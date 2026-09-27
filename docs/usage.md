@@ -448,15 +448,19 @@ guidance rather than a bare driver error. The process reads JSON-RPC 2.0 message
 Serve the MCP JSON-RPC protocol over HTTP. Suited for multi-client, platform, and CI use.
 
 ```sh
-fathom serve-http --store <path> [--addr <host:port>] [--module <store>]... [--modules-token-env <NAME>]
+fathom serve-http --store <path> [--addr <host:port>] [--managed] [--idle-exit 20m] [--ttl 8h] [--exit-with-parent=true] [--allow-operator-state] [--module <store>]... [--modules-token-env <NAME>]
 ```
 
 | Flag | Default | Description |
 |---|---|---|
 | `--store` | (required, or `[daemon].store` in config.toml) | store path (.sqlite/.db) |
 | `--addr` | `127.0.0.1:7575` | Listen address — loopback by default; surfaces are not a security boundary (ADR-014 amendment) |
-| `--auto-refresh` | `true` | Re-ingest a service on git-HEAD drift before answering. The inline re-ingest runs detached from the request (a caller that disconnects returns at once; the ingest completes); only the read that starts it waits, and other reads of that service meanwhile answer from the index as it stands. Inline auto-refresh ingests run one at a time process-wide (the `ingest` tool and `/refresh-file` do not share that ticket yet). One that fails before recording the new commit is retried after 30 s, doubling to at most 30 min |
-| `--managed` | `false` | This is the operator's launchd daemon (plist schema 2 passes it); also inferred when launchd starts the process under the installed fathom agent's label. Only a managed daemon watches its own binary: it stats it every 20 s, hashes only on a (size, mtime, inode) change, adopts a verified new binary by exiting **75**, and keeps a 5-minute cooldown between adoptions across restarts in `~/.fathom/daemon/<label>/lifecycle.jsonl`. `FATHOM_SELF_RESTART=off` still pins the binary |
+| `--auto-refresh` | `true` managed; `false` unmanaged | Re-ingest a service on git-HEAD drift before answering; an explicit flag wins either way. The inline re-ingest runs detached from the request (a caller that disconnects returns at once; the ingest completes); only the read that starts it waits, and other reads of that service meanwhile answer from the index as it stands. Inline auto-refresh ingests run one at a time process-wide (the `ingest` tool and `/refresh-file` do not share that ticket yet). One that fails before recording the new commit is retried after 30 s, doubling to at most 30 min |
+| `--managed` | `false` | This is the supervised daemon (ADR-047 §10.1; plist schema 2 passes it). A launchd job whose label is the default `dev.fathom.serve-http` or the `Label` of an installed fathom agent (`XPC_SERVICE_NAME`) is detected as managed without it; a systemd unit passes it. Only the managed daemon obeys `~/.fathom/daemon/disabled.json`/`paused.json` and watches its own binary: it stats it every 20 s, hashes only on a (size, mtime, inode) change, adopts a verified new binary by exiting **75**, and keeps a 5-minute cooldown between adoptions across restarts in `~/.fathom/daemon/<label>/lifecycle.jsonl` (`FATHOM_SELF_RESTART=off` still pins the binary). Every other serve-http is **unmanaged** (a scratch daemon) and bounded by the four flags below; it also runs no self-restart watcher or scavenger tick and starts the console feeders only when `/events` is first requested |
+| `--exit-with-parent` | `true` | Unmanaged: exit within 10 s of the parent process's death, SIGKILL included (kqueue `NOTE_EXIT` on macOS, a `getppid` poll everywhere); a daemon started by pid 1 has no parent to watch |
+| `--idle-exit` | `20m` | Unmanaged: exit after this long with no request in flight (an open `/events` stream counts as one); `0` disables |
+| `--ttl` | `8h` | Unmanaged: exit after this long regardless; `0` disables. Every bounded exit — also an unlinked (deleted or replaced) executable or store, checked every 60 s — logs its reason (`parent 4121 exited`, `idle 20m0s`, `ttl 8h0m0s`, `store unlinked`) and removes the daemon's record |
+| `--allow-operator-state` | `false` | Unmanaged: without it, a `--store` or `--call-log` resolving to the managed daemon's (from its record) is refused and serve-http exits 1 before opening anything |
 | `--call-log` | `<repo>/workspace/logs/mcp-calls.jsonl` (else `~/.fathom/logs/mcp-calls.jsonl`) | JSONL tool-call log, resolved from the daemon working directory's repository (§CLI subcommands); empty disables |
 | `--module` | — | Path to a conforming expert-module store, mounted READ-ONLY on `POST /rpc/modules`; repeatable; a non-conforming store aborts startup |
 | `--modules-token-env` | unset | NAME of an env var holding the bearer token for `POST /rpc/modules` (hosted mode); unset = no auth |
@@ -943,8 +947,8 @@ its uncompiled scopes absent (`uncompiled_count`), never a measured 0 or "fully
 covered". A layer whose pack could not be read (a broken project pack, or an unreadable
 `.fathom/layers` of a project holding it) is listed under `unplaced`, not guessed into a
 stratum, and `totals.layers` is a lower bound naming any unreadable catalog. They read the
-store the daemon at `--url` recorded when it bound (its `~/.fathom/daemons/` record,
-OC-2), else `[daemon].store`, else the workspace default — mounted read-only, and a
+store the daemon at `--url` recorded when it bound (its `~/.fathom/daemon/<id>/record.json`
+record, OC-2, RT-166), else `[daemon].store`, else the workspace default — mounted read-only, and a
 missing store is refused rather than created; text output names the store and the rule
 that chose it. `show` without `--json` is unchanged.
 
@@ -1464,6 +1468,8 @@ fathom daemon start   [--label NAME]
 fathom daemon pause   [--reason TEXT] [--url URL]
 fathom daemon resume
 fathom daemon uninstall [--label NAME]
+fathom daemon ps   [--json]
+fathom daemon reap [--apply] [--grace 5s]
 ```
 
 `status --json`: `{platform, label?, plist?, plist_schema?, posture_drift?,
@@ -1526,6 +1532,34 @@ daemon's codesigning identity — read from the live process (`codesign -dv
 binary on disk when none is running, and says which — and names an ad-hoc
 one (RT-148). Adoption by the self-restart watcher exits 75, so schema 2
 relaunches it; that is what `tenancy_contract` 1 promises.
+
+`ps` joins the daemon records (`~/.fathom/daemon/<id>/record.json`, schema 2,
+`<id>` = the launchd label when managed, else `addr-<port>-<pid>`; the legacy
+`~/.fathom/daemons/<host>-<port>.json` is still read for this release) with a
+live census of every `serve-http` process of any fathom executable, record or
+not. Columns: pid, addr, managed, age, RSS, idle (from the record's 60 s
+heartbeat; `?` without one), parent alive, unlinked executable, record state.
+Verdicts: `ok`, `orphaned` (unmanaged, parent gone), `idle` (unmanaged, no
+request for 1 h), `unlinked`, `no-record`, `stale-record` (the record's process
+is gone or its pid was reused). The managed daemon is never judged orphaned or
+idle; a record-less process on the managed address — the installed plist's
+`--addr`, else `[daemon].addr`, else `127.0.0.1:7575` — counts as managed. A
+daemon with a request in flight (an open `/events` stream) is never idle.
+
+`reap` is a **dry run by default**: it prints what it would kill and prune.
+With `--apply` it kills only unmanaged daemons whose verdict is not `ok`
+(SIGTERM, `--grace`, SIGKILL), re-checking each pid against a fresh census
+first (a reused pid is skipped), never the managed daemon, never its own
+process tree, and never a `no-record` daemon whose parent is alive (its record
+lives under another HOME — stranger-check's, a test suite's — and its own
+bounds apply); it removes their records and prunes stale ones whose pid is
+still gone at prune time.
+
+Records do not accumulate: an unmanaged daemon removes its record on its
+bounded exits and on SIGTERM, SIGINT or SIGHUP (exiting 128+signo), and a
+daemon recording itself prunes the records of scratch daemons whose pid is
+gone (a SIGKILL or a crash). The managed daemon's record is kept while it is
+down, so verbs still find its call log.
 
 macOS/launchd. `install` writes `~/Library/LaunchAgents/<label>.plist` with
 **your** resolved binary (symlinks followed, so launchd runs the stable
@@ -2761,8 +2795,9 @@ unreadable store) render on the same shell with the reason and the remedy.
   Sharing is a human verb (law 13): the verb writes a file and stops.
 
 **The call log is resolved once** (OC-2). `serve-http` records itself in
-`~/.fathom/daemons/<host>-<port>.json` (its absolute `--call-log`, store, pid and
-commit) once its listener is bound, and renders its own pages from that log.
+`~/.fathom/daemon/<id>/record.json` (its absolute `--call-log`, store, pid and
+commit; the legacy `~/.fathom/daemons/<host>-<port>.json` is still read this release,
+RT-166) once its listener is bound, and renders its own pages from that log.
 Every metrics, instrument and flywheel verb, `fleet report` and `research
 report`/`bundle` then resolve the log the same way: `--call-log`, else
 `FATHOM_CALL_LOG`, else the record of the daemon they talk to (`FATHOM_HTTP`,

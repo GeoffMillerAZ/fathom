@@ -55,15 +55,15 @@ and the operator can switch the daemon off with nothing else working.
 - [x] Hooks `stat` `disabled.json`/`paused.json` before any RPC and return silently (§9) {id: RT-10, symbol: BreakerAllows, package: internal/hookguard, reachable_from: TestHooksSilentWhenDisabled}
 - [x] Self-restart adoption exits 75, a code launchd relaunches on under both the schema-1 `KeepAlive true` plist and the schema-2 `{SuccessfulExit: false}` dict, where exit 0 would stay down (§8.2) {id: RT-11, symbol: adoptionExitCode, package: cmd/fathom, reachable_from: TestSelfRestartExitCodeMatchesPlistSchema}
 - [x] The binary watcher hashes only when (size, mtime, inode) changed, keeps a cross-process 5-minute cooldown in the lifecycle ledger, and runs only when managed (§8.2) {id: RT-12, symbol: binaryStatChanged, package: cmd/fathom, reachable_from: TestWatchOwnBinaryHashesOnlyOnStatChange}
-- [ ] A shared test entry point isolates HOME, state, call log and hook caches, points FATHOM_HTTP at 127.0.0.1:1, sets `FATHOM_TEST=1`, and exits 2 when it cannot (§10.4) {id: RT-16, symbol: IsolateAndRun, package: internal/testisolate, reachable_from: TestIsolateAndRun_ExitsWhenTempUnavailable}
-- [ ] `defaultFathomURL` returns an unroutable URL under `testing.Testing()` or `FATHOM_TEST=1` when FATHOM_HTTP is unset (§10.4) {id: RT-17, symbol: defaultFathomURL, package: cmd/fathom, reachable_from: TestDefaultURLUnroutableUnderTest}
-- [ ] `custodian.DefaultDaemonURL` has the same backstop (§10.4) {id: RT-18, symbol: DefaultDaemonURL, package: internal/custodian, reachable_from: TestDefaultDaemonURLUnroutableUnderTest}
-- [ ] Every package that reaches a daemon, state or call-log default runs under the isolating entry point (§10.4) {id: RT-19, symbol: packagesNeedingIsolation, package: internal/testisolate, reachable_from: TestEveryPackageWithDaemonDefaultsIsIsolated}
-- [ ] Every client derives `test=1` in `X-Fathom-Caller` from `FATHOM_TEST=1` as well as `testing.Testing()`, so a test that execs the built binary is still marked (§10.4) {id: RT-164, symbol: CallerHeader, package: pkg/client, reachable_from: TestCallerHeaderTestFlagFromEnv}
-- [ ] An unmanaged serve-http exits within 10 s of its parent's death, SIGKILL included (§10.1) {id: RT-20, symbol: watchParentExit, package: cmd/fathom, reachable_from: TestUnmanagedServeHTTPExitsWhenParentKilled}
-- [ ] An unmanaged serve-http exits on idle (20 min), TTL (8 h), or an unlinked executable or store, naming the reason; auto-refresh, feeders and the watcher are off (§10.1) {id: RT-21, symbol: EvaluateUnmanagedExit, package: internal/tenancy, reachable_from: TestUnmanagedExitReasons}
-- [ ] An unmanaged serve-http refuses the managed daemon's store and call log without `--allow-operator-state` (§10.1) {id: RT-22, symbol: refuseOperatorState, package: cmd/fathom, reachable_from: TestUnmanagedRefusesOperatorStore}
-- [ ] The stranger check uses a private `mktemp -d` work dir removed by its trap (§10.3) {id: RT-25, oracle: lexical, path: scripts/stranger-check.sh, pattern: "mktemp -d"}
+- [x] A shared test entry point isolates HOME, state, call log and hook caches, points FATHOM_HTTP at 127.0.0.1:1, sets `FATHOM_TEST=1`, and exits 2 when it cannot (§10.4) {id: RT-16, symbol: IsolateAndRun, package: internal/testisolate, reachable_from: TestIsolateAndRun_ExitsWhenTempUnavailable}
+- [x] `defaultFathomURL` returns an unroutable URL under `testing.Testing()` or `FATHOM_TEST=1` when FATHOM_HTTP is unset (§10.4) {id: RT-17, symbol: defaultFathomURL, package: cmd/fathom, reachable_from: TestDefaultURLUnroutableUnderTest}
+- [x] `custodian.DefaultDaemonURL` has the same backstop (§10.4) {id: RT-18, symbol: DefaultDaemonURL, package: internal/custodian, reachable_from: TestDefaultDaemonURLUnroutableUnderTest}
+- [x] Every package that reaches a daemon, state or call-log default runs under the isolating entry point (§10.4) {id: RT-19, symbol: packagesNeedingIsolation, package: internal/testisolate, reachable_from: TestEveryPackageWithDaemonDefaultsIsIsolated}
+- [x] Every client derives `test=1` in `X-Fathom-Caller` from `FATHOM_TEST=1` as well as `testing.Testing()`, so a test that execs the built binary is still marked (§10.4) {id: RT-164, symbol: CallerHeader, package: pkg/client, reachable_from: TestCallerHeaderTestFlagFromEnv}
+- [x] An unmanaged serve-http exits within 10 s of its parent's death, SIGKILL included (§10.1) {id: RT-20, symbol: watchParentExit, package: cmd/fathom, reachable_from: TestUnmanagedServeHTTPExitsWhenParentKilled}
+- [x] An unmanaged serve-http exits on idle (20 min), TTL (8 h), or an unlinked executable or store, naming the reason; auto-refresh, feeders and the watcher are off (§10.1) {id: RT-21, symbol: EvaluateUnmanagedExit, package: internal/tenancy, reachable_from: TestUnmanagedExitReasons}
+- [x] An unmanaged serve-http refuses the managed daemon's store and call log without `--allow-operator-state` (§10.1) {id: RT-22, symbol: refuseOperatorState, package: cmd/fathom, reachable_from: TestUnmanagedRefusesOperatorStore}
+- [x] The stranger check uses a private `mktemp -d` work dir removed by its trap (§10.3) {id: RT-25, oracle: lexical, path: scripts/stranger-check.sh, pattern: "mktemp -d"}
 - [x] `task deploy` fails loudly when the `fathom-dev` signing identity is missing instead of installing an ad-hoc binary (§8.4) {id: RT-147, oracle: lexical, path: Taskfile.yml, pattern: "fathom-dev signing identity missing"}
 - [x] `fathom daemon status` reports the running binary's codesigning identity and names an ad-hoc signature (§8.4) {id: RT-148, symbol: binarySigningIdentity, package: cmd/fathom, reachable_from: TestDaemonStatusReportsSigningIdentity}
 - [x] The post-commit hook's message says what it did (daemon refresh failed, nothing ingested, how to refresh) instead of announcing a fallback it does not run (§12.3) {id: RT-170, symbol: cmdPostCommitHook, package: cmd/fathom, reachable_from: TestPostCommitMessageNamesNoFallback}
@@ -77,10 +77,12 @@ waits.
 - [x] Plist schema 2: KeepAlive {SuccessfulExit: false}, ThrottleInterval 60, ProcessType Background, LowPriorityIO, LowPriorityBackgroundIO, Nice 5, ExitTimeOut 20, `--managed`; `TestSelfRestartExitCodeMatchesPlistSchema` reads this render (§8.1, §8.2) {id: RT-13, symbol: plistBody, package: cmd/fathom, reachable_from: TestPlistV2RoundTripAndReconcileKeepsOperatorKeys}
 - [x] `fathom daemon install --reconcile` rewrites only the tenancy keys, keeps label, paths, store, call log, WorkingDirectory and env, writes a backup and receipt, needs `--adopt` for a hand-written plist, and refuses before the binary reports `tenancy_contract >= 1` (§8.3) {id: RT-14, symbol: reconcilePlist, package: cmd/fathom, reachable_from: TestPlistV2RoundTripAndReconcileKeepsOperatorKeys}
 - [x] Doctor and `daemon status` name plist drift with the exact reconcile command; the reload line is printed, not run, from an agent shell (§8.3) {id: RT-15, symbol: checkDaemonPosture, package: cmd/fathom, reachable_from: TestDoctorDaemonPostureNamesReconcile}
-- [ ] Daemon records move to `~/.fathom/daemon/<id>/record.json`; the legacy `~/.fathom/daemons/` is read for one release and pruned (§10.2) {id: RT-166, symbol: daemonRecordPath, package: cmd/fathom, reachable_from: TestDaemonRecordUnderDaemonDirWithLegacyRead}
-- [ ] `fathom daemon ps` joins records with a live census and names orphaned, idle, unlinked, no-record and stale-record daemons (§10.2) {id: RT-23, symbol: daemonCensus, package: cmd/fathom, reachable_from: TestDaemonCensusVerdicts}
-- [ ] `fathom daemon reap` is dry-run by default and never touches the managed label (§10.2) {id: RT-24, symbol: runDaemonReap, package: cmd/fathom, reachable_from: TestDaemonReapDryRunKillsNothing}
+- [x] Daemon records move to `~/.fathom/daemon/<id>/record.json`; the legacy `~/.fathom/daemons/` is read for one release and pruned (§10.2) {id: RT-166, symbol: daemonRecordPath, package: cmd/fathom, reachable_from: TestDaemonRecordUnderDaemonDirWithLegacyRead}
+- [x] `fathom daemon ps` joins records with a live census and names orphaned, idle, unlinked, no-record and stale-record daemons (§10.2) {id: RT-23, symbol: daemonCensus, package: cmd/fathom, reachable_from: TestDaemonCensusVerdicts}
+- [x] `fathom daemon reap` is dry-run by default and never touches the managed label (§10.2) {id: RT-24, symbol: runDaemonReap, package: cmd/fathom, reachable_from: TestDaemonReapDryRunKillsNothing}
 - [ ] (op) RT-28: operator deploys the wave-A binary with `task deploy` (which now fails without the signing identity), reconciles this machine's plist (`--adopt`), reloads from their own terminal, and runs `fathom daemon reap --apply` on the leaked scratch daemons {id: RT-28, skip: "operator action on the live machine", needs: "RT-11,RT-14,RT-24,RT-147"}
+- [x] Daemon records do not accumulate: an unmanaged serve-http removes its record on SIGTERM/SIGINT/SIGHUP, a daemon recording itself prunes dead scratch daemons' records, and a lookup reads only its port's record directories (§10.2, I48) {id: RT-175, symbol: pruneDeadScratchRecords, package: cmd/fathom, reachable_from: TestDaemonRecordRetentionIsBounded}
+- [x] Every request the binary sends to a daemon host carries `X-Fathom-Caller`, not only those built by `originHeader` (§10.4) {id: RT-176, symbol: InstallCallerTransport, package: pkg/client, reachable_from: TestEveryDaemonRequestCarriesCaller}
 
 ## B. Seatbelt — bounded whatever the cause
 
@@ -90,6 +92,7 @@ bound memory here.
 
 - [ ] The budget resolves from RAM and config (clamp(RAM/8, 1–4 GiB)), deriving marks, slots, per-call ceilings and deadlines, each derivation named (§2, §3.1) {id: RT-29, symbol: ResolveBudget, package: internal/tenancy, reachable_from: TestResolveBudget_PerRAMClass}
 - [ ] `[tenancy]` is read at user scope only; a repository `[tenancy]` is ignored and named; `[daemon].memory_limit` migrates (§1) {id: RT-30, symbol: ResolveTenancyConfig, package: internal/config, reachable_from: TestBudgetConfigUserScopeOnly}
+- [ ] An unmanaged serve-http resolves its own `[tenancy.unmanaged]` budget (512 MiB default) through the same ladder, so a leaked scratch daemon cannot grow to the managed size (§10.1) {id: RT-177, symbol: ResolveBudget, package: internal/tenancy, reachable_from: TestResolveBudget_UnmanagedClass}
 - [ ] The CUE schema carries `#Tenancy` with valid and invalid testdata pairs (§1) {id: RT-31, oracle: lexical, path: schema/config/schema.cue, pattern: "#Tenancy"}
 - [ ] The host sampler reads phys_footprint, the child-process tree, runtime/metrics, pressure level, swap used and volume free space without stop-the-world calls or allocation; an unknown pressure or swap reading is disclosed and never a trigger; an unknown footprint disables the ladder, disclosed (§2) {id: RT-32, symbol: SampleHost, package: internal/tenancy, reachable_from: TestHostSampler_UnknownDisclosedNeverTriggers}
 - [ ] The child-process tree's footprint (`go list`, git, rg) is sampled, disclosed in `resources` and `/metrics`, and counted toward the shed and refuse marks; the exit rung kills the tree first (§2) {id: RT-161, symbol: childTreeFootprint, package: cmd/fathom, reachable_from: TestChildFootprintCountedTowardShedAndRefuse}
@@ -298,7 +301,7 @@ appears in two classes and once here).
 | soft-limit-no-admission-control | RT-33, RT-35, RT-36, RT-53, RT-153 |
 | scavenger-fixed-cadence-blind-metric | RT-45, RT-34 |
 | launchd-keepalive-relaunch-loop | RT-13, RT-37, RT-38, RT-39, RT-40, RT-155, RT-156, RT-157, RT-M3 |
-| scratch-daemon-leak | RT-20, RT-21, RT-22, RT-24 |
+| scratch-daemon-leak | RT-20, RT-21, RT-22, RT-24, RT-177, RT-175 |
 | self-restart-hash-and-abrupt-exit | RT-11, RT-12, RT-44, RT-109 |
 | console-refactor-unbounded-goroutines | RT-117, RT-118 |
 | console-plans-loopback-verify-amplifier | RT-116, RT-61 |
@@ -322,7 +325,7 @@ appears in two classes and once here).
 | bench-and-script-daemons-escape-cleanup | RT-20, RT-25, RT-168 |
 | gates-spawn-parallel-heavy-work-per-push-and-commit | RT-129, RT-111, RT-170 |
 | daemon-forks-git-and-go-toolchain-in-request-path | RT-99, RT-101, RT-106, RT-161 |
-| state-files-without-retention | RT-125, RT-126 |
+| state-files-without-retention | RT-125, RT-126, RT-175 |
 | workspace-bench-artifacts-unbounded | RT-125, RT-135 |
 | sqlite-wal-and-store-never-shrink | RT-78, RT-128 |
 | custodian-walk-in-hooks-for-non-git-roots | RT-134 |
@@ -344,7 +347,7 @@ appears in two classes and once here).
 | caches-invisible-and-count-bounded | RT-73, RT-124 |
 | sqlite-memory-outside-go-accounting | RT-78, RT-124 |
 | disk-writes-and-disk-full-invisible-rendered-as-zero | RT-41, RT-124, RT-162, RT-M12 |
-| caller-identity-and-scratch-daemons-unattributable | RT-63, RT-64, RT-23, RT-164 |
+| caller-identity-and-scratch-daemons-unattributable | RT-63, RT-64, RT-23, RT-164, RT-176 |
 | observatory-reads-cost-uncounted | RT-112, RT-113, RT-126 |
 | no-idle-shrink-or-exit | RT-73, RT-21; managed idle exit deferred as RT-D3 |
 | intent-records-claim-bounded | RT-138, RT-139, RT-140, RT-142 (plus INC-23, INC-24, I47–I53 in this change) |

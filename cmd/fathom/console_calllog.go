@@ -8,7 +8,8 @@ package main
 // other than the one it writes, and verbs reading a log relative to their
 // working directory. Two changes close it:
 //
-//   - serve-http records itself (~/.fathom/daemons/<host>-<port>.json) once
+//   - serve-http records itself (~/.fathom/daemon/<id>/record.json since
+//     RT-166; the legacy ~/.fathom/daemons/<host>-<port>.json still reads) once
 //     its listener is bound: its absolute --call-log, store, pid, commit.
 //     A verb run from any directory reads the record for the daemon it
 //     talks to (FATHOM_HTTP, else localhost:7575) and gets the log the
@@ -59,7 +60,8 @@ func servingDaemonCallLog() (path, note string, set bool) {
 	return servingCallLog.path, servingCallLog.note, servingCallLog.set
 }
 
-// daemonRecordPathFor is the record path for the daemon at baseURL.
+// daemonRecordPathFor is the LEGACY record path for the daemon at baseURL
+// (~/.fathom/daemons/<host>-<port>.json), read for one release (RT-166).
 func daemonRecordPathFor(baseURL string) (string, bool) {
 	home, err := os.UserHomeDir()
 	if err != nil || home == "" {
@@ -80,16 +82,19 @@ func daemonRecordPathFor(baseURL string) (string, bool) {
 // A record whose call_log is "" is still a record: that daemon runs with
 // logging off (rule none), and it is still a previous daemon for the next
 // start's restart/adopt event.
+//
+// RT-166: records live at ~/.fathom/daemon/<id>/record.json; the legacy
+// ~/.fathom/daemons/<host>-<port>.json is still read (daemon_records.go).
 func readDaemonRecordFor(baseURL string) (console.DaemonRecord, bool) {
-	p, ok := daemonRecordPathFor(baseURL)
-	if !ok {
+	home, err := os.UserHomeDir()
+	if err != nil || home == "" {
 		return console.DaemonRecord{}, false
 	}
-	rec, err := console.ReadDaemonRecord(p)
+	addr, err := console.DaemonAddrFromURL(baseURL)
 	if err != nil {
 		return console.DaemonRecord{}, false
 	}
-	return rec, true
+	return findDaemonRecord(home, addr)
 }
 
 // recordServingDaemon writes this daemon's record and remembers its own log
@@ -107,26 +112,8 @@ func absStorePath(p string) string {
 }
 
 func recordServingDaemon(addr, callLog, storePath, commit string, now time.Time) (console.DaemonRecord, error) {
-	abs := callLog
-	if abs != "" && !filepath.IsAbs(abs) {
-		if a, err := filepath.Abs(abs); err == nil {
-			abs = a
-		}
-	}
-	rec := console.NewDaemonRecord(addr, os.Getpid(), abs, absStorePath(storePath), commit, now)
-	// The record's own provenance: a verb run from a terminal names this
-	// log through the record (resolveConsoleCallLogFor), so the pages must
-	// use the same words or their JSON differs from the verb's (OC-8).
-	setServingCallLog(abs, rec.Note())
-	home, err := os.UserHomeDir()
-	if err != nil || home == "" {
-		return rec, err
-	}
-	p, err := console.DaemonRecordPath(home, addr)
-	if err != nil {
-		return rec, err
-	}
-	return rec, console.WriteDaemonRecord(p, rec)
+	rec, _, err := recordServingDaemonAs(daemonMeta{PPID: os.Getppid()}, addr, callLog, storePath, commit, now)
+	return rec, err
 }
 
 // callLogQuery parameterizes resolveConsoleCallLogFor: the invocation's own

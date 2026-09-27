@@ -1,0 +1,128 @@
+package testisolate
+
+import (
+	"bytes"
+	"errors"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+)
+
+type runnerFunc func() int
+
+func (f runnerFunc) Run() int { return f() }
+
+// isolatedVars are restored by t.Setenv after each case, since
+// IsolateAndRun mutates the process environment the way TestMain does.
+func saveEnv(t *testing.T) {
+	t.Helper()
+	for _, k := range IsolatedVars {
+		t.Setenv(k, os.Getenv(k))
+	}
+}
+
+// TestIsolateAndRun_ExitsWhenTempUnavailable (RT-16, §10.4): when the
+// isolated root cannot be made, the suite never runs against the real
+// HOME — the entry point exits 2 and names why.
+func TestIsolateAndRun_ExitsWhenTempUnavailable(t *testing.T) {
+	saveEnv(t)
+	realHome := os.Getenv("HOME")
+	var stderr bytes.Buffer
+	ran := false
+	code := IsolateAndRun(runnerFunc(func() int { ran = true; return 0 }), Options{
+		MkdirTemp: func(string, string) (string, error) { return "", errors.New("no space left on device") },
+		Stderr:    &stderr,
+	})
+	if code != 2 {
+		t.Fatalf("exit code = %d, want 2", code)
+	}
+	if ran {
+		t.Fatal("the suite ran although isolation failed")
+	}
+	if os.Getenv("HOME") != realHome {
+		t.Fatalf("HOME changed to %q on a failed isolation", os.Getenv("HOME"))
+	}
+	if !strings.Contains(stderr.String(), "no space left on device") {
+		t.Fatalf("stderr does not name the reason: %q", stderr.String())
+	}
+
+	// A failing per-package setup is the same refusal.
+	stderr.Reset()
+	ran = false
+	code = IsolateAndRun(runnerFunc(func() int { ran = true; return 0 }), Options{
+		MkdirTemp: func(string, string) (string, error) { return t.TempDir(), nil },
+		Setup:     func(string) error { return errors.New("cache dir unwritable") },
+		Stderr:    &stderr,
+	})
+	if code != 2 || ran {
+		t.Fatalf("setup failure: code=%d ran=%v, want 2/false", code, ran)
+	}
+}
+
+// TestIsolateAndRun_IsolatesEnvironment: the suite sees an isolated HOME,
+// state dir, XDG state, call log, the unroutable daemon URL and
+// FATHOM_TEST=1; the root is removed afterwards and the suite's code is
+// returned.
+func TestIsolateAndRun_IsolatesEnvironment(t *testing.T) {
+	saveEnv(t)
+	t.Setenv("FATHOM_HTTP", "http://localhost:7575")
+	t.Setenv("FATHOM_STATE_DIR", "/real/operator/state")
+	t.Setenv("FATHOM_CALL_LOG", "/real/operator/mcp-calls.jsonl")
+	parent := t.TempDir()
+	var root string
+	seen := map[string]string{}
+	var setupRoot string
+	code := IsolateAndRun(runnerFunc(func() int {
+		for _, k := range IsolatedVars {
+			seen[k] = os.Getenv(k)
+		}
+		return 7
+	}), Options{
+		MkdirTemp: func(_, pattern string) (string, error) {
+			d, err := os.MkdirTemp(parent, pattern)
+			root = d
+			return d, err
+		},
+		Setup: func(r string) error { setupRoot = r; return nil },
+	})
+	if code != 7 {
+		t.Fatalf("exit code = %d, want the suite's 7", code)
+	}
+	if setupRoot != root {
+		t.Fatalf("setup got %q, want root %q", setupRoot, root)
+	}
+	if seen["FATHOM_HTTP"] != UnroutableURL {
+		t.Errorf("FATHOM_HTTP = %q, want %q (an inherited live URL must be replaced)", seen["FATHOM_HTTP"], UnroutableURL)
+	}
+	if seen[EnvTest] != "1" {
+		t.Errorf("%s = %q, want 1", EnvTest, seen[EnvTest])
+	}
+	for _, k := range []string{"FATHOM_STATE_DIR", "FATHOM_CALL_LOG"} {
+		if seen[k] != "" {
+			t.Errorf("%s = %q, want unset (it resolves under the isolated XDG_STATE_HOME)", k, seen[k])
+		}
+	}
+	for _, k := range []string{"HOME", "XDG_STATE_HOME", "FATHOM_THREADS"} {
+		if !strings.HasPrefix(seen[k], root+string(filepath.Separator)) {
+			t.Errorf("%s = %q, not under the isolated root %q", k, seen[k], root)
+		}
+	}
+	if _, err := os.Stat(root); !os.IsNotExist(err) {
+		t.Errorf("isolated root %s not removed after the run (err=%v)", root, err)
+	}
+}
+
+// TestBackstopFromEnvInChildProcess: testing.Testing() is false in a child
+// process, so the env flag alone must carry the backstop.
+func TestBackstopFromEnvInChildProcess(t *testing.T) {
+	if got := backstop(false, "", "http://localhost:7575"); got != "http://localhost:7575" {
+		t.Fatalf("not under test: %q, want the default", got)
+	}
+	if got := backstop(false, "1", "http://localhost:7575"); got != UnroutableURL {
+		t.Fatalf("FATHOM_TEST=1: %q, want %q", got, UnroutableURL)
+	}
+	if got := backstop(true, "", "http://localhost:7575"); got != UnroutableURL {
+		t.Fatalf("testing.Testing(): %q, want %q", got, UnroutableURL)
+	}
+}

@@ -3,16 +3,19 @@ package main
 import (
 	"context"
 	"crypto/subtle"
+	"flag"
 	"fmt"
 	"io"
 	"net/http"
 	"net/http/pprof"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"runtime"
 	"runtime/debug"
 	"strings"
 	"sync/atomic"
+	"syscall"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/capability"
@@ -22,6 +25,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/mcp"
 	"github.com/geoffmilleraz/fathom/internal/modulehost"
 	"github.com/geoffmilleraz/fathom/internal/store"
+	"github.com/geoffmilleraz/fathom/internal/tenancy"
 	"github.com/geoffmilleraz/fathom/pkg/client"
 )
 
@@ -65,6 +69,10 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	// fathom-http.err and vice versa.
 	flog := dlog.New(stderr, dlog.LevelFromEnv(os.Getenv), time.Now)
 	outLog := dlog.New(stdout, dlog.LevelFromEnv(os.Getenv), time.Now)
+	// RT-20: the parent is the process that started this one; captured
+	// before anything slow, so a parent that dies during startup is seen.
+	startPPID := os.Getppid()
+	startedAt := time.Now()
 
 	loaded, cfgErr := config.Load(config.DefaultUserPath(), config.DefaultProjectPath())
 	if cfgErr != nil {
@@ -79,26 +87,59 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	callLogPath := fs.String("call-log", firstNonEmpty(loaded.Config.Daemon.CallLog, defaultCallLogPath()), "JSONL tool-call log path, resolved against the daemon working directory; empty to disable")
 	var modulePaths stringSliceFlag
 	fs.Var(&modulePaths, "module", "path to a conforming expert-module store (.sqlite/.db, docs/spec/expert-module-v0.md), mounted READ-ONLY on POST /rpc/modules; repeatable. A non-conforming or unreadable store aborts startup loudly (docs/plans/gke-module-host.md GKE-MH-1) rather than starting up silently degraded.")
-	managed := fs.Bool("managed", false, "this is the operator's managed daemon (the launchd agent; plist schema 2 passes it): it obeys ~/.fathom/daemon/disabled.json and paused.json (`fathom daemon stop|pause`) and is the only daemon that watches its own binary for self-restart. Also inferred when launchd starts this process under the installed fathom agent's label (XPC_SERVICE_NAME); a scratch daemon omits it and ignores the switch files")
+	managedFlag := fs.Bool("managed", false, "this is the operator's managed (launchd/systemd-supervised) daemon (§10.1; plist schema 2 passes it): it obeys ~/.fathom/daemon/disabled.json and paused.json (`fathom daemon stop|pause`) and is the only daemon that watches its own binary for self-restart. A launchd job under the default label or an installed fathom agent's Label is detected as managed without it. Unmanaged daemons are bounded: --exit-with-parent, --idle-exit, --ttl, no auto-refresh by default, switch files ignored, and the managed daemon's store and call log refused")
+	exitWithParent := fs.Bool("exit-with-parent", true, "unmanaged only: exit within 10 s of the parent process's death, SIGKILL included (RT-20)")
+	idleExit := fs.Duration("idle-exit", tenancy.DefaultUnmanagedBounds().IdleExit, "unmanaged only: exit after this long with no request in flight; 0 disables (RT-21)")
+	ttl := fs.Duration("ttl", tenancy.DefaultUnmanagedBounds().TTL, "unmanaged only: exit after this long regardless; 0 disables (RT-21)")
+	allowOperatorState := fs.Bool("allow-operator-state", false, "unmanaged only: allow --store/--call-log to name the managed daemon's store or call log (RT-22)")
 	modulesTokenEnv := fs.String("modules-token-env", "", "name of an environment variable holding the bearer token required for POST /rpc/modules (GKE-MH-7); unset = auth disabled (default — matches the loopback-only daemon's existing unauthenticated trust boundary). The token itself is never a flag or config value, only this env var's NAME.")
 
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
 
-	// RT-6: the managed daemon re-reads paused.json every 2 s and moves to
-	// and from safe mode. XPC_SERVICE_NAME covers a schema-1 plist that
-	// predates --managed.
-	if *managed || isManagedInvocation(nil, os.Getenv) {
-		if dir, dirErr := daemonStateDir(); dirErr == nil {
-			go watchPauseSwitch(dir, 2*time.Second, time.Now, flog, nil)
-		}
-	}
-
 	if *storePath == "" {
 		flog.Error("--store is required")
 		fs.Usage()
 		return 1
+	}
+
+	// §10.1: managed or unmanaged decides every tenancy default below.
+	managed, managedLabel := detectManaged(*managedFlag, os.Getenv, installedAgentLabels)
+	// RT-6: the managed daemon re-reads paused.json every 2 s and moves to
+	// and from safe mode. XPC_SERVICE_NAME covers a schema-1 plist that
+	// predates --managed.
+	if managed {
+		if dir, dirErr := daemonStateDir(); dirErr == nil {
+			go watchPauseSwitch(dir, 2*time.Second, time.Now, flog, nil)
+		}
+	}
+	explicit := map[string]bool{}
+	fs.Visit(func(f *flag.Flag) { explicit[f.Name] = true })
+	if !managed {
+		// A scratch daemon never re-ingests real repositories unless asked.
+		if !explicit["auto-refresh"] {
+			*autoRefresh = false
+		}
+		if !*allowOperatorState {
+			// The managed daemon's paths from its record and its plist,
+			// under HOME and the account's own home (a swapped HOME holds
+			// neither); an unreadable managed record refuses (I38).
+			homes := operatorStateHomes()
+			addrHome := ""
+			if len(homes) > 0 {
+				addrHome = homes[len(homes)-1] // the account's home when HOME is swapped
+			}
+			warns, err := checkOperatorState(*storePath, *callLogPath, homes, managedDaemonAddrIn(addrHome, loaded.Config.Daemon.Addr))
+			for _, w := range warns {
+				flog.Warn(w)
+			}
+			if err != nil {
+				flog.Error(err.Error())
+				return 1
+			}
+		}
+		outLog.Info(fmt.Sprintf("serve-http: unmanaged (idle-exit %s, ttl %s, exit-with-parent %v, auto-refresh %v) — pass --managed for a supervised daemon", *idleExit, *ttl, *exitWithParent, *autoRefresh))
 	}
 
 	// GKE-MH-7: resolve the modules bearer token BEFORE opening anything —
@@ -250,7 +291,7 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	// daemon watches (RT-12): a scratch serve-http never adopts, never
 	// hashes its binary and never writes the operator's lifecycle ledger.
 	startSelfRestart(outLog, selfRestartStart{
-		managedFlag:     *managed,
+		managedFlag:     *managedFlag,
 		xpcServiceName:  os.Getenv("XPC_SERVICE_NAME"),
 		installedLabels: installedAgentLabels,
 		disabled:        selfRestartDisabled(),
@@ -274,7 +315,9 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	// simply makes rotateDaemonStdio a no-op for those two arguments.
 	outFile, _ := stdout.(*os.File)
 	errFile, _ := stderr.(*os.File)
-	if scavengeDisabled() {
+	if !managed {
+		outLog.Info("scavenge: off (unmanaged daemon, §10.1)")
+	} else if scavengeDisabled() {
 		outLog.Info("scavenge: OFF (FATHOM_SCAVENGE=off) — the daemon's OS-visible footprint may not shrink after a peak (O108); fathom-http.log/.err rotation (DG-6) is paused too")
 	} else {
 		go runMemoryScavenger(context.Background(), scavengeIntervalFromEnv(), outLog, func() {
@@ -311,15 +354,55 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	// daemon and start the event feeders.
 	prevRecord, hadPrev := readDaemonRecordFor("http://" + *addr)
 	commit := statuszBuildInfo().BinaryCommit
-	if rec, recErr := recordServingDaemon(*addr, *callLogPath, *storePath, commit, time.Now()); recErr != nil {
+	meta := daemonMeta{Managed: managed, Label: managedLabel, PPID: startPPID}
+	if !managed {
+		meta.IdleExit, meta.TTL = *idleExit, *ttl
+	}
+	rec, recordPath, recErr := recordServingDaemonAs(meta, listener.Addr().String(), *callLogPath, *storePath, commit, time.Now())
+	if recErr != nil {
 		flog.Warn(fmt.Sprintf("serve-http: daemon record not written (%v) — verbs fall back to config and the legacy call-log path", recErr))
 	} else {
-		outLog.Info(fmt.Sprintf("serve-http: daemon record: call log %s", rec.CallLog))
+		outLog.Info(fmt.Sprintf("serve-http: daemon record: %s (call log %s)", recordPath, rec.CallLog))
 	}
 	publishDaemonEvent(consoleDeps.bus, prevRecord, hadPrev, commit)
 	eventSources := newConsoleEventSources(consoleDeps.bus, c, verifyLedgerPath(), sessionLedgerPath())
 	eventSources.warn = func(msg string) { flog.Warn(msg) }
-	go runConsoleEventSources(context.Background(), eventSources)
+	startFeeders := func() { go runConsoleEventSources(context.Background(), eventSources) }
+	if managed {
+		startFeeders()
+	} else {
+		handler = lazyFeeders(handler, startFeeders) // §10.1: feeders lazy
+	}
+
+	// RT-20/RT-21: the lifetime tick (heartbeat for every daemon; exit
+	// bounds for an unmanaged one) and the parent-death watch.
+	act := newActivity(time.Now)
+	handler = act.middleware(handler)
+	lifetime := &daemonLifetime{
+		managed:    managed,
+		bounds:     tenancy.UnmanagedBounds{IdleExit: *idleExit, TTL: *ttl},
+		startedAt:  startedAt,
+		act:        act,
+		store:      identify(absStorePath(*storePath)),
+		recordPath: recordPath,
+		now:        time.Now,
+		logf:       func(m string) { outLog.Info(m) },
+		exit:       os.Exit,
+	}
+	if exe, exeErr := os.Executable(); exeErr == nil {
+		lifetime.exe = identify(exe)
+	}
+	go lifetime.run(daemonLifetimeTick)
+	if !managed {
+		sigs := make(chan os.Signal, 1)
+		signal.Notify(sigs, syscall.SIGTERM, syscall.SIGINT, syscall.SIGHUP)
+		go exitOnSignal(sigs, lifetime)
+	}
+	if !managed && *exitWithParent {
+		if !watchParentExit(startPPID, parentExitPoll, os.Getppid, lifetime.shutdown) {
+			outLog.Info(fmt.Sprintf("serve-http: parent-exit watch off (started by pid %d)", startPPID))
+		}
+	}
 
 	if err := http.Serve(listener, handler); err != nil {
 		flog.Error(fmt.Sprintf("http serve: %v", err))
@@ -327,6 +410,13 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	}
 	return 0
 }
+
+// daemonLifetimeTick is the heartbeat and exit-bound cadence (§10.1,
+// §10.2); parentExitPoll the getppid poll behind the kqueue watch.
+var (
+	daemonLifetimeTick = 60 * time.Second
+	parentExitPoll     = 5 * time.Second
+)
 
 // httpServerState holds lightweight server-level metrics exposed via GET /metrics.
 type httpServerState struct {

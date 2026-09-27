@@ -11,7 +11,7 @@ package main
 // They read the store the daemon reads — never a store relative to the
 // working directory. The store is resolved once (resolveKnowledgeStore):
 // --store when given, else the store the daemon at --url recorded when its
-// listener bound (~/.fathom/daemons/<host>-<port>.json, OC-2's record),
+// listener bound (~/.fathom/daemon/<id>/record.json, OC-2's record, RT-166),
 // else [daemon].store, else the workspace default. It is mounted genuinely
 // read-only (store.MountReadOnly): a verb that explains the index never
 // writes to it.

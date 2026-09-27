@@ -133,8 +133,10 @@ func relaunchClause(ops daemonOps, label string, rec tenancy.SwitchRecord) []str
 func findManagedDaemon(ops daemonOps, addr string) (int, []string) {
 	var notes []string
 	home, _ := os.UserHomeDir()
-	if p, err := console.DaemonRecordPath(home, addr); err == nil {
-		if rec, err := console.ReadDaemonRecord(p); err == nil && rec.PID > 0 {
+	// RT-166: the schema-2 record (~/.fathom/daemon/<id>/record.json) first,
+	// else the legacy ~/.fathom/daemons/<host>-<port>.json.
+	if home != "" {
+		if rec, found := findDaemonRecord(home, addr); found && rec.PID > 0 {
 			pi, alive := ops.Proc(rec.PID)
 			recorded, perr := time.Parse(time.RFC3339, rec.StartedAt)
 			switch {

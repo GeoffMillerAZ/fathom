@@ -227,6 +227,15 @@ Served by `serve-http` and `serve-mcp` alike; the contract lives in
   `POST /rpc/agent` through agentic-kit's `mcp-client` Streamable-HTTP
   transport — a client fathom did not write — initialize → tools/list →
   tools/call.
+- **Caller identity (RT-164, ADR-047 §10.4).** Every request the `fathom`
+  binary sends to a daemon host (loopback, `localhost`, or `FATHOM_HTTP`'s
+  host — never any other) carries `X-Fathom-Caller:
+  pid=<n>;ppid=<n>;origin=<channel>;session=<id>;test=0|1`. `test=1` when the
+  sender is a test binary or runs with `FATHOM_TEST=1` (inherited by a
+  process a test execs). `origin` and `session` keep `[A-Za-z0-9._:/-]`, map
+  anything else to `_` and are capped at 128 bytes, so a value cannot add or
+  override a field; a parser ignores unknown fields
+  (`client.ParseCallerHeader`). `X-Fathom-Origin` is unchanged.
 - **Descriptions (RP-9, diet O101).** Every agent-surface description
   carries a "Reach for it when …" sentence and a `Required: a, b.` sentence
   naming exactly the arguments its own `inputSchema` marks required —

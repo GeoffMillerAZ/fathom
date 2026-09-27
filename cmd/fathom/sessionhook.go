@@ -19,6 +19,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/harness"
 	"github.com/geoffmilleraz/fathom/internal/hookguard"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
+	"github.com/geoffmilleraz/fathom/internal/testisolate"
 )
 
 // cmdSessionHook implements the "session-hook" subcommand: a Claude Code
@@ -282,7 +283,9 @@ func defaultFathomURL() string {
 	if u := os.Getenv("FATHOM_HTTP"); u != "" {
 		return u
 	}
-	return "http://localhost:7575"
+	// RT-17/RT-18 (§10.4): a test binary, or a process a test started
+	// (FATHOM_TEST=1), never falls back to the operator's daemon.
+	return testisolate.DaemonURLBackstop("http://localhost:7575")
 }
 
 type svcInfo struct {

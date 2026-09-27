@@ -126,7 +126,7 @@ func daemonRestartHint(storeHint string) string {
 }
 
 func cmdDaemon(args []string, stdout, stderr io.Writer) int {
-	const subs = "install|status|uninstall|stop|start|pause|resume"
+	const subs = "install|status|uninstall|stop|start|pause|resume|ps|reap"
 	if len(args) == 0 {
 		fmt.Fprintln(stderr, "usage: fathom daemon "+subs)
 		return 2
@@ -150,6 +150,10 @@ func cmdDaemon(args []string, stdout, stderr io.Writer) int {
 		return runDaemonPause(true, rest, stdout, stderr, realDaemonOps{})
 	case "resume":
 		return runDaemonPause(false, rest, stdout, stderr, realDaemonOps{})
+	case "ps":
+		return cmdDaemonPs(rest, stdout, stderr)
+	case "reap":
+		return cmdDaemonReap(rest, stdout, stderr)
 	default:
 		fmt.Fprintf(stderr, "error: unknown daemon subcommand %q (%s)\n", sub, subs)
 		return 2

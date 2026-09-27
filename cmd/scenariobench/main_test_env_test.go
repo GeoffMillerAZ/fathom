@@ -3,6 +3,8 @@ package main
 import (
 	"os"
 	"testing"
+
+	"github.com/geoffmilleraz/fathom/internal/testisolate"
 )
 
 // TestMain scrubs the variables git exports to hook processes before any
@@ -12,5 +14,5 @@ func TestMain(m *testing.M) {
 		os.Unsetenv(k)
 	}
 	os.Setenv("LEFTHOOK", "0")
-	os.Exit(m.Run())
+	testisolate.Main(m) // RT-19 (§10.4): private HOME/state/call log, unroutable daemon URL
 }
