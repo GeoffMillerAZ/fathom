@@ -117,6 +117,7 @@ var storeMethodDisposition = map[string]string{
 	// --- responsible tenant §6 (RT-76, RT-160): derived facts ---
 	"WriteServiceSummary":   "write path (an ingest's final transaction)",
 	"BackfillDerivedTables": "write path (derives from stored rows; reads no file)",
+	"RecountServiceSummary": "write path (recounts the summary row in place after a single-file refresh; returns nothing)",
 	"DerivedState":          "which derived facts a service has (flags and a watermark), no path-anchored content",
 
 	// --- diagnostics sweep DG-10: restart-durable typed-edge status ---
