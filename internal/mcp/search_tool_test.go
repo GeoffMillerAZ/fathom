@@ -87,7 +87,7 @@ func TestSearchWithReceiptsFromService(t *testing.T) {
 
 func TestSearchRootOnlyOmitsSymKindButKeepsFlags(t *testing.T) {
 	_, root := newSearchServer(t)
-	srv := mcp.NewServer(nil) // no backend at all — root mode must not need one
+	srv := rootServer(root) // no symbols indexed: root mode reads no index
 	payload := callTool(t, srv, "search", map[string]any{"root": root, "pattern": `func TestA`})
 	hits, _ := payload["hits"].([]any)
 	if len(hits) != 1 {
@@ -105,7 +105,7 @@ func TestSearchRootOnlyOmitsSymKindButKeepsFlags(t *testing.T) {
 
 func TestSearchExcludesVendorAndWorkspaceByDefault(t *testing.T) {
 	_, root := newSearchServer(t)
-	srv := mcp.NewServer(nil)
+	srv := rootServer(root)
 	payload := callTool(t, srv, "search", map[string]any{"root": root, "pattern": `func A\(\)`})
 	hits, _ := payload["hits"].([]any)
 	for _, raw := range hits {
@@ -125,7 +125,7 @@ func TestSearchExcludesVendorAndWorkspaceByDefault(t *testing.T) {
 
 func TestSearchPathGlob(t *testing.T) {
 	_, root := newSearchServer(t)
-	srv := mcp.NewServer(nil)
+	srv := rootServer(root)
 	payload := callTool(t, srv, "search", map[string]any{"root": root, "pattern": "package", "path": "pkg/*_test.go"})
 	hits, _ := payload["hits"].([]any)
 	if len(hits) != 1 {
@@ -139,7 +139,7 @@ func TestSearchPathGlob(t *testing.T) {
 
 func TestSearchCaseInsensitive(t *testing.T) {
 	_, root := newSearchServer(t)
-	srv := mcp.NewServer(nil)
+	srv := rootServer(root)
 	// Default (case omitted) is case-sensitive: "FUNC A" must not match.
 	payload := callTool(t, srv, "search", map[string]any{"root": root, "pattern": "FUNC A", "path": "pkg/a.go"})
 	if hits, _ := payload["hits"].([]any); len(hits) != 0 {
@@ -153,7 +153,7 @@ func TestSearchCaseInsensitive(t *testing.T) {
 
 func TestSearchContext(t *testing.T) {
 	_, root := newSearchServer(t)
-	srv := mcp.NewServer(nil)
+	srv := rootServer(root)
 	payload := callTool(t, srv, "search", map[string]any{"root": root, "pattern": `func A\(\)`, "path": "pkg/a.go", "context": 1})
 	hits, _ := payload["hits"].([]any)
 	if len(hits) != 1 {
@@ -176,7 +176,7 @@ func TestSearchLimitAndElision(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "many.txt"), []byte(sb.String()), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	srv := mcp.NewServer(nil)
+	srv := rootServer(root)
 	payload := callTool(t, srv, "search", map[string]any{"root": root, "pattern": "needle"})
 	hits, _ := payload["hits"].([]any)
 	if len(hits) != 50 {
@@ -186,11 +186,17 @@ func TestSearchLimitAndElision(t *testing.T) {
 	if !ok {
 		t.Fatalf("elided missing, want a block naming the %d hits past the limit: %v", total-50, payload)
 	}
-	if got := int(el["count"].(float64)); got != total-50 {
-		t.Errorf("elided.count = %d, want %d", got, total-50)
+	// RT-88: a file stops after limit+1 matches (ripgrep --max-count, the
+	// fallback likewise), so "of" is a lower bound past the limit and the
+	// answer names it.
+	if got := int(el["count"].(float64)); got != 1 {
+		t.Errorf("elided.count = %d, want 1 (one match past the limit is read)", got)
 	}
-	if got := int(el["of"].(float64)); got != total {
-		t.Errorf("elided.of = %d, want %d", got, total)
+	if got := int(el["of"].(float64)); got != 51 {
+		t.Errorf("elided.of = %d, want 51", got)
+	}
+	if p, _ := payload["partial"].(string); !strings.Contains(p, "≥ 51 hits (at most 51 matches read per file)") {
+		t.Errorf("partial = %q, want the per-file bound named", payload["partial"])
 	}
 	if el["how_to_get_more"] == "" {
 		t.Error("elided.how_to_get_more is empty")
@@ -214,7 +220,7 @@ func TestSearchHitsSortedByPathThenLine(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	srv := mcp.NewServer(nil)
+	srv := rootServer(root)
 	payload := callTool(t, srv, "search", map[string]any{"root": root, "pattern": "needle"})
 	hits, _ := payload["hits"].([]any)
 	if len(hits) != 3 {
@@ -257,4 +263,10 @@ func TestSearchOnAgentSurface(t *testing.T) {
 	if !on {
 		t.Fatal("search is not on the agent surface allowlist")
 	}
+}
+
+// rootServer registers root as one service's root and indexes no symbols:
+// a bare-root search must lie inside a registered root (RT-88).
+func rootServer(root string) *mcp.Server {
+	return mcp.NewServer(&extendedFakeBackend{services: []string{"svc"}, svcPath: root})
 }
