@@ -21,6 +21,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/store"
+	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
 
 // JSON-RPC 2.0 error codes.
@@ -152,6 +153,10 @@ type Server struct {
 	navMemo   map[string]navMemoEntry
 	navOrder  []string
 	navFlight map[string]*navCall
+
+	// gate is the admission gate (design §3.2, RT-56): set once by
+	// SetGate before serving; nil admits everything (stdio, tests).
+	gate *tenancy.Gate
 }
 
 // DropCaches drops the server's derived caches — the call graphs and the

@@ -164,7 +164,11 @@ const OriginConsole = "console"
 
 // IsConsoleRead reports whether a call-log row's origin is the console
 // reading itself, never usage.
-func IsConsoleRead(origin string) bool { return origin == OriginConsole }
+// The daemon's own in-process console calls (OriginConsoleInProcess,
+// RT-61) are console reads too.
+func IsConsoleRead(origin string) bool {
+	return origin == OriginConsole || origin == OriginConsoleInProcess
+}
 
 // originFrom extracts the caller-declared origin ("" = agent/unknown).
 func originFrom(ctx context.Context) string {
