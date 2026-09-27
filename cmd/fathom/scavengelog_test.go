@@ -105,6 +105,31 @@ func TestScavengerLogsReleasedAndFootprint(t *testing.T) {
 			}
 		}
 	})
+
+	// The exit mark with an ingest in flight halts it (and quarantines the
+	// service) before deciding to exit: that halt is an event too.
+	t.Run("exit-mark halt", func(t *testing.T) {
+		r := newGovRig(t)
+		var lines []string
+		r.g.logf = func(s string) { lines = append(lines, s) }
+		r.g.memRead = mem.read
+		_, done := r.g.inflight.Begin(context.Background(), tenancy.ClassIngest, "ingest", "svc", "")
+		defer done()
+		r.host.set(9*tenancy.GiB, 0) // over the exit mark
+		r.ticks(2)
+		var halt string
+		for _, l := range lines {
+			if strings.HasPrefix(l, "scavenge (exit-mark halt)") {
+				halt = l
+			}
+		}
+		if halt == "" {
+			t.Fatalf("no scavenge (exit-mark halt) line; log:\n%s", strings.Join(lines, "\n"))
+		}
+		if !strings.Contains(halt, "phys_footprint 1.2 GiB → 700 MiB") || !strings.Contains(halt, "total−released 900 MiB → 400 MiB") {
+			t.Errorf("exit-mark halt line lacks the before/after readings: %s", halt)
+		}
+	})
 }
 
 type lockedWriter struct {

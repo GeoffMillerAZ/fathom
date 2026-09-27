@@ -113,7 +113,8 @@ func runMemoryScavenger(ctx context.Context, interval time.Duration, log *dlog.L
 }
 
 // scavengeMem is one scavenge reading: runtime/metrics total−released and
-// the process's phys_footprint (RSS off darwin); -1 = unknown.
+// the process's phys_footprint; -1 = unknown (off darwin, where no
+// footprint reader is wired, the line says "phys_footprint unknown").
 type scavengeMem struct {
 	TotalMinusReleased int64
 	Footprint          int64
