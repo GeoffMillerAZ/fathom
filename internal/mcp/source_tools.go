@@ -21,6 +21,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/analysis/cloc"
 	"github.com/geoffmilleraz/fathom/internal/analysis/security"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/corpus"
 )
 
 // registerSourceTools is called from registerTools (tools.go) and adds the
@@ -52,13 +53,15 @@ func serviceArg(args json.RawMessage, tool string) (string, *rpcError) {
 	return p.Service, nil
 }
 
-// fetchSources calls backend.Sources and converts the error to rpcError.
-func fetchSources(ctx context.Context, backend QueryInterface, service string) ([]core.SourceFile, *rpcError) {
-	files, err := backend.Sources(ctx, service)
+// fetchSources gathers the service's files under the tree budget
+// (collectSources, RT-71) and converts the error to rpcError. The coverage
+// names a partial scan; callers disclose it with withPartial.
+func fetchSources(ctx context.Context, backend QueryInterface, service string) ([]core.SourceFile, corpus.Coverage, *rpcError) {
+	files, cov, err := collectSources(ctx, backend, service)
 	if err != nil {
-		return nil, &rpcError{Code: ErrCodeInternal, Message: "sources: " + err.Error()}
+		return nil, cov, &rpcError{Code: ErrCodeInternal, Message: "sources: " + err.Error()}
 	}
-	return files, nil
+	return files, cov, nil
 }
 
 // ─── secret_scan ─────────────────────────────────────────────────────────────
@@ -83,7 +86,7 @@ func registerSecretScan(s *Server, backend QueryInterface) {
 		if rpcErr != nil {
 			return nil, rpcErr
 		}
-		files, rpcErr := fetchSources(ctx, backend, service)
+		files, cov, rpcErr := fetchSources(ctx, backend, service)
 		if rpcErr != nil {
 			return nil, rpcErr
 		}
@@ -95,7 +98,7 @@ func registerSecretScan(s *Server, backend QueryInterface) {
 			all = append(all, security.SecretScan(f.Path, f.Content)...)
 		}
 		sortSecurityFindings(all)
-		return map[string]any{"findings": securityFindingsToAny(all)}, nil
+		return withPartial(map[string]any{"findings": securityFindingsToAny(all)}, cov), nil
 	})
 }
 
@@ -121,7 +124,7 @@ func registerShellOut(s *Server, backend QueryInterface) {
 		if rpcErr != nil {
 			return nil, rpcErr
 		}
-		files, rpcErr := fetchSources(ctx, backend, service)
+		files, cov, rpcErr := fetchSources(ctx, backend, service)
 		if rpcErr != nil {
 			return nil, rpcErr
 		}
@@ -133,7 +136,7 @@ func registerShellOut(s *Server, backend QueryInterface) {
 			all = append(all, security.ShellOut(f.Path, f.Content)...)
 		}
 		sortSecurityFindings(all)
-		return map[string]any{"findings": securityFindingsToAny(all)}, nil
+		return withPartial(map[string]any{"findings": securityFindingsToAny(all)}, cov), nil
 	})
 }
 
@@ -159,7 +162,7 @@ func registerHTTPClientCalls(s *Server, backend QueryInterface) {
 		if rpcErr != nil {
 			return nil, rpcErr
 		}
-		files, rpcErr := fetchSources(ctx, backend, service)
+		files, cov, rpcErr := fetchSources(ctx, backend, service)
 		if rpcErr != nil {
 			return nil, rpcErr
 		}
@@ -171,7 +174,7 @@ func registerHTTPClientCalls(s *Server, backend QueryInterface) {
 			all = append(all, security.HTTPClientCalls(f.Path, f.Content)...)
 		}
 		sortSecurityFindings(all)
-		return map[string]any{"findings": securityFindingsToAny(all)}, nil
+		return withPartial(map[string]any{"findings": securityFindingsToAny(all)}, cov), nil
 	})
 }
 
@@ -197,7 +200,7 @@ func registerCloc(s *Server, backend QueryInterface) {
 		if rpcErr != nil {
 			return nil, rpcErr
 		}
-		files, rpcErr := fetchSources(ctx, backend, service)
+		files, cov, rpcErr := fetchSources(ctx, backend, service)
 		if rpcErr != nil {
 			return nil, rpcErr
 		}
@@ -245,7 +248,7 @@ func registerCloc(s *Server, backend QueryInterface) {
 			total.Comment += s.Comment
 			total.Code += s.Code
 		}
-		return map[string]any{
+		return withPartial(map[string]any{
 			"by_lang": byLang,
 			"total": map[string]any{
 				"blank":   total.Blank,
@@ -261,7 +264,7 @@ func registerCloc(s *Server, backend QueryInterface) {
 				"files": generatedFiles,
 				"bytes": generatedBytes,
 			},
-		}, nil
+		}, cov), nil
 	})
 }
 

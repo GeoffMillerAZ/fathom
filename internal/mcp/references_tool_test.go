@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/corpus"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
 )
 
@@ -751,4 +752,28 @@ func TestReferencesDegradesUnreadableSourcesOnly(t *testing.T) {
 	if len(occs) != 1 {
 		t.Errorf("occurrences = %v, want svcGood's one occurrence", occs)
 	}
+}
+
+func (r *referencesFakeBackend) ScanSources(ctx context.Context, svc string, bud corpus.Budget, fn func(core.SourceFile) bool) (corpus.Coverage, error) {
+	files, err := r.Sources(ctx, svc)
+	if err != nil {
+		return corpus.Coverage{}, err
+	}
+	return corpus.ScanSourceFiles(ctx, files, bud, fn)
+}
+
+func (f *referencesExactMultiFake) ScanSources(ctx context.Context, svc string, bud corpus.Budget, fn func(core.SourceFile) bool) (corpus.Coverage, error) {
+	files, err := f.Sources(ctx, svc)
+	if err != nil {
+		return corpus.Coverage{}, err
+	}
+	return corpus.ScanSourceFiles(ctx, files, bud, fn)
+}
+
+func (f *referencesUnreadableFake) ScanSources(ctx context.Context, svc string, bud corpus.Budget, fn func(core.SourceFile) bool) (corpus.Coverage, error) {
+	files, err := f.Sources(ctx, svc)
+	if err != nil {
+		return corpus.Coverage{}, err
+	}
+	return corpus.ScanSourceFiles(ctx, files, bud, fn)
 }

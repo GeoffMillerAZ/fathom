@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/corpus"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
 )
 
@@ -211,4 +212,12 @@ func TestReferencesDepthAndConfidence(t *testing.T) {
 	if len(buckets) != 2 || buckets[0].(map[string]any)["depth"] != float64(0) || buckets[1].(map[string]any)["count"] != float64(len(occs)) {
 		t.Errorf("by_depth = %v: want depth 0 (1 def) and depth 1 (%d mentions)", buckets, len(occs))
 	}
+}
+
+func (g *graphBackend) ScanSources(ctx context.Context, svc string, bud corpus.Budget, fn func(core.SourceFile) bool) (corpus.Coverage, error) {
+	files, err := g.Sources(ctx, svc)
+	if err != nil {
+		return corpus.Coverage{}, err
+	}
+	return corpus.ScanSourceFiles(ctx, files, bud, fn)
 }

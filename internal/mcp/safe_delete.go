@@ -224,7 +224,7 @@ func safeDeleteImplementations(ctx context.Context, backend QueryInterface, serv
 			return implementationsOf(ctx, backend, service, n, nodes)
 		}
 	}
-	sources, err := backend.Sources(ctx, service)
+	sources, _, err := collectSources(ctx, backend, service)
 	if err != nil || len(sources) == 0 {
 		return nil
 	}

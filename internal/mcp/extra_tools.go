@@ -353,8 +353,9 @@ func registerSpecCoverage(s *Server, backend QueryInterface) {
 		if p.Service == "" {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "spec_coverage: service required"}
 		}
-		// Scan Sources for spec refs; fall back to nodes if Sources unavailable.
-		files, _ := backend.Sources(ctx, p.Service)
+		// Scan sources for spec refs under the tree budget (RT-71); a
+		// partial scan is named in the answer.
+		files, specCov, _ := collectSources(ctx, backend, p.Service)
 		nodes, err := serviceSymbols(ctx, backend, p.Service)
 		if err != nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
@@ -398,11 +399,11 @@ func registerSpecCoverage(s *Server, backend QueryInterface) {
 			}
 			covered[id] = stringsToAny(syms)
 		}
-		return map[string]any{
+		return withPartial(map[string]any{
 			"coverage":  covered,
 			"uncovered": stringsToAny(uncovered),
 			"orphans":   stringsToAny(orphans),
-		}, nil
+		}, specCov), nil
 	})
 }
 
@@ -435,7 +436,7 @@ func registerTraceability(s *Server, backend QueryInterface) {
 		if p.Service == "" {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "traceability: service required"}
 		}
-		files, _ := backend.Sources(ctx, p.Service)
+		files, cov, _ := collectSources(ctx, backend, p.Service)
 		refs := make(map[string]any)
 		for _, f := range files {
 			var specRefs []string
@@ -448,7 +449,7 @@ func registerTraceability(s *Server, backend QueryInterface) {
 				refs[f.Path] = stringsToAny(specRefs)
 			}
 		}
-		return map[string]any{"refs": refs}, nil
+		return withPartial(map[string]any{"refs": refs}, cov), nil
 	})
 }
 
@@ -712,7 +713,7 @@ func registerStaleDocs(s *Server, backend QueryInterface) {
 		if rpcErr != nil {
 			return nil, rpcErr
 		}
-		files, rpcErr := fetchSources(ctx, backend, svc)
+		files, cov, rpcErr := fetchSources(ctx, backend, svc)
 		if rpcErr != nil {
 			return nil, rpcErr
 		}
@@ -753,7 +754,7 @@ func registerStaleDocs(s *Server, backend QueryInterface) {
 				"ref":  d.Ref,
 			}
 		}
-		return map[string]any{"drifts": result, "count": len(result)}, nil
+		return withPartial(map[string]any{"drifts": result, "count": len(result)}, cov), nil
 	})
 }
 
@@ -852,10 +853,14 @@ func registerDepDrift(s *Server, backend QueryInterface) {
 		if p.ServiceB == "" {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "dep_drift: service_b required"}
 		}
+		var partials []string
 		parseDeps := func(svc string) ([]deps.Dependency, *rpcError) {
-			files, err := backend.Sources(ctx, svc)
+			files, cov, err := collectSources(ctx, backend, svc)
 			if err != nil {
 				return nil, &rpcError{Code: ErrCodeInternal, Message: "sources " + svc + ": " + err.Error()}
+			}
+			if note := partialNote(cov); note != "" {
+				partials = append(partials, svc+": "+note)
 			}
 			var all []deps.Dependency
 			for _, f := range files {
@@ -884,7 +889,11 @@ func registerDepDrift(s *Server, backend QueryInterface) {
 				"baseline": d.Baseline,
 			}
 		}
-		return map[string]any{"drift": result, "count": len(result)}, nil
+		out := map[string]any{"drift": result, "count": len(result)}
+		if len(partials) > 0 {
+			out["partial"] = strings.Join(partials, "; ")
+		}
+		return out, nil
 	})
 }
 
@@ -1671,7 +1680,7 @@ func registerProtoConformance(s *Server, backend QueryInterface) {
 		if rpcErr != nil {
 			return nil, rpcErr
 		}
-		files, rpcErr := fetchSources(ctx, backend, svc)
+		files, cov, rpcErr := fetchSources(ctx, backend, svc)
 		if rpcErr != nil {
 			return nil, rpcErr
 		}
@@ -1691,7 +1700,7 @@ func registerProtoConformance(s *Server, backend QueryInterface) {
 				})
 			}
 		}
-		return map[string]any{"issues": allIssues, "count": len(allIssues)}, nil
+		return withPartial(map[string]any{"issues": allIssues, "count": len(allIssues)}, cov), nil
 	})
 }
 
@@ -1728,7 +1737,7 @@ func registerSpecRefs(s *Server, backend QueryInterface) {
 		if p.Service == "" {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "spec_refs: service required"}
 		}
-		files, rpcErr := fetchSources(ctx, backend, p.Service)
+		files, cov, rpcErr := fetchSources(ctx, backend, p.Service)
 		if rpcErr != nil {
 			return nil, rpcErr
 		}
@@ -1749,11 +1758,11 @@ func registerSpecRefs(s *Server, backend QueryInterface) {
 				"line": r.Line,
 			})
 		}
-		return map[string]any{
+		return withPartial(map[string]any{
 			"specs":         specsMap,
 			"total_refs":    len(refs),
 			"files_scanned": scanned,
-		}, nil
+		}, cov), nil
 	})
 }
 
@@ -2154,7 +2163,7 @@ func registerTraverse(s *Server, backend QueryInterface) {
 		}
 
 		// Build edges from source files: spec-refs, routes, env-keys.
-		srcs, _ := backend.Sources(ctx, p.Service)
+		srcs, srcCov, _ := collectSources(ctx, backend, p.Service)
 		for _, f := range srcs {
 			// Spec-ref edges: file → spec_id.
 			specRefs := sdd.ExtractRefs(string(f.Content))
@@ -2245,10 +2254,10 @@ func registerTraverse(s *Server, backend QueryInterface) {
 			edgeCountsOut[k] = v
 		}
 
-		return map[string]any{
+		return withPartial(map[string]any{
 			"paths":       pathsOut,
 			"truncated":   result.Truncated,
 			"edge_counts": edgeCountsOut,
-		}, nil
+		}, srcCov), nil
 	})
 }

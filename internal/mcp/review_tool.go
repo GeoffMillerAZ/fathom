@@ -21,6 +21,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/certify"
 	"github.com/geoffmilleraz/fathom/internal/conserve"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/corpus"
 	"github.com/geoffmilleraz/fathom/internal/memo"
 	"github.com/geoffmilleraz/fathom/internal/projectrules"
 	"github.com/geoffmilleraz/fathom/internal/store"
@@ -143,6 +144,9 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 		persisted, resolutions := applyAndPersistFindings(ctx, backend, &v, sources)
 
 		payload := v.Payload(persisted)
+		if note := partialNote(sources.cov); note != "" {
+			payload["corpus_partial"] = note
+		}
 		if vo := reviewVerdictOutcome(v, resolutions); vo != nil {
 			payload["verdict_outcome"] = vo
 		}
@@ -376,10 +380,18 @@ func discoverConservePlanPaths(root string) []string {
 // spec_coverage. The full source list is also returned: the persist step
 // needs it to hash cited lines (semantic.Sweep's contract), including arch
 // citations on files OUTSIDE the changed set.
-func buildReviewInput(ctx context.Context, backend QueryInterface, service string, changedFiles []string, concern, since string) (review.Input, []core.SourceFile, *rpcError) {
+// reviewCorpus is the budgeted scan review_diff's findings persistence
+// reads file contents from (RT-71): files, and whether the scan stopped
+// early — a file absent from a partial scan is unknown, never deleted.
+type reviewCorpus struct {
+	files []core.SourceFile
+	cov   corpus.Coverage
+}
+
+func buildReviewInput(ctx context.Context, backend QueryInterface, service string, changedFiles []string, concern, since string) (review.Input, reviewCorpus, *rpcError) {
 	nodes, err := serviceSymbols(ctx, backend, service)
 	if err != nil {
-		return review.Input{}, nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
+		return review.Input{}, reviewCorpus{}, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
 	}
 	typed, _ := backend.TypedEdges(ctx, service)
 
@@ -463,7 +475,7 @@ func buildReviewInput(ctx context.Context, backend QueryInterface, service strin
 	applyConservationDimension(ctx, &in, backend, corpusRoot, service)
 	rules, source, deny, checked, reason, resolveErr := projectrules.ResolveRules(corpusRoot, nil, false)
 	if resolveErr != nil {
-		return review.Input{}, nil, &rpcError{Code: ErrCodeInternal, Message: "review_diff: project rules: " + resolveErr.Error()}
+		return review.Input{}, reviewCorpus{}, &rpcError{Code: ErrCodeInternal, Message: "review_diff: project rules: " + resolveErr.Error()}
 	}
 	in.ArchRules = rules
 	in.ArchRuleSource = source
@@ -471,7 +483,7 @@ func buildReviewInput(ctx context.Context, backend QueryInterface, service strin
 	in.ArchChecked = checked
 	in.ArchReason = reason
 
-	sources, serr := backend.Sources(ctx, service)
+	sources, cov, serr := collectSources(ctx, backend, service)
 	if serr == nil {
 		changedSet := make(map[string]bool, len(changedFiles))
 		for _, f := range changedFiles {
@@ -484,7 +496,7 @@ func buildReviewInput(ctx context.Context, backend QueryInterface, service strin
 		}
 	}
 
-	return in, sources, nil
+	return in, reviewCorpus{files: sources, cov: cov}, nil
 }
 
 // defaultCoverageProfileLayer is the layer an unlabeled `coverage_profile`
@@ -581,7 +593,7 @@ func applyCoverageProfiles(ctx context.Context, backend QueryInterface, service 
 // own Scope and whether each scoped file is still present in sources (the
 // full corpus source list, not just the changed files), mirroring
 // cmd/fathom/review.go's runReview resolve closure exactly.
-func applyAndPersistFindings(ctx context.Context, backend QueryInterface, v *review.Verdict, sources []core.SourceFile) (bool, map[string]string) {
+func applyAndPersistFindings(ctx context.Context, backend QueryInterface, v *review.Verdict, rc reviewCorpus) (bool, map[string]string) {
 	rcb, ok := backend.(reviewClaimsBackend)
 	if !ok {
 		return false, nil
@@ -596,8 +608,8 @@ func applyAndPersistFindings(ctx context.Context, backend QueryInterface, v *rev
 	if _, indexedCommit, found, err := backend.ServiceMeta(ctx, v.Service); err == nil && found {
 		watermark = indexedCommit
 	}
-	content := make(map[string][]byte, len(sources))
-	for _, f := range sources {
+	content := make(map[string][]byte, len(rc.files))
+	for _, f := range rc.files {
 		content[f.Path] = f.Content
 	}
 	claims, links, supersede := review.BuildPersist(v, existing, review.PersistInput{
@@ -626,7 +638,9 @@ func applyAndPersistFindings(ctx context.Context, backend QueryInterface, v *rev
 			okAll = false
 		}
 	}
-	fileExists := func(path string) bool { _, ok := content[path]; return ok }
+	// A partial scan cannot say a file is gone (I38): an unscanned path
+	// counts as present, so no claim is resolved as a deletion on a guess.
+	fileExists := func(path string) bool { _, ok := content[path]; return ok || rc.cov.LowerBound() }
 	resolutions := make(map[string]string, len(supersede))
 	supersedeAt := time.Now().UTC()
 	for _, id := range supersede {

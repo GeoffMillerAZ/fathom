@@ -409,7 +409,10 @@ func registerReferences(s *Server, backend QueryInterface) {
 				// Already at cap; skip further source scans.
 				continue
 			}
-			sources, err := backend.Sources(ctx, svc)
+			sources, srcCov, err := collectSources(ctx, backend, svc)
+			if err == nil && srcCov.LowerBound() {
+				degraded = append(degraded, degradedEntry{Service: svc, Reason: partialNote(srcCov)})
+			}
 			if err != nil {
 				// O36: same doctrine as ListAllSymbols above — a service
 				// whose sources cannot be discovered degrades, never

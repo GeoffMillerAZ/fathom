@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/corpus"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
 )
@@ -876,4 +877,12 @@ rules: [
 	if vo2["active"] != float64(0) || vo2["fixed"] != float64(1) || vo2["superseded"] != float64(0) {
 		t.Fatalf("run2 verdict_outcome = %v, want active:0 fixed:1 superseded:0", vo2)
 	}
+}
+
+func (r *reviewFakeBackend) ScanSources(ctx context.Context, svc string, bud corpus.Budget, fn func(core.SourceFile) bool) (corpus.Coverage, error) {
+	files, err := r.Sources(ctx, svc)
+	if err != nil {
+		return corpus.Coverage{}, err
+	}
+	return corpus.ScanSourceFiles(ctx, files, bud, fn)
 }

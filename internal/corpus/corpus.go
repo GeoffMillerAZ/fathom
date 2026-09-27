@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/connector"
+	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
 
@@ -266,4 +267,84 @@ func ScanBudgeted(ctx context.Context, root string, paths []string, b Budget, fn
 		}
 	}
 	return cov, nil
+}
+
+// ScanFetch is ScanBudgeted over a fetch function — a connector's Fetch —
+// for the request path's tree reads (RT-71, §4.6): one file at a time,
+// handed to fn and released before the next, stopping at b's byte, file and
+// wall bounds, at fn's hit stop, at ctx, or at a meter refusal. A file the
+// byte budget cannot hold stops the scan (it was fetched under the per-file
+// cap but never handed on). A missing file is skipped; an oversize one
+// (*connector.OversizeError) is named in Coverage.Excluded; any other fetch
+// failure is named unreadable.
+func ScanFetch(ctx context.Context, paths []string, b Budget, fetch func(ctx context.Context, path string) ([]byte, error), fn func(path string, content []byte) (stop bool)) (Coverage, error) {
+	cov := Coverage{Total: len(paths)}
+	now := b.Now
+	if now == nil {
+		now = time.Now
+	}
+	start := now()
+	var read int64
+	for _, p := range paths {
+		if err := ctx.Err(); err != nil {
+			cov.Stopped = StopCtx
+			return cov, err
+		}
+		if b.Files > 0 && cov.Scanned >= b.Files {
+			cov.Stopped = StopFiles
+			return cov, nil
+		}
+		if b.Wall > 0 && now().Sub(start) >= b.Wall {
+			cov.Stopped = StopTime
+			return cov, nil
+		}
+		data, err := fetch(ctx, p)
+		if err != nil {
+			var over *connector.OversizeError
+			switch {
+			case ctx.Err() != nil:
+				cov.Stopped = StopCtx
+				return cov, ctx.Err()
+			case errors.Is(err, fs.ErrNotExist):
+				continue
+			case errors.As(err, &over):
+				cov.Excluded = append(cov.Excluded, Excluded{Path: p, Reason: ReasonOversize, Size: over.Size})
+				continue
+			case errors.Is(err, tenancy.ErrOverBudget), errors.Is(err, tenancy.ErrAbandonedByGovernor), errors.Is(err, tenancy.ErrHaltedOverBudget):
+				cov.Stopped = StopMeter
+				return cov, nil
+			default:
+				cov.Excluded = append(cov.Excluded, Excluded{Path: p, Reason: ReasonUnreadable, Err: err})
+				continue
+			}
+		}
+		if b.Bytes > 0 && read+int64(len(data)) > b.Bytes {
+			cov.Stopped = StopBytes
+			return cov, nil
+		}
+		read += int64(len(data))
+		cov.Scanned++
+		if fn(p, data) {
+			cov.Stopped = StopHits
+			return cov, nil
+		}
+	}
+	return cov, nil
+}
+
+// ScanSourceFiles is ScanFetch over files already in memory — the shape an
+// in-memory or test backend answers a tree scan with, under the same budget
+// and hit semantics as a connector-backed one.
+func ScanSourceFiles(ctx context.Context, files []core.SourceFile, b Budget, fn func(core.SourceFile) (stop bool)) (Coverage, error) {
+	byPath := make(map[string]core.SourceFile, len(files))
+	paths := make([]string, 0, len(files))
+	for _, f := range files {
+		if _, dup := byPath[f.Path]; !dup {
+			paths = append(paths, f.Path)
+		}
+		byPath[f.Path] = f
+	}
+	return ScanFetch(ctx, paths, b, func(_ context.Context, p string) ([]byte, error) {
+		return byPath[p].Content, nil
+	}, func(p string, _ []byte) bool { return fn(byPath[p]) })
 }

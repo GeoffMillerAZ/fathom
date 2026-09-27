@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/corpus"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
 )
 
@@ -254,4 +255,12 @@ func TestSymbolContext_NoFleetBackend_OmitsCrossServiceFields(t *testing.T) {
 	if _, ok := p["cross_service_callers"]; ok {
 		t.Errorf("cross_service_callers should be omitted with no fleet backend: %v", p)
 	}
+}
+
+func (q fleetAsQuery) ScanSources(ctx context.Context, svc string, bud corpus.Budget, fn func(core.SourceFile) bool) (corpus.Coverage, error) {
+	files, err := q.Sources(ctx, svc)
+	if err != nil {
+		return corpus.Coverage{}, err
+	}
+	return corpus.ScanSourceFiles(ctx, files, bud, fn)
 }

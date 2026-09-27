@@ -26,6 +26,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/corpus"
 	"github.com/geoffmilleraz/fathom/internal/decide"
 	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/query"
@@ -572,6 +573,45 @@ func (c *Client) Sources(ctx context.Context, service string) ([]core.SourceFile
 		})
 	}
 	return files, nil
+}
+
+// ScanSources streams the service's source files to fn one at a time under
+// b (RT-71, docs/design/responsible-tenant.md §4.6) — the request path's
+// only tree read, replacing Sources in mcp.QueryInterface. Each file is
+// fetched through the connector (the 2 MiB fetch cap, the meter, the
+// producer governor), handed to fn and released before the next; the
+// returned coverage names why a scan stopped early (a lower bound, I38).
+// It takes a Sources slot (RT-146): a hook-origin ctx never waits and gets
+// ErrSourcesBusy.
+func (c *Client) ScanSources(ctx context.Context, service string, b corpus.Budget, fn func(SourceFile) (stop bool)) (corpus.Coverage, error) {
+	release, err := acquireSourcesSlot(ctx)
+	if err != nil {
+		return corpus.Coverage{}, err
+	}
+	defer release()
+	svcRef := core.ServiceRef{ID: service, Path: service}
+	if meta, found, err := c.st.GetServiceMeta(ctx, service); err == nil && found && meta.Path != "" {
+		svcRef.Path = meta.Path
+	}
+	refs, err := c.conn.Discover(ctx, svcRef)
+	if err != nil {
+		return corpus.Coverage{}, fmt.Errorf("client.ScanSources discover %q: %w", service, err)
+	}
+	byPath := make(map[string]core.SourceRef, len(refs))
+	paths := make([]string, 0, len(refs))
+	for _, ref := range refs {
+		byPath[ref.Path] = ref
+		paths = append(paths, ref.Path)
+	}
+	return corpus.ScanFetch(ctx, paths, b, func(ctx context.Context, p string) ([]byte, error) {
+		return c.conn.Fetch(ctx, byPath[p])
+	}, func(p string, data []byte) bool {
+		lang := connector.LanguageForPath(p)
+		if connector.IsBinary(data) {
+			lang = core.LangBinary
+		}
+		return fn(SourceFile{Path: p, Content: data, Lang: lang, Generated: connector.IsGenerated(p, data)})
+	})
 }
 
 // IngestService re-ingests the named service and satisfies the

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/corpus"
 	"github.com/geoffmilleraz/fathom/internal/dlog"
 	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/hookcache"
@@ -405,9 +406,9 @@ func (a *autoRefreshBackend) ListAllSymbols(ctx context.Context, serviceID strin
 	return a.QueryInterface.ListAllSymbols(ctx, serviceID)
 }
 
-func (a *autoRefreshBackend) Sources(ctx context.Context, service string) ([]core.SourceFile, error) {
+func (a *autoRefreshBackend) ScanSources(ctx context.Context, service string, b corpus.Budget, fn func(core.SourceFile) bool) (corpus.Coverage, error) {
 	a.ensure(ctx, service)
-	return a.QueryInterface.Sources(ctx, service)
+	return a.QueryInterface.ScanSources(ctx, service, b, fn)
 }
 
 func (a *autoRefreshBackend) TypedEdges(ctx context.Context, serviceID string) ([]core.Edge, error) {

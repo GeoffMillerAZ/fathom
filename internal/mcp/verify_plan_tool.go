@@ -279,7 +279,7 @@ func buildSpecMatrix(ctx context.Context, backend QueryInterface, service string
 			codeRefs[n.Name] = refs
 		}
 	}
-	files, err := backend.Sources(ctx, service)
+	files, _, err := collectSources(ctx, backend, service)
 	if errors.Is(err, core.ErrSourcesBusy) {
 		return sdd.Matrix{}, err
 	}

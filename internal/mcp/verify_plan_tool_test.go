@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/corpus"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
 )
 
@@ -418,4 +419,12 @@ func TestVerifyPlan_Tool_StructuredSkipReason(t *testing.T) {
 	if c := criterionFor(t, reasoned, "skip_test"); c["status"] != "pass" || !strings.Contains(c["detail"].(string), "covered by TestUntestedIntegration") {
 		t.Errorf("T-REASONED: skip_test criterion = %v, want the structured skip reason in the detail", c)
 	}
+}
+
+func (f *verifyFakeBackend) ScanSources(ctx context.Context, svc string, bud corpus.Budget, fn func(core.SourceFile) bool) (corpus.Coverage, error) {
+	files, err := f.Sources(ctx, svc)
+	if err != nil {
+		return corpus.Coverage{}, err
+	}
+	return corpus.ScanSourceFiles(ctx, files, bud, fn)
 }

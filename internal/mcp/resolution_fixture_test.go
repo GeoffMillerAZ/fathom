@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/corpus"
 )
 
 // resolution_fixture_test.go is review F3's coverage (docs/plans/verbs.md
@@ -314,4 +315,12 @@ func TestResolution_References_DisagreeingServices_OmitsIndexCommit(t *testing.T
 	if _, ok := payload["resolution"].(map[string]any); !ok {
 		t.Errorf("references (disagreeing services) resolution missing: %v", payload)
 	}
+}
+
+func (b *multiSvcBackend) ScanSources(ctx context.Context, svc string, bud corpus.Budget, fn func(core.SourceFile) bool) (corpus.Coverage, error) {
+	files, err := b.Sources(ctx, svc)
+	if err != nil {
+		return corpus.Coverage{}, err
+	}
+	return corpus.ScanSourceFiles(ctx, files, bud, fn)
 }

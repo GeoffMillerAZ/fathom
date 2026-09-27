@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/corpus"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
 )
 
@@ -465,4 +466,12 @@ func TestAnalysisToolsInCorrectProfile(t *testing.T) {
 			t.Errorf("tool %q registered in group %q, want %q", tc.name, got, tc.group)
 		}
 	}
+}
+
+func (r *richFakeBackend) ScanSources(ctx context.Context, svc string, bud corpus.Budget, fn func(core.SourceFile) bool) (corpus.Coverage, error) {
+	files, err := r.Sources(ctx, svc)
+	if err != nil {
+		return corpus.Coverage{}, err
+	}
+	return corpus.ScanSourceFiles(ctx, files, bud, fn)
 }

@@ -10,6 +10,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/routes"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/corpus"
 )
 
 // fauxtownRoot resolves the fixture fleet root the same way
@@ -587,8 +588,8 @@ func TestKindAndTierConstants(t *testing.T) {
 
 type fakeSourceLister map[string][]core.SourceFile
 
-func (f fakeSourceLister) Sources(_ context.Context, service string) ([]core.SourceFile, error) {
-	return f[service], nil
+func (f fakeSourceLister) ScanSources(ctx context.Context, service string, b corpus.Budget, fn func(core.SourceFile) bool) (corpus.Coverage, error) {
+	return corpus.ScanSourceFiles(ctx, f[service], b, fn)
 }
 
 func TestBuildFromStore(t *testing.T) {

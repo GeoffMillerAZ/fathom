@@ -69,6 +69,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/routes"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/corpus"
 )
 
 // Kind is the core.CrossRepoEdge.Kind / edge-report "kind" value every hop
@@ -978,11 +979,11 @@ func sourceText(src []byte, fset *token.FileSet, e ast.Expr) string {
 // Fleet-wide, store-backed extraction
 // ---------------------------------------------------------------------
 
-// SourceLister is the minimal backend capability BuildFromStore needs — any
-// backend that can list a service's source files (internal/mcp's
-// QueryInterface and pkg/client.Client both satisfy it structurally).
+// SourceLister is the minimal backend capability BuildFromStore needs — a
+// budgeted stream of a service's source files (internal/mcp's
+// QueryInterface and pkg/client.Client both satisfy it structurally; RT-71).
 type SourceLister interface {
-	Sources(ctx context.Context, service string) ([]core.SourceFile, error)
+	ScanSources(ctx context.Context, service string, b corpus.Budget, fn func(core.SourceFile) (stop bool)) (corpus.Coverage, error)
 }
 
 // routesLang maps a core.SourceFile.Lang tag to the language token
@@ -1011,15 +1012,15 @@ func BuildFromStore(ctx context.Context, backend SourceLister, serviceIDs []stri
 	routesByService := make(map[string][]routes.Route, len(svcs))
 	callsByService := make(map[string][]ClientCall, len(svcs))
 	for _, svc := range svcs {
-		files, err := backend.Sources(ctx, svc)
-		if err != nil {
-			return nil, fmt.Errorf("serviceref: sources %q: %w", svc, err)
-		}
-		for _, f := range files {
+		_, err := backend.ScanSources(ctx, svc, corpus.Budget{}, func(f core.SourceFile) bool {
 			if rl := routesLang(f.Lang); rl != "" {
 				routesByService[svc] = append(routesByService[svc], routes.Extract(rl, f.Path, f.Content)...)
 			}
 			callsByService[svc] = append(callsByService[svc], ExtractClientCalls(f.Lang, f.Path, f.Content)...)
+			return false
+		})
+		if err != nil {
+			return nil, fmt.Errorf("serviceref: sources %q: %w", svc, err)
 		}
 	}
 	return ServiceRefEdges(routesByService, callsByService), nil

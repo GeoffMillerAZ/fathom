@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/corpus"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
 )
 
@@ -437,4 +438,12 @@ func TestInvestigationProfileIncludesFindCallers(t *testing.T) {
 	if !found {
 		t.Error("find_callers must stay on the agent surface — it is the investigation hot loop")
 	}
+}
+
+func (f *fakeBackend) ScanSources(ctx context.Context, svc string, bud corpus.Budget, fn func(core.SourceFile) bool) (corpus.Coverage, error) {
+	files, err := f.Sources(ctx, svc)
+	if err != nil {
+		return corpus.Coverage{}, err
+	}
+	return corpus.ScanSourceFiles(ctx, files, bud, fn)
 }
