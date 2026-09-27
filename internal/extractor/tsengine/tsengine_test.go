@@ -91,16 +91,38 @@ func TestQuery_GuestBudgetBoundsPathologicalQueryRun(t *testing.T) {
 	}
 	defer q.Close()
 
+	// The bound is asserted on the CPU the scan burned, not on wall clock.
+	// The guest budget is checked by tree-sitter's progress callback every
+	// ~100 query operations, and on this tree an operation's cost grows as
+	// the scan proceeds: a 300ms budget is observed at ~8s of guest CPU
+	// (measured 8.25s, with or without RT-107's memory cap; a 1ms budget
+	// fires at ~28ms), against ~43-53s for the whole unbounded scan. That is
+	// CPU work, so on a loaded machine its wall time stretches with the
+	// share of a core the test gets — the pre-push gate saw 49.7s wall for
+	// the same ~8s — and a wall-clock bound here measured the machine, not
+	// the cancel. The wall-clock guarantee under any load is the host-side
+	// backstop's job (TestEngine_HardBackstopAbandonsRunawayCall); this test
+	// isolates the guest cancel, so it bounds the work the cancel allows.
+	// RUSAGE_SELF is process-wide: this must not run beside another wasm
+	// scan (no test in this package is parallel, and none before this one
+	// leaves an abandoned runaway burning).
 	ParseTimeout = 300 * time.Millisecond
+	cpu0 := processCPU(t)
 	start := time.Now()
 	_, err = q.Run(tree)
 	elapsed := time.Since(start)
+	burned := processCPU(t) - cpu0
 
 	if err == nil {
 		t.Fatal("Run over the pathological tree returned no error — the query budget did not fire")
 	}
-	if elapsed > 30*time.Second {
-		t.Fatalf("Run took %v — the query cancel did not bound the scan", elapsed)
+	t.Logf("query cancel: %v CPU, %v wall", burned, elapsed)
+	// 30s, the bound this test always used, now in CPU: the cancelled scan
+	// is ~8s on a performance core (11.8s measured with 3x the cores busy),
+	// the whole scan 43s+ and more on a slower core, so 30s still separates
+	// "the cancel fired" from "the scan ran out".
+	if burned > 30*time.Second {
+		t.Fatalf("Run burned %v CPU (%v wall) — the query cancel did not bound the scan (the whole unbounded scan is ~43-53s)", burned, elapsed)
 	}
 
 	// The SAME parser must still work for a healthy file.
