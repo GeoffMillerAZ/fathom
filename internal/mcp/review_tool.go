@@ -493,7 +493,19 @@ func buildReviewInput(ctx context.Context, backend QueryInterface, service strin
 		for _, f := range sources {
 			if changedSet[f.Path] {
 				in.ChangedSources = append(in.ChangedSources, f)
+				delete(changedSet, f.Path)
 			}
+		}
+		// RT-71 / I38: a changed file the budgeted scan never reached is
+		// read by name, not dropped from spec_coverage.
+		if cov.LowerBound() && len(changedSet) > 0 {
+			missing := make([]string, 0, len(changedSet))
+			for f := range changedSet {
+				missing = append(missing, f)
+			}
+			sort.Strings(missing)
+			in.ChangedSources = append(in.ChangedSources, sourceFiles(ctx, backend, service, missing)...)
+			sort.Slice(in.ChangedSources, func(i, j int) bool { return in.ChangedSources[i].Path < in.ChangedSources[j].Path })
 		}
 	}
 
@@ -613,12 +625,30 @@ func applyAndPersistFindings(ctx context.Context, backend QueryInterface, v *rev
 	for _, f := range rc.files {
 		content[f.Path] = f.Content
 	}
+	readByName := map[string][]byte{}
 	claims, links, supersede := review.BuildPersist(v, existing, review.PersistInput{
 		Now:       time.Now,
 		Watermark: watermark,
 		FileContent: func(path string) ([]byte, bool) {
-			data, ok := content[path]
-			return data, ok
+			if data, ok := content[path]; ok {
+				return data, true
+			}
+			if !rc.cov.LowerBound() {
+				return nil, false
+			}
+			// RT-71 / I38: the scan stopped before this file — read it by
+			// name, or a finding citing it would lose its cites link
+			// (PutClaims replaces a claim's link set wholesale).
+			if _, tried := readByName[path]; !tried {
+				readByName[path] = nil
+				for _, f := range sourceFiles(ctx, backend, v.Service, []string{path}) {
+					if f.Path == path {
+						readByName[path] = f.Content
+					}
+				}
+			}
+			data := readByName[path]
+			return data, data != nil
 		},
 		ScopeFingerprint: func(path string) (string, bool) {
 			hash, found, ferr := rcb.SourceFingerprint(ctx, v.Service, path)
