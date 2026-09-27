@@ -561,6 +561,8 @@ HTTP endpoints:
 | `POST` | `/rpc/{surface}` | Same protocol scoped to a named surface (`agent`, `companion`, `coding`, `investigation`, `shared`, `platform`, `modules`): filters `tools/list`; an off-surface `tools/call` still **executes** and is logged `off_surface:true` (execute-and-flag, ADR-014 amendment) — the hard gate exists only behind `Server.strictSurfaces` and on hosted `/rpc/modules` |
 | `GET` | `/healthz` | Liveness probe — returns `ok` |
 | `GET` | `/events` | Live freshness (OC-13): SSE with an `id:` per event (`<epoch>-<n>`: the epoch is this daemon process's boot ID, named in the opening `hello` event), a `: keepalive` every 25 s, replay of the last 64 events after `Last-Event-ID` (or `?last_event_id=`) — an id from another epoch (a reconnect across a daemon restart) replays the whole ring, the restart event first — at most 16 subscribers (the 17th gets 503 + `Retry-After`). Kinds: `ingest` (a service's indexed content moved; a hash-gated no-op re-ingest is not one), `compile` (one per new run), `verify` (the verify ledger, polled every 2 s), `session` (the row's repo label mapped to the service whose root it names; a label that is not a name fires only the unscoped `sessions` source), `daemon`. Events carry names and IDs only, never content |
+| `GET` | `/identity?path=DIR[&path=TOPLEVEL]` | Which indexed service a directory is, from the daemon's registry (RT-133; `docs/mcp-tools.md`) — the hooks' identity lookup |
+| `GET` | `/debug/pprof/*`, `/debug/inflight` | pprof (loopback `Host` only, `seconds` ≤ 30, one profile at a time — 429 otherwise) and the in-flight table as JSON (RT-123) |
 | `GET` | `/metrics` | Text metrics: `fathom_uptime_seconds`, `fathom_requests_total`, memory and memo gauges, the ladder (`fathom_tenancy_level`, `fathom_budget_bytes`, `fathom_footprint_bytes`, `fathom_children_footprint_bytes`, `fathom_host_pressure_level`, `fathom_swap_used_bytes`, `fathom_gc_cpu_fraction`, `fathom_quarantined_services`), admission (`fathom_inflight{class,origin}`, `fathom_queue{class}`, `fathom_slots{class}`, `fathom_rejected_total{class,reason,origin}`, `fathom_would_refuse_total{class,reason,origin}`, `fathom_calls_total{class,outcome}`, `fathom_admission_mode`, `fathom_test_callers_rejected_total`), `fathom_console_page_views_total{route=…}` (OC-15: HTML views per console route pattern since start; the durable 30-day record is `~/.fathom/console-views.jsonl`, `FATHOM_CONSOLE_VIEWS` overrides) and `fathom_console_event_subscribers` |
 | `GET` | `/statusz` | Daemon health, per-service index freshness, channel liveness, last compile per layer, (schema 2) the daemon's own build stamp `binary_commit` / `binary_dirty` / `built_at`, and (additive) the ladder's `tenancy` block — level, marks, the last sample and every unknown reading (`footprint unknown (ladder off)`), plus `quarantined` — JSON (schema 3, unchanged) via `Accept: application/json`/`?format=json`; HTML on the console shell otherwise, where every service names its typed-edge state — run by this daemon, recorded by an earlier daemon process (replayed from the store), failed with its reason, **does not apply** (no `go.mod` at the service root), or **unknown** (a Go module with no pass recorded anywhere), never blank (OC-6; `docs/design/observability-surfaces.md` §8 item 6). Gated inside the `/rpc/modules` bearer-token allowlist when `--modules-token-env` is configured; open on the default loopback-only daemon |
 | `POST` | `/reload` | Reload the store (PlatformStore re-scan in platform mode) |
@@ -1426,7 +1428,15 @@ disclosed, and a ring sample older than 5 min is SKIPped with its age, never jud
 now), `scratch_daemons` (leaked unmanaged daemons — exactly the set `fathom daemon reap
 --apply` kills, so its remedy clears the row — and stale records) and `tenancy_scope`
 (WARNs on a repository `[tenancy]`, which is ignored and named, on admission `off`, and on
-a `memory_limit` / `gc_hint` conflict; env overrides disclosed).
+a `memory_limit` / `gc_hint` conflict; env overrides disclosed). Two more rows judge what
+the hooks and the disk cost (RT-135, §11.3, §12.1), also WARN, never FAIL: `hook_budget`
+(each channel's p99 wall time against its deadline over 24 h, from
+`~/.fathom/hook-latency.jsonl`, which every hook invocation appends to; minutes the
+shared breaker held hooks off; edits served while it was open, whose guards were skipped;
+harness kills — an edit-hook `seen` beat never answered) and `disk_retention` (`fathom
+gc`'s dry run: reclaimable bytes by class and the largest classes, what it only reports,
+and the home volume's free space; WARN above 512 MiB reclaimable). `fathom resources`'
+hooks line reads the same latency log.
 
 Exit `0` every check passed; `1` at least one check failed; `2` doctor itself could not
 run (bad flags, unresolvable `--path`) — an operational error, not a verdict on the

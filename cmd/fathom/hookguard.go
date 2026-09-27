@@ -104,6 +104,9 @@ func beginHookGuard(channel, marker, harnessID, baseURL string) (end func(), sil
 	restore := activateHookGuard(g)
 	return func() {
 		restore()
+		// RT-135 (§11.3): every invocation's wall time against its
+		// deadline, for doctor's hook_budget.
+		recordHookLatency(channel, time.Since(start), g.Deadline.Budget(), time.Now())
 		skips := g.Skips()
 		if len(skips) == 0 {
 			return

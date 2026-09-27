@@ -14,9 +14,11 @@ import (
 	"io"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/custodian"
 	"github.com/geoffmilleraz/fathom/internal/harness"
+	"github.com/geoffmilleraz/fathom/internal/hookcache"
 )
 
 // configChangeBeatKind is the custodian channel's kind for this event;
@@ -38,11 +40,18 @@ func cmdConfigAuditHook(harnessFlag, event string, stderr io.Writer) int {
 	if event == "file-changed" {
 		marker += " --event file-changed"
 	}
+	start := time.Now()
 	endGuard, silent := beginHookGuard("config-change-hook", marker, codec.ID(), defaultFathomURL())
 	if silent {
 		return 0 // §9: the managed daemon is disabled or paused — no RPC, no output
 	}
 	defer endGuard()
+	// RT-134 (§11.3): the config walk ends 2 s before the harness would
+	// kill this hook, and a directory that is not a repository is refused.
+	if t := hookTimeoutSec(codec.ID(), marker); t > 0 {
+		custodian.SetWalkPolicy(&custodian.WalkPolicy{Deadline: start.Add(time.Duration(t)*time.Second - 2*time.Second), RefuseNonGit: true})
+		defer custodian.SetWalkPolicy(nil)
+	}
 	if event == "file-changed" {
 		return fileChangedHook(codec, os.Stdin)
 	}
@@ -101,6 +110,15 @@ func auditConfigChange(codec harness.Codec, stdin io.Reader, ev harness.Event, t
 	}
 	if in.FilePath != "" {
 		meta["file_path"] = in.FilePath
+	}
+	// RT-134: one FileChanged audit per (root, file, mtime) across every
+	// session — N sessions watching one repo see one rebase, not N audits.
+	if trigger == "file-changed" && in.FilePath != "" {
+		if st, err := os.Stat(in.FilePath); err == nil && !custodian.DebounceFileChanged(hookcache.FileChangedDir, root, in.FilePath, st.ModTime(), time.Now()) {
+			meta["result"] = "debounced"
+			emitBeat("custodian", configChangeBeatKind, firingMeta(meta, in.SessionID, ""))
+			return 0
+		}
 	}
 	concerns, loadErrs := loadConcernsBoth(root)
 	switch {

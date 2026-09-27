@@ -46,3 +46,8 @@ var HealthDir = filepath.Join(os.TempDir(), "fathom-hook-health")
 // docs/design/responsible-tenant.md §11.3). A package var so tests can
 // redirect it.
 var ToplevelDir = filepath.Join(os.TempDir(), "fathom-toplevel-cache")
+
+// FileChangedDir is os.TempDir()/fathom-filechanged — the cross-session
+// FileChanged audit leases (custodian.DebounceFileChanged, §11.3). A
+// package var so tests can redirect it.
+var FileChangedDir = filepath.Join(os.TempDir(), "fathom-filechanged")

@@ -250,6 +250,8 @@ func runDoctorChecks(root, explicitSvc, harness, baseURL string) []doctorCheck {
 		checkDaemonLifecycle(tenancyRep),                             // RT-50: starts, exits, breaker, quarantine (doctor_tenancy.go)
 		checkHostPressure(tenancyRep),                                // RT-50: pressure, swap, swap-volume free
 		checkScratchDaemons(tenancyRep),                              // RT-50: leaked unmanaged daemons and stale records
+		checkHookBudgetFromFiles(time.Now()),                         // RT-135: hook p99 vs deadline, breaker-open minutes, unguarded edits, kills (doctor_retention.go)
+		checkDiskRetentionFromDisk(root),                             // RT-135: reclaimable bytes by class, internal disk free (doctor_retention.go)
 		checkTenancyScope(root, config.DefaultUserPath(), os.Getenv), // RT-50: [tenancy] is user scope only
 		checkHooksInstalled(root, harness),
 		checkLefthookGates(root),
