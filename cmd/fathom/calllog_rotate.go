@@ -19,6 +19,7 @@ import (
 	"bufio"
 	"compress/gzip"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -396,3 +397,85 @@ func (r *rotatingCallLog) Close() error {
 	r.archiving.Wait()
 	return err
 }
+
+// callLogGenerations lists every generation of the call log at path,
+// oldest first: the gzip archives, the pending generations, <path>.1, then
+// the live log. Only existing files are listed.
+func callLogGenerations(path string) []string {
+	gens := append(callLogArchives(path), pendingCallLogs(path)...)
+	for _, p := range []string{path + ".1", path} {
+		if _, err := os.Lstat(p); err == nil {
+			gens = append(gens, p)
+		}
+	}
+	return gens
+}
+
+// openCallLogGenerations opens every generation of the call log at path as
+// one stream, oldest first, a newline between generations (so a torn last
+// line never joins the next generation's first). No generation at all is
+// the live log's own ENOENT; a generation that exists and cannot be opened
+// is an error — a partial read is never presented as the whole (I38).
+func openCallLogGenerations(path string) (io.ReadCloser, error) {
+	// A background archive pass can remove a pending generation between
+	// the listing and its open (its archive already written): list again.
+	for attempt := 0; ; attempt++ {
+		rc, err := openCallLogGenerationsOnce(path)
+		if err == nil || attempt == 2 || !errors.Is(err, errGenerationVanished) {
+			return rc, err
+		}
+	}
+}
+
+// errGenerationVanished marks a listed generation gone by its open.
+var errGenerationVanished = errors.New("call-log generation moved during the read")
+
+func openCallLogGenerationsOnce(path string) (io.ReadCloser, error) {
+	gens := callLogGenerations(path)
+	if len(gens) == 0 {
+		_, err := os.Open(path)
+		if err == nil {
+			err = &os.PathError{Op: "open", Path: path, Err: os.ErrNotExist}
+		}
+		return nil, err
+	}
+	var (
+		readers []io.Reader
+		closers []io.Closer
+	)
+	closeAll := func() {
+		for _, c := range closers {
+			_ = c.Close()
+		}
+	}
+	for _, g := range gens {
+		f, err := os.Open(g)
+		if err != nil {
+			closeAll()
+			if os.IsNotExist(err) && g != path {
+				return nil, fmt.Errorf("%w: %s", errGenerationVanished, g)
+			}
+			return nil, fmt.Errorf("%w%s", err, tccWedgeHint(g))
+		}
+		closers = append(closers, f)
+		var r io.Reader = f
+		if strings.HasSuffix(g, ".jsonl.gz") {
+			zr, err := gzip.NewReader(f)
+			if err != nil {
+				closeAll()
+				return nil, fmt.Errorf("read call-log archive %s: %w", g, err)
+			}
+			closers = append(closers, zr)
+			r = zr
+		}
+		readers = append(readers, r, strings.NewReader("\n"))
+	}
+	return multiReadCloser{Reader: io.MultiReader(readers...), close: closeAll}, nil
+}
+
+type multiReadCloser struct {
+	io.Reader
+	close func()
+}
+
+func (m multiReadCloser) Close() error { m.close(); return nil }

@@ -371,12 +371,12 @@ func classifyCallLogRead(path string) (entries []adoptionCallEntry, skippedMalfo
 // callLogReadCounting is classifyCallLogRead that also counts the console's
 // own reads it left out, for a figure that names them (console.CallTotal).
 func callLogReadCounting(path string) (entries []adoptionCallEntry, skippedMalformed, consoleReads int, err error) {
-	f, openErr := os.Open(path)
+	// Every generation (RT-126): a rotation hides no history (I38).
+	f, openErr := openCallLogGenerations(path)
 	if openErr != nil {
-		if os.IsNotExist(openErr) {
-			return nil, 0, 0, openErr // honest "no log yet"
-		}
-		return nil, 0, 0, fmt.Errorf("%w%s", openErr, tccWedgeHint(path))
+		// os.IsNotExist: the honest "no log yet"; anything else carries
+		// its cause (and the external-volume remedy when that is the tell).
+		return nil, 0, 0, openErr
 	}
 	defer f.Close()
 

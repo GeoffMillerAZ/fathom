@@ -151,3 +151,50 @@ func TestGCArchivesPendingNeverRenamesLiveCallLog(t *testing.T) {
 		t.Fatalf("the live log over the bound is not reported: %+v", rep.Items)
 	}
 }
+
+// RT-126 hygiene (I38): a rotation hides no history from a usage reader.
+// classifyCallLogRead (every metrics, instrument, flywheel, doctor, fleet
+// and research reader) and the discoveries pointer rows read every
+// generation — gzip archives, pending generations, <log>.1 and the live
+// log — so a windowed answer counts rows the rotation moved.
+func TestCallLogReadersReadEveryGeneration(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "mcp-calls.jsonl")
+	w, err := openRotatingCallLog(path, 512, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	clock := time.Date(2026, 9, 27, 4, 0, 0, 0, time.UTC)
+	w.now = func() time.Time { clock = clock.Add(time.Minute); return clock }
+	const n = 60
+	for i := 0; i < n; i++ {
+		row := fmt.Sprintf(`{"schema_version":3,"ts":"2026-09-27T04:%02d:00Z","tool":"search","service":"svc","surface":"agent","outcome":"ok","pointers":["p%d"]}`+"\n", i, i)
+		if _, err := w.Write([]byte(row)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if len(callLogArchives(path)) == 0 {
+		t.Fatal("the fixture must reach the archive generation")
+	}
+	// A pending generation (an archive pass not yet run) is read too.
+	if err := os.WriteFile(path+".20260926T000000Z.pending", []byte(`{"schema_version":3,"ts":"2026-09-26T23:59:00Z","tool":"search","service":"svc","pointers":["old"]}`+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	entries, _, err := classifyCallLogRead(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != n+1 {
+		t.Fatalf("classifyCallLogRead saw %d rows, want %d across every generation", len(entries), n+1)
+	}
+	if rows := readCallLogPointerRows(path, "svc", time.Time{}); len(rows) != n+1 {
+		t.Fatalf("readCallLogPointerRows saw %d rows, want %d across every generation", len(rows), n+1)
+	}
+	// Absent everywhere is still the honest ENOENT.
+	if _, _, err := classifyCallLogRead(filepath.Join(dir, "none.jsonl")); !os.IsNotExist(err) {
+		t.Fatalf("no generation at all = %v, want ENOENT", err)
+	}
+}
