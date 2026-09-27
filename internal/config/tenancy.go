@@ -140,6 +140,22 @@ func ResolveTenancyConfig(l Loaded, getenv func(string) string) (tenancy.Config,
 	if v := getenv("FATHOM_MEMORY_LIMIT"); v != "" {
 		oldKey, oldSrc = v, "FATHOM_MEMORY_LIMIT"
 	}
+	// A malformed hint is an error naming its source, as the old soft
+	// limit's was (it exited 1), never a silent fallback to the exit mark.
+	if h := strings.TrimSpace(cfg.GCHint); h != "" {
+		switch {
+		case strings.EqualFold(h, "exit"), strings.EqualFold(h, "budget"), strings.EqualFold(h, "off"):
+		default:
+			if _, err := tenancy.ParseSize(h); err != nil {
+				errs = append(errs, fmt.Sprintf("[tenancy] gc_hint %q: want exit, budget, off or an IEC size (%v)", h, err))
+			}
+		}
+	}
+	if oldKey != "" {
+		if _, _, err := ParseMemoryLimit(oldKey); err != nil {
+			errs = append(errs, fmt.Sprintf("%s: %v", oldSrc, err))
+		}
+	}
 	if oldKey != "" {
 		if cfg.GCHint == "" {
 			cfg.GCHint = oldKey

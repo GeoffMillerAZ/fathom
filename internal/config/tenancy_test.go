@@ -140,3 +140,46 @@ func hasNote(notes []string, subs ...string) bool {
 	}
 	return false
 }
+
+// Review finding 6: a malformed GC hint — [tenancy].gc_hint, the migrated
+// [daemon].memory_limit or FATHOM_MEMORY_LIMIT — is an error naming its
+// source, as the old soft limit's was, never a silent fallback to the exit
+// mark.
+func TestMalformedGCHintIsNamedError(t *testing.T) {
+	dir := t.TempDir()
+	empty := filepath.Join(dir, "empty.toml")
+	writeTOML(t, empty, "")
+	loaded, err := Load(empty, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, v := range []string{"3 gigs", "0GiB", "-1GiB"} {
+		_, _, err := ResolveTenancyConfig(loaded, envOf(map[string]string{"FATHOM_MEMORY_LIMIT": v}))
+		if err == nil || !strings.Contains(err.Error(), "FATHOM_MEMORY_LIMIT") {
+			t.Fatalf("FATHOM_MEMORY_LIMIT=%q: err %v, want a named error", v, err)
+		}
+	}
+	for _, v := range []string{"off", "3GiB", "512MiB"} {
+		if _, _, err := ResolveTenancyConfig(loaded, envOf(map[string]string{"FATHOM_MEMORY_LIMIT": v})); err != nil {
+			t.Fatalf("FATHOM_MEMORY_LIMIT=%q is valid: %v", v, err)
+		}
+	}
+	bad := filepath.Join(dir, "bad.toml")
+	writeTOML(t, bad, "[tenancy]\ngc_hint = \"lots\"\n")
+	if loaded, err := Load(bad, ""); err == nil {
+		if _, _, err := ResolveTenancyConfig(loaded, envOf(nil)); err == nil || !strings.Contains(err.Error(), "gc_hint") {
+			t.Fatalf("[tenancy].gc_hint = lots: err %v, want a named error", err)
+		}
+	}
+	for _, v := range []string{"exit", "budget", "off", "2GiB"} {
+		ok := filepath.Join(dir, "ok.toml")
+		writeTOML(t, ok, "[tenancy]\ngc_hint = \""+v+"\"\n")
+		loaded, err := Load(ok, "")
+		if err != nil {
+			t.Fatalf("gc_hint %q: load: %v", v, err)
+		}
+		if _, _, err := ResolveTenancyConfig(loaded, envOf(nil)); err != nil {
+			t.Fatalf("gc_hint %q is valid: %v", v, err)
+		}
+	}
+}
