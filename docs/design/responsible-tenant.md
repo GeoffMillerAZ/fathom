@@ -998,7 +998,7 @@ degrades silently then, so it is counted), harness kills (a `seen` beat with no
 
 | Class | Policy | Managed daemon runs it daily at low priority? |
 |---|---|---|
-| call log | rotate at 64 MiB: rollup, gzip, archive (never deleted) up to 1 GiB, then report | rotate + gzip: yes; delete: never |
+| call log | rotate at 64 MiB: rollup, gzip, archive (never deleted) up to 1 GiB, then report. The daemon's writer only renames (live → `.1`, old `.1` → `.<ts>.pending`); roll-up + gzip run in a background pass off the request path, under `<log>.archive.lock`, which `gc --apply` shares; a failed rotation retries after a minute, never per row. `gc` never renames a live log a daemon holds; it archives pending generations | rotate: on the writer; roll-up + gzip: yes, in the background; delete: never |
 | verify / session / intent ledgers, `decisions.jsonl` | report at 32 MiB, keep all (I33 needs history); rotation waits until their readers read archived generations — rotating now would hide history from them (RT-125) | no; reported |
 | `session-stamps` | delete after 30 days | yes |
 | `~/.fathom/daemon/<id>/record.json` (and legacy `~/.fathom/daemons`) with a dead pid | delete | yes |
@@ -1007,7 +1007,7 @@ degrades silently then, so it is counted), harness kills (a `seen` beat with no
 | `workspace/tmp/fathom-bin-*` | keep last 3 | no; reported |
 | `~/.fathom/daemon/<id>/diag` | 10 captures / 200 MiB | yes |
 
-Console tails read the rotated generation. Doctor `disk_retention`: reclaimable bytes by
+Console tails read the rotated generation; every usage reader (`classifyCallLogRead` and the discoveries pointer rows) reads every generation — archives, pending, `.1`, live — so a rotation hides no history (I38). Doctor `disk_retention`: reclaimable bytes by
 class, the largest classes, internal-disk free. Targets: `workspace/` ≤ 3 GiB after `gc
 --apply` (10 GB today); `~/.fathom` ≤ 500 MB.
 

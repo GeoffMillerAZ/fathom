@@ -65,6 +65,8 @@ func TestGCDryRunDeletesNothing(t *testing.T) {
 	callLog := filepath.Join(home, "state", "logs", "mcp-calls.jsonl")
 
 	gcTouch(t, callLog, callLogRotateBytes+1, now)
+	callLogPending := callLog + ".20260926T000000Z.pending"
+	gcTouch(t, callLogPending, 4096, now)
 	gcTouch(t, filepath.Join(fh, "session-ledger.jsonl"), gcLedgerRotateBytes+1, now)
 	gcTouch(t, filepath.Join(fh, "session-stamps", "old.json"), 10, old)
 	gcTouch(t, filepath.Join(fh, "session-stamps", "new.json"), 10, now)
@@ -103,7 +105,7 @@ func TestGCDryRunDeletesNothing(t *testing.T) {
 	if dry.Applied || len(dry.Errors) > 0 {
 		t.Fatalf("dry run: applied %v errors %v", dry.Applied, dry.Errors)
 	}
-	want := map[string]int{"call-log": 1, "ledgers": 1, "session-stamps": 1, "daemon-records": 1, "diag": 2, "tmp": 2, "scenariobench-worktrees": 2, "workspace-bins": 2}
+	want := map[string]int{"call-log": 2, "ledgers": 1, "session-stamps": 1, "daemon-records": 1, "diag": 2, "tmp": 2, "scenariobench-worktrees": 2, "workspace-bins": 2}
 	got := map[string]int{}
 	for _, it := range dry.Items {
 		got[it.Class]++
@@ -128,8 +130,11 @@ func TestGCDryRunDeletesNothing(t *testing.T) {
 	if len(rep.Errors) > 0 {
 		t.Fatalf("apply errors: %v", rep.Errors)
 	}
-	if _, err := os.Stat(callLog + ".1"); err != nil {
-		t.Fatalf("the call log's rotated generation is kept: %v", err)
+	if st, err := os.Stat(callLog); err != nil || st.Size() != callLogRotateBytes+1 {
+		t.Fatalf("gc never renames the live call log (the daemon's writer rotates it): %v", err)
+	}
+	if _, err := os.Stat(callLog + ".20260926T000000Z.jsonl.gz"); err != nil {
+		t.Fatalf("the pending generation is archived, never deleted: %v", err)
 	}
 	if st, err := os.Stat(filepath.Join(fh, "session-ledger.jsonl")); err != nil || st.Size() != gcLedgerRotateBytes+1 {
 		t.Fatalf("a ledger is never rotated away or deleted: %v", err)

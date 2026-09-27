@@ -1764,7 +1764,7 @@ and changes nothing — until `--apply`. Evidence is archived, never deleted:
 
 | Class | Policy |
 |---|---|
-| `call-log` | over 64 MiB: rotated (the previous generation rolled up and gzipped to `<log>.<ts>.jsonl.gz`); archives are never deleted, and past 1 GiB they are reported |
+| `call-log` | the serving daemon's writer rotates the live log at 64 MiB (renames only: live → `<log>.1`, the previous `.1` → `<log>.<ts>.pending`) and gzips pending generations in the background; gc never renames a live log — over 64 MiB it is reported, and `--apply` rolls up and gzips pending generations to `<log>.<ts>.jsonl.gz` under the lock the daemon's pass shares. Archives (including `metrics rotate`'s `<log>.archive-<date>`) are never deleted, and past 1 GiB they are reported |
 | `ledgers` | the verify, session and intent ledgers and `decisions.jsonl` over 32 MiB are reported and kept whole — their readers read only the live file, so rotating them would hide history |
 | `session-stamps` | older than 30 days: deleted |
 | `daemon-records` | `~/.fathom/daemon/<id>/record.json` (and legacy `~/.fathom/daemons`) whose pid is not running: deleted (the directory and its lifecycle ledger stay) |

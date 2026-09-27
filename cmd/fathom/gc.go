@@ -3,8 +3,9 @@ package main
 // gc.go — `fathom gc` (docs/design/responsible-tenant.md §12.1, RT-125):
 // per-class retention for what fathom leaves on disk. Dry run by default:
 // it reports what each class would reclaim and changes nothing; --apply
-// acts. Evidence is archived, never deleted: the call log rotates into
-// gzip archives (calllog_rotate.go), and the verify, session and intent
+// acts. Evidence is archived, never deleted: the daemon's writer rotates
+// the call log and gc gzips its pending generations (calllog_rotate.go),
+// never renaming a live log; and the verify, session and intent
 // ledgers and decisions.jsonl are reported, not rotated — their readers
 // read only the live file, so archiving them would hide history (I33, I38)
 // until those readers read archives too. What is deleted is what is not
@@ -80,12 +81,22 @@ func runGC(o gcOptions) gcReport {
 	add := func(it gcItem) { rep.Items = append(rep.Items, it) }
 	errf := func(format string, a ...any) { rep.Errors = append(rep.Errors, fmt.Sprintf(format, a...)) }
 
-	// Call log: rotate + gzip at 64 MiB, archives never deleted.
+	// Call log (§12.1): the serving daemon's writer rotates the live log —
+	// gc never renames a log a daemon holds open (its appends would follow
+	// the renamed inode). gc archives the pending generations, under the
+	// archive lock the daemon's own pass takes, and reports the rest.
 	if o.CallLog != "" {
 		if st, err := os.Stat(o.CallLog); err == nil && st.Size() > callLogRotateBytes {
-			add(gcItem{Class: "call-log", Path: o.CallLog, Action: "archive", Bytes: st.Size(), Reason: fmt.Sprintf("%s over %s: rotated, the previous generation rolled up and gzipped", tenancy.FormatBytes(st.Size()), tenancy.FormatBytes(callLogRotateBytes))})
+			add(gcItem{Class: "call-log", Path: o.CallLog, Action: "report", Bytes: st.Size(), Reason: fmt.Sprintf("%s over %s: the serving daemon rotates it at its next row (gc never renames a live log)", tenancy.FormatBytes(st.Size()), tenancy.FormatBytes(callLogRotateBytes))})
 		} else if err != nil && !os.IsNotExist(err) {
 			errf("call log %s: %v", o.CallLog, err)
+		}
+		for _, p := range pendingCallLogs(o.CallLog) {
+			var size int64
+			if st, err := os.Stat(p); err == nil {
+				size = st.Size()
+			}
+			add(gcItem{Class: "call-log", Path: p, Action: "archive", Bytes: size, Reason: "a rotated generation awaiting its archive: rolled up and gzipped, never deleted"})
 		}
 		if n := callLogArchiveBytes(o.CallLog); n > callLogArchiveWarnBytes {
 			add(gcItem{Class: "call-log", Path: o.CallLog + ".*.jsonl.gz", Action: "report", Bytes: n, Reason: "archives over 1 GiB — never deleted; move them elsewhere"})
@@ -160,6 +171,9 @@ func runGC(o gcOptions) gcReport {
 		}
 	}
 
+	archived := map[string]bool{} // pending generations one archive pass handled
+	archivedErr := error(nil)
+	archivePass := false
 	for i := range rep.Items {
 		it := &rep.Items[i]
 		if it.Action != "report" {
@@ -173,7 +187,23 @@ func runGC(o gcOptions) gcReport {
 		case "delete":
 			err = os.RemoveAll(it.Path)
 		case "archive":
-			_, err = rotateCallLog(it.Path, o.Now)
+			if !archivePass {
+				archivePass = true
+				pass, perr := archiveCallLogGenerations(o.CallLog)
+				archivedErr = perr
+				for _, a := range pass.Archived {
+					archived[strings.TrimSuffix(a, ".jsonl.gz")+".pending"] = true
+				}
+			}
+			if !archived[it.Path] {
+				if _, serr := os.Stat(it.Path); os.IsNotExist(serr) {
+					// Archived meanwhile by the daemon's own pass.
+				} else if archivedErr != nil {
+					err = archivedErr
+				} else {
+					err = fmt.Errorf("still pending after the archive pass")
+				}
+			}
 		}
 		if err != nil {
 			it.Error = err.Error()

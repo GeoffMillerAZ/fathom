@@ -151,9 +151,13 @@ func callLogArchives(path string) []string {
 	return m
 }
 
+// callLogArchiveBytes is the bytes of every archive of path: the gzip
+// archives and `fathom metrics rotate`'s dated <path>.archive-<date>
+// siblings (the older, age-based verb; both are evidence, never deleted).
 func callLogArchiveBytes(path string) int64 {
 	var n int64
-	for _, p := range callLogArchives(path) {
+	dated, _ := filepath.Glob(path + ".archive-*")
+	for _, p := range append(callLogArchives(path), dated...) {
 		if st, err := os.Stat(p); err == nil {
 			n += st.Size()
 		}

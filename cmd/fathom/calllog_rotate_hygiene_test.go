@@ -91,3 +91,63 @@ func TestCallLogRotationOffRequestPath(t *testing.T) {
 	}
 	_ = w2.Close()
 }
+
+// RT-125/RT-126 hygiene: `fathom gc --apply` never renames a live call log
+// a daemon holds open (the daemon's writer rotates it); it archives the
+// pending generations under the archive lock the daemon's pass shares, and
+// its archive accounting counts `fathom metrics rotate`'s dated archives
+// too.
+func TestGCArchivesPendingNeverRenamesLiveCallLog(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "mcp-calls.jsonl")
+	w, err := openRotatingCallLog(path, callLogRotateBytes, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer w.Close()
+	if err := os.Truncate(path, callLogRotateBytes+1); err != nil {
+		t.Fatal(err)
+	}
+	w.size = callLogRotateBytes + 1
+	pending := path + ".20260926T000000Z.pending"
+	if err := os.WriteFile(pending, []byte(`{"ts":"2026-09-26T00:00:00Z","tool":"search"}`+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	metricsArchive := path + ".archive-2026-01-01"
+	if err := os.WriteFile(metricsArchive, make([]byte, 1000), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	before, _ := os.Stat(path)
+	rep := runGC(gcOptions{CallLog: path, Apply: true, Now: time.Date(2026, 9, 27, 0, 0, 0, 0, time.UTC)})
+	if len(rep.Errors) > 0 {
+		t.Fatalf("gc errors: %v", rep.Errors)
+	}
+	after, err := os.Stat(path)
+	if err != nil || !os.SameFile(before, after) {
+		t.Fatalf("gc renamed the live call log a daemon holds open: %v", err)
+	}
+	if _, err := os.Stat(path + ".1"); !os.IsNotExist(err) {
+		t.Fatalf("gc created a rotated generation from outside the daemon: %v", err)
+	}
+	if _, err := os.Stat(pending); !os.IsNotExist(err) {
+		t.Fatalf("the pending generation was not archived: %v", err)
+	}
+	if _, err := os.Stat(path + ".20260926T000000Z.jsonl.gz"); err != nil {
+		t.Fatalf("no archive for the pending generation: %v", err)
+	}
+	if n := callLogArchiveBytes(path); n < 1000 {
+		t.Fatalf("archive accounting omits `metrics rotate`'s archive: %d bytes", n)
+	}
+	var live bool
+	for _, it := range rep.Items {
+		if it.Class == "call-log" && it.Path == path {
+			live = true
+			if it.Action != "report" {
+				t.Fatalf("the live log over the bound is reported, not acted on: %+v", it)
+			}
+		}
+	}
+	if !live {
+		t.Fatalf("the live log over the bound is not reported: %+v", rep.Items)
+	}
+}
