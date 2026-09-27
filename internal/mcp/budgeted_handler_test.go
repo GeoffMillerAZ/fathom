@@ -11,6 +11,8 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
 
 type synthPayload struct {
@@ -32,6 +34,7 @@ func registerOversizedSyntheticTool(s *Server) {
 		Description: "synthetic oversized tool (SU-3 test only)",
 		InputSchema: map[string]any{"type": "object"},
 		group:       GroupCoding,
+		cost:        declareCost(tenancy.ClassPoint),
 	}, func(_ context.Context, _ json.RawMessage) (any, *rpcError) {
 		return &synthPayload{Items: items}, nil
 	})
@@ -115,6 +118,7 @@ func TestBudgetedHandler_UnderBudgetIsByteIdentical(t *testing.T) {
 		Description: "synthetic small tool (SU-3 golden)",
 		InputSchema: map[string]any{"type": "object"},
 		group:       GroupCoding,
+		cost:        declareCost(tenancy.ClassPoint),
 	}, func(_ context.Context, _ json.RawMessage) (any, *rpcError) {
 		return map[string]any{"items": []string{"a", "b", "c"}}, nil
 	})

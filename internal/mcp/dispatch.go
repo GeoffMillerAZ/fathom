@@ -50,22 +50,34 @@ type toolDescriptor struct {
 	// handleToolsCallWithCtx) knows an alias satisfies its primary's
 	// "required" entry. nil for tools with no alias.
 	aliases map[string]string
+
+	// cost declares the tool's cost class explicitly (design §3.1, RT-55);
+	// the zero value takes toolCostClasses' row (costclass.go).
+	cost costDecl
 }
 
 // toolEntry pairs a descriptor with its handler.
 type toolEntry struct {
 	desc    toolDescriptor
 	handler func(ctx context.Context, args json.RawMessage) (any, *rpcError)
+	class   tenancy.Class // the declared cost class (RT-55)
 }
 
 // registerTool adds a tool to the server's tool registry. Every handler is
 // wrapped with budgetedHandler (SU-3, ADR-041 decision 3) — a single choke
 // point, so a handler that forgets its own budget still cannot exceed the
 // dispatch-level one.
+//
+// RT-55 (design §3.1): a tool without a cost class cannot be registered —
+// the admission gate would have nothing to admit it in.
 func (s *Server) registerTool(desc toolDescriptor, h func(ctx context.Context, args json.RawMessage) (any, *rpcError)) {
+	class, ok := resolveCostClass(desc)
+	if !ok {
+		panic("mcp: tool " + desc.Name + " declares no cost class: add it to toolCostClasses (internal/mcp/costclass.go), testdata/toolcost.json and docs/mcp-tools.md's Cost classes table")
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.tools = append(s.tools, toolEntry{desc: desc, handler: budgetedHandler(h)})
+	s.tools = append(s.tools, toolEntry{desc: desc, handler: budgetedHandler(h), class: class})
 }
 
 // findTool returns the toolEntry for a given name, or (zero, false).
