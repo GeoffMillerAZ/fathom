@@ -7,6 +7,9 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
 
 // metricsServer serves a minimal /metrics text-exposition response with
@@ -36,105 +39,72 @@ func metricsServer(t *testing.T, heapInuseBytes int64, uptimeSeconds float64) *h
 	return ts
 }
 
-func TestCheckDaemonFootprint_DaemonDown(t *testing.T) {
-	c := checkDaemonFootprint(&http.Client{}, "http://127.0.0.1:1", false)
-	if c.Status != doctorSkipped {
-		t.Fatalf("status = %s, want skipped", c.Status)
+// RT-49 (§13.3): daemon_footprint judges phys_footprint (+ children) from
+// the resources projection against the budget; an unreachable daemon is a
+// WARN naming the ring's last sample and its age — never a SKIP into
+// silence — and no remedy says "restart the daemon".
+func TestDoctorDaemonBudgetNeverSkipsWhenDown(t *testing.T) {
+	type tc struct {
+		name   string
+		setup  func(t *testing.T, f *resourcesFixture)
+		status doctorStatus
+		reason []string
+		remedy []string
 	}
-}
-
-func TestCheckDaemonFootprint_BelowBudget_Passes(t *testing.T) {
-	ts := metricsServer(t, 64<<20, 3600) // 64 MiB, 1h uptime
-	c := checkDaemonFootprint(&http.Client{}, ts.URL, true)
-	if c.Status != doctorPass {
-		t.Fatalf("status = %s (%s), want pass", c.Status, c.Reason)
+	for _, c := range []tc{
+		{"down with a ring: WARN with the last sample and its age", func(t *testing.T, f *resourcesFixture) {
+			f.writeRing(t, 3400*tenancy.MiB, tenancy.LevelNormal, false)
+		}, doctorWarn, []string{"did not answer", "last ring sample 10m0s old", "phys_footprint 1.2 GiB (+100 MiB children)", "budget 4 GiB"}, []string{"fathom resources"}},
+		{"down with no ring: WARN, no instrument named", func(t *testing.T, f *resourcesFixture) {}, doctorWarn,
+			[]string{"did not answer", "no resource ring", "no footprint instrument"}, []string{"fathom resources"}},
+		{"live, within budget: PASS", func(t *testing.T, f *resourcesFixture) {
+			f.live = &StatuszReport{Tenancy: &governorSnapshot{Source: "live", Level: "normal", Mode: "normal", Budget: 4 * tenancy.GiB, Shed: 3 * tenancy.GiB, Refuse: 4 * tenancy.GiB, Exit: 8 * tenancy.GiB, ExitEnabled: true,
+				Footprint: 900 * tenancy.MiB, Children: 0, Pressure: "normal", SampleAt: f.now.Format(time.RFC3339), InFlightByClass: map[string]int{}}}
+		}, doctorPass, []string{"phys_footprint 900 MiB", "budget 4 GiB", "level normal"}, nil},
+		{"live, shed: WARN naming the level, class and top tool", func(t *testing.T, f *resourcesFixture) {
+			f.live = &StatuszReport{Tenancy: &governorSnapshot{Source: "live", Level: "shed", Mode: "normal", Budget: 4 * tenancy.GiB, Shed: 3 * tenancy.GiB, Refuse: 4 * tenancy.GiB, Exit: 8 * tenancy.GiB, ExitEnabled: true,
+				Footprint: 3300 * tenancy.MiB, Children: 0, Pressure: "normal", SampleAt: f.now.Format(time.RFC3339), InFlightByClass: map[string]int{"tree": 1},
+				Oldest: &inflightView{Class: "tree", Tool: "obligations", AgeSec: 12}}}
+		}, doctorWarn, []string{"level shed", "phys_footprint 3.2 GiB"}, []string{"shed", "obligations (tree)", "fathom resources"}},
+		{"live, footprint unknown: WARN, ladder off disclosed", func(t *testing.T, f *resourcesFixture) {
+			f.live = &StatuszReport{Tenancy: &governorSnapshot{Source: "live", Level: "normal", LadderOff: true, Budget: 4 * tenancy.GiB, Footprint: -1, Children: -1, Pressure: "unknown", InFlightByClass: map[string]int{}}}
+		}, doctorWarn, []string{"footprint unknown", "ladder off"}, []string{"fathom resources"}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			f := newResourcesFixture(t)
+			c.setup(t, f)
+			rep := buildResources(f.env(), "", "http://127.0.0.1:7949", 24*time.Hour)
+			got := checkDaemonFootprint(rep, nil)
+			if got.Name != "daemon_footprint" {
+				t.Fatalf("row name %q", got.Name)
+			}
+			if got.Status == doctorSkipped {
+				t.Fatalf("daemon_footprint SKIPped: %+v", got)
+			}
+			if got.Status != c.status {
+				t.Fatalf("status %s, want %s: %+v", got.Status, c.status, got)
+			}
+			for _, w := range c.reason {
+				if !strings.Contains(got.Reason, w) {
+					t.Errorf("reason lacks %q: %s", w, got.Reason)
+				}
+			}
+			for _, w := range c.remedy {
+				if !strings.Contains(got.Remedy, w) {
+					t.Errorf("remedy lacks %q: %s", w, got.Remedy)
+				}
+			}
+			if strings.Contains(strings.ToLower(got.Remedy+got.Reason), "restart") {
+				t.Errorf("the restart remedy is gone (§13.3): %+v", got)
+			}
+		})
 	}
-	if !strings.Contains(c.Reason, "heap in-use") {
-		t.Errorf("reason must name heap in-use: %q", c.Reason)
-	}
-}
-
-func TestCheckDaemonFootprint_AboveBudget_Warns(t *testing.T) {
-	ts := metricsServer(t, 12<<30, 33898) // 12 GiB, O108's own incident numbers
-	c := checkDaemonFootprint(&http.Client{}, ts.URL, true)
-	if c.Status != doctorWarn {
-		t.Fatalf("status = %s (%s), want warn (never fail — doctor's own honesty discipline)", c.Status, c.Reason)
-	}
-	if !strings.Contains(c.Reason, "O108") {
-		t.Errorf("reason must cite O108: %q", c.Reason)
-	}
-	if c.Remedy == "" {
-		t.Error("a warn row must carry a remedy")
-	}
-}
-
-func TestCheckDaemonFootprint_OldDaemon_MissingFields_Skips(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "fathom_uptime_seconds 10\nfathom_requests_total 1\n")
-	}))
-	defer ts.Close()
-	c := checkDaemonFootprint(&http.Client{}, ts.URL, true)
-	if c.Status != doctorSkipped {
-		t.Fatalf("status = %s, want skipped", c.Status)
-	}
-	if !strings.Contains(c.Reason, "predating O108") {
-		t.Errorf("reason must name the version gap: %q", c.Reason)
-	}
-}
-
-func TestCheckDaemonFootprint_Unreachable_Skips(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusInternalServerError)
-	}))
-	defer ts.Close()
-	c := checkDaemonFootprint(&http.Client{}, ts.URL, true)
-	if c.Status != doctorSkipped {
-		t.Fatalf("status = %s, want skipped", c.Status)
-	}
-}
-
-// TestCheckDaemonFootprint_NamesMemoryLimitInReason pins Task 2's "doctor's
-// daemon_footprint row names the limit in its reason" requirement.
-func TestCheckDaemonFootprint_NamesMemoryLimitInReason(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "process_uptime_seconds 60\n")
-		fmt.Fprintf(w, "go_memstats_heap_inuse_bytes %d\n", int64(64<<20))
-		fmt.Fprintf(w, "go_memory_limit_bytes %d\n", int64(3)<<30)
-	}))
-	defer ts.Close()
-	c := checkDaemonFootprint(&http.Client{}, ts.URL, true)
-	if !strings.Contains(c.Reason, "memory limit 3.00 GiB") {
-		t.Errorf("reason must name the configured memory limit: %q", c.Reason)
-	}
-}
-
-// TestCheckDaemonFootprint_MemoryLimitOff pins the "off" reading for a
-// daemon with no soft limit configured (the runtime's own math.MaxInt64
-// sentinel).
-func TestCheckDaemonFootprint_MemoryLimitOff(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "process_uptime_seconds 60\n")
-		fmt.Fprintf(w, "go_memstats_heap_inuse_bytes %d\n", int64(64<<20))
-		fmt.Fprintf(w, "go_memory_limit_bytes %d\n", int64(math.MaxInt64))
-	}))
-	defer ts.Close()
-	c := checkDaemonFootprint(&http.Client{}, ts.URL, true)
-	if !strings.Contains(c.Reason, "memory limit off") {
-		t.Errorf("reason must report the limit as off: %q", c.Reason)
-	}
-}
-
-// TestCheckDaemonFootprint_MissingMemoryLimit_StillPasses proves a
-// pre-W-N daemon's /metrics (no go_memory_limit_bytes line at all) never
-// forces a skip — only the heap/uptime pair is required.
-func TestCheckDaemonFootprint_MissingMemoryLimit_StillPasses(t *testing.T) {
-	ts := metricsServer(t, 64<<20, 3600)
-	c := checkDaemonFootprint(&http.Client{}, ts.URL, true)
-	if c.Status != doctorPass {
-		t.Fatalf("status = %s (%s), want pass", c.Status, c.Reason)
-	}
-	if strings.Contains(c.Reason, "memory limit") {
-		t.Errorf("reason must not mention memory limit when the metric is absent: %q", c.Reason)
+	// The GC hint, when /metrics carries it, is named beside the footprint.
+	f := newResourcesFixture(t)
+	f.writeRing(t, 3400*tenancy.MiB, tenancy.LevelNormal, false)
+	got := checkDaemonFootprint(buildResources(f.env(), "", "", 24*time.Hour), map[string]float64{"go_memory_limit_bytes": float64(math.MaxInt64)})
+	if !strings.Contains(got.Reason, "GC hint off") {
+		t.Errorf("reason lacks the GC hint: %s", got.Reason)
 	}
 }
 

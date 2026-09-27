@@ -171,9 +171,10 @@ type lifecycleEntry struct {
 }
 
 // resolveResourcesTarget picks the daemon `resources` reports: --id, else
-// the managed daemon — a managed record, else an installed label (or the
-// default) whose state directory exists, else the default label.
-func resolveResourcesTarget(env resourcesEnv, id string) (resourcesDaemon, *console.DaemonRecord) {
+// the record serving url, else the managed daemon — a managed record,
+// else an installed label (or the default) whose state directory exists,
+// else the default label.
+func resolveResourcesTarget(env resourcesEnv, id, url string) (resourcesDaemon, *console.DaemonRecord) {
 	dir := daemonRecordsDir(env.home)
 	pick := func(id string) (resourcesDaemon, *console.DaemonRecord) {
 		d := resourcesDaemon{ID: id, StateDir: filepath.Join(dir, id)}
@@ -190,6 +191,14 @@ func resolveResourcesTarget(env resourcesEnv, id string) (resourcesDaemon, *cons
 		return pick(id)
 	}
 	recs, _ := listDaemonRecords(env.home)
+	if url != "" {
+		want := hookguard.NormalizeURL(url)
+		for _, r := range recs {
+			if r.Rec.ID != "" && r.Rec.Addr != "" && hookguard.NormalizeURL(r.Rec.Addr) == want {
+				return pick(r.Rec.ID)
+			}
+		}
+	}
 	for _, r := range recs {
 		if r.Rec.Managed && r.Rec.ID != "" {
 			return pick(r.Rec.ID)
@@ -212,7 +221,7 @@ func resolveResourcesTarget(env resourcesEnv, id string) (resourcesDaemon, *cons
 func buildResources(env resourcesEnv, id, url string, since time.Duration) resourcesReport {
 	now := env.now()
 	rep := resourcesReport{SchemaVersion: resourcesSchemaVersion, GeneratedAt: now.UTC().Format(time.RFC3339)}
-	d, rec := resolveResourcesTarget(env, id)
+	d, rec := resolveResourcesTarget(env, id, url)
 	switch {
 	case url != "":
 		d.URL = url
@@ -798,6 +807,12 @@ func liveResourcesEnv() resourcesEnv {
 		budget: resolveLocalBudget,
 		labels: installedAgentLabels,
 	}
+}
+
+// doctorResourcesReport is the resources projection doctor's tenancy
+// rows read (RT-49, RT-50): the daemon at baseURL, its files, the census.
+func doctorResourcesReport(baseURL string) resourcesReport {
+	return buildResources(liveResourcesEnv(), "", baseURL, 24*time.Hour)
 }
 
 // resolveLocalBudget resolves the managed budget from this machine's

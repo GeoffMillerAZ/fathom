@@ -1,14 +1,18 @@
 package main
 
-// doctor_footprint.go — O108 (.fathom/observations.md): the always-on
-// daemon's memory grew ~0.9 GB/hour with nothing in `fathom doctor` to
-// flag it before it filled swap and killed a gated push's pre-push hook
-// twice in one day. `daemon_footprint` reads the daemon's own /metrics
-// (servehttp.go, O108's instrumentation half) and WARNs — never FAILs,
-// per doctor's own honesty discipline (doctor.go's doc comment): a large
-// heap is an operator signal to act on, not a wiring-broken verdict —
-// above a stated budget, naming the remedy this observation records until
-// the underlying growth is fixed (docs/plans/daemon-footprint.md).
+// doctor_footprint.go — `daemon_footprint` (RT-49, design §13.3). It
+// judges the daemon's phys_footprint (plus its child processes, the
+// ladder's measure) against the budget the daemon runs under, from the
+// resources projection (resources.go): the live /statusz tenancy block
+// when the daemon answers, else the resource ring's last sample with its
+// age. It never SKIPs an unreachable daemon into silence (I38): a daemon
+// that does not answer is a WARN that names what the files last saw.
+// WARN, never FAIL, per doctor's honesty discipline (doctor.go): memory
+// is an operator signal, not a wiring-broken verdict. The old remedy —
+// "restart the daemon" — is gone: the governor bounds the daemon, and the
+// remedy names the level, the class and the top tool, and `fathom
+// resources`. (O108's heap-in-use reading was the wrong instrument: Go's
+// heap is not what the machine pays.)
 
 import (
 	"bufio"
@@ -17,56 +21,77 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
 
-// daemonFootprintWarnBytes is the heap-in-use threshold above which
-// daemon_footprint WARNs (O108's own 12 GB incident against a normal
-// freshly-restarted daemon's tens-of-MB baseline — 2 GiB is generous
-// headroom above any legitimate fleet-sized working set while still
-// firing well before swap is in play).
-const daemonFootprintWarnBytes = 2 << 30 // 2 GiB
-
-// checkDaemonFootprint reads the daemon's /metrics and reports its
-// go_memstats_heap_inuse_bytes and process_uptime_seconds. WARN (never
-// FAIL) above daemonFootprintWarnBytes; SKIP with a reason when the
-// daemon is unreachable or /metrics predates these fields (a daemon built
-// before O108 shipped).
-func checkDaemonFootprint(hc *http.Client, baseURL string, daemonUp bool) doctorCheck {
+// checkDaemonFootprint is doctor's daemon_footprint row over the
+// resources report; metrics is the daemon's /metrics (nil when it did not
+// answer), read only for the GC hint.
+func checkDaemonFootprint(rep resourcesReport, metrics map[string]float64) doctorCheck {
 	const name = "daemon_footprint"
-	remedy := "restart the daemon (task deploy, or the way your platform restarts the serve-http launchd job); O108 — the fix is not yet closed, so growth will resume until it is"
-	if !daemonUp {
-		return doctorCheck{Name: name, Status: doctorSkipped, Reason: "daemon unreachable — cannot read /metrics (see daemon_reachable)"}
-	}
-	m, err := fetchMetricsText(hc, baseURL)
-	if err != nil {
-		return doctorCheck{Name: name, Status: doctorSkipped, Reason: fmt.Sprintf("could not read %s/metrics: %v", baseURL, err)}
-	}
-	heap, heapOK := m["go_memstats_heap_inuse_bytes"]
-	uptime, uptimeOK := m["process_uptime_seconds"]
-	if !heapOK || !uptimeOK {
-		return doctorCheck{
-			Name: name, Status: doctorSkipped,
-			Reason: "the daemon's /metrics carries no go_memstats_heap_inuse_bytes/process_uptime_seconds — it was started from a build predating O108's instrumentation",
-			Remedy: "task deploy from the fathom checkout to pick up current /metrics",
+	const see = "fathom resources"
+	t := rep.Tenancy
+	if t == nil {
+		why := firstNonEmpty(rep.Daemon.Unreachable, "no tenancy block")
+		switch {
+		case len(rep.Unreadable) > 0:
+			return doctorCheck{Name: name, Status: doctorWarn,
+				Reason: fmt.Sprintf("the daemon at %s did not answer (%s) and its files are unreadable: %s", rep.Daemon.URL, why, strings.Join(rep.Unreadable, "; ")),
+				Remedy: see}
+		case rep.Daemon.Reachable:
+			return doctorCheck{Name: name, Status: doctorWarn,
+				Reason: fmt.Sprintf("the daemon at %s answers but reports no tenancy block (%s) — its binary predates the governor, so its footprint is unbounded and unmeasured", rep.Daemon.URL, why),
+				Remedy: "update the daemon's binary the way it was installed (in a fathom checkout: task deploy); then " + see}
+		default:
+			return doctorCheck{Name: name, Status: doctorWarn,
+				Reason: fmt.Sprintf("the daemon at %s did not answer (%s) and there is no resource ring at %s — no footprint instrument", rep.Daemon.URL, why, rep.Footprint.Ring),
+				Remedy: see + " (and daemon_reachable above)"}
 		}
 	}
-	reason := fmt.Sprintf("heap in-use %.2f GiB, uptime %s", heap/(1<<30), time.Duration(uptime*float64(time.Second)).Round(time.Second))
-	// memory limit (W-N, docs/plans/daemon-footprint.md): named here best-
-	// effort — a daemon built before this wave simply has no
-	// go_memory_limit_bytes line, and that alone is not a reason to skip
-	// the rest of this check the way a missing heap/uptime pair is.
-	if limit, ok := m["go_memory_limit_bytes"]; ok {
-		reason += fmt.Sprintf(", memory limit %s", memoryLimitDisplay(limit))
-	}
-	if heap >= daemonFootprintWarnBytes {
-		return doctorCheck{
-			Name: name, Status: doctorWarn,
-			Reason: fmt.Sprintf("%s — above the %d GiB budget (O108: the daemon's memory has been observed growing ~0.9 GB/hour until swap fills)", reason, daemonFootprintWarnBytes>>30),
-			Remedy: remedy,
+	fb := tenancy.FormatBytes
+	var b strings.Builder
+	if t.Footprint < 0 {
+		b.WriteString("phys_footprint unknown")
+	} else {
+		fmt.Fprintf(&b, "phys_footprint %s", fb(t.Footprint))
+		if t.Children >= 0 {
+			fmt.Fprintf(&b, " (+%s children)", fb(t.Children))
 		}
 	}
-	return doctorCheck{Name: name, Status: doctorPass, Reason: reason}
+	if rep.Budget.Budget > 0 {
+		fmt.Fprintf(&b, " vs budget %s (shed %s, refuse %s)", fb(rep.Budget.Budget), fb(rep.Budget.Shed), fb(rep.Budget.Refuse))
+	}
+	fmt.Fprintf(&b, " · level %s · mode %s", t.Level, firstNonEmpty(t.Mode, "unknown"))
+	if rep.Footprint.Max > 0 {
+		fmt.Fprintf(&b, " · %s max %s", rep.Footprint.Window, fb(rep.Footprint.Max))
+	}
+	if limit, ok := metrics["go_memory_limit_bytes"]; ok {
+		fmt.Fprintf(&b, " · GC hint %s", memoryLimitDisplay(limit))
+	}
+	remedy := see
+	if t.Oldest != nil {
+		remedy = fmt.Sprintf("level %s; top in-flight %s (%s) — %s", t.Level, t.Oldest.Tool, t.Oldest.Class, see)
+	} else {
+		remedy = fmt.Sprintf("level %s — %s", t.Level, see)
+	}
+	if t.Source != "live" {
+		return doctorCheck{Name: name, Status: doctorWarn,
+			Reason: fmt.Sprintf("the daemon at %s did not answer (%s); last ring sample %s old: %s", rep.Daemon.URL, firstNonEmpty(rep.Daemon.Unreachable, "no tenancy block"), firstNonEmpty(rep.Footprint.SampleAge, "?"), b.String()),
+			Remedy: remedy}
+	}
+	if t.Footprint < 0 || t.LadderOff {
+		return doctorCheck{Name: name, Status: doctorWarn,
+			Reason: b.String() + " — footprint unknown: ladder off (admission still applies)", Remedy: remedy}
+	}
+	combined := t.Footprint
+	if t.Children > 0 {
+		combined += t.Children
+	}
+	if t.Level != tenancy.LevelNormal.String() || (rep.Budget.Shed > 0 && combined >= rep.Budget.Shed) {
+		return doctorCheck{Name: name, Status: doctorWarn, Reason: b.String() + " — at or above the shed mark", Remedy: remedy}
+	}
+	return doctorCheck{Name: name, Status: doctorPass, Reason: b.String()}
 }
 
 // memoryLimitDisplay renders a go_memory_limit_bytes reading (already

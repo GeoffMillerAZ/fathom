@@ -231,13 +231,20 @@ func runDoctorChecks(root, explicitSvc, harness, baseURL string) []doctorCheck {
 		checkMCPRegistration(root, harness, baseURL),
 	}
 	daemonUp, daemonCheck := checkDaemonReachable(hc, baseURL)
+	// RT-49/RT-50 (§13.3): one resources projection feeds every tenancy
+	// row — live when the daemon answers, else its ring and ledger.
+	tenancyRep := doctorResourcesReport(baseURL)
+	var daemonMetrics map[string]float64
+	if daemonUp {
+		daemonMetrics, _ = fetchMetricsText(hc, baseURL)
+	}
 	checks = append(
 		checks,
 		daemonCheck,
 		checkBinaryFresh(root),
 		checkDaemonFresh(hc, baseURL, daemonUp), // PC-4: the daemon's stamp vs this binary (doctor_provenance.go)
-		checkDaemonFootprint(hc, baseURL, daemonUp), // O108: the daemon's own heap in-use vs a stated budget (doctor_footprint.go)
-		checkDaemonPosture(""),                      // RT-15: the installed plist's launchd posture vs schema 2 (daemon_signing.go)
+		checkDaemonFootprint(tenancyRep, daemonMetrics), // RT-49: phys_footprint vs the budget, live or from the ring (doctor_footprint.go)
+		checkDaemonPosture(""),                          // RT-15: the installed plist's launchd posture vs schema 2 (daemon_signing.go)
 		checkHooksInstalled(root, harness),
 		checkLefthookGates(root),
 		checkHooksFiring(hc, baseURL, daemonUp, root, harness),
