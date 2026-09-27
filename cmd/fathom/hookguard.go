@@ -16,7 +16,9 @@ package main
 // no guard is active and the wrapper is a pointer load and a tail call.
 
 import (
+	"fmt"
 	"net/http"
+	"os"
 	"sort"
 	"sync/atomic"
 	"time"
@@ -103,6 +105,10 @@ func beginHookGuard(channel, marker, harnessID, baseURL string) (end func(), sil
 		return func() {}, true
 	}
 	restore := activateHookGuard(g)
+	// RT-135: this invocation's id, stamped on every beat it emits and on
+	// its latency row, so doctor tells a killed hook from a silent exit.
+	inv := fmt.Sprintf("%d-%d", os.Getpid(), start.UnixNano())
+	prevInv := hookInvocation.Swap(&inv)
 	// RT-134 (§11.3): in every hook the custodian's config walk ends 2 s
 	// under the harness timeout and a directory that is not a repository
 	// is refused, named — SessionStart's attention line included.
@@ -112,7 +118,8 @@ func beginHookGuard(channel, marker, harnessID, baseURL string) (end func(), sil
 		restore()
 		// RT-135 (§11.3): every invocation's wall time against its
 		// deadline, for doctor's hook_budget.
-		recordHookLatency(channel, time.Since(start), g.Deadline.Budget(), time.Now())
+		recordHookLatency(channel, inv, time.Since(start), g.Deadline.Budget(), time.Now())
+		hookInvocation.Store(prevInv)
 		skips := g.Skips()
 		if len(skips) == 0 {
 			return
@@ -143,4 +150,15 @@ func hookWalkDeadline(start time.Time, timeoutSec int) time.Time {
 		d = total / 2
 	}
 	return start.Add(d)
+}
+
+// hookInvocation is the running hook invocation's id (nil outside a hook).
+var hookInvocation atomic.Pointer[string]
+
+// currentHookInvocation is that id, "" outside a hook.
+func currentHookInvocation() string {
+	if p := hookInvocation.Load(); p != nil {
+		return *p
+	}
+	return ""
 }

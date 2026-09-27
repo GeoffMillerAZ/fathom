@@ -126,6 +126,9 @@ func stampBeatMeta(meta map[string]string) map[string]string {
 	if beatHarness != "" {
 		out["harness"] = beatHarness
 	}
+	if inv := currentHookInvocation(); inv != "" {
+		out["hook_inv"] = inv // RT-135: joins a beat to its invocation's latency row
+	}
 	for k, v := range meta {
 		out[k] = v
 	}

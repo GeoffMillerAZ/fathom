@@ -40,7 +40,7 @@ func TestDoctorHookBudgetAndDiskRetention(t *testing.T) {
 		{Channel: "edit-hook", Kind: "breaker_open", At: now.Add(-10 * time.Minute)},
 		{Channel: "edit-hook", Kind: "breaker_open", At: now.Add(-10*time.Minute + 20*time.Second)},
 		{Channel: "session-hook", Kind: "breaker_open", At: now.Add(-5 * time.Minute)},
-		{Channel: "edit-hook", Kind: "seen", At: now.Add(-3 * time.Minute), Meta: map[string]string{"session": "s", "file": "a.go", "phase": "post"}},
+		{Channel: "edit-hook", Kind: "seen", At: now.Add(-3 * time.Minute), Meta: map[string]string{"session": "s", "file": "a.go", "phase": "post", "hook_inv": "9-1"}},
 		{Channel: "edit-hook", Kind: "seen", At: now.Add(-2 * time.Minute), Meta: map[string]string{"session": "s", "file": "b.go", "phase": "post"}},
 		{Channel: "edit-hook", Kind: "answered", At: now.Add(-2*time.Minute + time.Second), Meta: map[string]string{"session": "s", "file": "b.go", "phase": "post"}},
 	}
@@ -54,7 +54,7 @@ func TestDoctorHookBudgetAndDiskRetention(t *testing.T) {
 
 	// The latency log round-trips through the hook guard's writer.
 	t.Setenv("FATHOM_HOOKS_LOG", filepath.Join(t.TempDir(), "hooks.jsonl"))
-	recordHookLatency("edit-hook", 1900*time.Millisecond, 4*time.Second, time.Now())
+	recordHookLatency("edit-hook", "", 1900*time.Millisecond, 4*time.Second, time.Now())
 	if rows := readHookLatency(hookLatencyPath(), time.Now().Add(-time.Hour)); len(rows) != 1 || rows[0].MS != 1900 || rows[0].BudgetMS != 4000 {
 		t.Fatalf("latency log: %+v", rows)
 	}

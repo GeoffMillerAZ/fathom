@@ -7,8 +7,9 @@ package main
 // channel (hook-latency.jsonl, written by the hook guard's end), the
 // minutes the shared breaker held hooks off, the edits served while it was
 // open (the guard feature degrades silently then, so they are counted),
-// and harness kills — an edit-hook `seen` beat with no `answered` or
-// `error` after it (the process was killed before it could say).
+// and harness kills — an edit-hook invocation whose `seen` beat's id
+// (hook_inv) never reached hook-latency.jsonl: it began and never
+// finished (the hook guard writes the row on every return path).
 //
 // disk_retention: `fathom gc`'s dry run — reclaimable bytes by class and
 // the largest classes — and the internal disk's free space.
@@ -35,6 +36,10 @@ type hookLatencyRow struct {
 	Channel  string    `json:"channel"`
 	MS       int64     `json:"ms"`
 	BudgetMS int64     `json:"budget_ms,omitempty"` // the deadline; 0 = none
+	// Inv is the invocation's id (pid-startnanos), also stamped on every
+	// beat the invocation emitted: a `seen` whose id never reaches this
+	// log is an invocation that never finished — a harness kill.
+	Inv string `json:"inv,omitempty"`
 }
 
 // hookLatencyRotateBytes bounds hook-latency.jsonl (one generation kept).
@@ -50,7 +55,7 @@ func hookLatencyPath() string {
 }
 
 // recordHookLatency appends one row. Best-effort, like every beat.
-func recordHookLatency(channel string, wall, budget time.Duration, at time.Time) {
+func recordHookLatency(channel, inv string, wall, budget time.Duration, at time.Time) {
 	path := hookLatencyPath()
 	if path == "" {
 		return
@@ -59,7 +64,7 @@ func recordHookLatency(channel string, wall, budget time.Duration, at time.Time)
 		return
 	}
 	_ = dlog.RotateIfNeeded(path, hookLatencyRotateBytes)
-	b, err := json.Marshal(hookLatencyRow{At: at.UTC(), Channel: channel, MS: wall.Milliseconds(), BudgetMS: budget.Milliseconds()})
+	b, err := json.Marshal(hookLatencyRow{At: at.UTC(), Channel: channel, MS: wall.Milliseconds(), BudgetMS: budget.Milliseconds(), Inv: inv})
 	if err != nil {
 		return
 	}
@@ -111,11 +116,21 @@ func checkHookBudget(lat []hookLatencyRow, beats []heartbeat.Beat, now time.Time
 		}
 	}
 	over := hookChannelsOverBudget(inWindow)
-	// Breaker-open minutes, edits served open, harness kills (beats).
+	// Breaker-open minutes, edits served open (beats), and harness kills:
+	// an edit-hook invocation whose `seen` beat carries its id (hook_inv)
+	// and whose id never reached the latency log — it began and never
+	// finished. A silent exit after `seen` (obligations off, a relative
+	// path, a deny) still finishes, so it is never a kill. Beats without
+	// an id (an older binary) are not judged.
+	finished := map[string]bool{}
+	for _, r := range lat {
+		if r.Inv != "" {
+			finished[r.Inv] = true
+		}
+	}
 	openMinutes := map[int64]bool{}
 	editsOpen := 0
-	type key struct{ session, file, phase string }
-	pending := map[key]time.Time{}
+	kills := 0
 	for _, b := range beats {
 		if b.At.Before(since) {
 			continue
@@ -127,15 +142,9 @@ func checkHookBudget(lat []hookLatencyRow, beats []heartbeat.Beat, now time.Time
 				editsOpen++
 			}
 		case b.Channel == "edit-hook" && b.Kind == "seen":
-			pending[key{b.Meta["session"], b.Meta["file"], b.Meta["phase"]}] = b.At
-		case b.Channel == "edit-hook" && (b.Kind == "answered" || b.Kind == "error"):
-			delete(pending, key{b.Meta["session"], b.Meta["file"], b.Meta["phase"]})
-		}
-	}
-	kills := 0
-	for _, at := range pending {
-		if now.Sub(at) > 30*time.Second { // a seen still unanswered 30 s on was killed
-			kills++
+			if inv := b.Meta["hook_inv"]; inv != "" && !finished[inv] && now.Sub(b.At) > 30*time.Second {
+				kills++ // unfinished 30 s on: killed
+			}
 		}
 	}
 	lat24 := "no hook latency recorded in 24 h (hook-latency.jsonl)"

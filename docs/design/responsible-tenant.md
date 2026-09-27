@@ -992,8 +992,8 @@ written by rename.
 Targets (from `hooks.jsonl`): no-op paths p50 ≤ 30 ms; breaker-open fail-open p50 ≤ 15 ms;
 post-bash p99 ≤ 4.0 s (5,017 ms max today). Doctor `hook_budget`: p99 vs deadline per
 channel, breaker-open minutes, edits served while the breaker was open (the guard feature
-degrades silently then, so it is counted), harness kills (a `seen` beat with no
-`answered`/`error`).
+degrades silently then, so it is counted), harness kills (an invocation whose `seen` beat's id, `hook_inv`, never reaches
+`hook-latency.jsonl`: it began and never finished — a silent exit after `seen` still finishes).
 
 ---
 
