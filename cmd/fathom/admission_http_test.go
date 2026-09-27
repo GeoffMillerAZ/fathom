@@ -142,7 +142,7 @@ func TestDaemonServerTimeoutsAndLoopbackHost(t *testing.T) {
 	// Hosted mode (a modules token) serves a network Host.
 	hosted := newDaemonServer(inner, daemonServerOpts{hosted: true})
 	r := httptest.NewRequest(http.MethodPost, "/rpc/modules", nil)
-	r.Host = "fathom.internal:443"
+	r.Host = "fathom.example.com:443"
 	w := httptest.NewRecorder()
 	hosted.Handler.ServeHTTP(w, r)
 	if w.Code != http.StatusOK {
