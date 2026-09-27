@@ -43,6 +43,19 @@ type consoleDeps struct {
 	// verification and conserve run in it (jobPool).
 	jobsOnce sync.Once
 	jobs     *console.Jobs
+	// feeders is serve-http's event feeder switch (nil in handler tests):
+	// a page reading a source generation catches the sources up first
+	// while no /events subscriber keeps them running (sourceGeneration).
+	feeders *feederSwitch
+}
+
+// sourceGeneration is the bus's generation for a panel source key, after
+// catching the event sources up when the feeders are off (RT-119): a memo
+// keyed on it is never served past a change only a stopped feeder would
+// have published.
+func (d *consoleDeps) sourceGeneration(_ context.Context, key string) uint64 {
+	d.feeders.catchUp()
+	return d.bus.SourceGeneration(key)
 }
 
 // Console job pool bounds (design §14): two workers, a queue of 32.

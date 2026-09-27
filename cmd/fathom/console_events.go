@@ -28,6 +28,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/console"
@@ -68,6 +69,17 @@ type consoleEventSources struct {
 	compileCursorRun string
 	// warn reports an event the bus refused (serve-http's log).
 	warn func(string)
+
+	// pollMu serializes the polls: the feeders' loop and a page's
+	// catch-up (catchUp) never poll at once. ledgerAt and storeAt are when
+	// each was last polled (by now, the clock tests pin); storePolls
+	// counts the store polls run (tests); storeKicked is a catch-up's
+	// store poll in flight.
+	pollMu            sync.Mutex
+	now               func() time.Time
+	ledgerAt, storeAt time.Time
+	storePolls        int
+	storeKicked       atomic.Bool
 }
 
 func newConsoleEventSources(bus *console.EventBus, c *client.Client, verifyLedger, sessionLedger string) *consoleEventSources {
@@ -270,18 +282,80 @@ func (s *consoleEventSources) pollCompileRunsOf(ctx context.Context, svc string,
 	s.compile[svc] = now
 }
 
-// runConsoleEventSources polls until ctx ends. The ledgers' baseline is
-// taken on the first run only: a restart (RT-119) resumes from where the
-// last run stopped.
-func runConsoleEventSources(ctx context.Context, s *consoleEventSources) {
-	if !s.ledgersPrimed {
+// clock is the sources' now.
+func (s *consoleEventSources) clock() time.Time {
+	if s.now != nil {
+		return s.now()
+	}
+	return time.Now()
+}
+
+// pollLedgersDue polls the ledgers — the first time, takes their baseline
+// instead — unless they were polled within consoleLedgerPoll (force: the
+// feeders' ticker or a restart polls regardless; a ledger poll reads only
+// appended bytes).
+func (s *consoleEventSources) pollLedgersDue(force bool) {
+	s.pollMu.Lock()
+	defer s.pollMu.Unlock()
+	now := s.clock()
+	switch {
+	case !s.ledgersPrimed:
 		s.verify.Prime()
 		s.session.Prime()
 		s.ledgersPrimed = true
-	} else {
+	case force || now.Sub(s.ledgerAt) >= consoleLedgerPoll:
 		s.pollLedgers()
+	default:
+		return
+	}
+	s.ledgerAt = now
+}
+
+// pollStoreDue polls the store unless it was polled within
+// consoleStorePoll (force: the feeders' ticker): a navigation that closes
+// and reopens /events restarts the feeders, and must not run a
+// full-fleet poll each time.
+func (s *consoleEventSources) pollStoreDue(ctx context.Context, force bool) {
+	s.pollMu.Lock()
+	defer s.pollMu.Unlock()
+	now := s.clock()
+	if !force && !s.storeAt.IsZero() && now.Sub(s.storeAt) < consoleStorePoll {
+		return
 	}
 	s.pollStore(ctx)
+	s.storePolls++
+	s.storeAt = now
+}
+
+// catchUp is a page's read of the sources while the feeders are off
+// (RT-119: they run only while /events has a subscriber): the ledgers are
+// polled now, so a generation a memo keys on reflects what they gained;
+// the store poll, a full-fleet read, is started off the request path at
+// most once per consoleStorePoll, and the next view sees what it found.
+// Paused like the feeders at shed and in safe mode.
+func (s *consoleEventSources) catchUp() {
+	if !backgroundAllowed() {
+		return
+	}
+	s.pollLedgersDue(false)
+	s.pollMu.Lock()
+	due := s.storeAt.IsZero() || s.clock().Sub(s.storeAt) >= consoleStorePoll
+	s.pollMu.Unlock()
+	if due && s.storeKicked.CompareAndSwap(false, true) {
+		go func() {
+			defer s.storeKicked.Store(false)
+			s.pollStoreDue(context.Background(), false)
+		}()
+	}
+}
+
+// runConsoleEventSources polls until ctx ends. The ledgers' baseline is
+// taken on the first run only: a restart (RT-119) resumes from where the
+// last run stopped, and polls the store only when consoleStorePoll has
+// passed since the last store poll.
+func runConsoleEventSources(ctx context.Context, s *consoleEventSources) {
+	s.pollLedgersDue(true)
+	s.pollStoreDue(ctx, false)
 	ledgers := time.NewTicker(consoleLedgerPoll)
 	store := time.NewTicker(consoleStorePoll)
 	defer ledgers.Stop()
@@ -292,11 +366,11 @@ func runConsoleEventSources(ctx context.Context, s *consoleEventSources) {
 			return
 		case <-ledgers.C:
 			if backgroundAllowed() { // RT-34: paused at shed and above; RT-39: off in safe mode
-				s.pollLedgers()
+				s.pollLedgersDue(true)
 			}
 		case <-store.C:
 			if backgroundAllowed() {
-				s.pollStore(ctx)
+				s.pollStoreDue(ctx, true)
 			}
 		}
 	}
@@ -340,6 +414,15 @@ func (f *feederSwitch) subscribers(n int) {
 		f.cancel()
 		f.cancel = nil
 	}
+}
+
+// catchUp brings the sources up to date for a page when the feeders are
+// off (consoleEventSources.catchUp); while they run they keep it current.
+func (f *feederSwitch) catchUp() {
+	if f == nil || f.running() {
+		return
+	}
+	f.src.catchUp()
 }
 
 // running reports whether the feeders are on.

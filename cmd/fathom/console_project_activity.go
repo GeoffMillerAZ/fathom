@@ -100,9 +100,9 @@ var projectActivityMemo = consoleMemo[projectActivityData]{max: 32}
 // generations of the panels' live sources (index:{svc}, sessions:{svc}),
 // so a refresh the "updated" affordance offers reads again.
 func projectActivityKey(cr *consoleRequest, pc projectContext, src console.Sources) string {
-	bus := cr.deps.bus
+	ctx := cr.r.Context()
 	return strings.Join([]string{pc.svc, cr.now.UTC().Format("2006-01-02"), src.CallLog.Path, src.SessionLedger, pc.m.GeneratedAt,
-		strconv.FormatUint(bus.SourceGeneration("index:"+pc.svc), 10), strconv.FormatUint(bus.SourceGeneration("sessions:"+pc.svc), 10)}, "\x00")
+		strconv.FormatUint(cr.deps.sourceGeneration(ctx, "index:"+pc.svc), 10), strconv.FormatUint(cr.deps.sourceGeneration(ctx, "sessions:"+pc.svc), 10)}, "\x00")
 }
 
 func projectActivityFor(cr *consoleRequest, pc projectContext) projectActivityData {

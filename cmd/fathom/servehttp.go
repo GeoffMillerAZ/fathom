@@ -713,6 +713,7 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	// RT-119 (§14, §10.1): the feeders run only while GET /events has a
 	// subscriber — managed or not, an unwatched console polls nothing.
 	feeders := newFeederSwitch(eventSources)
+	consoleDeps.feeders = feeders
 	consoleDeps.bus.OnSubscribers(feeders.subscribers)
 	defer consoleDeps.bus.OnSubscribers(nil)
 

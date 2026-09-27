@@ -2,6 +2,7 @@ package main
 
 import (
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -95,5 +96,57 @@ func TestFeedersIdleWithoutSubscribers(t *testing.T) {
 	refs, err := compileRunRefsAfter(ctx, c, base)
 	if err != nil || len(refs) != 3 || refs[0].RunID != "run-2" || refs[2].RunID != "run-long" {
 		t.Errorf("runs after the baseline = %+v, %v; want run-2, run-3, run-long in record order", refs, err)
+	}
+}
+
+// TestSourceGenerationCatchesUpWithoutSubscribers (RT-119): with no
+// /events subscriber the feeders are off, but a page reading a panel
+// source's generation first folds what the ledgers gained (a JSON or
+// headless reader is never served a memo keyed on a generation the
+// feeders stopped advancing); and a navigation's close-and-reopen of
+// /events does not run another full-fleet store poll inside
+// consoleStorePoll.
+func TestSourceGenerationCatchesUpWithoutSubscribers(t *testing.T) {
+	c, err := client.NewConstantClient(client.ModeLocal, filepath.Join(t.TempDir(), "store.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+	dir := t.TempDir()
+	verifyLedger := filepath.Join(dir, "verify.jsonl")
+	mustWrite(t, verifyLedger, "")
+	bus := console.NewEventBus(console.BusOptions{})
+	src := newConsoleEventSources(bus, c, verifyLedger, filepath.Join(dir, "sessions.jsonl"))
+	clock := time.Date(2026, 9, 27, 12, 0, 0, 0, time.UTC)
+	var clockMu sync.Mutex
+	src.now = func() time.Time { clockMu.Lock(); defer clockMu.Unlock(); return clock }
+	advance := func(d time.Duration) { clockMu.Lock(); clock = clock.Add(d); clockMu.Unlock() }
+	fs := newFeederSwitch(src)
+	bus.OnSubscribers(fs.subscribers)
+	deps := &consoleDeps{bus: bus, feeders: fs}
+
+	if g := deps.sourceGeneration(t.Context(), "plans:pay"); g != 0 {
+		t.Fatalf("generation before any change = %d", g)
+	}
+	mustWrite(t, verifyLedger, `{"service":"pay","plan":"docs/plans/p.md","failing":0}`+"\n")
+	advance(consoleLedgerPoll)
+	if g := deps.sourceGeneration(t.Context(), "plans:pay"); g == 0 {
+		t.Fatal("a verify appended while no /events subscriber listened left the plans generation unmoved: the page's memo would serve the old audit")
+	}
+
+	// Navigation: /events closes and reopens; the store is polled once
+	// per consoleStorePoll, not on every restart.
+	polls := func() int { src.pollMu.Lock(); defer src.pollMu.Unlock(); return src.storePolls }
+	for i := 0; i < 3; i++ {
+		sub, _, err := bus.Subscribe(bus.LastID())
+		if err != nil {
+			t.Fatal(err)
+		}
+		waitUntil(t, fs.running)
+		sub.Close()
+		waitUntil(t, func() bool { return !fs.running() && fs.stoppedCleanly() })
+	}
+	if n := polls(); n > 1 {
+		t.Fatalf("three navigations inside consoleStorePoll ran %d full store polls; want at most one", n)
 	}
 }

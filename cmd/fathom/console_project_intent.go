@@ -122,7 +122,7 @@ func buildProjectIntentPage(cr *consoleRequest) (consoleOut, error) {
 		}
 		return out, nil
 	}
-	run, at, aerr := readOnlyIntentAudit(pc.root, pc.svc, cr.deps.selfURL, cr.deps.bus.SourceGeneration("plans:"+pc.svc), cr.now)
+	run, at, aerr := readOnlyIntentAudit(pc.root, pc.svc, cr.deps.selfURL, cr.deps.sourceGeneration(cr.r.Context(), "plans:"+pc.svc), cr.now)
 	if aerr != nil {
 		model.Error = aerr.Error()
 		out.Model = model

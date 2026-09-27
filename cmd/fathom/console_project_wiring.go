@@ -97,7 +97,7 @@ var projectWiringMemo = consoleMemo[projectWiringData]{max: 32}
 // they show "updated — refresh this panel", so the refresh re-reads), and
 // the receipts log's size and mtime (every apply and undo appends to it).
 func projectWiringKey(cr *consoleRequest, pc projectContext) string {
-	key := pc.svc + "\x00" + pc.root + "\x00" + pc.rootNote + "\x00" + strconv.FormatUint(cr.deps.bus.SourceGeneration("index:"+pc.svc), 10)
+	key := pc.svc + "\x00" + pc.root + "\x00" + pc.rootNote + "\x00" + strconv.FormatUint(cr.deps.sourceGeneration(cr.r.Context(), "index:"+pc.svc), 10)
 	if pc.rootNote == "" {
 		key += "\x00" + fileWatermark(wiring.ReceiptsPath(pc.root))
 	}
