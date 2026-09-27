@@ -680,10 +680,13 @@ use a stat manifest (paths, sizes, mtimes from `file_stats`), capped and cached 
 `Client.ServiceWatermark` reads a git-SHA service's HEAD with `gitro.Head` only, and
 `LocalConnector.Watermark` answers an unreadable HEAD in a git work tree with
 `gitro.ErrFreshnessUnknown`. A non-git corpus keeps the portable content manifest an
-ingest records, gated by a stat manifest walked each call (paths, sizes, mtimes; no
-reads): recomputed only when the stats move; over 20,000 files it is
-`ErrManifestTooLarge`, remembered for 30 s. `file_stats` can replace the walk once the
-storage lane lands it.)
+ingest records, gated by a stat manifest (paths, sizes, mtimes; no reads): the ingest's
+`Watermark` recomputes it only when the stats move; over 20,000 files it is
+`ErrManifestTooLarge`, remembered for 30 s. The request path never computes it: auto-refresh
+asks `Client.ServiceFreshnessProbe` → `LocalConnector.FreshnessProbe`, which walks the stats
+at most once per 5 s per root and answers the recorded manifest while they stand, or a
+`stat:` drift token that queues a refresh — the ingest then computes the manifest off the
+request path. `file_stats` can replace the walk once the storage lane lands it.)
 
 ---
 

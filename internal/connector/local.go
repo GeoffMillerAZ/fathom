@@ -44,6 +44,9 @@ type LocalConnector struct {
 	// manifests memoizes each non-git root's content manifest behind its
 	// stat manifest (RT-110) — see statGatedManifest.
 	manifests sync.Map // root (string) -> manifestMemo
+	// probes caches each non-git root's last stat walk for FreshnessProbe
+	// (RT-110) — at most one walk per probeTTL.
+	probes sync.Map // root (string) -> probeMemo
 }
 
 // Exclusions reports what the most recent Discover of service excluded at

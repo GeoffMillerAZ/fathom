@@ -154,6 +154,13 @@ type serviceWatermarker interface {
 	ServiceWatermark(ctx context.Context, service string) (string, error)
 }
 
+// freshnessProber is the request path's freshness capability (RT-110,
+// I48): pkg/client's ServiceFreshnessProbe, which never reads the corpus.
+// Preferred over serviceWatermarker when the backend has both.
+type freshnessProber interface {
+	ServiceFreshnessProbe(ctx context.Context, service string) (string, error)
+}
+
 // ensure asks for a re-ingest of service when its corpus has drifted from
 // the indexed watermark, and returns at once (RT-99, design §7.1): the read
 // is answered from the index as it stands, and the envelope's "refresh"
@@ -223,7 +230,11 @@ func (a *autoRefreshBackend) ensure(ctx context.Context, service string) {
 	}
 	head := a.headFn(path)
 	if head == "" {
-		if w, ok := a.QueryInterface.(serviceWatermarker); ok {
+		// RT-110/I48: the request path probes (stats, cached) — never the
+		// content manifest, which reads the whole corpus.
+		if p, ok := a.QueryInterface.(freshnessProber); ok {
+			head, _ = p.ServiceFreshnessProbe(ctx, service)
+		} else if w, ok := a.QueryInterface.(serviceWatermarker); ok {
 			head, _ = w.ServiceWatermark(ctx, service)
 		}
 	}

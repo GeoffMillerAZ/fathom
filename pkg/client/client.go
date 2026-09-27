@@ -734,6 +734,32 @@ func (c *Client) ServiceWatermark(ctx context.Context, service string) (string, 
 	return c.conn.Watermark(ctx, svcRef)
 }
 
+// ServiceFreshnessProbe is ServiceWatermark for the request path (RT-110,
+// I48): a git-SHA service compares HEAD exactly as ServiceWatermark does;
+// any other service asks the connector's FreshnessProbe, which answers the
+// recorded content manifest while the corpus's stats stand and a drift
+// token once they move — never a whole-corpus read inside a request. A
+// connector without the capability falls back to ServiceWatermark.
+func (c *Client) ServiceFreshnessProbe(ctx context.Context, service string) (string, error) {
+	fp, ok := c.conn.(connector.FreshnessProber)
+	if !ok {
+		return c.ServiceWatermark(ctx, service)
+	}
+	svcRef := core.ServiceRef{ID: service, Path: service}
+	meta, found, err := c.st.GetServiceMeta(ctx, service)
+	if err == nil && found && meta.Path != "" {
+		svcRef.Path = meta.Path
+	}
+	if err == nil && found && gitro.IsObjectName(meta.IndexedCommit) {
+		head, herr := gitro.Head(ctx, svcRef.Path)
+		if herr != nil {
+			return "", fmt.Errorf("service %q: %w", service, herr)
+		}
+		return head, nil
+	}
+	return fp.FreshnessProbe(ctx, svcRef)
+}
+
 // Store returns the underlying store.Store Client was constructed over —
 // an escape hatch for a caller that needs a capability Client itself does
 // not re-export (ADR-044 wave 2: internal/mcp's review_diff wiring builds

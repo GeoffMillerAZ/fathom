@@ -176,3 +176,36 @@ func TestServerAdoptsAutoRefreshQueue(t *testing.T) {
 		t.Fatal("two ingests of svc ran at once (I50: at most one per service)")
 	}
 }
+
+// probeFake is a non-git service's backend: its watermark is the content
+// manifest (a whole-corpus read) and its probe is the stat-cached token.
+type probeFake struct {
+	refreshFake
+	watermarks, probes int
+}
+
+func (f *probeFake) ServiceWatermark(context.Context, string) (string, error) {
+	f.watermarks++
+	return "manifest:new", nil
+}
+
+func (f *probeFake) ServiceFreshnessProbe(context.Context, string) (string, error) {
+	f.probes++
+	return "stat:moved", nil
+}
+
+// TestEnsureProbesNeverComputesManifest (RT-110, I48): a read of a non-git
+// service asks the stat probe, never the content manifest, and a moved stat
+// token queues a refresh.
+func TestEnsureProbesNeverComputesManifest(t *testing.T) {
+	f := &probeFake{refreshFake: refreshFake{path: "/docs", indexed: "manifest:old"}}
+	ar := newAR(f, "")
+	ar.ensure(context.Background(), "svc")
+	settle(t, ar)
+	if f.watermarks != 0 || f.probes != 1 {
+		t.Fatalf("watermarks=%d probes=%d; want 0 and 1", f.watermarks, f.probes)
+	}
+	if f.ingests != 1 {
+		t.Fatalf("ingests=%d; a moved stat token must queue one refresh", f.ingests)
+	}
+}
