@@ -144,3 +144,35 @@ func TestIngestToolRunsOnRefreshQueue(t *testing.T) {
 		t.Fatal("two ingests ran at once")
 	}
 }
+
+// TestServerAdoptsAutoRefreshQueue (RT-97, I50): a server built over the
+// auto-refresh backend — serve-mcp's wiring, which never calls
+// SetRefreshQueue — runs the ingest tool on that backend's queue, so an
+// ingest-tool call beside a running auto-refresh ingest never starts a
+// second ingest of the service.
+func TestServerAdoptsAutoRefreshQueue(t *testing.T) {
+	release := make(chan struct{})
+	started := make(chan string, 4)
+	var running, maxSeen int64
+	f := &gatedIngestFake{refreshFake: refreshFake{path: "/r", indexed: "old"}, started: started, release: release, running: &running, maxSeen: &maxSeen}
+	ar := NewAutoRefresh(f, nil).(*autoRefreshBackend)
+	ar.headFn = func(string) string { return "new" }
+	srv := NewServer(ar)
+	if srv.RefreshQueue() != ar.RefreshQueue() {
+		t.Fatal("the server did not adopt its auto-refresh backend's queue")
+	}
+	ar.ensure(context.Background(), "svc")
+	<-started
+	done := make(chan struct{})
+	go func() {
+		_, _ = srv.handleToolsCallWithCtx(context.Background(), []byte(`{"name":"ingest","arguments":{"service":"svc"}}`))
+		close(done)
+	}()
+	time.Sleep(30 * time.Millisecond)
+	close(release)
+	<-done
+	settle(t, ar)
+	if atomic.LoadInt64(&maxSeen) != 1 {
+		t.Fatal("two ingests of svc ran at once (I50: at most one per service)")
+	}
+}

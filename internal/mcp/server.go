@@ -221,6 +221,14 @@ func newServer(backend QueryInterface, fleet FleetBackend, logger *CallLogger, m
 		callLogger: logger,
 		graphCache: callgraph.NewCachedCallGraph(0),
 	}
+	// RT-97/I50: a backend that runs its re-ingests on a refresh queue
+	// (the auto-refresh wrapper) lends that queue to the ingest tool and
+	// the routes, whatever the surface — serve-mcp never calls
+	// SetRefreshQueue, and an ingest-tool call must never run beside the
+	// queue's worker. The daemon's SetRefreshQueue installs the same queue.
+	if qb, ok := backend.(interface{ RefreshQueue() *refresh.Queue }); ok && qb.RefreshQueue() != nil {
+		s.refreshQ.Store(qb.RefreshQueue())
+	}
 	registerBuiltins(s)
 	registerTools(s, backend, fleet, modules)
 	registerPlatformTools(s, backend, fleet)
