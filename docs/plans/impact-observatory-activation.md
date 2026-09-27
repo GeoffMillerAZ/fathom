@@ -23,7 +23,7 @@
 - [x] init's own scaffolds load clean: three-state loader (absent = none configured, inert-commented = pass with note, malformed = fail), proven against the actual template bytes init writes (O7) {id: IO-7, symbol: LoadBindings, package: internal/bindspec, reachable_from: TestExplicitEmptyBindings}
 - [x] compile --dry-run prints an output-token and cost RANGE plus expected duration, never a confident zero (O8) {id: IO-8, symbol: Compile, package: internal/semantic, reachable_from: TestDryRunEstimateRange}
 - [x] the review verb never prompts in a non-TTY: pre-push completes or exits with a named verdict (O9) {id: IO-9, symbol: runReview, package: cmd/fathom, reachable_from: TestReviewNonInteractive}
-- [x] the adoption gauge is service-scoped and cwd-independent: --service plus daemon-side call-log resolution; zero-call list scoped to the measured surface (O6 + audit) {id: IO-10, symbol: buildAdoptionReport, package: cmd/fathom, reachable_from: TestAdoptionServiceScoped}
+- [x] the adoption gauge is service-scoped and cwd-independent: --service plus daemon-side call-log resolution; zero-call list scoped to the measured surface (O6 + audit) {id: IO-10, symbol: buildAdoptionReportFold, package: cmd/fathom, reachable_from: TestAdoptionServiceScoped}
 
 ## B — Version-stamped telemetry (vision 14 §3)
 
