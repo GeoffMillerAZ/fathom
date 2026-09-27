@@ -132,9 +132,12 @@ func (s *Server) loadNavGraphs(ctx context.Context, backend QueryInterface, serv
 	return call.graphs
 }
 
-// navMemoCap bounds how many services' navigation state stays resident —
-// the same eight the graph cache keeps (callgraph.defaultCacheCapacity).
-const navMemoCap = 8
+// navMemoCap bounds how many services' navigation state (every symbol,
+// typed edge and three graphs) stays resident. A large service's state is
+// ~1 GiB (the wave-A replay retained 2.5 GiB for three), so two — the
+// service a session works in and one neighbour — until wave B accounts
+// cache bytes against the budget (RT-163).
+const navMemoCap = 2
 
 type navMemoEntry struct {
 	mark   string
