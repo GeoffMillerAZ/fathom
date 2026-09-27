@@ -718,9 +718,12 @@ WHERE o.service_id = ? AND json_array_length(o.calls) > 0 AND j.type = 'text'`, 
 // indexed and the insert trigger captures every later one, so the store
 // counts as indexed from birth. A crash midway leaves the services
 // unindexed (the state rows go first), never wrongly indexed.
-func rebuildCallIndex(ctx context.Context, ex interface {
-	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
-}) error {
+func rebuildCallIndex(ctx context.Context, conn *sql.Conn) error {
+	tx, err := conn.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
 	now := time.Now().UnixNano()
 	for _, q := range []struct {
 		sql  string
@@ -736,10 +739,26 @@ WHERE json_array_length(o.calls) > 0 AND j.type = 'text'`, nil},
 		{`INSERT OR REPLACE INTO observation_calls_state (service_id, indexed_at) SELECT DISTINCT service_id, ? FROM observations`, []any{now}},
 		{`INSERT OR REPLACE INTO derived_meta (key, value) VALUES (?, '1')`, []any{callsFromBirthKey}},
 	} {
-		if _, err := ex.ExecContext(ctx, q.sql, q.args...); err != nil {
+		if _, err := tx.ExecContext(ctx, q.sql, q.args...); err != nil {
 			if isNoSuchTable(err) {
 				return nil
 			}
+			return err
+		}
+	}
+	return tx.Commit() // one transaction: a reader sees the old state or the rebuilt index
+}
+
+// markCallIndexStale makes every service read as call-unindexed (their
+// state rows and the from-birth mark go) ahead of a VACUUM that may
+// renumber rowids; rebuildCallIndex restores both.
+func markCallIndexStale(ctx context.Context, tx *sql.Tx) error {
+	for _, q := range []string{`DELETE FROM observation_calls_state`, `DELETE FROM derived_meta WHERE key = ?`} {
+		var args []any
+		if strings.Contains(q, "?") {
+			args = []any{callsFromBirthKey}
+		}
+		if _, err := tx.ExecContext(ctx, q, args...); err != nil && !isNoSuchTable(err) {
 			return err
 		}
 	}

@@ -82,3 +82,56 @@ func TestCallIndexSurvivesPurgeVacuumAndNewServices(t *testing.T) {
 		t.Fatalf("callers of Charge after the purge = %d, want 2", n)
 	}
 }
+
+// TestCallIndexReadsUnindexedAcrossTheVacuumWindow (review finding,
+// RT-77, I38): between a purge's VACUUM (which may renumber rowids) and
+// the call index's rebuild, the index's rows point at renumbered rowids,
+// so a lookup in that window could miss a true caller while the service
+// still claimed to be indexed. The services read as not indexed from
+// before the VACUUM until the rebuild commits, so a reader in the window
+// is told the index is absent, never handed a silent partial.
+func TestCallIndexReadsUnindexedAcrossTheVacuumWindow(t *testing.T) {
+	ctx := context.Background()
+	s, err := NewSQLiteStore(filepath.Join(t.TempDir(), "win.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	if err := s.PutObservations(ctx, []core.Observation{
+		obsWithCalls("api", "cmd/main.go", "main", "main", 3, "billing::charge.Charge"),
+		obsWithCalls("api", "secrets/x.go", "Leak", "secrets", 1, "fmt.Println"),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.WriteServiceSummary(ctx, ServiceMeta{ServiceID: "api", IndexedCommit: "c1", IndexedAt: 1}, ServiceSummary{}, nil); err != nil {
+		t.Fatal(err)
+	}
+	var inWindow *bool
+	purgeAfterVacuumHook = func() {
+		st, err := s.DerivedState(ctx, "api")
+		if err != nil {
+			t.Errorf("DerivedState in the window: %v", err)
+			return
+		}
+		v := st.CallsIndexed
+		inWindow = &v
+	}
+	defer func() { purgeAfterVacuumHook = nil }()
+	rep, err := s.PurgePaths(ctx, "api", prefixMatcher("secrets/"), PurgeOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !rep.Physical.Vacuumed {
+		t.Skip("the purge did not VACUUM; nothing to prove")
+	}
+	if inWindow == nil {
+		t.Fatal("the hook did not run")
+	}
+	if *inWindow {
+		t.Fatal("between the VACUUM and the rebuild the service still claimed a complete call index")
+	}
+	st, err := s.DerivedState(ctx, "api")
+	if err != nil || !st.CallsIndexed {
+		t.Fatalf("after the rebuild: indexed %v, err %v", st.CallsIndexed, err)
+	}
+}

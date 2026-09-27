@@ -737,6 +737,15 @@ func (s *SQLiteStore) executePurge(ctx context.Context, serviceID string, plan *
 	if err := del(`DELETE FROM semantic_claims WHERE service_id = ? AND claim_id IN (%s)`, plan.claimIDs, true); err != nil {
 		return out, err
 	}
+	if s.path != "" {
+		// The VACUUM below may renumber the rowids the call index keys on:
+		// every service reads as unindexed from this commit until the
+		// rebuild after it commits, never as a complete index over stale
+		// rowids (RT-77, I38).
+		if err := markCallIndexStale(ctx, tx); err != nil {
+			return out, fmt.Errorf("store.PurgePaths call index: %w", err)
+		}
+	}
 
 	if err := tx.Commit(); err != nil {
 		return out, fmt.Errorf("store.PurgePaths commit: %w", err)
@@ -744,15 +753,24 @@ func (s *SQLiteStore) executePurge(ctx context.Context, serviceID string, plan *
 	committed = true
 
 	purgePhysicalResidue(ctx, conn, s.path, &out)
-	if out.Vacuumed {
+	if s.path != "" {
 		// VACUUM may renumber observations' rowids, which the call index
-		// keys on (RT-77): rebuild it in place for every service.
+		// keys on (RT-77): rebuild it in place for every service. The
+		// services were marked unindexed before the VACUUM, so a reader in
+		// between is told the index is absent (I38).
+		if purgeAfterVacuumHook != nil {
+			purgeAfterVacuumHook()
+		}
 		if err := rebuildCallIndex(ctx, conn); err != nil {
 			return out, fmt.Errorf("store.PurgePaths rebuild call index: %w", err)
 		}
 	}
 	return out, nil
 }
+
+// purgeAfterVacuumHook, when set, runs between a purge's VACUUM and the
+// call index's rebuild (tests: the window a reader must see as unindexed).
+var purgeAfterVacuumHook func()
 
 // purgePhysicalResidue is §3.2's last row, and the one the first draft of
 // the design was missing entirely: the deleted rows' RAW BYTES.
