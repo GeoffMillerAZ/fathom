@@ -750,12 +750,20 @@ whole-service case.
 ### 8.2 Self-restart
 
 - Adoption exits **75** (was 0). `TestSelfRestartExitCodeMatchesPlistSchema` renders the
-  plist and asserts the adoption code is non-zero exactly when `KeepAlive` is a dict.
+  plist and asserts launchd relaunches on 75 under both schema 1 (`KeepAlive true`) and
+  schema 2 (`{SuccessfulExit: false}`), and that exit 0 relaunches only under schema 1 — the
+  dict is why the adoption code must be non-zero. (Amended in wave A: "non-zero exactly
+  when `KeepAlive` is a dict" would have required exit 0 under schema 1. Until RT-13 ships
+  the schema-2 renderer the test derives the schema-2 plist from the schema-1 render;
+  RT-13 swaps in its own render.)
 - Poll stat `(size, mtime, ino)` every 20 s; SHA-256 only when it changes (today: ~4,320
-  full hashes of an 89 MB binary per day).
+  full hashes of an 89 MB binary per day). A hash failure is logged and retried on the
+  next poll; a candidate whose `version` check fails is re-verified after the cooldown.
 - Cross-process cooldown: last adoption in `lifecycle.jsonl`; ≥ 5 min between adoptions;
-  deploys during the cooldown coalesce. No adoption at `refuse` or above. The watcher runs
-  only when `--managed`. Adoptions are not counted by the breaker.
+  deploys during the cooldown coalesce. An unreadable ledger is named, and adoption then
+  waits until the process itself has run 5 min. No adoption at `refuse` or above. The
+  watcher runs only when managed: `--managed`, or launchd's `XPC_SERVICE_NAME` equals an
+  installed fathom agent's label. Adoptions are not counted by the breaker.
 - Drain before exit (§8.5).
 
 ### 8.3 Migrating installed plists: `fathom daemon install --reconcile`

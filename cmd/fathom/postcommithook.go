@@ -24,9 +24,9 @@ import (
 // ingest` against the shared store").
 //
 // This verb routes the refresh through the daemon, which owns the store and
-// carries its own TCC grant. The shell path survives only as the fallback
-// for a daemon that is genuinely unreachable, and there it runs under
-// IT-15's refusal, so a wedge still cannot overwrite a populated index.
+// carries its own TCC grant. There is no fallback: when the daemon is
+// unreachable or refuses, nothing is ingested and the one line printed says
+// so and names how to refresh once the daemon is back (RT-170).
 //
 // Fail-open like every other hook (I9): a post-commit hook that blocks or
 // errors on infrastructure gets uninstalled within a week. Every outcome
@@ -38,7 +38,7 @@ func cmdPostCommitHook(args []string, stdout, stderr io.Writer) int {
 	dir := fs.String("dir", ".", "repository root to refresh")
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL")
 	service := fs.String("service", "", "service id (default: resolved from the repo)")
-	timeout := fs.Duration("timeout", 10*time.Second, "daemon timeout before falling back")
+	timeout := fs.Duration("timeout", 10*time.Second, "daemon timeout for the refresh request (on failure nothing is ingested)")
 	quiet := fs.Bool("quiet", false, "print nothing on success")
 	if err := fs.Parse(args); err != nil {
 		return 0 // never block a commit on our own flag parsing
@@ -113,12 +113,24 @@ func cmdPostCommitHook(args []string, stdout, stderr io.Writer) int {
 		}
 		return 0
 	} else {
-		// The daemon is the only writer we trust with the shared store. Say
-		// why we are falling back, so a wedged or stopped daemon is visible
-		// rather than silently routed around.
-		fmt.Fprintf(stderr, "post-commit: daemon refresh failed (%v) — falling back to a store-direct ingest, which refuses to overwrite a populated index on read errors (IT-15)\n", err)
+		// The daemon is the only writer we trust with the shared store, and
+		// this hook runs no other path. Say exactly that (RT-170, design
+		// §12.3): the refresh failed, nothing was ingested, and how to
+		// refresh through the daemon once it is back. The line used to
+		// announce a store-direct fallback it never ran — a false claim made
+		// during exactly the incidents it reports. It does not suggest a
+		// shell `fathom ingest`: that writes the shared store directly (the
+		// INC-3 path this verb exists to close).
+		fmt.Fprintln(stderr, postCommitFailureLine(svc, root, err))
 	}
 	return 0
+}
+
+// postCommitFailureLine is the one stderr line a failed daemon refresh
+// prints (RT-170): what failed, that nothing was ingested, and the refresh
+// to run through the daemon when it is back.
+func postCommitFailureLine(service, root string, err error) string {
+	return fmt.Sprintf("post-commit: daemon refresh failed (%v) — nothing was ingested; %q stays at its previously indexed commit. When the daemon is back, refresh through it: fathom post-commit-hook --dir %s (or the ingest MCP tool for service %q)", err, service, root, service)
 }
 
 // ingestViaDaemon calls the daemon's `ingest` tool for service. A JSON-RPC

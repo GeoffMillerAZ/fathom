@@ -78,7 +78,7 @@ func TestSelfRestartAdoptsAVerifiedBinary(t *testing.T) {
 	var out syncBuffer
 	done := make(chan struct{})
 	go func() {
-		watchOwnBinary(bin, dlogOver(&out), 5*time.Millisecond, 0, func(c int) { exited.Store(int32(c)) })
+		watchOwnBinary(bin, dlogOver(&out), selfRestartConfig{poll: 5 * time.Millisecond, exit: func(c int) { exited.Store(int32(c)) }})
 		close(done)
 	}()
 
@@ -90,8 +90,8 @@ func TestSelfRestartAdoptsAVerifiedBinary(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatalf("the watcher never adopted the new binary; log:\n%s", out.String())
 	}
-	if exited.Load() != 0 {
-		t.Errorf("exit code = %d, want 0 — a clean exit is what lets launchd restart on the new code", exited.Load())
+	if exited.Load() != int32(adoptionExitCode()) {
+		t.Errorf("exit code = %d, want %d — a non-zero exit is what lets launchd (KeepAlive {SuccessfulExit: false}) restart on the new code", exited.Load(), adoptionExitCode())
 	}
 	if !strings.Contains(out.String(), "adopting") {
 		t.Errorf("the adoption must be announced; a silent self-restart is indistinguishable from a crash:\n%s", out.String())
@@ -108,7 +108,7 @@ func TestSelfRestartRefusesABinaryThatCannotRun(t *testing.T) {
 
 	var exited atomic.Bool
 	var out syncBuffer
-	go watchOwnBinary(bin, dlogOver(&out), 5*time.Millisecond, 0, func(int) { exited.Store(true) })
+	go watchOwnBinary(bin, dlogOver(&out), selfRestartConfig{poll: 5 * time.Millisecond, exit: func(int) { exited.Store(true) }})
 
 	time.Sleep(20 * time.Millisecond)
 	// The 2026-08-12 shape: present, changed, and unable to execute.
@@ -148,7 +148,7 @@ func TestSelfRestartWaitsForTheFileToSettle(t *testing.T) {
 	var out syncBuffer
 	// A long poll: the file changes twice within one interval, so a
 	// watcher that acted on first sight would adopt a half-written file.
-	go watchOwnBinary(bin, dlogOver(&out), 150*time.Millisecond, 0, func(int) { exited.Store(true) })
+	go watchOwnBinary(bin, dlogOver(&out), selfRestartConfig{poll: 150 * time.Millisecond, exit: func(int) { exited.Store(true) }})
 
 	time.Sleep(50 * time.Millisecond)
 	if err := os.WriteFile(bin, []byte("partial"), 0o755); err != nil {
@@ -201,7 +201,7 @@ func TestWatchOwnBinary_AdoptLineIncludesBuildAge(t *testing.T) {
 	var out syncBuffer
 	done := make(chan struct{})
 	go func() {
-		watchOwnBinary(bin, dlogOver(&out), 5*time.Millisecond, 0, func(c int) { exited.Store(int32(c)) })
+		watchOwnBinary(bin, dlogOver(&out), selfRestartConfig{poll: 5 * time.Millisecond, exit: func(c int) { exited.Store(int32(c)) }})
 		close(done)
 	}()
 

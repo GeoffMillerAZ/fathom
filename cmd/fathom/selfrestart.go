@@ -51,11 +51,21 @@ import (
 const (
 	// selfRestartPoll is deliberately unhurried: a deploy that takes effect
 	// within a minute is indistinguishable from instant to every consumer,
-	// and the poll costs one hash of an already-cached file.
+	// and the poll costs one stat (RT-12: the binary is hashed only when its
+	// (size, mtime, inode) changed).
 	selfRestartPoll = 20 * time.Second
-	// selfRestartCooldown bounds how often the daemon may step aside.
-	selfRestartCooldown = 2 * time.Minute
+	// selfRestartCooldown bounds how often the daemon may step aside,
+	// across processes: the last adoption is read from the lifecycle ledger
+	// (RT-12, design §8.2), so a relaunched process does not reset it.
+	selfRestartCooldown = 5 * time.Minute
 )
+
+// adoptionExitCode returns the code the daemon exits with when it adopts a new
+// binary (RT-11, design §8.2): 75 (EX_TEMPFAIL), never 0. Under plist
+// schema 2 KeepAlive is {SuccessfulExit: false}, so exit 0 means "stay
+// down" (the kill switch, a breaker stop) and an adoption must be non-zero
+// to be relaunched; under schema 1 (KeepAlive true) any exit relaunches.
+func adoptionExitCode() int { return 75 }
 
 // selfRestartDisabled lets an operator switch the behaviour off without a
 // rebuild. Off is a legitimate choice — some deployments want the binary
@@ -77,50 +87,127 @@ var selfRestartBuildStamp = buildinfo.Read
 // lines are not flaky). Production leaves this as time.Now; tests swap it.
 var selfRestartNow = time.Now
 
-// watchOwnBinary polls the daemon's own executable and exits when a
-// verified newer binary is in place.
+// selfRestartConfig carries the watcher's knobs. Zero values take the
+// production defaults, except exit, which the caller must supply.
+type selfRestartConfig struct {
+	poll     time.Duration // stat interval (default selfRestartPoll)
+	cooldown time.Duration // minimum spacing between adoptions (0 = none)
+	// ledger is the lifecycle ledger (~/.fathom/daemon/<label>/lifecycle.jsonl)
+	// holding the cross-process cooldown; "" keeps the cooldown in-process.
+	ledger string
+	exit   func(int)                    // os.Exit in production
+	hash   func(string) (string, error) // default hashFile; tests count calls
+	now    func() time.Time             // default time.Now
+}
+
+// watchOwnBinary polls the daemon's own executable and exits with
+// adoptionExitCode when a verified newer binary is in place.
 //
-// exit is injected so the loop is testable without ending the test
-// process; production passes os.Exit.
-func watchOwnBinary(path string, log *dlog.Logger, poll, cooldown time.Duration, exit func(int)) {
-	start, err := hashFile(path)
-	if err != nil {
+// Each poll is one stat; the binary is hashed only when its (size, mtime,
+// inode) changed since the last poll (RT-12). A change is adopted once the
+// stat has held still for one full poll (settle), the cooldown since the
+// last adoption — this process's or, via the ledger, any predecessor's — has
+// passed, and the candidate runs.
+func watchOwnBinary(path string, log *dlog.Logger, cfg selfRestartConfig) {
+	if cfg.poll <= 0 {
+		cfg.poll = selfRestartPoll
+	}
+	if cfg.hash == nil {
+		cfg.hash = hashFile
+	}
+	if cfg.now == nil {
+		cfg.now = time.Now
+	}
+	startedAt := cfg.now() // the uptime fallback when the ledger is unreadable
+	startStat, serr := statBinary(path)
+	start, err := cfg.hash(path)
+	if serr != nil || err != nil {
 		// No baseline means every later comparison is a guess. Say so once
 		// and stop, rather than restarting on noise.
+		if err == nil {
+			err = serr
+		}
 		log.Warn(fmt.Sprintf("self-restart: disabled — cannot hash %s (%v); a deploy will need a manual restart", path, err))
 		return
 	}
 	log.Info(fmt.Sprintf("self-restart: watching %s (%s); a verified new binary is adopted within ~%s",
-		path, shortHash(start), poll*2))
+		path, shortHash(start), cfg.poll*2))
 
 	var (
-		pending     string
-		pendingSeen int
-		last        time.Time
+		seen          = startStat // the stat last observed and hashed
+		pending       string      // hash of changed bytes awaiting adoption
+		refusedAt     time.Time   // backoff after a refused candidate; retried after it
+		deferNoticeOf string      // pending hash whose cooldown deferral was logged
+		hashErrOf     binaryStat  // stat whose hash failure was logged
 	)
 	for {
-		time.Sleep(poll)
+		time.Sleep(cfg.poll)
 
-		cur, herr := hashFile(path)
-		if herr != nil || cur == start {
-			pending, pendingSeen = "", 0
+		st, serr := statBinary(path)
+		if serr != nil {
+			pending = ""
+			continue
+		}
+		if binaryStatChanged(seen, st) {
+			// (3) Settle: a changed stat is hashed once and must then hold
+			// still for a full poll, so a file still being written is never
+			// adopted half-copied.
+			cur, herr := cfg.hash(path)
+			if herr != nil {
+				// Not recorded as seen: the next poll hashes it again, so a
+				// transient read failure never strands a deploy, and the
+				// failure is named once per stat (4, I38).
+				if hashErrOf != st {
+					log.Warn(fmt.Sprintf("self-restart: %s changed but cannot be hashed (%v); retrying on the next poll", path, herr))
+					hashErrOf = st
+				}
+				pending = ""
+				continue
+			}
+			seen = st
+			if cur == start {
+				pending = ""
+			} else {
+				pending = cur
+				refusedAt = time.Time{}
+			}
+			continue
+		}
+		if pending == "" {
 			continue
 		}
 
-		// (3) Settle: the same new bytes twice before acting, so a file
-		// still being written is never adopted half-copied.
-		if cur != pending {
-			pending, pendingSeen = cur, 1
+		// (2) Rate limit: after a refusal, and across processes.
+		now := cfg.now()
+		if !refusedAt.IsZero() && now.Sub(refusedAt) < max(cfg.cooldown, cfg.poll) {
 			continue
 		}
-		pendingSeen++
-		if pendingSeen < 2 {
-			continue
-		}
-
-		// (2) Rate limit.
-		if !last.IsZero() && time.Since(last) < cooldown {
-			continue
+		if cfg.ledger != "" && cfg.cooldown > 0 {
+			last, ok, lerr := lastAdoption(cfg.ledger)
+			switch {
+			case lerr != nil:
+				// I38: an unreadable ledger is named, not read as "no
+				// adoption". The cooldown is then unknown, and the
+				// uncertainty resolves toward waiting: adopt only once this
+				// process has itself run a full cooldown, which still bounds
+				// adoptions to one per cooldown across processes.
+				up := now.Sub(startedAt)
+				if deferNoticeOf != pending {
+					log.Warn(fmt.Sprintf("self-restart: cannot read the lifecycle ledger %s (%v); the cross-process cooldown is unknown, so adoption waits until this process has run %s (up %s)",
+						cfg.ledger, lerr, cfg.cooldown, up.Round(time.Second)))
+					deferNoticeOf = pending
+				}
+				if up < cfg.cooldown {
+					continue
+				}
+			case ok && now.Sub(last) < cfg.cooldown:
+				if deferNoticeOf != pending {
+					log.Info(fmt.Sprintf("self-restart: %s changed (%s); adoption deferred — the last adoption was %s ago, inside the %s cooldown (deploys in the cooldown coalesce)",
+						path, shortHash(pending), now.Sub(last).Round(time.Second), cfg.cooldown))
+					deferNoticeOf = pending
+				}
+				continue
+			}
 		}
 
 		// (1) Verify before yielding.
@@ -129,17 +216,24 @@ func watchOwnBinary(path string, log *dlog.Logger, poll, cooldown time.Duration,
 			log.Warn(fmt.Sprintf("self-restart: REFUSED — %s changed but will not run (%v). "+
 				"Keeping this process, so the fleet stays served by working code. "+
 				"An unsigned binary fails exactly this way; `task deploy` signs.", path, verr))
-			// start is deliberately NOT updated: if the operator repairs
-			// the binary in place, the next poll sees a new hash and
-			// re-verifies rather than treating the bad one as the baseline.
-			pending, pendingSeen = "", 0
-			last = time.Now()
+			// start is deliberately NOT updated, and pending is kept: the
+			// candidate is re-verified after the refusal backoff (the
+			// cooldown), so a good binary whose first run failed
+			// transiently (a version timeout under memory pressure, a
+			// slow first exec) is not stranded; a repaired binary's stat
+			// change re-hashes it at once.
+			refusedAt = now
 			continue
 		}
 
-		log.Info(fmt.Sprintf("self-restart: adopting %s (%s → %s)%s — exiting so launchd restarts on the new code",
-			ver, shortHash(start), shortHash(cur), buildAgeSuffix()))
-		exit(0)
+		if cfg.ledger != "" {
+			if werr := appendAdoptRow(cfg.ledger, now, start, pending); werr != nil {
+				log.Warn(fmt.Sprintf("self-restart: cannot record the adoption in %s (%v); the next process's cooldown will not see it", cfg.ledger, werr))
+			}
+		}
+		log.Info(fmt.Sprintf("self-restart: adopting %s (%s → %s)%s — exiting %d so launchd restarts on the new code",
+			ver, shortHash(start), shortHash(pending), buildAgeSuffix(), adoptionExitCode()))
+		cfg.exit(adoptionExitCode())
 		return
 	}
 }

@@ -71,6 +71,7 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	callLogPath := fs.String("call-log", firstNonEmpty(loaded.Config.Daemon.CallLog, defaultCallLogPath()), "JSONL tool-call log path, resolved against the daemon working directory; empty to disable")
 	var modulePaths stringSliceFlag
 	fs.Var(&modulePaths, "module", "path to a conforming expert-module store (.sqlite/.db, docs/spec/expert-module-v0.md), mounted READ-ONLY on POST /rpc/modules; repeatable. A non-conforming or unreadable store aborts startup loudly (docs/plans/gke-module-host.md GKE-MH-1) rather than starting up silently degraded.")
+	managed := fs.Bool("managed", false, "this is the operator's managed daemon (the launchd agent; plist schema 2 passes it): only a managed daemon watches its own binary for self-restart. Also inferred when launchd starts this process under the installed fathom agent's label (XPC_SERVICE_NAME)")
 	modulesTokenEnv := fs.String("modules-token-env", "", "name of an environment variable holding the bearer token required for POST /rpc/modules (GKE-MH-7); unset = auth disabled (default — matches the loopback-only daemon's existing unauthenticated trust boundary). The token itself is never a flag or config value, only this env var's NAME.")
 
 	if err := fs.Parse(args); err != nil {
@@ -225,17 +226,22 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	inProcessReg.Store(&inProcessRegistry{self: "http://" + *addr, services: inProcessServicesFn})
 	handler := newHTTPHandlerWithAuthDeps(srv, c, modulesToken, *addr, ports, flog, consoleDeps)
 
-	// Adopt a new binary without a human (selfrestart.go). launchd's
-	// KeepAlive is true for this job, so exiting IS a restart — which is
-	// what lets an agent complete a deploy end to end, rather than
-	// building a fix and then waiting for someone to run `launchctl`.
-	if selfRestartDisabled() {
-		outLog.Info("self-restart: OFF (FATHOM_SELF_RESTART=off) — a deploy will need a manual restart")
-	} else if exe, exeErr := os.Executable(); exeErr != nil {
-		outLog.Warn(fmt.Sprintf("self-restart: disabled — cannot resolve this process's own path (%v)", exeErr))
-	} else {
-		go watchOwnBinary(exe, outLog, selfRestartPoll, selfRestartCooldown, os.Exit)
-	}
+	// Adopt a new binary without a human (selfrestart.go). launchd
+	// relaunches the job after the adoption exit (75, RT-11), which is what
+	// lets an agent complete a deploy end to end, rather than building a
+	// fix and then waiting for someone to run `launchctl`. Only the managed
+	// daemon watches (RT-12): a scratch serve-http never adopts, never
+	// hashes its binary and never writes the operator's lifecycle ledger.
+	startSelfRestart(outLog, selfRestartStart{
+		managedFlag:     *managed,
+		xpcServiceName:  os.Getenv("XPC_SERVICE_NAME"),
+		installedLabels: labelsInstalled,
+		disabled:        selfRestartDisabled(),
+		executable:      os.Executable,
+		watch: func(path string, cfg selfRestartConfig) {
+			go watchOwnBinary(path, outLog, cfg)
+		},
+	})
 
 	// Periodic OS-memory return (memscavenge.go, O108): bounds how long any
 	// one peak (a large graph build, a burst of concurrent cache misses)

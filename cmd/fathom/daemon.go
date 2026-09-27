@@ -52,14 +52,24 @@ func launchAgentsDir() string {
 // agent on this machine, or "" if there is none. It reads the plists rather
 // than assuming a label, which is the whole point: a hint that names someone
 // else's service is worse than no hint, because it looks authoritative.
+// With several installed, it is the alphabetically first (labelsInstalled).
 func labelInstalled() string {
+	if found := labelsInstalled(); len(found) > 0 {
+		return found[0]
+	}
+	return ""
+}
+
+// labelsInstalled returns the launchd labels of every installed fathom
+// serve-http agent on this machine, sorted.
+func labelsInstalled() []string {
 	dir := launchAgentsDir()
 	if dir == "" || runtime.GOOS != "darwin" {
-		return ""
+		return nil
 	}
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return ""
+		return nil
 	}
 	var found []string
 	for _, e := range entries {
@@ -84,10 +94,7 @@ func labelInstalled() string {
 		found = append(found, strings.TrimSuffix(e.Name(), ".plist"))
 	}
 	sort.Strings(found)
-	if len(found) == 0 {
-		return ""
-	}
-	return found[0]
+	return found
 }
 
 // daemonRestartHint is the ONE place that renders "how do I get the daemon
