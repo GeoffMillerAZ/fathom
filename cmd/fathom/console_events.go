@@ -212,11 +212,11 @@ func runConsoleEventSources(ctx context.Context, s *consoleEventSources) {
 		case <-ctx.Done():
 			return
 		case <-ledgers.C:
-			if !backgroundPaused.Load() { // RT-34: paused at shed and above
+			if backgroundAllowed() { // RT-34: paused at shed and above; RT-39: off in safe mode
 				s.pollLedgers()
 			}
 		case <-store.C:
-			if !backgroundPaused.Load() {
+			if backgroundAllowed() {
 				s.pollStore(ctx)
 			}
 		}

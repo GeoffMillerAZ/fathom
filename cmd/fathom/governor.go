@@ -16,7 +16,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -61,6 +60,8 @@ type governorConfig struct {
 	killChildren func() int
 	captureDiag  func(trigger string) string // returns the capture's path
 	exit         func(code int)
+	// observe sees each sample and the level after it (nil: none).
+	observe func(s *tenancy.Sample, level tenancy.Level)
 }
 
 // governor owns the ladder for one daemon.
@@ -132,6 +133,9 @@ func (g *governor) tick(at time.Time, late time.Duration) tenancy.Transition {
 	// the OS at most once per freeEvery, so the ladder can step down.
 	if g.st.Level >= tenancy.LevelShed {
 		g.scavenge(at, false)
+	}
+	if g.observe != nil {
+		g.observe(&g.sample, g.st.Level)
 	}
 	return tr
 }
@@ -354,16 +358,7 @@ func (g *governor) appendRow(row any) {
 	}
 	b, err := json.Marshal(row)
 	if err == nil {
-		err = os.MkdirAll(filepath.Dir(g.ledger), 0o700)
-	}
-	if err == nil {
-		var f *os.File
-		if f, err = os.OpenFile(g.ledger, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600); err == nil {
-			_, err = f.Write(append(b, '\n'))
-			if cerr := f.Close(); err == nil {
-				err = cerr
-			}
-		}
+		err = appendLedgerBytes(g.ledger, b) // rotates at 1 MiB, one generation kept (§2.3)
 	}
 	if err != nil {
 		g.logf(fmt.Sprintf("tenancy: lifecycle ledger %s not written: %v", g.ledger, err))
@@ -381,14 +376,11 @@ func (g *governor) loadQuarantine() error {
 	if g.ledger == "" {
 		return nil
 	}
-	f, err := os.Open(g.ledger)
-	if errors.Is(err, os.ErrNotExist) {
-		return nil
-	}
+	f, done, err := openLedgerGenerations(g.ledger)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer done()
 	qs, skipped, err := tenancy.QuarantinedServices(f)
 	if err != nil {
 		return err
@@ -425,6 +417,11 @@ type governorSnapshot struct {
 	LastTransition string   `json:"last_transition,omitempty"`
 	Quarantined    []string `json:"quarantined,omitempty"`
 	Abandoned      int64    `json:"abandoned_by_governor"`
+	// The lifecycle modes (§2.3, §2.1): safe mode's sentence, the warm-up
+	// window's end, store distress's reason; empty when not in effect.
+	SafeMode      string `json:"safe_mode,omitempty"`
+	WarmupUntil   string `json:"warmup_until,omitempty"`
+	StoreDistress string `json:"store_distress,omitempty"`
 }
 
 func (g *governor) snapshot() governorSnapshot {
@@ -450,6 +447,17 @@ func (g *governor) snapshot() governorSnapshot {
 	}
 	for _, q := range tenancy.QuarantinedNow() {
 		s.Quarantined = append(s.Quarantined, q.Attention())
+	}
+	now := g.now()
+	if sm, on := tenancy.SafeModeNow(); on {
+		s.SafeMode = sm.Message()
+	}
+	if tenancy.InWarmup(now) {
+		start, d := tenancy.Warmup()
+		s.WarmupUntil = start.Add(d).UTC().Format(time.RFC3339)
+	}
+	if why, on := tenancy.StoreDistressNow(now); on {
+		s.StoreDistress = why
 	}
 	return s
 }
@@ -528,7 +536,17 @@ func governorMetricLines() string {
 	fmt.Fprintf(&b, "fathom_gc_cpu_fraction %g\n", s.GCCPUFraction)
 	fmt.Fprintf(&b, "fathom_quarantined_services %d\n", len(s.Quarantined))
 	fmt.Fprintf(&b, "fathom_governor_abandoned_total %d\n", s.Abandoned)
+	fmt.Fprintf(&b, "fathom_safe_mode %d\n", boolGauge(s.SafeMode != ""))
+	fmt.Fprintf(&b, "fathom_warmup %d\n", boolGauge(s.WarmupUntil != ""))
+	fmt.Fprintf(&b, "fathom_store_distress %d\n", boolGauge(s.StoreDistress != ""))
 	return b.String()
+}
+
+func boolGauge(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
 }
 
 // captureExitDiag writes the exit rung's diagnostics — the heap profile and

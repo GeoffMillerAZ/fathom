@@ -20,11 +20,11 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/dlog"
 )
 
-const (
+var (
 	// bindRetryMaxWait bounds the total time spent retrying before giving
 	// up and returning the bind error — "up to 10 s" per the owner's
 	// amendment.
-	bindRetryMaxWait = 10 * time.Second
+	bindRetryMaxWait = 10 * time.Second // a var so a test can shorten it
 	// bindRetryInitialBackoff is the first retry's delay; it doubles (capped
 	// at bindRetryMaxBackoff) on each subsequent attempt.
 	bindRetryInitialBackoff = 250 * time.Millisecond

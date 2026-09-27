@@ -460,6 +460,7 @@ fathom serve-http --store <path> [--addr <host:port>] [--managed] [--idle-exit 2
 | `--exit-with-parent` | `true` | Unmanaged: exit within 10 s of the parent process's death, SIGKILL included (kqueue `NOTE_EXIT` on macOS, a `getppid` poll everywhere); a daemon started by pid 1 has no parent to watch |
 | `--idle-exit` | `20m` | Unmanaged: exit after this long with no request in flight (an open `/events` stream counts as one); `0` disables |
 | `--ttl` | `8h` | Unmanaged: exit after this long regardless; `0` disables. Every bounded exit — also an unlinked (deleted or replaced) executable or store, checked every 60 s — logs its reason (`parent 4121 exited`, `idle 20m0s`, `ttl 8h0m0s`, `store unlinked`) and removes the daemon's record |
+| `--lifecycle-id` | unset | Unmanaged: keep the lifecycle ledger (and so the crash-loop breaker) under `~/.fathom/daemon/<id>/lifecycle.jsonl` across relaunches — the stress harness's (RT-158). Never a managed label, an `addr-*` id or a path (refused, exit 1). Without it an unmanaged daemon keeps a per-process `addr-<port>-<pid>` ledger, removed on a clean exit. A breaker stop under it exits 0 but never writes `disabled.json` |
 | `--allow-operator-state` | `false` | Unmanaged: without it, a `--store` or `--call-log` resolving to the managed daemon's (from its record) is refused and serve-http exits 1 before opening anything |
 | `--call-log` | `<repo>/workspace/logs/mcp-calls.jsonl` (else `~/.fathom/logs/mcp-calls.jsonl`) | JSONL tool-call log, resolved from the daemon working directory's repository (§CLI subcommands); empty disables |
 | `--module` | — | Path to a conforming expert-module store, mounted READ-ONLY on `POST /rpc/modules`; repeatable; a non-conforming store aborts startup |
@@ -480,6 +481,49 @@ footprints; `/statusz` lists quarantined services, which only a completed
 explicit call of the daemon's `ingest` tool lifts (never a hook's refresh
 or a shell `fathom ingest`). A scratch daemon that needs more sets
 `FATHOM_TENANCY_BUDGET`. See [configuration.md](configuration.md#the-budget-tenancy-user-scope-only).
+
+**The lifecycle ledger and the breaker (ADR-047 §2.3, §8.4, §8.5; RT-37..RT-44,
+RT-156, RT-158, RT-165).** Every start and exit is a row in
+`~/.fathom/daemon/<id>/lifecycle.jsonl` (rotated at 1 MiB, one generation
+kept). A start with no following exit is named at the next start —
+`exit{reason: unclean}` with the jetsam or `fathom_*.diag` resource report the
+system kept for that pid (`jetsam: largestProcess`, `resource: disk writes`).
+Before the store and the bind, the breaker counts `over_budget`, `unclean`,
+foreign-holder `port_held` and non-zero `start_failed` exits (a store that
+opens and is not a database, a module that does not mount, a bind error that
+is not a held port) since the last `operator_reset`: 3 in 30 min
+start the daemon in **safe mode** (tree and fleet refused with `fathom safe
+mode since 21:07: … — run fathom resources`; point and index served;
+auto-refresh, the console feeders and the decision port off; after 30 min at
+normal it steps back); 5 in 60 min, or a safe-mode process exiting over
+budget while still in safe mode, **stop** it — the managed daemon writes `disabled.json {reason:
+breaker}` and exits 0 (`fathom daemon start` clears it). Adoption, `stop`,
+a drained SIGTERM, a store wait, the unmanaged lifetime exits and a
+`task deploy` kickstart (its `deploy` intent row, `fathom daemon
+deploy-intent`, is written before the kickstart) are not counted. For
+`[tenancy.breaker] warmup` (120 s) after any start each heavy class holds one
+slot — a second concurrent call is refused 503 under the default `admission =
+"observe"` as under `"enforce"` (only `"off"` skips it) — and auto-refresh
+ingests nothing inline. The daemon binds
+**before** it opens its store: an unavailable store is waited for, never
+exited on — `/healthz` and `/statusz` answer `waiting-for-store` with the
+errno and label (`tcc-wedge` for EPERM on a path that stats, with the daemon
+binary's path, signing identity and Full Disk Access / Removable Volumes
+grant as the remedy; `volume-not-mounted`), tools/call is 503 `store
+unavailable: …`, reopened with backoff 5 s → 5 min, one `store_wait` row per
+errno (recovered by opening the path itself when SQLite's `unable to open
+database file` drops it). An unmanaged daemon keeps its `--ttl`,
+`--idle-exit` and `--exit-with-parent` while it waits. A port a managed fathom of the same label already serves exits 0
+(`already served by pid N`); any other holder exits 75 and is named. SQLITE_FULL or
+SQLITE_IOERR from a read or a write (an ingest, `/refresh-file`, an
+auto-refresh ingest), or a store volume under `min_store_volume_free`, is
+**store distress**: ingest and `/refresh-file` are refused with the reason and a
+failed read is a named error (`list_services` `symbol_count_error`), never a
+zero. The managed daemon's SIGTERM writes `exit{reason: drain}` first, closes
+tree, fleet and ingest, lets point and index finish within 12 s, and exits 0;
+runtime fatals go to `~/.fathom/daemon/<id>/crash.log`. `/metrics` carries
+`fathom_safe_mode`, `fathom_warmup` and `fathom_store_distress`; `/statusz`'s
+`tenancy` block the same, named.
 
 The daemon also reads the `budgets` block of `.fathom/capabilities.cue` /
 `~/.fathom/capabilities.cue` (project → user → built-in) for class-budgeted answers
@@ -1486,7 +1530,13 @@ fathom daemon resume
 fathom daemon uninstall [--label NAME]
 fathom daemon ps   [--json]
 fathom daemon reap [--apply] [--grace 5s]
+fathom daemon deploy-intent [--label NAME] [--binary PATH]
 ```
+
+`deploy-intent` appends a `deploy` row (the running pid from the daemon
+record, the new binary's hash) to the label's lifecycle ledger; `task deploy`
+runs it before its kickstart so the breaker does not count the kickstart. It
+never fails a deploy: with no recorded daemon it says so and exits 0.
 
 `status --json`: `{platform, label?, plist?, plist_schema?, posture_drift?,
 posture_remedy?, switch?, signing?, url, reachable, detail?, remedy?,
@@ -1512,9 +1562,9 @@ starts normally. An empty file (`touch ~/.fathom/daemon/disabled.json`, the
 appends an `operator_reset` row to `~/.fathom/daemon/<label>/lifecycle.jsonl`
 (the breaker window restarts) and kickstarts the label. `pause` writes
 `paused.json`; the managed daemon re-reads it every 2 s, stays up and sets
-its safe-mode flag (logged); in this release the flag has no effect yet —
-auto-refresh off and heavy requests refused arrive with RT-39/RT-150, so
-`stop` is the switch that takes load off now. `resume` removes it. While the
+enters safe mode (logged): tree and fleet refused with the reason,
+auto-refresh, the console feeders and the decision port off, point and index
+served. `resume` removes it. While the
 switch is set, `status`, doctor and the session primer name `fathom daemon
 start` (with the switch's reason) as the remedy instead of a kickstart, and
 `task deploy` installs the binary, then stops with that message instead of

@@ -1130,6 +1130,10 @@ func registerIngest(s *Server, backend QueryInterface) {
 		} else {
 			ingestErr = backend.IngestService(ctx, svc)
 		}
+		// RT-41 (§2.1): an ingest that failed writing the store with
+		// SQLITE_FULL or SQLITE_IOERR is store distress — the next ingest
+		// and refresh are refused, named, instead of admitted to fail.
+		tenancy.NoteStoreError(ingestErr, time.Now())
 		// Critic finding F2 (BLOCKING, phase-P fix round): bust the
 		// CLI's service-identity cache (cmd/fathom/identcache.go) on
 		// every ingest via this MCP tool that may have written — a hook

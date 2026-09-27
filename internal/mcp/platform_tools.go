@@ -60,6 +60,9 @@ type ServiceSummary struct {
 	SymbolCount int
 	Languages   []string
 	Path        string
+	// CountErr names why the symbol count could not be read (RT-41, I38):
+	// the count is then unknown, never zero.
+	CountErr string
 }
 
 // ServiceSummaries computes list_services' identity fields in process. The
@@ -76,12 +79,21 @@ func ServiceSummaries(ctx context.Context, backend QueryInterface, fleet FleetBa
 	agg, hasAgg := fleet.(fleetSymbolAggregateBackend)
 	for _, svc := range svcs {
 		var sum ServiceSummary
-		if hasAgg {
-			// A failed aggregate reads as SymbolsFor's failure always did
-			// (zero, no languages; the backend logs it) — never a fallback
-			// to the whole-table load the aggregate exists to avoid.
-			count, kinds, _ := agg.SymbolAggregatesFor(svc)
+		if aggErr, ok := fleet.(fleetSymbolAggregateErrBackend); ok {
+			// RT-41 (I38): a failed aggregate is a named error — the
+			// count is unknown, never zero — and never a fallback to the
+			// whole-table load the aggregate exists to avoid.
+			count, kinds, err := aggErr.SymbolAggregatesErr(svc)
 			sum = ServiceSummary{Service: svc, SymbolCount: count, Languages: langStringsForKinds(kinds)}
+			if err != nil {
+				sum.CountErr = err.Error()
+			}
+		} else if hasAgg {
+			count, kinds, ok := agg.SymbolAggregatesFor(svc)
+			sum = ServiceSummary{Service: svc, SymbolCount: count, Languages: langStringsForKinds(kinds)}
+			if !ok {
+				sum.CountErr = "symbol aggregate unreadable (the daemon log names the store error)"
+			}
 		} else {
 			nodes := fleet.SymbolsFor(svc)
 			sum = ServiceSummary{Service: svc, SymbolCount: len(nodes), Languages: langStrings(nodes)}
@@ -103,6 +115,12 @@ func ServiceSummaries(ctx context.Context, backend QueryInterface, fleet FleetBa
 // be computed (the implementation logs why).
 type fleetSymbolAggregateBackend interface {
 	SymbolAggregatesFor(service string) (count int, kinds []core.SourceKind, ok bool)
+}
+
+// fleetSymbolAggregateErrBackend is the aggregate with its store error
+// named (RT-41), preferred over fleetSymbolAggregateBackend.
+type fleetSymbolAggregateErrBackend interface {
+	SymbolAggregatesErr(service string) (count int, kinds []core.SourceKind, err error)
 }
 
 // langStringsForKinds is langStrings over distinct kinds.
@@ -143,9 +161,14 @@ func registerListServices(s *Server, backend QueryInterface, fleet FleetBackend)
 				langs[i] = l
 			}
 			entry := map[string]any{
-				"service":      svc,
-				"symbol_count": sum.SymbolCount,
-				"languages":    langs,
+				"service":   svc,
+				"languages": langs,
+			}
+			// RT-41 (I38): an unreadable count is named, never rendered 0.
+			if sum.CountErr != "" {
+				entry["symbol_count_error"] = sum.CountErr
+			} else {
+				entry["symbol_count"] = sum.SymbolCount
 			}
 			// Recorded corpus path (ServiceMeta) — empty/omitted when the
 			// backend is absent or the service has no recorded root (e.g.

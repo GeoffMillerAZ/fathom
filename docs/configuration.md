@@ -300,6 +300,14 @@ refuse_on_pressure    = "critical"
 refuse_on_swap_growth = "2GiB"      # swap grew this much in the window while fathom ≥ the shed mark
 swap_growth_window    = "5m"
 min_swap_volume_free  = "5GiB"      # /System/Volumes/VM
+min_store_volume_free = "2GiB"      # below it the store is in distress: writes and ingest refused
+
+[tenancy.breaker]
+safe_after  = 3                     # counted exits in safe_window → next start in safe mode
+safe_window = "30m"
+stop_after  = 5                     # counted exits in stop_window → disabled.json {reason: breaker}, exit 0
+stop_window = "60m"
+warmup      = "120s"                # after any start: one slot per heavy class (refused past it unless admission = "off"), no inline ingest
 
 [tenancy.unmanaged]
 budget = "512MiB"                   # an unmanaged serve-http's own budget
@@ -337,6 +345,22 @@ completing, lifts it (the response carries `quarantine_cleared: true`); a
 hook's refresh (post-commit, edit) is refused with the quarantine named, a
 failed or halted ingest leaves it, and a shell `fathom ingest` writes the
 store directly and never reaches the daemon's quarantine.
+
+**Lifecycle and the crash-loop breaker** (§2.3, §8.4, §8.5). Every start and
+exit is a row in `~/.fathom/daemon/<id>/lifecycle.jsonl`; a start whose
+predecessor left no exit row names it as unclean (with a jetsam or
+resource-report file when one is found). Counted exits — over budget, unclean,
+a port held by something else — trip the breaker: `safe_after` in
+`safe_window` starts the daemon in **safe mode** (tree and fleet refused with a
+named 503 `-32050`; point and index served; auto-refresh, feeders, jobs and the
+decision port off), and `stop_after` in `stop_window`, or an over-budget exit
+while already in safe mode, writes `disabled.json {reason: breaker}` and exits
+0. An adoption, `fathom daemon stop`, a store wait, a SIGTERM drain and a
+`task deploy` kickstart (its `deploy` intent row) are not counted; `fathom
+daemon start` resets the window. An unmanaged daemon gets a persistent ledger
+only with `serve-http --lifecycle-id <id>`. Store distress (SQLITE_FULL,
+IOERR, the store volume under `min_store_volume_free`) refuses writes and
+ingest and names a failed read, never a zero.
 
 **Unmanaged daemons** (no `--managed`: tests, scripts, benches) take
 `[tenancy.unmanaged].budget` (512 MiB; exit mark 1 GiB), never the managed

@@ -130,6 +130,12 @@ func (a *autoRefreshBackend) ensure(ctx context.Context, service string) {
 	if tenancy.CurrentLevel() >= tenancy.LevelShed || tenancy.IsQuarantined(service) {
 		return
 	}
+	// RT-39/RT-40/RT-41 (§2.3, §2.1): no inline ingest in safe mode,
+	// during warm-up or in store distress (RT-150 adds the stale answer's
+	// disclosure).
+	if ok, _ := tenancy.InlineIngestAllowed(a.clock()); !ok {
+		return
+	}
 	path, indexed, found, err := a.QueryInterface.ServiceMeta(ctx, service)
 	if err != nil || !found || path == "" {
 		return
@@ -195,6 +201,9 @@ func (a *autoRefreshBackend) runInlineIngest(ctx context.Context, service string
 	inlineIngestTicket <- struct{}{}
 	err := a.QueryInterface.IngestService(ctx, service)
 	<-inlineIngestTicket
+	// RT-41 (§2.1): SQLITE_FULL or SQLITE_IOERR from the write is store
+	// distress.
+	tenancy.NoteStoreError(err, time.Now())
 
 	// Critic finding F2 (BLOCKING, phase-P fix round): bust the CLI's
 	// service-identity cache (cmd/fathom/identcache.go) on every

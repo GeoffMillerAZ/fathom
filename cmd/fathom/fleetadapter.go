@@ -2,13 +2,16 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/dlog"
+	"github.com/geoffmilleraz/fathom/internal/tenancy"
 	"github.com/geoffmilleraz/fathom/pkg/client"
 )
 
@@ -59,15 +62,27 @@ type unsupportedLangCacheEntry struct {
 // wedge on /Volumes, per this repo's own CLAUDE.md) — a human reading the
 // (now singular, deduped — DG-2) line should not have to guess whether that
 // is what happened versus a permanent failure.
+//
+// RT-41 (design §2.1): SQLITE_FULL and SQLITE_IOERR are store distress —
+// recorded (tenancy.NoteStoreDistress), so ingest and writes are refused
+// with the named reason — and a read that failed on one is rendered as that
+// named error by its caller, never as a zero count (I38).
 func classifyStoreError(err error) string {
 	if err == nil {
 		return ""
+	}
+	if kind := storeDistressKind(err); kind != "" {
+		tenancy.NoteStoreDistress(kind, time.Now())
+		return "store distress (" + kind + "): " + err.Error()
 	}
 	if strings.Contains(strings.ToUpper(err.Error()), "CANTOPEN") {
 		return "store-locked (possibly transient, SQLITE_CANTOPEN): " + err.Error()
 	}
 	return err.Error()
 }
+
+// storeDistressKind names a distress error (tenancy.StoreDistressKind).
+func storeDistressKind(err error) string { return tenancy.StoreDistressKind(err) }
 
 func (f *fleetAdapter) Services() []string {
 	ids, err := f.c.Services(context.Background())
@@ -93,12 +108,20 @@ func (f *fleetAdapter) SymbolsFor(service string) []client.SymbolNode {
 // error (logged, deduped), which list_services reports as zero symbols,
 // exactly as a failed SymbolsFor always read.
 func (f *fleetAdapter) SymbolAggregatesFor(service string) (int, []core.SourceKind, bool) {
+	n, kinds, err := f.SymbolAggregatesErr(service)
+	return n, kinds, err == nil
+}
+
+// SymbolAggregatesErr is SymbolAggregatesFor with the store error named
+// (RT-41): list_services renders it instead of a zero count (I38).
+func (f *fleetAdapter) SymbolAggregatesErr(service string) (int, []core.SourceKind, error) {
 	agg, err := f.c.ServiceSymbolAggregates(context.Background(), service)
 	if err != nil {
-		f.log.Dedupe(dlog.LevelWarn, "fleet:aggregates:"+service, "fleet: symbol aggregates for %s: %s", service, classifyStoreError(err))
-		return 0, nil, false
+		named := classifyStoreError(err)
+		f.log.Dedupe(dlog.LevelWarn, "fleet:aggregates:"+service, "fleet: symbol aggregates for %s: %s", service, named)
+		return 0, nil, fmt.Errorf("%s", named)
 	}
-	return agg.Count, agg.Kinds, true
+	return agg.Count, agg.Kinds, nil
 }
 
 func (f *fleetAdapter) ObservationsFor(service string) []client.Observation {

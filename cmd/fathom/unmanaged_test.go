@@ -45,6 +45,28 @@ func runTestHelper(role string) int {
 			return 1
 		}
 		return runServeHTTP([]string{"--store", os.Getenv("RT20_STORE"), "--addr", "127.0.0.1:0", "--call-log", ""}, out, out)
+	case "rt42-serve":
+		// RT-42: a real serve-http whose store is unavailable; the backoff
+		// is shortened so the test sees it reopen.
+		storeWaitFirst, storeWaitMax = 100*time.Millisecond, 200*time.Millisecond
+		out, err := os.OpenFile(os.Getenv("RT42_LOG"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
+		if err != nil {
+			return 1
+		}
+		return runServeHTTP([]string{"--store", os.Getenv("RT42_STORE"), "--addr", os.Getenv("RT42_ADDR"), "--call-log", "", "--lifecycle-id", "rt42"}, out, out)
+	case "rt42-ttl-serve":
+		// RT-42 with RT-20/RT-21: an unmanaged daemon waiting for its
+		// store still keeps its --ttl; the lifetime tick is shortened.
+		storeWaitFirst, storeWaitMax = 100*time.Millisecond, 200*time.Millisecond
+		daemonLifetimeTick = 100 * time.Millisecond
+		out, err := os.OpenFile(os.Getenv("RT42_LOG"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
+		if err != nil {
+			return 1
+		}
+		return runServeHTTP([]string{"--store", os.Getenv("RT42_STORE"), "--addr", os.Getenv("RT42_ADDR"), "--call-log", "", "--lifecycle-id", "rt42ttl", "--ttl", "1s"}, out, out)
+	case "rt-startfail":
+		// RT-38: a managed start whose store opens and is wrong.
+		return runServeHTTP([]string{"--managed", "--store", os.Getenv("RT_STORE"), "--addr", os.Getenv("RT_ADDR"), "--call-log", ""}, os.Stdout, os.Stderr)
 	}
 	return 2
 }

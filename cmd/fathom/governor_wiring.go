@@ -72,20 +72,16 @@ func servingLadderActions(srv *mcp.Server, c *client.Client, fleet *fleetAdapter
 }
 
 // startGovernor resolves nothing itself: it builds the serving daemon's
-// governor over the platform host, loads the quarantine from the ledger
-// beside the daemon record, and starts sampling. stop ends the sampling
-// goroutine, unpublishes the governor and the level (serve-http defers it:
-// an in-process serve-http that returns leaves nothing running).
-func startGovernor(b tenancy.Budget, notes []tenancy.Note, storePath, recordPath, managedLabel string, actions ladderActions, flog *dlog.Logger) (g *governor, stop func()) {
+// governor over the platform host, loads the quarantine from the lifecycle
+// ledger (its diagnostic captures beside it), and starts sampling; observe
+// (may be nil) sees every sample and the level after it — store distress
+// and the breaker's safe mode ride on it (RT-41, RT-39). stop ends the
+// sampling goroutine, unpublishes the governor and the level (serve-http
+// defers it: an in-process serve-http that returns leaves nothing running).
+func startGovernor(b tenancy.Budget, notes []tenancy.Note, storePath, ledger string, actions ladderActions, flog *dlog.Logger, observe func(*tenancy.Sample, tenancy.Level)) (g *governor, stop func()) {
 	dir := ""
-	if recordPath != "" {
-		dir = filepath.Dir(recordPath)
-	} else if p := lifecycleLedgerPath(managedLabel); p != "" {
-		dir = filepath.Dir(p)
-	}
-	ledger := ""
-	if dir != "" {
-		ledger = filepath.Join(dir, "lifecycle.jsonl")
+	if ledger != "" {
+		dir = filepath.Dir(ledger)
 	}
 	pid := os.Getpid()
 	g = newGovernor(governorConfig{
@@ -103,6 +99,7 @@ func startGovernor(b tenancy.Budget, notes []tenancy.Note, storePath, recordPath
 		killChildren: func() int { return killChildTree(pid) },
 		captureDiag:  captureExitDiag(filepath.Join(dir, "diag"), tenancy.DefaultInFlight, time.Now),
 		exit:         os.Exit,
+		observe:      observe,
 	})
 	if dir == "" {
 		g.captureDiag = nil

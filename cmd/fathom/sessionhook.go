@@ -289,9 +289,10 @@ func defaultFathomURL() string {
 }
 
 type svcInfo struct {
-	symbols int
-	langs   string
-	path    string // recorded corpus root; "" when the daemon has none
+	symbols  int
+	countErr string
+	langs    string
+	path     string // recorded corpus root; "" when the daemon has none
 }
 
 // buildSessionContext returns the additionalContext line for the project at
@@ -360,7 +361,7 @@ func buildSessionContext(baseURL, projDir string) string {
 		if info.langs != "" {
 			langs = ", " + info.langs
 		}
-		ctxLine := fmt.Sprintf("✅ fathom code-intelligence is live — this repo is the indexed service %q (%d symbols%s). Route by question shape: where / who-calls / what-breaks resolve via fathom: find_symbol, query_symbols, find_callers, outline, repo_map, references; what-governs this repository is obligations with no path (the root conventions); is this still true / what was known is staleness_report; a bug report, stack trace, error string or failing test is localize's job (one bounded, logged walk of the index — before any grep). A literal string, a config value, a log line, or a document-versus-document contradiction is grep's job. Read files to *edit* them, not to discover them. The index auto-refreshes on git-HEAD drift; force a refresh with the ingest tool ({\"service\":%q}).", lookup, info.symbols, langs, lookup)
+		ctxLine := fmt.Sprintf("✅ fathom code-intelligence is live — this repo is the indexed service %q (%s%s). Route by question shape: where / who-calls / what-breaks resolve via fathom: find_symbol, query_symbols, find_callers, outline, repo_map, references; what-governs this repository is obligations with no path (the root conventions); is this still true / what was known is staleness_report; a bug report, stack trace, error string or failing test is localize's job (one bounded, logged walk of the index — before any grep). A literal string, a config value, a log line, or a document-versus-document contradiction is grep's job. Read files to *edit* them, not to discover them. The index auto-refreshes on git-HEAD drift; force a refresh with the ingest tool ({\"service\":%q}).", lookup, info.countText(), langs, lookup)
 		// FR-4 (docs/plans/exploration-ledger.md): teach the FIRST query
 		// with a LIVE symbol from this repo's own index — the first-query
 		// experience decides adoption; one miss loses the session to grep.
@@ -434,7 +435,7 @@ func svcInfoFromSummaries(sums []mcp.ServiceSummary) map[string]svcInfo {
 		if err := core.ValidServiceID(s.Service); err != nil {
 			continue
 		}
-		out[strings.ToLower(s.Service)] = svcInfo{symbols: s.SymbolCount, langs: joinLangs(s.Languages), path: s.Path}
+		out[strings.ToLower(s.Service)] = svcInfo{symbols: s.SymbolCount, countErr: s.CountErr, langs: joinLangs(s.Languages), path: s.Path}
 	}
 	return out
 }
@@ -525,7 +526,7 @@ func fetchServicesOnce(hc *http.Client, baseURL string) (map[string]svcInfo, err
 		if err := core.ValidServiceID(s.Service); err != nil {
 			continue // skip malformed/path-like service IDs (e.g. "../app-kit")
 		}
-		out[strings.ToLower(s.Service)] = svcInfo{symbols: s.SymbolCount, langs: joinLangs(s.Languages), path: s.Path}
+		out[strings.ToLower(s.Service)] = svcInfo{symbols: s.SymbolCount, countErr: s.SymbolCountError, langs: joinLangs(s.Languages), path: s.Path}
 	}
 	return out, nil
 }
@@ -583,10 +584,20 @@ func liveExampleLine(hc *http.Client, baseURL, service string) string {
 }
 
 type rawSvc struct {
-	Service     string   `json:"service"`
-	SymbolCount int      `json:"symbol_count"`
-	Languages   []string `json:"languages"`
-	Path        string   `json:"path"` // recorded corpus root (authoritative repo↔service identity)
+	Service          string   `json:"service"`
+	SymbolCount      int      `json:"symbol_count"`
+	SymbolCountError string   `json:"symbol_count_error"` // RT-41: the count was unreadable
+	Languages        []string `json:"languages"`
+	Path             string   `json:"path"` // recorded corpus root (authoritative repo↔service identity)
+}
+
+// countText is "N symbols", or the named reason the count could not be
+// read (RT-41, I38: an unreadable count is never rendered 0).
+func (s svcInfo) countText() string {
+	if s.countErr != "" {
+		return "symbol count unreadable: " + s.countErr
+	}
+	return fmt.Sprintf("%d symbols", s.symbols)
 }
 
 func joinLangs(l []string) string {

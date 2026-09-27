@@ -11,10 +11,12 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"path/filepath"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/tenancy"
 	"github.com/geoffmilleraz/fathom/pkg/client"
-	"path/filepath"
 )
 
 // refreshFileRequest is POST /refresh-file's JSON body.
@@ -68,6 +70,13 @@ func refreshFileHandler(c *client.Client, patcher graphPatcher) http.HandlerFunc
 			http.Error(w, "service and file are required", http.StatusBadRequest)
 			return
 		}
+		// RT-41 (§2.1): a refresh writes the store; in distress it is
+		// refused with the named reason.
+		if why, on := tenancy.StoreDistressNow(time.Now()); on {
+			w.Header().Set("Retry-After", "60")
+			http.Error(w, why+" — /refresh-file writes are refused until it clears", http.StatusServiceUnavailable)
+			return
+		}
 		out := buildRefreshFileResponse(r.Context(), c, patcher, req.Service, req.File)
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(out)
@@ -84,6 +93,9 @@ func refreshFileHandler(c *client.Client, patcher graphPatcher) http.HandlerFunc
 func buildRefreshFileResponse(ctx context.Context, c *client.Client, patcher graphPatcher, service, file string) refreshFileResponse {
 	report, err := c.ReingestFile(ctx, service, file)
 	if err != nil {
+		// RT-41 (§2.1): a write's SQLITE_FULL or SQLITE_IOERR is store
+		// distress — later refreshes and ingests are refused, named.
+		tenancy.NoteStoreError(err, time.Now())
 		return refreshFileResponse{Error: err.Error()}
 	}
 	out := refreshFileResponse{
