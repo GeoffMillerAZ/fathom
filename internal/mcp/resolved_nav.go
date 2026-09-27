@@ -104,8 +104,15 @@ func (s *Server) loadNavGraphs(ctx context.Context, backend QueryInterface, serv
 	// the graph — ~6 GiB footprint).
 	if call, ok := s.navFlight[key]; ok {
 		s.navMu.Unlock()
-		<-call.done
-		return call.graphs
+		// RT-179: a waiter leaves at its own deadline (or its caller's
+		// departure); its handler then answers as abandoned, never waits
+		// out another call's build.
+		select {
+		case <-call.done:
+			return call.graphs
+		case <-ctx.Done():
+			return nil
+		}
 	}
 	if s.navFlight == nil {
 		s.navFlight = make(map[string]*navCall)

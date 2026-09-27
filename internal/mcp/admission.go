@@ -141,6 +141,10 @@ func (s *Server) admitToolCall(ctx context.Context, te toolEntry, args json.RawM
 		Class:   class,
 		Origin:  tenancy.ParseOrigin(originFrom(ctx), caller.Test),
 	}
+	if top {
+		// RT-179: the class deadline runs from the request's arrival.
+		req.Arrived = arrivalFrom(ctx)
+	}
 	tk, ref := s.gate.Admit(actx, req)
 	if ref != nil {
 		if top {

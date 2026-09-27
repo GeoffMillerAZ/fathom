@@ -229,7 +229,12 @@ func (s *Server) loggedToolsCall(ctx context.Context, toolName string, params js
 	}
 	_ = json.Unmarshal(params, &args)
 
+	// RT-179: the clock starts at the request's arrival when the HTTP
+	// layer recorded it, so a wait before dispatch is never logged as fast.
 	start := time.Now()
+	if a := arrivalFrom(ctx); !a.IsZero() && a.Before(start) {
+		start = a
+	}
 	result, rpcErr, meta := s.handleToolsCallMeta(ctx, params)
 	latency := time.Since(start)
 
@@ -413,6 +418,7 @@ func (s *Server) handleToolsCallMeta(ctx context.Context, params json.RawMessage
 	ctx, tk, busy := s.admitToolCall(ctx, te, p.Arguments, true)
 	if busy != nil {
 		meta.outcome = string(tenancy.OutcomeRefused)
+		meta.queued = sinceArrival(ctx) // RT-179: the wait before the refusal
 		return nil, busy, meta
 	}
 

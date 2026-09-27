@@ -168,6 +168,10 @@ type Request struct {
 	// Deadline is the client's (X-Fathom-Deadline); zero: none. The
 	// admitting ctx's own deadline counts too; the earlier wins.
 	Deadline time.Time
+	// Arrived is when the request reached the daemon (wall clock); zero:
+	// at admission. The class deadline runs from it, and the wait before
+	// admission is counted as queued (RT-179).
+	Arrived time.Time
 }
 
 // GateConfig wires the gate; zero fields take defaults.
@@ -257,8 +261,14 @@ func (g *Gate) Admit(ctx context.Context, r Request) (*Ticket, *Refusal) {
 			deadline = d
 		}
 	}
+	// RT-179: the wait before admission (the request's arrival to now,
+	// on the wall clock) counts against the class deadline and as queued.
+	var pre time.Duration
+	if !r.Arrived.IsZero() {
+		pre = max(time.Since(r.Arrived), 0)
+	}
 	if g.cfg.Mode == ModeOff {
-		return g.issue(ctx, r, deadline, 0, false), nil
+		return g.issue(ctx, r, deadline, pre, false), nil
 	}
 	observe := g.cfg.Mode == ModeObserve
 
@@ -268,6 +278,19 @@ func (g *Gate) Admit(ctx context.Context, r Request) (*Ticket, *Refusal) {
 	// refuses it too.
 	if ctx.Err() != nil {
 		return nil, g.refuse(r, g.callerGone(r, "before admission"))
+	}
+
+	// A read that already waited past its class deadline before admission
+	// is refused by name in either mode, like a caller already gone: the
+	// answer would arrive after the deadline its caller was promised.
+	if d := g.cfg.Budget.Deadline[r.Class]; d > 0 && pre >= d {
+		return nil, g.refuse(r, &Refusal{
+			Code:       RefusalDeadline,
+			Reason:     fmt.Sprintf("the %s-class deadline (%s) passed before admission: the call waited %s to reach dispatch — retry; fathom resources shows what held the daemon", r.Class, d, pre.Round(time.Millisecond)),
+			Class:      r.Class.String(),
+			Level:      g.cfg.Level().String(),
+			RetryAfter: time.Second,
+		})
 	}
 
 	if ref := g.decideLevel(r); ref != nil {
@@ -290,13 +313,13 @@ func (g *Gate) Admit(ctx context.Context, r Request) (*Ticket, *Refusal) {
 		if full && queueWait(r.Class, r.Origin) == refuseWait {
 			g.would(r, g.slotsRefusal(r))
 		}
-		return g.issue(ctx, r, deadline, 0, false), nil
+		return g.issue(ctx, r, deadline, pre, false), nil
 	}
 
 	// Enforce: take a free slot, or queue for the origin's wait.
 	select {
 	case g.slots[r.Class] <- struct{}{}:
-		return g.issue(ctx, r, deadline, 0, true), nil
+		return g.issue(ctx, r, deadline, pre, true), nil
 	default:
 	}
 	wait := queueWait(r.Class, r.Origin)
@@ -321,7 +344,14 @@ func (g *Gate) Admit(ctx context.Context, r Request) (*Ticket, *Refusal) {
 	}()
 	select {
 	case g.slots[r.Class] <- struct{}{}:
-		return g.issue(ctx, r, deadline, g.cfg.Now().Sub(start), true), nil
+		// The wave-B live reading's F5: the ladder may have climbed while
+		// this call queued — re-check the level on dequeue, and refuse by
+		// name (503) instead of admitting work the rung now refuses.
+		if ref := g.decideLevel(r); ref != nil {
+			<-g.slots[r.Class]
+			return nil, g.refuse(r, ref)
+		}
+		return g.issue(ctx, r, deadline, pre+g.cfg.Now().Sub(start), true), nil
 	case <-fire:
 		ref := g.slotsRefusal(r)
 		ref.Reason += fmt.Sprintf(" after waiting %s", wait.Round(time.Millisecond))
@@ -439,7 +469,13 @@ func (g *Gate) runningLocked(c Class) int {
 func (g *Gate) issue(ctx context.Context, r Request, deadline time.Time, queued time.Duration, holdsSlot bool) *Ticket {
 	now := g.cfg.Now()
 	if d := g.cfg.Budget.Deadline[r.Class]; d > 0 {
-		if cd := now.Add(d); deadline.IsZero() || cd.Before(deadline) {
+		// From the request's arrival (RT-179): the wait before admission
+		// has already spent part of the class deadline.
+		var pre time.Duration
+		if !r.Arrived.IsZero() {
+			pre = max(time.Since(r.Arrived), 0)
+		}
+		if cd := now.Add(d - pre); deadline.IsZero() || cd.Before(deadline) {
 			deadline = cd
 		}
 	}
@@ -491,7 +527,8 @@ func (t *Ticket) Class() Class { return t.req.Class }
 // Origin is the ticket's origin.
 func (t *Ticket) Origin() Origin { return t.req.Origin }
 
-// Queued is how long the call waited for its slot.
+// Queued is how long the call waited: before admission (from its arrival,
+// RT-179) and for its slot.
 func (t *Ticket) Queued() time.Duration { return t.queued }
 
 // BytesRead is what the call's producers charged.
