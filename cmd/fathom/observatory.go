@@ -893,6 +893,13 @@ func dropObsCacheLocked() {
 // dropped meanwhile is followed by another, and a flight that failed
 // answers a model naming the failure.
 func cachedObservatoryModel(baseURL string, now time.Time) observatoryModel {
+	return cachedObservatoryModelCtx(context.Background(), baseURL, now)
+}
+
+// cachedObservatoryModelCtx is cachedObservatoryModel for a request: a
+// cold reader whose request ends leaves at once with a model naming why
+// (RT-62) — the flight runs on and stores its model for the next read.
+func cachedObservatoryModelCtx(ctx context.Context, baseURL string, now time.Time) observatoryModel {
 	obsCache.Lock()
 	defer obsCache.Unlock()
 	for attempt := 0; ; attempt++ {
@@ -909,7 +916,12 @@ func cachedObservatoryModel(baseURL string, now time.Time) observatoryModel {
 		}
 		done := obsCache.done
 		obsCache.Unlock()
-		<-done
+		select {
+		case <-done:
+		case <-ctx.Done():
+			obsCache.Lock() // the deferred Unlock releases it
+			return failedObservatoryModel(now, "the request ended before the console model was built (it is still being built for the next read)")
+		}
 		obsCache.Lock()
 		if !obsCache.at.IsZero() {
 			return obsCache.model

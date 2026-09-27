@@ -30,6 +30,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/geoffmilleraz/app-kit/appkit/ui/chrome"
@@ -175,42 +176,98 @@ func projectIndexFor(ctx context.Context, d *consoleDeps, pc projectContext) pro
 	c := d.c
 	wm, _ := c.StoreWatermark(ctx, pc.svc)
 	key := pc.svc + "@" + wm + "@" + pc.root + "@" + pc.rootNote
-	out, _, _ := projectIndexMemo.doCtx(ctx, key, time.Now(), func() (projectIndexData, time.Duration) {
+	if v, ok := projectIndexMemo.get(key, time.Now()); ok {
+		return v
+	}
+	// The pool is the one flight per key: a request joining a queued or
+	// running read gets that job back, and shares its result holder. The
+	// job, not the request that started it, stores what it read, so a
+	// waiter that leaves when its request ends (RT-62) never cancels the
+	// read for the others, and never holds its handler for the queue.
+	projectIndexFlights.Lock()
+	fl := projectIndexFlights.m[key]
+	if fl == nil {
+		fl = &projectIndexFlight{}
+		projectIndexFlights.m[key] = fl
+	}
+	projectIndexFlights.Unlock()
+	job, err := d.jobPool().SubmitJob("project-index:"+pc.svc, "project-index:"+key, func() {
 		var data projectIndexData
 		var failure string
-		job, err := d.jobPool().SubmitJob("project-index:"+pc.svc, "project-index:"+key, func() {
-			// RT-61 (§3.3): the project index is an in-process console
-			// call, admitted and metered as console-inprocess.
-			if err := inProcessToolCall(context.WithoutCancel(ctx), "console:project-index", tenancy.ClassIndex, func(ctx context.Context) error {
-				data = projectIndexCompute(ctx, d, pc)
-				return nil
-			}); err != nil {
-				failure = err.Error()
-			}
-		})
-		if err == nil {
-			<-job.Done()
-			switch {
-			case job.Dropped():
-				failure = "a newer index of " + pc.svc + " superseded this read before it ran"
-			case job.Err() != nil:
-				failure = job.Err().Error()
-			}
-		} else {
+		// RT-61 (§3.3): the project index is an in-process console
+		// call, admitted and metered as console-inprocess.
+		if err := inProcessToolCall(context.WithoutCancel(ctx), "console:project-index", tenancy.ClassIndex, func(ctx context.Context) error {
+			data = projectIndexCompute(ctx, d, pc)
+			return nil
+		}); err != nil {
 			failure = err.Error()
 		}
-		if failure != "" {
-			data = projectIndexData{facts: console.IndexFacts{Service: pc.svc, Source: "the daemon's store (" + pc.svc + ")", InventoryErr: failure}}
+		// A read that failed is never memoized: the next view retries it
+		// (an EPERM wedge on the volume clears; a memoized error would not).
+		f := data.facts
+		if failure == "" && wm != "" && f.LanguagesErr == "" && f.EdgesErr == "" && f.InventoryErr == "" {
+			projectIndexMemo.put(key, data, time.Now())
 		}
-		// A read that failed is never memoized: the next view retries it (an
-		// EPERM wedge on the volume clears; a memoized error would not).
-		failed := data.facts.LanguagesErr != "" || data.facts.EdgesErr != "" || data.facts.InventoryErr != ""
-		if wm == "" || failed {
-			return data, 0
+		projectIndexFlights.Lock()
+		fl.data, fl.failure, fl.ran = data, failure, true
+		if projectIndexFlights.m[key] == fl {
+			delete(projectIndexFlights.m, key)
 		}
-		return data, -1
+		projectIndexFlights.Unlock()
 	})
-	return out
+	if err != nil {
+		projectIndexFlights.Lock()
+		if projectIndexFlights.m[key] == fl && !fl.ran {
+			delete(projectIndexFlights.m, key)
+		}
+		projectIndexFlights.Unlock()
+		return projectIndexFailure(pc, err.Error())
+	}
+	select {
+	case <-job.Done():
+	case <-ctx.Done():
+		return projectIndexFailure(pc, "the request ended before the index read of "+pc.svc+" finished (it runs on in the console's job pool for the next view)")
+	}
+	switch {
+	case job.Dropped():
+		projectIndexFlights.Lock()
+		if projectIndexFlights.m[key] == fl && !fl.ran {
+			delete(projectIndexFlights.m, key)
+		}
+		projectIndexFlights.Unlock()
+		return projectIndexFailure(pc, "a newer index of "+pc.svc+" superseded this read before it ran")
+	case job.Err() != nil:
+		return projectIndexFailure(pc, job.Err().Error())
+	}
+	projectIndexFlights.Lock()
+	data, failure, ran := fl.data, fl.failure, fl.ran
+	projectIndexFlights.Unlock()
+	switch {
+	case !ran:
+		return projectIndexFailure(pc, "the index read of "+pc.svc+" finished without a result; the next view reads it again")
+	case failure != "":
+		return projectIndexFailure(pc, failure)
+	}
+	return data
+}
+
+// projectIndexFlight is one index read's result, shared by every request
+// that joined its job; projectIndexFlights holds the one being read per
+// key (removed when it finishes: the memo keeps what is kept).
+type projectIndexFlight struct {
+	data    projectIndexData
+	failure string
+	ran     bool
+}
+
+var projectIndexFlights = struct {
+	sync.Mutex
+	m map[string]*projectIndexFlight
+}{m: map[string]*projectIndexFlight{}}
+
+// projectIndexFailure is the index read that could not be answered, named.
+func projectIndexFailure(pc projectContext, why string) projectIndexData {
+	return projectIndexData{facts: console.IndexFacts{Service: pc.svc, Source: "the daemon's store (" + pc.svc + ")", InventoryErr: why}}
 }
 
 func computeProjectIndex(ctx context.Context, c *client.Client, pc projectContext) projectIndexData {

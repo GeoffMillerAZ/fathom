@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -165,5 +166,39 @@ func TestObservatoryModelNeverServesAnEmptyModel(t *testing.T) {
 	}
 	if m.callFacts.AbsentReason == "" {
 		t.Errorf("a failed build's call facts claim a read: %+v", m.callFacts)
+	}
+}
+
+// TestColdModelWaitHonoursTheRequest (RT-113, RT-62): a cold reader whose
+// request ends while the one flight builds leaves with a model naming why,
+// never holding its handler goroutine for the build.
+func TestColdModelWaitHonoursTheRequest(t *testing.T) {
+	resetObsCache()
+	t.Cleanup(resetObsCache)
+	release := make(chan struct{})
+	prev := obsModelBuilder
+	obsModelBuilder = func(baseURL string, now time.Time) observatoryModel {
+		<-release
+		return observatoryModel{GeneratedAt: now.UTC().Format(time.RFC3339)}
+	}
+	t.Cleanup(func() { obsModelBuilder = prev })
+	// The flight finishes (and stores) before the cleanups reset the cache.
+	defer waitUntil(t, func() bool {
+		obsCache.Lock()
+		defer obsCache.Unlock()
+		return !obsCache.building
+	})
+	defer close(release)
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+	got := make(chan observatoryModel, 1)
+	go func() { got <- cachedObservatoryModelCtx(ctx, "http://x", time.Now()) }()
+	select {
+	case m := <-got:
+		if m.DegradedNote == "" {
+			t.Fatalf("an abandoned cold read = %+v; want a model naming why", m)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("the request ended and the cold read is still waiting on the build")
 	}
 }

@@ -7,6 +7,7 @@ package main
 // application/json, its projection in one envelope (consolePageJSON).
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"net/url"
@@ -242,7 +243,11 @@ func mountConsole(mux *http.ServeMux, d *consoleDeps, wiring http.Handler) {
 
 // model is the request's observatory model (cached, 30 s TTL).
 func (cr *consoleRequest) model() observatoryModel {
-	return cachedObservatoryModel(cr.deps.selfURL, cr.now)
+	ctx := context.Background()
+	if cr.r != nil {
+		ctx = cr.r.Context()
+	}
+	return cachedObservatoryModelCtx(ctx, cr.deps.selfURL, cr.now)
 }
 
 // modelMeta is the heading meta line every model-backed page shares.

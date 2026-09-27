@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"strconv"
 	"testing"
 	"time"
 
@@ -61,5 +62,55 @@ func TestProjectIndexRunsInTheJobPool(t *testing.T) {
 	d := projectIndexFor(context.Background(), full, projectContext{svc: "other"})
 	if d.facts.InventoryErr == "" {
 		t.Fatalf("a full pool = %+v; want the refusal named", d.facts)
+	}
+}
+
+// TestProjectIndexWaitHonoursTheRequest (RT-117, RT-62): a request
+// waiting on its index read behind a busy pool leaves when its context
+// ends — the read runs on in the pool for the next request, which gets
+// it — and never holds its handler goroutine for the queue's length.
+func TestProjectIndexWaitHonoursTheRequest(t *testing.T) {
+	f := newConsoleFixture(t)
+	projectIndexMemo.reset()
+	t.Cleanup(projectIndexMemo.reset)
+	prev := projectIndexCompute
+	projectIndexCompute = func(ctx context.Context, d *consoleDeps, pc projectContext) projectIndexData {
+		return projectIndexData{facts: console.IndexFacts{Service: pc.svc}}
+	}
+	t.Cleanup(func() { projectIndexCompute = prev })
+	deps := newConsoleDeps(f.client, "http://x", f.now)
+	release := make(chan struct{})
+	for i := 0; i < consoleJobWorkers; i++ {
+		if _, err := deps.jobPool().SubmitJob("", "blocker-"+strconv.Itoa(i), func() { <-release }); err != nil {
+			t.Fatal(err)
+		}
+	}
+	waitUntil(t, func() bool { return deps.jobPool().Stats().Running == consoleJobWorkers })
+	pc := projectContext{svc: "proof-service"}
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+	got := make(chan projectIndexData, 1)
+	go func() { got <- projectIndexFor(ctx, deps, pc) }()
+	select {
+	case d := <-got:
+		if d.facts.InventoryErr == "" {
+			t.Errorf("an abandoned wait = %+v; want the unfinished read named", d.facts)
+		}
+	case <-time.After(3 * time.Second):
+		close(release)
+		t.Fatal("the request's context ended and projectIndexFor is still blocked on the pool")
+	}
+	// A second waiter on the same read (still queued) is not answered the
+	// first one's abandonment: it waits for the read and gets it.
+	got2 := make(chan projectIndexData, 1)
+	go func() { got2 <- projectIndexFor(context.Background(), deps, pc) }()
+	close(release)
+	select {
+	case d := <-got2:
+		if d.facts.Service != "proof-service" || d.facts.InventoryErr != "" {
+			t.Fatalf("the next request = %+v; want the read's own facts", d.facts)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the read never finished")
 	}
 }
