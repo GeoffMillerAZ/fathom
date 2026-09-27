@@ -6,9 +6,12 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
+	"sync/atomic"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
-	"github.com/geoffmilleraz/fathom/internal/gitro"
 )
 
 // manifestWatermarkPrefix marks a content-addressed (non-git) watermark, so a
@@ -23,16 +26,6 @@ const manifestWatermarkPrefix = "manifest:"
 // comment) without needing their own copy of the literal.
 const ManifestWatermarkPrefix = manifestWatermarkPrefix
 
-// gitHead returns the HEAD commit for dir, or "" when dir is not inside a git
-// work tree or HEAD cannot be read. RT-101: from the ref files, no fork.
-func gitHead(dir string) string {
-	sha, err := gitro.Head(context.Background(), dir)
-	if err != nil {
-		return ""
-	}
-	return sha
-}
-
 // manifestWatermark computes a content-addressed watermark over a corpus: the
 // sha256 of every discovered file's (relative path, content hash) pair, in
 // Discover order. Equal watermarks ⇔ identical corpus content, independent of
@@ -41,6 +34,7 @@ func gitHead(dir string) string {
 // it is intended for the non-git corpora (docs folders, findings exports)
 // where corpora are small. Git-backed corpora use the HEAD SHA instead.
 func manifestWatermark(ctx context.Context, c Connector, svc core.ServiceRef) (string, error) {
+	manifestComputations.Add(1)
 	refs, err := c.Discover(ctx, svc)
 	if err != nil {
 		return "", fmt.Errorf("watermark discover %q: %w", svc.ID, err)
@@ -82,4 +76,88 @@ func manifestWatermark(ctx context.Context, c Connector, svc core.ServiceRef) (s
 // directly instead of Connector.Watermark.
 func ManifestWatermark(ctx context.Context, c Connector, svc core.ServiceRef) (string, error) {
 	return manifestWatermark(ctx, c, svc)
+}
+
+// manifestComputations counts content-manifest computations (whole-corpus
+// reads) in this process — RT-110's instrument.
+var manifestComputations atomic.Int64
+
+// ManifestComputations is the number of content-manifest computations —
+// each one a read of every file of a corpus — this process has made.
+func ManifestComputations() int64 { return manifestComputations.Load() }
+
+// ErrManifestTooLarge is Watermark's answer for a non-git corpus with more
+// files than the stat manifest's cap: freshness unknown, never a
+// whole-corpus read on the request path.
+var ErrManifestTooLarge = errors.New("connector: non-git corpus over the stat-manifest cap — freshness unknown")
+
+// manifestStatCap bounds the files a non-git corpus's stat manifest covers
+// (RT-110); manifestTTL is how long an over-the-cap verdict stands before
+// the tree is walked again (an ordinary answer re-walks the stats every
+// time, so a content change is seen at once). Vars for tests.
+var (
+	manifestStatCap = 20000
+	manifestTTL     = 30 * time.Second
+	manifestNow     = time.Now
+)
+
+// manifestMemo is one root's memoized watermark.
+type manifestMemo struct {
+	at       time.Time
+	stat     string // digest of (path, size, mtime) over the discovered files
+	manifest string // the content manifest computed for those stats
+	tooLarge int    // > 0: the file count that exceeded the cap at `at`
+}
+
+// statGatedManifest is the content manifest (ADR-017's portable, content-
+// addressed watermark — what an ingest records) recomputed only when the
+// corpus's stat manifest moved (RT-110): each call walks the stats (no
+// reads) and answers the memoized manifest while they stand. A corpus over
+// the cap is ErrManifestTooLarge (freshness unknown), remembered for
+// manifestTTL so it is not re-walked on every read.
+func (c *LocalConnector) statGatedManifest(ctx context.Context, svc core.ServiceRef) (string, error) {
+	now := manifestNow()
+	var memo manifestMemo
+	if v, ok := c.manifests.Load(svc.Path); ok {
+		memo = v.(manifestMemo)
+		if memo.tooLarge > 0 && now.Sub(memo.at) < manifestTTL {
+			return "", fmt.Errorf("%w (%d files, cap %d)", ErrManifestTooLarge, memo.tooLarge, manifestStatCap)
+		}
+	}
+	refs, err := c.Discover(ctx, svc)
+	if err != nil {
+		return "", fmt.Errorf("watermark discover %q: %w", svc.ID, err)
+	}
+	if len(refs) > manifestStatCap {
+		c.manifests.Store(svc.Path, manifestMemo{at: now, tooLarge: len(refs)})
+		return "", fmt.Errorf("%w (%d files, cap %d)", ErrManifestTooLarge, len(refs), manifestStatCap)
+	}
+	h := sha256.New()
+	for _, ref := range refs {
+		if err := ctx.Err(); err != nil {
+			return "", err
+		}
+		p := ref.Path
+		if !filepath.IsAbs(p) {
+			p = filepath.Join(svc.Path, filepath.FromSlash(p))
+		}
+		fi, serr := os.Stat(p)
+		if serr != nil {
+			fmt.Fprintf(h, "%s\x00missing\n", ref.Path)
+			continue
+		}
+		fmt.Fprintf(h, "%s\x00%d\x00%d\n", ref.Path, fi.Size(), fi.ModTime().UnixNano())
+	}
+	stat := hex.EncodeToString(h.Sum(nil))
+	if memo.manifest != "" && memo.stat == stat {
+		memo.at = now
+		c.manifests.Store(svc.Path, memo)
+		return memo.manifest, nil
+	}
+	manifest, err := manifestWatermark(ctx, c, svc)
+	if err != nil {
+		return "", err
+	}
+	c.manifests.Store(svc.Path, manifestMemo{at: now, stat: stat, manifest: manifest})
+	return manifest, nil
 }

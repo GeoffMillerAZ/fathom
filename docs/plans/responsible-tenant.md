@@ -191,7 +191,7 @@ bound memory here.
 - [x] Toolchain children run with GOFLAGS=-p=2, GOMAXPROCS=2 and background priority (§7.2) {id: RT-106, symbol: backgroundToolchainEnv, package: internal/fusion, reachable_from: TestTypedPassChildrenNicedAndCapped}
 - [x] The file-resolve pass reuses the pipeline's extractors; TSExtractor closes its modules and caps module memory; module count is stable across ingests (§7.2) {id: RT-107, symbol: enrichFileResolvedEdges, package: internal/fusion, reachable_from: TestWazeroModulesStableAcrossIngests}
 - [x] File-resolve reuses file_imports for unchanged hashes, applies size, binary and known-fault gates, and discloses faults (§7.2) {id: RT-108, symbol: resolveLang, package: internal/fusion, reachable_from: TestFileResolve_ReusesImportsAndDisclosesFaults}
-- [ ] A service whose watermark is a git SHA never takes the content-manifest path; non-git corpora use a capped stat manifest (§6, ADR-017 amended) {id: RT-110, symbol: ServiceWatermark, package: pkg/client, reachable_from: TestGitServiceNeverTakesManifestPath}
+- [x] A service whose watermark is a git SHA never takes the content-manifest path; non-git corpora use a capped stat manifest (§6, ADR-017 amended) {id: RT-110, symbol: ServiceWatermark, package: pkg/client, reachable_from: TestGitServiceNeverTakesManifestPath}
 - [x] The post-commit hook enqueues a refresh (202, coalesced) instead of running an ingest (§12.3) {id: RT-111, symbol: ingestViaDaemon, package: cmd/fathom, reachable_from: TestPostCommitEnqueuesRefresh}
 
 ## E. Console and hygiene

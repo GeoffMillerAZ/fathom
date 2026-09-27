@@ -2,6 +2,7 @@ package connector
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/filter"
+	"github.com/geoffmilleraz/fathom/internal/gitro"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
 
@@ -39,6 +41,9 @@ type LocalConnector struct {
 	// exclusions remembers, per service ID, what the most recent Discover
 	// pruned (RT-145) — see Exclusions.
 	exclusions sync.Map // service ID (string) -> Exclusions
+	// manifests memoizes each non-git root's content manifest behind its
+	// stat manifest (RT-110) — see statGatedManifest.
+	manifests sync.Map // root (string) -> manifestMemo
 }
 
 // Exclusions reports what the most recent Discover of service excluded at
@@ -200,11 +205,22 @@ func (c *LocalConnector) Fetch(ctx context.Context, ref core.SourceRef) ([]byte,
 // svc.Path is inside a git work tree, else a content-addressed manifest hash
 // (ADR-017: non-git corpora — docs folders, findings exports — get honest
 // freshness too).
+//
+// RT-110 (design §6, ADR-017 amended): a git work tree whose HEAD cannot be
+// read is freshness unknown — an error wrapping gitro.ErrFreshnessUnknown —
+// never the content manifest (one whole-corpus read per query, on the
+// request path). A genuine non-git corpus gets the content manifest gated by
+// a capped stat manifest (statGatedManifest): recomputed only when a file's
+// path, size or mtime moved, and at most once per manifestTTL.
 func (c *LocalConnector) Watermark(ctx context.Context, svc core.ServiceRef) (string, error) {
-	if head := gitHead(svc.Path); head != "" {
+	head, err := gitro.Head(ctx, svc.Path)
+	switch {
+	case err == nil:
 		return head, nil
+	case !errors.Is(err, gitro.ErrNotRepository):
+		return "", err
 	}
-	return manifestWatermark(ctx, c, svc)
+	return c.statGatedManifest(ctx, svc)
 }
 
 // loadIgnoreFile reads root/.fathomignore and compiles it into a Matcher.

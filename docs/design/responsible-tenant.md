@@ -676,7 +676,14 @@ previous row back.
 
 ADR-017 amendment: a service whose stored watermark is a git SHA never takes the content
 manifest path — a git failure is `freshness: unknown`, disclosed. Genuine non-git corpora
-use a stat manifest (paths, sizes, mtimes from `file_stats`), capped and cached with a TTL.
+use a stat manifest (paths, sizes, mtimes from `file_stats`), capped and cached with a TTL. (As built, RT-110:
+`Client.ServiceWatermark` reads a git-SHA service's HEAD with `gitro.Head` only, and
+`LocalConnector.Watermark` answers an unreadable HEAD in a git work tree with
+`gitro.ErrFreshnessUnknown`. A non-git corpus keeps the portable content manifest an
+ingest records, gated by a stat manifest walked each call (paths, sizes, mtimes; no
+reads): recomputed only when the stats move; over 20,000 files it is
+`ErrManifestTooLarge`, remembered for 30 s. `file_stats` can replace the walk once the
+storage lane lands it.)
 
 ---
 

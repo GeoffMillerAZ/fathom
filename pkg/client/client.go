@@ -27,6 +27,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/decide"
 	"github.com/geoffmilleraz/fathom/internal/fusion"
+	"github.com/geoffmilleraz/fathom/internal/gitro"
 	"github.com/geoffmilleraz/fathom/internal/query"
 	"github.com/geoffmilleraz/fathom/internal/scip"
 	"github.com/geoffmilleraz/fathom/internal/store"
@@ -707,10 +708,24 @@ func (c *Client) TypedPassWaitedTotal() int64 {
 // non-git corpora — ADR-017), resolved from the path recorded in service_meta
 // at the last ingest. Comparing it against the stored IndexedCommit detects
 // corpus drift without assuming git. Empty string means freshness is unknown.
+//
+// RT-110 (design §6, ADR-017 amended): a service whose stored watermark is a
+// git SHA is compared only against its HEAD, read from the ref files
+// (gitro.Head); when HEAD cannot be read the answer is "" with an error
+// naming freshness as unknown — never the connector's content manifest,
+// which reads the whole corpus on the request path.
 func (c *Client) ServiceWatermark(ctx context.Context, service string) (string, error) {
 	svcRef := core.ServiceRef{ID: service, Path: service}
-	if meta, found, err := c.st.GetServiceMeta(ctx, service); err == nil && found && meta.Path != "" {
+	meta, found, err := c.st.GetServiceMeta(ctx, service)
+	if err == nil && found && meta.Path != "" {
 		svcRef.Path = meta.Path
+	}
+	if err == nil && found && gitro.IsObjectName(meta.IndexedCommit) {
+		head, herr := gitro.Head(ctx, svcRef.Path)
+		if herr != nil {
+			return "", fmt.Errorf("service %q: %w", service, herr)
+		}
+		return head, nil
 	}
 	return c.conn.Watermark(ctx, svcRef)
 }
