@@ -25,9 +25,9 @@ func withTempIdentCacheDir(t *testing.T) {
 func TestIdentCache_WriteThenRead(t *testing.T) {
 	withTempIdentCacheDir(t)
 	now := time.Date(2026, 7, 30, 12, 0, 0, 0, time.UTC)
-	writeIdentCache("/repo", "http://localhost:7575", serviceCandidate{name: "fathom", root: "/repo"}, true, now)
+	writeIdentCache("/repo", "http://localhost:7581", serviceCandidate{name: "fathom", root: "/repo"}, true, now)
 
-	cand, found, hit := readIdentCache("/repo", "http://localhost:7575", now.Add(1*time.Minute))
+	cand, found, hit := readIdentCache("/repo", "http://localhost:7581", now.Add(1*time.Minute))
 	if !hit {
 		t.Fatal("expected a cache hit shortly after write")
 	}
@@ -39,9 +39,9 @@ func TestIdentCache_WriteThenRead(t *testing.T) {
 func TestIdentCache_NotFoundCachedToo(t *testing.T) {
 	withTempIdentCacheDir(t)
 	now := time.Date(2026, 7, 30, 12, 0, 0, 0, time.UTC)
-	writeIdentCache("/repo", "http://localhost:7575", serviceCandidate{}, false, now)
+	writeIdentCache("/repo", "http://localhost:7581", serviceCandidate{}, false, now)
 
-	_, found, hit := readIdentCache("/repo", "http://localhost:7575", now.Add(5*time.Second))
+	_, found, hit := readIdentCache("/repo", "http://localhost:7581", now.Add(5*time.Second))
 	if !hit {
 		t.Fatal("expected a cache hit for a cached negative resolution within the negative TTL")
 	}
@@ -58,9 +58,9 @@ func TestIdentCache_NotFoundCachedToo(t *testing.T) {
 func TestIdentCache_NegativeTTLShorterThanPositive(t *testing.T) {
 	withTempIdentCacheDir(t)
 	now := time.Date(2026, 7, 30, 12, 0, 0, 0, time.UTC)
-	writeIdentCache("/repo", "http://localhost:7575", serviceCandidate{}, false, now)
+	writeIdentCache("/repo", "http://localhost:7581", serviceCandidate{}, false, now)
 
-	if _, _, hit := readIdentCache("/repo", "http://localhost:7575", now.Add(identCacheNegativeTTL+time.Second)); hit {
+	if _, _, hit := readIdentCache("/repo", "http://localhost:7581", now.Add(identCacheNegativeTTL+time.Second)); hit {
 		t.Fatal("expected a negative resolution to expire shortly after identCacheNegativeTTL")
 	}
 	if identCacheNegativeTTL >= identCacheTTL {
@@ -70,15 +70,15 @@ func TestIdentCache_NegativeTTLShorterThanPositive(t *testing.T) {
 	// A POSITIVE resolution written at the same instant must still be
 	// live at that same elapsed time — the two TTLs are genuinely
 	// independent, not one shared clock.
-	writeIdentCache("/repo2", "http://localhost:7575", serviceCandidate{name: "svc", root: "/repo2"}, true, now)
-	if _, found, hit := readIdentCache("/repo2", "http://localhost:7575", now.Add(identCacheNegativeTTL+time.Second)); !hit || !found {
+	writeIdentCache("/repo2", "http://localhost:7581", serviceCandidate{name: "svc", root: "/repo2"}, true, now)
+	if _, found, hit := readIdentCache("/repo2", "http://localhost:7581", now.Add(identCacheNegativeTTL+time.Second)); !hit || !found {
 		t.Fatal("expected the positive resolution to still be live past the negative TTL")
 	}
 }
 
 func TestIdentCache_AbsentWhenNeverWritten(t *testing.T) {
 	withTempIdentCacheDir(t)
-	if _, _, hit := readIdentCache("/repo", "http://localhost:7575", time.Now()); hit {
+	if _, _, hit := readIdentCache("/repo", "http://localhost:7581", time.Now()); hit {
 		t.Fatal("expected no cache entry for a key that was never written")
 	}
 }
@@ -86,12 +86,12 @@ func TestIdentCache_AbsentWhenNeverWritten(t *testing.T) {
 func TestIdentCache_ExpiresAfterTTL(t *testing.T) {
 	withTempIdentCacheDir(t)
 	now := time.Date(2026, 7, 30, 12, 0, 0, 0, time.UTC)
-	writeIdentCache("/repo", "http://localhost:7575", serviceCandidate{name: "fathom", root: "/repo"}, true, now)
+	writeIdentCache("/repo", "http://localhost:7581", serviceCandidate{name: "fathom", root: "/repo"}, true, now)
 
-	if _, _, hit := readIdentCache("/repo", "http://localhost:7575", now.Add(identCacheTTL+time.Minute)); hit {
+	if _, _, hit := readIdentCache("/repo", "http://localhost:7581", now.Add(identCacheTTL+time.Minute)); hit {
 		t.Fatal("expected the entry to be expired past the TTL")
 	}
-	if _, _, hit := readIdentCache("/repo", "http://localhost:7575", now.Add(identCacheTTL-time.Minute)); !hit {
+	if _, _, hit := readIdentCache("/repo", "http://localhost:7581", now.Add(identCacheTTL-time.Minute)); !hit {
 		t.Fatal("expected the entry to still be valid just under the TTL")
 	}
 }
@@ -99,9 +99,9 @@ func TestIdentCache_ExpiresAfterTTL(t *testing.T) {
 func TestIdentCache_KeyedByBothRootAndURL(t *testing.T) {
 	withTempIdentCacheDir(t)
 	now := time.Date(2026, 7, 30, 12, 0, 0, 0, time.UTC)
-	writeIdentCache("/repo-a", "http://localhost:7575", serviceCandidate{name: "a", root: "/repo-a"}, true, now)
+	writeIdentCache("/repo-a", "http://localhost:7581", serviceCandidate{name: "a", root: "/repo-a"}, true, now)
 
-	if _, _, hit := readIdentCache("/repo-b", "http://localhost:7575", now); hit {
+	if _, _, hit := readIdentCache("/repo-b", "http://localhost:7581", now); hit {
 		t.Fatal("a different repo root must not share a cache entry")
 	}
 	if _, _, hit := readIdentCache("/repo-a", "http://localhost:9999", now); hit {
@@ -282,8 +282,8 @@ func TestCmdIngest_BustsIdentCache(t *testing.T) {
 	identCacheDir, hookcache.IdentDir = dir, dir
 	t.Cleanup(func() { identCacheDir, hookcache.IdentDir = origIdentCacheDir, origHookcacheDir })
 
-	writeIdentCache("/some/repo", "http://localhost:7575", serviceCandidate{name: "svc", root: "/some/repo"}, true, time.Now())
-	if _, _, hit := readIdentCache("/some/repo", "http://localhost:7575", time.Now()); !hit {
+	writeIdentCache("/some/repo", "http://localhost:7581", serviceCandidate{name: "svc", root: "/some/repo"}, true, time.Now())
+	if _, _, hit := readIdentCache("/some/repo", "http://localhost:7581", time.Now()); !hit {
 		t.Fatal("setup: expected the seeded cache entry to be readable before ingest")
 	}
 
@@ -297,7 +297,7 @@ func TestCmdIngest_BustsIdentCache(t *testing.T) {
 	if _, err := os.Stat(dir); !os.IsNotExist(err) {
 		t.Fatalf("expected the ident cache directory to be removed by ingest, stat err = %v", err)
 	}
-	if _, _, hit := readIdentCache("/some/repo", "http://localhost:7575", time.Now()); hit {
+	if _, _, hit := readIdentCache("/some/repo", "http://localhost:7581", time.Now()); hit {
 		t.Fatal("expected the seeded cache entry to be gone after ingest busts the cache")
 	}
 }

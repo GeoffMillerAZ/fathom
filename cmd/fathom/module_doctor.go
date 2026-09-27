@@ -33,6 +33,8 @@ const (
 
 // ladderRank orders the levels for --require-level comparisons (finding 9);
 // "none" (an unloadable manifest) ranks below everything.
+//
+//fathom:tenancy-allow pkg-map read-only lookup table of constants, never written after init: not a cache
 var ladderRank = map[string]int{
 	"none":          0,
 	LevelDraft:      1,

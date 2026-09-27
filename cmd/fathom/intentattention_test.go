@@ -150,7 +150,7 @@ func TestWholePrimerCap(t *testing.T) {
 	// A realistic long identity line: the daemon-down message carries a URL
 	// and a launchctl remedy. Identity + a full 2,400 B brief + the
 	// attention line is what pushes the composition over the cap.
-	identity := "⚠️ fathom code-intelligence daemon (http://localhost:7575) is not responding — " + strings.Repeat("its MCP tools are unavailable this session, so Grep/Read discovery is expected. ", 12)
+	identity := "⚠️ fathom code-intelligence daemon (http://localhost:7581) is not responding — " + strings.Repeat("its MCP tools are unavailable this session, so Grep/Read discovery is expected. ", 12)
 	primer, briefBytes, _ := composeContinuityAndCustodian(identity, root, now)
 
 	if len(primer) > sessionPrimerBudget {

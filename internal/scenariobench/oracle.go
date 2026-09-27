@@ -599,6 +599,7 @@ func applyTestPatchViaStaging(ctx context.Context, wt Worktree, task Task) error
 		return fmt.Errorf("staging test patch worktree: %w (%s)", err, strings.TrimSpace(string(out)))
 	}
 	defer func() {
+		//fathom:tenancy-allow exec-noctx benchmark harness run by an operator, never in the daemon; the child's lifetime is the bench run's
 		_ = exec.Command("git", "-C", wt.SubjectClone, "worktree", "remove", "--force", staging).Run()
 		_ = os.RemoveAll(staging)
 	}()
@@ -791,6 +792,7 @@ func CalibrateSubject(ctx context.Context, task Task, wt Worktree, root string) 
 		return Calibration{}, fmt.Errorf("calibrating subject: git worktree add: %w (%s)", err, strings.TrimSpace(string(out)))
 	}
 	defer func() {
+		//fathom:tenancy-allow exec-noctx benchmark harness run by an operator, never in the daemon; the child's lifetime is the bench run's
 		_ = exec.Command("git", "-C", clone, "worktree", "remove", "--force", calibWT).Run()
 		_ = os.RemoveAll(calibWT)
 	}()

@@ -341,7 +341,7 @@ func TestStatusz_OnShellUnknownTypedEdgesVisible(t *testing.T) {
 			{Service: "eps", IndexedCommit: "2b2b2b", TypedEdges: &StatuszTypedEdges{Packages: 4, Persisted: true, RecordedAt: "2026-09-24T08:00:00Z"}},
 		},
 	}
-	body := renderStatusz(report, "http://127.0.0.1:7575")
+	body := renderStatusz(report, "http://127.0.0.1:7581")
 	// The rows render twice — the table from lg up, a stacked list below
 	// it — so each count reads the table alone.
 	tableOnly := func(page string) string {
@@ -388,7 +388,7 @@ func TestStatusz_OnShellUnknownTypedEdgesVisible(t *testing.T) {
 	if !strings.Contains(body, "6h 18m") {
 		t.Error("uptime must be human-readable")
 	}
-	if !strings.Contains(body, `data-console-copy="curl -s http://127.0.0.1:7575/statusz?format=json"`) {
+	if !strings.Contains(body, `data-console-copy="curl -s http://127.0.0.1:7581/statusz?format=json"`) {
 		t.Error("the statusz verb must name this daemon's own endpoint")
 	}
 	if !strings.Contains(body, `href="/projects/alpha"`) {

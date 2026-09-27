@@ -513,6 +513,7 @@ func reapStaleScratchDaemon(wtPath string) {
 	if err != nil || pid <= 1 {
 		return
 	}
+	//fathom:tenancy-allow exec-noctx benchmark harness run by an operator, never in the daemon; the child's lifetime is the bench run's
 	out, err := exec.Command("ps", "-o", "command=", "-p", strconv.Itoa(pid)).Output()
 	if err != nil || !strings.Contains(string(out), scratchDaemonCommandMarker) {
 		return
@@ -834,6 +835,7 @@ func wireScratchDaemon(ctx context.Context, wt *Worktree, task Task, renderedArm
 	// this cell's other own artifacts (scratch-daemon.log, arm-setup.log),
 	// never shared across cells.
 	callLog := filepath.Join(wt.CellDir, "calls.jsonl")
+	//fathom:tenancy-allow exec-noctx benchmark harness run by an operator, never in the daemon; the child's lifetime is the bench run's
 	daemon := exec.Command(bin, "serve-http", "-store", wt.StorePath, "-addr", addr, "-auto-refresh=false", "-call-log", callLog)
 	daemon.Dir = wt.Path
 	// A scratch daemon never watches its binary for a deploy (it would exit

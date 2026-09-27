@@ -94,7 +94,7 @@ func TestHeartbeatCountsOpenStreamsAsActivity(t *testing.T) {
 	if rec.LastActivityAt != now.Format(time.RFC3339) {
 		t.Fatalf("last_activity_at = %s with a stream open, want %s", rec.LastActivityAt, now.Format(time.RFC3339))
 	}
-	rows := daemonCensus([]storedRecord{{Path: path, Rec: rec}}, []psProc{{PID: rec.PID, PPID: 50, Command: "/w/fathom serve-http --addr 127.0.0.1:7857"}}, now, "127.0.0.1:7575", func(string) (uint64, bool) { return rec.ExeInode, true })
+	rows := daemonCensus([]storedRecord{{Path: path, Rec: rec}}, []psProc{{PID: rec.PID, PPID: 50, Command: "/w/fathom serve-http --addr 127.0.0.1:7857"}}, now, "127.0.0.1:7581", func(string) (uint64, bool) { return rec.ExeInode, true })
 	if len(rows) != 1 || rows[0].Verdict == "idle" {
 		t.Fatalf("census reads a streaming daemon idle: %+v", rows)
 	}

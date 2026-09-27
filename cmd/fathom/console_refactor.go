@@ -105,6 +105,7 @@ func resetConserveCache() {
 // consoleGit runs one git read for a page under consoleGitTimeout; a git
 // that does not answer in time is killed and named.
 func consoleGit(root string, args ...string) (string, error) {
+	//fathom:tenancy-allow bg-ctx shared, cached git/conserve computation that outlives the request; bounded by consoleGitTimeout / consoleConserveDeadline
 	ctx, cancel := context.WithTimeout(context.Background(), consoleGitTimeout)
 	defer cancel()
 	out, err := gitro.Output(ctx, root, args...)
@@ -124,6 +125,7 @@ func refactorReport(pc *consolePlans, sr serviceRoot, since string, budget time.
 	if gerr != nil && strings.Contains(gerr.Error(), "did not answer") {
 		return &conserveEntry{finished: true, err: gerr.Error(), at: time.Now()}, true
 	}
+	//fathom:tenancy-allow bg-ctx shared, cached git/conserve computation that outlives the request; bounded by consoleGitTimeout / consoleConserveDeadline
 	ctx := context.Background()
 	key := strings.Join([]string{fmt.Sprintf("%p", pc.deps), sr.Service, sr.Root, since, base, pc.head(sr.Root), pc.storeWatermark(ctx, sr.Service)}, "|")
 	conserveCache.Lock()
@@ -216,6 +218,7 @@ func computeRefactorReport(pc *consolePlans, sr serviceRoot, since string, e *co
 	if pc.deps.c == nil {
 		err = errNoStore
 	} else {
+		//fathom:tenancy-allow bg-ctx shared, cached git/conserve computation that outlives the request; bounded by consoleGitTimeout / consoleConserveDeadline
 		ctx, cancel := context.WithTimeout(context.Background(), consoleConserveDeadline)
 		defer cancel()
 		// RT-61 (§3.3): conserve is an in-process console call, admitted
@@ -432,10 +435,13 @@ func renderRefactorPage(v console.RefactorPage, names []string, sr serviceRoot, 
 
 // planeSurface and planeInk color a plane chip by its verdict role
 // (complete literals for the CSS build); the verdict is always also words.
+//
+//fathom:tenancy-allow pkg-map read-only lookup table of constants, never written after init: not a cache
 var planeSurface = map[string]string{
 	"positive": "bg-positive-soft", "danger": "bg-danger-soft", "caution": "bg-caution-soft", "ink-muted": "bg-surface-sunken",
 }
 
+//fathom:tenancy-allow pkg-map read-only lookup table of constants, never written after init: not a cache
 var planeInk = map[string]string{
 	"positive": "text-positive", "danger": "text-danger", "caution": "text-caution", "ink-muted": "text-ink-muted",
 }

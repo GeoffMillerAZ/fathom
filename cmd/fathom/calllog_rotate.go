@@ -363,6 +363,7 @@ func (r *rotatingCallLog) startArchive() {
 		return
 	}
 	r.archiving.Add(1)
+	//fathom:tenancy-allow bare-go one archive per rotation, tracked by the archiving WaitGroup that Close waits for
 	go func() {
 		defer r.archiving.Done()
 		for {

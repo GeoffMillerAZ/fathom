@@ -164,7 +164,7 @@ func TestEnsureJoinersServeStaleDuringInflightIngest(t *testing.T) {
 	ar := newAR(t, fa, "new")
 	var head atomic.Value
 	head.Store("new")
-	ar.headFn = func(string) string { return head.Load().(string) }
+	ar.headFn = func(context.Context, string) string { return head.Load().(string) }
 
 	firstDone := make(chan struct{})
 	go func() { ar.ensure(context.Background(), "svc"); close(firstDone) }()
@@ -267,7 +267,7 @@ func TestEnsureBacksOffAFailingIngest(t *testing.T) {
 		t.Fatalf("refreshTotal = %d, want 3 (attempts, not reads)", got)
 	}
 	// A new head is a new drift: it is attempted at once.
-	ar.headFn = func(string) string { return "newer" }
+	ar.headFn = func(context.Context, string) string { return "newer" }
 	ensureSettled(t, ar, ctx, "svc")
 	if fake.ingests != 4 {
 		t.Fatalf("attempts after HEAD moved = %d, want 4 (a new drift is tried at once)", fake.ingests)

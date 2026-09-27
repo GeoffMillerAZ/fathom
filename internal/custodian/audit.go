@@ -688,6 +688,7 @@ func insideGitWorkTree(root string) bool {
 }
 
 func gitAgentConfigFiles(root string) ([]string, error) {
+	//fathom:tenancy-allow exec-noctx custodian audit CLI path (git ls-files); its API takes no context
 	cmd := exec.Command("git", "-C", root, "ls-files", "--cached", "--others", "--exclude-standard", "--",
 		"CLAUDE.md", "*/CLAUDE.md", "AGENTS.md", "*/AGENTS.md")
 	raw, err := cmd.Output()

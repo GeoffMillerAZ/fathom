@@ -15,7 +15,7 @@ import (
 func TestMCPEntryDigestNamesNotValues(t *testing.T) {
 	base := map[string]any{
 		"type":    "http",
-		"url":     "http://localhost:7575/rpc/agent",
+		"url":     "http://localhost:7581/rpc/agent",
 		"env":     map[string]any{"TOKEN": "secret-1", "A": "1"},
 		"headers": map[string]any{"Authorization": "Bearer x"},
 	}
@@ -23,14 +23,14 @@ func TestMCPEntryDigestNamesNotValues(t *testing.T) {
 	rotated := map[string]any{
 		"headers": map[string]any{"Authorization": "Bearer y"},
 		"env":     map[string]any{"A": "2", "TOKEN": "secret-2"},
-		"url":     "http://localhost:7575/rpc/agent",
+		"url":     "http://localhost:7581/rpc/agent",
 		"type":    "http",
 	}
 	if d2 := mcpEntryDigest(rotated); d2 != d1 {
 		t.Errorf("rotated values / reordered keys must not change the digest: %s vs %s", d1, d2)
 	}
 	newName := map[string]any{
-		"type": "http", "url": "http://localhost:7575/rpc/agent",
+		"type": "http", "url": "http://localhost:7581/rpc/agent",
 		"env": map[string]any{"TOKEN": "secret-1", "A": "1", "LD_PRELOAD": "x"}, "headers": map[string]any{"Authorization": "Bearer x"},
 	}
 	if d3 := mcpEntryDigest(newName); d3 == d1 {
@@ -51,12 +51,12 @@ func TestMCPEntryDigestNamesNotValues(t *testing.T) {
 }
 
 func TestMCPEntryDigestJSONAndTOML(t *testing.T) {
-	js := []byte(`{"mcpServers":{"fathom":{"type":"http","url":"http://localhost:7575/rpc/agent"},"other":{}}}`)
+	js := []byte(`{"mcpServers":{"fathom":{"type":"http","url":"http://localhost:7581/rpc/agent"},"other":{}}}`)
 	dj, present, err := MCPEntryDigest(js, "json", []string{"mcpServers", "fathom"})
 	if err != nil || !present || dj == "" {
 		t.Fatalf("json: dig=%q present=%v err=%v", dj, present, err)
 	}
-	tm := []byte("[mcp_servers.fathom]\ntype = \"http\"\nurl = \"http://localhost:7575/rpc/agent\"\n")
+	tm := []byte("[mcp_servers.fathom]\ntype = \"http\"\nurl = \"http://localhost:7581/rpc/agent\"\n")
 	dt, present, err := MCPEntryDigest(tm, "toml", []string{"mcp_servers", "fathom"})
 	if err != nil || !present {
 		t.Fatalf("toml: present=%v err=%v", present, err)
@@ -87,7 +87,7 @@ func TestDriftMCPAndSkills(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	write(mcpPath, `{"mcpServers":{"fathom":{"type":"http","url":"http://localhost:7575/rpc/agent"}}}`)
+	write(mcpPath, `{"mcpServers":{"fathom":{"type":"http","url":"http://localhost:7581/rpc/agent"}}}`)
 	skillPath := filepath.Join(root, ".claude", "skills", "fathom-doctor", "SKILL.md")
 	write(skillPath, "<!-- fathom:owned v1 -->\n# doctor\n")
 

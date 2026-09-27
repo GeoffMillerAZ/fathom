@@ -194,6 +194,8 @@ var localizeWordRE = regexp.MustCompile(`[A-Za-z_][A-Za-z0-9_]{3,}`)
 // localizeStopwords are common English function words excluded from
 // concern-term seeding — never a claim about the corpus, just noise
 // reduction over free-form prose.
+//
+//fathom:tenancy-allow pkg-map read-only lookup table of constants, never written after init: not a cache
 var localizeStopwords = map[string]bool{
 	"this": true, "that": true, "with": true, "from": true, "into": true,
 	"when": true, "what": true, "does": true, "not": true, "have": true,

@@ -775,6 +775,7 @@ func ensureRepoClone(subjectsDir, repoURL string) (*repoClone, error) {
 		if err := os.MkdirAll(subjectsDir, 0o755); err != nil {
 			return nil, err
 		}
+		//fathom:tenancy-allow exec-noctx benchmark harness run by an operator, never in the daemon; the child's lifetime is the bench run's
 		cmd := exec.Command("git", "clone", "--quiet", "--bare", "--filter=blob:none", repoURL, dir)
 		if out, err := cmd.CombinedOutput(); err != nil {
 			return nil, fmt.Errorf("git clone %s: %w: %s", repoURL, err, strings.TrimSpace(string(out)))
@@ -809,6 +810,7 @@ func (c *repoClone) fetchCommit(sha string, timeout time.Duration) error {
 }
 
 func (c *repoClone) readFile(sha, path string) ([]byte, error) {
+	//fathom:tenancy-allow exec-noctx benchmark harness run by an operator, never in the daemon; the child's lifetime is the bench run's
 	out, err := exec.Command("git", "-C", c.dir, "show", sha+":"+path).Output()
 	if err != nil {
 		return nil, fmt.Errorf("git show %s:%s: %w", sha, path, err)

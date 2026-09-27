@@ -239,6 +239,7 @@ func threadAutoNote(id, thread, kind, text string, pointers map[string]string, c
 // is in flight.
 func mechanicalSessionFacts(root string) string {
 	run := func(args ...string) string {
+		//fathom:tenancy-allow exec-noctx hook process bounded by its hookguard deadline, which kills the process tree; no request context to pass
 		out, err := exec.Command("git", append([]string{"-C", root}, args...)...).Output()
 		if err != nil {
 			return ""
@@ -266,6 +267,7 @@ func mechanicalSessionFacts(root string) string {
 // plans modified since HEAD (uncommitted plan edits are exactly the
 // claims a departing session leaves hanging).
 func countClaimedUnproven(root string) int {
+	//fathom:tenancy-allow exec-noctx hook process bounded by its hookguard deadline, which kills the process tree; no request context to pass
 	out, err := exec.Command("git", "-C", root, "diff", "--name-only", "--", "docs/plans").Output()
 	if err != nil {
 		return 0

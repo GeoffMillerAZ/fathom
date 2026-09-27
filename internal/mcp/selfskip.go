@@ -17,6 +17,7 @@ package mcp
 
 import (
 	"bytes"
+	"context"
 	"os/exec"
 	"path/filepath"
 
@@ -25,11 +26,11 @@ import (
 
 // gitShowFile returns rel's content at ref within the git repo at repoPath,
 // or nil when unavailable (not a repo, ref/path absent, git missing).
-func gitShowFile(repoPath, ref, rel string) []byte {
+func gitShowFile(ctx context.Context, repoPath, ref, rel string) []byte {
 	if repoPath == "" {
 		return nil
 	}
-	out, err := exec.Command("git", "-C", repoPath, "show", ref+":"+filepath.ToSlash(rel)).Output()
+	out, err := exec.CommandContext(ctx, "git", "-C", repoPath, "show", ref+":"+filepath.ToSlash(rel)).Output()
 	if err != nil {
 		return nil
 	}
@@ -37,11 +38,11 @@ func gitShowFile(repoPath, ref, rel string) []byte {
 }
 
 // gitIsRepo reports whether repoPath is inside a git work tree.
-func gitIsRepo(repoPath string) bool {
+func gitIsRepo(ctx context.Context, repoPath string) bool {
 	if repoPath == "" {
 		return false
 	}
-	return exec.Command("git", "-C", repoPath, "rev-parse", "--git-dir").Run() == nil
+	return exec.CommandContext(ctx, "git", "-C", repoPath, "rev-parse", "--git-dir").Run() == nil
 }
 
 // selfSkipPriorPlan mirrors cmd/fathom's priorSelfSkipPlan exactly — the
@@ -50,15 +51,15 @@ func gitIsRepo(repoPath string) bool {
 // working tree when the caller is the CLI or an editor-integrated agent)
 // differs from HEAD's own content, else HEAD's first parent. nil
 // (inapplicable) when repoPath is not a real git work tree.
-func selfSkipPriorPlan(repoPath, rel, service string, workingTreeMD []byte) *verify.Plan {
-	if !gitIsRepo(repoPath) {
+func selfSkipPriorPlan(ctx context.Context, repoPath, rel, service string, workingTreeMD []byte) *verify.Plan {
+	if !gitIsRepo(ctx, repoPath) {
 		return nil
 	}
-	headMD := gitShowFile(repoPath, "HEAD", rel)
+	headMD := gitShowFile(ctx, repoPath, "HEAD", rel)
 	if headMD != nil && !bytes.Equal(headMD, workingTreeMD) {
 		p := verify.ParseMarkdownPlan(service, headMD)
 		return &p
 	}
-	p := verify.ParseMarkdownPlan(service, gitShowFile(repoPath, "HEAD~1", rel))
+	p := verify.ParseMarkdownPlan(service, gitShowFile(ctx, repoPath, "HEAD~1", rel))
 	return &p
 }

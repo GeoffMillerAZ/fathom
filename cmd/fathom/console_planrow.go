@@ -274,6 +274,8 @@ func renderRowEvidence(v console.RowEvidenceView, verb, live string) string {
 
 // badgeSurface are the soft surfaces a state badge sits on (complete
 // literals for the CSS build).
+//
+//fathom:tenancy-allow pkg-map read-only lookup table of constants, never written after init: not a cache
 var badgeSurface = map[string]string{
 	"positive-soft": "bg-positive-soft", "info-soft": "bg-info-soft", "danger-soft": "bg-danger-soft",
 	"caution-soft": "bg-caution-soft", "accent-soft": "bg-accent-soft", "surface-sunken": "bg-surface-sunken",

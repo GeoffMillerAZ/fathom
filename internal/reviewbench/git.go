@@ -15,6 +15,7 @@ type GitRunner func(dir string, args ...string) ([]byte, error)
 
 // ExecGit is the real GitRunner: os/exec against the system git binary.
 func ExecGit(dir string, args ...string) ([]byte, error) {
+	//fathom:tenancy-allow exec-noctx benchmark harness run by an operator, never in the daemon; the child's lifetime is the bench run's
 	cmd := exec.Command("git", args...)
 	cmd.Dir = dir
 	out, err := cmd.CombinedOutput()

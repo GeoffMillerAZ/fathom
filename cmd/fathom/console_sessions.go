@@ -204,6 +204,8 @@ func sessionSortHeader(cr *consoleRequest, tbl console.SessionTableModel, key, l
 }
 
 // sessionSortLabels names each sort key as the table's header does.
+//
+//fathom:tenancy-allow pkg-map read-only lookup table of constants, never written after init: not a cache
 var sessionSortLabels = map[string]string{"at": "last row", "turns": "turns", "first_edit": "first edit", "tokens": "tokens", "fathom_calls": "fathom calls", "catches": "verify catches"}
 
 // renderSessionSortChips is the sort below md, where the table (and its

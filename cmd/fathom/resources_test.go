@@ -30,7 +30,7 @@ func newResourcesFixture(t *testing.T) *resourcesFixture {
 	t.Helper()
 	home := t.TempDir()
 	f := &resourcesFixture{home: home, dir: filepath.Join(home, ".fathom", "daemon", fixtureLabel),
-		now: time.Date(2026, 9, 26, 22, 0, 0, 0, time.UTC), fetchErr: errors.New("dial tcp 127.0.0.1:7575: connect: connection refused")}
+		now: time.Date(2026, 9, 26, 22, 0, 0, 0, time.UTC), fetchErr: errors.New("dial tcp 127.0.0.1:7581: connect: connection refused")}
 	if err := os.MkdirAll(f.dir, 0o700); err != nil {
 		t.Fatal(err)
 	}

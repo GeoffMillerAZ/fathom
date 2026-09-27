@@ -19,7 +19,7 @@ func TestFindManagedDaemonReadsSchema2Record(t *testing.T) {
 	t.Setenv("HOME", home)
 	started := stopT0.Add(-time.Hour)
 	rec := console.DaemonRecord{
-		SchemaVersion: console.DaemonRecordSchemaVersion, Addr: "127.0.0.1:7575", PID: 4242,
+		SchemaVersion: console.DaemonRecordSchemaVersion, Addr: "127.0.0.1:7581", PID: 4242,
 		StartedAt: started.UTC().Format(time.RFC3339), ID: defaultDaemonLabel, Managed: true,
 	}
 	p, err := daemonRecordPath(home, defaultDaemonLabel)
@@ -35,12 +35,12 @@ func TestFindManagedDaemonReadsSchema2Record(t *testing.T) {
 	}
 	ops := newFakeDaemonOps(stopT0)
 	ops.procs[4242] = procInfo{PID: 4242, Start: started, Command: "/opt/fathom serve-http --managed"}
-	if pid, notes := findManagedDaemon(ops, "127.0.0.1:7575"); pid != 4242 {
+	if pid, notes := findManagedDaemon(ops, "127.0.0.1:7581"); pid != 4242 {
 		t.Fatalf("findManagedDaemon = %d (%v), want the schema-2 record's pid 4242", pid, notes)
 	}
 	// The pid-reuse guard still applies to a schema-2 record.
 	ops.procs[4242] = procInfo{PID: 4242, Start: started, Command: "/usr/bin/vim"}
-	if pid, _ := findManagedDaemon(ops, "127.0.0.1:7575"); pid != 0 {
+	if pid, _ := findManagedDaemon(ops, "127.0.0.1:7581"); pid != 0 {
 		t.Fatalf("a reused pid from a schema-2 record was returned: %d", pid)
 	}
 }

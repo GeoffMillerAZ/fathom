@@ -19,6 +19,7 @@ func RunArmsConcurrently[T any](fns []func() (T, error)) ([]T, []error) {
 	var wg sync.WaitGroup
 	wg.Add(len(fns))
 	for i, fn := range fns {
+		//fathom:tenancy-allow bare-go benchmark fan-out joined by a WaitGroup
 		go func(i int, fn func() (T, error)) {
 			defer wg.Done()
 			results[i], errs[i] = fn()

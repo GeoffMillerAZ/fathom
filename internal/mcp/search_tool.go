@@ -108,6 +108,8 @@ type searchOpts struct {
 // called with a bare `root` — so it is pruned unconditionally here,
 // exactly as the RC-24 spec requires ("vendored and workspace/ trees
 // excluded by default").
+//
+//fathom:tenancy-allow pkg-map read-only lookup table of constants, never written after init: not a cache
 var searchExtraSkipDirs = map[string]bool{"workspace": true}
 
 func searchSkipDir(name string) bool {
@@ -119,6 +121,8 @@ func searchSkipDir(name string) bool {
 // from every walk) because a caller-given `root` may point AT or INSIDE
 // one of these trees on purpose, in which case pruning does not apply
 // (root itself is never pruned) but the flag still should.
+//
+//fathom:tenancy-allow pkg-map read-only lookup table of constants, never written after init: not a cache
 var searchVendorSegments = map[string]bool{"vendor": true, "node_modules": true, "third_party": true}
 
 // searchHit is one search result, rendered compact for the wire (SB-48,
@@ -311,7 +315,7 @@ func registerSearch(s *Server, backend QueryInterface) {
 		linesCache := map[string][]string{}
 		hits := make([]searchHit, 0, len(limited))
 		for _, rh := range limited {
-			hits = append(hits, renderSearchHit(rh, re, byFile, flagsCache, linesCache, root))
+			hits = append(hits, renderSearchHit(ctx, rh, re, byFile, flagsCache, linesCache, root))
 		}
 		kept, truncated := fitToBudget(hits, 0)
 		var el *elided
@@ -640,6 +644,7 @@ func searchWalk(ctx context.Context, root string, o searchOpts) ([]searchRawHit,
 		glob = filter.New([]string{o.pathGlob})
 	}
 	var paths []string
+	//fathom:tenancy-allow whole-read the no-ripgrep fallback lists paths only; every byte is read through corpus.ScanBudgeted with the byte, wall and file caps
 	walkErr := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return nil // best-effort: skip unreadable entries
@@ -949,6 +954,8 @@ func searchComputeFlags(root, rel string) []string {
 // connector API change) for languages whose line-comment syntax is enough,
 // on its own, to say "this position opens a comment" without needing
 // block-comment/multi-line-string context this classifier never guesses.
+//
+//fathom:tenancy-allow pkg-map read-only lookup table of constants, never written after init: not a cache
 var searchLineCommentTokens = map[string]string{
 	".go": "//", ".ts": "//", ".tsx": "//", ".js": "//", ".jsx": "//",
 	".java": "//", ".cs": "//", ".rs": "//", ".proto": "//", ".cue": "//",
@@ -1033,7 +1040,7 @@ func searchHitWireSize(h searchHit) int {
 // and the ident/comment/string classification (re-locating the match in
 // the returned line text with re, so classification is consistent
 // regardless of which engine produced the hit).
-func renderSearchHit(rh searchRawHit, re *regexp.Regexp, byFile map[string][]core.SymbolNode, flagsCache map[string][]string, linesCache map[string][]string, root string) searchHit {
+func renderSearchHit(ctx context.Context, rh searchRawHit, re *regexp.Regexp, byFile map[string][]core.SymbolNode, flagsCache map[string][]string, linesCache map[string][]string, root string) searchHit {
 	h := searchHit{
 		Loc:  rh.File + ":" + strconv.Itoa(rh.Line),
 		Text: truncateForWire(rh.Text, searchTextMaxChars),
@@ -1041,7 +1048,9 @@ func renderSearchHit(rh searchRawHit, re *regexp.Regexp, byFile map[string][]cor
 	if syms, ok := byFile[rh.File]; ok {
 		lines, cached := linesCache[rh.File]
 		if !cached {
-			if data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(rh.File))); err == nil {
+			// Through the corpus reader: stat-capped like the scan that
+			// matched it, charged to the request's ticket (RT-91).
+			if data, ex, err := corpus.ReadFileCapped(ctx, filepath.Join(root, filepath.FromSlash(rh.File)), searchMaxFileBytes); err == nil && ex == nil {
 				lines = strings.Split(string(data), "\n")
 			}
 			linesCache[rh.File] = lines

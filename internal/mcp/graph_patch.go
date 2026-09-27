@@ -20,6 +20,7 @@ import (
 // patchScope is service's graph-store scope at the backend's current
 // watermark.
 func (s *Server) patchScope(service string) memo.Scope {
+	//fathom:tenancy-allow bg-ctx scope lookup for a cache patch after a refresh job, called through a context-free interface; a point query on the watermark
 	return navScopeNoEnsure(context.Background(), s.backend, service)
 }
 

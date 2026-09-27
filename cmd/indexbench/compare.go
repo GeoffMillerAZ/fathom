@@ -260,6 +260,7 @@ func fathomVersion() string {
 // checkout (or git is unavailable) — a best-effort ledger field, never a
 // hard failure.
 func gitCommitAt(dir string) string {
+	//fathom:tenancy-allow exec-noctx benchmark harness run by an operator, never in the daemon; the child's lifetime is the bench run's
 	out, err := exec.Command("git", "-C", dir, "rev-parse", "HEAD").Output()
 	if err != nil {
 		return ""

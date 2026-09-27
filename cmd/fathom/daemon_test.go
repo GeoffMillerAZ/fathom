@@ -43,7 +43,7 @@ func TestDaemonRestartHintNeverNamesAnUninstalledService(t *testing.T) {
 		t.Fatal(err)
 	}
 	plist := filepath.Join(agents, "com.example.mine.plist")
-	if err := os.WriteFile(plist, []byte(plistBody("com.example.mine", "/opt/fathom", "/tmp/s.sqlite", ":7575", "/tmp", "/tmp/c.jsonl", "/usr/bin", nil)), 0o644); err != nil {
+	if err := os.WriteFile(plist, []byte(plistBody("com.example.mine", "/opt/fathom", "/tmp/s.sqlite", ":7581", "/tmp", "/tmp/c.jsonl", "/usr/bin", nil)), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if got := labelInstalled(); got != "com.example.mine" {
@@ -91,7 +91,7 @@ func TestDaemonInstallRefusesToStackASecondAgent(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(agents, "com.existing.fathom-http.plist"),
-		[]byte(plistBody("com.existing.fathom-http", "/opt/fathom", "/tmp/s.sqlite", ":7575", "/tmp", "/tmp/c.jsonl", "/usr/bin", nil)), 0o644); err != nil {
+		[]byte(plistBody("com.existing.fathom-http", "/opt/fathom", "/tmp/s.sqlite", ":7581", "/tmp", "/tmp/c.jsonl", "/usr/bin", nil)), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -114,13 +114,13 @@ func TestDaemonInstallRefusesToStackASecondAgent(t *testing.T) {
 // The plist launchd gets must carry the resolved paths, not placeholders —
 // this was previously a doc snippet the adopter hand-edited.
 func TestPlistCarriesResolvedPaths(t *testing.T) {
-	body := plistBody("dev.fathom.serve-http", "/usr/local/bin/fathom", "/home/u/.fathom/db/fathom.sqlite", ":7575", "/home/u/.fathom/logs", "/home/u/.fathom/logs/mcp-calls.jsonl", "/usr/local/go/bin:/usr/bin", nil)
+	body := plistBody("dev.fathom.serve-http", "/usr/local/bin/fathom", "/home/u/.fathom/db/fathom.sqlite", ":7581", "/home/u/.fathom/logs", "/home/u/.fathom/logs/mcp-calls.jsonl", "/usr/local/go/bin:/usr/bin", nil)
 	for _, want := range []string{
 		"<string>dev.fathom.serve-http</string>",
 		"<string>/usr/local/bin/fathom</string>",
 		"<string>serve-http</string>",
 		"<string>/home/u/.fathom/db/fathom.sqlite</string>",
-		"<string>:7575</string>",
+		"<string>:7581</string>",
 		"/home/u/.fathom/logs/fathom-http.log",
 	} {
 		if !strings.Contains(body, want) {
@@ -143,7 +143,7 @@ func TestPlistCarriesResolvedPaths(t *testing.T) {
 // at the source; internal/fusion.TypedEdgeEnv is the belt for daemons an
 // older binary installed.
 func TestPlistCarriesGoToolchainEnv(t *testing.T) {
-	body := plistBody("dev.fathom.serve-http", "/usr/local/bin/fathom", "/tmp/s.sqlite", ":7575", "/tmp", "/tmp/c.jsonl", "/usr/local/go/bin:/usr/bin",
+	body := plistBody("dev.fathom.serve-http", "/usr/local/bin/fathom", "/tmp/s.sqlite", ":7581", "/tmp", "/tmp/c.jsonl", "/usr/local/go/bin:/usr/bin",
 		[]string{"GOPATH=/home/u/go", "GOCACHE=/home/u/Library/Caches/go-build", "GOMODCACHE=/home/u/go/pkg/mod"})
 	for _, want := range []string{
 		"<key>GOPATH</key><string>/home/u/go</string>",

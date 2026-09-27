@@ -122,7 +122,7 @@ func registerVerifyPlan(s *Server, backend QueryInterface) {
 			// git checkout on this filesystem. Best-effort; see selfskip.go.
 			if p.PlanPath != "" {
 				if repoPath, _, found, merr := backend.ServiceMeta(ctx, p.Service); merr == nil && found && repoPath != "" {
-					prior := selfSkipPriorPlan(repoPath, p.PlanPath, p.Service, []byte(p.PlanMarkdown))
+					prior := selfSkipPriorPlan(ctx, repoPath, p.PlanPath, p.Service, []byte(p.PlanMarkdown))
 					plan = verify.AnnotateSelfSkip(plan, prior)
 				}
 			}

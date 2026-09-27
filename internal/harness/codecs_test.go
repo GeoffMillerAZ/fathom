@@ -538,8 +538,8 @@ func TestLadderRowsAndTable(t *testing.T) {
 			t.Errorf("%s: a ladder row must not also be a descriptor", r.ID)
 		}
 	}
-	table := RenderLadderTable("http://127.0.0.1:7575")
-	if strings.Contains(table, "{{url}}") || !strings.Contains(table, "http://127.0.0.1:7575/rpc/agent") {
+	table := RenderLadderTable("http://127.0.0.1:7581")
+	if strings.Contains(table, "{{url}}") || !strings.Contains(table, "http://127.0.0.1:7581/rpc/agent") {
 		t.Errorf("url not filled:\n%s", table)
 	}
 	if lines := strings.Split(strings.TrimSpace(table), "\n"); len(lines) != 2+len(want) {

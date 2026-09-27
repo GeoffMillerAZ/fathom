@@ -89,6 +89,7 @@ func Linked(dir string) (mainRoot string, ok bool) {
 	if i := strings.Index(slash+"/", Marker); i >= 0 {
 		return filepath.FromSlash(slash[:i]), true
 	}
+	//fathom:tenancy-allow exec-noctx git worktree probe used by CLI verbs and hooks; its exported API takes no context (a context-taking variant is follow-up work)
 	out, err := exec.Command("git", "-C", dir, "rev-parse", "--git-dir", "--git-common-dir").Output()
 	if err != nil {
 		return "", false
@@ -108,6 +109,7 @@ func Linked(dir string) (mainRoot string, ok bool) {
 // shared .git of a main checkout and all its linked worktrees), or ok=false
 // when dir is not inside a git repository git can answer for.
 func CommonDir(dir string) (string, bool) {
+	//fathom:tenancy-allow exec-noctx git worktree probe used by CLI verbs and hooks; its exported API takes no context (a context-taking variant is follow-up work)
 	out, err := exec.Command("git", "-C", dir, "rev-parse", "--git-common-dir").Output()
 	if err != nil {
 		return "", false

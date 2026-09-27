@@ -42,6 +42,7 @@ func countFindingsAcrossFiles(url, service string, files []string, deadline time
 			break
 		}
 		wg.Add(1)
+		//fathom:tenancy-allow bare-go hook-side fan-out bounded by the file list, joined by a WaitGroup under the hook deadline
 		go func(i int, f string) {
 			defer wg.Done()
 			sem <- struct{}{}

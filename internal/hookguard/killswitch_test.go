@@ -1,6 +1,7 @@
 package hookguard
 
 import (
+	"net/url"
 	"os"
 	"path/filepath"
 	"testing"
@@ -21,7 +22,14 @@ func TestKillSwitchGovernsOnlyManagedURL(t *testing.T) {
 	}
 	// An empty disabled.json disables, reason unknown (§9).
 	write("disabled.json", "")
-	for _, u := range []string{"http://localhost:7575", "http://127.0.0.1:7575/", "127.0.0.1:7575"} {
+	// The managed address is named symbolically: a test never carries the
+	// operator's live daemon address as a literal (tenancy lint test-live-url).
+	mu, err := url.Parse(DefaultManagedURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	port := mu.Port()
+	for _, u := range []string{"http://localhost:" + port, "http://127.0.0.1:" + port + "/", "127.0.0.1:" + port} {
 		if d := BreakerAllows(g, u); d.Verdict != Disabled || d.Reason != "reason unknown" {
 			t.Fatalf("%s under empty disabled.json: %+v", u, d)
 		}
@@ -35,7 +43,7 @@ func TestKillSwitchGovernsOnlyManagedURL(t *testing.T) {
 	if d := BreakerAllows(g, "http://localhost:7600"); d.Verdict != Disabled || d.Reason != "breaker" {
 		t.Fatalf("named addr: %+v", d)
 	}
-	if d := BreakerAllows(g, "http://127.0.0.1:7575"); d.Verdict != Allow {
+	if d := BreakerAllows(g, DefaultManagedURL); d.Verdict != Allow {
 		t.Fatalf("default port when the switch names another addr: %v", d.Verdict)
 	}
 	// A timed stop that has lapsed no longer silences.

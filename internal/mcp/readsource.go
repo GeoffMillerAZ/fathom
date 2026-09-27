@@ -31,13 +31,16 @@ package mcp
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 	"unicode/utf8"
 
 	"github.com/geoffmilleraz/fathom/internal/connector"
+	"github.com/geoffmilleraz/fathom/internal/corpus"
 	"github.com/geoffmilleraz/fathom/internal/filter"
 	"github.com/geoffmilleraz/fathom/internal/scope"
 )
@@ -443,8 +446,23 @@ func readSourceLines(ctx context.Context, backend QueryInterface, service, file 
 	if info.Size() > sourceReadMaxFileBytes {
 		return sourceRange{}, fmt.Errorf("file %q is %d bytes, over the %d-byte read ceiling (files this large are excluded from the index by the same extraction cap)", file, info.Size(), sourceReadMaxFileBytes)
 	}
-	data, err := os.ReadFile(full) //nolint:gosec — full is the EvalSymlinks-resolved, corpus-root-contained path from resolveRealPath
+	// Through the corpus reader (RT-91): the same cap, re-checked at open,
+	// and every byte charged to the request's admission ticket. full is the
+	// EvalSymlinks-resolved, corpus-root-contained path from resolveRealPath.
+	data, ex, err := corpus.ReadFileCapped(ctx, full, sourceReadMaxFileBytes)
 	if err != nil {
+		if ctx.Err() != nil || !errors.Is(err, fs.ErrNotExist) {
+			return sourceRange{}, err
+		}
+		return sourceRange{}, fmt.Errorf("file not found in service corpus: %q", file)
+	}
+	if ex != nil {
+		switch ex.Reason {
+		case corpus.ReasonBinary:
+			return sourceRange{}, fmt.Errorf("refusing to read binary file: %q", file)
+		case corpus.ReasonOversize:
+			return sourceRange{}, fmt.Errorf("file %q is %d bytes, over the %d-byte read ceiling (files this large are excluded from the index by the same extraction cap)", file, ex.Size, sourceReadMaxFileBytes)
+		}
 		return sourceRange{}, fmt.Errorf("file not found in service corpus: %q", file)
 	}
 	if connector.IsBinary(data) {

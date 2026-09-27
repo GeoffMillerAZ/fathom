@@ -114,6 +114,7 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	// predates --managed.
 	if managed {
 		if dir, dirErr := daemonStateDir(); dirErr == nil {
+			//fathom:tenancy-allow bare-go daemon lifetime goroutine started once at serve-http startup and stopped by the drain
 			go watchPauseSwitch(dir, 2*time.Second, time.Now, flog, nil)
 		}
 	}
@@ -353,8 +354,10 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	// (RT-63).
 	httpSrv := newDaemonServer(act.middleware(swap), daemonServerOpts{managed: managed, hosted: modulesToken != ""})
 	serveErr := make(chan error, 1)
+	//fathom:tenancy-allow bare-go daemon lifetime goroutine started once at serve-http startup and stopped by the drain
 	go func() { serveErr <- httpSrv.Serve(listener) }()
 	stopServing := func() {
+		//fathom:tenancy-allow bg-ctx daemon lifetime context in serve-http startup, cancelled by the drain; not a request
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
 		_ = httpSrv.Shutdown(ctx)
@@ -375,6 +378,7 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	}
 	// RT-97 (§7.1): the refresh queue's worker lives until the drain (or
 	// return) stops it; it is started once the backend exists below.
+	//fathom:tenancy-allow bg-ctx daemon lifetime context in serve-http startup, cancelled by the drain; not a request
 	refreshCtx, stopRefresh := context.WithCancel(context.Background())
 	defer stopRefresh()
 	// RT-44 (§8.5): a managed daemon's SIGTERM drains and exits 0.
@@ -396,6 +400,7 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 		signal.Stop(sigs)
 		close(sigs) // the handler below returns (an in-process caller)
 	}()
+	//fathom:tenancy-allow bare-go daemon lifetime goroutine started once at serve-http startup and stopped by the drain
 	go func() {
 		sig, ok := <-sigs
 		if !ok {
@@ -452,6 +457,7 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	}
 	lifetimeP.Store(lifetime)
 	defer lifetime.stop()
+	//fathom:tenancy-allow bare-go daemon lifetime goroutine started once at serve-http startup and stopped by the drain
 	go lifetime.run(daemonLifetimeTick)
 	if !managed && *exitWithParent {
 		if !watchParentExit(startPPID, parentExitPoll, os.Getppid, lifetime.shutdown) {
@@ -466,6 +472,7 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	// an unmounted volume with the daemon binary's own remedy (RT-165).
 	exePath, _ := os.Executable()
 	lastWaitErrno := ""
+	//fathom:tenancy-allow bg-ctx daemon lifetime context in serve-http startup, cancelled by the drain; not a request
 	storeCtx, cancelStoreWait := context.WithCancel(context.Background())
 	defer cancelStoreWait()
 	c, err := openStoreWithWait(storeCtx, storeWaitDeps[*client.Client]{
@@ -694,6 +701,7 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 		disabled:        selfRestartDisabled(),
 		executable:      os.Executable,
 		watch: func(path string, cfg selfRestartConfig) {
+			//fathom:tenancy-allow bare-go daemon lifetime goroutine started once at serve-http startup and stopped by the drain
 			go watchOwnBinary(path, outLog, cfg)
 		},
 	})
@@ -712,14 +720,18 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	errFile, _ := stderr.(*os.File)
 	// RT-127 (§12.2): the stdio logs rotate on their own 60 s ticker —
 	// FATHOM_SCAVENGE=off no longer pauses them.
+	//fathom:tenancy-allow bg-ctx daemon lifetime context in serve-http startup, cancelled by the drain; not a request
 	stdioCtx, stopStdio := context.WithCancel(context.Background())
 	defer stopStdio()
+	//fathom:tenancy-allow bare-go daemon lifetime goroutine started once at serve-http startup and stopped by the drain
 	go runStdioRotation(stdioCtx, stdioRotateEvery, outFile, errFile, outLog, flog)
 	if !managed {
 		outLog.Info("scavenge: off (unmanaged daemon, §10.1)")
 	} else if scavengeDisabled() {
 		outLog.Info("scavenge: OFF (FATHOM_SCAVENGE=off) — the daemon's OS-visible footprint may not shrink after a peak (O108); fathom-http.log/.err rotation runs on its own ticker")
 	} else {
+		//fathom:tenancy-allow bg-ctx daemon lifetime context in serve-http startup, cancelled by the drain; not a request
+		//fathom:tenancy-allow bare-go daemon lifetime goroutine started once at serve-http startup and stopped by the drain
 		go runMemoryScavenger(context.Background(), scavengeIntervalFromEnv(), outLog, func() {
 			scavengeTick(outLog, flog, time.Now)
 		}, nil)
@@ -738,21 +750,27 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	defer stopGovernor()
 	// RT-160: derive service_summary and observation_calls for services a
 	// pre-RT-76 store holds, one at a time under the ingest slot.
+	//fathom:tenancy-allow bg-ctx daemon lifetime context in serve-http startup, cancelled by the drain; not a request
 	backfillCtx, stopBackfill := context.WithCancel(context.Background())
 	defer stopBackfill()
+	//fathom:tenancy-allow bare-go daemon lifetime goroutine started once at serve-http startup and stopped by the drain
 	go runDerivedBackfill(backfillCtx, c, func(m string) { flog.Info(m) })
 	// RT-128 (§12.2): the managed daemon truncates the WAL after 5 idle
 	// minutes, at most hourly.
 	if cp, ok := c.Store().(interface{ Checkpoint(context.Context) error }); ok && managed {
+		//fathom:tenancy-allow bg-ctx daemon lifetime context in serve-http startup, cancelled by the drain; not a request
 		walCtx, stopWAL := context.WithCancel(context.Background())
 		defer stopWAL()
+		//fathom:tenancy-allow bare-go daemon lifetime goroutine started once at serve-http startup and stopped by the drain
 		go runWALIdleCheckpoint(walCtx, rpcActivity.Load, func() bool { return tenancy.DefaultInFlight.Len() > 0 }, cp.Checkpoint, func(m string) { outLog.Info(m) })
 	}
 	// RT-181 (§12.1): the managed daemon applies gc's daily classes once a
 	// day, idle and at the ladder's normal level only.
 	if managed {
+		//fathom:tenancy-allow bg-ctx daemon lifetime context in serve-http startup, cancelled by the drain; not a request
 		gcCtx, stopGC := context.WithCancel(context.Background())
 		defer stopGC()
+		//fathom:tenancy-allow bare-go daemon lifetime goroutine started once at serve-http startup and stopped by the drain
 		go runDailyGC(gcCtx, time.Now(), func() bool {
 			return tenancy.DefaultInFlight.Len() > 0 || tenancy.CurrentLevel() != tenancy.LevelNormal
 		}, func(m string) { outLog.Info(m) })

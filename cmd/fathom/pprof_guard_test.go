@@ -27,7 +27,7 @@ func TestPprofLoopbackCappedSingleProfile(t *testing.T) {
 	h := guardPprof(stub)
 
 	// A foreign Host is refused before any profile runs.
-	req := loopbackReq(http.MethodGet, "http://evil.example:7575/debug/pprof/profile", nil)
+	req := loopbackReq(http.MethodGet, "http://evil.example:7581/debug/pprof/profile", nil)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	if rec.Code != http.StatusForbidden {
@@ -37,7 +37,7 @@ func TestPprofLoopbackCappedSingleProfile(t *testing.T) {
 	// seconds=600 is capped to 30; while it runs, a second profile is refused 429.
 	done := make(chan int, 1)
 	go func() {
-		r := loopbackReq(http.MethodGet, "http://127.0.0.1:7575/debug/pprof/profile?seconds=600", nil)
+		r := loopbackReq(http.MethodGet, "http://127.0.0.1:7581/debug/pprof/profile?seconds=600", nil)
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, r)
 		done <- w.Code
@@ -45,7 +45,7 @@ func TestPprofLoopbackCappedSingleProfile(t *testing.T) {
 	if got := <-entered; got != "30" {
 		t.Fatalf("seconds reached the profiler as %q, want 30", got)
 	}
-	r2 := loopbackReq(http.MethodGet, "http://localhost:7575/debug/pprof/heap", nil)
+	r2 := loopbackReq(http.MethodGet, "http://localhost:7581/debug/pprof/heap", nil)
 	w2 := httptest.NewRecorder()
 	h.ServeHTTP(w2, r2)
 	if w2.Code != http.StatusTooManyRequests || !strings.Contains(w2.Body.String(), "one profile at a time") {
@@ -57,7 +57,7 @@ func TestPprofLoopbackCappedSingleProfile(t *testing.T) {
 	}
 	// Once it finished, the next profile runs.
 	w3 := httptest.NewRecorder()
-	h.ServeHTTP(w3, loopbackReq(http.MethodGet, "http://[::1]:7575/debug/pprof/heap?seconds=5", nil))
+	h.ServeHTTP(w3, loopbackReq(http.MethodGet, "http://[::1]:7581/debug/pprof/heap?seconds=5", nil))
 	if w3.Code != http.StatusOK || <-entered != "5" {
 		t.Fatalf("the next profile after release: %d", w3.Code)
 	}
@@ -109,14 +109,14 @@ func TestPprofRefusesRemotePeerSpoofingLoopbackHost(t *testing.T) {
 	mux := http.NewServeMux()
 	mountPprof(mux)
 	for _, path := range []string{"/debug/pprof/cmdline", "/debug/pprof/", "/debug/inflight"} {
-		req := loopbackReq(http.MethodGet, "http://127.0.0.1:7575"+path, nil)
+		req := loopbackReq(http.MethodGet, "http://127.0.0.1:7581"+path, nil)
 		req.RemoteAddr = "203.0.113.9:4444"
 		rec := httptest.NewRecorder()
 		mux.ServeHTTP(rec, req)
 		if rec.Code != http.StatusForbidden {
 			t.Errorf("GET %s from a remote peer with a loopback Host: %d, want 403", path, rec.Code)
 		}
-		req = loopbackReq(http.MethodGet, "http://127.0.0.1:7575"+path, nil)
+		req = loopbackReq(http.MethodGet, "http://127.0.0.1:7581"+path, nil)
 		req.RemoteAddr = "127.0.0.1:50000"
 		rec = httptest.NewRecorder()
 		mux.ServeHTTP(rec, req)

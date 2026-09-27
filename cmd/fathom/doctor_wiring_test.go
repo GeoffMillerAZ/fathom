@@ -25,7 +25,7 @@ func wiringFixture(t *testing.T) (root string) {
 			t.Fatal(err)
 		}
 	}
-	write(".mcp.json", `{"mcpServers":{"fathom":{"type":"http","url":"http://localhost:7575/rpc/agent"}}}`)
+	write(".mcp.json", `{"mcpServers":{"fathom":{"type":"http","url":"http://localhost:7581/rpc/agent"}}}`)
 	write(".claude/skills/fathom-doctor/SKILL.md", skillMarker+" v1 -->\n# doctor\n")
 	return root
 }

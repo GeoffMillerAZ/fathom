@@ -32,6 +32,7 @@ func consoleScope(ctx context.Context, c *client.Client, service string) memo.Sc
 func consoleSnapshot(ctx context.Context, c *client.Client, service string) (*memo.Snapshot, error) {
 	snap, err := memo.SnapshotForExtra(ctx, consoleScope(ctx, c, service), func(l context.Context) ([]core.SymbolNode, any, error) {
 		cctx, col := scope.WithCollector(l)
+		//fathom:tenancy-allow sources the console's graph-store group: loads the shared memo snapshot once per watermark (single flight, memo-budgeted)
 		nodes, err := c.ListAllSymbols(cctx, service)
 		return nodes, col.For(service), err
 	})

@@ -95,6 +95,7 @@ func renderFleet(t console.FleetTableModel, metrics console.Metrics, m observato
 
 // ─── the health rollup ──────────────────────────────────────────────────
 
+//fathom:tenancy-allow pkg-map read-only lookup table of constants, never written after init: not a cache
 var healthStatus = map[console.Health]topology.Status{
 	console.HealthFailed: topology.Failed, console.HealthDegraded: topology.Degraded,
 	console.HealthUnknown: topology.Unknown, console.HealthHealthy: topology.Healthy,

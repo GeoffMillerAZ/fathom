@@ -72,12 +72,12 @@ func TestEveryDaemonRequestCarriesCaller(t *testing.T) {
 	}
 
 	// Only daemon hosts: an outbound request elsewhere is left alone.
-	for host, want := range map[string]bool{"127.0.0.1:7575": true, "localhost:7575": true, "[::1]:7575": true, "api.example.com": false} {
+	for host, want := range map[string]bool{"127.0.0.1:7581": true, "localhost:7581": true, "[::1]:7581": true, "api.example.com": false} {
 		if got := client.IsDaemonHost(host, ""); got != want {
 			t.Errorf("IsDaemonHost(%q) = %v, want %v", host, got, want)
 		}
 	}
-	if !client.IsDaemonHost("daemon.example:7575", "http://daemon.example:7575") {
+	if !client.IsDaemonHost("daemon.example:7581", "http://daemon.example:7581") {
 		t.Error("the FATHOM_HTTP host is a daemon host")
 	}
 }

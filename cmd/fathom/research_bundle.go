@@ -375,6 +375,8 @@ func retroCorpusDir(root string) string {
 // retro firing may be counted under in the shareable bundle (IR-5).
 // Anything else collapses to "unrecognized" — a retro artifact is a local
 // file, and nothing read from it reaches the bundle verbatim.
+//
+//fathom:tenancy-allow pkg-map read-only lookup table of constants, never written after init: not a cache
 var retroChannelLabels = map[string]string{"guard": "guard", "obligations": "obligations"}
 
 func retroOutcomeLabel(outcome string) string {

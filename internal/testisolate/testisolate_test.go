@@ -66,7 +66,7 @@ func TestIsolateAndRun_ExitsWhenTempUnavailable(t *testing.T) {
 // returned.
 func TestIsolateAndRun_IsolatesEnvironment(t *testing.T) {
 	saveEnv(t)
-	t.Setenv("FATHOM_HTTP", "http://localhost:7575")
+	t.Setenv("FATHOM_HTTP", "http://localhost:7581")
 	t.Setenv("FATHOM_STATE_DIR", "/real/operator/state")
 	t.Setenv("FATHOM_CALL_LOG", "/real/operator/mcp-calls.jsonl")
 	parent := t.TempDir()
@@ -116,13 +116,13 @@ func TestIsolateAndRun_IsolatesEnvironment(t *testing.T) {
 // TestBackstopFromEnvInChildProcess: testing.Testing() is false in a child
 // process, so the env flag alone must carry the backstop.
 func TestBackstopFromEnvInChildProcess(t *testing.T) {
-	if got := backstop(false, "", "http://localhost:7575"); got != "http://localhost:7575" {
+	if got := backstop(false, "", "http://localhost:7581"); got != "http://localhost:7581" {
 		t.Fatalf("not under test: %q, want the default", got)
 	}
-	if got := backstop(false, "1", "http://localhost:7575"); got != UnroutableURL {
+	if got := backstop(false, "1", "http://localhost:7581"); got != UnroutableURL {
 		t.Fatalf("FATHOM_TEST=1: %q, want %q", got, UnroutableURL)
 	}
-	if got := backstop(true, "", "http://localhost:7575"); got != UnroutableURL {
+	if got := backstop(true, "", "http://localhost:7581"); got != UnroutableURL {
 		t.Fatalf("testing.Testing(): %q, want %q", got, UnroutableURL)
 	}
 }

@@ -404,6 +404,7 @@ type RoundTripReport struct {
 // the whole export.
 func scipGoSymbolNames(scipGoPath, modulePath string) (map[string]bool, error) {
 	outPath := modulePath + "/index.scip"
+	//fathom:tenancy-allow exec-noctx scip export CLI path (go list for symbol names); no request context in its API
 	cmd := exec.Command(scipGoPath)
 	cmd.Dir = modulePath
 	var stderr bytes.Buffer

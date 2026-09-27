@@ -110,6 +110,8 @@ var companionTools = func() map[string]bool {
 // tools. Every other GroupShared tool is deliberately absent here — update
 // this list and surface_test.go together, the same discipline
 // companionTools already documents.
+//
+//fathom:tenancy-allow pkg-map read-only lookup table of constants, never written after init: not a cache
 var hostedModulesTools = map[string]bool{
 	"list_modules":       true,
 	"module_obligations": true,

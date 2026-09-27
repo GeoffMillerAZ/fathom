@@ -286,6 +286,7 @@ func rerankWithinTiers(ctx context.Context, d decision.Decider, file, hunk strin
 	for i, chunk := range chunks {
 		wg.Add(1)
 		sem <- struct{}{}
+		//fathom:tenancy-allow bare-go bounded fan-out: a semaphore caps the goroutines and a WaitGroup joins them
 		go func(i int, chunk []scored) {
 			defer wg.Done()
 			defer func() { <-sem }()

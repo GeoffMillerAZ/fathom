@@ -57,6 +57,7 @@ func (m memoRefReader) ServiceRefsFor(ctx context.Context, service string) (stor
 // dropServiceRefs forgets service's memoized refs at the backend's current
 // watermark.
 func dropServiceRefs(backend QueryInterface, service string) {
+	//fathom:tenancy-allow bg-ctx scope lookup to drop a memo entry after a per-file refresh, called through a context-free interface; a point query on the watermark
 	serviceRefsGroup.Remove(serviceRefsKey{navScopeNoEnsure(context.Background(), backend, service)}, memo.ReasonWatermark)
 }
 

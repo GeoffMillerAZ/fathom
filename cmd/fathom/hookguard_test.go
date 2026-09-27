@@ -255,7 +255,7 @@ func TestHooksSilentWhenDisabled(t *testing.T) {
 			t.Fatal(err)
 		}
 		defer os.Remove(p)
-		t.Setenv("FATHOM_HTTP", "http://localhost:7575")
+		t.Setenv("FATHOM_HTTP", "http://localhost:"+managedPort)
 		hits.Store(0)
 		isolateHookRun(t)
 		code, out, _ := runHookVerb(t, []string{"session-hook"}, payload)

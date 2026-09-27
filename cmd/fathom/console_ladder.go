@@ -22,16 +22,20 @@ func realizationVerb(service string) string {
 
 // rungSurface and rungInk color a rung by its state (complete literals for
 // the CSS build); the state is always also words.
+//
+//fathom:tenancy-allow pkg-map read-only lookup table of constants, never written after init: not a cache
 var rungSurface = map[string]string{
 	console.RungMet: "border-positive", console.RungUnmet: "border-danger",
 	console.RungUnknown: "border-line", console.RungNotApplicable: "border-line",
 }
 
+//fathom:tenancy-allow pkg-map read-only lookup table of constants, never written after init: not a cache
 var rungInk = map[string]string{
 	console.RungMet: "text-positive", console.RungUnmet: "text-danger",
 	console.RungUnknown: "text-ink-muted", console.RungNotApplicable: "text-ink-muted",
 }
 
+//fathom:tenancy-allow pkg-map read-only lookup table of constants, never written after init: not a cache
 var rungWords = map[string]string{
 	console.RungMet: "met", console.RungUnmet: "not met",
 	console.RungUnknown: "unknown — not measured", console.RungNotApplicable: "does not apply",

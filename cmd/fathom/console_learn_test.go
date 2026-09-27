@@ -842,7 +842,7 @@ func TestConsoleShell_StickyPagesFreeMain(t *testing.T) {
 // breaks anywhere squeezed it to "Cop / y"), and a short single-word cell
 // of a try-it answer ("resolved") stays whole while long paths still break.
 func TestConsoleLearnAsk_NoMidWordBreaks(t *testing.T) {
-	chip := renderVerbChip("claude mcp add --transport http fathom http://127.0.0.1:7575/rpc/agent")
+	chip := renderVerbChip("claude mcp add --transport http fathom http://127.0.0.1:7581/rpc/agent")
 	if !strings.Contains(chip, "shrink-0") || !strings.Contains(chip, "whitespace-nowrap") || !strings.Contains(chip, `aria-label="Copy the line claude mcp add`) {
 		t.Errorf("the copy button must neither shrink nor wrap, and name what it copies: %s", chip)
 	}

@@ -363,6 +363,7 @@ func (p *Parser) bounded(what string, op func() (any, error)) (any, error) {
 		err error
 	}
 	ch := make(chan opResult, 1)
+	//fathom:tenancy-allow bare-go runs one wasm op against its deadline; the reaper closes the module when a timed-out op returns
 	go func() {
 		val, err := op()
 		ch <- opResult{val: val, err: err}
@@ -379,6 +380,7 @@ func (p *Parser) bounded(what string, op func() (any, error)) (any, error) {
 		// callers from here on; the reaper closes the module when the op
 		// goroutine finishes in the background.
 		p.closed.Store(true)
+		//fathom:tenancy-allow bare-go runs one wasm op against its deadline; the reaper closes the module when a timed-out op returns
 		go func() {
 			<-ch
 			_ = p.mod.Close(context.Background())

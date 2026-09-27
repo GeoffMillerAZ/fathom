@@ -134,7 +134,7 @@ func TestManagedBreakerStopWritesDisabledJSON(t *testing.T) {
 		beginLifecycle(in)
 	}
 	in := lcStart(ledger, 300, t0.Add(6*time.Minute))
-	in.managed, in.addr = true, "127.0.0.1:7575"
+	in.managed, in.addr = true, "127.0.0.1:7581"
 	in.switchDir = filepath.Join(home, ".fathom", "daemon")
 	var logged []string
 	in.logf = func(m string) { logged = append(logged, m) }
@@ -148,7 +148,7 @@ func TestManagedBreakerStopWritesDisabledJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 	rec, err := tenancy.ParseSwitch(raw)
-	if err != nil || rec.Reason != "breaker" || rec.Addr != "127.0.0.1:7575" || !strings.Contains(rec.Detail, "counted exits") || rec.Since.IsZero() {
+	if err != nil || rec.Reason != "breaker" || rec.Addr != "127.0.0.1:7581" || !strings.Contains(rec.Detail, "counted exits") || rec.Since.IsZero() {
 		t.Fatalf("disabled.json = %s (%v)", raw, err)
 	}
 	if !strings.Contains(strings.Join(logged, "\n"), "launchd will not relaunch") {
@@ -206,7 +206,7 @@ func TestDeployKickstartNotCountedByBreaker(t *testing.T) {
 	if err := os.MkdirAll(filepath.Dir(recPath), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	recJSON, _ := json.Marshal(map[string]any{"schema_version": 2, "addr": "127.0.0.1:7575", "pid": 4242, "started_at": t0.Format(time.RFC3339)})
+	recJSON, _ := json.Marshal(map[string]any{"schema_version": 2, "addr": "127.0.0.1:7581", "pid": 4242, "started_at": t0.Format(time.RFC3339)})
 	if err := os.WriteFile(recPath, recJSON, 0o600); err != nil {
 		t.Fatal(err)
 	}

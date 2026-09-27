@@ -223,6 +223,7 @@ func valuePlain(v console.Value[int]) string {
 // fathom no longer patches either.
 func renderKitTable(p table.TableParams) string {
 	var buf bytes.Buffer
+	//fathom:tenancy-allow bg-ctx templ render into a buffer: the context only carries templ values, nothing is cancelled or read
 	_ = table.Table(p).Render(context.Background(), &buf)
 	return buf.String()
 }

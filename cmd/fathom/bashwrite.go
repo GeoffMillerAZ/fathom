@@ -48,6 +48,8 @@ var sedInPlaceRe = regexp.MustCompile(`\bsed\b.*?\s-i(?:[\w.]*|\s+'')?\b`)
 var gitApplyRe = regexp.MustCompile(`\bgit\s+(?:apply|am)\b`)
 
 // bashWriteDevNull are redirection targets that are never a repo file.
+//
+//fathom:tenancy-allow pkg-map read-only lookup table of constants, never written after init: not a cache
 var bashWriteDevNull = map[string]bool{
 	"/dev/null": true, "/dev/stderr": true, "/dev/stdout": true, "&1": true, "&2": true,
 }

@@ -32,6 +32,8 @@ const (
 // tokens — BA-8 labels any tokens-from-bytes conversion an ESTIMATE, and
 // this is that same estimate run in reverse (charsPerToken converts once,
 // here, into the char units fitToBudget/applyBudget operate in).
+//
+//fathom:tenancy-allow pkg-map read-only lookup table of constants, never written after init: not a cache
 var measuredDefaults = map[toolBudgetClass]int{
 	classList:      1500,
 	classComposite: 4000,
@@ -53,6 +55,8 @@ const charsPerToken = 4
 // and outline are likewise absent — the design table classes them, but
 // nothing routes their sizing through here, so they are NOT budgeted by
 // class.
+//
+//fathom:tenancy-allow pkg-map read-only lookup table of constants, never written after init: not a cache
 var toolBudgetClasses = map[string]toolBudgetClass{
 	"query_symbols": classList,
 	"references":    classList,

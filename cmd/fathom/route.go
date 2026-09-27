@@ -65,6 +65,8 @@ var routeVerbs = []decision.Option{
 // routeShapeOf maps each routeVerbs Name to DP-9's fixed shape label —
 // what the response's "shape" field names, independent of the verb string
 // itself (references and find_callers share "who-calls").
+//
+//fathom:tenancy-allow pkg-map read-only lookup table of constants, never written after init: not a cache
 var routeShapeOf = map[string]string{
 	"localize":         "issue",
 	"find_symbol":      "where",

@@ -154,6 +154,7 @@ func serviceSnapshot(ctx context.Context, backend QueryInterface, service string
 		// replayed to every reader below: a cached snapshot still says
 		// what it hides (SP-3).
 		cctx, col := scope.WithCollector(lctx)
+		//fathom:tenancy-allow sources the nav memo's loader: the one shared snapshot per watermark (single flight, memo-budgeted)
 		nodes, err := backend.ListAllSymbols(cctx, service)
 		return nodes, col.For(service), err
 	})

@@ -115,6 +115,7 @@ func runReview(args []string, gitRunner func(args ...string) ([]byte, error), st
 		// process; it holds no store write path (--no-persist enforced
 		// above).
 		done := make(chan int, 1)
+		//fathom:tenancy-allow bare-go CLI: the body raced against its timeout on a buffered channel
 		go func() { done <- body() }()
 		select {
 		case rc := <-done:

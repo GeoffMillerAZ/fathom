@@ -508,6 +508,7 @@ func localGitHead(path string) string {
 		return ""
 	}
 	var out strings.Builder
+	//fathom:tenancy-allow exec-noctx module-host HEAD read at load time, not per request; its API takes no context
 	cmd := exec.Command("git", "-C", path, "rev-parse", "HEAD")
 	cmd.Stdout = &out
 	if err := cmd.Run(); err != nil {

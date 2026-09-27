@@ -37,8 +37,8 @@ import (
 type autoRefreshBackend struct {
 	QueryInterface
 	log    *dlog.Logger
-	headFn func(path string) string // injectable for tests; default = currentGitHead
-	now    func() time.Time         // injectable clock for the failure backoff; nil = time.Now
+	headFn func(ctx context.Context, path string) string // injectable for tests; default = currentGitHead
+	now    func() time.Time                              // injectable clock for the failure backoff; nil = time.Now
 	// ownerAlive reports whether the process that began an ingest (pid,
 	// at started) is still running — RT-109's liveness check; nil = the
 	// process-wide probe (SetIngestOwnerProbe).
@@ -72,6 +72,7 @@ type autoRefreshBackend struct {
 // to silence it. The daemon shares one queue with the ingest tool and its
 // routes: NewAutoRefreshQueued.
 func NewAutoRefresh(backend QueryInterface, log *dlog.Logger) QueryInterface {
+	//fathom:tenancy-allow bg-ctx NewAutoRefresh starts a process-lifetime refresh queue; daemons use NewAutoRefreshQueued with the drain's context
 	ar, _ := newAutoRefreshUntil(context.Background(), backend, log)
 	return ar
 }
@@ -288,7 +289,7 @@ func (a *autoRefreshBackend) ensure(ctx context.Context, service string) {
 		}
 		path, indexed = rowPath, ""
 	}
-	head := a.headFn(path)
+	head := a.headFn(ctx, path)
 	if head == "" {
 		// RT-110/I48: the request path probes (stats, cached) — never the
 		// content manifest, which reads the whole corpus.
@@ -502,6 +503,7 @@ func (a *autoRefreshBackend) FindSymbol(ctx context.Context, serviceID, name str
 
 func (a *autoRefreshBackend) ListAllSymbols(ctx context.Context, serviceID string) ([]core.SymbolNode, error) {
 	a.ensure(ctx, serviceID)
+	//fathom:tenancy-allow sources autorefresh's QueryInterface pass-through, which only forwards the call; the memo loader is the one caller
 	return a.QueryInterface.ListAllSymbols(ctx, serviceID)
 }
 

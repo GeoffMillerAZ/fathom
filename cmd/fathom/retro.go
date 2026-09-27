@@ -275,6 +275,7 @@ func readRetroBeats(path string) ([]retroBeat, error) {
 // direction (it under-claims impact, never over-claims).
 func gitAftermath(root string, start time.Time) (committed, modified map[string]bool) {
 	committed, modified = map[string]bool{}, map[string]bool{}
+	//fathom:tenancy-allow exec-noctx one-shot CLI verb with no request context; the git/child call ends with the process
 	log := exec.Command("git", "-C", root, "log", "--since="+start.UTC().Format(time.RFC3339), "--name-only", "--pretty=format:")
 	if raw, err := log.Output(); err == nil {
 		for _, ln := range strings.Split(string(raw), "\n") {
@@ -283,6 +284,7 @@ func gitAftermath(root string, start time.Time) (committed, modified map[string]
 			}
 		}
 	}
+	//fathom:tenancy-allow exec-noctx one-shot CLI verb with no request context; the git/child call ends with the process
 	st := exec.Command("git", "-C", root, "status", "--porcelain")
 	if raw, err := st.Output(); err == nil {
 		for _, ln := range strings.Split(string(raw), "\n") {

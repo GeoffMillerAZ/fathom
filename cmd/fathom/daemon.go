@@ -394,7 +394,9 @@ func cmdDaemonInstall(args []string, stdout, stderr io.Writer) int {
 	uid := os.Getuid()
 	// bootout first so a re-install replaces rather than stacks; a missing
 	// service makes bootout fail, which is fine and not worth reporting.
+	//fathom:tenancy-allow exec-noctx one-shot CLI verb with no request context; the git/child call ends with the process
 	_ = exec.Command("launchctl", "bootout", fmt.Sprintf("gui/%d/%s", uid, *label)).Run()
+	//fathom:tenancy-allow exec-noctx one-shot CLI verb with no request context; the git/child call ends with the process
 	out, bootErr := exec.Command("launchctl", "bootstrap", fmt.Sprintf("gui/%d", uid), plistPath).CombinedOutput()
 	if bootErr != nil {
 		fmt.Fprintf(stderr, "fathom daemon install: wrote the agent but launchctl bootstrap failed: %v\n%s\n", bootErr, strings.TrimSpace(string(out)))
@@ -518,6 +520,7 @@ func cmdDaemonUninstall(args []string, stdout, stderr io.Writer) int {
 		return 0
 	}
 	plistPath := filepath.Join(launchAgentsDir(), target+".plist")
+	//fathom:tenancy-allow exec-noctx one-shot CLI verb with no request context; the git/child call ends with the process
 	_ = exec.Command("launchctl", "bootout", fmt.Sprintf("gui/%d/%s", os.Getuid(), target)).Run()
 	if err := os.Remove(plistPath); err != nil && !os.IsNotExist(err) {
 		fmt.Fprintf(stderr, "error: removing %s: %v\n", plistPath, err)

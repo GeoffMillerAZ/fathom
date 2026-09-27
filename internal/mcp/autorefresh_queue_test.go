@@ -79,7 +79,7 @@ func TestEnsureNeverIngestsInline(t *testing.T) {
 	// The public constructor runs on a queue too.
 	pf := &gatedIngestFake{refreshFake: refreshFake{path: "/r", indexed: "old"}, started: make(chan string, 1), release: make(chan struct{}), running: new(int64), maxSeen: new(int64)}
 	pub := NewAutoRefreshForTest(t, pf).(*autoRefreshBackend)
-	pub.headFn = func(string) string { return "new" }
+	pub.headFn = func(context.Context, string) string { return "new" }
 	done := make(chan struct{})
 	go func() { pub.ensure(context.Background(), "svc"); close(done) }()
 	select {
@@ -156,7 +156,7 @@ func TestServerAdoptsAutoRefreshQueue(t *testing.T) {
 	var running, maxSeen int64
 	f := &gatedIngestFake{refreshFake: refreshFake{path: "/r", indexed: "old"}, started: started, release: release, running: &running, maxSeen: &maxSeen}
 	ar := NewAutoRefreshForTest(t, f).(*autoRefreshBackend)
-	ar.headFn = func(string) string { return "new" }
+	ar.headFn = func(context.Context, string) string { return "new" }
 	srv := NewServer(ar)
 	if srv.RefreshQueue() != ar.RefreshQueue() {
 		t.Fatal("the server did not adopt its auto-refresh backend's queue")

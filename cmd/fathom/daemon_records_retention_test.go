@@ -51,7 +51,7 @@ func TestDaemonRecordRetentionIsBounded(t *testing.T) {
 		return p
 	}
 	staleScratch := write("addr-7001-"+strconv.Itoa(gone), console.DaemonRecord{Addr: "127.0.0.1:7001", PID: gone})
-	managedDown := write("dev.fathom.serve-http", console.DaemonRecord{Addr: "127.0.0.1:7575", PID: gone, Managed: true})
+	managedDown := write("dev.fathom.serve-http", console.DaemonRecord{Addr: "127.0.0.1:7581", PID: gone, Managed: true})
 	liveOther := write("addr-7002-"+strconv.Itoa(os.Getppid()), console.DaemonRecord{Addr: "127.0.0.1:7002", PID: os.Getppid()})
 
 	if _, _, err := recordServingDaemonAs(daemonMeta{PPID: 1}, "127.0.0.1:7003", "", "", "c0ffee", now); err != nil {
@@ -76,7 +76,7 @@ func TestDaemonRecordRetentionIsBounded(t *testing.T) {
 	if rec, ok := findDaemonRecord(home, "127.0.0.1:7004"); ok {
 		t.Fatalf("findDaemonRecord read a directory that cannot hold 127.0.0.1:7004: %+v", rec)
 	}
-	if rec, ok := findDaemonRecord(home, "localhost:7575"); !ok || !rec.Managed {
+	if rec, ok := findDaemonRecord(home, "localhost:7581"); !ok || !rec.Managed {
 		t.Fatalf("the managed daemon's labelled record not found for its address: %+v ok=%v", rec, ok)
 	}
 	if rec, ok := findDaemonRecord(home, "127.0.0.1:7002"); !ok || rec.PID != os.Getppid() {

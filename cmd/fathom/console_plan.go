@@ -201,6 +201,8 @@ func planStamp(s console.PlanStampFacts) string {
 }
 
 // stateBadge is a row state's card badge: its words and its role.
+//
+//fathom:tenancy-allow pkg-map read-only lookup table of constants, never written after init: not a cache
 var stateBadge = map[string]kanban.Badge{
 	console.RowProven:         {Label: "proven", Role: "positive-soft"},
 	console.RowOpMeasured:     {Label: "measured", Role: "info-soft"},
@@ -252,6 +254,7 @@ func renderPlanBoard(v console.PlanLedgerView) string {
 		}
 	}
 	var buf bytes.Buffer
+	//fathom:tenancy-allow bg-ctx templ render into a buffer: the context only carries templ values, nothing is cancelled or read
 	_ = kanban.Board(cols, cards).Render(context.Background(), &buf)
 	note := ""
 	if cut > 0 {

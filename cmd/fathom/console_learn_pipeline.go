@@ -343,6 +343,7 @@ func learnProbeFilesKey(root string) string {
 		if !info.IsDir() || !listDir {
 			return
 		}
+		//fathom:tenancy-allow whole-read lists one directory's entries (names only), no file content
 		entries, err := os.ReadDir(p)
 		if err != nil {
 			b.WriteString(p + ":unreadable;")
@@ -723,6 +724,7 @@ func readVerifyLedgerFor(path, svc, root string) learnGate {
 // relative path. A missing directory is no plans; an unreadable one is an
 // error (a glob would swallow it).
 func currentPlanPaths(root string) (map[string]bool, error) {
+	//fathom:tenancy-allow whole-read lists one directory's entries (names only), no file content
 	entries, err := os.ReadDir(filepath.Join(root, "docs", "plans"))
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {

@@ -35,6 +35,7 @@ import (
 // (HEAD~1), or nil when unavailable (HEAD has no parent — the root commit —
 // or the path did not exist there).
 func headParentFileVersion(repoDir, rel string) []byte {
+	//fathom:tenancy-allow exec-noctx one-shot CLI verb with no request context; the git/child call ends with the process
 	cmd := exec.Command("git", "-C", repoDir, "show", "HEAD~1:"+filepath.ToSlash(rel))
 	out, err := cmd.Output()
 	if err != nil {

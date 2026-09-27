@@ -60,7 +60,7 @@ func newARQueued(t testing.TB, fake QueryInterface, head string, q *refresh.Queu
 	}
 	return &autoRefreshBackend{
 		QueryInterface: fake,
-		headFn:         func(string) string { return head },
+		headFn:         func(context.Context, string) string { return head },
 		queue:          q,
 		seen:           make(map[string]string),
 		pending:        make(map[string]string),
@@ -167,7 +167,7 @@ func TestAutoRefresh_AutoRefreshTotal_CountsDebouncedRefreshesOnce(t *testing.T)
 	}
 
 	// A second, later drift bumps it again.
-	ar.headFn = func(string) string { return "newersha" }
+	ar.headFn = func(context.Context, string) string { return "newersha" }
 	ar.ListAllSymbols(ctx, "svc")
 	settle(t, ar)
 	if got := ar.AutoRefreshTotal(); got != 2 {

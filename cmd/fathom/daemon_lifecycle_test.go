@@ -42,13 +42,13 @@ func stopFixture(t *testing.T, addr string, pid int) (string, *fakeDaemonOps) {
 // reports success only once the process is gone AND the port is closed. A
 // process that dies while the port stays open is NOT a stop.
 func TestStopProofRequiresPortClosed(t *testing.T) {
-	const addr = "127.0.0.1:7575"
+	const addr = "127.0.0.1:7581"
 	home, ops := stopFixture(t, addr, 4242)
 	// The process exits on SIGTERM but something still holds the port.
 	ops.onSignal = func(f *fakeDaemonOps, pid int, sig syscall.Signal) { f.kill(pid, "") }
 	var out, errBuf bytes.Buffer
 	rc := runDaemonStop([]string{"--url", "http://" + addr, "--reason", "test"}, &out, &errBuf, ops)
-	if rc == 0 || !strings.Contains(out.String(), "NOT STOPPED") || !strings.Contains(out.String(), ":7575 is still open") {
+	if rc == 0 || !strings.Contains(out.String(), "NOT STOPPED") || !strings.Contains(out.String(), ":7581 is still open") {
 		t.Fatalf("an open port must fail the stop: rc=%d\n%s", rc, out.String())
 	}
 	if strings.Contains(out.String(), "gone after") {
@@ -69,7 +69,7 @@ func TestStopProofRequiresPortClosed(t *testing.T) {
 	if rc := runDaemonStop([]string{"--url", "http://" + addr}, &out, &errBuf, ops); rc != 0 {
 		t.Fatalf("stop: rc=%d\n%s", rc, out.String())
 	}
-	for _, want := range []string{"pid 4242 gone after", "(SIGTERM)", ":7575 closed", "launchd will not relaunch: disabled.json"} {
+	for _, want := range []string{"pid 4242 gone after", "(SIGTERM)", ":7581 closed", "launchd will not relaunch: disabled.json"} {
 		if !strings.Contains(out.String(), want) {
 			t.Fatalf("the proof must carry %q:\n%s", want, out.String())
 		}
@@ -106,7 +106,7 @@ func TestStopUnderV1PlistNamesRelaunchAndBootout(t *testing.T) {
 	if runtime.GOOS != "darwin" {
 		t.Skip("launchd plists are darwin-only")
 	}
-	const addr = "127.0.0.1:7575"
+	const addr = "127.0.0.1:7581"
 	home, ops := stopFixture(t, addr, 4242)
 	t.Setenv("XPC_SERVICE_NAME", "")
 	agents := filepath.Join(home, "Library", "LaunchAgents")

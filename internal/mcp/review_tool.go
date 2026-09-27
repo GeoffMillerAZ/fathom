@@ -263,12 +263,12 @@ func reviewVerdictOutcome(v review.Verdict, resolutions map[string]string) map[s
 // Base stays "" exactly as if since had not been given, and no error is
 // returned — every other review_diff dimension must still run regardless
 // of whether the base-aware ones can.
-func reviewDiffWithBase(in *review.Input, root, since string) {
+func reviewDiffWithBase(ctx context.Context, in *review.Input, root, since string) {
 	in.Root = root
 	if since == "" || root == "" {
 		return
 	}
-	out, err := exec.Command("git", "-C", root, "rev-parse", since).Output()
+	out, err := exec.CommandContext(ctx, "git", "-C", root, "rev-parse", since).Output()
 	if err != nil {
 		return
 	}
@@ -459,7 +459,7 @@ func buildReviewInput(ctx context.Context, backend QueryInterface, service strin
 	}
 	// CV-13 (ADR-044 §1.6): resolve since in the service's OWN indexed
 	// root — never the daemon process's cwd — and fill Input.Base/Root.
-	reviewDiffWithBase(&in, corpusRoot, since)
+	reviewDiffWithBase(ctx, &in, corpusRoot, since)
 	// DimIntegrity (ADR-044 §1.6, CV-12, gap-closing wave 3 item 1): the
 	// "integrity" conserve plane over exactly the base just resolved — a
 	// no-op (leaves IntegrityFindings empty) when Base is still "" or

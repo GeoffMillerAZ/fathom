@@ -42,6 +42,7 @@ func NewGitHubConnector(repo string, runner func(args ...string) ([]byte, error)
 
 // runGH is the default runner that delegates to the gh CLI via os/exec.
 func runGH(args ...string) ([]byte, error) {
+	//fathom:tenancy-allow exec-noctx gh call in the GitHub connector at ingest time, never on a request path; its API takes no context
 	cmd := exec.Command("gh", args...)
 	return cmd.Output()
 }

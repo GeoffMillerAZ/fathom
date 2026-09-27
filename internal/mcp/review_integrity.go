@@ -15,13 +15,16 @@ package mcp
 
 import (
 	"context"
-	"os"
+	"errors"
+	"fmt"
+	"io/fs"
 	"path/filepath"
 	"strconv"
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/review"
 	"github.com/geoffmilleraz/fathom/internal/conserve"
+	"github.com/geoffmilleraz/fathom/internal/corpus"
 )
 
 // applyIntegrityDimension fills in.IntegrityFindings from the "integrity"
@@ -60,10 +63,10 @@ func applyIntegrityDimension(ctx context.Context, in *review.Input, backend Quer
 		Head:         conserve.HeadWorktree,
 		ChangedFiles: in.ChangedFiles,
 		BaseFile: func(path string) ([]byte, bool, error) {
-			b := gitShowFile(corpusRoot, base, path)
+			b := gitShowFile(ctx, corpusRoot, base, path)
 			return b, b != nil, nil
 		},
-		HeadFile: func(path string) ([]byte, bool, error) { return readWorktreeFileForIntegrity(corpusRoot, path) },
+		HeadFile: func(path string) ([]byte, bool, error) { return readWorktreeFileForIntegrity(ctx, corpusRoot, path) },
 		Store:    cb.Store(),
 	}
 	findings, _ := plane.Check(ctx, cin)
@@ -86,14 +89,21 @@ func applyIntegrityDimension(ctx context.Context, in *review.Input, backend Quer
 // readWorktreeFileForIntegrity reads path (repo-relative) from disk under
 // root — this package's mirror of cmd/fathom/reviewintegrity.go's
 // readWorktreeFile.
-func readWorktreeFileForIntegrity(root, path string) ([]byte, bool, error) {
-	full := filepath.Join(root, filepath.FromSlash(path))
-	b, err := os.ReadFile(full) //nolint:gosec — root is the service's own indexed corpus root, path is repo-relative
+//
+// It reads through the corpus reader (RT-91): stat-capped at the extraction
+// cap and charged to the request's ticket. An oversize or binary file is an
+// error naming why, never a silent "absent".
+func readWorktreeFileForIntegrity(ctx context.Context, root, path string) ([]byte, bool, error) {
+	full := filepath.Join(root, filepath.FromSlash(path)) // root is the service's own indexed corpus root, path is repo-relative
+	b, ex, err := corpus.ReadFileCapped(ctx, full, sourceReadMaxFileBytes)
 	if err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, fs.ErrNotExist) {
 			return nil, false, nil
 		}
 		return nil, false, err
+	}
+	if ex != nil {
+		return nil, false, fmt.Errorf("%s: %s (%d bytes)", path, ex.Reason, ex.Size)
 	}
 	return b, true, nil
 }

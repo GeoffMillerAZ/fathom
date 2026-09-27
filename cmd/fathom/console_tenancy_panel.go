@@ -39,6 +39,7 @@ func operateResources(selfURL string) resourcesReport {
 	if fetch := env.fetch; fetch != nil {
 		env.fetch = func(u string) (*StatuszReport, error) {
 			if r := inProcessDaemon(u); r != nil && r.statusz != nil {
+				//fathom:tenancy-allow bg-ctx in-process statusz for the resources panel's shared background rebuild; no request owns it
 				rep := r.statusz(context.Background())
 				return &rep, nil
 			}
@@ -81,6 +82,7 @@ func operateResourcesCached(selfURL string, now time.Time) resourcesReport {
 		}
 		if !c.building {
 			c.building, c.done = true, make(chan struct{})
+			//fathom:tenancy-allow bare-go one background rebuild at a time (c.building), signalled through c.done
 			go refreshOperateResources(selfURL, now, c.gen, c.done)
 		}
 		if warm {

@@ -15,7 +15,7 @@ import (
 
 func TestInitPrintsVerifyGateWithQuiet(t *testing.T) {
 	var out bytes.Buffer
-	printManualSteps(&out, "myservice", "http://127.0.0.1:7575")
+	printManualSteps(&out, "myservice", "http://127.0.0.1:7581")
 	got := out.String()
 
 	if !strings.Contains(got, "bin/fathom verify --service myservice --plan docs/plans/<plan>.md --quiet") {

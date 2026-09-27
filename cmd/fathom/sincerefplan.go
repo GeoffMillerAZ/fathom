@@ -19,6 +19,7 @@ import (
 // (stophook.go, selfskip.go) exactly, parameterized by an arbitrary ref
 // instead of HEAD/HEAD~1.
 func refFileVersion(repoDir, ref, rel string) []byte {
+	//fathom:tenancy-allow exec-noctx one-shot CLI verb with no request context; the git/child call ends with the process
 	cmd := exec.Command("git", "-C", repoDir, "show", ref+":"+filepath.ToSlash(rel))
 	out, err := cmd.Output()
 	if err != nil {

@@ -296,7 +296,7 @@ func writeClaudeRegistration(t *testing.T, home, baseURL string) {
 func TestCheckClaudeMCPRegistration(t *testing.T) {
 	t.Run("unreadable home is skipped, never a guessed pass", func(t *testing.T) {
 		t.Setenv("HOME", filepath.Join(t.TempDir(), "does-not-exist"))
-		got := checkClaudeMCPRegistration("http://localhost:7575")
+		got := checkClaudeMCPRegistration("http://localhost:7581")
 		if got.Status != doctorSkipped {
 			t.Fatalf("status = %v, want skipped", got.Status)
 		}
@@ -308,7 +308,7 @@ func TestCheckClaudeMCPRegistration(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(home, ".claude.json"), []byte(`{"mcpServers":{}}`), 0o644); err != nil {
 			t.Fatal(err)
 		}
-		got := checkClaudeMCPRegistration("http://localhost:7575")
+		got := checkClaudeMCPRegistration("http://localhost:7581")
 		if got.Status != doctorFail || got.Remedy == "" {
 			t.Fatalf("got %+v, want fail with a remedy", got)
 		}
@@ -317,13 +317,13 @@ func TestCheckClaudeMCPRegistration(t *testing.T) {
 	t.Run("wrong URL fails", func(t *testing.T) {
 		home := t.TempDir()
 		t.Setenv("HOME", home)
-		writeClaudeRegistration(t, home, "http://localhost:7575")
+		writeClaudeRegistration(t, home, "http://localhost:7581")
 		// Overwrite with a non-/rpc/agent URL.
-		doc := `{"mcpServers":{"fathom":{"type":"http","url":"http://localhost:7575/rpc"}}}`
+		doc := `{"mcpServers":{"fathom":{"type":"http","url":"http://localhost:7581/rpc"}}}`
 		if err := os.WriteFile(filepath.Join(home, ".claude.json"), []byte(doc), 0o644); err != nil {
 			t.Fatal(err)
 		}
-		got := checkClaudeMCPRegistration("http://localhost:7575")
+		got := checkClaudeMCPRegistration("http://localhost:7581")
 		if got.Status != doctorFail {
 			t.Fatalf("status = %v, want fail", got.Status)
 		}
@@ -332,8 +332,8 @@ func TestCheckClaudeMCPRegistration(t *testing.T) {
 	t.Run("registered at /rpc/agent passes", func(t *testing.T) {
 		home := t.TempDir()
 		t.Setenv("HOME", home)
-		writeClaudeRegistration(t, home, "http://localhost:7575")
-		got := checkClaudeMCPRegistration("http://localhost:7575")
+		writeClaudeRegistration(t, home, "http://localhost:7581")
+		got := checkClaudeMCPRegistration("http://localhost:7581")
 		if got.Status != doctorPass {
 			t.Fatalf("got %+v, want pass", got)
 		}
@@ -342,11 +342,11 @@ func TestCheckClaudeMCPRegistration(t *testing.T) {
 	t.Run("companion alias also passes", func(t *testing.T) {
 		home := t.TempDir()
 		t.Setenv("HOME", home)
-		doc := `{"mcpServers":{"fathom":{"type":"http","url":"http://localhost:7575/rpc/companion"}}}`
+		doc := `{"mcpServers":{"fathom":{"type":"http","url":"http://localhost:7581/rpc/companion"}}}`
 		if err := os.WriteFile(filepath.Join(home, ".claude.json"), []byte(doc), 0o644); err != nil {
 			t.Fatal(err)
 		}
-		got := checkClaudeMCPRegistration("http://localhost:7575")
+		got := checkClaudeMCPRegistration("http://localhost:7581")
 		if got.Status != doctorPass {
 			t.Fatalf("got %+v, want pass", got)
 		}
@@ -368,7 +368,7 @@ func TestCheckCodexMCPRegistration(t *testing.T) {
 		if err := os.MkdirAll(filepath.Join(home, ".codex"), 0o755); err != nil {
 			t.Fatal(err)
 		}
-		toml := "[mcp_servers.fathom]\nurl = \"http://127.0.0.1:7575/rpc/agent\"\n"
+		toml := "[mcp_servers.fathom]\nurl = \"http://127.0.0.1:7581/rpc/agent\"\n"
 		if err := os.WriteFile(filepath.Join(home, ".codex", "config.toml"), []byte(toml), 0o644); err != nil {
 			t.Fatal(err)
 		}

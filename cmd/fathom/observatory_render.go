@@ -157,6 +157,7 @@ type obsLead struct {
 	Explain string
 }
 
+//fathom:tenancy-allow pkg-map read-only lookup table of constants, never written after init: not a cache
 var obsLeads = map[string]obsLead{
 	"home":   {"fathom is a code index your AI coding agents query instead of re-reading the codebase. This page answers: is it wired, is it used, and is it paying off?", "Agents normally rediscover a codebase every session by reading files and grepping — that costs tokens and time, and every subagent repeats it. fathom indexes the code once and answers where/what/who-calls questions directly. The four cards summarize what that is worth; each links to its evidence."},
 	"fleet":  {"Every repo fathom indexes, how well each is wired, and the exact command that fixes anything amber.", "Each tile is one repository. The letter is a wiring grade over the signals visible from the repo itself (hook wiring, docs stanza, index freshness, recorded traffic — signals that cannot be checked from here are excluded rather than counted against it). Sparklines show two weeks of query traffic. Amber monospace lines are copy-paste remedies. Grades: A = fully wired (hooks + stanza + fresh index + real traffic) · B = one signal missing · C/D = mostly unwired · index-only = a remote corpus other repos query (no sessions run here, so wiring is not expected)."},

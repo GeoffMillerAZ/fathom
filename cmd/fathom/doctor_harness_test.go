@@ -73,7 +73,7 @@ func TestCheckMCPRegistrationNonClaudeNeverGuessesPass(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(dir, ".codex"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	cfg := "[mcp_servers.fathom]\nurl = \"http://127.0.0.1:7575/rpc/agent\"\n"
+	cfg := "[mcp_servers.fathom]\nurl = \"http://127.0.0.1:7581/rpc/agent\"\n"
 	if err := os.WriteFile(filepath.Join(dir, ".codex", "config.toml"), []byte(cfg), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -81,20 +81,20 @@ func TestCheckMCPRegistrationNonClaudeNeverGuessesPass(t *testing.T) {
 	// this workstation), so a found entry is a real PASS. The demotion
 	// below it exists for the unverified state and must not outlive it —
 	// an unverified-forever row makes the verified state unreachable.
-	c := checkMCPRegistration(dir, "codex", "http://127.0.0.1:7575")
+	c := checkMCPRegistration(dir, "codex", "http://127.0.0.1:7581")
 	if c.Status != doctorPass || !strings.Contains(c.Reason, "registered in") {
 		t.Errorf("codex with an entry = %+v; want PASS naming the found entry", c)
 	}
 	// A missing entry is still a real FAIL — evidence, not a guess.
-	if c := checkMCPRegistration(t.TempDir(), "codex", "http://127.0.0.1:7575"); c.Status == doctorPass {
+	if c := checkMCPRegistration(t.TempDir(), "codex", "http://127.0.0.1:7581"); c.Status == doctorPass {
 		t.Errorf("codex with no config must never PASS: %+v", c)
 	}
 
-	g := checkMCPRegistration(dir, "gemini-cli", "http://127.0.0.1:7575")
-	if g.Status != doctorSkipped || !strings.Contains(g.Reason, "unverified") || !strings.Contains(g.Remedy, "httpUrl") || !strings.Contains(g.Remedy, "http://127.0.0.1:7575/rpc/agent") {
+	g := checkMCPRegistration(dir, "gemini-cli", "http://127.0.0.1:7581")
+	if g.Status != doctorSkipped || !strings.Contains(g.Reason, "unverified") || !strings.Contains(g.Remedy, "httpUrl") || !strings.Contains(g.Remedy, "http://127.0.0.1:7581/rpc/agent") {
 		t.Errorf("gemini-cli = %+v", g)
 	}
-	a := checkMCPRegistration(dir, "agents", "http://127.0.0.1:7575")
+	a := checkMCPRegistration(dir, "agents", "http://127.0.0.1:7581")
 	if a.Status != doctorSkipped || !strings.Contains(a.Remedy, "mcp add") {
 		t.Errorf("agents = %+v", a)
 	}

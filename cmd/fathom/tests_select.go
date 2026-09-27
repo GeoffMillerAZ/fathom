@@ -174,6 +174,8 @@ type rankedTest struct {
 // (a repo-configured custom layer beyond the built-in unit/integration/e2e
 // trio) sorts after all three, alphabetically among themselves — see
 // layerRankOf.
+//
+//fathom:tenancy-allow pkg-map read-only lookup table of constants, never written after init: not a cache
 var testLayerOrder = map[string]int{"unit": 0, "integration": 1, "e2e": 2}
 
 func layerRankOf(layer string) int {

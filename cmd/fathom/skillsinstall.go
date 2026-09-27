@@ -169,6 +169,8 @@ func renderSkill(target, name string) ([]byte, error) {
 // and is a hard error on a spec-only reader, so the `.agents/skills`
 // rendering never carries one. schema/skills/schema.cue is the same set as
 // a vetted schema.
+//
+//fathom:tenancy-allow pkg-map read-only lookup table of constants, never written after init: not a cache
 var agentSkillsFields = map[string]bool{
 	"name": true, "description": true, "license": true,
 	"compatibility": true, "metadata": true, "allowed-tools": true,

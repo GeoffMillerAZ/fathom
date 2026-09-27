@@ -197,14 +197,14 @@ tasks:
     cmds: ["bash scripts/gate-lease.sh task validate:unleased"]
 
   validate:unleased:
-    desc: Full gate — fmt-check, vet, cue-vet, vendor-check, testkit-schema-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit, bench-l0-gate, test
+    desc: Full gate — fmt-check, vet, cue-vet, vendor-check, testkit-schema-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit, bench-l0-gate, tenancy-lint, test
     # clean-clone-check is IN the gate, not a nice-to-have: the adopter build
     # broke silently once (go.work committed, app-kit unmirrored) and stayed
     # broken because every machine that ran validate had the siblings.
     # stranger-check (RP-23) is the same lesson one step further: the copy
     # must init and pass doctor for someone who is not the author. Measured
     # 26–43s on 2026-09-02, under the two-minute budget that admits it here.
-    deps: [fmt-check, vet, cue-vet, vendor-check, testkit-schema-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit, scenariobench, bench-l0-gate]
+    deps: [fmt-check, vet, cue-vet, vendor-check, testkit-schema-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit, scenariobench, bench-l0-gate, tenancy-lint]
     cmds: [{ task: test }]
 
   push:
@@ -220,6 +220,10 @@ tasks:
   bench-l0-gate:
     desc: "Free, every commit (ADR-035 decision 5; docs/plans/verbs.md VB-6/VB-7/VB-17): the L0 index oracle (TestIndexOracleGoldens, internal/indexbench/testdata/l0-goldens.json), L1 payload replay (TestPayloadReplay, internal/indexbench/testdata/l1-replay.json), and the L0 freshness probe (TestFreshnessProbe, internal/indexbench/testdata/freshness-probe.json — vision 29 §3 wave D, M7) over the fauxtown fixture fleet, named as its own validate dependency rather than left to be swept in by the package-wide `go test ./...`. Fauxtown is three tiny services — measured well under a second — so no subset is pinned; if a future fixture fleet makes this slow, pin a subset here and say so in the golden's comment instead of dropping the gate."
     cmds: ["CGO_ENABLED=1 MACOSX_DEPLOYMENT_TARGET=14.0 {{.GO}} test -race -run 'TestIndexOracleGoldens|TestPayloadReplay|TestFreshnessProbe' ./internal/indexbench/..."]
+
+  tenancy-lint:
+    desc: "Free, every commit (design §4.7, RT-91/RT-92): the tenancy lint's syntactic rules over cmd/, internal/ and pkg/ (whole reads and walks in handler packages, whole-table loads, uncontexted exec, Background contexts in request-path files, bare goroutines, package-level maps, raw http.Serve, :7575 in tests, a test cmd.Env without os.Environ()), the allowlist in step with the tree's //fathom:tenancy-allow excuses, and the allowlist ratchet. Named as its own validate dependency, like bench-l0-gate, rather than left to the package-wide go test ./..."
+    cmds: ["{{.GO}} test -count=1 ./internal/lint/tenancy/..."]
 
   config-audit:
     desc: Custodian gate (invariants I16/I34/I37, PC-14) — this repo's own agent config holds every concern in .fathom/concerns.cue; a down daemon reads unable-to-check, never a violation

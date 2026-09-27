@@ -34,6 +34,7 @@ func (h ClaudeHarness) Name() string { return "claude-code" }
 // session never needs the binary installed.
 func (h ClaudeHarness) Version() string {
 	bin := h.bin()
+	//fathom:tenancy-allow exec-noctx benchmark harness run by an operator, never in the daemon; the child's lifetime is the bench run's
 	out, err := exec.Command(bin, "--version").Output()
 	if err != nil {
 		return ""
@@ -91,6 +92,7 @@ func (h ClaudeHarness) RunSession(req SessionRequest) (SessionResult, error) {
 	streamPath := filepath.Join(req.RawDir, fmt.Sprintf("session-%d-%s.stream.jsonl", req.Index, safeRole(req.Role)))
 	args := buildClaudeArgs(req, mcpPath)
 
+	//fathom:tenancy-allow exec-noctx benchmark harness run by an operator, never in the daemon; the child's lifetime is the bench run's
 	cmd := exec.Command(h.bin(), args...)
 	cmd.Dir = req.Worktree
 	cmd.Env = SubjectEnv(req.Worktree, req.Env)

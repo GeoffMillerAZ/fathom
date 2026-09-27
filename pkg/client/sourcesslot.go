@@ -100,6 +100,7 @@ func cancelOnAbandon(ctx context.Context) (context.Context, context.CancelFunc) 
 		return ctx, func() {}
 	}
 	ctx, cancel := context.WithCancel(ctx)
+	//fathom:tenancy-allow bare-go ties a derived context to the slot's release; exits on either the caller's context or the release
 	go func() {
 		select {
 		case <-abandon:

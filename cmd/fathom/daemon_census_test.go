@@ -16,7 +16,7 @@ var censusNow = time.Date(2026, 9, 26, 12, 0, 0, 0, time.UTC)
 func censusFixture() ([]storedRecord, []psProc, func(string) (uint64, bool)) {
 	ts := func(d time.Duration) string { return censusNow.Add(-d).Format(time.RFC3339) }
 	recs := []storedRecord{
-		{Path: "/h/.fathom/daemon/dev.fathom.serve-http/record.json", Rec: console.DaemonRecord{SchemaVersion: 2, ID: "dev.fathom.serve-http", Managed: true, PID: 100, Addr: "127.0.0.1:7575", Exe: "/bin/fathom", ExeInode: 1, LastActivityAt: ts(5 * time.Hour)}},
+		{Path: "/h/.fathom/daemon/dev.fathom.serve-http/record.json", Rec: console.DaemonRecord{SchemaVersion: 2, ID: "dev.fathom.serve-http", Managed: true, PID: 100, Addr: "127.0.0.1:7581", Exe: "/bin/fathom", ExeInode: 1, LastActivityAt: ts(5 * time.Hour)}},
 		{Path: "/h/.fathom/daemon/addr-7851-200/record.json", Rec: console.DaemonRecord{SchemaVersion: 2, PID: 200, PPID: 50, Addr: "127.0.0.1:7851", Exe: "/w/fathom", ExeInode: 7, LastActivityAt: ts(time.Minute)}},
 		{Path: "/h/.fathom/daemon/addr-7852-300/record.json", Rec: console.DaemonRecord{SchemaVersion: 2, PID: 300, PPID: 51, Addr: "127.0.0.1:7852", Exe: "/w/fathom", ExeInode: 7, LastActivityAt: ts(time.Minute)}},
 		{Path: "/h/.fathom/daemon/addr-7853-400/record.json", Rec: console.DaemonRecord{SchemaVersion: 2, PID: 400, PPID: 52, Addr: "127.0.0.1:7853", Exe: "/w/fathom", ExeInode: 7, LastActivityAt: ts(2 * time.Hour)}},
@@ -50,7 +50,7 @@ func censusFixture() ([]storedRecord, []psProc, func(string) (uint64, bool)) {
 // managed address) is never judged by the scratch bounds.
 func TestDaemonCensusVerdicts(t *testing.T) {
 	recs, procs, stat := censusFixture()
-	rows := daemonCensus(recs, procs, censusNow, "127.0.0.1:7575", stat)
+	rows := daemonCensus(recs, procs, censusNow, "127.0.0.1:7581", stat)
 	got := map[int]string{}
 	managed := map[int]bool{}
 	for _, r := range rows {
@@ -141,7 +141,7 @@ func (f *fakeReap) env() reapEnv {
 // kill (pid reuse), and prunes stale records.
 func TestDaemonReapDryRunKillsNothing(t *testing.T) {
 	recs, procs, stat := censusFixture()
-	rows := daemonCensus(recs, procs, censusNow, "127.0.0.1:7575", stat)
+	rows := daemonCensus(recs, procs, censusNow, "127.0.0.1:7581", stat)
 	// The managed daemon also reads "unlinked" after a deploy replaced its
 	// binary: still never touched.
 	for i := range rows {

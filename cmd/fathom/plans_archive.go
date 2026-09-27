@@ -345,6 +345,7 @@ func gitHistoryCorpus(root, relPlan string) (string, error) {
 		args = append(args, first+"..HEAD")
 	}
 	args = append(args, "--", ".", ":(exclude)docs/plans")
+	//fathom:tenancy-allow exec-noctx one-shot CLI verb with no request context; the git/child call ends with the process
 	out, err := exec.Command("git", args...).Output()
 	if err != nil {
 		return "", nil
@@ -355,6 +356,7 @@ func gitHistoryCorpus(root, relPlan string) (string, error) {
 // gitFirstCommitTouching returns the sha of the commit that added rel, or
 // "" when git cannot say (untracked plan, no history, git absent).
 func gitFirstCommitTouching(root, rel string) string {
+	//fathom:tenancy-allow exec-noctx one-shot CLI verb with no request context; the git/child call ends with the process
 	out, err := exec.Command("git", "-C", root, "log", "--follow", "--diff-filter=A",
 		"--format=%H", "--", rel).Output()
 	if err != nil {
@@ -463,6 +465,7 @@ func mustRel(root, path string) string {
 // gitPathDirty reports whether rel has any uncommitted state (staged,
 // unstaged, or untracked — any `git status --porcelain` line at all).
 func gitPathDirty(root, rel string) (bool, error) {
+	//fathom:tenancy-allow exec-noctx one-shot CLI verb with no request context; the git/child call ends with the process
 	out, err := exec.Command("git", "-C", root, "status", "--porcelain", "--", rel).Output()
 	if err != nil {
 		return false, err
@@ -471,6 +474,7 @@ func gitPathDirty(root, rel string) (bool, error) {
 }
 
 func gitHEAD(root string) (string, error) {
+	//fathom:tenancy-allow exec-noctx one-shot CLI verb with no request context; the git/child call ends with the process
 	out, err := exec.Command("git", "-C", root, "rev-parse", "HEAD").Output()
 	if err != nil {
 		return "", err
@@ -479,6 +483,7 @@ func gitHEAD(root string) (string, error) {
 }
 
 func gitMv(root, src, dst string) error {
+	//fathom:tenancy-allow exec-noctx one-shot CLI verb with no request context; the git/child call ends with the process
 	out, err := exec.Command("git", "-C", root, "mv", src, dst).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("%s: %w", strings.TrimSpace(string(out)), err)
@@ -487,6 +492,7 @@ func gitMv(root, src, dst string) error {
 }
 
 func gitAdd(root, path string) error {
+	//fathom:tenancy-allow exec-noctx one-shot CLI verb with no request context; the git/child call ends with the process
 	out, err := exec.Command("git", "-C", root, "add", path).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("%s: %w", strings.TrimSpace(string(out)), err)

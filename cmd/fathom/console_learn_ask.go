@@ -253,6 +253,7 @@ func readAskSamples(cr *consoleRequest, choice learnChoice) map[string]console.A
 	svc := choice.Service
 	if cr.deps.c != nil {
 		ctx, cancel := context.WithTimeout(cr.r.Context(), 10*time.Second)
+		//fathom:tenancy-allow sources the Learn page's try-it runs one symbol listing for a chosen service under a 10 s request deadline; moving it onto the shared snapshot is follow-up work
 		nodes, err := cr.deps.c.ListAllSymbols(ctx, svc)
 		cancel()
 		switch {

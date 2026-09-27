@@ -114,7 +114,8 @@ type consolePlans struct {
 }
 
 var (
-	consolePlansMu  sync.Mutex
+	consolePlansMu sync.Mutex
+	//fathom:tenancy-allow pkg-map registry keyed by the daemon's consoleDeps (one entry per daemon); the plan cache it holds is bounded by the plan count but sits outside memo (I51, RT-95 follow-up)
 	consolePlansFor = map[*consoleDeps]*consolePlans{}
 )
 
@@ -200,6 +201,7 @@ func servicePlanFiles(root string) ([]string, string) {
 func (p *consolePlans) plan(ctx context.Context, sr serviceRoot, path string) (console.PlanFacts, *planEntry) {
 	rel := filepath.ToSlash(filepath.Join("docs", "plans", filepath.Base(path)))
 	facts := console.PlanFacts{Service: sr.Service, Path: path, Rel: rel, Title: filepath.Base(path)}
+	//fathom:tenancy-allow whole-read reads one plan document the page renders; plan files are small, one per request, cached by stamp
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		facts.Err = "the plan file could not be read: " + err.Error()
@@ -354,6 +356,7 @@ func (p *consolePlans) verify(e *planEntry) {
 		if gate != nil {
 			<-gate
 		}
+		//fathom:tenancy-allow bg-ctx plan verification is a shared single flight whose result outlives the request that started it; bounded by consolePlanVerifyDeadline / consoleGitTimeout
 		ctx := context.Background()
 		wm = p.storeWatermark(ctx, e.service)
 		computed, rawRep, err = p.compute(e)
@@ -403,6 +406,7 @@ func verdictDigest(rep verify.Report, stale bool, errText string) string {
 // laid over them — reusing the daemon's verdicts when only HEAD moved. It
 // returns the overlaid result and the daemon's report before the overlays.
 func (p *consolePlans) compute(e *planEntry) (planComputed, *verify.Report, error) {
+	//fathom:tenancy-allow whole-read reads one plan document the page renders; plan files are small, one per request, cached by stamp
 	raw, err := os.ReadFile(e.path)
 	if err != nil {
 		return planComputed{}, nil, fmt.Errorf("reading plan %q: %w", e.path, err)
@@ -448,6 +452,7 @@ var consolePlanVerifyDeadline = 90 * time.Second
 // service's index probed in the store rather than over /indexed. The
 // verdicts are the ones `fathom plans status` merges (verifyWithCaller).
 func verifyPlanInProcess(d *consoleDeps, service string, raw []byte, lp verify.Plan) (verify.Report, error) {
+	//fathom:tenancy-allow bg-ctx plan verification is a shared single flight whose result outlives the request that started it; bounded by consolePlanVerifyDeadline / consoleGitTimeout
 	ctx, cancel := context.WithTimeout(context.Background(), consolePlanVerifyDeadline)
 	defer cancel()
 	if d.c != nil {
@@ -510,6 +515,7 @@ func (p *consolePlans) head(root string) string {
 		return st.value
 	}
 	// Read from the repository's files, never a git process (RT-115).
+	//fathom:tenancy-allow bg-ctx HEAD read from the ref files (gitro.Head, no fork) for a shared per-root cache entry
 	v, _ := gitro.Head(context.Background(), root)
 	p.mu.Lock()
 	p.heads[root] = plansStamp{value: v, at: now}
@@ -575,6 +581,7 @@ func (p *consolePlans) history(root, rel string) ([]planRevisionText, int, strin
 	if ok {
 		return h.revs, h.older, h.note
 	}
+	//fathom:tenancy-allow bg-ctx plan verification is a shared single flight whose result outlives the request that started it; bounded by consolePlanVerifyDeadline / consoleGitTimeout
 	ctx, cancel := context.WithTimeout(context.Background(), consoleGitTimeout)
 	revs, older, note := planGitHistory(ctx, root, rel)
 	timedOut := ctx.Err() != nil

@@ -31,7 +31,7 @@ func TestDaemonRecordUnderDaemonDirWithLegacyRead(t *testing.T) {
 	resetServingCallLogForTest(t)
 	now := time.Date(2026, 9, 26, 12, 0, 0, 0, time.UTC)
 
-	if got := daemonID(daemonMeta{Managed: true, Label: "dev.fathom.serve-http"}, "127.0.0.1:7575", 99); got != "dev.fathom.serve-http" {
+	if got := daemonID(daemonMeta{Managed: true, Label: "dev.fathom.serve-http"}, "127.0.0.1:7581", 99); got != "dev.fathom.serve-http" {
 		t.Fatalf("managed id = %q, want the label", got)
 	}
 	if got := daemonID(daemonMeta{}, "localhost:7853", 1234); got != "addr-7853-1234" {

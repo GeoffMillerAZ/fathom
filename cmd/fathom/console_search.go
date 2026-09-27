@@ -233,6 +233,7 @@ func projectSearchDocs(service, root string) ([]console.SearchDoc, error) {
 	var docs []console.SearchDoc
 	var firstErr error
 	var plans []string
+	//fathom:tenancy-allow whole-read lists docs/plans entries (names only), no file content
 	entries, err := os.ReadDir(filepath.Join(root, "docs", "plans"))
 	if err != nil && !os.IsNotExist(err) {
 		firstErr = err

@@ -7,6 +7,7 @@ package harness
 // demotion clock never moves this table; the fixed date pins that too).
 
 import (
+	"github.com/geoffmilleraz/fathom/internal/hookguard"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -16,7 +17,7 @@ import (
 )
 
 // AdoptionMatrixURL is the daemon URL the committed doc is rendered with.
-const AdoptionMatrixURL = "http://127.0.0.1:7575"
+const AdoptionMatrixURL = hookguard.DefaultManagedURL
 
 func TestAdoptionDocMatrixIsGenerated(t *testing.T) {
 	_, file, _, ok := runtime.Caller(0)

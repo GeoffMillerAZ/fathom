@@ -1,0 +1,176 @@
+# The tenancy lint's excuses (design §4.7; plan RT-91, RT-92, RT-137).
+# Generated from //fathom:tenancy-allow comments by
+#   FATHOM_TENANCY_ALLOW_UPDATE=1 go test ./internal/lint/tenancy
+# One line per excused site: rule<TAB>path<TAB>reason. The count may only fall.
+bare-go	cmd/fathom/calllog_rotate.go	one archive per rotation, tracked by the archiving WaitGroup that Close waits for
+bare-go	cmd/fathom/console_events.go	one detached flight guarded by storeKicked (CompareAndSwap)
+bare-go	cmd/fathom/console_events.go	the feeder goroutine, one per event stream, cancelled with the last subscriber
+bare-go	cmd/fathom/console_tenancy_panel.go	one background rebuild at a time (c.building), signalled through c.done
+bare-go	cmd/fathom/discoveries.go	one-shot CLI: a single reader goroutine raced against the command's timeout
+bare-go	cmd/fathom/governor_wiring.go	the governor's sampler, one per process, stopped by its cancel
+bare-go	cmd/fathom/obligationsmerge.go	hook-side fan-out bounded by the file list, joined by a WaitGroup under the hook deadline
+bare-go	cmd/fathom/observatory.go	one background rebuild at a time (obsCache.building), signalled through obsCache.done
+bare-go	cmd/fathom/plans.go	CLI fan-out, one goroutine per local plan, joined by a WaitGroup
+bare-go	cmd/fathom/prompthook_findings.go	hook-side fan-out bounded by the file list, joined by a WaitGroup under the hook deadline
+bare-go	cmd/fathom/review.go	CLI: the body raced against its timeout on a buffered channel
+bare-go	cmd/fathom/selfrestart.go	runs the candidate binary's version check against a watchdog timer; buffered, never leaks
+bare-go	cmd/fathom/servehttp.go	daemon lifetime goroutine started once at serve-http startup and stopped by the drain
+bare-go	cmd/fathom/servehttp.go	daemon lifetime goroutine started once at serve-http startup and stopped by the drain
+bare-go	cmd/fathom/servehttp.go	daemon lifetime goroutine started once at serve-http startup and stopped by the drain
+bare-go	cmd/fathom/servehttp.go	daemon lifetime goroutine started once at serve-http startup and stopped by the drain
+bare-go	cmd/fathom/servehttp.go	daemon lifetime goroutine started once at serve-http startup and stopped by the drain
+bare-go	cmd/fathom/servehttp.go	daemon lifetime goroutine started once at serve-http startup and stopped by the drain
+bare-go	cmd/fathom/servehttp.go	daemon lifetime goroutine started once at serve-http startup and stopped by the drain
+bare-go	cmd/fathom/servehttp.go	daemon lifetime goroutine started once at serve-http startup and stopped by the drain
+bare-go	cmd/fathom/servehttp.go	daemon lifetime goroutine started once at serve-http startup and stopped by the drain
+bare-go	cmd/fathom/servehttp.go	daemon lifetime goroutine started once at serve-http startup and stopped by the drain
+bare-go	cmd/fathom/unmanaged.go	unmanaged daemon's parent watch: one per process, lives until the parent exits
+bare-go	cmd/fathom/unmanaged.go	unmanaged daemon's parent watch: one per process, lives until the parent exits
+bare-go	cmd/scenariobench/signals.go	benchmark signal forwarder, one per bench run
+bare-go	internal/extractor/tsengine/tsengine.go	runs one wasm op against its deadline; the reaper closes the module when a timed-out op returns
+bare-go	internal/extractor/tsengine/tsengine.go	runs one wasm op against its deadline; the reaper closes the module when a timed-out op returns
+bare-go	internal/scenariobench/concurrent.go	benchmark fan-out joined by a WaitGroup
+bare-go	internal/semantic/decisionrank.go	bounded fan-out: a semaphore caps the goroutines and a WaitGroup joins them
+bare-go	pkg/client/sourcesslot.go	ties a derived context to the slot's release; exits on either the caller's context or the release
+bg-ctx	cmd/fathom/console_events.go	detached store poll for the event stream, shared by every subscriber; a single flight guarded by storeKicked, not a request
+bg-ctx	cmd/fathom/console_events.go	the feeder's lifetime spans all subscribers and is cancelled when the last one leaves; no single request owns it
+bg-ctx	cmd/fathom/console_memo.go	do() is the context-free wrapper for computations that take no context; callers with a request use doCtx
+bg-ctx	cmd/fathom/console_panel.go	templ render into a buffer: the context only carries templ values, nothing is cancelled or read
+bg-ctx	cmd/fathom/console_plan.go	templ render into a buffer: the context only carries templ values, nothing is cancelled or read
+bg-ctx	cmd/fathom/console_plansdata.go	HEAD read from the ref files (gitro.Head, no fork) for a shared per-root cache entry
+bg-ctx	cmd/fathom/console_plansdata.go	plan verification is a shared single flight whose result outlives the request that started it; bounded by consolePlanVerifyDeadline / consoleGitTimeout
+bg-ctx	cmd/fathom/console_plansdata.go	plan verification is a shared single flight whose result outlives the request that started it; bounded by consolePlanVerifyDeadline / consoleGitTimeout
+bg-ctx	cmd/fathom/console_plansdata.go	plan verification is a shared single flight whose result outlives the request that started it; bounded by consolePlanVerifyDeadline / consoleGitTimeout
+bg-ctx	cmd/fathom/console_refactor.go	shared, cached git/conserve computation that outlives the request; bounded by consoleGitTimeout / consoleConserveDeadline
+bg-ctx	cmd/fathom/console_refactor.go	shared, cached git/conserve computation that outlives the request; bounded by consoleGitTimeout / consoleConserveDeadline
+bg-ctx	cmd/fathom/console_refactor.go	shared, cached git/conserve computation that outlives the request; bounded by consoleGitTimeout / consoleConserveDeadline
+bg-ctx	cmd/fathom/console_router.go	the observatory model is a shared 30 s cache entry rebuilt once for every page; replaced by the request's context when one is present
+bg-ctx	cmd/fathom/console_tenancy_panel.go	in-process statusz for the resources panel's shared background rebuild; no request owns it
+bg-ctx	cmd/fathom/servehttp.go	daemon lifetime context in serve-http startup, cancelled by the drain; not a request
+bg-ctx	cmd/fathom/servehttp.go	daemon lifetime context in serve-http startup, cancelled by the drain; not a request
+bg-ctx	cmd/fathom/servehttp.go	daemon lifetime context in serve-http startup, cancelled by the drain; not a request
+bg-ctx	cmd/fathom/servehttp.go	daemon lifetime context in serve-http startup, cancelled by the drain; not a request
+bg-ctx	cmd/fathom/servehttp.go	daemon lifetime context in serve-http startup, cancelled by the drain; not a request
+bg-ctx	cmd/fathom/servehttp.go	daemon lifetime context in serve-http startup, cancelled by the drain; not a request
+bg-ctx	cmd/fathom/servehttp.go	daemon lifetime context in serve-http startup, cancelled by the drain; not a request
+bg-ctx	cmd/fathom/servehttp.go	daemon lifetime context in serve-http startup, cancelled by the drain; not a request
+bg-ctx	internal/mcp/autorefresh.go	NewAutoRefresh starts a process-lifetime refresh queue; daemons use NewAutoRefreshQueued with the drain's context
+bg-ctx	internal/mcp/graph_patch.go	scope lookup for a cache patch after a refresh job, called through a context-free interface; a point query on the watermark
+bg-ctx	internal/mcp/servicerefs_memo.go	scope lookup to drop a memo entry after a per-file refresh, called through a context-free interface; a point query on the watermark
+exec-noctx	cmd/contextbenchscore/cells.go	benchmark harness run by an operator, never in the daemon; the child's lifetime is the bench run's
+exec-noctx	cmd/fathom/assess.go	one-shot CLI verb with no request context; the git/child call ends with the process
+exec-noctx	cmd/fathom/assess.go	one-shot CLI verb with no request context; the git/child call ends with the process
+exec-noctx	cmd/fathom/assess.go	one-shot CLI verb with no request context; the git/child call ends with the process
+exec-noctx	cmd/fathom/assess.go	one-shot CLI verb with no request context; the git/child call ends with the process
+exec-noctx	cmd/fathom/assess.go	one-shot CLI verb with no request context; the git/child call ends with the process
+exec-noctx	cmd/fathom/assess.go	one-shot CLI verb with no request context; the git/child call ends with the process
+exec-noctx	cmd/fathom/assess.go	one-shot CLI verb with no request context; the git/child call ends with the process
+exec-noctx	cmd/fathom/daemon.go	one-shot CLI verb with no request context; the git/child call ends with the process
+exec-noctx	cmd/fathom/daemon.go	one-shot CLI verb with no request context; the git/child call ends with the process
+exec-noctx	cmd/fathom/daemon.go	one-shot CLI verb with no request context; the git/child call ends with the process
+exec-noctx	cmd/fathom/daemon_census.go	one-shot CLI verb with no request context; the git/child call ends with the process
+exec-noctx	cmd/fathom/daemon_census.go	one-shot CLI verb with no request context; the git/child call ends with the process
+exec-noctx	cmd/fathom/doctor.go	one-shot CLI verb with no request context; the git/child call ends with the process
+exec-noctx	cmd/fathom/doctor.go	one-shot CLI verb with no request context; the git/child call ends with the process
+exec-noctx	cmd/fathom/doctor.go	one-shot CLI verb with no request context; the git/child call ends with the process
+exec-noctx	cmd/fathom/doctor.go	one-shot CLI verb with no request context; the git/child call ends with the process
+exec-noctx	cmd/fathom/intentbaseline.go	one-shot CLI verb with no request context; the git/child call ends with the process
+exec-noctx	cmd/fathom/lifecyclehooks.go	hook process bounded by its hookguard deadline, which kills the process tree; no request context to pass
+exec-noctx	cmd/fathom/lifecyclehooks.go	hook process bounded by its hookguard deadline, which kills the process tree; no request context to pass
+exec-noctx	cmd/fathom/module.go	one-shot CLI verb with no request context; the git/child call ends with the process
+exec-noctx	cmd/fathom/plans_archive.go	one-shot CLI verb with no request context; the git/child call ends with the process
+exec-noctx	cmd/fathom/plans_archive.go	one-shot CLI verb with no request context; the git/child call ends with the process
+exec-noctx	cmd/fathom/plans_archive.go	one-shot CLI verb with no request context; the git/child call ends with the process
+exec-noctx	cmd/fathom/plans_archive.go	one-shot CLI verb with no request context; the git/child call ends with the process
+exec-noctx	cmd/fathom/plans_archive.go	one-shot CLI verb with no request context; the git/child call ends with the process
+exec-noctx	cmd/fathom/plans_archive.go	one-shot CLI verb with no request context; the git/child call ends with the process
+exec-noctx	cmd/fathom/retro.go	one-shot CLI verb with no request context; the git/child call ends with the process
+exec-noctx	cmd/fathom/retro.go	one-shot CLI verb with no request context; the git/child call ends with the process
+exec-noctx	cmd/fathom/selfrestart.go	runs the new binary's --version with its own watchdog timer in the self-restart path; no request context
+exec-noctx	cmd/fathom/selfskip.go	one-shot CLI verb with no request context; the git/child call ends with the process
+exec-noctx	cmd/fathom/serviceident.go	one-shot CLI verb with no request context; the git/child call ends with the process
+exec-noctx	cmd/fathom/sincerefplan.go	one-shot CLI verb with no request context; the git/child call ends with the process
+exec-noctx	cmd/fathom/stophook.go	hook process bounded by its hookguard deadline, which kills the process tree; no request context to pass
+exec-noctx	cmd/fathom/thread.go	one-shot CLI verb with no request context; the git/child call ends with the process
+exec-noctx	cmd/fathom/thread.go	one-shot CLI verb with no request context; the git/child call ends with the process
+exec-noctx	cmd/fathom/thread.go	one-shot CLI verb with no request context; the git/child call ends with the process
+exec-noctx	cmd/fathom/verifyledger.go	one-shot CLI verb with no request context; the git/child call ends with the process
+exec-noctx	cmd/indexbench/compare.go	benchmark harness run by an operator, never in the daemon; the child's lifetime is the bench run's
+exec-noctx	cmd/scenariobench/main.go	benchmark harness run by an operator, never in the daemon; the child's lifetime is the bench run's
+exec-noctx	cmd/scenariobench/main.go	benchmark harness run by an operator, never in the daemon; the child's lifetime is the bench run's
+exec-noctx	cmd/scenariobench/main.go	benchmark harness run by an operator, never in the daemon; the child's lifetime is the bench run's
+exec-noctx	cmd/scenariobench/main.go	benchmark harness run by an operator, never in the daemon; the child's lifetime is the bench run's
+exec-noctx	internal/analysis/scipexport/scipexport.go	scip export CLI path (go list for symbol names); no request context in its API
+exec-noctx	internal/connector/github.go	gh call in the GitHub connector at ingest time, never on a request path; its API takes no context
+exec-noctx	internal/custodian/audit.go	custodian audit CLI path (git ls-files); its API takes no context
+exec-noctx	internal/custodian/propose.go	custodian propose CLI path; its API takes no context
+exec-noctx	internal/modulehost/federated.go	module-host HEAD read at load time, not per request; its API takes no context
+exec-noctx	internal/reviewbench/git.go	benchmark harness run by an operator, never in the daemon; the child's lifetime is the bench run's
+exec-noctx	internal/scenariobench/derive.go	benchmark harness run by an operator, never in the daemon; the child's lifetime is the bench run's
+exec-noctx	internal/scenariobench/derive.go	benchmark harness run by an operator, never in the daemon; the child's lifetime is the bench run's
+exec-noctx	internal/scenariobench/harness_claude.go	benchmark harness run by an operator, never in the daemon; the child's lifetime is the bench run's
+exec-noctx	internal/scenariobench/harness_claude.go	benchmark harness run by an operator, never in the daemon; the child's lifetime is the bench run's
+exec-noctx	internal/scenariobench/oracle.go	benchmark harness run by an operator, never in the daemon; the child's lifetime is the bench run's
+exec-noctx	internal/scenariobench/oracle.go	benchmark harness run by an operator, never in the daemon; the child's lifetime is the bench run's
+exec-noctx	internal/scenariobench/sessionpid.go	benchmark harness run by an operator, never in the daemon; the child's lifetime is the bench run's
+exec-noctx	internal/scenariobench/subject.go	benchmark harness run by an operator, never in the daemon; the child's lifetime is the bench run's
+exec-noctx	internal/scenariobench/subject.go	benchmark harness run by an operator, never in the daemon; the child's lifetime is the bench run's
+exec-noctx	internal/worktree/worktree.go	git worktree probe used by CLI verbs and hooks; its exported API takes no context (a context-taking variant is follow-up work)
+exec-noctx	internal/worktree/worktree.go	git worktree probe used by CLI verbs and hooks; its exported API takes no context (a context-taking variant is follow-up work)
+pkg-map	cmd/fathom/bashwrite.go	read-only lookup table of constants, never written after init: not a cache
+pkg-map	cmd/fathom/console_fleet.go	read-only lookup table of constants, never written after init: not a cache
+pkg-map	cmd/fathom/console_ladder.go	read-only lookup table of constants, never written after init: not a cache
+pkg-map	cmd/fathom/console_ladder.go	read-only lookup table of constants, never written after init: not a cache
+pkg-map	cmd/fathom/console_ladder.go	read-only lookup table of constants, never written after init: not a cache
+pkg-map	cmd/fathom/console_plan.go	read-only lookup table of constants, never written after init: not a cache
+pkg-map	cmd/fathom/console_planrow.go	read-only lookup table of constants, never written after init: not a cache
+pkg-map	cmd/fathom/console_plans.go	read-only lookup table of constants, never written after init: not a cache
+pkg-map	cmd/fathom/console_plansdata.go	registry keyed by the daemon's consoleDeps (one entry per daemon); the plan cache it holds is bounded by the plan count but sits outside memo (I51, RT-95 follow-up)
+pkg-map	cmd/fathom/console_refactor.go	read-only lookup table of constants, never written after init: not a cache
+pkg-map	cmd/fathom/console_refactor.go	read-only lookup table of constants, never written after init: not a cache
+pkg-map	cmd/fathom/console_sessions.go	read-only lookup table of constants, never written after init: not a cache
+pkg-map	cmd/fathom/discoveries_observed.go	read-only lookup table of constants, never written after init: not a cache
+pkg-map	cmd/fathom/discovery.go	read-only lookup table of constants, never written after init: not a cache
+pkg-map	cmd/fathom/metrics_evidence.go	read-only lookup table of constants, never written after init: not a cache
+pkg-map	cmd/fathom/modelprice.go	read-only lookup table of constants, never written after init: not a cache
+pkg-map	cmd/fathom/module_doctor.go	read-only lookup table of constants, never written after init: not a cache
+pkg-map	cmd/fathom/observatory_render.go	read-only lookup table of constants, never written after init: not a cache
+pkg-map	cmd/fathom/observatory_series.go	read-only lookup table of constants, never written after init: not a cache
+pkg-map	cmd/fathom/promptcandidates.go	read-only lookup table of constants, never written after init: not a cache
+pkg-map	cmd/fathom/research_bundle.go	read-only lookup table of constants, never written after init: not a cache
+pkg-map	cmd/fathom/resources.go	read-only lookup table of constants, never written after init: not a cache
+pkg-map	cmd/fathom/route.go	read-only lookup table of constants, never written after init: not a cache
+pkg-map	cmd/fathom/skillsinstall.go	read-only lookup table of constants, never written after init: not a cache
+pkg-map	cmd/fathom/tests_select.go	read-only lookup table of constants, never written after init: not a cache
+pkg-map	internal/mcp/budget_defaults.go	read-only lookup table of constants, never written after init: not a cache
+pkg-map	internal/mcp/budget_defaults.go	read-only lookup table of constants, never written after init: not a cache
+pkg-map	internal/mcp/costclass.go	read-only lookup table of constants, never written after init: not a cache
+pkg-map	internal/mcp/localize_tool.go	read-only lookup table of constants, never written after init: not a cache
+pkg-map	internal/mcp/meta.go	prompt index built once from the canned prompt list at init and only read after: not a cache
+pkg-map	internal/mcp/outputschema.go	read-only lookup table of constants, never written after init: not a cache
+pkg-map	internal/mcp/search_tool.go	read-only lookup table of constants, never written after init: not a cache
+pkg-map	internal/mcp/search_tool.go	read-only lookup table of constants, never written after init: not a cache
+pkg-map	internal/mcp/search_tool.go	read-only lookup table of constants, never written after init: not a cache
+pkg-map	internal/mcp/surface.go	read-only lookup table of constants, never written after init: not a cache
+sources	cmd/fathom/console_graphstore.go	the console's graph-store group: loads the shared memo snapshot once per watermark (single flight, memo-budgeted)
+sources	cmd/fathom/console_learn_ask.go	the Learn page's try-it runs one symbol listing for a chosen service under a 10 s request deadline; moving it onto the shared snapshot is follow-up work
+sources	internal/mcp/autorefresh.go	autorefresh's QueryInterface pass-through, which only forwards the call; the memo loader is the one caller
+sources	internal/mcp/resolved_nav.go	the nav memo's loader: the one shared snapshot per watermark (single flight, memo-budgeted)
+test-live-url	internal/lint/tenancy/tenancy_test.go	the rule's own fixture: a string handed to CheckFile, never dialled
+test-live-url	internal/lint/tenancy/tenancy_test.go	the rule's own fixture: a string handed to CheckFile, never dialled
+whole-read	cmd/fathom/console_learn_pipeline.go	lists one directory's entries (names only), no file content
+whole-read	cmd/fathom/console_learn_pipeline.go	lists one directory's entries (names only), no file content
+whole-read	cmd/fathom/console_plansdata.go	reads one plan document the page renders; plan files are small, one per request, cached by stamp
+whole-read	cmd/fathom/console_plansdata.go	reads one plan document the page renders; plan files are small, one per request, cached by stamp
+whole-read	cmd/fathom/console_projects.go	lists docs/plans entries (names only), no file content
+whole-read	cmd/fathom/console_projects.go	reads the verify ledger, a size-rotated operator file, not a repository tree
+whole-read	cmd/fathom/console_search.go	lists docs/plans entries (names only), no file content
+whole-read	cmd/fathom/console_since.go	reads a small operator file (page-view log, .git file or ref log) for the since view, never a repository tree
+whole-read	cmd/fathom/console_since.go	reads a small operator file (page-view log, .git file or ref log) for the since view, never a repository tree
+whole-read	cmd/fathom/console_since.go	reads a small operator file (page-view log, .git file or ref log) for the since view, never a repository tree
+whole-read	cmd/fathom/console_since.go	reads a small operator file (page-view log, .git file or ref log) for the since view, never a repository tree
+whole-read	cmd/fathom/console_since.go	reads a small operator file (page-view log, .git file or ref log) for the since view, never a repository tree
+whole-read	cmd/fathom/observatory_apply.go	hashes the handful of wiring files the apply plan names, never a tree
+whole-read	cmd/fathom/observatory_story.go	reads the session ledger, a size-rotated operator file, not a repository tree
+whole-read	cmd/fathom/observatory_story.go	reads the session ledger, a size-rotated operator file, not a repository tree
+whole-read	internal/mcp/search_tool.go	the no-ripgrep fallback lists paths only; every byte is read through corpus.ScanBudgeted with the byte, wall and file caps

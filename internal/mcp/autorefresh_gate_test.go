@@ -193,7 +193,7 @@ func TestEnsureSeenDoesNotHideInterruptedIngest(t *testing.T) {
 func TestEnsureResumesKilledFirstIngest(t *testing.T) {
 	fake := &ingestStateFake{noMeta: true, row: store.IngestState{ServiceID: "svc", State: store.IngestInProgress, PID: os.Getpid() + 1, StartedAt: 1, TargetCommit: "h1", Path: "/new/repo"}}
 	ar := newAR(t, fake, "h1")
-	ar.headFn = func(p string) string { fake.paths = append(fake.paths, p); return "h1" }
+	ar.headFn = func(_ context.Context, p string) string { fake.paths = append(fake.paths, p); return "h1" }
 	ar.ownerAlive = ownerProbe(false)
 	ensureSettled(t, ar, context.Background(), "svc")
 	if fake.ingests != 1 {

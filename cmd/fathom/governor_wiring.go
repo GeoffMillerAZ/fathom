@@ -128,6 +128,7 @@ func startGovernor(b tenancy.Budget, notes []tenancy.Note, storePath, ledger str
 	}
 	activeGovernor.Store(g)
 	ctx, cancel := context.WithCancel(context.Background())
+	//fathom:tenancy-allow bare-go the governor's sampler, one per process, stopped by its cancel
 	go g.run(ctx)
 	return g, func() {
 		cancel()

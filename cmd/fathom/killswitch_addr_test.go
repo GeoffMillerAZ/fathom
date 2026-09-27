@@ -22,7 +22,7 @@ func TestSwitchWritersRecordAddrHooksMatch(t *testing.T) {
 	ops.env["CLAUDECODE"] = "1"
 	g := &hookguard.Guard{HealthDir: filepath.Join(home, "health"), DaemonDir: dir}
 	const managed = "http://127.0.0.1:7999"
-	const other = "http://127.0.0.1:7575"
+	const other = "http://127.0.0.1:7581"
 
 	var out, errBuf bytes.Buffer
 	if rc := runDaemonStop([]string{"--url", managed}, &out, &errBuf, ops); rc != 0 {

@@ -358,6 +358,8 @@ func renderPlansScopeNav(sps []console.ServicePlans, scope string) string {
 
 // roleSwatch are the legend swatches' fill utilities, one per bar role
 // (complete literals, so the CSS build sees each one).
+//
+//fathom:tenancy-allow pkg-map read-only lookup table of constants, never written after init: not a cache
 var roleSwatch = map[string]string{
 	"positive": "bg-positive", "info": "bg-info", "danger": "bg-danger", "caution": "bg-caution",
 	"caution-soft": "bg-caution-soft", "ink-faint": "bg-ink-faint", "accent": "bg-accent",

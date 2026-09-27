@@ -536,6 +536,7 @@ func subagentDiscoveries(baseURL, root, service, parentSessionID string, now tim
 	ctx, cancel := context.WithTimeout(context.Background(), subagentDiscoveriesDeadline)
 	defer cancel()
 	ch := make(chan string, 1)
+	//fathom:tenancy-allow bare-go one-shot CLI: a single reader goroutine raced against the command's timeout
 	go func() {
 		// baseURL is the SAME daemon subagentPrimer already resolved this
 		// service against — never defaultFathomURL() again, which would

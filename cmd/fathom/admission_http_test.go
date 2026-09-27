@@ -106,29 +106,29 @@ func TestDaemonServerTimeoutsAndLoopbackHost(t *testing.T) {
 		s.Handler.ServeHTTP(w, r)
 		return w.Code
 	}
-	for _, host := range []string{"127.0.0.1:7575", "localhost:7575", "[::1]:7575"} {
+	for _, host := range []string{"127.0.0.1:7581", "localhost:7581", "[::1]:7581"} {
 		if code := serve(host, "", "/rpc"); code != http.StatusOK {
 			t.Fatalf("loopback Host %s: %d", host, code)
 		}
 	}
-	if code := serve("evil.example:7575", "", "/rpc"); code != http.StatusForbidden {
+	if code := serve("evil.example:7581", "", "/rpc"); code != http.StatusForbidden {
 		t.Fatalf("DNS-rebinding Host: %d, want 403", code)
 	}
 	if code := serve("evil.example", "", "/"); code != http.StatusForbidden {
 		t.Fatalf("console route with a foreign Host: %d, want 403", code)
 	}
-	if code := serve("127.0.0.1:7575", "http://evil.example", "/rpc"); code != http.StatusForbidden {
+	if code := serve("127.0.0.1:7581", "http://evil.example", "/rpc"); code != http.StatusForbidden {
 		t.Fatalf("cross-origin Origin: %d, want 403", code)
 	}
-	if code := serve("127.0.0.1:7575", "http://localhost:7575", "/rpc"); code != http.StatusOK {
+	if code := serve("127.0.0.1:7581", "http://localhost:7581", "/rpc"); code != http.StatusOK {
 		t.Fatalf("same-origin Origin: %d", code)
 	}
 
 	mu.Lock()
 	seen = nil
 	mu.Unlock()
-	serve("127.0.0.1:7575", "", "/rpc/agent")
-	serve("127.0.0.1:7575", "", "/events")
+	serve("127.0.0.1:7581", "", "/rpc/agent")
+	serve("127.0.0.1:7581", "", "/events")
 	mu.Lock()
 	defer mu.Unlock()
 	if len(seen) != 2 {
@@ -174,7 +174,7 @@ func TestTestCallerRefusedByManagedDaemon(t *testing.T) {
 	managed := newDaemonServer(inner, daemonServerOpts{managed: true})
 	call := func(s *http.Server, caller string) *httptest.ResponseRecorder {
 		r := httptest.NewRequest(http.MethodPost, "/rpc", strings.NewReader(toolsCall("capabilities")))
-		r.Host = "127.0.0.1:7575"
+		r.Host = "127.0.0.1:7581"
 		if caller != "" {
 			r.Header.Set(client.CallerHeaderName, caller)
 		}

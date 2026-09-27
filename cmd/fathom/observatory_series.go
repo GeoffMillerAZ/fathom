@@ -261,6 +261,8 @@ type gradeSeries struct {
 
 // gradeLadder is the render order for letters; anything else sorts after,
 // alphabetically.
+//
+//fathom:tenancy-allow pkg-map read-only lookup table of constants, never written after init: not a cache
 var gradeLadder = map[string]int{"A": 0, "B": 1, "C": 2, "D": 3, "F": 4, "idle": 5}
 
 func gradeRank(letter string) int {

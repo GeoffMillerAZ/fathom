@@ -37,6 +37,7 @@ type sessionStory struct {
 func buildSessionStory(sessionID string) sessionStory {
 	st := sessionStory{SessionID: sessionID}
 
+	//fathom:tenancy-allow whole-read reads the session ledger, a size-rotated operator file, not a repository tree
 	if data, err := os.ReadFile(sessionLedgerPath()); err == nil {
 		for _, line := range strings.Split(string(data), "\n") {
 			if line == "" {
@@ -178,6 +179,7 @@ type weekStory struct {
 func buildWeekStory(now time.Time) weekStory {
 	from := now.UTC().AddDate(0, 0, -7)
 	ws := weekStory{From: from.Format("2006-01-02"), To: now.UTC().Format("2006-01-02")}
+	//fathom:tenancy-allow whole-read reads the session ledger, a size-rotated operator file, not a repository tree
 	data, err := os.ReadFile(sessionLedgerPath())
 	if err != nil {
 		ws.Note = "session ledger not readable — the week cannot be composed, and that is stated rather than faked"

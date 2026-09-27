@@ -171,8 +171,8 @@ bound memory here.
 - [x] `search` caps rg output bytes (killing rg), columns, file size, count and context, and restricts root to registered service roots (§4.5) {id: RT-88, symbol: searchRipgrep, package: internal/mcp, reachable_from: TestSearchRipgrep_ByteCapKillsAndRootRestricted}
 - [x] Routes and HTTP client calls are extracted at ingest and read per watermark, never per call (§6) {id: RT-89, symbol: BuildFromStore, package: internal/analysis/serviceref, reachable_from: TestServiceRefs_PersistedNotPerCall}
 - [x] The dispatch backstop checks size before copying and producers budget themselves; no marshal/unmarshal cascade (§4.5) {id: RT-90, symbol: budgetedResult, package: internal/mcp, reachable_from: TestBudgetedResultNoRemarshalCascade}
-- [ ] The tenancy lint's syntactic rules forbid whole-file reads and walks in handler packages, whole-table and whole-tree loads, uncontexted exec, Background contexts in handler files, bare goroutines, package-level maps in `cmd/fathom`/`internal/mcp` without an allowlist entry, raw http.Serve, live daemon URLs in tests, and a test `cmd.Env` built without `os.Environ()` (§4.7) {id: RT-91, symbol: CheckTenancyRules, package: internal/lint/tenancy, reachable_from: TestTenancyRules}
-- [ ] The tenancy allowlist may only shrink (§4.7) {id: RT-92, symbol: allowlistCount, package: internal/lint/tenancy, reachable_from: TestTenancyAllowlistOnlyShrinks}
+- [x] The tenancy lint's syntactic rules forbid whole-file reads and walks in handler packages (internal/mcp, and the cmd/fathom files that serve HTTP), whole-table and whole-tree loads, uncontexted exec, Background contexts in handler files, bare goroutines, package-level maps in `cmd/fathom`/`internal/mcp` without an allowlist entry, raw http.Serve, live daemon URLs in tests, and a test `cmd.Env` built without `os.Environ()` (§4.7) {id: RT-91, symbol: CheckTenancyRules, package: internal/lint/tenancy, reachable_from: TestTenancyRules}
+- [x] The tenancy allowlist may only shrink (§4.7) {id: RT-92, symbol: allowlistCount, package: internal/lint/tenancy, reachable_from: TestTenancyAllowlistOnlyShrinks}
 - [ ] Every tool has a cost row: bytes read and allocations within its class ceiling, cold and warm, at 1× and 10× fleet scale (§4.8) {id: RT-93, symbol: MeasureToolCost, package: internal/mcp/costtest, reachable_from: TestEveryToolHasCostRow}
 - [ ] Point and index tools grow at most 1.5× when the fleet grows 10× (§4.8, I48) {id: RT-94, symbol: MeasureToolCost, package: internal/mcp/costtest, reachable_from: TestPointIndexToolsScaleSublinearly}
 - [ ] 32 cold concurrent callers cause one build and one walk's bytes per key; cancelling them all returns goroutines to baseline within 1 s (§4.8) {id: RT-95, symbol: MeasureStampede, package: internal/mcp/costtest, reachable_from: TestColdStampedeOneBuildPerKey}
@@ -228,7 +228,7 @@ bound memory here.
 
 ## F. Close — honesty debt paid
 
-- [ ] The tenancy allowlist is empty, or every remaining entry carries its reason {id: RT-137, oracle: lexical, path: .fathom/tenancy-allow.txt, pattern: "^[^#]", eq: 0}
+- [x] The tenancy allowlist is empty, or every remaining entry carries its reason (no `rule<TAB>path` entry without a third, reason field) {id: RT-137, oracle: lexical, path: .fathom/tenancy-allow.txt, pattern: "^[a-z-]+\t[^\t\n]+\t?[ ]*$", eq: 0}
 - [ ] O108 and O112 are marked superseded by INC-23 in the observation log {id: RT-138, oracle: lexical, path: .fathom/observations.md, pattern: "superseded by INC-23"}
 - [ ] CHANGELOG corrects "bounded at the peaks" and names INC-23 {id: RT-139, oracle: lexical, path: CHANGELOG.md, pattern: "INC-23"}
 - [ ] fleet-index.md stops recommending heap_sys as a footprint and names phys_footprint and `fathom resources` {id: RT-140, oracle: lexical, path: docs/guides/fleet-index.md, pattern: "fathom resources"}

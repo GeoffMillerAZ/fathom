@@ -258,12 +258,12 @@ func TestUnmanagedRefusesOperatorStore(t *testing.T) {
 	dir := t.TempDir()
 	opStore := filepath.Join(dir, "fleet.sqlite")
 	opLog := filepath.Join(dir, "mcp-calls.jsonl")
-	legacy, _ := console.DaemonRecordPath(home, "127.0.0.1:7575")
-	if err := console.WriteDaemonRecord(legacy, console.DaemonRecord{SchemaVersion: 1, Addr: "127.0.0.1:7575", PID: 1, Store: opStore, CallLog: opLog, StartedAt: "2026-09-26T00:00:00Z"}); err != nil {
+	legacy, _ := console.DaemonRecordPath(home, managedAddr)
+	if err := console.WriteDaemonRecord(legacy, console.DaemonRecord{SchemaVersion: 1, Addr: managedAddr, PID: 1, Store: opStore, CallLog: opLog, StartedAt: "2026-09-26T00:00:00Z"}); err != nil {
 		t.Fatal(err)
 	}
 	recs, _ := listDaemonRecords(home)
-	stores, logs := operatorPaths(recs, "127.0.0.1:7575")
+	stores, logs := operatorPaths(recs, managedAddr)
 	if err := refuseOperatorState(opStore, "", stores, logs); !errors.Is(err, errOperatorState) || !strings.Contains(err.Error(), "--allow-operator-state") {
 		t.Fatalf("operator store not refused: %v", err)
 	}
@@ -274,7 +274,7 @@ func TestUnmanagedRefusesOperatorStore(t *testing.T) {
 		t.Fatalf("a scratch store refused: %v", err)
 	}
 	// A schema-1 record at another address is a scratch daemon's, not the operator's.
-	if s, l := operatorPaths([]storedRecord{{Rec: console.DaemonRecord{SchemaVersion: 1, Addr: "127.0.0.1:7856", Store: "/x"}}}, "127.0.0.1:7575"); len(s)+len(l) != 0 {
+	if s, l := operatorPaths([]storedRecord{{Rec: console.DaemonRecord{SchemaVersion: 1, Addr: "127.0.0.1:7856", Store: "/x"}}}, managedAddr); len(s)+len(l) != 0 {
 		t.Fatalf("a scratch record counted as the operator's: %v %v", s, l)
 	}
 

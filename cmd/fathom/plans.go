@@ -210,6 +210,7 @@ func computePlanReports(planFiles []string, service, storePath, urlStr string, o
 		var wg sync.WaitGroup
 		for i := range localPlans {
 			wg.Add(1)
+			//fathom:tenancy-allow bare-go CLI fan-out, one goroutine per local plan, joined by a WaitGroup
 			go func(i int) {
 				defer wg.Done()
 				sem <- struct{}{}

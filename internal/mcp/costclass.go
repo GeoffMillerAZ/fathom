@@ -12,11 +12,14 @@ package mcp
 
 import (
 	"encoding/json"
+	"sort"
 
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
 
 // toolCostClasses is §3.1's table by today's cost.
+//
+//fathom:tenancy-allow pkg-map read-only lookup table of constants, never written after init: not a cache
 var toolCostClasses = map[string]tenancy.Class{
 	// point: one row, one capped file, or the process's own counters.
 	"capabilities": tenancy.ClassPoint, "server_stats": tenancy.ClassPoint, "staleness_report": tenancy.ClassPoint,
@@ -119,4 +122,17 @@ func DeclaredCostClass(name string, args json.RawMessage) tenancy.Class {
 		c = tenancy.ClassIndex
 	}
 	return costClassOf(toolEntry{desc: toolDescriptor{Name: name}, class: c}, args)
+}
+
+// RegisteredTools lists every registered tool's name, sorted — the cost
+// harness (internal/mcp/costtest, RT-93) holds a row for each.
+func (s *Server) RegisteredTools() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	out := make([]string, 0, len(s.tools))
+	for _, e := range s.tools {
+		out = append(out, e.desc.Name)
+	}
+	sort.Strings(out)
+	return out
 }

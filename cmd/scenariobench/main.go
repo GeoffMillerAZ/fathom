@@ -168,6 +168,7 @@ func resolveFathomCommit(explicit string) string {
 	if explicit != "" {
 		return explicit
 	}
+	//fathom:tenancy-allow exec-noctx benchmark harness run by an operator, never in the daemon; the child's lifetime is the bench run's
 	out, err := exec.Command("git", "rev-parse", "--short", "HEAD").Output()
 	if err != nil {
 		return "unknown"
@@ -1200,15 +1201,18 @@ func reconstructFinalTree(cell *scenariobench.CellResult) (tree string, cleanup 
 		return "", noop, false
 	}
 	remove := func() {
+		//fathom:tenancy-allow exec-noctx benchmark harness run by an operator, never in the daemon; the child's lifetime is the bench run's
 		_ = exec.Command("git", "-C", cell.SubjectClone, "worktree", "remove", "--force", tmp).Run()
 		_ = os.RemoveAll(tmp)
 	}
+	//fathom:tenancy-allow exec-noctx benchmark harness run by an operator, never in the daemon; the child's lifetime is the bench run's
 	if _, err := exec.Command("git", "-C", cell.SubjectClone, "worktree", "add", "--detach", tmp, cell.BaseCommit).CombinedOutput(); err != nil {
 		_ = os.RemoveAll(tmp)
 		return "", noop, false
 	}
 	if cell.AgentDiffPath != "" {
 		if info, err := os.Stat(cell.AgentDiffPath); err == nil && info.Size() > 0 {
+			//fathom:tenancy-allow exec-noctx benchmark harness run by an operator, never in the daemon; the child's lifetime is the bench run's
 			apply := exec.Command("git", "apply", cell.AgentDiffPath)
 			apply.Dir = tmp
 			if _, err := apply.CombinedOutput(); err != nil {

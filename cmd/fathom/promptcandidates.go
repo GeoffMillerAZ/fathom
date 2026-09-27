@@ -158,6 +158,8 @@ func looksLikePackagePath(tok string) bool {
 // domains a bare (scheme-less) URL mention in prose is overwhelmingly
 // likely to carry — enough to catch "cursor.com/blog/…", never intended
 // as an authoritative registry.
+//
+//fathom:tenancy-allow pkg-map read-only lookup table of constants, never written after init: not a cache
 var commonTLDs = map[string]bool{
 	"com": true, "org": true, "net": true, "io": true, "dev": true,
 	"co": true, "ai": true, "app": true, "blog": true, "edu": true, "gov": true,

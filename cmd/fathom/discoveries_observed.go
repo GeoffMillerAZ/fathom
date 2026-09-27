@@ -139,6 +139,8 @@ func observedRepoRelPath(p, cwd string) (string, bool) {
 // Grep apart for (docs/design/production-tokenomics.md §4's honesty
 // constraint: reading what you already located is not the same act as
 // finding it).
+//
+//fathom:tenancy-allow pkg-map read-only lookup table of constants, never written after init: not a cache
 var bashObservedReadKind = map[string]string{
 	"cat": "read", "head": "read", "tail": "read", "sed": "read",
 	"rg": "grep", "grep": "grep",

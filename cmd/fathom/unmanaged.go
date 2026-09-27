@@ -54,6 +54,7 @@ func watchParentExit(ppid int, poll time.Duration, getppid func() int, onExit fu
 	}
 	var once sync.Once
 	fire := func() { once.Do(func() { onExit(fmt.Sprintf("parent %d exited", ppid)) }) }
+	//fathom:tenancy-allow bare-go unmanaged daemon's parent watch: one per process, lives until the parent exits
 	go func() {
 		t := time.NewTicker(poll)
 		defer t.Stop()
@@ -64,6 +65,7 @@ func watchParentExit(ppid int, poll time.Duration, getppid func() int, onExit fu
 			}
 		}
 	}()
+	//fathom:tenancy-allow bare-go unmanaged daemon's parent watch: one per process, lives until the parent exits
 	go func() {
 		if waitProcessExit(ppid) == nil {
 			fire()

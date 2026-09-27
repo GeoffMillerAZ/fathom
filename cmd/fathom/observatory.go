@@ -894,6 +894,7 @@ func cachedObservatoryModelCtx(ctx context.Context, baseURL string, now time.Tim
 		if !obsCache.building {
 			obsCache.building = true
 			obsCache.done = make(chan struct{})
+			//fathom:tenancy-allow bare-go one background rebuild at a time (obsCache.building), signalled through obsCache.done
 			go rebuildObservatoryModel(baseURL, now, obsCache.gen, obsCache.done)
 		}
 		if !obsCache.at.IsZero() {

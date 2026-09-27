@@ -581,6 +581,38 @@ Escape hatch: `//fathom:tenancy-allow <rule> <reason>` on the line. Every use is
 above the committed number. Wave C seeds it with today's violations and later waves burn it
 down; RT-137 closes it at zero or with each remaining entry justified.
 
+*As built (RT-91, RT-92, RT-137, 2026-09-27).* `internal/lint/tenancy` (`CheckTenancyRules`,
+run by `TestTenancyRules` and named as the `tenancy-lint` dependency of `task validate`). Four
+refinements, each still decidable from one file:
+- *Handler files.* `cmd/fathom` is one package holding the console, `serve-http`, some ninety
+  one-shot CLI verbs and the hooks. `whole-read` and `sources` apply to `internal/mcp` and to the
+  `cmd/fathom` files that serve HTTP: `console_*.go`, `servehttp*.go`, and any other file that
+  names `http.ResponseWriter` or `http.Handler`. A CLI verb or a hook is a process that exits
+  after one answer, bounded by the hook deadline (§11.1), and the request-path rule does not
+  govern it. The rule as first drafted flagged 195 sites, 170 of them in CLI verbs.
+- *Bounded reads.* `io.ReadAll(io.LimitReader(…))` and `io.ReadAll(http.MaxBytesReader(…))` read
+  up to a stated ceiling, so they are not whole reads.
+- *`test-env`* fires on an `Env` assigned a `[]string` literal, `nil`, or an `append` that does not
+  start from `os.Environ()`, and on an `exec.Cmd{Env: …}` literal. A variable is undecidable
+  and passes. Map and struct literals are not environments.
+- *Excuses.* An excuse sits on the finding's line or in the run of excuse lines directly above
+  it (one per rule when a site trips two). An excuse naming no reason, or a rule that does not
+  exist, is itself a finding (`allow-noreason`). `.fathom/tenancy-allow.txt` is generated
+  (`FATHOM_TENANCY_ALLOW_UPDATE=1 go test ./internal/lint/tenancy`), one
+  `rule<TAB>path<TAB>reason` line per excused site with no line numbers, and the test fails when
+  it drifts from the tree. `allowlistCeiling` is the committed count: the test fails above it,
+  and below it until the ceiling is lowered in the same change.
+
+The seed on 2026-09-27 was 172 excuses: 60 `exec-noctx` (CLI verbs and benches with no request
+context), 35 `pkg-map` (34 read-only lookup tables and the console plan-cache registry, which
+is I51's open item), 30 `bare-go`, 25 `bg-ctx` (daemon lifetime contexts and shared flights),
+16 `whole-read` (directory listings and small operator files), 4 `sources` (the two snapshot
+loaders, a pass-through, and the Learn page's try-it) and the lint's own two fixtures. The same
+change fixed what had a context to pass: `review_diff`'s and `verify_plan`'s git calls now use
+`CommandContext`, and `read_source`, the integrity plane's worktree read and `search`'s
+enclosing-symbol read now go through `corpus.ReadFileCapped`. The 160 `:7575` literals in tests
+now name another port, or the managed default symbolically (`hookguard.DefaultManagedURL`).
+
 ### 4.8 Cost tests (`internal/mcp/costtest`)
 
 Fixture: the `fauxtown` golden corpus generated at 1× and 10× (same shape, 10× files,

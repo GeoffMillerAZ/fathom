@@ -14,16 +14,16 @@ import (
 
 func TestInitPrintsCodexMcpAdd(t *testing.T) {
 	var out bytes.Buffer
-	printManualSteps(&out, "myservice", "http://127.0.0.1:7575")
+	printManualSteps(&out, "myservice", "http://127.0.0.1:7581")
 	got := out.String()
 
 	// The existing Claude Code line stays.
-	if !strings.Contains(got, "claude mcp add --transport http --scope user fathom http://127.0.0.1:7575/rpc/agent") {
+	if !strings.Contains(got, "claude mcp add --transport http --scope user fathom http://127.0.0.1:7581/rpc/agent") {
 		t.Errorf("missing the existing claude mcp add line:\n%s", got)
 	}
 
 	// The HTTP form, per docs/adoption/codex.md §2.
-	if !strings.Contains(got, "codex mcp add fathom --url http://127.0.0.1:7575/rpc/agent") {
+	if !strings.Contains(got, "codex mcp add fathom --url http://127.0.0.1:7581/rpc/agent") {
 		t.Errorf("missing the codex mcp add --url HTTP form:\n%s", got)
 	}
 

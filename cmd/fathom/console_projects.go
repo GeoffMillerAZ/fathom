@@ -175,6 +175,7 @@ func gatherProjects(ctx context.Context, src projectSources) projectsRead {
 // went.
 func readVerifyRuns(ledgerPath string) ([]console.VerifyRun, console.SourceRead) {
 	read := console.SourceRead{Name: console.SourceVerifyLedger, Path: ledgerPath}
+	//fathom:tenancy-allow whole-read reads the verify ledger, a size-rotated operator file, not a repository tree
 	switch data, err := os.ReadFile(ledgerPath); {
 	case ledgerPath == "":
 		read.State, read.Reason = console.StateAbsent, "no home directory to find the verify ledger in"
@@ -201,6 +202,7 @@ func planFilesAt(root string) ([]string, error) {
 	if root == "" {
 		return nil, nil
 	}
+	//fathom:tenancy-allow whole-read lists docs/plans entries (names only), no file content
 	entries, err := os.ReadDir(filepath.Join(root, "docs", "plans"))
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil, nil

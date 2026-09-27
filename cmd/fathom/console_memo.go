@@ -51,6 +51,7 @@ type consoleMemoFlight[V any] struct {
 // with the wedge that caused it), < 0 is kept until evicted. at is when
 // the returned value was computed.
 func (m *consoleMemo[V]) do(key string, now time.Time, compute func() (V, time.Duration)) (V, time.Time) {
+	//fathom:tenancy-allow bg-ctx do() is the context-free wrapper for computations that take no context; callers with a request use doCtx
 	v, at, _ := m.doCtx(context.Background(), key, now, compute)
 	return v, at
 }

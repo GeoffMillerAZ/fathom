@@ -26,11 +26,11 @@ import (
 // or HEAD cannot be read. RT-101: read from the ref files without a fork
 // (gitro.Head, cached per root by mtime) — this runs on every per-service
 // read through auto-refresh.
-func currentGitHead(path string) string {
+func currentGitHead(ctx context.Context, path string) string {
 	if path == "" {
 		return ""
 	}
-	sha, err := gitro.Head(context.Background(), path)
+	sha, err := gitro.Head(ctx, path)
 	if err != nil {
 		return ""
 	}
@@ -265,7 +265,7 @@ func registerStalenessReport(s *Server, backend QueryInterface) {
 			indexedCommit = ic
 			// Attempt to resolve current HEAD using the stored path.
 			if repoPath != "" {
-				currentCommit = currentGitHead(repoPath)
+				currentCommit = currentGitHead(ctx, repoPath)
 			}
 			if indexedCommit != "" && currentCommit != "" && indexedCommit != currentCommit {
 				reingestRecommended = true
@@ -576,6 +576,8 @@ var cannedPrompts = []promptDef{
 }
 
 // promptIndex is a fast-lookup map built once at package init.
+//
+//fathom:tenancy-allow pkg-map prompt index built once from the canned prompt list at init and only read after: not a cache
 var promptIndex map[string]*promptDef
 
 func init() {

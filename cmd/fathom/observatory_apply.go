@@ -305,6 +305,7 @@ func planDigest(root string, plan wiring.Plan) string {
 		h.Write([]byte{0})
 		h.Write([]byte(f))
 		h.Write([]byte{0})
+		//fathom:tenancy-allow whole-read hashes the handful of wiring files the apply plan names, never a tree
 		data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(f)))
 		if err != nil {
 			h.Write([]byte("absent"))

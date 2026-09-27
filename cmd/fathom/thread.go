@@ -207,6 +207,7 @@ func threadConditionHolds(c threadCondition, repoRoot string, items []threadItem
 		if c.Repo == "" {
 			return false
 		}
+		//fathom:tenancy-allow exec-noctx one-shot CLI verb with no request context; the git/child call ends with the process
 		out, err := exec.Command("git", "-C", c.Repo, "status", "--porcelain").Output()
 		return err == nil && strings.TrimSpace(string(out)) == ""
 	case "plan_row_checked":
@@ -307,6 +308,7 @@ func repoIdentity(repoRoot string) string {
 // (not a git repo, or no `origin` configured) — repoIdentity's file-path
 // fallback then applies.
 func gitOriginURL(repoRoot string) string {
+	//fathom:tenancy-allow exec-noctx one-shot CLI verb with no request context; the git/child call ends with the process
 	out, err := exec.Command("git", "-C", repoRoot, "remote", "get-url", "origin").Output()
 	if err != nil {
 		return ""
@@ -923,6 +925,7 @@ func derivedPlansSummary(root string) string {
 // store never duplicates what git already knows.
 func derivedInFlight(root string) string {
 	run := func(args ...string) string {
+		//fathom:tenancy-allow exec-noctx one-shot CLI verb with no request context; the git/child call ends with the process
 		cmd := exec.Command("git", append([]string{"-C", root}, args...)...)
 		out, err := cmd.Output()
 		if err != nil {

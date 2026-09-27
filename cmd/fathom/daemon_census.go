@@ -254,6 +254,7 @@ func liveCensus() ([]censusRow, error) {
 	for _, e := range errs {
 		fmt.Fprintf(os.Stderr, "warning: unreadable daemon record: %v\n", e)
 	}
+	//fathom:tenancy-allow exec-noctx one-shot CLI verb with no request context; the git/child call ends with the process
 	out, err := exec.Command("ps", "-axo", "pid=,ppid=,etime=,rss=,command=").Output()
 	if err != nil {
 		return nil, fmt.Errorf("daemon census: ps: %w", err)
@@ -331,6 +332,7 @@ func liveReapEnv() reapEnv {
 			if syscall.Kill(pid, 0) != nil {
 				return false
 			}
+			//fathom:tenancy-allow exec-noctx one-shot CLI verb with no request context; the git/child call ends with the process
 			out, err := exec.Command("ps", "-o", "stat=", "-p", strconv.Itoa(pid)).Output()
 			return err == nil && !strings.HasPrefix(strings.TrimSpace(string(out)), "Z")
 		},

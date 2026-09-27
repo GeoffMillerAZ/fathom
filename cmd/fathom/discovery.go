@@ -76,6 +76,8 @@ func discoveryBeatName(tool harness.ToolClass) string {
 
 // shellSearchBinaries are the argv[0] values that count as a "shell
 // search" discovery action (design §4's literal list).
+//
+//fathom:tenancy-allow pkg-map read-only lookup table of constants, never written after init: not a cache
 var shellSearchBinaries = map[string]bool{
 	"grep": true,
 	"rg":   true,

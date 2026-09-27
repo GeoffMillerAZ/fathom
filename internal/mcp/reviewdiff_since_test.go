@@ -8,6 +8,7 @@ package mcp
 
 import (
 	"bytes"
+	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -55,7 +56,7 @@ func TestReviewDiff_SinceArgument(t *testing.T) {
 	}()
 
 	var in review.Input
-	reviewDiffWithBase(&in, root, "HEAD")
+	reviewDiffWithBase(context.Background(), &in, root, "HEAD")
 	if in.Root != root {
 		t.Errorf("Root = %q, want %q", in.Root, root)
 	}
@@ -71,7 +72,7 @@ func TestReviewDiff_SinceArgument(t *testing.T) {
 func TestReviewDiff_SinceArgument_Empty(t *testing.T) {
 	root := reviewDiffSinceGitRepo(t)
 	var in review.Input
-	reviewDiffWithBase(&in, root, "")
+	reviewDiffWithBase(context.Background(), &in, root, "")
 	if in.Root != root {
 		t.Errorf("Root = %q, want %q", in.Root, root)
 	}
@@ -87,7 +88,7 @@ func TestReviewDiff_SinceArgument_Empty(t *testing.T) {
 func TestReviewDiff_SinceArgument_UnresolvableRefFailsOpen(t *testing.T) {
 	root := reviewDiffSinceGitRepo(t)
 	var in review.Input
-	reviewDiffWithBase(&in, root, "not-a-real-ref")
+	reviewDiffWithBase(context.Background(), &in, root, "not-a-real-ref")
 	if in.Base != "" {
 		t.Errorf("Base = %q, want empty (ref does not resolve — fail open)", in.Base)
 	}
@@ -101,7 +102,7 @@ func TestReviewDiff_SinceArgument_UnresolvableRefFailsOpen(t *testing.T) {
 // an attempt to run git with "-C ”" against the process cwd.
 func TestReviewDiff_SinceArgument_EmptyRootNeverShellsOut(t *testing.T) {
 	var in review.Input
-	reviewDiffWithBase(&in, "", "HEAD")
+	reviewDiffWithBase(context.Background(), &in, "", "HEAD")
 	if in.Base != "" || in.Root != "" {
 		t.Errorf("in = %+v, want a complete no-op with an empty root", in)
 	}

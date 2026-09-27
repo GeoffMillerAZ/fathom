@@ -31,7 +31,7 @@ func TestListenWithBackoff_SucceedsImmediately(t *testing.T) {
 	sleep := func(time.Duration) { slept++ }
 	log := dlog.New(io.Discard, dlog.LevelDebug, time.Now)
 
-	ln, err := listenWithBackoff("127.0.0.1:7575", 10*time.Second, listen, sleep, log)
+	ln, err := listenWithBackoff("127.0.0.1:7581", 10*time.Second, listen, sleep, log)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -84,7 +84,7 @@ func TestListenWithBackoff_RetriesThenSucceeds(t *testing.T) {
 	var buf strings.Builder
 	log := dlog.New(&buf, dlog.LevelDebug, time.Now)
 
-	ln, err := listenWithBackoff("127.0.0.1:7575", 10*time.Second, listen, sleep, log)
+	ln, err := listenWithBackoff("127.0.0.1:7581", 10*time.Second, listen, sleep, log)
 	if err != nil {
 		t.Fatalf("unexpected error after eventual success: %v", err)
 	}
@@ -130,7 +130,7 @@ func TestListenWithBackoff_GivesUpAfterMaxWait(t *testing.T) {
 	log := dlog.New(io.Discard, dlog.LevelDebug, time.Now)
 
 	maxWait := 2 * time.Second
-	_, err := listenWithBackoff("127.0.0.1:7575", maxWait, listen, sleep, log)
+	_, err := listenWithBackoff("127.0.0.1:7581", maxWait, listen, sleep, log)
 	if !isAddrInUse(err) {
 		t.Fatalf("err = %v, want the original EADDRINUSE error", err)
 	}
@@ -146,7 +146,7 @@ func TestListenWithBackoff_GivesUpAfterMaxWait(t *testing.T) {
 }
 
 func TestIsAddrInUse(t *testing.T) {
-	if !isAddrInUse(addrInUseErr("127.0.0.1:7575")) {
+	if !isAddrInUse(addrInUseErr("127.0.0.1:7581")) {
 		t.Error("isAddrInUse(EADDRINUSE-wrapped error) = false, want true")
 	}
 	if isAddrInUse(errors.New("some other failure")) {

@@ -25,7 +25,7 @@ const v1PlistFixture = `<?xml version="1.0" encoding="UTF-8"?>
     <string>/opt/fathom/fathom</string>
     <string>serve-http</string>
     <string>--store</string><string>/data/fleet.sqlite</string>
-    <string>--addr</string><string>:7575</string>
+    <string>--addr</string><string>:7581</string>
     <string>--call-log</string><string>/data/mcp-calls.jsonl</string>
   </array>
   <key>EnvironmentVariables</key><dict>
@@ -100,7 +100,7 @@ func plutilLint(t *testing.T, raw []byte) {
 // run before the installed binary reports tenancy_contract >= 1.
 func TestPlistV2RoundTripAndReconcileKeepsOperatorKeys(t *testing.T) {
 	// Schema 2 as rendered: no drift, reconcile is a byte-identical no-op.
-	body := []byte(plistBody("dev.fathom.serve-http", "/usr/local/bin/fathom", "/s.sqlite", ":7575", "/logs", "/logs/c.jsonl", "/usr/bin", []string{"GOPATH=/home/u/go"}))
+	body := []byte(plistBody("dev.fathom.serve-http", "/usr/local/bin/fathom", "/s.sqlite", ":7581", "/logs", "/logs/c.jsonl", "/usr/bin", []string{"GOPATH=/home/u/go"}))
 	plutilLint(t, body)
 	for key, want := range map[string]string{
 		"KeepAlive":               "{SuccessfulExit: false}",

@@ -283,6 +283,7 @@ func indexRepo(root string) (*repoIndex, error) {
 	var files []string
 	listed := false
 	if fi, err := os.Stat(filepath.Join(root, ".git")); err == nil && (fi.IsDir() || fi.Mode().IsRegular()) {
+		//fathom:tenancy-allow exec-noctx custodian propose CLI path; its API takes no context
 		out, gerr := exec.Command("git", "-C", root, "ls-files", "-z", "--cached", "--others", "--exclude-standard").Output()
 		if gerr == nil {
 			listed = true

@@ -365,10 +365,10 @@ func TestCodexDoctorRowsUseTheMeasuredEvidence(t *testing.T) {
 
 func TestCmdHarnessLadder(t *testing.T) {
 	var out, errb bytes.Buffer
-	if code := run([]string{"harness", "ladder", "--url", "http://127.0.0.1:7575"}, &out, &errb); code != 0 {
+	if code := run([]string{"harness", "ladder", "--url", "http://127.0.0.1:7581"}, &out, &errb); code != 0 {
 		t.Fatalf("exit %d: %s", code, errb.String())
 	}
-	if !strings.Contains(out.String(), "no injection here") || !strings.Contains(out.String(), "http://127.0.0.1:7575/rpc/agent") || strings.Contains(out.String(), "{{url}}") {
+	if !strings.Contains(out.String(), "no injection here") || !strings.Contains(out.String(), "http://127.0.0.1:7581/rpc/agent") || strings.Contains(out.String(), "{{url}}") {
 		t.Errorf("ladder table:\n%s", out.String())
 	}
 	out.Reset()

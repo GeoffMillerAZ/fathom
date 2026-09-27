@@ -307,6 +307,7 @@ func moduleWatermark(ctx context.Context, root string, m modspec.Manifest) (stri
 // internal/connector to avoid growing that package's public surface for a
 // one-line helper only cmd/fathom needs.
 func moduleGitHead(dir string) string {
+	//fathom:tenancy-allow exec-noctx one-shot CLI verb with no request context; the git/child call ends with the process
 	out, err := exec.Command("git", "-C", dir, "rev-parse", "HEAD").Output()
 	if err != nil {
 		return ""

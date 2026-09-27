@@ -62,7 +62,7 @@ func TestSinceLastLook_FromLedgers(t *testing.T) {
 	}
 	// The daemon record: started with binary d at 15:00 — d's deploy is
 	// dated by the start, so there is no separate restart.
-	rec := DaemonRecord{SchemaVersion: 1, Addr: "127.0.0.1:7575", PID: 42, BinaryCommit: "dddddddddddd0123456789012345678901234567", StartedAt: "2026-09-25T15:00:00Z"}
+	rec := DaemonRecord{SchemaVersion: 1, Addr: "127.0.0.1:7581", PID: 42, BinaryCommit: "dddddddddddd0123456789012345678901234567", StartedAt: "2026-09-25T15:00:00Z"}
 	restart, deploys := DaemonStart(rec, deploys, "daemon record")
 	if restart != nil || deploys[1].At != "2026-09-25T15:00:00Z" || !strings.Contains(deploys[1].Detail, "pid 42") {
 		t.Fatalf("a deploy's own start is not a restart: restart %v, deploy %+v", restart, deploys[1])

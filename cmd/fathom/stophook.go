@@ -369,6 +369,7 @@ func newlyClaimedTasks(oldMD, newMD []byte, service string) []string {
 // headFileVersion returns rel's content at git HEAD, or nil when unavailable
 // (new file, not a git repo, git missing).
 func headFileVersion(repoDir, rel string) []byte {
+	//fathom:tenancy-allow exec-noctx hook process bounded by its hookguard deadline, which kills the process tree; no request context to pass
 	cmd := exec.Command("git", "-C", repoDir, "show", "HEAD:"+filepath.ToSlash(rel))
 	out, err := cmd.Output()
 	if err != nil {

@@ -268,12 +268,14 @@ func buildAgeSuffix() string {
 // "a new binary WORKS" — the distinction that turns a self-restart into a
 // crash loop when it is skipped.
 func binaryReports(path string) (string, error) {
+	//fathom:tenancy-allow exec-noctx runs the new binary's --version with its own watchdog timer in the self-restart path; no request context
 	cmd := exec.Command(path, "version")
 	done := make(chan struct{})
 	var (
 		outBytes []byte
 		runErr   error
 	)
+	//fathom:tenancy-allow bare-go runs the candidate binary's version check against a watchdog timer; buffered, never leaks
 	go func() {
 		outBytes, runErr = cmd.Output()
 		close(done)

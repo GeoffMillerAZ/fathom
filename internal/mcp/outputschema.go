@@ -479,6 +479,8 @@ type capabilitiesResult struct {
 // agentResultTypes maps each agent-surface tool to its result type — the
 // single source outputSchemaFor generates from. Adding a tool to
 // companionTools without a row here fails TestOutputSchemasMatchLiveResults.
+//
+//fathom:tenancy-allow pkg-map read-only lookup table of constants, never written after init: not a cache
 var agentResultTypes = map[string]reflect.Type{
 	"blast_radius":      reflect.TypeOf(blastRadiusResult{}),
 	"capabilities":      reflect.TypeOf(capabilitiesResult{}),

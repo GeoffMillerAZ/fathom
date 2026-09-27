@@ -103,6 +103,7 @@ func readLivePID(pidfile string) (pid int, ok bool) {
 	if err != nil || pid <= 1 {
 		return 0, false
 	}
+	//fathom:tenancy-allow exec-noctx benchmark harness run by an operator, never in the daemon; the child's lifetime is the bench run's
 	out, err := exec.Command("ps", "-o", "command=", "-p", strconv.Itoa(pid)).Output()
 	if err != nil || !strings.Contains(string(out), sessionCommandMarker) {
 		return pid, false

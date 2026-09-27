@@ -201,6 +201,7 @@ func gatherUnitEvidence(root, sid string, start, end time.Time) assess.UnitEvide
 		WindowStart: start.UTC().Format(time.RFC3339),
 		WindowEnd:   end.UTC().Format(time.RFC3339),
 	}
+	//fathom:tenancy-allow exec-noctx one-shot CLI verb with no request context; the git/child call ends with the process
 	out, err := exec.Command("git", "-C", root, "log", "--reverse",
 		"--since="+ev.WindowStart, "--until="+ev.WindowEnd, "--format=%H%x09%s", "HEAD").Output()
 	if err == nil {
@@ -209,8 +210,10 @@ func gatherUnitEvidence(root, sid string, start, end time.Time) assess.UnitEvide
 			if !ok || sha == "" {
 				continue
 			}
+			//fathom:tenancy-allow exec-noctx one-shot CLI verb with no request context; the git/child call ends with the process
 			patch, _ := exec.Command("git", "-C", root, "show", "--format=", "--patch", "--no-color", "--no-ext-diff", sha).Output()
 			ev.Commits = append(ev.Commits, assess.Commit{SHA: sha, Subject: subject, Patch: string(patch)})
+			//fathom:tenancy-allow exec-noctx one-shot CLI verb with no request context; the git/child call ends with the process
 			plan, _ := exec.Command("git", "-C", root, "show", "--format=", "--unified=0", "--no-color", "--no-ext-diff", sha, "--", "docs/plans").Output()
 			ev.PlanDeltas = append(ev.PlanDeltas, parsePlanDeltas(string(plan))...)
 		}
@@ -402,6 +405,7 @@ func assessInterventions(root, sid string, start, end time.Time, projBeats []ret
 // /dev/null: its whole content is the change. "" means no evidence.
 func fileDiffInWindow(root, rel, since, until string, withWorkingTree bool) string {
 	var b strings.Builder
+	//fathom:tenancy-allow exec-noctx one-shot CLI verb with no request context; the git/child call ends with the process
 	if out, err := exec.Command("git", "-C", root, "log", "--since="+since, "--until="+until,
 		"--format=--- commit %h %s", "--patch", "--no-color", "--no-ext-diff", "--", rel).Output(); err == nil {
 		b.Write(out)
@@ -409,13 +413,16 @@ func fileDiffInWindow(root, rel, since, until string, withWorkingTree bool) stri
 	if !withWorkingTree {
 		return b.String()
 	}
+	//fathom:tenancy-allow exec-noctx one-shot CLI verb with no request context; the git/child call ends with the process
 	if out, err := exec.Command("git", "-C", root, "diff", "--no-color", "--no-ext-diff", "HEAD", "--", rel).Output(); err == nil && len(out) > 0 {
 		b.WriteString("--- uncommitted working-tree change\n")
 		b.Write(out)
 		return b.String()
 	}
+	//fathom:tenancy-allow exec-noctx one-shot CLI verb with no request context; the git/child call ends with the process
 	if others, err := exec.Command("git", "-C", root, "ls-files", "--others", "--exclude-standard", "--", rel).Output(); err == nil && strings.TrimSpace(string(others)) != "" {
 		// --no-index exits 1 when the two sides differ, which they always do here.
+		//fathom:tenancy-allow exec-noctx one-shot CLI verb with no request context; the git/child call ends with the process
 		out, err := exec.Command("git", "-C", root, "diff", "--no-index", "--no-color", "--no-ext-diff", "--", os.DevNull, rel).Output()
 		var ee *exec.ExitError
 		if (err == nil || (errors.As(err, &ee) && ee.ExitCode() == 1)) && len(out) > 0 {

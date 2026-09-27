@@ -60,20 +60,20 @@ func TestMutationEndpointRefusals(t *testing.T) {
 		headers map[string]string
 		want    int
 	}{
-		{"non-loopback Host", http.MethodPost, "/observatory/wiring/apply?service=demo", "fathom.example.net:7575", nil, http.StatusForbidden},
-		{"LAN address Host", http.MethodPost, "/observatory/wiring/apply?service=demo", "192.168.1.20:7575", nil, http.StatusForbidden},
-		{"cross-site Origin", http.MethodPost, "/observatory/wiring/apply?service=demo", "127.0.0.1:7575", map[string]string{"Origin": "http://evil.example"}, http.StatusForbidden},
-		{"loopback Origin on another port", http.MethodPost, "/observatory/wiring/apply?service=demo", "127.0.0.1:7575", map[string]string{"Origin": "http://127.0.0.1:9999"}, http.StatusForbidden},
-		{"localhost Origin on another port", http.MethodPost, "/observatory/wiring/apply?service=demo", "127.0.0.1:7575", map[string]string{"Origin": "http://localhost:9999"}, http.StatusForbidden},
-		{"loopback Origin with no port against a ported Host", http.MethodPost, "/observatory/wiring/apply?service=demo", "127.0.0.1:7575", map[string]string{"Origin": "http://127.0.0.1"}, http.StatusForbidden},
-		{"loopback Origin with the wrong scheme", http.MethodPost, "/observatory/wiring/apply?service=demo", "127.0.0.1:7575", map[string]string{"Origin": "https://127.0.0.1:7575"}, http.StatusForbidden},
-		{"cross-site Sec-Fetch-Site", http.MethodPost, "/observatory/wiring/apply?service=demo", "127.0.0.1:7575", map[string]string{"Sec-Fetch-Site": "cross-site"}, http.StatusForbidden},
-		{"same-site (other port) Sec-Fetch-Site", http.MethodPost, "/observatory/wiring/apply?service=demo", "127.0.0.1:7575", map[string]string{"Sec-Fetch-Site": "same-site"}, http.StatusForbidden},
-		{"unknown service id", http.MethodPost, "/observatory/wiring/apply?service=ghost", "127.0.0.1:7575", nil, http.StatusBadRequest},
-		{"no service id", http.MethodPost, "/observatory/wiring/apply", "127.0.0.1:7575", nil, http.StatusBadRequest},
-		{"path that is not the registered root", http.MethodPost, "/observatory/wiring/apply?service=demo&path=" + url.QueryEscape(t.TempDir()), "127.0.0.1:7575", nil, http.StatusBadRequest},
-		{"service with no local root", http.MethodPost, "/observatory/wiring/apply?service=remote", "127.0.0.1:7575", nil, http.StatusBadRequest},
-		{"GET is not a mutation", http.MethodGet, "/observatory/wiring/apply?service=demo", "127.0.0.1:7575", nil, http.StatusMethodNotAllowed},
+		{"non-loopback Host", http.MethodPost, "/observatory/wiring/apply?service=demo", "fathom.example.net:7581", nil, http.StatusForbidden},
+		{"LAN address Host", http.MethodPost, "/observatory/wiring/apply?service=demo", "192.168.1.20:7581", nil, http.StatusForbidden},
+		{"cross-site Origin", http.MethodPost, "/observatory/wiring/apply?service=demo", "127.0.0.1:7581", map[string]string{"Origin": "http://evil.example"}, http.StatusForbidden},
+		{"loopback Origin on another port", http.MethodPost, "/observatory/wiring/apply?service=demo", "127.0.0.1:7581", map[string]string{"Origin": "http://127.0.0.1:9999"}, http.StatusForbidden},
+		{"localhost Origin on another port", http.MethodPost, "/observatory/wiring/apply?service=demo", "127.0.0.1:7581", map[string]string{"Origin": "http://localhost:9999"}, http.StatusForbidden},
+		{"loopback Origin with no port against a ported Host", http.MethodPost, "/observatory/wiring/apply?service=demo", "127.0.0.1:7581", map[string]string{"Origin": "http://127.0.0.1"}, http.StatusForbidden},
+		{"loopback Origin with the wrong scheme", http.MethodPost, "/observatory/wiring/apply?service=demo", "127.0.0.1:7581", map[string]string{"Origin": "https://127.0.0.1:7581"}, http.StatusForbidden},
+		{"cross-site Sec-Fetch-Site", http.MethodPost, "/observatory/wiring/apply?service=demo", "127.0.0.1:7581", map[string]string{"Sec-Fetch-Site": "cross-site"}, http.StatusForbidden},
+		{"same-site (other port) Sec-Fetch-Site", http.MethodPost, "/observatory/wiring/apply?service=demo", "127.0.0.1:7581", map[string]string{"Sec-Fetch-Site": "same-site"}, http.StatusForbidden},
+		{"unknown service id", http.MethodPost, "/observatory/wiring/apply?service=ghost", "127.0.0.1:7581", nil, http.StatusBadRequest},
+		{"no service id", http.MethodPost, "/observatory/wiring/apply", "127.0.0.1:7581", nil, http.StatusBadRequest},
+		{"path that is not the registered root", http.MethodPost, "/observatory/wiring/apply?service=demo&path=" + url.QueryEscape(t.TempDir()), "127.0.0.1:7581", nil, http.StatusBadRequest},
+		{"service with no local root", http.MethodPost, "/observatory/wiring/apply?service=remote", "127.0.0.1:7581", nil, http.StatusBadRequest},
+		{"GET is not a mutation", http.MethodGet, "/observatory/wiring/apply?service=demo", "127.0.0.1:7581", nil, http.StatusMethodNotAllowed},
 	}
 	for _, tc := range refusals {
 		t.Run(tc.name, func(t *testing.T) {
@@ -94,12 +94,12 @@ func TestMutationEndpointRefusals(t *testing.T) {
 	t.Run("happy path: loopback, same-origin, registered service", func(t *testing.T) {
 		for _, hdr := range []map[string]string{
 			nil,
-			{"Origin": "http://127.0.0.1:7575", "Sec-Fetch-Site": "same-origin"},
-			{"Origin": "http://localhost:7575"},
-			{"Origin": "http://[::1]:7575"},
+			{"Origin": "http://127.0.0.1:7581", "Sec-Fetch-Site": "same-origin"},
+			{"Origin": "http://localhost:7581"},
+			{"Origin": "http://[::1]:7581"},
 		} {
 			before := reached
-			rr := do(http.MethodPost, "/observatory/wiring/apply?service=demo", "localhost:7575", hdr)
+			rr := do(http.MethodPost, "/observatory/wiring/apply?service=demo", "localhost:7581", hdr)
 			if rr.Code != http.StatusNoContent {
 				t.Fatalf("headers %v: status = %d, want 204 (body: %s)", hdr, rr.Code, rr.Body.String())
 			}
@@ -111,7 +111,7 @@ func TestMutationEndpointRefusals(t *testing.T) {
 			}
 		}
 		// The registered path itself is accepted when spelled back.
-		rr := do(http.MethodPost, "/observatory/wiring/apply?service=demo&path="+url.QueryEscape(root), "127.0.0.1:7575", nil)
+		rr := do(http.MethodPost, "/observatory/wiring/apply?service=demo&path="+url.QueryEscape(root), "127.0.0.1:7581", nil)
 		if rr.Code != http.StatusNoContent {
 			t.Errorf("registered path refused: %d %s", rr.Code, rr.Body.String())
 		}
@@ -142,7 +142,7 @@ func TestWiringApplyRequiresFreshPlan(t *testing.T) {
 
 	post := func(h http.Handler, path string, form url.Values) (int, map[string]any) {
 		req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(form.Encode()))
-		req.Host = "127.0.0.1:7575"
+		req.Host = "127.0.0.1:7581"
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		req.Header.Set("Accept", "application/json")
 		rr := httptest.NewRecorder()
@@ -285,7 +285,7 @@ func TestWiringPagesRenderHTML(t *testing.T) {
 	}
 
 	req = httptest.NewRequest(http.MethodPost, "/observatory/wiring/preview", strings.NewReader("service=demo"))
-	req.Host = "127.0.0.1:7575"
+	req.Host = "127.0.0.1:7581"
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rr = httptest.NewRecorder()
 	h.ServeHTTP(rr, req)

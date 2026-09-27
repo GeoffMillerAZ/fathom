@@ -26,7 +26,7 @@ func TestSelfRestartExitCodeMatchesPlistSchema(t *testing.T) {
 		t.Fatalf("adoptionExitCode() = %d, want 75 (EX_TEMPFAIL)", adoptionExitCode())
 	}
 	// Schema 2 is the plist fathom actually writes (RT-13's plistBody).
-	v2 := plistBody("dev.fathom.serve-http", "/usr/local/bin/fathom", "/s.sqlite", ":7575", "/logs", "/c.jsonl", "/usr/bin", nil)
+	v2 := plistBody("dev.fathom.serve-http", "/usr/local/bin/fathom", "/s.sqlite", ":7581", "/logs", "/c.jsonl", "/usr/bin", nil)
 	const v2KeepAlive = "<key>KeepAlive</key><dict><key>SuccessfulExit</key><false/></dict>"
 	if !strings.Contains(v2, v2KeepAlive) {
 		t.Fatalf("rendered plist no longer carries %q; update this test to the schema it renders:\n%s", v2KeepAlive, v2)

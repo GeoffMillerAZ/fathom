@@ -256,6 +256,7 @@ func mountConsole(mux *http.ServeMux, d *consoleDeps, wiring http.Handler) {
 
 // model is the request's observatory model (cached, 30 s TTL).
 func (cr *consoleRequest) model() observatoryModel {
+	//fathom:tenancy-allow bg-ctx the observatory model is a shared 30 s cache entry rebuilt once for every page; replaced by the request's context when one is present
 	ctx := context.Background()
 	if cr.r != nil {
 		ctx = cr.r.Context()

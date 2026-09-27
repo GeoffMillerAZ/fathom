@@ -342,8 +342,10 @@ func (s *consoleEventSources) catchUp() {
 	due := s.storeAt.IsZero() || s.clock().Sub(s.storeAt) >= consoleStorePoll
 	s.pollMu.Unlock()
 	if due && s.storeKicked.CompareAndSwap(false, true) {
+		//fathom:tenancy-allow bare-go one detached flight guarded by storeKicked (CompareAndSwap)
 		go func() {
 			defer s.storeKicked.Store(false)
+			//fathom:tenancy-allow bg-ctx detached store poll for the event stream, shared by every subscriber; a single flight guarded by storeKicked, not a request
 			s.pollStoreDue(context.Background(), false)
 		}()
 	}
@@ -399,10 +401,12 @@ func (f *feederSwitch) subscribers(n int) {
 	defer f.mu.Unlock()
 	switch {
 	case n > 0 && f.cancel == nil:
+		//fathom:tenancy-allow bg-ctx the feeder's lifetime spans all subscribers and is cancelled when the last one leaves; no single request owns it
 		ctx, cancel := context.WithCancel(context.Background())
 		prev := f.done
 		done := make(chan struct{})
 		f.cancel, f.done = cancel, done
+		//fathom:tenancy-allow bare-go the feeder goroutine, one per event stream, cancelled with the last subscriber
 		go func() {
 			defer close(done)
 			if prev != nil {

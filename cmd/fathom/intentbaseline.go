@@ -98,6 +98,7 @@ func intentBaseline(root, decisionsFile string, now time.Time, lookbackDays int)
 
 // gitOut runs git in root and returns stdout.
 func gitOut(root string, args ...string) (string, error) {
+	//fathom:tenancy-allow exec-noctx one-shot CLI verb with no request context; the git/child call ends with the process
 	cmd := exec.Command("git", args...)
 	cmd.Dir = root
 	b, err := cmd.Output()

@@ -66,6 +66,7 @@ const (
 // gitHeadShort returns the short HEAD sha of root, or "" — absence over
 // failure, this is telemetry.
 func gitHeadShort(root string) string {
+	//fathom:tenancy-allow exec-noctx one-shot CLI verb with no request context; the git/child call ends with the process
 	out, err := exec.Command("git", "-C", root, "rev-parse", "--short", "HEAD").Output()
 	if err != nil {
 		return ""

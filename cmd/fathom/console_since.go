@@ -41,6 +41,7 @@ func gatherSince(ctx context.Context, src sinceSources) console.Since {
 
 	// The last look: the previous view of Now.
 	views := console.SourceRead{Name: "page views", Path: src.viewsLog}
+	//fathom:tenancy-allow whole-read reads a small operator file (page-view log, .git file or ref log) for the since view, never a repository tree
 	switch data, err := os.ReadFile(src.viewsLog); {
 	case src.viewsLog == "":
 		views.State, views.Reason = console.StateAbsent, "no page-view log is configured"
@@ -247,6 +248,7 @@ func gitDirs(root string) (gitDir, commonDir string, ok bool) {
 	}
 	gitDir = dotGit
 	if !fi.IsDir() {
+		//fathom:tenancy-allow whole-read reads a small operator file (page-view log, .git file or ref log) for the since view, never a repository tree
 		raw, err := os.ReadFile(dotGit)
 		if err != nil {
 			return "", "", false
@@ -261,6 +263,7 @@ func gitDirs(root string) (gitDir, commonDir string, ok bool) {
 		}
 	}
 	commonDir = gitDir
+	//fathom:tenancy-allow whole-read reads a small operator file (page-view log, .git file or ref log) for the since view, never a repository tree
 	if raw, err := os.ReadFile(filepath.Join(gitDir, "commondir")); err == nil {
 		c := strings.TrimSpace(string(raw))
 		if !filepath.IsAbs(c) {
@@ -275,6 +278,7 @@ func gitDirs(root string) (gitDir, commonDir string, ok bool) {
 // origin/HEAD names, else main, else master.
 func remoteTrackingReflog(commonDir string) (ref string, data []byte, err error) {
 	branches := []string{"main", "master"}
+	//fathom:tenancy-allow whole-read reads a small operator file (page-view log, .git file or ref log) for the since view, never a repository tree
 	if raw, rerr := os.ReadFile(filepath.Join(commonDir, "refs", "remotes", "origin", "HEAD")); rerr == nil {
 		if b := strings.TrimPrefix(strings.TrimSpace(string(raw)), "ref: refs/remotes/origin/"); b != "" && !strings.ContainsAny(b, " \n") {
 			branches = append([]string{b}, branches...)
@@ -282,6 +286,7 @@ func remoteTrackingReflog(commonDir string) (ref string, data []byte, err error)
 	}
 	err = os.ErrNotExist
 	for _, b := range branches {
+		//fathom:tenancy-allow whole-read reads a small operator file (page-view log, .git file or ref log) for the since view, never a repository tree
 		data, err = os.ReadFile(filepath.Join(commonDir, "logs", "refs", "remotes", "origin", filepath.FromSlash(b)))
 		if err == nil {
 			return "origin/" + b, data, nil

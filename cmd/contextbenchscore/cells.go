@@ -130,6 +130,7 @@ func cmdSelect(args []string) int {
 	if *files != "" {
 		changed = splitList(*files)
 	} else {
+		//fathom:tenancy-allow exec-noctx benchmark harness run by an operator, never in the daemon; the child's lifetime is the bench run's
 		out, err := exec.Command("git", "-C", *repo, "diff", "--name-only", *diff).Output()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "select: git diff --name-only %s: %v\n", *diff, err)

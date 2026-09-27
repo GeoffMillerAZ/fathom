@@ -692,6 +692,7 @@ func checkBinaryFresh(root string) doctorCheck {
 // shallow clone) — callers must treat that as "undetermined", never as a
 // negative answer.
 func gitIsAncestor(root, ancestor, descendant string) (bool, bool) {
+	//fathom:tenancy-allow exec-noctx one-shot CLI verb with no request context; the git/child call ends with the process
 	err := exec.Command("git", "-C", root, "merge-base", "--is-ancestor", ancestor, descendant).Run()
 	if err == nil {
 		return true, true
@@ -711,6 +712,7 @@ func gitIsAncestor(root, ancestor, descendant string) (bool, bool) {
 // count could not be determined; the caller then omits the number rather
 // than guessing.
 func gitCommitCount(root, from, to string) (int, bool) {
+	//fathom:tenancy-allow exec-noctx one-shot CLI verb with no request context; the git/child call ends with the process
 	out, err := exec.Command("git", "-C", root, "rev-list", "--count", from+".."+to).Output()
 	if err != nil {
 		return 0, false
@@ -723,6 +725,7 @@ func gitCommitCount(root, from, to string) (int, bool) {
 }
 
 func doctorGitHead(root string) (string, error) {
+	//fathom:tenancy-allow exec-noctx one-shot CLI verb with no request context; the git/child call ends with the process
 	out, err := exec.Command("git", "-C", root, "rev-parse", "HEAD").Output()
 	if err != nil {
 		return "", err
@@ -748,6 +751,7 @@ func isGitWorktree(root string) bool {
 // been compiled from a nested worktree's different code. Best-effort: any
 // git failure reports zero (the note is additive, never load-bearing).
 func nestedLinkedWorktrees(root string) int {
+	//fathom:tenancy-allow exec-noctx one-shot CLI verb with no request context; the git/child call ends with the process
 	out, err := exec.Command("git", "-C", root, "worktree", "list", "--porcelain").Output()
 	if err != nil {
 		return 0

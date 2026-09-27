@@ -24,7 +24,7 @@ func TestResolveCallLog_PrefersDaemonConfiguredLog(t *testing.T) {
 	// path while the daemon wrote elsewhere. With a daemon record, the
 	// daemon's log wins over both config and legacy.
 	got := console.ResolveCallLog(console.CallLogInputs{
-		Daemon: daemonLog, DaemonNote: "recorded by serve-http pid 7 on 127.0.0.1:7575",
+		Daemon: daemonLog, DaemonNote: "recorded by serve-http pid 7 on 127.0.0.1:7581",
 		Config: configLog, Legacy: legacy,
 	})
 	if got.Path != daemonLog || got.Rule != console.RuleDaemon {
@@ -80,15 +80,15 @@ func TestResolveCallLog_PrefersDaemonConfiguredLog(t *testing.T) {
 	// The daemon record round-trips through the path a verb derives from
 	// its daemon URL — localhost and 127.0.0.1 name the same record.
 	home := filepath.Join(dir, "home")
-	written, err := console.DaemonRecordPath(home, "127.0.0.1:7575")
+	written, err := console.DaemonRecordPath(home, "127.0.0.1:7581")
 	if err != nil {
 		t.Fatal(err)
 	}
-	rec := console.NewDaemonRecord("127.0.0.1:7575", 4242, daemonLog, "/db/fleet.sqlite", "abc123", time.Date(2026, 9, 25, 10, 0, 0, 0, time.UTC))
+	rec := console.NewDaemonRecord("127.0.0.1:7581", 4242, daemonLog, "/db/fleet.sqlite", "abc123", time.Date(2026, 9, 25, 10, 0, 0, 0, time.UTC))
 	if err := console.WriteDaemonRecord(written, rec); err != nil {
 		t.Fatal(err)
 	}
-	addr, err := console.DaemonAddrFromURL("http://localhost:7575")
+	addr, err := console.DaemonAddrFromURL("http://localhost:7581")
 	if err != nil {
 		t.Fatal(err)
 	}

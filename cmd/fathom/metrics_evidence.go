@@ -373,6 +373,8 @@ type sessionReplay struct {
 
 // replayHiddenMeta are beat labels the replay does not repeat on every
 // event (the session itself, provenance stamps, the project directory).
+//
+//fathom:tenancy-allow pkg-map read-only lookup table of constants, never written after init: not a cache
 var replayHiddenMeta = map[string]bool{"session": true, "fathom_version": true, "schema_version": true, "harness": true, "project_dir": true, "service": true}
 
 // readSessionEvents reads one session's beats from the hooks log and its

@@ -37,6 +37,7 @@ func installKillSwitch() func() {
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, syscall.SIGTERM, syscall.SIGINT)
 	done := make(chan struct{})
+	//fathom:tenancy-allow bare-go benchmark signal forwarder, one per bench run
 	go func() {
 		select {
 		case sig := <-ch:

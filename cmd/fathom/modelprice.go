@@ -39,6 +39,8 @@ const (
 )
 
 // knownModelRates names every model fathom has a real price for.
+//
+//fathom:tenancy-allow pkg-map read-only lookup table of constants, never written after init: not a cache
 var knownModelRates = map[string]bool{
 	defaultCompileModel: true,
 }
