@@ -32,6 +32,9 @@ type daemonMeta struct {
 	PPID     int
 	IdleExit time.Duration
 	TTL      time.Duration
+	// LifecycleID is --lifecycle-id: where the ledger lives when it is not
+	// the record's own directory (RT-158).
+	LifecycleID string
 }
 
 // daemonID names the record directory: the label when managed, else
@@ -94,6 +97,7 @@ func recordServingDaemonAs(meta daemonMeta, addr, callLog, storePath, commit str
 	rec.ID = daemonID(meta, addr, pid)
 	rec.Managed = meta.Managed
 	rec.PPID = meta.PPID
+	rec.LifecycleID = meta.LifecycleID
 	if exe, err := os.Executable(); err == nil {
 		rec.Exe = exe
 		rec.ExeInode = exeInode(exe)

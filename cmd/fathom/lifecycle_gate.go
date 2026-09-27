@@ -19,6 +19,7 @@ import (
 	"time"
 
 	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
+	"github.com/geoffmilleraz/fathom/internal/hookguard"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
 
@@ -31,11 +32,17 @@ var draining atomic.Bool
 // errDraining cancels in-flight heavy and ingest work at the drain.
 var errDraining = errors.New("fathom is draining (SIGTERM): heavy work cancelled")
 
-// lcRefusal is one refusal: the sentence, the class, how long to wait.
+// lcRefusal is one refusal: the sentence, the class, how long to wait,
+// and how far it reaches (design §3.4, X-Fathom-Busy-Scope): "daemon" when
+// the daemon refuses as a whole (safe mode, a drain, the store unavailable)
+// and every hook should hold off for Retry-After; "class" when one cost
+// class refused (warm-up's one slot, store distress's ingest and writes)
+// and other calls are served.
 type lcRefusal struct {
 	Reason     string
 	Class      tenancy.Class
 	RetryAfter time.Duration
+	Scope      string
 }
 
 // heavyClass reports tree and fleet.
@@ -44,24 +51,25 @@ func heavyClass(c tenancy.Class) bool { return c == tenancy.ClassTree || c == te
 // lifecycleRefusal is the mode check for one tools/call of class c.
 func lifecycleRefusal(c tenancy.Class, now time.Time) *lcRefusal {
 	if draining.Load() && (heavyClass(c) || c == tenancy.ClassIngest) {
-		return &lcRefusal{Reason: fmt.Sprintf("draining: fathom is shutting down (SIGTERM); %s-class calls are closed", c), Class: c, RetryAfter: 30 * time.Second}
+		return &lcRefusal{Reason: fmt.Sprintf("draining: fathom is shutting down (SIGTERM); %s-class calls are closed", c), Class: c, RetryAfter: 30 * time.Second, Scope: hookguard.BusyScopeDaemon}
 	}
 	if heavyClass(c) {
 		if s, on := tenancy.SafeModeNow(); on {
-			return &lcRefusal{Reason: s.Message(), Class: c, RetryAfter: 60 * time.Second}
+			return &lcRefusal{Reason: s.Message(), Class: c, RetryAfter: 60 * time.Second, Scope: hookguard.BusyScopeDaemon}
 		}
 	}
 	if c == tenancy.ClassIngest {
 		if why, on := tenancy.StoreDistressNow(now); on {
-			return &lcRefusal{Reason: why + " — ingest and writes are refused until it clears; fathom resources", Class: c, RetryAfter: 60 * time.Second}
+			return &lcRefusal{Reason: why + " — ingest and writes are refused until it clears; fathom resources", Class: c, RetryAfter: 60 * time.Second, Scope: hookguard.BusyScopeClass}
 		}
 	}
 	return nil
 }
 
-// writeBusy writes §3.4's refusal: 503, Retry-After, -32050 {reason,
-// class, level, retry_after_ms}.
-func writeBusy(w http.ResponseWriter, id json.RawMessage, reason, class string, retry time.Duration) {
+// writeBusy writes §3.4's refusal: 503, Retry-After, X-Fathom-Busy-Scope
+// (scope; daemon when empty) and -32050 "fathom busy: <reason>" {reason,
+// class, level, retry_after_ms} — the admission path's shape.
+func writeBusy(w http.ResponseWriter, id json.RawMessage, reason, class, scope string, retry time.Duration) {
 	if len(id) == 0 {
 		id = json.RawMessage("null")
 	}
@@ -70,7 +78,7 @@ func writeBusy(w http.ResponseWriter, id json.RawMessage, reason, class string, 
 		"id":      id,
 		"error": map[string]any{
 			"code":    rpcBusyCode,
-			"message": "fathom busy",
+			"message": "fathom busy: " + reason,
 			"data": map[string]any{
 				"reason":         reason,
 				"class":          class,
@@ -79,6 +87,10 @@ func writeBusy(w http.ResponseWriter, id json.RawMessage, reason, class string, 
 			},
 		},
 	})
+	if scope == "" {
+		scope = hookguard.BusyScopeDaemon
+	}
+	w.Header().Set(hookguard.BusyScopeHeader, scope)
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Retry-After", strconv.Itoa(int((retry+time.Second-1)/time.Second)))
 	w.WriteHeader(http.StatusServiceUnavailable)
@@ -121,14 +133,14 @@ func lifecycleGate(ctx context.Context, w http.ResponseWriter, raw []byte, origi
 	// past safe mode, a drain or store distress.
 	for _, c := range classes {
 		if ref := lifecycleRefusal(c, now); ref != nil {
-			writeBusy(w, id, ref.Reason, c.String(), ref.RetryAfter)
+			writeBusy(w, id, ref.Reason, c.String(), ref.Scope, ref.RetryAfter)
 			return nil, false
 		}
 	}
 	class := classes[0]
 	rel, ref := serveWarmupGate.acquire(ctx, class, tool, origin, now)
 	if ref != nil {
-		writeBusy(w, id, ref.Reason, class.String(), ref.RetryAfter)
+		writeBusy(w, id, ref.Reason, class.String(), ref.Scope, ref.RetryAfter)
 		return nil, false
 	}
 	return rel, true
@@ -193,7 +205,9 @@ func (g *warmupGate) acquire(ctx context.Context, c tenancy.Class, tool, origin 
 		return held()
 	default:
 	}
-	if origin != "hook" && g.wait > 0 {
+	// A hook (edit-hook, session-hook, prime, …) is refused at once, never
+	// queued: classified exactly as the admission gate classifies it.
+	if tenancy.ParseOrigin(origin, false) != tenancy.OriginHook && g.wait > 0 {
 		t := time.NewTimer(g.wait)
 		defer t.Stop()
 		select {
@@ -211,7 +225,7 @@ func (g *warmupGate) acquire(ctx context.Context, c tenancy.Class, tool, origin 
 	if g.logf != nil {
 		g.logf("tenancy: warm-up refused " + tool + ": " + reason)
 	}
-	return nil, &lcRefusal{Reason: reason, Class: c, RetryAfter: max(remain, time.Second)}
+	return nil, &lcRefusal{Reason: reason, Class: c, RetryAfter: max(remain, time.Second), Scope: hookguard.BusyScopeClass}
 }
 
 // ─── safe mode (RT-39) ────────────────────────────────────────────────────

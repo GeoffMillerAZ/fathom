@@ -426,7 +426,12 @@ func quarantinesOnHalt(tool string) bool {
 	return tool == "ingest" || tool == "onboard_service"
 }
 
-// topInFlight names the oldest n in-flight entries: tool(class, service, age).
+// topInFlight names the oldest n in-flight entries: tool(class, service,
+// age, since start). The age is a wall-clock difference (Round(0) strips
+// the monotonic reading), the clock the ledger and the ring record: a
+// monotonic difference stops while the machine sleeps, which made the
+// live reading's exit row say 1m15s for an ingest its timeline put at 10
+// minutes (F7). The start instant lets the row be checked against both.
 func (g *governor) topInFlight(n int) []string {
 	snap := g.inflight.Snapshot()
 	out := []string{}
@@ -434,7 +439,8 @@ func (g *governor) topInFlight(n int) []string {
 		if i == n {
 			break
 		}
-		out = append(out, fmt.Sprintf("%s(%s, %s, %s)", e.Tool, e.Class, firstNonEmpty(e.Service, "-"), g.sample.At.Sub(e.Started).Round(time.Second)))
+		age := g.sample.At.Round(0).Sub(e.Started.Round(0)).Round(time.Second)
+		out = append(out, fmt.Sprintf("%s(%s, %s, %s since %s)", e.Tool, e.Class, firstNonEmpty(e.Service, "-"), age, e.Started.UTC().Format(time.RFC3339)))
 	}
 	return out
 }

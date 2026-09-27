@@ -21,6 +21,8 @@ import (
 	"sync/atomic"
 	"syscall"
 	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/hookguard"
 )
 
 // Store-wait labels (§8.4).
@@ -301,7 +303,7 @@ func waitingHandler(st *atomic.Pointer[storeWaitState]) http.Handler {
 				ID json.RawMessage `json:"id"`
 			}
 			_ = json.NewDecoder(http.MaxBytesReader(w, r.Body, 4<<20)).Decode(&msg)
-			writeBusy(w, msg.ID, storeUnavailableReason(s), "", 30*time.Second)
+			writeBusy(w, msg.ID, storeUnavailableReason(s), "", hookguard.BusyScopeDaemon, 30*time.Second)
 		default:
 			http.Error(w, "fathom is waiting for its store: "+storeUnavailableReason(s), http.StatusServiceUnavailable)
 		}

@@ -229,6 +229,24 @@ type lifecycleEntry struct {
 // else the default label.
 func resolveResourcesTarget(env resourcesEnv, id, url string) (resourcesDaemon, *console.DaemonRecord) {
 	dir := daemonRecordsDir(env.home)
+	var labels []string
+	if env.labels != nil {
+		labels = env.labels()
+	}
+	labels = append(labels, defaultDaemonLabel)
+	recs, _ := listDaemonRecords(env.home)
+	// fromRecord reports the daemon a record names. A --lifecycle-id
+	// daemon (RT-158) keeps its ledger, ring and diagnostics under
+	// <lifecycle-id>/, not beside its addr-<port>-<pid> record (the live
+	// reading's F6: doctor read the empty per-process directory and said
+	// the build had no RT-37).
+	fromRecord := func(p string, rec console.DaemonRecord, id string) (resourcesDaemon, *console.DaemonRecord) {
+		d := resourcesDaemon{ID: id, StateDir: filepath.Join(dir, id), Record: p, PID: rec.PID, Managed: rec.Managed}
+		if rec.LifecycleID != "" && !rec.Managed {
+			d.ID, d.StateDir = rec.LifecycleID, filepath.Join(dir, rec.LifecycleID)
+		}
+		return d, &rec
+	}
 	pick := func(id string) (resourcesDaemon, *console.DaemonRecord) {
 		d := resourcesDaemon{ID: id, StateDir: filepath.Join(dir, id)}
 		_, _, scratch := scratchRecordID(id)
@@ -238,16 +256,26 @@ func resolveResourcesTarget(env resourcesEnv, id, url string) (resourcesDaemon, 
 			d.Record, d.PID, d.Managed = p, rec.PID, rec.Managed || !scratch
 			return d, &rec
 		}
+		// A --lifecycle-id directory holds no record: the live record that
+		// names it does, and it is never the managed daemon's.
+		for _, r := range recs {
+			if r.Rec.LifecycleID == id && !r.Rec.Managed {
+				dd, rec := fromRecord(filepath.Join(dir, r.Rec.ID, "record.json"), r.Rec, r.Rec.ID)
+				return dd, rec
+			}
+		}
 		return d, nil
 	}
 	if id != "" {
 		return pick(id)
 	}
-	recs, _ := listDaemonRecords(env.home)
 	if url != "" {
 		want := hookguard.NormalizeURL(url)
 		for _, r := range recs {
 			if r.Rec.ID != "" && r.Rec.Addr != "" && hookguard.NormalizeURL(r.Rec.Addr) == want {
+				if r.Rec.LifecycleID != "" && !r.Rec.Managed {
+					return fromRecord(filepath.Join(dir, r.Rec.ID, "record.json"), r.Rec, r.Rec.ID)
+				}
 				return pick(r.Rec.ID)
 			}
 		}
@@ -257,11 +285,6 @@ func resolveResourcesTarget(env resourcesEnv, id, url string) (resourcesDaemon, 
 			return pick(r.Rec.ID)
 		}
 	}
-	var labels []string
-	if env.labels != nil {
-		labels = env.labels()
-	}
-	labels = append(labels, defaultDaemonLabel)
 	for _, l := range labels {
 		if fi, err := os.Stat(filepath.Join(dir, l)); err == nil && fi.IsDir() {
 			return pick(l)

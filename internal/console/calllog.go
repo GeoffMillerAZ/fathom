@@ -154,6 +154,10 @@ type DaemonRecord struct {
 	HeartbeatAt    string `json:"heartbeat_at,omitempty"`     // rewritten every 60 s
 	LastActivityAt string `json:"last_activity_at,omitempty"` // the last request, as of the heartbeat
 	StateRoot      string `json:"state_root,omitempty"`       // the ~/.fathom/daemon/<id> directory
+	// LifecycleID is an unmanaged daemon's --lifecycle-id (RT-158): its
+	// ledger, resource ring and diagnostics live under
+	// ~/.fathom/daemon/<LifecycleID>/, not beside this record.
+	LifecycleID string `json:"lifecycle_id,omitempty"`
 }
 
 // DaemonRecordSchemaVersion is the record's wire version.

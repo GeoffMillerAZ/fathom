@@ -329,7 +329,7 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	// failed to start never leaves a record behind — and before the store,
 	// so `fathom daemon stop` finds a daemon waiting for its store.
 	prevRecord, hadPrev := readDaemonRecordFor("http://" + *addr)
-	meta := daemonMeta{Managed: managed, Label: managedLabel, PPID: startPPID}
+	meta := daemonMeta{Managed: managed, Label: managedLabel, PPID: startPPID, LifecycleID: lcID}
 	if !managed {
 		meta.IdleExit, meta.TTL = *idleExit, *ttl
 	}
@@ -1001,6 +1001,8 @@ func newHTTPHandlerDeps(srv *mcp.Server, c *client.Client, selfAddr string, port
 
 	// serveRPC handles one JSON-RPC 2.0 message on the named surface.
 	serveRPC := func(w http.ResponseWriter, r *http.Request, surface string) {
+		// RT-179: the call's clock and class deadline run from here.
+		arrived := time.Now()
 		state.reqCount.Add(1)
 		if r.Method != http.MethodPost {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -1028,6 +1030,7 @@ func newHTTPHandlerDeps(srv *mcp.Server, c *client.Client, selfAddr string, port
 		// request's tools/list back into outputSchema.
 		ctx, cancelRPC := rpcContext(r, surface)
 		defer cancelRPC()
+		ctx = mcp.WithArrival(ctx, arrived)
 		// An ingest-class call runs detached with no class deadline; the
 		// route's 150 s write deadline would cut its client off mid-ingest
 		// (the work completes, the answer is lost), so it lifts it.
