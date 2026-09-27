@@ -175,6 +175,11 @@ migration note (`docs/rename-migration.md` is the precedent; new ones go to
 - Telemetry record shapes carrying `schema_version` and `fathom_version`: call log JSONL,
   beats, session ledger, rollups, `/statusz` JSON; the research bundle
   (`schema/research-bundle`). Evidence: `CHANGELOG.md` IO-11..13.
+- The daemon's admission wire format (ADR-047 §3.4): HTTP 503 with `Retry-After` and
+  JSON-RPC `-32050` (`data: reason, class, level, retry_after_ms, in_flight`), the named
+  `abandoned` outcome, `budget.partial`, and the managed daemon's 409 to a test caller.
+  Evidence: `internal/mcp/admission.go` (`TestAdmissionReturnsNamed503WithRetryAfter`),
+  `cmd/fathom/admission_http.go` (`TestTestCallerRefusedByManagedDaemon`).
 - `pkg/client` and `pkg/platform` exported Go API. Evidence: `pkg/client/client.go`.
 - CLI verbs and their `--json` envelopes (law 10: every capability is a verb first).
 

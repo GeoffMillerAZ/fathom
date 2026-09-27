@@ -344,7 +344,7 @@ ticket: at most 16 calls, each admitted in its own class.
 Admission defaults to `observe` (`[tenancy].admission`, `docs/configuration.md`):
 every would-refuse is logged and counted (`fathom_would_refuse_total`) and the call
 runs. Under `enforce` a refused call answers HTTP 503 with `Retry-After` and JSON-RPC
-error `-32050` (`message: "fathom busy"`, `data: {reason, class, level,
+error `-32050` (`message: "fathom busy: <reason>"`, `data: {reason, class, level,
 retry_after_ms, in_flight}`); a call whose context ends (deadline, client gone, the
 refuse rung) answers a named `abandoned` error, never an empty result; a call whose
 producers passed the per-call ceiling carries `budget: {partial: true, bytes_read,
