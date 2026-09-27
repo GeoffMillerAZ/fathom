@@ -217,6 +217,11 @@ func findGitDirs(root string) (gitDir, commonDir string, stamps []fileStamp, err
 	if aerr != nil {
 		return "", "", nil, aerr
 	}
+	// A root that does not exist is in no work tree — as `git -C root`
+	// fails there — never the enclosing directory's repository.
+	if fi, serr := os.Stat(dir); serr != nil || !fi.IsDir() {
+		return "", "", nil, ErrNotRepository
+	}
 	for {
 		dotGit := filepath.Join(dir, ".git")
 		fi, serr := os.Stat(dotGit)

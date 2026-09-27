@@ -124,6 +124,12 @@ func TestHead_ReadsRefsWithoutFork(t *testing.T) {
 		t.Fatalf("Head forked git %d time(s) for readable repositories; want 0", n)
 	}
 
+	// A root that does not exist is in no work tree, though the directory
+	// it would sit in is one (git -C fails there too).
+	if got, err := Head(ctx, filepath.Join(repo, "no-such-dir")); got != "" || !errors.Is(err, ErrNotRepository) {
+		t.Fatalf("missing root: Head = %q, %v; want \"\", ErrNotRepository", got, err)
+	}
+
 	// Not a repository: no fork either — "" with ErrNotRepository.
 	plain := t.TempDir()
 	if got, err := Head(ctx, plain); got != "" || !errors.Is(err, ErrNotRepository) {
