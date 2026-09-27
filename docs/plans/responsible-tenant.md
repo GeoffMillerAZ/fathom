@@ -202,7 +202,7 @@ bound memory here.
 - [ ] Console pages make no loopback self-calls and fork no git per service (§14) {id: RT-115, symbol: fleetFreshness, package: cmd/fathom, reachable_from: TestFleetFreshnessNoLoopbackOrFork}
 - [ ] Console plan verification runs in process under a deadline and never re-queues a key still running (§14) {id: RT-116, symbol: verifyPlanInProcess, package: cmd/fathom, reachable_from: TestConsolePlansVerifyInProcessNoRequeue}
 - [x] Console background work runs in one bounded job pool with single flight per key, dropping superseded keys (§14) {id: RT-117, symbol: SubmitJob, package: internal/console, reachable_from: TestJobs_BoundedSingleFlightDropsSuperseded}
-- [ ] /refactors computes conserve through the job pool with contexted git and a diff-size cap (§14) {id: RT-118, symbol: refactorReport, package: cmd/fathom, reachable_from: TestRefactorReportBoundedPool}
+- [x] /refactors computes conserve through the job pool with contexted git and a diff-size cap (§14) {id: RT-118, symbol: refactorReport, package: cmd/fathom, reachable_from: TestRefactorReportBoundedPool}
 - [ ] Event feeders run only while /events has a subscriber and poll compile runs from a cursor (§14) {id: RT-119, symbol: runConsoleEventSources, package: cmd/fathom, reachable_from: TestFeedersIdleWithoutSubscribers}
 - [ ] The ⌘K palette reads the shared snapshot, not a private fleet copy (§14) {id: RT-120, symbol: lookupSymbols, package: cmd/fathom, reachable_from: TestConsoleSearchUsesSharedSnapshot}
 - [ ] Operate's Tenancy panel renders `fathom resources --json` with JSON parity, through app-kit roles (§14) {id: RT-121, symbol: renderTenancyPanel, package: cmd/fathom, reachable_from: TestTenancyPanelRendersResourcesJSON}

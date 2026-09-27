@@ -645,6 +645,9 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	// event feeders below publish to the same bus GET /events streams.
 	consoleDeps := newConsoleDeps(c, "http://"+*addr, time.Now())
 	consoleDeps.storePath = absStorePath(*storePath)
+	if n := loaded.Config.Console.ConserveMaxFiles; n > 0 {
+		consoleConserveMaxFiles = n // [console] conserve_max_files (RT-118)
+	}
 	inProcessReg.Store(&inProcessRegistry{self: "http://" + *addr, services: registry.services, stale: registry.staleNote})
 	handler := newHTTPHandlerWithAuthDeps(srv, c, modulesToken, *addr, ports, flog, consoleDeps)
 

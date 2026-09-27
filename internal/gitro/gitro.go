@@ -27,6 +27,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 // Command returns the git command for args run in dir, and a cleanup to
@@ -44,6 +45,9 @@ func Command(ctx context.Context, dir string, args ...string) (*exec.Cmd, func()
 		args = append([]string{"-c", "core.splitIndex=false"}, args...)
 	}
 	cmd := exec.CommandContext(ctx, "git", args...)
+	// A git killed at its context's end may leave a child holding the
+	// output pipe; the caller is released after WaitDelay regardless.
+	cmd.WaitDelay = 2 * time.Second
 	cmd.Dir = dir
 	cmd.Env = env
 	return cmd, cleanup, nil

@@ -104,9 +104,20 @@ func cmdConserve(args []string, stdout, stderr io.Writer) int {
 // the reading set. The console's refactor page (OC-26) calls it with the
 // service's registered root, so the page and the verb cannot disagree.
 func conserveReportFor(ctx context.Context, st store.Store, root, since, service string, planPaths []string, coverageMeta string, residueMax int) (conserve.Report, error) {
+	return conserveReportCapped(ctx, st, root, since, service, planPaths, coverageMeta, residueMax, 0)
+}
+
+// conserveReportCapped is conserveReportFor refusing, by name, a range
+// that changes more than maxFiles files (0: no cap) — the console's
+// `[console] conserve_max_files` (RT-118): the refusal names the count,
+// the cap and the verb that still computes it, never a partial report.
+func conserveReportCapped(ctx context.Context, st store.Store, root, since, service string, planPaths []string, coverageMeta string, residueMax, maxFiles int) (conserve.Report, error) {
 	in, err := conserve.NewInput(ctx, root, since, st, service, planPaths)
 	if err != nil {
 		return conserve.Report{}, err
+	}
+	if maxFiles > 0 && len(in.ChangedFiles) > maxFiles {
+		return conserve.Report{}, fmt.Errorf("not computed here: the range since %s has %d changed files, over [console] conserve_max_files = %d; run fathom conserve --since %s --service %s", since, len(in.ChangedFiles), maxFiles, since, service)
 	}
 	loadConserveCoverage(&in, root, coverageMeta)
 	rep := conserve.Run(ctx, in, conserve.Planes())

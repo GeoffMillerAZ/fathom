@@ -112,3 +112,8 @@ package config
 // 		refuse_at: 0.5
 // 	}
 // }
+//
+// 17. A [console] conserve_max_files below 1:
+// bad17: #Config & {
+// 	console: conserve_max_files: 0
+// }
