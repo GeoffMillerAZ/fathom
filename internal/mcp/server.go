@@ -16,10 +16,12 @@ import (
 	"io"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/refresh"
 	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
@@ -127,6 +129,10 @@ type Server struct {
 	// begins accepting concurrent requests — same single-set-before-serving
 	// convention as strictSurfaces; no separate mutex.
 	hostedModules bool
+
+	// refreshQ is the daemon's refresh queue (RT-97): when set, the ingest
+	// tool's ingests run on it. Nil (stdio, tests) runs them in the call.
+	refreshQ atomic.Pointer[refresh.Queue]
 
 	// Stats for server_stats meta-tool.
 	startTime  time.Time
@@ -430,3 +436,11 @@ func (s *Server) activeProfile() string {
 	defer s.profileMu.RUnlock()
 	return s.profile
 }
+
+// SetRefreshQueue routes the ingest tool's ingests through q (RT-97, design
+// §7.1) — the same queue auto-refresh, POST /refresh-request and
+// /refresh-file use.
+func (s *Server) SetRefreshQueue(q *refresh.Queue) { s.refreshQ.Store(q) }
+
+// RefreshQueue is the queue SetRefreshQueue installed, or nil.
+func (s *Server) RefreshQueue() *refresh.Queue { return s.refreshQ.Load() }

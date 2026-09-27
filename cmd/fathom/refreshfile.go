@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/refresh"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
 	"github.com/geoffmilleraz/fathom/pkg/client"
 )
@@ -54,8 +55,11 @@ type graphPatcher interface {
 	DropCachedGraphs(service string)
 }
 
-// refreshFileHandler serves POST /refresh-file.
-func refreshFileHandler(c *client.Client, patcher graphPatcher) http.HandlerFunc {
+// refreshFileHandler serves POST /refresh-file. q is the daemon's refresh
+// queue (RT-97): while a whole-service refresh of the service is queued or
+// running, the file is left to it — no per-file write races the ingest —
+// and the answer says so. queue (nil, or returning nil): no queue.
+func refreshFileHandler(c *client.Client, patcher graphPatcher, queue func() *refresh.Queue) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -76,6 +80,13 @@ func refreshFileHandler(c *client.Client, patcher graphPatcher) http.HandlerFunc
 			w.Header().Set("Retry-After", "60")
 			http.Error(w, why+" — /refresh-file writes are refused until it clears", http.StatusServiceUnavailable)
 			return
+		}
+		if q := refreshQueueOf(queue); q != nil {
+			if st := q.StateOf(req.Service); st == refresh.StateQueued || st == refresh.StateRunning {
+				w.Header().Set("Content-Type", "application/json")
+				_ = json.NewEncoder(w).Encode(refreshFileResponse{Skipped: "whole-service refresh " + string(st) + " — it covers this file; the index is stale until it completes"})
+				return
+			}
 		}
 		out := buildRefreshFileResponse(r.Context(), c, patcher, req.Service, req.File)
 		w.Header().Set("Content-Type", "application/json")

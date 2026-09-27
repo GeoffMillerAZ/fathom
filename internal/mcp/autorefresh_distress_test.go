@@ -24,7 +24,7 @@ func TestAutoRefreshWriteErrorIsStoreDistress(t *testing.T) {
 	t.Cleanup(tenancy.ResetLifecycleStateForTest)
 	fake := &fullDiskIngestFake{refreshFake: refreshFake{path: "/repo", indexed: "old"}}
 	ar := newAR(fake, "new")
-	ar.ensure(context.Background(), "svc")
+	ensureSettled(t, ar, context.Background(), "svc")
 	if fake.ingests != 1 {
 		t.Fatalf("ingests = %d, want 1", fake.ingests)
 	}

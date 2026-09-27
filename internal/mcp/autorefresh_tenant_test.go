@@ -42,87 +42,66 @@ func (f *gatedIngestFake) IngestService(ctx context.Context, service string) err
 	return nil
 }
 
-// TestEnsureIngestSurvivesRequestCancelAndSerializes pins RT-149 (design
-// §3.5, §7.1): ensure()'s inline ingest runs detached from its requester
-// (context.WithoutCancel), so a caller that disconnects mid-ingest returns at
-// once while the ingest completes uncancelled; and it holds one process-wide
-// ingest ticket, so two services (here on two separate backends) never ingest
-// inline at the same time.
+// TestEnsureIngestSurvivesRequestCancelAndSerializes pinned RT-149 (design
+// §3.5, §7.1), which RT-99 supersedes: ensure() no longer runs or waits for
+// an ingest at all. What survives of the contract is pinned here on the
+// queue: the re-ingest a read requested completes uncancelled after that
+// requester's ctx is cancelled, and two services (on two backends sharing
+// the daemon's one queue) never ingest at the same time.
 func TestEnsureIngestSurvivesRequestCancelAndSerializes(t *testing.T) {
 	var running, maxSeen int64
 	release := make(chan struct{})
 	started := make(chan string, 4)
 	fa := &gatedIngestFake{refreshFake: refreshFake{path: "/a", indexed: "old"}, started: started, release: release, running: &running, maxSeen: &maxSeen}
 	fb := &gatedIngestFake{refreshFake: refreshFake{path: "/b", indexed: "old"}, started: started, release: release, running: &running, maxSeen: &maxSeen}
-	arA := newAR(fa, "new")
-	arB := newAR(fb, "new")
+	// One queue for the process, as serve-http wires it; its jobs ingest on
+	// whichever fake the service belongs to.
+	both := &routingIngestFake{by: map[string]QueryInterface{"svc-a": fa, "svc-b": fb}}
+	q := newTestRefreshQueue(both)
+	arA := newARQueued(fa, "new", q)
+	arB := newARQueued(fb, "new", q)
 
-	// Requester A: its ctx is cancelled while the ingest is running.
 	ctxA, cancelA := context.WithCancel(context.Background())
-	doneA := make(chan struct{})
-	go func() { arA.ensure(ctxA, "svc-a"); close(doneA) }()
+	returned := make(chan struct{})
+	go func() { arA.ensure(ctxA, "svc-a"); arB.ensure(context.Background(), "svc-b"); close(returned) }()
+	select {
+	case <-returned:
+	case <-time.After(2 * time.Second):
+		t.Fatal("ensure waited for an ingest; RT-99: it only requests one")
+	}
 	select {
 	case <-started:
 	case <-time.After(5 * time.Second):
-		t.Fatal("ingest for svc-a never started")
+		t.Fatal("no queued ingest started")
 	}
-
-	// Requester B asks for a different service while A's ingest holds the ticket.
-	ctxB, cancelB := context.WithTimeout(context.Background(), 200*time.Millisecond)
-	defer cancelB()
-	doneB := make(chan struct{})
-	go func() { arB.ensure(ctxB, "svc-b"); close(doneB) }()
-
-	cancelA()
-	select {
-	case <-doneA:
-	case <-time.After(5 * time.Second):
-		t.Fatal("ensure did not return after its requester's ctx was cancelled")
-	}
-	select {
-	case <-doneB:
-	case <-time.After(5 * time.Second):
-		t.Fatal("ensure for svc-b did not return when its ctx expired while waiting for the ticket")
-	}
+	cancelA() // the requester goes away mid-ingest
+	time.Sleep(20 * time.Millisecond)
 	if got := atomic.LoadInt64(&running); got != 1 {
-		t.Fatalf("ingests running while svc-a holds the ticket = %d, want 1", got)
+		t.Fatalf("ingests running at once = %d, want 1 (one heavy slot)", got)
 	}
-
 	close(release)
-	// svc-b's ingest was queued behind the ticket; it runs after svc-a's.
-	select {
-	case <-started:
-	case <-time.After(5 * time.Second):
-		t.Fatal("queued ingest for svc-b never started after the ticket was released")
-	}
-	deadline := time.Now().Add(5 * time.Second)
-	for {
-		fa.mu.Lock()
-		fb.mu.Lock()
-		done := fa.finished == 1 && fb.finished == 1
-		fb.mu.Unlock()
-		fa.mu.Unlock()
-		if done {
-			break
-		}
-		if time.Now().After(deadline) {
-			t.Fatal("ingests did not finish")
-		}
-		time.Sleep(5 * time.Millisecond)
-	}
+	settle(t, arA)
+	settle(t, arB)
 	if got := atomic.LoadInt64(&maxSeen); got != 1 {
-		t.Fatalf("peak concurrent inline ingests = %d, want 1 (one process-wide ticket)", got)
+		t.Fatalf("peak concurrent ingests = %d, want 1", got)
 	}
-	fa.mu.Lock()
-	defer fa.mu.Unlock()
-	if err := fa.ctxErrs[0]; err != nil {
-		t.Fatalf("svc-a's ingest saw ctx error %v after its requester left, want nil (detached)", err)
+	for name, f := range map[string]*gatedIngestFake{"svc-a": fa, "svc-b": fb} {
+		f.mu.Lock()
+		if f.finished != 1 || f.ctxErrs[0] != nil {
+			t.Errorf("%s: finished %d, ctx errors %v; want one uncancelled ingest", name, f.finished, f.ctxErrs)
+		}
+		f.mu.Unlock()
 	}
-	fb.mu.Lock()
-	defer fb.mu.Unlock()
-	if err := fb.ctxErrs[0]; err != nil {
-		t.Fatalf("svc-b's ingest saw ctx error %v, want nil (detached)", err)
-	}
+}
+
+// routingIngestFake sends each service's IngestService to its own fake.
+type routingIngestFake struct {
+	refreshFake
+	by map[string]QueryInterface
+}
+
+func (r *routingIngestFake) IngestService(ctx context.Context, service string) error {
+	return r.by[service].IngestService(ctx, service)
 }
 
 // failingIngestFake fails its first n ingests.
@@ -149,7 +128,7 @@ func TestEnsureSeenOnlyAfterSuccess(t *testing.T) {
 	ar.now = func() time.Time { return now }
 	ctx := context.Background()
 
-	ar.ensure(ctx, "svc")
+	ensureSettled(t, ar, ctx, "svc")
 	if fake.ingests != 1 {
 		t.Fatalf("ingests after first read = %d, want 1", fake.ingests)
 	}
@@ -161,11 +140,11 @@ func TestEnsureSeenOnlyAfterSuccess(t *testing.T) {
 	}
 
 	now = now.Add(autoRefreshBackoffBase) // past the failure backoff
-	ar.ensure(ctx, "svc")
+	ensureSettled(t, ar, ctx, "svc")
 	if fake.ingests != 2 {
 		t.Fatalf("ingests after second read = %d, want 2 (the failed ingest is retried)", fake.ingests)
 	}
-	ar.ensure(ctx, "svc")
+	ensureSettled(t, ar, ctx, "svc")
 	if fake.ingests != 2 {
 		t.Fatalf("ingests after third read = %d, want 2 (debounced after success)", fake.ingests)
 	}
@@ -259,28 +238,28 @@ func TestEnsureBacksOffAFailingIngest(t *testing.T) {
 	ctx := context.Background()
 
 	for i := 0; i < 50; i++ {
-		ar.ensure(ctx, "svc")
+		ensureSettled(t, ar, ctx, "svc")
 	}
 	if fake.ingests != 1 {
 		t.Fatalf("50 reads inside the backoff -> %d ingest attempts, want 1", fake.ingests)
 	}
 	now = now.Add(29 * time.Second)
-	ar.ensure(ctx, "svc")
+	ensureSettled(t, ar, ctx, "svc")
 	if fake.ingests != 1 {
 		t.Fatalf("attempts 29 s after a failure = %d, want 1 (backoff 30 s)", fake.ingests)
 	}
 	now = now.Add(time.Second)
-	ar.ensure(ctx, "svc")
+	ensureSettled(t, ar, ctx, "svc")
 	if fake.ingests != 2 {
 		t.Fatalf("attempts 30 s after a failure = %d, want 2 (retried after the backoff)", fake.ingests)
 	}
 	now = now.Add(59 * time.Second)
-	ar.ensure(ctx, "svc")
+	ensureSettled(t, ar, ctx, "svc")
 	if fake.ingests != 2 {
 		t.Fatalf("attempts 59 s after the second failure = %d, want 2 (backoff doubles to 60 s)", fake.ingests)
 	}
 	now = now.Add(time.Second)
-	ar.ensure(ctx, "svc")
+	ensureSettled(t, ar, ctx, "svc")
 	if fake.ingests != 3 {
 		t.Fatalf("attempts 60 s after the second failure = %d, want 3", fake.ingests)
 	}
@@ -289,14 +268,14 @@ func TestEnsureBacksOffAFailingIngest(t *testing.T) {
 	}
 	// A new head is a new drift: it is attempted at once.
 	ar.headFn = func(string) string { return "newer" }
-	ar.ensure(ctx, "svc")
+	ensureSettled(t, ar, ctx, "svc")
 	if fake.ingests != 4 {
 		t.Fatalf("attempts after HEAD moved = %d, want 4 (a new drift is tried at once)", fake.ingests)
 	}
 	// Capped: after many failures the wait never exceeds autoRefreshBackoffMax.
 	for i := 0; i < 20; i++ {
 		now = now.Add(autoRefreshBackoffMax)
-		ar.ensure(ctx, "svc")
+		ensureSettled(t, ar, ctx, "svc")
 	}
 	if fake.ingests != 24 {
 		t.Fatalf("attempts at one per cap interval = %d, want 24", fake.ingests)

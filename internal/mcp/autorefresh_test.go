@@ -3,8 +3,10 @@ package mcp
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/refresh"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
 )
 
@@ -46,13 +48,57 @@ func (f *refreshFake) ListCommits(_ context.Context, _ string) ([]CommitInfo, er
 func (f *refreshFake) TypedEdges(_ context.Context, _ string) ([]core.Edge, error) { return nil, nil }
 
 func newAR(fake QueryInterface, head string) *autoRefreshBackend {
+	return newARQueued(fake, head, nil)
+}
+
+// newARQueued is newAR over q, or over a queue of its own (no start wait,
+// no stagger) when q is nil.
+func newARQueued(fake QueryInterface, head string, q *refresh.Queue) *autoRefreshBackend {
+	if q == nil {
+		q = newTestRefreshQueue(fake)
+	}
 	return &autoRefreshBackend{
 		QueryInterface: fake,
 		headFn:         func(string) string { return head },
+		queue:          q,
 		seen:           make(map[string]string),
-		inflight:       make(map[string]*inlineIngest),
+		pending:        make(map[string]string),
 		failures:       make(map[string]refreshFailure),
 	}
+}
+
+// newTestRefreshQueue is a started refresh queue over backend with no start
+// wait and no warm-up stagger (the process gate still applies).
+func newTestRefreshQueue(backend QueryInterface) *refresh.Queue {
+	q := NewRefreshQueue(backend, refresh.Config{StartWait: -1, Stagger: -1, Warmup: func(time.Time) bool { return false }, PausePoll: 10 * time.Millisecond})
+	q.Start(context.Background())
+	return q
+}
+
+// settle waits until every re-ingest ar requested has finished (RT-99:
+// ensure never waits for one; a test that counts ingests waits here).
+func settle(t testing.TB, ar *autoRefreshBackend) {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		ar.mu.Lock()
+		n := len(ar.pending)
+		ar.mu.Unlock()
+		if n == 0 && len(ar.queue.Pending()) == 0 {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("queued re-ingests did not settle: %v", ar.queue.Pending())
+		}
+		time.Sleep(time.Millisecond)
+	}
+}
+
+// ensureSettled is ensure followed by settle.
+func ensureSettled(t testing.TB, ar *autoRefreshBackend, ctx context.Context, service string) {
+	t.Helper()
+	ar.ensure(ctx, service)
+	settle(t, ar)
 }
 
 // TestAutoRefresh_ReingestsOnDriftOnce: HEAD drifted from the indexed commit, so
@@ -67,6 +113,7 @@ func TestAutoRefresh_ReingestsOnDriftOnce(t *testing.T) {
 	ar.QuerySymbols(ctx, core.Query{ServiceID: "svc"})
 	ar.Sources(ctx, "svc")
 	ar.TypedEdges(ctx, "svc")
+	settle(t, ar)
 	if fake.ingests != 1 {
 		t.Fatalf("ingests = %d, want 1 (debounced)", fake.ingests)
 	}
@@ -81,6 +128,7 @@ func TestAutoRefresh_TypedEdges_TriggersEnsure(t *testing.T) {
 	if _, err := ar.TypedEdges(context.Background(), "svc"); err != nil {
 		t.Fatalf("TypedEdges: %v", err)
 	}
+	settle(t, ar)
 	if fake.ingests != 1 {
 		t.Fatalf("ingests = %d, want 1 (TypedEdges must trigger ensure)", fake.ingests)
 	}
@@ -98,6 +146,7 @@ func TestAutoRefresh_AutoRefreshTotal_CountsDebouncedRefreshesOnce(t *testing.T)
 	ar.ListAllSymbols(ctx, "svc")
 	ar.FindSymbol(ctx, "svc", "X")
 	ar.QuerySymbols(ctx, core.Query{ServiceID: "svc"})
+	settle(t, ar)
 	if got := ar.AutoRefreshTotal(); got != 1 {
 		t.Fatalf("AutoRefreshTotal() = %d, want 1 (debounced)", got)
 	}
@@ -105,6 +154,7 @@ func TestAutoRefresh_AutoRefreshTotal_CountsDebouncedRefreshesOnce(t *testing.T)
 	// A second, later drift bumps it again.
 	ar.headFn = func(string) string { return "newersha" }
 	ar.ListAllSymbols(ctx, "svc")
+	settle(t, ar)
 	if got := ar.AutoRefreshTotal(); got != 2 {
 		t.Fatalf("AutoRefreshTotal() after a second drift = %d, want 2", got)
 	}

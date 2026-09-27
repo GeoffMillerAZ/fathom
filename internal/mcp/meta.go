@@ -19,6 +19,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/extractor"
 	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/gitro"
+	"github.com/geoffmilleraz/fathom/internal/refresh"
 )
 
 // currentGitHead returns HEAD for path, or "" when path is in no work tree
@@ -287,6 +288,16 @@ func registerStalenessReport(s *Server, backend QueryInterface) {
 		}
 		if line := elisionLine(elidedCount, "read_source or outline on the file you doubt (source_count is the full total)"); line != "" {
 			resp["elision"] = line
+		}
+		// RT-99 (§7.1): a re-ingest the refresh queue holds is named, so
+		// reingest_recommended is read beside "it is already on its way".
+		if q := s.RefreshQueue(); q != nil {
+			switch q.StateOf(p.Service) {
+			case refresh.StateQueued:
+				resp["refresh"] = "queued"
+			case refresh.StateRunning:
+				resp["refresh"] = "refreshing"
+			}
 		}
 		// BP-35: the typed-edge pass outcome for this service, when the
 		// backend can report it. `known: false` is the honest "no ingest

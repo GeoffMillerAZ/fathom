@@ -16,11 +16,14 @@ import (
 // plausible empty one, and it is what CLAUDE.md's question-shape routing
 // rule forbids.
 //
-// Two daemon calls are expected (wave P3 / O82): the registered-root guard
-// asks list_services before ingesting — this fake answers it with no
-// matching service (an empty "ok:true" body, not a list_services shape), so
-// the guard fails open and the refresh still proceeds — then the ingest
-// call itself. `lastTool`/`lastService`/`lastPath` record the LAST call
+// Three daemon calls are expected (wave P3 / O82, RT-111): the
+// registered-root guard asks list_services before refreshing — this fake
+// answers it with no matching service (an empty "ok:true" body, not a
+// list_services shape), so the guard fails open and the refresh still
+// proceeds — then POST /refresh-request, which this fake (a daemon that
+// predates the route) does not answer as a queue, so the hook falls back to
+// the ingest call itself (TestPostCommitEnqueuesRefresh pins the queued
+// path). `lastTool`/`lastService`/`lastPath` record the LAST call
 // (the ingest), which is what the assertions below care about.
 func TestPostCommitHookPrefersDaemon(t *testing.T) {
 	var called struct {
@@ -53,8 +56,8 @@ func TestPostCommitHookPrefersDaemon(t *testing.T) {
 	if code != 0 {
 		t.Errorf("a post-commit hook must never block a commit; exit %d stderr=%s", code, errBuf.String())
 	}
-	if called.n != 2 {
-		t.Fatalf("expected exactly two daemon calls (the registered-root guard's list_services, then ingest), got %d", called.n)
+	if called.n != 3 {
+		t.Fatalf("expected exactly three daemon calls (the registered-root guard's list_services, the /refresh-request probe, then ingest), got %d", called.n)
 	}
 	if called.tool != "ingest" {
 		t.Errorf("last call was %q, want the daemon's ingest tool", called.tool)

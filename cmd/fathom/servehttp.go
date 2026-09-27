@@ -25,6 +25,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/dlog"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
 	"github.com/geoffmilleraz/fathom/internal/modulehost"
+	"github.com/geoffmilleraz/fathom/internal/refresh"
 	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
 	"github.com/geoffmilleraz/fathom/pkg/client"
@@ -372,9 +373,14 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 		}
 		removeDaemonRecord(recordPath)
 	}
+	// RT-97 (§7.1): the refresh queue's worker lives until the drain (or
+	// return) stops it; it is started once the backend exists below.
+	refreshCtx, stopRefresh := context.WithCancel(context.Background())
+	defer stopRefresh()
 	// RT-44 (§8.5): a managed daemon's SIGTERM drains and exits 0.
 	dr := &drainer{
-		ledger: lcIn.ledger, pid: pid, version: Version, startedAt: startedAt, now: time.Now,
+		stopRefresh: stopRefresh,
+		ledger:      lcIn.ledger, pid: pid, version: Version, startedAt: startedAt, now: time.Now,
 		inflight: tenancy.DefaultInFlight, budget: drainBudget, logf: func(m string) { flog.Warn(m) },
 		shutdown:     httpSrv.Shutdown,
 		removeRecord: removeRecord,
@@ -557,9 +563,16 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	// whose git HEAD has drifted from the indexed commit triggers a hash-gated
 	// re-ingest before the answer — so the always-on daemon never serves a stale
 	// index without anyone noticing.
+	// RT-97 (§7.1): one refresh queue for every whole-service ingest the
+	// daemon runs — auto-refresh, the ingest tool, POST /refresh-request
+	// (the post-commit hook) and /refresh-file — one per service, one heavy
+	// slot, background work held 60 s after this start and staggered during
+	// warm-up.
+	refreshQ := mcp.NewRefreshQueue(c, refresh.Config{Started: startedAt})
+	refreshQ.Start(refreshCtx)
 	var backend mcp.QueryInterface = c
 	if *autoRefresh {
-		backend = mcp.NewAutoRefresh(c, flog)
+		backend = mcp.NewAutoRefreshQueued(c, flog, refreshQ)
 		// RT-109: an in_progress row is an interrupted ingest only once
 		// its owner is gone (a live CLI ingest is never duplicated).
 		mcp.SetIngestOwnerProbe(ingestOwnerProbe(realDaemonOps{}))
@@ -598,6 +611,7 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 		Log:      func(m string) { flog.Warn(m) },
 	})
 	srv.SetGate(gate)
+	srv.SetRefreshQueue(refreshQ)
 	daemonGate.Store(gate)
 	defer daemonGate.Store(nil)
 	decisionAdmit.Store(&decisionAdmitter{admit: srv.AdmitDecision})
@@ -966,7 +980,11 @@ func newHTTPHandlerDeps(srv *mcp.Server, c *client.Client, selfAddr string, port
 	mux.Handle("/indexed", indexedHandler(c))
 	// POST /refresh-file {service, file} (SU-5/SU-6, ADR-041 decisions 3
 	// and 4): the pre-edit hook's per-file freshness refresh.
-	mux.Handle("/refresh-file", refreshFileHandler(c, srv))
+	mux.Handle("/refresh-file", refreshFileHandler(c, srv, srv.RefreshQueue))
+	// POST /refresh-request {service} (RT-111, §12.3): the post-commit
+	// hook's refresh — queued (202, coalesced), refused at refuse and for
+	// background work in safe mode, never an ingest in the request.
+	mux.Handle("/refresh-request", refreshRequestHandler(c, srv.RefreshQueue))
 	// POST /route {prompt} (DP-9, ADR-042): suggests which MCP tool's
 	// question-shape fits prompt — the prompt hook's route line (DP-10).
 	mux.Handle("/route", routeHandler(ports))

@@ -697,7 +697,13 @@ whole-service case.
   one service at a time (warm-up). The ordering function is an interface (the decision-port
   option stays free, §vision 8).
 - Paused at `shed`, refused at `refuse`, in safe mode and for a quarantined service;
-  `store_distress` refuses.
+  `store_distress` refuses. (As built, RT-100: pause, safe mode and quarantine apply to
+  background requests — auto-refresh, post-commit, `/refresh-file`; an explicit `ingest`
+  call is not paused at shed (admission admitted it in its class), passes safe mode
+  (which refuses tree and fleet, never ingest — RT-39) and a quarantine (only it lifts
+  one). Explicit requests start first and are not held by the post-start wait or the
+  stagger. `/refresh-file` has no whole-service case: while the queue holds the
+  service it leaves the file to that refresh and says so.)
 - The ingest runs under the worker's daemon-lifetime ctx; `wait: true` callers wait under
   their own ctx and never cancel the shared job; drain on shutdown stops at a batch boundary.
 - HEAD without a fork: `gitro.Head(root)` reads `.git/HEAD`, `refs/…` or `packed-refs`

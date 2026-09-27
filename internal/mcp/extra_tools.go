@@ -42,6 +42,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/graph"
 	"github.com/geoffmilleraz/fathom/internal/hookcache"
 	"github.com/geoffmilleraz/fathom/internal/projectrules"
+	"github.com/geoffmilleraz/fathom/internal/refresh"
 	"github.com/geoffmilleraz/fathom/internal/sdd"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
@@ -1121,12 +1122,26 @@ func registerIngest(s *Server, backend QueryInterface) {
 		}
 
 		var ingestErr error
+		var queued *refresh.Status
 		if p.Path != "" {
-			ia, ok := backend.(ingestAtBackend)
-			if !ok {
+			if _, ok := backend.(ingestAtBackend); !ok {
 				return nil, &rpcError{Code: ErrCodeInvalid, Message: "ingest: this backend does not support onboarding by path"}
 			}
-			ingestErr = ia.IngestServiceAt(ctx, svc, p.Path)
+		}
+		if q := s.RefreshQueue(); q != nil {
+			// RT-97/RT-98 (design §7.1): the daemon's ingests share one
+			// queue — one per service, one heavy slot. This call waits
+			// for the run that serves it (the one follow-up, when the
+			// service's ingest was already running); the job runs under
+			// the queue's context, so a disconnect never cancels it.
+			st := q.RequestRefresh(ctx, refresh.Request{Service: svc, Path: p.Path, Reason: refresh.ReasonIngestTool}, true)
+			if st.State == refresh.StateRefused {
+				return nil, &rpcError{Code: ErrCodeInvalid, Message: "ingest: " + st.Refused}
+			}
+			ingestErr = st.Err
+			queued = &st
+		} else if p.Path != "" {
+			ingestErr = backend.(ingestAtBackend).IngestServiceAt(ctx, svc, p.Path)
 		} else {
 			ingestErr = backend.IngestService(ctx, svc)
 		}
@@ -1161,6 +1176,11 @@ func registerIngest(s *Server, backend QueryInterface) {
 		}
 
 		result := map[string]any{"service": svc, "ok": true}
+		if queued != nil && queued.Coalesced {
+			// The ingest this call waited for was shared with other
+			// requests for the service (RT-98) — said, never hidden.
+			result["coalesced"] = true
+		}
 		if quarantineCleared {
 			result["quarantine_cleared"] = true
 		}
