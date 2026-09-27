@@ -34,7 +34,7 @@ func isOversize(err error) bool { return asOversize(err) != nil }
 // fingerprint. skipped is true when the stored fingerprint already names
 // the same size; otherwise any observations it held are purged and the
 // size fingerprint is recorded.
-func (p *Pipeline) recordOversize(ctx context.Context, serviceID, ref string, size int64) (skipped bool, err error) {
+func (p *Pipeline) recordOversize(ctx context.Context, inv *passInvalidator, serviceID, ref string, size int64) (skipped bool, err error) {
 	fp := OversizeFingerprint(size)
 	stored, found, err := p.st.Fingerprint(ctx, serviceID, ref)
 	if err != nil {
@@ -46,6 +46,9 @@ func (p *Pipeline) recordOversize(ctx context.Context, serviceID, ref string, si
 	atomic.AddInt64(&p.oversizeTotal, 1)
 	if found && stored == fp {
 		return true, nil
+	}
+	if err := inv.note(ctx, ref); err != nil {
+		return false, err
 	}
 	if found {
 		if err := p.st.PurgeSource(ctx, serviceID, ref); err != nil {

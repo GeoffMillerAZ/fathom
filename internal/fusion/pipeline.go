@@ -870,6 +870,10 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	// deleted — the typed and CUE passes' gate (RT-104, RT-105).
 	var changed []string
 	sink := p.newExtractSink(svc.ID)
+	// A pass input's new fingerprint is written only after that pass's
+	// success record is gone (design §7.2), so a run that fails between the
+	// two cannot hide the change from the next ingest's gate.
+	inv := newPassInvalidator(p.st, svc.ID)
 
 	peak, streamErr := p.fetchWindowed(ctx, refs, gate.toRead, p.cfg.InflightBytes, p.cfg.Concurrency, func(i int, content []byte, ferr error) error {
 		ref := refs[i]
@@ -907,6 +911,9 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 			return nil
 		}
 		if err := beforeWrite(); err != nil {
+			return err
+		}
+		if err := inv.note(ctx, ref.Path); err != nil {
 			return err
 		}
 		if legacy {
@@ -1013,7 +1020,7 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 		if err := beforeWrite(); err != nil {
 			return abandon(err)
 		}
-		unchanged, err := p.recordOversize(ctx, svc.ID, o.path, o.size)
+		unchanged, err := p.recordOversize(ctx, inv, svc.ID, o.path, o.size)
 		if err != nil {
 			return report, err
 		}

@@ -80,6 +80,9 @@ func (p *Pipeline) ReingestFile(ctx context.Context, st store.Store, serviceID, 
 	} else if excluded {
 		rep := ReingestReport{Skipped: "outside the corpus: " + why}
 		if _, found, ferr := st.Fingerprint(ctx, serviceID, relFile); ferr == nil && found {
+			if err := newPassInvalidator(st, serviceID).note(ctx, relFile); err != nil {
+				return ReingestReport{}, err
+			}
 			if err := st.PurgeSource(ctx, serviceID, relFile); err != nil {
 				return ReingestReport{}, fmt.Errorf("fusion: ReingestFile purge %q: %w", relFile, err)
 			}
@@ -108,6 +111,20 @@ func (p *Pipeline) ReingestFile(ctx context.Context, st store.Store, serviceID, 
 		return p.reingestOversize(ctx, st, serviceID, relFile, int64(len(content)))
 	}
 	hash := FingerprintHash(content)
+
+	// Design §7.2: this file's new fingerprint makes it look unchanged to
+	// the next whole ingest, so the passes it is an input of lose their
+	// success record first and that ingest runs them (TypedEdgesStale says
+	// the same to the caller now).
+	stored, found, err := st.Fingerprint(ctx, serviceID, relFile)
+	if err != nil {
+		return ReingestReport{}, fmt.Errorf("fusion: ReingestFile fingerprint %q: %w", relFile, err)
+	}
+	if !found || stored != hash {
+		if err := newPassInvalidator(st, serviceID).note(ctx, relFile); err != nil {
+			return ReingestReport{}, err
+		}
+	}
 
 	if connector.IsBinary(content) {
 		if err := st.SetFingerprint(ctx, serviceID, relFile, hash); err != nil {
@@ -203,6 +220,9 @@ func (p *Pipeline) reingestOversize(ctx context.Context, st store.Store, service
 	}
 	if found && stored == fp {
 		return rep, nil
+	}
+	if err := newPassInvalidator(st, serviceID).note(ctx, relFile); err != nil {
+		return ReingestReport{}, err
 	}
 	if found {
 		if err := st.PurgeSource(ctx, serviceID, relFile); err != nil {

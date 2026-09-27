@@ -20,8 +20,11 @@ package fusion
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 	"strings"
+
+	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
 // Typed-pass state keys and the value a successful pass records.
@@ -135,3 +138,51 @@ const SkippedPassReason = "no input changed since the last successful pass"
 // SkippedPartialPassReason is SkippedPassReason when the last pass completed
 // with packages that failed to load: its partial typed edges stand.
 const SkippedPartialPassReason = "no input changed since the last pass, which completed with package(s) that failed typed loading — its partial typed edges stand"
+
+// passKeysFor names the pass-state rows path is an input of: the typed Go
+// pass, the CUE pass and the file resolver.
+func passKeysFor(path string) []string {
+	var keys []string
+	if isGoInput(path) {
+		keys = append(keys, goPassStateKey)
+	}
+	if isCUEInput(path) {
+		keys = append(keys, cuePassStateKey)
+	}
+	if fileResolveLangFor(path) != "" {
+		keys = append(keys, fileResolveStateKey)
+	}
+	return keys
+}
+
+// passInvalidator removes a pass's success record before the first new
+// fingerprint of one of its inputs is written (design §7.2: "changed since
+// the last successful pass"). The gate compares this ingest's changes only;
+// a fingerprint written by the one-file refresh, or by an ingest that then
+// failed before its passes ran, would otherwise make the input look
+// unchanged to every later ingest while the success record still stood.
+// Each key is removed at most once per invalidator.
+type passInvalidator struct {
+	st      store.Store
+	service string
+	done    map[string]bool
+}
+
+func newPassInvalidator(st store.Store, service string) *passInvalidator {
+	return &passInvalidator{st: st, service: service, done: map[string]bool{}}
+}
+
+// note invalidates the passes path is an input of. An error means the
+// record may still stand, so the caller must not write the fingerprint.
+func (v *passInvalidator) note(ctx context.Context, path string) error {
+	for _, key := range passKeysFor(path) {
+		if v.done[key] {
+			continue
+		}
+		if err := v.st.DeleteTypedEdgePackage(ctx, v.service, key); err != nil {
+			return fmt.Errorf("fusion: invalidate %s for %q: %w", key, path, err)
+		}
+		v.done[key] = true
+	}
+	return nil
+}
