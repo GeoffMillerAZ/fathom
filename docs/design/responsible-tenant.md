@@ -1114,7 +1114,7 @@ Triggers: first crossing of each power of two (1, 2, 4, 8 GiB) per process; entr
 `heap.pb.gz`, `goroutine.txt` (labelled by `pprof.Do(tool, origin)` in the dispatch
 wrapper), `inflight.json`, `trace.out` from `trace.FlightRecorder` (started at `shed`, 8 MiB
 window), `metrics.txt` (including `fathom_gc_cpu_fraction`, which RT-M7 reads for refuse
-windows). The exit rung writes only the heap profile and `inflight.json`, within 1 s. Rate: ≤ 1 per 10 min; retention 10 captures / 200 MiB. Logged at
+windows). The exit rung writes only the heap profile and `inflight.json`, within 1 s. Rate: ≤ 1 per 10 min per trigger kind (footprint crossing, refuse, pressure; the exit rung is never limited) — one global limit would let a 1 GiB crossing suppress the refuse capture a minute later, the one that matters (RT-122); retention 10 captures / 200 MiB. Logged at
 info with the path; the latest shows in doctor and `resources`.
 
 ### 13.5 pprof and diagnostics (the socket deferred)

@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -52,7 +53,7 @@ func TestDiagCaptureRetention(t *testing.T) {
 		}
 	}
 	now := base.Add(time.Hour)
-	got := captureExitDiag(dir, tenancy.NewInFlight(nil), func() time.Time { return now })("refuse")
+	got := captureDiagnostics(dir, "refuse", diagSources{inflight: tenancy.NewInFlight(nil), now: func() time.Time { return now }, metrics: func() string { return "" }})
 	if got == "" {
 		t.Fatal("capture wrote nothing")
 	}
@@ -116,5 +117,112 @@ func TestExitHaltQuarantinesOnlyIngests(t *testing.T) {
 	}
 	if !tenancy.IsQuarantined("new-svc") {
 		t.Fatal("a halted onboard_service (an ingest) is quarantined")
+	}
+}
+
+// RT-122 (design §13.4): threshold crossings capture — the first crossing
+// of each power of two of the process's footprint, refuse entry and
+// pressure critical — each kind at most once per 10 minutes; a capture
+// holds the heap, labelled goroutines, the in-flight table, the GC CPU
+// fraction and (while shed) the flight recorder's trace; the exit rung's
+// capture is only the heap and the in-flight table; retention holds.
+func TestDiagCaptureRateLimitedAndRetained(t *testing.T) {
+	r := newGovRig(t)
+	r.ticks(2) // exactly 1 GiB: not over the first power
+	if n := len(r.events); n != 0 {
+		t.Fatalf("1 GiB is not a crossing: %v", r.events)
+	}
+	r.host.set(1500*tenancy.MiB, 0)
+	r.ticks(2)
+	if r.saw("diag footprint-1GiB") != 1 {
+		t.Fatalf("crossing 1 GiB captures once: %v", r.events)
+	}
+	// Down and back over 1 GiB: not a first crossing.
+	r.host.set(512*tenancy.MiB, 0)
+	r.ticks(2)
+	r.host.set(1500*tenancy.MiB, 0)
+	r.ticks(2)
+	if r.saw("diag footprint-1GiB") != 1 {
+		t.Fatalf("a re-crossing is not a first crossing: %v", r.events)
+	}
+	// 2 GiB within 10 min of the 1 GiB capture: the footprint kind is limited.
+	r.host.set(2500*tenancy.MiB, 0)
+	r.ticks(2)
+	if r.saw("diag footprint-2GiB") != 0 {
+		t.Fatalf("a second footprint capture within 10 min: %v", r.events)
+	}
+	// Pressure critical is its own kind: captured at once, once.
+	r.host.mu.Lock()
+	r.host.pressure = tenancy.PressureCritical
+	r.host.mu.Unlock()
+	r.ticks(3)
+	if r.saw("diag pressure-critical") != 1 {
+		t.Fatalf("pressure critical captures once on entry: %v", r.events)
+	}
+	// Refuse entry is its own kind too.
+	r.host.mu.Lock()
+	r.host.pressure = tenancy.PressureNormal
+	r.host.mu.Unlock()
+	r.host.set(4500*tenancy.MiB, 0)
+	r.ticks(2)
+	if r.saw("diag refuse") != 1 {
+		t.Fatalf("refuse entry captures: %v", r.events)
+	}
+	// 10 minutes on, crossing 8 GiB captures again (named for the highest power).
+	r.now = r.now.Add(11 * time.Minute)
+	r.g.budget.Exit = 64 * tenancy.GiB // keep the exit rung out of this test
+	r.host.set(8500*tenancy.MiB, 0)
+	r.ticks(1)
+	if r.saw("diag footprint-8GiB") != 1 {
+		t.Fatalf("crossing 8 GiB after the window captures: %v", r.events)
+	}
+
+	// The capture's contents.
+	dir := t.TempDir()
+	inf := tenancy.NewInFlight(nil)
+	_, done := inf.Begin(context.Background(), tenancy.ClassTree, "references", "svc", "agent")
+	defer done()
+	fr := &flightRecorder{}
+	if err := fr.start(); err != nil {
+		t.Skipf("flight recorder unavailable here: %v", err)
+	}
+	defer fr.stop()
+	src := diagSources{inflight: inf, now: func() time.Time { return time.Date(2026, 9, 27, 1, 0, 0, 0, time.UTC) },
+		metrics: func() string { return "fathom_gc_cpu_fraction 0.25\n" }, flight: fr}
+	d := captureDiagnostics(dir, "refuse", src)
+	for _, f := range []string{"heap.pb.gz", "goroutine.txt", "inflight.json", "metrics.txt", "trace.out"} {
+		if st, err := os.Stat(filepath.Join(d, f)); err != nil || st.Size() == 0 {
+			t.Fatalf("refuse capture lacks %s: %v", f, err)
+		}
+	}
+	if b, _ := os.ReadFile(filepath.Join(d, "inflight.json")); !strings.Contains(string(b), "references") {
+		t.Fatalf("inflight.json lacks the in-flight call: %s", b)
+	}
+	if b, _ := os.ReadFile(filepath.Join(d, "metrics.txt")); !strings.Contains(string(b), "fathom_gc_cpu_fraction") {
+		t.Fatalf("metrics.txt lacks the GC CPU fraction: %s", b)
+	}
+	src.now = func() time.Time { return time.Date(2026, 9, 27, 1, 1, 0, 0, time.UTC) }
+	start := time.Now()
+	e := captureDiagnostics(dir, diagTriggerExit, src)
+	if el := time.Since(start); el > time.Second {
+		t.Fatalf("the exit capture took %s, over 1 s", el)
+	}
+	ents, _ := os.ReadDir(e)
+	var names []string
+	for _, x := range ents {
+		names = append(names, x.Name())
+	}
+	sort.Strings(names)
+	if strings.Join(names, ",") != "heap.pb.gz,inflight.json" {
+		t.Fatalf("the exit capture writes only the heap and in-flight table: %v", names)
+	}
+	// Retention: at most diagKeep captures.
+	for i := 0; i < diagKeep+3; i++ {
+		i := i
+		src.now = func() time.Time { return time.Date(2026, 9, 27, 2, i, 0, 0, time.UTC) }
+		captureDiagnostics(dir, diagTriggerExit, src)
+	}
+	if ents, _ := os.ReadDir(dir); len(ents) != diagKeep {
+		t.Fatalf("retention kept %d captures, want %d", len(ents), diagKeep)
 	}
 }

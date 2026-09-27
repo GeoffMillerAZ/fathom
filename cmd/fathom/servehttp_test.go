@@ -425,7 +425,9 @@ func TestServeHTTPPprofMounted(t *testing.T) {
 		"/debug/pprof/goroutine",
 		"/debug/pprof/allocs",
 	} {
-		req := httptest.NewRequest(http.MethodGet, path, nil)
+		// RT-123: pprof answers a loopback Host only (httptest's default
+		// Host, example.com, is refused).
+		req := httptest.NewRequest(http.MethodGet, "http://127.0.0.1:7575"+path, nil)
 		rr := httptest.NewRecorder()
 		handler.ServeHTTP(rr, req)
 		if rr.Code != http.StatusOK {

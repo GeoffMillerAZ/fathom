@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/http/pprof"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -993,11 +992,9 @@ func newHTTPHandlerDeps(srv *mcp.Server, c *client.Client, selfAddr string, port
 	// two profiles O108's synthetic driver reads across an auto-refresh
 	// loop; /debug/pprof/profile (30s CPU) and /debug/pprof/allocs are
 	// mounted too since they cost nothing idle.
-	mux.HandleFunc("/debug/pprof/", pprof.Index)
-	mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
-	mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
-	mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
-	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+	// RT-123 (§13.5): guarded — loopback Host, seconds ≤ 30, one profile
+	// at a time — with GET /debug/inflight beside it (pprof_guard.go).
+	mountPprof(mux)
 
 	// serveRPC handles one JSON-RPC 2.0 message on the named surface.
 	serveRPC := func(w http.ResponseWriter, r *http.Request, surface string) {
@@ -1140,6 +1137,9 @@ func newHTTPHandlerDeps(srv *mcp.Server, c *client.Client, selfAddr string, port
 		fmt.Fprintf(w, "process_uptime_seconds %.3f\n", uptime)
 
 		fmt.Fprintf(w, "go_memstats_heap_inuse_bytes %d\n", ms.HeapInuse)
+		// HeapSys is virtual size, not memory held (§13.3): labelled so,
+		// never read as the footprint (fathom_footprint_bytes is).
+		fmt.Fprint(w, "# HELP go_memstats_heap_sys_bytes virtual address space reserved for the heap (never decreases; not resident memory — see fathom_footprint_bytes)\n")
 		fmt.Fprintf(w, "go_memstats_heap_sys_bytes %d\n", ms.HeapSys)
 		fmt.Fprintf(w, "go_memstats_sys_bytes %d\n", ms.Sys)
 		fmt.Fprintf(w, "go_goroutines %d\n", runtime.NumGoroutine())
@@ -1171,8 +1171,12 @@ func newHTTPHandlerDeps(srv *mcp.Server, c *client.Client, selfAddr string, port
 		// (memorylimit.go's currentMemoryLimitBytes). A value at
 		// math.MaxInt64's scale means no limit is set ("off").
 		fmt.Fprint(w, memoryLimitMetricLine())
-		fmt.Fprint(w, governorMetricLines())     // RT-161, RT-155: the ladder, footprint, children, quarantine
-		fmt.Fprint(w, admissionMetricLines(srv)) // RT-53..RT-63: slots, queues, refusals, would-refuse, outcomes, test callers
+		// RT-124 (§13.3): every tenancy family — the ladder, footprint,
+		// children and quarantine (RT-161, RT-155), admission's slots,
+		// queues, refusals and outcomes (RT-53..RT-63), and volumes,
+		// released memory, oldest in-flight, abandoned and bytes read by
+		// tool, cache bytes, starts by reason and SQLite's memory.
+		writeTenancyMetrics(w, srv)
 
 		// fathom_graph_memo_entries: the watermark-keyed call-graph memo
 		// (BP-28, I21, internal/analysis/callgraph/cache.go) — one entry

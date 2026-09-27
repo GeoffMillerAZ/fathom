@@ -188,7 +188,19 @@ outside the tool registry — hooks call these directly rather than through
   `fathom_graph_memo_entries`/`_hits_total`/`_misses_total`,
   `fathom_open_stores`, `fathom_autorefresh_total`,
   `fathom_typed_pass_total`, and — vision 35 — `fathom_console_page_views_total{route}`
-  and `fathom_console_event_subscribers`) — `fathom doctor`'s `daemon_footprint`
+  and `fathom_console_event_subscribers`; and the tenancy families of RT-124,
+  design §13.3: `fathom_tenancy_level`, `fathom_budget_bytes`,
+  `fathom_footprint_bytes`, `fathom_children_footprint_bytes`,
+  `fathom_host_pressure_level`, `fathom_swap_used_bytes`,
+  `fathom_volume_free_bytes{vol}`, `fathom_inflight{class,origin}`,
+  `fathom_oldest_inflight_seconds{class}`, `fathom_queue{class}`,
+  `fathom_rejected_total{class,reason,origin}`, `fathom_abandoned_total{tool,cause}`,
+  `fathom_bytes_read_total{tool}`, `fathom_bytes_written_total{subsystem}`,
+  `fathom_cache_bytes{group}`, `fathom_lifecycle_starts_total{reason}`,
+  `fathom_memory_released_bytes`, `fathom_gc_cpu_fraction`,
+  `fathom_sqlite_memory_used_bytes`, `fathom_quarantined_services` — a reading
+  the process cannot take is a `#` comment naming why, never a zero;
+  `go_memstats_heap_sys_bytes` carries a HELP line naming it virtual size) — `fathom doctor`'s `daemon_footprint`
   row reads only its `go_memory_limit_bytes` (the GC hint); the footprint it judges
   comes from `/statusz`'s `tenancy` block or the resource ring (`fathom resources`).
 - `GET /events` (OC-13) — the console's live-freshness stream: server-sent
@@ -202,12 +214,17 @@ outside the tool registry — hooks call these directly rather than through
   for `?format=json`) are HTML surfaces over the same projections, not tools;
   [usage.md](usage.md#the-observatory-console-and-the-brief) lists them. None
   of them adds an MCP tool or changes a tool's contract.
-- `GET /debug/pprof/*` (O108) — the stdlib `net/http/pprof` handlers
+- `GET /debug/pprof/*` (O108, RT-123) — the stdlib `net/http/pprof` handlers
   (`heap`, `goroutine`, `allocs`, `profile`, `cmdline`, `symbol`, `trace`),
-  mounted on the daemon's own mux. Loopback-only, same unauthenticated trust
-  boundary as every other route (ADR-014 amendment: surfaces are not a
-  security boundary) — never gated behind the `/rpc/modules` bearer token
-  even in hosted-modules mode. `curl -s localhost:7575/debug/pprof/heap -o
+  mounted on the daemon's own mux behind the loopback `Host` check (checked by
+  the handlers themselves too, so a hosted-modules daemon still serves them to
+  this machine only); `seconds` is capped at 30 (the response names a cap in
+  `X-Fathom-Pprof-Seconds-Capped`) and one profile runs at a time — a second
+  concurrent request is 429 with `Retry-After`, never queued. Never gated
+  behind the `/rpc/modules` bearer token.
+- `GET /debug/inflight` (RT-123) — the in-flight table as JSON (`class`,
+  `tool`, `service`, `origin`, `age_seconds`, oldest first), loopback only;
+  it takes no profile slot. `curl -s localhost:7575/debug/pprof/heap -o
   heap.pb.gz && go tool pprof -top heap.pb.gz` reads a live snapshot;
   `docs/guides/fleet-index.md`'s daemon-ops section has the operational
   playbook.
