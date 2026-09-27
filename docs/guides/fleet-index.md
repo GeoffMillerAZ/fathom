@@ -321,7 +321,7 @@ launchd keeps relaunching every 10 s (harmlessly); `fathom daemon install
 --reconcile` (after `task deploy`) and a reload from your terminal make
 exit 0 stay down. `docs/usage.md` §daemon has the full contract.
 
-## Daemon memory footprint (O108)
+## Daemon memory footprint (O108, INC-23)
 
 The always-on daemon grew ~0.9 GB/hour in one incident (`.fathom/observations.md`
 O108, `docs/plans/daemon-footprint.md`), reaching 12 GB (11 GB compressed) over
@@ -360,8 +360,13 @@ misreads the daemon's health:
   that was the exact naming mistake O108's own instrumentation had to
   correct (getrusage's Maxrss is a peak, not a current value).**
 
-Read the daemon's OS-visible footprint with `top -pid <pid> -stats mem,cmprs`
-(or `/metrics`' `go_memstats_heap_sys_bytes`), never `ps`'s RSS column — `ps`
+**The footprint is `phys_footprint`, never `heap_sys` (I47, INC-24).** Read the
+daemon's footprint with `fathom resources`, which shows the budget, the daemon's own
+`phys_footprint` plus its children's, and the 24 h ring, and works with the daemon down.
+The live reading is `/metrics`' `process_phys_footprint_bytes`, or
+`top -pid <pid> -stats mem,cmprs` by hand. `heap_sys` never falls, so it cannot show a
+bound holding. It was the wrong instrument behind O108's "bounded" verdict.
+Never read `ps`'s RSS column either: `ps`
 counts `MADV_FREE`'d pages as resident until the kernel actually reclaims
 them, so it can read hundreds of MB high for minutes after a scavenge pass
 has already returned that memory to the OS (2026-09-23 production reading,
@@ -382,21 +387,17 @@ curl -s localhost:7575/debug/pprof/heap -o heap-b.pb.gz
 go tool pprof -top -sample_index=inuse_space -base heap-a.pb.gz heap-b.pb.gz
 ```
 
-Three independent bounds now target O108's growth pattern — a 2026-09-23
-production reading reframed it as idle heap left behind by PEAKS (typed-edge
-passes over large services), reclaimed lazily by darwin, not a live leak.
-The daemon returns freed heap to the OS every 15 minutes by default
-(`debug.FreeOSMemory`, `FATHOM_SCAVENGE_INTERVAL` to tune, `FATHOM_SCAVENGE=off`
-to disable) rather than waiting on Go's own lazy background scavenger — bounds
-how long any one peak (a large graph build, a burst of concurrent cache
-misses across many parallel agent sessions) can inflate `go_memstats_heap_sys_bytes`.
-A process-wide semaphore serializes the typed-edge pass so two large services
-(an `app-kit`-sized one included) can never type-check concurrently — bounds
-how many peaks can stack at once. `[daemon] memory_limit` (default `"3GiB"`,
-`docs/configuration.md`) applies a soft `runtime.SetMemoryLimit` ceiling —
-bounds how large any one peak's heap is allowed to grow in the first place.
-If footprint is still climbing after a restart with all three live, re-read
-O108 before assuming the mitigations cover it.
+**The scavenger, the typed-pass semaphore and `memory_limit` did not bound the
+daemon.** O108 called them three independent bounds on the peaks. INC-23
+(2026-09-26, about 29 GB, swap full, a relaunch loop) showed the growth came from
+request-path work proportional to repository and fleet size, multiplied by
+concurrency. The scavenger still returns freed heap every 15 minutes
+(`FATHOM_SCAVENGE_INTERVAL`, `FATHOM_SCAVENGE=off`), and the semaphore still serializes
+the typed-edge pass. `memory_limit` is a GC hint, not protection
+(`docs/configuration.md`). The bound is ADR-047's responsible tenant: a declared
+`[tenancy]` budget with a shed/refuse/exit ladder over `phys_footprint`, cost-classed
+admission with cancellation, the per-tool cost and cold-stampede tests
+(`internal/mcp/costtest`), and a crash-loop breaker. Read `fathom resources` first.
 
 ## Fleet wiring: `fleet report`, `reconcile`, receipts, `undo` (law 15)
 

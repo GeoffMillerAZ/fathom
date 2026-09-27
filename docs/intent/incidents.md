@@ -41,7 +41,7 @@ What: O108 (swap killed the pre-push gate twice) was closed "mitigated-and-bound
 Evidence: `.fathom/observations.md` O108, O112; `CHANGELOG.md` "bounded at the peaks"; 0 of 193 scavenge lines show `heap_sys` falling by more than 1 MiB.
 Would have caught it: this file's own rule (every incident yields an invariant, a test or a decision) applied to resource incidents, and a test that counts bytes under concurrency.
 Class: wrong-done-claim
-Outcome: I47 (never report `HeapSys` as a footprint), I48 and RT-M1; corrections RT-138..RT-140 (pending).
+Outcome: I47 (never report `HeapSys` as a footprint), I48 and RT-M1. Corrections RT-138..RT-140 landed 2026-09-27: O108 and O112 are marked superseded by INC-23, the CHANGELOG entry no longer says "bounded at the peaks", and fleet-index.md names `phys_footprint` and `fathom resources`.
 
 ## Closed
 

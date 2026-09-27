@@ -85,6 +85,36 @@ shaped decisions, and the assumptions the design rests on.
   Source: O25, `Taskfile.yml` deploy.
 - launchd `KeepAlive` means the daemon exiting *is* a restart. Consequence: the daemon
   self-adopts a verified newer binary (AU-1..3). Source: `CHANGELOG.md` 2026-08-12.
+  `KeepAlive true` relaunches every exit, including exit 0 and a crash loop (5 relaunches in
+  17 min, INC-23). `{SuccessfulExit: false}` relaunches only a non-zero exit or a signal
+  death, so exit 0 means stay down. Consequence: plist schema 2, `ThrottleInterval 60`,
+  self-restart and over-budget exit non-zero, and breaker and kill-switch stops exit 0.
+  Source: ADR-047, design §8.1.
+- Memory instruments measure different things. Go's `HeapSys` never falls for the life
+  of the process, so it cannot show a bound holding. RSS (`ps`, `ri_resident_size`) leaves
+  out compressed pages, and it counts `MADV_FREE`'d pages until the kernel reclaims them.
+  `phys_footprint` (`ri_phys_footprint`) is the number Activity Monitor and jetsam use.
+  Consequence: the budget, the ladder, `fathom resources` and doctor read `phys_footprint`,
+  self plus children (I47). Source: INC-24, `.fathom/observations.md` O108.
+- jetsam kills the largest processes under memory pressure, and they may be neighbours
+  rather than the culprit. `runtime/debug.SetMemoryLimit` is a GC hint that never stops
+  the process: the daemon reached about 29 GB under a 3 GiB limit. Consequence: the daemon
+  enforces its own budget with an exit mark. Source: INC-23, `JetsamEvent-2026-09-26-*.ips`.
+- macOS grows swap files on demand, so the used/total swap fraction is routinely high at
+  normal pressure (4.9 of 6.1 GB at pressure level 1), which makes that fraction meaningless.
+  A full swap volume turns the store's writes into `SQLITE_FULL`/`SQLITE_IOERR`.
+  Consequence: the host triggers are pressure level, swap growth and swap-volume free
+  space, never the used fraction, and SQLITE_FULL/IOERR is store distress that refuses
+  writes by name (I38). Source: ADR-047 amendment, design §2.1.
+- `HardResourceLimits.ResidentSetSize` is advisory on macOS, not enforced. `ProcessType
+  Background` puts the daemon in background QoS, and its `git`/`go`/`rg` children inherit
+  that class. Consequence: no plist RSS limit is relied on, and Background is on
+  probation against hook latency (RT-M6). Source: design §8.1.
+- `.gitignore` is the repository's own statement of what is cache: a Go build cache or a
+  cargo registry inside a work tree can be gigabytes of files nobody asked about.
+  Consequence: discovery can take its file list from `git ls-files -co --exclude-standard`
+  (`respect_gitignore`, off until RT-M11 measures it), and the default cache directories
+  are always pruned. Source: vision 36 §2, RT-145.
 - Reads under an external volume can fail `EPERM` for a whole process tree while `stat`
   succeeds (a wedged TCC verdict). Tools then emit false signals: an empty index reporting
   "0 failed", `gofmt -l` naming an innocent file, "88 of 88 tools zero-call".
