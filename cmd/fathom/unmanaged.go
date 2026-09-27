@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -163,6 +164,9 @@ type daemonLifetime struct {
 	// readRecord reads the record for the heartbeat (nil:
 	// console.ReadDaemonRecord); a seam for the shutdown race test.
 	readRecord func(string) (console.DaemonRecord, error)
+	// onExit records the exit (its lifecycle row) before the record goes;
+	// nil records nothing.
+	onExit func(reason string, code int)
 
 	// mu orders the heartbeat's write against shutdown's removal: once
 	// closed, no heartbeat writes the record back.
@@ -214,11 +218,49 @@ func (l *daemonLifetime) shutdown(reason string) { l.shutdownWith(reason, 0) }
 // shutdownWith is shutdown with an exit code (128+signo for a signal).
 func (l *daemonLifetime) shutdownWith(reason string, code int) {
 	l.logf(fmt.Sprintf("serve-http: unmanaged daemon exiting: %s (§10.1; --idle-exit/--ttl/--exit-with-parent, or --managed)", reason))
+	if l.onExit != nil {
+		l.onExit(reason, code)
+	}
+	l.closeRecord()
+	l.exit(code)
+}
+
+// closeRecord removes the record; no heartbeat writes it back after.
+func (l *daemonLifetime) closeRecord() {
 	l.mu.Lock()
 	l.closed = true
 	removeDaemonRecord(l.recordPath)
 	l.mu.Unlock()
-	l.exit(code)
+}
+
+// lifetimeExitReason maps a lifetime exit's reason to the ledger's (§2.3).
+func lifetimeExitReason(reason string) string {
+	switch {
+	case strings.HasPrefix(reason, "idle"):
+		return tenancy.ExitIdle
+	case strings.HasPrefix(reason, "ttl"):
+		return tenancy.ExitTTL
+	case strings.Contains(reason, "unlinked"):
+		return tenancy.ExitUnlinked
+	case strings.HasPrefix(reason, "parent"):
+		return tenancy.ExitParent
+	case strings.HasPrefix(reason, "signal"):
+		return tenancy.ExitSignal
+	}
+	return reason
+}
+
+// removePerProcessLedger removes an addr-<port>-<pid> daemon's ledger (both
+// generations) and an empty crash.log on its clean exit: nothing reads a
+// per-process ledger after its process, and its directory would otherwise
+// stay for good (I48). A diagnostic capture keeps the directory.
+func removePerProcessLedger(ledger string) {
+	_ = os.Remove(ledger)
+	_ = os.Remove(ledger + ".1")
+	crash := filepath.Join(filepath.Dir(ledger), "crash.log")
+	if fi, err := os.Stat(crash); err == nil && fi.Size() == 0 {
+		_ = os.Remove(crash)
+	}
 }
 
 // exitOnSignal shuts an unmanaged daemon down on the first signal from

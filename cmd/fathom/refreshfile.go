@@ -11,10 +11,12 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"path/filepath"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/tenancy"
 	"github.com/geoffmilleraz/fathom/pkg/client"
-	"path/filepath"
 )
 
 // refreshFileRequest is POST /refresh-file's JSON body.
@@ -66,6 +68,13 @@ func refreshFileHandler(c *client.Client, patcher graphPatcher) http.HandlerFunc
 		}
 		if req.Service == "" || req.File == "" {
 			http.Error(w, "service and file are required", http.StatusBadRequest)
+			return
+		}
+		// RT-41 (§2.1): a refresh writes the store; in distress it is
+		// refused with the named reason.
+		if why, on := tenancy.StoreDistressNow(time.Now()); on {
+			w.Header().Set("Retry-After", "60")
+			http.Error(w, why+" — /refresh-file writes are refused until it clears", http.StatusServiceUnavailable)
 			return
 		}
 		out := buildRefreshFileResponse(r.Context(), c, patcher, req.Service, req.File)

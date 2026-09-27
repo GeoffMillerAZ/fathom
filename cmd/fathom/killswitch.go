@@ -144,9 +144,9 @@ func readKillSwitch(dir string, now time.Time) tenancy.KillSwitchVerdict {
 	})
 }
 
-// daemonSafeMode is true while paused.json holds (RT-6). It is the flag the
-// safe-mode machinery (RT-39's applySafeMode, RT-150's ensure skip) reads;
-// in wave A the daemon tracks and discloses it.
+// daemonSafeMode is true while paused.json holds (RT-6); it is mirrored
+// into tenancy.SetPausedSafeMode, which the request path reads (RT-39:
+// tree and fleet refused, auto-refresh, feeders and the decision port off).
 var daemonSafeMode atomic.Bool
 
 // safeModeActive reports whether the managed daemon is paused.
@@ -171,6 +171,7 @@ func checkKillSwitch(args []string, getenv func(string) string, now time.Time, s
 		return v.ExitCode, true
 	case tenancy.ActionSafeMode:
 		daemonSafeMode.Store(true)
+		tenancy.SetPausedSafeMode(true) // RT-39: the modes the request path reads
 		fmt.Fprintln(stderr, v.Message)
 	case tenancy.ActionRun:
 		if v.Expired {
@@ -196,6 +197,7 @@ func watchPauseSwitch(dir string, tick time.Duration, now func() time.Time, log 
 		}
 		v := readKillSwitch(dir, now())
 		paused := v.Action == tenancy.ActionSafeMode
+		tenancy.SetPausedSafeMode(paused)
 		if daemonSafeMode.Swap(paused) != paused && log != nil {
 			if paused {
 				log.Warn(v.Message)

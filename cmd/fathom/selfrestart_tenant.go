@@ -228,22 +228,11 @@ func appendAdoptRow(ledger string, at time.Time, oldHash, newHash string) error 
 // appendLedgerRow appends one JSON row to a lifecycle ledger, creating its
 // directory (0700) and file (0600).
 func appendLedgerRow(ledger string, row lifecycleRow) error {
-	if err := os.MkdirAll(filepath.Dir(ledger), 0o700); err != nil {
-		return err
-	}
 	b, err := json.Marshal(row)
 	if err != nil {
 		return err
 	}
-	f, err := os.OpenFile(ledger, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
-	if err != nil {
-		return err
-	}
-	if _, err := f.Write(append(b, '\n')); err != nil {
-		_ = f.Close()
-		return err
-	}
-	return f.Close()
+	return appendLedgerBytes(ledger, b) // rotates at 1 MiB, one generation kept (§2.3)
 }
 
 // keepAliveRelaunches reads a launchd plist's KeepAlive and reports whether

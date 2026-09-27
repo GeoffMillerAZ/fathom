@@ -60,7 +60,7 @@ func TestRunServeHTTPRestoresMemoryLimitAndStopsGovernor(t *testing.T) {
 func TestStartGovernorStop(t *testing.T) {
 	dir := t.TempDir()
 	b, notes := tenancy.ResolveBudget(tenancy.Config{}, tenancy.HostFacts{RAM: 32 * tenancy.GiB, NumCPU: 8})
-	g, stop := startGovernor(b, notes, filepath.Join(dir, "s.sqlite"), filepath.Join(dir, "daemon", "t", "record.json"), "", ladderActions{}, dlog.New(io.Discard, dlog.LevelDebug, time.Now))
+	g, stop := startGovernor(b, notes, filepath.Join(dir, "s.sqlite"), filepath.Join(dir, "daemon", "t", "lifecycle.jsonl"), ladderActions{}, dlog.New(io.Discard, dlog.LevelDebug, time.Now), nil)
 	if activeGovernor.Load() != g {
 		t.Fatal("startGovernor publishes its governor")
 	}
