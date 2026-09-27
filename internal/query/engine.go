@@ -128,12 +128,31 @@ func (e *Engine) Query(ctx context.Context, q core.Query) (core.QueryResult, err
 // FindCallers returns all SymbolNodes for the given serviceID whose Calls list
 // contains the given symbol. Matching is by bare name or SymbolKey suffix
 // (e.g. "ValidateToken" matches "pkg/auth.ValidateToken").
+//
+// RT-85: the candidates come from the store's call index
+// (ObservationsCalling) — only a service whose index is not complete loads
+// its whole observation set.
 func (e *Engine) FindCallers(ctx context.Context, serviceID, symbol string) ([]core.SymbolNode, error) {
-	// Query all observations for the service (no concern filter).
+	obs, indexed, err := e.store.ObservationsCalling(ctx, serviceID, symbol)
+	if err != nil {
+		return nil, err
+	}
+	if !indexed {
+		return e.findCallersFull(ctx, serviceID, symbol)
+	}
+	return callersFrom(obs, symbol), nil
+}
+
+// findCallersFull is FindCallers over the service's whole observation set.
+func (e *Engine) findCallersFull(ctx context.Context, serviceID, symbol string) ([]core.SymbolNode, error) {
 	obs, err := e.store.QueryObservations(ctx, serviceID, "")
 	if err != nil {
 		return nil, err
 	}
+	return callersFrom(obs, symbol), nil
+}
+
+func callersFrom(obs []core.Observation, symbol string) []core.SymbolNode {
 
 	var nodes []core.SymbolNode
 	for _, o := range obs {
@@ -145,7 +164,7 @@ func (e *Engine) FindCallers(ctx context.Context, serviceID, symbol string) ([]c
 	sort.Slice(nodes, func(i, j int) bool {
 		return nodes[i].Name < nodes[j].Name
 	})
-	return nodes, nil
+	return nodes
 }
 
 // TypedEdges returns every typed Go call edge (ADR-021 §3) stored for
@@ -174,13 +193,28 @@ func (e *Engine) TypedEdges(ctx context.Context, serviceID string) ([]core.Edge,
 // means. Ordinary (non-parenthesized) queries are completely unaffected:
 // normalizeReceiverSyntax is a no-op for them, and the existing
 // alphabetical-by-Name ordering is unchanged.
+//
+// RT-85: the candidates are a point lookup over the (service_id, symbol)
+// index (ObservationsForSymbol), never the service's whole observation set.
 func (e *Engine) FindSymbol(ctx context.Context, serviceID, name string) ([]core.SymbolNode, error) {
+	qname := normalizeReceiverSyntax(name)
+	obs, err := e.store.ObservationsForSymbol(ctx, serviceID, qname)
+	if err != nil {
+		return nil, err
+	}
+	return findSymbolIn(obs, name, qname), nil
+}
+
+// findSymbolFull is FindSymbol over the service's whole observation set.
+func (e *Engine) findSymbolFull(ctx context.Context, serviceID, name string) ([]core.SymbolNode, error) {
 	obs, err := e.store.QueryObservations(ctx, serviceID, "")
 	if err != nil {
 		return nil, err
 	}
+	return findSymbolIn(obs, name, normalizeReceiverSyntax(name)), nil
+}
 
-	qname := normalizeReceiverSyntax(name)
+func findSymbolIn(obs []core.Observation, name, qname string) []core.SymbolNode {
 	receiverQualified := qname != name
 
 	var nodes []core.SymbolNode
@@ -219,7 +253,7 @@ func (e *Engine) FindSymbol(ctx context.Context, serviceID, name string) ([]core
 	sort.Slice(nodes, func(i, j int) bool {
 		return nodes[i].Name < nodes[j].Name
 	})
-	return nodes, nil
+	return nodes
 }
 
 // normalizeReceiverSyntax strips Go's doc-style "(*T).Method" / "(T).Method"

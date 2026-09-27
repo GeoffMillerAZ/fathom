@@ -264,6 +264,20 @@ type Store interface {
 	// docs/design/responsible-tenant.md §4.3).
 	SymbolSourcesForNames(ctx context.Context, serviceID string, names []string) ([]SymbolSource, error)
 
+	// ObservationsForSymbol returns the service's observations whose
+	// symbol equals name or one of its dotted suffixes, or ends in
+	// "."+name — query.FindSymbol's candidates, read through the
+	// (service_id, symbol) index, never the whole observation set (RT-85,
+	// docs/design/responsible-tenant.md §4.5). Filtered by source_ref.
+	ObservationsForSymbol(ctx context.Context, serviceID, name string) ([]core.Observation, error)
+
+	// ObservationsCalling returns the service's observations whose calls
+	// carry symbol or a key with symbol's final name segment — a candidate
+	// superset query.FindCallers narrows — through observation_calls
+	// (RT-85). indexed is false when the service's call index is not
+	// complete; the caller then keeps its scan. Filtered by source_ref.
+	ObservationsCalling(ctx context.Context, serviceID, symbol string) (obs []core.Observation, indexed bool, err error)
+
 	// Fingerprint returns the stored content hash for (serviceID, sourceRef).
 	// The boolean is false when no fingerprint has been recorded yet.
 	Fingerprint(ctx context.Context, serviceID, sourceRef string) (hash string, found bool, err error)
