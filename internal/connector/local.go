@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/tenancy"
 	"github.com/geoffmilleraz/fathom/internal/filter"
 )
 
@@ -177,7 +178,14 @@ func (c *LocalConnector) Discover(ctx context.Context, svc core.ServiceRef) ([]c
 //
 // RT-69: Fetch honours ctx and stats before it reads; a file over
 // MaxFetchSize is never opened and comes back as an *OversizeError.
+//
+// RT-153: before each file it asks the producer governor; a fetch whose
+// ctx names no class is a whole-tree walk (tree class), so at refuse it
+// halts, and at the exit mark every fetch does.
 func (c *LocalConnector) Fetch(ctx context.Context, ref core.SourceRef) ([]byte, error) {
+	if err := tenancy.ProducerAllowsCtx(ctx, tenancy.ClassTree); err != nil {
+		return nil, err
+	}
 	if filepath.IsAbs(ref.Path) {
 		return fetchCapped(ctx, ref.Path, MaxFetchSize)
 	}
