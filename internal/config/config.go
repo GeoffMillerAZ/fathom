@@ -379,6 +379,14 @@ func Load(userPath, projectPath string) (Loaded, error) {
 		}
 	}
 
+	// F8 (the wave-B live reading): run from $HOME, the "project" layer is
+	// the user's own ~/.fathom/config.toml. It is read once, as the user
+	// layer — never again as a repository whose [tenancy] is ignored.
+	if projectPath != "" && userPath != "" && sameFile(userPath, projectPath) {
+		projectPath = ""
+		out.ProjectPath = ""
+	}
+
 	if projectPath != "" {
 		raw, found, err := readLayer(projectPath)
 		if err != nil {
@@ -495,4 +503,18 @@ func formatCUEError(err error) error {
 		lines = append(lines, fmt.Sprintf("%s: %s", key, msgs))
 	}
 	return fmt.Errorf("%s", strings.Join(lines, " | "))
+}
+
+// sameFile reports whether a and b name one existing file (any spelling:
+// a symlinked home, a relative path).
+func sameFile(a, b string) bool {
+	fa, err := os.Stat(a)
+	if err != nil {
+		return false
+	}
+	fb, err := os.Stat(b)
+	if err != nil {
+		return false
+	}
+	return os.SameFile(fa, fb)
 }
