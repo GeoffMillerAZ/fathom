@@ -182,7 +182,8 @@ outside the tool registry — hooks call these directly rather than through
   `fathom_open_stores`, `fathom_autorefresh_total`,
   `fathom_typed_pass_total`, and — vision 35 — `fathom_console_page_views_total{route}`
   and `fathom_console_event_subscribers`) — `fathom doctor`'s `daemon_footprint`
-  row reads it.
+  row reads only its `go_memory_limit_bytes` (the GC hint); the footprint it judges
+  comes from `/statusz`'s `tenancy` block or the resource ring (`fathom resources`).
 - `GET /events` (OC-13) — the console's live-freshness stream: server-sent
   events with an `id:`, a keepalive every 25 s, replay of the last 64 events
   after `Last-Event-ID`, at most 16 subscribers (503 + `Retry-After` past it).

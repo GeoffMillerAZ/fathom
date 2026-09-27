@@ -327,7 +327,8 @@ it's felt, not after:
 
 ```sh
 curl -s localhost:7575/metrics | grep -E 'heap_(inuse|sys)_bytes|goroutines|graph_memo|open_stores|typed_pass|memory_limit|resident_memory|phys_footprint'
-fathom doctor   # daemon_footprint row: WARN above 2 GiB heap in-use, names the memory limit too
+fathom resources # budget, phys_footprint history (24 h ring), lifecycle, host — works with the daemon down
+fathom doctor    # daemon_footprint: phys_footprint vs the budget, WARN at the shed mark or when the daemon does not answer
 ```
 
 **Footprint vs heap — read the right gauge (DG-16, diagnostics sweep).**

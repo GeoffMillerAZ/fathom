@@ -1327,6 +1327,18 @@ none` is `skipped` naming it off; `llm` pings the configured profile lane and, w
 `fail`). The stanza check accepts both the v1 and the v3 (`sha256:`-digested) begin
 marker.
 
+The tenancy rows (RT-49, RT-50; docs/design/responsible-tenant.md §13.3) read one
+`fathom resources` projection — the daemon's live `/statusz` tenancy block, else its
+resource ring and lifecycle ledger — and WARN, never FAIL: `daemon_footprint`
+(phys_footprint plus children against the budget the daemon runs under; a daemon that
+does not answer is a WARN naming the ring's last sample and its age, never a SKIP, and
+the remedy names the level, the top in-flight tool and `fathom resources`, never a
+restart), `daemon_lifecycle` (starts, unclean and over-budget exits, crash-looping at 3
+counted exits in 30 min, the switch files, quarantined services), `host_pressure`
+(pressure, swap, swap-volume free; unknown pressure is disclosed), `scratch_daemons`
+(leaked unmanaged daemons and stale records; remedy `fathom daemon reap --apply`) and
+`tenancy_scope` (a repository `[tenancy]` is ignored and named; env overrides disclosed).
+
 Exit `0` every check passed; `1` at least one check failed; `2` doctor itself could not
 run (bad flags, unresolvable `--path`) — an operational error, not a verdict on the
 repo's wiring. See the `fathom-doctor` skill for interpretation, the remedy-approval
@@ -1595,6 +1607,39 @@ Every "the daemon is down" message in fathom (doctor's remedy, the
 SessionStart line, `init`'s closing note) names the label **discovered on
 this machine**, never a fixed one. Off macOS, all of them fall back to
 `fathom serve-http` under your own supervisor.
+
+### `resources` — what the daemon takes from this machine
+
+```sh
+fathom resources [--json] [--since 24h] [--id <state-dir id>] [--url <base>]
+```
+
+One report, rendered from files so it works when the daemon is down, wedged or
+crash-looping (RT-48, design §13.2): the budget and marks the daemon runs under (from
+its ring header, else config), its phys_footprint and its children's now and over the
+window (peak with its level, an hourly sparkline), lifecycle (starts, unclean and
+over-budget exits, counted exits in 30 min, the kill switch), quarantined services, host
+pressure, swap and volume free space, in-flight work by class with the oldest call,
+the hooks' shared breaker, scratch daemons (the `daemon ps` census), disk, and the last
+diagnostic capture. When the daemon answers, the figures come from its `/statusz`
+tenancy block (the same projection); when it does not, the report says so and shows the
+ring's last sample with its age — never nothing. Every line names its instrument.
+
+The ring is `~/.fathom/daemon/<id>/resources.ring`: one fixed-size file (271,520 B)
+the governor writes in place — a sample a minute for 24 h plus every ladder transition,
+each slot checksummed (a torn slot is skipped and counted). A scratch daemon's ring is
+removed with its record.
+
+Exit `0` within budget; `1` over budget, the ladder at refuse or exit, crash-looping
+(3 counted exits in 30 min), stopped by the breaker, or scratch daemons leaked; `2` a
+ring, ledger or config is unreadable, or there is no sample at all to judge. `--id`
+picks another state directory (a scratch daemon's `addr-<port>-<pid>`); the default is
+the record serving `--url`, else the managed daemon.
+
+The session primer (`fathom prime`, the SessionStart hook) carries one line from the
+same files — at most 160 B, inside the primer's 3,200 B cap — only when the daemon is
+not normal: stopped by the breaker, shed or refusing, in safe mode, crash-looping, or
+holding a quarantined service (RT-51).
 
 ### `intent` — the intent corpus, audited (ADR-026, **experimental**)
 
