@@ -427,6 +427,7 @@ func (c *Client) RawFallbackObligations(ctx context.Context, service, file strin
 	if err != nil {
 		return nil, "", false, nil
 	}
+	corpus = c.probeAncestorGuides(ctx, service, layerDef, file, corpus)
 	claims, err := c.st.ClaimsForService(ctx, service, layerDef.Name)
 	if err != nil {
 		return nil, "", false, nil

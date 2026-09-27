@@ -8,10 +8,14 @@ package client
 //
 // Now an obligations call costs the edited file plus memoized state:
 //
-//   - The layer's corpus PATHS come from a names-only discovery
-//     (SourcePaths), filtered by the layer's own globs, computed once per
-//     (service, store watermark, layer digest) and single-flighted, so a
-//     burst of edits between ingests shares one walk (layerCoveragePaths).
+//   - The layer's corpus PATHS come from the file_stats rows the ingest
+//     wrote (RT-82) — no walk — or, for a service not ingested since
+//     file_stats existed, from one names-only discovery (SourcePaths),
+//     filtered by the layer's own globs, computed once per (service, store
+//     watermark, layer digest) in a memo group (internal/memo:
+//     single-flighted, ctx-aware waiters, byte-budgeted, evicted when the
+//     watermark moves), so a burst of edits between ingests shares one
+//     derivation (layerCoveragePaths).
 //   - Only the files the layer selects (the governing guides: CLAUDE.md,
 //     ADR.md, …) are read, each stat'ed first, capped at HotPathReadCap, and
 //     kept until its (size, mtime) moves; a guide over the cap or unreadable
@@ -35,6 +39,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/memo"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
@@ -44,8 +49,7 @@ import (
 // selected corpus file of that service.
 type obligationsMemo struct {
 	mu     sync.Mutex
-	paths  map[string]corpusPathsEntry // service -> the layer's corpus paths at one key
-	flight map[string]*corpusPathsCall // full key -> the in-flight walk
+	paths  map[string]corpusPathsEntry // service -> the guide contents at one paths key
 	edited map[string]editedEntry      // absolute path -> what was derived from it at a stat
 }
 
@@ -102,16 +106,24 @@ func (c *Client) editedStore(path string, info os.FileInfo, update func(*editedE
 }
 
 type corpusPathsEntry struct {
-	key   string
-	paths []string
-	docs  map[string]corpusDoc // repo-relative path -> content at a stat
+	key  string
+	docs map[string]corpusDoc // repo-relative path -> content at a stat
 }
 
-type corpusPathsCall struct {
-	done  chan struct{}
-	paths []string
-	err   error
+// layerPathsKey keys the layer-coverage paths group: one client's
+// service at one store watermark and layer digest.
+type layerPathsKey struct {
+	c                *Client
+	service, mark, d string
 }
+
+func (k layerPathsKey) MemoScope() (string, string) { return k.service, k.mark }
+
+// layerPathsGroup is the layer-coverage memo group (design §5: every
+// derived cache is a memo group).
+// Keep: a walk (the pre-file_stats path) outlives the hook that started
+// it and is memoized for the next, instead of being redone per deadline.
+var layerPathsGroup = memo.NewGroup[layerPathsKey, []string]("layer_coverage_paths", memo.Options{WatermarkScoped: true, Keep: true})
 
 // corpusDoc is one guide's content as of a stat (size, mtime). fromStat is
 // false for a connector with no on-disk root (faux, remote): its content is
@@ -147,78 +159,50 @@ func layerDigest(def semantic.LayerDef) string {
 }
 
 // layerCoveragePaths returns the repo-relative paths of def's corpus for
-// service, sorted: a names-only discovery (SourcePaths — no file is read)
-// filtered by def's include and exclude globs exactly as semantic.
-// SelectCorpus filters a fetched corpus. Memoized per (service, store
-// watermark, layer digest) and single-flighted: concurrent callers at one
-// key share one walk. A service with no store watermark (never ingested)
-// cannot be memoized, but its concurrent callers still share one walk. A
-// discovery error is returned and never memoized. Every caller — the one
-// that started the walk included — leaves when its own ctx is cancelled;
-// the walk itself runs detached and still memoizes its result.
+// service, sorted: the file_stats paths (RT-82) — or, before the service's
+// first ingest that wrote them, a names-only discovery (SourcePaths) — no
+// file is read — filtered by def's include and exclude globs exactly as
+// semantic.SelectCorpus filters a fetched corpus. Memoized per (service,
+// store watermark, layer digest) in layerPathsGroup and single-flighted:
+// concurrent callers at one key share one derivation, each leaving when
+// its own ctx ends. A service with no store watermark (never ingested) is
+// derived but never memoized (I21); an error is never memoized.
 func (c *Client) layerCoveragePaths(ctx context.Context, service string, def semantic.LayerDef) ([]string, error) {
 	wm, wmErr := c.StoreWatermark(ctx, service)
-	memoize := wmErr == nil && wm != ""
-	key := service + "\x00" + wm + "\x00" + layerDigest(def)
-	if !memoize {
-		key = service + "\x00<no watermark>\x00" + layerDigest(def)
+	if wmErr != nil {
+		wm = ""
 	}
-
-	m := &c.oblMemo
-	m.mu.Lock()
-	if e, ok := m.paths[service]; memoize && ok && e.key == key {
-		m.mu.Unlock()
-		return e.paths, nil
-	}
-	call, joined := m.flight[key]
-	if !joined {
-		if m.flight == nil {
-			m.flight = map[string]*corpusPathsCall{}
+	key := layerPathsKey{c: c, service: service, mark: wm, d: layerDigest(def)}
+	return layerPathsGroup.Get(ctx, key, func(bctx context.Context) ([]string, int64, error) {
+		paths, err := c.walkCorpusPaths(bctx, service, def)
+		var size int64
+		for _, p := range paths {
+			size += int64(len(p)) + 16
 		}
-		call = &corpusPathsCall{done: make(chan struct{})}
-		m.flight[key] = call
-		// The walk runs detached from every caller's cancellation: callers
-		// joined to this flight must not inherit the first caller's
-		// cancel, and a cancelled first caller still leaves a finished
-		// walk for the next one.
-		go c.runCorpusPathsWalk(context.WithoutCancel(ctx), service, def, key, memoize, call)
-	}
-	m.mu.Unlock()
-
-	select {
-	case <-call.done:
-		return call.paths, call.err
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	}
+		return paths, size, err
+	})
 }
 
-// runCorpusPathsWalk is one flight's walk: it records the result (memoized
-// only when the key carries a watermark) and releases the flight.
-func (c *Client) runCorpusPathsWalk(ctx context.Context, service string, def semantic.LayerDef, key string, memoize bool, call *corpusPathsCall) {
-	call.paths, call.err = c.walkCorpusPaths(ctx, service, def)
-
-	m := &c.oblMemo
-	m.mu.Lock()
-	delete(m.flight, key)
-	if memoize && call.err == nil {
-		if m.paths == nil {
-			m.paths = map[string]corpusPathsEntry{}
-		}
-		// A new key starts a fresh guide-content cache: the path set may
-		// have changed, and a stale entry must not outlive its path.
-		m.paths[service] = corpusPathsEntry{key: key, paths: call.paths, docs: map[string]corpusDoc{}}
-	}
-	m.mu.Unlock()
-	close(call.done)
+// pathsKeyString is the docs cache's key: guide contents are kept while
+// the paths key holds, and start over when it moves.
+func pathsKeyString(service, wm string, def semantic.LayerDef) string {
+	return service + "\x00" + wm + "\x00" + layerDigest(def)
 }
 
-// walkCorpusPaths is the one names-only walk layerCoveragePaths memoizes.
+// walkCorpusPaths derives the layer's corpus paths: file_stats when the
+// ingest wrote them (RT-82), else one names-only walk (RT-143).
 func (c *Client) walkCorpusPaths(ctx context.Context, service string, def semantic.LayerDef) ([]string, error) {
 	noteCorpusPathsBuild(service)
-	all, err := c.SourcePaths(ctx, service)
-	if err != nil {
-		return nil, err
+	var all []string
+	if files, ok, err := c.st.FileStats(ctx, service); err == nil && ok {
+		all = make([]string, len(files))
+		for i, f := range files {
+			all[i] = f.Path
+		}
+	} else {
+		if all, err = c.SourcePaths(ctx, service); err != nil {
+			return nil, err
+		}
 	}
 	stubs := make([]core.SourceFile, len(all))
 	for i, p := range all {
@@ -263,6 +247,11 @@ func (c *Client) layerCorpus(ctx context.Context, service string, def semantic.L
 	if err != nil {
 		return nil, nil, err
 	}
+	wm, _ := c.StoreWatermark(ctx, service)
+	docsKey := ""
+	if wm != "" {
+		docsKey = pathsKeyString(service, wm, def)
+	}
 	root := c.serviceRoot(ctx, service)
 	onDisk := false
 	if root != "" {
@@ -274,7 +263,7 @@ func (c *Client) layerCorpus(ctx context.Context, service string, def semantic.L
 	files := make([]core.SourceFile, 0, len(paths))
 	var unread []corpusSkip
 	for _, p := range paths {
-		doc, cached := c.cachedCorpusDoc(service, p)
+		doc, cached := c.cachedCorpusDoc(service, docsKey, p)
 		// RT-153: the corpus read is a tree producer. Before any file it
 		// has to read (a memoized copy costs nothing), ask the producer
 		// governor; a halt is the named error, never a shorter corpus.
@@ -308,7 +297,7 @@ func (c *Client) layerCorpus(ctx context.Context, service string, def semantic.L
 					continue
 				}
 				doc = corpusDoc{size: rinfo.Size(), mtimeNs: rinfo.ModTime().UnixNano(), fromStat: true, content: data}
-				c.storeCorpusDoc(service, p, doc)
+				c.storeCorpusDoc(service, docsKey, p, doc)
 			}
 		case !cached:
 			data, ferr := c.conn.Fetch(ctx, core.SourceRef{Service: service, Path: p})
@@ -321,7 +310,7 @@ func (c *Client) layerCorpus(ctx context.Context, service string, def semantic.L
 				continue
 			}
 			doc = corpusDoc{content: data}
-			c.storeCorpusDoc(service, p, doc)
+			c.storeCorpusDoc(service, docsKey, p, doc)
 		}
 		lang := connector.LanguageForPath(p)
 		files = append(files, core.SourceFile{Path: p, Content: doc.content, Lang: lang})
@@ -329,25 +318,38 @@ func (c *Client) layerCorpus(ctx context.Context, service string, def semantic.L
 	return files, unread, nil
 }
 
-func (c *Client) cachedCorpusDoc(service, path string) (corpusDoc, bool) {
+func (c *Client) cachedCorpusDoc(service, key, path string) (corpusDoc, bool) {
 	m := &c.oblMemo
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	e, ok := m.paths[service]
-	if !ok {
+	if !ok || key == "" || e.key != key {
 		return corpusDoc{}, false
 	}
 	d, ok := e.docs[path]
 	return d, ok
 }
 
-func (c *Client) storeCorpusDoc(service, path string, d corpusDoc) {
+// storeCorpusDoc keeps a guide's content under the current paths key; a
+// new key (the watermark or layer moved) starts the service's cache over,
+// so a stale entry never outlives its path. Uncached when the service has
+// no watermark (an empty key segment is never a key, I21).
+func (c *Client) storeCorpusDoc(service, key, path string, d corpusDoc) {
+	if key == "" {
+		return
+	}
 	m := &c.oblMemo
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if e, ok := m.paths[service]; ok && e.docs != nil {
-		e.docs[path] = d
+	if m.paths == nil {
+		m.paths = map[string]corpusPathsEntry{}
 	}
+	e, ok := m.paths[service]
+	if !ok || e.key != key {
+		e = corpusPathsEntry{key: key, docs: map[string]corpusDoc{}}
+		m.paths[service] = e
+	}
+	e.docs[path] = d
 }
 
 // serviceRoot is the service's recorded corpus root, or "".
@@ -365,4 +367,63 @@ func skipPaths(skips []corpusSkip) []string {
 		out[i] = k.path
 	}
 	return out
+}
+
+// probeAncestorGuides adds to corpus the guides a nested-guide include
+// ("**/CLAUDE.md") selects in the edited file's own ancestor directories
+// that the paths do not list yet — a guide written since the service's
+// last ingest (RT-82: file_stats paths are the ingest's). Bounded: one
+// stat per (ancestor, literal include), a read only for a guide that
+// exists, under the hot-path cap; never a walk. The raw fallback's
+// "a brand-new nested guide is served before any ingest" (ADR-037) holds.
+func (c *Client) probeAncestorGuides(ctx context.Context, service string, def semantic.LayerDef, file string, corpus []core.SourceFile) []core.SourceFile {
+	root := c.serviceRoot(ctx, service)
+	if root == "" || file == "" || filepath.IsAbs(file) {
+		return corpus
+	}
+	have := make(map[string]bool, len(corpus))
+	for _, f := range corpus {
+		have[f.Path] = true
+	}
+	var names []string
+	for _, inc := range def.CorpusInclude {
+		rest, ok := strings.CutPrefix(inc, "**/")
+		if ok && rest != "" && !strings.ContainsAny(rest, "*?[/") {
+			names = append(names, rest)
+		}
+	}
+	if len(names) == 0 {
+		return corpus
+	}
+	dir := filepath.ToSlash(filepath.Dir(filepath.FromSlash(file)))
+	for {
+		for _, name := range names {
+			p := name
+			if dir != "." && dir != "" {
+				p = dir + "/" + name
+			}
+			if have[p] {
+				continue
+			}
+			if len(semantic.SelectCorpus([]core.SourceFile{{Path: p}}, def.CorpusInclude, def.CorpusExclude)) == 0 {
+				continue
+			}
+			abs := filepath.Join(root, filepath.FromSlash(p))
+			if info, err := os.Stat(abs); err != nil || !info.Mode().IsRegular() {
+				continue
+			}
+			data, _, skipped, err := readFileCapped(abs, HotPathReadCap)
+			if err != nil || skipped != "" {
+				continue
+			}
+			have[p] = true
+			corpus = append(corpus, core.SourceFile{Path: p, Content: data, Lang: connector.LanguageForPath(p)})
+		}
+		if dir == "." || dir == "" || dir == "/" {
+			break
+		}
+		dir = filepath.ToSlash(filepath.Dir(filepath.FromSlash(dir)))
+	}
+	sort.Slice(corpus, func(i, j int) bool { return corpus[i].Path < corpus[j].Path })
+	return corpus
 }
