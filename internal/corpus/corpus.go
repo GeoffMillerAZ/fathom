@@ -49,6 +49,8 @@ type Excluded struct {
 	Path   string
 	Reason string
 	Size   int64
+	// Err is the failure behind an unreadable exclusion (nil otherwise).
+	Err error
 }
 
 // FileStat is a file's stat facts (file_stats rows, §6).
@@ -69,11 +71,19 @@ type FileStat struct {
 // file is an error wrapping fs.ErrNotExist; a permission failure is an
 // unreadable exclusion.
 func ReadFileCapped(ctx context.Context, path string, cap int64) ([]byte, *Excluded, error) {
+	data, _, ex, err := Read(ctx, path, cap, nil)
+	return data, ex, err
+}
+
+// Read is ReadFileCapped that also returns the file's stat (nil when the
+// stat failed) and tells onOpen (when non-nil) each path it actually
+// opens — the callers' proof that an excluded file was never read.
+func Read(ctx context.Context, path string, cap int64, onOpen func(path string)) ([]byte, fs.FileInfo, *Excluded, error) {
 	if err := ctx.Err(); err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	if err := tenancy.ProducerAllowsCtx(ctx, tenancy.ClassPoint); err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	if cap <= 0 {
 		cap = DefaultCap
@@ -81,22 +91,25 @@ func ReadFileCapped(ctx context.Context, path string, cap int64) ([]byte, *Exclu
 	info, err := os.Stat(path)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
-		return nil, &Excluded{Path: path, Reason: ReasonUnreadable}, nil
+		return nil, nil, &Excluded{Path: path, Reason: ReasonUnreadable, Err: err}, nil
 	}
 	if !info.Mode().IsRegular() {
-		return nil, &Excluded{Path: path, Reason: ReasonNotRegular, Size: info.Size()}, nil
+		return nil, info, &Excluded{Path: path, Reason: ReasonNotRegular, Size: info.Size()}, nil
 	}
 	if info.Size() > cap {
-		return nil, &Excluded{Path: path, Reason: ReasonOversize, Size: info.Size()}, nil
+		return nil, info, &Excluded{Path: path, Reason: ReasonOversize, Size: info.Size()}, nil
+	}
+	if onOpen != nil {
+		onOpen(path)
 	}
 	f, err := os.Open(path)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
-			return nil, nil, err
+			return nil, info, nil, err
 		}
-		return nil, &Excluded{Path: path, Reason: ReasonUnreadable, Size: info.Size()}, nil
+		return nil, info, &Excluded{Path: path, Reason: ReasonUnreadable, Size: info.Size(), Err: err}, nil
 	}
 	defer f.Close()
 
@@ -104,18 +117,18 @@ func ReadFileCapped(ctx context.Context, path string, cap int64) ([]byte, *Exclu
 	head := make([]byte, min(int64(SniffSize), info.Size()+1))
 	n, err := io.ReadFull(f, head)
 	if err != nil && !errors.Is(err, io.ErrUnexpectedEOF) && !errors.Is(err, io.EOF) {
-		return nil, &Excluded{Path: path, Reason: ReasonUnreadable, Size: info.Size()}, nil
+		return nil, info, &Excluded{Path: path, Reason: ReasonUnreadable, Size: info.Size(), Err: err}, nil
 	}
 	head = head[:n]
 	if cerr := tenancy.Charge(ctx, int64(n)); cerr != nil {
-		return nil, nil, cerr
+		return nil, info, nil, cerr
 	}
 	if connector.IsBinary(head) {
-		return nil, &Excluded{Path: path, Reason: ReasonBinary, Size: info.Size()}, nil
+		return nil, info, &Excluded{Path: path, Reason: ReasonBinary, Size: info.Size()}, nil
 	}
 	if n < len(head) {
 		// EOF inside the sniff: the whole file is in head.
-		return head, nil, nil
+		return head, info, nil, nil
 	}
 	// The rest, under the cap: a file that grew since the stat stops at
 	// cap+1 and is named oversize.
@@ -123,16 +136,16 @@ func ReadFileCapped(ctx context.Context, path string, cap int64) ([]byte, *Exclu
 	copy(buf, head)
 	rest, err := io.ReadAll(io.LimitReader(f, cap+1-int64(n)))
 	if err != nil {
-		return nil, &Excluded{Path: path, Reason: ReasonUnreadable, Size: info.Size()}, nil
+		return nil, info, &Excluded{Path: path, Reason: ReasonUnreadable, Size: info.Size(), Err: err}, nil
 	}
 	if cerr := tenancy.Charge(ctx, int64(len(rest))); cerr != nil {
-		return nil, nil, cerr
+		return nil, info, nil, cerr
 	}
 	buf = append(buf, rest...)
 	if int64(len(buf)) > cap {
-		return nil, &Excluded{Path: path, Reason: ReasonOversize, Size: int64(len(buf))}, nil
+		return nil, info, &Excluded{Path: path, Reason: ReasonOversize, Size: int64(len(buf))}, nil
 	}
-	return buf, nil, nil
+	return buf, info, nil, nil
 }
 
 // Budget bounds a scan. A zero field is no bound on that axis.
@@ -197,6 +210,10 @@ func ScanBudgeted(ctx context.Context, root string, paths []string, b Budget, fn
 		now = time.Now
 	}
 	start := now()
+	fileCap := b.FileCap
+	if fileCap <= 0 {
+		fileCap = DefaultCap
+	}
 	var read int64
 	for _, p := range paths {
 		if err := ctx.Err(); err != nil {
@@ -216,7 +233,9 @@ func ScanBudgeted(ctx context.Context, root string, paths []string, b Budget, fn
 			full = filepath.Join(root, p)
 		}
 		if b.Bytes > 0 {
-			if info, err := os.Stat(full); err == nil && read+info.Size() > b.Bytes {
+			// Only a file that would be read spends the budget: an oversize
+			// or non-regular one is excluded from its stat, unread.
+			if info, err := os.Stat(full); err == nil && info.Mode().IsRegular() && info.Size() <= fileCap && read+info.Size() > b.Bytes {
 				cov.Stopped = StopBytes
 				return cov, nil
 			}

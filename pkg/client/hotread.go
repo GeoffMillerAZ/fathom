@@ -1,10 +1,12 @@
 package client
 
 import (
+	"context"
 	"fmt"
-	"io"
 	"os"
 	"sync/atomic"
+
+	"github.com/geoffmilleraz/fathom/internal/corpus"
 )
 
 // HotPathReadCap is the largest file a request-path read in this package
@@ -18,35 +20,35 @@ const HotPathReadCap int64 = 2 << 20
 // and that a whole-tree walk read no contents. nil in production.
 var readObserver atomic.Pointer[func(path string)]
 
-// readFileCapped stats path first and reads it only when it is a regular
-// file of at most max bytes. skipped names why a file was not read (and
-// data is nil); err is a stat or read failure. A file that grew past max
+// readFileCapped reads path through internal/corpus (RT-66, I48): stat
+// first, read only a regular file of at most max bytes that does not
+// sniff as binary, and charge every byte read to ctx's admission ticket.
+// skipped names why a file was not read (and data is nil); err is a stat
+// or read failure (an unreadable file's own error, never a skip — I38), or
+// the governor or meter refusing the read. A file that grew past max
 // between the stat and the read is skipped too, never truncated.
-func readFileCapped(path string, max int64) (data []byte, info os.FileInfo, skipped string, err error) {
-	info, err = os.Stat(path)
-	if err != nil {
-		return nil, nil, "", err
-	}
-	if !info.Mode().IsRegular() {
-		return nil, info, "not a regular file", nil
-	}
-	if info.Size() > max {
-		return nil, info, oversizeNote(info.Size(), max), nil
-	}
+func readFileCapped(ctx context.Context, path string, max int64) (data []byte, info os.FileInfo, skipped string, err error) {
+	var onOpen func(string)
 	if obs := readObserver.Load(); obs != nil {
-		(*obs)(path)
+		onOpen = *obs
 	}
-	f, err := os.Open(path)
+	data, info, ex, err := corpus.Read(ctx, path, max, onOpen)
 	if err != nil {
 		return nil, info, "", err
 	}
-	defer f.Close()
-	data, err = io.ReadAll(io.LimitReader(f, max+1))
-	if err != nil {
-		return nil, info, "", err
-	}
-	if int64(len(data)) > max {
-		return nil, info, oversizeNote(int64(len(data)), max), nil
+	if ex != nil {
+		switch ex.Reason {
+		case corpus.ReasonUnreadable:
+			return nil, info, "", ex.Err
+		case corpus.ReasonNotRegular:
+			return nil, info, "not a regular file", nil
+		case corpus.ReasonOversize:
+			return nil, info, oversizeNote(ex.Size, max), nil
+		case corpus.ReasonBinary:
+			return nil, info, "binary file, not read past its first " + humanBytes(corpus.SniffSize), nil
+		default:
+			return nil, info, ex.Reason, nil
+		}
 	}
 	return data, info, "", nil
 }

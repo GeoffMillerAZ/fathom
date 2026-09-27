@@ -178,3 +178,29 @@ func TestScanBudgeted_StopsAndReportsLowerBound(t *testing.T) {
 		t.Fatalf("ctx: %+v err=%v", cov, err)
 	}
 }
+
+// TestScanBudgeted_OversizeFileNeverSpendsTheByteBudget (review finding,
+// RT-67): a file over the per-file cap is excluded by its stat and never
+// read, so it spends none of the scan's byte budget — one large file must
+// not stop a scan at zero files with Stopped=bytes.
+func TestScanBudgeted_OversizeFileNeverSpendsTheByteBudget(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "a_big.bin"), bytes.Repeat([]byte("a"), 400), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "b_small.txt"), []byte("hello"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var seen []string
+	cov, err := ScanBudgeted(context.Background(), dir, []string{"a_big.bin", "b_small.txt"}, Budget{Bytes: 100, FileCap: 50},
+		func(p string, _ []byte) bool { seen = append(seen, p); return false })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cov.Stopped != "" || cov.Scanned != 1 || len(seen) != 1 || seen[0] != "b_small.txt" {
+		t.Fatalf("coverage %+v, seen %v; want the small file scanned and no stop", cov, seen)
+	}
+	if len(cov.Excluded) != 1 || cov.Excluded[0].Reason != ReasonOversize {
+		t.Fatalf("excluded %+v; want the big file named oversize", cov.Excluded)
+	}
+}

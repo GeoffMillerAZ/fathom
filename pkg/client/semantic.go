@@ -276,7 +276,7 @@ func (c *Client) ObligationsIndexCheck(ctx context.Context, service, file string
 	if e, ok := c.editedLookup(diskPath, info); ok && e.hashOK {
 		return e.hash != stored, ""
 	}
-	data, rinfo, skipped, err := readFileCapped(diskPath, HotPathReadCap)
+	data, rinfo, skipped, err := readFileCapped(ctx, diskPath, HotPathReadCap)
 	if err != nil {
 		return false, ""
 	}
@@ -520,7 +520,7 @@ func (c *Client) editedFileTokens(ctx context.Context, root, service, file strin
 			if e, ok := c.editedLookup(path, info); ok && e.tokensOK {
 				return e.tokens, ""
 			}
-			data, rinfo, why, rerr := readFileCapped(path, HotPathReadCap)
+			data, rinfo, why, rerr := readFileCapped(ctx, path, HotPathReadCap)
 			if rerr != nil || why != "" {
 				return nil, why
 			}

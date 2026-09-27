@@ -290,7 +290,7 @@ func (c *Client) layerCorpus(ctx context.Context, service string, def semantic.L
 				continue
 			}
 			if !(cached && doc.fromStat && doc.size == info.Size() && doc.mtimeNs == info.ModTime().UnixNano()) {
-				data, rinfo, skipped, rerr := readFileCapped(abs, HotPathReadCap)
+				data, rinfo, skipped, rerr := readFileCapped(ctx, abs, HotPathReadCap)
 				if rerr != nil {
 					if errors.Is(rerr, fs.ErrNotExist) {
 						continue
@@ -418,7 +418,7 @@ func (c *Client) probeAncestorGuides(ctx context.Context, service string, def se
 			if info, err := os.Stat(abs); err != nil || !info.Mode().IsRegular() {
 				continue
 			}
-			data, _, skipped, err := readFileCapped(abs, HotPathReadCap)
+			data, _, skipped, err := readFileCapped(ctx, abs, HotPathReadCap)
 			if err != nil || skipped != "" {
 				continue
 			}
