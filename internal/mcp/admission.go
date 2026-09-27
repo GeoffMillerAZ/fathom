@@ -14,6 +14,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strconv"
 	"sync"
 	"time"
@@ -175,6 +176,21 @@ func (s *Server) settleCall(ctx context.Context, tool string, tk *tenancy.Ticket
 		tk.Release(release)
 	}
 	return result, rpcErr, partial, meta
+}
+
+// runHandler runs one tool handler and turns a panic into a named error,
+// so the settle that follows always releases the admission ticket (its
+// slot, in-flight entry and running count). net/http's conn.serve would
+// otherwise recover the panic with the slot still held — in a 1-slot
+// class, a refusal for the life of the process.
+func runHandler(ctx context.Context, te toolEntry, args json.RawMessage) (result any, rpcErr *rpcError) {
+	defer func() {
+		if v := recover(); v != nil {
+			result, rpcErr = nil, &rpcError{Code: ErrCodeInternal, Message: fmt.Sprintf("internal error: %s panicked: %v", te.desc.Name, v),
+				Data: map[string]any{"outcome": string(tenancy.OutcomeError), "panic": fmt.Sprint(v)}}
+		}
+	}()
+	return te.handler(ctx, args)
 }
 
 // serviceOfArgs is args' "service", best-effort.

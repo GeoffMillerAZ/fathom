@@ -366,3 +366,30 @@ func TestUnsupportedWalkCancelledIsNeverCached(t *testing.T) {
 		t.Fatalf("a live waiter got the departed owner's cancelled walk: %v, want swift:1", got)
 	}
 }
+
+// TestInProcessPanicReleasesItsSlot (review finding, RT-61): an in-process
+// console call whose body panics releases its ticket and answers a named
+// error — the fleet class's single slot is never held by a dead call.
+func TestInProcessPanicReleasesItsSlot(t *testing.T) {
+	g, reg := testGate(t, tenancy.ModeEnforce)
+	daemonGate.Store(g)
+	defer daemonGate.Store(nil)
+	var err error
+	func() {
+		defer func() {
+			if v := recover(); v != nil {
+				t.Errorf("the panic escaped inProcessToolCall: %v", v)
+			}
+		}()
+		err = inProcessToolCall(context.Background(), "list_services", tenancy.ClassFleet, func(context.Context) error { panic("boom") })
+	}()
+	if err == nil || !strings.Contains(err.Error(), "boom") {
+		t.Fatalf("want a named error, got %v", err)
+	}
+	if n := len(reg.Snapshot()); n != 0 {
+		t.Fatalf("%d in-flight entries left behind", n)
+	}
+	if err := inProcessToolCall(context.Background(), "list_services", tenancy.ClassFleet, func(context.Context) error { return nil }); err != nil {
+		t.Fatalf("the panicked call kept its fleet slot: %v", err)
+	}
+}

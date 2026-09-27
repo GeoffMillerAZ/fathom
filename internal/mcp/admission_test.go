@@ -354,3 +354,45 @@ func TestDecisionPortClosedUnderRefuse(t *testing.T) {
 		t.Fatalf("no gate skipped: %q", skip)
 	}
 }
+
+// TestPanickingHandlerReleasesItsSlot (review finding, RT-56): a handler
+// that panics must not keep its admission slot, its in-flight entry or its
+// running count — one panic in a 1-slot class would otherwise refuse that
+// class for the life of the process. The panic answers a named error, in a
+// top-level call and in a batch sub-call alike.
+func TestPanickingHandlerReleasesItsSlot(t *testing.T) {
+	r := newAdmissionRig(t, tenancy.ModeEnforce)
+	obj := map[string]any{"type": "object"}
+	r.srv.registerTool(toolDescriptor{Name: "zz_boom", InputSchema: obj, group: GroupShared, cost: declareCost(tenancy.ClassFleet)},
+		func(context.Context, json.RawMessage) (any, *rpcError) { panic("boom") })
+	r.srv.registerTool(toolDescriptor{Name: "zz_fleet", InputSchema: obj, group: GroupShared, cost: declareCost(tenancy.ClassFleet)},
+		func(context.Context, json.RawMessage) (any, *rpcError) { return map[string]any{"ok": true}, nil })
+
+	call := func(tool string, args map[string]any) (got rpcResp, panicked any) {
+		defer func() { panicked = recover() }()
+		return r.call(t, context.Background(), tool, args), nil
+	}
+	got, p := call("zz_boom", nil)
+	if p != nil {
+		t.Fatalf("the panic escaped dispatch: %v", p)
+	}
+	if got.Error == nil || !strings.Contains(got.Error.Message, "boom") {
+		t.Fatalf("a panicking handler must answer a named error: %+v", got)
+	}
+	if got := r.call(t, WithOrigin(context.Background(), "edit-hook"), "zz_fleet", nil); got.Error != nil {
+		t.Fatalf("the panicked call kept its fleet slot: %s", got.Error.Message)
+	}
+	got, p = call("batch", map[string]any{"calls": []any{map[string]any{"name": "zz_boom"}}})
+	if p != nil || got.Error != nil {
+		t.Fatalf("batch: panic %v, error %+v", p, got.Error)
+	}
+	if res := batchResults(t, got); !strings.Contains(fmt.Sprint(res[0]["error"]), "boom") {
+		t.Fatalf("batch sub-call panic not named: %+v", res)
+	}
+	if got := r.call(t, WithOrigin(context.Background(), "edit-hook"), "zz_fleet", nil); got.Error != nil {
+		t.Fatalf("the panicked batch sub-call kept its fleet slot: %s", got.Error.Message)
+	}
+	if n := len(r.reg.Snapshot()); n != 0 {
+		t.Fatalf("%d in-flight entries left behind", n)
+	}
+}

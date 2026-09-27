@@ -166,7 +166,7 @@ func testCallerMetricLine() string {
 // in flight, metered, refused by name like any request — excluded from
 // agent traffic (mcp.IsConsoleRead) and never an auto-refresh trigger.
 // With no gate (a CLI process) fn simply runs.
-func inProcessToolCall(ctx context.Context, tool string, class tenancy.Class, fn func(context.Context) error) error {
+func inProcessToolCall(ctx context.Context, tool string, class tenancy.Class, fn func(context.Context) error) (err error) {
 	ctx = mcp.WithOrigin(ctx, mcp.OriginConsoleInProcess)
 	g := daemonGate.Load()
 	if g == nil {
@@ -176,16 +176,22 @@ func inProcessToolCall(ctx context.Context, tool string, class tenancy.Class, fn
 	if ref != nil {
 		return fmt.Errorf("fathom busy: %s", ref.Reason)
 	}
-	err := fn(tk.Context())
-	switch {
-	case tk.Context().Err() != nil:
-		tk.Release(tenancy.OutcomeAbandoned)
-	case err != nil:
-		tk.Release(tenancy.OutcomeError)
-	default:
-		tk.Release(tenancy.OutcomeOK)
-	}
-	return err
+	defer func() {
+		// A panicking body releases its ticket and answers a named error:
+		// a dead call never holds the class's slot.
+		if v := recover(); v != nil {
+			err = fmt.Errorf("internal error: %s panicked: %v", tool, v)
+		}
+		switch {
+		case tk.Context().Err() != nil:
+			tk.Release(tenancy.OutcomeAbandoned)
+		case err != nil:
+			tk.Release(tenancy.OutcomeError)
+		default:
+			tk.Release(tenancy.OutcomeOK)
+		}
+	}()
+	return fn(tk.Context())
 }
 
 // admissionMetricLines is the gate's /metrics block and the test-caller

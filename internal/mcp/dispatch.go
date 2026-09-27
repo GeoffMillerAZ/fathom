@@ -426,7 +426,7 @@ func (s *Server) handleToolsCallMeta(ctx context.Context, params json.RawMessage
 	// forbids, while the row sat checked on internal-object tests.
 	ctx, collector := scope.WithCollector(ctx)
 
-	result, rpcErr := te.handler(ctx, p.Arguments)
+	result, rpcErr := runHandler(ctx, te, p.Arguments)
 	// RT-57 (§3.4): the answer names itself — abandoned, partial or ok.
 	result, rpcErr, partial, settled := s.settleCall(ctx, te.desc.Name, tk, result, rpcErr)
 	settled.class = meta.class

@@ -1606,7 +1606,7 @@ func registerBatch(s *Server) {
 				results[i] = batchResult{Name: call.Name, Error: busy.Message}
 				continue
 			}
-			result, rpcErr := te.handler(subCtx, argsRaw)
+			result, rpcErr := runHandler(subCtx, te, argsRaw)
 			result, rpcErr, _, meta := s.settleCall(subCtx, call.Name, tk, result, rpcErr)
 			meta.class = costClassOf(te, argsRaw)
 			logSub(call.Name, string(te.desc.group), argsRaw, subOff, claimsAttachedFrom(result), verdictOutcomeFrom(result), result, time.Since(start), rpcErr, meta)
