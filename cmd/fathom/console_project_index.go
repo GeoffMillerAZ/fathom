@@ -87,7 +87,7 @@ func buildProjectIndexPage(cr *consoleRequest) (consoleOut, error) {
 		return consoleOut{}, &consoleError{Status: 503, Title: "Store unreadable", Reason: "this daemon has no store open, so " + pc.svc + "'s index cannot be read", Remedy: "fathom serve-http --store <path>"}
 	}
 	ctx := cr.r.Context()
-	idx := projectIndexFor(ctx, c, pc)
+	idx := projectIndexFor(ctx, cr.deps, pc)
 	profile := console.IndexProfile(idx.facts)
 
 	q := strings.TrimSpace(cr.r.URL.Query().Get("symbol"))
@@ -159,34 +159,58 @@ type projectIndexData struct {
 // kept one).
 var projectIndexMemo = consoleMemo[projectIndexData]{max: 6}
 
+// projectIndexCompute computes one project's index read (tests hold it).
+var projectIndexCompute = func(ctx context.Context, d *consoleDeps, pc projectContext) projectIndexData {
+	return computeProjectIndex(ctx, d.c, pc)
+}
+
 // projectIndexFor reads (or recalls) one project's index facts and graph.
 // The memo key is the store's watermark (StoreWatermark: the ingest's
 // commit and time), so only a re-ingest invalidates it; "" never memoizes.
-// The read runs detached from the request that started it: the requests
-// waiting on the same read must not see it cancelled by that one's client
-// going away.
-func projectIndexFor(ctx context.Context, c *client.Client, pc projectContext) projectIndexData {
+// The read runs as a job in the console's bounded pool (RT-117, design
+// §14), one flight per key, detached from the request that started it: the
+// requests waiting on the same read must not see it cancelled by that
+// one's client going away. A full pool is refused by name and not kept.
+func projectIndexFor(ctx context.Context, d *consoleDeps, pc projectContext) projectIndexData {
+	c := d.c
 	wm, _ := c.StoreWatermark(ctx, pc.svc)
 	key := pc.svc + "@" + wm + "@" + pc.root + "@" + pc.rootNote
-	d, _, _ := projectIndexMemo.doCtx(ctx, key, time.Now(), func() (projectIndexData, time.Duration) {
-		var d projectIndexData
-		// RT-61 (§3.3): the project index is an in-process console call,
-		// admitted and metered as console-inprocess.
-		if err := inProcessToolCall(context.WithoutCancel(ctx), "console:project-index", tenancy.ClassIndex, func(ctx context.Context) error {
-			d = computeProjectIndex(ctx, c, pc)
-			return nil
-		}); err != nil {
-			d = projectIndexData{facts: console.IndexFacts{Service: pc.svc, Source: "the daemon's store (" + pc.svc + ")", InventoryErr: err.Error()}}
+	out, _, _ := projectIndexMemo.doCtx(ctx, key, time.Now(), func() (projectIndexData, time.Duration) {
+		var data projectIndexData
+		var failure string
+		job, err := d.jobPool().SubmitJob("project-index:"+pc.svc, "project-index:"+key, func() {
+			// RT-61 (§3.3): the project index is an in-process console
+			// call, admitted and metered as console-inprocess.
+			if err := inProcessToolCall(context.WithoutCancel(ctx), "console:project-index", tenancy.ClassIndex, func(ctx context.Context) error {
+				data = projectIndexCompute(ctx, d, pc)
+				return nil
+			}); err != nil {
+				failure = err.Error()
+			}
+		})
+		if err == nil {
+			<-job.Done()
+			switch {
+			case job.Dropped():
+				failure = "a newer index of " + pc.svc + " superseded this read before it ran"
+			case job.Err() != nil:
+				failure = job.Err().Error()
+			}
+		} else {
+			failure = err.Error()
+		}
+		if failure != "" {
+			data = projectIndexData{facts: console.IndexFacts{Service: pc.svc, Source: "the daemon's store (" + pc.svc + ")", InventoryErr: failure}}
 		}
 		// A read that failed is never memoized: the next view retries it (an
 		// EPERM wedge on the volume clears; a memoized error would not).
-		failed := d.facts.LanguagesErr != "" || d.facts.EdgesErr != "" || d.facts.InventoryErr != ""
+		failed := data.facts.LanguagesErr != "" || data.facts.EdgesErr != "" || data.facts.InventoryErr != ""
 		if wm == "" || failed {
-			return d, 0
+			return data, 0
 		}
-		return d, -1
+		return data, -1
 	})
-	return d
+	return out
 }
 
 func computeProjectIndex(ctx context.Context, c *client.Client, pc projectContext) projectIndexData {
