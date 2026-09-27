@@ -52,6 +52,8 @@ func TestMain(m *testing.M) {
 		identCacheDir = filepath.Join(cacheRoot, "ident-cache")
 		hookcache.IdentDir = identCacheDir
 		hookcache.HealthDir = filepath.Join(cacheRoot, "hook-health")
+		hookcache.ToplevelDir = filepath.Join(cacheRoot, "toplevel-cache")
+		hookcache.FileChangedDir = filepath.Join(cacheRoot, "filechanged")
 		editSetDir = filepath.Join(cacheRoot, "edit-set")
 		guardStampDir = filepath.Join(cacheRoot, "guard-stamps")
 		return nil

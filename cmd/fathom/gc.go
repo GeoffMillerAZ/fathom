@@ -39,6 +39,11 @@ const (
 	gcScenarioWorktreesPath = "artifacts/scenariobench/worktrees"
 )
 
+// gcTmpCacheDirs are the hooks' shared $TMPDIR caches whose entries gc
+// prunes after a day: FileChanged leases (one per root, file and mtime),
+// the per-cwd toplevel cache, the ident cache and guard stamps.
+var gcTmpCacheDirs = []string{"fathom-filechanged", "fathom-toplevel-cache", "fathom-ident-cache", "fathom-guard-stamps"}
+
 // gcOptions are runGC's inputs; every location and effect is injectable.
 type gcOptions struct {
 	Home      string // the user's home (~/.fathom lives under it)
@@ -158,6 +163,13 @@ func runGC(o gcOptions) gcReport {
 				(strings.HasPrefix(n, "fathom-") && strings.Contains(n, "-test-"))
 			return "fathom temp older than a day", match && o.Now.Sub(st.ModTime()) > gcTmpAge
 		}, "tmp", add, errf)
+		// The hooks' shared caches: their entries (never the directories)
+		// older than a day. Every entry outlives its own TTL by then.
+		for _, d := range gcTmpCacheDirs {
+			gcEntries(filepath.Join(o.TmpDir, d), func(e os.DirEntry, st os.FileInfo) (string, bool) {
+				return d + " entry older than a day", o.Now.Sub(st.ModTime()) > gcTmpAge
+			}, "tmp", add, errf)
+		}
 	}
 
 	// Workspace: scenario-bench worktrees and build binaries.

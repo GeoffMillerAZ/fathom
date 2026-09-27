@@ -1769,7 +1769,7 @@ and changes nothing — until `--apply`. Evidence is archived, never deleted:
 | `session-stamps` | older than 30 days: deleted |
 | `daemon-records` | `~/.fathom/daemon/<id>/record.json` (and legacy `~/.fathom/daemons`) whose pid is not running: deleted (the directory and its lifecycle ledger stay) |
 | `diag` | captures past 10 / 200 MiB per daemon: deleted, oldest first |
-| `tmp` | `$TMPDIR` `fathom-edit-set*`, `fathom-*-test-*`, `fathom-stranger-check*` older than a day: deleted |
+| `tmp` | `$TMPDIR` `fathom-edit-set*`, `fathom-*-test-*`, `fathom-stranger-check*` older than a day: deleted; entries of the hooks' caches (`fathom-filechanged`, `fathom-toplevel-cache`, `fathom-ident-cache`, `fathom-guard-stamps`) older than a day: deleted (the directories stay) |
 | `scenariobench-worktrees` | `workspace/artifacts/scenariobench/worktrees` beyond the newest 5 runs and older than 14 days (a `.pin` file exempts one): deleted |
 | `workspace-bins` | `workspace/tmp/fathom-bin-*` beyond the newest 3: deleted |
 

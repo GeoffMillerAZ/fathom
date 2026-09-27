@@ -233,3 +233,34 @@ func TestConsoleTailSharesRotatedGeneration(t *testing.T) {
 		t.Fatalf("callEntriesFor over both segments = %d, want 52", len(got))
 	}
 }
+
+// RT-125 hygiene: the hooks' $TMPDIR caches (FileChanged leases, the
+// per-cwd toplevel cache, the ident cache, guard stamps) have retention:
+// gc's tmp class removes their entries older than a day and keeps fresh
+// ones and the directories themselves.
+func TestGCPrunesHookCachesInTmp(t *testing.T) {
+	now := time.Date(2026, 9, 27, 12, 0, 0, 0, time.UTC)
+	tmp := t.TempDir()
+	var old, fresh []string
+	for _, d := range []string{"fathom-filechanged", "fathom-toplevel-cache", "fathom-ident-cache", "fathom-guard-stamps"} {
+		o := filepath.Join(tmp, d, "old.entry")
+		f := filepath.Join(tmp, d, "fresh.entry")
+		gcTouch(t, o, 10, now.Add(-48*time.Hour))
+		gcTouch(t, f, 10, now)
+		old, fresh = append(old, o), append(fresh, f)
+	}
+	rep := runGC(gcOptions{TmpDir: tmp, Now: now, Apply: true})
+	if len(rep.Errors) > 0 {
+		t.Fatalf("gc errors: %v", rep.Errors)
+	}
+	for _, p := range old {
+		if _, err := os.Stat(p); !os.IsNotExist(err) {
+			t.Errorf("%s older than a day survived gc", p)
+		}
+	}
+	for _, p := range fresh {
+		if _, err := os.Stat(p); err != nil {
+			t.Errorf("%s (fresh) was removed: %v", p, err)
+		}
+	}
+}
