@@ -1,5 +1,10 @@
 package mcp
 
+import (
+	"context"
+	"testing"
+)
+
 // export_test.go — test-only accessors. Visible to package mcp_test in this
 // directory, never to production callers (the file is compiled only into the
 // package's test binary), so asserting an internal contract costs no API
@@ -66,4 +71,18 @@ func (s *Server) CostClassOfForTest(name, args string) string {
 // must panic (RT-55: registration without a class fails).
 func (s *Server) RegisterUndeclaredToolForTest(name string) {
 	s.registerTool(toolDescriptor{Name: name, InputSchema: map[string]any{"type": "object"}, group: GroupShared}, nil)
+}
+
+// NewAutoRefreshForTest is NewAutoRefresh whose queue worker stops, and is
+// waited for, when t ends — no refresh job of one test finishes inside the
+// next.
+func NewAutoRefreshForTest(t testing.TB, backend QueryInterface) QueryInterface {
+	t.Helper()
+	ctx, cancel := context.WithCancel(context.Background())
+	ar, q := newAutoRefreshUntil(ctx, backend, nil)
+	t.Cleanup(func() {
+		cancel()
+		q.Wait()
+	})
+	return ar
 }

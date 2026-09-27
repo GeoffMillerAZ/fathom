@@ -21,7 +21,7 @@ func TestEnsureNeverIngestsInline(t *testing.T) {
 	started := make(chan string, 4)
 	var running, maxSeen int64
 	f := &gatedIngestFake{refreshFake: refreshFake{path: "/r", indexed: "0ld0000aaaa"}, started: started, release: release, running: &running, maxSeen: &maxSeen}
-	ar := newAR(f, "4ead000bbbb")
+	ar := newAR(t, f, "4ead000bbbb")
 
 	ctx, notes := withRefreshNotes(context.Background())
 	returned := make(chan struct{})
@@ -66,7 +66,7 @@ func TestEnsureNeverIngestsInline(t *testing.T) {
 	// Console origins never request one.
 	for _, origin := range []string{OriginConsole, OriginConsoleInProcess} {
 		cf := &refreshFake{path: "/r", indexed: "old"}
-		car := newAR(cf, "new")
+		car := newAR(t, cf, "new")
 		car.ensure(WithOrigin(context.Background(), origin), "svc")
 		if p := car.queue.Pending(); len(p) != 0 {
 			t.Fatalf("%s read queued %v", origin, p)
@@ -78,7 +78,7 @@ func TestEnsureNeverIngestsInline(t *testing.T) {
 
 	// The public constructor runs on a queue too.
 	pf := &gatedIngestFake{refreshFake: refreshFake{path: "/r", indexed: "old"}, started: make(chan string, 1), release: make(chan struct{}), running: new(int64), maxSeen: new(int64)}
-	pub := NewAutoRefresh(pf, nil).(*autoRefreshBackend)
+	pub := NewAutoRefreshForTest(t, pf).(*autoRefreshBackend)
 	pub.headFn = func(string) string { return "new" }
 	done := make(chan struct{})
 	go func() { pub.ensure(context.Background(), "svc"); close(done) }()
@@ -104,8 +104,8 @@ func TestIngestToolRunsOnRefreshQueue(t *testing.T) {
 	started := make(chan string, 4)
 	var running, maxSeen int64
 	f := &gatedIngestFake{refreshFake: refreshFake{path: "/r", indexed: "old"}, started: started, release: release, running: &running, maxSeen: &maxSeen}
-	q := newTestRefreshQueue(f)
-	ar := newARQueued(f, "new", q)
+	q := newTestRefreshQueue(t, f)
+	ar := newARQueued(t, f, "new", q)
 	srv := NewServer(ar)
 	srv.SetRefreshQueue(q)
 
@@ -155,7 +155,7 @@ func TestServerAdoptsAutoRefreshQueue(t *testing.T) {
 	started := make(chan string, 4)
 	var running, maxSeen int64
 	f := &gatedIngestFake{refreshFake: refreshFake{path: "/r", indexed: "old"}, started: started, release: release, running: &running, maxSeen: &maxSeen}
-	ar := NewAutoRefresh(f, nil).(*autoRefreshBackend)
+	ar := NewAutoRefreshForTest(t, f).(*autoRefreshBackend)
 	ar.headFn = func(string) string { return "new" }
 	srv := NewServer(ar)
 	if srv.RefreshQueue() != ar.RefreshQueue() {
@@ -199,7 +199,7 @@ func (f *probeFake) ServiceFreshnessProbe(context.Context, string) (string, erro
 // token queues a refresh.
 func TestEnsureProbesNeverComputesManifest(t *testing.T) {
 	f := &probeFake{refreshFake: refreshFake{path: "/docs", indexed: "manifest:old"}}
-	ar := newAR(f, "")
+	ar := newAR(t, f, "")
 	ar.ensure(context.Background(), "svc")
 	settle(t, ar)
 	if f.watermarks != 0 || f.probes != 1 {

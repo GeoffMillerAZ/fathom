@@ -12,14 +12,14 @@ import (
 func TestConsoleOriginNeverTriggersAutoRefresh(t *testing.T) {
 	for _, origin := range []string{OriginConsole, OriginConsoleInProcess} {
 		f := &refreshFake{path: "/r", indexed: "old"}
-		ar := newAR(f, "new")
+		ar := newAR(t, f, "new")
 		ensureSettled(t, ar, WithOrigin(context.Background(), origin), "svc")
 		if f.ingests != 0 {
 			t.Fatalf("%s read triggered %d inline ingests", origin, f.ingests)
 		}
 	}
 	f := &refreshFake{path: "/r", indexed: "old"}
-	ar := newAR(f, "new")
+	ar := newAR(t, f, "new")
 	ensureSettled(t, ar, context.Background(), "svc")
 	if f.ingests != 1 {
 		t.Fatalf("agent read of a drifted service: %d ingests, want 1", f.ingests)

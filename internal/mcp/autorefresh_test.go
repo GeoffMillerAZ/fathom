@@ -47,15 +47,15 @@ func (f *refreshFake) ListCommits(_ context.Context, _ string) ([]CommitInfo, er
 
 func (f *refreshFake) TypedEdges(_ context.Context, _ string) ([]core.Edge, error) { return nil, nil }
 
-func newAR(fake QueryInterface, head string) *autoRefreshBackend {
-	return newARQueued(fake, head, nil)
+func newAR(t testing.TB, fake QueryInterface, head string) *autoRefreshBackend {
+	return newARQueued(t, fake, head, nil)
 }
 
 // newARQueued is newAR over q, or over a queue of its own (no start wait,
 // no stagger) when q is nil.
-func newARQueued(fake QueryInterface, head string, q *refresh.Queue) *autoRefreshBackend {
+func newARQueued(t testing.TB, fake QueryInterface, head string, q *refresh.Queue) *autoRefreshBackend {
 	if q == nil {
-		q = newTestRefreshQueue(fake)
+		q = newTestRefreshQueue(t, fake)
 	}
 	return &autoRefreshBackend{
 		QueryInterface: fake,
@@ -68,11 +68,25 @@ func newARQueued(fake QueryInterface, head string, q *refresh.Queue) *autoRefres
 }
 
 // newTestRefreshQueue is a started refresh queue over backend with no start
-// wait and no warm-up stagger (the process gate still applies).
-func newTestRefreshQueue(backend QueryInterface) *refresh.Queue {
+// wait and no warm-up stagger (the process gate still applies). Its worker
+// is stopped, and waited for, when t ends: a job still finishing must not
+// run its bookkeeping (the identity-cache bust) inside a later test.
+func newTestRefreshQueue(t testing.TB, backend QueryInterface) *refresh.Queue {
 	q := NewRefreshQueue(backend, refresh.Config{StartWait: -1, Stagger: -1, Warmup: func(time.Time) bool { return false }, PausePoll: 10 * time.Millisecond})
-	q.Start(context.Background())
+	startTestQueue(t, q)
 	return q
+}
+
+// startTestQueue starts q under a context cancelled when t ends, then waits
+// for its worker to stop.
+func startTestQueue(t testing.TB, q *refresh.Queue) {
+	t.Helper()
+	ctx, cancel := context.WithCancel(context.Background())
+	q.Start(ctx)
+	t.Cleanup(func() {
+		cancel()
+		q.Wait()
+	})
 }
 
 // settle waits until every re-ingest ar requested has finished (RT-99:
@@ -106,7 +120,7 @@ func ensureSettled(t testing.TB, ar *autoRefreshBackend, ctx context.Context, se
 // per (service, commit)).
 func TestAutoRefresh_ReingestsOnDriftOnce(t *testing.T) {
 	fake := &refreshFake{path: "/repo", indexed: "oldsha"}
-	ar := newAR(fake, "newsha")
+	ar := newAR(t, fake, "newsha")
 	ctx := context.Background()
 	ar.ListAllSymbols(ctx, "svc")
 	ar.FindSymbol(ctx, "svc", "X")
@@ -124,7 +138,7 @@ func TestAutoRefresh_ReingestsOnDriftOnce(t *testing.T) {
 // debounce) must refresh before answering, exactly like the other reads.
 func TestAutoRefresh_TypedEdges_TriggersEnsure(t *testing.T) {
 	fake := &refreshFake{path: "/repo", indexed: "oldsha"}
-	ar := newAR(fake, "newsha")
+	ar := newAR(t, fake, "newsha")
 	if _, err := ar.TypedEdges(context.Background(), "svc"); err != nil {
 		t.Fatalf("TypedEdges: %v", err)
 	}
@@ -141,7 +155,7 @@ func TestAutoRefresh_TypedEdges_TriggersEnsure(t *testing.T) {
 // intercepted read.
 func TestAutoRefresh_AutoRefreshTotal_CountsDebouncedRefreshesOnce(t *testing.T) {
 	fake := &refreshFake{path: "/repo", indexed: "oldsha"}
-	ar := newAR(fake, "newsha")
+	ar := newAR(t, fake, "newsha")
 	ctx := context.Background()
 	ar.ListAllSymbols(ctx, "svc")
 	ar.FindSymbol(ctx, "svc", "X")
@@ -163,7 +177,7 @@ func TestAutoRefresh_AutoRefreshTotal_CountsDebouncedRefreshesOnce(t *testing.T)
 // TestAutoRefresh_NoReingestWhenFresh: HEAD == indexed commit → no ingest.
 func TestAutoRefresh_NoReingestWhenFresh(t *testing.T) {
 	fake := &refreshFake{path: "/repo", indexed: "same"}
-	ar := newAR(fake, "same")
+	ar := newAR(t, fake, "same")
 	ar.ListAllSymbols(context.Background(), "svc")
 	if fake.ingests != 0 {
 		t.Fatalf("ingests = %d, want 0 (fresh)", fake.ingests)
@@ -174,7 +188,7 @@ func TestAutoRefresh_NoReingestWhenFresh(t *testing.T) {
 // index as-is rather than risk a failed query.
 func TestAutoRefresh_NoReingestWhenHeadUnknown(t *testing.T) {
 	fake := &refreshFake{path: "/repo", indexed: "old"}
-	ar := newAR(fake, "")
+	ar := newAR(t, fake, "")
 	ar.ListAllSymbols(context.Background(), "svc")
 	if fake.ingests != 0 {
 		t.Fatalf("ingests = %d, want 0 (head unknown)", fake.ingests)
@@ -230,7 +244,7 @@ func TestAutoRefresh_ForwardsObligationsLayerCapabilities(t *testing.T) {
 		coverage:      semantic.LayerCoverage{SectionsTotal: 5, SectionsCompiled: 3, BudgetStopped: true},
 		coverageFound: true,
 	}
-	ar := newAR(fake, "same")
+	ar := newAR(t, fake, "same")
 	ctx := context.Background()
 
 	if _, err := ar.ObligationsLayer(ctx, "svc", "a.go", 6, semantic.ObligationLayerRules); err != nil {
@@ -272,7 +286,7 @@ func TestAutoRefresh_ForwardsObligationsLayerCapabilities(t *testing.T) {
 // found=false) rather than panicking on a failed type assertion.
 func TestAutoRefresh_ObligationsLayerCapabilitiesDegradeGracefully(t *testing.T) {
 	fake := &refreshFake{path: "/repo", indexed: "same"}
-	ar := newAR(fake, "same")
+	ar := newAR(t, fake, "same")
 	ctx := context.Background()
 
 	if _, err := ar.ObligationsLayer(ctx, "svc", "a.go", 6, semantic.ObligationLayerAll); err == nil {

@@ -46,7 +46,7 @@ func TestEnsureSkippedAtShedSafeModeWarmupQuarantine(t *testing.T) {
 			tc.set()
 
 			fake := &refreshFake{path: "/repo", indexed: "old"}
-			ar := newAR(fake, "new")
+			ar := newAR(t, fake, "new")
 			ar.now = func() time.Time { return now }
 			ctx, notes := withRefreshNotes(context.Background())
 			if _, err := ar.FindSymbol(ctx, "svc", "X"); err != nil {
@@ -80,7 +80,7 @@ func TestEnsureSkippedAtShedSafeModeWarmupQuarantine(t *testing.T) {
 	t.Run("warm-up ends", func(t *testing.T) {
 		tenancy.SetWarmup(now.Add(-121*time.Second), 120*time.Second)
 		fake := &refreshFake{path: "/repo", indexed: "old"}
-		ar := newAR(fake, "new")
+		ar := newAR(t, fake, "new")
 		ar.now = func() time.Time { return now }
 		ensureSettled(t, ar, context.Background(), "svc")
 		if fake.ingests != 1 {
@@ -93,7 +93,7 @@ func TestEnsureSkippedAtShedSafeModeWarmupQuarantine(t *testing.T) {
 		tenancy.PublishLevel(tenancy.LevelShed)
 		defer tenancy.PublishLevel(tenancy.LevelNormal)
 		fake := &refreshFake{path: "/repo", indexed: "old"}
-		srv := NewServer(newAR(fake, "new"))
+		srv := NewServer(newAR(t, fake, "new"))
 		params, _ := json.Marshal(map[string]any{"name": "find_symbol", "arguments": map[string]any{"service": "svc", "name": "X"}})
 		res, rpcErr := srv.handleToolsCallWithCtx(context.Background(), params)
 		if rpcErr != nil {
@@ -156,7 +156,7 @@ func TestEnsureReingestsInterruptedIngest(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			fake := &ingestStateFake{refreshFake: refreshFake{path: "/repo", indexed: "same"}, row: store.IngestState{ServiceID: "svc", State: tc.state, PID: tc.pid, StartedAt: 1}}
-			ar := newAR(fake, "same")
+			ar := newAR(t, fake, "same")
 			ar.ownerAlive = ownerProbe(tc.alive)
 			ensureSettled(t, ar, context.Background(), "svc")
 			ensureSettled(t, ar, context.Background(), "svc")
@@ -173,7 +173,7 @@ func TestEnsureReingestsInterruptedIngest(t *testing.T) {
 // the half-written index is re-ingested although HEAD never moved.
 func TestEnsureSeenDoesNotHideInterruptedIngest(t *testing.T) {
 	fake := &ingestStateFake{refreshFake: refreshFake{path: "/repo", indexed: "old"}}
-	ar := newAR(fake, "new")
+	ar := newAR(t, fake, "new")
 	ar.ownerAlive = ownerProbe(false)
 	ensureSettled(t, ar, context.Background(), "svc")
 	if fake.ingests != 1 {
@@ -192,7 +192,7 @@ func TestEnsureSeenDoesNotHideInterruptedIngest(t *testing.T) {
 // in_progress row naming the corpus root; ensure re-ingests from that root.
 func TestEnsureResumesKilledFirstIngest(t *testing.T) {
 	fake := &ingestStateFake{noMeta: true, row: store.IngestState{ServiceID: "svc", State: store.IngestInProgress, PID: os.Getpid() + 1, StartedAt: 1, TargetCommit: "h1", Path: "/new/repo"}}
-	ar := newAR(fake, "h1")
+	ar := newAR(t, fake, "h1")
 	ar.headFn = func(p string) string { fake.paths = append(fake.paths, p); return "h1" }
 	ar.ownerAlive = ownerProbe(false)
 	ensureSettled(t, ar, context.Background(), "svc")
@@ -204,7 +204,7 @@ func TestEnsureResumesKilledFirstIngest(t *testing.T) {
 	}
 	// No row, no meta: nothing to refresh.
 	fake2 := &ingestStateFake{noMeta: true}
-	ar2 := newAR(fake2, "h1")
+	ar2 := newAR(t, fake2, "h1")
 	ensureSettled(t, ar2, context.Background(), "svc")
 	if fake2.ingests != 0 {
 		t.Fatalf("ingests for an unknown service = %d, want 0", fake2.ingests)

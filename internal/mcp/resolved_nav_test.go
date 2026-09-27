@@ -281,7 +281,7 @@ func TestNavGraphMemoIsWatermarkKeyed(t *testing.T) {
 // wired.
 func TestNavGraphMemoSurvivesAutoRefreshWrapper(t *testing.T) {
 	f := newNavFake()
-	srv := mcp.NewServer(mcp.NewAutoRefresh(f, nil))
+	srv := mcp.NewServer(mcp.NewAutoRefreshForTest(t, f))
 
 	callTool(t, srv, "find_callers", map[string]any{"service": "svc", "symbol": "Target"})
 	_, hits1, misses1 := srv.GraphCacheStatsForTest()

@@ -209,7 +209,7 @@ func TestObligationsTool_RawFallback_ThroughAutoRefreshWrapper(t *testing.T) {
 		rawOK:   true,
 		rawRows: []semantic.Obligation{{Rule: "Register every extractor.", Src: "internal/CLAUDE.md#L1-L3", Tier: "raw", Layer: "obligations", Why: "why"}},
 	}
-	srv := mcp.NewServer(mcp.NewAutoRefresh(fake, nil))
+	srv := mcp.NewServer(mcp.NewAutoRefreshForTest(t, fake))
 	resp := roundtrip(t, srv, request{
 		JSONRPC: "2.0", ID: 5, Method: "tools/call",
 		Params: map[string]any{

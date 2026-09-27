@@ -54,8 +54,8 @@ func TestQueuedIngestFailureIsNeverSilent(t *testing.T) {
 		Gate: func(string, bool, time.Time) refresh.Verdict { return refresh.Verdict{} },
 	}, dlog.New(&logs, dlog.LevelInfo, time.Now))
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	q.Start(ctx)
+	t.Cleanup(func() { cancel(); q.Wait() })
 	q.RequestRefresh(ctx, refresh.Request{Service: "svc", Reason: refresh.ReasonPostCommit}, false)
 
 	deadline := time.Now().Add(5 * time.Second)

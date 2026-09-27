@@ -57,9 +57,9 @@ func TestEnsureIngestSurvivesRequestCancelAndSerializes(t *testing.T) {
 	// One queue for the process, as serve-http wires it; its jobs ingest on
 	// whichever fake the service belongs to.
 	both := &routingIngestFake{by: map[string]QueryInterface{"svc-a": fa, "svc-b": fb}}
-	q := newTestRefreshQueue(both)
-	arA := newARQueued(fa, "new", q)
-	arB := newARQueued(fb, "new", q)
+	q := newTestRefreshQueue(t, both)
+	arA := newARQueued(t, fa, "new", q)
+	arB := newARQueued(t, fb, "new", q)
 
 	ctxA, cancelA := context.WithCancel(context.Background())
 	returned := make(chan struct{})
@@ -123,7 +123,7 @@ func (f *failingIngestFake) IngestService(_ context.Context, _ string) error {
 // ingest succeeds, later reads for the same head are debounced.
 func TestEnsureSeenOnlyAfterSuccess(t *testing.T) {
 	fake := &failingIngestFake{refreshFake: refreshFake{path: "/repo", indexed: "old"}, failFirst: 1}
-	ar := newAR(fake, "new")
+	ar := newAR(t, fake, "new")
 	now := time.Date(2026, 9, 26, 12, 0, 0, 0, time.UTC)
 	ar.now = func() time.Time { return now }
 	ctx := context.Background()
@@ -161,7 +161,7 @@ func TestEnsureJoinersServeStaleDuringInflightIngest(t *testing.T) {
 	release := make(chan struct{})
 	started := make(chan string, 4)
 	fa := &gatedIngestFake{refreshFake: refreshFake{path: "/a", indexed: "old"}, started: started, release: release, running: &running, maxSeen: &maxSeen}
-	ar := newAR(fa, "new")
+	ar := newAR(t, fa, "new")
 	var head atomic.Value
 	head.Store("new")
 	ar.headFn = func(string) string { return head.Load().(string) }
@@ -232,7 +232,7 @@ func TestEnsureJoinersServeStaleDuringInflightIngest(t *testing.T) {
 // cannot turn hook traffic into a continuous serialized walk loop.
 func TestEnsureBacksOffAFailingIngest(t *testing.T) {
 	fake := &failingIngestFake{refreshFake: refreshFake{path: "/repo", indexed: "old"}, failFirst: 1 << 30}
-	ar := newAR(fake, "new")
+	ar := newAR(t, fake, "new")
 	now := time.Date(2026, 9, 26, 12, 0, 0, 0, time.UTC)
 	ar.now = func() time.Time { return now }
 	ctx := context.Background()

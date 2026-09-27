@@ -70,9 +70,16 @@ type autoRefreshBackend struct {
 // to silence it. The daemon shares one queue with the ingest tool and its
 // routes: NewAutoRefreshQueued.
 func NewAutoRefresh(backend QueryInterface, log *dlog.Logger) QueryInterface {
+	ar, _ := newAutoRefreshUntil(context.Background(), backend, log)
+	return ar
+}
+
+// newAutoRefreshUntil is NewAutoRefresh with its queue's worker stopped when
+// ctx ends (the queue is returned so a caller can Wait for it).
+func newAutoRefreshUntil(ctx context.Context, backend QueryInterface, log *dlog.Logger) (QueryInterface, *refresh.Queue) {
 	q := NewRefreshQueueLogged(backend, refresh.Config{StartWait: -1}, log)
-	q.Start(context.Background())
-	return NewAutoRefreshQueued(backend, log, q)
+	q.Start(ctx)
+	return NewAutoRefreshQueued(backend, log, q), q
 }
 
 // NewAutoRefreshQueued is NewAutoRefresh over the process's refresh queue

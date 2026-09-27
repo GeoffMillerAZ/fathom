@@ -152,7 +152,7 @@ func TestServerStats_StatsForwardThroughAutoRefreshWrapper(t *testing.T) {
 		oversize:            1,
 		classifiedZero:      map[string]int64{"k8s": 2},
 	}
-	srv := mcp.NewServer(mcp.NewAutoRefresh(backend, nil))
+	srv := mcp.NewServer(mcp.NewAutoRefreshForTest(t, backend))
 
 	resp := roundtrip(t, srv, request{
 		JSONRPC: "2.0", ID: 903, Method: "tools/call",
