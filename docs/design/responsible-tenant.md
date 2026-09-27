@@ -1124,7 +1124,8 @@ info with the path; the latest shows in doctor and `resources`.
 
 ### 13.5 pprof and diagnostics (the socket deferred)
 
-pprof and `/debug/inflight` stay on the TCP mux behind the loopback `Host` check (§3.5),
+pprof and `/debug/inflight` stay on the TCP mux behind the loopback `Host` check (§3.5)
+and a loopback peer address (the client chooses `Host`; a hosted daemon drops the Host guard),
 with `seconds` capped at 30 and one profile at a time; `/metrics` stays where it is. A
 private unix socket (`diag.sock`, its own goroutine budget, outside admission) would be a
 new breaking surface whose only argument is reachability under saturation, which the Host
