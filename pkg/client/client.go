@@ -633,14 +633,22 @@ func (c *Client) IngestServiceAt(ctx context.Context, service, path string) erro
 // remove_service verb reaches it through the same delegation chain every
 // other capability uses.
 func (c *Client) RemoveService(ctx context.Context, serviceID string) (bool, error) {
+	c.pipe.ForgetStats(serviceID)
 	return c.st.RemoveService(ctx, serviceID)
 }
 
 // RenameService atomically re-keys every service_id-scoped row
 // (store.Store.RenameService) — typed refusals pass through verbatim.
 func (c *Client) RenameService(ctx context.Context, oldID, newID string) error {
+	c.pipe.ForgetStats(oldID)
+	c.pipe.ForgetStats(newID)
 	return c.st.RenameService(ctx, oldID, newID)
 }
+
+// DropIngestStats drops the pipeline's in-memory stat records (RT-102) at
+// the tenancy ladder's refuse rung: each service's next ingest reads every
+// file once.
+func (c *Client) DropIngestStats() { c.pipe.DropStatMemo() }
 
 // DefaultIgnoredDirs names, repo-relative and sorted, each directory the
 // connector's default cache list pruned from its most recent discovery of

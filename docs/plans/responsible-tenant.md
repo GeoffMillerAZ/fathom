@@ -157,6 +157,7 @@ bound memory here.
 - [ ] One graph store keyed (service, watermark, kind) serves MCP tools and the console; `callgraph.Build` has no other caller (§5) {id: RT-74, symbol: GraphFor, package: internal/memo, reachable_from: TestGraphStore_OneGraphPerServiceWatermark}
 - [ ] One immutable symbol snapshot per (service, watermark) with name and callee indexes serves iterating tools, nav reloads and the console palette (§5) {id: RT-75, symbol: SnapshotFor, package: internal/memo, reachable_from: TestSnapshot_NameIndexSharedByReaders}
 - [ ] Ingest writes file_stats and service_summary in its final transaction (§6) {id: RT-76, symbol: WriteServiceSummary, package: internal/store, reachable_from: TestServiceSummary_WrittenAtIngestCommit}
+- [ ] Pass 1 reads its prior stats from `file_stats` (`WithStatSource`/`WithStatSink` wired by serve-http and the CLI ingest), so a restart or a one-shot CLI ingest reads only stat-changed files; a record vouches only under the current `ExtractorEpoch` (§7.2) {id: RT-180, symbol: WithStatSource, package: internal/fusion, reachable_from: TestStatGateReadsFileStatsAcrossRestart}
 - [ ] Ingest normalizes calls into observation_calls with a callee index (§6) {id: RT-77, symbol: CallersOfKeys, package: internal/store, reachable_from: TestObservationCalls_IndexedReverseLookup}
 - [ ] `service_summary` and `observation_calls` are backfilled by SQL (`GROUP BY`, `json_each(calls)`) at first use, one service per transaction under the ingest slot, with no content reads; only `file_stats` waits for an ingest (§6) {id: RT-160, symbol: BackfillDerivedTables, package: internal/store, reachable_from: TestSummaryBackfilledWithoutIngest}
 - [ ] The store opens with cache_size, soft_heap_limit, hard_heap_limit and journal_size_limit, indexes (service_id, symbol), and sorts observations without a temp B-tree (§6) {id: RT-78, symbol: applyTenancyPragmas, package: internal/store, reachable_from: TestStorePragmasAndNoTempSort}
@@ -184,7 +185,7 @@ bound memory here.
 - [x] Auto-refresh enqueues and answers from the current index with index_stale, never ingesting inline; console origins never trigger it (§7.1) {id: RT-99, symbol: ensure, package: internal/mcp, reachable_from: TestEnsureNeverIngestsInline}
 - [x] The queue orders by demand, waits and staggers after a start (one service per 30 s during warm-up), pauses at shed and refuses at refuse, safe mode, quarantine and store distress (§7.1) {id: RT-100, symbol: nextRefresh, package: internal/refresh, reachable_from: TestRefresh_DemandOrderAndStartupStagger}
 - [x] HEAD is read from .git/HEAD and ref files without a fork, cached by mtime, with a 2 s contexted fallback that reads as freshness unknown (§7.1) {id: RT-101, symbol: Head, package: internal/gitro, reachable_from: TestHead_ReadsRefsWithoutFork}
-- [x] Pass 1 reads only files whose (size, mtime, inode) changed (§7.2) {id: RT-102, symbol: statChangedFiles, package: internal/fusion, reachable_from: TestIngest_ReadsOnlyStatChangedFiles}
+- [x] Pass 1 reads only files whose (size, mtime, inode) changed — the record kept in memory per pipeline, bounded by `statMemoMax` and dropped at refuse, until RT-180 wires `file_stats` (§7.2) {id: RT-102, symbol: statChangedFiles, package: internal/fusion, reachable_from: TestIngest_ReadsOnlyStatChangedFiles}
 - [x] Pass 2 streams through a 64 MiB in-flight byte window and writes in batches; peak content bytes never exceed it (§7.2) {id: RT-103, symbol: fetchWindowed, package: internal/fusion, reachable_from: TestIngestPeakContentWithinInflightBytes}
 - [x] The typed pass runs only when a Go input (`.go`, `go.mod`, `go.sum`, `go.work`) changed — new, changed or deleted — since its last successful pass, and says so when it skips; loading only the changed packages plus reverse dependencies is RT-D9 (§7.2) {id: RT-104, symbol: typedPassNeeded, package: internal/fusion, reachable_from: TestDocOnlyChangeRunsNoTypedPass}
 - [x] The CUE pass runs only when a .cue input changed, under the heavy slot (§7.2) {id: RT-105, symbol: cuePassNeeded, package: internal/fusion, reachable_from: TestCUEPassGatedAndSerialized}
@@ -294,7 +295,7 @@ appears in two classes and once here).
 | budget-after-build | RT-90, RT-57 |
 | console-search-cold-fanout | RT-120, RT-75 |
 | hot-path-uncapped-single-file-reads | RT-26, RT-27, RT-69 |
-| ingest-pass2-holds-whole-corpus | RT-69, RT-145, RT-102, RT-103, RT-68, RT-173, RT-155 |
+| ingest-pass2-holds-whole-corpus | RT-69, RT-145, RT-102, RT-180, RT-103, RT-68, RT-173, RT-155 |
 | autorefresh-sync-unbounded-cascade | RT-149, RT-150, RT-97, RT-99, RT-100, RT-40 |
 | abandoned-request-work-continues | RT-58, RT-72, RT-98, RT-172 |
 | wazero-module-leak-per-ingest | RT-107 |

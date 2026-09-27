@@ -152,10 +152,7 @@ func (p *Pipeline) rememberStats(ctx context.Context, service string, g statGate
 	}
 	if p.statSource == nil {
 		p.mu.Lock()
-		if p.statMemo == nil {
-			p.statMemo = map[string]map[string]StatRecord{}
-		}
-		p.statMemo[service] = m
+		p.storeStatMemoLocked(service, m)
 		p.mu.Unlock()
 	}
 	if p.statSink != nil {
@@ -341,4 +338,65 @@ func (p *Pipeline) existingObservations(ctx context.Context, service string) (in
 		n += c.Count
 	}
 	return n, nil
+}
+
+// statMemoMax bounds the in-memory stat record across every service this
+// pipeline ingested (RT-M memory goals): about 150 bytes a file, so the
+// default holds ~40 MiB. Over it, the least recently ingested services are
+// evicted — their next ingest reads every file once, never a wrong answer
+// (a record vouches only while the stored fingerprint matches). A var for
+// tests.
+var statMemoMax = 250_000
+
+// storeStatMemoLocked records service's stats as the most recent and evicts
+// the least recent services while over statMemoMax (never service itself).
+// Caller holds p.mu.
+func (p *Pipeline) storeStatMemoLocked(service string, m map[string]StatRecord) {
+	if p.statMemo == nil {
+		p.statMemo = map[string]map[string]StatRecord{}
+	}
+	p.forgetStatsLocked(service)
+	p.statMemo[service] = m
+	p.statOrder = append(p.statOrder, service)
+	p.statRecords += len(m)
+	for p.statRecords > statMemoMax && len(p.statOrder) > 1 {
+		p.forgetStatsLocked(p.statOrder[0])
+	}
+}
+
+// forgetStatsLocked drops service's records. Caller holds p.mu.
+func (p *Pipeline) forgetStatsLocked(service string) {
+	if m, ok := p.statMemo[service]; ok {
+		p.statRecords -= len(m)
+		delete(p.statMemo, service)
+	}
+	for i, s := range p.statOrder {
+		if s == service {
+			p.statOrder = append(p.statOrder[:i:i], p.statOrder[i+1:]...)
+			break
+		}
+	}
+}
+
+// ForgetStats drops service's in-memory stat records (a removed or renamed
+// service); its next ingest reads every file.
+func (p *Pipeline) ForgetStats(service string) {
+	p.mu.Lock()
+	p.forgetStatsLocked(service)
+	p.mu.Unlock()
+}
+
+// DropStatMemo drops every in-memory stat record — the tenancy ladder's
+// refuse rung; each service's next ingest reads every file once.
+func (p *Pipeline) DropStatMemo() {
+	p.mu.Lock()
+	p.statMemo, p.statOrder, p.statRecords = nil, nil, 0
+	p.mu.Unlock()
+}
+
+// StatMemoRecords is the number of stat records held in memory.
+func (p *Pipeline) StatMemoRecords() int {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.statRecords
 }

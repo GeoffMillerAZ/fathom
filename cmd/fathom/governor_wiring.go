@@ -66,6 +66,7 @@ func servingLadderActions(srv *mcp.Server, c *client.Client, fleet *fleetAdapter
 		dropRefuse: []namedDrop{
 			{"graph and navigation caches", srv.DropCaches},
 			{"obligations memos", c.DropHotPathMemos},
+			{"ingest stat records", c.DropIngestStats},
 		},
 		pauseBackground: func(p bool) { backgroundPaused.Store(p) },
 	}

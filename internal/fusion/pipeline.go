@@ -291,6 +291,10 @@ type Pipeline struct {
 	statSource func(ctx context.Context, service string) (map[string]StatRecord, bool)
 	statSink   func(ctx context.Context, service string, recs []StatRecord) error
 	statMemo   map[string]map[string]StatRecord
+	// statOrder is statMemo's services, least recently ingested first, and
+	// statRecords their record count (bounded by statMemoMax). Guarded by mu.
+	statOrder   []string
+	statRecords int
 }
 
 // pendingFile holds a fetched, hash-gated file waiting for extraction.

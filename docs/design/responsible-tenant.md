@@ -743,7 +743,10 @@ whole-service case.
   `Pipeline.WithStatSource` when wired — the seam for the storage lane's `file_stats` —
   else the pipeline's own record of its last successful ingest of the service (so the
   long-lived daemon is stat-gated from its second ingest; a one-shot CLI ingest reads
-  everything until `file_stats` is wired); each successful ingest hands its live records
+  everything until `file_stats` is wired, RT-180). That in-memory record holds at most
+  250,000 files across the fleet (least recently ingested service evicted first), is
+  forgotten on a remove or rename and dropped at refuse; losing it costs one full read,
+  never a wrong answer. Each successful ingest hands its live records
   to `WithStatSink` at the final commit. `Config.Rehash` (`ingest --rehash`) reads
   everything. Pass 2 reserves the 2 MiB read cap per read and settles to the bytes read,
   so content held never exceeds the window; results reach the consumer in input order;
