@@ -289,3 +289,45 @@ func TestRetryableOnlyRefusedOrReset(t *testing.T) {
 		}
 	}
 }
+
+// TestClassScopedRefusalDoesNotSilenceTheDaemon (review finding, RT-56 +
+// §11.2): a 503 the daemon marks class-scoped (X-Fathom-Busy-Scope: class —
+// one class's slots full, or a deadline the tool cannot meet) is returned
+// to its caller but does not open the shared busy breaker: a refused
+// list_services must not silence every hook's point and index calls for
+// Retry-After. A daemon-scoped 503 (the refuse rung, safe mode, a daemon
+// that sends no scope) still does.
+func TestClassScopedRefusalDoesNotSilenceTheDaemon(t *testing.T) {
+	var scope atomic.Value
+	scope.Store("class")
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Retry-After", "30")
+		if s := scope.Load().(string); s != "" {
+			w.Header().Set(BusyScopeHeader, s)
+		}
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	defer srv.Close()
+	g := &Guard{HealthDir: filepath.Join(t.TempDir(), "h"), DaemonDir: t.TempDir(), Deadline: HookDeadline(time.Now(), 5)}
+	hc := &http.Client{Transport: &Transport{Base: http.DefaultTransport, Active: func() *Guard { return g }}}
+	get := func() error {
+		resp, err := hc.Get(srv.URL + "/rpc")
+		if err == nil {
+			resp.Body.Close()
+		}
+		return err
+	}
+	if err := get(); err != nil {
+		t.Fatal(err)
+	}
+	if d := BreakerAllows(g, srv.URL); d.Verdict != Allow {
+		t.Fatalf("class-scoped 503: breaker %v, want allow", d.Verdict)
+	}
+	scope.Store("daemon")
+	if err := get(); err != nil {
+		t.Fatal(err)
+	}
+	if d := BreakerAllows(g, srv.URL); d.Verdict != Busy {
+		t.Fatalf("daemon-scoped 503: breaker %v, want busy", d.Verdict)
+	}
+}

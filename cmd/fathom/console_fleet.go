@@ -121,6 +121,8 @@ func renderFleetHealth(t console.FleetTableModel, m observatoryModel) string {
 	state, reason := console.StatePresent, ""
 	if m.DegradedNote != "" {
 		state, reason = console.StatePartial, "registry read incompletely: "+m.DegradedNote
+	} else if m.RegistryStale != "" {
+		state, reason = console.StateStale, m.RegistryStale
 	}
 	return renderPanel(consolePanel{
 		ID: "health", Title: "Health",
@@ -199,6 +201,8 @@ func renderFleetTablePanel(t console.FleetTableModel, m observatoryModel) string
 		state, reason = console.StatePartial, "registry read incompletely: "+m.DegradedNote
 	case t.CallLogNote != "":
 		state, reason = console.StatePartial, "calls not measured: "+t.CallLogNote
+	case m.RegistryStale != "":
+		state, reason = console.StateStale, m.RegistryStale
 	}
 	return renderPanel(consolePanel{
 		ID: "projects", Title: "Projects",

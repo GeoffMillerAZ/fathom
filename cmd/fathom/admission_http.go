@@ -17,6 +17,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -55,6 +56,14 @@ func rpcContext(r *http.Request, surface string) (context.Context, context.Cance
 func writeRefusal(w http.ResponseWriter, ref *tenancy.Refusal) {
 	status, retry := mcp.RefusalHTTP(ref)
 	w.Header().Set("Retry-After", retry)
+	// How far the refusal reaches (§11.2): one class's refusal must not
+	// open the hooks' shared busy breaker for every other call.
+	scope := hookguard.BusyScopeDaemon
+	switch ref.Code {
+	case tenancy.RefusalSlots, tenancy.RefusalDeadline, tenancy.RefusalCallerGone:
+		scope = hookguard.BusyScopeClass
+	}
+	w.Header().Set(hookguard.BusyScopeHeader, scope)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 }
@@ -192,6 +201,58 @@ func inProcessToolCall(ctx context.Context, tool string, class tenancy.Class, fn
 		}
 	}()
 	return fn(tk.Context())
+}
+
+// lastGoodRegistry is the in-process registry read with its last good
+// projection (§3.4: the console's consumer of a refusal renders "the last
+// good projection with truth state `stale: fathom shedding`"). The read is
+// admitted as fleet with the console's refuse-wait, so any running fleet
+// call refuses it; the pages then keep the registry they last had, named
+// stale, instead of "service registry unreachable".
+type lastGoodRegistry struct {
+	read func(context.Context) (map[string]svcInfo, error)
+
+	mu    sync.Mutex
+	good  map[string]svcInfo
+	asOf  time.Time
+	stale string
+}
+
+func newLastGoodRegistry(read func(context.Context) (map[string]svcInfo, error)) *lastGoodRegistry {
+	return &lastGoodRegistry{read: read}
+}
+
+// services reads the registry; a refusal with a last good projection
+// answers that projection (staleNote names it), otherwise the error.
+func (l *lastGoodRegistry) services(ctx context.Context) (map[string]svcInfo, error) {
+	m, err := l.read(ctx)
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if err == nil {
+		l.good, l.asOf, l.stale = m, time.Now(), ""
+		return m, nil
+	}
+	if l.good == nil || !strings.HasPrefix(err.Error(), "fathom busy") {
+		return nil, err
+	}
+	l.stale = fmt.Sprintf("stale: fathom shedding — the registry as of %s (%s)", l.asOf.Format("15:04:05"), strings.TrimPrefix(err.Error(), "fathom busy: "))
+	return l.good, nil
+}
+
+// staleNote is "" when the last read was fresh, else the stale disclosure.
+func (l *lastGoodRegistry) staleNote() string {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.stale
+}
+
+// registryStaleNote is the in-process registry's stale disclosure when
+// baseURL is this daemon; "" otherwise.
+func registryStaleNote(baseURL string) string {
+	if r := inProcessReg.Load(); r != nil && r.stale != nil && sameDaemonURL(baseURL, r.self) {
+		return r.stale()
+	}
+	return ""
 }
 
 // admissionMetricLines is the gate's /metrics block and the test-caller

@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/hookguard"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
 	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
@@ -420,5 +421,71 @@ func TestIngestClassLiftsTheWriteDeadline(t *testing.T) {
 	seen = serve(toolsCall("capabilities"))
 	if len(seen) != 1 || seen[0].IsZero() {
 		t.Fatalf("read call: write deadlines %v, want the route's 150 s only", seen)
+	}
+}
+
+// TestRefusalNamesItsScope (review finding, RT-56 + §11.2): a class-scoped
+// refusal (slots full) says so in X-Fathom-Busy-Scope, so the hooks' shared
+// breaker does not hold every other call off; the refuse rung's refusal is
+// daemon-scoped.
+func TestRefusalNamesItsScope(t *testing.T) {
+	for _, tc := range []struct {
+		ref  tenancy.Refusal
+		want string
+	}{
+		{tenancy.Refusal{Code: tenancy.RefusalSlots, RetryAfter: 30 * time.Second}, hookguard.BusyScopeClass},
+		{tenancy.Refusal{Code: tenancy.RefusalDeadline, RetryAfter: time.Second}, hookguard.BusyScopeClass},
+		{tenancy.Refusal{Code: tenancy.RefusalLevel, RetryAfter: 30 * time.Second}, hookguard.BusyScopeDaemon},
+		{tenancy.Refusal{Code: tenancy.RefusalSafeMode, RetryAfter: 60 * time.Second}, hookguard.BusyScopeDaemon},
+	} {
+		rec := httptest.NewRecorder()
+		writeRefusal(rec, &tc.ref)
+		if rec.Code != http.StatusServiceUnavailable || rec.Header().Get("Retry-After") == "" {
+			t.Fatalf("%s: %d Retry-After %q", tc.ref.Code, rec.Code, rec.Header().Get("Retry-After"))
+		}
+		if got := rec.Header().Get(hookguard.BusyScopeHeader); got != tc.want {
+			t.Fatalf("%s: scope %q, want %q", tc.ref.Code, got, tc.want)
+		}
+	}
+}
+
+// TestRegistryServesLastGoodWhenShedding (review finding, RT-61 + §3.4):
+// the in-process registry read is admitted as fleet with the console's
+// refuse-wait, so it is refused whenever any fleet call runs; the console
+// then serves the last good projection named `stale: fathom shedding`,
+// never "registry unreachable" — and only a registry never read fails.
+func TestRegistryServesLastGoodWhenShedding(t *testing.T) {
+	g, _ := testGate(t, tenancy.ModeEnforce)
+	daemonGate.Store(g)
+	defer daemonGate.Store(nil)
+	calls := 0
+	reg := newLastGoodRegistry(func(ctx context.Context) (map[string]svcInfo, error) {
+		var out map[string]svcInfo
+		err := inProcessToolCall(ctx, "list_services", tenancy.ClassFleet, func(context.Context) error {
+			calls++
+			out = map[string]svcInfo{"demo": {symbols: calls}}
+			return nil
+		})
+		return out, err
+	})
+
+	held, _ := g.Admit(context.Background(), tenancy.Request{Tool: "review_diff", Class: tenancy.ClassFleet, Origin: tenancy.OriginAgent})
+	if _, err := reg.services(context.Background()); err == nil || !strings.Contains(err.Error(), "fathom busy") {
+		t.Fatalf("never read: want the busy error, got %v", err)
+	}
+	held.Release(tenancy.OutcomeOK)
+
+	got, err := reg.services(context.Background())
+	if err != nil || got["demo"].symbols != 1 || reg.staleNote() != "" {
+		t.Fatalf("fresh read: %v %v note %q", got, err, reg.staleNote())
+	}
+	held, _ = g.Admit(context.Background(), tenancy.Request{Tool: "review_diff", Class: tenancy.ClassFleet, Origin: tenancy.OriginAgent})
+	defer held.Release(tenancy.OutcomeOK)
+	got, err = reg.services(context.Background())
+	if err != nil || got["demo"].symbols != 1 {
+		t.Fatalf("shedding: want the last good projection, got %v %v", got, err)
+	}
+	if note := reg.staleNote(); !strings.HasPrefix(note, "stale: fathom shedding") || !strings.Contains(note, "review_diff") {
+		t.Fatalf("shedding note %q", note)
 	}
 }

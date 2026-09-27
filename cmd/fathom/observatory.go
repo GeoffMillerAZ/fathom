@@ -186,6 +186,10 @@ type observatoryModel struct {
 	GeneratedAt   string `json:"generated_at"`
 
 	DegradedNote string `json:"degraded_note,omitempty"`
+	// RegistryStale is set when the registry is the last good projection,
+	// served because the read was refused while the daemon sheds (§3.4):
+	// "stale: fathom shedding — …". The registry was read, earlier.
+	RegistryStale string `json:"registry_stale,omitempty"`
 
 	Arm     obsArmBanner `json:"arm"`
 	Narrate obsArmBanner `json:"narrate"`
@@ -290,6 +294,9 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 		m.DegradedNote = "service registry unreachable (" + err.Error() + ") — fleet tiles are not measured, never empty-as-healthy"
 		m.callFacts = console.CallLogFacts{Log: console.ResolvedCallLog{Rule: console.RuleNone, Note: "not read"}, AbsentReason: "call log not read: " + m.DegradedNote}
 	} else {
+		// §3.4: a registry read refused while the daemon sheds answers
+		// the last good projection; the page names it stale.
+		m.RegistryStale = registryStaleNote(baseURL)
 		// Traffic fold, same resolution the adoption gauge uses.
 		perSvc := map[string]*struct {
 			total, agent int

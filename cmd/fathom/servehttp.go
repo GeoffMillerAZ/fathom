@@ -283,21 +283,23 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	decisionAdmit.Store(&decisionAdmitter{admit: srv.AdmitDecision})
 	defer decisionAdmit.Store(nil)
 	if gate.Mode() == tenancy.ModeOff {
-		flog.Warn("serve-http: ADMISSION OFF (FATHOM_TENANCY_ADMISSION=off or [tenancy].admission = \"off\") — no call is decided, refused or bounded by class; doctor warns on every run")
+		flog.Warn("serve-http: ADMISSION OFF (FATHOM_TENANCY_ADMISSION=off or [tenancy].admission = \"off\") — no call is decided or refused by class (class deadlines still apply); doctor's admission_mode row warns on every run")
 	} else {
 		outLog.Info(fmt.Sprintf("serve-http: admission %s (slots %s)", gate.Mode(), admissionSlotsLine(budget)))
 	}
 	// RT-61 (§3.3): the registry read goes through admission as
 	// console-inprocess.
 	listServicesClass, _ := srv.ToolCostClass("list_services", nil)
-	inProcessServicesFn := func(ctx context.Context) (map[string]svcInfo, error) {
+	// A refused read (any fleet call running) answers the last good
+	// projection, disclosed as stale (§3.4).
+	registry := newLastGoodRegistry(func(ctx context.Context) (map[string]svcInfo, error) {
 		var out map[string]svcInfo
 		err := inProcessToolCall(ctx, "list_services", listServicesClass, func(ctx context.Context) error {
 			out = svcInfoFromSummaries(mcp.ServiceSummaries(ctx, backend, fleet))
 			return nil
 		})
 		return out, err
-	}
+	})
 	// BA-9: budget defaults are project-settable. The `budgets` block of
 	// <cwd>/.fathom/capabilities.cue (the daemon's working repo) and
 	// ~/.fathom/capabilities.cue sizes each tool class in tokens, resolved
@@ -323,7 +325,7 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	// event feeders below publish to the same bus GET /events streams.
 	consoleDeps := newConsoleDeps(c, "http://"+*addr, time.Now())
 	consoleDeps.storePath = absStorePath(*storePath)
-	inProcessReg.Store(&inProcessRegistry{self: "http://" + *addr, services: inProcessServicesFn})
+	inProcessReg.Store(&inProcessRegistry{self: "http://" + *addr, services: registry.services, stale: registry.staleNote})
 	handler := newHTTPHandlerWithAuthDeps(srv, c, modulesToken, *addr, ports, flog, consoleDeps)
 
 	// Adopt a new binary without a human (selfrestart.go). launchd
