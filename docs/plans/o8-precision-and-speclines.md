@@ -10,7 +10,7 @@ carries the new prompt.
 ## Compile-side precision (the O8 work order)
 
 - [x] Prompt v3: rules must scope to the file class they bind (code rules to source globs, docs rules to markdown globs); bare catch-all scopes are forbidden by instruction {id: OP-1, symbol: obligationsPromptVersion, package: internal/semantic, skip_test: true, skip: "prompt text change; identity rotation is the test — TextHash-derived PromptVersion changes"}
-- [x] Over-broad-scope guard in compile verification: a draft whose scope matches more than half of the indexed files is rejected and counted, exactly like a failed citation {id: OP-2, symbol: verifyDraft, package: internal/semantic, reachable_from: TestBuild_PropagatesListError}
+- [x] Over-broad-scope guard in compile verification: a draft whose scope matches more than half of the indexed files is rejected and counted, exactly like a failed citation {id: OP-2, symbol: verifyDraft, package: internal/semantic, reachable_from: TestCompile_RejectsOverBroadScope}
 - [x] Edit-hook refuses files outside the resolved service root — the out-of-repo injection O8 observed goes silent {id: OP-3, symbol: cmdEditHook, package: cmd/fathom}
 
 ## Spec-line injection (knowledge tied to code, in the working channel)

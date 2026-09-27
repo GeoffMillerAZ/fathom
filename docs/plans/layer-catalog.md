@@ -77,7 +77,7 @@ Design (normative):
 
 ## Tasks
 
-- [x] prompt_file in #Layer + embedded prompts; generic promptForLayer(LayerDef); loud unknown-layer/missing-file errors; obligations identity pinned unchanged (obligations/c02b1aa1) {id: LC-1, symbol: LoadLayer, package: internal/semantic, reachable_from: TestBuild_PropagatesListError}
+- [x] prompt_file in #Layer + embedded prompts; generic promptForLayer(LayerDef); loud unknown-layer/missing-file errors; obligations identity pinned unchanged (obligations/c02b1aa1) {id: LC-1, symbol: LoadLayer, package: internal/semantic, reachable_from: TestLoadLayer_Obligations}
 - [x] serving.drift_tracked replaces KindFinding gates in scope-fp writing and code_drifted serving {id: LC-2, symbol: DriftedFindings, package: internal/semantic, reachable_from: TestAdoptionServiceScoped}
 - [x] Pack loader unions embedded packs with project .fathom/layers/; presence = enabled; project-over-embedded override surfaced {id: LC-3, symbol: LayerNames, package: internal/semantic, reachable_from: TestInstallPack_MidCopyFailureLeavesNoDebris}
 - [x] Built-ins migrate to pack shape (schema/semantic/layers/{obligations,findings}/) with byte-copy drift tests extended {id: LC-4, symbol: LoadLayer, package: internal/semantic, skip_test: true, skip: "layout migration proven by LC-1's identity pin + the existing TestManifestSchemaMatchesSource family; the deliverable is file layout, not a new symbol"}

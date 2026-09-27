@@ -148,7 +148,7 @@ implements):
 
 ### A — compile rejection-reason capture (O19's fix, docs/design/observability-surfaces.md §8 item 5)
 
-- [x] `verifyDraft`'s seven rejection sites each wrap their error with a classified cause (malformed / anchor-missing / scope-unverifiable / over-broad); `classifyRejectionCause` unwraps it, defaulting an unclassified error to malformed rather than dropping it {id: Q-1, symbol: classifyRejectionCause, package: internal/semantic, reachable_from: TestBuild_PropagatesListError}
+- [x] `verifyDraft`'s seven rejection sites each wrap their error with a classified cause (malformed / anchor-missing / scope-unverifiable / over-broad); `classifyRejectionCause` unwraps it, defaulting an unclassified error to malformed rather than dropping it {id: Q-1, symbol: classifyRejectionCause, package: internal/semantic, reachable_from: TestClassifyRejectionCause_EmptyRule_Malformed}
   - `internal/semantic/compile.go`: `claimRejectionError` (cause + wrapped
     err, `Unwrap` for `errors.As`), `rejectErr(cause, format, args...)
     error` (the seven `verifyDraft` return sites switched to it, behavior
@@ -161,7 +161,7 @@ implements):
     failure paths), `_EmptyScope_Malformed`, `_ScopeMatchesNoFile_ScopeUnverifiable`,
     `_ScopeOverBroad_OverBroad`, `_UnclassifiedError_DefaultsMalformed`.
 
-- [x] The compile loop accumulates a deterministic, sorted rejection-cause breakdown (count + up to 3 example messages per cause) onto the run {id: Q-2, symbol: buildRejectionReasons, package: internal/semantic, reachable_from: TestBuild_PropagatesListError}
+- [x] The compile loop accumulates a deterministic, sorted rejection-cause breakdown (count + up to 3 example messages per cause) onto the run {id: Q-2, symbol: buildRejectionReasons, package: internal/semantic, reachable_from: TestBuildRejectionReasons_DeterministicOrder}
   - `internal/semantic/compile.go`: `buildRejectionReasons(counts
     map[string]int, samples map[string][]string) []core.RejectionBreakdown`
     — sorted by cause name, samples capped at `maxRejectionSamplesPerCause`
