@@ -470,7 +470,15 @@ const maxVerifyFollowUps = 64
 // never arrives is reported Unknown with the reason — never left out, which
 // would let the gate pass a claim it never checked.
 func verifyViaHTTP(hc *http.Client, baseURL, service, concern string, planMD []byte, localPlan verify.Plan) (verify.Report, error) {
-	hvr, err := callVerifyPlan(hc, baseURL, service, concern, planMD)
+	return verifyWithCaller(func(md []byte) (httpVerifyResult, error) {
+		return callVerifyPlan(hc, baseURL, service, concern, md)
+	}, planMD, localPlan)
+}
+
+// verifyWithCaller is verifyViaHTTP over any one-call transport: HTTP, or
+// the daemon's own handler in process (verifyPlanInProcess).
+func verifyWithCaller(call func(planMD []byte) (httpVerifyResult, error), planMD []byte, localPlan verify.Plan) (verify.Report, error) {
+	hvr, err := call(planMD)
 	if err != nil {
 		return verify.Report{}, err
 	}
@@ -484,7 +492,7 @@ func verifyViaHTTP(hc *http.Client, baseURL, service, concern string, planMD []b
 		if !ok {
 			break
 		}
-		next, err := callVerifyPlan(hc, baseURL, service, concern, sub)
+		next, err := call(sub)
 		if err != nil {
 			return verify.Report{}, err
 		}
@@ -573,6 +581,28 @@ func verifyViaHTTP(hc *http.Client, baseURL, service, concern string, planMD []b
 
 // callVerifyPlan is one verify_plan call.
 func callVerifyPlan(hc *http.Client, baseURL, service, concern string, planMD []byte) (httpVerifyResult, error) {
+	reqBody, err := verifyPlanRequest(service, concern, planMD)
+	if err != nil {
+		return httpVerifyResult{}, err
+	}
+	req, err := originHeader(baseURL, bytes.NewReader(reqBody))
+	if err != nil {
+		return httpVerifyResult{}, fmt.Errorf("build request: %w", err)
+	}
+	resp, err := hc.Do(req)
+	if err != nil {
+		return httpVerifyResult{}, fmt.Errorf("POST %s/rpc: %w", baseURL, err)
+	}
+	defer resp.Body.Close()
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
+	if err != nil {
+		return httpVerifyResult{}, fmt.Errorf("reading response: %w", err)
+	}
+	return parseVerifyPlanResponse(raw)
+}
+
+// verifyPlanRequest is one verify_plan tools/call message.
+func verifyPlanRequest(service, concern string, planMD []byte) ([]byte, error) {
 	args := map[string]any{
 		"service":       service,
 		"plan_markdown": string(planMD),
@@ -590,29 +620,18 @@ func callVerifyPlan(hc *http.Client, baseURL, service, concern string, planMD []
 		},
 	})
 	if err != nil {
-		return httpVerifyResult{}, fmt.Errorf("marshal request: %w", err)
+		return nil, fmt.Errorf("marshal request: %w", err)
 	}
+	return reqBody, nil
+}
 
-	req, err := originHeader(baseURL, bytes.NewReader(reqBody))
-	if err != nil {
-		return httpVerifyResult{}, fmt.Errorf("build request: %w", err)
-	}
-	resp, err := hc.Do(req)
-	if err != nil {
-		return httpVerifyResult{}, fmt.Errorf("POST %s/rpc: %w", baseURL, err)
-	}
-	defer resp.Body.Close()
-	raw, err := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
-	if err != nil {
-		return httpVerifyResult{}, fmt.Errorf("reading response: %w", err)
-	}
-
+// parseVerifyPlanResponse unwraps a verify_plan JSON-RPC response.
+func parseVerifyPlanResponse(raw []byte) (httpVerifyResult, error) {
 	// Unwrap MCP content envelope: {"result":{"content":[{"text":"<json>"}]}}
 	innerJSON, err := unwrapRPCResult(raw)
 	if err != nil {
 		return httpVerifyResult{}, fmt.Errorf("unwrap verify_plan response: %w", err)
 	}
-
 	var hvr httpVerifyResult
 	if err := json.Unmarshal(innerJSON, &hvr); err != nil {
 		return httpVerifyResult{}, fmt.Errorf("parse verify_plan result: %w", err)

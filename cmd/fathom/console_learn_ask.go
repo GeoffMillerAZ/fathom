@@ -173,6 +173,11 @@ func askToolCall(ctx context.Context, selfURL, tool string, args map[string]any)
 	if err != nil {
 		return nil, err
 	}
+	// Inside the daemon the call runs in process, admitted by the server's
+	// gate as a console call (RT-115): no loopback request.
+	if raw, ok := inProcessCall(ctx, selfURL, "agent", body); ok {
+		return unwrapRPCResult(raw)
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, selfURL+"/rpc/agent", bytes.NewReader(body))
 	if err != nil {
 		return nil, err

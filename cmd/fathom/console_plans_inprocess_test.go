@@ -1,0 +1,114 @@
+package main
+
+import (
+	"context"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"strings"
+	"sync/atomic"
+	"testing"
+	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/mcp"
+)
+
+// TestConsolePlansVerifyInProcessNoRequeue (RT-116, design §14): inside the
+// daemon the plans portfolio verifies a plan through the verify_plan handler
+// in process — no loopback request — under a deadline, and a plan whose key
+// moves away and back while its first verification still runs rejoins that
+// verification instead of queueing the key again.
+func TestConsolePlansVerifyInProcessNoRequeue(t *testing.T) {
+	f := newConsoleFixture(t)
+	var loopbacks atomic.Int32
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		loopbacks.Add(1)
+		http.Error(w, "loopback", http.StatusTeapot)
+	}))
+	t.Cleanup(ts.Close)
+	srv := mcp.NewServerWithFleetAndLogger(f.client, &fleetAdapter{c: f.client, log: testDiscardLogger()}, nil)
+	var calls atomic.Int32
+	prev := inProcessReg.Load()
+	inProcessReg.Store(&inProcessRegistry{
+		self:    ts.URL,
+		statusz: func(context.Context) StatuszReport { return StatuszReport{} },
+		rpc: func(ctx context.Context, raw []byte) ([]byte, bool) {
+			calls.Add(1)
+			return srv.HandleRequest(ctx, raw)
+		},
+	})
+	t.Cleanup(func() { inProcessReg.Store(prev) })
+
+	root := t.TempDir()
+	plansDir := filepath.Join(root, "docs", "plans")
+	mustWrite(t, filepath.Join(root, "README.md"), "# Runbook\n\n## Window\n")
+	planPath := filepath.Join(plansDir, "window.md")
+	planA := "# Window\n\n- [x] The runbook names the window {id: W-1, oracle: lexical, path: README.md, pattern: \"^## Window$\"}\n"
+	planB := planA + "- [ ] Another row {id: W-2}\n"
+	mustWrite(t, planPath, planA)
+
+	deps := newConsoleDeps(f.client, ts.URL, f.now)
+	p := plansFor(deps)
+	sr := serviceRoot{Service: "proof-service", Root: root}
+	gate := make(chan struct{})
+	setConsolePlansGate(gate)
+	t.Cleanup(func() { setConsolePlansGate(nil) })
+
+	_, first := p.plan(context.Background(), sr, planPath)
+	if first == nil {
+		t.Fatal("the plan was not submitted")
+	}
+	waitUntil(t, func() bool { return deps.jobPool().Stats().Running == 1 })
+	mustWrite(t, planPath, planB) // the key moves away…
+	_, second := p.plan(context.Background(), sr, planPath)
+	waitUntil(t, func() bool { return deps.jobPool().Stats().Running == 2 })
+	mustWrite(t, planPath, planA) // …and back while the first still runs
+	_, again := p.plan(context.Background(), sr, planPath)
+	if again != first {
+		t.Fatal("a key still being verified was queued again; it must rejoin its flight")
+	}
+	if st := deps.jobPool().Stats(); st.Running+st.Queued != 2 {
+		t.Fatalf("pool = %+v; want the two flights only", st)
+	}
+	close(gate)
+	for _, e := range []*planEntry{first, second} {
+		select {
+		case <-e.done:
+		case <-time.After(30 * time.Second):
+			t.Fatal("a verification never finished")
+		}
+	}
+	if first.err != "" {
+		t.Fatalf("in-process verification failed: %s", first.err)
+	}
+	if calls.Load() == 0 {
+		t.Error("verify_plan was not called in process")
+	}
+	if len(first.result.Report.Tasks) != 1 || first.result.Report.Tasks[0].TaskID != "W-1" {
+		t.Errorf("verdicts = %+v", first.result.Report.Tasks)
+	}
+	if n := loopbacks.Load(); n != 0 {
+		t.Errorf("%d loopback request(s) to the daemon's own URL", n)
+	}
+
+	// Under a deadline: a verify_plan that does not answer is cut off and
+	// named, never waited on.
+	inProcessReg.Store(&inProcessRegistry{
+		self:    ts.URL,
+		statusz: func(context.Context) StatuszReport { return StatuszReport{} },
+		rpc: func(ctx context.Context, raw []byte) ([]byte, bool) {
+			<-ctx.Done()
+			return nil, false
+		},
+	})
+	prevDeadline := consolePlanVerifyDeadline
+	consolePlanVerifyDeadline = 100 * time.Millisecond
+	t.Cleanup(func() { consolePlanVerifyDeadline = prevDeadline })
+	raw, _ := os.ReadFile(planPath)
+	start := time.Now()
+	_, err := verifyPlanInProcess(deps, "proof-service", raw, parsePlanForVerify("proof-service", root, planPath, raw))
+	if err == nil || !strings.Contains(err.Error(), "deadline") || time.Since(start) > 5*time.Second {
+		t.Errorf("a hung verify_plan = %v after %s; want the deadline named", err, time.Since(start))
+	}
+}

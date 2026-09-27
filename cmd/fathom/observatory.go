@@ -9,6 +9,7 @@ package main
 // loopback (law 13 — `fathom brief` writes a LOCAL file a human sends).
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -365,7 +366,13 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 
 		obligationsBySvc := map[string]int{}
 		windowObligations := map[string]int{}
-		compileBySvc := fetchCompileStates(hc, baseURL)
+		// One statusz read for the whole model (RT-115): in process inside
+		// the daemon, and it serves every service's freshness too.
+		statusz := daemonStatuszRead(hc, baseURL)
+		compileBySvc := statusz.compile
+		if compileBySvc == nil {
+			compileBySvc = map[string]string{}
+		}
 		obligationCalls := 0
 		byDay := map[string]int{}
 		svcByDay := map[string]map[string]int{}
@@ -418,7 +425,7 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 		for _, name := range names {
 			info := svcs[name]
 			row := obsServiceRow{fleetServiceRow: fleetServiceRow{Service: name, Path: info.path, Symbols: info.symbols}, languages: splitLangs(info.langs)}
-			row.Freshness, row.IndexedCommit, row.RepoHead = fleetFreshness(hc, baseURL, name, info.path)
+			row.Freshness, row.IndexedCommit, row.RepoHead = fleetFreshnessFrom(statusz, name, info.path)
 			if strings.HasPrefix(row.Freshness, "stale") {
 				row.FreshnessRemedy = daemonRefreshRemedy(info.path, name)
 			}
@@ -985,22 +992,28 @@ func wiringGrade(s obsServiceRow) (grade, raise string) {
 // MCP-connected session carries before any work happens. Zeros on any
 // failure; the renderer names the absence (law 3), never charts a zero.
 func surfaceSchemaTax(hc *http.Client, baseURL string) (int, int) {
-	req, err := http.NewRequest(http.MethodPost, baseURL+"/rpc/agent", strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}`))
-	if err != nil {
-		return 0, 0
-	}
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := hc.Do(req)
-	if err != nil {
-		return 0, 0
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return 0, 0
-	}
-	raw, err := io.ReadAll(io.LimitReader(resp.Body, 1<<22))
-	if err != nil {
-		return 0, 0
+	const body = `{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}`
+	// Inside the daemon the agent surface's tools/list is answered in
+	// process (RT-115): no loopback request.
+	raw, inProc := inProcessCall(context.Background(), baseURL, "agent", []byte(body))
+	if !inProc {
+		req, err := http.NewRequest(http.MethodPost, baseURL+"/rpc/agent", strings.NewReader(body))
+		if err != nil {
+			return 0, 0
+		}
+		req.Header.Set("Content-Type", "application/json")
+		resp, err := hc.Do(req)
+		if err != nil {
+			return 0, 0
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode < 200 || resp.StatusCode > 299 {
+			return 0, 0
+		}
+		raw, err = io.ReadAll(io.LimitReader(resp.Body, 1<<22))
+		if err != nil {
+			return 0, 0
+		}
 	}
 	var env struct {
 		Result struct {
@@ -1018,36 +1031,14 @@ func surfaceSchemaTax(hc *http.Client, baseURL string) (int, int) {
 }
 
 // fetchCompileStates maps service → a one-line summary of its most recent
-// compile per layer, from the daemon's own statusz JSON. Empty map when
-// unreachable — the caller renders the honest default.
+// compile per layer, from the daemon's own statusz (in process inside the
+// daemon, RT-115). Empty map when unreachable — the caller renders the
+// honest default.
 func fetchCompileStates(hc *http.Client, baseURL string) map[string]string {
-	out := map[string]string{}
-	resp, err := hc.Get(baseURL + "/statusz?format=json")
-	if err != nil {
-		return out
+	if st := daemonStatuszRead(hc, baseURL); st.compile != nil {
+		return st.compile
 	}
-	defer resp.Body.Close()
-	var rep struct {
-		Services []struct {
-			Service             string            `json:"service"`
-			LastCompilePerLayer map[string]string `json:"last_compile_per_layer"`
-		} `json:"services"`
-	}
-	if json.NewDecoder(resp.Body).Decode(&rep) != nil {
-		return out
-	}
-	for _, s := range rep.Services {
-		if len(s.LastCompilePerLayer) == 0 {
-			continue
-		}
-		parts := make([]string, 0, len(s.LastCompilePerLayer))
-		for layer, sum := range s.LastCompilePerLayer {
-			parts = append(parts, layer+": "+sum)
-		}
-		sort.Strings(parts)
-		out[strings.ToLower(s.Service)] = strings.Join(parts, " · ")
-	}
-	return out
+	return map[string]string{}
 }
 
 // abMinTurnsPerUnit is the amended admissibility floor (production-

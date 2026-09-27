@@ -42,6 +42,15 @@ type daemonStatusz struct {
 // swallowed: the caller decides whether provenance is best-effort.
 func fetchStatusz(hc *http.Client, baseURL string) (daemonStatusz, error) {
 	var out daemonStatusz
+	if r := inProcessDaemon(baseURL); r != nil && r.statusz != nil {
+		// Inside the daemon: its own report, never a loopback (RT-115).
+		raw, err := json.Marshal(r.statusz(context.Background()))
+		if err != nil {
+			return out, err
+		}
+		err = json.Unmarshal(raw, &out)
+		return out, err
+	}
 	req, err := http.NewRequest(http.MethodGet, strings.TrimRight(baseURL, "/")+"/statusz?format=json", nil)
 	if err != nil {
 		return out, err

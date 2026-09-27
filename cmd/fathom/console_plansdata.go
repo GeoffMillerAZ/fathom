@@ -23,7 +23,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -32,6 +31,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
 	"github.com/geoffmilleraz/fathom/internal/console"
+	"github.com/geoffmilleraz/fathom/internal/gitro"
 	"github.com/geoffmilleraz/fathom/internal/verify"
 )
 
@@ -398,9 +398,17 @@ func (p *consolePlans) compute(e *planEntry) (planComputed, *verify.Report, erro
 	}
 	lp := parsePlanForVerify(e.service, e.root, e.path, raw)
 	var rep verify.Report
-	if e.prevRaw != nil {
+	switch {
+	case e.prevRaw != nil:
 		rep = cloneReport(*e.prevRaw)
-	} else {
+	case p.deps.c != nil && inProcessDaemon(p.deps.selfURL) != nil:
+		// Inside the daemon: its own verify_plan handler, in process and
+		// under a deadline — never a loopback request (RT-116).
+		rep, err = verifyPlanInProcess(p.deps, e.service, raw, lp)
+		if err != nil {
+			return planComputed{}, nil, err
+		}
+	default:
 		hc := consoleRPCClient(90 * time.Second)
 		indexed, ierr := daemonServiceIndexed(hc, p.deps.selfURL, e.service)
 		switch {
@@ -417,6 +425,44 @@ func (p *consolePlans) compute(e *planEntry) (planComputed, *verify.Report, erro
 	rawRep := cloneReport(rep)
 	overlayPlanReport(&rep, lp, verify.DirFiles(e.root))
 	return planComputed{File: e.path, Plan: lp, Report: rep}, &rawRep, nil
+}
+
+// consolePlanVerifyDeadline bounds one plan's in-process verification,
+// follow-up calls included.
+var consolePlanVerifyDeadline = 90 * time.Second
+
+// verifyPlanInProcess verifies one plan through this daemon's own
+// verify_plan handler in process (RT-116): admitted by the server's gate
+// as a console call like any request, under consolePlanVerifyDeadline, the
+// service's index probed in the store rather than over /indexed. The
+// verdicts are the ones `fathom plans status` merges (verifyWithCaller).
+func verifyPlanInProcess(d *consoleDeps, service string, raw []byte, lp verify.Plan) (verify.Report, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), consolePlanVerifyDeadline)
+	defer cancel()
+	if d.c != nil {
+		indexed, _, err := d.c.IsIndexed(ctx, service)
+		switch {
+		case err != nil:
+			return verify.Report{}, fmt.Errorf("probing the store for service %q: %w", service, err)
+		case !indexed:
+			return verify.Report{}, fmt.Errorf("service %q is not indexed on the daemon at %s — ingest it and retry", service, d.selfURL)
+		}
+	}
+	rep, err := verifyWithCaller(func(md []byte) (httpVerifyResult, error) {
+		body, err := verifyPlanRequest(service, "", md)
+		if err != nil {
+			return httpVerifyResult{}, err
+		}
+		resp, ok := inProcessCall(ctx, d.selfURL, "", body)
+		if ctx.Err() != nil {
+			return httpVerifyResult{}, fmt.Errorf("verify_plan did not answer within the console's %s deadline", consolePlanVerifyDeadline)
+		}
+		if !ok {
+			return httpVerifyResult{}, fmt.Errorf("verify_plan: this daemon's handler is not available in process")
+		}
+		return parseVerifyPlanResponse(resp)
+	}, raw, lp)
+	return rep, err
 }
 
 // cloneReport deep-copies a report, so the overlays can never write into a
@@ -452,8 +498,8 @@ func (p *consolePlans) head(root string) string {
 	if ok && now.Sub(st.at) < headTTL {
 		return st.value
 	}
-	out, _ := exec.Command("git", "-C", root, "rev-parse", "HEAD").Output()
-	v := strings.TrimSpace(string(out))
+	// Read from the repository's files, never a git process (RT-115).
+	v, _ := gitro.Head(root)
 	p.mu.Lock()
 	p.heads[root] = plansStamp{value: v, at: now}
 	p.mu.Unlock()

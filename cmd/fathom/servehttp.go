@@ -648,7 +648,11 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	if n := loaded.Config.Console.ConserveMaxFiles; n > 0 {
 		consoleConserveMaxFiles = n // [console] conserve_max_files (RT-118)
 	}
-	inProcessReg.Store(&inProcessRegistry{self: "http://" + *addr, services: registry.services, stale: registry.staleNote})
+	inProcessReg.Store(&inProcessRegistry{self: "http://" + *addr, services: registry.services, stale: registry.staleNote,
+		statusz: func(ctx context.Context) StatuszReport {
+			return buildStatuszReport(ctx, c, consoleDeps.startTime, time.Now())
+		},
+		rpc: srv.HandleRequest})
 	handler := newHTTPHandlerWithAuthDeps(srv, c, modulesToken, *addr, ports, flog, consoleDeps)
 
 	// Adopt a new binary without a human (selfrestart.go). launchd

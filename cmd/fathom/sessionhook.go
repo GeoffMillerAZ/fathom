@@ -430,6 +430,40 @@ type inProcessRegistry struct {
 	// stale is the registry's stale disclosure ("" when fresh): a read
 	// refused while shedding answers the last good projection (§3.4).
 	stale func() string
+	// statusz is the daemon's own /statusz report, built in process
+	// (RT-115): a console page reads it without a loopback request.
+	statusz func(ctx context.Context) StatuszReport
+	// rpc answers one JSON-RPC message in process (the MCP server's
+	// HandleRequest): the console's own tool calls — the agent surface's
+	// tools/list, /learn/ask, plan verification — are admitted by the
+	// server's gate like any call, without a loopback request (RT-115,
+	// RT-116). The caller's context carries the surface and origin.
+	rpc func(ctx context.Context, raw []byte) ([]byte, bool)
+}
+
+// inProcessDaemon is the in-process registry when baseURL names this
+// daemon, else nil (a CLI process, or another daemon's URL).
+func inProcessDaemon(baseURL string) *inProcessRegistry {
+	if r := inProcessReg.Load(); r != nil && sameDaemonURL(baseURL, r.self) {
+		return r
+	}
+	return nil
+}
+
+// inProcessCall runs one JSON-RPC message on this daemon's surface in
+// process, as origin console-inprocess; ok is false when baseURL is not
+// this daemon (the caller then asks over HTTP).
+func inProcessCall(ctx context.Context, baseURL, surface string, raw []byte) (resp []byte, ok bool) {
+	r := inProcessDaemon(baseURL)
+	if r == nil || r.rpc == nil {
+		return nil, false
+	}
+	ctx = mcp.WithOrigin(mcp.WithRequestScope(ctx, surface, true), mcp.OriginConsoleInProcess)
+	resp, has := r.rpc(ctx, raw)
+	if !has {
+		return nil, true
+	}
+	return resp, true
 }
 
 var inProcessReg atomic.Pointer[inProcessRegistry]
