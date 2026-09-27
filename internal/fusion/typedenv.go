@@ -168,11 +168,11 @@ func goEnvValue(key string, extra ...string) string {
 // beside a push clone elsewhere. Best-effort: "" on any failure (no
 // toolchain, a broken environment) or when the answer is "off"/empty —
 // never blocking, never guessed.
-func detectWorkspaceOverride(repoPath string) string {
+func detectWorkspaceOverride(ctx context.Context, repoPath string) string {
 	if !goToolchainPresent() {
 		return ""
 	}
-	cmd := exec.Command("go", "env", "GOWORK")
+	cmd := commandTree(ctx, "go", "env", "GOWORK") // RT-178: a halted pass kills it
 	cmd.Dir = repoPath
 	cmd.Env = repairedGoEnv() // repaired GOPATH/GOCACHE/GOMODCACHE, deliberately WITHOUT GOWORK=off
 	out, err := cmd.Output()

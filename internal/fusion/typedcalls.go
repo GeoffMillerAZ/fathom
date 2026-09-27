@@ -224,9 +224,9 @@ func hasGoModule(repoPath string) bool {
 // The connector's Discover result (refs) becomes the typed pass's
 // allowed-file set: only .go files the connector actually surfaced (i.e.
 // after .fathomignore and skip-dir filtering) may contribute edges.
-func (p *Pipeline) enrichTypedEdges(ctx context.Context, svc core.ServiceRef, refs []core.SourceRef) TypedEdgeReport {
+func (p *Pipeline) enrichTypedEdges(ctx context.Context, svc core.ServiceRef, refs []core.SourceRef) (TypedEdgeReport, error) {
 	if p.cfg.DisableTypedEdges || !hasGoSource(refs) || !hasGoModule(svc.Path) {
-		return TypedEdgeReport{}
+		return TypedEdgeReport{}, nil
 	}
 	atomic.AddInt64(&p.typedPassTotal, 1)
 	allowed := make(map[string]bool)
@@ -252,7 +252,7 @@ func (p *Pipeline) enrichTypedEdges(ctx context.Context, svc core.ServiceRef, re
 			Reason: fmt.Sprintf("waiting for the process-wide typed-pass slot: %v", acquireErr),
 		})
 		p.diagWarn("fusion: typed-edge pass %q: %v while waiting for the process-wide typed-pass slot — syntax-only edges remain the baseline\n", svc.ID, acquireErr)
-		return TypedEdgeReport{}
+		return TypedEdgeReport{}, haltError(ctx, acquireErr)
 	}
 	defer release()
 
@@ -269,6 +269,19 @@ func (p *Pipeline) enrichTypedEdges(ctx context.Context, svc core.ServiceRef, re
 	// every surface reports as healthy.
 	edgesTotal := rep.EdgesDirect + rep.EdgesIfaceDispatch + rep.EdgesUnresolved + rep.EdgesFuncValue
 	switch {
+	case err != nil && haltError(ctx, err) != nil:
+		// RT-178: halted by the producer governor (or a cancelled ctx) —
+		// named on the service and returned, so the Ingest fails before its
+		// final commit and stays in_progress (RT-109).
+		p.noteTypedEdgeStatus(ctx, svc.ID, TypedEdgeStatus{
+			PackagesSeen: rep.PackagesTotal,
+			Packages:     rep.PackagesLoaded,
+			Failed:       true,
+			Reason:       err.Error(),
+			Fallback:     rep.Fallback,
+		})
+		p.diagWarn("fusion: typed-edge pass %q: %v — the ingest stays in_progress; the next start resumes it\n", svc.ID, err)
+		return rep, err
 	case err != nil:
 		p.noteTypedEdgeStatus(ctx, svc.ID, TypedEdgeStatus{
 			Failed:                 true,
@@ -322,7 +335,7 @@ func (p *Pipeline) enrichTypedEdges(ctx context.Context, svc core.ServiceRef, re
 			EdgesDroppedOutOfScope: rep.EdgesDroppedOutOfScope,
 		})
 	}
-	return rep
+	return rep, nil
 }
 
 // formatFailedTypedPackages renders FailedPackages as a short parenthesised
@@ -382,21 +395,39 @@ func EnrichTypedEdges(ctx context.Context, st store.Store, serviceID, repoPath s
 	// pinned globally via `go env -w`). Never blocking: any failure (no
 	// toolchain, a broken environment) leaves Fallback empty rather than
 	// guessing.
-	if ws := detectWorkspaceOverride(repoPath); ws != "" {
+
+	// RT-178: the pass is an ingest-class producer — governed before it
+	// starts, before every parsed file, by a watcher while go/packages
+	// holds the thread, and before every stored package
+	// (typedpass_governor.go).
+	gov := governTypedPass(ctx)
+	defer gov.close()
+	halted := func(err error) (TypedEdgeReport, error) {
+		report.Duration = time.Since(start)
+		return report, fmt.Errorf("fusion: typed-edge pass %q halted after %d package(s): %w", repoPath, report.PackagesLoaded, err)
+	}
+	if hErr := gov.check(); hErr != nil {
+		return halted(hErr)
+	}
+	if ws := detectWorkspaceOverride(gov.ctx, repoPath); ws != "" {
 		report.Fallback = "GOWORK=off"
 	}
 
 	fset := token.NewFileSet()
 	cfg := &packages.Config{
-		Context: ctx,
-		Dir:     repoPath,
-		Fset:    fset,
-		Tests:   true,
-		Env:     TypedEdgeEnv(),
+		Context:   gov.ctx,
+		Dir:       repoPath,
+		Fset:      fset,
+		Tests:     true,
+		Env:       TypedEdgeEnv(),
+		ParseFile: gov.parseFile,
 		Mode: packages.NeedName | packages.NeedFiles | packages.NeedCompiledGoFiles |
 			packages.NeedImports | packages.NeedTypes | packages.NeedSyntax | packages.NeedTypesInfo,
 	}
 	pkgs, err := packages.Load(cfg, "./...")
+	if hErr := gov.check(); hErr != nil {
+		return halted(hErr) // a load the governor cancelled is a halt, never a toolchain failure
+	}
 	if err != nil {
 		report.Duration = time.Since(start)
 		return report, fmt.Errorf("fusion: typed-edge load %q: %w", repoPath, err)
@@ -453,6 +484,12 @@ func EnrichTypedEdges(ctx context.Context, st store.Store, serviceID, repoPath s
 	discoveryGapSeen := map[string]bool{}
 
 	for _, pkg := range pkgs {
+		if onTypedPassPackage != nil {
+			onTypedPassPackage(pkg.ID)
+		}
+		if hErr := gov.check(); hErr != nil {
+			return halted(hErr) // no reconcile: the stored rows of every package not reached stand
+		}
 		// Connector scope (see the package doc): a package with zero
 		// allowed files contributes nothing — and is deliberately NOT in
 		// the keep set, so previously stored rows for a now-ignored

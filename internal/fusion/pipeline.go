@@ -47,6 +47,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/llm"
 	"github.com/geoffmilleraz/fathom/internal/sdd"
 	"github.com/geoffmilleraz/fathom/internal/store"
+	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
 
 // Config controls pipeline behaviour.
@@ -968,7 +969,13 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 
 	// Typed Go call-edge enrichment (ADR-021 §3): additive, per-package,
 	// never blocks ingest. See internal/fusion/typedcalls.go.
-	typedRep := p.enrichTypedEdges(ctx, svc, refs)
+	typedRep, typedErr := p.enrichTypedEdges(ctx, svc, refs)
+	if typedErr != nil {
+		// RT-178: the typed pass was halted (the producer governor at
+		// refuse, or a cancelled ctx) — fail before the final commit so the
+		// watermark never moves and the ingest stays in_progress (RT-109).
+		return finish(fmt.Errorf("fusion: typed-edge pass %q: %w", svc.ID, typedErr))
+	}
 	report.TypedPackages = typedRep.PackagesLoaded + typedRep.PackagesCached
 	report.TypedPackagesFailed = typedRep.PackagesFailed
 	report.TypedEdgesDirect = typedRep.EdgesDirect
@@ -1200,6 +1207,14 @@ func (p *Pipeline) extractAndStore(ctx context.Context, serviceID string, batch 
 
 	// Process file-by-file in batch (input) order for determinism.
 	for _, pf := range batch {
+		// RT-178: extraction is an ingest-class producer — asked of the
+		// governor before each file, like the fetch that fed it.
+		if err := tenancy.ProducerAllowsCtx(ctx, tenancy.ClassIngest); err != nil {
+			return stats, fmt.Errorf("fusion: extract %q halted before %s: %w", serviceID, pf.ref.Path, err)
+		}
+		if err := ctx.Err(); err != nil {
+			return stats, fmt.Errorf("fusion: extract %q: %w", serviceID, err)
+		}
 		// Binary content never carries extractable symbols, regardless of
 		// whether its path happens to match a registered extension (ADR-021
 		// §1 / LT-2). Record the fingerprint so it isn't re-sniffed on every
