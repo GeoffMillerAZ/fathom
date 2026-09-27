@@ -264,6 +264,25 @@ Served by `serve-http` and `serve-mcp` alike; the contract lives in
   `batch` is gated by each of its sub-calls' classes (a batch carrying
   `list_services` is refused in safe mode) and its class is its heaviest
   sub-call's.
+- **Admission (RT-53..RT-65, ADR-047 §3; "Cost classes" below).** Under
+  `[tenancy].admission = "enforce"` a refused call answers HTTP 503 with
+  `Retry-After` and JSON-RPC error `-32050`, message `fathom busy: <reason>`,
+  `data: {reason, class, level, retry_after_ms, in_flight, outcome:
+  "refused"}` (a `batch` sub-call's refusal is that entry's `error`, the batch
+  itself answers 200); the 503 carries `X-Fathom-Busy-Scope: class` (slots,
+  deadline, caller gone) or `daemon` (refuse rung, safe mode), and hooks back
+  off daemon-wide only on `daemon`. A caller already gone is refused
+  `caller_gone` before its handler runs. A call whose context ended — its client left, or its
+  class deadline or `X-Fathom-Deadline` passed — answers `-32603` with
+  `data: {outcome: "abandoned", cause}`, never what the handler computed. A
+  call whose producer the meter stopped at the class's per-call byte ceiling
+  (enforce only) carries `budget: {partial: true, elided, bytes_read,
+  reason}` in its envelope or its `batch` entry, `elided` a lower bound. The managed
+  daemon answers a test caller (`X-Fathom-Caller … test=1`) 409 `{reason:
+  "test binary reached the operator daemon"}`. Call-log rows are
+  `schema_version` 3: `outcome` on every row (`ok`, `partial`, `refused`,
+  `abandoned`, `abandoned-by-governor`, `error`), `class`, `queued_ms`,
+  `bytes_read` and `caller {pid, ppid, session, test}`.
 - **Descriptions (RP-9, diet O101).** Every agent-surface description
   carries a "Reach for it when …" sentence and a `Required: a, b.` sentence
   naming exactly the arguments its own `inputSchema` marks required —
@@ -334,6 +353,93 @@ Served by `serve-http` and `serve-mcp` alike; the contract lives in
   rows as "direct".
 
 ---
+
+## Cost classes
+
+Every tool declares a cost class (design `docs/design/responsible-tenant.md` §3.1,
+RT-55); registering a tool without one fails. The admission gate admits each
+`tools/call` in its class before the handler runs: per-class slots derived from the
+budget, a per-call byte ceiling and a server deadline (`point` 10 s, `index` 30 s,
+`tree` 60 s, `fleet` 120 s; `ingest` runs detached). A class is the tool's cost
+**today** (`internal/mcp/testdata/toolcost.json`, held by
+`TestCostClassMatchesMeasuredCost`); a tool moves to a cheaper class only in the commit
+that rewrites it. `references` with `services: ["*"]` is `fleet`. `batch` holds no
+ticket: at most 16 calls, each admitted in its own class.
+
+Admission defaults to `observe` (`[tenancy].admission`, `docs/configuration.md`):
+every would-refuse is logged and counted (`fathom_would_refuse_total`) and the call
+runs. Under `enforce` a refused call answers HTTP 503 with `Retry-After` and JSON-RPC
+error `-32050` (`message: "fathom busy: <reason>"`, `data: {reason, class, level,
+retry_after_ms, in_flight}`); a call whose context ends (deadline, client gone, the
+refuse rung) answers a named `abandoned` error, never an empty result; a call whose
+producer the meter stopped at the per-call ceiling carries `budget: {partial: true,
+elided, bytes_read, reason}` in its envelope (or its `batch` entry). A test binary reaching the managed daemon gets 409.
+
+| Tool | Class |
+|---|---|
+| `api_diff` | `index` |
+| `arch_conformance` | `index` |
+| `batch` | `point` |
+| `blast_radius` | `tree` |
+| `brief` | `tree` |
+| `capabilities` | `point` |
+| `cloc` | `tree` |
+| `community` | `index` |
+| `compile_layer` | `ingest` |
+| `complexity` | `index` |
+| `contradiction_scan` | `index` |
+| `cross_repo_blast_radius` | `fleet` |
+| `cross_repo_callers` | `fleet` |
+| `dead_code` | `index` |
+| `dep_drift` | `fleet` |
+| `diff_impact` | `index` |
+| `discoveries` | `tree` |
+| `entrypoints` | `index` |
+| `evidence_summary` | `index` |
+| `find_callees` | `index` |
+| `find_callers` | `index` |
+| `find_symbol` | `index` |
+| `findings_near` | `index` |
+| `fleet_drift` | `fleet` |
+| `god_object` | `index` |
+| `history` | `point` |
+| `http_client_calls` | `tree` |
+| `ingest` | `ingest` |
+| `list_modules` | `point` |
+| `list_services` | `fleet` |
+| `list_sources` | `tree` |
+| `localize` | `index` |
+| `memory_search` | `point` |
+| `module_obligations` | `index` |
+| `module_query` | `index` |
+| `module_staleness` | `index` |
+| `obligations` | `tree` |
+| `outline` | `index` |
+| `pack_context` | `index` |
+| `proto_conformance` | `tree` |
+| `query_symbols` | `index` |
+| `reachable` | `index` |
+| `read_source` | `point` |
+| `references` | `tree` |
+| `remove_service` | `ingest` |
+| `rename_impact` | `index` |
+| `rename_service` | `ingest` |
+| `repo_map` | `index` |
+| `review_diff` | `fleet` |
+| `safe_delete_check` | `tree` |
+| `search` | `tree` |
+| `secret_scan` | `tree` |
+| `server_stats` | `point` |
+| `shell_out` | `tree` |
+| `spec_coverage` | `tree` |
+| `spec_refs` | `tree` |
+| `stale_docs` | `tree` |
+| `staleness_report` | `point` |
+| `symbol_context` | `tree` |
+| `test_impact` | `index` |
+| `traceability` | `tree` |
+| `traverse` | `tree` |
+| `verify_plan` | `index` |
 
 ## Shared tools (GroupShared)
 

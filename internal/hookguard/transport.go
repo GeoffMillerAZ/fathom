@@ -133,6 +133,11 @@ func (g *Guard) roundTrip(base http.RoundTripper, req *http.Request) (*http.Resp
 		return nil, err
 	}
 	switch {
+	case resp.StatusCode == http.StatusServiceUnavailable && resp.Header.Get(BusyScopeHeader) == BusyScopeClass:
+		// One class's refusal (its slots full, or a deadline the tool
+		// cannot meet): the caller gets its named 503, and every other
+		// hook call — a point or index call the daemon would serve — is
+		// not silenced for Retry-After. Not a failure either.
 	case resp.StatusCode == http.StatusServiceUnavailable && resp.Header.Get("Retry-After") != "":
 		g.RecordBusy(target, parseRetryAfter(resp.Header.Get("Retry-After")))
 	case resp.StatusCode >= 500:

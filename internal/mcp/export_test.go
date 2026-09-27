@@ -40,3 +40,30 @@ func ValidateAgainstSchemaForTest(schema map[string]any, v any) string {
 func (s *Server) GraphCacheStatsForTest() (entries, hits, misses int) {
 	return s.graphCache.Stats()
 }
+
+// ToolCostClassesForTest maps every registered tool to its declared cost
+// class name (RT-55); args-dependent tools report their no-argument class.
+func (s *Server) ToolCostClassesForTest() map[string]string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	out := make(map[string]string, len(s.tools))
+	for _, e := range s.tools {
+		out[e.desc.Name] = e.class.String()
+	}
+	return out
+}
+
+// CostClassOfForTest is costClassOf for a registered tool and its args.
+func (s *Server) CostClassOfForTest(name, args string) string {
+	te, ok := s.findTool(name)
+	if !ok {
+		return ""
+	}
+	return costClassOf(te, []byte(args)).String()
+}
+
+// RegisterUndeclaredToolForTest registers a tool with no cost class; it
+// must panic (RT-55: registration without a class fails).
+func (s *Server) RegisterUndeclaredToolForTest(name string) {
+	s.registerTool(toolDescriptor{Name: name, InputSchema: map[string]any{"type": "object"}, group: GroupShared}, nil)
+}

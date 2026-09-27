@@ -27,6 +27,9 @@ type countingConnector struct {
 	// gate, when set, blocks Discover until closed — to hold concurrent
 	// cold callers inside the walk together.
 	gate chan struct{}
+	// honourCtx, when set, makes Discover fail with ctx.Err() once its ctx
+	// has ended, as the local connector's walk does.
+	honourCtx bool
 }
 
 func newCountingConnector() *countingConnector {
@@ -37,14 +40,18 @@ func newCountingConnector() *countingConnector {
 	}
 }
 
-func (c *countingConnector) Discover(_ context.Context, svc core.ServiceRef) ([]core.SourceRef, error) {
+func (c *countingConnector) Discover(ctx context.Context, svc core.ServiceRef) ([]core.SourceRef, error) {
 	c.mu.Lock()
 	c.discover[svc.ID]++
 	gate := c.gate
 	refs := c.refs[svc.ID]
+	honour := c.honourCtx
 	c.mu.Unlock()
 	if gate != nil {
 		<-gate
+	}
+	if honour && ctx.Err() != nil {
+		return nil, ctx.Err()
 	}
 	return refs, nil
 }

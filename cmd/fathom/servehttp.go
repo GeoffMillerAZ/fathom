@@ -347,7 +347,10 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	// Activity (the unmanaged idle bound's input) is counted from the
 	// bind, the store wait included.
 	act := newActivity(time.Now)
-	httpSrv := &http.Server{Handler: act.middleware(swap)}
+	// RT-59 (§3.5): header, idle and per-route write timeouts and the
+	// loopback-Host guard; the managed daemon answers a test caller 409
+	// (RT-63).
+	httpSrv := newDaemonServer(act.middleware(swap), daemonServerOpts{managed: managed, hosted: modulesToken != ""})
 	serveErr := make(chan error, 1)
 	go func() { serveErr <- httpSrv.Serve(listener) }()
 	stopServing := func() {
@@ -543,8 +546,12 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	// to decision.None rather than blocking startup (I14). RT-39: closed in
 	// safe mode and at refuse and above (gatedDecider).
 	ports := openDecisionPorts(loaded, daemonProfileName, *callLogPath, "serve-http", stderr)
-	ports.Decider = gatedDecider{inner: ports.Decider}
-	c.WithDecision(ports.Decider, ports.Cfg, ports.Recorder)
+	// RT-39: closed in safe mode and at refuse and above; RT-65: the
+	// client's decision-port calls (the obligations re-rank, the compile
+	// pre-filter) are also admitted as egress once the gate exists. /route
+	// admits its own call, so ports.Decider only closes.
+	ports.Decider = closingDecider(ports.Decider)
+	c.WithDecision(gateDecider(ports.Decider, "client"), ports.Cfg, ports.Recorder)
 
 	// Default: keep the shared index fresh transparently. A query for a service
 	// whose git HEAD has drifted from the indexed commit triggers a hash-gated
@@ -582,9 +589,37 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	// never round-trips list_services over loopback HTTP (it timed out under
 	// load and rendered project pages as "store unreadable") and never writes
 	// a call-log row of its own.
-	inProcessServicesFn := func(ctx context.Context) (map[string]svcInfo, error) {
-		return svcInfoFromSummaries(mcp.ServiceSummaries(ctx, backend, fleet)), nil
+	// RT-53/RT-54 (design §3.2): the admission gate over the budget's
+	// slots, in [tenancy].admission's mode (observe until RT-96).
+	gate := tenancy.NewGate(tenancy.GateConfig{
+		Budget:   budget,
+		Mode:     tenancy.ParseMode(budget.Admission),
+		SafeMode: func() bool { _, on := tenancy.SafeModeNow(); return on }, // the breaker's or paused.json's (RT-39)
+		Log:      func(m string) { flog.Warn(m) },
+	})
+	srv.SetGate(gate)
+	daemonGate.Store(gate)
+	defer daemonGate.Store(nil)
+	decisionAdmit.Store(&decisionAdmitter{admit: srv.AdmitDecision})
+	defer decisionAdmit.Store(nil)
+	if gate.Mode() == tenancy.ModeOff {
+		flog.Warn("serve-http: ADMISSION OFF (FATHOM_TENANCY_ADMISSION=off or [tenancy].admission = \"off\") — no call is decided or refused by class (class deadlines still apply); doctor's admission_mode row warns on every run")
+	} else {
+		outLog.Info(fmt.Sprintf("serve-http: admission %s (slots %s)", gate.Mode(), admissionSlotsLine(budget)))
 	}
+	// RT-61 (§3.3): the registry read goes through admission as
+	// console-inprocess.
+	listServicesClass, _ := srv.ToolCostClass("list_services", nil)
+	// A refused read (any fleet call running) answers the last good
+	// projection, disclosed as stale (§3.4).
+	registry := newLastGoodRegistry(func(ctx context.Context) (map[string]svcInfo, error) {
+		var out map[string]svcInfo
+		err := inProcessToolCall(ctx, "list_services", listServicesClass, func(ctx context.Context) error {
+			out = svcInfoFromSummaries(mcp.ServiceSummaries(ctx, backend, fleet))
+			return nil
+		})
+		return out, err
+	})
 	// BA-9: budget defaults are project-settable. The `budgets` block of
 	// <cwd>/.fathom/capabilities.cue (the daemon's working repo) and
 	// ~/.fathom/capabilities.cue sizes each tool class in tokens, resolved
@@ -610,7 +645,7 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	// event feeders below publish to the same bus GET /events streams.
 	consoleDeps := newConsoleDeps(c, "http://"+*addr, time.Now())
 	consoleDeps.storePath = absStorePath(*storePath)
-	inProcessReg.Store(&inProcessRegistry{self: "http://" + *addr, services: inProcessServicesFn})
+	inProcessReg.Store(&inProcessRegistry{self: "http://" + *addr, services: registry.services, stale: registry.staleNote})
 	handler := newHTTPHandlerWithAuthDeps(srv, c, modulesToken, *addr, ports, flog, consoleDeps)
 
 	// Adopt a new binary without a human (selfrestart.go). launchd
@@ -985,13 +1020,18 @@ func newHTTPHandlerDeps(srv *mcp.Server, c *client.Client, selfAddr string, port
 			}
 		}
 
-		// Background, not r.Context(): a client disconnect must not cancel a
-		// long-running ingest mid-flight. The scope carries the surface.
-		// "?contracts=true" (O101/TD-2) opts this request's tools/list back
-		// into outputSchema — off by default so the served payload stays
-		// diet-sized; a client that validates structured output can ask.
-		ctx := mcp.WithContracts(mcp.WithOrigin(mcp.WithRequestScope(context.Background(), surface, true), r.Header.Get("X-Fathom-Origin")), r.URL.Query().Get("contracts") == "true")
-		ctx = markHookOrigin(ctx, r.Header.Get("X-Fathom-Origin"))
+		// RT-58 (design §3.5): the request's own context, so a client that
+		// leaves cancels read work (counted abandoned); ingest-class calls
+		// run detached in dispatch, so a disconnect never cancels an ingest
+		// midway. X-Fathom-Deadline bounds it; the admission ticket adds
+		// the class deadline. "?contracts=true" (O101/TD-2) opts this
+		// request's tools/list back into outputSchema.
+		ctx, cancelRPC := rpcContext(r, surface)
+		defer cancelRPC()
+		// An ingest-class call runs detached with no class deadline; the
+		// route's 150 s write deadline would cut its client off mid-ingest
+		// (the work completes, the answer is lost), so it lifts it.
+		ctx = mcp.WithDetachHook(ctx, func() { _ = http.NewResponseController(w).SetWriteDeadline(time.Time{}) })
 		ctx, doneSources := rpcSourcesScope(ctx, r)
 		defer doneSources()
 		// RT-39/RT-40/RT-41/RT-44: safe mode, warm-up, store distress and
@@ -1001,9 +1041,9 @@ func newHTTPHandlerDeps(srv *mcp.Server, c *client.Client, selfAddr string, port
 			return
 		}
 		defer releaseGate()
-		// RT-172: registered by class so the refuse rung can cancel it.
-		ctx, endTicket := governorTicket(ctx, raw, r.Header.Get("X-Fathom-Origin"))
-		defer endTicket()
+		// RT-56 (§3.4): a top-level refusal answers 503 + Retry-After; the
+		// admission ticket registers the call in flight by class (RT-172).
+		ctx, refusal := mcp.WithRefusalSink(ctx)
 		// MCP-Protocol-Version (2025-06-18+ Streamable HTTP): clients send
 		// the negotiated revision on every post-initialize request. It is
 		// TOLERATED here (RP-12) — never a 400 — and answered with the
@@ -1014,6 +1054,11 @@ func newHTTPHandlerDeps(srv *mcp.Server, c *client.Client, selfAddr string, port
 		if !hasResp {
 			// Notification — no response body.
 			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		if ref := refusal(); ref != nil {
+			writeRefusal(w, ref)
+			w.Write(resp) //nolint:errcheck
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -1123,7 +1168,8 @@ func newHTTPHandlerDeps(srv *mcp.Server, c *client.Client, selfAddr string, port
 		// (memorylimit.go's currentMemoryLimitBytes). A value at
 		// math.MaxInt64's scale means no limit is set ("off").
 		fmt.Fprint(w, memoryLimitMetricLine())
-		fmt.Fprint(w, governorMetricLines()) // RT-161, RT-155: the ladder, footprint, children, quarantine
+		fmt.Fprint(w, governorMetricLines())     // RT-161, RT-155: the ladder, footprint, children, quarantine
+		fmt.Fprint(w, admissionMetricLines(srv)) // RT-53..RT-63: slots, queues, refusals, would-refuse, outcomes, test callers
 
 		// fathom_graph_memo_entries: the watermark-keyed call-graph memo
 		// (BP-28, I21, internal/analysis/callgraph/cache.go) — one entry

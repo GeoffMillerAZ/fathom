@@ -284,18 +284,29 @@ func (s *safeModeController) step(now time.Time, level tenancy.Level) {
 	}
 }
 
-// gatedDecider closes the decision port in safe mode and at refuse and
-// above (§2.1, §2.3). Its callers fail open on an error (I14).
-type gatedDecider struct{ inner decision.Decider }
+// closingDecider wraps an active decider so the port closes in safe mode
+// and at refuse (gatedDecider with no site); decision.None and nil stay
+// as they are (callers type-check None to mean "no provider").
+func closingDecider(d decision.Decider) decision.Decider {
+	if d == nil {
+		return nil
+	}
+	if _, isNone := d.(decision.None); isNone {
+		return d
+	}
+	return gatedDecider{inner: d}
+}
 
-func (g gatedDecider) Name() string { return g.inner.Name() }
-
-func (g gatedDecider) Decide(ctx context.Context, req decision.Request) (decision.Response, error) {
+// decisionPortClosed names why the decision port is closed — safe mode, or
+// the governor at refuse and above (§2.1, §2.3) — else nil. gatedDecider
+// (admission_http.go) checks it before any admission; callers fail open on
+// the error (I14).
+func decisionPortClosed() error {
 	if s, on := tenancy.SafeModeNow(); on {
-		return decision.Response{}, fmt.Errorf("decision port closed: %s: %w", s.Message(), decision.ErrNoProvider)
+		return fmt.Errorf("decision port closed: %s: %w", s.Message(), decision.ErrNoProvider)
 	}
 	if l := tenancy.CurrentLevel(); l >= tenancy.LevelRefuse {
-		return decision.Response{}, fmt.Errorf("decision port closed: governor at %s: %w", l, decision.ErrNoProvider)
+		return fmt.Errorf("decision port closed: governor at %s: %w", l, decision.ErrNoProvider)
 	}
-	return g.inner.Decide(ctx, req)
+	return nil
 }

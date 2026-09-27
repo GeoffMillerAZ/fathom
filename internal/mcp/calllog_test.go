@@ -88,8 +88,8 @@ func TestCallLogVersionStamp(t *testing.T) {
 	if err := json.Unmarshal(buf.Bytes(), &row); err != nil {
 		t.Fatalf("unmarshal: %v (%q)", err, buf.String())
 	}
-	if row["schema_version"] != float64(2) {
-		t.Errorf("schema_version = %v, want 2", row["schema_version"])
+	if row["schema_version"] != float64(3) { // v3: RT-64's admission columns
+		t.Errorf("schema_version = %v, want 3", row["schema_version"])
 	}
 	if v, _ := row["fathom_version"].(string); v == "" {
 		t.Error("fathom_version must never be empty — 'unknown' is the floor")

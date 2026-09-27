@@ -10,6 +10,20 @@ import (
 // daemon can bound (and drop) work whose answer nobody will read (§3.5).
 const DeadlineHeader = "X-Fathom-Deadline"
 
+// BusyScopeHeader names how far a 503 refusal reaches (design §3.4): "class"
+// when one cost class refused (its slots full, a deadline its tool cannot
+// meet) — the breaker is not opened, other calls are served — and
+// "daemon" when the daemon refuses heavy work as a whole (the refuse rung,
+// safe mode, store unavailable), which holds every hook off for
+// Retry-After. A 503 without it is daemon-scoped (older daemons).
+const BusyScopeHeader = "X-Fathom-Busy-Scope"
+
+// Busy scopes (BusyScopeHeader values).
+const (
+	BusyScopeClass  = "class"
+	BusyScopeDaemon = "daemon"
+)
+
 // Deadline is one hook invocation's monotonic deadline. The zero value is
 // "no deadline" (a CLI verb, not a hook).
 type Deadline struct {

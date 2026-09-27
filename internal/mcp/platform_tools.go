@@ -231,7 +231,7 @@ func registerListServices(s *Server, backend QueryInterface, fleet FleetBackend)
 					}
 				}
 			}
-			if unsupported := fleet.UnsupportedLanguagesFor(svc); len(unsupported) > 0 {
+			if unsupported := unsupportedLanguagesCtx(ctx, fleet, svc); len(unsupported) > 0 {
 				names := make([]string, 0, len(unsupported))
 				for lang := range unsupported {
 					names = append(names, lang)
@@ -249,7 +249,7 @@ func registerListServices(s *Server, backend QueryInterface, fleet FleetBackend)
 			// root_missing:true plus a remedy naming how to drop the
 			// stale record.
 			if frb, ok := fleet.(fleetRootStatusBackend); ok {
-				if missing, remedy := frb.RootMissing(svc); missing {
+				if missing, remedy := rootMissingCtx(ctx, frb, svc); missing {
 					entry["root_missing"] = true
 					entry["remedy"] = remedy
 				}
@@ -258,6 +258,28 @@ func registerListServices(s *Server, backend QueryInterface, fleet FleetBackend)
 		}
 		return map[string]any{"services": entries, "count": len(sums)}, nil
 	})
+}
+
+// fleetCtxBackend is the optional ctx-aware form of the per-service fleet
+// reads (RT-62): a waiter on another caller's walk leaves when the
+// request's ctx ends.
+type fleetCtxBackend interface {
+	UnsupportedLanguagesForCtx(ctx context.Context, service string) map[string]int
+	RootMissingCtx(ctx context.Context, service string) (bool, string)
+}
+
+func unsupportedLanguagesCtx(ctx context.Context, fleet FleetBackend, svc string) map[string]int {
+	if cf, ok := fleet.(fleetCtxBackend); ok {
+		return cf.UnsupportedLanguagesForCtx(ctx, svc)
+	}
+	return fleet.UnsupportedLanguagesFor(svc)
+}
+
+func rootMissingCtx(ctx context.Context, frb fleetRootStatusBackend, svc string) (bool, string) {
+	if cf, ok := frb.(fleetCtxBackend); ok {
+		return cf.RootMissingCtx(ctx, svc)
+	}
+	return frb.RootMissing(svc)
 }
 
 // ─── fleet_drift ──────────────────────────────────────────────────────────────

@@ -107,7 +107,7 @@ func projectActivityKey(cr *consoleRequest, pc projectContext, src console.Sourc
 
 func projectActivityFor(cr *consoleRequest, pc projectContext) projectActivityData {
 	src := cr.deps.sources()
-	d, _ := projectActivityMemo.do(projectActivityKey(cr, pc, src), cr.now, func() (projectActivityData, time.Duration) {
+	d, _, _ := projectActivityMemo.doCtx(cr.r.Context(), projectActivityKey(cr, pc, src), cr.now, func() (projectActivityData, time.Duration) {
 		return readProjectActivity(cr, pc, src), projectActivityTTL
 	})
 	return d

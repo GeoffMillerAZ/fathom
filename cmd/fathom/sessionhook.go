@@ -422,6 +422,9 @@ func buildSessionContext(baseURL, projDir string) string {
 type inProcessRegistry struct {
 	self     string
 	services func(ctx context.Context) (map[string]svcInfo, error)
+	// stale is the registry's stale disclosure ("" when fresh): a read
+	// refused while shedding answers the last good projection (§3.4).
+	stale func() string
 }
 
 var inProcessReg atomic.Pointer[inProcessRegistry]

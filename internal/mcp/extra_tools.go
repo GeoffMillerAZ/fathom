@@ -1478,17 +1478,30 @@ type batchCall struct {
 	Arguments json.RawMessage `json:"arguments"`
 }
 
+// batchMaxCalls caps a batch's sub-calls (RT-60, design §3.3).
+const batchMaxCalls = 16
+
+// admitBatchCall admits one batch sub-call in its own class under the
+// batch's context (and so its deadline); a refusal is that sub-call's
+// named error, never the batch's 503 (RT-60).
+func (s *Server) admitBatchCall(ctx context.Context, te toolEntry, args json.RawMessage) (context.Context, *tenancy.Ticket, *rpcError) {
+	return s.admitToolCall(ctx, te, args, false)
+}
+
 // batchResult is the result of one call in a batch, with a per-call error field.
 type batchResult struct {
 	Name   string `json:"name"`
 	Result any    `json:"result,omitempty"`
 	Error  string `json:"error,omitempty"`
+	// Budget is a stopped sub-call's partial block (RT-57): an entry
+	// never looks complete when its producer was stopped.
+	Budget map[string]any `json:"budget,omitempty"`
 }
 
 func registerBatch(s *Server) {
 	s.registerTool(toolDescriptor{
 		Name:        "batch",
-		Description: "Execute N tool calls in a single request. Per-call errors are reported in the result rather than aborting the entire batch.",
+		Description: "Execute up to 16 tool calls in a single request. Per-call errors are reported in the result rather than aborting the entire batch.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -1517,11 +1530,16 @@ func registerBatch(s *Server) {
 		if len(p.Calls) == 0 {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "batch: calls required"}
 		}
+		// RT-60 (design §3.3): at most batchMaxCalls sub-calls; the batch
+		// holds no ticket, each sub-call is admitted in its own class.
+		if len(p.Calls) > batchMaxCalls {
+			return nil, &rpcError{Code: ErrCodeParams, Message: fmt.Sprintf("batch: at most %d calls per batch (got %d) — split it", batchMaxCalls, len(p.Calls))}
+		}
 		results := make([]any, len(p.Calls))
 		sc := scopeFrom(ctx)
 		// Sub-calls are logged individually (via:"batch") so surface telemetry
 		// counts the tools a batch actually exercised, not just "batch".
-		logSub := func(name, group string, argsRaw json.RawMessage, offSurface bool, claimsAttached int, verdictOutcome map[string]int, subResult any, latency time.Duration, rpcErr *rpcError) {
+		logSub := func(name, group string, argsRaw json.RawMessage, offSurface bool, claimsAttached int, verdictOutcome map[string]int, subResult any, latency time.Duration, rpcErr *rpcError, meta callMeta) {
 			if s.callLogger == nil {
 				return
 			}
@@ -1534,9 +1552,15 @@ func registerBatch(s *Server) {
 				subErr = &rpcErrWrapper{rpcErr}
 			}
 			subCount, subVia := outcomeFrom(subResult)
-			s.callLogger.log(name, sa.Service, group, s.effectiveSurface(ctx), "batch", originFrom(ctx), offSurface, claimsAttached, verdictOutcome, callOutcome{ResultCount: subCount, MatchedVia: subVia}, latency, subErr)
+			s.callLogger.log(name, sa.Service, group, s.effectiveSurface(ctx), "batch", originFrom(ctx), offSurface, claimsAttached, verdictOutcome, s.recordCallOutcome(ctx, meta, callOutcome{ResultCount: subCount, MatchedVia: subVia}), latency, subErr)
 		}
 		for i, call := range p.Calls {
+			// RT-60: the batch stops when its context ends — nothing after
+			// the cancellation runs, and each unrun call says so.
+			if err := ctx.Err(); err != nil {
+				results[i] = batchResult{Name: call.Name, Error: "not run: the batch's context ended (" + err.Error() + ")"}
+				continue
+			}
 			argsRaw := call.Arguments
 			if argsRaw == nil {
 				argsRaw = json.RawMessage("{}")
@@ -1556,7 +1580,7 @@ func registerBatch(s *Server) {
 			// like handleToolsCallWithCtx's own check (dispatch.go).
 			if s.hostedModuleBlocked(sc, te.desc) {
 				gateErr := &rpcError{Code: ErrCodeNotFound, Message: "tool " + call.Name + " requires the " + SurfaceModules + " surface (hosted mode is active)"}
-				logSub(call.Name, string(te.desc.group), argsRaw, false, 0, nil, nil, 0, gateErr)
+				logSub(call.Name, string(te.desc.group), argsRaw, false, 0, nil, nil, 0, gateErr, callMeta{})
 				results[i] = batchResult{Name: call.Name, Error: gateErr.Message}
 				continue
 			}
@@ -1564,7 +1588,7 @@ func registerBatch(s *Server) {
 			if sc.enforced() && !s.toolOnSurface(sc.surface, te.desc) {
 				if s.strictFor(sc.surface) {
 					gateErr := &rpcError{Code: ErrCodeNotFound, Message: "tool " + call.Name + " is not on the " + sc.surface + " surface; POST /rpc serves the full surface"}
-					logSub(call.Name, string(te.desc.group), argsRaw, false, 0, nil, nil, 0, gateErr)
+					logSub(call.Name, string(te.desc.group), argsRaw, false, 0, nil, nil, 0, gateErr, callMeta{})
 					results[i] = batchResult{Name: call.Name, Error: gateErr.Message}
 					continue
 				}
@@ -1578,18 +1602,26 @@ func registerBatch(s *Server) {
 			// A failing sub-call errors into ITS OWN batchResult (and is
 			// logged like any other sub-call error) — never the whole batch.
 			if valErr := validateRequired(te.desc, argsRaw); valErr != nil {
-				logSub(call.Name, string(te.desc.group), argsRaw, subOff, 0, nil, nil, 0, valErr)
+				logSub(call.Name, string(te.desc.group), argsRaw, subOff, 0, nil, nil, 0, valErr, callMeta{})
 				results[i] = batchResult{Name: call.Name, Error: valErr.Message}
 				continue
 			}
 			start := time.Now()
-			result, rpcErr := te.handler(ctx, argsRaw)
-			logSub(call.Name, string(te.desc.group), argsRaw, subOff, claimsAttachedFrom(result), verdictOutcomeFrom(result), result, time.Since(start), rpcErr)
+			subCtx, tk, busy := s.admitBatchCall(ctx, te, argsRaw)
+			if busy != nil {
+				logSub(call.Name, string(te.desc.group), argsRaw, subOff, 0, nil, nil, 0, busy, callMeta{class: costClassOf(te, argsRaw), outcome: string(tenancy.OutcomeRefused)})
+				results[i] = batchResult{Name: call.Name, Error: busy.Message}
+				continue
+			}
+			result, rpcErr := runHandler(subCtx, te, argsRaw)
+			result, rpcErr, partial, meta := s.settleCall(subCtx, call.Name, tk, result, rpcErr)
+			meta.class = costClassOf(te, argsRaw)
+			logSub(call.Name, string(te.desc.group), argsRaw, subOff, claimsAttachedFrom(result), verdictOutcomeFrom(result), result, time.Since(start), rpcErr, meta)
 			if rpcErr != nil {
 				results[i] = batchResult{Name: call.Name, Error: rpcErr.Message}
 				continue
 			}
-			results[i] = batchResult{Name: call.Name, Result: result}
+			results[i] = batchResult{Name: call.Name, Result: result, Budget: partial}
 		}
 		return map[string]any{"results": results, "count": len(results)}, nil
 	})

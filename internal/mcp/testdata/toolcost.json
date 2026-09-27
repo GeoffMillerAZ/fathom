@@ -1,0 +1,257 @@
+{
+  "_comment": "The committed measured cost class of every registered MCP tool (design §3.1, RT-152). A declared class (internal/mcp/costclass.go) is at least this; a row moves down only in the commit that rewrites the tool and carries its cost assertion (RT-93, or the rewrite's own allocation assertion before RT-93 exists). \"audit\" rows are the read-only audit of 4200482a; \"static read\" rows were classified from what the handler loads, pending the §4.8 cost harness.",
+  "tools": {
+    "api_diff": {
+      "measured": "index",
+      "basis": "static read: ListAllSymbols for one service"
+    },
+    "arch_conformance": {
+      "measured": "index",
+      "basis": "static read: ListAllSymbols + ServiceMeta"
+    },
+    "batch": {
+      "measured": "point",
+      "basis": "static read: dispatch only; holds no ticket, each sub-call is admitted and measured in its own class"
+    },
+    "blast_radius": {
+      "measured": "tree",
+      "basis": "design §3.1: moves to index only with the derived facts (§6); today a whole-service graph build (loadNavGraphs)"
+    },
+    "brief": {
+      "measured": "tree",
+      "basis": "static read: obligations and symbol queries for one service (obligations is tree until its rewrites carry a cost assertion)"
+    },
+    "capabilities": {
+      "measured": "point",
+      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
+    },
+    "cloc": {
+      "measured": "tree",
+      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
+    },
+    "community": {
+      "measured": "index",
+      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
+    },
+    "compile_layer": {
+      "measured": "ingest",
+      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
+    },
+    "complexity": {
+      "measured": "index",
+      "basis": "static read: ListAllSymbols for one service"
+    },
+    "contradiction_scan": {
+      "measured": "index",
+      "basis": "static read: QuerySymbols over one service"
+    },
+    "cross_repo_blast_radius": {
+      "measured": "fleet",
+      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
+    },
+    "cross_repo_callers": {
+      "measured": "fleet",
+      "basis": "static read: every registered service (fleet backend)"
+    },
+    "dead_code": {
+      "measured": "index",
+      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
+    },
+    "dep_drift": {
+      "measured": "fleet",
+      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
+    },
+    "diff_impact": {
+      "measured": "index",
+      "basis": "static read: ListAllSymbols + TypedEdges for one service"
+    },
+    "discoveries": {
+      "measured": "tree",
+      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
+    },
+    "entrypoints": {
+      "measured": "index",
+      "basis": "static read: ListAllSymbols for one service"
+    },
+    "evidence_summary": {
+      "measured": "index",
+      "basis": "static read: ListAllSymbols for one service"
+    },
+    "find_callees": {
+      "measured": "index",
+      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
+    },
+    "find_callers": {
+      "measured": "index",
+      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
+    },
+    "find_symbol": {
+      "measured": "index",
+      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
+    },
+    "findings_near": {
+      "measured": "index",
+      "basis": "static read: ListAllSymbols + TypedEdges for one service"
+    },
+    "fleet_drift": {
+      "measured": "fleet",
+      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
+    },
+    "god_object": {
+      "measured": "index",
+      "basis": "static read: ListAllSymbols for one service"
+    },
+    "history": {
+      "measured": "point",
+      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
+    },
+    "http_client_calls": {
+      "measured": "tree",
+      "basis": "static read: client.Sources (whole-tree read)"
+    },
+    "ingest": {
+      "measured": "ingest",
+      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
+    },
+    "list_modules": {
+      "measured": "point",
+      "basis": "static read: lists the mounted module stores (no service rows)"
+    },
+    "list_services": {
+      "measured": "fleet",
+      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
+    },
+    "list_sources": {
+      "measured": "tree",
+      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
+    },
+    "localize": {
+      "measured": "index",
+      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
+    },
+    "memory_search": {
+      "measured": "point",
+      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
+    },
+    "module_obligations": {
+      "measured": "index",
+      "basis": "static read: obligations over each mounted module store (store rows, no corpus read)"
+    },
+    "module_query": {
+      "measured": "index",
+      "basis": "static read: claim query over each mounted module store"
+    },
+    "module_staleness": {
+      "measured": "index",
+      "basis": "static read: watermark rows of each mounted module store"
+    },
+    "obligations": {
+      "measured": "tree",
+      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
+    },
+    "outline": {
+      "measured": "index",
+      "basis": "static read: ListAllSymbols for one service"
+    },
+    "pack_context": {
+      "measured": "index",
+      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
+    },
+    "proto_conformance": {
+      "measured": "tree",
+      "basis": "static read: client.Sources (whole-tree read)"
+    },
+    "query_symbols": {
+      "measured": "index",
+      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
+    },
+    "reachable": {
+      "measured": "index",
+      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
+    },
+    "read_source": {
+      "measured": "point",
+      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
+    },
+    "references": {
+      "measured": "tree",
+      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
+    },
+    "remove_service": {
+      "measured": "ingest",
+      "basis": "static read: deletes a service from the store (a store write)"
+    },
+    "rename_impact": {
+      "measured": "index",
+      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
+    },
+    "rename_service": {
+      "measured": "ingest",
+      "basis": "static read: rewrites a service id in the store (a store write)"
+    },
+    "repo_map": {
+      "measured": "index",
+      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
+    },
+    "review_diff": {
+      "measured": "fleet",
+      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
+    },
+    "safe_delete_check": {
+      "measured": "tree",
+      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
+    },
+    "search": {
+      "measured": "tree",
+      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
+    },
+    "secret_scan": {
+      "measured": "tree",
+      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
+    },
+    "server_stats": {
+      "measured": "point",
+      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
+    },
+    "shell_out": {
+      "measured": "tree",
+      "basis": "static read: client.Sources (whole-tree read)"
+    },
+    "spec_coverage": {
+      "measured": "tree",
+      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
+    },
+    "spec_refs": {
+      "measured": "tree",
+      "basis": "static read: client.Sources (whole-tree read)"
+    },
+    "stale_docs": {
+      "measured": "tree",
+      "basis": "static read: client.Sources (whole-tree read)"
+    },
+    "staleness_report": {
+      "measured": "point",
+      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
+    },
+    "symbol_context": {
+      "measured": "tree",
+      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
+    },
+    "test_impact": {
+      "measured": "index",
+      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
+    },
+    "traceability": {
+      "measured": "tree",
+      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
+    },
+    "traverse": {
+      "measured": "tree",
+      "basis": "static read: client.Sources (whole-tree read) + ListAllSymbols"
+    },
+    "verify_plan": {
+      "measured": "index",
+      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
+    }
+  }
+}

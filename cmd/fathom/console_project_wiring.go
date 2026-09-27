@@ -105,7 +105,7 @@ func projectWiringKey(cr *consoleRequest, pc projectContext) string {
 }
 
 func projectWiringFor(cr *consoleRequest, pc projectContext) projectWiringData {
-	d, _ := projectWiringMemo.do(projectWiringKey(cr, pc), cr.now, func() (projectWiringData, time.Duration) {
+	d, _, _ := projectWiringMemo.doCtx(cr.r.Context(), projectWiringKey(cr, pc), cr.now, func() (projectWiringData, time.Duration) {
 		return readProjectWiring(cr, pc), projectWiringTTL
 	})
 	return d

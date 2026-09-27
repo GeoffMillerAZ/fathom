@@ -23,9 +23,13 @@ import (
 
 // callLogSchemaVersion identifies this record type's field semantics.
 // v1 = the unstamped legacy shape (rows without the field); v2 adds the
-// version stamps (vision 14 §3 / plan IO-11). Bump on any semantic change
-// to an existing field — additive fields alone do not require a bump.
-const callLogSchemaVersion = 2
+// version stamps (vision 14 §3 / plan IO-11); v3 (RT-64, design §13.3)
+// makes outcome a field of every row (ok | partial | refused | abandoned |
+// abandoned-by-governor | error, was set only for abandoned-by-governor)
+// and adds class, queued_ms, bytes_read and caller. Bump on any semantic
+// change to an existing field — additive fields alone do not require a
+// bump.
+const callLogSchemaVersion = 3
 
 // callLogEntry is the JSONL record written per tools/call invocation.
 type callLogEntry struct {
@@ -86,10 +90,20 @@ type callLogEntry struct {
 
 	LatencyMS float64 `json:"latency_ms"`
 	Error     string  `json:"error,omitempty"`
-	// Outcome names a call that ended other than by its handler's own
-	// answer — "abandoned-by-governor" when the tenancy ladder's refuse
-	// rung cancelled it (RT-172). Omitted for every ordinary call.
+	// Outcome is how the call ended (RT-64, v3): ok, partial (a producer
+	// stopped at the per-call ceiling), refused (admission), abandoned
+	// (its deadline passed or its client left), abandoned-by-governor (the
+	// refuse rung cancelled it, RT-172) or error. Omitted only for a call
+	// rejected before admission (unknown tool, bad params).
 	Outcome string `json:"outcome,omitempty"`
+	// Class, QueuedMS and BytesRead are the call's admission (RT-64,
+	// design §13.3): its cost class, how long it queued for a slot and the
+	// bytes its producers charged to the per-call meter.
+	Class     string `json:"class,omitempty"`
+	QueuedMS  int64  `json:"queued_ms"`
+	BytesRead int64  `json:"bytes_read"`
+	// Caller is the X-Fathom-Caller identity (§10.4), when sent.
+	Caller *callLogCaller `json:"caller,omitempty"`
 
 	// Pointers (RC-25, docs/vision/28-receipts.md §4) are this call's top
 	// discovery pointers — symbol ids ("pkgDir.Name") and repo-relative
@@ -173,8 +187,22 @@ type callOutcome struct {
 	// this call's result — computed by dispatch.go's pointer-extraction
 	// hook (resultPointers) before the call is logged.
 	Pointers []string
-	// Outcome is the call-log row's outcome name (RT-172), "" for none.
+	// Outcome is the call-log row's outcome name (RT-64), "" for none.
 	Outcome string
+	// Class, QueuedMS, BytesRead and Caller are the admission columns
+	// (RT-64).
+	Class     string
+	QueuedMS  int64
+	BytesRead int64
+	Caller    *callLogCaller
+}
+
+// callLogCaller is a row's caller identity (X-Fathom-Caller).
+type callLogCaller struct {
+	PID     int    `json:"pid,omitempty"`
+	PPID    int    `json:"ppid,omitempty"`
+	Session string `json:"session,omitempty"`
+	Test    bool   `json:"test"`
 }
 
 func (l *CallLogger) log(tool, service, group, surface, via, origin string, offSurface bool, claimsAttached int, verdictOutcome map[string]int, outcome callOutcome, latency time.Duration, callErr error) {
@@ -202,6 +230,10 @@ func (l *CallLogger) log(tool, service, group, surface, via, origin string, offS
 		LatencyMS:      float64(latency.Milliseconds()),
 		Pointers:       outcome.Pointers,
 		Outcome:        outcome.Outcome,
+		Class:          outcome.Class,
+		QueuedMS:       outcome.QueuedMS,
+		BytesRead:      outcome.BytesRead,
+		Caller:         outcome.Caller,
 	}
 	if callErr != nil {
 		entry.Error = callErr.Error()

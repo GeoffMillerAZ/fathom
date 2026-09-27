@@ -50,22 +50,34 @@ type toolDescriptor struct {
 	// handleToolsCallWithCtx) knows an alias satisfies its primary's
 	// "required" entry. nil for tools with no alias.
 	aliases map[string]string
+
+	// cost declares the tool's cost class explicitly (design §3.1, RT-55);
+	// the zero value takes toolCostClasses' row (costclass.go).
+	cost costDecl
 }
 
 // toolEntry pairs a descriptor with its handler.
 type toolEntry struct {
 	desc    toolDescriptor
 	handler func(ctx context.Context, args json.RawMessage) (any, *rpcError)
+	class   tenancy.Class // the declared cost class (RT-55)
 }
 
 // registerTool adds a tool to the server's tool registry. Every handler is
 // wrapped with budgetedHandler (SU-3, ADR-041 decision 3) — a single choke
 // point, so a handler that forgets its own budget still cannot exceed the
 // dispatch-level one.
+//
+// RT-55 (design §3.1): a tool without a cost class cannot be registered —
+// the admission gate would have nothing to admit it in.
 func (s *Server) registerTool(desc toolDescriptor, h func(ctx context.Context, args json.RawMessage) (any, *rpcError)) {
+	class, ok := resolveCostClass(desc)
+	if !ok {
+		panic("mcp: tool " + desc.Name + " declares no cost class: add it to toolCostClasses (internal/mcp/costclass.go), testdata/toolcost.json and docs/mcp-tools.md's Cost classes table")
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.tools = append(s.tools, toolEntry{desc: desc, handler: budgetedHandler(h)})
+	s.tools = append(s.tools, toolEntry{desc: desc, handler: budgetedHandler(h), class: class})
 }
 
 // findTool returns the toolEntry for a given name, or (zero, false).
@@ -196,10 +208,7 @@ func abandonedByGovernor(ctx context.Context) *rpcError {
 
 func (s *Server) handleToolsCall(ctx context.Context, params json.RawMessage) (any, *rpcError) {
 	if s.callLogger == nil {
-		result, rpcErr := s.handleToolsCallWithCtx(ctx, params)
-		if ab := abandonedByGovernor(ctx); ab != nil {
-			return nil, ab
-		}
+		result, rpcErr, _ := s.handleToolsCallMeta(ctx, params)
 		return result, rpcErr
 	}
 	// Extract tool name for logging before dispatching.
@@ -210,7 +219,7 @@ func (s *Server) handleToolsCall(ctx context.Context, params json.RawMessage) (a
 	return s.loggedToolsCall(ctx, nameOnly.Name, params)
 }
 
-// loggedToolsCall wraps handleToolsCallWithCtx with call logging.
+// loggedToolsCall wraps handleToolsCallMeta with call logging.
 func (s *Server) loggedToolsCall(ctx context.Context, toolName string, params json.RawMessage) (any, *rpcError) {
 	// Extract service from arguments for the log entry (best-effort).
 	var args struct {
@@ -221,12 +230,8 @@ func (s *Server) loggedToolsCall(ctx context.Context, toolName string, params js
 	_ = json.Unmarshal(params, &args)
 
 	start := time.Now()
-	result, rpcErr := s.handleToolsCallWithCtx(ctx, params)
+	result, rpcErr, meta := s.handleToolsCallMeta(ctx, params)
 	latency := time.Since(start)
-	outcomeName := ""
-	if ab := abandonedByGovernor(ctx); ab != nil {
-		result, rpcErr, outcomeName = nil, ab, outcomeAbandonedByGovernor
-	}
 
 	// Determine group + off-surface flag from the tool descriptor. The flag is
 	// recomputed here (pure: scope + descriptor) rather than threaded through
@@ -272,8 +277,24 @@ func (s *Server) loggedToolsCall(ctx context.Context, toolName string, params js
 	_ = json.Unmarshal(params, &rawArgs)
 	pointers := resultPointers(toolName, rawArgs.Arguments, result)
 	s.callLogger.log(toolName, args.Arguments.Service, group, s.effectiveSurface(ctx), "", originFrom(ctx), offSurface, claimsAttached, verdictOutcome,
-		callOutcome{ResultCount: resultCount, MatchedVia: matchedVia, ResponseBytes: responseBytes, ElidedCount: elidedCount, Pointers: pointers, Outcome: outcomeName}, latency, logErr)
+		s.recordCallOutcome(ctx, meta, callOutcome{ResultCount: resultCount, MatchedVia: matchedVia, ResponseBytes: responseBytes, ElidedCount: elidedCount, Pointers: pointers}), latency, logErr)
 	return result, rpcErr
+}
+
+// recordCallOutcome completes a call-log outcome bundle with the admission
+// columns (RT-64): class, queued_ms, bytes_read, outcome and the caller.
+func (s *Server) recordCallOutcome(ctx context.Context, meta callMeta, out callOutcome) callOutcome {
+	out.Class = meta.class.String()
+	if meta.outcome == "" {
+		out.Class = ""
+	}
+	out.QueuedMS = meta.queued.Milliseconds()
+	out.BytesRead = meta.bytesRead
+	out.Outcome = meta.outcome
+	if c, ok := callerFrom(ctx); ok {
+		out.Caller = &callLogCaller{PID: c.PID, PPID: c.PPID, Session: c.Session, Test: c.Test}
+	}
+	return out
 }
 
 // validateRequired checks args against desc's declared InputSchema
@@ -322,19 +343,28 @@ type rpcErrWrapper struct{ e *rpcError }
 func (w *rpcErrWrapper) Error() string { return w.e.Message }
 
 func (s *Server) handleToolsCallWithCtx(ctx context.Context, params json.RawMessage) (any, *rpcError) {
+	result, rpcErr, _ := s.handleToolsCallMeta(ctx, params)
+	return result, rpcErr
+}
+
+// handleToolsCallMeta dispatches one tools/call and reports its admission
+// (class, queue, bytes, outcome) for the call log. meta.outcome is "" only
+// for a call rejected before admission (unknown tool, bad params).
+func (s *Server) handleToolsCallMeta(ctx context.Context, params json.RawMessage) (any, *rpcError, callMeta) {
+	var meta callMeta
 	var p struct {
 		Name      string          `json:"name"`
 		Arguments json.RawMessage `json:"arguments"`
 	}
 	if err := json.Unmarshal(params, &p); err != nil {
-		return nil, &rpcError{Code: ErrCodeParams, Message: "invalid tools/call params"}
+		return nil, &rpcError{Code: ErrCodeParams, Message: "invalid tools/call params"}, meta
 	}
 	if p.Name == "" {
-		return nil, &rpcError{Code: ErrCodeParams, Message: "tools/call: name required"}
+		return nil, &rpcError{Code: ErrCodeParams, Message: "tools/call: name required"}, meta
 	}
 	te, ok := s.findTool(p.Name)
 	if !ok {
-		return nil, &rpcError{Code: ErrCodeNotFound, Message: "tool not found: " + p.Name}
+		return nil, &rpcError{Code: ErrCodeNotFound, Message: "tool not found: " + p.Name}, meta
 	}
 	sc := scopeFrom(ctx)
 	// Hosted-modules security gate (GKE-MH-7, critic finding 2): checked
@@ -345,7 +375,7 @@ func (s *Server) handleToolsCallWithCtx(ctx context.Context, params json.RawMess
 	// mode is active (a --modules-token-env was configured); the local,
 	// loopback-only daemon never reaches this branch.
 	if s.hostedModuleBlocked(sc, te.desc) {
-		return nil, &rpcError{Code: ErrCodeNotFound, Message: "tool " + p.Name + " requires the " + SurfaceModules + " surface (hosted mode is active)"}
+		return nil, &rpcError{Code: ErrCodeNotFound, Message: "tool " + p.Name + " requires the " + SurfaceModules + " surface (hosted mode is active)"}, meta
 	}
 	// Execute-and-flag (ADR-014 amendment): an off-surface call runs and is
 	// LOGGED as off_surface — an error teaches agents to abandon the surface,
@@ -353,7 +383,7 @@ func (s *Server) handleToolsCallWithCtx(ctx context.Context, params json.RawMess
 	// available behind strictSurfaces for any future multi-tenant shape (and
 	// is ALWAYS on for the modules surface while hosted — strictFor).
 	if sc.enforced() && !s.toolOnSurface(sc.surface, te.desc) && s.strictFor(sc.surface) {
-		return nil, &rpcError{Code: ErrCodeNotFound, Message: "tool " + p.Name + " is not on the " + sc.surface + " surface; POST /rpc serves the full surface"}
+		return nil, &rpcError{Code: ErrCodeNotFound, Message: "tool " + p.Name + " is not on the " + sc.surface + " surface; POST /rpc serves the full surface"}, meta
 	}
 	// P1-8: enforce the declared InputSchema "required" fields before
 	// invoking the handler, so the served contract matches what tools/list
@@ -372,7 +402,18 @@ func (s *Server) handleToolsCallWithCtx(ctx context.Context, params json.RawMess
 	// needs to run before this check — it is encoded declaratively in
 	// aliases and consulted here, rather than mutating p.Arguments.
 	if rpcErr := validateRequired(te.desc, p.Arguments); rpcErr != nil {
-		return nil, rpcErr
+		return nil, rpcErr, meta
+	}
+
+	// RT-56 (design §3.3): admit before the handler runs, so a refused
+	// tree or fleet call costs nothing. The handler runs under the
+	// ticket's ctx: the class deadline, the in-flight registration the
+	// refuse rung cancels, and the byte meter.
+	meta.class = costClassOf(te, p.Arguments)
+	ctx, tk, busy := s.admitToolCall(ctx, te, p.Arguments, true)
+	if busy != nil {
+		meta.outcome = string(tenancy.OutcomeRefused)
+		return nil, busy, meta
 	}
 
 	// SP-3, made real at the only layer every response passes through: the
@@ -387,14 +428,18 @@ func (s *Server) handleToolsCallWithCtx(ctx context.Context, params json.RawMess
 	// RT-150: a read whose auto-refresh was deferred says so.
 	ctx, refreshed := withRefreshNotes(ctx)
 
-	result, rpcErr := te.handler(ctx, p.Arguments)
+	result, rpcErr := runHandler(ctx, te, p.Arguments)
+	// RT-57 (§3.4): the answer names itself — abandoned, partial or ok.
+	result, rpcErr, partial, settled := s.settleCall(ctx, te.desc.Name, tk, result, rpcErr)
+	settled.class = meta.class
+	meta = settled
 	if rpcErr != nil {
-		return nil, rpcErr
+		return nil, rpcErr, meta
 	}
 	// Wrap result in MCP content envelope.
 	b, err := json.Marshal(result)
 	if err != nil {
-		return nil, &rpcError{Code: ErrCodeInternal, Message: "marshal result: " + err.Error()}
+		return nil, &rpcError{Code: ErrCodeInternal, Message: "marshal result: " + err.Error()}, meta
 	}
 	envelope := map[string]any{
 		"content": []any{
@@ -415,5 +460,8 @@ func (s *Server) handleToolsCallWithCtx(ctx context.Context, params json.RawMess
 	if r := refreshed.render(); r != nil {
 		envelope["refresh"] = r
 	}
-	return envelope, nil
+	if partial != nil {
+		envelope["budget"] = partial
+	}
+	return envelope, nil, meta
 }

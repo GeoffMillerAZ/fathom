@@ -238,6 +238,7 @@ func runDoctorChecks(root, explicitSvc, harness, baseURL string) []doctorCheck {
 		checkDaemonFresh(hc, baseURL, daemonUp), // PC-4: the daemon's stamp vs this binary (doctor_provenance.go)
 		checkDaemonFootprint(hc, baseURL, daemonUp),  // O108: the daemon's own heap in-use vs a stated budget (doctor_footprint.go)
 		checkDaemonDiskWrites(hc, baseURL, daemonUp), // RT-162: bytes written outside explicit ingest vs 2 GiB/day (doctor_footprint.go)
+		checkAdmissionMode(hc, baseURL, daemonUp),    // design §1: WARN while the daemon serves with admission off (doctor_admission.go)
 		checkDaemonPosture(""),                       // RT-15: the installed plist's launchd posture vs schema 2 (daemon_signing.go)
 		checkHooksInstalled(root, harness),
 		checkLefthookGates(root),
