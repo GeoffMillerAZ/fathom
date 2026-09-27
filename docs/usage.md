@@ -485,9 +485,10 @@ or a shell `fathom ingest`). A scratch daemon that needs more sets
 cost class (`docs/mcp-tools.md`, "Cost classes") before its handler runs:
 per-class slots derived from the budget, per-origin queue waits (a hook never
 waits for a `tree` or `fleet` slot), a refusal when the remaining
-`X-Fathom-Deadline` is below the class's median, and the class deadline on the
-call's context — which is now the request's, so a client that disconnects
-cancels its read (an ingest runs detached). `[tenancy].admission` defaults to
+`X-Fathom-Deadline` is below the tool's recent median, and the class deadline on
+the call's context — which is now the request's, so a client that disconnects
+cancels its read and a caller already gone is never run (an ingest runs
+detached). `[tenancy].admission` defaults to
 `observe` (every would-refuse logged and counted, nothing refused); `enforce`
 answers HTTP 503 + `Retry-After` + JSON-RPC `-32050`; `off` is the escape
 hatch. Every route requires a loopback `Host` (and a same-origin `Origin`),

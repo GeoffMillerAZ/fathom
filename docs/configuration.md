@@ -336,19 +336,23 @@ budget, not configured: at 4 GiB, `point` 64, `index` max(2, min(NumCPU−2, 8))
 waiter queues for at most its origin's wait — a hook 100 ms for `point`/`index`
 and never for `tree`/`fleet`; the console 2 s (never for `fleet`); an agent
 5 s (20 s for `fleet`); a CLI 30 s — and leaves when its request ends. A
-request whose remaining `X-Fathom-Deadline` is below the class's observed
-median is refused at once. Each call runs under its request's context and the
-class deadline (`point` 10 s, `index` 30 s, `tree` 60 s, `fleet` 120 s), so a
-client that disconnects cancels it (counted abandoned); an ingest runs
-detached. The refuse rung refuses `tree`, `fleet`, `ingest` and `egress`
+request whose remaining `X-Fathom-Deadline` is below its tool's median over the
+last 15 minutes (ok, partial and abandoned calls; none until eight) is refused
+at once. Each call runs under its request's context and the class deadline
+(`point` 10 s, `index` 30 s, `tree` 60 s, `fleet` 120 s), so a client that
+disconnects cancels it (counted abandoned), and a caller already gone is never
+run (refused `caller_gone`, in every mode but `off`); an ingest runs detached,
+free of the route's write deadline. A refusal's `X-Fathom-Busy-Scope` is
+`class` (slots full, deadline, caller gone: the hooks' breaker stays closed) or
+`daemon` (the refuse rung, safe mode: hooks back off for `Retry-After`). The refuse rung refuses `tree`, `fleet`, `ingest` and `egress`
 (decision-port calls: `/route`, the obligations re-rank); safe mode refuses
 `tree`, `fleet` and `egress`.
 
 | Mode | What it does |
 |---|---|
 | `observe` (default until RT-96) | runs the whole decision, logs every would-refuse (`admission (observe): would refuse …`) and counts it (`fathom_would_refuse_total{class,reason,origin}`), and admits; the per-call byte meter records but never stops a producer |
-| `enforce` | refuses with HTTP 503, `Retry-After` and JSON-RPC `-32050` (`fathom busy: <reason>`); a producer stopped at its per-call ceiling answers `budget: {partial: true, …}` |
-| `off` | admits without deciding; a loud startup line (the escape hatch: `FATHOM_TENANCY_ADMISSION=off`) |
+| `enforce` | refuses with HTTP 503, `Retry-After` and JSON-RPC `-32050` (`fathom busy: <reason>`); a producer stopped at its per-call ceiling answers `budget: {partial: true, elided, bytes_read, reason}` (elided a lower bound), in a `batch` entry too |
+| `off` | admits without deciding (class deadlines still apply); a loud startup line and a `fathom doctor` `admission_mode` WARN on every run (the escape hatch: `FATHOM_TENANCY_ADMISSION=off`) |
 
 `GET /metrics` adds `fathom_inflight{class,origin}`, `fathom_queue{class}`,
 `fathom_slots{class}`, `fathom_rejected_total{class,reason,origin}`,

@@ -248,11 +248,15 @@ Served by `serve-http` and `serve-mcp` alike; the contract lives in
   `Retry-After` and JSON-RPC error `-32050`, message `fathom busy: <reason>`,
   `data: {reason, class, level, retry_after_ms, in_flight, outcome:
   "refused"}` (a `batch` sub-call's refusal is that entry's `error`, the batch
-  itself answers 200). A call whose context ended — its client left, or its
+  itself answers 200); the 503 carries `X-Fathom-Busy-Scope: class` (slots,
+  deadline, caller gone) or `daemon` (refuse rung, safe mode), and hooks back
+  off daemon-wide only on `daemon`. A caller already gone is refused
+  `caller_gone` before its handler runs. A call whose context ended — its client left, or its
   class deadline or `X-Fathom-Deadline` passed — answers `-32603` with
   `data: {outcome: "abandoned", cause}`, never what the handler computed. A
-  call whose producers passed the class's per-call byte ceiling carries
-  `budget: {partial: true, bytes_read, reason}` in its envelope. The managed
+  call whose producer the meter stopped at the class's per-call byte ceiling
+  (enforce only) carries `budget: {partial: true, elided, bytes_read,
+  reason}` in its envelope or its `batch` entry, `elided` a lower bound. The managed
   daemon answers a test caller (`X-Fathom-Caller … test=1`) 409 `{reason:
   "test binary reached the operator daemon"}`. Call-log rows are
   `schema_version` 3: `outcome` on every row (`ok`, `partial`, `refused`,
@@ -347,8 +351,8 @@ runs. Under `enforce` a refused call answers HTTP 503 with `Retry-After` and JSO
 error `-32050` (`message: "fathom busy: <reason>"`, `data: {reason, class, level,
 retry_after_ms, in_flight}`); a call whose context ends (deadline, client gone, the
 refuse rung) answers a named `abandoned` error, never an empty result; a call whose
-producers passed the per-call ceiling carries `budget: {partial: true, bytes_read,
-reason}` in its envelope. A test binary reaching the managed daemon gets 409.
+producer the meter stopped at the per-call ceiling carries `budget: {partial: true,
+elided, bytes_read, reason}` in its envelope (or its `batch` entry). A test binary reaching the managed daemon gets 409.
 
 | Tool | Class |
 |---|---|
