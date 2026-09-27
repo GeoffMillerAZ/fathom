@@ -47,7 +47,8 @@ func TestFleetFreshnessNoLoopbackOrFork(t *testing.T) {
 				Services: []StatuszServiceRow{{Service: "pay", IndexedCommit: head, LastCompilePerLayer: map[string]string{"adr-rules": "ok"},
 					TypedEdges: &StatuszTypedEdges{Failed: true, Reason: "go list failed"}}}}
 		},
-		rpc: srv.HandleRequest,
+		build: func() StatuszBuildInfo { return StatuszBuildInfo{BinaryCommit: "0123456789ab"} },
+		rpc:   srv.HandleRequest,
 	})
 	t.Cleanup(func() { inProcessReg.Store(prev) })
 

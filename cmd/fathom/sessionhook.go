@@ -433,6 +433,9 @@ type inProcessRegistry struct {
 	// statusz is the daemon's own /statusz report, built in process
 	// (RT-115): a console page reads it without a loopback request.
 	statusz func(ctx context.Context) StatuszReport
+	// build is the daemon binary's stamp (nil: statuszBuildInfo, this
+	// process's own — the value statusz reports; tests inject one).
+	build func() StatuszBuildInfo
 	// rpc answers one JSON-RPC message in process (the MCP server's
 	// HandleRequest): the console's own tool calls — the agent surface's
 	// tools/list, /learn/ask, plan verification — are admitted by the

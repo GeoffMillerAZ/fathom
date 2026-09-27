@@ -44,6 +44,9 @@ type daemonStatusz struct {
 // compile runs — RT-115); otherwise /statusz's.
 func fetchDaemonBuild(hc *http.Client, baseURL string) (StatuszBuildInfo, error) {
 	if r := inProcessDaemon(baseURL); r != nil && r.statusz != nil {
+		if r.build != nil {
+			return r.build(), nil
+		}
 		return statuszBuildInfo(), nil
 	}
 	st, err := fetchStatusz(hc, baseURL)
