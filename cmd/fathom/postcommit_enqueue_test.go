@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -133,26 +134,39 @@ func TestPostCommitEnqueuesRefresh(t *testing.T) {
 	}
 }
 
-// TestRefreshFileDefersToQueuedServiceRefresh (RT-97): while a whole-service
-// refresh of the service is queued or running on the refresh queue,
-// /refresh-file leaves the file to it — no per-file write races the ingest
-// — and says so.
+// TestRefreshFileDefersToQueuedServiceRefresh (RT-97, I48): while a
+// whole-service refresh of the service is queued or running, /refresh-file
+// leaves the file to the queue — no per-file write races the ingest — and
+// asks it for the refresh that covers the edit: a running ingest may have
+// read the file before the edit, so the request becomes its one follow-up.
 func TestRefreshFileDefersToQueuedServiceRefresh(t *testing.T) {
 	ms := store.NewMemoryStore()
 	c := client.New(connector.NewLocalConnector(), ms)
 	t.Cleanup(func() { _ = c.Close() })
 	release := make(chan struct{})
-	started := make(chan struct{}, 1)
+	started := make(chan struct{}, 4)
+	var runs int32
 	q := refresh.New(refresh.Config{
-		Run:       func(ctx context.Context, job refresh.Job) error { started <- struct{}{}; <-release; return nil },
+		Run: func(ctx context.Context, job refresh.Job) error {
+			atomic.AddInt32(&runs, 1)
+			started <- struct{}{}
+			<-release
+			return nil
+		},
 		Gate:      func(string, bool, time.Time) refresh.Verdict { return refresh.Verdict{} },
 		StartWait: -1, Stagger: -1, Warmup: func(time.Time) bool { return false },
 	})
 	qctx, stop := context.WithCancel(context.Background())
 	q.Start(qctx)
-	t.Cleanup(func() { close(release); stop(); q.Wait() })
+	var once sync.Once
+	letGo := func() { once.Do(func() { close(release) }) }
+	t.Cleanup(func() { letGo(); stop(); q.Wait() })
 	q.RequestRefresh(context.Background(), refresh.Request{Service: "svc", Reason: refresh.ReasonAuto}, false)
 	<-started
+	go func() {
+		for range started { // drain the follow-up's start
+		}
+	}()
 
 	srv := httptest.NewServer(refreshFileHandler(c, nil, func() *refresh.Queue { return q }))
 	defer srv.Close()
@@ -163,7 +177,15 @@ func TestRefreshFileDefersToQueuedServiceRefresh(t *testing.T) {
 	defer resp.Body.Close()
 	var out refreshFileResponse
 	_ = json.NewDecoder(resp.Body).Decode(&out)
-	if out.Refreshed || !strings.Contains(out.Skipped, "whole-service refresh running") {
-		t.Fatalf("/refresh-file during a service refresh: %+v; want skipped, naming the running refresh", out)
+	if out.Refreshed || !strings.Contains(out.Skipped, "whole-service refresh running") || !strings.Contains(out.Skipped, "follow-up") {
+		t.Fatalf("/refresh-file during a service refresh: %+v; want skipped, naming the running refresh and its follow-up", out)
+	}
+	letGo()
+	deadline := time.Now().Add(5 * time.Second)
+	for atomic.LoadInt32(&runs) < 2 {
+		if time.Now().After(deadline) {
+			t.Fatalf("runs = %d: the edit's follow-up refresh never ran — the file stays stale", atomic.LoadInt32(&runs))
+		}
+		time.Sleep(5 * time.Millisecond)
 	}
 }
