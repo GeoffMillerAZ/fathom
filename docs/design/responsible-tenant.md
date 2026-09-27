@@ -1035,9 +1035,14 @@ class, the largest classes, internal-disk free. Targets: `workspace/` ≤ 3 GiB 
 The audit's macOS resource report showed 8.6 GB dirtied in 1,395 s against a ~99 KB/s
 limit. Contract: ≤ 2 GiB/day written by the managed daemon outside explicit ingest. The
 sampler reads cumulative bytes written (`proc_pid_rusage`'s `ri_diskio_byteswritten`, self
-and children); the ring keeps it per minute; `resources` and doctor's `disk_retention` row
-judge the day against the budget (`DiskWriteVerdict`); `fathom_bytes_written_total` carries
-it by subsystem. RT-M12 reads seven days. A breach is disclosed, not enforced: the
+and children — rusage has no children's disk-I/O field, so each live child is read per sample
+and `ChildWriteTracker` keeps a monotonic floor: a child's writes after the last sample that
+saw it are missed); the ring keeps it per minute (in memory until RT-47 persists it, so the
+window since start is exported and named, never called 24 h); `resources` and doctor's
+`disk_writes` row (beside §12.1's `disk_retention`, which reports reclaimable bytes) judge the
+day against the budget (`DiskWriteVerdict`); `fathom_bytes_written_total` carries it by
+subsystem — `self` and `children`, since rusage cannot attribute bytes to the call log, the
+WAL or ingest. RT-M12 reads seven days. A breach is disclosed, not enforced: the
 writers are the call log, the WAL and ingest, each bounded by its own mechanism.
 
 ---

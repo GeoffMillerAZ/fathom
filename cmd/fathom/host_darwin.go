@@ -7,7 +7,8 @@ package main
 // disk bytes written (proc_pid_rusage), walks the child-process tree
 // (proc_listchildpids — `go list -export`, git and rg run as children and
 // their memory is not in the daemon's phys_footprint) summing each child's
-// phys_footprint, and reads kern.memorystatus_vm_pressure_level,
+// phys_footprint and bytes written (RT-162: the children's writes, sampled
+// while each child lives), and reads kern.memorystatus_vm_pressure_level,
 // vm.swapusage and statfs of the store's, TMPDIR's and the swap volume. All
 // in C over stack buffers and C strings made once: no Go allocation per
 // sample.
@@ -27,6 +28,12 @@ package main
 typedef struct {
 	int64_t footprint, disk_written;
 	int64_t children, child_count;
+	// RT-162: each live child's own bytes written (proc_pid_rusage per
+	// child; rusage has no children's disk-I/O field). child_n = -1 when the
+	// tree could not be listed.
+	int32_t child_pids[FATHOM_MAX_TREE];
+	int64_t child_written[FATHOM_MAX_TREE];
+	int64_t child_n;
 	int64_t pressure;
 	int64_t swap_used, swap_total;
 	int64_t store_free, tmp_free, swap_vol_free;
@@ -57,16 +64,23 @@ static int fathom_tree(pid_t root, pid_t *out, int max) {
 	return n;
 }
 
-static int64_t fathom_children(pid_t root, int64_t *count) {
+// fathom_children sums the tree's phys_footprint; when wpids is set it
+// also records each answering child's pid and bytes written (*wn of them,
+// -1 when the tree could not be listed).
+static int64_t fathom_children(pid_t root, int64_t *count, int32_t *wpids, int64_t *wwritten, int64_t *wn) {
 	pid_t pids[FATHOM_MAX_TREE];
 	int n = fathom_tree(root, pids, FATHOM_MAX_TREE);
-	if (n < 0) { *count = -1; return -1; }
-	int64_t sum = 0, c = 0;
+	if (n < 0) { *count = -1; if (wn) *wn = -1; return -1; }
+	int64_t sum = 0, c = 0, w = 0;
 	for (int i = 0; i < n; i++) {
-		uint64_t phys = 0;
-		if (fathom_rusage(pids[i], &phys, NULL) == 0) { sum += (int64_t)phys; c++; }
+		uint64_t phys = 0, written = 0;
+		if (fathom_rusage(pids[i], &phys, wpids ? &written : NULL) == 0) {
+			sum += (int64_t)phys; c++;
+			if (wpids) { wpids[w] = (int32_t)pids[i]; wwritten[w] = (int64_t)written; w++; }
+		}
 	}
 	*count = c;
+	if (wn) *wn = w;
 	return sum;
 }
 
@@ -98,7 +112,7 @@ static void fathom_read_host(pid_t self, const char *store, const char *tmp, con
 		r->footprint = -1;
 		r->disk_written = -1;
 	}
-	r->children = fathom_children(self, &r->child_count);
+	r->children = fathom_children(self, &r->child_count, r->child_pids, r->child_written, &r->child_n);
 
 	int level = 0;
 	size_t sz = sizeof(level);
@@ -130,6 +144,7 @@ import "C"
 
 import (
 	"os"
+	"unsafe"
 
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
@@ -143,6 +158,7 @@ type darwinHost struct {
 	self                C.pid_t
 	store, tmp, swapVol *C.char
 	reading             C.fathom_host_reading
+	writes              tenancy.ChildWriteTracker // RT-162: the children's bytes written
 }
 
 // newTenancyHost returns the platform's host reader; storeDir is the
@@ -162,6 +178,11 @@ func (h *darwinHost) ReadHost(s *tenancy.Sample) {
 	r := &h.reading
 	s.Footprint = int64(r.footprint)
 	s.DiskWritten = int64(r.disk_written)
+	if n := int(r.child_n); n >= 0 {
+		s.ChildDiskWritten = h.writes.Observe(
+			unsafe.Slice((*int32)(unsafe.Pointer(&r.child_pids[0])), n),
+			unsafe.Slice((*int64)(unsafe.Pointer(&r.child_written[0])), n))
+	}
 	s.Children, s.ChildCount = int64(r.children), int(r.child_count)
 	if s.ChildCount < 0 {
 		s.ChildCount = 0
@@ -185,7 +206,7 @@ func (h *darwinHost) ReadHost(s *tenancy.Sample) {
 // could not be listed.
 func childTreeFootprint(pid int) (bytes int64, count int, ok bool) {
 	var c C.int64_t
-	sum := C.fathom_children(C.pid_t(pid), &c)
+	sum := C.fathom_children(C.pid_t(pid), &c, nil, nil, nil)
 	if sum < 0 {
 		return tenancy.Unknown, 0, false
 	}

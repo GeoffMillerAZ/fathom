@@ -39,6 +39,11 @@ func TestDiskWriteBudgetDisclosed(t *testing.T) {
 	if !strings.Contains(v.Line, "1.5/2 GiB") || !strings.Contains(v.Line, "outside explicit ingest") || !strings.Contains(v.Line, "5 GiB during explicit ingest") {
 		t.Errorf("line = %q", v.Line)
 	}
+	// Review finding 4: five minutes of readings are not a day — the line
+	// names the window and says "so far", never "within budget" for 24 h.
+	if v.Covered >= 24*time.Hour || !strings.Contains(v.Line, "since the first reading") || !strings.Contains(v.Line, "within budget so far") {
+		t.Errorf("a 5-minute ring's line = %q (covered %s), want its window named and \"within budget so far\"", v.Line, v.Covered)
+	}
 
 	// A restart resets the cumulative counter: the new value is new writes.
 	r.Add(t0.Add(6*time.Minute), 768*MiB, false)

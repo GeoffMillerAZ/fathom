@@ -111,6 +111,10 @@ func DiskWriteVerdict(r *DiskWriteRing, now time.Time, budget int64) DiskWriteJu
 	if j.Outside > budget {
 		j.Over = true
 		j.Line += fmt.Sprintf(" — over the %s/day budget; disclosed, not enforced: the writers are the call log, the WAL and ingest — fathom resources", FormatBytes(budget))
+	} else if j.Covered < 24*time.Hour {
+		// The ring is in memory until RT-47 persists it: a young
+		// daemon's readings are not a day (review finding 4).
+		j.Line += " — within budget so far"
 	} else {
 		j.Line += " — within budget"
 	}

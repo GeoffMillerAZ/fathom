@@ -81,6 +81,10 @@ type governor struct {
 	abandoned int64                 // calls cancelled as abandoned-by-governor, process lifetime
 	lastDiag  time.Time             // the last refuse-entry diagnostic capture
 	disk      tenancy.DiskWriteRing // RT-162: bytes written per minute, 24 h
+	// childWritten is the children's last known bytes-written total: a
+	// sample whose child reading is unknown holds it rather than reading as
+	// a counter reset (which the ring would count as all-new writes).
+	childWritten int64
 }
 
 // freeEvery bounds debug.FreeOSMemory while shed (§2.1).
@@ -124,7 +128,13 @@ func (g *governor) tick(at time.Time, late time.Duration) tenancy.Transition {
 	}
 	tenancy.SampleHost(g.host, g.rt, at, late, &g.sample)
 	g.haveSmp = true
-	g.disk.Add(g.sample.At, g.sample.DiskWritten, g.inflight.ExplicitIngestInFlight())
+	// RT-162 (§12.4): self and the sampled children.
+	if g.sample.ChildDiskWritten >= 0 {
+		g.childWritten = g.sample.ChildDiskWritten
+	}
+	if g.sample.DiskWritten >= 0 {
+		g.disk.Add(g.sample.At, g.sample.DiskWritten+g.childWritten, g.inflight.ExplicitIngestInFlight())
+	}
 	tr := tenancy.StepLadder(&g.st, &g.sample, &g.budget)
 	if tr.Changed {
 		g.lastTrans = tr
@@ -430,6 +440,9 @@ type governorSnapshot struct {
 	Pressure    string `json:"pressure"`
 	SwapUsed    int64  `json:"swap_used"`
 	DiskWritten int64  `json:"disk_written"`
+	// ChildDiskWritten is the sampled children's bytes written (a floor:
+	// a child's last two seconds are not seen); -1 = unknown.
+	ChildDiskWritten int64 `json:"children_disk_written"`
 	// DiskWrites is RT-162's judgment: bytes written in the last 24 h
 	// outside explicit ingest against 2 GiB/day (tenancy.DiskWriteVerdict).
 	DiskWrites     string `json:"disk_writes,omitempty"`
@@ -437,6 +450,7 @@ type governorSnapshot struct {
 	diskOutside    int64
 	diskIngest     int64
 	diskKnown      bool
+	diskCovered    time.Duration
 	GCCPUFraction  float64  `json:"gc_cpu_fraction"`
 	Unknowns       []string `json:"unknowns,omitempty"`
 	LastTransition string   `json:"last_transition,omitempty"`
@@ -450,7 +464,7 @@ func (g *governor) snapshot() governorSnapshot {
 	s := governorSnapshot{
 		Level: g.st.Level.String(), LadderOff: g.st.Off,
 		Budget: g.budget.Budget, Shed: g.budget.Shed, Refuse: g.budget.Refuse, Exit: g.budget.Exit, ExitEnabled: g.budget.ExitEnabled,
-		Footprint: tenancy.Unknown, Children: tenancy.Unknown, SwapUsed: tenancy.Unknown, DiskWritten: tenancy.Unknown,
+		Footprint: tenancy.Unknown, Children: tenancy.Unknown, SwapUsed: tenancy.Unknown, DiskWritten: tenancy.Unknown, ChildDiskWritten: tenancy.Unknown,
 		Pressure: tenancy.PressureUnknown.String(), Abandoned: g.abandoned,
 	}
 	if !g.st.Since.IsZero() {
@@ -459,11 +473,14 @@ func (g *governor) snapshot() governorSnapshot {
 	if g.haveSmp {
 		s.Footprint, s.Children, s.ChildCount = g.sample.Footprint, g.sample.Children, g.sample.ChildCount
 		s.Pressure, s.SwapUsed, s.DiskWritten = g.sample.Pressure.String(), g.sample.SwapUsed, g.sample.DiskWritten
+		if g.sample.ChildDiskWritten >= 0 || g.childWritten > 0 {
+			s.ChildDiskWritten = g.childWritten
+		}
 		s.GCCPUFraction = g.sample.GCCPUFraction
 		s.Unknowns = g.sample.Unknowns()
 		dv := tenancy.DiskWriteVerdict(&g.disk, g.sample.At, tenancy.DiskWriteBudgetPerDay)
 		s.DiskWrites, s.DiskWritesOver = dv.Line, dv.Over
-		s.diskOutside, s.diskIngest, s.diskKnown = dv.Outside, dv.Ingest, !dv.Unknown
+		s.diskOutside, s.diskIngest, s.diskKnown, s.diskCovered = dv.Outside, dv.Ingest, !dv.Unknown, dv.Covered
 	}
 	if g.lastTrans.Changed {
 		s.LastTransition = fmt.Sprintf("%s %s → %s: %s", g.lastTrans.At.UTC().Format(time.RFC3339), g.lastTrans.From, g.lastTrans.To, g.lastTrans.Reason)
@@ -546,12 +563,21 @@ func governorMetricLines() string {
 		fmt.Fprintf(&b, "fathom_swap_used_bytes %d\n", s.SwapUsed)
 	}
 	fmt.Fprintf(&b, "fathom_gc_cpu_fraction %g\n", s.GCCPUFraction)
+	// RT-162 (§12.4): by subsystem — the daemon's own rusage and its
+	// sampled child tree (per-writer attribution, call log vs WAL vs
+	// ingest, is not in rusage).
 	if s.DiskWritten >= 0 {
-		fmt.Fprintf(&b, "fathom_bytes_written_total %d\n", s.DiskWritten)
+		fmt.Fprintf(&b, "fathom_bytes_written_total{subsystem=\"self\"} %d\n", s.DiskWritten)
+	}
+	if s.ChildDiskWritten >= 0 {
+		fmt.Fprintf(&b, "fathom_bytes_written_total{subsystem=\"children\"} %d\n", s.ChildDiskWritten)
 	}
 	if s.diskKnown { // RT-162: never a zero for an unknown reading (I38)
 		fmt.Fprintf(&b, "fathom_bytes_written_24h_outside_ingest %d\n", s.diskOutside)
 		fmt.Fprintf(&b, "fathom_bytes_written_24h_explicit_ingest %d\n", s.diskIngest)
+		// The ring is in memory until RT-47: the "24h" pair covers only
+		// this much (review finding 4).
+		fmt.Fprintf(&b, "fathom_bytes_written_window_seconds %d\n", int64(s.diskCovered/time.Second))
 		fmt.Fprintf(&b, "fathom_disk_write_budget_bytes %d\n", int64(tenancy.DiskWriteBudgetPerDay))
 	}
 	fmt.Fprintf(&b, "fathom_quarantined_services %d\n", len(s.Quarantined))
