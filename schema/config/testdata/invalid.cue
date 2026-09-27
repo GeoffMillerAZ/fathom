@@ -103,3 +103,12 @@ package config
 // bad15: #Config & {
 // 	tenancy: admission: "strict"
 // }
+//
+// 16. A [tenancy] refuse mark below the shed mark (the ladder's rungs are
+//     ordered: shed ≤ refuse):
+// bad16: #Config & {
+// 	tenancy: {
+// 		shed_at:   1.0
+// 		refuse_at: 0.5
+// 	}
+// }

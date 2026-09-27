@@ -288,10 +288,10 @@ laptop's ceiling. Precedence: env > user > defaults.
 [tenancy]
 budget       = "auto"    # phys_footprint; auto = clamp(RAM/8, 1GiB, 4GiB)
 shed_at      = 0.75      # × budget
-refuse_at    = 1.00      # × budget
-exit_at      = 2.00      # × budget, capped at RAM/4
+refuse_at    = 1.00      # × budget; never below shed_at (a misordered ladder is refused at start)
+exit_at      = 2.00      # × budget, capped at RAM/4, raised to the refuse mark
 exit_enabled = true      # false keeps shed and refuse only (disclosed)
-gc_hint      = "exit"    # SetMemoryLimit target: "exit" | "budget" | "off" | an IEC size
+gc_hint      = "exit"    # SetMemoryLimit target: "exit" | "budget" | "off" | an IEC size (anything else is refused at start)
 gomaxprocs   = "auto"    # managed daemons: max(2, NumCPU/2) unless GOMAXPROCS is in the env
 
 [tenancy.host]

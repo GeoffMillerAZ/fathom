@@ -140,6 +140,9 @@ func ResolveTenancyConfig(l Loaded, getenv func(string) string) (tenancy.Config,
 	if v := getenv("FATHOM_MEMORY_LIMIT"); v != "" {
 		oldKey, oldSrc = v, "FATHOM_MEMORY_LIMIT"
 	}
+	if err := tenancy.CheckMarks(cfg); err != nil {
+		errs = append(errs, err.Error())
+	}
 	// A malformed hint is an error naming its source, as the old soft
 	// limit's was (it exited 1), never a silent fallback to the exit mark.
 	if h := strings.TrimSpace(cfg.GCHint); h != "" {

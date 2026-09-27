@@ -335,6 +335,18 @@ func clamp(v, lo, hi int64) int64 {
 	return v
 }
 
+// CheckMarks reports a ladder whose rungs are out of order: the effective
+// refuse fraction (configured or the default) below the effective shed
+// fraction. ResolveBudget itself never fails; config resolution calls this
+// so a misordered ladder is a named error, not a silent inversion.
+func CheckMarks(cfg Config) error {
+	shedAt, refuseAt := orF(cfg.ShedAt, defaultShedAt), orF(cfg.RefuseAt, defaultRefuseAt)
+	if refuseAt < shedAt {
+		return fmt.Errorf("[tenancy] refuse_at %.2f is below shed_at %.2f: the rungs are ordered (shed ≤ refuse)", refuseAt, shedAt)
+	}
+	return nil
+}
+
 func orF(v, d float64) float64 {
 	if v > 0 {
 		return v

@@ -183,3 +183,35 @@ func TestMalformedGCHintIsNamedError(t *testing.T) {
 		}
 	}
 }
+
+// Review finding 9: the ladder's marks are ordered — a refuse mark below
+// the shed mark (explicit or against the 0.75 default) is a named error.
+func TestTenancyMarksOrdered(t *testing.T) {
+	dir := t.TempDir()
+	for _, tc := range []struct {
+		body string
+		ok   bool
+	}{
+		{"[tenancy]\nshed_at = 1.0\nrefuse_at = 0.5\n", false},
+		{"[tenancy]\nrefuse_at = 0.5\n", false}, // default shed 0.75
+		{"[tenancy]\nshed_at = 0.9\n", true},    // default refuse 1.0
+		{"[tenancy]\nshed_at = 0.8\nrefuse_at = 0.8\n", true},
+	} {
+		p := filepath.Join(dir, "c.toml")
+		writeTOML(t, p, tc.body)
+		loaded, err := Load(p, "")
+		if err != nil {
+			if tc.ok {
+				t.Fatalf("%q: load: %v", tc.body, err)
+			}
+			continue // the schema refused it: named at load
+		}
+		_, _, err = ResolveTenancyConfig(loaded, envOf(nil))
+		if tc.ok && err != nil {
+			t.Fatalf("%q is ordered: %v", tc.body, err)
+		}
+		if !tc.ok && (err == nil || !strings.Contains(err.Error(), "refuse_at")) {
+			t.Fatalf("%q: err %v, want a named ordering error", tc.body, err)
+		}
+	}
+}

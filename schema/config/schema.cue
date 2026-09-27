@@ -298,6 +298,13 @@ package config
 	shed_at?:   number & >0 & <=1
 	refuse_at?: number & >0 & <=2
 	exit_at?:   number & >=1 & <=8
+	// The rungs are ordered: shed ≤ refuse (checked here when both are
+	// set; against the 0.75 default by ResolveTenancyConfig). An exit
+	// mark below refuse is raised to it, named in the startup line.
+	if shed_at != _|_ if refuse_at != _|_ {
+		refuse_at: >=shed_at
+	}
+
 	// false keeps shed/refuse only (disclosed); an in-flight ingest is
 	// always halted before any exit.
 	exit_enabled?: bool
