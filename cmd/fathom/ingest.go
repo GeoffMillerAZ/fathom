@@ -140,7 +140,7 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 	// — a stale cached identity must never outlive the ingest that
 	// changed the answer, regardless of TTL (the O15 class). A refused
 	// ingest changed nothing.
-	if readErr == nil || !readErr.Refused {
+	if readErr == nil || !readErr.WroteNothing() {
 		hookcache.BustIdent()
 	}
 
@@ -151,7 +151,7 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 	// doesn't have. Best-effort per file: one bad SCIP index never aborts
 	// the ingest that already succeeded.
 	var scipResults []scipImportResult
-	if readErr == nil || !readErr.Refused {
+	if readErr == nil || !readErr.WroteNothing() {
 		for _, p := range resolveSCIPPaths(svcPath, scipPaths) {
 			imp, ierr := c.ImportSCIP(context.Background(), *service, p)
 			if ierr != nil {
@@ -171,7 +171,7 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 	// config/optional read at a CLI entry point (I14): a problem here
 	// warns and never turns an otherwise-successful ingest into a
 	// failure.
-	if readErr == nil || !readErr.Refused {
+	if readErr == nil || !readErr.WroteNothing() {
 		if n, cerr := ingestConfiguredTestResults(context.Background(), *storePath, *service, svcPath); cerr != nil {
 			fmt.Fprintf(stderr, "warning: [tests] results_dir envelope pickup: %v\n", cerr)
 		} else if n > 0 && !*jsonOut {
@@ -187,7 +187,7 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 	// only → every certificate reads unproven, never silently absent).
 	// Hash-gated (runCertifyCompile) so a repeat ingest against an
 	// unchanged declaration/watermark set is a cheap no-op.
-	if readErr == nil || !readErr.Refused {
+	if readErr == nil || !readErr.WroteNothing() {
 		ingestConfiguredCertifications(context.Background(), *storePath, *service, svcPath, stdout, stderr, *jsonOut)
 	}
 
@@ -322,8 +322,11 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 	printDefaultIgnoredDirs(stdout, report.DefaultIgnoredDirs)
 	if readErr != nil {
 		outcome := "degraded"
-		if readErr.Refused {
+		switch {
+		case readErr.Refused:
 			outcome = "refused"
+		case readErr.Incomplete:
+			outcome = "incomplete"
 		}
 		fmt.Fprintf(stderr, "error: ingest %s: %v\n", outcome, readErr)
 		if h := readErr.Hint(); h != "" {

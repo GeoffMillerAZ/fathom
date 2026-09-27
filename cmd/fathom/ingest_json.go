@@ -89,8 +89,11 @@ type ingestScipJSON struct {
 // ingestJSON is the `fathom ingest --json` envelope.
 type ingestJSON struct {
 	Service string `json:"service"`
-	// Outcome is ok | degraded | refused. degraded: every readable file was
-	// indexed and read_failed > 0; refused: nothing was written (O16 guard).
+	// Outcome is ok | degraded | refused | incomplete. degraded: every
+	// readable file was indexed and read_failed > 0; refused: nothing was
+	// written (O16 guard); incomplete: every file failed with no index to
+	// protect — nothing was written and the ingest was not recorded
+	// complete (F2).
 	Outcome    string `json:"outcome"`
 	ExitCode   int    `json:"exit_code"`
 	Discovered int    `json:"discovered"`
@@ -208,8 +211,11 @@ func renderIngestJSON(w io.Writer, service, svcPath string, report client.Report
 	}
 	if readErr != nil {
 		out.Outcome = "degraded"
-		if readErr.Refused {
+		switch {
+		case readErr.Refused:
 			out.Outcome = "refused"
+		case readErr.Incomplete:
+			out.Outcome = "incomplete" // F2: nothing indexed, not recorded complete
 		}
 		out.ExitCode = 1
 		out.Error = readErr.Error()

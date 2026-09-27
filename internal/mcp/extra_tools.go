@@ -1208,7 +1208,7 @@ func registerIngest(s *Server, backend QueryInterface) {
 		// partially stored before it stopped. Only a REFUSED ingest
 		// (IT-15) provably wrote nothing and leaves the cache alone.
 		var readErr *fusion.ReadFailuresError
-		if !(errors.As(ingestErr, &readErr) && readErr.Refused) {
+		if !(errors.As(ingestErr, &readErr) && readErr.WroteNothing()) {
 			hookcache.BustIdent()
 			evictServiceCaches(backend, svc)
 		}
@@ -1217,7 +1217,7 @@ func registerIngest(s *Server, backend QueryInterface) {
 		// the quarantine, recorded in the daemon's lifecycle ledger. A
 		// refused, halted or failed ingest leaves it in place.
 		quarantineCleared := false
-		if wasQuarantined && (ingestErr == nil || (readErr != nil && !readErr.Refused)) {
+		if wasQuarantined && (ingestErr == nil || (readErr != nil && !readErr.WroteNothing())) {
 			quarantineCleared = tenancy.ClearQuarantine(svc, "ingest tool")
 		}
 		if ingestErr != nil {

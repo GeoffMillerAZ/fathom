@@ -1031,10 +1031,11 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	// watermark over them — would let a wedged reader pass off an empty
 	// index as a fresh one. Refuse before the first write (nothing has been
 	// written: every read failed). A store with no evidence has nothing to
-	// protect and falls through (the failures are still returned loudly). A
-	// PARTIAL wedge is not refused: the readable files are honest progress
-	// and the unreadable ones keep their evidence; refusing there would also
-	// make a repo with one permanently unreadable file un-ingestable forever.
+	// protect, but is not committed either: it is returned Incomplete and
+	// stays in_progress (F2, below). A PARTIAL wedge is not refused: the
+	// readable files are honest progress and the unreadable ones keep their
+	// evidence; refusing there would also make a repo with one permanently
+	// unreadable file un-ingestable forever.
 	if len(failures) > 0 && len(failures) == len(refs) {
 		existing, qErr := p.existingObservations(ctx, svc.ID)
 		if qErr != nil {
@@ -1045,6 +1046,17 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 			// still the one its watermark describes.
 			return abandon(&ReadFailuresError{Service: svc.ID, Failures: failures, Refused: true, Existing: existing})
 		}
+		// F2 (docs/bench/readings/rt-waves-c-f-2026-09-27.md §6): with no
+		// evidence to protect, an ingest that read nothing used to fall
+		// through to the final commit — watermark = HEAD, ingest_state =
+		// complete over zero fingerprints — and auto-refresh, seeing no
+		// drift, served that empty index as fresh forever. RT-109: only a
+		// final commit advances the watermark, and an ingest that indexed
+		// nothing is not one. Nothing has been written; ingest_state stays
+		// in_progress (naming the root), so the service never reads as
+		// indexed at HEAD, the next process re-ingests it, and a retry
+		// reads every file (no fingerprint, so no stat skip).
+		return report, &ReadFailuresError{Service: svc.ID, Failures: failures, Incomplete: true}
 	}
 
 	// Oversize files (RT-69): fingerprinted by size so an unchanged one is

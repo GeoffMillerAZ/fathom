@@ -54,12 +54,25 @@ type ReadFailure struct {
 // Service — then NOTHING was written (Existing is the observation count the
 // refusal protected); otherwise every readable file was processed normally
 // and only the listed files kept their previous evidence.
+//
+// Incomplete (F2, docs/bench/readings/rt-waves-c-f-2026-09-27.md §6) is
+// true when the ingest could read nothing and there was no evidence to
+// protect (a first ingest, or an empty index): nothing was written, no
+// freshness watermark was recorded and ingest_state stays in_progress, so
+// the service is never served as indexed at HEAD and the next ingest reads
+// every file again (RT-109).
 type ReadFailuresError struct {
-	Service  string
-	Failures []ReadFailure
-	Refused  bool
-	Existing int
+	Service    string
+	Failures   []ReadFailure
+	Refused    bool
+	Existing   int
+	Incomplete bool
 }
+
+// WroteNothing reports whether the ingest stopped before its first write —
+// refused (IT-15) or held back incomplete (F2) — so callers skip the
+// post-ingest steps that assume an index was written.
+func (e *ReadFailuresError) WroteNothing() bool { return e.Refused || e.Incomplete }
 
 // Error names the cause: the count, the first failed path with its errno
 // text, and — when refused — the evidence the refusal protected.
@@ -69,9 +82,12 @@ func (e *ReadFailuresError) Error() string {
 	if len(e.Failures) > 0 {
 		fmt.Fprintf(&b, " (first: %s: %s)", e.Failures[0].Path, e.Failures[0].Err)
 	}
-	if e.Refused {
+	switch {
+	case e.Refused:
 		fmt.Fprintf(&b, "; refused to replace the %d observation(s) already stored for %q with a zero-symbol result — nothing was written", e.Existing, e.Service)
-	} else {
+	case e.Incomplete:
+		fmt.Fprintf(&b, "; every file failed, so the ingest was not recorded complete — nothing was written, no watermark was recorded, and %q stays in_progress for a retry", e.Service)
+	default:
 		b.WriteString("; the stored evidence for those files was left as it was")
 	}
 	return b.String()
