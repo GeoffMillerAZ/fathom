@@ -119,10 +119,32 @@ type CallRow struct {
 // ToolLoads folds usage rows (console reads excluded) into per-tool loads,
 // most-called first (ties by name), each with its dominant class.
 func ToolLoads(rows []CallRow) []ToolLoad {
+	counts := map[CallerCount]int{}
+	for _, r := range rows {
+		counts[CallerCount{Tool: r.Tool, Surface: r.Surface, Origin: r.Origin}]++
+	}
+	out := make([]CallerCount, 0, len(counts))
+	for k, n := range counts {
+		k.Calls = n
+		out = append(out, k)
+	}
+	return ToolLoadsCounted(out)
+}
+
+// CallerCount is the calls of one tool from one surface and origin — what
+// a caller class is decided from — so an all-time fold can keep counts
+// instead of rows (RT-112).
+type CallerCount struct {
+	Tool, Surface, Origin string
+	Calls                 int
+}
+
+// ToolLoadsCounted is ToolLoads over counted rows.
+func ToolLoadsCounted(counts []CallerCount) []ToolLoad {
 	byTool := map[string]map[CallerClass]int{}
 	total := 0
-	for _, r := range rows {
-		if r.Tool == "" {
+	for _, r := range counts {
+		if r.Tool == "" || r.Calls <= 0 {
 			continue
 		}
 		c := ClassifyCaller(r.Tool, r.Surface, r.Origin)
@@ -132,8 +154,8 @@ func ToolLoads(rows []CallRow) []ToolLoad {
 		if byTool[r.Tool] == nil {
 			byTool[r.Tool] = map[CallerClass]int{}
 		}
-		byTool[r.Tool][c]++
-		total++
+		byTool[r.Tool][c] += r.Calls
+		total += r.Calls
 	}
 	out := make([]ToolLoad, 0, len(byTool))
 	for tool, counts := range byTool {

@@ -298,11 +298,6 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 		// §3.4: a registry read refused while the daemon sheds answers
 		// the last good projection; the page names it stale.
 		m.RegistryStale = registryStaleNote(baseURL)
-		// Traffic fold, same resolution the adoption gauge uses.
-		perSvc := map[string]*struct {
-			total, agent int
-			last         string
-		}{}
 		// OC-2: the one call-log resolution (console_calllog.go). Inside
 		// the daemon this is the daemon's own --call-log — the survey found
 		// the pages rendering from a different log than the daemon writes.
@@ -312,11 +307,17 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 		// (ENOENT) apart from a log that is right there and unreadable (a
 		// wedged TCC verdict, a permission defect); both are absences the
 		// tiles must name, but only the second is a defect worth a remedy.
-		entries, _, consoleReads, callLogErr := consoleCallLogTail.read(callLogPath) // a tail (RT-113)
+		// A tail (RT-113): the all-time figures come from its fold, the
+		// windowed ones (14 and 30 days) from its 35-day ring (RT-112).
+		snap, callLogErr := consoleCallLogTail.read(callLogPath)
+		fold, entries := snap.fold, snap.ring
+		if fold == nil {
+			fold = newCallLogFold()
+		}
 		callLogRead := callLogErr == nil
-		m.callFacts = callLogFactsFor(resolvedLog, entries, callLogErr)
+		m.callFacts = fold.facts(resolvedLog, callLogErr)
 		if callLogRead {
-			m.callFacts.ConsoleReads = consoleReads
+			m.callFacts.ConsoleReads = snap.consoleReads
 		}
 		switch {
 		case callLogRead:
@@ -327,8 +328,8 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 		default:
 			m.CallLogNote = "call log unreadable: " + callLogErr.Error() + " — traffic figures are not measured, never zero"
 		}
-		m.Misses = buildMissModel(entries)
-		m.toolClass, m.reviews = toolClassesOf(entries), reviewRunsOf(entries)
+		m.Misses = fold.missModel()
+		m.toolClass, m.reviews = fold.toolClasses(), fold.reviewRuns()
 
 		// Ledger sessions per repo (mirrors fleetreport.go's own fold): the
 		// index-only distinction needs to know whether ANYONE runs coding
@@ -373,18 +374,12 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 		if compileBySvc == nil {
 			compileBySvc = map[string]string{}
 		}
-		obligationCalls := 0
+		// The 14-day series and the realization window read the ring.
 		byDay := map[string]int{}
 		svcByDay := map[string]map[string]int{}
 		for _, e := range entries {
-			if e.Tool == "obligations" {
-				obligationCalls++
-				if e.Service != "" {
-					obligationsBySvc[strings.ToLower(e.Service)]++
-					if inRealizationWindow(e.TS, winFromDay, winToDay) {
-						windowObligations[strings.ToLower(e.Service)]++
-					}
-				}
+			if e.Tool == "obligations" && e.Service != "" && inRealizationWindow(e.TS, winFromDay, winToDay) {
+				windowObligations[strings.ToLower(e.Service)]++
 			}
 			if len(e.TS) >= 10 {
 				byDay[e.TS[:10]]++
@@ -396,25 +391,11 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 					svcByDay[k][e.TS[:10]]++
 				}
 			}
-			if e.Service == "" {
-				continue
-			}
-			k := strings.ToLower(e.Service)
-			tr := perSvc[k]
-			if tr == nil {
-				tr = &struct {
-					total, agent int
-					last         string
-				}{}
-				perSvc[k] = tr
-			}
-			tr.total++
-			if e.Surface == "agent" || e.Surface == "companion" {
-				tr.agent++
-			}
-			if e.TS > tr.last {
-				tr.last = e.TS
-			}
+		}
+		// All-time per-service traffic and obligations read the fold.
+		obligationCalls := fold.obligations
+		for k, sf := range fold.services {
+			obligationsBySvc[k] = sf.obligations
 		}
 
 		names := make([]string, 0, len(svcs))
@@ -434,7 +415,7 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 				row.WiringRemedy = "fathom fleet reconcile --apply (or: cd " + info.path + " && fathom init)"
 			}
 			row.OpenObservations, row.ObservationsError = serviceOpenObservations(info.path)
-			if tr := perSvc[name]; tr != nil {
+			if tr, ok := fold.services[name]; ok {
 				row.CallsTotal, row.CallsAgent, row.LastCallTS = tr.total, tr.agent, tr.last
 			}
 			if ledgerReadable {
@@ -505,7 +486,7 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 		m.AgentSurfaceTools, m.AgentSchemaBytes = surfaceSchemaTax(hc, baseURL)
 		m.Impact = buildImpactModel(now)
 		m.Impact.ObligationCalls = obligationCalls
-		m.Cost = observatoryCostPanel(entries, m.AgentSurfaceTools, m.AgentSchemaBytes, m.Impact.DiscoveryTotal)
+		m.Cost = fold.costPanel(m.AgentSurfaceTools, m.AgentSchemaBytes, m.Impact.DiscoveryTotal)
 		return m
 	}
 
@@ -951,39 +932,7 @@ type obsMissRow struct {
 // buildMissModel folds call outcomes per tool, most-called first. Rows
 // logged before IQ-1 count as NotRecorded — never as hits (law 3).
 func buildMissModel(entries []adoptionCallEntry) []obsMissRow {
-	byTool := map[string]*obsMissRow{}
-	for _, e := range entries {
-		if e.Tool == "" {
-			continue
-		}
-		r := byTool[e.Tool]
-		if r == nil {
-			r = &obsMissRow{Tool: e.Tool}
-			byTool[e.Tool] = r
-		}
-		r.Calls++
-		switch {
-		case e.ResultCount == nil:
-			r.NotRecorded++
-		case e.MatchedVia == "did_you_mean":
-			r.DidYouMean++
-		case *e.ResultCount == 0:
-			r.Misses++
-		default:
-			r.Hits++
-		}
-	}
-	rows := make([]obsMissRow, 0, len(byTool))
-	for _, r := range byTool {
-		rows = append(rows, *r)
-	}
-	sort.Slice(rows, func(i, j int) bool {
-		if rows[i].Calls != rows[j].Calls {
-			return rows[i].Calls > rows[j].Calls
-		}
-		return rows[i].Tool < rows[j].Tool
-	})
-	return rows
+	return foldCallLog(entries).missModel()
 }
 
 // ─── IQ-15: the wiring grade ─────────────────────────────────────────────

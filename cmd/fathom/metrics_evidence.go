@@ -62,11 +62,7 @@ func fileState(what, path string, err error) (reason string, isErr bool) {
 
 // toolClassesOf is each tool's dominant caller class over the usage rows.
 func toolClassesOf(entries []adoptionCallEntry) map[string]console.CallerClass {
-	out := map[string]console.CallerClass{}
-	for _, tl := range console.ToolLoads(callRowsOf(entries)) {
-		out[tl.Tool] = tl.Class
-	}
-	return out
+	return foldCallLog(entries).toolClasses()
 }
 
 // callRowsOf converts call-log entries to the console's row shape.
@@ -81,14 +77,7 @@ func callRowsOf(entries []adoptionCallEntry) []console.CallRow {
 // reviewRunsOf keeps the `fathom review` rows that carry per-dimension
 // finding counts (review.go's forced-channel row, T5-7).
 func reviewRunsOf(entries []adoptionCallEntry) []console.ReviewRun {
-	var out []console.ReviewRun
-	for _, e := range entries {
-		if e.Tool != "review" || e.VerdictOutcome == nil {
-			continue
-		}
-		out = append(out, console.ReviewRun{At: e.TS, Service: e.Service, Outcome: e.VerdictOutcome})
-	}
-	return out
+	return foldCallLog(entries).reviewRuns()
 }
 
 // ─── impact ──────────────────────────────────────────────────────────────

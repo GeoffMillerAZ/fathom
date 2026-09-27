@@ -157,15 +157,20 @@ func daemonFacts(d *consoleDeps) console.DaemonFacts {
 
 func buildOperateProjection(d *consoleDeps, m observatoryModel, resolved console.ResolvedCallLog, now time.Time) operateProjection {
 	p := operateProjection{CallLog: resolved, GeneratedAt: now}
-	var entries []adoptionCallEntry
-	var skipped, consoleReads int
+	// A tail (RT-113): all-time figures from its fold, the 14-day load
+	// and the week's traffic from its 35-day ring (RT-112).
+	var snap callLogSnapshot
 	var readErr error
 	if resolved.Path != "" {
-		entries, skipped, consoleReads, readErr = consoleCallLogTail.read(resolved.Path) // a tail (RT-113)
+		snap, readErr = consoleCallLogTail.read(resolved.Path)
 	}
-	facts := callLogFactsFor(resolved, entries, readErr)
+	fold, entries := snap.fold, snap.ring
+	if fold == nil {
+		fold = newCallLogFold()
+	}
+	facts := fold.facts(resolved, readErr)
 	if readErr == nil {
-		facts.ConsoleReads = consoleReads
+		facts.ConsoleReads = snap.consoleReads
 	}
 	reason, isErr, _ := callLogState(facts)
 	in := operateLoadInputs(entries, resolved, reason, isErr, now)
@@ -176,7 +181,7 @@ func buildOperateProjection(d *consoleDeps, m observatoryModel, resolved console
 	p.Callers = trafficResultFrom(entries, reason, isErr, "", metrics.TrafficGroupByCaller, week, now)
 	p.Harnesses = harness.AdoptionRows(d.selfURL, now)
 	p.Resources = operateResources(d.selfURL) // RT-121
-	pre := &adoptionPreread{entries: entries, skipped: skipped, err: readErr}
+	pre := &adoptionPreread{fold: fold, skipped: snap.skipped, err: readErr}
 	if resolved.Path == "" {
 		pre = nil
 	}
@@ -200,7 +205,7 @@ func buildOperateProjection(d *consoleDeps, m observatoryModel, resolved console
 	} else if facts.Missing {
 		logErr = os.ErrNotExist
 	}
-	p.Flywheel = flywheelChecksFrom(m.Impact, entries, logErr, now)
+	p.Flywheel = flywheelChecksFold(m.Impact, fold, logErr, now)
 	return p
 }
 

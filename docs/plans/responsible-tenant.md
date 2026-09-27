@@ -196,7 +196,7 @@ bound memory here.
 
 ## E. Console and hygiene
 
-- [x] The call-log tail keeps a 35-day ring of compact rows — the window every page aggregates over — never a row per line forever (§14) {id: RT-112, symbol: callLogWindow, package: cmd/fathom, reachable_from: TestCallLogTailKeepsWindowOnly}
+- [x] The call-log tails keep aggregates plus a 35-day ring — every all-time figure from the fold, every window from the ring — never a row per line forever (§14) {id: RT-112, symbol: foldCallLog, package: cmd/fathom, reachable_from: TestCallLogTailKeepsAggregatesNotRows}
 - [x] The observatory model serves the last model while one flight rebuilds outside the lock, from tails, never whole-log re-parses (§14) {id: RT-113, symbol: cachedObservatoryModel, package: cmd/fathom, reachable_from: TestObservatoryModelServesStaleWhileRebuilding}
 - [x] Session pages seek a per-session offset index; nothing reads hooks.jsonl whole (§14) {id: RT-114, symbol: sessionBeatIndex, package: cmd/fathom, reachable_from: TestSessionPageSeeksIndexedBeats}
 - [x] Console pages make no loopback self-calls and fork no git per service (§14) {id: RT-115, symbol: fleetFreshness, package: cmd/fathom, reachable_from: TestFleetFreshnessNoLoopbackOrFork}

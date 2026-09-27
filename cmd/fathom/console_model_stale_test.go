@@ -82,10 +82,10 @@ func TestObservatoryModelServesStaleWhileRebuilding(t *testing.T) {
 	var tail callLogEntryTail
 	check := func(label string) {
 		t.Helper()
-		got, gs, gc, err := tail.read(log)
+		snap, err := tail.read(log)
 		want, ws, wc, werr := callLogReadCounting(log)
-		if err != nil || werr != nil || len(got) != len(want) || gs != ws || gc != wc {
-			t.Fatalf("%s: tail %d/%d/%d %v, whole %d/%d/%d %v", label, len(got), gs, gc, err, len(want), ws, wc, werr)
+		if err != nil || werr != nil || snap.fold.rows != len(want) || snap.skipped != ws || snap.consoleReads != wc {
+			t.Fatalf("%s: tail %+v %v, whole %d/%d/%d %v", label, snap, err, len(want), ws, wc, werr)
 		}
 	}
 	check("first read")

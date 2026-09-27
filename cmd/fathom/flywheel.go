@@ -146,17 +146,17 @@ func runFlywheelChecks(baseURL, service string, now time.Time) []flywheelCheck {
 // model's impact fold and its own read of the log instead of re-reading
 // both (the impact fold alone reads the whole hooks log).
 func flywheelChecksFrom(imp obsImpact, entries []adoptionCallEntry, callLogErr error, now time.Time) []flywheelCheck {
+	return flywheelChecksFold(imp, foldCallLog(entries), callLogErr, now)
+}
+
+// flywheelChecksFold is flywheelChecksFrom over the call log's fold.
+func flywheelChecksFold(imp obsImpact, fold *callLogFold, callLogErr error, now time.Time) []flywheelCheck {
 	ledger := readLedgerRows(sessionLedgerPath())
-	obligationCalls := 0
-	for _, e := range entries {
-		if e.Tool == "obligations" {
-			obligationCalls++
-		}
-	}
+	obligationCalls := fold.obligations
 	return []flywheelCheck{
 		checkLoopSessionLedger(ledger, now),
 		checkLoopArm(ledger, imp, now),
-		checkLoopCallLogEntries(entries, callLogErr, now),
+		checkLoopCallLog(fold, callLogErr, now),
 		checkLoopObligations(obligationCalls),
 		checkLoopVerifyGate(imp),
 		checkLoopExploration(imp),
@@ -414,6 +414,11 @@ func tccWedgeHint(path string) string {
 // collapsed bool could not tell the two apart, so an EPERM read rendered
 // exactly like a clean checkout that had simply never run a call).
 func checkLoopCallLogEntries(entries []adoptionCallEntry, callLogErr error, now time.Time) flywheelCheck {
+	return checkLoopCallLog(foldCallLog(entries), callLogErr, now)
+}
+
+// checkLoopCallLog is checkLoopCallLogEntries over the call log's fold.
+func checkLoopCallLog(fold *callLogFold, callLogErr error, now time.Time) flywheelCheck {
 	c := flywheelCheck{
 		Loop:    "call-log",
 		Purpose: "every tool call recorded, so adoption and per-tool cost are measurable",
@@ -424,25 +429,16 @@ func checkLoopCallLogEntries(entries []adoptionCallEntry, callLogErr error, now 
 		c.Remedy = "fathom doctor (the hooks_firing check locates the daemon's own log)"
 		return c
 	}
-	if len(entries) == 0 {
+	if fold.rows == 0 {
 		c.Status = loopIdle
 		c.Evidence = "no call log readable — the daemon may not have served a call yet, or its log lives elsewhere"
 		c.Remedy = "fathom doctor (the hooks_firing check locates the daemon's own log)"
 		return c
 	}
-	var lastTS string
-	agentCalls := 0
-	for _, e := range entries {
-		if e.TS > lastTS {
-			lastTS = e.TS
-		}
-		if strings.Contains(e.Surface, "agent") {
-			agentCalls++
-		}
-	}
+	lastTS, agentCalls := fold.lastTS, fold.agentSurface
 	age := ledgerRowAge(lastTS, now)
 	c.Evidence = fmt.Sprintf("%s calls, %s via the agent surface, most recent %s",
-		fmtThousands(len(entries)), fmtThousands(agentCalls), describeAge(age))
+		fmtThousands(fold.rows), fmtThousands(agentCalls), describeAge(age))
 	if age > 24*time.Hour {
 		// IT-2(a): silence over the stale window can be the OFF arm doing
 		// exactly what it is for — hook channels quiet BY DESIGN — not a

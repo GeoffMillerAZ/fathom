@@ -212,10 +212,11 @@ type adoptionQuery struct {
 	preread *adoptionPreread
 }
 
-// adoptionPreread is one read of the call log: its usage entries, the
-// malformed lines skipped, and the read error.
+// adoptionPreread is one read of the call log: its usage rows' fold, the
+// malformed lines skipped, and the read error. A query naming a service
+// reads the log itself (the fold is not per service).
 type adoptionPreread struct {
-	entries []adoptionCallEntry
+	fold    *callLogFold
 	skipped int
 	err     error
 }
@@ -242,25 +243,29 @@ func instrumentAdoption(q adoptionQuery, stderr io.Writer) (AdoptionReport, cons
 	// classification, mirrored here per SP-B3) tells "no log yet" (ENOENT)
 	// apart from a real defect.
 	var (
-		entries          []adoptionCallEntry
+		fold             *callLogFold
 		skippedMalformed int
 		callLogErr       error
 	)
-	if q.preread != nil {
-		entries, skippedMalformed, callLogErr = append([]adoptionCallEntry(nil), q.preread.entries...), q.preread.skipped, q.preread.err
+	unattributedExcluded := 0
+	if q.preread != nil && q.Service == "" {
+		fold, skippedMalformed, callLogErr = q.preread.fold, q.preread.skipped, q.preread.err
+		if fold == nil {
+			fold = newCallLogFold()
+		}
 	} else {
+		var entries []adoptionCallEntry
 		entries, skippedMalformed, callLogErr = classifyCallLogRead(callLogPath)
+		if q.Service != "" {
+			entries, unattributedExcluded = filterEntriesByService(entries, q.Service)
+		}
+		fold = foldCallLog(entries)
 	}
 	read := callLogErr == nil
 	realReadErr := callLogErr != nil && !os.IsNotExist(callLogErr)
 	callLogReadError := ""
 	if realReadErr {
 		callLogReadError = callLogErr.Error()
-	}
-
-	unattributedExcluded := 0
-	if q.Service != "" {
-		entries, unattributedExcluded = filterEntriesByService(entries, q.Service)
 	}
 
 	toolNames, toolErr := registeredToolNames(q.Store)
@@ -288,7 +293,7 @@ func instrumentAdoption(q adoptionQuery, stderr io.Writer) (AdoptionReport, cons
 	// IT-11: the verify-gate figure sources from the verify ledger, never
 	// the call log — readVerifyLedger() already honors FATHOM_VERIFY_LEDGER
 	// (verifyledger.go), the "path injectable" this row asks for.
-	report := buildAdoptionReport(callLogPath, read, callLogReadError, entries, skippedMalformed, toolNames, toolNote, openObs, observationsPath(q.Root), readVerifyLedger())
+	report := buildAdoptionReportFold(callLogPath, read, callLogReadError, fold, skippedMalformed, toolNames, toolNote, openObs, observationsPath(q.Root), readVerifyLedger())
 	report.ServiceFilter = q.Service
 	report.UnattributedExcluded = unattributedExcluded
 	// O17: same fabrication risk as buildAdoptionReport's zeroCall — the
@@ -296,7 +301,7 @@ func instrumentAdoption(q adoptionQuery, stderr io.Writer) (AdoptionReport, cons
 	// (empty on a real read error), so it stays uncomputed (nil/0) rather
 	// than claiming every agent-surface tool is zero-call too.
 	if !realReadErr {
-		report.ZeroCallAgentTools, report.RegisteredNotOnAgent = partitionZeroCalls(toolNames, mcp.AgentSurfaceTools(), adoptionToolCounts(entries))
+		report.ZeroCallAgentTools, report.RegisteredNotOnAgent = partitionZeroCalls(toolNames, mcp.AgentSurfaceTools(), fold.toolCallCounts())
 	}
 
 	return report, resolved
@@ -490,22 +495,21 @@ func registeredToolNames(storePath string) ([]string, error) {
 // per FW-1's own requirement) — cmdInstrumentAdoption does all the I/O,
 // this function does none.
 func buildAdoptionReport(callLogPath string, read bool, callLogReadError string, entries []adoptionCallEntry, skippedMalformed int, registeredTools []string, toolNote string, openObs *int, obsPath string, ledgerRows []verifyLedgerRow) AdoptionReport {
+	return buildAdoptionReportFold(callLogPath, read, callLogReadError, foldCallLog(entries), skippedMalformed, registeredTools, toolNote, openObs, obsPath, ledgerRows)
+}
+
+// buildAdoptionReportFold is buildAdoptionReport over the log's fold (the
+// console's tail keeps the fold, never the rows — RT-112).
+func buildAdoptionReportFold(callLogPath string, read bool, callLogReadError string, fold *callLogFold, skippedMalformed int, registeredTools []string, toolNote string, openObs *int, obsPath string, ledgerRows []verifyLedgerRow) AdoptionReport {
 	surfaceCalls := map[string]int{}
 	surfaceLastTS := map[string]string{}
-	toolCalls := map[string]int{}
-	briefCalls, briefWithClaims := 0, 0
-
-	for _, e := range entries {
-		surfaceCalls[e.Surface]++
-		surfaceLastTS[e.Surface] = e.TS // entries are file-order == write-order (append-only JSONL), so the last write wins
-		toolCalls[e.Tool]++
-		if e.Tool == "brief" {
-			briefCalls++
-			if e.ClaimsAttached > 0 {
-				briefWithClaims++
-			}
-		}
+	for s, sf := range fold.surfaces {
+		// entries are file-order == write-order (append-only JSONL), so
+		// the fold's last write per surface is the one that wins
+		surfaceCalls[s], surfaceLastTS[s] = sf.calls, sf.lastTS
 	}
+	toolCalls := fold.toolCallCounts()
+	briefCalls, briefWithClaims := fold.briefCalls, fold.briefClaims
 
 	surfaceNames := make([]string, 0, len(surfaceCalls))
 	for s := range surfaceCalls {
@@ -565,7 +569,7 @@ func buildAdoptionReport(callLogPath string, read bool, callLogReadError string,
 		CallLogPath:                       callLogPath,
 		CallLogRead:                       read,
 		CallLogReadError:                  callLogReadError,
-		TotalCalls:                        len(entries),
+		TotalCalls:                        fold.rows,
 		SkippedMalformedLines:             skippedMalformed,
 		SurfaceTraffic:                    surfaceTraffic,
 		TopTools:                          topTools,
@@ -752,9 +756,5 @@ func partitionZeroCalls(registered, agentTools []string, counts map[string]int) 
 
 // adoptionToolCounts folds entries into per-tool call counts.
 func adoptionToolCounts(entries []adoptionCallEntry) map[string]int {
-	out := map[string]int{}
-	for _, e := range entries {
-		out[e.Tool]++
-	}
-	return out
+	return foldCallLog(entries).toolCallCounts()
 }

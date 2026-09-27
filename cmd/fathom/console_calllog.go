@@ -28,7 +28,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 
@@ -181,24 +180,24 @@ func resolveConsoleCallLogFor(q callLogQuery) console.ResolvedCallLog {
 // callLogFactsFor folds one read of the resolved log into the shared
 // metric's facts (rows, unattributed rows, absence or read error).
 func callLogFactsFor(resolved console.ResolvedCallLog, entries []adoptionCallEntry, readErr error) console.CallLogFacts {
+	return foldCallLog(entries).facts(resolved, readErr)
+}
+
+// callLogFactsState is the facts' absence or read error, and whether the
+// log was read (only then do its rows count).
+func callLogFactsState(resolved console.ResolvedCallLog, readErr error) (console.CallLogFacts, bool) {
 	f := console.CallLogFacts{Log: resolved}
 	switch {
 	case resolved.Path == "":
-		return f
+		return f, false
 	case readErr != nil && os.IsNotExist(readErr):
 		f.Missing = true
-		return f
+		return f, false
 	case readErr != nil:
 		f.ReadErr = readErr.Error()
-		return f
+		return f, false
 	}
-	f.Rows = len(entries)
-	for _, e := range entries {
-		if strings.TrimSpace(e.Service) == "" {
-			f.Unattributed++
-		}
-	}
-	return f
+	return f, true
 }
 
 // callLogLine is the text line a verb prints naming the log it read and the
