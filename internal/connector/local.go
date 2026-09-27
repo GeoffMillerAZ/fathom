@@ -212,7 +212,9 @@ func (c *LocalConnector) Fetch(ctx context.Context, ref core.SourceRef) ([]byte,
 // RT-110 (design §6, ADR-017 amended): a git work tree whose HEAD cannot be
 // read is freshness unknown — an error wrapping gitro.ErrFreshnessUnknown —
 // never the content manifest (one whole-corpus read per query, on the
-// request path). A genuine non-git corpus gets the content manifest gated by
+// request path). A work tree git confirms has no commit yet
+// (gitro.ErrUnbornHead) has no HEAD to compare and is treated as the
+// non-git corpus it effectively is. A genuine non-git corpus gets the content manifest gated by
 // a capped stat manifest (statGatedManifest): recomputed only when a file's
 // path, size or mtime moved, and at most once per manifestTTL.
 func (c *LocalConnector) Watermark(ctx context.Context, svc core.ServiceRef) (string, error) {
@@ -220,7 +222,9 @@ func (c *LocalConnector) Watermark(ctx context.Context, svc core.ServiceRef) (st
 	switch {
 	case err == nil:
 		return head, nil
-	case !errors.Is(err, gitro.ErrNotRepository):
+	case !errors.Is(err, gitro.ErrNotRepository) && !errors.Is(err, gitro.ErrUnbornHead):
+		// An unborn branch (no commit yet) has no HEAD to compare: its
+		// freshness is its content, as for a non-git corpus.
 		return "", err
 	}
 	return c.statGatedManifest(ctx, svc)

@@ -217,7 +217,9 @@ func (c *LocalConnector) FreshnessProbe(ctx context.Context, svc core.ServiceRef
 	switch {
 	case err == nil:
 		return head, nil
-	case !errors.Is(err, gitro.ErrNotRepository):
+	case !errors.Is(err, gitro.ErrNotRepository) && !errors.Is(err, gitro.ErrUnbornHead):
+		// An unborn branch (no commit yet) has no HEAD to compare: its
+		// freshness is its content, as for a non-git corpus.
 		return "", err
 	}
 	now := manifestNow()

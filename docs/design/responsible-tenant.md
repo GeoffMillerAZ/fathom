@@ -718,7 +718,10 @@ whole-service case.
   their own ctx and never cancel the shared job; drain on shutdown stops at a batch boundary.
 - HEAD without a fork: `gitro.Head(root)` reads `.git/HEAD`, `refs/…` or `packed-refs`
   (worktree `gitdir:` handled), cached per root, invalidated by mtime; fallback
-  `CommandContext` with a 2 s timeout; timeout = `freshness: unknown`.
+  `CommandContext` with a 2 s timeout; timeout = `freshness: unknown`. The fallback's
+  answer is cached against the files it was asked about for at most 30 s, so an
+  unreadable layout forks once per TTL, not per read; a branch git confirms has no
+  commit (`ErrUnbornHead`) is freshness by content manifest, as a non-git corpus.
 - Reads answer at once with `staleness{index_stale: true, refreshing|queued: true,
   indexed_commit, head}` (I4).
 

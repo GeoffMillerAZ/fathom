@@ -10,7 +10,11 @@ package gitro
 // it read changes mtime. Only a layout it cannot read (reftable, an unborn
 // branch) runs git, under a 2 s deadline; a fallback that does not answer
 // in time is ErrFreshnessUnknown — the caller discloses freshness as
-// unknown instead of waiting on git.
+// unknown instead of waiting on git. The fallback's answer is cached too,
+// while the files it was asked about stand and for at most failureCacheTTL,
+// so such a repository forks once per TTL, not once per read. A branch git
+// confirms has no commit yet is ErrUnbornHead: a work tree with no HEAD
+// commit, whose freshness is its content (the caller's manifest case).
 
 import (
 	"bufio"
@@ -32,6 +36,22 @@ var ErrNotRepository = errors.New("gitro: not inside a git work tree")
 // ErrFreshnessUnknown is Head's answer when HEAD could not be read from the
 // files and the git fallback failed or exceeded its deadline.
 var ErrFreshnessUnknown = errors.New("gitro: HEAD unreadable — freshness unknown")
+
+// ErrUnbornHead is Head's answer when HEAD names a branch with no commit
+// yet (a fresh `git init`), confirmed by git: there is no commit to compare,
+// so the caller treats the tree as a non-git corpus (content manifest).
+var ErrUnbornHead = errors.New("gitro: HEAD names a branch with no commit yet")
+
+// errUnresolvedRef is readHead's error for a symbolic ref found in no loose
+// file and not in packed-refs.
+var errUnresolvedRef = errors.New("ref is neither a loose ref nor in packed-refs")
+
+// failureCacheTTL bounds how long a fallback's answer is reused (a var for
+// tests).
+var failureCacheTTL = 30 * time.Second
+
+// headNow is the cache's clock (a var for tests).
+var headNow = time.Now
 
 // fallbackDeadline bounds the git fallback (a var for tests).
 var fallbackDeadline = 2 * time.Second
@@ -69,7 +89,10 @@ func stampOf(path string) fileStamp {
 
 type headEntry struct {
 	sha    string
+	err    error       // a cached fallback failure
 	stamps []fileStamp // every file the answer was read from (or found absent)
+	// expires bounds a fallback answer (zero for one read from the files).
+	expires time.Time
 }
 
 var (
@@ -96,18 +119,13 @@ func Head(ctx context.Context, root string) (string, error) {
 	headMu.Lock()
 	e, hit := headCache[root]
 	headMu.Unlock()
-	if hit && stampsCurrent(e.stamps) {
-		return e.sha, nil
+	if hit && stampsCurrent(e.stamps) && (e.expires.IsZero() || headNow().Before(e.expires)) {
+		return e.sha, e.err
 	}
 	sha, stamps, err := readHead(root)
 	switch {
 	case err == nil:
-		headMu.Lock()
-		if len(headCache) >= headCacheMax {
-			headCache = map[string]headEntry{}
-		}
-		headCache[root] = headEntry{sha: sha, stamps: stamps}
-		headMu.Unlock()
+		storeHead(root, headEntry{sha: sha, stamps: stamps})
 		return sha, nil
 	case errors.Is(err, ErrNotRepository):
 		return "", err
@@ -115,13 +133,52 @@ func Head(ctx context.Context, root string) (string, error) {
 	fctx, cancel := context.WithTimeout(ctx, fallbackDeadline)
 	defer cancel()
 	sha, ferr := headFallback(fctx, root)
-	if ferr != nil || !isObjectName(sha) {
+	if ferr == nil && isObjectName(sha) {
+		storeHead(root, headEntry{sha: sha, stamps: stamps, expires: headNow().Add(failureCacheTTL)})
+		return sha, nil
+	}
+	if ctx.Err() != nil {
+		// The caller gave up: nothing was learned about the repository.
+		return "", fmt.Errorf("%w (%s: %v)", ErrFreshnessUnknown, root, ctx.Err())
+	}
+	var out error
+	switch {
+	case ferr != nil && fctx.Err() == nil && errors.Is(err, errUnresolvedRef) && !hasReftable(stamps):
+		// The files name a branch with no ref and git, answering in time,
+		// cannot resolve HEAD either: an unborn branch.
+		out = fmt.Errorf("%w (%s: %v; git fallback: %v)", ErrUnbornHead, root, err, ferr)
+	default:
 		if ferr == nil {
 			ferr = fmt.Errorf("unexpected output %q", sha)
 		}
-		return "", fmt.Errorf("%w (%s: %v; git fallback: %v)", ErrFreshnessUnknown, root, err, ferr)
+		out = fmt.Errorf("%w (%s: %v; git fallback: %v)", ErrFreshnessUnknown, root, err, ferr)
 	}
-	return sha, nil
+	storeHead(root, headEntry{err: out, stamps: stamps, expires: headNow().Add(failureCacheTTL)})
+	return "", out
+}
+
+func storeHead(root string, e headEntry) {
+	headMu.Lock()
+	if len(headCache) >= headCacheMax {
+		headCache = map[string]headEntry{}
+	}
+	headCache[root] = e
+	headMu.Unlock()
+}
+
+// reftableList is the file a reftable repository's refs move through.
+func reftableList(commonDir string) string {
+	return filepath.Join(commonDir, "reftable", "tables.list")
+}
+
+// hasReftable reports whether stamps saw a reftable table list.
+func hasReftable(stamps []fileStamp) bool {
+	for _, s := range stamps {
+		if s.ok && filepath.Base(s.path) == "tables.list" && filepath.Base(filepath.Dir(s.path)) == "reftable" {
+			return true
+		}
+	}
+	return false
 }
 
 func stampsCurrent(stamps []fileStamp) bool {
@@ -133,17 +190,20 @@ func stampsCurrent(stamps []fileStamp) bool {
 	return true
 }
 
-// readHead resolves root's HEAD from the files alone.
+// readHead resolves root's HEAD from the files alone. On failure inside a
+// work tree the stamps of every file consulted are still returned, so a
+// fallback's answer can be cached against them.
 func readHead(root string) (string, []fileStamp, error) {
 	gitDir, commonDir, stamps, err := findGitDirs(root)
 	if err != nil {
 		return "", nil, err
 	}
+	stamps = append(stamps, stampOf(reftableList(commonDir)))
 	headPath := filepath.Join(gitDir, "HEAD")
 	stamps = append(stamps, stampOf(headPath))
 	raw, err := os.ReadFile(headPath)
 	if err != nil {
-		return "", nil, err
+		return "", stamps, err
 	}
 	val := strings.TrimSpace(string(raw))
 	for depth := 0; depth < 5; depth++ {
@@ -151,20 +211,20 @@ func readHead(root string) (string, []fileStamp, error) {
 			if isObjectName(val) {
 				return val, stamps, nil
 			}
-			return "", nil, fmt.Errorf("HEAD holds %q, not an object name", val)
+			return "", stamps, fmt.Errorf("HEAD holds %q, not an object name", val)
 		}
 		ref := strings.TrimSpace(strings.TrimPrefix(val, "ref:"))
 		if ref == "" || strings.Contains(ref, "..") {
-			return "", nil, fmt.Errorf("HEAD names an unreadable ref %q", ref)
+			return "", stamps, fmt.Errorf("HEAD names an unreadable ref %q", ref)
 		}
 		next, found, refStamps := readRef(gitDir, commonDir, ref)
 		stamps = append(stamps, refStamps...)
 		if !found {
-			return "", nil, fmt.Errorf("ref %s is neither a loose ref nor in packed-refs", ref)
+			return "", stamps, fmt.Errorf("ref %s: %w", ref, errUnresolvedRef)
 		}
 		val = next
 	}
-	return "", nil, errors.New("symbolic refs nest too deeply")
+	return "", stamps, errors.New("symbolic refs nest too deeply")
 }
 
 // readRef reads ref as a loose file (per-worktree gitDir first, then the
