@@ -39,10 +39,12 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/corpus"
 	"github.com/geoffmilleraz/fathom/internal/filter"
 )
 
@@ -68,11 +70,34 @@ const searchHitMaxBytes = 120
 // byte-fit loop, mirroring references' occTextMaxChars.
 const searchTextMaxChars = 80
 
-// searchHardScanCap bounds the Go-regexp fallback's total match count (a
-// safety valve against a wide-open pattern over a huge tree with no rg
-// installed) — ripgrep needs no such cap; it is fast enough to finish and
-// report an honest total itself.
-const searchHardScanCap = 20000
+// searchHardScanCap bounds the Go-regexp fallback's total match count
+// (RT-88, §4.5: 200, not 20,000 — a wide-open pattern over a huge tree
+// stops, named).
+const searchHardScanCap = 200
+
+// RT-88 (§4.5): ripgrep's own bounds. Its stdout is read through a
+// byte-capped reader that kills rg at searchRgOutputCap; a line is cut at
+// searchRgMaxColumns (with a preview), a file over 2 MiB is never searched,
+// a file stops after limit+1 matches, and context is at most
+// searchContextMax lines either side.
+const (
+	searchRgOutputCap  = 1 << 20
+	searchRgMaxColumns = 512
+	searchContextMax   = 5
+	// searchWalkBytes and searchWalkWall bound the Go fallback's scan.
+	searchWalkBytes int64 = 64 << 20
+	searchWalkWall        = 5 * time.Second
+)
+
+// searchOpts is one search's engine inputs.
+type searchOpts struct {
+	pattern, pathGlob string
+	caseSensitive     bool
+	contextN, limit   int
+	// ignore/ignorePatterns: the service-scoped .fathomignore (see searchRun).
+	ignore         *filter.Matcher
+	ignorePatterns []string
+}
 
 // searchExtraSkipDirs are directory names search always prunes beyond
 // connector.IsSkippedDir's ingest-time set (vendor, .git, testdata,
@@ -120,6 +145,9 @@ type searchResult struct {
 	Hits    []searchHit `json:"hits"`
 	Engine  string      `json:"engine"`
 	Elided  *elided     `json:"elided,omitempty"`
+	// Partial (RT-88, I38) names an engine bound that stopped the search —
+	// its total is then a lower bound.
+	Partial string `json:"partial,omitempty"`
 }
 
 // searchRawHit is one match before receipts are attached: what either
@@ -247,18 +275,23 @@ func registerSearch(s *Server, backend QueryInterface) {
 			if err != nil || !info.IsDir() {
 				return nil, &rpcError{Code: ErrCodeParams, Message: fmt.Sprintf("search: root %q is not a readable directory", root)}
 			}
+			// RT-88 (§4.5): a bare root must lie inside a registered
+			// service's root — search is not a door to the whole disk.
+			if rpcErr := searchRootRegistered(ctx, backend, root); rpcErr != nil {
+				return nil, rpcErr
+			}
 		}
 
 		limit := p.Limit
 		if limit <= 0 {
 			limit = searchDefaultLimit
 		}
-		contextN := p.Context
-		if contextN < 0 {
-			contextN = 0
-		}
+		contextN := min(max(p.Context, 0), searchContextMax)
 
-		rawHits, engine, err := searchRun(ctx, root, p.Pattern, p.Path, caseSensitive, contextN, ignore, ignorePatterns)
+		rawHits, engine, capped, err := searchRun(ctx, root, searchOpts{
+			pattern: p.Pattern, pathGlob: p.Path, caseSensitive: caseSensitive,
+			contextN: contextN, limit: limit, ignore: ignore, ignorePatterns: ignorePatterns,
+		})
 		if err != nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: "search: " + err.Error()}
 		}
@@ -285,7 +318,11 @@ func registerSearch(s *Server, backend QueryInterface) {
 		if truncated || total > len(kept) {
 			el = elisionFor(len(kept), total, "path, then line", "narrow path or pattern")
 		}
-		return searchResult{Summary: searchSummary(kept), Hits: kept, Engine: engine, Elided: el}, nil
+		partial := ""
+		if capped != "" {
+			partial = fmt.Sprintf("≥ %d hits (%s)", total, capped)
+		}
+		return searchResult{Summary: searchSummary(kept), Hits: kept, Engine: engine, Elided: el, Partial: partial}, nil
 	})
 }
 
@@ -322,17 +359,50 @@ func searchSummary(kept []searchHit) string {
 // excludes, so a `service` call never serves what ingest/read_source
 // would refuse, regardless of which engine answers it. Both nil for a
 // bare `root` call, which has no per-service ignore file to load.
-func searchRun(ctx context.Context, root, pattern, pathGlob string, caseSensitive bool, contextN int, ignore *filter.Matcher, ignorePatterns []string) ([]searchRawHit, string, error) {
+//
+// capped names the engine bound that stopped the search early ("" when it
+// ran to completion): the result is then a lower bound (RT-88).
+func searchRun(ctx context.Context, root string, o searchOpts) (hits []searchRawHit, engine, capped string, err error) {
 	if _, err := exec.LookPath("rg"); err == nil {
-		if hits, err := searchRipgrep(ctx, root, pattern, pathGlob, caseSensitive, contextN, ignorePatterns); err == nil {
-			return hits, "ripgrep", nil
+		if hits, capped, err := searchRipgrep(ctx, root, o); err == nil {
+			return hits, "ripgrep", capped, nil
 		}
 		// Any rg plumbing failure (an unexpected build's flag set, a
 		// transient exec error) falls through to the Go walk rather than
 		// surfacing an engine implementation detail as a tool error.
 	}
-	hits, err := searchWalk(root, pattern, pathGlob, caseSensitive, contextN, ignore)
-	return hits, "regexp", err
+	hits, capped, err = searchWalk(ctx, root, o)
+	return hits, "regexp", capped, err
+}
+
+// searchRootRegistered refuses a bare root outside every registered
+// service root (RT-88): symlinks resolved on both sides.
+func searchRootRegistered(ctx context.Context, backend QueryInterface, root string) *rpcError {
+	refuse := &rpcError{Code: ErrCodeParams, Message: fmt.Sprintf("search: root %q is not inside an indexed service's root — pass service, or a root under one", root)}
+	if backend == nil || !filepath.IsAbs(root) {
+		return refuse
+	}
+	real, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		return refuse
+	}
+	services, err := backend.Services(ctx)
+	if err != nil {
+		return &rpcError{Code: ErrCodeInternal, Message: "search: list services: " + err.Error()}
+	}
+	for _, svc := range services {
+		svcRoot, _, found, err := backend.ServiceMeta(ctx, svc)
+		if err != nil || !found || !filepath.IsAbs(svcRoot) {
+			continue
+		}
+		if r, err := filepath.EvalSymlinks(svcRoot); err == nil {
+			svcRoot = r
+		}
+		if real == svcRoot || strings.HasPrefix(real, svcRoot+string(filepath.Separator)) {
+			return nil
+		}
+	}
+	return refuse
 }
 
 // ignorePatternToRipgrepGlob converts one raw .fathomignore line (gitignore
@@ -357,9 +427,16 @@ func ignorePatternToRipgrepGlob(line string) string {
 
 // searchRipgrep shells out to rg. Exit code 1 (no matches) is success with
 // zero hits; any other non-zero exit is a real error.
-func searchRipgrep(ctx context.Context, root, pattern, pathGlob string, caseSensitive bool, contextN int, ignorePatterns []string) ([]searchRawHit, error) {
+//
+// RT-88: rg runs under the bounds above; its stdout is read through a
+// reader capped at searchRgOutputCap, and reaching the cap kills rg — the
+// hits read so far (whole lines only) are the answer, capped named.
+func searchRipgrep(ctx context.Context, root string, o searchOpts) ([]searchRawHit, string, error) {
+	pattern, pathGlob, caseSensitive, contextN := o.pattern, o.pathGlob, o.caseSensitive, min(o.contextN, searchContextMax)
 	args := []string{
 		"--line-number", "--no-heading", "--with-filename", "--color=never", "--sort", "path",
+		"--max-columns=" + strconv.Itoa(searchRgMaxColumns), "--max-columns-preview",
+		"--max-filesize=2M",
 		"-g", "!vendor/**", "-g", "!node_modules/**", "-g", "!workspace/**",
 		// MINOR (V-review): searchWalk already refuses a .env-pattern
 		// basename via isEnvPatternFile — the ripgrep path had no
@@ -367,7 +444,14 @@ func searchRipgrep(ctx context.Context, root, pattern, pathGlob string, caseSens
 		// engine alone depending on which one answered a given call.
 		"-g", "!*.env", "-g", "!.env", "-g", "!.env.*",
 	}
-	for _, p := range ignorePatterns {
+	// perFile matches are kept per file; rg reads one more, so a file it
+	// cut is told apart from one that had exactly perFile matches.
+	perFile := 0
+	if o.limit > 0 {
+		perFile = o.limit + 1
+		args = append(args, "--max-count="+strconv.Itoa(perFile+1))
+	}
+	for _, p := range o.ignorePatterns {
 		if g := ignorePatternToRipgrepGlob(p); g != "" {
 			args = append(args, "-g", g)
 		}
@@ -382,18 +466,61 @@ func searchRipgrep(ctx context.Context, root, pattern, pathGlob string, caseSens
 		args = append(args, "-g", pathGlob)
 	}
 	args = append(args, "--", pattern, ".")
-	cmd := exec.CommandContext(ctx, "rg", args...)
+	rgCtx, kill := context.WithCancel(ctx)
+	defer kill()
+	cmd := exec.CommandContext(rgCtx, "rg", args...)
 	cmd.Dir = root
-	var out, errBuf bytes.Buffer
-	cmd.Stdout = &out
+	var errBuf bytes.Buffer
 	cmd.Stderr = &errBuf
-	if err := cmd.Run(); err != nil {
-		if ee, ok := err.(*exec.ExitError); ok && ee.ExitCode() == 1 {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("ripgrep: %v: %s", err, strings.TrimSpace(errBuf.String()))
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return nil, "", fmt.Errorf("ripgrep: %v", err)
 	}
-	return parseRipgrepOutput(out.String(), contextN), nil
+	if err := cmd.Start(); err != nil {
+		return nil, "", fmt.Errorf("ripgrep: %v", err)
+	}
+	out, readErr := io.ReadAll(io.LimitReader(stdout, searchRgOutputCap+1))
+	capped := ""
+	if len(out) > searchRgOutputCap {
+		kill()
+		out = out[:searchRgOutputCap]
+		if i := bytes.LastIndexByte(out, '\n'); i >= 0 {
+			out = out[:i+1]
+		} else {
+			out = nil
+		}
+		capped = fmt.Sprintf("ripgrep output reached %s and was stopped", "1 MiB")
+	}
+	waitErr := cmd.Wait()
+	if capped == "" {
+		if readErr != nil {
+			return nil, "", fmt.Errorf("ripgrep: read: %v", readErr)
+		}
+		if waitErr != nil {
+			if ee, ok := waitErr.(*exec.ExitError); ok && ee.ExitCode() == 1 {
+				return nil, "", nil
+			}
+			return nil, "", fmt.Errorf("ripgrep: %v: %s", waitErr, strings.TrimSpace(errBuf.String()))
+		}
+	}
+	hits := parseRipgrepOutput(string(out), contextN)
+	if perFile > 0 {
+		per := map[string]int{}
+		kept := hits[:0]
+		cut := false
+		for _, h := range hits {
+			if per[h.File]++; per[h.File] > perFile {
+				cut = true
+				continue
+			}
+			kept = append(kept, h)
+		}
+		hits = kept
+		if cut && capped == "" {
+			capped = fmt.Sprintf("at most %d matches read per file", perFile)
+		}
+	}
+	return hits, capped, nil
 }
 
 var (
@@ -494,24 +621,31 @@ func searchIgnoreMatch(ignore *filter.Matcher, path string) bool {
 // shape, used when rg is not on PATH. ignore (nil for a bare `root` call)
 // is the service-scoped .fathomignore Matcher search's caller loaded via
 // connector.LoadIgnoreScopedForWithPatterns — see searchRun's doc comment.
-func searchWalk(root, pattern, pathGlob string, caseSensitive bool, contextN int, ignore *filter.Matcher) ([]searchRawHit, error) {
-	reSrc := pattern
-	if !caseSensitive {
+// RT-88: the walk lists paths only; contents are read one file at a time
+// through corpus.ScanBudgeted (stat first, binary sniff, the 2 MiB cap,
+// 64 MiB / 5 s per call) and the scan stops at searchHardScanCap hits,
+// naming whichever bound stopped it.
+func searchWalk(ctx context.Context, root string, o searchOpts) ([]searchRawHit, string, error) {
+	reSrc := o.pattern
+	if !o.caseSensitive {
 		reSrc = "(?i)" + reSrc
 	}
 	re, err := regexp.Compile(reSrc)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
+	contextN := min(o.contextN, searchContextMax)
 	var glob *filter.Matcher
-	if pathGlob != "" {
-		glob = filter.New([]string{pathGlob})
+	if o.pathGlob != "" {
+		glob = filter.New([]string{o.pathGlob})
 	}
-	var hits []searchRawHit
-	stop := fmt.Errorf("search: scan cap reached")
+	var paths []string
 	walkErr := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return nil // best-effort: skip unreadable entries
+		}
+		if cerr := ctx.Err(); cerr != nil {
+			return cerr
 		}
 		rel, rerr := filepath.Rel(root, p)
 		if rerr != nil {
@@ -527,7 +661,7 @@ func searchWalk(root, pattern, pathGlob string, caseSensitive bool, contextN int
 			return nil
 		}
 		if d.IsDir() {
-			if rel != "." && (searchSkipDir(d.Name()) || searchIgnoreMatch(ignore, rel+"/")) {
+			if rel != "." && (searchSkipDir(d.Name()) || searchIgnoreMatch(o.ignore, rel+"/")) {
 				return filepath.SkipDir
 			}
 			return nil
@@ -535,24 +669,30 @@ func searchWalk(root, pattern, pathGlob string, caseSensitive bool, contextN int
 		if glob != nil && !glob.Match(rel) {
 			return nil
 		}
-		if isEnvPatternFile(d.Name()) {
+		if isEnvPatternFile(d.Name()) || searchIgnoreMatch(o.ignore, rel) {
 			return nil
 		}
-		if searchIgnoreMatch(ignore, rel) {
-			return nil
-		}
-		info, ierr := d.Info()
-		if ierr != nil || info.Size() > searchMaxFileBytes {
-			return nil
-		}
-		data, rerr2 := os.ReadFile(p)
-		if rerr2 != nil || connector.IsBinary(data) {
-			return nil
-		}
+		paths = append(paths, rel)
+		return nil
+	})
+	if walkErr != nil {
+		return nil, "", walkErr
+	}
+	var hits []searchRawHit
+	perFile, perFileHit := 0, false
+	if o.limit > 0 {
+		perFile = o.limit + 1 // ripgrep's --max-count, so both engines agree
+	}
+	cov, err := corpus.ScanBudgeted(ctx, root, paths, corpus.Budget{Bytes: searchWalkBytes, Wall: searchWalkWall, FileCap: searchMaxFileBytes}, func(rel string, data []byte) bool {
 		fileLines := strings.Split(string(data), "\n")
+		inFile := 0
 		for i, line := range fileLines {
 			if !re.MatchString(line) {
 				continue
+			}
+			if inFile++; perFile > 0 && inFile > perFile {
+				perFileHit = true
+				break
 			}
 			h := searchRawHit{File: rel, Line: i + 1, Text: line}
 			if contextN > 0 {
@@ -567,15 +707,26 @@ func searchWalk(root, pattern, pathGlob string, caseSensitive bool, contextN int
 			}
 			hits = append(hits, h)
 			if len(hits) >= searchHardScanCap {
-				return stop
+				return true
 			}
 		}
-		return nil
+		return false
 	})
-	if walkErr != nil && walkErr != stop {
-		return hits, walkErr
+	if err != nil {
+		return hits, "", err
 	}
-	return hits, nil
+	capped := ""
+	switch cov.Stopped {
+	case "":
+		if perFileHit {
+			capped = fmt.Sprintf("at most %d matches read per file", perFile)
+		}
+	case corpus.StopHits:
+		capped = fmt.Sprintf("the scan stops at %d hits", searchHardScanCap)
+	default:
+		capped = cov.String()
+	}
+	return hits, capped, nil
 }
 
 // isEnvPatternFile reports whether base looks like a .env-pattern secrets

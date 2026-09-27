@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/corpus"
 )
 
 // ─── BA-1/BA-5 fixture backend ──────────────────────────────────────────────
@@ -293,7 +294,7 @@ func TestEveryTruncatingToolDiscloses(t *testing.T) {
 	}
 
 	assertElided(t, "query_symbols", callTool(t, srv, "query_symbols", map[string]any{"service": "svc", "concern": "handler", "top": 60}))
-	refResp := callTool(t, srv, "references", map[string]any{"query": "Needle"})
+	refResp := callTool(t, srv, "references", map[string]any{"services": []any{"*"}, "query": "Needle"})
 	assertElided(t, "references", refResp)
 	// wave L1: summary survives the same fitToBudget cut that produced the
 	// elided block above.
@@ -542,4 +543,12 @@ func TestBudgetDefaultsFromRegistry(t *testing.T) {
 	if got := budgetDefaults("query_symbols", both); got != 3000*charsPerToken {
 		t.Errorf("project must win over user: got %d, want %d", got, 3000*charsPerToken)
 	}
+}
+
+func (f *elisionFakeBackend) ScanSources(ctx context.Context, svc string, bud corpus.Budget, fn func(core.SourceFile) bool) (corpus.Coverage, error) {
+	files, err := f.Sources(ctx, svc)
+	if err != nil {
+		return corpus.Coverage{}, err
+	}
+	return corpus.ScanSourceFiles(ctx, files, bud, fn)
 }

@@ -294,7 +294,7 @@ func TestSearchRunFallsBackWhenRipgrepFails(t *testing.T) {
 	}
 	t.Setenv("PATH", fakeBin)
 
-	hits, engine, err := searchRun(context.Background(), root, "needle", "", true, 0, nil, nil)
+	hits, engine, _, err := searchRun(context.Background(), root, searchOpts{pattern: "needle", caseSensitive: true})
 	if err != nil {
 		t.Fatalf("searchRun: %v", err)
 	}
@@ -348,7 +348,7 @@ func TestSearchIgnore_FathomignoredDir_RefusedBothEngines(t *testing.T) {
 		t.Fatal("ignore is nil, want a compiled Matcher for the seeded .fathomignore")
 	}
 
-	walkHits, err := searchWalk(root, "Needle", "", true, 0, ignore)
+	walkHits, _, err := searchWalk(context.Background(), root, searchOpts{pattern: "Needle", caseSensitive: true, ignore: ignore})
 	if err != nil {
 		t.Fatalf("searchWalk: %v", err)
 	}
@@ -359,7 +359,7 @@ func TestSearchIgnore_FathomignoredDir_RefusedBothEngines(t *testing.T) {
 	if _, lerr := exec.LookPath("rg"); lerr != nil {
 		t.Skip("rg not on PATH — ripgrep engine not exercised directly here")
 	}
-	rgHits, err := searchRipgrep(context.Background(), root, "Needle", "", true, 0, patterns)
+	rgHits, _, err := searchRipgrep(context.Background(), root, searchOpts{pattern: "Needle", caseSensitive: true, ignorePatterns: patterns})
 	if err != nil {
 		t.Fatalf("searchRipgrep: %v", err)
 	}
@@ -438,7 +438,7 @@ func TestSearchEnvFile_RefusedBothEngines(t *testing.T) {
 	writeFlagFixture(t, root, "prod.env", "API_KEY=Needle\n")
 	writeFlagFixture(t, root, "pkg/a.go", "// Needle marker\n")
 
-	walkHits, err := searchWalk(root, "Needle", "", true, 0, nil)
+	walkHits, _, err := searchWalk(context.Background(), root, searchOpts{pattern: "Needle", caseSensitive: true})
 	if err != nil {
 		t.Fatalf("searchWalk: %v", err)
 	}
@@ -449,7 +449,7 @@ func TestSearchEnvFile_RefusedBothEngines(t *testing.T) {
 	if _, lerr := exec.LookPath("rg"); lerr != nil {
 		t.Skip("rg not on PATH — ripgrep engine not exercised directly here")
 	}
-	rgHits, err := searchRipgrep(context.Background(), root, "Needle", "", true, 0, nil)
+	rgHits, _, err := searchRipgrep(context.Background(), root, searchOpts{pattern: "Needle", caseSensitive: true})
 	if err != nil {
 		t.Fatalf("searchRipgrep: %v", err)
 	}
@@ -469,7 +469,7 @@ func TestSearchWalk_SkipsSymlinks(t *testing.T) {
 	}
 	writeFlagFixture(t, root, "pkg/a.go", "// Needle real\n")
 
-	hits, err := searchWalk(root, "Needle", "", true, 0, nil)
+	hits, _, err := searchWalk(context.Background(), root, searchOpts{pattern: "Needle", caseSensitive: true})
 	if err != nil {
 		t.Fatalf("searchWalk: %v", err)
 	}

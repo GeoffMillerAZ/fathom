@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/corpus"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
 )
 
@@ -417,5 +418,64 @@ func TestVerifyPlan_Tool_StructuredSkipReason(t *testing.T) {
 	}
 	if c := criterionFor(t, reasoned, "skip_test"); c["status"] != "pass" || !strings.Contains(c["detail"].(string), "covered by TestUntestedIntegration") {
 		t.Errorf("T-REASONED: skip_test criterion = %v, want the structured skip reason in the detail", c)
+	}
+}
+
+func (f *verifyFakeBackend) ScanSources(ctx context.Context, svc string, bud corpus.Budget, fn func(core.SourceFile) bool) (corpus.Coverage, error) {
+	files, err := f.Sources(ctx, svc)
+	if err != nil {
+		return corpus.Coverage{}, err
+	}
+	return corpus.ScanSourceFiles(ctx, files, bud, fn)
+}
+
+// stoppedScanVerifyBackend's tree scan stops after its first file (the
+// 64 MiB / 5 s handler budget spent): the spec ref lives in a file the
+// scan never reached.
+type stoppedScanVerifyBackend struct {
+	*verifyFakeBackend
+}
+
+func (b stoppedScanVerifyBackend) ScanSources(_ context.Context, _ string, _ corpus.Budget, fn func(core.SourceFile) bool) (corpus.Coverage, error) {
+	fn(core.SourceFile{Path: "a.go", Content: []byte("package a\n")})
+	return corpus.Coverage{Scanned: 1, Total: 2, Stopped: corpus.StopBytes}, nil
+}
+
+// I38: a spec matrix built from a scan that stopped early is a lower
+// bound — an "uncovered" spec may sit in an unscanned file — so the
+// answer names the partial scan instead of reading as a complete one.
+func TestVerifyPlan_PartialSpecScanIsNamed(t *testing.T) {
+	srv := mcp.NewServer(stoppedScanVerifyBackend{newVerifyBackend()})
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 1, Method: "tools/call",
+		Params: map[string]any{
+			"name": "verify_plan",
+			"arguments": map[string]any{
+				"service": "svc",
+				"tasks": []any{
+					map[string]any{"id": "T-1", "title": "spec", "symbol": "DoWork", "spec_ids": []any{"SPEC-1"}},
+				},
+			},
+		},
+	})
+	p := xtraPayload(t, resp)
+	note, _ := p["partial"].(string)
+	if !strings.Contains(note, "scanned 1/2 files: budget bytes") || !strings.Contains(note, "spec") {
+		t.Fatalf("partial = %q, want the spec matrix's stopped scan named", note)
+	}
+
+	// A plan with no spec IDs never scans: no partial.
+	resp = roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 2, Method: "tools/call",
+		Params: map[string]any{
+			"name": "verify_plan",
+			"arguments": map[string]any{
+				"service": "svc",
+				"tasks":   []any{map[string]any{"id": "T-1", "title": "do", "symbol": "DoWork"}},
+			},
+		},
+	})
+	if _, ok := xtraPayload(t, resp)["partial"]; ok {
+		t.Fatal("partial set without a spec scan")
 	}
 }

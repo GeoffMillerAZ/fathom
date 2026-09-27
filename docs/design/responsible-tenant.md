@@ -306,7 +306,8 @@ In wave A the cause fixes and the `Sources` slot bound the known paths; in wave 
 ladder and the producer governor bound memory whatever the cause.
 
 Argument-dependent classes: `references` without `services` is `tree` on the caller's own
-service (when an identity resolves, §4.5); with `["*"]` it is `fleet`.
+service (when an identity resolves, §4.5); with `["*"]`, or an explicit list naming more
+than one service (the same per-service work), it is `fleet`.
 
 ### 3.2 The gate
 
@@ -537,6 +538,16 @@ time before each is rewritten.
 `Corpus(service) corpus.Reader`. Code that tries to read a whole tree in a handler does not
 compile.
 
+**Status (wave C).** Built: `Sources` is gone from `mcp.QueryInterface` and
+`autoRefreshBackend` (RT-71); `internal/mcp` handlers stream `ScanSources` under a budget or
+read named files (`ReadSourceFiles`). Not yet built: the `SourcesForIngest` rename and the
+`Corpus` reader. `(*Client).Sources` keeps its name and still serves `cmd/fathom` readers —
+CLI verbs (`report`, `review`, `verify`'s gone evidence, `refactor-plan`, `gen-status-cue`),
+the console's project index, the evidence report and `CompileLayer` — each still bounded by
+the RT-146 slot. The rename and the "does not compile" guarantee for `cmd/fathom` land with
+the lint's `sources` rule (RT-91, RT-137), which makes each remaining handler reader either
+move to `ScanSources` or carry an allowlist reason.
+
 ### 4.7 `internal/lint/tenancy` — the rule enforced in the gate
 
 A Go test (`TestTenancyRules`, run by `go test ./...` inside `task validate`; no vet tool,
@@ -654,7 +665,7 @@ Additive tables (`CREATE … IF NOT EXISTS`), written in the ingest's final tran
 | `file_stats(service_id, path, size, mtime_ns, ino, content_hash, lang, excluded)` | pass 1 | `Sources`/`SourcePaths` for paths and languages, obligations corpus selection, the manifest watermark | ~45k rows after gitignore |
 | `service_summary(service_id, watermark, symbol_count, source_kinds_json, unsupported_langs_json, file_count, bytes, excluded_counts_json, source)` | end of ingest (with `service_meta`, one transaction) | `ServiceSummaries`' full symbol load, `unsupportedLanguagesCached` | 21 rows |
 | `observation_calls(service_id, caller_rowid, callee_key, callee_name)` + `INDEX(callee_key)`, `INDEX(callee_name)`, `INDEX(caller_rowid)`; `observation_calls_state(service_id)` marks a service complete | triggers on `observations` (insert, delete, rename), so every writer keeps it in step | `fleetCallers`, `crossServiceCallees` | ~669k rows, 30–40 MB |
-| `service_routes`, `service_http_calls` | ingest (serviceref extractor moves here) | `serviceref.BuildFromStore` per call | small |
+| `service_routes`, `service_http_calls`; `service_refs_state(service_id)` marks a service complete | ingest (serviceref extractor moves here): extracted from the fetched content, written just before the final commit, after every pass that can halt; a per-file refresh replaces its file's rows; read once per watermark (the `service_refs` memo group, dropped on a per-file refresh) | `serviceref.BuildFromStore` per call | small |
 | `file_imports(service_id, path, content_hash, imports_json, resolved_json)` | ingest; unchanged hash reuses the row | `fileresolve` re-parsing every JS/TS/Python file twice | per JS/TS/Py file |
 | `ingest_state(service_id, state, pid, started_at, target_commit, path)` | refresh | the watermark-before-extraction bug | 21 rows |
 

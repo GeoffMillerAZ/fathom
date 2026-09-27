@@ -28,7 +28,7 @@ func referencesOccurrences(t *testing.T, srv *mcp.Server, query string) []map[st
 		JSONRPC: "2.0", ID: 2030, Method: "tools/call",
 		Params: map[string]any{
 			"name":      "references",
-			"arguments": map[string]any{"query": query},
+			"arguments": map[string]any{"services": []any{"*"}, "query": query},
 		},
 	})
 	p := xtraPayload(t, resp)

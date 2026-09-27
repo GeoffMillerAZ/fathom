@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/corpus"
 	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/pkg/client"
 )
@@ -223,5 +224,49 @@ func TestSourcesScopeAbandonEndsWait(t *testing.T) {
 		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("an abandoned request kept waiting for a whole-tree slot")
+	}
+}
+
+// ctxBlockingConnector's Discover blocks until its ctx ends — a tree walk
+// that only a cancelled ctx stops.
+type ctxBlockingConnector struct{ entered chan struct{} }
+
+func (b ctxBlockingConnector) Discover(ctx context.Context, _ core.ServiceRef) ([]core.SourceRef, error) {
+	b.entered <- struct{}{}
+	<-ctx.Done()
+	return nil, ctx.Err()
+}
+
+func (ctxBlockingConnector) Fetch(context.Context, core.SourceRef) ([]byte, error) {
+	return nil, nil
+}
+
+func (ctxBlockingConnector) Watermark(context.Context, core.ServiceRef) (string, error) {
+	return "", nil
+}
+
+// RT-71 kept RT-146's contract: a ScanSources whose request is abandoned
+// mid-read stops its walk and fetch loop, not only its wait for a slot —
+// the daemon's /rpc ctx is detached from the connection.
+func TestScanSourcesAbandonStopsWalk(t *testing.T) {
+	conn := ctxBlockingConnector{entered: make(chan struct{}, 1)}
+	c := client.New(conn, store.NewMemoryStore())
+	abandon := make(chan struct{})
+	s, done := client.WithSourcesScope(context.Background(), abandon)
+	defer done()
+	errc := make(chan error, 1)
+	go func() {
+		_, err := c.ScanSources(s, "svc", corpus.Budget{}, func(client.SourceFile) bool { return false })
+		errc <- err
+	}()
+	<-conn.entered
+	close(abandon)
+	select {
+	case err := <-errc:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("abandoned scan err = %v, want context.Canceled", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("an abandoned ScanSources kept walking the tree")
 	}
 }

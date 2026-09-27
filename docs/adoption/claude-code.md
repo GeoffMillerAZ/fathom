@@ -965,7 +965,7 @@ The `/rpc/agent` (aka `/rpc/companion`) allowlist (`docs/mcp-tools.md`):
 | `repo_map` | You're orienting in a repo you don't know yet — the birds-eye structural view |
 | `symbol_context` | You're about to touch a symbol and want definition + callers + callees + related tests — plus an inline source snippet of the definition (capped 40 lines) — in one call, instead of four |
 | `find_callers` | You need every call site of a symbol — the structured alternative to grepping the repo |
-| `references` | Fleet-wide occurrence search for an identifier or string across every indexed service — replaces cross-repo grep |
+| `references` | Occurrence search for an identifier or string in your own service, or across every indexed service with `services: ["*"]` — replaces cross-repo grep |
 | `read_source` | You have a file and line range (from a citation, `find_symbol`, or a DocChunk's `line`/`end_line`) and want the exact current text, line-numbered — the surface's bounded `sed -n` |
 | `pack_context` | You're an architect/lead assembling a pre-packed, paste-ready brief for a worker or subagent — signatures, file paths, contract types in one shot |
 | `entrypoints` | You need to know where execution starts — `main`, HTTP handlers, CLI roots — e.g. before a blast-radius or dead-code question |

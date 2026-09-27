@@ -11,19 +11,19 @@ measurement window.
 
 ## Load-bearing manifest
 
-- [x] Embedded schema.cue is parsed at init; layer definitions (corpus globs, tier, budgets, serving caps) come from the manifest {id: M1-1, symbol: LoadLayer, package: internal/semantic, reachable_from: TestBuild_PropagatesListError}
+- [x] Embedded schema.cue is parsed at init; layer definitions (corpus globs, tier, budgets, serving caps) come from the manifest {id: M1-1, symbol: LoadLayer, package: internal/semantic, reachable_from: TestCompile_RefusesToStartWhenEstimatedCostExceedsBudget}
 - [x] The hand-synced Go mirrors are deleted: ObligationsInclude and the systemPrompt const no longer exist as authoritative sources {id: M1-2, symbol: LoadLayer, skip_test: true, skip: "deletion proven by grep acceptance below; loader behavior is M1-1's test"}
 - [x] compile_layer and fathom compile accept any manifest-listed layer instead of hard-rejecting non-obligations {id: M1-3, symbol: cmdCompile, package: cmd/fathom}
 
 ## Content-addressed prompt identity
 
 - [x] The obligations prompt lives as a prompttemplate.Template; PromptVersion derives from TextHash (obligations/hash8) so any prompt edit is automatically a new compile identity {id: M1-4, symbol: obligationsPromptVersion, package: internal/semantic, reachable_from: TestCompile_HappyPath}
-- [x] The digest gate keys on the derived identity; a template-text edit forces recompile of every section (the v1-to-v2 bug class dies) {id: M1-5, symbol: allDigestsMatch, package: internal/semantic, reachable_from: TestBuild_PropagatesListError}
+- [x] The digest gate keys on the derived identity; a template-text edit forces recompile of every section (the v1-to-v2 bug class dies) {id: M1-5, symbol: allDigestsMatch, package: internal/semantic, reachable_from: TestCompile_HappyPath}
 
 ## Typed compile failures + enforced budgets
 
-- [x] Section completion goes through structured.Complete: ErrTruncated and ErrMalformed drive the existing skip-section policy; errBadResponse hand-classification retires {id: M1-6, symbol: compileSection, package: internal/semantic, reachable_from: TestBuild_PropagatesListError}
-- [x] Run-level budgets from the manifest are enforced: estimated cost above max_usd_per_run refuses to start; max_tokens_per_run hard-stops mid-run; aborts are resumable via the digest gate; refusals recorded in compile_runs {id: M1-7, symbol: enforceBudgets, package: internal/semantic, reachable_from: TestBuild_PropagatesListError}
+- [x] Section completion goes through structured.Complete: ErrTruncated and ErrMalformed drive the existing skip-section policy; errBadResponse hand-classification retires {id: M1-6, symbol: compileSection, package: internal/semantic, reachable_from: TestCompile_HappyPath}
+- [x] Run-level budgets from the manifest are enforced: estimated cost above max_usd_per_run refuses to start; max_tokens_per_run hard-stops mid-run; aborts are resumable via the digest gate; refusals recorded in compile_runs {id: M1-7, symbol: enforceBudgets, package: internal/semantic, reachable_from: TestEnforceBudgets_MaxUSDPerRunZeroOrNegativeMeansUnlimited}
 
 ## Tier widening (amends ADR-016 tier gating)
 

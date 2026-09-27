@@ -126,7 +126,7 @@ func TestReferencesAlias_NativeQueryWorks(t *testing.T) {
 	srv := mcp.NewServer(&fakeBackend{})
 	resp := roundtrip(t, srv, request{
 		JSONRPC: "2.0", ID: 8, Method: "tools/call",
-		Params: map[string]any{"name": "references", "arguments": map[string]any{"query": "ProcessPayment"}},
+		Params: map[string]any{"name": "references", "arguments": map[string]any{"services": []any{"*"}, "query": "ProcessPayment"}},
 	})
 	if resp["error"] != nil {
 		t.Fatalf("unexpected error: %v", resp["error"])
@@ -138,7 +138,7 @@ func TestReferencesAlias_SymbolAliasWorks(t *testing.T) {
 	resp := roundtrip(t, srv, request{
 		JSONRPC: "2.0", ID: 9, Method: "tools/call",
 		// "symbol" only — no "query" at all.
-		Params: map[string]any{"name": "references", "arguments": map[string]any{"symbol": "ProcessPayment"}},
+		Params: map[string]any{"name": "references", "arguments": map[string]any{"services": []any{"*"}, "symbol": "ProcessPayment"}},
 	})
 	if resp["error"] != nil {
 		t.Fatalf("unexpected error: %v", resp["error"])
@@ -149,7 +149,7 @@ func TestReferencesAlias_ConflictingValuesErrorsLoudly(t *testing.T) {
 	srv := mcp.NewServer(&fakeBackend{})
 	resp := roundtrip(t, srv, request{
 		JSONRPC: "2.0", ID: 10, Method: "tools/call",
-		Params: map[string]any{"name": "references", "arguments": map[string]any{"query": "ProcessPayment", "symbol": "ValidateToken"}},
+		Params: map[string]any{"name": "references", "arguments": map[string]any{"services": []any{"*"}, "query": "ProcessPayment", "symbol": "ValidateToken"}},
 	})
 	if code := rpcErrCode(t, resp); code != float64(mcp.ErrCodeParams) {
 		t.Errorf("code = %v, want %v", code, mcp.ErrCodeParams)

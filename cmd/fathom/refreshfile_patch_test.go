@@ -188,3 +188,38 @@ func TestRefreshFile_OversizePurgeDropsGraphMemo(t *testing.T) {
 		t.Fatalf("an unchanged oversize file touched the memo: %+v %+v", out, p2)
 	}
 }
+
+// refsDroppingPatcher records the service-refs drops a refresh asks for.
+type refsDroppingPatcher struct {
+	recordingPatcher
+	refsDropped []string
+}
+
+func (p *refsDroppingPatcher) DropServiceRefs(service string) {
+	p.refsDropped = append(p.refsDropped, service)
+}
+
+// RT-89: a per-file refresh replaces the file's routes and client calls
+// without moving the watermark the daemon's service-refs memo is keyed on,
+// so every completed refresh drops that memo entry — cached graph or not.
+func TestRefreshFile_DropsServiceRefsMemo(t *testing.T) {
+	dir := t.TempDir()
+	target := filepath.Join(dir, "srv.go")
+	if err := os.WriteFile(target, []byte("package main\n\nfunc main() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	c := client.New(connector.NewLocalConnector(), store.NewMemoryStore())
+	t.Cleanup(func() { _ = c.Close() })
+	ctx := context.Background()
+	if _, err := c.Ingest(ctx, client.ServiceRef{ID: "refs-svc", Path: dir}); err != nil {
+		t.Fatalf("Ingest: %v", err)
+	}
+	p := &refsDroppingPatcher{}
+	out := buildRefreshFileResponse(ctx, c, p, "refs-svc", "srv.go")
+	if out.Error != "" {
+		t.Fatal(out.Error)
+	}
+	if len(p.refsDropped) != 1 || p.refsDropped[0] != "refs-svc" {
+		t.Fatalf("service refs dropped = %v, want [refs-svc]", p.refsDropped)
+	}
+}

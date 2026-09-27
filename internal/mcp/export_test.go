@@ -67,3 +67,11 @@ func (s *Server) CostClassOfForTest(name, args string) string {
 func (s *Server) RegisterUndeclaredToolForTest(name string) {
 	s.registerTool(toolDescriptor{Name: name, InputSchema: map[string]any{"type": "object"}, group: GroupShared}, nil)
 }
+
+// SetReferencesScanBytesForTest sets one references call's byte budget and
+// returns a restore func.
+func SetReferencesScanBytesForTest(n int64) func() {
+	old := referencesScanBytes
+	referencesScanBytes = n
+	return func() { referencesScanBytes = old }
+}

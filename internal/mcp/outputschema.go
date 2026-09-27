@@ -200,6 +200,13 @@ type referencesResult struct {
 	// confirm against one (false when any fell back — see Degraded).
 	Exact          bool `json:"exact"`
 	ExactAvailable bool `json:"exact_available,omitempty"`
+	// Scope (RT-86): which services were searched — "caller-service" (the
+	// default: the caller's own), "services" (named) or "fleet" (["*"]).
+	Scope string `json:"scope"`
+	// Partial (RT-86, I38): the scan stopped past max, at its byte or time
+	// budget, or left services unread — "≥ N occurrences (scanned x/y
+	// files: budget bytes)"; absent for a complete scan.
+	Partial string `json:"partial,omitempty"`
 	// Degraded (SB-45, O36 — ADR-014 execute-and-flag): services this call
 	// could not fully answer for — an unreadable root, or no typed
 	// reference sites to confirm exact mode against — named with why,
@@ -312,6 +319,7 @@ type verifyPlanResult struct {
 	Service string            `json:"service"`
 	Summary verifyPlanSummary `json:"summary"`
 	Tasks   []verifyPlanTask  `json:"tasks"`
+	Partial string            `json:"partial,omitempty"`
 }
 
 type verifyPlanSummary struct {
@@ -377,6 +385,9 @@ type blastRadiusResult struct {
 	// each element is serviceref.Hop.Payload()'s ad-hoc map, the same
 	// reason reviewDiffResult.Dimensions stays `any`.
 	ServiceRefHops any `json:"service_ref_hops"`
+	// ServiceRefUnextracted (RT-89) names services whose routes and client
+	// calls no ingest has extracted yet: their hops cannot appear.
+	ServiceRefUnextracted []string `json:"service_ref_unextracted,omitempty"`
 }
 
 // reviewDiffResult mirrors review_diff's payload (review_tool.go): the
@@ -399,6 +410,9 @@ type reviewDiffResult struct {
 	IndexCommit string        `json:"index_commit,omitempty"`
 	// ServiceRefHops (VB-30): see blastRadiusResult.ServiceRefHops.
 	ServiceRefHops any `json:"service_ref_hops"`
+	// ServiceRefUnextracted (RT-89) names services whose routes and client
+	// calls no ingest has extracted yet: their hops cannot appear.
+	ServiceRefUnextracted []string `json:"service_ref_unextracted,omitempty"`
 }
 
 // safeDeleteCheckResult mirrors safe_delete_check's payload (safe_delete.go).

@@ -93,7 +93,7 @@ func TestOutputSchemasMatchLiveResults(t *testing.T) {
 		"pack_context":      {"service": "svc", "concern": "billing"},
 		"query_symbols":     {"service": "svc", "concern": "billing"},
 		"read_source":       {"service": "svc", "file": "pkg/a.go"},
-		"references":        {"query": "A", "word": true},
+		"references":        {"services": []any{"*"}, "query": "A", "word": true},
 		"rename_impact":     {"service": "svc", "symbol": "A"},
 		"repo_map":          {"service": "svc"},
 		"review_diff":       {"service": "svc", "changed_files": []string{"pkg/a.go"}},

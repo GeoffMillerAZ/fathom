@@ -27,7 +27,7 @@ func TestCallerHeaderTestFlagFromEnv(t *testing.T) {
 
 	t.Setenv(testisolate.EnvTest, "")
 	h := CallerHeader("edit-hook", "sess;test=0")
-	want := "pid=" + strconv.Itoa(os.Getpid()) + ";ppid=" + strconv.Itoa(os.Getppid()) + ";origin=edit-hook;session=sess_test_0;test=1"
+	want := "pid=" + strconv.Itoa(os.Getpid()) + ";ppid=" + strconv.Itoa(os.Getppid()) + ";origin=edit-hook;session=sess_test_0;test=1;cwd=" + callerCwd()
 	if h != want {
 		t.Fatalf("CallerHeader = %q, want %q", h, want)
 	}

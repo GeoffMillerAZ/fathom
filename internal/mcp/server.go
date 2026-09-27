@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/corpus"
 	"github.com/geoffmilleraz/fathom/internal/memo"
 	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
@@ -47,9 +48,12 @@ type QueryInterface interface {
 	// Services returns the distinct service IDs known to the backend.
 	// Implementations may return nil/empty when the information is unavailable.
 	Services(ctx context.Context) ([]string, error)
-	// Sources discovers and fetches every source file for the named service.
-	// Implementations may return nil/empty when source fetching is unavailable.
-	Sources(ctx context.Context, service string) ([]core.SourceFile, error)
+	// ScanSources streams the named service's source files to fn one at a
+	// time under b and reports what it covered (RT-71, design §4.6): the
+	// only tree read query code has — there is no whole-tree slice to ask
+	// for. A scan that stopped early names why (Coverage.LowerBound, I38).
+	// Implementations without source access return a zero Coverage and nil.
+	ScanSources(ctx context.Context, service string, b corpus.Budget, fn func(core.SourceFile) (stop bool)) (corpus.Coverage, error)
 	// IngestService triggers a re-ingest of the named service, refreshing the
 	// store.  Implementations that do not support re-ingest may return nil.
 	IngestService(ctx context.Context, service string) error

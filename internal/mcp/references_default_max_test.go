@@ -30,7 +30,7 @@ func TestReferencesDefaultMaxIs25NamesHowToGetMore(t *testing.T) {
 		JSONRPC: "2.0", ID: 2030, Method: "tools/call",
 		Params: map[string]any{
 			"name":      "references",
-			"arguments": map[string]any{"query": "FindMe"},
+			"arguments": map[string]any{"services": []any{"*"}, "query": "FindMe"},
 		},
 	})
 	p := xtraPayload(t, resp)

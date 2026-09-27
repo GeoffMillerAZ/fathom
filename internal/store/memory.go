@@ -49,6 +49,8 @@ type MemoryStore struct {
 	// memory_derived.go); nil until first written.
 	summaries map[string]ServiceSummary
 	fileStats map[string][]FileStat
+	// serviceRefs are RT-89's extracted routes and client calls.
+	serviceRefs map[string]*memServiceRefs
 
 	// gate is the per-call suppression filter (scoped.go); initialised by
 	// NewMemoryStore and exercised by the constructor audit.

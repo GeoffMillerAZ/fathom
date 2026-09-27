@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/corpus"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
 )
 
@@ -205,4 +206,12 @@ func TestTraverseTool_HeterogeneousPath(t *testing.T) {
 	if len(paths) == 0 {
 		t.Error("traverse heterogeneous: expected at least 1 path")
 	}
+}
+
+func (b *traverseFakeBackend) ScanSources(ctx context.Context, svc string, bud corpus.Budget, fn func(core.SourceFile) bool) (corpus.Coverage, error) {
+	files, err := b.Sources(ctx, svc)
+	if err != nil {
+		return corpus.Coverage{}, err
+	}
+	return corpus.ScanSourceFiles(ctx, files, bud, fn)
 }

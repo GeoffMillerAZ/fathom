@@ -298,10 +298,10 @@ func registerDiscoveries(s *Server, backend QueryInterface) {
 		if backend != nil {
 			var nerr error
 			nodes, nerr = serviceSymbols(ctx, backend, p.Service)
-			sources, serr := backend.Sources(ctx, p.Service)
+			paths, serr := sourcePaths(ctx, backend, p.Service)
 			if serr == nil {
-				for _, sf := range sources {
-					sourceSet[sf.Path] = true
+				for _, sp := range paths {
+					sourceSet[sp] = true
 				}
 			}
 			switch {

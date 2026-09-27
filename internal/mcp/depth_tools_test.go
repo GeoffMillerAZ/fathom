@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/corpus"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
 )
 
@@ -39,6 +40,12 @@ func newGraphBackend() *graphBackend {
 
 func (g *graphBackend) ListAllSymbols(_ context.Context, _ string) ([]core.SymbolNode, error) {
 	return g.nodes, nil
+}
+
+// FindSymbol is the store's point lookup over the fixture (references
+// reads definitions through it, RT-86).
+func (g *graphBackend) FindSymbol(_ context.Context, _, name string) ([]core.SymbolNode, error) {
+	return nodesNamed(g.nodes, name), nil
 }
 
 func (g *graphBackend) TypedEdges(_ context.Context, _ string) ([]core.Edge, error) {
@@ -180,7 +187,7 @@ func TestBlastRadiusByDepthField(t *testing.T) {
 // — its own default behavior is pinned by TestReferencesExactModeDefault.
 func TestReferencesDepthAndConfidence(t *testing.T) {
 	srv := mcp.NewServer(newGraphBackend())
-	payload := callTool(t, srv, "references", map[string]any{"query": "Target", "word": true, "exact": false})
+	payload := callTool(t, srv, "references", map[string]any{"services": []any{"*"}, "query": "Target", "word": true, "exact": false})
 	defs := payload["definitions"].([]any)
 	if len(defs) != 1 || defs[0].(map[string]any)["depth"] != float64(0) || defs[0].(map[string]any)["edge_confidence"] != "resolved" {
 		t.Fatalf("definitions = %v: want Target at depth 0, resolved (verified tier)", defs)
@@ -211,4 +218,12 @@ func TestReferencesDepthAndConfidence(t *testing.T) {
 	if len(buckets) != 2 || buckets[0].(map[string]any)["depth"] != float64(0) || buckets[1].(map[string]any)["count"] != float64(len(occs)) {
 		t.Errorf("by_depth = %v: want depth 0 (1 def) and depth 1 (%d mentions)", buckets, len(occs))
 	}
+}
+
+func (g *graphBackend) ScanSources(ctx context.Context, svc string, bud corpus.Budget, fn func(core.SourceFile) bool) (corpus.Coverage, error) {
+	files, err := g.Sources(ctx, svc)
+	if err != nil {
+		return corpus.Coverage{}, err
+	}
+	return corpus.ScanSourceFiles(ctx, files, bud, fn)
 }

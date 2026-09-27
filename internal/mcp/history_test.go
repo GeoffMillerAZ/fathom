@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/corpus"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
 )
 
@@ -195,4 +196,12 @@ func TestHistory_MissingService(t *testing.T) {
 	if code := errObj["code"].(float64); code != float64(mcp.ErrCodeParams) {
 		t.Errorf("code = %v, want %v", code, mcp.ErrCodeParams)
 	}
+}
+
+func (b *historyFakeBackend) ScanSources(ctx context.Context, svc string, bud corpus.Budget, fn func(core.SourceFile) bool) (corpus.Coverage, error) {
+	files, err := b.Sources(ctx, svc)
+	if err != nil {
+		return corpus.Coverage{}, err
+	}
+	return corpus.ScanSourceFiles(ctx, files, bud, fn)
 }

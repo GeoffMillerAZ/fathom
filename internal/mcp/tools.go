@@ -365,7 +365,7 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 		// scopes are never silently merged; each cross-service entry also
 		// carries an explicit "scope":"cross-service" tag. nil fleet or no
 		// cross-service hits omit the field entirely.
-		if cross := crossServiceCallers(fleet, p.Service, p.Symbol); len(cross) > 0 {
+		if cross := crossServiceCallers(ctx, fleet, p.Service, p.Symbol); len(cross) > 0 {
 			result["cross_service_callers"] = cross
 		}
 		return withSummary(findCallersSummary(p.Symbol, callers[:len(wireCallers)], transitiveRows, elidedCount, maxDepth), result), nil

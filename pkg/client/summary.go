@@ -107,6 +107,21 @@ func (c *Client) DerivedState(ctx context.Context, service string) (store.Derive
 	return c.st.DerivedState(ctx, service)
 }
 
+// CallersOfKeys is the store's indexed reverse call lookup (RT-77, RT-84):
+// every observation, in a call-indexed service, whose calls carry one of
+// keys or a key whose final name segment is one of keys — a candidate
+// superset the caller narrows. Suppression-filtered.
+func (c *Client) CallersOfKeys(ctx context.Context, keys []string) ([]store.CallerRow, error) {
+	return c.st.CallersOfKeys(ctx, keys)
+}
+
+// SymbolSourcesForNames returns the (package, symbol, source_ref) rows
+// declaring any of names in service — a point lookup over the (service_id,
+// symbol) index, never a symbol load (RT-84). Suppression-filtered.
+func (c *Client) SymbolSourcesForNames(ctx context.Context, service string, names []string) ([]store.SymbolSource, error) {
+	return c.st.SymbolSourcesForNames(ctx, service, names)
+}
+
 // StoreID names the store this client reads (RT-74): the graph store and
 // symbol snapshots key on it, so the MCP tools and the console — which
 // share one client in the daemon — share one snapshot and one graph per
@@ -130,4 +145,11 @@ func (c *Client) SuppressionToken(service string) string {
 		return t.SuppressionToken(service)
 	}
 	return ""
+}
+
+// ServiceRefsFor is the store's ingest-extracted routes and outbound HTTP
+// client calls for service (RT-89), and whether every readable file has
+// been extracted. Suppression-filtered.
+func (c *Client) ServiceRefsFor(ctx context.Context, service string) (store.ServiceRefs, bool, error) {
+	return c.st.ServiceRefsFor(ctx, service)
 }

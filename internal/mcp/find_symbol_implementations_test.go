@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/corpus"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
 )
 
@@ -178,4 +179,12 @@ func TestFindSymbol_NonInterface_NoImplementationsField(t *testing.T) {
 	if _, has := p["implementations"]; has {
 		t.Errorf("expected no implementations field on a non-interface hit, got %v", p["implementations"])
 	}
+}
+
+func (b *implFakeBackend) ScanSources(ctx context.Context, svc string, bud corpus.Budget, fn func(core.SourceFile) bool) (corpus.Coverage, error) {
+	files, err := b.Sources(ctx, svc)
+	if err != nil {
+		return corpus.Coverage{}, err
+	}
+	return corpus.ScanSourceFiles(ctx, files, bud, fn)
 }

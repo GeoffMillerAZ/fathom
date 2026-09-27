@@ -29,6 +29,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/geoffmilleraz/fathom/internal/analysis/serviceref"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -948,6 +949,27 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 		pending = append(pending, pendingFile{ref: ref, content: content, hash: hash})
 	}
 
+	// RT-89 (§6): routes and outbound HTTP client calls are extracted here,
+	// at ingest, from the content this pass already holds — never per call.
+	contents := make(map[string][]byte, len(refs))
+	unreadable := map[string]bool{}
+	for i, r := range refs {
+		switch {
+		case fetched[i].err == nil:
+			contents[r.Path] = fetched[i].content
+		case !isOversize(fetched[i].err):
+			unreadable[r.Path] = true
+		}
+	}
+	// Extracted now, while the content is in hand (the rows are small);
+	// written just before the final commit, so an ingest halted anywhere
+	// before it leaves the previous commit's rows.
+	writeRefs, err := p.extractServiceRefs(ctx, svc.ID, refs, contents, unreadable, pending)
+	if err != nil {
+		return report, err
+	}
+	contents = nil
+
 	// ── Dispatch ─────────────────────────────────────────────────────────────
 	if p.cfg.Lazy {
 		// Lazy mode: enqueue and return without extracting. The orphan purge
@@ -957,6 +979,9 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 		p.mu.Lock()
 		p.queue[svc.ID] = append(p.queue[svc.ID], pending...)
 		p.mu.Unlock()
+		if err := writeRefs(); err != nil {
+			return finish(err)
+		}
 		return finish(p.finalCommit(ctx, svc, run, refs))
 	}
 
@@ -1026,6 +1051,9 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	// ── Orphan purge, then the final commit ──────────────────────────────────
 	// refs still holds every discovered file, unreadable ones included, so an
 	// unreadable file is never mistaken for a deleted one.
+	if err := writeRefs(); err != nil {
+		return finish(err)
+	}
 	return finish(p.finalCommit(ctx, svc, run, refs))
 }
 
@@ -1119,6 +1147,83 @@ func (p *Pipeline) purgeOrphans(ctx context.Context, serviceID string, refs []co
 		}
 	}
 	return nil
+}
+
+// extractServiceRefs replaces the service's extracted routes and client
+// calls (RT-89): the changed files' when the service's rows are complete,
+// every readable file's when they are not (its first ingest since RT-89,
+// or after a purge); rows of files no longer discovered, or no longer
+// readable as source (oversize), are dropped.
+//
+// A file unreadable this run (a read failure, not oversize) keeps its rows,
+// as pass 3 keeps its observations: when it reads again unchanged it is
+// never pending, so dropped rows would never return. For the same reason a
+// first extraction with any unreadable file is not marked complete — the
+// next ingest extracts every readable file again.
+//
+// It extracts now and returns the write, which the caller runs just before
+// the final commit (§6): an ingest halted in between writes nothing.
+func (p *Pipeline) extractServiceRefs(ctx context.Context, serviceID string, refs []core.SourceRef, contents map[string][]byte, unreadable map[string]bool, pending []pendingFile) (write func() error, err error) {
+	noWrite := func() error { return nil }
+	stored, complete, err := p.st.ServiceRefsFor(ctx, serviceID)
+	if err != nil {
+		return noWrite, fmt.Errorf("fusion: service refs %q: %w", serviceID, err)
+	}
+	var paths []string
+	if complete {
+		for _, pf := range pending {
+			paths = append(paths, pf.ref.Path)
+		}
+	} else {
+		for _, r := range refs {
+			if _, ok := contents[r.Path]; ok {
+				paths = append(paths, r.Path)
+			}
+		}
+	}
+	files := append([]string(nil), paths...)
+	discovered := make(map[string]bool, len(refs))
+	for _, r := range refs {
+		discovered[r.Path] = true
+	}
+	gone := map[string]bool{}
+	dropped := func(file string) bool {
+		if !discovered[file] {
+			return true
+		}
+		_, readable := contents[file]
+		return !readable && !unreadable[file]
+	}
+	for _, r := range stored.Routes {
+		if dropped(r.File) {
+			gone[r.File] = true
+		}
+	}
+	for _, c := range stored.Calls {
+		if dropped(c.File) {
+			gone[c.File] = true
+		}
+	}
+	for f := range gone {
+		files = append(files, f)
+	}
+	sort.Strings(files)
+	var out store.ServiceRefs
+	for _, path := range paths {
+		r := serviceref.ExtractFile(path, contents[path])
+		out.Routes = append(out.Routes, r.Routes...)
+		out.Calls = append(out.Calls, r.Calls...)
+	}
+	if len(files) == 0 && complete {
+		return noWrite, nil
+	}
+	markComplete := complete || len(unreadable) == 0
+	return func() error {
+		if err := p.st.ReplaceServiceRefs(ctx, serviceID, files, out, markComplete); err != nil {
+			return fmt.Errorf("fusion: write service refs %q: %w", serviceID, err)
+		}
+		return nil
+	}, nil
 }
 
 // ExtractPending drains the lazy queue for serviceID, extracts all pending

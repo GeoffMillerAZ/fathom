@@ -42,6 +42,9 @@ type CallerInfo struct {
 	PID, PPID int
 	Session   string
 	Test      bool
+	// Cwd is the caller's working directory (cwd=), when it sent one:
+	// references resolves the caller's own service from it (RT-86).
+	Cwd string
 }
 
 type callerKey struct{}

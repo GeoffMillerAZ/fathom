@@ -28,7 +28,7 @@ hooks, gates, CLAUDE.md/AGENTS.md — lives in [coding-agents.md](coding-agents.
 | `brief` | MCP tool | Paste-ready markdown brief combining symbol resolution + concern query; respects a char budget |
 | `symbol_context` | MCP tool | Definition + direct callers + direct callees + related tests for one symbol |
 | `read_source` | MCP tool | Bounded, line-numbered raw-text read from the indexed corpus (200 lines / 8000 bytes per call by default, `max_bytes` up to 16000; the bytes are the `lines` array as sent, envelope and escaping included) — the agent surface's `sed -n`; refuses ignored or suppressed paths by name |
-| `references` | MCP tool | Fleet-wide occurrence search for an identifier or string, evidence-tiered — the structured alternative to grepping repo by repo |
+| `references` | MCP tool | Occurrence search for an identifier or string (your service by default, `services: ["*"]` for the fleet), evidence-tiered — the structured alternative to grepping repo by repo |
 | `memory_search` | MCP tool | Anchored memories for a service, filtered by `query` and/or `file`; every entry carries `tier` and `state` (**experimental** — new, unmeasured) |
 | `find_callees` | MCP tool | Direct callees of a named symbol |
 | `entrypoints` | MCP tool | Likely program entry points: `main` functions, HTTP handlers, CLI root commands |

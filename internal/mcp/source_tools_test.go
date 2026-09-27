@@ -11,6 +11,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/cloc"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/corpus"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
 )
 
@@ -619,4 +620,12 @@ func TestCloc_UnclassifiedBucket(t *testing.T) {
 	if _, ok := byLang["other"]; ok {
 		t.Error(`"other" bucket must never appear — unclassified files get an explicit label`)
 	}
+}
+
+func (s *sourcesFakeBackend) ScanSources(ctx context.Context, svc string, bud corpus.Budget, fn func(core.SourceFile) bool) (corpus.Coverage, error) {
+	files, err := s.Sources(ctx, svc)
+	if err != nil {
+		return corpus.Coverage{}, err
+	}
+	return corpus.ScanSourceFiles(ctx, files, bud, fn)
 }

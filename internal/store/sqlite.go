@@ -772,6 +772,11 @@ func (s *SQLiteStore) PurgeService(ctx context.Context, serviceID string) error 
 		`DELETE FROM file_stats WHERE service_id = ?`,
 		`DELETE FROM service_summary WHERE service_id = ?`,
 		`DELETE FROM observation_calls WHERE service_id = ?`,
+		// RT-89: extracted routes and client calls; the next ingest
+		// re-extracts every file.
+		`DELETE FROM service_routes WHERE service_id = ?`,
+		`DELETE FROM service_http_calls WHERE service_id = ?`,
+		`DELETE FROM service_refs_state WHERE service_id = ?`,
 	} {
 		if _, err := s.db.ExecContext(ctx, q, serviceID); err != nil {
 			return fmt.Errorf("PurgeService: %w", err)
@@ -802,6 +807,9 @@ var serviceIDTables = []string{
 	"service_summary",
 	"observation_calls",
 	"observation_calls_state",
+	"service_routes",
+	"service_http_calls",
+	"service_refs_state",
 }
 
 // RemoveService deletes every row for serviceID in one transaction — see the

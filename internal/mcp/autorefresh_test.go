@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/corpus"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
 )
 
@@ -65,7 +66,7 @@ func TestAutoRefresh_ReingestsOnDriftOnce(t *testing.T) {
 	ar.ListAllSymbols(ctx, "svc")
 	ar.FindSymbol(ctx, "svc", "X")
 	ar.QuerySymbols(ctx, core.Query{ServiceID: "svc"})
-	ar.Sources(ctx, "svc")
+	ar.ScanSources(ctx, "svc", corpus.Budget{}, func(core.SourceFile) bool { return false })
 	ar.TypedEdges(ctx, "svc")
 	if fake.ingests != 1 {
 		t.Fatalf("ingests = %d, want 1 (debounced)", fake.ingests)
@@ -237,4 +238,12 @@ func TestAutoRefresh_ObligationsLayerCapabilitiesDegradeGracefully(t *testing.T)
 	if err := ar.ClaimFeedback(ctx, "svc", "c1", "refute", "n", "a"); err == nil {
 		t.Error("expected an error when the backend does not implement claimFeedbackBackend")
 	}
+}
+
+func (f *refreshFake) ScanSources(ctx context.Context, svc string, bud corpus.Budget, fn func(core.SourceFile) bool) (corpus.Coverage, error) {
+	files, err := f.Sources(ctx, svc)
+	if err != nil {
+		return corpus.Coverage{}, err
+	}
+	return corpus.ScanSourceFiles(ctx, files, bud, fn)
 }

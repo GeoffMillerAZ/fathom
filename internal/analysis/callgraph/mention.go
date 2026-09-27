@@ -2,6 +2,7 @@ package callgraph
 
 import (
 	"sort"
+	"sync"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
 )
@@ -28,30 +29,47 @@ func edgeConfidenceBetween(g *Graph, caller, callee string) core.EdgeConfidence 
 // rather than paying the graph-construction cost on every query the way a
 // single-shot MentionConfidence call would.
 type MentionIndex struct {
-	g      *Graph
-	byFile map[string][]core.SymbolNode
+	g     *Graph
+	nodes []core.SymbolNode
+	// byFile holds, per file, indexes into nodes sorted by (line, key) —
+	// built on the first lookup, so an index nobody asks costs nothing and
+	// the nodes are never copied.
+	once   sync.Once
+	byFile map[string][]int32
 }
 
 // BuildMentionIndex builds the index once for (nodes, typed).
 func BuildMentionIndex(nodes []core.SymbolNode, typed []core.Edge) *MentionIndex {
 	g := Build(nodes)
 	AddTypedEdges(g, typed)
-	byFile := map[string][]core.SymbolNode{}
-	for _, n := range nodes {
-		if n.Line > 0 {
-			byFile[n.FilePath] = append(byFile[n.FilePath], n)
+	return &MentionIndex{g: g, nodes: nodes}
+}
+
+// NewMentionIndex is BuildMentionIndex over an already-built graph of
+// nodes plus their typed edges (BuildBoth's graph — the shared memo's
+// GraphBoth), so a caller holding one pays no graph build. nodes is read,
+// never copied or reordered.
+func NewMentionIndex(both *Graph, nodes []core.SymbolNode) *MentionIndex {
+	return &MentionIndex{g: both, nodes: nodes}
+}
+
+func (m *MentionIndex) buildByFile() {
+	m.byFile = map[string][]int32{}
+	for i := range m.nodes {
+		if m.nodes[i].Line > 0 {
+			f := m.nodes[i].FilePath
+			m.byFile[f] = append(m.byFile[f], int32(i))
 		}
 	}
-	for f := range byFile {
-		ns := byFile[f]
-		sort.Slice(ns, func(i, j int) bool {
-			if ns[i].Line != ns[j].Line {
-				return ns[i].Line < ns[j].Line
+	for _, ix := range m.byFile {
+		sort.Slice(ix, func(a, b int) bool {
+			na, nb := &m.nodes[ix[a]], &m.nodes[ix[b]]
+			if na.Line != nb.Line {
+				return na.Line < nb.Line
 			}
-			return ns[i].Key() < ns[j].Key()
+			return na.Key() < nb.Key()
 		})
 	}
-	return &MentionIndex{g: g, byFile: byFile}
 }
 
 // Confidence returns a lookup that classifies a text mention at (file,
@@ -64,12 +82,13 @@ func BuildMentionIndex(nodes []core.SymbolNode, typed []core.Edge) *MentionIndex
 // then key.
 func (m *MentionIndex) Confidence(defKeys []string) func(file string, line int) core.EdgeConfidence {
 	return func(file string, line int) core.EdgeConfidence {
+		m.once.Do(m.buildByFile)
 		ns := m.byFile[file]
-		idx := sort.Search(len(ns), func(i int) bool { return ns[i].Line > line }) - 1
+		idx := sort.Search(len(ns), func(i int) bool { return m.nodes[ns[i]].Line > line }) - 1
 		if idx < 0 {
 			return core.EdgeConfidenceHeuristic
 		}
-		enclosing := ns[idx].Key()
+		enclosing := m.nodes[ns[idx]].Key()
 		for _, def := range defKeys {
 			if edgeConfidenceBetween(m.g, enclosing, def) == core.EdgeConfidenceResolved {
 				return core.EdgeConfidenceResolved

@@ -117,36 +117,61 @@ func serviceRefHopsPayload(hops []serviceref.Hop) []any {
 	return out
 }
 
+// fleetServiceRefHops joins services' ingest-extracted routes and client
+// calls (RT-89) into hops — rows read from the store, never source. A
+// backend without the stored rows (serviceref.RefReader), or a read
+// error, yields no hops; unextracted names services whose rows are not
+// complete (not re-ingested since RT-89). Each service's rows are read
+// once per watermark (memoRefReader), not per call.
+func fleetServiceRefHops(ctx context.Context, backend QueryInterface, services []string) (hops []serviceref.Hop, unextracted []string) {
+	rr, ok := backend.(serviceref.RefReader)
+	if !ok {
+		return nil, services
+	}
+	hops, unextracted, err := serviceref.BuildFromStore(ctx, memoRefReader{backend: backend, rr: rr}, services)
+	if err != nil {
+		return nil, services
+	}
+	return hops, unextracted
+}
+
 // serviceRefHopsInto reports the service_ref hops (VB-30) whose ToService
 // is service and whose ToFile is one of changedFiles: another service's
 // client call joins a route THIS change touches, so that OTHER service's
 // call site is part of the blast radius even though no same-process call
-// graph connects them. Computed fleet-wide (serviceref.BuildFromStore
-// across every known service) each call — the same no-caching precedent
-// cross_repo_blast_radius already sets by re-listing every service's
-// symbols on every call. Best-effort: a fleet of fewer than two services,
+// graph connects them. Joined fleet-wide each call (serviceref.BuildFromStore
+// across every known service) from rows read once per watermark
+// (memoRefReader, RT-89). Best-effort: a fleet of fewer than two services,
 // or any backend error, degrades to no hops rather than failing the whole
 // tool.
-func serviceRefHopsInto(ctx context.Context, backend QueryInterface, service string, changedFiles []string) []serviceref.Hop {
+//
+// unextracted (RT-89) names services whose routes and client calls have
+// not been extracted by an ingest yet: their hops cannot be in the answer.
+func serviceRefHopsInto(ctx context.Context, backend QueryInterface, service string, changedFiles []string) (out []serviceref.Hop, unextracted []string) {
 	services, err := backend.Services(ctx)
 	if err != nil || len(services) < 2 {
-		return nil
+		return nil, nil
 	}
-	hops, err := serviceref.BuildFromStore(ctx, backend, services)
-	if err != nil {
-		return nil
-	}
+	hops, unextracted := fleetServiceRefHops(ctx, backend, services)
 	changed := make(map[string]bool, len(changedFiles))
 	for _, f := range changedFiles {
 		changed[f] = true
 	}
-	var out []serviceref.Hop
 	for _, h := range hops {
 		if h.ToService == service && changed[h.ToFile] {
 			out = append(out, h)
 		}
 	}
-	return out
+	return out, unextracted
+}
+
+// withServiceRefHops sets m's service_ref_hops and, when any service's
+// routes and calls are not extracted yet, service_ref_unextracted (RT-89).
+func withServiceRefHops(m map[string]any, hops []serviceref.Hop, unextracted []string) {
+	m["service_ref_hops"] = serviceRefHopsPayload(hops)
+	if len(unextracted) > 0 {
+		m["service_ref_unextracted"] = unextracted
+	}
 }
 
 // ─── investigation: blast_radius ─────────────────────────────────────────────
@@ -218,8 +243,9 @@ func registerBlastRadius(s *Server, backend QueryInterface) {
 			// call graph can see. Each entry kind:"service_ref",
 			// tier:"heuristic". Empty (never omitted) when the fleet has
 			// fewer than two services or no such hop exists.
-			"service_ref_hops": serviceRefHopsPayload(serviceRefHopsInto(ctx, backend, p.Service, p.ChangedFiles)),
 		}
+		hops, unextracted := serviceRefHopsInto(ctx, backend, p.Service, p.ChangedFiles)
+		withServiceRefHops(result, hops, unextracted)
 		if ic := indexCommitFor(ctx, backend, p.Service); ic != "" {
 			result["index_commit"] = ic
 		}
@@ -353,8 +379,9 @@ func registerSpecCoverage(s *Server, backend QueryInterface) {
 		if p.Service == "" {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "spec_coverage: service required"}
 		}
-		// Scan Sources for spec refs; fall back to nodes if Sources unavailable.
-		files, _ := backend.Sources(ctx, p.Service)
+		// Scan sources for spec refs under the tree budget (RT-71); a
+		// partial scan is named in the answer.
+		files, specCov, _ := collectSources(ctx, backend, p.Service)
 		nodes, err := serviceSymbols(ctx, backend, p.Service)
 		if err != nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
@@ -398,11 +425,11 @@ func registerSpecCoverage(s *Server, backend QueryInterface) {
 			}
 			covered[id] = stringsToAny(syms)
 		}
-		return map[string]any{
+		return withPartial(map[string]any{
 			"coverage":  covered,
 			"uncovered": stringsToAny(uncovered),
 			"orphans":   stringsToAny(orphans),
-		}, nil
+		}, specCov), nil
 	})
 }
 
@@ -435,7 +462,7 @@ func registerTraceability(s *Server, backend QueryInterface) {
 		if p.Service == "" {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "traceability: service required"}
 		}
-		files, _ := backend.Sources(ctx, p.Service)
+		files, cov, _ := collectSources(ctx, backend, p.Service)
 		refs := make(map[string]any)
 		for _, f := range files {
 			var specRefs []string
@@ -448,7 +475,7 @@ func registerTraceability(s *Server, backend QueryInterface) {
 				refs[f.Path] = stringsToAny(specRefs)
 			}
 		}
-		return map[string]any{"refs": refs}, nil
+		return withPartial(map[string]any{"refs": refs}, cov), nil
 	})
 }
 
@@ -712,7 +739,7 @@ func registerStaleDocs(s *Server, backend QueryInterface) {
 		if rpcErr != nil {
 			return nil, rpcErr
 		}
-		files, rpcErr := fetchSources(ctx, backend, svc)
+		files, cov, rpcErr := fetchSources(ctx, backend, svc)
 		if rpcErr != nil {
 			return nil, rpcErr
 		}
@@ -753,7 +780,7 @@ func registerStaleDocs(s *Server, backend QueryInterface) {
 				"ref":  d.Ref,
 			}
 		}
-		return map[string]any{"drifts": result, "count": len(result)}, nil
+		return withPartial(map[string]any{"drifts": result, "count": len(result)}, cov), nil
 	})
 }
 
@@ -852,10 +879,14 @@ func registerDepDrift(s *Server, backend QueryInterface) {
 		if p.ServiceB == "" {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "dep_drift: service_b required"}
 		}
+		var partials []string
 		parseDeps := func(svc string) ([]deps.Dependency, *rpcError) {
-			files, err := backend.Sources(ctx, svc)
+			files, cov, err := collectSources(ctx, backend, svc)
 			if err != nil {
 				return nil, &rpcError{Code: ErrCodeInternal, Message: "sources " + svc + ": " + err.Error()}
+			}
+			if note := partialNote(cov); note != "" {
+				partials = append(partials, svc+": "+note)
 			}
 			var all []deps.Dependency
 			for _, f := range files {
@@ -884,7 +915,11 @@ func registerDepDrift(s *Server, backend QueryInterface) {
 				"baseline": d.Baseline,
 			}
 		}
-		return map[string]any{"drift": result, "count": len(result)}, nil
+		out := map[string]any{"drift": result, "count": len(result)}
+		if len(partials) > 0 {
+			out["partial"] = strings.Join(partials, "; ")
+		}
+		return out, nil
 	})
 }
 
@@ -1328,19 +1363,16 @@ func registerCrossRepoBlastRadius(s *Server, backend QueryInterface) {
 		// (the intra-service ListAllSymbols loop), extended across the
 		// process boundary a call-graph-only search cannot see.
 		var hopHits []serviceref.Hop
-		if allHops, err := serviceref.BuildFromStore(ctx, backend, services); err == nil {
-			for _, h := range allHops {
-				if h.ToHandler == p.Symbol {
-					hopHits = append(hopHits, h)
-				}
+		allHops, unextracted := fleetServiceRefHops(ctx, backend, services)
+		for _, h := range allHops {
+			if h.ToHandler == p.Symbol {
+				hopHits = append(hopHits, h)
 			}
 		}
 
-		return map[string]any{
-			"hits":             out,
-			"count":            len(out),
-			"service_ref_hops": serviceRefHopsPayload(hopHits),
-		}, nil
+		result := map[string]any{"hits": out, "count": len(out)}
+		withServiceRefHops(result, hopHits, unextracted)
+		return result, nil
 	})
 }
 
@@ -1671,7 +1703,7 @@ func registerProtoConformance(s *Server, backend QueryInterface) {
 		if rpcErr != nil {
 			return nil, rpcErr
 		}
-		files, rpcErr := fetchSources(ctx, backend, svc)
+		files, cov, rpcErr := fetchSources(ctx, backend, svc)
 		if rpcErr != nil {
 			return nil, rpcErr
 		}
@@ -1691,7 +1723,7 @@ func registerProtoConformance(s *Server, backend QueryInterface) {
 				})
 			}
 		}
-		return map[string]any{"issues": allIssues, "count": len(allIssues)}, nil
+		return withPartial(map[string]any{"issues": allIssues, "count": len(allIssues)}, cov), nil
 	})
 }
 
@@ -1728,7 +1760,7 @@ func registerSpecRefs(s *Server, backend QueryInterface) {
 		if p.Service == "" {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "spec_refs: service required"}
 		}
-		files, rpcErr := fetchSources(ctx, backend, p.Service)
+		files, cov, rpcErr := fetchSources(ctx, backend, p.Service)
 		if rpcErr != nil {
 			return nil, rpcErr
 		}
@@ -1749,11 +1781,11 @@ func registerSpecRefs(s *Server, backend QueryInterface) {
 				"line": r.Line,
 			})
 		}
-		return map[string]any{
+		return withPartial(map[string]any{
 			"specs":         specsMap,
 			"total_refs":    len(refs),
 			"files_scanned": scanned,
-		}, nil
+		}, cov), nil
 	})
 }
 
@@ -2154,7 +2186,7 @@ func registerTraverse(s *Server, backend QueryInterface) {
 		}
 
 		// Build edges from source files: spec-refs, routes, env-keys.
-		srcs, _ := backend.Sources(ctx, p.Service)
+		srcs, srcCov, _ := collectSources(ctx, backend, p.Service)
 		for _, f := range srcs {
 			// Spec-ref edges: file → spec_id.
 			specRefs := sdd.ExtractRefs(string(f.Content))
@@ -2245,10 +2277,10 @@ func registerTraverse(s *Server, backend QueryInterface) {
 			edgeCountsOut[k] = v
 		}
 
-		return map[string]any{
+		return withPartial(map[string]any{
 			"paths":       pathsOut,
 			"truncated":   result.Truncated,
 			"edge_counts": edgeCountsOut,
-		}, nil
+		}, srcCov), nil
 	})
 }

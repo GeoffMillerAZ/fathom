@@ -115,7 +115,18 @@ func buildRefreshFileResponse(ctx context.Context, c *client.Client, patcher gra
 	if (report.Refreshed || report.Purged) && patcher != nil && patcher.HasCachedGraph(service) {
 		out.GraphPatched = patchGraphForFile(ctx, c, patcher, service, file)
 	}
+	// RT-89: the refresh also replaced the file's routes and client calls,
+	// under the same unmoved watermark — drop the service-refs memo entry.
+	if d, ok := patcher.(serviceRefsDropper); ok {
+		d.DropServiceRefs(service)
+	}
 	return out
+}
+
+// serviceRefsDropper is the OPTIONAL patcher capability forgetting a
+// service's memoized routes and client calls (mcp.Server.DropServiceRefs).
+type serviceRefsDropper interface {
+	DropServiceRefs(service string)
 }
 
 // patchGraphForFile patches the memoized graph for every package the

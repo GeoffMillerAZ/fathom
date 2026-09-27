@@ -25,7 +25,7 @@ func referencesImplementations(t *testing.T, be *implFakeBackend, query string) 
 		JSONRPC: "2.0", ID: 5000, Method: "tools/call",
 		Params: map[string]any{
 			"name":      "references",
-			"arguments": map[string]any{"query": query},
+			"arguments": map[string]any{"services": []any{"*"}, "query": query},
 		},
 	})
 	if resp["error"] != nil {

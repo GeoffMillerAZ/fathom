@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/corpus"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
 )
@@ -875,5 +876,94 @@ rules: [
 	}
 	if vo2["active"] != float64(0) || vo2["fixed"] != float64(1) || vo2["superseded"] != float64(0) {
 		t.Fatalf("run2 verdict_outcome = %v, want active:0 fixed:1 superseded:0", vo2)
+	}
+}
+
+func (r *reviewFakeBackend) ScanSources(ctx context.Context, svc string, bud corpus.Budget, fn func(core.SourceFile) bool) (corpus.Coverage, error) {
+	files, err := r.Sources(ctx, svc)
+	if err != nil {
+		return corpus.Coverage{}, err
+	}
+	return corpus.ScanSourceFiles(ctx, files, bud, fn)
+}
+
+// partialScanReviewBackend's tree scan stops before any file (the handler
+// budget spent), while the files themselves are readable by name.
+type partialScanReviewBackend struct {
+	*reviewFakeBackend
+}
+
+func (b partialScanReviewBackend) ScanSources(context.Context, string, corpus.Budget, func(core.SourceFile) bool) (corpus.Coverage, error) {
+	return corpus.Coverage{Scanned: 0, Total: len(b.sources), Stopped: corpus.StopBytes}, nil
+}
+
+func (b partialScanReviewBackend) ReadSourceFiles(_ context.Context, _ string, paths []string) ([]core.SourceFile, error) {
+	var out []core.SourceFile
+	for _, p := range paths {
+		if c, ok := b.sources[p]; ok {
+			out = append(out, core.SourceFile{Path: p, Content: c})
+		}
+	}
+	return out, nil
+}
+
+// RT-71 / I38: a review over a service whose tree scan stopped early still
+// hashes the cited file (read by name), so re-running review_diff never
+// strips an existing finding's cites link (PutClaims replaces the link set).
+func TestReviewDiff_PartialScanKeepsCitationLinks(t *testing.T) {
+	corpusRoot := t.TempDir()
+	rulesDir := filepath.Join(corpusRoot, ".fathom", "rules")
+	if err := os.MkdirAll(rulesDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(rulesDir, "archconformance.cue"), []byte("rules: [\n\t{from_pkg: \"api\", to_pkg: \"store\", allow: false},\n]\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	nodes := []core.SymbolNode{
+		{Service: "svc", Package: "api", Name: "Handler", Kind: core.KindGoFunc, FilePath: "api/handler.go", Line: 7, Calls: []string{"svc::store.Query"}},
+		{Service: "svc", Package: "store", Name: "Query", Kind: core.KindGoFunc, FilePath: "store/query.go", Line: 3},
+	}
+	handler := []byte("package api\n\nimport \"svc/store\"\n\n// Handler serves.\n//\nfunc Handler() { store.Query() }\n\n")
+	fake := &reviewFakeBackend{
+		extendedFakeBackend: extendedFakeBackend{nodes: nodes, services: []string{"svc"}, svcPath: corpusRoot},
+		sources:             map[string][]byte{"api/handler.go": handler, "store/query.go": []byte("package store\n\nfunc Query() {}\n")},
+	}
+	call := func(backend mcp.QueryInterface) string {
+		t.Helper()
+		resp := roundtrip(t, mcp.NewServer(backend), request{
+			JSONRPC: "2.0", ID: 1, Method: "tools/call",
+			Params: map[string]any{
+				"name":      "review_diff",
+				"arguments": map[string]any{"service": "svc", "changed_files": []string{"api/handler.go"}},
+			},
+		})
+		p := extToolPayload(t, resp)
+		for _, raw := range p["dimensions"].([]any) {
+			d := raw.(map[string]any)
+			if d["name"] == "arch_conformance" {
+				f := d["findings"].([]any)[0].(map[string]any)
+				return f["claim_id"].(string)
+			}
+		}
+		t.Fatal("missing arch_conformance dimension")
+		return ""
+	}
+	hasCites := func(id string) bool {
+		for _, l := range fake.links[id] {
+			if l.Rel == core.RelCites {
+				return true
+			}
+		}
+		return false
+	}
+	id := call(fake)
+	if !hasCites(id) {
+		t.Fatalf("a complete scan persisted no cites link: %+v", fake.links[id])
+	}
+	if again := call(partialScanReviewBackend{fake}); again != id {
+		t.Fatalf("claim id moved: %s vs %s", again, id)
+	}
+	if !hasCites(id) {
+		t.Fatalf("a partial scan stripped the cites link: %+v", fake.links[id])
 	}
 }

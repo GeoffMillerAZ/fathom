@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/corpus"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
 )
@@ -100,4 +101,12 @@ func TestVerifyPlan_SourcesBusyRefusesByName(t *testing.T) {
 	if resp["error"] != nil {
 		t.Fatalf("verify_plan without specs = %v, want an answer", resp["error"])
 	}
+}
+
+func (b busySourcesVerifyBackend) ScanSources(ctx context.Context, svc string, bud corpus.Budget, fn func(core.SourceFile) bool) (corpus.Coverage, error) {
+	files, err := b.Sources(ctx, svc)
+	if err != nil {
+		return corpus.Coverage{}, err
+	}
+	return corpus.ScanSourceFiles(ctx, files, bud, fn)
 }

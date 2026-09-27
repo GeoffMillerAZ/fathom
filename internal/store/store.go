@@ -264,6 +264,20 @@ type Store interface {
 	// docs/design/responsible-tenant.md §4.3).
 	SymbolSourcesForNames(ctx context.Context, serviceID string, names []string) ([]SymbolSource, error)
 
+	// ObservationsForSymbol returns the service's observations whose
+	// symbol equals name or one of its dotted suffixes, or ends in
+	// "."+name — query.FindSymbol's candidates, read through the
+	// (service_id, symbol) index, never the whole observation set (RT-85,
+	// docs/design/responsible-tenant.md §4.5). Filtered by source_ref.
+	ObservationsForSymbol(ctx context.Context, serviceID, name string) ([]core.Observation, error)
+
+	// ObservationsCalling returns the service's observations whose calls
+	// carry symbol or a key with symbol's final name segment — a candidate
+	// superset query.FindCallers narrows — through observation_calls
+	// (RT-85). indexed is false when the service's call index is not
+	// complete; the caller then keeps its scan. Filtered by source_ref.
+	ObservationsCalling(ctx context.Context, serviceID, symbol string) (obs []core.Observation, indexed bool, err error)
+
 	// Fingerprint returns the stored content hash for (serviceID, sourceRef).
 	// The boolean is false when no fingerprint has been recorded yet.
 	Fingerprint(ctx context.Context, serviceID, sourceRef string) (hash string, found bool, err error)
@@ -669,6 +683,18 @@ type Store interface {
 	// a candidate superset callers narrow with their own match. Sorted by
 	// (service, symbol, source_ref, line). Filtered by source_ref.
 	CallersOfKeys(ctx context.Context, keys []string) ([]CallerRow, error)
+
+	// ReplaceServiceRefs replaces the routes and outbound HTTP client
+	// calls of files with refs' rows (RT-89: extracted at ingest);
+	// markComplete records that an ingest extracted every readable file of
+	// the service (it never unmarks).
+	ReplaceServiceRefs(ctx context.Context, serviceID string, files []string, refs ServiceRefs, markComplete bool) error
+
+	// ServiceRefsFor returns serviceID's extracted routes and client
+	// calls, and whether every readable file has been extracted (a
+	// service not yet re-ingested since RT-89 is incomplete, named by the
+	// reader — never answered by reading source). Filtered by file.
+	ServiceRefsFor(ctx context.Context, serviceID string) (refs ServiceRefs, complete bool, err error)
 
 	// DerivedState reports which derived facts serviceID has.
 	DerivedState(ctx context.Context, serviceID string) (DerivedState, error)

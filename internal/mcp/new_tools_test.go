@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/corpus"
 	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
 )
@@ -39,8 +40,8 @@ func (e *extendedFakeBackend) FindCallers(_ context.Context, _, _ string) ([]cor
 	return nil, nil
 }
 
-func (e *extendedFakeBackend) FindSymbol(_ context.Context, _, _ string) ([]core.SymbolNode, error) {
-	return nil, nil
+func (e *extendedFakeBackend) FindSymbol(_ context.Context, _, name string) ([]core.SymbolNode, error) {
+	return nodesNamed(e.nodes, name), nil
 }
 
 func (e *extendedFakeBackend) ListAllSymbols(_ context.Context, _ string) ([]core.SymbolNode, error) {
@@ -1279,4 +1280,12 @@ func TestStalenessReport_TypedEdgesUnknown(t *testing.T) {
 	if _, present := block["failed"]; present {
 		t.Fatalf("an unknown outcome must not carry a failed verdict either way: %v", block)
 	}
+}
+
+func (e *extendedFakeBackend) ScanSources(ctx context.Context, svc string, bud corpus.Budget, fn func(core.SourceFile) bool) (corpus.Coverage, error) {
+	files, err := e.Sources(ctx, svc)
+	if err != nil {
+		return corpus.Coverage{}, err
+	}
+	return corpus.ScanSourceFiles(ctx, files, bud, fn)
 }

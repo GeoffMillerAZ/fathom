@@ -108,6 +108,30 @@ func (f *fleetAdapter) ObservationsFor(service string) []client.Observation {
 	return obs
 }
 
+// CallersOfKeys answers cross-service callers from the store's call index
+// (RT-84): one indexed query, never a whole-service load. A store error is
+// logged (deduped) and returned; fleetCallers then falls back to the scan.
+func (f *fleetAdapter) CallersOfKeys(ctx context.Context, keys []string) ([]store.CallerRow, error) {
+	rows, err := f.c.CallersOfKeys(ctx, keys)
+	if err != nil {
+		f.log.Dedupe(dlog.LevelWarn, "fleet:callers-of-keys", "fleet: callers of keys: %s", classifyStoreError(err))
+	}
+	return rows, err
+}
+
+// CallsIndexed reports whether service's call index is complete
+// (DerivedState.CallsIndexed); a service that is not keeps the scan.
+func (f *fleetAdapter) CallsIndexed(ctx context.Context, service string) bool {
+	st, err := f.c.DerivedState(ctx, service)
+	return err == nil && st.CallsIndexed
+}
+
+// SymbolSourcesForNames resolves declarations by exact name over the
+// (service_id, symbol) index (RT-84's cross-service callees).
+func (f *fleetAdapter) SymbolSourcesForNames(ctx context.Context, service string, names []string) ([]store.SymbolSource, error) {
+	return f.c.SymbolSourcesForNames(ctx, service, names)
+}
+
 // StoredSummary answers list_services from the service's service_summary
 // row (RT-79, design §4.4): written at ingest, backfilled by SQL at first
 // use, never a symbol load or a walk. A row not yet derived is a named

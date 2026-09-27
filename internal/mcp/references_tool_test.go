@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/corpus"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
 )
 
@@ -26,12 +27,35 @@ func (r *referencesFakeBackend) Sources(_ context.Context, svc string) ([]core.S
 	return r.sourcesByService[svc], nil
 }
 
+// FindSymbol is the store's point lookup over the fixture (references
+// reads definitions through it, RT-86); like ListAllSymbols here, it does
+// not partition by service.
+func (r *referencesFakeBackend) FindSymbol(_ context.Context, _, name string) ([]core.SymbolNode, error) {
+	return nodesNamed(r.nodes, name), nil
+}
+
+// nodesNamed is a fake store's FindSymbol: the nodes named name.
+func nodesNamed(nodes []core.SymbolNode, name string) []core.SymbolNode {
+	var out []core.SymbolNode
+	for _, n := range nodes {
+		if n.Name == name {
+			out = append(out, n)
+		}
+	}
+	return out
+}
+
 // compile-time check.
 var _ mcp.QueryInterface = (*referencesFakeBackend)(nil)
 
 // newReferencesSrv returns a Server backed by a two-service fake that contains
 // the query token "FindMe" in multiple places.
 func newReferencesSrv() (*mcp.Server, string) {
+	return mcp.NewServer(referencesBackendForTest()), "FindMe"
+}
+
+// referencesBackendForTest is newReferencesSrv's backend.
+func referencesBackendForTest() *referencesFakeBackend {
 	const query = "FindMe"
 
 	srcA1 := core.SourceFile{
@@ -81,7 +105,7 @@ func newReferencesSrv() (*mcp.Server, string) {
 		},
 	}
 
-	return mcp.NewServer(be), query
+	return be
 }
 
 // ─── tests ────────────────────────────────────────────────────────────────────
@@ -92,7 +116,7 @@ func TestReferences_OccurrencesAcrossServices(t *testing.T) {
 		JSONRPC: "2.0", ID: 2000, Method: "tools/call",
 		Params: map[string]any{
 			"name":      "references",
-			"arguments": map[string]any{"query": query},
+			"arguments": map[string]any{"services": []any{"*"}, "query": query},
 		},
 	})
 	p := xtraPayload(t, resp)
@@ -141,7 +165,7 @@ func TestReferences_DefinitionsEntry(t *testing.T) {
 		JSONRPC: "2.0", ID: 2001, Method: "tools/call",
 		Params: map[string]any{
 			"name":      "references",
-			"arguments": map[string]any{"query": query},
+			"arguments": map[string]any{"services": []any{"*"}, "query": query},
 		},
 	})
 	p := xtraPayload(t, resp)
@@ -179,7 +203,7 @@ func TestReferences_MaxCap_Truncated(t *testing.T) {
 		JSONRPC: "2.0", ID: 2002, Method: "tools/call",
 		Params: map[string]any{
 			"name":      "references",
-			"arguments": map[string]any{"query": query, "max": 1},
+			"arguments": map[string]any{"services": []any{"*"}, "query": query, "max": 1},
 		},
 	})
 	p := xtraPayload(t, resp)
@@ -220,7 +244,7 @@ func TestReferences_ScopeRequired(t *testing.T) {
 	be := &extendedFakeBackend{nodes: nodes, services: []string{"svc"}}
 	srv := mcp.NewServer(be)
 
-	payload := callTool(t, srv, "references", map[string]any{"query": "String"})
+	payload := callTool(t, srv, "references", map[string]any{"services": []any{"*"}, "query": "String"})
 
 	if payload["scope_required"] != true {
 		t.Fatalf("scope_required = %v, want true for a %d-definition fan-in", payload["scope_required"], n)
@@ -287,7 +311,7 @@ func TestReferences_MissingQuery(t *testing.T) {
 		JSONRPC: "2.0", ID: 2004, Method: "tools/call",
 		Params: map[string]any{
 			"name":      "references",
-			"arguments": map[string]any{},
+			"arguments": map[string]any{"services": []any{"*"}},
 		},
 	})
 	errObj := xtraError(t, resp)
@@ -302,7 +326,7 @@ func TestReferences_BadRegex(t *testing.T) {
 		JSONRPC: "2.0", ID: 2005, Method: "tools/call",
 		Params: map[string]any{
 			"name":      "references",
-			"arguments": map[string]any{"query": "[invalid(", "regex": true},
+			"arguments": map[string]any{"services": []any{"*"}, "query": "[invalid(", "regex": true},
 		},
 	})
 	errObj := xtraError(t, resp)
@@ -332,7 +356,7 @@ func TestReferences_WordMatch(t *testing.T) {
 		JSONRPC: "2.0", ID: 2006, Method: "tools/call",
 		Params: map[string]any{
 			"name":      "references",
-			"arguments": map[string]any{"query": "FindMe", "word": true},
+			"arguments": map[string]any{"services": []any{"*"}, "query": "FindMe", "word": true},
 		},
 	})
 	p := xtraPayload(t, resp)
@@ -372,7 +396,7 @@ func TestReferencesOccurrenceUnder100Bytes(t *testing.T) {
 		JSONRPC: "2.0", ID: 2020, Method: "tools/call",
 		Params: map[string]any{
 			"name":      "references",
-			"arguments": map[string]any{"query": "FindMe"},
+			"arguments": map[string]any{"services": []any{"*"}, "query": "FindMe"},
 		},
 	})
 	p := xtraPayload(t, resp)
@@ -401,7 +425,7 @@ func TestReferences_RefusesNonSymbolQuery(t *testing.T) {
 		JSONRPC: "2.0", ID: 2021, Method: "tools/call",
 		Params: map[string]any{
 			"name":      "references",
-			"arguments": map[string]any{"query": "func (s *"},
+			"arguments": map[string]any{"services": []any{"*"}, "query": "func (s *"},
 		},
 	})
 	errObj := xtraError(t, resp)
@@ -421,9 +445,9 @@ func TestReferences_RefusesNonSymbolQuery(t *testing.T) {
 func TestReferences_DottedPathAndRegexAccepted(t *testing.T) {
 	srv, _ := newReferencesSrv()
 	for _, args := range []map[string]any{
-		{"query": "pkg.Sym"},
-		{"query": "Type.Method"},
-		{"query": "Find.*", "regex": true},
+		{"query": "pkg.Sym", "services": []any{"*"}},
+		{"query": "Type.Method", "services": []any{"*"}},
+		{"query": "Find.*", "regex": true, "services": []any{"*"}},
 	} {
 		resp := roundtrip(t, srv, request{
 			JSONRPC: "2.0", ID: 2022, Method: "tools/call",
@@ -464,7 +488,7 @@ func TestReferences_InToolsList(t *testing.T) {
 // (a syntax-only call, a doc mention) are dropped, and the response says so.
 func TestReferencesExactModeDefault(t *testing.T) {
 	srv := mcp.NewServer(newGraphBackend())
-	payload := callTool(t, srv, "references", map[string]any{"query": "Target", "word": true})
+	payload := callTool(t, srv, "references", map[string]any{"services": []any{"*"}, "query": "Target", "word": true})
 
 	if payload["exact"] != true {
 		t.Fatalf("exact = %v, want true (the service has typed edges)", payload["exact"])
@@ -491,7 +515,7 @@ func TestReferencesExactModeDefault(t *testing.T) {
 // filter off entirely, restoring the pre-SB-45 answer.
 func TestReferencesExactFalseRestoresEveryOccurrence(t *testing.T) {
 	srv := mcp.NewServer(newGraphBackend())
-	payload := callTool(t, srv, "references", map[string]any{"query": "Target", "word": true, "exact": false})
+	payload := callTool(t, srv, "references", map[string]any{"services": []any{"*"}, "query": "Target", "word": true, "exact": false})
 	if payload["exact"] != false {
 		t.Errorf("exact = %v, want false", payload["exact"])
 	}
@@ -509,7 +533,7 @@ func TestReferencesExactFalseRestoresEveryOccurrence(t *testing.T) {
 // exact mode off.
 func TestReferencesExactIncludeHeuristicAddsBack(t *testing.T) {
 	srv := mcp.NewServer(newGraphBackend())
-	payload := callTool(t, srv, "references", map[string]any{"query": "Target", "word": true, "include_heuristic": true})
+	payload := callTool(t, srv, "references", map[string]any{"services": []any{"*"}, "query": "Target", "word": true, "include_heuristic": true})
 	if payload["exact"] != true {
 		t.Errorf("exact = %v, want true — include_heuristic adds occurrences, it does not disable exact mode", payload["exact"])
 	}
@@ -538,8 +562,8 @@ func (f *referencesExactMultiFake) FindCallers(context.Context, string, string) 
 	return nil, nil
 }
 
-func (f *referencesExactMultiFake) FindSymbol(context.Context, string, string) ([]core.SymbolNode, error) {
-	return nil, nil
+func (f *referencesExactMultiFake) FindSymbol(_ context.Context, svc, name string) ([]core.SymbolNode, error) {
+	return nodesNamed(f.nodesByService[svc], name), nil
 }
 
 func (f *referencesExactMultiFake) ListAllSymbols(_ context.Context, svc string) ([]core.SymbolNode, error) {
@@ -594,7 +618,7 @@ func newReferencesExactMultiFake() *referencesExactMultiFake {
 // exact_available: false even though svcA answered at full precision.
 func TestReferencesExactFallsBackForUnconfirmableService(t *testing.T) {
 	srv := mcp.NewServer(newReferencesExactMultiFake())
-	payload := callTool(t, srv, "references", map[string]any{"query": "Target", "word": true})
+	payload := callTool(t, srv, "references", map[string]any{"services": []any{"*"}, "query": "Target", "word": true})
 
 	if payload["exact"] != true {
 		t.Fatalf("exact = %v, want true (svcA has typed edges)", payload["exact"])
@@ -658,8 +682,9 @@ func (f *referencesUnreadableFake) FindCallers(context.Context, string, string) 
 	return nil, nil
 }
 
-func (f *referencesUnreadableFake) FindSymbol(context.Context, string, string) ([]core.SymbolNode, error) {
-	return nil, nil
+func (f *referencesUnreadableFake) FindSymbol(ctx context.Context, svc, name string) ([]core.SymbolNode, error) {
+	nodes, err := f.ListAllSymbols(ctx, svc)
+	return nodesNamed(nodes, name), err
 }
 
 func (f *referencesUnreadableFake) ListAllSymbols(_ context.Context, svc string) ([]core.SymbolNode, error) {
@@ -705,7 +730,7 @@ func TestReferencesDegradesUnreadableServiceRoot(t *testing.T) {
 		listErr:     fmt.Errorf(`sources demo: client.Sources discover "demo": lstat /scratchpad/adopt2/demo: no such file or directory`),
 	}
 	srv := mcp.NewServer(f)
-	payload := callTool(t, srv, "references", map[string]any{"query": "HooksWired"})
+	payload := callTool(t, srv, "references", map[string]any{"services": []any{"*"}, "query": "HooksWired"})
 
 	if _, hasErr := payload["error"]; hasErr {
 		t.Fatalf("references returned an error for the whole call: %v", payload)
@@ -738,7 +763,7 @@ func TestReferencesDegradesUnreadableSourcesOnly(t *testing.T) {
 		sourcesErr:  fmt.Errorf(`client.Sources discover "svcBad": lstat /scratchpad/adopt2/demo: no such file or directory`),
 	}
 	srv := mcp.NewServer(f)
-	payload := callTool(t, srv, "references", map[string]any{"query": "HooksWired"})
+	payload := callTool(t, srv, "references", map[string]any{"services": []any{"*"}, "query": "HooksWired"})
 
 	if _, hasErr := payload["error"]; hasErr {
 		t.Fatalf("references returned an error for the whole call: %v", payload)
@@ -751,4 +776,28 @@ func TestReferencesDegradesUnreadableSourcesOnly(t *testing.T) {
 	if len(occs) != 1 {
 		t.Errorf("occurrences = %v, want svcGood's one occurrence", occs)
 	}
+}
+
+func (r *referencesFakeBackend) ScanSources(ctx context.Context, svc string, bud corpus.Budget, fn func(core.SourceFile) bool) (corpus.Coverage, error) {
+	files, err := r.Sources(ctx, svc)
+	if err != nil {
+		return corpus.Coverage{}, err
+	}
+	return corpus.ScanSourceFiles(ctx, files, bud, fn)
+}
+
+func (f *referencesExactMultiFake) ScanSources(ctx context.Context, svc string, bud corpus.Budget, fn func(core.SourceFile) bool) (corpus.Coverage, error) {
+	files, err := f.Sources(ctx, svc)
+	if err != nil {
+		return corpus.Coverage{}, err
+	}
+	return corpus.ScanSourceFiles(ctx, files, bud, fn)
+}
+
+func (f *referencesUnreadableFake) ScanSources(ctx context.Context, svc string, bud corpus.Budget, fn func(core.SourceFile) bool) (corpus.Coverage, error) {
+	files, err := f.Sources(ctx, svc)
+	if err != nil {
+		return corpus.Coverage{}, err
+	}
+	return corpus.ScanSourceFiles(ctx, files, bud, fn)
 }

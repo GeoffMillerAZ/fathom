@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/geoffmilleraz/fathom/internal/analysis/serviceref"
 	"os"
 	"sync"
 	"sync/atomic"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/corpus"
 	"github.com/geoffmilleraz/fathom/internal/dlog"
 	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/hookcache"
@@ -405,9 +407,9 @@ func (a *autoRefreshBackend) ListAllSymbols(ctx context.Context, serviceID strin
 	return a.QueryInterface.ListAllSymbols(ctx, serviceID)
 }
 
-func (a *autoRefreshBackend) Sources(ctx context.Context, service string) ([]core.SourceFile, error) {
+func (a *autoRefreshBackend) ScanSources(ctx context.Context, service string, b corpus.Budget, fn func(core.SourceFile) bool) (corpus.Coverage, error) {
 	a.ensure(ctx, service)
-	return a.QueryInterface.Sources(ctx, service)
+	return a.QueryInterface.ScanSources(ctx, service, b, fn)
 }
 
 func (a *autoRefreshBackend) TypedEdges(ctx context.Context, serviceID string) ([]core.Edge, error) {
@@ -734,4 +736,28 @@ func (a *autoRefreshBackend) StoreID() string {
 		return id.StoreID()
 	}
 	return ""
+}
+
+// SourcePaths forwards the wrapped backend's path lister (RT-71): without
+// it a paths-only question would fall back to a budgeted content scan.
+func (a *autoRefreshBackend) SourcePaths(ctx context.Context, service string) ([]string, error) {
+	a.ensure(ctx, service)
+	return sourcePaths(ctx, a.QueryInterface, service)
+}
+
+// ReadSourceFiles forwards the wrapped backend's named-file reader
+// (RT-71, RT-86), falling back to a budgeted scan keeping those paths.
+func (a *autoRefreshBackend) ReadSourceFiles(ctx context.Context, service string, paths []string) ([]core.SourceFile, error) {
+	a.ensure(ctx, service)
+	return sourceFiles(ctx, a.QueryInterface, service, paths), nil
+}
+
+// ServiceRefsFor forwards the wrapped backend's ingest-extracted routes
+// and client calls (RT-89); a backend without them has none extracted.
+func (a *autoRefreshBackend) ServiceRefsFor(ctx context.Context, service string) (store.ServiceRefs, bool, error) {
+	if rr, ok := a.QueryInterface.(serviceref.RefReader); ok {
+		a.ensure(ctx, service)
+		return rr.ServiceRefsFor(ctx, service)
+	}
+	return store.ServiceRefs{}, false, nil
 }

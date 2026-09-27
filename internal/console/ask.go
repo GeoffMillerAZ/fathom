@@ -239,6 +239,11 @@ func AskArgs(s AskShape, service, input string) map[string]any {
 	default:
 		args[s.Arg] = strings.TrimSpace(input)
 	}
+	if s.Tool == "references" && service != "" {
+		// RT-86: references searches the services it is named — the
+		// project the question is asked from.
+		args["services"] = []string{service}
+	}
 	return args
 }
 

@@ -388,7 +388,7 @@ func registerCrossRepoCallers(s *Server, fleet FleetBackend, name, description s
 			"required": []string{"symbol"},
 		},
 		group: GroupPlatform,
-	}, func(_ context.Context, args json.RawMessage) (any, *rpcError) {
+	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
 		if fleet == nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: "no fleet backend configured"}
 		}
@@ -406,7 +406,7 @@ func registerCrossRepoCallers(s *Server, fleet FleetBackend, name, description s
 		// extracted so symbol_context/find_callers's cross-service
 		// stitching (P1-2) can reuse it verbatim instead of a second
 		// implementation drifting apart from this one.
-		hits := fleetCallers(fleet, p.Symbol)
+		hits := fleetCallers(ctx, fleet, p.Symbol)
 		result := make([]any, len(hits))
 		for i, h := range hits {
 			result[i] = map[string]any{

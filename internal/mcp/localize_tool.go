@@ -691,7 +691,7 @@ func runLocalize(ctx context.Context, s *Server, backend QueryInterface, service
 			if root, err := resolveCorpusRoot(ctx, backend, service); err == nil {
 				ignore, ignorePatterns, _, ierr := connector.LoadIgnoreScopedForWithPatterns(root, service)
 				if ierr == nil {
-					rawHits, _, serr := searchRun(ctx, root, regexp.QuoteMeta(item.Value), "", false, 0, ignore, ignorePatterns)
+					rawHits, _, _, serr := searchRun(ctx, root, searchOpts{pattern: regexp.QuoteMeta(item.Value), ignore: ignore, ignorePatterns: ignorePatterns})
 					if serr == nil {
 						sort.Slice(rawHits, func(i, j int) bool {
 							if rawHits[i].File != rawHits[j].File {
