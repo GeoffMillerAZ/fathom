@@ -76,12 +76,22 @@ type governor struct {
 	lastFree  time.Time
 	halted    bool // an ingest was halted at the exit mark; the next exit sample exits
 	exited    bool
-	cancelled []string // the last refuse cancellation, in order
-	abandoned int64    // calls cancelled as abandoned-by-governor, process lifetime
+	cancelled []string  // the last refuse cancellation, in order
+	abandoned int64     // calls cancelled as abandoned-by-governor, process lifetime
+	lastDiag  time.Time // the last refuse-entry diagnostic capture
 }
 
 // freeEvery bounds debug.FreeOSMemory while shed (§2.1).
 const freeEvery = 30 * time.Second
+
+// Diagnostic capture bounds (§13.4): at most one refuse-entry capture per
+// diagEvery, and the capture directory keeps at most diagKeep captures and
+// diagKeepBytes, oldest pruned first.
+const (
+	diagEvery     = 10 * time.Minute
+	diagKeep      = 10
+	diagKeepBytes = 200 * tenancy.MiB
+)
 
 // exitOverBudgetCode is the exit rung's code (EX_SOFTWARE): launchd
 // relaunches it and the breaker counts it (§2.3).
@@ -149,7 +159,8 @@ func (g *governor) applyLadderLevel(tr tenancy.Transition) {
 			}
 			g.drop(g.actions.dropRefuse)
 			g.cancelHeavy()
-			if tr.To == tenancy.LevelRefuse && g.captureDiag != nil {
+			if tr.To == tenancy.LevelRefuse && g.captureDiag != nil && (g.lastDiag.IsZero() || tr.At.Sub(g.lastDiag) >= diagEvery) {
+				g.lastDiag = tr.At
 				if p := g.captureDiag("refuse"); p != "" {
 					g.logf("tenancy: diagnostics captured → " + p)
 				}
@@ -510,6 +521,48 @@ func captureExitDiag(dir string, inflight *tenancy.InFlight, now func() time.Tim
 		if b, err := json.MarshalIndent(inflight.Snapshot(), "", "  "); err == nil {
 			_ = os.WriteFile(filepath.Join(d, "inflight.json"), b, 0o600)
 		}
+		pruneDiagCaptures(dir, diagKeep, diagKeepBytes)
 		return d
 	}
+}
+
+// pruneDiagCaptures keeps dir's newest captures — at most keep of them and
+// at most keepBytes in all, the newest always kept — and removes the rest.
+// Capture directories are named <UTC timestamp>-<trigger>, so name order is
+// age order. Best-effort: an unreadable entry is left alone.
+func pruneDiagCaptures(dir string, keep int, keepBytes int64) {
+	ents, err := os.ReadDir(dir)
+	if err != nil {
+		return
+	}
+	var names []string
+	for _, e := range ents {
+		if e.IsDir() {
+			names = append(names, e.Name())
+		}
+	}
+	sort.Sort(sort.Reverse(sort.StringSlice(names)))
+	var total int64
+	for i, name := range names {
+		p := filepath.Join(dir, name)
+		size := dirSize(p)
+		if i == 0 || (i < keep && total+size <= keepBytes) {
+			total += size
+			continue
+		}
+		_ = os.RemoveAll(p)
+	}
+}
+
+func dirSize(dir string) int64 {
+	var n int64
+	_ = filepath.WalkDir(dir, func(_ string, d os.DirEntry, err error) error {
+		if err == nil && !d.IsDir() {
+			if info, ierr := d.Info(); ierr == nil {
+				n += info.Size()
+			}
+		}
+		return nil
+	})
+	return n
 }
