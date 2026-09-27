@@ -117,7 +117,9 @@ preflight() {
 ledger_start_of() {
   local ledger="$1" pattern="$2"
   [ -f "$ledger" ] || return 0
-  awk -v pat="$pattern" '/"row":"start"/ {n++} $0 ~ pat {print n+0; exit}' "$ledger"
+  # A breaker row is written by the start it decides, before that start's
+  # own row: a match on a non-start row belongs to the next start.
+  awk -v pat="$pattern" '/"row":"start"/ {n++} $0 ~ pat {print (/"row":"start"/ ? n : n+1); exit}' "$ledger"
 }
 
 # stress_verdict MAX_FP EXIT_MARK DIAG SAFE_START STOP_START — RT-M3's
@@ -163,14 +165,26 @@ verdict_self_check() {
     fi
   }
   printf '%s\n' '{"row":"start","mode":"normal"}' '{"row":"exit"}' '{"row":"start","mode":"normal"}' '{"row":"exit"}' \
-    '{"row":"start","mode":"safe"}' '{"row":"exit"}' '{"row":"start","mode":"safe"}' '{"row":"breaker"}' >"$l"
+    '{"row":"start","mode":"safe"}' '{"row":"exit"}' '{"row":"start","mode":"safe"}' '{"row":"breaker","to":"stop"}' >"$l"
   local safe stop
   safe="$(ledger_start_of "$l" '"mode":"safe"|"to":"safe"')"
-  stop="$(ledger_start_of "$l" '"row":"breaker"|"row":"stop"')"
+  stop="$(ledger_start_of "$l" '"to":"stop"|"row":"stop"')"
   check "the seatbelt held (safe mode by start 3, stop by start 5)" PASS 100 4294967296 /diag "$safe" "$stop"
   check "no safe mode" FAIL 100 4294967296 /diag "" "$stop"
   printf '%s\n' '{"row":"start"}' '{"row":"start"}' '{"row":"start"}' '{"row":"start","mode":"safe"}' '{"row":"stop"}' >"$l"
   check "safe mode first at start $(ledger_start_of "$l" '"mode":"safe"')" FAIL 100 4294967296 /diag "$(ledger_start_of "$l" '"mode":"safe"')" "$(ledger_start_of "$l" '"row":"stop"')"
+  # The ledger as a daemon writes it: the breaker row precedes the start it
+  # decides (5 SIGKILL cycles: safe at start 4, stop at start 6).
+  printf '%s\n' '{"row":"start"}' '{"row":"exit"}' '{"row":"start"}' '{"row":"exit"}' '{"row":"start"}' '{"row":"exit"}' \
+    '{"row":"breaker","to":"safe"}' '{"row":"start","mode":"safe"}' '{"row":"exit"}' '{"row":"breaker","to":"safe"}' \
+    '{"row":"start","mode":"safe"}' '{"row":"exit"}' '{"row":"breaker","to":"stop"}' >"$l"
+  safe="$(ledger_start_of "$l" '"mode":"safe"|"to":"safe"')"
+  stop="$(ledger_start_of "$l" '"to":"stop"|"row":"stop"')"
+  if [ "$safe" = 4 ] && [ "$stop" = 6 ]; then
+    echo "self-check: ledger: a breaker row is attributed to the start it decides (safe 4, stop 6)"
+  else
+    echo "self-check: FAILED — ledger attribution read safe ${safe}, stop ${stop} (want 4, 6)" >&2; ok=1
+  fi
   check "no stop" FAIL 100 4294967296 /diag 3 ""
   check "no diag capture" FAIL 100 4294967296 "" 3 5
   return "$ok"
@@ -323,7 +337,9 @@ main() {
     daemon_pid=$!
     local i
     for i in $(seq 1 100); do
-      curl -s -m 1 "http://127.0.0.1:${port}/healthz" >/dev/null 2>&1 && return 0
+      # -f: /healthz answers 503 while the daemon waits for its store
+      # (storewait.go); load sent then is refused daemon-wide, not measured.
+      curl -sf -m 1 "http://127.0.0.1:${port}/healthz" >/dev/null 2>&1 && return 0
       kill -0 "$daemon_pid" 2>/dev/null || return 1
       sleep 0.2
     done
@@ -393,19 +409,41 @@ main() {
   diag="$(ls -d "${home}/.fathom/daemon/${lifecycle_id}/diag/"* 2>/dev/null | head -1 || true)"
   # The start number (not the ledger line) each first appeared at.
   safe_at="$(ledger_start_of "$ledger" '"mode":"safe"|"to":"safe"')"
-  stop_at="$(ledger_start_of "$ledger" '"row":"breaker"|"row":"stop"')"
+  stop_at="$(ledger_start_of "$ledger" '"to":"stop"|"row":"stop"')"
   local refused ok503
   refused="$(grep -c '^503$' "${run_dir}/codes.txt" 2>/dev/null || true)"
   ok503="$(grep -c '^200$' "${run_dir}/codes.txt" 2>/dev/null || true)"
   local exit_mark_bytes verdict_line verdict
-  exit_mark_bytes="$(HOME="$home" FATHOM_TENANCY_BUDGET="$budget" "$binary" resources --id "$lifecycle_id" --json 2>/dev/null | sed -n 's/.*"exit_mark": *\([0-9]*\).*/\1/p' | head -1)"
+  # --url: without it resources falls back to the managed daemon's address
+  # and would report the operator's daemon, not this run's. `|| true`:
+  # resources exits 1 whenever its verdict is not "within budget" (a
+  # crash-looping ledger is exactly what the cycles produce), and under
+  # pipefail that would end the harness before the reading is written.
+  local res_json
+  res_json="$(HOME="$home" FATHOM_TENANCY_BUDGET="$budget" "$binary" resources --id "$lifecycle_id" --url "http://127.0.0.1:${port}" --json 2>/dev/null || true)"
+  exit_mark_bytes="$(printf '%s\n' "$res_json" | sed -n 's/.*"exit_mark": *\([0-9]*\).*/\1/p' | head -1 || true)"
+  local budget_bytes over_budget_exits tenant_line
+  budget_bytes="$(printf '%s\n' "$res_json" | sed -n 's/.*"budget": *\([0-9]*\).*/\1/p' | head -1 || true)"
+  over_budget_exits="$(grep -c '"reason":"over_budget"' "$ledger" 2>/dev/null || true)"
+  # RT-M3 on a post-wave-D binary: never exits over budget, stays ≤ budget.
+  if [ -n "$budget_bytes" ] && [ "${over_budget_exits:-0}" -eq 0 ] && [ "$max_fp" -le "$budget_bytes" ]; then
+    tenant_line="PASS (no over-budget exit; max own footprint ${max_fp} B ≤ budget ${budget_bytes} B)"
+  else
+    tenant_line="FAIL (over-budget exits ${over_budget_exits:-?}; max own footprint ${max_fp} B; budget ${budget_bytes:-unknown} B)"
+  fi
   verdict_line="$(stress_verdict "$max_fp" "$exit_mark_bytes" "$diag" "$safe_at" "$stop_at")"
   verdict="${verdict_line%% *}"
+  local diag_word="does not exist" safe_word="did not appear" stop_word="did not stop it"
+  [ -z "$diag" ] || diag_word="exists"
+  [ -z "$safe_at" ] || safe_word="appeared at start ${safe_at}"
+  [ -z "$stop_at" ] || stop_word="stopped it at start ${stop_at}"
   [ -n "$reading" ] || reading="${REPO_ROOT}/docs/bench/readings/tenancy-stress-$(date -u +%Y-%m-%d).md"
   {
     echo "# Tenancy stress reading — $(date -u +%Y-%m-%d)"
     echo
-    echo "**Verdict: ${verdict_line}.** The daemon under a ${budget} budget peaked at $(( max_fp / 1048576 )) MiB of its own footprint (exit mark $(( ${exit_mark_bytes:-0} / 1048576 )) MiB), /metrics answered ${reach} of ${total} one-second samples, ${refused} calls were refused with 503 and ${ok503} answered 200; a diagnostic capture ${diag:+exists}${diag:-does not exist}; safe mode ${safe_at:+appeared at start ${safe_at}}${safe_at:-did not appear}; the breaker ${stop_at:+stopped it at start ${stop_at}}${stop_at:-did not stop it} over ${starts} starts (RT-M3: safe mode by start 3, stop by start 5)."
+    echo "**Verdict: ${verdict_line}.** The daemon under a ${budget} budget peaked at $(( max_fp / 1048576 )) MiB of its own footprint (exit mark $(( ${exit_mark_bytes:-0} / 1048576 )) MiB), /metrics answered ${reach} of ${total} one-second samples, ${refused} calls were refused with 503 and ${ok503} answered 200; a diagnostic capture ${diag_word}; safe mode ${safe_word}; the breaker ${stop_word} over ${starts} starts (RT-M3: safe mode by start 3, stop by start 5)."
+    echo
+    echo "**Tenant (post-wave-D RT-M3: never exits over budget, stays ≤ budget): ${tenant_line}.** The seatbelt verdict above expects over-budget exits; SIGKILL cycles alone reach safe mode on the start after the third counted exit."
     echo
     echo "| Measure | Value | Instrument |"
     echo "|---|---|---|"

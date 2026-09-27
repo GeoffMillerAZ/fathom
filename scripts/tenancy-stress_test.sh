@@ -27,7 +27,8 @@ for want in \
   "verdict: no safe mode reads FAIL" \
   "verdict: safe mode first at start 4 reads FAIL" \
   "verdict: no stop reads FAIL" \
-  "verdict: no diag capture reads FAIL"; do
+  "verdict: no diag capture reads FAIL" \
+  "ledger: a breaker row is attributed to the start it decides (safe 4, stop 6)"; do
   printf '%s\n' "$out" | grep -qF "$want" || fail "self-check output lacks \"$want\":
 $out"
 done
@@ -38,6 +39,11 @@ fi
 
 # The harness names its scratch-daemon contract in the script itself.
 grep -q -- '--lifecycle-id' "${SCRIPT_DIR}/tenancy-stress.sh" || fail "the harness no longer passes --lifecycle-id"
+# rt-waves-c-f reading (2026-09-27): /healthz answers 503 while the store
+# opens, so readiness needs curl -f; resources needs the run's --url or it
+# reports the managed daemon.
+grep -q 'curl -sf -m 1 "http://127.0.0.1:${port}/healthz"' "${SCRIPT_DIR}/tenancy-stress.sh" || fail "the readiness probe does not fail on a 503 /healthz"
+grep -q 'resources --id "$lifecycle_id" --url "http://127.0.0.1:${port}"' "${SCRIPT_DIR}/tenancy-stress.sh" || fail "resources is not pointed at the run's daemon"
 grep -q -- '--exit-with-parent' "${SCRIPT_DIR}/tenancy-stress.sh" || fail "the harness no longer ties the daemon to its parent"
 
 echo "tenancy-stress test: ok (managed port, store, call log and internal-disk fixture refused; go-ahead required)"
