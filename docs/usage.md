@@ -29,6 +29,13 @@ lefthook install
 `store-purego` (invariant I2, ADR-025) runs `CGO_ENABLED=0 go test -race ./internal/store/`
 on every validate/push — the store stays pure Go; only the tree-sitter extractors need CGO.
 
+`task validate` runs under a machine-wide gate lease (RT-129, design §12.3): concurrent
+gates on one machine — other repositories, other agents, a pre-push — queue on an flock
+at `~/.fathom/locks/gate.lock` (`FATHOM_GATE_LOCK` overrides) and say who holds it
+(`gate-lease: waiting for gate lease held by pid N (repo X)`); the gate runs at background
+priority (`taskpolicy -b` on macOS, else `nice -n 10`; `FATHOM_GATE_NICE=off` opts out)
+and `go test -p 4`. `task validate:unleased` is the same gate without the lease.
+
 ### Pushing (`task push`)
 
 ```sh
