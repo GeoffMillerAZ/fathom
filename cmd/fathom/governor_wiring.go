@@ -50,13 +50,6 @@ func consoleMemoDrops() {
 	obsCache.Unlock()
 }
 
-// dropCaches forgets the unsupported-languages memo (a fleet memo).
-func (f *fleetAdapter) dropCaches() {
-	f.unsupportedMu.Lock()
-	f.unsupportedCache = nil
-	f.unsupportedMu.Unlock()
-}
-
 // servingLadderActions wires the rungs to the serving daemon's caches.
 func servingLadderActions(srv *mcp.Server, c *client.Client, fleet *fleetAdapter) ladderActions {
 	return ladderActions{
@@ -65,7 +58,7 @@ func servingLadderActions(srv *mcp.Server, c *client.Client, fleet *fleetAdapter
 			// shed and stays under it while shed; only refuse drops it.
 			{"memo registry trim", func() { memo.Trim(memo.ReasonShed, 0) }},
 			{"console memos", consoleMemoDrops},
-			{"fleet memos", func() { fleet.dropCaches(); c.DropCaches() }},
+			{"fleet memos", c.DropCaches},
 		},
 		dropRefuse: []namedDrop{
 			{"memo registry", func() { memo.Drop(memo.ReasonRefuse) }},

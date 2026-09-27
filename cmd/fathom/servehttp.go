@@ -700,6 +700,11 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 		sm.step(s.At, l)
 	})
 	defer stopGovernor()
+	// RT-160: derive service_summary and observation_calls for services a
+	// pre-RT-76 store holds, one at a time under the ingest slot.
+	backfillCtx, stopBackfill := context.WithCancel(context.Background())
+	defer stopBackfill()
+	go runDerivedBackfill(backfillCtx, c, func(m string) { flog.Info(m) })
 	publishDaemonEvent(consoleDeps.bus, prevRecord, hadPrev, commit)
 	eventSources := newConsoleEventSources(consoleDeps.bus, c, verifyLedgerPath(), sessionLedgerPath())
 	eventSources.warn = func(msg string) { flog.Warn(msg) }

@@ -746,7 +746,7 @@ func (c *Client) StoreWatermark(ctx context.Context, serviceID string) (string, 
 	if !ok {
 		return "", nil
 	}
-	return fmt.Sprintf("%s@%d", meta.IndexedCommit, meta.IndexedAt), nil
+	return store.WatermarkOf(meta), nil
 }
 
 // ServiceMeta returns the stored ingest metadata (path, indexed commit) for

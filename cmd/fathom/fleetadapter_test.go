@@ -124,142 +124,6 @@ func TestFleetAdapter_UnsupportedLanguagesFor_MissingCorpusSkipsRewalk(t *testin
 	}
 }
 
-// TestFleetAdapter_UnsupportedLanguagesFor_CallsDiscoverAtMostOncePerServiceWatermark
-// is DG-18's own contract test: list_services over N services calls
-// Discover at most once per (service, watermark) across repeated calls —
-// the fix for list_services being the fleet's most-called MCP tool (~31k
-// calls measured, p95 4.6s, max 182s) purely because this re-walked every
-// service's source tree on every read.
-func TestFleetAdapter_UnsupportedLanguagesFor_CallsDiscoverAtMostOncePerServiceWatermark(t *testing.T) {
-	ctx := context.Background()
-	st := store.NewMemoryStore()
-	conn := newCountingConnector()
-	root := t.TempDir()
-
-	const n = 5
-	services := make([]string, n)
-	for i := 0; i < n; i++ {
-		svc := "svc-" + string(rune('a'+i))
-		services[i] = svc
-		if err := st.SetServiceMeta(ctx, store.ServiceMeta{
-			ServiceID:     svc,
-			Path:          root,
-			IndexedCommit: "commit-" + svc,
-			IndexedAt:     1,
-		}); err != nil {
-			t.Fatalf("SetServiceMeta(%s): %v", svc, err)
-		}
-		conn.addSwiftFile(svc, svc+"/main.swift")
-	}
-	fa := newTestFleetAdapter(conn, st)
-
-	// Simulate 20 repeated list_services-style reads.
-	const reads = 20
-	for r := 0; r < reads; r++ {
-		for _, svc := range services {
-			got := fa.UnsupportedLanguagesFor(svc)
-			if got["swift"] != 1 {
-				t.Fatalf("read %d: UnsupportedLanguagesFor(%s) = %v, want {swift:1}", r, svc, got)
-			}
-		}
-	}
-
-	for _, svc := range services {
-		if calls := conn.discoverCalls(svc); calls != 1 {
-			t.Errorf("Discover called %d times for %s across %d reads, want at most 1 per watermark", calls, svc, reads)
-		}
-	}
-}
-
-// TestFleetAdapter_UnsupportedLanguagesFor_RecomputesOnWatermarkChange pins
-// that the cache is keyed on watermark, not pinned forever: once a fresh
-// ingest changes the service's StoreWatermark (a new IndexedCommit), the
-// next read recomputes exactly once, not on every subsequent read.
-func TestFleetAdapter_UnsupportedLanguagesFor_RecomputesOnWatermarkChange(t *testing.T) {
-	ctx := context.Background()
-	st := store.NewMemoryStore()
-	conn := newCountingConnector()
-	root := t.TempDir()
-	meta := store.ServiceMeta{ServiceID: "demo", Path: root, IndexedCommit: "v1", IndexedAt: 1}
-	if err := st.SetServiceMeta(ctx, meta); err != nil {
-		t.Fatalf("SetServiceMeta: %v", err)
-	}
-	conn.addSwiftFile("demo", "demo/main.swift")
-	fa := newTestFleetAdapter(conn, st)
-
-	fa.UnsupportedLanguagesFor("demo")
-	fa.UnsupportedLanguagesFor("demo")
-	if calls := conn.discoverCalls("demo"); calls != 1 {
-		t.Fatalf("Discover called %d times before any re-ingest, want 1", calls)
-	}
-
-	// A fresh ingest replaces service_meta with a new IndexedCommit — the
-	// watermark moves.
-	meta.IndexedCommit = "v2"
-	meta.IndexedAt = 2
-	if err := st.SetServiceMeta(ctx, meta); err != nil {
-		t.Fatalf("SetServiceMeta (re-ingest): %v", err)
-	}
-
-	fa.UnsupportedLanguagesFor("demo")
-	fa.UnsupportedLanguagesFor("demo")
-	if calls := conn.discoverCalls("demo"); calls != 2 {
-		t.Errorf("Discover called %d times after a watermark change plus repeats, want 2 (one recompute, then cached)", calls)
-	}
-}
-
-// TestFleetAdapter_UnsupportedLanguagesFor_DedupesRepeatedFailures pins
-// that a persistently failing Sources call (a non-root-missing error) also
-// collapses to one Discover attempt per watermark — DG-2's Dedupe means a
-// human reading the log sees one line, not a burst; DG-18's cache means
-// the daemon does not re-walk to produce even that one line more than
-// once per watermark.
-func TestFleetAdapter_UnsupportedLanguagesFor_DedupesRepeatedFailures(t *testing.T) {
-	ctx := context.Background()
-	st := store.NewMemoryStore()
-	conn := newCountingConnector()
-	root := t.TempDir()
-	if err := st.SetServiceMeta(ctx, store.ServiceMeta{
-		ServiceID: "flaky", Path: root, IndexedCommit: "v1", IndexedAt: 1,
-	}); err != nil {
-		t.Fatalf("SetServiceMeta: %v", err)
-	}
-	// No files registered in conn.refs["flaky"] means Discover succeeds
-	// with zero refs (not a Sources error) — to exercise the FAILURE path
-	// instead, use a fake connector that always errors on Discover for
-	// this one service.
-	failing := &alwaysFailDiscoverConnector{countingConnector: conn, failService: "flaky"}
-	c := client.New(failing, st)
-	fa := &fleetAdapter{c: c, log: dlog.New(io.Discard, dlog.LevelDebug, time.Now)}
-
-	for i := 0; i < 5; i++ {
-		if got := fa.UnsupportedLanguagesFor("flaky"); got != nil {
-			t.Errorf("call %d: got %v, want nil on a Sources failure", i, got)
-		}
-	}
-	if calls := conn.discoverCalls("flaky"); calls != 1 {
-		t.Errorf("Discover called %d times across 5 failing reads at one watermark, want 1", calls)
-	}
-}
-
-// alwaysFailDiscoverConnector wraps countingConnector, returning an error
-// from Discover for one named service (still counting the attempt) while
-// delegating everything else.
-type alwaysFailDiscoverConnector struct {
-	*countingConnector
-	failService string
-}
-
-func (c *alwaysFailDiscoverConnector) Discover(ctx context.Context, svc core.ServiceRef) ([]core.SourceRef, error) {
-	c.countingConnector.mu.Lock()
-	c.countingConnector.discover[svc.ID]++
-	c.countingConnector.mu.Unlock()
-	if svc.ID == c.failService {
-		return nil, errors.New("connector: simulated discover failure")
-	}
-	return c.countingConnector.refs[svc.ID], nil
-}
-
 // errInjectingStore wraps store.MemoryStore, overriding QueryObservations
 // to return a caller-chosen error — used to simulate a raw SQLite
 // CANTOPEN-shaped failure without a real corrupted database file.
@@ -327,6 +191,10 @@ func TestSymbolsFor_GenericErrorNotTaggedCantopen(t *testing.T) {
 // at once — the daemon reached ~30 GB in minutes and the operator
 // force-quit it. The answer depends on paths only, so a read must never
 // fetch a file, and concurrent cold callers share one walk per service.
+// TestFleetAdapter_UnsupportedLanguagesFor_NeverReadsFileContents (RT-79):
+// unsupported languages come from the service's summary row — derived at
+// first use from the fingerprinted paths by NAME — never from a walk or a
+// fetch; repeated reads at one watermark derive it once.
 func TestFleetAdapter_UnsupportedLanguagesFor_NeverReadsFileContents(t *testing.T) {
 	ctx := context.Background()
 	st := store.NewMemoryStore()
@@ -334,51 +202,24 @@ func TestFleetAdapter_UnsupportedLanguagesFor_NeverReadsFileContents(t *testing.
 	if err := st.SetServiceMeta(ctx, store.ServiceMeta{ServiceID: "demo", Path: t.TempDir(), IndexedCommit: "c1", IndexedAt: 1}); err != nil {
 		t.Fatal(err)
 	}
+	for _, p := range []string{"demo/a.swift", "demo/b.swift", "demo/c.go"} {
+		_ = st.SetFingerprint(ctx, "demo", p, "h")
+	}
 	conn.addSwiftFile("demo", "demo/a.swift")
-	conn.addSwiftFile("demo", "demo/b.swift")
 	fa := newTestFleetAdapter(conn, st)
-	if got := fa.UnsupportedLanguagesFor("demo"); got["swift"] != 2 {
-		t.Fatalf("UnsupportedLanguagesFor = %v, want {swift:2}", got)
+	for range 5 {
+		if got := fa.UnsupportedLanguagesFor("demo"); got["swift"] != 2 || len(got) != 1 {
+			t.Fatalf("UnsupportedLanguagesFor = %v, want {swift:2}", got)
+		}
 	}
 	conn.mu.Lock()
 	fetches := conn.fetches
 	conn.mu.Unlock()
-	if fetches != 0 {
-		t.Fatalf("a list_services read fetched %d file(s); the answer depends on paths only and must fetch none", fetches)
+	if fetches != 0 || conn.discoverCalls("demo") != 0 {
+		t.Fatalf("a list_services read walked (%d) or fetched (%d); it reads the summary row only", conn.discoverCalls("demo"), fetches)
 	}
-}
-
-func TestFleetAdapter_UnsupportedLanguagesFor_ConcurrentColdCallsWalkOnce(t *testing.T) {
-	ctx := context.Background()
-	st := store.NewMemoryStore()
-	conn := newCountingConnector()
-	if err := st.SetServiceMeta(ctx, store.ServiceMeta{ServiceID: "demo", Path: t.TempDir(), IndexedCommit: "c1", IndexedAt: 1}); err != nil {
-		t.Fatal(err)
-	}
-	conn.addSwiftFile("demo", "demo/a.swift")
-	conn.gate = make(chan struct{})
-	fa := newTestFleetAdapter(conn, st)
-
-	const callers = 32
-	var wg sync.WaitGroup
-	results := make([]map[string]int, callers)
-	for i := 0; i < callers; i++ {
-		wg.Add(1)
-		go func(i int) {
-			defer wg.Done()
-			results[i] = fa.UnsupportedLanguagesFor("demo")
-		}(i)
-	}
-	// Let every caller reach the adapter before the one walk finishes.
-	time.Sleep(50 * time.Millisecond)
-	close(conn.gate)
-	wg.Wait()
-	if n := conn.discoverCalls("demo"); n != 1 {
-		t.Fatalf("%d concurrent cold callers walked the tree %d times, want 1", callers, n)
-	}
-	for i, r := range results {
-		if r["swift"] != 1 {
-			t.Fatalf("caller %d got %v, want {swift:1}", i, r)
-		}
+	sum, _, _ := st.ServiceSummary(ctx, "demo")
+	if sum.Source != store.SummaryFromBackfill {
+		t.Fatalf("summary = %+v, want one backfilled row", sum)
 	}
 }
