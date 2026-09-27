@@ -77,7 +77,7 @@ func TestEveryDaemonRequestCarriesCaller(t *testing.T) {
 			t.Errorf("IsDaemonHost(%q) = %v, want %v", host, got, want)
 		}
 	}
-	if !client.IsDaemonHost("fathom.internal:7575", "http://fathom.internal:7575") {
+	if !client.IsDaemonHost("daemon.example:7575", "http://daemon.example:7575") {
 		t.Error("the FATHOM_HTTP host is a daemon host")
 	}
 }
