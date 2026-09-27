@@ -11,6 +11,11 @@ package main
 // reader shares (decodeCallLogLine), so an incremental read can never
 // count differently from a whole-file one.
 //
+// It is a ring, not a row per line forever (RT-112, design §14): only the
+// rows inside callLogRing — the longest window any page shows — are kept,
+// so the daemon's resident call-log state is bounded by the last 35 days'
+// traffic however long the log itself grows.
+//
 // A log that cannot be read is an error returned to the caller, never an
 // empty read: the external-volume wedge makes stat succeed while open
 // fails, and "nothing parsed" must not become "no traffic".
@@ -27,8 +32,43 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/metrics"
 )
 
-// callLogRow is one counted call, compact: the console keeps every row of
-// the log in memory, so strings that repeat (tool, service, surface) are
+// callLogRing is the tail's window: the longest any console page reads
+// (the traffic pages read 30 days; 35 keeps a margin for a week-aligned
+// view). callLogNow is its clock (tests pin it).
+const callLogRing = 35 * 24 * time.Hour
+
+var callLogNow = time.Now
+
+// callLogWindow keeps the rows at or after now-callLogRing: an older row,
+// or one whose time does not parse (no window counts it), is dropped. The
+// kept rows are copied into a fresh slice only when something was dropped,
+// so the dropped rows' memory is released and a slice a caller still holds
+// is never modified.
+func callLogWindow(rows []callLogRow, now time.Time) []callLogRow {
+	cutoff := now.Add(-callLogRing)
+	drop := 0
+	for _, r := range rows {
+		if r.at.IsZero() || r.at.Before(cutoff) {
+			drop++
+		}
+	}
+	if drop == 0 {
+		return rows
+	}
+	if drop == len(rows) {
+		return nil
+	}
+	out := make([]callLogRow, 0, len(rows)-drop)
+	for _, r := range rows {
+		if !r.at.IsZero() && !r.at.Before(cutoff) {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
+// callLogRow is one counted call, compact: the console keeps the window's
+// rows in memory, so strings that repeat (tool, service, surface) are
 // interned and the timestamp is kept as a time.
 type callLogRow struct {
 	at                     time.Time // zero when the row's ts does not parse
@@ -66,7 +106,8 @@ func resetCallLogTail() {
 	callLogTail.Unlock()
 }
 
-// callLogRows returns every counted row of the log at path. The returned
+// callLogRows returns the counted rows of the log at path inside the
+// ring's window (callLogWindow). The returned
 // slice is shared and must not be modified. A missing log is an error
 // satisfying errors.Is(err, os.ErrNotExist); any other failure to read is
 // its own error — with the external-volume remedy when that is the tell.
@@ -102,13 +143,13 @@ func callLogRows(path string) ([]callLogRow, error) {
 		// parsed before, and report the failure.
 		return nil, fmt.Errorf("read call log %s: %w", path, err)
 	}
-	t.rows = append(t.rows, rows...)
+	t.rows = callLogWindow(append(t.rows, rows...), callLogNow())
 	t.offset += consumed
 	t.info = info
 	// An unterminated last line counts once it parses, as a whole-file
 	// read counts it, but is parsed again next time (it may still grow).
 	t.tail = len(tail) > 0
-	if row, ok := callLogRowOf(tail, t.intern); ok {
+	if row, ok := callLogRowOf(tail, t.intern); ok && len(callLogWindow([]callLogRow{row}, callLogNow())) == 1 {
 		return append(slices.Clip(t.rows), row), nil
 	}
 	return t.rows, nil

@@ -6,7 +6,71 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
+
+// pinCallLogClock fixes the call-log tail's clock for one test.
+func pinCallLogClock(t *testing.T, at time.Time) {
+	t.Helper()
+	prev := callLogNow
+	callLogNow = func() time.Time { return at }
+	t.Cleanup(func() { callLogNow = prev })
+}
+
+// TestCallLogTailKeepsWindowOnly (RT-112, design §14): the console's
+// call-log tail is a 35-day ring — the longest window any page shows — so
+// a row older than that is dropped as the clock passes it, a row with no
+// parseable time (never counted by any window) is never kept, and the
+// kept slice does not pin the dropped rows' memory. Never a row per line
+// forever.
+func TestCallLogTailKeepsWindowOnly(t *testing.T) {
+	resetCallLogTail()
+	t.Cleanup(resetCallLogTail)
+	now := time.Date(2026, 9, 27, 12, 0, 0, 0, time.UTC)
+	pinCallLogClock(t, now)
+	path := filepath.Join(t.TempDir(), "mcp-calls.jsonl")
+	at := func(tool string, ts time.Time) string {
+		return `{"ts":"` + ts.Format(time.RFC3339) + `","tool":"` + tool + `","service":"pay","latency_ms":1}` + "\n"
+	}
+	old := now.Add(-36 * 24 * time.Hour)
+	var b strings.Builder
+	for i := 0; i < 500; i++ {
+		b.WriteString(at("old", old))
+	}
+	b.WriteString(`{"ts":"not a time","tool":"untimed","service":"pay"}` + "\n")
+	b.WriteString(at("edge", now.Add(-34*24*time.Hour)))
+	b.WriteString(at("recent", now.Add(-time.Hour)))
+	mustWrite(t, path, b.String())
+	rows, err := callLogRows(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 2 || rows[0].tool != "edge" || rows[1].tool != "recent" {
+		t.Fatalf("rows = %+v; want only the two rows inside the 35-day window", rows)
+	}
+	if c := cap(callLogTail.rows); c > 64 {
+		t.Errorf("the ring still holds capacity for %d rows after dropping 501: the dropped rows stay resident", c)
+	}
+	// The clock moves past the edge row: the next read (with an append)
+	// drops it.
+	pinCallLogClock(t, now.Add(2*24*time.Hour))
+	fh, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0o644)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fh.WriteString(at("new", now.Add(24*time.Hour)))
+	fh.Close()
+	rows, err = callLogRows(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 2 || rows[0].tool != "recent" || rows[1].tool != "new" {
+		t.Fatalf("after the clock moved = %+v; want recent, new", rows)
+	}
+	if got := callLogWindow(nil, now); got != nil {
+		t.Errorf("an empty ring = %v", got)
+	}
+}
 
 // TestCallLogRows_ReadsAppendedBytesOnly: the console's call-log reader
 // counts exactly what the whole-file reader counts (console reads, blank
@@ -17,6 +81,7 @@ import (
 func TestCallLogRows_ReadsAppendedBytesOnly(t *testing.T) {
 	resetCallLogTail()
 	t.Cleanup(resetCallLogTail)
+	pinCallLogClock(t, time.Date(2026, 9, 25, 0, 0, 0, 0, time.UTC))
 	path := filepath.Join(t.TempDir(), "mcp-calls.jsonl")
 	line := func(tool, svc, origin string) string {
 		return `{"ts":"2026-09-24T10:00:00Z","tool":"` + tool + `","service":"` + svc + `","origin":"` + origin + `","latency_ms":3}` + "\n"
