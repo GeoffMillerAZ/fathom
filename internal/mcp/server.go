@@ -142,6 +142,13 @@ type Server struct {
 	// a ten-thousand-symbol service and nothing about that work is
 	// per-query. Never nil after newServer; safe for concurrent use.
 	graphCache *callgraph.CachedCallGraph
+	// navMemo holds each service's loaded symbols, typed edges and graphs
+	// per store watermark; navFlight lets concurrent cold callers share one
+	// load (resolved_nav.go loadNavGraphs).
+	navMu     sync.Mutex
+	navMemo   map[string]navMemoEntry
+	navOrder  []string
+	navFlight map[string]*navCall
 }
 
 // NewServer constructs a Server wired to backend. If backend is nil the server

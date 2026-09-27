@@ -291,7 +291,10 @@ func TestNavGraphMemoSurvivesAutoRefreshWrapper(t *testing.T) {
 
 	callTool(t, srv, "find_callers", map[string]any{"service": "svc", "symbol": "Target"})
 	_, hits2, misses2 := srv.GraphCacheStatsForTest()
-	if hits2 <= hits1 || misses2 != misses1 {
+	// The second call must build nothing: it is answered by the nav memo
+	// (loadNavGraphs, keyed by the same watermark) or by a graph-cache hit.
+	_ = hits2
+	if misses2 != misses1 {
 		t.Errorf("graph memo did not survive the auto-refresh wrapper (hits %d->%d, misses %d->%d) — autoRefreshBackend must forward StoreWatermark", hits1, hits2, misses1, misses2)
 	}
 }

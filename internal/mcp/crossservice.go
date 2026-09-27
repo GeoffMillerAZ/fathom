@@ -64,10 +64,19 @@ func crossServiceHitsToAny(hits []crossServiceHit) []any {
 // cross-service stitching both call this, rather than two copies drifting
 // apart. Sorted by (service, symbol) for determinism. nil fleet or empty
 // symbol return nil.
+// fleetScanSlot admits one fleetCallers scan process-wide.
+var fleetScanSlot = make(chan struct{}, 1)
+
 func fleetCallers(fleet FleetBackend, symbol string) []crossServiceHit {
 	if fleet == nil || symbol == "" {
 		return nil
 	}
+	// One fleet-wide scan at a time: each scan loads every service's
+	// symbols and observations, and concurrent callers multiplied that into
+	// the wave-A replay's ~6 GiB. Serializing bounds the peak until wave C
+	// replaces the scan with a stored reverse index (RT-84).
+	fleetScanSlot <- struct{}{}
+	defer func() { <-fleetScanSlot }()
 	var hits []crossServiceHit
 	seen := make(map[string]bool)
 	for _, svc := range fleet.Services() {

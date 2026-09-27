@@ -85,13 +85,83 @@ type navGraphs struct {
 // a session's second nav call on an unchanged index pays nothing to build.
 // Returns nil when the backend cannot list symbols.
 func (s *Server) loadNavGraphs(ctx context.Context, backend QueryInterface, service string) *navGraphs {
+	mark := serviceWatermark(ctx, backend, service)
+	if mark == "" {
+		return buildNavGraphs(ctx, s, backend, service, "")
+	}
+	key := service + "\x00" + mark
+	s.navMu.Lock()
+	if g, ok := s.navMemo[service]; ok && g.mark == mark {
+		s.navMu.Unlock()
+		return g.graphs
+	}
+	// One load and build per (service, watermark): a concurrent cold caller
+	// waits for the one in flight (the wave-A incident replay measured 20
+	// concurrent symbol_context calls each loading every symbol and building
+	// the graph — ~6 GiB footprint).
+	if call, ok := s.navFlight[key]; ok {
+		s.navMu.Unlock()
+		<-call.done
+		return call.graphs
+	}
+	if s.navFlight == nil {
+		s.navFlight = make(map[string]*navCall)
+		s.navMemo = make(map[string]navMemoEntry)
+	}
+	call := &navCall{done: make(chan struct{})}
+	s.navFlight[key] = call
+	s.navMu.Unlock()
+
+	call.graphs = buildNavGraphs(ctx, s, backend, service, mark)
+
+	s.navMu.Lock()
+	delete(s.navFlight, key)
+	if call.graphs != nil {
+		s.navMemo[service] = navMemoEntry{mark: mark, graphs: call.graphs}
+		s.navOrder = append(removeString(s.navOrder, service), service)
+		for len(s.navOrder) > navMemoCap {
+			delete(s.navMemo, s.navOrder[0])
+			s.navOrder = s.navOrder[1:]
+		}
+	}
+	s.navMu.Unlock()
+	close(call.done)
+	return call.graphs
+}
+
+// navMemoCap bounds how many services' navigation state stays resident —
+// the same eight the graph cache keeps (callgraph.defaultCacheCapacity).
+const navMemoCap = 8
+
+type navMemoEntry struct {
+	mark   string
+	graphs *navGraphs
+}
+
+type navCall struct {
+	done   chan struct{}
+	graphs *navGraphs
+}
+
+func removeString(xs []string, x string) []string {
+	out := xs[:0]
+	for _, v := range xs {
+		if v != x {
+			out = append(out, v)
+		}
+	}
+	return out
+}
+
+// buildNavGraphs loads the service's symbols and typed edges and builds the
+// two graphs (memoized in the graph cache under mark). Returns nil when the
+// backend cannot list symbols.
+func buildNavGraphs(ctx context.Context, s *Server, backend QueryInterface, service, mark string) *navGraphs {
 	nodes, err := backend.ListAllSymbols(ctx, service)
 	if err != nil || len(nodes) == 0 {
 		return nil
 	}
 	typed, _ := backend.TypedEdges(ctx, service)
-	mark := serviceWatermark(ctx, backend, service)
-
 	g := &navGraphs{Nodes: nodes, Typed: typed}
 	g.Both = s.graphCache.Graph(service+"\x00both", mark, func() *callgraph.Graph {
 		return callgraph.BuildBoth(nodes, typed)
