@@ -39,7 +39,9 @@ var ErrFreshnessUnknown = errors.New("gitro: HEAD unreadable — freshness unkno
 
 // ErrUnbornHead is Head's answer when HEAD names a branch with no commit
 // yet (a fresh `git init`), confirmed by git: there is no commit to compare,
-// so the caller treats the tree as a non-git corpus (content manifest).
+// so the connector treats the tree as a non-git corpus (content manifest).
+// It also matches ErrFreshnessUnknown: a service whose recorded watermark
+// is a commit still has no HEAD to compare it with.
 var ErrUnbornHead = errors.New("gitro: HEAD names a branch with no commit yet")
 
 // errUnresolvedRef is readHead's error for a symbolic ref found in no loose
@@ -146,7 +148,10 @@ func Head(ctx context.Context, root string) (string, error) {
 	case ferr != nil && fctx.Err() == nil && errors.Is(err, errUnresolvedRef) && !hasReftable(stamps):
 		// The files name a branch with no ref and git, answering in time,
 		// cannot resolve HEAD either: an unborn branch.
-		out = fmt.Errorf("%w (%s: %v; git fallback: %v)", ErrUnbornHead, root, err, ferr)
+		// Still freshness unknown to a caller comparing a recorded commit
+		// (a SHA watermark whose branch vanished); a caller without one
+		// (the connector) takes it as a tree with no commit yet.
+		out = fmt.Errorf("%w — %w (%s: %v; git fallback: %v)", ErrUnbornHead, ErrFreshnessUnknown, root, err, ferr)
 	default:
 		if ferr == nil {
 			ferr = fmt.Errorf("unexpected output %q", sha)
