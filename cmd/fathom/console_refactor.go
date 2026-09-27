@@ -225,6 +225,13 @@ func computeRefactorReport(pc *consolePlans, sr serviceRoot, since string, e *co
 			rep, cerr = conserveReportCapped(ctx, pc.deps.c.Store(), sr.Root, since, sr.Service, discoverPlanPaths(sr.Root), "", conserve.DefaultResidueMax, consoleConserveMaxFiles)
 			return cerr
 		})
+		// conserve's planes do not all check ctx: a computation cut off
+		// by its deadline is a named failure (retried after
+		// consolePlansRetry), never a report whose unfinished planes
+		// read clean (I38, I9).
+		if ctx.Err() != nil {
+			err = fmt.Errorf("not computed within %s: the conserve report since %s was stopped at the console's deadline; run fathom conserve --since %s --service %s", consoleConserveDeadline, since, since, sr.Service)
+		}
 	}
 }
 

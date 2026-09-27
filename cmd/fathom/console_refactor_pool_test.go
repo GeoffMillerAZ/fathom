@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -104,5 +105,46 @@ func TestPlanGitHistoryHonoursItsContext(t *testing.T) {
 	revs, _, note = planGitHistory(ctx, root, "docs/plans/p.md")
 	if len(revs) != 0 || !strings.Contains(note, "stopped") {
 		t.Fatalf("under an ended context = %d revisions, note %q; want none and the stop named", len(revs), note)
+	}
+}
+
+// TestRefactorReportDeadlineIsNamedNotClean (RT-118): a computation cut
+// off by consoleConserveDeadline is a named failure, never a report that
+// shows its unfinished planes clean and is kept until HEAD moves.
+func TestRefactorReportDeadlineIsNamedNotClean(t *testing.T) {
+	f := newConsoleFixture(t)
+	root := t.TempDir()
+	gitInitTempRepo(t, root)
+	runGitFootprint(t, root, "config", "user.email", "t@example.com")
+	runGitFootprint(t, root, "config", "user.name", "t")
+	mustWrite(t, filepath.Join(root, "docs", "plans", "p.md"), "# P\n")
+	mustWrite(t, filepath.Join(root, "a.go"), "package a\n")
+	runGitFootprint(t, root, "add", ".")
+	runGitFootprint(t, root, "commit", "-qm", "base")
+	mustWrite(t, filepath.Join(root, "a.go"), "package a\n\nfunc A() {}\n")
+	runGitFootprint(t, root, "add", ".")
+	runGitFootprint(t, root, "commit", "-qm", "two")
+	realGit, err := exec.LookPath("git")
+	if err != nil {
+		t.Skip("no git")
+	}
+	bin := t.TempDir()
+	mustWrite(t, filepath.Join(bin, "git"), "#!/bin/sh\nfor a in \"$@\"; do if [ \"$a\" = show ]; then sleep 3; fi; done\nexec "+realGit+" \"$@\"\n")
+	if err := os.Chmod(filepath.Join(bin, "git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	prev := consoleConserveDeadline
+	consoleConserveDeadline = 500 * time.Millisecond
+	t.Cleanup(func() { consoleConserveDeadline = prev })
+	resetConserveCache()
+	t.Cleanup(resetConserveCache)
+	pc := plansFor(f.deps)
+	e, ok := refactorReport(pc, serviceRoot{Service: "proof-service", Root: root}, "HEAD~1", 30*time.Second)
+	if !ok {
+		t.Fatal("the range never finished")
+	}
+	if e.err == "" || !strings.Contains(e.err, "not computed within") {
+		t.Fatalf("a computation cut off at its deadline = err %q, %d planes; want a named 'not computed within' failure", e.err, len(e.report.Planes))
 	}
 }
