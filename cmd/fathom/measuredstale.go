@@ -77,7 +77,7 @@ func liveDaemonStale(hc *http.Client, baseURL, root string) (bool, string) {
 		BinaryCommit: buildinfo.Version(),
 	}
 	if fathomTree {
-		row.Commit = gitHeadShort(root)
+		row.Commit = repoHeadNoFork(root) // from the repository's files (RT-115)
 	}
 	if !measuredStaleReading(row, fathomTree) {
 		return false, ""

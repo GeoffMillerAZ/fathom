@@ -23,6 +23,9 @@ import (
 func TestFleetFreshnessNoLoopbackOrFork(t *testing.T) {
 	root := t.TempDir()
 	gitInitTempRepo(t, root)
+	// A fathom checkout: the plans page's measured-stale reading compares
+	// the daemon with its HEAD.
+	mustWrite(t, filepath.Join(root, "go.mod"), "module github.com/geoffmilleraz/fathom\n")
 	runGitFootprint(t, root, "-c", "user.email=t@example.com", "-c", "user.name=t", "commit", "-q", "--allow-empty", "-m", "one")
 	head := strings.TrimSpace(runGitFootprint(t, root, "rev-parse", "HEAD"))
 
@@ -40,7 +43,9 @@ func TestFleetFreshnessNoLoopbackOrFork(t *testing.T) {
 		self: ts.URL,
 		statusz: func(context.Context) StatuszReport {
 			statuszBuilds.Add(1)
-			return StatuszReport{Services: []StatuszServiceRow{{Service: "pay", IndexedCommit: head, LastCompilePerLayer: map[string]string{"adr-rules": "ok"}}}}
+			return StatuszReport{StatuszBuildInfo: StatuszBuildInfo{BinaryCommit: "0123456789ab"},
+				Services: []StatuszServiceRow{{Service: "pay", IndexedCommit: head, LastCompilePerLayer: map[string]string{"adr-rules": "ok"},
+					TypedEdges: &StatuszTypedEdges{Failed: true, Reason: "go list failed"}}}}
 		},
 		rpc: srv.HandleRequest,
 	})
@@ -81,6 +86,24 @@ func TestFleetFreshnessNoLoopbackOrFork(t *testing.T) {
 	}
 	if n := statuszBuilds.Load(); n != 0 {
 		t.Errorf("fleetFreshnessFrom built statusz %d times; the caller's one read serves all", n)
+	}
+
+	// The projects page's typed-edge failures, the plans page's
+	// measured-stale reading, the intent page's cache key and its index
+	// oracle: in process, no fork.
+	if got := statuszTypedFailures(ts.URL); got["pay"] != "go list failed" {
+		t.Errorf("typed failures = %v", got)
+	}
+	pc.stale = map[string]plansStamp{}
+	if !pc.daemonStale("pay", root) {
+		t.Errorf("the plans page's stale reading missed a daemon at another commit than HEAD")
+	}
+	if k := intentAuditKey(root, "pay", 1); !strings.Contains(k, head) {
+		t.Errorf("the intent audit key %q does not carry HEAD %s", k, head)
+	}
+	oracle := newIndexOracle(ts.URL, "pay", root, head, true, consoleRPCClient(0)).(*indexOracle)
+	if _, err := oracle.resolveNames([]string{"TestNothing"}); err != nil && strings.Contains(err.Error(), "loopback") {
+		t.Errorf("the intent oracle asked over loopback: %v", err)
 	}
 
 	if n := loopbacks.Load(); n != 0 {

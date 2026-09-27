@@ -21,6 +21,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/gitro"
 	"github.com/geoffmilleraz/fathom/internal/verify"
 )
 
@@ -69,6 +70,17 @@ func gitHeadShort(root string) string {
 		return ""
 	}
 	return strings.TrimSpace(string(out))
+}
+
+// repoHeadNoFork is root's HEAD commit read from the repository's files
+// (gitro.Head), or "" — never a git process: the console reads it on
+// request paths (RT-115, design §14 "fork no git per service").
+func repoHeadNoFork(root string) string {
+	h, err := gitro.Head(root)
+	if err != nil {
+		return ""
+	}
+	return h
 }
 
 func verifyLedgerPath() string {

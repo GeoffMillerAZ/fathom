@@ -25,6 +25,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -262,7 +263,14 @@ func reviewCallLogPath(flag, service string) string {
 // makes to render a page is the console reading itself, never usage.
 type consoleOriginTransport struct{ base http.RoundTripper }
 
+// RoundTrip stamps the console's origin. A request to this daemon's own
+// bare JSON-RPC endpoint or its statusz is answered in process (RT-115:
+// console pages make no loopback self-calls) — the RPC through the
+// server's gate as origin console-inprocess, like every in-process call.
 func (t consoleOriginTransport) RoundTrip(r *http.Request) (*http.Response, error) {
+	if resp, ok := consoleInProcessRoundTrip(r); ok {
+		return resp, nil
+	}
 	r = r.Clone(r.Context())
 	r.Header.Set(originHeaderName, mcp.OriginConsole)
 	base := t.base
@@ -270,6 +278,52 @@ func (t consoleOriginTransport) RoundTrip(r *http.Request) (*http.Response, erro
 		base = http.DefaultTransport
 	}
 	return base.RoundTrip(r)
+}
+
+// consoleInProcessRoundTrip answers r in process when it asks this daemon
+// for POST /rpc or GET /statusz; false otherwise (a CLI process, another
+// daemon, any other route).
+func consoleInProcessRoundTrip(r *http.Request) (*http.Response, bool) {
+	if r.URL == nil {
+		return nil, false
+	}
+	base := r.URL.Scheme + "://" + r.URL.Host
+	reg := inProcessDaemon(base)
+	if reg == nil {
+		return nil, false
+	}
+	var body []byte
+	switch {
+	case r.Method == http.MethodPost && r.URL.Path == "/rpc" && reg.rpc != nil:
+		if r.Body != nil {
+			raw, err := io.ReadAll(io.LimitReader(r.Body, 8<<20))
+			r.Body.Close()
+			if err != nil {
+				return nil, false
+			}
+			body = raw
+		}
+		resp, _ := inProcessCall(r.Context(), base, "", body)
+		body = resp
+	case r.Method == http.MethodGet && r.URL.Path == "/statusz" && r.URL.Query().Get("format") == "json" && reg.statusz != nil:
+		raw, err := json.Marshal(reg.statusz(r.Context()))
+		if err != nil {
+			return nil, false
+		}
+		body = raw
+	default:
+		return nil, false
+	}
+	status := http.StatusOK
+	if len(body) == 0 {
+		status = http.StatusNoContent
+	}
+	return &http.Response{
+		Status: http.StatusText(status), StatusCode: status, Proto: "HTTP/1.1", ProtoMajor: 1, ProtoMinor: 1,
+		Header:        http.Header{"Content-Type": []string{"application/json"}},
+		Body:          io.NopCloser(bytes.NewReader(body)),
+		ContentLength: int64(len(body)), Request: r,
+	}, true
 }
 
 // consoleRPCClient is the HTTP client for the console's own reads of the
