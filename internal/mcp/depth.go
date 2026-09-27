@@ -143,9 +143,7 @@ type blastBucket struct {
 // (syntax edges plus typed edges), so the union of the buckets equals that
 // result's Symbols. Buckets are sorted by depth, symbols by key; the result
 // is never nil.
-func blastRadiusByDepth(nodes []core.SymbolNode, changedFiles []string, typed []core.Edge) []blastBucket {
-	g := callgraph.Build(nodes)
-	callgraph.AddTypedEdges(g, typed)
+func blastRadiusByDepth(g *callgraph.Graph, nodes []core.SymbolNode, changedFiles []string) []blastBucket {
 	return blastBucketsOf(g, nodes, changedFiles, 0, nil)
 }
 

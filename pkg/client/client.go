@@ -18,6 +18,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
@@ -115,6 +116,11 @@ type Client struct {
 	// watermark and its guides' contents per stat.
 	oblMemo obligationsMemo
 
+	// storeIDOnce/storeID name this client's store for the graph store
+	// and symbol snapshots (StoreID, RT-74).
+	storeIDOnce sync.Once
+	storeID     string
+
 	// aggregates memoizes ServiceSymbolAggregates per store watermark
 	// (RT-144, aggregates.go).
 	aggregates aggregateMemo
@@ -192,7 +198,16 @@ func (c *Client) ReingestFile(ctx context.Context, serviceID, relFile string) (f
 	if !found || meta.Path == "" {
 		return fusion.ReingestReport{}, fmt.Errorf("client.ReingestFile: service %q has no recorded repo path (never ingested)", serviceID)
 	}
-	return c.pipe.ReingestFile(ctx, c.st, serviceID, meta.Path, relFile)
+	rep, err := c.pipe.ReingestFile(ctx, c.st, serviceID, meta.Path, relFile)
+	if err == nil && (rep.Refreshed || rep.Purged) {
+		// The watermark the summary row is keyed by did not move, so the
+		// row's count is recounted here or list_services reports the
+		// pre-refresh count as current (RT-76/RT-79).
+		if rerr := c.st.RecountServiceSummary(ctx, serviceID); rerr != nil {
+			return rep, fmt.Errorf("client.ReingestFile: recount summary: %w", rerr)
+		}
+	}
+	return rep, err
 }
 
 // SourcePackages returns the distinct packages of the symbols anchored at
@@ -746,7 +761,7 @@ func (c *Client) StoreWatermark(ctx context.Context, serviceID string) (string, 
 	if !ok {
 		return "", nil
 	}
-	return fmt.Sprintf("%s@%d", meta.IndexedCommit, meta.IndexedAt), nil
+	return store.WatermarkOf(meta), nil
 }
 
 // ServiceMeta returns the stored ingest metadata (path, indexed commit) for

@@ -45,6 +45,11 @@ type MemoryStore struct {
 	// identity PutClaims already keys on.
 	externalFindings map[claimKey]core.ExternalFinding
 
+	// summaries and fileStats are the derived facts (RT-76,
+	// memory_derived.go); nil until first written.
+	summaries map[string]ServiceSummary
+	fileStats map[string][]FileStat
+
 	// gate is the per-call suppression filter (scoped.go); initialised by
 	// NewMemoryStore and exercised by the constructor audit.
 	gate scopeGate
@@ -249,6 +254,7 @@ func (m *MemoryStore) PurgeSource(_ context.Context, serviceID, sourceRef string
 func (m *MemoryStore) PurgeService(_ context.Context, serviceID string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	m.dropDerivedLocked(serviceID)
 	kept := m.observations[:0]
 	for _, o := range m.observations {
 		if o.ServiceID == serviceID {
@@ -356,6 +362,9 @@ func (m *MemoryStore) RemoveService(_ context.Context, serviceID string) (bool, 
 		removed = true
 		delete(m.ingestState, serviceID)
 	}
+	if m.dropDerivedLocked(serviceID) {
+		removed = true
+	}
 	if _, ok := m.commits[serviceID]; ok {
 		removed = true
 		delete(m.commits, serviceID)
@@ -429,6 +438,7 @@ func (m *MemoryStore) RenameService(_ context.Context, oldID, newID string) erro
 		delete(m.ingestState, oldID)
 		m.ingestState[newID] = is
 	}
+	m.renameDerivedLocked(oldID, newID)
 	if commits, ok := m.commits[oldID]; ok {
 		for i := range commits {
 			commits[i].ServiceID = newID

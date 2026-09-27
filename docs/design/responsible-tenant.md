@@ -619,6 +619,18 @@ func Stats() []GroupStats                      // entries, bytes, hits, misses, 
 - I21's clause "result caching of whole tool answers is still absent" stands for MCP tool
   answers: no memo group caches a tool's response. `obsModel` and `operate` cache console
   page projections, which are not tool answers; I51 governs them.
+- As built (RT-74, RT-75): keys carry the store's identity too (`Scope{Store, Service,
+  Watermark}`, `pkg/client.(*Client).StoreID`), so the MCP tools and the console — one
+  client in the daemon — share entries and two stores never do; a backend that names no
+  store is never cached. `callgraph.Build`/`BuildBoth`/`BuildResolved` have no caller in
+  `internal/mcp` or the console but `memo.GraphFor` (pinned by
+  `TestGraphStore_OneGraphPerServiceWatermark`, which also refuses the node-slice helpers
+  that build one — `impact.BlastRadius`/`TestGap`, `findings.FileNeighborhood`; the serving
+  paths call their graph-taking `…On` forms); batch CLI verbs and analysis packages
+  (`impact`, `review`, `certify`) still build their own for one-shot work, and so does
+  `review_diff`'s conservation dimension (`conserve.Run`/`Residue` read the store directly
+  and build per review) — open. SU-4's
+  single-file refresh patches the snapshot and graphs copy-on-write (`memo.PatchPackage`).
 - Groups (migrations): `graphstore` keyed `(service, watermark, kind)` — replaces
   `callgraph.CachedCallGraph`, `projectIndexMemo`'s graph, the console plans graphs;
   `BuildBoth` becomes two keys — so no service's graph is held three times.
@@ -640,8 +652,8 @@ Additive tables (`CREATE … IF NOT EXISTS`), written in the ingest's final tran
 | Table | Written by | Replaces request-time | Size today |
 |---|---|---|---|
 | `file_stats(service_id, path, size, mtime_ns, ino, content_hash, lang, excluded)` | pass 1 | `Sources`/`SourcePaths` for paths and languages, obligations corpus selection, the manifest watermark | ~45k rows after gitignore |
-| `service_summary(service_id, watermark, symbol_count, languages_json, unsupported_langs_json, file_count, bytes, excluded_counts_json)` | end of ingest | `ServiceSummaries`' full symbol load, `unsupportedLanguagesCached` | 21 rows |
-| `observation_calls(service_id, caller_rowid, callee_key)` + `INDEX(callee_key)` | ingest (normalizes `calls`) | `fleetCallers`, `crossServiceCallees` | ~669k rows, 30–40 MB |
+| `service_summary(service_id, watermark, symbol_count, source_kinds_json, unsupported_langs_json, file_count, bytes, excluded_counts_json, source)` | end of ingest (with `service_meta`, one transaction) | `ServiceSummaries`' full symbol load, `unsupportedLanguagesCached` | 21 rows |
+| `observation_calls(service_id, caller_rowid, callee_key, callee_name)` + `INDEX(callee_key)`, `INDEX(callee_name)`, `INDEX(caller_rowid)`; `observation_calls_state(service_id)` marks a service complete | triggers on `observations` (insert, delete, rename), so every writer keeps it in step | `fleetCallers`, `crossServiceCallees` | ~669k rows, 30–40 MB |
 | `service_routes`, `service_http_calls` | ingest (serviceref extractor moves here) | `serviceref.BuildFromStore` per call | small |
 | `file_imports(service_id, path, content_hash, imports_json, resolved_json)` | ingest; unchanged hash reuses the row | `fileresolve` re-parsing every JS/TS/Python file twice | per JS/TS/Py file |
 | `ingest_state(service_id, state, pid, started_at, target_commit, path)` | refresh | the watermark-before-extraction bug | 21 rows |
@@ -656,9 +668,17 @@ already has, so they are backfilled by SQL at first use, never by a re-ingest: `
 service_id, count(*) … GROUP BY service_id` plus the distinct-extension aggregate for the
 summary, `INSERT INTO observation_calls SELECT … FROM observations, json_each(calls)` for
 the call index — one service per transaction under the ingest slot, no content reads
-(`TestSummaryBackfilledWithoutIngest`). Until a service's backfill commits, `list_services`
-keeps wave A's aggregate path (RT-144) and cross-service callers keep today's query, so
-there is no window of degraded answers and no 21-service re-ingest after the deploy. Only
+(`TestSummaryBackfilledWithoutIngest`). As built (RT-79, RT-160): `list_services` derives a
+missing or stale summary itself at first read when the ingest slot is free (a GROUP BY,
+the same cost as wave A's aggregate) and names the absence (`symbol_count_error`) when it
+is not, never falling back to a symbol load or a walk; the daemon derives every service's
+summary and call index once after warm-up; cross-service callers keep today's query for a
+service whose call index is not complete (`DerivedState.CallsIndexed`). No 21-service
+re-ingest after the deploy. An ingest's final transaction indexes a service the
+store's trigger did not see from birth, so a service first ingested after start-up is
+never left out. A purge's VACUUM may renumber rowids, so it rebuilds every service's call
+index in place (never left empty until a restart), and `CallersOfKeys` re-checks each hit
+against the caller's own `calls`. Only
 `file_stats` genuinely needs a walk: until a service's first post-upgrade ingest,
 consumers of it (RT-82, the stat manifest) answer from `SourcePaths` or name the absence
 (I38), never a whole-tree content read.

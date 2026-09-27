@@ -14,6 +14,7 @@ import (
 // concurrent cold callers pile up behind it.
 type navMemoFake struct {
 	refreshFake
+	testStore
 	loads atomic.Int32
 	mark  atomic.Value
 	gate  chan struct{}

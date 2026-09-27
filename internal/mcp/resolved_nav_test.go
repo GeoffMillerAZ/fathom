@@ -24,6 +24,7 @@ import (
 // must return both; and the verify engine must keep seeing both regardless.
 
 type navFake struct {
+	extTestStore
 	nodes     []core.SymbolNode
 	typed     []core.Edge
 	watermark string

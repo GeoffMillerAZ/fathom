@@ -40,7 +40,7 @@ func TestConsolePlans_HeadOnlyChangeReusesDaemonVerdicts(t *testing.T) {
 
 	deps := &consoleDeps{selfURL: "http://127.0.0.1:1", now: time.Now}
 	p := &consolePlans{deps: deps, entries: map[string]*planEntry{}, wake: make(chan struct{}, 1),
-		heads: map[string]plansStamp{}, stale: map[string]plansStamp{}, graphs: map[string]*graphEntry{},
+		heads: map[string]plansStamp{}, stale: map[string]plansStamp{},
 		hist: map[string]historyEntry{}}
 	sum := sha256.Sum256([]byte(plan))
 	rawKey := hex.EncodeToString(sum[:8]) + "|"
@@ -158,7 +158,7 @@ func TestConsolePlans_UnreadablePlansDirIsAnError(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
 	p := &consolePlans{deps: &consoleDeps{now: time.Now}, entries: map[string]*planEntry{}, wake: make(chan struct{}, 1),
-		heads: map[string]plansStamp{}, stale: map[string]plansStamp{}, graphs: map[string]*graphEntry{},
+		heads: map[string]plansStamp{}, stale: map[string]plansStamp{},
 		hist: map[string]historyEntry{}}
 	sp, _ := p.servicePlans(context.Background(), serviceRoot{Service: "svc", Root: root}, "")
 	if sp.Err == "" || len(sp.Plans) != 0 {
@@ -202,7 +202,7 @@ func TestConsolePlans_VerifyEventsOnlyWhenVerdictsChange(t *testing.T) {
 	bus := console.NewEventBus(console.BusOptions{})
 	deps := &consoleDeps{selfURL: "http://127.0.0.1:1", now: time.Now, bus: bus}
 	p := &consolePlans{deps: deps, entries: map[string]*planEntry{}, wake: make(chan struct{}, 1),
-		heads: map[string]plansStamp{}, stale: map[string]plansStamp{}, graphs: map[string]*graphEntry{},
+		heads: map[string]plansStamp{}, stale: map[string]plansStamp{},
 		hist: map[string]historyEntry{}}
 	sum := sha256.Sum256([]byte(plan))
 	rawKey := hex.EncodeToString(sum[:8]) + "|"

@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/geoffmilleraz/fathom/internal/memo"
 )
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -184,5 +186,25 @@ func TestRunServeMCPSubcommand(t *testing.T) {
 	code := runWithStdin([]string{"serve-mcp", "--store", store}, in, &out, &errBuf)
 	if code != 0 {
 		t.Fatalf("run serve-mcp exited %d; stderr=%q stdout=%q", code, errBuf.String(), out.String())
+	}
+}
+
+// TestServeMCPBoundsTheMemoRegistry (review finding, I51): serve-mcp runs
+// the same MCP tools as serve-http over the same memo registry, so it
+// takes the same cache budget (the cache fraction of its unmanaged
+// tenancy budget) — with none the registry held every service it touched.
+func TestServeMCPBoundsTheMemoRegistry(t *testing.T) {
+	prev, _ := memo.Default.Budget()
+	memo.Default.SetBudget(0, 0)
+	t.Cleanup(func() { memo.Default.SetBudget(prev, 0) })
+	t.Setenv("FATHOM_TENANCY_BUDGET", "1GiB")
+	store := filepath.Join(t.TempDir(), "test.sqlite")
+	var out, errBuf bytes.Buffer
+	if code := runServeMCP([]string{"--store", store}, buildMCPInput(t), &out, &errBuf); code != 0 {
+		t.Fatalf("serve-mcp exited %d; stderr=%q", code, errBuf.String())
+	}
+	got, _ := memo.Default.Budget()
+	if got <= 0 || got >= 1<<30 {
+		t.Fatalf("memo budget = %d, want the cache fraction of the 1 GiB tenancy budget", got)
 	}
 }

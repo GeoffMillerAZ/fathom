@@ -49,15 +49,21 @@ type TestGapResult struct {
 // unprotected code). Pure and deterministic: every slice is sorted.
 func TestGap(nodes []core.SymbolNode, changedFiles []string, typed []core.Edge) TestGapResult {
 	if len(nodes) == 0 {
+		return TestGapOn(nil, nodes, changedFiles)
+	}
+	return TestGapOn(callgraph.BuildBoth(nodes, typed), nodes, changedFiles)
+}
+
+// TestGapOn is TestGap over a graph the caller already holds — g must be
+// callgraph.BuildBoth(nodes, typed) (the serving paths' shared graph
+// store, RT-74) — so a request never builds one of its own.
+func TestGapOn(g *callgraph.Graph, nodes []core.SymbolNode, changedFiles []string) TestGapResult {
+	if len(nodes) == 0 || g == nil {
 		return TestGapResult{Reason: "no symbols indexed for this service — ingest it before reviewing", AffectedTests: []TestReach{}, Gap: []SymbolGap{}}
 	}
 	changed := make(map[string]bool, len(changedFiles))
 	for _, f := range changedFiles {
 		changed[f] = true
-	}
-	g := callgraph.Build(nodes)
-	if len(typed) > 0 {
-		callgraph.AddTypedEdges(g, typed)
 	}
 	byKey := make(map[string]core.SymbolNode, len(nodes))
 	var seeds []string

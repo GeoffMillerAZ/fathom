@@ -28,6 +28,8 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
 	"github.com/geoffmilleraz/fathom/internal/analysis/impact"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/memo"
+	"github.com/geoffmilleraz/fathom/internal/scope"
 )
 
 // Default bounds for blast_radius (BP-27). Depth 2 is "what breaks and what
@@ -66,8 +68,11 @@ func serviceWatermark(ctx context.Context, backend QueryInterface, service strin
 // navGraphs is one service's two graphs plus the facts a handler needs to
 // report honestly about them.
 type navGraphs struct {
-	Nodes []core.SymbolNode
-	Typed []core.Edge
+	// Nodes is the shared snapshot's slice: read it, never sort or edit
+	// it (serviceSymbols hands out a copy).
+	Nodes    []core.SymbolNode
+	Snapshot *memo.Snapshot
+	Typed    []core.Edge
 	// Syntax is the syntax-only graph (no typed edges) — what
 	// symbol_context's "callers"/"callees" read.
 	Syntax *callgraph.Graph
@@ -81,112 +86,147 @@ type navGraphs struct {
 	// callers, and silently returning it would trade bad precision for
 	// invented recall.
 	TypedAvailable bool
+	// TypedErr is set when this call could not read the typed edges: the
+	// graphs are the syntax edges only, for this call alone (never cached).
+	TypedErr error
 }
 
-// loadNavGraphs builds (or reuses) the two graphs for service. Both are
-// memoized under the store watermark (BP-28, I21) in the server's cache, so
-// a session's second nav call on an unchanged index pays nothing to build.
-// Returns nil when the backend cannot list symbols.
+// storeIdentifier is the OPTIONAL backend capability naming the store a
+// backend reads (pkg/client's Client): the graph store and snapshot keys
+// carry it, so two stores holding a same-named service never share an
+// entry, and the MCP tools and the console — one client — share one.
+type storeIdentifier interface {
+	StoreID() string
+}
+
+// freshnessEnsurer is the OPTIONAL backend capability that runs the
+// auto-refresh freshness check a symbol load would have run (autorefresh.go
+// ensure) before a snapshot is taken: a cached snapshot must not also skip
+// the refresh the uncached load triggered.
+type freshnessEnsurer interface {
+	EnsureFresh(ctx context.Context, service string)
+}
+
+// navScope is service's (store, service, watermark) scope; the watermark
+// is "" when the backend cannot name one (never cached, I21).
+func navScope(ctx context.Context, backend QueryInterface, service string) memo.Scope {
+	if e, ok := backend.(freshnessEnsurer); ok {
+		e.EnsureFresh(ctx, service)
+	}
+	return navScopeNoEnsure(ctx, backend, service)
+}
+
+// navScopeNoEnsure is navScope without the freshness check (the refresh
+// path patching the store's own state).
+func navScopeNoEnsure(ctx context.Context, backend QueryInterface, service string) memo.Scope {
+	id, ok := backend.(storeIdentifier)
+	if !ok || id.StoreID() == "" {
+		// A backend that cannot name its store is never cached: an address
+		// is not an identity (a freed backend's address is reused).
+		return memo.Scope{Service: service}
+	}
+	wm := serviceWatermark(ctx, backend, service)
+	if wm != "" {
+		if t, ok := backend.(suppressionTokener); ok {
+			// A suppression change is a new key: a cached snapshot never
+			// serves rows a suppression now hides (SP-2).
+			if tok := t.SuppressionToken(service); tok != "" {
+				wm += "|suppressed:" + tok
+			}
+		}
+	}
+	return memo.Scope{Store: id.StoreID(), Service: service, Watermark: wm}
+}
+
+// suppressionTokener is the OPTIONAL backend capability naming the
+// suppressions currently applied to a service's reads (pkg/client).
+type suppressionTokener interface {
+	SuppressionToken(service string) string
+}
+
+// serviceSnapshot is service's symbol snapshot (RT-75): one immutable load
+// per (store, service, watermark), shared by every iterating tool, the
+// navigation graphs and the console.
+func serviceSnapshot(ctx context.Context, backend QueryInterface, service string) (*memo.Snapshot, error) {
+	sc := navScope(ctx, backend, service)
+	snap, err := memo.SnapshotForExtra(ctx, sc, func(lctx context.Context) ([]core.SymbolNode, any, error) {
+		// The load's suppression disclosure is kept on the snapshot and
+		// replayed to every reader below: a cached snapshot still says
+		// what it hides (SP-3).
+		cctx, col := scope.WithCollector(lctx)
+		nodes, err := backend.ListAllSymbols(cctx, service)
+		return nodes, col.For(service), err
+	})
+	if err != nil {
+		return nil, err
+	}
+	if d, ok := snap.Extra.(*scope.Disclosure); ok {
+		scope.Record(ctx, service, d)
+	}
+	return snap, nil
+}
+
+// serviceSymbols is the service's symbols as a slice the caller may sort
+// or edit (a copy of the shared snapshot's): the iterating tools' load
+// (RT-75), never a per-call store read at a cached watermark.
+func serviceSymbols(ctx context.Context, backend QueryInterface, service string) ([]core.SymbolNode, error) {
+	snap, err := serviceSnapshot(ctx, backend, service)
+	if err != nil {
+		return nil, err
+	}
+	return snap.NodesCopy(), nil
+}
+
+// typedLoader loads the service's typed edges through the backend. A read
+// failure is returned, never read as "none": the graph store does not
+// cache a failure, so it cannot stand for the whole watermark (I38); the
+// callers degrade that one call (memo.GraphForTyped).
+func typedLoader(backend QueryInterface, service string) memo.TypedLoader {
+	return func(ctx context.Context) ([]core.Edge, error) {
+		return backend.TypedEdges(ctx, service)
+	}
+}
+
+// loadNavGraphs returns service's snapshot and its three graphs, each
+// from the graph store (RT-74): one build per (store, service, watermark,
+// kind), shared by every tool and the console, single-flighted with
+// ctx-aware waiters. Returns nil when the backend cannot list symbols (or
+// the caller left); an index with no symbols yields empty graphs.
 func (s *Server) loadNavGraphs(ctx context.Context, backend QueryInterface, service string) *navGraphs {
-	mark := serviceWatermark(ctx, backend, service)
-	if mark == "" {
-		return buildNavGraphs(ctx, s, backend, service, "")
-	}
-	key := service + "\x00" + mark
-	s.navMu.Lock()
-	if g, ok := s.navMemo[service]; ok && g.mark == mark {
-		s.navMu.Unlock()
-		return g.graphs
-	}
-	// One load and build per (service, watermark): a concurrent cold caller
-	// waits for the one in flight (the wave-A incident replay measured 20
-	// concurrent symbol_context calls each loading every symbol and building
-	// the graph — ~6 GiB footprint).
-	if call, ok := s.navFlight[key]; ok {
-		s.navMu.Unlock()
-		// RT-179: a waiter leaves at its own deadline (or its caller's
-		// departure); its handler then answers as abandoned, never waits
-		// out another call's build.
-		select {
-		case <-call.done:
-			return call.graphs
-		case <-ctx.Done():
-			return nil
-		}
-	}
-	if s.navFlight == nil {
-		s.navFlight = make(map[string]*navCall)
-		s.navMemo = make(map[string]navMemoEntry)
-	}
-	call := &navCall{done: make(chan struct{})}
-	s.navFlight[key] = call
-	s.navMu.Unlock()
-
-	call.graphs = buildNavGraphs(ctx, s, backend, service, mark)
-
-	s.navMu.Lock()
-	delete(s.navFlight, key)
-	if call.graphs != nil {
-		s.navMemo[service] = navMemoEntry{mark: mark, graphs: call.graphs}
-		s.navOrder = append(removeString(s.navOrder, service), service)
-		for len(s.navOrder) > navMemoCap {
-			delete(s.navMemo, s.navOrder[0])
-			s.navOrder = s.navOrder[1:]
-		}
-	}
-	s.navMu.Unlock()
-	close(call.done)
-	return call.graphs
-}
-
-// navMemoCap bounds how many services' navigation state (every symbol,
-// typed edge and three graphs) stays resident. A large service's state is
-// ~1 GiB (the wave-A replay retained 2.5 GiB for three), so two — the
-// service a session works in and one neighbour — until wave B accounts
-// cache bytes against the budget (RT-163).
-const navMemoCap = 2
-
-type navMemoEntry struct {
-	mark   string
-	graphs *navGraphs
-}
-
-type navCall struct {
-	done   chan struct{}
-	graphs *navGraphs
-}
-
-func removeString(xs []string, x string) []string {
-	out := xs[:0]
-	for _, v := range xs {
-		if v != x {
-			out = append(out, v)
-		}
-	}
-	return out
-}
-
-// buildNavGraphs loads the service's symbols and typed edges and builds the
-// two graphs (memoized in the graph cache under mark). Returns nil when the
-// backend cannot list symbols.
-func buildNavGraphs(ctx context.Context, s *Server, backend QueryInterface, service, mark string) *navGraphs {
-	nodes, err := backend.ListAllSymbols(ctx, service)
-	if err != nil || len(nodes) == 0 {
+	g, err := loadNavGraphsErr(ctx, backend, service)
+	if err != nil {
 		return nil
 	}
-	typed, _ := backend.TypedEdges(ctx, service)
-	g := &navGraphs{Nodes: nodes, Typed: typed}
-	g.Syntax = s.graphCache.Graph(service+"\x00syntax", mark, func() *callgraph.Graph {
-		return callgraph.Build(nodes)
-	})
-	g.Both = s.graphCache.Graph(service+"\x00both", mark, func() *callgraph.Graph {
-		return callgraph.BuildBoth(nodes, typed)
-	})
-	g.Resolved = s.graphCache.Graph(service+"\x00resolved", mark, func() *callgraph.Graph {
-		return callgraph.BuildResolved(nodes, typed)
-	})
-	g.TypedAvailable = g.Resolved.HasEdges()
 	return g
+}
+
+// loadNavGraphsErr is loadNavGraphs with the load error.
+func loadNavGraphsErr(ctx context.Context, backend QueryInterface, service string) (*navGraphs, error) {
+	snap, err := serviceSnapshot(ctx, backend, service)
+	if err != nil {
+		return nil, err
+	}
+	typed := typedLoader(backend, service)
+	g := &navGraphs{Nodes: snap.Nodes, Snapshot: snap}
+	if g.Syntax, err = memo.GraphFor(ctx, snap, memo.GraphSyntax, nil); err != nil {
+		return nil, err
+	}
+	// A typed-edge read failure degrades this call to the syntax edges
+	// (TypedAvailable false, TypedErr naming it) and is never cached: the
+	// next call reads the typed edges again (I38).
+	if g.Both, g.Typed, g.TypedErr, err = memo.GraphForTyped(ctx, snap, memo.GraphBoth, typed); err != nil {
+		return nil, err
+	}
+	if g.TypedErr == nil {
+		if g.Resolved, _, g.TypedErr, err = memo.GraphForTyped(ctx, snap, memo.GraphResolved, typed); err != nil {
+			return nil, err
+		}
+	}
+	if g.TypedErr != nil {
+		g.Typed, g.Both, g.Resolved = nil, g.Syntax, memo.EmptyGraph()
+	}
+	g.TypedAvailable = g.Resolved.HasEdges()
+	return g, nil
 }
 
 // pick returns the graph a handler should walk given the caller's

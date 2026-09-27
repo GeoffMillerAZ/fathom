@@ -430,7 +430,7 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 			// SB-5: an exact hit on a single Go interface additionally
 			// carries its implementers (H1-T06's question in one call).
 			if len(nodes) == 1 && nodes[0].Kind == core.KindGoInterface {
-				if all, allErr := backend.ListAllSymbols(ctx, p.Service); allErr == nil {
+				if all, allErr := serviceSymbols(ctx, backend, p.Service); allErr == nil {
 					if impls := implementationsOf(ctx, backend, p.Service, nodes[0], all); len(impls) > 0 {
 						resp["implementations"] = impls
 					}
@@ -442,7 +442,7 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 		// Exact tier missed — degrade over the service's symbol list. Fallback
 		// errors never fail the lookup; the answer is just "no match".
 		var all []core.SymbolNode
-		if listed, listErr := backend.ListAllSymbols(ctx, p.Service); listErr == nil {
+		if listed, listErr := serviceSymbols(ctx, backend, p.Service); listErr == nil {
 			all = listed
 			if ci, ciTotal := caseFoldMatches(all, p.Name); len(ci) > 0 {
 				resp := map[string]any{"symbols": toNodeDTOs(ci), "matched_via": "case_insensitive"}
@@ -576,15 +576,11 @@ func toNodeDTOs(nodes []core.SymbolNode) []symbolNodeDTO {
 // Best-effort: a backend that cannot list symbols (or lists none) yields
 // nil, and the caller degrades to the syntax engine's own direct callers.
 func callerGraph(ctx context.Context, backend QueryInterface, service string) *callgraph.Graph {
-	nodes, err := backend.ListAllSymbols(ctx, service)
-	if err != nil || len(nodes) == 0 {
+	ng, err := loadNavGraphsErr(ctx, backend, service)
+	if err != nil || len(ng.Nodes) == 0 {
 		return nil
 	}
-	g := callgraph.Build(nodes)
-	if typed, tErr := backend.TypedEdges(ctx, service); tErr == nil && len(typed) > 0 {
-		callgraph.AddTypedEdges(g, typed)
-	}
-	return g
+	return ng.Both // RT-74: the graph store's, shared and read-only
 }
 
 // findCallersSummary renders find_callers' answer-first sentence (wave L1,

@@ -39,14 +39,11 @@ func registerAnalysisTools(s *Server, backend QueryInterface) {
 // reachability answer the daemon gives). An index with no symbols yields an
 // empty graph, as it always did — only a backend failure is an error.
 func bothGraph(ctx context.Context, s *Server, backend QueryInterface, service string) ([]core.SymbolNode, *callgraph.Graph, *rpcError) {
-	if ng := s.loadNavGraphs(ctx, backend, service); ng != nil {
-		return ng.Nodes, ng.Both, nil
-	}
-	nodes, err := backend.ListAllSymbols(ctx, service)
+	ng, err := loadNavGraphsErr(ctx, backend, service)
 	if err != nil {
 		return nil, nil, &rpcError{Code: ErrCodeInternal, Message: "list symbols: " + err.Error()}
 	}
-	return nodes, callgraph.Build(nodes), nil
+	return ng.Nodes, ng.Both, nil
 }
 
 // buildGraph is bothGraph for callers that need only the graph.
@@ -103,11 +100,11 @@ func registerRenameImpact(s *Server, backend QueryInterface) {
 		if p.Symbol == "" {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "rename_impact: symbol required"}
 		}
-		nodes, err := backend.ListAllSymbols(ctx, p.Service)
+		ng, err := loadNavGraphsErr(ctx, backend, p.Service)
 		if err != nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: "list symbols: " + err.Error()}
 		}
-		g := callgraph.Build(nodes)
+		g := ng.Syntax
 		callers := callgraph.RenameImpact(g, p.Symbol)
 
 		// resolution/index_commit (VB-19, docs/vision/29-verbs-not-lookups.md
@@ -116,9 +113,7 @@ func registerRenameImpact(s *Server, backend QueryInterface) {
 		// walked, since AddTypedEdges can introduce callers the syntax pass
 		// never had (BP-26) and rename_impact's caller SET must stay
 		// exactly what it always was; only the tier annotation is additive.
-		typed, _ := backend.TypedEdges(ctx, p.Service)
-		tg := callgraph.Build(nodes)
-		callgraph.AddTypedEdges(tg, typed)
+		tg := ng.Both
 		kinds := make(map[string]core.EdgeKind, len(callers))
 		for _, d := range callgraph.CallersDetail(tg, p.Symbol) {
 			kinds[d.Key] = d.Kind
@@ -262,7 +257,7 @@ func registerTestImpact(s *Server, backend QueryInterface) {
 		if p.Symbol == "" {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "test_impact: symbol required"}
 		}
-		nodes, g, rpcErr := bothGraph(ctx, s, backend, p.Service)
+		_, g, rpcErr := bothGraph(ctx, s, backend, p.Service)
 		if rpcErr != nil {
 			return nil, rpcErr
 		}
@@ -275,9 +270,7 @@ func registerTestImpact(s *Server, backend QueryInterface) {
 		// the one TestImpact itself walked (AddTypedEdges can introduce
 		// reachability the syntax pass never had, BP-26); test_impact's
 		// returned SET must stay exactly what it always was.
-		typed, _ := backend.TypedEdges(ctx, p.Service)
-		tg := callgraph.Build(nodes)
-		callgraph.AddTypedEdges(tg, typed)
+		tg := g // bothGraph's graph already carries the typed edges
 		infos := callerDepths(tg, p.Symbol, 0)
 		var mix resolutionMix
 		for _, t := range tests {

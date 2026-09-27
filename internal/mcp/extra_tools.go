@@ -41,6 +41,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/graph"
 	"github.com/geoffmilleraz/fathom/internal/hookcache"
+	"github.com/geoffmilleraz/fathom/internal/memo"
 	"github.com/geoffmilleraz/fathom/internal/projectrules"
 	"github.com/geoffmilleraz/fathom/internal/sdd"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
@@ -304,19 +305,19 @@ func registerDiffImpact(s *Server, backend QueryInterface) {
 		if len(p.ChangedFiles) == 0 {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "diff_impact: changed_files required"}
 		}
-		nodes, err := backend.ListAllSymbols(ctx, p.Service)
+		// RT-74: the graph store's syntax+typed graph (typed Go call edges,
+		// ADR-021 §3, additive on the transitive-caller walk — a non-Go
+		// service contributes none), never a per-call build.
+		ng, err := loadNavGraphsErr(ctx, backend, p.Service)
 		if err != nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
 		}
-		// Typed Go call edges (ADR-021 §3): additive on the transitive-caller
-		// walk — best-effort, a non-Go service contributes nothing.
-		typed, _ := backend.TypedEdges(ctx, p.Service)
-		result := impact.DiffImpactWithTypedEdges(nodes, p.ChangedFiles, typed)
+		result := impact.BlastRadiusOn(ng.Both, ng.Nodes, p.ChangedFiles)
 		return map[string]any{
 			"symbols":  stringsToAny(result.Symbols),
 			"tests":    stringsToAny(result.Tests),
 			"files":    stringsToAny(result.Files),
-			"by_depth": blastRadiusByDepth(nodes, p.ChangedFiles, typed), // BD-3, identical to blast_radius
+			"by_depth": blastRadiusByDepth(ng.Both, ng.Nodes, p.ChangedFiles), // BD-3, identical to blast_radius
 		}, nil
 	})
 }
@@ -354,7 +355,7 @@ func registerSpecCoverage(s *Server, backend QueryInterface) {
 		}
 		// Scan Sources for spec refs; fall back to nodes if Sources unavailable.
 		files, _ := backend.Sources(ctx, p.Service)
-		nodes, err := backend.ListAllSymbols(ctx, p.Service)
+		nodes, err := serviceSymbols(ctx, backend, p.Service)
 		if err != nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
 		}
@@ -474,7 +475,7 @@ func registerEvidenceSummary(s *Server, backend QueryInterface) {
 			return nil, rpcErr
 		}
 		// Derive observations from ListAllSymbols: convert each SymbolNode's Tier to a fake Observation.
-		nodes, err := backend.ListAllSymbols(ctx, svc)
+		nodes, err := serviceSymbols(ctx, backend, svc)
 		if err != nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
 		}
@@ -622,7 +623,7 @@ func registerArchConformance(s *Server, backend QueryInterface) {
 		if p.Service == "" {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "arch_conformance: service required"}
 		}
-		nodes, err := backend.ListAllSymbols(ctx, p.Service)
+		nodes, err := serviceSymbols(ctx, backend, p.Service)
 		if err != nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
 		}
@@ -715,7 +716,7 @@ func registerStaleDocs(s *Server, backend QueryInterface) {
 		if rpcErr != nil {
 			return nil, rpcErr
 		}
-		nodes, err := backend.ListAllSymbols(ctx, svc)
+		nodes, err := serviceSymbols(ctx, backend, svc)
 		if err != nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
 		}
@@ -788,11 +789,11 @@ func registerAPIDiff(s *Server, backend QueryInterface) {
 		if p.ServiceB == "" {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "api_diff: service_b required"}
 		}
-		nodesA, err := backend.ListAllSymbols(ctx, p.ServiceA)
+		nodesA, err := serviceSymbols(ctx, backend, p.ServiceA)
 		if err != nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: "list service_a: " + err.Error()}
 		}
-		nodesB, err := backend.ListAllSymbols(ctx, p.ServiceB)
+		nodesB, err := serviceSymbols(ctx, backend, p.ServiceB)
 		if err != nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: "list service_b: " + err.Error()}
 		}
@@ -1120,16 +1121,27 @@ func registerIngest(s *Server, backend QueryInterface) {
 			}
 		}
 
+		// RT-160: the ingest runs under tenancy's one ingest slot, as the
+		// inline ingest does, so a derived-table backfill (serving
+		// start-up, list_services' first read) never runs beside it and
+		// writes a summary with a mixed count. A caller whose request ends
+		// while another ingest or backfill holds the slot leaves, named.
+		releaseSlot, slotErr := tenancy.AcquireIngestSlot(ctx)
+		if slotErr != nil {
+			return nil, &rpcError{Code: ErrCodeBusy, Message: "ingest: " + svc + " not ingested — the wait for the one ingest slot (held by another ingest or a derived-table backfill) ended: " + slotErr.Error()}
+		}
 		var ingestErr error
 		if p.Path != "" {
 			ia, ok := backend.(ingestAtBackend)
 			if !ok {
+				releaseSlot()
 				return nil, &rpcError{Code: ErrCodeInvalid, Message: "ingest: this backend does not support onboarding by path"}
 			}
 			ingestErr = ia.IngestServiceAt(ctx, svc, p.Path)
 		} else {
 			ingestErr = backend.IngestService(ctx, svc)
 		}
+		releaseSlot()
 		// RT-41 (§2.1): an ingest that failed writing the store with
 		// SQLITE_FULL or SQLITE_IOERR is store distress — the next ingest
 		// and refresh are refused, named, instead of admitted to fail.
@@ -1147,6 +1159,7 @@ func registerIngest(s *Server, backend QueryInterface) {
 		var readErr *fusion.ReadFailuresError
 		if !(errors.As(ingestErr, &readErr) && readErr.Refused) {
 			hookcache.BustIdent()
+			evictServiceCaches(backend, svc)
 		}
 		// RT-155: the explicit ingest ran to completion (a degraded one
 		// included: it indexed every readable file within budget) — lift
@@ -1269,10 +1282,13 @@ func registerCrossRepoBlastRadius(s *Server, backend QueryInterface) {
 		}
 		var hits []hit
 		for _, svc := range services {
-			nodes, err := backend.ListAllSymbols(ctx, svc)
+			// The shared snapshot, read in place (RT-75): no per-call
+			// copy of every service's symbols.
+			snap, err := serviceSnapshot(ctx, backend, svc)
 			if err != nil {
 				continue
 			}
+			nodes := snap.Nodes
 			// Find the symbol in this service.
 			var seed []string
 			for _, n := range nodes {
@@ -1282,8 +1298,14 @@ func registerCrossRepoBlastRadius(s *Server, backend QueryInterface) {
 				}
 			}
 			if len(seed) > 0 {
-				// Also compute callers in this service.
-				result := impact.BlastRadius(nodes, seed)
+				// Also compute callers in this service, on its shared
+				// syntax graph (RT-74) — built once per (service,
+				// watermark), not once per call per service.
+				g, gerr := memo.GraphFor(ctx, snap, memo.GraphSyntax, nil)
+				if gerr != nil {
+					continue
+				}
+				result := impact.BlastRadiusOn(g, nodes, seed)
 				for _, sym := range result.Symbols {
 					if sym != p.Symbol {
 						hits = append(hits, hit{Service: svc, Symbol: sym})
@@ -1355,7 +1377,7 @@ func registerRepoMap(s *Server, backend QueryInterface) {
 		if budget <= 0 {
 			budget, _ = budgetDefaultTokens("repo_map", s.budgets) // BA-5/BA-9: project → user → measured default (design §3 "map")
 		}
-		nodes, err := backend.ListAllSymbols(ctx, p.Service)
+		nodes, err := serviceSymbols(ctx, backend, p.Service)
 		if err != nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
 		}
@@ -2113,7 +2135,7 @@ func registerTraverse(s *Server, backend QueryInterface) {
 		}
 
 		// Build edges from call graph (symbols → Calls).
-		nodes, err := backend.ListAllSymbols(ctx, p.Service)
+		nodes, err := serviceSymbols(ctx, backend, p.Service)
 		if err != nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: "traverse: list symbols: " + err.Error()}
 		}

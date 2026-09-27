@@ -58,6 +58,9 @@ var storeMethodDisposition = map[string]string{
 	"SourceKindCounts":              "", // RT-144: list_services' symbol counts must not count a hidden file's symbols
 	"SourcePackages":                "", // RT-27: a hidden file names no package
 	"PackageObservations":           "", // RT-27: a package's node set must not carry a hidden file's symbols
+	"ServiceSummary":                "", // RT-79: list_services' counts must not count a hidden file
+	"FileStats":                     "", // RT-82: file_stats names every file; a hidden one never surfaces
+	"CallersOfKeys":                 "", // RT-77: a hidden file's call never names a caller
 
 	// --- exempt, with the reason ---
 	"PutObservations":                "write path; suppression is a READ decision and must never change what is indexed (§3.5)",
@@ -111,6 +114,12 @@ var storeMethodDisposition = map[string]string{
 	// --- vision 33 / ADR-043 stage 1 (TC-6/TC-8): certification evidence ---
 	"TestCaseRunsForSymbol": "per-run case status/attempts history keyed by test symbol, no path-anchored source content",
 
+	// --- responsible tenant §6 (RT-76, RT-160): derived facts ---
+	"WriteServiceSummary":   "write path (an ingest's final transaction)",
+	"BackfillDerivedTables": "write path (derives from stored rows; reads no file)",
+	"RecountServiceSummary": "write path (recounts the summary row in place after a single-file refresh; returns nothing)",
+	"DerivedState":          "which derived facts a service has (flags and a watermark), no path-anchored content",
+
 	// --- diagnostics sweep DG-10: restart-durable typed-edge status ---
 	"SetTypedEdgeStatus": "write path",
 	"TypedEdgeStatus":    "", // filtered: DiscoveryGapFiles names files, and a hidden one must not surface through list_services/staleness_report//statusz
@@ -122,8 +131,8 @@ func seedSurfaceStore(t *testing.T, s store.Store) {
 	now := fixedTime
 
 	obs := []core.Observation{
-		{ServiceID: svc, SourceRef: hiddenRef, SourceKind: core.KindGoFunc, EvidenceTier: core.TierVerified, Symbol: "Secret", Package: "secrets", Claim: "func Secret()", IngestedAt: now},
-		{ServiceID: svc, SourceRef: visibleRef, SourceKind: core.KindGoFunc, EvidenceTier: core.TierVerified, Symbol: "Ok", Package: "internal", Claim: "func Ok()", IngestedAt: now},
+		{ServiceID: svc, SourceRef: hiddenRef, SourceKind: core.KindGoFunc, EvidenceTier: core.TierVerified, Symbol: "Secret", Package: "secrets", Claim: "func Secret()", Calls: []string{"fmt.Println"}, IngestedAt: now},
+		{ServiceID: svc, SourceRef: visibleRef, SourceKind: core.KindGoFunc, EvidenceTier: core.TierVerified, Symbol: "Ok", Package: "internal", Claim: "func Ok()", Calls: []string{"fmt.Println"}, IngestedAt: now},
 	}
 	if err := s.PutObservations(ctx, obs); err != nil {
 		t.Fatalf("PutObservations: %v", err)
@@ -171,6 +180,12 @@ func seedSurfaceStore(t *testing.T, s store.Store) {
 		{TestSymbolKey: svc + "::internal.TestOk", Kind: "invariant", TargetID: "I-visible", Strength: "asserts", File: visibleRef, Line: 5},
 	}); err != nil {
 		t.Fatalf("PutCertifyDeclarations: %v", err)
+	}
+	if err := s.WriteServiceSummary(ctx, store.ServiceMeta{ServiceID: svc, IndexedCommit: "c", IndexedAt: 1}, store.ServiceSummary{FileCount: 2}, []store.FileStat{
+		{Path: hiddenRef, Size: 100, Lang: store.UnsupportedLangPrefix + "Secretlang"},
+		{Path: visibleRef, Size: 10},
+	}); err != nil {
+		t.Fatalf("WriteServiceSummary: %v", err)
 	}
 	if err := s.SetTypedEdgeStatus(ctx, svc, store.TypedEdgeStatusRecord{
 		Packages: 2, DiscoveryGaps: 2, DiscoveryGapFiles: []string{hiddenRef, visibleRef}, RecordedAt: now,
@@ -398,6 +413,30 @@ func TestSuppressionCoversEverySurface(t *testing.T) {
 					t.Fatalf("TypedEdgeStatus ok=%v err=%v", ok, err)
 				}
 				assertRefs(t, rec.DiscoveryGapFiles)
+			})
+			t.Run("ServiceSummary", func(t *testing.T) {
+				sum, ok, err := g.ServiceSummary(ctx, svc)
+				if err != nil || !ok {
+					t.Fatalf("ServiceSummary ok=%v err=%v", ok, err)
+				}
+				// Visible: Ok; hidden: Secret.
+				if sum.SymbolCount != 1 || sum.FileCount != 1 || sum.Bytes != 10 || len(sum.UnsupportedLangs) != 0 || !sum.Filtered {
+					t.Fatalf("summary counts a hidden file: %+v", sum)
+				}
+			})
+			t.Run("FileStats", func(t *testing.T) {
+				fs, _, err := g.FileStats(ctx, svc)
+				if err != nil {
+					t.Fatal(err)
+				}
+				assertRefs(t, refsOf(fs, func(f store.FileStat) string { return f.Path }))
+			})
+			t.Run("CallersOfKeys", func(t *testing.T) {
+				rows, err := g.CallersOfKeys(ctx, []string{"Println"})
+				if err != nil {
+					t.Fatal(err)
+				}
+				assertRefs(t, refsOf(rows, func(r store.CallerRow) string { return r.SourceRef }))
 			})
 			// The exempt hash-gate read still serves the fingerprint: a
 			// reversible READ decision must never change what ingest sees.

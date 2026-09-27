@@ -262,6 +262,9 @@ type Surface struct {
 // connector reads it from the corpus's own .fathom/config.toml.
 type Connector struct {
 	Include []string
+	// RespectGitignore discovers a git work tree through `git ls-files`
+	// (RT-68); off by default until RT-M11.
+	RespectGitignore bool
 }
 
 // Config is the merged, in-memory form of one or more config.toml layers.

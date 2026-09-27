@@ -21,6 +21,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/certify"
 	"github.com/geoffmilleraz/fathom/internal/conserve"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/memo"
 	"github.com/geoffmilleraz/fathom/internal/projectrules"
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
@@ -145,7 +146,7 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 		if vo := reviewVerdictOutcome(v, resolutions); vo != nil {
 			payload["verdict_outcome"] = vo
 		}
-		payload["test_impact"] = reviewTestGap(in).Payload()
+		payload["test_impact"] = reviewTestGap(ctx, backend, in).Payload()
 
 		// resolution/index_commit (VB-19, docs/vision/29-verbs-not-lookups.md
 		// §3 wave E): the typed/heuristic mix behind the impact dimension's
@@ -156,7 +157,9 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 		// Governance dimensions (obligations, arch_conformance, spec
 		// coverage, test coverage) are not edge-derived and are outside
 		// this tally.
-		payload["resolution"] = resolutionFromBlastBuckets(blastRadiusByDepth(in.Nodes, in.ChangedFiles, in.TypedEdges))
+		if ng, gerr := loadNavGraphsErr(ctx, backend, p.Service); gerr == nil {
+			payload["resolution"] = resolutionFromBlastBuckets(blastRadiusByDepth(ng.Both, ng.Nodes, in.ChangedFiles))
+		}
 		if ic := indexCommitFor(ctx, backend, p.Service); ic != "" {
 			payload["index_commit"] = ic
 		}
@@ -180,8 +183,22 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 // review_diff names the tests to run and the unprotected code in the same
 // verdict instead of sending the agent back for N test_impact calls.
 // Additive: every existing payload field is unchanged (law 4).
-func reviewTestGap(in review.Input) impact.TestGapResult {
-	return impact.TestGap(in.Nodes, in.ChangedFiles, in.TypedEdges)
+//
+// The walk runs on the shared syntax+typed graph (RT-74) — the same
+// graph BuildBoth(in.Nodes, in.TypedEdges) would build, once per (service,
+// watermark) instead of once per review.
+func reviewTestGap(ctx context.Context, backend QueryInterface, in review.Input) impact.TestGapResult {
+	snap, err := serviceSnapshot(ctx, backend, in.Service)
+	if err != nil {
+		return impact.TestGapOn(nil, nil, in.ChangedFiles)
+	}
+	// A typed-edge read failure degrades this review to the syntax graph
+	// and is never cached (GraphForTyped).
+	g, _, _, err := memo.GraphForTyped(ctx, snap, memo.GraphBoth, typedLoader(backend, in.Service))
+	if err != nil {
+		return impact.TestGapOn(nil, nil, in.ChangedFiles)
+	}
+	return impact.TestGapOn(g, snap.Nodes, in.ChangedFiles)
 }
 
 // reviewVerdictOutcome computes review_diff's gate-shaped result summary
@@ -360,7 +377,7 @@ func discoverConservePlanPaths(root string) []string {
 // needs it to hash cited lines (semantic.Sweep's contract), including arch
 // citations on files OUTSIDE the changed set.
 func buildReviewInput(ctx context.Context, backend QueryInterface, service string, changedFiles []string, concern, since string) (review.Input, []core.SourceFile, *rpcError) {
-	nodes, err := backend.ListAllSymbols(ctx, service)
+	nodes, err := serviceSymbols(ctx, backend, service)
 	if err != nil {
 		return review.Input{}, nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
 	}

@@ -18,6 +18,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/console"
 	"github.com/geoffmilleraz/fathom/internal/dlog"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
+	"github.com/geoffmilleraz/fathom/internal/memo"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
 	"github.com/geoffmilleraz/fathom/pkg/client"
 )
@@ -49,23 +50,23 @@ func consoleMemoDrops() {
 	obsCache.Unlock()
 }
 
-// dropCaches forgets the unsupported-languages memo (a fleet memo).
-func (f *fleetAdapter) dropCaches() {
-	f.unsupportedMu.Lock()
-	f.unsupportedCache = nil
-	f.unsupportedMu.Unlock()
-}
-
 // servingLadderActions wires the rungs to the serving daemon's caches.
 func servingLadderActions(srv *mcp.Server, c *client.Client, fleet *fleetAdapter) ladderActions {
 	return ladderActions{
 		dropShed: []namedDrop{
+			// §5: the memo registry trims by LRU to half its budget at
+			// shed and stays under it while shed; only refuse drops it.
+			{"memo registry trim", func() { memo.Trim(memo.ReasonShed, 0) }},
 			{"console memos", consoleMemoDrops},
-			{"fleet memos", func() { fleet.dropCaches(); c.DropCaches() }},
+			{"fleet memos", c.DropCaches},
 		},
 		dropRefuse: []namedDrop{
+			{"memo registry", func() { memo.Drop(memo.ReasonRefuse) }},
 			{"graph and navigation caches", srv.DropCaches},
 			{"obligations memos", c.DropHotPathMemos},
+		},
+		dropIdle: []namedDrop{
+			{"memo registry", func() { memo.Drop(memo.ReasonIdle) }},
 		},
 		pauseBackground: func(p bool) { backgroundPaused.Store(p) },
 	}
@@ -84,6 +85,9 @@ func startGovernor(b tenancy.Budget, notes []tenancy.Note, storePath, ledger str
 		dir = filepath.Dir(ledger)
 	}
 	pid := os.Getpid()
+	// §5: the memo registry's byte budget is the cache fraction of the
+	// tenancy budget; at shed it holds ShedTrim of it.
+	memo.Default.SetBudget(b.Caches, b.CacheShedTrim)
 	g = newGovernor(governorConfig{
 		budget:       b,
 		notes:        notes,

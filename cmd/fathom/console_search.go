@@ -28,7 +28,7 @@ import (
 	"github.com/geoffmilleraz/app-kit/appkit/ui/form"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/palette"
 	"github.com/geoffmilleraz/fathom/internal/console"
-	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/memo"
 	"github.com/geoffmilleraz/fathom/pkg/client"
 )
 
@@ -50,23 +50,14 @@ const searchDocsTTL = 60 * time.Second
 // (design §2: anything over 50 rows pages).
 const searchGroupPageSize = 50
 
-// consoleSearchCache holds the gathered documents and the symbol index.
+// consoleSearchCache holds the gathered documents. Symbols come from the
+// daemon's one symbol snapshot per (service, watermark) (internal/memo,
+// RT-75) — the palette keeps no copy of its own.
 type consoleSearchCache struct {
 	mu      sync.Mutex
 	docs    []console.SearchDoc
 	notes   []string
 	builtAt time.Time
-	symbols map[string]consoleSymbolSet
-	keys    contentKeyCache
-}
-
-// consoleSymbolSet is one service's symbol names. Entries stay compact —
-// a SearchDoc is built only for a kept match — because the set is held for
-// the daemon's lifetime (the fleet carries ~137k symbols; O108 bounds
-// memory).
-type consoleSymbolSet struct {
-	key     string
-	entries []consoleSymbolEntry
 }
 
 // consoleSymbolEntry is one symbol and its lowered search fields (a field
@@ -83,8 +74,41 @@ func newSymbolEntry(name, kind, pkg, ref string) consoleSymbolEntry {
 	}
 }
 
+// symbolSource is one service's palette rows: scored on the lowered
+// fields, materialized as an entry only for a match.
+type symbolSource interface {
+	Len() int
+	Lowered(i int) (lname, lkind, lpkg, lref string)
+	Entry(i int) consoleSymbolEntry
+}
+
+// entrySlice is a symbolSource over entries already built.
+type entrySlice []consoleSymbolEntry
+
+func (e entrySlice) Len() int { return len(e) }
+func (e entrySlice) Lowered(i int) (string, string, string, string) {
+	return e[i].lname, e[i].lkind, e[i].lpkg, e[i].lref
+}
+func (e entrySlice) Entry(i int) consoleSymbolEntry { return e[i] }
+
+// snapshotSource is a symbolSource over a service's shared snapshot.
+type snapshotSource struct{ s *memo.Snapshot }
+
+func (p snapshotSource) Len() int { return len(p.s.Palette()) }
+func (p snapshotSource) Lowered(i int) (string, string, string, string) {
+	l := p.s.Lower(int(p.s.Palette()[i]))
+	return l.Name, l.Kind, l.Package, l.Ref
+}
+func (p snapshotSource) Entry(i int) consoleSymbolEntry {
+	j := int(p.s.Palette()[i])
+	n := &p.s.Nodes[j]
+	l := p.s.Lower(j)
+	return consoleSymbolEntry{name: n.Name, kind: string(n.Kind), pkg: n.Package, ref: p.s.Ref(j),
+		lname: l.Name, lkind: l.Kind, lpkg: l.Package, lref: l.Ref}
+}
+
 func newConsoleSearchCache() *consoleSearchCache {
-	return &consoleSearchCache{symbols: map[string]consoleSymbolSet{}}
+	return &consoleSearchCache{}
 }
 
 // searchService is one searchable project: its ID and recorded root.
@@ -295,23 +319,24 @@ func clip(s string, n int) string {
 }
 
 // lookupSymbols answers the Symbols group (console.SymbolLookup): every
-// service's symbols, cached per service content, filtered by EVERY token
-// and ranked before anything is cut, with the exact match count.
+// service's symbols, from the daemon's shared snapshot (RT-75), filtered by
+// EVERY token and ranked before anything is cut, with the exact match
+// count.
 func (sc *consoleSearchCache) lookupSymbols(ctx context.Context, c *client.Client, services []string, tokens []string, limit int) ([]console.SearchResult, int, error) {
 	if c == nil || len(tokens) == 0 {
 		return nil, 0, nil
 	}
-	sets := make(map[string][]consoleSymbolEntry, len(services))
+	sets := make(map[string]symbolSource, len(services))
 	var firstErr error
 	for _, svc := range services {
-		set, err := sc.symbolSet(ctx, c, svc)
+		snap, err := consoleSnapshot(ctx, c, svc)
 		if err != nil {
 			if firstErr == nil {
 				firstErr = err
 			}
 			continue
 		}
-		sets[svc] = set.entries
+		sets[svc] = snapshotSource{snap}
 	}
 	rs, total := rankSymbolEntries(services, sets, tokens, limit)
 	return rs, total, firstErr
@@ -319,7 +344,7 @@ func (sc *consoleSearchCache) lookupSymbols(ctx context.Context, c *client.Clien
 
 // symbolCand is one matching symbol before it becomes a SearchResult.
 type symbolCand struct {
-	e     *consoleSymbolEntry
+	e     consoleSymbolEntry
 	svc   string
 	href  string
 	score int
@@ -347,7 +372,7 @@ func symbolCandLess(a, b symbolCand) bool {
 // rankSymbolEntries scores every entry of every service against all tokens
 // (console.ScoreFields: the name is the title; kind, package, service and
 // ref are the rest), keeps the best limit and counts every match.
-func rankSymbolEntries(services []string, sets map[string][]consoleSymbolEntry, tokens []string, limit int) ([]console.SearchResult, int) {
+func rankSymbolEntries(services []string, sets map[string]symbolSource, tokens []string, limit int) ([]console.SearchResult, int) {
 	var cands []symbolCand
 	total := 0
 	prune := func() {
@@ -357,18 +382,21 @@ func rankSymbolEntries(services []string, sets map[string][]consoleSymbolEntry, 
 		}
 	}
 	for _, svc := range services {
+		src := sets[svc]
+		if src == nil {
+			continue
+		}
 		lsvc := strings.ToLower(svc)
 		href := projectHref(svc)
-		entries := sets[svc]
-		for i := range entries {
-			e := &entries[i]
-			rest := [4]string{e.lkind, e.lpkg, lsvc, e.lref}
-			s := console.ScoreFields(e.lname, "", rest[:], tokens)
+		for i, n := 0, src.Len(); i < n; i++ {
+			lname, lkind, lpkg, lref := src.Lowered(i)
+			rest := [4]string{lkind, lpkg, lsvc, lref}
+			s := console.ScoreFields(lname, "", rest[:], tokens)
 			if s == 0 {
 				continue
 			}
 			total++
-			cands = append(cands, symbolCand{e: e, svc: svc, href: href, score: s})
+			cands = append(cands, symbolCand{e: src.Entry(i), svc: svc, href: href, score: s})
 			if limit > 0 && len(cands) >= 4*limit+256 {
 				prune()
 			}
@@ -386,72 +414,6 @@ func rankSymbolEntries(services []string, sets map[string][]consoleSymbolEntry, 
 		})
 	}
 	return out, total
-}
-
-// symbolEntriesFrom turns a service's observations into its symbol
-// entries: documentation chunks are not symbols, and a row the store holds
-// twice (same symbol, kind, package and place — differing only in
-// ingested_at) is one entry, never a duplicate result.
-func symbolEntriesFrom(obs []core.Observation) []consoleSymbolEntry {
-	seen := map[[4]string]bool{}
-	lower := map[string]string{} // kinds and packages repeat: lower each once
-	low := func(s string) string {
-		if l, ok := lower[s]; ok {
-			return l
-		}
-		l := strings.ToLower(s)
-		lower[s] = l
-		return l
-	}
-	var out []consoleSymbolEntry
-	for _, o := range obs {
-		if o.Symbol == "" || o.SourceKind == "DocChunk" {
-			continue
-		}
-		ref := o.SourceRef
-		if o.Line > 0 && !strings.Contains(ref, ":") {
-			ref += ":" + itoa(o.Line)
-		}
-		k := [4]string{o.Symbol, string(o.SourceKind), o.Package, ref}
-		if seen[k] {
-			continue
-		}
-		seen[k] = true
-		out = append(out, consoleSymbolEntry{
-			name: o.Symbol, kind: string(o.SourceKind), pkg: o.Package, ref: ref,
-			lname: strings.ToLower(o.Symbol), lkind: low(string(o.SourceKind)), lpkg: low(o.Package), lref: strings.ToLower(ref),
-		})
-	}
-	return out
-}
-
-func (sc *consoleSearchCache) symbolSet(ctx context.Context, c *client.Client, svc string) (consoleSymbolSet, error) {
-	// The cache key is the service's content (its commit and the store's
-	// fingerprint digest, recomputed only when service_meta.indexed_at
-	// moves): a hash-gated no-op re-ingest keeps it, so it no longer
-	// reloads every symbol on the next keystroke.
-	_, key, found, err := sc.keys.key(ctx, c.Store(), svc)
-	if err != nil {
-		return consoleSymbolSet{}, err
-	}
-	if !found {
-		key = "unrecorded"
-	}
-	sc.mu.Lock()
-	set, ok := sc.symbols[svc]
-	sc.mu.Unlock()
-	if ok && set.key == key {
-		return set, nil
-	}
-	obs, err := c.Store().QueryObservations(ctx, svc, "")
-	if err != nil {
-		return consoleSymbolSet{}, err
-	}
-	set = consoleSymbolSet{key: key, entries: symbolEntriesFrom(obs)}
-	sc.mu.Lock()
-	sc.symbols[svc] = set
-	sc.mu.Unlock()
-	return set, nil
 }
 
 // searchGroupBySlug maps a ?group= slug to its group.

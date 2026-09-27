@@ -74,16 +74,21 @@ func symbolNeighborhood(g *callgraph.Graph, seeds []string, maxHops int) map[str
 // renders that as "subject not found in the index", never a fabricated
 // empty-but-valid neighborhood.
 func FileNeighborhood(nodes []core.SymbolNode, typed []core.Edge, subject string, maxHops int) map[string]int {
+	return FileNeighborhoodOn(callgraph.BuildBoth(nodes, typed), nodes, subject, maxHops)
+}
+
+// FileNeighborhoodOn is FileNeighborhood over a graph the caller already
+// holds — g must be callgraph.BuildBoth(nodes, typed) (the serving paths'
+// shared graph store, RT-74) — so a request never builds one of its own.
+func FileNeighborhoodOn(g *callgraph.Graph, nodes []core.SymbolNode, subject string, maxHops int) map[string]int {
 	symbolFile := make(map[string]string, len(nodes))
 	fileSymbols := map[string][]string{}
 	for _, n := range nodes {
 		symbolFile[n.Key()] = n.FilePath
 		fileSymbols[n.FilePath] = append(fileSymbols[n.FilePath], n.Key())
 	}
-
-	g := callgraph.Build(nodes)
-	if len(typed) > 0 {
-		callgraph.AddTypedEdges(g, typed)
+	if g == nil {
+		return nil
 	}
 
 	// The subject resolves the way every call-graph analysis resolves its

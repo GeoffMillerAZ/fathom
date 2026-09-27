@@ -150,7 +150,7 @@ func TestLayerCoverageFromSourcePathsSingleFlightNeverReadsContents(t *testing.T
 
 	st := store.NewMemoryStore()
 	cc := &countingConn{Connector: connector.NewLocalConnector()}
-	c := client.New(cc, st)
+	c := client.New(cc, noFileStatsStore{st}) // RT-143 is the pre-file_stats path (RT-82 covers the other)
 	defer c.Close()
 	if _, err := c.Ingest(ctx, client.ServiceRef{ID: "svc", Path: dir}); err != nil {
 		t.Fatal("Ingest:", err)
@@ -300,7 +300,7 @@ func TestRawFallbackReadsOnlyEditedFile(t *testing.T) {
 	}
 	writeTree(t, dir, tree)
 	cc := &countingConn{Connector: connector.NewLocalConnector()}
-	c := client.New(cc, store.NewMemoryStore())
+	c := client.New(cc, noFileStatsStore{store.NewMemoryStore()})
 	defer c.Close()
 	if _, err := c.Ingest(ctx, client.ServiceRef{ID: "svc", Path: dir}); err != nil {
 		t.Fatal(err)
@@ -525,7 +525,7 @@ func TestLayerCoveragePathsLeaderHonoursCancel(t *testing.T) {
 	dir := t.TempDir()
 	writeTree(t, dir, map[string]string{"CLAUDE.md": "# R\n\n- Keep tests green.\n", "main.go": "package main\n"})
 	g := &gatedConn{Connector: connector.NewLocalConnector(), release: make(chan struct{})}
-	c := client.New(g, store.NewMemoryStore())
+	c := client.New(g, noFileStatsStore{store.NewMemoryStore()})
 	defer c.Close()
 	if _, err := c.Ingest(context.Background(), client.ServiceRef{ID: "svc", Path: dir}); err != nil {
 		t.Fatal(err)
@@ -573,7 +573,7 @@ func TestLayerCoveragePathsSingleFlightWithoutWatermark(t *testing.T) {
 	writeTree(t, dir, map[string]string{"CLAUDE.md": "# R\n\n- Keep tests green.\n", "main.go": "package main\n"})
 	g := &gatedConn{Connector: connector.NewLocalConnector(), release: make(chan struct{})}
 	g.armed.Store(true)
-	c := client.New(g, store.NewMemoryStore())
+	c := client.New(g, noFileStatsStore{store.NewMemoryStore()})
 	defer c.Close()
 
 	var wg sync.WaitGroup

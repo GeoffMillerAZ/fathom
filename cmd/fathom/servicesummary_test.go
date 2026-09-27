@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
-	"github.com/geoffmilleraz/fathom/internal/mcp"
 	"github.com/geoffmilleraz/fathom/internal/store"
+	"github.com/geoffmilleraz/fathom/pkg/client"
 )
 
 // symbolLoadCountingStore counts whole-service observation loads and
@@ -35,10 +35,13 @@ func (s *symbolLoadCountingStore) SourceKindCounts(ctx context.Context, serviceI
 	return s.MemoryStore.SourceKindCounts(ctx, serviceID)
 }
 
-// RT-144 (docs/design/responsible-tenant.md §4.4): list_services' symbol
-// counts and languages come from SQL aggregates, cached per watermark and
+// RT-144 (docs/design/responsible-tenant.md §4.4): a service's symbol
+// count and source kinds come from SQL aggregates, cached per watermark and
 // single-flighted — never a whole-service symbol load (the profile charged
-// 133.8 GB of allocation to that load on 2026-09-26).
+// 133.8 GB of allocation to that load on 2026-09-26). RT-79 moved
+// list_services itself onto service_summary rows
+// (TestServiceSummaries_ReadsSummaryRowsOnly); the aggregate still answers
+// IsIndexed (RT-80).
 func TestServiceSummaries_AggregatesNeverLoadSymbols(t *testing.T) {
 	ctx := context.Background()
 	st := &symbolLoadCountingStore{MemoryStore: store.NewMemoryStore()}
@@ -60,19 +63,19 @@ func TestServiceSummaries_AggregatesNeverLoadSymbols(t *testing.T) {
 	st.gate = make(chan struct{})
 	const callers = 16
 	var wg sync.WaitGroup
-	sums := make([][]mcp.ServiceSummary, callers)
+	sums := make([]client.SymbolAggregates, callers)
 	for i := 0; i < callers; i++ {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			sums[i] = mcp.ServiceSummaries(ctx, nil, fa)
+			sums[i], _ = fa.c.ServiceSymbolAggregates(ctx, "demo")
 		}(i)
 	}
 	time.Sleep(50 * time.Millisecond)
 	close(st.gate)
 	wg.Wait()
 
-	want := []mcp.ServiceSummary{{Service: "demo", SymbolCount: 4, Languages: []string{"go", "python"}}}
+	want := client.SymbolAggregates{Count: 4, Kinds: []core.SourceKind{core.KindGoFunc, core.SourceKind("Markdown"), core.KindPyFunc}}
 	for i, got := range sums {
 		if !reflect.DeepEqual(got, want) {
 			t.Fatalf("caller %d: ServiceSummaries = %+v, want %+v", i, got, want)
@@ -87,14 +90,14 @@ func TestServiceSummaries_AggregatesNeverLoadSymbols(t *testing.T) {
 
 	// Cached per watermark: a warm call runs no query; an ingest (a new
 	// watermark) earns exactly one more.
-	mcp.ServiceSummaries(ctx, nil, fa)
+	_, _ = fa.c.ServiceSymbolAggregates(ctx, "demo")
 	if n := st.aggregates.Load(); n != 1 {
 		t.Fatalf("a warm call re-ran the aggregate (%d queries)", n)
 	}
 	if err := st.SetServiceMeta(ctx, store.ServiceMeta{ServiceID: "demo", IndexedCommit: "c2", IndexedAt: 2}); err != nil {
 		t.Fatal(err)
 	}
-	mcp.ServiceSummaries(ctx, nil, fa)
+	_, _ = fa.c.ServiceSymbolAggregates(ctx, "demo")
 	if n := st.aggregates.Load(); n != 2 {
 		t.Fatalf("after a new watermark, aggregate queries = %d, want 2", n)
 	}

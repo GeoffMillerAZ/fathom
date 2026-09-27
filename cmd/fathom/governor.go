@@ -39,8 +39,12 @@ type namedDrop struct {
 // (console and fleet memos); dropRefuse at refuse and above (every other
 // cache: the graph, navigation and symbol caches).
 type ladderActions struct {
-	dropShed        []namedDrop
-	dropRefuse      []namedDrop
+	dropShed   []namedDrop
+	dropRefuse []namedDrop
+	// dropIdle runs once after budget.CacheIdleDrop without an in-flight
+	// ticket (§5: Drop(Idle) then FreeOSMemory); re-armed by the next
+	// ticket.
+	dropIdle        []namedDrop
 	pauseBackground func(paused bool)
 }
 
@@ -87,7 +91,9 @@ type governor struct {
 	haveSmp   bool
 	lastTrans tenancy.Transition
 	lastFree  time.Time
-	halted    bool // an ingest was halted at the exit mark; the next exit sample exits
+	lastBusy  time.Time // the last sample that saw an in-flight ticket
+	idleDone  bool      // dropIdle ran since lastBusy
+	halted    bool      // an ingest was halted at the exit mark; the next exit sample exits
 	exited    bool
 	cancelled []string              // the last refuse cancellation, in order
 	abandoned int64                 // calls cancelled as abandoned-by-governor, process lifetime
@@ -209,6 +215,7 @@ func (g *governor) tick(at time.Time, late time.Duration) tenancy.Transition {
 		g.exitOverBudget(tr)
 		return tr
 	}
+	g.idleCheck(at)
 	// While shed or refusing, memory freed by finished work goes back to
 	// the OS at most once per freeEvery, so the ladder can step down.
 	if g.st.Level >= tenancy.LevelShed {
@@ -260,6 +267,27 @@ func (g *governor) applyLadderLevel(tr tenancy.Transition) {
 	default: // a step down that stays at shed or above
 		g.halted = false
 	}
+}
+
+// idleCheck is the idle rung of the memo registry (§5): after
+// budget.CacheIdleDrop with no ticket — none in flight at a sample, and
+// none begun or ended since (a short call between two samples counts) —
+// drop the idle caches once and return the memory to the OS.
+func (g *governor) idleCheck(at time.Time) {
+	if g.inflight.Len() > 0 || g.lastBusy.IsZero() {
+		g.lastBusy, g.idleDone = at, false
+		return
+	}
+	if last := g.inflight.LastActive(); last.After(g.lastBusy) {
+		g.lastBusy, g.idleDone = last, false
+	}
+	if g.idleDone || len(g.actions.dropIdle) == 0 || g.budget.CacheIdleDrop <= 0 || at.Sub(g.lastBusy) < g.budget.CacheIdleDrop {
+		return
+	}
+	g.idleDone = true
+	g.drop(g.actions.dropIdle)
+	g.logf(fmt.Sprintf("tenancy: idle %s — memo caches dropped", g.budget.CacheIdleDrop))
+	g.scavenge(at, true, "idle drop")
 }
 
 func (g *governor) drop(ds []namedDrop) {

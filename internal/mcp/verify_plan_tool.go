@@ -96,18 +96,13 @@ func registerVerifyPlan(s *Server, backend QueryInterface) {
 		// (BP-28) but nothing on this path ever called into it. A second
 		// call at an unchanged watermark now costs microseconds instead of
 		// paying the build again.
-		nodes, err := backend.ListAllSymbols(ctx, p.Service)
-		if err != nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
+		// RT-74: the graph store's syntax+typed graph for this watermark,
+		// the one every nav tool and the console read.
+		ng, lerr := loadNavGraphsErr(ctx, backend, p.Service)
+		if lerr != nil {
+			return nil, &rpcError{Code: ErrCodeInternal, Message: lerr.Error()}
 		}
-		// Typed Go call edges (ADR-021 §3): additive on top of the syntax
-		// graph — best-effort, a non-Go service or a store with no typed
-		// edges yet simply contributes nothing.
-		typed, _ := backend.TypedEdges(ctx, p.Service)
-		mark := serviceWatermark(ctx, backend, p.Service)
-		graph := s.graphCache.Graph(p.Service+"\x00both", mark, func() *callgraph.Graph {
-			return callgraph.BuildBoth(nodes, typed)
-		})
+		nodes, graph := ng.Nodes, ng.Both
 
 		// Contradictions (best-effort; scoped by concern when provided).
 		var contras []core.Contradiction

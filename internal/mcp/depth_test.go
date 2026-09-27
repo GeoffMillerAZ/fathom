@@ -1,6 +1,7 @@
 package mcp
 
 import (
+	"context"
 	"encoding/json"
 	"reflect"
 	"testing"
@@ -8,6 +9,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
 	"github.com/geoffmilleraz/fathom/internal/analysis/impact"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/memo"
 )
 
 // depthFixture: Target ← Direct1 (syntax) ← Deep (syntax) ← TestDeep;
@@ -63,9 +65,21 @@ func TestCallerDepthsAndBuckets(t *testing.T) {
 	}
 }
 
+// bothGraphOf builds nodes' syntax+typed graph through the graph store,
+// unscoped (never cached): the graph a service's snapshot would get.
+func bothGraphOf(t *testing.T, nodes []core.SymbolNode, typed []core.Edge) *callgraph.Graph {
+	t.Helper()
+	g, err := memo.GraphFor(context.Background(), memo.NewSnapshot(nodes), memo.GraphBoth, func(context.Context) ([]core.Edge, error) { return typed, nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	return g
+}
+
 func TestBlastRadiusByDepth(t *testing.T) {
 	nodes, typed := depthFixture()
-	buckets := blastRadiusByDepth(nodes, []string{"a.go"}, typed)
+	g := bothGraphOf(t, nodes, typed)
+	buckets := blastRadiusByDepth(g, nodes, []string{"a.go"})
 	if len(buckets) != 4 {
 		t.Fatalf("buckets = %+v, want depths 0..3", buckets)
 	}
@@ -94,11 +108,11 @@ func TestBlastRadiusByDepth(t *testing.T) {
 
 	// Determinism: two runs marshal byte-identically.
 	a, _ := json.Marshal(buckets)
-	b, _ := json.Marshal(blastRadiusByDepth(nodes, []string{"a.go"}, typed))
+	b, _ := json.Marshal(blastRadiusByDepth(bothGraphOf(t, nodes, typed), nodes, []string{"a.go"}))
 	if string(a) != string(b) {
 		t.Fatalf("blastRadiusByDepth is not deterministic:\n%s\n%s", a, b)
 	}
-	if empty := blastRadiusByDepth(nodes, []string{"nope.go"}, nil); len(empty) != 0 || empty == nil {
+	if empty := blastRadiusByDepth(bothGraphOf(t, nodes, nil), nodes, []string{"nope.go"}); len(empty) != 0 || empty == nil {
 		t.Fatalf("no changed symbols must yield an empty, non-nil slice, got %#v", empty)
 	}
 }

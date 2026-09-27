@@ -358,7 +358,7 @@ func registerReferences(s *Server, backend QueryInterface) {
 
 		for _, svc := range svcs {
 			// ── definitions: symbol index lookup ─────────────────────────────
-			nodes, err := backend.ListAllSymbols(ctx, svc)
+			nodes, err := serviceSymbols(ctx, backend, svc)
 			if err != nil {
 				// O36: a service whose root vanished (or is otherwise
 				// unreadable) must not fail the whole fleet-wide call —

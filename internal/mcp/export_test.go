@@ -38,7 +38,7 @@ func ValidateAgainstSchemaForTest(schema map[string]any, v any) string {
 // (resolved_nav.go's loadNavGraphs) instead of rebuilding the graph from
 // scratch every call.
 func (s *Server) GraphCacheStatsForTest() (entries, hits, misses int) {
-	return s.graphCache.Stats()
+	return s.GraphCacheStats()
 }
 
 // ToolCostClassesForTest maps every registered tool to its declared cost

@@ -18,8 +18,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/memo"
 	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
@@ -141,33 +141,20 @@ type Server struct {
 	// built-in defaults (budget_defaults.go).
 	budgets budgetSettings
 
-	// graphCache memoizes each service's call graphs per store watermark
-	// (BP-28, I21). Building one cost ~9.7s of every blast_radius query on
-	// a ten-thousand-symbol service and nothing about that work is
-	// per-query. Never nil after newServer; safe for concurrent use.
-	graphCache *callgraph.CachedCallGraph
-	// navMemo holds each service's loaded symbols, typed edges and graphs
-	// per store watermark; navFlight lets concurrent cold callers share one
-	// load (resolved_nav.go loadNavGraphs).
-	navMu     sync.Mutex
-	navMemo   map[string]navMemoEntry
-	navOrder  []string
-	navFlight map[string]*navCall
+	// The call graphs and symbol snapshots live in internal/memo's graph
+	// store (RT-74, RT-75): one per (store, service, watermark), shared
+	// with the console, byte-budgeted with every other memo group.
 
 	// gate is the admission gate (design §3.2, RT-56): set once by
 	// SetGate before serving; nil admits everything (stdio, tests).
 	gate *tenancy.Gate
 }
 
-// DropCaches drops the server's derived caches — the call graphs and the
-// navigation memo — at the tenancy ladder's refuse rung (RT-34). Loads in
-// flight finish for their callers and are not stored past the next one.
+// DropCaches drops the derived caches the server reads — the memo
+// registry's snapshots and graphs among them — at the tenancy ladder's
+// refuse rung (RT-34; the governor also drops the registry itself).
 func (s *Server) DropCaches() {
-	s.graphCache.Clear()
-	s.navMu.Lock()
-	s.navMemo = make(map[string]navMemoEntry) // never nil: a flight in progress stores into it
-	s.navOrder = nil
-	s.navMu.Unlock()
+	memo.Drop(memo.ReasonRefuse)
 }
 
 // NewServer constructs a Server wired to backend. If backend is nil the server
@@ -213,7 +200,6 @@ func newServer(backend QueryInterface, fleet FleetBackend, logger *CallLogger, m
 		backend:    backend,
 		startTime:  time.Now(),
 		callLogger: logger,
-		graphCache: callgraph.NewCachedCallGraph(0),
 	}
 	registerBuiltins(s)
 	registerTools(s, backend, fleet, modules)
@@ -225,14 +211,16 @@ func newServer(backend QueryInterface, fleet FleetBackend, logger *CallLogger, m
 	return s
 }
 
-// GraphCacheStats returns the call-graph memo's current size and its
-// process-lifetime hit/miss counts (BP-28, I21) — see
-// callgraph.CachedCallGraph.Stats. Consumed by cmd/fathom's /metrics as
-// fathom_graph_memo_entries (O108): a daemon running --auto-refresh should
-// hold this at or below the cache's capacity (8 by default) for its whole
-// lifetime, never climbing without bound.
+// GraphCacheStats returns the graph store's resident graph count and its
+// process-lifetime hit/miss counts (RT-74, internal/memo "graphstore") —
+// consumed by cmd/fathom's /metrics as fathom_graph_memo_entries (O108).
 func (s *Server) GraphCacheStats() (entries, hits, misses int) {
-	return s.graphCache.Stats()
+	for _, g := range memo.Stats() {
+		if g.Name == "graphstore" {
+			return g.Entries, int(g.Hits), int(g.Misses)
+		}
+	}
+	return 0, 0, 0
 }
 
 // AutoRefreshTotal returns the process-lifetime count of auto-refresh

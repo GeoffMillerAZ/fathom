@@ -19,6 +19,7 @@ import (
 	"github.com/geoffmilleraz/app-kit/appkit/ui/form"
 	"github.com/geoffmilleraz/fathom/internal/console"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/memo"
 )
 
 func TestConsoleSearch_SymbolsMatchEveryTokenWithExactTotals(t *testing.T) {
@@ -31,7 +32,7 @@ func TestConsoleSearch_SymbolsMatchEveryTokenWithExactTotals(t *testing.T) {
 		entries = append(entries, newSymbolEntry(fmt.Sprintf("Test%03d", i), "GoFunc", "main", "x_test.go:1"))
 	}
 	entries = append(entries, newSymbolEntry("TestResolveCallLogPath_FallsBackWithNoConfig", "GoFunc", "main", "calllog_test.go:9"))
-	sets := map[string][]consoleSymbolEntry{"fathom": entries}
+	sets := map[string]symbolSource{"fathom": entrySlice(entries)}
 	for _, q := range []string{"resolveCallLog test", "test resolveCallLog", "Test resolvecalllog"} {
 		rs, total := rankSymbolEntries([]string{"fathom"}, sets, strings.Fields(strings.ToLower(q)), 8)
 		if total != 1 || len(rs) != 1 || rs[0].Title != "TestResolveCallLogPath_FallsBackWithNoConfig" {
@@ -51,8 +52,12 @@ func TestConsoleSearch_SymbolsMatchEveryTokenWithExactTotals(t *testing.T) {
 		{Symbol: "resolveCallLogCandidates", SourceKind: "GoFunc", Package: "main", SourceRef: "cmd/fathom/other.go", Line: 3},
 		{Symbol: "Readme", SourceKind: "DocChunk", SourceRef: "README.md"},
 	}
-	if got := symbolEntriesFrom(obs); len(got) != 2 {
-		t.Errorf("entries = %+v, want the duplicate row once and doc chunks dropped", got)
+	nodes := make([]core.SymbolNode, len(obs))
+	for i, o := range obs {
+		nodes[i] = o.ToSymbolNode()
+	}
+	if got := memo.NewSnapshot(nodes).Palette(); len(got) != 2 {
+		t.Errorf("palette = %v, want the duplicate row once and doc chunks dropped", got)
 	}
 }
 

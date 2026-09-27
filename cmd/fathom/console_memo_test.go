@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -78,5 +79,46 @@ func TestConsoleMemo_ColdKeyNeverBlocksWarmKey(t *testing.T) {
 	}
 	if len(m.entries) > m.max {
 		t.Errorf("memo holds %d entries, bound %d", len(m.entries), m.max)
+	}
+}
+
+// TestConsoleMemoWaiterHonoursContext (RT-62, §3.5): a console memo waiter
+// on another request's computation leaves when its context ends instead of
+// parking behind it, while the computation runs on for its own caller.
+// (The console page memos are not memo groups yet — I51's open item — so
+// this pins their waiters directly.)
+func TestConsoleMemoWaiterHonoursContext(t *testing.T) {
+	var m consoleMemo[int]
+	release := make(chan struct{})
+	first := make(chan int, 1)
+	go func() {
+		v, _ := m.do("k", time.Now(), func() (int, time.Duration) { <-release; return 1, -1 })
+		first <- v
+	}()
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		m.mu.Lock()
+		inFlight := m.flights["k"] != nil
+		m.mu.Unlock()
+		if inFlight {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("the first computation never started")
+		}
+		time.Sleep(time.Millisecond)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Millisecond)
+	defer cancel()
+	start := time.Now()
+	if _, _, ok := m.doCtx(ctx, "k", time.Now(), func() (int, time.Duration) { return 2, -1 }); ok {
+		t.Fatal("a waiter whose ctx ended reported a value")
+	}
+	if el := time.Since(start); el > time.Second {
+		t.Fatalf("memo waiter stayed %s after its ctx ended", el)
+	}
+	close(release)
+	if v := <-first; v != 1 {
+		t.Fatalf("the computation's own caller got %d", v)
 	}
 }

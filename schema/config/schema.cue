@@ -278,9 +278,13 @@ package config
 // .turbo, coverage) prunes: a bare name re-includes every directory with
 // that name, an entry with a slash one repo-relative path. Read from the
 // corpus's own .fathom/config.toml; never re-includes vendor, .git,
-// testdata or the other always-skipped directories.
+// testdata or the other always-skipped directories. respect_gitignore
+// (RT-68, §4.2) discovers a git work tree through `git ls-files -co
+// --exclude-standard` — skipDir and the default list still applied after
+// it — and stays off by default until RT-M11 has measured every service.
 #Connector: {
 	include?: [...string]
+	respect_gitignore?: bool
 }
 
 // #Tenancy is the responsible-tenant budget (ADR-047,

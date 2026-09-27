@@ -30,6 +30,28 @@ type ingestRun struct {
 	started int64  // Unix nano
 	prev    store.IngestState
 	hadPrev bool
+
+	// RT-76: what the final commit writes to file_stats and
+	// service_summary — the discovered refs, per-file facts learned while
+	// fetching (size, hash, exclusion), and the directory exclusions.
+	refs          []core.SourceRef
+	facts         map[string]fileFact
+	defaultIgnore int
+}
+
+// fileFact is what an ingest learned about one file without re-reading it.
+type fileFact struct {
+	size     int64
+	hash     string
+	excluded string // "", "oversize", "unreadable"
+}
+
+// noteFact records a file's fact for the final commit.
+func (r *ingestRun) noteFact(path string, f fileFact) {
+	if r.facts == nil {
+		r.facts = make(map[string]fileFact)
+	}
+	r.facts[path] = f
 }
 
 // ingestTarget is the watermark an ingest of svc records when it
@@ -97,7 +119,7 @@ func (p *Pipeline) abandonIngestState(ctx context.Context, run ingestRun) {
 // commitIngest is an ingest's final commit: the watermark read at its start
 // and ingest_state = complete.
 func (p *Pipeline) commitIngest(ctx context.Context, svc core.ServiceRef, run ingestRun) {
-	p.recordIngestMeta(ctx, svc, run.target)
+	p.recordIngestMeta(ctx, svc, run.target, &run)
 	if iss, ok := p.st.(store.IngestStateStore); ok {
 		_ = iss.SetIngestState(ctx, store.IngestState{
 			ServiceID: svc.ID, State: store.IngestComplete, PID: os.Getpid(),

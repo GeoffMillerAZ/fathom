@@ -310,20 +310,20 @@ type inlineIngest struct {
 	done chan struct{} // closed when the ingest has finished, either way
 }
 
-// inlineIngestTicket is the one process-wide ingest ticket (RT-149, design
-// §3.5/§7.1): every autoRefreshBackend's inline ingest holds it, so two
-// services never ingest inline at once. It stands in for wave D's refresh
-// queue heavy slot, which replaces the inline ingest entirely (RT-99).
-var inlineIngestTicket = make(chan struct{}, 1)
+// The inline ingest holds tenancy's one process-wide ingest slot (RT-149,
+// design §3.5/§7.1), so two services never ingest inline at once and an
+// ingest never runs beside the derived-table backfill (RT-160). It stands
+// in for wave D's refresh queue heavy slot, which replaces the inline
+// ingest entirely (RT-99).
 
 // runInlineIngest waits for the process-wide ticket, ingests, and records
 // seen[service] only after a successful ingest (RT-151): a failed ingest is
 // retried by the first read after its backoff instead of being debounced
 // forever.
 func (a *autoRefreshBackend) runInlineIngest(ctx context.Context, service string, fl *inlineIngest) {
-	inlineIngestTicket <- struct{}{}
+	release, _ := tenancy.AcquireIngestSlot(context.WithoutCancel(ctx))
 	err := a.QueryInterface.IngestService(ctx, service)
-	<-inlineIngestTicket
+	release()
 	// RT-41 (§2.1): SQLITE_FULL or SQLITE_IOERR from the write is store
 	// distress.
 	tenancy.NoteStoreError(err, time.Now())
@@ -336,6 +336,9 @@ func (a *autoRefreshBackend) runInlineIngest(ctx context.Context, service string
 	// ingest above succeeded or failed (a failed ingest may still have
 	// changed on-disk state worth invalidating against).
 	hookcache.BustIdent()
+	// §5: the superseded snapshot and graphs leave now, not when the
+	// service is next read at its new watermark.
+	evictServiceCaches(a, service)
 
 	a.mu.Lock()
 	if err == nil {
@@ -703,4 +706,32 @@ func (a *autoRefreshBackend) StoreWatermark(ctx context.Context, serviceID strin
 		return "", fmt.Errorf("backend does not support store watermarks")
 	}
 	return w.StoreWatermark(ctx, serviceID)
+}
+
+// EnsureFresh runs the auto-refresh freshness check for service — what a
+// symbol load through this backend runs first — for the graph store's
+// snapshot path (resolved_nav.go navScope), whose cache hits never reach
+// ListAllSymbols.
+func (a *autoRefreshBackend) EnsureFresh(ctx context.Context, service string) {
+	a.ensure(ctx, service)
+}
+
+// SuppressionToken forwards the wrapped backend's suppression token
+// (RT-75): the snapshot key's suppression segment.
+func (a *autoRefreshBackend) SuppressionToken(service string) string {
+	if t, ok := a.QueryInterface.(suppressionTokener); ok {
+		return t.SuppressionToken(service)
+	}
+	return ""
+}
+
+// StoreID forwards the wrapped backend's store identity (RT-74): without
+// it the MCP tools and the console would key the one graph store under
+// two identities for one store. "" (a wrapped backend that names no
+// store) is never cached.
+func (a *autoRefreshBackend) StoreID() string {
+	if id, ok := a.QueryInterface.(storeIdentifier); ok {
+		return id.StoreID()
+	}
+	return ""
 }

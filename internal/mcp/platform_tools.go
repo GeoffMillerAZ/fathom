@@ -16,6 +16,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/configdrift"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
 // FleetBackend is the minimal interface the platform tools require.  It is
@@ -63,6 +64,19 @@ type ServiceSummary struct {
 	// CountErr names why the symbol count could not be read (RT-41, I38):
 	// the count is then unknown, never zero.
 	CountErr string
+	// Unsupported is the summary row's unsupported languages (RT-79);
+	// FromSummary marks a row answered from service_summary, whose
+	// unsupported languages list_services reports instead of walking.
+	Unsupported map[string]int
+	FromSummary bool
+}
+
+// fleetSummaryBackend is the FleetBackend extension list_services answers
+// from (RT-79, §4.4): the service's stored summary row. An error is a
+// named absence (not yet derived, or unreadable) — never a reason to load
+// symbols or walk the tree.
+type fleetSummaryBackend interface {
+	StoredSummary(ctx context.Context, service string) (store.ServiceSummary, error)
 }
 
 // ServiceSummaries computes list_services' identity fields in process. The
@@ -77,9 +91,22 @@ func ServiceSummaries(ctx context.Context, backend QueryInterface, fleet FleetBa
 	svcs := fleet.Services()
 	out := make([]ServiceSummary, 0, len(svcs))
 	agg, hasAgg := fleet.(fleetSymbolAggregateBackend)
+	summaries, hasSummaries := fleet.(fleetSummaryBackend)
 	for _, svc := range svcs {
 		var sum ServiceSummary
-		if aggErr, ok := fleet.(fleetSymbolAggregateErrBackend); ok {
+		if hasSummaries {
+			// RT-79: the summary row only. A service not yet derived is a
+			// named absence, never an aggregate, symbol load or walk.
+			row, err := summaries.StoredSummary(ctx, svc)
+			sum = ServiceSummary{Service: svc, FromSummary: true}
+			if err != nil {
+				sum.CountErr = err.Error()
+			} else {
+				sum.SymbolCount = row.SymbolCount
+				sum.Languages = langStringsForKinds(row.SourceKinds)
+				sum.Unsupported = row.UnsupportedLangs
+			}
+		} else if aggErr, ok := fleet.(fleetSymbolAggregateErrBackend); ok {
 			// RT-41 (I38): a failed aggregate is a named error — the
 			// count is unknown, never zero — and never a fallback to the
 			// whole-table load the aggregate exists to avoid.
@@ -231,7 +258,11 @@ func registerListServices(s *Server, backend QueryInterface, fleet FleetBackend)
 					}
 				}
 			}
-			if unsupported := unsupportedLanguagesCtx(ctx, fleet, svc); len(unsupported) > 0 {
+			unsupported := sum.Unsupported
+			if !sum.FromSummary {
+				unsupported = unsupportedLanguagesCtx(ctx, fleet, svc)
+			}
+			if len(unsupported) > 0 {
 				names := make([]string, 0, len(unsupported))
 				for lang := range unsupported {
 					names = append(names, lang)

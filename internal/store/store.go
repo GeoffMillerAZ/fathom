@@ -639,6 +639,45 @@ type Store interface {
 	// fact for serviceID, ordered by (file, line).
 	CertifyDeclarationsForService(ctx context.Context, serviceID string) ([]CertifyDeclaration, error)
 
+	// WriteServiceSummary is an ingest's final transaction (RT-76,
+	// docs/design/responsible-tenant.md §6): it records meta (the
+	// watermark), replaces serviceID's file_stats with files and writes
+	// the service_summary row — symbol count and source kinds counted in
+	// the same transaction, watermark WatermarkOf(meta).
+	WriteServiceSummary(ctx context.Context, meta ServiceMeta, sum ServiceSummary, files []FileStat) error
+
+	// RecountServiceSummary recounts the symbol count and source kinds of
+	// serviceID's summary row in place, in one transaction — a
+	// single-file refresh replaces rows without moving the watermark the
+	// row is keyed by. A no-op when the service has no row.
+	RecountServiceSummary(ctx context.Context, serviceID string) error
+
+	// ServiceSummary returns serviceID's service_summary row; found is
+	// false when neither an ingest nor a backfill has written one (a named
+	// absence: callers never fall back to a whole-tree or whole-table
+	// read). Suppression-filtered: counts are recomputed without a hidden
+	// file when a suppression applies (RT-79).
+	ServiceSummary(ctx context.Context, serviceID string) (ServiceSummary, bool, error)
+
+	// FileStats returns serviceID's file_stats rows sorted by path; ok is
+	// false when no ingest has written them yet. Filtered by path.
+	FileStats(ctx context.Context, serviceID string) (files []FileStat, ok bool, err error)
+
+	// CallersOfKeys is the indexed reverse call lookup (RT-77): every
+	// observation, in a call-indexed service, whose calls carry a key
+	// whose full text or final name segment (CalleeName) is one of keys —
+	// a candidate superset callers narrow with their own match. Sorted by
+	// (service, symbol, source_ref, line). Filtered by source_ref.
+	CallersOfKeys(ctx context.Context, keys []string) ([]CallerRow, error)
+
+	// DerivedState reports which derived facts serviceID has.
+	DerivedState(ctx context.Context, serviceID string) (DerivedState, error)
+
+	// BackfillDerivedTables derives serviceID's summary and call index
+	// from rows the store holds (RT-160): SQL GROUP BY and json_each, one
+	// transaction, no file read. Callers hold the ingest slot.
+	BackfillDerivedTables(ctx context.Context, serviceID string, opts BackfillOptions) (BackfillReport, error)
+
 	// TestCaseRunsForSymbol returns testSymbolKey's case observations
 	// across every attested run for serviceID, most-recent-run-first (by
 	// the owning run's started_at, ties broken by ingested_at — the same

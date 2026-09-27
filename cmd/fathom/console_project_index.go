@@ -191,14 +191,22 @@ func projectIndexFor(ctx context.Context, c *client.Client, pc projectContext) p
 
 func computeProjectIndex(ctx context.Context, c *client.Client, pc projectContext) projectIndexData {
 	d := projectIndexData{facts: console.IndexFacts{Service: pc.svc, Source: "the daemon's store (" + pc.svc + ")"}}
-	nodes, err := c.ListAllSymbols(ctx, pc.svc)
-	if err != nil {
+	// RT-74/RT-75: the daemon's one snapshot and graph for this watermark.
+	// A typed-edge read failure is named (EdgesErr), never read as "no
+	// typed edges", and never cached for the watermark (I38).
+	var (
+		nodes []core.SymbolNode
+		edges []core.Edge
+		both  *callgraph.Graph
+	)
+	if snap, typed, g, terr, err := consoleBothGraph(ctx, c, pc.svc); err != nil {
 		d.facts.LanguagesErr = err.Error()
 		d.graph.err = err.Error()
-	}
-	edges, eerr := c.TypedEdges(ctx, pc.svc)
-	if eerr != nil {
-		d.facts.EdgesErr = eerr.Error()
+	} else {
+		nodes, edges, both = snap.Nodes, typed, g
+		if terr != nil {
+			d.facts.EdgesErr = terr.Error()
+		}
 	}
 
 	// Languages: files and symbols per language, by conserve's own naming
@@ -289,7 +297,7 @@ func computeProjectIndex(ctx context.Context, c *client.Client, pc projectContex
 	// The call graph, typed edges included (the graph find_callers walks).
 	if d.graph.err == "" {
 		d.graph.nodes = nodes
-		d.graph.g = callgraph.BuildBoth(nodes, edges)
+		d.graph.g = both
 		d.graph.isTest = map[string]bool{}
 		type fan struct {
 			key string
