@@ -231,14 +231,14 @@ func hasGoModule(repoPath string) bool {
 // RT-104 (typedgate.go): it runs only when a Go input is in changed (this
 // ingest's new, changed and deleted paths) or no successful pass is
 // recorded; otherwise the report says Skipped and the stored typed edges
-// stand. The success record is removed as the pass starts and written only
-// when every package was processed.
+// stand. The state record is removed as the pass starts and written when
+// the pass completes: ok, or partial when packages failed typed loading.
 func (p *Pipeline) enrichTypedEdges(ctx context.Context, svc core.ServiceRef, refs []core.SourceRef, changed []string) (TypedEdgeReport, error) {
 	if p.cfg.DisableTypedEdges || !hasGoSource(refs) || !hasGoModule(svc.Path) {
 		return TypedEdgeReport{}, nil
 	}
 	if !typedPassNeeded(changed, p.passStateOK(ctx, svc.ID, goPassStateKey)) {
-		return TypedEdgeReport{Skipped: SkippedPassReason}, nil
+		return TypedEdgeReport{Skipped: p.skippedReason(ctx, svc.ID, goPassStateKey)}, nil
 	}
 	atomic.AddInt64(&p.typedPassTotal, 1)
 	allowed := make(map[string]bool)
@@ -318,6 +318,9 @@ func (p *Pipeline) enrichTypedEdges(ctx context.Context, svc core.ServiceRef, re
 			EdgesDroppedOutOfScope: rep.EdgesDroppedOutOfScope,
 		})
 		p.diagWarn("fusion: typed-edge pass %q: %d/%d package(s) failed typed loading — syntax-only edges remain the baseline for those%s\n", svc.ID, rep.PackagesFailed, rep.PackagesTotal, formatFailedTypedPackages(rep.FailedPackages))
+		// RT-104: a package that always fails must not defeat the gate —
+		// the same inputs fail the same way; wait for a Go change.
+		p.commitPartialPassState(ctx, svc.ID, goPassStateKey)
 	case rep.PackagesTotal > 0 && rep.PackagesLoaded+rep.PackagesCached == 0:
 		// Never-silent guard: go/packages saw packages but the connector-
 		// scope filter excluded every one of them. Legitimate only when the
@@ -337,6 +340,7 @@ func (p *Pipeline) enrichTypedEdges(ctx context.Context, svc core.ServiceRef, re
 			EdgesDroppedOutOfScope: rep.EdgesDroppedOutOfScope,
 		})
 		p.diagWarn("fusion: typed-edge pass %q: %d package(s) seen but 0 processed — every package excluded by the connector scope filter; reconcile will purge any previously stored typed edges for this service\n", svc.ID, rep.PackagesTotal)
+		p.commitPartialPassState(ctx, svc.ID, goPassStateKey)
 	default:
 		p.noteTypedEdgeStatus(ctx, svc.ID, TypedEdgeStatus{
 			PackagesSeen:           rep.PackagesTotal,

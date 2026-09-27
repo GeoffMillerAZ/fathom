@@ -12,9 +12,11 @@ package fusion
 // the typed-edge fingerprint table under a namespaced key
 // (typed-pass-state:go, typed-pass-state:cue — the same table the CUE pass
 // ("cue:") and the file resolver ("file-resolved:") already share): it is
-// removed when a pass starts and written only when the pass completes with
-// every package processed, so a halted, killed or failing pass leaves no
-// state and the next ingest runs it again.
+// removed when a pass starts and written when the pass completes — "ok"
+// with every package processed, "partial" when packages failed typed
+// loading or scope excluded them all (the same inputs fail the same way, so
+// it gates too, and the skip says so) — so a halted, killed or unloadable
+// pass leaves no state and the next ingest runs it again.
 
 import (
 	"context"
@@ -28,6 +30,13 @@ const (
 	goPassStateKey       = typedPassStatePrefix + "go"
 	cuePassStateKey      = typedPassStatePrefix + "cue"
 	passStateOK          = "ok"
+	// passStatePartial records a pass that ran to completion with packages
+	// that failed to load (or every package excluded by scope): deterministic
+	// outcomes of the same inputs, so it gates like a clean pass — the next
+	// run waits for an input change — and the skip says it was partial. A
+	// pass halted, cancelled or failing to load at all records nothing and
+	// runs again.
+	passStatePartial = "partial"
 )
 
 // isGoInput reports whether path is an input of the typed Go pass: Go
@@ -70,10 +79,29 @@ func cuePassNeeded(changed []string, lastOK bool) bool {
 	return passNeeded(changed, lastOK, isCUEInput)
 }
 
-// passStateOK reports whether key records a successful pass for service.
+// passStateOK reports whether key records a completed pass for service
+// (clean or partial).
 func (p *Pipeline) passStateOK(ctx context.Context, service, key string) bool {
+	return p.passState(ctx, service, key) != ""
+}
+
+// passState is key's recorded outcome: passStateOK, passStatePartial or ""
+// (no completed pass recorded).
+func (p *Pipeline) passState(ctx context.Context, service, key string) string {
 	v, found, err := p.st.TypedEdgePackageFingerprint(ctx, service, key)
-	return err == nil && found && v == passStateOK
+	if err != nil || !found || (v != passStateOK && v != passStatePartial) {
+		return ""
+	}
+	return v
+}
+
+// skippedReason is the Report's disclosure for a gated-off pass whose last
+// run recorded state.
+func (p *Pipeline) skippedReason(ctx context.Context, service, key string) string {
+	if p.passState(ctx, service, key) == passStatePartial {
+		return SkippedPartialPassReason
+	}
+	return SkippedPassReason
 }
 
 // beginPassState removes key's success record as a pass starts.
@@ -84,6 +112,12 @@ func (p *Pipeline) beginPassState(ctx context.Context, service, key string) {
 // commitPassState records a successful pass.
 func (p *Pipeline) commitPassState(ctx context.Context, service, key string) {
 	_ = p.st.SetTypedEdgePackageFingerprint(ctx, service, key, passStateOK)
+}
+
+// commitPartialPassState records a pass that completed with failed or
+// excluded packages (passStatePartial).
+func (p *Pipeline) commitPartialPassState(ctx context.Context, service, key string) {
+	_ = p.st.SetTypedEdgePackageFingerprint(ctx, service, key, passStatePartial)
 }
 
 // isNamespacedTypedKey reports whether a typed-edge package key belongs to
@@ -97,3 +131,7 @@ func isNamespacedTypedKey(id string) bool {
 
 // SkippedPassReason is the Report's disclosure for a gated-off pass.
 const SkippedPassReason = "no input changed since the last successful pass"
+
+// SkippedPartialPassReason is SkippedPassReason when the last pass completed
+// with packages that failed to load: its partial typed edges stand.
+const SkippedPartialPassReason = "no input changed since the last pass, which completed with package(s) that failed typed loading — its partial typed edges stand"

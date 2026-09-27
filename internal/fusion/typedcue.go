@@ -104,7 +104,7 @@ func (p *Pipeline) enrichCUEEdges(ctx context.Context, svc core.ServiceRef, refs
 		return TypedEdgeReport{}, nil
 	}
 	if !cuePassNeeded(changed, p.passStateOK(ctx, svc.ID, cuePassStateKey)) {
-		return TypedEdgeReport{Skipped: SkippedPassReason}, nil
+		return TypedEdgeReport{Skipped: p.skippedReason(ctx, svc.ID, cuePassStateKey)}, nil
 	}
 	release, err := acquireTypedPassSlot(ctx)
 	if err != nil {
@@ -129,6 +129,7 @@ func (p *Pipeline) enrichCUEEdges(ctx context.Context, svc core.ServiceRef, refs
 		}
 	case rep.PackagesFailed > 0:
 		fmt.Fprintf(os.Stderr, "fusion: CUE typed-edge pass %q: %d/%d package(s) failed typed loading\n", svc.ID, rep.PackagesFailed, rep.PackagesTotal)
+		p.commitPartialPassState(ctx, svc.ID, cuePassStateKey) // RT-105: gates like a clean pass
 	default:
 		p.commitPassState(ctx, svc.ID, cuePassStateKey)
 	}

@@ -216,3 +216,37 @@ func TestCUEPassGatedAndSerialized(t *testing.T) {
 		t.Fatal("cuePassNeeded's input rule is wrong")
 	}
 }
+
+// TestPartialTypedPassStillGates (RT-104): a pass that completes with a
+// package that always fails to load records its attempt, so a README-only
+// change runs no typed pass (the skip names the partial result) and a Go
+// change runs it again — before, only a fully clean pass recorded state and
+// every ingest of such a repo paid the whole go/packages load.
+func TestPartialTypedPassStillGates(t *testing.T) {
+	dir := gateFixture(t)
+	if err := os.MkdirAll(filepath.Join(dir, "bad"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "bad", "bad.go"), []byte("package bad\n\nfunc X() int { return \"s\" }\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	st := store.NewMemoryStore()
+	p := New(connector.NewLocalConnector(), st, Config{})
+	gateIngest(t, p, dir)
+	if n := p.TypedPassTotal(); n != 1 {
+		t.Fatalf("first ingest ran %d typed passes; want 1", n)
+	}
+	appendTo(t, filepath.Join(dir, "README.md"), "more words\n")
+	rep := gateIngest(t, p, dir)
+	if n := p.TypedPassTotal(); n != 1 {
+		t.Fatalf("a README-only change re-ran a partial typed pass (total %d)", n)
+	}
+	if !strings.Contains(rep.TypedSkipped, "failed") {
+		t.Fatalf("skip reason %q must say the last pass was partial", rep.TypedSkipped)
+	}
+	appendTo(t, filepath.Join(dir, "a.go"), "\nfunc C() int { return A() }\n")
+	gateIngest(t, p, dir)
+	if n := p.TypedPassTotal(); n != 2 {
+		t.Fatalf("a Go change after a partial pass: total %d, want 2", n)
+	}
+}
