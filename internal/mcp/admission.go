@@ -113,20 +113,20 @@ type callMeta struct {
 // requester (§3.5: only refresh, Keep flights and ingest outlive their
 // caller).
 func (s *Server) admitToolCall(ctx context.Context, te toolEntry, args json.RawMessage, top bool) (context.Context, *tenancy.Ticket, *rpcError) {
-	if s.gate == nil || te.desc.Name == "batch" {
-		return ctx, nil, nil
-	}
 	class := costClassOf(te, args)
+	actx := ctx
+	if class == tenancy.ClassIngest {
+		actx = context.WithoutCancel(ctx)
+	}
+	if s.gate == nil || te.desc.Name == "batch" {
+		return actx, nil, nil
+	}
 	caller, _ := callerFrom(ctx)
 	req := tenancy.Request{
 		Tool:    te.desc.Name,
 		Service: serviceOfArgs(args),
 		Class:   class,
 		Origin:  tenancy.ParseOrigin(originFrom(ctx), caller.Test),
-	}
-	actx := ctx
-	if class == tenancy.ClassIngest {
-		actx = context.WithoutCancel(ctx)
 	}
 	tk, ref := s.gate.Admit(actx, req)
 	if ref != nil {

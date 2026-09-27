@@ -103,3 +103,13 @@ func (s *Server) ToolCostClass(name string, args json.RawMessage) (tenancy.Class
 	}
 	return costClassOf(te, args), true
 }
+
+// DeclaredCostClass is a tool's declared class for args without a server
+// (cmd/fathom's governor and console); an unknown tool is index.
+func DeclaredCostClass(name string, args json.RawMessage) tenancy.Class {
+	c, ok := toolCostClasses[name]
+	if !ok {
+		c = tenancy.ClassIndex
+	}
+	return costClassOf(toolEntry{desc: toolDescriptor{Name: name}, class: c}, args)
+}

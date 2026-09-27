@@ -170,6 +170,9 @@ func IsConsoleRead(origin string) bool {
 	return origin == OriginConsole || origin == OriginConsoleInProcess
 }
 
+// OriginOf is ctx's caller-declared origin ("" = agent/unknown).
+func OriginOf(ctx context.Context) string { return originFrom(ctx) }
+
 // originFrom extracts the caller-declared origin ("" = agent/unknown).
 func originFrom(ctx context.Context) string {
 	o, _ := ctx.Value(originKey{}).(string)

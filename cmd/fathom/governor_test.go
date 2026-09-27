@@ -215,8 +215,7 @@ func TestRefuseCancelsAllHeavyTicketsYoungestFirst(t *testing.T) {
 		t.Fatalf("/metrics lacks the abandoned count:\n%s", m)
 	}
 
-	// The provisional class table the /rpc registration uses until the
-	// admission gate (RT-55) declares classes on the tools.
+	// The declared classes (RT-55) the admission ticket registers under.
 	for _, tc := range []struct {
 		tool, args string
 		want       tenancy.Class
