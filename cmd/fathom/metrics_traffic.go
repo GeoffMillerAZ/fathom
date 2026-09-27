@@ -119,7 +119,7 @@ func trafficReport(resolved console.ResolvedCallLog, service, by string, since, 
 	var entries []adoptionCallEntry
 	var err error
 	if resolved.Path != "" {
-		entries, _, _, err = callLogReadCounting(resolved.Path)
+		entries, _, _, err = callLogReadCountingSince(resolved.Path, since)
 	}
 	reason, isErr, _ := callLogState(callLogFactsFor(resolved, entries, err))
 	return trafficResultFrom(entries, reason, isErr, service, by, since, until)

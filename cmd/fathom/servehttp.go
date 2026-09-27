@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/http/pprof"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -593,7 +592,9 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	// actually uses); failure to open the log never blocks serving.
 	var logger *mcp.CallLogger
 	if *callLogPath != "" {
-		f, err := openCallLog(*callLogPath)
+		// RT-126 (§12.1): rotated at 64 MiB; the previous generation is
+		// rolled up and archived, never deleted.
+		f, err := openRotatingCallLog(*callLogPath, callLogRotateBytes, func(m string) { flog.Warn(m) })
 		if err != nil {
 			flog.Warn(fmt.Sprintf("call log disabled: %v", err))
 		} else {
@@ -701,23 +702,26 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	// one peak (a large graph build, a burst of concurrent cache misses)
 	// can inflate the daemon's OS-visible footprint, instead of leaving it
 	// to Go's own lazy background scavenger for a process that runs 24/7.
-	// DG-6 piggybacks the daemon's own launchd-piped stdout/stderr bound on
-	// this same ticker (rotateDaemonStdio) — an operator who turns
-	// scavenging off also pauses log rotation, a deliberate coupling
-	// (matching DG-2's dedupe-flush cadence) rather than a second
-	// independent ticker for one more periodic housekeeping task.
+	// The launchd-piped stdout/stderr bound (DG-6) moved off this ticker
+	// onto its own (RT-127): turning scavenging off no longer lets the
+	// logs grow unbounded.
 	// outFile/errFile are the real *os.File only when this IS a genuine
 	// os.Stdout/os.Stderr (production); a test's non-*os.File stdout/stderr
 	// simply makes rotateDaemonStdio a no-op for those two arguments.
 	outFile, _ := stdout.(*os.File)
 	errFile, _ := stderr.(*os.File)
+	// RT-127 (§12.2): the stdio logs rotate on their own 60 s ticker —
+	// FATHOM_SCAVENGE=off no longer pauses them.
+	stdioCtx, stopStdio := context.WithCancel(context.Background())
+	defer stopStdio()
+	go runStdioRotation(stdioCtx, stdioRotateEvery, outFile, errFile, outLog, flog)
 	if !managed {
 		outLog.Info("scavenge: off (unmanaged daemon, §10.1)")
 	} else if scavengeDisabled() {
-		outLog.Info("scavenge: OFF (FATHOM_SCAVENGE=off) — the daemon's OS-visible footprint may not shrink after a peak (O108); fathom-http.log/.err rotation (DG-6) is paused too")
+		outLog.Info("scavenge: OFF (FATHOM_SCAVENGE=off) — the daemon's OS-visible footprint may not shrink after a peak (O108); fathom-http.log/.err rotation runs on its own ticker")
 	} else {
 		go runMemoryScavenger(context.Background(), scavengeIntervalFromEnv(), outLog, func() {
-			scavengeTick(outFile, errFile, daemonStdioRotateBytes, outLog, flog, time.Now)
+			scavengeTick(outLog, flog, time.Now)
 		}, nil)
 	}
 
@@ -737,6 +741,22 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	backfillCtx, stopBackfill := context.WithCancel(context.Background())
 	defer stopBackfill()
 	go runDerivedBackfill(backfillCtx, c, func(m string) { flog.Info(m) })
+	// RT-128 (§12.2): the managed daemon truncates the WAL after 5 idle
+	// minutes, at most hourly.
+	if cp, ok := c.Store().(interface{ Checkpoint(context.Context) error }); ok && managed {
+		walCtx, stopWAL := context.WithCancel(context.Background())
+		defer stopWAL()
+		go runWALIdleCheckpoint(walCtx, rpcActivity.Load, func() bool { return tenancy.DefaultInFlight.Len() > 0 }, cp.Checkpoint, func(m string) { outLog.Info(m) })
+	}
+	// RT-181 (§12.1): the managed daemon applies gc's daily classes once a
+	// day, idle and at the ladder's normal level only.
+	if managed {
+		gcCtx, stopGC := context.WithCancel(context.Background())
+		defer stopGC()
+		go runDailyGC(gcCtx, time.Now(), func() bool {
+			return tenancy.DefaultInFlight.Len() > 0 || tenancy.CurrentLevel() != tenancy.LevelNormal
+		}, func(m string) { outLog.Info(m) })
+	}
 	publishDaemonEvent(consoleDeps.bus, prevRecord, hadPrev, commit)
 	eventSources := newConsoleEventSources(consoleDeps.bus, c, verifyLedgerPath(), sessionLedgerPath())
 	eventSources.warn = func(msg string) { flog.Warn(msg) }
@@ -1001,6 +1021,9 @@ func newHTTPHandlerDeps(srv *mcp.Server, c *client.Client, selfAddr string, port
 	// GET /indexed?service= (RT-80): the meta-only "is service X indexed"
 	// probe verify, the hooks, plans and the console ask.
 	mux.Handle("/indexed", indexedHandler(c))
+	// GET /identity?path=<dir>[&path=<toplevel>] (RT-133): which indexed
+	// service a directory is, from the in-process registry.
+	mux.Handle("/identity", handleIdentity(daemonIdentityServices))
 	// POST /refresh-file {service, file} (SU-5/SU-6, ADR-041 decisions 3
 	// and 4): the pre-edit hook's per-file freshness refresh.
 	mux.Handle("/refresh-file", refreshFileHandler(c, srv, srv.RefreshQueue))
@@ -1034,17 +1057,16 @@ func newHTTPHandlerDeps(srv *mcp.Server, c *client.Client, selfAddr string, port
 	// two profiles O108's synthetic driver reads across an auto-refresh
 	// loop; /debug/pprof/profile (30s CPU) and /debug/pprof/allocs are
 	// mounted too since they cost nothing idle.
-	mux.HandleFunc("/debug/pprof/", pprof.Index)
-	mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
-	mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
-	mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
-	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+	// RT-123 (§13.5): guarded — loopback Host, seconds ≤ 30, one profile
+	// at a time — with GET /debug/inflight beside it (pprof_guard.go).
+	mountPprof(mux)
 
 	// serveRPC handles one JSON-RPC 2.0 message on the named surface.
 	serveRPC := func(w http.ResponseWriter, r *http.Request, surface string) {
 		// RT-179: the call's clock and class deadline run from here.
 		arrived := time.Now()
 		state.reqCount.Add(1)
+		rpcActivity.Add(1) // RT-128: the WAL checkpoint's idle signal
 		if r.Method != http.MethodPost {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 			return
@@ -1181,6 +1203,9 @@ func newHTTPHandlerDeps(srv *mcp.Server, c *client.Client, selfAddr string, port
 		fmt.Fprintf(w, "process_uptime_seconds %.3f\n", uptime)
 
 		fmt.Fprintf(w, "go_memstats_heap_inuse_bytes %d\n", ms.HeapInuse)
+		// HeapSys is virtual size, not memory held (§13.3): labelled so,
+		// never read as the footprint (fathom_footprint_bytes is).
+		fmt.Fprint(w, "# HELP go_memstats_heap_sys_bytes virtual address space reserved for the heap (never decreases; not resident memory — see fathom_footprint_bytes)\n")
 		fmt.Fprintf(w, "go_memstats_heap_sys_bytes %d\n", ms.HeapSys)
 		fmt.Fprintf(w, "go_memstats_sys_bytes %d\n", ms.Sys)
 		fmt.Fprintf(w, "go_goroutines %d\n", runtime.NumGoroutine())
@@ -1212,8 +1237,12 @@ func newHTTPHandlerDeps(srv *mcp.Server, c *client.Client, selfAddr string, port
 		// (memorylimit.go's currentMemoryLimitBytes). A value at
 		// math.MaxInt64's scale means no limit is set ("off").
 		fmt.Fprint(w, memoryLimitMetricLine())
-		fmt.Fprint(w, governorMetricLines())     // RT-161, RT-155: the ladder, footprint, children, quarantine
-		fmt.Fprint(w, admissionMetricLines(srv)) // RT-53..RT-63: slots, queues, refusals, would-refuse, outcomes, test callers
+		// RT-124 (§13.3): every tenancy family — the ladder, footprint,
+		// children and quarantine (RT-161, RT-155), admission's slots,
+		// queues, refusals and outcomes (RT-53..RT-63), and volumes,
+		// released memory, oldest in-flight, abandoned and bytes read by
+		// tool, cache bytes, starts by reason and SQLite's memory.
+		writeTenancyMetrics(w, srv)
 
 		// fathom_graph_memo_entries: the watermark-keyed call-graph memo
 		// (BP-28, I21, internal/analysis/callgraph/cache.go) — one entry

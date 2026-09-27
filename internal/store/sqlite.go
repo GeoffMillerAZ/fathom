@@ -94,7 +94,8 @@ const storeFormatVersionUnversioned = 0
 const storeApplicationID = 0x46415448
 
 // sqlitePragmaDSN appends the per-connection pragmas this backend requires
-// (journal_mode=WAL, busy_timeout, synchronous=NORMAL) to path as DSN query
+// (journal_mode=WAL, busy_timeout, synchronous=NORMAL, journal_size_limit
+// 64 MiB) to path as DSN query
 // parameters. modernc.org/sqlite applies "_pragma" query parameters to every
 // new physical connection it opens (conn.go's newConn → applyQueryParams),
 // so these apply uniformly across the whole (uncapped) pool, not just the

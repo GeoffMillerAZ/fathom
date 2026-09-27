@@ -94,6 +94,7 @@ func startGovernor(b tenancy.Budget, notes []tenancy.Note, storePath, ledger str
 	// §5: the memo registry's byte budget is the cache fraction of the
 	// tenancy budget; at shed it holds ShedTrim of it.
 	memo.Default.SetBudget(b.Caches, b.CacheShedTrim)
+	flight := &flightRecorder{}
 	g = newGovernor(governorConfig{
 		budget:       b,
 		notes:        notes,
@@ -107,7 +108,8 @@ func startGovernor(b tenancy.Budget, notes []tenancy.Note, storePath, ledger str
 		actions:      actions,
 		freeOSMemory: debug.FreeOSMemory,
 		killChildren: func() int { return killChildTree(pid) },
-		captureDiag:  captureExitDiag(filepath.Join(dir, "diag"), tenancy.DefaultInFlight, time.Now),
+		captureDiag:  diagCapturer(filepath.Join(dir, "diag"), diagSources{inflight: tenancy.DefaultInFlight, now: time.Now, flight: flight}),
+		flight:       flight,
 		exit:         os.Exit,
 		observe:      observe,
 	})
@@ -129,6 +131,7 @@ func startGovernor(b tenancy.Budget, notes []tenancy.Note, storePath, ledger str
 	go g.run(ctx)
 	return g, func() {
 		cancel()
+		flight.stop()
 		if activeGovernor.CompareAndSwap(g, nil) {
 			tenancy.PublishLevel(tenancy.LevelNormal)
 		}

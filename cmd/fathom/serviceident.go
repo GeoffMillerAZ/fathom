@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"net/http"
 	"os/exec"
 	"path/filepath"
@@ -41,8 +42,14 @@ func serviceCandidates(projDir string) []serviceCandidate {
 }
 
 // gitToplevel returns the enclosing git work-tree root for dir, or "" when
-// dir is not inside a repo (or git is unavailable).
-func gitToplevel(dir string) string {
+// dir is not inside a repo (or git is unavailable). Memoized in process
+// and cached per cwd across processes (gitToplevelCached, RT-130): a hook
+// fires on every tool call, and a git fork per hook per call was a fixed
+// cost of every edit.
+func gitToplevel(dir string) string { return gitToplevelCached(dir) }
+
+// gitToplevelUncached forks `git rev-parse --show-toplevel` in dir.
+func gitToplevelUncached(dir string) string {
 	out, err := exec.Command("git", "-C", dir, "rev-parse", "--show-toplevel").Output()
 	if err != nil {
 		return ""
@@ -74,6 +81,18 @@ func resolveIndexedCandidate(hc *http.Client, baseURL, projDir string) (serviceC
 // collapse to the same ok=false here otherwise, but only the FIRST should
 // ever trigger a stale-cache fallback.
 func resolveIndexedCandidateErr(hc *http.Client, baseURL, projDir string) (serviceCandidate, bool, error) {
+	// RT-133 (§11.3): GET /identity answers from the daemon's registry
+	// without listing every service over list_services; a daemon that
+	// predates it falls back to the full list.
+	if id, err := lookupIdentity(hc, baseURL, projDir); !errors.Is(err, errIdentityRouteMissing) {
+		if err != nil {
+			return serviceCandidate{}, false, err
+		}
+		if id.MatchedBy != identityByRoot {
+			return serviceCandidate{}, false, nil
+		}
+		return serviceCandidate{name: id.Service, root: id.Root}, true, nil
+	}
 	svcs, err := fetchServices(hc, baseURL)
 	cand, ok := resolveFromServices(svcs, projDir)
 	return cand, ok, err
@@ -89,7 +108,12 @@ func resolveIndexedCandidateErr(hc *http.Client, baseURL, projDir string) (servi
 // basename affinity (a name matching the dir/toplevel basename outranks a
 // stranger), then lexicographic order. Never iteration order.
 func resolveFromServices(svcs map[string]svcInfo, projDir string) (serviceCandidate, bool) {
-	base := serviceCandidates(projDir)
+	return resolveFromServicesCands(svcs, serviceCandidates(projDir))
+}
+
+// resolveFromServicesCands is resolveFromServices over explicit candidates
+// (GET /identity receives them from the hook).
+func resolveFromServicesCands(svcs map[string]svcInfo, base []serviceCandidate) (serviceCandidate, bool) {
 	roots := map[string]string{} // resolved path → original root
 	baseNames := map[string]bool{}
 	for _, cand := range base {

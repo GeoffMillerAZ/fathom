@@ -254,6 +254,8 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		return cmdDoctor(args[1:], stdout, stderr)
 	case "resources":
 		return cmdResources(args[1:], stdout, stderr)
+	case "gc":
+		return cmdGC(args[1:], stdout, stderr)
 	case "research":
 		return cmdResearch(args[1:], stdout, stderr)
 	case "module":

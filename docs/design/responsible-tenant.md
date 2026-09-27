@@ -1051,12 +1051,18 @@ written by rename.
 ### 11.3 Less fan-out
 
 - Every identity lookup (`subagentPrimer`, `worktreeAdvice`/`indexedServiceFor`,
-  `cwdChangedPrimer`, post-commit, `daemonServiceIndexed`, `doctor_languages`) goes through
-  `resolveIndexedCandidateCached`, backed by `GET /identity`.
+  `cwdChangedPrimer`, the SessionStart stamp and primer, post-commit) goes through the
+  cached resolver (`resolveIndexedCandidateCached`, `lookupIdentityCached`: an in-process
+  memo plus the on-disk ident cache), backed by `GET /identity`; SessionStart makes one
+  lookup, and reads `list_services` only when nothing matched (to name the indexed
+  services). Doctor's rows that need the registry's payload rather than one directory's
+  identity (`doctor_languages`' unsupported-language breakdown, the indexed-service list,
+  the `fathom` service's path) keep `list_services`; they run outside hooks.
 - `SubagentStart` reuses the parent session's SessionStart resolution from the session
   stamp (zero RPCs).
-- `gitToplevel` memoized in-process and cached per cwd (keyed by cwd and `.git` mtime, 10
-  min TTL).
+- `gitToplevel` memoized in-process and cached per cwd (keyed by cwd and the device and
+  inode of the `.git` nearest the cwd, 10 min TTL; not `.git`'s mtime, which every index
+  refresh moves, so a key on it would miss on nearly every call).
 - Observe-only paths (the Read|Grep|Glob observer; post-bash with no write targets) exit
   before any git or daemon work, and are registered non-blocking (async) in the hook
   template where the harness supports it, so an agent's tool call never waits on them
@@ -1070,8 +1076,10 @@ written by rename.
 Targets (from `hooks.jsonl`): no-op paths p50 ≤ 30 ms; breaker-open fail-open p50 ≤ 15 ms;
 post-bash p99 ≤ 4.0 s (5,017 ms max today). Doctor `hook_budget`: p99 vs deadline per
 channel, breaker-open minutes, edits served while the breaker was open (the guard feature
-degrades silently then, so it is counted), harness kills (a `seen` beat with no
-`answered`/`error`).
+degrades silently then, so it is counted), harness kills (an invocation whose `seen` beat's id, `hook_inv`, never reaches
+`hook-latency.jsonl`: it began and never finished — a silent exit after `seen` still finishes). The beat figures read the beats back to the window's start across `hooks.jsonl` and
+`hooks.jsonl.1` (at most 32 MiB of them); when those end first, the row names the span they cover
+instead of "/24h".
 
 ---
 
@@ -1081,16 +1089,18 @@ degrades silently then, so it is counted), harness kills (a `seen` beat with no
 
 | Class | Policy | Managed daemon runs it daily at low priority? |
 |---|---|---|
-| call log | rotate at 64 MiB: rollup, gzip, archive (never deleted) up to 1 GiB, then report | rotate + gzip: yes; delete: never |
-| verify / session / intent ledgers, `decisions.jsonl` | rotate + gzip at 32 MiB, keep all (I33 needs history) | rotate: yes |
+| call log | rotate at 64 MiB: rollup, gzip, archive (never deleted) up to 1 GiB, then report. The daemon's writer only renames (live → `.1`, old `.1` → `.<ts>.pending`); roll-up + gzip run in a background pass off the request path, under `<log>.archive.lock`, which `gc --apply` shares; a failed rotation retries after a minute, never per row. `gc` never renames a live log a daemon holds; it archives pending generations | rotate: on the writer; roll-up + gzip: yes, in the background; delete: never |
+| verify / session / intent ledgers, `decisions.jsonl` | report at 32 MiB, keep all (I33 needs history); rotation waits until their readers read archived generations — rotating now would hide history from them (RT-125) | no; reported |
 | `session-stamps` | delete after 30 days | yes |
 | `~/.fathom/daemon/<id>/record.json` (and legacy `~/.fathom/daemons`) with a dead pid | delete | yes |
-| `$TMPDIR` `fathom-edit-set`, `fathom-*-test-*`, `fathom-stranger-check` | delete after 1 day | yes |
+| `$TMPDIR` `fathom-edit-set`, `fathom-*-test-*`, `fathom-stranger-check`; entries of the hook caches `fathom-filechanged`, `fathom-toplevel-cache`, `fathom-ident-cache`, `fathom-guard-stamps` | delete after 1 day | yes |
 | `workspace/artifacts/scenariobench/worktrees` | keep last 5 runs or 14 days; `.pin` exempts | no; reported |
 | `workspace/tmp/fathom-bin-*` | keep last 3 | no; reported |
 | `~/.fathom/daemon/<id>/diag` | 10 captures / 200 MiB | yes |
 
-Console tails read the rotated generation. Doctor `disk_retention`: reclaimable bytes by
+The daily run (RT-181) is the managed daemon applying `runGC` over the home and `$TMPDIR` only — the rows marked yes — once a day, never in its first 10 minutes, never while work is in flight or the ladder is above normal; each run writes one line to the serve-http log.
+
+Console tails read the rotated generation; every usage reader (`classifyCallLogRead` and the discoveries pointer rows) reads every generation — archives, pending, `.1`, live — so a rotation hides no history (I38). A pending generation whose archive already exists (a kill between the archive's rename and the pending file's removal) is read once, as its archive. A windowed reader (`discoveries --since`, `metrics traffic --since`) never opens a generation wholly older than its window: a generation is named for the moment it left `.1`, so every row in it is older than its name. An all-history reader (the console's totals, `instrument --adoption`) still reads every generation per render, as it read the one unbounded live log before rotation; bounding it (serving archived generations from their rollups) waits until a console render over the archives is measured slow (Revisit when: an Operate or Overview render over the call log exceeds 1 s on the operator's machine). Doctor `disk_retention`: reclaimable bytes by
 class, the largest classes, internal-disk free. Targets: `workspace/` ≤ 3 GiB after `gc
 --apply` (10 GB today); `~/.fathom` ≤ 500 MB.
 
@@ -1100,7 +1110,8 @@ class, the largest classes, internal-disk free. Targets: `workspace/` ≤ 3 GiB 
   longer disables it); the copy streams with `io.Copy`; above 256 MiB it truncates without
   copying and writes one line naming the discarded bytes.
 - `journal_size_limit` 64 MiB; `wal_checkpoint(TRUNCATE)` after 5 idle minutes, at most
-  hourly; `VACUUM` only via `fathom gc --apply --vacuum`.
+  hourly; `VACUUM` only via `fathom gc --apply --vacuum`, deferred (RT-D10) until a store is measured
+  at more than 1.5x its live pages.
 
 ### 12.3 Gates on a shared machine
 
@@ -1197,12 +1208,13 @@ Triggers: first crossing of each power of two (1, 2, 4, 8 GiB) per process; entr
 `heap.pb.gz`, `goroutine.txt` (labelled by `pprof.Do(tool, origin)` in the dispatch
 wrapper), `inflight.json`, `trace.out` from `trace.FlightRecorder` (started at `shed`, 8 MiB
 window), `metrics.txt` (including `fathom_gc_cpu_fraction`, which RT-M7 reads for refuse
-windows). The exit rung writes only the heap profile and `inflight.json`, within 1 s. Rate: ≤ 1 per 10 min; retention 10 captures / 200 MiB. Logged at
+windows). The exit rung writes only the heap profile and `inflight.json`, within 1 s. Rate: ≤ 1 per 10 min per trigger kind (footprint crossing, refuse, pressure; the exit rung is never limited) — one global limit would let a 1 GiB crossing suppress the refuse capture a minute later, the one that matters (RT-122). A footprint crossing the limit suppressed is deferred, not spent: when the window reopens with the footprint still over a higher power, that capture is taken then, so a fast climb keeps its most informative heap; retention 10 captures / 200 MiB. Logged at
 info with the path; the latest shows in doctor and `resources`.
 
 ### 13.5 pprof and diagnostics (the socket deferred)
 
-pprof and `/debug/inflight` stay on the TCP mux behind the loopback `Host` check (§3.5),
+pprof and `/debug/inflight` stay on the TCP mux behind the loopback `Host` check (§3.5)
+and a loopback peer address (the client chooses `Host`; a hosted daemon drops the Host guard),
 with `seconds` capped at 30 and one profile at a time; `/metrics` stays where it is. A
 private unix socket (`diag.sock`, its own goroutine budget, outside admission) would be a
 new breaking surface whose only argument is reachability under saturation, which the Host
@@ -1281,9 +1293,11 @@ unreachable under load.
 
 Runnable by anyone, heavy, run only on a quiet machine with the operator's go-ahead.
 
-- Builds the binary under test into `workspace/tmp/`, copies the fleet store into a
-  `mktemp -d` under `workspace/tmp/` on the external volume (never the 91%-full internal
-  disk), starts an **unmanaged** daemon on a free port with `--parent-pid $$` and
+- Builds the binary under test into `workspace/tmp/`, copies the fleet store (sqlite3
+  `.backup`) into a `mktemp -d` under `workspace/tmp/` on the external volume (never the
+  91%-full internal disk), starts an **unmanaged** daemon on a free port as the harness's
+  own child with `--exit-with-parent` (serve-http has no `--parent-pid`; its parent is the
+  harness), a scratch `HOME` under the run dir, and
   `--lifecycle-id tenancy-stress-<run>` (so the breaker sees every simulated relaunch in one
   ledger; the default unmanaged id `addr-<port>-<pid>` would start a fresh ledger each time),
   `[tenancy] budget` forced to 1 GiB and `exit_enabled = true` (so the ladder is exercised

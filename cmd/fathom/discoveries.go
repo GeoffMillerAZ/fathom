@@ -9,6 +9,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -164,13 +165,18 @@ type callLogPointerRow struct {
 // naming service (when non-empty) with ts >= since and at least one
 // pointer. A missing or malformed log degrades to empty, never an error.
 func readCallLogPointerRows(logPath, service string, since time.Time) []callLogPointerRow {
-	data, err := os.ReadFile(logPath)
+	// Every generation in the window (RT-126): a rotation hides no
+	// pointer, and a generation wholly before since is never opened.
+	rc, err := openCallLogGenerationsSince(logPath, since)
 	if err != nil {
 		return nil
 	}
+	defer rc.Close()
 	var out []callLogPointerRow
-	for _, line := range strings.Split(string(data), "\n") {
-		line = strings.TrimSpace(line)
+	sc := bufio.NewScanner(rc)
+	sc.Buffer(make([]byte, 0, 64*1024), 4*1024*1024)
+	for sc.Scan() {
+		line := strings.TrimSpace(sc.Text())
 		if line == "" {
 			continue
 		}

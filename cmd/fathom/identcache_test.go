@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -179,7 +180,7 @@ func TestCandidatesWithDaemon_CachesAcrossCalls(t *testing.T) {
 	withTempIdentCacheDir(t)
 	dir := t.TempDir()
 
-	srv, calls := countingServer(t, func(w http.ResponseWriter, r *http.Request) {
+	srv, calls := countingRPCServer(t, func(w http.ResponseWriter, r *http.Request) {
 		resp := map[string]any{
 			"jsonrpc": "2.0", "id": 1,
 			"result": map[string]any{
@@ -245,7 +246,7 @@ func TestCandidatesWithDaemon_NoCacheEscape(t *testing.T) {
 	t.Setenv("FATHOM_IDENT_NO_CACHE", "1")
 	dir := t.TempDir()
 
-	srv, calls := countingServer(t, func(w http.ResponseWriter, r *http.Request) {
+	srv, calls := countingRPCServer(t, func(w http.ResponseWriter, r *http.Request) {
 		resp := map[string]any{
 			"jsonrpc": "2.0", "id": 1,
 			"result": map[string]any{
@@ -299,4 +300,21 @@ func TestCmdIngest_BustsIdentCache(t *testing.T) {
 	if _, _, hit := readIdentCache("/some/repo", "http://localhost:7575", time.Now()); hit {
 		t.Fatal("expected the seeded cache entry to be gone after ingest busts the cache")
 	}
+}
+
+// countingRPCServer counts only the /rpc round trips (list_services): the
+// GET /identity probe an old stand-in answers with no route (RT-133) is
+// not the round trip the identity cache saves.
+func countingRPCServer(t *testing.T, handler http.HandlerFunc) (*httptest.Server, *int32) {
+	t.Helper()
+	var calls int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/identity" {
+			http.NotFound(w, r)
+			return
+		}
+		atomic.AddInt32(&calls, 1)
+		handler(w, r)
+	}))
+	return srv, &calls
 }

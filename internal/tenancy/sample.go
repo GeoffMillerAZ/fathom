@@ -36,6 +36,7 @@ type Sample struct {
 	ChildDiskWritten int64
 
 	GoTotalMinusReleased int64 // /memory/classes/total − /memory/classes/heap/released
+	HeapReleased         int64 // /memory/classes/heap/released: heap returned to the OS
 	HeapLive             int64 // /gc/heap/live
 	GCCPUFraction        float64
 
@@ -129,6 +130,7 @@ func (r *RuntimeReader) Read(s *Sample) {
 		return 0, false
 	}
 	total, released := u(0), u(1)
+	s.HeapReleased = released
 	if total >= 0 && released >= 0 {
 		s.GoTotalMinusReleased = total - released
 	} else {
@@ -152,7 +154,7 @@ func (r *RuntimeReader) Read(s *Sample) {
 func SampleHost(h Host, rt *RuntimeReader, at time.Time, late time.Duration, s *Sample) {
 	*s = Sample{
 		At: at, Late: late,
-		Footprint: Unknown, Children: Unknown, DiskWritten: Unknown, ChildDiskWritten: Unknown,
+		Footprint: Unknown, Children: Unknown, DiskWritten: Unknown, ChildDiskWritten: Unknown, HeapReleased: Unknown,
 		SwapUsed: Unknown, SwapTotal: Unknown,
 		StoreFree: Unknown, TmpFree: Unknown, SwapVolumeFree: Unknown,
 	}

@@ -37,6 +37,7 @@ func hookSpecsFor(id string) []hookSpec {
 			marker:  b.Marker,
 			sub:     b.Verb,
 			timeout: b.TimeoutSec,
+			async:   d.RegisterAsync(b),
 		})
 	}
 	return out

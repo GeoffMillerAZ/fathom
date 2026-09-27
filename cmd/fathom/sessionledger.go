@@ -27,7 +27,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 	"syscall"
 	"time"
@@ -517,153 +516,209 @@ func summarizeTranscriptBytes(data []byte) transcriptSummary {
 //     excluded too (the use was never registered), so boundary-straddling
 //     pairs count in neither window.
 func summarizeTranscriptWindow(data []byte, since *time.Time) transcriptSummary {
-	lines := splitLines(data)
-
-	turnCount := 0
-	tokensTotal := 0
-	tokensIn, tokensOut, tokensCacheRead, tokensCacheCreate := 0, 0, 0, 0
-	sawUsage := false
-	var timestamps []time.Time
-
-	var firstEditTurn *int
-	// EX-1 pairing state: tool_use id → its class, and Read file paths.
-	type useInfo struct {
-		class    string // "raw" | "fathom" | ""
-		filePath string
+	f := newTranscriptFold()
+	for _, l := range splitLines(data) {
+		f.add(l, since)
 	}
-	uses := map[string]useInfo{}
-	resultsSeen := map[string]int{}
-	var (
-		rawCalls, fathomCalls     int
-		rawTokens, fathomTokens   int
-		sawResult                 bool
-		repeatFiles, repeatTokens int
-		sidechainResults          int
-		toolSearchCount           int
-	)
-	for _, l := range lines {
-		if len(l) == 0 {
-			continue
+	return f.summary()
+}
+
+// transcriptFold is summarizeTranscriptWindow's state, line by line, so the
+// Stop hook can fold only what a transcript gained since its last turn
+// (readTranscriptFromOffset, RT-132) and get the summary a whole-file read
+// would. Exported fields: it is persisted in the session's offset stamp.
+type transcriptFold struct {
+	Lines             int                `json:"lines"`
+	TurnCount         int                `json:"turns"`
+	TokensTotal       int                `json:"tokens_total"`
+	TokensIn          int                `json:"tokens_in"`
+	TokensOut         int                `json:"tokens_out"`
+	TokensCacheRead   int                `json:"tokens_cache_read"`
+	TokensCacheCreate int                `json:"tokens_cache_create"`
+	SawUsage          bool               `json:"saw_usage"`
+	FirstTS           *time.Time         `json:"first_ts,omitempty"`
+	LastTS            *time.Time         `json:"last_ts,omitempty"`
+	Timestamps        int                `json:"timestamps"`
+	FirstEditTurn     *int               `json:"first_edit_turn,omitempty"`
+	Uses              map[string]foldUse `json:"uses"` // EX-1 pairing: an unanswered tool_use id → class, Read path (dropped once paired)
+	ResultsSeen       map[string]int     `json:"results_seen"`
+	RawCalls          int                `json:"raw_calls"`
+	FathomCalls       int                `json:"fathom_calls"`
+	RawTokens         int                `json:"raw_tokens"`
+	FathomTokens      int                `json:"fathom_tokens"`
+	SawResult         bool               `json:"saw_result"`
+	RepeatFiles       int                `json:"repeat_files"`
+	RepeatTokens      int                `json:"repeat_tokens"`
+	SidechainResults  int                `json:"sidechain_results"`
+	ToolSearchCount   int                `json:"tool_search_turns"`
+}
+
+// foldUse is one tool_use awaiting (or past) its result.
+type foldUse struct {
+	Class    string `json:"c"` // "raw" | "fathom"
+	FilePath string `json:"f,omitempty"`
+}
+
+func newTranscriptFold() *transcriptFold {
+	return &transcriptFold{Uses: map[string]foldUse{}, ResultsSeen: map[string]int{}}
+}
+
+// clone deep-copies f (the maps), so an unterminated tail line can be
+// folded into a copy without entering the persisted state.
+func (f *transcriptFold) clone() *transcriptFold {
+	c := *f
+	c.Uses = make(map[string]foldUse, len(f.Uses))
+	for k, v := range f.Uses {
+		c.Uses[k] = v
+	}
+	c.ResultsSeen = make(map[string]int, len(f.ResultsSeen))
+	for k, v := range f.ResultsSeen {
+		c.ResultsSeen[k] = v
+	}
+	return &c
+}
+
+// add folds one transcript line (since: summarizeTranscriptWindow's window).
+func (f *transcriptFold) add(l []byte, since *time.Time) {
+	f.Lines++
+	if len(l) == 0 {
+		return
+	}
+	var tl transcriptLine
+	if err := json.Unmarshal(l, &tl); err != nil {
+		return // not this shape — skip, never abort the whole file
+	}
+	if since != nil {
+		t, terr := time.Parse(time.RFC3339, tl.Timestamp)
+		if terr != nil || t.Before(*since) {
+			return
 		}
-		var tl transcriptLine
-		if err := json.Unmarshal(l, &tl); err != nil {
-			continue // not this shape — skip, never abort the whole file
+	}
+	if tl.Type == "assistant" {
+		f.TurnCount++
+		if toolSearchTurns(tl) > 0 {
+			f.ToolSearchCount++
 		}
-		if since != nil {
-			t, terr := time.Parse(time.RFC3339, tl.Timestamp)
-			if terr != nil || t.Before(*since) {
+		if tl.Message != nil {
+			for _, c := range tl.Message.Content {
+				if c.Type != "tool_use" {
+					continue
+				}
+				if f.FirstEditTurn == nil && isEditTool(c.Name) {
+					t := f.TurnCount
+					f.FirstEditTurn = &t
+				}
+				u := foldUse{}
+				switch {
+				case c.Name == "Read" || c.Name == "Grep" || c.Name == "Glob":
+					u.Class = "raw"
+					f.RawCalls++
+					if c.Name == "Read" && c.Input != nil && c.Input.FilePath != "" {
+						u.FilePath = c.Input.FilePath
+					}
+				case strings.HasPrefix(c.Name, "mcp__fathom__"):
+					u.Class = "fathom"
+					f.FathomCalls++
+				}
+				if c.ID != "" && u.Class != "" {
+					f.Uses[c.ID] = u
+				}
+			}
+		}
+	}
+	if tl.Type == "user" && tl.Message != nil {
+		for _, c := range tl.Message.Content {
+			if c.Type != "tool_result" || c.ToolUseID == "" {
 				continue
 			}
-		}
-		if tl.Type == "assistant" {
-			turnCount++
-			if toolSearchTurns(tl) > 0 {
-				toolSearchCount++
+			u, ok := f.Uses[c.ToolUseID]
+			if !ok {
+				continue
 			}
-			if tl.Message != nil {
-				for _, c := range tl.Message.Content {
-					if c.Type != "tool_use" {
-						continue
-					}
-					if firstEditTurn == nil && isEditTool(c.Name) {
-						t := turnCount
-						firstEditTurn = &t
-					}
-					u := useInfo{}
-					switch {
-					case c.Name == "Read" || c.Name == "Grep" || c.Name == "Glob":
-						u.class = "raw"
-						rawCalls++
-						if c.Name == "Read" && c.Input != nil && c.Input.FilePath != "" {
-							u.filePath = c.Input.FilePath
-						}
-					case strings.HasPrefix(c.Name, "mcp__fathom__"):
-						u.class = "fathom"
-						fathomCalls++
-					}
-					if c.ID != "" && u.class != "" {
-						uses[c.ID] = u
-					}
-				}
+			// Paired: the entry is spent. Dropping it keeps the persisted
+			// fold (RT-132's per-session stamp, rewritten every Stop) to the
+			// unanswered uses plus ResultsSeen's per-path counts, never
+			// growing with the session's tool calls.
+			delete(f.Uses, c.ToolUseID)
+			if tl.IsSidechain {
+				f.SidechainResults++
 			}
-		}
-		if tl.Type == "user" && tl.Message != nil {
-			for _, c := range tl.Message.Content {
-				if c.Type != "tool_result" || c.ToolUseID == "" {
-					continue
-				}
-				u, ok := uses[c.ToolUseID]
-				if !ok {
-					continue
-				}
-				if tl.IsSidechain {
-					sidechainResults++
-				}
-				est := len(c.Content) / 4
-				sawResult = true
-				switch u.class {
-				case "raw":
-					rawTokens += est
-					if u.filePath != "" {
-						resultsSeen[u.filePath]++
-						if n := resultsSeen[u.filePath]; n >= 2 {
-							repeatTokens += est
-							if n == 2 {
-								repeatFiles++
-							}
+			est := len(c.Content) / 4
+			f.SawResult = true
+			switch u.Class {
+			case "raw":
+				f.RawTokens += est
+				if u.FilePath != "" {
+					f.ResultsSeen[u.FilePath]++
+					if n := f.ResultsSeen[u.FilePath]; n >= 2 {
+						f.RepeatTokens += est
+						if n == 2 {
+							f.RepeatFiles++
 						}
 					}
-				case "fathom":
-					fathomTokens += est
 				}
-			}
-		}
-		if tl.Message != nil && tl.Message.Usage != nil {
-			u := tl.Message.Usage
-			tokensTotal += u.InputTokens + u.OutputTokens + u.CacheCreationInputTokens + u.CacheReadInputTokens
-			tokensIn += u.InputTokens
-			tokensOut += u.OutputTokens
-			tokensCacheRead += u.CacheReadInputTokens
-			tokensCacheCreate += u.CacheCreationInputTokens
-			sawUsage = true
-		}
-		if tl.Timestamp != "" {
-			if t, terr := time.Parse(time.RFC3339, tl.Timestamp); terr == nil {
-				timestamps = append(timestamps, t)
+			case "fathom":
+				f.FathomTokens += est
 			}
 		}
 	}
+	if tl.Message != nil && tl.Message.Usage != nil {
+		u := tl.Message.Usage
+		f.TokensTotal += u.InputTokens + u.OutputTokens + u.CacheCreationInputTokens + u.CacheReadInputTokens
+		f.TokensIn += u.InputTokens
+		f.TokensOut += u.OutputTokens
+		f.TokensCacheRead += u.CacheReadInputTokens
+		f.TokensCacheCreate += u.CacheCreationInputTokens
+		f.SawUsage = true
+	}
+	if tl.Timestamp != "" {
+		if t, terr := time.Parse(time.RFC3339, tl.Timestamp); terr == nil {
+			f.Timestamps++
+			if f.FirstTS == nil || t.Before(*f.FirstTS) {
+				tt := t
+				f.FirstTS = &tt
+			}
+			if f.LastTS == nil || t.After(*f.LastTS) {
+				tt := t
+				f.LastTS = &tt
+			}
+		}
+	}
+}
 
+// summary renders the fold as the whole-transcript summary.
+func (f *transcriptFold) summary() transcriptSummary {
 	out := transcriptSummary{}
-	if len(lines) == 0 {
+	if f.Lines == 0 {
 		out.TurnNote = "unavailable: empty transcript"
 	} else {
-		tc := turnCount
+		tc := f.TurnCount
 		out.TurnCount = &tc
 	}
-	if sawUsage {
-		tt := tokensTotal
+	if f.SawUsage {
+		tt := f.TokensTotal
 		out.TokensTotal = &tt
-		ti, to, tcr, tcc := tokensIn, tokensOut, tokensCacheRead, tokensCacheCreate
+		ti, to, tcr, tcc := f.TokensIn, f.TokensOut, f.TokensCacheRead, f.TokensCacheCreate
 		out.TokensIn, out.TokensOut = &ti, &to
 		out.TokensCacheRead, out.TokensCacheCreate = &tcr, &tcc
 	} else {
 		out.TokensNote = "unavailable: no usage data found in transcript"
 	}
-	if firstEditTurn != nil {
-		out.FirstEditTurn = firstEditTurn
-	} else if turnCount > 0 {
+	if f.FirstEditTurn != nil {
+		fe := *f.FirstEditTurn
+		out.FirstEditTurn = &fe
+	} else if f.TurnCount > 0 {
 		out.FirstEditNote = "no file-changing tool call in this transcript"
 	} else {
 		out.FirstEditNote = "unavailable: no assistant turns parsed"
 	}
-	out.RawDiscoveryCalls = rawCalls
-	out.FathomCalls = fathomCalls
-	out.ToolSearchTurns = toolSearchCount
-	out.RepeatedReadFiles = repeatFiles
-	out.SidechainToolResults = sidechainResults
-	if sawResult {
-		rt, ft, rp := rawTokens, fathomTokens, repeatTokens
+	out.RawDiscoveryCalls = f.RawCalls
+	out.FathomCalls = f.FathomCalls
+	out.ToolSearchTurns = f.ToolSearchCount
+	out.RepeatedReadFiles = f.RepeatFiles
+	out.SidechainToolResults = f.SidechainResults
+	if f.SawResult {
+		rt, ft, rp := f.RawTokens, f.FathomTokens, f.RepeatTokens
 		out.RawDiscoveryTokensEst = &rt
 		out.FathomTokensEst = &ft
 		out.RepeatedReadTokensEst = &rp
@@ -671,17 +726,17 @@ func summarizeTranscriptWindow(data []byte, since *time.Time) transcriptSummary 
 	} else {
 		out.ExplorationNote = "no tool results parsed - exploration not measured"
 	}
-	if len(timestamps) >= 2 {
-		sort.Slice(timestamps, func(i, j int) bool { return timestamps[i].Before(timestamps[j]) })
-		dur := timestamps[len(timestamps)-1].Sub(timestamps[0]).Milliseconds()
+	switch {
+	case f.Timestamps >= 2:
+		dur := f.LastTS.Sub(*f.FirstTS).Milliseconds()
 		out.DurationMS = &dur
-		first := timestamps[0]
+		first := *f.FirstTS
 		out.FirstTS = &first
-	} else if len(timestamps) == 1 {
-		first := timestamps[0]
+	case f.Timestamps == 1:
+		first := *f.FirstTS
 		out.FirstTS = &first
 		out.DurationNote = "unavailable: fewer than two timestamped transcript lines"
-	} else {
+	default:
 		out.DurationNote = "unavailable: fewer than two timestamped transcript lines"
 	}
 	return out

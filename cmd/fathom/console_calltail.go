@@ -118,14 +118,67 @@ func resetCallLogTail() {
 	callLogTail.Lock()
 	callLogTail.path, callLogTail.info, callLogTail.offset, callLogTail.tail, callLogTail.rows, callLogTail.intern = "", nil, 0, false, nil, nil
 	callLogTail.Unlock()
+	rotatedTail.Lock()
+	rotatedTail.path, rotatedTail.info, rotatedTail.rows = "", nil, nil
+	rotatedTail.Unlock()
 }
 
-// callLogRows returns the counted rows of the log at path inside the
-// ring's window (callLogWindow). The returned
-// slice is shared and must not be modified. A missing log is an error
-// satisfying errors.Is(err, os.ErrNotExist); any other failure to read is
-// its own error — with the external-volume remedy when that is the tell.
-func callLogRows(path string) ([]callLogRow, error) {
+// rotatedTail caches the rotated generation (<log>.1, RT-126): it is
+// written once, at rotation, so it is parsed once per rotation, and
+// returned as its own segment — never copied when a live row arrives.
+var rotatedTail struct {
+	sync.Mutex
+	path string
+	info os.FileInfo
+	rows []callLogRow
+}
+
+// callLogRowSegments returns the counted rows of the log at path inside the
+// ring's window (callLogWindow, RT-112) as two
+// segments, oldest first: the rotated generation <path>.1 (RT-126, §12.1:
+// console tails read it, so a rotation never empties the console's
+// traffic) and the live log. Both slices are shared and must not be
+// modified. A missing live log is an error satisfying
+// errors.Is(err, os.ErrNotExist); any other failure to read is its own
+// error — with the external-volume remedy when that is the tell.
+func callLogRowSegments(path string) (rotated, live []callLogRow, err error) {
+	live, err = liveCallLogRows(path)
+	if err != nil {
+		return nil, nil, err
+	}
+	gen := path + ".1"
+	info, serr := os.Stat(gen)
+	if serr != nil {
+		if os.IsNotExist(serr) {
+			return nil, live, nil
+		}
+		return nil, nil, fmt.Errorf("%w%s", serr, tccWedgeHint(gen))
+	}
+	rt := &rotatedTail
+	rt.Lock()
+	defer rt.Unlock()
+	if rt.path != gen || rt.info == nil || !os.SameFile(rt.info, info) || info.Size() != rt.info.Size() || !info.ModTime().Equal(rt.info.ModTime()) {
+		fh, err := os.Open(gen)
+		if err != nil {
+			return nil, nil, fmt.Errorf("%w%s", err, tccWedgeHint(gen))
+		}
+		rows, _, tail, err := scanCallLogRows(fh, map[string]string{})
+		fh.Close()
+		if err != nil {
+			return nil, nil, fmt.Errorf("read rotated call log %s: %w", gen, err)
+		}
+		if row, ok := callLogRowOf(tail, map[string]string{}); ok {
+			rows = append(rows, row)
+		}
+		// The ring (RT-112) holds only the window's rows of either
+		// generation.
+		rt.path, rt.info, rt.rows = gen, info, slices.Clip(callLogWindow(rows, callLogNow()))
+	}
+	return rt.rows, live, nil
+}
+
+// liveCallLogRows parses the live log incrementally, keeping the window.
+func liveCallLogRows(path string) ([]callLogRow, error) {
 	info, err := os.Stat(path)
 	if err != nil {
 		return nil, err
@@ -227,16 +280,18 @@ func internString(m map[string]string, s string) string {
 
 // callEntriesFor is one service's rows in [since, until], in
 // internal/metrics' shape — readCallDataFor's window and service filter.
-func callEntriesFor(rows []callLogRow, service string, since, until time.Time) []metrics.CallEntry {
+func callEntriesFor(service string, since, until time.Time, segments ...[]callLogRow) []metrics.CallEntry {
 	var out []metrics.CallEntry
-	for _, r := range rows {
-		if r.at.IsZero() || r.at.Before(since) || r.at.After(until) {
-			continue
+	for _, rows := range segments {
+		for _, r := range rows {
+			if r.at.IsZero() || r.at.Before(since) || r.at.After(until) {
+				continue
+			}
+			if service != "" && r.service != service {
+				continue
+			}
+			out = append(out, r.callEntry())
 		}
-		if service != "" && r.service != service {
-			continue
-		}
-		out = append(out, r.callEntry())
 	}
 	return out
 }

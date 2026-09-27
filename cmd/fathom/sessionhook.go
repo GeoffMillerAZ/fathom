@@ -121,10 +121,12 @@ func cmdSessionHook(args []string, stdin io.Reader, stdout, stderr io.Writer) in
 	// resolution reuses the same daemon-backed lookup the advisory events
 	// already make, so this costs one extra round trip only when a
 	// session id exists to tag it with.
+	var stampIdentity *identityResult
 	if sessionID != "" {
 		svc := ""
-		if name, _, ok := indexedServiceFor(&http.Client{Timeout: 2 * time.Second}, *url, projDir); ok {
+		if name, info, ok := indexedServiceFor(&http.Client{Timeout: 2 * time.Second}, *url, projDir); ok {
 			svc = name
+			stampIdentity = &identityResult{Schema: 1, Service: name, Symbols: info.symbols, CountErr: info.countErr, Langs: info.langs, Path: info.path}
 		}
 		recordSessionWindow(projDir, sessionWindowRow{
 			SchemaVersion: 1, SessionID: sessionID, Cwd: projDir, Service: svc,
@@ -163,6 +165,8 @@ func cmdSessionHook(args []string, stdin io.Reader, stdout, stderr io.Writer) in
 		BriefBytes:    briefBytes,
 		IntentLine:    intentLine,
 		At:            time.Now().UTC().Format(time.RFC3339),
+		Cwd:           projDir,
+		Identity:      stampIdentity,
 	})
 
 	// EP-24: the attention line's bytes as a COMPONENT of the primer, so
@@ -344,6 +348,17 @@ func buildSessionContext(baseURL, projDir string) string {
 		return fmt.Sprintf("🔬 fathom OFF arm active (measurement, vision 14 §2): channels are silent this session — no obligations, no guards, no verify gate. Bound: %s. This is deliberate counterfactual data collection; end it early with `fathom arm on`.", bound)
 	}
 
+	// RT-133 (§11.3): the cached identity answers (SessionStart's stamp
+	// lookup already made the one round trip); the full list is read only
+	// when nothing matched (to name the indexed services) or the daemon
+	// predates GET /identity.
+	id, idErr := lookupIdentityCached(hc, baseURL, projDir)
+	if idErr == nil && id.Service != "" {
+		return sessionPrimerLine(hc, baseURL, projDir, id.Service, id.info())
+	}
+	if idErr != nil && !errors.Is(idErr, errIdentityRouteMissing) {
+		return fmt.Sprintf("⚠️ fathom daemon is healthy but service enumeration failed (%v) — index state is unknown this session; the MCP tools may still work, so try them before falling back to Grep/Read. If this repeats, check GET %s/statusz.", idErr, baseURL)
+	}
 	svcs, svcErr := fetchServices(hc, baseURL)
 	if svcErr != nil {
 		// O2: enumeration failure is NOT "not indexed". The daemon is healthy
@@ -362,39 +377,7 @@ func buildSessionContext(baseURL, projDir string) string {
 		if !ok {
 			continue
 		}
-		langs := ""
-		if info.langs != "" {
-			langs = ", " + info.langs
-		}
-		ctxLine := fmt.Sprintf("✅ fathom code-intelligence is live — this repo is the indexed service %q (%s%s). Route by question shape: where / who-calls / what-breaks resolve via fathom: find_symbol, query_symbols, find_callers, outline, repo_map, references; what-governs this repository is obligations with no path (the root conventions); is this still true / what was known is staleness_report; a bug report, stack trace, error string or failing test is localize's job (one bounded, logged walk of the index — before any grep). A literal string, a config value, a log line, or a document-versus-document contradiction is grep's job. Read files to *edit* them, not to discover them. The index auto-refreshes on git-HEAD drift; force a refresh with the ingest tool ({\"service\":%q}).", lookup, info.countText(), langs, lookup)
-		// FR-4 (docs/plans/exploration-ledger.md): teach the FIRST query
-		// with a LIVE symbol from this repo's own index — the first-query
-		// experience decides adoption; one miss loses the session to grep.
-		// Degraded-branch discipline holds: any failure omits the line.
-		if ex := liveExampleLine(hc, baseURL, lookup); ex != "" {
-			ctxLine += " " + ex
-		}
-		// The wiring tripwire (vision 14 §7 tier-1, IO-19): every drifted
-		// session opens by telling its agent the exact remedy — detection
-		// is free and universal; nothing mutates here.
-		if d := analyzeWiring(projDir); len(d.Missing) > 0 || len(d.StaleCmds) > 0 {
-			ctxLine += fmt.Sprintf(" ⚠️ wiring drift: %d missing hook template entr(ies), %d stale binary path(s) — run `fathom fleet reconcile --apply` (or /fathom:rewire) to reconcile in place.", len(d.Missing), len(d.StaleCmds))
-		}
-		// RC-30: routes named in ONE line only when at least one exists —
-		// a cheap candidate count (no live-index resolution here; `fathom
-		// routes` does that pass).
-		if rl := routesSummaryLine(projDir, lookup, time.Now()); rl != "" {
-			ctxLine += " " + rl
-		}
-		// FL-21 (docs/vision/30-findings-loop.md §3.4): one line naming
-		// the repo-wide open finding-kind claim count, when any exist —
-		// silent on a zero count or any fetch failure, matching this
-		// hook's own degraded-branch discipline (never a reason to fail
-		// or slow session start).
-		if fl := findingsBriefLine(hc, baseURL, lookup); fl != "" {
-			ctxLine += " " + fl
-		}
-		return ctxLine
+		return sessionPrimerLine(hc, baseURL, projDir, lookup, info)
 	}
 
 	repo := filepath.Base(strings.TrimRight(projDir, "/"))
@@ -408,6 +391,44 @@ func buildSessionContext(baseURL, projDir string) string {
 		indexed = "none yet"
 	}
 	return fmt.Sprintf("ℹ️ fathom code-intelligence is live, but this repo (%q) is not an indexed service — its symbols aren't in the index, so Grep/Read discovery is expected here. Indexed services: %s. (Add this repo with the ingest tool: {\"service\":\"<name>\",\"path\":\"<absolute repo root>\"}.)", repo, indexed)
+}
+
+// sessionPrimerLine is the live line for projDir, the indexed service
+// lookup (with info).
+func sessionPrimerLine(hc *http.Client, baseURL, projDir, lookup string, info svcInfo) string {
+	langs := ""
+	if info.langs != "" {
+		langs = ", " + info.langs
+	}
+	ctxLine := fmt.Sprintf("✅ fathom code-intelligence is live — this repo is the indexed service %q (%s%s). Route by question shape: where / who-calls / what-breaks resolve via fathom: find_symbol, query_symbols, find_callers, outline, repo_map, references; what-governs this repository is obligations with no path (the root conventions); is this still true / what was known is staleness_report; a bug report, stack trace, error string or failing test is localize's job (one bounded, logged walk of the index — before any grep). A literal string, a config value, a log line, or a document-versus-document contradiction is grep's job. Read files to *edit* them, not to discover them. The index auto-refreshes on git-HEAD drift; force a refresh with the ingest tool ({\"service\":%q}).", lookup, info.countText(), langs, lookup)
+	// FR-4 (docs/plans/exploration-ledger.md): teach the FIRST query
+	// with a LIVE symbol from this repo's own index — the first-query
+	// experience decides adoption; one miss loses the session to grep.
+	// Degraded-branch discipline holds: any failure omits the line.
+	if ex := liveExampleLine(hc, baseURL, lookup); ex != "" {
+		ctxLine += " " + ex
+	}
+	// The wiring tripwire (vision 14 §7 tier-1, IO-19): every drifted
+	// session opens by telling its agent the exact remedy — detection
+	// is free and universal; nothing mutates here.
+	if d := analyzeWiring(projDir); len(d.Missing) > 0 || len(d.StaleCmds) > 0 {
+		ctxLine += fmt.Sprintf(" ⚠️ wiring drift: %d missing hook template entr(ies), %d stale binary path(s) — run `fathom fleet reconcile --apply` (or /fathom:rewire) to reconcile in place.", len(d.Missing), len(d.StaleCmds))
+	}
+	// RC-30: routes named in ONE line only when at least one exists —
+	// a cheap candidate count (no live-index resolution here; `fathom
+	// routes` does that pass).
+	if rl := routesSummaryLine(projDir, lookup, time.Now()); rl != "" {
+		ctxLine += " " + rl
+	}
+	// FL-21 (docs/vision/30-findings-loop.md §3.4): one line naming
+	// the repo-wide open finding-kind claim count, when any exist —
+	// silent on a zero count or any fetch failure, matching this
+	// hook's own degraded-branch discipline (never a reason to fail
+	// or slow session start).
+	if fl := findingsBriefLine(hc, baseURL, lookup); fl != "" {
+		ctxLine += " " + fl
+	}
+	return ctxLine
 }
 
 // fetchServices calls the list_services MCP tool over HTTP and returns a map

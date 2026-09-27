@@ -18,6 +18,7 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/console"
@@ -376,12 +377,21 @@ func classifyCallLogRead(path string) (entries []adoptionCallEntry, skippedMalfo
 // callLogReadCounting is classifyCallLogRead that also counts the console's
 // own reads it left out, for a figure that names them (console.CallTotal).
 func callLogReadCounting(path string) (entries []adoptionCallEntry, skippedMalformed, consoleReads int, err error) {
-	f, openErr := os.Open(path)
+	return callLogReadCountingSince(path, time.Time{})
+}
+
+// callLogReadCountingSince is callLogReadCounting for a reader whose window
+// starts at since: generations wholly older than the window are never
+// opened (RT-126); rows older than since in the generations read are still
+// returned, for the caller's own window filter. The zero since is all
+// history.
+func callLogReadCountingSince(path string, since time.Time) (entries []adoptionCallEntry, skippedMalformed, consoleReads int, err error) {
+	// Every generation in the window (RT-126): a rotation hides no history (I38).
+	f, openErr := openCallLogGenerationsSince(path, since)
 	if openErr != nil {
-		if os.IsNotExist(openErr) {
-			return nil, 0, 0, openErr // honest "no log yet"
-		}
-		return nil, 0, 0, fmt.Errorf("%w%s", openErr, tccWedgeHint(path))
+		// os.IsNotExist: the honest "no log yet"; anything else carries
+		// its cause (and the external-volume remedy when that is the tell).
+		return nil, 0, 0, openErr
 	}
 	defer f.Close()
 

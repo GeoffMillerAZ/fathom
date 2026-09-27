@@ -116,10 +116,9 @@ func fileInEditSet(filePath, cwd, sessionID string) bool {
 		}
 		filePath = a
 	}
-	projDir := resolveProjDir(cwd)
 	now := time.Now()
-	for _, cand := range serviceCandidates(projDir) {
-		if rel, ok := relativeToRoot(cand.root, filePath); ok {
+	for _, root := range localCandidateRoots(resolveProjDir(cwd)) {
+		if rel, ok := relativeToRoot(root, filePath); ok {
 			if fileRecentlyEdited(sessionID, rel, now) {
 				return true
 			}

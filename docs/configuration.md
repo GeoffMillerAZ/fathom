@@ -274,6 +274,14 @@ never a startup error, an operational tuning knob like `FATHOM_SCAVENGE_INTERVAL
 above. See `docs/guides/fleet-index.md`'s "Daemon logging" section for the
 log format, rotation and dedupe-summary behavior this controls.
 
+**`FATHOM_GATE_LOCK`** and **`FATHOM_GATE_NICE`** (env vars, not config keys; RT-129,
+design §12.3) tune the machine-wide gate lease `task validate` runs under
+(`scripts/gate-lease.sh`). `FATHOM_GATE_LOCK` is the lease's flock file (default
+`~/.fathom/locks/gate.lock`): every gate on the machine that names the same file queues
+on it, so point concurrent checkouts at one file, not one each. `FATHOM_GATE_NICE=off`
+runs the gate at normal priority instead of `taskpolicy -b` (macOS) or `nice -n 10`.
+`task validate:unleased` is the same gate without the lease. See `docs/usage.md`.
+
 ## The budget: `[tenancy]` (user scope only)
 
 What the daemon may cost the machine it shares (ADR-047,

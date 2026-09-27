@@ -208,6 +208,7 @@ func TestHead_MatchesGitOnARealRepository(t *testing.T) {
 		t.Fatalf("main checkout after a worktree commit: Head = %q, want %s", got, want)
 	}
 }
+
 // TestHead_ReadsRefsWithoutGit (RT-115): Head answers `git rev-parse HEAD`
 // from the repository's files — a loose ref, a packed ref, a detached HEAD,
 // a subdirectory of the work tree and a linked worktree — without running

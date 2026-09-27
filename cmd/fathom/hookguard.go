@@ -16,11 +16,14 @@ package main
 // no guard is active and the wrapper is a pointer load and a tail call.
 
 import (
+	"fmt"
 	"net/http"
+	"os"
 	"sort"
 	"sync/atomic"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/custodian"
 	"github.com/geoffmilleraz/fathom/internal/harness"
 	"github.com/geoffmilleraz/fathom/internal/hookguard"
 )
@@ -102,8 +105,21 @@ func beginHookGuard(channel, marker, harnessID, baseURL string) (end func(), sil
 		return func() {}, true
 	}
 	restore := activateHookGuard(g)
+	// RT-135: this invocation's id, stamped on every beat it emits and on
+	// its latency row, so doctor tells a killed hook from a silent exit.
+	inv := fmt.Sprintf("%d-%d", os.Getpid(), start.UnixNano())
+	prevInv := hookInvocation.Swap(&inv)
+	// RT-134 (§11.3): in every hook the custodian's config walk ends 2 s
+	// under the harness timeout and a directory that is not a repository
+	// is refused, named — SessionStart's attention line included.
+	prevWalk := custodian.SetWalkPolicy(&custodian.WalkPolicy{Deadline: hookWalkDeadline(start, hookTimeoutSec(harnessID, marker)), RefuseNonGit: true})
 	return func() {
+		custodian.SetWalkPolicy(prevWalk)
 		restore()
+		// RT-135 (§11.3): every invocation's wall time against its
+		// deadline, for doctor's hook_budget.
+		recordHookLatency(channel, inv, time.Since(start), g.Deadline.Budget(), time.Now())
+		hookInvocation.Store(prevInv)
 		skips := g.Skips()
 		if len(skips) == 0 {
 			return
@@ -119,4 +135,30 @@ func beginHookGuard(channel, marker, harnessID, baseURL string) (end func(), sil
 			emitBeat(channel, k, map[string]string{"skipped": itoa(skips[hookguard.Verdict(k)])})
 		}
 	}, false
+}
+
+// hookWalkDeadline is the config walk's deadline for a hook that started
+// at start under a timeout of timeoutSec: 2 s under the timeout, never
+// less than half of it; zero (none) when the hook has no timeout.
+func hookWalkDeadline(start time.Time, timeoutSec int) time.Time {
+	if timeoutSec <= 0 {
+		return time.Time{}
+	}
+	total := time.Duration(timeoutSec) * time.Second
+	d := total - 2*time.Second
+	if d < total/2 {
+		d = total / 2
+	}
+	return start.Add(d)
+}
+
+// hookInvocation is the running hook invocation's id (nil outside a hook).
+var hookInvocation atomic.Pointer[string]
+
+// currentHookInvocation is that id, "" outside a hook.
+func currentHookInvocation() string {
+	if p := hookInvocation.Load(); p != nil {
+		return *p
+	}
+	return ""
 }

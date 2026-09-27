@@ -13,7 +13,6 @@ import (
 	"bufio"
 	"encoding/json"
 	"io"
-	"os"
 	"sort"
 	"sync"
 	"time"
@@ -157,7 +156,8 @@ func NewCallLogger(w io.Writer) *CallLogger {
 		surfaceCalls:  make(map[string]int64),
 		surfaceLastTS: make(map[string]time.Time),
 	}
-	if f, ok := w.(*os.File); ok {
+	// *os.File and serve-http's rotating writer both name their file.
+	if f, ok := w.(interface{ Name() string }); ok {
 		l.path = f.Name()
 	}
 	return l

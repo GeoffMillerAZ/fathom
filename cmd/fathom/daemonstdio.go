@@ -27,6 +27,8 @@ package main
 // the new generation.
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -53,11 +55,34 @@ import (
 // the rest of the process's life — worse than the bare fmt.Fprintf it
 // replaced, since an operator had no way to tell "happened once" from
 // "still happening."
-func scavengeTick(outFile, errFile *os.File, maxBytes int64, outLog, flog *dlog.Logger, now func() time.Time) {
+func scavengeTick(outLog, flog *dlog.Logger, now func() time.Time) {
 	debug.FreeOSMemory()
-	rotateDaemonStdio(outFile, errFile, maxBytes, outLog, flog)
 	outLog.FlushDedupe(now())
 	flog.FlushDedupe(now())
+}
+
+// stdioRotateEvery is the stdio logs' own rotation ticker (RT-127, §12.2):
+// off the scavenger tick, so FATHOM_SCAVENGE=off no longer disables it.
+const stdioRotateEvery = 60 * time.Second
+
+// stdioHardCapBytes is where rotation stops copying: a log this large is
+// truncated in place without a prior generation, and one line names the
+// discarded bytes (a copy of hundreds of MiB is the disk write the
+// rotation exists to bound).
+var stdioHardCapBytes int64 = 256 << 20
+
+// runStdioRotation rotates out/errW every interval until ctx ends.
+func runStdioRotation(ctx context.Context, interval time.Duration, out, errW *os.File, outLog, errLog *dlog.Logger) {
+	t := time.NewTicker(interval)
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+			rotateDaemonStdio(out, errW, daemonStdioRotateBytes, outLog, errLog)
+		}
+	}
 }
 
 // daemonStdioRotateBytes bounds fathom-http.log/.err, mirroring
@@ -105,17 +130,28 @@ func rotateDaemonStdio(out, errW *os.File, maxBytes int64, outLog, errLog *dlog.
 	}
 }
 
-// truncateStdioIfNeeded is rotateDaemonStdio's per-file worker; see this
-// file's header comment for why it truncates in place instead of renaming.
+// truncateStdioIfNeeded is rotateStdioLog at the default hard cap.
+func truncateStdioIfNeeded(f *os.File, path string, maxBytes int64, log *dlog.Logger) {
+	rotateStdioLog(f, path, maxBytes, stdioHardCapBytes, log)
+}
+
+// rotateStdioLog is rotateDaemonStdio's per-file worker (RT-127, §12.2);
+// see this file's header comment for why it truncates in place instead of
+// renaming. At maxBytes the current bytes are STREAMED (io.Copy, never
+// read whole into memory) to path+".1" through a temp file, then — under
+// log's write lock — the bytes written since the copy began are appended
+// to it too, and f is truncated and its offset reset: no line is lost and
+// no sparse hole is left. At hardCap it copies nothing: f is truncated in
+// place and one line names the discarded bytes.
 //
 // log MUST be the Logger that writes to f (never some other stream's
-// logger): the backup-read/Truncate/Seek sequence runs inside
+// logger): the tail-copy/Truncate/Seek sequence runs inside
 // log.WithWriteLock so it can never interleave with a concurrent
-// Debug/Info/Warn/Error call's Write landing between the Truncate and the
-// Seek — which would otherwise leave a sparse hole of NUL bytes in f
-// (finding [1]: the daemon runs 24/7 with many goroutines logging through
-// the very same *os.File this function truncates).
-func truncateStdioIfNeeded(f *os.File, path string, maxBytes int64, log *dlog.Logger) {
+// Debug/Info/Warn/Error call's Write (finding [1]: the daemon runs 24/7
+// with many goroutines logging through the very same *os.File). The
+// log.Warn/Info calls stay OUTSIDE the lock: they write through the same
+// Logger, whose mutex is not reentrant.
+func rotateStdioLog(f *os.File, path string, maxBytes, hardCap int64, log *dlog.Logger) {
 	fInfo, err := f.Stat()
 	if err != nil || fInfo.Size() < maxBytes {
 		return
@@ -128,33 +164,64 @@ func truncateStdioIfNeeded(f *os.File, path string, maxBytes int64, log *dlog.Lo
 		return
 	}
 
-	if content, readErr := os.ReadFile(path); readErr == nil {
-		if writeErr := os.WriteFile(path+".1", content, 0o644); writeErr != nil {
-			log.Warn(fmt.Sprintf("log-rotate: writing prior generation for %s: %v", path, writeErr))
-		}
-	} else {
-		log.Warn(fmt.Sprintf("log-rotate: reading %s to back it up before truncating: %v", path, readErr))
-	}
-
-	// Only the Truncate+Seek pair itself needs log.WithWriteLock — NOT the
-	// log.Warn/log.Info calls around it, which would DEADLOCK: they write
-	// through this SAME Logger's lockedWriter, which takes the SAME
-	// (non-reentrant) mutex WithWriteLock is already holding. Scoping the
-	// lock to just these two calls is also exactly what closes the race:
-	// any concurrent Debug/Info/Warn/Error call's Write blocks on the same
-	// mutex until BOTH the Truncate and the Seek have completed, so it can
-	// never land at the pre-truncate offset.
-	var truncErr, seekErr error
-	log.WithWriteLock(func() {
-		if truncErr = f.Truncate(0); truncErr != nil {
+	if fInfo.Size() >= hardCap {
+		var discarded int64
+		var truncErr, seekErr error
+		log.WithWriteLock(func() {
+			if st, err := f.Stat(); err == nil {
+				discarded = st.Size()
+			}
+			if truncErr = f.Truncate(0); truncErr != nil {
+				return
+			}
+			_, seekErr = f.Seek(0, io.SeekStart)
+		})
+		if truncErr != nil || seekErr != nil {
+			log.Warn(fmt.Sprintf("log-rotate: truncating %s: %v", path, errors.Join(truncErr, seekErr)))
 			return
 		}
-		// The write offset survives Truncate — without this Seek, the next
-		// write would land at the file's OLD length, leaving a sparse hole
-		// of NUL bytes from 0 to there instead of starting the new
-		// generation at byte 0.
-		_, seekErr = f.Seek(0, io.SeekStart)
-	})
+		log.Warn(fmt.Sprintf("log-rotate: %s reached %d bytes, over the %d-byte hard cap: truncated in place WITHOUT a prior generation — %d bytes discarded", path, discarded, hardCap, discarded))
+		return
+	}
+
+	src, err := os.Open(path)
+	if err != nil {
+		log.Warn(fmt.Sprintf("log-rotate: opening %s to back it up before truncating: %v", path, err))
+		return
+	}
+	defer src.Close()
+	tmp := path + ".1.tmp"
+	dst, err := os.OpenFile(tmp, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
+	if err != nil {
+		log.Warn(fmt.Sprintf("log-rotate: writing prior generation for %s: %v", path, err))
+		return
+	}
+	copied, copyErr := io.Copy(dst, src)
+	var truncErr, seekErr, tailErr error
+	if copyErr == nil {
+		log.WithWriteLock(func() {
+			// The bytes written while the copy streamed.
+			if _, tailErr = io.Copy(dst, src); tailErr != nil {
+				return
+			}
+			if truncErr = f.Truncate(0); truncErr != nil {
+				return
+			}
+			// The write offset survives Truncate — without this Seek, the
+			// next write would land at the file's OLD length, leaving a
+			// sparse hole of NUL bytes before the new generation.
+			_, seekErr = f.Seek(0, io.SeekStart)
+		})
+	}
+	closeErr := dst.Close()
+	if err := errors.Join(copyErr, tailErr, closeErr); err != nil {
+		os.Remove(tmp)
+		log.Warn(fmt.Sprintf("log-rotate: writing prior generation for %s: %v — not truncated", path, err))
+		return
+	}
+	if err := os.Rename(tmp, path+".1"); err != nil {
+		log.Warn(fmt.Sprintf("log-rotate: keeping prior generation for %s: %v", path, err))
+	}
 	if truncErr != nil {
 		log.Warn(fmt.Sprintf("log-rotate: truncating %s: %v", path, truncErr))
 		return
@@ -163,5 +230,5 @@ func truncateStdioIfNeeded(f *os.File, path string, maxBytes int64, log *dlog.Lo
 		log.Warn(fmt.Sprintf("log-rotate: resetting write offset for %s: %v", path, seekErr))
 		return
 	}
-	log.Info(fmt.Sprintf("log-rotate: %s exceeded %d bytes, truncated in place (one prior generation kept at %s.1)", path, maxBytes, path))
+	log.Info(fmt.Sprintf("log-rotate: %s exceeded %d bytes, truncated in place (one prior generation of %d+ bytes kept at %s.1, streamed)", path, maxBytes, copied, path))
 }

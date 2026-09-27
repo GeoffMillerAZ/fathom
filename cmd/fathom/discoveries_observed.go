@@ -124,9 +124,8 @@ func observedRepoRelPath(p, cwd string) (string, bool) {
 		}
 		p = a
 	}
-	projDir := resolveProjDir(cwd)
-	for _, cand := range serviceCandidates(projDir) {
-		if rel, ok := relativeToRoot(cand.root, p); ok {
+	for _, root := range localCandidateRoots(resolveProjDir(cwd)) {
+		if rel, ok := relativeToRoot(root, p); ok {
 			return rel, true
 		}
 	}
@@ -223,7 +222,9 @@ func observedDiscoveriesLogPathFor(root string) string {
 		return p
 	}
 	base := root
-	if top := gitToplevel(root); top != "" {
+	// By stat, never a git fork: the Read|Grep|Glob observer resolves this
+	// on every discovery call (RT-131); readers resolve it the same way.
+	if top := gitToplevelByStat(root); top != "" {
 		base = top
 	}
 	return filepath.Join(statedir.Resolve(base), "logs", "observed-discoveries.jsonl")

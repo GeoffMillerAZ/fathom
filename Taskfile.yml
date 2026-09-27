@@ -74,7 +74,9 @@ tasks:
 
   test:
     desc: Run all tests (race + CGO/tree-sitter)
-    cmds: ["{{.GO}} test -race ./..."]
+    # RT-129 (§12.3): -p 4 bounds how many package test binaries run at
+    # once on a machine other gates and agents share.
+    cmds: ["{{.GO}} test -race -p 4 ./..."]
 
   test-unit:
     desc: Fast unit tests only (-short)
@@ -175,6 +177,8 @@ tasks:
         done
         [ "$rc" -eq 0 ] || exit "$rc"
         bash scripts/build-cache_test.sh
+        bash scripts/gate-lease_test.sh
+        bash scripts/tenancy-stress_test.sh
         bash third_party/agentic-kit/fathom-pack/scripts/push-check_test.sh
         bash third_party/agentic-kit/fathom-pack/scripts/push-http_test.sh
 
@@ -186,6 +190,13 @@ tasks:
       - bash scripts/ui-css.sh
 
   validate:
+    desc: Full gate under the machine-wide gate lease, at background priority (RT-129) — see validate:unleased
+    # RT-129 (§12.3): concurrent gates on one machine queue on one flock
+    # (~/.fathom/locks/gate.lock; FATHOM_GATE_LOCK overrides) and run under
+    # taskpolicy -b / nice -n 10 (FATHOM_GATE_NICE=off opts out).
+    cmds: ["bash scripts/gate-lease.sh task validate:unleased"]
+
+  validate:unleased:
     desc: Full gate — fmt-check, vet, cue-vet, vendor-check, testkit-schema-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit, bench-l0-gate, test
     # clean-clone-check is IN the gate, not a nice-to-have: the adopter build
     # broke silently once (go.work committed, app-kit unmirrored) and stayed

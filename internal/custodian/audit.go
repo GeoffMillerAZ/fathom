@@ -2,6 +2,8 @@ package custodian
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -11,6 +13,8 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"sync/atomic"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
@@ -643,20 +647,44 @@ func skipPointerTarget(target string) bool {
 // AgentConfigFiles discovers the agent-config corpus (CLAUDE.md and
 // AGENTS.md at any depth), repo-relative and sorted.
 //
-// Inside a git work tree (a .git at root), git's ignore rules are the
+// Inside a git work tree (a .git at root or at any ancestor — a harness
+// root may be a subdirectory of a repository), git's ignore rules are the
 // authority on what belongs to the repo — that is what keeps `ref/` clones
 // and `workspace/` out without this package growing its own ignore
 // engine. Elsewhere (tests, bare directories) a walk with a fixed skip
 // list stands in.
 func AgentConfigFiles(root string) ([]string, error) {
-	if fi, err := os.Stat(filepath.Join(root, ".git")); err == nil && (fi.IsDir() || fi.Mode().IsRegular()) {
+	if insideGitWorkTree(root) {
 		if out, err := gitAgentConfigFiles(root); err == nil {
 			return out, nil
 		}
 		// A git tree whose git invocation failed still deserves an answer:
 		// fall through to the walk rather than reporting nothing.
+	} else if currentWalkPolicy().RefuseNonGit {
+		// RT-134 (§11.3): a hook's audit never walks a directory that is
+		// not a repository — a session opened in $HOME would walk it all.
+		return nil, &NotGitRootError{Root: root}
 	}
-	return walkAgentConfigFiles(root)
+	return walkAgentConfigFiles(root, currentWalkPolicy().limits())
+}
+
+// insideGitWorkTree reports whether root or one of its ancestors holds a
+// .git (a directory, or a worktree's file) — stat calls only, no git fork.
+func insideGitWorkTree(root string) bool {
+	dir, err := filepath.Abs(root)
+	if err != nil {
+		return false
+	}
+	for {
+		if fi, err := os.Stat(filepath.Join(dir, ".git")); err == nil && (fi.IsDir() || fi.Mode().IsRegular()) {
+			return true
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return false
+		}
+		dir = parent
+	}
 }
 
 func gitAgentConfigFiles(root string) ([]string, error) {
@@ -715,14 +743,32 @@ var walkSkipDirs = map[string]struct{}{
 	".idea": {}, ".vscode": {},
 }
 
-func walkAgentConfigFiles(root string) ([]string, error) {
+func walkAgentConfigFiles(root string, lim walkLimits) ([]string, error) {
 	var out []string
+	entries := 0
+	var capped *WalkCappedError
 	err := fs.WalkDir(os.DirFS(root), ".", func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
+		entries++
+		if entries > lim.MaxEntries {
+			capped = &WalkCappedError{Root: root, Reason: fmt.Sprintf("more than %d entries", lim.MaxEntries)}
+			return fs.SkipAll
+		}
+		if !lim.Deadline.IsZero() && entries%256 == 0 && !lim.now().Before(lim.Deadline) {
+			capped = &WalkCappedError{Root: root, Reason: "the hook's deadline passed"}
+			return fs.SkipAll
+		}
 		if d.IsDir() {
 			if _, skip := walkSkipDirs[d.Name()]; skip && p != "." {
+				return fs.SkipDir
+			}
+			if p != "." && strings.Count(p, "/")+1 > lim.MaxDepth {
+				// Deeper than the cap: not walked, and named below.
+				if capped == nil {
+					capped = &WalkCappedError{Root: root, Reason: fmt.Sprintf("directories deeper than %d levels (first: %s)", lim.MaxDepth, p)}
+				}
 				return fs.SkipDir
 			}
 			return nil
@@ -736,7 +782,115 @@ func walkAgentConfigFiles(root string) ([]string, error) {
 		return nil, err
 	}
 	sort.Strings(out)
+	if capped != nil {
+		// A capped walk is a lower bound, never the corpus: the caller
+		// reports it unable to check (I38), with what was found so far.
+		capped.Found = out
+		return nil, capped
+	}
 	return out, nil
+}
+
+// Walk bounds (§11.3): depth 6, 20,000 entries.
+const (
+	walkMaxDepth   = 6
+	walkMaxEntries = 20000
+)
+
+// walkLimits bound walkAgentConfigFiles.
+type walkLimits struct {
+	MaxDepth   int
+	MaxEntries int
+	Deadline   time.Time // zero: none
+	Now        func() time.Time
+}
+
+func (l walkLimits) now() time.Time {
+	if l.Now != nil {
+		return l.Now()
+	}
+	return time.Now()
+}
+
+// WalkCappedError is a config walk that stopped at a cap: its result is a
+// lower bound and is not served as the corpus.
+type WalkCappedError struct {
+	Root   string
+	Reason string
+	Found  []string // what the walk had found when it stopped
+}
+
+func (e *WalkCappedError) Error() string {
+	return fmt.Sprintf("custodian: agent-config walk of %s stopped: %s — the corpus is not checked (%d file(s) found before the cap)", e.Root, e.Reason, len(e.Found))
+}
+
+// NotGitRootError is a hook audit refused at a root that is not a git work
+// tree.
+type NotGitRootError struct{ Root string }
+
+func (e *NotGitRootError) Error() string {
+	return fmt.Sprintf("custodian: %s is not a git work tree — a hook's config audit does not walk it (run `fathom config audit` there to walk it once, capped)", e.Root)
+}
+
+// WalkPolicy is how AgentConfigFiles walks in this process: a hook sets a
+// deadline (2 s under its timeout) and refuses non-git roots.
+type WalkPolicy struct {
+	Deadline     time.Time
+	RefuseNonGit bool
+}
+
+var walkPolicy atomic.Pointer[WalkPolicy]
+
+// SetWalkPolicy sets this process's walk policy (nil: the CLI default —
+// capped, no deadline, non-git roots walked) and returns the previous one.
+func SetWalkPolicy(p *WalkPolicy) (prev *WalkPolicy) { return walkPolicy.Swap(p) }
+
+func currentWalkPolicy() WalkPolicy {
+	if p := walkPolicy.Load(); p != nil {
+		return *p
+	}
+	return WalkPolicy{}
+}
+
+func (p WalkPolicy) limits() walkLimits {
+	return walkLimits{MaxDepth: walkMaxDepth, MaxEntries: walkMaxEntries, Deadline: p.Deadline}
+}
+
+// FileChangedDebounceWindow is how long one FileChanged audit of a file at
+// one mtime covers every session's event for it (§11.3).
+const FileChangedDebounceWindow = 10 * time.Minute
+
+// DebounceFileChanged takes the cross-session lease for auditing file under
+// root at mtime: the first caller gets true and audits; every other hook
+// process — any session — gets false within the window. The lease is a
+// file created O_EXCL in dir, keyed on sha(root, file, mtime); a lease
+// older than the window is replaced.
+func DebounceFileChanged(dir, root, file string, mtime, now time.Time) bool {
+	if dir == "" {
+		return true
+	}
+	h := sha256.Sum256([]byte(root + "\x00" + file + "\x00" + mtime.UTC().Format(time.RFC3339Nano)))
+	p := filepath.Join(dir, hex.EncodeToString(h[:8])+".lease")
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return true // no lease possible: audit (never silently skip)
+	}
+	for attempt := 0; attempt < 2; attempt++ {
+		f, err := os.OpenFile(p, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+		if err == nil {
+			_, _ = f.WriteString(now.UTC().Format(time.RFC3339Nano))
+			_ = f.Close()
+			return true
+		}
+		if !os.IsExist(err) {
+			return true
+		}
+		st, serr := os.Stat(p)
+		if serr != nil || now.Sub(st.ModTime()) < FileChangedDebounceWindow {
+			return false
+		}
+		_ = os.Remove(p) // expired: take it again
+	}
+	return false
 }
 
 func readFileLines(root, rel string) ([]string, error) {

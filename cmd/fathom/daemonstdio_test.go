@@ -6,6 +6,7 @@ package main
 // sparse-file hole of NUL bytes), and one prior generation must be kept.
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -256,7 +257,7 @@ func TestScavengeTick_FlushesDedupeOnBothLoggers(t *testing.T) {
 	// nil files: rotateDaemonStdio degrades to a no-op for those (see
 	// TestRotateDaemonStdio_NoHomeDir_NoOp) — this test is only about the
 	// dedupe-flush wiring, not rotation itself.
-	scavengeTick(nil, nil, 100, outLog, flog, func() time.Time { return fixed.Add(time.Minute) })
+	scavengeTick(outLog, flog, func() time.Time { return fixed.Add(time.Minute) })
 
 	if !strings.Contains(outBuf.String(), "repeated 2 times") {
 		t.Errorf("scavengeTick did not flush outLog's dedupe summary; got %q", outBuf.String())
@@ -265,3 +266,83 @@ func TestScavengeTick_FlushesDedupeOnBothLoggers(t *testing.T) {
 		t.Errorf("scavengeTick did not flush flog's dedupe summary; got %q", errBuf.String())
 	}
 }
+
+// RT-127 (design §12.2): the stdio logs rotate on their own ticker (with
+// FATHOM_SCAVENGE=off too), the prior generation is streamed to .1, and
+// above the hard cap the log is truncated without a copy and one line
+// names the discarded bytes.
+func TestStdioRotationStreamsAndHardCaps(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("FATHOM_SCAVENGE", "off")
+	dir := filepath.Join(home, ".fathom", "logs")
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(dir, "fathom-http.log")
+	f := openSameFile(t, path)
+	var logBuf strings.Builder
+	var mu sync.Mutex
+	log := dlog.New(writerFunc(func(p []byte) (int, error) { mu.Lock(); defer mu.Unlock(); return logBuf.Write(p) }), dlog.LevelDebug, time.Now)
+	original := strings.Repeat("line of daemon output\n", 20)
+	if _, err := f.WriteString(original); err != nil {
+		t.Fatal(err)
+	}
+	prev := daemonStdioRotateBytes
+	daemonStdioRotateBytes = 100
+	t.Cleanup(func() { daemonStdioRotateBytes = prev })
+
+	// Its own ticker, scavenging off.
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() { runStdioRotation(ctx, 5*time.Millisecond, f, nil, log, log); close(done) }()
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		if b, err := os.ReadFile(path + ".1"); err == nil && string(b) == original {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("the stdio ticker did not rotate with FATHOM_SCAVENGE=off")
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	cancel()
+	<-done
+	if st, _ := f.Stat(); st.Size() != 0 {
+		t.Fatalf("rotated log is %d bytes, want truncated", st.Size())
+	}
+	if _, err := os.Stat(path + ".1.tmp"); !os.IsNotExist(err) {
+		t.Fatal("the streamed copy's temp file was left behind")
+	}
+	if _, err := f.WriteString("next\n"); err != nil {
+		t.Fatal(err)
+	}
+	if b, _ := os.ReadFile(path); string(b) != "next\n" {
+		t.Fatalf("after rotation the next write lands at 0: %q", b)
+	}
+
+	// Hard cap: no copy, the discarded bytes named.
+	if err := os.WriteFile(path+".1", []byte("previous generation"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.WriteString(strings.Repeat("y", 500)); err != nil {
+		t.Fatal(err)
+	}
+	rotateStdioLog(f, path, 100, 400, log)
+	if b, _ := os.ReadFile(path + ".1"); string(b) != "previous generation" {
+		t.Fatalf("over the hard cap nothing is copied; .1 = %q", b)
+	}
+	if st, _ := f.Stat(); st.Size() != 0 {
+		t.Fatalf("over the hard cap the log is truncated; size %d", st.Size())
+	}
+	mu.Lock()
+	out := logBuf.String()
+	mu.Unlock()
+	if !strings.Contains(out, "505 bytes discarded") || !strings.Contains(out, "WITHOUT a prior generation") {
+		t.Fatalf("the hard-cap line must name the discarded bytes: %q", out)
+	}
+}
+
+type writerFunc func([]byte) (int, error)
+
+func (w writerFunc) Write(p []byte) (int, error) { return w(p) }

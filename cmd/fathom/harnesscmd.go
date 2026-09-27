@@ -251,6 +251,7 @@ func cmdHarnessHooks(args []string, stdout, stderr io.Writer) int {
 		Type    string `json:"type"`
 		Command string `json:"command"`
 		Timeout int    `json:"timeout"`
+		Async   bool   `json:"async,omitempty"` // RT-169
 	}
 	type group struct {
 		Matcher string  `json:"matcher,omitempty"`
@@ -268,7 +269,7 @@ func cmdHarnessHooks(args []string, stdout, stderr io.Writer) int {
 		}
 		byEvent[sp.event] = append(byEvent[sp.event], group{
 			Matcher: sp.matcher,
-			Hooks:   []entry{{Type: "command", Command: bin + " " + sp.sub, Timeout: timeout}},
+			Hooks:   []entry{{Type: "command", Command: bin + " " + sp.sub, Timeout: timeout, Async: sp.async}},
 		})
 	}
 	// Deterministic output: encoding/json sorts the map keys, and the

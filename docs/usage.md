@@ -29,6 +29,13 @@ lefthook install
 `store-purego` (invariant I2, ADR-025) runs `CGO_ENABLED=0 go test -race ./internal/store/`
 on every validate/push — the store stays pure Go; only the tree-sitter extractors need CGO.
 
+`task validate` runs under a machine-wide gate lease (RT-129, design §12.3): concurrent
+gates on one machine — other repositories, other agents, a pre-push — queue on an flock
+at `~/.fathom/locks/gate.lock` (`FATHOM_GATE_LOCK` overrides) and say who holds it
+(`gate-lease: waiting for gate lease held by pid N (repo X)`); the gate runs at background
+priority (`taskpolicy -b` on macOS, else `nice -n 10`; `FATHOM_GATE_NICE=off` opts out)
+and `go test -p 4`. `task validate:unleased` is the same gate without the lease.
+
 ### Pushing (`task push`)
 
 ```sh
@@ -561,6 +568,8 @@ HTTP endpoints:
 | `POST` | `/rpc/{surface}` | Same protocol scoped to a named surface (`agent`, `companion`, `coding`, `investigation`, `shared`, `platform`, `modules`): filters `tools/list`; an off-surface `tools/call` still **executes** and is logged `off_surface:true` (execute-and-flag, ADR-014 amendment) — the hard gate exists only behind `Server.strictSurfaces` and on hosted `/rpc/modules` |
 | `GET` | `/healthz` | Liveness probe — returns `ok` |
 | `GET` | `/events` | Live freshness (OC-13): SSE with an `id:` per event (`<epoch>-<n>`: the epoch is this daemon process's boot ID, named in the opening `hello` event), a `: keepalive` every 25 s, replay of the last 64 events after `Last-Event-ID` (or `?last_event_id=`) — an id from another epoch (a reconnect across a daemon restart) replays the whole ring, the restart event first — at most 16 subscribers (the 17th gets 503 + `Retry-After`). Kinds: `ingest` (a service's indexed content moved; a hash-gated no-op re-ingest is not one), `compile` (one per new run), `verify` (the verify ledger, polled every 2 s), `session` (the row's repo label mapped to the service whose root it names; a label that is not a name fires only the unscoped `sessions` source), `daemon`. Events carry names and IDs only, never content |
+| `GET` | `/identity?path=DIR[&path=TOPLEVEL]` | Which indexed service a directory is, from the daemon's registry (RT-133; `docs/mcp-tools.md`) — the hooks' identity lookup |
+| `GET` | `/debug/pprof/*`, `/debug/inflight` | pprof (loopback `Host` and loopback peer only, `seconds` ≤ 30, one profile at a time — 429 otherwise) and the in-flight table as JSON (RT-123) |
 | `GET` | `/metrics` | Text metrics: `fathom_uptime_seconds`, `fathom_requests_total`, memory and memo gauges, the ladder (`fathom_tenancy_level`, `fathom_budget_bytes`, `fathom_footprint_bytes`, `fathom_children_footprint_bytes`, `fathom_host_pressure_level`, `fathom_swap_used_bytes`, `fathom_gc_cpu_fraction`, `fathom_quarantined_services`), admission (`fathom_inflight{class,origin}`, `fathom_queue{class}`, `fathom_slots{class}`, `fathom_rejected_total{class,reason,origin}`, `fathom_would_refuse_total{class,reason,origin}`, `fathom_calls_total{class,outcome}`, `fathom_admission_mode`, `fathom_test_callers_rejected_total`), `fathom_console_page_views_total{route=…}` (OC-15: HTML views per console route pattern since start; the durable 30-day record is `~/.fathom/console-views.jsonl`, `FATHOM_CONSOLE_VIEWS` overrides) and `fathom_console_event_subscribers` |
 | `GET` | `/statusz` | Daemon health, per-service index freshness, channel liveness, last compile per layer, (schema 2) the daemon's own build stamp `binary_commit` / `binary_dirty` / `built_at`, and (additive) the ladder's `tenancy` block — level, marks, the last sample and every unknown reading (`footprint unknown (ladder off)`), plus `quarantined` — JSON (schema 3, unchanged) via `Accept: application/json`/`?format=json`; HTML on the console shell otherwise, where every service names its typed-edge state — run by this daemon, recorded by an earlier daemon process (replayed from the store), failed with its reason, **does not apply** (no `go.mod` at the service root), or **unknown** (a Go module with no pass recorded anywhere), never blank (OC-6; `docs/design/observability-surfaces.md` §8 item 6). Gated inside the `/rpc/modules` bearer-token allowlist when `--modules-token-env` is configured; open on the default loopback-only daemon |
 | `POST` | `/reload` | Reload the store (PlatformStore re-scan in platform mode) |
@@ -845,6 +854,24 @@ edit hook's claim-moment rows carry `origin: claim-moment` — the PostToolUse
 `edit-hook` runs the same verify for one plan the moment an edit adds a
 `[x]` to a depth-1 `docs/plans/*.md` and injects the refusal (silent on a
 clean claim or any operational failure).
+
+### Hook fan-out: what a hook does per tool call
+
+Hooks fire on a large share of every agent's tool calls, so each one does the least it
+can (RT-130..RT-133, RT-169, design §11.3):
+
+- `gitToplevel` is memoized in process and cached per working directory across hook
+  processes (`$TMPDIR/fathom-toplevel-cache`, 10 min, keyed by the cwd and `<top>/.git`'s
+  mtime; a `git init` under a cached "not a repository" misses) — no git fork per hook.
+- The Read|Grep|Glob observer and a post-Bash call with no write targets are observe-only:
+  they exit before any git fork or daemon request (the observer finds its repository root
+  by stat). `fathom init` registers the observer `"async": true` on Claude Code, so a Read
+  never waits on it.
+- The Stop hook folds only what the transcript gained since the session's last Stop (a
+  per-session offset stamp beside the session stamps), not up to 16 MB every turn.
+- Identity lookups ask the daemon's `GET /identity` through the cached resolver instead of
+  listing every service, and `SubagentStart` reuses its parent's SessionStart resolution
+  from the session stamp — zero RPCs.
 
 ### Hook deadlines, the shared breaker and the kill switch
 
@@ -1411,7 +1438,17 @@ disclosed, and a ring sample older than 5 min is SKIPped with its age, never jud
 now), `scratch_daemons` (leaked unmanaged daemons — exactly the set `fathom daemon reap
 --apply` kills, so its remedy clears the row — and stale records) and `tenancy_scope`
 (WARNs on a repository `[tenancy]`, which is ignored and named, on admission `off`, and on
-a `memory_limit` / `gc_hint` conflict; env overrides disclosed).
+a `memory_limit` / `gc_hint` conflict; env overrides disclosed). Two more rows judge what
+the hooks and the disk cost (RT-135, §11.3, §12.1), also WARN, never FAIL: `hook_budget`
+(each channel's p99 wall time against its deadline over 24 h, from
+`~/.fathom/hook-latency.jsonl`, which every hook invocation appends to; minutes the
+shared breaker held hooks off; edits served while it was open, whose guards were skipped;
+harness kills — an edit-hook `seen` beat never answered — read from the beats of the whole
+24 h across `hooks.jsonl` and `hooks.jsonl.1`; when the retained beats end sooner, the row
+names the span they cover) and `disk_retention` (`fathom
+gc`'s dry run: reclaimable bytes by class and the largest classes, what it only reports,
+and the home volume's free space; WARN above 512 MiB reclaimable). `fathom resources`'
+hooks line reads the same latency log.
 
 Exit `0` every check passed; `1` at least one check failed; `2` doctor itself could not
 run (bad flags, unresolvable `--path`) — an operational error, not a verdict on the
@@ -1735,6 +1772,41 @@ The session primer (`fathom prime`, the SessionStart hook) carries one line from
 same files — at most 160 B, inside the primer's 3,200 B cap — only when the daemon is
 not normal: stopped by the breaker, shed or refusing, in safe mode, crash-looping, or
 holding a quarantined service (RT-51).
+
+### `gc` — disk retention by class
+
+```sh
+fathom gc [--apply] [--json] [--workspace <dir>] [--call-log <path>]
+```
+
+A dry run by default (RT-125, design §12.1): it lists what each class would reclaim —
+and changes nothing — until `--apply`. Evidence is archived, never deleted:
+
+| Class | Policy |
+|---|---|
+| `call-log` | the serving daemon's writer rotates the live log at 64 MiB (renames only: live → `<log>.1`, the previous `.1` → `<log>.<ts>.pending`) and gzips pending generations in the background; gc never renames a live log — over 64 MiB it is reported, and `--apply` rolls up and gzips pending generations to `<log>.<ts>.jsonl.gz` under the lock the daemon's pass shares. Archives (including `metrics rotate`'s `<log>.archive-<date>`) are never deleted, and past 1 GiB they are reported |
+| `ledgers` | the verify, session and intent ledgers and `decisions.jsonl` over 32 MiB are reported and kept whole — their readers read only the live file, so rotating them would hide history |
+| `session-stamps` | older than 30 days: deleted |
+| `daemon-records` | `~/.fathom/daemon/<id>/record.json` (and legacy `~/.fathom/daemons`) whose pid is not running: deleted (the directory and its lifecycle ledger stay) |
+| `diag` | captures past 10 / 200 MiB per daemon: deleted, oldest first |
+| `tmp` | `$TMPDIR` `fathom-edit-set*`, `fathom-*-test-*`, `fathom-stranger-check*` older than a day: deleted; entries of the hooks' caches (`fathom-filechanged`, `fathom-toplevel-cache`, `fathom-ident-cache`, `fathom-guard-stamps`) older than a day: deleted (the directories stay) |
+| `scenariobench-worktrees` | `workspace/artifacts/scenariobench/worktrees` beyond the newest 5 runs and older than 14 days (a `.pin` file exempts one): deleted |
+| `workspace-bins` | `workspace/tmp/fathom-bin-*` beyond the newest 3: deleted |
+
+Exit `0`, or `1` when any class could not be read or acted on (each error named).
+
+The managed daemon applies the `session-stamps`, `daemon-records`, `diag` and `tmp` classes
+itself once a day (RT-181): never in its first 10 minutes, never while work is in flight or
+its ladder is above normal, one `gc (daily)` line in its log per run. The workspace classes
+stay with this verb. `VACUUM` of a store is not offered (deferred, RT-D10).
+
+The serving daemon also bounds what it writes while it runs (RT-126..RT-128): the call
+log rotates at 64 MiB the same way (console tails read the rotated generation
+`<log>.1`, so traffic history survives a rotation); `fathom-http.log`/`.err` rotate on
+their own 60 s ticker (no longer paused by `FATHOM_SCAVENGE=off`), streaming the prior
+generation to `.1` — above 256 MiB they are truncated without a copy and one line names
+the discarded bytes; and the managed daemon runs `wal_checkpoint(TRUNCATE)` after 5 idle
+minutes, at most hourly (`journal_size_limit` is 64 MiB).
 
 ### `intent` — the intent corpus, audited (ADR-026, **experimental**)
 

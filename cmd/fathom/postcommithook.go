@@ -81,16 +81,10 @@ func cmdPostCommitHook(args []string, stdout, stderr io.Writer) int {
 	}
 	defer endGuard()
 	hc := &http.Client{Timeout: *timeout}
-	svc := *service
-	if svc == "" {
-		// The same daemon-backed identity every hook uses (O1's
-		// deterministic resolver), fail-open to the basename.
-		if cand, ok := resolveIndexedCandidate(hc, *url, root); ok {
-			svc = cand.name
-		} else if cands := serviceCandidates(root); len(cands) > 0 {
-			svc = cands[0].name
-		}
-	}
+	// The same cached, daemon-backed identity every hook uses (RT-133,
+	// O1's deterministic resolver), fail-open to the basename; it also
+	// carries the service's registered root for the guard below.
+	svc, registered, registeredKnown := postCommitIdentity(hc, *url, root, *service)
 	if svc == "" {
 		fmt.Fprintln(stderr, "post-commit: no service resolves for this repo — skipping refresh (fathom init wires one)")
 		return 0
@@ -106,14 +100,19 @@ func cmdPostCommitHook(args []string, stdout, stderr io.Writer) int {
 	// Skip proactively and say so plainly. Fail-open on enumeration
 	// failure (daemon down, or too old to answer list_services): the
 	// ingest call's own refusal below remains the backstop.
-	if svcs, err := fetchServices(hc, *url); err == nil {
-		if info, ok := svcs[strings.ToLower(svc)]; ok && info.path != "" {
-			recCanon, rerr := filepath.EvalSymlinks(info.path)
-			rootCanon, cerr := filepath.EvalSymlinks(root)
-			if rerr == nil && cerr == nil && recCanon != rootCanon {
-				fmt.Fprintf(stderr, "post-commit: %q is registered at %s, not this repo root (%s) — refreshed nothing (a hook must never re-point a service; use `fathom remap` for a deliberate move, or ingest with remap:true)\n", svc, recCanon, rootCanon)
-				return 0
-			}
+	if !registeredKnown {
+		// An explicit --service identity cannot answer, or a daemon that
+		// predates GET /identity: the full list, as before.
+		if svcs, err := fetchServices(hc, *url); err == nil {
+			registered = svcs[strings.ToLower(svc)].path
+		}
+	}
+	if registered != "" {
+		recCanon, rerr := filepath.EvalSymlinks(registered)
+		rootCanon, cerr := filepath.EvalSymlinks(root)
+		if rerr == nil && cerr == nil && recCanon != rootCanon {
+			fmt.Fprintf(stderr, "post-commit: %q is registered at %s, not this repo root (%s) — refreshed nothing (a hook must never re-point a service; use `fathom remap` for a deliberate move, or ingest with remap:true)\n", svc, recCanon, rootCanon)
+			return 0
 		}
 	}
 
@@ -274,4 +273,42 @@ func absPath(p string) (string, error) {
 		return os.Getwd()
 	}
 	return filepath.Abs(p)
+}
+
+// postCommitIdentity resolves the service to refresh for root (explicit
+// wins; else the cached identity's root match; else the first basename
+// candidate) and, when the identity answered for that service, its
+// registered corpus root (known=true; "" when it has none or nothing is
+// indexed under that name). known=false leaves the guard to the full list.
+func postCommitIdentity(hc *http.Client, baseURL, root, explicit string) (svc, registered string, known bool) {
+	if explicit != "" {
+		// A named service is not a directory's identity: the guard reads
+		// the full list for its registered root, as before.
+		return explicit, "", false
+	}
+	id, err := lookupIdentityCached(hc, baseURL, root)
+	if errors.Is(err, errIdentityRouteMissing) {
+		if cand, ok := resolveIndexedCandidate(hc, baseURL, root); ok {
+			svc = cand.name
+		}
+	} else if err == nil && id.MatchedBy == identityByRoot {
+		svc = id.Service
+	}
+	if svc == "" {
+		if cands := serviceCandidates(root); len(cands) > 0 {
+			svc = cands[0].name
+		}
+	}
+	if err != nil || svc == "" {
+		return svc, "", false
+	}
+	switch {
+	case strings.EqualFold(id.Service, svc):
+		return svc, id.Path, true
+	case id.Service == "":
+		// Neither root nor any basename candidate names an indexed
+		// service: svc (a basename) is not registered anywhere.
+		return svc, "", true
+	}
+	return svc, "", false
 }

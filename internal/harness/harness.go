@@ -239,6 +239,10 @@ type EventBinding struct {
 	Input      map[string]string `json:"input,omitempty"`
 	Output     map[string]string `json:"output,omitempty"`
 	Note       string            `json:"note,omitempty"`
+	// ObserveOnly marks a binding whose hook only counts (a beat, a local
+	// row) and never injects, blocks or answers — registered non-blocking
+	// where the harness supports it (RT-169, hookRegistrationAsync).
+	ObserveOnly bool `json:"observe_only,omitempty"`
 }
 
 // EventCatalogEntry is one event the harness OFFERS, and whether fathom
@@ -345,6 +349,10 @@ type Descriptor struct {
 	Skills      SkillsShape           `json:"skills"`
 	MCP         MCPTarget             `json:"mcp"`
 	Env         EnvContract           `json:"env"`
+	// AsyncHooks is true when the harness runs a hook entry marked
+	// `"async": true` in the background, so the agent's tool call never
+	// waits on it (docs/design/responsible-tenant.md §11.3, RT-169).
+	AsyncHooks bool `json:"async_hooks,omitempty"`
 	// Transcript names the transcript format the session ledger can read;
 	// "" makes CapSessionLedger absent by construction (ADR-029 §6).
 	Transcript string `json:"transcript,omitempty"`
@@ -511,3 +519,14 @@ func EffectiveTier(desc Descriptor, now time.Time) string {
 func ExportJSON() ([]byte, error) {
 	return json.MarshalIndent(All(), "", "  ")
 }
+
+// hookRegistrationAsync reports whether binding b is registered
+// non-blocking in d's hook template (RT-169, §11.3): only an observe-only
+// binding, only on a harness that runs async hooks, and never one whose
+// vehicle injects or blocks — async output is never read back.
+func hookRegistrationAsync(d Descriptor, b EventBinding) bool {
+	return d.AsyncHooks && b.ObserveOnly && b.Vehicle == VehicleHookSilent
+}
+
+// RegisterAsync is hookRegistrationAsync for the renderers in cmd/fathom.
+func (d Descriptor) RegisterAsync(b EventBinding) bool { return hookRegistrationAsync(d, b) }

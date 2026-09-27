@@ -64,6 +64,9 @@ package harness
 	input?: {[string]: string}
 	output?: {[string]: string}
 	note?: string
+	// A counting-only binding, registered non-blocking where the harness
+	// runs async hooks (RT-169).
+	observe_only?: bool
 }
 
 #EventCatalogEntry: {
@@ -110,6 +113,9 @@ package harness
 	instruction_files: [#InstructionFile, ...#InstructionFile]
 	hook_files?: [...#HookFile]
 	hooks?: [...#EventBinding]
+	// The harness runs a hook entry marked "async": true in the
+	// background (RT-169).
+	async_hooks?: bool
 	// The catalogue of every event the harness OFFERS, with the reason
 	// fathom leaves each unwired one unwired (HP-32). Absent on a
 	// descriptor whose event surface fathom has not catalogued — which

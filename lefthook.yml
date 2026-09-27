@@ -46,9 +46,14 @@ pre-push:
     # ingests HEAD into a scratch store under workspace/tmp (gitignored) and
     # verifies against that; an ingest failure is an operational error
     # (fail-open with a named line), never a silent pass.
+    # RT-129 (§12.3): the scratch ingest and each verify run under the same
+    # machine-wide gate lease and background priority as `task validate`
+    # (scripts/gate-lease.sh), so concurrent pushes queue rather than
+    # ingest side by side.
     verify:
       run: |
         [ -x bin/fathom ] || exit 0
+        lease="bash scripts/gate-lease.sh"
         shopt -s nullglob
         plans=()
         for f in docs/plans/*.md; do
@@ -59,13 +64,13 @@ pre-push:
         mkdir -p workspace/tmp
         store="workspace/tmp/gate-verify.sqlite"
         rm -f "$store" "$store-wal" "$store-shm"
-        if ! bin/fathom ingest --store "$store" --service fathom --path . >workspace/tmp/gate-verify-ingest.log 2>&1; then
+        if ! $lease bin/fathom ingest --store "$store" --service fathom --path . >workspace/tmp/gate-verify-ingest.log 2>&1; then
           echo "fathom verify: scratch ingest of HEAD failed — allowing push (fail-open, see workspace/tmp/gate-verify-ingest.log)"
           exit 0
         fi
         rc=0
         for f in "${plans[@]}"; do
-          bin/fathom verify --strict --store "$store" --service fathom --plan "$f" --quiet
+          $lease bin/fathom verify --strict --store "$store" --service fathom --plan "$f" --quiet
           code=$?
           if [ $code -eq 1 ]; then rc=1; fi
           if [ $code -eq 2 ]; then

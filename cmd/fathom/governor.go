@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime/pprof"
 	"sort"
 	"strings"
 	"sync"
@@ -64,7 +63,10 @@ type governorConfig struct {
 	memRead      func() scavengeMem // RT-45: the scavenge line's readings; nil = readScavengeMem
 	killChildren func() int
 	captureDiag  func(trigger string) string // returns the capture's path
-	exit         func(code int)
+	// flight is the flight recorder started at shed and stopped back at
+	// normal (§13.4); nil records no trace.
+	flight *flightRecorder
+	exit   func(code int)
 	// observe sees each sample and the level after it (nil: none).
 	observe func(s *tenancy.Sample, level tenancy.Level)
 	// ring is the resource ring (§13.1, RT-47): one record a minute and
@@ -97,15 +99,23 @@ type governor struct {
 	exited    bool
 	cancelled []string              // the last refuse cancellation, in order
 	abandoned int64                 // calls cancelled as abandoned-by-governor, process lifetime
-	lastDiag  time.Time             // the last refuse-entry diagnostic capture
+	lastDiag  map[string]time.Time  // the last capture per trigger kind (§13.4 rate)
+	crossed   int                   // the highest power of two of the footprint captured this process: 1 GiB → 1, 2 → 2, 4 → 3, 8 → 4
+	critical  bool                  // the last sample's pressure was critical
 	disk      tenancy.DiskWriteRing // RT-162: bytes written per minute, 24 h
 	// childWritten is the children's last known bytes-written total: a
 	// sample whose child reading is unknown holds it rather than reading as
 	// a counter reset (which the ring would count as all-new writes).
 	childWritten int64
-	diagPath     string    // the newest capture's directory
-	diagAt       time.Time // and when it was taken
-	diagWhy      string    // and its trigger
+	// pendingDiag is the captures this tick asked for, taken after g.mu is
+	// released: a capture renders the governor's own /metrics lines
+	// (g.snapshot takes g.mu) and writes profiles, neither of which may
+	// run under the lock (RT-122 hygiene).
+	pendingDiag []pendingCapture
+	diagMu      sync.Mutex // serializes captures (and their pruning)
+	diagPath    string     // the newest capture's directory
+	diagAt      time.Time  // and when it was taken
+	diagWhy     string     // and its trigger
 
 	ringMinute int64 // unix minute of the last minute record (0: none yet)
 	ringErr    bool  // a ring write failed (logged once until one succeeds)
@@ -153,8 +163,8 @@ func (g *governor) ringRecord(at time.Time, transition bool) tenancy.RingRecord 
 // freeEvery bounds debug.FreeOSMemory while shed (§2.1).
 const freeEvery = 30 * time.Second
 
-// Diagnostic capture bounds (§13.4): at most one refuse-entry capture per
-// diagEvery, and the capture directory keeps at most diagKeep captures and
+// Diagnostic capture bounds (§13.4): at most one capture of each trigger
+// kind per diagEvery, and the capture directory keeps at most diagKeep captures and
 // diagKeepBytes, oldest pruned first.
 const (
 	diagEvery     = 10 * time.Minute
@@ -185,10 +195,43 @@ func newGovernor(cfg governorConfig) *governor {
 	return &governor{governorConfig: cfg, rt: tenancy.NewRuntimeReader()}
 }
 
-// tick takes one sample, steps the ladder and applies the rung.
+// pendingCapture is one threshold capture a tick asked for.
+type pendingCapture struct {
+	trigger string
+	at      time.Time
+}
+
+// tick takes one sample, steps the ladder and applies the rung. The
+// threshold captures the tick asked for run after g.mu is released.
 func (g *governor) tick(at time.Time, late time.Duration) tenancy.Transition {
 	g.mu.Lock()
-	defer g.mu.Unlock()
+	tr := g.tickLocked(at, late)
+	pending := g.pendingDiag
+	g.pendingDiag = nil
+	g.mu.Unlock()
+	g.runCaptures(pending)
+	return tr
+}
+
+// runCaptures takes the queued captures outside g.mu, then records the
+// newest one under it.
+func (g *governor) runCaptures(pending []pendingCapture) {
+	for _, pc := range pending {
+		g.diagMu.Lock()
+		p := g.captureDiag(pc.trigger)
+		g.diagMu.Unlock()
+		if p == "" {
+			continue
+		}
+		g.mu.Lock()
+		g.diagPath, g.diagAt, g.diagWhy = p, pc.at, pc.trigger
+		g.mu.Unlock()
+		g.logf("tenancy: diagnostics captured (" + pc.trigger + ") → " + p)
+	}
+}
+
+// tickLocked is tick under g.mu.
+func (g *governor) tickLocked(at time.Time, late time.Duration) tenancy.Transition {
 	if g.exited {
 		return tenancy.Transition{}
 	}
@@ -201,6 +244,7 @@ func (g *governor) tick(at time.Time, late time.Duration) tenancy.Transition {
 	if g.sample.DiskWritten >= 0 {
 		g.disk.Add(g.sample.At, g.sample.DiskWritten+g.childWritten, g.inflight.ExplicitIngestInFlight())
 	}
+	g.captureCrossings(at)
 	tr := tenancy.StepLadder(&g.st, &g.sample, &g.budget)
 	if tr.Changed {
 		g.lastTrans = tr
@@ -239,6 +283,9 @@ func (g *governor) applyLadderLevel(tr tenancy.Transition) {
 	switch {
 	case tr.To > tr.From:
 		if tr.From < tenancy.LevelShed {
+			if err := g.flight.start(); err != nil {
+				g.logf(fmt.Sprintf("tenancy: flight recorder not started (%v) — captures carry no trace.out", err))
+			}
 			g.drop(g.actions.dropShed)
 			if g.actions.pauseBackground != nil {
 				g.actions.pauseBackground(true)
@@ -250,17 +297,14 @@ func (g *governor) applyLadderLevel(tr tenancy.Transition) {
 			}
 			g.drop(g.actions.dropRefuse)
 			g.cancelHeavy()
-			if tr.To == tenancy.LevelRefuse && g.captureDiag != nil && (g.lastDiag.IsZero() || tr.At.Sub(g.lastDiag) >= diagEvery) {
-				g.lastDiag = tr.At
-				if p := g.captureDiag("refuse"); p != "" {
-					g.diagPath, g.diagAt, g.diagWhy = p, tr.At, "refuse"
-					g.logf("tenancy: diagnostics captured → " + p)
-				}
+			if tr.To == tenancy.LevelRefuse {
+				g.captureRateLimited("refuse", "refuse", tr.At)
 			}
 		}
 		g.scavenge(tr.At, tr.To >= tenancy.LevelRefuse, tr.To.String()+" entry")
 	case tr.To == tenancy.LevelNormal:
 		g.halted = false
+		g.flight.stop()
 		if g.actions.pauseBackground != nil {
 			g.actions.pauseBackground(false)
 		}
@@ -288,6 +332,54 @@ func (g *governor) idleCheck(at time.Time) {
 	g.drop(g.actions.dropIdle)
 	g.logf(fmt.Sprintf("tenancy: idle %s — memo caches dropped", g.budget.CacheIdleDrop))
 	g.scavenge(at, true, "idle drop")
+}
+
+// captureCrossings takes the threshold captures a sample can trigger
+// (§13.4, RT-122): the first crossing of each power of two of the
+// process's own footprint (1, 2, 4, 8 GiB — one capture, named for the
+// highest power newly crossed; one the rate limit suppressed is taken
+// when the window reopens if the footprint is still over it) and entry to
+// pressure critical. Called under g.mu.
+func (g *governor) captureCrossings(at time.Time) {
+	if fp := g.sample.Footprint; fp > 0 {
+		p := 0
+		for p < 4 && fp > tenancy.GiB<<p {
+			p++
+		}
+		// A crossing the rate limit suppressed is deferred, not spent:
+		// g.crossed moves only when a capture is queued, so the window
+		// reopening with the footprint still over a higher power takes
+		// that (more informative) capture then.
+		if p > g.crossed && g.captureRateLimited("footprint", fmt.Sprintf("footprint-%dGiB", 1<<(p-1)), at) {
+			g.crossed = p
+		}
+	}
+	critical := g.sample.Pressure == tenancy.PressureCritical
+	if critical && !g.critical {
+		g.captureRateLimited("pressure", "pressure-critical", at)
+	}
+	g.critical = critical
+}
+
+// captureRateLimited captures trigger unless a capture of the same kind
+// ran within diagEvery. Each kind is limited on its own, so a fast climb
+// that crosses 1 GiB, then enters refuse a minute later, keeps both
+// captures (the refuse one is the one that matters); the exit rung is
+// never limited. Called under g.mu: it only queues the capture, which
+// tick takes once the lock is released. It reports whether it queued one.
+func (g *governor) captureRateLimited(kind, trigger string, at time.Time) bool {
+	if g.captureDiag == nil {
+		return false
+	}
+	if last, ok := g.lastDiag[kind]; ok && at.Sub(last) < diagEvery {
+		return false
+	}
+	if g.lastDiag == nil {
+		g.lastDiag = map[string]time.Time{}
+	}
+	g.lastDiag[kind] = at
+	g.pendingDiag = append(g.pendingDiag, pendingCapture{trigger: trigger, at: at})
+	return true
 }
 
 func (g *governor) drop(ds []namedDrop) {
@@ -376,7 +468,7 @@ func (g *governor) exitOverBudget(tr tenancy.Transition) {
 	}
 	diag := ""
 	if g.captureDiag != nil {
-		diag = g.captureDiag("exit")
+		diag = g.captureDiag(diagTriggerExit)
 		if diag != "" {
 			g.diagPath, g.diagAt, g.diagWhy = diag, g.sample.At, "exit"
 		}
@@ -722,30 +814,6 @@ func boolGauge(b bool) int {
 		return 1
 	}
 	return 0
-}
-
-// captureExitDiag writes the exit rung's diagnostics — the heap profile and
-// the in-flight list, nothing slower — under dir/<ts>-<trigger>/ (§13.4)
-// and returns the directory.
-func captureExitDiag(dir string, inflight *tenancy.InFlight, now func() time.Time) func(trigger string) string {
-	return func(trigger string) string {
-		if dir == "" {
-			return ""
-		}
-		d := filepath.Join(dir, now().UTC().Format("20060102T150405Z")+"-"+trigger)
-		if err := os.MkdirAll(d, 0o700); err != nil {
-			return ""
-		}
-		if f, err := os.Create(filepath.Join(d, "heap.pb.gz")); err == nil {
-			_ = pprof.Lookup("heap").WriteTo(f, 0)
-			_ = f.Close()
-		}
-		if b, err := json.MarshalIndent(inflight.Snapshot(), "", "  "); err == nil {
-			_ = os.WriteFile(filepath.Join(d, "inflight.json"), b, 0o600)
-		}
-		pruneDiagCaptures(dir, diagKeep, diagKeepBytes)
-		return d
-	}
 }
 
 // pruneDiagCaptures keeps dir's newest captures — at most keep of them and

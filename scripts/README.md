@@ -77,3 +77,29 @@ Runs the full validation gate and prints a compact pass/fail summary.
 # With verbose task output
 TASK_FLAGS=--verbose ./scripts/ci.sh
 ```
+
+## gate-lease.sh
+
+`task validate` runs under it (RT-129, design §12.3): an flock on
+`~/.fathom/locks/gate.lock` (`FATHOM_GATE_LOCK` overrides) queues concurrent gates on one
+machine and names the holder; the command runs at background priority (`taskpolicy -b` on
+macOS, else `nice -n 10`; `FATHOM_GATE_NICE=off` opts out). `gate-lease_test.sh` (in
+`task scripts-check`) proves two holders serialize.
+
+## tenancy-stress.sh
+
+The responsible-tenant stress harness (RT-136, design §15.2) — committed, not in the
+gate, and every run needs `--i-have-the-operators-go-ahead` on a quiet machine. It copies
+a store with `sqlite3 .backup`, generates a fixture corpus under an external volume,
+starts an unmanaged daemon (its own child, `--lifecycle-id tenancy-stress-<run>`, a scratch
+`HOME`, `FATHOM_TENANCY_BUDGET` forced), drives the load mix, SIGKILLs and relaunches it,
+samples `/metrics` every second and writes a reading with the verdict first. It refuses
+the managed daemon's port, store and call log and a fixture on the internal disk;
+`--self-check` exercises those refusals and is run by `tenancy-stress_test.sh` in
+`task scripts-check`.
+
+```bash
+bash scripts/tenancy-stress.sh --self-check
+bash scripts/tenancy-stress.sh --i-have-the-operators-go-ahead --store-source workspace/db/fleet.sqlite \
+  --run-root /Volumes/<external>/tmp            # RT-M3 / RT-M5 / RT-M10 (op rows)
+```

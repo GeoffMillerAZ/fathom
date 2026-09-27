@@ -48,6 +48,8 @@ type resourcesEnv struct {
 	labels func() []string                                           // installed launchd labels
 	killSw func(dir string, now time.Time) tenancy.KillSwitchVerdict // nil: readKillSwitch
 	size   func(path string) int64                                   // nil: dirSize
+	// hookLat reads hook-latency.jsonl since a time (RT-135); nil: not read.
+	hookLat func(since time.Time) []hookLatencyRow
 }
 
 // resourcesReport is `resources --json`.
@@ -212,8 +214,22 @@ func resourcesDiskJudgment(blk *governorSnapshot) string {
 	return blk.DiskWrites
 }
 
-// hookLatencyNote: hook p99 is not measured by this build; disclosed.
-const hookLatencyNote = "p99 not measured by this build (hook beats carry outcomes, not latency)"
+// hookLatencyNote: no hook invocation recorded a wall time in the window
+// (hook-latency.jsonl, RT-135); disclosed, never a zero.
+const hookLatencyNote = "p99 not measured: no hook latency recorded in 24 h (hook-latency.jsonl)"
+
+// hookLatencyLine is the hooks line's latency: each channel's p99 against
+// its deadline over the last 24 h, or the note.
+func hookLatencyLine(read func(since time.Time) []hookLatencyRow, now time.Time) string {
+	if read == nil {
+		return hookLatencyNote
+	}
+	rows := read(now.Add(-hookBudgetWindow))
+	if len(rows) == 0 {
+		return hookLatencyNote
+	}
+	return hookLatencySummary(rows)
+}
 
 // lifecycleNotRecorded discloses a ledger with no start row: the build
 // that wrote it records over-budget exits (and operator resets, adoptions)
@@ -477,7 +493,7 @@ func buildResources(env resourcesEnv, id, url string, since time.Duration) resou
 	}
 
 	// Hooks.
-	rep.Hooks = resourcesHooks{URL: hookguard.NormalizeURL(d.URL), Breaker: "not read", Latency: hookLatencyNote}
+	rep.Hooks = resourcesHooks{URL: hookguard.NormalizeURL(d.URL), Breaker: "not read", Latency: hookLatencyLine(env.hookLat, env.now())}
 	if env.hooks != nil {
 		dec := env.hooks(d.URL)
 		rep.Hooks.Breaker, rep.Hooks.Reason = string(dec.Verdict), dec.Reason
@@ -972,6 +988,9 @@ func liveResourcesEnv() resourcesEnv {
 		hooks:  func(u string) hookguard.Decision { return hookguard.BreakerAllows(&hookguard.Guard{}, u) },
 		budget: resolveLocalBudget,
 		labels: installedAgentLabels,
+		hookLat: func(since time.Time) []hookLatencyRow {
+			return readHookLatency(hookLatencyPath(), since)
+		},
 	}
 }
 

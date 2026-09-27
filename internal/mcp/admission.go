@@ -15,6 +15,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"runtime/pprof"
 	"strconv"
 	"sync"
 	"time"
@@ -175,11 +176,15 @@ func (s *Server) settleCall(ctx context.Context, tool string, tk *tenancy.Ticket
 	case ab != nil:
 		result, rpcErr = nil, ab
 		meta.outcome, release = outcomeAbandonedByGovernor, tenancy.OutcomeAbandoned
+		tenancy.RecordAbandoned(tool, tenancy.AbandonGovernor)
 	case tk != nil && ctx.Err() != nil:
 		cause := "the client went away"
+		why := tenancy.AbandonClient
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
 			cause = "the call's deadline passed (the " + tk.Class().String() + "-class server deadline or X-Fathom-Deadline)"
+			why = tenancy.AbandonDeadline
 		}
+		tenancy.RecordAbandoned(tool, why)
 		result, rpcErr = nil, &rpcError{Code: ErrCodeInternal, Message: "abandoned: " + cause + "; " + tool + " did not finish and no partial answer is served",
 			Data: map[string]any{"outcome": string(tenancy.OutcomeAbandoned), "cause": cause}}
 		meta.outcome, release = string(tenancy.OutcomeAbandoned), tenancy.OutcomeAbandoned
@@ -195,6 +200,7 @@ func (s *Server) settleCall(ctx context.Context, tool string, tk *tenancy.Ticket
 	}
 	if tk != nil {
 		meta.class, meta.queued, meta.bytesRead = tk.Class(), tk.Queued(), tk.BytesRead()
+		tenancy.RecordBytesRead(tool, meta.bytesRead)
 		tk.Release(release)
 	}
 	return result, rpcErr, partial, meta
@@ -212,7 +218,20 @@ func runHandler(ctx context.Context, te toolEntry, args json.RawMessage) (result
 				Data: map[string]any{"outcome": string(tenancy.OutcomeError), "panic": fmt.Sprint(v)}}
 		}
 	}()
-	return te.handler(ctx, args)
+	// RT-122 (§13.4): the handler's goroutine — and every goroutine it
+	// starts — carries the tool and origin as pprof labels, so a
+	// diagnostic capture's goroutine.txt names whose work is running.
+	pprof.Do(ctx, pprof.Labels("tool", te.desc.Name, "origin", firstNonEmptyOrigin(originFrom(ctx))), func(lctx context.Context) {
+		result, rpcErr = te.handler(lctx, args)
+	})
+	return result, rpcErr
+}
+
+func firstNonEmptyOrigin(o string) string {
+	if o == "" {
+		return "unknown"
+	}
+	return o
 }
 
 // serviceOfArgs is args' "service", best-effort.
