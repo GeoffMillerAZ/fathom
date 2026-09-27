@@ -91,6 +91,11 @@ func readHookLatency(path string, since time.Time) []hookLatencyRow {
 	return out
 }
 
+// inHookSkip: doctor --brief (the Setup hook) prints FAIL rows only, and
+// these rows never FAIL — their log and disk scans are not spent inside a
+// hook's deadline.
+const inHookSkip = "not run inside a hook (doctor --brief shows FAIL rows only; this row never FAILs) — run `fathom doctor`"
+
 // hookBudgetWindow is what hook_budget judges.
 const hookBudgetWindow = 24 * time.Hour
 
@@ -149,6 +154,9 @@ func checkHookBudget(lat []hookLatencyRow, beats []heartbeat.Beat, now time.Time
 
 // checkHookBudgetFromFiles reads the logs and judges them.
 func checkHookBudgetFromFiles(now time.Time) doctorCheck {
+	if activeHookGuard() != nil {
+		return doctorCheck{Name: "hook_budget", Status: doctorSkipped, Reason: inHookSkip}
+	}
 	beats, _ := readBeatLogTail(beatLogPath(), sessionLedgerBeatTailBytes)
 	return checkHookBudget(readHookLatency(hookLatencyPath(), now.Add(-hookBudgetWindow)), beats, now)
 }
@@ -212,6 +220,9 @@ func checkDiskRetention(rep gcReport, free int64, freeVol string) doctorCheck {
 
 // checkDiskRetentionFromDisk runs gc's dry run for root's workspace.
 func checkDiskRetentionFromDisk(root string) doctorCheck {
+	if activeHookGuard() != nil {
+		return doctorCheck{Name: "disk_retention", Status: doctorSkipped, Reason: inHookSkip}
+	}
 	home, _ := os.UserHomeDir()
 	ws := ""
 	if top := gitToplevel(root); top != "" {
