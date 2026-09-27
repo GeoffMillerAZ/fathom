@@ -226,3 +226,31 @@ func TestDiagCaptureRateLimitedAndRetained(t *testing.T) {
 		t.Fatalf("retention kept %d captures, want %d", len(ents), diagKeep)
 	}
 }
+
+// RT-122 hygiene: the production capturer (metrics nil → the governor's own
+// /metrics lines) runs outside g.mu. Under the lock, captureDiagnostics →
+// governorMetricLines → g.snapshot → g.mu self-deadlocks the governor.
+func TestProductionDiagCaptureDoesNotDeadlockGovernor(t *testing.T) {
+	r := newGovRig(t)
+	dir := t.TempDir()
+	r.g.captureDiag = diagCapturer(dir, diagSources{inflight: tenancy.NewInFlight(nil), now: time.Now, flight: &flightRecorder{}})
+	prev := activeGovernor.Load()
+	activeGovernor.Store(r.g)
+	t.Cleanup(func() { activeGovernor.Store(prev) })
+	r.host.set(1500*tenancy.MiB, 0)
+	done := make(chan struct{})
+	go func() { r.ticks(1); close(done) }()
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("DEADLOCK: tick under g.mu -> captureDiagnostics -> governorMetricLines -> g.snapshot -> g.mu")
+	}
+	s := tenancyStatus(r.g)
+	if s.LastDiag == nil || !strings.Contains(s.LastDiag.Path, "footprint-1GiB") {
+		t.Fatalf("the capture is recorded after the tick: %+v", s.LastDiag)
+	}
+	b, err := os.ReadFile(filepath.Join(s.LastDiag.Path, "metrics.txt"))
+	if err != nil || !strings.Contains(string(b), "fathom_footprint_bytes") {
+		t.Fatalf("metrics.txt carries the governor's own lines: %v %s", err, b)
+	}
+}

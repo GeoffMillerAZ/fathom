@@ -101,9 +101,15 @@ type governor struct {
 	// sample whose child reading is unknown holds it rather than reading as
 	// a counter reset (which the ring would count as all-new writes).
 	childWritten int64
-	diagPath     string    // the newest capture's directory
-	diagAt       time.Time // and when it was taken
-	diagWhy      string    // and its trigger
+	// pendingDiag is the captures this tick asked for, taken after g.mu is
+	// released: a capture renders the governor's own /metrics lines
+	// (g.snapshot takes g.mu) and writes profiles, neither of which may
+	// run under the lock (RT-122 hygiene).
+	pendingDiag []pendingCapture
+	diagMu      sync.Mutex // serializes captures (and their pruning)
+	diagPath    string     // the newest capture's directory
+	diagAt      time.Time  // and when it was taken
+	diagWhy     string     // and its trigger
 
 	ringMinute int64 // unix minute of the last minute record (0: none yet)
 	ringErr    bool  // a ring write failed (logged once until one succeeds)
@@ -183,10 +189,43 @@ func newGovernor(cfg governorConfig) *governor {
 	return &governor{governorConfig: cfg, rt: tenancy.NewRuntimeReader()}
 }
 
-// tick takes one sample, steps the ladder and applies the rung.
+// pendingCapture is one threshold capture a tick asked for.
+type pendingCapture struct {
+	trigger string
+	at      time.Time
+}
+
+// tick takes one sample, steps the ladder and applies the rung. The
+// threshold captures the tick asked for run after g.mu is released.
 func (g *governor) tick(at time.Time, late time.Duration) tenancy.Transition {
 	g.mu.Lock()
-	defer g.mu.Unlock()
+	tr := g.tickLocked(at, late)
+	pending := g.pendingDiag
+	g.pendingDiag = nil
+	g.mu.Unlock()
+	g.runCaptures(pending)
+	return tr
+}
+
+// runCaptures takes the queued captures outside g.mu, then records the
+// newest one under it.
+func (g *governor) runCaptures(pending []pendingCapture) {
+	for _, pc := range pending {
+		g.diagMu.Lock()
+		p := g.captureDiag(pc.trigger)
+		g.diagMu.Unlock()
+		if p == "" {
+			continue
+		}
+		g.mu.Lock()
+		g.diagPath, g.diagAt, g.diagWhy = p, pc.at, pc.trigger
+		g.mu.Unlock()
+		g.logf("tenancy: diagnostics captured (" + pc.trigger + ") → " + p)
+	}
+}
+
+// tickLocked is tick under g.mu.
+func (g *governor) tickLocked(at time.Time, late time.Duration) tenancy.Transition {
 	if g.exited {
 		return tenancy.Transition{}
 	}
@@ -294,7 +333,8 @@ func (g *governor) captureCrossings(at time.Time) {
 // ran within diagEvery. Each kind is limited on its own, so a fast climb
 // that crosses 1 GiB, then enters refuse a minute later, keeps both
 // captures (the refuse one is the one that matters); the exit rung is
-// never limited. Called under g.mu.
+// never limited. Called under g.mu: it only queues the capture, which
+// tick takes once the lock is released.
 func (g *governor) captureRateLimited(kind, trigger string, at time.Time) {
 	if g.captureDiag == nil {
 		return
@@ -306,10 +346,7 @@ func (g *governor) captureRateLimited(kind, trigger string, at time.Time) {
 		g.lastDiag = map[string]time.Time{}
 	}
 	g.lastDiag[kind] = at
-	if p := g.captureDiag(trigger); p != "" {
-		g.diagPath, g.diagAt, g.diagWhy = p, at, trigger
-		g.logf("tenancy: diagnostics captured (" + trigger + ") → " + p)
-	}
+	g.pendingDiag = append(g.pendingDiag, pendingCapture{trigger: trigger, at: at})
 }
 
 func (g *governor) drop(ds []namedDrop) {
