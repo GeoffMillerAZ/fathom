@@ -382,7 +382,7 @@ elided, bytes_read, reason}` in its envelope (or its `batch` entry). A test bina
 | `api_diff` | `index` |
 | `arch_conformance` | `index` |
 | `batch` | `point` |
-| `blast_radius` | `tree` **RT-89:** `service_ref_hops` join routes and client calls extracted at ingest (stored rows, never a per-call source read); `service_ref_unextracted` names services not re-ingested since. |
+| `blast_radius` | `tree` |
 | `brief` | `tree` |
 | `capabilities` | `point` |
 | `cloc` | `tree` |
@@ -390,7 +390,7 @@ elided, bytes_read, reason}` in its envelope (or its `batch` entry). A test bina
 | `compile_layer` | `ingest` |
 | `complexity` | `index` |
 | `contradiction_scan` | `index` |
-| `cross_repo_blast_radius` | `fleet` **RT-89:** `service_ref_hops` join routes and client calls extracted at ingest (stored rows, never a per-call source read); `service_ref_unextracted` names services not re-ingested since. |
+| `cross_repo_blast_radius` | `fleet` |
 | `cross_repo_callers` | `fleet` |
 | `dead_code` | `index` |
 | `dep_drift` | `fleet` |
@@ -427,7 +427,7 @@ elided, bytes_read, reason}` in its envelope (or its `batch` entry). A test bina
 | `rename_impact` | `index` |
 | `rename_service` | `ingest` |
 | `repo_map` | `index` |
-| `review_diff` | `fleet` **RT-89:** `service_ref_hops` join routes and client calls extracted at ingest (stored rows, never a per-call source read); `service_ref_unextracted` names services not re-ingested since. |
+| `review_diff` | `fleet` |
 | `safe_delete_check` | `tree` |
 | `search` | `tree` |
 | `secret_scan` | `tree` |
