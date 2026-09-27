@@ -112,3 +112,43 @@ func TestConsolePlansVerifyInProcessNoRequeue(t *testing.T) {
 		t.Errorf("a hung verify_plan = %v after %s; want the deadline named", err, time.Since(start))
 	}
 }
+
+// TestConsolePlanVerifyPanicFinishes (RT-116, RT-117): a plan verification
+// that panics finishes as a failure the page names — its waiters are
+// released and its key leaves the flights — never a key stuck "verifying"
+// that every later render rejoins.
+func TestConsolePlanVerifyPanicFinishes(t *testing.T) {
+	f := newConsoleFixture(t)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "loopback", http.StatusTeapot)
+	}))
+	t.Cleanup(ts.Close)
+	prev := inProcessReg.Load()
+	inProcessReg.Store(&inProcessRegistry{
+		self:    ts.URL,
+		statusz: func(context.Context) StatuszReport { return StatuszReport{} },
+		rpc:     func(context.Context, []byte) ([]byte, bool) { panic("the handler broke") },
+	})
+	t.Cleanup(func() { inProcessReg.Store(prev) })
+	root := t.TempDir()
+	mustWrite(t, filepath.Join(root, "README.md"), "# Runbook\n")
+	planPath := filepath.Join(root, "docs", "plans", "p.md")
+	mustWrite(t, planPath, "# P\n\n- [x] A row {id: P-1, symbol: Nothing}\n")
+	deps := newConsoleDeps(f.client, ts.URL, f.now)
+	p := plansFor(deps)
+	_, e := p.plan(context.Background(), serviceRoot{Service: "proof-service", Root: root}, planPath)
+	if e == nil {
+		t.Fatal("the plan was not submitted")
+	}
+	select {
+	case <-e.done:
+	case <-time.After(10 * time.Second):
+		t.Fatal("a panicking verification never released its waiters")
+	}
+	p.mu.Lock()
+	finished, errText, flights := e.finished, e.err, len(p.flights)
+	p.mu.Unlock()
+	if !finished || !strings.Contains(errText, "panicked") || flights != 0 {
+		t.Fatalf("finished=%v err=%q flights=%d; want a finished failure naming the panic and no flight left", finished, errText, flights)
+	}
+}

@@ -196,6 +196,23 @@ func trimConserveCacheLocked() {
 func computeRefactorReport(pc *consolePlans, sr serviceRoot, since string, e *conserveEntry) {
 	var rep conserve.Report
 	var err error
+	// A report that panics finishes as a failure the page names, its
+	// waiters released — never a range stuck pending (the pool recovers
+	// the panic but cannot finish the entry).
+	defer func() {
+		if v := recover(); v != nil {
+			err = fmt.Errorf("the conserve report panicked: %v", v)
+		}
+		conserveCache.Lock()
+		if err != nil {
+			e.err = err.Error()
+		} else {
+			e.report = rep
+		}
+		e.finished, e.at = true, time.Now()
+		close(e.done)
+		conserveCache.Unlock()
+	}()
 	if pc.deps.c == nil {
 		err = errNoStore
 	} else {
@@ -209,15 +226,6 @@ func computeRefactorReport(pc *consolePlans, sr serviceRoot, since string, e *co
 			return cerr
 		})
 	}
-	conserveCache.Lock()
-	if err != nil {
-		e.err = err.Error()
-	} else {
-		e.report = rep
-	}
-	e.finished, e.at = true, time.Now()
-	close(e.done)
-	conserveCache.Unlock()
 }
 
 // refactorInput is a report as the projection reads it.

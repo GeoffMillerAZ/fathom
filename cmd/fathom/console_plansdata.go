@@ -338,16 +338,34 @@ func setConsolePlansGate(ch chan struct{}) {
 
 // verify computes one plan through the verb's own path.
 func (p *consolePlans) verify(e *planEntry) {
-	consolePlansGate.Lock()
-	gate := consolePlansGate.ch
-	consolePlansGate.Unlock()
-	if gate != nil {
-		<-gate
-	}
-	ctx := context.Background()
-	wm := p.storeWatermark(ctx, e.service)
-	computed, rawRep, err := p.compute(e)
-	stale := p.daemonStale(e.service, e.root)
+	var (
+		wm       string
+		computed planComputed
+		rawRep   *verify.Report
+		err      error
+		stale    bool
+	)
+	// A verification that panics finishes as a failure the page names:
+	// the job pool recovers the panic, but the entry must still be
+	// finished, its flight deleted and its waiters released, or every
+	// later render rejoins a flight that never ends.
+	func() {
+		defer func() {
+			if v := recover(); v != nil {
+				err = fmt.Errorf("the verification panicked: %v", v)
+			}
+		}()
+		consolePlansGate.Lock()
+		gate := consolePlansGate.ch
+		consolePlansGate.Unlock()
+		if gate != nil {
+			<-gate
+		}
+		ctx := context.Background()
+		wm = p.storeWatermark(ctx, e.service)
+		computed, rawRep, err = p.compute(e)
+		stale = p.daemonStale(e.service, e.root)
+	}()
 	p.mu.Lock()
 	if err != nil {
 		e.err = err.Error()
