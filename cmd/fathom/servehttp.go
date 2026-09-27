@@ -23,6 +23,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/decide"
 	"github.com/geoffmilleraz/fathom/internal/dlog"
+	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
 	"github.com/geoffmilleraz/fathom/internal/modulehost"
 	"github.com/geoffmilleraz/fathom/internal/refresh"
@@ -568,6 +569,17 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	// (the post-commit hook) and /refresh-file — one per service, one heavy
 	// slot, background work held 60 s after this start and staggered during
 	// warm-up.
+	// RT-106 (§7.2): every `go` this daemon execs (the typed pass's go
+	// list, go env) runs through a shim at background priority with
+	// GOFLAGS=-p=2 and GOMAXPROCS=2.
+	if shimDir, err := os.MkdirTemp("", "fathom-toolchain-"); err == nil {
+		if undo, ierr := fusion.InstallBackgroundToolchain(shimDir); ierr != nil {
+			flog.Warn(fmt.Sprintf("serve-http: toolchain children run at normal priority: %v", ierr))
+			_ = os.RemoveAll(shimDir)
+		} else {
+			defer undo()
+		}
+	}
 	refreshQ := mcp.NewRefreshQueue(c, refresh.Config{Started: startedAt})
 	refreshQ.Start(refreshCtx)
 	var backend mcp.QueryInterface = c
