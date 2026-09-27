@@ -90,6 +90,26 @@ func abandonOf(ctx context.Context) <-chan struct{} {
 	return nil
 }
 
+// cancelOnAbandon derives a ctx that ends when ctx's scope is abandoned, so
+// a request abandoned mid-read stops the walk and the fetch loop too, not
+// only the wait for a slot (the daemon's /rpc ctx is detached from the
+// connection). Outside a scope it returns ctx and a no-op cancel.
+func cancelOnAbandon(ctx context.Context) (context.Context, context.CancelFunc) {
+	abandon := abandonOf(ctx)
+	if abandon == nil {
+		return ctx, func() {}
+	}
+	ctx, cancel := context.WithCancel(ctx)
+	go func() {
+		select {
+		case <-abandon:
+			cancel()
+		case <-ctx.Done():
+		}
+	}()
+	return ctx, cancel
+}
+
 // acquireSourcesSlot takes a whole-tree read slot, returning its release.
 // A hook-origin ctx gets ErrSourcesBusy at once when none is free; any
 // other ctx waits until a slot frees, ctx ends, or its scope is abandoned.

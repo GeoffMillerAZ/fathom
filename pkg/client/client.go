@@ -512,20 +512,8 @@ func (c *Client) Sources(ctx context.Context, service string) ([]core.SourceFile
 		return nil, err
 	}
 	defer release()
-	// A request abandoned mid-read (its scope's abandon fires) stops the
-	// walk and the fetch loop too, not only the wait for a slot.
-	if abandon := abandonOf(ctx); abandon != nil {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithCancel(ctx)
-		defer cancel()
-		go func() {
-			select {
-			case <-abandon:
-				cancel()
-			case <-ctx.Done():
-			}
-		}()
-	}
+	ctx, cancel := cancelOnAbandon(ctx)
+	defer cancel()
 	svcRef := core.ServiceRef{ID: service, Path: service}
 	if meta, found, err := c.st.GetServiceMeta(ctx, service); err == nil && found && meta.Path != "" {
 		svcRef.Path = meta.Path
@@ -589,6 +577,8 @@ func (c *Client) ScanSources(ctx context.Context, service string, b corpus.Budge
 		return corpus.Coverage{}, err
 	}
 	defer release()
+	ctx, cancel := cancelOnAbandon(ctx)
+	defer cancel()
 	svcRef := core.ServiceRef{ID: service, Path: service}
 	if meta, found, err := c.st.GetServiceMeta(ctx, service); err == nil && found && meta.Path != "" {
 		svcRef.Path = meta.Path
