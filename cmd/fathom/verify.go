@@ -663,8 +663,9 @@ func localPlanHas(plan verify.Plan, id string) bool {
 
 // daemonServiceIndexed reports whether the daemon has indexed service.
 // false-with-nil-error means the daemon answered and the service is
-// genuinely absent or never indexed. It asks the meta-only GET /indexed
-// probe (RT-80); only a daemon that predates that route is asked through
+// genuinely absent, never indexed, or indexed with zero symbols (the
+// exit-2 fail-open below depends on that last case). It asks GET /indexed
+// (RT-80: a meta row plus the cached symbol-count aggregate); only a daemon that predates that route is asked through
 // list_services, the probe it has always served.
 func daemonServiceIndexed(hc *http.Client, baseURL, service string) (bool, error) {
 	indexed, err := probeIndexed(hc, baseURL, service)

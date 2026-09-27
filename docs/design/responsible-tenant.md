@@ -473,7 +473,9 @@ single-flighted) and RT-83 (the `loadUnion` memo). Wave C's RT-82 swaps `SourceP
   on the hotfix's names-only walk (RT-1). No `service_summary` table is needed, and the
   133.8 GB/62 min symbol load is gone.
 - Wave C (RT-79): served from `service_summary` + `service_meta` (§6): one select of ~21 rows.
-- `IsIndexed(service)` (wave A; a `service_meta` row with `indexed_at > 0`) replaces
+- `IsIndexed(service)` (wave A; a `service_meta` row with `indexed_at > 0` and a non-zero
+  symbol count from the watermark-cached aggregate, so an empty-tree ingest or a purge still
+  reads "not indexed" and `fathom verify` keeps its exit-2 fail-open, I8/I9) replaces
   `daemonServiceIndexed` (`verify.go`), the stop-hook and edit-hook claim checks,
   `plans.go`, and `console_plansdata.go`'s probe — yes/no questions that pay the full
   answer today.

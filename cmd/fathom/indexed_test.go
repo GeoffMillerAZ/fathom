@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/pkg/client"
 )
@@ -22,7 +23,15 @@ func TestDaemonServiceIndexedUsesMetaProbe(t *testing.T) {
 	if err := st.SetServiceMeta(ctx, store.ServiceMeta{ServiceID: "demo", Path: t.TempDir(), IndexedCommit: "c1", IndexedAt: time.Now().UnixNano()}); err != nil {
 		t.Fatal(err)
 	}
+	if err := st.PutObservations(ctx, []core.Observation{{ServiceID: "demo", Symbol: "Demo", SourceKind: core.KindGoFunc, SourceRef: "demo.go", Line: 1}}); err != nil {
+		t.Fatal(err)
+	}
 	if err := st.SetServiceMeta(ctx, store.ServiceMeta{ServiceID: "never", Path: t.TempDir()}); err != nil {
+		t.Fatal(err)
+	}
+	// Ingested, but from an empty tree: a meta row and no symbols is not
+	// indexed (verify's exit-2 fail-open and init's zero-symbol line).
+	if err := st.SetServiceMeta(ctx, store.ServiceMeta{ServiceID: "hollow", Path: t.TempDir(), IndexedAt: time.Now().UnixNano()}); err != nil {
 		t.Fatal(err)
 	}
 	c := client.New(newCountingConnector(), st)
@@ -41,7 +50,7 @@ func TestDaemonServiceIndexedUsesMetaProbe(t *testing.T) {
 	for _, tc := range []struct {
 		service string
 		want    bool
-	}{{"demo", true}, {"never", false}, {"absent", false}} {
+	}{{"demo", true}, {"never", false}, {"hollow", false}, {"absent", false}} {
 		got, err := daemonServiceIndexed(hc, srv.URL, tc.service)
 		if err != nil {
 			t.Fatalf("%s: %v", tc.service, err)

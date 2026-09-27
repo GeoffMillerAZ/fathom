@@ -132,8 +132,11 @@ outside the tool registry — hooks call these directly rather than through
   never an error (RT-27). The memoized graph is patched from the file's own
   rows and its packages' rows, never a whole-service symbol load.
 - `GET /indexed?service=NAME` — `{"service", "indexed"}`: whether the service
-  has a `service_meta` row with a non-zero `indexed_at` (RT-80,
-  `pkg/client.IsIndexed`; exact id first, then case-insensitive). The
+  has a `service_meta` row with a non-zero `indexed_at` and at least one
+  symbol (RT-80, `pkg/client.IsIndexed`; the count is the watermark-cached
+  aggregate `list_services` uses, never a symbol load; exact id first, then
+  case-insensitive). A service ingested from an empty tree, or purged, is
+  not indexed — the meaning the `list_services` probe had. The
   meta-only "is X indexed" probe `fathom verify`, the stop and edit hooks,
   `fathom plans`, `fathom init` and the console ask; they fall back to
   `list_services` only against a daemon that answers this route 4xx.
