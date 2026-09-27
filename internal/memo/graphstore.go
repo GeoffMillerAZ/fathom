@@ -22,6 +22,7 @@ package memo
 import (
 	"context"
 	"strings"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -63,10 +64,21 @@ type typedKey struct{ Scope }
 
 func (k typedKey) MemoScope() (string, string) { return k.Store + "\x00" + k.Service, k.Watermark }
 
+// Expected costs of a cold build on a large service (the RT-74/75
+// measurements: a 145k-observation fleet store, fathom's own service): a
+// flight past half of it outlives a caller that gave up (a hook's short
+// deadline), so the next caller finds it built; one short of that is
+// cancelled with its last waiter.
+const (
+	snapshotCost = 2 * time.Second
+	typedCost    = time.Second
+	graphCost    = 2 * time.Second
+)
+
 var (
-	snapshotGroup = NewGroup[snapKey, *Snapshot]("snapshot", Options{WatermarkScoped: true, Keep: true})
-	typedGroup    = NewGroup[typedKey, []core.Edge]("typed_edges", Options{WatermarkScoped: true, Keep: true})
-	graphGroup    = NewGroup[graphKey, *callgraph.Graph]("graphstore", Options{WatermarkScoped: true, Keep: true})
+	snapshotGroup = NewGroup[snapKey, *Snapshot]("snapshot", Options{WatermarkScoped: true, Keep: true, ExpectedCost: snapshotCost})
+	typedGroup    = NewGroup[typedKey, []core.Edge]("typed_edges", Options{WatermarkScoped: true, Keep: true, ExpectedCost: typedCost})
+	graphGroup    = NewGroup[graphKey, *callgraph.Graph]("graphstore", Options{WatermarkScoped: true, Keep: true, ExpectedCost: graphCost})
 )
 
 // Snapshot is one service's symbols at one watermark. Immutable: callers
@@ -360,6 +372,7 @@ func PatchPackage(sc Scope, pkg string, nodes []core.SymbolNode, typed []core.Ed
 		}
 		kept = append(kept, nodes...)
 		s := newSnapshot(sc, kept)
+		s.Extra = old.Extra // the load's disclosure still describes it
 		return s, snapshotBytes(s)
 	})
 	for _, k := range []GraphKind{GraphSyntax, GraphBoth} {

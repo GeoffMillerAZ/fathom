@@ -36,6 +36,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -122,8 +123,10 @@ func (k layerPathsKey) MemoScope() (string, string) { return k.service, k.mark }
 // layerPathsGroup is the layer-coverage memo group (design §5: every
 // derived cache is a memo group).
 // Keep: a walk (the pre-file_stats path) outlives the hook that started
-// it and is memoized for the next, instead of being redone per deadline.
-var layerPathsGroup = memo.NewGroup[layerPathsKey, []string]("layer_coverage_paths", memo.Options{WatermarkScoped: true, Keep: true})
+// it and is memoized for the next, instead of being redone per deadline
+// (RT-143) — from its first instant, so its expected cost is nominal. The
+// refuse drop still cancels it.
+var layerPathsGroup = memo.NewGroup[layerPathsKey, []string]("layer_coverage_paths", memo.Options{WatermarkScoped: true, Keep: true, ExpectedCost: time.Nanosecond})
 
 // corpusDoc is one guide's content as of a stat (size, mtime). fromStat is
 // false for a connector with no on-disk root (faux, remote): its content is

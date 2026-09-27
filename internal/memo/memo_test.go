@@ -110,7 +110,7 @@ func TestGroup_StampedeOneBuildCtxAwareWaiters(t *testing.T) {
 	}
 
 	// Keep: the build survives its last waiter and is cached.
-	kg := NewGroup[skey, int]("keep", Options{WatermarkScoped: true, Keep: true})
+	kg := NewGroup[skey, int]("keep", Options{WatermarkScoped: true, Keep: true, ExpectedCost: time.Nanosecond})
 	k3 := skey{"svc", "w1", "kept"}
 	started := make(chan struct{})
 	finish := make(chan struct{})

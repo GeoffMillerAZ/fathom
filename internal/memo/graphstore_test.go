@@ -29,6 +29,7 @@ func fixtureNodes() []core.SymbolNode {
 // built per call and never cached; and in the serving paths (internal/mcp
 // and the console) no code builds a call graph but the graph store.
 func TestGraphStore_OneGraphPerServiceWatermark(t *testing.T) {
+	isolateGraphStore(t)
 	ctx := context.Background()
 	var loads, typedLoads atomic.Int32
 	load := func(context.Context) ([]core.SymbolNode, error) { loads.Add(1); return fixtureNodes(), nil }
@@ -137,6 +138,7 @@ func TestGraphStore_OneGraphPerServiceWatermark(t *testing.T) {
 // without a scan, lowered fields are stored once, and readers that sort
 // get a copy, never the shared slice.
 func TestSnapshot_NameIndexSharedByReaders(t *testing.T) {
+	isolateGraphStore(t)
 	ctx := context.Background()
 	var loads atomic.Int32
 	load := func(context.Context) ([]core.SymbolNode, error) { loads.Add(1); return fixtureNodes(), nil }

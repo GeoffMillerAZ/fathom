@@ -77,7 +77,9 @@ type Options struct {
 	Priority int
 	// Keep marks the group's flights as worth finishing: once a build has
 	// run for at least half ExpectedCost, its last waiter leaving does not
-	// cancel it, and the result is cached for the next caller.
+	// cancel it, and the result is cached for the next caller. Keep with no
+	// ExpectedCost keeps nothing: a flight is held past its callers only on
+	// a stated cost. The refuse drop cancels kept flights too.
 	Keep         bool
 	ExpectedCost time.Duration
 }
@@ -115,6 +117,7 @@ type Registry struct {
 type groupHandle interface {
 	name() string
 	evictLocked(e *entryRef, reason DropReason)
+	cancelFlightsLocked()
 	stats() GroupStats
 }
 
@@ -264,12 +267,18 @@ func (r *Registry) Trim(reason DropReason, fraction float64) {
 	r.trimToLocked(int64(float64(r.budget)*fraction), reason)
 }
 
-// Drop evicts every entry in every group (refuse, idle). In-flight builds
-// are not cancelled here — the governor cancels their tickets — and their
-// results are cached only if the limit in force still admits them.
+// Drop evicts every entry in every group (refuse, idle). Refuse also
+// cancels every build in flight: a flight's context is detached from its
+// callers' (so a Keep flight can outlive them), so cancelling the
+// callers' tickets alone would let the build run on and refill the cache.
 func (r *Registry) Drop(reason DropReason) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	if reason == ReasonRefuse {
+		for _, g := range r.groups {
+			g.cancelFlightsLocked()
+		}
+	}
 	r.trimToLocked(0, reason)
 	for el := r.lru.Front(); el != nil; el = r.lru.Front() {
 		e := el.Value.(*entryRef)
@@ -303,19 +312,20 @@ func EvictService(service string) { Default.EvictService(service) }
 // Stats reports the Default registry's groups.
 func Stats() []GroupStats { return Default.Stats() }
 
-// acquireRebuild admits one rebuild flight process-wide while the ladder
-// is at shed or above; at normal it admits every flight. release is never
-// nil.
-func (r *Registry) acquireRebuild(ctx context.Context) (release func(), err error) {
+// shed reports whether the ladder is at shed or above.
+func (r *Registry) shed() bool {
 	r.mu.Lock()
-	shed := r.level != nil && r.level() >= tenancy.LevelShed
-	r.mu.Unlock()
-	if !shed {
-		return func() {}, nil
-	}
+	defer r.mu.Unlock()
+	return r.level != nil && r.level() >= tenancy.LevelShed
+}
+
+// acquireRebuild takes the one rebuild token (Get takes it only while
+// shed), waiting no longer than ctx. release is never nil.
+func (r *Registry) acquireRebuild(ctx context.Context) (release func(), err error) {
 	select {
 	case r.rebuild <- struct{}{}:
-		return func() { <-r.rebuild }, nil
+		var once sync.Once
+		return func() { once.Do(func() { <-r.rebuild }) }, nil
 	case <-ctx.Done():
 		return func() {}, ctx.Err()
 	}
@@ -422,6 +432,13 @@ var errNilBuild = errors.New("memo: nil build")
 // in bytes. A waiter whose ctx ends leaves at once with ctx.Err(); the
 // build is cancelled when its last waiter leaves unless the group keeps
 // it. A failed build is never cached.
+//
+// While the ladder is at shed a caller that must start a flight first
+// takes the process-wide rebuild token, waiting for it no longer than its
+// own ctx; the flight returns the token when its build ends. A Get made
+// from inside a build (a nested flight: GraphFor loading typed edges) is
+// part of that rebuild and never takes the token — its parent holds it —
+// so a rebuild cannot wait on itself. Joining a flight never needs it.
 func (g *Group[K, V]) Get(ctx context.Context, key K, build func(context.Context) (V, int64, error)) (V, error) {
 	var zero V
 	if build == nil {
@@ -434,32 +451,58 @@ func (g *Group[K, V]) Get(ctx context.Context, key K, build func(context.Context
 		g.reg.mu.Unlock()
 	}
 
-	g.reg.mu.Lock()
-	g.mu.Lock()
-	if e, ok := g.entries[key]; ok {
-		g.counters.Hits++
-		if e.ref.elem != nil {
-			g.reg.lru.MoveToFront(e.ref.elem)
+	nested := ctx.Value(inBuildKey{}) != nil
+	var token func() // the rebuild token this caller holds, if any
+	defer func() {
+		if token != nil {
+			token()
 		}
-		v := e.val
-		g.mu.Unlock()
+	}()
+	var f *flight[V]
+	for {
+		needToken := token == nil && !nested && g.reg.shed()
+		g.reg.mu.Lock()
+		g.mu.Lock()
+		if e, ok := g.entries[key]; ok {
+			g.counters.Hits++
+			if e.ref.elem != nil {
+				g.reg.lru.MoveToFront(e.ref.elem)
+			}
+			v := e.val
+			g.mu.Unlock()
+			g.reg.mu.Unlock()
+			return v, nil
+		}
 		g.reg.mu.Unlock()
-		return v, nil
-	}
-	g.reg.mu.Unlock()
-	f, ok := g.flights[key]
-	if !ok {
+		if cur, ok := g.flights[key]; ok {
+			g.counters.Hits++
+			f = cur
+			break
+		}
+		if needToken {
+			g.mu.Unlock()
+			release, err := g.reg.acquireRebuild(ctx)
+			if err != nil {
+				return zero, err
+			}
+			token = release
+			continue // the entry or a flight may have appeared meanwhile
+		}
 		g.counters.Misses++
 		g.counters.Flights++
-		fctx, cancel := context.WithCancel(context.WithoutCancel(ctx))
+		fctx, cancel := context.WithCancel(context.WithValue(context.WithoutCancel(ctx), inBuildKey{}, true))
 		f = &flight[V]{done: make(chan struct{}), cancel: cancel, started: g.reg.now()}
 		g.flights[key] = f
-		go g.run(fctx, key, f, build, service, mark, cacheable)
-	} else {
-		g.counters.Hits++
+		go g.run(fctx, key, f, build, service, mark, cacheable, token)
+		token = nil // the flight returns it when its build ends
+		break
 	}
 	f.waiters++
 	g.mu.Unlock()
+	if token != nil {
+		token() // joined a flight after all: no rebuild of ours
+		token = nil
+	}
 
 	select {
 	case <-f.done:
@@ -469,6 +512,9 @@ func (g *Group[K, V]) Get(ctx context.Context, key K, build func(context.Context
 		return zero, ctx.Err()
 	}
 }
+
+// inBuildKey marks a build's context: a Get under it is a nested flight.
+type inBuildKey struct{}
 
 // leave drops one waiter; the last one out cancels the flight unless the
 // group keeps it.
@@ -484,7 +530,7 @@ func (g *Group[K, V]) leave(key K, f *flight[V]) {
 		return
 	default:
 	}
-	if g.opts.Keep && g.reg.now().Sub(f.started) >= g.opts.ExpectedCost/2 {
+	if g.opts.Keep && g.opts.ExpectedCost > 0 && g.reg.now().Sub(f.started) >= g.opts.ExpectedCost/2 {
 		return
 	}
 	f.cancel()
@@ -495,21 +541,13 @@ func (g *Group[K, V]) leave(key K, f *flight[V]) {
 	}
 }
 
-// run is the flight: admission for a rebuild while shed, the build, and
-// the insert.
-func (g *Group[K, V]) run(ctx context.Context, key K, f *flight[V], build func(context.Context) (V, int64, error), service, mark string, cacheable bool) {
+// run is the flight: the build (holding the rebuild token its starter
+// took, if any, until the build ends) and the insert.
+func (g *Group[K, V]) run(ctx context.Context, key K, f *flight[V], build func(context.Context) (V, int64, error), service, mark string, cacheable bool, token func()) {
 	defer f.cancel()
-	var (
-		val  V
-		size int64
-		err  error
-	)
-	release, aerr := g.reg.acquireRebuild(ctx)
-	if aerr != nil {
-		err = aerr
-	} else {
-		val, size, err = build(ctx)
-		release()
+	val, size, err := build(ctx)
+	if token != nil {
+		token()
 	}
 	if err == nil && ctx.Err() != nil {
 		err = ctx.Err()
@@ -531,6 +569,19 @@ func (g *Group[K, V]) run(ctx context.Context, key K, f *flight[V], build func(c
 	g.mu.Unlock()
 	g.reg.mu.Unlock()
 	close(f.done)
+}
+
+// cancelFlightsLocked cancels every flight in progress (refuse): kept or
+// not, its build's ctx ends, its waiters get the cancellation, and a new
+// caller starts afresh. Registry lock held.
+func (g *Group[K, V]) cancelFlightsLocked() {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	for k, f := range g.flights {
+		f.cancel()
+		g.counters.Cancelled++
+		delete(g.flights, k)
+	}
 }
 
 // insertLocked caches val under key when it fits the limit in force and
