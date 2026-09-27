@@ -177,6 +177,21 @@ idle for longer than planned before the burst. The figures are for the burst its
 None of these broke the bound. F1 and F2 are the ones a wave-C or wave-D lane should
 take before `admission` defaults to `enforce` (RT-96).
 
+### 5.1 What was fixed (rtB-integ, after this reading)
+
+Each finding was reproduced as a failing test first, then fixed.
+
+| # | Fix | Proving test (red before, green after) |
+|---|---|---|
+| F1 | **RT-178.** The typed pass is an ingest-class producer. It asks the governor before it starts, in a governed `ParseFile` before every file, from a 50 ms watcher while `go list` or a type-check holds the thread, and before every stored package. A refusal cancels the load's context with the `OverBudgetError` as its cause. go/packages then stops every package it has not started, and its runner interrupts and then kills the `go list` child. The pass returns `ErrOverBudget`, and `Ingest` fails before its final commit, so the ingest stays `in_progress` (RT-109). The extraction loop asks the governor before each file. The pass's own `go env` child runs in its own process group and is killed as a tree. | `TestTypedPassHaltsAtRefuse`, `TestTypedPassHaltsWhenRefuseLandsDuringLoad`, `TestIngestFailsWhenTypedPassHaltsBetweenPackages`, `TestExtractAndStoreHaltsAtRefuse`, `TestCommandTreeKillsGrandchildOnCancel` |
+| F2 | **RT-179.** A call's clock and its class deadline now run from the request's arrival at `serveRPC`. If a read has already waited past its class deadline before admission, it is refused by name (`-32050`, deadline, class scope), in observe and in enforce. The ticket's deadline is shortened by the wait. The call log's `latency_ms` is the true wall time, and `queued_ms` includes the wait before admission. A cold caller behind another call's navigation build (`loadNavGraphs`) now leaves at its own deadline instead of waiting for the build. **Not proven: what the 531 s call was blocked on.** A static read of the request path found no lock held across an ingest before the call-log clock starts. Two scratch re-runs did not reproduce the stall: one ingest at a 4 GiB budget, with 0.3 s `find_symbol` probes and a goroutine dump at 10 s, and one of the pre-fix binary at 128 MiB, where the ladder went straight to exit in 8 s. The fix bounds and discloses the wait whatever held it. | `TestIndexReadPastItsDeadlineBeforeAdmissionIsRefusedAndLoggedTrue`, `TestIndexReadLogsWaitBeforeAdmission`, `TestNavMemoWaiterLeavesAtItsDeadline` |
+| F3 | The warm-up gate classifies the origin with `tenancy.ParseOrigin`, so `edit-hook`, `session-hook`, `prime` and `*-hook` are refused at once. | `TestWarmupRefusesHookOriginsAtOnce` |
+| F4 | `writeBusy` sends `"fathom busy: <reason>"` and `X-Fathom-Busy-Scope`: **daemon** for safe mode, a drain and an unavailable store (store-wait), and **class** for warm-up and store distress. | `TestLifecycleRefusalsCarryScopeAndReason`, `TestStoreWaitRefusalIsDaemonScoped` |
+| F5 | When a queued call wins a slot, the gate re-checks the ladder. At refuse it releases the slot and refuses with the level reason, a 503 with `Retry-After`. | `TestQueuedCallRecheckedOnDequeue` |
+| F6 | The daemon record carries `lifecycle_id`. `resources` and doctor (the same projection) read the ledger, ring and diagnostics under that id whether the daemon is reached by `--url` or `--id`, and label it unmanaged with its pid. | `TestResourcesFindsTheLifecycleIDLedger` |
+| F7 | `top_in_flight` ages are wall-clock differences, which is the clock the ledger and the ring use, and each entry names its start instant. The likely cause of the gap is a monotonic difference, which stops while a Mac sleeps. §4 records a sleep in the same session, but this is not proven for §3.2. | `TestTopInFlightNamesWallAgeAndStart` |
+| F8 | `config.Load` reads a project layer that is the same file as the user layer once, as the user layer. | `TestUserConfigAsProjectIsNotAnIgnoredRepository` |
+
 ## 6. `fathom resources` and doctor on the scratch daemon
 
 `HOME=<scratch> fathom resources --id rtb --url http://127.0.0.1:7691`, exit 0:
