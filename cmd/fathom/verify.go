@@ -698,15 +698,24 @@ func daemonServiceIndexedViaListServices(hc *http.Client, baseURL, service strin
 	}
 	var payload struct {
 		Services []struct {
-			Service     string `json:"service"`
-			SymbolCount int    `json:"symbol_count"`
+			Service          string `json:"service"`
+			SymbolCount      int    `json:"symbol_count"`
+			SymbolCountError string `json:"symbol_count_error"`
 		} `json:"services"`
 	}
 	if err := json.Unmarshal(inner, &payload); err != nil {
 		return false, fmt.Errorf("parse list_services result: %w", err)
 	}
 	for _, s := range payload.Services {
-		if strings.EqualFold(s.Service, service) && s.SymbolCount > 0 {
+		if !strings.EqualFold(s.Service, service) {
+			continue
+		}
+		// RT-41 (I38): an unreadable count is an error (verify's exit 2,
+		// fail-open), never "zero symbols, not indexed".
+		if s.SymbolCountError != "" {
+			return false, fmt.Errorf("list_services: %s symbol count unreadable: %s", s.Service, s.SymbolCountError)
+		}
+		if s.SymbolCount > 0 {
 			return true, nil
 		}
 	}

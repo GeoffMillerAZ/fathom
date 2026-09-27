@@ -7,7 +7,9 @@ package tenancy
 // the feeders read them. Process-wide, like the published ladder level.
 
 import (
+	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 )
@@ -107,6 +109,50 @@ func NoteStoreDistress(reason string, at time.Time) {
 	lcMu.Lock()
 	defer lcMu.Unlock()
 	lcErr, lcErrAt = reason, at
+}
+
+// StoreDistressKind names a store error that is distress ("disk full
+// (SQLITE_FULL)", "disk I/O error (SQLITE_IOERR)"), else "" (§2.1).
+// modernc.org/sqlite's *Error carries the extended code (Code() int); the
+// message is the fallback, since the ingest pipeline wraps its errors.
+func StoreDistressKind(err error) string {
+	if err == nil {
+		return ""
+	}
+	var coded interface{ Code() int }
+	if errors.As(err, &coded) {
+		switch coded.Code() & 0xff {
+		case sqliteFull:
+			return "disk full (SQLITE_FULL)"
+		case sqliteIOErr:
+			return "disk I/O error (SQLITE_IOERR)"
+		}
+	}
+	msg := strings.ToLower(err.Error())
+	switch {
+	case strings.Contains(msg, "database or disk is full") || strings.Contains(msg, "sqlite_full") || strings.Contains(msg, "no space left on device"):
+		return "disk full (SQLITE_FULL)"
+	case strings.Contains(msg, "disk i/o error") || strings.Contains(msg, "sqlite_ioerr"):
+		return "disk I/O error (SQLITE_IOERR)"
+	}
+	return ""
+}
+
+// SQLite primary result codes that are store distress (§2.1).
+const (
+	sqliteIOErr = 10
+	sqliteFull  = 13
+)
+
+// NoteStoreError records err as store distress when it is one — a read's,
+// or a write's (an ingest, a /refresh-file, an auto-refresh ingest: on a
+// full disk the writes fail first) — and returns its kind, else "".
+func NoteStoreError(err error, at time.Time) string {
+	kind := StoreDistressKind(err)
+	if kind != "" {
+		NoteStoreDistress(kind, at)
+	}
+	return kind
 }
 
 // NoteStoreVolumeFree records the store volume's free bytes against its

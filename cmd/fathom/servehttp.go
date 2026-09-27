@@ -205,8 +205,12 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 		lcIn.ledger, lcIn.id, lcIn.now = p, id, time.Now()
 		return beginLifecycle(lcIn), true
 	}
+	// lcOut is the breaker's verdict for this start: only its safe mode
+	// (never paused.json's) steps down after 30 min at normal.
+	var lcOut lifecycleOutcome
 	if lcID != "" {
 		if out, ok := begin(lcID); ok {
+			lcOut = out
 			if out.stop {
 				return out.code
 			}
@@ -238,7 +242,9 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	if *modulesTokenEnv != "" {
 		modulesToken = os.Getenv(*modulesTokenEnv)
 		if modulesToken == "" {
-			flog.Error(fmt.Sprintf("--modules-token-env=%s is set but that environment variable is empty or unset", *modulesTokenEnv))
+			msg := fmt.Sprintf("--modules-token-env=%s is set but that environment variable is empty or unset", *modulesTokenEnv)
+			flog.Error(msg)
+			exitRow(tenancy.ExitStartFailed, msg, 1)
 			return 1
 		}
 	}
@@ -255,7 +261,9 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 		moduleHost = modulehost.NewHost(store.LevelL0)
 		for _, p := range modulePaths {
 			if _, mErr := moduleHost.Mount(p, ""); mErr != nil {
-				flog.Error(fmt.Sprintf("mounting module %s: %v", p, mErr))
+				msg := fmt.Sprintf("mounting module %s: %v", p, mErr)
+				flog.Error(msg)
+				exitRow(tenancy.ExitStartFailed, msg, 1)
 				return 1
 			}
 			flog.Info(fmt.Sprintf("serve-http: mounted module %s (%s)", p, modulehost.ModuleNameFromPath(p)))
@@ -295,15 +303,19 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 			exitRow(reason, detail, code)
 			return code
 		}
+		exitRow(tenancy.ExitStartFailed, "bind "+*addr+": "+listenErr.Error(), 1)
 		return 1
 	}
 	outLog.Info(fmt.Sprintf("serve-http: listening on %s", *addr))
 	if lcIn.ledger == "" && !managed {
 		// The unmanaged per-process ledger: addr-<port>-<pid>, beside the
 		// record; removed with it on a clean exit.
-		if out, ok := begin(daemonID(daemonMeta{}, listener.Addr().String(), pid)); ok && out.stop {
-			_ = listener.Close()
-			return out.code
+		if out, ok := begin(daemonID(daemonMeta{}, listener.Addr().String(), pid)); ok {
+			lcOut = out
+			if out.stop {
+				_ = listener.Close()
+				return out.code
+			}
 		}
 	}
 	setCrashOutput(lcIn.ledger, func(m string) { flog.Warn(m) })
@@ -329,7 +341,10 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	// the full one — one listener, one server, swapped in place.
 	var waitState atomic.Pointer[storeWaitState]
 	swap := newSwapHandler(waitingHandler(&waitState))
-	httpSrv := &http.Server{Handler: swap}
+	// Activity (the unmanaged idle bound's input) is counted from the
+	// bind, the store wait included.
+	act := newActivity(time.Now)
+	httpSrv := &http.Server{Handler: act.middleware(swap)}
 	serveErr := make(chan error, 1)
 	go func() { serveErr <- httpSrv.Serve(listener) }()
 	stopServing := func() {
@@ -365,6 +380,10 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	} else {
 		signal.Notify(sigs, syscall.SIGTERM, syscall.SIGINT, syscall.SIGHUP)
 	}
+	defer func() {
+		signal.Stop(sigs)
+		close(sigs) // the handler below returns (an in-process caller)
+	}()
 	go func() {
 		sig, ok := <-sigs
 		if !ok {
@@ -392,6 +411,42 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 		os.Exit(code)
 	}()
 
+	// RT-20/RT-21: the lifetime tick (heartbeat for every daemon; exit
+	// bounds for an unmanaged one) and the parent-death watch, from the
+	// bind — BEFORE the store wait, so an unmanaged daemon waiting for a
+	// store that never comes (a mistyped --store) still keeps its --ttl,
+	// --idle-exit and --exit-with-parent (I47, I48). Every lifetime exit
+	// writes its exit row (not counted by the breaker).
+	lifetime := &daemonLifetime{
+		managed:    managed,
+		bounds:     tenancy.UnmanagedBounds{IdleExit: *idleExit, TTL: *ttl},
+		startedAt:  startedAt,
+		act:        act,
+		store:      identify(absStorePath(*storePath)),
+		recordPath: recordPath,
+		now:        time.Now,
+		logf:       func(m string) { outLog.Info(m) },
+		exit:       os.Exit,
+		stopped:    make(chan struct{}),
+		onExit: func(reason string, code int) {
+			exitRow(lifetimeExitReason(reason), reason, code)
+			if perProcessLedger {
+				removePerProcessLedger(lcIn.ledger)
+			}
+		},
+	}
+	if exe, exeErr := os.Executable(); exeErr == nil {
+		lifetime.exe = identify(exe)
+	}
+	lifetimeP.Store(lifetime)
+	defer lifetime.stop()
+	go lifetime.run(daemonLifetimeTick)
+	if !managed && *exitWithParent {
+		if !watchParentExit(startPPID, parentExitPoll, os.Getppid, lifetime.shutdown) {
+			outLog.Info(fmt.Sprintf("serve-http: parent-exit watch off (started by pid %d)", startPPID))
+		}
+	}
+
 	// RT-42 (§8.4 step 4): open the store, waiting — never exiting — while
 	// it is unavailable: /healthz and /statusz answer with the errno,
 	// tools/call is 503, reopen with backoff 5 s → 5 min, one store_wait
@@ -405,6 +460,7 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 		path:  absStorePath(*storePath),
 		open:  func() (*client.Client, error) { return client.NewConstantClient(client.ModeLocal, *storePath) },
 		stat:  statPath,
+		probe: probeStoreOpen,
 		sleep: sleepCtx,
 		now:   time.Now,
 		exe:   exePath,
@@ -431,9 +487,16 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 		},
 	})
 	if err != nil {
+		// A store that opened and is wrong (not unavailability): a failed
+		// start — counted by the breaker, so launchd's relaunch loop is
+		// bounded — and the record written at the bind goes with it.
 		flog.Error(fmt.Sprintf("opening client: %v", err))
 		stopServing()
-		exitRow("store_error", err.Error(), 1)
+		exitRow(tenancy.ExitStartFailed, "store: "+err.Error(), 1)
+		if perProcessLedger {
+			removePerProcessLedger(lcIn.ledger)
+		}
+		removeRecord()
 		return 1
 	}
 	defer c.Close()
@@ -589,10 +652,7 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	// every 2 s and bounds memory whatever the cause. Each sample also
 	// feeds store distress (the store volume's free space, RT-41) and the
 	// breaker's safe mode, which steps down after 30 min at normal.
-	sm := &safeModeController{ledger: lcIn.ledger, pid: pid, version: Version, warmup: budget.Breaker.Warmup, logf: func(m string) { flog.Warn(m) }}
-	if _, on := tenancy.SafeModeNow(); on {
-		sm.tracker.Safe = true
-	}
+	sm := newSafeModeController(lcOut, lcIn.ledger, pid, Version, budget.Breaker.Warmup, func(m string) { flog.Warn(m) })
 	minStoreFree := budget.Host.MinStoreVolumeFree
 	_, stopGovernor := startGovernor(budget, budgetNotes, absStorePath(*storePath), lcIn.ledger, servingLadderActions(srv, c, fleet), flog, func(s *tenancy.Sample, l tenancy.Level) {
 		tenancy.NoteStoreVolumeFree(s.StoreFree, minStoreFree, s.At)
@@ -609,42 +669,11 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 		handler = lazyFeeders(handler, startFeeders) // §10.1: feeders lazy
 	}
 
-	// RT-20/RT-21: the lifetime tick (heartbeat for every daemon; exit
-	// bounds for an unmanaged one) and the parent-death watch. Every
-	// lifetime exit writes its exit row (not counted by the breaker).
-	act := newActivity(time.Now)
-	handler = act.middleware(handler)
-	lifetime := &daemonLifetime{
-		managed:    managed,
-		bounds:     tenancy.UnmanagedBounds{IdleExit: *idleExit, TTL: *ttl},
-		startedAt:  startedAt,
-		act:        act,
-		store:      identify(absStorePath(*storePath)),
-		recordPath: recordPath,
-		now:        time.Now,
-		logf:       func(m string) { outLog.Info(m) },
-		exit:       os.Exit,
-		onExit: func(reason string, code int) {
-			exitRow(lifetimeExitReason(reason), reason, code)
-			if perProcessLedger {
-				removePerProcessLedger(lcIn.ledger)
-			}
-		},
-	}
-	if exe, exeErr := os.Executable(); exeErr == nil {
-		lifetime.exe = identify(exe)
-	}
-	lifetimeP.Store(lifetime)
-	go lifetime.run(daemonLifetimeTick)
-	if !managed && *exitWithParent {
-		if !watchParentExit(startPPID, parentExitPoll, os.Getppid, lifetime.shutdown) {
-			outLog.Info(fmt.Sprintf("serve-http: parent-exit watch off (started by pid %d)", startPPID))
-		}
-	}
-
 	swap.set(handler)
 	if err := <-serveErr; err != nil && !errors.Is(err, http.ErrServerClosed) {
 		flog.Error(fmt.Sprintf("http serve: %v", err))
+		exitRow("serve_error", err.Error(), 1)
+		removeRecord()
 		return 1
 	}
 	return 0

@@ -248,11 +248,15 @@ Served by `serve-http` and `serve-mcp` alike; the contract lives in
   "fathom busy", data: {reason, class, level, retry_after_ms}}`: `tree` and
   `fleet` in safe mode (`fathom safe mode since 21:07: … — run fathom
   resources`); `tree`, `fleet` and `ingest` while draining after SIGTERM;
-  `ingest` in store distress (SQLITE_FULL/IOERR, a low store volume); a
-  second concurrent heavy call during the 120 s warm-up under `admission =
-  "enforce"`; and every call while the daemon waits for its store (`store
+  `ingest` in store distress (SQLITE_FULL/IOERR from a read or a write, a
+  low store volume); a second concurrent heavy call during the 120 s
+  warm-up (under `admission = "observe"` as under `"enforce"`; only `"off"`
+  skips it); and every call while the daemon waits for its store (`store
   unavailable: operation not permitted (EPERM, tcc-wedge) — …`,
-  `retry_after_ms: 30000`). `point` and `index` are served in safe mode.
+  `retry_after_ms: 30000`). `point` and `index` are served in safe mode. A
+  `batch` is gated by each of its sub-calls' classes (a batch carrying
+  `list_services` is refused in safe mode) and its class is its heaviest
+  sub-call's.
 - **Descriptions (RP-9, diet O101).** Every agent-surface description
   carries a "Reach for it when …" sentence and a `Required: a, b.` sentence
   naming exactly the arguments its own `inputSchema` marks required —

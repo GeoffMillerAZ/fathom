@@ -111,10 +111,13 @@ type listServicesResult struct {
 }
 
 type listServicesEntry struct {
-	Service     string   `json:"service"`
-	SymbolCount int      `json:"symbol_count"`
-	Languages   []string `json:"languages"`
-	Path        string   `json:"path,omitempty"`
+	Service string `json:"service"`
+	// SymbolCount is absent when the count could not be read; then
+	// SymbolCountError names why (RT-41, I38: never a 0 that looks real).
+	SymbolCount      *int     `json:"symbol_count,omitempty"`
+	SymbolCountError string   `json:"symbol_count_error,omitempty"`
+	Languages        []string `json:"languages"`
+	Path             string   `json:"path,omitempty"`
 }
 
 type obligationsResult struct {
@@ -586,11 +589,22 @@ func validateAgainstSchema(path string, schema map[string]any, v any) string {
 		if !ok {
 			return path + ": want object, got " + jsonKind(v)
 		}
-		if req, ok := schema["required"].([]string); ok {
-			for _, r := range req {
-				if _, present := m[r]; !present {
-					return path + ": required property \"" + r + "\" missing"
+		// required is []string as generated, []any once the schema has
+		// crossed the wire (tools/list): both are checked.
+		var req []string
+		switch rv := schema["required"].(type) {
+		case []string:
+			req = rv
+		case []any:
+			for _, r := range rv {
+				if s, ok := r.(string); ok {
+					req = append(req, s)
 				}
+			}
+		}
+		for _, r := range req {
+			if _, present := m[r]; !present {
+				return path + ": required property \"" + r + "\" missing"
 			}
 		}
 		props, _ := schema["properties"].(map[string]any)

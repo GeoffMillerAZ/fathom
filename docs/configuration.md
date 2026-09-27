@@ -307,7 +307,7 @@ safe_after  = 3                     # counted exits in safe_window → next star
 safe_window = "30m"
 stop_after  = 5                     # counted exits in stop_window → disabled.json {reason: breaker}, exit 0
 stop_window = "60m"
-warmup      = "120s"                # after any start: one slot per heavy class, no inline ingest
+warmup      = "120s"                # after any start: one slot per heavy class (refused past it unless admission = "off"), no inline ingest
 
 [tenancy.unmanaged]
 budget = "512MiB"                   # an unmanaged serve-http's own budget

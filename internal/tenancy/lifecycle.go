@@ -37,9 +37,12 @@ const (
 	RowOperatorReset = "operator_reset"
 )
 
-// Exit reasons (§2.3). The breaker counts over_budget, unclean and a
-// port_held exit with a non-zero code (a foreign holder); every other
-// reason — and an already-served port_held, code 0 — is not counted.
+// Exit reasons (§2.3). The breaker counts over_budget, unclean, a
+// port_held exit with a non-zero code (a foreign holder) and a
+// start_failed exit with a non-zero code (a store that opens and is wrong,
+// a module that does not mount — launchd relaunches it every throttle
+// interval); every other reason — and an already-served port_held, code 0
+// — is not counted.
 const (
 	ExitOverBudget = "over_budget"
 	ExitDrain      = "drain"
@@ -52,6 +55,10 @@ const (
 	ExitUnlinked   = "unlinked"
 	ExitPortHeld   = "port_held"
 	ExitSignal     = "signal" // an unmanaged daemon's SIGTERM/SIGINT/SIGHUP
+	// ExitStartFailed is a start that ended before serving: a store that
+	// opened and is wrong, a module that did not mount, a bind error that
+	// is not a held port.
+	ExitStartFailed = "start_failed"
 )
 
 // Daemon modes a start row records.
@@ -167,24 +174,38 @@ func closesStart(row LifecycleRow, pid int) bool {
 	return (row.Row == RowExit || row.Row == RowAdopt) && (row.PID == pid || row.PID == 0)
 }
 
-// UncleanPredecessor returns the newest start row that no exit or adopt
-// row closes, when it is not self's own (§2.3: SIGKILL, jetsam,
-// force-quit, a runtime fatal).
-func UncleanPredecessor(rows []LifecycleRow, self int) (LifecycleRow, bool) {
+// UncleanPredecessors returns every start row that no later exit or adopt
+// row closes, newest first, except self's own (§2.3: SIGKILL, jetsam,
+// force-quit, a runtime fatal). Every unclosed start is examined, not only
+// the newest: a same-label duplicate that found the port served writes a
+// start and a closing port_held exit after the incumbent's start, and the
+// incumbent's later unclean death must still be named. The caller skips a
+// pid that is still alive (the incumbent itself).
+func UncleanPredecessors(rows []LifecycleRow, self int) []LifecycleRow {
+	var out []LifecycleRow
 	for i := len(rows) - 1; i >= 0; i-- {
-		if rows[i].Row != RowStart {
+		st := rows[i]
+		if st.Row != RowStart || st.PID == self || st.PID == 0 {
 			continue
 		}
-		st := rows[i]
-		if st.PID == self || st.PID == 0 {
-			return LifecycleRow{}, false
-		}
+		closed := false
 		for _, later := range rows[i+1:] {
 			if closesStart(later, st.PID) {
-				return LifecycleRow{}, false
+				closed = true
+				break
 			}
 		}
-		return st, true
+		if !closed {
+			out = append(out, st)
+		}
+	}
+	return out
+}
+
+// UncleanPredecessor is the newest of UncleanPredecessors.
+func UncleanPredecessor(rows []LifecycleRow, self int) (LifecycleRow, bool) {
+	if ps := UncleanPredecessors(rows, self); len(ps) > 0 {
+		return ps[0], true
 	}
 	return LifecycleRow{}, false
 }
@@ -373,7 +394,7 @@ func countedExit(row LifecycleRow, rows []LifecycleRow) bool {
 	switch row.Reason {
 	case ExitOverBudget:
 		return true
-	case ExitPortHeld:
+	case ExitPortHeld, ExitStartFailed:
 		return row.Code != nil && *row.Code != 0
 	case ExitUnclean:
 		// A deploy row naming the pid within the window before the
@@ -395,8 +416,11 @@ func countedExit(row LifecycleRow, rows []LifecycleRow) bool {
 // EvaluateBreaker is the crash-loop breaker (§2.3), evaluated at start
 // after the kill switch and before the store or the bind: ≥ SafeAfter
 // counted exits in SafeWindow → safe mode; ≥ StopAfter in StopWindow, or a
-// safe-mode process that exited over budget within StopWindow → stop.
-// Only rows after the newest operator_reset count. Pure.
+// safe-mode process that exited over budget within StopWindow → stop. A
+// process is in safe mode from a start row with mode safe until a mode row
+// moves it to normal (safe mode stepped down after 30 min at normal): an
+// over-budget exit after that ran under normal rules and counts once. Only
+// rows after the newest operator_reset count. Pure.
 func EvaluateBreaker(rows []LifecycleRow, now time.Time, cfg BreakerSettings) BreakerVerdict {
 	cfg = cfg.Resolved()
 	from := 0
@@ -408,15 +432,18 @@ func EvaluateBreaker(rows []LifecycleRow, now time.Time, cfg BreakerSettings) Br
 	}
 	window := rows[from:]
 	modeOf := map[int]string{}
-	for _, r := range window {
-		if r.Row == RowStart {
-			modeOf[r.PID] = r.Mode
-		}
-	}
 	var v BreakerVerdict
 	stopKinds, safeKinds := map[string]int{}, map[string]int{}
 	safeOverBudget := ""
 	for _, r := range window {
+		switch r.Row {
+		case RowStart:
+			modeOf[r.PID] = r.Mode
+		case RowMode:
+			if r.To != "" {
+				modeOf[r.PID] = r.To
+			}
+		}
 		if !countedExit(r, window) {
 			continue
 		}

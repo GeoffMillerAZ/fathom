@@ -64,9 +64,10 @@ func TestLifecycle_UncleanPredecessorNamed(t *testing.T) {
 			t.Fatalf("closed by %s, still unclean: %+v", closer.Row, p)
 		}
 	}
-	// This process's own start row is never its predecessor.
-	if _, ok := UncleanPredecessor(append(append([]LifecycleRow(nil), rows...), startRow(300, 4*time.Minute, ModeNormal)), 300); ok {
-		t.Fatal("a process named itself its unclean predecessor")
+	// This process's own start row is never its predecessor; the older
+	// unclosed start before it still is.
+	if p, ok := UncleanPredecessor(append(append([]LifecycleRow(nil), rows...), startRow(300, 4*time.Minute, ModeNormal)), 300); !ok || p.PID != 200 {
+		t.Fatalf("with its own start row last: %+v %v, want pid 200 (never 300)", p, ok)
 	}
 	// An empty ledger has no predecessor.
 	if _, ok := UncleanPredecessor(nil, 300); ok {

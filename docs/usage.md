@@ -488,30 +488,36 @@ RT-156, RT-158, RT-165).** Every start and exit is a row in
 kept). A start with no following exit is named at the next start —
 `exit{reason: unclean}` with the jetsam or `fathom_*.diag` resource report the
 system kept for that pid (`jetsam: largestProcess`, `resource: disk writes`).
-Before the store and the bind, the breaker counts `over_budget`, `unclean` and
-foreign-holder `port_held` exits since the last `operator_reset`: 3 in 30 min
+Before the store and the bind, the breaker counts `over_budget`, `unclean`,
+foreign-holder `port_held` and non-zero `start_failed` exits (a store that
+opens and is not a database, a module that does not mount, a bind error that
+is not a held port) since the last `operator_reset`: 3 in 30 min
 start the daemon in **safe mode** (tree and fleet refused with `fathom safe
 mode since 21:07: … — run fathom resources`; point and index served;
 auto-refresh, the console feeders and the decision port off; after 30 min at
 normal it steps back); 5 in 60 min, or a safe-mode process exiting over
-budget, **stop** it — the managed daemon writes `disabled.json {reason:
+budget while still in safe mode, **stop** it — the managed daemon writes `disabled.json {reason:
 breaker}` and exits 0 (`fathom daemon start` clears it). Adoption, `stop`,
 a drained SIGTERM, a store wait, the unmanaged lifetime exits and a
 `task deploy` kickstart (its `deploy` intent row, `fathom daemon
 deploy-intent`, is written before the kickstart) are not counted. For
 `[tenancy.breaker] warmup` (120 s) after any start each heavy class holds one
-slot (enforced under `admission = "enforce"`, logged and counted under the
-default `observe`) and auto-refresh ingests nothing inline. The daemon binds
+slot — a second concurrent call is refused 503 under the default `admission =
+"observe"` as under `"enforce"` (only `"off"` skips it) — and auto-refresh
+ingests nothing inline. The daemon binds
 **before** it opens its store: an unavailable store is waited for, never
 exited on — `/healthz` and `/statusz` answer `waiting-for-store` with the
 errno and label (`tcc-wedge` for EPERM on a path that stats, with the daemon
 binary's path, signing identity and Full Disk Access / Removable Volumes
 grant as the remedy; `volume-not-mounted`), tools/call is 503 `store
 unavailable: …`, reopened with backoff 5 s → 5 min, one `store_wait` row per
-errno. A port a managed fathom of the same label already serves exits 0
-(`already served by pid N`); any other holder exits 75 and is named. SQLITE_FULL,
-SQLITE_IOERR or a store volume under `min_store_volume_free` is **store
-distress**: ingest and `/refresh-file` are refused with the reason and a
+errno (recovered by opening the path itself when SQLite's `unable to open
+database file` drops it). An unmanaged daemon keeps its `--ttl`,
+`--idle-exit` and `--exit-with-parent` while it waits. A port a managed fathom of the same label already serves exits 0
+(`already served by pid N`); any other holder exits 75 and is named. SQLITE_FULL or
+SQLITE_IOERR from a read or a write (an ingest, `/refresh-file`, an
+auto-refresh ingest), or a store volume under `min_store_volume_free`, is
+**store distress**: ingest and `/refresh-file` are refused with the reason and a
 failed read is a named error (`list_services` `symbol_count_error`), never a
 zero. The managed daemon's SIGTERM writes `exit{reason: drain}` first, closes
 tree, fleet and ingest, lets point and index finish within 12 s, and exits 0;

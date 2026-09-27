@@ -201,6 +201,9 @@ func (a *autoRefreshBackend) runInlineIngest(ctx context.Context, service string
 	inlineIngestTicket <- struct{}{}
 	err := a.QueryInterface.IngestService(ctx, service)
 	<-inlineIngestTicket
+	// RT-41 (§2.1): SQLITE_FULL or SQLITE_IOERR from the write is store
+	// distress.
+	tenancy.NoteStoreError(err, time.Now())
 
 	// Critic finding F2 (BLOCKING, phase-P fix round): bust the CLI's
 	// service-identity cache (cmd/fathom/identcache.go) on every

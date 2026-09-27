@@ -3,9 +3,12 @@ package main
 // drain.go — SIGTERM (design §8.5, RT-44). The exit{reason: drain} row is
 // written FIRST, so a SIGKILL racing the drain still leaves a not-counted
 // exit; heavy admission closes; in-flight tree/fleet work is cancelled and
-// an in-flight ingest stops at its next batch boundary (its ingest_state
-// stays in_progress, so the next start resumes it); point and index calls
-// finish; all within 12 s in total (under the plist's ExitTimeOut 20); the
+// so is an in-flight ingest, which observes it at its batch boundary — the
+// pipeline checks its context between fetch and write
+// (internal/fusion/pipeline.go), so it stops before writing or finishes its
+// write; that an aborted ingest leaves ingest_state in_progress and its
+// watermark unmoved is RT-109's contract, not this file's; point and index
+// calls finish; all within 12 s in total (under the plist's ExitTimeOut 20); the
 // record is removed; exit 0 — an Activity Monitor "Quit" or `fathom daemon
 // stop` stays down under schema 2, and `launchctl kickstart -k` is
 // unaffected.
@@ -70,7 +73,7 @@ func (d *drainer) drain(signal string) {
 		cancelled = d.inflight.Cancel(errDraining, tenancy.ClassTree, tenancy.ClassFleet, tenancy.ClassIngest)
 	}
 	if d.logf != nil {
-		d.logf(fmt.Sprintf("drain: %s — heavy admission closed, %d tree/fleet/ingest call(s) cancelled (an ingest stops at its next batch boundary; ingest_state stays in_progress), point and index finishing within %s", signal, len(cancelled), budget))
+		d.logf(fmt.Sprintf("drain: %s — heavy admission closed, %d tree/fleet/ingest call(s) cancelled (an ingest stops at its next cancellation check), point and index finishing within %s", signal, len(cancelled), budget))
 	}
 	ctx, cancel := context.WithDeadline(context.Background(), start.Add(budget))
 	defer cancel()

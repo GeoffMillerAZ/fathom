@@ -247,7 +247,15 @@ func beginLifecycle(in lifecycleStart) lifecycleOutcome {
 		logf(fmt.Sprintf("lifecycle: %d unreadable ledger line(s) skipped in %s", skipped, in.ledger))
 	}
 	if err == nil {
-		if pred, ok := tenancy.UncleanPredecessor(rows, in.pid); ok && (in.alive == nil || !in.alive(pred.PID)) {
+		// Every unclosed start whose pid is gone, oldest first: an alive
+		// incumbent (a duplicate start found its port served) never hides
+		// an older death, nor a duplicate's closed start a later one.
+		preds := tenancy.UncleanPredecessors(rows, in.pid)
+		for i := len(preds) - 1; i >= 0; i-- {
+			pred := preds[i]
+			if in.alive != nil && in.alive(pred.PID) {
+				continue
+			}
 			var files []tenancy.EvidenceFile
 			if in.evidence != nil {
 				files = in.evidence(pred.Time())

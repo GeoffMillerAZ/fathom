@@ -591,7 +591,7 @@ func initIngest(baseURL, svc, root string, stdout io.Writer) (bool, error) {
 	if info.langs != "" {
 		langs = ", " + info.langs
 	}
-	fmt.Fprintf(stdout, "ok ingest (service %q indexed: %d symbols%s)\n", svc, info.symbols, langs)
+	fmt.Fprintf(stdout, "ok ingest (service %q indexed: %s%s)\n", svc, info.countText(), langs)
 	return true, nil
 }
 

@@ -217,7 +217,7 @@ harness so an unmanaged daemon keeps one ledger across its simulated relaunches)
 | Row | Fields |
 |---|---|
 | `start` | pid, binary_commit, managed, plist_schema, mode |
-| `exit` | pid, code, reason (`over_budget`, `drain`, `adopt`, `stop`, `unclean`, `parent_exit`, `idle`, `ttl`, `unlinked`, `port_held`), uptime, last sample, top in-flight, diag path |
+| `exit` | pid, code, reason (`over_budget`, `drain`, `adopt`, `stop`, `unclean`, `parent_exit`, `idle`, `ttl`, `unlinked`, `port_held`, `start_failed`), uptime, last sample, top in-flight, diag path |
 | `adopt` | old and new binary commit |
 | `mode` | from, to, reason |
 | `breaker` | trip reason |
@@ -234,7 +234,11 @@ its pid and adds `jetsam: largestProcess` or `resource: disk writes`.
 
 `func EvaluateBreaker(rows []LifecycleRow, now time.Time, cfg BreakerConfig) BreakerVerdict`
 — pure, evaluated at startup **after the kill-switch check and before config, store or
-bind**. Counted exits: `over_budget`, `unclean`, `port_held` (foreign holder), panics.
+bind**. Counted exits: `over_budget`, `unclean`, `port_held` (foreign holder), `start_failed`
+with a non-zero code (a store that opens and is wrong, a module that does not mount, a bind
+error that is not a held port: launchd relaunches it every throttle interval), panics. A
+process is in safe mode from its `start{mode: safe}` until a `mode` row steps it to normal;
+only an over-budget exit while still in safe mode stops the daemon on its own.
 Not counted: `adopt`, `stop`, `store_wait`, `drain` (SIGTERM), and an `unclean` death of a
 pid named by a `deploy` row written in the preceding 60 s (a `launchctl kickstart -k` whose
 SIGTERM did not reach a drained exit). Without the last rule, three agent deploys in 30

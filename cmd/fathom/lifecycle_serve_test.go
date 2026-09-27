@@ -175,14 +175,14 @@ func TestWarmupGateOneHeavySlot(t *testing.T) {
 	} else {
 		r3()
 	}
+	// Warm-up holds under admission = "observe" too (a lifecycle bound,
+	// like safe mode): TestWarmupHoldsUnderObserve.
 	obs := newWarmupGate(func() string { return "observe" }, 10*time.Millisecond)
 	ra, _ := obs.acquire(context.Background(), tenancy.ClassFleet, "list_services", "agent", now)
-	rb, ref := obs.acquire(context.Background(), tenancy.ClassFleet, "list_services", "agent", now)
-	if ref != nil || obs.wouldRefuse.Load() != 1 {
-		t.Fatalf("observe refused or did not count: %+v %d", ref, obs.wouldRefuse.Load())
+	if _, ref := obs.acquire(context.Background(), tenancy.ClassFleet, "list_services", "agent", now); ref == nil {
+		t.Fatal("observe admitted a second fleet call during warm-up")
 	}
 	ra()
-	rb()
 	after := now.Add(2 * time.Minute)
 	r4, _ := g.acquire(context.Background(), tenancy.ClassTree, "a", "agent", after)
 	r5, ref := g.acquire(context.Background(), tenancy.ClassTree, "b", "hook", after)
@@ -280,17 +280,17 @@ func TestStoreWaitLabels(t *testing.T) {
 	stats := func(string) error { return nil }
 	gone := func(string) error { return os.ErrNotExist }
 	perm := &os.PathError{Op: "open", Path: "/Volumes/m2ext/db/fleet.sqlite", Err: syscall.EPERM}
-	if errno, label := classifyStoreWait(perm, "/Volumes/m2ext/db/fleet.sqlite", stats); errno != "EPERM" || label != storeWaitTCC {
+	if errno, label := classifyStoreWait(perm, "/Volumes/m2ext/db/fleet.sqlite", stats, nil); errno != "EPERM" || label != storeWaitTCC {
 		t.Fatalf("EPERM that stats = %s %s", errno, label)
 	}
-	if _, label := classifyStoreWait(perm, "/Volumes/m2ext/db/fleet.sqlite", gone); label == storeWaitTCC {
+	if _, label := classifyStoreWait(perm, "/Volumes/m2ext/db/fleet.sqlite", gone, nil); label == storeWaitTCC {
 		t.Fatal("EPERM on a path that does not stat is not a TCC wedge")
 	}
 	noent := &os.PathError{Op: "open", Path: "/Volumes/m2ext/db/fleet.sqlite", Err: syscall.ENOENT}
-	if errno, label := classifyStoreWait(noent, "/Volumes/m2ext/db/fleet.sqlite", gone); errno != "ENOENT" || label != storeWaitUnmounted {
+	if errno, label := classifyStoreWait(noent, "/Volumes/m2ext/db/fleet.sqlite", gone, nil); errno != "ENOENT" || label != storeWaitUnmounted {
 		t.Fatalf("ENOENT under /Volumes = %s %s", errno, label)
 	}
-	if _, label := classifyStoreWait(noent, "/Users/x/db/fleet.sqlite", gone); label != storeWaitUnavailable {
+	if _, label := classifyStoreWait(noent, "/Users/x/db/fleet.sqlite", gone, nil); label != storeWaitUnavailable {
 		t.Fatalf("ENOENT elsewhere = %s", label)
 	}
 	if !storeUnavailable(perm) || !storeUnavailable(noent) || !storeUnavailable(&os.PathError{Err: syscall.EACCES}) || storeUnavailable(errors.New("schema mismatch")) {

@@ -93,6 +93,9 @@ func refreshFileHandler(c *client.Client, patcher graphPatcher) http.HandlerFunc
 func buildRefreshFileResponse(ctx context.Context, c *client.Client, patcher graphPatcher, service, file string) refreshFileResponse {
 	report, err := c.ReingestFile(ctx, service, file)
 	if err != nil {
+		// RT-41 (§2.1): a write's SQLITE_FULL or SQLITE_IOERR is store
+		// distress — later refreshes and ingests are refused, named.
+		tenancy.NoteStoreError(err, time.Now())
 		return refreshFileResponse{Error: err.Error()}
 	}
 	out := refreshFileResponse{

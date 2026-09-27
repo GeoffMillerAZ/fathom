@@ -59,8 +59,8 @@ func subagentPrimer(baseURL, projDir, parentSessionID string) string {
 		return ""
 	}
 	primer := fmt.Sprintf(
-		"fathom: this repo is the indexed service %q (%d symbols) — route by question shape: where/who-calls/what-breaks -> fathom MCP tools; what-governs -> obligations (no path); what-was-known -> staleness_report; a doc-vs-doc conflict is grep's job.\n%s",
-		name, info.symbols, openingMovesTable,
+		"fathom: this repo is the indexed service %q (%s) — route by question shape: where/who-calls/what-breaks -> fathom MCP tools; what-governs -> obligations (no path); what-was-known -> staleness_report; a doc-vs-doc conflict is grep's job.\n%s",
+		name, info.countText(), openingMovesTable,
 	)
 	// A subagent started inside a git worktree of the service gets the
 	// worktree line here: WorktreeCreate is a creation hook, not an
@@ -154,8 +154,8 @@ func toolFailureAdvice(baseURL, projDir, toolName, toolErr string) string {
 		return fmt.Sprintf("%s — the daemon is up, but this repo is not resolvable as an indexed service, so a `service` argument naming it cannot be answered. Index it with the ingest tool ({\"service\":\"<name>\",\"path\":\"<absolute repo root>\"}), or fall back to Grep/Read.",
 			lead)
 	}
-	return fmt.Sprintf("%s — the daemon is up and this repo IS the indexed service %q (%d symbols), so the failure is in the call, not the wiring: check the arguments (service must be %q) and retry. `fathom doctor` gives the full diagnosis.",
-		lead, name, info.symbols, name)
+	return fmt.Sprintf("%s — the daemon is up and this repo IS the indexed service %q (%s), so the failure is in the call, not the wiring: check the arguments (service must be %q) and retry. `fathom doctor` gives the full diagnosis.",
+		lead, name, info.countText(), name)
 }
 
 // worktreeAdvice renders the one line a freshly created git worktree gets

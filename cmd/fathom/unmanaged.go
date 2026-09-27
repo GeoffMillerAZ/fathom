@@ -172,12 +172,33 @@ type daemonLifetime struct {
 	// closed, no heartbeat writes the record back.
 	mu     sync.Mutex
 	closed bool
+
+	// stopped (nil: never) ends run's ticker when serve-http returns
+	// without exiting (a failed start in an in-process caller): a
+	// leftover tick must never apply an exit bound to the caller's
+	// process. Closed by stop, once.
+	stopped  chan struct{}
+	stopOnce sync.Once
+}
+
+// stop ends run's ticker; idempotent.
+func (l *daemonLifetime) stop() {
+	l.stopOnce.Do(func() {
+		if l.stopped != nil {
+			close(l.stopped)
+		}
+	})
 }
 
 // tick runs one evaluation; it returns the exit reason when it exited.
 func (l *daemonLifetime) tick() string {
 	inFlight, last := l.act.snapshot()
 	now := l.now()
+	// The lifetime starts before the store wait (RT-42): a store created
+	// by its first open is identified at the first tick that sees it.
+	if !l.store.ok && l.store.path != "" {
+		l.store = identify(l.store.path)
+	}
 	if l.recordPath != "" {
 		read := l.readRecord
 		if read == nil {
@@ -283,9 +304,14 @@ func exitOnSignal(sigs <-chan os.Signal, l *daemonLifetime) {
 func (l *daemonLifetime) run(every time.Duration) {
 	t := time.NewTicker(every)
 	defer t.Stop()
-	for range t.C {
-		if l.tick() != "" {
+	for {
+		select {
+		case <-l.stopped:
 			return
+		case <-t.C:
+			if l.tick() != "" {
+				return
+			}
 		}
 	}
 }

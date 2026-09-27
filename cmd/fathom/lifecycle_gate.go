@@ -85,8 +85,10 @@ func writeBusy(w http.ResponseWriter, id json.RawMessage, reason, class string, 
 	_, _ = w.Write(body)
 }
 
-// rpcCallInfo parses the parts of a /rpc message the gate needs.
-func rpcCallInfo(raw []byte) (id json.RawMessage, tool string, class tenancy.Class, ok bool) {
+// rpcCallInfo parses the parts of a /rpc message the gate needs: the
+// call's class and, for a batch, every sub-call's class (classes[0] is
+// the call's own).
+func rpcCallInfo(raw []byte) (id json.RawMessage, tool string, classes []tenancy.Class, ok bool) {
 	var msg struct {
 		ID     json.RawMessage `json:"id"`
 		Method string          `json:"method"`
@@ -96,24 +98,34 @@ func rpcCallInfo(raw []byte) (id json.RawMessage, tool string, class tenancy.Cla
 		} `json:"params"`
 	}
 	if json.Unmarshal(raw, &msg) != nil || msg.Method != "tools/call" || msg.Params.Name == "" {
-		return nil, "", 0, false
+		return nil, "", nil, false
 	}
-	return msg.ID, msg.Params.Name, rpcToolClass(msg.Params.Name, msg.Params.Arguments), true
+	classes = []tenancy.Class{rpcToolClass(msg.Params.Name, msg.Params.Arguments)}
+	if msg.Params.Name == "batch" {
+		classes = append(classes, rpcBatchClasses(msg.Params.Arguments)...)
+	}
+	return msg.ID, msg.Params.Name, classes, true
 }
 
 // lifecycleGate runs before dispatch: the mode refusals, then the warm-up
 // slot. It writes the refusal itself and reports false; on true the caller
 // dispatches and calls release when done.
 func lifecycleGate(ctx context.Context, w http.ResponseWriter, raw []byte, origin string) (release func(), ok bool) {
-	id, tool, class, isCall := rpcCallInfo(raw)
+	id, tool, classes, isCall := rpcCallInfo(raw)
 	if !isCall {
 		return func() {}, true
 	}
 	now := time.Now()
-	if ref := lifecycleRefusal(class, now); ref != nil {
-		writeBusy(w, id, ref.Reason, class.String(), ref.RetryAfter)
-		return nil, false
+	// A batch dispatches its sub-calls in process: each sub-call's class
+	// is checked, so a batch never carries a tree, fleet or ingest call
+	// past safe mode, a drain or store distress.
+	for _, c := range classes {
+		if ref := lifecycleRefusal(c, now); ref != nil {
+			writeBusy(w, id, ref.Reason, c.String(), ref.RetryAfter)
+			return nil, false
+		}
 	}
+	class := classes[0]
 	rel, ref := serveWarmupGate.acquire(ctx, class, tool, origin, now)
 	if ref != nil {
 		writeBusy(w, id, ref.Reason, class.String(), ref.RetryAfter)
@@ -124,18 +136,19 @@ func lifecycleGate(ctx context.Context, w http.ResponseWriter, raw []byte, origi
 
 // ─── warm-up (RT-40) ──────────────────────────────────────────────────────
 
-// warmupGate holds one slot per heavy class while tenancy.InWarmup. Under
-// admission = "enforce" a call that cannot get the slot within wait (a
-// hook: at once) is refused; under "observe" (the default until RT-96) it
-// is logged, counted and admitted; "off" skips the gate.
+// warmupGate holds one slot per heavy class while tenancy.InWarmup. A
+// call that cannot get the slot within wait (a hook: at once) is refused
+// (503 + Retry-After, which a hook's breaker reads as busy, not a
+// failure). Warm-up is a lifecycle bound, like safe mode's refusals: it
+// holds under admission = "observe" (the default until RT-96) as under
+// "enforce"; only "off" skips it.
 type warmupGate struct {
-	mode        func() string
-	wait        time.Duration
-	mu          sync.Mutex
-	slots       map[tenancy.Class]chan struct{}
-	holders     map[tenancy.Class]string // the slot holder's tool, for the refusal
-	wouldRefuse atomic.Int64
-	logf        func(string)
+	mode    func() string
+	wait    time.Duration
+	mu      sync.Mutex
+	slots   map[tenancy.Class]chan struct{}
+	holders map[tenancy.Class]string // the slot holder's tool, for the refusal
+	logf    func(string)
 }
 
 func newWarmupGate(mode func() string, wait time.Duration) *warmupGate {
@@ -195,12 +208,8 @@ func (g *warmupGate) acquire(ctx context.Context, c tenancy.Class, tool, origin 
 	g.mu.Unlock()
 	remain := d - now.Sub(start)
 	reason := fmt.Sprintf("warm-up: %s-class holds 1 slot for %s after the start (in use: %s)", c, d, holder)
-	if mode != "enforce" {
-		g.wouldRefuse.Add(1)
-		if g.logf != nil {
-			g.logf("tenancy: admission observe — would refuse " + tool + ": " + reason)
-		}
-		return func() {}, nil
+	if g.logf != nil {
+		g.logf("tenancy: warm-up refused " + tool + ": " + reason)
 	}
 	return nil, &lcRefusal{Reason: reason, Class: c, RetryAfter: max(remain, time.Second)}
 }
@@ -246,6 +255,16 @@ type safeModeController struct {
 	version string
 	warmup  time.Duration
 	logf    func(string)
+}
+
+// newSafeModeController tracks the breaker's safe mode from this start's
+// verdict (out.safe). paused.json's safe mode is the operator's: it ends
+// with `fathom daemon resume`, never by stepping down, so it is not
+// tracked and writes no mode row.
+func newSafeModeController(out lifecycleOutcome, ledger string, pid int, version string, warmup time.Duration, logf func(string)) *safeModeController {
+	sm := &safeModeController{ledger: ledger, pid: pid, version: version, warmup: warmup, logf: logf}
+	sm.tracker.Safe = out.safe != nil
+	return sm
 }
 
 func (s *safeModeController) step(now time.Time, level tenancy.Level) {

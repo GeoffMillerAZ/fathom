@@ -94,9 +94,15 @@ func volumeRoot(path string) string {
 // that stats (the file, or its directory when the file is not there yet)
 // is a TCC wedge — the kernel can see it, the policy refuses it; ENOENT
 // under /Volumes/ whose volume root does not stat is an unmounted volume;
-// anything else is unavailable, errno named.
-func classifyStoreWait(err error, path string, stat func(string) error) (errno, label string) {
+// anything else is unavailable, errno named. The SQLite VFS drops the
+// errno of an existing file it cannot open ("unable to open database file
+// (14)") — INC-23's shape exactly — so when err carries none, probe (nil:
+// none) opens the path itself to recover it.
+func classifyStoreWait(err error, path string, stat, probe func(string) error) (errno, label string) {
 	errno = errnoName(err)
+	if errno == "" && probe != nil {
+		errno = errnoName(probe(path))
+	}
 	if errno == "" {
 		errno = "CANTOPEN"
 	}
@@ -152,6 +158,7 @@ type storeWaitDeps[T any] struct {
 	path     string
 	open     func() (T, error)
 	stat     func(string) error
+	probe    func(string) error
 	sleep    func(ctx context.Context, d time.Duration) error
 	onWait   func(storeWaitState) // each failed attempt, then once Open after a wait
 	now      func() time.Time
@@ -180,7 +187,7 @@ func openStoreWithWait[T any](ctx context.Context, d storeWaitDeps[T]) (T, error
 		if !storeUnavailable(err) {
 			return zero, err
 		}
-		errno, label := classifyStoreWait(err, d.path, d.stat)
+		errno, label := classifyStoreWait(err, d.path, d.stat, d.probe)
 		if st.Attempts == 0 {
 			st.Since = d.now()
 		}
@@ -219,6 +226,27 @@ func sleepCtx(ctx context.Context, d time.Duration) error {
 // codesignDescribe reads the daemon binary's signing identity.
 func codesignDescribe(exe string) signingIdentity {
 	return binarySigningIdentity(realDaemonOps{}, exe)
+}
+
+// probeStoreOpen opens the store file read-write as SQLite would, to
+// recover the errno the VFS dropped; when the file is not there, the
+// directory it would be created in is probed instead. nil: nothing refused
+// (the failure is SQLite's own).
+func probeStoreOpen(path string) error {
+	f, err := os.OpenFile(path, os.O_RDWR, 0)
+	if err == nil {
+		_ = f.Close()
+		return nil
+	}
+	if !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	d, derr := os.Open(filepath.Dir(path))
+	if derr != nil {
+		return derr
+	}
+	_ = d.Close()
+	return nil
 }
 
 // statPath is os.Stat's error.

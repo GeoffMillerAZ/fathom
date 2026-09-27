@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -82,34 +81,8 @@ func classifyStoreError(err error) string {
 	return err.Error()
 }
 
-// SQLite primary result codes that are store distress (§2.1).
-const (
-	sqliteIOErr = 10
-	sqliteFull  = 13
-)
-
-// storeDistressKind names a distress error ("disk full (SQLITE_FULL)",
-// "disk I/O error (SQLITE_IOERR)"), else "". modernc.org/sqlite's *Error
-// carries the extended code (Code() int); the message is the fallback.
-func storeDistressKind(err error) string {
-	var coded interface{ Code() int }
-	if errors.As(err, &coded) {
-		switch coded.Code() & 0xff {
-		case sqliteFull:
-			return "disk full (SQLITE_FULL)"
-		case sqliteIOErr:
-			return "disk I/O error (SQLITE_IOERR)"
-		}
-	}
-	msg := strings.ToLower(err.Error())
-	switch {
-	case strings.Contains(msg, "database or disk is full") || strings.Contains(msg, "sqlite_full") || strings.Contains(msg, "no space left on device"):
-		return "disk full (SQLITE_FULL)"
-	case strings.Contains(msg, "disk i/o error") || strings.Contains(msg, "sqlite_ioerr"):
-		return "disk I/O error (SQLITE_IOERR)"
-	}
-	return ""
-}
+// storeDistressKind names a distress error (tenancy.StoreDistressKind).
+func storeDistressKind(err error) string { return tenancy.StoreDistressKind(err) }
 
 func (f *fleetAdapter) Services() []string {
 	ids, err := f.c.Services(context.Background())
