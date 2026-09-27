@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -106,6 +107,9 @@ func sqlitePragmaDSN(path string) string {
 	q.Add("_pragma", "busy_timeout(5000)")
 	q.Add("_pragma", "journal_mode(WAL)")
 	q.Add("_pragma", "synchronous(NORMAL)")
+	for _, p := range tenancyConnPragmas { // RT-78
+		q.Add("_pragma", p)
+	}
 	return path + "?" + q.Encode()
 }
 
@@ -145,6 +149,10 @@ func NewSQLiteStore(path string) (*SQLiteStore, error) {
 	}
 
 	s := &SQLiteStore{db: db, path: path, gate: newScopeGate()}
+	if err := applyTenancyPragmas(context.Background(), db); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("store.NewSQLiteStore pragmas: %w", err)
+	}
 	if err := s.createSchema(); err != nil {
 		_ = db.Close()
 		return nil, fmt.Errorf("store.NewSQLiteStore schema: %w", err)
@@ -180,6 +188,9 @@ var serveIndexes = []string{
     ON typed_edges (service_id, from_symbol)`,
 	`CREATE INDEX IF NOT EXISTS idx_observations_service_source
     ON observations (service_id, source_ref)`,
+	// RT-78 (§6): find_symbol / find_callers point lookups by name.
+	`CREATE INDEX IF NOT EXISTS idx_observations_service_symbol
+    ON observations (service_id, symbol)`,
 	`CREATE INDEX IF NOT EXISTS idx_external_findings_service_claim
     ON external_findings (service_id, claim_id)`,
 }
@@ -661,31 +672,43 @@ func (s *SQLiteStore) queryObservationsRaw(ctx context.Context, serviceID, conce
 		err  error
 	)
 	if concernID == "" {
-		rows, err = s.db.QueryContext(ctx, `
-SELECT service_id, concern_id, source_ref, source_kind, evidence_tier,
-       symbol, package, claim, content_hash, calls, complexity, line, end_line, ingested_at,
-       tool_kind, generated
-FROM observations
-WHERE service_id = ?
-ORDER BY ingested_at
-`, serviceID)
+		rows, err = s.db.QueryContext(ctx, queryObservationsSQL, serviceID)
 	} else {
-		rows, err = s.db.QueryContext(ctx, `
-SELECT service_id, concern_id, source_ref, source_kind, evidence_tier,
-       symbol, package, claim, content_hash, calls, complexity, line, end_line, ingested_at,
-       tool_kind, generated
-FROM observations
-WHERE service_id = ? AND concern_id = ?
-ORDER BY ingested_at
-`, serviceID, concernID)
+		rows, err = s.db.QueryContext(ctx, queryObservationsConcernSQL, serviceID, concernID)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("QueryObservations query: %w", err)
 	}
 	defer rows.Close()
 
-	return scanObservations(ctx, rows)
+	obs, err := scanObservations(ctx, rows)
+	if err != nil {
+		return nil, err
+	}
+	// RT-78: ingested_at order, sorted here on the service's rows rather
+	// than by SQLite in a temp B-tree. Rows arrive in rowid (insertion)
+	// order from the service_id index, so the stable sort keeps insertion
+	// order among equal timestamps.
+	sort.SliceStable(obs, func(i, j int) bool { return obs[i].IngestedAt.Before(obs[j].IngestedAt) })
+	return obs, nil
 }
+
+// queryObservationsSQL and queryObservationsConcernSQL read a service's
+// observations with no ORDER BY (RT-78: no temp B-tree); the caller sorts.
+const (
+	queryObservationsSQL = `
+SELECT service_id, concern_id, source_ref, source_kind, evidence_tier,
+       symbol, package, claim, content_hash, calls, complexity, line, end_line, ingested_at,
+       tool_kind, generated
+FROM observations
+WHERE service_id = ?`
+	queryObservationsConcernSQL = `
+SELECT service_id, concern_id, source_ref, source_kind, evidence_tier,
+       symbol, package, claim, content_hash, calls, complexity, line, end_line, ingested_at,
+       tool_kind, generated
+FROM observations
+WHERE service_id = ? AND concern_id = ?`
+)
 
 // Fingerprint returns the stored content hash for (serviceID, sourceRef).
 func (s *SQLiteStore) Fingerprint(ctx context.Context, serviceID, sourceRef string) (string, bool, error) {

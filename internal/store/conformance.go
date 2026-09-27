@@ -183,6 +183,7 @@ func sqliteReadOnlyDSN(path string) string {
 	q := url.Values{}
 	q.Set("mode", "ro")
 	q.Add("_pragma", "busy_timeout(5000)")
+	q.Add("_pragma", tenancyConnPragmas[0]) // RT-78: cache_size
 	return "file:" + path + "?" + q.Encode()
 }
 
