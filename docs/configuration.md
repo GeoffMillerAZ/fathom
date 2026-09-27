@@ -303,6 +303,9 @@ min_swap_volume_free  = "5GiB"      # /System/Volumes/VM
 
 [tenancy.unmanaged]
 budget = "512MiB"                   # an unmanaged serve-http's own budget
+
+[tenancy.breaker]
+warmup = "120s"                     # after a managed start, auto-refresh runs no inline ingest for this long
 ```
 
 Every 2 s the daemon samples its own `phys_footprint`, the footprint of its
@@ -325,7 +328,36 @@ the budget and its derivation (`tenancy: budget 4 GiB (auto: clamp(RAM 32 GiB
 carries `fathom_tenancy_level`, `fathom_budget_bytes`,
 `fathom_footprint_bytes`, `fathom_children_footprint_bytes`,
 `fathom_host_pressure_level`, `fathom_swap_used_bytes`,
-`fathom_gc_cpu_fraction` and `fathom_quarantined_services`.
+`fathom_gc_cpu_fraction`, `fathom_quarantined_services` and the disk-write
+gauges below. Every scavenge — the 15-minute tick and each ladder event (shed
+entry, every 30 s while shed, refuse entry, the exit-mark halt) — logs one
+line: `scavenge (<event>): released X — total−released A → B, phys_footprint
+C → D` (runtime/metrics and the process footprint; `heap_sys`, a high-water
+mark that never falls, is not the instrument).
+
+**Auto-refresh deferral.** Auto-refresh runs no inline ingest at `shed` and
+above, while the daemon is paused (safe mode), during the managed daemon's
+warm-up after a start (`[tenancy.breaker].warmup`, 120 s) or for a
+quarantined service. The read answers from the index as it stands and its
+response envelope says so: `"refresh": {"<service>": "deferred (shed) —
+served from the index as it stands; freshness not checked …"}`.
+
+**Interrupted ingests.** An ingest writes `ingest_state = in_progress` in the
+store before its first write and records the watermark (with `complete`)
+only at its final commit, so a killed or halted ingest never looks fresh.
+Auto-refresh re-ingests a service another process left `in_progress`, even
+at the same commit — unless the service is quarantined.
+
+**Disk writes.** The sampler reads the daemon's cumulative bytes written
+(rusage) and keeps them per minute for 24 h, split by whether an explicit
+`ingest`/`onboard_service` call was in flight. The contract is ≤ 2 GiB a day
+outside explicit ingest (§12.4); it is disclosed, not enforced: `/statusz`'s
+tenancy block carries `disk_writes` (and `disk_writes_over`), `/metrics`
+carries `fathom_bytes_written_total`,
+`fathom_bytes_written_24h_outside_ingest`,
+`fathom_bytes_written_24h_explicit_ingest` and
+`fathom_disk_write_budget_bytes`, and doctor's `disk_writes` row WARNs over
+budget. An unreadable counter is unknown, never 0.
 
 **Quarantine.** A service whose ingest was halted at the exit mark (or was in
 flight at an over-budget exit) is recorded in the daemon's lifecycle ledger;
