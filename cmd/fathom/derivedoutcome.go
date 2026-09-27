@@ -7,12 +7,15 @@ package main
 // verify ledger (SD-1) accumulates history.
 
 import (
+	"context"
 	"errors"
 	"os/exec"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/gitro"
 )
 
 // derivedCommitsForSession returns the number of commits landed in root
@@ -49,30 +52,37 @@ func derivedCommitsInSpan(root string, start, end time.Time) (int, bool) {
 	}
 	head := repoHeadNoFork(root)
 	key := strings.Join([]string{root, head, start.UTC().Format(time.RFC3339Nano), end.UTC().Format(time.RFC3339Nano)}, "\x00")
+	now := derivedCommitsNow()
 	if head != "" {
 		derivedCommitsMemo.Lock()
 		v, ok := derivedCommitsMemo.m[key]
 		derivedCommitsMemo.Unlock()
-		if ok {
+		// An answer stands until HEAD moves; a failure only for
+		// consolePlansRetry (an EPERM wedge clears — I38).
+		if ok && (v.ok || now.Sub(v.at) < consolePlansRetry) {
 			return v.n, v.ok
 		}
 	}
-	out, err := exec.Command("git", "-C", root, "rev-list", "--count",
+	// The model's rebuild is one flight: a git that does not answer within
+	// consoleGitTimeout is stopped, never held (RT-115).
+	ctx, cancel := context.WithTimeout(context.Background(), consoleGitTimeout)
+	defer cancel()
+	out, err := gitro.Output(ctx, root, "rev-list", "--count",
 		"--since="+start.UTC().Format(time.RFC3339),
 		"--until="+end.Add(time.Minute).UTC().Format(time.RFC3339),
-		"HEAD").Output()
+		"HEAD")
 	n, ok := 0, false
 	if err == nil {
 		if v, perr := strconv.Atoi(strings.TrimSpace(string(out))); perr == nil {
 			n, ok = v, true
 		}
 	}
-	if head != "" && (ok || err != nil && !isExecNotFound(err)) {
+	if head != "" && ctx.Err() == nil && (ok || err != nil && !isExecNotFound(err)) {
 		derivedCommitsMemo.Lock()
 		if derivedCommitsMemo.m == nil || len(derivedCommitsMemo.m) >= derivedCommitsMemoMax {
 			derivedCommitsMemo.m = map[string]derivedCount{}
 		}
-		derivedCommitsMemo.m[key] = derivedCount{n, ok}
+		derivedCommitsMemo.m[key] = derivedCount{n, ok, now}
 		derivedCommitsMemo.Unlock()
 	}
 	return n, ok
@@ -81,7 +91,11 @@ func derivedCommitsInSpan(root string, start, end time.Time) (int, bool) {
 type derivedCount struct {
 	n  int
 	ok bool
+	at time.Time
 }
+
+// derivedCommitsNow is the memo's clock (tests pin it).
+var derivedCommitsNow = time.Now
 
 // derivedCommitsMemoMax bounds the kept counts (one per arm unit window).
 const derivedCommitsMemoMax = 4096
