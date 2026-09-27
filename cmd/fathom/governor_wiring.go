@@ -106,6 +106,10 @@ func startGovernor(b tenancy.Budget, notes []tenancy.Note, storePath, recordPath
 	})
 	if dir == "" {
 		g.captureDiag = nil
+	} else if ring, err := tenancy.OpenRing(filepath.Join(dir, tenancy.RingFileName)); err == nil {
+		g.ring = ring
+	} else {
+		flog.Warn(fmt.Sprintf("tenancy: resource ring unavailable (%v) — `fathom resources` and doctor will read no history for this daemon", err))
 	}
 	if err := g.loadQuarantine(); err != nil {
 		flog.Warn(fmt.Sprintf("tenancy: quarantine unreadable (%v) — the lifecycle ledger %s could not be read; no service is treated as quarantined", err, ledger))
@@ -118,6 +122,12 @@ func startGovernor(b tenancy.Budget, notes []tenancy.Note, storePath, recordPath
 		if activeGovernor.CompareAndSwap(g, nil) {
 			tenancy.PublishLevel(tenancy.LevelNormal)
 		}
+		g.mu.Lock()
+		if c, ok := g.ring.(interface{ Close() error }); ok {
+			_ = c.Close()
+		}
+		g.ring = nil
+		g.mu.Unlock()
 	}
 }
 

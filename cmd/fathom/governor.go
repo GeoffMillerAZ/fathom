@@ -61,6 +61,17 @@ type governorConfig struct {
 	killChildren func() int
 	captureDiag  func(trigger string) string // returns the capture's path
 	exit         func(code int)
+	// ring is the resource ring (§13.1, RT-47): one record a minute and
+	// one per ladder transition; nil writes none.
+	ring ringWriter
+	// safeMode reports the daemon's mode for the ring and /statusz; nil
+	// reads safeModeActive.
+	safeMode func() bool
+}
+
+// ringWriter is the resource ring as the governor writes it.
+type ringWriter interface {
+	WriteRingSample(tenancy.RingRecord) error
 }
 
 // governor owns the ladder for one daemon.
@@ -79,6 +90,51 @@ type governor struct {
 	cancelled []string  // the last refuse cancellation, in order
 	abandoned int64     // calls cancelled as abandoned-by-governor, process lifetime
 	lastDiag  time.Time // the last refuse-entry diagnostic capture
+	diagPath  string    // the newest capture's directory
+	diagAt    time.Time // and when it was taken
+	diagWhy   string    // and its trigger
+
+	ringMinute int64 // unix minute of the last minute record (0: none yet)
+	ringErr    bool  // a ring write failed (logged once until one succeeds)
+}
+
+// writeRing writes one ring record from the current sample (§13.1).
+// Called under g.mu. A failed write is logged once, not every minute.
+func (g *governor) writeRing(at time.Time, transition bool) {
+	if g.ring == nil {
+		return
+	}
+	rec := g.ringRecord(at, transition)
+	if err := g.ring.WriteRingSample(rec); err != nil {
+		if !g.ringErr {
+			g.ringErr = true
+			g.logf(fmt.Sprintf("tenancy: resource ring not written (%v) — `fathom resources` shows the last readable sample", err))
+		}
+		return
+	}
+	g.ringErr = false
+}
+
+// ringRecord projects the governor's state into a ring record.
+func (g *governor) ringRecord(at time.Time, transition bool) tenancy.RingRecord {
+	s := &g.sample
+	rec := tenancy.RingRecord{
+		At: at, Transition: transition, Level: g.st.Level, SafeMode: g.safeMode(), LadderOff: g.st.Off,
+		Footprint: s.Footprint, Children: s.Children, GoTotalMinusReleased: s.GoTotalMinusReleased,
+		HeapLive: s.HeapLive, GCCPUFraction: s.GCCPUFraction, Pressure: s.Pressure, SwapUsed: s.SwapUsed,
+		StoreFree: s.StoreFree, TmpFree: s.TmpFree, SwapVolumeFree: s.SwapVolumeFree, DiskWritten: s.DiskWritten,
+		Abandoned: uint32(min(g.abandoned, int64(^uint32(0)))),
+	}
+	snap := g.inflight.Snapshot()
+	for _, e := range snap {
+		if int(e.Class) < len(rec.InFlight) && rec.InFlight[e.Class] < ^uint16(0) {
+			rec.InFlight[e.Class]++
+		}
+	}
+	if len(snap) > 0 { // Snapshot is oldest first
+		rec.OldestTool, rec.OldestClass, rec.OldestAge = snap[0].Tool, snap[0].Class, at.Sub(snap[0].Started)
+	}
+	return rec
 }
 
 // freeEvery bounds debug.FreeOSMemory while shed (§2.1).
@@ -107,6 +163,9 @@ func newGovernor(cfg governorConfig) *governor {
 	if cfg.logf == nil {
 		cfg.logf = func(string) {}
 	}
+	if cfg.safeMode == nil {
+		cfg.safeMode = safeModeActive
+	}
 	return &governor{governorConfig: cfg, rt: tenancy.NewRuntimeReader()}
 }
 
@@ -123,6 +182,11 @@ func (g *governor) tick(at time.Time, late time.Duration) tenancy.Transition {
 	if tr.Changed {
 		g.lastTrans = tr
 		g.applyLadderLevel(tr)
+		g.writeRing(at, true)
+	}
+	if m := at.Unix() / 60; m != g.ringMinute {
+		g.ringMinute = m
+		g.writeRing(at, false)
 	}
 	if g.st.Level == tenancy.LevelExit {
 		g.exitOverBudget(tr)
@@ -162,6 +226,7 @@ func (g *governor) applyLadderLevel(tr tenancy.Transition) {
 			if tr.To == tenancy.LevelRefuse && g.captureDiag != nil && (g.lastDiag.IsZero() || tr.At.Sub(g.lastDiag) >= diagEvery) {
 				g.lastDiag = tr.At
 				if p := g.captureDiag("refuse"); p != "" {
+					g.diagPath, g.diagAt, g.diagWhy = p, tr.At, "refuse"
 					g.logf("tenancy: diagnostics captured → " + p)
 				}
 			}
@@ -260,6 +325,9 @@ func (g *governor) exitOverBudget(tr tenancy.Transition) {
 	diag := ""
 	if g.captureDiag != nil {
 		diag = g.captureDiag("exit")
+		if diag != "" {
+			g.diagPath, g.diagAt, g.diagWhy = diag, g.sample.At, "exit"
+		}
 	}
 	detail := tr.Reason
 	if detail == "" || !tr.Changed {

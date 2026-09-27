@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/console"
+	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
 
 // daemonMeta is what serve-http knows about itself beyond its address.
@@ -180,13 +181,20 @@ func scratchRecordID(id string) (port string, pid int, ok bool) {
 }
 
 // removeDaemonRecord removes a record on clean exit, and its directory
-// when nothing else (a lifecycle ledger, a ring) lives there.
+// when nothing else (a lifecycle ledger) lives there. A scratch daemon's
+// resource ring (addr-<port>-<pid>, §13.1) goes with its record: its id is
+// unique per process, so a ring left behind would never be written or read
+// again and every dead scratch daemon would leave ~270 KB for good. A
+// managed daemon's ring is kept: it is how a stopped daemon stays visible.
 func removeDaemonRecord(path string) {
 	if path == "" {
 		return
 	}
 	_ = os.Remove(path)
 	_ = os.Remove(path + ".tmp")
+	if _, _, scratch := scratchRecordID(filepath.Base(filepath.Dir(path))); scratch {
+		_ = os.Remove(filepath.Join(filepath.Dir(path), tenancy.RingFileName))
+	}
 	_ = os.Remove(filepath.Dir(path)) // fails, harmlessly, when not empty
 }
 
