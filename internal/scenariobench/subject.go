@@ -839,7 +839,14 @@ func wireScratchDaemon(ctx context.Context, wt *Worktree, task Task, renderedArm
 	// A scratch daemon never watches its binary for a deploy (it would exit
 	// and nothing relaunches it), and it runs in its own process group so
 	// StopWorktree can take down anything it spawned (O52).
+	// A bench cell measures the daemon an agent meets, so its scratch
+	// daemon takes the managed daemon's ceiling (4 GiB at most, ADR-047
+	// §2), not the 512 MiB unmanaged budget that would cut a heavy cell
+	// short with exit 70; an explicit FATHOM_TENANCY_BUDGET still wins.
 	daemon.Env = append(os.Environ(), "FATHOM_SELF_RESTART=off")
+	if os.Getenv("FATHOM_TENANCY_BUDGET") == "" {
+		daemon.Env = append(daemon.Env, "FATHOM_TENANCY_BUDGET=4GiB")
+	}
 	daemon.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	logFile, err := os.Create(filepath.Join(wt.CellDir, "scratch-daemon.log"))
 	if err == nil {
