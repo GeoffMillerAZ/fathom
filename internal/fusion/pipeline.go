@@ -952,12 +952,16 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	// RT-89 (§6): routes and outbound HTTP client calls are extracted here,
 	// at ingest, from the content this pass already holds — never per call.
 	contents := make(map[string][]byte, len(refs))
+	unreadable := map[string]bool{}
 	for i, r := range refs {
-		if fetched[i].err == nil {
+		switch {
+		case fetched[i].err == nil:
 			contents[r.Path] = fetched[i].content
+		case !isOversize(fetched[i].err):
+			unreadable[r.Path] = true
 		}
 	}
-	if err := p.extractServiceRefs(ctx, svc.ID, refs, contents, pending); err != nil {
+	if err := p.extractServiceRefs(ctx, svc.ID, refs, contents, unreadable, pending); err != nil {
 		return report, err
 	}
 
@@ -1139,7 +1143,13 @@ func (p *Pipeline) purgeOrphans(ctx context.Context, serviceID string, refs []co
 // every readable file's when they are not (its first ingest since RT-89,
 // or after a purge); rows of files no longer discovered, or no longer
 // readable as source (oversize), are dropped.
-func (p *Pipeline) extractServiceRefs(ctx context.Context, serviceID string, refs []core.SourceRef, contents map[string][]byte, pending []pendingFile) error {
+//
+// A file unreadable this run (a read failure, not oversize) keeps its rows,
+// as pass 3 keeps its observations: when it reads again unchanged it is
+// never pending, so dropped rows would never return. For the same reason a
+// first extraction with any unreadable file is not marked complete — the
+// next ingest extracts every readable file again.
+func (p *Pipeline) extractServiceRefs(ctx context.Context, serviceID string, refs []core.SourceRef, contents map[string][]byte, unreadable map[string]bool, pending []pendingFile) error {
 	stored, complete, err := p.st.ServiceRefsFor(ctx, serviceID)
 	if err != nil {
 		return fmt.Errorf("fusion: service refs %q: %w", serviceID, err)
@@ -1162,13 +1172,20 @@ func (p *Pipeline) extractServiceRefs(ctx context.Context, serviceID string, ref
 		discovered[r.Path] = true
 	}
 	gone := map[string]bool{}
+	dropped := func(file string) bool {
+		if !discovered[file] {
+			return true
+		}
+		_, readable := contents[file]
+		return !readable && !unreadable[file]
+	}
 	for _, r := range stored.Routes {
-		if _, readable := contents[r.File]; !discovered[r.File] || !readable {
+		if dropped(r.File) {
 			gone[r.File] = true
 		}
 	}
 	for _, c := range stored.Calls {
-		if _, readable := contents[c.File]; !discovered[c.File] || !readable {
+		if dropped(c.File) {
 			gone[c.File] = true
 		}
 	}
@@ -1185,7 +1202,8 @@ func (p *Pipeline) extractServiceRefs(ctx context.Context, serviceID string, ref
 	if len(files) == 0 && complete {
 		return nil
 	}
-	if err := p.st.ReplaceServiceRefs(ctx, serviceID, files, out, true); err != nil {
+	markComplete := complete || len(unreadable) == 0
+	if err := p.st.ReplaceServiceRefs(ctx, serviceID, files, out, markComplete); err != nil {
 		return fmt.Errorf("fusion: write service refs %q: %w", serviceID, err)
 	}
 	return nil

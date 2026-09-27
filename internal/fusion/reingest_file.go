@@ -29,6 +29,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/analysis/serviceref"
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/store"
@@ -86,6 +87,9 @@ func (p *Pipeline) ReingestFile(ctx context.Context, st store.Store, serviceID, 
 			if err := st.DeleteFingerprint(ctx, serviceID, relFile); err != nil {
 				return ReingestReport{}, fmt.Errorf("fusion: ReingestFile delete fingerprint %q: %w", relFile, err)
 			}
+			if err := replaceFileServiceRefs(ctx, st, serviceID, relFile, nil); err != nil {
+				return ReingestReport{}, err
+			}
 			rep.Purged = true
 		}
 		return rep, nil
@@ -108,6 +112,13 @@ func (p *Pipeline) ReingestFile(ctx context.Context, st store.Store, serviceID, 
 		return p.reingestOversize(ctx, st, serviceID, relFile, int64(len(content)))
 	}
 	hash := FingerprintHash(content)
+
+	// RT-89: this call moves the file's fingerprint, so the next ingest
+	// hash-gates it — its routes and client calls are replaced here too,
+	// or the rows from before the edit would outlive it.
+	if err := replaceFileServiceRefs(ctx, st, serviceID, relFile, content); err != nil {
+		return ReingestReport{}, err
+	}
 
 	if connector.IsBinary(content) {
 		if err := st.SetFingerprint(ctx, serviceID, relFile, hash); err != nil {
@@ -210,8 +221,26 @@ func (p *Pipeline) reingestOversize(ctx context.Context, st store.Store, service
 		}
 		rep.Purged = true
 	}
+	if err := replaceFileServiceRefs(ctx, st, serviceID, relFile, nil); err != nil {
+		return ReingestReport{}, err
+	}
 	if err := st.SetFingerprint(ctx, serviceID, relFile, fp); err != nil {
 		return ReingestReport{}, fmt.Errorf("fusion: ReingestFile set fingerprint %q: %w", relFile, err)
 	}
 	return rep, nil
+}
+
+// replaceFileServiceRefs replaces relFile's extracted routes and outbound
+// HTTP client calls (RT-89) with content's — none for nil content (a file
+// oversize or outside the corpus). It never marks the service's rows
+// complete: one file cannot stand in for a service's first extraction.
+func replaceFileServiceRefs(ctx context.Context, st store.Store, serviceID, relFile string, content []byte) error {
+	var refs store.ServiceRefs
+	if content != nil {
+		refs = serviceref.ExtractFile(relFile, content)
+	}
+	if err := st.ReplaceServiceRefs(ctx, serviceID, []string{relFile}, refs, false); err != nil {
+		return fmt.Errorf("fusion: ReingestFile service refs %q: %w", relFile, err)
+	}
+	return nil
 }
