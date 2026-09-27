@@ -42,6 +42,16 @@ func TestTypedEdges_PerformanceGate(t *testing.T) {
 		t.Skip("whole-repo typed load — excluded from -short")
 	}
 
+	// RT-106 throttles the typed pass's toolchain children on purpose
+	// (GOFLAGS -p and GOMAXPROCS at most 2, niced) so it yields to the
+	// operator's own work. This gate measures the pass's ALGORITHMIC cost
+	// against the syntax-only baseline, which runs unthrottled in-process
+	// — so the throttle is lifted here (FATHOM_TOOLCHAIN_PROCS=off; both
+	// runs see the same inherited environment). Measuring the deliberate
+	// throttle against an unthrottled baseline would make the 10x bound
+	// trip on a slowdown chosen by design, not on a blowup.
+	t.Setenv("FATHOM_TOOLCHAIN_PROCS", "off")
+
 	repoRoot, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
 		t.Fatalf("abs: %v", err)

@@ -21,6 +21,7 @@ package fusion_test
 import (
 	"context"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -70,43 +71,93 @@ func TestEnrichTypedEdges_RelativeGOPATH(t *testing.T) {
 
 // TestTypedEdgeEnv_RepairsGoPath pins the env-construction contract itself,
 // independent of a load: GOPATH is absolute, GOWORK stays off, and the
-// caches point somewhere absolute too. GOFLAGS is deliberately NOT set —
-// the pre-existing invocation never set it and the repo does not need
-// -mod=mod; adding it here would change build semantics on every adopter.
+// caches point somewhere absolute too.
+//
+// GOFLAGS: the loader never adds a flag that changes WHAT is built (no
+// -mod, no -tags, no -trimpath — the pre-existing invocation set none and
+// this repo does not need them; a guess here changes build semantics on
+// every adopter). The one flag it may add is RT-106's -p, the parallelism
+// cap (how many builds run at once, not what they build), and that cap
+// never RAISES an operator's own -p. An operator's GOFLAGS otherwise passes
+// through flag for flag. (Before RT-106 the guard was "GOFLAGS equals the
+// ambient value"; RT-106 deliberately adds -p=2, so the guard now pins the
+// premise it was written for: no semantic flag, no lost operator flag.)
 func TestTypedEdgeEnv_RepairsGoPath(t *testing.T) {
-	for _, broken := range []string{"", "relative/path", "./x"} {
-		t.Setenv("GOPATH", broken)
-		env := fusion.TypedEdgeEnv()
-		got := map[string]string{}
-		for _, kv := range env {
-			if k, v, ok := strings.Cut(kv, "="); ok {
-				got[k] = v // later entries win, exactly as exec does
-			}
+	t.Setenv("FATHOM_TOOLCHAIN_PROCS", "") // the default cap
+	for _, ambientFlags := range []string{"<unset>", "", "-mod=vendor -tags=integration", "-mod=mod -p=1", "-p=8 -trimpath"} {
+		if ambientFlags == "<unset>" {
+			t.Setenv("GOFLAGS", "")
+			os.Unsetenv("GOFLAGS")
+		} else {
+			t.Setenv("GOFLAGS", ambientFlags)
 		}
-		if got["GOWORK"] != "off" {
-			t.Fatalf("GOPATH=%q: GOWORK = %q, want off", broken, got["GOWORK"])
-		}
-		for _, key := range []string{"GOPATH", "GOCACHE", "GOMODCACHE"} {
-			v := got[key]
-			if v == "" {
-				t.Fatalf("GOPATH=%q: %s is empty — the go subprocess would fall back to a default that may be unresolvable", broken, key)
+		for _, broken := range []string{"", "relative/path", "./x"} {
+			t.Setenv("GOPATH", broken)
+			env := fusion.TypedEdgeEnv()
+			got := map[string]string{}
+			for _, kv := range env {
+				if k, v, ok := strings.Cut(kv, "="); ok {
+					got[k] = v // later entries win, exactly as exec does
+				}
 			}
-			if !strings.HasPrefix(v, "/") {
-				t.Fatalf("GOPATH=%q: %s = %q is not absolute", broken, key, v)
+			if got["GOWORK"] != "off" {
+				t.Fatalf("GOPATH=%q: GOWORK = %q, want off", broken, got["GOWORK"])
 			}
-			if strings.Contains(v, "$") {
-				t.Fatalf("GOPATH=%q: %s = %q carries an unexpanded variable — this is the daemon's exact failure", broken, key, v)
+			for _, key := range []string{"GOPATH", "GOCACHE", "GOMODCACHE"} {
+				v := got[key]
+				if v == "" {
+					t.Fatalf("GOPATH=%q: %s is empty — the go subprocess would fall back to a default that may be unresolvable", broken, key)
+				}
+				if !strings.HasPrefix(v, "/") {
+					t.Fatalf("GOPATH=%q: %s = %q is not absolute", broken, key, v)
+				}
+				if strings.Contains(v, "$") {
+					t.Fatalf("GOPATH=%q: %s = %q carries an unexpanded variable — this is the daemon's exact failure", broken, key, v)
+				}
 			}
-		}
-		// The contract is that the LOADER adds nothing: an ambient GOFLAGS
-		// (an operator's -p=2, a CI's -mod=vendor) passes through unchanged,
-		// and only a value the environment did not already carry is the
-		// loader's own guess.
-		ambient, ambientSet := os.LookupEnv("GOFLAGS")
-		if v, set := got["GOFLAGS"]; set && !(ambientSet && v == ambient) {
-			t.Fatalf("GOPATH=%q: GOFLAGS=%q was set by the loader — not needed by this repo, and a guess that changes build semantics", broken, v)
+			ambient := os.Getenv("GOFLAGS")
+			gotSemantic, gotP := splitParallelism(got["GOFLAGS"])
+			wantSemantic, ambientP := splitParallelism(ambient)
+			if strings.Join(gotSemantic, " ") != strings.Join(wantSemantic, " ") {
+				t.Fatalf("GOFLAGS %q (ambient %q): the loader changed build-semantic flags %q, want exactly the operator's %q",
+					got["GOFLAGS"], ambient, gotSemantic, wantSemantic)
+			}
+			if len(gotP) > 1 {
+				t.Fatalf("GOFLAGS %q carries more than one -p", got["GOFLAGS"])
+			}
+			if len(gotP) == 1 {
+				n := parallelismOf(t, gotP[0])
+				if n > 2 {
+					t.Fatalf("GOFLAGS %q: -p above RT-106's cap of 2", got["GOFLAGS"])
+				}
+				if len(ambientP) > 0 && n > parallelismOf(t, ambientP[len(ambientP)-1]) {
+					t.Fatalf("GOFLAGS %q raised the operator's own %s", got["GOFLAGS"], ambientP[len(ambientP)-1])
+				}
+			}
 		}
 	}
+}
+
+// splitParallelism splits a GOFLAGS value into its build-semantic flags and
+// its -p (parallelism) flags.
+func splitParallelism(flags string) (semantic, p []string) {
+	for _, f := range strings.Fields(flags) {
+		if strings.HasPrefix(f, "-p=") {
+			p = append(p, f)
+			continue
+		}
+		semantic = append(semantic, f)
+	}
+	return semantic, p
+}
+
+func parallelismOf(t *testing.T, flag string) int {
+	t.Helper()
+	n, err := strconv.Atoi(strings.TrimPrefix(flag, "-p="))
+	if err != nil || n < 1 {
+		t.Fatalf("malformed parallelism flag %q", flag)
+	}
+	return n
 }
 
 // TestTypedEdgeEnv_KeepsAbsoluteGoPath: a healthy environment is left alone.

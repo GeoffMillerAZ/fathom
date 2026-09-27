@@ -5,7 +5,8 @@ package fusion
 // go/packages runs `go list`, which compiles export data for every
 // dependency with as many parallel compilers as the machine has cores; on
 // a shared laptop that competed with the operator's own builds at full
-// priority. Children now get GOFLAGS=-p=2 and GOMAXPROCS=2
+// priority. Children now get GOFLAGS -p and GOMAXPROCS at most 2
+// (FATHOM_TOOLCHAIN_PROCS moves or lifts the ceiling)
 // (backgroundToolchainEnv, carried by TypedEdgeEnv), and run niced: Go's
 // SysProcAttr has no niceness field and go/packages builds its own exec.Cmd,
 // so the daemon installs a `go` shim first on its PATH
@@ -23,31 +24,75 @@ import (
 	"strings"
 )
 
-// toolchainProcs is the parallelism cap for the typed pass's children.
-const toolchainProcs = "2"
+// defaultToolchainProcs is the parallelism ceiling for the typed pass's
+// children.
+const defaultToolchainProcs = 2
+
+// toolchainProcsEnv moves the ceiling: a positive integer N caps at N,
+// "off" lifts the caps entirely (the environment passes through; the shim
+// still nices). Unset, empty or unparseable: defaultToolchainProcs. For an
+// operator with cores to spare, and for measuring the typed pass's own cost
+// (TestTypedEdges_PerformanceGate) without the deliberate throttle.
+const toolchainProcsEnv = "FATHOM_TOOLCHAIN_PROCS"
+
+// toolchainProcCap is the ceiling in force; 0 means no cap.
+func toolchainProcCap() int {
+	v := strings.TrimSpace(os.Getenv(toolchainProcsEnv))
+	if strings.EqualFold(v, "off") {
+		return 0
+	}
+	if n, err := strconv.Atoi(v); err == nil && n > 0 {
+		return n
+	}
+	return defaultToolchainProcs
+}
+
+// capped returns min(inherited, ceiling) when inherited is a positive
+// integer, else ceiling: the cap never raises what the environment already
+// asked for (an operator's, or a gate's, -p=1 stays 1).
+func capped(inherited string, ceiling int) int {
+	if n, err := strconv.Atoi(inherited); err == nil && n > 0 && n < ceiling {
+		return n
+	}
+	return ceiling
+}
 
 // backgroundToolchainEnv returns env with the typed pass's caps applied:
-// GOMAXPROCS=2, and GOFLAGS carrying -p=2 (other inherited flags kept; an
-// inherited -p replaced). Later entries win in exec's environment, so the
-// caps are appended.
+// GOMAXPROCS and GOFLAGS' -p each at most the ceiling (default 2) and never
+// above what env already carried; every other inherited GOFLAGS flag is
+// kept as it was — -p is parallelism, never build semantics. Later entries
+// win in exec's environment, so the caps are appended. With the caps
+// lifted (FATHOM_TOOLCHAIN_PROCS=off) env is returned unchanged.
 func backgroundToolchainEnv(env []string) []string {
-	flags := ""
+	ceiling := toolchainProcCap()
+	if ceiling == 0 {
+		return env
+	}
+	flags, procs := "", ""
 	for _, kv := range env {
 		if v, ok := strings.CutPrefix(kv, "GOFLAGS="); ok {
 			flags = v
 		}
+		if v, ok := strings.CutPrefix(kv, "GOMAXPROCS="); ok {
+			procs = v
+		}
 	}
 	var kept []string
+	inheritedP := ""
 	for _, f := range strings.Fields(flags) {
-		if strings.HasPrefix(f, "-p=") || f == "-p" {
+		if v, ok := strings.CutPrefix(f, "-p="); ok {
+			inheritedP = v
+			continue
+		}
+		if f == "-p" {
 			continue
 		}
 		kept = append(kept, f)
 	}
-	kept = append(kept, "-p="+toolchainProcs)
+	kept = append(kept, "-p="+strconv.Itoa(capped(inheritedP, ceiling)))
 	out := make([]string, 0, len(env)+2)
 	out = append(out, env...)
-	return append(out, "GOFLAGS="+strings.Join(kept, " "), "GOMAXPROCS="+toolchainProcs)
+	return append(out, "GOFLAGS="+strings.Join(kept, " "), "GOMAXPROCS="+strconv.Itoa(capped(procs, ceiling)))
 }
 
 // shellQuote single-quotes s for sh.
@@ -71,10 +116,18 @@ func writeToolchainShim(dir, realGo string) (string, error) {
 			prio = append(prio, "/usr/sbin/taskpolicy", "-b")
 		}
 	}
+	caps := ""
+	if ceiling := toolchainProcCap(); ceiling > 0 {
+		// The same ceiling backgroundToolchainEnv applies, in sh: never
+		// above the cap, never above what the caller already asked for.
+		c := strconv.Itoa(ceiling)
+		caps = "case \"${GOMAXPROCS:-}\" in ''|0|*[!0-9]*) GOMAXPROCS=" + c + " ;; *) [ \"$GOMAXPROCS\" -gt " + c + " ] && GOMAXPROCS=" + c + " ;; esac; export GOMAXPROCS\n" +
+			"_fathom_p=; for _fathom_f in ${GOFLAGS:-}; do case $_fathom_f in -p=*) _fathom_p=${_fathom_f#-p=} ;; esac; done\n" +
+			"case \"$_fathom_p\" in ''|0|*[!0-9]*) GOFLAGS=\"${GOFLAGS:+$GOFLAGS }-p=" + c + "\" ;; *) [ \"$_fathom_p\" -gt " + c + " ] && GOFLAGS=\"$GOFLAGS -p=" + c + "\" ;; esac; export GOFLAGS\n"
+	}
 	script := "#!/bin/sh\n" +
 		"# fathom background toolchain shim (RT-106): the daemon's go, capped and niced.\n" +
-		"GOMAXPROCS=" + toolchainProcs + "; export GOMAXPROCS\n" +
-		"GOFLAGS=\"${GOFLAGS:+$GOFLAGS }-p=" + toolchainProcs + "\"; export GOFLAGS\n" +
+		caps +
 		"exec " + strings.Join(append(prio, shellQuote(realGo)), " ") + " \"$@\"\n"
 	p := filepath.Join(dir, "go")
 	tmp := p + ".tmp"

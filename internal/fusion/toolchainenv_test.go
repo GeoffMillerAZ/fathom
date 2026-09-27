@@ -40,11 +40,17 @@ func TestTypedPassChildrenNicedAndCapped(t *testing.T) {
 		t.Fatal("inherited variables must survive")
 	}
 	// TypedEdgeEnv (what packages.Load gets) carries the caps.
+	// The process's own GOFLAGS/GOMAXPROCS are cleared so the default
+	// ceiling is what shows (an ambient -p=1, e.g. the gate's, stays 1 —
+	// TestToolchainCapNeverRaisesAndCanBeLifted).
+	t.Setenv(toolchainProcsEnv, "")
+	t.Setenv("GOFLAGS", "")
+	t.Setenv("GOMAXPROCS", "")
 	te := TypedEdgeEnv()
 	if v, _ := envValue(te, "GOMAXPROCS"); v != "2" {
 		t.Fatalf("TypedEdgeEnv GOMAXPROCS = %q, want 2", v)
 	}
-	if v, _ := envValue(te, "GOFLAGS"); !strings.Contains(v, "-p=2") {
+	if v, _ := envValue(te, "GOFLAGS"); v != "-p=2" {
 		t.Fatalf("TypedEdgeEnv GOFLAGS = %q, want -p=2", v)
 	}
 
@@ -116,5 +122,78 @@ func TestTypedPassChildrenNicedAndCapped(t *testing.T) {
 	cleanup()
 	if os.Getenv("PATH") != realPath {
 		t.Fatal("cleanup did not restore PATH")
+	}
+}
+
+// TestToolchainCapNeverRaisesAndCanBeLifted: RT-106's cap is a ceiling, not
+// a setting — an operator (or a gate) already running the toolchain at -p=1
+// / GOMAXPROCS=1 keeps it; FATHOM_TOOLCHAIN_PROCS=N moves the ceiling and
+// FATHOM_TOOLCHAIN_PROCS=off lifts it (the environment passes through
+// untouched), which is how a measurement of the typed pass's own cost
+// (TestTypedEdges_PerformanceGate) runs it unthrottled.
+func TestToolchainCapNeverRaisesAndCanBeLifted(t *testing.T) {
+	cases := []struct {
+		knob      string
+		base      []string
+		wantFlags string
+		wantProcs string // "" = GOMAXPROCS not set
+	}{
+		{"", []string{"GOFLAGS=-mod=mod -p=1", "GOMAXPROCS=1"}, "-mod=mod -p=1", "1"},
+		{"", []string{"GOFLAGS=-p=8"}, "-p=2", "2"},
+		{"", []string{"GOMAXPROCS=0"}, "-p=2", "2"}, // 0 = all cores to the runtime
+		{"garbage", []string{}, "-p=2", "2"},
+		{"4", []string{"GOFLAGS=-p=8", "GOMAXPROCS=16"}, "-p=4", "4"},
+		{"4", []string{"GOFLAGS=-p=3"}, "-p=3", "4"},
+		{"off", []string{"GOFLAGS=-mod=mod", "GOMAXPROCS=16"}, "-mod=mod", "16"},
+		{"OFF", []string{}, "", ""},
+	}
+	for _, c := range cases {
+		t.Setenv(toolchainProcsEnv, c.knob)
+		env := backgroundToolchainEnv(append([]string{"PATH=/usr/bin"}, c.base...))
+		flags, _ := envValue(env, "GOFLAGS")
+		procs, _ := envValue(env, "GOMAXPROCS")
+		if flags != c.wantFlags || procs != c.wantProcs {
+			t.Errorf("knob %q base %q: GOFLAGS=%q GOMAXPROCS=%q; want %q / %q", c.knob, c.base, flags, procs, c.wantFlags, c.wantProcs)
+		}
+	}
+
+	if runtime.GOOS == "windows" {
+		t.Skip("no sh on windows")
+	}
+	// The shim applies the same ceiling to whatever environment it is
+	// started with.
+	dir := t.TempDir()
+	fake := filepath.Join(dir, "realgo")
+	if err := os.WriteFile(fake, []byte("#!/bin/sh\nprintf '%s|%s\\n' \"$GOMAXPROCS\" \"$GOFLAGS\"\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	run := func(knob string, env ...string) string {
+		t.Helper()
+		t.Setenv(toolchainProcsEnv, knob)
+		shim, err := writeToolchainShim(filepath.Join(dir, "shim-"+knob), fake)
+		if err != nil {
+			t.Fatal(err)
+		}
+		cmd := exec.Command(shim)
+		cmd.Env = append([]string{"PATH=/usr/bin:/bin"}, env...)
+		out, err := cmd.Output()
+		if err != nil {
+			t.Fatalf("shim: %v", err)
+		}
+		return strings.TrimSpace(string(out))
+	}
+	for _, c := range []struct {
+		knob string
+		env  []string
+		want string
+	}{
+		{"", []string{"GOMAXPROCS=1", "GOFLAGS=-p=1"}, "1|-p=1"},
+		{"", []string{"GOMAXPROCS=16", "GOFLAGS=-mod=mod -p=8"}, "2|-mod=mod -p=8 -p=2"},
+		{"", nil, "2|-p=2"},
+		{"off", []string{"GOMAXPROCS=16", "GOFLAGS=-mod=mod"}, "16|-mod=mod"},
+	} {
+		if got := run(c.knob, c.env...); got != c.want {
+			t.Errorf("shim knob %q env %q: child saw %q, want %q", c.knob, c.env, got, c.want)
+		}
 	}
 }

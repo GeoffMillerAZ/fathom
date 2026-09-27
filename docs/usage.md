@@ -235,6 +235,15 @@ since the last successful pass` when their input files did not change (RT-104, R
 RT-108), and a `file_resolved` import-parse fault is a stderr warning naming the files.
 `--json` adds `stat_skipped` and `peak_inflight_bytes`.
 
+**Typed-pass toolchain ceiling (RT-106).** The Go typed pass's toolchain children (`go list`
+and the compiles it forks) run at background priority (`nice -n 10`, plus `taskpolicy -b` on
+macOS) with `GOFLAGS` `-p` and `GOMAXPROCS` capped at 2 — a ceiling, never a raise: an
+inherited `-p=1`/`GOMAXPROCS=1` stays 1, and every other inherited `GOFLAGS` flag passes
+through unchanged. `FATHOM_TOOLCHAIN_PROCS=N` (env, positive integer) moves the ceiling;
+`FATHOM_TOOLCHAIN_PROCS=off` lifts it (priority still lowered in the daemon); unset or
+unparseable means 2. The CT-5 performance gate runs with it `off` so it measures the
+pass's own cost, not the throttle.
+
 **Typed edges by import (ADR-041 decision 5, SU-9).** Go gets typed call edges natively
 (`internal/fusion.EnrichTypedEdges`, type-checking the source directly); every other
 language gets them by IMPORTING an external indexer's SCIP output instead —

@@ -28,9 +28,11 @@ package fusion
 // file is the belt to that pair of braces, and the only one that helps a
 // daemon installed by an older binary.
 //
-// GOFLAGS gains exactly one flag: -p=2 (RT-106, toolchainenv.go), the
-// parallelism cap — never a flag that changes build semantics (no -mod,
-// no tags); an inherited GOFLAGS is otherwise kept as it was.
+// GOFLAGS gains exactly one flag: -p (RT-106, toolchainenv.go), the
+// parallelism ceiling (default 2, never above an inherited -p;
+// FATHOM_TOOLCHAIN_PROCS moves or lifts it) — never a flag that changes
+// build semantics (no -mod, no tags); an inherited GOFLAGS is otherwise
+// kept as it was.
 
 import (
 	"context"
@@ -60,7 +62,7 @@ import (
 // Later entries win in exec's environment, so appending is enough; the
 // inherited entries are kept so nothing else (PATH, HOME, GOTOOLCHAIN,
 // proxy settings) is silently dropped. RT-106: the toolchain caps
-// (GOFLAGS -p=2, GOMAXPROCS=2) are applied last.
+// (GOFLAGS -p, GOMAXPROCS; at most 2 by default) are applied last.
 func TypedEdgeEnv() []string {
 	return backgroundToolchainEnv(repairedGoEnv("GOWORK=off"))
 }
