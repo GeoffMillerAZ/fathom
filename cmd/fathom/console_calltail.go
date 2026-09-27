@@ -39,13 +39,27 @@ const callLogRing = 35 * 24 * time.Hour
 
 var callLogNow = time.Now
 
-// callLogWindow keeps the rows at or after now-callLogRing: an older row,
-// or one whose time does not parse (no window counts it), is dropped. The
-// kept rows are copied into a fresh slice only when something was dropped,
-// so the dropped rows' memory is released and a slice a caller still holds
-// is never modified.
+// callLogWindow keeps the rows at or after the window's start: callLogRing
+// before the newest row's time, or before now when that is earlier (a
+// row stamped in the future never empties the ring). Anchoring on the log
+// rather than the wall clock keeps the ring a function of the log: every
+// page's window ends at its now, which is never before the newest row
+// written, so a row the ring drops is outside every page's window. An
+// older row, or one whose time does not parse (no window counts it), is
+// dropped. The kept rows are copied into a fresh slice only when
+// something was dropped, so the dropped rows' memory is released and a
+// slice a caller still holds is never modified.
 func callLogWindow(rows []callLogRow, now time.Time) []callLogRow {
-	cutoff := now.Add(-callLogRing)
+	var newest time.Time
+	for _, r := range rows {
+		if r.at.After(newest) {
+			newest = r.at
+		}
+	}
+	if newest.IsZero() || newest.After(now) {
+		newest = now
+	}
+	cutoff := newest.Add(-callLogRing)
 	drop := 0
 	for _, r := range rows {
 		if r.at.IsZero() || r.at.Before(cutoff) {

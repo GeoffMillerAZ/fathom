@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -51,14 +52,13 @@ func TestCallLogTailKeepsWindowOnly(t *testing.T) {
 	if c := cap(callLogTail.rows); c > 64 {
 		t.Errorf("the ring still holds capacity for %d rows after dropping 501: the dropped rows stay resident", c)
 	}
-	// The clock moves past the edge row: the next read (with an append)
-	// drops it.
+	// The log moves past the edge row: the next read drops it.
 	pinCallLogClock(t, now.Add(2*24*time.Hour))
 	fh, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0o644)
 	if err != nil {
 		t.Fatal(err)
 	}
-	fh.WriteString(at("new", now.Add(24*time.Hour)))
+	fh.WriteString(at("new", now.Add(2*24*time.Hour)))
 	fh.Close()
 	rows, err = callLogRows(path)
 	if err != nil {
@@ -69,6 +69,17 @@ func TestCallLogTailKeepsWindowOnly(t *testing.T) {
 	}
 	if got := callLogWindow(nil, now); got != nil {
 		t.Errorf("an empty ring = %v", got)
+	}
+	// The ring is anchored on the log, never only the wall clock: an old
+	// log read years later keeps its last 35 days, and a row stamped in
+	// the future does not empty it.
+	past := []callLogRow{{at: now.Add(-40 * 24 * time.Hour)}, {at: now.Add(-3 * 24 * time.Hour)}, {at: now}}
+	if got := callLogWindow(past, now.AddDate(4, 0, 0)); len(got) != 2 {
+		t.Errorf("an old log read later kept %d rows, want its last 35 days (2)", len(got))
+	}
+	future := append(slices.Clone(past), callLogRow{at: now.AddDate(1, 0, 0)})
+	if got := callLogWindow(future, now); len(got) != 3 {
+		t.Errorf("a future-stamped row left %d rows, want 3", len(got))
 	}
 }
 
