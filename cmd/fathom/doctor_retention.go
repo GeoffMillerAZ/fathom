@@ -107,6 +107,13 @@ const hookBudgetWindow = 24 * time.Hour
 // checkHookBudget is the hook_budget row over the window's latency rows
 // and beats.
 func checkHookBudget(lat []hookLatencyRow, beats []heartbeat.Beat, now time.Time) doctorCheck {
+	return checkHookBudgetCovered(lat, beats, time.Time{}, now)
+}
+
+// checkHookBudgetCovered is checkHookBudget over beats that reach back
+// only to coveredFrom (zero: the whole window): the beat figures then name
+// the span they cover, never "/24h" (I38).
+func checkHookBudgetCovered(lat []hookLatencyRow, beats []heartbeat.Beat, coveredFrom, now time.Time) doctorCheck {
 	const name = "hook_budget"
 	since := now.Add(-hookBudgetWindow)
 	var inWindow []hookLatencyRow
@@ -151,7 +158,11 @@ func checkHookBudget(lat []hookLatencyRow, beats []heartbeat.Beat, now time.Time
 	if len(inWindow) > 0 {
 		lat24 = hookLatencySummary(inWindow)
 	}
-	reason := fmt.Sprintf("%s · breaker open %d min/24h · %d edit(s) served while open (guards skipped) · %d harness kill(s) [hook-latency.jsonl, hooks.jsonl]", lat24, len(openMinutes), editsOpen, kills)
+	span := "/24h"
+	if !coveredFrom.IsZero() && coveredFrom.After(since) {
+		span = fmt.Sprintf(" in the %s the beat log read covers only (of 24h)", now.Sub(coveredFrom).Round(time.Minute))
+	}
+	reason := fmt.Sprintf("%s · breaker open %d min%s · %d edit(s) served while open (guards skipped) · %d harness kill(s) [hook-latency.jsonl, hooks.jsonl]", lat24, len(openMinutes), span, editsOpen, kills)
 	switch {
 	case len(over) > 0:
 		return doctorCheck{Name: name, Status: doctorWarn, Reason: reason, Remedy: "hooks on " + strings.Join(over, ", ") + " run past their deadline at p99 — the harness kills them; `fathom resources` names the daemon's state and the in-flight work"}
@@ -166,8 +177,50 @@ func checkHookBudgetFromFiles(now time.Time) doctorCheck {
 	if activeHookGuard() != nil {
 		return doctorCheck{Name: "hook_budget", Status: doctorSkipped, Reason: inHookSkip}
 	}
-	beats, _ := readBeatLogTail(beatLogPath(), sessionLedgerBeatTailBytes)
-	return checkHookBudget(readHookLatency(hookLatencyPath(), now.Add(-hookBudgetWindow)), beats, now)
+	since := now.Add(-hookBudgetWindow)
+	beats, coveredFrom := readBeatsSince(beatLogPath(), since, hookBudgetBeatMaxBytes)
+	return checkHookBudgetCovered(readHookLatency(hookLatencyPath(), since), beats, coveredFrom, now)
+}
+
+// readBeatsSince reads the beat log's beats back to since, newest
+// generation first — the live log, then its rotated generation <path>.1 —
+// reading each from its end in doubling tails, never more than maxBytes in
+// all. coveredFrom is zero when the beats read reach back to since;
+// otherwise it is the oldest beat read (the retained history, or the byte
+// bound, ended first), so the caller names the span it covers.
+func readBeatsSince(path string, since time.Time, maxBytes int64) (beats []heartbeat.Beat, coveredFrom time.Time) {
+	if path == "" {
+		return nil, time.Time{}
+	}
+	left := maxBytes
+	reached := false
+	for _, g := range []string{path, path + ".1"} {
+		if left <= 0 || reached {
+			break
+		}
+		st, err := os.Stat(g)
+		if err != nil {
+			continue
+		}
+		var got []heartbeat.Beat
+		var read int64
+		for tail := min(int64(4<<20), left); ; tail = min(tail*2, left) {
+			read = min(tail, st.Size())
+			got, _ = readBeatLogTail(g, read)
+			if read == st.Size() || tail == left || (len(got) > 0 && !got[0].At.After(since)) {
+				break
+			}
+		}
+		left -= read
+		beats = append(got, beats...)
+		if len(got) > 0 && !got[0].At.After(since) {
+			reached = true
+		}
+	}
+	if reached || len(beats) == 0 {
+		return beats, time.Time{}
+	}
+	return beats, beats[0].At
 }
 
 // diskRetentionWarnBytes is the reclaimable total that warns.
@@ -295,3 +348,7 @@ func hookChannelsOverBudget(rows []hookLatencyRow) []string {
 	}
 	return over
 }
+
+// hookBudgetBeatMaxBytes bounds how many bytes of beats hook_budget reads
+// to cover its window (both generations together).
+var hookBudgetBeatMaxBytes int64 = 32 << 20

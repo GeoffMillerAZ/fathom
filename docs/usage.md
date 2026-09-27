@@ -1433,7 +1433,9 @@ the hooks and the disk cost (RT-135, §11.3, §12.1), also WARN, never FAIL: `ho
 (each channel's p99 wall time against its deadline over 24 h, from
 `~/.fathom/hook-latency.jsonl`, which every hook invocation appends to; minutes the
 shared breaker held hooks off; edits served while it was open, whose guards were skipped;
-harness kills — an edit-hook `seen` beat never answered) and `disk_retention` (`fathom
+harness kills — an edit-hook `seen` beat never answered — read from the beats of the whole
+24 h across `hooks.jsonl` and `hooks.jsonl.1`; when the retained beats end sooner, the row
+names the span they cover) and `disk_retention` (`fathom
 gc`'s dry run: reclaimable bytes by class and the largest classes, what it only reports,
 and the home volume's free space; WARN above 512 MiB reclaimable). `fathom resources`'
 hooks line reads the same latency log.
