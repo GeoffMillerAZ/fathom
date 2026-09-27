@@ -369,7 +369,7 @@ func TestIngestInFlightAtOverBudgetExitQuarantines(t *testing.T) {
 	if len(qs) != 2 || qs[0].Service != "app-kit" || qs[1].Service != "zeta" {
 		t.Fatalf("both services quarantined, one row each, sorted: %+v", qs)
 	}
-	if want := "quarantined: app-kit exceeded budget during ingest — fathom ingest app-kit to retry"; qs[0].Attention() != want {
+	if want := "quarantined: app-kit exceeded budget during ingest — retry with the daemon's `ingest` tool (service \"app-kit\"); a completed explicit ingest lifts it"; qs[0].Attention() != want {
 		t.Fatalf("attention line %q", qs[0].Attention())
 	}
 

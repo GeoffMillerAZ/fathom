@@ -49,8 +49,11 @@ type Quarantine struct {
 }
 
 // Attention is the one-line form /statusz, `resources` and the primer use.
+// Its remedy names what lifts a quarantine: the daemon's `ingest` tool,
+// called explicitly (not a hook), completing. A shell `fathom ingest`
+// writes the store directly and never reaches the daemon's set.
 func (q Quarantine) Attention() string {
-	return fmt.Sprintf("quarantined: %s %s — fathom ingest %s to retry", q.Service, q.Reason, q.Service)
+	return fmt.Sprintf("quarantined: %s %s — retry with the daemon's `ingest` tool (service %q); a completed explicit ingest lifts it", q.Service, q.Reason, q.Service)
 }
 
 // QuarantineReasonIngest is the reason every exit-rung quarantine carries.

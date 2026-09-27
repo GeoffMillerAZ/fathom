@@ -330,8 +330,13 @@ carries `fathom_tenancy_level`, `fathom_budget_bytes`,
 **Quarantine.** A service whose ingest was halted at the exit mark (or was in
 flight at an over-budget exit) is recorded in the daemon's lifecycle ledger;
 the next start reads it, `/statusz` lists it (`quarantined: app-kit exceeded
-budget during ingest — fathom ingest app-kit to retry`), and auto-refresh
-never re-ingests it. An explicit `ingest` of the service clears it.
+budget during ingest — retry with the daemon's `ingest` tool (service
+"app-kit"); a completed explicit ingest lifts it`), and auto-refresh never
+re-ingests it. Only the daemon's `ingest` tool, called explicitly and
+completing, lifts it (the response carries `quarantine_cleared: true`); a
+hook's refresh (post-commit, edit) is refused with the quarantine named, a
+failed or halted ingest leaves it, and a shell `fathom ingest` writes the
+store directly and never reaches the daemon's quarantine.
 
 **Unmanaged daemons** (no `--managed`: tests, scripts, benches) take
 `[tenancy.unmanaged].budget` (512 MiB; exit mark 1 GiB), never the managed

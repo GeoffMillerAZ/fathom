@@ -1107,9 +1107,18 @@ func registerIngest(s *Server, backend QueryInterface) {
 			before.unclassified, before.oversize = sb.IngestStats()
 		}
 
-		// RT-155: an explicit ingest lifts the service's over-budget
-		// quarantine (recorded in the daemon's lifecycle ledger).
-		tenancy.ClearQuarantine(svc, "ingest tool")
+		// RT-155: a quarantined service is re-ingested only explicitly —
+		// a hook's automated refresh (post-commit, edit) is refused with
+		// the quarantine named — and the quarantine is lifted below only
+		// once that explicit ingest has completed.
+		wasQuarantined := tenancy.IsQuarantined(svc)
+		if wasQuarantined && strings.HasSuffix(originFrom(ctx), "-hook") {
+			for _, q := range tenancy.QuarantinedNow() {
+				if q.Service == svc {
+					return nil, &rpcError{Code: ErrCodeInvalid, Message: "ingest: " + q.Attention() + " — a hook's refresh never lifts a quarantine"}
+				}
+			}
+		}
 
 		var ingestErr error
 		if p.Path != "" {
@@ -1135,11 +1144,22 @@ func registerIngest(s *Server, backend QueryInterface) {
 		if !(errors.As(ingestErr, &readErr) && readErr.Refused) {
 			hookcache.BustIdent()
 		}
+		// RT-155: the explicit ingest ran to completion (a degraded one
+		// included: it indexed every readable file within budget) — lift
+		// the quarantine, recorded in the daemon's lifecycle ledger. A
+		// refused, halted or failed ingest leaves it in place.
+		quarantineCleared := false
+		if wasQuarantined && (ingestErr == nil || (readErr != nil && !readErr.Refused)) {
+			quarantineCleared = tenancy.ClearQuarantine(svc, "ingest tool")
+		}
 		if ingestErr != nil {
 			return nil, ingestFailure(ingestErr)
 		}
 
 		result := map[string]any{"service": svc, "ok": true}
+		if quarantineCleared {
+			result["quarantine_cleared"] = true
+		}
 		// Name the root that was ingested (O22: four ok:true envelopes and
 		// not one of them said which tree). Additive; absent when the
 		// backend records no root.

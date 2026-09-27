@@ -476,8 +476,9 @@ halts an in-flight ingest and quarantines its service, then — if still over
 — exits **70** with an `over_budget` row in `lifecycle.jsonl` and a heap
 profile under `~/.fathom/daemon/<id>/diag/`. The startup line names the
 budget and its derivation; `/metrics` carries `fathom_tenancy_level` and the
-footprints; `/statusz` lists quarantined services, which an explicit
-`ingest` clears. A scratch daemon that needs more sets
+footprints; `/statusz` lists quarantined services, which only a completed
+explicit call of the daemon's `ingest` tool lifts (never a hook's refresh
+or a shell `fathom ingest`). A scratch daemon that needs more sets
 `FATHOM_TENANCY_BUDGET`. See [configuration.md](configuration.md#the-budget-tenancy-user-scope-only).
 
 The daemon also reads the `budgets` block of `.fathom/capabilities.cue` /
