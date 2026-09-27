@@ -54,6 +54,11 @@ func TestTenancyPanelRendersResourcesJSON(t *testing.T) {
 		t.Fatalf("resources --json carries hourly %v and ladder %+v; want 24 hours and the shed transition", rep.Footprint.Hourly, rep.Ladder)
 	}
 
+	// The panel over the verb's own report draws the transition.
+	if body := renderTenancyPanel(rep); !strings.Contains(body, "ladder transitions") || !strings.Contains(body, `aria-label="ladder transitions"`) {
+		t.Error("the panel over a report with a shed transition draws no ladder timeline")
+	}
+
 	_, _, page := f.get(t, "/operate")
 	mustContain(t, "tenancy panel", page,
 		`id="tenancy"`, `data-console-verb="fathom resources --json"`,
