@@ -615,6 +615,17 @@ func (c *Client) RenameService(ctx context.Context, oldID, newID string) error {
 	return c.st.RenameService(ctx, oldID, newID)
 }
 
+// DefaultIgnoredDirs names, repo-relative and sorted, each directory the
+// connector's default cache list pruned from its most recent discovery of
+// service (RT-145) — nil when none, or when the connector does not record
+// exclusions. The MCP ingest tool carries it as default_ignored_dirs.
+func (c *Client) DefaultIgnoredDirs(service string) []string {
+	if er, ok := c.conn.(connector.ExclusionReporter); ok {
+		return er.Exclusions(service).DefaultIgnored
+	}
+	return nil
+}
+
 // IngestStats returns the process-lifetime unclassified/oversize counters
 // (ADR-021 §2 / TI-6) accumulated across every Ingest this Client's pipeline
 // has run — see fusion.Pipeline.Stats. Consumed by the mcp server's

@@ -43,3 +43,27 @@ func TestIsIndexedRequiresSymbols(t *testing.T) {
 		t.Fatal("IsIndexed(never ingested) = true")
 	}
 }
+
+// RT-145: the client names the directories its connector's last discovery
+// pruned, for the MCP ingest tool's default_ignored_dirs.
+func TestDefaultIgnoredDirsAfterIngest(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	for _, f := range []string{"a.go", ".cache/b.go"} {
+		p := filepath.Join(dir, f)
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte("package a\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	c := client.New(connector.NewLocalConnector(), store.NewMemoryStore())
+	t.Cleanup(func() { _ = c.Close() })
+	if _, err := c.Ingest(ctx, client.ServiceRef{ID: "pruned", Path: dir}); err != nil {
+		t.Fatal(err)
+	}
+	if got := c.DefaultIgnoredDirs("pruned"); len(got) != 1 || got[0] != ".cache" {
+		t.Fatalf("DefaultIgnoredDirs = %v, want [.cache]", got)
+	}
+}

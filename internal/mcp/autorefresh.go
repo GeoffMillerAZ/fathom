@@ -226,6 +226,15 @@ func (a *autoRefreshBackend) RenameService(ctx context.Context, oldID, newID str
 // explicit forward, wrapping the client in auto-refresh would silently hide
 // the counters from server_stats/ingest — the same class of bug ingestAtBackend
 // documents above (dogfood O7).
+// DefaultIgnoredDirs forwards exclusionsBackend (RT-145) through the
+// auto-refresh wrapper, the same forwarding class as IngestStats.
+func (a *autoRefreshBackend) DefaultIgnoredDirs(service string) []string {
+	if eb, ok := a.QueryInterface.(exclusionsBackend); ok {
+		return eb.DefaultIgnoredDirs(service)
+	}
+	return nil
+}
+
 func (a *autoRefreshBackend) IngestStats() (unclassified, oversize int64) {
 	sb, ok := a.QueryInterface.(statsBackend)
 	if !ok {

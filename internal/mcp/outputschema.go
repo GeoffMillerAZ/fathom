@@ -95,6 +95,9 @@ type ingestResult struct {
 	Root              string `json:"root,omitempty"`
 	UnclassifiedFiles int    `json:"unclassified_files,omitempty"`
 	OversizeFiles     int    `json:"oversize_files,omitempty"`
+	// DefaultIgnoredDirs (RT-145) names each directory the default cache
+	// list pruned from this ingest's discovery.
+	DefaultIgnoredDirs []string `json:"default_ignored_dirs,omitempty"`
 	// TypedEdges (O82): {packages_seen, packages_processed, edges, failed,
 	// error?, fallback?} — present whenever this process has a recorded
 	// typed-edge outcome for the service; a failed pass also flips OK to

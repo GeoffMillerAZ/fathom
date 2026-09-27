@@ -1072,3 +1072,18 @@ func TestLoad_ConnectorInclude(t *testing.T) {
 		t.Fatalf("connector.include provenance = %+v", loaded.Provenance["connector.include"])
 	}
 }
+
+// RT-145 review: `[connector] include` is a property of the corpus — the
+// connector reads it only from the corpus's own .fathom/config.toml. In the
+// user layer it would validate, show in `fathom config --explain`, and do
+// nothing; it is refused by name instead.
+func TestLoad_ConnectorIncludeRefusedInUserLayer(t *testing.T) {
+	dir := t.TempDir()
+	user := filepath.Join(dir, "user.toml")
+	writeTOML(t, user, "[connector]\ninclude = [\"dist\"]\n")
+	_, err := Load(user, "")
+	var le *LoadError
+	if !errors.As(err, &le) || le.Path != user || !strings.Contains(err.Error(), ".fathom/config.toml") {
+		t.Fatalf("user-layer connector.include: err = %v, want a LoadError naming %s and the corpus file it belongs in", err, user)
+	}
+}

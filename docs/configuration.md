@@ -546,7 +546,9 @@ include = ["coverage", "compute/.tools"]
 
 A bare name re-includes every directory with that name; an entry with a slash
 re-includes that one repo-relative path. `include` never re-includes
-`vendor`, `.git`, `testdata` or the other always-skipped names. Measure the
+`vendor`, `.git`, `testdata` or the other always-skipped names. It is refused
+in the user layer (`~/.fathom/config.toml`): a load error names the file,
+since a user-wide list would change nothing. Measure the
 effect first with `fathom ingest --path <root> --service <id> --dry-run
 --json` (stat only; `default_ignored_dirs` names each pruned directory).
 

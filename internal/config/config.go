@@ -352,6 +352,15 @@ func Load(userPath, projectPath string) (Loaded, error) {
 		}
 		out.UserFound = found
 		if found {
+			// RT-145: `[connector] include` is a property of the corpus;
+			// the connector reads it only from the corpus's own
+			// .fathom/config.toml. In the user layer it would validate,
+			// show in `fathom config --explain`, and change nothing.
+			if cm, ok := raw["connector"].(map[string]any); ok {
+				if _, ok := cm["include"]; ok {
+					return Loaded{}, &LoadError{Path: userPath, Err: fmt.Errorf("connector.include is read only from a corpus's own .fathom/config.toml; move it there")}
+				}
+			}
 			mergeLayer(&out.Config, out.Provenance, raw, SourceUser, userPath)
 		}
 	}
