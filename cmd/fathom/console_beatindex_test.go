@@ -161,3 +161,65 @@ func TestHooksLogReadersUseTheIndex(t *testing.T) {
 		t.Errorf("a missing log = %v", err)
 	}
 }
+
+// TestShedKeepsTailsIncremental (RT-113, RT-114): the shed rung frees the
+// console's derived caches and the beat index's cached lines, but keeps
+// the tails' read positions and folds and the index's offsets — the next
+// read under memory pressure reads only what was appended, never the whole
+// call log, session ledger or hooks log again.
+func TestShedKeepsTailsIncremental(t *testing.T) {
+	dir := t.TempDir()
+	hooks := filepath.Join(dir, "hooks.jsonl")
+	mustWrite(t, hooks, `{"channel":"edit-hook","kind":"seen","at":"2026-09-27T10:00:00Z","meta":{"session":"s-a"}}`+"\n")
+	calls := filepath.Join(dir, "calls.jsonl")
+	mustWrite(t, calls, `{"ts":"2026-09-27T10:00:00Z","tool":"find_symbol","service":"svc"}`+"\n")
+	ledger := filepath.Join(dir, "sessions.jsonl")
+	mustWrite(t, ledger, `{"session_id":"a","repo":"svc","at":"2026-09-27T10:00:00Z"}`+"\n")
+	hooksBeatIndex.reset()
+	resetConsoleTails()
+	t.Cleanup(func() { hooksBeatIndex.reset(); resetConsoleTails() })
+
+	if _, _, err := hooksBeatIndex.lines(hooks, "s-a"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := consoleCallLogTail.read(calls); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := consoleSessionLedger.read(ledger); err != nil {
+		t.Fatal(err)
+	}
+	beats, callBytes, ledgerBytes := hooksBeatIndex.parsed, consoleCallLogTail.parsed, consoleSessionLedger.parsed
+
+	consoleMemoDrops()
+	hooksBeatIndex.mu.Lock()
+	cached := len(hooksBeatIndex.lru)
+	hooksBeatIndex.mu.Unlock()
+	if cached != 0 {
+		t.Errorf("the shed kept %d sessions' cached lines; want them freed", cached)
+	}
+	consoleCallLogTail.mu.Lock()
+	callAt := consoleCallLogTail.f.offset
+	consoleCallLogTail.mu.Unlock()
+	consoleSessionLedger.mu.Lock()
+	ledgerAt := consoleSessionLedger.f.offset
+	consoleSessionLedger.mu.Unlock()
+	if callAt != callBytes || ledgerAt != ledgerBytes {
+		t.Errorf("the shed dropped the tails' read positions: call log at %d of %d, ledger at %d of %d", callAt, callBytes, ledgerAt, ledgerBytes)
+	}
+
+	lines, _, err := hooksBeatIndex.lines(hooks, "s-a")
+	if err != nil || len(lines) != 1 {
+		t.Fatalf("after the shed s-a = %d lines, %v", len(lines), err)
+	}
+	snap, err := consoleCallLogTail.read(calls)
+	if err != nil || len(snap.ring) != 1 {
+		t.Fatalf("after the shed the call log = %d ring rows, %v", len(snap.ring), err)
+	}
+	if _, err := consoleSessionLedger.read(ledger); err != nil {
+		t.Fatal(err)
+	}
+	if hooksBeatIndex.parsed != beats || consoleCallLogTail.parsed != callBytes || consoleSessionLedger.parsed != ledgerBytes {
+		t.Fatalf("the shed made the next reads re-read whole logs: hooks %d→%d, call log %d→%d, ledger %d→%d bytes",
+			beats, hooksBeatIndex.parsed, callBytes, consoleCallLogTail.parsed, ledgerBytes, consoleSessionLedger.parsed)
+	}
+}

@@ -47,8 +47,11 @@ func consoleMemoDrops() {
 	obsCache.Lock()
 	dropObsCacheLocked()
 	obsCache.Unlock()
-	resetConsoleTails()
-	hooksBeatIndex.reset()
+	// The tails' folds and read positions and the beat index's offsets
+	// stay: they are small next to the logs, and dropping them would make
+	// the next read re-read whole logs while memory is tight. Only the
+	// index's cached session lines are freed.
+	hooksBeatIndex.dropLines()
 }
 
 // dropCaches forgets the unsupported-languages memo (a fleet memo).

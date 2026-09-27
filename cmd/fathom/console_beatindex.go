@@ -438,10 +438,18 @@ func (ix *beatOffsetIndex) remember(session, mark string, lines [][]byte) {
 	}
 }
 
-// reset forgets the index (tests; the governor's drops).
+// reset forgets the index (tests).
 func (ix *beatOffsetIndex) reset() {
 	ix.mu.Lock()
 	ix.gens, ix.lru = nil, nil
+	ix.mu.Unlock()
+}
+
+// dropLines frees the cached session lines, keeping the offsets and
+// digests (the governor's shed: the next read seeks, never re-indexes).
+func (ix *beatOffsetIndex) dropLines() {
+	ix.mu.Lock()
+	ix.lru = map[string]beatLRUEntry{}
 	ix.mu.Unlock()
 }
 

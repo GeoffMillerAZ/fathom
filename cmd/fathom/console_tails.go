@@ -447,7 +447,7 @@ var (
 	consoleSessionLedger sessionLedgerTail
 )
 
-// resetConsoleTails forgets every tail (tests; the governor's drops).
+// resetConsoleTails forgets every tail (tests; the shed keeps them, RT-113).
 func resetConsoleTails() {
 	consoleCallLogTail.reset()
 	consoleSessionLedger.reset()
