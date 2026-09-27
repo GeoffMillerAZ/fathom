@@ -373,7 +373,7 @@ tenancy block carries `disk_writes` (and `disk_writes_over`,
 `fathom_bytes_written_24h_explicit_ingest`,
 `fathom_bytes_written_window_seconds` and `fathom_disk_write_budget_bytes`,
 and doctor's `disk_writes` row WARNs over budget. The per-minute ring is in
-memory until RT-47 persists it, so after a start the "24h" figures cover
+memory (the resource ring keeps only the process counter), so after a start the "24h" figures cover
 only `fathom_bytes_written_window_seconds`; the line and doctor name that
 window ("within budget so far"). An unreadable counter is unknown, never 0.
 

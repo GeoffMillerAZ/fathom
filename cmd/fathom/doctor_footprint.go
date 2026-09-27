@@ -165,13 +165,14 @@ func checkDaemonDiskWrites(hc *http.Client, baseURL string, daemonUp bool) docto
 		}
 	}
 	ingest := m["fathom_bytes_written_24h_explicit_ingest"]
-	// Review finding 4: the ring is in memory until RT-47 persists it, so
+	// Review finding 4: the disk-write ring is in memory (the resource ring,
+	// RT-47, keeps only the process counter), so
 	// after a start it covers minutes, not a day — name the window.
 	span := "in the last 24 h"
 	if w, ok := m["fathom_bytes_written_window_seconds"]; !ok {
 		span = "over a window this daemon does not report"
 	} else if cov := time.Duration(w) * time.Second; cov < 24*time.Hour {
-		span = fmt.Sprintf("in the %s since the daemon's first reading (the ring is in memory until RT-47 — not a full day)", cov)
+		span = fmt.Sprintf("in the %s since the daemon's first reading (the disk-write ring is in memory and restarts with the daemon — not a full day)", cov)
 	}
 	reason := fmt.Sprintf("written %s %s outside explicit ingest (+%s during explicit ingest) against %s/day",
 		tenancy.FormatBytes(int64(outside)), span, tenancy.FormatBytes(int64(ingest)), tenancy.FormatBytes(int64(budget)))
