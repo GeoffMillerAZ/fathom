@@ -223,6 +223,9 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	var backend mcp.QueryInterface = c
 	if *autoRefresh {
 		backend = mcp.NewAutoRefresh(c, flog)
+		// RT-109: an in_progress row is an interrupted ingest only once
+		// its owner is gone (a live CLI ingest is never duplicated).
+		mcp.SetIngestOwnerProbe(ingestOwnerProbe(realDaemonOps{}))
 	}
 
 	// Call logging feeds tool-selection telemetry (which tools each surface

@@ -22,7 +22,7 @@ func TestIngestStateRoundTrip(t *testing.T) {
 			if _, found, err := iss.GetIngestState(ctx, "a"); err != nil || found {
 				t.Fatalf("empty store: found=%v err=%v", found, err)
 			}
-			want := IngestState{ServiceID: "a", State: IngestInProgress, PID: 42, StartedAt: 7, TargetCommit: "abc"}
+			want := IngestState{ServiceID: "a", State: IngestInProgress, PID: 42, StartedAt: 7, TargetCommit: "abc", Path: "/repo/a"}
 			if err := iss.SetIngestState(ctx, want); err != nil {
 				t.Fatal(err)
 			}
@@ -40,7 +40,7 @@ func TestIngestStateRoundTrip(t *testing.T) {
 			if err := st.RenameService(ctx, "a", "b"); err != nil {
 				t.Fatal(err)
 			}
-			if got, found, _ := iss.GetIngestState(ctx, "b"); !found || got.TargetCommit != "abc" || got.ServiceID != "b" {
+			if got, found, _ := iss.GetIngestState(ctx, "b"); !found || got.TargetCommit != "abc" || got.Path != "/repo/a" || got.ServiceID != "b" {
 				t.Fatalf("after rename: %+v found=%v", got, found)
 			}
 			if _, err := st.RemoveService(ctx, "b"); err != nil {

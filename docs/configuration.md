@@ -345,8 +345,13 @@ served from the index as it stands; freshness not checked …"}`.
 **Interrupted ingests.** An ingest writes `ingest_state = in_progress` in the
 store before its first write and records the watermark (with `complete`)
 only at its final commit, so a killed or halted ingest never looks fresh.
-Auto-refresh re-ingests a service another process left `in_progress`, even
-at the same commit — unless the service is quarantined.
+Auto-refresh re-ingests a service another process left `in_progress` once
+that process is gone (a running `fathom ingest` into the same store is left
+alone; a pid reused by a later process counts as gone), even at the same
+commit and even for a first ingest that never recorded a watermark — the row
+names the corpus root — unless the service is quarantined. An ingest that
+fails before its first write (Discover, fetch, or the IT-15 refusal) puts the
+previous row back.
 
 **Disk writes.** The sampler reads the daemon's cumulative bytes written
 (rusage) and keeps them per minute for 24 h, split by whether an explicit

@@ -92,6 +92,9 @@ func runServeMCP(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	var backend mcp.QueryInterface = c
 	if *autoRefresh {
 		backend = mcp.NewAutoRefresh(c, flog)
+		// RT-109: an in_progress row is an interrupted ingest only once
+		// its owner is gone (a live CLI ingest is never duplicated).
+		mcp.SetIngestOwnerProbe(ingestOwnerProbe(realDaemonOps{}))
 	}
 
 	srv := mcp.NewServerWithFleet(backend, &fleetAdapter{c: c, log: flog})

@@ -726,6 +726,7 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	// ── Pass 1: Filter ──────────────────────────────────────────────────────
 	refs, err := p.conn.Discover(ctx, svc)
 	if err != nil {
+		p.abandonIngestState(ctx, run) // before the first write
 		return Report{}, fmt.Errorf("fusion: discover %q: %w", svc.ID, err)
 	}
 
@@ -793,9 +794,11 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	wg.Wait()
 
 	if firstErrPtr != nil {
+		p.abandonIngestState(ctx, run) // before the first write
 		return report, fmt.Errorf("fusion: fetch: %w", *(*error)(firstErrPtr))
 	}
 	if ctxErr := ctx.Err(); ctxErr != nil {
+		p.abandonIngestState(context.WithoutCancel(ctx), run) // before the first write
 		return report, fmt.Errorf("fusion: fetch: %w", ctxErr)
 	}
 
@@ -842,6 +845,7 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	if len(failures) > 0 && len(failures) == len(refs) {
 		existing, qErr := p.st.QueryObservations(ctx, svc.ID, "")
 		if qErr != nil {
+			p.abandonIngestState(ctx, run) // before the first write
 			return report, fmt.Errorf("fusion: count observations %q: %w", svc.ID, qErr)
 		}
 		if len(existing) > 0 {
@@ -1037,12 +1041,7 @@ func (p *Pipeline) recordIngestMeta(ctx context.Context, svc core.ServiceRef, co
 	// An EMPTY path stays empty: remote/faux services have no local
 	// corpus root, and Abs("") would record the ingesting process's
 	// CWD — auto-refresh treats "" as "skip", which is the truth.
-	metaPath := svc.Path
-	if metaPath != "" {
-		if abs, absErr := filepath.Abs(metaPath); absErr == nil {
-			metaPath = abs
-		}
-	}
+	metaPath := absCorpusPath(svc.Path)
 	meta := store.ServiceMeta{
 		ServiceID:     svc.ID,
 		Path:          metaPath,

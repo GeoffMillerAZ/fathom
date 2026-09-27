@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
 
@@ -107,42 +108,106 @@ func TestEnsureSkippedAtShedSafeModeWarmupQuarantine(t *testing.T) {
 	})
 }
 
-// ingestStateFake reports an ingest_state row for the service.
+// ingestStateFake reports an ingest_state row for the service; noMeta
+// makes ServiceMeta answer not-found (a first ingest killed before its
+// final commit recorded any).
 type ingestStateFake struct {
 	refreshFake
-	state string
-	pid   int
+	row    store.IngestState
+	noMeta bool
+	paths  []string // the corpus roots headFn was asked about
 }
 
-func (f *ingestStateFake) IngestState(_ context.Context, _ string) (string, int, bool, error) {
-	return f.state, f.pid, f.state != "", nil
+func (f *ingestStateFake) IngestState(_ context.Context, _ string) (store.IngestState, bool, error) {
+	return f.row, f.row.State != "", nil
+}
+
+func (f *ingestStateFake) ServiceMeta(ctx context.Context, svc string) (string, string, bool, error) {
+	if f.noMeta {
+		return "", "", false, nil
+	}
+	return f.refreshFake.ServiceMeta(ctx, svc)
+}
+
+// ownerProbe is an injected liveness answer for the row's pid.
+func ownerProbe(alive bool) func(int, time.Time) bool {
+	return func(int, time.Time) bool { return alive }
 }
 
 // TestEnsureReingestsInterruptedIngest pins RT-109's read half (design §6):
-// an in_progress row written by another process (a killed or halted
-// ingest — dead or foreign pid) means the index is not the one its
-// watermark describes, so ensure re-ingests even when HEAD equals the
-// watermark; one written by this process, or a complete row, does not.
+// an in_progress row whose owner is dead or foreign — a killed or halted
+// ingest in another process — means the index is not the one its watermark
+// describes, so ensure re-ingests even when HEAD equals the watermark. A
+// row this process wrote, a complete row, and an in_progress row whose
+// owner is still running (a live concurrent ingest; review finding 3) do
+// not.
 func TestEnsureReingestsInterruptedIngest(t *testing.T) {
 	for _, tc := range []struct {
 		name  string
 		state string
 		pid   int
+		alive bool
 		want  int
 	}{
-		{"foreign in_progress", "in_progress", os.Getpid() + 1, 1},
-		{"own in_progress", "in_progress", os.Getpid(), 0},
-		{"complete", "complete", os.Getpid() + 1, 0},
-		{"no row", "", 0, 0},
+		{"foreign in_progress, owner dead", "in_progress", os.Getpid() + 1, false, 1},
+		{"foreign in_progress, owner still running", "in_progress", os.Getpid() + 1, true, 0},
+		{"own in_progress", "in_progress", os.Getpid(), false, 0},
+		{"complete", "complete", os.Getpid() + 1, false, 0},
+		{"no row", "", 0, false, 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			fake := &ingestStateFake{refreshFake: refreshFake{path: "/repo", indexed: "same"}, state: tc.state, pid: tc.pid}
+			fake := &ingestStateFake{refreshFake: refreshFake{path: "/repo", indexed: "same"}, row: store.IngestState{ServiceID: "svc", State: tc.state, PID: tc.pid, StartedAt: 1}}
 			ar := newAR(fake, "same")
+			ar.ownerAlive = ownerProbe(tc.alive)
 			ar.ensure(context.Background(), "svc")
 			ar.ensure(context.Background(), "svc")
 			if fake.ingests != tc.want {
 				t.Fatalf("ingests = %d, want %d", fake.ingests, tc.want)
 			}
 		})
+	}
+}
+
+// TestEnsureSeenDoesNotHideInterruptedIngest pins review finding 2 on
+// RT-109: this daemon refreshed svc to H (seen[svc] = H); another process
+// then began an ingest at H and was killed. The debounce must not hide it:
+// the half-written index is re-ingested although HEAD never moved.
+func TestEnsureSeenDoesNotHideInterruptedIngest(t *testing.T) {
+	fake := &ingestStateFake{refreshFake: refreshFake{path: "/repo", indexed: "old"}}
+	ar := newAR(fake, "new")
+	ar.ownerAlive = ownerProbe(false)
+	ar.ensure(context.Background(), "svc")
+	if fake.ingests != 1 {
+		t.Fatalf("ingests after the drift = %d, want 1", fake.ingests)
+	}
+	fake.indexed = "new"
+	fake.row = store.IngestState{ServiceID: "svc", State: store.IngestInProgress, PID: os.Getpid() + 1, StartedAt: 2, TargetCommit: "new", Path: "/repo"}
+	ar.ensure(context.Background(), "svc")
+	if fake.ingests != 2 {
+		t.Fatalf("ingests after a foreign ingest at the seen HEAD was killed = %d, want 2", fake.ingests)
+	}
+}
+
+// TestEnsureResumesKilledFirstIngest pins review finding 1 on RT-109: a
+// first ingest killed before its final commit left no service_meta, only an
+// in_progress row naming the corpus root; ensure re-ingests from that root.
+func TestEnsureResumesKilledFirstIngest(t *testing.T) {
+	fake := &ingestStateFake{noMeta: true, row: store.IngestState{ServiceID: "svc", State: store.IngestInProgress, PID: os.Getpid() + 1, StartedAt: 1, TargetCommit: "h1", Path: "/new/repo"}}
+	ar := newAR(fake, "h1")
+	ar.headFn = func(p string) string { fake.paths = append(fake.paths, p); return "h1" }
+	ar.ownerAlive = ownerProbe(false)
+	ar.ensure(context.Background(), "svc")
+	if fake.ingests != 1 {
+		t.Fatalf("ingests for a killed first ingest = %d, want 1", fake.ingests)
+	}
+	if len(fake.paths) == 0 || fake.paths[0] != "/new/repo" {
+		t.Fatalf("drift read corpus roots %v, want /new/repo", fake.paths)
+	}
+	// No row, no meta: nothing to refresh.
+	fake2 := &ingestStateFake{noMeta: true}
+	ar2 := newAR(fake2, "h1")
+	ar2.ensure(context.Background(), "svc")
+	if fake2.ingests != 0 {
+		t.Fatalf("ingests for an unknown service = %d, want 0", fake2.ingests)
 	}
 }

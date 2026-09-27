@@ -14,6 +14,7 @@ package fusion
 import (
 	"context"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -25,7 +26,8 @@ import (
 type ingestRun struct {
 	service string
 	target  string
-	started int64 // Unix nano
+	path    string // the corpus root, absolute (absCorpusPath)
+	started int64  // Unix nano
 	prev    store.IngestState
 	hadPrev bool
 }
@@ -48,7 +50,7 @@ func (p *Pipeline) ingestTarget(ctx context.Context, svc core.ServiceRef) string
 // in_progress (best-effort: a store without the table, or a failed write,
 // never aborts the ingest — the watermark ordering alone still holds).
 func (p *Pipeline) beginIngestState(ctx context.Context, svc core.ServiceRef) ingestRun {
-	run := ingestRun{service: svc.ID, target: p.ingestTarget(ctx, svc), started: time.Now().UnixNano()}
+	run := ingestRun{service: svc.ID, target: p.ingestTarget(ctx, svc), path: absCorpusPath(svc.Path), started: time.Now().UnixNano()}
 	iss, ok := p.st.(store.IngestStateStore)
 	if !ok {
 		return run
@@ -56,15 +58,30 @@ func (p *Pipeline) beginIngestState(ctx context.Context, svc core.ServiceRef) in
 	run.prev, run.hadPrev, _ = iss.GetIngestState(ctx, svc.ID)
 	_ = iss.SetIngestState(ctx, store.IngestState{
 		ServiceID: svc.ID, State: store.IngestInProgress, PID: os.Getpid(),
-		StartedAt: run.started, TargetCommit: run.target,
+		StartedAt: run.started, TargetCommit: run.target, Path: run.path,
 	})
 	return run
 }
 
+// absCorpusPath is the corpus root as recorded: absolute, so a daemon
+// resolving it from another working directory reads the same corpus; an
+// empty path (remote or faux services) stays empty.
+func absCorpusPath(path string) string {
+	if path == "" {
+		return ""
+	}
+	if abs, err := filepath.Abs(path); err == nil {
+		return abs
+	}
+	return path
+}
+
 // abandonIngestState puts back the row an ingest replaced, for an ingest
-// refused before its first write (IT-15): the index is untouched, so it is
-// still what its watermark says, and a refusal must not make every later
-// process re-ingest.
+// that stopped before its first write — refused (IT-15), or failed in
+// Discover or the fetch: the index is untouched, so it is still what its
+// watermark says, and such a stop must not make every later process
+// re-ingest. A stop after a write (a halt, a budget error) leaves
+// in_progress: that index is half-written.
 func (p *Pipeline) abandonIngestState(ctx context.Context, run ingestRun) {
 	iss, ok := p.st.(store.IngestStateStore)
 	if !ok {
@@ -84,7 +101,7 @@ func (p *Pipeline) commitIngest(ctx context.Context, svc core.ServiceRef, run in
 	if iss, ok := p.st.(store.IngestStateStore); ok {
 		_ = iss.SetIngestState(ctx, store.IngestState{
 			ServiceID: svc.ID, State: store.IngestComplete, PID: os.Getpid(),
-			StartedAt: run.started, TargetCommit: run.target,
+			StartedAt: run.started, TargetCommit: run.target, Path: run.path,
 		})
 	}
 }

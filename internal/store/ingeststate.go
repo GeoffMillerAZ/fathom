@@ -28,7 +28,8 @@ CREATE TABLE IF NOT EXISTS ingest_state (
     state         TEXT    NOT NULL,
     pid           INTEGER NOT NULL DEFAULT 0,
     started_at    BIGINT  NOT NULL DEFAULT 0,
-    target_commit TEXT    NOT NULL DEFAULT ''
+    target_commit TEXT    NOT NULL DEFAULT '',
+    path          TEXT    NOT NULL DEFAULT ''
 );
 `
 
@@ -45,6 +46,10 @@ type IngestState struct {
 	PID          int    // the process that wrote the row
 	StartedAt    int64  // Unix nano
 	TargetCommit string // the watermark the ingest will record when it completes
+	// Path is the corpus root (absolute) the ingest read. A first ingest
+	// has no service_meta until its final commit, so a killed one is
+	// re-ingested from here (review finding 1 on RT-109).
+	Path string
 }
 
 // IngestStateStore is the optional store capability behind ingest_state.
@@ -63,12 +68,13 @@ func (s *SQLiteStore) createIngestStateSchema() error {
 // SetIngestState upserts serviceID's row.
 func (s *SQLiteStore) SetIngestState(ctx context.Context, st IngestState) error {
 	_, err := s.db.ExecContext(ctx, `
-INSERT INTO ingest_state (service_id, state, pid, started_at, target_commit)
-VALUES (?, ?, ?, ?, ?)
+INSERT INTO ingest_state (service_id, state, pid, started_at, target_commit, path)
+VALUES (?, ?, ?, ?, ?, ?)
 ON CONFLICT (service_id) DO UPDATE SET
     state = excluded.state, pid = excluded.pid,
-    started_at = excluded.started_at, target_commit = excluded.target_commit
-`, st.ServiceID, st.State, st.PID, st.StartedAt, st.TargetCommit)
+    started_at = excluded.started_at, target_commit = excluded.target_commit,
+    path = excluded.path
+`, st.ServiceID, st.State, st.PID, st.StartedAt, st.TargetCommit, st.Path)
 	if err != nil {
 		return fmt.Errorf("SetIngestState: %w", err)
 	}
@@ -79,8 +85,8 @@ ON CONFLICT (service_id) DO UPDATE SET
 func (s *SQLiteStore) GetIngestState(ctx context.Context, serviceID string) (IngestState, bool, error) {
 	st := IngestState{ServiceID: serviceID}
 	err := s.db.QueryRowContext(ctx, `
-SELECT state, pid, started_at, target_commit FROM ingest_state WHERE service_id = ?
-`, serviceID).Scan(&st.State, &st.PID, &st.StartedAt, &st.TargetCommit)
+SELECT state, pid, started_at, target_commit, path FROM ingest_state WHERE service_id = ?
+`, serviceID).Scan(&st.State, &st.PID, &st.StartedAt, &st.TargetCommit, &st.Path)
 	if errors.Is(err, sql.ErrNoRows) {
 		return IngestState{}, false, nil
 	}

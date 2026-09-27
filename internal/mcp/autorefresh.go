@@ -2,10 +2,12 @@ package mcp
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -31,11 +33,19 @@ type autoRefreshBackend struct {
 	log    *dlog.Logger
 	headFn func(path string) string // injectable for tests; default = currentGitHead
 	now    func() time.Time         // injectable clock for the failure backoff; nil = time.Now
+	// ownerAlive reports whether the process that began an ingest (pid,
+	// at started) is still running — RT-109's liveness check; nil = the
+	// process-wide probe (SetIngestOwnerProbe).
+	ownerAlive func(pid int, started time.Time) bool
 
 	mu       sync.Mutex
 	seen     map[string]string         // service -> commit successfully refreshed to
 	inflight map[string]*inlineIngest  // service -> the detached ingest running now
 	failures map[string]refreshFailure // service -> the last failed attempt's backoff
+	// resumed is the interrupted ingest_state row (owner pid and start)
+	// this backend already re-ingested per service: one re-ingest per
+	// interrupted row, even when the row cannot be rewritten afterwards.
+	resumed map[string]ingestOwner
 
 	// refreshTotal counts every auto-refresh re-ingest this backend has
 	// triggered (O108, cmd/fathom's /metrics fathom_autorefresh_total) —
@@ -57,6 +67,7 @@ func NewAutoRefresh(backend QueryInterface, log *dlog.Logger) QueryInterface {
 		seen:           make(map[string]string),
 		inflight:       make(map[string]*inlineIngest),
 		failures:       make(map[string]refreshFailure),
+		resumed:        make(map[string]ingestOwner),
 	}
 }
 
@@ -137,8 +148,30 @@ func (a *autoRefreshBackend) ensure(ctx context.Context, service string) {
 		return
 	}
 	path, indexed, found, err := a.QueryInterface.ServiceMeta(ctx, service)
-	if err != nil || !found || path == "" {
+	if err != nil {
 		return
+	}
+	// RT-109 (design §6): an ingest another process began and did not
+	// finish — killed or halted, its owner no longer running — means the
+	// index is not the one its watermark describes: re-ingest even with no
+	// drift, and even at a HEAD this backend already refreshed to (the
+	// seen debounce below describes this process's ingests, not another's).
+	// One point read of the row per ensure.
+	interrupted, owner, rowPath := a.interruptedIngest(ctx, service)
+	if interrupted {
+		a.mu.Lock()
+		if a.resumed[service] == owner {
+			interrupted = false // already re-ingested once
+		}
+		a.mu.Unlock()
+	}
+	if !found || path == "" {
+		// A first ingest killed before its final commit recorded no
+		// service_meta; its row names the corpus root.
+		if !interrupted || rowPath == "" {
+			return
+		}
+		path, indexed = rowPath, ""
 	}
 	head := a.headFn(path)
 	if head == "" {
@@ -146,14 +179,11 @@ func (a *autoRefreshBackend) ensure(ctx context.Context, service string) {
 			head, _ = w.ServiceWatermark(ctx, service)
 		}
 	}
-	// RT-109 (design §6): an ingest another process left in_progress (it
-	// was killed or halted — a dead or foreign pid) means the index is not
-	// the one its watermark describes: re-ingest even with no drift.
-	if head == "" || (head == indexed && !a.interruptedIngest(ctx, service)) {
+	if head == "" || (head == indexed && !interrupted) {
 		return
 	}
 	a.mu.Lock()
-	if a.seen[service] == head {
+	if !interrupted && a.seen[service] == head {
 		a.mu.Unlock()
 		return
 	}
@@ -170,6 +200,12 @@ func (a *autoRefreshBackend) ensure(ctx context.Context, service string) {
 	}
 	fl := &inlineIngest{head: head, done: make(chan struct{})}
 	a.inflight[service] = fl
+	if interrupted {
+		if a.resumed == nil {
+			a.resumed = make(map[string]ingestOwner)
+		}
+		a.resumed[service] = owner
+	}
 	atomic.AddInt64(&a.refreshTotal, 1)
 	if a.log != nil {
 		a.log.Info(fmt.Sprintf("auto-refresh: %s drifted %s→%s, re-ingesting", service, shortSHA(indexed), shortSHA(head)))
@@ -187,20 +223,74 @@ func (a *autoRefreshBackend) ensure(ctx context.Context, service string) {
 // ingestStateBackend is the optional backend capability behind RT-109:
 // the service's ingest_state row (pkg/client implements it).
 type ingestStateBackend interface {
-	IngestState(ctx context.Context, service string) (state string, pid int, found bool, err error)
+	IngestState(ctx context.Context, service string) (row store.IngestState, found bool, err error)
 }
 
 // interruptedIngest reports whether service's last ingest was left
-// in_progress by another process — killed or halted before its final
-// commit. A row this process wrote is its own ingest's (a failure here is
-// retried by the drift and backoff rules), never an interruption.
-func (a *autoRefreshBackend) interruptedIngest(ctx context.Context, service string) bool {
+// in_progress by another process that is no longer running — killed or
+// halted before its final commit — and the corpus root that ingest read.
+// A row this process wrote is its own ingest's (a failure here is retried
+// by the drift and backoff rules), and a row whose owner is still running
+// is a live concurrent ingest (a CLI ingest into this store): re-ingesting
+// beside it would double the memory this program bounds (review finding
+// 3), so both are not interruptions.
+func (a *autoRefreshBackend) interruptedIngest(ctx context.Context, service string) (bool, ingestOwner, string) {
 	isb, ok := a.QueryInterface.(ingestStateBackend)
 	if !ok {
+		return false, ingestOwner{}, ""
+	}
+	row, found, err := isb.IngestState(ctx, service)
+	if err != nil || !found || row.State != store.IngestInProgress || row.PID == os.Getpid() {
+		return false, ingestOwner{}, ""
+	}
+	alive := a.ownerAlive
+	if alive == nil {
+		alive = loadIngestOwnerProbe()
+	}
+	if alive(row.PID, time.Unix(0, row.StartedAt)) {
+		return false, ingestOwner{}, ""
+	}
+	return true, ingestOwner{pid: row.PID, started: row.StartedAt}, row.Path
+}
+
+// ingestOwner identifies one ingest_state row's ingest: its pid and start.
+type ingestOwner struct {
+	pid     int
+	started int64
+}
+
+// ingestOwnerProbe is the process-wide liveness check behind
+// interruptedIngest. The default is kill(pid, 0) alone; cmd/fathom
+// installs one that also rejects a reused pid (a process that started
+// after the row was written).
+var ingestOwnerProbe atomic.Pointer[func(pid int, started time.Time) bool]
+
+// SetIngestOwnerProbe installs the liveness check RT-109's interrupted-
+// ingest rule uses: whether pid, recorded as starting an ingest at
+// started, is that same process and still running. nil restores the
+// default (kill(pid, 0)).
+func SetIngestOwnerProbe(fn func(pid int, started time.Time) bool) {
+	if fn == nil {
+		ingestOwnerProbe.Store(nil)
+		return
+	}
+	ingestOwnerProbe.Store(&fn)
+}
+
+func loadIngestOwnerProbe() func(int, time.Time) bool {
+	if p := ingestOwnerProbe.Load(); p != nil {
+		return *p
+	}
+	return pidRunning
+}
+
+// pidRunning is kill(pid, 0): nil or EPERM means a process holds the pid.
+func pidRunning(pid int, _ time.Time) bool {
+	if pid <= 0 {
 		return false
 	}
-	state, pid, found, err := isb.IngestState(ctx, service)
-	return err == nil && found && state == store.IngestInProgress && pid != os.Getpid()
+	err := syscall.Kill(pid, 0)
+	return err == nil || errors.Is(err, syscall.EPERM)
 }
 
 // inlineIngest is one detached auto-refresh ingest in flight for a service.

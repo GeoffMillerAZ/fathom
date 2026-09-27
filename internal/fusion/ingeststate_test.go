@@ -147,3 +147,77 @@ func TestWatermarkNotAdvancedByKilledIngest(t *testing.T) {
 		}
 	})
 }
+
+// discoverFailConn fails Discover: an ingest that stops before its first
+// write.
+type discoverFailConn struct{ memConn }
+
+func (discoverFailConn) Discover(context.Context, core.ServiceRef) ([]core.SourceRef, error) {
+	return nil, errors.New("discover: permission denied")
+}
+
+// TestFirstIngestKilledKeepsCorpusPath pins review finding 1 on RT-109: a
+// FIRST ingest (onboard, or `ingest` with a path) has no service_meta until
+// its final commit, so a kill midway must still leave the corpus root
+// somewhere the next process can re-ingest from — the ingest_state row
+// carries it (absolute), and the watermark stays absent.
+func TestFirstIngestKilledKeepsCorpusPath(t *testing.T) {
+	ctx := context.Background()
+	conn := memConn{files: map[string]string{"a.go": "package a\n\nfunc A() {}\n"}}
+	mem := store.NewMemoryStore()
+	bs := &blockingStore{MemoryStore: mem, entered: make(chan struct{}, 1), release: make(chan struct{})}
+	p := fusion.New(conn, bs, fusion.Config{Concurrency: 1})
+	p.WithGitHead(func(string) string { return "h1" })
+	p.WithGitLog(func(string) string { return "" })
+	done := make(chan error, 1)
+	go func() { _, err := p.Ingest(ctx, core.ServiceRef{ID: "fresh", Path: "/new/repo"}); done <- err }()
+	defer func() { close(bs.release); <-done }()
+	select {
+	case <-bs.entered:
+	case <-time.After(10 * time.Second):
+		t.Fatal("ingest never reached its first write")
+	}
+	if _, found, _ := mem.GetServiceMeta(ctx, "fresh"); found {
+		t.Error("a first ingest recorded service_meta before its final commit")
+	}
+	st, found, err := mem.GetIngestState(ctx, "fresh")
+	if err != nil || !found || st.State != store.IngestInProgress || st.Path != "/new/repo" {
+		t.Fatalf("ingest_state mid first ingest = %+v found=%v err=%v, want in_progress with path /new/repo", st, found, err)
+	}
+}
+
+// TestPreWriteFailurePutsIngestStateBack pins review finding 3's asymmetry:
+// an ingest that fails before its first write (Discover, a fatal fetch)
+// leaves the index untouched, so — like the IT-15 refusal — it puts back
+// the row it replaced instead of leaving a false in_progress.
+func TestPreWriteFailurePutsIngestStateBack(t *testing.T) {
+	ctx := context.Background()
+	svc := core.ServiceRef{ID: "svc", Path: "/repo"}
+	for _, tc := range []struct {
+		name string
+		prev *store.IngestState
+	}{
+		{"had a complete row", &store.IngestState{ServiceID: "svc", State: store.IngestComplete, PID: 1, StartedAt: 5, TargetCommit: "old", Path: "/repo"}},
+		{"had no row", nil},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			mem := store.NewMemoryStore()
+			if tc.prev != nil {
+				_ = mem.SetIngestState(ctx, *tc.prev)
+			}
+			p := fusion.New(discoverFailConn{}, mem, fusion.Config{Concurrency: 1})
+			p.WithGitHead(func(string) string { return "new" })
+			p.WithGitLog(func(string) string { return "" })
+			if _, err := p.Ingest(ctx, svc); err == nil {
+				t.Fatal("a Discover failure returned no error")
+			}
+			got, found, _ := mem.GetIngestState(ctx, "svc")
+			switch {
+			case tc.prev == nil && found:
+				t.Fatalf("ingest_state after a pre-write failure = %+v, want no row", got)
+			case tc.prev != nil && (!found || got != *tc.prev):
+				t.Fatalf("ingest_state after a pre-write failure = %+v found=%v, want %+v", got, found, *tc.prev)
+			}
+		})
+	}
+}
