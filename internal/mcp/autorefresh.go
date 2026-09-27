@@ -159,6 +159,7 @@ type refreshFailure struct {
 	head     string
 	failures int
 	next     time.Time
+	err      string // the last attempt's error, for the stale read's note
 }
 
 // autoRefreshBackoff is the wait after the n-th consecutive failure (n ≥ 1).
@@ -300,6 +301,10 @@ func (a *autoRefreshBackend) ensure(ctx context.Context, service string) {
 	}
 	if f, failed := a.failures[service]; failed && f.head == head && a.clock().Before(f.next) {
 		a.mu.Unlock()
+		// I38/I4: served from the stale index like any drifted read, so
+		// the envelope says so — and that the refresh failed.
+		noteRefreshDeferred(ctx, service, fmt.Sprintf("index_stale — served from the index at %s; HEAD is %s; the last refresh failed (%s) and is retried after %s",
+			shortSHA(indexed), shortSHA(head), f.err, f.next.UTC().Format(time.RFC3339)))
 		return
 	}
 	a.pending[service] = head
@@ -430,6 +435,10 @@ func (a *autoRefreshBackend) refreshDone(service, head string, err error) {
 			f = refreshFailure{head: head}
 		}
 		f.failures++
+		f.err = err.Error()
+		if len(f.err) > 200 {
+			f.err = f.err[:200] + "…"
+		}
 		wait := autoRefreshBackoff(f.failures)
 		f.next = a.clock().Add(wait)
 		a.failures[service] = f
