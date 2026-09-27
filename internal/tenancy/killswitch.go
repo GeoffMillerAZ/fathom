@@ -40,6 +40,10 @@ type SwitchRecord struct {
 	Detail string    `json:"detail,omitempty"`
 	Since  time.Time `json:"since,omitzero"`
 	Until  time.Time `json:"until,omitzero"`
+	// Addr is the managed daemon's listen address (host:port). Every writer
+	// records it: the hooks' kill-switch stat (RT-10) silences only hooks
+	// addressing this daemon, never a scratch daemon elsewhere (§2.3, §9).
+	Addr string `json:"addr,omitempty"`
 }
 
 // SwitchFile is one switch file as the caller found it: Present when it

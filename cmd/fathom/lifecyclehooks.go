@@ -115,6 +115,11 @@ func cmdSessionEndHook(args []string, stdout, stderr io.Writer) int {
 	if !ok {
 		return 0
 	}
+	endGuard, silent := beginHookGuard("session-end-hook", "fathom session-end-hook", codec.ID(), defaultFathomURL())
+	if silent {
+		return 0 // §9: the managed daemon is disabled or paused — no RPC, no output
+	}
+	defer endGuard()
 	in, ok := readLifecycleInput(codec, harness.EventSessionEnd)
 	if !ok || in.SessionID == "" {
 		return 0
@@ -177,6 +182,11 @@ func cmdPreCompactHook(args []string, stdout, stderr io.Writer) int {
 	if !ok {
 		return 0
 	}
+	endGuard, silent := beginHookGuard("pre-compact-hook", "fathom pre-compact-hook", codec.ID(), defaultFathomURL())
+	if silent {
+		return 0 // §9: the managed daemon is disabled or paused — no RPC, no output
+	}
+	defer endGuard()
 	in, ok := readLifecycleInput(codec, harness.EventPreCompact)
 	if !ok || in.SessionID == "" {
 		return 0

@@ -34,6 +34,15 @@ func cmdConfigAuditHook(harnessFlag, event string, stderr io.Writer) int {
 	if !ok {
 		return 0
 	}
+	marker := "fathom config audit --hook"
+	if event == "file-changed" {
+		marker += " --event file-changed"
+	}
+	endGuard, silent := beginHookGuard("config-change-hook", marker, codec.ID(), defaultFathomURL())
+	if silent {
+		return 0 // §9: the managed daemon is disabled or paused — no RPC, no output
+	}
+	defer endGuard()
 	if event == "file-changed" {
 		return fileChangedHook(codec, os.Stdin)
 	}

@@ -214,8 +214,13 @@ func runDaemonStop(args []string, stdout, stderr io.Writer, ops daemonOps) int {
 		fmt.Fprintf(stderr, "error: cannot resolve ~/.fathom/daemon: %v\n", err)
 		return 1
 	}
+	addr, err := console.DaemonAddrFromURL(*url)
+	if err != nil {
+		fmt.Fprintf(stderr, "error: %v\n", err)
+		return 2
+	}
 	now := ops.Now()
-	rec := tenancy.SwitchRecord{By: fmt.Sprintf("fathom daemon stop (pid %d)", os.Getpid()), Reason: firstNonEmpty(*reason, "operator stop"), Since: now.UTC()}
+	rec := tenancy.SwitchRecord{By: fmt.Sprintf("fathom daemon stop (pid %d)", os.Getpid()), Reason: firstNonEmpty(*reason, "operator stop"), Since: now.UTC(), Addr: addr}
 	if *forDur > 0 {
 		rec.Until = now.Add(*forDur).UTC()
 	}
@@ -226,11 +231,6 @@ func runDaemonStop(args []string, stdout, stderr io.Writer, ops daemonOps) int {
 	}
 	fmt.Fprintf(stdout, "kill switch: %s written — every managed start now exits before config, store or bind\n", path)
 
-	addr, err := console.DaemonAddrFromURL(*url)
-	if err != nil {
-		fmt.Fprintf(stderr, "error: %v\n", err)
-		return 2
-	}
 	pid, notes := findManagedDaemon(ops, addr)
 	for _, n := range notes {
 		fmt.Fprintf(stdout, "note: %s\n", n)
@@ -358,6 +358,7 @@ func runDaemonPause(pause bool, args []string, stdout, stderr io.Writer, ops dae
 	}
 	fs := newFlagSet(name, stderr)
 	reason := fs.String("reason", "", "why (recorded in paused.json)")
+	url := fs.String("url", defaultFathomURL(), "the managed daemon's base URL (recorded as addr: hooks addressing it go quiet)")
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
@@ -367,7 +368,12 @@ func runDaemonPause(pause bool, args []string, stdout, stderr io.Writer, ops dae
 		return 1
 	}
 	if pause {
-		p, err := writeSwitchFile(dir, tenancy.PausedFile, tenancy.SwitchRecord{By: "fathom daemon pause", Reason: firstNonEmpty(*reason, "operator pause"), Since: ops.Now().UTC()})
+		addr, err := console.DaemonAddrFromURL(*url)
+		if err != nil {
+			fmt.Fprintf(stderr, "error: %v\n", err)
+			return 2
+		}
+		p, err := writeSwitchFile(dir, tenancy.PausedFile, tenancy.SwitchRecord{By: "fathom daemon pause", Reason: firstNonEmpty(*reason, "operator pause"), Since: ops.Now().UTC(), Addr: addr})
 		if err != nil {
 			fmt.Fprintf(stderr, "error: %v\n", err)
 			return 1

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/harness"
+	"github.com/geoffmilleraz/fathom/internal/hookguard"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
 )
 
@@ -65,6 +67,11 @@ func cmdSessionHook(args []string, stdin io.Reader, stdout, stderr io.Writer) in
 	if !ok {
 		return 0
 	}
+	endGuard, silent := beginHookGuard("session-hook", "fathom session-hook", codec.ID(), *url)
+	if silent {
+		return 0 // §9: the managed daemon is disabled or paused — no RPC, no output
+	}
+	defer endGuard()
 
 	// session_id (docs/design/production-tokenomics.md §6): read
 	// best-effort from the SessionStart hook JSON through the codec — the
@@ -295,6 +302,22 @@ func buildSessionContext(baseURL, projDir string) string {
 		if resp != nil {
 			resp.Body.Close()
 		}
+		// A busy daemon (503 + Retry-After, held by the hook breaker) IS
+		// responding: saying otherwise would send the agent to Grep for
+		// the whole session over a few seconds of load (§11.2).
+		var skip *hookguard.SkipError
+		if errors.As(err, &skip) && skip.Verdict == hookguard.Open {
+			// The shared breaker is open: other hooks already saw this
+			// daemon fail and are shielding it. §11.2 says hooks stay
+			// silent then (I9, P18) — the old "not responding … Restart
+			// it" line told every new session to restart a daemon the
+			// breaker was giving room to recover. The skip is recorded as
+			// a breaker_open beat.
+			return ""
+		}
+		if errors.As(err, &skip) && skip.Verdict == hookguard.Busy {
+			return fmt.Sprintf("fathom daemon (%s) is busy right now (hooks back off until %s) — its MCP tools may refuse briefly with a Retry-After; retry them before falling back to Grep/Read.", baseURL, skip.Until.Local().Format("15:04:05"))
+		}
 		// This line reaches EVERY session of EVERY adopter, which is why it
 		// may not name a label that exists on one machine.
 		return fmt.Sprintf("⚠️ fathom code-intelligence daemon (%s) is not responding — its MCP tools are unavailable this session, so Grep/Read discovery is expected. Restart it with: %s", baseURL, daemonRestartHint(""))
@@ -382,8 +405,8 @@ func buildSessionContext(baseURL, projDir string) string {
 // keyed by lower-cased service ID, plus an error when ENUMERATION failed —
 // callers must distinguish "failed to enumerate" from "zero services" (O2:
 // collapsing them once rendered a confident false not-indexed instruction
-// for an indexed repo). One retry with its own timeout, decoupled from the
-// caller's healthz-sized client.
+// for an indexed repo). One retry, on the caller's own client, and only for
+// a refused or reset connection inside the hook's deadline (RT-8).
 // inProcessRegistry is published by serve-http: a registry lookup aimed at
 // the daemon's own URL is answered in process (the same
 // mcp.ServiceSummaries list_services returns) instead of over loopback HTTP.
@@ -428,15 +451,22 @@ func fetchServices(hc *http.Client, baseURL string) (map[string]svcInfo, error) 
 		return r.services(context.Background())
 	}
 	m, err := fetchServicesOnce(hc, baseURL)
-	if err == nil {
-		return m, nil
+	if err == nil || !hookguard.Retryable(err) {
+		// RT-8 (§11.1): a timeout, a 5xx or a guard skip is never retried —
+		// the old fresh 4 s retry client let a hook facing a hung daemon
+		// spend its whole budget and then four seconds more.
+		return m, err
 	}
-	retryClient := &http.Client{Timeout: 4 * time.Second}
-	if hc != nil && hc.Transport != nil {
-		retryClient.Transport = hc.Transport
+	// Refused or reset: the daemon may be mid-restart. One retry on the
+	// SAME client, and only while the hook's deadline has time for it.
+	if g := activeHookGuard(); g != nil && g.Deadline.Remaining() < fetchServicesMinRetry {
+		return m, err
 	}
-	return fetchServicesOnce(retryClient, baseURL)
+	return fetchServicesOnce(hc, baseURL)
 }
+
+// fetchServicesMinRetry is the least deadline left that is worth a retry.
+const fetchServicesMinRetry = 100 * time.Millisecond
 
 func fetchServicesOnce(hc *http.Client, baseURL string) (map[string]svcInfo, error) {
 	out := map[string]svcInfo{}
