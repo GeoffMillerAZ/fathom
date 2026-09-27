@@ -93,7 +93,8 @@ const storeFormatVersionUnversioned = 0
 const storeApplicationID = 0x46415448
 
 // sqlitePragmaDSN appends the per-connection pragmas this backend requires
-// (journal_mode=WAL, busy_timeout, synchronous=NORMAL) to path as DSN query
+// (journal_mode=WAL, busy_timeout, synchronous=NORMAL, journal_size_limit
+// 64 MiB) to path as DSN query
 // parameters. modernc.org/sqlite applies "_pragma" query parameters to every
 // new physical connection it opens (conn.go's newConn → applyQueryParams),
 // so these apply uniformly across the whole (uncapped) pool, not just the
@@ -106,6 +107,9 @@ func sqlitePragmaDSN(path string) string {
 	q.Add("_pragma", "busy_timeout(5000)")
 	q.Add("_pragma", "journal_mode(WAL)")
 	q.Add("_pragma", "synchronous(NORMAL)")
+	// RT-128 (§12.2): a checkpoint leaves the -wal file at most 64 MiB
+	// instead of its high-water mark.
+	q.Add("_pragma", "journal_size_limit(67108864)")
 	return path + "?" + q.Encode()
 }
 

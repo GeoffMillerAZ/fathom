@@ -568,7 +568,9 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	// actually uses); failure to open the log never blocks serving.
 	var logger *mcp.CallLogger
 	if *callLogPath != "" {
-		f, err := openCallLog(*callLogPath)
+		// RT-126 (§12.1): rotated at 64 MiB; the previous generation is
+		// rolled up and archived, never deleted.
+		f, err := openRotatingCallLog(*callLogPath, callLogRotateBytes, func(m string) { flog.Warn(m) })
 		if err != nil {
 			flog.Warn(fmt.Sprintf("call log disabled: %v", err))
 		} else {
@@ -668,23 +670,26 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	// one peak (a large graph build, a burst of concurrent cache misses)
 	// can inflate the daemon's OS-visible footprint, instead of leaving it
 	// to Go's own lazy background scavenger for a process that runs 24/7.
-	// DG-6 piggybacks the daemon's own launchd-piped stdout/stderr bound on
-	// this same ticker (rotateDaemonStdio) — an operator who turns
-	// scavenging off also pauses log rotation, a deliberate coupling
-	// (matching DG-2's dedupe-flush cadence) rather than a second
-	// independent ticker for one more periodic housekeeping task.
+	// The launchd-piped stdout/stderr bound (DG-6) moved off this ticker
+	// onto its own (RT-127): turning scavenging off no longer lets the
+	// logs grow unbounded.
 	// outFile/errFile are the real *os.File only when this IS a genuine
 	// os.Stdout/os.Stderr (production); a test's non-*os.File stdout/stderr
 	// simply makes rotateDaemonStdio a no-op for those two arguments.
 	outFile, _ := stdout.(*os.File)
 	errFile, _ := stderr.(*os.File)
+	// RT-127 (§12.2): the stdio logs rotate on their own 60 s ticker —
+	// FATHOM_SCAVENGE=off no longer pauses them.
+	stdioCtx, stopStdio := context.WithCancel(context.Background())
+	defer stopStdio()
+	go runStdioRotation(stdioCtx, stdioRotateEvery, outFile, errFile, outLog, flog)
 	if !managed {
 		outLog.Info("scavenge: off (unmanaged daemon, §10.1)")
 	} else if scavengeDisabled() {
-		outLog.Info("scavenge: OFF (FATHOM_SCAVENGE=off) — the daemon's OS-visible footprint may not shrink after a peak (O108); fathom-http.log/.err rotation (DG-6) is paused too")
+		outLog.Info("scavenge: OFF (FATHOM_SCAVENGE=off) — the daemon's OS-visible footprint may not shrink after a peak (O108); fathom-http.log/.err rotation runs on its own ticker")
 	} else {
 		go runMemoryScavenger(context.Background(), scavengeIntervalFromEnv(), outLog, func() {
-			scavengeTick(outFile, errFile, daemonStdioRotateBytes, outLog, flog, time.Now)
+			scavengeTick(outLog, flog, time.Now)
 		}, nil)
 	}
 
@@ -699,6 +704,13 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 		sm.step(s.At, l)
 	})
 	defer stopGovernor()
+	// RT-128 (§12.2): the managed daemon truncates the WAL after 5 idle
+	// minutes, at most hourly.
+	if cp, ok := c.Store().(interface{ Checkpoint(context.Context) error }); ok && managed {
+		walCtx, stopWAL := context.WithCancel(context.Background())
+		defer stopWAL()
+		go runWALIdleCheckpoint(walCtx, rpcActivity.Load, func() bool { return tenancy.DefaultInFlight.Len() > 0 }, cp.Checkpoint, func(m string) { outLog.Info(m) })
+	}
 	publishDaemonEvent(consoleDeps.bus, prevRecord, hadPrev, commit)
 	eventSources := newConsoleEventSources(consoleDeps.bus, c, verifyLedgerPath(), sessionLedgerPath())
 	eventSources.warn = func(msg string) { flog.Warn(msg) }
@@ -1001,6 +1013,7 @@ func newHTTPHandlerDeps(srv *mcp.Server, c *client.Client, selfAddr string, port
 		// RT-179: the call's clock and class deadline run from here.
 		arrived := time.Now()
 		state.reqCount.Add(1)
+		rpcActivity.Add(1) // RT-128: the WAL checkpoint's idle signal
 		if r.Method != http.MethodPost {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 			return

@@ -999,7 +999,7 @@ degrades silently then, so it is counted), harness kills (a `seen` beat with no
 | Class | Policy | Managed daemon runs it daily at low priority? |
 |---|---|---|
 | call log | rotate at 64 MiB: rollup, gzip, archive (never deleted) up to 1 GiB, then report | rotate + gzip: yes; delete: never |
-| verify / session / intent ledgers, `decisions.jsonl` | rotate + gzip at 32 MiB, keep all (I33 needs history) | rotate: yes |
+| verify / session / intent ledgers, `decisions.jsonl` | report at 32 MiB, keep all (I33 needs history); rotation waits until their readers read archived generations — rotating now would hide history from them (RT-125) | no; reported |
 | `session-stamps` | delete after 30 days | yes |
 | `~/.fathom/daemon/<id>/record.json` (and legacy `~/.fathom/daemons`) with a dead pid | delete | yes |
 | `$TMPDIR` `fathom-edit-set`, `fathom-*-test-*`, `fathom-stranger-check` | delete after 1 day | yes |

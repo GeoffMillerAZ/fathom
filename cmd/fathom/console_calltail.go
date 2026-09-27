@@ -64,13 +64,71 @@ func resetCallLogTail() {
 	callLogTail.Lock()
 	callLogTail.path, callLogTail.info, callLogTail.offset, callLogTail.tail, callLogTail.rows, callLogTail.intern = "", nil, 0, false, nil, nil
 	callLogTail.Unlock()
+	rotatedTail.Lock()
+	rotatedTail.path, rotatedTail.info, rotatedTail.rows, rotatedTail.live, rotatedTail.merged = "", nil, nil, nil, nil
+	rotatedTail.Unlock()
 }
 
-// callLogRows returns every counted row of the log at path. The returned
-// slice is shared and must not be modified. A missing log is an error
-// satisfying errors.Is(err, os.ErrNotExist); any other failure to read is
-// its own error — with the external-volume remedy when that is the tell.
+// rotatedTail caches the rotated generation (<log>.1, RT-126): it is
+// written once, at rotation, so it is parsed once per rotation.
+var rotatedTail struct {
+	sync.Mutex
+	path   string
+	info   os.FileInfo
+	rows   []callLogRow
+	live   []callLogRow // the live rows the merged slice was built from
+	merged []callLogRow
+}
+
+// callLogRows returns every counted row of the log at path, the rotated
+// generation <path>.1 first (RT-126, §12.1: console tails read it, so a
+// rotation never empties the console's traffic). The returned slice is
+// shared and must not be modified. A missing log is an error satisfying
+// errors.Is(err, os.ErrNotExist); any other failure to read is its own
+// error — with the external-volume remedy when that is the tell.
 func callLogRows(path string) ([]callLogRow, error) {
+	live, err := liveCallLogRows(path)
+	if err != nil {
+		return nil, err
+	}
+	gen := path + ".1"
+	info, serr := os.Stat(gen)
+	if serr != nil {
+		if os.IsNotExist(serr) {
+			return live, nil
+		}
+		return nil, fmt.Errorf("%w%s", serr, tccWedgeHint(gen))
+	}
+	rt := &rotatedTail
+	rt.Lock()
+	defer rt.Unlock()
+	if rt.path != gen || rt.info == nil || !os.SameFile(rt.info, info) || info.Size() != rt.info.Size() || !info.ModTime().Equal(rt.info.ModTime()) {
+		fh, err := os.Open(gen)
+		if err != nil {
+			return nil, fmt.Errorf("%w%s", err, tccWedgeHint(gen))
+		}
+		rows, _, tail, err := scanCallLogRows(fh, map[string]string{})
+		fh.Close()
+		if err != nil {
+			return nil, fmt.Errorf("read rotated call log %s: %w", gen, err)
+		}
+		if row, ok := callLogRowOf(tail, map[string]string{}); ok {
+			rows = append(rows, row)
+		}
+		rt.path, rt.info, rt.rows, rt.live, rt.merged = gen, info, rows, nil, nil
+	}
+	if len(rt.rows) == 0 {
+		return live, nil
+	}
+	if rt.merged == nil || len(rt.live) != len(live) || (len(live) > 0 && &rt.live[0] != &live[0]) {
+		rt.merged = append(slices.Clip(rt.rows), live...)
+		rt.live = live
+	}
+	return rt.merged, nil
+}
+
+// liveCallLogRows parses the live log incrementally.
+func liveCallLogRows(path string) ([]callLogRow, error) {
 	info, err := os.Stat(path)
 	if err != nil {
 		return nil, err

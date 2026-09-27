@@ -1718,6 +1718,36 @@ same files — at most 160 B, inside the primer's 3,200 B cap — only when the 
 not normal: stopped by the breaker, shed or refusing, in safe mode, crash-looping, or
 holding a quarantined service (RT-51).
 
+### `gc` — disk retention by class
+
+```sh
+fathom gc [--apply] [--json] [--workspace <dir>] [--call-log <path>]
+```
+
+A dry run by default (RT-125, design §12.1): it lists what each class would reclaim —
+and changes nothing — until `--apply`. Evidence is archived, never deleted:
+
+| Class | Policy |
+|---|---|
+| `call-log` | over 64 MiB: rotated (the previous generation rolled up and gzipped to `<log>.<ts>.jsonl.gz`); archives are never deleted, and past 1 GiB they are reported |
+| `ledgers` | the verify, session and intent ledgers and `decisions.jsonl` over 32 MiB are reported and kept whole — their readers read only the live file, so rotating them would hide history |
+| `session-stamps` | older than 30 days: deleted |
+| `daemon-records` | `~/.fathom/daemon/<id>/record.json` (and legacy `~/.fathom/daemons`) whose pid is not running: deleted (the directory and its lifecycle ledger stay) |
+| `diag` | captures past 10 / 200 MiB per daemon: deleted, oldest first |
+| `tmp` | `$TMPDIR` `fathom-edit-set*`, `fathom-*-test-*`, `fathom-stranger-check*` older than a day: deleted |
+| `scenariobench-worktrees` | `workspace/artifacts/scenariobench/worktrees` beyond the newest 5 runs and older than 14 days (a `.pin` file exempts one): deleted |
+| `workspace-bins` | `workspace/tmp/fathom-bin-*` beyond the newest 3: deleted |
+
+Exit `0`, or `1` when any class could not be read or acted on (each error named).
+
+The serving daemon also bounds what it writes while it runs (RT-126..RT-128): the call
+log rotates at 64 MiB the same way (console tails read the rotated generation
+`<log>.1`, so traffic history survives a rotation); `fathom-http.log`/`.err` rotate on
+their own 60 s ticker (no longer paused by `FATHOM_SCAVENGE=off`), streaming the prior
+generation to `.1` — above 256 MiB they are truncated without a copy and one line names
+the discarded bytes; and the managed daemon runs `wal_checkpoint(TRUNCATE)` after 5 idle
+minutes, at most hourly (`journal_size_limit` is 64 MiB).
+
 ### `intent` — the intent corpus, audited (ADR-026, **experimental**)
 
 ```sh
