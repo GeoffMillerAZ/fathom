@@ -10,10 +10,12 @@ package connector
 // drop.
 
 import (
+	"fmt"
 	"os"
 	"path"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 
 	toml "github.com/pelletier/go-toml/v2"
@@ -117,4 +119,37 @@ func loadConnectorInclude(root string) map[string]bool {
 	}
 	includeCache.Store(p, includeMemo{size: fi.Size(), mtimeNS: fi.ModTime().UnixNano(), include: include})
 	return include
+}
+
+// ExcludedFromCorpus reports whether the repo-relative file rel under root
+// is outside the corpus Discover would walk for serviceID — under an
+// always-skipped directory, a default-ignored cache directory that
+// `[connector] include` does not re-include, or a path the scoped ignore
+// files match — and names why. The one-file refresh path (/refresh-file)
+// asks it so the pre-edit hook never indexes a file the next ingest purges
+// as an orphan. The corpus root itself is never excluded by name.
+func ExcludedFromCorpus(root, serviceID, rel string) (reason string, excluded bool, err error) {
+	rel = path.Clean(filepath.ToSlash(rel))
+	ignore, _, err := LoadIgnoreScopedFor(root, serviceID)
+	if err != nil {
+		return "", false, err
+	}
+	include := loadConnectorInclude(root)
+	segs := strings.Split(rel, "/")
+	for i := 0; i < len(segs)-1; i++ {
+		name := segs[i]
+		prefix := strings.Join(segs[:i+1], "/")
+		switch {
+		case skipDir(name):
+			return fmt.Sprintf("under always-skipped directory %s", prefix), true, nil
+		case defaultIgnoredDir(name, prefix, include):
+			return fmt.Sprintf("under default-ignored cache directory %s (re-include with [connector] include)", prefix), true, nil
+		case ignore != nil && ignore.Match(prefix+"/"):
+			return fmt.Sprintf("under ignored directory %s", prefix), true, nil
+		}
+	}
+	if ignore != nil && ignore.Match(rel) {
+		return "matched by an ignore file", true, nil
+	}
+	return "", false, nil
 }

@@ -71,6 +71,25 @@ type ReingestReport struct {
 // say — without needing a fresh Pipeline per call.
 func (p *Pipeline) ReingestFile(ctx context.Context, st store.Store, serviceID, repoPath, relFile string) (ReingestReport, error) {
 	absPath := filepath.Join(repoPath, filepath.FromSlash(relFile))
+	// RT-145: the one-file refresh sees the corpus an ingest sees — a file
+	// Discover would not walk is not indexed here only to be purged as an
+	// orphan by the next ingest. Rows an earlier refresh left for it are
+	// purged now (Purged tells the caller to drop its graph memo).
+	if why, excluded, xerr := connector.ExcludedFromCorpus(repoPath, serviceID, relFile); xerr != nil {
+		return ReingestReport{}, fmt.Errorf("fusion: ReingestFile corpus check %q: %w", relFile, xerr)
+	} else if excluded {
+		rep := ReingestReport{Skipped: "outside the corpus: " + why}
+		if _, found, ferr := st.Fingerprint(ctx, serviceID, relFile); ferr == nil && found {
+			if err := st.PurgeSource(ctx, serviceID, relFile); err != nil {
+				return ReingestReport{}, fmt.Errorf("fusion: ReingestFile purge %q: %w", relFile, err)
+			}
+			if err := st.DeleteFingerprint(ctx, serviceID, relFile); err != nil {
+				return ReingestReport{}, fmt.Errorf("fusion: ReingestFile delete fingerprint %q: %w", relFile, err)
+			}
+			rep.Purged = true
+		}
+		return rep, nil
+	}
 	// RT-27: stat before reading. A file over MaxExtractSize is never
 	// opened: it is fingerprinted by size (as an ingest would) and reported
 	// skipped, not failed.

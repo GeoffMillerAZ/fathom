@@ -130,7 +130,11 @@ outside the tool registry — hooks call these directly rather than through
   reads: a file over 2 MiB is never opened, is fingerprinted by size, and
   answers `{"refreshed": false, "skipped": "oversize (…; not read)"}` —
   never an error (RT-27). The memoized graph is patched from the file's own
-  rows and its packages' rows, never a whole-service symbol load.
+  rows and its packages' rows, never a whole-service symbol load. A file
+  outside the corpus an ingest walks (under an always-skipped or
+  default-ignored cache directory, or matched by an ignore file) answers
+  `{"refreshed": false, "skipped": "outside the corpus: …"}` and any rows an
+  earlier refresh left for it are purged.
 - `GET /indexed?service=NAME` — `{"service", "indexed"}`: whether the service
   has a `service_meta` row with a non-zero `indexed_at` and at least one
   symbol (RT-80, `pkg/client.IsIndexed`; the count is the watermark-cached
