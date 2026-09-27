@@ -343,9 +343,13 @@ func GraphFor(ctx context.Context, snap *Snapshot, kind GraphKind, typed TypedLo
 	})
 }
 
-// HasGraphs reports whether any graph is cached for sc — a refresh asks
-// before paying to list a package's nodes.
+// HasGraphs reports whether anything a refresh must patch is cached for
+// sc — the snapshot (the iterating tools read it) or any graph — so a
+// refresh asks before paying to list a package's nodes.
 func HasGraphs(sc Scope) bool {
+	if _, ok := snapshotGroup.Peek(snapKey{sc}); ok {
+		return true
+	}
 	for _, k := range []GraphKind{GraphSyntax, GraphBoth, GraphResolved} {
 		if _, ok := graphGroup.Peek(graphKey{sc, k}); ok {
 			return true

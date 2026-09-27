@@ -65,3 +65,30 @@ func TestPatchPackageGraph_KeepsMemoFreshWithoutRebuild(t *testing.T) {
 		t.Fatal("HasCachedGraph = true after DropCachedGraphs")
 	}
 }
+
+// TestRefreshPatchesSnapshotWithNoGraphCached (review finding, O99): the
+// iterating tools (find_symbol, search, references) read the snapshot, and
+// a single-file refresh does not move the watermark it is keyed by — so a
+// cached snapshot with no graph beside it is patched too, never left to
+// serve the pre-refresh symbols until the next full ingest.
+func TestRefreshPatchesSnapshotWithNoGraphCached(t *testing.T) {
+	old := []core.SymbolNode{{Service: "svc", Package: "main", Name: "Original", FilePath: "target.go", Line: 3}}
+	f := &patchFake{nodes: old}
+	s := NewServer(f)
+	ctx := context.Background()
+	if _, err := serviceSymbols(ctx, f, "svc"); err != nil || f.loads != 1 {
+		t.Fatalf("priming load: loads=%d err=%v", f.loads, err)
+	}
+	if !s.HasCachedGraph("svc") {
+		t.Fatal("HasCachedGraph = false with a cached snapshot: the refresh would skip the patch")
+	}
+	fresh := []core.SymbolNode{{Service: "svc", Package: "main", Name: "Changed", FilePath: "target.go", Line: 3}}
+	s.PatchPackageGraph("svc", "main", fresh, nil)
+	nodes, err := serviceSymbols(ctx, f, "svc")
+	if err != nil || f.loads != 1 {
+		t.Fatalf("reload after patch: loads=%d err=%v", f.loads, err)
+	}
+	if len(nodes) != 1 || nodes[0].Name != "Changed" {
+		t.Fatalf("snapshot after refresh = %+v", nodes)
+	}
+}

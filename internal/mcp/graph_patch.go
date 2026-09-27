@@ -23,8 +23,10 @@ func (s *Server) patchScope(service string) memo.Scope {
 	return navScopeNoEnsure(context.Background(), s.backend, service)
 }
 
-// HasCachedGraph reports whether any graph is memoized for service — the
-// refresh path asks it before paying to list the package's nodes.
+// HasCachedGraph reports whether the snapshot or any graph is memoized for
+// service — the refresh path asks it before paying to list the package's
+// nodes; a snapshot alone must be patched too (the iterating tools read
+// it under the watermark a single-file refresh does not move).
 func (s *Server) HasCachedGraph(service string) bool {
 	return memo.HasGraphs(s.patchScope(service))
 }
