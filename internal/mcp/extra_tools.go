@@ -1146,6 +1146,13 @@ func registerIngest(s *Server, backend QueryInterface) {
 			result["unclassified_files"] = afterUnclassified - before.unclassified
 			result["oversize_files"] = afterOversize - before.oversize
 		}
+		// RT-145 / I38: every directory the default cache list pruned is
+		// named here too, not only in the CLI summary.
+		if eb, ok := backend.(exclusionsBackend); ok {
+			if dirs := eb.DefaultIgnoredDirs(svc); len(dirs) > 0 {
+				result["default_ignored_dirs"] = dirs
+			}
+		}
 		// Ingest honesty disclosure (wave P3 / O82, .fathom/observations.md):
 		// the SAME TypedEdgeStatus staleness_report/doctor/list_services
 		// already read, carried on the ingest response itself — a caller

@@ -132,3 +132,53 @@ func hasSymbol(obs []core.Observation, symbol string) bool {
 	}
 	return false
 }
+
+// RT-145 review: /refresh-file sees the corpus ingest sees. A file under a
+// default-ignored cache directory, an always-skipped directory or a
+// .fathomignore'd path is not indexed by the pre-edit hook only to be
+// purged as an orphan by the next ingest; a corpus that re-includes the
+// directory with `[connector] include` refreshes it as usual.
+func TestReingestFile_HonoursCorpusExclusions(t *testing.T) {
+	dir := t.TempDir()
+	write := func(rel, body string) {
+		t.Helper()
+		p := filepath.Join(dir, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("main.go", "package main\n\nfunc Main() {}\n")
+	write(".fathomignore", "scratch/\n")
+	for _, rel := range []string{"dist/gen.go", "vendor/v/v.go", "scratch/s.go", "web/build/b.go"} {
+		write(rel, "package x\n\nfunc Hidden() {}\n")
+	}
+	st := store.NewMemoryStore()
+	p := fusion.New(connector.NewLocalConnector(), st, fusion.Config{Concurrency: 1, DisableTypedEdges: true})
+	ctx := context.Background()
+	if _, err := p.Ingest(ctx, core.ServiceRef{ID: "excl", Path: dir}); err != nil {
+		t.Fatal(err)
+	}
+	for _, rel := range []string{"dist/gen.go", "vendor/v/v.go", "scratch/s.go", "web/build/b.go"} {
+		rep, err := p.ReingestFile(ctx, st, "excl", dir, rel)
+		if err != nil {
+			t.Fatalf("%s: %v", rel, err)
+		}
+		if rep.Refreshed || rep.Skipped == "" {
+			t.Fatalf("%s: report %+v, want a named skip (outside the corpus)", rel, rep)
+		}
+	}
+	obs, _ := st.QueryObservations(ctx, "excl", "")
+	if hasSymbol(obs, "Hidden") {
+		t.Fatal("a refresh indexed a file the corpus excludes")
+	}
+
+	// Re-included: refreshed like any corpus file.
+	write(".fathom/config.toml", "[connector]\ninclude = [\"dist\"]\n")
+	rep, err := p.ReingestFile(ctx, st, "excl", dir, "dist/gen.go")
+	if err != nil || !rep.Refreshed {
+		t.Fatalf("re-included dist/gen.go: %+v, %v; want refreshed", rep, err)
+	}
+}

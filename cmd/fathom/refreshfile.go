@@ -15,7 +15,6 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/pkg/client"
 	"path/filepath"
-	"sort"
 )
 
 // refreshFileRequest is POST /refresh-file's JSON body.
@@ -39,6 +38,9 @@ type refreshFileResponse struct {
 	// reads this to say "refresh failed: <reason>" instead of pretending
 	// the index is current.
 	Error string `json:"error,omitempty"`
+	// Skipped names why a file was checked but not re-extracted without an
+	// error — "oversize (N bytes; over the 2097152-byte cap; not read)" (RT-27, I38).
+	Skipped string `json:"skipped,omitempty"`
 }
 
 // graphPatcher is the daemon's memoized-graph seam (SU-4): the MCP server
@@ -88,13 +90,17 @@ func buildRefreshFileResponse(ctx context.Context, c *client.Client, patcher gra
 		Refreshed:       report.Refreshed,
 		Symbols:         report.Symbols,
 		TypedEdgesStale: report.TypedEdgesStale,
+		Skipped:         report.Skipped,
 	}
 	// SU-4: a re-ingest replaces the file's rows without moving the store
 	// watermark the daemon's graph memo is keyed by, so the memo must be
 	// patched (or dropped) here or the next query answers from the
 	// pre-refresh graph (O99). Only when something is memoized at all —
 	// otherwise the next query builds fresh from current data anyway.
-	if report.Refreshed && patcher != nil && patcher.HasCachedGraph(service) {
+	// An oversize file whose old rows were purged (report.Purged) moves the
+	// graph's inputs just as a refresh does: its package lookup now finds
+	// no rows, so the memo is dropped rather than left serving them.
+	if (report.Refreshed || report.Purged) && patcher != nil && patcher.HasCachedGraph(service) {
 		out.GraphPatched = patchGraphForFile(ctx, c, patcher, service, file)
 	}
 	return out
@@ -107,36 +113,28 @@ func buildRefreshFileResponse(ctx context.Context, c *client.Client, patcher gra
 // replace; TypedEdgesStale says so). A file whose fresh extraction produced
 // no symbols names no package to patch, so the memo is dropped instead: the
 // next query rebuilds, and a stale graph is never served.
+//
+// RT-27: the file's packages come from its own rows (source_ref) and each
+// package's node set from that package's rows — never the service's whole
+// symbol table.
 func patchGraphForFile(ctx context.Context, c *client.Client, patcher graphPatcher, service, file string) bool {
-	nodes, err := c.ListAllSymbols(ctx, service)
+	file = filepath.ToSlash(file)
+	pkgs, err := c.SourcePackages(ctx, service, file)
+	if err != nil || len(pkgs) == 0 {
+		patcher.DropCachedGraphs(service)
+		return false
+	}
+	nodes, err := c.PackageSymbols(ctx, service, pkgs)
 	if err != nil {
 		patcher.DropCachedGraphs(service)
 		return false
 	}
-	file = filepath.ToSlash(file)
-	pkgSet := map[string]bool{}
+	byPkg := make(map[string][]core.SymbolNode, len(pkgs))
 	for _, n := range nodes {
-		if filepath.ToSlash(n.FilePath) == file {
-			pkgSet[n.Package] = true
-		}
+		byPkg[n.Package] = append(byPkg[n.Package], n)
 	}
-	if len(pkgSet) == 0 {
-		patcher.DropCachedGraphs(service)
-		return false
-	}
-	pkgs := make([]string, 0, len(pkgSet))
-	for p := range pkgSet {
-		pkgs = append(pkgs, p)
-	}
-	sort.Strings(pkgs)
 	for _, pkg := range pkgs {
-		var pkgNodes []core.SymbolNode
-		for _, n := range nodes {
-			if n.Package == pkg {
-				pkgNodes = append(pkgNodes, n)
-			}
-		}
-		patcher.PatchPackageGraph(service, pkg, pkgNodes, nil)
+		patcher.PatchPackageGraph(service, pkg, byPkg[pkg], nil)
 	}
 	return true
 }

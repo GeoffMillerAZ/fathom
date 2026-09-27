@@ -529,6 +529,29 @@ is (project layer over user layer, `fathom config --explain` for
 provenance) — see `internal/config`'s `Tests` struct and
 `schema/config/schema.cue`'s `#Tests`.
 
+## Discovery: `[connector]`
+
+Discovery skips the default cache directories (`.cache`, `.tools`, `target`,
+`dist`, `build`, `__pycache__`, `.venv`, `.gradle`, `.next`, `.turbo`,
+`coverage`) on top of the always-skipped names (RT-145, docs/design/
+responsible-tenant.md §4.2). A corpus that commits source under one of them
+re-includes it in **its own** `.fathom/config.toml` — the connector reads the
+file at the root it discovers, so each service carries its own list:
+
+```toml
+# .fathom/config.toml
+[connector]
+include = ["coverage", "compute/.tools"]
+```
+
+A bare name re-includes every directory with that name; an entry with a slash
+re-includes that one repo-relative path. `include` never re-includes
+`vendor`, `.git`, `testdata` or the other always-skipped names. It is refused
+in the user layer (`~/.fathom/config.toml`): a load error names the file,
+since a user-wide list would change nothing. Measure the
+effect first with `fathom ingest --path <root> --service <id> --dry-run
+--json` (stat only; `default_ignored_dirs` names each pruned directory).
+
 ## Capability-inventory patterns: `[[surface.pattern]]`
 
 ADR-044 §2.1 (`docs/design/refactor-conservation.md`): `internal/analysis/

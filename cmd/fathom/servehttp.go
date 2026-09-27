@@ -539,6 +539,9 @@ func newHTTPHandlerDeps(srv *mcp.Server, c *client.Client, selfAddr string, port
 	// route, never an MCP tool — the session hook's own repo-wide "open
 	// findings: N" brief line.
 	mux.Handle("/findings/summary", findingsSummaryHandler(c))
+	// GET /indexed?service= (RT-80): the meta-only "is service X indexed"
+	// probe verify, the hooks, plans and the console ask.
+	mux.Handle("/indexed", indexedHandler(c))
 	// POST /refresh-file {service, file} (SU-5/SU-6, ADR-041 decisions 3
 	// and 4): the pre-edit hook's per-file freshness refresh.
 	mux.Handle("/refresh-file", refreshFileHandler(c, srv))
@@ -601,6 +604,9 @@ func newHTTPHandlerDeps(srv *mcp.Server, c *client.Client, selfAddr string, port
 		// into outputSchema — off by default so the served payload stays
 		// diet-sized; a client that validates structured output can ask.
 		ctx := mcp.WithContracts(mcp.WithOrigin(mcp.WithRequestScope(context.Background(), surface, true), r.Header.Get("X-Fathom-Origin")), r.URL.Query().Get("contracts") == "true")
+		ctx = markHookOrigin(ctx, r.Header.Get("X-Fathom-Origin"))
+		ctx, doneSources := rpcSourcesScope(ctx, r)
+		defer doneSources()
 		// MCP-Protocol-Version (2025-06-18+ Streamable HTTP): clients send
 		// the negotiated revision on every post-initialize request. It is
 		// TOLERATED here (RP-12) — never a 400 — and answered with the

@@ -88,6 +88,14 @@ type statsBackend interface {
 	IngestStats() (unclassified, oversize int64)
 }
 
+// exclusionsBackend is the optional backend capability that names the
+// directories the connector's default cache list pruned from the most
+// recent discovery of a service (RT-145, I38) — carried on the ingest
+// tool's response as default_ignored_dirs, as the CLI summary does.
+type exclusionsBackend interface {
+	DefaultIgnoredDirs(service string) []string
+}
+
 // classifiedZeroBackend is the optional backend capability for the per-tool
 // classified-but-zero-symbols counters (ADR-021 §2, critic F5) — files that
 // classified as a known tool but whose extractor emitted zero symbols.

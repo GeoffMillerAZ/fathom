@@ -254,8 +254,19 @@ type Surface struct {
 	Pattern []SurfacePattern
 }
 
+// Connector configures discovery (schema.cue #Connector, RT-145):
+// `[connector] include` re-includes directories the default cache list
+// (.cache, .tools, target, dist, build, __pycache__, .venv, .gradle, .next,
+// .turbo, coverage) would prune — a bare name re-includes every directory
+// with that name, an entry with a slash one repo-relative path. The
+// connector reads it from the corpus's own .fathom/config.toml.
+type Connector struct {
+	Include []string
+}
+
 // Config is the merged, in-memory form of one or more config.toml layers.
 type Config struct {
+	Connector      Connector
 	DefaultProfile string
 	Profiles       map[string]Profile
 	Daemon         Daemon
@@ -341,6 +352,15 @@ func Load(userPath, projectPath string) (Loaded, error) {
 		}
 		out.UserFound = found
 		if found {
+			// RT-145: `[connector] include` is a property of the corpus;
+			// the connector reads it only from the corpus's own
+			// .fathom/config.toml. In the user layer it would validate,
+			// show in `fathom config --explain`, and change nothing.
+			if cm, ok := raw["connector"].(map[string]any); ok {
+				if _, ok := cm["include"]; ok {
+					return Loaded{}, &LoadError{Path: userPath, Err: fmt.Errorf("connector.include is read only from a corpus's own .fathom/config.toml; move it there")}
+				}
+			}
 			mergeLayer(&out.Config, out.Provenance, raw, SourceUser, userPath)
 		}
 	}

@@ -115,6 +115,11 @@ type Report struct {
 	// when every discovered extension either has an extractor or is not a
 	// known programming language.
 	UnsupportedLanguages map[string]int
+	// DefaultIgnoredDirs names, repo-relative and sorted, each directory the
+	// connector's default cache list pruned from discovery (RT-145: .cache,
+	// target, dist, build, …) — counted and named, never a silent drop. A
+	// corpus re-includes one with `[connector] include`. Nil when none.
+	DefaultIgnoredDirs []string
 	// Oversize is the number of files skipped from extraction because their
 	// content exceeded MaxExtractSize (ADR-021 §2 / TI-6) — still
 	// fingerprinted so they are not re-sniffed on every ingest.
@@ -720,6 +725,9 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 
 	var report Report
 	report.Discovered = len(refs)
+	if er, ok := p.conn.(connector.ExclusionReporter); ok {
+		report.DefaultIgnoredDirs = er.Exclusions(svc.ID).DefaultIgnored
+	}
 
 	// Build this ingest's sibling index ONCE from the just-Discovered list
 	// (ADR-021 §2 / TI-1, option (b) from the grounding: O(files), not
@@ -769,7 +777,7 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 
 			content, fetchErr := p.conn.Fetch(ctx, r)
 			fetched[idx] = fetchResult{content: content, err: fetchErr}
-			if fetchErr != nil && !isReadFailure(fetchErr) {
+			if fetchErr != nil && !isReadFailure(fetchErr) && !isOversize(fetchErr) {
 				var nilPtr unsafe.Pointer
 				heapErr := fetchErr // capture on heap
 				atomic.CompareAndSwapPointer(&firstErrPtr, nilPtr, unsafe.Pointer(&heapErr))
@@ -790,7 +798,7 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	// so the orphan purge below cannot mistake "unreadable" for "deleted".
 	var failures []ReadFailure
 	for i, ref := range refs {
-		if fetched[i].err != nil {
+		if fetched[i].err != nil && !isOversize(fetched[i].err) {
 			failures = append(failures, ReadFailure{Path: ref.Path, Err: fetched[i].err.Error()})
 		}
 	}
@@ -860,6 +868,20 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	var tokenAccum int64
 
 	for i, ref := range refs {
+		if over := asOversize(fetched[i].err); over != nil {
+			// RT-69: over the read cap, decided from the stat — never read.
+			// Fingerprinted by size so an unchanged one is skipped next
+			// time; what it held when it was small is purged, since it
+			// now contributes no observations.
+			// Counted under Oversize on every ingest, changed or not: the
+			// file stays unindexed, so the summary names it (I38) instead
+			// of folding it into the unchanged-and-skipped count.
+			if _, err := p.recordOversize(ctx, svc.ID, ref.Path, over.Size); err != nil {
+				return report, err
+			}
+			report.Oversize++
+			continue
+		}
 		if fetched[i].err != nil {
 			// Unreadable this run: no hash-gate, no purge, no fingerprint —
 			// the stored evidence stays until the file can be read again.
@@ -930,7 +952,7 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	report.Extracted = len(pending)
 	report.Symbols = stats.symbols
 	report.Unclassified = stats.unclassified
-	report.Oversize = stats.oversize
+	report.Oversize += stats.oversize
 	report.ClassifiedZero = stats.classifiedZero
 	report.TSEngineFaults = stats.tsFaults
 	report.UnsupportedLanguages = stats.unsupportedLang

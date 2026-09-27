@@ -269,7 +269,7 @@ func renderPostEdit(url, projDir, filePath, sessionID, newContent string) (strin
 			emitBeat("edit-hook", "error", firingMeta(map[string]string{"phase": "post", "reason": truncateBytes(ferr.Error(), reasonMetaMaxBytes)}, sessionID, filePath))
 			return "", postEditMeta{}, false // daemon down or error → silent
 		}
-		if len(o.Rules) > 0 || stale {
+		if len(o.Rules) > 0 || stale || o.CoverageSkipped != "" {
 			obl, indexStale, repoRelFile, svcName, svcRoot, found = o, stale, rel, name, cand.root, true
 			break
 		}
@@ -364,6 +364,11 @@ func renderPostEdit(url, projDir, filePath, sessionID, newContent string) (strin
 				sb.WriteString("\n⚠️ index is behind your working tree for this file")
 			} else if obl.IndexUnchecked != "" {
 				sb.WriteString("\n⚠️ " + indexUncheckedLine(obl.IndexUnchecked))
+			}
+			// RT-146 / I38: the daemon skipped this hook's whole-tree read,
+			// so coverage (and any raw fallback rule) is unknown, not absent.
+			if obl.CoverageSkipped != "" {
+				sb.WriteString("\n⚠️ " + obl.CoverageSkipped)
 			}
 		}
 		// Platform-modules.md §3.3: a bound-but-unmounted module is an
@@ -728,6 +733,7 @@ func fetchObligations(baseURL, service, file string, maxRules int, timeout time.
 		DisplacedRepo       int                   `json:"displaced_repo"`
 		DisplacedModule     int                   `json:"displaced_module"`
 		ModuleNotes         []semantic.ModuleNote `json:"module_notes"`
+		CoverageSkipped     string                `json:"coverage_skipped"`
 	}
 	if err := json.Unmarshal(inner, &payload); err != nil {
 		return semantic.Obligations{}, false, false, fmt.Errorf("decode obligations payload: %w", err)
@@ -743,6 +749,7 @@ func fetchObligations(baseURL, service, file string, maxRules int, timeout time.
 		DisplacedModule: payload.DisplacedModule,
 		ModuleNotes:     payload.ModuleNotes,
 		IndexUnchecked:  payload.IndexUnchecked,
+		CoverageSkipped: payload.CoverageSkipped,
 	}
 	return obl, payload.IndexStale, true, nil
 }

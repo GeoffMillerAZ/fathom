@@ -113,8 +113,11 @@ type ingestJSON struct {
 	// edge count (ADR-041 decision 5 / SU-11) — always heuristic tier.
 	FileResolved int                 `json:"file_resolved,omitempty"`
 	Excluded     *ingestExcludedJSON `json:"excluded,omitempty"`
-	Error        string              `json:"error,omitempty"`
-	Hint         string              `json:"hint,omitempty"`
+	// DefaultIgnoredDirs names each directory the default cache list pruned
+	// (RT-145); omitted when none.
+	DefaultIgnoredDirs []string `json:"default_ignored_dirs,omitempty"`
+	Error              string   `json:"error,omitempty"`
+	Hint               string   `json:"hint,omitempty"`
 }
 
 // errnoClass maps the connector's errno text to its symbolic class; ""
@@ -157,6 +160,7 @@ func renderIngestJSON(w io.Writer, service, svcPath string, report client.Report
 	if len(report.UnsupportedLanguages) > 0 {
 		out.UnsupportedLanguages = report.UnsupportedLanguages
 	}
+	out.DefaultIgnoredDirs = report.DefaultIgnoredDirs
 	for _, f := range report.ReadFailures {
 		out.ReadFailures = append(out.ReadFailures, ingestReadFailureJSON{Path: f.Path, Err: f.Err, Errno: errnoClass(f.Err)})
 	}

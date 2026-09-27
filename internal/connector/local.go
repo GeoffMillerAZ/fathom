@@ -35,6 +35,21 @@ type LocalConnector struct {
 	// roots remembers, per service ID, the root directory of the most recent
 	// Discover, so Fetch can resolve the repo-relative paths Discover emits.
 	roots sync.Map // service ID (string) -> root dir (string)
+	// exclusions remembers, per service ID, what the most recent Discover
+	// pruned (RT-145) — see Exclusions.
+	exclusions sync.Map // service ID (string) -> Exclusions
+}
+
+// Exclusions reports what the most recent Discover of service excluded at
+// the directory level (RT-145). The zero value when service was never
+// discovered by this connector.
+func (c *LocalConnector) Exclusions(service string) Exclusions {
+	if v, ok := c.exclusions.Load(service); ok {
+		ex := v.(Exclusions)
+		ex.DefaultIgnored = append([]string(nil), ex.DefaultIgnored...)
+		return ex
+	}
+	return Exclusions{}
 }
 
 // NewLocalConnector returns a ready-to-use LocalConnector.
@@ -47,7 +62,10 @@ func NewLocalConnector() *LocalConnector { return &LocalConnector{} }
 // exists
 // at svc.Path, its patterns are applied to paths relative to svc.Path
 // (matched dirs are pruned from the walk; matched files are dropped).
-func (c *LocalConnector) Discover(_ context.Context, svc core.ServiceRef) ([]core.SourceRef, error) {
+func (c *LocalConnector) Discover(ctx context.Context, svc core.ServiceRef) ([]core.SourceRef, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	// Scoped config (docs/design/scoped-config.md deliverable 1): union the
 	// project's .fathomignore with the user-scope ~/.fathom/ignore. This is
 	// the enforcement point for law 13's additive-only rule — a violating
@@ -80,9 +98,20 @@ func (c *LocalConnector) Discover(_ context.Context, svc core.ServiceRef) ([]cor
 		}
 	}
 
+	entries := 0
+	include := loadConnectorInclude(svc.Path)
+	var ex Exclusions
 	err = filepath.WalkDir(walkRoot, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
+		}
+		// RT-69: a cancelled requester stops the walk (checked every 256
+		// entries, so the check never dominates a small tree).
+		entries++
+		if entries%256 == 0 {
+			if cerr := ctx.Err(); cerr != nil {
+				return cerr
+			}
 		}
 		rel, relErr := filepath.Rel(walkRoot, path)
 		if relErr != nil {
@@ -92,9 +121,20 @@ func (c *LocalConnector) Discover(_ context.Context, svc core.ServiceRef) ([]cor
 
 		if d.IsDir() {
 			if skipDir(d.Name()) {
+				ex.SkippedDirs++
 				return filepath.SkipDir
 			}
-			if ignore != nil && rel != "." && rel != "" && ignore.Match(rel+"/") {
+			if rel == "." || rel == "" {
+				// The corpus root itself is never a default-ignored cache
+				// (a service rooted at a directory named build is indexed).
+				return nil
+			}
+			if defaultIgnoredDir(d.Name(), rel, include) {
+				ex.DefaultIgnored = append(ex.DefaultIgnored, rel)
+				return filepath.SkipDir
+			}
+			if ignore != nil && ignore.Match(rel+"/") {
+				ex.IgnoredDirs++
 				return filepath.SkipDir
 			}
 			return nil
@@ -125,6 +165,8 @@ func (c *LocalConnector) Discover(_ context.Context, svc core.ServiceRef) ([]cor
 	sort.Slice(refs, func(i, j int) bool {
 		return refs[i].Path < refs[j].Path
 	})
+	sort.Strings(ex.DefaultIgnored)
+	c.exclusions.Store(svc.ID, ex)
 	return refs, nil
 }
 
@@ -132,15 +174,18 @@ func (c *LocalConnector) Discover(_ context.Context, svc core.ServiceRef) ([]cor
 // refs (the ADR-017 convention Discover emits) are resolved against the root
 // recorded for ref.Service by the preceding Discover. Absolute refs — from
 // stores written before ADR-017 — are read as-is.
-func (c *LocalConnector) Fetch(_ context.Context, ref core.SourceRef) ([]byte, error) {
+//
+// RT-69: Fetch honours ctx and stats before it reads; a file over
+// MaxFetchSize is never opened and comes back as an *OversizeError.
+func (c *LocalConnector) Fetch(ctx context.Context, ref core.SourceRef) ([]byte, error) {
 	if filepath.IsAbs(ref.Path) {
-		return os.ReadFile(ref.Path)
+		return fetchCapped(ctx, ref.Path, MaxFetchSize)
 	}
 	root, ok := c.roots.Load(ref.Service)
 	if !ok {
 		return nil, fmt.Errorf("connector: no root recorded for service %q (Discover must precede Fetch for repo-relative refs)", ref.Service)
 	}
-	return os.ReadFile(filepath.Join(root.(string), filepath.FromSlash(ref.Path)))
+	return fetchCapped(ctx, filepath.Join(root.(string), filepath.FromSlash(ref.Path)), MaxFetchSize)
 }
 
 // Watermark returns the corpus freshness token: the git HEAD SHA when

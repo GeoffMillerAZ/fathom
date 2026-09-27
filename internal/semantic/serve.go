@@ -261,6 +261,12 @@ type Obligations struct {
 	// edited file's index freshness was not checked (over the hot-path
 	// read cap). Serving never sets it; the tool adds the key itself.
 	IndexUnchecked string `json:"index_unchecked,omitempty"`
+	// CoverageSkipped (RT-146) is the named skip the obligations tool
+	// reports when a hook-origin whole-tree read was refused, so its raw
+	// fallback or layer coverage could not be computed this call. Set only
+	// by a consumer decoding the tool's "coverage_skipped" field (the edit
+	// hook); never set by ObligationsFor.
+	CoverageSkipped string `json:"coverage_skipped,omitempty"`
 
 	// RankedBy (DP-8, ADR-042 decision 2) names which decision-port Decider
 	// re-ranked this payload's rules within their governing-scope tier:

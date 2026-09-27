@@ -133,7 +133,22 @@ fathom serve-mcp --store workspace/db/fathom.sqlite
 ## Ignoring files: `.fathomignore`
 
 `LocalConnector` always skips `vendor`, `.git`, `testdata`, `generated`,
-`node_modules`, `.idea`, and `.vscode`. For repo-specific exclusions, place a
+`node_modules`, `.idea`, `.vscode` and `.claude`. It also skips the default
+cache directories `.cache`, `.tools`, `target`, `dist`, `build`, `__pycache__`,
+`.venv`, `.gradle`, `.next`, `.turbo` and `coverage` (RT-145), and names every one
+it pruned (`excluded: N default-ignored cache dir(s) (…)` in the ingest summary,
+`default_ignored_dirs` in `--json`). A corpus that commits source under one of those
+names re-includes it in its own `.fathom/config.toml` — a bare name re-includes every
+directory with that name, a path with a slash just that one:
+
+```toml
+[connector]
+include = ["coverage", "dist"]
+```
+
+`include` never re-includes the always-skipped names. The connector never reads a
+file over 2 MiB (RT-69): it is sized by a stat, counted under `oversize`, and never
+opened. For repo-specific exclusions, place a
 `.fathomignore` file at the service root (the `--path` directory). It uses
 gitignore-style patterns — one per line, `#` comments, `!` negation, `**`
 globs, trailing-slash dir-only rules, and leading-slash root anchoring
@@ -187,6 +202,7 @@ Ingest a service into the knowledge store.
 
 ```sh
 fathom ingest --service <id> [--path <dir>] [--store <path>] [--mode local|faux] [--scip <path>]... [--json]
+fathom ingest --service <id> --path <dir> --dry-run [--stats] [--json]
 ```
 
 | Flag | Default | Description |
@@ -196,7 +212,9 @@ fathom ingest --service <id> [--path <dir>] [--store <path>] [--mode local|faux]
 | `--store` | `<repo>/workspace/db/fathom.sqlite` (see §CLI subcommands) | store path (.sqlite/.db) |
 | `--mode` | `local` | Connector mode: `local` or `faux` |
 | `--scip` | auto-detected | SCIP index file to import as typed edges (ADR-041 decision 5, SU-9; repeatable). Unset: auto-detects `index.scip` at the service root and every `.fathom/scip/*.scip` |
-| `--json` | off | Emit the run as JSON: `{service, outcome: ok|degraded|refused, exit_code, discovered, extracted, skipped, symbols, read_failed, read_failures: [{path, err, errno?}], unclassified, oversize, classified_zero, unsupported_languages?, typed_edges?, scip_imports?, excluded?, error?, hint?}` — `errno` is the class (`EPERM`, `EACCES`, `ENOENT`, `EIO`, `EISDIR`) derived from the connector's text, so CI can assert `read_failed == 0`. `unsupported_languages` (O69, present only when non-empty) is `{language: file_count}` — e.g. `{"swift": 412}` — for source in a KNOWN programming language fathom has no registered extractor for; see "Unsupported languages" below. `scip_imports` (present only when at least one SCIP index was imported) is `[{path, producer, language?, documents, edges, direct, unresolved, unmapped}]` — see "Typed edges by import" below |
+| `--dry-run` | off | Discover and stat only (RT-70): report files, bytes, files over the 2 MiB read cap, the default-ignored and always-skipped directories, and the five largest files — without reading a file or opening the store. `--json` emits `{service, path, dry_run, files, bytes, oversize_files, oversize_bytes, read_cap_bytes, default_ignored_dirs, skipped_dirs, ignored_dirs, stat_failed, largest: [{path, size}]}`; `stat_failed > 0` makes `bytes` a lower bound |
+| `--stats` | off | With `--dry-run`: the discovery statistics (what `--dry-run` prints) |
+| `--json` | off | Emit the run as JSON: `{service, outcome: ok|degraded|refused, exit_code, discovered, extracted, skipped, symbols, read_failed, read_failures: [{path, err, errno?}], unclassified, oversize, classified_zero, unsupported_languages?, typed_edges?, scip_imports?, excluded?, default_ignored_dirs?, error?, hint?}` — `errno` is the class (`EPERM`, `EACCES`, `ENOENT`, `EIO`, `EISDIR`) derived from the connector's text, so CI can assert `read_failed == 0`. `unsupported_languages` (O69, present only when non-empty) is `{language: file_count}` — e.g. `{"swift": 412}` — for source in a KNOWN programming language fathom has no registered extractor for; see "Unsupported languages" below. `scip_imports` (present only when at least one SCIP index was imported) is `[{path, producer, language?, documents, edges, direct, unresolved, unmapped}]` — see "Typed edges by import" below |
 
 Output: `discovered`, `extracted`, `skipped`, `symbols` counts, plus non-zero-only rows
 (`unclassified`, `oversize`, `classified-but-zero-symbols`, `unsupported languages (no extractor)`,

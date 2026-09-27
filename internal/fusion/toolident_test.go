@@ -417,8 +417,16 @@ spec:
 // so an image literally named "build:2.0" got a FALSE reference while the
 // image the file actually builds ("myapp:1.0") got none. *.dockerfile files
 // key by their STEM.
+//
+// RT-145: build/ is on the default cache-directory list, so the probe's
+// corpus re-includes it with `[connector] include` — the documented escape
+// for a repository that keeps real Dockerfiles under build/ (the Go
+// project layout does). TestIngest_CrossRef_BuildDirPrunedByDefaultIsNamed
+// pins the other half: without the include the ref is gone and the ingest
+// names the pruned directory.
 func TestIngest_CrossRef_DotDockerfileKeyedByStemNotDir(t *testing.T) {
 	dir := t.TempDir()
+	writeFile(t, dir, ".fathom/config.toml", "[connector]\ninclude = [\"build\"]\n")
 	writeFile(t, dir, "build/myapp.dockerfile", "FROM golang:1.26\n")
 	writeFile(t, dir, "k8s/deployment.yaml", `apiVersion: apps/v1
 kind: Deployment
@@ -446,6 +454,34 @@ spec:
 		if r.Symbol == "build" {
 			t.Error("image 'build' must NOT get a ref from build/myapp.dockerfile's directory name — that ref is a lie")
 		}
+	}
+}
+
+// TestIngest_CrossRef_BuildDirPrunedByDefaultIsNamed is RT-145's corpus
+// loss made visible (I38): with no `[connector] include`, a Dockerfile
+// under build/ is not discovered, so its image cross-ref is absent — and
+// the ingest report names build as a default-ignored directory rather than
+// dropping it silently.
+func TestIngest_CrossRef_BuildDirPrunedByDefaultIsNamed(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "build/myapp.dockerfile", "FROM golang:1.26\n")
+	writeFile(t, dir, "k8s/deployment.yaml", `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myapp
+spec:
+  template:
+    spec:
+      containers:
+        - name: app
+          image: myapp:1.0
+`)
+	obs, report := ingestDir(t, dir, "builddir-svc")
+	if refs := obsByKind(obs, core.KindImageDockerfileRef); len(refs) != 0 {
+		t.Fatalf("build/ is default-ignored: want 0 ImageDockerfileRef, got %+v", refs)
+	}
+	if len(report.DefaultIgnoredDirs) != 1 || report.DefaultIgnoredDirs[0] != "build" {
+		t.Fatalf("DefaultIgnoredDirs = %v, want [build] (a pruned directory is named, never silent)", report.DefaultIgnoredDirs)
 	}
 }
 
@@ -587,5 +623,51 @@ func TestPipeline_StatsAccumulatesAcrossIngests(t *testing.T) {
 	after, _ := p.Stats()
 	if after-before != 1 {
 		t.Errorf("Stats() unclassified delta = %d, want 1", after-before)
+	}
+}
+
+// RT-69: an oversize file is decided from its stat and never read — the
+// ingest counts it, fingerprints it by size so an unchanged one is skipped
+// next time, and purges what it held when it was small, instead of
+// aborting (a non-read-failure fetch error) or holding its bytes.
+func TestIngest_OversizeNeverReadStableAcrossIngests(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "grows.go", "package x\n\nfunc Small() {}\n")
+	writeFile(t, dir, "small.go", "package x\n\nfunc Ok() {}\n")
+
+	conn := connector.NewLocalConnector()
+	st := store.NewMemoryStore()
+	svc := core.ServiceRef{ID: "grow-svc", Path: dir}
+	p := fusion.New(conn, st, fusion.Config{Concurrency: 1, DisableTypedEdges: true})
+	ctx := context.Background()
+	if _, err := p.Ingest(ctx, svc); err != nil {
+		t.Fatal(err)
+	}
+
+	writeFile(t, dir, "grows.go", "package x\n\nfunc Small() {}\n// "+strings.Repeat("z", fusion.MaxExtractSize)+"\n")
+	rep, err := p.Ingest(ctx, svc)
+	if err != nil {
+		t.Fatalf("an oversize file aborted the ingest: %v", err)
+	}
+	if rep.Oversize != 1 || rep.ReadFailed != 0 {
+		t.Fatalf("report Oversize=%d ReadFailed=%d, want 1 and 0", rep.Oversize, rep.ReadFailed)
+	}
+	obs, _ := st.QueryObservations(ctx, svc.ID, "")
+	if n := len(obsBySource(obs, "grows.go")); n != 0 {
+		t.Fatalf("grows.go kept %d observations from when it was small; an oversize file holds none", n)
+	}
+	if len(obsBySource(obs, "small.go")) == 0 {
+		t.Fatal("the small sibling lost its observations")
+	}
+
+	rep, err = p.Ingest(ctx, svc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Unchanged: not re-fingerprinted or purged, but still counted under
+	// Oversize on every ingest — it stays unindexed, so the summary names it
+	// as the lower bound it is (I38), never "oversize: 0".
+	if rep.Oversize != 1 || rep.Skipped != 1 {
+		t.Fatalf("second ingest: Oversize=%d Skipped=%d, want 1 (still named) and 1 (small.go unchanged)", rep.Oversize, rep.Skipped)
 	}
 }

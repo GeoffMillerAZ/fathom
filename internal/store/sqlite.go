@@ -902,6 +902,86 @@ DELETE FROM fingerprints WHERE service_id = ? AND source_ref = ?
 
 // ListSourceRefs returns the sorted distinct source_refs for serviceID across
 // the observations and fingerprints tables.
+// sourcePackagesRaw is SourcePackages before the suppression filter.
+func (s *SQLiteStore) sourcePackagesRaw(ctx context.Context, serviceID, sourceRef string) ([]string, error) {
+	rows, err := s.db.QueryContext(ctx, `
+SELECT DISTINCT package FROM observations
+WHERE service_id = ? AND source_ref = ?
+ORDER BY package
+`, serviceID, sourceRef)
+	if err != nil {
+		return nil, fmt.Errorf("SourcePackages: %w", err)
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var p string
+		if err := rows.Scan(&p); err != nil {
+			return nil, fmt.Errorf("SourcePackages scan: %w", err)
+		}
+		out = append(out, p)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("SourcePackages rows: %w", err)
+	}
+	return out, nil
+}
+
+// packageObservationsRaw is PackageObservations before the suppression
+// filter.
+func (s *SQLiteStore) packageObservationsRaw(ctx context.Context, serviceID string, pkgs []string) ([]core.Observation, error) {
+	if len(pkgs) == 0 {
+		return nil, nil
+	}
+	args := make([]any, 0, len(pkgs)+1)
+	args = append(args, serviceID)
+	marks := make([]string, len(pkgs))
+	for i, p := range pkgs {
+		marks[i] = "?"
+		args = append(args, p)
+	}
+	rows, err := s.db.QueryContext(ctx, `
+SELECT service_id, concern_id, source_ref, source_kind, evidence_tier,
+       symbol, package, claim, content_hash, calls, complexity, line, end_line, ingested_at,
+       tool_kind, generated
+FROM observations
+WHERE service_id = ? AND package IN (`+strings.Join(marks, ",")+`)
+ORDER BY source_ref, line, symbol
+`, args...)
+	if err != nil {
+		return nil, fmt.Errorf("PackageObservations: %w", err)
+	}
+	defer rows.Close()
+	return scanObservations(rows)
+}
+
+// sourceKindCountsRaw is SourceKindCounts before the suppression filter:
+// one row per (source_ref, source_kind), never an observation row.
+func (s *SQLiteStore) sourceKindCountsRaw(ctx context.Context, serviceID string) ([]SourceKindCount, error) {
+	rows, err := s.db.QueryContext(ctx, `
+SELECT source_ref, source_kind, count(*) FROM observations
+WHERE service_id = ?
+GROUP BY source_ref, source_kind
+ORDER BY source_ref, source_kind
+`, serviceID)
+	if err != nil {
+		return nil, fmt.Errorf("SourceKindCounts: %w", err)
+	}
+	defer rows.Close()
+	var out []SourceKindCount
+	for rows.Next() {
+		var r SourceKindCount
+		if err := rows.Scan(&r.SourceRef, (*string)(&r.Kind), &r.Count); err != nil {
+			return nil, fmt.Errorf("SourceKindCounts scan: %w", err)
+		}
+		out = append(out, r)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("SourceKindCounts rows: %w", err)
+	}
+	return out, nil
+}
+
 func (s *SQLiteStore) listSourceRefsRaw(ctx context.Context, serviceID string) ([]string, error) {
 	rows, err := s.db.QueryContext(ctx, `
 SELECT source_ref FROM observations WHERE service_id = ?

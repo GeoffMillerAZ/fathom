@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -48,6 +49,13 @@ func manifestWatermark(ctx context.Context, c Connector, svc core.ServiceRef) (s
 	h := sha256.New()
 	for _, ref := range refs {
 		data, err := c.Fetch(ctx, ref)
+		var over *OversizeError
+		if errors.As(err, &over) {
+			// RT-69: a file over the read cap is never read; its size
+			// stands in for its content hash.
+			fmt.Fprintf(h, "%s\x00oversize:%d\n", ref.Path, over.Size)
+			continue
+		}
 		if err != nil {
 			return "", fmt.Errorf("watermark fetch %q: %w", ref.Path, err)
 		}

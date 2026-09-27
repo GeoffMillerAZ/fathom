@@ -112,6 +112,10 @@ type Client struct {
 	// obligations_corpus.go): the layer corpus's paths per store
 	// watermark and its guides' contents per stat.
 	oblMemo obligationsMemo
+
+	// aggregates memoizes ServiceSymbolAggregates per store watermark
+	// (RT-144, aggregates.go).
+	aggregates aggregateMemo
 }
 
 // New constructs a Client from an explicit connector and store. Callers that
@@ -187,6 +191,32 @@ func (c *Client) ReingestFile(ctx context.Context, serviceID, relFile string) (f
 		return fusion.ReingestReport{}, fmt.Errorf("client.ReingestFile: service %q has no recorded repo path (never ingested)", serviceID)
 	}
 	return c.pipe.ReingestFile(ctx, c.st, serviceID, meta.Path, relFile)
+}
+
+// SourcePackages returns the distinct packages of the symbols anchored at
+// file (repo-relative) — one file's rows, never the whole symbol table
+// (RT-27).
+func (c *Client) SourcePackages(ctx context.Context, serviceID, file string) ([]string, error) {
+	pkgs, err := c.st.SourcePackages(ctx, serviceID, file)
+	if err != nil {
+		return nil, fmt.Errorf("client.SourcePackages: %w", err)
+	}
+	return pkgs, nil
+}
+
+// PackageSymbols returns every symbol of serviceID whose package is one of
+// pkgs — those packages' complete node sets, no other package's rows
+// (RT-27).
+func (c *Client) PackageSymbols(ctx context.Context, serviceID string, pkgs []string) ([]SymbolNode, error) {
+	obs, err := c.st.PackageObservations(ctx, serviceID, pkgs)
+	if err != nil {
+		return nil, fmt.Errorf("client.PackageSymbols: %w", err)
+	}
+	nodes := make([]SymbolNode, 0, len(obs))
+	for _, o := range obs {
+		nodes = append(nodes, o.ToSymbolNode())
+	}
+	return nodes, nil
 }
 
 // refuseWorktreeReroot applies worktree.CheckReroot against the recorded
@@ -454,7 +484,30 @@ func (c *Client) SourcePaths(ctx context.Context, service string) ([]string, err
 // available — so source-scanning tools work regardless of the server's
 // working directory. It falls back to the service ID as path so connectors
 // that only need the ID (like FauxConnector) keep working.
+//
+// RT-146: at most two Sources reads run at once process-wide
+// (acquireSourcesSlot); a hook-origin ctx (WithHookOrigin) never waits and
+// gets ErrSourcesBusy. The fetch loop stops when ctx ends.
 func (c *Client) Sources(ctx context.Context, service string) ([]core.SourceFile, error) {
+	release, err := acquireSourcesSlot(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer release()
+	// A request abandoned mid-read (its scope's abandon fires) stops the
+	// walk and the fetch loop too, not only the wait for a slot.
+	if abandon := abandonOf(ctx); abandon != nil {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithCancel(ctx)
+		defer cancel()
+		go func() {
+			select {
+			case <-abandon:
+				cancel()
+			case <-ctx.Done():
+			}
+		}()
+	}
 	svcRef := core.ServiceRef{ID: service, Path: service}
 	if meta, found, err := c.st.GetServiceMeta(ctx, service); err == nil && found && meta.Path != "" {
 		svcRef.Path = meta.Path
@@ -467,6 +520,9 @@ func (c *Client) Sources(ctx context.Context, service string) ([]core.SourceFile
 
 	files := make([]SourceFile, 0, len(refs))
 	for _, ref := range refs {
+		if cerr := ctx.Err(); cerr != nil {
+			return nil, cerr
+		}
 		data, err := c.conn.Fetch(ctx, ref)
 		if err != nil {
 			// Skip files that cannot be fetched (e.g. permission errors).
@@ -562,6 +618,17 @@ func (c *Client) RemoveService(ctx context.Context, serviceID string) (bool, err
 // (store.Store.RenameService) — typed refusals pass through verbatim.
 func (c *Client) RenameService(ctx context.Context, oldID, newID string) error {
 	return c.st.RenameService(ctx, oldID, newID)
+}
+
+// DefaultIgnoredDirs names, repo-relative and sorted, each directory the
+// connector's default cache list pruned from its most recent discovery of
+// service (RT-145) — nil when none, or when the connector does not record
+// exclusions. The MCP ingest tool carries it as default_ignored_dirs.
+func (c *Client) DefaultIgnoredDirs(service string) []string {
+	if er, ok := c.conn.(connector.ExclusionReporter); ok {
+		return er.Exclusions(service).DefaultIgnored
+	}
+	return nil
 }
 
 // IngestStats returns the process-lifetime unclassified/oversize counters

@@ -137,6 +137,79 @@ func (m *MemoryStore) queryObservationsRaw(_ context.Context, serviceID, concern
 	return result, nil
 }
 
+// sourcePackagesRaw is SourcePackages before the suppression filter.
+func (m *MemoryStore) sourcePackagesRaw(_ context.Context, serviceID, sourceRef string) ([]string, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	seen := map[string]bool{}
+	var out []string
+	for _, o := range m.observations {
+		if o.ServiceID == serviceID && o.SourceRef == sourceRef && !seen[o.Package] {
+			seen[o.Package] = true
+			out = append(out, o.Package)
+		}
+	}
+	sort.Strings(out)
+	return out, nil
+}
+
+// packageObservationsRaw is PackageObservations before the suppression
+// filter.
+func (m *MemoryStore) packageObservationsRaw(_ context.Context, serviceID string, pkgs []string) ([]core.Observation, error) {
+	want := make(map[string]bool, len(pkgs))
+	for _, p := range pkgs {
+		want[p] = true
+	}
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	var out []core.Observation
+	for _, o := range m.observations {
+		if o.ServiceID == serviceID && want[o.Package] {
+			out = append(out, o)
+		}
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		if out[i].SourceRef != out[j].SourceRef {
+			return out[i].SourceRef < out[j].SourceRef
+		}
+		if out[i].Line != out[j].Line {
+			return out[i].Line < out[j].Line
+		}
+		return out[i].Symbol < out[j].Symbol
+	})
+	return out, nil
+}
+
+// sourceKindCountsRaw is SourceKindCounts before the suppression filter.
+func (m *MemoryStore) sourceKindCountsRaw(_ context.Context, serviceID string) ([]SourceKindCount, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	type key struct {
+		ref  string
+		kind core.SourceKind
+	}
+	counts := map[key]int{}
+	for _, o := range m.observations {
+		if o.ServiceID == serviceID {
+			counts[key{o.SourceRef, o.SourceKind}]++
+		}
+	}
+	if len(counts) == 0 {
+		return nil, nil
+	}
+	out := make([]SourceKindCount, 0, len(counts))
+	for k, n := range counts {
+		out = append(out, SourceKindCount{SourceRef: k.ref, Kind: k.kind, Count: n})
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].SourceRef != out[j].SourceRef {
+			return out[i].SourceRef < out[j].SourceRef
+		}
+		return out[i].Kind < out[j].Kind
+	})
+	return out, nil
+}
+
 // Fingerprint returns the stored hash for (serviceID, sourceRef).
 func (m *MemoryStore) Fingerprint(_ context.Context, serviceID, sourceRef string) (string, bool, error) {
 	m.mu.RLock()

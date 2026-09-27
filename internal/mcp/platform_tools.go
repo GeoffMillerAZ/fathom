@@ -73,9 +73,19 @@ func ServiceSummaries(ctx context.Context, backend QueryInterface, fleet FleetBa
 	}
 	svcs := fleet.Services()
 	out := make([]ServiceSummary, 0, len(svcs))
+	agg, hasAgg := fleet.(fleetSymbolAggregateBackend)
 	for _, svc := range svcs {
-		nodes := fleet.SymbolsFor(svc)
-		sum := ServiceSummary{Service: svc, SymbolCount: len(nodes), Languages: langStrings(nodes)}
+		var sum ServiceSummary
+		if hasAgg {
+			// A failed aggregate reads as SymbolsFor's failure always did
+			// (zero, no languages; the backend logs it) — never a fallback
+			// to the whole-table load the aggregate exists to avoid.
+			count, kinds, _ := agg.SymbolAggregatesFor(svc)
+			sum = ServiceSummary{Service: svc, SymbolCount: count, Languages: langStringsForKinds(kinds)}
+		} else {
+			nodes := fleet.SymbolsFor(svc)
+			sum = ServiceSummary{Service: svc, SymbolCount: len(nodes), Languages: langStrings(nodes)}
+		}
 		if backend != nil {
 			if path, _, found, err := backend.ServiceMeta(ctx, svc); err == nil && found && path != "" {
 				sum.Path = path
@@ -84,6 +94,31 @@ func ServiceSummaries(ctx context.Context, backend QueryInterface, fleet FleetBa
 		out = append(out, sum)
 	}
 	return out
+}
+
+// fleetSymbolAggregateBackend is the optional FleetBackend extension
+// list_services answers symbol counts and languages from (RT-144): an
+// aggregate per service — count and distinct source kinds — instead of
+// SymbolsFor's whole symbol table. ok is false when the aggregate could not
+// be computed (the implementation logs why).
+type fleetSymbolAggregateBackend interface {
+	SymbolAggregatesFor(service string) (count int, kinds []core.SourceKind, ok bool)
+}
+
+// langStringsForKinds is langStrings over distinct kinds.
+func langStringsForKinds(kinds []core.SourceKind) []string {
+	seen := make(map[string]struct{}, 4)
+	for _, k := range kinds {
+		if lang := kindToLang(k); lang != "" {
+			seen[lang] = struct{}{}
+		}
+	}
+	langs := make([]string, 0, len(seen))
+	for l := range seen {
+		langs = append(langs, l)
+	}
+	sort.Strings(langs)
+	return langs
 }
 
 func registerListServices(s *Server, backend QueryInterface, fleet FleetBackend) {

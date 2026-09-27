@@ -55,6 +55,9 @@ var storeMethodDisposition = map[string]string{
 	"ListSourceRefs":                "",
 	"ClaimLinks":                    "",
 	"CertifyDeclarationsForService": "",
+	"SourceKindCounts":              "", // RT-144: list_services' symbol counts must not count a hidden file's symbols
+	"SourcePackages":                "", // RT-27: a hidden file names no package
+	"PackageObservations":           "", // RT-27: a package's node set must not carry a hidden file's symbols
 
 	// --- exempt, with the reason ---
 	"PutObservations":                "write path; suppression is a READ decision and must never change what is indexed (§3.5)",
@@ -354,6 +357,33 @@ func TestSuppressionCoversEverySurface(t *testing.T) {
 					}
 					return ""
 				}))
+			})
+			t.Run("SourceKindCounts", func(t *testing.T) {
+				got, err := g.SourceKindCounts(ctx, svc)
+				if err != nil {
+					t.Fatal(err)
+				}
+				assertRefs(t, refsOf(got, func(r store.SourceKindCount) string { return r.SourceRef }))
+			})
+			t.Run("SourcePackages", func(t *testing.T) {
+				hidden, err := g.SourcePackages(ctx, svc, hiddenRef)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if len(hidden) != 0 {
+					t.Fatalf("a suppressed file named packages %v", hidden)
+				}
+				visible, err := g.SourcePackages(ctx, svc, visibleRef)
+				if err != nil || len(visible) != 1 {
+					t.Fatalf("the filter took the visible file's package too: %v, %v", visible, err)
+				}
+			})
+			t.Run("PackageObservations", func(t *testing.T) {
+				got, err := g.PackageObservations(ctx, svc, []string{"secrets", "internal"})
+				if err != nil {
+					t.Fatal(err)
+				}
+				assertRefs(t, refsOf(got, func(o core.Observation) string { return o.SourceRef }))
 			})
 			t.Run("CertifyDeclarationsForService", func(t *testing.T) {
 				got, err := g.CertifyDeclarationsForService(ctx, svc)

@@ -272,6 +272,17 @@ package config
 	pattern?: [...#SurfacePattern]
 }
 
+// #Connector configures discovery (RT-145, docs/design/responsible-
+// tenant.md §4.2). include re-includes directories the default cache list
+// (.cache, .tools, target, dist, build, __pycache__, .venv, .gradle, .next,
+// .turbo, coverage) prunes: a bare name re-includes every directory with
+// that name, an entry with a slash one repo-relative path. Read from the
+// corpus's own .fathom/config.toml; never re-includes vendor, .git,
+// testdata or the other always-skipped directories.
+#Connector: {
+	include?: [...string]
+}
+
 // #Config is the top-level shape of one config.toml layer (user or
 // project). Both layers validate against the same schema; internal/config
 // merges them field-by-field per docs/plans/config-experience.md's stated
@@ -285,10 +296,11 @@ package config
 	// named profiles, keyed however the operator likes.
 	profiles?: [string]: #Profile
 
-	daemon?:   #Daemon
-	guards?:   #Guards
-	findings?: #Findings
-	decide?:   #Decide
-	tests?:    #Tests
-	surface?:  #Surface
+	daemon?:    #Daemon
+	guards?:    #Guards
+	findings?:  #Findings
+	decide?:    #Decide
+	tests?:     #Tests
+	surface?:   #Surface
+	connector?: #Connector
 }
