@@ -46,6 +46,9 @@ type Key struct {
 	Marker  string   // KindJSONHook: the command substring that is fathom's signature
 	Body    string   // KindYAMLCommand: the child block; KindJSONHook: the command
 	Timeout int      // KindJSONHook: the hook timeout in seconds, omitted when 0
+	// Async is, for a KindJSONHook key, `"async": true` on the entry: the
+	// harness runs it in the background (RT-169, observe-only bindings).
+	Async bool
 	// AdoptUntracked is the pre-ledger migration switch (INC-12), the key
 	// counterpart of Region.AdoptUntracked: an entry that is PRESENT and
 	// identified as fathom's own (KindJSONHook: by Marker) but absent from
@@ -109,6 +112,9 @@ func (k Key) hookEntry() map[string]any {
 	e := map[string]any{"type": "command", "command": k.Body}
 	if k.Timeout > 0 {
 		e["timeout"] = float64(k.Timeout)
+	}
+	if k.Async {
+		e["async"] = true
 	}
 	return e
 }

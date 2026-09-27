@@ -655,6 +655,7 @@ func hookKeyFor(spec hookSpec, command string) wiring.Key {
 		Marker:  spec.marker,
 		Body:    command,
 		Timeout: spec.timeout,
+		Async:   spec.async, // RT-169: the observer never blocks the tool call
 	}
 }
 
