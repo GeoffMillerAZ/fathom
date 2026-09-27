@@ -77,9 +77,10 @@ type governor struct {
 	lastFree  time.Time
 	halted    bool // an ingest was halted at the exit mark; the next exit sample exits
 	exited    bool
-	cancelled []string  // the last refuse cancellation, in order
-	abandoned int64     // calls cancelled as abandoned-by-governor, process lifetime
-	lastDiag  time.Time // the last refuse-entry diagnostic capture
+	cancelled []string              // the last refuse cancellation, in order
+	abandoned int64                 // calls cancelled as abandoned-by-governor, process lifetime
+	lastDiag  time.Time             // the last refuse-entry diagnostic capture
+	disk      tenancy.DiskWriteRing // RT-162: bytes written per minute, 24 h
 }
 
 // freeEvery bounds debug.FreeOSMemory while shed (§2.1).
@@ -123,6 +124,7 @@ func (g *governor) tick(at time.Time, late time.Duration) tenancy.Transition {
 	}
 	tenancy.SampleHost(g.host, g.rt, at, late, &g.sample)
 	g.haveSmp = true
+	g.disk.Add(g.sample.At, g.sample.DiskWritten, g.inflight.ExplicitIngestInFlight())
 	tr := tenancy.StepLadder(&g.st, &g.sample, &g.budget)
 	if tr.Changed {
 		g.lastTrans = tr
@@ -414,20 +416,27 @@ func (g *governor) loadQuarantine() error {
 // governorSnapshot is the projection /metrics, /statusz and (later)
 // `resources` and the primer render.
 type governorSnapshot struct {
-	Level          string   `json:"level"`
-	Since          string   `json:"since,omitempty"`
-	LadderOff      bool     `json:"ladder_off,omitempty"`
-	Budget         int64    `json:"budget"`
-	Shed           int64    `json:"shed_mark"`
-	Refuse         int64    `json:"refuse_mark"`
-	Exit           int64    `json:"exit_mark"`
-	ExitEnabled    bool     `json:"exit_enabled"`
-	Footprint      int64    `json:"footprint"`
-	Children       int64    `json:"children"`
-	ChildCount     int      `json:"child_count"`
-	Pressure       string   `json:"pressure"`
-	SwapUsed       int64    `json:"swap_used"`
-	DiskWritten    int64    `json:"disk_written"`
+	Level       string `json:"level"`
+	Since       string `json:"since,omitempty"`
+	LadderOff   bool   `json:"ladder_off,omitempty"`
+	Budget      int64  `json:"budget"`
+	Shed        int64  `json:"shed_mark"`
+	Refuse      int64  `json:"refuse_mark"`
+	Exit        int64  `json:"exit_mark"`
+	ExitEnabled bool   `json:"exit_enabled"`
+	Footprint   int64  `json:"footprint"`
+	Children    int64  `json:"children"`
+	ChildCount  int    `json:"child_count"`
+	Pressure    string `json:"pressure"`
+	SwapUsed    int64  `json:"swap_used"`
+	DiskWritten int64  `json:"disk_written"`
+	// DiskWrites is RT-162's judgment: bytes written in the last 24 h
+	// outside explicit ingest against 2 GiB/day (tenancy.DiskWriteVerdict).
+	DiskWrites     string `json:"disk_writes,omitempty"`
+	DiskWritesOver bool   `json:"disk_writes_over,omitempty"`
+	diskOutside    int64
+	diskIngest     int64
+	diskKnown      bool
 	GCCPUFraction  float64  `json:"gc_cpu_fraction"`
 	Unknowns       []string `json:"unknowns,omitempty"`
 	LastTransition string   `json:"last_transition,omitempty"`
@@ -452,6 +461,9 @@ func (g *governor) snapshot() governorSnapshot {
 		s.Pressure, s.SwapUsed, s.DiskWritten = g.sample.Pressure.String(), g.sample.SwapUsed, g.sample.DiskWritten
 		s.GCCPUFraction = g.sample.GCCPUFraction
 		s.Unknowns = g.sample.Unknowns()
+		dv := tenancy.DiskWriteVerdict(&g.disk, g.sample.At, tenancy.DiskWriteBudgetPerDay)
+		s.DiskWrites, s.DiskWritesOver = dv.Line, dv.Over
+		s.diskOutside, s.diskIngest, s.diskKnown = dv.Outside, dv.Ingest, !dv.Unknown
 	}
 	if g.lastTrans.Changed {
 		s.LastTransition = fmt.Sprintf("%s %s → %s: %s", g.lastTrans.At.UTC().Format(time.RFC3339), g.lastTrans.From, g.lastTrans.To, g.lastTrans.Reason)
@@ -534,6 +546,14 @@ func governorMetricLines() string {
 		fmt.Fprintf(&b, "fathom_swap_used_bytes %d\n", s.SwapUsed)
 	}
 	fmt.Fprintf(&b, "fathom_gc_cpu_fraction %g\n", s.GCCPUFraction)
+	if s.DiskWritten >= 0 {
+		fmt.Fprintf(&b, "fathom_bytes_written_total %d\n", s.DiskWritten)
+	}
+	if s.diskKnown { // RT-162: never a zero for an unknown reading (I38)
+		fmt.Fprintf(&b, "fathom_bytes_written_24h_outside_ingest %d\n", s.diskOutside)
+		fmt.Fprintf(&b, "fathom_bytes_written_24h_explicit_ingest %d\n", s.diskIngest)
+		fmt.Fprintf(&b, "fathom_disk_write_budget_bytes %d\n", int64(tenancy.DiskWriteBudgetPerDay))
+	}
 	fmt.Fprintf(&b, "fathom_quarantined_services %d\n", len(s.Quarantined))
 	fmt.Fprintf(&b, "fathom_governor_abandoned_total %d\n", s.Abandoned)
 	return b.String()
