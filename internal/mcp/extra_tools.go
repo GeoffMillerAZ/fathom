@@ -121,13 +121,14 @@ func serviceRefHopsPayload(hops []serviceref.Hop) []any {
 // calls (RT-89) into hops — rows read from the store, never source. A
 // backend without the stored rows (serviceref.RefReader), or a read
 // error, yields no hops; unextracted names services whose rows are not
-// complete (not re-ingested since RT-89).
+// complete (not re-ingested since RT-89). Each service's rows are read
+// once per watermark (memoRefReader), not per call.
 func fleetServiceRefHops(ctx context.Context, backend QueryInterface, services []string) (hops []serviceref.Hop, unextracted []string) {
 	rr, ok := backend.(serviceref.RefReader)
 	if !ok {
 		return nil, services
 	}
-	hops, unextracted, err := serviceref.BuildFromStore(ctx, rr, services)
+	hops, unextracted, err := serviceref.BuildFromStore(ctx, memoRefReader{backend: backend, rr: rr}, services)
 	if err != nil {
 		return nil, services
 	}
@@ -138,10 +139,9 @@ func fleetServiceRefHops(ctx context.Context, backend QueryInterface, services [
 // is service and whose ToFile is one of changedFiles: another service's
 // client call joins a route THIS change touches, so that OTHER service's
 // call site is part of the blast radius even though no same-process call
-// graph connects them. Computed fleet-wide (serviceref.BuildFromStore
-// across every known service) each call — the same no-caching precedent
-// cross_repo_blast_radius already sets by re-listing every service's
-// symbols on every call. Best-effort: a fleet of fewer than two services,
+// graph connects them. Joined fleet-wide each call (serviceref.BuildFromStore
+// across every known service) from rows read once per watermark
+// (memoRefReader, RT-89). Best-effort: a fleet of fewer than two services,
 // or any backend error, degrades to no hops rather than failing the whole
 // tool.
 //

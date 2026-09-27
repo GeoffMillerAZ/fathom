@@ -961,9 +961,14 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 			unreadable[r.Path] = true
 		}
 	}
-	if err := p.extractServiceRefs(ctx, svc.ID, refs, contents, unreadable, pending); err != nil {
+	// Extracted now, while the content is in hand (the rows are small);
+	// written just before the final commit, so an ingest halted anywhere
+	// before it leaves the previous commit's rows.
+	writeRefs, err := p.extractServiceRefs(ctx, svc.ID, refs, contents, unreadable, pending)
+	if err != nil {
 		return report, err
 	}
+	contents = nil
 
 	// ── Dispatch ─────────────────────────────────────────────────────────────
 	if p.cfg.Lazy {
@@ -974,6 +979,9 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 		p.mu.Lock()
 		p.queue[svc.ID] = append(p.queue[svc.ID], pending...)
 		p.mu.Unlock()
+		if err := writeRefs(); err != nil {
+			return finish(err)
+		}
 		return finish(p.finalCommit(ctx, svc, run, refs))
 	}
 
@@ -1043,6 +1051,9 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	// ── Orphan purge, then the final commit ──────────────────────────────────
 	// refs still holds every discovered file, unreadable ones included, so an
 	// unreadable file is never mistaken for a deleted one.
+	if err := writeRefs(); err != nil {
+		return finish(err)
+	}
 	return finish(p.finalCommit(ctx, svc, run, refs))
 }
 
@@ -1149,10 +1160,14 @@ func (p *Pipeline) purgeOrphans(ctx context.Context, serviceID string, refs []co
 // never pending, so dropped rows would never return. For the same reason a
 // first extraction with any unreadable file is not marked complete — the
 // next ingest extracts every readable file again.
-func (p *Pipeline) extractServiceRefs(ctx context.Context, serviceID string, refs []core.SourceRef, contents map[string][]byte, unreadable map[string]bool, pending []pendingFile) error {
+//
+// It extracts now and returns the write, which the caller runs just before
+// the final commit (§6): an ingest halted in between writes nothing.
+func (p *Pipeline) extractServiceRefs(ctx context.Context, serviceID string, refs []core.SourceRef, contents map[string][]byte, unreadable map[string]bool, pending []pendingFile) (write func() error, err error) {
+	noWrite := func() error { return nil }
 	stored, complete, err := p.st.ServiceRefsFor(ctx, serviceID)
 	if err != nil {
-		return fmt.Errorf("fusion: service refs %q: %w", serviceID, err)
+		return noWrite, fmt.Errorf("fusion: service refs %q: %w", serviceID, err)
 	}
 	var paths []string
 	if complete {
@@ -1200,13 +1215,15 @@ func (p *Pipeline) extractServiceRefs(ctx context.Context, serviceID string, ref
 		out.Calls = append(out.Calls, r.Calls...)
 	}
 	if len(files) == 0 && complete {
-		return nil
+		return noWrite, nil
 	}
 	markComplete := complete || len(unreadable) == 0
-	if err := p.st.ReplaceServiceRefs(ctx, serviceID, files, out, markComplete); err != nil {
-		return fmt.Errorf("fusion: write service refs %q: %w", serviceID, err)
-	}
-	return nil
+	return func() error {
+		if err := p.st.ReplaceServiceRefs(ctx, serviceID, files, out, markComplete); err != nil {
+			return fmt.Errorf("fusion: write service refs %q: %w", serviceID, err)
+		}
+		return nil
+	}, nil
 }
 
 // ExtractPending drains the lazy queue for serviceID, extracts all pending

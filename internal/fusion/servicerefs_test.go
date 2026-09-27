@@ -209,3 +209,26 @@ func TestIngest_FirstExtractionWithUnreadableStaysIncomplete(t *testing.T) {
 		t.Fatalf("routes = %q, want srv.go:/items", got)
 	}
 }
+
+// RT-89 (§6): routes and client calls are written with the ingest's final
+// commit, not mid-ingest — an ingest halted at its observation writes
+// leaves the service's rows exactly as the previous commit left them.
+func TestIngest_HaltedIngestWritesNoServiceRefs(t *testing.T) {
+	ctx := context.Background()
+	conn := memConn{files: map[string]string{"a.go": srvOneRoute}}
+	fresh := store.NewMemoryStore()
+	bs := &blockingStore{MemoryStore: fresh, fail: errors.New("over budget: ingest producer halted at exit")}
+	p := fusion.New(conn, bs, fusion.Config{Concurrency: 1})
+	p.WithGitHead(func(string) string { return "new" })
+	p.WithGitLog(func(string) string { return "" })
+	if _, err := p.Ingest(ctx, core.ServiceRef{ID: "svc", Path: "/repo"}); err == nil {
+		t.Fatal("a halted ingest returned no error")
+	}
+	refs, complete, err := fresh.ServiceRefsFor(ctx, "svc")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if complete || len(refs.Routes) != 0 {
+		t.Fatalf("after a halted ingest: complete=%v routes=%+v, want nothing written", complete, refs.Routes)
+	}
+}
