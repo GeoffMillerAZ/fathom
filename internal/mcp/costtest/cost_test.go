@@ -15,6 +15,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/dlog"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
+	"github.com/geoffmilleraz/fathom/internal/testisolate"
 	"github.com/geoffmilleraz/fathom/pkg/client"
 )
 
@@ -29,9 +30,10 @@ var measured struct {
 	dirs     []string // the fleets' roots, removed by TestMain
 }
 
-// TestMain removes the fleets every test shares.
+// TestMain runs the tests isolated from the operator's daemon, state and
+// call log (testisolate), then removes the fleets every test shares.
 func TestMain(m *testing.M) {
-	code := m.Run()
+	code := testisolate.IsolateAndRun(m, testisolate.Options{})
 	for _, d := range measured.dirs {
 		_ = os.RemoveAll(d)
 	}
