@@ -717,6 +717,12 @@ func (p *Pipeline) SetLogger(log *dlog.Logger) {
 // longer appear in the Discover set (deleted or newly ignored files) have
 // their observations and fingerprints removed. See purgeOrphans.
 func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, error) {
+	// RT-109 (design §6): the watermark this ingest will record is read
+	// now, before the corpus is, and ingest_state = in_progress is written
+	// first. The watermark moves only at the final commit (commitIngest); a
+	// killed or halted ingest leaves in_progress and the old watermark.
+	run := p.beginIngestState(ctx, svc)
+
 	// ── Pass 1: Filter ──────────────────────────────────────────────────────
 	refs, err := p.conn.Discover(ctx, svc)
 	if err != nil {
@@ -743,10 +749,10 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 
 	if len(refs) == 0 {
 		// Still a full-service ingest: every stored ref is now an orphan.
-		p.recordIngestMeta(ctx, svc)
 		if err := p.purgeOrphans(ctx, svc.ID, refs); err != nil {
 			return report, err
 		}
+		p.commitIngest(ctx, svc, run)
 		return report, nil
 	}
 
@@ -839,6 +845,9 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 			return report, fmt.Errorf("fusion: count observations %q: %w", svc.ID, qErr)
 		}
 		if len(existing) > 0 {
+			// Refused before the first write: the index is untouched and
+			// still the one its watermark describes.
+			p.abandonIngestState(ctx, run)
 			return report, &ReadFailuresError{Service: svc.ID, Failures: failures, Refused: true, Existing: len(existing)}
 		}
 	}
@@ -858,12 +867,6 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 			report.PurgedLegacyAnchors = true
 		}
 	}
-
-	// Freshness watermark + commit history — only once the ingest is going
-	// to write (a refused ingest above must not look fresh). The prior meta
-	// is kept so a later halt can put it back (RT-153).
-	prevMeta, hadPrevMeta, _ := p.st.GetServiceMeta(ctx, svc.ID)
-	p.recordIngestMeta(ctx, svc)
 
 	// ── Pass 3: PostFetch (sequential, input order) ──────────────────────────
 	var pending []pendingFile
@@ -944,7 +947,7 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 		p.mu.Lock()
 		p.queue[svc.ID] = append(p.queue[svc.ID], pending...)
 		p.mu.Unlock()
-		return finish(p.purgeOrphans(ctx, svc.ID, refs))
+		return finish(p.finalCommit(ctx, svc, run, refs))
 	}
 
 	stats, err := p.extractAndStore(ctx, svc.ID, pending)
@@ -998,52 +1001,34 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	fileRep, fileErr := p.enrichFileResolvedEdges(ctx, svc, refs)
 	report.FileResolvedEdges = fileRep.EdgesResolved
 	if fileErr != nil {
-		// RT-153 (I38): halted after the watermark was recorded — put the
-		// prior freshness back so the halted run never reads as fresh, and
-		// fail with the named cause instead of a shorter index.
-		p.restoreIngestMeta(ctx, svc.ID, prevMeta, hadPrevMeta)
+		// RT-153 (I38): halted before the final commit — the watermark
+		// never moved (RT-109), so the halted run never reads as fresh; fail
+		// with the named cause instead of a shorter index.
 		return finish(fmt.Errorf("fusion: file-resolved edge pass %q: %w", svc.ID, fileErr))
 	}
 
-	// ── Orphan purge ─────────────────────────────────────────────────────────
+	// ── Orphan purge, then the final commit ──────────────────────────────────
 	// refs still holds every discovered file, unreadable ones included, so an
 	// unreadable file is never mistaken for a deleted one.
-	return finish(p.purgeOrphans(ctx, svc.ID, refs))
+	return finish(p.finalCommit(ctx, svc, run, refs))
 }
 
-// restoreIngestMeta undoes recordIngestMeta's watermark for an ingest that
-// halted after it (RT-153): the prior meta comes back, or — for a service
-// that had none — the watermark is blanked so the next freshness check sees
-// drift and retries. Best-effort, like recordIngestMeta.
-func (p *Pipeline) restoreIngestMeta(ctx context.Context, serviceID string, prev store.ServiceMeta, had bool) {
-	if had {
-		_ = p.st.SetServiceMeta(ctx, prev)
-		return
+// finalCommit purges orphans and, when that succeeds, commits the ingest:
+// the watermark and ingest_state = complete (RT-109).
+func (p *Pipeline) finalCommit(ctx context.Context, svc core.ServiceRef, run ingestRun, refs []core.SourceRef) error {
+	if err := p.purgeOrphans(ctx, svc.ID, refs); err != nil {
+		return err
 	}
-	cur, found, err := p.st.GetServiceMeta(ctx, serviceID)
-	if err != nil || !found {
-		return
-	}
-	cur.IndexedCommit = ""
-	_ = p.st.SetServiceMeta(ctx, cur)
+	p.commitIngest(ctx, svc, run)
+	return nil
 }
 
 // recordIngestMeta records the ingest metadata (freshness watermark + corpus
 // path) and the git commit history for svc. Best-effort: a failure here
-// never aborts the ingest. Called only once an ingest is committed to
-// writing — a refused ingest (IT-15) must not advance the watermark over
-// evidence it left untouched.
-func (p *Pipeline) recordIngestMeta(ctx context.Context, svc core.ServiceRef) {
-	// Git-backed corpora record the HEAD SHA; non-git corpora fall back to
-	// the connector's watermark (content-addressed manifest hash — ADR-017:
-	// freshness is domain-neutral, so docs folders and findings exports get
-	// honest drift detection too).
-	commit := p.gitHeadFn(svc.Path)
-	if commit == "" {
-		if wm, wmErr := p.conn.Watermark(ctx, svc); wmErr == nil {
-			commit = wm
-		}
-	}
+// never aborts the ingest. RT-109 (design §6): called only at the ingest's
+// final commit (commitIngest), with the watermark read when the ingest
+// began — a refused (IT-15), halted or killed ingest never advances it.
+func (p *Pipeline) recordIngestMeta(ctx context.Context, svc core.ServiceRef, commit string) {
 	// Record the corpus root ABSOLUTE: auto-refresh, staleness_report,
 	// and the ingest MCP tool all resolve this path from the DAEMON's
 	// working directory — a relative path recorded from some other CWD
