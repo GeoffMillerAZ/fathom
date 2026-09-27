@@ -713,6 +713,15 @@ func (a *autoRefreshBackend) EnsureFresh(ctx context.Context, service string) {
 	a.ensure(ctx, service)
 }
 
+// SuppressionToken forwards the wrapped backend's suppression token
+// (RT-75): the snapshot key's suppression segment.
+func (a *autoRefreshBackend) SuppressionToken(service string) string {
+	if t, ok := a.QueryInterface.(suppressionTokener); ok {
+		return t.SuppressionToken(service)
+	}
+	return ""
+}
+
 // StoreID forwards the wrapped backend's store identity (RT-74): without
 // it the MCP tools and the console would key the one graph store under
 // two identities for one store. "" (a wrapped backend that names no

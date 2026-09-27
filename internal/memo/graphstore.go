@@ -80,6 +80,10 @@ type Snapshot struct {
 	lower   []Lowered
 	names   map[string][]int32 // lowercased name -> node indexes
 	callees map[string][]int32 // callee key and its final name -> caller node indexes
+	// Extra is what the loader returned beside the nodes (SnapshotForExtra):
+	// the MCP tools keep the load's suppression disclosure here and replay
+	// it to every reader, so a cached snapshot still says what it hides.
+	Extra any
 	// palette lists each distinct (name, kind, package, ref) symbol once,
 	// doc chunks and nameless rows excluded — the console palette's set.
 	palette []int32
@@ -160,6 +164,20 @@ func SnapshotFor(ctx context.Context, sc Scope, load SnapshotLoader) (*Snapshot,
 // callers holding a node set that is not a service's stored state (test
 // fixtures, a filtered subset).
 func NewSnapshot(nodes []core.SymbolNode) *Snapshot { return newSnapshot(Scope{}, nodes) }
+
+// SnapshotForExtra is SnapshotFor with a loader that also returns a value
+// kept on the snapshot (Snapshot.Extra).
+func SnapshotForExtra(ctx context.Context, sc Scope, load func(ctx context.Context) ([]core.SymbolNode, any, error)) (*Snapshot, error) {
+	return snapshotGroup.Get(ctx, snapKey{sc}, func(bctx context.Context) (*Snapshot, int64, error) {
+		nodes, extra, err := load(bctx)
+		if err != nil {
+			return nil, 0, err
+		}
+		s := newSnapshot(sc, nodes)
+		s.Extra = extra
+		return s, snapshotBytes(s), nil
+	})
+}
 
 // newSnapshot indexes nodes (taken over, not copied).
 func newSnapshot(sc Scope, nodes []core.SymbolNode) *Snapshot {

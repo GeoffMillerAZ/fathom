@@ -420,3 +420,24 @@ func filterCallerRows(ctx context.Context, g scopeGate, rows []CallerRow, err er
 	}
 	return out, nil
 }
+
+// SuppressionToken names the suppressions currently hiding rows of
+// serviceID (scope.Set.ActiveToken): the key segment a cache of this
+// store's filtered reads carries (RT-75), so a suppression change is a
+// cache miss. "" when none applies.
+func (s *SQLiteStore) SuppressionToken(serviceID string) string {
+	return s.gate.token(serviceID)
+}
+
+// SuppressionToken is SQLiteStore.SuppressionToken for the memory backend.
+func (m *MemoryStore) SuppressionToken(serviceID string) string {
+	return m.gate.token(serviceID)
+}
+
+func (g scopeGate) token(serviceID string) string {
+	if g.src == nil {
+		return ""
+	}
+	set, now := g.src.Snapshot()
+	return set.ActiveToken(serviceID, now)
+}

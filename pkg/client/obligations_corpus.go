@@ -172,6 +172,9 @@ func (c *Client) layerCoveragePaths(ctx context.Context, service string, def sem
 	if wmErr != nil {
 		wm = ""
 	}
+	if tok := c.SuppressionToken(service); wm != "" && tok != "" {
+		wm += "|suppressed:" + tok // file_stats is filtered: a suppression change is a new key
+	}
 	key := layerPathsKey{c: c, service: service, mark: wm, d: layerDigest(def)}
 	return layerPathsGroup.Get(ctx, key, func(bctx context.Context) ([]string, int64, error) {
 		paths, err := c.walkCorpusPaths(bctx, service, def)

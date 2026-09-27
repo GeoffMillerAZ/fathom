@@ -119,6 +119,28 @@ func (s *Set) AffectsService(service string, now time.Time) bool {
 	return false
 }
 
+// ActiveToken names the suppressions ACTIVE at now that apply to service —
+// their sorted IDs, joined — or "" when none does. A cache of a service's
+// filtered rows (internal/memo's snapshots, RT-75) keys on it, so a new,
+// removed or expired suppression is a new key: the next read sees it,
+// exactly as an unmemoized read would.
+func (s *Set) ActiveToken(service string, now time.Time) string {
+	if s.Empty() {
+		return ""
+	}
+	var ids []string
+	for _, e := range s.entries {
+		if SuppressionState(e.sup, now) != StateActive {
+			continue
+		}
+		if e.sup.Service == "" || e.sup.Service == service {
+			ids = append(ids, e.sup.ID)
+		}
+	}
+	sort.Strings(ids)
+	return strings.Join(ids, ",")
+}
+
 // Disclosure is what a filtered read owes its caller: how many rows were
 // hidden and the governing reason(s). §2.2 — "a silent filter is
 // indistinguishable from a recall bug, and this program has spent real time

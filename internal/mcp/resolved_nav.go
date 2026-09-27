@@ -29,6 +29,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/analysis/impact"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/memo"
+	"github.com/geoffmilleraz/fathom/internal/scope"
 )
 
 // Default bounds for blast_radius (BP-27). Depth 2 is "what breaks and what
@@ -121,7 +122,23 @@ func navScopeNoEnsure(ctx context.Context, backend QueryInterface, service strin
 		// is not an identity (a freed backend's address is reused).
 		return memo.Scope{Service: service}
 	}
-	return memo.Scope{Store: id.StoreID(), Service: service, Watermark: serviceWatermark(ctx, backend, service)}
+	wm := serviceWatermark(ctx, backend, service)
+	if wm != "" {
+		if t, ok := backend.(suppressionTokener); ok {
+			// A suppression change is a new key: a cached snapshot never
+			// serves rows a suppression now hides (SP-2).
+			if tok := t.SuppressionToken(service); tok != "" {
+				wm += "|suppressed:" + tok
+			}
+		}
+	}
+	return memo.Scope{Store: id.StoreID(), Service: service, Watermark: wm}
+}
+
+// suppressionTokener is the OPTIONAL backend capability naming the
+// suppressions currently applied to a service's reads (pkg/client).
+type suppressionTokener interface {
+	SuppressionToken(service string) string
 }
 
 // serviceSnapshot is service's symbol snapshot (RT-75): one immutable load
@@ -129,9 +146,21 @@ func navScopeNoEnsure(ctx context.Context, backend QueryInterface, service strin
 // navigation graphs and the console.
 func serviceSnapshot(ctx context.Context, backend QueryInterface, service string) (*memo.Snapshot, error) {
 	sc := navScope(ctx, backend, service)
-	return memo.SnapshotFor(ctx, sc, func(lctx context.Context) ([]core.SymbolNode, error) {
-		return backend.ListAllSymbols(lctx, service)
+	snap, err := memo.SnapshotForExtra(ctx, sc, func(lctx context.Context) ([]core.SymbolNode, any, error) {
+		// The load's suppression disclosure is kept on the snapshot and
+		// replayed to every reader below: a cached snapshot still says
+		// what it hides (SP-3).
+		cctx, col := scope.WithCollector(lctx)
+		nodes, err := backend.ListAllSymbols(cctx, service)
+		return nodes, col.For(service), err
 	})
+	if err != nil {
+		return nil, err
+	}
+	if d, ok := snap.Extra.(*scope.Disclosure); ok {
+		scope.Record(ctx, service, d)
+	}
+	return snap, nil
 }
 
 // serviceSymbols is the service's symbols as a slice the caller may sort

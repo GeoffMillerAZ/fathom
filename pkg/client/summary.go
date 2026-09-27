@@ -105,3 +105,15 @@ func (c *Client) StoreID() string {
 }
 
 var storeIDSeq atomic.Int64
+
+// SuppressionToken names the suppressions currently hiding rows of service
+// (the store's scope gate): the graph store and symbol snapshots key on it
+// beside the watermark, so a new, removed or expired suppression is seen
+// on the next read, as an unmemoized read sees it. "" when none applies
+// or the store has no gate.
+func (c *Client) SuppressionToken(service string) string {
+	if t, ok := c.st.(interface{ SuppressionToken(string) string }); ok {
+		return t.SuppressionToken(service)
+	}
+	return ""
+}

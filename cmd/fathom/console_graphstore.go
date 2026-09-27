@@ -12,6 +12,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/memo"
+	"github.com/geoffmilleraz/fathom/internal/scope"
 	"github.com/geoffmilleraz/fathom/pkg/client"
 )
 
@@ -21,14 +22,26 @@ func consoleScope(ctx context.Context, c *client.Client, service string) memo.Sc
 	if err != nil {
 		wm = ""
 	}
+	if tok := c.SuppressionToken(service); wm != "" && tok != "" {
+		wm += "|suppressed:" + tok // the MCP tools' key (resolved_nav.go navScope)
+	}
 	return memo.Scope{Store: c.StoreID(), Service: service, Watermark: wm}
 }
 
 // consoleSnapshot is service's symbol snapshot.
 func consoleSnapshot(ctx context.Context, c *client.Client, service string) (*memo.Snapshot, error) {
-	return memo.SnapshotFor(ctx, consoleScope(ctx, c, service), func(l context.Context) ([]core.SymbolNode, error) {
-		return c.ListAllSymbols(l, service)
+	snap, err := memo.SnapshotForExtra(ctx, consoleScope(ctx, c, service), func(l context.Context) ([]core.SymbolNode, any, error) {
+		cctx, col := scope.WithCollector(l)
+		nodes, err := c.ListAllSymbols(cctx, service)
+		return nodes, col.For(service), err
 	})
+	if err != nil {
+		return nil, err
+	}
+	if d, ok := snap.Extra.(*scope.Disclosure); ok {
+		scope.Record(ctx, service, d)
+	}
+	return snap, nil
 }
 
 // consoleTypedLoader loads service's typed edges (an error reads as none,
