@@ -39,6 +39,10 @@ type InFlight struct {
 	next    uint64
 	entries map[uint64]*inflightEntry
 	now     func() time.Time
+	// last is when work last began or ended: the idle clock (§5: "30 min
+	// without tickets") runs from it, so a call that begins and ends
+	// between two samples still counts.
+	last time.Time
 }
 
 type inflightEntry struct {
@@ -64,6 +68,7 @@ func (r *InFlight) Begin(ctx context.Context, c Class, tool, service, origin str
 	r.mu.Lock()
 	r.next++
 	id := r.next
+	r.last = r.now()
 	r.entries[id] = &inflightEntry{
 		InFlightEntry: InFlightEntry{ID: id, Class: c, Tool: tool, Service: service, Origin: origin, Started: r.now()},
 		cancel:        cancel,
@@ -74,6 +79,7 @@ func (r *InFlight) Begin(ctx context.Context, c Class, tool, service, origin str
 		once.Do(func() {
 			r.mu.Lock()
 			delete(r.entries, id)
+			r.last = r.now()
 			r.mu.Unlock()
 			cancel(nil)
 		})
@@ -85,6 +91,13 @@ func (r *InFlight) Len() int {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return len(r.entries)
+}
+
+// LastActive is when work last began or ended (zero before any).
+func (r *InFlight) LastActive() time.Time {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.last
 }
 
 // Snapshot lists the registered work, oldest first (ties by id).

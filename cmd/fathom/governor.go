@@ -270,12 +270,16 @@ func (g *governor) applyLadderLevel(tr tenancy.Transition) {
 }
 
 // idleCheck is the idle rung of the memo registry (§5): after
-// budget.CacheIdleDrop with no in-flight ticket, drop the idle caches once
-// and return the memory to the OS.
+// budget.CacheIdleDrop with no ticket — none in flight at a sample, and
+// none begun or ended since (a short call between two samples counts) —
+// drop the idle caches once and return the memory to the OS.
 func (g *governor) idleCheck(at time.Time) {
 	if g.inflight.Len() > 0 || g.lastBusy.IsZero() {
 		g.lastBusy, g.idleDone = at, false
 		return
+	}
+	if last := g.inflight.LastActive(); last.After(g.lastBusy) {
+		g.lastBusy, g.idleDone = last, false
 	}
 	if g.idleDone || len(g.actions.dropIdle) == 0 || g.budget.CacheIdleDrop <= 0 || at.Sub(g.lastBusy) < g.budget.CacheIdleDrop {
 		return
