@@ -11,9 +11,11 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
 	"github.com/geoffmilleraz/fathom/internal/analysis/references"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/corpus"
+	"github.com/geoffmilleraz/fathom/internal/memo"
 )
 
 // referencesDefaultMax is the default occurrence cap (SB-1,
@@ -313,24 +315,14 @@ func registerReferences(s *Server, backend QueryInterface) {
 			CaseInsensitive: p.CaseInsensitive,
 		}
 
-		// SB-45: fetch each queried service's typed edges up front — once,
-		// both to decide exact's default (true when ANY queried service's
-		// typed pass produced edges) and to reuse below instead of asking
-		// twice per service.
-		typedByService := make(map[string][]core.Edge, len(svcs))
-		exactDefault := false
-		for _, svc := range svcs {
-			if typed, tErr := backend.TypedEdges(ctx, svc); tErr == nil {
-				typedByService[svc] = typed
-				if len(typed) > 0 {
-					exactDefault = true
-				}
-			}
-		}
-		exact := exactDefault
-		if p.Exact != nil {
-			exact = *p.Exact
-		}
+		// SB-45: exact defaults to true when ANY scanned service's typed pass
+		// produced edges. A service with typed edges and definitions filters
+		// its own occurrences either way (exact could only be true then), so
+		// the default is settled after the loop, from the services actually
+		// scanned — never by loading every queried service's typed edges up
+		// front (RT-86, §4.5: typed edges per service as needed).
+		exactWanted := p.Exact == nil || *p.Exact
+		anyTyped := false
 
 		// degradedEntry (O36, ADR-014 execute-and-flag): a service this
 		// call could not fully answer for — its root vanished, or (SB-45)
@@ -340,6 +332,9 @@ func registerReferences(s *Server, backend QueryInterface) {
 		type degradedEntry struct {
 			Service string `json:"service"`
 			Reason  string `json:"reason"`
+			// exactOnly marks an SB-45 "no typed reference sites" entry,
+			// kept only when the call's exact mode turns out on.
+			exactOnly bool
 		}
 
 		var defs []defEntry
@@ -357,7 +352,8 @@ func registerReferences(s *Server, backend QueryInterface) {
 		// one budget for the whole call (referencesScanBytes, referencesScanWall)
 		// and stop once more than maxOccs are kept — so the count past max
 		// is a lower bound, and a scan the budget stopped is named in
-		// "partial", never a silently shorter answer (I38).
+		// "partial", never a silently shorter answer (I38). The interface
+		// files a bare query reads (RC-21) are charged to the same budget.
 		matcher, mErr := references.NewMatcher(p.Query, opts)
 		if mErr != nil {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "references: " + mErr.Error()}
@@ -366,61 +362,114 @@ func registerReferences(s *Server, backend QueryInterface) {
 		var scanBytes int64
 		var scanned, scanTotal, unscanned int
 		scanStop := ""
+		remaining := func() corpus.Budget {
+			return corpus.Budget{Bytes: referencesScanBytes - scanBytes, Wall: referencesScanWall - time.Since(scanStart)}
+		}
+		spent := func(b corpus.Budget) bool {
+			if b.Bytes <= 0 || b.Wall <= 0 {
+				scanStop = map[bool]string{true: corpus.StopBytes, false: corpus.StopTime}[b.Bytes <= 0]
+				return true
+			}
+			return false
+		}
 		for _, svc := range svcs {
-			// ── definitions: symbol index lookup ─────────────────────────────
-			nodes, err := serviceSymbols(ctx, backend, svc)
-			if err != nil {
-				// O36: a service whose root vanished (or is otherwise
-				// unreadable) must not fail the whole fleet-wide call —
-				// skip it and name it in degraded.
-				degraded = append(degraded, degradedEntry{Service: svc, Reason: "list symbols: " + err.Error()})
-				continue
+			// ── definitions ──────────────────────────────────────────────────
+			// Exact-name definitions come from the store's point lookup
+			// (RT-85), so a service the scan never reaches costs no symbol
+			// list; the opt-in substring match iterates the watermark's
+			// shared snapshot (RT-75), never a per-call copy.
+			var defNodes []core.SymbolNode
+			var snap *memo.Snapshot
+			if p.IncludeHeuristic && !p.Word && !p.Regex {
+				sn, err := serviceSnapshot(ctx, backend, svc)
+				if err != nil {
+					// O36: a service whose root vanished (or is otherwise
+					// unreadable) must not fail the whole fleet-wide call —
+					// skip it and name it in degraded.
+					degraded = append(degraded, degradedEntry{Service: svc, Reason: "list symbols: " + err.Error()})
+					continue
+				}
+				snap = sn
+				for _, n := range snap.Nodes {
+					if n.Name == p.Query || strings.Contains(n.Name, p.Query) {
+						defNodes = append(defNodes, n)
+					}
+				}
+			} else {
+				found, err := backend.FindSymbol(ctx, svc, p.Query)
+				if err != nil {
+					degraded = append(degraded, degradedEntry{Service: svc, Reason: "find symbol: " + err.Error()})
+					continue
+				}
+				for _, n := range found {
+					if n.Name == p.Query {
+						defNodes = append(defNodes, n)
+					}
+				}
+				sort.SliceStable(defNodes, func(i, j int) bool {
+					if defNodes[i].FilePath != defNodes[j].FilePath {
+						return defNodes[i].FilePath < defNodes[j].FilePath
+					}
+					if defNodes[i].Line != defNodes[j].Line {
+						return defNodes[i].Line < defNodes[j].Line
+					}
+					return defNodes[i].Key() < defNodes[j].Key()
+				})
 			}
 			var defKeys []string
-			for _, n := range nodes {
-				isDef := false
-				if n.Name == p.Query {
-					isDef = true
-				} else if p.IncludeHeuristic && !p.Word && !p.Regex {
-					// Substring match on name — opt-in since BP-26.
-					if strings.Contains(n.Name, p.Query) {
-						isDef = true
-					}
+			for _, n := range defNodes {
+				tier := string(n.Tier)
+				if tier == "" {
+					tier = string(core.TierVerified)
 				}
-				if isDef {
-					tier := string(n.Tier)
-					if tier == "" {
-						tier = string(core.TierVerified)
-					}
-					conf := core.EdgeConfidenceHeuristic
-					if tier == string(core.TierVerified) {
-						conf = core.EdgeConfidenceResolved
-					}
-					defs = append(defs, defEntry{
-						Service:        svc,
-						Symbol:         n.Name,
-						File:           n.FilePath,
-						Line:           n.Line,
-						Tier:           tier,
-						Depth:          0,
-						EdgeConfidence: string(conf),
-					})
-					defKeys = append(defKeys, n.Key())
-					pkg := n.Package
-					if pkg == "" {
-						pkg = svc
-					}
-					byPkg[pkg]++
+				conf := core.EdgeConfidenceHeuristic
+				if tier == string(core.TierVerified) {
+					conf = core.EdgeConfidenceResolved
 				}
+				defs = append(defs, defEntry{
+					Service:        svc,
+					Symbol:         n.Name,
+					File:           n.FilePath,
+					Line:           n.Line,
+					Tier:           tier,
+					Depth:          0,
+					EdgeConfidence: string(conf),
+				})
+				defKeys = append(defKeys, n.Key())
+				pkg := n.Package
+				if pkg == "" {
+					pkg = svc
+				}
+				byPkg[pkg]++
 			}
+
+			// ── past the cap or the budget: definitions only ─────────────────
+			if truncated || scanStop != "" || spent(remaining()) {
+				// This service's text, symbols, typed edges and interface
+				// files are not read, and the answer says so.
+				unscanned++
+				continue
+			}
+			if snap == nil {
+				sn, err := serviceSnapshot(ctx, backend, svc)
+				if err != nil {
+					degraded = append(degraded, degradedEntry{Service: svc, Reason: "list symbols: " + err.Error()})
+					continue
+				}
+				snap = sn
+			}
+			nodes := snap.Nodes // shared: read, never sorted or edited
 
 			// RC-21: query names an interface method (typed edges know the
 			// receiver is an interface, but the method itself is never
 			// indexed as its own symbol — see interfaceMethodQuery) — list
 			// the implementing types first, ahead of the occurrences below.
-			// Only the candidate interfaces' own files are read.
+			// Only the candidate interfaces' own files are read, under the
+			// call's byte budget.
 			if implRows == nil {
-				if files := interfaceSourceFiles(ctx, backend, svc, nodes, p.Query); len(files) > 0 {
+				files, used, complete := interfaceSourceFilesWithin(ctx, backend, svc, nodes, p.Query, remaining().Bytes)
+				scanBytes += used
+				if complete && len(files) > 0 {
 					if iface, method, ok := interfaceMethodQuery(files, nodes, p.Query); ok {
 						if rows := implementationsForMethod(ctx, backend, svc, iface, method, nodes); len(rows) > 0 {
 							implRows = rows
@@ -430,30 +479,31 @@ func registerReferences(s *Server, backend QueryInterface) {
 			}
 
 			// ── occurrences: budgeted source stream ──────────────────────────
-			if truncated || scanStop != "" {
-				// At the occurrence cap or out of budget: this service's
-				// text is not read, and the answer says so.
+			b := remaining()
+			if spent(b) {
 				unscanned++
 				continue
 			}
 			// Typed-edge confirmation for mentions (BD-2), when this
-			// service has both definitions of the query and typed edges.
-			typed := typedByService[svc]
+			// service has both definitions of the query and typed edges:
+			// the watermark's memoized typed edges and GraphBoth (RT-74),
+			// never a per-call load or graph build.
+			typedLoad := typedLoader(backend, svc)
+			typed, _ := memo.TypedFor(ctx, snap.Scope, typedLoad)
+			if len(typed) > 0 {
+				anyTyped = true
+			}
 			var mentionConf func(file string, line int) core.EdgeConfidence
 			if len(defKeys) > 0 && len(typed) > 0 {
-				mentionConf = mentionConfidence(nodes, typed, defKeys)
+				if both, gErr := memo.GraphFor(ctx, snap, memo.GraphBoth, typedLoad); gErr == nil {
+					mentionConf = callgraph.NewMentionIndex(both, nodes).Confidence(defKeys)
+				}
 			}
 			// SB-45: exact mode keeps only occurrences mentionConf marks
 			// resolved. A service that cannot even attempt confirmation
 			// falls back to its unfiltered occurrences and says so.
-			serviceExact := exact && mentionConf != nil
+			serviceExact := exactWanted && mentionConf != nil
 			foundAny := false
-			b := corpus.Budget{Bytes: referencesScanBytes - scanBytes, Wall: referencesScanWall - time.Since(scanStart)}
-			if b.Bytes <= 0 || b.Wall <= 0 {
-				scanStop = map[bool]string{true: corpus.StopBytes, false: corpus.StopTime}[b.Bytes <= 0]
-				unscanned++
-				continue
-			}
 			cov, err := backend.ScanSources(ctx, svc, b, func(f core.SourceFile) bool {
 				if f.Lang == core.LangBinary {
 					return false
@@ -484,7 +534,7 @@ func registerReferences(s *Server, backend QueryInterface) {
 			scanned += cov.Scanned
 			scanTotal += cov.Total
 			if err != nil {
-				// O36: same doctrine as ListAllSymbols above — a service
+				// O36: same doctrine as the symbol list above — a service
 				// whose sources cannot be discovered degrades, never
 				// aborts the whole call.
 				degraded = append(degraded, degradedEntry{Service: svc, Reason: "sources: " + err.Error()})
@@ -497,8 +547,7 @@ func registerReferences(s *Server, backend QueryInterface) {
 			default:
 				scanStop = cov.Stopped
 			}
-			if exact && mentionConf == nil && foundAny {
-				exactAvailable = false
+			if exactWanted && mentionConf == nil && foundAny {
 				reason := fmt.Sprintf("no typed reference sites for %q in %s", p.Query, svc)
 				switch {
 				case len(typed) == 0:
@@ -506,9 +555,24 @@ func registerReferences(s *Server, backend QueryInterface) {
 				case len(defKeys) == 0:
 					reason += " (no indexed definition)"
 				}
-				degraded = append(degraded, degradedEntry{Service: svc, Reason: reason})
+				degraded = append(degraded, degradedEntry{Service: svc, Reason: reason, exactOnly: true})
 			}
 		}
+		exact := anyTyped
+		if p.Exact != nil {
+			exact = *p.Exact
+		}
+		kept := degraded[:0]
+		for _, d := range degraded {
+			if d.exactOnly {
+				if !exact {
+					continue
+				}
+				exactAvailable = false
+			}
+			kept = append(kept, d)
+		}
+		degraded = kept
 		// Occurrences in (service, file, line) order: a stream may hand
 		// files over in any discovery order.
 		sort.SliceStable(occs, func(i, j int) bool {

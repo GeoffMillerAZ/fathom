@@ -113,6 +113,32 @@ func sourceFiles(ctx context.Context, backend QueryInterface, service string, pa
 // every interface for a bare name) — interfaceMethodQuery's only input
 // beyond the index.
 func interfaceSourceFiles(ctx context.Context, backend QueryInterface, service string, nodes []core.SymbolNode, query string) []core.SourceFile {
+	return sourceFiles(ctx, backend, service, interfaceSourcePaths(nodes, query))
+}
+
+// interfaceSourceFilesWithin is interfaceSourceFiles under a byte
+// allowance (a references call's one budget, §4.5): files are read one at
+// a time and the reading stops once allowance bytes are spent. complete is
+// false when a candidate file was left unread — an interface match over a
+// subset could name a unique interface that is not one, so the caller
+// then skips the check and names the stop.
+func interfaceSourceFilesWithin(ctx context.Context, backend QueryInterface, service string, nodes []core.SymbolNode, query string, allowance int64) (files []core.SourceFile, used int64, complete bool) {
+	paths := interfaceSourcePaths(nodes, query)
+	for i, p := range paths {
+		if used >= allowance {
+			return files, used, i == len(paths)
+		}
+		for _, f := range sourceFiles(ctx, backend, service, []string{p}) {
+			used += int64(len(f.Content))
+			files = append(files, f)
+		}
+	}
+	return files, used, used <= allowance
+}
+
+// interfaceSourcePaths are the sorted files declaring the Go interfaces
+// query could name a method of.
+func interfaceSourcePaths(nodes []core.SymbolNode, query string) []string {
 	ifaceName := ""
 	if i := strings.LastIndexByte(query, '.'); i >= 0 {
 		ifaceName = query[:i]
@@ -129,5 +155,5 @@ func interfaceSourceFiles(ctx context.Context, backend QueryInterface, service s
 		}
 	}
 	sort.Strings(paths)
-	return sourceFiles(ctx, backend, service, paths)
+	return paths
 }

@@ -217,9 +217,3 @@ func blastBucketsOf(g *callgraph.Graph, nodes []core.SymbolNode, changedFiles []
 	sort.Slice(out, func(i, j int) bool { return out[i].Depth < out[j].Depth })
 	return out
 }
-
-// mentionConfidence is references_tool.go's alias for
-// callgraph.MentionConfidence (moved there in SB-45 so the L0 index oracle
-// can score the same typed-confirmation the tool renders, instead of
-// duplicating it).
-var mentionConfidence = callgraph.MentionConfidence

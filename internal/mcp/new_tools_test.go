@@ -40,8 +40,8 @@ func (e *extendedFakeBackend) FindCallers(_ context.Context, _, _ string) ([]cor
 	return nil, nil
 }
 
-func (e *extendedFakeBackend) FindSymbol(_ context.Context, _, _ string) ([]core.SymbolNode, error) {
-	return nil, nil
+func (e *extendedFakeBackend) FindSymbol(_ context.Context, _, name string) ([]core.SymbolNode, error) {
+	return nodesNamed(e.nodes, name), nil
 }
 
 func (e *extendedFakeBackend) ListAllSymbols(_ context.Context, _ string) ([]core.SymbolNode, error) {

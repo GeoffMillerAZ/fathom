@@ -16,8 +16,10 @@ import (
 )
 
 // referencesScanBytes and referencesScanWall bound one references call's
-// text scan across every service it searches (§4.5).
-const (
+// reads across every service it searches (§4.5): the text scan and the
+// interface files a bare query reads. Variables only so a test can shrink
+// them.
+var (
 	referencesScanBytes int64 = 64 << 20
 	referencesScanWall        = 5 * time.Second
 )

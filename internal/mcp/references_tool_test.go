@@ -27,6 +27,24 @@ func (r *referencesFakeBackend) Sources(_ context.Context, svc string) ([]core.S
 	return r.sourcesByService[svc], nil
 }
 
+// FindSymbol is the store's point lookup over the fixture (references
+// reads definitions through it, RT-86); like ListAllSymbols here, it does
+// not partition by service.
+func (r *referencesFakeBackend) FindSymbol(_ context.Context, _, name string) ([]core.SymbolNode, error) {
+	return nodesNamed(r.nodes, name), nil
+}
+
+// nodesNamed is a fake store's FindSymbol: the nodes named name.
+func nodesNamed(nodes []core.SymbolNode, name string) []core.SymbolNode {
+	var out []core.SymbolNode
+	for _, n := range nodes {
+		if n.Name == name {
+			out = append(out, n)
+		}
+	}
+	return out
+}
+
 // compile-time check.
 var _ mcp.QueryInterface = (*referencesFakeBackend)(nil)
 
@@ -544,8 +562,8 @@ func (f *referencesExactMultiFake) FindCallers(context.Context, string, string) 
 	return nil, nil
 }
 
-func (f *referencesExactMultiFake) FindSymbol(context.Context, string, string) ([]core.SymbolNode, error) {
-	return nil, nil
+func (f *referencesExactMultiFake) FindSymbol(_ context.Context, svc, name string) ([]core.SymbolNode, error) {
+	return nodesNamed(f.nodesByService[svc], name), nil
 }
 
 func (f *referencesExactMultiFake) ListAllSymbols(_ context.Context, svc string) ([]core.SymbolNode, error) {
@@ -664,8 +682,9 @@ func (f *referencesUnreadableFake) FindCallers(context.Context, string, string) 
 	return nil, nil
 }
 
-func (f *referencesUnreadableFake) FindSymbol(context.Context, string, string) ([]core.SymbolNode, error) {
-	return nil, nil
+func (f *referencesUnreadableFake) FindSymbol(ctx context.Context, svc, name string) ([]core.SymbolNode, error) {
+	nodes, err := f.ListAllSymbols(ctx, svc)
+	return nodesNamed(nodes, name), err
 }
 
 func (f *referencesUnreadableFake) ListAllSymbols(_ context.Context, svc string) ([]core.SymbolNode, error) {

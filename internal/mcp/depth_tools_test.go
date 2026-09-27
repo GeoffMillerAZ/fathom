@@ -42,6 +42,12 @@ func (g *graphBackend) ListAllSymbols(_ context.Context, _ string) ([]core.Symbo
 	return g.nodes, nil
 }
 
+// FindSymbol is the store's point lookup over the fixture (references
+// reads definitions through it, RT-86).
+func (g *graphBackend) FindSymbol(_ context.Context, _, name string) ([]core.SymbolNode, error) {
+	return nodesNamed(g.nodes, name), nil
+}
+
 func (g *graphBackend) TypedEdges(_ context.Context, _ string) ([]core.Edge, error) {
 	return g.typed, nil
 }
