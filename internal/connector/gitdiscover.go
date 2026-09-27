@@ -47,12 +47,49 @@ func splitNUL(out []byte) []string {
 	return paths
 }
 
+// gitRootIgnored reports whether an enclosing repository's .gitignore
+// excludes the corpus root as a whole. That repository's rules do not
+// govern a corpus it ignores (a scratch clone inside a checkout, say):
+// discovery walks it instead, and the refresh path agrees. false outside a
+// work tree, at a repository's top level, or on any git failure.
+func gitRootIgnored(ctx context.Context, root string) bool {
+	out, err := gitro.Output(ctx, root, "rev-parse", "--show-prefix")
+	if err != nil {
+		return false
+	}
+	prefix := strings.TrimSpace(string(out))
+	if prefix == "" {
+		return false
+	}
+	top, err := gitro.Output(ctx, root, "rev-parse", "--show-toplevel")
+	if err != nil {
+		return false
+	}
+	return gitIgnored(strings.TrimSpace(string(top)), prefix)
+}
+
+// ownWorkTree reports whether dir is the top level of its own git work
+// tree (a nested repository or a submodule), not merely inside another.
+func ownWorkTree(ctx context.Context, dir string) bool {
+	out, err := gitro.Output(ctx, dir, "rev-parse", "--show-toplevel")
+	if err != nil {
+		return false
+	}
+	top, err1 := filepath.EvalSymlinks(strings.TrimSpace(string(out)))
+	self, err2 := filepath.EvalSymlinks(dir)
+	return err1 == nil && err2 == nil && top == self
+}
+
 // discoverViaGit lists root's corpus through git. ok is false when root is
-// not a git work tree (the caller walks instead); an error from a work
-// tree is returned. Paths are repo-relative to root, slash-separated,
-// sorted, regular files only.
+// not a git work tree, when an enclosing repository ignores root as a
+// whole, or when git lists nothing (the caller walks instead — an empty
+// discovery would make the ingest purge every stored row); an error from a
+// work tree is returned. A nested repository or submodule, which git lists
+// as one directory entry, is listed through its own git; one that cannot
+// be is counted (GitUnlisted). Paths are repo-relative to root,
+// slash-separated, sorted, regular files only.
 func discoverViaGit(ctx context.Context, root string, ignore *filter.Matcher, include map[string]bool) (paths []string, ex Exclusions, ok bool, err error) {
-	if !isGitWorkTree(ctx, root) {
+	if !isGitWorkTree(ctx, root) || gitRootIgnored(ctx, root) {
 		return nil, ex, false, nil
 	}
 	ex.Git = true
@@ -90,18 +127,18 @@ func discoverViaGit(ctx context.Context, root string, ignore *filter.Matcher, in
 	skippedSeen := map[string]bool{}
 	ignoredSeen := map[string]bool{}
 	seen := make(map[string]bool, len(candidates))
-	for i, rel := range candidates {
+	for i := 0; i < len(candidates); i++ {
 		if i%256 == 0 {
 			if cerr := ctx.Err(); cerr != nil {
 				return nil, ex, true, cerr
 			}
 		}
-		rel = filepath.ToSlash(rel)
-		if seen[rel] {
+		rel := strings.TrimSuffix(filepath.ToSlash(candidates[i]), "/")
+		if rel == "" || seen[rel] {
 			continue
 		}
 		seen[rel] = true
-		if dir, why := excludedDirOf(rel, ignore, include); why != "" {
+		if dir, why := excludedDirOf(rel+"/_", ignore, include); why != "" {
 			switch why {
 			case "skip":
 				skippedSeen[dir] = true
@@ -115,11 +152,42 @@ func discoverViaGit(ctx context.Context, root string, ignore *filter.Matcher, in
 		if ignore != nil && ignore.Match(rel) {
 			continue
 		}
-		fi, lerr := os.Lstat(filepath.Join(root, filepath.FromSlash(rel)))
-		if lerr != nil || !fi.Mode().IsRegular() {
-			continue // deleted from the work tree, a symlink, or a submodule
+		abs := filepath.Join(root, filepath.FromSlash(rel))
+		fi, lerr := os.Lstat(abs)
+		if lerr != nil {
+			continue // deleted from the work tree
+		}
+		if fi.IsDir() {
+			// A nested repository or a submodule: git lists it as one
+			// entry. Its own git lists its files (its own .gitignore
+			// applies); one it cannot list is counted, never dropped
+			// silently.
+			if !ownWorkTree(ctx, abs) {
+				ex.GitUnlisted++
+				continue
+			}
+			sub, serr := gitro.Output(ctx, abs, "ls-files", "-co", "--exclude-standard", "-z", "--", ".")
+			if serr != nil {
+				ex.GitUnlisted++
+				continue
+			}
+			for _, p := range splitNUL(sub) {
+				candidates = append(candidates, rel+"/"+filepath.ToSlash(p))
+			}
+			if ign, ierr := gitro.Output(ctx, abs, "ls-files", "-o", "-i", "--exclude-standard", "--directory", "-z", "--", "."); ierr == nil {
+				ex.GitIgnored += len(splitNUL(ign))
+			}
+			continue
+		}
+		if !fi.Mode().IsRegular() {
+			continue // a symlink
 		}
 		paths = append(paths, rel)
+	}
+	if len(paths) == 0 {
+		// Nothing listed: walk rather than hand the ingest an empty
+		// corpus it would take as every stored file deleted.
+		return nil, Exclusions{}, false, nil
 	}
 	sort.Strings(paths)
 	ex.SkippedDirs, ex.IgnoredDirs = len(skippedSeen), len(ignoredSeen)
@@ -166,3 +234,11 @@ func gitIgnored(root, rel string) bool {
 
 // gitCheckIgnoreTimeout bounds the one-file check the refresh path runs.
 const gitCheckIgnoreTimeout = 5 * time.Second
+
+// refreshRootIgnored is gitRootIgnored for the one-file refresh path,
+// bounded like its check-ignore.
+func refreshRootIgnored(root string) bool {
+	ctx, cancel := context.WithTimeout(context.Background(), gitCheckIgnoreTimeout)
+	defer cancel()
+	return gitRootIgnored(ctx, root)
+}

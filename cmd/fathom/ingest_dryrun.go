@@ -47,6 +47,9 @@ type ingestDryRunStats struct {
 	// the untracked entries .gitignore excluded (directories collapsed).
 	Git        bool `json:"git"`
 	GitIgnored int  `json:"gitignored"`
+	// GitUnlisted counts nested repositories or submodules git listed
+	// that could not be listed through their own git (excluded, counted).
+	GitUnlisted int `json:"git_unlisted"`
 	// StatFailed counts discovered files whose stat failed; their size is
 	// not in Bytes, so Bytes is then a lower bound (I38).
 	StatFailed int                    `json:"stat_failed"`
@@ -81,7 +84,7 @@ func runIngestDryRunStats(ctx context.Context, conn connector.Connector, svc cor
 		}
 		out.SkippedDirs = ex.SkippedDirs
 		out.IgnoredDirs = ex.IgnoredDirs
-		out.Git, out.GitIgnored = ex.Git, ex.GitIgnored
+		out.Git, out.GitIgnored, out.GitUnlisted = ex.Git, ex.GitIgnored, ex.GitUnlisted
 	}
 	var sized []ingestDryRunFileJSON
 	for _, ref := range refs {
@@ -131,6 +134,9 @@ func runIngestDryRunStats(ctx context.Context, conn connector.Connector, svc cor
 	fmt.Fprintf(stdout, "pruned:     %d always-skipped dir(s) (vendor, .git, testdata, …), %d by ignore files\n", out.SkippedDirs, out.IgnoredDirs)
 	if out.Git {
 		fmt.Fprintf(stdout, "gitignored: %d untracked entr(ies) excluded by .gitignore (discovered through git)\n", out.GitIgnored)
+		if out.GitUnlisted > 0 {
+			fmt.Fprintf(stdout, "unlisted:   %d nested repositor(ies) or submodule(s) git could not list — excluded\n", out.GitUnlisted)
+		}
 	}
 	if out.StatFailed > 0 {
 		fmt.Fprintf(stdout, "stat-failed: %d file(s) — bytes is a lower bound\n", out.StatFailed)

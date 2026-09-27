@@ -66,6 +66,10 @@ type Exclusions struct {
 	// did.
 	GitIgnored int
 	Git        bool
+	// GitUnlisted counts directory entries git listed that discovery could
+	// not list through their own git (a nested repository or submodule
+	// with no readable work tree): excluded, and counted (I38).
+	GitUnlisted int
 }
 
 // ExclusionReporter is implemented by connectors that record what their
@@ -173,7 +177,7 @@ func ExcludedFromCorpus(root, serviceID, rel string) (reason string, excluded bo
 	// does (unless include re-includes its directory), so a refresh must
 	// not index it either.
 	if gitMode && !underInclude(rel, include) {
-		if gitIgnored(root, rel) {
+		if gitIgnored(root, rel) && !refreshRootIgnored(root) {
 			return "ignored by .gitignore ([connector] respect_gitignore)", true, nil
 		}
 	}
