@@ -855,7 +855,10 @@ Every hook verb (`session-hook` and its `--event`s, `edit-hook [--pre]`, `prompt
 - **One deadline per invocation**: the harness descriptor's timeout minus max(1 s, 20%)
   (Claude Code's 5 s hooks get 4 s, 10 s hooks 8 s, Codex's 3 s SessionEnd 2 s). Every
   RPC's context ends at it and carries `X-Fathom-Deadline: <ms left>`. `post-commit-hook`
-  is a git hook with no descriptor: its `--timeout` bounds each call.
+  is a git hook with no descriptor: its `--timeout` bounds each call. It queues a
+  refresh of a service the daemon already indexes (`POST /refresh-request`) and never
+  onboards one: in a repository the daemon does not index it prints the `ingest` MCP
+  tool call (`{"service", "path"}`) that onboards it once.
 - **Retries**: the service enumeration retries once, only on a refused or reset
   connection and only while the deadline has time left; a timeout or 5xx is never retried.
 - **Shared breaker**: `$TMPDIR/fathom-hook-health/daemon-health-<sha8(url)>.json`, shared

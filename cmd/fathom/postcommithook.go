@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -147,6 +148,12 @@ func cmdPostCommitHook(args []string, stdout, stderr io.Writer) int {
 // prints (RT-170): what failed, that nothing was ingested, and the refresh
 // to run through the daemon when it is back.
 func postCommitFailureLine(service, root string, err error) string {
+	if errors.Is(err, errServiceNotIndexed) {
+		// RT-111: the hook queues a refresh of a service the daemon
+		// indexes; it never onboards one (the ingest tool with a path did,
+		// before the refresh queue). Say how to onboard it once.
+		return fmt.Sprintf("post-commit: %q is not indexed by the daemon — nothing was ingested; a commit hook never onboards a service. Onboard it once through the daemon: the ingest MCP tool with {\"service\": %q, \"path\": %q} (then each commit queues its refresh)", service, service, root)
+	}
 	return fmt.Sprintf("post-commit: daemon refresh failed (%v) — nothing was ingested; %q stays at its previously indexed commit. When the daemon is back, refresh through it: fathom post-commit-hook --dir %s (or the ingest MCP tool for service %q)", err, service, root, service)
 }
 
@@ -209,6 +216,8 @@ func enqueueViaDaemon(baseURL, service string, timeout time.Duration) (what stri
 			what += " (" + ans.Paused + ")"
 		}
 		return what, true, nil
+	case isAnswer && resp.StatusCode == http.StatusNotFound:
+		return "", true, fmt.Errorf("%w (HTTP 404): %s", errServiceNotIndexed, ans.Error)
 	case isAnswer:
 		why := ans.Refused
 		if why == "" {
@@ -218,6 +227,10 @@ func enqueueViaDaemon(baseURL, service string, timeout time.Duration) (what stri
 	}
 	return "", false, nil
 }
+
+// errServiceNotIndexed is enqueueViaDaemon's error for a service the daemon
+// does not index (POST /refresh-request's 404): the hook never onboards one.
+var errServiceNotIndexed = errors.New("service not indexed by the daemon")
 
 // ingestToolViaDaemon calls the daemon's `ingest` tool for service — the
 // fallback for a daemon that predates POST /refresh-request. A JSON-RPC
