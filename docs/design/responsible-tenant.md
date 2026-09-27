@@ -977,8 +977,9 @@ written by rename.
   the `fathom` service's path) keep `list_services`; they run outside hooks.
 - `SubagentStart` reuses the parent session's SessionStart resolution from the session
   stamp (zero RPCs).
-- `gitToplevel` memoized in-process and cached per cwd (keyed by cwd and `.git` mtime, 10
-  min TTL).
+- `gitToplevel` memoized in-process and cached per cwd (keyed by cwd and the device and
+  inode of the `.git` nearest the cwd, 10 min TTL; not `.git`'s mtime, which every index
+  refresh moves, so a key on it would miss on nearly every call).
 - Observe-only paths (the Read|Grep|Glob observer; post-bash with no write targets) exit
   before any git or daemon work, and are registered non-blocking (async) in the hook
   template where the harness supports it, so an agent's tool call never waits on them

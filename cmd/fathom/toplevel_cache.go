@@ -3,10 +3,13 @@ package main
 // toplevel_cache.go — gitToplevel memoized in process and cached per cwd
 // across hook processes (docs/design/responsible-tenant.md §11.3, RT-130).
 // A cached answer is keyed by the cwd and holds for 10 minutes while its
-// evidence stands: a toplevel answer while <top>/.git has the mtime it had
-// (a re-init or a moved repository misses), a "not a repository" answer
-// while no .git exists at the cwd or above it (a `git init` misses). A
-// miss forks git once and writes the answer back by rename.
+// evidence stands: a toplevel answer while the .git nearest the cwd is
+// still <top>/.git, the same file (device and inode) — a nested `git
+// init`, a re-init or a moved repository misses; .git's mtime is not
+// evidence, since every index refresh (git status, git diff) moves it — and
+// a "not a repository" answer while no .git exists at the cwd or above it
+// (a `git init` misses). A miss forks git once and writes the answer back
+// by rename.
 
 import (
 	"crypto/sha256"
@@ -34,10 +37,11 @@ var (
 var toplevelMemo sync.Map
 
 type toplevelEntry struct {
-	Cwd      string    `json:"cwd"`
-	Top      string    `json:"top"`
-	GitMtime int64     `json:"git_mtime_ns,omitempty"` // <top>/.git's mtime; 0 for "" answers
-	At       time.Time `json:"at"`
+	Cwd    string    `json:"cwd"`
+	Top    string    `json:"top"`
+	GitDev uint64    `json:"git_dev,omitempty"` // <top>/.git's device and inode; 0 for "" answers
+	GitIno uint64    `json:"git_ino,omitempty"`
+	At     time.Time `json:"at"`
 }
 
 // gitToplevelCached is gitToplevel through the in-process memo and the
@@ -60,11 +64,11 @@ func gitToplevelCached(dir string) string {
 	top := gitToplevelExec(dir)
 	e := toplevelEntry{Cwd: dir, Top: top, At: now}
 	if top != "" {
-		st, err := os.Stat(filepath.Join(top, ".git"))
-		if err != nil {
+		id := identify(filepath.Join(top, ".git")) // unmanaged.go's (device, inode)
+		if !id.ok {
 			return top // no evidence to key on: answer, cache nothing
 		}
-		e.GitMtime = st.ModTime().UnixNano()
+		e.GitDev, e.GitIno = id.dev, id.ino
 	}
 	toplevelMemo.Store(dir, e)
 	if b, err := json.Marshal(e); err == nil {
@@ -85,19 +89,16 @@ func toplevelValid(e toplevelEntry, now time.Time) bool {
 	if now.Sub(e.At) >= toplevelTTL || now.Before(e.At) {
 		return false
 	}
-	if e.Top != "" {
-		st, err := os.Stat(filepath.Join(e.Top, ".git"))
-		return err == nil && st.ModTime().UnixNano() == e.GitMtime
-	}
-	// A "not a repository" answer stands while no .git exists at or above
-	// the cwd (a few stats, no fork).
+	// The nearest .git at or above the cwd (a few stats, no fork): for a
+	// toplevel answer it must be the recorded <top>/.git; for a "not a
+	// repository" answer there must be none.
 	for d := e.Cwd; ; {
-		if _, err := os.Lstat(filepath.Join(d, ".git")); err == nil {
-			return false
+		if id := identify(filepath.Join(d, ".git")); id.ok {
+			return e.Top != "" && e.GitIno != 0 && id.dev == e.GitDev && id.ino == e.GitIno
 		}
 		parent := filepath.Dir(d)
 		if parent == d {
-			return true
+			return e.Top == ""
 		}
 		d = parent
 	}
