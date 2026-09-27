@@ -19,6 +19,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/llmsec"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
+	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
 
 // WithLLM attaches an LLM client for semantic-layer compilation. model is
@@ -361,6 +362,10 @@ func (c *Client) ObligationsLayerCoverage(ctx context.Context, service string) (
 		return semantic.ObligationsLayerCoverage(ctx, c.st, service, semantic.LayerObligations)
 	}
 	corpus, unread, err := c.layerCorpus(ctx, service, layerDef)
+	if errors.Is(err, tenancy.ErrOverBudget) {
+		// RT-153 / I38: halted by the governor — named, not a fallback.
+		return semantic.LayerCoverage{}, false, err
+	}
 	if err != nil {
 		return semantic.ObligationsLayerCoverage(ctx, c.st, service, semantic.LayerObligations)
 	}
@@ -415,6 +420,10 @@ func (c *Client) RawFallbackObligations(ctx context.Context, service, file strin
 		return nil, "", false, nil
 	}
 	corpus, unread, err := c.layerCorpus(ctx, service, layerDef)
+	if errors.Is(err, tenancy.ErrOverBudget) {
+		// RT-153 / I38: a governor halt is named, never "nothing to add".
+		return nil, "", false, err
+	}
 	if err != nil {
 		return nil, "", false, nil
 	}
@@ -520,6 +529,11 @@ func (c *Client) editedFileTokens(ctx context.Context, root, service, file strin
 		}
 	}
 	data, err := c.conn.Fetch(ctx, core.SourceRef{Service: service, Path: file})
+	if errors.Is(err, tenancy.ErrOverBudget) {
+		// RT-153 / I38: not read because the governor halted it — named
+		// in why, never the silent "file simply isn't there".
+		return nil, err.Error()
+	}
 	if err != nil {
 		return nil, ""
 	}

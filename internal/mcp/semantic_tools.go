@@ -12,6 +12,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/modserve"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
+	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
 
 // ─── optional backend interfaces ─────────────────────────────────────────────
@@ -337,6 +338,9 @@ func renderObligationReceipt(ctx context.Context, backend QueryInterface, servic
 				// the raw fallback could not be computed — named below as
 				// coverage_skipped, never a silent "no gap".
 				coverageSkipped = core.ErrSourcesBusy.Error()
+			case errors.Is(rerr, tenancy.ErrOverBudget):
+				// RT-153 / I38: the governor halted the guide reads.
+				coverageSkipped = rerr.Error()
 			case rerr == nil && rok && len(rows) > 0:
 				obl.Rules = append(rows, obl.Rules...)
 			}
@@ -443,10 +447,11 @@ func renderObligationReceipt(ctx context.Context, backend QueryInterface, servic
 	if cb, ok := backend.(layerCoverageBackend); ok && obl.AsOf == "" {
 		cov, found, cerr := cb.ObligationsLayerCoverage(ctx, service)
 		switch {
-		case errors.Is(cerr, core.ErrSourcesBusy):
-			// RT-146 / I38: coverage could not be measured this call —
-			// named, never omitted as if there were nothing to report.
-			coverageSkipped = core.ErrSourcesBusy.Error()
+		case errors.Is(cerr, core.ErrSourcesBusy), errors.Is(cerr, tenancy.ErrOverBudget):
+			// RT-146 / RT-153 / I38: coverage could not be measured this
+			// call (a busy tree read, or the governor halted it) — named,
+			// never omitted as if there were nothing to report.
+			coverageSkipped = cerr.Error()
 			result["layer_coverage"] = map[string]any{"status": "skipped", "note": coverageSkipped}
 		case cerr != nil:
 			// An actual RPC/store error answering the coverage question is
