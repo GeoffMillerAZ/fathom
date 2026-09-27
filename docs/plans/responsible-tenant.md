@@ -213,6 +213,7 @@ bound memory here.
 - [x] The call log rotates and gzips at 64 MiB with a rollup and archives, never deletes; console tails read the rotated generation (§12.1) {id: RT-126, symbol: rotateCallLog, package: cmd/fathom, reachable_from: TestCallLogRotationArchivesNeverDeletes}
 - [x] Stdio logs rotate on their own ticker, stream the copy, and hard-cap without copying (§12.2) {id: RT-127, symbol: rotateStdioLog, package: cmd/fathom, reachable_from: TestStdioRotationStreamsAndHardCaps}
 - [x] The managed daemon truncates the WAL after 5 idle minutes, at most hourly (§12.2) {id: RT-128, symbol: checkpointWhenIdle, package: cmd/fathom, reachable_from: TestWALTruncatedWhenIdle}
+- [x] The managed daemon applies gc's daily classes (session stamps, dead daemon records, $TMPDIR caches, diag captures) once a day, never in its first 10 minutes, never while work is in flight or the ladder is above normal (§12.1) {id: RT-180, symbol: gcDailyTick, package: cmd/fathom, reachable_from: TestManagedDaemonRunsDailyGC}
 - [x] Gate runs take a machine-wide lease and run niced with `go test -p 4`; `scripts/gate-lease_test.sh` (run by `task scripts-check`) proves two concurrent holders serialize (§12.3) {id: RT-129, oracle: lexical, path: Taskfile.yml, pattern: "bash scripts/gate-lease_test\.sh"}
 - [x] `gitToplevel` is memoized and cached per cwd (§11.3) {id: RT-130, symbol: gitToplevelCached, package: cmd/fathom, reachable_from: TestGitToplevelCachedPerCwd}
 - [x] Observe-only hook paths exit before any git or daemon work (§11.3) {id: RT-131, symbol: observeOnlyExit, package: cmd/fathom, reachable_from: TestObserveOnlyHooksSkipGitAndDaemon}
@@ -262,6 +263,7 @@ Every harness run is gated on the operator's go-ahead and runs on a quiet machin
 - [-] The decision port classifying incident windows for doctor's remedies {id: RT-D5, disposition: deferred, reason: "two labelled incidents cannot prove a margin", trigger: "five or more labelled episodes exist"}
 - [-] Ingest and the typed pass in a child worker process (`fathom ingest-worker`) whose memory returns to the OS on exit {id: RT-D6, disposition: deferred, reason: "streaming ingest and the producer governor bound the peak; a worker adds a process per ingest and a second store opener", trigger: "RT-M4 reads the daemon's footprint 10 min after an ingest above 1.25x its pre-ingest footprint, or app-kit ingest above 300 MiB after RT-103"}
 - [-] pprof, metrics and /debug/inflight on a private unix socket with its own budget {id: RT-D7, disposition: deferred, reason: "the loopback Host check and admission may already keep /metrics reachable; a socket is a new breaking surface", trigger: "RT-M3 records /metrics unreachable under load"}
+- [-] `fathom gc --apply --vacuum`: VACUUM of a store on request (§12.2) {id: RT-D9, disposition: deferred, reason: "VACUUM needs the store exclusively and rewrites it whole; journal_size_limit and the idle WAL truncation (RT-128) bound the growth the incident showed, and no measured store carries a large freelist", trigger: "a store file measured at more than 1.5x its live pages (freelist_count over page_count) on the operator's machine"}
 - [-] Linux PSI and cgroup budget readers, and a systemd unit {id: RT-D8, disposition: deferred, reason: "no Linux adopter exists; Linux reads RSS and reports pressure and swap Unknown; the systemd mapping is documented only", trigger: "a registered Linux adopter runs the managed daemon"}
 
 ## Hazard → row map
@@ -327,9 +329,9 @@ appears in two classes and once here).
 | bench-and-script-daemons-escape-cleanup | RT-20, RT-25, RT-168 |
 | gates-spawn-parallel-heavy-work-per-push-and-commit | RT-129, RT-111, RT-170 |
 | daemon-forks-git-and-go-toolchain-in-request-path | RT-99, RT-101, RT-106, RT-161 |
-| state-files-without-retention | RT-125, RT-126, RT-175 |
+| state-files-without-retention | RT-125, RT-126, RT-175, RT-180 |
 | workspace-bench-artifacts-unbounded | RT-125, RT-135 |
-| sqlite-wal-and-store-never-shrink | RT-78, RT-128 |
+| sqlite-wal-and-store-never-shrink | RT-78, RT-128; VACUUM deferred as RT-D9 |
 | custodian-walk-in-hooks-for-non-git-roots | RT-134 |
 | pprof-open-on-daemon | RT-123, RT-D7 |
 | soft-memory-limit-is-not-a-cap | RT-33, RT-35, RT-36, RT-141 |

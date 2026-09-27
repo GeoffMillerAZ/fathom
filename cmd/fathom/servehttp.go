@@ -711,6 +711,15 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 		defer stopWAL()
 		go runWALIdleCheckpoint(walCtx, rpcActivity.Load, func() bool { return tenancy.DefaultInFlight.Len() > 0 }, cp.Checkpoint, func(m string) { outLog.Info(m) })
 	}
+	// RT-180 (§12.1): the managed daemon applies gc's daily classes once a
+	// day, idle and at the ladder's normal level only.
+	if managed {
+		gcCtx, stopGC := context.WithCancel(context.Background())
+		defer stopGC()
+		go runDailyGC(gcCtx, time.Now(), func() bool {
+			return tenancy.DefaultInFlight.Len() > 0 || tenancy.CurrentLevel() != tenancy.LevelNormal
+		}, func(m string) { outLog.Info(m) })
+	}
 	publishDaemonEvent(consoleDeps.bus, prevRecord, hadPrev, commit)
 	eventSources := newConsoleEventSources(consoleDeps.bus, c, verifyLedgerPath(), sessionLedgerPath())
 	eventSources.warn = func(msg string) { flog.Warn(msg) }

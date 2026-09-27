@@ -1777,6 +1777,11 @@ and changes nothing — until `--apply`. Evidence is archived, never deleted:
 
 Exit `0`, or `1` when any class could not be read or acted on (each error named).
 
+The managed daemon applies the `session-stamps`, `daemon-records`, `diag` and `tmp` classes
+itself once a day (RT-180): never in its first 10 minutes, never while work is in flight or
+its ladder is above normal, one `gc (daily)` line in its log per run. The workspace classes
+stay with this verb. `VACUUM` of a store is not offered (deferred, RT-D9).
+
 The serving daemon also bounds what it writes while it runs (RT-126..RT-128): the call
 log rotates at 64 MiB the same way (console tails read the rotated generation
 `<log>.1`, so traffic history survives a rotation); `fathom-http.log`/`.err` rotate on

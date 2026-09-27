@@ -1015,6 +1015,8 @@ instead of "/24h".
 | `workspace/tmp/fathom-bin-*` | keep last 3 | no; reported |
 | `~/.fathom/daemon/<id>/diag` | 10 captures / 200 MiB | yes |
 
+The daily run (RT-180) is the managed daemon applying `runGC` over the home and `$TMPDIR` only — the rows marked yes — once a day, never in its first 10 minutes, never while work is in flight or the ladder is above normal; each run writes one line to the serve-http log.
+
 Console tails read the rotated generation; every usage reader (`classifyCallLogRead` and the discoveries pointer rows) reads every generation — archives, pending, `.1`, live — so a rotation hides no history (I38). A pending generation whose archive already exists (a kill between the archive's rename and the pending file's removal) is read once, as its archive. A windowed reader (`discoveries --since`, `metrics traffic --since`) never opens a generation wholly older than its window: a generation is named for the moment it left `.1`, so every row in it is older than its name. An all-history reader (the console's totals, `instrument --adoption`) still reads every generation per render, as it read the one unbounded live log before rotation; bounding it (serving archived generations from their rollups) waits until a console render over the archives is measured slow (Revisit when: an Operate or Overview render over the call log exceeds 1 s on the operator's machine). Doctor `disk_retention`: reclaimable bytes by
 class, the largest classes, internal-disk free. Targets: `workspace/` ≤ 3 GiB after `gc
 --apply` (10 GB today); `~/.fathom` ≤ 500 MB.
@@ -1025,7 +1027,8 @@ class, the largest classes, internal-disk free. Targets: `workspace/` ≤ 3 GiB 
   longer disables it); the copy streams with `io.Copy`; above 256 MiB it truncates without
   copying and writes one line naming the discarded bytes.
 - `journal_size_limit` 64 MiB; `wal_checkpoint(TRUNCATE)` after 5 idle minutes, at most
-  hourly; `VACUUM` only via `fathom gc --apply --vacuum`.
+  hourly; `VACUUM` only via `fathom gc --apply --vacuum`, deferred (RT-D9) until a store is measured
+  at more than 1.5x its live pages.
 
 ### 12.3 Gates on a shared machine
 
