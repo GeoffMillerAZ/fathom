@@ -361,7 +361,8 @@ Every tool declares a cost class (design `docs/design/responsible-tenant.md` §3
 RT-55); registering a tool without one fails. The admission gate admits each
 `tools/call` in its class before the handler runs: per-class slots derived from the
 budget, a per-call byte ceiling and a server deadline (`point` 10 s, `index` 30 s,
-`tree` 60 s, `fleet` 120 s; `ingest` runs detached). A class is the tool's cost
+`tree` 60 s, `fleet` 120 s; `ingest` runs detached, and the `ingest` tool queues for
+the daemon's one ingest slot — never beside another ingest or a summary backfill). A class is the tool's cost
 **today** (`internal/mcp/testdata/toolcost.json`, held by
 `TestCostClassMatchesMeasuredCost`); a tool moves to a cheaper class only in the commit
 that rewrites it. `references` with `services: ["*"]` is `fleet`. `batch` holds no
