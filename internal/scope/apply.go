@@ -100,6 +100,25 @@ func (s *Set) Match(service, ref string, now time.Time) (Suppression, bool) {
 	return Suppression{}, false
 }
 
+// AffectsService reports whether any suppression ACTIVE at now applies to
+// service (its own or a fleet-wide one) — a cheap gate for reads that
+// serve a precomputed aggregate and must recompute it only when something
+// could be hidden (RT-79's service_summary).
+func (s *Set) AffectsService(service string, now time.Time) bool {
+	if s.Empty() {
+		return false
+	}
+	for _, e := range s.entries {
+		if SuppressionState(e.sup, now) != StateActive {
+			continue
+		}
+		if e.sup.Service == "" || e.sup.Service == service {
+			return true
+		}
+	}
+	return false
+}
+
 // Disclosure is what a filtered read owes its caller: how many rows were
 // hidden and the governing reason(s). §2.2 — "a silent filter is
 // indistinguishable from a recall bug, and this program has spent real time

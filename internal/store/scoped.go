@@ -37,6 +37,7 @@ package store
 
 import (
 	"context"
+	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/scope"
@@ -276,4 +277,146 @@ func (s *SQLiteStore) PackageObservations(ctx context.Context, serviceID string,
 func (m *MemoryStore) PackageObservations(ctx context.Context, serviceID string, pkgs []string) ([]core.Observation, error) {
 	obs, err := m.packageObservationsRaw(ctx, serviceID, pkgs)
 	return filterScoped(ctx, m.gate, serviceID, obs, err, func(o core.Observation) string { return o.SourceRef })
+}
+
+// ---- Derived facts (RT-76, RT-77, RT-79, RT-82): both backends ----
+
+// ServiceSummary serves the stored summary row; when a suppression applies
+// to the service its counts are recomputed without the hidden files — the
+// symbol count and source kinds from the filtered SourceKindCounts
+// aggregate, the file facts from the filtered file_stats (or, before an
+// ingest wrote them, the filtered source refs) — so a hidden file is never
+// counted.
+func (s *SQLiteStore) ServiceSummary(ctx context.Context, serviceID string) (ServiceSummary, bool, error) {
+	sum, ok, err := s.serviceSummaryRaw(ctx, serviceID)
+	if err != nil || !ok {
+		return sum, ok, err
+	}
+	return filterSummary(ctx, s.gate, serviceID, sum, derivedReads{
+		kinds: func() ([]SourceKindCount, error) { return s.sourceKindCountsRaw(ctx, serviceID) },
+		files: func() ([]FileStat, error) { return s.fileStatsRaw(ctx, serviceID) },
+		refs:  func() ([]string, error) { return s.listSourceRefsRaw(ctx, serviceID) },
+	})
+}
+
+// FileStats filters by file_stats.path. ok is false when no ingest has
+// written file_stats for the service yet (a named absence, never a walk).
+func (s *SQLiteStore) FileStats(ctx context.Context, serviceID string) ([]FileStat, bool, error) {
+	files, err := s.fileStatsRaw(ctx, serviceID)
+	ok := len(files) > 0
+	files, err = filterScoped(ctx, s.gate, serviceID, files, err, func(f FileStat) string { return f.Path })
+	return files, ok, err
+}
+
+// CallersOfKeys filters each row by its service's suppressions on
+// observations.source_ref.
+func (s *SQLiteStore) CallersOfKeys(ctx context.Context, keys []string) ([]CallerRow, error) {
+	rows, err := s.callersOfKeysRaw(ctx, keys)
+	return filterCallerRows(ctx, s.gate, rows, err)
+}
+
+// ServiceSummary is the memory backend's summary read; see SQLiteStore's.
+func (m *MemoryStore) ServiceSummary(ctx context.Context, serviceID string) (ServiceSummary, bool, error) {
+	sum, ok := m.serviceSummaryRaw(serviceID)
+	if !ok {
+		return sum, false, nil
+	}
+	return filterSummary(ctx, m.gate, serviceID, sum, derivedReads{
+		kinds: func() ([]SourceKindCount, error) { return m.sourceKindCountsRaw(ctx, serviceID) },
+		files: func() ([]FileStat, error) { return m.fileStatsRaw(serviceID), nil },
+		refs:  func() ([]string, error) { return m.listSourceRefsRaw(ctx, serviceID) },
+	})
+}
+
+// FileStats filters by file_stats.path.
+func (m *MemoryStore) FileStats(ctx context.Context, serviceID string) ([]FileStat, bool, error) {
+	files := m.fileStatsRaw(serviceID)
+	ok := len(files) > 0
+	files, err := filterScoped(ctx, m.gate, serviceID, files, nil, func(f FileStat) string { return f.Path })
+	return files, ok, err
+}
+
+// CallersOfKeys filters by source_ref, per row's service.
+func (m *MemoryStore) CallersOfKeys(ctx context.Context, keys []string) ([]CallerRow, error) {
+	return filterCallerRows(ctx, m.gate, m.callersOfKeysRaw(keys), nil)
+}
+
+type derivedReads struct {
+	kinds func() ([]SourceKindCount, error)
+	files func() ([]FileStat, error)
+	refs  func() ([]string, error)
+}
+
+func filterSummary(ctx context.Context, g scopeGate, serviceID string, sum ServiceSummary, r derivedReads) (ServiceSummary, bool, error) {
+	if g.src == nil {
+		return sum, true, nil
+	}
+	set, now := g.src.Snapshot()
+	if !set.AffectsService(serviceID, now) {
+		return sum, true, nil
+	}
+	rows, err := r.kinds()
+	rows, err = filterScoped(ctx, g, serviceID, rows, err, func(c SourceKindCount) string { return c.SourceRef })
+	if err != nil {
+		return ServiceSummary{}, false, err
+	}
+	sum.SymbolCount, sum.SourceKinds = 0, nil
+	kinds := map[core.SourceKind]bool{}
+	for _, c := range rows {
+		sum.SymbolCount += c.Count
+		kinds[c.Kind] = true
+	}
+	for k := range kinds {
+		sum.SourceKinds = append(sum.SourceKinds, k)
+	}
+	sortKinds(sum.SourceKinds)
+	sum.Filtered = true
+	if sum.HasFileStats {
+		files, err := r.files()
+		files, err = filterScoped(ctx, g, serviceID, files, err, func(f FileStat) string { return f.Path })
+		if err != nil {
+			return ServiceSummary{}, false, err
+		}
+		sum.FileCount, sum.Bytes, sum.UnsupportedLangs = len(files), 0, nil
+		for _, f := range files {
+			sum.Bytes += f.Size
+			if lang, ok := strings.CutPrefix(f.Lang, UnsupportedLangPrefix); ok {
+				if sum.UnsupportedLangs == nil {
+					sum.UnsupportedLangs = map[string]int{}
+				}
+				sum.UnsupportedLangs[lang]++
+			}
+		}
+		return sum, true, nil
+	}
+	refs, err := r.refs()
+	refs, err = filterScoped(ctx, g, serviceID, refs, err, func(p string) string { return p })
+	if err != nil {
+		return ServiceSummary{}, false, err
+	}
+	// A backfilled row's unsupported counts came from a name-only pass the
+	// store cannot redo without the classifier: dropped rather than served
+	// with a hidden file in them.
+	sum.FileCount, sum.UnsupportedLangs = len(refs), nil
+	return sum, true, nil
+}
+
+func filterCallerRows(ctx context.Context, g scopeGate, rows []CallerRow, err error) ([]CallerRow, error) {
+	if err != nil || g.src == nil || len(rows) == 0 {
+		return rows, err
+	}
+	var out []CallerRow
+	for start := 0; start < len(rows); {
+		end := start
+		for end < len(rows) && rows[end].ServiceID == rows[start].ServiceID {
+			end++
+		}
+		kept, ferr := filterScoped(ctx, g, rows[start].ServiceID, rows[start:end:end], nil, func(r CallerRow) string { return r.SourceRef })
+		if ferr != nil {
+			return nil, ferr
+		}
+		out = append(out, kept...)
+		start = end
+	}
+	return out, nil
 }

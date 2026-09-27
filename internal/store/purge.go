@@ -697,6 +697,14 @@ func (s *SQLiteStore) executePurge(ctx context.Context, serviceID string, plan *
 	if err := del(`DELETE FROM fingerprints WHERE service_id = ? AND source_ref IN (%s)`, plan.byLocation[LocFingerprints], true); err != nil {
 		return out, err
 	}
+	// file_stats names the purged paths too (RT-76); the summary's counts
+	// included them and is rebuilt by backfill at first use.
+	if err := del(`DELETE FROM file_stats WHERE service_id = ? AND path IN (%s)`, plan.byLocation[LocFingerprints], true); err != nil {
+		return out, err
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM service_summary WHERE service_id = ?`, serviceID); err != nil {
+		return out, fmt.Errorf("store.PurgePaths summary: %w", err)
+	}
 	if err := del(`DELETE FROM doc_summaries WHERE service_id = ? AND source_ref IN (%s)`, plan.byLocation[LocDocSummaries], true); err != nil {
 		return out, err
 	}
@@ -731,6 +739,13 @@ func (s *SQLiteStore) executePurge(ctx context.Context, serviceID string, plan *
 	committed = true
 
 	purgePhysicalResidue(ctx, conn, s.path, &out)
+	if out.Vacuumed {
+		// VACUUM may renumber observations' rowids, which the call index
+		// keys on (RT-77): forget it; each service is backfilled again.
+		if err := resetCallIndex(ctx, conn); err != nil {
+			return out, fmt.Errorf("store.PurgePaths reset call index: %w", err)
+		}
+	}
 	return out, nil
 }
 

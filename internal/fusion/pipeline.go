@@ -736,6 +736,8 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	if er, ok := p.conn.(connector.ExclusionReporter); ok {
 		report.DefaultIgnoredDirs = er.Exclusions(svc.ID).DefaultIgnored
 	}
+	run.refs = refs
+	run.defaultIgnore = len(report.DefaultIgnoredDirs)
 
 	// Build this ingest's sibling index ONCE from the just-Discovered list
 	// (ADR-021 §2 / TI-1, option (b) from the grounding: O(files), not
@@ -890,11 +892,13 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 				return report, err
 			}
 			report.Oversize++
+			run.noteFact(ref.Path, fileFact{size: over.Size, excluded: "oversize"})
 			continue
 		}
 		if fetched[i].err != nil {
 			// Unreadable this run: no hash-gate, no purge, no fingerprint —
 			// the stored evidence stays until the file can be read again.
+			run.noteFact(ref.Path, fileFact{size: -1, excluded: "unreadable"})
 			continue
 		}
 		content := fetched[i].content
@@ -904,6 +908,7 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 		// fingerprint, or improved extraction never reaches unchanged files —
 		// the stale-observation class dogfood O9 caught.
 		hash := FingerprintHash(content)
+		run.noteFact(ref.Path, fileFact{size: int64(len(content)), hash: hash})
 
 		// Hash-gate: compare against stored fingerprint.
 		storedHash, found, fpErr := p.st.Fingerprint(ctx, svc.ID, ref.Path)
@@ -1039,7 +1044,7 @@ func (p *Pipeline) finalCommit(ctx context.Context, svc core.ServiceRef, run ing
 // never aborts the ingest. RT-109 (design §6): called only at the ingest's
 // final commit (commitIngest), with the watermark read when the ingest
 // began — a refused (IT-15), halted or killed ingest never advances it.
-func (p *Pipeline) recordIngestMeta(ctx context.Context, svc core.ServiceRef, commit string) {
+func (p *Pipeline) recordIngestMeta(ctx context.Context, svc core.ServiceRef, commit string, run *ingestRun) {
 	// Record the corpus root ABSOLUTE: auto-refresh, staleness_report,
 	// and the ingest MCP tool all resolve this path from the DAEMON's
 	// working directory — a relative path recorded from some other CWD
@@ -1055,7 +1060,14 @@ func (p *Pipeline) recordIngestMeta(ctx context.Context, svc core.ServiceRef, co
 		IndexedCommit: commit,
 		IndexedAt:     time.Now().UnixNano(),
 	}
-	_ = p.st.SetServiceMeta(ctx, meta) // best-effort; ignore error
+	// RT-76 (§6): the watermark, file_stats and service_summary in one
+	// transaction. Best-effort like the meta write it replaces: if the
+	// summary write fails, the watermark is still recorded (a missing
+	// summary is backfilled at first use, never a wrong one served).
+	sum, files := ingestSummary(metaPath, run)
+	if err := p.st.WriteServiceSummary(ctx, meta, sum, files); err != nil {
+		_ = p.st.SetServiceMeta(ctx, meta) // best-effort; ignore error
+	}
 
 	// Collect git commit history (best-effort; injectable gitLogFn for tests).
 	if raw := p.gitLogFn(svc.Path); raw != "" {
