@@ -186,12 +186,18 @@ func (m *MemoryStore) BackfillDerivedTables(_ context.Context, serviceID string,
 func (m *MemoryStore) dropDerivedLocked(serviceID string) bool {
 	_, a := m.summaries[serviceID]
 	_, b := m.fileStats[serviceID]
+	_, c := m.serviceRefs[serviceID]
 	delete(m.summaries, serviceID)
 	delete(m.fileStats, serviceID)
-	return a || b
+	delete(m.serviceRefs, serviceID)
+	return a || b || c
 }
 
 func (m *MemoryStore) renameDerivedLocked(oldID, newID string) {
+	if sr, ok := m.serviceRefs[oldID]; ok {
+		delete(m.serviceRefs, oldID)
+		m.serviceRefs[newID] = sr
+	}
 	if sum, ok := m.summaries[oldID]; ok {
 		delete(m.summaries, oldID)
 		sum.ServiceID = newID

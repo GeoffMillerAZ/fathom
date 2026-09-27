@@ -68,8 +68,9 @@ import (
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/routes"
+	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
-	"github.com/geoffmilleraz/fathom/internal/corpus"
+	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
 // Kind is the core.CrossRepoEdge.Kind / edge-report "kind" value every hop
@@ -979,11 +980,32 @@ func sourceText(src []byte, fset *token.FileSet, e ast.Expr) string {
 // Fleet-wide, store-backed extraction
 // ---------------------------------------------------------------------
 
-// SourceLister is the minimal backend capability BuildFromStore needs — a
-// budgeted stream of a service's source files (internal/mcp's
-// QueryInterface and pkg/client.Client both satisfy it structurally; RT-71).
-type SourceLister interface {
-	ScanSources(ctx context.Context, service string, b corpus.Budget, fn func(core.SourceFile) (stop bool)) (corpus.Coverage, error)
+// RefReader is the minimal backend capability BuildFromStore needs: a
+// service's routes and client calls as its ingest extracted them (RT-89),
+// and whether every readable file has been extracted.
+// pkg/client.Client and store.Store satisfy it.
+type RefReader interface {
+	ServiceRefsFor(ctx context.Context, service string) (store.ServiceRefs, bool, error)
+}
+
+// ExtractFile is the ingest-time extraction (RT-89): path's route
+// registrations and outbound HTTP client calls as store rows. A binary
+// file, or a language neither extractor reads, yields none.
+func ExtractFile(path string, content []byte) store.ServiceRefs {
+	var out store.ServiceRefs
+	if connector.IsBinary(content) {
+		return out
+	}
+	lang := connector.LanguageForPath(path)
+	if rl := routesLang(lang); rl != "" {
+		for _, r := range routes.Extract(rl, path, content) {
+			out.Routes = append(out.Routes, store.ServiceRoute{Method: r.Method, Path: r.Path, Handler: r.Handler, File: r.File, Line: r.Line})
+		}
+	}
+	for _, c := range ExtractClientCalls(lang, path, content) {
+		out.Calls = append(out.Calls, store.ServiceHTTPCall{Method: c.Method, Template: c.Template, RawURL: c.RawURL, Symbol: c.Symbol, File: c.File, Line: c.Line})
+	}
+	return out
 }
 
 // routesLang maps a core.SourceFile.Lang tag to the language token
@@ -998,30 +1020,32 @@ func routesLang(lang string) string {
 	}
 }
 
-// BuildFromStore extracts every service's route registrations and outbound
-// HTTP client calls from already-ingested source (backend.Sources) and
-// joins them into the fleet's service_ref hops (ServiceRefEdges). Language-
-// agnostic on the SERVER side (routes.Extract's own go/js/py support);
-// Go-only on the CLIENT side today (ExtractClientCalls). Deterministic for
-// a fixed store state: serviceIDs is sorted before processing and every
-// per-file result set is already sorted by its extractor.
-func BuildFromStore(ctx context.Context, backend SourceLister, serviceIDs []string) ([]Hop, error) {
+// BuildFromStore joins every service's ingest-extracted route
+// registrations and outbound HTTP client calls (RT-89: rows written at
+// ingest, read here — never a per-call read of source) into the fleet's
+// service_ref hops (ServiceRefEdges). unextracted names the services whose
+// rows are not complete yet (not re-ingested since RT-89): their hops are
+// missing, and callers say so. Deterministic for a fixed store state.
+func BuildFromStore(ctx context.Context, backend RefReader, serviceIDs []string) (hops []Hop, unextracted []string, err error) {
 	svcs := append([]string(nil), serviceIDs...)
 	sort.Strings(svcs)
 
 	routesByService := make(map[string][]routes.Route, len(svcs))
 	callsByService := make(map[string][]ClientCall, len(svcs))
 	for _, svc := range svcs {
-		_, err := backend.ScanSources(ctx, svc, corpus.Budget{}, func(f core.SourceFile) bool {
-			if rl := routesLang(f.Lang); rl != "" {
-				routesByService[svc] = append(routesByService[svc], routes.Extract(rl, f.Path, f.Content)...)
-			}
-			callsByService[svc] = append(callsByService[svc], ExtractClientCalls(f.Lang, f.Path, f.Content)...)
-			return false
-		})
+		refs, complete, err := backend.ServiceRefsFor(ctx, svc)
 		if err != nil {
-			return nil, fmt.Errorf("serviceref: sources %q: %w", svc, err)
+			return nil, nil, fmt.Errorf("serviceref: refs %q: %w", svc, err)
+		}
+		if !complete {
+			unextracted = append(unextracted, svc)
+		}
+		for _, r := range refs.Routes {
+			routesByService[svc] = append(routesByService[svc], routes.Route{Method: r.Method, Path: r.Path, Handler: r.Handler, File: r.File, Line: r.Line})
+		}
+		for _, c := range refs.Calls {
+			callsByService[svc] = append(callsByService[svc], ClientCall{Method: c.Method, Template: c.Template, RawURL: c.RawURL, Symbol: c.Symbol, File: c.File, Line: c.Line})
 		}
 	}
-	return ServiceRefEdges(routesByService, callsByService), nil
+	return ServiceRefEdges(routesByService, callsByService), unextracted, nil
 }

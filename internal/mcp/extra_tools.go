@@ -117,6 +117,23 @@ func serviceRefHopsPayload(hops []serviceref.Hop) []any {
 	return out
 }
 
+// fleetServiceRefHops joins services' ingest-extracted routes and client
+// calls (RT-89) into hops — rows read from the store, never source. A
+// backend without the stored rows (serviceref.RefReader), or a read
+// error, yields no hops; unextracted names services whose rows are not
+// complete (not re-ingested since RT-89).
+func fleetServiceRefHops(ctx context.Context, backend QueryInterface, services []string) (hops []serviceref.Hop, unextracted []string) {
+	rr, ok := backend.(serviceref.RefReader)
+	if !ok {
+		return nil, services
+	}
+	hops, unextracted, err := serviceref.BuildFromStore(ctx, rr, services)
+	if err != nil {
+		return nil, services
+	}
+	return hops, unextracted
+}
+
 // serviceRefHopsInto reports the service_ref hops (VB-30) whose ToService
 // is service and whose ToFile is one of changedFiles: another service's
 // client call joins a route THIS change touches, so that OTHER service's
@@ -127,26 +144,34 @@ func serviceRefHopsPayload(hops []serviceref.Hop) []any {
 // symbols on every call. Best-effort: a fleet of fewer than two services,
 // or any backend error, degrades to no hops rather than failing the whole
 // tool.
-func serviceRefHopsInto(ctx context.Context, backend QueryInterface, service string, changedFiles []string) []serviceref.Hop {
+//
+// unextracted (RT-89) names services whose routes and client calls have
+// not been extracted by an ingest yet: their hops cannot be in the answer.
+func serviceRefHopsInto(ctx context.Context, backend QueryInterface, service string, changedFiles []string) (out []serviceref.Hop, unextracted []string) {
 	services, err := backend.Services(ctx)
 	if err != nil || len(services) < 2 {
-		return nil
+		return nil, nil
 	}
-	hops, err := serviceref.BuildFromStore(ctx, backend, services)
-	if err != nil {
-		return nil
-	}
+	hops, unextracted := fleetServiceRefHops(ctx, backend, services)
 	changed := make(map[string]bool, len(changedFiles))
 	for _, f := range changedFiles {
 		changed[f] = true
 	}
-	var out []serviceref.Hop
 	for _, h := range hops {
 		if h.ToService == service && changed[h.ToFile] {
 			out = append(out, h)
 		}
 	}
-	return out
+	return out, unextracted
+}
+
+// withServiceRefHops sets m's service_ref_hops and, when any service's
+// routes and calls are not extracted yet, service_ref_unextracted (RT-89).
+func withServiceRefHops(m map[string]any, hops []serviceref.Hop, unextracted []string) {
+	m["service_ref_hops"] = serviceRefHopsPayload(hops)
+	if len(unextracted) > 0 {
+		m["service_ref_unextracted"] = unextracted
+	}
 }
 
 // ─── investigation: blast_radius ─────────────────────────────────────────────
@@ -218,8 +243,9 @@ func registerBlastRadius(s *Server, backend QueryInterface) {
 			// call graph can see. Each entry kind:"service_ref",
 			// tier:"heuristic". Empty (never omitted) when the fleet has
 			// fewer than two services or no such hop exists.
-			"service_ref_hops": serviceRefHopsPayload(serviceRefHopsInto(ctx, backend, p.Service, p.ChangedFiles)),
 		}
+		hops, unextracted := serviceRefHopsInto(ctx, backend, p.Service, p.ChangedFiles)
+		withServiceRefHops(result, hops, unextracted)
 		if ic := indexCommitFor(ctx, backend, p.Service); ic != "" {
 			result["index_commit"] = ic
 		}
@@ -1337,19 +1363,16 @@ func registerCrossRepoBlastRadius(s *Server, backend QueryInterface) {
 		// (the intra-service ListAllSymbols loop), extended across the
 		// process boundary a call-graph-only search cannot see.
 		var hopHits []serviceref.Hop
-		if allHops, err := serviceref.BuildFromStore(ctx, backend, services); err == nil {
-			for _, h := range allHops {
-				if h.ToHandler == p.Symbol {
-					hopHits = append(hopHits, h)
-				}
+		allHops, unextracted := fleetServiceRefHops(ctx, backend, services)
+		for _, h := range allHops {
+			if h.ToHandler == p.Symbol {
+				hopHits = append(hopHits, h)
 			}
 		}
 
-		return map[string]any{
-			"hits":             out,
-			"count":            len(out),
-			"service_ref_hops": serviceRefHopsPayload(hopHits),
-		}, nil
+		result := map[string]any{"hits": out, "count": len(out)}
+		withServiceRefHops(result, hopHits, unextracted)
+		return result, nil
 	})
 }
 

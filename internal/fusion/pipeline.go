@@ -29,6 +29,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/geoffmilleraz/fathom/internal/analysis/serviceref"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -948,6 +949,18 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 		pending = append(pending, pendingFile{ref: ref, content: content, hash: hash})
 	}
 
+	// RT-89 (§6): routes and outbound HTTP client calls are extracted here,
+	// at ingest, from the content this pass already holds — never per call.
+	contents := make(map[string][]byte, len(refs))
+	for i, r := range refs {
+		if fetched[i].err == nil {
+			contents[r.Path] = fetched[i].content
+		}
+	}
+	if err := p.extractServiceRefs(ctx, svc.ID, refs, contents, pending); err != nil {
+		return report, err
+	}
+
 	// ── Dispatch ─────────────────────────────────────────────────────────────
 	if p.cfg.Lazy {
 		// Lazy mode: enqueue and return without extracting. The orphan purge
@@ -1117,6 +1130,63 @@ func (p *Pipeline) purgeOrphans(ctx context.Context, serviceID string, refs []co
 		if err := p.st.DeleteFingerprint(ctx, serviceID, ref); err != nil {
 			return fmt.Errorf("fusion: delete orphan fingerprint %q: %w", ref, err)
 		}
+	}
+	return nil
+}
+
+// extractServiceRefs replaces the service's extracted routes and client
+// calls (RT-89): the changed files' when the service's rows are complete,
+// every readable file's when they are not (its first ingest since RT-89,
+// or after a purge); rows of files no longer discovered, or no longer
+// readable as source (oversize), are dropped.
+func (p *Pipeline) extractServiceRefs(ctx context.Context, serviceID string, refs []core.SourceRef, contents map[string][]byte, pending []pendingFile) error {
+	stored, complete, err := p.st.ServiceRefsFor(ctx, serviceID)
+	if err != nil {
+		return fmt.Errorf("fusion: service refs %q: %w", serviceID, err)
+	}
+	var paths []string
+	if complete {
+		for _, pf := range pending {
+			paths = append(paths, pf.ref.Path)
+		}
+	} else {
+		for _, r := range refs {
+			if _, ok := contents[r.Path]; ok {
+				paths = append(paths, r.Path)
+			}
+		}
+	}
+	files := append([]string(nil), paths...)
+	discovered := make(map[string]bool, len(refs))
+	for _, r := range refs {
+		discovered[r.Path] = true
+	}
+	gone := map[string]bool{}
+	for _, r := range stored.Routes {
+		if _, readable := contents[r.File]; !discovered[r.File] || !readable {
+			gone[r.File] = true
+		}
+	}
+	for _, c := range stored.Calls {
+		if _, readable := contents[c.File]; !discovered[c.File] || !readable {
+			gone[c.File] = true
+		}
+	}
+	for f := range gone {
+		files = append(files, f)
+	}
+	sort.Strings(files)
+	var out store.ServiceRefs
+	for _, path := range paths {
+		r := serviceref.ExtractFile(path, contents[path])
+		out.Routes = append(out.Routes, r.Routes...)
+		out.Calls = append(out.Calls, r.Calls...)
+	}
+	if len(files) == 0 && complete {
+		return nil
+	}
+	if err := p.st.ReplaceServiceRefs(ctx, serviceID, files, out, true); err != nil {
+		return fmt.Errorf("fusion: write service refs %q: %w", serviceID, err)
 	}
 	return nil
 }

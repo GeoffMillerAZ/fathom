@@ -684,6 +684,18 @@ type Store interface {
 	// (service, symbol, source_ref, line). Filtered by source_ref.
 	CallersOfKeys(ctx context.Context, keys []string) ([]CallerRow, error)
 
+	// ReplaceServiceRefs replaces the routes and outbound HTTP client
+	// calls of files with refs' rows (RT-89: extracted at ingest);
+	// markComplete records that an ingest extracted every readable file of
+	// the service (it never unmarks).
+	ReplaceServiceRefs(ctx context.Context, serviceID string, files []string, refs ServiceRefs, markComplete bool) error
+
+	// ServiceRefsFor returns serviceID's extracted routes and client
+	// calls, and whether every readable file has been extracted (a
+	// service not yet re-ingested since RT-89 is incomplete, named by the
+	// reader — never answered by reading source). Filtered by file.
+	ServiceRefsFor(ctx context.Context, serviceID string) (refs ServiceRefs, complete bool, err error)
+
 	// DerivedState reports which derived facts serviceID has.
 	DerivedState(ctx context.Context, serviceID string) (DerivedState, error)
 

@@ -12,9 +12,11 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/geoffmilleraz/fathom/internal/analysis/serviceref"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/corpus"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
+	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
 // serviceRefFakeBackend embeds extendedFakeBackend (satisfies the rest of
@@ -29,6 +31,18 @@ type serviceRefFakeBackend struct {
 
 func (b *serviceRefFakeBackend) Sources(_ context.Context, svc string) ([]core.SourceFile, error) {
 	return b.bySvc[svc], nil
+}
+
+// ServiceRefsFor answers with the rows an ingest of bySvc would have
+// written (RT-89): the tools join stored rows, never source.
+func (b *serviceRefFakeBackend) ServiceRefsFor(_ context.Context, svc string) (store.ServiceRefs, bool, error) {
+	var out store.ServiceRefs
+	for _, f := range b.bySvc[svc] {
+		r := serviceref.ExtractFile(f.Path, f.Content)
+		out.Routes = append(out.Routes, r.Routes...)
+		out.Calls = append(out.Calls, r.Calls...)
+	}
+	return out, true, nil
 }
 
 // fauxtownRoot resolves the fixture fleet root the same way

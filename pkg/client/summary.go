@@ -146,3 +146,10 @@ func (c *Client) SuppressionToken(service string) string {
 	}
 	return ""
 }
+
+// ServiceRefsFor is the store's ingest-extracted routes and outbound HTTP
+// client calls for service (RT-89), and whether every readable file has
+// been extracted. Suppression-filtered.
+func (c *Client) ServiceRefsFor(ctx context.Context, service string) (store.ServiceRefs, bool, error) {
+	return c.st.ServiceRefsFor(ctx, service)
+}

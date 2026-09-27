@@ -710,6 +710,11 @@ func (s *SQLiteStore) executePurge(ctx context.Context, serviceID string, plan *
 	if _, err := tx.ExecContext(ctx, `DELETE FROM service_summary WHERE service_id = ?`, serviceID); err != nil {
 		return out, fmt.Errorf("store.PurgePaths summary: %w", err)
 	}
+	// RT-89: extracted routes and client calls are derived from content;
+	// the service's are dropped whole and re-extracted at its next ingest.
+	if err := clearServiceRefs(ctx, tx, serviceID); err != nil {
+		return out, fmt.Errorf("store.PurgePaths service refs: %w", err)
+	}
 	if err := del(`DELETE FROM doc_summaries WHERE service_id = ? AND source_ref IN (%s)`, plan.byLocation[LocDocSummaries], true); err != nil {
 		return out, err
 	}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/geoffmilleraz/fathom/internal/analysis/serviceref"
 	"os"
 	"sync"
 	"sync/atomic"
@@ -735,4 +736,28 @@ func (a *autoRefreshBackend) StoreID() string {
 		return id.StoreID()
 	}
 	return ""
+}
+
+// SourcePaths forwards the wrapped backend's path lister (RT-71): without
+// it a paths-only question would fall back to a budgeted content scan.
+func (a *autoRefreshBackend) SourcePaths(ctx context.Context, service string) ([]string, error) {
+	a.ensure(ctx, service)
+	return sourcePaths(ctx, a.QueryInterface, service)
+}
+
+// ReadSourceFiles forwards the wrapped backend's named-file reader
+// (RT-71, RT-86), falling back to a budgeted scan keeping those paths.
+func (a *autoRefreshBackend) ReadSourceFiles(ctx context.Context, service string, paths []string) ([]core.SourceFile, error) {
+	a.ensure(ctx, service)
+	return sourceFiles(ctx, a.QueryInterface, service, paths), nil
+}
+
+// ServiceRefsFor forwards the wrapped backend's ingest-extracted routes
+// and client calls (RT-89); a backend without them has none extracted.
+func (a *autoRefreshBackend) ServiceRefsFor(ctx context.Context, service string) (store.ServiceRefs, bool, error) {
+	if rr, ok := a.QueryInterface.(serviceref.RefReader); ok {
+		a.ensure(ctx, service)
+		return rr.ServiceRefsFor(ctx, service)
+	}
+	return store.ServiceRefs{}, false, nil
 }

@@ -384,6 +384,9 @@ type blastRadiusResult struct {
 	// each element is serviceref.Hop.Payload()'s ad-hoc map, the same
 	// reason reviewDiffResult.Dimensions stays `any`.
 	ServiceRefHops any `json:"service_ref_hops"`
+	// ServiceRefUnextracted (RT-89) names services whose routes and client
+	// calls no ingest has extracted yet: their hops cannot appear.
+	ServiceRefUnextracted []string `json:"service_ref_unextracted,omitempty"`
 }
 
 // reviewDiffResult mirrors review_diff's payload (review_tool.go): the
@@ -406,6 +409,9 @@ type reviewDiffResult struct {
 	IndexCommit string        `json:"index_commit,omitempty"`
 	// ServiceRefHops (VB-30): see blastRadiusResult.ServiceRefHops.
 	ServiceRefHops any `json:"service_ref_hops"`
+	// ServiceRefUnextracted (RT-89) names services whose routes and client
+	// calls no ingest has extracted yet: their hops cannot appear.
+	ServiceRefUnextracted []string `json:"service_ref_unextracted,omitempty"`
 }
 
 // safeDeleteCheckResult mirrors safe_delete_check's payload (safe_delete.go).

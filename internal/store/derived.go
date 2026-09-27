@@ -244,6 +244,9 @@ func (s *SQLiteStore) createDerivedSchema() error {
 	if _, err := s.db.Exec(derivedDDL); err != nil {
 		return err
 	}
+	if _, err := s.db.Exec(serviceRefsDDL); err != nil { // RT-89
+		return err
+	}
 	if had == 0 {
 		var any int
 		if err := s.db.QueryRow(`SELECT EXISTS(SELECT 1 FROM observations)`).Scan(&any); err != nil {

@@ -10,7 +10,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/routes"
 	"github.com/geoffmilleraz/fathom/internal/core"
-	"github.com/geoffmilleraz/fathom/internal/corpus"
+	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
 // fauxtownRoot resolves the fixture fleet root the same way
@@ -586,41 +586,56 @@ func TestKindAndTierConstants(t *testing.T) {
 // BuildFromStore
 // ---------------------------------------------------------------------
 
-type fakeSourceLister map[string][]core.SourceFile
-
-func (f fakeSourceLister) ScanSources(ctx context.Context, service string, b corpus.Budget, fn func(core.SourceFile) bool) (corpus.Coverage, error) {
-	return corpus.ScanSourceFiles(ctx, f[service], b, fn)
+// storedRefs writes each service's files' extracted refs into a memory
+// store, as an ingest does, and returns the store.
+func storedRefs(t *testing.T, files map[string]map[string][]byte) *store.MemoryStore {
+	t.Helper()
+	st := store.NewMemoryStore()
+	for svc, byPath := range files {
+		var all store.ServiceRefs
+		var paths []string
+		for path, content := range byPath {
+			r := ExtractFile(path, content)
+			all.Routes = append(all.Routes, r.Routes...)
+			all.Calls = append(all.Calls, r.Calls...)
+			paths = append(paths, path)
+		}
+		if err := st.ReplaceServiceRefs(context.Background(), svc, paths, all, true); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return st
 }
 
-func TestBuildFromStore(t *testing.T) {
+// RT-89 (§6): routes and HTTP client calls are extracted once, at ingest,
+// into store rows; BuildFromStore joins the stored rows and reads no
+// source — its backend has no source access at all — and a service not yet
+// extracted is named, never answered by a scan.
+func TestServiceRefs_PersistedNotPerCall(t *testing.T) {
 	root := fauxtownRoot(t)
-	catalogSrc := readFixture(t, root, "catalog-service", "catalog.go")
-	checkoutSrc := readFixture(t, root, "checkout-service", "checkout.go")
-
-	backend := fakeSourceLister{
-		"catalog-service":  {{Path: "catalog.go", Content: catalogSrc, Lang: "go"}},
-		"checkout-service": {{Path: "checkout.go", Content: checkoutSrc, Lang: "go"}},
-	}
-
-	hops, err := BuildFromStore(context.Background(), backend, []string{"checkout-service", "catalog-service"})
+	st := storedRefs(t, map[string]map[string][]byte{
+		"catalog-service":  {"catalog.go": readFixture(t, root, "catalog-service", "catalog.go")},
+		"checkout-service": {"checkout.go": readFixture(t, root, "checkout-service", "checkout.go")},
+	})
+	var reader RefReader = st // a store: no Sources, no ScanSources
+	hops, unextracted, err := BuildFromStore(context.Background(), reader, []string{"checkout-service", "catalog-service", "new-service"})
 	if err != nil {
 		t.Fatalf("BuildFromStore: %v", err)
 	}
-	if len(hops) != 1 {
-		t.Fatalf("BuildFromStore: got %d hops, want 1: %+v", len(hops), hops)
+	if len(hops) != 1 || hops[0].FromService != "checkout-service" || hops[0].ToService != "catalog-service" {
+		t.Fatalf("hops = %+v, want one checkout-service -> catalog-service", hops)
 	}
-	if hops[0].FromService != "checkout-service" || hops[0].ToService != "catalog-service" {
-		t.Errorf("hop = %+v, want checkout-service -> catalog-service", hops[0])
+	if len(unextracted) != 1 || unextracted[0] != "new-service" {
+		t.Fatalf("unextracted = %v, want [new-service]", unextracted)
 	}
 }
 
 func TestBuildFromStore_UnknownServiceIsEmptyNotError(t *testing.T) {
-	backend := fakeSourceLister{}
-	hops, err := BuildFromStore(context.Background(), backend, []string{"nowhere"})
+	hops, unextracted, err := BuildFromStore(context.Background(), store.NewMemoryStore(), []string{"nowhere"})
 	if err != nil {
 		t.Fatalf("BuildFromStore: %v", err)
 	}
-	if len(hops) != 0 {
-		t.Errorf("BuildFromStore(unknown service) = %+v, want empty", hops)
+	if len(hops) != 0 || len(unextracted) != 1 {
+		t.Errorf("BuildFromStore(unknown service) = %+v, %v; want no hops and the service named unextracted", hops, unextracted)
 	}
 }

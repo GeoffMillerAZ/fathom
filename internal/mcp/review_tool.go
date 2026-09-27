@@ -172,7 +172,8 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 		// shared with blast_radius/cross_repo_blast_radius). Additive:
 		// every existing payload field is unchanged (law 4, same as
 		// test_impact above).
-		payload["service_ref_hops"] = serviceRefHopsPayload(serviceRefHopsInto(ctx, backend, p.Service, p.ChangedFiles))
+		hops, unextracted := serviceRefHopsInto(ctx, backend, p.Service, p.ChangedFiles)
+		withServiceRefHops(payload, hops, unextracted)
 		return payload, nil
 	})
 }

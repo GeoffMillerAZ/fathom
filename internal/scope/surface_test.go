@@ -63,6 +63,7 @@ var storeMethodDisposition = map[string]string{
 	"CallersOfKeys":                 "", // RT-77: a hidden file's call never names a caller
 	"ObservationsForSymbol":         "", // RT-85: find_symbol's point lookup
 	"ObservationsCalling":           "", // RT-85: find_callers' point lookup
+	"ServiceRefsFor":                "", // RT-89: routes and client calls name their file
 
 	// --- exempt, with the reason ---
 	"PutObservations":                "write path; suppression is a READ decision and must never change what is indexed (§3.5)",
@@ -119,6 +120,7 @@ var storeMethodDisposition = map[string]string{
 	// --- responsible tenant §6 (RT-76, RT-160): derived facts ---
 	"WriteServiceSummary":   "write path (an ingest's final transaction)",
 	"BackfillDerivedTables": "write path (derives from stored rows; reads no file)",
+	"ReplaceServiceRefs":    "write path (an ingest's extracted routes and client calls)",
 	"RecountServiceSummary": "write path (recounts the summary row in place after a single-file refresh; returns nothing)",
 	"DerivedState":          "which derived facts a service has (flags and a watermark), no path-anchored content",
 
@@ -432,6 +434,20 @@ func TestSuppressionCoversEverySurface(t *testing.T) {
 					t.Fatal(err)
 				}
 				assertRefs(t, refsOf(fs, func(f store.FileStat) string { return f.Path }))
+			})
+			t.Run("ServiceRefsFor", func(t *testing.T) {
+				if err := g.ReplaceServiceRefs(ctx, svc, []string{hiddenRef, visibleRef}, store.ServiceRefs{
+					Routes: []store.ServiceRoute{{Method: "GET", Path: "/secret", File: hiddenRef, Line: 1}, {Method: "GET", Path: "/ok", File: visibleRef, Line: 1}},
+					Calls:  []store.ServiceHTTPCall{{Method: "GET", Template: "/x", File: hiddenRef, Line: 2}, {Method: "GET", Template: "/y", File: visibleRef, Line: 2}},
+				}, true); err != nil {
+					t.Fatal(err)
+				}
+				refs, _, err := g.ServiceRefsFor(ctx, svc)
+				if err != nil {
+					t.Fatal(err)
+				}
+				assertRefs(t, refsOf(refs.Routes, func(r store.ServiceRoute) string { return r.File }))
+				assertRefs(t, refsOf(refs.Calls, func(c store.ServiceHTTPCall) string { return c.File }))
 			})
 			t.Run("ObservationsForSymbol", func(t *testing.T) {
 				var refs []string
