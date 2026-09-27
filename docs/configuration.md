@@ -333,7 +333,48 @@ the budget and its derivation (`tenancy: budget 4 GiB (auto: clamp(RAM 32 GiB
 carries `fathom_tenancy_level`, `fathom_budget_bytes`,
 `fathom_footprint_bytes`, `fathom_children_footprint_bytes`,
 `fathom_host_pressure_level`, `fathom_swap_used_bytes`,
-`fathom_gc_cpu_fraction` and `fathom_quarantined_services`.
+`fathom_gc_cpu_fraction`, `fathom_quarantined_services` and the disk-write
+gauges below. Every scavenge — the 15-minute tick and each ladder event (shed
+entry, every 30 s while shed, refuse entry, the exit-mark halt) — logs one
+line: `scavenge (<event>): released X — total−released A → B, phys_footprint
+C → D` (runtime/metrics and the process footprint; `heap_sys`, a high-water
+mark that never falls, is not the instrument).
+
+**Auto-refresh deferral.** Auto-refresh runs no inline ingest at `shed` and
+above, while the daemon is paused (safe mode), during the managed daemon's
+warm-up after a start (`[tenancy.breaker].warmup`, 120 s) or for a
+quarantined service. The read answers from the index as it stands and its
+response envelope says so: `"refresh": {"<service>": "deferred (shed) —
+served from the index as it stands; freshness not checked …"}`.
+
+**Interrupted ingests.** An ingest writes `ingest_state = in_progress` in the
+store before its first write and records the watermark (with `complete`)
+only at its final commit, so a killed or halted ingest never looks fresh.
+Auto-refresh re-ingests a service another process left `in_progress` once
+that process is gone (a running `fathom ingest` into the same store is left
+alone; a pid reused by a later process counts as gone), even at the same
+commit and even for a first ingest that never recorded a watermark — the row
+names the corpus root — unless the service is quarantined. An ingest that
+fails before its first write (Discover, fetch, or the IT-15 refusal) puts the
+previous row back.
+
+**Disk writes.** The sampler reads the daemon's cumulative bytes written
+(rusage) and each live child's (`go list -export`, git, rg — rusage has no
+children's disk-I/O field, so a child is read while it lives: its last
+2 s, or a child shorter than one sample, are not seen, and the children's
+figure is a floor). Both are kept per minute, split by whether an explicit
+`ingest`/`onboard_service` call was in flight. The contract is ≤ 2 GiB a day
+outside explicit ingest (§12.4); it is disclosed, not enforced: `/statusz`'s
+tenancy block carries `disk_writes` (and `disk_writes_over`,
+`children_disk_written`), `/metrics` carries
+`fathom_bytes_written_total{subsystem="self"|"children"}`,
+`fathom_bytes_written_24h_outside_ingest`,
+`fathom_bytes_written_24h_explicit_ingest`,
+`fathom_bytes_written_window_seconds` and `fathom_disk_write_budget_bytes`,
+and doctor's `disk_writes` row WARNs over budget. The per-minute ring is in
+memory until RT-47 persists it, so after a start the "24h" figures cover
+only `fathom_bytes_written_window_seconds`; the line and doctor name that
+window ("within budget so far"). An unreadable counter is unknown, never 0.
 
 **Quarantine.** A service whose ingest was halted at the exit mark (or was in
 flight at an over-budget exit) is recorded in the daemon's lifecycle ledger;

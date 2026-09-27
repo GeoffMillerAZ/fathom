@@ -31,6 +31,9 @@ type Sample struct {
 	Children    int64 // summed phys_footprint of the child-process tree
 	ChildCount  int
 	DiskWritten int64 // cumulative bytes written by this process
+	// ChildDiskWritten is the running total of bytes the child-process tree
+	// was seen writing (ChildWriteTracker: sampled while alive, a floor).
+	ChildDiskWritten int64
 
 	GoTotalMinusReleased int64 // /memory/classes/total − /memory/classes/heap/released
 	HeapLive             int64 // /gc/heap/live
@@ -61,6 +64,9 @@ func (s *Sample) Unknowns() []string {
 	}
 	if s.DiskWritten < 0 {
 		out = append(out, "disk written unknown")
+	}
+	if s.ChildDiskWritten < 0 {
+		out = append(out, "children disk written unknown")
 	}
 	if s.Pressure == PressureUnknown {
 		out = append(out, "pressure unknown")
@@ -146,7 +152,7 @@ func (r *RuntimeReader) Read(s *Sample) {
 func SampleHost(h Host, rt *RuntimeReader, at time.Time, late time.Duration, s *Sample) {
 	*s = Sample{
 		At: at, Late: late,
-		Footprint: Unknown, Children: Unknown, DiskWritten: Unknown,
+		Footprint: Unknown, Children: Unknown, DiskWritten: Unknown, ChildDiskWritten: Unknown,
 		SwapUsed: Unknown, SwapTotal: Unknown,
 		StoreFree: Unknown, TmpFree: Unknown, SwapVolumeFree: Unknown,
 	}

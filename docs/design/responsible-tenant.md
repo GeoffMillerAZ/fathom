@@ -644,7 +644,7 @@ Additive tables (`CREATE … IF NOT EXISTS`), written in the ingest's final tran
 | `observation_calls(service_id, caller_rowid, callee_key)` + `INDEX(callee_key)` | ingest (normalizes `calls`) | `fleetCallers`, `crossServiceCallees` | ~669k rows, 30–40 MB |
 | `service_routes`, `service_http_calls` | ingest (serviceref extractor moves here) | `serviceref.BuildFromStore` per call | small |
 | `file_imports(service_id, path, content_hash, imports_json, resolved_json)` | ingest; unchanged hash reuses the row | `fileresolve` re-parsing every JS/TS/Python file twice | per JS/TS/Py file |
-| `ingest_state(service_id, state, pid, started_at, target_commit)` | refresh | the watermark-before-extraction bug | 21 rows |
+| `ingest_state(service_id, state, pid, started_at, target_commit, path)` | refresh | the watermark-before-extraction bug | 21 rows |
 
 Indexes: `observations(service_id, symbol)`. Pragmas at open: `cache_size = -8192`,
 `soft_heap_limit = 268435456` (advisory), `hard_heap_limit = 536870912`,
@@ -666,7 +666,13 @@ consumers of it (RT-82, the stat manifest) answer from `SourcePaths` or name the
 Watermark ordering (RT-109, wave B — cancellation, the producer governor and quarantine all
 need an aborted ingest to leave the old watermark): `ingest_state='in_progress'` is written
 first; `recordIngestMeta` moves to the final commit. `ensure` treats `in_progress` with a dead or foreign pid as "re-ingest
-needed" (`TestWatermarkNotAdvancedByKilledIngest`).
+needed" (`TestWatermarkNotAdvancedByKilledIngest`): foreign means another process that is no
+longer running — a live owner that started no later than the row is a concurrent ingest and
+is left alone, a pid reused by a later process is dead — and the re-ingest happens even at a
+HEAD this daemon already refreshed to, once per interrupted row. The row carries the corpus
+root, so a first ingest killed before any `service_meta` exists is re-ingested from it. An
+ingest that stops before its first write (Discover or fetch failure, IT-15 refusal) puts the
+previous row back.
 
 ADR-017 amendment: a service whose stored watermark is a git SHA never takes the content
 manifest path — a git failure is `freshness: unknown`, disclosed. Genuine non-git corpora
@@ -1033,9 +1039,14 @@ class, the largest classes, internal-disk free. Targets: `workspace/` ≤ 3 GiB 
 The audit's macOS resource report showed 8.6 GB dirtied in 1,395 s against a ~99 KB/s
 limit. Contract: ≤ 2 GiB/day written by the managed daemon outside explicit ingest. The
 sampler reads cumulative bytes written (`proc_pid_rusage`'s `ri_diskio_byteswritten`, self
-and children); the ring keeps it per minute; `resources` and doctor's `disk_retention` row
-judge the day against the budget (`DiskWriteVerdict`); `fathom_bytes_written_total` carries
-it by subsystem. RT-M12 reads seven days. A breach is disclosed, not enforced: the
+and children — rusage has no children's disk-I/O field, so each live child is read per sample
+and `ChildWriteTracker` keeps a monotonic floor: a child's writes after the last sample that
+saw it are missed); the ring keeps it per minute (in memory until RT-47 persists it, so the
+window since start is exported and named, never called 24 h); `resources` and doctor's
+`disk_writes` row (beside §12.1's `disk_retention`, which reports reclaimable bytes) judge the
+day against the budget (`DiskWriteVerdict`); `fathom_bytes_written_total` carries it by
+subsystem — `self` and `children`, since rusage cannot attribute bytes to the call log, the
+WAL or ingest. RT-M12 reads seven days. A breach is disclosed, not enforced: the
 writers are the call log, the WAL and ingest, each bounded by its own mechanism.
 
 ---

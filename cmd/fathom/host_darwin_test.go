@@ -100,8 +100,8 @@ func TestDarwinHostSampleZeroAlloc(t *testing.T) {
 	rt := tenancy.NewRuntimeReader()
 	var s tenancy.Sample
 	tenancy.SampleHost(h, rt, time.Now(), 0, &s)
-	if s.Footprint <= 0 || s.Pressure == tenancy.PressureUnknown || s.SwapTotal < 0 || s.StoreFree <= 0 {
-		t.Fatalf("the darwin host reads footprint, pressure, swap and volume free: %+v (unknowns %v)", s, s.Unknowns())
+	if s.Footprint <= 0 || s.Pressure == tenancy.PressureUnknown || s.SwapTotal < 0 || s.StoreFree <= 0 || s.ChildDiskWritten < 0 {
+		t.Fatalf("the darwin host reads footprint, pressure, swap, volume free and the children's bytes written: %+v (unknowns %v)", s, s.Unknowns())
 	}
 	now := time.Now()
 	if a := testing.AllocsPerRun(50, func() { tenancy.SampleHost(h, rt, now, 0, &s) }); a != 0 {

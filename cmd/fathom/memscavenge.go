@@ -31,12 +31,14 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
-	"runtime"
+	"runtime/metrics"
 	"strings"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/dlog"
+	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
 
 // defaultScavengeInterval bounds how long any single memory peak can
@@ -74,16 +76,21 @@ func scavengeDisabled() bool {
 // production caller never cancels its own Background() context, so the
 // goroutine runs for as long as the daemon does.
 //
-// DG-4 (diagnostics sweep): the pre-existing line here
-// ("scavenge: returned freed heap memory to the OS (O108)") was content-free
-// — it recorded that a pass RAN, never what it did. That forced the O108
-// postmortem to stand up an external 5-minute MemStats sampler just to see
-// whether a given scavenge pass actually moved anything. runtime.MemStats is
-// read immediately before and after free() so the same line self-reports
-// the heap_sys/heap_inuse before→after delta the postmortem needed.
-func runMemoryScavenger(ctx context.Context, interval time.Duration, log *dlog.Logger, free func()) {
+// RT-45 (design §13.3; DG-4 before it): the line is self-contained evidence
+// of what a pass did. It reads total−released (runtime/metrics: what the Go
+// runtime holds from the OS, minus what it has already returned) and the
+// process's phys_footprint before and after free(), and names the bytes
+// released. DG-4's heap_sys/heap_inuse pair came from a stop-the-world
+// ReadMemStats, and heap_sys is a high-water mark that never falls — the
+// wrong instrument (hazard heap-sys-is-the-wrong-instrument). read nil =
+// readScavengeMem. The governor logs the same line on its events
+// (governor.scavenge).
+func runMemoryScavenger(ctx context.Context, interval time.Duration, log *dlog.Logger, free func(), read func() scavengeMem) {
 	if interval <= 0 {
 		return
+	}
+	if read == nil {
+		read = readScavengeMem
 	}
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
@@ -92,16 +99,56 @@ func runMemoryScavenger(ctx context.Context, interval time.Duration, log *dlog.L
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			var before, after runtime.MemStats
-			runtime.ReadMemStats(&before)
+			before := read()
 			free()
-			runtime.ReadMemStats(&after)
-			log.Info("scavenge: returned freed heap memory to the OS (O108)",
-				"heap_sys_before_bytes", before.HeapSys,
-				"heap_sys_after_bytes", after.HeapSys,
-				"heap_inuse_before_bytes", before.HeapInuse,
-				"heap_inuse_after_bytes", after.HeapInuse,
+			after := read()
+			log.Info(scavengeLine("tick", before, after),
+				"total_minus_released_before_bytes", before.TotalMinusReleased,
+				"total_minus_released_after_bytes", after.TotalMinusReleased,
+				"phys_footprint_before_bytes", before.Footprint,
+				"phys_footprint_after_bytes", after.Footprint,
 			)
 		}
 	}
+}
+
+// scavengeMem is one scavenge reading: runtime/metrics total−released and
+// the process's phys_footprint; -1 = unknown (off darwin, where no
+// footprint reader is wired, the line says "phys_footprint unknown").
+type scavengeMem struct {
+	TotalMinusReleased int64
+	Footprint          int64
+}
+
+// readScavengeMem reads total−released from runtime/metrics (no
+// stop-the-world) and the process footprint.
+func readScavengeMem() scavengeMem {
+	s := [2]metrics.Sample{{Name: "/memory/classes/total:bytes"}, {Name: "/memory/classes/heap/released:bytes"}}
+	metrics.Read(s[:])
+	m := scavengeMem{TotalMinusReleased: tenancy.Unknown, Footprint: tenancy.Unknown}
+	if s[0].Value.Kind() == metrics.KindUint64 && s[1].Value.Kind() == metrics.KindUint64 {
+		m.TotalMinusReleased = int64(s[0].Value.Uint64()) - int64(s[1].Value.Uint64())
+	}
+	if fp, ok := processPhysFootprintBytes(); ok {
+		m.Footprint = fp
+	}
+	return m
+}
+
+// scavengeLine is the one scavenge line the tick and the governor's events
+// share: "scavenge (<event>): released X — total−released A → B,
+// phys_footprint C → D". released is the footprint's fall (the OS-visible
+// effect), else total−released's.
+func scavengeLine(event string, before, after scavengeMem) string {
+	released := tenancy.Unknown
+	switch {
+	case before.Footprint >= 0 && after.Footprint >= 0:
+		released = max(before.Footprint-after.Footprint, 0)
+	case before.TotalMinusReleased >= 0 && after.TotalMinusReleased >= 0:
+		released = max(before.TotalMinusReleased-after.TotalMinusReleased, 0)
+	}
+	return fmt.Sprintf("scavenge (%s): released %s — total−released %s → %s, phys_footprint %s → %s",
+		event, tenancy.FormatBytes(released),
+		tenancy.FormatBytes(before.TotalMinusReleased), tenancy.FormatBytes(after.TotalMinusReleased),
+		tenancy.FormatBytes(before.Footprint), tenancy.FormatBytes(after.Footprint))
 }

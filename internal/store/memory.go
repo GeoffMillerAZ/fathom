@@ -32,6 +32,7 @@ type MemoryStore struct {
 	typedEdgeFPs   map[fpKey]string                 // reuses fpKey{serviceID, pkgPath} shape
 	typedEdgeStat  map[string]TypedEdgeStatusRecord // serviceID → last persisted typed-edge status (DG-10)
 	reviewRuns     map[reviewRunKey]core.ReviewRun  // (serviceID, idempotencyKey) → review run (FL-15)
+	ingestState    map[string]IngestState           // serviceID → ingest progress (RT-109)
 
 	// Test evidence + declared certifications (vision 33 / ADR-043 stage
 	// 0, TC-2/TC-5): see memory_testevidence.go.
@@ -85,6 +86,7 @@ func NewMemoryStore() *MemoryStore {
 		typedEdges:     make(map[typedEdgeKey][]core.Edge),
 		typedEdgeFPs:   make(map[fpKey]string),
 		typedEdgeStat:  make(map[string]TypedEdgeStatusRecord),
+		ingestState:    make(map[string]IngestState),
 
 		externalFindings: make(map[claimKey]core.ExternalFinding),
 		reviewRuns:       make(map[reviewRunKey]core.ReviewRun),
@@ -350,6 +352,10 @@ func (m *MemoryStore) RemoveService(_ context.Context, serviceID string) (bool, 
 		removed = true
 		delete(m.serviceMeta, serviceID)
 	}
+	if _, ok := m.ingestState[serviceID]; ok {
+		removed = true
+		delete(m.ingestState, serviceID)
+	}
 	if _, ok := m.commits[serviceID]; ok {
 		removed = true
 		delete(m.commits, serviceID)
@@ -417,6 +423,11 @@ func (m *MemoryStore) RenameService(_ context.Context, oldID, newID string) erro
 		meta.ServiceID = newID
 		delete(m.serviceMeta, oldID)
 		m.serviceMeta[newID] = meta
+	}
+	if is, ok := m.ingestState[oldID]; ok {
+		is.ServiceID = newID
+		delete(m.ingestState, oldID)
+		m.ingestState[newID] = is
 	}
 	if commits, ok := m.commits[oldID]; ok {
 		for i := range commits {

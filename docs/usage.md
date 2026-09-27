@@ -1561,10 +1561,11 @@ starts normally. An empty file (`touch ~/.fathom/daemon/disabled.json`, the
 (unmanaged) `serve-http` ignores both files. `start` removes the switch,
 appends an `operator_reset` row to `~/.fathom/daemon/<label>/lifecycle.jsonl`
 (the breaker window restarts) and kickstarts the label. `pause` writes
-`paused.json`; the managed daemon re-reads it every 2 s, stays up and sets
+`paused.json`; the managed daemon re-reads it every 2 s, stays up and
 enters safe mode (logged): tree and fleet refused with the reason,
-auto-refresh, the console feeders and the decision port off, point and index
-served. `resume` removes it. While the
+auto-refresh, the console feeders and the decision port off (reads answer
+from the index as it stands and their envelope says `refresh: deferred (safe
+mode)`), point and index served. `resume` removes it. While the
 switch is set, `status`, doctor and the session primer name `fathom daemon
 start` (with the switch's reason) as the remedy instead of a kickstart, and
 `task deploy` installs the binary, then stops with that message instead of

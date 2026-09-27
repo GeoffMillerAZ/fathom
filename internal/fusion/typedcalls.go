@@ -106,6 +106,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/store"
+	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
 
 // diagWarn/diagInfo (DG-4, diagnostics sweep) route the typed-edge pass's
@@ -257,19 +258,10 @@ func (p *Pipeline) enrichTypedEdges(ctx context.Context, svc core.ServiceRef, re
 
 	var rep TypedEdgeReport
 	var err error
-	peakHeapInuse := samplePeakHeapInuse(func() {
+	heap := sampleProcessHeapDuringPass(func() {
 		rep, err = EnrichTypedEdges(ctx, p.st, svc.ID, svc.Path, allowed)
-	})
-	defer func() {
-		packages := rep.PackagesLoaded + rep.PackagesCached
-		edges := rep.EdgesDirect + rep.EdgesIfaceDispatch + rep.EdgesUnresolved + rep.EdgesFuncValue
-		// "edges" is what this pass WROTE: a package whose content hash is
-		// unchanged keeps its stored edges and contributes none here, so an
-		// all-cached pass reads "0 edges written", never a bare "0 edges"
-		// over a graph that still holds every edge.
-		p.diagInfo("fusion: typed-edge pass %q: %d packages (%d re-resolved, %d unchanged and reused), %d edges written, peak heap_inuse %.1f MiB, %s\n",
-			svc.ID, packages, rep.PackagesLoaded, rep.PackagesCached, edges, float64(peakHeapInuse)/(1024*1024), rep.Duration)
-	}()
+	}, tenancy.DefaultInFlight.Len)
+	defer func() { p.diagInfo("%s", typedPassLine(svc.ID, rep, heap)) }()
 	// BP-35: the outcome is recorded ON THE SERVICE, not only on stderr.
 	// The named reason travels with it (I24) so /statusz,
 	// staleness_report and doctor's typed_edges row can all say WHY the

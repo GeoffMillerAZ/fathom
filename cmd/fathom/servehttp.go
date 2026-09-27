@@ -222,6 +222,9 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	// Warm-up after any start (§2.3, RT-40): heavy classes get one slot
 	// each and auto-refresh runs no inline ingest.
 	tenancy.SetWarmup(startedAt, budget.Breaker.Warmup)
+	if ws, wd := tenancy.Warmup(); !ws.IsZero() {
+		flog.Info(fmt.Sprintf("tenancy: warm-up %s — one slot per heavy class and no inline auto-refresh ingest until %s", wd, ws.Add(wd).Format(time.TimeOnly)))
+	}
 	exitRow := func(reason, detail string, code int) {
 		if lcIn.ledger == "" {
 			return
@@ -550,6 +553,9 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	var backend mcp.QueryInterface = c
 	if *autoRefresh {
 		backend = mcp.NewAutoRefresh(c, flog)
+		// RT-109: an in_progress row is an interrupted ingest only once
+		// its owner is gone (a live CLI ingest is never duplicated).
+		mcp.SetIngestOwnerProbe(ingestOwnerProbe(realDaemonOps{}))
 	}
 
 	// Call logging feeds tool-selection telemetry (which tools each surface
@@ -645,7 +651,7 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	} else {
 		go runMemoryScavenger(context.Background(), scavengeIntervalFromEnv(), outLog, func() {
 			scavengeTick(outFile, errFile, daemonStdioRotateBytes, outLog, flog, time.Now)
-		})
+		}, nil)
 	}
 
 	// RT-33..RT-36, RT-155, RT-161, RT-172, RT-173: the governor samples

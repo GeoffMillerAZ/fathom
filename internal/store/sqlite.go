@@ -400,6 +400,12 @@ CREATE INDEX IF NOT EXISTS idx_observations_service_id
 		return err
 	}
 
+	// ingest_state (RT-109) — same additive-table convention
+	// (sqlite_ingeststate.go).
+	if err := s.createIngestStateSchema(); err != nil {
+		return err
+	}
+
 	// Conditional migrations for SQLite stores created before a column
 	// existed. The "no ALTER cruft" stance above holds for the fleet store
 	// (freshly migrated), but scratch/workspace SQLite stores created by
@@ -757,6 +763,7 @@ var serviceIDTables = []string{
 	"compile_runs",
 	"typed_edges",
 	"typed_edge_fingerprints",
+	"ingest_state",
 }
 
 // RemoveService deletes every row for serviceID in one transaction — see the

@@ -113,6 +113,13 @@ withheld by a suppression someone registered". `read_source` refuses
 suppressed and service-ignored paths by name, with the unsuppress command
 in the refusal.
 
+**Deferred refresh disclosure (RT-150, responsible tenant).** When
+auto-refresh did not run for a service a tool read — the daemon is at `shed`
+or above, paused (safe mode), in its warm-up after a start, or the service is
+quarantined — the envelope carries `"refresh": {"<service>": "deferred
+(<reason>) — served from the index as it stands; freshness not checked …"}`.
+The answer is the index as it stands, never presented as fresh.
+
 ### Plain HTTP endpoints (non-MCP)
 
 The separate CLI command `fathom theme-guide` provides an opt-in synthetic

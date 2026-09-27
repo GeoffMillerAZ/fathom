@@ -18,6 +18,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
 
 // daemonFootprintWarnBytes is the heap-in-use threshold above which
@@ -112,4 +114,49 @@ func fetchMetricsText(hc *http.Client, baseURL string) (map[string]float64, erro
 		out[fields[0]] = v
 	}
 	return out, sc.Err()
+}
+
+// checkDaemonDiskWrites is RT-162's doctor row (design §12.4): the
+// daemon's bytes written in the last 24 h outside explicit ingest, from
+// /metrics, against 2 GiB/day. WARN over budget — disclosed, not enforced
+// (the writers are the call log, the WAL and ingest, each bounded by its
+// own mechanism) — and a named SKIP when the reading is unavailable, never
+// a zero.
+func checkDaemonDiskWrites(hc *http.Client, baseURL string, daemonUp bool) doctorCheck {
+	const name = "disk_writes"
+	if !daemonUp {
+		return doctorCheck{Name: name, Status: doctorSkipped, Reason: "daemon unreachable — cannot read /metrics (see daemon_reachable); `fathom resources` reads the ring once RT-47/RT-48 land"}
+	}
+	m, err := fetchMetricsText(hc, baseURL)
+	if err != nil {
+		return doctorCheck{Name: name, Status: doctorSkipped, Reason: fmt.Sprintf("could not read %s/metrics: %v", baseURL, err)}
+	}
+	outside, ok := m["fathom_bytes_written_24h_outside_ingest"]
+	budget, okB := m["fathom_disk_write_budget_bytes"]
+	if !ok || !okB || budget <= 0 {
+		return doctorCheck{
+			Name: name, Status: doctorSkipped,
+			Reason: "the daemon's /metrics carries no bytes-written judgment — its build predates RT-162, or its host cannot read rusage bytes written (disclosed as unknown, never 0)",
+			Remedy: "task deploy from the fathom checkout to pick up current /metrics",
+		}
+	}
+	ingest := m["fathom_bytes_written_24h_explicit_ingest"]
+	// Review finding 4: the ring is in memory until RT-47 persists it, so
+	// after a start it covers minutes, not a day — name the window.
+	span := "in the last 24 h"
+	if w, ok := m["fathom_bytes_written_window_seconds"]; !ok {
+		span = "over a window this daemon does not report"
+	} else if cov := time.Duration(w) * time.Second; cov < 24*time.Hour {
+		span = fmt.Sprintf("in the %s since the daemon's first reading (the ring is in memory until RT-47 — not a full day)", cov)
+	}
+	reason := fmt.Sprintf("written %s %s outside explicit ingest (+%s during explicit ingest) against %s/day",
+		tenancy.FormatBytes(int64(outside)), span, tenancy.FormatBytes(int64(ingest)), tenancy.FormatBytes(int64(budget)))
+	if outside > budget {
+		return doctorCheck{
+			Name: name, Status: doctorWarn,
+			Reason: reason + " — over budget; disclosed, not enforced (the call log, the WAL and ingest are the writers)",
+			Remedy: "fathom resources; check the call log's size and rotation and whether auto-refresh is re-ingesting in a loop (the refresh lines in fathom-http.log)",
+		}
+	}
+	return doctorCheck{Name: name, Status: doctorPass, Reason: reason}
 }

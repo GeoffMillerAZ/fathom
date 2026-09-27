@@ -80,6 +80,13 @@ func (r *InFlight) Begin(ctx context.Context, c Class, tool, service, origin str
 	}
 }
 
+// Len is how much work is registered now (no allocation).
+func (r *InFlight) Len() int {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return len(r.entries)
+}
+
 // Snapshot lists the registered work, oldest first (ties by id).
 func (r *InFlight) Snapshot() []InFlightEntry {
 	r.mu.Lock()
@@ -127,8 +134,29 @@ func (r *InFlight) Cancel(cause error, classes ...Class) []InFlightEntry {
 	return out
 }
 
+// OriginPipeline is the origin of the pipeline's own ingest registration
+// (BeginIngest): every ingest, explicit or auto-refresh, registers under
+// it; an explicit ingest also has its /rpc ticket (tool ingest or
+// onboard_service, the caller's origin).
+const OriginPipeline = "pipeline"
+
 // BeginIngest registers an ingest of service in DefaultInFlight: its ctx
 // is ingest-class for the producer governor, and the exit rung can halt it.
 func BeginIngest(ctx context.Context, service string) (context.Context, func()) {
-	return DefaultInFlight.Begin(ctx, ClassIngest, "ingest", service, "")
+	return DefaultInFlight.Begin(ctx, ClassIngest, "ingest", service, OriginPipeline)
+}
+
+// ExplicitIngestInFlight reports whether an explicit ingest — an /rpc
+// `ingest` or `onboard_service` call, not auto-refresh's pipeline ingest —
+// is registered now (RT-162: disk writes are judged outside explicit
+// ingest). No allocation.
+func (r *InFlight) ExplicitIngestInFlight() bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for _, e := range r.entries {
+		if e.Class == ClassIngest && e.Origin != OriginPipeline && (e.Tool == "ingest" || e.Tool == "onboard_service") {
+			return true
+		}
+	}
+	return false
 }
