@@ -91,17 +91,22 @@ type ingestJSON struct {
 	Service string `json:"service"`
 	// Outcome is ok | degraded | refused. degraded: every readable file was
 	// indexed and read_failed > 0; refused: nothing was written (O16 guard).
-	Outcome        string                  `json:"outcome"`
-	ExitCode       int                     `json:"exit_code"`
-	Discovered     int                     `json:"discovered"`
-	Extracted      int                     `json:"extracted"`
-	Skipped        int                     `json:"skipped"`
-	Symbols        int                     `json:"symbols"`
-	ReadFailed     int                     `json:"read_failed"`
-	ReadFailures   []ingestReadFailureJSON `json:"read_failures"`
-	Unclassified   int                     `json:"unclassified"`
-	Oversize       int                     `json:"oversize"`
-	ClassifiedZero int                     `json:"classified_zero"`
+	Outcome    string `json:"outcome"`
+	ExitCode   int    `json:"exit_code"`
+	Discovered int    `json:"discovered"`
+	Extracted  int    `json:"extracted"`
+	Skipped    int    `json:"skipped"`
+	// StatSkipped (RT-102): of skipped, the files never read — stat and
+	// fingerprint unchanged. PeakInflightBytes (RT-103): the most file
+	// content the ingest held at once.
+	StatSkipped       int                     `json:"stat_skipped,omitempty"`
+	PeakInflightBytes int64                   `json:"peak_inflight_bytes,omitempty"`
+	Symbols           int                     `json:"symbols"`
+	ReadFailed        int                     `json:"read_failed"`
+	ReadFailures      []ingestReadFailureJSON `json:"read_failures"`
+	Unclassified      int                     `json:"unclassified"`
+	Oversize          int                     `json:"oversize"`
+	ClassifiedZero    int                     `json:"classified_zero"`
 	// UnsupportedLanguages names, by language display name (e.g. "kotlin"),
 	// files whose extension belongs to a known programming language fathom
 	// has no registered extractor for (O69). Omitted when empty.
@@ -145,17 +150,19 @@ func errnoClass(errText string) string {
 // nil when none ran.
 func renderIngestJSON(w io.Writer, service, svcPath string, report client.Report, readErr *client.ReadFailuresError, scipResults []scipImportResult) int {
 	out := ingestJSON{
-		Service:        service,
-		Outcome:        "ok",
-		Discovered:     report.Discovered,
-		Extracted:      report.Extracted,
-		Skipped:        report.Skipped,
-		Symbols:        report.Symbols,
-		ReadFailed:     report.ReadFailed,
-		ReadFailures:   []ingestReadFailureJSON{},
-		Unclassified:   report.Unclassified,
-		Oversize:       report.Oversize,
-		ClassifiedZero: report.ClassifiedZero,
+		Service:           service,
+		Outcome:           "ok",
+		Discovered:        report.Discovered,
+		Extracted:         report.Extracted,
+		Skipped:           report.Skipped,
+		StatSkipped:       report.StatSkipped,
+		PeakInflightBytes: report.PeakInflightBytes,
+		Symbols:           report.Symbols,
+		ReadFailed:        report.ReadFailed,
+		ReadFailures:      []ingestReadFailureJSON{},
+		Unclassified:      report.Unclassified,
+		Oversize:          report.Oversize,
+		ClassifiedZero:    report.ClassifiedZero,
 	}
 	if len(report.UnsupportedLanguages) > 0 {
 		out.UnsupportedLanguages = report.UnsupportedLanguages

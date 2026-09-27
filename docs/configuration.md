@@ -370,7 +370,10 @@ explicit `ingest` passes safe mode and a quarantine). A read never waits for an
 ingest: it answers from the index and says `refresh: queued (index_stale) …`.
 No setting; the knobs are the ladder's.
 
-**Incremental ingest (RT-104..RT-108).** The typed Go pass runs only when a
+**Incremental ingest (RT-102..RT-108).** An ingest stats every file and reads
+only those whose size, mtime or inode moved since the daemon's last ingest of the
+service (`fathom ingest --rehash` reads everything), through a 64 MiB in-flight
+window of file content. The typed Go pass runs only when a
 `.go`, `go.mod`, `go.sum` or `go.work` file changed since its last successful
 pass, the CUE pass only for `.cue`, and the TS/JS/Python import resolver only
 for those files (reusing each unchanged file's recorded imports from the store's

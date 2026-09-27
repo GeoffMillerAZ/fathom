@@ -51,6 +51,7 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 	mode := fs.String("mode", "local", "connector mode: local or faux")
 	jsonOut := fs.Bool("json", false, "emit the run as JSON (counts, read_failures with errno, outcome ok|degraded|refused) — docs/usage.md §ingest")
 	dryRun := fs.Bool("dry-run", false, "discover and stat only: report files, bytes, oversize files and pruned directories without reading a file or opening the store (RT-70)")
+	rehash := fs.Bool("rehash", false, "read and hash every file, ignoring the stat gate (RT-102)")
 	statsFlag := fs.Bool("stats", false, "with --dry-run: print the discovery statistics (the default output of --dry-run)")
 	var scipPaths stringList
 	fs.Var(&scipPaths, "scip", "SCIP index file to import as typed edges (ADR-041 decision 5, SU-9; repeatable). Unset: auto-detects index.scip at the repo root and .fathom/scip/*.scip")
@@ -102,6 +103,7 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 		svcPath = *service
 	}
 
+	c.SetRehash(*rehash)
 	report, err := c.Ingest(context.Background(), client.ServiceRef{
 		ID:   *service,
 		Path: svcPath,
@@ -182,6 +184,12 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 	fmt.Fprintf(stdout, "discovered: %d\n", report.Discovered)
 	fmt.Fprintf(stdout, "extracted:  %d\n", report.Extracted)
 	fmt.Fprintf(stdout, "skipped:    %d\n", report.Skipped)
+	if report.StatSkipped > 0 {
+		fmt.Fprintf(stdout, "stat-skipped: %d (not read: size, mtime and inode unchanged)\n", report.StatSkipped)
+	}
+	if report.PeakInflightBytes > 0 {
+		fmt.Fprintf(stdout, "peak-inflight: %d bytes of file content held at once\n", report.PeakInflightBytes)
+	}
 	fmt.Fprintf(stdout, "symbols:    %d\n", report.Symbols)
 	// The failed column (IT-14): every file the connector could not read,
 	// with its errno text — a wedged reader must never print a clean

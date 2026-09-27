@@ -728,6 +728,21 @@ whole-service case.
   semaphore (`[ingest] inflight_bytes = 64 MiB`); each file is hashed, extracted and written
   in batches of 256 observations per transaction, then released. Files > 2 MiB are never
   read; binaries sniffed on 8 KiB. Peak content memory ≤ 64 MiB regardless of corpus.
+- (As built, RT-102/RT-103, `internal/fusion/stream.go`: pass 1 stats through the
+  connector's optional `Stater` and reads a file only when its `(size, mtime_ns, ino)`
+  moved or its stored fingerprint no longer equals the recorded hash. The prior record is
+  `Pipeline.WithStatSource` when wired — the seam for the storage lane's `file_stats` —
+  else the pipeline's own record of its last successful ingest of the service (so the
+  long-lived daemon is stat-gated from its second ingest; a one-shot CLI ingest reads
+  everything until `file_stats` is wired); each successful ingest hands its live records
+  to `WithStatSink` at the final commit. `Config.Rehash` (`ingest --rehash`) reads
+  everything. Pass 2 reserves the 2 MiB read cap per read and settles to the bytes read,
+  so content held never exceeds the window; results reach the consumer in input order;
+  observations are written 256 at a time and a file's fingerprint only after its
+  observations. The legacy-anchor rebuild and oversize fingerprints wait for the first
+  write, so a wedge that reads nothing still writes nothing. `Report.StatSkipped` and
+  `Report.PeakInflightBytes` are the instruments. The window is `Config.InflightBytes`;
+  no `[ingest]` config key yet.)
 - **Typed/CUE gate:** the typed pass runs only if a `.go`/`go.mod`/`go.sum`/`go.work` file is
   in the changed set since the last successful pass (`typed_pass_state`); it loads only the
   changed packages plus reverse dependencies from the stored import graph. The CUE pass

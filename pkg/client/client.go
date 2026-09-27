@@ -177,6 +177,10 @@ func (c *Client) Ingest(ctx context.Context, svc ServiceRef) (Report, error) {
 	return c.pipe.Ingest(ctx, svc)
 }
 
+// SetRehash makes the next ingests read and hash every file, ignoring the
+// stat gate (RT-102; `fathom ingest --rehash`).
+func (c *Client) SetRehash(on bool) { c.pipe.SetRehash(on) }
+
 // ReingestFile (SU-5/SU-6, docs/plans/substrate.md §A, ADR-041 decisions 3
 // and 4) re-extracts ONE file's observations/syntax edges and fingerprint
 // — the daemon's POST /refresh-file route and the pre-edit hook's

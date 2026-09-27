@@ -201,7 +201,7 @@ All subcommands share the convention:
 Ingest a service into the knowledge store.
 
 ```sh
-fathom ingest --service <id> [--path <dir>] [--store <path>] [--mode local|faux] [--scip <path>]... [--json]
+fathom ingest --service <id> [--path <dir>] [--store <path>] [--mode local|faux] [--scip <path>]... [--rehash] [--json]
 fathom ingest --service <id> --path <dir> --dry-run [--stats] [--json]
 ```
 
@@ -214,12 +214,18 @@ fathom ingest --service <id> --path <dir> --dry-run [--stats] [--json]
 | `--scip` | auto-detected | SCIP index file to import as typed edges (ADR-041 decision 5, SU-9; repeatable). Unset: auto-detects `index.scip` at the service root and every `.fathom/scip/*.scip` |
 | `--dry-run` | off | Discover and stat only (RT-70): report files, bytes, files over the 2 MiB read cap, the default-ignored and always-skipped directories, and the five largest files — without reading a file or opening the store. `--json` emits `{service, path, dry_run, files, bytes, oversize_files, oversize_bytes, read_cap_bytes, default_ignored_dirs, skipped_dirs, ignored_dirs, stat_failed, largest: [{path, size}]}`; `stat_failed > 0` makes `bytes` a lower bound |
 | `--stats` | off | With `--dry-run`: the discovery statistics (what `--dry-run` prints) |
+| `--rehash` | off | Read and hash every file (RT-102). Without it an ingest reads only files whose size, mtime or inode moved since the last ingest the same process (the daemon) ran, or the store's recorded stats once `file_stats` exists; a one-shot CLI ingest reads everything today |
 | `--json` | off | Emit the run as JSON: `{service, outcome: ok|degraded|refused, exit_code, discovered, extracted, skipped, symbols, read_failed, read_failures: [{path, err, errno?}], unclassified, oversize, classified_zero, unsupported_languages?, typed_edges?, scip_imports?, excluded?, default_ignored_dirs?, error?, hint?}` — `errno` is the class (`EPERM`, `EACCES`, `ENOENT`, `EIO`, `EISDIR`) derived from the connector's text, so CI can assert `read_failed == 0`. `unsupported_languages` (O69, present only when non-empty) is `{language: file_count}` — e.g. `{"swift": 412}` — for source in a KNOWN programming language fathom has no registered extractor for; see "Unsupported languages" below. `scip_imports` (present only when at least one SCIP index was imported) is `[{path, producer, language?, documents, edges, direct, unresolved, unmapped}]` — see "Typed edges by import" below |
 
 Output: `discovered`, `extracted`, `skipped`, `symbols` counts, plus non-zero-only rows
 (`unclassified`, `oversize`, `classified-but-zero-symbols`, `unsupported languages (no extractor)`,
 `typed-edges`, `typed_edges: … via <producer>` per imported SCIP index, `excluded:` pattern
-counts, and `read-failed`).
+counts, and `read-failed`), `stat-skipped` (files not read: stat and fingerprint unchanged)
+and `peak-inflight` (the most file content held at once — at most 64 MiB, RT-103); the
+`typed-edges`, `cue-typed-edges` and `file_resolved` rows say `skipped — no input changed
+since the last successful pass` when their input files did not change (RT-104, RT-105,
+RT-108), and a `file_resolved` import-parse fault is a stderr warning naming the files.
+`--json` adds `stat_skipped` and `peak_inflight_bytes`.
 
 **Typed edges by import (ADR-041 decision 5, SU-9).** Go gets typed call edges natively
 (`internal/fusion.EnrichTypedEdges`, type-checking the source directly); every other
