@@ -1012,7 +1012,7 @@ degrades silently then, so it is counted), harness kills (an invocation whose `s
 | `workspace/tmp/fathom-bin-*` | keep last 3 | no; reported |
 | `~/.fathom/daemon/<id>/diag` | 10 captures / 200 MiB | yes |
 
-Console tails read the rotated generation; every usage reader (`classifyCallLogRead` and the discoveries pointer rows) reads every generation — archives, pending, `.1`, live — so a rotation hides no history (I38). Doctor `disk_retention`: reclaimable bytes by
+Console tails read the rotated generation; every usage reader (`classifyCallLogRead` and the discoveries pointer rows) reads every generation — archives, pending, `.1`, live — so a rotation hides no history (I38). A pending generation whose archive already exists (a kill between the archive's rename and the pending file's removal) is read once, as its archive. A windowed reader (`discoveries --since`, `metrics traffic --since`) never opens a generation wholly older than its window: a generation is named for the moment it left `.1`, so every row in it is older than its name. An all-history reader (the console's totals, `instrument --adoption`) still reads every generation per render, as it read the one unbounded live log before rotation; bounding it (serving archived generations from their rollups) waits until a console render over the archives is measured slow (Revisit when: an Operate or Overview render over the call log exceeds 1 s on the operator's machine). Doctor `disk_retention`: reclaimable bytes by
 class, the largest classes, internal-disk free. Targets: `workspace/` ≤ 3 GiB after `gc
 --apply` (10 GB today); `~/.fathom` ≤ 500 MB.
 

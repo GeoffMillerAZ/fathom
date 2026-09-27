@@ -165,8 +165,9 @@ type callLogPointerRow struct {
 // naming service (when non-empty) with ts >= since and at least one
 // pointer. A missing or malformed log degrades to empty, never an error.
 func readCallLogPointerRows(logPath, service string, since time.Time) []callLogPointerRow {
-	// Every generation (RT-126): a rotation hides no pointer.
-	rc, err := openCallLogGenerations(logPath)
+	// Every generation in the window (RT-126): a rotation hides no
+	// pointer, and a generation wholly before since is never opened.
+	rc, err := openCallLogGenerationsSince(logPath, since)
 	if err != nil {
 		return nil
 	}

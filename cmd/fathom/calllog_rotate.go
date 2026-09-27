@@ -13,7 +13,8 @@ package main
 // 1 GiB of them the pass reports it (the serve-http log, doctor
 // disk_retention, `fathom gc`) and keeps them all. Every usage reader
 // reads every generation (openCallLogGenerations), so a rotation hides no
-// history.
+// history; a windowed reader (openCallLogGenerationsSince) skips the
+// generations wholly older than its window by name, never opening them.
 
 import (
 	"bufio"
@@ -400,9 +401,48 @@ func (r *rotatingCallLog) Close() error {
 
 // callLogGenerations lists every generation of the call log at path,
 // oldest first: the gzip archives, the pending generations, <path>.1, then
-// the live log. Only existing files are listed.
+// the live log. Only existing files are listed. A pending generation whose
+// archive already exists (an archive pass renames the gzip into place
+// before it removes the pending file; a kill between the two leaves both)
+// is listed once, as its archive: its rows are never counted twice (I38).
 func callLogGenerations(path string) []string {
-	gens := append(callLogArchives(path), pendingCallLogs(path)...)
+	return callLogGenerationsSince(path, time.Time{})
+}
+
+// callLogGenerationsSince is callLogGenerations without the archived and
+// pending generations whose every row predates since: a generation is
+// named for the moment it left <path>.1, and every row in it was written
+// before then. The zero since is every generation.
+func callLogGenerationsSince(path string, since time.Time) []string {
+	archives := callLogArchives(path)
+	have := map[string]bool{}
+	for _, a := range archives {
+		have[a] = true
+	}
+	var pending []string
+	for _, p := range pendingCallLogs(path) {
+		a := strings.TrimSuffix(p, ".pending") + ".jsonl.gz"
+		if have[a] {
+			continue
+		}
+		if _, err := os.Lstat(a); err == nil {
+			// Archived since the listing above: read the archive.
+			archives = append(archives, a)
+			have[a] = true
+			continue
+		}
+		pending = append(pending, p)
+	}
+	sort.Strings(archives)
+	var gens []string
+	for _, g := range append(archives, pending...) {
+		if !since.IsZero() {
+			if left, ok := callLogGenerationLeft(path, g); ok && left.Before(since) {
+				continue
+			}
+		}
+		gens = append(gens, g)
+	}
 	for _, p := range []string{path + ".1", path} {
 		if _, err := os.Lstat(p); err == nil {
 			gens = append(gens, p)
@@ -411,16 +451,38 @@ func callLogGenerations(path string) []string {
 	return gens
 }
 
+// callLogGenerationLeft parses the moment generation g of path left
+// <path>.1 from its name (<path>.<ts>[-n].jsonl.gz or .pending).
+func callLogGenerationLeft(path, g string) (time.Time, bool) {
+	stem := strings.TrimPrefix(g, path+".")
+	if stem == g {
+		return time.Time{}, false
+	}
+	stem = strings.TrimSuffix(strings.TrimSuffix(stem, ".jsonl.gz"), ".pending")
+	if i := strings.IndexByte(stem, '-'); i >= 0 {
+		stem = stem[:i]
+	}
+	t, err := time.Parse("20060102T150405Z", stem)
+	return t, err == nil
+}
+
 // openCallLogGenerations opens every generation of the call log at path as
 // one stream, oldest first, a newline between generations (so a torn last
 // line never joins the next generation's first). No generation at all is
 // the live log's own ENOENT; a generation that exists and cannot be opened
 // is an error — a partial read is never presented as the whole (I38).
 func openCallLogGenerations(path string) (io.ReadCloser, error) {
+	return openCallLogGenerationsSince(path, time.Time{})
+}
+
+// openCallLogGenerationsSince is openCallLogGenerations for a reader whose
+// window starts at since: it never opens (or gunzips) a generation whose
+// every row is older than the window.
+func openCallLogGenerationsSince(path string, since time.Time) (io.ReadCloser, error) {
 	// A background archive pass can remove a pending generation between
 	// the listing and its open (its archive already written): list again.
 	for attempt := 0; ; attempt++ {
-		rc, err := openCallLogGenerationsOnce(path)
+		rc, err := openCallLogGenerationsOnce(path, since)
 		if err == nil || attempt == 2 || !errors.Is(err, errGenerationVanished) {
 			return rc, err
 		}
@@ -430,8 +492,8 @@ func openCallLogGenerations(path string) (io.ReadCloser, error) {
 // errGenerationVanished marks a listed generation gone by its open.
 var errGenerationVanished = errors.New("call-log generation moved during the read")
 
-func openCallLogGenerationsOnce(path string) (io.ReadCloser, error) {
-	gens := callLogGenerations(path)
+func openCallLogGenerationsOnce(path string, since time.Time) (io.ReadCloser, error) {
+	gens := callLogGenerationsSince(path, since)
 	if len(gens) == 0 {
 		_, err := os.Open(path)
 		if err == nil {
