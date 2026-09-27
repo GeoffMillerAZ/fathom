@@ -239,19 +239,19 @@ type observatoryModel struct {
 	// — so a page's table never comes from a read its metrics did not: a
 	// page that lists sessions (the activity tab, the sessions pages) lists
 	// the ones that were counted.
-	ledger    []byte
+	ledger    *sessionLedgerSnap
 	ledgerErr error
 	toolClass map[string]console.CallerClass
 	reviews   []console.ReviewRun
 }
 
-// sessionLedgerRead is the session ledger's bytes as this build read them,
-// nil when the read failed (m.sessions then carries the error).
-func (m observatoryModel) sessionLedgerRead() []byte {
-	if m.ledgerErr != nil {
+// sessionLedgerRead is the session ledger as this build folded it, nil
+// when the read failed (m.sessions then carries the error).
+func (m observatoryModel) sessionLedgerRead() *console.LedgerFold {
+	if m.ledgerErr != nil || m.ledger == nil {
 		return nil
 	}
-	return m.ledger
+	return m.ledger.fold
 }
 
 // obsTrafficDay is one day of call-log traffic.
@@ -285,9 +285,13 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 	// OC-9: the shared sessions metric, from the one dedupe rule every page
 	// uses (console.SessionCount) — read once per model build.
 	ledgerPath := sessionLedgerPath()
-	ledgerData, ledgerErr := sessionLedgerTail.read(ledgerPath) // a tail (RT-113)
-	m.sessions = console.SessionCount(ledgerPath, ledgerData, ledgerErr).WithAsOf(now)
-	m.ledger, m.ledgerErr = ledgerData, ledgerErr
+	ledgerSnap, ledgerErr := consoleSessionLedger.read(ledgerPath) // a folded tail (RT-113)
+	var ledgerFold *console.LedgerFold
+	if ledgerErr == nil {
+		ledgerFold = ledgerSnap.fold
+	}
+	m.sessions = console.SessionCountFold(ledgerPath, ledgerFold, ledgerErr).WithAsOf(now)
+	m.ledger, m.ledgerErr = ledgerSnap, ledgerErr
 
 	// The model's reads of the daemon (list_services) carry the console's
 	// origin: the console reading itself is never usage (mcp.OriginConsole).
@@ -357,8 +361,8 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 		winFromDay, winToDay := winFrom.Format("2006-01-02"), winTo.Format("2006-01-02")
 		windowSessions := map[string]int{}
 		if ledgerReadable {
-			sessionsByRepo = console.DistinctSessionsBy(ledgerData, labelKey)
-			windowSessions = console.DistinctSessionsIn(ledgerData, labelKey, winFrom, winTo)
+			sessionsByRepo = ledgerFold.DistinctBy(labelKey)
+			windowSessions = ledgerFold.DistinctIn(labelKey, winFrom, winTo)
 		}
 		// The gating rung reads the verify ledger (SD-1): every `fathom
 		// verify` run appends to it, a pre-push hook's included — the
@@ -502,7 +506,7 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 func buildImpactModel(now time.Time) obsImpact {
 	imp := obsImpact{}
 	path := sessionLedgerPath()
-	data, err := sessionLedgerTail.read(path) // a tail (RT-113)
+	snap, err := consoleSessionLedger.read(path) // a folded tail (RT-113)
 	if err != nil {
 		imp.LedgerNote = "session ledger not readable at " + path + " — impact figures are not measured, never zero"
 		imp.VerifyCatchesNote = "no ledger — verify catches unknown"
@@ -543,29 +547,10 @@ func buildImpactModel(now time.Time) obsImpact {
 	// are the complete ones. Read-time rather than a rewrite, because the
 	// ledger is append-only evidence and the superseded rows are history,
 	// not garbage.
-	latest := map[string]sessionLedgerEntry{}
-	var order []string
-	for _, line := range strings.Split(string(data), "\n") {
-		if line == "" {
-			continue
-		}
-		var e sessionLedgerEntry
-		if json.Unmarshal([]byte(line), &e) != nil {
-			continue
-		}
-		key := e.SessionID
-		if key == "" {
-			// A row with no session id cannot be deduped, so it counts once
-			// on its own terms rather than being dropped or merged with
-			// every other anonymous row.
-			key = "\x00anon:" + e.At + ":" + e.Repo
-		}
-		if _, seen := latest[key]; !seen {
-			order = append(order, key)
-		}
-		latest[key] = e
-	}
-	imp.LedgerStops = len(strings.Split(strings.TrimRight(string(data), "\n"), "\n"))
+	// The tail keeps exactly that: each session's last row, in first-seen
+	// order (sessionLedgerSnap.add).
+	latest, order := snap.latest, snap.order
+	imp.LedgerStops = snap.stops
 
 	for _, key := range order {
 		e := latest[key]

@@ -4,11 +4,14 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/console"
 )
 
 // TestObservatoryModelServesStaleWhileRebuilding (RT-113, design §14): a
@@ -99,21 +102,7 @@ func TestObservatoryModelServesStaleWhileRebuilding(t *testing.T) {
 	if got := tail.parsed - before; got != int64(len(line)) {
 		t.Errorf("the append parsed %d bytes, want %d (only what was appended)", got, len(line))
 	}
-	var ledger bytesTail
-	lp := filepath.Join(dir, "sessions.jsonl")
-	mustWrite(t, lp, "{\"session_id\":\"a\"}\n")
-	ledger.read(lp)
-	fh, _ = os.OpenFile(lp, os.O_APPEND|os.O_WRONLY, 0o644)
-	fh.WriteString("{\"session_id\":\"b\"}\n")
-	fh.Close()
-	got, err := ledger.read(lp)
-	whole, _ := os.ReadFile(lp)
-	if err != nil || string(got) != string(whole) {
-		t.Errorf("ledger tail = %q, %v; want %q", got, err, whole)
-	}
-	if _, err := ledger.read(filepath.Join(dir, "missing")); !os.IsNotExist(err) {
-		t.Errorf("a missing ledger = %v, want not-exist", err)
-	}
+	checkSessionLedgerTail(t, dir)
 }
 
 // TestObservatoryModelNeverServesAnEmptyModel (RT-113): a cold reader never
@@ -200,5 +189,74 @@ func TestColdModelWaitHonoursTheRequest(t *testing.T) {
 		}
 	case <-time.After(3 * time.Second):
 		t.Fatal("the request ended and the cold read is still waiting on the build")
+	}
+}
+
+// checkSessionLedgerTail (RT-113): the session ledger is a folded tail —
+// each read folds only the lines appended since the last, keeps no row's
+// bytes, and answers exactly what a whole-file fold answers, an
+// unterminated last line and malformed rows included.
+func checkSessionLedgerTail(t *testing.T, dir string) {
+	t.Helper()
+	var tail sessionLedgerTail
+	lp := filepath.Join(dir, "sessions.jsonl")
+	rows := []string{
+		`{"session_id":"a","repo":"proof-service","arm":"on","at":"2026-09-20T10:00:00Z","turn_count":2,"tokens_in":5,"tokens_out":6,"verify_catches":1}`,
+		``,
+		`not json`,
+		`{"session_id":"b","repo":"Other","at":"2026-09-21T10:00:00Z","turn_count":"x"}`,
+		`{"repo":"proof-service","at":"2026-09-22T10:00:00Z"}`,
+		`{"session_id":"a","repo":"proof-service","arm":"on","at":"2026-09-23T10:00:00Z","turn_count":4,"fathom_calls":3}`,
+	}
+	mustWrite(t, lp, strings.Join(rows[:3], "\n")+"\n")
+	check := func(when string) {
+		t.Helper()
+		got, err := tail.read(lp)
+		if err != nil {
+			t.Fatalf("%s: %v", when, err)
+		}
+		whole, _ := os.ReadFile(lp)
+		want := foldSessionLedger(whole)
+		labelKey := func(l string) string { return strings.ToLower(l) }
+		from, to := time.Date(2026, 9, 21, 0, 0, 0, 0, time.UTC), time.Date(2026, 9, 30, 0, 0, 0, 0, time.UTC)
+		for _, pair := range []struct {
+			name      string
+			got, want any
+		}{
+			{"stops", got.stops, want.stops},
+			{"order", got.order, want.order},
+			{"latest", got.latest, want.latest},
+			{"sessions", console.SessionCountFold(lp, got.fold, nil), console.SessionCount(lp, whole, nil)},
+			{"by repo", got.fold.DistinctBy(labelKey), console.DistinctSessionsBy(whole, labelKey)},
+			{"in window", got.fold.DistinctIn(labelKey, from, to), console.DistinctSessionsIn(whole, labelKey, from, to)},
+			{"table", console.SessionTableFold(lp, got.fold, nil, console.SessionFilter{}, 1, 50), console.SessionTable(lp, whole, nil, console.SessionFilter{}, 1, 50)},
+			{"activity", console.ProjectActivity(console.Sources{}, console.ActivityInput{Service: "proof-service", Sessions: console.Measured(1, "x"), LedgerFold: got.fold}).SessionRows,
+				console.ProjectActivity(console.Sources{}, console.ActivityInput{Service: "proof-service", Sessions: console.Measured(1, "x"), Ledger: whole}).SessionRows},
+			{"last row", got.lastRow("a"), want.lastRow("a")},
+		} {
+			if !reflect.DeepEqual(pair.got, pair.want) {
+				t.Errorf("%s: %s = %+v; the whole-file fold = %+v", when, pair.name, pair.got, pair.want)
+			}
+		}
+	}
+	check("first read")
+	appendTo := func(s string) {
+		fh, _ := os.OpenFile(lp, os.O_APPEND|os.O_WRONLY, 0o644)
+		fh.WriteString(s)
+		fh.Close()
+	}
+	before := tail.parsed
+	add := strings.Join(rows[3:], "\n") + "\n"
+	appendTo(add)
+	check("after an append")
+	if got := tail.parsed - before; got != int64(len(add)) {
+		t.Errorf("the append folded %d bytes, want %d (only what was appended)", got, len(add))
+	}
+	appendTo(`{"session_id":"c","repo":"proof-service","at":"2026-09-24T10:00:00Z"}`)
+	check("an unterminated last line")
+	appendTo("\n\n")
+	check("trailing empty lines")
+	if _, err := tail.read(filepath.Join(dir, "missing")); !os.IsNotExist(err) {
+		t.Errorf("a missing ledger = %v, want not-exist", err)
 	}
 }

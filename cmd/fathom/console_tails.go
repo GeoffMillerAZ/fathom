@@ -5,10 +5,11 @@ package main
 // The model rebuilt every 30 s by re-reading and re-decoding the whole call
 // log (tens of megabytes) and the whole session ledger; the Operate
 // projection read the log whole again. Both logs are append-only, so each
-// reader here keeps what it read and, on the next read, reads only the
-// bytes appended since — decoded by the same line reading every usage
-// reader shares (decodeCallLogLine), so a tail never counts differently
-// from a whole-file read.
+// reader here folds, on each read, only the bytes appended since — the
+// call log into its fold and 35-day ring, the session ledger into
+// console.LedgerFold and the impact model's per-session rows — by the same
+// line rules every whole-file reader uses, so a tail never counts
+// differently from a whole-file read, and neither keeps a row's bytes.
 //
 // A file replaced (another inode), truncated, or rewritten in place (the
 // last bytes read no longer match) is read again from the start. A file
@@ -18,12 +19,15 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"slices"
 	"sync"
 	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/console"
 )
 
 // tailCheckBytes is how much of what was read last is compared on the next
@@ -77,16 +81,99 @@ func (f *tailFile) keep(b []byte) {
 	}
 }
 
-// bytesTail follows an append-only file and returns its whole content,
-// reading only what was appended since the last read.
-type bytesTail struct {
-	mu   sync.Mutex
-	f    tailFile
-	data []byte
+// sessionLedgerSnap is one read of the session ledger, folded: the
+// console's rules (console.LedgerFold: the shared sessions count, the
+// per-repo and windowed counts, the activity rows, the sessions table)
+// and the impact model's (each session's last row that decodes as a
+// sessionLedgerEntry, in first-seen order, and the stop count) — never
+// the rows' bytes (RT-113). A snapshot is the reader's own: the tail
+// folds on without changing it.
+type sessionLedgerSnap struct {
+	fold   *console.LedgerFold
+	latest map[string]sessionLedgerEntry
+	order  []string
+	// stops is the impact model's LedgerStops: the ledger's lines up to
+	// its last non-empty one, at least one.
+	stops int
 }
 
-// read returns the file's content (shared: callers must not modify it).
-func (t *bytesTail) read(path string) ([]byte, error) {
+// newSessionLedgerSnap returns an empty fold.
+func newSessionLedgerSnap() *sessionLedgerSnap {
+	return &sessionLedgerSnap{fold: console.NewLedgerFold(), latest: map[string]sessionLedgerEntry{}}
+}
+
+// foldSessionLedger folds whole ledger bytes (the CLI verbs' one read).
+func foldSessionLedger(data []byte) *sessionLedgerSnap {
+	s := newSessionLedgerSnap()
+	lines := bytes.Split(data, []byte{'\n'})
+	for i, line := range lines {
+		s.add(line)
+		if len(line) > 0 {
+			s.stops = i + 1
+		}
+	}
+	s.stops = max(s.stops, 1)
+	return s
+}
+
+// add folds one line (without its newline) by every rule.
+func (s *sessionLedgerSnap) add(line []byte) {
+	s.fold.Add(line)
+	if len(line) == 0 {
+		return
+	}
+	var e sessionLedgerEntry
+	if json.Unmarshal(line, &e) != nil {
+		return
+	}
+	key := e.SessionID
+	if key == "" {
+		// A row with no session id cannot be deduped, so it counts once
+		// on its own terms rather than being dropped or merged with
+		// every other anonymous row.
+		key = "\x00anon:" + e.At + ":" + e.Repo
+	}
+	if _, seen := s.latest[key]; !seen {
+		s.order = append(s.order, key)
+	}
+	s.latest[key] = e
+}
+
+// clone is an independent copy (the tail's reader gets one).
+func (s *sessionLedgerSnap) clone() *sessionLedgerSnap {
+	c := &sessionLedgerSnap{fold: s.fold.Clone(), latest: make(map[string]sessionLedgerEntry, len(s.latest)), order: s.order[:len(s.order):len(s.order)], stops: s.stops}
+	for k, v := range s.latest {
+		c.latest[k] = v
+	}
+	return c
+}
+
+// lastRow is the session's last ledger row that decodes, nil when none.
+func (s *sessionLedgerSnap) lastRow(sessionID string) *sessionLedgerEntry {
+	if s == nil || sessionID == "" {
+		return nil
+	}
+	e, ok := s.latest[sessionID]
+	if !ok {
+		return nil
+	}
+	return &e
+}
+
+// sessionLedgerTail follows the session ledger, folding only the lines
+// appended since the last read (RT-113: never a whole-log re-parse, and
+// never the whole log held).
+type sessionLedgerTail struct {
+	mu    sync.Mutex
+	f     tailFile
+	snap  *sessionLedgerSnap
+	lines int // complete lines folded
+	// parsed counts the bytes folded over the tail's life (tests).
+	parsed int64
+}
+
+// read returns the ledger's fold as foldSessionLedger(whole file) would.
+func (t *sessionLedgerTail) read(path string) (*sessionLedgerSnap, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	fh, info, restart, err := t.f.open(path)
@@ -94,30 +181,66 @@ func (t *bytesTail) read(path string) ([]byte, error) {
 		return nil, err
 	}
 	defer fh.Close()
-	if restart {
-		t.f, t.data = tailFile{}, nil
-	}
-	if info.Size() == t.f.offset {
-		t.f.path, t.f.info = path, info
-		return t.data, nil
+	if restart || t.snap == nil {
+		t.resetLocked()
 	}
 	if _, err := fh.Seek(t.f.offset, io.SeekStart); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("read session ledger %s: %w", path, err)
 	}
-	more, err := io.ReadAll(fh)
-	if err != nil {
-		return nil, fmt.Errorf("read %s: %w", path, err)
+	br := bufio.NewReaderSize(fh, 64*1024)
+	var tail []byte
+	for {
+		line, rerr := br.ReadSlice('\n')
+		if rerr == bufio.ErrBufferFull {
+			long := append([]byte(nil), line...)
+			for rerr == bufio.ErrBufferFull && len(long) <= 16*1024*1024 {
+				line, rerr = br.ReadSlice('\n')
+				long = append(long, line...)
+			}
+			if rerr == bufio.ErrBufferFull {
+				t.resetLocked()
+				return nil, fmt.Errorf("read session ledger %s: a line longer than 16 MiB", path)
+			}
+			line = long
+		}
+		if rerr == io.EOF {
+			tail = append([]byte(nil), line...)
+			break
+		}
+		if rerr != nil {
+			t.resetLocked()
+			return nil, fmt.Errorf("read session ledger %s: %w", path, rerr)
+		}
+		t.parsed += int64(len(line))
+		body := line[:len(line)-1]
+		t.lines++
+		t.snap.add(body)
+		if len(body) > 0 {
+			t.snap.stops = t.lines
+		}
+		t.f.offset += int64(len(line))
+		t.f.keep(line)
 	}
-	// A new backing array on growth: a slice handed out earlier is never
-	// written under its reader.
-	t.data = append(slices.Clip(t.data), more...)
-	t.f.consumed(path, info, more)
-	return t.data, nil
+	t.f.path, t.f.info = path, info
+	snap := t.snap.clone()
+	// An unterminated last line counts as a whole-file read counts it,
+	// and is folded again next time (it may still grow).
+	if len(tail) > 0 {
+		snap.add(tail)
+		snap.stops = t.lines + 1
+	}
+	snap.stops = max(snap.stops, 1)
+	return snap, nil
 }
 
-func (t *bytesTail) reset() {
+func (t *sessionLedgerTail) resetLocked() {
+	t.f, t.snap, t.lines = tailFile{}, newSessionLedgerSnap(), 0
+}
+
+func (t *sessionLedgerTail) reset() {
 	t.mu.Lock()
-	t.f, t.data = tailFile{}, nil
+	t.resetLocked()
+	t.parsed = 0
 	t.mu.Unlock()
 }
 
@@ -320,12 +443,12 @@ func (t *callLogEntryTail) reset() {
 
 // The model's and the Operate projection's tails: one per source.
 var (
-	consoleCallLogTail callLogEntryTail
-	sessionLedgerTail  bytesTail
+	consoleCallLogTail   callLogEntryTail
+	consoleSessionLedger sessionLedgerTail
 )
 
 // resetConsoleTails forgets every tail (tests; the governor's drops).
 func resetConsoleTails() {
 	consoleCallLogTail.reset()
-	sessionLedgerTail.reset()
+	consoleSessionLedger.reset()
 }

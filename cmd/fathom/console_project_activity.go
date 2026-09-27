@@ -125,7 +125,7 @@ func readProjectActivity(cr *consoleRequest, pc projectContext, src console.Sour
 	d := projectActivityData{at: cr.now, resolved: src.CallLog}
 	d.act = console.ProjectActivity(src, console.ActivityInput{
 		Service: pc.svc, LabelKey: sessionLabelKey(roots),
-		Sessions: console.ProjectSessions(pc.facts()), Ledger: pc.m.sessionLedgerRead(),
+		Sessions: console.ProjectSessions(pc.facts()), LedgerFold: pc.m.sessionLedgerRead(),
 	})
 	since, _ := time.Parse("2006-01-02", d.act.From)
 	until, _ := time.Parse("2006-01-02", d.act.To)

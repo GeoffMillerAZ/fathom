@@ -12,7 +12,6 @@ package main
 // table and its shared metrics never come from two different reads.
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -478,28 +477,11 @@ func replayDetail(meta map[string]string) string {
 	return strings.Join(parts, " ")
 }
 
-// lastLedgerRow is a session's last ledger row in ledger bytes.
-func lastLedgerRow(ledger []byte, sessionID string) *sessionLedgerEntry {
-	var last *sessionLedgerEntry
-	needle := []byte(`"` + sessionID + `"`)
-	for _, line := range bytes.Split(ledger, []byte{'\n'}) {
-		if !bytes.Contains(line, needle) {
-			continue
-		}
-		var e sessionLedgerEntry
-		if json.Unmarshal(line, &e) == nil && e.SessionID == sessionID {
-			cp := e
-			last = &cp
-		}
-	}
-	return last
-}
-
 // buildSessionReplay is `fathom metrics sessions --id S --json`'s whole
 // computation; the session page calls it with the model's read of the
 // ledger (ledgerErr is that read's error: the ledger row is then absent or
 // an error naming the ledger, never "no row for this session").
-func buildSessionReplay(ledgerPath string, ledger []byte, ledgerErr error, sessionID string, channels []string, page, perPage int) sessionReplay {
+func buildSessionReplay(ledgerPath string, ledger *sessionLedgerSnap, ledgerErr error, sessionID string, channels []string, page, perPage int) sessionReplay {
 	src := cachedSessionEvents(beatLogPath(), sessionID)
 	r := sessionReplay{Window: console.SessionWindow(sessionID, src, channels, page, perPage), LedgerState: console.StatePresent}
 	if reason, isErr := fileState("session ledger", ledgerPath, ledgerErr); reason != "" {
@@ -509,7 +491,7 @@ func buildSessionReplay(ledgerPath string, ledger []byte, ledgerErr error, sessi
 		}
 		return r
 	}
-	if r.Ledger = lastLedgerRow(ledger, sessionID); r.Ledger == nil {
+	if r.Ledger = ledger.lastRow(sessionID); r.Ledger == nil {
 		r.LedgerState = console.StateAbsent
 		r.LedgerNote = "no ledger row for this session (the stop hook writes one at each turn's end)"
 	}
@@ -542,7 +524,7 @@ func cmdMetricsSessions(args []string, stdout, stderr io.Writer) int {
 		for _, c := range channels {
 			chans = append(chans, strings.Split(c, ",")...)
 		}
-		r := buildSessionReplay(ledgerPath, ledger, lerr, *id, chans, *page, *perPage)
+		r := buildSessionReplay(ledgerPath, foldSessionLedger(ledger), lerr, *id, chans, *page, *perPage)
 		if *jsonOut {
 			jsonPrint(stdout, r)
 			return 0

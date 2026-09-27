@@ -9,8 +9,6 @@ package console
 // on any two pages that disagree about a metric ID.
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -217,6 +215,15 @@ func SessionCount(ledgerPath string, data []byte, readErr error) Value[int] {
 	return sessionCountValue(source, sessions, rows)
 }
 
+// SessionCountFold is SessionCount over a folded ledger (a tail's).
+func SessionCountFold(ledgerPath string, f *LedgerFold, readErr error) Value[int] {
+	if readErr != nil || f == nil {
+		return SessionCount(ledgerPath, nil, readErr)
+	}
+	sessions, rows := f.Sessions()
+	return sessionCountValue("session ledger "+ledgerPath, sessions, rows)
+}
+
 // sessionCountValue is sessions.total's value over a read ledger — the one
 // shape SessionCount and the session table both return.
 func sessionCountValue(source string, sessions, rows int) Value[int] {
@@ -226,12 +233,7 @@ func sessionCountValue(source string, sessions, rows int) Value[int] {
 // DistinctSessions counts distinct sessions and non-empty rows in ledger
 // bytes, with the dedupe rule every page shares.
 func DistinctSessions(data []byte) (sessions, rows int) {
-	seen := map[string]bool{}
-	eachLedgerSession(data, func(key, _ string) {
-		rows++
-		seen[key] = true
-	})
-	return len(seen), rows
+	return FoldLedger(data).Sessions()
 }
 
 // DistinctSessionsByRepo counts distinct sessions per repo label (lowered)
@@ -247,25 +249,7 @@ func DistinctSessionsByRepo(data []byte) map[string]int {
 // Stop hook labels this repository "sextant", its service is "fathom"), so a
 // session counts once under its key. A label mapped to "" is skipped.
 func DistinctSessionsBy(data []byte, keyOf func(repoLabel string) string) map[string]int {
-	seen := map[string]map[string]bool{}
-	eachLedgerSession(data, func(key, repo string) {
-		if repo == "" {
-			return
-		}
-		repo = keyOf(repo)
-		if repo == "" {
-			return
-		}
-		if seen[repo] == nil {
-			seen[repo] = map[string]bool{}
-		}
-		seen[repo][key] = true
-	})
-	out := make(map[string]int, len(seen))
-	for repo, keys := range seen {
-		out[repo] = len(keys)
-	}
-	return out
+	return FoldLedger(data).DistinctBy(keyOf)
 }
 
 // DistinctSessionsIn is DistinctSessionsBy over one window: a session
@@ -275,29 +259,7 @@ func DistinctSessionsBy(data []byte, keyOf func(repoLabel string) string) map[st
 // window", docs/design/realization-grade.md §3) — an all-time count would
 // grade a repository busy in July and silent since as active.
 func DistinctSessionsIn(data []byte, keyOf func(repoLabel string) string, from, to time.Time) map[string]int {
-	seen := map[string]map[string]bool{}
-	eachLedgerSessionAt(data, func(key, repo, at string) {
-		if repo == "" {
-			return
-		}
-		ts, err := time.Parse(time.RFC3339, at)
-		if err != nil || ts.Before(from) || !ts.Before(to) {
-			return
-		}
-		repo = keyOf(repo)
-		if repo == "" {
-			return
-		}
-		if seen[repo] == nil {
-			seen[repo] = map[string]bool{}
-		}
-		seen[repo][key] = true
-	})
-	out := make(map[string]int, len(seen))
-	for repo, keys := range seen {
-		out[repo] = len(keys)
-	}
-	return out
+	return FoldLedger(data).DistinctIn(keyOf, from, to)
 }
 
 // VerifyRunsIn counts the verify gate's runs in [from, to) per service key
@@ -326,47 +288,6 @@ func VerifyRunsIn(runs []LedgerRun, keyOf func(service string) string, from, to 
 		out[k] = len(at)
 	}
 	return out
-}
-
-// eachLedgerSession calls fn with every parseable ledger row's session key
-// (its session id; a row with none counts once on its own) and repo label.
-func eachLedgerSession(data []byte, fn func(key, repo string)) {
-	eachLedgerRowAt(data, func(key, repo, _ string, _ []byte) { fn(key, repo) })
-}
-
-// eachLedgerSessionAt is eachLedgerSession with the row's timestamp.
-func eachLedgerSessionAt(data []byte, fn func(key, repo, at string)) {
-	eachLedgerRowAt(data, func(key, repo, at string, _ []byte) { fn(key, repo, at) })
-}
-
-// eachLedgerRow is eachLedgerSession with the row's own bytes, for a fold
-// that reads more of a row (the activity tab's session rows) and must still
-// count sessions by the one rule.
-func eachLedgerRow(data []byte, fn func(key, repo string, line []byte)) {
-	eachLedgerRowAt(data, func(key, repo, _ string, line []byte) { fn(key, repo, line) })
-}
-
-// eachLedgerRowAt is the one walk behind them: every parseable row's
-// session key, repo label, timestamp and bytes.
-func eachLedgerRowAt(data []byte, fn func(key, repo, at string, line []byte)) {
-	for _, line := range bytes.Split(data, []byte{'\n'}) {
-		if len(bytes.TrimSpace(line)) == 0 {
-			continue
-		}
-		var row struct {
-			SessionID string `json:"session_id"`
-			At        string `json:"at"`
-			Repo      string `json:"repo"`
-		}
-		if json.Unmarshal(line, &row) != nil {
-			continue
-		}
-		key := row.SessionID
-		if key == "" {
-			key = "\x00anon:" + row.At + ":" + row.Repo
-		}
-		fn(key, row.Repo, row.At, line)
-	}
 }
 
 // Sources names what the projections read: the resolved call log, the

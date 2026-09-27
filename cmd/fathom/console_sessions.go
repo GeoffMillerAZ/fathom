@@ -85,7 +85,7 @@ func buildSessionsPage(cr *consoleRequest) (consoleOut, error) {
 	m := cr.model()
 	q := cr.r.URL.Query()
 	f := sessionFilterFrom(q)
-	tbl := console.SessionTable(sessionLedgerPath(), m.ledger, m.ledgerErr, f, evPage(q), 50)
+	tbl := console.SessionTableFold(sessionLedgerPath(), m.sessionLedgerRead(), m.ledgerErr, f, evPage(q), 50)
 	verb := sessionsCommand(f, tbl.Page)
 	// The shared sessions metric is the model's one read of the ledger —
 	// the read the table above is built from too (OC-9, ADR-045 decision 3).
