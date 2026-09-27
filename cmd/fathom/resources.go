@@ -69,6 +69,8 @@ type resourcesReport struct {
 	Unreadable  []string           `json:"unreadable,omitempty"`
 	Exit        int                `json:"exit"`
 	Reasons     []string           `json:"reasons,omitempty"`
+
+	quarantine []tenancy.Quarantine // the ledger's, for the primer's line
 }
 
 type resourcesDaemon struct {
@@ -116,6 +118,7 @@ type resourcesLifecycle struct {
 	CountedExits30m int    `json:"counted_exits_30m"`
 	CrashLooping    bool   `json:"crash_looping"`
 	Switch          string `json:"switch"` // run | stopped: … | paused: …
+	SwitchSince     string `json:"switch_since,omitempty"`
 	BreakerStopped  bool   `json:"breaker_stopped"`
 	LastExit        string `json:"last_exit,omitempty"`
 }
@@ -261,6 +264,7 @@ func buildResources(env resourcesEnv, id, url string, since time.Duration) resou
 	}
 	if f, err := os.Open(ledger); err == nil {
 		if qs, _, qerr := tenancy.QuarantinedServices(f); qerr == nil {
+			rep.quarantine = qs
 			for _, q := range qs {
 				rep.Quarantined = append(rep.Quarantined, q.Attention())
 			}
@@ -353,6 +357,9 @@ func buildResources(env resourcesEnv, id, url string, since time.Duration) resou
 	}
 	if d.Managed {
 		v := kill(daemonRecordsDir(env.home), now)
+		if !v.Record.Since.IsZero() {
+			rep.Lifecycle.SwitchSince = v.Record.Since.UTC().Format(time.RFC3339)
+		}
 		switch v.Action {
 		case tenancy.ActionExitStay, tenancy.ActionExitRetry:
 			rep.Lifecycle.Switch = "stopped: " + v.Message

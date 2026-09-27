@@ -188,8 +188,8 @@ func TestPrimerUnderBudgetIsUntouched(t *testing.T) {
 // section, this arithmetic fails and tells them the cap is now load-bearing
 // — which is the moment to re-read EP-20 rather than bump a number.
 func TestPrimerPartBudgetsSumUnderCap(t *testing.T) {
-	const typicalIdentityBytes = 400 // the healthy-daemon line, measured
-	sum := typicalIdentityBytes + threadBriefBudgetBytes + attentionLineBudget
+	const typicalIdentityBytes = 400                                                                        // the healthy-daemon line, measured
+	sum := typicalIdentityBytes + threadBriefBudgetBytes + attentionLineBudget + tenancyAttentionBudget + 3 // + the joining newlines
 	if sum > sessionPrimerBudget {
 		t.Fatalf("the parts now sum to %d B against a %d B cap — the cap is load-bearing, not a backstop; re-read EP-20 before changing it", sum, sessionPrimerBudget)
 	}

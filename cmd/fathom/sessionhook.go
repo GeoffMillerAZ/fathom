@@ -210,9 +210,14 @@ const primerOverflowNote = " …[session primer truncated at its byte cap]"
 func composeContinuityAndCustodian(identity, projDir string, now time.Time) (primer string, briefBytes int, attention string) {
 	brief := renderThreadBrief(loadThreadItems(threadsPath()), projDir, threadBriefBudgetBytes, now)
 	line := attentionLine(projDir, now)
+	// RT-51: the tenancy line, only when the daemon is not normal (≤160 B).
+	tenancyLine := primerTenancyLine(now)
 
 	join := func(b string) string {
 		out := identity
+		if tenancyLine != "" {
+			out += "\n" + tenancyLine
+		}
 		if b != "" {
 			out += "\n" + b
 		}
