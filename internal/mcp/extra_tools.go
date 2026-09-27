@@ -1120,16 +1120,27 @@ func registerIngest(s *Server, backend QueryInterface) {
 			}
 		}
 
+		// RT-160: the ingest runs under tenancy's one ingest slot, as the
+		// inline ingest does, so a derived-table backfill (serving
+		// start-up, list_services' first read) never runs beside it and
+		// writes a summary with a mixed count. A caller whose request ends
+		// while another ingest or backfill holds the slot leaves, named.
+		releaseSlot, slotErr := tenancy.AcquireIngestSlot(ctx)
+		if slotErr != nil {
+			return nil, &rpcError{Code: ErrCodeBusy, Message: "ingest: " + svc + " not ingested — the wait for the one ingest slot (held by another ingest or a derived-table backfill) ended: " + slotErr.Error()}
+		}
 		var ingestErr error
 		if p.Path != "" {
 			ia, ok := backend.(ingestAtBackend)
 			if !ok {
+				releaseSlot()
 				return nil, &rpcError{Code: ErrCodeInvalid, Message: "ingest: this backend does not support onboarding by path"}
 			}
 			ingestErr = ia.IngestServiceAt(ctx, svc, p.Path)
 		} else {
 			ingestErr = backend.IngestService(ctx, svc)
 		}
+		releaseSlot()
 		// RT-41 (§2.1): an ingest that failed writing the store with
 		// SQLITE_FULL or SQLITE_IOERR is store distress — the next ingest
 		// and refresh are refused, named, instead of admitted to fail.
