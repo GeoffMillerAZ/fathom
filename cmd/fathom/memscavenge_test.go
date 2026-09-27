@@ -24,7 +24,7 @@ func TestRunMemoryScavenger_CallsFreeOnEveryTick(t *testing.T) {
 	done := make(chan struct{})
 	log := dlog.New(io.Discard, dlog.LevelDebug, time.Now)
 	go func() {
-		runMemoryScavenger(ctx, 5*time.Millisecond, log, func() { calls.Add(1) })
+		runMemoryScavenger(ctx, 5*time.Millisecond, log, func() { calls.Add(1) }, nil)
 		close(done)
 	}()
 
@@ -51,7 +51,7 @@ func TestRunMemoryScavenger_ZeroIntervalIsNoOp(t *testing.T) {
 	done := make(chan struct{})
 	log := dlog.New(io.Discard, dlog.LevelDebug, time.Now)
 	go func() {
-		runMemoryScavenger(context.Background(), 0, log, func() { called = true })
+		runMemoryScavenger(context.Background(), 0, log, func() { called = true }, nil)
 		close(done)
 	}()
 	select {
@@ -64,12 +64,11 @@ func TestRunMemoryScavenger_ZeroIntervalIsNoOp(t *testing.T) {
 	}
 }
 
-// TestRunMemoryScavenger_LogsHeapDelta pins DG-4: the scavenge line must be
-// self-contained evidence of what a pass did, not just that one ran — the
-// O108 postmortem had to stand up an external MemStats sampler to work
-// around exactly this gap. Both the before and after reading for each of
-// heap_sys and heap_inuse must appear in the logged line, so a reader never
-// needs a second instrument to see whether a pass actually moved anything.
+// TestRunMemoryScavenger_LogsHeapDelta pins DG-4 as RT-45 restated it: the
+// scavenge line must be self-contained evidence of what a pass did, not
+// just that one ran. Both the before and after readings of total−released
+// and phys_footprint appear in the same line (heap_sys, a high-water mark
+// that never falls, was the wrong instrument).
 func TestRunMemoryScavenger_LogsHeapDelta(t *testing.T) {
 	var buf strings.Builder
 	log := dlog.New(&buf, dlog.LevelInfo, time.Now)
@@ -78,7 +77,7 @@ func TestRunMemoryScavenger_LogsHeapDelta(t *testing.T) {
 
 	done := make(chan struct{})
 	go func() {
-		runMemoryScavenger(ctx, 5*time.Millisecond, log, func() {})
+		runMemoryScavenger(ctx, 5*time.Millisecond, log, func() {}, nil)
 		close(done)
 	}()
 
@@ -92,15 +91,15 @@ func TestRunMemoryScavenger_LogsHeapDelta(t *testing.T) {
 
 	out := buf.String()
 	for _, field := range []string{
-		"heap_sys_before_bytes", "heap_sys_after_bytes",
-		"heap_inuse_before_bytes", "heap_inuse_after_bytes",
+		"total_minus_released_before_bytes", "total_minus_released_after_bytes",
+		"phys_footprint_before_bytes", "phys_footprint_after_bytes",
 	} {
 		if !strings.Contains(out, field) {
-			t.Errorf("scavenge log missing %q; want both before and after heap_sys/heap_inuse readings in the same line:\n%s", field, out)
+			t.Errorf("scavenge log missing %q; want both before and after readings in the same line:\n%s", field, out)
 		}
 	}
-	if !strings.Contains(out, "scavenge: returned freed heap memory to the OS (O108)") {
-		t.Errorf("scavenge log missing the O108 message text:\n%s", out)
+	if !strings.Contains(out, "scavenge (tick): released") {
+		t.Errorf("scavenge log missing the released line:\n%s", out)
 	}
 }
 

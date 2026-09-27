@@ -58,6 +58,7 @@ type governorConfig struct {
 	logf         func(string)
 	actions      ladderActions
 	freeOSMemory func()
+	memRead      func() scavengeMem // RT-45: the scavenge line's readings; nil = readScavengeMem
 	killChildren func() int
 	captureDiag  func(trigger string) string // returns the capture's path
 	exit         func(code int)
@@ -107,6 +108,9 @@ func newGovernor(cfg governorConfig) *governor {
 	if cfg.logf == nil {
 		cfg.logf = func(string) {}
 	}
+	if cfg.memRead == nil {
+		cfg.memRead = readScavengeMem
+	}
 	return &governor{governorConfig: cfg, rt: tenancy.NewRuntimeReader()}
 }
 
@@ -131,7 +135,7 @@ func (g *governor) tick(at time.Time, late time.Duration) tenancy.Transition {
 	// While shed or refusing, memory freed by finished work goes back to
 	// the OS at most once per freeEvery, so the ladder can step down.
 	if g.st.Level >= tenancy.LevelShed {
-		g.scavenge(at, false)
+		g.scavenge(at, false, g.st.Level.String()+", every "+freeEvery.String())
 	}
 	return tr
 }
@@ -166,7 +170,7 @@ func (g *governor) applyLadderLevel(tr tenancy.Transition) {
 				}
 			}
 		}
-		g.scavenge(tr.At, tr.To >= tenancy.LevelRefuse)
+		g.scavenge(tr.At, tr.To >= tenancy.LevelRefuse, tr.To.String()+" entry")
 	case tr.To == tenancy.LevelNormal:
 		g.halted = false
 		if g.actions.pauseBackground != nil {
@@ -184,8 +188,10 @@ func (g *governor) drop(ds []namedDrop) {
 }
 
 // scavenge returns memory to the OS: once on entry, then at most once per
-// freeEvery (force: a refuse or exit entry always scavenges).
-func (g *governor) scavenge(at time.Time, force bool) {
+// freeEvery (force: a refuse or exit entry always scavenges). RT-45: each
+// pass logs the tick's scavenge line — total−released and phys_footprint
+// before and after — labelled with the event that caused it.
+func (g *governor) scavenge(at time.Time, force bool, event string) {
 	if g.freeOSMemory == nil {
 		return
 	}
@@ -193,7 +199,9 @@ func (g *governor) scavenge(at time.Time, force bool) {
 		return
 	}
 	g.lastFree = at
+	before := g.memRead()
 	g.freeOSMemory()
+	g.logf(scavengeLine(event, before, g.memRead()))
 }
 
 // cancelHeavy cancels every in-flight tree and fleet ticket, youngest
@@ -238,7 +246,7 @@ func (g *governor) exitOverBudget(tr tenancy.Transition) {
 			names := g.quarantine(ingests, own)
 			g.drop(g.actions.dropShed)
 			g.drop(g.actions.dropRefuse)
-			g.scavenge(g.sample.At, true)
+			g.scavenge(g.sample.At, true, "exit-mark halt")
 			var tools []string
 			for _, e := range ingests {
 				tools = append(tools, e.Tool+"("+firstNonEmpty(e.Service, "-")+")")

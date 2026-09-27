@@ -336,7 +336,7 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	} else {
 		go runMemoryScavenger(context.Background(), scavengeIntervalFromEnv(), outLog, func() {
 			scavengeTick(outFile, errFile, daemonStdioRotateBytes, outLog, flog, time.Now)
-		})
+		}, nil)
 	}
 
 	// Soft memory limit (memorylimit.go, W-N, docs/plans/daemon-footprint.md):
