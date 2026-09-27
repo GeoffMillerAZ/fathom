@@ -194,6 +194,8 @@ bound memory here.
 - [x] File-resolve reuses file_imports for unchanged hashes, applies size, binary and known-fault gates, and discloses faults (§7.2) {id: RT-108, symbol: resolveLang, package: internal/fusion, reachable_from: TestFileResolve_ReusesImportsAndDisclosesFaults}
 - [x] A service whose watermark is a git SHA never takes the content-manifest path; non-git corpora use a capped stat manifest (§6, ADR-017 amended) {id: RT-110, symbol: ServiceWatermark, package: pkg/client, reachable_from: TestGitServiceNeverTakesManifestPath}
 - [x] The post-commit hook enqueues a refresh (202, coalesced) instead of running an ingest (§12.3) {id: RT-111, symbol: ingestViaDaemon, package: cmd/fathom, reachable_from: TestPostCommitEnqueuesRefresh}
+- [x] A Discover that fails never replaces the root recorded for its service, so a read on a service still being onboarded (no service_meta path: the corpus resolves as the bare service ID) cannot make the onboarding ingest's Stat and Fetch fail for every file (waves C–F reading F1) {id: RT-182, symbol: (*LocalConnector).Discover, package: internal/connector, reachable_from: TestFailedDiscoverKeepsRecordedRoot}
+- [x] An ingest in which every file failed to read, with no index to protect, writes nothing, records no watermark and stays in_progress naming the failure (an Incomplete read-failure error) — never complete at HEAD over zero fingerprints; a partial failure still commits (§6, waves C–F reading F2) {id: RT-183, symbol: (*Pipeline).Ingest, package: internal/fusion, reachable_from: TestIngestAllReadsFailedNeverRecordsComplete, needs: RT-109}
 
 ## E. Console and hygiene
 
