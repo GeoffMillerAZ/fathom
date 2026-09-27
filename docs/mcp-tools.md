@@ -411,6 +411,13 @@ the daemon's one ingest slot — never beside another ingest or a summary backfi
 that rewrites it. `references` with `services: ["*"]`, or naming more than one service, is `fleet`. `batch` holds no
 ticket: at most 16 calls, each admitted in its own class.
 
+The class ceilings are measured. `internal/mcp/costtest` (RT-93..RT-95, design §4.8) calls
+every registered tool cold and warm against a generated fleet at 1× and 10×. It checks
+allocations against `point` 8 MiB, `index` 64 MiB, `tree` 256 MiB and `fleet` 512 MiB,
+bytes read against 2 MiB for `point`, and growth for `point` and `index` at no more than
+1.5× when the fleet grows 10×. A new tool needs a row in
+`internal/mcp/costtest/testdata/costrows.json` (`TestEveryToolHasCostRow`).
+
 Admission defaults to `observe` (`[tenancy].admission`, `docs/configuration.md`):
 every would-refuse is logged and counted (`fathom_would_refuse_total`) and the call
 runs. Under `enforce` a refused call answers HTTP 503 with `Retry-After` and JSON-RPC

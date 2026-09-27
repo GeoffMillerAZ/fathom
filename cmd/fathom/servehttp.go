@@ -611,7 +611,7 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	}
 
 	var srv *mcp.Server
-	fleet := &fleetAdapter{c: c, log: flog}
+	fleet := newFleetAdapter(c, flog)
 	if moduleHost != nil {
 		srv = mcp.NewServerWithModules(backend, fleet, logger, moduleHost)
 	} else {

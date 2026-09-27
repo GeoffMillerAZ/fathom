@@ -68,7 +68,7 @@ func TestServiceSummaries_AggregatesNeverLoadSymbols(t *testing.T) {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			sums[i], _ = fa.c.ServiceSymbolAggregates(ctx, "demo")
+			sums[i], _ = fa.Client().ServiceSymbolAggregates(ctx, "demo")
 		}(i)
 	}
 	time.Sleep(50 * time.Millisecond)
@@ -90,14 +90,14 @@ func TestServiceSummaries_AggregatesNeverLoadSymbols(t *testing.T) {
 
 	// Cached per watermark: a warm call runs no query; an ingest (a new
 	// watermark) earns exactly one more.
-	_, _ = fa.c.ServiceSymbolAggregates(ctx, "demo")
+	_, _ = fa.Client().ServiceSymbolAggregates(ctx, "demo")
 	if n := st.aggregates.Load(); n != 1 {
 		t.Fatalf("a warm call re-ran the aggregate (%d queries)", n)
 	}
 	if err := st.SetServiceMeta(ctx, store.ServiceMeta{ServiceID: "demo", IndexedCommit: "c2", IndexedAt: 2}); err != nil {
 		t.Fatal(err)
 	}
-	_, _ = fa.c.ServiceSymbolAggregates(ctx, "demo")
+	_, _ = fa.Client().ServiceSymbolAggregates(ctx, "demo")
 	if n := st.aggregates.Load(); n != 2 {
 		t.Fatalf("after a new watermark, aggregate queries = %d, want 2", n)
 	}

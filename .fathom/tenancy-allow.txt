@@ -29,6 +29,8 @@ bare-go	cmd/fathom/unmanaged.go	unmanaged daemon's parent watch: one per process
 bare-go	cmd/scenariobench/signals.go	benchmark signal forwarder, one per bench run
 bare-go	internal/extractor/tsengine/tsengine.go	runs one wasm op against its deadline; the reaper closes the module when a timed-out op returns
 bare-go	internal/extractor/tsengine/tsengine.go	runs one wasm op against its deadline; the reaper closes the module when a timed-out op returns
+bare-go	internal/mcp/costtest/stampede.go	the harness's own concurrent callers, joined by a WaitGroup before it returns
+bare-go	internal/mcp/costtest/stampede.go	the harness's own concurrent callers, joined by a WaitGroup before it returns
 bare-go	internal/scenariobench/concurrent.go	benchmark fan-out joined by a WaitGroup
 bare-go	internal/semantic/decisionrank.go	bounded fan-out: a semaphore caps the goroutines and a WaitGroup joins them
 bare-go	pkg/client/sourcesslot.go	ties a derived context to the slot's release; exits on either the caller's context or the release
@@ -126,8 +128,6 @@ pkg-map	cmd/fathom/console_plan.go	read-only lookup table of constants, never wr
 pkg-map	cmd/fathom/console_planrow.go	read-only lookup table of constants, never written after init: not a cache
 pkg-map	cmd/fathom/console_plans.go	read-only lookup table of constants, never written after init: not a cache
 pkg-map	cmd/fathom/console_plansdata.go	registry keyed by the daemon's consoleDeps (one entry per daemon); the plan cache it holds is bounded by the plan count but sits outside memo (I51, RT-95 follow-up)
-pkg-map	cmd/fathom/console_refactor.go	read-only lookup table of constants, never written after init: not a cache
-pkg-map	cmd/fathom/console_refactor.go	read-only lookup table of constants, never written after init: not a cache
 pkg-map	cmd/fathom/console_sessions.go	read-only lookup table of constants, never written after init: not a cache
 pkg-map	cmd/fathom/discoveries_observed.go	read-only lookup table of constants, never written after init: not a cache
 pkg-map	cmd/fathom/discovery.go	read-only lookup table of constants, never written after init: not a cache

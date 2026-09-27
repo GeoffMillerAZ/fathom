@@ -289,8 +289,26 @@ func (c *Client) layerCorpus(ctx context.Context, service string, def semantic.L
 				unread = append(unread, corpusSkip{p, serr.Error()})
 				continue
 			}
-			if !(cached && doc.fromStat && doc.size == info.Size() && doc.mtimeNs == info.ModTime().UnixNano()) {
-				data, rinfo, skipped, rerr := readFileCapped(ctx, abs, HotPathReadCap)
+			fresh := func(d corpusDoc) bool {
+				return d.fromStat && d.size == info.Size() && d.mtimeNs == info.ModTime().UnixNano()
+			}
+			if !(cached && fresh(doc)) {
+				type guide struct {
+					doc     corpusDoc
+					skipped string
+				}
+				v, rerr := c.flightDerive(ctx, "doc\x00"+service+"\x00"+docsKey+"\x00"+p, func() (any, error) {
+					if d, ok := c.cachedCorpusDoc(service, docsKey, p); ok && fresh(d) {
+						return guide{doc: d}, nil
+					}
+					data, rinfo, skipped, rerr := readFileCapped(ctx, abs, HotPathReadCap)
+					if rerr != nil || skipped != "" {
+						return guide{skipped: skipped}, rerr
+					}
+					d := corpusDoc{size: rinfo.Size(), mtimeNs: rinfo.ModTime().UnixNano(), fromStat: true, content: data}
+					c.storeCorpusDoc(service, docsKey, p, d)
+					return guide{doc: d}, nil
+				})
 				if rerr != nil {
 					if errors.Is(rerr, fs.ErrNotExist) {
 						continue
@@ -298,12 +316,12 @@ func (c *Client) layerCorpus(ctx context.Context, service string, def semantic.L
 					unread = append(unread, corpusSkip{p, rerr.Error()})
 					continue
 				}
-				if skipped != "" {
-					unread = append(unread, corpusSkip{p, skipped})
+				g := v.(guide)
+				if g.skipped != "" {
+					unread = append(unread, corpusSkip{p, g.skipped})
 					continue
 				}
-				doc = corpusDoc{size: rinfo.Size(), mtimeNs: rinfo.ModTime().UnixNano(), fromStat: true, content: data}
-				c.storeCorpusDoc(service, docsKey, p, doc)
+				doc = g.doc
 			}
 		case !cached:
 			data, ferr := c.conn.Fetch(ctx, core.SourceRef{Service: service, Path: p})

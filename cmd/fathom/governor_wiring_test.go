@@ -15,7 +15,7 @@ import (
 func TestServingRefuseDropsEveryCache(t *testing.T) {
 	c := client.New(connector.NewLocalConnector(), store.NewMemoryStore())
 	defer c.Close()
-	a := servingLadderActions(mcp.NewServer(nil), c, &fleetAdapter{c: c})
+	a := servingLadderActions(mcp.NewServer(nil), c, newFleetAdapter(c, nil))
 	names := map[string]bool{}
 	for _, d := range append(append([]namedDrop{}, a.dropShed...), a.dropRefuse...) {
 		names[d.name] = true

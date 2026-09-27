@@ -1,6 +1,8 @@
 package client
 
 import (
+	"errors"
+
 	"context"
 	"fmt"
 	"os"
@@ -66,4 +68,21 @@ func humanBytes(n int64) string {
 	default:
 		return fmt.Sprintf("%d B", n)
 	}
+}
+
+// flightDerive runs derive once among concurrent callers of key on this
+// client (RT-95, I51): the obligations hot path's read-and-remember steps
+// (the edited file's hash and tokens, a layer guide's content) each
+// re-check their memo inside the flight, read on a miss and store what
+// they derived before the flight ends, so a cold stampede reads each file
+// once — charged to the ticket of the caller that read it — and a caller
+// arriving after the flight finds the memo filled. A waiter whose own
+// context is live when the shared derive failed on the reader's cancelled
+// context derives for itself.
+func (c *Client) flightDerive(ctx context.Context, key string, derive func() (any, error)) (any, error) {
+	v, err, _ := c.hotReads.Do(key, derive)
+	if err != nil && ctx.Err() == nil && (errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)) {
+		return derive()
+	}
+	return v, err
 }

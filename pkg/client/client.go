@@ -21,6 +21,8 @@ import (
 	"sync"
 	"time"
 
+	"golang.org/x/sync/singleflight"
+
 	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
 	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
 	"github.com/geoffmilleraz/fathom/internal/config"
@@ -117,6 +119,10 @@ type Client struct {
 	// obligations_corpus.go): the layer corpus's paths per store
 	// watermark and its guides' contents per stat.
 	oblMemo obligationsMemo
+
+	// hotReads single-flights the obligations hot path's file reads
+	// (flightDerive, RT-95): concurrent cold callers share one read.
+	hotReads singleflight.Group
 
 	// storeIDOnce/storeID name this client's store for the graph store
 	// and symbol snapshots (StoreID, RT-74).

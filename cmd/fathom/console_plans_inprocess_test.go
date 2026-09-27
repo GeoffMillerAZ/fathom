@@ -27,7 +27,7 @@ func TestConsolePlansVerifyInProcessNoRequeue(t *testing.T) {
 		http.Error(w, "loopback", http.StatusTeapot)
 	}))
 	t.Cleanup(ts.Close)
-	srv := mcp.NewServerWithFleetAndLogger(f.client, &fleetAdapter{c: f.client, log: testDiscardLogger()}, nil)
+	srv := mcp.NewServerWithFleetAndLogger(f.client, newFleetAdapter(f.client, testDiscardLogger()), nil)
 	var calls atomic.Int32
 	prev := inProcessReg.Load()
 	inProcessReg.Store(&inProcessRegistry{

@@ -368,9 +368,9 @@ func renderRefactorPage(v console.RefactorPage, names []string, sr serviceRoot, 
 		if detail == "" && c.Verdict == "conserved" {
 			detail = "checked, nothing lost"
 		}
-		chips.WriteString(`<li class="min-w-0 rounded-md border border-line px-3 py-2 ` + planeSurface[c.Role] + `" data-plane="` + html.EscapeString(c.Plane) + `" data-verdict="` + html.EscapeString(c.Verdict) + `">` +
+		chips.WriteString(`<li class="min-w-0 rounded-md border border-line px-3 py-2 ` + planeSurface(c.Role) + `" data-plane="` + html.EscapeString(c.Plane) + `" data-verdict="` + html.EscapeString(c.Verdict) + `">` +
 			`<p class="text-sm font-semibold text-ink">` + html.EscapeString(c.Plane) + `</p>` +
-			`<p class="text-sm font-medium ` + planeInk[c.Role] + `">` + html.EscapeString(c.Verdict) + `</p>`)
+			`<p class="text-sm font-medium ` + planeInk(c.Role) + `">` + html.EscapeString(c.Verdict) + `</p>`)
 		if detail != "" {
 			chips.WriteString(`<p class="text-xs text-ink-muted [overflow-wrap:anywhere]">` + html.EscapeString(detail) + `</p>`)
 		}
@@ -435,15 +435,33 @@ func renderRefactorPage(v console.RefactorPage, names []string, sr serviceRoot, 
 
 // planeSurface and planeInk color a plane chip by its verdict role
 // (complete literals for the CSS build); the verdict is always also words.
-//
-//fathom:tenancy-allow pkg-map read-only lookup table of constants, never written after init: not a cache
-var planeSurface = map[string]string{
-	"positive": "bg-positive-soft", "danger": "bg-danger-soft", "caution": "bg-caution-soft", "ink-muted": "bg-surface-sunken",
+// Functions, not package-level maps (tenancy lint pkg-map, RT-92).
+func planeSurface(role string) string {
+	switch role {
+	case "positive":
+		return "bg-positive-soft"
+	case "danger":
+		return "bg-danger-soft"
+	case "caution":
+		return "bg-caution-soft"
+	case "ink-muted":
+		return "bg-surface-sunken"
+	}
+	return ""
 }
 
-//fathom:tenancy-allow pkg-map read-only lookup table of constants, never written after init: not a cache
-var planeInk = map[string]string{
-	"positive": "text-positive", "danger": "text-danger", "caution": "text-caution", "ink-muted": "text-ink-muted",
+func planeInk(role string) string {
+	switch role {
+	case "positive":
+		return "text-positive"
+	case "danger":
+		return "text-danger"
+	case "caution":
+		return "text-caution"
+	case "ink-muted":
+		return "text-ink-muted"
+	}
+	return ""
 }
 
 func renderReadingSet(r console.ResidueView) string {

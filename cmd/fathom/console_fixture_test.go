@@ -223,7 +223,7 @@ func newConsoleFixtureOpts(t *testing.T, o consoleFixtureOpts) *consoleFixture {
 		t.Cleanup(func() { logFile.Close() })
 		logger = mcp.NewCallLogger(logFile)
 	}
-	srv := mcp.NewServerWithFleetAndLogger(c, &fleetAdapter{c: c, log: testDiscardLogger()}, logger)
+	srv := mcp.NewServerWithFleetAndLogger(c, newFleetAdapter(c, testDiscardLogger()), logger)
 	h = newHTTPHandlerDeps(srv, c, strings.TrimPrefix(f.ts.URL, "http://"), nil, f.deps)
 	t.Setenv("FATHOM_HTTP", f.ts.URL)
 	// serve-http records itself once bound (recordServingDaemon, OC-2): a

@@ -646,3 +646,45 @@ func TestObligationsHotPathReaderAgnosticTripwire(t *testing.T) {
 		t.Fatal("an obligations call opened a non-selected file's contents (blocked on the FIFO tripwire)")
 	}
 }
+
+// TestConcurrentColdHotReadsShareOneRead (RT-95, I51): concurrent cold
+// obligations callers share one read of each file — the edited file's
+// hash and the layer corpus's guides — instead of each reading it before
+// the first stores what it read.
+func TestConcurrentColdHotReadsShareOneRead(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	writeTree(t, dir, map[string]string{
+		"CLAUDE.md":   "# Rules\n\n## Non-negotiables — the workspace/ convention\n\nAll build artifacts belong under workspace/.\n",
+		"cmd/emit.go": "package cmd\n\nimport \"os\"\n\nfunc emit(dir string) error {\n\treturn os.WriteFile(dir, nil, 0o644)\n}\n",
+	})
+	c := client.New(connector.NewLocalConnector(), store.NewMemoryStore())
+	defer c.Close()
+	if _, err := c.Ingest(ctx, client.ServiceRef{ID: "svc", Path: dir}); err != nil {
+		t.Fatal(err)
+	}
+	stop := client.ObserveReadsUnderSlow(dir, 30*time.Millisecond)
+	const callers = 16
+	var wg sync.WaitGroup
+	for i := 0; i < callers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, _ = c.ObligationsIndexCheck(ctx, "svc", "cmd/emit.go")
+			_, _ = c.Obligations(ctx, "svc", "cmd/emit.go", 5)
+		}()
+	}
+	wg.Wait()
+	per := map[string]int{}
+	for _, r := range stop() {
+		per[r]++
+	}
+	for path, n := range per {
+		if n != 1 {
+			t.Errorf("%s read %d times by %d concurrent cold callers; want 1", path, n, callers)
+		}
+	}
+	if len(per) == 0 {
+		t.Fatal("no read observed: the test exercises nothing")
+	}
+}

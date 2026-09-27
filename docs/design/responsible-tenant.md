@@ -631,6 +631,35 @@ bytes read == one walk; cancel all callers mid-build → the flight is cancelled
 `runtime.NumGoroutine` returns to baseline within 1 s. They generalize the hotfix's red
 test and count bytes, not Discover calls (the DG-18 test's mistake).
 
+*As built (RT-93, RT-94, RT-95, 2026-09-27).* `internal/mcp/costtest`. The fleet is
+generated. Each of fauxtown's six services is copied once per replica with 200 generated
+functions added to each Go service, and the queried service (`ledger-service`) also carries a
+12 MiB text file and a 64 KiB binary. "10×" is ten times the services. The service a
+point or index call names stays the same size, because I48 is about the *fleet* growing
+around an answer. A fleet that is ten times deeper in one service is a different question,
+and `index` answers it by design. The ingest fleet uses `LocalConnector` over a `MemoryStore`.
+Each tool is measured behind an observe-mode gate. A fresh client (new store identity, so every
+memo key is cold) makes one call, then repeats it warm. `testdata/costrows.json` holds one row
+per registered tool, and a row whose call cannot answer on the fixture names why in
+`expect_error`. Refinements:
+- *Bytes read.* Only `point` states its own byte ceiling (2 MiB). The other classes hold bytes
+  read to their allocation ceiling. `ingest` has neither: I50's one slot and in-flight window
+  bound it. A binary file reads at most the 8 KiB sniff, not zero.
+- *Scale ratio.* A 1× measurement under 256 KiB (`ScaleFloor`) is taken as 256 KiB. Below
+  that, map growth and a longer envelope are noise. A whole-fleet load of the generated fleet
+  is several MiB at 10×, far above the floor.
+- *Stampede.* "One build per key" is checked against what one cold caller starts in each memo
+  group. "One walk's bytes" means 32 cold callers read what one cold caller reads, plus 32 ×
+  a warm call's reads. Each case is a tool that builds through memo: `find_callers`,
+  `obligations`, `symbol_context` and `cross_repo_blast_radius`. The cancel case holds the
+  snapshot build open with a gated backend.
+
+The first measurement found one violation. Concurrent cold `obligations` callers each read
+the edited file (and the layer guides) before the first caller stored what it derived, because
+the client's own memo was not single-flighted (I51's open item). The read-and-remember steps
+now run in one flight per key (`Client.flightDerive`), which re-checks the memo inside the
+flight.
+
 ---
 
 ## 5. `internal/memo`: one byte-budgeted, single-flighted registry

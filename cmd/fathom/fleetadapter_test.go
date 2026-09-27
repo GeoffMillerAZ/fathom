@@ -85,7 +85,7 @@ func (c *countingConnector) addSwiftFile(service, path string) {
 
 func newTestFleetAdapter(conn *countingConnector, st store.Store) *fleetAdapter {
 	c := client.New(conn, st)
-	return &fleetAdapter{c: c, log: dlog.New(io.Discard, dlog.LevelDebug, time.Now)}
+	return newFleetAdapter(c, dlog.New(io.Discard, dlog.LevelDebug, time.Now))
 }
 
 // TestFleetAdapter_UnsupportedLanguagesFor_MissingCorpusSkipsRewalk pins
@@ -149,7 +149,7 @@ func TestSymbolsFor_TagsCantopenDistinctly(t *testing.T) {
 	fa := newTestFleetAdapter(conn, st)
 
 	var buf strings.Builder
-	fa.log = dlog.New(&buf, dlog.LevelDebug, time.Now)
+	fa.SetLog(dlog.New(&buf, dlog.LevelDebug, time.Now))
 
 	if got := fa.SymbolsFor("demo"); got != nil {
 		t.Errorf("SymbolsFor on a store error = %v, want nil", got)
@@ -173,7 +173,7 @@ func TestSymbolsFor_GenericErrorNotTaggedCantopen(t *testing.T) {
 	fa := newTestFleetAdapter(conn, st)
 
 	var buf strings.Builder
-	fa.log = dlog.New(&buf, dlog.LevelDebug, time.Now)
+	fa.SetLog(dlog.New(&buf, dlog.LevelDebug, time.Now))
 
 	fa.SymbolsFor("demo")
 	line := buf.String()

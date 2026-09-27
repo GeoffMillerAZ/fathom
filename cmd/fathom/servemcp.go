@@ -107,7 +107,7 @@ func runServeMCP(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		mcp.SetIngestOwnerProbe(ingestOwnerProbe(realDaemonOps{}))
 	}
 
-	srv := mcp.NewServerWithFleet(backend, &fleetAdapter{c: c, log: flog})
+	srv := mcp.NewServerWithFleet(backend, newFleetAdapter(c, flog))
 
 	// RT-86: a stdio server runs in its agent's working directory, so its
 	// calls carry that as the caller's cwd — references then defaults to

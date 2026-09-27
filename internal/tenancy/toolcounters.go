@@ -45,6 +45,15 @@ func RecordBytesRead(tool string, n int64) {
 	toolCounters.Unlock()
 }
 
+// BytesReadTotal is the bytes every settled call of tool has read so far
+// (fathom_bytes_read_total{tool}); the cost harness reads its delta
+// around one call (RT-93).
+func BytesReadTotal(tool string) int64 {
+	toolCounters.Lock()
+	defer toolCounters.Unlock()
+	return toolCounters.bytesRead[tool]
+}
+
 // RegisterCacheBytes registers a cache group's byte reading (the memo
 // registry's groups register here); a nil size unregisters it.
 func RegisterCacheBytes(group string, size func() int64) {

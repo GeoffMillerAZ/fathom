@@ -276,16 +276,27 @@ func (c *Client) ObligationsIndexCheck(ctx context.Context, service, file string
 	if e, ok := c.editedLookup(diskPath, info); ok && e.hashOK {
 		return e.hash != stored, ""
 	}
-	data, rinfo, skipped, err := readFileCapped(ctx, diskPath, HotPathReadCap)
+	type hashed struct{ hash, skipped string }
+	v, err := c.flightDerive(ctx, "hash\x00"+diskPath, func() (any, error) {
+		if e, ok := c.editedLookup(diskPath, info); ok && e.hashOK {
+			return hashed{hash: e.hash}, nil
+		}
+		data, rinfo, skipped, err := readFileCapped(ctx, diskPath, HotPathReadCap)
+		if err != nil || skipped != "" {
+			return hashed{skipped: skipped}, err
+		}
+		hash := fusion.FingerprintHash(data)
+		c.editedStore(diskPath, rinfo, func(e *editedEntry) { e.hash, e.hashOK = hash, true })
+		return hashed{hash: hash}, nil
+	})
 	if err != nil {
 		return false, ""
 	}
-	if skipped != "" {
-		return false, "index freshness not checked: " + skipped + "; not refreshed"
+	h := v.(hashed)
+	if h.skipped != "" {
+		return false, "index freshness not checked: " + h.skipped + "; not refreshed"
 	}
-	hash := fusion.FingerprintHash(data)
-	c.editedStore(diskPath, rinfo, func(e *editedEntry) { e.hash, e.hashOK = hash, true })
-	return hash != stored, ""
+	return h.hash != stored, ""
 }
 
 // CompileLayer runs the compile for the named manifest layer against
@@ -520,13 +531,27 @@ func (c *Client) editedFileTokens(ctx context.Context, root, service, file strin
 			if e, ok := c.editedLookup(path, info); ok && e.tokensOK {
 				return e.tokens, ""
 			}
-			data, rinfo, why, rerr := readFileCapped(ctx, path, HotPathReadCap)
-			if rerr != nil || why != "" {
-				return nil, why
+			type tokened struct {
+				tokens []string
+				why    string
 			}
-			tokens = semantic.BehaviorTokens(string(data))
-			c.editedStore(path, rinfo, func(e *editedEntry) { e.tokens, e.tokensOK = tokens, true })
-			return tokens, ""
+			v, rerr := c.flightDerive(ctx, "tokens\x00"+path, func() (any, error) {
+				if e, ok := c.editedLookup(path, info); ok && e.tokensOK {
+					return tokened{tokens: e.tokens}, nil
+				}
+				data, rinfo, why, rerr := readFileCapped(ctx, path, HotPathReadCap)
+				if rerr != nil || why != "" {
+					return tokened{why: why}, rerr
+				}
+				tokens := semantic.BehaviorTokens(string(data))
+				c.editedStore(path, rinfo, func(e *editedEntry) { e.tokens, e.tokensOK = tokens, true })
+				return tokened{tokens: tokens}, nil
+			})
+			if rerr != nil {
+				return nil, ""
+			}
+			tk := v.(tokened)
+			return tk.tokens, tk.why
 		}
 	}
 	data, err := c.conn.Fetch(ctx, core.SourceRef{Service: service, Path: file})
