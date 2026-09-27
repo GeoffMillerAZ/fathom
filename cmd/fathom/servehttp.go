@@ -389,6 +389,10 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	// every 2 s and bounds memory whatever the cause.
 	_, stopGovernor := startGovernor(budget, budgetNotes, absStorePath(*storePath), recordPath, managedLabel, servingLadderActions(srv, c, fleet), flog)
 	defer stopGovernor()
+	// RT-150 (§2.3): warm-up after a managed start — auto-refresh runs no
+	// inline ingest for [tenancy.breaker].warmup (120 s), absorbing the
+	// cold-cache stampede an empty seen map causes.
+	defer startRefreshWarmup(managed, tenancyCfg.Breaker.WarmupDuration(), time.Now(), outLog.Info)()
 	publishDaemonEvent(consoleDeps.bus, prevRecord, hadPrev, commit)
 	eventSources := newConsoleEventSources(consoleDeps.bus, c, verifyLedgerPath(), sessionLedgerPath())
 	eventSources.warn = func(msg string) { flog.Warn(msg) }

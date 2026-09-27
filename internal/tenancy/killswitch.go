@@ -173,7 +173,7 @@ func EvaluateKillSwitch(in KillSwitchInput) KillSwitchVerdict {
 		rec, err := parseSwitchFile(in.Paused)
 		return KillSwitchVerdict{
 			Action: ActionSafeMode, Record: rec, Malformed: err != nil,
-			Message: "fathom: paused " + describe(rec, err) + " — serving with the safe-mode flag set (its effects, auto-refresh off and heavy requests refused, arrive with RT-39/RT-150; nothing is curtailed yet); `fathom daemon resume` clears it",
+			Message: "fathom: paused " + describe(rec, err) + " — serving with the safe-mode flag set: auto-refresh is off (reads answer from the index as it stands, disclosed); heavy requests are not yet refused (RT-39); `fathom daemon resume` clears it",
 		}
 	}
 	return KillSwitchVerdict{Action: ActionRun}

@@ -136,3 +136,18 @@ func tenancyStartupLine(b tenancy.Budget, notes []tenancy.Note) string {
 	return fmt.Sprintf("tenancy: budget %s (%s) · shed %s · refuse %s · exit %s · sampled every %s, %d CPUs",
 		tenancy.FormatBytes(b.Budget), how, tenancy.FormatBytes(b.Shed), tenancy.FormatBytes(b.Refuse), exit, tenancy.SampleEvery, runtime.NumCPU())
 }
+
+// startRefreshWarmup opens auto-refresh's warm-up window for a managed
+// daemon (RT-150, design §2.3) and returns what closes it. A scratch
+// daemon gets none: its auto-refresh is off unless asked for, and a proof
+// agent that asks wants it at once.
+func startRefreshWarmup(managed bool, d time.Duration, now time.Time, logf func(string, ...any)) (stop func()) {
+	if !managed || d <= 0 {
+		return func() {}
+	}
+	tenancy.StartWarmup(now, d)
+	if logf != nil {
+		logf(fmt.Sprintf("tenancy: warm-up %s — auto-refresh runs no inline ingest until %s", d, now.Add(d).Format(time.TimeOnly)))
+	}
+	return func() { tenancy.StartWarmup(time.Time{}, 0) }
+}

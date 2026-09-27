@@ -1512,9 +1512,10 @@ starts normally. An empty file (`touch ~/.fathom/daemon/disabled.json`, the
 appends an `operator_reset` row to `~/.fathom/daemon/<label>/lifecycle.jsonl`
 (the breaker window restarts) and kickstarts the label. `pause` writes
 `paused.json`; the managed daemon re-reads it every 2 s, stays up and sets
-its safe-mode flag (logged); in this release the flag has no effect yet —
-auto-refresh off and heavy requests refused arrive with RT-39/RT-150, so
-`stop` is the switch that takes load off now. `resume` removes it. While the
+its safe-mode flag (logged). In safe mode auto-refresh runs no ingest —
+reads answer from the index as it stands and their response envelope says
+`refresh: deferred (safe mode)` (RT-150); heavy requests are not yet refused
+(RT-39), so `stop` is the switch that takes all load off. `resume` removes it. While the
 switch is set, `status`, doctor and the session primer name `fathom daemon
 start` (with the switch's reason) as the remedy instead of a kickstart, and
 `task deploy` installs the binary, then stops with that message instead of

@@ -3,6 +3,7 @@ package mcp
 import (
 	"context"
 	"fmt"
+	"os"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -12,6 +13,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/hookcache"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
+	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
 
@@ -124,10 +126,14 @@ func (a *autoRefreshBackend) ensure(ctx context.Context, service string) {
 	if service == "" {
 		return
 	}
-	// RT-34/RT-155 (design §2.1, §2.3): background work pauses at shed and
-	// above, and a quarantined service is never re-queued until an
-	// explicit ingest — the read answers from the index as it stands.
-	if tenancy.CurrentLevel() >= tenancy.LevelShed || tenancy.IsQuarantined(service) {
+	// RT-150 (design §7.1, §2.1, §2.3): no inline ingest at shed and
+	// above, in safe mode, during warm-up after a start, or for a
+	// quarantined service (never re-queued until an explicit ingest). The
+	// read answers from the index as it stands and the envelope says why
+	// (refreshnotes.go). Decided before any drift check, so a gated read
+	// costs no git or corpus read.
+	if reason := tenancy.RefreshDeferralNow(service, a.clock()); reason != "" {
+		noteRefreshDeferred(ctx, service, reason)
 		return
 	}
 	path, indexed, found, err := a.QueryInterface.ServiceMeta(ctx, service)
@@ -140,7 +146,10 @@ func (a *autoRefreshBackend) ensure(ctx context.Context, service string) {
 			head, _ = w.ServiceWatermark(ctx, service)
 		}
 	}
-	if head == "" || head == indexed {
+	// RT-109 (design §6): an ingest another process left in_progress (it
+	// was killed or halted — a dead or foreign pid) means the index is not
+	// the one its watermark describes: re-ingest even with no drift.
+	if head == "" || (head == indexed && !a.interruptedIngest(ctx, service)) {
 		return
 	}
 	a.mu.Lock()
@@ -173,6 +182,25 @@ func (a *autoRefreshBackend) ensure(ctx context.Context, service string) {
 	case <-fl.done:
 	case <-ctx.Done():
 	}
+}
+
+// ingestStateBackend is the optional backend capability behind RT-109:
+// the service's ingest_state row (pkg/client implements it).
+type ingestStateBackend interface {
+	IngestState(ctx context.Context, service string) (state string, pid int, found bool, err error)
+}
+
+// interruptedIngest reports whether service's last ingest was left
+// in_progress by another process — killed or halted before its final
+// commit. A row this process wrote is its own ingest's (a failure here is
+// retried by the drift and backoff rules), never an interruption.
+func (a *autoRefreshBackend) interruptedIngest(ctx context.Context, service string) bool {
+	isb, ok := a.QueryInterface.(ingestStateBackend)
+	if !ok {
+		return false
+	}
+	state, pid, found, err := isb.IngestState(ctx, service)
+	return err == nil && found && state == store.IngestInProgress && pid != os.Getpid()
 }
 
 // inlineIngest is one detached auto-refresh ingest in flight for a service.

@@ -350,9 +350,9 @@ func runDaemonStart(args []string, stdout, stderr io.Writer, ops daemonOps) int 
 
 // runDaemonPause is `fathom daemon pause|resume`: paused.json sets (and its
 // removal clears) the managed daemon's safe-mode flag on its next 2 s tick,
-// without stopping it. In wave A nothing reads the flag yet — its effects
-// are RT-39 (applySafeMode) and RT-150 (the ensure skip) — so the output
-// says pause records the intent only.
+// without stopping it. Auto-refresh reads the flag (RT-150: reads answer
+// from the index as it stands, disclosed); heavy-request refusal is RT-39's
+// and not yet built, so the output says so.
 func runDaemonPause(pause bool, args []string, stdout, stderr io.Writer, ops daemonOps) int {
 	name := "daemon resume"
 	if pause {
@@ -381,7 +381,7 @@ func runDaemonPause(pause bool, args []string, stdout, stderr io.Writer, ops dae
 			return 1
 		}
 		fmt.Fprintf(stdout, "paused: %s written — the managed daemon marks itself paused within 2 s (logged) and stays up; `fathom daemon resume` clears it\n", p)
-		fmt.Fprintln(stdout, "note: pausing records the intent only in this release — auto-refresh and heavy requests are not yet curtailed (RT-39, RT-150); `fathom daemon stop` is the switch that takes load off now")
+		fmt.Fprintln(stdout, "note: paused turns auto-refresh off (reads answer from the index as it stands, and say so); heavy requests are not yet refused (RT-39) — `fathom daemon stop` is the switch that takes all load off")
 		return 0
 	}
 	p := filepath.Join(dir, tenancy.PausedFile)

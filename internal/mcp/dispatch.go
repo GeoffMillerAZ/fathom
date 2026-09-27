@@ -384,6 +384,8 @@ func (s *Server) handleToolsCallWithCtx(ctx context.Context, params json.RawMess
 	// indistinguishable from a recall bug", the exact condition the row
 	// forbids, while the row sat checked on internal-object tests.
 	ctx, collector := scope.WithCollector(ctx)
+	// RT-150: a read whose auto-refresh was deferred says so.
+	ctx, refreshed := withRefreshNotes(ctx)
 
 	result, rpcErr := te.handler(ctx, p.Arguments)
 	if rpcErr != nil {
@@ -409,6 +411,9 @@ func (s *Server) handleToolsCallWithCtx(ctx context.Context, params json.RawMess
 	}
 	if suppressed := collector.Render(); suppressed != nil {
 		envelope["suppressed"] = suppressed
+	}
+	if r := refreshed.render(); r != nil {
+		envelope["refresh"] = r
 	}
 	return envelope, nil
 }

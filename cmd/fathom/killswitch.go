@@ -23,7 +23,6 @@ import (
 	"slices"
 	"sort"
 	"strings"
-	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -144,10 +143,10 @@ func readKillSwitch(dir string, now time.Time) tenancy.KillSwitchVerdict {
 	})
 }
 
-// daemonSafeMode is true while paused.json holds (RT-6). It is the flag the
-// safe-mode machinery (RT-39's applySafeMode, RT-150's ensure skip) reads;
-// in wave A the daemon tracks and discloses it.
-var daemonSafeMode atomic.Bool
+// daemonSafeMode is true while paused.json holds (RT-6). It is the
+// process's tenancy.SafeModeFlag, so auto-refresh's gate (RT-150, in
+// internal/mcp) reads the same flag RT-39's applySafeMode will.
+var daemonSafeMode = tenancy.SafeModeFlag()
 
 // safeModeActive reports whether the managed daemon is paused.
 func safeModeActive() bool { return daemonSafeMode.Load() }

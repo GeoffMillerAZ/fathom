@@ -258,8 +258,8 @@ func TestDaemonStartPauseResume(t *testing.T) {
 	if rc := runDaemonPause(true, nil, &out, &errBuf, ops); rc != 0 {
 		t.Fatal("pause")
 	}
-	// In wave A nothing reads the safe-mode flag yet (RT-39, RT-150): pause
-	// must say it records the intent only, never that the daemon changed.
+	// Auto-refresh reads the safe-mode flag (RT-150); heavy refusal (RT-39)
+	// is not built yet: pause must never claim an effect it does not have.
 	if strings.Contains(out.String(), "enters safe mode") || !strings.Contains(out.String(), "not yet") {
 		t.Fatalf("pause must not claim an effect it does not have:\n%s", out.String())
 	}
