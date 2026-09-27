@@ -156,7 +156,9 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 		// Governance dimensions (obligations, arch_conformance, spec
 		// coverage, test coverage) are not edge-derived and are outside
 		// this tally.
-		payload["resolution"] = resolutionFromBlastBuckets(blastRadiusByDepth(in.Nodes, in.ChangedFiles, in.TypedEdges))
+		if ng, gerr := loadNavGraphsErr(ctx, backend, p.Service); gerr == nil {
+			payload["resolution"] = resolutionFromBlastBuckets(blastRadiusByDepth(ng.Both, ng.Nodes, in.ChangedFiles))
+		}
 		if ic := indexCommitFor(ctx, backend, p.Service); ic != "" {
 			payload["index_commit"] = ic
 		}
@@ -360,7 +362,7 @@ func discoverConservePlanPaths(root string) []string {
 // needs it to hash cited lines (semantic.Sweep's contract), including arch
 // citations on files OUTSIDE the changed set.
 func buildReviewInput(ctx context.Context, backend QueryInterface, service string, changedFiles []string, concern, since string) (review.Input, []core.SourceFile, *rpcError) {
-	nodes, err := backend.ListAllSymbols(ctx, service)
+	nodes, err := serviceSymbols(ctx, backend, service)
 	if err != nil {
 		return review.Input{}, nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
 	}

@@ -90,19 +90,12 @@ type consolePlans struct {
 	started bool
 	heads   map[string]plansStamp
 	stale   map[string]plansStamp
-	graphs  map[string]*graphEntry
 	hist    map[string]historyEntry
 	ledger  struct {
 		size  int64
 		mtime time.Time
 		read  ledgerRead
 	}
-}
-
-type graphEntry struct {
-	key   string
-	graph *callgraph.Graph
-	used  time.Time
 }
 
 var (
@@ -117,7 +110,7 @@ func plansFor(d *consoleDeps) *consolePlans {
 	p := consolePlansFor[d]
 	if p == nil {
 		p = &consolePlans{deps: d, entries: map[string]*planEntry{}, wake: make(chan struct{}, 1),
-			heads: map[string]plansStamp{}, stale: map[string]plansStamp{}, graphs: map[string]*graphEntry{},
+			heads: map[string]plansStamp{}, stale: map[string]plansStamp{},
 			hist: map[string]historyEntry{}}
 		consolePlansFor[d] = p
 	}
@@ -525,42 +518,15 @@ func (p *consolePlans) history(root, rel string) ([]planRevisionText, int, strin
 	return revs, older, note
 }
 
-// maxCachedGraphs bounds the call graphs the row evidence keeps.
-const maxCachedGraphs = 2
-
-// graph is the service's call graph — the verify engine's own (BuildBoth:
-// syntax edges plus the typed pass) — memoized per index watermark.
+// graph is the service's call graph — the verify engine's own (syntax
+// edges plus the typed pass) — from the daemon's graph store (RT-74): one
+// per (service, watermark), shared with the MCP tools, never a private copy.
 func (p *consolePlans) graph(ctx context.Context, service string) (*callgraph.Graph, error) {
 	if p.deps.c == nil {
 		return nil, errNoStore
 	}
-	wm := p.storeWatermark(ctx, service)
-	p.mu.Lock()
-	if g := p.graphs[service]; g != nil && g.key == wm && wm != "" {
-		g.used = time.Now()
-		p.mu.Unlock()
-		return g.graph, nil
-	}
-	p.mu.Unlock()
-	nodes, err := p.deps.c.ListAllSymbols(ctx, service)
-	if err != nil {
-		return nil, err
-	}
-	typed, _ := p.deps.c.TypedEdges(ctx, service)
-	g := callgraph.BuildBoth(nodes, typed)
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	if len(p.graphs) >= maxCachedGraphs {
-		var oldest string
-		for k, v := range p.graphs {
-			if oldest == "" || v.used.Before(p.graphs[oldest].used) {
-				oldest = k
-			}
-		}
-		delete(p.graphs, oldest)
-	}
-	p.graphs[service] = &graphEntry{key: wm, graph: g, used: time.Now()}
-	return g, nil
+	_, _, g, err := consoleBothGraph(ctx, p.deps.c, service)
+	return g, err
 }
 
 // errNoStore is the row evidence's answer on a daemon with no store.

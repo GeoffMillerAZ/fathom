@@ -10,27 +10,32 @@ package mcp
 // stale graph (O99). Patching in place keeps the memo — no full Build,
 // 13-25 s on this repository — AND makes the refreshed package visible.
 
-import "github.com/geoffmilleraz/fathom/internal/core"
+import (
+	"context"
 
-// The two cache keys loadNavGraphs and verify_plan memoize under.
-func graphKeyBoth(service string) string     { return service + "\x00both" }
-func graphKeyResolved(service string) string { return service + "\x00resolved" }
+	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/memo"
+)
+
+// patchScope is service's graph-store scope at the backend's current
+// watermark.
+func (s *Server) patchScope(service string) memo.Scope {
+	return navScopeNoEnsure(context.Background(), s.backend, service)
+}
 
 // HasCachedGraph reports whether any graph is memoized for service — the
 // refresh path asks it before paying to list the package's nodes.
 func (s *Server) HasCachedGraph(service string) bool {
-	return s.graphCache.Has(graphKeyBoth(service)) || s.graphCache.Has(graphKeyResolved(service))
+	return memo.HasGraphs(s.patchScope(service))
 }
 
 // PatchPackageGraph replaces package pkg's nodes (and, when typed is
-// non-nil, its typed edges) in the memoized syntax+typed graph. The
-// resolved-only graph is dropped rather than patched: ReplacePackage
-// re-derives the package's syntax edges from Calls, which the resolved graph
-// must never carry — it rebuilds on its next use (BuildResolved, the cheaper
-// build). A no-op when nothing is cached for service.
+// non-nil, its typed edges) in the graph store's snapshot and graphs for
+// service (memo.PatchPackage): the syntax and syntax+typed graphs are
+// patched copy-on-write, the resolved-only graph dropped and rebuilt on
+// its next use. A no-op when nothing is cached for service.
 func (s *Server) PatchPackageGraph(service, pkg string, nodes []core.SymbolNode, typed []core.Edge) {
-	s.graphCache.InvalidatePackage(graphKeyBoth(service), pkg, nodes, typed)
-	s.graphCache.Invalidate(graphKeyResolved(service))
+	memo.PatchPackage(s.patchScope(service), pkg, nodes, typed)
 }
 
 // DropCachedGraphs forgets every memoized graph for service — the honest
@@ -38,6 +43,5 @@ func (s *Server) PatchPackageGraph(service, pkg string, nodes []core.SymbolNode,
 // fresh extraction produced no symbols): the next query rebuilds; a stale
 // graph is never served.
 func (s *Server) DropCachedGraphs(service string) {
-	s.graphCache.Invalidate(graphKeyBoth(service))
-	s.graphCache.Invalidate(graphKeyResolved(service))
+	memo.DropScope(s.patchScope(service))
 }

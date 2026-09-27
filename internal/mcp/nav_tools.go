@@ -170,19 +170,11 @@ func registerSymbolContext(s *Server, backend QueryInterface, fleet FleetBackend
 		// one load and build per (service, watermark), shared by concurrent
 		// callers. Building them per call cost 2.45–9.78 GB of allocation and
 		// ~6 GiB of footprint under a 20-call burst (wave-A incident replay).
-		var nodes []core.SymbolNode
-		var g *callgraph.Graph
-		ng := s.loadNavGraphs(ctx, backend, p.Service)
-		if ng != nil {
-			nodes, g = ng.Nodes, ng.Syntax
-		} else {
-			var err error
-			nodes, err = backend.ListAllSymbols(ctx, p.Service)
-			if err != nil {
-				return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
-			}
-			g = callgraph.Build(nodes)
+		ng, lerr := loadNavGraphsErr(ctx, backend, p.Service)
+		if lerr != nil {
+			return nil, &rpcError{Code: ErrCodeInternal, Message: lerr.Error()}
 		}
+		nodes, g := ng.Nodes, ng.Syntax
 
 		// J3(a) (app-kit O12): resolve BEFORE building any neighbourhood.
 		// symbolnav.ResolveTiered mirrors the internal resolution
@@ -236,22 +228,11 @@ func registerSymbolContext(s *Server, backend QueryInterface, fleet FleetBackend
 		// or one with no typed edges tallies every row heuristic). typed
 		// is fetched ONCE and reused below for typed_edges too (review F5
 		// — this handler previously called backend.TypedEdges twice).
-		var typedEdges []core.Edge
-		var typedErr error
-		if ng != nil {
-			typedEdges = ng.Typed
-		} else {
-			typedEdges, typedErr = backend.TypedEdges(ctx, p.Service)
-		}
+		typedEdges := ng.Typed
 		var mix resolutionMix
-		var tg *callgraph.Graph
-		switch {
-		case typedErr == nil && len(typedEdges) > 0 && ng != nil:
+		tg := g
+		if len(typedEdges) > 0 {
 			tg = ng.Both // shared and read-only: never AddTypedEdges on it
-		case typedErr == nil && len(typedEdges) > 0:
-			tg = callgraph.BuildBoth(nodes, typedEdges)
-		default:
-			tg = g
 		}
 		kindOf := func(details []callgraph.EdgeInfo) map[string]core.EdgeKind {
 			m := make(map[string]core.EdgeKind, len(details))
@@ -405,7 +386,7 @@ func registerOutline(s *Server, backend QueryInterface) {
 		if p.File == "" {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "outline: file required"}
 		}
-		nodes, err := backend.ListAllSymbols(ctx, p.Service)
+		nodes, err := serviceSymbols(ctx, backend, p.Service)
 		if err != nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
 		}
@@ -449,7 +430,7 @@ func registerEntrypoints(s *Server, backend QueryInterface) {
 		if p.Service == "" {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "entrypoints: service required"}
 		}
-		nodes, err := backend.ListAllSymbols(ctx, p.Service)
+		nodes, err := serviceSymbols(ctx, backend, p.Service)
 		if err != nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
 		}
@@ -491,7 +472,7 @@ func registerComplexity(s *Server, backend QueryInterface) {
 		if topN <= 0 {
 			topN = 10
 		}
-		nodes, err := backend.ListAllSymbols(ctx, p.Service)
+		nodes, err := serviceSymbols(ctx, backend, p.Service)
 		if err != nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
 		}
@@ -544,7 +525,7 @@ func registerGodObject(s *Server, backend QueryInterface) {
 		if p.Service == "" {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "god_object: service required"}
 		}
-		nodes, err := backend.ListAllSymbols(ctx, p.Service)
+		nodes, err := serviceSymbols(ctx, backend, p.Service)
 		if err != nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
 		}
@@ -597,12 +578,11 @@ func registerCommunity(s *Server, backend QueryInterface) {
 		if p.Symbol == "" {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "community: symbol required"}
 		}
-		nodes, err := backend.ListAllSymbols(ctx, p.Service)
+		ng, err := loadNavGraphsErr(ctx, backend, p.Service)
 		if err != nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
 		}
-		g := callgraph.Build(nodes)
-		members := symbolnav.Community(g, nodes, p.Symbol)
+		members := symbolnav.Community(ng.Syntax, ng.Nodes, p.Symbol)
 		return map[string]any{"members": stringsToAny(members)}, nil
 	})
 }

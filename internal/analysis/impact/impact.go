@@ -105,7 +105,35 @@ func blastRadius(nodes []core.SymbolNode, changedFiles []string, typed []core.Ed
 	if len(typed) > 0 {
 		callgraph.AddTypedEdges(g, typed)
 	}
+	return blastRadiusOn(g, nodes, seed, sf)
+}
 
+// BlastRadiusOn is BlastRadiusWithTypedEdges over a graph the caller
+// already holds (the serving daemon's graph store, RT-74) instead of one
+// built per call: g must be callgraph.BuildBoth(nodes, typed).
+func BlastRadiusOn(g *callgraph.Graph, nodes []core.SymbolNode, changedFiles []string) Result {
+	if g == nil || len(nodes) == 0 || len(changedFiles) == 0 {
+		return Result{Symbols: []string{}, Tests: []string{}, Files: []string{}}
+	}
+	changed := make(map[string]bool, len(changedFiles))
+	for _, f := range changedFiles {
+		changed[f] = true
+	}
+	seed := map[string]bool{}
+	for fp, keys := range fileSymbols(nodes) {
+		if changed[fp] {
+			for _, k := range keys {
+				seed[k] = true
+			}
+		}
+	}
+	if len(seed) == 0 {
+		return Result{Symbols: []string{}, Tests: []string{}, Files: []string{}}
+	}
+	return blastRadiusOn(g, nodes, seed, symbolFile(nodes))
+}
+
+func blastRadiusOn(g *callgraph.Graph, nodes []core.SymbolNode, seed map[string]bool, sf map[string]string) Result {
 	// BFS over callers.
 	visited := make(map[string]bool, len(seed))
 	queue := make([]string, 0, len(seed))

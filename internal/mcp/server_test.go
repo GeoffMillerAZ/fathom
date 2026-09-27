@@ -300,10 +300,12 @@ func TestNotificationsInitialized(t *testing.T) {
 // constructed server's call-graph memo starts at zero entries/hits/misses
 // — the baseline a synthetic driver's iteration-0 sample compares against.
 func TestGraphCacheStats_StartsEmpty(t *testing.T) {
+	// RT-74: the graph store is process-wide (internal/memo); after the
+	// refuse rung's drop it holds no graph.
 	srv := mcp.NewServer(nil)
-	entries, hits, misses := srv.GraphCacheStats()
-	if entries != 0 || hits != 0 || misses != 0 {
-		t.Fatalf("GraphCacheStats() = (%d, %d, %d), want all zero on a fresh server", entries, hits, misses)
+	srv.DropCaches()
+	if entries, _, _ := srv.GraphCacheStats(); entries != 0 {
+		t.Fatalf("GraphCacheStats() entries = %d after DropCaches, want 0", entries)
 	}
 }
 

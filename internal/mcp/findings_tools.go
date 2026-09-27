@@ -60,7 +60,7 @@ func registerFindingsNear(s *Server, backend QueryInterface) {
 			p.Hops = 2
 		}
 
-		nodes, err := backend.ListAllSymbols(ctx, p.Service)
+		nodes, err := serviceSymbols(ctx, backend, p.Service)
 		if err != nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: "findings_near: " + err.Error()}
 		}

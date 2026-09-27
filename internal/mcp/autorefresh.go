@@ -704,3 +704,22 @@ func (a *autoRefreshBackend) StoreWatermark(ctx context.Context, serviceID strin
 	}
 	return w.StoreWatermark(ctx, serviceID)
 }
+
+// EnsureFresh runs the auto-refresh freshness check for service — what a
+// symbol load through this backend runs first — for the graph store's
+// snapshot path (resolved_nav.go navScope), whose cache hits never reach
+// ListAllSymbols.
+func (a *autoRefreshBackend) EnsureFresh(ctx context.Context, service string) {
+	a.ensure(ctx, service)
+}
+
+// StoreID forwards the wrapped backend's store identity (RT-74): without
+// it the MCP tools and the console would key the one graph store under
+// two identities for one store. "" (a wrapped backend that names no
+// store) is never cached.
+func (a *autoRefreshBackend) StoreID() string {
+	if id, ok := a.QueryInterface.(storeIdentifier); ok {
+		return id.StoreID()
+	}
+	return ""
+}

@@ -18,6 +18,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
@@ -114,6 +115,11 @@ type Client struct {
 	// obligations_corpus.go): the layer corpus's paths per store
 	// watermark and its guides' contents per stat.
 	oblMemo obligationsMemo
+
+	// storeIDOnce/storeID name this client's store for the graph store
+	// and symbol snapshots (StoreID, RT-74).
+	storeIDOnce sync.Once
+	storeID     string
 
 	// aggregates memoizes ServiceSymbolAggregates per store watermark
 	// (RT-144, aggregates.go).

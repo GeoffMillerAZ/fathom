@@ -224,7 +224,7 @@ func registerSearch(s *Server, backend QueryInterface) {
 				return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
 			}
 			root = r
-			if nodes, err := backend.ListAllSymbols(ctx, p.Service); err == nil {
+			if nodes, err := serviceSymbols(ctx, backend, p.Service); err == nil {
 				byFile = groupSymbolsByFile(nodes)
 			}
 			// CRITICAL (V-review): a `service` search must mirror the

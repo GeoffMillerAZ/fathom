@@ -12,6 +12,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync/atomic"
 
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/store"
@@ -91,3 +92,16 @@ func (c *Client) BackfillDerived(ctx context.Context, service string) (store.Bac
 func (c *Client) DerivedState(ctx context.Context, service string) (store.DerivedState, error) {
 	return c.st.DerivedState(ctx, service)
 }
+
+// StoreID names the store this client reads (RT-74): the graph store and
+// symbol snapshots key on it, so the MCP tools and the console — which
+// share one client in the daemon — share one snapshot and one graph per
+// service, and two stores never share an entry.
+// The identity is a process-unique sequence number, never an address (a
+// freed store's address is reused by the next one).
+func (c *Client) StoreID() string {
+	c.storeIDOnce.Do(func() { c.storeID = fmt.Sprintf("store-%d", storeIDSeq.Add(1)) })
+	return c.storeID
+}
+
+var storeIDSeq atomic.Int64

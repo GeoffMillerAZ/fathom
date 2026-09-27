@@ -297,7 +297,7 @@ func registerDiscoveries(s *Server, backend QueryInterface) {
 		var idxErr error
 		if backend != nil {
 			var nerr error
-			nodes, nerr = backend.ListAllSymbols(ctx, p.Service)
+			nodes, nerr = serviceSymbols(ctx, backend, p.Service)
 			sources, serr := backend.Sources(ctx, p.Service)
 			if serr == nil {
 				for _, sf := range sources {

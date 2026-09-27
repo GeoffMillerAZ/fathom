@@ -242,7 +242,7 @@ func registerStalenessReport(s *Server, backend QueryInterface) {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "staleness_report: service required"}
 		}
 		// Derive a simple "sources seen" summary from ListAllSymbols.
-		nodes, err := backend.ListAllSymbols(ctx, p.Service)
+		nodes, err := serviceSymbols(ctx, backend, p.Service)
 		if err != nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
 		}
@@ -368,7 +368,7 @@ func registerListSources(s *Server, backend QueryInterface) {
 		if p.Service == "" {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "list_sources: service required"}
 		}
-		nodes, err := backend.ListAllSymbols(ctx, p.Service)
+		nodes, err := serviceSymbols(ctx, backend, p.Service)
 		if err != nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
 		}
@@ -728,7 +728,7 @@ func readServiceResource(ctx context.Context, backend QueryInterface, svcID stri
 	if backend == nil {
 		return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
 	}
-	nodes, err := backend.ListAllSymbols(ctx, svcID)
+	nodes, err := serviceSymbols(ctx, backend, svcID)
 	if err != nil {
 		return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
 	}

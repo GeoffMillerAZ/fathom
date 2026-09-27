@@ -622,3 +622,42 @@ func (g *Group[K, V]) Len() int {
 	defer g.mu.Unlock()
 	return len(g.entries)
 }
+
+// Update replaces the cached value for key with fn's result and size (a
+// negative size keeps the entry's recorded size), keeping its LRU
+// position; it reports whether key was cached. fn runs under the group's
+// lock and must not call back into the registry.
+func (g *Group[K, V]) Update(key K, fn func(V) (V, int64)) bool {
+	g.reg.mu.Lock()
+	defer g.reg.mu.Unlock()
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	e, ok := g.entries[key]
+	if !ok {
+		return false
+	}
+	v, size := fn(e.val)
+	if size < 0 {
+		size = e.ref.bytes
+	}
+	if e.ref.elem != nil {
+		g.reg.total += size - e.ref.bytes
+	}
+	e.ref.bytes = size
+	e.val = v
+	return true
+}
+
+// Remove drops key from the group (a no-op when it is not cached).
+func (g *Group[K, V]) Remove(key K, reason DropReason) {
+	g.reg.mu.Lock()
+	defer g.reg.mu.Unlock()
+	g.mu.Lock()
+	e, ok := g.entries[key]
+	g.mu.Unlock()
+	if !ok {
+		return
+	}
+	g.evictLocked(e.ref, reason)
+	g.reg.removeLocked(e.ref)
+}
