@@ -462,19 +462,20 @@ type sessionReplay struct {
 var replayHiddenMeta = map[string]bool{"session": true, "fathom_version": true, "schema_version": true, "harness": true, "project_dir": true, "service": true}
 
 // readSessionEvents reads one session's beats from the hooks log and its
-// one rotated generation (hooks.jsonl.1, older), decoding only the lines
-// that name the session — the survey's replay re-decoded the whole log. err
-// and partial are readHooksGenerations': nothing could be read, or one
+// one rotated generation (hooks.jsonl.1, older) through the per-session
+// offset index (RT-114: hooksBeatIndex) — only this session's lines are
+// read and decoded, and the log is never read whole per page. err and
+// partial are readHooksGenerations': nothing could be read, or one
 // generation could not.
 func readSessionEvents(path, sessionID string) (events []console.ReplayEvent, partial, err error) {
 	if sessionID == "" {
 		return nil, nil, nil
 	}
-	needle := []byte(`"session":"` + sessionID + `"`)
-	partial, err = readHooksGenerations(path, func(line []byte) {
-		if !bytes.Contains(line, needle) {
-			return
-		}
+	lines, partial, err := hooksBeatIndex.lines(path, sessionID)
+	if err != nil {
+		return nil, nil, err
+	}
+	for _, line := range lines {
 		var b struct {
 			Channel string            `json:"channel"`
 			Kind    string            `json:"kind"`
@@ -482,12 +483,9 @@ func readSessionEvents(path, sessionID string) (events []console.ReplayEvent, pa
 			Meta    map[string]string `json:"meta"`
 		}
 		if json.Unmarshal(line, &b) != nil || b.Meta["session"] != sessionID {
-			return
+			continue
 		}
 		events = append(events, console.ReplayEvent{At: b.At.UTC(), Channel: b.Channel, Kind: b.Kind, Service: b.Meta["service"], Detail: replayDetail(b.Meta)})
-	})
-	if err != nil {
-		return nil, nil, err
 	}
 	return events, partial, nil
 }

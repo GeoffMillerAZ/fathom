@@ -45,8 +45,10 @@ func consoleMemoDrops() {
 	consoleProjectsCache.key, consoleProjectsCache.read = "", projectsRead{}
 	consoleProjectsCache.Unlock()
 	obsCache.Lock()
-	obsCache.model, obsCache.at = observatoryModel{}, time.Time{}
+	dropObsCacheLocked()
 	obsCache.Unlock()
+	resetConsoleTails()
+	hooksBeatIndex.reset()
 }
 
 // dropCaches forgets the unsupported-languages memo (a fleet memo).
