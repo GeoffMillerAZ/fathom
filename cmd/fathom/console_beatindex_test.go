@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 // TestSessionPageSeeksIndexedBeats (RT-114, design §14): a session's beats
@@ -87,5 +88,76 @@ func TestSessionPageSeeksIndexedBeats(t *testing.T) {
 		if _, _, err := ix.lines(path, "s-a"); err == nil {
 			t.Error("an unreadable current log must be an error")
 		}
+	}
+}
+
+// TestHooksLogReadersUseTheIndex (RT-114, design §14: "nothing reads
+// hooks.jsonl whole"): the catches timeline's guard beats, the impact
+// model's per-session beat-windows and the flywheel's last custodian audit
+// come from the hooks-log index's digests — only appended bytes are
+// decoded — and answer what the whole-file readers answered: the guard
+// beats over both generations, the windows and audits over the current
+// file (readRetroBeats'), an unterminated last line counted.
+func TestHooksLogReadersUseTheIndex(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "hooks.jsonl")
+	guard := func(at, kind, session string) string {
+		return `{"channel":"edit-hook","kind":"` + kind + `","at":"` + at + `","meta":{"phase":"pre","target":"a.go","project_dir":"/r/pay","session":"` + session + `"}}` + "\n"
+	}
+	cust := func(at string) string {
+		return `{"channel":"custodian","kind":"audit","at":"` + at + `","meta":{"project_dir":"/r/pay"}}` + "\n"
+	}
+	mustWrite(t, path+".1", guard("2026-09-20T10:00:00Z", "seen", "s1")+cust("2026-09-20T11:00:00Z"))
+	mustWrite(t, path, guard("2026-09-26T10:00:00Z", "answered", "s1")+"not json\n"+
+		`{"channel":"edit-hook","kind":"seen","at":"2026-09-26T10:05:00Z","meta":{"phase":"post","project_dir":"/r/pay","session":"s1"}}`+"\n"+
+		cust("2026-09-25T09:00:00Z"))
+	ix := &beatOffsetIndex{}
+	prev := hooksBeatIndex
+	hooksBeatIndex = ix
+	t.Cleanup(func() { hooksBeatIndex = prev })
+	label := func(base string) string { return map[string]string{"pay": "payments"}[base] }
+
+	beats, partial, err := readGuardBeats(path, label)
+	if err != nil || partial != nil || len(beats) != 2 || beats[0].Kind != "seen" || beats[1].Kind != "answered" || beats[1].Service != "payments" || beats[1].Session != "s1" {
+		t.Fatalf("guard beats = %+v, %v, %v; want the rotated beat then the current one, named payments", beats, partial, err)
+	}
+	if ix.parsed == 0 {
+		t.Fatal("the guard beats were not read through the index")
+	}
+	// The impact model's window and the flywheel's audit: the current
+	// file, as readRetroBeats reads it.
+	whole, _ := readRetroBeats(path)
+	start, end, ok := ix.sessionSpan(path, "s1", "/r/pay")
+	if !ok || !start.Equal(time.Date(2026, 9, 26, 10, 0, 0, 0, time.UTC)) || !end.Equal(time.Date(2026, 9, 26, 10, 5, 0, 0, time.UTC)) {
+		t.Errorf("span = %s..%s %v; want the current file's 10:00..10:05", start, end, ok)
+	}
+	var wantAudit time.Time
+	for _, b := range whole {
+		if b.Channel == "custodian" && b.At.After(wantAudit) {
+			wantAudit = b.At
+		}
+	}
+	if got := ix.lastCustodianAudit(path, "/r/pay"); !got.Equal(wantAudit) {
+		t.Errorf("last custodian audit = %s, want %s", got, wantAudit)
+	}
+
+	// An append is decoded alone; an unterminated last line counts.
+	before := ix.parsed
+	app := guard("2026-09-27T10:00:00Z", "seen", "s2")
+	fh, _ := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0o644)
+	fh.WriteString(app + strings.TrimSuffix(cust("2026-09-27T12:00:00Z"), "\n"))
+	fh.Close()
+	beats, _, _ = readGuardBeats(path, label)
+	if len(beats) != 3 || ix.parsed-before != int64(len(app)) {
+		t.Fatalf("after an append: %d beats, %d bytes decoded; want 3 and only the %d appended", len(beats), ix.parsed-before, len(app))
+	}
+	if got := ix.lastCustodianAudit(path, "/r/pay"); !got.Equal(time.Date(2026, 9, 27, 12, 0, 0, 0, time.UTC)) {
+		t.Errorf("an unterminated audit line was not counted: %s", got)
+	}
+	if _, _, ok := ix.sessionSpan(path, "nobody", "/r/pay"); ok {
+		t.Error("a session with no beats has a window")
+	}
+	if _, _, err := readGuardBeats(filepath.Join(dir, "none.jsonl"), label); !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("a missing log = %v", err)
 	}
 }

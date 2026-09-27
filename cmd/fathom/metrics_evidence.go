@@ -12,10 +12,8 @@ package main
 // table and its shared metrics never come from two different reads.
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -261,87 +259,15 @@ func hooksLogSource(path string) string {
 	return "hooks log " + path + " and its rotated generation " + path + ".1"
 }
 
-// readHooksGenerations streams every line of the hooks log's rotated
-// generation (path.1, older) and then the log itself to fn. err is non-nil
-// when nothing could be read: os.ErrNotExist (wrapped with the path) when
-// neither file exists, else the current log's open or read failure.
-// partial names a generation that failed while the other was read — the
-// caller's counts are then lower bounds, never complete ones.
-func readHooksGenerations(path string, fn func(line []byte)) (partial, err error) {
-	if path == "" {
-		return nil, os.ErrNotExist
-	}
-	missing := 0
-	for i, p := range []string{path + ".1", path} {
-		ferr := scanHooksFile(p, fn)
-		switch {
-		case ferr == nil:
-		case os.IsNotExist(ferr):
-			missing++
-		case i == 0:
-			partial = fmt.Errorf("the rotated hooks log could not be read: %w", ferr)
-		default:
-			err = ferr
-		}
-	}
-	if err != nil {
-		return nil, err
-	}
-	if missing == 2 {
-		return nil, &os.PathError{Op: "open", Path: path, Err: os.ErrNotExist}
-	}
-	if partial != nil && missing == 1 {
-		// Only the rotated generation existed, and it failed: nothing read.
-		return nil, errors.Unwrap(partial)
-	}
-	return partial, nil
-}
-
-// scanHooksFile streams one hooks-log file's lines to fn.
-func scanHooksFile(path string, fn func(line []byte)) error {
-	f, err := os.Open(path)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	sc := bufio.NewScanner(f)
-	sc.Buffer(make([]byte, 0, 64*1024), 4*1024*1024)
-	for sc.Scan() {
-		fn(sc.Bytes())
-	}
-	return sc.Err()
-}
-
 // readGuardBeats reads the PreToolUse edit-hook beats (the guard hook's)
 // from the hooks log and its rotated generation, naming each beat's service
 // through labelKey (the project directory's base name mapped to the service
-// whose root it is). A line is decoded only when it carries the pre phase.
-// partial is a generation that could not be read while the other was.
+// whose root it is). It reads through the daemon's hooks-log index (RT-114:
+// nothing reads hooks.jsonl whole — only what was appended since the last
+// read is decoded). partial is a generation that could not be read while
+// the other was.
 func readGuardBeats(path string, labelKey func(string) string) (beats []console.GuardBeat, partial, err error) {
-	needle := []byte(`"phase":"pre"`)
-	partial, err = readHooksGenerations(path, func(line []byte) {
-		if !bytes.Contains(line, needle) || !bytes.Contains(line, []byte(`"edit-hook"`)) {
-			return
-		}
-		var b struct {
-			Channel string            `json:"channel"`
-			Kind    string            `json:"kind"`
-			At      time.Time         `json:"at"`
-			Meta    map[string]string `json:"meta"`
-		}
-		if json.Unmarshal(line, &b) != nil || b.Channel != "edit-hook" || b.Meta["phase"] != "pre" {
-			return
-		}
-		svc := ""
-		if dir := b.Meta["project_dir"]; dir != "" && labelKey != nil {
-			svc = labelKey(filepath.Base(dir))
-		}
-		beats = append(beats, console.GuardBeat{At: b.At, Kind: b.Kind, Target: b.Meta["target"], Service: svc, Session: b.Meta["session"]})
-	})
-	if err != nil {
-		return nil, nil, err
-	}
-	return beats, partial, nil
+	return hooksBeatIndex.guardBeats(path, labelKey)
 }
 
 // catchFilterFrom builds the timeline filter from query values: kinds
@@ -454,8 +380,8 @@ var replayHiddenMeta = map[string]bool{"session": true, "fathom_version": true, 
 // one rotated generation (hooks.jsonl.1, older) through the per-session
 // offset index (RT-114: hooksBeatIndex) — only this session's lines are
 // read and decoded, and the log is never read whole per page. err and
-// partial are readHooksGenerations': nothing could be read, or one
-// generation could not.
+// partial are the index's (beatOffsetIndex.refresh): nothing could be
+// read, or one generation could not.
 func readSessionEvents(path, sessionID string) (events []console.ReplayEvent, partial, err error) {
 	if sessionID == "" {
 		return nil, nil, nil

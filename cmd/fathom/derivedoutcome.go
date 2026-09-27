@@ -7,9 +7,11 @@ package main
 // verify ledger (SD-1) accumulates history.
 
 import (
+	"errors"
 	"os/exec"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -33,16 +35,64 @@ func derivedCommitsForSession(beats []retroBeat, sid, root string) (int, bool) {
 	if start.IsZero() {
 		return 0, false
 	}
+	return derivedCommitsInSpan(root, start, end)
+}
+
+// derivedCommitsInSpan counts the commits reachable from root's HEAD in
+// [start, end+1m]. The answer is kept per (root, HEAD, span): a past
+// window's count changes only when HEAD moves, and the console's model
+// asks for every arm unit on every build — one git process per unit per
+// build before (RT-115: no git fork per service on a page's path).
+func derivedCommitsInSpan(root string, start, end time.Time) (int, bool) {
+	if start.IsZero() {
+		return 0, false
+	}
+	head := repoHeadNoFork(root)
+	key := strings.Join([]string{root, head, start.UTC().Format(time.RFC3339Nano), end.UTC().Format(time.RFC3339Nano)}, "\x00")
+	if head != "" {
+		derivedCommitsMemo.Lock()
+		v, ok := derivedCommitsMemo.m[key]
+		derivedCommitsMemo.Unlock()
+		if ok {
+			return v.n, v.ok
+		}
+	}
 	out, err := exec.Command("git", "-C", root, "rev-list", "--count",
 		"--since="+start.UTC().Format(time.RFC3339),
 		"--until="+end.Add(time.Minute).UTC().Format(time.RFC3339),
 		"HEAD").Output()
-	if err != nil {
-		return 0, false
+	n, ok := 0, false
+	if err == nil {
+		if v, perr := strconv.Atoi(strings.TrimSpace(string(out))); perr == nil {
+			n, ok = v, true
+		}
 	}
-	n, err := strconv.Atoi(strings.TrimSpace(string(out)))
-	if err != nil {
-		return 0, false
+	if head != "" && (ok || err != nil && !isExecNotFound(err)) {
+		derivedCommitsMemo.Lock()
+		if derivedCommitsMemo.m == nil || len(derivedCommitsMemo.m) >= derivedCommitsMemoMax {
+			derivedCommitsMemo.m = map[string]derivedCount{}
+		}
+		derivedCommitsMemo.m[key] = derivedCount{n, ok}
+		derivedCommitsMemo.Unlock()
 	}
-	return n, true
+	return n, ok
+}
+
+type derivedCount struct {
+	n  int
+	ok bool
+}
+
+// derivedCommitsMemoMax bounds the kept counts (one per arm unit window).
+const derivedCommitsMemoMax = 4096
+
+var derivedCommitsMemo struct {
+	sync.Mutex
+	m map[string]derivedCount
+}
+
+// isExecNotFound is a git that could not be started (not an answer).
+func isExecNotFound(err error) bool {
+	var ee *exec.Error
+	return errors.As(err, &ee)
 }

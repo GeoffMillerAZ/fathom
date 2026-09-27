@@ -735,7 +735,9 @@ func buildImpactModel(now time.Time) obsImpact {
 	// landed in each unit's own beat-window. Same admissibility rule as
 	// the token medians; ratings, when present, remain the human override
 	// (DO-4).
-	doBeats, _ := readRetroBeats(beatLogPath())
+	// Each unit's beat-window comes from the hooks-log index (RT-114),
+	// never a whole read of the log per model build.
+	beatPath := beatLogPath()
 	var onC, offC []int
 	for _, key := range order {
 		e := latest[key]
@@ -745,7 +747,11 @@ func buildImpactModel(now time.Time) obsImpact {
 		if _, ok := armUnitFor(e); !ok {
 			continue
 		}
-		c, ok := derivedCommitsForSession(doBeats, e.SessionID, e.Repo)
+		start, end, spanned := hooksBeatIndex.sessionSpan(beatPath, e.SessionID, e.Repo)
+		if !spanned {
+			continue
+		}
+		c, ok := derivedCommitsInSpan(e.Repo, start, end)
 		if !ok {
 			continue
 		}

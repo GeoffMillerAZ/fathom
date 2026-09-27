@@ -603,12 +603,9 @@ func checkLoopCustodian(now time.Time) flywheelCheck {
 			violated++
 		}
 	}
-	var lastAudit time.Time
-	for _, b := range readBeatsForLoop() {
-		if b.Channel == "custodian" && (b.Kind == "audit" || b.Kind == "attention") && b.Meta["project_dir"] == root && b.At.After(lastAudit) {
-			lastAudit = b.At
-		}
-	}
+	// The latest audit from the hooks-log index (RT-114), never a whole
+	// read of the log.
+	lastAudit := hooksBeatIndex.lastCustodianAudit(beatLogPath(), root)
 	switch {
 	case violated > 0 && (lastAudit.IsZero() || now.Sub(lastAudit) > 7*24*time.Hour):
 		c.Status = loopOpen
@@ -622,11 +619,4 @@ func checkLoopCustodian(now time.Time) flywheelCheck {
 		c.Evidence = fmt.Sprintf("%d concern(s) audited clean", len(concerns))
 	}
 	return c
-}
-
-// readBeatsForLoop is the flywheel's tolerant beat read — absent log,
-// zero rows.
-func readBeatsForLoop() []retroBeat {
-	rows, _ := readRetroBeats(beatLogPath())
-	return rows
 }

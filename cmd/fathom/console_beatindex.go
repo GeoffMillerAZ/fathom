@@ -15,7 +15,7 @@ package main
 //
 // A generation that cannot be read is an error, never "no beats": the
 // current one failing fails the read, the rotated one failing marks it
-// partial — readHooksGenerations' contract.
+// partial.
 
 import (
 	"bufio"
@@ -24,10 +24,15 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/console"
 )
 
 // beatIndexSessions is how many sessions' lines stay cached.
@@ -37,6 +42,89 @@ const beatIndexSessions = 64
 type beatGen struct {
 	f       tailFile
 	offsets map[string][]int64 // session → offsets of its complete lines
+	// The digests every other console reader of the hooks log reads, kept
+	// as the lines are indexed so none of them reads the log whole: the
+	// guard hook's pre beats (the catches timeline), each (session,
+	// project) beat-window (the impact model's derived commits) and each
+	// project's latest custodian audit (the flywheel).
+	guard     []beatGuard
+	spans     map[beatSpanKey]beatSpan
+	custodian map[string]time.Time
+}
+
+// beatGuard is one PreToolUse edit-hook beat, before its project is named
+// as a service (the reader's labelKey does that).
+type beatGuard struct {
+	at                                time.Time
+	kind, target, projectDir, session string
+}
+
+type beatSpanKey struct{ session, projectDir string }
+
+// beatSpan is the first and last beat time of one session in one project.
+type beatSpan struct{ start, end time.Time }
+
+func newBeatGen() *beatGen {
+	return &beatGen{offsets: map[string][]int64{}, spans: map[beatSpanKey]beatSpan{}, custodian: map[string]time.Time{}}
+}
+
+var (
+	beatPreNeedle       = []byte(`"phase":"pre"`)
+	beatEditHookNeedle  = []byte(`"edit-hook"`)
+	beatCustodianNeedle = []byte(`"custodian"`)
+)
+
+// digest folds one line into the generation's digests. A line is decoded
+// only when it can matter to one: it names a session, or it is a guard or
+// custodian beat. The decode is readRetroBeats' (a beat with a channel).
+func (g *beatGen) digest(line []byte, hasSession bool) {
+	guard := bytes.Contains(line, beatPreNeedle) && bytes.Contains(line, beatEditHookNeedle)
+	cust := bytes.Contains(line, beatCustodianNeedle)
+	if !hasSession && !guard && !cust {
+		return
+	}
+	b, ok := decodeRetroBeat(line)
+	if !ok {
+		return
+	}
+	g.fold(b)
+}
+
+// fold adds one decoded beat to the digests.
+func (g *beatGen) fold(b retroBeat) {
+	if b.Channel == "edit-hook" && b.Meta["phase"] == "pre" {
+		g.guard = append(g.guard, beatGuard{at: b.At, kind: b.Kind, target: b.Meta["target"], projectDir: b.Meta["project_dir"], session: b.Meta["session"]})
+	}
+	if sid := b.Meta["session"]; sid != "" {
+		k := beatSpanKey{sid, b.Meta["project_dir"]}
+		sp, seen := g.spans[k]
+		if !seen || b.At.Before(sp.start) {
+			sp.start = b.At
+		}
+		if !seen || b.At.After(sp.end) {
+			sp.end = b.At
+		}
+		g.spans[k] = sp
+	}
+	if b.Channel == "custodian" && (b.Kind == "audit" || b.Kind == "attention") {
+		dir := b.Meta["project_dir"]
+		if b.At.After(g.custodian[dir]) {
+			g.custodian[dir] = b.At
+		}
+	}
+}
+
+// decodeRetroBeat is readRetroBeats' decode of one line.
+func decodeRetroBeat(line []byte) (retroBeat, bool) {
+	line = bytes.TrimSpace(line)
+	if len(line) == 0 {
+		return retroBeat{}, false
+	}
+	var b retroBeat
+	if json.Unmarshal(line, &b) != nil || b.Channel == "" {
+		return retroBeat{}, false
+	}
+	return b, true
 }
 
 // beatOffsetIndex indexes the hooks log's generations by session.
@@ -69,55 +157,13 @@ func sessionBeatIndex(path, session string) (lines [][]byte, partial, err error)
 // (older) and then path, each in file order. partial names a rotated
 // generation that could not be read while the current one was.
 func (ix *beatOffsetIndex) lines(path, session string) (out [][]byte, partial, err error) {
-	if path == "" {
-		return nil, nil, os.ErrNotExist
-	}
 	ix.mu.Lock()
 	defer ix.mu.Unlock()
-	if ix.gens == nil {
-		ix.gens, ix.lru = map[string]*beatGen{}, map[string]beatLRUEntry{}
-	}
-	type opened struct {
-		fh   *os.File
-		g    *beatGen
-		tail []byte // an unterminated last line, not indexed
-	}
-	var files [2]opened
-	missing := 0
-	marks := make([]string, 0, 2)
-	for i, p := range []string{path + ".1", path} {
-		fh, g, tail, ferr := ix.extend(p, path)
-		switch {
-		case ferr == nil:
-			files[i] = opened{fh: fh, g: g, tail: tail}
-			marks = append(marks, p+"@"+strconv.FormatInt(g.f.offset, 10)+"+"+strconv.Itoa(len(tail)))
-		case errors.Is(ferr, os.ErrNotExist):
-			missing++
-			marks = append(marks, p+"@-")
-		case i == 0:
-			partial = fmt.Errorf("the rotated hooks log could not be read: %w", ferr)
-			marks = append(marks, p+"@err")
-		default:
-			err = ferr
-		}
-	}
-	defer func() {
-		for _, o := range files {
-			if o.fh != nil {
-				o.fh.Close()
-			}
-		}
-	}()
+	files, mark, partial, err := ix.refresh(path)
+	defer files.close()
 	if err != nil {
 		return nil, nil, err
 	}
-	if missing == 2 {
-		return nil, nil, &os.PathError{Op: "open", Path: path, Err: os.ErrNotExist}
-	}
-	if partial != nil && missing == 1 {
-		return nil, nil, errors.Unwrap(partial)
-	}
-	mark := strings.Join(marks, "|")
 	ix.tick++
 	if e, ok := ix.lru[session]; ok && e.mark == mark {
 		e.used = ix.tick
@@ -145,13 +191,180 @@ func (ix *beatOffsetIndex) lines(path, session string) (out [][]byte, partial, e
 	return out, partial, nil
 }
 
+// beatGenRead is one generation as refresh left it: open, indexed to its
+// last complete line, and its unterminated last line (not indexed).
+type beatGenRead struct {
+	fh   *os.File
+	g    *beatGen
+	tail []byte
+}
+
+// beatGenReads are the rotated generation (older) and the current one; an
+// entry with no file is a generation that does not exist or failed.
+type beatGenReads [2]beatGenRead
+
+func (r beatGenReads) close() {
+	for _, o := range r {
+		if o.fh != nil {
+			o.fh.Close()
+		}
+	}
+}
+
+// refresh indexes what was appended to path's rotated generation and to
+// path itself. mark is both generations' watermarks. err is the current
+// generation's failure, or not-exist when neither exists; partial names a
+// rotated generation that failed while the current one was read —
+// the caller holds ix.mu and closes files.
+func (ix *beatOffsetIndex) refresh(path string) (files beatGenReads, mark string, partial, err error) {
+	if path == "" {
+		return files, "", nil, os.ErrNotExist
+	}
+	if ix.gens == nil {
+		ix.gens, ix.lru = map[string]*beatGen{}, map[string]beatLRUEntry{}
+	}
+	missing := 0
+	marks := make([]string, 0, 2)
+	for i, p := range []string{path + ".1", path} {
+		fh, g, tail, ferr := ix.extend(p, path)
+		switch {
+		case ferr == nil:
+			files[i] = beatGenRead{fh: fh, g: g, tail: tail}
+			marks = append(marks, p+"@"+strconv.FormatInt(g.f.offset, 10)+"+"+strconv.Itoa(len(tail)))
+		case errors.Is(ferr, os.ErrNotExist):
+			missing++
+			marks = append(marks, p+"@-")
+		case i == 0:
+			partial = fmt.Errorf("the rotated hooks log could not be read: %w", ferr)
+			marks = append(marks, p+"@err")
+		default:
+			err = ferr
+		}
+	}
+	switch {
+	case err != nil:
+		return files, "", nil, err
+	case missing == 2:
+		return files, "", nil, &os.PathError{Op: "open", Path: path, Err: os.ErrNotExist}
+	case partial != nil && missing == 1:
+		return files, "", nil, errors.Unwrap(partial)
+	}
+	return files, strings.Join(marks, "|"), partial, nil
+}
+
+// guardBeats is readGuardBeats over the index: the guard hook's pre beats
+// from the rotated generation and then the current one, in file order,
+// each project named as a service through labelKey.
+func (ix *beatOffsetIndex) guardBeats(path string, labelKey func(string) string) (beats []console.GuardBeat, partial, err error) {
+	ix.mu.Lock()
+	defer ix.mu.Unlock()
+	files, _, partial, err := ix.refresh(path)
+	defer files.close()
+	if err != nil {
+		return nil, nil, err
+	}
+	add := func(r beatGuard) {
+		svc := ""
+		if r.projectDir != "" && labelKey != nil {
+			svc = labelKey(filepath.Base(r.projectDir))
+		}
+		beats = append(beats, console.GuardBeat{At: r.at, Kind: r.kind, Target: r.target, Service: svc, Session: r.session})
+	}
+	for _, o := range files {
+		if o.g == nil {
+			continue
+		}
+		for _, r := range o.g.guard {
+			add(r)
+		}
+		if tail := tailDigest(o.tail); tail != nil {
+			for _, r := range tail.guard {
+				add(r)
+			}
+		}
+	}
+	return beats, partial, nil
+}
+
+// tailDigest is the digest of an unterminated last line (a whole-file
+// read counts it; the index reads it again next time), nil when it adds
+// nothing.
+func tailDigest(tail []byte) *beatGen {
+	if len(tail) == 0 {
+		return nil
+	}
+	_, hasSession := beatSession(tail)
+	g := newBeatGen()
+	g.digest(tail, hasSession)
+	return g
+}
+
+// currentGen is the current generation's digest with its unterminated
+// last line folded in — what readRetroBeats(path) reads (the current file
+// only). nil when the log does not exist or cannot be read (readRetroBeats'
+// callers read either as no beats).
+func (ix *beatOffsetIndex) currentGen(path string) *beatGen {
+	files, _, _, err := ix.refresh(path)
+	defer files.close()
+	cur := files[1]
+	if err != nil || cur.g == nil {
+		return nil
+	}
+	t := tailDigest(cur.tail)
+	if t == nil {
+		return cur.g
+	}
+	merged := &beatGen{spans: maps.Clone(cur.g.spans), custodian: maps.Clone(cur.g.custodian)}
+	for k, sp := range t.spans {
+		m, seen := merged.spans[k]
+		if !seen || sp.start.Before(m.start) {
+			m.start = sp.start
+		}
+		if !seen || sp.end.After(m.end) {
+			m.end = sp.end
+		}
+		merged.spans[k] = m
+	}
+	for dir, at := range t.custodian {
+		if at.After(merged.custodian[dir]) {
+			merged.custodian[dir] = at
+		}
+	}
+	return merged
+}
+
+// sessionSpan is the session's beat-window in root, from the current
+// generation (derivedCommitsForSession's input, without a whole read).
+func (ix *beatOffsetIndex) sessionSpan(path, sid, root string) (start, end time.Time, ok bool) {
+	ix.mu.Lock()
+	defer ix.mu.Unlock()
+	g := ix.currentGen(path)
+	if g == nil {
+		return time.Time{}, time.Time{}, false
+	}
+	sp, ok := g.spans[beatSpanKey{sid, root}]
+	return sp.start, sp.end, ok
+}
+
+// lastCustodianAudit is root's latest custodian audit or attention beat in
+// the current generation (zero when none).
+func (ix *beatOffsetIndex) lastCustodianAudit(path, root string) time.Time {
+	ix.mu.Lock()
+	defer ix.mu.Unlock()
+	g := ix.currentGen(path)
+	if g == nil {
+		return time.Time{}
+	}
+	return g.custodian[root]
+}
+
 // extend opens p and indexes what was appended since its last read. A
 // rotated generation that is the file the current path named before is
 // that file's index, moved.
 func (ix *beatOffsetIndex) extend(p, current string) (*os.File, *beatGen, []byte, error) {
 	g := ix.gens[p]
 	if g == nil {
-		g = &beatGen{offsets: map[string][]int64{}}
+		g = newBeatGen()
 	}
 	fh, info, restart, err := g.f.open(p)
 	if err != nil {
@@ -164,7 +377,7 @@ func (ix *beatOffsetIndex) extend(p, current string) (*os.File, *beatGen, []byte
 			delete(ix.gens, current)
 			g.f.path = p
 		} else {
-			g = &beatGen{offsets: map[string][]int64{}}
+			g = newBeatGen()
 		}
 		ix.gens[p] = g
 	}
@@ -197,9 +410,11 @@ func (ix *beatOffsetIndex) extend(p, current string) (*os.File, *beatGen, []byte
 			fh.Close()
 			return nil, nil, nil, rerr
 		}
-		if s, ok := beatSession(line); ok {
+		s, hasSession := beatSession(line)
+		if hasSession {
 			g.offsets[s] = append(g.offsets[s], g.f.offset)
 		}
+		g.digest(line, hasSession)
 		ix.parsed += int64(len(line))
 		g.f.offset += int64(len(line))
 		g.f.keep(line)
