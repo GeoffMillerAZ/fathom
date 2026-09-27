@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -111,5 +112,58 @@ func TestObservatoryModelServesStaleWhileRebuilding(t *testing.T) {
 	}
 	if _, err := ledger.read(filepath.Join(dir, "missing")); !os.IsNotExist(err) {
 		t.Errorf("a missing ledger = %v, want not-exist", err)
+	}
+}
+
+// TestObservatoryModelNeverServesAnEmptyModel (RT-113): a cold reader never
+// gets the zero model rendered as zero services and zero traffic. A drop
+// during a rebuild (the governor's consoleMemoDrops, under memory
+// pressure) makes the waiter start a new flight; a build that panics
+// answers a model that names the failure — measured nothing, never zero.
+func TestObservatoryModelNeverServesAnEmptyModel(t *testing.T) {
+	resetObsCache()
+	t.Cleanup(resetObsCache)
+	release := make(chan struct{})
+	var builds atomic.Int32
+	var panics atomic.Bool
+	prev := obsModelBuilder
+	obsModelBuilder = func(baseURL string, now time.Time) observatoryModel {
+		if n := builds.Add(1); n == 2 {
+			<-release
+		}
+		if panics.Load() {
+			panic("the fold broke")
+		}
+		return observatoryModel{GeneratedAt: now.UTC().Format(time.RFC3339)}
+	}
+	t.Cleanup(func() { obsModelBuilder = prev })
+	t0 := time.Date(2026, 9, 27, 12, 0, 0, 0, time.UTC)
+	cachedObservatoryModel("http://x", t0) // warm
+	later := t0.Add(obsCacheTTL + time.Second)
+	cachedObservatoryModel("http://x", later) // stale; flight 2 blocks
+	waitUntil(t, func() bool { return builds.Load() == 2 })
+	consoleMemoDrops()
+	got := make(chan observatoryModel, 1)
+	go func() { got <- cachedObservatoryModel("http://x", later) }()
+	time.Sleep(50 * time.Millisecond)
+	close(release)
+	select {
+	case m := <-got:
+		if m.GeneratedAt == "" {
+			t.Fatalf("a cold read after a drop got the empty model: %+v", m)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the cold read never returned")
+	}
+
+	// A panicking build: the cold reader gets a model naming the failure.
+	resetObsCache()
+	panics.Store(true)
+	m := cachedObservatoryModel("http://x", t0)
+	if m.GeneratedAt == "" || !strings.Contains(m.DegradedNote, "could not be built") {
+		t.Fatalf("a failed build = %+v; want a model naming the failure", m)
+	}
+	if m.callFacts.AbsentReason == "" {
+		t.Errorf("a failed build's call facts claim a read: %+v", m.callFacts)
 	}
 }

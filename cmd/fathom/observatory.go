@@ -11,6 +11,8 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -857,9 +859,17 @@ var obsCache struct {
 	building bool
 	done     chan struct{} // closed when the flight in progress ends
 	gen      uint64
+	// failed is the last flight that panicked and why (its done channel
+	// identifies it to the readers that waited on it).
+	failedDone chan struct{}
+	failedWhy  string
 }
 
 const obsCacheTTL = 30 * time.Second
+
+// obsColdRetries bounds how often a cold reader starts another flight when
+// the one it waited on stored nothing because the cache was dropped.
+const obsColdRetries = 3
 
 // obsModelBuilder builds the model (tests hold it to observe a rebuild).
 var obsModelBuilder = buildObservatoryModel
@@ -870,29 +880,57 @@ func dropObsCacheLocked() {
 	obsCache.gen++
 }
 
+// cachedObservatoryModel serves the last model and rebuilds it in one
+// flight outside the lock (RT-113). Only a cold cache waits, and a cold
+// reader never gets the zero model — zero services and zero traffic
+// rendered as measured: a flight that stored nothing because the cache was
+// dropped meanwhile is followed by another, and a flight that failed
+// answers a model naming the failure.
 func cachedObservatoryModel(baseURL string, now time.Time) observatoryModel {
 	obsCache.Lock()
-	if !obsCache.at.IsZero() && now.Sub(obsCache.at) < obsCacheTTL {
-		m := obsCache.model
-		obsCache.Unlock()
-		return m
-	}
-	if !obsCache.building {
-		obsCache.building = true
-		obsCache.done = make(chan struct{})
-		go rebuildObservatoryModel(baseURL, now, obsCache.gen, obsCache.done)
-	}
-	if !obsCache.at.IsZero() {
-		m := obsCache.model // stale: served while the flight rebuilds
-		obsCache.Unlock()
-		return m
-	}
-	done := obsCache.done
-	obsCache.Unlock()
-	<-done
-	obsCache.Lock()
 	defer obsCache.Unlock()
-	return obsCache.model
+	for attempt := 0; ; attempt++ {
+		if !obsCache.at.IsZero() && now.Sub(obsCache.at) < obsCacheTTL {
+			return obsCache.model
+		}
+		if !obsCache.building {
+			obsCache.building = true
+			obsCache.done = make(chan struct{})
+			go rebuildObservatoryModel(baseURL, now, obsCache.gen, obsCache.done)
+		}
+		if !obsCache.at.IsZero() {
+			return obsCache.model // stale: served while the flight rebuilds
+		}
+		done := obsCache.done
+		obsCache.Unlock()
+		<-done
+		obsCache.Lock()
+		if !obsCache.at.IsZero() {
+			return obsCache.model
+		}
+		if obsCache.failedDone == done {
+			return failedObservatoryModel(now, "the console model could not be built ("+obsCache.failedWhy+")")
+		}
+		if attempt+1 >= obsColdRetries {
+			return failedObservatoryModel(now, "the console model could not be built (dropped under memory pressure while it rebuilt, "+fmt.Sprint(obsColdRetries)+" times)")
+		}
+	}
+}
+
+// failedObservatoryModel is the model a cold reader gets when no build
+// stored one: it names why, and every figure is not measured, never zero.
+func failedObservatoryModel(now time.Time, why string) observatoryModel {
+	note := why + " — nothing on this page is measured, never empty-as-healthy"
+	return observatoryModel{
+		SchemaVersion: observatorySchemaVersion,
+		FathomVersion: buildinfo.Version(),
+		GeneratedAt:   now.UTC().Format(time.RFC3339),
+		DegradedNote:  note,
+		CallLogNote:   note,
+		callFacts:     console.CallLogFacts{Log: console.ResolvedCallLog{Rule: console.RuleNone, Note: "not read"}, AbsentReason: "call log not read: " + note},
+		sessions:      console.SessionCount(sessionLedgerPath(), nil, errors.New(why)).WithAsOf(now),
+		ledgerErr:     errors.New(why),
+	}
 }
 
 // rebuildObservatoryModel is the one flight: the model is built outside
@@ -902,12 +940,16 @@ func rebuildObservatoryModel(baseURL string, now time.Time, gen uint64, done cha
 	built := false
 	defer func() {
 		// A panicking build (no request goroutine to recover it here)
-		// stores nothing and never takes the daemon down; the next read
-		// starts another flight.
-		_ = recover()
+		// stores nothing and never takes the daemon down; its waiters get
+		// a model naming the failure and the next read starts another
+		// flight.
+		r := recover()
 		obsCache.Lock()
 		if built && gen == obsCache.gen {
 			obsCache.model, obsCache.at = m, now
+		}
+		if r != nil {
+			obsCache.failedDone, obsCache.failedWhy = done, fmt.Sprint("panic: ", r)
 		}
 		obsCache.building = false
 		close(done)
