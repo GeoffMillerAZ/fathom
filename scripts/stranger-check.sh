@@ -89,12 +89,18 @@ fi
 bin="${tree}/bin/fathom"
 
 # 3. A throwaway daemon on a free port with a temp store.
+#    FATHOM_TENANCY_BUDGET: an unmanaged serve-http takes the 512 MiB
+#    [tenancy.unmanaged] budget (RT-177), and `go list` children count
+#    toward its marks (RT-161), so ingesting this whole tree reaches the
+#    refuse rung — which now fails the ingest by name instead of indexing
+#    less (RT-153, I38). The check proves adoption, not the unmanaged
+#    ceiling, so its daemon takes a managed-sized budget, named here.
 port=$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1]); s.close()')
 url="http://127.0.0.1:${port}"
 # --call-log is explicit: its default resolves through the working
 # directory's state dir, which in this repository is the managed daemon's
 # own log, and the throwaway HOME holds no record to refuse against.
-HOME="${home}" "${bin}" serve-http --store "${work}/store.sqlite" --addr "127.0.0.1:${port}" --call-log "${work}/mcp-calls.jsonl" >"${work}/daemon.log" 2>&1 &
+HOME="${home}" FATHOM_TENANCY_BUDGET="${FATHOM_TENANCY_BUDGET:-4GiB}" "${bin}" serve-http --store "${work}/store.sqlite" --addr "127.0.0.1:${port}" --call-log "${work}/mcp-calls.jsonl" >"${work}/daemon.log" 2>&1 &
 daemon_pid=$!
 for _ in $(seq 1 50); do
   if curl -s --max-time 1 "${url}/healthz" 2>/dev/null | grep -q ok; then break; fi
