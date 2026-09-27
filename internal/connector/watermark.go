@@ -6,10 +6,9 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"os/exec"
-	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/gitro"
 )
 
 // manifestWatermarkPrefix marks a content-addressed (non-git) watermark, so a
@@ -25,13 +24,13 @@ const manifestWatermarkPrefix = "manifest:"
 const ManifestWatermarkPrefix = manifestWatermarkPrefix
 
 // gitHead returns the HEAD commit for dir, or "" when dir is not inside a git
-// work tree (or git is unavailable).
+// work tree or HEAD cannot be read. RT-101: from the ref files, no fork.
 func gitHead(dir string) string {
-	out, err := exec.Command("git", "-C", dir, "rev-parse", "HEAD").Output()
+	sha, err := gitro.Head(context.Background(), dir)
 	if err != nil {
 		return ""
 	}
-	return strings.TrimSpace(string(out))
+	return sha
 }
 
 // manifestWatermark computes a content-addressed watermark over a corpus: the

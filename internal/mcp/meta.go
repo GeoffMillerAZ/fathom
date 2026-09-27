@@ -9,33 +9,31 @@
 package mcp
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"os/exec"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/extractor"
 	"github.com/geoffmilleraz/fathom/internal/fusion"
+	"github.com/geoffmilleraz/fathom/internal/gitro"
 )
 
-// currentGitHead shells out to git to return HEAD for path.
-// Returns "" when git is unavailable, the path is not a repo, or any error.
-// Only called at query time (not hot path).
+// currentGitHead returns HEAD for path, or "" when path is in no work tree
+// or HEAD cannot be read. RT-101: read from the ref files without a fork
+// (gitro.Head, cached per root by mtime) — this runs on every per-service
+// read through auto-refresh.
 func currentGitHead(path string) string {
 	if path == "" {
 		return ""
 	}
-	var out bytes.Buffer
-	cmd := exec.Command("git", "-C", path, "rev-parse", "HEAD")
-	cmd.Stdout = &out
-	if err := cmd.Run(); err != nil {
+	sha, err := gitro.Head(context.Background(), path)
+	if err != nil {
 		return ""
 	}
-	return strings.TrimSpace(out.String())
+	return sha
 }
 
 // ─── registerMeta ─────────────────────────────────────────────────────────────

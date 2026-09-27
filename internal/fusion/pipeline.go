@@ -44,6 +44,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/dlog"
 	"github.com/geoffmilleraz/fathom/internal/extractor"
+	"github.com/geoffmilleraz/fathom/internal/gitro"
 	"github.com/geoffmilleraz/fathom/internal/llm"
 	"github.com/geoffmilleraz/fathom/internal/sdd"
 	"github.com/geoffmilleraz/fathom/internal/store"
@@ -263,20 +264,19 @@ type pendingFile struct {
 	hash    string
 }
 
-// realGitHead shells out to git to resolve HEAD for the given directory path.
-// Returns an empty string when git is unavailable, the directory is not a repo,
-// or any other error occurs.  Never panics, never returns an error.
+// realGitHead resolves HEAD for the given directory path from the ref files
+// (RT-101: gitro.Head, no fork for a readable layout). Returns an empty
+// string when the path is in no work tree or HEAD cannot be read. Never
+// panics, never returns an error.
 func realGitHead(path string) string {
 	if path == "" {
 		return ""
 	}
-	var out bytes.Buffer
-	cmd := exec.Command("git", "-C", path, "rev-parse", "HEAD")
-	cmd.Stdout = &out
-	if err := cmd.Run(); err != nil {
+	sha, err := gitro.Head(context.Background(), path)
+	if err != nil {
 		return ""
 	}
-	return strings.TrimSpace(out.String())
+	return sha
 }
 
 // realGitLog shells out to git to get the last 500 commits for the given

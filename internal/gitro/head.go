@@ -1,0 +1,272 @@
+package gitro
+
+// head.go — RT-101 (docs/design/responsible-tenant.md §7.1): the HEAD
+// commit of a work tree, read from .git/HEAD and the ref files without a
+// fork. Auto-refresh asked `git rev-parse HEAD` on every per-service read
+// (the audit's autorefresh-git-fork-per-read hazard): one process per
+// query, on the request path. Head reads HEAD, follows a symbolic ref to its
+// loose file or packed-refs (a linked worktree's `gitdir:` file and its
+// commondir handled), and caches the answer per root until one of the files
+// it read changes mtime. Only a layout it cannot read (reftable, an unborn
+// branch) runs git, under a 2 s deadline; a fallback that does not answer
+// in time is ErrFreshnessUnknown — the caller discloses freshness as
+// unknown instead of waiting on git.
+
+import (
+	"bufio"
+	"bytes"
+	"context"
+	"errors"
+	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"sync"
+	"time"
+)
+
+// ErrNotRepository is Head's answer for a root inside no git work tree.
+var ErrNotRepository = errors.New("gitro: not inside a git work tree")
+
+// ErrFreshnessUnknown is Head's answer when HEAD could not be read from the
+// files and the git fallback failed or exceeded its deadline.
+var ErrFreshnessUnknown = errors.New("gitro: HEAD unreadable — freshness unknown")
+
+// fallbackDeadline bounds the git fallback (a var for tests).
+var fallbackDeadline = 2 * time.Second
+
+// headFallback runs `git rev-parse HEAD` in root under ctx (a var for tests).
+var headFallback = func(ctx context.Context, root string) (string, error) {
+	cmd := exec.CommandContext(ctx, "git", "-C", root, "rev-parse", "HEAD")
+	cmd.Env = append(os.Environ(), "GIT_OPTIONAL_LOCKS=0")
+	out, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
+// headCacheMax bounds the per-root cache; roots are registered services, so
+// the bound is never reached in practice and a reset is harmless.
+const headCacheMax = 256
+
+// fileStamp is one file's identity for cache validation.
+type fileStamp struct {
+	path  string
+	mtime int64
+	size  int64
+	ok    bool
+}
+
+func stampOf(path string) fileStamp {
+	fi, err := os.Stat(path)
+	if err != nil {
+		return fileStamp{path: path}
+	}
+	return fileStamp{path: path, mtime: fi.ModTime().UnixNano(), size: fi.Size(), ok: true}
+}
+
+type headEntry struct {
+	sha    string
+	stamps []fileStamp // every file the answer was read from (or found absent)
+}
+
+var (
+	headMu    sync.Mutex
+	headCache = map[string]headEntry{}
+)
+
+// ResetHeadCache empties the per-root cache (tests).
+func ResetHeadCache() {
+	headMu.Lock()
+	headCache = map[string]headEntry{}
+	headMu.Unlock()
+}
+
+// Head returns the commit root's work tree has checked out. It reads the
+// repository's files — never forks for a readable layout — and caches the
+// answer per root until a file it read moves. "" with ErrNotRepository when
+// root is in no work tree; "" with ErrFreshnessUnknown when HEAD could not
+// be read and the 2 s git fallback did not answer.
+func Head(ctx context.Context, root string) (string, error) {
+	if root == "" {
+		return "", ErrNotRepository
+	}
+	headMu.Lock()
+	e, hit := headCache[root]
+	headMu.Unlock()
+	if hit && stampsCurrent(e.stamps) {
+		return e.sha, nil
+	}
+	sha, stamps, err := readHead(root)
+	switch {
+	case err == nil:
+		headMu.Lock()
+		if len(headCache) >= headCacheMax {
+			headCache = map[string]headEntry{}
+		}
+		headCache[root] = headEntry{sha: sha, stamps: stamps}
+		headMu.Unlock()
+		return sha, nil
+	case errors.Is(err, ErrNotRepository):
+		return "", err
+	}
+	fctx, cancel := context.WithTimeout(ctx, fallbackDeadline)
+	defer cancel()
+	sha, ferr := headFallback(fctx, root)
+	if ferr != nil || !isObjectName(sha) {
+		if ferr == nil {
+			ferr = fmt.Errorf("unexpected output %q", sha)
+		}
+		return "", fmt.Errorf("%w (%s: %v; git fallback: %v)", ErrFreshnessUnknown, root, err, ferr)
+	}
+	return sha, nil
+}
+
+func stampsCurrent(stamps []fileStamp) bool {
+	for _, s := range stamps {
+		if stampOf(s.path) != s {
+			return false
+		}
+	}
+	return true
+}
+
+// readHead resolves root's HEAD from the files alone.
+func readHead(root string) (string, []fileStamp, error) {
+	gitDir, commonDir, stamps, err := findGitDirs(root)
+	if err != nil {
+		return "", nil, err
+	}
+	headPath := filepath.Join(gitDir, "HEAD")
+	stamps = append(stamps, stampOf(headPath))
+	raw, err := os.ReadFile(headPath)
+	if err != nil {
+		return "", nil, err
+	}
+	val := strings.TrimSpace(string(raw))
+	for depth := 0; depth < 5; depth++ {
+		if !strings.HasPrefix(val, "ref:") {
+			if isObjectName(val) {
+				return val, stamps, nil
+			}
+			return "", nil, fmt.Errorf("HEAD holds %q, not an object name", val)
+		}
+		ref := strings.TrimSpace(strings.TrimPrefix(val, "ref:"))
+		if ref == "" || strings.Contains(ref, "..") {
+			return "", nil, fmt.Errorf("HEAD names an unreadable ref %q", ref)
+		}
+		next, found, refStamps := readRef(gitDir, commonDir, ref)
+		stamps = append(stamps, refStamps...)
+		if !found {
+			return "", nil, fmt.Errorf("ref %s is neither a loose ref nor in packed-refs", ref)
+		}
+		val = next
+	}
+	return "", nil, errors.New("symbolic refs nest too deeply")
+}
+
+// readRef reads ref as a loose file (per-worktree gitDir first, then the
+// common dir) or from packed-refs, returning every file it consulted.
+func readRef(gitDir, commonDir, ref string) (string, bool, []fileStamp) {
+	var stamps []fileStamp
+	dirs := []string{gitDir}
+	if commonDir != gitDir {
+		dirs = append(dirs, commonDir)
+	}
+	for _, d := range dirs {
+		p := filepath.Join(d, filepath.FromSlash(ref))
+		st := stampOf(p)
+		stamps = append(stamps, st)
+		if !st.ok {
+			continue
+		}
+		raw, err := os.ReadFile(p)
+		if err != nil {
+			continue
+		}
+		return strings.TrimSpace(string(raw)), true, stamps
+	}
+	packed := filepath.Join(commonDir, "packed-refs")
+	stamps = append(stamps, stampOf(packed))
+	raw, err := os.ReadFile(packed)
+	if err != nil {
+		return "", false, stamps
+	}
+	sc := bufio.NewScanner(bytes.NewReader(raw))
+	sc.Buffer(make([]byte, 64<<10), 1<<20)
+	for sc.Scan() {
+		line := sc.Text()
+		if line == "" || line[0] == '#' || line[0] == '^' {
+			continue
+		}
+		sha, name, ok := strings.Cut(line, " ")
+		if ok && name == ref && isObjectName(sha) {
+			return sha, true, stamps
+		}
+	}
+	return "", false, stamps
+}
+
+// findGitDirs walks up from root to the first .git entry: a directory (a
+// main work tree) or a file naming the gitdir (a linked worktree or a
+// submodule), whose commondir file, when present, locates the shared refs.
+func findGitDirs(root string) (gitDir, commonDir string, stamps []fileStamp, err error) {
+	dir, aerr := filepath.Abs(root)
+	if aerr != nil {
+		return "", "", nil, aerr
+	}
+	for {
+		dotGit := filepath.Join(dir, ".git")
+		fi, serr := os.Stat(dotGit)
+		if serr == nil {
+			if fi.IsDir() {
+				return dotGit, dotGit, []fileStamp{stampOf(dotGit)}, nil
+			}
+			raw, rerr := os.ReadFile(dotGit)
+			if rerr != nil {
+				return "", "", nil, rerr
+			}
+			line := strings.TrimSpace(string(raw))
+			if !strings.HasPrefix(line, "gitdir:") {
+				return "", "", nil, fmt.Errorf("%s is not a gitdir file", dotGit)
+			}
+			gd := strings.TrimSpace(strings.TrimPrefix(line, "gitdir:"))
+			if !filepath.IsAbs(gd) {
+				gd = filepath.Join(dir, gd)
+			}
+			cd := gd
+			if c, cerr := os.ReadFile(filepath.Join(gd, "commondir")); cerr == nil {
+				cd = strings.TrimSpace(string(c))
+				if !filepath.IsAbs(cd) {
+					cd = filepath.Join(gd, cd)
+				}
+			}
+			return filepath.Clean(gd), filepath.Clean(cd), []fileStamp{stampOf(dotGit)}, nil
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return "", "", nil, ErrNotRepository
+		}
+		dir = parent
+	}
+}
+
+// isObjectName reports whether s is a full SHA-1 or SHA-256 object name.
+func isObjectName(s string) bool {
+	if len(s) != 40 && len(s) != 64 {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if !(c >= '0' && c <= '9' || c >= 'a' && c <= 'f') {
+			return false
+		}
+	}
+	return true
+}
+
+// IsObjectName reports whether s is a full git object name (40 or 64
+// lowercase hex characters) — how a stored watermark says it is a commit.
+func IsObjectName(s string) bool { return isObjectName(s) }
