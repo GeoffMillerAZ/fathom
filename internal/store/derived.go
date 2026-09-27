@@ -301,11 +301,26 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
 	if err := upsertSummaryTx(ctx, tx, sum); err != nil {
 		return err
 	}
-	if _, err := tx.ExecContext(ctx, `
-INSERT OR IGNORE INTO observation_calls_state (service_id, indexed_at)
-SELECT ?, ? WHERE EXISTS (SELECT 1 FROM derived_meta WHERE key = ? AND value = '1')`,
-		meta.ServiceID, sum.WrittenAt, callsFromBirthKey); err != nil {
+	// The call index: complete from birth (the trigger saw every insert),
+	// or derived now for a service a pre-trigger store — or a purge's
+	// VACUUM — left unindexed, so a service is never silently missing from
+	// CallersOfKeys until the next daemon start (I38).
+	var indexed, birth int
+	if err := tx.QueryRowContext(ctx, `
+SELECT EXISTS(SELECT 1 FROM observation_calls_state WHERE service_id = ?),
+       EXISTS(SELECT 1 FROM derived_meta WHERE key = ? AND value = '1')`,
+		meta.ServiceID, callsFromBirthKey).Scan(&indexed, &birth); err != nil {
 		return fmt.Errorf("WriteServiceSummary calls state: %w", err)
+	}
+	if indexed == 0 {
+		if birth == 0 {
+			if _, err := indexServiceCallsTx(ctx, tx, meta.ServiceID); err != nil {
+				return fmt.Errorf("WriteServiceSummary: %w", err)
+			}
+		}
+		if _, err := tx.ExecContext(ctx, `INSERT OR REPLACE INTO observation_calls_state (service_id, indexed_at) VALUES (?, ?)`, meta.ServiceID, sum.WrittenAt); err != nil {
+			return fmt.Errorf("WriteServiceSummary calls mark: %w", err)
+		}
 	}
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("WriteServiceSummary commit: %w", err)
@@ -631,19 +646,11 @@ SELECT (SELECT watermark FROM service_summary WHERE service_id = ?),
 			return rep, fmt.Errorf("BackfillDerivedTables calls state: %w", err)
 		}
 		if indexed == 0 {
-			if _, err := tx.ExecContext(ctx, `DELETE FROM observation_calls WHERE service_id = ?`, serviceID); err != nil {
-				return rep, fmt.Errorf("BackfillDerivedTables clear calls: %w", err)
-			}
-			res, err := tx.ExecContext(ctx, `
-INSERT INTO observation_calls (service_id, caller_rowid, callee_key, callee_name)
-SELECT o.service_id, o.rowid, j.value, `+calleeNameSQL("j.value")+`
-FROM observations o, json_each(o.calls) j
-WHERE o.service_id = ? AND json_array_length(o.calls) > 0 AND j.type = 'text'`, serviceID)
+			n, err := indexServiceCallsTx(ctx, tx, serviceID)
 			if err != nil {
-				return rep, fmt.Errorf("BackfillDerivedTables calls: %w", err)
+				return rep, fmt.Errorf("BackfillDerivedTables: %w", err)
 			}
-			n, _ := res.RowsAffected()
-			rep.CallRows = int(n)
+			rep.CallRows = n
 			if _, err := tx.ExecContext(ctx, `INSERT OR REPLACE INTO observation_calls_state (service_id, indexed_at) VALUES (?, ?)`, serviceID, time.Now().UnixNano()); err != nil {
 				return rep, fmt.Errorf("BackfillDerivedTables calls mark: %w", err)
 			}
@@ -655,14 +662,55 @@ WHERE o.service_id = ? AND json_array_length(o.calls) > 0 AND j.type = 'text'`, 
 	return rep, nil
 }
 
-// resetCallIndex forgets every service's call index (after a VACUUM,
-// which may renumber observations' rowids): the rows go and each service
-// is backfilled again at first use.
-func resetCallIndex(ctx context.Context, ex interface {
+// indexServiceCallsTx replaces serviceID's observation_calls rows with
+// ones derived by json_each over its observations' calls (no file read).
+// The caller marks the service indexed.
+func indexServiceCallsTx(ctx context.Context, tx *sql.Tx, serviceID string) (int, error) {
+	if _, err := tx.ExecContext(ctx, `DELETE FROM observation_calls WHERE service_id = ?`, serviceID); err != nil {
+		return 0, fmt.Errorf("clear calls: %w", err)
+	}
+	res, err := tx.ExecContext(ctx, `
+INSERT INTO observation_calls (service_id, caller_rowid, callee_key, callee_name)
+SELECT o.service_id, o.rowid, j.value, `+calleeNameSQL("j.value")+`
+FROM observations o, json_each(o.calls) j
+WHERE o.service_id = ? AND json_array_length(o.calls) > 0 AND j.type = 'text'`, serviceID)
+	if err != nil {
+		return 0, fmt.Errorf("index calls: %w", err)
+	}
+	n, _ := res.RowsAffected()
+	return int(n), nil
+}
+
+// rebuildCallIndex re-derives every service's call index in place after a
+// VACUUM, which may renumber observations' rowids (the index keys on
+// them). It used to forget the index, and only a daemon restart's
+// backfill rebuilt it — until then CallersOfKeys skipped every service,
+// silently (I38). After the rebuild every stored observation's calls are
+// indexed and the insert trigger captures every later one, so the store
+// counts as indexed from birth. A crash midway leaves the services
+// unindexed (the state rows go first), never wrongly indexed.
+func rebuildCallIndex(ctx context.Context, ex interface {
 	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
 }) error {
-	for _, q := range []string{`DELETE FROM observation_calls`, `DELETE FROM observation_calls_state`, `DELETE FROM derived_meta WHERE key = '` + callsFromBirthKey + `'`} {
-		if _, err := ex.ExecContext(ctx, q); err != nil && !isNoSuchTable(err) {
+	now := time.Now().UnixNano()
+	for _, q := range []struct {
+		sql  string
+		args []any
+	}{
+		{`DELETE FROM observation_calls_state`, nil},
+		{`DELETE FROM derived_meta WHERE key = ?`, []any{callsFromBirthKey}},
+		{`DELETE FROM observation_calls`, nil},
+		{`INSERT INTO observation_calls (service_id, caller_rowid, callee_key, callee_name)
+SELECT o.service_id, o.rowid, j.value, ` + calleeNameSQL("j.value") + `
+FROM observations o, json_each(o.calls) j
+WHERE json_array_length(o.calls) > 0 AND j.type = 'text'`, nil},
+		{`INSERT OR REPLACE INTO observation_calls_state (service_id, indexed_at) SELECT DISTINCT service_id, ? FROM observations`, []any{now}},
+		{`INSERT OR REPLACE INTO derived_meta (key, value) VALUES (?, '1')`, []any{callsFromBirthKey}},
+	} {
+		if _, err := ex.ExecContext(ctx, q.sql, q.args...); err != nil {
+			if isNoSuchTable(err) {
+				return nil
+			}
 			return err
 		}
 	}

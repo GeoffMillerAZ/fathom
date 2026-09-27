@@ -670,9 +670,11 @@ the same cost as wave A's aggregate) and names the absence (`symbol_count_error`
 is not, never falling back to a symbol load or a walk; the daemon derives every service's
 summary and call index once after warm-up; cross-service callers keep today's query for a
 service whose call index is not complete (`DerivedState.CallsIndexed`). No 21-service
-re-ingest after the deploy. A purge's VACUUM may renumber rowids, so it forgets the call
-index (re-derived at first use), and `CallersOfKeys` re-checks each hit against the
-caller's own `calls`. Only
+re-ingest after the deploy. An ingest's final transaction indexes a service the
+store's trigger did not see from birth, so a service first ingested after start-up is
+never left out. A purge's VACUUM may renumber rowids, so it rebuilds every service's call
+index in place (never left empty until a restart), and `CallersOfKeys` re-checks each hit
+against the caller's own `calls`. Only
 `file_stats` genuinely needs a walk: until a service's first post-upgrade ingest,
 consumers of it (RT-82, the stat manifest) answer from `SourcePaths` or name the absence
 (I38), never a whole-tree content read.

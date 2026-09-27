@@ -746,9 +746,9 @@ func (s *SQLiteStore) executePurge(ctx context.Context, serviceID string, plan *
 	purgePhysicalResidue(ctx, conn, s.path, &out)
 	if out.Vacuumed {
 		// VACUUM may renumber observations' rowids, which the call index
-		// keys on (RT-77): forget it; each service is backfilled again.
-		if err := resetCallIndex(ctx, conn); err != nil {
-			return out, fmt.Errorf("store.PurgePaths reset call index: %w", err)
+		// keys on (RT-77): rebuild it in place for every service.
+		if err := rebuildCallIndex(ctx, conn); err != nil {
+			return out, fmt.Errorf("store.PurgePaths rebuild call index: %w", err)
 		}
 	}
 	return out, nil
