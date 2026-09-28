@@ -1,0 +1,4828 @@
+[
+  {
+    "id": "typescript",
+    "name": "TypeScript (.ts .tsx .mts .cts)",
+    "kind": "language",
+    "target_level": "L4",
+    "grammar_source": "tree-sitter/tree-sitter-typescript",
+    "licence": "MIT",
+    "oracle": [
+      "ctags",
+      "scip-typescript"
+    ],
+    "calibration_subjects": [
+      "colinhacks/zod",
+      "nestjs/nest"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F5",
+      "LB-F7",
+      "LB-F11"
+    ],
+    "wave": 1,
+    "engine": "tags",
+    "plan_row": "LB-Q-typescript",
+    "worker_model": "sonnet",
+    "notes": "upgrade: ranges, signatures, name-captured calls; L3/L4 already wired, measure against CV-M7 truth"
+  },
+  {
+    "id": "javascript",
+    "name": "JavaScript (.js .jsx .mjs .cjs)",
+    "kind": "language",
+    "target_level": "L4",
+    "grammar_source": "tree-sitter/tree-sitter-javascript",
+    "licence": "MIT",
+    "oracle": [
+      "ctags",
+      "scip-typescript"
+    ],
+    "calibration_subjects": [
+      "expressjs/express",
+      "axios/axios"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F5",
+      "LB-F7",
+      "LB-F11"
+    ],
+    "wave": 1,
+    "engine": "tags",
+    "plan_row": "LB-Q-javascript",
+    "worker_model": "sonnet",
+    "notes": "upgrade; scip-typescript indexes JS with --infer-tsconfig"
+  },
+  {
+    "id": "dockerfile",
+    "name": "Dockerfile / Containerfile",
+    "kind": "tooling",
+    "target_level": "L3",
+    "grammar_source": "camdencheek/tree-sitter-dockerfile",
+    "licence": "Apache-2.0",
+    "oracle": [
+      "hadolint --format json (parse only)",
+      "docker buildx build --print=outline"
+    ],
+    "calibration_subjects": [
+      "docker-library/python",
+      "docker/cli"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F5",
+      "LB-F7",
+      "LB-F11",
+      "LB-F18"
+    ],
+    "wave": 1,
+    "engine": "tags",
+    "plan_row": "LB-Q-dockerfile",
+    "worker_model": "sonnet",
+    "port_of": "dockerextract.go (pure Go)",
+    "notes": "stages, ARG/ENV keys (env: inventory), FROM image refs, COPY --from stage edges, cross-file FROM <local image> edges"
+  },
+  {
+    "id": "python",
+    "name": "Python (.py .pyi)",
+    "kind": "language",
+    "target_level": "L4",
+    "grammar_source": "tree-sitter/tree-sitter-python",
+    "licence": "MIT",
+    "oracle": [
+      "ctags",
+      "scip-python"
+    ],
+    "calibration_subjects": [
+      "pallets/flask",
+      "fastapi/fastapi"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F5",
+      "LB-F7",
+      "LB-F11"
+    ],
+    "wave": 1,
+    "engine": "tags",
+    "plan_row": "LB-Q-python",
+    "worker_model": "sonnet",
+    "notes": "upgrade: decorators keep def line within tolerance; properties, class attributes, type aliases"
+  },
+  {
+    "id": "html",
+    "name": "HTML (.html .htm)",
+    "kind": "language",
+    "target_level": "L3",
+    "grammar_source": "tree-sitter/tree-sitter-html",
+    "licence": "MIT",
+    "oracle": [
+      "ctags"
+    ],
+    "calibration_subjects": [
+      "h5bp/html5-boilerplate",
+      "twbs/bootstrap"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F5",
+      "LB-F7",
+      "LB-F11",
+      "LB-F6"
+    ],
+    "wave": 1,
+    "engine": "tags",
+    "plan_row": "LB-Q-html",
+    "worker_model": "sonnet",
+    "notes": "new; fleet gap; ids, custom elements, forms, script/style injections, src/href file edges (relative-path)"
+  },
+  {
+    "id": "github-actions",
+    "name": "GitHub Actions workflows and composite actions",
+    "kind": "tooling",
+    "target_level": "L3",
+    "grammar_source": "pure-go:gopkg.in/yaml.v3",
+    "licence": "n/a",
+    "oracle": [
+      "actionlint -format json (parse only)"
+    ],
+    "calibration_subjects": [
+      "actions/starter-workflows",
+      "cli/cli"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22",
+      "LB-F18"
+    ],
+    "wave": 1,
+    "engine": "doc",
+    "plan_row": "LB-Q-github-actions",
+    "worker_model": "sonnet",
+    "port_of": "ghaextract.go",
+    "notes": "jobs, steps with ids, needs edges, reusable-workflow uses: edges (local path L3), action.yml inputs"
+  },
+  {
+    "id": "css",
+    "name": "CSS (.css)",
+    "kind": "language",
+    "target_level": "L3",
+    "grammar_source": "tree-sitter/tree-sitter-css",
+    "licence": "MIT",
+    "oracle": [
+      "ctags"
+    ],
+    "calibration_subjects": [
+      "necolas/normalize.css",
+      "picocss/pico"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F5",
+      "LB-F7",
+      "LB-F11"
+    ],
+    "wave": 1,
+    "engine": "tags",
+    "plan_row": "LB-Q-css",
+    "worker_model": "sonnet",
+    "notes": "new; fleet gap; selectors, custom properties, keyframes, @import edges"
+  },
+  {
+    "id": "sql",
+    "name": "SQL (.sql; schema and migrations)",
+    "kind": "language",
+    "target_level": "L2",
+    "grammar_source": "DerekStride/tree-sitter-sql",
+    "licence": "MIT",
+    "oracle": [
+      "ctags"
+    ],
+    "calibration_subjects": [
+      "lerocha/chinook-database",
+      "sqitchers/sqitch"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F18"
+    ],
+    "wave": 1,
+    "engine": "tags",
+    "plan_row": "LB-Q-sql",
+    "worker_model": "sonnet",
+    "port_of": "sqlextract.go (regex)",
+    "notes": "port; tables, views, columns, functions, indexes; FK references as L2 edges; dialect variance disclosed"
+  },
+  {
+    "id": "package-json",
+    "name": "npm/pnpm/yarn package manifests (package.json, workspaces)",
+    "kind": "tooling",
+    "target_level": "L3",
+    "grammar_source": "pure-go:encoding/json",
+    "licence": "n/a",
+    "oracle": [
+      "npm query / pnpm ls --json"
+    ],
+    "calibration_subjects": [
+      "vercel/next.js",
+      "babel/babel"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 1,
+    "engine": "doc",
+    "plan_row": "LB-Q-package-json",
+    "worker_model": "sonnet",
+    "notes": "packages, scripts, bin, exports; workspace-member edges; dependency edges to in-fleet packages (cross-repo)"
+  },
+  {
+    "id": "bash",
+    "name": "Shell / Bash (.sh .bash, shebangs)",
+    "kind": "language",
+    "target_level": "L2",
+    "grammar_source": "tree-sitter/tree-sitter-bash",
+    "licence": "MIT",
+    "oracle": [
+      "ctags"
+    ],
+    "calibration_subjects": [
+      "nvm-sh/nvm",
+      "bats-core/bats-core"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F18"
+    ],
+    "wave": 1,
+    "engine": "tags",
+    "plan_row": "LB-Q-bash",
+    "worker_model": "sonnet",
+    "port_of": "bashextract.go (CGO walker)",
+    "notes": "port; functions, exported vars, source edges (file-symbol) at L3 later"
+  },
+  {
+    "id": "java",
+    "name": "Java (.java)",
+    "kind": "language",
+    "target_level": "L4",
+    "grammar_source": "tree-sitter/tree-sitter-java",
+    "licence": "MIT",
+    "oracle": [
+      "ctags",
+      "scip-java"
+    ],
+    "calibration_subjects": [
+      "square/retrofit",
+      "google/guava"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F5",
+      "LB-F7",
+      "LB-F11",
+      "LB-F18"
+    ],
+    "wave": 1,
+    "engine": "tags",
+    "plan_row": "LB-Q-java",
+    "worker_model": "sonnet",
+    "port_of": "javaextract.go (CGO walker)",
+    "notes": "port; @scope.package; records, annotations, fields"
+  },
+  {
+    "id": "python-packaging",
+    "name": "Python packaging (pyproject.toml, requirements*.txt, setup.cfg)",
+    "kind": "tooling",
+    "target_level": "L2",
+    "grammar_source": "pure-go:github.com/pelletier/go-toml/v2",
+    "licence": "n/a",
+    "oracle": [
+      "pip-compile --dry-run / tomllib reference parse (C)"
+    ],
+    "calibration_subjects": [
+      "pypa/pip",
+      "fastapi/fastapi"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 1,
+    "engine": "doc",
+    "plan_row": "LB-Q-python-packaging",
+    "worker_model": "sonnet",
+    "notes": "new; project, entry points/scripts (cli: inventory keys), dependency groups, tool.* sections as keys"
+  },
+  {
+    "id": "csharp",
+    "name": "C# (.cs)",
+    "kind": "language",
+    "target_level": "L4",
+    "grammar_source": "tree-sitter/tree-sitter-c-sharp",
+    "licence": "MIT",
+    "oracle": [
+      "ctags",
+      "scip-dotnet"
+    ],
+    "calibration_subjects": [
+      "JamesNK/Newtonsoft.Json",
+      "App-vNext/Polly"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F5",
+      "LB-F7",
+      "LB-F11",
+      "LB-F18"
+    ],
+    "wave": 1,
+    "engine": "tags",
+    "plan_row": "LB-Q-csharp",
+    "worker_model": "sonnet",
+    "port_of": "csharpextract.go (CGO walker)",
+    "notes": "port; namespaces (block and file-scoped), records, properties, partial types"
+  },
+  {
+    "id": "c",
+    "name": "C (.c, .h by sniff)",
+    "kind": "language",
+    "target_level": "L4",
+    "grammar_source": "tree-sitter/tree-sitter-c",
+    "licence": "MIT",
+    "oracle": [
+      "ctags",
+      "scip-clang"
+    ],
+    "calibration_subjects": [
+      "libuv/libuv",
+      "curl/curl"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F5",
+      "LB-F7",
+      "LB-F11",
+      "LB-F18",
+      "LB-F9"
+    ],
+    "wave": 1,
+    "engine": "tags",
+    "plan_row": "LB-Q-c",
+    "worker_model": "sonnet",
+    "port_of": "cextract.go + cheaderextract.go (CGO walkers)",
+    "notes": "port; keep the CT-3 .h router; include-path strategy; scip-clang needs compile_commands.json"
+  },
+  {
+    "id": "terraform",
+    "name": "Terraform / OpenTofu (.tf .tfvars .tf.json)",
+    "kind": "tooling",
+    "target_level": "L3",
+    "grammar_source": "native:github.com/hashicorp/hcl/v2",
+    "licence": "MPL-2.0 (library dependency, unmodified)",
+    "oracle": [
+      "terraform graph (tier A, offline init)"
+    ],
+    "calibration_subjects": [
+      "terraform-aws-modules/terraform-aws-vpc",
+      "terraform-aws-modules/terraform-aws-eks"
+    ],
+    "depends_on": [
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 1,
+    "engine": "native",
+    "plan_row": "LB-Q-terraform",
+    "worker_model": "sonnet",
+    "notes": "upgrade hclextract.go: variables, outputs, locals, module sources (local path L3, registry refs recorded), .tfvars keys; resource reference edges"
+  },
+  {
+    "id": "cpp",
+    "name": "C++ (.cc .cpp .cxx .hpp .hh .hxx, .h by sniff)",
+    "kind": "language",
+    "target_level": "L4",
+    "grammar_source": "tree-sitter/tree-sitter-cpp",
+    "licence": "MIT",
+    "oracle": [
+      "ctags",
+      "scip-clang"
+    ],
+    "calibration_subjects": [
+      "fmtlib/fmt",
+      "nlohmann/json"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F5",
+      "LB-F7",
+      "LB-F11",
+      "LB-F18",
+      "LB-F9",
+      "LB-Q-c"
+    ],
+    "wave": 1,
+    "engine": "tags",
+    "plan_row": "LB-Q-cpp",
+    "worker_model": "sonnet",
+    "port_of": "cppextract.go (CGO walker)",
+    "notes": "port; namespaces, templates, out-of-line method definitions qualify to their class"
+  },
+  {
+    "id": "go",
+    "name": "Go (.go)",
+    "kind": "language",
+    "target_level": "L4",
+    "grammar_source": "native:go/parser+go/types",
+    "licence": "BSD-3-Clause",
+    "oracle": [
+      "ctags",
+      "scip-go"
+    ],
+    "calibration_subjects": [
+      "spf13/cobra",
+      "cli/cli"
+    ],
+    "depends_on": [
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 1,
+    "engine": "native",
+    "plan_row": "LB-Q-go",
+    "worker_model": "haiku",
+    "notes": "measure-only: the native extractor gets its first independent reading; no engine change"
+  },
+  {
+    "id": "kubernetes",
+    "name": "Kubernetes manifests (incl. CRDs)",
+    "kind": "tooling",
+    "target_level": "L3",
+    "grammar_source": "pure-go:gopkg.in/yaml.v3",
+    "licence": "n/a",
+    "oracle": [
+      "kubectl apply --dry-run=client -o json (offline) / kubeconform"
+    ],
+    "calibration_subjects": [
+      "kubernetes/examples",
+      "argoproj/argocd-example-apps"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22",
+      "LB-F18"
+    ],
+    "wave": 1,
+    "engine": "doc",
+    "plan_row": "LB-Q-kubernetes",
+    "worker_model": "sonnet",
+    "port_of": "k8sextract.go",
+    "notes": "kinds and names; selector, configMapRef, secretRef, serviceAccountName, Service→Deployment edges; service_ref cross-repo edges kept"
+  },
+  {
+    "id": "powershell",
+    "name": "PowerShell (.ps1 .psm1 .psd1)",
+    "kind": "language",
+    "target_level": "L2",
+    "grammar_source": "airbus-cert/tree-sitter-powershell",
+    "licence": "MIT (verify at pin)",
+    "oracle": [
+      "ctags"
+    ],
+    "calibration_subjects": [
+      "PowerShell/PSScriptAnalyzer",
+      "pester/Pester"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 2,
+    "engine": "tags",
+    "plan_row": "LB-Q-powershell",
+    "worker_model": "sonnet",
+    "notes": "new; functions, classes, enums, param blocks as signatures"
+  },
+  {
+    "id": "docker-compose",
+    "name": "Docker Compose files",
+    "kind": "tooling",
+    "target_level": "L3",
+    "grammar_source": "pure-go:gopkg.in/yaml.v3",
+    "licence": "n/a",
+    "oracle": [
+      "docker compose config --format json"
+    ],
+    "calibration_subjects": [
+      "docker/awesome-compose",
+      "getsentry/self-hosted"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22",
+      "LB-F18"
+    ],
+    "wave": 2,
+    "engine": "doc",
+    "plan_row": "LB-Q-docker-compose",
+    "worker_model": "sonnet",
+    "port_of": "composeextract.go",
+    "notes": "services, networks, volumes; depends_on, extends (file), build.context and dockerfile edges"
+  },
+  {
+    "id": "php",
+    "name": "PHP (.php)",
+    "kind": "language",
+    "target_level": "L4",
+    "grammar_source": "tree-sitter/tree-sitter-php",
+    "licence": "MIT",
+    "oracle": [
+      "ctags",
+      "scip-php"
+    ],
+    "calibration_subjects": [
+      "guzzle/guzzle",
+      "Seldaek/monolog"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F5",
+      "LB-F7",
+      "LB-F11",
+      "LB-F18"
+    ],
+    "wave": 2,
+    "engine": "tags",
+    "plan_row": "LB-Q-php",
+    "worker_model": "sonnet",
+    "port_of": "phpextract.go (CGO walker)",
+    "notes": "port; namespaces via @scope.package, traits, enums, PSR-4 via composer.json (namespace-dir)"
+  },
+  {
+    "id": "helm",
+    "name": "Helm charts (Chart.yaml, values.yaml, templates/*.yaml, *.tpl)",
+    "kind": "tooling",
+    "target_level": "L3",
+    "grammar_source": "ngalaiko/tree-sitter-go-template",
+    "licence": "MIT (verify at pin)",
+    "oracle": [
+      "helm template (tier A)",
+      "helm show values"
+    ],
+    "calibration_subjects": [
+      "bitnami/charts",
+      "prometheus-community/helm-charts"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F2",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F3",
+      "LB-F4",
+      "LB-F8",
+      "LB-F9",
+      "LB-F5",
+      "LB-F7",
+      "LB-F11",
+      "LB-F18"
+    ],
+    "wave": 2,
+    "engine": "tags+doc",
+    "plan_row": "LB-Q-helm",
+    "worker_model": "sonnet",
+    "port_of": "helmextract.go (regex) + helmtemplateyaml.go",
+    "notes": "define/template/include edges, .Values key references to values.yaml keys (L2), dependency charts (L3)"
+  },
+  {
+    "id": "rust",
+    "name": "Rust (.rs)",
+    "kind": "language",
+    "target_level": "L4",
+    "grammar_source": "tree-sitter/tree-sitter-rust",
+    "licence": "MIT",
+    "oracle": [
+      "ctags",
+      "rust-analyzer scip"
+    ],
+    "calibration_subjects": [
+      "BurntSushi/ripgrep",
+      "clap-rs/clap"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F5",
+      "LB-F7",
+      "LB-F11",
+      "LB-F18"
+    ],
+    "wave": 2,
+    "engine": "tags",
+    "plan_row": "LB-Q-rust",
+    "worker_model": "sonnet",
+    "port_of": "rustextract.go (CGO walker)",
+    "notes": "port; impl blocks qualify methods to their type, traits, macros, mod edges (crate-mod)"
+  },
+  {
+    "id": "makefile",
+    "name": "Makefile / GNU make (Makefile, *.mk, GNUmakefile)",
+    "kind": "tooling",
+    "target_level": "L2",
+    "grammar_source": "tree-sitter-grammars/tree-sitter-make",
+    "licence": "MIT",
+    "oracle": [
+      "make -pn (database dump, tier A)",
+      "ctags"
+    ],
+    "calibration_subjects": [
+      "jart/cosmopolitan",
+      "prometheus/prometheus"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 2,
+    "engine": "tags",
+    "plan_row": "LB-Q-makefile",
+    "worker_model": "sonnet",
+    "notes": "new; targets, variables, prerequisite edges, include edges (L3 later)"
+  },
+  {
+    "id": "kotlin",
+    "name": "Kotlin (.kt .kts)",
+    "kind": "language",
+    "target_level": "L4",
+    "grammar_source": "fwcd/tree-sitter-kotlin",
+    "licence": "MIT",
+    "oracle": [
+      "ctags",
+      "scip-java"
+    ],
+    "calibration_subjects": [
+      "square/okhttp",
+      "JetBrains/Exposed"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F5",
+      "LB-F7",
+      "LB-F11"
+    ],
+    "wave": 2,
+    "engine": "tags",
+    "plan_row": "LB-Q-kotlin",
+    "worker_model": "sonnet",
+    "notes": "upgrade: ranges, signatures, packages; scip-java's Kotlin path (never the archived scip-kotlin)"
+  },
+  {
+    "id": "lua",
+    "name": "Lua (.lua)",
+    "kind": "language",
+    "target_level": "L2",
+    "grammar_source": "tree-sitter-grammars/tree-sitter-lua",
+    "licence": "MIT",
+    "oracle": [
+      "ctags"
+    ],
+    "calibration_subjects": [
+      "Kong/kong",
+      "nvim-telescope/telescope.nvim"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F18"
+    ],
+    "wave": 2,
+    "engine": "tags",
+    "plan_row": "LB-Q-lua",
+    "worker_model": "sonnet",
+    "port_of": "luaextract.go (CGO walker)",
+    "notes": "port; module tables (M.fn), local functions; require edges at L3 later"
+  },
+  {
+    "id": "gitlab-ci",
+    "name": "GitLab CI (.gitlab-ci.yml, included files)",
+    "kind": "tooling",
+    "target_level": "L3",
+    "grammar_source": "pure-go:gopkg.in/yaml.v3",
+    "licence": "n/a",
+    "oracle": [
+      "gitlab-ci-local --list-json (tier A, offline)"
+    ],
+    "calibration_subjects": [
+      "gitlab.com/gitlab-org/gitlab-runner",
+      "gitlab.com/gitlab-org/gitaly"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 2,
+    "engine": "doc",
+    "plan_row": "LB-Q-gitlab-ci",
+    "worker_model": "sonnet",
+    "notes": "new; jobs, hidden templates, stages; needs, extends, dependencies edges; include:local edges"
+  },
+  {
+    "id": "ruby",
+    "name": "Ruby (.rb, Rakefile, Gemfile by basename)",
+    "kind": "language",
+    "target_level": "L3",
+    "grammar_source": "tree-sitter/tree-sitter-ruby",
+    "licence": "MIT",
+    "oracle": [
+      "ctags",
+      "scip-ruby (Sorbet codebases only)"
+    ],
+    "calibration_subjects": [
+      "sinatra/sinatra",
+      "jekyll/jekyll"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F5",
+      "LB-F7",
+      "LB-F11"
+    ],
+    "wave": 2,
+    "engine": "tags",
+    "plan_row": "LB-Q-ruby",
+    "worker_model": "sonnet",
+    "notes": "upgrade; L4 only on a Sorbet-typed subject — out of target, disclosed"
+  },
+  {
+    "id": "maven",
+    "name": "Maven POMs (pom.xml)",
+    "kind": "tooling",
+    "target_level": "L3",
+    "grammar_source": "pure-go:encoding/xml",
+    "licence": "n/a",
+    "oracle": [
+      "mvn help:effective-pom -o (tier A, offline)"
+    ],
+    "calibration_subjects": [
+      "apache/maven",
+      "apache/dubbo"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 2,
+    "engine": "doc",
+    "plan_row": "LB-Q-maven",
+    "worker_model": "sonnet",
+    "notes": "new; modules edges, parent edges, artifacts, plugins"
+  },
+  {
+    "id": "dart",
+    "name": "Dart (.dart)",
+    "kind": "language",
+    "target_level": "L4",
+    "grammar_source": "UserNobody14/tree-sitter-dart",
+    "licence": "MIT",
+    "oracle": [
+      "ctags (unverified: check --list-languages)",
+      "scip-dart"
+    ],
+    "calibration_subjects": [
+      "felangel/bloc",
+      "dart-lang/http"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F5",
+      "LB-F7",
+      "LB-F11"
+    ],
+    "wave": 2,
+    "engine": "tags",
+    "plan_row": "LB-Q-dart",
+    "worker_model": "sonnet",
+    "notes": "new; package: imports via pubspec.yaml (namespace-dir)"
+  },
+  {
+    "id": "cargo",
+    "name": "Cargo manifests (Cargo.toml, workspaces)",
+    "kind": "tooling",
+    "target_level": "L3",
+    "grammar_source": "pure-go:github.com/pelletier/go-toml/v2",
+    "licence": "n/a",
+    "oracle": [
+      "cargo metadata --no-deps --format-version 1 (tier A)"
+    ],
+    "calibration_subjects": [
+      "rust-lang/cargo",
+      "tokio-rs/tokio"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 2,
+    "engine": "doc",
+    "plan_row": "LB-Q-cargo",
+    "worker_model": "sonnet",
+    "notes": "new; packages, bins, features; workspace members and path-dependency edges"
+  },
+  {
+    "id": "swift",
+    "name": "Swift (.swift)",
+    "kind": "language",
+    "target_level": "L3",
+    "grammar_source": "alex-pinkus/tree-sitter-swift",
+    "licence": "MIT",
+    "oracle": [
+      "tree-sitter-tags (C)",
+      "sourcekit-lsp index-store (unavailable headless: disclose)"
+    ],
+    "calibration_subjects": [
+      "Alamofire/Alamofire",
+      "apple/swift-nio"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F5",
+      "LB-F7",
+      "LB-F11"
+    ],
+    "wave": 2,
+    "engine": "tags",
+    "plan_row": "LB-Q-swift",
+    "worker_model": "sonnet",
+    "notes": "new; fleet demand (app-kit family); tree-sitter/swift-tree-sitter is a binding, not a grammar — pin alex-pinkus; ctags has no Swift parser — L1 caps at good unless a tier-A/B oracle is found; swift-module strategy reads Package.swift targets"
+  },
+  {
+    "id": "go-mod",
+    "name": "Go modules (go.mod, go.work)",
+    "kind": "tooling",
+    "target_level": "L3",
+    "grammar_source": "native:golang.org/x/mod",
+    "licence": "BSD-3-Clause",
+    "oracle": [
+      "go list -m -json all (tier A, offline with GOFLAGS=-mod=mod)"
+    ],
+    "calibration_subjects": [
+      "kubernetes/kubernetes",
+      "cli/cli"
+    ],
+    "depends_on": [
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22",
+      "LB-F18"
+    ],
+    "wave": 2,
+    "engine": "native",
+    "plan_row": "LB-Q-go-mod",
+    "worker_model": "sonnet",
+    "port_of": "gomodextract.go (upgrade)",
+    "notes": "requires, replaces (local path edges L3), go.work use edges"
+  },
+  {
+    "id": "scss",
+    "name": "SCSS / Sass (.scss .sass)",
+    "kind": "language",
+    "target_level": "L3",
+    "grammar_source": "tree-sitter-grammars/tree-sitter-scss",
+    "licence": "MIT (verify at pin)",
+    "oracle": [
+      "ctags"
+    ],
+    "calibration_subjects": [
+      "twbs/bootstrap",
+      "primer/css"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F5",
+      "LB-F7",
+      "LB-F11",
+      "LB-Q-css"
+    ],
+    "wave": 2,
+    "engine": "tags",
+    "plan_row": "LB-Q-scss",
+    "worker_model": "sonnet",
+    "notes": "new; fleet gap; mixins, functions, variables, placeholders; @use/@import/@forward edges"
+  },
+  {
+    "id": "less",
+    "name": "Less (.less)",
+    "kind": "language",
+    "target_level": "L3",
+    "grammar_source": "jimliang/tree-sitter-less",
+    "licence": "verify at pin",
+    "oracle": [
+      "tree-sitter-tags (C)"
+    ],
+    "calibration_subjects": [
+      "Semantic-Org/Semantic-UI",
+      "twbs/bootstrap@v3.4.1"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F5",
+      "LB-F7",
+      "LB-F11",
+      "LB-Q-css"
+    ],
+    "wave": 2,
+    "engine": "tags",
+    "plan_row": "LB-Q-less",
+    "worker_model": "sonnet",
+    "notes": "new; fleet gap (largest unclassified style family); mixins, variables, @import edges"
+  },
+  {
+    "id": "msbuild",
+    "name": "MSBuild projects (.csproj .fsproj .vbproj .props .targets, .sln)",
+    "kind": "tooling",
+    "target_level": "L3",
+    "grammar_source": "pure-go:encoding/xml",
+    "licence": "n/a",
+    "oracle": [
+      "dotnet msbuild -getProperty / sln list (tier A)"
+    ],
+    "calibration_subjects": [
+      "App-vNext/Polly",
+      "dotnet/aspnetcore (src/Http subpath)"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 2,
+    "engine": "doc",
+    "plan_row": "LB-Q-msbuild",
+    "worker_model": "sonnet",
+    "notes": "new; projects, targets, ProjectReference edges, PackageReference ids"
+  },
+  {
+    "id": "kustomize",
+    "name": "Kustomize (kustomization.yaml)",
+    "kind": "tooling",
+    "target_level": "L3",
+    "grammar_source": "pure-go:gopkg.in/yaml.v3",
+    "licence": "n/a",
+    "oracle": [
+      "kustomize build (tier A)"
+    ],
+    "calibration_subjects": [
+      "kubernetes-sigs/kustomize",
+      "argoproj/argocd-example-apps"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22",
+      "LB-F18",
+      "LB-Q-kubernetes"
+    ],
+    "wave": 3,
+    "engine": "doc",
+    "plan_row": "LB-Q-kustomize",
+    "worker_model": "sonnet",
+    "port_of": "kustomizeextract.go",
+    "notes": "resources/bases/components/patches file edges, images, configMapGenerator keys"
+  },
+  {
+    "id": "assembly",
+    "name": "Assembly (.s .S .asm)",
+    "kind": "language",
+    "target_level": "L1",
+    "grammar_source": "RubixDev/tree-sitter-asm",
+    "licence": "MIT",
+    "oracle": [
+      "ctags"
+    ],
+    "calibration_subjects": [
+      "cfenollosa/os-tutorial",
+      "BLAKE3-team/BLAKE3"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 3,
+    "engine": "tags",
+    "plan_row": "LB-Q-assembly",
+    "worker_model": "sonnet",
+    "notes": "new; global labels and macros only"
+  },
+  {
+    "id": "argo",
+    "name": "Argo CD Applications and Argo Workflows",
+    "kind": "tooling",
+    "target_level": "L3",
+    "grammar_source": "pure-go:gopkg.in/yaml.v3",
+    "licence": "n/a",
+    "oracle": [
+      "argo lint --offline (tier A)"
+    ],
+    "calibration_subjects": [
+      "argoproj/argocd-example-apps",
+      "argoproj/argo-workflows (examples subpath)"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22",
+      "LB-Q-kubernetes"
+    ],
+    "wave": 3,
+    "engine": "doc",
+    "plan_row": "LB-Q-argo",
+    "worker_model": "sonnet",
+    "notes": "new; Application source.path edges, workflow templates, templateRef/dag dependencies edges"
+  },
+  {
+    "id": "r",
+    "name": "R (.R .r)",
+    "kind": "language",
+    "target_level": "L2",
+    "grammar_source": "r-lib/tree-sitter-r",
+    "licence": "MIT",
+    "oracle": [
+      "ctags"
+    ],
+    "calibration_subjects": [
+      "tidyverse/dplyr",
+      "r-lib/testthat"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 3,
+    "engine": "tags",
+    "plan_row": "LB-Q-r",
+    "worker_model": "sonnet",
+    "notes": "new; function assignments, S4/R6 classes, library()/source() edges later"
+  },
+  {
+    "id": "ansible",
+    "name": "Ansible playbooks, roles and inventories",
+    "kind": "tooling",
+    "target_level": "L3",
+    "grammar_source": "pure-go:gopkg.in/yaml.v3",
+    "licence": "n/a",
+    "oracle": [
+      "ansible-playbook --list-tasks --syntax-check (tier A)",
+      "ctags (Ansible subparser)"
+    ],
+    "calibration_subjects": [
+      "geerlingguy/mac-dev-playbook",
+      "geerlingguy/ansible-role-docker"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 3,
+    "engine": "doc",
+    "plan_row": "LB-Q-ansible",
+    "worker_model": "sonnet",
+    "notes": "new; plays, tasks, handlers, roles; notify edges, include_tasks/import_role file edges"
+  },
+  {
+    "id": "groovy",
+    "name": "Groovy (.groovy .gvy)",
+    "kind": "language",
+    "target_level": "L2",
+    "grammar_source": "murtaza64/tree-sitter-groovy",
+    "licence": "verify at pin",
+    "oracle": [
+      "tree-sitter-tags (C)"
+    ],
+    "calibration_subjects": [
+      "spockframework/spock",
+      "grails/grails-core"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 3,
+    "engine": "tags",
+    "plan_row": "LB-Q-groovy",
+    "worker_model": "sonnet",
+    "notes": "new; classes, methods, closures assigned to names; basis for Gradle and Jenkinsfile"
+  },
+  {
+    "id": "composer",
+    "name": "Composer manifests (composer.json)",
+    "kind": "tooling",
+    "target_level": "L2",
+    "grammar_source": "pure-go:encoding/json",
+    "licence": "n/a",
+    "oracle": [
+      "composer validate / show --tree (tier A, offline)"
+    ],
+    "calibration_subjects": [
+      "laravel/framework",
+      "symfony/symfony"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 3,
+    "engine": "doc",
+    "plan_row": "LB-Q-composer",
+    "worker_model": "sonnet",
+    "notes": "new; package, autoload PSR-4 roots (feeds PHP namespace-dir), scripts"
+  },
+  {
+    "id": "vbnet",
+    "name": "Visual Basic .NET (.vb)",
+    "kind": "language",
+    "target_level": "L1",
+    "grammar_source": "govindbanura/tree-sitter-vbnet (weak, 2026)",
+    "licence": "verify at pin",
+    "oracle": [
+      "scip-dotnet (tier A for definitions)"
+    ],
+    "calibration_subjects": [
+      "dotnet/roslyn (src/Compilers/VisualBasic subpath)",
+      "dotnet/samples"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 3,
+    "engine": "tags",
+    "plan_row": "LB-Q-vbnet",
+    "worker_model": "sonnet",
+    "notes": "new; grammar quality is the risk — disposition refused if parse error rate > 5%"
+  },
+  {
+    "id": "bazel",
+    "name": "Bazel / Starlark (BUILD, BUILD.bazel, *.bzl, WORKSPACE, MODULE.bazel)",
+    "kind": "tooling",
+    "target_level": "L3",
+    "grammar_source": "tree-sitter-grammars/tree-sitter-starlark",
+    "licence": "MIT",
+    "oracle": [
+      "bazel query --output=streamed_jsonproto (tier A, offline)"
+    ],
+    "calibration_subjects": [
+      "bazelbuild/examples",
+      "grpc/grpc"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F5",
+      "LB-F7",
+      "LB-F11"
+    ],
+    "wave": 3,
+    "engine": "tags",
+    "plan_row": "LB-Q-bazel",
+    "worker_model": "sonnet",
+    "notes": "new; targets (rule name=), macros, load() edges, deps label edges resolved to packages"
+  },
+  {
+    "id": "matlab",
+    "name": "MATLAB (.m by sniff)",
+    "kind": "language",
+    "target_level": "L1",
+    "grammar_source": "acristoffers/tree-sitter-matlab",
+    "licence": "MIT",
+    "oracle": [
+      "ctags"
+    ],
+    "calibration_subjects": [
+      "altmany/export_fig",
+      "chebfun/chebfun"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F9"
+    ],
+    "wave": 3,
+    "engine": "tags",
+    "plan_row": "LB-Q-matlab",
+    "worker_model": "sonnet",
+    "notes": "new; functions, classdef, methods, properties"
+  },
+  {
+    "id": "cmake",
+    "name": "CMake (CMakeLists.txt, *.cmake)",
+    "kind": "tooling",
+    "target_level": "L3",
+    "grammar_source": "uyha/tree-sitter-cmake",
+    "licence": "MIT (verify at pin)",
+    "oracle": [
+      "cmake --graphviz / cmake-file-api codemodel (tier A)",
+      "ctags"
+    ],
+    "calibration_subjects": [
+      "fmtlib/fmt",
+      "nlohmann/json"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F5",
+      "LB-F7",
+      "LB-F11",
+      "LB-F18"
+    ],
+    "wave": 3,
+    "engine": "tags",
+    "plan_row": "LB-Q-cmake",
+    "worker_model": "sonnet",
+    "port_of": "cmakeextract.go (pure Go)",
+    "notes": "targets, functions/macros, target_link_libraries edges, add_subdirectory/include edges"
+  },
+  {
+    "id": "perl",
+    "name": "Perl (.pl .pm .t by sniff)",
+    "kind": "language",
+    "target_level": "L2",
+    "grammar_source": "tree-sitter-perl/tree-sitter-perl",
+    "licence": "MIT",
+    "oracle": [
+      "ctags"
+    ],
+    "calibration_subjects": [
+      "mojolicious/mojo",
+      "Perl-Critic/Perl-Critic"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F9"
+    ],
+    "wave": 3,
+    "engine": "tags",
+    "plan_row": "LB-Q-perl",
+    "worker_model": "sonnet",
+    "notes": "new; packages, subs, use edges later"
+  },
+  {
+    "id": "protobuf",
+    "name": "Protocol Buffers (.proto)",
+    "kind": "tooling",
+    "target_level": "L3",
+    "grammar_source": "coder3101/tree-sitter-proto",
+    "licence": "MIT (verify at pin)",
+    "oracle": [
+      "protoc --descriptor_set_out (tier A)",
+      "buf build -o -#format=json",
+      "ctags"
+    ],
+    "calibration_subjects": [
+      "grpc/grpc-go",
+      "bufbuild/protovalidate"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F5",
+      "LB-F7",
+      "LB-F11",
+      "LB-F18"
+    ],
+    "wave": 3,
+    "engine": "tags",
+    "plan_row": "LB-Q-protobuf",
+    "worker_model": "sonnet",
+    "port_of": "protoextract.go (pure Go)",
+    "notes": "messages, enums, services, rpcs; field type references; import edges"
+  },
+  {
+    "id": "gdscript",
+    "name": "GDScript (.gd)",
+    "kind": "language",
+    "target_level": "L2",
+    "grammar_source": "PrestonKnopp/tree-sitter-gdscript",
+    "licence": "MIT",
+    "oracle": [
+      "ctags"
+    ],
+    "calibration_subjects": [
+      "godotengine/godot-demo-projects",
+      "bitwes/Gut"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 3,
+    "engine": "tags",
+    "plan_row": "LB-Q-gdscript",
+    "worker_model": "sonnet",
+    "notes": "new; class_name, extends, funcs, signals"
+  },
+  {
+    "id": "graphql",
+    "name": "GraphQL schemas and operations (.graphql .gql)",
+    "kind": "tooling",
+    "target_level": "L3",
+    "grammar_source": "bkegley/tree-sitter-graphql",
+    "licence": "MIT (verify at pin)",
+    "oracle": [
+      "graphql-js buildSchema (reference parser, tier A)"
+    ],
+    "calibration_subjects": [
+      "octokit/graphql-schema",
+      "99designs/gqlgen"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F5",
+      "LB-F7",
+      "LB-F11",
+      "LB-F18"
+    ],
+    "wave": 3,
+    "engine": "tags",
+    "plan_row": "LB-Q-graphql",
+    "worker_model": "sonnet",
+    "port_of": "graphqlextract.go (pure Go)",
+    "notes": "types, fields, directives, operations; type references; #import edges"
+  },
+  {
+    "id": "elixir",
+    "name": "Elixir (.ex .exs)",
+    "kind": "language",
+    "target_level": "L3",
+    "grammar_source": "elixir-lang/tree-sitter-elixir",
+    "licence": "Apache-2.0",
+    "oracle": [
+      "ctags"
+    ],
+    "calibration_subjects": [
+      "phoenixframework/phoenix",
+      "elixir-ecto/ecto"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F5",
+      "LB-F7",
+      "LB-F11"
+    ],
+    "wave": 3,
+    "engine": "tags",
+    "plan_row": "LB-Q-elixir",
+    "worker_model": "sonnet",
+    "notes": "new; defmodule nesting, def/defp/defmacro, alias/import/use edges (dotted-module)"
+  },
+  {
+    "id": "openapi",
+    "name": "OpenAPI / Swagger documents",
+    "kind": "tooling",
+    "target_level": "L3",
+    "grammar_source": "pure-go:gopkg.in/yaml.v3",
+    "licence": "n/a",
+    "oracle": [
+      "redocly bundle / swagger-parser (tier A)"
+    ],
+    "calibration_subjects": [
+      "github/rest-api-description",
+      "OAI/OpenAPI-Specification"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22",
+      "LB-F18"
+    ],
+    "wave": 3,
+    "engine": "doc",
+    "plan_row": "LB-Q-openapi",
+    "worker_model": "sonnet",
+    "port_of": "openapiextract.go",
+    "notes": "operations (route: inventory keys), schemas; $ref edges within and across files"
+  },
+  {
+    "id": "json-schema",
+    "name": "JSON Schema documents",
+    "kind": "tooling",
+    "target_level": "L3",
+    "grammar_source": "pure-go:encoding/json",
+    "licence": "n/a",
+    "oracle": [
+      "a reference validator's $ref resolution (tier A)"
+    ],
+    "calibration_subjects": [
+      "SchemaStore/schemastore",
+      "json-schema-org/JSON-Schema-Test-Suite"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 3,
+    "engine": "doc",
+    "plan_row": "LB-Q-json-schema",
+    "worker_model": "sonnet",
+    "notes": "new; $defs/definitions, properties; $ref edges local and cross-file"
+  },
+  {
+    "id": "scala",
+    "name": "Scala (.scala .sc)",
+    "kind": "language",
+    "target_level": "L4",
+    "grammar_source": "tree-sitter/tree-sitter-scala",
+    "licence": "MIT",
+    "oracle": [
+      "ctags (unverified: check --list-languages)",
+      "scip-java (semanticdb)"
+    ],
+    "calibration_subjects": [
+      "typelevel/cats",
+      "http4s/http4s"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F5",
+      "LB-F7",
+      "LB-F11",
+      "LB-F18"
+    ],
+    "wave": 3,
+    "engine": "tags",
+    "plan_row": "LB-Q-scala",
+    "worker_model": "sonnet",
+    "port_of": "scalaextract.go (CGO walker)",
+    "notes": "port; objects, traits, case classes, givens, extension methods"
+  },
+  {
+    "id": "nix",
+    "name": "Nix (.nix, flake.nix)",
+    "kind": "tooling",
+    "target_level": "L3",
+    "grammar_source": "nix-community/tree-sitter-nix",
+    "licence": "MIT",
+    "oracle": [
+      "nix-instantiate --parse (tier C)",
+      "nix flake show --json (tier A, offline where possible)"
+    ],
+    "calibration_subjects": [
+      "nix-community/home-manager",
+      "NixOS/nixpkgs (pkgs/development/tools subpath)"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F5",
+      "LB-F7",
+      "LB-F11"
+    ],
+    "wave": 3,
+    "engine": "tags",
+    "plan_row": "LB-Q-nix",
+    "worker_model": "sonnet",
+    "notes": "new; fleet demand; attribute bindings, functions, flake inputs/outputs, import/callPackage path edges"
+  },
+  {
+    "id": "objective-c",
+    "name": "Objective-C (.m .mm, .h by sniff)",
+    "kind": "language",
+    "target_level": "L3",
+    "grammar_source": "tree-sitter-grammars/tree-sitter-objc",
+    "licence": "MIT",
+    "oracle": [
+      "ctags",
+      "scip-clang"
+    ],
+    "calibration_subjects": [
+      "AFNetworking/AFNetworking",
+      "SDWebImage/SDWebImage"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F5",
+      "LB-F7",
+      "LB-F11",
+      "LB-F9",
+      "LB-Q-c"
+    ],
+    "wave": 3,
+    "engine": "tags",
+    "plan_row": "LB-Q-objective-c",
+    "worker_model": "sonnet",
+    "notes": "new; @interface/@implementation/@protocol, methods by selector; include-path strategy"
+  },
+  {
+    "id": "jupyter",
+    "name": "Jupyter notebooks (.ipynb)",
+    "kind": "tooling",
+    "target_level": "L2",
+    "grammar_source": "pure-go:encoding/json + python dialect",
+    "licence": "n/a",
+    "oracle": [
+      "nbformat reference parse + ctags on exported cells"
+    ],
+    "calibration_subjects": [
+      "jakevdp/PythonDataScienceHandbook",
+      "microsoft/ML-For-Beginners"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F2",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F3",
+      "LB-F4",
+      "LB-F8",
+      "LB-F9",
+      "LB-F6",
+      "LB-Q-python"
+    ],
+    "wave": 3,
+    "engine": "tags+doc",
+    "plan_row": "LB-Q-jupyter",
+    "worker_model": "sonnet",
+    "notes": "new; code cells run through the Python dialect with cell-relative lines; outputs never read"
+  },
+  {
+    "id": "luau",
+    "name": "Luau (.luau)",
+    "kind": "language",
+    "target_level": "L2",
+    "grammar_source": "tree-sitter-grammars/tree-sitter-luau",
+    "licence": "MIT",
+    "oracle": [
+      "tree-sitter-tags (C)"
+    ],
+    "calibration_subjects": [
+      "luau-lang/luau",
+      "Roblox/roact"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-Q-lua"
+    ],
+    "wave": 3,
+    "engine": "tags",
+    "plan_row": "LB-Q-luau",
+    "worker_model": "sonnet",
+    "notes": "new; Lua kinds plus type aliases"
+  },
+  {
+    "id": "taskfile",
+    "name": "Taskfile (go-task: Taskfile.yml)",
+    "kind": "tooling",
+    "target_level": "L3",
+    "grammar_source": "pure-go:gopkg.in/yaml.v3",
+    "licence": "n/a",
+    "oracle": [
+      "task --list-all --json (tier A)"
+    ],
+    "calibration_subjects": [
+      "go-task/task",
+      "go-task/examples"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 3,
+    "engine": "doc",
+    "plan_row": "LB-Q-taskfile",
+    "worker_model": "sonnet",
+    "notes": "new; fleet demand; tasks, deps/cmds task: edges, includes (file edges)"
+  },
+  {
+    "id": "rego",
+    "name": "Rego / OPA policy (.rego)",
+    "kind": "language",
+    "target_level": "L3",
+    "grammar_source": "FallenAngel97/tree-sitter-rego",
+    "licence": "MIT (verify at pin)",
+    "oracle": [
+      "opa inspect / opa parse --format json (tier A)"
+    ],
+    "calibration_subjects": [
+      "open-policy-agent/opa",
+      "StyraInc/regal"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F5",
+      "LB-F7",
+      "LB-F11"
+    ],
+    "wave": 3,
+    "engine": "tags",
+    "plan_row": "LB-Q-rego",
+    "worker_model": "sonnet",
+    "notes": "new; fleet demand; packages, rules, functions; import data.x edges (dotted-module)"
+  },
+  {
+    "id": "git-hooks-config",
+    "name": "Git hook managers (lefthook.yml, .pre-commit-config.yaml)",
+    "kind": "tooling",
+    "target_level": "L1",
+    "grammar_source": "pure-go:gopkg.in/yaml.v3",
+    "licence": "n/a",
+    "oracle": [
+      "pre-commit validate-config / lefthook dump (tier A)"
+    ],
+    "calibration_subjects": [
+      "evilmartians/lefthook",
+      "pre-commit/pre-commit-hooks"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 3,
+    "engine": "doc",
+    "plan_row": "LB-Q-git-hooks-config",
+    "worker_model": "sonnet",
+    "notes": "new; fleet demand; hooks and their commands as entities"
+  },
+  {
+    "id": "astro",
+    "name": "Astro components (.astro)",
+    "kind": "language",
+    "target_level": "L2",
+    "grammar_source": "virchau13/tree-sitter-astro",
+    "licence": "MIT",
+    "oracle": [
+      "tree-sitter-tags (C)"
+    ],
+    "calibration_subjects": [
+      "withastro/docs",
+      "withastro/astro"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F6",
+      "LB-Q-typescript",
+      "LB-Q-html"
+    ],
+    "wave": 3,
+    "engine": "tags",
+    "plan_row": "LB-Q-astro",
+    "worker_model": "sonnet",
+    "notes": "new; fleet demand; frontmatter TS injection, component usages"
+  },
+  {
+    "id": "gradle",
+    "name": "Gradle builds (build.gradle, build.gradle.kts, settings.gradle*)",
+    "kind": "tooling",
+    "target_level": "L3",
+    "grammar_source": "murtaza64/tree-sitter-groovy + fwcd/tree-sitter-kotlin",
+    "licence": "verify at pin",
+    "oracle": [
+      "gradle projects -q --offline (tier A)"
+    ],
+    "calibration_subjects": [
+      "square/okhttp",
+      "spring-projects/spring-boot"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F5",
+      "LB-F7",
+      "LB-F11",
+      "LB-Q-groovy",
+      "LB-Q-kotlin"
+    ],
+    "wave": 3,
+    "engine": "tags",
+    "plan_row": "LB-Q-gradle",
+    "worker_model": "sonnet",
+    "notes": "new; tasks, plugins, include() project edges, project(':x') dependency edges"
+  },
+  {
+    "id": "vue",
+    "name": "Vue single-file components (.vue)",
+    "kind": "language",
+    "target_level": "L3",
+    "grammar_source": "tree-sitter-grammars/tree-sitter-vue",
+    "licence": "MIT",
+    "oracle": [
+      "tree-sitter-tags (C)",
+      "scip-typescript via vue-tsc (unavailable: disclose)"
+    ],
+    "calibration_subjects": [
+      "element-plus/element-plus",
+      "vuejs/docs"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F5",
+      "LB-F7",
+      "LB-F11",
+      "LB-F6",
+      "LB-Q-typescript",
+      "LB-Q-html",
+      "LB-Q-css"
+    ],
+    "wave": 3,
+    "engine": "tags",
+    "plan_row": "LB-Q-vue",
+    "worker_model": "sonnet",
+    "notes": "new; script setup injection, component registration, import edges"
+  },
+  {
+    "id": "jenkinsfile",
+    "name": "Jenkins pipelines (Jenkinsfile, *.jenkinsfile)",
+    "kind": "tooling",
+    "target_level": "L2",
+    "grammar_source": "murtaza64/tree-sitter-groovy",
+    "licence": "verify at pin",
+    "oracle": [
+      "tree-sitter-tags (C)"
+    ],
+    "calibration_subjects": [
+      "jenkinsci/pipeline-examples",
+      "jenkins-infra/jenkins.io"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-Q-groovy"
+    ],
+    "wave": 3,
+    "engine": "tags",
+    "plan_row": "LB-Q-jenkinsfile",
+    "worker_model": "sonnet",
+    "notes": "new; stages, steps, shared-library calls"
+  },
+  {
+    "id": "svelte",
+    "name": "Svelte components (.svelte)",
+    "kind": "language",
+    "target_level": "L3",
+    "grammar_source": "tree-sitter-grammars/tree-sitter-svelte",
+    "licence": "MIT",
+    "oracle": [
+      "tree-sitter-tags (C)"
+    ],
+    "calibration_subjects": [
+      "sveltejs/kit",
+      "huntabyte/shadcn-svelte"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F5",
+      "LB-F7",
+      "LB-F11",
+      "LB-F6",
+      "LB-Q-typescript",
+      "LB-Q-html",
+      "LB-Q-css"
+    ],
+    "wave": 3,
+    "engine": "tags",
+    "plan_row": "LB-Q-svelte",
+    "worker_model": "sonnet",
+    "notes": "new; script injection, exported props, import edges"
+  },
+  {
+    "id": "azure-pipelines",
+    "name": "Azure Pipelines (azure-pipelines.yml, templates)",
+    "kind": "tooling",
+    "target_level": "L3",
+    "grammar_source": "pure-go:gopkg.in/yaml.v3",
+    "licence": "n/a",
+    "oracle": [
+      "az pipelines validation (network: unavailable) → reference parse (C)"
+    ],
+    "calibration_subjects": [
+      "microsoft/azure-pipelines-yaml",
+      "dotnet/runtime (eng/pipelines subpath)"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 3,
+    "engine": "doc",
+    "plan_row": "LB-Q-azure-pipelines",
+    "worker_model": "sonnet",
+    "notes": "new; stages, jobs, dependsOn edges, template: file edges"
+  },
+  {
+    "id": "cue",
+    "name": "CUE (.cue)",
+    "kind": "language",
+    "target_level": "L4",
+    "grammar_source": "native:cuelang.org/go",
+    "licence": "Apache-2.0",
+    "oracle": [
+      "cue def / cue export (tier A)"
+    ],
+    "calibration_subjects": [
+      "cue-lang/cue",
+      "stefanprodan/timoni"
+    ],
+    "depends_on": [
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 3,
+    "engine": "native",
+    "plan_row": "LB-Q-cue",
+    "worker_model": "haiku",
+    "notes": "measure-only: native extractor gets its first reading"
+  },
+  {
+    "id": "circleci",
+    "name": "CircleCI (.circleci/config.yml)",
+    "kind": "tooling",
+    "target_level": "L2",
+    "grammar_source": "pure-go:gopkg.in/yaml.v3",
+    "licence": "n/a",
+    "oracle": [
+      "circleci config process (tier A, offline)"
+    ],
+    "calibration_subjects": [
+      "CircleCI-Public/circleci-cli",
+      "CircleCI-Public/cimg-base"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 3,
+    "engine": "doc",
+    "plan_row": "LB-Q-circleci",
+    "worker_model": "sonnet",
+    "notes": "new; jobs, workflows, commands, executors; requires edges"
+  },
+  {
+    "id": "pascal",
+    "name": "Delphi / Object Pascal (.pas .dpr, .pp by sniff)",
+    "kind": "language",
+    "target_level": "L1",
+    "grammar_source": "Isopod/tree-sitter-pascal",
+    "licence": "MIT",
+    "oracle": [
+      "ctags"
+    ],
+    "calibration_subjects": [
+      "project-jedi/jcl",
+      "castle-engine/castle-engine"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F9"
+    ],
+    "wave": 4,
+    "engine": "tags",
+    "plan_row": "LB-Q-pascal",
+    "worker_model": "sonnet",
+    "notes": "new; units, classes, procedures/functions, properties"
+  },
+  {
+    "id": "fortran",
+    "name": "Fortran (.f90 .f95 .f03 .f .for)",
+    "kind": "language",
+    "target_level": "L2",
+    "grammar_source": "stadelmanma/tree-sitter-fortran",
+    "licence": "MIT",
+    "oracle": [
+      "ctags"
+    ],
+    "calibration_subjects": [
+      "fortran-lang/stdlib",
+      "Reference-LAPACK/lapack"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 4,
+    "engine": "tags",
+    "plan_row": "LB-Q-fortran",
+    "worker_model": "sonnet",
+    "notes": "new; modules, subroutines, functions, types; use edges later"
+  },
+  {
+    "id": "cloudformation",
+    "name": "AWS CloudFormation / SAM templates",
+    "kind": "tooling",
+    "target_level": "L3",
+    "grammar_source": "pure-go:gopkg.in/yaml.v3",
+    "licence": "n/a",
+    "oracle": [
+      "cfn-lint --format json (parse + graph, tier A)"
+    ],
+    "calibration_subjects": [
+      "aws-cloudformation/aws-cloudformation-templates",
+      "aws/serverless-application-model"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 4,
+    "engine": "doc",
+    "plan_row": "LB-Q-cloudformation",
+    "worker_model": "sonnet",
+    "notes": "new; parameters, resources, outputs; Ref/GetAtt/DependsOn edges; nested stack TemplateURL (local) edges; short-form tags (!Ref) decoded"
+  },
+  {
+    "id": "ada",
+    "name": "Ada (.adb .ads)",
+    "kind": "language",
+    "target_level": "L1",
+    "grammar_source": "briot/tree-sitter-ada",
+    "licence": "MIT (verify at pin)",
+    "oracle": [
+      "ctags"
+    ],
+    "calibration_subjects": [
+      "AdaCore/gnatcoll-core",
+      "alire-project/alire"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 4,
+    "engine": "tags",
+    "plan_row": "LB-Q-ada",
+    "worker_model": "sonnet",
+    "notes": "new; packages, procedures, functions, types"
+  },
+  {
+    "id": "cobol",
+    "name": "COBOL (.cob .cbl .cpy)",
+    "kind": "language",
+    "target_level": "L1",
+    "grammar_source": "yutaro-sakamoto/tree-sitter-cobol",
+    "licence": "MIT",
+    "oracle": [
+      "ctags"
+    ],
+    "calibration_subjects": [
+      "openmainframeproject/cobol-programming-course",
+      "OCamlPro/gnucobol (tests subpath)"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 4,
+    "engine": "tags",
+    "plan_row": "LB-Q-cobol",
+    "worker_model": "sonnet",
+    "notes": "new; programs, sections, paragraphs, copybooks (COPY edges later)"
+  },
+  {
+    "id": "terragrunt",
+    "name": "Terragrunt (terragrunt.hcl, root.hcl)",
+    "kind": "tooling",
+    "target_level": "L3",
+    "grammar_source": "tree-sitter-grammars/tree-sitter-hcl",
+    "licence": "MIT",
+    "oracle": [
+      "terragrunt render-json (tier A)"
+    ],
+    "calibration_subjects": [
+      "gruntwork-io/terragrunt-infrastructure-live-example",
+      "gruntwork-io/terragrunt (test/fixtures subpath)"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F5",
+      "LB-F7",
+      "LB-F11",
+      "LB-Q-terraform"
+    ],
+    "wave": 4,
+    "engine": "tags",
+    "plan_row": "LB-Q-terragrunt",
+    "worker_model": "sonnet",
+    "notes": "new; fleet demand (.hcl outside .tf); dependency and include blocks as file edges, inputs keys"
+  },
+  {
+    "id": "zig",
+    "name": "Zig (.zig)",
+    "kind": "language",
+    "target_level": "L3",
+    "grammar_source": "tree-sitter-grammars/tree-sitter-zig",
+    "licence": "MIT",
+    "oracle": [
+      "tree-sitter-tags (C)"
+    ],
+    "calibration_subjects": [
+      "tigerbeetle/tigerbeetle",
+      "ziglang/zig (lib/std subpath)"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F5",
+      "LB-F7",
+      "LB-F11"
+    ],
+    "wave": 4,
+    "engine": "tags",
+    "plan_row": "LB-Q-zig",
+    "worker_model": "sonnet",
+    "notes": "new; pub fns, structs as const bindings, @import edges (file-symbol)"
+  },
+  {
+    "id": "erlang",
+    "name": "Erlang (.erl .hrl)",
+    "kind": "language",
+    "target_level": "L2",
+    "grammar_source": "WhatsApp/tree-sitter-erlang",
+    "licence": "Apache-2.0",
+    "oracle": [
+      "ctags"
+    ],
+    "calibration_subjects": [
+      "ninenines/cowboy",
+      "rabbitmq/rabbitmq-server (deps/rabbit subpath)"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 4,
+    "engine": "tags",
+    "plan_row": "LB-Q-erlang",
+    "worker_model": "sonnet",
+    "notes": "new; modules, exported functions by arity, records, macros"
+  },
+  {
+    "id": "hcl-tools",
+    "name": "HashiCorp HCL tool configs (Packer *.pkr.hcl, Nomad jobspecs, Vault/Consul configs, docker-bake.hcl)",
+    "kind": "tooling",
+    "target_level": "L2",
+    "grammar_source": "tree-sitter-grammars/tree-sitter-hcl",
+    "licence": "MIT",
+    "oracle": [
+      "packer inspect / nomad job validate -json (tier A where offline)"
+    ],
+    "calibration_subjects": [
+      "hashicorp/packer-plugin-docker",
+      "hashicorp/nomad-pack-community-registry"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 4,
+    "engine": "tags",
+    "plan_row": "LB-Q-hcl-tools",
+    "worker_model": "sonnet",
+    "notes": "new; blocks with labels as entities by tool (source, build, job, group, task, target); references inside a file"
+  },
+  {
+    "id": "fsharp",
+    "name": "F# (.fs .fsi .fsx, .fs by sniff)",
+    "kind": "language",
+    "target_level": "L2",
+    "grammar_source": "ionide/tree-sitter-fsharp",
+    "licence": "MIT",
+    "oracle": [
+      "tree-sitter-tags (C)",
+      "scip-dotnet (F# unsupported: disclose)"
+    ],
+    "calibration_subjects": [
+      "fsprojects/Paket",
+      "giraffe-fsharp/Giraffe"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F9"
+    ],
+    "wave": 4,
+    "engine": "tags",
+    "plan_row": "LB-Q-fsharp",
+    "worker_model": "sonnet",
+    "notes": "new; modules, let/member, types, unions"
+  },
+  {
+    "id": "ocaml",
+    "name": "OCaml (.ml .mli)",
+    "kind": "language",
+    "target_level": "L2",
+    "grammar_source": "tree-sitter/tree-sitter-ocaml",
+    "licence": "MIT",
+    "oracle": [
+      "ctags"
+    ],
+    "calibration_subjects": [
+      "ocaml/dune",
+      "janestreet/core"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 4,
+    "engine": "tags",
+    "plan_row": "LB-Q-ocaml",
+    "worker_model": "sonnet",
+    "notes": "new; let bindings, modules, module types, types; .mli signatures"
+  },
+  {
+    "id": "pulumi-yaml",
+    "name": "Pulumi YAML programs and project files (Pulumi.yaml, Pulumi.<stack>.yaml)",
+    "kind": "tooling",
+    "target_level": "L2",
+    "grammar_source": "pure-go:gopkg.in/yaml.v3",
+    "licence": "n/a",
+    "oracle": [
+      "pulumi preview --json (needs a backend: unavailable) → reference parse (C)"
+    ],
+    "calibration_subjects": [
+      "pulumi/examples",
+      "pulumi/templates"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 4,
+    "engine": "doc",
+    "plan_row": "LB-Q-pulumi-yaml",
+    "worker_model": "sonnet",
+    "notes": "new; resources, variables, outputs; ${ref} edges; stack config keys"
+  },
+  {
+    "id": "gleam",
+    "name": "Gleam (.gleam)",
+    "kind": "language",
+    "target_level": "L3",
+    "grammar_source": "gleam-lang/tree-sitter-gleam",
+    "licence": "Apache-2.0",
+    "oracle": [
+      "tree-sitter-tags (C)"
+    ],
+    "calibration_subjects": [
+      "gleam-lang/stdlib",
+      "lustre-labs/lustre"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F5",
+      "LB-F7",
+      "LB-F11"
+    ],
+    "wave": 4,
+    "engine": "tags",
+    "plan_row": "LB-Q-gleam",
+    "worker_model": "sonnet",
+    "notes": "new; pub fns, types, constants; import edges (dotted-module)"
+  },
+  {
+    "id": "prolog",
+    "name": "Prolog (.pl by sniff, .pro)",
+    "kind": "language",
+    "target_level": "L1",
+    "grammar_source": "foxyseta/tree-sitter-prolog",
+    "licence": "verify at pin",
+    "oracle": [
+      "tree-sitter-tags (C)"
+    ],
+    "calibration_subjects": [
+      "SWI-Prolog/swipl-devel (library subpath)",
+      "mthom/scryer-prolog"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F9"
+    ],
+    "wave": 4,
+    "engine": "tags",
+    "plan_row": "LB-Q-prolog",
+    "worker_model": "sonnet",
+    "notes": "new; predicates by name/arity"
+  },
+  {
+    "id": "tekton",
+    "name": "Tekton pipelines and tasks",
+    "kind": "tooling",
+    "target_level": "L2",
+    "grammar_source": "pure-go:gopkg.in/yaml.v3",
+    "licence": "n/a",
+    "oracle": [
+      "tkn (offline lint) → reference parse (C)"
+    ],
+    "calibration_subjects": [
+      "tektoncd/catalog",
+      "tektoncd/pipeline (examples subpath)"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22",
+      "LB-Q-kubernetes"
+    ],
+    "wave": 4,
+    "engine": "doc",
+    "plan_row": "LB-Q-tekton",
+    "worker_model": "sonnet",
+    "notes": "new; Pipelines, Tasks, runAfter edges, taskRef edges"
+  },
+  {
+    "id": "haskell",
+    "name": "Haskell (.hs)",
+    "kind": "language",
+    "target_level": "L3",
+    "grammar_source": "tree-sitter-grammars/tree-sitter-haskell",
+    "licence": "MIT",
+    "oracle": [
+      "ctags"
+    ],
+    "calibration_subjects": [
+      "haskell/cabal",
+      "PostgREST/postgrest"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F5",
+      "LB-F7",
+      "LB-F11"
+    ],
+    "wave": 4,
+    "engine": "tags",
+    "plan_row": "LB-Q-haskell",
+    "worker_model": "sonnet",
+    "notes": "new; functions with type signatures, data/newtype/class/instance; import edges (dotted-module)"
+  },
+  {
+    "id": "julia",
+    "name": "Julia (.jl)",
+    "kind": "language",
+    "target_level": "L2",
+    "grammar_source": "tree-sitter-grammars/tree-sitter-julia",
+    "licence": "MIT",
+    "oracle": [
+      "ctags"
+    ],
+    "calibration_subjects": [
+      "FluxML/Flux.jl",
+      "JuliaLang/julia (base subpath)"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 4,
+    "engine": "tags",
+    "plan_row": "LB-Q-julia",
+    "worker_model": "sonnet",
+    "notes": "new; modules, functions (both forms), structs, macros"
+  },
+  {
+    "id": "crossplane",
+    "name": "Crossplane compositions and XRDs",
+    "kind": "tooling",
+    "target_level": "L3",
+    "grammar_source": "pure-go:gopkg.in/yaml.v3",
+    "licence": "n/a",
+    "oracle": [
+      "crossplane beta validate (tier A, offline schemas)"
+    ],
+    "calibration_subjects": [
+      "crossplane/crossplane (examples subpath)",
+      "upbound/platform-ref-aws"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22",
+      "LB-Q-kubernetes"
+    ],
+    "wave": 4,
+    "engine": "doc",
+    "plan_row": "LB-Q-crossplane",
+    "worker_model": "sonnet",
+    "notes": "new; XRDs, Compositions, compositeTypeRef edges, patch paths"
+  },
+  {
+    "id": "clojure",
+    "name": "Clojure (.clj .cljs .cljc .edn)",
+    "kind": "language",
+    "target_level": "L2",
+    "grammar_source": "sogaiu/tree-sitter-clojure",
+    "licence": "CC0-1.0",
+    "oracle": [
+      "ctags"
+    ],
+    "calibration_subjects": [
+      "ring-clojure/ring",
+      "weavejester/compojure"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 4,
+    "engine": "tags",
+    "plan_row": "LB-Q-clojure",
+    "worker_model": "sonnet",
+    "notes": "new; ns, defn/defmacro/defprotocol/defrecord via #any-of? predicates"
+  },
+  {
+    "id": "commonlisp",
+    "name": "Common Lisp (.lisp .lsp .asd)",
+    "kind": "language",
+    "target_level": "L1",
+    "grammar_source": "tree-sitter-grammars/tree-sitter-commonlisp",
+    "licence": "MIT",
+    "oracle": [
+      "ctags"
+    ],
+    "calibration_subjects": [
+      "lem-project/lem",
+      "fukamachi/woo"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 4,
+    "engine": "tags",
+    "plan_row": "LB-Q-commonlisp",
+    "worker_model": "sonnet",
+    "notes": "new; defun/defmacro/defclass/defgeneric/defmethod via predicates"
+  },
+  {
+    "id": "skaffold",
+    "name": "Skaffold (skaffold.yaml)",
+    "kind": "tooling",
+    "target_level": "L2",
+    "grammar_source": "pure-go:gopkg.in/yaml.v3",
+    "licence": "n/a",
+    "oracle": [
+      "skaffold diagnose --yaml-only (tier A)"
+    ],
+    "calibration_subjects": [
+      "GoogleContainerTools/skaffold (examples subpath)",
+      "GoogleCloudPlatform/microservices-demo"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 4,
+    "engine": "doc",
+    "plan_row": "LB-Q-skaffold",
+    "worker_model": "sonnet",
+    "notes": "new; build artifacts (image→context edges), deploy manifests file edges, profiles"
+  },
+  {
+    "id": "scheme-racket",
+    "name": "Scheme and Racket (.scm .ss .rkt)",
+    "kind": "language",
+    "target_level": "L1",
+    "grammar_source": "6cdh/tree-sitter-scheme + 6cdh/tree-sitter-racket",
+    "licence": "MIT",
+    "oracle": [
+      "ctags (Scheme)"
+    ],
+    "calibration_subjects": [
+      "racket/racket (collects subpath)",
+      "cisco/ChezScheme"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 4,
+    "engine": "tags",
+    "plan_row": "LB-Q-scheme-racket",
+    "worker_model": "sonnet",
+    "notes": "new; define forms, modules/provide"
+  },
+  {
+    "id": "solidity",
+    "name": "Solidity (.sol)",
+    "kind": "language",
+    "target_level": "L2",
+    "grammar_source": "JoranHonig/tree-sitter-solidity",
+    "licence": "MIT",
+    "oracle": [
+      "tree-sitter-tags (C)",
+      "solc --ast-compact-json (tier A)"
+    ],
+    "calibration_subjects": [
+      "OpenZeppelin/openzeppelin-contracts",
+      "foundry-rs/forge-std"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 4,
+    "engine": "tags",
+    "plan_row": "LB-Q-solidity",
+    "worker_model": "sonnet",
+    "notes": "new; contracts, interfaces, libraries, functions, events, modifiers"
+  },
+  {
+    "id": "tiltfile",
+    "name": "Tiltfile (Starlark)",
+    "kind": "tooling",
+    "target_level": "L2",
+    "grammar_source": "tree-sitter-grammars/tree-sitter-starlark",
+    "licence": "MIT",
+    "oracle": [
+      "tree-sitter-tags (C)"
+    ],
+    "calibration_subjects": [
+      "tilt-dev/tilt-extensions",
+      "tilt-dev/tilt-example-go"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-Q-bazel"
+    ],
+    "wave": 4,
+    "engine": "tags",
+    "plan_row": "LB-Q-tiltfile",
+    "worker_model": "sonnet",
+    "notes": "new; docker_build, k8s_yaml, local_resource calls as entities; load edges"
+  },
+  {
+    "id": "elm",
+    "name": "Elm (.elm)",
+    "kind": "language",
+    "target_level": "L2",
+    "grammar_source": "elm-tooling/tree-sitter-elm",
+    "licence": "MIT",
+    "oracle": [
+      "ctags"
+    ],
+    "calibration_subjects": [
+      "elm/core",
+      "rtfeldman/elm-spa-example"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 4,
+    "engine": "tags",
+    "plan_row": "LB-Q-elm",
+    "worker_model": "sonnet",
+    "notes": "new; modules, functions with annotations, types, ports"
+  },
+  {
+    "id": "nim",
+    "name": "Nim (.nim .nims)",
+    "kind": "language",
+    "target_level": "L2",
+    "grammar_source": "alaviss/tree-sitter-nim",
+    "licence": "MPL-2.0 (unmodified; verify at pin)",
+    "oracle": [
+      "tree-sitter-tags (C)"
+    ],
+    "calibration_subjects": [
+      "nim-lang/Nim (lib subpath)",
+      "status-im/nimbus-eth2"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 4,
+    "engine": "tags",
+    "plan_row": "LB-Q-nim",
+    "worker_model": "sonnet",
+    "notes": "new; procs, funcs, types, templates, macros"
+  },
+  {
+    "id": "justfile",
+    "name": "just (justfile, .justfile)",
+    "kind": "tooling",
+    "target_level": "L2",
+    "grammar_source": "IndianBoy42/tree-sitter-just",
+    "licence": "MIT (verify at pin)",
+    "oracle": [
+      "just --dump --dump-format json (tier A)"
+    ],
+    "calibration_subjects": [
+      "casey/just",
+      "sharkdp/fd"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 4,
+    "engine": "tags",
+    "plan_row": "LB-Q-justfile",
+    "worker_model": "sonnet",
+    "notes": "new; recipes, dependency edges, variables"
+  },
+  {
+    "id": "crystal",
+    "name": "Crystal (.cr)",
+    "kind": "language",
+    "target_level": "L2",
+    "grammar_source": "crystal-lang-tools/tree-sitter-crystal",
+    "licence": "MIT (verify at pin)",
+    "oracle": [
+      "tree-sitter-tags (C)"
+    ],
+    "calibration_subjects": [
+      "kemalcr/kemal",
+      "crystal-lang/crystal (src subpath)"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 4,
+    "engine": "tags",
+    "plan_row": "LB-Q-crystal",
+    "worker_model": "sonnet",
+    "notes": "new; modules, classes, structs, defs, macros"
+  },
+  {
+    "id": "d",
+    "name": "D (.d)",
+    "kind": "language",
+    "target_level": "L2",
+    "grammar_source": "gdamore/tree-sitter-d",
+    "licence": "MIT",
+    "oracle": [
+      "ctags"
+    ],
+    "calibration_subjects": [
+      "dlang/phobos",
+      "dlang/dub"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 4,
+    "engine": "tags",
+    "plan_row": "LB-Q-d",
+    "worker_model": "sonnet",
+    "notes": "new; modules, classes, structs, functions, templates"
+  },
+  {
+    "id": "earthfile",
+    "name": "Earthly (Earthfile)",
+    "kind": "tooling",
+    "target_level": "L2",
+    "grammar_source": "glehmann/tree-sitter-earthfile",
+    "licence": "verify at pin",
+    "oracle": [
+      "tree-sitter-tags (C)"
+    ],
+    "calibration_subjects": [
+      "earthly/earthly",
+      "earthly/lib"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 4,
+    "engine": "tags",
+    "plan_row": "LB-Q-earthfile",
+    "worker_model": "sonnet",
+    "notes": "new; targets, FROM +target edges, BUILD edges, IMPORT"
+  },
+  {
+    "id": "markdown",
+    "name": "Markdown (.md .mdx)",
+    "kind": "tooling",
+    "target_level": "L3",
+    "grammar_source": "native:github.com/yuin/goldmark",
+    "licence": "MIT",
+    "oracle": [
+      "ctags (Markdown)"
+    ],
+    "calibration_subjects": [
+      "rust-lang/book",
+      "tldr-pages/tldr"
+    ],
+    "depends_on": [
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22",
+      "LB-F18"
+    ],
+    "wave": 5,
+    "engine": "native",
+    "plan_row": "LB-Q-markdown",
+    "worker_model": "sonnet",
+    "port_of": "mdextract.go (upgrade)",
+    "notes": "headings, link and image file edges (relative-path), fenced-code language census (never extracted as code)"
+  },
+  {
+    "id": "vba",
+    "name": "VBA (.bas .cls .frm by sniff)",
+    "kind": "language",
+    "target_level": "L1",
+    "grammar_source": "harumiWeb/tree-sitter-vba (weak)",
+    "licence": "verify at pin",
+    "oracle": [
+      "ctags (Basic)"
+    ],
+    "calibration_subjects": [
+      "sancarn/stdVBA",
+      "VBA-tools/VBA-Web"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F9"
+    ],
+    "wave": 5,
+    "engine": "tags",
+    "plan_row": "LB-Q-vba",
+    "worker_model": "sonnet",
+    "notes": "new; SO 2025 4.2%; subs, functions, properties; disposition refused if the grammar fails real code"
+  },
+  {
+    "id": "json-yaml-toml",
+    "name": "Generic JSON, YAML and TOML documents",
+    "kind": "tooling",
+    "target_level": "L1",
+    "grammar_source": "pure-go:encoding/json + gopkg.in/yaml.v3 + go-toml/v2",
+    "licence": "n/a",
+    "oracle": [
+      "reference parse (C)"
+    ],
+    "calibration_subjects": [
+      "tsconfig/bases",
+      "starship/starship"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22",
+      "LB-F18"
+    ],
+    "wave": 5,
+    "engine": "doc",
+    "plan_row": "LB-Q-json-yaml-toml",
+    "worker_model": "sonnet",
+    "port_of": "jsonextract.go + tomlextract.go",
+    "notes": "top-level keys only; everything format-specific belongs to its own dialect"
+  },
+  {
+    "id": "verilog",
+    "name": "Verilog / SystemVerilog (.v by sniff, .sv .svh .vh)",
+    "kind": "language",
+    "target_level": "L1",
+    "grammar_source": "gmlarumbe/tree-sitter-systemverilog",
+    "licence": "MIT",
+    "oracle": [
+      "ctags"
+    ],
+    "calibration_subjects": [
+      "lowRISC/ibex",
+      "YosysHQ/picorv32"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F9"
+    ],
+    "wave": 5,
+    "engine": "tags",
+    "plan_row": "LB-Q-verilog",
+    "worker_model": "sonnet",
+    "notes": "new; modules, interfaces, packages, functions/tasks"
+  },
+  {
+    "id": "templ",
+    "name": "templ components (.templ)",
+    "kind": "tooling",
+    "target_level": "L2",
+    "grammar_source": "vrischmann/tree-sitter-templ",
+    "licence": "MIT (verify at pin)",
+    "oracle": [
+      "tree-sitter-tags (C)"
+    ],
+    "calibration_subjects": [
+      "a-h/templ",
+      "a-h/templ (examples subpath)"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F18"
+    ],
+    "wave": 5,
+    "engine": "tags",
+    "plan_row": "LB-Q-templ",
+    "worker_model": "sonnet",
+    "port_of": "templextract.go (regex)",
+    "notes": "components, CSS classes, script templates; Go-expression calls"
+  },
+  {
+    "id": "vhdl",
+    "name": "VHDL (.vhd .vhdl)",
+    "kind": "language",
+    "target_level": "L1",
+    "grammar_source": "jpt13653903/tree-sitter-vhdl (simplified by design)",
+    "licence": "verify at pin",
+    "oracle": [
+      "ctags"
+    ],
+    "calibration_subjects": [
+      "stnolting/neorv32",
+      "VUnit/vunit"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 5,
+    "engine": "tags",
+    "plan_row": "LB-Q-vhdl",
+    "worker_model": "sonnet",
+    "notes": "new; entities, architectures, packages, processes"
+  },
+  {
+    "id": "dotenv",
+    "name": "Dotenv files (.env, .env.example, *.env)",
+    "kind": "tooling",
+    "target_level": "L1",
+    "grammar_source": "pure-go:line parser",
+    "licence": "n/a",
+    "oracle": [
+      "dotenv reference parse (C)"
+    ],
+    "calibration_subjects": [
+      "supabase/supabase",
+      "getsentry/self-hosted"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 5,
+    "engine": "doc",
+    "plan_row": "LB-Q-dotenv",
+    "worker_model": "sonnet",
+    "notes": "new; keys only (env: inventory keys), values never stored"
+  },
+  {
+    "id": "glsl",
+    "name": "GLSL shaders (.glsl .vert .frag .comp, .fs by sniff)",
+    "kind": "language",
+    "target_level": "L1",
+    "grammar_source": "tree-sitter-grammars/tree-sitter-glsl",
+    "licence": "MIT",
+    "oracle": [
+      "tree-sitter-tags (C)"
+    ],
+    "calibration_subjects": [
+      "mrdoob/three.js (src/renderers/shaders subpath)",
+      "KhronosGroup/glTF-Sample-Viewer"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F9"
+    ],
+    "wave": 5,
+    "engine": "tags",
+    "plan_row": "LB-Q-glsl",
+    "worker_model": "sonnet",
+    "notes": "new; functions, structs, uniforms"
+  },
+  {
+    "id": "nginx",
+    "name": "nginx configuration (nginx.conf, conf.d/*.conf by glob)",
+    "kind": "tooling",
+    "target_level": "L2",
+    "grammar_source": "opa-oz/tree-sitter-nginx",
+    "licence": "verify at pin",
+    "oracle": [
+      "nginx -T (tier A, needs nginx) → crossplane-parse (C)"
+    ],
+    "calibration_subjects": [
+      "h5bp/server-configs-nginx",
+      "nginxinc/docker-nginx"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 5,
+    "engine": "tags",
+    "plan_row": "LB-Q-nginx",
+    "worker_model": "sonnet",
+    "notes": "new; servers, locations (route: keys), upstreams; proxy_pass → upstream edges"
+  },
+  {
+    "id": "systemd",
+    "name": "systemd units (*.service *.timer *.socket …)",
+    "kind": "tooling",
+    "target_level": "L2",
+    "grammar_source": "pure-go:INI parser",
+    "licence": "n/a",
+    "oracle": [
+      "systemd-analyze verify (tier A, Linux)",
+      "ctags (SystemdUnit)"
+    ],
+    "calibration_subjects": [
+      "coreos/fedora-coreos-config",
+      "systemd/systemd (units subpath)"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 5,
+    "engine": "doc",
+    "plan_row": "LB-Q-systemd",
+    "worker_model": "sonnet",
+    "notes": "new; units, Requires/After/Wants edges, ExecStart commands"
+  },
+  {
+    "id": "hlsl",
+    "name": "HLSL shaders (.hlsl .hlsli .fx)",
+    "kind": "language",
+    "target_level": "L1",
+    "grammar_source": "tree-sitter-grammars/tree-sitter-hlsl",
+    "licence": "MIT",
+    "oracle": [
+      "tree-sitter-tags (C)"
+    ],
+    "calibration_subjects": [
+      "microsoft/DirectX-Graphics-Samples",
+      "GPUOpen-Effects/FidelityFX-SDK"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 5,
+    "engine": "tags",
+    "plan_row": "LB-Q-hlsl",
+    "worker_model": "sonnet",
+    "notes": "new; functions, structs, cbuffers"
+  },
+  {
+    "id": "devcontainer",
+    "name": "Dev containers (devcontainer.json, devcontainer-feature.json)",
+    "kind": "tooling",
+    "target_level": "L2",
+    "grammar_source": "pure-go:JSONC",
+    "licence": "n/a",
+    "oracle": [
+      "@devcontainers/cli read-configuration (tier A)"
+    ],
+    "calibration_subjects": [
+      "devcontainers/templates",
+      "devcontainers/images"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 5,
+    "engine": "doc",
+    "plan_row": "LB-Q-devcontainer",
+    "worker_model": "sonnet",
+    "notes": "new; features, image/dockerFile edges, postCreate commands"
+  },
+  {
+    "id": "wgsl",
+    "name": "WGSL shaders (.wgsl)",
+    "kind": "language",
+    "target_level": "L1",
+    "grammar_source": "szebniok/tree-sitter-wgsl (or tree-sitter-grammars/tree-sitter-wgsl-bevy)",
+    "licence": "MIT (verify at pin)",
+    "oracle": [
+      "tree-sitter-tags (C)"
+    ],
+    "calibration_subjects": [
+      "gfx-rs/wgpu",
+      "webgpu/webgpu-samples"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 5,
+    "engine": "tags",
+    "plan_row": "LB-Q-wgsl",
+    "worker_model": "sonnet",
+    "notes": "new; fns, structs, bindings"
+  },
+  {
+    "id": "dependency-bots",
+    "name": "Renovate and Dependabot configs",
+    "kind": "tooling",
+    "target_level": "L1",
+    "grammar_source": "pure-go:JSON5 + gopkg.in/yaml.v3",
+    "licence": "n/a",
+    "oracle": [
+      "renovate-config-validator (tier A)"
+    ],
+    "calibration_subjects": [
+      "cli/cli",
+      "renovatebot/.github"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 5,
+    "engine": "doc",
+    "plan_row": "LB-Q-dependency-bots",
+    "worker_model": "sonnet",
+    "notes": "new; update ecosystems and directories as entities"
+  },
+  {
+    "id": "cuda",
+    "name": "CUDA (.cu .cuh)",
+    "kind": "language",
+    "target_level": "L3",
+    "grammar_source": "tree-sitter-grammars/tree-sitter-cuda",
+    "licence": "MIT",
+    "oracle": [
+      "ctags (C++)",
+      "scip-clang"
+    ],
+    "calibration_subjects": [
+      "NVIDIA/cuda-samples",
+      "NVIDIA/cutlass"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F5",
+      "LB-F7",
+      "LB-F11",
+      "LB-Q-cpp"
+    ],
+    "wave": 5,
+    "engine": "tags",
+    "plan_row": "LB-Q-cuda",
+    "worker_model": "sonnet",
+    "notes": "new; C++ kinds plus __global__/__device__ kernels"
+  },
+  {
+    "id": "jsonnet",
+    "name": "Jsonnet (.jsonnet .libsonnet)",
+    "kind": "tooling",
+    "target_level": "L3",
+    "grammar_source": "sourcegraph/tree-sitter-jsonnet",
+    "licence": "MIT",
+    "oracle": [
+      "jsonnet --tla (evaluation, tier A)"
+    ],
+    "calibration_subjects": [
+      "grafana/jsonnet-libs",
+      "prometheus-operator/kube-prometheus"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F5",
+      "LB-F7",
+      "LB-F11"
+    ],
+    "wave": 5,
+    "engine": "tags",
+    "plan_row": "LB-Q-jsonnet",
+    "worker_model": "sonnet",
+    "notes": "new; locals, object fields, functions; import/importstr file edges"
+  },
+  {
+    "id": "apex",
+    "name": "Salesforce Apex (.cls by glob, .trigger)",
+    "kind": "language",
+    "target_level": "L2",
+    "grammar_source": "aheber/tree-sitter-sfapex",
+    "licence": "MIT",
+    "oracle": [
+      "tree-sitter-tags (C)"
+    ],
+    "calibration_subjects": [
+      "trailheadapps/apex-recipes",
+      "apex-enterprise-patterns/fflib-apex-common"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F9"
+    ],
+    "wave": 5,
+    "engine": "tags",
+    "plan_row": "LB-Q-apex",
+    "worker_model": "sonnet",
+    "notes": "new; classes, interfaces, triggers, methods"
+  },
+  {
+    "id": "pkl",
+    "name": "Pkl (.pkl)",
+    "kind": "tooling",
+    "target_level": "L2",
+    "grammar_source": "apple/tree-sitter-pkl",
+    "licence": "Apache-2.0",
+    "oracle": [
+      "pkl eval (tier A)"
+    ],
+    "calibration_subjects": [
+      "apple/pkl-pantry",
+      "apple/pkl-go-examples"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 5,
+    "engine": "tags",
+    "plan_row": "LB-Q-pkl",
+    "worker_model": "sonnet",
+    "notes": "new; modules, classes, properties; amends/import edges"
+  },
+  {
+    "id": "abap",
+    "name": "ABAP (.abap)",
+    "kind": "language",
+    "target_level": "L1",
+    "grammar_source": "kennyhml/tree-sitter-abap (weak, emerging)",
+    "licence": "verify at pin",
+    "oracle": [
+      "abaplint (reference parser, tier A)"
+    ],
+    "calibration_subjects": [
+      "abapGit/abapGit",
+      "SAP-samples/abap-platform-refscen-flight"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 5,
+    "engine": "tags",
+    "plan_row": "LB-Q-abap",
+    "worker_model": "sonnet",
+    "notes": "new; grammar quality is the risk — disposition refused if none parses real code"
+  },
+  {
+    "id": "kcl",
+    "name": "KCL (.k)",
+    "kind": "tooling",
+    "target_level": "L2",
+    "grammar_source": "kcl-lang/tree-sitter-kcl",
+    "licence": "Apache-2.0",
+    "oracle": [
+      "kcl (evaluation, tier A)"
+    ],
+    "calibration_subjects": [
+      "kcl-lang/konfig",
+      "kcl-lang/modules"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 5,
+    "engine": "tags",
+    "plan_row": "LB-Q-kcl",
+    "worker_model": "sonnet",
+    "notes": "new; schemas, rules, import edges"
+  },
+  {
+    "id": "dhall",
+    "name": "Dhall (.dhall)",
+    "kind": "tooling",
+    "target_level": "L1",
+    "grammar_source": "jbellerb/tree-sitter-dhall",
+    "licence": "MIT (verify at pin)",
+    "oracle": [
+      "dhall (evaluation, tier A)"
+    ],
+    "calibration_subjects": [
+      "dhall-lang/dhall-kubernetes",
+      "dhall-lang/dhall-lang (Prelude subpath)"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 5,
+    "engine": "tags",
+    "plan_row": "LB-Q-dhall",
+    "worker_model": "sonnet",
+    "notes": "new; let bindings, record fields"
+  },
+  {
+    "id": "nushell",
+    "name": "Nushell (.nu)",
+    "kind": "language",
+    "target_level": "L2",
+    "grammar_source": "nushell/tree-sitter-nu",
+    "licence": "MIT",
+    "oracle": [
+      "tree-sitter-tags (C)"
+    ],
+    "calibration_subjects": [
+      "nushell/nu_scripts",
+      "nushell/nushell (crates/nu-std subpath)"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 5,
+    "engine": "tags",
+    "plan_row": "LB-Q-nushell",
+    "worker_model": "sonnet",
+    "notes": "new; fleet demand; def/export def, modules, use edges"
+  },
+  {
+    "id": "thrift",
+    "name": "Apache Thrift IDL (.thrift)",
+    "kind": "tooling",
+    "target_level": "L3",
+    "grammar_source": "duskmoon314/tree-sitter-thrift",
+    "licence": "MIT (verify at pin)",
+    "oracle": [
+      "thrift --gen json (tier A)",
+      "ctags"
+    ],
+    "calibration_subjects": [
+      "apache/thrift (test subpath)",
+      "facebook/fbthrift (thrift/test subpath)"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F5",
+      "LB-F7",
+      "LB-F11"
+    ],
+    "wave": 5,
+    "engine": "tags",
+    "plan_row": "LB-Q-thrift",
+    "worker_model": "sonnet",
+    "notes": "new; structs, services, enums; include edges"
+  },
+  {
+    "id": "purescript",
+    "name": "PureScript (.purs)",
+    "kind": "language",
+    "target_level": "L2",
+    "grammar_source": "postsolar/tree-sitter-purescript",
+    "licence": "MIT (verify at pin)",
+    "oracle": [
+      "tree-sitter-tags (C)"
+    ],
+    "calibration_subjects": [
+      "purescript/purescript-prelude",
+      "purescript-halogen/purescript-halogen"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 5,
+    "engine": "tags",
+    "plan_row": "LB-Q-purescript",
+    "worker_model": "sonnet",
+    "notes": "new; modules, values with signatures, data, classes"
+  },
+  {
+    "id": "avro",
+    "name": "Avro schemas (.avsc) and IDL (.avdl)",
+    "kind": "tooling",
+    "target_level": "L2",
+    "grammar_source": "pure-go:encoding/json",
+    "licence": "n/a",
+    "oracle": [
+      "avro-tools idl2schemata / reference parse (C)"
+    ],
+    "calibration_subjects": [
+      "apache/avro (share/test/schemas subpath)",
+      "confluentinc/examples"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 5,
+    "engine": "doc",
+    "plan_row": "LB-Q-avro",
+    "worker_model": "sonnet",
+    "notes": "new; records, enums, fields; named-type references"
+  },
+  {
+    "id": "emacs-lisp",
+    "name": "Emacs Lisp (.el)",
+    "kind": "language",
+    "target_level": "L1",
+    "grammar_source": "Wilfred/tree-sitter-elisp",
+    "licence": "MIT",
+    "oracle": [
+      "ctags"
+    ],
+    "calibration_subjects": [
+      "magit/magit",
+      "emacs-lsp/lsp-mode"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 5,
+    "engine": "tags",
+    "plan_row": "LB-Q-emacs-lisp",
+    "worker_model": "sonnet",
+    "notes": "new; defun/defmacro/defvar/defcustom"
+  },
+  {
+    "id": "asyncapi",
+    "name": "AsyncAPI documents",
+    "kind": "tooling",
+    "target_level": "L3",
+    "grammar_source": "pure-go:gopkg.in/yaml.v3",
+    "licence": "n/a",
+    "oracle": [
+      "@asyncapi/parser (tier A)"
+    ],
+    "calibration_subjects": [
+      "asyncapi/spec (examples subpath)",
+      "asyncapi/generator (test fixtures subpath)"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22",
+      "LB-Q-openapi"
+    ],
+    "wave": 5,
+    "engine": "doc",
+    "plan_row": "LB-Q-asyncapi",
+    "worker_model": "sonnet",
+    "notes": "new; channels, operations, messages; $ref edges"
+  },
+  {
+    "id": "vimscript",
+    "name": "Vim script (.vim, vimrc)",
+    "kind": "language",
+    "target_level": "L1",
+    "grammar_source": "tree-sitter-grammars/tree-sitter-vim",
+    "licence": "MIT",
+    "oracle": [
+      "ctags"
+    ],
+    "calibration_subjects": [
+      "junegunn/vim-plug",
+      "tpope/vim-fugitive"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 5,
+    "engine": "tags",
+    "plan_row": "LB-Q-vimscript",
+    "worker_model": "sonnet",
+    "notes": "new; functions, commands, autocmd groups"
+  },
+  {
+    "id": "prisma",
+    "name": "Prisma schema (schema.prisma)",
+    "kind": "tooling",
+    "target_level": "L3",
+    "grammar_source": "victorhqc/tree-sitter-prisma",
+    "licence": "MIT (verify at pin)",
+    "oracle": [
+      "prisma format / getDMMF (tier A)"
+    ],
+    "calibration_subjects": [
+      "prisma/prisma-examples",
+      "prisma/prisma (fixtures subpath)"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F5",
+      "LB-F7",
+      "LB-F11"
+    ],
+    "wave": 5,
+    "engine": "tags",
+    "plan_row": "LB-Q-prisma",
+    "worker_model": "sonnet",
+    "notes": "new; models, enums, relations (field type → model edges), datasource/generator"
+  },
+  {
+    "id": "tcl",
+    "name": "Tcl (.tcl)",
+    "kind": "language",
+    "target_level": "L1",
+    "grammar_source": "tree-sitter-grammars/tree-sitter-tcl",
+    "licence": "MIT",
+    "oracle": [
+      "ctags"
+    ],
+    "calibration_subjects": [
+      "tcltk/tcllib",
+      "tcltk/tk (library subpath)"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 5,
+    "engine": "tags",
+    "plan_row": "LB-Q-tcl",
+    "worker_model": "sonnet",
+    "notes": "new; procs, namespaces"
+  },
+  {
+    "id": "dbt",
+    "name": "dbt projects (dbt_project.yml, models/*.sql with ref(), schema.yml)",
+    "kind": "tooling",
+    "target_level": "L3",
+    "grammar_source": "DerekStride/tree-sitter-sql + pure-go:gopkg.in/yaml.v3",
+    "licence": "MIT",
+    "oracle": [
+      "dbt parse → manifest.json (tier A, offline)"
+    ],
+    "calibration_subjects": [
+      "dbt-labs/jaffle-shop",
+      "dbt-labs/dbt-utils"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F2",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F3",
+      "LB-F4",
+      "LB-F8",
+      "LB-F9",
+      "LB-F5",
+      "LB-F7",
+      "LB-F11",
+      "LB-Q-sql"
+    ],
+    "wave": 5,
+    "engine": "tags+doc",
+    "plan_row": "LB-Q-dbt",
+    "worker_model": "sonnet",
+    "notes": "new; models, sources, macros; ref()/source() edges — may need a strategy (report needs-strategy)"
+  },
+  {
+    "id": "sql-migrations",
+    "name": "Migration changelogs (Flyway V__*.sql naming, Liquibase changelogs)",
+    "kind": "tooling",
+    "target_level": "L2",
+    "grammar_source": "pure-go:gopkg.in/yaml.v3 + encoding/xml",
+    "licence": "n/a",
+    "oracle": [
+      "liquibase validate (tier A, offline h2)"
+    ],
+    "calibration_subjects": [
+      "liquibase/liquibase (examples subpath)",
+      "flyway/flyway (test subpath)"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22",
+      "LB-Q-sql"
+    ],
+    "wave": 5,
+    "engine": "doc",
+    "plan_row": "LB-Q-sql-migrations",
+    "worker_model": "sonnet",
+    "notes": "new; changesets and versions as entities, includeAll/include file edges"
+  },
+  {
+    "id": "mojo",
+    "name": "Mojo (.mojo, .🔥)",
+    "kind": "language",
+    "target_level": "L1",
+    "grammar_source": "none consolidated (several ~3-star community grammars)",
+    "licence": "verify at pin",
+    "oracle": [
+      "tree-sitter-tags (C)"
+    ],
+    "calibration_subjects": [
+      "modular/modular (mojo/stdlib subpath)",
+      "modular/mojo-examples"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 5,
+    "engine": "tags",
+    "plan_row": "LB-Q-mojo",
+    "worker_model": "sonnet",
+    "notes": "new; fn/def, structs, traits; disposition deferred if no grammar parses current syntax"
+  },
+  {
+    "id": "buf",
+    "name": "Buf workspace and generation configs (buf.yaml, buf.gen.yaml, buf.work.yaml)",
+    "kind": "tooling",
+    "target_level": "L1",
+    "grammar_source": "pure-go:gopkg.in/yaml.v3",
+    "licence": "n/a",
+    "oracle": [
+      "buf config ls-modules (tier A)"
+    ],
+    "calibration_subjects": [
+      "bufbuild/buf",
+      "connectrpc/connect-go"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22",
+      "LB-Q-protobuf"
+    ],
+    "wave": 5,
+    "engine": "doc",
+    "plan_row": "LB-Q-buf",
+    "worker_model": "sonnet",
+    "notes": "new; modules and plugins as entities"
+  },
+  {
+    "id": "odin",
+    "name": "Odin (.odin)",
+    "kind": "language",
+    "target_level": "L1",
+    "grammar_source": "tree-sitter-grammars/tree-sitter-odin",
+    "licence": "MIT",
+    "oracle": [
+      "tree-sitter-tags (C)"
+    ],
+    "calibration_subjects": [
+      "odin-lang/Odin (core subpath)",
+      "odin-lang/examples"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 5,
+    "engine": "tags",
+    "plan_row": "LB-Q-odin",
+    "worker_model": "sonnet",
+    "notes": "new; procs, structs, enums"
+  },
+  {
+    "id": "gemfile-podfile",
+    "name": "Ruby DSL manifests (Gemfile, *.gemspec, Podfile, *.podspec)",
+    "kind": "tooling",
+    "target_level": "L2",
+    "grammar_source": "tree-sitter/tree-sitter-ruby",
+    "licence": "MIT",
+    "oracle": [
+      "bundle list / pod ipc spec (tier A)"
+    ],
+    "calibration_subjects": [
+      "rails/rails",
+      "Alamofire/Alamofire"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-Q-ruby"
+    ],
+    "wave": 5,
+    "engine": "tags",
+    "plan_row": "LB-Q-gemfile-podfile",
+    "worker_model": "sonnet",
+    "notes": "new; gems/pods as entities, path: edges"
+  },
+  {
+    "id": "latex",
+    "name": "LaTeX (.tex .sty .cls by sniff)",
+    "kind": "language",
+    "target_level": "L2",
+    "grammar_source": "latex-lsp/tree-sitter-latex",
+    "licence": "MIT",
+    "oracle": [
+      "ctags (Tex)"
+    ],
+    "calibration_subjects": [
+      "latex3/latex3",
+      "Wandmalfarbe/pandoc-latex-template"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F9"
+    ],
+    "wave": 5,
+    "engine": "tags",
+    "plan_row": "LB-Q-latex",
+    "worker_model": "sonnet",
+    "notes": "new; sections, labels, newcommand; \\ref/\\cite edges, \\input/\\include file edges later"
+  },
+  {
+    "id": "android-manifest",
+    "name": "Android manifests (AndroidManifest.xml)",
+    "kind": "tooling",
+    "target_level": "L2",
+    "grammar_source": "pure-go:encoding/xml",
+    "licence": "n/a",
+    "oracle": [
+      "aapt2 dump xmltree (tier A)"
+    ],
+    "calibration_subjects": [
+      "android/nowinandroid",
+      "android/architecture-samples"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 5,
+    "engine": "doc",
+    "plan_row": "LB-Q-android-manifest",
+    "worker_model": "sonnet",
+    "notes": "new; activities, services, receivers, providers → class edges (Kotlin/Java)"
+  },
+  {
+    "id": "typst",
+    "name": "Typst (.typ)",
+    "kind": "language",
+    "target_level": "L1",
+    "grammar_source": "uben0/tree-sitter-typst",
+    "licence": "MIT (verify at pin)",
+    "oracle": [
+      "tree-sitter-tags (C)"
+    ],
+    "calibration_subjects": [
+      "typst/templates",
+      "typst/packages (a few packages, subpath)"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 5,
+    "engine": "tags",
+    "plan_row": "LB-Q-typst",
+    "worker_model": "sonnet",
+    "notes": "new; Octoverse 2025 fastest-growing (+108%); headings, let bindings, labels; #import/#include edges later"
+  },
+  {
+    "id": "codeowners",
+    "name": "CODEOWNERS (.github/CODEOWNERS, docs/CODEOWNERS)",
+    "kind": "tooling",
+    "target_level": "L2",
+    "grammar_source": "pure-go:line parser",
+    "licence": "n/a",
+    "oracle": [
+      "GitHub's documented matching rules (reference, C)"
+    ],
+    "calibration_subjects": [
+      "nodejs/node",
+      "hashicorp/terraform-provider-aws"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 5,
+    "engine": "doc",
+    "plan_row": "LB-Q-codeowners",
+    "worker_model": "sonnet",
+    "notes": "new; path patterns → owners; path→file edges (ownership facts, not rules)"
+  },
+  {
+    "id": "blade",
+    "name": "Laravel Blade templates (.blade.php)",
+    "kind": "language",
+    "target_level": "L2",
+    "grammar_source": "EmranMR/tree-sitter-blade",
+    "licence": "MIT (verify at pin)",
+    "oracle": [
+      "tree-sitter-tags (C)"
+    ],
+    "calibration_subjects": [
+      "laravel/breeze",
+      "filamentphp/filament"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F6",
+      "LB-Q-php",
+      "LB-Q-html"
+    ],
+    "wave": 5,
+    "engine": "tags",
+    "plan_row": "LB-Q-blade",
+    "worker_model": "sonnet",
+    "notes": "new; Octoverse 2025 growth (+67%); sections, components, @include/@extends view edges; PHP injection"
+  },
+  {
+    "id": "serverless",
+    "name": "Serverless Framework (serverless.yml)",
+    "kind": "tooling",
+    "target_level": "L2",
+    "grammar_source": "pure-go:gopkg.in/yaml.v3",
+    "licence": "n/a",
+    "oracle": [
+      "serverless print (tier A, offline)"
+    ],
+    "calibration_subjects": [
+      "serverless/examples",
+      "serverless/serverless (test fixtures subpath)"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 5,
+    "engine": "doc",
+    "plan_row": "LB-Q-serverless",
+    "worker_model": "sonnet",
+    "notes": "new; functions, events (route: keys), resources"
+  }
+]
