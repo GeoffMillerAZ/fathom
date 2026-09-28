@@ -29,6 +29,7 @@ cannot reach its target keeps its contract and gains a `[-]` sibling
 - [x] Calibration shards: `calibration/corpus.d/<id>.yaml` read by `clone.sh` alongside `corpus.yaml`, a `subpath` field, and `task calibrate-clean -- <id>` (§13.3) {id: LB-F21, oracle: lexical, path: calibration/clone.sh, pattern: "corpus\.d"}
 - [x] `docs/languages.md` is generated from manifests, readings and the queue (`indexbench lang-tracker`), a registered dialect without a reading shows `tolerated`, the milestone line is computed, and the tracker test refuses a level above its reading (§12, I54) {id: LB-F17, symbol: RenderTracker, package: internal/langbench, reachable_from: TestLanguagesTrackerIsGenerated, needs: "LB-F16,LB-F22"}
 - [x] The dialect manifest schema in CUE with valid/invalid testdata pairs (`schema/CLAUDE.md` conventions) (§2.2) {id: LB-F29, oracle: lexical, path: schema/dialect/dialect.cue, pattern: "^#Dialect:"}
+- [ ] Tool-format L3 scoring: `xref_precision`/`xref_recall` from a tool oracle's cross-file references against the doc engine's `cross_file` references. Open, not built in the wave-1 triage: §10 specifies no cross-reference oracle shape, and `DocExtractor.Extract` returns only `DocResult.Nodes` — fusion never persists `DocResult.CrossFile`, so a score today would measure edges ingest drops. Lands with that persistence and a `cross_references` field in the tool-oracle file {id: LB-F30, symbol: ScoreXrefs, package: internal/langbench, reachable_from: TestScoreXrefs, needs: "LB-F23,LB-F8"}
 
 ### F.2 The tags-query engine (§3)
 
