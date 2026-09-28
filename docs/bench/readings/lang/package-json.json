@@ -2,15 +2,15 @@
   "dialect": "package-json",
   "kind": "tooling",
   "target_level": "L3",
-  "level_met": "none",
+  "level_met": "L1",
   "grade": {
-    "L1": "unmet",
+    "L1": "excellent",
     "L2": "not-attempted",
     "L3": "not-attempted",
     "L4": "not-applicable"
   },
   "measured_at": "2026-09-28",
-  "fathom_commit": "468dc922",
+  "fathom_commit": "c5a1859a",
   "extractor": "dialect",
   "subjects": [
     {
@@ -20,8 +20,8 @@
       "bytes": 387098,
       "counts": {
         "fathom_defs": 1637,
-        "kind_equal": 13,
-        "matched": 13,
+        "kind_equal": 1637,
+        "matched": 1637,
         "oracle_defs": 1638
       },
       "families": {
@@ -35,7 +35,7 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 6.301000000000002,
+        "extract_ms": 7.254999999999994,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -48,9 +48,9 @@
       "bytes": 78175,
       "counts": {
         "fathom_defs": 515,
-        "kind_equal": 354,
-        "matched": 354,
-        "oracle_defs": 752
+        "kind_equal": 515,
+        "matched": 515,
+        "oracle_defs": 516
       },
       "families": {
         "l1": "A"
@@ -63,7 +63,7 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 2.344999999999994,
+        "extract_ms": 2.1539999999999937,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -85,8 +85,8 @@
   "metrics": {
     "ref_precision": null,
     "ref_recall": null,
-    "sym_precision": 0.1705,
-    "sym_recall": 0.1536,
+    "sym_precision": 1,
+    "sym_recall": 0.9991,
     "xref_precision": null,
     "xref_recall": null
   },
@@ -104,14 +104,14 @@
   ],
   "counts": {
     "fathom_defs": 2152,
-    "kind_equal": 367,
-    "matched": 367,
-    "oracle_defs": 2390
+    "kind_equal": 2152,
+    "matched": 2152,
+    "oracle_defs": 2154
   },
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 53.81,
+    "throughput_mb_s": 49.45,
     "max_file_ms": 0,
     "peak_module_pages": 0,
     "compiled_bytes": 0
@@ -119,7 +119,8 @@
   "excluded_by_kind": {},
   "notes": [
     "next.js: 1 files skipped by ingest's gates (generated)",
+    "next.js: 236 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
   ],
-  "disposition": "deferred: sym_recall .1536 and sym_precision .1705 collapse far below the L1 good floor (.95/.90 for tool formats), but this is not a doc.json selector gap — every required kind is emitted (fathom_defs 2152 vs oracle_defs 2390 are close in magnitude; the shortfall is almost entirely name KEY-matching, not missing/extra entities). Root cause, confirmed directly with a reverted-before-commit experiment (internal/langbench/score.go's BareName forced to identity, then reverted): matched jumps from 367/2390 to 1991/2390 (babel alone: 13/1638 -> 1637/1638, sym_recall .0079 -> .9994, L1 excellent). BareName() strips a name's text after the last '.'/':'/'#'/'/'/'\\\\'/' '/')' -- a convention built for programming-language qualification (Class.method) that collides with THREE separate, common npm conventions this dialect's own required and non-required kinds legitimately produce: (1) scoped package names, BareName(\"@babel/core\")=\"core\" -- every scoped package (the overwhelming majority in both subjects) loses its scope and collides with every other package sharing that last segment; (2) colon-namespaced script names, BareName(\"codesandbox:build\")=\"build\", BareName(\"test:esm\")=\"esm\" -- an extremely common npm convention (build:watch, test:e2e, lint:fix); (3) export subpaths, BareName(\"./utils\")=\"utils\", and BareName(\".\")=\"\" (the root subpath becomes the empty string) -- while npm's own names (the oracle, via `npm pkg get`, tier A) are never BareName'd, so almost no scoped-package/colon-script/subpath-export name can key-match its oracle counterpart before line-distance is even considered. This is the same class of gap CSS's reading root-caused (LB-Q-css-rest: BareName's separator set colliding with that dialect's own domain punctuation) manifesting through '/' and ':' instead of '.'/'#'/':'. Neither fix belongs to this dialect: BareName is a cross-cutting internal/langbench primitive shared by every already-measured dialect (an Opus-reviewed change, design §15), and there is no query or entity change in doc.json that can make a package's own published name stop containing '/' or a script's own name stop containing ':'. Separately, and much smaller: a `bin`/`exports` field written as a single string rather than an object (real in both subjects, e.g. next's own `\"bin\": \"dist/bin/next\"`-style packages) is not captured as its own entity at all -- the doc-engine's selectors are evaluated relative to the matched node with no path back to a sibling `name` field, so there is no name to give such an entity; disclosed, not query-fixable without a doc-engine capability change (also not a worker's file). L2's ref_recall/ref_precision and L3's xref_precision/xref_recall are separately unreachable: package.json has no intra-file entity-to-entity reference this engine's selector model can express (scripts/bin/exports don't reference each other structurally, only by convention in string command text), so FamilyRefs is never measured (not-attempted, correctly -- forcing a fake reference to pass the metric is exactly what design §14.2 rules out); and xref_precision/xref_recall have no scoring implementation at all in cmd/indexbench/langoracle.go or internal/langbench/merge.go (no FamilyXref constant, no CntXref* counts, and BenchExtraction never carries DocResult.CrossFile through the generic Extractor interface DocExtractor.Extract narrows to) even though the metric names exist in reading.go's threshold table -- confirmed directly by reading both files; this dialect's doc.json still declares real cross_file selectors (workspace-member globs, dependency/devDependency/peerDependency/optionalDependency edges via module-source) so that plumbing is ready the moment a foundation change wires it through. LB-Q-package-json stays unchecked; see LB-Q-package-json-rest. Trigger: an Opus-reviewed internal/langbench change gives BareName a per-canonical-kind (or dialect-declared) policy so '/' and ':' are not treated as qualification separators for package/task/route kinds, then package-json.json is re-measured; independently, an Opus-reviewed foundation change adds a NotApplicable-style carve-out (or a genuine metric) for a tool format with no intra-file reference concept, and another wires DocResult.CrossFile through BenchExtraction plus FamilyXref/CntXref* scoring so L3 becomes measurable at all for any doc-engine dialect, not only this one."
+  "disposition": "deferred: L1 excellent; L2 has no intra-file reference to measure and L3 waits on xref scoring (LB-F30) (LB-Q-package-json-rest)"
 }

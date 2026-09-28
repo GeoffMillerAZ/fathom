@@ -69,7 +69,7 @@ reading's computed `level_met` with each met level's grade; `tolerated` is regis
 no reading yet; `unsupported (disclosed)` is queued, not registered, and named per service
 by `list_services`.
 
-Milestone M1 progress: languages at L1 excellent 1/20, at L2 0/12, at L3 0/8, at L4 0/6; tool formats at target 0/15
+Milestone M1 progress: languages at L1 excellent 1/20, at L2 0/12, at L3 0/8, at L4 0/6; tool formats at target 1/15
 
 | Language or format | Kind | Engine | Grammar / parser | Target | Level met | Oracles | Typed edges | Reading | Next |
 |---|---|---|---|---|---|---|---|---|---|
@@ -77,14 +77,14 @@ Milestone M1 progress: languages at L1 excellent 1/20, at L2 0/12, at L3 0/8, at
 | JavaScript (.js .jsx .mjs .cjs) | language | tags | tree-sitter/tree-sitter-javascript (MIT) | L4 | none (measured) | A scip-typescript 0.4.0; B universal-ctags 6.2.1 | scip:scip-typescript | 2026-09-28 | LB-Q-javascript |
 | Dockerfile / Containerfile | tool format | tags | camdencheek/tree-sitter-dockerfile (Apache-2.0) | L3 | tolerated | — | syntax | — | LB-Q-dockerfile |
 | Python (.py .pyi) | language | tags | tree-sitter/tree-sitter-python (MIT) | L4 | L1 (L1 excellent) | A scip-python 0.6.6; B universal-ctags 6.2.1 | scip:scip-python | 2026-09-28 | LB-Q-python |
-| HTML (.html .htm) | language | tags | tree-sitter/tree-sitter-html (MIT) | L3 | none (measured) | B universal-ctags 6.2.1 | file | 2026-09-28 | LB-Q-html |
+| HTML (.html .htm) | language | tags | tree-sitter/tree-sitter-html (MIT) | L3 | L1 (L1 good) | B universal-ctags 6.2.1 | file | 2026-09-28 | LB-Q-html |
 | GitHub Actions workflows and composite actions | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | tolerated | — | syntax | — | LB-Q-github-actions |
 | CSS (.css) | language | tags | tree-sitter/tree-sitter-css (MIT) | L3 | none (measured) | B universal-ctags 6.2.1 | file | 2026-09-28 | LB-Q-css |
 | SQL (.sql; schema and migrations) | language | tags | DerekStride/tree-sitter-sql (MIT) | L2 | tolerated | — | syntax | — | LB-Q-sql |
-| npm/pnpm/yarn package manifests (package.json, workspaces) | tool format | doc | pure-go:encoding/json (n/a) | L3 | none (measured) | A npm pkg get 11.16.0 | syntax | 2026-09-28 | LB-Q-package-json |
+| npm/pnpm/yarn package manifests (package.json, workspaces) | tool format | doc | pure-go:encoding/json (n/a) | L3 | L1 (L1 excellent) | A npm pkg get 11.16.0 | syntax | 2026-09-28 | LB-Q-package-json |
 | Shell / Bash (.sh .bash, shebangs) | language | tags | tree-sitter/tree-sitter-bash (MIT) | L2 | tolerated | — | syntax | — | LB-Q-bash |
 | Java (.java) | language | tags | tree-sitter/tree-sitter-java (MIT) | L4 | tolerated | — | scip:scip-java | — | LB-Q-java |
-| Python packaging (pyproject.toml, requirements*.txt, setup.cfg) | tool format | doc | pure-go:github.com/pelletier/go-toml/v2 (n/a) | L2 | none (measured) | C tomllib reference parse tomllib(python3.14) | syntax | 2026-09-28 | LB-Q-python-packaging |
+| Python packaging (pyproject.toml, requirements*.txt, setup.cfg) | tool format | doc | pure-go:github.com/pelletier/go-toml/v2 (n/a) | L2 | L2 (L1 good, L2 good) | C tomllib reference parse tomllib(python3.14) | syntax | 2026-09-28 | at target (LB-Q-python-packaging) |
 | C# (.cs) | language | tags | tree-sitter/tree-sitter-c-sharp (MIT) | L4 | tolerated | — | scip:scip-dotnet | — | LB-Q-csharp |
 | C (.c, .h by sniff) | language | tags | tree-sitter/tree-sitter-c (MIT) | L4 | tolerated | — | scip:scip-clang | — | LB-Q-c |
 | Terraform / OpenTofu (.tf .tfvars .tf.json) | tool format | native | native:github.com/hashicorp/hcl/v2 (MPL-2.0 (library dependency, unmodified)) | L3 | L1 (L1 excellent) | B universal-ctags 6.2.1 | syntax | 2026-09-28 | LB-Q-terraform |

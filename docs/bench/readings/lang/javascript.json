@@ -148,6 +148,9 @@
     "sym_recall": "B",
     "typed_recall": "A"
   },
+  "not_measured": [
+    "range_agreement"
+  ],
   "required_kinds": [
     "class",
     "function",
@@ -196,7 +199,9 @@
     "def_mapping/typed_recall near zero: the same scip-typescript@0.4.0 position-mapping shortfall already recorded for TypeScript (docs/languages.md, O115) — not specific to this dialect",
     "import_resolution not measured: in-repo spec counts arrive with the L3 strategies (LB-F11)",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
-    "sym_recall gap root-caused, not just measured: tags.scm now captures assignment-based definitions (Foo.prototype.bar = fn, app.foo = fn), which moved combined sym_recall .39->.70 on express alone before axios was added, but two more real ctags-recognized shapes (module.exports.foo = fn; a bare `foo = fn` with no const/let/var) were deliberately left uncaptured because both already appear in TestTagsDialectParity's frozen fixtures (common.cjs, shapes.js) and adding them changes that frozen output — confirmed empirically (diagnostic-only, not committed) that admitting both anyway only moves combined sym_recall to .717, so the frozen-parity boundary is not the dominant blocker; the dominant one is universal-ctags' own JS heuristics, which double-tag a named function-expression assigned to a property inconsistently (verified directly: identical `exports.helper = function helper(){}`-shaped code sometimes emits one oracle tag, sometimes two, under the same ctags run) and inflate the L1 oracle denominator in a way no 1:1 structural query can match"
+    "range_agreement not measured: the L1 oracle reported no end line for any matched definition, so L1 can be met at most at good, never excellent (design §1.2)",
+    "regraded at 06815345 from the recorded subject counts (harness rules only; extraction as measured at c2b6965a)",
+    "sym_recall gap root-caused, not just measured: tags.scm now captures assignment-based definitions (Foo.prototype.bar = fn, app.foo = fn), which moved combined sym_recall .39-\u003e.70 on express alone before axios was added, but two more real ctags-recognized shapes (module.exports.foo = fn; a bare `foo = fn` with no const/let/var) were deliberately left uncaptured because both already appear in TestTagsDialectParity's frozen fixtures (common.cjs, shapes.js) and adding them changes that frozen output — confirmed empirically (diagnostic-only, not committed) that admitting both anyway only moves combined sym_recall to .717, so the frozen-parity boundary is not the dominant blocker; the dominant one is universal-ctags' own JS heuristics, which double-tag a named function-expression assigned to a property inconsistently (verified directly: identical `exports.helper = function helper(){}`-shaped code sometimes emits one oracle tag, sometimes two, under the same ctags run) and inflate the L1 oracle denominator in a way no 1:1 structural query can match"
   ],
   "disposition": "deferred: sym_recall .70 vs the L1 good floor .85 (express+axios) after a real tags.scm fix (assignment-based definitions); the residual gap is dominated by universal-ctags' own inconsistent double-tagging of named function-expression property assignments (tier B oracle noise, not a fathom capture gap) plus two remaining assignment shapes withheld because they collide with TestTagsDialectParity's frozen legacy goldens (LB-F1) — widening those goldens is not this worker's call. def_mapping/typed_recall are separately near zero from the pre-existing scip-typescript position-mapping shortfall (O115) shared with TypeScript, so L4 was out of reach regardless of L1."
 }

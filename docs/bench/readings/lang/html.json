@@ -2,15 +2,15 @@
   "dialect": "html",
   "kind": "language",
   "target_level": "L3",
-  "level_met": "none",
+  "level_met": "L1",
   "grade": {
-    "L1": "unmet",
+    "L1": "good",
     "L2": "not-attempted",
     "L3": "not-attempted",
     "L4": "not-attempted"
   },
   "measured_at": "2026-09-28",
-  "fathom_commit": "3a02c3be",
+  "fathom_commit": "06815345",
   "extractor": "dialect",
   "subjects": [
     {
@@ -34,14 +34,15 @@
         "ctags:heading1": 14,
         "ctags:heading2": 10,
         "ctags:heading3": 13,
+        "fathom:CSSSelector": 6,
         "fathom:HTMLFormField": 3,
         "fathom:JSFunc": 5
       },
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 132.035,
-        "max_file_ms": 74,
+        "extract_ms": 47.709,
+        "max_file_ms": 12,
         "peak_module_pages": 288,
         "compiled_bytes": 0
       }
@@ -63,14 +64,15 @@
       ],
       "excluded_by_kind": {
         "ctags:heading1": 1,
-        "ctags:heading3": 1
+        "ctags:heading3": 1,
+        "fathom:CSSSelector": 8
       },
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.84,
+        "extract_ms": 1.064,
         "max_file_ms": 0,
-        "peak_module_pages": 266,
+        "peak_module_pages": 269,
         "compiled_bytes": 0
       }
     }
@@ -104,6 +106,9 @@
   "not_applicable": [
     "signature_coverage"
   ],
+  "not_measured": [
+    "range_agreement"
+  ],
   "required_kinds": [
     "label"
   ],
@@ -119,8 +124,8 @@
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 1.18,
-    "max_file_ms": 74,
+    "throughput_mb_s": 3.2,
+    "max_file_ms": 12,
     "peak_module_pages": 288,
     "compiled_bytes": 0
   },
@@ -128,13 +133,15 @@
     "ctags:heading1": 15,
     "ctags:heading2": 10,
     "ctags:heading3": 14,
+    "fathom:CSSSelector": 14,
     "fathom:HTMLFormField": 3,
     "fathom:JSFunc": 5
   },
   "notes": [
+    "a file whose extraction instantiated a grammar module after the warm-up (an injected language) is timed on a second, warm extraction",
+    "custom_element/form/field (HTMLCustomElement/HTMLForm/HTMLFormField) are captured but deliberately outside oracle_kinds — ctags 6.2.1 has no HTML kind for any of them, same convention as CSS's keyframes/custom_property and Python's PythonTypeAlias; excluded_by_kind's fathom:HTMLFormField/fathom:JSFunc entries are exactly this (JSFunc is the <script> injection's own symbols, correctly counted separately from the host HTML defs)",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
-    "L1 sym_recall/sym_precision/kind_agreement are all 1.0 (154/154 matched, bootstrap+html5-boilerplate) but range_agreement is null: universal-ctags 6.2.1's HTML parser never populates an \"end\" field for any HTML kind (verified directly with `--fields='*'` — zero end fields across id/heading1/heading2/heading3/title, for every element shape tried, self-closing and paired), so range_eligible is 0/0 for the whole tier-B oracle and internal/langbench's gradeLevel treats an unmeasured, non-exempt L1 metric as \"missing\", forcing L1 Unmet regardless of extraction quality — signature_coverage has a NotApplicable carve-out for a dialect with no callable kind (merge.go), range_agreement has none; this is a harness/oracle-tier gap this queue item cannot fix without weakening a threshold (Opus review, docs/plans/language-breadth.md LB-Q-html-rest)",
-    "custom_element/form/field (HTMLCustomElement/HTMLForm/HTMLFormField) are captured but deliberately outside oracle_kinds — ctags 6.2.1 has no HTML kind for any of them, same convention as CSS's keyframes/custom_property and Python's PythonTypeAlias; excluded_by_kind's fathom:HTMLFormField/fathom:JSFunc entries are exactly this (JSFunc is the <script> injection's own symbols, correctly counted separately from the host HTML defs)"
+    "range_agreement not measured: the L1 oracle reported no end line for any matched definition, so L1 can be met at most at good, never excellent (design §1.2)"
   ],
-  "disposition": "deferred: range_agreement unmeasurable at L1 (ctags 6.2.1's HTML parser reports no \"end\" field for any HTML kind, verified directly), which blocks the whole level chain even though sym_recall/sym_precision/kind_agreement all measure 1.0 — L2's call metrics and L3's import/file-edge metrics are separately unreachable too (no SCIP producer named for HTML; §1.4's call-truth pairs and design §1.2's import_resolution/file_edge metrics both require a SCIP oracle fathom's own harness has never wired for a ctags-only dialect). Fixing the range_agreement gap needs an Opus-reviewed internal/langbench change (a NotApplicable-style carve-on when an oracle's own tier structurally reports no end for any kind, mirroring signature_coverage's existing carve-out) or an upstream/backport fix to universal-ctags' HTML parser — neither is a worker's file to change."
+  "disposition": "deferred: L1 good (range_agreement not_measured: ctags writes no HTML end line); L2/L3 unmeasured, no HTML reference oracle is named (LB-Q-html-rest)"
 }
