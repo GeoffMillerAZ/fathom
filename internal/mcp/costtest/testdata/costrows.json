@@ -13,7 +13,6 @@
     "contradiction_scan": {"args": {"service": "$service", "concern": "ledger"}},
     "cross_repo_callers": {"args": {"symbol": "Post"}},
     "dead_code": {"args": {"service": "$service"}},
-    "diff_impact": {"args": {"service": "$service", "changed_files": ["ledger.go"]}},
     "discoveries": {"args": {"service": "$service"}},
     "entrypoints": {"args": {"service": "$service"}},
     "evidence_summary": {"args": {"service": "$service"}},

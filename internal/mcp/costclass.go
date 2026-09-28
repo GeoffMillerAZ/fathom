@@ -36,7 +36,7 @@ var toolCostClasses = map[string]tenancy.Class{
 	"reachable": tenancy.ClassIndex, "dead_code": tenancy.ClassIndex, "community": tenancy.ClassIndex,
 	"localize": tenancy.ClassIndex, "outline": tenancy.ClassIndex, "entrypoints": tenancy.ClassIndex,
 	"complexity": tenancy.ClassIndex, "god_object": tenancy.ClassIndex, "api_diff": tenancy.ClassIndex,
-	"arch_conformance": tenancy.ClassIndex, "diff_impact": tenancy.ClassIndex, "evidence_summary": tenancy.ClassIndex,
+	"arch_conformance": tenancy.ClassIndex, "evidence_summary": tenancy.ClassIndex,
 	"contradiction_scan": tenancy.ClassIndex, "findings_near": tenancy.ClassIndex,
 	"module_obligations": tenancy.ClassIndex, "module_query": tenancy.ClassIndex, "module_staleness": tenancy.ClassIndex,
 

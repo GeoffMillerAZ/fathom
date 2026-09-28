@@ -237,7 +237,7 @@ var nonTruncatingTools = map[string]bool{
 	"secret_scan": true, "shell_out": true, "http_client_calls": true,
 	"cloc": true, "read_source": true, "capabilities": true,
 	"server_stats": true, "list_sources": true,
-	"blast_radius": true, "diff_impact": true, "spec_coverage": true,
+	"blast_radius": true, "spec_coverage": true,
 	"traceability": true, "evidence_summary": true, "contradiction_scan": true,
 	"verify_plan": true, "review_diff": true, "findings_near": true,
 	"arch_conformance": true, "stale_docs": true, "api_diff": true,

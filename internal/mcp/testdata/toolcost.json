@@ -49,10 +49,6 @@
       "measured": "index",
       "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
     },
-    "diff_impact": {
-      "measured": "index",
-      "basis": "static read: ListAllSymbols + TypedEdges for one service"
-    },
     "discoveries": {
       "measured": "tree",
       "basis": "audit of 4200482a (design §3.1 table, by today's cost)"

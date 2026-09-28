@@ -150,20 +150,19 @@ func TestFindCallersDepthAndConfidence(t *testing.T) {
 	}
 }
 
-// BD-3: blast_radius (and its diff_impact alias) group the radius by depth.
+// BD-3: blast_radius groups the radius by depth.
 //
 // blast_radius is asked for the unbounded both-kinds walk explicitly
-// (BP-27 made resolved/depth-2 the default); diff_impact still IS that
-// walk, so it takes no arguments. The bucket shape under the new defaults
-// is pinned by TestBlastRadiusResolvedByDefault.
+// (BP-27 made resolved/depth-2 the default). The bucket shape under the
+// new defaults is pinned by TestBlastRadiusResolvedByDefault. diff_impact,
+// blast_radius's former thin alias, was unregistered by SR-25 (surface
+// reckoning F-16) — review_diff is the verb for a diff/PR impact question.
 func TestBlastRadiusByDepthField(t *testing.T) {
 	srv := mcp.NewServer(newGraphBackend())
-	for _, tool := range []string{"blast_radius", "diff_impact"} {
-		args := map[string]any{"service": "svc", "changed_files": []string{"a.go"}}
-		if tool == "blast_radius" {
-			args["include_heuristic"] = true
-			args["max_depth"] = 0
-			args["max_symbols"] = 0
+	for _, tool := range []string{"blast_radius"} {
+		args := map[string]any{
+			"service": "svc", "changed_files": []string{"a.go"},
+			"include_heuristic": true, "max_depth": 0, "max_symbols": 0,
 		}
 		payload := callTool(t, srv, tool, args)
 		buckets, ok := payload["by_depth"].([]any)

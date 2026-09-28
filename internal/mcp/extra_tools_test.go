@@ -120,23 +120,6 @@ func TestBlastRadius_MissingService(t *testing.T) {
 	}
 }
 
-// ─── diff_impact ──────────────────────────────────────────────────────────────
-
-func TestDiffImpact_Basic(t *testing.T) {
-	srv := newExtraSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 1010, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "diff_impact",
-			"arguments": map[string]any{"service": "svc", "changed_files": []string{"pkg/beta.go"}},
-		},
-	})
-	p := xtraPayload(t, resp)
-	if _, ok := p["symbols"]; !ok {
-		t.Error("diff_impact: symbols missing")
-	}
-}
-
 // ─── spec_coverage ────────────────────────────────────────────────────────────
 
 func TestSpecCoverage_Basic(t *testing.T) {
@@ -957,7 +940,7 @@ func TestExtraToolsInList(t *testing.T) {
 	}
 
 	want := []string{
-		"blast_radius", "diff_impact", "spec_coverage",
+		"blast_radius", "spec_coverage",
 		"traceability", "evidence_summary", "contradiction_scan",
 		"arch_conformance", "stale_docs", "api_diff",
 		"ingest",

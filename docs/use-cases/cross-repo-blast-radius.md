@@ -15,8 +15,7 @@ Answer "if I change X, what breaks — here and in every other service?" across 
 |---|---|---|
 | `find_callers` | MCP tool (investigation) | All symbols in the **current service** that call a named symbol |
 | `test_impact` | MCP tool (investigation) | Test functions that transitively reach the symbol via the call graph |
-| `blast_radius` | MCP tool (investigation) | Blast radius of **changed files**: symbols defined there + their transitive callers + affected tests + touched files |
-| `diff_impact` | MCP tool (investigation) | Alias of `blast_radius`, framed for diff/PR review |
+| `blast_radius` | MCP tool (investigation) | Blast radius of **changed files**: symbols defined there + their transitive callers + affected tests + touched files (widen with `max_depth:0, max_symbols:0` for the unbounded diff/PR recall its retired `diff_impact` alias gave, SR-25) |
 | `rename_impact` | MCP tool (coding) | Every call site that must be updated if the symbol is renamed |
 | `reachable` | MCP tool (coding) | Boolean: is there any directed call path from symbol A to symbol B? |
 | `cross_repo_callers` | MCP tool (platform) | All callers of a symbol **across every ingested service** via stored call edges (its `platform_callers` alias was deleted, SW-1) |
@@ -36,7 +35,7 @@ With fathom:
 2. **Test impact is automatic.** `test_impact` walks the call graph transitively; Claude Code gets an exact test list to run rather than guessing.
 3. **Rename safety is explicit.** `rename_impact` returns every call site as a list; Claude Code can iterate it, edit each site, and confirm the list shrinks to zero.
 4. **Path existence is a boolean gate.** `reachable` lets Claude Code answer "does this change propagate to the payment path?" without speculative reasoning — reducing plan drift.
-5. **Interface-dispatch callers are no longer invisible.** For Go services (ADR-021 §3), `find_callers`/`blast_radius`/`diff_impact`/`symbol_context` additionally consume typed call edges: a caller reachable only through an interface method shared by several concrete implementations — previously an unconditional refusal, since the syntax-only graph can't disambiguate an overloaded method name — now shows up, kind-labeled (`direct` / `iface-dispatch`) in `find_callers`'s `typed_callers` and `symbol_context`'s `typed_edges`, and folded directly into `blast_radius`/`diff_impact`'s symbol/test/file sets.
+5. **Interface-dispatch callers are no longer invisible.** For Go services (ADR-021 §3), `find_callers`/`blast_radius`/`symbol_context` additionally consume typed call edges: a caller reachable only through an interface method shared by several concrete implementations — previously an unconditional refusal, since the syntax-only graph can't disambiguate an overloaded method name — now shows up, kind-labeled (`direct` / `iface-dispatch`) in `find_callers`'s `typed_callers` and `symbol_context`'s `typed_edges`, and folded directly into `blast_radius`'s symbol/test/file sets.
 
 The result: impact review that would take dozens of file reads and grep calls collapses to 3-5 structured tool calls, and Claude Code can cite specific files and line numbers from the evidence rather than hedging.
 
@@ -114,7 +113,7 @@ Produces the same cross-repo caller list. The `--repos` flag is a legacy Go-only
 
 ### Diff / PR variant: blast radius of a change
 
-When you have a set of changed files (a PR, a commit), use `blast_radius` (or its PR-framed alias `diff_impact`) to get the symbols those files define plus everything transitively affected — the exact review surface:
+When you have a set of changed files (a PR, a commit), use `blast_radius` to get the symbols those files define plus everything transitively affected — the exact review surface (pass `max_depth:0, max_symbols:0` for the unbounded recall its retired `diff_impact` alias always gave, SR-25):
 
 ```json
 { "name": "blast_radius", "arguments": { "service": "auth-lib", "changed_files": ["internal/auth/token.go"] } }
@@ -151,4 +150,4 @@ After ingest, verify the `Package` column and `Calls` edges are present by check
 
 ## Maintained
 
-This doc covers: `find_callers` (incl. `depth`, `edge_confidence`, `by_depth`, `transitive_callers`), `test_impact`, `blast_radius` (incl. `by_depth`), `diff_impact`, `rename_impact`, `reachable`, `cross_repo_callers`, `references`, `list_services`, `staleness_report`, `ingest`, `fathom platform-callers`. Update it when these change.
+This doc covers: `find_callers` (incl. `depth`, `edge_confidence`, `by_depth`, `transitive_callers`), `test_impact`, `blast_radius` (incl. `by_depth`), `rename_impact`, `reachable`, `cross_repo_callers`, `references`, `list_services`, `staleness_report`, `ingest`, `fathom platform-callers`. Update it when these change.

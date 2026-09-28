@@ -2186,7 +2186,7 @@ without a second bespoke hashing API:
   hashed off the working tree, or `--manifest FILE`'s own declared
   digests).
 - `closure` — the typed import/call closure of the changed files, walked
-  forward over the SAME typed call graph `blast_radius`/`diff_impact` use
+  forward over the SAME typed call graph `blast_radius`/`review_diff` use
   (never a new import parser), digested by each reached file's store
   fingerprint.
 - `rules` — the project's `.fathom/rules/archconformance.cue` +
