@@ -451,6 +451,11 @@ func registerIngest(s *Server, backend QueryInterface) {
 				"service": map[string]any{"type": "string", "description": "Service / repo identifier"},
 				"path":    map[string]any{"type": "string", "description": "Absolute corpus root — only for onboarding a new service"},
 				"remap":   map[string]any{"type": "boolean", "description": "Authorize re-pointing an existing service's root"},
+				"indexers": map[string]any{
+					"type":        "array",
+					"items":       map[string]any{"type": "string", "enum": SCIPIndexers()},
+					"description": "SCIP producers whose .fathom/scip/<name>.scip to import as typed edges after the ingest",
+				},
 			},
 			"required": []string{"service"},
 		},
@@ -469,11 +474,19 @@ func registerIngest(s *Server, backend QueryInterface) {
 			// recorded root is refused outright — see the re-root refusal
 			// below.
 			Remap bool `json:"remap"`
+			// Indexers (SR-65, F-74) names the SCIP producers whose index
+			// `fathom init` left under the root's .fathom/scip/; the daemon
+			// imports each after the syntax pass (scip_import.go).
+			Indexers []string `json:"indexers"`
 		}
 		if err := json.Unmarshal(args, &p); err != nil || p.Service == "" {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "ingest: service required"}
 		}
 		svc := p.Service
+		indexers, ierr := validIndexers(p.Indexers)
+		if ierr != nil {
+			return nil, &rpcError{Code: ErrCodeParams, Message: "ingest: " + ierr.Error()}
+		}
 
 		// Registration hygiene (plan IO-2; O1 fix d). Enforced HERE, in the
 		// daemon's handler — client-side ValidServiceID checks let the
@@ -661,8 +674,13 @@ func registerIngest(s *Server, backend QueryInterface) {
 		// Name the root that was ingested (O22: four ok:true envelopes and
 		// not one of them said which tree). Additive; absent when the
 		// backend records no root.
+		recordedRoot := ""
 		if root, _, found, merr := backend.ServiceMeta(ctx, svc); merr == nil && found && root != "" {
 			result["root"] = root
+			recordedRoot = root
+		}
+		if len(indexers) > 0 {
+			result["scip"] = s.importIndexers(ctx, backend, svc, recordedRoot, indexers)
 		}
 		if hasStats {
 			afterUnclassified, afterOversize := sb.IngestStats()
