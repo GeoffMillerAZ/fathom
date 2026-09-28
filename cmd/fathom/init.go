@@ -1586,6 +1586,7 @@ func printGateAndConfigManualSteps(stdout io.Writer, service string) {
 	fmt.Fprintln(stdout, "MANUAL:       fathom-verify:")
 	fmt.Fprintln(stdout, "MANUAL:         run: |")
 	fmt.Fprintf(stdout, "MANUAL:           bin/fathom verify --service %s --plan docs/plans/<plan>.md --quiet\n", service)
+	initPrePushConserve(stdout, service)
 	fmt.Fprintln(stdout, "MANUAL: keep the index fresh after each commit — through the DAEMON, never a shell ingest")
 	fmt.Fprintln(stdout, "MANUAL: against the shared store (INC-3; a wedged reader once wrote a plausible empty index):")
 	fmt.Fprintln(stdout, "MANUAL:   post-commit:")
@@ -1602,6 +1603,26 @@ func printGateAndConfigManualSteps(stdout io.Writer, service string) {
 	fmt.Fprintln(stdout, "        commented (inert) — run `fathom capabilities` to see what is on and why; uncomment")
 	fmt.Fprintln(stdout, "MANUAL: and commit to guard critical scopes (docs/design/guarded-edits.md) or bind a platform")
 	fmt.Fprintln(stdout, "MANUAL: module (docs/design/platform-modules.md); neither applies until you do.")
+}
+
+// initPrePushConserve prints the MANUAL step that adds a non-blocking
+// `fathom conserve` step to the adopter's own pre-push gate, on the pushed
+// range (design surface-reckoning.md §6, SR-63; ADR-044 §6/CV-47). Today
+// only this repo's own lefthook.yml runs conserve in pre-push (the
+// refactor-conserve step); every other adopter following init's manual
+// steps got the verify gate only. fathom init never edits lefthook.yml
+// itself (a hand-curated file, printGateAndConfigManualSteps above); this
+// makes conserve part of that same printed default instead of something an
+// adopter has to already know to add. Advisory only: like the verify gate's
+// neighbor steps, this always exits 0 for a finding — only an unresolvable
+// ref or missing binary degrades, silently, per the fail-open convention
+// (docs/design/coding-agent-excellence.md §5.3).
+func initPrePushConserve(stdout io.Writer, service string) {
+	fmt.Fprintln(stdout, "MANUAL:       fathom-conserve:")
+	fmt.Fprintln(stdout, "MANUAL:         run: |")
+	fmt.Fprintln(stdout, "MANUAL:           since=$(git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null)")
+	fmt.Fprintln(stdout, "MANUAL:           [ -n \"$since\" ] || since=\"origin/main\"")
+	fmt.Fprintf(stdout, "MANUAL:           bin/fathom conserve --service %s --since \"$since\" --quiet || true\n", service)
 }
 
 // waitForIndexed polls the daemon until svc reads as indexed or t.pollFor
