@@ -194,6 +194,10 @@ func newConsoleFixtureOpts(t *testing.T, o consoleFixtureOpts) *consoleFixture {
 	t.Setenv("FATHOM_CALL_LOG", f.callLog)
 	t.Setenv("FATHOM_VERIFY_LEDGER", filepath.Join(dir, "verify-ledger.jsonl"))
 	t.Setenv("FATHOM_HOOKS_LOG", filepath.Join(dir, "hooks.jsonl"))
+	// SR-61: /explain and `fathom obligations` read the edit hook's signal
+	// log; a test that ran the hook earlier in this process must not leak
+	// its rows into a page-versus-verb parity check.
+	t.Setenv("FATHOM_RULE_OUTCOME_LOG", filepath.Join(dir, "rule-outcomes.jsonl"))
 	t.Setenv("FATHOM_CONSOLE_VIEWS", f.viewsLog)
 
 	storePath := consoleFixtureStorePath(t)

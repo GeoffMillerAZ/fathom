@@ -123,11 +123,11 @@ func RuleOutcomesView(claimIDs []string, events []semantic.RuleOutcomeEvent, rea
 		set.Rules = append(set.Rules, c)
 	}
 
-	v := Present(set, ruleOutcomeSource).WithAsOf(now)
+	v := Present(set, ruleOutcomeSource)
 	v.Denominator = fmt.Sprintf("the last %d days of %d logged rule events (log since %s)", RuleOutcomeWindowDays, read.Rows, sinceLabel(read.Since))
 	if read.Skipped > 0 {
 		return Partial(set, fmt.Sprintf("%d malformed row(s) in the log were left out, so these counts are a lower bound", read.Skipped)).
-			WithSource(ruleOutcomeSource).WithDenominator(v.Denominator).WithAsOf(now)
+			WithSource(ruleOutcomeSource).WithDenominator(v.Denominator)
 	}
 	return v
 }
