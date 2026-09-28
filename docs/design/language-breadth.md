@@ -374,7 +374,10 @@ and prints the three numbers to paste back. `subdirs` lists the grammar director
 repository root when there is more than one (tree-sitter-typescript: `typescript`, `tsx`);
 empty means the root. `commit` is the commit the tag points at (`git get-tar-commit-id` of the
 tarball), never an annotated tag object's id. The lock is decoded strictly: an unknown field
-is an error. A grammar whose release ships only
+is an error. `"predicate_export": true` adds `ts_query_predicates_for_pattern` to a blob's
+exports; the five original blobs keep `false`, because the engine reads predicates from the
+query source (LB-F2) and a rebuild of them from the lock is then byte-identical (measured:
+`build.sh typescript` reproduced the committed module's sha256). A grammar whose release ships only
 `grammar.js` sets `"generate": true` and the recipe runs a pinned `tree-sitter-cli` via
 `npx --yes tree-sitter-cli@<pinned> generate` in scratch (never a global install).
 `PROVENANCE.md` becomes a generated rendering of the lock plus the prose that is there today.

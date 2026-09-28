@@ -61,7 +61,11 @@ type GrammarLockRow struct {
 	Subdirs  []string `json:"subdirs,omitempty"`
 	Scanner  bool     `json:"scanner"`
 	Generate bool     `json:"generate"`
-	ABI      int      `json:"abi"`
+	// PredicateExport adds ts_query_predicates_for_pattern to the blob's
+	// exports (build.sh). The engine never requires it (predicates.go reads
+	// predicates from the query source); the five original blobs predate it.
+	PredicateExport bool `json:"predicate_export,omitempty"`
+	ABI             int  `json:"abi"`
 	// BlobSHA256 and BlobBytes describe the uncompressed module; GzBytes the
 	// committed <blob>.wasm.gz.
 	BlobSHA256 string `json:"blob_sha256"`
