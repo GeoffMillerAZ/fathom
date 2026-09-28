@@ -19,6 +19,11 @@ type SCIPResult struct {
 	// FileEdges are the index's cross-file edges at file granularity:
 	// (referencing document, defining document), both in this index.
 	FileEdges map[[2]string]bool
+	// EnclosingFallback counts definitions the producer gave no
+	// enclosing_range (scip-clang 0.4.0 sets none) that took their mapped
+	// fathom definition's line span instead (owner decision D5), so call
+	// truth stays measurable; the reading discloses the count.
+	EnclosingFallback int
 }
 
 // scipBareName returns a SCIP symbol's leaf descriptor name and whether it
@@ -90,10 +95,10 @@ func ScoreSCIP(raw []byte, service string, nodes []core.SymbolNode) (SCIPResult,
 	}
 
 	type fk struct{ path, name string }
-	fathomAt := map[fk][]int{}
+	fathomAt := map[fk][][2]int{} // (line, end line) per same-named definition
 	for _, n := range nodes {
 		k := fk{n.FilePath, BareName(n.Name)}
-		fathomAt[k] = append(fathomAt[k], n.Line)
+		fathomAt[k] = append(fathomAt[k], [2]int{n.Line, n.EndLine})
 	}
 	definedIn := map[string]string{} // symbol -> defining document
 	defsByDoc := map[string][]*scipDef{}
@@ -117,10 +122,18 @@ func ScoreSCIP(raw []byte, service string, nodes []core.SymbolNode) (SCIPResult,
 				def.enc, def.hasEnc = enc, true
 			}
 			res.Counts[CntScipDefs]++
-			for _, line := range fathomAt[fk{def.doc, name}] {
-				if d := line - def.line; d >= -2 && d <= 2 {
+			for _, span := range fathomAt[fk{def.doc, name}] {
+				if d := span[0] - def.line; d >= -2 && d <= 2 {
 					def.fathomDef = name
 					res.Counts[CntScipDefsMapped]++
+					if !def.hasEnc && span[1] >= span[0] && span[1] > 0 {
+						// D5: no enclosing_range from the producer — the
+						// mapped definition's own lines stand in (0-based,
+						// whole lines).
+						lo := min(int32(span[0]-1), r[0])
+						def.enc, def.hasEnc = [4]int32{lo, 0, int32(span[1] - 1), 1 << 30}, true
+						res.EnclosingFallback++
+					}
 					break
 				}
 			}
@@ -197,4 +210,158 @@ func ScoreFileEdges(truth map[[2]string]bool, edges []core.Edge, nodes []core.Sy
 			counts[CntFileEdgesAgree]++
 		}
 	}
+}
+
+// docKeywords are the declaration keywords a SCIP producer's hover text
+// (SymbolInformation.documentation, e.g. scip-typescript's "```ts\nclass
+// Foo\n```" or "(method) Foo.bar(): void") names a definition's kind by.
+var docKeywords = map[string]bool{
+	"class": true, "interface": true, "enum": true, "function": true, "method": true,
+	"constructor": true, "property": true, "field": true, "var": true, "let": true,
+	"const": true, "type": true, "module": true, "namespace": true, "struct": true,
+	"record": true, "trait": true, "getter": true, "setter": true, "alias": true,
+	"macro": true, "event": true, "delegate": true, "operator": true, "object": true,
+}
+
+var docModifiers = map[string]bool{
+	"public": true, "private": true, "protected": true, "internal": true, "static": true,
+	"abstract": true, "final": true, "export": true, "declare": true, "default": true,
+	"readonly": true, "async": true, "sealed": true, "override": true, "virtual": true,
+	"partial": true, "extern": true, "unsafe": true, "open": true, "data": true,
+}
+
+// docKeyword is the declaration keyword of a documentation string's first
+// code line ("(method) …" or "[modifiers] <keyword> …"), "" when it names
+// none this harness knows.
+func docKeyword(doc string) string {
+	for _, line := range strings.Split(doc, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "```") {
+			continue
+		}
+		if strings.HasPrefix(line, "(") {
+			if i := strings.IndexByte(line, ')'); i > 0 {
+				if k := strings.TrimSpace(line[1:i]); docKeywords[k] {
+					return k
+				}
+			}
+			return ""
+		}
+		for _, w := range strings.Fields(line) {
+			if docModifiers[w] {
+				continue
+			}
+			if docKeywords[w] {
+				return w
+			}
+			return ""
+		}
+		return ""
+	}
+	return ""
+}
+
+// scipDescriptorKind is a definition's kind from its symbol's last
+// descriptor (SCIP's grammar), and whether its parent is a type.
+func scipDescriptorKind(sym string) (kind string, scoped bool) {
+	s := sym
+	switch {
+	case strings.HasSuffix(s, ")."):
+		kind, s = "function", s[:strings.LastIndex(s, "(")]
+	case strings.HasSuffix(s, "#"):
+		kind, s = "type", s[:len(s)-1]
+	case strings.HasSuffix(s, "."):
+		kind, s = "term", s[:len(s)-1]
+	case strings.HasSuffix(s, "/"):
+		kind, s = "namespace", s[:len(s)-1]
+	case strings.HasSuffix(s, "!"):
+		kind, s = "macro", s[:len(s)-1]
+	case strings.HasSuffix(s, ":"):
+		kind, s = "meta", s[:len(s)-1]
+	default:
+		return "", false
+	}
+	if strings.HasSuffix(s, "`") {
+		if i := strings.LastIndex(s[:len(s)-1], "`"); i >= 0 {
+			s = s[:i]
+		}
+	} else if i := strings.LastIndexAny(s, "/#.: "); i >= 0 {
+		s = s[:i+1]
+	}
+	return kind, strings.HasSuffix(s, "#")
+}
+
+// SCIPDefs reads a SCIP index as a tier-A L1 oracle (owner decision D2):
+// every definition occurrence of a named, non-local, non-parameter symbol,
+// with its 1-based line, its enclosing range's last line (0 when the
+// producer gives none), and a kind — SymbolInformation.kind lowercased
+// when set, else the documentation's declaration keyword, else the
+// descriptor suffix ("function", "type", "term", "namespace", "macro",
+// "meta") — Scoped when the symbol's parent is a type (a manifest's
+// "<kind>@scoped" oracle key). A constructor's SCIP name (`<constructor>`,
+// `<init>`) becomes the name languages give it: "constructor" for
+// TypeScript/JavaScript's, the enclosing type's name for the JVM's.
+// Sorted by path, line, name.
+func SCIPDefs(raw []byte) (defs []OracleDef, tool, version string, err error) {
+	idx := &scippb.Index{}
+	if err := proto.Unmarshal(raw, idx); err != nil {
+		return nil, "", "", fmt.Errorf("scip: decode index: %w", err)
+	}
+	if ti := idx.GetMetadata().GetToolInfo(); ti != nil {
+		tool, version = ti.GetName(), ti.GetVersion()
+	}
+	for _, d := range idx.GetDocuments() {
+		info := map[string]*scippb.SymbolInformation{}
+		for _, si := range d.GetSymbols() {
+			info[si.GetSymbol()] = si
+		}
+		for _, o := range d.GetOccurrences() {
+			if o.GetSymbolRoles()&int32(scippb.SymbolRole_Definition) == 0 {
+				continue
+			}
+			sym := o.GetSymbol()
+			name, _ := scipBareName(sym)
+			r, ok := rangeOf(o.GetRange())
+			if name == "" || !ok {
+				continue
+			}
+			kind, scoped := scipDescriptorKind(sym)
+			if si := info[sym]; si != nil {
+				if k := si.GetKind(); k != scippb.SymbolInformation_UnspecifiedKind {
+					kind = strings.ToLower(k.String())
+				} else {
+					for _, doc := range si.GetDocumentation() {
+						if k := docKeyword(doc); k != "" {
+							kind = k
+							break
+						}
+					}
+				}
+			}
+			switch name {
+			case "<constructor>":
+				name = "constructor"
+			case "<init>":
+				if parent := strings.TrimSuffix(sym[:strings.LastIndex(sym, "`<init>`")], "#"); parent != "" {
+					name, _ = scipBareName(parent + "#")
+				}
+			}
+			def := OracleDef{Path: d.GetRelativePath(), Name: name, Line: int(r[0]) + 1, Kind: kind, Scoped: scoped}
+			if enc, ok := rangeOf(o.GetEnclosingRange()); ok {
+				def.End = int(enc[2]) + 1
+			}
+			defs = append(defs, def)
+		}
+	}
+	sort.SliceStable(defs, func(i, j int) bool {
+		a, b := defs[i], defs[j]
+		if a.Path != b.Path {
+			return a.Path < b.Path
+		}
+		if a.Line != b.Line {
+			return a.Line < b.Line
+		}
+		return a.Name < b.Name
+	})
+	return defs, tool, version, nil
 }

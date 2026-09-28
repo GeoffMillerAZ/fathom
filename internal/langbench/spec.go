@@ -166,6 +166,11 @@ func (m Manifest) Owns(relPath string) bool {
 // local rather than imported since internal/connector does not depend on
 // internal/langbench and this package stays free of that dependency too.
 func globMatch(pattern, p string) bool {
+	return GlobMatch(pattern, p)
+}
+
+// GlobMatch is the manifest glob rule, exported for the harness's -only.
+func GlobMatch(pattern, p string) bool {
 	return globSegs(strings.Split(pattern, "/"), strings.Split(p, "/"))
 }
 

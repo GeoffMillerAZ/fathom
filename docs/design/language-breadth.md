@@ -122,6 +122,31 @@ owner's decisions, binding on the harness and every reading after them:
   subject measured before D1 (no `extract_cpu_ms`) puts the whole reading back on the
   wall-clock basis, never a mix. C's wave-1b reading (0.62 MB/s wall) is re-graded by
   re-measurement.
+- **D2 — a stronger oracle where ctags is deficient.** When the tier-B oracle is
+  demonstrably deficient for a language (a verified mis-tag, not a disagreement), the
+  dialect is measured against a stronger one: TypeScript/JavaScript against scip-typescript
+  (tier A: `lang-oracle -scip <index> -scip-defs` scores L1 from the index's definitions —
+  `langbench.SCIPDefs`: kind from `SymbolInformation.kind`, else the hover text's
+  declaration keyword, else the descriptor suffix; `@scoped` when the parent is a type;
+  the manifest's `oracle_kinds.scip` maps them); Java against scip-java, or where it cannot
+  run on arm64 a JavaParser symbol dump (tier B, JVM, bench-only); C# against scip-dotnet
+  (tier A) if it installs, else a Roslyn syntax dump (tier B). Dumps speak the neutral
+  oracle file (`-tool-oracle`, repeatable: `definitions`, `calls`, `references`, each file
+  with its own `tier`), mapped through `oracle_kinds.tool`. SQL restricts its calibration
+  subjects to the families its grammar supports (ANSI, SQLite, PostgreSQL) with
+  `-only <globs>`; the reading names the restriction and the unsupported families (T-SQL,
+  MySQL, Oracle, Db2, Vertica) are a disclosed gap. Node, a JVM and the .NET SDK are bench
+  instruments only (installed under the measurement scratch dir), never product
+  dependencies. An instrument that cannot be installed is recorded with why, and the
+  reading keeps ctags with the deficiency disclosed — L1 capped at good.
+- **D5 — an L2 calls oracle for every language dialect.** Where no SCIP producer exists
+  (bash, SQL …), call pairs come from the grammar's upstream `queries/tags.scm` run by an
+  independent runtime (py-tree-sitter or the tree-sitter CLI): each `@reference.call`'s
+  `@name` paired with its innermost enclosing `@definition.*`'s `@name`, emitted as the
+  neutral file's `calls` at tier C (L2 good at most). Where SCIP gives references it stays
+  tier A; a producer that sets no `enclosing_range` (scip-clang 0.4.0) no longer zeroes the
+  calls: a definition mapped to a fathom definition takes that definition's line span, and
+  the reading counts how many did.
 - **D6 — a queue-item dependency is met at L1.** A queue item that depends on another queue
   item (cpp on c; scss and less on css) is eligible once the parent has a committed reading
   at L1 or better, not only once the parent's row is `[x]` (its row may stay open for L4
@@ -484,7 +509,9 @@ go run ./cmd/indexbench lang-oracle \
   -subject workspace/calibration/swift/Alamofire \
   -ctags workspace/tools/ctags \
   [-scip workspace/tmp/scip/swift-alamofire.scip] \
-  [-tool-oracle workspace/tmp/oracle/<id>-<subject>.json] \
+  [-scip-defs]                                 # L1 from the SCIP index, tier A (D2)
+  [-tool-oracle workspace/tmp/oracle/<id>-<subject>.json]...   # repeatable (D2, D5)
+  [-only 'dir/**/*.sql,other.sql'] \             # restrict the subject (D2)
   -out docs/bench/readings/lang/swift.json   # merges subjects: one reading per dialect
 ```
 
