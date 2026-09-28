@@ -198,6 +198,14 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 			}
 			receipt := reviewDiffReceipt(ng.Both, ng.Nodes, in, v, hops, table)
 			payload["receipt"] = riskReceiptPayload(receipt)
+			// SR-49 (docs/plans/surface-reckoning.md): the SAME receipt,
+			// additionally rendered as SARIF 2.1.0 and a GitHub check-run
+			// payload through review.ChangeRiskReceipt — embedded as raw
+			// JSON (json.RawMessage) rather than an escaped string, so the
+			// tool's overall JSON payload carries them as nested objects.
+			receiptSARIF, receiptCheck := review.ChangeRiskReceipt("fathom review_diff", receipt)
+			payload["receipt_sarif"] = json.RawMessage(receiptSARIF)
+			payload["receipt_check"] = json.RawMessage(receiptCheck)
 		}
 		return payload, nil
 	})
