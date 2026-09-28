@@ -65,6 +65,9 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 	strictMutation := fs.Bool("strict-mutation", false, "gate-fail a covered-not-asserted finding instead of noting it as advisory")
 	rowID := fs.String("row", "", "narrow the report and the gate to one row id (the console's row evidence renders `verify --row ID --json`); every plan is still verified and ledgered in full")
 	dialectID := fs.String("dialect", "", "spec dialect every --plan file is read with (fathom-v2 | speckit | openspec); default: detected per file by its path and content shape (ADR-049)")
+	converge := fs.Bool("converge", false, "also print each plan's converge report (ADR-049, spec-interop design §5): claimed-unproven tasks with the failing criterion, unanchored tasks, and code changed on the spec's branch range that no task anchors (the last needs --store); exit codes are the gate's, unchanged")
+	convergeBase := fs.String("base", "", "--converge: the branch range's base ref (default: the commit that added the spec file)")
+	writeFixups := fs.Bool("write-fixups", false, "--converge: append a fix-up task per claimed-unproven and unclaimed item inside the spec's <!-- fathom:begin converge --> block, in the spec's own checkbox shape; text outside the markers never changes (law 15)")
 	since := fs.String("since", "", "git ref to compare each --plan file against (ADR-044 §1.4, I45): a claimed row's skip/disposition/retires/surface_change/raised-max gained since <ref> is reported self-declared and never excuses a loss; rows present at <ref> and missing now are reported deleted. Applies only inside a git work tree; a ref the plan file did not exist at counts as every current row being self-declared.")
 
 	if err := fs.Parse(args); err != nil {
@@ -80,6 +83,10 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 	case "", "text", "json", "sarif":
 	default:
 		fmt.Fprintf(stderr, "error: --format %q: want text, json or sarif\n", *format)
+		return 2
+	}
+	if (*writeFixups || *convergeBase != "") && !*converge {
+		fmt.Fprintln(stderr, "error: --write-fixups and --base apply only with --converge")
 		return 2
 	}
 	if len(plans) == 0 {
@@ -106,6 +113,7 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 	// verdict lines point into the author's own file, and the daemon is
 	// sent the plan synthesized into the native grammar, never the bytes.
 	foreign := make([]bool, 0, len(plans))
+	dialectIDs := make([]string, 0, len(plans))
 	dialects := specdialect.Default()
 	for _, pf := range plans {
 		raw, err := os.ReadFile(pf)
@@ -159,6 +167,7 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 		localPlans = append(localPlans, lp)
 		planBytes = append(planBytes, raw)
 		foreign = append(foreign, d.ID() != specdialect.NativeID)
+		dialectIDs = append(dialectIDs, d.ID())
 	}
 
 	// The working tree lexical oracles (ADR-030) read: the tree the plan
@@ -246,6 +255,24 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, notice)
 	}
 
+	// --converge (ADR-049, design §5): one report per plan over the full
+	// verdicts (before any --row narrowing); --write-fixups then writes
+	// only inside each spec's converge block.
+	var converged []specdialect.ConvergeReport
+	if *converge {
+		for i, pf := range plans {
+			r := buildConverge(pf, dialectIDs[i], localPlans[i], reports[i], *service, *storePath, *convergeBase)
+			converged = append(converged, r)
+			if *writeFixups {
+				if err := writeFixupsFile(pf, dialectIDs[i], planBytes[i], localPlans[i], r); err != nil {
+					fmt.Fprintf(stderr, "error: --write-fixups: %v\n", err)
+					return 2
+				}
+				fmt.Fprintf(stderr, "converge: %s: %d fix-up task(s) in its converge block\n", pf, len(r.ClaimedUnproven)+len(r.Unclaimed))
+			}
+		}
+	}
+
 	// --row narrows what is reported and gated to one row (the ledger
 	// above already recorded every plan in full).
 	if *rowID != "" {
@@ -265,6 +292,9 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 		_, _ = stdout.Write(verify.RenderSARIF("fathom verify", verify.GateSARIF(plans, reports, *strict)))
 	} else if *format == "json" {
 		out := verifyJSONDoc(reports, allFail)
+		if *converge {
+			out["converge"] = converged
+		}
 		enc := json.NewEncoder(stdout)
 		enc.SetIndent("", "  ")
 		_ = enc.Encode(out)
@@ -341,6 +371,11 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 				}
 				fmt.Fprintf(stdout, "deleted since %s (%s): %s\n", *since, plans[i], strings.Join(lp.DeletedRows, ", "))
 			}
+		}
+	}
+	if *converge && *format != "json" && *format != "sarif" {
+		for _, r := range converged {
+			specdialect.RenderConverge(stdout, r)
 		}
 	}
 
