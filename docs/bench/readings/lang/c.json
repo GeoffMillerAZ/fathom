@@ -2,7 +2,7 @@
   "dialect": "c",
   "kind": "language",
   "target_level": "L4",
-  "level_met": "none",
+  "level_met": "L1",
   "grade": {
     "L1": "good",
     "L2": "unmet",
@@ -10,28 +10,30 @@
     "L4": "unmet"
   },
   "measured_at": "2026-09-28",
-  "fathom_commit": "0e2c7702",
+  "fathom_commit": "bab7f72c",
   "extractor": "dialect",
   "subjects": [
     {
-      "name": "libuv",
+      "name": "libuv/libuv",
       "sha": "840404ce8ba7cc0204be52389a6cfff9f2c90fb6",
       "files": 331,
       "bytes": 2814983,
       "counts": {
         "call_fathom": 2325,
-        "call_truth": 0,
+        "call_fathom_in_truth": 1406,
+        "call_truth": 1662,
+        "call_truth_found": 1406,
         "callables": 2696,
         "callables_signed": 2696,
         "fathom_defs": 4035,
-        "kind_equal": 3988,
-        "matched": 3988,
+        "kind_equal": 4031,
+        "matched": 4031,
         "oracle_defs": 4631,
         "range_eligible": 3955,
         "range_ok": 3949,
         "scip_defs": 2343,
-        "scip_defs_mapped": 624,
-        "scip_edges": 2052,
+        "scip_defs_mapped": 626,
+        "scip_edges": 2048,
         "scip_edges_typed": 0
       },
       "families": {
@@ -56,8 +58,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 4514.759000000001,
-        "max_file_ms": 275,
+        "extract_ms": 1226.7289999999998,
+        "extract_cpu_ms": 968.4100000000001,
+        "max_file_ms": 100,
         "peak_module_pages": 374,
         "compiled_bytes": 0
       }
@@ -76,21 +79,22 @@
     }
   ],
   "metrics": {
-    "call_precision": 0,
-    "call_recall": null,
-    "def_mapping": 0.2663,
+    "call_precision": 0.6047,
+    "call_recall": 0.846,
+    "def_mapping": 0.2672,
     "file_edge_precision": null,
     "file_edge_recall": null,
     "import_resolution": null,
     "kind_agreement": 1,
     "range_agreement": 0.9985,
     "signature_coverage": 1,
-    "sym_precision": 0.9884,
-    "sym_recall": 0.8612,
+    "sym_precision": 0.999,
+    "sym_recall": 0.8704,
     "typed_recall": 0
   },
   "metric_tiers": {
     "call_precision": "A",
+    "call_recall": "A",
     "def_mapping": "A",
     "kind_agreement": "B",
     "range_agreement": "B",
@@ -117,25 +121,29 @@
   ],
   "counts": {
     "call_fathom": 2325,
-    "call_truth": 0,
+    "call_fathom_in_truth": 1406,
+    "call_truth": 1662,
+    "call_truth_found": 1406,
     "callables": 2696,
     "callables_signed": 2696,
     "fathom_defs": 4035,
-    "kind_equal": 3988,
-    "matched": 3988,
+    "kind_equal": 4031,
+    "matched": 4031,
     "oracle_defs": 4631,
     "range_eligible": 3955,
     "range_ok": 3949,
     "scip_defs": 2343,
-    "scip_defs_mapped": 624,
-    "scip_edges": 2052,
+    "scip_defs_mapped": 626,
+    "scip_edges": 2048,
     "scip_edges_typed": 0
   },
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 0.62,
-    "max_file_ms": 275,
+    "throughput_mb_s": 2.91,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 2.29,
+    "max_file_ms": 100,
     "peak_module_pages": 374,
     "compiled_bytes": 0
   },
@@ -146,10 +154,8 @@
   },
   "notes": [
     "import_resolution not measured: in-repo spec counts arrive with the L3 strategies (LB-F11)",
-    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
-    "sym_recall capped below excellent by universal-ctags 6.2.1's own heuristic, not a missed query: any `MACRO_NAME(args) {` at file scope (libuv's TEST_IMPL/BENCHMARK_IMPL test-registration macros, 507 uses across test/*.c) is tagged by ctags as a function literally named by the macro identifier (verified directly: ctags emits {name: \"TEST_IMPL\", kind: \"function\", end: <the whole body's close brace>}), which fathom's real tree-sitter parse correctly does not do (TEST_IMPL(name) is a call_expression, not a function_definition, with no preprocessor expansion) — an oracle-heuristic gap, the same shape as LB-Q-css's BareName and LB-Q-html's range_agreement precedents, not a fixable pattern",
-    "call_precision/call_recall/typed_recall are 0/0/0 with a real, clean SCIP index (2.1 s, 0 errored TUs, 37 hand-built compile_commands.json entries covering libuv's darwin/APPLE CMakeLists.txt file set) because scip-clang v0.4.0 never sets occurrence.enclosing_range on any definition (verified directly: 5,716 definition occurrences, 0 with an enclosing_range) — internal/langbench.ScoreSCIP's call-pair attribution requires it to find a reference's containing definition, so it finds none regardless of subject or compile_commands.json completeness; this is a foundation-level internal/langbench gap (LB-F16's domain), not something a queue worker's tags.scm/imports.scm can route around",
-    "L3's import_resolution/file_edge metrics are separately not wired into indexbench lang-oracle for any dialect yet (the note above is boilerplate in the harness); the include-path strategy itself is proven end-to-end for this dialect by internal/fusion.TestResolveFileEdges_CIncludes (a #include \"util.h\" resolving a same-scope call across two fixture files), not by this reading"
+    "libuv/libuv: 626 SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
   ],
-  "disposition": "deferred: target L4 not reached. L1 good (ctags tier B; see notes for the recall cap). L2/L4 blocked on an internal/langbench.ScoreSCIP fix (definitions need an enclosing-range fallback — e.g. a definition's own [Line,EndLine] — for scip-clang's output, which never sets occurrence.enclosing_range); L3's harness wiring (import_resolution/file_edge scoring) is unbuilt for any dialect. Trigger: internal/langbench gains an enclosing-range fallback for a SCIP producer that omits it, or a newer scip-clang sets it — then re-run indexbench lang-oracle -dialect c with a real compile_commands.json (this attempt's is calibration/corpus.d/c.yaml's libuv, hand-built from its CMakeLists.txt darwin file list — see PROVENANCE.md) and re-measure."
+  "disposition": "partial: target L4, met L1 good (the throughput floor now judged on CPU time, D1: 2.91 MB/CPU-s; wave 1b's 0.62 MB/s was wall clock under contention). L1 good, not excellent: sym_recall 0.8704 against universal-ctags 6.2.1 — ctags tags libuv's TEST_IMPL/BENCHMARK_IMPL macro uses as functions named by the macro. L2 unmet: scip-clang 0.4.0 calls now measurable (D5 enclosing-range fallback, 626 definitions): call_recall 0.846 good, call_precision 0.6047 vs .85, not root-caused this round. L4: typed_recall 0 — internal/scip.ImportIndex attributes a reference by its SCIP definition's enclosing_range, which scip-clang never sets, so `fathom ingest --scip` of a scip-clang index yields no typed edges (a product gap, not a bench one); def_mapping 0.2672. Trigger: ImportIndex gains the same mapped-definition line-span fallback, and an L2 pass classifies the unmatched call pairs."
 }

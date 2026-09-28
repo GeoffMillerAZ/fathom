@@ -2,76 +2,45 @@
   "dialect": "csharp",
   "kind": "language",
   "target_level": "L4",
-  "level_met": "none",
+  "level_met": "L1",
   "grade": {
-    "L1": "unmet",
-    "L2": "not-attempted",
+    "L1": "excellent",
+    "L2": "unmet",
     "L3": "not-attempted",
-    "L4": "not-attempted"
+    "L4": "unmet"
   },
   "measured_at": "2026-09-28",
-  "fathom_commit": "dd97b3b5",
+  "fathom_commit": "bab7f72c",
   "extractor": "dialect",
   "subjects": [
     {
-      "name": "Newtonsoft.Json",
-      "sha": "4e13299d4b0ec96bd4df9954ef646bd2d1b5bf2a",
-      "files": 944,
-      "bytes": 7091764,
-      "counts": {
-        "callables": 7337,
-        "callables_signed": 7337,
-        "fathom_defs": 12618,
-        "kind_equal": 10774,
-        "matched": 10774,
-        "oracle_defs": 12014,
-        "range_eligible": 10770,
-        "range_ok": 10749
-      },
-      "families": {
-        "l1": "B"
-      },
-      "kind_intersection": [
-        "class",
-        "enum",
-        "interface",
-        "method",
-        "namespace",
-        "property",
-        "struct"
-      ],
-      "excluded_by_kind": {
-        "ctags:enumerator": 488,
-        "ctags:event": 22,
-        "ctags:field": 1399,
-        "ctags:typedef": 651
-      },
-      "tenancy": {
-        "faults": 0,
-        "faulting_files": [],
-        "extract_ms": 1857.2549999999997,
-        "max_file_ms": 106,
-        "peak_module_pages": 629,
-        "compiled_bytes": 0
-      }
-    },
-    {
-      "name": "Polly",
+      "name": "App-vNext/Polly",
       "sha": "9ad5ae9b4ff9beb4321b0762249ce173b984f817",
       "files": 801,
       "bytes": 4479791,
       "counts": {
+        "call_fathom": 18519,
+        "call_fathom_in_truth": 13391,
+        "call_truth": 14054,
+        "call_truth_found": 13391,
         "callables": 5079,
         "callables_signed": 5079,
         "fathom_defs": 7337,
-        "kind_equal": 5838,
-        "matched": 5875,
-        "oracle_defs": 6147,
-        "range_eligible": 5873,
-        "range_ok": 5863
+        "kind_equal": 7170,
+        "matched": 7175,
+        "oracle_defs": 7344,
+        "range_eligible": 7175,
+        "range_ok": 6384,
+        "scip_defs": 7296,
+        "scip_defs_mapped": 6106,
+        "scip_edges": 0,
+        "scip_edges_typed": 0
       },
       "families": {
-        "l1": "B"
+        "calls": "A",
+        "defmap": "A",
+        "l1": "B",
+        "typed": "A"
       },
       "kind_intersection": [
         "class",
@@ -83,16 +52,76 @@
         "struct"
       ],
       "excluded_by_kind": {
-        "ctags:enumerator": 65,
-        "ctags:field": 1005,
-        "ctags:typedef": 18
+        "tool:delegate": 2,
+        "tool:destructor": 1,
+        "tool:enumMember": 65,
+        "tool:field": 733,
+        "tool:indexer": 5
       },
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 1341.218999999998,
-        "max_file_ms": 55,
+        "extract_ms": 1693.4939999999995,
+        "extract_cpu_ms": 1608.2359999999999,
+        "max_file_ms": 71,
         "peak_module_pages": 519,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "JamesNK/Newtonsoft.Json",
+      "sha": "4e13299d4b0ec96bd4df9954ef646bd2d1b5bf2a",
+      "files": 944,
+      "bytes": 7091764,
+      "counts": {
+        "call_fathom": 18660,
+        "call_fathom_in_truth": 15516,
+        "call_truth": 16522,
+        "call_truth_found": 15516,
+        "callables": 7337,
+        "callables_signed": 7337,
+        "fathom_defs": 12618,
+        "kind_equal": 12479,
+        "matched": 12479,
+        "oracle_defs": 12556,
+        "range_eligible": 12479,
+        "range_ok": 12474,
+        "scip_defs": 12508,
+        "scip_defs_mapped": 10174,
+        "scip_edges": 0,
+        "scip_edges_typed": 0
+      },
+      "families": {
+        "calls": "A",
+        "defmap": "A",
+        "l1": "B",
+        "typed": "A"
+      },
+      "kind_intersection": [
+        "class",
+        "enum",
+        "interface",
+        "method",
+        "namespace",
+        "property",
+        "struct"
+      ],
+      "excluded_by_kind": {
+        "tool:delegate": 21,
+        "tool:destructor": 2,
+        "tool:enumMember": 464,
+        "tool:event": 26,
+        "tool:field": 1195,
+        "tool:indexer": 32,
+        "tool:operator": 2
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 3969.997999999996,
+        "extract_cpu_ms": 2938.0650000000023,
+        "max_file_ms": 228,
+        "peak_module_pages": 629,
         "compiled_bytes": 0
       }
     }
@@ -100,25 +129,33 @@
   "oracles": [
     {
       "tier": "B",
-      "tool": "universal-ctags",
-      "version": "6.2.1"
+      "tool": "roslyn-syntax",
+      "version": "Microsoft.CodeAnalysis.CSharp 5.9.0"
+    },
+    {
+      "tier": "A",
+      "tool": "scip-dotnet",
+      "version": "0.1.0-SNAPSHOT"
     }
   ],
   "metrics": {
-    "call_precision": null,
-    "call_recall": null,
-    "def_mapping": null,
+    "call_precision": 0.7775,
+    "call_recall": 0.9454,
+    "def_mapping": 0.8221,
     "file_edge_precision": null,
     "file_edge_recall": null,
     "import_resolution": null,
-    "kind_agreement": 0.9978,
-    "range_agreement": 0.9981,
+    "kind_agreement": 0.9997,
+    "range_agreement": 0.9595,
     "signature_coverage": 1,
-    "sym_precision": 0.8343,
-    "sym_recall": 0.9167,
+    "sym_precision": 0.9849,
+    "sym_recall": 0.9876,
     "typed_recall": null
   },
   "metric_tiers": {
+    "call_precision": "A",
+    "call_recall": "A",
+    "def_mapping": "A",
     "kind_agreement": "B",
     "range_agreement": "B",
     "signature_coverage": "B",
@@ -144,34 +181,47 @@
     "struct"
   ],
   "counts": {
+    "call_fathom": 37179,
+    "call_fathom_in_truth": 28907,
+    "call_truth": 30576,
+    "call_truth_found": 28907,
     "callables": 12416,
     "callables_signed": 12416,
     "fathom_defs": 19955,
-    "kind_equal": 16612,
-    "matched": 16649,
-    "oracle_defs": 18161,
-    "range_eligible": 16643,
-    "range_ok": 16612
+    "kind_equal": 19649,
+    "matched": 19654,
+    "oracle_defs": 19900,
+    "range_eligible": 19654,
+    "range_ok": 18858,
+    "scip_defs": 19804,
+    "scip_defs_mapped": 16280,
+    "scip_edges": 0,
+    "scip_edges_typed": 0
   },
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 3.62,
-    "max_file_ms": 106,
+    "throughput_mb_s": 2.55,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 2.04,
+    "max_file_ms": 228,
     "peak_module_pages": 629,
     "compiled_bytes": 0
   },
   "excluded_by_kind": {
-    "ctags:enumerator": 553,
-    "ctags:event": 22,
-    "ctags:field": 2404,
-    "ctags:typedef": 669
+    "tool:delegate": 23,
+    "tool:destructor": 3,
+    "tool:enumMember": 529,
+    "tool:event": 26,
+    "tool:field": 1928,
+    "tool:indexer": 37,
+    "tool:operator": 2
   },
   "notes": [
-    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
-    "measured with a fix to indexbench lang-oracle itself (cmd/indexbench/langoracle.go): before this attempt, -dialect always measured fusion's LIVE dispatch (ExtractForBench, with=nil), which for a port whose incumbent has not yet passed the merge gate (§11 step 2) is the CGO incumbent, not the dialect just written — verified directly: the first csharp run under the unpatched tool read signature_coverage 0 (csharpextract.go never sets SymbolNode.Signature) despite the dialect itself signing every callable (internal/extractor's own goldens); a fresh run of `lang-oracle -dialect c` on the c dialect's own fixtures reproduced the identical zero-signature symptom on this exact checkout, confirming it was not csharp-specific. Design §10 says lang-oracle 'runs the dialect's extractor on each' — the fix (ExtractForBenchWith, already built for lang-parity/LB-F18, simply never wired into lang-oracle) makes that literally true. This affects every not-yet-merged port's own future re-measurement, not just this reading.",
-    "sym_recall is good on both subjects (.8968 Newtonsoft.Json, .9167 Polly) but sym_precision is short of good (.90) on both (.8539, .8343): three investigation rounds (design §13.2 step 21) did not isolate one dominant, fixable cause the way LB-Q-c's TEST_IMPL macros or LB-Q-sql's two tooling gaps did. Ruled out directly: universal-ctags DOES tag block-scoped namespace declarations correctly (verified: JsonSerializer.cs's own namespace tag lines up with fathom's, an earlier read of the raw ctags dump that seemed to show zero namespace tags was this worker's own analysis filter excluding the kind, not a real gap); a full name+line diff of JsonSerializer.cs's 55 defs against ctags showed zero mismatches beyond the harness's own <=2-line tolerance. Added beyond the incumbent within this attempt: conversion operators (`public static explicit/implicit operator T(...)`, 81 in Newtonsoft.Json alone — csharpextract.go never extracted these; tags.scm's conversion_operator_declaration pattern uses the target type as a stand-in name, since this grammar gives them no name field at all) — real symbols now captured for fathom's own callers, but they do not move sym_precision: universal-ctags names them synthetically (\"operator bool\", \"operator JToken\", the literal string \"operator \" prefixed to the type), which no structural tree-sitter capture can reproduce (the query engine captures node text, never a synthesized string), so they simply add unmatched defs on both sides rather than closing the gap. The remaining ~1.8k (Newtonsoft.Json) / ~1.3k (Polly) unmatched fathom defs were not traced to a single mechanism within this attempt's budget.",
-    "L2-L4 not attempted this round: scip-dotnet v0.2.14 needs a buildable .NET solution (design §7), and this worktree has no dotnet SDK; installing one, restoring both subjects' NuGet dependencies and running the indexer was judged not worth the remaining time budget given L1 itself is not yet good. Separately, verified directly (internal/fusion/csharpfileresolve_test.go, TestResolveFileEdges_CSharpUsing): namespace-dir's 'whole' import binding only matches a call whose text is itself prefixed by the using's own LocalName — the ordinary C# idiom (`using MyApp.Util;` then an unqualified `Helper.Assist()`, exactly why `using` exists) produces zero file-resolved edges under this strategy, since namespace-dir is not in ResolveFileEdges' wholeIsWildcard closed set (include-path/file-symbol/swift-module only); only an aliased, receiver-qualified call (`using U = MyApp.Util; U.Helper.Assist();`) reaches the 'whole' path at all. This is a real, if less common, C# pattern, proven end to end by the fixture test — not a claim that the common case resolves. Widening wholeIsWildcard to also cover C# (and, by the same argument, Java's `import pkg.*;`) is a foundation-level fusion change (design §6), flagged for Opus, not made here."
+    "App-vNext/Polly: 6106 SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)",
+    "JamesNK/Newtonsoft.Json: 10174 SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)",
+    "import_resolution not measured: in-repo spec counts arrive with the L3 strategies (LB-F11)",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
   ],
-  "disposition": "deferred: target L4 not reached. L1 unmet: sym_recall good on both subjects (.8968/.9167) but sym_precision short of good (.8343-.8539 vs .90) with no single dominant cause isolated in three investigation rounds (namespace tagging and a JsonSerializer.cs full-file diff both ruled out; conversion operators added real coverage but cannot name-match ctags' synthetic \"operator T\" naming). L2 blocked: no SCIP index was produced this attempt (scip-dotnet needs a buildable .NET solution and a dotnet SDK, neither set up here) and, separately, namespace-dir's whole-import call matching does not reach C#'s ordinary unqualified-after-using idiom (verified, TestResolveFileEdges_CSharpUsing) — a foundation-level fusion gap, not this item's tags.scm to route around. L3/L4 depend on L2. Trigger: a worker (or a future attempt) installs a dotnet SDK, builds Newtonsoft.Json and/or Polly, runs scip-dotnet, and re-measures with -scip; separately, an Opus decision on widening wholeIsWildcard for C#/Java-shaped whole-namespace imports would let the common case resolve; the sym_precision gap's exact composition across 1,745 files is also worth a closer pass before the next attempt."
+  "disposition": "partial: target L4, met L1 excellent against a Roslyn 5.9.0 syntax dump (tier B, D2 — scip-dotnet 0.2.14 sets neither kinds nor enclosing ranges, so it cannot measure ranges) on Newtonsoft.Json + Polly: sym_recall 0.9876, sym_precision 0.9849, range 0.9595. L2 unmet against scip-dotnet (tier A, D5 enclosing fallback): call_recall 0.9454, call_precision 0.7775 vs .85, not root-caused this round. L4: def_mapping 0.8221; typed_recall unmeasured — ImportIndex keeps no edge from an index without enclosing ranges (the C gap). using X; Y.Z() now resolves (D7). Trigger: ImportIndex's enclosing fallback and an L2 pass over the unmatched pairs."
 }

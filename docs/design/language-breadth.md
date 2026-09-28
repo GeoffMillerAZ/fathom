@@ -172,6 +172,28 @@ owner's decisions, binding on the harness and every reading after them:
   for months). Foundation rows still need `[x]`/`[-]`. `langbench.QueueEligibility` and
   `indexbench lang-next` compute it (§13.0 step 2).
 
+**Round-2 re-measurement (2026-09-28), with the instruments above** — the readings in
+`docs/bench/readings/lang/` carry the numbers and the dispositions:
+
+| Item | Wave 1b | Round 2 | L1 oracle | L2 oracle |
+|---|---|---|---|---|
+| c | none (0.62 MB/s wall) | L1 good | ctags (B) | scip-clang (A, D5 fallback): precision short |
+| typescript | none | L1 excellent | scip-typescript (A) + D3 | scip-typescript: precision short |
+| javascript | none | L1 excellent | scip-typescript (A) + D3 | scip-typescript: not adequate for untyped JS |
+| java | none | L2 good | JavaParser dump (B) | JavaParser dump (B) |
+| csharp | none | L1 excellent | Roslyn dump (B) | scip-dotnet (A): precision short |
+| sql | none | L2 good | ctags (B), restricted families | sqlglot FK pairs (C) |
+| bash | L1 good | L2 good | ctags (B) | aider bash-tags.scm on py-tree-sitter (C) |
+| github-actions | L2 good | L3 good | actionlint walk (C) | same, `cross_references` (D4) |
+| kubernetes | L2 good | L3 good | yaml.v3 walk (C) | same, label-selector joins (D4) |
+| dockerfile | L2 excellent | L2 excellent (re-graded) | buildkit parser (A) | L3 waits on LB-X-docker-image-ref |
+
+Two re-measurement findings changed the dialects themselves: TypeScript missed abstract
+classes and every bodiless signature (fixed, `ExtractorEpoch` 17), and SQL invented a
+column for each PostgreSQL `ATTACH PARTITION` (fixed). One is a product limit, disclosed:
+a SQL data dump past about 400 KB builds a tree larger than the 64 MiB module cap and
+faults (chinook-database left the subjects for it).
+
 ---
 
 ## 2. Dialects as data

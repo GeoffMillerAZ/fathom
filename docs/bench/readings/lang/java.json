@@ -2,34 +2,39 @@
   "dialect": "java",
   "kind": "language",
   "target_level": "L4",
-  "level_met": "none",
+  "level_met": "L2",
   "grade": {
-    "L1": "unmet",
-    "L2": "not-attempted",
+    "L1": "excellent",
+    "L2": "good",
     "L3": "not-attempted",
     "L4": "not-attempted"
   },
   "measured_at": "2026-09-28",
-  "fathom_commit": "dd97b3b5",
+  "fathom_commit": "bab7f72c",
   "extractor": "dialect",
   "subjects": [
     {
-      "name": "guava",
+      "name": "google/guava",
       "sha": "c5b5a383a1f7f4a84c17de910f61181011c95908",
       "files": 611,
       "bytes": 6797263,
       "counts": {
+        "call_fathom": 18233,
+        "call_fathom_in_truth": 18195,
+        "call_truth": 18646,
+        "call_truth_found": 18195,
         "callables": 13004,
         "callables_signed": 13004,
         "fathom_defs": 17314,
-        "kind_equal": 15827,
-        "matched": 15827,
-        "oracle_defs": 16274,
-        "range_eligible": 15827,
-        "range_ok": 15827,
+        "kind_equal": 16859,
+        "matched": 16859,
+        "oracle_defs": 17314,
+        "range_eligible": 16859,
+        "range_ok": 16859,
         "type_refs": 2396
       },
       "families": {
+        "calls": "B",
         "l1": "B"
       },
       "kind_intersection": [
@@ -40,36 +45,42 @@
         "method"
       ],
       "excluded_by_kind": {
-        "ctags:enumConstant": 185,
-        "ctags:package": 610,
-        "fathom:JavaImport": 6522
+        "fathom:JavaImport": 6522,
+        "tool:annotationMember": 4,
+        "tool:enumConstant": 176
       },
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 990.7560000000002,
-        "max_file_ms": 51,
+        "extract_ms": 2024.3230000000003,
+        "extract_cpu_ms": 1386.7259999999992,
+        "max_file_ms": 134,
         "peak_module_pages": 406,
         "compiled_bytes": 0
       }
     },
     {
-      "name": "retrofit",
+      "name": "square/retrofit",
       "sha": "3ab0f1a2c18666adb79ebf4eacef6fbc40d3e801",
       "files": 304,
       "bytes": 1274479,
       "counts": {
+        "call_fathom": 9303,
+        "call_fathom_in_truth": 9303,
+        "call_truth": 9359,
+        "call_truth_found": 9303,
         "callables": 2715,
         "callables_signed": 2715,
         "fathom_defs": 4204,
-        "kind_equal": 3461,
-        "matched": 3461,
-        "oracle_defs": 3526,
-        "range_eligible": 3461,
-        "range_ok": 3461,
+        "kind_equal": 4170,
+        "matched": 4170,
+        "oracle_defs": 4204,
+        "range_eligible": 4170,
+        "range_ok": 4170,
         "type_refs": 1560
       },
       "families": {
+        "calls": "B",
         "l1": "B"
       },
       "kind_intersection": [
@@ -80,15 +91,16 @@
         "method"
       ],
       "excluded_by_kind": {
-        "ctags:enumConstant": 4,
-        "ctags:package": 304,
-        "fathom:JavaImport": 2933
+        "fathom:JavaImport": 2933,
+        "tool:annotationMember": 27,
+        "tool:enumConstant": 4
       },
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 274.87799999999993,
-        "max_file_ms": 29,
+        "extract_ms": 604.6769999999996,
+        "extract_cpu_ms": 445.69300000000004,
+        "max_file_ms": 55,
         "peak_module_pages": 345,
         "compiled_bytes": 0
       }
@@ -97,13 +109,13 @@
   "oracles": [
     {
       "tier": "B",
-      "tool": "universal-ctags",
-      "version": "6.2.1"
+      "tool": "javaparser",
+      "version": "3.28.2"
     }
   ],
   "metrics": {
-    "call_precision": null,
-    "call_recall": null,
+    "call_precision": 0.9986,
+    "call_recall": 0.9819,
     "def_mapping": null,
     "file_edge_precision": null,
     "file_edge_recall": null,
@@ -111,11 +123,13 @@
     "kind_agreement": 1,
     "range_agreement": 1,
     "signature_coverage": 1,
-    "sym_precision": 0.8964,
-    "sym_recall": 0.9741,
+    "sym_precision": 0.9773,
+    "sym_recall": 0.9773,
     "typed_recall": null
   },
   "metric_tiers": {
+    "call_precision": "B",
+    "call_recall": "B",
     "kind_agreement": "B",
     "range_agreement": "B",
     "signature_coverage": "B",
@@ -137,32 +151,39 @@
     "method"
   ],
   "counts": {
+    "call_fathom": 27536,
+    "call_fathom_in_truth": 27498,
+    "call_truth": 28005,
+    "call_truth_found": 27498,
     "callables": 15719,
     "callables_signed": 15719,
     "fathom_defs": 21518,
-    "kind_equal": 19288,
-    "matched": 19288,
-    "oracle_defs": 19800,
-    "range_eligible": 19288,
-    "range_ok": 19288,
+    "kind_equal": 21029,
+    "matched": 21029,
+    "oracle_defs": 21518,
+    "range_eligible": 21029,
+    "range_ok": 21029,
     "type_refs": 3956
   },
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 6.38,
-    "max_file_ms": 51,
+    "throughput_mb_s": 4.4,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 3.07,
+    "max_file_ms": 134,
     "peak_module_pages": 406,
     "compiled_bytes": 0
   },
   "excluded_by_kind": {
-    "ctags:enumConstant": 189,
-    "ctags:package": 914,
-    "fathom:JavaImport": 9455
+    "fathom:JavaImport": 9455,
+    "tool:annotationMember": 31,
+    "tool:enumConstant": 180
   },
   "notes": [
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
-    "retrofit: 2 files skipped by ingest's gates (generated)"
+    "square/retrofit: 2 files skipped by ingest's gates (generated)",
+    "square/retrofit: 97 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)"
   ],
-  "disposition": "deferred: below L1 — sym_recall .9741/kind_agreement 1.0/range_agreement 1.0/signature_coverage 1.0 all excellent, but sym_precision .8964 misses the good floor .90, root-caused directly to universal-ctags 6.2.1 substantially undercounting LOCAL Java classes (declared inside a method body) and their methods — verified on retrofit's RetrofitTest.java (ctags: 1 class/99 methods; this dialect's real parse, hand-confirmed against the source: 9 classes/142 methods, every extra a genuine distinct local declaration). L2-L4 not-attempted: oracle A (scip-java v0.13.1) was attempted, not skipped — retrofit's Gradle build pins JavaLanguageVersion.of(8), which has no arm64 build in this sandbox (an x64 install needs sudo); guava's Maven build compiles cleanly under JDK 21 (--release 9) but scip-java's injected semanticdb javac wrapper reports \"No SCIP shards found\" for that combination. See internal/extractor/dialects/java/PROVENANCE.md and LB-Q-java-rest. Trigger: a universal-ctags release that recognizes local (in-method) Java classes, or a scip-java fix/newer version that emits shards for a JDK21-run/--release-9 Maven build, or an arm64 JDK 8 becoming available."
+  "disposition": "partial: target L4, met L2 good against a JavaParser 3.28.2 symbol and call dump (tier B, D2 — universal-ctags undercounts local classes; scip-java needs a Maven/Gradle build this sandbox cannot run on arm64) on retrofit + guava: L1 excellent (sym_recall 0.9773, sym_precision 0.9773, range 1), L2 call_recall 0.9819, call_precision 0.9986 (good: tier B caps L2 at good). L3/L4 not attempted: import_resolution and file-edge/typed metrics need a SCIP index. Trigger: scip-java produces shards for a subject (a buildable Gradle/Maven project with an arm64 JDK it accepts)."
 }

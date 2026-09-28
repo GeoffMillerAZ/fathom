@@ -2,15 +2,15 @@
   "dialect": "github-actions",
   "kind": "tooling",
   "target_level": "L3",
-  "level_met": "L2",
+  "level_met": "L3",
   "grade": {
     "L1": "good",
     "L2": "good",
-    "L3": "not-attempted",
+    "L3": "good",
     "L4": "not-applicable"
   },
   "measured_at": "2026-09-28",
-  "fathom_commit": "585f31f4",
+  "fathom_commit": "bab7f72c",
   "extractor": "dialect",
   "subjects": [
     {
@@ -22,10 +22,13 @@
         "fathom_defs": 31,
         "kind_equal": 31,
         "matched": 31,
-        "oracle_defs": 31
+        "oracle_defs": 31,
+        "xref_fathom": 0,
+        "xref_truth": 0
       },
       "families": {
-        "l1": "C"
+        "l1": "C",
+        "xref": "C"
       },
       "kind_intersection": [
         "job",
@@ -38,7 +41,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.228,
+        "extract_ms": 0.478,
+        "extract_cpu_ms": 0.473,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -50,18 +54,21 @@
       "files": 15,
       "bytes": 35142,
       "counts": {
-        "fathom_defs": 81,
-        "kind_equal": 81,
-        "matched": 81,
-        "oracle_defs": 81,
+        "fathom_defs": 83,
+        "kind_equal": 83,
+        "matched": 83,
+        "oracle_defs": 83,
         "ref_fathom": 6,
         "ref_fathom_in_truth": 6,
         "ref_truth": 6,
-        "ref_truth_found": 6
+        "ref_truth_found": 6,
+        "xref_fathom": 0,
+        "xref_truth": 0
       },
       "families": {
         "l1": "C",
-        "refs": "C"
+        "refs": "C",
+        "xref": "C"
       },
       "kind_intersection": [
         "job",
@@ -74,7 +81,50 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.8540000000000004,
+        "extract_ms": 1.0220000000000005,
+        "extract_cpu_ms": 1.0210000000000004,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "pytorch/pytorch",
+      "sha": "ba56102387ef21a3b04b357e5b183d48f0afefc7",
+      "files": 118,
+      "bytes": 569139,
+      "counts": {
+        "fathom_defs": 953,
+        "kind_equal": 953,
+        "matched": 953,
+        "oracle_defs": 953,
+        "ref_fathom": 197,
+        "ref_fathom_in_truth": 197,
+        "ref_truth": 197,
+        "ref_truth_found": 197,
+        "xref_fathom": 250,
+        "xref_fathom_in_truth": 250,
+        "xref_truth": 252,
+        "xref_truth_found": 250
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C",
+        "xref": "C"
+      },
+      "kind_intersection": [
+        "job",
+        "output",
+        "resource",
+        "step",
+        "target",
+        "variable_decl"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 14.930999999999997,
+        "extract_cpu_ms": 20.906999999999996,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -84,13 +134,8 @@
   "oracles": [
     {
       "tier": "C",
-      "tool": "actionlint",
-      "version": "v1.7.12"
-    },
-    {
-      "tier": "B",
-      "tool": "universal-ctags",
-      "status": "unavailable: universal-ctags has no parser for this dialect"
+      "tool": "github-actions-oracle (actionlint AST + yaml.v3 for action metadata)",
+      "version": "github.com/rhysd/actionlint v1.7.12"
     }
   ],
   "metrics": {
@@ -98,14 +143,16 @@
     "ref_recall": 1,
     "sym_precision": 1,
     "sym_recall": 1,
-    "xref_precision": null,
-    "xref_recall": null
+    "xref_precision": 1,
+    "xref_recall": 0.9921
   },
   "metric_tiers": {
     "ref_precision": "C",
     "ref_recall": "C",
     "sym_precision": "C",
-    "sym_recall": "C"
+    "sym_recall": "C",
+    "xref_precision": "C",
+    "xref_recall": "C"
   },
   "required_kinds": [
     "job",
@@ -121,27 +168,35 @@
     "variable_decl"
   ],
   "counts": {
-    "fathom_defs": 112,
-    "kind_equal": 112,
-    "matched": 112,
-    "oracle_defs": 112,
-    "ref_fathom": 6,
-    "ref_fathom_in_truth": 6,
-    "ref_truth": 6,
-    "ref_truth_found": 6
+    "fathom_defs": 1067,
+    "kind_equal": 1067,
+    "matched": 1067,
+    "oracle_defs": 1067,
+    "ref_fathom": 203,
+    "ref_fathom_in_truth": 203,
+    "ref_truth": 203,
+    "ref_truth_found": 203,
+    "xref_fathom": 250,
+    "xref_fathom_in_truth": 250,
+    "xref_truth": 252,
+    "xref_truth_found": 250
   },
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 37.33,
+    "throughput_mb_s": 27.21,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 37.1,
     "max_file_ms": 0,
     "peak_module_pages": 0,
     "compiled_bytes": 0
   },
   "excluded_by_kind": {},
   "notes": [
-    "cli/cli: 2 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
-    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "pytorch/pytorch: 1327 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
+    "pytorch/pytorch: 16 files skipped by ingest's gates (generated)",
+    "pytorch/pytorch: 273 oracle cross-references on files fathom does not read were left out of scope (§1.4)"
   ],
-  "disposition": "deferred: L2 good (sym_recall/sym_precision/ref_recall/ref_precision all 1.0, tier C actionlint v1.7.12 AST oracle — action.yml inputs/outputs are extracted and golden-tested but not exercised by either calibration subject — neither contains an action.yml/action.yaml file — so variable_decl/output are simply unattested in this measurement, not a miss); L3 blocked by two independent gaps, not query-fixable: xref scoring is open (LB-F30, shared with LB-Q-package-json-rest) and, separately, needs-strategy — GHA's uses:/reusable-workflow local-path convention (`./path`) is repository-root-relative while every existing cross_file strategy (repo-path, module-source) resolves a `./` value relative to the referring file's own directory, so file-resolved edges would misresolve whenever the workflow or action.yml is not at the repo root (the common case: .github/workflows/*.yml and .github/actions/*/action.yml are nested) — verified directly on both calibration subjects' own uses: values (github-actions/PROVENANCE.md)"
+  "disposition": null
 }
