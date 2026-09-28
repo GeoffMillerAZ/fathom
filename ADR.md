@@ -3062,6 +3062,18 @@ for one codebase.
   than it saves).
 - The owner decides to sell one product (then bundle first, merge code last).
 
+**Amended 2026-09-29 (owner decision, recorded with ADR-056): model verdict proposals are deferred, not refused.**
+Decision 4's second path, a verdict proposed by the decision port, is switched off until it is earned. Verdicts
+stay human: an authored, cited claim in `docs/features.md`. Model proposals return only after J0
+(`docs/plans/judged-predicates.md` JP-M1) reads PASS and a calibration against the owner's 86 labeled verdicts of
+2026-09-27 reaches the bar (agreement of at least 0.8 at n of at least 3). The plan rows FM-10 (the proposal),
+FM-11 (a ditch proposal routes into the surface-reckoning pattern) and FM-M2 (the calibration reading) in
+`docs/plans/feature-map.md` are `[-]` deferred with that trigger, and G26's done-when no longer waits on FM-M2.
+Everything else in this record stands: a ditch proposal never auto-applies, and fathom never decides or applies a
+verdict. ADR-056's research pass had first read the path as refused because 86 labels over four classes look
+too few for the bar and a model "ditch" could anchor the decision ADR-053 requires to be evidence-driven; the
+owner kept the option open instead, so the calibration decides. Future F51.
+
 ## ADR-056: Judgment at the port, proof first: level 10 through fathom, optional per site, measured before it is built (2026-09-29)
 
 **Status.** Accepted 2026-09-29. Owner directive of 2026-09-29: use level 10 of the ten-levels series (agentic Jev)
@@ -3076,7 +3088,8 @@ reads ADR-046, ADR-049 (decisions 2 and 7), ADR-053 and ADR-055 as constraints. 
 `docs/plans/judgment-foundations.md` (JF-), `docs/plans/test-run-hook.md` (TR-), `docs/plans/judged-predicates.md`
 (JP-), `docs/plans/judged-telemetry.md` (JT-), `docs/plans/exploration-maps.md` (XM-), `docs/plans/carry-across.md`
 (CA-), `docs/plans/work-signals.md` (WS-). Goals G27 to G32. Principle P24, invariants I59 to I61, futures F34 to
-F49, questions Q31 to Q33.
+F51, questions Q31 to Q33. Amended the same day by the owner's decision on feature-map verdict proposals
+(decision 13 no longer refuses them: deferred, futures F51; ADR-055 decision 4 carries the dated amendment).
 
 **Context.** Level 10 gives the agent one tool that runs a command, assembles one state and asks a fast typed model
 the agent's own questions, hiding the output from the agent. Fathom already has the decision port (ADR-042), a
@@ -3091,11 +3104,17 @@ rule-outcome events governance learning reads measure scope persistence, not com
 1. *The decision-model bet (principle P24).* Fast, cheap typed-judgment models (Jev is the first) will keep
    improving in accuracy, calibration, price and latency, and fathom rides that curve without redesign. Boundary:
    judgment never replaces proof for anything fathom can compute, and a model answer is never a receipt a stranger
-   can re-derive. Rules: every judgment is a typed decision-port site (schema plus provider), never an ad hoc call;
-   every site owns a calibration set that grows and `fathom decide calibrate --provider X` re-grades every site;
-   features improve monotonically (deterministic with provider none, judgment only in bands where calibration has
-   passed, no feature whose value exists only if a future model arrives); judgments are cached by (template,
-   content hash) stamped with provider and model version and kept apart from proof; no vendor lock-in.
+   can re-derive, however good the model becomes. Five rules. (1) Every judgment is a typed decision-port site
+   (schema plus provider: none, llm, typesafe or a future one), never an ad hoc model call. (2) Every site owns an
+   adjudicated calibration set that grows (sampled judged telemetry plus one-key human verdicts), and `fathom
+   decide calibrate --provider X` re-grades every site, so adopting a better model is a measurement and not a
+   redesign (JF-12). (3) Features improve monotonically: deterministic with provider none, judgment used only in
+   the confidence bands where calibration has passed, bands that widen automatically as calibration improves and
+   narrow when a model moves (JF-23), and no feature whose value exists only if a future model arrives. (4)
+   Judgments are cached by (question template, content hash), stamped with provider and model version and kept
+   apart from proof, so a better model re-grades cleanly. (5) No vendor lock-in: the port's primitives (choice,
+   score, abstain) are generic and any fast model plugs in as Jev did (decision 11 closes the remaining leaks).
+   Futures follow the bet: one per site, "Promote when provider X passes calibration on this site".
 2. *Program rules R1 to R8.* R1 structural routing: named operators or existing tools answer every computable
    question and a model never decides what is computable. R2 new sites never enter the default site list. R3 bars
    use Wilson intervals: a calibrated hint needs 90 of 100 right at the shown confidence (ADR-044 decision 8); a
@@ -3152,19 +3171,27 @@ rule-outcome events governance learning reads measure scope persistence, not com
    composite of references for several; live maps and semantic layers are complementary axes (what matters for a
    purpose versus what is true or binding), live maps query layers and scope expensive columns; maps arrive through
    handoff, location-relevant hook lines, the session brief and threads, never by an agent choosing to look; no new
-   default tool. (c) Stall detection: deterministic detectors folded asynchronously by the daemon, checked against
-   abandoned sessions and later green runs, an opt-in nudge A/B by session hash, fathom never switches models or
-   dispatches. (d) The U6 preflight model against a fitted logistic baseline (bar 0.05 held-out AUROC).
+   default tool. (c) Stall detection: deterministic detectors folded asynchronously by the daemon (never inside a hook), checked against
+   abandoned sessions and later green runs, an optional typed classification of ambiguous episodes (productive
+   iteration versus stuck: sampled, calibrated against the owner's labels, never required), an advisory nudge at
+   most once per episode and opt-in, A/B by session hash (kept only if episodes shorten and cost per proven weight
+   point drops), stall cost in reports per session, model, harness and zone, and fathom never switches models,
+   respawns or dispatches (it may write a signal an orchestrator reads). Plan rows: `docs/plans/work-signals.md`
+   WS-1 to WS-7. (d) The U6 preflight model against a fitted logistic baseline (bar 0.05 held-out AUROC).
 10. *Estimated weights and cost per weight point (owner, accepted).* A deterministic estimator proposes row weights
     shown beside authored weights and never overwriting them; the author accepts one with one command; a model may
     refine an estimate only after it passes calibration, and a refinement is a proposal for the author, so progress
-    computed by `fathom verify` stays model-free (ADR-049 decision 7 holds). Economics show cost per proven weight
-    point per model, harness and zone, keyed by agent identity (I58).
+    computed by `fathom verify` stays model-free (ADR-049 decision 7 holds). Estimates are calibrated against actual
+    effort (tokens, turns and wall time per proven row) and the error is published (WS-M3). Economics show cost per
+    proven weight point per model, harness and zone, keyed by agent identity (I58), on the Progress and Economics
+    pages (WS-10, PE-22). Plan rows: `docs/plans/work-signals.md` WS-8 to WS-11.
 11. *Hexagonal hardening of the port (owner, accepted; implemented in agentic-kit).* A generic kind name with the
     vendor term as a wire alias, adapter-declared limits, adapters in subpackages, a `Capabilities()` declaration, a
     conformance kit, composition as decorators (cascade, fallback, cache, record and replay) and a calibration
-    mapping in the core. It is recorded in agentic-kit's decision-port plan; fathom then bumps its vendored mirror.
-12. *Deferred, each on a named trigger (futures F34 to F49):* `fathom ask` (J0 passes); tier 2 `failure_kind` (at
+    mapping in the core. It is recorded in agentic-kit's decision-port plan (`docs/plans/decision-port.md`, section
+    "Hexagonal hardening", rows DP-12 to DP-24, and its decision 0017); fathom then bumps its vendored mirror and moves
+    its call sites (JF-13, JF-14, JF-24).
+12. *Deferred, each on a named trigger (futures F34 to F51):* `fathom ask` (J0 passes); tier 2 `failure_kind` (at
     least 100 failing runs later green, and J0 has run); question-directed traversal (the maps A/B passes); files at
     scale (J0, RT-M1 and a named consumer's own metric); when-to-compact advice (carry-across passes and route is
     re-admitted); fitted recalibration and auto-disable (100 labels for one site, provider and model); the
@@ -3172,17 +3199,18 @@ rule-outcome events governance learning reads measure scope persistence, not com
     assess or supersede it); guard proposals from relabeled rule outcomes; MCP exposure of test-run or ask output
     (5 percent of sessions); a `--plan-only` export (a named consumer); map set algebra; ADR-to-rule pair
     judgments, doc-drift triage, an injection screen, skill suggestion, friction classification and product feedback
-    (each its own trigger). Graduating a judged template to claims at tier ai-derived needs its own ADR promoting F7.
+    (each its own trigger); durable live maps (F50); and model proposals for feature-map verdicts (F51: the owner
+    decided 2026-09-29 that this is deferred, not refused, and verdicts stay human until J0 passes and a
+    calibration against the owner's 86 labeled verdicts reaches the bar; FM-10, FM-11 and FM-M2 in
+    `docs/plans/feature-map.md` are `[-]` deferred with that trigger). Graduating a judged template to claims at tier
+    ai-derived needs its own ADR promoting F7.
 13. *Refused.* A public `fathom triage` verb as the delivery, and `ask`'s computable-operator grammar as a new verb
     (tools agents must choose to call die and the operators duplicate existing tools); judged rule compliance now
     (contradicts governance-learning section 11 and ADR-049 decision 7, and no labels exist); Jev for answer
     usefulness, config custodian proposals and product digests (joins over structured events, and narrative is a
     lens, P14); computable labels as model work (generated files, config versus code, public API, ownership, I/O
     reach, TODO admission); model-judged security properties as a served signal (X6, ADR-051); a Stop-hook
-    completion check judged by a model; model verdict proposals for the feature map (ADR-055 decision 4's proposal
-    path, FM-10: 86 labels over four classes cannot support its 0.8 agreement bar, and a model "ditch" would anchor
-    the one decision ADR-053 requires to be evidence-driven; this narrows ADR-055 and awaits the owner's
-    confirmation, the FM plan rows are not edited here); commit classification; model inputs to the risk band; model gates on
+    completion check judged by a model; commit classification; model inputs to the risk band; model gates on
     destructive commands or secret writes (the harness owns them, P11); generated text from Jev; output rewriting and
     command execution by fathom; a judged-telemetry lane parallel to assess.
 14. *Labels and spend.* The one labeled template is `failure_kind`; J0's residue set (50 to 80 owner labels, once)
@@ -3204,7 +3232,8 @@ rule-outcome events governance learning reads measure scope persistence, not com
 
 **Consequences.**
 - Seven plans, seven design documents, vision 40, goals G27 to G32, principle P24, invariants I59 to I61 (I14
-  amended), questions Q31 to Q33, futures F34 to F49 and a dated amendment line on ADR-042.
+  amended), questions Q31 to Q33, futures F34 to F51, a dated amendment line on ADR-042 and another on ADR-055
+  (verdict proposals deferred, not refused).
 - Code follows through JF, TR, JP, JT, XM, CA and WS rows, each gated by `fathom verify`; nothing here is built
   by this record.
 - The tool count is unchanged; the default surface stays at eight tools (ADR-053).

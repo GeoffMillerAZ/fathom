@@ -572,3 +572,39 @@ nothing may depend on it (P24). The entry's own drop-if stands.
 - Preserve: deterministic friction classes first; the research bundle's allowlist.
 - Promote when: U3 exists (classification), or labels worth sharing exist (feedback).
 - Drop if: U3 is refused, or no labels worth sharing exist within a year.
+
+## F50. Durable live maps: saved queries in the layers' vocabulary
+
+- Confidence: plausible. Horizon: later. Evidence: ADR-056, `docs/design/exploration-maps.md` section 3,
+  `docs/plans/exploration-maps.md` XM-D1, XM-D4, XM-D5.
+- Motivation: a live map is a saved, re-run query (a working set) that stays correct as code changes, unlike a
+  wiki diagram or a document list: the auth surface for a security review, the payment path from entry point to
+  data store, release blockers, the public API without a live certificate, a migration's remaining sites, the
+  hot zone, everything that reads a flag, an active program's footprint, dead-code candidates, the product's
+  core loop. It queries layers, scopes an expensive judged column to the maps that need it, and graduates to a
+  named concern when many agents reuse it.
+- Do not build: a live map before the handoff A/B (XM-M2) and RT-M1 both read PASS (R5: storage stays in
+  existing thread fields), a second freshness mechanism, an idle unnamed map that never decays, or a layer
+  owned by a map (a layer keeps its own freshness and lifecycle: candidate, active, retired).
+- Preserve: maps compose by reference (a DAG, depth capped at 4), a named map needs a purpose line, one
+  freshness machine shared with layers, permanent only when named and used.
+- Promote when: XM-M2 reads PASS and RT-M1 reads PASS (XM-D1's trigger).
+- Drop if: no live map is mounted in at least 3 runs within 180 days of the first one shipping.
+
+## F51. Model proposals for feature-map verdicts
+
+- Confidence: plausible. Horizon: someday. Evidence: ADR-055 decision 4 (amended 2026-09-29), ADR-056 decision 12,
+  `docs/plans/feature-map.md` FM-10, FM-11, FM-M2.
+- Motivation: a Choice over keep, improve, merge and ditch given a feature's computed evidence row could ease
+  reviewing many features. The owner decided on 2026-09-29 that this is deferred, not refused: verdicts stay
+  human until a calibration earns the proposal path.
+- Do not build: the proposal path or any display of a model's verdict before J0 passes and a calibration against
+  the owner's 86 labeled verdicts reaches the bar; a ditch proposal never auto-applies (it routes into the
+  surface-reckoning pattern) and a model never anchors the one decision ADR-053 requires to be evidence-driven.
+- Preserve: verdicts as human-authored cited claims in `docs/features.md` (FM-9), the computed evidence row as
+  the proposal's input, and the 86 labeled verdicts as calibration data. The critics' estimate is that 86 labels
+  over four classes cannot support the 0.8 bar, which is why this waits rather than runs.
+- Promote when: J0 (`docs/plans/judged-predicates.md` JP-M1) reads PASS and a calibration against the owner's 86
+  labeled verdicts reaches agreement of at least 0.8 at n of at least 3 (FM-M2's bar).
+- Drop if: J0 kills the code-reading sites, or the calibration misses the bar and the owner's labeled verdicts
+  have not grown within a year.

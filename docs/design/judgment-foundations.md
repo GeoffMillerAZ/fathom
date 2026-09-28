@@ -47,7 +47,16 @@ answer is never a receipt a stranger can re-derive, however good the model becom
 4. Judgments are cached keyed by (question template, content hash), stamped with provider and model
    version, and kept apart from proof; a better model re-grades cleanly.
 5. No vendor lock-in: the port's primitives (choice, score, abstain) are generic and any fast model
-   plugs in as Jev did.
+   plugs in as Jev did. The hexagonal hardening below closes the leaks that remain.
+
+**Futures follow the bet.** Every judged site gets one future entry whose promotion is a reading: "Promote
+when provider X passes calibration on this site", so a better model is admitted by a measurement and never by a
+redesign (`docs/intent/futures.md` F34 to F37 are the first four sites' entries; a new site adds its own).
+**Where each rule is proven:** rule 1 by the opt-in and structural-routing rows (JF-4, JF-19 to JF-21); rule 2 by
+JF-11, JF-12 and, for `failure_kind`, JT-3; rule 3 by JF-23 (bands read from the latest calibration reading) and
+by provider `none` staying byte-identical (I42, JF-5); rule 4 by JF-10 (the resolved model on every row),
+agentic-kit's cache decorator (its DP-19) and the durable memo deferred behind RT-M1 (F40); rule 5 by
+agentic-kit's hexagonal hardening rows (below).
 
 ## 3. Program rules R1 to R8 (every item obeys them)
 
@@ -96,7 +105,12 @@ adapters in subpackages so the core imports no vendor code; a `Capabilities()` d
 limits, batching, latency and cost class, confidence semantics); a conformance kit every adapter
 passes; composition as decorators (cascade, fallback, cache, record and replay); and a calibration
 mapping in the core from raw provider confidence to per-site calibrated bands. The record lives in
-agentic-kit's decision-port plan; ADR-056 references it.
+agentic-kit's decision-port plan (`docs/plans/decision-port.md`, section "Hexagonal hardening", one open row
+per item: generic kind DP-12, adapter-declared limits DP-13, adapter subpackages DP-14, `Capabilities()` DP-15,
+conformance kit DP-16, decorators DP-17 to DP-21, calibration mapping DP-22, readings library DP-23, compat and
+migration DP-24) and in its decision 0017; ADR-056 references it, and fathom's own rows are JF-13, JF-14 and
+JF-24. The calibration mapping is what makes rule 3 of the bet mechanical: a site's usable bands come from its
+latest reading (JF-23).
 
 ## 5. The rule-outcome instrument (A1, F1)
 

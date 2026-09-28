@@ -106,15 +106,18 @@ measured"** otherwise — never inferred from health, never guessed.
 into `docs/features.md`, next to the feature's row. This is read and served; the feature map
 never computes it.
 
-**Proposed (the decision port).** Given a feature's computed evidence row (health, value,
-cost, usage), a Choice over the four verdicts, calibrated against the owner's 86 labeled
-verdicts from 2026-09-27 exactly as CV-M11 calibrated the route site. The proposal is shown
-with its calibration and is never treated as proof. A `ditch` proposal never deletes anything:
+**Proposed (the decision port), deferred.** Owner decision 2026-09-29 (ADR-055 amendment, future
+F51): the proposal path is deferred, not refused, and verdicts stay human until it is earned. When it
+returns, it is a Choice over the four verdicts given a feature's computed evidence row (health,
+value, cost, usage), calibrated against the owner's 86 labeled verdicts from 2026-09-27 exactly as
+CV-M11 calibrated the route site. Its trigger is J0 (`docs/plans/judged-predicates.md` JP-M1)
+reading PASS and a calibration against those 86 verdicts reaching the bar of section 8. The proposal
+is shown with its calibration and is never treated as proof. A `ditch` proposal never deletes anything:
 it routes into the surface-reckoning pattern (ADR-053 decision 5) — callers proved absent, the
 citing plan rows either re-anchored (the capability survives under a different key) or
 retired to `[-] refused` (the capability is actually gone).
 
-## 8. Decision-port proposal calibration
+## 8. Decision-port proposal calibration (deferred: FM-10, FM-11, FM-M2)
 
 The calibration bar is the same one ADR-042's route site used and failed, applied here before
 the proposal path is trusted rather than after: an agreement rate of at least 0.8 against the
@@ -161,7 +164,7 @@ means it cannot start before those do either.
 | Reading | Threshold |
 |---|---|
 | FM-M1 | fathom's own 86-feature scorecard re-derived; evidence columns match the hand-built one on at least 90% of cells |
-| FM-M2 | verdict-proposal agreement at least 0.8 at n at least 3 against the owner's 86 verdicts, or the proposal path is dropped |
+| FM-M2 (deferred, F51) | verdict-proposal agreement at least 0.8 at n at least 3 against the owner's 86 verdicts, or the proposal path is dropped; not read until J0 passes |
 
 ## 13. Refused, and not worth it now
 

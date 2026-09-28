@@ -77,10 +77,11 @@ rewrite tool output (refused). Any saving comes from fewer search and read turns
 | `fathom ask` (fathom as planner, a model as a semantic predicate) | defer | JP | J0 passes and beats a lexical baseline |
 | The judged-telemetry flywheel, reframed as a label economy | accept the labels and readings; defer the sampler and table | JT | the sampler waits for RT-M1 |
 | Question-directed exploration (traversal) | defer | JP | the maps A/B passes, then provider none first |
-| Exploration maps shared from planner to sub-agents (composable, live, discoverable) | experiment, measurement first | XM | a 14-day reading shows at least 15 percent re-derivation |
+| Exploration maps shared from planner to sub-agents (composable, live, discoverable; section 13) | experiment, measurement first | XM | a 14-day reading shows at least 15 percent re-derivation |
 | Files at scale as semantic columns (level 9) | defer | JP | J0, RT-M1 and a named consumer's own metric |
 | The compaction advisor: carry-across only | experiment with a stop rule; advice deferred | CA | SessionStart(source=compact) verified, Reading 0 shows waste |
 | Stall detection, estimated weights, cost per weight point, the preflight model against a fitted baseline | accept detection and weights; nudge and model site are experiments | WS | WI-16 to WI-19 for the baseline |
+| Model proposals for feature-map verdicts (ADR-055 decision 4) | defer, not refuse (owner, 2026-09-29): verdicts stay human | FM (FM-10, FM-11, FM-M2 are `[-]`) | J0 passes, then a calibration against the owner's 86 labeled verdicts reaches the bar (F51) |
 
 ## 6. The strongest finding did not need Jev
 
@@ -154,3 +155,44 @@ answers by construction: nothing depends on it. These are tracked as questions Q
 | Stall nudge | episodes do not shorten or cost per weight point does not drop: keep detection, drop the nudge |
 | Preflight model | under 0.05 AUROC over a fitted baseline: the fitted model serves |
 | Judged template | agreement under 0.8 after one revision: drop the template |
+
+## 13. Exploration maps in one page (binding design; the reading decides whether it is built)
+
+The full design is `docs/design/exploration-maps.md` and the rows are `docs/plans/exploration-maps.md` (XM-).
+
+**Composable by reference.** A map holds its own anchored entries (a symbol or `path#Lx-Ly`, a content hash and
+a why line) plus `includes` references to other map ids; entries are never copied. Includes form a DAG: shared
+bases allowed, cycles refused, depth capped at 4. The handoff always carries ONE id; when a caller wants several
+maps, fathom mints a tiny composite made only of references, and a sub-agent can pass its own composite down a
+level. Resolution is a union deduplicated by anchor; on conflicting annotations the nearest include wins and
+both are kept with provenance; freshness is checked once per entry however many maps include it. Lifetimes
+follow references: an ephemeral map is pinned while a live map includes it, and its idle clock restarts when the
+last reference drops. Set algebra (intersection, difference) is deferred (F44). Why not a list of ids: every
+sub-agent would re-implement merge, dedup and budgeting, and an id list could not be handed down a level.
+
+**Live maps and semantic layers are complementary, not redundant.** A layer says what is TRUE or BINDING about
+code (governed claims: rules, bindings, labels, the proposed self-invalidating columns); a live map says which
+part of the code MATTERS for a purpose (a saved, re-run query). Layers are the vocabulary and live maps are saved
+questions written in it. So maps query layers and get sharper as layers grow; maps scope layers, computing an
+expensive judged column only inside the maps that need it, which is the cost control for cheap-model columns; a
+live map reused by many agents graduates to a named concern in a layer, and claims gain "used by map X" signals;
+and one freshness machine (content-hash drift) invalidates both. Durable live maps earn their keep as saved
+questions that stay correct as code changes, unlike a wiki diagram or a document list: the auth surface for a
+security review, the payment path from entry point to data store, release blockers, the public API without a
+live certificate, a migration's remaining sites, the hot zone, everything that reads a flag, an active
+program's footprint, dead-code candidates, the product's core loop. A live map is permanent only when named and
+used; idle unnamed maps decay (F50).
+
+**Maps arrive; agents do not have to look.** Discoveries and anchored memory failed because they depended on an
+agent choosing to look, and fathom's founding rule is delivery by configuration. Four channels: the handoff (a
+brief's map id, expanded by the session hook within budget); relevance by location (a prompt or edit inside a
+map's footprint gets one line naming the map, its purpose, size and freshness, once per session, budgeted, like
+obligations at the edit); the session brief (at most 3 maps by recent use and overlap with the thread's recent
+files, never a full list); and continuity threads (notes may reference maps, the pre-compact pointer carries
+active map ids, resuming re-mounts them). A named map needs a required purpose line, the question it answers;
+fathom computes scope, freshness, creator and last use. No new default tool. Measure pointer precision (expanded
+over shown) and reuse rate; a pointer expanded under 10 percent of the time is cut.
+
+**Where a typed model helps.** Mostly nowhere: the planner already decided what matters. Optional roles are a
+drafted purpose line, an expensive judged column inside a map's footprint (after J0), and a planner's traversal
+becoming a map. With provider `none` every map feature works.
