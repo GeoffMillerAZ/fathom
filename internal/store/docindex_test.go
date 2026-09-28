@@ -149,3 +149,48 @@ func TestPutDocUnitsRejectsEmptyUnitID(t *testing.T) {
 		t.Fatal("PutDocUnits with empty UnitID: want error, got nil")
 	}
 }
+
+// TestDocUnitsLinkedToTargets pins the KR-4 read side: a unit with a
+// still-holding (valid_to = 0) doc_links row naming one of the caller's
+// targets is returned, most distinct targets first; a link whose valid_to
+// is already set (superseded, §4's validity-window rule) does not count;
+// empty targets short-circuits to nil with no query at all.
+func TestDocUnitsLinkedToTargets(t *testing.T) {
+	ctx := context.Background()
+	sq, err := NewSQLiteStore(filepath.Join(t.TempDir(), "doclinks.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = sq.Close() })
+
+	if got, err := sq.DocUnitsLinkedToTargets(ctx, "fathom", nil); err != nil || got != nil {
+		t.Fatalf("DocUnitsLinkedToTargets(nil targets) = %+v, %v, want nil, nil", got, err)
+	}
+
+	seedLink := func(unitID, target string, validTo int64) {
+		t.Helper()
+		if _, err := sq.db.ExecContext(ctx, `
+INSERT INTO doc_links (service_id, unit_id, target_kind, target, line, link_tier, target_hash_at_link, valid_from, valid_to)
+VALUES ('fathom', ?, 'symbol', ?, 1, 'exact', 'h', 0, ?)`, unitID, target, validTo); err != nil {
+			t.Fatal(err)
+		}
+	}
+	seedLink("u-two-targets", "PutDocUnits", 0)
+	seedLink("u-two-targets", "SplitDocUnits", 0)
+	seedLink("u-one-target", "PutDocUnits", 0)
+	seedLink("u-superseded", "PutDocUnits", 12345) // valid_to set: must not count
+
+	got, err := sq.DocUnitsLinkedToTargets(ctx, "fathom", []string{"PutDocUnits", "SplitDocUnits"})
+	if err != nil {
+		t.Fatalf("DocUnitsLinkedToTargets: %v", err)
+	}
+	want := []DocLinkMatch{{UnitID: "u-two-targets", MatchCount: 2}, {UnitID: "u-one-target", MatchCount: 1}}
+	if len(got) != len(want) {
+		t.Fatalf("DocUnitsLinkedToTargets = %+v, want %+v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("row %d = %+v, want %+v", i, got[i], want[i])
+		}
+	}
+}

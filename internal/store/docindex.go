@@ -37,6 +37,7 @@ package store
 import (
 	"context"
 	"fmt"
+	"strings"
 )
 
 // DocUnit is one row of doc_units plus the body text that only ever lives in
@@ -237,6 +238,55 @@ SELECT DISTINCT path FROM doc_units WHERE service_id = ? ORDER BY path`, service
 			return nil, fmt.Errorf("DocIndexedPaths scan: %w", err)
 		}
 		out = append(out, p)
+	}
+	return out, rows.Err()
+}
+
+// DocLinkMatch is one doc_units unit with at least one still-holding
+// (valid_to = 0) doc_links row naming one of RankDocs' concernSymbols
+// targets, and how many distinct such targets it names. KR-4's fusion uses
+// MatchCount only to re-order a unit already in the BM25 candidate set —
+// never to admit a unit the text query itself did not match.
+type DocLinkMatch struct {
+	UnitID     string
+	MatchCount int
+}
+
+// DocUnitsLinkedToTargets returns, for serviceID, every doc_units unit_id
+// with a still-holding doc_links row naming one of targets, most distinct
+// targets first, ties broken by unit_id for determinism. Empty targets
+// returns nil without running a query — doc_links is written by KR-6 (not
+// yet landed as of this call's introduction in KR-4); reading it before any
+// row exists is simply an empty result, never an error.
+func (s *SQLiteStore) DocUnitsLinkedToTargets(ctx context.Context, serviceID string, targets []string) ([]DocLinkMatch, error) {
+	if len(targets) == 0 {
+		return nil, nil
+	}
+	placeholders := make([]string, len(targets))
+	args := make([]any, 0, len(targets)+1)
+	args = append(args, serviceID)
+	for i, t := range targets {
+		placeholders[i] = "?"
+		args = append(args, t)
+	}
+	q := fmt.Sprintf(`
+SELECT unit_id, COUNT(DISTINCT target) AS n
+FROM doc_links
+WHERE service_id = ? AND valid_to = 0 AND target IN (%s)
+GROUP BY unit_id
+ORDER BY n DESC, unit_id ASC`, strings.Join(placeholders, ","))
+	rows, err := s.db.QueryContext(ctx, q, args...)
+	if err != nil {
+		return nil, fmt.Errorf("DocUnitsLinkedToTargets: %w", err)
+	}
+	defer rows.Close()
+	var out []DocLinkMatch
+	for rows.Next() {
+		var m DocLinkMatch
+		if err := rows.Scan(&m.UnitID, &m.MatchCount); err != nil {
+			return nil, fmt.Errorf("DocUnitsLinkedToTargets scan: %w", err)
+		}
+		out = append(out, m)
 	}
 	return out, rows.Err()
 }
