@@ -450,6 +450,17 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 			res.notes = append(res.notes, fmt.Sprintf("%s: %d tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)", name, dropped))
 		}
 		res.oracles = append(res.oracles, run)
+		// ── LB-F30: cross-file references (langoracle_xref.go) ──
+		if doc, ok := with.(*extractor.DocExtractor); ok {
+			n, err := scoreXrefOracle(toolOracle, doc, service, srcFiles, &sub, inScope)
+			if err != nil {
+				return res, err
+			}
+			if n > 0 {
+				res.notes = append(res.notes, fmt.Sprintf("%s: %d oracle cross-references on files fathom does not read were left out of scope (§1.4)", name, n))
+			}
+		}
+		// ── end LB-F30 ──
 	}
 	if opts.unmatched != "" && l1res != nil {
 		b, err := json.MarshalIndent(map[string][]langbench.OracleDef{"dialect_only": l1res.DialectOnly, "oracle_only": l1res.OracleOnly}, "", " ")
@@ -508,6 +519,8 @@ type toolOracleFile struct {
 	// file's tier — e.g. tier C from the grammar's upstream tags.scm run
 	// by an independent runtime (owner decision D5).
 	Calls []oraclePair `json:"calls"`
+	// CrossReferences are LB-F30's cross-file references (xrefOracle).
+	CrossReferences []xrefOracleEntry `json:"cross_references,omitempty"`
 }
 
 // oraclePair is one (from, to) pair in a file.

@@ -20,6 +20,8 @@ package dialect
 	entities: [#DocEntity, ...#DocEntity]
 	references?: [...#DocRef]
 	cross_file?: [...#DocCrossRef]
+	// labels: the label maps a label-selector join matches (LB-F30, D4).
+	labels?: [...#DocLabels]
 }
 
 // #DocSelector: `$` or `.`, then `.key`, `.*` and `[*]` steps.
@@ -28,23 +30,27 @@ package dialect
 // #DocValue: selectors and `$key`, alternated with `|`.
 #DocValue: string & !=""
 
+#DocWhere: {
+	is_map?:    bool
+	is_seq?:    bool
+	is_scalar?: bool
+	key_in?: [...string]
+	not_key_in?: [...string]
+	key_prefix?:     string
+	key_not_prefix?: string
+	has_key?: [...string]
+	equals?: {[string]: string}
+}
+
 #DocEntity: {
-	select: #DocSelector
-	where?: {
-		is_map?:    bool
-		is_seq?:    bool
-		is_scalar?: bool
-		key_in?: [...string]
-		not_key_in?: [...string]
-		key_prefix?:     string
-		key_not_prefix?: string
-		has_key?: [...string]
-		equals?: {[string]: string}
-	}
+	select:      #DocSelector
+	where?:      #DocWhere
 	kind:        #Canonical
 	source_kind: =~"^[A-Z][A-Za-z0-9]*$"
 	name:        #DocValue
 	signature?:  #DocValue
+	// qualify: values prefixed to the name, "/"-joined, empty ones skipped.
+	qualify?: [...#DocValue]
 }
 
 #DocRef: {
@@ -57,8 +63,19 @@ package dialect
 
 #DocCrossRef: {
 	from?:   string & !=""
+	where?:  #DocWhere
 	select:  #DocSelector
 	value:   #DocValue
-	resolve: "repo-path" | "image-ref" | "module-source" | "service-name"
+	resolve: "repo-path" | "repo-root" | "image-ref" | "module-source" | "service-name" | "label-selector"
 	edge:    string & !=""
+	scope?:         #DocValue
+	scope_default?: string & !=""
+}
+
+#DocLabels: {
+	from:           string & !=""
+	where?:         #DocWhere
+	select:         #DocSelector
+	scope?:         #DocValue
+	scope_default?: string & !=""
 }

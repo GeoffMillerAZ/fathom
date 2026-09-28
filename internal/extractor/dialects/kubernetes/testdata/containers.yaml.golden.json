@@ -1,6 +1,6 @@
 {
   "symbols": [
-    { "name": "web-app", "kind": "K8sWorkload", "package": "containers", "line": 1, "end_line": 16, "signature": "Deployment", "tier": "verified" },
+    { "name": "Deployment/staging/web-app", "kind": "K8sWorkload", "package": "containers", "line": 1, "end_line": 16, "signature": "Deployment", "tier": "verified" },
     { "name": "registry.example.com/web:v1.2.3", "kind": "K8sContainer", "package": "containers", "line": 10, "end_line": 11, "signature": "web", "tier": "verified" },
     { "name": "envoyproxy/envoy:v1.28.0", "kind": "K8sContainer", "package": "containers", "line": 12, "end_line": 13, "signature": "sidecar", "tier": "verified" },
     { "name": "registry.example.com/migrator:latest", "kind": "K8sContainer", "package": "containers", "line": 15, "end_line": 16, "signature": "migrator", "tier": "verified" }

@@ -28,8 +28,8 @@
     { "from": "job", "select": "$.needs[*]", "value": "$", "to_kind": "job", "edge": "needs" }
   ],
   "cross_file": [
-    { "from": "job", "select": "$.steps[*].uses", "value": "$", "resolve": "module-source", "edge": "uses_action" },
-    { "from": "job", "select": "$.uses", "value": "$", "resolve": "module-source", "edge": "calls_workflow" },
-    { "from": "target", "select": "$.runs.steps[*].uses", "value": "$", "resolve": "module-source", "edge": "uses_action" }
+    { "from": "job", "select": "$.steps[*].uses", "value": "$", "resolve": "repo-root", "edge": "uses_action" },
+    { "from": "job", "select": "$.uses", "value": "$", "resolve": "repo-root", "edge": "calls_workflow" },
+    { "from": "target", "select": "$.runs.steps[*].uses", "value": "$", "resolve": "repo-root", "edge": "uses_action" }
   ]
 }

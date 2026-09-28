@@ -4,7 +4,7 @@
   "detect": { "require_keys": ["kind", "metadata"] },
   "entities": [
     { "select": "$", "where": { "has_key": ["kind", "metadata"] },
-      "kind": "resource", "source_kind": "K8sWorkload", "name": ".metadata.name", "signature": ".kind" },
+      "kind": "resource", "source_kind": "K8sWorkload", "name": ".metadata.name", "qualify": [".kind", ".metadata.namespace"], "signature": ".kind" },
 
     { "select": "$.spec.containers[*]", "where": { "is_map": true, "has_key": ["image"] },
       "kind": "data_source", "source_kind": "K8sContainer", "name": ".image", "signature": ".name" },
@@ -50,6 +50,13 @@
     { "from": "resource", "select": "$.spec.template.spec.volumes[*].secret.secretName", "value": "$", "to_kind": "resource", "edge": "secret_ref" }
   ],
   "cross_file": [
-    { "from": "data_source", "select": "$.image", "value": "$", "resolve": "image-ref", "edge": "runs" }
+    { "from": "data_source", "select": "$.image", "value": "$", "resolve": "image-ref", "edge": "runs" },
+    { "from": "resource", "where": { "equals": { ".kind": "Service" } }, "select": "$.spec.selector", "value": "$",
+      "resolve": "label-selector", "scope": ".metadata.namespace", "scope_default": "default", "edge": "selects" }
+  ],
+  "labels": [
+    { "from": "resource", "select": "$.spec.template.metadata.labels", "scope": ".metadata.namespace", "scope_default": "default" },
+    { "from": "resource", "select": "$.spec.jobTemplate.spec.template.metadata.labels", "scope": ".metadata.namespace", "scope_default": "default" },
+    { "from": "resource", "where": { "equals": { ".kind": "Pod" } }, "select": "$.metadata.labels", "scope": ".metadata.namespace", "scope_default": "default" }
   ]
 }

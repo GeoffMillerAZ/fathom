@@ -40,6 +40,7 @@ var familyMetrics = map[string][]string{
 	FamilyTyped:     {MTypedRecall},
 	FamilyFileEdges: {MFileEdgePrecision, MFileEdgeRecall},
 	FamilyRefs:      {MRefRecall, MRefPrecision},
+	FamilyXref:      {MXrefPrecision, MXrefRecall},
 }
 
 var tierRank = map[string]int{"A": 4, "B": 3, "C": 2, "D": 1}
@@ -163,6 +164,9 @@ func recompute(r *Reading) {
 	set(FamilyFileEdges, MFileEdgeRecall, ratio(counts[CntFileEdgesAgree], counts[CntFileEdgesTruth]))
 	set(FamilyRefs, MRefRecall, ratio(counts[CntRefTruthFound], counts[CntRefTruth]))
 	set(FamilyRefs, MRefPrecision, ratio(counts[CntRefFathomInTrue], counts[CntRefFathom]))
+	// LB-F30: tool-format cross-file references (xref.go).
+	set(FamilyXref, MXrefPrecision, ratio(counts[CntXrefFathomInTrue], counts[CntXrefFathom]))
+	set(FamilyXref, MXrefRecall, ratio(counts[CntXrefTruthFound], counts[CntXrefTruth]))
 	r.Metrics = all
 	r.MetricTiers = metricTiers
 	r.NotApplicable = nil

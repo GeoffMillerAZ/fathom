@@ -28,3 +28,18 @@ repos:
       - "release-automation workflows with job-level conditionals and a
         mix of first-party (`actions/checkout@v4`) and GitHub CLI project
         action references"
+  - name: pytorch/pytorch
+    url: https://github.com/pytorch/pytorch
+    ref: v2.8.0
+    sha: ba56102387ef21a3b04b357e5b183d48f0afefc7
+    licence: BSD-3-Clause
+    # Only .github/ is read: the workflows and composite actions, not the
+    # multi-gigabyte source tree (§13.3's size rule).
+    subpath: .github
+    idioms:
+      - 'reusable workflows called by local path (`uses:
+        ./.github/workflows/_linux-build.yml`) from dozens of callers'
+      - 'composite actions under .github/actions/*/action.yml used by local
+        path from workflows and from other actions'
+      - 'generated workflow files carrying an @generated marker (gated out
+        of extraction by ingest)'

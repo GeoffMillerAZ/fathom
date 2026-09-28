@@ -5,7 +5,7 @@
     { "name": "publish", "kind": "GHAJob", "package": "deploy", "line": 13, "end_line": 16, "calls": ["build"], "tier": "verified" }
   ],
   "cross_file": [
-    { "from": "build", "edge": "calls_workflow", "raw": "./.github/workflows/build.yml", "target": ".github/workflows/.github/workflows/build.yml", "strategy": "module-source", "line": 10 },
-    { "from": "publish", "edge": "calls_workflow", "raw": "octo-org/shared-workflows/.github/workflows/publish.yml@v2", "target": "octo-org/shared-workflows/.github/workflows/publish.yml@v2", "strategy": "module-source", "line": 15 }
+    { "from": "build", "edge": "calls_workflow", "raw": "./.github/workflows/build.yml", "target": ".github/workflows/build.yml", "strategy": "repo-root", "line": 10 },
+    { "from": "publish", "edge": "calls_workflow", "raw": "octo-org/shared-workflows/.github/workflows/publish.yml@v2", "target": "octo-org/shared-workflows/.github/workflows/publish.yml@v2", "strategy": "repo-root", "line": 15 }
   ]
 }

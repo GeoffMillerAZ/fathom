@@ -2633,6 +2633,17 @@ judgment), listed, and left out of `sym_precision`'s denominator.
 D7: C#'s unaliased `using X;` is a wildcard import resolved through the namespace's declaring
 files, and a dotted call through a wildcard-imported type resolves to its member.
 
+**Amended 2026-09-28 (owner decision D4, LB-F30).** The "three items deferred on the same
+missing L3 oracle" trigger fired (github-actions, package-json and dockerfile all waited on
+tool-format xref scoring). Answer: the doc engine's cross-file references now reach the
+store as file-tier `doc-xref` edges and are scored as `xref_precision`/`xref_recall`
+against a tool oracle's `cross_references`; the doc-engine strategy set gains `repo-root`
+(GitHub Actions' root-relative `uses:`) and `label-selector` (Kubernetes Service to
+workload, a bounded join over declared labels). `repo-root` is `repo-path` with a different
+base directory — the "parameterized copy" trigger is watched, not yet fired. A Dockerfile
+local-image strategy is designed and deferred (plan row LB-X-docker-image-ref): its
+evidence lives in three other formats.
+
 ## ADR-049: The proof-layer roadmap: a kitchen-sink gate, pillars inside the tenancy lane, reach before depth, views never trackers, no Rust rewrite (2026-09-27)
 
 **Status.** Accepted 2026-09-27. Owner decision memo of 2026-09-27 over the agentic-coding landscape scan of the same date and the owner's notes N1 to N8. Vision: `docs/vision/38-proof-layer-roadmap.md`. Designs: `docs/design/reach.md`, `docs/design/spec-interop.md`, `docs/design/knowledge-retrieval.md`, `docs/design/governance-learning.md`, `docs/design/progress-and-economics.md`; the system graph is ADR-050. Plans: `docs/plans/reach.md` (RH-), `docs/plans/spec-interop.md` (SI-), `docs/plans/knowledge-retrieval.md` (KR-), `docs/plans/governance-learning.md` (GL-), `docs/plans/progress-and-economics.md` (PE-), `docs/plans/system-graph.md` (SG-). Goals G16 to G22; G15 names vision 37's M2 and M3 as its next bets. Promotes futures F20 and the plugin part of F2; promotes F14's output format only; F13 stays gated by vision 31. Invariants I56, I57.
