@@ -2387,6 +2387,21 @@ when** a routing change (a different prompt, model, or provider) passes the
 calibration check (0.9 right nine times in ten) on a newly measured sample —
 only then does a firm line for a high-confidence band become warranted again.
 
+**Amended 2026-09-29 (ADR-056): calibration first, and the decision-port site list.** The bar stands as
+ADR-044 decision 8 set it: a site's proceed band is trusted only where 0.9 is right nine times in ten on
+adjudicated cases. ADR-056 rule R3 adds Wilson-interval bars: a calibrated hint needs 90 of 100 right at the
+shown confidence, a judgment that prunes, gates or reorders a default list needs a 95 percent lower bound of at
+least 0.90, and a free-form question is shown uncalibrated and never prunes or reorders. New decision-port sites,
+all opt-in and none in `DefaultDecide.Sites`: `triage_failure` (a failure kind over a test run), `ask` (judgments
+the agent directs, over spans the graph selects), `explore` (question-directed traversal), `compact_advice` (when
+to compact) and the `judge_*` family (sampled judged telemetry, `judge_failure` first). Each is refused unless the
+repository's own `[decide] sites` names it, even when a provider is set; `route` leaves the default list (the code
+stays). Decision 3 gains a category, judgments the agent directs; decision 5 (no new MCP tool) stands; I14's
+enumerated list widens to any explicitly invoked CLI verb whose site is listed in `[decide] sites` (never a hook
+process directly). This amendment builds nothing: each site waits on its plan rows in
+`docs/plans/judgment-foundations.md`, `docs/plans/test-run-hook.md`, `docs/plans/judged-predicates.md` and
+`docs/plans/judged-telemetry.md`.
+
 ## ADR-043: Tested means certified — a certifications layer over declared test evidence, judged elsewhere (2026-09-23)
 
 **Status.** Accepted 2026-09-23. Vision: `docs/vision/33-test-certifications.md`. Design: `docs/design/test-certifications.md`. Plan: `docs/plans/test-certifications.md`.
@@ -3046,3 +3061,163 @@ for one codebase.
 - The evidence contract takes more than 3 breaking changes in a quarter (the seam costs more
   than it saves).
 - The owner decides to sell one product (then bundle first, merge code last).
+
+## ADR-056: Judgment at the port, proof first: level 10 through fathom, optional per site, measured before it is built (2026-09-29)
+
+**Status.** Accepted 2026-09-29. Owner directive of 2026-09-29: use level 10 of the ten-levels series (agentic Jev)
+powerfully in fathom while keeping Jev optional, and land every decision from the research pass in the durable
+records. Inputs: the design brief (five centerpieces, two designs, nineteen ideas, ten findings), an invariants
+critic, a cost critic, the owner-architect notes of 2026-09-29 (binding where they apply), and the public level 10
+source. Amends ADR-042 (decisions 3 and 5 gain a category and a per-site opt-in; I14's enumerated list widens) and
+reads ADR-046, ADR-049 (decisions 2 and 7), ADR-053 and ADR-055 as constraints. Vision:
+`docs/vision/40-judgment-and-exploration-maps.md`. Designs: `docs/design/judgment-foundations.md`,
+`docs/design/test-run-hook.md`, `docs/design/judged-predicates.md`, `docs/design/judged-telemetry.md`,
+`docs/design/exploration-maps.md`, `docs/design/carry-across.md`, `docs/design/work-signals.md`. Plans:
+`docs/plans/judgment-foundations.md` (JF-), `docs/plans/test-run-hook.md` (TR-), `docs/plans/judged-predicates.md`
+(JP-), `docs/plans/judged-telemetry.md` (JT-), `docs/plans/exploration-maps.md` (XM-), `docs/plans/carry-across.md`
+(CA-), `docs/plans/work-signals.md` (WS-). Goals G27 to G32. Principle P24, invariants I59 to I61, futures F34 to
+F49, questions Q31 to Q33.
+
+**Context.** Level 10 gives the agent one tool that runs a command, assembles one state and asks a fast typed model
+the agent's own questions, hiding the output from the agent. Fathom already has the decision port (ADR-042), a
+`typesafe` provider, and a call log that shows the tools an agent must choose to call die (about 98k MCP calls:
+localize 40, test_impact 103, discoveries 13) while hooks and threads survive. Nobody has measured a typed
+judgment model's accuracy on code. Four facts shaped the answer: most of what level 10 asks has an exact answer
+fathom computes with no model; the `route` site failed calibration (45.7 percent right at confidence 0.9 or more,
+non-monotonic); a site added the usual way switches on in every repository that sets a provider; and the
+rule-outcome events governance learning reads measure scope persistence, not compliance.
+
+**Decision.**
+1. *The decision-model bet (principle P24).* Fast, cheap typed-judgment models (Jev is the first) will keep
+   improving in accuracy, calibration, price and latency, and fathom rides that curve without redesign. Boundary:
+   judgment never replaces proof for anything fathom can compute, and a model answer is never a receipt a stranger
+   can re-derive. Rules: every judgment is a typed decision-port site (schema plus provider), never an ad hoc call;
+   every site owns a calibration set that grows and `fathom decide calibrate --provider X` re-grades every site;
+   features improve monotonically (deterministic with provider none, judgment only in bands where calibration has
+   passed, no feature whose value exists only if a future model arrives); judgments are cached by (template,
+   content hash) stamped with provider and model version and kept apart from proof; no vendor lock-in.
+2. *Program rules R1 to R8.* R1 structural routing: named operators or existing tools answer every computable
+   question and a model never decides what is computable. R2 new sites never enter the default site list. R3 bars
+   use Wilson intervals: a calibrated hint needs 90 of 100 right at the shown confidence (ADR-044 decision 8); a
+   judgment that prunes, gates or reorders a default list needs a 95 percent lower bound of at least 0.90 (the O113
+   lesson); a free-form question is shown to the asking agent labeled uncalibrated and never prunes or reorders.
+   R4 human labels go to one template at a time. R5 no table, durable memo, sampler queue or background judge
+   before RT-M1 reads PASS (ADR-049 decision 2). R6 no new MCP tool (ADR-042 decision 5, ADR-053); exposure only
+   on call-log demand from at least 5 percent of sessions, folded into an existing extended tool. R7 a judgment
+   never asserts a code fact, prunes silently, sets a status or blocks, and a model never prunes on a security
+   property. R8 pin the model, log the resolved model, mark a site "recalibration due" on any move.
+3. *Every new decision site is opt-in per repository, even when a provider is set (this is what makes Jev optional
+   per feature).* `DefaultDecide.Sites` is frozen at today's list minus `route`; `decide.OptInSites` lists
+   `triage_failure`, `ask`, `explore`, `compact_advice` and the `judge_*` family; `SiteAllowed` refuses an opt-in
+   site unless the repository's own `[decide] sites` names it. A missing key, a timeout, a 429 or 529, refuse mode
+   or safe mode each produce one disclosed line and the deterministic path. Provider `none` stays the default and
+   stays byte-identical (I42); `llm` serves the CLI and background work only; `typesafe` may serve a hook through a
+   daemon endpoint. Calibration is per (site, template@version, provider, resolved model).
+4. *A new category: judgments the agent directs.* ADR-042 decision 3 covered judgments fathom makes while serving.
+   A judgment the agent asks for (a free-form question over spans the graph selects) is allowed as a CLI verb and a
+   lazily loaded skill, shown to the asking agent as uncalibrated, and it never prunes, reorders, sets a status or
+   gates. Decision 5 stands: it adds no MCP tool.
+5. *I14 amendment.* The decision port may open from the daemon, or from any explicitly invoked CLI verb whose site
+   is listed in `[decide] sites`; it never opens from a hook process directly (a hook reaches a daemon endpoint).
+6. *Fathom's level 10 is the test-run hook, tiers 0 and 1, provider none (accepted).* On the repository's declared
+   test command (PostToolUse and PostToolUseFailure of Bash) it parses the run and computes, by localize and test
+   impact over the working-tree diff, the changed symbols each failing test reaches, and injects one line, nothing on
+   a pass. It never rewrites output, blocks or runs a command. Opt-in behind `[hooks] test_run`, default-on only
+   after its bench cell: 20 mutation-seeded test-fix tasks on a repository fathom did not write, n = 3, arms
+   control, the hook and raw level 10 (bench sandbox only). Bar: at least 20 percent fewer tokens-to-green than
+   control, the paired CI excludes 0, correctness not lower. Kill: the line stays off; if raw level 10 beats the
+   hook, publish that. Tier 2 (a failure-kind choice, site `triage_failure`) is deferred.
+7. *J0 first (accepted): a one-way kill screen.* About 1,000 spans from fathom and two open source Go repositories;
+   oracle templates the index computes; a lexical baseline arm; a 150-unit residue set labeled by a frontier pass
+   with the owner adjudicating every disagreement plus 20 percent; bars: direct-visible AUROC at least 0.9 and recall
+   at least 0.95 at a prune rate of at least 0.5, beats the lexical baseline by 0.05, context assembly lifts
+   transitive recall by 20 points, residue precision at least 0.9. Any miss, or grep tying the model, means no
+   code-reading site is built (`ask`, the traversal scorer, files at scale). Alongside it, an I3 masked-plan-row
+   smoke test that never counts toward SI-M4.
+8. *Corrections accepted.* The rule-outcome events are renamed `still_served` and `top_changed` and every reading
+   is re-labeled (they measured scope persistence, not compliance); `route` leaves the default site list (the code
+   stays, SR-44's precheck stays; re-admission needs 100 replayed prompts against R3); `certify_suggest` computes
+   the strength levels the evidence permits and offers the model only those; calibration is a reading per (site,
+   template, provider, resolved model), not a fitted map; two design notes that assumed Jev generates text are
+   corrected, and conservation's reach is stated exactly (it does not catch an expected constant edited to match
+   buggy output).
+9. *Experiments with named bars and kills.* (a) Carry-across after compaction: verify SessionStart(source=compact),
+   read 14 days of transcripts, stop if the median compaction has under 2 re-reads or re-reads are under 10 percent
+   of post-compaction reads, else A/B by session hash (re-reads down 30 percent, CI excluding 0); a pass overturns
+   `cmdThreadBrief`'s deliberate silence on compact and amends I12. The compaction advisor itself is not a fathom
+   feature: a hook cannot compact. (b) Exploration maps shared from planner to sub-agents, measurement first: build
+   only if at least 15 percent of sub-agent reads are re-derivation, then an A/B (25 percent fewer sub-agent tokens,
+   no accuracy loss, under 5 percent stale entries). Binding design: entries anchored to symbol and content hash;
+   maps compose by reference as a DAG (cycles refused, depth 4), the handoff carries one id and fathom mints a
+   composite of references for several; live maps and semantic layers are complementary axes (what matters for a
+   purpose versus what is true or binding), live maps query layers and scope expensive columns; maps arrive through
+   handoff, location-relevant hook lines, the session brief and threads, never by an agent choosing to look; no new
+   default tool. (c) Stall detection: deterministic detectors folded asynchronously by the daemon, checked against
+   abandoned sessions and later green runs, an opt-in nudge A/B by session hash, fathom never switches models or
+   dispatches. (d) The U6 preflight model against a fitted logistic baseline (bar 0.05 held-out AUROC).
+10. *Estimated weights and cost per weight point (owner, accepted).* A deterministic estimator proposes row weights
+    shown beside authored weights and never overwriting them; the author accepts one with one command; a model may
+    refine an estimate only after it passes calibration, and a refinement is a proposal for the author, so progress
+    computed by `fathom verify` stays model-free (ADR-049 decision 7 holds). Economics show cost per proven weight
+    point per model, harness and zone, keyed by agent identity (I58).
+11. *Hexagonal hardening of the port (owner, accepted; implemented in agentic-kit).* A generic kind name with the
+    vendor term as a wire alias, adapter-declared limits, adapters in subpackages, a `Capabilities()` declaration, a
+    conformance kit, composition as decorators (cascade, fallback, cache, record and replay) and a calibration
+    mapping in the core. It is recorded in agentic-kit's decision-port plan; fathom then bumps its vendored mirror.
+12. *Deferred, each on a named trigger (futures F34 to F49):* `fathom ask` (J0 passes); tier 2 `failure_kind` (at
+    least 100 failing runs later green, and J0 has run); question-directed traversal (the maps A/B passes); files at
+    scale (J0, RT-M1 and a named consumer's own metric); when-to-compact advice (carry-across passes and route is
+    re-admitted); fitted recalibration and auto-disable (100 labels for one site, provider and model); the
+    judged-telemetry sampler, queue, background judge and table (RT-M1 PASS, plus the owner's call to unfreeze
+    assess or supersede it); guard proposals from relabeled rule outcomes; MCP exposure of test-run or ask output
+    (5 percent of sessions); a `--plan-only` export (a named consumer); map set algebra; ADR-to-rule pair
+    judgments, doc-drift triage, an injection screen, skill suggestion, friction classification and product feedback
+    (each its own trigger). Graduating a judged template to claims at tier ai-derived needs its own ADR promoting F7.
+13. *Refused.* A public `fathom triage` verb as the delivery, and `ask`'s computable-operator grammar as a new verb
+    (tools agents must choose to call die and the operators duplicate existing tools); judged rule compliance now
+    (contradicts governance-learning section 11 and ADR-049 decision 7, and no labels exist); Jev for answer
+    usefulness, config custodian proposals and product digests (joins over structured events, and narrative is a
+    lens, P14); computable labels as model work (generated files, config versus code, public API, ownership, I/O
+    reach, TODO admission); model-judged security properties as a served signal (X6, ADR-051); a Stop-hook
+    completion check judged by a model; model verdict proposals for the feature map (ADR-055 decision 4's proposal
+    path, FM-10: 86 labels over four classes cannot support its 0.8 agreement bar, and a model "ditch" would anchor
+    the one decision ADR-053 requires to be evidence-driven; this narrows ADR-055 and awaits the owner's
+    confirmation, the FM plan rows are not edited here); commit classification; model inputs to the risk band; model gates on
+    destructive commands or secret writes (the harness owns them, P11); generated text from Jev; output rewriting and
+    command execution by fathom; a judged-telemetry lane parallel to assess.
+14. *Labels and spend.* The one labeled template is `failure_kind`; J0's residue set (50 to 80 owner labels, once)
+    is the only other human labeling; labels arrive in batches of ten through the one-key verdict with provenance
+    (human, frontier, computed). Bench spend in order: J0 plus I3 (about $0.25 and 1 to 2 days), the level 10 cell
+    ($90 to $360), transcript readings ($0), the `ask` and traversal benches only after their triggers ($110 to
+    $720). Provider spend is under $1 across all of it.
+
+**Alternatives rejected.**
+- *Port level 10 as is: a tool the agent calls, with fathom running the command.* The agent must choose to call
+  it, and fathom does not run commands or rewrite output; the exact questions have exact answers.
+- *Let a model route computable versus judged questions.* The `route` site failed at exactly that shape.
+- *Ship the whole judged-telemetry loop now.* Labels, not tokens, are scarce; the loop needs a table and a worker
+  that RT-M1 blocks, and a parallel lane would rebuild assess's consent and spend isolation.
+- *Record every judgment as a claim.* ADR-042 rejected it; judgments stay in a memo until a template graduates.
+- *A fitted calibration map now.* It cannot repair a non-monotonic failure and a fit at n near 100 is noise.
+- *Make `typesafe` a default provider, or leave new sites on whenever a provider is set.* It breaks optionality
+  per feature.
+
+**Consequences.**
+- Seven plans, seven design documents, vision 40, goals G27 to G32, principle P24, invariants I59 to I61 (I14
+  amended), questions Q31 to Q33, futures F34 to F49 and a dated amendment line on ADR-042.
+- Code follows through JF, TR, JP, JT, XM, CA and WS rows, each gated by `fathom verify`; nothing here is built
+  by this record.
+- The tool count is unchanged; the default surface stays at eight tools (ADR-053).
+- A judgment is labeled with its tier and calibration state wherever it is shown, and every removed row is listed.
+
+**Revisit when.**
+- The J0 reading lands: a kill closes `ask`, the traversal scorer and files at scale; a pass opens F34.
+- The level 10 cell reads: arm B misses the 20 percent bar (the hook stays off) or raw level 10 beats it (publish
+  and consider tier 2 sooner).
+- Any site's calibration reading clears or fails R3's bars at n of at least 100 (open or drop that template).
+- RT-M1 reads PASS (the memo, the sampler and files at scale may be reconsidered).
+- A site is found on by default when a provider is set (the opt-in guard leaked).
+- The maps re-derivation reading or the carry-across Reading 0 lands (build or stop).
+- Hook or CLI use reaches 5 percent of sessions (MCP exposure).
+- The provider situation changes: Jev signups were paused on 2026-09-22 and its OpenRouter access is alpha; the
+  design assumes nothing depends on it, and a withdrawal only removes an optional provider.
