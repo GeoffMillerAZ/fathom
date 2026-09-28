@@ -16,6 +16,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/harness"
@@ -234,30 +235,78 @@ func threadAutoNote(id, thread, kind, text string, pointers map[string]string, c
 	})
 }
 
+// sessionFactsGitExec runs `git -C root <args>`, trimmed ("" on error). A
+// package var (not a local closure) so tests can count and stub the forks
+// mechanicalSessionFacts makes — the same seam gitToplevelExec gives the
+// identity lookup.
+var sessionFactsGitExec = func(root string, args ...string) string {
+	//fathom:tenancy-allow exec-noctx hook process bounded by its hookguard deadline, which kills the process tree; no request context to pass
+	out, err := exec.Command("git", append([]string{"-C", root}, args...)...).Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
+}
+
 // mechanicalSessionFacts summarizes what a departing session leaves in
 // flight — git facts plus claimed-unproven plan rows. Empty when nothing
 // is in flight.
+//
+// RT-7's local-work half applies here even though nothing downstream is an
+// RPC: with no daemon call to wait out, the hook's whole budget is local
+// git forks, and under contention the cost of a fork is its LATENCY (slow
+// to start), not its CPU. Two rules follow. Past a spent deadline the
+// facts only feed a deposit the hook has no budget left to make, so
+// nothing is forked at all (as doctor and the identity lookup do,
+// hookguard_localwork_test.go). Before it, the four reads are independent
+// of each other, so they run together — one latency wait, not four in a
+// row — and are assembled in a fixed order, so the answer is unchanged.
 func mechanicalSessionFacts(root string) string {
-	run := func(args ...string) string {
-		//fathom:tenancy-allow exec-noctx hook process bounded by its hookguard deadline, which kills the process tree; no request context to pass
-		out, err := exec.Command("git", append([]string{"-C", root}, args...)...).Output()
-		if err != nil {
+	if hookDeadlineSpent() {
+		return ""
+	}
+	run := func(args ...string) string { return sessionFactsGitExec(root, args...) }
+	steps := []func() string{
+		func() string {
+			if s := run("status", "--porcelain"); s != "" {
+				return fmt.Sprintf("%d uncommitted file(s)", len(strings.Split(s, "\n")))
+			}
 			return ""
-		}
-		return strings.TrimSpace(string(out))
+		},
+		func() string {
+			if st := run("stash", "list"); st != "" {
+				return fmt.Sprintf("%d stash(es)", len(strings.Split(st, "\n")))
+			}
+			return ""
+		},
+		func() string {
+			if b := run("rev-parse", "--abbrev-ref", "HEAD"); b != "" && b != "main" && b != "master" {
+				return "branch " + b
+			}
+			return ""
+		},
+		func() string {
+			if n := countClaimedUnproven(root); n > 0 {
+				return fmt.Sprintf("%d claimed-unproven plan row(s)", n)
+			}
+			return ""
+		},
 	}
+	found := make([]string, len(steps))
+	var wg sync.WaitGroup
+	for i, step := range steps {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			found[i] = step()
+		}()
+	}
+	wg.Wait()
 	var parts []string
-	if s := run("status", "--porcelain"); s != "" {
-		parts = append(parts, fmt.Sprintf("%d uncommitted file(s)", len(strings.Split(s, "\n"))))
-	}
-	if st := run("stash", "list"); st != "" {
-		parts = append(parts, fmt.Sprintf("%d stash(es)", len(strings.Split(st, "\n"))))
-	}
-	if b := run("rev-parse", "--abbrev-ref", "HEAD"); b != "" && b != "main" && b != "master" {
-		parts = append(parts, "branch "+b)
-	}
-	if n := countClaimedUnproven(root); n > 0 {
-		parts = append(parts, fmt.Sprintf("%d claimed-unproven plan row(s)", n))
+	for _, p := range found {
+		if p != "" {
+			parts = append(parts, p)
+		}
 	}
 	return strings.Join(parts, ", ")
 }
@@ -267,13 +316,12 @@ func mechanicalSessionFacts(root string) string {
 // plans modified since HEAD (uncommitted plan edits are exactly the
 // claims a departing session leaves hanging).
 func countClaimedUnproven(root string) int {
-	//fathom:tenancy-allow exec-noctx hook process bounded by its hookguard deadline, which kills the process tree; no request context to pass
-	out, err := exec.Command("git", "-C", root, "diff", "--name-only", "--", "docs/plans").Output()
-	if err != nil {
+	out := sessionFactsGitExec(root, "diff", "--name-only", "--", "docs/plans")
+	if out == "" {
 		return 0
 	}
 	n := 0
-	for _, f := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+	for _, f := range strings.Split(out, "\n") {
 		if f == "" {
 			continue
 		}

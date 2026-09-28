@@ -1085,10 +1085,16 @@ SessionEnd 3 s → 2 s). Every RPC derives from it and sends `X-Fathom-Deadline`
 remaining). `fetchServices`' fresh 4 s retry client is replaced by a retry only on
 `ECONNREFUSED`/`ECONNRESET` and only within the deadline — never after a timeout.
 `TestNoHookRPCOutlivesItsDescriptorBudget`: every descriptor against a hanging server,
-every RPC ended by the deadline and hook wall time ≤ deadline + 250 ms of local work (inside
-the max(1 s, 20%) margin before the harness kill). The deadline bounds RPCs; past it a hook
-also skips the local work that only feeds a refused RPC (the identity lookup's git read) and
-its optional local work — `session-hook`'s outbox sync and continuity brief (replaced by a note
+every hung RPC abandoned within its budget (wall clock, from that RPC's start), and the hook's
+CPU time (its own plus its reaped git children's) plus its wall time waiting on RPCs ≤ deadline
++ 250 ms of local work (inside the max(1 s, 20%) margin before the harness kill). The whole-hook
+bound is CPU, not wall: under load a fork is slow to start, not costly, and that wait is
+neither a hung daemon nor a spinning hook (codex `session-end-hook`, all local work, took 701 ms
+against a 200 ms scaled budget at load 12 on 10 cores). Wall time still backstops it at the
+descriptor's whole `TimeoutSec`, the harness kill. `session-end-hook`'s four independent git
+reads run together and are skipped outright once the deadline is spent. The deadline bounds
+RPCs; past it a hook also skips the local work that only feeds a refused RPC (the identity
+lookup's git read) and its optional local work — `session-hook`'s outbox sync and continuity brief (replaced by a note
 naming `fathom prime`), `doctor --brief`'s remaining checks (counted in one `hook_deadline`
 row the brief always shows) — so a hook stuck on a hung daemon exits at its budget even at
 background priority on a loaded machine. Bounding local work before the deadline on large
