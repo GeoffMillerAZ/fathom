@@ -429,6 +429,43 @@
   },
   {
     "manifest": {
+      "id": "css",
+      "display": "CSS",
+      "kind": "language",
+      "lang_tag": "css",
+      "match": {
+        "extensions": [
+          ".css"
+        ],
+        "basenames": []
+      },
+      "kinds": {
+        "selector": {
+          "source_kind": "CSSSelector",
+          "canonical": "selector"
+        }
+      },
+      "required_kinds": [
+        "selector"
+      ],
+      "oracle_kinds": {
+        "ctags": {
+          "class": "selector",
+          "id": "selector",
+          "selector": "selector"
+        }
+      },
+      "queue_id": "css"
+    },
+    "ctags": {
+      "languages": [
+        "CSS"
+      ],
+      "args": []
+    }
+  },
+  {
+    "manifest": {
       "id": "scala",
       "display": "Scala",
       "kind": "language",

@@ -519,7 +519,15 @@ func parseGitLog(serviceID, raw string) []store.Commit {
 // epoch 7 fixed for Kotlin; the salt bump forces those files through the
 // new extractor on the next ingest instead of leaving them silently stuck
 // on a stale "unsupported" fingerprint.
-const ExtractorEpoch = "10"
+// Epoch 11 (LB-Q-css, docs/design/language-breadth.md §13): CSS (.css) now
+// extracts via internal/extractor.NewTSExtractor("css") — tree-sitter via
+// wazero/WASM, a fleet gap with no incumbent — where every .css file
+// previously fell through to "no extractor registered" and was
+// fingerprinted (never re-sniffed) by that dead-end path, the same class
+// epochs 7 and 10 fixed for Kotlin and HTML; the salt bump forces those
+// files through the new extractor on the next ingest instead of leaving
+// them silently stuck on a stale "unsupported" fingerprint.
+const ExtractorEpoch = "11"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares
@@ -642,6 +650,15 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	}
 	p.exts[".html"] = html
 	p.exts[".htm"] = html
+
+	// CSS — tree-sitter via wazero/WASM (LB-Q-css, design
+	// §13/language-breadth): new; no incumbent bespoke walker existed for
+	// CSS (a fleet gap, not a port), so there is no calibration gate.
+	css, err := extractor.NewTSExtractor("css")
+	if err != nil {
+		panic(fmt.Sprintf("fusion: tsextract css: %v", err))
+	}
+	p.exts[".css"] = css
 
 	// Terraform HCL
 	p.exts[".tf"] = extractor.NewHCLExtractor()

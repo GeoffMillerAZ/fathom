@@ -1,0 +1,35 @@
+id: css
+language: CSS
+repos:
+  - name: normalize.css
+    url: https://github.com/necolas/normalize.css
+    ref: v2.1.3
+    sha: dafaf9ee60ff76173954aca755c78a6912a0ee6c
+    licence: MIT
+    idioms:
+      - "a flat reset stylesheet: comma-grouped type/attribute selectors
+        across many rules (no nesting, no custom properties — pre-dates
+        CSS variables)"
+      - "pseudo-classes (:hover, :focus) and vendor pseudo-elements
+        (::-webkit-search-cancel-button, ::-moz-focus-inner)"
+      - "attribute selectors (`[hidden]`, `input[type=\"search\"]`)"
+  - name: pico
+    url: https://github.com/picocss/pico
+    ref: v2.1.1
+    sha: 1039a4788d6abc368d5485ae6bac84a8f0e3096f
+    licence: MIT
+    subpath: css
+    idioms:
+      - "heavy custom-property use (~480 `--name:` declarations, ~500
+        `var(--name)` reads) across `:root` and `[data-theme=...]` blocks"
+      - "many `@media` breakpoints (18 in the base build)"
+      - "many near-duplicate colour-variant/classless builds (amber, blue,
+        classless, conditional-*) — real repeated-shape stress, not just
+        one file"
+    notes: >
+      the built `css/` bundles carry no `@import` of their own (the
+      framework ships pre-compiled, not modular) — this shard measures
+      selectors/custom-properties/@media well but exercises no @import
+      edge; combined with normalize.css (also import-free), L3's
+      import_resolution metric has no real @import in either subject and
+      is expected to read N/A or 0/0, not a query defect.

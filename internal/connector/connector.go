@@ -105,6 +105,9 @@ var extClassMap = map[string]classification{
 	".html": {core.KindHTMLId, "html"},
 	".htm":  {core.KindHTMLId, "html"},
 
+	// CSS (LB-Q-css, language-breadth: new — a fleet gap, no incumbent).
+	".css": {core.KindCSSSelector, "css"},
+
 	// C
 	".c": {core.KindCFunc, "c"},
 	".h": {core.KindCFunc, "c"},

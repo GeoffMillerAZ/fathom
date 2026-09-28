@@ -1,0 +1,32 @@
+{
+  "id": "css",
+  "display": "CSS",
+  "kind": "language",
+  "engine": "tags",
+  "lang_tag": "css",
+  "match": {
+    "extensions": [".css"],
+    "basenames": [],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "grammar": { "blob": "css", "entry_point": "tree_sitter_css" },
+  "variants": [],
+  "queries": { "tags": "tags.scm", "imports": "imports.scm" },
+  "kinds": {
+    "selector":         { "source_kind": "CSSSelector", "canonical": "selector" },
+    "keyframes":         { "source_kind": "CSSKeyframes", "canonical": "rule", "container": true },
+    "custom_property":  { "source_kind": "CSSCustomProperty", "canonical": "variable" }
+  },
+  "required_kinds": ["selector"],
+  "oracle_kinds": {
+    "ctags": { "class": "selector", "id": "selector", "selector": "selector" }
+  },
+  "qualify": { "chain_containers": false, "container_sep": ".", "method_sep": "." },
+  "package": { "strategy": "dir" },
+  "imports": { "strategy": "relative-path", "relative": true, "suffixes": [".css"] },
+  "signature": { "max_chars": 200 },
+  "target_level": "L3",
+  "queue_id": "css"
+}

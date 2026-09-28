@@ -1,0 +1,12 @@
+{
+  "symbols": [
+    {
+      "name": ".ok-before",
+      "kind": "CSSSelector",
+      "package": "broken",
+      "line": 1,
+      "end_line": 3,
+      "tier": "verified"
+    }
+  ]
+}

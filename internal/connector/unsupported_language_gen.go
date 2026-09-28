@@ -24,7 +24,6 @@ var unsupportedLangExtMap = map[string]string{
 	".comp":    "glsl",
 	".cpy":     "cobol",
 	".cr":      "crystal",
-	".css":     "css",
 	".cu":      "cuda",
 	".cuh":     "cuda",
 	".d":       "d",

@@ -1,0 +1,31 @@
+@import "base.css";
+@import url("theme.css") screen;
+
+:root {
+  --primary-color: #336699;
+  --spacing-sm: 4px;
+}
+
+.button, .button--large {
+  color: var(--primary-color);
+  padding: var(--spacing-sm) 8px;
+}
+
+#header {
+  display: flex;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 600px) {
+  .button {
+    padding: 2px;
+  }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

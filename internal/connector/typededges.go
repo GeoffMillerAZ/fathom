@@ -40,6 +40,7 @@ var typedEdgeProducers = map[string]string{
 	// dialect's src/href/@import specs to in-repo files (tier pre-scan,
 	// LB-F11) — no SCIP producer and no native pass.
 	"html": "file",
+	"css":  "file",
 
 	// syntax: call names by syntax only — every other registered
 	// language, CUE included (see the doc comment above).

@@ -1,0 +1,132 @@
+{
+  "dialect": "css",
+  "kind": "language",
+  "target_level": "L3",
+  "level_met": "none",
+  "grade": {
+    "L1": "unmet",
+    "L2": "not-attempted",
+    "L3": "not-attempted",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-09-28",
+  "fathom_commit": "5e9549f7",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "normalize.css",
+      "sha": "dafaf9ee60ff76173954aca755c78a6912a0ee6c",
+      "files": 1,
+      "bytes": 7546,
+      "counts": {
+        "fathom_defs": 71,
+        "kind_equal": 46,
+        "matched": 46,
+        "oracle_defs": 70
+      },
+      "families": {
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "selector"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 0.955,
+        "max_file_ms": 0,
+        "peak_module_pages": 271,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "pico",
+      "sha": "1039a4788d6abc368d5485ae6bac84a8f0e3096f",
+      "files": 119,
+      "bytes": 10216590,
+      "counts": {
+        "fathom_defs": 78191,
+        "kind_equal": 7936,
+        "matched": 7936,
+        "oracle_defs": 194677
+      },
+      "families": {
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "selector"
+      ],
+      "excluded_by_kind": {
+        "fathom:CSSCustomProperty": 55074,
+        "fathom:CSSKeyframes": 434
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 2746.920000000001,
+        "max_file_ms": 27,
+        "peak_module_pages": 312,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "B",
+      "tool": "universal-ctags",
+      "version": "6.2.1"
+    }
+  ],
+  "metrics": {
+    "call_precision": null,
+    "call_recall": null,
+    "def_mapping": null,
+    "file_edge_precision": null,
+    "file_edge_recall": null,
+    "import_resolution": null,
+    "kind_agreement": 1,
+    "range_agreement": null,
+    "signature_coverage": null,
+    "sym_precision": 0.102,
+    "sym_recall": 0.041,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "kind_agreement": "B",
+    "sym_precision": "B",
+    "sym_recall": "B"
+  },
+  "not_applicable": [
+    "signature_coverage"
+  ],
+  "required_kinds": [
+    "selector"
+  ],
+  "kind_intersection": [
+    "selector"
+  ],
+  "counts": {
+    "fathom_defs": 78262,
+    "kind_equal": 7982,
+    "matched": 7982,
+    "oracle_defs": 194747
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 3.72,
+    "max_file_ms": 27,
+    "peak_module_pages": 312,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "fathom:CSSCustomProperty": 55074,
+    "fathom:CSSKeyframes": 434
+  },
+  "notes": [
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "pico: 119 files skipped by ingest's gates (generated)",
+    "tree-sitter-css v0.25.0 (the latest tagged release; verified via git ls-remote, no newer tag exists) cannot parse the CSS Selectors Level 4 multi-argument form `:not(A, B, C)` — confirmed directly with `indexbench lang-probe` on pico's `input:not([type=submit], [type=button], ...)`: the parser emits an ERROR at `input` and recovers by flattening the bracketed arguments into a bogus top-level comma selector list, which both inflates fathom_defs and produces names neither side agrees on. This repeats across most of pico's 119 measured files (the same shared rule), dominating its per-subject counts (fathom_defs 78,191 vs oracle_defs 194,677, only 7,936 matched) and swamping normalize.css's much closer count (71 vs 70, 46 matched) in the merged total. Upstream-grammar-limited; not a tags.scm defect and not fixable by re-pinning (no newer release)."
+  ],
+  "disposition": "deferred: sym_recall .041 and sym_precision .102 both collapse far below the L1 good floor (.85/.90), but this is not a tags.scm gap. Root cause, confirmed directly: internal/langbench/score.go's BareName() strips a qualified name's text after the last '.', ':', '#', '/', '\\\\', ' ' or ')' — a convention built for programming-language qualification (Class.method, Class::method) that collides with CSS's OWN selector syntax, where '.', '#' and ':' are not qualification separators but the selector's own kind marker. BareName(\".button\")=\"button\", BareName(\"#header\")=\"header\", BareName(\"a:hover\")=\"hover\", BareName(\":root\")=\"root\", and BareName(\"audio:not([controls])\")=\"\" (empty) — verified directly by calling BareName from a scratch test — while ctags' own reported names keep their full punctuation (\".button\", \"#header\", \"a:hover\", verified with `ctags --fields=+n` on the fixture and on normalize.css), so almost every class/id/pseudo-class selector fails to key-match its oracle counterpart before line-distance is even considered. A local, reverted-before-commit experiment (BareName forced to identity) raised normalize.css alone from 46/70 to 54/70 matched (.77 recall/.76 precision) — real but still short of good, the remainder being ctags attributing each name in a multi-line comma selector list to ITS OWN physical line while fathom deliberately keeps every such name at the enclosing rule's start line (so EndLine can still reach the rule's real close-brace — ctags itself reports no end field for CSS at all, so this costs nothing on the oracle side and is real product value: an accurate range for e.g. `symbol_context(\".button\")`) — a >2-line delta then falls outside ScoreL1's |Δline|<=2 window. Neither fix belongs to this dialect: BareName is a cross-cutting internal/langbench primitive shared by every already-measured dialect (an Opus-reviewed change, §15), and narrowing fathom's own Line/EndLine to chase the oracle's per-line convention would trade away real range accuracy for a scoring artifact, which §14.2 rules out. LB-Q-css stays unchecked; see LB-Q-css-rest. Trigger: a per-canonical-kind (or dialect-declared) bare-name policy lands in internal/langbench/score.go so CSS's own selector-marker punctuation is no longer treated as a qualification separator, then css.json is re-measured; the :not() multi-argument grammar gap (see notes) additionally needs a tree-sitter-css release newer than v0.25.0 before pico's own numbers can improve independently of the BareName fix."
+}

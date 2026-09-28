@@ -91,6 +91,14 @@ const (
 	// dialect's primary connector-classification kind).
 	KindHTMLId SourceKind = "HTMLId"
 
+	// CSS (LB-Q-css, language-breadth: new — a fleet gap, no incumbent).
+	// KindCSSSelector is a rule's selector (the manifest's one
+	// required_kind and universal-ctags' only CSS kind); the dialect's
+	// other kinds (keyframes, custom properties) have no connector
+	// classification use and so get no constant of their own, same
+	// precedent as HTML's custom_element/form/field.
+	KindCSSSelector SourceKind = "CSSSelector"
+
 	// Rust
 	KindRustFn     SourceKind = "RustFn"
 	KindRustStruct SourceKind = "RustStruct"
