@@ -251,6 +251,14 @@ var requiredExports = []string{
 	"ts_query_capture_name_for_id",
 }
 
+// probeExports are the node-walk functions build.sh exports that only the
+// probe (Tree.SExpr, LB-F20) calls. Resolved when present, never required:
+// extraction must not fail on a blob built without them.
+var probeExports = []string{
+	"ts_node_type", "ts_node_is_named", "ts_node_child", "ts_node_child_count",
+	"ts_node_named_child_count", "ts_node_field_name_for_child",
+}
+
 // NewParser compiles (if needed) and instantiates the named grammar blob,
 // resolves entryPoint (e.g. "tree_sitter_typescript") to get the TSLanguage,
 // and creates a TSParser bound to it. Call Close when done — it frees the
@@ -282,6 +290,11 @@ func NewParser(ctx context.Context, grammar, entryPoint string) (*Parser, error)
 			return fail(fmt.Errorf("tsengine: grammar %q missing required export %q", grammar, name))
 		}
 		p.fns[name] = &fn
+	}
+	for _, name := range probeExports {
+		if fn := mod.ExportedFunction(name); fn != nil {
+			p.fns[name] = &fn
+		}
 	}
 
 	entryFn := mod.ExportedFunction(entryPoint)
