@@ -234,7 +234,7 @@ func TestRenderCursorPluginRefusesPluginRootTokens(t *testing.T) {
 
 	ok := map[string]any{
 		"mcpServers": map[string]any{
-			"fathom": map[string]any{"type": "streamable-http", "url": "http://localhost:7575/rpc/agent"},
+			"fathom": map[string]any{"type": "streamable-http", "url": "http://localhost:8080/rpc/agent"},
 		},
 	}
 	if _, err := renderCursorPlugin(ok); err != nil {

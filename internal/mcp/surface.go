@@ -114,15 +114,28 @@ var companionTools = func() map[string]bool {
 // (F-86, design §1.1): the eight answers an agent gets before opting into
 // anything else, capped by TestDefaultSurfaceIsEight. Membership is a
 // contract change — update that test and docs/mcp-tools.md together.
-var defaultSurfaceTools = map[string]bool{
-	"blast_radius":   true,
-	"find_symbol":    true,
-	"obligations":    true,
-	"read_source":    true,
-	"review_diff":    true,
-	"search":         true,
-	"symbol_context": true,
-	"verify_plan":    true,
+//
+// It is a sorted slice, not a package-level map (tenancy lint pkg-map):
+// isDefaultSurfaceTool answers membership.
+var defaultSurfaceTools = [...]string{
+	"blast_radius",
+	"find_symbol",
+	"obligations",
+	"read_source",
+	"review_diff",
+	"search",
+	"symbol_context",
+	"verify_plan",
+}
+
+// isDefaultSurfaceTool reports whether name is on the /rpc/agent floor.
+func isDefaultSurfaceTool(name string) bool {
+	for _, n := range defaultSurfaceTools {
+		if n == name {
+			return true
+		}
+	}
+	return false
 }
 
 // extendedTools is /rpc/extended's opt-in set (F-86, design §1.1): the
@@ -145,7 +158,7 @@ var defaultSurfaceTools = map[string]bool{
 // before.
 var extendedTools = func() map[string]bool {
 	m := map[string]bool{}
-	for name := range defaultSurfaceTools {
+	for _, name := range defaultSurfaceTools {
 		m[name] = true
 	}
 	for _, name := range []string{
@@ -327,7 +340,7 @@ func (s *Server) toolOnSurface(surface string, d toolDescriptor) bool {
 		}
 		return true
 	case SurfaceAgent:
-		return defaultSurfaceTools[d.Name]
+		return isDefaultSurfaceTool(d.Name)
 	case SurfaceCompanion, SurfaceExtended:
 		return extendedTools[d.Name]
 	case SurfaceModules:
@@ -442,7 +455,7 @@ func AgentSurfaceTools() []string {
 // TestDefaultSurfaceIsEight).
 func DefaultSurfaceTools() []string {
 	out := make([]string, 0, len(defaultSurfaceTools))
-	for name := range defaultSurfaceTools {
+	for _, name := range defaultSurfaceTools {
 		out = append(out, name)
 	}
 	sort.Strings(out)
