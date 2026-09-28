@@ -9,9 +9,9 @@ Design: `docs/design/work-intelligence.md` (section numbers below are its). Goal
 
 ## Wave 2: proof regressions generalized (U12)
 
-- [ ] Certificate regressions: live to flaky, broken or unproven, with the reading and commit {id: WI-20, symbol: certificateRegressions, package: internal/console, reachable_from: TestCertificateRegressionsWithCommit}
-- [ ] Conservation and invariant-enforcement regressions: a plane once `conserved`, an enforcing test that stopped reaching {id: WI-21, symbol: conservationRegressions, package: internal/console, reachable_from: TestConservationAndInvariantRegressions}
-- [ ] One regressions list, newest first, rows plus certificates plus conservation plus invariants, each linking the breaking diff {id: WI-22, symbol: AllProofRegressions, package: internal/console, reachable_from: TestAllProofRegressionsMerged, needs: "WI-20,WI-21,progress-and-economics.md#PE-8"}
+- [x] Certificate regressions: live to flaky, broken or unproven, with the reading and commit {id: WI-20, symbol: certificateRegressions, package: internal/console, reachable_from: TestCertificateRegressionsWithCommit}
+- [x] Conservation and invariant-enforcement regressions: a plane once `conserved`, an enforcing test that stopped reaching {id: WI-21, symbol: conservationRegressions, package: internal/console, reachable_from: TestConservationAndInvariantRegressions}
+- [x] One regressions list, newest first, rows plus certificates plus conservation plus invariants, each linking the breaking diff {id: WI-22, symbol: AllProofRegressions, package: internal/console, reachable_from: TestAllProofRegressionsMerged, needs: "WI-20,WI-21,progress-and-economics.md#PE-8"}
 
 ## Wave 3: zones, U1, U2, U3, U5, U13
 
