@@ -37,8 +37,8 @@ func TestComputeStateNeverAboveReading(t *testing.T) {
 		if cell.LevelMet != "" {
 			t.Errorf("declared cell claims level_met=%q", cell.LevelMet)
 		}
-		if cell.Target == nil || *cell.Target != "true" {
-			t.Errorf("declared cell target = %v, want true", cell.Target)
+		if cell.Target != true {
+			t.Errorf("declared cell target = %v (%T), want the JSON boolean true", cell.Target, cell.Target)
 		}
 	})
 

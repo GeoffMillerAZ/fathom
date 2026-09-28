@@ -140,14 +140,14 @@ func planVerdict(v string) Verdict {
 }
 
 // setTarget renders a CapabilityTarget into Cell.Target's string form: a
-// Level, or "true" for ProvenOnly. Left unset when neither is declared.
+// Level string, or the JSON boolean `true` for ProvenOnly (never the
+// string "true" — #Cell.target is `#Level | true`, and CUE's `true` only
+// unifies against a JSON boolean). Left unset when neither is declared.
 func setTarget(cell *Cell, t CapabilityTarget) {
 	switch {
 	case t.Level != "":
-		s := string(t.Level)
-		cell.Target = &s
+		cell.Target = string(t.Level)
 	case t.ProvenOnly:
-		s := "true"
-		cell.Target = &s
+		cell.Target = true
 	}
 }

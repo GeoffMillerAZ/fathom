@@ -192,11 +192,17 @@ type LedgerRow struct {
 	Commit      string `json:"commit"`
 }
 
-// Cell is one (entry, capability) of the matrix (#Cell).
+// Cell is one (entry, capability) of the matrix (#Cell). Target's JSON form
+// is #Level | true (schema/support/schema.cue): a Level string for a
+// levelled capability, or the JSON boolean `true` for a ProvenOnly one —
+// never the STRING "true", which fails #Cell validation (a CUE boolean
+// literal unifies only against a JSON boolean). `any` is the seam that
+// lets encoding/json emit either shape; the only two values ever stored
+// here are a Level string or the literal Go bool `true` (setTarget).
 type Cell struct {
 	Capability string  `json:"capability"`
 	State      State   `json:"state"`
-	Target     *string `json:"target,omitempty"` // a Level string, or "true"
+	Target     any     `json:"target,omitempty"`
 	LevelMet   Level   `json:"level_met,omitempty"`
 	Reading    string  `json:"reading,omitempty"`
 	PlanRow    string  `json:"plan_row,omitempty"`
