@@ -56,6 +56,19 @@ func activateHookGuard(g *hookguard.Guard) (restore func()) {
 	return func() { activeHookGuardPtr.Store(prev) }
 }
 
+// hookDeadlineSpent reports that the running hook's deadline has passed
+// (always false outside a hook). RT-7's local-work half (§11.1): the guard
+// refuses every RPC after the deadline, and a hook that then carried on
+// with its local work — git reads feeding an RPC that will not be sent,
+// doctor's remaining checks, the continuity brief — ran past its budget by
+// however long that work took: ~100 ms idle, 350-420 ms at background
+// priority on a loaded machine. Past the deadline a hook skips that work,
+// says what it skipped, and exits.
+func hookDeadlineSpent() bool {
+	g := activeHookGuard()
+	return g != nil && g.Deadline.Spent()
+}
+
 // hookTimeoutSec is the harness descriptor timeout for the hook whose
 // wired marker is marker ("fathom edit-hook --pre"), under harness id
 // ("" = claude-code). Several bindings can share a marker (edit-hook --pre

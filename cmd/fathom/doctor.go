@@ -227,94 +227,132 @@ func fileExists(path string) bool {
 func runDoctorChecks(root, explicitSvc, harness, baseURL string) []doctorCheck {
 	hc := &http.Client{Timeout: 5 * time.Second}
 
-	checks := []doctorCheck{
-		checkMCPRegistration(root, harness, baseURL),
-	}
-	daemonUp, daemonCheck := checkDaemonReachable(hc, baseURL)
-	// RT-49/RT-50 (§13.3): one resources projection feeds every tenancy
-	// row — live when the daemon answers, else its ring and ledger.
-	tenancyRep := doctorResourcesReport(baseURL)
-	var daemonMetrics map[string]float64
-	if daemonUp {
-		daemonMetrics, _ = fetchMetricsText(hc, baseURL)
-	}
-	checks = append(
-		checks,
-		daemonCheck,
-		checkBinaryFresh(root),
-		checkDaemonFresh(hc, baseURL, daemonUp), // PC-4: the daemon's stamp vs this binary (doctor_provenance.go)
-		checkDaemonFootprint(tenancyRep, daemonMetrics),              // RT-49: phys_footprint vs the budget, live or from the ring (doctor_footprint.go)
-		checkDaemonDiskWrites(hc, baseURL, daemonUp),                 // RT-162: bytes written outside explicit ingest vs 2 GiB/day (doctor_footprint.go)
-		checkAdmissionMode(hc, baseURL, daemonUp),                    // design §1: WARN while the daemon serves with admission off (doctor_admission.go)
-		checkDaemonPosture(""),                                       // RT-15: the installed plist's launchd posture vs schema 2 (daemon_signing.go)
-		checkDaemonLifecycle(tenancyRep),                             // RT-50: starts, exits, breaker, quarantine (doctor_tenancy.go)
-		checkHostPressure(tenancyRep),                                // RT-50: pressure, swap, swap-volume free
-		checkScratchDaemons(tenancyRep),                              // RT-50: leaked unmanaged daemons and stale records
-		checkHookBudgetFromFiles(time.Now()),                         // RT-135: hook p99 vs deadline, breaker-open minutes, unguarded edits, kills (doctor_retention.go)
-		checkDiskRetentionFromDisk(root),                             // RT-135: reclaimable bytes by class, internal disk free (doctor_retention.go)
-		checkTenancyScope(root, config.DefaultUserPath(), os.Getenv), // RT-50: [tenancy] is user scope only
-		checkHooksInstalled(root, harness),
-		checkLefthookGates(root),
-		checkHooksFiring(hc, baseURL, daemonUp, root, harness),
-		checkGatePosture(harness),
-		checkHooksCoverage(harness),          // HP-32: what the harness offers vs what fathom wires (advisory, never FAIL)
-		checkHarnessHookFiles(root, harness), // HP-18/19: doctor_harness.go, never PASS
-		checkStanzaPresent(root),
-		checkStanzaLoaded(root),          // PC-25: the harness-side twin of stanza_present (doctor_stanza_loaded.go)
-		checkAgentsSkills(root, harness), // RP-3: skills_installed on the standard (doctor_skills.go)
-		checkWiringDrift(root, harness),  // PC-29: hooks, stanzas, MCP entries, owned skills (doctor_wiring.go)
-		checkConfigValid(root),
-		checkDecisionProvider(root, providerClientBuilder), // DP-4 (ADR-042): is the configured [decide] provider viable? (doctor_decide.go)
-		checkObligationsServed(hc, baseURL, root, explicitSvc, daemonUp),
-		checkSurfaceTraffic(hc, baseURL, daemonUp, root),
+	// Each row is a step, run in order. Inside a hook (doctor --brief, the
+	// Setup hook) a spent deadline stops the run: the rows not reached are
+	// counted in one doctorDeadlineRow, never silently dropped (RT-7).
+	var (
+		daemonUp      bool
+		tenancyRep    resourcesReport
+		daemonMetrics map[string]float64
+	)
+	steps := []func() doctorCheck{
+		func() doctorCheck { return checkMCPRegistration(root, harness, baseURL) },
+		func() doctorCheck {
+			up, daemonCheck := checkDaemonReachable(hc, baseURL)
+			daemonUp = up
+			if hookDeadlineSpent() {
+				return daemonCheck // every later row is cut; skip their inputs too
+			}
+			// RT-49/RT-50 (§13.3): one resources projection feeds every
+			// tenancy row — live when the daemon answers, else its ring and
+			// ledger.
+			tenancyRep = doctorResourcesReport(baseURL)
+			if daemonUp {
+				daemonMetrics, _ = fetchMetricsText(hc, baseURL)
+			}
+			return daemonCheck
+		},
+		func() doctorCheck { return checkBinaryFresh(root) },
+		func() doctorCheck { return checkDaemonFresh(hc, baseURL, daemonUp) },                      // PC-4: the daemon's stamp vs this binary (doctor_provenance.go)
+		func() doctorCheck { return checkDaemonFootprint(tenancyRep, daemonMetrics) },              // RT-49: phys_footprint vs the budget, live or from the ring (doctor_footprint.go)
+		func() doctorCheck { return checkDaemonDiskWrites(hc, baseURL, daemonUp) },                 // RT-162: bytes written outside explicit ingest vs 2 GiB/day (doctor_footprint.go)
+		func() doctorCheck { return checkAdmissionMode(hc, baseURL, daemonUp) },                    // design §1: WARN while the daemon serves with admission off (doctor_admission.go)
+		func() doctorCheck { return checkDaemonPosture("") },                                       // RT-15: the installed plist's launchd posture vs schema 2 (daemon_signing.go)
+		func() doctorCheck { return checkDaemonLifecycle(tenancyRep) },                             // RT-50: starts, exits, breaker, quarantine (doctor_tenancy.go)
+		func() doctorCheck { return checkHostPressure(tenancyRep) },                                // RT-50: pressure, swap, swap-volume free
+		func() doctorCheck { return checkScratchDaemons(tenancyRep) },                              // RT-50: leaked unmanaged daemons and stale records
+		func() doctorCheck { return checkHookBudgetFromFiles(time.Now()) },                         // RT-135: hook p99 vs deadline, breaker-open minutes, unguarded edits, kills (doctor_retention.go)
+		func() doctorCheck { return checkDiskRetentionFromDisk(root) },                             // RT-135: reclaimable bytes by class, internal disk free (doctor_retention.go)
+		func() doctorCheck { return checkTenancyScope(root, config.DefaultUserPath(), os.Getenv) }, // RT-50: [tenancy] is user scope only
+		func() doctorCheck { return checkHooksInstalled(root, harness) },
+		func() doctorCheck { return checkLefthookGates(root) },
+		func() doctorCheck { return checkHooksFiring(hc, baseURL, daemonUp, root, harness) },
+		func() doctorCheck { return checkGatePosture(harness) },
+		func() doctorCheck { return checkHooksCoverage(harness) },          // HP-32: what the harness offers vs what fathom wires (advisory, never FAIL)
+		func() doctorCheck { return checkHarnessHookFiles(root, harness) }, // HP-18/19: doctor_harness.go, never PASS
+		func() doctorCheck { return checkStanzaPresent(root) },
+		func() doctorCheck { return checkStanzaLoaded(root) },          // PC-25: the harness-side twin of stanza_present (doctor_stanza_loaded.go)
+		func() doctorCheck { return checkAgentsSkills(root, harness) }, // RP-3: skills_installed on the standard (doctor_skills.go)
+		func() doctorCheck { return checkWiringDrift(root, harness) },  // PC-29: hooks, stanzas, MCP entries, owned skills (doctor_wiring.go)
+		func() doctorCheck { return checkConfigValid(root) },
+		func() doctorCheck { return checkDecisionProvider(root, providerClientBuilder) }, // DP-4 (ADR-042): is the configured [decide] provider viable? (doctor_decide.go)
+		func() doctorCheck { return checkObligationsServed(hc, baseURL, root, explicitSvc, daemonUp) },
+		func() doctorCheck { return checkSurfaceTraffic(hc, baseURL, daemonUp, root) },
 		// Phase O (docs/design/platform-modules.md §4 / guarded-edits.md
 		// §2.4): config-validity first, then the checks that need it.
-		checkBindingFile(root),
-		checkGuardFile(root),
-		checkBindingModulesMounted(hc, baseURL, root, daemonUp),
-		checkBindingModuleReadiness(hc, baseURL, root, daemonUp),
-		checkGuardDeadScopes(hc, baseURL, root, explicitSvc, daemonUp),
-		checkGuardIncludeModulesUnbound(root),
+		func() doctorCheck { return checkBindingFile(root) },
+		func() doctorCheck { return checkGuardFile(root) },
+		func() doctorCheck { return checkBindingModulesMounted(hc, baseURL, root, daemonUp) },
+		func() doctorCheck { return checkBindingModuleReadiness(hc, baseURL, root, daemonUp) },
+		func() doctorCheck { return checkGuardDeadScopes(hc, baseURL, root, explicitSvc, daemonUp) },
+		func() doctorCheck { return checkGuardIncludeModulesUnbound(root) },
 		// Phase P (docs/design/production-tokenomics.md / scoped-config.md):
 		// env-driven honesty checks first, then scoped-config disclosure.
-		checkChannelsEnv(),
-		checkBinaryOnPath(),
-		checkIdentCacheEnv(),
-		checkUserScopeIgnore(root),
-		checkUserScopeGuard(),
-		checkSessionLedgerTokens(),
+		func() doctorCheck { return checkChannelsEnv() },
+		func() doctorCheck { return checkBinaryOnPath() },
+		func() doctorCheck { return checkIdentCacheEnv() },
+		func() doctorCheck { return checkUserScopeIgnore(root) },
+		func() doctorCheck { return checkUserScopeGuard() },
+		func() doctorCheck { return checkSessionLedgerTokens() },
 		// Phase Q (docs/design/observability-surfaces.md §8 item 3).
-		checkMetricsTier(),
+		func() doctorCheck { return checkMetricsTier() },
 		// Phase R (docs/plans/cpp-toolchain.md CT-7).
-		checkCppToolchain(root),
+		func() doctorCheck { return checkCppToolchain(root) },
 		// BP-36 (docs/plans/bench-pyramid.md): is the graph this daemon
 		// serves actually typed? (doctor_typed.go)
-		checkTypedEdges(hc, baseURL, root, explicitSvc, daemonUp),
+		func() doctorCheck { return checkTypedEdges(hc, baseURL, root, explicitSvc, daemonUp) },
 		// O69 (wave P1): does this repo have source in a language fathom has
 		// no extractor for — named and counted, never silent (doctor_languages.go)
-		checkUnsupportedLanguages(hc, baseURL, root, explicitSvc, daemonUp),
+		func() doctorCheck { return checkUnsupportedLanguages(hc, baseURL, root, explicitSvc, daemonUp) },
 		// Phase T (docs/design/capability-registry.md): the one row that
 		// answers "why isn't X happening here?" — last, because it reads
 		// every fact the rows above diagnose individually.
-		checkCapabilities(baseURL, root, explicitSvc),
+		func() doctorCheck { return checkCapabilities(baseURL, root, explicitSvc) },
 		// CC-6 (docs/plans/custodian.md): the config custodian — are this
 		// repo's registered config contracts still true?
-		checkConcerns(root),
-		checkIntent(root),
-		checkUnprovenClaims(root, baseURL, explicitSvc),
+		func() doctorCheck { return checkConcerns(root) },
+		func() doctorCheck { return checkIntent(root) },
+		func() doctorCheck { return checkUnprovenClaims(root, baseURL, explicitSvc) },
 		// DP-3/DP-4 (docs/plans/custodian.md): the doctrine plane — the
 		// vision promotion pipeline and goals as pre-registered bets
 		// (intentdoctrine.go). Warns, never fails.
-		checkDoctrine(root),
+		func() doctorCheck { return checkDoctrine(root) },
 		// vision 33 / ADR-043 stage 1 (TC-14): the certifications layer's
 		// own declared/live/join-rate facts, read directly from the
 		// repo's local store (doctor's only store-direct row — see
 		// doctor_certifications.go's own doc comment for why).
-		checkCertifications(certificationsStorePath(root), certificationsDoctorService(root, explicitSvc)),
+		func() doctorCheck {
+			return checkCertifications(certificationsStorePath(root), certificationsDoctorService(root, explicitSvc))
+		},
 		// J5 (app-kit O25): instrument --adoption/research report/flywheel
 		// must agree on which call log they're reading.
-		checkInstrumentIdentity(hc, baseURL, explicitSvc),
-	)
+		func() doctorCheck { return checkInstrumentIdentity(hc, baseURL, explicitSvc) },
+	}
+	return runDoctorSteps(steps)
+}
+
+// doctorDeadlineRow names the row a hook's spent deadline leaves in place
+// of the checks it cut (RT-7).
+const doctorDeadlineRow = "hook_deadline"
+
+// runDoctorSteps runs steps in order. Outside a hook every step runs;
+// inside one, a spent deadline stops the run and the steps not reached are
+// named in one skipped doctorDeadlineRow — a cut diagnosis never reads as
+// a clean one.
+func runDoctorSteps(steps []func() doctorCheck) []doctorCheck {
+	checks := make([]doctorCheck, 0, len(steps))
+	for i, step := range steps {
+		if hookDeadlineSpent() {
+			checks = append(checks, doctorCheck{
+				Name:   doctorDeadlineRow,
+				Status: doctorSkipped,
+				Reason: fmt.Sprintf("%d check(s) not run — the hook's deadline was spent (a slow or unreachable daemon)", len(steps)-i),
+				Remedy: "run `fathom doctor` for the full table",
+			})
+			break
+		}
+		checks = append(checks, step())
+	}
 	return checks
 }
 

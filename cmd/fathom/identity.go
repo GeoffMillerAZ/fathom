@@ -22,6 +22,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/hookguard"
 )
 
 // How an identity was matched.
@@ -124,6 +126,11 @@ var errIdentityRouteMissing = errors.New("daemon has no /identity route")
 // lookupIdentity resolves dir: in process when this process is the daemon,
 // else one GET /identity with the directory and its work-tree root.
 func lookupIdentity(hc *http.Client, baseURL, dir string) (identityResult, error) {
+	if hookDeadlineSpent() {
+		// The /identity RPC below would be refused by the hook guard; the
+		// git toplevel read only feeds it (RT-7).
+		return identityResult{}, &hookguard.SkipError{Verdict: hookguard.VerdictDeadline}
+	}
 	dir = strings.TrimRight(dir, "/")
 	paths := []string{dir}
 	if top := gitToplevel(dir); top != "" && top != dir {

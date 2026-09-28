@@ -97,12 +97,16 @@ func runHookVerb(t *testing.T, verb []string, payload string) (code int, stdout 
 }
 
 // hookLocalWorkSlack is how far past its deadline a hook may run in
-// TestNoHookRPCOutlivesItsDescriptorBudget: the local git and file work
-// that follows the last RPC, which the time scale does not shrink. Measured
-// at most ~120 ms under -race on the fixture repo (codex session-hook);
-// 250 ms stays well inside the unscaled max(1 s, 20%) margin the deadline
-// leaves before the harness kills the hook. Bounding local work on large
-// repos is §11.3's fan-out rows, not the deadline's.
+// TestNoHookRPCOutlivesItsDescriptorBudget: writing its records and its
+// answer after the last RPC, which the time scale does not shrink. Past a
+// spent deadline hooks skip their optional local work (hookDeadlineSpent):
+// measured under -race on the fixture repo, the median overrun fell from
+// 101 ms to 2 ms (doctor --brief) and 91 ms to 15 ms (codex session-hook) —
+// the ~4x of a background-priority gate on a loaded machine had pushed the
+// old figures to 340-420 ms. 250 ms stays well inside the unscaled
+// max(1 s, 20%) margin the deadline leaves before the harness kills the
+// hook. Bounding local work before the deadline on large repos is §11.3's
+// fan-out rows, not the deadline's.
 const hookLocalWorkSlack = 250 * time.Millisecond
 
 // TestNoHookRPCOutlivesItsDescriptorBudget is RT-7 (§11.1): every hook

@@ -1086,8 +1086,13 @@ remaining). `fetchServices`' fresh 4 s retry client is replaced by a retry only 
 `ECONNREFUSED`/`ECONNRESET` and only within the deadline — never after a timeout.
 `TestNoHookRPCOutlivesItsDescriptorBudget`: every descriptor against a hanging server,
 every RPC ended by the deadline and hook wall time ≤ deadline + 250 ms of local work (inside
-the max(1 s, 20%) margin before the harness kill). The deadline bounds RPCs, not local git
-and file work; bounding that on large repos is §11.3's.
+the max(1 s, 20%) margin before the harness kill). The deadline bounds RPCs; past it a hook
+also skips the local work that only feeds a refused RPC (the identity lookup's git read) and
+its optional local work — `session-hook`'s outbox sync and continuity brief (replaced by a note
+naming `fathom prime`), `doctor --brief`'s remaining checks (counted in one `hook_deadline`
+row the brief always shows) — so a hook stuck on a hung daemon exits at its budget even at
+background priority on a loaded machine. Bounding local work before the deadline on large
+repos is §11.3's.
 
 ### 11.2 Shared breaker
 

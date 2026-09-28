@@ -97,6 +97,12 @@ func cmdSessionHook(args []string, stdin io.Reader, stdout, stderr io.Writer) in
 	}
 
 	ctx := buildSessionContext(*url, projDir)
+	// RT-7 (§11.1): a hung daemon spends the whole deadline in the line
+	// above. Past it, the outbox sync and the stamp's identity lookup (each
+	// only feeds an RPC the guard now refuses) and the continuity brief are
+	// skipped — the brief with a note naming where to get it — and the
+	// hook writes its records and exits at its budget.
+	spent := hookDeadlineSpent()
 
 	// FL-22 (docs/vision/30-findings-loop.md §3.7): the outbox sync, gated
 	// to the SAME startup/clear/"" sources as the continuity brief below —
@@ -105,7 +111,7 @@ func cmdSessionHook(args []string, stdin io.Reader, stdout, stderr io.Writer) in
 	// costume, not a real session start. syncFindingsOutbox itself is the
 	// "never more than one attempt" gate (the digest cursor short-circuits
 	// a repeat call once it has been written).
-	if startSource == "startup" || startSource == "clear" || startSource == "" {
+	if !spent && (startSource == "startup" || startSource == "clear" || startSource == "") {
 		if line := syncFindingsOutbox(*url, projDir); line != "" {
 			ctx += "\n" + line
 		}
@@ -124,9 +130,11 @@ func cmdSessionHook(args []string, stdin io.Reader, stdout, stderr io.Writer) in
 	var stampIdentity *identityResult
 	if sessionID != "" {
 		svc := ""
-		if name, info, ok := indexedServiceFor(&http.Client{Timeout: 2 * time.Second}, *url, projDir); ok {
-			svc = name
-			stampIdentity = &identityResult{Schema: 1, Service: name, Symbols: info.symbols, CountErr: info.countErr, Langs: info.langs, Path: info.path}
+		if !spent { // past the deadline the lookup's RPC would be refused
+			if name, info, ok := indexedServiceFor(&http.Client{Timeout: 2 * time.Second}, *url, projDir); ok {
+				svc = name
+				stampIdentity = &identityResult{Schema: 1, Service: name, Symbols: info.symbols, CountErr: info.countErr, Langs: info.langs, Path: info.path}
+			}
 		}
 		recordSessionWindow(projDir, sessionWindowRow{
 			SchemaVersion: 1, SessionID: sessionID, Cwd: projDir, Service: svc,
@@ -149,12 +157,16 @@ func cmdSessionHook(args []string, stdin io.Reader, stdout, stderr io.Writer) in
 		// reads; adds nothing on clean or unconfigured repos. Same
 		// startup/clear gate as the thread brief: resumed sessions kept
 		// their context. The whole primer is capped here (EP-20).
-		var line string
-		ctx, briefBytes, line = composeContinuityAndCustodian(ctx, projDir, time.Now())
-		attentionBytes = len(line)
-		intentLine = line != ""
-		if intentLine {
-			emitBeat("custodian", "attention", firingMeta(nil, sessionID, ""))
+		if spent {
+			ctx += "\n" + primerDeadlineNote
+		} else {
+			var line string
+			ctx, briefBytes, line = composeContinuityAndCustodian(ctx, projDir, time.Now())
+			attentionBytes = len(line)
+			intentLine = line != ""
+			if intentLine {
+				emitBeat("custodian", "attention", firingMeta(nil, sessionID, ""))
+			}
 		}
 	}
 	writeSessionStamp(sessionStamp{
@@ -194,6 +206,11 @@ func cmdSessionHook(args []string, stdin io.Reader, stdout, stderr io.Writer) in
 // only number an adopter can reason about is the total that lands in every
 // session. I12 (docs/intent/invariants.md) is the invariant this enforces.
 const sessionPrimerBudget = 3200
+
+// primerDeadlineNote replaces the continuity brief and attention line when
+// the hook's deadline was spent before they were composed (RT-7): named,
+// with the command that prints them, never silently absent.
+const primerDeadlineNote = "(thread brief and attention line skipped — this hook's deadline was spent waiting on the daemon; `fathom prime` prints them)"
 
 // primerOverflowNote is appended when even the identity line alone exceeds
 // the cap — the last-resort cut, never silent.

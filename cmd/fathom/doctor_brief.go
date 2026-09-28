@@ -29,20 +29,31 @@ const doctorBriefMaxLines = 5
 // noise the adopter learns to skip.
 func doctorBrief(checks []doctorCheck) string {
 	var fails []doctorCheck
-	for _, c := range checks {
-		if c.Status == doctorFail {
+	var cut *doctorCheck
+	for i, c := range checks {
+		switch {
+		case c.Status == doctorFail:
 			fails = append(fails, c)
+		case c.Name == doctorDeadlineRow:
+			// The hook's deadline stopped the run (RT-7): the checks it cut
+			// may hold failures, so the cut is always shown — a cut brief
+			// that printed nothing would read as a clean diagnosis.
+			cut = &checks[i]
 		}
 	}
-	if len(fails) == 0 {
+	if len(fails) == 0 && cut == nil {
 		return ""
+	}
+	maxFails := doctorBriefMaxLines
+	if cut != nil {
+		maxFails-- // the cut's own line is inside the five
 	}
 	shown := fails
 	elided := 0
-	if len(shown) > doctorBriefMaxLines {
+	if len(shown) > maxFails {
 		// One line of the budget is spent saying how many were dropped, so
 		// the count is never the thing that got truncated away.
-		shown = fails[:doctorBriefMaxLines-1]
+		shown = fails[:maxFails-1]
 		elided = len(fails) - len(shown)
 	}
 	var sb strings.Builder
@@ -56,6 +67,9 @@ func doctorBrief(checks []doctorCheck) string {
 	}
 	if elided > 0 {
 		fmt.Fprintf(&sb, "- …and %d more — run `fathom doctor` for the full table\n", elided)
+	}
+	if cut != nil {
+		fmt.Fprintf(&sb, "- %s: %s → %s\n", cut.Name, oneLine(cut.Reason), oneLine(cut.Remedy))
 	}
 	return strings.TrimRight(sb.String(), "\n")
 }
