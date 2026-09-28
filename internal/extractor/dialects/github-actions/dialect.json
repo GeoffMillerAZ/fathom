@@ -21,7 +21,7 @@
     "input":     { "source_kind": "GHAActionInput",  "canonical": "variable_decl" },
     "output":    { "source_kind": "GHAActionOutput", "canonical": "output" }
   },
-  "required_kinds": ["target", "job", "action"],
+  "required_kinds": ["workflow", "job", "action"],
   "oracle_kinds": {
     "tool": {
       "target": "target", "job": "job", "resource": "resource",
