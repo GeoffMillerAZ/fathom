@@ -227,10 +227,10 @@ package config
 	// A site absent here makes NO call at all, whatever provider is set.
 	// Unset (the default) means every current site — DefaultDecide.Sites in
 	// Go, so unconfigured behaviour is unchanged; `sites = []` disables
-	// every site. Closed to the five sites that exist today, same
+	// every site. Closed to the six sites that exist today, same
 	// discipline as provider's own enum ("assess" is `fathom assess`,
-	// ADR-046).
-	sites?: [...("route" | "compile_prefilter" | "obligations_rerank" | "certify_suggest" | "assess")]
+	// ADR-046; "preflight" is task preflight's Score, WI-18).
+	sites?: [...("route" | "compile_prefilter" | "obligations_rerank" | "certify_suggest" | "assess" | "preflight")]
 }
 
 // #Tests configures vision 33 / ADR-043 stage 0's test-evidence ingest: a

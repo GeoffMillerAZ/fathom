@@ -179,8 +179,9 @@ type Decide struct {
 	// through this Decide port — "route" (POST /route), "compile_prefilter"
 	// (the compile pre-filter, DP-9), "obligations_rerank" (the obligations
 	// within-tier re-rank, DP-7/DP-8), "certify_suggest" (`fathom certify
-	// suggest`, TC-24) and "assess" (`fathom assess`, ADR-046 — also gated
-	// by the default-off assess capability). A site not listed here makes NO call at all,
+	// suggest`, TC-24), "assess" (`fathom assess`, ADR-046 — also gated
+	// by the default-off assess capability) and "preflight" (`fathom plans
+	// context --preflight --score`, WI-18 — asked only on request). A site not listed here makes NO call at all,
 	// regardless of Provider — internal/decide.SiteAllowed is the single
 	// gate every call site consults. A present-but-empty list (`sites = []`)
 	// disables every site; an absent key (the common case) leaves the
@@ -221,7 +222,7 @@ var DefaultDecide = Decide{
 	// "assess" (ADR-046) joins the default like every other site: the
 	// provider is the egress arm, and assess additionally needs its own
 	// default-off capability and an explicit invocation before it spends.
-	Sites: []string{"route", "compile_prefilter", "obligations_rerank", "certify_suggest", "assess"},
+	Sites: []string{"route", "compile_prefilter", "obligations_rerank", "certify_suggest", "assess", "preflight"},
 }
 
 // Tests configures vision 33 / ADR-043 stage 0's test-evidence ingest
