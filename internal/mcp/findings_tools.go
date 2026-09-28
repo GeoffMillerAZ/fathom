@@ -37,6 +37,7 @@ func registerFindingsNear(s *Server, backend QueryInterface) {
 				"subject":            map[string]any{"type": "string", "description": "A canonical symbol key (service::pkg.Name) or a repo-relative file path"},
 				"hops":               map[string]any{"type": "integer", "description": "Call-graph hop radius (default 2)"},
 				"include_superseded": map[string]any{"type": "boolean", "description": "Include superseded/refuted findings, always labeled (default false)"},
+				"as_of":              map[string]any{"type": "string", "description": "RFC3339 timestamp or indexed commit sha: the findings whose validity window held then, whatever their status is now (GL-17)"},
 			},
 			"required": []string{"service", "subject"},
 		},
@@ -50,12 +51,17 @@ func registerFindingsNear(s *Server, backend QueryInterface) {
 			Subject           string `json:"subject"`
 			Hops              int    `json:"hops"`
 			IncludeSuperseded bool   `json:"include_superseded"`
+			AsOf              string `json:"as_of"`
 		}
 		if err := json.Unmarshal(args, &p); err != nil {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "findings_near: invalid args"}
 		}
 		if p.Service == "" || p.Subject == "" {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "findings_near: service and subject are required"}
+		}
+		asOf, aerr := newAsOfFilter(ctx, backend, p.Service, p.AsOf, "findings_near")
+		if aerr != nil {
+			return nil, aerr
 		}
 		if p.Hops <= 0 {
 			p.Hops = 2
@@ -99,7 +105,18 @@ func registerFindingsNear(s *Server, backend QueryInterface) {
 			}, nil
 		}
 
-		entries := findings.RankNear(claims, fileHops, p.IncludeSuperseded)
+		// GL-17: as_of narrows the claims to those whose validity window held
+		// at the instant BEFORE RankNear runs — "was this finding true then",
+		// independent of its status now — and RankNear's own superseded gate,
+		// a current-status question, must not drop a since-superseded finding
+		// this call just proved was valid then (the same rule `fathom findings
+		// near --as-of` keeps).
+		includeSuperseded := p.IncludeSuperseded
+		if asOf.active() {
+			claims = asOf.claims(claims)
+			includeSuperseded = true
+		}
+		entries := findings.RankNear(claims, fileHops, includeSuperseded)
 		out := make([]map[string]any, 0, len(entries))
 		for _, e := range entries {
 			compiledAt := ""
@@ -116,9 +133,13 @@ func registerFindingsNear(s *Server, backend QueryInterface) {
 		if len(out) == 0 {
 			note = "no findings within the neighborhood"
 		}
-		return map[string]any{
+		res := map[string]any{
 			"subject": p.Subject, "hops": p.Hops, "include_superseded": p.IncludeSuperseded,
 			"found": true, "note": note, "findings": out,
-		}, nil
+		}
+		if asOf.active() {
+			res["as_of"] = asOf.label()
+		}
+		return res, nil
 	})
 }

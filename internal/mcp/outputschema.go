@@ -293,6 +293,12 @@ type stalenessReportResult struct {
 	// Refresh (RT-99): "queued" or "refreshing" while the daemon's refresh
 	// queue holds a re-ingest of the service; absent when idle.
 	Refresh string `json:"refresh,omitempty"`
+	// AsOf (GL-17): the RFC3339 instant a dated call answered its claims-
+	// by-layer and doc-link sections for; AsOfScope names which sections
+	// are dated and which read the index as it stands. Both absent on a
+	// live call.
+	AsOf      string `json:"as_of,omitempty"`
+	AsOfScope string `json:"as_of_scope,omitempty"`
 }
 
 type symbolContextResult struct {

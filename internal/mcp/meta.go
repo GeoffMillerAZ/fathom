@@ -368,6 +368,7 @@ func registerStalenessReport(s *Server, backend QueryInterface) {
 			"type": "object",
 			"properties": map[string]any{
 				"service": map[string]any{"type": "string", "description": "Service / repo identifier"},
+				"as_of":   map[string]any{"type": "string", "description": "RFC3339 timestamp or indexed commit sha: answer the claims-by-layer and doc-link sections as they stood then (GL-17)"},
 			},
 			"required": []string{"service"},
 		},
@@ -378,12 +379,17 @@ func registerStalenessReport(s *Server, backend QueryInterface) {
 		}
 		var p struct {
 			Service string `json:"service"`
+			AsOf    string `json:"as_of"`
 		}
 		if err := json.Unmarshal(args, &p); err != nil {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "staleness_report: invalid args"}
 		}
 		if p.Service == "" {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "staleness_report: service required"}
+		}
+		asOf, aerr := newAsOfFilter(ctx, backend, p.Service, p.AsOf, "staleness_report")
+		if aerr != nil {
+			return nil, aerr
 		}
 		// Derive a simple "sources seen" summary from ListAllSymbols.
 		nodes, err := serviceSymbols(ctx, backend, p.Service)
@@ -447,7 +453,12 @@ func registerStalenessReport(s *Server, backend QueryInterface) {
 		// nothing") when the backend has no doc-link-drift capability —
 		// docDriftBackend's own comment explains why that is not the same
 		// as "nothing drifted" (I38).
-		if ddb, ok := backend.(docDriftBackend); ok {
+		//
+		// GL-17: an as_of call leaves doc_link_drift out — drift compares a
+		// link's frozen hash with the target as it stands NOW, so it has no
+		// dated answer — and stalenessAsOf names the doc links that held
+		// then instead.
+		if ddb, ok := backend.(docDriftBackend); ok && !asOf.active() {
 			if drifted, err := ddb.DocLinkDrift(ctx, p.Service); err == nil {
 				resp["doc_link_drift"] = renderDocLinkDrift(drifted)
 			}
@@ -509,7 +520,11 @@ func registerStalenessReport(s *Server, backend QueryInterface) {
 			resp["typed_edges"] = block
 		}
 		// Optional: append per-layer claims summary when backend supports it.
-		if csb, ok := backend.(claimsSummaryBackend); ok {
+		// GL-17: a dated call counts the claims valid at the instant instead
+		// (status counts are today's verdicts, not what stood then).
+		if asOf.active() {
+			stalenessAsOf(ctx, backend, p.Service, asOf, resp)
+		} else if csb, ok := backend.(claimsSummaryBackend); ok {
 			if summary, err := csb.ClaimsSummary(ctx, p.Service); err == nil && len(summary) > 0 {
 				resp["layers"] = summary
 			}

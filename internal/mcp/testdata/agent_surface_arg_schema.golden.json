@@ -398,6 +398,9 @@
   },
   "review_diff": {
     "properties": {
+      "as_of": {
+        "type": "string"
+      },
       "changed_files": {
         "description": "Repo-relative changed file paths (e.g. from git diff --name-only)",
         "items": {
@@ -489,6 +492,9 @@
   },
   "staleness_report": {
     "properties": {
+      "as_of": {
+        "type": "string"
+      },
       "service": {
         "description": "Service / repo identifier",
         "type": "string"

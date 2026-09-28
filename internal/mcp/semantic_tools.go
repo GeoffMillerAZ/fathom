@@ -685,15 +685,12 @@ func registerSemanticTools(s *Server, backend QueryInterface, modules moduleBack
 			if !ok {
 				return nil, &rpcError{Code: ErrCodeInvalid, Message: "backend does not support as_of"}
 			}
-			var commits []CommitInfo
-			if cl, cerr := backend.ListCommits(ctx, p.Service); cerr == nil {
-				commits = cl
-			}
-			asOf, aerr := semantic.ResolveAsOf(p.AsOf, commits)
+			// GL-17: one resolver for every verb that takes an as_of.
+			asOf, aerr := newAsOfFilter(ctx, backend, p.Service, p.AsOf, "obligations")
 			if aerr != nil {
-				return nil, &rpcError{Code: ErrCodeParams, Message: "obligations: " + aerr.Error()}
+				return nil, aerr
 			}
-			obl, oerr := aob.ObligationsAsOf(ctx, p.Service, p.File, p.MaxRules, asOf)
+			obl, oerr := aob.ObligationsAsOf(ctx, p.Service, p.File, p.MaxRules, asOf.instant())
 			if oerr != nil {
 				return nil, &rpcError{Code: ErrCodeInternal, Message: oerr.Error()}
 			}

@@ -91,7 +91,7 @@ func TestBuildReviewInput_ConservationDimensionWiredEndToEnd(t *testing.T) {
 		t.Fatalf("IngestServiceAt: %v", err)
 	}
 
-	in, _, rpcErr := buildReviewInput(ctx, c, "svc", []string{"widgets/w.go"}, "", base)
+	in, _, rpcErr := buildReviewInput(ctx, c, "svc", []string{"widgets/w.go"}, "", base, nil)
 	if rpcErr != nil {
 		t.Fatalf("buildReviewInput: %+v", rpcErr)
 	}
@@ -127,7 +127,7 @@ func TestBuildReviewInput_ConservationDimensionNoSinceIsUnsupported(t *testing.T
 		t.Fatalf("IngestServiceAt: %v", err)
 	}
 
-	in, _, rpcErr := buildReviewInput(ctx, c, "svc", []string{"widgets/w.go"}, "", "")
+	in, _, rpcErr := buildReviewInput(ctx, c, "svc", []string{"widgets/w.go"}, "", "", nil)
 	if rpcErr != nil {
 		t.Fatalf("buildReviewInput: %+v", rpcErr)
 	}

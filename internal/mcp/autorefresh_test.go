@@ -9,6 +9,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/corpus"
 	"github.com/geoffmilleraz/fathom/internal/refresh"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
+	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
 // refreshFake is a QueryInterface whose ServiceMeta reports a fixed indexed
@@ -310,4 +311,65 @@ func (f *refreshFake) ScanSources(ctx context.Context, svc string, bud corpus.Bu
 		return corpus.Coverage{}, err
 	}
 	return corpus.ScanSourceFiles(ctx, files, bud, fn)
+}
+
+// asOfCapabilityFake adds the two capabilities GL-17's dated answers read
+// (ClaimsForService, DocLinksAsOf) to refreshFake.
+type asOfCapabilityFake struct {
+	refreshFake
+	claims []core.SemanticClaim
+	links  []store.DocLinkView
+	gotAt  time.Time
+}
+
+// The wrapper must satisfy both capability interfaces the verbs assert.
+var (
+	_ claimsListBackend   = (*autoRefreshBackend)(nil)
+	_ docLinksAsOfBackend = (*autoRefreshBackend)(nil)
+)
+
+func (f *asOfCapabilityFake) ClaimsForService(_ context.Context, _, _ string) ([]core.SemanticClaim, error) {
+	return f.claims, nil
+}
+
+func (f *asOfCapabilityFake) DocLinksAsOf(_ context.Context, _ string, at time.Time) ([]store.DocLinkView, error) {
+	f.gotAt = at
+	return f.links, nil
+}
+
+// TestAutoRefresh_ForwardsClaimAndDocLinkReads (GL-17): the wrapper is
+// serve-http's default backend, and a capability it does not forward is
+// stripped before any request reaches it — the O7 class every other
+// optional capability in autorefresh.go documents. Without these two
+// forwards findings_near, review_diff's certifications and every dated
+// staleness_report/review_diff answer degraded on a real daemon.
+func TestAutoRefresh_ForwardsClaimAndDocLinkReads(t *testing.T) {
+	fake := &asOfCapabilityFake{
+		refreshFake: refreshFake{path: "/repo", indexed: "same"},
+		claims:      []core.SemanticClaim{{ClaimID: "c1", Layer: "obligations"}},
+		links:       []store.DocLinkView{{Target: "Foo"}},
+	}
+	ar := newAR(t, fake, "same")
+	ctx := context.Background()
+
+	claims, err := ar.ClaimsForService(ctx, "svc", "")
+	if err != nil || len(claims) != 1 || claims[0].ClaimID != "c1" {
+		t.Errorf("ClaimsForService through the wrapper = %+v, %v", claims, err)
+	}
+
+	at := time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC)
+	links, err := ar.DocLinksAsOf(ctx, "svc", at)
+	if err != nil || len(links) != 1 || links[0].Target != "Foo" || !fake.gotAt.Equal(at) {
+		t.Errorf("DocLinksAsOf through the wrapper = %+v, %v (at %v)", links, err, fake.gotAt)
+	}
+
+	// A backend without either capability answers the wrapper's named
+	// "unsupported", never a silent empty.
+	bare := newAR(t, &refreshFake{path: "/repo", indexed: "same"}, "same")
+	if _, err := bare.ClaimsForService(ctx, "svc", ""); err == nil {
+		t.Error("ClaimsForService over a backend without it must be an error, not an empty answer")
+	}
+	if _, err := bare.DocLinksAsOf(ctx, "svc", at); err == nil {
+		t.Error("DocLinksAsOf over a backend without it must be an error, not an empty answer")
+	}
 }
