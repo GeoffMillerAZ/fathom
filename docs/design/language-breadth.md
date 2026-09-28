@@ -157,6 +157,15 @@ owner's decisions, binding on the harness and every reading after them:
   tier A; a producer that sets no `enclosing_range` (scip-clang 0.4.0) no longer zeroes the
   calls: a definition mapped to a fathom definition takes that definition's line span, and
   the reading counts how many did.
+- **D7 — C#'s `using X; Y.Z();` resolves.** An unaliased `using X;` is a wildcard import
+  (the C# idiom: every type of namespace X in scope unqualified); an aliased
+  `using A = X;` keeps its prefix binding. Under namespace-dir a wildcard's namespace is
+  found first by the files whose symbols declare it (C# namespaces need not mirror
+  directories), then by the directory rule; and a dotted call `Y.Z()` whose head `Y` a
+  wildcard brought into scope resolves to the member `Y.Z` when `Y`'s file defines it,
+  else to `Y` (the one-segment depth the whole-module path keeps) — for every strategy,
+  so Java's `import a.*;` then `Y.z()` resolves the same way. The Dockerfile half of D7
+  (a local image tag to the Dockerfile that builds it) is recorded with D4 (§4).
 - **D6 — a queue-item dependency is met at L1.** A queue item that depends on another queue
   item (cpp on c; scss and less on css) is eligible once the parent has a committed reading
   at L1 or better, not only once the parent's row is `[x]` (its row may stay open for L4
@@ -384,8 +393,9 @@ relative to the importer first), `case: "snake"` and `labels: "bazel"`; an omitt
 the strategy's default, which for `relative-path` and `dotted-module` is the pre-LB-F11
 TS/JS and Python rule (`internal/fusion/resolvestrategy.go` documents each strategy's reads).
 Under `include-path`, `file-symbol` and `swift-module` a whole-module import brings every
-top-level name of its target into scope, as does any `@import.wildcard`; a name two targets
-define is left unresolved.
+top-level name of its target into scope, as does any `@import.wildcard` (C#'s unaliased
+`using`, D7); a name two targets define is left unresolved, and a dotted call through a
+wildcard-imported name resolves to that name's member when its file defines one.
 A new strategy is a foundation-level change (an Opus row), never something a worker adds.
 Edges keep the existing label: `file-resolved`, tier pre-scan, never presented as typed.
 

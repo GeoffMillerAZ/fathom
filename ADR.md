@@ -2630,6 +2630,8 @@ instruments only. D5: every language dialect gets an L2 calls oracle — SCIP re
 D3: a reading may carry an adjudicated set of dialect-only definitions the oracle is verified
 to miss, each admitted by a deterministic file:line and name check (never a model's
 judgment), listed, and left out of `sym_precision`'s denominator.
+D7: C#'s unaliased `using X;` is a wildcard import resolved through the namespace's declaring
+files, and a dotted call through a wildcard-imported type resolves to its member.
 
 ## ADR-049: The proof-layer roadmap: a kitchen-sink gate, pillars inside the tenancy lane, reach before depth, views never trackers, no Rust rewrite (2026-09-27)
 

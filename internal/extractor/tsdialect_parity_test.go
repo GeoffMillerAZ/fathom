@@ -119,8 +119,11 @@ func extractGolden(t *testing.T, e *TSExtractor, fixture string) goldenFile {
 	}
 	for _, s := range imps {
 		kind := "named"
-		if s.Kind == ImportWhole {
+		switch s.Kind {
+		case ImportWhole:
 			kind = "whole"
+		case ImportWildcard:
+			kind = "wildcard"
 		}
 		g.Imports = append(g.Imports, goldenImport{Local: s.LocalName, Exported: s.ExportedName, Module: s.Module, Kind: kind, Line: s.Line})
 	}

@@ -4,28 +4,10 @@ package fusion_test
 // resolves across two fixture files via its manifest's namespace-dir
 // strategy — mirroring TestResolveFileEdges_CIncludes' shape.
 //
-// C#'s own "using" semantics do NOT fit namespace-dir's "whole" binding the
-// way Java-shaped code does (verified directly, not asserted): a plain
-// `using MyApp.Util;` then an UNQUALIFIED `Helper.Assist()` — the ordinary,
-// overwhelmingly common C# idiom, since `using` exists precisely to drop
-// the namespace prefix — produces zero edges: matchFileResolvedCall's
-// "whole" path only matches a call whose text is ITSELF prefixed by the
-// import's own LocalName (internal/fusion/fileresolve.go), and namespace-dir
-// is not in wholeIsWildcard's closed set (include-path/file-symbol/
-// swift-module only) the way a C #include's target's names are. This
-// fixture instead uses the one shape namespace-dir's "whole" path DOES
-// reach: an ALIASED using (`using U = MyApp.Util;`) followed by an
-// alias-qualified call (`U.Helper.Assist()`) — a real, if less common, C#
-// pattern (disambiguating a name collision without a full using). This
-// proves the wiring (dialect -> imports.scm -> namespace-dir -> file edge)
-// end to end, exactly step 13's ask; it does not claim the common
-// unqualified case resolves, and docs/plans/language-breadth.md's
-// LB-Q-csharp-rest/this dialect's PROVENANCE.md say so plainly. Widening
-// namespace-dir's wholeIsWildcard set to also cover a language whose
-// whole-import genuinely behaves like a wildcard (C#, and by the same
-// argument Java's `import pkg.*;`) is a foundation-level fusion change
-// (design §6: "a new strategy is a foundation-level change... never
-// something a worker adds") — flagged for Opus, not patched here.
+// An aliased using (`using U = MyApp.Util;` then `U.Helper.Assist()`) binds
+// a prefix through namespace-dir's whole-import path. The ordinary
+// unaliased `using MyApp.Util;` then `Helper.Assist()` is a wildcard import
+// (imports.scm, owner decision D7): TestResolveFileEdges_CSharpUsingWildcard.
 import (
 	"context"
 	"path/filepath"
@@ -80,4 +62,44 @@ func TestResolveFileEdges_CSharpUsing(t *testing.T) {
 			t.Errorf("edge from %s: got %s, want %s", from, got[from], to)
 		}
 	}
+}
+
+// TestResolveFileEdges_CSharpUsingWildcard (owner decision D7): C#'s
+// ordinary `using X;` brings every type of namespace X into scope
+// unqualified, so `Y.Z()` resolves — to the member Y.Z when the target
+// defines it. The namespace is found by the files that DECLARE it (C#
+// namespaces need not mirror directories: Lib/Hammer.cs declares
+// MyApp.Tools), then by namespace-dir's directory rule.
+func TestResolveFileEdges_CSharpUsingWildcard(t *testing.T) {
+	dir, err := filepath.Abs(filepath.Join("testdata", "csfixture"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	files, symbols := loadFileResolveFixture(t, dir, "csharp", []string{filepath.Join("MyApp", "Util.cs"), filepath.Join("Lib", "Hammer.cs"), "Program.cs", "Program2.cs"})
+	edges, report := fusion.ResolveFileEdges(context.Background(), "csharp", dir, files, symbols)
+	if report.Skipped {
+		t.Fatalf("skipped: %s", report.SkipReason)
+	}
+	got := fileResolveEdgeSetAll(edges)
+	want := []string{
+		"fixture::MyApp.Consumer.Program.Run -> fixture::MyApp/MyApp.Util.Helper",
+		"fixture::MyApp.Consumer.Worker.Go -> fixture::MyApp/MyApp.Util.Helper.Assist",
+		"fixture::MyApp.Consumer.Worker.Go -> fixture::Lib/MyApp.Tools.Hammer.Hit",
+	}
+	for _, w := range want {
+		if !got[w] {
+			t.Errorf("missing edge %s; got %v", w, got)
+		}
+	}
+	if len(got) != len(want) {
+		t.Errorf("got %d edges %v, want %d", len(got), got, len(want))
+	}
+}
+
+func fileResolveEdgeSetAll(edges []core.Edge) map[string]bool {
+	out := map[string]bool{}
+	for _, e := range edges {
+		out[e.FromSymbol+" -> "+e.ToSymbol] = true
+	}
+	return out
 }
