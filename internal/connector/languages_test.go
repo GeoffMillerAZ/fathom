@@ -64,6 +64,7 @@ var langRowHint = map[string]string{
 	"cs":               "| C# ",
 	"php":              "| PHP ",
 	"sh":               "Bash",
+	"powershell":       "PowerShell",
 	"lua":              "| Lua ",
 	"sql":              "| SQL ",
 	"terraform":        "Terraform",

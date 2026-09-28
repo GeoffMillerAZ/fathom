@@ -45,6 +45,7 @@ language-native SCIP indexer), **file** (per-file resolver, tier pre-scan, label
 | Swift | **none** — disclosed as unsupported, reported per service by `list_services` | no | (corpus.yaml) | **none** | extractor (fleet demand: app-kit) |
 | Lua | heuristic (`luaextract.go`) | no | (corpus.yaml) | **syntax** | grammar |
 | Bash | heuristic (`bashextract.go`) | no | (corpus.yaml) | **syntax** | — |
+| PowerShell | tree-sitter (wasm) | yes | PSScriptAnalyzer, Pester | **syntax** — call names by syntax only (a command name or a member invocation); no SCIP producer exists for PowerShell | class properties and script/global variables (a `$`-sigilled token the tags engine cannot strip to the bare name) |
 | SQL | heuristic (`sqlextract.go`) | no | — | **syntax** | — |
 | Terraform/HCL | pure Go (`hclextract.go`) | n/a | (corpus.yaml) | **syntax** (resource references) | — |
 | Kubernetes YAML, Helm, Kustomize, docker-compose | pure Go | n/a | (corpus.yaml) | **syntax** (`service_ref` cross-repo edges) | — |
@@ -69,7 +70,7 @@ reading's computed `level_met` with each met level's grade; `tolerated` is regis
 no reading yet; `unsupported (disclosed)` is queued, not registered, and named per service
 by `list_services`.
 
-Milestone M1 progress: languages at L1 excellent 4/20, at L2 3/12, at L3 0/8, at L4 0/6; tool formats at target 3/15
+Milestone M1 progress: languages at L1 excellent 5/20, at L2 4/12, at L3 0/8, at L4 0/6; tool formats at target 3/15
 
 | Language or format | Kind | Engine | Grammar / parser | Target | Level met | Oracles | Typed edges | Reading | Next |
 |---|---|---|---|---|---|---|---|---|---|
@@ -91,7 +92,7 @@ Milestone M1 progress: languages at L1 excellent 4/20, at L2 3/12, at L3 0/8, at
 | C++ (.cc .cpp .cxx .hpp .hh .hxx, .h by sniff) | language | tags | tree-sitter/tree-sitter-cpp (MIT) | L4 | L1 (L1 excellent) | A scip-clang 0.4.0; B universal-ctags 6.2.1 | scip:scip-clang | 2026-09-28 | LB-Q-cpp |
 | Go (.go) | language | native | native:go/parser+go/types (BSD-3-Clause) | L4 | L1 (L1 good) | A scip-go 0.2.7; B universal-ctags 6.2.1 | native | 2026-09-28 | LB-Q-go |
 | Kubernetes manifests (incl. CRDs) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 good, L2 good, L3 good) | C kubernetes-oracle (independent gopkg.in/yaml.v3 walk) gopkg.in/yaml.v3 v3.0.1 | — | 2026-09-28 | at target (LB-Q-kubernetes) |
-| PowerShell (.ps1 .psm1 .psd1) | language | tags | airbus-cert/tree-sitter-powershell (MIT (verify at pin)) | L2 | unsupported (disclosed) | — | — | — | LB-Q-powershell |
+| PowerShell (.ps1 .psm1 .psd1) | language | tags | airbus-cert/tree-sitter-powershell (MIT (verify at pin)) | L2 | L2 (L1 excellent, L2 good) | B powershell-ast PowerShell 7.5.4 System.Management.Automation.Language.Parser | syntax | 2026-09-28 | at target (LB-Q-powershell) |
 | Docker Compose files | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | tolerated | — | syntax | — | LB-Q-docker-compose |
 | PHP (.php) | language | tags | tree-sitter/tree-sitter-php (MIT) | L4 | tolerated | — | syntax | — | LB-Q-php |
 | Helm charts (Chart.yaml, values.yaml, templates/*.yaml, *.tpl) | tool format | tags+doc | ngalaiko/tree-sitter-go-template (MIT (verify at pin)) | L3 | tolerated | — | syntax | — | LB-Q-helm |

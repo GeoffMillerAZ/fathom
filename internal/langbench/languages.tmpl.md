@@ -45,6 +45,7 @@ language-native SCIP indexer), **file** (per-file resolver, tier pre-scan, label
 | Swift | **none** — disclosed as unsupported, reported per service by `list_services` | no | (corpus.yaml) | **none** | extractor (fleet demand: app-kit) |
 | Lua | heuristic (`luaextract.go`) | no | (corpus.yaml) | **syntax** | grammar |
 | Bash | heuristic (`bashextract.go`) | no | (corpus.yaml) | **syntax** | — |
+| PowerShell | tree-sitter (wasm) | yes | PSScriptAnalyzer, Pester | **syntax** — call names by syntax only (a command name or a member invocation); no SCIP producer exists for PowerShell | class properties and script/global variables (a `$`-sigilled token the tags engine cannot strip to the bare name) |
 | SQL | heuristic (`sqlextract.go`) | no | — | **syntax** | — |
 | Terraform/HCL | pure Go (`hclextract.go`) | n/a | (corpus.yaml) | **syntax** (resource references) | — |
 | Kubernetes YAML, Helm, Kustomize, docker-compose | pure Go | n/a | (corpus.yaml) | **syntax** (`service_ref` cross-repo edges) | — |

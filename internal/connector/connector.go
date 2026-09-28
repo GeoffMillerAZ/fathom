@@ -190,6 +190,13 @@ var extClassMap = map[string]classification{
 	".sh":   {core.KindBashFunction, "sh"},
 	".bash": {core.KindBashFunction, "sh"},
 
+	// PowerShell (LB-Q-powershell, language-breadth: new — a fleet gap, no
+	// incumbent). .psd1 is a module manifest (a hashtable data file): it is
+	// classified as PowerShell like the other two, and simply defines nothing.
+	".ps1":  {core.KindPowerShellFunction, "powershell"},
+	".psm1": {core.KindPowerShellFunction, "powershell"},
+	".psd1": {core.KindPowerShellFunction, "powershell"},
+
 	// Lua
 	".lua": {core.KindLuaFunction, "lua"},
 }
