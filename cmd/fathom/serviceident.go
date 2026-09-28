@@ -32,11 +32,26 @@ type serviceCandidate struct {
 //
 // Both hooks iterate these against the index, so either layout finds its
 // service without configuration.
+//
+// Each root whose fathom stanza names a service other than its basename
+// contributes that stanza-named identity FIRST (stanzaNamedService, the same
+// fallback reconcile's stanzaServiceID uses): a checkout at …/sextant
+// registered as "fathom" otherwise sent every daemon-unresolved lookup
+// (spec_refs, memories) to a service that does not exist — 170 of 306
+// live spec_refs calls failed that way.
 func serviceCandidates(projDir string) []serviceCandidate {
 	projDir = strings.TrimRight(projDir, "/")
-	out := []serviceCandidate{{name: filepath.Base(projDir), root: projDir}}
+	var out []serviceCandidate
+	add := func(root string) {
+		base := filepath.Base(root)
+		if named := stanzaNamedService(root); named != "" && !strings.EqualFold(named, base) {
+			out = append(out, serviceCandidate{name: named, root: root})
+		}
+		out = append(out, serviceCandidate{name: base, root: root})
+	}
+	add(projDir)
 	if top := gitToplevel(projDir); top != "" && top != projDir {
-		out = append(out, serviceCandidate{name: filepath.Base(top), root: top})
+		add(top)
 	}
 	return out
 }
