@@ -1,18 +1,34 @@
 package cost
 
 import (
+	"go/build"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
-	"time"
 )
 
 // TestPriceTableNoNetwork (PE-16, docs/design/progress-and-economics.md
 // §5): loadPriceTable parses a user-editable ~/.fathom/prices.toml with no
-// network call — proven here by a wall-clock bound tight enough that any
-// accidental dial or DNS lookup would blow it — and prices tokens by
-// model; an unpriced model is named, never a guessed rate.
+// network call — proven structurally (this package imports nothing from
+// net, so no dial or DNS lookup can be written here without failing the
+// test; a wall-clock bound would flip under -race on a loaded machine and
+// would not prove the absence anyway) — and prices tokens by model; an
+// unpriced model is named, never a guessed rate.
 func TestPriceTableNoNetwork(t *testing.T) {
+	pkg, err := build.ImportDir(".", 0)
+	if err != nil {
+		t.Fatalf("read package imports: %v", err)
+	}
+	if len(pkg.Imports) == 0 {
+		t.Fatal("no imports found: the no-network check would prove nothing")
+	}
+	for _, imp := range pkg.Imports {
+		if imp == "net" || strings.HasPrefix(imp, "net/") {
+			t.Errorf("internal/cost imports %q: the price table must never make a network call (PE-16)", imp)
+		}
+	}
+
 	dir := t.TempDir()
 	path := filepath.Join(dir, "prices.toml")
 	body := `
@@ -26,11 +42,7 @@ cache_write_per_mtok = 3.75
 		t.Fatal(err)
 	}
 
-	start := time.Now()
 	pt, err := loadPriceTable(path)
-	if elapsed := time.Since(start); elapsed > 200*time.Millisecond {
-		t.Fatalf("loadPriceTable took %s — a network call would explain that, a local file read would not", elapsed)
-	}
 	if err != nil {
 		t.Fatalf("loadPriceTable: %v", err)
 	}
