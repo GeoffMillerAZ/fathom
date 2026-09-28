@@ -1831,6 +1831,9 @@ type BenchExtraction struct {
 	// Skipped names why no extractor ran: "binary", "oversize",
 	// "unclassified" or "no-extractor"; "" when one did.
 	Skipped string
+	// TypeRefs is the type references the tags engine captured in this
+	// file (design §3.4: counted in the reading, never stored).
+	TypeRefs int
 }
 
 // ExtractForBench runs ingest's gates (binary, size cap) and dispatch on
@@ -1857,6 +1860,15 @@ func (p *Pipeline) ExtractForBench(serviceID string, refs []core.SourceRef, relP
 	case !ok:
 		return BenchExtraction{Skipped: "no-extractor"}, nil
 	}
+	tr, counts := e.(interface{ TypeRefs() int64 })
+	var before int64
+	if counts {
+		before = tr.TypeRefs()
+	}
 	nodes, err := e.Extract(serviceID, relPath, content)
-	return BenchExtraction{Nodes: nodes, ToolKind: tk}, err
+	out := BenchExtraction{Nodes: nodes, ToolKind: tk}
+	if counts {
+		out.TypeRefs = int(tr.TypeRefs() - before)
+	}
+	return out, err
 }

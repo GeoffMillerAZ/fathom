@@ -218,6 +218,9 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name, c
 			sub.Tenancy.FaultingFiles = append(sub.Tenancy.FaultingFiles, ref.Path)
 			continue
 		}
+		if ex.TypeRefs > 0 {
+			sub.Counts["type_refs"] += ex.TypeRefs // §3.4: counted, not stored
+		}
 		for _, n := range ex.Nodes {
 			if n.FilePath == ref.Path {
 				nodes = append(nodes, n)

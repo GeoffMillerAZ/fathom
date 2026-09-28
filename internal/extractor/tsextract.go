@@ -219,7 +219,15 @@ type TSExtractor struct {
 	// ruling: the incumbents are slated for deletion and must not be a
 	// load-bearing path). Surfaced per-ingest as fusion.Report.TSEngineFaults.
 	faults atomic.Int64
+
+	// typeRefs counts @reference.class/implementation/type captures over
+	// this extractor's lifetime (LB-F4): measured in readings, not stored.
+	typeRefs atomic.Int64
 }
+
+// TypeRefs returns the type references (§3.4) this extractor's queries have
+// captured over its lifetime; the harness reads it per file as a delta.
+func (e *TSExtractor) TypeRefs() int64 { return e.typeRefs.Load() }
 
 // ErrTSEngineFault marks an Extract error as a tree-sitter engine fault
 // (parse timeout on pathological input, a wasm trap, or a query-run
@@ -374,7 +382,8 @@ func (e *TSExtractor) Extract(service, relPath string, src []byte) ([]core.Symbo
 	}
 
 	rules := variant.rules
-	defs, calls := splitTSMatches(matches, rules.kinds, src)
+	defs, calls, typeRefs := splitTSMatches(matches, rules.kinds, src)
+	e.typeRefs.Add(int64(typeRefs))
 	resolveTSParents(defs)
 	qualifyTSDefs(defs, rules)
 	attachTSCalls(defs, calls)
@@ -430,29 +439,64 @@ type tsCallSite struct {
 	start, end uint32
 }
 
+// typeRefCaptures are the reference captures §3.4 counts but does not store
+// until a consumer exists.
+var typeRefCaptures = map[string]bool{"reference.class": true, "reference.implementation": true, "reference.type": true}
+
+// tsCalleeName is a call site's callee (LB-F4, design §3.4): the @name
+// captured inside the match's @reference.call when the query has one (the
+// tags convention), else the @reference.call node's own text (the five
+// pre-manifest queries capture the callee expression itself). ok is false
+// when the match has no @reference.call.
+func tsCalleeName(m tsengine.Match, src []byte) (callee string, site tsengine.Node, ok bool) {
+	var name *tsengine.Node
+	for i := range m.Captures {
+		c := &m.Captures[i]
+		switch c.Name {
+		case "reference.call":
+			site, ok = c.Node, true
+		case "name":
+			n := c.Node
+			name = &n
+		}
+	}
+	if !ok {
+		return "", site, false
+	}
+	if name != nil && name.StartByte >= site.StartByte && name.EndByte <= site.EndByte {
+		return name.Text(src), site, true
+	}
+	return site.Text(src), site, true
+}
+
 // splitTSMatches separates a query's flat match list into definitions (a
-// "name" + "definition.<kind>" capture pair) and call sites (a bare
-// "reference.call" capture) using src to resolve capture text.
-func splitTSMatches(matches []tsengine.Match, kinds map[string]tsDefKind, src []byte) ([]*tsDef, []tsCallSite) {
+// "name" + "definition.<kind>" capture pair) and call sites (a
+// "reference.call" capture, its callee per tsCalleeName) using src to
+// resolve capture text, and counts type references (typeRefCaptures).
+func splitTSMatches(matches []tsengine.Match, kinds map[string]tsDefKind, src []byte) ([]*tsDef, []tsCallSite, int) {
 	var defs []*tsDef
 	var calls []tsCallSite
+	typeRefs := 0
 	for _, m := range matches {
+		if callee, site, ok := tsCalleeName(m, src); ok {
+			if callee != "" {
+				calls = append(calls, tsCallSite{text: callee, start: site.StartByte, end: site.EndByte})
+			}
+			continue
+		}
 		var nameNode, defNode, bodyNode *tsengine.Node
 		var defSuffix string
 		for i := range m.Captures {
 			c := &m.Captures[i]
 			switch {
+			case typeRefCaptures[c.Name]:
+				typeRefs++
 			case c.Name == "name":
 				n := c.Node
 				nameNode = &n
 			case c.Name == "body":
 				n := c.Node
 				bodyNode = &n
-			case c.Name == "reference.call":
-				text := c.Node.Text(src)
-				if text != "" {
-					calls = append(calls, tsCallSite{text: text, start: c.Node.StartByte, end: c.Node.EndByte})
-				}
 			case strings.HasPrefix(c.Name, "definition."):
 				n := c.Node
 				defNode = &n
@@ -485,7 +529,7 @@ func splitTSMatches(matches []tsengine.Match, kinds map[string]tsDefKind, src []
 		}
 		defs = append(defs, d)
 	}
-	return defs, calls
+	return defs, calls, typeRefs
 }
 
 // tsEndLine is the 1-based line of the definition node's last byte (§3.3).
