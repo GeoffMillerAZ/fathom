@@ -2,56 +2,19 @@
   "dialect": "kubernetes",
   "kind": "tooling",
   "target_level": "L3",
-  "level_met": "L2",
+  "level_met": "L3",
   "grade": {
     "L1": "good",
     "L2": "good",
-    "L3": "not-attempted",
+    "L3": "good",
     "L4": "not-applicable"
   },
   "measured_at": "2026-09-28",
-  "fathom_commit": "585f31f4",
+  "fathom_commit": "bab7f72c",
   "extractor": "dialect",
   "subjects": [
     {
-      "name": "examples",
-      "sha": "d6b8cd27eacb51e651a1aa6f7c190a28713eff6e",
-      "files": 250,
-      "bytes": 195146,
-      "counts": {
-        "fathom_defs": 409,
-        "kind_equal": 399,
-        "matched": 399,
-        "oracle_defs": 399,
-        "range_eligible": 399,
-        "range_ok": 399,
-        "ref_fathom": 6,
-        "ref_fathom_in_truth": 6,
-        "ref_truth": 6,
-        "ref_truth_found": 6
-      },
-      "families": {
-        "l1": "C",
-        "refs": "C"
-      },
-      "kind_intersection": [
-        "data_source",
-        "resource"
-      ],
-      "excluded_by_kind": {
-        "fathom:K8sSelector": 150
-      },
-      "tenancy": {
-        "faults": 0,
-        "faulting_files": [],
-        "extract_ms": 13.085999999999991,
-        "max_file_ms": 1,
-        "peak_module_pages": 0,
-        "compiled_bytes": 0
-      }
-    },
-    {
-      "name": "microservices-demo",
+      "name": "GoogleCloudPlatform/microservices-demo",
       "sha": "38e7348eb289eb5b87c0c6e8cb19ced0449dc389",
       "files": 14,
       "bytes": 33606,
@@ -60,16 +23,19 @@
         "kind_equal": 50,
         "matched": 50,
         "oracle_defs": 50,
-        "range_eligible": 50,
-        "range_ok": 50,
         "ref_fathom": 11,
         "ref_fathom_in_truth": 11,
         "ref_truth": 11,
-        "ref_truth_found": 11
+        "ref_truth_found": 11,
+        "xref_fathom": 12,
+        "xref_fathom_in_truth": 12,
+        "xref_truth": 12,
+        "xref_truth_found": 12
       },
       "families": {
         "l1": "C",
-        "refs": "C"
+        "refs": "C",
+        "xref": "C"
       },
       "kind_intersection": [
         "data_source",
@@ -81,8 +47,50 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 1.767,
+        "extract_ms": 1.7380000000000002,
+        "extract_cpu_ms": 1.7429999999999999,
         "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "kubernetes/examples",
+      "sha": "d6b8cd27eacb51e651a1aa6f7c190a28713eff6e",
+      "files": 250,
+      "bytes": 195146,
+      "counts": {
+        "fathom_defs": 409,
+        "kind_equal": 409,
+        "matched": 409,
+        "oracle_defs": 409,
+        "ref_fathom": 7,
+        "ref_fathom_in_truth": 7,
+        "ref_truth": 7,
+        "ref_truth_found": 7,
+        "xref_fathom": 99,
+        "xref_fathom_in_truth": 99,
+        "xref_truth": 99,
+        "xref_truth_found": 99
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C",
+        "xref": "C"
+      },
+      "kind_intersection": [
+        "data_source",
+        "resource"
+      ],
+      "excluded_by_kind": {
+        "fathom:K8sSelector": 150
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 12.92399999999999,
+        "extract_cpu_ms": 17.363999999999997,
+        "max_file_ms": 2,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -91,28 +99,25 @@
   "oracles": [
     {
       "tier": "C",
-      "tool": "fathom-worker independent yaml.v3 walk (LB-Q-kubernetes oracle.go, not committed)",
-      "version": "gopkg.in/yaml.v3"
-    },
-    {
-      "tier": "B",
-      "tool": "universal-ctags",
-      "status": "unavailable: universal-ctags has no parser for this dialect"
+      "tool": "kubernetes-oracle (independent gopkg.in/yaml.v3 walk)",
+      "version": "gopkg.in/yaml.v3 v3.0.1"
     }
   ],
   "metrics": {
     "ref_precision": 1,
     "ref_recall": 1,
-    "sym_precision": 0.9782,
+    "sym_precision": 1,
     "sym_recall": 1,
-    "xref_precision": null,
-    "xref_recall": null
+    "xref_precision": 1,
+    "xref_recall": 1
   },
   "metric_tiers": {
     "ref_precision": "C",
     "ref_recall": "C",
     "sym_precision": "C",
-    "sym_recall": "C"
+    "sym_recall": "C",
+    "xref_precision": "C",
+    "xref_recall": "C"
   },
   "required_kinds": [
     "resource"
@@ -123,21 +128,25 @@
   ],
   "counts": {
     "fathom_defs": 459,
-    "kind_equal": 449,
-    "matched": 449,
-    "oracle_defs": 449,
-    "range_eligible": 449,
-    "range_ok": 449,
-    "ref_fathom": 17,
-    "ref_fathom_in_truth": 17,
-    "ref_truth": 17,
-    "ref_truth_found": 17
+    "kind_equal": 459,
+    "matched": 459,
+    "oracle_defs": 459,
+    "ref_fathom": 18,
+    "ref_fathom_in_truth": 18,
+    "ref_truth": 18,
+    "ref_truth_found": 18,
+    "xref_fathom": 111,
+    "xref_fathom_in_truth": 111,
+    "xref_truth": 111,
+    "xref_truth_found": 111
   },
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 15.4,
-    "max_file_ms": 1,
+    "throughput_mb_s": 11.97,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 15.6,
+    "max_file_ms": 2,
     "peak_module_pages": 0,
     "compiled_bytes": 0
   },

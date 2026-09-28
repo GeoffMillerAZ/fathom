@@ -1,4 +1,10 @@
 id: sql
+# 2026-09-28 (owner decision D2): measured on the families DerekStride/tree-sitter-sql
+# supports (ANSI, SQLite, PostgreSQL) only. chinook-database stays listed for
+# provenance but is no longer a subject: its SQLite/PostgreSQL files are 400-600 KB
+# data dumps whose trees exceed the 64 MiB module cap (RT-107) and fault; sqitch is
+# measured on its SQLite and plain fixture files (lang-oracle -only), not its
+# psql-templated pg.sql (:"registry" variables are not SQL).
 language: SQL
 repos:
   - name: chinook-database
@@ -34,3 +40,18 @@ repos:
       - 'CREATE VIEW definitions joining the registry''s own tracking tables'
       - 'mixed single- and double-quoted identifiers across the sqlite, pg,
         mysql, oracle and vertica engine variants under t/'
+  - name: devrimgunduz/pagila
+    url: https://github.com/devrimgunduz/pagila
+    ref: pagila-v4.1.1
+    sha: 9baf49c4149e43229f6021e6218d6b2ac8ef4f34
+    # LICENSE.txt is the MIT text. Measured with lang-oracle -only
+    # 'pagila-schema.sql,pagila-schema-jsonb.sql,pagila-temporal-setup.sql':
+    # the data files (13 and 19 MB) are past ingest's 2 MiB gate anyway.
+    licence: MIT
+    idioms:
+      - 'pg_dump-style PostgreSQL DDL: CREATE TABLE, then primary and foreign
+        keys added by ALTER TABLE ONLY ... ADD CONSTRAINT'
+      - 'plpgsql and SQL functions, triggers and views over the same schema'
+      - 'declarative partitioning: a partitioned payment table and ALTER TABLE
+        ... ATTACH PARTITION per month'
+      - 'CREATE TYPE ... AS ENUM, domains and sequences'

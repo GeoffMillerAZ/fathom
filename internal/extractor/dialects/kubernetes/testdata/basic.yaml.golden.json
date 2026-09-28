@@ -1,15 +1,16 @@
 {
   "symbols": [
-    { "name": "api-server", "kind": "K8sWorkload", "package": "basic", "line": 1, "end_line": 15, "signature": "Deployment", "tier": "verified" },
+    { "name": "Deployment/production/api-server", "kind": "K8sWorkload", "package": "basic", "line": 1, "end_line": 15, "signature": "Deployment", "tier": "verified" },
     { "name": "app", "kind": "K8sSelector", "package": "basic", "line": 10, "end_line": 10, "signature": "api-server", "tier": "verified" },
     { "name": "registry.example.com/web:v1.2.3", "kind": "K8sContainer", "package": "basic", "line": 14, "end_line": 15, "signature": "web", "tier": "verified" },
-    { "name": "api-svc", "kind": "K8sWorkload", "package": "basic", "line": 17, "end_line": 25, "signature": "Service", "tier": "verified" },
+    { "name": "Service/api-svc", "kind": "K8sWorkload", "package": "basic", "line": 17, "end_line": 25, "signature": "Service", "tier": "verified" },
     { "name": "app", "kind": "K8sSelector", "package": "basic", "line": 23, "end_line": 23, "signature": "api-server", "tier": "verified" },
-    { "name": "migrate-db", "kind": "K8sWorkload", "package": "basic", "line": 27, "end_line": 36, "signature": "Job", "tier": "verified" },
+    { "name": "Job/migrate-db", "kind": "K8sWorkload", "package": "basic", "line": 27, "end_line": 36, "signature": "Job", "tier": "verified" },
     { "name": "registry.example.com/migrator:latest", "kind": "K8sContainer", "package": "basic", "line": 35, "end_line": 36, "signature": "migrator", "tier": "verified" }
   ],
   "cross_file": [
     { "from": "registry.example.com/web:v1.2.3", "edge": "runs", "raw": "registry.example.com/web:v1.2.3", "target": "registry.example.com/web:v1.2.3", "strategy": "image-ref", "line": 15 },
+    { "from": "Service/api-svc", "edge": "selects", "raw": "app=api-server", "target": "app=api-server", "strategy": "label-selector", "line": 22 },
     { "from": "registry.example.com/migrator:latest", "edge": "runs", "raw": "registry.example.com/migrator:latest", "target": "registry.example.com/migrator:latest", "strategy": "image-ref", "line": 36 }
   ]
 }

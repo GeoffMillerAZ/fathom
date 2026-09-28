@@ -34,27 +34,18 @@ against an oracle that *does* synthesize a name from the path (e.g. GitHub's own
 which shows the file path for an unnamed workflow) — worth knowing if a future
 calibration subject or a stricter oracle is chosen.
 
-## Divergence: `uses:` cross_file resolution is directory-relative, GHA's convention is repo-root-relative
+## `uses:` cross_file resolution is repo-root-relative (resolved 2026-09-28)
 
-GitHub's own semantics: `uses: ./path` in a workflow or `action.yml` is always relative
-to the **repository root**, never to the referencing file's own directory. Every
-`cross_file` strategy this engine has (`repo-path`, `image-ref`, `module-source`,
-`service-name`; design §4, §6) resolves a `./`/`../` value relative to
-`path.Dir(relPath)` — correct for GitLab CI includes or JS relative imports, wrong here.
-
-Verified directly on both calibration subjects' own local `uses:` values (not a
-hypothetical): a step `uses: ./.github/actions/other-helper` from
-`.github/actions/my-helper/action.yml` resolves (via `module-source`) to
-`.github/actions/my-helper/.github/actions/other-helper` — nested and wrong; the correct
-target is `.github/actions/other-helper`. Every fixture with a local `uses:`/reusable
-`uses:` value documents the actual (wrong) resolution in its golden, deliberately, so the
-gap is visible in the test suite rather than hidden by a fixture that happens to live at
-the repo root.
-
-This is `needs-strategy` (design §13.2 step 13): no existing strategy fits, and adding
-one (a repo-root-relative variant) is an Opus decision, not this worker's. The `uses:`
-value and its raw/target/strategy are still recorded via `cross_file` — a future strategy
-fix improves `target` without any dialect change.
+GitHub's own semantics: `uses: ./path` in a workflow or `action.yml` is relative to the
+**repository root**, never to the referencing file's directory. The first cut had only
+directory-relative strategies and recorded this as `needs-strategy`; owner decision D4
+(2026-09-28, design §4) added the `repo-root` strategy and every `uses:` `cross_file`
+entry now names it. A local `uses: ./.github/actions/x` resolves to
+`.github/actions/x`, and `fusion.ResolveDocXrefs` resolves that directory to its one
+doc file (`action.yml`/`action.yaml`) and the file's root entity (the action's `name:`);
+a reusable-workflow `uses: ./.github/workflows/w.yml` resolves to that workflow's root
+entity. A remote `owner/repo@ref` or `docker://` value is kept as written and resolves
+to nothing in-repo. The goldens now record the correct targets.
 
 ## The calibration oracle
 

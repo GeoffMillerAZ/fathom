@@ -1,0 +1,19 @@
+{
+  "arrow-const": {
+    "why": "scip-typescript records a variable initialized with an arrow function or function expression as a variable (hover `const f: () => …`), not a function; fathom and universal-ctags call it a function (verified: zod packages/zod/src/v3/types.ts:5080 `const ostring = () => …`)",
+    "pattern": "\\b(?:const|let|var)\\s+{name}\\b(?s:.*?)=\\s*(?:async\\s*)?(?:function\\b|(?s:.*?)=>)",
+    "kinds": [
+      "function"
+    ],
+    "scope": "module"
+  },
+  "assigned-function": {
+    "why": "scip-typescript records a function assigned to a property of an untyped object (`app.use = function use(fn)`, `exports.f = …`, `module.exports = function`, `X.prototype.m = …`) as references to locals, with no definition occurrence at all (verified: expressjs/express lib/application.js:194 — symbol_roles 0 on `app`, `use` and the function expression's name)",
+    "pattern": "(?:^|[^\\w$])(?:[\\w$]+\\s*\\.\\s*)+{name}\\s*=\\s*(?:async\\s+)?(?:function\\b|(?s:.*?)=>)",
+    "kinds": [
+      "function",
+      "method"
+    ],
+    "scope": "module"
+  }
+}

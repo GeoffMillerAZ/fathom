@@ -31,7 +31,10 @@
   (_) @import.module
   .) @import.stmt
 
+; An unaliased `using X;` brings every type of namespace X into scope
+; unqualified — C#'s ordinary idiom (`using X;` then `Y.Z()`), so it is a
+; wildcard import, not a prefix binding (owner decision D7, 2026-09-28).
 (using_directive
   .
-  (_) @import.module
+  (_) @import.module @import.wildcard
   .) @import.stmt

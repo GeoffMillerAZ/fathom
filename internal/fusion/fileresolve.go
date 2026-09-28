@@ -49,6 +49,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 
@@ -257,7 +258,30 @@ func resolveImports(r *importResolver, paths []string, specs map[string][]extrac
 	// callable's name when its immediate parent is a container, so a
 	// module-scope function/class/variable always has a bare Name.
 	topLevel := make(map[string]map[string]string, len(paths))
+	// qualified[file][name] is every symbol by its full Name (a member
+	// "Y.Z" included) and keyFile its file — a dotted call through a
+	// wildcard-imported type resolves to the member when the target
+	// defines it (D7). declared[pkg] is the files declaring a package or
+	// namespace, for namespace-dir languages whose namespaces need not
+	// mirror directories (C#).
+	qualified := make(map[string]map[string]string, len(paths))
+	keyFile := make(map[string]string, len(symbols))
+	declared := map[string][]string{}
 	for _, s := range symbols {
+		q := qualified[s.FilePath]
+		if q == nil {
+			q = map[string]string{}
+			qualified[s.FilePath] = q
+		}
+		if _, dup := q[s.Name]; !dup {
+			q[s.Name] = s.Key()
+		}
+		keyFile[s.Key()] = s.FilePath
+		if s.Package != "" && fileSet[s.FilePath] {
+			if fs := declared[s.Package]; len(fs) == 0 || fs[len(fs)-1] != s.FilePath {
+				declared[s.Package] = append(fs, s.FilePath)
+			}
+		}
 		if strings.Contains(s.Name, ".") {
 			continue
 		}
@@ -307,7 +331,11 @@ func resolveImports(r *importResolver, paths []string, specs map[string][]extrac
 					whole[spec.LocalName] = targets[0]
 				}
 			case extractor.ImportWildcard:
-				wildFiles = append(wildFiles, r.resolve(path, spec.Module)...)
+				if fs := r.declaredFiles(declared, spec.Module); len(fs) > 0 {
+					wildFiles = append(wildFiles, fs...)
+				} else {
+					wildFiles = append(wildFiles, r.resolve(path, spec.Module)...)
+				}
 			}
 		}
 		wild := wildcardNames(wildFiles, topLevel)
@@ -323,6 +351,9 @@ func resolveImports(r *importResolver, paths []string, specs map[string][]extrac
 			seen := map[string]bool{}
 			for _, call := range s.Calls {
 				toKey, ok := matchFileResolvedCall(call, named, whole, topLevel, topLevel[path], wild)
+				if !ok {
+					toKey, ok = matchWildMember(call, wild, qualified, keyFile)
+				}
 				if !ok || toKey == fromKey || seen[toKey] {
 					continue
 				}
@@ -382,6 +413,39 @@ func matchFileResolvedCall(call string, named, whole map[string]string, topLevel
 		}
 	}
 	return "", false
+}
+
+// matchWildMember resolves a dotted call "Y.Z…" whose head Y is a name a
+// wildcard import brought into scope (C#'s `using X;` then `Y.Z()`, Java's
+// `import a.*;` then `Y.z()`, owner decision D7): to the member "Y.Z" when
+// Y's file defines it, else to Y itself — the same one-segment depth the
+// whole-module path keeps.
+func matchWildMember(call string, wild map[string]string, qualified map[string]map[string]string, keyFile map[string]string) (string, bool) {
+	head, rest, dotted := strings.Cut(call, ".")
+	if !dotted {
+		return "", false
+	}
+	key, ok := wild[head]
+	if !ok {
+		return "", false
+	}
+	member, _, _ := strings.Cut(rest, ".")
+	if mk, ok := qualified[keyFile[key]][head+"."+member]; ok {
+		return mk, true
+	}
+	return key, true
+}
+
+// declaredFiles is, for namespace-dir only, the files whose symbols
+// declare module as their package or namespace (sorted), so a namespace
+// that does not mirror a directory still resolves (D7); nil otherwise.
+func (r *importResolver) declaredFiles(declared map[string][]string, module string) []string {
+	if r.strategy != "namespace-dir" {
+		return nil
+	}
+	fs := append([]string(nil), declared[module]...)
+	sort.Strings(fs)
+	return fs
 }
 
 // lookupNamed is the first target file, in sorted order, defining name at

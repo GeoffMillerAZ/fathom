@@ -20,7 +20,8 @@
   },
   "required_kinds": ["function"],
   "oracle_kinds": {
-    "ctags": { "function": "function" }
+    "ctags": { "function": "function" },
+    "tool":  { "function": "function" }
   },
   "qualify": { "chain_containers": false, "container_sep": ".", "method_sep": "." },
   "package": { "strategy": "dir" },

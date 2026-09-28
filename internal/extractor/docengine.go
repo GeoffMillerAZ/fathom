@@ -33,6 +33,30 @@ type DocSpec struct {
 	Entities      []DocEntity   `json:"entities"`
 	References    []DocRef      `json:"references,omitempty"`
 	CrossFile     []DocCrossRef `json:"cross_file,omitempty"`
+	// Labels names the label maps an entity carries for a label-selector
+	// join (owner decision D4, 2026-09-28: Kubernetes Service -> workload).
+	Labels []DocLabels `json:"labels,omitempty"`
+}
+
+// DocLabels declares a label set: for each entity of kind From, Select
+// (relative to the entity's node) reaches a map of scalar labels; Scope,
+// a value expression on the document root, names the join scope
+// (ScopeDefault when it is empty).
+type DocLabels struct {
+	From string `json:"from"`
+	// Where filters the origin entity's node (a Pod's own labels).
+	Where        *DocWhere `json:"where,omitempty"`
+	Select       string    `json:"select"`
+	Scope        string    `json:"scope,omitempty"`
+	ScopeDefault string    `json:"scope_default,omitempty"`
+}
+
+// DocLabelSet is one entity's label map.
+type DocLabelSet struct {
+	Entity string
+	Scope  string
+	Labels map[string]string
+	Line   int
 }
 
 // DocDetect is how a file is recognized. Basenames, globs and the content
@@ -57,6 +81,11 @@ type DocEntity struct {
 	SourceKind string   `json:"source_kind"`
 	Name       string   `json:"name"`
 	Signature  string   `json:"signature,omitempty"`
+	// Qualify prefixes the name with each non-empty value (evaluated on
+	// the entity's node), "/"-joined: a Kubernetes object is
+	// "<kind>/<namespace>/<name>", so a Service and a Deployment sharing a
+	// name keep distinct symbol keys (the incumbent k8sextract's naming).
+	Qualify []string `json:"qualify,omitempty"`
 }
 
 // DocWhere filters selected nodes. Every set condition must hold.
@@ -89,11 +118,17 @@ type DocRef struct {
 // resolved by the named strategy (repo-path, image-ref, module-source,
 // service-name).
 type DocCrossRef struct {
-	From    string `json:"from,omitempty"`
-	Select  string `json:"select"`
-	Value   string `json:"value"`
-	Resolve string `json:"resolve"`
-	Edge    string `json:"edge"`
+	From string `json:"from,omitempty"`
+	// Where filters the origin (the entity, or the document root).
+	Where   *DocWhere `json:"where,omitempty"`
+	Select  string    `json:"select"`
+	Value   string    `json:"value"`
+	Resolve string    `json:"resolve"`
+	Edge    string    `json:"edge"`
+	// Scope and ScopeDefault name a label-selector's join scope, as
+	// DocLabels does.
+	Scope        string `json:"scope,omitempty"`
+	ScopeDefault string `json:"scope_default,omitempty"`
 }
 
 // DocCrossFileRef is one resolved cross-file reference.
@@ -108,17 +143,30 @@ type DocCrossFileRef struct {
 	Raw, Target string
 	Strategy    string
 	Line        int
+	// Scope and Labels: a label-selector's join scope and selector map
+	// (Target is the map written canonically, "k=v,k2=v2").
+	Scope  string
+	Labels map[string]string
 }
 
 // DocResult is one file's extraction.
 type DocResult struct {
 	Nodes     []core.SymbolNode
 	CrossFile []DocCrossFileRef
+	// Labels is every declared label set (DocSpec.Labels).
+	Labels []DocLabelSet
+	// Roots names, in document order, the entities selected at a
+	// document's root ("$") — what a file-level cross-file reference
+	// resolves to.
+	Roots []string
 }
 
 var docDecoders = map[string]bool{"yaml": true, "json": true, "jsonc": true, "toml": true, "xml": true}
 
-var docResolveStrategies = map[string]bool{"repo-path": true, "image-ref": true, "module-source": true, "service-name": true}
+var docResolveStrategies = map[string]bool{
+	"repo-path": true, "image-ref": true, "module-source": true, "service-name": true,
+	"repo-root": true, "label-selector": true,
+}
 
 // ParseDocSpec decodes a doc.json strictly (unknown fields refused).
 func ParseDocSpec(b []byte) (DocSpec, error) {
@@ -138,13 +186,22 @@ type DocExtractor struct {
 	entities []compiledEntity
 	refs     []compiledRef
 	cross    []compiledCross
+	labels   []compiledLabels
 }
 
 type compiledEntity struct {
 	DocEntity
 	sel       docPath
 	name, sig docValue
+	qualify   []docValue
 	equals    []docEquals
+}
+
+type compiledLabels struct {
+	DocLabels
+	sel    docPath
+	scope  docValue
+	equals []docEquals
 }
 
 type docEquals struct {
@@ -160,8 +217,34 @@ type compiledRef struct {
 
 type compiledCross struct {
 	DocCrossRef
-	sel docPath
-	val docValue
+	sel    docPath
+	val    docValue
+	scope  docValue
+	equals []docEquals
+}
+
+func compileEquals(eqs map[string]string, where string) ([]docEquals, error) {
+	keys := make([]string, 0, len(eqs))
+	for k := range eqs {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	var out []docEquals
+	for _, k := range keys {
+		p, err := parseDocPath(k)
+		if err != nil {
+			return nil, fmt.Errorf("%s: where.equals %q: %w", where, k, err)
+		}
+		out = append(out, docEquals{p, eqs[k]})
+	}
+	return out, nil
+}
+
+func compileScope(expr string) (docValue, error) {
+	if expr == "" {
+		return docValue{}, nil
+	}
+	return parseDocValue(expr)
 }
 
 // NewDocExtractor compiles spec's selectors (§4's subset: `$`, `.key`,
@@ -200,17 +283,15 @@ func NewDocExtractor(spec DocSpec) (*DocExtractor, error) {
 				return nil, fmt.Errorf("%s: signature: %w", where, err)
 			}
 		}
-		keys := make([]string, 0, len(e.Where.Equals))
-		for k := range e.Where.Equals {
-			keys = append(keys, k)
-		}
-		sort.Strings(keys)
-		for _, k := range keys {
-			p, err := parseDocPath(k)
+		for j, q := range e.Qualify {
+			qv, err := parseDocValue(q)
 			if err != nil {
-				return nil, fmt.Errorf("%s: where.equals %q: %w", where, k, err)
+				return nil, fmt.Errorf("%s: qualify[%d]: %w", where, j, err)
 			}
-			ce.equals = append(ce.equals, docEquals{p, e.Where.Equals[k]})
+			ce.qualify = append(ce.qualify, qv)
+		}
+		if ce.equals, err = compileEquals(e.Where.Equals, where); err != nil {
+			return nil, err
 		}
 		kinds[e.Kind], kinds[e.SourceKind] = true, true
 		x.entities = append(x.entities, ce)
@@ -233,7 +314,7 @@ func NewDocExtractor(spec DocSpec) (*DocExtractor, error) {
 	for i, c := range spec.CrossFile {
 		where := fmt.Sprintf("doc spec: cross_file[%d]", i)
 		if !docResolveStrategies[c.Resolve] {
-			return nil, fmt.Errorf("%s: resolve %q is not repo-path, image-ref, module-source or service-name", where, c.Resolve)
+			return nil, fmt.Errorf("%s: resolve %q is not repo-path, repo-root, image-ref, module-source, service-name or label-selector", where, c.Resolve)
 		}
 		if c.From != "" && !kinds[c.From] {
 			return nil, fmt.Errorf("%s: from %q names no entity kind", where, c.From)
@@ -246,9 +327,70 @@ func NewDocExtractor(spec DocSpec) (*DocExtractor, error) {
 		if cc.val, err = parseDocValue(c.Value); err != nil {
 			return nil, fmt.Errorf("%s: value: %w", where, err)
 		}
+		if cc.scope, err = compileScope(c.Scope); err != nil {
+			return nil, fmt.Errorf("%s: scope: %w", where, err)
+		}
+		if c.Where != nil {
+			if cc.equals, err = compileEquals(c.Where.Equals, where); err != nil {
+				return nil, err
+			}
+		}
 		x.cross = append(x.cross, cc)
 	}
+	for i, l := range spec.Labels {
+		where := fmt.Sprintf("doc spec: labels[%d]", i)
+		if !kinds[l.From] {
+			return nil, fmt.Errorf("%s: from %q names no entity kind", where, l.From)
+		}
+		cl := compiledLabels{DocLabels: l}
+		var err error
+		if cl.sel, err = parseDocPath(l.Select); err != nil {
+			return nil, fmt.Errorf("%s: select: %w", where, err)
+		}
+		if cl.scope, err = compileScope(l.Scope); err != nil {
+			return nil, fmt.Errorf("%s: scope: %w", where, err)
+		}
+		if l.Where != nil {
+			if cl.equals, err = compileEquals(l.Where.Equals, where); err != nil {
+				return nil, err
+			}
+		}
+		x.labels = append(x.labels, cl)
+	}
 	return x, nil
+}
+
+// scopeOf evaluates a join scope on a document root.
+func scopeOf(v docValue, def string, root *docNode) string {
+	if s := v.eval(docMatch{node: root}); s != "" {
+		return s
+	}
+	return def
+}
+
+// labelMap is a map node's scalar entries, and its canonical "k=v,…"
+// form; ok is false for anything else or an empty map.
+func labelMap(n *docNode) (map[string]string, string, bool) {
+	if n == nil || n.kind != docMap || len(n.keys) == 0 {
+		return nil, "", false
+	}
+	m := map[string]string{}
+	for i, k := range n.keys {
+		if n.vals[i].kind != docScalar {
+			return nil, "", false
+		}
+		m[k] = n.vals[i].scalar
+	}
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	parts := make([]string, len(keys))
+	for i, k := range keys {
+		parts[i] = k + "=" + m[k]
+	}
+	return m, strings.Join(parts, ","), true
 }
 
 // Extract implements Extractor: the entities, with intra-file references
@@ -289,6 +431,14 @@ func (x *DocExtractor) ExtractDoc(service, relPath string, src []byte) (DocResul
 				name := ce.name.eval(m)
 				if name == "" {
 					continue
+				}
+				for j := len(ce.qualify) - 1; j >= 0; j-- {
+					if q := ce.qualify[j].eval(m); q != "" {
+						name = q + "/" + name
+					}
+				}
+				if ce.sel.isRoot() {
+					res.Roots = append(res.Roots, name)
 				}
 				h := entityHit{ent: ce, node: m.node, name: name}
 				if ce.Signature != "" {
@@ -339,7 +489,21 @@ func (x *DocExtractor) ExtractDoc(service, relPath string, src []byte) (DocResul
 				}
 			}
 			for _, o := range origins {
+				if cc.Where != nil && !whereMatches(*cc.Where, cc.equals, docMatch{node: o.node}) {
+					continue
+				}
 				for _, m := range cc.sel.eval(o.node, "") {
+					if cc.Resolve == "label-selector" {
+						labels, canon, ok := labelMap(m.node)
+						if !ok {
+							continue
+						}
+						res.CrossFile = append(res.CrossFile, DocCrossFileRef{
+							From: o.from, Edge: cc.Edge, Raw: canon, Target: canon, Strategy: cc.Resolve,
+							Line: m.node.line, Scope: scopeOf(cc.scope, cc.ScopeDefault, root), Labels: labels,
+						})
+						continue
+					}
 					raw := cc.val.eval(m)
 					if raw == "" {
 						continue
@@ -348,6 +512,22 @@ func (x *DocExtractor) ExtractDoc(service, relPath string, src []byte) (DocResul
 						From: o.from, Edge: cc.Edge, Raw: raw, Strategy: cc.Resolve,
 						Target: resolveDocRef(cc.Resolve, relPath, raw), Line: m.node.line,
 					})
+				}
+			}
+		}
+		for i := range x.labels {
+			cl := &x.labels[i]
+			for _, h := range hits {
+				if h.ent.Kind != cl.From && h.ent.SourceKind != cl.From {
+					continue
+				}
+				if cl.Where != nil && !whereMatches(*cl.Where, cl.equals, docMatch{node: h.node}) {
+					continue
+				}
+				for _, m := range cl.sel.eval(h.node, "") {
+					if labels, _, ok := labelMap(m.node); ok {
+						res.Labels = append(res.Labels, DocLabelSet{Entity: h.name, Scope: scopeOf(cl.scope, cl.ScopeDefault, root), Labels: labels, Line: m.node.line})
+					}
 				}
 			}
 		}
@@ -393,8 +573,10 @@ func hasKeys(n *docNode, keys []string) bool {
 	return true
 }
 
-func (ce *compiledEntity) matches(m docMatch) bool {
-	w := ce.Where
+func (ce *compiledEntity) matches(m docMatch) bool { return whereMatches(ce.Where, ce.equals, m) }
+
+// whereMatches applies a where filter (equals compiled) to a match.
+func whereMatches(w DocWhere, equals []docEquals, m docMatch) bool {
 	n := m.node
 	if w.IsMap != nil && (n.kind == docMap) != *w.IsMap {
 		return false
@@ -422,7 +604,7 @@ func (ce *compiledEntity) matches(m docMatch) bool {
 			return false
 		}
 	}
-	for _, eq := range ce.equals {
+	for _, eq := range equals {
 		ok := false
 		for _, v := range eq.p.eval(n, m.key) {
 			if v.node.kind == docScalar && v.node.scalar == eq.want {
@@ -458,6 +640,17 @@ func resolveDocRef(strategy, relPath, raw string) string {
 	case "module-source":
 		if strings.HasPrefix(raw, "./") || strings.HasPrefix(raw, "../") {
 			return repoPath(relPath, raw)
+		}
+		return raw
+	case "repo-root":
+		// GitHub Actions' `uses: ./path`: relative to the repository
+		// root, whatever directory the referring file sits in (D4).
+		if raw == "." || raw == "./" || strings.HasPrefix(raw, "./") || strings.HasPrefix(raw, "../") {
+			p := path.Clean(raw)
+			if p == ".." || strings.HasPrefix(p, "../") {
+				return ""
+			}
+			return p
 		}
 		return raw
 	}
@@ -612,6 +805,9 @@ func parseDocPath(s string) (docPath, error) {
 	}
 	return p, nil
 }
+
+// isRoot reports whether the path selects the document root itself ("$").
+func (p docPath) isRoot() bool { return len(p.steps) == 0 }
 
 func (p docPath) eval(ctx *docNode, ctxKey string) []docMatch {
 	cur := []docMatch{{ctx, ctxKey}}

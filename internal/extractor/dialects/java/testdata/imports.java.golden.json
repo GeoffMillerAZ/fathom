@@ -63,7 +63,7 @@
     {
       "local": "*",
       "module": "com.example.other",
-      "kind": "named",
+      "kind": "wildcard",
       "line": 4
     },
     {
@@ -75,7 +75,7 @@
     {
       "local": "*",
       "module": "java.lang.Math",
-      "kind": "named",
+      "kind": "wildcard",
       "line": 6
     }
   ]

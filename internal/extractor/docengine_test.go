@@ -304,6 +304,7 @@ func TestDocExtractorSpecRefusals(t *testing.T) {
 		`{"decode":"yaml","detect":{},"entities":[{"select":"$","kind":"key","source_kind":"K","name":"$key"}],"references":[{"from":"nope","select":"$","value":"$","to_kind":"key"}]}`: "names no entity kind",
 		`{"decode":"yaml","detect":{},"entities":[{"select":"$","kind":"key","source_kind":"K","name":"$key"}],"cross_file":[{"select":"$","value":"$","resolve":"magic","edge":"x"}]}`:  "resolve",
 		`{"decode":"yaml","detect":{},"entities":[{"select":"$","kind":"key","source_kind":"K","name":"$key","template":"{{x}}"}]}`:                                                      "unknown field",
+		`{"decode":"yaml","detect":{},"entities":[{"select":"$","kind":"key","source_kind":"K","name":"$key"}],"labels":[{"from":"nope","select":"$"}]}`:                                 "labels[0]: from",
 	}
 	for spec, want := range cases {
 		s, err := ParseDocSpec([]byte(spec))

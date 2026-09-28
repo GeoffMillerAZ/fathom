@@ -1,0 +1,29 @@
+{
+  "symbols": [
+    {
+      "name": "payment",
+      "kind": "SQLTable",
+      "package": "partition",
+      "line": 2,
+      "end_line": 4,
+      "signature": "CREATE TABLE payment",
+      "tier": "verified"
+    },
+    {
+      "name": "payment_id",
+      "kind": "SQLColumn",
+      "package": "partition",
+      "line": 3,
+      "end_line": 3,
+      "tier": "verified"
+    },
+    {
+      "name": "amount",
+      "kind": "SQLColumn",
+      "package": "partition",
+      "line": 6,
+      "end_line": 6,
+      "tier": "verified"
+    }
+  ]
+}

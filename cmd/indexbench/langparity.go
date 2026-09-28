@@ -182,7 +182,7 @@ func cmdLangParity(args []string, stdout, stderr io.Writer) int {
 			r     *langbench.Reading
 			kinds map[string]int
 		}{{incSpec, incX, &incR, incKinds}, {spec, dialX, &dialR, dialKinds}} {
-			m, err := measureSubject(ctx, side.spec, s.dir, s.name, *ctagsPath, s.scip, s.tool, side.x)
+			m, err := measureSubject(ctx, side.spec, s.dir, s.name, oracleOpts{ctags: *ctagsPath, scip: s.scip, tools: nonEmpty(s.tool)}, side.x)
 			if err != nil {
 				fmt.Fprintln(stderr, "lang-parity:", err)
 				return 2
@@ -268,4 +268,15 @@ func writeParity(w io.Writer, p langbench.Parity) {
 	reasons := append([]string(nil), p.Reasons...)
 	sort.Strings(reasons)
 	fmt.Fprintf(w, "verdict: REFUSED — %s\n", strings.Join(reasons, "; "))
+}
+
+// nonEmpty is xs without its empty strings.
+func nonEmpty(xs ...string) []string {
+	var out []string
+	for _, x := range xs {
+		if x != "" {
+			out = append(out, x)
+		}
+	}
+	return out
 }

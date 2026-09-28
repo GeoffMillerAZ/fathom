@@ -9,7 +9,7 @@
     { "name": "actions/checkout@v4", "kind": "GHAAction", "package": "action", "line": 24, "end_line": 25, "signature": "Checkout", "tier": "verified" }
   ],
   "cross_file": [
-    { "from": "My Helper", "edge": "uses_action", "raw": "./.github/actions/other-helper", "target": ".github/actions/my-helper/.github/actions/other-helper", "strategy": "module-source", "line": 23 },
-    { "from": "My Helper", "edge": "uses_action", "raw": "actions/checkout@v4", "target": "actions/checkout@v4", "strategy": "module-source", "line": 25 }
+    { "from": "My Helper", "edge": "uses_action", "raw": "./.github/actions/other-helper", "target": ".github/actions/other-helper", "strategy": "repo-root", "line": 23 },
+    { "from": "My Helper", "edge": "uses_action", "raw": "actions/checkout@v4", "target": "actions/checkout@v4", "strategy": "repo-root", "line": 25 }
   ]
 }

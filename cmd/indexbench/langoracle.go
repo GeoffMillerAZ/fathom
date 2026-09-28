@@ -52,7 +52,12 @@ func cmdLangOracle(args []string, stdout, stderr io.Writer) int {
 	subjectName := fs.String("subject-name", "", "subject name recorded in the reading (default: the directory name)")
 	ctagsPath := fs.String("ctags", "", "universal-ctags binary (default: workspace/tools/ctags, then ctags on PATH; a non-universal ctags is reported unavailable)")
 	scipPath := fs.String("scip", "", "SCIP index of the subject (tier A; optional)")
-	toolOracle := fs.String("tool-oracle", "", "tool-native oracle JSON (tier A unless it says otherwise; optional)")
+	scipDefs := fs.Bool("scip-defs", false, "score L1 against the -scip index's definitions (tier A) instead of universal-ctags (owner decision D2: a stronger oracle where ctags is deficient)")
+	var toolOracles multiFlag
+	fs.Var(&toolOracles, "tool-oracle", "oracle JSON in the neutral shape (definitions, calls, references; tier A unless it says otherwise; repeatable)")
+	adjudicate := fs.String("adjudicate", "", "oracle-deficiency disclosure JSON (owner decision D3): dialect-only definitions the L1 oracle is verified to miss, each admitted only by a deterministic file:line, name and module-scope check, listed in the reading and left out of sym_precision's denominator")
+	unmatched := fs.String("unmatched", "", "write this subject's L1 misses both ways (dialect_only, oracle_only) as JSON — the worker's diagnosis and the source of D3 adjudication candidates; never part of the reading")
+	only := fs.String("only", "", "comma-separated globs (subject-relative, * within a segment, ** across): measure only these files — e.g. the SQL families a grammar supports (D2); the reading names the restriction")
 	out := fs.String("out", "", "reading to write; an existing reading of the same dialect is merged (required)")
 	queuePath := fs.String("queue", "docs/plans/language-breadth.queue.json", "the queue (for the dialect's target level)")
 	date := fs.String("date", time.Now().UTC().Format("2006-01-02"), "measured_at")
@@ -127,7 +132,17 @@ func cmdLangOracle(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 
-	m, err := measureSubject(ctx, spec, *subject, name, *ctagsPath, *scipPath, *toolOracle, with)
+	if *scipDefs && *scipPath == "" {
+		fmt.Fprintln(stderr, "lang-oracle: -scip-defs needs -scip")
+		return 2
+	}
+	var onlyGlobs []string
+	for _, g := range strings.Split(*only, ",") {
+		if g = strings.TrimSpace(g); g != "" {
+			onlyGlobs = append(onlyGlobs, g)
+		}
+	}
+	m, err := measureSubject(ctx, spec, *subject, name, oracleOpts{ctags: *ctagsPath, scip: *scipPath, scipDefs: *scipDefs, tools: toolOracles, only: onlyGlobs, adjudicate: *adjudicate, unmatched: *unmatched}, with)
 	if err != nil {
 		fmt.Fprintln(stderr, "lang-oracle:", err)
 		return 1
@@ -215,10 +230,34 @@ type subjectMeasurement struct {
 	kinds map[string]int
 }
 
+// oracleOpts are one subject's oracles and scope.
+type oracleOpts struct {
+	ctags      string   // universal-ctags binary ("" = workspace/tools/ctags, then PATH)
+	scip       string   // SCIP index (tier A)
+	scipDefs   bool     // the SCIP index's definitions are the L1 oracle (D2)
+	tools      []string // neutral oracle JSON files (definitions, calls, references)
+	only       []string // globs restricting the subject's files (D2, SQL)
+	adjudicate string   // oracle-deficiency disclosure file (D3)
+	unmatched  string   // where to write the L1 misses both ways (diagnosis)
+}
+
+// onlyMatch reports whether rel is inside the -only restriction.
+func onlyMatch(globs []string, rel string) bool {
+	if len(globs) == 0 {
+		return true
+	}
+	for _, g := range globs {
+		if langbench.GlobMatch(g, rel) {
+			return true
+		}
+	}
+	return false
+}
+
 // measureSubject measures one subject. with, when non-nil, extracts every
 // file the dialect owns instead of fusion's dispatch (lang-parity's dialect
 // side, §11); nil measures what ingest would run.
-func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name, ctagsBin, scipPath, toolOracle string, with extractor.Extractor) (subjectMeasurement, error) {
+func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name string, opts oracleOpts, with extractor.Extractor) (subjectMeasurement, error) {
 	res := subjectMeasurement{kinds: map[string]int{}}
 	extract := func(pipe *fusion.Pipeline, service string, refs []core.SourceRef, rel string, content []byte) (fusion.BenchExtraction, error) {
 		if with != nil {
@@ -245,8 +284,12 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name, c
 	// Warm-up: one untimed extraction compiles the dialect's grammar, so
 	// per-file times measure extraction, not the one-time lazy compile
 	// (design §9 charges that to the module pool, LB-F15).
+	owned := func(p string) bool { return spec.Manifest.Owns(p) && onlyMatch(opts.only, p) }
+	if len(opts.only) > 0 {
+		res.notes = append(res.notes, fmt.Sprintf("%s: restricted to %s (-only; the files outside are a disclosed gap, not measured)", name, strings.Join(opts.only, ", ")))
+	}
 	for _, ref := range refs {
-		if !spec.Manifest.Owns(ref.Path) {
+		if !owned(ref.Path) {
 			continue
 		}
 		if content, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(ref.Path))); err == nil {
@@ -257,7 +300,7 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name, c
 		}
 	}
 	for _, ref := range refs {
-		if !spec.Manifest.Owns(ref.Path) {
+		if !owned(ref.Path) {
 			continue
 		}
 		content, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(ref.Path)))
@@ -265,16 +308,16 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name, c
 			return res, err
 		}
 		inst := tsengine.Instantiations()
-		start := time.Now()
+		start, cpu0 := time.Now(), processCPU()
 		ex, err := extract(pipe, service, refs, ref.Path, content)
-		elapsed := time.Since(start)
+		elapsed, cpu := time.Since(start), processCPU()-cpu0
 		if tsengine.Instantiations() != inst && ex.Skipped == "" {
 			// This file instantiated a grammar module the warm-up did not
 			// (an injected language's, e.g. HTML's <script>): time it again,
 			// warm, so a one-time compile is never charged to throughput.
-			start = time.Now()
+			start, cpu0 = time.Now(), processCPU()
 			ex, err = extract(pipe, service, refs, ref.Path, content)
-			elapsed = time.Since(start)
+			elapsed, cpu = time.Since(start), processCPU()-cpu0
 			retimed++
 		}
 		if ex.Skipped != "" {
@@ -285,6 +328,7 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name, c
 		sub.Files++
 		sub.Bytes += int64(len(content))
 		sub.Tenancy.ExtractMS += float64(elapsed.Microseconds()) / 1000
+		sub.Tenancy.ExtractCPUMS += float64(cpu.Microseconds()) / 1000
 		sub.Tenancy.MaxFileMS = max(sub.Tenancy.MaxFileMS, elapsed.Milliseconds())
 		if err != nil {
 			sub.Tenancy.Faults++
@@ -313,9 +357,14 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name, c
 		res.notes = append(res.notes, fmt.Sprintf("%s: %d files skipped by ingest's gates (%s)", name, skipped[k], k))
 	}
 
+	var l1res *langbench.L1Result // the subject's one L1 scoring, for D3
 	// Tier B: universal-ctags over exactly the files fathom read.
 	ctagsRun := langbench.OracleRun{Tier: "B", Tool: "universal-ctags"}
-	switch bin, version, why := findCtags(ctx, ctagsBin); {
+	switch bin, version, why := findCtags(ctx, opts.ctags); {
+	case opts.scipDefs || toolsCarryDefinitions(opts.tools):
+		// D2: a stronger oracle (the SCIP index, or an oracle file's
+		// definitions) is this subject's one L1 oracle.
+		ctagsRun = langbench.OracleRun{}
 	case len(spec.Ctags.Languages) == 0:
 		ctagsRun.Status = "unavailable: universal-ctags has no parser for this dialect"
 	case why != "":
@@ -327,21 +376,52 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name, c
 			return res, err
 		}
 		l1 := langbench.ScoreL1(spec.Manifest, "ctags", nodes, defs)
+		l1res = &l1
 		addCounts(sub.Counts, l1.Counts)
 		addCounts(sub.ExcludedByKind, l1.Excluded)
 		sub.KindIntersection = l1.Intersection
 		sub.Families[langbench.FamilyL1] = "B"
 	}
-	res.oracles = append(res.oracles, ctagsRun)
+	if ctagsRun.Tool != "" {
+		res.oracles = append(res.oracles, ctagsRun)
+	}
+	inScope := map[string]bool{}
+	for _, f := range files {
+		inScope[f] = true
+	}
 
-	if scipPath != "" {
-		raw, err := os.ReadFile(scipPath)
+	if opts.scip != "" {
+		raw, err := os.ReadFile(opts.scip)
 		if err != nil {
 			return res, err
+		}
+		if opts.scipDefs {
+			all, _, _, err := langbench.SCIPDefs(raw, func(p string) []byte {
+				b, _ := os.ReadFile(filepath.Join(root, filepath.FromSlash(p)))
+				return b
+			})
+			if err != nil {
+				return res, err
+			}
+			var defs []langbench.OracleDef
+			for _, d := range all {
+				if inScope[d.Path] {
+					defs = append(defs, d)
+				}
+			}
+			l1 := langbench.ScoreL1(spec.Manifest, "scip", nodes, defs)
+			l1res = &l1
+			addCounts(sub.Counts, l1.Counts)
+			addCounts(sub.ExcludedByKind, l1.Excluded)
+			sub.KindIntersection = l1.Intersection
+			sub.Families[langbench.FamilyL1] = "A"
 		}
 		sr, err := langbench.ScoreSCIP(raw, service, nodes)
 		if err != nil {
 			return res, err
+		}
+		if sr.EnclosingFallback > 0 {
+			res.notes = append(res.notes, fmt.Sprintf("%s: %d SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)", name, sr.EnclosingFallback))
 		}
 		addCounts(sub.Counts, sr.Counts)
 		sub.Families[langbench.FamilyCalls] = "A"
@@ -360,19 +440,63 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name, c
 		res.notes = append(res.notes, "import_resolution not measured: in-repo spec counts arrive with the L3 strategies (LB-F11)")
 	}
 
-	if toolOracle != "" {
-		inScope := map[string]bool{}
-		for _, f := range files {
-			inScope[f] = true
-		}
-		run, dropped, err := scoreToolOracle(toolOracle, spec.Manifest, nodes, &sub, inScope)
+	for _, toolOracle := range opts.tools {
+		run, dropped, l1, err := scoreToolOracle(toolOracle, spec.Manifest, nodes, &sub, inScope)
 		if err != nil {
 			return res, err
+		}
+		if l1 != nil {
+			l1res = l1
 		}
 		if dropped > 0 {
 			res.notes = append(res.notes, fmt.Sprintf("%s: %d tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)", name, dropped))
 		}
 		res.oracles = append(res.oracles, run)
+		// ── LB-F30: cross-file references (langoracle_xref.go) ──
+		if doc, ok := with.(*extractor.DocExtractor); ok {
+			n, err := scoreXrefOracle(toolOracle, doc, service, srcFiles, &sub, inScope)
+			if err != nil {
+				return res, err
+			}
+			if n > 0 {
+				res.notes = append(res.notes, fmt.Sprintf("%s: %d oracle cross-references on files fathom does not read were left out of scope (§1.4)", name, n))
+			}
+		}
+		// ── end LB-F30 ──
+	}
+	if opts.unmatched != "" && l1res != nil {
+		b, err := json.MarshalIndent(map[string][]langbench.OracleDef{"dialect_only": l1res.DialectOnly, "oracle_only": l1res.OracleOnly}, "", " ")
+		if err != nil {
+			return res, err
+		}
+		if err := os.WriteFile(opts.unmatched, b, 0o644); err != nil {
+			return res, err
+		}
+	}
+	if opts.adjudicate != "" {
+		if l1res == nil {
+			return res, fmt.Errorf("-adjudicate needs an L1 oracle on this subject")
+		}
+		b, err := os.ReadFile(opts.adjudicate)
+		if err != nil {
+			return res, err
+		}
+		var adj langbench.Adjudication
+		dec := json.NewDecoder(bytes.NewReader(b))
+		dec.DisallowUnknownFields()
+		if err := dec.Decode(&adj); err != nil {
+			return res, fmt.Errorf("%s: %w", opts.adjudicate, err)
+		}
+		before := l1res.Counts[langbench.CntAdjudicated]
+		accepted, refused := langbench.Adjudicate(l1res, nodes, adj, func(p string) []byte {
+			b, _ := os.ReadFile(filepath.Join(root, filepath.FromSlash(p)))
+			return b
+		})
+		sub.Counts[langbench.CntAdjudicated] += l1res.Counts[langbench.CntAdjudicated] - before
+		sub.Adjudicated = accepted
+		if len(refused) > 0 {
+			res.notes = append(res.notes, fmt.Sprintf("%s: %d adjudication claims refused by the deterministic check (e.g. %s)", name, len(refused), refused[0]))
+		}
 	}
 	res.subject = sub
 	return res, nil
@@ -391,11 +515,21 @@ type toolOracleFile struct {
 		End  int    `json:"end"`
 		Kind string `json:"kind"`
 	} `json:"definitions"`
-	References []struct {
-		Path string `json:"path"`
-		From string `json:"from"`
-		To   string `json:"to"`
-	} `json:"references"`
+	References []oraclePair `json:"references"`
+	// Calls are a language's call pairs (§1.4: enclosing definition's
+	// name, callee's name), scored as call_recall/call_precision at the
+	// file's tier — e.g. tier C from the grammar's upstream tags.scm run
+	// by an independent runtime (owner decision D5).
+	Calls []oraclePair `json:"calls"`
+	// CrossReferences are LB-F30's cross-file references (xrefOracle).
+	CrossReferences []xrefOracleEntry `json:"cross_references,omitempty"`
+}
+
+// oraclePair is one (from, to) pair in a file.
+type oraclePair struct {
+	Path string `json:"path"`
+	From string `json:"from"`
+	To   string `json:"to"`
 }
 
 // sub is a pointer: on success (len(defs) > 0), this is the subject's ONLY
@@ -408,8 +542,11 @@ type toolOracleFile struct {
 //
 // inScope is the file list fathom read (§1.4 Scope): an oracle entry on
 // any other file is dropped and counted, never scored as a miss.
-func scoreToolOracle(path string, m langbench.Manifest, nodes []core.SymbolNode, sub *langbench.Subject, inScope map[string]bool) (langbench.OracleRun, int, error) {
-	fail := func(err error) (langbench.OracleRun, int, error) { return langbench.OracleRun{}, 0, err }
+func scoreToolOracle(path string, m langbench.Manifest, nodes []core.SymbolNode, sub *langbench.Subject, inScope map[string]bool) (langbench.OracleRun, int, *langbench.L1Result, error) {
+	fail := func(err error) (langbench.OracleRun, int, *langbench.L1Result, error) {
+		return langbench.OracleRun{}, 0, nil, err
+	}
+	var l1res *langbench.L1Result
 	b, err := os.ReadFile(path)
 	if err != nil {
 		return fail(err)
@@ -438,10 +575,29 @@ func scoreToolOracle(path string, m langbench.Manifest, nodes []core.SymbolNode,
 			return fail(fmt.Errorf("%s: definitions given alongside ctags; measure one L1 oracle per subject", path))
 		}
 		l1 := langbench.ScoreL1(m, "tool", nodes, defs)
+		l1res = &l1
 		addCounts(sub.Counts, l1.Counts)
 		addCounts(sub.ExcludedByKind, l1.Excluded)
 		sub.KindIntersection = l1.Intersection
 		sub.Families[langbench.FamilyL1] = tier
+	}
+	if len(tf.Calls) > 0 {
+		if _, done := sub.Families[langbench.FamilyCalls]; done {
+			return fail(fmt.Errorf("%s: calls given alongside another calls oracle (a SCIP index or an earlier file); measure one per subject", path))
+		}
+		truth := map[langbench.CallPair]bool{}
+		files := map[string]bool{}
+		for _, c := range tf.Calls {
+			if !inScope[c.Path] {
+				dropped++
+				continue
+			}
+			truth[langbench.CallPair{Path: c.Path, Caller: m.MatchName(c.From), Callee: m.MatchName(c.To)}] = true
+			files[c.Path] = true
+		}
+		found := m.CallPairs(nodes, files)
+		langbench.ScorePairs(truth, found, sub.Counts, langbench.CntCallTruth, langbench.CntCallTruthFound, langbench.CntCallFathom, langbench.CntCallFathomInTrue)
+		sub.Families[langbench.FamilyCalls] = tier
 	}
 	if len(tf.References) > 0 {
 		truth := map[langbench.CallPair]bool{}
@@ -458,7 +614,7 @@ func scoreToolOracle(path string, m langbench.Manifest, nodes []core.SymbolNode,
 		langbench.ScorePairs(truth, found, sub.Counts, langbench.CntRefTruth, langbench.CntRefTruthFound, langbench.CntRefFathom, langbench.CntRefFathomInTrue)
 		sub.Families[langbench.FamilyRefs] = tier
 	}
-	return langbench.OracleRun{Tier: tier, Tool: tf.Tool, Version: tf.Version}, dropped, nil
+	return langbench.OracleRun{Tier: tier, Tool: tf.Tool, Version: tf.Version}, dropped, l1res, nil
 }
 
 var universalCtagsRE = regexp.MustCompile(`Universal Ctags ([0-9][^,( ]*)`)
@@ -604,4 +760,22 @@ func gitOut(ctx context.Context, dir string, args ...string) string {
 		return ""
 	}
 	return strings.TrimSpace(string(outb))
+}
+
+// toolsCarryDefinitions reports whether any neutral oracle file carries
+// definitions (an unreadable file is left to scoreToolOracle to report).
+func toolsCarryDefinitions(paths []string) bool {
+	for _, p := range paths {
+		b, err := os.ReadFile(p)
+		if err != nil {
+			continue
+		}
+		var probe struct {
+			Definitions []json.RawMessage `json:"definitions"`
+		}
+		if json.Unmarshal(b, &probe) == nil && len(probe.Definitions) > 0 {
+			return true
+		}
+	}
+	return false
 }

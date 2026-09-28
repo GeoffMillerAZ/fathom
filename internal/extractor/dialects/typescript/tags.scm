@@ -11,6 +11,24 @@
 (class_declaration
   name: (_) @name) @definition.class
 
+; Declarations without a body (owner decision D2's re-measurement against
+; scip-typescript, 2026-09-28: every one is a definition the tier-A oracle
+; — and universal-ctags — reports, and fathom missed): an abstract class,
+; an interface's method signature, an abstract method, and a function or
+; method overload signature / `declare function` (no @body: the signature
+; is the declaration's first line, tsSignature's rule).
+(abstract_class_declaration
+  name: (_) @name) @definition.class
+
+(method_signature
+  name: [(property_identifier) (private_property_identifier) (computed_property_name)] @name) @definition.method
+
+(abstract_method_signature
+  name: [(property_identifier) (private_property_identifier) (computed_property_name)] @name) @definition.method
+
+(function_signature
+  name: (identifier) @name) @definition.function
+
 (function_declaration
   name: (identifier) @name
   body: (_) @body) @definition.function

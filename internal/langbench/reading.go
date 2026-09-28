@@ -95,6 +95,13 @@ const (
 	MaxPeakModulePages = 1024
 )
 
+// Throughput bases (owner decision D1, 2026-09-28): the floor is judged on
+// CPU time so a reading taken under contention is not failed by it.
+const (
+	ThroughputBasisCPU  = "cpu"
+	ThroughputBasisWall = "wall"
+)
+
 // Tiers (§1.3).
 var validTiers = []string{"A", "B", "C", "D"}
 
@@ -152,6 +159,9 @@ type Subject struct {
 	KindIntersection []string          `json:"kind_intersection,omitempty"`
 	ExcludedByKind   map[string]int    `json:"excluded_by_kind,omitempty"`
 	Tenancy          *SubjectTenancy   `json:"tenancy,omitempty"`
+	// Adjudicated lists the dialect-only definitions admitted by
+	// langbench.Adjudicate (D3) as "path:line name (class)".
+	Adjudicated []string `json:"adjudicated,omitempty"`
 }
 
 // OracleRun names an oracle a reading used.
@@ -164,12 +174,20 @@ type OracleRun struct {
 
 // Tenancy is §9's per-reading resource record.
 type Tenancy struct {
-	Faults          int      `json:"faults"`
-	FaultingFiles   []string `json:"faulting_files"`
-	ThroughputMBs   float64  `json:"throughput_mb_s"`
-	MaxFileMS       int64    `json:"max_file_ms"`
-	PeakModulePages int      `json:"peak_module_pages"`
-	CompiledBytes   int64    `json:"compiled_bytes"`
+	Faults        int      `json:"faults"`
+	FaultingFiles []string `json:"faulting_files"`
+	// ThroughputMBs is the gated number (§1.2): bytes per CPU-second of
+	// the extraction process when every subject recorded CPU time
+	// (ThroughputBasis "cpu", owner decision D1), else bytes per
+	// wall-clock second ("wall", readings measured before D1).
+	ThroughputMBs float64 `json:"throughput_mb_s"`
+	// ThroughputBasis is "cpu" or "wall"; WallThroughputMBs discloses the
+	// wall-clock figure alongside a cpu-basis reading.
+	ThroughputBasis   string  `json:"throughput_basis,omitempty"`
+	WallThroughputMBs float64 `json:"wall_throughput_mb_s,omitempty"`
+	MaxFileMS         int64   `json:"max_file_ms"`
+	PeakModulePages   int     `json:"peak_module_pages"`
+	CompiledBytes     int64   `json:"compiled_bytes"`
 }
 
 // Reading is one dialect's committed measurement (§10). Nobody types

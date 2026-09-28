@@ -2,15 +2,15 @@
   "dialect": "bash",
   "kind": "language",
   "target_level": "L2",
-  "level_met": "L1",
+  "level_met": "L2",
   "grade": {
     "L1": "good",
-    "L2": "not-attempted",
+    "L2": "good",
     "L3": "not-attempted",
     "L4": "not-attempted"
   },
   "measured_at": "2026-09-28",
-  "fathom_commit": "bdbf3817",
+  "fathom_commit": "bab7f72c",
   "extractor": "dialect",
   "subjects": [
     {
@@ -19,6 +19,10 @@
       "files": 51,
       "bytes": 69374,
       "counts": {
+        "call_fathom": 328,
+        "call_fathom_in_truth": 328,
+        "call_truth": 338,
+        "call_truth_found": 328,
         "callables": 148,
         "callables_signed": 148,
         "fathom_defs": 148,
@@ -27,6 +31,7 @@
         "oracle_defs": 148
       },
       "families": {
+        "calls": "C",
         "l1": "B"
       },
       "kind_intersection": [
@@ -39,8 +44,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 15.802999999999997,
-        "max_file_ms": 2,
+        "extract_ms": 17.888000000000005,
+        "extract_cpu_ms": 18.171000000000006,
+        "max_file_ms": 3,
         "peak_module_pages": 354,
         "compiled_bytes": 0
       }
@@ -51,6 +57,10 @@
       "files": 5,
       "bytes": 183679,
       "counts": {
+        "call_fathom": 790,
+        "call_fathom_in_truth": 790,
+        "call_truth": 803,
+        "call_truth_found": 790,
         "callables": 158,
         "callables_signed": 158,
         "fathom_defs": 158,
@@ -59,6 +69,7 @@
         "oracle_defs": 159
       },
       "families": {
+        "calls": "C",
         "l1": "B"
       },
       "kind_intersection": [
@@ -71,8 +82,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 43.818000000000005,
-        "max_file_ms": 37,
+        "extract_ms": 46.417,
+        "extract_cpu_ms": 46.272,
+        "max_file_ms": 39,
         "peak_module_pages": 425,
         "compiled_bytes": 0
       }
@@ -80,14 +92,19 @@
   ],
   "oracles": [
     {
+      "tier": "C",
+      "tool": "tree-sitter-tags:bash-tags.scm",
+      "version": "py-tree-sitter 0.25.2, tree-sitter-bash 0.25.1"
+    },
+    {
       "tier": "B",
       "tool": "universal-ctags",
       "version": "6.2.1"
     }
   ],
   "metrics": {
-    "call_precision": null,
-    "call_recall": null,
+    "call_precision": 1,
+    "call_recall": 0.9798,
     "def_mapping": null,
     "file_edge_precision": null,
     "file_edge_recall": null,
@@ -100,6 +117,8 @@
     "typed_recall": null
   },
   "metric_tiers": {
+    "call_precision": "C",
+    "call_recall": "C",
     "kind_agreement": "B",
     "signature_coverage": "B",
     "sym_precision": "B",
@@ -115,6 +134,10 @@
     "function"
   ],
   "counts": {
+    "call_fathom": 1118,
+    "call_fathom_in_truth": 1118,
+    "call_truth": 1141,
+    "call_truth_found": 1118,
     "callables": 306,
     "callables_signed": 306,
     "fathom_defs": 306,
@@ -125,8 +148,10 @@
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 4.24,
-    "max_file_ms": 37,
+    "throughput_mb_s": 3.93,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 3.94,
+    "max_file_ms": 39,
     "peak_module_pages": 425,
     "compiled_bytes": 0
   },
@@ -135,6 +160,8 @@
     "fathom:BashVariable": 17
   },
   "notes": [
+    "bats-core/bats-core: 387 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
+    "nvm-sh/nvm: 966 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
     "range_agreement not measured: the L1 oracle reported no end line for any matched definition, so L1 can be met at most at good, never excellent (design §1.2)"
   ],

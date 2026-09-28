@@ -28,15 +28,15 @@
   ],
   "imports": [
     {
-      "local": "System",
+      "local": "*",
       "module": "System",
-      "kind": "whole",
+      "kind": "wildcard",
       "line": 1
     },
     {
-      "local": "System.Collections.Generic",
+      "local": "*",
       "module": "System.Collections.Generic",
-      "kind": "whole",
+      "kind": "wildcard",
       "line": 2
     },
     {
@@ -46,15 +46,15 @@
       "line": 3
     },
     {
-      "local": "System.Math",
+      "local": "*",
       "module": "System.Math",
-      "kind": "whole",
+      "kind": "wildcard",
       "line": 4
     },
     {
-      "local": "System.Linq",
+      "local": "*",
       "module": "System.Linq",
-      "kind": "whole",
+      "kind": "wildcard",
       "line": 5
     }
   ]

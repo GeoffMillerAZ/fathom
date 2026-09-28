@@ -68,7 +68,8 @@ inferred from the data, not declared: an L1 oracle that matched definitions but 
 line for none of them. A tier-A oracle that reports ends lifts the cap by measuring it.
 
 Always required, every level: `faults ≤ 0.1%` of files with every faulting file named;
-`throughput ≥ 1 MB/s/core`; `max_file_ms ≤ 2000`; `peak_module_pages ≤ 1024`.
+`throughput ≥ 1 MB/s/core`, judged on CPU time (bytes per CPU-second of the extraction
+process, `throughput_basis: "cpu"`; D1, §1.5); `max_file_ms ≤ 2000`; `peak_module_pages ≤ 1024`.
 
 Tool formats: L1 `sym_recall` and `sym_precision` ≥ .98 (good ≥ .95); L2 reference
 recall and precision ≥ .95 (good ≥ .90); L3 precision ≥ .95, recall ≥ .80 (good .90/.60).
@@ -108,6 +109,96 @@ and tiers alone; nobody types it.
   and test fixtures inside the subject are excluded by the same rules fathom's connector
   applies, so the oracle is run over exactly the file list fathom would read (the harness
   passes it `-L <filelist>`).
+
+### 1.5 Owner decisions, round 2 (2026-09-28)
+
+Wave 1b showed the bottleneck had become the measuring instruments, not the dialects. The
+owner's decisions, binding on the harness and every reading after them:
+
+- **D1 — throughput is CPU time.** The §1.2 floor is bytes per CPU-second of the
+  extraction process (user + system, `getrusage` around exactly the timed extractions),
+  not wall clock, so a reading taken while other workers run is not failed by contention.
+  The reading records `throughput_basis: "cpu"` and discloses `wall_throughput_mb_s`; a
+  subject measured before D1 (no `extract_cpu_ms`) puts the whole reading back on the
+  wall-clock basis, never a mix. C's wave-1b reading (0.62 MB/s wall) is re-graded by
+  re-measurement.
+- **D2 — a stronger oracle where ctags is deficient.** When the tier-B oracle is
+  demonstrably deficient for a language (a verified mis-tag, not a disagreement), the
+  dialect is measured against a stronger one: TypeScript/JavaScript against scip-typescript
+  (tier A: `lang-oracle -scip <index> -scip-defs` scores L1 from the index's definitions —
+  `langbench.SCIPDefs`: kind from `SymbolInformation.kind`, else the hover text's
+  declaration keyword, else the descriptor suffix; `@scoped` when the parent is a type;
+  the manifest's `oracle_kinds.scip` maps them); Java against scip-java, or where it cannot
+  run on arm64 a JavaParser symbol dump (tier B, JVM, bench-only); C# against scip-dotnet
+  (tier A) if it installs, else a Roslyn syntax dump (tier B). Dumps speak the neutral
+  oracle file (`-tool-oracle`, repeatable: `definitions`, `calls`, `references`, each file
+  with its own `tier`), mapped through `oracle_kinds.tool`. SQL restricts its calibration
+  subjects to the families its grammar supports (ANSI, SQLite, PostgreSQL) with
+  `-only <globs>`; the reading names the restriction and the unsupported families (T-SQL,
+  MySQL, Oracle, Db2, Vertica) are a disclosed gap. Node, a JVM and the .NET SDK are bench
+  instruments only (installed under the measurement scratch dir), never product
+  dependencies. An instrument that cannot be installed is recorded with why, and the
+  reading keeps ctags with the deficiency disclosed — L1 capped at good.
+- **D3 — oracle-deficiency disclosure.** A reading may carry an adjudicated set of
+  dialect-only definitions the L1 oracle is verified to miss (`lang-oracle -adjudicate
+  <file>`: classes, each with a `why`, an optional structural `pattern` where `{name}`
+  stands for the name and a required `scope`, and the claimed `path`/`line`/`name`/`class`
+  entries). A miss is valid only when the oracle failed to report a real definition of a
+  scored kind — never a dialect's over-extraction the oracle deliberately excludes
+  (locals, callback helpers, object-literal keys): the only scope is `module`, whose
+  definition's line starts at column 0 with no emitted definition enclosing it (an
+  audit of the first sets found 69% of sampled TypeScript and 29% of JavaScript
+  admissions were locals or object-literal keys). An entry is
+  admitted only by `langbench.Adjudicate`'s deterministic check — fathom emitted that name
+  at exactly that line inside the kind intersection, the oracle matched nothing to it, and
+  the definition's source text contains the name (and the class pattern) — never by a
+  model's judgment. Admitted entries leave `sym_precision`'s denominator (never recall's
+  numerator), are listed under their subject's `adjudicated`, and the reading carries an
+  `adjudicated:` note; refused claims are counted and named in the notes.
+- **D5 — an L2 calls oracle for every language dialect.** Where no SCIP producer exists
+  (bash, SQL …), call pairs come from the grammar's upstream `queries/tags.scm` run by an
+  independent runtime (py-tree-sitter or the tree-sitter CLI): each `@reference.call`'s
+  `@name` paired with its innermost enclosing `@definition.*`'s `@name`, emitted as the
+  neutral file's `calls` at tier C (L2 good at most). Where SCIP gives references it stays
+  tier A; a producer that sets no `enclosing_range` (scip-clang 0.4.0) no longer zeroes the
+  calls: a definition mapped to a fathom definition takes that definition's line span, and
+  the reading counts how many did.
+- **D7 — C#'s `using X; Y.Z();` resolves.** An unaliased `using X;` is a wildcard import
+  (the C# idiom: every type of namespace X in scope unqualified); an aliased
+  `using A = X;` keeps its prefix binding. Under namespace-dir a wildcard's namespace is
+  found first by the files whose symbols declare it (C# namespaces need not mirror
+  directories), then by the directory rule; and a dotted call `Y.Z()` whose head `Y` a
+  wildcard brought into scope resolves to the member `Y.Z` when `Y`'s file defines it,
+  else to `Y` (the one-segment depth the whole-module path keeps) — for every strategy,
+  so Java's `import a.*;` then `Y.z()` resolves the same way. The Dockerfile half of D7
+  (a local image tag to the Dockerfile that builds it) is recorded with D4 (§4).
+- **D6 — a queue-item dependency is met at L1.** A queue item that depends on another queue
+  item (cpp on c; scss and less on css) is eligible once the parent has a committed reading
+  at L1 or better, not only once the parent's row is `[x]` (its row may stay open for L4
+  for months). Foundation rows still need `[x]`/`[-]`. `langbench.QueueEligibility` and
+  `indexbench lang-next` compute it (§13.0 step 2).
+
+**Round-2 re-measurement (2026-09-28), with the instruments above** — the readings in
+`docs/bench/readings/lang/` carry the numbers and the dispositions:
+
+| Item | Wave 1b | Round 2 | L1 oracle | L2 oracle |
+|---|---|---|---|---|
+| c | none (0.62 MB/s wall) | L1 good | ctags (B) | scip-clang (A, D5 fallback): precision short |
+| typescript | none | L1 good | scip-typescript (A) + D3 (module scope) | scip-typescript: precision short |
+| javascript | none | none (sym_precision .84) | scip-typescript (A) + D3 (module scope) | scip-typescript: not adequate for untyped JS |
+| java | none | L2 good | JavaParser dump (B) | JavaParser dump (B) |
+| csharp | none | L1 excellent | Roslyn dump (B) | scip-dotnet (A): precision short |
+| sql | none | L2 good | ctags (B), restricted families | sqlglot FK pairs (C) |
+| bash | L1 good | L2 good | ctags (B) | aider bash-tags.scm on py-tree-sitter (C) |
+| github-actions | L2 good | L3 good | actionlint walk (C) | same, `cross_references` (D4) |
+| kubernetes | L2 good | L3 good | yaml.v3 walk (C) | same, label-selector joins (D4) |
+| dockerfile | L2 excellent | L2 excellent (re-graded) | buildkit parser (A) | L3 waits on LB-X-docker-image-ref |
+
+Two re-measurement findings changed the dialects themselves: TypeScript missed abstract
+classes and every bodiless signature (fixed, `ExtractorEpoch` 17), and SQL invented a
+column for each PostgreSQL `ATTACH PARTITION` (fixed). One is a product limit, disclosed:
+a SQL data dump past about 400 KB builds a tree larger than the 64 MiB module cap and
+faults (chinook-database left the subjects for it).
 
 ---
 
@@ -278,8 +369,30 @@ alternation `|`), implemented in Go over the decoded tree — no expression lang
 templating. Formats whose meaning needs evaluation (Helm templates, Jsonnet, Starlark,
 Nix, CUE) are not doc-engine formats: they are syntax dialects on the tags engine, and
 where a tool can evaluate them it is the tier-A oracle. A doc-engine tool format reaches
-L3 through `cross_file` selectors resolved by strategy (`repo-path`, `image-ref`,
-`module-source`, `service-name`).
+L3 through `cross_file` selectors resolved by strategy (`repo-path`, `repo-root`,
+`image-ref`, `module-source`, `service-name`, `label-selector`).
+
+**Cross-file references reach the store (LB-F30, owner decision D4, 2026-09-28).** One
+resolver, `fusion.ResolveDocXrefs`, serves ingest and the harness: `repo-path`, `repo-root`
+and a relative `module-source` name a file, the one doc file directly in a named directory,
+or every such file in the directories a glob names (`packages/*`), and resolve to that
+file's first root entity (an entity selected at `$`); a non-relative `module-source` or a
+`service-name` resolves to the one entity of that name in another file; `label-selector`
+joins every entity whose declared `labels` (a top-level `labels` list: `from`, `select`,
+`scope`, `scope_default`) include the selector map, in the same scope. `repo-root` resolves
+`./x` from the repository root (GitHub Actions' `uses:` convention), every other strategy
+from the referring file's directory. A `cross_file` entry may carry a `where` filter on its
+origin (the Service-only selector), and an entity a `qualify` list (`[".kind",
+".metadata.namespace"]` names a Kubernetes object `Deployment/prod/web`, the incumbent's
+naming, so a Service and a Deployment sharing a name keep distinct keys). **Edge shape:** a
+file-tier typed edge (`core.EdgeFileResolved`, tier pre-scan, never presented as typed) from
+the referring entity's symbol to the referenced entity's, stored under the typed_edges key
+`doc-xref` and replaced wholesale by an ingest pass gated like the file resolver's — the
+same table and label `ResolveFileEdges` writes. A reference leaving the repository (a
+registry package, a remote action, an image) resolves to nothing here: crossing
+repositories is the `service_ref`/`module_ref` layer's job (§1.1). A reference resolving to
+its own origin's key is dropped. The harness scores exactly the resolver's output
+(`xref_precision`/`xref_recall`, §10), so the bench never scores an edge ingest drops.
 
 ## 5. Classification
 
@@ -330,8 +443,9 @@ relative to the importer first), `case: "snake"` and `labels: "bazel"`; an omitt
 the strategy's default, which for `relative-path` and `dotted-module` is the pre-LB-F11
 TS/JS and Python rule (`internal/fusion/resolvestrategy.go` documents each strategy's reads).
 Under `include-path`, `file-symbol` and `swift-module` a whole-module import brings every
-top-level name of its target into scope, as does any `@import.wildcard`; a name two targets
-define is left unresolved.
+top-level name of its target into scope, as does any `@import.wildcard` (C#'s unaliased
+`using`, D7); a name two targets define is left unresolved, and a dotted call through a
+wildcard-imported name resolves to that name's member when its file defines one.
 A new strategy is a foundation-level change (an Opus row), never something a worker adds.
 Edges keep the existing label: `file-resolved`, tier pre-scan, never presented as typed.
 
@@ -465,7 +579,10 @@ go run ./cmd/indexbench lang-oracle \
   -subject workspace/calibration/swift/Alamofire \
   -ctags workspace/tools/ctags \
   [-scip workspace/tmp/scip/swift-alamofire.scip] \
-  [-tool-oracle workspace/tmp/oracle/<id>-<subject>.json] \
+  [-scip-defs]                                 # L1 from the SCIP index, tier A (D2)
+  [-tool-oracle workspace/tmp/oracle/<id>-<subject>.json]...   # repeatable (D2, D5)
+  [-only 'dir/**/*.sql,other.sql']               # restrict the subject (D2)
+  [-adjudicate calibration/adjudications/<id>.json] \  # verified oracle misses (D3)
   -out docs/bench/readings/lang/swift.json   # merges subjects: one reading per dialect
 ```
 
@@ -500,6 +617,12 @@ The reading (`internal/langbench.Reading`, JSON, indented, stable key order):
   "disposition": null
 }
 ```
+
+A tool-native oracle file may carry `cross_references` (`[{path, from, to_path, to}]`; `to`
+omitted compares at file granularity): the harness scores them against
+`fusion.ResolveDocXrefs` over the dialect's files as `xref_precision`/`xref_recall` at the
+file's tier (LB-F30, §4). Bench-only oracles that write this shape live under
+`calibration/oracles/` (tier C: github-actions, kubernetes).
 
 `level_met` is the highest level whose metrics all pass at excellent or good with an
 admissible tier; `grade` says which. The file is written with
@@ -560,7 +683,11 @@ worktree and your scratch directory.
 1. Read your entry: `id`, `name`, `kind`, `target_level`, `engine`, `grammar_source`,
    `licence`, `oracle`, `calibration_subjects`, `depends_on`, `port_of` (when present).
 2. Check `depends_on`: every id must be `[x]` or `[-]` in `docs/plans/language-breadth.md`
-   (`fathom plans status`). If not, stop and report `blocked: <ids>`.
+   (`fathom plans status`) — except a dependency on another queue item (`LB-Q-<id>`: cpp on
+   c, scss/less on css), which is satisfied once that item has a committed reading at L1 or
+   better, even while its own row stays open for a higher target (D6, §1.5).
+   `go run ./cmd/indexbench lang-next -all` prints exactly this. If blocked, stop and
+   report `blocked: <ids>`.
 3. Work in a fresh worktree on branch `lang/<id>` from the integration branch, with
    `GOWORK=off`, your own scratch dir `/Volumes/m2ext/tmp/lang-<id>/` (never shared), and
    `GOFLAGS=-p=2`. Never start a daemon, never touch `127.0.0.1:7575` or `~/.fathom`.
@@ -718,7 +845,8 @@ A disposition is a result. A fake claim is an incident.
   `retargeted` field; `TestLanguageQueueMatchesPlan` keeps it in step with the plan.
 - **Driver.** The harness (a workflow script or `/loop` in a coordinator session) reads the
   queue in order, skips entries whose plan row is `[x]` or `[-]`, and dispatches the first
-  entry whose `depends_on` are all done. Fathom serves the facts (`fathom plans next
+  entry whose `depends_on` are all done (a queue-item dependency is done at a committed L1
+  reading, D6; `indexbench lang-next` lists the eligible items). Fathom serves the facts (`fathom plans next
   --eligible-only` over the plan; the queue file); it never runs the loop (vision 24).
 - **Parallelism.** At most two workers at once, on items with disjoint grammar blobs; one
   heavy measurement at a time (the lock in §13.0). Each worker has its own worktree and

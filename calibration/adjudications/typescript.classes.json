@@ -1,0 +1,10 @@
+{
+  "arrow-const": {
+    "why": "scip-typescript records a variable initialized with an arrow function or function expression as a variable (hover `const f: () => …`), not a function; fathom and universal-ctags call it a function (verified: zod packages/zod/src/v3/types.ts:5080 `const ostring = () => …`)",
+    "pattern": "\\b(?:const|let|var)\\s+{name}\\b(?s:.*?)=\\s*(?:async\\s*)?(?:function\\b|(?s:.*?)=>)",
+    "kinds": [
+      "function"
+    ],
+    "scope": "module"
+  }
+}
