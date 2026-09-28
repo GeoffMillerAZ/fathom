@@ -224,32 +224,6 @@ func TestObservatoryStoryPage(t *testing.T) {
 	}
 }
 
-// TestInitAutoNarrate pins IQ-10: init arms a bounded window; an active
-// window is left untouched.
-func TestInitAutoNarrate(t *testing.T) {
-	dir := t.TempDir()
-	t.Setenv("FATHOM_NARRATE_STATE", filepath.Join(dir, "narrate.json"))
-
-	var out strings.Builder
-	armAutoNarrate(&out)
-	st, active := loadNarrateState(time.Now())
-	if !active {
-		t.Fatal("init must arm the narrate window")
-	}
-	if st.SessionsRemaining == nil || *st.SessionsRemaining != autoNarrateSessions {
-		t.Fatalf("window = %+v, want %d sessions", st, autoNarrateSessions)
-	}
-	if !strings.Contains(out.String(), "self-expiring") {
-		t.Error("arming must be loudly announced")
-	}
-
-	out.Reset()
-	armAutoNarrate(&out)
-	if !strings.Contains(out.String(), "already armed") {
-		t.Error("an active window must be left untouched, and said so")
-	}
-}
-
 // TestBriefFourQuestions pins IQ-11.
 func TestBriefFourQuestions(t *testing.T) {
 	m := observatoryModel{GeneratedAt: "2026-08-08T12:00:00Z", FathomVersion: "test"}

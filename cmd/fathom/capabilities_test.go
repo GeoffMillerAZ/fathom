@@ -304,13 +304,13 @@ func TestCapabilitiesSetPreservesBudgetsBlock(t *testing.T) {
 	t.Run("a file that does not load is refused and left untouched", func(t *testing.T) {
 		// The phase-O inversion: the loader refuses it, so set must too —
 		// a rewrite would replace the author's lines with one of its own.
-		before := "capabilities: {\n\tnarrate: on?: false\n}\n\n" + budgetsBlock
+		before := "capabilities: {\n\tassess: on?: false\n}\n\n" + budgetsBlock
 		repo, path := write(t, before)
 		var out, errb bytes.Buffer
 		if code := cmdCapabilities([]string{"set", "--repo", repo, "guards", "on"}, &out, &errb); code == 0 {
 			t.Fatal("a file the loader refuses must not be rewritten")
 		}
-		if !strings.Contains(errb.String(), "narrate") || !strings.Contains(errb.String(), "by hand") {
+		if !strings.Contains(errb.String(), "assess") || !strings.Contains(errb.String(), "by hand") {
 			t.Errorf("the refusal must name the problem and the manual edit: %s", errb.String())
 		}
 		if after := read(t, path); after != before {
@@ -401,8 +401,8 @@ func TestCapabilityConfigErrorIsLoud(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(repo, ".fathom"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	// The phase-O inversion: reads as "switch narrate off", does nothing.
-	body := []byte("capabilities: {\n\tnarrate: on?: false\n}\n")
+	// The phase-O inversion: reads as "switch assess off", does nothing.
+	body := []byte("capabilities: {\n\tassess: on?: false\n}\n")
 	if err := os.WriteFile(filepath.Join(repo, ".fathom", "capabilities.cue"), body, 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -410,7 +410,7 @@ func TestCapabilityConfigErrorIsLoud(t *testing.T) {
 	if got.Status != doctorFail {
 		t.Fatalf("a config file that does not load must FAIL, not be ignored: %+v", got)
 	}
-	if !strings.Contains(got.Reason, "narrate") {
+	if !strings.Contains(got.Reason, "assess") {
 		t.Errorf("the failure must name the offending capability: %s", got.Reason)
 	}
 }
@@ -443,7 +443,7 @@ func TestInitScaffoldsCapabilities(t *testing.T) {
 	}
 
 	// Write-if-absent: a second init must not clobber a real config.
-	if err := os.WriteFile(p, []byte("capabilities: {\n\tnarrate: on: true\n}\n"), 0o644); err != nil {
+	if err := os.WriteFile(p, []byte("capabilities: {\n\tassess: on: true\n}\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	out.Reset()
@@ -451,7 +451,7 @@ func TestInitScaffoldsCapabilities(t *testing.T) {
 		t.Fatal(err)
 	}
 	after, _ := capability.Default().LoadSettings(p, capability.ScopeProject)
-	if !after["narrate"] {
+	if !after["assess"] {
 		t.Error("a second init overwrote a real configuration")
 	}
 }

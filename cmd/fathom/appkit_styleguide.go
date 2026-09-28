@@ -31,7 +31,6 @@ func observatoryGuideModel(state string) observatoryModel {
 		FathomVersion: "synthetic-guide",
 		GeneratedAt:   "2026-09-21T00:00:00Z",
 		Arm:           obsArmBanner{Detail: "Synthetic fixture: no measurement arm"},
-		Narrate:       obsArmBanner{Detail: "Synthetic fixture: narrative off"},
 	}
 	row := obsServiceRow{}
 	row.Service = "fixture"

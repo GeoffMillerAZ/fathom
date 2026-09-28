@@ -169,7 +169,7 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 		}
 		// VB-30: other services whose outbound HTTP client call joins a
 		// route one of changed_files registers (serviceRefHopsInto,
-		// shared with blast_radius/cross_repo_blast_radius). Additive:
+		// shared with blast_radius). Additive:
 		// every existing payload field is unchanged (law 4, same as
 		// test_impact above).
 		hops, unextracted := serviceRefHopsInto(ctx, backend, p.Service, p.ChangedFiles)

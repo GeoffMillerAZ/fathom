@@ -45,13 +45,13 @@ var toolCostClasses = map[string]tenancy.Class{
 	"secret_scan": tenancy.ClassTree, "cloc": tenancy.ClassTree, "spec_coverage": tenancy.ClassTree,
 	"traceability": tenancy.ClassTree, "safe_delete_check": tenancy.ClassTree, "list_sources": tenancy.ClassTree,
 	"discoveries": tenancy.ClassTree, "references": tenancy.ClassTree, "blast_radius": tenancy.ClassTree,
-	"brief": tenancy.ClassTree, "traverse": tenancy.ClassTree, "http_client_calls": tenancy.ClassTree,
+	"traverse": tenancy.ClassTree, "http_client_calls": tenancy.ClassTree,
 	"shell_out": tenancy.ClassTree, "proto_conformance": tenancy.ClassTree, "spec_refs": tenancy.ClassTree,
 	"stale_docs": tenancy.ClassTree,
 
 	// fleet: every service.
-	"list_services": tenancy.ClassFleet, "fleet_drift": tenancy.ClassFleet, "cross_repo_blast_radius": tenancy.ClassFleet,
-	"cross_repo_callers": tenancy.ClassFleet, "review_diff": tenancy.ClassFleet, "dep_drift": tenancy.ClassFleet,
+	"list_services": tenancy.ClassFleet, "fleet_drift": tenancy.ClassFleet,
+	"cross_repo_callers": tenancy.ClassFleet, "review_diff": tenancy.ClassFleet,
 
 	// ingest: writes the store; one machine-wide.
 	"ingest": tenancy.ClassIngest, "compile_layer": tenancy.ClassIngest,

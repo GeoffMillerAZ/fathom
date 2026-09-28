@@ -200,8 +200,6 @@ func capabilityEvidence(id string) string {
 		return "the standing schema tax in `fathom brief`, and per-tool traffic on /observatory/impact"
 	case "session-ledger":
 		return "every denominator in `fathom brief` — without it, no figure has a session count"
-	case "narrate":
-		return "story rows under the lens banner (a lens, never quoted as proof — law 14)"
 	case "assess":
 		return "per-run token cost on the assess ledger (`fathom assess spend`); verdicts stay local and uncalibrated, never a brief figure (ADR-046)"
 	}

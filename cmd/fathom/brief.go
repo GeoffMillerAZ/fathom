@@ -1,10 +1,12 @@
 package main
 
-// brief.go — OB-7: `fathom brief` renders the observatory's impact model to
-// a dated LOCAL markdown value brief. Sharing is a human verb (law 13):
-// this verb writes a file and stops — a person decides where it goes. The
-// pitch is the discipline: real numbers with denominators, version stamps,
-// and an explicit not-measured section.
+// brief.go renders the observatory's impact model to a markdown value
+// brief (renderBriefMD): real numbers with denominators, version stamps,
+// and an explicit not-measured section. The `fathom brief` CLI verb this
+// used to serve was removed by SR-14 (surface reckoning F-53) — 0 lifetime
+// calls; the console's /brief page (console_brief.go, observatory_brief.go)
+// is the surviving consumer, the "console covers the need" the verdict
+// relies on.
 //
 // BR-1 (owner ask, 2026-08-08): the brief is read by someone who has never
 // heard of fathom. Every figure therefore arrives with (a) a plain-English
@@ -15,74 +17,13 @@ package main
 // off, what turning it on would let the brief say, and the exact command.
 
 import (
-	"context"
-	"encoding/json"
 	"fmt"
-	"io"
-	"os"
-	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/console"
 )
-
-func cmdBrief(args []string, stdout, stderr io.Writer) int {
-	fs := newFlagSet("brief", stderr)
-	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL")
-	outDir := fs.String("out", "", "output directory (default ~/.fathom/briefs)")
-	printOnly := fs.Bool("print", false, "print the brief to stdout instead of writing a file")
-	jsonOut := fs.Bool("json", false, "print the Now page's projection as JSON — the attention queue, what changed since the last look, the stat band and the fleet pulse (vision 35 §3); writes nothing")
-	storePath := fs.String("store", "", "with --json: the store to read claims, certify status and compile runs from, read-only (default: the store the daemon at --url recorded)")
-	if err := fs.Parse(args); err != nil {
-		return 1
-	}
-	if *jsonOut {
-		// The Now page's projection (console_home.go), at the console
-		// verbs' injectable clock (fleetReportNow) so the page's JSON parity
-		// test pins the verb and the page to one instant.
-		rep := briefNowReport(context.Background(), *url, *storePath, fleetReportNow())
-		enc := json.NewEncoder(stdout)
-		enc.SetIndent("", "  ")
-		if err := enc.Encode(rep); err != nil {
-			fmt.Fprintf(stderr, "error: %v\n", err)
-			return 1
-		}
-		return 0
-	}
-
-	now := time.Now()
-	m := buildObservatoryModel(*url, now)
-	md := renderBriefMD(m)
-
-	if *printOnly {
-		fmt.Fprint(stdout, md)
-		return 0
-	}
-
-	dir := *outDir
-	if dir == "" {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			fmt.Fprintf(stderr, "error: cannot resolve home dir for the default output location: %v (use --out)\n", err)
-			return 1
-		}
-		dir = filepath.Join(home, ".fathom", "briefs")
-	}
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		fmt.Fprintf(stderr, "error: %v\n", err)
-		return 1
-	}
-	path := filepath.Join(dir, "brief-"+now.UTC().Format("2006-01-02")+".md")
-	if err := os.WriteFile(path, []byte(md), 0o644); err != nil {
-		fmt.Fprintf(stderr, "error: %v\n", err)
-		return 1
-	}
-	fmt.Fprintf(stdout, "brief written: %s\nsharing is a human verb — nothing was sent anywhere.\n", path)
-	return 0
-}
 
 // sentence capitalizes an instrument note so it can be appended after a
 // full stop without reading like a fragment.
@@ -197,13 +138,6 @@ func briefTuning(m observatoryModel, f briefFleet) []briefAction {
 				Note:   "wire that command into the pre-push hook (lefthook.yml) so it runs on every push rather than by hand",
 			})
 		}
-	}
-	if !m.Narrate.Active {
-		acts = append(acts, briefAction{
-			What:   "the narration dial is off, so no session records *what happened* alongside the counts",
-			Unlock: "concrete before/after stories to sit beside the numbers — labeled as a lens, never quoted as proof (law 14)",
-			Cmd:    "fathom narrate on --for 7d",
-		})
 	}
 	if m.Impact.ExpSessions == 0 {
 		acts = append(acts, briefAction{

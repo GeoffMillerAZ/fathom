@@ -322,8 +322,8 @@ func learnProbeModelKey(m observatoryModel, row obsServiceRow) string {
 		}
 		layers = strings.Join(names, ",")
 	}
-	return fmt.Sprintf("%s|%d|%s|%s|%s|%s|%s|%v|%d|%d|%d", row.Path, row.Symbols, row.Freshness, row.HooksNote, row.StanzaNote,
-		row.CompileNote, layers, m.Narrate.Active, m.Impact.LedgerSessions, m.AgentSurfaceTools, m.AgentSchemaBytes)
+	return fmt.Sprintf("%s|%d|%s|%s|%s|%s|%s|%d|%d|%d", row.Path, row.Symbols, row.Freshness, row.HooksNote, row.StanzaNote,
+		row.CompileNote, layers, m.Impact.LedgerSessions, m.AgentSurfaceTools, m.AgentSchemaBytes)
 }
 
 // learnProbeFilesKey is a stat signature of the files and directories the

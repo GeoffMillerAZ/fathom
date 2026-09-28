@@ -100,12 +100,12 @@ func TestDiagCaptureRetention(t *testing.T) {
 // Review finding 10: compile_layer is ingest-class work the exit rung
 // halts, but it is not an ingest — its service is not quarantined as
 // "exceeded budget during ingest" (auto-refresh keeps serving it). An
-// onboard_service call is an ingest and is quarantined.
+// ingest call is an ingest and is quarantined.
 func TestExitHaltQuarantinesOnlyIngests(t *testing.T) {
 	r := newGovRig(t)
 	cctx, done1 := r.g.inflight.Begin(context.Background(), tenancy.ClassIngest, "compile_layer", "layers-svc", "agent")
 	defer done1()
-	_, done2 := r.g.inflight.Begin(context.Background(), tenancy.ClassIngest, "onboard_service", "new-svc", "agent")
+	_, done2 := r.g.inflight.Begin(context.Background(), tenancy.ClassIngest, "ingest", "new-svc", "agent")
 	defer done2()
 	r.host.set(9*tenancy.GiB, 0)
 	r.ticks(2)
@@ -116,7 +116,7 @@ func TestExitHaltQuarantinesOnlyIngests(t *testing.T) {
 		t.Fatal("a halted compile_layer quarantined its service as an ingest")
 	}
 	if !tenancy.IsQuarantined("new-svc") {
-		t.Fatal("a halted onboard_service (an ingest) is quarantined")
+		t.Fatal("a halted ingest is quarantined")
 	}
 }
 

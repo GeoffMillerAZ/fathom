@@ -194,7 +194,6 @@ func obsContent(active string, body string, m observatoryModel) string {
 		b.WriteString(`<div class="` + cls + `">` + html.EscapeString(detail) + `</div>`)
 	}
 	banner(m.Arm.Active, m.Arm.Detail)
-	banner(m.Narrate.Active, m.Narrate.Detail)
 	if m.DegradedNote != "" {
 		banner(true, m.DegradedNote)
 	}

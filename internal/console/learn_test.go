@@ -31,7 +31,6 @@ func pipelineFacts() PipelineFacts {
 			{ID: "guards", Operating: true},
 			{ID: "verify-gate", Operating: true},
 			{ID: "session-ledger", Operating: true},
-			{ID: "narrate", Operating: false, Reason: "not armed"},
 		},
 	}
 }
@@ -104,7 +103,7 @@ func TestPipelineView_StagesAndCounts(t *testing.T) {
 	// Status: a required switch that is broken, on a stage whose own
 	// counts show it at work, is a working stage with the break named and
 	// its remedy — never "off" beside live counts; an optional switch
-	// (modules, narrate) never decides.
+	// (modules) never decides.
 	serve := stage(StageServe)
 	if serve.Status != StageWorking || !strings.Contains(serve.StatusReason, "obligations is broken here: rules authored, never compiled") || serve.Remedy != "fathom compile --service pay" {
 		t.Errorf("serve with obligations broken = %s %q %q", serve.Status, serve.StatusReason, serve.Remedy)
@@ -113,7 +112,7 @@ func TestPipelineView_StagesAndCounts(t *testing.T) {
 		t.Errorf("compile: modules is optional and off, layers required and on: %+v", st)
 	}
 	if st := stage(StageEvidence); st.Status != StageOperating {
-		t.Errorf("an optional switch off (narrate) must not turn a stage off: %s %s", st.Status, st.StatusReason)
+		t.Errorf("evidence stage with session-ledger on must be operating: %s %s", st.Status, st.StatusReason)
 	}
 
 	// Pages: the project filled in, escaped for a path and for a query.

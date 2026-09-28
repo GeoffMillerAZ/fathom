@@ -77,7 +77,6 @@ func TestBriefTuningIsGroundedInState(t *testing.T) {
 
 	t.Run("a fully configured fleet yields no invented advice", func(t *testing.T) {
 		m := observatoryModel{}
-		m.Narrate.Active = true
 		m.Services = []obsServiceRow{{fleetServiceRow: fleetServiceRow{Service: "ok"}, Grade: "A"}}
 		m.Impact.LedgerSessions = 10
 		m.Impact.TokensOffSessions = 5

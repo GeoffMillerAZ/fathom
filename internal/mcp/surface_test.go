@@ -398,10 +398,14 @@ func TestBareHTTPDoesNotGateToolsCall(t *testing.T) {
 
 // ─── canned prompts are scoped to the surface ────────────────────────────────
 
+// TestPromptsScopedOnSurface pins SR-20 (surface reckoning F-78): the four
+// canned prompts are gone from every surface, scoped or not.
+// registerPromptsHandlers stays wired (the protocol capability is kept),
+// serving an empty list everywhere, and prompts/get for any name — a
+// former canned prompt or not — errors identically on every surface.
 func TestPromptsScopedOnSurface(t *testing.T) {
 	srv := mcp.NewServer(&fakeBackend{})
 
-	// Unscoped: all four canned prompts.
 	unscoped := scopedRoundtrip(t, srv, context.Background(), request{
 		JSONRPC: "2.0", ID: 33, Method: "prompts/list", Params: map[string]any{},
 	})
@@ -409,16 +413,10 @@ func TestPromptsScopedOnSurface(t *testing.T) {
 		t.Fatalf("prompts/list: %v", unscoped["error"])
 	}
 	all := unscoped["result"].(map[string]any)["prompts"].([]any)
-	if len(all) != 4 {
-		t.Fatalf("unscoped prompts/list = %d prompts, want 4", len(all))
+	if len(all) != 0 {
+		t.Fatalf("unscoped prompts/list = %d prompts, want 0 (SR-20 removed the canned prompts)", len(all))
 	}
 
-	// Companion surface: review_change is the one canned prompt whose
-	// ONLY referenced tool (review_diff) ADR-035 decision 1 promoted onto
-	// the surface, so it alone is advertised; the other three still
-	// reference at least one gated tool (investigate_incident needs
-	// complexity/community, onboard_service needs god_object,
-	// plan_requirement needs dead_code) and stay hidden.
 	ctx := mcp.WithRequestScope(context.Background(), "companion", true)
 	scoped := scopedRoundtrip(t, srv, ctx, request{
 		JSONRPC: "2.0", ID: 34, Method: "prompts/list", Params: map[string]any{},
@@ -427,22 +425,19 @@ func TestPromptsScopedOnSurface(t *testing.T) {
 		t.Fatalf("prompts/list on companion: %v", scoped["error"])
 	}
 	visible := scoped["result"].(map[string]any)["prompts"].([]any)
-	if len(visible) != 1 {
-		t.Fatalf("companion prompts/list = %d prompts, want 1 (review_change only): %v", len(visible), visible)
-	}
-	if name := visible[0].(map[string]any)["name"]; name != "review_change" {
-		t.Fatalf("companion prompts/list = %v, want [review_change]", visible)
+	if len(visible) != 0 {
+		t.Fatalf("companion prompts/list = %d prompts, want 0: %v", len(visible), visible)
 	}
 	got := scopedRoundtrip(t, srv, ctx, request{
 		JSONRPC: "2.0", ID: 35, Method: "prompts/get",
-		Params: map[string]any{"name": "investigate_incident", "arguments": map[string]any{"service": "svc", "symptom": "x"}},
+		Params: map[string]any{"name": "no_such_prompt", "arguments": map[string]any{"service": "svc"}},
 	})
 	errObj, ok := got["error"].(map[string]any)
 	if !ok {
 		t.Fatalf("prompts/get on companion: want error, got %v", got)
 	}
-	if msg := errObj["message"].(string); !strings.Contains(msg, "surface") {
-		t.Errorf("prompts/get error %q should name the surface", msg)
+	if code := errObj["code"].(float64); code != float64(mcp.ErrCodeNotFound) {
+		t.Errorf("code = %v, want ErrCodeNotFound (prompt gone, not surface-gated)", code)
 	}
 }
 

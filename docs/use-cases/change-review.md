@@ -21,10 +21,8 @@ Review a diff or pull request with automated impact analysis and conformance gat
 | `diff_impact` | MCP tool (investigation) | Blast radius of changed files: affected symbols, transitive callers, and related tests |
 | `api_diff` | MCP tool (coding) | Added, removed, and changed exported symbols between two services |
 | `arch_conformance` | MCP tool (coding) | Call-graph edges that violate declared layering rules |
-| `dep_drift` | MCP tool (coding) | Dependency version mismatches between two services' lockfiles |
 | `proto_conformance` | MCP tool (coding) | Naming convention violations in `.proto` files |
 | `stale_docs` | MCP tool (coding) | Markdown files with inline-code or link references that no longer match known symbols or files |
-| `review_change` | MCP prompt | Calls `review_diff` for a structured, one-call review of a code change |
 | `ingest` | MCP tool (shared) | Re-ingest a service in-session to refresh the store before querying |
 | `staleness_report` | MCP tool (shared) | Check whether the indexed state has drifted from the current HEAD |
 | `fathom review` | CLI | Store-direct CLI mirror of `review_diff`: resolves changed files via `git diff --name-only <ref>`, runs the same engine (used by the non-blocking pre-push summary, `docs/plans/review-verb.md` C3-1); `--budget-seconds N` (with `--no-persist`) prints a named skip and exits 0 on excess. Not yet listed by `fathom help` — `fathom review -h` |
@@ -114,25 +112,9 @@ Returns one cited verdict:
 
 **`review_diff` writes to the claims store — deliberately, and only the oracle dimensions.** `findings_persisted:true` reports that the `arch_conformance` and `spec_coverage` findings (the deterministic-oracle dimensions — never `obligations`, which re-serves already-compiled claims, and never `impact` context noise) were persisted as content-addressed claims on the `findings` layer, each anchored with a hashed line citation and a scope fingerprint so the daemon's post-refresh citation sweep and remediation-drift pass verify them instead of falsifying them. The write is idempotent (an identical re-run upserts identical rows) and self-reconciling: a review-minted claim whose finding a later run over the same files no longer emits is flipped to `superseded` — absent = fixed. If the PR author disputes the violation, `fathom claim refute --claim 3f9a… --note "..."` (or the `obligations` tool's `action:"refute"`) suppresses it durably — a later `review_diff` call re-emitting the identical finding carries `status:"refuted"` (excluded from `count`, still listed) instead of re-flagging it.
 
-Alternatively, invoke the `review_change` prompt to get the same call pre-structured:
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "method": "prompts/get",
-  "params": {
-    "name": "review_change",
-    "arguments": {
-      "service": "payment-service",
-      "changed_files": "internal/api/handler.go",
-      "change": "handler now calls store.Query directly"
-    }
-  }
-}
-```
-
-The returned prompt instructs the agent to call `review_diff` with those arguments and how to read the resulting verdict.
+The `review_change` canned prompt that used to pre-structure this same call is gone
+(SR-20, surface reckoning F-78, zero lifetime calls) — call `review_diff` directly, as
+above.
 
 **CLI equivalent:**
 
@@ -224,30 +206,6 @@ Returns `{ "violations": [], "count": 0 }` — layer rules pass (or a `rule_sour
 
 Returns `{ "issues": [], "count": 0 }`. No violations.
 
-**Check dependency version drift between services.**
-
-```json
-{
-  "name": "dep_drift",
-  "arguments": {
-    "service_a": "auth-service",
-    "service_b": "payment-service"
-  }
-}
-```
-
-Returns:
-```json
-{
-  "drift": [
-    { "name": "golang.org/x/crypto", "current": "v0.21.0", "baseline": "v0.18.0" }
-  ],
-  "count": 1
-}
-```
-
-`payment-service` is ahead on `golang.org/x/crypto`.
-
 **Check doc and stale-docs coverage on changed files (optional).**
 
 ```json
@@ -262,7 +220,7 @@ Returns any Markdown references that no longer resolve to known symbols or files
 
 **`review_diff` never accepts inline architecture rules.** Unlike calling `arch_conformance` directly, `review_diff`'s `arch_conformance` dimension always resolves through the service's own `.fathom/rules/archconformance.cue` project rule pack (or reports `checked:false` when none exists) — there is no `rules` argument on `review_diff` itself. If you need to test rules that aren't committed yet, call `arch_conformance` directly with inline `rules`.
 
-**Surface.** `review_diff` and `diff_impact` are in the `investigation` group; the appendix's remaining tools (`api_diff`, `arch_conformance`, `dep_drift`, `proto_conformance`, `stale_docs`) are in `coding`. There is no profile switch (`set_profile` was removed, SW-2): stdio `serve-mcp` serves the full registry; over the shared HTTP daemon the path is the scope (bare `POST /rpc` for everything (the group endpoints were deleted — HF-5)). None of these review tools is on the 19-tool `/rpc/agent` allowlist, but an off-surface call still executes there — logged `off_surface:true`, never refused — so a session registered on `/rpc/agent` can run the whole review.
+**Surface.** `review_diff` and `diff_impact` are in the `investigation` group; the appendix's remaining tools (`api_diff`, `arch_conformance`, `proto_conformance`, `stale_docs`) are in `coding`. There is no profile switch (`set_profile` was removed, SW-2): stdio `serve-mcp` serves the full registry; over the shared HTTP daemon the path is the scope (bare `POST /rpc` for everything (the group endpoints were deleted — HF-5)). None of these review tools is on the `/rpc/agent` allowlist, but an off-surface call still executes there — logged `off_surface:true`, never refused — so a session registered on `/rpc/agent` can run the whole review.
 
 **Precedent before verdict.** `findings_near { "service", "subject": "api.Handler", "hops": 2 }` (CLI: `fathom findings near api.Handler --store … --service …`) answers "was this flagged here before?" — live findings ranked by call-graph proximity, superseded ones only with `include_superseded`/`--include-superseded` and always labeled. `fathom findings status` reports how far the findings layer is from its entry condition (**experimental** until then).
 
@@ -319,4 +277,4 @@ The section above is fathom's OWN findings (`fathom report`, compiled through th
 
 ## Maintained
 
-This doc covers: `review_diff` (the composed verb, C1-1/C2-1, `docs/plans/review-verb.md`; incl. its `test_impact` block — `affected_tests` and `test_gap`, BD-4) and its `fathom review` CLI mirror (which prints the same block, BD-5) (incl. `--no-persist`, `--budget-seconds`; `fathom review -h`), `diff_impact`, `api_diff`, `arch_conformance` (incl. its `.fathom/rules/archconformance.cue` project rule packs and `rule_source`/`checked` response fields), `dep_drift`, `proto_conformance`, `stale_docs`, `findings_near`, `fathom findings` (`near`/`status`; `fathom findings import`/`fathom findings candidates` land in another wave, FL-10/FL-23, `docs/plans/findings-loop.md`), `review_change` (MCP prompt), `ingest`, `staleness_report`, `fathom ingest-diff`, `fathom verify` (`--quiet`, `--strict`), the pre-push `fathom review` summary step (C3-1), `fathom report`, `fathom claim` (add/refute/corroborate). Update it when these change.
+This doc covers: `review_diff` (the composed verb, C1-1/C2-1, `docs/plans/review-verb.md`; incl. its `test_impact` block — `affected_tests` and `test_gap`, BD-4) and its `fathom review` CLI mirror (which prints the same block, BD-5) (incl. `--no-persist`, `--budget-seconds`; `fathom review -h`), `diff_impact`, `api_diff`, `arch_conformance` (incl. its `.fathom/rules/archconformance.cue` project rule packs and `rule_source`/`checked` response fields), `proto_conformance`, `stale_docs`, `findings_near`, `fathom findings` (`near`/`status`; `fathom findings import`/`fathom findings candidates` land in another wave, FL-10/FL-23, `docs/plans/findings-loop.md`), `ingest`, `staleness_report`, `fathom ingest-diff`, `fathom verify` (`--quiet`, `--strict`), the pre-push `fathom review` summary step (C3-1), `fathom report`, `fathom claim` (add/refute/corroborate). Update it when these change.

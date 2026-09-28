@@ -177,8 +177,6 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		return cmdObserve(args[1:], stdout, stderr)
 	case "arm":
 		return cmdArm(args[1:], stdout, stderr)
-	case "narrate":
-		return cmdNarrate(args[1:], stdout, stderr)
 	case "plugin":
 		if len(args) > 1 && args[1] == "render" {
 			return cmdPluginRender(args[2:], stdout, stderr)
@@ -189,8 +187,6 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		return cmdHarness(args[1:], stdout, stderr)
 	case "support":
 		return cmdSupport(args[1:], stdout, stderr)
-	case "brief":
-		return cmdBrief(args[1:], stdout, stderr)
 	case "capabilities":
 		return cmdCapabilities(args[1:], stdout, stderr)
 	case "flywheel":
@@ -285,17 +281,27 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 	}
 }
 
+// printUsage renders the dispatched verb table, skipping any verb frozen
+// out of help (verb.Hidden, SR-16/SR-18): still fully dispatched and
+// callable (TestHelpListsEveryDispatchedVerb pins that), just not
+// something an agent discovers by browsing `fathom help`.
 func printUsage(w io.Writer) {
 	fmt.Fprintln(w, "Usage: fathom <subcommand> [flags]")
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "Subcommands:")
 	width := 0
 	for _, v := range verbTable {
+		if v.Hidden {
+			continue
+		}
 		if n := len(v.Name); n > width {
 			width = n
 		}
 	}
 	for _, v := range verbTable {
+		if v.Hidden {
+			continue
+		}
 		fmt.Fprintf(w, "  %-*s  %s\n", width, v.Name, v.Summary)
 	}
 }
