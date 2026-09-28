@@ -37,7 +37,7 @@ func TestHostedModules_ModulesSurfaceServesOnlyAllowlist(t *testing.T) {
 	for _, n := range names {
 		nameSet[n] = true
 	}
-	for _, want := range []string{"list_modules", "module_obligations", "module_query", "module_staleness", "capabilities", "server_stats"} {
+	for _, want := range []string{"list_modules", "module_obligations", "module_query", "module_staleness", "status"} {
 		if !nameSet[want] {
 			t.Errorf("hosted /rpc/modules tools/list missing %q: got %v", want, names)
 		}
@@ -45,9 +45,39 @@ func TestHostedModules_ModulesSurfaceServesOnlyAllowlist(t *testing.T) {
 	// The whole point: GroupShared's write/spend/fleet-backend tools are
 	// NOT on the hosted allowlist, even though they'd be visible on the
 	// non-hosted "modules" surface (default GroupShared-inclusive rule).
-	for _, forbidden := range []string{"ingest", "compile_layer", "batch", "repo_map", "pack_context", "staleness_report", "find_symbol", "estimate_cost", "cost_report", "list_sources"} {
+	for _, forbidden := range []string{"ingest", "compile_layer", "batch", "repo_map", "pack_context", "staleness_report", "find_symbol", "estimate_cost", "cost_report"} {
 		if nameSet[forbidden] {
 			t.Errorf("hosted /rpc/modules tools/list must NOT include %q (fleet-backend/write/spend leak): got %v", forbidden, names)
+		}
+	}
+}
+
+// TestHostedModules_StatusSourcesSectionRefused (SR-23): the merged status
+// tool is on the hosted allowlist for its "tools"/"daemon" sections — the
+// two harmless, dependency-free meta reads capabilities/server_stats used
+// to be — but its "sources" section takes an arbitrary caller-supplied
+// service and lists THAT service's own files, exactly the fleet-backend
+// pivot list_sources was excluded from hostedModulesTools for before the
+// merge; the merge must not silently widen hosted-modules exposure.
+func TestHostedModules_StatusSourcesSectionRefused(t *testing.T) {
+	srv := newHostedModuleTestServer()
+	ctx := mcp.WithRequestScope(context.Background(), mcp.SurfaceModules, true)
+
+	resp := scopedRoundtrip(t, srv, ctx, request{
+		JSONRPC: "2.0", ID: 5, Method: "tools/call",
+		Params: map[string]any{"name": "status", "arguments": map[string]any{"section": "sources", "service": "svc"}},
+	})
+	if resp["error"] == nil {
+		t.Fatalf("status(section:\"sources\") under hosted-modules mode should be refused, got %v", resp)
+	}
+
+	for _, section := range []string{"tools", "daemon"} {
+		got := scopedRoundtrip(t, srv, ctx, request{
+			JSONRPC: "2.0", ID: 6, Method: "tools/call",
+			Params: map[string]any{"name": "status", "arguments": map[string]any{"section": section}},
+		})
+		if got["error"] != nil {
+			t.Errorf("status(section:%q) under hosted-modules mode should still dispatch: %v", section, got["error"])
 		}
 	}
 }

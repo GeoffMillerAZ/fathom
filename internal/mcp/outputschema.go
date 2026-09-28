@@ -72,10 +72,6 @@ type typedEdgeRef struct {
 	Kind string `json:"kind"`
 }
 
-type entrypointsResult struct {
-	Entrypoints []symbolNodeDTO `json:"entrypoints"`
-}
-
 type outlineResult struct {
 	Symbols []symbolNodeDTO `json:"symbols"`
 	// Elision (RC-19): present only when fitToolBudget cut "symbols".
@@ -272,6 +268,12 @@ type repoMapResult struct {
 	// budgeted tools carry, alongside the existing Elided struct below.
 	Elision string  `json:"elision,omitempty"`
 	Elided  *elided `json:"elided,omitempty"`
+	// Entrypoints/EntrypointsMore (SR-22, F-10, design §4): the header the
+	// unregistered `entrypoints` tool's detector now feeds instead, capped
+	// at repoMapEntrypointCap; both omitted (never an empty list) when the
+	// service has none.
+	Entrypoints     []symbolNodeDTO `json:"entrypoints,omitempty"`
+	EntrypointsMore int             `json:"entrypoints_more,omitempty"`
 }
 
 type stalenessReportResult struct {
@@ -488,7 +490,6 @@ var agentResultTypes = map[string]reflect.Type{
 	"blast_radius":      reflect.TypeOf(blastRadiusResult{}),
 	"capabilities":      reflect.TypeOf(capabilitiesResult{}),
 	"discoveries":       reflect.TypeOf(discoveriesResult{}),
-	"entrypoints":       reflect.TypeOf(entrypointsResult{}),
 	"find_callers":      reflect.TypeOf(findCallersResult{}),
 	"find_symbol":       reflect.TypeOf(findSymbolResult{}),
 	"ingest":            reflect.TypeOf(ingestResult{}),

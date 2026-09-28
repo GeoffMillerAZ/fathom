@@ -486,40 +486,9 @@ func TestOutline_BudgetElision(t *testing.T) {
 	assertRC19Elision(t, p, "read_source with start_line/end_line")
 }
 
-// ─── entrypoints ──────────────────────────────────────────────────────────────
-
-func TestEntrypoints_Basic(t *testing.T) {
-	srv := newExtSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 240, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "entrypoints",
-			"arguments": map[string]any{"service": "svc"},
-		},
-	})
-	p := extToolPayload(t, resp)
-	if p["entrypoints"] == nil {
-		t.Fatalf("entrypoints missing: %v", p)
-	}
-}
-
-func TestEntrypoints_MissingService(t *testing.T) {
-	srv := newExtSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 241, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "entrypoints",
-			"arguments": map[string]any{},
-		},
-	})
-	errObj, ok := resp["error"].(map[string]any)
-	if !ok {
-		t.Fatalf("expected error, got result: %v", resp)
-	}
-	if code := errObj["code"].(float64); code != float64(mcp.ErrCodeParams) {
-		t.Errorf("code = %v, want %v", code, mcp.ErrCodeParams)
-	}
-}
+// entrypoints was unregistered by SR-22 (F-10, design §4): its detector now
+// feeds repo_map's header (TestRepoMapHeaderCarriesEntrypoints,
+// extra_tools_test.go).
 
 // ─── complexity ───────────────────────────────────────────────────────────────
 
@@ -613,112 +582,11 @@ func TestCommunity_MissingParams(t *testing.T) {
 	}
 }
 
-// ─── meta: capabilities ───────────────────────────────────────────────────────
-
-func TestCapabilities_Basic(t *testing.T) {
-	srv := newExtSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 300, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "capabilities",
-			"arguments": map[string]any{},
-		},
-	})
-	p := extToolPayload(t, resp)
-	if p["tools"] == nil {
-		t.Fatalf("capabilities.tools missing: %v", p)
-	}
-	if p["active_profile"] == nil {
-		t.Fatalf("capabilities.active_profile missing: %v", p)
-	}
-	// ADR-021 §4 / XT-5: per-language extraction engine provenance (tree-
-	// sitter-wasm vs the languages that kept their incumbent) is discoverable
-	// without reading source.
-	engines, ok := p["extraction_engines"].(map[string]any)
-	if !ok || len(engines) == 0 {
-		t.Fatalf("capabilities.extraction_engines missing/empty: %v", p)
-	}
-	if got := engines[".py"]; got != "tree-sitter-wasm" {
-		t.Errorf("extraction_engines[.py] = %v, want tree-sitter-wasm", got)
-	}
-}
-
-// ─── meta: server_stats ───────────────────────────────────────────────────────
-
-func TestServerStats_Basic(t *testing.T) {
-	srv := newExtSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 310, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "server_stats",
-			"arguments": map[string]any{},
-		},
-	})
-	p := extToolPayload(t, resp)
-	if p["uptime_seconds"] == nil {
-		t.Fatalf("server_stats.uptime_seconds missing: %v", p)
-	}
-	if p["request_count"] == nil {
-		t.Fatalf("server_stats.request_count missing: %v", p)
-	}
-	// No service argument: typed_edges must be entirely absent (backward
-	// compatible with the pre-ADR-021-§3 shape).
-	if _, ok := p["typed_edges"]; ok {
-		t.Errorf("server_stats without a service should omit typed_edges, got %v", p["typed_edges"])
-	}
-}
-
-// TestServerStats_TypedEdges is CT-1's "counters in server_stats" proof
-// (ADR-021 §3): passing a service adds a typed_edges block with honest
-// kind counts — the visible signal for whether a store's typed pass has
-// run at all.
-func TestServerStats_TypedEdges(t *testing.T) {
-	srv := newDispatchSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 311, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "server_stats",
-			"arguments": map[string]any{"service": "svc"},
-		},
-	})
-	p := extToolPayload(t, resp)
-	typedEdges, ok := p["typed_edges"].(map[string]any)
-	if !ok {
-		t.Fatalf("server_stats.typed_edges missing or wrong shape: %v", p)
-	}
-	if typedEdges["total"].(float64) != 2 {
-		t.Errorf("typed_edges.total = %v, want 2", typedEdges["total"])
-	}
-	if typedEdges["iface_dispatch"].(float64) != 2 {
-		t.Errorf("typed_edges.iface_dispatch = %v, want 2", typedEdges["iface_dispatch"])
-	}
-	if typedEdges["direct"].(float64) != 0 || typedEdges["unresolved"].(float64) != 0 {
-		t.Errorf("typed_edges direct/unresolved = %v/%v, want 0/0", typedEdges["direct"], typedEdges["unresolved"])
-	}
-}
-
-// TestServerStats_TypedEdges_ZeroForUntypedService confirms a service with
-// no typed edges yet (predates ADR-021 §3, or hasn't been re-ingested)
-// reports all-zero counts rather than omitting the block — the honest
-// "the pass hasn't run" signal.
-func TestServerStats_TypedEdges_ZeroForUntypedService(t *testing.T) {
-	srv := newExtSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 312, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "server_stats",
-			"arguments": map[string]any{"service": "svc"},
-		},
-	})
-	p := extToolPayload(t, resp)
-	typedEdges, ok := p["typed_edges"].(map[string]any)
-	if !ok {
-		t.Fatalf("server_stats.typed_edges missing or wrong shape: %v", p)
-	}
-	if typedEdges["total"].(float64) != 0 {
-		t.Errorf("typed_edges.total = %v, want 0", typedEdges["total"])
-	}
-}
+// meta: capabilities/server_stats/list_sources were unregistered by SR-23
+// (F-11, design §4); status(section:"tools"|"daemon"|"sources") answers
+// each byte-compatibly (TestStatusSectionsMatchRetiredTools,
+// TestStatus_ToolsSectionExtractionEngines, TestStatus_DaemonTypedEdges,
+// TestStatus_DaemonTypedEdgesZeroForUntypedService — meta_test.go).
 
 // ─── meta: staleness_report ───────────────────────────────────────────────────
 
@@ -781,28 +649,6 @@ func TestStalenessReport_BudgetElision(t *testing.T) {
 		t.Fatalf("sources = %d rows, want a nonzero partial prefix < %d", len(sources), n)
 	}
 	assertRC19Elision(t, p, "read_source or outline on the file you doubt (source_count is the full total)")
-}
-
-// ─── meta: list_sources ───────────────────────────────────────────────────────
-
-func TestListSources_Basic(t *testing.T) {
-	srv := newExtSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 330, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "list_sources",
-			"arguments": map[string]any{"service": "svc"},
-		},
-	})
-	p := extToolPayload(t, resp)
-	sources, ok := p["sources"].([]any)
-	if !ok {
-		t.Fatalf("list_sources.sources missing: %v", p)
-	}
-	// fixture has files: pkg/a.go, pkg/c.go, pkg/a_test.go, pkg/orphan.go, pkg/types.go
-	if len(sources) == 0 {
-		t.Error("list_sources: expected non-empty sources")
-	}
 }
 
 // ─── MCP protocol: prompts/list ───────────────────────────────────────────
@@ -1032,7 +878,7 @@ func TestCallLogger_TimestampValid(t *testing.T) {
 	_ = roundtrip(t, srv, request{
 		JSONRPC: "2.0", ID: 700, Method: "tools/call",
 		Params: map[string]any{
-			"name":      "entrypoints",
+			"name":      "repo_map",
 			"arguments": map[string]any{"service": "svc"},
 		},
 	})
@@ -1071,7 +917,6 @@ func TestNewToolsInCorrectProfile(t *testing.T) {
 	}{
 		{"symbol_context", mcp.GroupCoding},
 		{"outline", mcp.GroupCoding},
-		{"entrypoints", mcp.GroupCoding},
 		{"complexity", mcp.GroupCoding},
 		{"god_object", mcp.GroupCoding},
 		{"community", mcp.GroupInvestigation},

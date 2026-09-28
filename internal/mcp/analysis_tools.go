@@ -1,15 +1,17 @@
 // Package mcp — analysis tool registrations backed by callgraph.Graph.
 //
-// registerAnalysisTools wires rename_impact, reachable, test_impact, and
-// dead_code into the server's tool registry.
+// registerAnalysisTools wires reachable, test_impact, and dead_code into the
+// server's tool registry. rename_impact was unregistered by SR-24 (F-13,
+// design §4); renameImpactAnswer below is now reached through
+// blast_radius's kind:"rename" (blastRadiusByKind, extra_tools.go).
 //
 // The call-graph tools walk the service's syntax-plus-typed graph through the
 // server's watermark-keyed cache (loadNavGraphs, BP-28/I21) — the SAME graph
 // verify_plan and the nav tools walk (O98), so a method value, an interface
 // dispatch, or a bare call on a receiver that shares a method name with
-// another type resolves identically on every surface. rename_impact alone
-// keeps its syntax-only caller SET by decision (BP-26) and annotates tiers
-// from the typed graph.
+// another type resolves identically on every surface. renameImpactAnswer
+// alone keeps its syntax-only caller SET by decision (BP-26) and annotates
+// tiers from the typed graph.
 package mcp
 
 import (
@@ -23,10 +25,9 @@ import (
 )
 
 // registerAnalysisTools is called from registerTools (tools.go) and adds the
-// four analysis tools.  backend may be nil; tools that require it return
-// ErrCodeInternal when backend == nil.
+// three surviving analysis tools. backend may be nil; tools that require it
+// return ErrCodeInternal when backend == nil.
 func registerAnalysisTools(s *Server, backend QueryInterface) {
-	registerRenameImpact(s, backend)
 	registerReachable(s, backend)
 	registerTestImpact(s, backend)
 	registerDeadCode(s, backend)
@@ -62,88 +63,66 @@ type claimsAnchoredBackend interface {
 	ClaimsAnchoredTo(ctx context.Context, serviceID, symbolKey string) ([]string, error)
 }
 
-// ─── rename_impact ────────────────────────────────────────────────────────────
+// ─── rename_impact (retired as a standalone tool, SR-24 — see
+// blastRadiusByKind, extra_tools.go, kind:"rename") ──────────────────────────
 
-func registerRenameImpact(s *Server, backend QueryInterface) {
-	s.registerTool(toolDescriptor{
-		Name:        "rename_impact",
-		Description: "Every call site needing an update if symbol were renamed — grep can't resolve identity across a shared name. Reach for it when about to rename. Required: service, symbol.",
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"service": map[string]any{
-					"type":        "string",
-					"description": "Service / repo identifier",
-				},
-				"symbol": map[string]any{
-					"type":        "string",
-					"description": "Symbol name (bare or fully-qualified)",
-				},
-			},
-			"required": []string{"service", "symbol"},
-		},
-		group: GroupCoding,
-	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
-		if backend == nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
-		}
-		var p struct {
-			Service string `json:"service"`
-			Symbol  string `json:"symbol"`
-		}
-		if err := json.Unmarshal(args, &p); err != nil {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "rename_impact: invalid args"}
-		}
-		if p.Service == "" {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "rename_impact: service required"}
-		}
-		if p.Symbol == "" {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "rename_impact: symbol required"}
-		}
-		ng, err := loadNavGraphsErr(ctx, backend, p.Service)
-		if err != nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "list symbols: " + err.Error()}
-		}
-		g := ng.Syntax
-		callers := callgraph.RenameImpact(g, p.Symbol)
+// renameImpactAnswer is the retired rename_impact tool's exact answer,
+// unregistered by SR-24 (F-13, design §4) and now reached through
+// blast_radius's kind:"rename" (blastRadiusByKind, extra_tools.go) —
+// byte-compatible with what rename_impact itself used to return.
+func renameImpactAnswer(ctx context.Context, backend QueryInterface, service, symbol string) (any, *rpcError) {
+	if backend == nil {
+		return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
+	}
+	if service == "" {
+		return nil, &rpcError{Code: ErrCodeParams, Message: "blast_radius: service required"}
+	}
+	if symbol == "" {
+		return nil, &rpcError{Code: ErrCodeParams, Message: `blast_radius: kind "rename" requires symbol`}
+	}
+	ng, err := loadNavGraphsErr(ctx, backend, service)
+	if err != nil {
+		return nil, &rpcError{Code: ErrCodeInternal, Message: "list symbols: " + err.Error()}
+	}
+	g := ng.Syntax
+	callers := callgraph.RenameImpact(g, symbol)
 
-		// resolution/index_commit (VB-19, docs/vision/29-verbs-not-lookups.md
-		// §3 wave E): tally each RETURNED caller's tier against a SEPARATE
-		// typed-edge-augmented graph — never the one RenameImpact itself
-		// walked, since AddTypedEdges can introduce callers the syntax pass
-		// never had (BP-26) and rename_impact's caller SET must stay
-		// exactly what it always was; only the tier annotation is additive.
-		tg := ng.Both
-		kinds := make(map[string]core.EdgeKind, len(callers))
-		for _, d := range callgraph.CallersDetail(tg, p.Symbol) {
-			kinds[d.Key] = d.Kind
-		}
-		var mix resolutionMix
-		for _, c := range callers {
-			mix.addKind(kinds[c])
-		}
+	// resolution/index_commit (VB-19, docs/vision/29-verbs-not-lookups.md
+	// §3 wave E): tally each RETURNED caller's tier against a SEPARATE
+	// typed-edge-augmented graph — never the one RenameImpact itself
+	// walked, since AddTypedEdges can introduce callers the syntax pass
+	// never had (BP-26) and rename_impact's caller SET must stay
+	// exactly what it always was; only the tier annotation is additive.
+	tg := ng.Both
+	kinds := make(map[string]core.EdgeKind, len(callers))
+	for _, d := range callgraph.CallersDetail(tg, symbol) {
+		kinds[d.Key] = d.Kind
+	}
+	var mix resolutionMix
+	for _, c := range callers {
+		mix.addKind(kinds[c])
+	}
 
-		// Return as []any so JSON serialises to an array of strings.
-		result := map[string]any{"callers": stringsToAny(callers), "resolution": mix}
-		if ic := indexCommitFor(ctx, backend, p.Service); ic != "" {
-			result["index_commit"] = ic
-		}
-		// SU-21 (ADR-041 decision 7): a rename is never silent for
-		// governance — any claim anchored to the renamed symbol (via an
-		// "anchors" claim link) is named here, not just its call sites.
-		// canonicalize through the SAME graph RenameImpact itself just
-		// walked, so the key this looks up is the identical symbol
-		// RenameImpact resolved p.Symbol to (bare name or full key alike).
-		if key := callgraph.Canonical(g, p.Symbol); key != "" {
-			if cab, ok := backend.(claimsAnchoredBackend); ok {
-				if ids, aerr := cab.ClaimsAnchoredTo(ctx, p.Service, key); aerr == nil && len(ids) > 0 {
-					result["claims_anchored"] = len(ids)
-					result["claims_anchored_ids"] = stringsToAny(ids)
-				}
+	// Return as []any so JSON serialises to an array of strings.
+	result := map[string]any{"callers": stringsToAny(callers), "resolution": mix}
+	if ic := indexCommitFor(ctx, backend, service); ic != "" {
+		result["index_commit"] = ic
+	}
+	// SU-21 (ADR-041 decision 7): a rename is never silent for
+	// governance — any claim anchored to the renamed symbol (via an
+	// "anchors" claim link) is named here, not just its call sites.
+	// canonicalize through the SAME graph RenameImpact itself just
+	// walked, so the key this looks up is the identical symbol
+	// RenameImpact resolved symbol to (bare name or full key alike).
+	if key := callgraph.Canonical(g, symbol); key != "" {
+		if cab, ok := backend.(claimsAnchoredBackend); ok {
+			if ids, aerr := cab.ClaimsAnchoredTo(ctx, service, key); aerr == nil && len(ids) > 0 {
+				result["claims_anchored"] = len(ids)
+				result["claims_anchored_ids"] = stringsToAny(ids)
 			}
 		}
-		return withSummary(renameImpactSummary(p.Symbol, callers), result), nil
-	})
+	}
+	return withSummary(renameImpactSummary(symbol, callers), result), nil
 }
 
 // renameImpactSummary renders rename_impact's answer-first sentence (wave

@@ -373,7 +373,9 @@ func listSourcesForDoctor(hc *http.Client, baseURL, service string) ([]string, e
 	if service == "" {
 		return nil, fmt.Errorf("no service resolved")
 	}
-	inner, err := callMCPTool(hc, baseURL, "list_sources", map[string]any{"service": service})
+	// SR-23: list_sources merged into status(section:"sources"), byte-
+	// compatible with its own {sources: [...]} shape.
+	inner, err := callMCPTool(hc, baseURL, "status", map[string]any{"section": "sources", "service": service})
 	if err != nil {
 		return nil, err
 	}

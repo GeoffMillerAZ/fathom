@@ -81,11 +81,13 @@ const SurfaceExtended = "extended"
 // safe_delete_check, its read-only sibling: the agent surface leads with
 // the answers grep cannot give, not another lookup pitched on token
 // savings. Wave G (plan VB-26) adds a fifth promoted verb, localize.
+// safe_delete_check left this map at SR-24 (F-13, design §4) — it is
+// unregistered as a standalone tool, its answer now blast_radius' own
+// kind:"delete" (blastRadiusByKind, extra_tools.go), and blast_radius was
+// already promoted below via promotedVerbs().
 var companionTools = func() map[string]bool {
 	m := map[string]bool{
-		"capabilities":     true,
 		"discoveries":      true,
-		"entrypoints":      true,
 		"find_callers":     true,
 		"find_symbol":      true,
 		"ingest":           true,
@@ -106,7 +108,6 @@ var companionTools = func() map[string]bool {
 	for _, v := range promotedVerbs() {
 		m[v.Name] = true
 	}
-	m["safe_delete_check"] = true
 	return m
 }()
 
@@ -151,11 +152,7 @@ func isDefaultSurfaceTool(name string) bool {
 // surviving tool or removed outright elsewhere in wave 2).
 //
 // "status" (design §1.1's merge of capabilities/server_stats/list_sources,
-// SR-23) is deliberately NOT listed yet: that tool does not exist until
-// SR-23 registers it. Adding the name here now would claim a 21st member
-// this repo cannot yet serve; SR-23's own commit adds it in the same
-// change that registers the tool, so extended goes 20 -> 21 then, not
-// before.
+// SR-23) joins the 20 above it — extended now serves 21.
 var extendedTools = func() map[string]bool {
 	m := map[string]bool{}
 	for _, name := range defaultSurfaceTools {
@@ -173,6 +170,7 @@ var extendedTools = func() map[string]bool {
 		"references",
 		"repo_map",
 		"staleness_report",
+		"status",
 		"test_impact",
 	} {
 		m[name] = true
@@ -192,10 +190,19 @@ var extendedTools = func() map[string]bool {
 // just the mounted modules) and tools with real side effects (ingest
 // triggers a store write; compile_layer spends against a wired LLM; batch
 // can smuggle any other tool's call). A hosted module host serves ONLY the
-// module-host's own floor tools plus two harmless, dependency-free meta
-// tools. Every other GroupShared tool is deliberately absent here — update
-// this list and surface_test.go together, the same discipline
-// companionTools already documents.
+// module-host's own floor tools plus one meta tool. Every other GroupShared
+// tool is deliberately absent here — update this list and surface_test.go
+// together, the same discipline companionTools already documents.
+//
+// "status" (SR-23) replaces the two former entries "capabilities" and
+// "server_stats" it merged — but ONLY for its "tools"/"daemon" sections:
+// its "sources" section takes an arbitrary caller-supplied service and
+// reads THAT service's own file list, exactly the fleet-backend pivot
+// "list_sources" was excluded from this list for before the merge. Listing
+// "status" here does not reopen that hole: registerStatus itself refuses
+// section:"sources" under hosted-modules mode (meta.go), the same "coarse
+// allowlist plus a scope-aware refusal" shape hostedModuleBlocked below
+// uses for GroupModules tools.
 //
 //fathom:tenancy-allow pkg-map read-only lookup table of constants, never written after init: not a cache
 var hostedModulesTools = map[string]bool{
@@ -203,8 +210,7 @@ var hostedModulesTools = map[string]bool{
 	"module_obligations": true,
 	"module_query":       true,
 	"module_staleness":   true,
-	"capabilities":       true,
-	"server_stats":       true,
+	"status":             true,
 }
 
 // requestScope is the per-request surface selection carried in context.

@@ -9,30 +9,38 @@
         "type": "array"
       },
       "include_heuristic": {
-        "description": "Also follow syntax-only (heuristic) edges. Default false.",
+        "description": "Also follow syntax-only edges. Default false.",
         "type": "boolean"
+      },
+      "kind": {
+        "description": "\"change\" (default, changed_files), \"rename\"/\"delete\" (need symbol) — grep gives none of the three.",
+        "enum": [
+          "change",
+          "rename",
+          "delete"
+        ],
+        "type": "string"
       },
       "max_depth": {
         "description": "Hops from the changed files (default 2; 0 = unbounded).",
         "type": "integer"
       },
       "max_symbols": {
-        "description": "Symbols listed, shallowest first (default 500; 0 = uncapped); total_symbols keeps the full count.",
+        "description": "Symbols listed, shallowest first (default 500).",
         "type": "integer"
       },
       "service": {
         "description": "Service / repo identifier",
         "type": "string"
+      },
+      "symbol": {
+        "description": "Symbol name (bare or fully-qualified)",
+        "type": "string"
       }
     },
     "required": [
-      "service",
-      "changed_files"
+      "service"
     ],
-    "type": "object"
-  },
-  "capabilities": {
-    "properties": {},
     "type": "object"
   },
   "discoveries": {
@@ -47,18 +55,6 @@
       },
       "since": {
         "description": "RFC3339 timestamp; only pointers established at/after it (default: all recorded history)",
-        "type": "string"
-      }
-    },
-    "required": [
-      "service"
-    ],
-    "type": "object"
-  },
-  "entrypoints": {
-    "properties": {
-      "service": {
-        "description": "Service / repo identifier",
         "type": "string"
       }
     },
@@ -404,23 +400,6 @@
     ],
     "type": "object"
   },
-  "rename_impact": {
-    "properties": {
-      "service": {
-        "description": "Service / repo identifier",
-        "type": "string"
-      },
-      "symbol": {
-        "description": "Symbol name (bare or fully-qualified SymbolKey)",
-        "type": "string"
-      }
-    },
-    "required": [
-      "service",
-      "symbol"
-    ],
-    "type": "object"
-  },
   "repo_map": {
     "properties": {
       "budget": {
@@ -485,27 +464,6 @@
     "required": [
       "service",
       "changed_files"
-    ],
-    "type": "object"
-  },
-  "safe_delete_check": {
-    "properties": {
-      "service": {
-        "description": "Service / repo identifier",
-        "type": "string"
-      },
-      "symbol": {
-        "description": "Symbol name (bare or fully-qualified SymbolKey)",
-        "type": "string"
-      },
-      "symbol_id": {
-        "description": "Alias for symbol — a fully-qualified SymbolKey",
-        "type": "string"
-      }
-    },
-    "required": [
-      "service",
-      "symbol"
     ],
     "type": "object"
   },

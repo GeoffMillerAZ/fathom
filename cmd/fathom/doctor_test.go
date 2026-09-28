@@ -113,8 +113,8 @@ type fakeModuleRow struct {
 	module, path string
 }
 
-// fakeDoctorDaemon serves healthz + list_services + obligations +
-// server_stats shaped like the real MCP endpoint.
+// fakeDoctorDaemon serves healthz + list_services + obligations + status
+// shaped like the real MCP endpoint.
 func fakeDoctorDaemon(t *testing.T, cfg fakeDaemonCfg) *httptest.Server {
 	t.Helper()
 	mux := http.NewServeMux()
@@ -182,20 +182,29 @@ func fakeDoctorDaemon(t *testing.T, cfg fakeDaemonCfg) *httptest.Server {
 				covField = `,"layer_coverage":{"status":"unknown","note":"layer compiled before coverage was recorded; recompile to record coverage"}`
 			}
 			inner = fmt.Sprintf(`{"service":"svc","file":%q,"rules":%s%s%s}`, file, rules, wmField, covField)
-		case "server_stats":
-			inner = fmt.Sprintf(`{"uptime_seconds":1,"surface_traffic":{"agent":{"calls":%d,"last_ts":"2026-01-01T00:00:00Z"}}}`, cfg.agentCalls)
+		case "status":
+			// SR-23: capabilities/server_stats/list_sources merged into one
+			// status tool, dispatched by "section" — this fake serves each
+			// section byte-compatibly with what the retired tool returned.
+			switch section, _ := req.Params.Arguments["section"].(string); section {
+			case "daemon":
+				inner = fmt.Sprintf(`{"uptime_seconds":1,"surface_traffic":{"agent":{"calls":%d,"last_ts":"2026-01-01T00:00:00Z"}}}`, cfg.agentCalls)
+			case "sources":
+				rows := make([]string, len(cfg.sources))
+				for i, s := range cfg.sources {
+					rows[i] = fmt.Sprintf("%q", s)
+				}
+				inner = `{"sources":[` + strings.Join(rows, ",") + `]}`
+			default:
+				http.Error(w, "unknown status section", 400)
+				return
+			}
 		case "list_modules":
 			rows := make([]string, len(cfg.modules))
 			for i, m := range cfg.modules {
 				rows[i] = fmt.Sprintf(`{"module":%q,"path":%q}`, m.module, m.path)
 			}
 			inner = `{"modules":[` + strings.Join(rows, ",") + `]}`
-		case "list_sources":
-			rows := make([]string, len(cfg.sources))
-			for i, s := range cfg.sources {
-				rows[i] = fmt.Sprintf("%q", s)
-			}
-			inner = `{"sources":[` + strings.Join(rows, ",") + `]}`
 		case "staleness_report":
 			layers := "{}"
 			if cfg.obligLayerCompiled {

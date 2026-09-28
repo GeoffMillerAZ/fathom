@@ -209,27 +209,33 @@ func TestResolution_SymbolContext_MixedTiers(t *testing.T) {
 	}
 }
 
+// TestResolution_SafeDeleteCheck_MixedTiers: safe_delete_check's answer
+// (unregistered as a standalone tool, now blast_radius's kind:"delete" —
+// SR-24, F-13).
 func TestResolution_SafeDeleteCheck_MixedTiers(t *testing.T) {
 	srv, _, _, _, _, _ := newResolutionFixtureServer(t)
-	payload := callTool(t, srv, "safe_delete_check", map[string]any{"service": "svc", "symbol": "B"})
+	payload := callTool(t, srv, "blast_radius", map[string]any{"kind": "delete", "service": "svc", "symbol": "B"})
 	typed, heuristic := resolutionOf(t, payload)
 	if typed != 1 || heuristic != 1 {
-		t.Errorf("safe_delete_check(B) resolution = {typed:%d heuristic:%d}, want {typed:1 heuristic:1}", typed, heuristic)
+		t.Errorf(`blast_radius(kind:"delete", B) resolution = {typed:%d heuristic:%d}, want {typed:1 heuristic:1}`, typed, heuristic)
 	}
 	if got, ok := payload["index_commit"].(string); !ok || got != "fixturecommit123" {
-		t.Errorf("safe_delete_check index_commit = %v, want %q", payload["index_commit"], "fixturecommit123")
+		t.Errorf(`blast_radius(kind:"delete") index_commit = %v, want %q`, payload["index_commit"], "fixturecommit123")
 	}
 }
 
+// TestResolution_RenameImpact_MixedTiers: rename_impact's answer
+// (unregistered as a standalone tool, now blast_radius's kind:"rename" —
+// SR-24, F-13).
 func TestResolution_RenameImpact_MixedTiers(t *testing.T) {
 	srv, _, _, _, _, _ := newResolutionFixtureServer(t)
-	payload := callTool(t, srv, "rename_impact", map[string]any{"service": "svc", "symbol": "B"})
+	payload := callTool(t, srv, "blast_radius", map[string]any{"kind": "rename", "service": "svc", "symbol": "B"})
 	typed, heuristic := resolutionOf(t, payload)
 	if typed != 1 || heuristic != 1 {
-		t.Errorf("rename_impact(B) resolution = {typed:%d heuristic:%d}, want {typed:1 heuristic:1}", typed, heuristic)
+		t.Errorf(`blast_radius(kind:"rename", B) resolution = {typed:%d heuristic:%d}, want {typed:1 heuristic:1}`, typed, heuristic)
 	}
 	if got, ok := payload["index_commit"].(string); !ok || got != "fixturecommit123" {
-		t.Errorf("rename_impact index_commit = %v, want %q", payload["index_commit"], "fixturecommit123")
+		t.Errorf(`blast_radius(kind:"rename") index_commit = %v, want %q`, payload["index_commit"], "fixturecommit123")
 	}
 }
 

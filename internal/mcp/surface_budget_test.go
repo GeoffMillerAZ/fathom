@@ -108,8 +108,8 @@ func TestAgentSurfaceBudget(t *testing.T) {
 	t.Logf("agent surface tools/list (contracts=false): %d tools, %d bytes summed per-entry", len(rows), total)
 
 	// wireTotal is the ACTUAL served payload — json.Marshal({"tools":
-	// [...]})  — the same computation capabilities' schema_bytes uses
-	// (toolsListBytes, dispatch.go). It differs from the per-entry sum
+	// [...]})  — the same computation status(section:"tools")' schema_bytes
+	// uses (toolsListBytes, dispatch.go). It differs from the per-entry sum
 	// above by the array/wrapper punctuation (commas, brackets, the
 	// "tools" key), so the budget itself is asserted against this number,
 	// not the sum.
@@ -119,20 +119,21 @@ func TestAgentSurfaceBudget(t *testing.T) {
 		t.Errorf("agent surface tools/list = %d bytes, want <= %d", wireTotal, agentSurfaceTotalByteCeiling)
 	}
 
-	// End-to-end: the capabilities TOOL's own schema_bytes field (what a
-	// connected session actually reads) must equal wireTotal — not a
+	// End-to-end: status(section:"tools")' own schema_bytes field (what a
+	// connected session actually reads; the retired capabilities tool's
+	// field, byte-compatible — SR-23) must equal wireTotal — not a
 	// separately-tracked or stale number — proving the diet is visible
 	// through the same call a session would make to check its own cost.
 	raw, err := json.Marshal(map[string]any{
 		"jsonrpc": "2.0", "id": 1, "method": "tools/call",
-		"params": map[string]any{"name": "capabilities", "arguments": map[string]any{}},
+		"params": map[string]any{"name": "status", "arguments": map[string]any{"section": "tools"}},
 	})
 	if err != nil {
-		t.Fatalf("marshal capabilities call: %v", err)
+		t.Fatalf("marshal status call: %v", err)
 	}
 	resp, hasResp := s.HandleRequest(ctx, raw)
 	if !hasResp {
-		t.Fatal("capabilities call produced no response")
+		t.Fatal("status call produced no response")
 	}
 	var env struct {
 		Result struct {
@@ -142,9 +143,9 @@ func TestAgentSurfaceBudget(t *testing.T) {
 		} `json:"result"`
 	}
 	if err := json.Unmarshal(resp, &env); err != nil {
-		t.Fatalf("decode capabilities response: %v (raw: %s)", err, resp)
+		t.Fatalf("decode status response: %v (raw: %s)", err, resp)
 	}
 	if env.Result.StructuredContent.SchemaBytes != wireTotal {
-		t.Errorf("capabilities schema_bytes = %d, want %d (the served, diet-sized tools/list total)", env.Result.StructuredContent.SchemaBytes, wireTotal)
+		t.Errorf("status schema_bytes = %d, want %d (the served, diet-sized tools/list total)", env.Result.StructuredContent.SchemaBytes, wireTotal)
 	}
 }

@@ -31,6 +31,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/analysis/proto"
 	"github.com/geoffmilleraz/fathom/internal/analysis/routes"
 	"github.com/geoffmilleraz/fathom/internal/analysis/serviceref"
+	"github.com/geoffmilleraz/fathom/internal/analysis/symbolnav"
 	"github.com/geoffmilleraz/fathom/internal/concern"
 	"github.com/geoffmilleraz/fathom/internal/context/packer"
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -187,26 +188,27 @@ func withServiceRefHops(m map[string]any, hops []serviceref.Hop, unextracted []s
 func registerBlastRadius(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "blast_radius",
-		Description: "Blast radius of changed files: symbols, transitive callers, tests, edge_confidence-labeled. Reach for it when a file changed and you need who transitively breaks. Required: service, changed_files.",
+		Description: `Blast radius of changed files (kind:"change"), every rename call site (kind:"rename"), or a symbol's remaining referents (kind:"delete"). Reach for it when a change, rename, or delete needs who breaks. Required: service.`,
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
 				"service":           map[string]any{"type": "string", "description": "Service / repo identifier"},
+				"kind":              map[string]any{"type": "string", "enum": []string{"change", "rename", "delete"}, "description": `"change" (default, changed_files), "rename"/"delete" (need symbol) — grep gives none of the three.`},
 				"changed_files":     map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Repo-relative file paths that changed"},
+				"symbol":            map[string]any{"type": "string", "description": "Symbol name (bare or fully-qualified)"},
 				"include_heuristic": map[string]any{"type": "boolean", "description": "Also follow syntax-only edges. Default false."},
-				"max_depth":         map[string]any{"type": "integer", "description": "Hops from the changed files (default 2; 0 = unbounded)"},
-				"max_symbols":       map[string]any{"type": "integer", "description": "Symbols listed, shallowest first (default 500)"},
+				"max_depth":         map[string]any{"type": "integer", "description": "Hops from the changed files (default 2; 0 = unbounded)."},
+				"max_symbols":       map[string]any{"type": "integer", "description": "Symbols listed, shallowest first (default 500)."},
 			},
-			"required": []string{"service", "changed_files"},
+			"required": []string{"service"},
 		},
 		group: GroupInvestigation,
 	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
-		if backend == nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
-		}
 		var p struct {
 			Service          string   `json:"service"`
+			Kind             string   `json:"kind"`
 			ChangedFiles     []string `json:"changed_files"`
+			Symbol           string   `json:"symbol"`
 			IncludeHeuristic bool     `json:"include_heuristic"`
 			MaxDepth         *int     `json:"max_depth"`
 			MaxSymbols       *int     `json:"max_symbols"`
@@ -214,51 +216,78 @@ func registerBlastRadius(s *Server, backend QueryInterface) {
 		if err := json.Unmarshal(args, &p); err != nil {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "blast_radius: invalid args"}
 		}
-		if p.Service == "" {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "blast_radius: service required"}
-		}
-		if len(p.ChangedFiles) == 0 {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "blast_radius: changed_files required"}
-		}
-		navs := s.loadNavGraphs(ctx, backend, p.Service)
-		if navs == nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "blast_radius: no symbols for service " + p.Service}
-		}
-		// BP-27: bounded, resolved-by-default. The unbounded both-kinds
-		// walk (impact.BlastRadiusWithTypedEdges) is untouched and is still
-		// what the verify engine's reachability reads.
-		res := blastRadiusResolved(navs, p.ChangedFiles, p.IncludeHeuristic,
-			intOr(p.MaxDepth, defaultBlastDepth), intOr(p.MaxSymbols, defaultBlastSymbols))
-		result := map[string]any{
-			"symbols":       stringsToAny(res.Symbols),
-			"tests":         stringsToAny(res.Tests),
-			"files":         stringsToAny(res.Files),
-			"edge_filter":   res.EdgeFilter,
-			"total_symbols": res.TotalSymbols,
-			"truncated":     res.Truncated,
-			"depth_capped":  res.DepthCapped,
-			"max_depth":     res.MaxDepthReached,
-			// BD-3 (docs/plans/blast-depth.md): the same symbols regrouped
-			// by distance from the changed files, each labeled with the
-			// confidence of the edge that pulled it in — under the SAME
-			// graph and bounds the listing used (BP-27).
-			"by_depth": res.Buckets,
-			// resolution (VB-19): the same by_depth counts, summed to one
-			// envelope-level typed/heuristic mix.
-			"resolution": resolutionFromBlastBuckets(res.Buckets),
-			// VB-30: other services whose outbound HTTP client call joins a
-			// route one of changed_files registers — a hop no same-process
-			// call graph can see. Each entry kind:"service_ref",
-			// tier:"heuristic". Empty (never omitted) when the fleet has
-			// fewer than two services or no such hop exists.
-		}
-		hops, unextracted := serviceRefHopsInto(ctx, backend, p.Service, p.ChangedFiles)
-		withServiceRefHops(result, hops, unextracted)
-		if ic := indexCommitFor(ctx, backend, p.Service); ic != "" {
-			result["index_commit"] = ic
-		}
-		return withSummary(blastRadiusSummary(res.Buckets, len(res.Tests)), result), nil
+		return blastRadiusByKind(ctx, s, backend, p.Kind, p.Service, p.ChangedFiles, p.Symbol, p.IncludeHeuristic, p.MaxDepth, p.MaxSymbols)
 	})
+}
+
+// blastRadiusByKind is blast_radius' kind dispatch (SR-24, F-13, design
+// §4): "change" (the default) is the tool's own long-standing answer;
+// "rename" and "delete" are the retired rename_impact/safe_delete_check
+// tools' exact answers, unregistered as standalone tools and reached here
+// instead — promotedVerbs() lost rename_impact accordingly.
+func blastRadiusByKind(ctx context.Context, s *Server, backend QueryInterface, kind, service string, changedFiles []string, symbol string, includeHeuristic bool, maxDepth, maxSymbols *int) (any, *rpcError) {
+	switch kind {
+	case "", "change":
+		return blastRadiusChangeAnswer(ctx, s, backend, service, changedFiles, includeHeuristic, maxDepth, maxSymbols)
+	case "rename":
+		return renameImpactAnswer(ctx, backend, service, symbol)
+	case "delete":
+		return safeDeleteCheckAnswer(ctx, s, backend, service, symbol)
+	default:
+		return nil, &rpcError{Code: ErrCodeParams, Message: `blast_radius: kind must be "change", "rename", or "delete"`}
+	}
+}
+
+// blastRadiusChangeAnswer is blast_radius' original (and default,
+// kind:"change") answer, unchanged by the SR-24 merge.
+func blastRadiusChangeAnswer(ctx context.Context, s *Server, backend QueryInterface, service string, changedFiles []string, includeHeuristic bool, maxDepth, maxSymbols *int) (any, *rpcError) {
+	if backend == nil {
+		return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
+	}
+	if service == "" {
+		return nil, &rpcError{Code: ErrCodeParams, Message: "blast_radius: service required"}
+	}
+	if len(changedFiles) == 0 {
+		return nil, &rpcError{Code: ErrCodeParams, Message: "blast_radius: changed_files required"}
+	}
+	navs := s.loadNavGraphs(ctx, backend, service)
+	if navs == nil {
+		return nil, &rpcError{Code: ErrCodeInternal, Message: "blast_radius: no symbols for service " + service}
+	}
+	// BP-27: bounded, resolved-by-default. The unbounded both-kinds
+	// walk (impact.BlastRadiusWithTypedEdges) is untouched and is still
+	// what the verify engine's reachability reads.
+	res := blastRadiusResolved(navs, changedFiles, includeHeuristic,
+		intOr(maxDepth, defaultBlastDepth), intOr(maxSymbols, defaultBlastSymbols))
+	result := map[string]any{
+		"symbols":       stringsToAny(res.Symbols),
+		"tests":         stringsToAny(res.Tests),
+		"files":         stringsToAny(res.Files),
+		"edge_filter":   res.EdgeFilter,
+		"total_symbols": res.TotalSymbols,
+		"truncated":     res.Truncated,
+		"depth_capped":  res.DepthCapped,
+		"max_depth":     res.MaxDepthReached,
+		// BD-3 (docs/plans/blast-depth.md): the same symbols regrouped
+		// by distance from the changed files, each labeled with the
+		// confidence of the edge that pulled it in — under the SAME
+		// graph and bounds the listing used (BP-27).
+		"by_depth": res.Buckets,
+		// resolution (VB-19): the same by_depth counts, summed to one
+		// envelope-level typed/heuristic mix.
+		"resolution": resolutionFromBlastBuckets(res.Buckets),
+		// VB-30: other services whose outbound HTTP client call joins a
+		// route one of changed_files registers — a hop no same-process
+		// call graph can see. Each entry kind:"service_ref",
+		// tier:"heuristic". Empty (never omitted) when the fleet has
+		// fewer than two services or no such hop exists.
+	}
+	hops, unextracted := serviceRefHopsInto(ctx, backend, service, changedFiles)
+	withServiceRefHops(result, hops, unextracted)
+	if ic := indexCommitFor(ctx, backend, service); ic != "" {
+		result["index_commit"] = ic
+	}
+	return withSummary(blastRadiusSummary(res.Buckets, len(res.Tests)), result), nil
 }
 
 // blastRadiusSummary renders blast_radius' answer-first sentence (wave L1):
@@ -1121,6 +1150,25 @@ func registerIngest(s *Server, backend QueryInterface) {
 
 // ─── context: repo_map ────────────────────────────────────────────────────────
 
+// repoMapEntrypointCap bounds repo_map's "entrypoints" header (SR-22,
+// F-10, design §4): the same symbolnav.Entrypoints detector the retired
+// `entrypoints` tool used, capped so a service with hundreds of HTTP
+// handlers never turns the header into its own unbounded listing.
+const repoMapEntrypointCap = 10
+
+// repoMapEntrypoints returns repo_map's header entrypoints — capped at
+// repoMapEntrypointCap — and how many were cut beyond the cap (0 when
+// everything fit). Nil input or no detected entrypoints returns (nil, 0)
+// so the caller can omit the field entirely rather than serve an empty one.
+func repoMapEntrypoints(nodes []core.SymbolNode) ([]symbolNodeDTO, int) {
+	eps := symbolnav.Entrypoints(nodes)
+	total := len(eps)
+	if total > repoMapEntrypointCap {
+		eps = eps[:repoMapEntrypointCap]
+	}
+	return toNodeDTOs(eps), total - len(eps)
+}
+
 func registerRepoMap(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "repo_map",
@@ -1162,6 +1210,15 @@ func registerRepoMap(s *Server, backend QueryInterface) {
 		// than widening that package's signature (out of this row's scope).
 		included := strings.Count(mapStr, "\n")
 		resp := map[string]any{"map": mapStr, "budget": budget}
+		// SR-22 (F-10, design §4): the header carries likely entrypoints —
+		// the same detector the unregistered `entrypoints` tool used —
+		// capped at repoMapEntrypointCap, honest-absence when none exist.
+		if eps, more := repoMapEntrypoints(nodes); len(eps) > 0 {
+			resp["entrypoints"] = eps
+			if more > 0 {
+				resp["entrypoints_more"] = more
+			}
+		}
 		if el := elisionFor(included, len(nodes), "outbound call-edge count, most-connected first, ties by package+name", "re-call with a larger budget"); el != nil {
 			resp["elided"] = el
 			// RC-19: the same one-line disclosure the other four newly-
