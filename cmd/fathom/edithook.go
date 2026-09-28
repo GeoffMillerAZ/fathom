@@ -174,6 +174,13 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 		// --pre/--post pair, not a separate later turn (postEditMeta's own
 		// doc comment on skipRuleVerdict).
 		text, ok = withRuleVerdictAsk(sessionID, meta.service, meta.repoRelFile, meta.topRule, meta.topSrc, text, ok)
+		// SR-61 (F-27/U4): served/complied/violated per claim id, the SAME
+		// top-governing-rule turn-over-turn comparison SR-48 already reads
+		// above, generalized from rule text to the claim's stable id
+		// (ruleoutcome_track.go). Independent of withRuleVerdictAsk's own
+		// memo — this call can never change what the agent sees, only what
+		// the signal log records.
+		trackRuleOutcome(sessionID, meta.service, meta.repoRelFile, meta.topClaimID)
 	}
 	text, ok = withClaimMoment(url, projDir, filePath, sessionID, text, ok) // PC-22: a newly checked [x] on a depth-1 plan verifies now (edithook_claim.go)
 	text, ok = withSkipGainedNote(projDir, filePath, text, ok)              // O56 fix item 3: note a row gaining skip_test, daemon-free (edithook_skipnote.go)
@@ -235,6 +242,14 @@ type postEditMeta struct {
 	service string
 	topRule string
 	topSrc  string
+	// topClaimID (SR-61, surface reckoning F-27/U4) is govRules[0]'s own
+	// ClaimID — "" whenever the compiled rule behind it predates ClaimID
+	// (semantic.Obligation's own doc comment) or no rule governs the file
+	// this turn. trackRuleOutcome (ruleoutcome_track.go) keys the
+	// served/complied/violated signal off of THIS, never topRule/topSrc
+	// text, so a rule's wording changing across a recompile never reads
+	// as a different claim.
+	topClaimID string
 	// skipRuleVerdict is true when THIS post-hook call consulted a guard
 	// stamp (stampConsulted, above) — the second half of a --pre/--post
 	// pair for the SAME edit, moments apart, never a genuinely separate
@@ -532,9 +547,9 @@ func renderPostEdit(url, projDir, filePath, sessionID, newContent string) (strin
 		emitBeat("edit-hook", "answered", firingMeta(map[string]string{"emitted": "false", "phase": "post"}, sessionID, filePath))
 		return "", postEditMeta{}, false // clean file (or unindexed project), no spec IDs → silent
 	}
-	topRule, topSrc := "", ""
+	topRule, topSrc, topClaimID := "", "", ""
 	if len(govRules) > 0 {
-		topRule, topSrc = govRules[0].Rule, govRules[0].Src
+		topRule, topSrc, topClaimID = govRules[0].Rule, govRules[0].Src, govRules[0].ClaimID
 	}
 	return sb.String(), postEditMeta{
 		rules:           len(renderRules),
@@ -547,6 +562,7 @@ func renderPostEdit(url, projDir, filePath, sessionID, newContent string) (strin
 		service:         svcName,
 		topRule:         topRule,
 		topSrc:          topSrc,
+		topClaimID:      topClaimID,
 		skipRuleVerdict: stampConsulted,
 	}, true
 }
