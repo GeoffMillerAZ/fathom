@@ -1,0 +1,21 @@
+[
+  {
+    "name": "aws_vpc.main",
+    "kind": "TerraformResource",
+    "line": 1,
+    "end_line": 3,
+    "signature": "resource \"aws_vpc\" \"main\"",
+    "tier": "verified"
+  },
+  {
+    "name": "aws_subnet.broken",
+    "kind": "TerraformResource",
+    "line": 5,
+    "end_line": 8,
+    "signature": "resource \"aws_subnet\" \"broken\"",
+    "calls": [
+      "aws_vpc.main"
+    ],
+    "tier": "verified"
+  }
+]

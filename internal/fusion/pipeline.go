@@ -544,7 +544,16 @@ func parseGitLog(serviceID, raw string) []store.Commit {
 // already-indexed pyproject.toml's stored observations were produced by
 // that generic path, so the salt bump forces re-extraction rather than
 // leaving them silently stale.
-const ExtractorEpoch = "13"
+// Epoch 14 (LB-Q-terraform, docs/design/language-breadth.md §13): HCLExtractor
+// now emits intra-file Calls (resource/data/module/var/local reference edges,
+// including depends_on) on resource/data/module/output/locals symbols, records
+// a module's source (local path or registry ref) in its Signature, and .tfvars
+// files now extract per-key TerraformVarValue symbols instead of falling
+// through to "no extractor registered" — every already-indexed .tf file's
+// stored observations were produced by the OLD extractor with no Calls and a
+// bare Signature, so the salt bump forces re-extraction rather than leaving
+// them silently stale.
+const ExtractorEpoch = "14"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares
@@ -678,7 +687,9 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	p.exts[".css"] = css
 
 	// Terraform HCL
-	p.exts[".tf"] = extractor.NewHCLExtractor()
+	hcl := extractor.NewHCLExtractor()
+	p.exts[".tf"] = hcl
+	p.exts[".tfvars"] = hcl
 
 	// YAML: route .github/workflows/* to GHA extractor, everything else to K8s.
 	k8s := extractor.NewK8sExtractor()

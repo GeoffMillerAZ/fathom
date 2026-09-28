@@ -1,0 +1,39 @@
+{
+  "id": "terraform",
+  "display": "Terraform / OpenTofu (.tf .tfvars)",
+  "kind": "tooling",
+  "engine": "native",
+  "lang_tag": "terraform",
+  "match": {
+    "extensions": [".tf", ".tfvars"],
+    "basenames": [],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "variants": [],
+  "kinds": {
+    "resource": { "source_kind": "TerraformResource", "canonical": "resource" },
+    "data_source": { "source_kind": "TerraformData", "canonical": "data_source" },
+    "module": { "source_kind": "TerraformModule", "canonical": "module" },
+    "variable_decl": { "source_kind": "TerraformVariable", "canonical": "variable_decl" },
+    "output": { "source_kind": "TerraformOutput", "canonical": "output" },
+    "local": { "source_kind": "TerraformLocal", "canonical": "variable" },
+    "tfvars_key": { "source_kind": "TerraformVarValue", "canonical": "key" }
+  },
+  "required_kinds": ["resource", "data_source", "variable_decl", "output"],
+  "oracle_kinds": {
+    "ctags": {
+      "resource": "resource",
+      "data": "data_source",
+      "module": "module",
+      "variable": "variable_decl",
+      "output": "output"
+    }
+  },
+  "qualify": { "chain_containers": false, "container_sep": ".", "method_sep": "." },
+  "package": { "strategy": "dir" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L3",
+  "queue_id": "terraform"
+}

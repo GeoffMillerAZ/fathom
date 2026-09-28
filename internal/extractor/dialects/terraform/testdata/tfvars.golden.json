@@ -1,0 +1,26 @@
+[
+  {
+    "name": "region",
+    "kind": "TerraformVarValue",
+    "line": 1,
+    "end_line": 1,
+    "signature": "region = …",
+    "tier": "verified"
+  },
+  {
+    "name": "instance_count",
+    "kind": "TerraformVarValue",
+    "line": 2,
+    "end_line": 2,
+    "signature": "instance_count = …",
+    "tier": "verified"
+  },
+  {
+    "name": "tags",
+    "kind": "TerraformVarValue",
+    "line": 3,
+    "end_line": 5,
+    "signature": "tags = …",
+    "tier": "verified"
+  }
+]

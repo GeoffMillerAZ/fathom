@@ -28,6 +28,7 @@ const (
 	KindTerraformOutput   SourceKind = "TerraformOutput"
 	KindTerraformProvider SourceKind = "TerraformProvider"
 	KindTerraformLocal    SourceKind = "TerraformLocal"
+	KindTerraformVarValue SourceKind = "TerraformVarValue"
 	KindK8sWorkload       SourceKind = "K8sWorkload"
 	KindK8sContainer      SourceKind = "K8sContainer"
 	KindCUEDefinition     SourceKind = "CUEDefinition"

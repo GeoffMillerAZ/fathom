@@ -66,10 +66,11 @@ var extClassMap = map[string]classification{
 	"go.mod": {core.KindModuleDep, "go"},
 
 	// Infrastructure / config
-	".tf":   {core.KindTerraformResource, "terraform"},
-	".cue":  {core.KindCUEDefinition, "cue"},
-	".yaml": {core.KindK8sWorkload, "yaml"},
-	".yml":  {core.KindK8sWorkload, "yaml"},
+	".tf":     {core.KindTerraformResource, "terraform"},
+	".tfvars": {core.KindTerraformVarValue, "terraform"},
+	".cue":    {core.KindCUEDefinition, "cue"},
+	".yaml":   {core.KindK8sWorkload, "yaml"},
+	".yml":    {core.KindK8sWorkload, "yaml"},
 
 	// Documentation
 	".md": {core.KindDocChunk, "md"},
