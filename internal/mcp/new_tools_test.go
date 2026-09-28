@@ -203,45 +203,6 @@ func extToolPayload(t *testing.T, resp map[string]any) map[string]any {
 	return payload
 }
 
-// ─── find_callees ─────────────────────────────────────────────────────────────
-
-func TestFindCallees_Basic(t *testing.T) {
-	srv := newExtSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 200, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "find_callees",
-			"arguments": map[string]any{"service": "svc", "symbol": "A"},
-		},
-	})
-	p := extToolPayload(t, resp)
-	callees, ok := p["callees"].([]any)
-	if !ok {
-		t.Fatalf("callees missing: %v", p)
-	}
-	if len(callees) == 0 {
-		t.Error("find_callees(A): expected B as callee")
-	}
-}
-
-func TestFindCallees_MissingService(t *testing.T) {
-	srv := newExtSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 201, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "find_callees",
-			"arguments": map[string]any{"symbol": "A"},
-		},
-	})
-	errObj, ok := resp["error"].(map[string]any)
-	if !ok {
-		t.Fatalf("expected error, got result: %v", resp)
-	}
-	if code := errObj["code"].(float64); code != float64(mcp.ErrCodeParams) {
-		t.Errorf("code = %v, want %v", code, mcp.ErrCodeParams)
-	}
-}
-
 // ─── call_hierarchy ───────────────────────────────────────────────────────────
 
 // ─── symbol_context ───────────────────────────────────────────────────────────
@@ -1025,7 +986,7 @@ func TestCallLogger_WritesEntries(t *testing.T) {
 		{
 			JSONRPC: "2.0", ID: 600, Method: "tools/call",
 			Params: map[string]any{
-				"name":      "find_callees",
+				"name":      "symbol_context",
 				"arguments": map[string]any{"service": "svc", "symbol": "A"},
 			},
 		},
@@ -1108,7 +1069,6 @@ func TestNewToolsInCorrectProfile(t *testing.T) {
 		name  string
 		group mcp.ToolGroup
 	}{
-		{"find_callees", mcp.GroupCoding},
 		{"symbol_context", mcp.GroupCoding},
 		{"outline", mcp.GroupCoding},
 		{"entrypoints", mcp.GroupCoding},

@@ -65,10 +65,6 @@
       "measured": "index",
       "basis": "static read: ListAllSymbols for one service"
     },
-    "find_callees": {
-      "measured": "index",
-      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
-    },
     "find_callers": {
       "measured": "index",
       "basis": "audit of 4200482a (design §3.1 table, by today's cost)"

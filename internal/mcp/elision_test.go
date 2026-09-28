@@ -231,7 +231,7 @@ var nonTruncatingTools = map[string]bool{
 	// {count, of, ordering, how_to_get_more} object.
 	"discoveries":   true,
 	"rename_impact": true, "reachable": true, "safe_delete_check": true,
-	"test_impact": true, "dead_code": true, "find_callees": true,
+	"test_impact": true, "dead_code": true,
 	"entrypoints": true,
 	"complexity":  true, "god_object": true, "community": true,
 	"secret_scan": true, "shell_out": true, "http_client_calls": true,

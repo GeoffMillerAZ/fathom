@@ -17,7 +17,6 @@
     "discoveries": {"args": {"service": "$service"}},
     "entrypoints": {"args": {"service": "$service"}},
     "evidence_summary": {"args": {"service": "$service"}},
-    "find_callees": {"args": {"service": "$service", "symbol": "Post"}},
     "find_callers": {"args": {"service": "$service", "symbol": "validateEntry"}},
     "find_symbol": {"args": {"service": "$service", "name": "Post"}},
     "findings_near": {"args": {"service": "$service", "subject": "Post"}},
