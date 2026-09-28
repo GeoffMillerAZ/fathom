@@ -3,10 +3,9 @@ package main
 // statusz.go — Q-25/Q-26 (docs/plans/expert-suite-q.md, docs/design/
 // observability-surfaces.md §8 item 6): `GET /statusz` on serve-http —
 // daemon health, per-service index freshness, channel liveness, last
-// compile per layer. Loopback-only, read-only, gated inside the hosted-
-// mode allowlist when `--modules-token-env` is configured
-// (servehttp.go's modulesAuthMiddleware, extended there — the
-// phase-O-critic-finding-#2 class this closes). The report is built here;
+// compile per layer. Loopback-only (newDaemonServer's Host guard) and
+// read-only; the hosted-mode bearer gate Q-26 put it behind went with
+// hosted-modules mode (SR-17, surface reckoning F-68). The report is built here;
 // the console page renders it on the shell (console_statusz.go, OC-6) and
 // answers ?format=json with this report unchanged (schema v3).
 

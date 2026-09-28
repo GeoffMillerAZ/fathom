@@ -29,10 +29,6 @@
       "measured": "ingest",
       "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
     },
-    "list_modules": {
-      "measured": "point",
-      "basis": "static read: lists the mounted module stores (no service rows)"
-    },
     "list_services": {
       "measured": "fleet",
       "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
@@ -40,18 +36,6 @@
     "localize": {
       "measured": "index",
       "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
-    },
-    "module_obligations": {
-      "measured": "index",
-      "basis": "static read: obligations over each mounted module store (store rows, no corpus read)"
-    },
-    "module_query": {
-      "measured": "index",
-      "basis": "static read: claim query over each mounted module store"
-    },
-    "module_staleness": {
-      "measured": "index",
-      "basis": "static read: watermark rows of each mounted module store"
     },
     "obligations": {
       "measured": "tree",

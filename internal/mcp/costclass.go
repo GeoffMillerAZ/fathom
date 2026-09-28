@@ -23,8 +23,7 @@ import (
 var toolCostClasses = map[string]tenancy.Class{
 	// point: one row, one capped file, or the process's own counters.
 	// history (SR-12) was unregistered: 0 lifetime calls.
-	"read_source":  tenancy.ClassPoint,
-	"list_modules": tenancy.ClassPoint,
+	"read_source": tenancy.ClassPoint,
 	// batch holds no ticket of its own: each sub-call is admitted in its
 	// own class (admitBatchCall).
 	"batch": tenancy.ClassPoint,
@@ -40,7 +39,6 @@ var toolCostClasses = map[string]tenancy.Class{
 	"complexity": tenancy.ClassIndex, "god_object": tenancy.ClassIndex,
 	"evidence_summary":   tenancy.ClassIndex,
 	"contradiction_scan": tenancy.ClassIndex, "findings_near": tenancy.ClassIndex,
-	"module_obligations": tenancy.ClassIndex, "module_query": tenancy.ClassIndex, "module_staleness": tenancy.ClassIndex,
 
 	// tree: a whole-tree read or a whole-service graph build.
 	// staleness_report (SR-28): moved here from "point" — its doc_drift

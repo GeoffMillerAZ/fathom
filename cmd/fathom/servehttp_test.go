@@ -19,7 +19,7 @@ import (
 )
 
 // testDiscardLogger is the *dlog.Logger every HTTP-handler test in this
-// package hands to newHTTPHandlerWithAuth (DG-5's loggingMiddleware needs a
+// package hands to newHTTPHandlerLogged (DG-5's loggingMiddleware needs a
 // non-nil logger) when the test itself has no interest in the log output.
 func testDiscardLogger() *dlog.Logger {
 	return dlog.New(io.Discard, dlog.LevelDebug, time.Now)
@@ -191,8 +191,8 @@ func TestServeHTTPEventsHello(t *testing.T) {
 
 // TestServeHTTPEventsHello_ThroughLoggingMiddleware is the finding [0]
 // regression test: DG-5's loggingMiddleware now wraps EVERY route,
-// including /events, via newHTTPHandlerWithAuth
-// (loggingMiddleware(modulesAuthMiddleware(newHTTPHandler(...)))). Unlike
+// including /events, via newHTTPHandlerLogged
+// (loggingMiddleware(newHTTPHandler(...))). Unlike
 // TestServeHTTPEventsHello above (which calls newHTTPHandler directly and
 // so never exercises loggingMiddleware at all), this drives the request
 // through the FULL production chain a real client hits. loggingResponseWriter
@@ -209,7 +209,7 @@ func TestServeHTTPEventsHello_ThroughLoggingMiddleware(t *testing.T) {
 	}
 	t.Cleanup(func() { c.Close() })
 	srv := mcp.NewServer(c)
-	handler := newHTTPHandlerWithAuth(srv, c, "", "127.0.0.1:0", nil, testDiscardLogger())
+	handler := newHTTPHandlerLogged(srv, c, "127.0.0.1:0", nil, testDiscardLogger())
 
 	ts := httptest.NewServer(handler)
 	t.Cleanup(ts.Close)
@@ -246,7 +246,7 @@ func TestServeHTTPEventsHello_ThroughLoggingMiddleware(t *testing.T) {
 			t.Errorf("GET /events body (through loggingMiddleware) = %q, want to contain \"hello\"", r.body)
 		}
 	case <-time.After(1500 * time.Millisecond):
-		t.Fatal("GET /events through the full newHTTPHandlerWithAuth chain delivered no bytes within 1.5s — loggingResponseWriter must forward Flush() to the underlying http.ResponseWriter (DG-5 regression)")
+		t.Fatal("GET /events through the full newHTTPHandlerLogged chain delivered no bytes within 1.5s — loggingResponseWriter must forward Flush() to the underlying http.ResponseWriter (DG-5 regression)")
 	}
 }
 

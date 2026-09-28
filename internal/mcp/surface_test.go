@@ -382,7 +382,7 @@ func TestPromptsScopedOnSurface(t *testing.T) {
 // ─── surface name validation ─────────────────────────────────────────────────
 
 func TestValidSurface(t *testing.T) {
-	for _, name := range []string{"agent", "companion", "extended", "modules"} {
+	for _, name := range []string{"agent", "companion", "extended"} {
 		if !mcp.ValidSurface(name) {
 			t.Errorf("ValidSurface(%q) = false, want true", name)
 		}
@@ -397,14 +397,14 @@ func TestValidSurface(t *testing.T) {
 			t.Errorf("ValidSurface(%q) = true — the group surfaces were deleted (HF-5)", name)
 		}
 	}
-	for _, name := range []string{"", "bogus", "Companion", "Agent", "full"} {
+	for _, name := range []string{"", "bogus", "Companion", "Agent", "full", "modules"} {
 		if mcp.ValidSurface(name) {
 			t.Errorf("ValidSurface(%q) = true, want false", name)
 		}
 	}
 	names := mcp.SurfaceNames()
-	if len(names) != 4 {
-		t.Fatalf("SurfaceNames() = %v, want 4 entries (agent, companion, extended, modules)", names)
+	if len(names) != 3 {
+		t.Fatalf("SurfaceNames() = %v, want 3 entries (agent, companion, extended; SR-17 removed modules)", names)
 	}
 	if !sort.StringsAreSorted(names) {
 		t.Errorf("SurfaceNames() not sorted: %v", names)
@@ -451,13 +451,13 @@ func TestGroupSurfacesRetired(t *testing.T) {
 			t.Errorf("ValidSurface(%q) = true — HF-5 deleted the group surfaces", gone)
 		}
 	}
-	for _, kept := range []string{mcp.SurfaceAgent, mcp.SurfaceCompanion, mcp.SurfaceExtended, mcp.SurfaceModules} {
+	for _, kept := range []string{mcp.SurfaceAgent, mcp.SurfaceCompanion, mcp.SurfaceExtended} {
 		if !mcp.ValidSurface(kept) {
-			t.Errorf("ValidSurface(%q) = false — agent, companion, extended and modules survive", kept)
+			t.Errorf("ValidSurface(%q) = false — agent, companion and extended survive", kept)
 		}
 	}
-	if got := mcp.SurfaceNames(); len(got) != 4 {
-		t.Errorf("SurfaceNames() = %v, want exactly the four surviving surfaces", got)
+	if got := mcp.SurfaceNames(); len(got) != 3 {
+		t.Errorf("SurfaceNames() = %v, want exactly the three surviving surfaces", got)
 	}
 
 	// The taxonomy survives the surfaces: a tool still carries its group.

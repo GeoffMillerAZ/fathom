@@ -32,7 +32,7 @@ func TestModuleListForDoctor(t *testing.T) {
 		root := t.TempDir()
 		writeTestBindings(t, root, `bindings: [{module: "m"}]`)
 		c := checkBindingModulesMounted(hc, ts.URL, root, true)
-		if c.Status != doctorSkipped || !strings.Contains(c.Reason, "no module store was mounted") {
+		if c.Status != doctorSkipped || !strings.Contains(c.Reason, "removed by SR-17") {
 			t.Errorf("binding_modules_mounted = %s %q", c.Status, c.Reason)
 		}
 	})

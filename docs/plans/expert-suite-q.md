@@ -528,7 +528,7 @@ implements):
   - Tests (`cmd/fathom/statusz_test.go`): `TestBuildStatuszReport_ServicesListed`,
     `_NoServices_EmptyNotError`, `_ChannelsOff_NotedInReport`.
 
-- [x] `GET /statusz` (HTML + JSON) wired on `serve-http`, gated inside the hosted-mode allowlist when `--modules-token-env` is configured {id: Q-26, symbol: modulesAuthMiddleware, package: cmd/fathom}
+- [-] `GET /statusz` (HTML + JSON) wired on `serve-http`, gated inside the hosted-mode allowlist when `--modules-token-env` is configured {id: Q-26, disposition: refused, reason: "retired by SR-17 (surface reckoning F-68, ADR-053): hosted-modules mode and its bearer gate (modulesAuthMiddleware) are removed; /statusz stays, loopback-only like every route"}
   - `cmd/fathom/servehttp.go`: `newHTTPHandler` registers `GET /statusz`
     (`Accept: application/json` or `?format=json` → JSON; otherwise a
     minimal, dependency-free HTML render — no template engine, no new

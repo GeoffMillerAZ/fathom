@@ -472,7 +472,7 @@ guidance rather than a bare driver error. The process reads JSON-RPC 2.0 message
 Serve the MCP JSON-RPC protocol over HTTP. Suited for multi-client, platform, and CI use.
 
 ```sh
-fathom serve-http --store <path> [--addr <host:port>] [--managed] [--idle-exit 20m] [--ttl 8h] [--exit-with-parent=true] [--allow-operator-state] [--module <store>]... [--modules-token-env <NAME>]
+fathom serve-http --store <path> [--addr <host:port>] [--managed] [--idle-exit 20m] [--ttl 8h] [--exit-with-parent=true] [--allow-operator-state] [--module <store>]...
 ```
 
 | Flag | Default | Description |
@@ -487,8 +487,7 @@ fathom serve-http --store <path> [--addr <host:port>] [--managed] [--idle-exit 2
 | `--lifecycle-id` | unset | Unmanaged: keep the lifecycle ledger (and so the crash-loop breaker) under `~/.fathom/daemon/<id>/lifecycle.jsonl` across relaunches — the stress harness's (RT-158). Never a managed label, an `addr-*` id or a path (refused, exit 1). Without it an unmanaged daemon keeps a per-process `addr-<port>-<pid>` ledger, removed on a clean exit. A breaker stop under it exits 0 but never writes `disabled.json` |
 | `--allow-operator-state` | `false` | Unmanaged: without it, a `--store` or `--call-log` resolving to the managed daemon's (from its record) is refused and serve-http exits 1 before opening anything |
 | `--call-log` | `<repo>/workspace/logs/mcp-calls.jsonl` (else `~/.fathom/logs/mcp-calls.jsonl`) | JSONL tool-call log, resolved from the daemon working directory's repository (§CLI subcommands); empty disables |
-| `--module` | — | Path to a conforming expert-module store, mounted READ-ONLY on `POST /rpc/modules`; repeatable; a non-conforming store aborts startup |
-| `--modules-token-env` | unset | NAME of an env var holding the bearer token for `POST /rpc/modules` (hosted mode); unset = no auth |
+| `--module` | — | Path to a conforming expert-module store, mounted READ-ONLY so `obligations` unions in bound modules' rules; repeatable; a non-conforming store aborts startup |
 
 **The memory budget (ADR-047, RT-29..RT-36).** Every serve-http samples its
 own `phys_footprint` and its child processes every 2 s and steps a ladder
@@ -559,8 +558,8 @@ cancels its read and a caller already gone is never run (an ingest runs
 detached). `[tenancy].admission` defaults to
 `observe` (every would-refuse logged and counted, nothing refused); `enforce`
 answers HTTP 503 + `Retry-After` + JSON-RPC `-32050`; `off` is the escape
-hatch. Every route requires a loopback `Host` (and a same-origin `Origin`),
-except a hosted `--modules-token-env` deployment; the managed daemon answers a
+hatch. Every route requires a loopback `Host` (and a same-origin `Origin`);
+the managed daemon answers a
 test binary (`X-Fathom-Caller … test=1`) 409. See
 [configuration.md](configuration.md#the-budget-tenancy-user-scope-only).
 
@@ -575,7 +574,7 @@ HTTP endpoints:
 | Method | Path | Description |
 |---|---|---|
 | `POST` | `/rpc` | Single JSON-RPC 2.0 request/response (4 MB body limit) — full tool surface |
-| `POST` | `/rpc/{surface}` | Same protocol scoped to a named surface (`agent`, `companion`, `coding`, `investigation`, `shared`, `platform`, `modules`): filters `tools/list`; an off-surface `tools/call` still **executes** and is logged `off_surface:true` (execute-and-flag, ADR-014 amendment) — the hard gate exists only behind `Server.strictSurfaces` and on hosted `/rpc/modules` |
+| `POST` | `/rpc/{surface}` | Same protocol scoped to a named surface (`agent`, `extended`, `companion`): filters `tools/list`; an off-surface `tools/call` still **executes** and is logged `off_surface:true` (execute-and-flag, ADR-014 amendment) — the hard gate exists only behind `Server.strictSurfaces` |
 | `GET` | `/healthz` | Liveness probe — returns `ok` |
 | `GET` | `/events` | Live freshness (OC-13): SSE with an `id:` per event (`<epoch>-<n>`: the epoch is this daemon process's boot ID, named in the opening `hello` event), a `: keepalive` every 25 s, replay of the last 64 events after `Last-Event-ID` (or `?last_event_id=`) — an id from another epoch (a reconnect across a daemon restart) replays the whole ring, the restart event first — at most 16 subscribers (the 17th gets 503 + `Retry-After`). Kinds: `ingest` (a service's indexed content moved; a hash-gated no-op re-ingest is not one), `compile` (one per new run), `verify` (the verify ledger, polled every 2 s), `session` (the row's repo label mapped to the service whose root it names; a label that is not a name fires only the unscoped `sessions` source), `daemon`. Events carry names and IDs only, never content |
 | `GET` | `/identity?path=DIR[&path=TOPLEVEL]` | Which indexed service a directory is, from the daemon's registry (RT-133; `docs/mcp-tools.md`) — the hooks' identity lookup |
@@ -1426,7 +1425,7 @@ verdict and drift-flagged rules counted into the reason), `surface_traffic`
 (the custodian — a load error or a violation is the only red), `user_scope_ignore`,
 `user_scope_guard`, `guard_file` / `guard_dead_scopes` / `guard_include_modules_unbound`,
 `binding_file` / `binding_modules_mounted` / `binding_module_readiness` (SKIP names the real
-reason when `list_modules` is not registered: no `--module` store was mounted), `binary_on_path`,
+reason: `list_modules` was removed by SR-17, so a current daemon never advertises it), `binary_on_path`,
 `channels_env`, `ident_cache_env`, `metrics_tier`, `session_ledger_tokens`,
 `cpp_toolchain` (CMake repos: `compile_commands.json` present), and
 `decision_provider` (ADR-042, docs/vision/32-decision-port.md: `[decide] provider =
@@ -3262,7 +3261,7 @@ HTTP a surface is selected by path — `POST /rpc/agent` is the curated 19-tool
 coding surface (`internal/mcp/surface.go`; also served at `/rpc/companion` for
 compatibility); bare `POST /rpc` is the full registry. Off-surface calls execute and are logged `off_surface:true`
 rather than rejected; the hard gate exists only behind the server's
-`strictSurfaces` option and on hosted `/rpc/modules`.
+`strictSurfaces` option.
 
 See [mcp-tools.md](mcp-tools.md) for all tools, prompts, and resources, and
 [use-cases/coding-agents.md](use-cases/coding-agents.md) for the canonical

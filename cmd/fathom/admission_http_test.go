@@ -142,14 +142,14 @@ func TestDaemonServerTimeoutsAndLoopbackHost(t *testing.T) {
 		t.Fatalf("/events (SSE) has a write deadline %v; it must have none", seen[1])
 	}
 
-	// Hosted mode (a modules token) serves a network Host.
-	hosted := newDaemonServer(inner, daemonServerOpts{hosted: true})
+	// SR-17 removed hosted-modules mode: a network Host is refused on every
+	// path, /rpc/modules included — no configuration opts out of the guard.
 	r := httptest.NewRequest(http.MethodPost, "/rpc/modules", nil)
 	r.Host = "fathom.example.com:443"
 	w := httptest.NewRecorder()
-	hosted.Handler.ServeHTTP(w, r)
-	if w.Code != http.StatusOK {
-		t.Fatalf("hosted Host refused: %d", w.Code)
+	s.Handler.ServeHTTP(w, r)
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("network Host served: %d, want 403", w.Code)
 	}
 }
 

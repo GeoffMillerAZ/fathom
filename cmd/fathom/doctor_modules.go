@@ -7,7 +7,10 @@ package main
 // registers registerModuleTools when `modules != nil`), and it is served on
 // the full surface (POST /rpc) and the modules surface, never the agent
 // surface. So the real reason for "not found" is "nothing is mounted", and
-// the row now says that.
+// the row now says that. SR-17 (surface reckoning F-68) removed
+// list_modules outright, so on a current daemon tools/list never advertises
+// it and these rows always skip naming that reason — the design's
+// "always-absent row"; an older daemon that still serves it is still read.
 
 import (
 	"bytes"
@@ -26,7 +29,7 @@ import (
 
 // errModulesUnserved is the honest reason list_modules answers "tool not
 // found": the daemon mounted no module store at start.
-var errModulesUnserved = errors.New("not served by this daemon: no module store was mounted at start (serve-http --module <store>) — the tool registers only when one is, so there is nothing to cross-check")
+var errModulesUnserved = errors.New("not served by this daemon: list_modules was removed by SR-17 (surface reckoning F-68), and a daemon predating it registered it only when a --module store was mounted, so there is nothing to cross-check over MCP")
 
 // moduleListForDoctor calls list_modules on the surface that serves it (the
 // full surface at POST /rpc — the same base URL doctor's other daemon rows

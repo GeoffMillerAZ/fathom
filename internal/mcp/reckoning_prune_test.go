@@ -5,10 +5,9 @@
 // registry as of the landed commit — one name added per removal row's
 // own commit, mirroring how docs/upgrades/0.9.0-surface-reckoning.md's
 // migration table and this plan's `Verified:` lines grow. It is
-// deliberately NOT the plan's full eventual removal set: SR-13 and SR-17
-// are still `[ ]` in the plan, and their tools are still registered —
-// listing them here before their own row lands would make this test
-// provably false, which law "done means proven" forbids.
+// never grown speculatively: a name lands here only in the commit that
+// unregisters it, since listing a still-registered tool would make this
+// test provably false, which law "done means proven" forbids.
 package mcp_test
 
 import (
@@ -41,6 +40,10 @@ import (
 //     (internal/store/conformance.go) for U13
 //   - memory_search: SR-13 (F-45) — anchored memory is removed outright
 //     (0 memories in any repo; continuity threads carry the hand-off)
+//   - list_modules, module_obligations, module_query, module_staleness:
+//     SR-17 (F-68) — the module MCP tools, the /rpc/modules surface and
+//     hosted-modules mode go; the module system (manifest, modules.cue,
+//     internal/modspec, internal/modulehost, `fathom module`) stays
 var reckoningTools = []string{
 	"api_diff",
 	"arch_conformance",
@@ -61,7 +64,11 @@ var reckoningTools = []string{
 	"god_object",
 	"history",
 	"http_client_calls",
+	"list_modules",
 	"memory_search",
+	"module_obligations",
+	"module_query",
+	"module_staleness",
 	"proto_conformance",
 	"reachable",
 	"secret_scan",
@@ -90,5 +97,27 @@ func TestRegistryCarriesNoReckonedTools(t *testing.T) {
 		if registered[name] {
 			t.Errorf("reckoning-removed tool %q is still registered", name)
 		}
+	}
+}
+
+// TestModuleToolsGoneEvenWithAModuleHost is SR-17's own pin: the four module
+// tools were registered only when a module backend was wired in (serve-http
+// --module), so NewServer(nil) above never saw them. A server built WITH a
+// module backend — the one shape that used to register them, still used by
+// obligations' module bindings — carries none of them, and "modules" is no
+// longer a valid /rpc/{surface}.
+func TestModuleToolsGoneEvenWithAModuleHost(t *testing.T) {
+	srv, _ := newModuleTestServer()
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 1, Method: "tools/list", Params: map[string]any{},
+	})
+	for _, n := range toolNames(t, resp) {
+		switch n {
+		case "list_modules", "module_obligations", "module_query", "module_staleness":
+			t.Errorf("module tool %q is still registered on a server with a module backend", n)
+		}
+	}
+	if mcp.ValidSurface("modules") {
+		t.Error(`"modules" is still a valid surface: /rpc/modules must 404`)
 	}
 }

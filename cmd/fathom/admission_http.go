@@ -71,7 +71,6 @@ func writeRefusal(w http.ResponseWriter, ref *tenancy.Refusal) {
 // daemonServerOpts shapes newDaemonServer.
 type daemonServerOpts struct {
 	managed bool // answer test callers 409 (§10.4)
-	hosted  bool // a modules token: network-reachable, no loopback-Host guard
 }
 
 // Server timeouts (§3.5).
@@ -87,8 +86,8 @@ const (
 // per-route write timeouts, a loopback Host and a same-origin Origin on
 // every route (requireLocalMutation's check, generalized: DNS rebinding
 // cannot reach /rpc or the console), and the managed daemon's 409 for a
-// test caller. Hosted mode (--modules-token-env) is network-reachable by
-// design and keeps its bearer gate instead of the Host guard.
+// test caller. Every route requires the loopback Host: hosted-modules mode,
+// the one network-reachable exception, was removed by SR-17.
 func newDaemonServer(h http.Handler, o daemonServerOpts) *http.Server {
 	h = routeWriteDeadline(h)
 	if o.managed {
@@ -100,9 +99,7 @@ func newDaemonServer(h http.Handler, o daemonServerOpts) *http.Server {
 			inner.ServeHTTP(w, r)
 		})
 	}
-	if !o.hosted {
-		h = requireLoopbackHost(h)
-	}
+	h = requireLoopbackHost(h)
 	return &http.Server{
 		Handler:           h,
 		ReadHeaderTimeout: daemonReadHeaderTimeout,

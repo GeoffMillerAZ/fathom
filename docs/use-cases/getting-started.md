@@ -208,7 +208,7 @@ profile switch. Scoping now depends entirely on transport:
 | `agent` | `POST /rpc/agent` | The eight-tool default floor (surface reckoning SR-33; `docs/mcp-tools.md` lists it) — the recommended registration |
 | `companion` | `POST /rpc/companion` | Compatible alias for `agent`: identical 19-tool allowlist |
 | ~~`coding` / `investigation` / `shared` / `platform`~~ | *(deleted)* | Removed 2026-08-26 (ADR-014 amendment 2, HF-5) — unreachable by any wired client. The group taxonomy still classifies tools; use `POST /rpc`. |
-| `modules` | `POST /rpc/modules` | The GKE module host's floor tools (`list_modules`, `module_obligations`, `module_query`, `module_staleness`) over N conforming stores mounted read-only via `serve-http --module <path>` — see [mcp-tools.md](../mcp-tools.md)'s "Module host tools" section, including its hosted-mode (`--modules-token-env`) restriction |
+| ~~`modules`~~ | *(removed)* | SR-17 (surface reckoning F-68) removed `/rpc/modules`, its four tools and hosted-modules mode; `serve-http --module <path>` still mounts module stores for `obligations`' bindings |
 
 Register the daemon against the curated surface:
 
@@ -221,10 +221,7 @@ surface is never hard-rejected — it runs normally, and the daemon's call
 log (`--call-log`) records it with `off_surface:true` so real demand for a
 wider surface is measurable instead of argued. Surfaces are ergonomics and
 measurement, never a security boundary — bare `/rpc` already serves the
-full, unauthenticated registry (see [mcp-tools.md](../mcp-tools.md)). The
-one exception is `/rpc/modules` in hosted mode (`--modules-token-env`
-configured): there, off-allowlist calls hard-gate and the module tools
-become unreachable from every other path — see mcp-tools.md.
+full, unauthenticated registry, loopback-only (see [mcp-tools.md](../mcp-tools.md)).
 
 Then call `capabilities` to confirm what's visible on this request:
 

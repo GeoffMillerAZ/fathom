@@ -143,8 +143,7 @@ func statusDaemonSection(ctx context.Context, s *Server, args json.RawMessage) m
 // statusSourcesSection is status(section:"sources")'s answer — byte-
 // compatible with the retired `list_sources` tool (SR-23, F-11,
 // design §4). A required service, unlike the other two sections: it lists
-// THAT service's own files, the one section carrying a fleet-service pivot
-// risk (hostedModulesTools refuses it under hosted-modules mode).
+// THAT service's own files.
 func statusSourcesSection(ctx context.Context, backend QueryInterface, service string) (map[string]any, *rpcError) {
 	if backend == nil {
 		return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
@@ -201,14 +200,6 @@ func registerStatus(s *Server, backend QueryInterface) {
 		case "daemon":
 			return statusDaemonSection(ctx, s, args), nil
 		case "sources":
-			// SR-23: list_sources' fleet-service pivot risk survives the
-			// merge — a hosted-modules-scoped call refuses it outright even
-			// though "status" itself is on that surface's allowlist, mirroring
-			// list_sources' historical exclusion (surface.go's
-			// hostedModulesTools doc).
-			if s.hostedModules && scopeFrom(ctx).surface == SurfaceModules {
-				return nil, &rpcError{Code: ErrCodeParams, Message: `status: section "sources" is not available under hosted-modules mode`}
-			}
 			return statusSourcesSection(ctx, backend, p.Service)
 		default:
 			return nil, &rpcError{Code: ErrCodeParams, Message: `status: section must be "tools", "daemon", or "sources"`}
