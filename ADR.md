@@ -162,7 +162,7 @@ selected per request by the endpoint path.
 
 ## ADR-014 — Path-scoped tool surfaces on the shared HTTP daemon
 
-**Status.** Accepted, amended 2026-07-16 and 2026-08-26.
+**Status.** Accepted, amended 2026-07-16, 2026-08-26 and 2026-09-27.
 
 **Decision.** Over HTTP, the tool surface is an **immutable per-request
 selection carried in the request context**, chosen by the endpoint path:
@@ -558,6 +558,17 @@ are deleted on law 4's ground instead: a surface no wired client can reach is
 registry weight with no consumer. `agent` (+ the `companion` alias), `modules`, and
 bare `/rpc` remain; `Server.strictSurfaces` remains. Executed by
 `docs/plans/honesty-fixes.md` HF-5; the trailer's condition (1) is thereby decided.
+
+**Amendment (2026-09-27, ADR-053).** The surface reckoning shrinks the served agent
+surface (25 tools: this record's base allowlist plus ADR-035's promoted verbs and
+`safe_delete_check`) to a default of eight — `find_symbol`, `search`, `read_source`,
+`symbol_context`, `obligations`, `verify_plan`, `blast_radius`, `review_diff`. A new
+opt-in surface, `extended` (`POST /rpc/extended`, 21 tools), holds what survives beyond
+the default; `/rpc/companion` stops aliasing `agent` and aliases `extended` instead, so a
+client pinned to it keeps its prior tool set minus the reckoning's deletions.
+Execute-and-flag (the 2026-07-16 amendment above) is unchanged — an off-surface call
+still executes and logs `off_surface:true` — so SR-M3 can read fourteen days of
+off-surface demand before anything returns to the default.
 
 ## ADR-019 — In-tree mirror of agentic-kit for kit-free distribution
 
@@ -1232,6 +1243,11 @@ or `pack_context` traffic rises enough for tiering to have a consumer; or
 fathom adopts a root LICENSE, at which point clause 1's hard reason should
 be restated in terms of that licence rather than the absence of one.
 
+**Amendment (2026-09-27, ADR-052).** The revisit trigger fired: fathom adopted FSL-1.1-ALv2.
+Clause 1's hard reason is restated: AGPL-3.0 code cannot be vendored, linked or embedded
+because its copyleft would require the combined work to be distributed under AGPL, which is
+incompatible with FSL's Competing Use restriction. The soft reasons and clause 2 stand.
+
 ## ADR-029: Harness adapters are data behind one seam; a second harness's inject tier ships unverified (2026-09-02)
 
 **Status.** Accepted under the delegated ownership of 2026-07-07 and the
@@ -1671,6 +1687,12 @@ adoption wedge. A standalone memory product.
 the repaired `obligations` misses the top-three bar; a compiled rule catches nothing in 200
 commits and thirty days; re-derivation reproduces under 95 % of receipts; the external corpus
 shows no lift.
+
+**Amended 2026-09-27 (ADR-053, the surface reckoning).** `rename_impact` and
+`safe_delete_check` fold into `blast_radius` (`kind: change|rename|delete`);
+`promotedVerbs()` drops `rename_impact`. The five-verb lead becomes two on the default
+agent surface (`blast_radius`, now also answering rename and delete, and `review_diff`),
+with `test_impact` and `localize` moved to the `extended` opt-in surface.
 
 ## ADR-036: Prompt-scoped obligations before the first edit — supersedes vision 21's hold on UserPromptSubmit in one narrow case (2026-09-14)
 
@@ -2487,6 +2509,11 @@ only then does a firm line for a high-confidence band become warranted again.
 - The adjudicated sample exists (M-A1): ADR-023's `qa-harness` adoption point.
 - IR-3's "guidance as served now" measurably differs from what was served at firing time: record the served set at IR-1.
 
+**Amended 2026-09-27 (ADR-053, the surface reckoning).** Status becomes *Accepted —
+frozen 2026-09-27*: both `fathom research` (decision 6, the retro corpus's only route)
+and `fathom assess` leave `fathom help`, the `assess` capability stays default off, and
+neither lane takes new rows until an owner pull supersedes this record.
+
 ## ADR-047: The responsible tenant — fathom declares a footprint budget measured by the OS, enforces it itself, and no request costs more than its answer (2026-09-26)
 
 **Status.** Accepted 2026-09-26. Owner directive of 2026-09-26, after the incident recorded as INC-23: "put measures into place to keep fathom from being a problematic tenant again. put a lot of design effort and implement completely to make it much more responsible and safe." Vision: `docs/vision/36-responsible-tenant.md`. Design: `docs/design/responsible-tenant.md`. Plan: `docs/plans/responsible-tenant.md` (RT-1..). Invariants I47–I53; principle P23.
@@ -2542,3 +2569,343 @@ only then does a firm line for a high-confidence band become warranted again.
 - *Alternative weighed and deferred: ingest in a child worker process.* It would return ingest memory to the OS on exit (removing the O108 retention class), could be niced and budgeted separately, and killed without killing the daemon; SQLite's single writer is unchanged if the worker holds the daemon's ingest slot. Cost: a process per ingest and a second store opener. Streaming ingest and the producer governor bound the peak first; the measurement that settles it is RT-M4's ingest peak and the daemon's footprint 10 minutes after an ingest (trigger: above 1.25× its pre-ingest footprint, plan RT-D6).
 - *The decision port.* Unchanged: excluded from every amended mechanism; the reviewers found its weighing sound.
 - *Revisit when (added).* The daemon spends more than 2% of a week in shed or above, or enters a host-triggered rung at normal pressure (RT-M13); the typed pass does not fit a RAM class's exit mark (RT-M10); a service is quarantined twice in a month for a legitimate ingest; `/metrics` is unreachable under load (RT-D7).
+
+## ADR-048: Language breadth and depth — four measured support levels, dialects as data on two engines, embedded compressed grammars with pinned packs, no language above its reading (2026-09-27)
+
+**Status.** Accepted 2026-09-27. Owner directive of 2026-09-27: "our language support is mostly Go. I want to be very competitive: AST symbols and dialect packs for the tooling that exists out there … Keep pressing until we have excellent language and tooling support — efficient tokenomics, background tasks with appropriately sized models, most common first, until we have a very respectable number." Vision: `docs/vision/37-language-breadth.md`. Design and worker recipe: `docs/design/language-breadth.md`. Plan: `docs/plans/language-breadth.md` (LB-…); queue: `docs/plans/language-breadth.queue.json`. Promotes futures F1; answers Q6; un-defers XT-6, XT-6b, XT-7. Invariants I54, I55.
+
+**Context.** Fathom extracts 17 languages and about 16 tool formats, but only Go and CUE carry native types and only five languages run on the generic tags-query engine (ADR-021 §4); nine run on hand-written Go walkers over CGO tree-sitter and three on regular expressions. The tags engine never fills `EndLine` or `Signature`. No symbol extractor has ever been measured against an independent oracle (the calibration harness compares to a grep proxy), and typed edges beyond Go and CUE are measured for TypeScript and Python only. The field advertises 40 to 370 languages, none of them with a published recall. The owner wants breadth and depth, most common first, executed by a long-running loop of cheaper workers.
+
+**Decision.**
+1. *Four support levels with thresholds and an oracle rule.* L1 symbols (kind, range, qualified name, package, signature), L2 syntax call edges, L3 imports and file-resolved edges, L4 typed edges (native or SCIP import). Excellent L1 is recall and precision ≥ 0.95 on the kind intersection with kind agreement ≥ 0.95, range agreement ≥ 0.90 and signature coverage ≥ 0.90; L2 excellent is call recall and precision ≥ 0.90; L3 excellent is import resolution ≥ 0.95 and file-edge precision ≥ 0.95 with recall ≥ 0.50; L4 excellent is definition mapping and typed recall ≥ 0.95; "good" thresholds sit below each (design §1.2). Tool formats use L1–L3 with exactness thresholds (≥ 0.98 for entities) and never claim L4. Oracles are tiered: A semantic (SCIP, native type checker, the tool's own evaluation), B independent syntactic (universal-ctags as a subprocess), C independent query over the same grammar, D grep proxy or author-labelled sample. Excellent needs A or B; C caps at good; D proves only "tolerated". Every level also requires faults ≤ 0.1% of files (each named), ≥ 1 MB/s/core, no file over 2 s, and module memory inside RT-107's cap.
+2. *A level is a reading, not a registration.* The harness (`indexbench lang-oracle`) writes `docs/bench/readings/lang/<id>.json` with `level_met` computed from metrics and tiers; the tracker is generated from manifests, readings and the queue, and a test refuses a tracker level above the reading (I54).
+3. *Two engines; dialects are data.* Syntax languages run on the one tags-query engine, grown with host-side predicates (`#eq?`, `#match?`, `#any-of?` and negations), ranges, `@body`-cut signatures, `@name`-captured references, package captures, one-level injections and generalized import captures, so upstream `tags.scm` and aider queries are usable nearly verbatim. Structured tool formats (YAML/JSON/TOML/XML) run on one document-path engine with declarative selectors, generalized from the six bespoke config extractors (P20). A dialect is a directory — manifest, queries or selectors, provenance, fixtures, goldens — and adding one needs no Go. Per-language Go is limited to a closed set of L3 module-resolution strategies (adding one is a foundation change) and the native typed passes.
+4. *Heuristics retire on measured parity.* Each CGO walker and regex extractor has a port item; the dialect replaces the incumbent when every L1 metric is at least the incumbent's on the same oracle and subjects, keeping the incumbent's `SourceKind` strings, with an `ExtractorEpoch` bump. When the last walker goes, the CGO tree-sitter modules leave `go.mod` (F1 promoted; its Promote-when is this protocol).
+5. *Grammar distribution: embedded, compressed, lazy; pinned packs for the long tail.* Every blob is built from pinned upstream source by the existing monolithic wasm32-wasi recipe, recorded in `grammars.lock.json` (repo, tag, commit, tarball sha256, blob sha256, sizes, SPDX), committed deflate-compressed (measured 4.9× smaller) and embedded, decompressed and compiled only on first use, with wazero's compilation cache on disk at user scope. Embedded compressed grammars are capped at 40 MiB; beyond it the least-demanded dialects ship as dialect packs — the same directory plus its blob — installed at user scope from a file or directory and loaded only when their sha256 is pinned by the binary's lock or listed in the user-scope trust list. A repository's config can neither install nor trust a pack. The daemon never fetches; a fetch verb waits for a public release host (F2).
+6. *Licence and provenance rule.* Grammars, queries and fixtures only from MIT, Apache-2.0, BSD-2/3-Clause, ISC, Unlicense, CC0-1.0, Zlib or 0BSD sources (MPL-2.0 for unmodified files only); GPL-family, SSPL, EUPL, PolyForm, BUSL, FSL, Commons Clause and unlicensed sources are refused. Every borrowed file names its source, commit and licence; a test refuses a blob or query the lock does not describe (I55). GPL tools are used only as separate processes on the measurement path, never linked, vendored or shipped. GitNexus (PolyForm Noncommercial) is not read for code or queries.
+7. *The tenancy guard.* Grammars load lazily; at most six parser modules live process-wide (LRU, idle-closed after two minutes); compiled grammar code is charged to the memo registry's byte budget (I51) and evicted at shed; RT-107's 64 MiB module cap, the 2 MiB file cap, the binary sniff and a new minified/generated sniff apply to every dialect; no dialect may raise the daemon's footprint budget, proven by a polyglot fixture test and an operator reading.
+8. *One interleaved queue, most common first.* Languages and tool formats share one queue ordered by demand (survey usage × fleet census × cross-repo value ÷ expected cost), in waves that mix upgrades, new languages and tool formats. The queue and the plan rows are facts fathom serves; the loop that consumes them belongs to the harness (vision 24). Foundation rows and triage run on Opus, queue items on Sonnet with the recipe as their whole brief, re-measurement and tracker regeneration on Haiku.
+9. *The decision port has no role in extraction.* Extraction must be deterministic (P2); ambiguous extensions resolve by deterministic content sniff with the ambiguous count disclosed. The port stays out of classification, extraction, measurement and the tracker.
+
+**Alternatives rejected.**
+- *Per-language Go extractors for new languages* (the CGO walkers' shape). Each costs code a cheap worker cannot write safely and a reviewer must read; query files are data, reviewable against a grammar and borrowable under permissive licences.
+- *Downloadable grammars as the default.* Breaks offline and air-gapped use, adds a supply-chain step to every adopter, and saves only binary bytes: embedded compressed blobs are clean file-backed pages that cost no resident memory until a language is used. Kept as the overflow and private-dialect path.
+- *Emscripten side-module grammars (npm tree-sitter-wasms, @vscode/tree-sitter-wasm).* ADR-021 §4 measured why: a dynamic linker and a JS-shaped callback shim to reimplement in Go. The monolithic build stays the only shape; prebuilt packages are provenance references, not inputs.
+- *Language servers in the daemon (Serena's shape) or per-language type checkers.* Scope's "no IDE language services" non-goal and ADR-041's rejection of per-language typed passes stand; SCIP import is the typed path.
+- *Counting grammars.* A bundled grammar without a reading is "tolerated", printed as such (law 3).
+- *A general cross-file resolution engine (stack-graphs).* Archived upstream in 2025; a closed set of measured strategies reaches L3 for the languages that carry most code.
+- *The decision port for ambiguous classification.* Non-deterministic by construction (decision 9).
+
+**Consequences.**
+- New: `internal/extractor/dialects/<id>/` (embedded), `internal/langbench` (reading schema, level computation, queue loader), `indexbench lang-oracle|lang-probe|lang-parity|lang-tracker`, `grammars.lock.json`, `schema/dialect/`, `calibration/corpus.d/`, `docs/bench/readings/lang/`, `fathom dialect list|install|verify`, the `[dialects]` user-scope block.
+- Changed: `TSExtractor`'s registry comes from manifests (the five tags languages migrate with zero output diff); classification consults manifests; the unsupported-language table is generated from the queue; `docs/languages.md` becomes generated; `build.sh` builds one blob from the lock; blobs are committed as `.wasm.gz`.
+- Removed at the end: the nine CGO walkers, the three regex extractors, the CGO tree-sitter modules in `go.mod`.
+- ADR-024's dialect row is refined: a dialect is still fathom-authored and trusted by goldens and calibration, still not a pack in the taxonomy's sense; its representation becomes data and a pinned dialect pack may be installed at user scope.
+- ADR-013 gains a closing condition (LB-F19).
+- The compatibility surface grows by the reading JSON shape (`docs/bench/readings/lang/*.json`), the manifest schema and the `[dialects]` config block.
+
+**Revisit when.**
+- Embedded compressed grammars reach the 40 MiB cap (LB-M4): decide the pack host (F2) or raise the cap with a measured binary-size cost.
+- A dialect's corpus run pushes the operator daemon's `phys_footprint` up by more than 64 MiB after a polyglot ingest (LB-M3), or the six-module pool measurably serializes ingest (> 1.5× wall time on the polyglot corpus).
+- Three or more queue items end `deferred` on the same missing L3 strategy or oracle: the strategy set or the oracle rule is wrong.
+- A fourth L3 strategy would be a parameterized copy of an existing one: consider a resolution DSL.
+- Universal-ctags changes licence or JSON output, or the SCIP governance transition (announced 2026-03) retires a producer the tracker depends on.
+- A language without a maintained SCIP producer becomes a primary fleet target (ADR-041's trigger, restated): its per-file resolver graduates to a typed pass.
+
+**Amended 2026-09-27 (ADR-054, the support matrix).** Decision 5's "pinned packs for the
+long tail" moves from planned to deferred: dialect packs wait for embedded compressed
+grammars to near the 40 MiB cap, and the Support page's dialects view showing the running
+total against the cap is the trigger.
+
+## ADR-049: The proof-layer roadmap: a kitchen-sink gate, pillars inside the tenancy lane, reach before depth, views never trackers, no Rust rewrite (2026-09-27)
+
+**Status.** Accepted 2026-09-27. Owner decision memo of 2026-09-27 over the agentic-coding landscape scan of the same date and the owner's notes N1 to N8. Vision: `docs/vision/38-proof-layer-roadmap.md`. Designs: `docs/design/reach.md`, `docs/design/spec-interop.md`, `docs/design/knowledge-retrieval.md`, `docs/design/governance-learning.md`, `docs/design/progress-and-economics.md`; the system graph is ADR-050. Plans: `docs/plans/reach.md` (RH-), `docs/plans/spec-interop.md` (SI-), `docs/plans/knowledge-retrieval.md` (KR-), `docs/plans/governance-learning.md` (GL-), `docs/plans/progress-and-economics.md` (PE-), `docs/plans/system-graph.md` (SG-). Goals G16 to G22; G15 names vision 37's M2 and M3 as its next bets. Promotes futures F20 and the plugin part of F2; promotes F14's output format only; F13 stays gated by vision 31. Invariants I56, I57.
+
+**Context.** The 2026-09 market has many tools that find code and many that describe work; almost none prove things about code. Spec tools verify by asking a model; review bots guess at impact; the new graph tools read syntax inside one repository. Fathom's lead is computed, cited and gated answers, and its gaps are reach (install, surface size, other clients), breadth (languages, service boundaries, dependencies) and visibility. The owner's notes asked for dependencies, progress views, a usage dashboard, spec formats, languages, cross-service calls, documentation search and stronger semantic layers. Without a gate, that list becomes a kitchen sink.
+
+**Decision.**
+1. *The kitchen-sink gate.* Every accepted item names which of (a) widen what fathom can prove, (b) deliver proof where people already work, (c) make the proof visible it serves, and the instrument that proves it. An item with a letter but no instrument goes to `futures.md` with a Promote-when; an item with neither is refused.
+2. *Pillars and a lane.* Widen the graph (a: G15, G17, G18), Know the words (a: G20), Deliver where work happens (b: G16, G19, G21), Make proof visible (c: G22); ADR-051 adds Proof depth (a: G23), Work intelligence (c: G24) and Review and compliance (b: G25); tenancy (G14) is the lane every pillar lives inside, and no row that adds a table, cache or background job starts before RT-M1's first week reads PASS.
+3. *Reach first.* Wave 1 is the cheap, high-leverage delivery work: a default agent surface of at most eight tools with the rest opt-in by group, the rendered plugin bundle install-tested in Claude Code and one other client, rules read from every major client's files with off/warn/error levels, hooks verified in at least three clients, the spec-dialect port with Spec Kit and OpenSpec adapters, SARIF for obligations and review findings, and token cost in every receipt. Public release remains the owner's Q4 call (F2).
+4. *Progress is a view, never a tracker.* Status is derived by `fathom verify`; no view writes a plan, a status or an assignment. An optional row `weight:` (integer, default 1) and proof history make weighted progress, burn-up, proof regressions, time-to-proof and claim honesty computable. Proof history is a projection of the existing verify ledger (`~/.fathom/verify-ledger.jsonl`, about 17,000 readings), which gains per-row verdicts additively (schema 3); no new ledger. Claim honesty is computed per agent identity, never per person (I58). The derived kanban is read-only.
+5. *Economics is cost per proven outcome.* The existing session ledger (3,359 sessions) and the Stop hook's incremental transcript fold are joined to what the session proved; transcripts are read within the tenancy budget and nothing new is captured. A generic token-usage dashboard is refused (commodity; owned by the clients). Fathom-on versus fathom-off is shown only where G2 makes the comparison admissible.
+6. *Spec interop through a port; our grammar stays canonical.* Foreign spec dialects (Spec Kit, OpenSpec, Kiro, BMAD, Task Master, GitHub task lists) are read in place and verified; a converge report lists claimed-unproven tasks and code nothing claims; fix-up tasks are written only inside fathom-marked blocks, only when asked. Plan grammar v2 gains `weight:` and `accept:` (EARS-style acceptance text, informational); the test-tied tier is the existing `certified_by:` (ADR-043), made a plan default by a `Proof: certified` header. The memo's `tests:` name is not used: that key already means a `gone: callers` modifier (ADR-044) and is in the compatibility surface.
+7. *Jev's two roles.* The decision port proposes anchors for unanchored foreign tasks (a Choice over `find_symbol`/`pack_context` candidates), shown as a proposal with its calibration, never as proof, and only after a calibration check on adjudicated anchors reads right at least nine times in ten at the confidence it is shown at (ADR-042's route-site lesson). It has no role in link matching, rule learning, doc linking or progress.
+8. *Knowledge retrieval without embeddings.* SQLite FTS5 (supported by the pure-Go driver: `modernc.org/sqlite` v1.52.0, SQLite 3.53.2, probed 2026-09-27) over docs, decisions, intent, plans, memories and comments, section-aware, fused with concern ranking; doc spans that name a symbol, path or contract key are linked, and a changed target flags the span possibly stale in `staleness_report`. Vision 31's kill criterion for embeddings stands.
+9. *Governance that learns, visibly.* Rules are promoted and retired from corroborate/refute signals under thresholds published in the repository, and every promotion or retirement is announced, never silent. The signals are empty today (0 memories, 0 human claim verdicts, 0 live certificate declarations on the reference machine), so a signal source (hook outcomes recorded as served, complied, violated and blocked events) lands before any threshold may move a rule. Validity windows (SU-19: `valid_from`/`valid_to` already on `semantic_claims`; activate and serve, no schema change for claims) extend from claims to memories, rules-file rules, learned-rule states and doc links, and `as_of` reaches every verb that reads them. Rules files of every major client are sources; hooks are served through every client's adapter on the harness port (vision 25). Findings reach reviewers as SARIF and a check-run payload; review diffs gain layers ordered by blast radius without a model.
+10. *Deferred.* A shared team index snapshot (F15's second user) and answer events for background agents (fathom would publish a verdict file or webhook payload only when asked, never schedule; the dispatch non-goal holds) go to `futures.md`.
+11. *The stack stays; no Rust rewrite.* Go, pure-Go SQLite, wazero tree-sitter, one loopback daemon under an OS-measured budget. Parsing is wasm and the store is SQLite, so Go is not the bottleneck; a Rust worker would add a toolchain, a seam and a second language on a bus factor of one.
+12. *Refused.* A model deciding done; auto-capture without a budget; Redis, a graph database, a vector database or any second store; a generic token dashboard; kanban write-back or status set by a drag; downloading dependencies, advisories or docs by default; a tool per edge kind; embeddings before the vision 31 bench passes; hosted anything.
+
+**Alternatives rejected.**
+- *Depth first (system graph and dependencies in wave 1).* The deepest engineering does not move adoption; the scan's fastest growth came from one-command installs and small surfaces, and depth adds load before tenancy closes.
+- *Adopt Spec Kit's or Kiro's format as canonical.* Theirs are prose; ours is the only grammar whose rows carry anchors that make done computable. We borrow two fields and keep the model.
+- *A kanban with write-back.* Makes fathom a tracker (scope non-goal) and lets a drag assert what only verify may compute.
+- *A token dashboard like the clients'.* Commodity, owned by the clients; the only number nobody else can compute is cost per proven outcome.
+- *Embeddings for documentation search.* Vision 31's bench has not run; FTS5 plus doc-to-code links answers the measured doc-question gap with no second store.
+- *A Rust extraction worker or rewrite.* Decision 11; kept as a trigger-gated wasm experiment (F29).
+
+**Consequences.**
+- New plans RH-, SI-, KR-, GL-, PE- (and SG- under ADR-050); new designs as listed; scope goals G16 to G22; G15 names M2 and M3 as defined in vision 37 §5 (LB-M6-M2, LB-M6-M3, unchanged).
+- Plan grammar v2 grows additively: `weight:`, `accept:` and the `Proof: certified` header join the compatibility surface when their rows land (SI-7, SI-8, SI-14).
+- The agent surface shrinks to a default of at most eight tools; the rest stay registered and reachable by group opt-in (law 4: no tool is deleted by this decision).
+- `~/.fathom/verify-ledger.jsonl` gains per-row verdicts (schema 3, additive; v1 and v2 rows still parse).
+- The rule compiler reads more instruction files; the obligations corpus widens only to files a client actually loads, and every compiled rule still passes I27's citation and scope checks.
+- Futures F2 (plugin part), F14 (output format), F20 promoted; F27 (team snapshot), F28 (answer events), F29 (Rust wasm module) added.
+
+**Revisit when.**
+- The default surface of eight measurably loses answers: RH-M3 shows a task class whose best tool is outside the default and is called by fewer than 1 in 20 sessions that needed it.
+- Stranger time-to-first-proven-answer stays above 10 minutes after wave 1 (RH-M1): reach is not the constraint and the wave order is wrong.
+- A spec tool ships a deterministic, anchor-bearing checklist format: F20's drop condition, re-weigh the adapters.
+- Jev's anchor calibration fails (SI-M4 below nine in ten at the shown confidence): drop the proposal path, keep the port out of spec interop.
+- The FTS5 slice misses grep's pass rate (KR-M1) after one tuning round: re-weigh vision 31's bench before any other retrieval work.
+- A learned rule is promoted and then refuted by a human within 30 days more than once in 10 promotions (GL-M2): the thresholds are wrong.
+- The Rust trigger in vision 38 §7 fires: run the wasm-module experiment (F29), not a rewrite.
+
+## ADR-050: The system graph: one contract-key link model with evidence tiers, three verbs, and dependency APIs read from local caches through a port (2026-09-27)
+
+**Status.** Accepted 2026-09-27. Owner decision memo of 2026-09-27, notes N1 (dependencies) and N6 (calls between services). Vision: `docs/vision/38-proof-layer-roadmap.md`. Design: `docs/design/system-graph.md`. Plan: `docs/plans/system-graph.md` (SG-). Goals G17, G18. Extends ADR-044's inventory keys; keeps vision 15 §3 (ci-kit owns the depgraph engine). Invariants I56, I57.
+
+**Context.** A call graph stops at a process boundary (inside one, `blast_radius` read precision 1.00 on 9 audited calls, 2026-09-27). Fathom already joins Go HTTP client calls to route registrations (`service_ref`, heuristic tier, VB-30) and extracts `route:`, `rpc:`, `env:` and `cli:` inventory keys for conservation (ADR-044), but each relation is its own code path, only HTTP crosses services, and nothing grades a link's evidence. Dependencies are the same problem one level down: our code consumes a library's API the way one service consumes another's route. `dep_drift` and `cross_repo_blast_radius` have zero lifetime calls; `package_deps` was deleted by the surface prune. Peers link routes to handlers across repositories; none grades the evidence or gates on it.
+
+**Decision.**
+1. *One model.* A node (a symbol, a file, or a contract document) PROVIDES or CONSUMES a typed contract key. A link is a provides/consumes match on the same key. Kinds: `route:` (method and path template), `rpc:` (package.Service/Method), `gql:` (Type.field), `topic:` (event or message channel name), `table:` (table, optionally .column), `env:` and `config:` (environment variables, config keys, feature flags), `pkg:` (ecosystem/name@version#symbol, a library API), `image:` and `deploy:` (container image, cluster service or ingress host), `cli:` (command path). The key grammar is language-neutral and extends ADR-044's keys without changing them.
+2. *Four evidence tiers, ordered.* `spec` (both ends bound through a contract document: OpenAPI, proto, GraphQL SDL, AsyncAPI, Avro, a migration) > `typed` (a typed pass or generated stub resolves the consumer to the provider's declaration) > `literal` (normalized literal key equality) > `template` (a key with holes matched to a template). A link carries its tier and its evidence (file:line at both ends, the extractor and its epoch). A link below `typed` never gates a verify row, a conservation plane or a review verdict; it informs (I57).
+3. *One port, one link table, three verbs.* Extractors implement one contract-source port; keys go to one additive `contract_keys` table per service and links to one `system_links` table, refreshed for the keys an ingest changed. Three verbs answer every kind: `links` (what a node provides and consumes, and who is on the other side), `system_impact` (a change's reach across services and dependents, by kind and tier), and `contract_drift` (a producer's contract against its consumers' usage, and a diff's breaking changes). The two surviving zero-call tools are retired when the verbs land; no tool per edge kind (law 4). The verbs join the agent surface only on call-log justification.
+4. *Dependencies are the `pkg:` kind, read locally.* Fathom never downloads a package, advisory or doc on its own authority (I56). It reads what the toolchain already fetched (the Go module cache, `node_modules` and the pnpm store, a project virtualenv and the uv cache, the Maven and Gradle caches, the Cargo registry sources), indexes each (ecosystem, name, version) public API surface once per machine, content-addressed by the package digest and shared by every service that uses it, lazily, in the background ingest class, under the memory budget. Upgrade impact is `contract_drift` between two versions of a `pkg:` provider; the usage map is `links`; vuln reach reads an OSV file the user supplies.
+5. *The lockfile graph comes through a port.* `DepGraph(ecosystem, root) -> nodes, edges, lock digests` is the seam vision 15 §3 named; an in-tree adapter reads lockfiles only until ci-kit ships its engine, then is deleted. Fathom consumes answers; ci-kit owns the engine.
+6. *Measured by a fixture fleet.* Fauxtown gains services that exercise every kind with an answer key; precision and recall are read per kind and tier; drift detection is read on seeded breaking changes; upgrade impact on a seeded-upgrade corpus. Co-change history from git is an independent oracle for `blast_radius` and `system_impact`, never an input to them.
+7. *Jev has no role in matching.* The route-site calibration failed (45.7% right at confidence at least 0.9, 2026-09-24). Revisit only with a passing calibration sample on adjudicated links.
+8. *Tenancy.* No link computation on a request path: the join is an indexed lookup on key; materialized links refresh at ingest for changed keys only; dependency indexing is lazy, per package, byte-capped, evictable, and a request for an unindexed package answers `pending` with a named reason.
+
+**Alternatives rejected.**
+- *A tool per edge kind* (`routes`, `topics`, `tables` …): the pruned-tool history (34 zero-call tools deleted) says agents do not find them; law 4.
+- *A graph database for cross-service edges:* ADR-041; the join is a key equality over an indexed table.
+- *Downloading packages or advisories to fill gaps:* egress is an admission cost the operator never granted, and a daemon that fetches is a supply-chain surface (I56).
+- *Indexing full dependency sources:* private bodies are not the contract and cost memory; the public surface answers upgrade impact and usage.
+- *Building the depgraph engine in fathom:* inverts ownership (vision 15 §3).
+- *Letting heuristic links gate:* a template match is a hint; gating on it would make a false positive block a push.
+
+**Consequences.**
+- New: `internal/syslink` (key grammar, port, join, tiers), `internal/depplane` (the DepGraph port, the in-tree lockfile adapter, cache locators, the API indexer), additive store tables `contract_keys`, `system_links`, `dep_packages`, `dep_api`, the verbs `links`, `system_impact`, `contract_drift`, `indexbench link-oracle`, fauxtown services and an answer key.
+- Changed: `service_ref` becomes the `literal`/`template` tiers of `route:` links; inventory extraction feeds `contract_keys`.
+- Removed at the end: `dep_drift`, `cross_repo_blast_radius`, and the in-tree lockfile adapter once ci-kit's engine ships.
+- The compatibility surface grows by the key grammar and the three verbs' `--json` envelopes when they land.
+
+**Revisit when.**
+- A kind's spec+typed tiers stay below precision 0.95 or recall 0.85 on the fixture fleet after two extractor rounds (SG-M1): drop or narrow that kind.
+- A materialized-link refresh costs more than 10% of ingest wall time on the home fleet, or dependency indexes exceed 256 MiB on disk or push `phys_footprint` beyond budget (SG-M5): change the materialization or the cap.
+- ci-kit ships the depgraph engine: delete the in-tree adapter (SG-31..SG-35).
+- A consumer needs private dependency bodies (not the public surface) for a proven answer class.
+- A calibration sample of adjudicated links passes nine in ten at a shown confidence: reconsider a proposal role for Jev in `template`-tier matching.
+
+## ADR-051: What only fathom can do: the joins, test intelligence, work intelligence, and change and compliance receipts (2026-09-27)
+
+**Status.** Accepted 2026-09-27. Owner decision memo of 2026-09-27, binding addendum "What only fathom can do" (T1 to T8, U1 to U16). Vision: `docs/vision/38-proof-layer-roadmap.md` §4. Designs: `docs/design/test-intelligence.md`, `docs/design/work-intelligence.md`, `docs/design/change-and-compliance.md`; U4 in `docs/design/governance-learning.md`; U10 in `docs/design/system-graph.md`; U12 over `docs/design/progress-and-economics.md`'s ledger projection. Plans: `docs/plans/test-intelligence.md` (TQ-), `docs/plans/work-intelligence.md` (WI-), `docs/plans/change-and-compliance.md` (CX-). Goals G23, G24, G25. Promotes futures F24 and the computable subset of F9; adds F30, F31. Invariant I58. Extends ADR-043 and vision 33 without duplicating their rows.
+
+**Context.** Fathom holds eight assets that other tools hold one or two of: a typed call graph across repositories, governing claims served at the edit, proof (verify, certificates, conservation, history), receipts with tiers and drift, the agent activity record (call log, hook log, transcripts, discoveries, threads), a machine-readable intent corpus, the fleet on one machine, and git history joined to all of it. Products built from joins of these cannot be copied by a tool that holds one. The risk is the opposite of the kitchen sink: building a new engine per product.
+
+**Decision.**
+1. *The join rule.* Every accepted product is a projection and a view over existing assets. A product that needs a new engine, a new store or a new analyzer is sent back. Retired analyzers (churn, cognitive complexity) are not revived: churn is a git-derived fact computed at ingest, and symbol size from L1 ranges is a named proxy for complexity.
+2. *Test intelligence (TQ-).* Shipped certification work stands (TC-1 to TC-24; TC-M2 to TC-M4 stay in their plan). Added: T1 risk-weighted coverage, T2 the test portfolio, T3 coverage ingest in six report formats into the existing block model, T4 certifying-first selection for a diff with CI time saved recorded, T5 contract certificates on system-graph links (takes TC-25 with its trigger), T6 dependency-upgrade test reach, T7 flakiness and commit-bound receipts measured. T8 is `certified_by:` (ADR-049 decision 6).
+3. *Work intelligence (WI-).* U1 cost per proven outcome by plan, language and zone with CI minutes; U2 the debt interest rate, measured agent effort per proven change per zone; U3 the friction map with computed remedies shown as proposals; U5 a descriptive model and harness scorecard with n and confounders, causal claims only where G2's admissibility holds (law 12); U6 task preflight, a difficulty profile and a recommended model tier, advisory only, the harness decides; U12 proof regressions generalized to certificates, conservation and invariant enforcement, each with the breaking commit; U13 hotspots with context as a view over T1's data.
+4. *Change and compliance (CX-).* U7 a change risk receipt per PR: blast radius, links touched, certificates affected, conservation, rows proven, rules touched, zone interest, uncertified contracts, a risk band with every reason cited, suggested reviewers from ownership of impacted symbols, emitted as SARIF and a check payload. U8 a traceability matrix (requirement, code, test, certificate, attested run, decision) and a dated evidence pack exported only on request that re-verifies byte-identically; standard-agnostic through a mapping file (ADR-011). U9 a migration tracker: declared from and to (symbols, imports, routes, config keys), remaining sites per repository, burn-down from proof history, completion proven by conservation; it never transforms. U11 an architecture drift radar: ADR decisions compiled to dependency rules (F24 promoted), layer violations over time, and machine evaluation of the computable subset of revisit triggers (F9 promoted for triggers whose condition names a fathom instrument and a threshold).
+5. *U4 and U10 live elsewhere.* Rule effectiveness (served, complied, violated, blocked, refuted per rule) is part of governance learning, and needs its signal source first: the reference machine holds 0 memories, 0 human claim verdicts and 0 live certificate declarations. The service catalog is a system-graph view with an opt-in catalog-info export.
+6. *Jev's site.* U6 is the best new decision-port site: a Score over deterministic features, A/B'd against the deterministic baseline, shown with its calibration, dropped if null. It never dispatches.
+7. *Deferred.* U14 onboarding path (F30) and U15 capability reach (F31).
+8. *Refused.* A productivity score for any human or any ranking of people (I58); per-author figures are agent identities only. Predictive estimates without a calibrated reading. Any auto-applied remedy.
+
+**Alternatives rejected.**
+- *A coverage product that counts lines.* Commodity (hosted coverage services); the join with centrality, governance and incidents is the only ranking nobody else can compute.
+- *A debt estimate from static rules.* Estimates debt; fathom can measure the interest actually paid in tokens and minutes.
+- *A people leaderboard.* Surveillance, and it would poison the honesty signals the scorecard depends on.
+- *A migration engine.* The Moderne non-goal; fathom tracks and proves.
+- *A hand-maintained service catalog export by default.* It is computed; export happens only when asked.
+
+**Consequences.**
+- New plans TQ-, WI-, CX-; goals G23 to G25; F24 and part of F9 promoted; F30, F31 added; I58 added.
+- The review verbs gain the risk receipt; `review_diff`'s output grows additively.
+- The session ledger and transcript fold become inputs to WI- projections; nothing new is captured without a budget.
+
+**Revisit when.**
+- A join cannot be built without a new engine or store: send it back or record a new decision.
+- U2's interest rate cannot separate zones (the top zone's effort per proven change within 1.2x of the median) on three repositories with at least 30 proven rows each (WI-M2).
+- U6's A/B is null or negative against the deterministic baseline (WI-M4): drop the Jev site.
+- T4's selection misses a certificate a full run would have caught on the replayed month (TQ-M2): selection goes advisory.
+- An adopter or regulator rejects the evidence pack format: revisit U8's mapping file shape.
+
+## ADR-052: Fathom is source-available under FSL-1.1-ALv2, converting to Apache-2.0 after two years (2026-09-27)
+
+**Status.** Accepted 2026-09-27 (owner decision). Licence text: root `LICENSE.md`, the canonical template from fsl.software fetched verbatim 2026-09-27 (sha256 of the unfilled template `36b6082235c0a2105174927fc57cc6ae9c41f45a08af2bdcaee18a8dace56177`, identical to the getsentry/fsl.software repository copy), with the notice filled as "Copyright 2026 Geoff Miller". Fires ADR-028's revisit trigger ("fathom adopts a root LICENSE"). Not legal advice.
+
+**Context.** The owner wants the source public and wants no one to sell fathom, or a competing product built from it, without him. MIT and Apache-2.0 permit exactly that resale. AGPL-3.0 permits commercial resale as long as the source is shared. The Functional Source License forbids "Competing Use" (making the software available in a commercial product or service that substitutes for it or offers substantially similar functionality) for two years per release, then each release converts irrevocably to Apache-2.0, which keeps an eventual-open promise and a patent grant that adopters can rely on.
+
+**Decision.**
+1. *Licence.* Fathom is licensed under FSL-1.1-ALv2, copyright holder Geoff Miller, 2026. Each release converts to Apache-2.0 on its second anniversary.
+2. *How it is described.* "Source-available, converts to Apache-2.0 after two years." Never "open source": FSL is not OSI-approved.
+3. *Contributions.* Outside contributions need a CLA or a DCO plus an explicit licence grant, so dual or commercial licensing stays possible. Recorded as an open question (Q29); nothing is built until a first outside contribution is offered.
+4. *Kit mirrors.* The in-tree mirrors must carry licences compatible with distribution inside an FSL work before any public release (F2's preserve list). Satisfied on 2026-09-27: agentic-kit was relicensed from MIT to FSL the same day, and app-kit is FSL; a pin bump that changes either licence re-opens the check.
+5. *Third-party inputs keep their own licences.* ADR-048's allowlist (permissive sources only, GPL-family tools as separate processes) already fits an FSL work; an FSL-licensed third-party source stays refused as a grammar or query input, as ADR-048 says.
+6. *ADR-028 clause 1 restated.* AGPL-3.0 code still cannot be vendored, linked or embedded: its copyleft would require the combined work to be distributed under AGPL, which is incompatible with FSL's Competing Use restriction. The absence of a licence is no longer the reason; the incompatibility is.
+7. *The name.* Trademark on "Fathom" is a separate open question (Q30): other products use the name. The licence's Trademarks clause reserves our marks; it does not establish one.
+
+**Alternatives rejected.**
+- *MIT or Apache-2.0 now.* Permits a competitor to sell fathom or a hosted copy.
+- *AGPL-3.0.* Permits commercial resale with source shared; closes dual licensing without a CLA.
+- *BUSL (Business Source License).* Similar intent, but a per-release custom "additional use grant" and a change date of up to four years; FSL is shorter, standardized and pre-committed to Apache-2.0.
+- *Closed source.* The owner wants the source public.
+
+**Consequences.**
+- `LICENSE.md` at the root; `README.md` gains a one-line License section.
+- `docs/intent/questions.md` gains Q29 (CLA or DCO plus grant) and Q30 (trademark).
+- F2's preserve list names the kit-mirror licence check (satisfied at today's pins).
+- ADR-028's clause 1 reason is restated (above).
+
+**Revisit when.**
+- An adopter or contributor refuses FSL in writing.
+- A commercial licence is requested.
+- A first outside contribution is offered (answer Q29 first).
+- The FSL steward publishes a new version, or a court or the OSI changes how FSL is treated.
+
+## ADR-053: The surface reckoning — eight tools by default, zero-use tools deleted, every removal proven absent (2026-09-27)
+
+**Status.** Accepted 2026-09-27 from the owner-accepted feature scorecard (86 features:
+30 keep, 24 improve, 12 merge, 10 ditch, 10 new). Amends ADR-014 (surfaces), ADR-035 (the
+promoted verbs), ADR-046 (frozen). Design: `docs/design/surface-reckoning.md`. Plan:
+`docs/plans/surface-reckoning.md`.
+
+**Context.** The registry serves 59 tools on bare `/rpc` (63 with the module host's four)
+and 25 on the agent surface, 18,310 bytes of schema before an agent asks anything. The call
+log (97,898 calls) shows the load concentrated on a dozen tools; 30-odd registrations have
+0–5 lifetime calls, and the most accurate impact verbs (blast_radius: precision 1.00,
+0.006 s) are among the least called. Law 4 forbids net growth; it has never forced a
+shrink.
+
+**Decision.**
+1. *The default agent surface is eight tools*: `find_symbol`, `search`, `read_source`,
+   `symbol_context`, `obligations`, `verify_plan`, `blast_radius`, `review_diff`, at
+   `/rpc/agent`. A path-scoped `extended` surface (21 tools) is the opt-in; `/rpc/companion`
+   aliases it. Surfaces stay execute-and-flag, so nothing an agent calls stops working;
+   off-surface demand is read from the call log after fourteen days (SR-M3).
+2. *Deleted*: `cross_repo_blast_radius`, `dep_drift`, `http_client_calls`, `fleet_drift`,
+   `reachable`, `traverse`, `history`, `memory_search` with all of anchored memory, the
+   MCP `brief` tool, the `narrate` and `brief` CLI verbs, the four module MCP tools with the
+   `/rpc/modules` surface and hosted-modules mode, twelve legacy tools (`complexity`,
+   `god_object`, `community`, `dead_code`, `cloc`, `secret_scan`, `shell_out`,
+   `proto_conformance`, `traceability`, `evidence_summary`, `contradiction_scan`, `batch`)
+   and the four canned prompts.
+3. *Merged*: `find_callees` into `symbol_context`; `entrypoints` into `repo_map`'s header;
+   `capabilities`, `server_stats`, `list_sources` into one `status` tool; `rename_impact` and
+   `safe_delete_check` into `blast_radius` (`kind: change|rename|delete`); `diff_impact`
+   into `review_diff`; the `api_diff` tool into `conserve`; `arch_conformance`,
+   `spec_coverage`, `spec_refs` into review internals (spec references ride the
+   `obligations` answer the edit hook already fetches); `stale_docs` into
+   `staleness_report`'s `doc_drift`; the `discoveries` tool into the session brief. CLI:
+   the metrics verbs under one `metrics`, `providers`/`smoke` as a doctor row, the CUE
+   shadow verbs out of help.
+4. *Frozen, not deleted*: `fathom research` (ADR-046 decision 6 routes the retro corpus
+   through its bundle) and `fathom assess` (this record marks ADR-046 frozen) leave help and
+   stay callable until an owner pull or a superseding record.
+5. *Every removal is proven absent.* A `gone:` contract on the registration literal (or the
+   package import), a pinned registry test, callers evidence in the commit, the exemption
+   check re-run, dependent claimed plan rows re-anchored (capability survives) or retired
+   to `[-] refused` (capability gone), and a `### Breaking` line with a migration note.
+6. *Counts after the reckoning*: 25 tools on bare `/rpc` (from 59), 8 on the default
+   surface (from 25), 0 prompts (from 4); the default's schema at most 9,000 bytes.
+
+**Alternatives rejected.**
+- *Keep the tools, hide them from the default surface only.* Zero-call tools still cost
+  schema bytes on `/rpc`, docs, tests and review; law 4 applies to the registry.
+- *A hard gate on the default surface.* An error teaches an agent to abandon the surface
+  and looks like no demand (ADR-014 amendment 2026-07-16).
+- *Deleting the Expert Module system with its tools.* The manifest, `modules.cue` and the
+  pack format are on the compatibility surface and used by layers; only the MCP tools had
+  zero use.
+- *Deleting `research` and `assess` outright.* Both sit under an accepted ADR with claimed
+  rows; a freeze keeps the record honest until it is superseded.
+
+**Consequences.**
+- Breaking: every removed tool name, the `module_query` wire contract v0, the default
+  surface's membership, the stanza (it no longer names `ingest`). One migration note,
+  `docs/upgrades/0.9.0-surface-reckoning.md`.
+- The compatibility surface line "the 19-tool agent surface allowlist" is replaced (it was
+  already stale at 25).
+- ADR-035's promoted verbs lose `rename_impact` (folded into `blast_radius`); the five-verb
+  lead becomes two on the default surface (`blast_radius`, which now also answers rename
+  and delete, and `review_diff`), with `test_impact` and `localize` on `extended`.
+- ADR-046: status becomes *Accepted — frozen 2026-09-27* (verb out of help, capability off
+  by default, no new rows) until an owner pull.
+
+**Revisit when.**
+- SR-M3 shows a tool left off the default called off-surface by agents on at least 5% of
+  sessions: move it to the default in place of the least-called default tool (the count
+  stays at eight).
+- SR-M2 shows agents on the default surface take more turns to a first answer than on the
+  25-tool surface.
+- A removed tool's replacement cannot answer a question the removed tool answered (a
+  filed observation with the question): restore the capability inside the replacement,
+  never as a new tool.
+
+## ADR-054: The support matrix is a projection — declared targets, computed states, evidence links; no status is typed (2026-09-27)
+
+**Status.** Accepted 2026-09-27. Owner decision (binding): track implementation quality
+and progress for languages, tools and every other supported kind as a projection, never a
+hand-maintained status list. Extends ADR-048 decision 2 from languages to every kind.
+Design: `docs/design/support-matrix.md`. Plan: `docs/plans/support-matrix.md`. Schema:
+`schema/support/`.
+
+**Context.** Fathom now declares support along eight axes — languages, tool formats,
+agent clients, spec dialects (N4), rules files (N8.3), coverage formats (T3), contract-key
+kinds (N6), dependency ecosystems (N1). Each has, or is getting, a registry the code loads.
+Hand-kept status tables in this repo have drifted within weeks (the scope file's "19-tool"
+surface; `package_deps` still listed a month after deletion).
+
+**Decision.**
+1. *One projection over registries.* Each kind's registry exposes `(kind, id,
+   capabilities)`; targets come from the language queue (languages, tool formats) or
+   `docs/plans/support.targets.json` (the other six kinds); state is computed from
+   committed readings and `fathom verify` of the owning plan row; every cell links its
+   evidence.
+2. *No reading, no level.* A registered entry without a reading is `tolerated`; a target
+   without a registry entry is `declared`; a level is shown only when a reading computed it.
+   The state vocabulary is closed and has no member a person sets.
+3. *Closure is tested.* A registry entry without a target fails; a target without a
+   registry entry fails once its plan row is claimed; a reading naming an unknown entry
+   fails.
+4. *History is a ledger.* Every reading write appends to
+   `docs/bench/readings/support-ledger.jsonl`; burn-up and `regressed` are computed from it.
+5. *Surfaces render the one projection*: `fathom support [--kind …] [--json]`
+   (`fathom.support/v1`), a console Support page (heatmap, dialects, progress, what's next),
+   the generated `docs/support.md` (LB-F17's tracker becomes its language and tool
+   sections — one generator), and the roadmap artifact's data. No MCP tool (law 4).
+6. *CUE validates, never authors* (ADR-018). `schema/support/schema.cue` vets targets,
+   readings, ledger rows and the output; the entries stay JSON and Go data.
+7. *Dialect packs are deferred* (owner, 2026-09-27) until embedded grammars near the
+   40 MiB cap; the Support page's dialects view shows the running total, which is the
+   trigger. This amends ADR-048 decision 5's "pinned packs for the long tail" from
+   "planned" to "deferred with a measured trigger".
+
+**Alternatives rejected.**
+- *A hand-kept catalog (markdown or JSON statuses).* It rots, and a typed level with no
+  reading is the claimed-unproven row `verify` exists to refuse.
+- *CUE-authored entries.* ADR-018 rejected CUE as an authoring surface; the registries
+  already live in Go and JSON where their owners work.
+- *An MCP tool for support queries.* Law 4; the CLI and the generated doc answer it.
+- *Client support from the descriptors' `VerifiedAgainst` string alone.* It is authored;
+  a local live check (`fathom harness verify`) writes the reading it must agree with.
+
+**Consequences.**
+- New: `internal/support`, `fathom support`, `fathom harness verify`, `schema/support/`,
+  `docs/plans/support.targets.json`, `docs/bench/readings/support/`, the readings ledger,
+  `docs/support.md`, the `/support` console page.
+- Changed: LB-F17 and LB-M6-M1..M3 point at `docs/support.md`; `docs/languages.md` is
+  removed; `indexbench lang-oracle` appends to the ledger.
+- Claude Code and Codex get client readings from existing live tests; Cursor, Copilot and
+  Gemini render `tolerated` until verified.
+- Compatibility surface grows by `fathom.support/v1` and the targets file shape.
+
+**Revisit when.**
+- A kind needs a state the closed vocabulary cannot express (add it to the schema with a
+  derivation rule, never a hand-set status).
+- Embedded grammars reach 36 MiB (90% of the cap): the packs deferral's trigger fires.
+- The closure test is bypassed or loosened to land a registry entry without a target.

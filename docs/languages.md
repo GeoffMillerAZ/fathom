@@ -7,6 +7,16 @@ what is left. Typed-edge order is the owner's (2026-09-19): Go, CUE, TypeScript,
 Python, then the delegate's. `TestLanguagesTrackerMatchesRegistry` (SU-13) keeps the
 rows honest against the extractor registry.
 
+**The breadth program (ADR-048, vision 37).** This table is being replaced by a generated
+one (`docs/plans/language-breadth.md` LB-F17): support levels L1 symbols, L2 syntax call
+edges, L3 imports and file-resolved edges, L4 typed edges, each claimed only when a committed
+reading under `docs/bench/readings/lang/` proves it against an independent oracle (ctags or
+SCIP). The ordered backlog of 77 languages and 65 tool formats is
+`docs/plans/language-breadth.queue.json`; the worker recipe is
+`docs/design/language-breadth.md` §13. Until LB-F17 lands, the rows below stay hand-kept, and
+the "heuristic" label on Java, Scala, Rust, C, C++, C#, PHP and Lua means hand-written Go
+walkers over CGO tree-sitter — real ASTs, never measured against an oracle.
+
 Typed-edge levels: **native** (fathom resolves types itself), **scip** (imported from a
 language-native SCIP indexer), **file** (per-file resolver, tier pre-scan, labelled
 `file-resolved`), **syntax** (call names by syntax only).

@@ -90,6 +90,12 @@ or adopt Bazel/kin?
   graphs — that stays as-is. What fathom lacks is **dependency-aware
   impact**: `dep_drift`, `package_deps`, `cross_repo_blast_radius` exist
   as tools with zero lifetime calls, waiting for a real dep plane.
+  **Dated note (2026-09-27):** `package_deps` was pruned in the 2026-08-23
+  zero-call sweep, and the surface reckoning (ADR-053) deletes `dep_drift`
+  and `cross_repo_blast_radius` outright — neither is a tool any more.
+  Dependency-aware impact is superseded by the system graph (ADR-050): the
+  `pkg:` contract-key kind reads what the toolchain already fetched, and
+  `system_impact`/`contract_drift` are the verbs, not a revived tool pair.
 - **What the platform side already decided** (platform-engineering): ci-kit
   specs the depgraph engine + canonical input hashing (`DeriveKey`,
   type-tagged length-prefixed, keyEpoch) and already adopted **bazel-remote

@@ -15,9 +15,10 @@ local process (`docs/vision/20` §7 Q2). Accept single-user in writing, or make 
 hardening a goal before any second adopter? Blocks: F8, F15, `domain.md` assumption 2.
 Answerable by: owner.
 
-**Q6. Has XT-6b's trigger fired?** ADR-013 kept "the WASM path … if a pure-Go runtime
-matures"; `tsengine` now runs four languages on wazero. Is the nine-language migration
-wanted, and what is its Promote when (F1)? Answerable by: owner plus the calibration corpus.
+**Q6. Has XT-6b's trigger fired?** Answered 2026-09-27 by the owner's directive and ADR-048:
+yes — the nine-language migration is wanted, gated per language by measured parity on the
+calibration corpus (`docs/design/language-breadth.md` §11). Delete this entry when LB-F19 is
+proven.
 
 **Q16. Should honesty-debt counts ever leave the machine?** Only through the existing
 sanitized research bundle, opt-in, as counts by kind (law 13). Blocks: EP-23's fleet
@@ -91,3 +92,12 @@ ran, plus the 21 changed files fathom does not analyze, instead of 47 files; on 
 weaker-tested repository the flagged set grows instead of hiding the gaps. At deny the
 pack's findings block instead of warn. Blocks: arming the pack at deny
 (`.reviewkit/config.cue`). Answerable by: owner.
+
+**Q29. CLA, or DCO plus an explicit grant, for outside contributions?** FSL-1.1-ALv2
+(ADR-052) keeps dual or commercial licensing possible only if the licensor holds enough
+rights in every contribution. Blocks: accepting a first outside contribution; F2. Answerable
+by: owner (with counsel). Nothing is built until a contribution is offered.
+
+**Q30. Is "Fathom" protectable as a trademark?** Other products use the name; the licence's
+Trademarks clause reserves marks but establishes none. Blocks: F2's public naming (a
+marketplace listing, a brew tap). Answerable by: owner (with counsel). Not legal advice.

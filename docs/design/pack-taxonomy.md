@@ -24,7 +24,7 @@ pack" or "platform pack" instead of re-deriving the distinction every time.
 
 | Stratum | Fathom realization today | Authored by | Trusted via |
 |---|---|---|---|
-| **dialect** | extractors + tool identity (code, not packs) | fathom | golden tests, deterministic |
+| **dialect** | extractors + tool identity (data run by fathom's engines since ADR-048; not a pack) | fathom | golden tests, deterministic, a calibration reading |
 | **provider** | does not exist — parked pack type (TX-3) | fathom or vendor | eval-gated, staleness vs. an UPSTREAM |
 | **platform** | `.fathom/` project packs (an org's own obligations/rules/bindings) | the org | compiled from an org corpus; on-disk eval evidence required (D3) |
 | **concern** | the layer catalog + rule packs + analyzers | fathom + org extensions | eval-gated embedded; entry-conditioned growth |
@@ -39,6 +39,14 @@ deterministic heuristics (CLAUDE.md's "Architecture" section,
 **Who authors it.** Fathom. A dialect is not installable data — it is a Go
 package implementing `extractor.Extractor`, registered by file extension in
 `fusion.New()` (CLAUDE.md, "Adding things → Extractor").
+
+*Refined by ADR-048 (2026-09-27).* A dialect is now a directory of data — a manifest,
+tree-sitter queries or document selectors, provenance and goldens — run by one of two
+engines (`docs/design/language-breadth.md` §2–§4). It is still authored by fathom and
+trusted by goldens plus a calibration reading, and it is still not a pack in this
+taxonomy's sense. The one installable form is a checksum-pinned **dialect pack** at user
+scope (the same directory plus its grammar blob), for the long tail past the embedded
+budget and for an org's private formats (ADR-011: org-specific is configuration).
 
 **How it's trusted.** Golden-fixture tests against `testdata/fauxtown/`
 (ADR-012) and the calibration harness (`calibration/`, ADR-023) — recall
