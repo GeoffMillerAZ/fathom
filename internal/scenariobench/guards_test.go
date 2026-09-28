@@ -188,6 +188,17 @@ func checkGuardsCorpusDetectors(t *testing.T, c Corpus) {
 					}
 				}
 				if pkgDir, testName, ok := parseGoTestDetector(d.Command); ok {
+					if task.Disposition == "dropped" {
+						// A dropped task never runs (PlanCells skips it), so
+						// its detector need not resolve in this tree — e.g.
+						// guards-adr-028, whose internal/memory SR-13
+						// (ADR-053) retired and which exists only at its
+						// base_commit. The drop must still say why.
+						if task.Reason == "" {
+							t.Errorf("task %s: disposition dropped with no reason", task.ID)
+						}
+						continue
+					}
 					if len(task.Subject.Setup) > 0 {
 						// RC-50: a task whose subject.setup materializes its
 						// own edit-site scaffold (a package this repo does
