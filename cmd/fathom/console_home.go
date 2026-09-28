@@ -15,16 +15,14 @@ package main
 //   - The fleet pulse: the busiest projects' realization ladders and calls
 //     per day on one shared scale (console.FleetTable, OC-20).
 //
-// The page's JSON carries `fathom brief --json` — the same projection the
-// verb prints (brief.go) — and `fathom fleet report --json`; and, per
-// project, the two verbs the queue's proof figures answer from recorded
+// The page's JSON carries `fathom fleet report --json`; and, per project,
+// the two verbs the queue's proof figures answer from recorded
 // instruments: `fathom plans status` (each plan's verify run at HEAD, from
 // the ledger) and `fathom certify status` (certify.Gaps over the store and
 // the repo's intent corpus), each in the verb's own shape and held to it
 // by TestConsolePagesRenderTheirVerbs.
 
 import (
-	"context"
 	"fmt"
 	"html"
 	"html/template"
@@ -46,7 +44,7 @@ func init() {
 		ID: "home", Route: "/{$}", Href: "/", Group: "Now", Order: 0, Nav: true,
 		Title: "Now", NavLabel: "Home",
 		Question:     "What needs my attention, and what changed since I last looked?",
-		Verbs:        []string{"fathom brief --json", "fathom fleet report --json"},
+		Verbs:        []string{"fathom fleet report --json"},
 		ProjectVerbs: []string{verbPlansStatusFor, verbCertifyStatusFor},
 		Shows: []console.MetricID{
 			console.MetricServices, console.MetricAgentTools, console.MetricSessions,
@@ -108,7 +106,9 @@ func nowProjectSections(p console.Projects) map[string]any {
 // nowReportSchema names the Now projection's wire version.
 const nowReportSchema = "fathom.console.now/v1"
 
-// nowReport is the Now page's projection and `fathom brief --json`'s output.
+// nowReport is the Now page's projection (SR-14, surface reckoning F-53,
+// removed the `fathom brief --json` CLI mirror this used to also serve —
+// 0 lifetime calls; the page's own JSON, via Model above, is unaffected).
 type nowReport struct {
 	Schema      string                  `json:"schema"`
 	GeneratedAt string                  `json:"generated_at"`
@@ -180,7 +180,6 @@ func buildHomePage(cr *consoleRequest) (consoleOut, error) {
 	}
 	if wantsJSON(cr.r) {
 		out.Sections = nowProjectSections(pr.projects)
-		out.Sections["fathom brief --json"] = rep
 		out.Sections["fathom fleet report --json"] = fleetReportSection(cr)
 	}
 	return out, nil
@@ -269,7 +268,6 @@ func renderAttentionPanel(a console.Attention, m observatoryModel) string {
 	return renderPanel(consolePanel{
 		ID: "attention", Title: "Needs attention",
 		Question:    "What blocks proof first, and which command fixes it?",
-		Verb:        "fathom brief --json",
 		Source:      "the verify ledger (each plan's run at the project's HEAD, from any clone; else the registered root's newest, stale), the daemon's store (certify status, the obligations compile), the registry's freshness and each repo's .fathom/observations.md",
 		Denominator: fmt.Sprintf("%s across %s", plural(len(a.Items), "item"), plural(a.Projects, "project")),
 		Freshness:   "as of " + m.GeneratedAt,
@@ -414,7 +412,6 @@ func renderSincePanel(s console.Since, now time.Time) string {
 	return renderPanel(consolePanel{
 		ID: "since", Title: "Since you last looked",
 		Question:    "What changed: pushes, deploys, measurements and restarts?",
-		Verb:        "fathom brief --json",
 		Source:      "read: " + strings.Join(read, ", ") + " — each change is a ledger row, never inferred",
 		Denominator: denom,
 		Freshness:   "as rendered",
@@ -540,17 +537,6 @@ func fleetReportSection(cr *consoleRequest) any {
 		return map[string]string{"error": err.Error()}
 	}
 	return rep
-}
-
-// briefNowReport is `fathom brief --json`: the Now projection computed from
-// the daemon at url and the store it recorded (or storeFlag), at now.
-func briefNowReport(ctx context.Context, url, storeFlag string, now time.Time) nowReport {
-	m := buildObservatoryModel(url, now)
-	st, read, storePath, closeStore := verbStore(storeFlag, url)
-	defer closeStore()
-	pr := gatherProjects(ctx, projectSources{baseURL: url, model: m, st: st, storeRead: read, storePath: storePath, now: now})
-	since := gatherSince(ctx, sinceSources{baseURL: url, callLog: modelCallFacts(m).Log.Path, viewsLog: consoleViewsLogPath(), model: m, now: now})
-	return buildNowReport(m, pr, since, now)
 }
 
 // pageMetrics keeps only the shared metrics the page declares it shows.

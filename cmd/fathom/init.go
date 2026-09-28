@@ -23,8 +23,6 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/harness"
 	"github.com/geoffmilleraz/fathom/internal/intent"
 	"github.com/geoffmilleraz/fathom/internal/wiring"
-
-	"github.com/geoffmilleraz/fathom/internal/buildinfo"
 )
 
 // cmdInit implements the "init" subcommand: one-command, idempotent,
@@ -144,11 +142,6 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 	}
 
 	fmt.Fprintf(stdout, "fathom init — service %q, root %s\n", svc, root)
-
-	// a0. auto-narrate (IQ-10): an adoption's FIRST sessions are the ones
-	// worth capturing, and nobody remembers to arm the dial by hand. Bounded
-	// and loudly announced; an already-active window is left alone.
-	armAutoNarrate(stdout)
 
 	// a. .fathomignore
 	if err := writeFathomIgnore(root, stdout); err != nil {
@@ -1594,34 +1587,6 @@ func printGateAndConfigManualSteps(stdout io.Writer, service string) {
 	fmt.Fprintln(stdout, "        commented (inert) — run `fathom capabilities` to see what is on and why; uncomment")
 	fmt.Fprintln(stdout, "MANUAL: and commit to guard critical scopes (docs/design/guarded-edits.md) or bind a platform")
 	fmt.Fprintln(stdout, "MANUAL: module (docs/design/platform-modules.md); neither applies until you do.")
-}
-
-// autoNarrateSessions bounds init's capture window: enough sessions to see
-// the adoption take, small enough to stay a pioneering probe, self-expiring
-// like every narrate window (vision 14 §6).
-const autoNarrateSessions = 10
-
-// armAutoNarrate arms a bounded narrate window at init time (IQ-10) unless
-// one is already active. Never fails init: capture is a bonus, not a gate.
-func armAutoNarrate(stdout io.Writer) {
-	if _, active := loadNarrateState(time.Now()); active {
-		fmt.Fprintln(stdout, "ok narrate (already armed — leaving the active window untouched)")
-		return
-	}
-	n := autoNarrateSessions
-	st := narrateState{
-		SchemaVersion:     narrateSchemaVersion,
-		FathomVersion:     buildinfo.Version(),
-		On:                "story-rows",
-		SetAt:             time.Now().UTC().Format(time.RFC3339),
-		Note:              "auto-armed by fathom init (IQ-10): capture the adoption's first sessions",
-		SessionsRemaining: &n,
-	}
-	if err := saveNarrateState(st); err != nil {
-		fmt.Fprintf(stdout, "note: auto-narrate not armed (%v) — arm by hand: fathom narrate on --sessions %d\n", err, autoNarrateSessions)
-		return
-	}
-	fmt.Fprintf(stdout, "created narrate window: story rows for the next %d sessions (self-expiring; fathom narrate off ends it early)\n", autoNarrateSessions)
 }
 
 // waitForIndexed polls the daemon until svc reads as indexed or t.pollFor

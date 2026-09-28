@@ -94,7 +94,6 @@ func syntheticModel() observatoryModel {
 		FathomVersion: "test",
 		GeneratedAt:   "2026-08-08T12:00:00Z",
 		Arm:           obsArmBanner{Detail: "no measurement arm active"},
-		Narrate:       obsArmBanner{Detail: "narrate off (default)"},
 	}
 	row := obsServiceRow{}
 	row.Service = "alpha"
@@ -159,7 +158,6 @@ func gradedFleetModel() observatoryModel {
 		FathomVersion: "test",
 		GeneratedAt:   "2026-08-08T12:00:00Z",
 		Arm:           obsArmBanner{Detail: "no measurement arm active"},
-		Narrate:       obsArmBanner{Detail: "narrate off (default)"},
 	}
 	zero := 0
 	one := 1

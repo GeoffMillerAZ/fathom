@@ -329,7 +329,6 @@ func observationCoverageModel(services []obsServiceRow, degradedNote string) obs
 		FathomVersion: "test",
 		GeneratedAt:   "2026-09-14T12:00:00Z",
 		Arm:           obsArmBanner{Detail: "no measurement arm active"},
-		Narrate:       obsArmBanner{Detail: "narrate off (default)"},
 		Services:      services,
 		DegradedNote:  degradedNote,
 	}

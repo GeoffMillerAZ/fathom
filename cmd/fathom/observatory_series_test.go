@@ -440,7 +440,6 @@ func TestServicePageAllAbsent(t *testing.T) {
 		FathomVersion: "test",
 		GeneratedAt:   now.Format(time.RFC3339),
 		Arm:           obsArmBanner{Detail: "no measurement arm active"},
-		Narrate:       obsArmBanner{Detail: "narrate off (default)"},
 		Services:      []obsServiceRow{row},
 	}
 	// Seed the page cache so the real handler serves this model without a
@@ -541,7 +540,6 @@ func TestServicePageSourcesUnread(t *testing.T) {
 		FathomVersion: "test",
 		GeneratedAt:   now.Format(time.RFC3339),
 		Arm:           obsArmBanner{Detail: "no measurement arm active"},
-		Narrate:       obsArmBanner{Detail: "narrate off (default)"},
 		Services:      []obsServiceRow{row},
 		CallLogNote:   logNote,
 	}

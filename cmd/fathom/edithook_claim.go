@@ -159,10 +159,9 @@ func withClaimMoment(url, projDir, filePath, sessionID, text string, ok bool) (s
 
 // claimRefusals renders the refusal line for every newly claimed task the
 // report proves FAILING — "<plan> [<id>] <title> — <criterion>: <detail>",
-// sorted — and records one verify-catch story row per refusal. Unknown
-// never refuses: an unprovable row is a coverage gap, not a false claim
-// (ADR-027). Shared by the Stop hook and the claim-moment path so the two
-// gates can never disagree about what a refusal looks like.
+// sorted. Unknown never refuses: an unprovable row is a coverage gap, not a
+// false claim (ADR-027). Shared by the Stop hook and the claim-moment path
+// so the two gates can never disagree about what a refusal looks like.
 func claimRefusals(projDir, rel string, newly []string, rep verify.Report) []string {
 	verdictByID := map[string]verify.TaskVerdict{}
 	for _, tv := range rep.Tasks {
@@ -182,9 +181,6 @@ func claimRefusals(projDir, rel string, newly []string, rep verify.Report) []str
 			}
 		}
 		out = append(out, fmt.Sprintf("%s [%s] %s — %s", rel, tv.TaskID, tv.Title, detail))
-		recordStoryRow(projDir, "verify-catch", map[string]any{
-			"plan": rel, "task": tv.TaskID, "title": tv.Title, "detail": detail,
-		})
 	}
 	sort.Strings(out)
 	return out

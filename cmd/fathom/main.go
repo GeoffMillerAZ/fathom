@@ -177,8 +177,6 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		return cmdObserve(args[1:], stdout, stderr)
 	case "arm":
 		return cmdArm(args[1:], stdout, stderr)
-	case "narrate":
-		return cmdNarrate(args[1:], stdout, stderr)
 	case "plugin":
 		if len(args) > 1 && args[1] == "render" {
 			return cmdPluginRender(args[2:], stdout, stderr)
@@ -187,8 +185,6 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		return 1
 	case "harness":
 		return cmdHarness(args[1:], stdout, stderr)
-	case "brief":
-		return cmdBrief(args[1:], stdout, stderr)
 	case "capabilities":
 		return cmdCapabilities(args[1:], stdout, stderr)
 	case "flywheel":

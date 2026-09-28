@@ -306,7 +306,7 @@ func TestRegisteredToolNames_NilBackendMatchesKnownTools(t *testing.T) {
 	if err != nil {
 		t.Fatalf("registeredToolNames(\"\"): %v", err)
 	}
-	want := map[string]bool{"find_symbol": true, "capabilities": true, "verify_plan": true, "brief": true}
+	want := map[string]bool{"find_symbol": true, "capabilities": true, "verify_plan": true, "read_source": true}
 	seen := map[string]bool{}
 	for _, n := range names {
 		seen[n] = true
