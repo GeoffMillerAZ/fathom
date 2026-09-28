@@ -486,7 +486,11 @@ func TestLegacyObservatoryRoutes_RedirectAndKeepJSON(t *testing.T) {
 			t.Errorf("legacy JSON grew a key %q — observatoryModel v1 must stay unchanged", k)
 		}
 	}
-	for _, k := range []string{"schema_version", "fathom_version", "generated_at", "services", "impact", "cost", "arm", "narrate"} {
+	// "narrate" left this list with SR-14 (surface reckoning F-53): the
+	// narrate feature (CLI verb, story rows, the observatory banner) was
+	// removed for 0 lifetime calls, so observatoryModel no longer carries
+	// a Narrate field to serialize — a legitimate v1 shrink, not drift.
+	for _, k := range []string{"schema_version", "fathom_version", "generated_at", "services", "impact", "cost", "arm"} {
 		if _, ok := legacy[k]; !ok {
 			t.Errorf("legacy JSON lost %q", k)
 		}

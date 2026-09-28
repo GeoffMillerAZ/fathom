@@ -190,6 +190,23 @@ type Task struct {
 	// is malformed exactly the way an unparsable min_trials is (O4: loud,
 	// never a silently-ignored bound). LintPlan reports each one.
 	BoundsInvalid []string
+
+	// --- spec interop (vision 38, ADR-049, docs/design/spec-interop.md §4) ---
+	//
+	// Weight is the row's share of a weighted progress rollup (`weight:`):
+	// a positive integer, 1 when the row carries no weight: key. Never
+	// gating — verifyTask does not read it. ParseMarkdownPlan always sets
+	// it; a Task built by hand with Weight 0 means "unset", i.e. 1.
+	Weight int
+	// WeightInvalid is the quoted raw `weight:` value when it was not a
+	// positive integer (zero, negative, fractional, a word, empty) —
+	// LintPlan refuses it and Weight falls back to 1. "" on healthy rows.
+	WeightInvalid string
+	// Accept is the row's acceptance text (`accept:`, EARS-shaped where
+	// the author likes). Never gating by itself: a row whose only
+	// annotation is accept: still verifies no-contract. Shown in the
+	// converge report; proven only through certified_by:.
+	Accept string
 }
 
 // Expect is a task's acceptance contract. The zero value is the STRICTEST

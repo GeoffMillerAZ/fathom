@@ -420,14 +420,17 @@ func TestInvestigationProfileIncludesFindCallers(t *testing.T) {
 
 	// HF-5 deleted /rpc/investigation (ADR-014 amendment 2). Two facts
 	// survive and both matter: find_callers' group classification, and its
-	// presence on the curated agent surface — the path agents actually use.
+	// presence on the curated extended surface — SR-33 (surface reckoning
+	// F-86) moved find_callers off /rpc/agent's now-eight-tool default onto
+	// /rpc/extended (and /rpc/companion, its compatible alias), the
+	// opt-in path an investigating agent reaches for.
 	if got := srv.GroupOfForTest("find_callers"); got != mcp.GroupInvestigation {
 		t.Errorf("find_callers registered in group %q, want %q", got, mcp.GroupInvestigation)
 	}
-	ctx := mcp.WithRequestScope(context.Background(), mcp.SurfaceAgent, true)
+	ctx := mcp.WithRequestScope(context.Background(), mcp.SurfaceExtended, true)
 	resp := scopedRoundtrip(t, srv, ctx, request{JSONRPC: "2.0", ID: 1, Method: "tools/list"})
 	if resp["error"] != nil {
-		t.Fatalf("tools/list(agent): %v", resp["error"])
+		t.Fatalf("tools/list(extended): %v", resp["error"])
 	}
 	found := false
 	for _, raw := range resp["result"].(map[string]any)["tools"].([]any) {
@@ -436,7 +439,7 @@ func TestInvestigationProfileIncludesFindCallers(t *testing.T) {
 		}
 	}
 	if !found {
-		t.Error("find_callers must stay on the agent surface — it is the investigation hot loop")
+		t.Error("find_callers must stay on the extended surface — it is the investigation hot loop")
 	}
 }
 

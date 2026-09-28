@@ -50,7 +50,7 @@ func TestDetectNeverReturnsBareBoolean(t *testing.T) {
 		Service: "svc", IndexedSymbols: 120, IndexFresh: true,
 		HooksReferenced: true, StanzaPresent: true, VerifyInLefthook: true,
 		GuardRules: 2, ModuleBindings: 1, LayerPacks: []string{"ui-appkit"},
-		ObligationRules: 6, ObligationsCompiled: true, NarrateActive: true, LedgerSessions: 4,
+		ObligationRules: 6, ObligationsCompiled: true, LedgerSessions: 4,
 		AgentSurfaceTools: 17, AgentSchemaBytes: 11839,
 		IntentRouterPresent: true, IntentDecisionsHome: "ADR.md", IntentConditions: 67,
 		AssessRuns: 3,
@@ -98,18 +98,18 @@ func TestResolveProvenanceAndRefusals(t *testing.T) {
 	})
 
 	t.Run("user sets a default for repositories that have not spoken", func(t *testing.T) {
-		c, _ := r.Get("narrate")
-		got := Resolution{User: Settings{"narrate": true}}.For(c)
+		c, _ := r.Get("assess")
+		got := Resolution{User: Settings{"assess": true}}.For(c)
 		if !got.On || got.Scope != ScopeUser {
 			t.Errorf("got %+v, want on from user scope", got)
 		}
 	})
 
 	t.Run("project governs over user", func(t *testing.T) {
-		c, _ := r.Get("narrate")
+		c, _ := r.Get("assess")
 		got := Resolution{
-			User:    Settings{"narrate": true},
-			Project: Settings{"narrate": false},
+			User:    Settings{"assess": true},
+			Project: Settings{"assess": false},
 		}.For(c)
 		if got.On || got.Scope != ScopeProject {
 			t.Errorf("got %+v, want off from project scope — project governs (law 13)", got)
@@ -174,7 +174,7 @@ func TestLoaderRefusesOptionalKnownField(t *testing.T) {
 	}
 
 	t.Run("optional field is refused with the fix in the message", func(t *testing.T) {
-		p := write("capabilities: {\n\tnarrate: on?: false\n}\n")
+		p := write("capabilities: {\n\tassess: on?: false\n}\n")
 		_, err := r.LoadSettings(p, ScopeProject)
 		if err == nil {
 			t.Fatal("an optional-field declaration must be refused, not silently ignored")
@@ -189,18 +189,18 @@ func TestLoaderRefusesOptionalKnownField(t *testing.T) {
 	})
 
 	t.Run("a concrete setting loads", func(t *testing.T) {
-		p := write("capabilities: {\n\tnarrate: on: true\n}\n")
+		p := write("capabilities: {\n\tassess: on: true\n}\n")
 		got, err := r.LoadSettings(p, ScopeProject)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if v, ok := got["narrate"]; !ok || !v {
-			t.Errorf("got %+v, want narrate=true", got)
+		if v, ok := got["assess"]; !ok || !v {
+			t.Errorf("got %+v, want assess=true", got)
 		}
 	})
 
 	t.Run("an entry that sets nothing is refused, not dropped", func(t *testing.T) {
-		p := write("capabilities: {\n\tnarrate: {}\n}\n")
+		p := write("capabilities: {\n\tassess: {}\n}\n")
 		if _, err := r.LoadSettings(p, ScopeProject); err == nil {
 			t.Error("an entry its author believed did something must say that it does not")
 		}
@@ -241,7 +241,7 @@ func TestLoadThreeStates(t *testing.T) {
 
 	t.Run("malformed is loud", func(t *testing.T) {
 		p := filepath.Join(dir, "bad.cue")
-		if err := os.WriteFile(p, []byte("capabilities: { narrate: on: \"yes\" }\n"), 0o600); err != nil {
+		if err := os.WriteFile(p, []byte("capabilities: { assess: on: \"yes\" }\n"), 0o600); err != nil {
 			t.Fatal(err)
 		}
 		if _, err := r.LoadSettings(p, ScopeProject); err == nil {

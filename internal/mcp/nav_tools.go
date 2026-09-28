@@ -2,7 +2,7 @@
 // symbolnav, complexity, and godobject analysis packages.
 //
 // registerNavTools wires the coding-group tools:
-//   - find_callees, symbol_context, outline, entrypoints
+//   - symbol_context (carries callees too, SR-21), outline, entrypoints
 //   - complexity, god_object
 //
 // and the investigation-group tools:
@@ -24,57 +24,12 @@ import (
 // nil (non-fleet stdio serve-mcp); when set, registerSymbolContext
 // additionally consults it for cross-service call edges (P1-2).
 func registerNavTools(s *Server, backend QueryInterface, fleet FleetBackend) {
-	registerFindCallees(s, backend)
 	registerSymbolContext(s, backend, fleet)
 	registerOutline(s, backend)
 	registerEntrypoints(s, backend)
 	registerComplexity(s, backend)
 	registerGodObject(s, backend)
 	registerCommunity(s, backend)
-}
-
-// ─── find_callees ─────────────────────────────────────────────────────────────
-
-func registerFindCallees(s *Server, backend QueryInterface) {
-	s.registerTool(toolDescriptor{
-		Name:        "find_callees",
-		Description: "Return the direct callees (symbols called by) the named symbol in the given service.",
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"service": map[string]any{"type": "string", "description": "Service / repo identifier"},
-				"symbol":  map[string]any{"type": "string", "description": "Symbol name (bare or fully-qualified SymbolKey)"},
-			},
-			"required": []string{"service", "symbol"},
-		},
-		group: GroupCoding,
-	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
-		if backend == nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
-		}
-		var p struct {
-			Service string `json:"service"`
-			Symbol  string `json:"symbol"`
-		}
-		if err := json.Unmarshal(args, &p); err != nil {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "find_callees: invalid args"}
-		}
-		if p.Service == "" {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "find_callees: service required"}
-		}
-		if p.Symbol == "" {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "find_callees: symbol required"}
-		}
-		// O98: the same syntax-plus-typed graph every other reachability
-		// tool walks, so a callee reached through a method value or an
-		// interface dispatch is listed here too.
-		nodes, g, rpcErr := bothGraph(ctx, s, backend, p.Service)
-		if rpcErr != nil {
-			return nil, rpcErr
-		}
-		callees := symbolnav.Callees(g, nodes, p.Symbol)
-		return map[string]any{"callees": stringsToAny(callees)}, nil
-	})
 }
 
 // ─── symbol_context ───────────────────────────────────────────────────────────

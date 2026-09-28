@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"testing"
 	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/cost"
 )
 
 // TestCallLogger_SurfaceTraffic_CountsAndLastTS is A1-1's instrument-repair
@@ -201,6 +203,41 @@ func TestResponseCostAccounting(t *testing.T) {
 	}
 	if fs.TruncatingCalls != 0 || fs.ElidedCalls != 0 {
 		t.Errorf("find_symbol = %+v, want zero truncating/elided (no elided field logged)", fs)
+	}
+}
+
+// TestReceiptCarriesTokenEstimate is PE-20 (docs/design/progress-and-
+// economics.md §5): every receipt already carries its response byte count
+// (BA-6, ResponseBytes); it gains an estimated token count beside it —
+// receiptTokens wraps internal/cost.Estimate (four characters per token),
+// named as an estimate, never presented as a measured count.
+func TestReceiptCarriesTokenEstimate(t *testing.T) {
+	body := []byte(`{"content":[{"type":"text","text":"hello world, this is a receipt"}]}`)
+	want := cost.Estimate(string(body))
+	if want == 0 {
+		t.Fatalf("fixture body must be non-trivial: cost.Estimate = 0")
+	}
+	if got := receiptTokens(body); got != want {
+		t.Fatalf("receiptTokens(%d bytes) = %d, want %d (cost.Estimate over the same bytes)", len(body), got, want)
+	}
+
+	var buf bytes.Buffer
+	l := NewCallLogger(&buf)
+	l.log("search", "svc", "coding", "agent", "", "", false, 0, nil,
+		callOutcome{ResponseBytes: len(body), ResponseTokens: receiptTokens(body)}, time.Millisecond, nil)
+
+	var entry callLogEntry
+	if err := json.Unmarshal(bytes.TrimSpace(buf.Bytes()), &entry); err != nil {
+		t.Fatalf("decode logged entry: %v", err)
+	}
+	if entry.ResponseBytes != len(body) {
+		t.Fatalf("entry.ResponseBytes = %d, want %d", entry.ResponseBytes, len(body))
+	}
+	if entry.ResponseTokens != want {
+		t.Fatalf("entry.ResponseTokens = %d, want %d beside response_bytes=%d", entry.ResponseTokens, want, entry.ResponseBytes)
+	}
+	if entry.ResponseTokens >= entry.ResponseBytes {
+		t.Fatalf("the token estimate (%d) must be smaller than the byte count (%d) it is derived from", entry.ResponseTokens, entry.ResponseBytes)
 	}
 }
 

@@ -224,7 +224,7 @@ func TestRefuseCancelsAllHeavyTicketsYoungestFirst(t *testing.T) {
 		{"symbol_context", `{}`, tenancy.ClassTree},
 		{"references", `{"symbol":"X"}`, tenancy.ClassTree},
 		{"references", `{"symbol":"X","services":["*"]}`, tenancy.ClassFleet},
-		{"cross_repo_blast_radius", `{}`, tenancy.ClassFleet},
+		{"cross_repo_callers", `{}`, tenancy.ClassFleet},
 		{"find_symbol", `{}`, tenancy.ClassIndex},
 		{"read_source", `{}`, tenancy.ClassPoint},
 		{"ingest", `{}`, tenancy.ClassIngest},

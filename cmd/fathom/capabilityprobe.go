@@ -34,7 +34,6 @@ func buildCapabilityProbe(baseURL, root, svc string, now time.Time) capability.P
 	}
 
 	m := cachedObservatoryModel(baseURL, now)
-	p.NarrateActive = m.Narrate.Active
 	p.LedgerSessions = m.Impact.LedgerSessions
 	p.AgentSurfaceTools = m.AgentSurfaceTools
 	p.AgentSchemaBytes = m.AgentSchemaBytes

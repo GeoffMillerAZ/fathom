@@ -92,7 +92,6 @@ func cmdEditHookPreFile(codec harness.Codec, filePath, cwd, sessionID, newConten
 			// full miss.
 		} else {
 			emitBeat("edit-hook", "denied", firingMeta(map[string]string{"phase": "pre", "target": "file"}, sessionID, filePath))
-			recordStoryRow(projDir, "guard-denied-file", nil)
 			fmt.Fprintln(stdout, string(out))
 			return 0
 		}
@@ -118,7 +117,6 @@ func cmdEditHookPreFile(codec harness.Codec, filePath, cwd, sessionID, newConten
 		return 0 // a codec that cannot answer is silence (§5.3)
 	}
 	emitBeat("edit-hook", "answered", firingMeta(map[string]string{"emitted": "true", "phase": "pre", "target": "file"}, sessionID, filePath))
-	recordStoryRow(projDir, "guard-served-file", nil)
 	fmt.Fprintln(stdout, string(out))
 	return 0
 }
@@ -360,7 +358,6 @@ func cmdEditHookPreCommand(codec harness.Codec, command, cwd, sessionID, url str
 		out, err := codec.EncodeOutput(harness.EventPreTool, harness.HookOutput{Deny: true, DenyReason: d.Reason})
 		if err == nil {
 			emitBeat("edit-hook", "denied", firingMeta(map[string]string{"phase": "pre", "target": "command"}, sessionID, ""))
-			recordStoryRow(projDir, "guard-denied-command", nil)
 			fmt.Fprintln(stdout, string(out))
 			return 0
 		}
@@ -409,7 +406,6 @@ func cmdEditHookPreCommand(codec harness.Codec, command, cwd, sessionID, url str
 		return 0 // a codec that cannot answer is silence (§5.3)
 	}
 	emitBeat("edit-hook", "answered", firingMeta(map[string]string{"emitted": "true", "phase": "pre", "target": "command"}, sessionID, ""))
-	recordStoryRow(projDir, "guard-served-command", nil)
 	fmt.Fprintln(stdout, string(out))
 	return 0
 }

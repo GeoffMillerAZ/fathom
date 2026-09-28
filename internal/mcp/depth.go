@@ -122,7 +122,7 @@ func sortedDepthRows(infos map[string]depthInfo) []depthRow {
 	return rows
 }
 
-// blastBucket is one `by_depth` entry of blast_radius / diff_impact: the
+// blastBucket is one `by_depth` entry of blast_radius: the
 // symbols at that distance from the changed files, each with the
 // confidence of the edge that pulled it in (absent at depth 0 — the changed
 // symbols themselves are index facts, not edges).

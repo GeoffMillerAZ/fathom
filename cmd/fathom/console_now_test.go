@@ -109,7 +109,7 @@ func TestConsoleNow_QueueSinceAndPulse(t *testing.T) {
 	root := withWaveBLedgers(t, f)
 
 	env := f.pageJSON(t, "/")
-	if strings.Join(env.Verbs, "|") != "fathom brief --json|fathom fleet report --json" {
+	if strings.Join(env.Verbs, "|") != "fathom fleet report --json" {
 		t.Fatalf("Now renders %v", env.Verbs)
 	}
 	if strings.Join(env.ProjectVerbs, "|") != verbPlansStatusFor+"|"+verbCertifyStatusFor {
@@ -119,12 +119,8 @@ func TestConsoleNow_QueueSinceAndPulse(t *testing.T) {
 	if err := json.Unmarshal(env.Model, &rep); err != nil {
 		t.Fatal(err)
 	}
-	var section nowReport
-	if err := json.Unmarshal(env.Sections["fathom brief --json"], &section); err != nil {
-		t.Fatal(err)
-	}
-	if rep.Schema != nowReportSchema || rep.GeneratedAt != section.GeneratedAt || len(rep.Attention.Items) != len(section.Attention.Items) {
-		t.Errorf("the page's model and its brief section differ: %+v / %+v", rep.Summary, section.Summary)
+	if rep.Schema != nowReportSchema {
+		t.Errorf("the page's model schema = %q, want %q", rep.Schema, nowReportSchema)
 	}
 	a := rep.Attention
 	if len(a.Items) < 2 || a.Items[0].Kind != console.AttentionGate || a.Items[1].Kind != console.AttentionUnproven {
@@ -168,7 +164,7 @@ func TestConsoleNow_QueueSinceAndPulse(t *testing.T) {
 		t.Fatalf("GET / = %d, %d h1", code, strings.Count(body, "<h1"))
 	}
 	for _, want := range []string{
-		`data-console-copy="fathom brief --json"`, `data-console-copy="fathom fleet report --json"`,
+		`data-console-copy="fathom fleet report --json"`,
 		`id="attention"`, `id="since"`, `id="pulse"`, `data-attention-item data-kind="gate"`,
 		`data-console-copy="cd ` + root + ` &amp;&amp; fathom verify --service payment-service --plan docs/plans/pay.md"`,
 		`href="/plans?svc=payment-service"`, `data-change="restart"`, `data-shared-spark`,
@@ -185,21 +181,6 @@ func TestConsoleNow_QueueSinceAndPulse(t *testing.T) {
 	}
 	assertRoleUtilitiesOnly(t, body)
 	assertLinksResolve(t, "/", body)
-
-	// The verb prints the page's section (P10): the CLI reads the store the
-	// daemon recorded, read-only.
-	var out, errb bytes.Buffer
-	if code := run([]string{"brief", "--json", "--url", f.ts.URL}, &out, &errb); code != 0 {
-		t.Fatalf("brief --json = %d: %s", code, errb.String())
-	}
-	var fromVerb, fromPage any
-	_ = json.Unmarshal(out.Bytes(), &fromVerb)
-	_ = json.Unmarshal(env.Sections["fathom brief --json"], &fromPage)
-	vb, _ := json.Marshal(fromVerb)
-	pb, _ := json.Marshal(fromPage)
-	if !bytes.Equal(vb, pb) {
-		t.Errorf("brief --json differs from the page:\nverb %s\npage %s", vb, pb)
-	}
 }
 
 // TestConsoleFleet_TableSortFilterAndRollup renders the Fleet page: the

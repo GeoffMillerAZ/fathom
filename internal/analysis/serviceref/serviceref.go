@@ -131,7 +131,7 @@ func (h Hop) CrossRepoEdge() core.CrossRepoEdge {
 }
 
 // Payload renders h as a plain map[string]any for MCP tool output —
-// shared by blast_radius, cross_repo_blast_radius and review_diff so their
+// shared by blast_radius and review_diff so their
 // service_ref reporting never drifts into three slightly different shapes.
 // Always carries kind:"service_ref" and tier:"heuristic".
 func (h Hop) Payload() map[string]any {

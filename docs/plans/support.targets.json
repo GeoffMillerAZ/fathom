@@ -1,0 +1,282 @@
+[
+  {
+    "kind": "client",
+    "id": "claude-code",
+    "name": "Claude Code",
+    "target": { "mcp-tools": true, "stanza": true, "obligations-post-edit": true },
+    "plan_row": "SM-13",
+    "wave": 1
+  },
+  {
+    "kind": "client",
+    "id": "codex",
+    "name": "Codex",
+    "target": { "mcp-tools": true, "stanza": true, "obligations-post-edit": true },
+    "plan_row": "SM-13",
+    "wave": 1
+  },
+  {
+    "kind": "client",
+    "id": "cursor",
+    "name": "Cursor",
+    "target": { "mcp-tools": true, "stanza": true, "obligations-post-edit": true },
+    "plan_row": "SM-13",
+    "wave": 1
+  },
+  {
+    "kind": "client",
+    "id": "copilot",
+    "name": "Copilot",
+    "target": { "mcp-tools": true, "stanza": true, "obligations-post-edit": true },
+    "plan_row": "SM-13",
+    "wave": 1
+  },
+  {
+    "kind": "client",
+    "id": "gemini-cli",
+    "name": "Gemini CLI",
+    "target": { "mcp-tools": true, "stanza": true, "obligations-post-edit": true },
+    "plan_row": "SM-13",
+    "wave": 1
+  },
+  {
+    "kind": "rules",
+    "id": "agents-md",
+    "name": "AGENTS.md",
+    "target": { "read": true, "levels": true, "served-at-edit": true },
+    "plan_row": "SM-15",
+    "wave": 2
+  },
+  {
+    "kind": "rules",
+    "id": "cursor-rules",
+    "name": ".cursor/rules",
+    "target": { "read": true, "levels": true, "served-at-edit": true },
+    "plan_row": "SM-15",
+    "wave": 2
+  },
+  {
+    "kind": "rules",
+    "id": "copilot-instructions",
+    "name": "copilot-instructions.md",
+    "target": { "read": true, "levels": true, "served-at-edit": true },
+    "plan_row": "SM-15",
+    "wave": 2
+  },
+  {
+    "kind": "rules",
+    "id": "kiro-steering",
+    "name": ".kiro/steering",
+    "target": { "read": true, "levels": true, "served-at-edit": true },
+    "plan_row": "SM-15",
+    "wave": 2
+  },
+  {
+    "kind": "rules",
+    "id": "bugbot-md",
+    "name": "BUGBOT.md",
+    "target": { "read": true, "levels": true, "served-at-edit": true },
+    "plan_row": "SM-15",
+    "wave": 2
+  },
+  {
+    "kind": "rules",
+    "id": "gemini-md",
+    "name": "GEMINI.md",
+    "target": { "read": true, "levels": true, "served-at-edit": true },
+    "plan_row": "SM-15",
+    "wave": 2
+  },
+  {
+    "kind": "coverage",
+    "id": "go-cover",
+    "name": "Go cover",
+    "target": { "parse": true, "block-join": true, "per-layer": true },
+    "plan_row": "SM-16",
+    "wave": 2
+  },
+  {
+    "kind": "coverage",
+    "id": "lcov",
+    "name": "lcov",
+    "target": { "parse": true, "block-join": true, "per-layer": true },
+    "plan_row": "SM-16",
+    "wave": 2
+  },
+  {
+    "kind": "coverage",
+    "id": "cobertura",
+    "name": "Cobertura",
+    "target": { "parse": true, "block-join": true, "per-layer": true },
+    "plan_row": "SM-16",
+    "wave": 2
+  },
+  {
+    "kind": "coverage",
+    "id": "jacoco",
+    "name": "JaCoCo",
+    "target": { "parse": true, "block-join": true, "per-layer": true },
+    "plan_row": "SM-16",
+    "wave": 2
+  },
+  {
+    "kind": "coverage",
+    "id": "coverage-py",
+    "name": "coverage.py JSON",
+    "target": { "parse": true, "block-join": true, "per-layer": true },
+    "plan_row": "SM-16",
+    "wave": 2
+  },
+  {
+    "kind": "coverage",
+    "id": "istanbul",
+    "name": "Istanbul",
+    "target": { "parse": true, "block-join": true, "per-layer": true },
+    "plan_row": "SM-16",
+    "wave": 2
+  },
+  {
+    "kind": "coverage",
+    "id": "llvm-cov",
+    "name": "llvm-cov",
+    "target": { "parse": true, "block-join": true, "per-layer": true },
+    "plan_row": "SM-16",
+    "wave": 2
+  },
+  {
+    "kind": "contract",
+    "id": "route",
+    "name": "route",
+    "target": { "provider-extract": true, "consumer-extract": true, "link-precision": true, "link-recall": true, "drift": true },
+    "plan_row": "SM-17",
+    "wave": 2
+  },
+  {
+    "kind": "contract",
+    "id": "rpc",
+    "name": "rpc",
+    "target": { "provider-extract": true, "consumer-extract": true, "link-precision": true, "link-recall": true, "drift": true },
+    "plan_row": "SM-17",
+    "wave": 2
+  },
+  {
+    "kind": "contract",
+    "id": "gql",
+    "name": "gql",
+    "target": { "provider-extract": true, "consumer-extract": true, "link-precision": true, "link-recall": true, "drift": true },
+    "plan_row": "SM-17",
+    "wave": 2
+  },
+  {
+    "kind": "contract",
+    "id": "topic",
+    "name": "topic",
+    "target": { "provider-extract": true, "consumer-extract": true, "link-precision": true, "link-recall": true, "drift": true },
+    "plan_row": "SM-17",
+    "wave": 2
+  },
+  {
+    "kind": "contract",
+    "id": "table",
+    "name": "table",
+    "target": { "provider-extract": true, "consumer-extract": true, "link-precision": true, "link-recall": true, "drift": true },
+    "plan_row": "SM-17",
+    "wave": 2
+  },
+  {
+    "kind": "contract",
+    "id": "env",
+    "name": "env",
+    "target": { "provider-extract": true, "consumer-extract": true, "link-precision": true, "link-recall": true, "drift": true },
+    "plan_row": "SM-17",
+    "wave": 2
+  },
+  {
+    "kind": "contract",
+    "id": "config",
+    "name": "config",
+    "target": { "provider-extract": true, "consumer-extract": true, "link-precision": true, "link-recall": true, "drift": true },
+    "plan_row": "SM-17",
+    "wave": 2
+  },
+  {
+    "kind": "contract",
+    "id": "pkg",
+    "name": "pkg",
+    "target": { "provider-extract": true, "consumer-extract": true, "link-precision": true, "link-recall": true, "drift": true },
+    "plan_row": "SM-17",
+    "wave": 2
+  },
+  {
+    "kind": "contract",
+    "id": "image",
+    "name": "image",
+    "target": { "provider-extract": true, "consumer-extract": true, "link-precision": true, "link-recall": true, "drift": true },
+    "plan_row": "SM-17",
+    "wave": 2
+  },
+  {
+    "kind": "contract",
+    "id": "deploy",
+    "name": "deploy",
+    "target": { "provider-extract": true, "consumer-extract": true, "link-precision": true, "link-recall": true, "drift": true },
+    "plan_row": "SM-17",
+    "wave": 2
+  },
+  {
+    "kind": "contract",
+    "id": "cli",
+    "name": "cli",
+    "target": { "provider-extract": true, "consumer-extract": true, "link-precision": true, "link-recall": true, "drift": true },
+    "plan_row": "SM-17",
+    "wave": 2
+  },
+  {
+    "kind": "ecosystem",
+    "id": "go",
+    "name": "Go",
+    "target": { "cache-read": true, "lockfile-graph": true, "api-index": true, "upgrade-impact": true, "docs": true, "vuln-reach": true },
+    "plan_row": "SM-18",
+    "wave": 2
+  },
+  {
+    "kind": "ecosystem",
+    "id": "npm",
+    "name": "npm",
+    "target": { "cache-read": true, "lockfile-graph": true, "api-index": true, "upgrade-impact": true, "docs": true, "vuln-reach": true },
+    "plan_row": "SM-18",
+    "wave": 2
+  },
+  {
+    "kind": "ecosystem",
+    "id": "pypi",
+    "name": "PyPI",
+    "target": { "cache-read": true, "lockfile-graph": true, "api-index": true, "upgrade-impact": true, "docs": true, "vuln-reach": true },
+    "plan_row": "SM-18",
+    "wave": 2
+  },
+  {
+    "kind": "ecosystem",
+    "id": "maven",
+    "name": "Maven",
+    "target": { "cache-read": true, "lockfile-graph": true, "api-index": true, "upgrade-impact": true, "docs": true, "vuln-reach": true },
+    "plan_row": "SM-18",
+    "wave": 2
+  },
+  {
+    "kind": "ecosystem",
+    "id": "cargo",
+    "name": "Cargo",
+    "target": { "cache-read": true, "lockfile-graph": true, "api-index": true, "upgrade-impact": true, "docs": true, "vuln-reach": true },
+    "plan_row": "SM-18",
+    "wave": 2
+  },
+  {
+    "kind": "ecosystem",
+    "id": "nuget",
+    "name": "NuGet",
+    "target": { "cache-read": true, "lockfile-graph": true, "api-index": true, "upgrade-impact": true, "docs": true, "vuln-reach": true },
+    "plan_row": "SM-18",
+    "wave": 2
+  }
+]

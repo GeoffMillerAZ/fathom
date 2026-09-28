@@ -12,7 +12,7 @@ of signal exist.
 
 ## Wave 1: every client's rules and hooks, reviewer output
 
-- [ ] The `RulesSource` port feeding the existing compile path; every compiled rule still passes I27; `[rules.sources]` levels `off`/`warn`/`error` (§3) {id: GL-1, symbol: RegisterRulesSource, package: internal/semantic, reachable_from: TestRulesSourceLevels}
+- [x] The `RulesSource` port feeding the existing compile path; every compiled rule still passes I27; `[rules.sources]` levels `off`/`warn`/`error` (§3) {id: GL-1, symbol: RegisterRulesSource, package: internal/semantic, reachable_from: TestRulesSourceLevels}
 - [ ] Cursor rules: `.cursor/rules/*.mdc` frontmatter `globs` become scope, `alwaysApply` repo scope {id: GL-2, symbol: cursorRulesRead, package: internal/semantic, reachable_from: TestCursorRulesScopes, needs: "GL-1"}
 - [ ] Copilot instructions: `.github/copilot-instructions.md` and `.github/instructions/*.instructions.md` with `applyTo` scope {id: GL-3, symbol: copilotInstructionsRead, package: internal/semantic, reachable_from: TestCopilotInstructionsApplyTo, needs: "GL-1"}
 - [ ] Kiro steering: `.kiro/steering/*.md` with `inclusion` and `fileMatchPattern`; `manual` compiled but not served unasked {id: GL-4, symbol: kiroSteeringRead, package: internal/semantic, reachable_from: TestKiroSteeringInclusion, needs: "GL-1"}
@@ -21,8 +21,8 @@ of signal exist.
 - [ ] Cursor hook codec for the flat snake_case `.cursor/hooks.json` shape; `fathom harness hooks --harness cursor` prints entries (§4) {id: GL-7, symbol: cursorCodec, package: internal/harness, reachable_from: TestCursorCodecRoundTrip}
 - [ ] Copilot hook codec on the harness port {id: GL-8, symbol: copilotCodec, package: internal/harness, reachable_from: TestCopilotCodecRoundTrip}
 - [ ] Gemini CLI verified from a real session's beats; the descriptor leaves `unverified` only then (ADR-029) {id: GL-9, oracle: lexical, path: docs/adoption/gemini-cli.md, pattern: "^Verified live on [0-9]{4}-[0-9]{2}-[0-9]{2}"}
-- [ ] SARIF for obligations and review findings through `verify.RenderSARIF` with their own rule vocabularies (§8) {id: GL-20, symbol: obligationsSARIF, package: cmd/fathom, reachable_from: TestObligationsAndReviewSARIF}
-- [ ] A check-run payload (name, conclusion, summary, at most 50 annotations) written to stdout or a file, never posted {id: GL-21, symbol: renderCheckRun, package: internal/verify, reachable_from: TestCheckRunPayloadCapped}
+- [x] SARIF for obligations and review findings through `verify.RenderSARIF` with their own rule vocabularies (§8) {id: GL-20, symbol: obligationsSARIF, package: cmd/fathom, reachable_from: TestObligationsAndReviewSARIF}
+- [x] A check-run payload (name, conclusion, summary, at most 50 annotations) written to stdout or a file, never posted {id: GL-21, symbol: renderCheckRun, package: internal/verify, reachable_from: TestCheckRunPayloadCapped}
 
 ## Wave 2: the signal source, rule effectiveness, learning
 

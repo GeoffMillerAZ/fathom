@@ -1,31 +1,28 @@
 package main
 
 import (
-	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
-// TestCmdBrief_HonestSections pins OB-7 and BR-1: the brief always carries
-// its four questions plus the plain-language opener and the work order,
-// absences are NAMED under "Not measured", and with real ledger rows the
-// counts carry denominators. Nothing is sent anywhere: --print writes only
-// to stdout, the default writes only a local file.
-func TestCmdBrief_HonestSections(t *testing.T) {
+// TestRenderBriefMD_HonestSections pins OB-7 and BR-1 on the surviving
+// renderer (SR-14, surface reckoning F-53, removed the `fathom brief` CLI
+// verb itself — 0 lifetime calls — but renderBriefMD stays: the console's
+// /brief page is the surviving caller): the brief always carries its four
+// questions plus the plain-language opener and the work order, absences
+// are NAMED under "Not measured", and with real ledger rows the counts
+// carry denominators.
+func TestRenderBriefMD_HonestSections(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("FATHOM_ARM_STATE", filepath.Join(dir, "arm.json"))
-	t.Setenv("FATHOM_NARRATE_STATE", filepath.Join(dir, "narrate.json"))
 	t.Setenv("FATHOM_SESSION_LEDGER", filepath.Join(dir, "ledger.jsonl"))
 	resetObsCache()
 
 	t.Run("empty state names every absence", func(t *testing.T) {
-		var out, errb bytes.Buffer
-		if code := cmdBrief([]string{"--url", "http://127.0.0.1:1", "--print"}, &out, &errb); code != 0 {
-			t.Fatalf("exit %d, stderr: %s", code, errb.String())
-		}
-		md := out.String()
+		md := renderBriefMD(buildObservatoryModel("http://127.0.0.1:1", time.Now()))
 		for _, want := range []string{
 			"## The short version",
 			"## 1 — How much is fathom being used?",
@@ -35,7 +32,7 @@ func TestCmdBrief_HonestSections(t *testing.T) {
 			"## 5 — Is the knowledge compounding?",
 			"## Could fathom help more if it were configured differently?",
 			"## Not measured",
-			"law 12", "law 14",
+			"law 12",
 		} {
 			if !strings.Contains(md, want) {
 				t.Errorf("brief missing %q", want)
@@ -57,28 +54,10 @@ func TestCmdBrief_HonestSections(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(dir, "ledger.jsonl"), []byte(lines), 0o644); err != nil {
 			t.Fatal(err)
 		}
-		var out, errb bytes.Buffer
-		if code := cmdBrief([]string{"--url", "http://127.0.0.1:1", "--print"}, &out, &errb); code != 0 {
-			t.Fatalf("exit %d", code)
-		}
-		md := out.String()
+		resetObsCache()
+		md := renderBriefMD(buildObservatoryModel("http://127.0.0.1:1", time.Now()))
 		if !strings.Contains(md, "caught before they were believed: 2") || !strings.Contains(md, "1 of 1") {
 			t.Errorf("brief must carry the count WITH its denominator; got:\n%s", md)
-		}
-	})
-
-	t.Run("default mode writes a local file and says so", func(t *testing.T) {
-		outDir := filepath.Join(dir, "briefs")
-		var out, errb bytes.Buffer
-		if code := cmdBrief([]string{"--url", "http://127.0.0.1:1", "--out", outDir}, &out, &errb); code != 0 {
-			t.Fatalf("exit %d", code)
-		}
-		if !strings.Contains(out.String(), "sharing is a human verb") {
-			t.Error("brief must state that nothing was sent")
-		}
-		matches, _ := filepath.Glob(filepath.Join(outDir, "brief-*.md"))
-		if len(matches) != 1 {
-			t.Fatalf("want exactly one brief file, got %v", matches)
 		}
 	})
 }

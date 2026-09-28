@@ -932,12 +932,17 @@ push); exit `2` — operational error (daemon unreachable, service unindexed, em
 fathom verify --service <id> --plan docs/plans/<slug>.md [--plan <more>...] \
   [--store <path> | --url http://localhost:7575] [--strict] [--require-all] \
   [--concern <id>] [--json | --format text|json|sarif] [--quiet] [--quiet-pass] \
-  [--mutation <report>] [--strict-mutation] [--since <ref>]
+  [--mutation <report>] [--strict-mutation] [--since <ref>] [--dialect <id>] \
+  [--converge [--base <ref>] [--write-fixups]]
 ```
 
 | Flag | Default | Description |
 |---|---|---|
-| `--plan` | (required, repeatable) | Markdown plan file(s) to verify |
+| `--plan` | (required, repeatable) | Plan file(s) to verify: a plan-grammar-v2 Markdown checklist, or a foreign spec read in place (ADR-049) — Spec Kit's `specs/<feature>/tasks.md` (`T###` rows) or OpenSpec's `openspec/changes/<id>/tasks.md` (numbered rows, requirements linked from the change's spec deltas as `accept:`). A foreign task's contract is an inline fathom annotation, else the first file path it names (a lexical "exists and is non-empty" contract); a task naming nothing verifies `no-contract`. The file is never written; verdicts name its own lines (`(<file>:<line>)` in text, `line` in JSON), and daemon mode sends the plan synthesized into the native grammar |
+| `--converge` | `false` | Also print each plan's converge report (ADR-049, `docs/design/spec-interop.md` §5): **claimed-unproven** tasks with their failing criterion, **unanchored** tasks (no contract), and **unclaimed code** — symbols whose definitions overlap a hunk of `git diff -U0 <base>` (working tree included) that no task anchors by `symbol:` or by naming its file. The last section reads the index's symbol ranges for the changed files only and needs `--store`; without it, or outside a git work tree, it says why it was not evaluated. JSON gains a `converge` array. Exit codes stay the gate's |
+| `--base` | the spec's creation commit | `--converge` only: the branch range's base ref |
+| `--write-fixups` | `false` | `--converge` only: write one open task per claimed-unproven and unclaimed item inside the spec's `<!-- fathom:begin converge -->` … `<!-- fathom:end converge -->` block (appended when absent), in the spec's own checkbox shape (`T###` numbered after the spec's own tasks for Spec Kit, a new top-level number for OpenSpec) and carrying a contract; a re-run replaces the block's contents; text outside the markers never changes (law 15), and a lone marker is refused (exit 2) |
+| `--dialect` | detected | Read every `--plan` with this dialect (`fathom-v2`, `speckit`, `openspec`) instead of detecting it by path and content shape; an unknown id is exit 2 |
 | `--service` | (required) | Service ID to verify against |
 | `--store` | `""` | store path (direct mode, bypasses the daemon; required for CI) |
 | `--url` | `defaultFathomURL()` | fathom `serve-http` base URL (HTTP mode; ignored when `--store` is set). The daemon's response budget cuts a long plan's `verify_plan` answer; the cut rows are verified in follow-up calls, and a row whose verdict never arrives reads unknown (`verdict-elided`), never absent from the gate |
@@ -2187,7 +2192,7 @@ without a second bespoke hashing API:
   hashed off the working tree, or `--manifest FILE`'s own declared
   digests).
 - `closure` — the typed import/call closure of the changed files, walked
-  forward over the SAME typed call graph `blast_radius`/`diff_impact` use
+  forward over the SAME typed call graph `blast_radius`/`review_diff` use
   (never a new import parser), digested by each reached file's store
   fingerprint.
 - `rules` — the project's `.fathom/rules/archconformance.cue` +
@@ -2937,7 +2942,7 @@ retired memories never surface. Served by the `memory_search` MCP tool
 ### `plugin` — one tree, two manifests
 
 ```sh
-fathom plugin render [--out DIR] [--mcp-url U] [--marketplace]
+fathom plugin render [--out DIR] [--mcp-url U] [--marketplace] [--client cursor]
 ```
 
 Renders the plugin tree into `--out` (the output dir belongs to the
@@ -2946,16 +2951,21 @@ generator, so re-rendering overwrites) from the same embedded sources
 
 | File | Loader |
 |---|---|
-| `plugin.json`, `mcp.json` | Agent Plugins 1.0 (VS Code, Cursor, Copilot, Codex, Kiro, …): the closed `$schema`-selected manifest and the `streamable-http` loopback registration |
-| `.claude-plugin/plugin.json`, `.mcp.json`, `hooks/hooks.json` | Claude Code: its manifest, the `type: http` registration, the full hook template spelled via the shim-stable `fathom` |
-| `skills/<name>/SKILL.md` | both — nine skills, spec-only frontmatter (the six Agent Skills fields are the shared floor) |
+| `plugin.json`, `mcp.json` | Agent Plugins 1.0 (VS Code, Cursor, Copilot, Codex, Kiro, …): the closed `$schema`-selected manifest and the `streamable-http` loopback registration, plus an `X-Fathom-Default-Surface` header naming the `/rpc/agent` default eight (RH-5) |
+| `.claude-plugin/plugin.json`, `.mcp.json`, `hooks/hooks.json` | Claude Code: its manifest (whose open `metadata` field also carries `defaultSurface`/`surfaceGroups`, RH-5), the `type: http` registration, the full hook template spelled via the shim-stable `fathom` |
+| `.cursor-plugin/plugin.json` (only with `--client cursor`) | Cursor's own manifest (RH-8): `mcpServers` is a path string (`"./mcp.json"`) pointing at the portable file above, not an inline server map — the one documented structural difference from the Agent Plugins pair |
+| `skills/<name>/SKILL.md` | both — ten skills, spec-only frontmatter (the six Agent Skills fields are the shared floor) |
 
 Both manifests vet against `schema/plugin/schema.cue` under `task cue-vet`
 (`TestPluginManifestsVet`), the Agent Plugins pair is golden-pinned
 (`cmd/fathom/testdata/plugin/`), and `scripts/ci.sh` runs `claude plugin
 validate --strict` over the rendered tree when a `claude` binary is on PATH
 (a named skip otherwise). `--marketplace` also writes
-`.claude-plugin/marketplace.json` beside the plugin dir.
+`.claude-plugin/marketplace.json` beside the plugin dir. A rendered
+template's content is pinned to a digest (`pluginTemplateDigestPin`,
+`TestPluginTemplateDigestPinned`): regenerate the pin and bump
+`pluginVersion` together whenever a skill, hook, or the default surface
+moves.
 
 ---
 

@@ -301,25 +301,6 @@ func Default() Registry {
 			},
 		},
 		{
-			ID:                   "narrate",
-			Switchable:           false,
-			NotSwitchableBecause: "narration is a bounded window, not a standing setting; `fathom narrate on --for 7d` is the real control and it self-expires",
-			Seam:                 SeamCore,
-			Summary:              "Captures short stories of what happened in a session alongside the counts. Off by default; it is a lens, never evidence (law 14).",
-			Default:              false,
-			Scopes:               ScopeAny,
-			Cost:                 "a story row per session",
-			Detect: func(p Probe) State {
-				if !p.NarrateActive {
-					return State{Reason: "the narration window is not armed"}
-				}
-				return State{Operating: true, Detail: "armed"}
-			},
-			Remedy: func(Probe) Remedy {
-				return Remedy{Cmd: "fathom narrate on --for 7d", Note: "self-expiring by design — narration is for a question you are asking now"}
-			},
-		},
-		{
 			ID:         "assess",
 			Switchable: true,
 			Seam:       SeamCore,

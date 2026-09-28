@@ -17,6 +17,14 @@ package main
 type verb struct {
 	Name    string
 	Summary string
+	// Hidden freezes a verb out of `fathom help` (SR-16/SR-18, surface
+	// reckoning F-53/F-70) while it stays fully dispatched and callable—
+	// for a verb an ADR keeps alive on a closed allowlist (research,
+	// ADR-046 decision 6) or behind an off-by-default capability (assess,
+	// ADR-046/ADR-053), not one anyone should discover by browsing help.
+	// TestHelpListsEveryDispatchedVerb still requires it dispatched AND in
+	// this table; only printUsage's rendering skips it.
+	Hidden bool
 }
 
 // verbTable is every subcommand `main` dispatches, in help order.
@@ -25,7 +33,7 @@ var verbTable = []verb{
 	{Name: "ingest-diff", Summary: "Ingest only files changed since a git ref"},
 	{Name: "watch", Summary: "Poll for file changes and re-ingest automatically"},
 	{Name: "gen-claude-md", Summary: "Generate a CLAUDE.md from stored symbols"},
-	{Name: "gen-status-cue", Summary: "Generate a CUE status file from a plan + evidence"},
+	{Name: "gen-status-cue", Summary: "Generate a CUE status file from a plan + evidence", Hidden: true}, // SR-30: internal dev/round-trip tooling (ADR-018 decision 3), not agent-facing
 	{Name: "gen-platform-manifest", Summary: "Generate a platform manifest from *.sqlite/*.db store files"},
 	{Name: "inspect", Summary: "List stored symbols for a service"},
 	{Name: "query", Summary: "Query symbols for a concern"},
@@ -63,7 +71,7 @@ var verbTable = []verb{
 	{Name: "daemon", Summary: "The serve-http launchd agent: install (writes the plist with YOUR paths and starts it; --reconcile migrates an installed one) | status | stop (the kill switch) | start | pause | resume | uninstall"},
 	{Name: "resources", Summary: "What the daemon takes from this machine, from files (works when it is down): budget, footprint history, lifecycle, quarantine, host, in-flight, hooks, scratch daemons, disk, last capture; exit 0 within budget, 1 over/crash-looping/stopped/leaked, 2 unreadable [--json] [--since 24h] [--id ID]"},
 	{Name: "gc", Summary: "Disk retention by class (call log rotated and archived — never deleted; old session stamps, dead daemon records, stale test temp dirs, old scenario-bench worktrees and build binaries, diag captures past 10/200 MiB); dry run by default [--apply] [--json] [--workspace DIR] [--call-log PATH]"},
-	{Name: "gen-plan-cue", Summary: "Emit the generated CUE shadow of a Markdown plan (round-trip verified)"},
+	{Name: "gen-plan-cue", Summary: "Emit the generated CUE shadow of a Markdown plan (round-trip verified)", Hidden: true}, // SR-30: internal dev/round-trip tooling (ADR-018 decision 3), not agent-facing
 	{Name: "instrument", Summary: "Channel-health report: injection coverage, rollup, liveness alarms (--adoption: the flywheel gauge)"},
 	{Name: "observe", Summary: "File a structured friction observation into .fathom/observations.md"},
 	{Name: "init", Summary: "One-command repo wiring: .fathomignore, ingest, Claude Code hooks, CLAUDE.md/AGENTS.md stanza"},
@@ -75,13 +83,11 @@ var verbTable = []verb{
 	{Name: "flywheel", Summary: "Are the feedback loops closed? Each loop CLOSED/OPEN/IDLE with its evidence and remedy"},
 	{Name: "rate", Summary: "Rate this session 1-5: the OUTCOME half of the A/B criterion (fewer tokens is not a win if you got less done)"},
 	{Name: "arm", Summary: "A/B counterfactual arm (law 12): off --for D --sessions N [--note ...] | on"},
-	{Name: "narrate", Summary: "Self-expiring story mode: on --for D --sessions N [--note ...] | off"},
-	{Name: "assess", Summary: "Priced, explicit, off by default: a model judges a unit's on-disk work (typed questions, never the transcript): [--session S] [--interventions] [--dry-run] [--json] | spend"},
+	{Name: "assess", Summary: "Priced, explicit, off by default: a model judges a unit's on-disk work (typed questions, never the transcript): [--session S] [--interventions] [--dry-run] [--json] | spend", Hidden: true}, // SR-18: frozen (ADR-046/ADR-053)
 	{Name: "retro", Summary: "Did the firings help? Join a session's interventions to outcomes: [--session S | latest stamped] [--write] [--json]"},
-	{Name: "brief", Summary: "Write the shareable markdown value brief (honesty covenant included) to ~/.fathom/briefs, or --print"},
 	{Name: "thread", Summary: "Continuity threads: brief | note | point | list | close | promote | handoff — the work, not the session (vision 21)"},
 	{Name: "fleet", Summary: "Fleet operations: report | reconcile [--apply] | realization --service S | receipts | undo <receipt> (every write receipted, every receipt reversible) | remedy: time-to-remedy per repository from the report snapshots"},
-	{Name: "research", Summary: "The research flywheel: report (aggregate local evidence) | bundle (sanitized, shareable summary)"},
+	{Name: "research", Summary: "The research flywheel: report (aggregate local evidence) | bundle (sanitized, shareable summary)", Hidden: true}, // SR-16: frozen (ADR-046 decision 6), not deleted
 	{Name: "module", Summary: "Expert-module lifecycle: init | sources | map | compile | eval | doctor | pack | runs"},
 	{Name: "rules", Summary: "Compiled governance (VB-13/VB-14): gen-test [--root DIR] [--out DIR] emits a Go test from .fathom/guard.cue's layer_rules | replay --since <ref|N> [--rules FILE] [--json]: evaluate today's rules against past commits (VB-16)"},
 	{Name: "receipt", Summary: "A stranger's re-derivation (VB-20): verify [--repo DIR] <receipt.json> checks a saved answer against a bare git checkout with go/types and git alone — no daemon, no store"},
@@ -93,6 +99,7 @@ var verbTable = []verb{
 	{Name: "plugin", Summary: "plugin render [--out DIR] [--mcp-url U] [--marketplace]: render one plugin tree carrying both the Claude Code and the Agent Plugins 1.0 manifests over one skills/ dir"},
 	{Name: "decide", Summary: "The decision port (ADR-042): log [--site S] [--json] — the provider, its sites, the ruling log beside the call log and the latest calibration reading's table"},
 	{Name: "harness", Summary: "The harness registry (ADR-029): list [--json] | capabilities [--harness ID] [--json] | matrix [--url U] [--json] — every vehicle per capability, unverified rows say so"},
+	{Name: "support", Summary: "The support matrix (SM): [--kind language|tool|client|spec|rules|coverage|contract|ecosystem] [--json] — computed support level per kind, never a hand-kept catalog"},
 	{Name: "version", Summary: "Print version information"},
 	{Name: "help", Summary: "Show this help message"},
 }

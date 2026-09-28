@@ -119,6 +119,14 @@ package plan
 	// surface_change lists capability-inventory keys this row declares
 	// intentionally changed (not removed) — same matching rule as retires.
 	surface_change?: [...string]
+
+	// weight is the row's share of a weighted progress rollup (ADR-049,
+	// spec-interop design §4): a positive integer, default 1. Never gating.
+	weight?: int & >=1
+
+	// accept is the row's acceptance text (EARS-shaped where the author
+	// likes). Never gating by itself; proven only through certified_by.
+	accept?: string
 }
 
 // #Plan is the top-level schema for a hand-edited plan file.

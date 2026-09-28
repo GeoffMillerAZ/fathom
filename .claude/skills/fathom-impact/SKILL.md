@@ -159,6 +159,7 @@ only until daily snapshots persist, **experimental**), `/observatory/impact`
 (catches and discovery with denominators; the counterfactual pilot state
 machine), `/observatory/service` (per-dimension 30-day series from real
 call-log rows — a day with no rows renders Absent, never 0).
-`fathom brief --print` renders the same model as a shareable markdown
-value brief with an explicit "Not measured" section — write it, read it,
-and let a HUMAN decide where it goes (law 13).
+The console's `/brief` page renders the same model as a shareable markdown
+value brief with an explicit "Not measured" section (the `fathom brief` CLI
+verb itself was removed, SR-14, surface reckoning F-53 — 0 lifetime calls)
+— read it, download it, and let a HUMAN decide where it goes (law 13).

@@ -15,13 +15,11 @@ Answer "if I change X, what breaks — here and in every other service?" across 
 |---|---|---|
 | `find_callers` | MCP tool (investigation) | All symbols in the **current service** that call a named symbol |
 | `test_impact` | MCP tool (investigation) | Test functions that transitively reach the symbol via the call graph |
-| `blast_radius` | MCP tool (investigation) | Blast radius of **changed files**: symbols defined there + their transitive callers + affected tests + touched files |
-| `diff_impact` | MCP tool (investigation) | Alias of `blast_radius`, framed for diff/PR review |
+| `blast_radius` | MCP tool (investigation) | Blast radius of **changed files**: symbols defined there + their transitive callers + affected tests + touched files (widen with `max_depth:0, max_symbols:0` for the unbounded diff/PR recall its retired `diff_impact` alias gave, SR-25) |
 | `rename_impact` | MCP tool (coding) | Every call site that must be updated if the symbol is renamed |
 | `reachable` | MCP tool (coding) | Boolean: is there any directed call path from symbol A to symbol B? |
 | `cross_repo_callers` | MCP tool (platform) | All callers of a symbol **across every ingested service** via stored call edges (its `platform_callers` alias was deleted, SW-1) |
 | `references` | MCP tool (investigation) | Occurrence search for an identifier or string — across every service's source with `services: ["*"]`, evidence-tiered — catches string/config mentions no call edge records |
-| `cross_repo_blast_radius` | MCP tool (platform) | Blast radius of a **symbol across all services**: the symbol plus every cross-service caller |
 | `list_services` | MCP tool (platform) | All services in the fleet with detected languages and symbol counts |
 | `staleness_report` | MCP tool (shared) | Whether the index is out of date vs. current HEAD |
 | `ingest` | MCP tool | Re-index a service in-session to pull in new call edges |
@@ -37,7 +35,7 @@ With fathom:
 2. **Test impact is automatic.** `test_impact` walks the call graph transitively; Claude Code gets an exact test list to run rather than guessing.
 3. **Rename safety is explicit.** `rename_impact` returns every call site as a list; Claude Code can iterate it, edit each site, and confirm the list shrinks to zero.
 4. **Path existence is a boolean gate.** `reachable` lets Claude Code answer "does this change propagate to the payment path?" without speculative reasoning — reducing plan drift.
-5. **Interface-dispatch callers are no longer invisible.** For Go services (ADR-021 §3), `find_callers`/`blast_radius`/`diff_impact`/`symbol_context` additionally consume typed call edges: a caller reachable only through an interface method shared by several concrete implementations — previously an unconditional refusal, since the syntax-only graph can't disambiguate an overloaded method name — now shows up, kind-labeled (`direct` / `iface-dispatch`) in `find_callers`'s `typed_callers` and `symbol_context`'s `typed_edges`, and folded directly into `blast_radius`/`diff_impact`'s symbol/test/file sets.
+5. **Interface-dispatch callers are no longer invisible.** For Go services (ADR-021 §3), `find_callers`/`blast_radius`/`symbol_context` additionally consume typed call edges: a caller reachable only through an interface method shared by several concrete implementations — previously an unconditional refusal, since the syntax-only graph can't disambiguate an overloaded method name — now shows up, kind-labeled (`direct` / `iface-dispatch`) in `find_callers`'s `typed_callers` and `symbol_context`'s `typed_edges`, and folded directly into `blast_radius`'s symbol/test/file sets.
 
 The result: impact review that would take dozens of file reads and grep calls collapses to 3-5 structured tool calls, and Claude Code can cite specific files and line numbers from the evidence rather than hedging.
 
@@ -115,7 +113,7 @@ Produces the same cross-repo caller list. The `--repos` flag is a legacy Go-only
 
 ### Diff / PR variant: blast radius of a change
 
-When you have a set of changed files (a PR, a commit), use `blast_radius` (or its PR-framed alias `diff_impact`) to get the symbols those files define plus everything transitively affected — the exact review surface:
+When you have a set of changed files (a PR, a commit), use `blast_radius` to get the symbols those files define plus everything transitively affected — the exact review surface (pass `max_depth:0, max_symbols:0` for the unbounded recall its retired `diff_impact` alias always gave, SR-25):
 
 ```json
 { "name": "blast_radius", "arguments": { "service": "auth-lib", "changed_files": ["internal/auth/token.go"] } }
@@ -123,13 +121,10 @@ When you have a set of changed files (a PR, a commit), use `blast_radius` (or it
 
 Returns the defined symbols, their transitive callers, the affected tests, and the touched files.
 
-For a single symbol's reach across the **whole fleet** in one call, use `cross_repo_blast_radius`:
-
-```json
-{ "name": "cross_repo_blast_radius", "arguments": { "symbol": "ValidateToken" } }
-```
-
-Returns the symbol in each service plus every cross-service caller — the one-call answer to "who is affected, fleet-wide?"
+For a single symbol's reach across the **whole fleet**, `cross_repo_blast_radius` was
+removed (SR-10, surface reckoning F-17, zero lifetime calls); use `cross_repo_callers`
+to find the symbol's cross-service callers, then `blast_radius` (or `find_callers`) in
+each caller's own service for its transitive reach there.
 
 ## Setup & notes
 
@@ -141,7 +136,7 @@ Returns the symbol in each service plus every cross-service caller — the one-c
 { "name": "ingest", "arguments": { "service": "auth-lib" } }
 ```
 
-After ingest, verify the `Package` column and `Calls` edges are present by checking `find_callees` on a known symbol. CLI `fathom ingest` can contend with a concurrent Claude Code session's own write (SQLite serializes writers, ADR-020) and fail past `busy_timeout` — use the MCP `ingest` tool instead.
+After ingest, verify the `Package` column and `Calls` edges are present by checking `symbol_context` (its `callees` field, SR-21 — `find_callees` was merged into it) on a known symbol. CLI `fathom ingest` can contend with a concurrent Claude Code session's own write (SQLite serializes writers, ADR-020) and fail past `busy_timeout` — use the MCP `ingest` tool instead.
 
 **Staleness matters for impact analysis.** A long-running `serve-mcp` process can outlive commits. Always call `staleness_report` before a blast-radius review. If `reingest_recommended` is `true`, call `ingest` before proceeding — stale call edges produce false negatives (missing callers).
 
@@ -155,4 +150,4 @@ After ingest, verify the `Package` column and `Calls` edges are present by check
 
 ## Maintained
 
-This doc covers: `find_callers` (incl. `depth`, `edge_confidence`, `by_depth`, `transitive_callers`), `test_impact`, `blast_radius` (incl. `by_depth`), `diff_impact`, `rename_impact`, `reachable`, `cross_repo_callers`, `cross_repo_blast_radius`, `references`, `list_services`, `staleness_report`, `ingest`, `fathom platform-callers`. Update it when these change.
+This doc covers: `find_callers` (incl. `depth`, `edge_confidence`, `by_depth`, `transitive_callers`), `test_impact`, `blast_radius` (incl. `by_depth`), `rename_impact`, `reachable`, `cross_repo_callers`, `references`, `list_services`, `staleness_report`, `ingest`, `fathom platform-callers`. Update it when these change.

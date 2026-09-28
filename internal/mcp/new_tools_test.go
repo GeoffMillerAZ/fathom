@@ -203,45 +203,6 @@ func extToolPayload(t *testing.T, resp map[string]any) map[string]any {
 	return payload
 }
 
-// ─── find_callees ─────────────────────────────────────────────────────────────
-
-func TestFindCallees_Basic(t *testing.T) {
-	srv := newExtSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 200, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "find_callees",
-			"arguments": map[string]any{"service": "svc", "symbol": "A"},
-		},
-	})
-	p := extToolPayload(t, resp)
-	callees, ok := p["callees"].([]any)
-	if !ok {
-		t.Fatalf("callees missing: %v", p)
-	}
-	if len(callees) == 0 {
-		t.Error("find_callees(A): expected B as callee")
-	}
-}
-
-func TestFindCallees_MissingService(t *testing.T) {
-	srv := newExtSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 201, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "find_callees",
-			"arguments": map[string]any{"symbol": "A"},
-		},
-	})
-	errObj, ok := resp["error"].(map[string]any)
-	if !ok {
-		t.Fatalf("expected error, got result: %v", resp)
-	}
-	if code := errObj["code"].(float64); code != float64(mcp.ErrCodeParams) {
-		t.Errorf("code = %v, want %v", code, mcp.ErrCodeParams)
-	}
-}
-
 // ─── call_hierarchy ───────────────────────────────────────────────────────────
 
 // ─── symbol_context ───────────────────────────────────────────────────────────
@@ -844,9 +805,14 @@ func TestListSources_Basic(t *testing.T) {
 	}
 }
 
-// ─── MCP protocol: prompts/list ───────────────────────────────────────────────
+// ─── MCP protocol: prompts/list ───────────────────────────────────────────
 
-func TestPromptsList(t *testing.T) {
+// TestPromptsListEmpty pins SR-20 (surface reckoning F-78): the four
+// canned workflow prompts the plan row names are removed.
+// registerPromptsHandlers stays wired — the protocol capability is kept —
+// and answers an empty list rather than an error or a missing "prompts"
+// key.
+func TestPromptsListEmpty(t *testing.T) {
 	srv := newExtSrv()
 	resp, hasResp := handleReq(t, srv, map[string]any{
 		"jsonrpc": "2.0",
@@ -862,118 +828,15 @@ func TestPromptsList(t *testing.T) {
 	}
 	result := resp["result"].(map[string]any)
 	prompts, ok := result["prompts"].([]any)
-	if !ok || len(prompts) == 0 {
-		t.Fatalf("prompts/list: missing or empty prompts: %v", result)
+	if !ok {
+		t.Fatalf("prompts/list: missing prompts key: %v", result)
 	}
-	// Expect at least 4 canned prompts.
-	if len(prompts) < 4 {
-		t.Errorf("prompts/list: expected at least 4 prompts, got %d", len(prompts))
-	}
-	// Each prompt must have name and description.
-	names := make(map[string]bool)
-	for _, raw := range prompts {
-		p := raw.(map[string]any)
-		if p["name"] == nil {
-			t.Error("prompt missing name")
-		}
-		names[p["name"].(string)] = true
-	}
-	for _, want := range []string{"investigate_incident", "review_change", "onboard_service", "plan_requirement"} {
-		if !names[want] {
-			t.Errorf("missing prompt %q", want)
-		}
+	if len(prompts) != 0 {
+		t.Errorf("prompts/list: got %d prompts, want 0 (SR-20 removed the four canned prompts)", len(prompts))
 	}
 }
 
-// ─── MCP protocol: prompts/get ────────────────────────────────────────────────
-
-func TestPromptsGet_InvestigateIncident(t *testing.T) {
-	srv := newExtSrv()
-	resp, hasResp := handleReq(t, srv, map[string]any{
-		"jsonrpc": "2.0",
-		"id":      401,
-		"method":  "prompts/get",
-		"params": map[string]any{
-			"name": "investigate_incident",
-			"arguments": map[string]any{
-				"service": "payment-service",
-				"symptom": "high latency on /charge endpoint",
-			},
-		},
-	})
-	if !hasResp {
-		t.Fatal("prompts/get: no response")
-	}
-	if resp["error"] != nil {
-		t.Fatalf("prompts/get error: %v", resp["error"])
-	}
-	result := resp["result"].(map[string]any)
-	messages, ok := result["messages"].([]any)
-	if !ok || len(messages) == 0 {
-		t.Fatalf("prompts/get: messages missing or empty: %v", result)
-	}
-	// Content of first message should mention the service or symptom.
-	text := messages[0].(map[string]any)["content"].(map[string]any)["text"].(string)
-	if !strings.Contains(text, "payment-service") && !strings.Contains(text, "high latency") {
-		t.Errorf("prompt text does not mention service or symptom: %q", text)
-	}
-}
-
-func TestPromptsGet_ReviewChange(t *testing.T) {
-	srv := newExtSrv()
-	resp, _ := handleReq(t, srv, map[string]any{
-		"jsonrpc": "2.0",
-		"id":      402,
-		"method":  "prompts/get",
-		"params": map[string]any{
-			"name": "review_change",
-			"arguments": map[string]any{
-				"service": "auth-service",
-				"change":  "added rate limiting to login endpoint",
-			},
-		},
-	})
-	if resp["error"] != nil {
-		t.Fatalf("review_change error: %v", resp["error"])
-	}
-}
-
-func TestPromptsGet_OnboardService(t *testing.T) {
-	srv := newExtSrv()
-	resp, _ := handleReq(t, srv, map[string]any{
-		"jsonrpc": "2.0",
-		"id":      403,
-		"method":  "prompts/get",
-		"params": map[string]any{
-			"name": "onboard_service",
-			"arguments": map[string]any{
-				"service": "ledger-service",
-			},
-		},
-	})
-	if resp["error"] != nil {
-		t.Fatalf("onboard_service error: %v", resp["error"])
-	}
-}
-
-func TestPromptsGet_PlanRequirement(t *testing.T) {
-	srv := newExtSrv()
-	resp, _ := handleReq(t, srv, map[string]any{
-		"jsonrpc": "2.0",
-		"id":      404,
-		"method":  "prompts/get",
-		"params": map[string]any{
-			"name": "plan_requirement",
-			"arguments": map[string]any{
-				"service":     "payment-service",
-				"requirement": "support multi-currency charges",
-			},
-		},
-	})
-	if resp["error"] != nil {
-		t.Fatalf("plan_requirement error: %v", resp["error"])
-	}
-}
+// ─── MCP protocol: prompts/get ────────────────────────────────────────────
 
 func TestPromptsGet_UnknownPrompt(t *testing.T) {
 	srv := newExtSrv()
@@ -1123,7 +986,7 @@ func TestCallLogger_WritesEntries(t *testing.T) {
 		{
 			JSONRPC: "2.0", ID: 600, Method: "tools/call",
 			Params: map[string]any{
-				"name":      "find_callees",
+				"name":      "symbol_context",
 				"arguments": map[string]any{"service": "svc", "symbol": "A"},
 			},
 		},
@@ -1206,7 +1069,6 @@ func TestNewToolsInCorrectProfile(t *testing.T) {
 		name  string
 		group mcp.ToolGroup
 	}{
-		{"find_callees", mcp.GroupCoding},
 		{"symbol_context", mcp.GroupCoding},
 		{"outline", mcp.GroupCoding},
 		{"entrypoints", mcp.GroupCoding},

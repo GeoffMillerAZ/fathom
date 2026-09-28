@@ -194,8 +194,7 @@ type observatoryModel struct {
 	// "stale: fathom shedding — …". The registry was read, earlier.
 	RegistryStale string `json:"registry_stale,omitempty"`
 
-	Arm     obsArmBanner `json:"arm"`
-	Narrate obsArmBanner `json:"narrate"`
+	Arm obsArmBanner `json:"arm"`
 
 	Services []obsServiceRow `json:"services"`
 
@@ -275,11 +274,6 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 		m.Arm = obsArmBanner{Active: true, Detail: armBannerDetail(st)}
 	} else {
 		m.Arm = obsArmBanner{Detail: "no measurement arm active — channels live (fathom arm off --sessions N starts one)"}
-	}
-	if st, active := loadNarrateState(now); active {
-		m.Narrate = obsArmBanner{Active: true, Detail: narrateBannerDetail(st)}
-	} else {
-		m.Narrate = obsArmBanner{Detail: "narrate off (default) — story rows not being captured (fathom narrate on --for 7d to pioneer)"}
 	}
 
 	// OC-9: the shared sessions metric, from the one dedupe rule every page
@@ -817,17 +811,6 @@ func armBannerDetail(st armState) string {
 	}
 	if st.Note != "" {
 		d += " — " + st.Note
-	}
-	return d
-}
-
-func narrateBannerDetail(st narrateState) string {
-	d := "narrate is ON (story rows captured)"
-	if st.SessionsRemaining != nil {
-		d += " (" + strconv.Itoa(*st.SessionsRemaining) + " sessions remaining)"
-	}
-	if st.Until != "" {
-		d += " (expires " + st.Until + ")"
 	}
 	return d
 }

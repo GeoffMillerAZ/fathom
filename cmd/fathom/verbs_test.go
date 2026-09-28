@@ -54,13 +54,81 @@ func TestHelpListsEveryDispatchedVerb(t *testing.T) {
 		t.Errorf("verbTable names nothing main dispatches: %s", strings.Join(phantom, ", "))
 	}
 
-	// The rendered help is the table, so every verb appears in it.
+	// The rendered help is the table, so every non-frozen verb appears in
+	// it (a Hidden verb — SR-16/SR-18 — is dispatched and in the table but
+	// deliberately absent from help; TestUsageOmitsFrozenVerbs pins that).
 	var out bytes.Buffer
 	printUsage(&out)
-	for _, n := range verbNames() {
-		if !strings.Contains(out.String(), "  "+n+" ") {
-			t.Errorf("printUsage output omits %q", n)
+	for _, v := range verbTable {
+		if v.Hidden {
+			continue
 		}
+		if !strings.Contains(out.String(), "  "+v.Name+" ") {
+			t.Errorf("printUsage output omits %q", v.Name)
+		}
+	}
+}
+
+// TestUsageOmitsFrozenVerbs pins SR-16 and SR-18 (surface reckoning F-53
+// "refined to freeze", F-70 "freeze"): `research` (ADR-046 decision 6, the
+// only route for the retro corpus) and `assess` (ADR-046/ADR-053, an
+// off-by-default capability) stay fully dispatched — verbNames()/isVerb()
+// still name them, so scripts and hooks calling them keep working — but
+// leave `fathom help`'s rendered output, so an agent stops discovering
+// them by browsing help.
+func TestUsageOmitsFrozenVerbs(t *testing.T) {
+	for _, name := range []string{"research", "assess"} {
+		if !isVerb(name) {
+			t.Errorf("%q must stay dispatched (frozen, not deleted)", name)
+		}
+	}
+	var out bytes.Buffer
+	printUsage(&out)
+	rendered := out.String()
+	for _, name := range []string{"research", "assess"} {
+		if strings.Contains(rendered, "  "+name+" ") {
+			t.Errorf("printUsage output names frozen verb %q — it should be hidden from help", name)
+		}
+	}
+	var found []string
+	for _, v := range verbTable {
+		if (v.Name == "research" || v.Name == "assess") && !v.Hidden {
+			found = append(found, v.Name)
+		}
+	}
+	if len(found) > 0 {
+		t.Errorf("verbTable rows not marked Hidden: %v", found)
+	}
+}
+
+// TestUsageOmitsInternalVerbs pins SR-30 (surface reckoning F-44 "CUE
+// shadows"): `gen-status-cue` and `gen-plan-cue` are internal dev/round-trip
+// tooling (ADR-018 decision 3), not agent-facing verbs. They stay fully
+// dispatched — verbNames()/isVerb() still name them, so the round-trip
+// tests and any script calling them directly keep working — but leave
+// `fathom help`'s rendered output.
+func TestUsageOmitsInternalVerbs(t *testing.T) {
+	for _, name := range []string{"gen-status-cue", "gen-plan-cue"} {
+		if !isVerb(name) {
+			t.Errorf("%q must stay dispatched (internal, not deleted)", name)
+		}
+	}
+	var out bytes.Buffer
+	printUsage(&out)
+	rendered := out.String()
+	for _, name := range []string{"gen-status-cue", "gen-plan-cue"} {
+		if strings.Contains(rendered, "  "+name+" ") {
+			t.Errorf("printUsage output names internal verb %q — it should be hidden from help", name)
+		}
+	}
+	var found []string
+	for _, v := range verbTable {
+		if (v.Name == "gen-status-cue" || v.Name == "gen-plan-cue") && !v.Hidden {
+			found = append(found, v.Name)
+		}
+	}
+	if len(found) > 0 {
+		t.Errorf("verbTable rows not marked Hidden: %v", found)
 	}
 }
 

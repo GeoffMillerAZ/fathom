@@ -16,6 +16,22 @@
 # 2026-09-02). Go toolchain scratch belongs OUTSIDE the module
 # (Taskfile.yml's GOTMPDIR note), so the copy lives under TMPDIR.
 #
+# RH-9 (docs/design/reach.md §5, "the stranger's five minutes"): the timed
+# first proven answer. After init, a SECOND, tiny fixture service
+# (fauxtown's checkout-service — already inside the copy, part of the
+# tracked tree) is ingested into its own scratch store and a two-row
+# fixture plan (one claimed row, proven against what was just ingested;
+# one left open, which never gates) is verified. Stopping the clock on
+# that verify's exit 0 is the first proven answer a stranger actually
+# gets — not a canned tools/call ping, but install -> ingest -> gate doing
+# real, provable work end to end. Per-step timings (build, daemon ready,
+# init, ingest, first answer) print on every run; FATHOM_STRANGER_READING=1
+# additionally writes them to a dated reading,
+# docs/bench/readings/reach/stranger-<date>.md, against the REAL
+# invoking checkout (not the throwaway copy) — opt-in so an ordinary
+# `task validate`/pre-push run does not leave a new untracked file behind
+# on every push.
+#
 # Run: task stranger-check   (prints the elapsed seconds; joins `task
 # validate` only if that number stays under two minutes)
 set -euo pipefail
@@ -37,6 +53,10 @@ fathom_cache_configure
 cd "${REPO_ROOT}"
 
 start=$SECONDS
+# RH-9: sub-second timestamps for the per-step timing table ($SECONDS
+# alone is 1s-resolution — too coarse for a fixture ingest/verify that
+# each complete in well under a second).
+t_setup=$EPOCHREALTIME
 # RT-25 (docs/design/responsible-tenant.md §10.3): a PRIVATE work dir per
 # run, removed by the trap. The fixed ${TMPDIR}/fathom-stranger-check was
 # shared by concurrent runs (one run's rm -rf pulled the tree from under
@@ -87,6 +107,7 @@ if ! (cd "${tree}" && GOWORK=off CGO_ENABLED=1 go build -o bin/fathom ./cmd/fath
   exit 1
 fi
 bin="${tree}/bin/fathom"
+t_build=$EPOCHREALTIME
 
 # 3. A throwaway daemon on a free port with a temp store.
 #    FATHOM_TENANCY_BUDGET: an unmanaged serve-http takes the 512 MiB
@@ -111,6 +132,7 @@ if ! curl -s --max-time 1 "${url}/healthz" 2>/dev/null | grep -q ok; then
   tail -20 "${work}/daemon.log" >&2
   exit 1
 fi
+t_daemon=$EPOCHREALTIME
 
 # 4. init as a stranger: temp HOME, --harness=none (stanza + .fathom/ +
 #    skills, no hook file), the copy's own binary.
@@ -127,6 +149,44 @@ if [ "${init_rc}" -ne 0 ]; then
   tail -10 "${work}/init.log" >&2
   exit 1
 fi
+t_init=$EPOCHREALTIME
+
+# 4b. RH-9 (docs/design/reach.md §5): the timed first proven answer. A
+#     SECOND, tiny fixture service — fauxtown's checkout-service, copied
+#     out of the tree already ingested above rather than reusing that
+#     whole-repository ingest — into its OWN scratch store, then a
+#     two-row fixture plan verified against exactly what was just
+#     ingested: one claimed row (proven by the file fathom's own ingest
+#     just read), one left open on purpose (an unclaimed row never
+#     gates). Stopping the clock on that verify's exit 0 is the first
+#     proven answer.
+fixture_dir="${work}/fixture"
+mkdir -p "${fixture_dir}"
+cp -r "${tree}/internal/connector/testdata/fauxtown/checkout-service" "${fixture_dir}/checkout-service"
+cat >"${fixture_dir}/plan.md" <<'PLANEOF'
+# stranger-check fixture plan (RH-9) — two rows, one true, one open.
+#
+# The claimed row proves against the fixture ingest below: the file
+# fathom just indexed literally defines FetchItem. The second row is
+# deliberately left open (`[ ]`) — an unclaimed row never gates, so it
+# proves nothing and is never meant to.
+- [x] FetchItem is defined in the freshly ingested fixture {id: SC-1, oracle: lexical, path: checkout-service/checkout.go, pattern: "^func FetchItem"}
+- [ ] HoldItem, left open on purpose {id: SC-2, symbol: HoldItem}
+PLANEOF
+
+if ! (cd "${fixture_dir}" && "${bin}" ingest -service fathom-stranger-fixture -path checkout-service -store fixture-store.sqlite >ingest.log 2>&1); then
+  echo "stranger-check: FAIL the RH-9 fixture ingest failed:" >&2
+  cat "${fixture_dir}/ingest.log" >&2
+  exit 1
+fi
+t_ingest=$EPOCHREALTIME
+
+if ! (cd "${fixture_dir}" && "${bin}" verify -service fathom-stranger-fixture -plan plan.md -store fixture-store.sqlite >verify.log 2>&1); then
+  echo "stranger-check: FAIL the RH-9 fixture verify did not exit 0 — no first proven answer:" >&2
+  cat "${fixture_dir}/verify.log" >&2
+  exit 1
+fi
+t_first_answer=$EPOCHREALTIME
 
 # 5. One real tool call against /rpc/agent, the way a stranger's first
 #    session makes one — this is what proves the surface answers, and it
@@ -167,4 +227,47 @@ if [ "${nfail}" != "0" ]; then
   exit 1
 fi
 [ -n "${fails}" ] && echo "${fails}"
-echo "stranger-check: the tracked tree builds standalone, inits with --harness=none --skills, answers a tools/call on /rpc/agent, and doctor reports no unexpected FAIL row (${elapsed}s)"
+
+# RH-9: the per-step timing table and, opt-in, the dated reading
+# (docs/design/reach.md §5 bullet 2). step_seconds prints two decimals —
+# a fixture ingest/verify each complete in well under a second, and
+# 1s-resolution would print "0s" for both, hiding exactly the numbers
+# this row exists to measure.
+step_seconds() { python3 -c "print(f'{float(\"$2\") - float(\"$1\"):.2f}')"; }
+mmss() { python3 -c "s=float(\"$1\"); print(f'{int(s)//60}:{int(s)%60:02d}')"; }
+build_s=$(step_seconds "${t_setup}" "${t_build}")
+daemon_s=$(step_seconds "${t_build}" "${t_daemon}")
+init_s=$(step_seconds "${t_daemon}" "${t_init}")
+ingest_s=$(step_seconds "${t_init}" "${t_ingest}")
+answer_s=$(step_seconds "${t_ingest}" "${t_first_answer}")
+total_s=$(step_seconds "${t_setup}" "${t_first_answer}")
+total_mmss=$(mmss "${total_s}")
+
+echo "stranger-check: the tracked tree builds standalone, inits with --harness=none --skills, ingests a fixture, verifies a first proven answer, answers a tools/call on /rpc/agent, and doctor reports no unexpected FAIL row (${elapsed}s)"
+echo "stranger-check: first proven answer in ${total_mmss} (build ${build_s}s, daemon ready ${daemon_s}s, init ${init_s}s, ingest ${ingest_s}s, first answer ${answer_s}s)"
+
+if [ "${FATHOM_STRANGER_READING:-0}" = "1" ]; then
+  reading_dir="${REPO_ROOT}/docs/bench/readings/reach"
+  mkdir -p "${reading_dir}"
+  reading_date="$(date -u +%Y-%m-%d)"
+  reading="${reading_dir}/stranger-${reading_date}.md"
+  head_rev="$(cd "${REPO_ROOT}" && git rev-parse --short HEAD 2>/dev/null || echo unknown)"
+  {
+    echo "# Stranger check reading — ${reading_date}"
+    echo
+    echo "RH-9 (docs/design/reach.md §5): per-step timings for the timed first"
+    echo "proven answer, from a fresh clone of fathom at ${head_rev}."
+    echo
+    echo "First proven answer in ${total_mmss}"
+    echo
+    echo "| Step | Seconds |"
+    echo "|---|---|"
+    echo "| build | ${build_s} |"
+    echo "| daemon ready | ${daemon_s} |"
+    echo "| init | ${init_s} |"
+    echo "| ingest (fixture) | ${ingest_s} |"
+    echo "| first answer (fixture verify) | ${answer_s} |"
+    echo "| **total** | **${total_s}** |"
+  } >"${reading}"
+  echo "stranger-check: reading written to ${reading}"
+fi

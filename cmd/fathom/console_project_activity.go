@@ -256,29 +256,51 @@ func renderActivityRecentPanel(pc projectContext, act console.ProjectActivityMod
 		} else {
 			rows := make([]table.Row, 0, len(act.Recent))
 			for i, c := range act.Recent {
-				surface := c.Surface
-				if surface == "" {
-					surface = "unscoped"
-				}
-				outcome := "ok"
-				if c.Error != "" {
-					outcome = "error: " + c.Error
-				}
-				rows = append(rows, table.Row{ID: fmt.Sprintf("call-%d", i), Cells: []string{activityStamp(c.At), c.Tool, surface, fmt.Sprintf("%.0f ms", c.LatencyMS), outcome}})
+				rows = append(rows, activityRecentRow(i, c))
 			}
 			body.WriteString(renderKitTable(table.TableParams{
 				TableID: "project-activity-recent", Caption: fmt.Sprintf("the newest %d calls, newest first", len(act.Recent)),
-				Columns: []table.Column{{Key: "at", Label: "At (UTC)"}, {Key: "tool", Label: "Tool"}, {Key: "surface", Label: "Surface"}, {Key: "latency", Label: "Latency", Align: "right"}, {Key: "outcome", Label: "Outcome"}},
+				Columns: []table.Column{{Key: "at", Label: "At (UTC)"}, {Key: "tool", Label: "Tool"}, {Key: "surface", Label: "Surface"}, {Key: "latency", Label: "Latency", Align: "right"}, {Key: "cost", Label: "Cost (est.)", Align: "right"}, {Key: "outcome", Label: "Outcome"}},
 				Rows:    rows,
 			}))
+			body.WriteString(`<p class="mt-2 text-xs text-ink-muted">cost is an ESTIMATE (response bytes ÷ 4, internal/cost.Estimate) — "—" is a call logged before the estimate existed, never a zero-cost answer.</p>`)
 		}
 	}
 	return renderPanel(consolePanel{
 		ID: "activity-recent", Title: "Recent calls",
-		Question: "What were the latest questions asked of this repository?",
+		Question: "What were the latest questions asked of this repository, and what did each answer cost?",
 		Source:   "the resolved call log: " + act.CallLog.Path, Denominator: fmt.Sprintf("the newest of the window's calls, at most %d", 20),
 		State: act.WindowCalls.State, Reason: act.WindowCalls.Reason, SourceKey: "index:" + pc.svc, Body: body.String(),
 	})
+}
+
+// activityRecentRow builds one Recent-calls table row (PE-21, docs/design/
+// progress-and-economics.md §5): its cost cell is renderAnswerCost over
+// PE-20's receiptTokens estimate, carried on the call itself, never
+// re-derived from a byte count the recent-calls projection does not keep.
+func activityRecentRow(i int, c console.ActivityCall) table.Row {
+	surface := c.Surface
+	if surface == "" {
+		surface = "unscoped"
+	}
+	outcome := "ok"
+	if c.Error != "" {
+		outcome = "error: " + c.Error
+	}
+	return table.Row{ID: fmt.Sprintf("call-%d", i), Cells: []string{
+		activityStamp(c.At), c.Tool, surface, fmt.Sprintf("%.0f ms", c.LatencyMS), renderAnswerCost(c.ResponseTokens), outcome,
+	}}
+}
+
+// renderAnswerCost renders one answer's estimated token cost (PE-21):
+// "~N tok" for a call whose receipt carried PE-20's token estimate, an
+// explicit "—" for a call logged before that estimate existed — never a
+// fabricated zero, which would read as a genuinely free answer.
+func renderAnswerCost(tokens int) string {
+	if tokens <= 0 {
+		return "—"
+	}
+	return "~" + fmtThousands(tokens) + " tok"
 }
 
 func renderActivitySessionsPanel(pc projectContext, act console.ProjectActivityModel) string {

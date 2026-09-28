@@ -198,9 +198,6 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 		answeredMeta["findings_omitted"] = strconv.Itoa(meta.findingsOmitted)
 	}
 	emitBeat("edit-hook", "answered", firingMeta(answeredMeta, sessionID, filePath))
-	recordStoryRow(projDir, "obligation-served", map[string]any{
-		"file": meta.repoRelFile, "rules": meta.rules, "session": sessionID,
-	})
 	fmt.Fprintln(stdout, string(out))
 	return 0
 }

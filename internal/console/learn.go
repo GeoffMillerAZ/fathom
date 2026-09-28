@@ -72,8 +72,8 @@ type CapabilityState struct {
 	Remedy string `json:"remedy,omitempty"`
 	// Required is set by PipelineView: a required switch that is off
 	// decides its stage's status (working, off or stale, against the
-	// stage's own counts); an optional one (narrate, guards, modules) is
-	// listed but never does.
+	// stage's own counts); an optional one (guards, modules) is listed but
+	// never does.
 	Required bool `json:"required"`
 }
 
@@ -252,7 +252,6 @@ var pipelineStages = []pipelineStageDef{
 		does:     "Sessions, gate runs and tool calls are appended to ledgers, so what fathom did here is measured, not asserted.",
 		question: "What have the ledgers recorded for this project?",
 		required: []string{"session-ledger"},
-		optional: []string{"narrate"},
 		pages:    []string{"/impact", "/sessions"},
 		live:     "sessions:{svc}",
 	},

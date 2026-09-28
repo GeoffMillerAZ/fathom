@@ -46,10 +46,16 @@ func refFileVersion(repoDir, ref, rel string) []byte {
 // which is correct: none of them could have predated a base where the row
 // did not exist.
 func sinceRefPlan(root, rel, ref, service string) *verify.Plan {
+	return sinceRefPlanWith(root, rel, ref, service, verify.ParseMarkdownPlan)
+}
+
+// sinceRefPlanWith is sinceRefPlan reading the ref's version with parse —
+// a foreign spec file's own dialect (ADR-049).
+func sinceRefPlanWith(root, rel, ref, service string, parse func(string, []byte) verify.Plan) *verify.Plan {
 	if gitToplevel(root) == "" {
 		return nil // not a git repo (or git unavailable) — inapplicable
 	}
 	md := refFileVersion(root, ref, rel)
-	p := verify.ParseMarkdownPlan(service, md)
+	p := parse(service, md)
 	return &p
 }

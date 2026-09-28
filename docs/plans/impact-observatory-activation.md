@@ -49,8 +49,8 @@
 
 ## F — Narrate v0 (vision 14 §6; story rows only, no LLM weekly yet)
 
-- [x] narrate on --for D|--sessions N with stamped auto-expiry; off is default; doctor shows the active dial {id: IO-21, symbol: cmdNarrate, package: cmd/fathom, reachable_from: TestNarrateExpiry}
-- [x] story rows: per-intervention JSONL (rule served + following tool calls; verify catch + claimed diff; discovery substitution) written only while active, version-stamped, never bundled {id: IO-22, symbol: recordStoryRow, package: cmd/fathom, reachable_from: TestStoryRows}
+- [-] narrate on --for D|--sessions N with stamped auto-expiry; off is default; doctor shows the active dial {id: IO-21, disposition: refused, reason: "retired by SR-14 (surface reckoning): the fathom narrate CLI verb (cmdNarrate) is removed for 0 lifetime calls"}
+- [-] story rows: per-intervention JSONL (rule served + following tool calls; verify catch + claimed diff; discovery substitution) written only while active, version-stamped, never bundled {id: IO-22, disposition: refused, reason: "retired by SR-14 (surface reckoning): recordStoryRow and its hook call sites are removed with the narrate CLI verb"}
 
 ## G — The skills pack (vision 16)
 

@@ -262,9 +262,14 @@ func (s *Server) loggedToolsCall(ctx context.Context, toolName string, params js
 	// envelope would marshal to — a second, tolerant marshal (result is
 	// already a plain map by this point) rather than threading the
 	// dispatch-time []byte through the return path.
-	responseBytes := 0
+	// PE-20 (docs/design/progress-and-economics.md §5): the same marshaled
+	// bytes carry an estimated token count beside their byte count —
+	// receiptTokens over the exact []byte responseBytes counted, so the two
+	// numbers can never name different responses.
+	responseBytes, responseTokens := 0, 0
 	if b, err := json.Marshal(result); err == nil {
 		responseBytes = len(b)
+		responseTokens = receiptTokens(b)
 	}
 	elidedCount := elidedCountFrom(result)
 	// RC-25 (docs/vision/28-receipts.md §4): the pointer-extraction hook —
@@ -282,7 +287,7 @@ func (s *Server) loggedToolsCall(ctx context.Context, toolName string, params js
 	_ = json.Unmarshal(params, &rawArgs)
 	pointers := resultPointers(toolName, rawArgs.Arguments, result)
 	s.callLogger.log(toolName, args.Arguments.Service, group, s.effectiveSurface(ctx), "", originFrom(ctx), offSurface, claimsAttached, verdictOutcome,
-		s.recordCallOutcome(ctx, meta, callOutcome{ResultCount: resultCount, MatchedVia: matchedVia, ResponseBytes: responseBytes, ElidedCount: elidedCount, Pointers: pointers}), latency, logErr)
+		s.recordCallOutcome(ctx, meta, callOutcome{ResultCount: resultCount, MatchedVia: matchedVia, ResponseBytes: responseBytes, ResponseTokens: responseTokens, ElidedCount: elidedCount, Pointers: pointers}), latency, logErr)
 	return result, rpcErr
 }
 

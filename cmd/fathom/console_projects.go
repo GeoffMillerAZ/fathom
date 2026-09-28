@@ -1,8 +1,8 @@
 package main
 
 // console_projects.go — the one read of every source the Now and Fleet
-// pages share, and that `fathom brief --json` renders (vision 35 §3, plan
-// section B). It gathers console.Projects — one row per registered project
+// pages share (vision 35 §3, plan section B). It gathers console.Projects
+// — one row per registered project
 // — from:
 //
 //   - the observatory model: the registry, freshness, wiring, the

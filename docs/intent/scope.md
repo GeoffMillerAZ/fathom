@@ -251,6 +251,9 @@ migration note (`docs/rename-migration.md` is the precedent; new ones go to
   `cmd/fathom/certify_gaps.go` (`TestCmdCertifyGaps_RemedyLinesAndJSON`).
 - Plan grammar v2's lexical oracle keys on plan rows (`oracle: lexical`, `path`,
   `pattern`). Evidence: ADR-030, `schema/plan/schema.cue`.
+- The spec-interop plan keys (ADR-049): `weight:` (a positive integer, default 1) and
+  `accept:` (quoted acceptance text, never gating by itself). Evidence:
+  `docs/design/spec-interop.md` §4, `schema/plan/schema.cue`.
 - The `<!-- fathom:begin -->`…`<!-- fathom:end -->` stanza region in `CLAUDE.md` and
   `AGENTS.md` (fleet reconcile compares content, law 15). Evidence: `CHANGELOG.md` 2026-08-13.
 - The default agent surface (8 tools, named in ADR-053: `find_symbol`, `search`,

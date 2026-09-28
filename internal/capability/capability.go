@@ -117,7 +117,6 @@ type Probe struct {
 	ObligationsCompiled bool
 
 	// Instruments
-	NarrateActive     bool
 	LedgerSessions    int
 	AgentSurfaceTools int
 	AgentSchemaBytes  int

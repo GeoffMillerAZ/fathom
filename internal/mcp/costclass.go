@@ -30,13 +30,13 @@ var toolCostClasses = map[string]tenancy.Class{
 	"batch": tenancy.ClassPoint,
 
 	// index: one service's symbols, edges or graph from the store.
-	"find_symbol": tenancy.ClassIndex, "find_callers": tenancy.ClassIndex, "find_callees": tenancy.ClassIndex,
+	"find_symbol": tenancy.ClassIndex, "find_callers": tenancy.ClassIndex,
 	"query_symbols": tenancy.ClassIndex, "pack_context": tenancy.ClassIndex, "repo_map": tenancy.ClassIndex,
 	"verify_plan": tenancy.ClassIndex, "test_impact": tenancy.ClassIndex, "rename_impact": tenancy.ClassIndex,
 	"reachable": tenancy.ClassIndex, "dead_code": tenancy.ClassIndex, "community": tenancy.ClassIndex,
 	"localize": tenancy.ClassIndex, "outline": tenancy.ClassIndex, "entrypoints": tenancy.ClassIndex,
-	"complexity": tenancy.ClassIndex, "god_object": tenancy.ClassIndex, "api_diff": tenancy.ClassIndex,
-	"arch_conformance": tenancy.ClassIndex, "diff_impact": tenancy.ClassIndex, "evidence_summary": tenancy.ClassIndex,
+	"complexity": tenancy.ClassIndex, "god_object": tenancy.ClassIndex,
+	"arch_conformance": tenancy.ClassIndex, "evidence_summary": tenancy.ClassIndex,
 	"contradiction_scan": tenancy.ClassIndex, "findings_near": tenancy.ClassIndex,
 	"module_obligations": tenancy.ClassIndex, "module_query": tenancy.ClassIndex, "module_staleness": tenancy.ClassIndex,
 
@@ -45,13 +45,13 @@ var toolCostClasses = map[string]tenancy.Class{
 	"secret_scan": tenancy.ClassTree, "cloc": tenancy.ClassTree, "spec_coverage": tenancy.ClassTree,
 	"traceability": tenancy.ClassTree, "safe_delete_check": tenancy.ClassTree, "list_sources": tenancy.ClassTree,
 	"discoveries": tenancy.ClassTree, "references": tenancy.ClassTree, "blast_radius": tenancy.ClassTree,
-	"brief": tenancy.ClassTree, "traverse": tenancy.ClassTree, "http_client_calls": tenancy.ClassTree,
+	"traverse": tenancy.ClassTree, "http_client_calls": tenancy.ClassTree,
 	"shell_out": tenancy.ClassTree, "proto_conformance": tenancy.ClassTree, "spec_refs": tenancy.ClassTree,
 	"stale_docs": tenancy.ClassTree,
 
 	// fleet: every service.
-	"list_services": tenancy.ClassFleet, "fleet_drift": tenancy.ClassFleet, "cross_repo_blast_radius": tenancy.ClassFleet,
-	"cross_repo_callers": tenancy.ClassFleet, "review_diff": tenancy.ClassFleet, "dep_drift": tenancy.ClassFleet,
+	"list_services": tenancy.ClassFleet, "fleet_drift": tenancy.ClassFleet,
+	"cross_repo_callers": tenancy.ClassFleet, "review_diff": tenancy.ClassFleet,
 
 	// ingest: writes the store; one machine-wide.
 	"ingest": tenancy.ClassIngest, "compile_layer": tenancy.ClassIngest,

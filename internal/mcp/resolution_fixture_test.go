@@ -252,9 +252,8 @@ func TestResolution_ReviewDiff_MixedTiers(t *testing.T) {
 	srv, _, _, _, _, _ := newResolutionFixtureServer(t)
 	payload := callTool(t, srv, "review_diff", map[string]any{"service": "svc", "changed_files": []any{"pkg/c.go"}})
 	// review_diff's impact dimension walks the UNBOUNDED both-kinds graph
-	// (matching diff_impact, not blast_radius's depth-capped default): from
-	// C, every hop is included — B(heuristic), A(typed), D(heuristic),
-	// TestFoo(heuristic).
+	// (not blast_radius's depth-capped default): from C, every hop is
+	// included — B(heuristic), A(typed), D(heuristic), TestFoo(heuristic).
 	typed, heuristic := resolutionOf(t, payload)
 	if typed != 1 || heuristic != 3 {
 		t.Errorf("review_diff(pkg/c.go) resolution = {typed:%d heuristic:%d}, want {typed:1 heuristic:3}", typed, heuristic)
