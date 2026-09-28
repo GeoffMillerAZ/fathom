@@ -266,11 +266,12 @@
     "grammar_source": "DerekStride/tree-sitter-sql",
     "licence": "MIT",
     "oracle": [
-      "ctags"
+      "ctags",
+      "sqlglot (C, FK call pairs)"
     ],
     "calibration_subjects": [
-      "lerocha/chinook-database",
-      "sqitchers/sqitch"
+      "sqitchers/sqitch",
+      "devrimgunduz/pagila"
     ],
     "depends_on": [
       "LB-F1",
@@ -291,6 +292,7 @@
     "engine": "tags",
     "plan_row": "LB-Q-sql",
     "worker_model": "sonnet",
+    "retargeted": "2026-09-28 (owner decision D2, Opus triage): subjects restricted to the families the grammar supports (ANSI, SQLite, PostgreSQL) with lang-oracle -only; lerocha/chinook-database dropped (its SQLite/PostgreSQL files are 400-600 KB data dumps whose parse trees exceed the 64 MiB module cap, RT-107, and fault; its T-SQL/MySQL/Oracle/Db2 files are unsupported families), devrimgunduz/pagila added (PostgreSQL schema, MIT); sqitch keeps its SQLite and plain fixture files, not its psql-templated pg.sql. L2 oracle: sqlglot FK pairs, tier C (D5).",
     "port_of": "sqlextract.go (regex)",
     "notes": "port; tables, views, columns, functions, indexes; FK references as L2 edges; dialect variance disclosed"
   },

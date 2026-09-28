@@ -52,8 +52,18 @@
   (object_reference name: (identifier) @name)) @definition.type
 
 ; --- column (nested inside a table, LB-Q-sql's "columns") ----------------
-(column_definition
-  name: (identifier) @name) @definition.column
+; Only a CREATE TABLE's column list or an explicit ALTER TABLE ... ADD
+; [COLUMN]: tree-sitter-sql recovers an unsupported ALTER TABLE clause
+; (PostgreSQL's `ATTACH PARTITION p FOR VALUES …`) into an add_column with
+; no ADD keyword whose "column" is the clause's first word — 57 phantom
+; `ATTACH` columns on pagila's schema (D2 re-measurement, 2026-09-28).
+(column_definitions
+  (column_definition
+    name: (identifier) @name) @definition.column)
+(add_column
+  (keyword_add)
+  (column_definition
+    name: (identifier) @name) @definition.column)
 
 ; --- FK references as L2 call edges: inline "col TYPE REFERENCES t(c)" --
 (column_definition
