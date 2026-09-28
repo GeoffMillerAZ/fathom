@@ -22,7 +22,7 @@ the computable subset of F9.
 - [x] A migration declaration: from and to for symbols, imports, routes, config keys and `pkg:` versions, in a plan or written by `refactor plan` (§4) {id: CX-9, symbol: ParseMigration, package: internal/review, reachable_from: TestParseMigrationForms}
 - [x] Remaining and done sites per repository in the fleet, each with its tier (typed or lexical) {id: CX-10, symbol: MigrationSites, package: internal/review, reachable_from: TestMigrationSitesPerRepo, needs: "CX-9"}
 - [x] Blockers: sites in files governed against the change, or in generated code {id: CX-11, symbol: migrationBlockers, package: internal/review, reachable_from: TestMigrationBlockers, needs: "CX-10"}
-- [ ] Burn-down from proof history and completion proven by conservation (`gone:` rows proven, no unexcused loss) {id: CX-12, symbol: MigrationBurnDown, package: internal/review, reachable_from: TestMigrationCompletionByConservation, needs: "CX-10,progress-and-economics.md#PE-2"}
+- [x] Burn-down from proof history and completion proven by conservation (`gone:` rows proven, no unexcused loss) {id: CX-12, symbol: MigrationBurnDown, package: internal/review, reachable_from: TestMigrationCompletionByConservation, needs: "CX-10,progress-and-economics.md#PE-2"}
 - [ ] `fathom refactor status` shows the fleet-wide migration view; nothing is rewritten {id: CX-13, symbol: refactorStatusMigration, package: cmd/fathom, reachable_from: TestRefactorStatusMigrationNeverRewrites, needs: "CX-12"}
 
 ## Wave 4: the evidence pack (U8) and the drift radar (U11)
