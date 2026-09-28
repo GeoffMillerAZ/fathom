@@ -1,0 +1,36 @@
+{
+  "id": "github-actions",
+  "display": "GitHub Actions workflows and composite actions",
+  "kind": "tooling",
+  "engine": "doc",
+  "lang_tag": "github-actions",
+  "match": {
+    "extensions": [],
+    "basenames": ["action.yml", "action.yaml"],
+    "globs": [".github/workflows/*.yml", ".github/workflows/*.yaml"],
+    "shebangs": [],
+    "sniff": null
+  },
+  "variants": [],
+  "kinds": {
+    "workflow":  { "source_kind": "GHAWorkflow",     "canonical": "target" },
+    "actiondef": { "source_kind": "GHAActionDef",    "canonical": "target" },
+    "job":       { "source_kind": "GHAJob",          "canonical": "job" },
+    "step":      { "source_kind": "GHAStep",         "canonical": "step" },
+    "action":    { "source_kind": "GHAAction",       "canonical": "resource" },
+    "input":     { "source_kind": "GHAActionInput",  "canonical": "variable_decl" },
+    "output":    { "source_kind": "GHAActionOutput", "canonical": "output" }
+  },
+  "required_kinds": ["target", "job", "action"],
+  "oracle_kinds": {
+    "tool": {
+      "target": "target", "job": "job", "resource": "resource",
+      "step": "step", "variable_decl": "variable_decl", "output": "output"
+    }
+  },
+  "name_match": "identity",
+  "package": { "strategy": "none" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L3",
+  "queue_id": "github-actions"
+}

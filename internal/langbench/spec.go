@@ -36,6 +36,7 @@ type Manifest struct {
 type ManifestMatch struct {
 	Extensions []string `json:"extensions"`
 	Basenames  []string `json:"basenames"`
+	Globs      []string `json:"globs"`
 }
 
 // KindSpec maps one of a dialect's kinds to a SourceKind and a canonical
@@ -130,14 +131,60 @@ func (m Manifest) CallPairs(nodes []core.SymbolNode, files map[string]bool) map[
 	return callPairs(nodes, files, m.MatchName)
 }
 
-// Owns reports whether relPath is one of this dialect's files by basename
-// or extension (the classification keys; sniffing arrives with LB-F9).
+// Owns reports whether relPath is one of this dialect's files by basename,
+// path glob or extension (the classification keys; sniffing is
+// connector.ClassifyDialect's job, LB-F9, and is not replicated here: a
+// bench subject's files are unambiguous by construction).
+//
+// Found and fixed alongside LB-Q-github-actions: this had checked only
+// Basenames and Extensions, silently ignoring Match.Globs (ManifestMatch
+// never even decoded the field) — every glob-only dialect (a workflow file
+// under .github/workflows/, which is a path shape, not a basename or
+// extension) measured zero files from lang-oracle although
+// connector.ClassifyDialect (production ingest) already classified them
+// correctly; the gap was in this bench-only helper alone.
 func (m Manifest) Owns(relPath string) bool {
 	base := path.Base(relPath)
 	if slices.Contains(m.Match.Basenames, base) {
 		return true
 	}
+	for _, g := range m.Match.Globs {
+		if globMatch(g, relPath) {
+			return true
+		}
+	}
 	return slices.Contains(m.Match.Extensions, strings.ToLower(path.Ext(base)))
+}
+
+// globMatch matches a slash path against a manifest glob: path.Match per
+// segment, with a "**" segment matching zero or more segments. Mirrors
+// internal/connector's globMatch (design §5) exactly, so the bench
+// harness's file discovery agrees with production classification; kept
+// local rather than imported since internal/connector does not depend on
+// internal/langbench and this package stays free of that dependency too.
+func globMatch(pattern, p string) bool {
+	return globSegs(strings.Split(pattern, "/"), strings.Split(p, "/"))
+}
+
+func globSegs(pat, segs []string) bool {
+	for len(pat) > 0 {
+		if pat[0] == "**" {
+			for i := 0; i <= len(segs); i++ {
+				if globSegs(pat[1:], segs[i:]) {
+					return true
+				}
+			}
+			return false
+		}
+		if len(segs) == 0 {
+			return false
+		}
+		if ok, err := path.Match(pat[0], segs[0]); err != nil || !ok {
+			return false
+		}
+		pat, segs = pat[1:], segs[1:]
+	}
+	return len(segs) == 0
 }
 
 // CanonicalForSource maps a SourceKind the extractor emitted to its

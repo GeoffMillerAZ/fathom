@@ -1,0 +1,35 @@
+{
+  "decode": "yaml",
+  "detect": {
+    "basenames": ["action.yml", "action.yaml"],
+    "globs": [".github/workflows/*.yml", ".github/workflows/*.yaml"]
+  },
+  "entities": [
+    { "select": "$", "where": { "is_map": true, "has_key": ["jobs"] },
+      "kind": "target", "source_kind": "GHAWorkflow", "name": ".name" },
+    { "select": "$", "where": { "is_map": true, "has_key": ["runs"] },
+      "kind": "target", "source_kind": "GHAActionDef", "name": ".name", "signature": ".description" },
+    { "select": "$.jobs.*", "where": { "is_map": true },
+      "kind": "job", "source_kind": "GHAJob", "name": "$key", "signature": ".runs-on" },
+    { "select": "$.jobs.*.steps[*]", "where": { "is_map": true, "has_key": ["id"] },
+      "kind": "step", "source_kind": "GHAStep", "name": ".id", "signature": ".name | .uses | .run" },
+    { "select": "$.jobs.*.steps[*]", "where": { "is_map": true, "has_key": ["uses"] },
+      "kind": "resource", "source_kind": "GHAAction", "name": ".uses", "signature": ".name" },
+    { "select": "$.runs.steps[*]", "where": { "is_map": true, "has_key": ["id"] },
+      "kind": "step", "source_kind": "GHAStep", "name": ".id", "signature": ".name | .uses | .run" },
+    { "select": "$.runs.steps[*]", "where": { "is_map": true, "has_key": ["uses"] },
+      "kind": "resource", "source_kind": "GHAAction", "name": ".uses", "signature": ".name" },
+    { "select": "$.inputs.*", "where": { "is_map": true },
+      "kind": "variable_decl", "source_kind": "GHAActionInput", "name": "$key", "signature": ".default | .description" },
+    { "select": "$.outputs.*", "where": { "is_map": true },
+      "kind": "output", "source_kind": "GHAActionOutput", "name": "$key", "signature": ".value | .description" }
+  ],
+  "references": [
+    { "from": "job", "select": "$.needs[*]", "value": "$", "to_kind": "job", "edge": "needs" }
+  ],
+  "cross_file": [
+    { "from": "job", "select": "$.steps[*].uses", "value": "$", "resolve": "module-source", "edge": "uses_action" },
+    { "from": "job", "select": "$.uses", "value": "$", "resolve": "module-source", "edge": "calls_workflow" },
+    { "from": "target", "select": "$.runs.steps[*].uses", "value": "$", "resolve": "module-source", "edge": "uses_action" }
+  ]
+}

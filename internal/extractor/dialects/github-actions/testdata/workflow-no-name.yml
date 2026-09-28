@@ -1,0 +1,9 @@
+on: push
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run in container
+        uses: docker://alpine:3.19
+        with:
+          entrypoint: /bin/sh
