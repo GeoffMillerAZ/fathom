@@ -179,6 +179,20 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name, c
 	var nodes []core.SymbolNode
 	var srcFiles []core.SourceFile
 	skipped := map[string]int{}
+	// Warm-up: one untimed extraction compiles the dialect's grammar, so
+	// per-file times measure extraction, not the one-time lazy compile
+	// (design §9 charges that to the module pool, LB-F15).
+	for _, ref := range refs {
+		if !spec.Manifest.Owns(ref.Path) {
+			continue
+		}
+		if content, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(ref.Path))); err == nil {
+			if ex, _ := pipe.ExtractForBench(service, refs, ref.Path, content); ex.Skipped == "" {
+				res.notes = append(res.notes, "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)")
+				break
+			}
+		}
+	}
 	for _, ref := range refs {
 		if !spec.Manifest.Owns(ref.Path) {
 			continue

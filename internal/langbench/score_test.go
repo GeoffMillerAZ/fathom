@@ -20,6 +20,7 @@ func TestParseCtagsJSON(t *testing.T) {
 	in := `{"_type": "ptag", "name": "JSON_OUTPUT_VERSION", "path": "0.0"}
 {"_type": "tag", "name": "Foo", "path": "a.py", "line": 1, "kind": "class", "end": 9}
 {"_type": "tag", "name": "bar", "path": "a.py", "line": 3, "kind": "member", "scope": "Foo", "scopeKind": "class", "end": 5}
+{"_type": "tag", "name": "F", "path": "a.go", "line": 7, "kind": "func", "scope": "pkg", "scopeKind": "package"}
 not json
 `
 	defs, err := ParseCtagsJSON(strings.NewReader(in))
@@ -33,8 +34,9 @@ not json
 	want := []OracleDef{
 		{Path: "a.py", Name: "Foo", Line: 1, End: 9, Kind: "class"},
 		{Path: "a.py", Name: "bar", Line: 3, End: 5, Kind: "member", Scoped: true},
+		{Path: "a.go", Name: "F", Line: 7, Kind: "func"},
 	}
-	if len(defs) != 2 || defs[0] != want[0] || defs[1] != want[1] {
+	if len(defs) != 3 || defs[0] != want[0] || defs[1] != want[1] || defs[2] != want[2] {
 		t.Fatalf("defs = %+v, want %+v", defs, want)
 	}
 }
