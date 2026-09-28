@@ -127,6 +127,19 @@ means no recommendation.
 | T12 | the 5 nearest proven rows' median tokens at least 2.0x the fleet median (needs 3 such rows) | standard |
 | T13 | fewer than 50% of the 5 nearest proven rows proven at the first attempt (needs 3 such rows) | standard |
 
+**The Score and the outcomes (WI-18, WI-19).** With `[decide]` configured and `preflight` among
+`[decide] sites`, `fathom plans context --preflight --score` asks the port one `KindScore`
+question over the profile's measured numbers (the state names no row, symbol or path), the
+answer's level rounds to a tier, and the ruling is logged to `decisions.jsonl` as never applied
+(I42, I14). No provider, or a site the allowlist omits, means no call and the Score reads absent
+with its reason; an answer in the unsure band reads as no answer. The console never asks: a page
+view must not spend or send code off-host. `fathom plans outcome` records what happened, one
+ledger line per worked row: the agent identity (harness, model, effort; I58 withholds anything
+shaped like a person), proven or not, whether at the first attempt, and the tier the table and
+the Score had recommended. The calibration shown beside a recommendation is read back from those
+lines: per recommended tier, rows proven at the first attempt over rows with a known reading,
+descriptive only and uncalibrated below the scorecard's n = 10. WI-M4's A/B reads the same ledger.
+
 ### U12. Proof regressions, generalized
 
 Anything once proven that no longer holds, with the reading and commit where it changed:

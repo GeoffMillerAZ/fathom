@@ -321,3 +321,30 @@ func TestTierRuleTablePublished(t *testing.T) {
 		}
 	}
 }
+
+// The row's proof history gives its claimed-unproven readings and weight
+// before work starts, and whether it was later proven at the first attempt.
+func TestRowProofFacts(t *testing.T) {
+	h := History{Rows: []RowHistory{
+		{Service: "Svc", Plan: "docs/plans/p.md", ID: "A", Readings: []RowReading{{At: "2026-09-01T10:00:00Z", State: HistOpen, Weight: 3}, {At: "2026-09-02T10:00:00Z", State: HistUnproven, Weight: 3}, {At: "2026-09-03T10:00:00Z", State: HistUnproven, Weight: 3}, {At: "2026-09-04T10:00:00Z", State: HistProven, Weight: 3}}},
+		{Service: "Svc", Plan: "docs/plans/p.md", ID: "B", Readings: []RowReading{{At: "2026-09-01T10:00:00Z", State: HistOpen}, {At: "2026-09-02T10:00:00Z", State: HistProven}}},
+	}}
+	if r, w, ok := RowProofFacts(h, "svc", "/abs/repo/docs/plans/p.md", "A"); !ok || r != 2 || w != 3 {
+		t.Fatalf("A: retries %d weight %d found %v", r, w, ok)
+	}
+	if r, w, ok := RowProofFacts(h, "svc", "docs/plans/p.md", "B"); !ok || r != 0 || w != 1 {
+		t.Fatalf("B: unset weight reads 1: retries %d weight %d found %v", r, w, ok)
+	}
+	if r, w, ok := RowProofFacts(h, "svc", "docs/plans/p.md", "ZZ"); ok || r != 0 || w != 1 {
+		t.Fatalf("an unread row: %d %d %v", r, w, ok)
+	}
+	if first, known := RowFirstAttempt(h, "svc", "docs/plans/p.md", "A"); !known || first {
+		t.Fatalf("A was proven after retries: %v %v", first, known)
+	}
+	if first, known := RowFirstAttempt(h, "svc", "docs/plans/p.md", "B"); !known || !first {
+		t.Fatalf("B was proven at the first attempt: %v %v", first, known)
+	}
+	if _, known := RowFirstAttempt(h, "svc", "docs/plans/p.md", "ZZ"); known {
+		t.Fatal("an unread row has no first-attempt reading")
+	}
+}

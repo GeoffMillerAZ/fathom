@@ -19,6 +19,7 @@ package console
 import (
 	"fmt"
 	"sort"
+	"strings"
 )
 
 // PreflightK is how many nearest proven rows a profile reads (design U6).
@@ -599,8 +600,8 @@ type Recommendation struct {
 	Note        string   `json:"note"`
 }
 
-// preflightAdvisory is the sentence every recommendation carries.
-const preflightAdvisory = "advisory: fathom recommends and the harness decides what to run; a recommendation starts, assigns and routes nothing"
+// PreflightAdvisory is the sentence every recommendation carries.
+const PreflightAdvisory = "advisory: fathom recommends and the harness decides what to run; a recommendation starts, assigns and routes nothing"
 
 // recommendTier is the deterministic tier recommendation (WI-17): each
 // rule of the published table (TierRules) that could be evaluated on the
@@ -627,16 +628,16 @@ func recommendTier(p Profile) Recommendation {
 	rec.Complete = len(rec.Unevaluated) == 0
 	switch {
 	case evaluated == 0:
-		rec.Note = "no rule of the table could be evaluated; " + preflightAdvisory
+		rec.Note = "no rule of the table could be evaluated; " + PreflightAdvisory
 	case rec.Tier == "" && rec.Complete:
 		rec.Tier = TierLight
-		rec.Note = "no rule of the table fired; " + preflightAdvisory
+		rec.Note = "no rule of the table fired; " + PreflightAdvisory
 	case rec.Tier == "":
-		rec.Note = fmt.Sprintf("no rule fired, but %d could not be evaluated, so no tier is recommended; %s", len(rec.Unevaluated), preflightAdvisory)
+		rec.Note = fmt.Sprintf("no rule fired, but %d could not be evaluated, so no tier is recommended; %s", len(rec.Unevaluated), PreflightAdvisory)
 	case !rec.Complete:
-		rec.Note = fmt.Sprintf("at least %s: %d rules could not be evaluated and could raise it; %s", rec.Tier, len(rec.Unevaluated), preflightAdvisory)
+		rec.Note = fmt.Sprintf("at least %s: %d rules could not be evaluated and could raise it; %s", rec.Tier, len(rec.Unevaluated), PreflightAdvisory)
 	default:
-		rec.Note = preflightAdvisory
+		rec.Note = PreflightAdvisory
 	}
 	return rec
 }
@@ -657,4 +658,57 @@ func unevaluatedWhy(id string, p Profile) string {
 		return fmt.Sprintf("only %s of the %d needed", nOf(len(p.Similar.V.Rows), "similar row", "similar rows"), preflightSimilarMinN)
 	}
 	return p.Similar.Reason
+}
+
+// ─── the row's own proof history ────────────────────────────────────────────
+
+// rowHistoryOf finds a row's history by service, plan and id. A plan is
+// matched by path suffix either way, so a plan named relative to the
+// repository and one named absolutely find the same row.
+func rowHistoryOf(h History, service, plan, id string) (RowHistory, bool) {
+	for _, rh := range h.Rows {
+		if rh.ID != id || !strings.EqualFold(rh.Service, service) {
+			continue
+		}
+		if rh.Plan == plan || strings.HasSuffix(plan, "/"+rh.Plan) || strings.HasSuffix(rh.Plan, "/"+plan) {
+			return rh, true
+		}
+	}
+	return RowHistory{}, false
+}
+
+// RowProofFacts is what a row's proof history says before work starts:
+// how many claimed-unproven readings it has had and its plan weight.
+// Found is false when the history has never read the row (then Retries is
+// 0 and Weight 1, and the caller says the history had no reading).
+func RowProofFacts(h History, service, plan, id string) (retries, weight int, found bool) {
+	rh, ok := rowHistoryOf(h, service, plan, id)
+	if !ok {
+		return 0, 1, false
+	}
+	for _, r := range rh.Readings {
+		if r.State == HistUnproven {
+			retries++
+		}
+	}
+	return retries, max(rh.Latest().Weight, 1), true
+}
+
+// RowFirstAttempt reports whether the row was proven with no
+// claimed-unproven reading before its first proven one; known is false
+// when the history has no proven reading of it (or never read it).
+func RowFirstAttempt(h History, service, plan, id string) (first, known bool) {
+	rh, ok := rowHistoryOf(h, service, plan, id)
+	if !ok {
+		return false, false
+	}
+	for _, r := range rh.Readings {
+		switch r.State {
+		case HistUnproven:
+			return false, true
+		case HistProven:
+			return true, true
+		}
+	}
+	return false, false
 }
