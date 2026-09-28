@@ -1,0 +1,21 @@
+{
+  "symbols": [
+    {
+      "name": "good",
+      "kind": "JSFunc",
+      "package": "broken",
+      "line": 1,
+      "calls": [
+        "callOne"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Broken",
+      "kind": "TSInterface",
+      "package": "broken",
+      "line": 5,
+      "tier": "verified"
+    }
+  ]
+}

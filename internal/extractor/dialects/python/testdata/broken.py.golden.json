@@ -1,0 +1,41 @@
+{
+  "symbols": [
+    {
+      "name": "good",
+      "kind": "PythonFunc",
+      "package": "broken",
+      "line": 1,
+      "calls": [
+        "call_one"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "broken",
+      "kind": "PythonFunc",
+      "package": "broken",
+      "line": 4,
+      "calls": [
+        "call_two"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Survivor",
+      "kind": "PythonClass",
+      "package": "broken",
+      "line": 7,
+      "tier": "verified"
+    },
+    {
+      "name": "Survivor.ok",
+      "kind": "PythonFunc",
+      "package": "broken",
+      "line": 8,
+      "calls": [
+        "call_three"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

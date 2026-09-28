@@ -1,0 +1,178 @@
+{
+  "symbols": [
+    {
+      "name": "Widget",
+      "kind": "JSClass",
+      "package": "shapes",
+      "line": 8,
+      "tier": "verified"
+    },
+    {
+      "name": "Widget.constructor",
+      "kind": "JSMethod",
+      "package": "shapes",
+      "line": 11,
+      "calls": [
+        "super",
+        "this.init"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Widget.render",
+      "kind": "JSMethod",
+      "package": "shapes",
+      "line": 16,
+      "calls": [
+        "helper"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Widget.#hidden",
+      "kind": "JSMethod",
+      "package": "shapes",
+      "line": 20,
+      "calls": [
+        "ns.run"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Widget.[Symbol.iterator]",
+      "kind": "JSMethod",
+      "package": "shapes",
+      "line": 24,
+      "tier": "verified"
+    },
+    {
+      "name": "Widget.create",
+      "kind": "JSMethod",
+      "package": "shapes",
+      "line": 28,
+      "tier": "verified"
+    },
+    {
+      "name": "Widget.value",
+      "kind": "JSMethod",
+      "package": "shapes",
+      "line": 32,
+      "tier": "verified"
+    },
+    {
+      "name": "plain",
+      "kind": "JSFunc",
+      "package": "shapes",
+      "line": 37,
+      "calls": [
+        "fs.readFileSync",
+        "join"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "gen",
+      "kind": "JSFunc",
+      "package": "shapes",
+      "line": 41,
+      "calls": [
+        "compute"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "arrow",
+      "kind": "JSFunc",
+      "package": "shapes",
+      "line": 45,
+      "calls": [
+        "add"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "expr",
+      "kind": "JSFunc",
+      "package": "shapes",
+      "line": 46,
+      "calls": [
+        "bee"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "method",
+      "kind": "JSMethod",
+      "package": "shapes",
+      "line": 53,
+      "calls": [
+        "inner"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "asyncFn",
+      "kind": "JSFunc",
+      "package": "shapes",
+      "line": 63,
+      "calls": [
+        "fetchAll",
+        "fetchAll().then"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "def",
+      "module": "./default",
+      "kind": "whole",
+      "line": 1
+    },
+    {
+      "local": "ns",
+      "module": "./ns",
+      "kind": "whole",
+      "line": 2
+    },
+    {
+      "local": "a",
+      "exported": "a",
+      "module": "../named",
+      "kind": "named",
+      "line": 3
+    },
+    {
+      "local": "bee",
+      "exported": "b",
+      "module": "../named",
+      "kind": "named",
+      "line": 3
+    },
+    {
+      "module": "./side-effect",
+      "kind": "whole",
+      "line": 4
+    },
+    {
+      "local": "fs",
+      "module": "fs",
+      "kind": "whole",
+      "line": 5
+    },
+    {
+      "local": "join",
+      "exported": "join",
+      "module": "path",
+      "kind": "named",
+      "line": 6
+    },
+    {
+      "local": "resolve",
+      "exported": "resolve",
+      "module": "path",
+      "kind": "named",
+      "line": 6
+    }
+  ]
+}

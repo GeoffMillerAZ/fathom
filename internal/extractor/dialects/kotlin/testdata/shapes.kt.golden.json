@@ -1,0 +1,203 @@
+{
+  "symbols": [
+    {
+      "name": "kotlin.math.PI",
+      "kind": "KotlinImport",
+      "package": "shapes",
+      "line": 3,
+      "tier": "verified"
+    },
+    {
+      "name": "com.example.util.Logger",
+      "kind": "KotlinImport",
+      "package": "shapes",
+      "line": 4,
+      "tier": "verified"
+    },
+    {
+      "name": "topLevel",
+      "kind": "KotlinProperty",
+      "package": "shapes",
+      "line": 6,
+      "tier": "verified"
+    },
+    {
+      "name": "mutableTop",
+      "kind": "KotlinProperty",
+      "package": "shapes",
+      "line": 7,
+      "tier": "verified"
+    },
+    {
+      "name": "Shape",
+      "kind": "KotlinInterface",
+      "package": "shapes",
+      "line": 9,
+      "tier": "verified"
+    },
+    {
+      "name": "Shape.area",
+      "kind": "KotlinFunction",
+      "package": "shapes",
+      "line": 10,
+      "tier": "verified"
+    },
+    {
+      "name": "Base",
+      "kind": "KotlinClass",
+      "package": "shapes",
+      "line": 13,
+      "tier": "verified"
+    },
+    {
+      "name": "Base.describe",
+      "kind": "KotlinFunction",
+      "package": "shapes",
+      "line": 16,
+      "calls": [
+        "format"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Base.Nested",
+      "kind": "KotlinClass",
+      "package": "shapes",
+      "line": 23,
+      "tier": "verified"
+    },
+    {
+      "name": "Base.Nested.deep",
+      "kind": "KotlinFunction",
+      "package": "shapes",
+      "line": 24,
+      "calls": [
+        "compute"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Base.Nested.Inner",
+      "kind": "KotlinClass",
+      "package": "shapes",
+      "line": 26,
+      "tier": "verified"
+    },
+    {
+      "name": "Base.Nested.Inner.deeper",
+      "kind": "KotlinFunction",
+      "package": "shapes",
+      "line": 27,
+      "calls": [
+        "Log.info"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Base.Factory",
+      "kind": "KotlinObject",
+      "package": "shapes",
+      "line": 33,
+      "tier": "verified"
+    },
+    {
+      "name": "Base.Factory.create",
+      "kind": "KotlinFunction",
+      "package": "shapes",
+      "line": 34,
+      "calls": [
+        "Circle"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Circle",
+      "kind": "KotlinClass",
+      "package": "shapes",
+      "line": 38,
+      "tier": "verified"
+    },
+    {
+      "name": "Circle.area",
+      "kind": "KotlinFunction",
+      "package": "shapes",
+      "line": 39,
+      "calls": [
+        "square"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Color",
+      "kind": "KotlinClass",
+      "package": "shapes",
+      "line": 42,
+      "tier": "verified"
+    },
+    {
+      "name": "Result",
+      "kind": "KotlinClass",
+      "package": "shapes",
+      "line": 44,
+      "tier": "verified"
+    },
+    {
+      "name": "Result.Empty",
+      "kind": "KotlinObject",
+      "package": "shapes",
+      "line": 45,
+      "tier": "verified"
+    },
+    {
+      "name": "Registry",
+      "kind": "KotlinObject",
+      "package": "shapes",
+      "line": 48,
+      "tier": "verified"
+    },
+    {
+      "name": "Registry.register",
+      "kind": "KotlinFunction",
+      "package": "shapes",
+      "line": 49,
+      "calls": [
+        "shapes.add"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "shout",
+      "kind": "KotlinFunction",
+      "package": "shapes",
+      "line": 54,
+      "calls": [
+        "this.uppercase"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "load",
+      "kind": "KotlinFunction",
+      "package": "shapes",
+      "line": 56,
+      "calls": [
+        "repository.find",
+        "repository.find(id).await"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "main",
+      "kind": "KotlinFunction",
+      "package": "shapes",
+      "line": 60,
+      "calls": [
+        "Circle",
+        "Registry.register",
+        "c.area",
+        "println"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

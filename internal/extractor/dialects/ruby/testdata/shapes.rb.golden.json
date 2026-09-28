@@ -1,0 +1,120 @@
+{
+  "symbols": [
+    {
+      "name": "Outer",
+      "kind": "RubyModule",
+      "package": "shapes",
+      "line": 4,
+      "tier": "verified"
+    },
+    {
+      "name": "Outer::Inner",
+      "kind": "RubyModule",
+      "package": "shapes",
+      "line": 7,
+      "tier": "verified"
+    },
+    {
+      "name": "Outer::Inner::Deep",
+      "kind": "RubyClass",
+      "package": "shapes",
+      "line": 8,
+      "tier": "verified"
+    },
+    {
+      "name": "Outer::Inner::Deep.call",
+      "kind": "RubyMethod",
+      "package": "shapes",
+      "line": 9,
+      "calls": [
+        "helper",
+        "parse"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Outer::Service",
+      "kind": "RubyClass",
+      "package": "shapes",
+      "line": 16,
+      "tier": "verified"
+    },
+    {
+      "name": "Outer::Service.initialize",
+      "kind": "RubyMethod",
+      "package": "shapes",
+      "line": 20,
+      "calls": [
+        "super"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Outer::Service.build",
+      "kind": "RubyMethod",
+      "package": "shapes",
+      "line": 25,
+      "calls": [
+        "configure",
+        "new",
+        "tap"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Outer::Service.each",
+      "kind": "RubyMethod",
+      "package": "shapes",
+      "line": 29,
+      "calls": [
+        "each"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Outer::Service.singleton_helper",
+      "kind": "RubyMethod",
+      "package": "shapes",
+      "line": 34,
+      "tier": "verified"
+    },
+    {
+      "name": "Outer::Service.secret?",
+      "kind": "RubyMethod",
+      "package": "shapes",
+      "line": 41,
+      "tier": "verified"
+    },
+    {
+      "name": "Outer::Service.value=",
+      "kind": "RubyMethod",
+      "package": "shapes",
+      "line": 45,
+      "tier": "verified"
+    },
+    {
+      "name": "Outer::Reopened",
+      "kind": "RubyClass",
+      "package": "shapes",
+      "line": 51,
+      "tier": "verified"
+    },
+    {
+      "name": "Outer::Reopened.method_missing",
+      "kind": "RubyMethod",
+      "package": "shapes",
+      "line": 52,
+      "tier": "verified"
+    },
+    {
+      "name": "top_level",
+      "kind": "RubyMethod",
+      "package": "shapes",
+      "line": 57,
+      "calls": [
+        "puts"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

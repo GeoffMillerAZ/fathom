@@ -1,0 +1,24 @@
+{
+  "symbols": [
+    {
+      "name": "good",
+      "kind": "JSFunc",
+      "package": "broken",
+      "line": 1,
+      "calls": [
+        "callOne"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "ok",
+      "kind": "JSMethod",
+      "package": "broken",
+      "line": 9,
+      "calls": [
+        "callThree"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

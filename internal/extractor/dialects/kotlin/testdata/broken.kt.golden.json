@@ -1,0 +1,31 @@
+{
+  "symbols": [
+    {
+      "name": "good",
+      "kind": "KotlinFunction",
+      "package": "broken",
+      "line": 1,
+      "calls": [
+        "callOne"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Survivor",
+      "kind": "KotlinClass",
+      "package": "broken",
+      "line": 8,
+      "tier": "verified"
+    },
+    {
+      "name": "Survivor.ok",
+      "kind": "KotlinFunction",
+      "package": "broken",
+      "line": 9,
+      "calls": [
+        "callThree"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

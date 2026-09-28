@@ -1,0 +1,25 @@
+{
+  "symbols": [
+    {
+      "name": "good",
+      "kind": "RubyMethod",
+      "package": "broken",
+      "line": 1,
+      "tier": "verified"
+    },
+    {
+      "name": "Survivor",
+      "kind": "RubyClass",
+      "package": "broken",
+      "line": 8,
+      "tier": "verified"
+    },
+    {
+      "name": "Survivor.ok",
+      "kind": "RubyMethod",
+      "package": "broken",
+      "line": 9,
+      "tier": "verified"
+    }
+  ]
+}

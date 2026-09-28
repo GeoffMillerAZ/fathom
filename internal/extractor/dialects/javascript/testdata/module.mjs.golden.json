@@ -1,0 +1,31 @@
+{
+  "symbols": [
+    {
+      "name": "exported",
+      "kind": "JSFunc",
+      "package": "module",
+      "line": 1,
+      "calls": [
+        "internal"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "internal",
+      "kind": "JSFunc",
+      "package": "module",
+      "line": 5,
+      "tier": "verified"
+    },
+    {
+      "name": "arrowExport",
+      "kind": "JSFunc",
+      "package": "module",
+      "line": 9,
+      "calls": [
+        "exported"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

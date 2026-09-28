@@ -1,0 +1,22 @@
+{
+  "symbols": [
+    {
+      "name": "helper",
+      "kind": "JSFunc",
+      "package": "common",
+      "line": 7,
+      "calls": [
+        "module.exports.handler"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "path",
+      "module": "path",
+      "kind": "whole",
+      "line": 1
+    }
+  ]
+}

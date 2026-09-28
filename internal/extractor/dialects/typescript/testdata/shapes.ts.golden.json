@@ -1,0 +1,138 @@
+{
+  "symbols": [
+    {
+      "name": "Shape",
+      "kind": "TSInterface",
+      "package": "shapes",
+      "line": 5,
+      "tier": "verified"
+    },
+    {
+      "name": "Point",
+      "kind": "TSType",
+      "package": "shapes",
+      "line": 10,
+      "tier": "verified"
+    },
+    {
+      "name": "Handler",
+      "kind": "TSType",
+      "package": "shapes",
+      "line": 11,
+      "tier": "verified"
+    },
+    {
+      "name": "Color",
+      "kind": "TSEnum",
+      "package": "shapes",
+      "line": 13,
+      "tier": "verified"
+    },
+    {
+      "name": "Flag",
+      "kind": "TSEnum",
+      "package": "shapes",
+      "line": 18,
+      "tier": "verified"
+    },
+    {
+      "name": "constructor",
+      "kind": "JSMethod",
+      "package": "shapes",
+      "line": 24,
+      "calls": [
+        "util.log"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "describe",
+      "kind": "JSMethod",
+      "package": "shapes",
+      "line": 30,
+      "calls": [
+        "format"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "#secret",
+      "kind": "JSMethod",
+      "package": "shapes",
+      "line": 37,
+      "calls": [
+        "this.describe"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Circle",
+      "kind": "JSClass",
+      "package": "shapes",
+      "line": 43,
+      "tier": "verified"
+    },
+    {
+      "name": "Circle.area",
+      "kind": "JSMethod",
+      "package": "shapes",
+      "line": 44,
+      "calls": [
+        "square"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "create",
+      "kind": "JSFunc",
+      "package": "shapes",
+      "line": 49,
+      "calls": [
+        "factory.make"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "arrow",
+      "kind": "JSFunc",
+      "package": "shapes",
+      "line": 53,
+      "calls": [
+        "compute"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "inner",
+      "kind": "JSFunc",
+      "package": "shapes",
+      "line": 56,
+      "calls": [
+        "outer"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "Injectable",
+      "exported": "Injectable",
+      "module": "./di",
+      "kind": "named",
+      "line": 1
+    },
+    {
+      "local": "Config",
+      "exported": "Config",
+      "module": "./config",
+      "kind": "named",
+      "line": 2
+    },
+    {
+      "local": "util",
+      "module": "../util",
+      "kind": "whole",
+      "line": 3
+    }
+  ]
+}
