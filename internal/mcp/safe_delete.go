@@ -2,12 +2,14 @@
 // 29-verbs-not-lookups.md §3 wave A, plan VB-2): "can this symbol go" —
 // read-only, never a mutator, a sibling of rename_impact answering the
 // question one step further down the same road (rename touches every
-// call site; delete needs to know there are none left).
+// call site; delete needs to know there are none left). Unregistered as a
+// standalone tool by SR-24 (F-13, design §4); safeDeleteCheckAnswer below
+// is now reached through blast_radius's kind:"delete" (blastRadiusByKind,
+// extra_tools.go).
 package mcp
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
@@ -26,156 +28,130 @@ type safeDeleteReferent struct {
 	Tier   string `json:"tier"`
 }
 
-func registerSafeDeleteCheck(s *Server, backend QueryInterface) {
-	s.registerTool(toolDescriptor{
-		Name:        "safe_delete_check",
-		Description: "Every remaining referent of a symbol, file:line with a typed/heuristic tier; zero is a proven-zero receipt. Reach for it when about to delete a symbol. Required: service, symbol.",
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"service":   map[string]any{"type": "string", "description": "Service / repo identifier"},
-				"symbol":    map[string]any{"type": "string", "description": "Symbol name (bare or fully-qualified)"},
-				"symbol_id": map[string]any{"type": "string", "description": "Alias for symbol"},
-			},
-			"required": []string{"service", "symbol"},
-		},
-		aliases: map[string]string{"symbol_id": "symbol"},
-		group:   GroupCoding,
-	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
-		if backend == nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
-		}
-		var raw map[string]json.RawMessage
-		if err := json.Unmarshal(args, &raw); err != nil {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "safe_delete_check: invalid args"}
-		}
-		var p struct {
-			Service string `json:"service"`
-		}
-		if err := json.Unmarshal(args, &p); err != nil {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "safe_delete_check: invalid args"}
-		}
-		if p.Service == "" {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "safe_delete_check: service required"}
-		}
-		symbol, aliasErr := resolveAliasedString(raw, "safe_delete_check", "symbol", "symbol_id")
-		if aliasErr != nil {
-			return nil, aliasErr
-		}
-		if symbol == "" {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "safe_delete_check: symbol or symbol_id required"}
-		}
+// safeDeleteCheckAnswer is the retired safe_delete_check tool's exact
+// answer, unregistered by SR-24 (F-13, design §4) and now reached through
+// blast_radius's kind:"delete" (blastRadiusByKind, extra_tools.go) —
+// byte-compatible with what safe_delete_check itself used to return.
+func safeDeleteCheckAnswer(ctx context.Context, s *Server, backend QueryInterface, service, symbol string) (any, *rpcError) {
+	if backend == nil {
+		return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
+	}
+	if service == "" {
+		return nil, &rpcError{Code: ErrCodeParams, Message: "blast_radius: service required"}
+	}
+	if symbol == "" {
+		return nil, &rpcError{Code: ErrCodeParams, Message: `blast_radius: kind "delete" requires symbol`}
+	}
 
-		navs := s.loadNavGraphs(ctx, backend, p.Service)
-		if navs == nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "safe_delete_check: no symbols for service " + p.Service}
-		}
+	navs := s.loadNavGraphs(ctx, backend, service)
+	if navs == nil {
+		return nil, &rpcError{Code: ErrCodeInternal, Message: "blast_radius: no symbols for service " + service}
+	}
 
-		heurNodes, err := backend.FindCallers(ctx, p.Service, symbol)
-		if err != nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
-		}
-		typedKeys, typedOK := resolvedCallersOnly(navs, symbol)
+	heurNodes, err := backend.FindCallers(ctx, service, symbol)
+	if err != nil {
+		return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
+	}
+	typedKeys, typedOK := resolvedCallersOnly(navs, symbol)
 
-		byKey := make(map[string]core.SymbolNode, len(navs.Nodes))
-		for _, n := range navs.Nodes {
-			byKey[n.Key()] = n
-		}
+	byKey := make(map[string]core.SymbolNode, len(navs.Nodes))
+	for _, n := range navs.Nodes {
+		byKey[n.Key()] = n
+	}
 
-		// tierOf classifies every caller key found by EITHER pass. A key
-		// the typed pass confirmed is reported "typed" even when the
-		// syntax pass also found it — typed is strictly stronger evidence
-		// for the same call site, never a second, weaker row.
-		tierOf := make(map[string]string, len(heurNodes))
-		for _, n := range heurNodes {
-			tierOf[n.Key()] = string(core.EdgeConfidenceHeuristic)
+	// tierOf classifies every caller key found by EITHER pass. A key
+	// the typed pass confirmed is reported "typed" even when the
+	// syntax pass also found it — typed is strictly stronger evidence
+	// for the same call site, never a second, weaker row.
+	tierOf := make(map[string]string, len(heurNodes))
+	for _, n := range heurNodes {
+		tierOf[n.Key()] = string(core.EdgeConfidenceHeuristic)
+	}
+	if typedOK {
+		for k := range typedKeys {
+			tierOf[k] = string(core.EdgeConfidenceResolved)
 		}
-		if typedOK {
-			for k := range typedKeys {
-				tierOf[k] = string(core.EdgeConfidenceResolved)
-			}
-		}
+	}
 
-		referents := []safeDeleteReferent{}
-		var testReferents []safeDeleteReferent
-		var mix resolutionMix
-		for key, conf := range tierOf {
-			n, ok := byKey[key]
-			if !ok {
-				for _, hn := range heurNodes {
-					if hn.Key() == key {
-						n, ok = hn, true
-						break
-					}
+	referents := []safeDeleteReferent{}
+	var testReferents []safeDeleteReferent
+	var mix resolutionMix
+	for key, conf := range tierOf {
+		n, ok := byKey[key]
+		if !ok {
+			for _, hn := range heurNodes {
+				if hn.Key() == key {
+					n, ok = hn, true
+					break
 				}
 			}
-			if !ok {
-				continue
-			}
-			r := safeDeleteReferent{File: n.FilePath, Line: n.Line, Symbol: n.Name, Tier: tierLabel(conf)}
-			mix.addConfidence(core.EdgeConfidence(conf))
-			if strings.HasPrefix(n.Name, "Test") {
-				testReferents = append(testReferents, r)
-			} else {
-				referents = append(referents, r)
-			}
 		}
+		if !ok {
+			continue
+		}
+		r := safeDeleteReferent{File: n.FilePath, Line: n.Line, Symbol: n.Name, Tier: tierLabel(conf)}
+		mix.addConfidence(core.EdgeConfidence(conf))
+		if strings.HasPrefix(n.Name, "Test") {
+			testReferents = append(testReferents, r)
+		} else {
+			referents = append(referents, r)
+		}
+	}
 
-		// An interface (or a method only an interface declares) has no
-		// "caller" at all, yet deleting it breaks every concrete
-		// implementation — list those as referents too (VB-2).
-		for _, im := range safeDeleteImplementations(ctx, backend, p.Service, symbol, navs.Nodes) {
-			tier := "heuristic"
-			if im.Via == "typed" {
-				tier = "typed"
-			}
-			referents = append(referents, safeDeleteReferent{File: im.FilePath, Line: im.Line, Symbol: im.Name, Tier: tier})
-			if tier == "typed" {
-				mix.Typed++
-			} else {
-				mix.Heuristic++
-			}
+	// An interface (or a method only an interface declares) has no
+	// "caller" at all, yet deleting it breaks every concrete
+	// implementation — list those as referents too (VB-2).
+	for _, im := range safeDeleteImplementations(ctx, backend, service, symbol, navs.Nodes) {
+		tier := "heuristic"
+		if im.Via == "typed" {
+			tier = "typed"
 		}
+		referents = append(referents, safeDeleteReferent{File: im.FilePath, Line: im.Line, Symbol: im.Name, Tier: tier})
+		if tier == "typed" {
+			mix.Typed++
+		} else {
+			mix.Heuristic++
+		}
+	}
 
-		sortSafeDeleteReferents(referents)
-		sortSafeDeleteReferents(testReferents)
+	sortSafeDeleteReferents(referents)
+	sortSafeDeleteReferents(testReferents)
 
-		// checkedEdges names the strongest evidence tier the zero-referent
-		// (or non-zero) verdict actually rests on: "typed" when the
-		// service's typed pass ran (both typed and heuristic edges were
-		// consulted), "heuristic" when only the syntax pass is available
-		// (a non-Go corpus, or a Go corpus with no resolved edges yet) —
-		// the same vocabulary RC-19/BP-26 already use for edge_confidence.
-		checkedEdges := "heuristic"
-		if navs.TypedAvailable {
-			checkedEdges = "typed"
-		}
+	// checkedEdges names the strongest evidence tier the zero-referent
+	// (or non-zero) verdict actually rests on: "typed" when the
+	// service's typed pass ran (both typed and heuristic edges were
+	// consulted), "heuristic" when only the syntax pass is available
+	// (a non-Go corpus, or a Go corpus with no resolved edges yet) —
+	// the same vocabulary RC-19/BP-26 already use for edge_confidence.
+	checkedEdges := "heuristic"
+	if navs.TypedAvailable {
+		checkedEdges = "typed"
+	}
 
-		_, indexCommit, metaFound, _ := backend.ServiceMeta(ctx, p.Service)
+	_, indexCommit, metaFound, _ := backend.ServiceMeta(ctx, service)
 
-		// referent_count: 0 alongside an empty referents array IS the
-		// proven-zero receipt — checked_edges names what was actually
-		// checked to reach it, and index_commit (when the backend can
-		// name one) anchors it to a commit a stranger can re-derive
-		// against. Always the same three fields either way, never a
-		// field that changes shape between zero and non-zero.
-		// resolution (VB-19): the typed/heuristic mix behind referents +
-		// test_referents (interface implementers included) — always
-		// present, even {0,0} on a proven-zero answer.
-		resp := map[string]any{
-			"referents":      referents,
-			"referent_count": len(referents),
-			"checked_edges":  checkedEdges,
-			"resolution":     mix,
-		}
-		if len(testReferents) > 0 {
-			resp["test_referents"] = testReferents
-		}
-		if metaFound && indexCommit != "" {
-			resp["index_commit"] = indexCommit
-		}
-		return withSummary(safeDeleteSummary(symbol, referents, checkedEdges), resp), nil
-	})
+	// referent_count: 0 alongside an empty referents array IS the
+	// proven-zero receipt — checked_edges names what was actually
+	// checked to reach it, and index_commit (when the backend can
+	// name one) anchors it to a commit a stranger can re-derive
+	// against. Always the same three fields either way, never a
+	// field that changes shape between zero and non-zero.
+	// resolution (VB-19): the typed/heuristic mix behind referents +
+	// test_referents (interface implementers included) — always
+	// present, even {0,0} on a proven-zero answer.
+	resp := map[string]any{
+		"referents":      referents,
+		"referent_count": len(referents),
+		"checked_edges":  checkedEdges,
+		"resolution":     mix,
+	}
+	if len(testReferents) > 0 {
+		resp["test_referents"] = testReferents
+	}
+	if metaFound && indexCommit != "" {
+		resp["index_commit"] = indexCommit
+	}
+	return withSummary(safeDeleteSummary(symbol, referents, checkedEdges), resp), nil
 }
 
 // safeDeleteSummary renders safe_delete_check's answer-first sentence (wave

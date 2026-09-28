@@ -483,11 +483,11 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 	})
 
 	// Register analysis tools (call-graph and import-cycle analysis).
+	// safe_delete_check and rename_impact (ADR-035 decision 1, plan VB-2)
+	// were unregistered as standalone tools by SR-24 (F-13, design §4);
+	// their answers are reached through blast_radius's kind argument now
+	// (blastRadiusByKind, extra_tools.go).
 	registerAnalysisTools(s, backend)
-
-	// Register safe_delete_check, rename_impact's read-only sibling
-	// (ADR-035 decision 1, plan VB-2).
-	registerSafeDeleteCheck(s, backend)
 
 	// Register localize — the bounded, budgeted, logged localization walk
 	// (ADR-035 decision 1 follow-on, vision 29 Wave G, plan VB-26).

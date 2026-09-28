@@ -32,7 +32,7 @@ var toolCostClasses = map[string]tenancy.Class{
 	// index: one service's symbols, edges or graph from the store.
 	"find_symbol": tenancy.ClassIndex, "find_callers": tenancy.ClassIndex,
 	"query_symbols": tenancy.ClassIndex, "pack_context": tenancy.ClassIndex, "repo_map": tenancy.ClassIndex,
-	"verify_plan": tenancy.ClassIndex, "test_impact": tenancy.ClassIndex, "rename_impact": tenancy.ClassIndex,
+	"verify_plan": tenancy.ClassIndex, "test_impact": tenancy.ClassIndex,
 	"reachable": tenancy.ClassIndex, "dead_code": tenancy.ClassIndex, "community": tenancy.ClassIndex,
 	"localize": tenancy.ClassIndex, "outline": tenancy.ClassIndex,
 	"complexity": tenancy.ClassIndex, "god_object": tenancy.ClassIndex,
@@ -45,9 +45,14 @@ var toolCostClasses = map[string]tenancy.Class{
 	// "sources" section walks a whole service's symbols exactly like the
 	// retired list_sources did; "tools"/"daemon" are cheaper (point) but
 	// the tool declares one class for all three.
+	// blast_radius (SR-24): stays "tree" — its kind:"change" default
+	// already was tree; kind:"rename"/"delete" (the retired
+	// rename_impact/safe_delete_check tools' own answers, declared index/
+	// tree before the merge) are no cheaper than that default, and one
+	// tool declares one class for all three kinds.
 	"symbol_context": tenancy.ClassTree, "obligations": tenancy.ClassTree, "search": tenancy.ClassTree,
 	"secret_scan": tenancy.ClassTree, "cloc": tenancy.ClassTree, "spec_coverage": tenancy.ClassTree,
-	"traceability": tenancy.ClassTree, "safe_delete_check": tenancy.ClassTree, "status": tenancy.ClassTree,
+	"traceability": tenancy.ClassTree, "status": tenancy.ClassTree,
 	"discoveries": tenancy.ClassTree, "references": tenancy.ClassTree, "blast_radius": tenancy.ClassTree,
 	"traverse": tenancy.ClassTree, "http_client_calls": tenancy.ClassTree,
 	"shell_out": tenancy.ClassTree, "proto_conformance": tenancy.ClassTree, "spec_refs": tenancy.ClassTree,

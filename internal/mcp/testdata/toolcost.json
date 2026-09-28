@@ -145,10 +145,6 @@
       "measured": "ingest",
       "basis": "static read: deletes a service from the store (a store write)"
     },
-    "rename_impact": {
-      "measured": "index",
-      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
-    },
     "rename_service": {
       "measured": "ingest",
       "basis": "static read: rewrites a service id in the store (a store write)"
@@ -159,10 +155,6 @@
     },
     "review_diff": {
       "measured": "fleet",
-      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
-    },
-    "safe_delete_check": {
-      "measured": "tree",
       "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
     },
     "search": {

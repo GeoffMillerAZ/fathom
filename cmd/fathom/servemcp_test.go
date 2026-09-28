@@ -163,16 +163,17 @@ func TestServeMCPToolsList(t *testing.T) {
 		names = append(names, name)
 	}
 
-	// rename_impact must be registered (analysis tool).
+	// blast_radius must be registered (analysis tool; also answers the
+	// retired rename_impact's kind:"rename" — SR-24).
 	found := false
 	for _, n := range names {
-		if n == "rename_impact" {
+		if n == "blast_radius" {
 			found = true
 			break
 		}
 	}
 	if !found {
-		t.Errorf("rename_impact not in tools/list; got: %s", strings.Join(names, ", "))
+		t.Errorf("blast_radius not in tools/list; got: %s", strings.Join(names, ", "))
 	}
 }
 

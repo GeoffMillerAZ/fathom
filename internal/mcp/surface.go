@@ -81,6 +81,10 @@ const SurfaceExtended = "extended"
 // safe_delete_check, its read-only sibling: the agent surface leads with
 // the answers grep cannot give, not another lookup pitched on token
 // savings. Wave G (plan VB-26) adds a fifth promoted verb, localize.
+// safe_delete_check left this map at SR-24 (F-13, design §4) — it is
+// unregistered as a standalone tool, its answer now blast_radius' own
+// kind:"delete" (blastRadiusByKind, extra_tools.go), and blast_radius was
+// already promoted below via promotedVerbs().
 var companionTools = func() map[string]bool {
 	m := map[string]bool{
 		"discoveries":      true,
@@ -104,7 +108,6 @@ var companionTools = func() map[string]bool {
 	for _, v := range promotedVerbs() {
 		m[v.Name] = true
 	}
-	m["safe_delete_check"] = true
 	return m
 }()
 

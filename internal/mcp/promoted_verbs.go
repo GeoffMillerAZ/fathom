@@ -24,12 +24,17 @@ type promotedVerb struct {
 // for surface membership; docs generation (docs/mcp-tools.md's "Also on
 // the agent/companion surface" annotations) is meant to read the same
 // list rather than a second, hand-maintained one.
+//
+// rename_impact left this list at SR-24 (F-13, design §4): it is
+// unregistered as a standalone tool, and its answer — every call site a
+// rename must touch — is now blast_radius' own kind:"rename"
+// (blastRadiusByKind, extra_tools.go), so the reason it earned this list
+// travels with blast_radius, already promoted below.
 func promotedVerbs() []promotedVerb {
 	return []promotedVerb{
-		{Name: "blast_radius", Reason: "who transitively breaks — grep has no call graph to walk"},
+		{Name: "blast_radius", Reason: "who transitively breaks (kind:\"change\"), every call site a rename must touch (kind:\"rename\"), or a symbol's remaining referents (kind:\"delete\") — grep can give none of the three"},
 		{Name: "review_diff", Reason: "one cited verdict over a diff — grep cannot compose obligations, coverage and conformance"},
 		{Name: "test_impact", Reason: "which tests reach a symbol — grep cannot walk the call graph to a Test* root"},
-		{Name: "rename_impact", Reason: "every call site a rename must touch — grep's text match cannot resolve identity"},
 		{Name: "localize", Reason: "where a bug lives before anyone knows the file — grep's literal match has no graph proximity, recency or governance ranking to fall back on"},
 	}
 }
