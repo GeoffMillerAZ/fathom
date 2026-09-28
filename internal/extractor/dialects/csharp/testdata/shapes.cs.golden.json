@@ -1,0 +1,20 @@
+{
+  "symbols": [
+    { "name": "MyApp.Shapes", "kind": "CSharpNamespace", "package": "MyApp.Shapes", "line": 1, "end_line": 1, "tier": "verified" },
+    { "name": "Circle", "kind": "CSharpClass", "package": "MyApp.Shapes", "line": 3, "end_line": 29, "tier": "verified" },
+    { "name": "Radius", "kind": "CSharpProperty", "package": "MyApp.Shapes", "line": 5, "end_line": 5, "tier": "verified" },
+    { "name": "Diameter", "kind": "CSharpProperty", "package": "MyApp.Shapes", "line": 7, "end_line": 7, "tier": "verified" },
+    { "name": "Circle.Circle", "kind": "CSharpMethod", "package": "MyApp.Shapes", "line": 9, "end_line": 12, "signature": "public Circle(double radius)", "tier": "verified" },
+    { "name": "Circle.Area", "kind": "CSharpMethod", "package": "MyApp.Shapes", "line": 14, "end_line": 21, "signature": "public double Area( double scale, bool round)", "calls": ["Adjust", "Console.WriteLine"], "tier": "verified" },
+    { "name": "Circle.Adjust", "kind": "CSharpMethod", "package": "MyApp.Shapes", "line": 23, "end_line": 23, "signature": "private double Adjust(double scale)", "tier": "verified" },
+    { "name": "Circle.Inner", "kind": "CSharpClass", "package": "MyApp.Shapes", "line": 25, "end_line": 28, "tier": "verified" },
+    { "name": "Circle.Inner.Act", "kind": "CSharpMethod", "package": "MyApp.Shapes", "line": 27, "end_line": 27, "signature": "public void Act()", "tier": "verified" },
+    { "name": "Circle", "kind": "CSharpClass", "package": "MyApp.Shapes", "line": 31, "end_line": 34, "tier": "verified" },
+    { "name": "Circle.Reset", "kind": "CSharpMethod", "package": "MyApp.Shapes", "line": 33, "end_line": 33, "signature": "public void Reset()", "tier": "verified" },
+    { "name": "IShape", "kind": "CSharpInterface", "package": "MyApp.Shapes", "line": 36, "end_line": 39, "tier": "verified" },
+    { "name": "IShape.Area", "kind": "CSharpMethod", "package": "MyApp.Shapes", "line": 38, "end_line": 38, "signature": "double Area(double scale, bool round);", "tier": "verified" },
+    { "name": "Point2D", "kind": "CSharpStruct", "package": "MyApp.Shapes", "line": 41, "end_line": 45, "tier": "verified" },
+    { "name": "Quadrant", "kind": "CSharpEnum", "package": "MyApp.Shapes", "line": 47, "end_line": 47, "tier": "verified" },
+    { "name": "Vector", "kind": "CSharpClass", "package": "MyApp.Shapes", "line": 49, "end_line": 49, "tier": "verified" }
+  ]
+}

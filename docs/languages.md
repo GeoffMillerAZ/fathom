@@ -85,7 +85,7 @@ Milestone M1 progress: languages at L1 excellent 1/20, at L2 0/12, at L3 0/8, at
 | Shell / Bash (.sh .bash, shebangs) | language | tags | tree-sitter/tree-sitter-bash (MIT) | L2 | L1 (L1 good) | B universal-ctags 6.2.1 | — | 2026-09-28 | LB-Q-bash |
 | Java (.java) | language | tags | tree-sitter/tree-sitter-java (MIT) | L4 | none (measured) | B universal-ctags 6.2.1 | scip:scip-java | 2026-09-28 | LB-Q-java |
 | Python packaging (pyproject.toml, requirements*.txt, setup.cfg) | tool format | doc | pure-go:github.com/pelletier/go-toml/v2 (n/a) | L2 | L2 (L1 good, L2 good) | C tomllib reference parse tomllib(python3.14) | syntax | 2026-09-28 | at target (LB-Q-python-packaging) |
-| C# (.cs) | language | tags | tree-sitter/tree-sitter-c-sharp (MIT) | L4 | tolerated | — | scip:scip-dotnet | — | LB-Q-csharp |
+| C# (.cs) | language | tags | tree-sitter/tree-sitter-c-sharp (MIT) | L4 | none (measured) | B universal-ctags 6.2.1 | — | 2026-09-28 | LB-Q-csharp |
 | C (.c, .h by sniff) | language | tags | tree-sitter/tree-sitter-c (MIT) | L4 | none (measured) | A scip-clang 0.4.0; B universal-ctags 6.2.1 | scip:scip-clang | 2026-09-28 | LB-Q-c |
 | Terraform / OpenTofu (.tf .tfvars .tf.json) | tool format | native | native:github.com/hashicorp/hcl/v2 (MPL-2.0 (library dependency, unmodified)) | L3 | L1 (L1 excellent) | B universal-ctags 6.2.1 | syntax | 2026-09-28 | LB-Q-terraform |
 | C++ (.cc .cpp .cxx .hpp .hh .hxx, .h by sniff) | language | tags | tree-sitter/tree-sitter-cpp (MIT) | L4 | tolerated | — | scip:scip-clang | — | LB-Q-cpp |

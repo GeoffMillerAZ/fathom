@@ -34,10 +34,15 @@ var fileResolveLang = map[string]string{"typescript": "javascript", "javascript"
 
 // cmdLangOracle is `indexbench lang-oracle` (LB-F23, design §10): one
 // subject's measurement of one dialect, merged into the dialect's reading.
-// No daemon, no store: the connector lists the subject's files, fusion's
-// own dispatch extracts them in process, universal-ctags (tier B), a SCIP
-// index (tier A) and a tool-native oracle (tier A) are scored per §1.4,
-// and the reading's level is computed, never typed.
+// No daemon, no store: the connector lists the subject's files, the
+// dialect's OWN extractor runs them in process (design §10: "runs the
+// dialect's extractor on each" — never fusion's live dispatch, which for a
+// port whose incumbent hasn't been switched in yet (§11 step 2's merge
+// gate) would silently measure the wrong extractor: verified directly, a
+// latent gap this fix closes — see resolveBenchSpec's "with" below),
+// universal-ctags (tier B), a SCIP index (tier A) and a tool-native oracle
+// (tier A) are scored per §1.4, and the reading's level is computed, never
+// typed.
 func cmdLangOracle(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("lang-oracle", flag.ContinueOnError)
 	fs.SetOutput(stderr)
@@ -84,7 +89,28 @@ func cmdLangOracle(args []string, stdout, stderr io.Writer) int {
 		name = filepath.Base(filepath.Clean(*subject))
 	}
 
-	m, err := measureSubject(ctx, spec, *subject, name, *ctagsPath, *scipPath, *toolOracle, nil)
+	// Measure the dialect's OWN extractor (ExtractForBenchWith, LB-F18),
+	// never fusion's live dispatch: a port whose incumbent still occupies
+	// pipeline.go's extension map (§11 step 2's merge gate not yet passed)
+	// would otherwise be measured as its own incumbent — wrong extractor,
+	// wrong reading, and undetectable from the output alone (kept
+	// SourceKind strings, §11 step 3, make the incumbent's nodes still
+	// "kind-valid" against the new manifest). Verified directly: before
+	// this fix, `lang-oracle -dialect c` on the c dialect's own fixtures
+	// read signature_coverage 0 (the CGO incumbent never sets Signature at
+	// all) despite the dialect itself signing every callable.
+	var with extractor.Extractor
+	if source == "dialect" && (spec.Manifest.Engine == "tags" || spec.Manifest.Engine == "tags+doc") {
+		ts, tserr := extractor.NewTSExtractor(*dialect)
+		if tserr != nil {
+			fmt.Fprintln(stderr, "lang-oracle:", tserr)
+			return 1
+		}
+		defer ts.Close()
+		with = ts
+	}
+
+	m, err := measureSubject(ctx, spec, *subject, name, *ctagsPath, *scipPath, *toolOracle, with)
 	if err != nil {
 		fmt.Fprintln(stderr, "lang-oracle:", err)
 		return 1
