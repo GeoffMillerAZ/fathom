@@ -1,5 +1,7 @@
-// Per-file import/module-scope resolver for TypeScript/JavaScript and
-// Python (ADR-041 decision 5, docs/plans/substrate.md SU-11) — the
+// Per-file import/module-scope resolver (ADR-041 decision 5,
+// docs/plans/substrate.md SU-11; generalized by LB-F11 to every tags dialect
+// whose manifest selects an import strategy — resolvestrategy.go — of which
+// TypeScript/JavaScript and Python are today's) — the
 // stack-graphs-style fallback for languages with no SCIP exporter wired
 // yet (SU-9, another wave): where no `index.scip`/`.fathom/scip/*.scip`
 // exists for the service, ResolveFileEdges parses each file's import
@@ -43,10 +45,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -131,6 +135,77 @@ func ResolveFileEdges(ctx context.Context, lang, repoPath string, files []core.S
 	return resolveFileEdgesWith(ctx, ext, lang, repoPath, files, symbols)
 }
 
+// diskManifestReader reads a repo manifest (a strategy's composer.json,
+// Cargo.toml, …) from repoPath, bounded by maxManifestBytes.
+func diskManifestReader(repoPath string) func(string) ([]byte, bool) {
+	return func(rel string) ([]byte, bool) {
+		if repoPath == "" {
+			return nil, false
+		}
+		f, err := os.Open(filepath.Join(repoPath, filepath.FromSlash(rel)))
+		if err != nil {
+			return nil, false
+		}
+		defer f.Close()
+		b, err := io.ReadAll(io.LimitReader(f, maxManifestBytes+1))
+		if err != nil || len(b) > maxManifestBytes {
+			return nil, false
+		}
+		return b, true
+	}
+}
+
+// newImportResolver is lang's manifest-selected strategy (LB-F11) over the
+// universe paths; ok=false when lang's manifest names no strategy.
+func newImportResolver(lang, root string, paths []string, read func(string) ([]byte, bool)) (*importResolver, bool) {
+	langs, err := extractor.FileResolveLangs()
+	if err != nil {
+		return nil, false
+	}
+	for _, l := range langs {
+		if l.Lang == lang {
+			return &importResolver{strategy: l.Strategy, params: l.Params, env: newResolveEnv(root, paths, read)}, true
+		}
+	}
+	return nil, false
+}
+
+// importResolver resolves one language's module specs by its strategy.
+type importResolver struct {
+	strategy string
+	params   extractor.ImportParams
+	env      *resolveEnv
+}
+
+func (r *importResolver) resolve(importer, module string) []string {
+	return resolveByStrategy(r.strategy, r.params, r.env, importer, module)
+}
+
+// wholeIsWildcard: under these strategies a whole-module import (#include,
+// require, source, Swift's import) brings every top-level name of its
+// target into scope unqualified, rather than binding a prefix.
+func (r *importResolver) wholeIsWildcard() bool {
+	switch r.strategy {
+	case "include-path", "file-symbol", "swift-module":
+		return true
+	}
+	return false
+}
+
+// submoduleSep is the separator a named import that names a submodule
+// (Python's `from pkg import mod`) is retried with, "" when the strategy
+// has no such form.
+func (r *importResolver) submoduleSep() string {
+	switch r.strategy {
+	case "dotted-module", "namespace-dir":
+		if r.params.Separator != "" {
+			return r.params.Separator
+		}
+		return "."
+	}
+	return ""
+}
+
 // resolveFileEdgesWith is ResolveFileEdges over an extractor the caller
 // owns — the pipeline passes its own (RT-107), so an ingest instantiates no
 // new grammar module for the pass.
@@ -148,7 +223,11 @@ func resolveFileEdgesWith(ctx context.Context, ext *extractor.TSExtractor, lang,
 		}
 		specs[f.Path] = sp
 	}
-	edges, report := resolveImports(lang, paths, specs, symbols)
+	r, ok := newImportResolver(lang, repoPath, paths, diskManifestReader(repoPath))
+	if !ok {
+		return nil, FileResolveReport{Skipped: true, SkipReason: fmt.Sprintf("dialect %q names no import strategy", lang)}
+	}
+	edges, report := resolveImports(r, paths, specs, symbols)
 	report.Faults = len(faults)
 	report.FaultFiles = firstN(faults, 5)
 	return edges, report
@@ -165,7 +244,7 @@ func firstN(xs []string, n int) []string {
 // specifiers. paths is the resolution universe, in order; a file absent from
 // specs (a parse fault, or a gated file — counted by the caller) resolves
 // nothing and is not counted as scanned.
-func resolveImports(lang string, paths []string, specs map[string][]extractor.ImportSpec, symbols []core.SymbolNode) ([]core.Edge, FileResolveReport) {
+func resolveImports(r *importResolver, paths []string, specs map[string][]extractor.ImportSpec, symbols []core.SymbolNode) ([]core.Edge, FileResolveReport) {
 	var report FileResolveReport
 	fileSet := make(map[string]bool, len(paths))
 	for _, p := range paths {
@@ -201,34 +280,38 @@ func resolveImports(lang string, paths []string, specs map[string][]extractor.Im
 
 		named := map[string]string{} // LocalName -> resolved target SymbolKey
 		whole := map[string]string{} // LocalName -> resolved target FILE path
+		var wildFiles []string       // files every top-level name of which is in scope
 		for _, spec := range fileSpecs {
 			if spec.LocalName == "" {
 				continue // side-effect-only import: no bound name to attribute a call to
 			}
 			switch spec.Kind {
 			case extractor.ImportNamed:
-				target, ok := resolveModule(lang, path, spec.Module, fileSet)
-				if ok {
-					if key, ok2 := topLevel[target][spec.ExportedName]; ok2 {
-						named[spec.LocalName] = key
-						continue
-					}
+				if key, ok := lookupNamed(r.resolve(path, spec.Module), spec.ExportedName, topLevel); ok {
+					named[spec.LocalName] = key
+					continue
 				}
-				// Python "from X import Y" where Y is itself a submodule
-				// (X/Y.py or X/Y/__init__.py), not a symbol X defines —
-				// retry as a whole-module binding one level deeper.
-				if lang == "python" {
-					if t2, ok2 := resolveModule(lang, path, spec.Module+"."+spec.ExportedName, fileSet); ok2 {
-						whole[spec.LocalName] = t2
+				// "from X import Y" where Y is itself a submodule (X/Y.py or
+				// X/Y/__init__.py), not a symbol X defines — retry as a
+				// whole-module binding one level deeper.
+				if sep := r.submoduleSep(); sep != "" {
+					if t2 := r.resolve(path, spec.Module+sep+spec.ExportedName); len(t2) == 1 {
+						whole[spec.LocalName] = t2[0]
 					}
 				}
 			case extractor.ImportWhole:
-				if target, ok := resolveModule(lang, path, spec.Module, fileSet); ok {
-					whole[spec.LocalName] = target
+				targets := r.resolve(path, spec.Module)
+				if r.wholeIsWildcard() {
+					wildFiles = append(wildFiles, targets...)
+				} else if len(targets) == 1 {
+					whole[spec.LocalName] = targets[0]
 				}
+			case extractor.ImportWildcard:
+				wildFiles = append(wildFiles, r.resolve(path, spec.Module)...)
 			}
 		}
-		if len(named) == 0 && len(whole) == 0 && len(topLevel[path]) == 0 {
+		wild := wildcardNames(wildFiles, topLevel)
+		if len(named) == 0 && len(whole) == 0 && len(wild) == 0 && len(topLevel[path]) == 0 {
 			continue
 		}
 
@@ -239,7 +322,7 @@ func resolveImports(lang string, paths []string, specs map[string][]extractor.Im
 			fromKey := s.Key()
 			seen := map[string]bool{}
 			for _, call := range s.Calls {
-				toKey, ok := matchFileResolvedCall(call, named, whole, topLevel, topLevel[path])
+				toKey, ok := matchFileResolvedCall(call, named, whole, topLevel, topLevel[path], wild)
 				if !ok || toKey == fromKey || seen[toKey] {
 					continue
 				}
@@ -263,9 +346,9 @@ func resolveImports(lang string, paths []string, specs map[string][]extractor.Im
 // whole-module import binding (LocalName may itself be dotted — Python
 // `import pkg.mod` — so matched by longest-prefix, not a fixed split;
 // member access, or a bare call through it when the target file has
-// exactly one top-level symbol), and finally a same-file module-scope
-// sibling.
-func matchFileResolvedCall(call string, named, whole map[string]string, topLevel map[string]map[string]string, localTop map[string]string) (string, bool) {
+// exactly one top-level symbol), a same-file module-scope sibling, and
+// finally a name a wildcard import brought into scope (LB-F11).
+func matchFileResolvedCall(call string, named, whole map[string]string, topLevel map[string]map[string]string, localTop, wild map[string]string) (string, bool) {
 	bareBase := call
 	hasDot := false
 	if i := strings.IndexByte(call, '.'); i >= 0 {
@@ -294,8 +377,46 @@ func matchFileResolvedCall(call string, named, whole map[string]string, topLevel
 		if key, ok := localTop[bareBase]; ok {
 			return key, true
 		}
+		if key, ok := wild[bareBase]; ok {
+			return key, true
+		}
 	}
 	return "", false
+}
+
+// lookupNamed is the first target file, in sorted order, defining name at
+// the top level.
+func lookupNamed(targets []string, name string, topLevel map[string]map[string]string) (string, bool) {
+	for _, t := range targets {
+		if key, ok := topLevel[t][name]; ok {
+			return key, true
+		}
+	}
+	return "", false
+}
+
+// wildcardNames is every top-level name the wildcard-imported files define,
+// each mapped to its symbol — a name two of the files define is
+// ambiguous and left out, never guessed.
+func wildcardNames(files []string, topLevel map[string]map[string]string) map[string]string {
+	if len(files) == 0 {
+		return nil
+	}
+	out := map[string]string{}
+	from := map[string]string{} // name -> the file defining it
+	ambiguous := map[string]bool{}
+	for _, f := range files {
+		for name, key := range topLevel[f] {
+			if prev, ok := from[name]; ok && prev != f {
+				ambiguous[name] = true
+			}
+			out[name], from[name] = key, f
+		}
+	}
+	for name := range ambiguous {
+		delete(out, name)
+	}
+	return out
 }
 
 // longestWholePrefix finds the longest key in whole that either equals
@@ -332,47 +453,6 @@ func longestWholePrefix(call string, whole map[string]string) (target, member st
 		}
 	}
 	return
-}
-
-// tsResolveExts is the extension search order for a resolved TypeScript/
-// JavaScript relative import with no extension of its own (SU-11: "TS:
-// .ts/.tsx/.js/index.*").
-var tsResolveExts = []string{".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"}
-
-// resolveModule resolves an ImportSpec's raw Module text to a file path in
-// fileSet, relative to importerPath (the importing file's own repo-relative
-// path). Returns ok=false for anything this pass cannot settle: a bare
-// package specifier (node_modules/PyPI, outside the corpus by
-// construction), a path that resolves to no file in fileSet.
-func resolveModule(lang, importerPath, module string, fileSet map[string]bool) (string, bool) {
-	if lang == "python" {
-		return resolvePyModule(importerPath, module, fileSet)
-	}
-	return resolveTSModule(importerPath, module, fileSet)
-}
-
-// resolveTSModule handles TypeScript/JavaScript's relative-only resolution
-// (a bare specifier is a package import — never in the corpus, correctly
-// left unresolved).
-func resolveTSModule(importerPath, spec string, fileSet map[string]bool) (string, bool) {
-	if !strings.HasPrefix(spec, "./") && !strings.HasPrefix(spec, "../") {
-		return "", false
-	}
-	candidate := path.Clean(path.Join(path.Dir(importerPath), spec))
-	if fileSet[candidate] {
-		return candidate, true
-	}
-	for _, ext := range tsResolveExts {
-		if p := candidate + ext; fileSet[p] {
-			return p, true
-		}
-	}
-	for _, ext := range tsResolveExts {
-		if p := candidate + "/index" + ext; fileSet[p] {
-			return p, true
-		}
-	}
-	return "", false
 }
 
 // enrichFileResolvedEdges is the fusion.Pipeline.Ingest call-site hook for
@@ -421,7 +501,23 @@ func (p *Pipeline) enrichFileResolvedEdges(ctx context.Context, svc core.Service
 	}
 	p.beginPassState(ctx, svc.ID, fileResolveStateKey)
 
-	for _, lang := range []string{"javascript", "python"} { // deterministic order
+	// Repo manifests a strategy consults (Cargo.toml, composer.json, …) are
+	// read through the connector, whatever their language.
+	byPath := make(map[string]core.SourceRef, len(refs))
+	for _, r := range refs {
+		byPath[r.Path] = r
+	}
+	read := func(rel string) ([]byte, bool) {
+		r, ok := byPath[rel]
+		if !ok {
+			return nil, false
+		}
+		b, err := p.conn.Fetch(ctx, r)
+		return b, err == nil
+	}
+	langs, _ := extractor.FileResolveLangs()
+	for _, fl := range langs { // sorted by Lang: deterministic order
+		lang := fl.Lang
 		lrefs, ok := langFiles[lang]
 		if !ok {
 			continue
@@ -434,7 +530,8 @@ func (p *Pipeline) enrichFileResolvedEdges(ctx context.Context, svc core.Service
 			fmt.Fprintf(os.Stderr, "fusion: file-resolved edge pass %q (%s): %v\n", svc.ID, lang, err)
 			continue
 		}
-		edges, rep, err := p.resolveLang(ctx, svc, lang, ext, lrefs)
+		r := &importResolver{strategy: fl.Strategy, params: fl.Params}
+		edges, rep, err := p.resolveLang(ctx, svc, r, read, ext, lrefs)
 		done()
 		if err != nil {
 			return total, err
@@ -472,8 +569,9 @@ const fileResolveStateKey = typedPassStatePrefix + "file-resolved"
 // cap, the binary sniff and the size gate — parsed once and recorded. A
 // parse fault is recorded against the bytes, so it is not retried until
 // they change, and is counted and named on every run.
-func (p *Pipeline) resolveLang(ctx context.Context, svc core.ServiceRef, lang string, ext *extractor.TSExtractor, lrefs []core.SourceRef) ([]core.Edge, FileResolveReport, error) {
+func (p *Pipeline) resolveLang(ctx context.Context, svc core.ServiceRef, r *importResolver, read func(string) ([]byte, bool), ext *extractor.TSExtractor, lrefs []core.SourceRef) ([]core.Edge, FileResolveReport, error) {
 	var rep FileResolveReport
+	lang := ext.Name()
 	fis, _ := p.st.(store.FileImportsStore)
 	paths := make([]string, 0, len(lrefs))
 	for _, r := range lrefs {
@@ -550,22 +648,21 @@ func (p *Pipeline) resolveLang(ctx context.Context, svc core.ServiceRef, lang st
 			}
 		}
 	}
-	edges, res := resolveImports(lang, paths, specs, symbols)
+	r.env = newResolveEnv(svc.Path, paths, read)
+	edges, res := resolveImports(r, paths, specs, symbols)
 	res.Reused, res.Gated = rep.Reused, rep.Gated
 	res.Faults, res.FaultFiles = len(faults), firstN(faults, 5)
 	return edges, res, nil
 }
 
-// fileResolveExtractorKey is the p.exts key whose extractor the file
-// resolver shares for each language.
-var fileResolveExtractorKey = map[string]string{"javascript": ".js", "python": ".py"}
-
 // fileResolveExtractor returns the pipeline's tree-sitter extractor for
 // lang and a no-op release; when a test replaced it with another kind, a
 // fresh one released by the returned func.
 func (p *Pipeline) fileResolveExtractor(lang string) (*extractor.TSExtractor, func(), error) {
-	if e, ok := p.exts[fileResolveExtractorKey[lang]].(*extractor.TSExtractor); ok {
-		return e, func() {}, nil
+	for _, ext := range fileResolveExts()[lang] {
+		if e, ok := p.exts[ext].(*extractor.TSExtractor); ok && e.Name() == lang {
+			return e, func() {}, nil
+		}
 	}
 	e, err := extractor.NewTSExtractor(lang)
 	if err != nil {
@@ -588,20 +685,39 @@ func haltError(ctx context.Context, err error) error {
 }
 
 // fileResolveLangFor maps a repo-relative path's extension to the
-// TSExtractor registry key this pass resolves it under, "" for anything
-// else (the pipeline hook simply skips such files).
+// TSExtractor registry key this pass resolves it under (a dialect whose
+// manifest selects an import strategy, LB-F11), "" for anything else (the
+// pipeline hook simply skips such files).
 func fileResolveLangFor(relPath string) string {
-	switch {
-	case strings.HasSuffix(relPath, ".py"):
-		return "python"
-	case strings.HasSuffix(relPath, ".js"), strings.HasSuffix(relPath, ".jsx"),
-		strings.HasSuffix(relPath, ".ts"), strings.HasSuffix(relPath, ".tsx"),
-		strings.HasSuffix(relPath, ".mjs"), strings.HasSuffix(relPath, ".cjs"),
-		strings.HasSuffix(relPath, ".mts"), strings.HasSuffix(relPath, ".cts"):
-		return "javascript"
-	}
-	return ""
+	return fileResolveLangByExt()[strings.ToLower(path.Ext(relPath))]
 }
+
+var (
+	fileResolveOnce  sync.Once
+	fileResolveByExt map[string]string
+	fileResolveExtsM map[string][]string
+)
+
+func fileResolveIndex() {
+	fileResolveOnce.Do(func() {
+		fileResolveByExt, fileResolveExtsM = map[string]string{}, map[string][]string{}
+		langs, err := extractor.FileResolveLangs()
+		if err != nil {
+			return // the dialect registry failed to load: nothing resolves
+		}
+		for _, l := range langs {
+			for _, e := range l.Extensions {
+				fileResolveByExt[e] = l.Lang
+			}
+			fileResolveExtsM[l.Lang] = l.Extensions
+		}
+	})
+}
+
+func fileResolveLangByExt() map[string]string { fileResolveIndex(); return fileResolveByExt }
+
+// fileResolveExts is each file-resolve language's extensions, sorted.
+func fileResolveExts() map[string][]string { fileResolveIndex(); return fileResolveExtsM }
 
 // fileResolvedPackageKey names the typed_edges store key ResolveFileEdges'
 // pipeline hook replaces wholesale each run for one language — namespaced
@@ -611,40 +727,3 @@ func fileResolveLangFor(relPath string) string {
 const fileResolvedKeyPrefix = "file-resolved:"
 
 func fileResolvedPackageKey(lang string) string { return fileResolvedKeyPrefix + lang }
-
-// resolvePyModule handles Python's dotted-path resolution: an absolute
-// `pkg.mod` resolves from repoPath's own root (importerPath's root, since
-// fileSet is already repo-relative); a relative `.mod`/`..pkg.mod`/`.`
-// resolves from importerPath's own directory, walking up one additional
-// parent per dot beyond the first (`.` = the importer's own package).
-func resolvePyModule(importerPath, spec string, fileSet map[string]bool) (string, bool) {
-	dir := ""
-	dotted := spec
-	if strings.HasPrefix(spec, ".") {
-		dots := 0
-		for dots < len(spec) && spec[dots] == '.' {
-			dots++
-		}
-		dotted = spec[dots:]
-		dir = path.Dir(importerPath)
-		for n := 1; n < dots; n++ {
-			dir = path.Dir(dir)
-		}
-	}
-	rel := strings.ReplaceAll(dotted, ".", "/")
-	candidate := rel
-	switch {
-	case dir != "" && dir != "." && rel != "":
-		candidate = dir + "/" + rel
-	case dir != "" && dir != "." && rel == "":
-		candidate = dir
-	}
-	candidate = path.Clean(candidate)
-	if p := candidate + ".py"; fileSet[p] {
-		return p, true
-	}
-	if p := candidate + "/__init__.py"; fileSet[p] {
-		return p, true
-	}
-	return "", false
-}

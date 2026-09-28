@@ -54,14 +54,18 @@ import "struct"
 		strategy: "dir" | "capture" | "none"
 	} | *{strategy: "dir"}
 
-	// imports.strategy is from §6's closed set; parameters are open to the
-	// strategy's own Go (LB-F11).
+	// imports.strategy is from §6's closed set; the parameters are the
+	// closed set extractor.ImportParams decodes (LB-F11) — each strategy
+	// reads the ones internal/fusion/resolvestrategy.go documents for it.
 	imports?: {
 		strategy: #ImportStrategy
 		source_roots?: [...string]
 		suffixes?: [...string]
 		index_files?: [...string]
-		...
+		separator?: string & !=""
+		relative?:  bool
+		case?:      "snake"
+		labels?:    "bazel"
 	}
 
 	signature: {

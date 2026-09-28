@@ -50,7 +50,7 @@ cannot reach its target keeps its contract and gains a `[-]` sibling
 
 ### F.4 L3 resolution (§6)
 
-- [ ] The closed strategy set — `relative-path`, `dotted-module`, `namespace-dir`, `include-path`, `crate-mod`, `swift-module`, `file-symbol` — selected by manifest with parameters; edges stay `file-resolved` at tier pre-scan; TS/JS/Python resolution unchanged {id: LB-F11, symbol: resolveByStrategy, package: internal/fusion, reachable_from: TestResolveStrategies, needs: "LB-F7"}
+- [x] The closed strategy set — `relative-path`, `dotted-module`, `namespace-dir`, `include-path`, `crate-mod`, `swift-module`, `file-symbol` — selected by manifest with parameters; edges stay `file-resolved` at tier pre-scan; TS/JS/Python resolution unchanged {id: LB-F11, symbol: resolveByStrategy, package: internal/fusion, reachable_from: TestResolveStrategies, needs: "LB-F7"}
 
 ### F.5 Grammars, distribution and tenancy (§8, §9)
 

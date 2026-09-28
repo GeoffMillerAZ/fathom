@@ -243,6 +243,10 @@ type TSExtractor struct {
 // captured over its lifetime; the harness reads it per file as a delta.
 func (e *TSExtractor) TypeRefs() int64 { return e.typeRefs.Load() }
 
+// Name is the registry key the extractor was built for (a tags dialect id,
+// or an extractor group such as "javascript").
+func (e *TSExtractor) Name() string { return e.spec.name }
+
 // ErrTSEngineFault marks an Extract error as a tree-sitter engine fault
 // (parse timeout on pathological input, a wasm trap, or a query-run
 // failure) as opposed to a configuration error. fusion's extract loop

@@ -107,10 +107,44 @@ type DialectPackage struct {
 	Strategy string `json:"strategy"`
 }
 
-// DialectImports names the L3 strategy (§6); the rest is the strategy's.
+// DialectImports names the L3 strategy (§6) and its parameters (LB-F11).
 type DialectImports struct {
-	Strategy string          `json:"strategy"`
-	Raw      json.RawMessage `json:"-"`
+	Strategy string
+	Params   ImportParams
+}
+
+// ImportParams are the parameters a manifest gives its import strategy
+// (design §6). Each strategy reads the ones it documents
+// (internal/fusion/resolvestrategy.go); an omitted one takes the strategy's
+// default, which for relative-path and dotted-module is exactly the
+// pre-LB-F11 TypeScript/JavaScript and Python rule.
+type ImportParams struct {
+	// SourceRoots are repo-relative directories a non-relative module is
+	// looked up under, in order ("" is the repo root).
+	SourceRoots []string `json:"source_roots,omitempty"`
+	// Suffixes are tried after the module path, in order.
+	Suffixes []string `json:"suffixes,omitempty"`
+	// IndexFiles are file names tried inside a module path that is a
+	// directory (index.ts, __init__.py, init.lua, mod.rs).
+	IndexFiles []string `json:"index_files,omitempty"`
+	// Separator splits a module name into path segments ("." for dotted
+	// names, "\\" for PHP, "::" for Perl); "/" when empty.
+	Separator string `json:"separator,omitempty"`
+	// Relative resolves a spec without a ./ or ../ prefix against the
+	// importing file's directory first (CSS @import, require_relative).
+	Relative bool `json:"relative,omitempty"`
+	// Case "snake" maps CamelCase segments to snake_case file names
+	// (Elixir's MyApp.FooBar -> my_app/foo_bar).
+	Case string `json:"case,omitempty"`
+	// Labels "bazel" reads //pkg:file and :file labels (Starlark load).
+	Labels string `json:"labels,omitempty"`
+}
+
+// importStrategies is design §6's closed set; go-package names Go's native
+// resolution and resolves nothing here.
+var importStrategies = map[string]bool{
+	"relative-path": true, "dotted-module": true, "namespace-dir": true, "include-path": true,
+	"crate-mod": true, "swift-module": true, "file-symbol": true, "go-package": true,
 }
 
 // DialectSignature caps Signature (§3.3).
@@ -121,12 +155,14 @@ type DialectSignature struct {
 func (d *DialectImports) UnmarshalJSON(b []byte) error {
 	var s struct {
 		Strategy string `json:"strategy"`
+		ImportParams
 	}
-	if err := json.Unmarshal(b, &s); err != nil {
+	dec := json.NewDecoder(bytes.NewReader(b))
+	dec.DisallowUnknownFields() // a parameter no strategy reads is a manifest error
+	if err := dec.Decode(&s); err != nil {
 		return err
 	}
-	d.Strategy = s.Strategy
-	d.Raw = append(json.RawMessage(nil), b...)
+	d.Strategy, d.Params = s.Strategy, s.ImportParams
 	return nil
 }
 
@@ -316,6 +352,17 @@ func checkDialect(fsys fs.FS, dir string, d Dialect) error {
 		}
 		if !found {
 			return fmt.Errorf("required kind %q is not a declared kind", rk)
+		}
+	}
+	if im := d.Imports; im != nil {
+		if !importStrategies[im.Strategy] {
+			return fmt.Errorf("imports.strategy %q is not in the closed set (§6)", im.Strategy)
+		}
+		if c := im.Params.Case; c != "" && c != "snake" {
+			return fmt.Errorf("imports.case %q: only \"snake\"", c)
+		}
+		if l := im.Params.Labels; l != "" && l != "bazel" {
+			return fmt.Errorf("imports.labels %q: only \"bazel\"", l)
 		}
 	}
 	if s := d.Match.Sniff; s != nil {

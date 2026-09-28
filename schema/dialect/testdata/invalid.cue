@@ -22,3 +22,5 @@ package dialect
 // 10. No kinds at all:                kinds: {}
 // 11. An extension without a dot:     match: {extensions: ["go"]}
 // 12. A target level past L4:         target_level: "L5"
+// 13. An import parameter no strategy reads: imports: {strategy: "file-symbol", roots: ["lib"]}
+// 14. An import case off the list:    imports: {strategy: "dotted-module", case: "kebab"}

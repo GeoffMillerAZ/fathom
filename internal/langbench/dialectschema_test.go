@@ -60,6 +60,8 @@ func TestDialectManifestSchema(t *testing.T) {
 		"tags without grammar": `{engine: "tags"}`,
 		"doc with grammar":     `{engine: "doc", grammar: {blob: "go", entry_point: "tree_sitter_go"}}`,
 		"strategy off list":    `{imports: {strategy: "stack-graphs"}}`,
+		"unknown import param": `{imports: {strategy: "file-symbol", roots: ["lib"]}}`,
+		"import case off list": `{imports: {strategy: "dotted-module", case: "kebab"}}`,
 		"signature too long":   `{signature: {max_chars: 300}}`,
 		"extension no dot":     `{match: {extensions: ["go"]}}`,
 		"level past L4":        `{target_level: "L5"}`,

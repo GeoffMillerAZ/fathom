@@ -311,7 +311,14 @@ repo file set) → target files:
 | `swift-module` | Swift | `import M` → a SwiftPM target named M (`Package.swift` targets' `path` or `Sources/M`) |
 | `file-symbol` | Ruby (`require_relative`), Lua (`require`), Bash (`source`), R (`source`), Perl (`use`/`require`), Nix, Jsonnet, Starlark (`load`) | path or dotted module → file, per-language suffix rules in the manifest |
 
-A manifest names its strategy and its parameters (source roots, suffixes, index files).
+A manifest names its strategy and its parameters — the closed set `extractor.ImportParams`
+decodes: `source_roots`, `suffixes`, `index_files`, `separator`, `relative` (a bare spec is
+relative to the importer first), `case: "snake"` and `labels: "bazel"`; an omitted one takes
+the strategy's default, which for `relative-path` and `dotted-module` is the pre-LB-F11
+TS/JS and Python rule (`internal/fusion/resolvestrategy.go` documents each strategy's reads).
+Under `include-path`, `file-symbol` and `swift-module` a whole-module import brings every
+top-level name of its target into scope, as does any `@import.wildcard`; a name two targets
+define is left unresolved.
 A new strategy is a foundation-level change (an Opus row), never something a worker adds.
 Edges keep the existing label: `file-resolved`, tier pre-scan, never presented as typed.
 

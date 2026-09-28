@@ -141,3 +141,20 @@ func TestLoadDialectsRefuses(t *testing.T) {
 		})
 	}
 }
+
+// TestDialectImportParamsStrict: a manifest's import parameters decode into
+// the closed extractor.ImportParams (LB-F11); a parameter no strategy reads
+// is refused, as the CUE schema refuses it.
+func TestDialectImportParamsStrict(t *testing.T) {
+	var ok DialectImports
+	if err := json.Unmarshal([]byte(`{"strategy":"file-symbol","relative":true,"suffixes":[".rb"],"source_roots":["lib"]}`), &ok); err != nil {
+		t.Fatal(err)
+	}
+	if ok.Strategy != "file-symbol" || !ok.Params.Relative || ok.Params.Suffixes[0] != ".rb" || ok.Params.SourceRoots[0] != "lib" {
+		t.Fatalf("decoded %+v", ok)
+	}
+	var bad DialectImports
+	if err := json.Unmarshal([]byte(`{"strategy":"file-symbol","roots":["lib"]}`), &bad); err == nil {
+		t.Fatal("an unknown import parameter decoded")
+	}
+}
