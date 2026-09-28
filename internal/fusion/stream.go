@@ -46,6 +46,12 @@ type StatRecord struct {
 	// from another epoch never vouches for a file (O9): its hash and the
 	// stored fingerprint both carry the old salt and would still agree.
 	Epoch string
+	// Excluded and Sniffed are the dialect gate's verdict on the bytes
+	// last read (dialectgate.go): a stat-skipped file keeps them, so the
+	// service summary's skipped_generated / ambiguous / sniffed counts do
+	// not drop to zero on an ingest that reads nothing.
+	Excluded string
+	Sniffed  bool
 }
 
 // racyWindow is how close to its stat a file's mtime may be and still be
@@ -123,6 +129,7 @@ func (p *Pipeline) statChangedFiles(ctx context.Context, serviceID string, refs 
 				if pr, ok := prior[ref.Path]; ok && pr.FileStat == st && pr.ContentHash != "" && pr.Epoch == ExtractorEpoch && st.Size <= connector.MaxFetchSize {
 					if stored, found, ferr := p.st.Fingerprint(ctx, serviceID, ref.Path); ferr == nil && found && stored == pr.ContentHash {
 						g.live[i].ContentHash = pr.ContentHash
+						g.live[i].Excluded, g.live[i].Sniffed = pr.Excluded, pr.Sniffed
 						g.skipped++
 						continue
 					}

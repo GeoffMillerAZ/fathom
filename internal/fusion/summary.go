@@ -43,6 +43,9 @@ func ingestSummary(root string, run *ingestRun) (store.ServiceSummary, []store.F
 			if fact.excluded != "" {
 				excluded[fact.excluded]++
 			}
+			if fact.sniffed {
+				excluded[CountClassifiedBySniff]++
+			}
 		}
 		if root != "" && !filepath.IsAbs(ref.Path) {
 			if fi, err := os.Lstat(filepath.Join(root, filepath.FromSlash(ref.Path))); err == nil {

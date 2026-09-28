@@ -97,6 +97,7 @@ func TestLoadDialectsRefuses(t *testing.T) {
 		"bad canonical":       {map[string]string{"dialects/a/dialect.json": strings.Replace(base("a", "AF", ".a"), `"function"`, `"gizmo"`, 1), "dialects/a/tags.scm": ""}, "closed list"},
 		"missing query":       {map[string]string{"dialects/a/dialect.json": base("a", "AF", ".a")}, "query tags.scm"},
 		"unknown field":       {map[string]string{"dialects/a/dialect.json": strings.Replace(base("a", "AF", ".a"), `"display"`, `"level_met":"L4","display"`, 1), "dialects/a/tags.scm": ""}, "unknown field"},
+		"bad sniff":           {map[string]string{"dialects/a/dialect.json": strings.Replace(base("a", "AF", ".a"), `"extensions":[".a"]`, `"extensions":[".a"],"sniff":{"extensions":[".q"],"pattern":"(","priority":0}`, 1), "dialects/a/tags.scm": ""}, "match.sniff.pattern"},
 		"required undeclared": {map[string]string{"dialects/a/dialect.json": strings.Replace(base("a", "AF", ".a"), `"required_kinds":["f"]`, `"required_kinds":["class"]`, 1), "dialects/a/tags.scm": ""}, "not a declared kind"},
 	}
 	for name, c := range cases {

@@ -32,7 +32,9 @@ func TestIngest_TSEngineFaultCountedAndRecovered(t *testing.T) {
 	dir := t.TempDir()
 	// aaa_bundle.min.js sorts before good.js, so the fault happens FIRST and
 	// the healthy file proves parser re-creation within the same ingest.
-	pathological := bytes.Repeat([]byte("({["), 50000) // 150KB, under the 2MB cap
+	// 150KB, under the 2MB cap. Broken into short lines: one 150KB line
+	// is minified, and the LB-F10 gate would skip it before the engine.
+	pathological := bytes.Repeat([]byte("({[({[({[({[({[\n"), 10000)
 	if err := os.WriteFile(filepath.Join(dir, "aaa_bundle.min.js"), pathological, 0o644); err != nil {
 		t.Fatalf("write pathological file: %v", err)
 	}

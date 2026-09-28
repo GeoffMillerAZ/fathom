@@ -89,3 +89,38 @@ func TestServiceSummaries_ReadsSummaryRowsOnly(t *testing.T) {
 		t.Fatalf("list_services loaded %d symbol table(s)", n)
 	}
 }
+
+// TestListServices_ClassificationCounts is LB-F9/LB-F10's list_services
+// disclosure (language-breadth §5): the summary row's sniffed, ambiguous
+// and skipped_generated counts are named under "classification"; the
+// other exclusion reasons (oversize) are not, and a service with none
+// carries no key.
+func TestListServices_ClassificationCounts(t *testing.T) {
+	f := &summaryFleet{
+		fakeFleet: fakeFleet{svcs: map[string][]core.SymbolNode{"api": {{Name: "X"}}, "web": {{Name: "Y"}}}},
+		rows: map[string]store.ServiceSummary{
+			"api": {ServiceID: "api", SymbolCount: 1, ExcludedCounts: map[string]int{
+				"classified_by_sniff": 4, "ambiguous_unclassified": 1, "skipped_generated": 7, "oversize": 2}},
+			"web": {ServiceID: "web", SymbolCount: 1, ExcludedCounts: map[string]int{"oversize": 2}},
+		},
+	}
+	srv := mcp.NewServerWithFleet(nil, f)
+	out := callTool(t, srv, "list_services", map[string]any{})
+	rows := out["services"].([]any)
+	cls, ok := rows[0].(map[string]any)["classification"].(map[string]any)
+	if !ok {
+		t.Fatalf("api row has no classification: %v", rows[0])
+	}
+	want := map[string]float64{"classified_by_sniff": 4, "ambiguous_unclassified": 1, "skipped_generated": 7}
+	if len(cls) != len(want) {
+		t.Fatalf("classification = %v, want %v", cls, want)
+	}
+	for k, v := range want {
+		if cls[k] != v {
+			t.Fatalf("classification[%s] = %v, want %v", k, cls[k], v)
+		}
+	}
+	if _, has := rows[1].(map[string]any)["classification"]; has {
+		t.Fatalf("web row carries classification with nothing to disclose: %v", rows[1])
+	}
+}

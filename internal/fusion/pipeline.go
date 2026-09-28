@@ -134,6 +134,19 @@ type Report struct {
 	// target, dist, build, …) — counted and named, never a silent drop. A
 	// corpus re-includes one with `[connector] include`. Nil when none.
 	DefaultIgnoredDirs []string
+	// SkippedGenerated is the number of dialect-owned files extracted this
+	// run that the generated/minified gate skipped (LB-F10, design §5): a
+	// `@generated` / `Code generated … DO NOT EDIT` marker in the first
+	// 2 KiB, or an average line over 500 characters in the first 64 KiB.
+	// Fingerprinted, never extracted.
+	SkippedGenerated int
+	// AmbiguousUnclassified is the number of files whose extension more
+	// than one dialect claims and no manifest sniff settled (LB-F9) —
+	// fingerprinted, never guessed.
+	AmbiguousUnclassified int
+	// ClassifiedBySniff is the number of files a manifest sniff classified
+	// (LB-F9) — disclosed, since a sniff is a content judgement.
+	ClassifiedBySniff int
 	// Oversize is the number of files skipped from extraction because their
 	// content exceeded MaxExtractSize (ADR-021 §2 / TI-6) — still
 	// fingerprinted so they are not re-sniffed on every ingest.
@@ -303,6 +316,7 @@ type pendingFile struct {
 	ref     core.SourceRef
 	content []byte
 	hash    string
+	verdict dialectVerdict
 }
 
 // realGitHead resolves HEAD for the given directory path from the ref files
@@ -494,7 +508,10 @@ func parseGitLog(serviceID, raw string) []store.Commit {
 // (JavaScript, TypeScript, Python, Ruby, Kotlin) now fills EndLine for every
 // definition and Signature for every callable; stored observations for those
 // files carry neither, so the salt bump re-extracts them.
-const ExtractorEpoch = "8"
+// Epoch 9 (LB-F10, design §5): the generated/minified gate — a minified or
+// generator-marked file of a manifest dialect is no longer extracted; its
+// stored observations predate the gate, so the salt bump purges them.
+const ExtractorEpoch = "9"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares
@@ -876,7 +893,8 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	// vouched for; it is never read.
 	for i, ref := range refs {
 		if gate.live[i].ContentHash != "" {
-			run.noteFact(ref.Path, fileFact{size: gate.live[i].Size, hash: gate.live[i].ContentHash})
+			run.noteFact(ref.Path, fileFact{size: gate.live[i].Size, hash: gate.live[i].ContentHash,
+				excluded: gate.live[i].Excluded, sniffed: gate.live[i].Sniffed})
 		}
 	}
 
@@ -929,8 +947,12 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 		// fingerprint, or improved extraction never reaches unchanged files —
 		// the stale-observation class dogfood O9 caught.
 		hash := FingerprintHash(content)
-		run.noteFact(ref.Path, fileFact{size: int64(len(content)), hash: hash})
+		// LB-F9/LB-F10: the dialect gate's verdict is a fact of the bytes,
+		// recorded whether or not the hash-gate lets the file through.
+		verdict := gateDialectFile(ref.Path, content)
+		run.noteFact(ref.Path, fileFact{size: int64(len(content)), hash: hash, excluded: verdict.excluded, sniffed: verdict.sniffed})
 		gate.live[i].ContentHash = hash
+		gate.live[i].Excluded, gate.live[i].Sniffed = verdict.excluded, verdict.sniffed
 
 		// RT-89: an incomplete service extracts every readable file's
 		// routes and client calls; a complete one only the changed files'.
@@ -986,7 +1008,7 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 		if svcRefs.complete {
 			svcRefs.add(ref.Path, content)
 		}
-		pf := pendingFile{ref: ref, content: content, hash: hash}
+		pf := pendingFile{ref: ref, content: content, hash: hash, verdict: verdict}
 		if p.cfg.Lazy {
 			pending = append(pending, pf)
 			return nil
@@ -1114,6 +1136,9 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	report.ClassifiedZero = stats.classifiedZero
 	report.TSEngineFaults = stats.tsFaults
 	report.UnsupportedLanguages = stats.unsupportedLang
+	report.SkippedGenerated = stats.skippedGenerated
+	report.AmbiguousUnclassified = stats.ambiguous
+	report.ClassifiedBySniff = stats.sniffed
 
 	// Deleted files change the typed inputs too (a removed .go file).
 	deleted, delErr := p.deletedRefs(ctx, svc.ID, refs)
@@ -1420,6 +1445,11 @@ type extractStats struct {
 	oversize       int
 	classifiedZero int
 	tsFaults       int // extract errors matching extractor.ErrTSEngineFault (critic M1)
+	// skippedGenerated, ambiguous and sniffed are the dialect gate's
+	// per-ingest counts (LB-F9, LB-F10) over the files extracted this run.
+	skippedGenerated int
+	ambiguous        int
+	sniffed          int
 	// unsupportedLang tallies files, by language display name, that hit the
 	// no-extractor fallback but matched a known-language extension (O69,
 	// connector.UnsupportedLanguageForPath) — the per-call source for
@@ -1561,6 +1591,25 @@ func (s *extractSink) add(ctx context.Context, pf pendingFile) error {
 	if len(pf.content) > MaxExtractSize {
 		stats.oversize++
 		atomic.AddInt64(&p.oversizeTotal, 1)
+		if err := p.st.SetFingerprint(ctx, serviceID, pf.ref.Path, pf.hash); err != nil {
+			return fmt.Errorf("fusion: set fingerprint %q: %w", pf.ref.Path, err)
+		}
+		return nil
+	}
+
+	// LB-F9/LB-F10 (design §5): an ambiguous extension no sniff settled,
+	// or a dialect file that is generated or minified, is fingerprinted
+	// and counted — never extracted, never silent.
+	if pf.verdict.sniffed {
+		stats.sniffed++
+	}
+	switch pf.verdict.excluded {
+	case ExcludedSkippedGenerated, ExcludedAmbiguous:
+		if pf.verdict.excluded == ExcludedSkippedGenerated {
+			stats.skippedGenerated++
+		} else {
+			stats.ambiguous++
+		}
 		if err := p.st.SetFingerprint(ctx, serviceID, pf.ref.Path, pf.hash); err != nil {
 			return fmt.Errorf("fusion: set fingerprint %q: %w", pf.ref.Path, err)
 		}
@@ -1847,6 +1896,12 @@ func (p *Pipeline) ExtractForBench(serviceID string, refs []core.SourceRef, relP
 	}
 	if len(content) > MaxExtractSize {
 		return BenchExtraction{Skipped: "oversize"}, nil
+	}
+	switch gateDialectFile(relPath, content).excluded {
+	case ExcludedSkippedGenerated:
+		return BenchExtraction{Skipped: "generated"}, nil
+	case ExcludedAmbiguous:
+		return BenchExtraction{Skipped: "ambiguous"}, nil
 	}
 	idx, ok := p.siblingIdx[serviceID]
 	if !ok {

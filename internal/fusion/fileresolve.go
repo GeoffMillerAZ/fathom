@@ -522,7 +522,9 @@ func (p *Pipeline) resolveLang(ctx context.Context, svc core.ServiceRef, lang st
 			rep.Gated++ // over the read cap, or unreadable this run
 			continue
 		}
-		if len(content) > MaxExtractSize || connector.IsBinary(content) {
+		// LB-F10: a generated/minified (or ambiguous) dialect file is
+		// gated here too — the extract pass never extracted it.
+		if len(content) > MaxExtractSize || connector.IsBinary(content) || gateDialectFile(r.Path, content).excluded != "" {
 			rep.Gated++
 			continue
 		}

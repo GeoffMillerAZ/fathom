@@ -43,7 +43,8 @@ type ingestRun struct {
 type fileFact struct {
 	size     int64
 	hash     string
-	excluded string // "", "oversize", "unreadable"
+	excluded string // "", "oversize", "unreadable", ExcludedSkippedGenerated, ExcludedAmbiguous
+	sniffed  bool   // a manifest sniff classified the file (LB-F9)
 }
 
 // noteFact records a file's fact for the final commit.

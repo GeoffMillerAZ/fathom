@@ -318,6 +318,13 @@ func checkDialect(fsys fs.FS, dir string, d Dialect) error {
 			return fmt.Errorf("required kind %q is not a declared kind", rk)
 		}
 	}
+	if s := d.Match.Sniff; s != nil {
+		// connector.ClassifyDialect compiles it multi-line; one that does
+		// not compile would silently never match.
+		if _, err := regexp.Compile("(?m)" + s.Pattern); err != nil {
+			return fmt.Errorf("match.sniff.pattern: %w", err)
+		}
+	}
 	for oracle, m := range d.OracleKinds {
 		for ok, canon := range m {
 			if !isCanonicalKind(canon) {
