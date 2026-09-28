@@ -1125,3 +1125,102 @@ func TestReviewNonInteractive(t *testing.T) {
 		}
 	})
 }
+
+// TestCmdReviewReceiptFormats proves CX-6 (docs/plans/change-and-
+// compliance.md, design doc §2): `fathom review --receipt --format
+// sarif|check` renders the change risk receipt through the shared emitter
+// (GL-20 verify.RenderSARIF, GL-21 verify.RenderCheckRun) instead of the
+// full review — and refuses any other --format, since the design names
+// exactly those two.
+func TestCmdReviewReceiptFormats(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "pkg"), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "pkg", "a.go"), []byte(reviewFixtureSrc), 0o644); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+	storePath := filepath.Join(t.TempDir(), "s.sqlite")
+
+	var ingestOut, ingestErr bytes.Buffer
+	if code := run([]string{"ingest", "--service", "receipt-svc", "--path", root, "--store", storePath}, &ingestOut, &ingestErr); code != 0 {
+		t.Fatalf("ingest exit = %d, stderr: %s", code, ingestErr.String())
+	}
+
+	t.Run("sarif", func(t *testing.T) {
+		var out, errBuf bytes.Buffer
+		code := runReview(
+			[]string{"--service", "receipt-svc", "--since", "HEAD~1", "--store", storePath, "--no-persist", "--receipt", "--format", "sarif"},
+			fakeGitRunner([]string{"pkg/a.go"}), &out, &errBuf,
+		)
+		if code != 0 {
+			t.Fatalf("review --receipt --format sarif exit = %d, stderr: %s", code, errBuf.String())
+		}
+		var doc map[string]any
+		if err := json.Unmarshal(out.Bytes(), &doc); err != nil {
+			t.Fatalf("unmarshal SARIF: %v\noutput: %s", err, out.String())
+		}
+		if doc["version"] != "2.1.0" {
+			t.Errorf("SARIF version = %v, want 2.1.0", doc["version"])
+		}
+		if _, ok := doc["runs"]; !ok {
+			t.Error("SARIF output missing \"runs\"")
+		}
+	})
+
+	t.Run("check", func(t *testing.T) {
+		var out, errBuf bytes.Buffer
+		code := runReview(
+			[]string{"--service", "receipt-svc", "--since", "HEAD~1", "--store", storePath, "--no-persist", "--receipt", "--format", "check"},
+			fakeGitRunner([]string{"pkg/a.go"}), &out, &errBuf,
+		)
+		if code != 0 {
+			t.Fatalf("review --receipt --format check exit = %d, stderr: %s", code, errBuf.String())
+		}
+		var doc map[string]any
+		if err := json.Unmarshal(out.Bytes(), &doc); err != nil {
+			t.Fatalf("unmarshal check-run: %v\noutput: %s", err, out.String())
+		}
+		// CX-8/ADR-040: the receipt never scores a pass/fail verdict from
+		// the band — the conclusion is always "neutral", whatever the
+		// band. CI decides what a band does, fathom never blocks.
+		if doc["conclusion"] != "neutral" {
+			t.Errorf("check-run conclusion = %v, want \"neutral\" (CX-8: fathom never blocks on its own authority)", doc["conclusion"])
+		}
+		out2, ok := doc["output"].(map[string]any)
+		if !ok {
+			t.Fatalf("check-run missing \"output\": %v", doc)
+		}
+		if summary, _ := out2["summary"].(string); !strings.Contains(summary, "band:") {
+			t.Errorf("check-run summary = %q, want it to name the band", summary)
+		}
+	})
+
+	t.Run("receipt_requires_sarif_or_check_format", func(t *testing.T) {
+		var out, errBuf bytes.Buffer
+		code := runReview(
+			[]string{"--service", "receipt-svc", "--since", "HEAD~1", "--store", storePath, "--no-persist", "--receipt"},
+			fakeGitRunner([]string{"pkg/a.go"}), &out, &errBuf,
+		)
+		if code == 0 {
+			t.Fatal("--receipt with the default --format text must refuse")
+		}
+		if !strings.Contains(errBuf.String(), "--receipt") {
+			t.Errorf("refusal should name --receipt, got: %q", errBuf.String())
+		}
+	})
+
+	t.Run("receipt_false_still_allows_text_format", func(t *testing.T) {
+		var out, errBuf bytes.Buffer
+		code := runReview(
+			[]string{"--service", "receipt-svc", "--since", "HEAD~1", "--store", storePath, "--no-persist"},
+			fakeGitRunner([]string{"pkg/a.go"}), &out, &errBuf,
+		)
+		if code != 0 {
+			t.Fatalf("plain review exit = %d, stderr: %s", code, errBuf.String())
+		}
+		if !strings.Contains(out.String(), "review: receipt-svc") {
+			t.Errorf("plain review output unaffected by --receipt wiring, got: %q", out.String())
+		}
+	})
+}
