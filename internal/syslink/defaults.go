@@ -14,5 +14,8 @@ func DefaultRegistry() *Registry {
 		must(d, routeSource{})
 	}
 	must("go", goClientSource{})
+	for _, d := range []string{"javascript", "typescript", "tsx", "python"} {
+		must(d, scriptClientSource{})
+	}
 	return r
 }

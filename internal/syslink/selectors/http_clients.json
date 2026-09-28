@@ -1,0 +1,48 @@
+{
+  "comment": "HTTP client call shapes per dialect (docs/design/system-graph.md §5): data, not Go. A call names its callee as written; a receiver names a constructor whose bound variable's methods are calls. method_arg is the 0-based argument carrying the method; options_arg is the argument whose `method:` key overrides default_method.",
+  "dialects": {
+    "javascript": {
+      "calls": [
+        {"callee": "fetch", "url_arg": 0, "default_method": "GET", "options_arg": 1},
+        {"callee": "axios.get", "url_arg": 0, "method": "GET"},
+        {"callee": "axios.post", "url_arg": 0, "method": "POST"},
+        {"callee": "axios.put", "url_arg": 0, "method": "PUT"},
+        {"callee": "axios.patch", "url_arg": 0, "method": "PATCH"},
+        {"callee": "axios.delete", "url_arg": 0, "method": "DELETE"},
+        {"callee": "axios.head", "url_arg": 0, "method": "HEAD"},
+        {"callee": "ky.get", "url_arg": 0, "method": "GET"},
+        {"callee": "ky.post", "url_arg": 0, "method": "POST"},
+        {"callee": "ky.put", "url_arg": 0, "method": "PUT"},
+        {"callee": "ky.patch", "url_arg": 0, "method": "PATCH"},
+        {"callee": "ky.delete", "url_arg": 0, "method": "DELETE"},
+        {"callee": "ky.head", "url_arg": 0, "method": "HEAD"}
+      ],
+      "receivers": [
+        {"constructor": "axios.create", "methods": {"get": "GET", "post": "POST", "put": "PUT", "patch": "PATCH", "delete": "DELETE", "head": "HEAD"}},
+        {"constructor": "ky.create", "methods": {"get": "GET", "post": "POST", "put": "PUT", "patch": "PATCH", "delete": "DELETE", "head": "HEAD"}}
+      ]
+    },
+    "python": {
+      "calls": [
+        {"callee": "requests.get", "url_arg": 0, "method": "GET"},
+        {"callee": "requests.post", "url_arg": 0, "method": "POST"},
+        {"callee": "requests.put", "url_arg": 0, "method": "PUT"},
+        {"callee": "requests.patch", "url_arg": 0, "method": "PATCH"},
+        {"callee": "requests.delete", "url_arg": 0, "method": "DELETE"},
+        {"callee": "requests.head", "url_arg": 0, "method": "HEAD"},
+        {"callee": "httpx.get", "url_arg": 0, "method": "GET"},
+        {"callee": "httpx.post", "url_arg": 0, "method": "POST"},
+        {"callee": "httpx.put", "url_arg": 0, "method": "PUT"},
+        {"callee": "httpx.patch", "url_arg": 0, "method": "PATCH"},
+        {"callee": "httpx.delete", "url_arg": 0, "method": "DELETE"},
+        {"callee": "httpx.head", "url_arg": 0, "method": "HEAD"}
+      ],
+      "receivers": [
+        {"constructor": "requests.Session", "methods": {"get": "GET", "post": "POST", "put": "PUT", "patch": "PATCH", "delete": "DELETE", "head": "HEAD"}},
+        {"constructor": "httpx.Client", "methods": {"get": "GET", "post": "POST", "put": "PUT", "patch": "PATCH", "delete": "DELETE", "head": "HEAD"}},
+        {"constructor": "httpx.AsyncClient", "methods": {"get": "GET", "post": "POST", "put": "PUT", "patch": "PATCH", "delete": "DELETE", "head": "HEAD"}},
+        {"constructor": "aiohttp.ClientSession", "methods": {"get": "GET", "post": "POST", "put": "PUT", "patch": "PATCH", "delete": "DELETE", "head": "HEAD"}}
+      ]
+    }
+  }
+}
