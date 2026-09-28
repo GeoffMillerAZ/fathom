@@ -28,7 +28,8 @@
 // lang-oracle (a dialect's reading against independent oracles),
 // lang-parity (a port's dialect against the incumbent it retires, §11),
 // lang-regrade (a committed reading recomputed under changed harness rules) and
-// lang-tracker (docs/languages.md rendered from the queue and readings) and
+// lang-tracker (docs/languages.md rendered from the queue and readings),
+// lang-next (the open queue items, eligible or blocked, §13.0 step 2) and
 // lang-disclosure (the connector's unsupported-language table, LB-F25).
 package main
 
@@ -77,6 +78,9 @@ func mainRun(args []string, stdout, stderr io.Writer) int {
 	}
 	if len(args) > 0 && args[0] == "lang-tracker" {
 		return cmdLangTracker(args[1:], stdout, stderr)
+	}
+	if len(args) > 0 && args[0] == "lang-next" {
+		return cmdLangNext(args[1:], stdout, stderr)
 	}
 	if len(args) > 0 && args[0] == "lang-disclosure" {
 		return cmdLangDisclosure(args[1:], stdout, stderr)

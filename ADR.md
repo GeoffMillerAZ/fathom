@@ -2620,6 +2620,8 @@ total against the cap is the trigger.
 **Amended 2026-09-28 (owner decisions, round 2; design §1.5).** D1: decision 1's
 "≥ 1 MB/s/core" is judged on CPU time — bytes per CPU-second of the extraction process —
 not wall clock, so contention from other workers never fails a reading.
+D6: a queue item depending on another queue item is eligible once the parent has a
+committed reading at L1 or better, not only once the parent's row is checked.
 
 ## ADR-049: The proof-layer roadmap: a kitchen-sink gate, pillars inside the tenancy lane, reach before depth, views never trackers, no Rust rewrite (2026-09-27)
 

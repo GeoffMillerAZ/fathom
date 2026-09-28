@@ -122,6 +122,11 @@ owner's decisions, binding on the harness and every reading after them:
   subject measured before D1 (no `extract_cpu_ms`) puts the whole reading back on the
   wall-clock basis, never a mix. C's wave-1b reading (0.62 MB/s wall) is re-graded by
   re-measurement.
+- **D6 — a queue-item dependency is met at L1.** A queue item that depends on another queue
+  item (cpp on c; scss and less on css) is eligible once the parent has a committed reading
+  at L1 or better, not only once the parent's row is `[x]` (its row may stay open for L4
+  for months). Foundation rows still need `[x]`/`[-]`. `langbench.QueueEligibility` and
+  `indexbench lang-next` compute it (§13.0 step 2).
 
 ---
 
@@ -574,7 +579,11 @@ worktree and your scratch directory.
 1. Read your entry: `id`, `name`, `kind`, `target_level`, `engine`, `grammar_source`,
    `licence`, `oracle`, `calibration_subjects`, `depends_on`, `port_of` (when present).
 2. Check `depends_on`: every id must be `[x]` or `[-]` in `docs/plans/language-breadth.md`
-   (`fathom plans status`). If not, stop and report `blocked: <ids>`.
+   (`fathom plans status`) — except a dependency on another queue item (`LB-Q-<id>`: cpp on
+   c, scss/less on css), which is satisfied once that item has a committed reading at L1 or
+   better, even while its own row stays open for a higher target (D6, §1.5).
+   `go run ./cmd/indexbench lang-next -all` prints exactly this. If blocked, stop and
+   report `blocked: <ids>`.
 3. Work in a fresh worktree on branch `lang/<id>` from the integration branch, with
    `GOWORK=off`, your own scratch dir `/Volumes/m2ext/tmp/lang-<id>/` (never shared), and
    `GOFLAGS=-p=2`. Never start a daemon, never touch `127.0.0.1:7575` or `~/.fathom`.
@@ -732,7 +741,8 @@ A disposition is a result. A fake claim is an incident.
   `retargeted` field; `TestLanguageQueueMatchesPlan` keeps it in step with the plan.
 - **Driver.** The harness (a workflow script or `/loop` in a coordinator session) reads the
   queue in order, skips entries whose plan row is `[x]` or `[-]`, and dispatches the first
-  entry whose `depends_on` are all done. Fathom serves the facts (`fathom plans next
+  entry whose `depends_on` are all done (a queue-item dependency is done at a committed L1
+  reading, D6; `indexbench lang-next` lists the eligible items). Fathom serves the facts (`fathom plans next
   --eligible-only` over the plan; the queue file); it never runs the loop (vision 24).
 - **Parallelism.** At most two workers at once, on items with disjoint grammar blobs; one
   heavy measurement at a time (the lock in §13.0). Each worker has its own worktree and
