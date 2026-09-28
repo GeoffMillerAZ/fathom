@@ -20,12 +20,17 @@
     "class":     { "source_kind": "JSClass",     "canonical": "class",      "container": true },
     "function":  { "source_kind": "JSFunc",      "canonical": "function",   "callable": true },
     "method":    { "source_kind": "JSMethod",    "canonical": "method",     "callable": true },
-    "interface": { "source_kind": "TSInterface", "canonical": "interface" },
+    "interface": { "source_kind": "TSInterface", "canonical": "interface", "container": true },
     "type":      { "source_kind": "TSType",      "canonical": "type_alias" },
     "enum":      { "source_kind": "TSEnum",      "canonical": "enum" }
   },
   "required_kinds": ["class", "function", "method", "interface", "enum"],
   "oracle_kinds": {
+    "scip":  { "class": "class", "interface": "interface", "type": "type_alias", "enum": "enum",
+               "function": "function", "function@scoped": "method", "method": "method",
+               "constructor": "method", "get": "method", "set": "method",
+               "var": "variable", "const": "variable", "let": "variable",
+               "module": "namespace", "property": "property" },
     "ctags": { "class": "class", "function": "function", "generator": "function", "method": "method",
                "interface": "interface", "enum": "enum", "alias": "type_alias", "namespace": "namespace",
                "property": "property", "variable": "variable", "constant": "constant",

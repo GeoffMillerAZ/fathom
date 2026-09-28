@@ -150,7 +150,12 @@ func marshalGolden(g goldenFile) []byte {
 // pre-manifest output: every fixture's symbols and imports, compared on the
 // legacy projection (everything except EndLine and Signature, which LB-F3
 // adds). The goldens were written by the pre-manifest engine; a change here
-// is a symbol regression, not a golden to refresh.
+// is a symbol regression, not a golden to refresh — except a definition the
+// legacy engine missed and a tier-A or tier-B oracle proves (owner decision
+// D2, 2026-09-28: TypeScript's abstract classes and bodiless signatures,
+// measured against scip-typescript), added to the golden by hand with the
+// names it qualifies; a removed or renamed-away symbol is still a
+// regression.
 func TestTagsDialectParity(t *testing.T) {
 	for _, id := range migratedTagsDialects {
 		t.Run(id, func(t *testing.T) {

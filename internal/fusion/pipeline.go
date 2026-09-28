@@ -570,7 +570,12 @@ func parseGitLog(serviceID, raw string) []store.Commit {
 // tags dialect already follows, ADR-021 §3) — every already-indexed
 // Dockerfile/*.dockerfile's stored observations predate all of this, so the
 // salt bump forces re-extraction rather than leaving them silently stale.
-const ExtractorEpoch = "16"
+// Epoch 17 (owner decision D2's re-measurement of TypeScript against
+// scip-typescript, 2026-09-28): the typescript dialect now emits abstract
+// classes (their members are qualified by them), interface and abstract
+// method signatures, and function overload / `declare function` signatures —
+// every already-indexed .ts/.tsx file missed those definitions.
+const ExtractorEpoch = "17"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares

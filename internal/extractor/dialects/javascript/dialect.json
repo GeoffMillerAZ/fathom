@@ -21,6 +21,10 @@
   },
   "required_kinds": ["class", "function", "method"],
   "oracle_kinds": {
+    "scip":  { "class": "class", "function": "function", "function@scoped": "method", "method": "method",
+               "constructor": "method", "get": "method", "set": "method",
+               "var": "variable", "const": "variable", "let": "variable",
+               "module": "namespace", "property": "property" },
     "ctags": { "class": "class", "function": "function", "generator": "function", "method": "method",
                "getter": "method", "setter": "method", "property": "property", "field": "field",
                "variable": "variable", "constant": "constant" }

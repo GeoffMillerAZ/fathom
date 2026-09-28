@@ -9,6 +9,15 @@
       "tier": "verified"
     },
     {
+      "name": "Shape.area",
+      "kind": "JSMethod",
+      "package": "shapes",
+      "line": 6,
+      "end_line": 6,
+      "signature": "area(): number",
+      "tier": "verified"
+    },
+    {
       "name": "Point",
       "kind": "TSType",
       "package": "shapes",
@@ -41,7 +50,15 @@
       "tier": "verified"
     },
     {
-      "name": "constructor",
+      "name": "Base",
+      "kind": "JSClass",
+      "package": "shapes",
+      "line": 20,
+      "end_line": 40,
+      "tier": "verified"
+    },
+    {
+      "name": "Base.constructor",
       "kind": "JSMethod",
       "package": "shapes",
       "line": 24,
@@ -53,7 +70,16 @@
       "tier": "verified"
     },
     {
-      "name": "describe",
+      "name": "Base.area",
+      "kind": "JSMethod",
+      "package": "shapes",
+      "line": 28,
+      "end_line": 28,
+      "signature": "abstract area(): number",
+      "tier": "verified"
+    },
+    {
+      "name": "Base.describe",
       "kind": "JSMethod",
       "package": "shapes",
       "line": 30,
@@ -65,7 +91,7 @@
       "tier": "verified"
     },
     {
-      "name": "#secret",
+      "name": "Base.#secret",
       "kind": "JSMethod",
       "package": "shapes",
       "line": 37,
@@ -130,6 +156,15 @@
       "calls": [
         "outer"
       ],
+      "tier": "verified"
+    },
+    {
+      "name": "ambient",
+      "kind": "JSFunc",
+      "package": "shapes",
+      "line": 61,
+      "end_line": 61,
+      "signature": "function ambient(x: number): void;",
       "tier": "verified"
     }
   ],
