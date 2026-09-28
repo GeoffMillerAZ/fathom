@@ -435,6 +435,11 @@ CREATE INDEX IF NOT EXISTS idx_observations_service_id
 		return err
 	}
 
+	// symbol_centrality (TQ-2) — same additive-table convention (centrality.go).
+	if err := s.createSymbolCentralitySchema(); err != nil {
+		return err
+	}
+
 	// docs_fts, doc_units, doc_links (KR-1, docs/design/knowledge-retrieval.md
 	// §4) — same additive-table convention (docindex.go). SQLite-only
 	// (docs_fts is an FTS5 virtual table; no MemoryStore equivalent, same as
@@ -833,6 +838,7 @@ var serviceIDTables = []string{
 	"service_refs_state",
 	"file_imports",
 	"file_churn",
+	"symbol_centrality",
 }
 
 // RemoveService deletes every row for serviceID in one transaction — see the

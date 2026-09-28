@@ -830,6 +830,7 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 
 	if len(refs) == 0 {
 		// Still a full-service ingest: every stored ref is now an orphan.
+		run.changed = 1 // every stored symbol goes: centrality must follow (TQ-2)
 		if err := p.purgeOrphans(ctx, svc.ID, refs); err != nil {
 			return report, err
 		}
@@ -1218,6 +1219,7 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	if err := writeRefs(); err != nil {
 		return finish(err)
 	}
+	run.changed = len(changed)
 	return finish(p.finalCommit(ctx, svc, run, refs))
 }
 
@@ -1271,6 +1273,14 @@ func (p *Pipeline) recordIngestMeta(ctx context.Context, svc core.ServiceRef, co
 			_ = p.st.SetFileChurn(ctx, svc.ID, computeFileChurn(cs, time.Now()))
 		}
 	}
+
+	// TQ-2 (design doc §1, §3 T1): centrality per symbol, at the SAME
+	// final commit, memoized per watermark.
+	changed := 0
+	if run != nil {
+		changed = run.changed
+	}
+	p.recordCentrality(ctx, svc.ID, commit, changed)
 }
 
 // deletedRefs lists the source_refs stored for serviceID that are absent
