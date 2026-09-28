@@ -1,0 +1,203 @@
+{
+  "symbols": [
+    {
+      "name": "Widget",
+      "kind": "JSClass",
+      "package": "shapes",
+      "line": 8,
+      "end_line": 35,
+      "tier": "verified"
+    },
+    {
+      "name": "Widget.constructor",
+      "kind": "JSMethod",
+      "package": "shapes",
+      "line": 11,
+      "end_line": 14,
+      "signature": "constructor(opts)",
+      "calls": [
+        "super",
+        "this.init"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Widget.render",
+      "kind": "JSMethod",
+      "package": "shapes",
+      "line": 16,
+      "end_line": 18,
+      "signature": "render()",
+      "calls": [
+        "helper"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Widget.#hidden",
+      "kind": "JSMethod",
+      "package": "shapes",
+      "line": 20,
+      "end_line": 22,
+      "signature": "#hidden()",
+      "calls": [
+        "ns.run"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Widget.[Symbol.iterator]",
+      "kind": "JSMethod",
+      "package": "shapes",
+      "line": 24,
+      "end_line": 26,
+      "signature": "[Symbol.iterator]()",
+      "tier": "verified"
+    },
+    {
+      "name": "Widget.create",
+      "kind": "JSMethod",
+      "package": "shapes",
+      "line": 28,
+      "end_line": 30,
+      "signature": "static create()",
+      "tier": "verified"
+    },
+    {
+      "name": "Widget.value",
+      "kind": "JSMethod",
+      "package": "shapes",
+      "line": 32,
+      "end_line": 34,
+      "signature": "get value()",
+      "tier": "verified"
+    },
+    {
+      "name": "plain",
+      "kind": "JSFunc",
+      "package": "shapes",
+      "line": 37,
+      "end_line": 39,
+      "signature": "function plain(x)",
+      "calls": [
+        "fs.readFileSync",
+        "join"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "gen",
+      "kind": "JSFunc",
+      "package": "shapes",
+      "line": 41,
+      "end_line": 43,
+      "signature": "function* gen()",
+      "calls": [
+        "compute"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "arrow",
+      "kind": "JSFunc",
+      "package": "shapes",
+      "line": 45,
+      "end_line": 45,
+      "signature": "arrow = (a, b) =>",
+      "calls": [
+        "add"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "expr",
+      "kind": "JSFunc",
+      "package": "shapes",
+      "line": 46,
+      "end_line": 48,
+      "signature": "expr = function named()",
+      "calls": [
+        "bee"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "method",
+      "kind": "JSMethod",
+      "package": "shapes",
+      "line": 53,
+      "end_line": 55,
+      "signature": "method()",
+      "calls": [
+        "inner"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "asyncFn",
+      "kind": "JSFunc",
+      "package": "shapes",
+      "line": 63,
+      "end_line": 65,
+      "signature": "async function asyncFn()",
+      "calls": [
+        "fetchAll",
+        "fetchAll().then"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "def",
+      "module": "./default",
+      "kind": "whole",
+      "line": 1
+    },
+    {
+      "local": "ns",
+      "module": "./ns",
+      "kind": "whole",
+      "line": 2
+    },
+    {
+      "local": "a",
+      "exported": "a",
+      "module": "../named",
+      "kind": "named",
+      "line": 3
+    },
+    {
+      "local": "bee",
+      "exported": "b",
+      "module": "../named",
+      "kind": "named",
+      "line": 3
+    },
+    {
+      "module": "./side-effect",
+      "kind": "whole",
+      "line": 4
+    },
+    {
+      "local": "fs",
+      "module": "fs",
+      "kind": "whole",
+      "line": 5
+    },
+    {
+      "local": "join",
+      "exported": "join",
+      "module": "path",
+      "kind": "named",
+      "line": 6
+    },
+    {
+      "local": "resolve",
+      "exported": "resolve",
+      "module": "path",
+      "kind": "named",
+      "line": 6
+    }
+  ]
+}

@@ -1,0 +1,182 @@
+package extractor
+
+import (
+	"bytes"
+	"encoding/json"
+	"flag"
+	"os"
+	"path/filepath"
+	"sort"
+	"strings"
+	"testing"
+
+	"github.com/geoffmilleraz/fathom/internal/core"
+)
+
+// updateGoldens rewrites every dialects/<id>/testdata/<case>.golden.json from
+// the extractor's current output: `go test ./internal/extractor -run
+// 'TestTagsDialectParity|TestDialectGoldens' -update`. A regenerated golden is
+// reviewed as a diff, never accepted blind.
+var updateGoldens = flag.Bool("update", false, "rewrite dialect golden files from current output")
+
+// migratedTagsDialects are the five languages TSExtractor served before
+// dialect manifests (LB-F1). Their goldens were first written by the
+// pre-manifest engine at 56c18502; TestTagsDialectParity holds every later
+// engine change to them.
+var migratedTagsDialects = []string{"javascript", "kotlin", "python", "ruby", "typescript"}
+
+// goldenSymbol is one SymbolNode as a golden file records it. Service and
+// FilePath are fixed by the harness ("svc", "src/<case>.<ext>").
+type goldenSymbol struct {
+	Name      string   `json:"name"`
+	Kind      string   `json:"kind"`
+	Package   string   `json:"package"`
+	Line      int      `json:"line"`
+	EndLine   int      `json:"end_line,omitempty"`
+	Signature string   `json:"signature,omitempty"`
+	Calls     []string `json:"calls,omitempty"`
+	Tier      string   `json:"tier"`
+}
+
+type goldenImport struct {
+	Local    string `json:"local,omitempty"`
+	Exported string `json:"exported,omitempty"`
+	Module   string `json:"module"`
+	Kind     string `json:"kind"`
+	Line     int    `json:"line"`
+}
+
+type goldenFile struct {
+	Symbols []goldenSymbol `json:"symbols"`
+	Imports []goldenImport `json:"imports,omitempty"`
+}
+
+// legacyProjection drops the fields LB-F3 adds (EndLine, Signature): the
+// part of a golden the five migrated dialects must never change, whatever
+// the engine learns later — no symbol regressions.
+func (g goldenFile) legacyProjection() goldenFile {
+	out := goldenFile{Imports: g.Imports}
+	for _, s := range g.Symbols {
+		s.EndLine, s.Signature = 0, ""
+		out.Symbols = append(out.Symbols, s)
+	}
+	return out
+}
+
+func dialectFixtures(t *testing.T, id string) []string {
+	t.Helper()
+	dir := filepath.Join("dialects", id, "testdata")
+	ents, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatalf("read %s: %v", dir, err)
+	}
+	var out []string
+	for _, e := range ents {
+		if e.IsDir() || strings.HasSuffix(e.Name(), ".json") || strings.HasSuffix(e.Name(), ".md") {
+			continue
+		}
+		out = append(out, filepath.Join(dir, e.Name()))
+	}
+	sort.Strings(out)
+	if len(out) == 0 {
+		t.Fatalf("%s: no fixtures", dir)
+	}
+	return out
+}
+
+func goldenPathFor(fixture string) string {
+	return strings.TrimSuffix(fixture, filepath.Ext(fixture)) + filepath.Ext(fixture) + ".golden.json"
+}
+
+// extractGolden runs e over fixture exactly as fusion would and renders the
+// result in golden form.
+func extractGolden(t *testing.T, e *TSExtractor, fixture string) goldenFile {
+	t.Helper()
+	src, err := os.ReadFile(fixture)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rel := "src/" + filepath.Base(fixture)
+	nodes, err := e.Extract("svc", rel, src)
+	if err != nil {
+		t.Fatalf("Extract %s: %v", fixture, err)
+	}
+	var g goldenFile
+	g.Symbols = []goldenSymbol{}
+	for _, n := range nodes {
+		if n.Service != "svc" || n.FilePath != rel {
+			t.Fatalf("%s: plumbing changed: service %q file %q", fixture, n.Service, n.FilePath)
+		}
+		g.Symbols = append(g.Symbols, goldenSymbol{
+			Name: n.Name, Kind: string(n.Kind), Package: n.Package, Line: n.Line,
+			EndLine: n.EndLine, Signature: n.Signature, Calls: n.Calls, Tier: tierName(n.Tier),
+		})
+	}
+	imps, err := e.ExtractImports(rel, src)
+	if err != nil {
+		t.Fatalf("ExtractImports %s: %v", fixture, err)
+	}
+	for _, s := range imps {
+		kind := "named"
+		if s.Kind == ImportWhole {
+			kind = "whole"
+		}
+		g.Imports = append(g.Imports, goldenImport{Local: s.LocalName, Exported: s.ExportedName, Module: s.Module, Kind: kind, Line: s.Line})
+	}
+	return g
+}
+
+func tierName(t core.EvidenceTier) string {
+	if t == core.TierVerified {
+		return "verified"
+	}
+	return "other"
+}
+
+func marshalGolden(g goldenFile) []byte {
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetIndent("", "  ")
+	enc.SetEscapeHTML(false)
+	_ = enc.Encode(g)
+	return buf.Bytes()
+}
+
+// TestTagsDialectParity (LB-F1) holds the five migrated languages to their
+// pre-manifest output: every fixture's symbols and imports, compared on the
+// legacy projection (everything except EndLine and Signature, which LB-F3
+// adds). The goldens were written by the pre-manifest engine; a change here
+// is a symbol regression, not a golden to refresh.
+func TestTagsDialectParity(t *testing.T) {
+	for _, id := range migratedTagsDialects {
+		t.Run(id, func(t *testing.T) {
+			e, err := NewTSExtractor(id)
+			if err != nil {
+				t.Fatalf("NewTSExtractor(%s): %v", id, err)
+			}
+			defer e.Close()
+			for _, fx := range dialectFixtures(t, id) {
+				got := extractGolden(t, e, fx)
+				gp := goldenPathFor(fx)
+				if *updateGoldens {
+					if err := os.WriteFile(gp, marshalGolden(got), 0o644); err != nil {
+						t.Fatal(err)
+					}
+					continue
+				}
+				raw, err := os.ReadFile(gp)
+				if err != nil {
+					t.Fatalf("read golden: %v (run with -update to create)", err)
+				}
+				var want goldenFile
+				if err := json.Unmarshal(raw, &want); err != nil {
+					t.Fatalf("%s: %v", gp, err)
+				}
+				gb, wb := marshalGolden(got.legacyProjection()), marshalGolden(want.legacyProjection())
+				if !bytes.Equal(gb, wb) {
+					t.Errorf("%s: parity broken\n--- got\n%s\n--- want\n%s", fx, gb, wb)
+				}
+			}
+		})
+	}
+}

@@ -1,0 +1,32 @@
+{
+  "symbols": [
+    {
+      "name": "org.gradle.api.Project",
+      "kind": "KotlinImport",
+      "package": "build",
+      "line": 1,
+      "end_line": 1,
+      "tier": "verified"
+    },
+    {
+      "name": "version",
+      "kind": "KotlinProperty",
+      "package": "build",
+      "line": 3,
+      "end_line": 3,
+      "tier": "verified"
+    },
+    {
+      "name": "configure",
+      "kind": "KotlinFunction",
+      "package": "build",
+      "line": 5,
+      "end_line": 7,
+      "signature": "fun configure(project: Project)",
+      "calls": [
+        "project.apply"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

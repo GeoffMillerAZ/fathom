@@ -290,7 +290,7 @@ grammar or extractor wired into this repo today; adding one is a separate, large
 (a real extractor/grammar, TDD'd against a calibration fixture) — this is disclosure only,
 never a fake extraction. Kotlin was on this list through wave P1; wave P2 (O79) closed it
 — `.kt`/`.kts` now extract via `internal/extractor.NewTSExtractor("kotlin")` (tree-sitter
-via wazero/WASM, ADR-021 §4, `internal/extractor/tsengine/grammars/kotlin.wasm`) — the
+via wazero/WASM, ADR-021 §4, `internal/extractor/tsengine/grammars/kotlin.wasm.gz`) — the
 first language added for new-language breadth rather than a CGO-incumbent swap.
 
 The pipeline is hash-gated: unchanged files (same SHA-256 as the stored fingerprint) are
@@ -1801,6 +1801,7 @@ and changes nothing — until `--apply`. Evidence is archived, never deleted:
 | `tmp` | `$TMPDIR` `fathom-edit-set*`, `fathom-*-test-*`, `fathom-stranger-check*` older than a day: deleted; entries of the hooks' caches (`fathom-filechanged`, `fathom-toplevel-cache`, `fathom-ident-cache`, `fathom-guard-stamps`) older than a day: deleted (the directories stay) |
 | `scenariobench-worktrees` | `workspace/artifacts/scenariobench/worktrees` beyond the newest 5 runs and older than 14 days (a `.pin` file exempts one): deleted |
 | `workspace-bins` | `workspace/tmp/fathom-bin-*` beyond the newest 3: deleted |
+| `wazero-cache` | `~/.fathom/cache/wazero/`: another wazero version's directory, and this version's compiled grammar code unwritten for 30 days: deleted (only the managed daemon writes it; the next compile recreates what is used) |
 
 Exit `0`, or `1` when any class could not be read or acted on (each error named).
 

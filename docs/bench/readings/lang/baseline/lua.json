@@ -1,0 +1,97 @@
+{
+  "dialect": "lua",
+  "kind": "language",
+  "target_level": "L2",
+  "level_met": "none",
+  "grade": {
+    "L1": "unmet",
+    "L2": "not-attempted",
+    "L3": "not-attempted",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-09-28",
+  "fathom_commit": "56c18502",
+  "extractor": "incumbent",
+  "subjects": [
+    {
+      "name": "nvim-telescope/telescope.nvim",
+      "sha": "40aedd8a68c78a656a10a8d62d80c54af59420fb",
+      "files": 77,
+      "bytes": 711916,
+      "counts": {
+        "callables": 278,
+        "fathom_defs": 278,
+        "kind_equal": 278,
+        "matched": 278,
+        "oracle_defs": 1059
+      },
+      "families": {
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "function"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 82.32399999999997,
+        "max_file_ms": 6,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "B",
+      "tool": "universal-ctags",
+      "version": "6.2.1"
+    }
+  ],
+  "metrics": {
+    "call_precision": null,
+    "call_recall": null,
+    "def_mapping": null,
+    "file_edge_precision": null,
+    "file_edge_recall": null,
+    "import_resolution": null,
+    "kind_agreement": 1,
+    "range_agreement": null,
+    "signature_coverage": 0,
+    "sym_precision": 1,
+    "sym_recall": 0.2625,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "kind_agreement": "B",
+    "signature_coverage": "B",
+    "sym_precision": "B",
+    "sym_recall": "B"
+  },
+  "required_kinds": [
+    "function"
+  ],
+  "kind_intersection": [
+    "function"
+  ],
+  "counts": {
+    "callables": 278,
+    "fathom_defs": 278,
+    "kind_equal": 278,
+    "matched": 278,
+    "oracle_defs": 1059
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 8.65,
+    "max_file_ms": 6,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+  ],
+  "disposition": null
+}

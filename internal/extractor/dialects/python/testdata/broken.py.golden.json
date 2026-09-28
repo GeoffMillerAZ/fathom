@@ -1,0 +1,48 @@
+{
+  "symbols": [
+    {
+      "name": "good",
+      "kind": "PythonFunc",
+      "package": "broken",
+      "line": 1,
+      "end_line": 2,
+      "signature": "def good():",
+      "calls": [
+        "call_one"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "broken",
+      "kind": "PythonFunc",
+      "package": "broken",
+      "line": 4,
+      "end_line": 5,
+      "signature": "def broken(:",
+      "calls": [
+        "call_two"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Survivor",
+      "kind": "PythonClass",
+      "package": "broken",
+      "line": 7,
+      "end_line": 9,
+      "tier": "verified"
+    },
+    {
+      "name": "Survivor.ok",
+      "kind": "PythonFunc",
+      "package": "broken",
+      "line": 8,
+      "end_line": 9,
+      "signature": "def ok(self):",
+      "calls": [
+        "call_three"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

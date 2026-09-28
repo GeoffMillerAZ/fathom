@@ -1,0 +1,96 @@
+package langbench
+
+import (
+	"os"
+	"strings"
+	"testing"
+)
+
+func trackerFixture() TrackerInput {
+	q, _ := ParseQueue([]byte(`[
+	 {"id":"go","name":"Go (.go)","kind":"language","target_level":"L4","engine":"native","grammar_source":"native:go/parser","licence":"BSD-3-Clause","plan_row":"LB-Q-go"},
+	 {"id":"swift","name":"Swift","kind":"language","target_level":"L3","engine":"tags","grammar_source":"alex-pinkus/tree-sitter-swift","licence":"MIT","plan_row":"LB-Q-swift"},
+	 {"id":"python","name":"Python","kind":"language","target_level":"L4","engine":"tags","grammar_source":"tree-sitter/tree-sitter-python","licence":"MIT","plan_row":"LB-Q-python"},
+	 {"id":"helm","name":"Helm | charts","kind":"tooling","target_level":"L3","engine":"doc","grammar_source":"pure-go:yaml","licence":"n/a","plan_row":"LB-Q-helm"}]`))
+	r := Reading{Dialect: "python", Kind: "language", TargetLevel: "L4", MeasuredAt: "2026-10-01",
+		Subjects:         []Subject{{Name: "o/r", Files: 10, Bytes: 1 << 20}},
+		Oracles:          []OracleRun{{Tier: "B", Tool: "universal-ctags", Version: "6.2.1"}, {Tier: "A", Tool: "scip-python", Status: "unavailable: no build"}},
+		RequiredKinds:    []string{"class"},
+		KindIntersection: []string{"class"},
+		Metrics:          l1Metrics(0.97), Tenancy: okTenancy()}
+	r.MetricTiers = tiers("B", r.Metrics)
+	r.Finalize()
+	return TrackerInput{
+		Template:   "# T\n\n" + TrackerMarker + "\n\ntail\n",
+		Queue:      q,
+		Readings:   map[string]Reading{"python": r},
+		Registered: map[string]Registration{"go": {Extractor: "goextract.go", LangTag: "go"}, "python": {Extractor: "tsextract.go", LangTag: "py"}, "helm": {Extractor: "helmextract.go"}},
+		TypedEdges: func(tag string) string {
+			return map[string]string{"go": "native:go/types", "py": "scip:scip-python"}[tag]
+		},
+	}
+}
+
+func TestRenderTracker(t *testing.T) {
+	doc := RenderTracker(trackerFixture())
+	for _, want := range []string{
+		"| Go (.go) | language | native | native:go/parser (BSD-3-Clause) | L4 | tolerated |",
+		"| Swift | language | tags | alex-pinkus/tree-sitter-swift (MIT) | L3 | unsupported (disclosed) |",
+		"| Python | language | tags | tree-sitter/tree-sitter-python (MIT) | L4 | L1 (L1 excellent) | B universal-ctags 6.2.1 | scip:scip-python | 2026-10-01 | LB-Q-python |",
+		"| Helm \\| charts | tool format |",
+		"\nMilestone M1 progress: languages at L1 excellent 1/20, at L2 0/12, at L3 0/8, at L4 0/6; tool formats at target 0/15\n",
+		"\ntail\n",
+	} {
+		if !strings.Contains(doc, want) {
+			t.Errorf("tracker lacks %q:\n%s", want, doc)
+		}
+	}
+	if strings.Contains(doc, "scip-python ") && strings.Contains(doc, "A scip-python") {
+		t.Error("an unavailable oracle is listed as a tier")
+	}
+	if errs := CheckTrackerAgainstReadings(doc, trackerFixture().Readings); len(errs) != 0 {
+		t.Errorf("rendered tracker fails its own check: %v", errs)
+	}
+	// I54: a level typed above the reading is refused.
+	bad := strings.Replace(doc, "| L4 | L1 (L1 excellent) |", "| L4 | L3 (L1 excellent) |", 1)
+	if errs := CheckTrackerAgainstReadings(bad, trackerFixture().Readings); len(errs) == 0 {
+		t.Error("a tracker row above its reading passed the check")
+	}
+	bad = strings.Replace(doc, "| L3 | unsupported (disclosed) |", "| L3 | L1 (L1 good) |", 1)
+	if errs := CheckTrackerAgainstReadings(bad, trackerFixture().Readings); len(errs) == 0 {
+		t.Error("a level with no reading passed the check")
+	}
+}
+
+func TestMilestones(t *testing.T) {
+	counts := MilestoneCounts{L1Excellent: 20, L1: 25, L2: 12, L3: 8, L4: 6, ToolsAtTarget: 15}
+	if got := MilestoneLine(counts); !strings.HasPrefix(got, "Milestone M1 reached") {
+		t.Errorf("MilestoneLine = %q", got)
+	}
+	counts.L4 = 5
+	if got := MilestoneLine(counts); !strings.HasPrefix(got, "Milestone M1 progress:") {
+		t.Errorf("MilestoneLine = %q", got)
+	}
+}
+
+// TestLanguagesTrackerIsGenerated (LB-F17, design §12, I54): the committed
+// docs/languages.md is exactly the rendering of the queue, the registered
+// dialects and the committed readings, and no row claims a level above
+// its reading.
+func TestLanguagesTrackerIsGenerated(t *testing.T) {
+	in, err := TrackerInputFromRepo("../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := RenderTracker(in)
+	got, err := os.ReadFile("../../docs/languages.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != want {
+		t.Fatalf("docs/languages.md is not the generated rendering; run `go run ./cmd/indexbench lang-tracker > docs/languages.md` (never hand-edit the table)")
+	}
+	if errs := CheckTrackerAgainstReadings(string(got), in.Readings); len(errs) > 0 {
+		t.Fatalf("tracker vs readings: %v", errs)
+	}
+}

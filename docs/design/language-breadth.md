@@ -311,7 +311,14 @@ repo file set) → target files:
 | `swift-module` | Swift | `import M` → a SwiftPM target named M (`Package.swift` targets' `path` or `Sources/M`) |
 | `file-symbol` | Ruby (`require_relative`), Lua (`require`), Bash (`source`), R (`source`), Perl (`use`/`require`), Nix, Jsonnet, Starlark (`load`) | path or dotted module → file, per-language suffix rules in the manifest |
 
-A manifest names its strategy and its parameters (source roots, suffixes, index files).
+A manifest names its strategy and its parameters — the closed set `extractor.ImportParams`
+decodes: `source_roots`, `suffixes`, `index_files`, `separator`, `relative` (a bare spec is
+relative to the importer first), `case: "snake"` and `labels: "bazel"`; an omitted one takes
+the strategy's default, which for `relative-path` and `dotted-module` is the pre-LB-F11
+TS/JS and Python rule (`internal/fusion/resolvestrategy.go` documents each strategy's reads).
+Under `include-path`, `file-symbol` and `swift-module` a whole-module import brings every
+top-level name of its target into scope, as does any `@import.wildcard`; a name two targets
+define is left unresolved.
 A new strategy is a foundation-level change (an Opus row), never something a worker adds.
 Edges keep the existing label: `file-resolved`, tier pre-scan, never presented as typed.
 
@@ -354,7 +361,7 @@ variables in `build.sh` and the hand-kept tables in `PROVENANCE.md`:
   "grammars": [
     { "blob": "swift", "repo": "alex-pinkus/tree-sitter-swift", "tag": "0.7.1",
       "commit": "<40 hex>", "tarball_sha256": "<64 hex>", "licence": "MIT",
-      "entry_points": ["tree_sitter_swift"], "subdir": "", "scanner": true,
+      "entry_points": ["tree_sitter_swift"], "subdirs": [], "scanner": true,
       "generate": false, "abi": 14,
       "blob_sha256": "<64 hex, of the uncompressed .wasm>", "blob_bytes": 0, "gz_bytes": 0 }
   ]
@@ -363,7 +370,14 @@ variables in `build.sh` and the hand-kept tables in `PROVENANCE.md`:
 
 `build.sh <blob>` builds one grammar from the lock (fetch tarball, check `tarball_sha256`,
 compile with the existing zig recipe plus the predicate export, `wasm-opt -Oz`, gzip -9),
-and prints the three numbers to paste back. A grammar whose release ships only
+and prints the three numbers to paste back. `subdirs` lists the grammar directories under the
+repository root when there is more than one (tree-sitter-typescript: `typescript`, `tsx`);
+empty means the root. `commit` is the commit the tag points at (`git get-tar-commit-id` of the
+tarball), never an annotated tag object's id. The lock is decoded strictly: an unknown field
+is an error. `"predicate_export": true` adds `ts_query_predicates_for_pattern` to a blob's
+exports; the five original blobs keep `false`, because the engine reads predicates from the
+query source (LB-F2) and a rebuild of them from the lock is then byte-identical (measured:
+`build.sh typescript` reproduced the committed module's sha256). A grammar whose release ships only
 `grammar.js` sets `"generate": true` and the recipe runs a pinned `tree-sitter-cli` via
 `npx --yes tree-sitter-cli@<pinned> generate` in scratch (never a global install).
 `PROVENANCE.md` becomes a generated rendering of the lock plus the prose that is there today.
@@ -416,8 +430,8 @@ licence is on the allowlist, with the same header.
 | Mechanism | Bound | Row |
 |---|---|---|
 | Lazy grammar load | a grammar is decompressed and compiled only when a file of its dialect is extracted | LB-F13 |
-| Process-wide parser pool | ≤ 6 live parser modules (LRU across all dialects); a module idle 2 minutes is closed; `tsengine.LiveModules()` stays the instrument | LB-F15 |
-| Compiled-code accounting | each compiled grammar's size (measured once at compile, recorded in the reading) is charged to the memo registry's byte budget (I51); shed evicts least-recently-used compiled grammars, refuse drops all | LB-F15 |
+| Process-wide parser pool | ≤ 6 live parser modules (LRU across all dialects, `tsengine.AcquireParser`, keyed by extractor and variant so compiled queries stay with their owner); a module idle 2 minutes is closed; a leased module is never closed under its holder (past the cap the surplus closes at release); `tsengine.LiveModules()` stays the instrument, `PoolPeak()` the proof's | LB-F15 |
+| Compiled-code accounting | each compiled grammar is a `grammar_code` memo group entry charged at its lock row's `blob_bytes` (wazero does not report compiled size; measured on arm64, wazero v1.12.0, the code is 0.46×–1.84× the module) against the memo registry's byte budget (I51); shed evicts least-recently-used compiled grammars, refuse drops all and closes idle modules; an evicted grammar's code is closed once no parser is being made from it | LB-F15 |
 | Module memory | RT-107's `MemoryLimitPages = 1024` (64 MiB) per module, unchanged | existing |
 | Per-file gates | 2 MiB cap, binary sniff, minified/generated sniff, known-fault fingerprint | existing + LB-F10 |
 | Guest budgets | parse and query-scan deadline 10 s, host backstop 20 s | existing |

@@ -1,0 +1,36 @@
+{
+  "id": "kotlin",
+  "display": "Kotlin",
+  "kind": "language",
+  "engine": "tags",
+  "lang_tag": "kotlin",
+  "match": {
+    "extensions": [".kt", ".kts"],
+    "basenames": [],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "grammar": { "blob": "kotlin", "entry_point": "tree_sitter_kotlin" },
+  "variants": [],
+  "queries": { "tags": "tags.scm" },
+  "kinds": {
+    "class":     { "source_kind": "KotlinClass",     "canonical": "class",     "container": true },
+    "interface": { "source_kind": "KotlinInterface", "canonical": "interface", "container": true },
+    "object":    { "source_kind": "KotlinObject",    "canonical": "class",     "container": true },
+    "function":  { "source_kind": "KotlinFunction",  "canonical": "function",  "callable": true },
+    "property":  { "source_kind": "KotlinProperty",  "canonical": "property" },
+    "import":    { "source_kind": "KotlinImport",    "canonical": "import" }
+  },
+  "required_kinds": ["class", "interface", "function"],
+  "oracle_kinds": {
+    "ctags": { "class": "class", "interface": "interface", "object": "class", "method": "function",
+               "variable": "property", "constant": "property", "typealias": "type_alias",
+               "package": "package" }
+  },
+  "qualify": { "chain_containers": true, "container_sep": ".", "method_sep": "." },
+  "package": { "strategy": "dir" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L4",
+  "queue_id": "kotlin"
+}

@@ -1,0 +1,221 @@
+{
+  "symbols": [
+    {
+      "name": "LIMIT",
+      "kind": "PythonVar",
+      "package": "shapes",
+      "line": 8,
+      "end_line": 8,
+      "tier": "verified"
+    },
+    {
+      "name": "counter",
+      "kind": "PythonVar",
+      "package": "shapes",
+      "line": 10,
+      "end_line": 10,
+      "tier": "verified"
+    },
+    {
+      "name": "top",
+      "kind": "PythonFunc",
+      "package": "shapes",
+      "line": 13,
+      "end_line": 17,
+      "signature": "def top(a, b=2, *args, **kwargs):",
+      "calls": [
+        "check",
+        "helper",
+        "os.path.join"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "fetch",
+      "kind": "PythonFunc",
+      "package": "shapes",
+      "line": 20,
+      "end_line": 21,
+      "signature": "async def fetch(url):",
+      "calls": [
+        "client.get"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "decorated",
+      "kind": "PythonFunc",
+      "package": "shapes",
+      "line": 25,
+      "end_line": 29,
+      "signature": "def decorated( first, second, ):",
+      "tier": "verified"
+    },
+    {
+      "name": "Base",
+      "kind": "PythonClass",
+      "package": "shapes",
+      "line": 32,
+      "end_line": 51,
+      "tier": "verified"
+    },
+    {
+      "name": "Base.__init__",
+      "kind": "PythonFunc",
+      "package": "shapes",
+      "line": 35,
+      "end_line": 37,
+      "signature": "def __init__(self, value):",
+      "calls": [
+        "super",
+        "super().__init__"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Base.size",
+      "kind": "PythonFunc",
+      "package": "shapes",
+      "line": 40,
+      "end_line": 41,
+      "signature": "def size(self):",
+      "calls": [
+        "len"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Base.build",
+      "kind": "PythonFunc",
+      "package": "shapes",
+      "line": 44,
+      "end_line": 45,
+      "signature": "def build(*parts):",
+      "calls": [
+        "Base"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Inner",
+      "kind": "PythonClass",
+      "package": "shapes",
+      "line": 47,
+      "end_line": 51,
+      "tier": "verified"
+    },
+    {
+      "name": "Inner.deep",
+      "kind": "PythonFunc",
+      "package": "shapes",
+      "line": 48,
+      "end_line": 51,
+      "signature": "def deep(self):",
+      "calls": [
+        "local"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "local",
+      "kind": "PythonFunc",
+      "package": "shapes",
+      "line": 49,
+      "end_line": 50,
+      "signature": "def local():",
+      "calls": [
+        "compute"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Child",
+      "kind": "PythonClass",
+      "package": "shapes",
+      "line": 54,
+      "end_line": 57,
+      "tier": "verified"
+    },
+    {
+      "name": "Child.method",
+      "kind": "PythonFunc",
+      "package": "shapes",
+      "line": 55,
+      "end_line": 57,
+      "signature": "def method(self):",
+      "calls": [
+        "Base.build",
+        "self.build"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "outer",
+      "kind": "PythonFunc",
+      "package": "shapes",
+      "line": 60,
+      "end_line": 64,
+      "signature": "def outer():",
+      "tier": "verified"
+    },
+    {
+      "name": "Local",
+      "kind": "PythonClass",
+      "package": "shapes",
+      "line": 61,
+      "end_line": 63,
+      "tier": "verified"
+    },
+    {
+      "name": "Local.m",
+      "kind": "PythonFunc",
+      "package": "shapes",
+      "line": 62,
+      "end_line": 63,
+      "signature": "def m(self):",
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "os",
+      "module": "os",
+      "kind": "whole",
+      "line": 2
+    },
+    {
+      "local": "osp",
+      "module": "os.path",
+      "kind": "whole",
+      "line": 3
+    },
+    {
+      "local": "OrderedDict",
+      "exported": "OrderedDict",
+      "module": "collections",
+      "kind": "named",
+      "line": 4
+    },
+    {
+      "local": "dd",
+      "exported": "defaultdict",
+      "module": "collections",
+      "kind": "named",
+      "line": 4
+    },
+    {
+      "local": "sibling",
+      "exported": "sibling",
+      "module": ".",
+      "kind": "named",
+      "line": 5
+    },
+    {
+      "local": "other",
+      "exported": "thing",
+      "module": ".pkg.mod",
+      "kind": "named",
+      "line": 6
+    }
+  ]
+}

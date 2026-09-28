@@ -134,6 +134,19 @@ type Report struct {
 	// target, dist, build, …) — counted and named, never a silent drop. A
 	// corpus re-includes one with `[connector] include`. Nil when none.
 	DefaultIgnoredDirs []string
+	// SkippedGenerated is the number of dialect-owned files extracted this
+	// run that the generated/minified gate skipped (LB-F10, design §5): a
+	// `@generated` / `Code generated … DO NOT EDIT` marker in the first
+	// 2 KiB, or an average line over 500 characters in the first 64 KiB.
+	// Fingerprinted, never extracted.
+	SkippedGenerated int
+	// AmbiguousUnclassified is the number of files whose extension more
+	// than one dialect claims and no manifest sniff settled (LB-F9) —
+	// fingerprinted, never guessed.
+	AmbiguousUnclassified int
+	// ClassifiedBySniff is the number of files a manifest sniff classified
+	// (LB-F9) — disclosed, since a sniff is a content judgement.
+	ClassifiedBySniff int
 	// Oversize is the number of files skipped from extraction because their
 	// content exceeded MaxExtractSize (ADR-021 §2 / TI-6) — still
 	// fingerprinted so they are not re-sniffed on every ingest.
@@ -303,6 +316,7 @@ type pendingFile struct {
 	ref     core.SourceRef
 	content []byte
 	hash    string
+	verdict dialectVerdict
 }
 
 // realGitHead resolves HEAD for the given directory path from the ref files
@@ -490,7 +504,14 @@ func parseGitLog(serviceID, raw string) []store.Commit {
 // KindJavaField and KindJavaImport, which the epoch-6 extractor never
 // captured — every already-indexed .java file's stored observations predate
 // both new kinds.
-const ExtractorEpoch = "7"
+// Epoch 8 (LB-F3, docs/design/language-breadth.md §3.3): the tags engine
+// (JavaScript, TypeScript, Python, Ruby, Kotlin) now fills EndLine for every
+// definition and Signature for every callable; stored observations for those
+// files carry neither, so the salt bump re-extracts them.
+// Epoch 9 (LB-F10, design §5): the generated/minified gate — a minified or
+// generator-marked file of a manifest dialect is no longer extracted; its
+// stored observations predate the gate, so the salt bump purges them.
+const ExtractorEpoch = "9"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares
@@ -872,7 +893,8 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	// vouched for; it is never read.
 	for i, ref := range refs {
 		if gate.live[i].ContentHash != "" {
-			run.noteFact(ref.Path, fileFact{size: gate.live[i].Size, hash: gate.live[i].ContentHash})
+			run.noteFact(ref.Path, fileFact{size: gate.live[i].Size, hash: gate.live[i].ContentHash,
+				excluded: gate.live[i].Excluded, sniffed: gate.live[i].Sniffed})
 		}
 	}
 
@@ -925,8 +947,12 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 		// fingerprint, or improved extraction never reaches unchanged files —
 		// the stale-observation class dogfood O9 caught.
 		hash := FingerprintHash(content)
-		run.noteFact(ref.Path, fileFact{size: int64(len(content)), hash: hash})
+		// LB-F9/LB-F10: the dialect gate's verdict is a fact of the bytes,
+		// recorded whether or not the hash-gate lets the file through.
+		verdict := gateDialectFile(ref.Path, content)
+		run.noteFact(ref.Path, fileFact{size: int64(len(content)), hash: hash, excluded: verdict.excluded, sniffed: verdict.sniffed})
 		gate.live[i].ContentHash = hash
+		gate.live[i].Excluded, gate.live[i].Sniffed = verdict.excluded, verdict.sniffed
 
 		// RT-89: an incomplete service extracts every readable file's
 		// routes and client calls; a complete one only the changed files'.
@@ -982,7 +1008,7 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 		if svcRefs.complete {
 			svcRefs.add(ref.Path, content)
 		}
-		pf := pendingFile{ref: ref, content: content, hash: hash}
+		pf := pendingFile{ref: ref, content: content, hash: hash, verdict: verdict}
 		if p.cfg.Lazy {
 			pending = append(pending, pf)
 			return nil
@@ -1110,6 +1136,9 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	report.ClassifiedZero = stats.classifiedZero
 	report.TSEngineFaults = stats.tsFaults
 	report.UnsupportedLanguages = stats.unsupportedLang
+	report.SkippedGenerated = stats.skippedGenerated
+	report.AmbiguousUnclassified = stats.ambiguous
+	report.ClassifiedBySniff = stats.sniffed
 
 	// Deleted files change the typed inputs too (a removed .go file).
 	deleted, delErr := p.deletedRefs(ctx, svc.ID, refs)
@@ -1416,6 +1445,11 @@ type extractStats struct {
 	oversize       int
 	classifiedZero int
 	tsFaults       int // extract errors matching extractor.ErrTSEngineFault (critic M1)
+	// skippedGenerated, ambiguous and sniffed are the dialect gate's
+	// per-ingest counts (LB-F9, LB-F10) over the files extracted this run.
+	skippedGenerated int
+	ambiguous        int
+	sniffed          int
 	// unsupportedLang tallies files, by language display name, that hit the
 	// no-extractor fallback but matched a known-language extension (O69,
 	// connector.UnsupportedLanguageForPath) — the per-call source for
@@ -1563,54 +1597,33 @@ func (s *extractSink) add(ctx context.Context, pf pendingFile) error {
 		return nil
 	}
 
-	base := filepath.Base(pf.ref.Path)
-	ext := filepath.Ext(pf.ref.Path)
-
-	var extExtractor extractor.Extractor
-	var toolKind ToolKind
-	ok := false
-
-	switch {
-	case ext == ".yaml" || ext == ".yml":
-		switch {
-		case strings.Contains(filepath.ToSlash(pf.ref.Path), ".github/workflows/"):
-			// GHA dispatch was never the grounded defect — keep the
-			// existing YAMLExtractor wrapper unchanged.
-			extExtractor, ok = p.exts[ext]
-			toolKind = ToolGHA
-		default:
-			if e, hit := p.exts[base]; hit {
-				// Already unambiguous by basename (Chart.yaml,
-				// values.yaml, kustomization.*, compose.*,
-				// docker-compose.*) — no content sniff needed.
-				extExtractor, ok = e, true
-				toolKind = toolKindForBasename(base)
-			} else {
-				kind := Classify(pf.ref.Path, pf.content, idx)
-				toolKind = kind
-				if kind == ToolUnclassified {
-					stats.unclassified++
-					atomic.AddInt64(&p.unclassifiedTotal, 1)
-					if err := p.st.SetFingerprint(ctx, serviceID, pf.ref.Path, pf.hash); err != nil {
-						return fmt.Errorf("fusion: set fingerprint %q: %w", pf.ref.Path, err)
-					}
-					return nil
-				}
-				extExtractor, ok = p.toolExts[kind]
-			}
+	// LB-F9/LB-F10 (design §5): an ambiguous extension no sniff settled,
+	// or a dialect file that is generated or minified, is fingerprinted
+	// and counted — never extracted, never silent.
+	if pf.verdict.sniffed {
+		stats.sniffed++
+	}
+	switch pf.verdict.excluded {
+	case ExcludedSkippedGenerated, ExcludedAmbiguous:
+		if pf.verdict.excluded == ExcludedSkippedGenerated {
+			stats.skippedGenerated++
+		} else {
+			stats.ambiguous++
 		}
-	case ext == ".cue":
-		// Classify never changes which extractor runs for .cue files —
-		// only the ToolKind tag recorded on the resulting observations.
-		extExtractor, ok = p.exts[ext]
-		toolKind = Classify(pf.ref.Path, pf.content, idx)
-	default:
-		// Unchanged fast path: try full basename first (e.g. "go.mod"),
-		// then extension.
-		extExtractor, ok = p.exts[base]
-		if !ok {
-			extExtractor, ok = p.exts[ext]
+		if err := p.st.SetFingerprint(ctx, serviceID, pf.ref.Path, pf.hash); err != nil {
+			return fmt.Errorf("fusion: set fingerprint %q: %w", pf.ref.Path, err)
 		}
+		return nil
+	}
+
+	extExtractor, toolKind, ok, unclassified := p.resolveExtractor(pf.ref.Path, pf.content, idx)
+	if unclassified {
+		stats.unclassified++
+		atomic.AddInt64(&p.unclassifiedTotal, 1)
+		if err := p.st.SetFingerprint(ctx, serviceID, pf.ref.Path, pf.hash); err != nil {
+			return fmt.Errorf("fusion: set fingerprint %q: %w", pf.ref.Path, err)
+		}
+		return nil
 	}
 
 	if !ok {
@@ -1810,4 +1823,107 @@ func joinDocHeadings(nodes []core.SymbolNode) string {
 		result += p
 	}
 	return result
+}
+
+// resolveExtractor is ingest's per-file dispatch: which extractor reads
+// relPath, the ToolKind its observations carry, and whether a YAML file
+// was left unclassified (never extracted, counted). Shared by extraction
+// and ExtractForBench so the language-breadth harness measures exactly
+// the dispatch ingest runs (LB-F23).
+func (p *Pipeline) resolveExtractor(relPath string, content []byte, idx *siblingIndex) (e extractor.Extractor, toolKind ToolKind, ok, unclassified bool) {
+	base := filepath.Base(relPath)
+	ext := filepath.Ext(relPath)
+	switch {
+	case ext == ".yaml" || ext == ".yml":
+		switch {
+		case strings.Contains(filepath.ToSlash(relPath), ".github/workflows/"):
+			// GHA dispatch was never the grounded defect — keep the
+			// existing YAMLExtractor wrapper unchanged.
+			e, ok = p.exts[ext]
+			toolKind = ToolGHA
+		default:
+			if hitE, hit := p.exts[base]; hit {
+				// Already unambiguous by basename (Chart.yaml,
+				// values.yaml, kustomization.*, compose.*,
+				// docker-compose.*) — no content sniff needed.
+				e, ok = hitE, true
+				toolKind = toolKindForBasename(base)
+			} else {
+				kind := Classify(relPath, content, idx)
+				toolKind = kind
+				if kind == ToolUnclassified {
+					return nil, kind, false, true
+				}
+				e, ok = p.toolExts[kind]
+			}
+		}
+	case ext == ".cue":
+		// Classify never changes which extractor runs for .cue files —
+		// only the ToolKind tag recorded on the resulting observations.
+		e, ok = p.exts[ext]
+		toolKind = Classify(relPath, content, idx)
+	default:
+		// Unchanged fast path: try full basename first (e.g. "go.mod"),
+		// then extension.
+		e, ok = p.exts[base]
+		if !ok {
+			e, ok = p.exts[ext]
+		}
+	}
+	return e, toolKind, ok, false
+}
+
+// BenchExtraction is the result of extracting one file outside a store.
+type BenchExtraction struct {
+	Nodes    []core.SymbolNode
+	ToolKind ToolKind
+	// Skipped names why no extractor ran: "binary", "oversize",
+	// "unclassified" or "no-extractor"; "" when one did.
+	Skipped string
+	// TypeRefs is the type references the tags engine captured in this
+	// file (design §3.4: counted in the reading, never stored).
+	TypeRefs int
+}
+
+// ExtractForBench runs ingest's gates (binary, size cap) and dispatch on
+// one file and returns the extractor's nodes, touching no store — the
+// language-breadth harness's in-process extraction (LB-F23, design §10).
+// refs is the service's Discover list (the sibling index YAML
+// classification reads).
+func (p *Pipeline) ExtractForBench(serviceID string, refs []core.SourceRef, relPath string, content []byte) (BenchExtraction, error) {
+	if connector.IsBinary(content) {
+		return BenchExtraction{Skipped: "binary"}, nil
+	}
+	if len(content) > MaxExtractSize {
+		return BenchExtraction{Skipped: "oversize"}, nil
+	}
+	switch gateDialectFile(relPath, content).excluded {
+	case ExcludedSkippedGenerated:
+		return BenchExtraction{Skipped: "generated"}, nil
+	case ExcludedAmbiguous:
+		return BenchExtraction{Skipped: "ambiguous"}, nil
+	}
+	idx, ok := p.siblingIdx[serviceID]
+	if !ok {
+		idx = buildSiblingIndex(refs)
+		p.siblingIdx[serviceID] = idx
+	}
+	e, tk, ok, unclassified := p.resolveExtractor(relPath, content, idx)
+	switch {
+	case unclassified:
+		return BenchExtraction{ToolKind: tk, Skipped: "unclassified"}, nil
+	case !ok:
+		return BenchExtraction{Skipped: "no-extractor"}, nil
+	}
+	tr, counts := e.(interface{ TypeRefs() int64 })
+	var before int64
+	if counts {
+		before = tr.TypeRefs()
+	}
+	nodes, err := e.Extract(serviceID, relPath, content)
+	out := BenchExtraction{Nodes: nodes, ToolKind: tk}
+	if counts {
+		out.TypeRefs = int(tr.TypeRefs() - before)
+	}
+	return out, err
 }

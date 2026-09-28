@@ -1,0 +1,1131 @@
+[
+  {
+    "manifest": {
+      "id": "go",
+      "display": "Go",
+      "kind": "language",
+      "lang_tag": "go",
+      "match": {
+        "extensions": [
+          ".go"
+        ],
+        "basenames": []
+      },
+      "kinds": {
+        "goFunc": {
+          "source_kind": "GoFunc",
+          "canonical": "function",
+          "callable": true
+        },
+        "goMethod": {
+          "source_kind": "GoMethod",
+          "canonical": "method",
+          "callable": true
+        },
+        "goType": {
+          "source_kind": "GoType",
+          "canonical": "struct"
+        },
+        "goInterface": {
+          "source_kind": "GoInterface",
+          "canonical": "interface"
+        },
+        "goConst": {
+          "source_kind": "GoConst",
+          "canonical": "constant"
+        },
+        "goVar": {
+          "source_kind": "GoVar",
+          "canonical": "variable"
+        }
+      },
+      "required_kinds": [
+        "function",
+        "method",
+        "struct",
+        "interface"
+      ],
+      "oracle_kinds": {
+        "ctags": {
+          "func": "function",
+          "func@scoped": "method",
+          "struct": "struct",
+          "type": "struct",
+          "talias": "type_alias",
+          "interface": "interface",
+          "const": "constant",
+          "var": "variable"
+        }
+      },
+      "queue_id": "go"
+    },
+    "ctags": {
+      "languages": [
+        "Go"
+      ],
+      "args": []
+    },
+    "notes": [
+      "GoType covers every named type; ctags struct and type both map to struct"
+    ]
+  },
+  {
+    "manifest": {
+      "id": "typescript",
+      "display": "TypeScript",
+      "kind": "language",
+      "lang_tag": "ts",
+      "match": {
+        "extensions": [
+          ".ts",
+          ".tsx",
+          ".mts",
+          ".cts"
+        ],
+        "basenames": []
+      },
+      "kinds": {
+        "jSClass": {
+          "source_kind": "JSClass",
+          "canonical": "class"
+        },
+        "jSFunc": {
+          "source_kind": "JSFunc",
+          "canonical": "function",
+          "callable": true
+        },
+        "jSMethod": {
+          "source_kind": "JSMethod",
+          "canonical": "method",
+          "callable": true
+        },
+        "tSInterface": {
+          "source_kind": "TSInterface",
+          "canonical": "interface"
+        },
+        "tSType": {
+          "source_kind": "TSType",
+          "canonical": "type_alias"
+        },
+        "tSEnum": {
+          "source_kind": "TSEnum",
+          "canonical": "enum"
+        }
+      },
+      "required_kinds": [
+        "class",
+        "function",
+        "method",
+        "interface",
+        "enum"
+      ],
+      "oracle_kinds": {
+        "ctags": {
+          "class": "class",
+          "function": "function",
+          "generator": "function",
+          "method": "method",
+          "interface": "interface",
+          "enum": "enum",
+          "alias": "type_alias",
+          "namespace": "namespace",
+          "property": "property",
+          "variable": "variable",
+          "constant": "constant",
+          "enumerator": "enum_member"
+        }
+      },
+      "queue_id": "typescript"
+    },
+    "ctags": {
+      "languages": [
+        "TypeScript"
+      ],
+      "args": []
+    }
+  },
+  {
+    "manifest": {
+      "id": "javascript",
+      "display": "JavaScript",
+      "kind": "language",
+      "lang_tag": "js",
+      "match": {
+        "extensions": [
+          ".js",
+          ".jsx",
+          ".mjs",
+          ".cjs"
+        ],
+        "basenames": []
+      },
+      "kinds": {
+        "jSClass": {
+          "source_kind": "JSClass",
+          "canonical": "class"
+        },
+        "jSFunc": {
+          "source_kind": "JSFunc",
+          "canonical": "function",
+          "callable": true
+        },
+        "jSMethod": {
+          "source_kind": "JSMethod",
+          "canonical": "method",
+          "callable": true
+        }
+      },
+      "required_kinds": [
+        "class",
+        "function",
+        "method"
+      ],
+      "oracle_kinds": {
+        "ctags": {
+          "class": "class",
+          "function": "function",
+          "generator": "function",
+          "method": "method",
+          "getter": "method",
+          "setter": "method",
+          "property": "property",
+          "field": "field",
+          "variable": "variable",
+          "constant": "constant"
+        }
+      },
+      "queue_id": "javascript"
+    },
+    "ctags": {
+      "languages": [
+        "JavaScript"
+      ],
+      "args": []
+    }
+  },
+  {
+    "manifest": {
+      "id": "python",
+      "display": "Python",
+      "kind": "language",
+      "lang_tag": "py",
+      "match": {
+        "extensions": [
+          ".py",
+          ".pyi"
+        ],
+        "basenames": []
+      },
+      "kinds": {
+        "pythonClass": {
+          "source_kind": "PythonClass",
+          "canonical": "class"
+        },
+        "pythonFunc": {
+          "source_kind": "PythonFunc",
+          "canonical": "function",
+          "callable": true
+        },
+        "pythonVar": {
+          "source_kind": "PythonVar",
+          "canonical": "variable"
+        }
+      },
+      "required_kinds": [
+        "class",
+        "function"
+      ],
+      "oracle_kinds": {
+        "ctags": {
+          "class": "class",
+          "function": "function",
+          "member": "function",
+          "variable": "variable"
+        }
+      },
+      "queue_id": "python"
+    },
+    "ctags": {
+      "languages": [
+        "Python"
+      ],
+      "args": []
+    },
+    "notes": [
+      "fathom's Python taxonomy has no method kind (a method is a PythonFunc qualified by its class), so ctags member maps to function"
+    ]
+  },
+  {
+    "manifest": {
+      "id": "java",
+      "display": "Java",
+      "kind": "language",
+      "lang_tag": "java",
+      "match": {
+        "extensions": [
+          ".java"
+        ],
+        "basenames": []
+      },
+      "kinds": {
+        "javaClass": {
+          "source_kind": "JavaClass",
+          "canonical": "class"
+        },
+        "javaInterface": {
+          "source_kind": "JavaInterface",
+          "canonical": "interface"
+        },
+        "javaMethod": {
+          "source_kind": "JavaMethod",
+          "canonical": "method",
+          "callable": true
+        },
+        "javaEnum": {
+          "source_kind": "JavaEnum",
+          "canonical": "enum"
+        },
+        "javaRecord": {
+          "source_kind": "JavaRecord",
+          "canonical": "class"
+        },
+        "javaField": {
+          "source_kind": "JavaField",
+          "canonical": "field"
+        },
+        "javaImport": {
+          "source_kind": "JavaImport",
+          "canonical": "import"
+        }
+      },
+      "required_kinds": [
+        "class",
+        "interface",
+        "method",
+        "enum"
+      ],
+      "oracle_kinds": {
+        "ctags": {
+          "class": "class",
+          "interface": "interface",
+          "annotation": "interface",
+          "method": "method",
+          "enum": "enum",
+          "field": "field",
+          "enumConstant": "enum_member",
+          "package": "package"
+        }
+      },
+      "queue_id": "java"
+    },
+    "ctags": {
+      "languages": [
+        "Java"
+      ],
+      "args": []
+    }
+  },
+  {
+    "manifest": {
+      "id": "kotlin",
+      "display": "Kotlin",
+      "kind": "language",
+      "lang_tag": "kotlin",
+      "match": {
+        "extensions": [
+          ".kt",
+          ".kts"
+        ],
+        "basenames": []
+      },
+      "kinds": {
+        "kotlinClass": {
+          "source_kind": "KotlinClass",
+          "canonical": "class"
+        },
+        "kotlinInterface": {
+          "source_kind": "KotlinInterface",
+          "canonical": "interface"
+        },
+        "kotlinObject": {
+          "source_kind": "KotlinObject",
+          "canonical": "class"
+        },
+        "kotlinFunction": {
+          "source_kind": "KotlinFunction",
+          "canonical": "function",
+          "callable": true
+        },
+        "kotlinProperty": {
+          "source_kind": "KotlinProperty",
+          "canonical": "property"
+        },
+        "kotlinImport": {
+          "source_kind": "KotlinImport",
+          "canonical": "import"
+        }
+      },
+      "required_kinds": [
+        "class",
+        "interface",
+        "function"
+      ],
+      "oracle_kinds": {
+        "ctags": {
+          "class": "class",
+          "interface": "interface",
+          "object": "class",
+          "method": "function",
+          "variable": "property",
+          "constant": "property",
+          "typealias": "type_alias",
+          "package": "package"
+        }
+      },
+      "queue_id": "kotlin"
+    },
+    "ctags": {
+      "languages": [
+        "Kotlin"
+      ],
+      "args": []
+    }
+  },
+  {
+    "manifest": {
+      "id": "scala",
+      "display": "Scala",
+      "kind": "language",
+      "lang_tag": "scala",
+      "match": {
+        "extensions": [
+          ".scala",
+          ".sc"
+        ],
+        "basenames": []
+      },
+      "kinds": {
+        "scalaClass": {
+          "source_kind": "ScalaClass",
+          "canonical": "class"
+        },
+        "scalaObject": {
+          "source_kind": "ScalaObject",
+          "canonical": "class"
+        },
+        "scalaTrait": {
+          "source_kind": "ScalaTrait",
+          "canonical": "trait"
+        },
+        "scalaDef": {
+          "source_kind": "ScalaDef",
+          "canonical": "function",
+          "callable": true
+        }
+      },
+      "required_kinds": [
+        "class",
+        "trait",
+        "function"
+      ],
+      "oracle_kinds": {},
+      "queue_id": "scala"
+    },
+    "ctags": {
+      "languages": [],
+      "args": []
+    },
+    "notes": [
+      "universal-ctags 6.2.1 has no Scala parser: no tier-B oracle"
+    ]
+  },
+  {
+    "manifest": {
+      "id": "rust",
+      "display": "Rust",
+      "kind": "language",
+      "lang_tag": "rust",
+      "match": {
+        "extensions": [
+          ".rs"
+        ],
+        "basenames": []
+      },
+      "kinds": {
+        "rustFn": {
+          "source_kind": "RustFn",
+          "canonical": "function",
+          "callable": true
+        },
+        "rustStruct": {
+          "source_kind": "RustStruct",
+          "canonical": "struct"
+        },
+        "rustEnum": {
+          "source_kind": "RustEnum",
+          "canonical": "enum"
+        },
+        "rustTrait": {
+          "source_kind": "RustTrait",
+          "canonical": "trait"
+        },
+        "rustImpl": {
+          "source_kind": "RustImpl",
+          "canonical": "class"
+        },
+        "rustMod": {
+          "source_kind": "RustMod",
+          "canonical": "module"
+        }
+      },
+      "required_kinds": [
+        "function",
+        "struct",
+        "enum",
+        "trait"
+      ],
+      "oracle_kinds": {
+        "ctags": {
+          "function": "function",
+          "method": "function",
+          "struct": "struct",
+          "enum": "enum",
+          "interface": "trait",
+          "implementation": "class",
+          "module": "module",
+          "typedef": "type_alias",
+          "constant": "constant",
+          "macro": "macro",
+          "field": "field",
+          "enumerator": "enum_member",
+          "variable": "variable"
+        }
+      },
+      "queue_id": "rust"
+    },
+    "ctags": {
+      "languages": [
+        "Rust"
+      ],
+      "args": []
+    },
+    "notes": [
+      "fathom emits methods as RustFn; ctags method maps to function"
+    ]
+  },
+  {
+    "manifest": {
+      "id": "c",
+      "display": "C",
+      "kind": "language",
+      "lang_tag": "c",
+      "match": {
+        "extensions": [
+          ".c",
+          ".h"
+        ],
+        "basenames": []
+      },
+      "kinds": {
+        "cFunc": {
+          "source_kind": "CFunc",
+          "canonical": "function",
+          "callable": true
+        },
+        "cStruct": {
+          "source_kind": "CStruct",
+          "canonical": "struct"
+        },
+        "cEnum": {
+          "source_kind": "CEnum",
+          "canonical": "enum"
+        },
+        "cTypedef": {
+          "source_kind": "CTypedef",
+          "canonical": "type_alias"
+        }
+      },
+      "required_kinds": [
+        "function",
+        "struct"
+      ],
+      "oracle_kinds": {
+        "ctags": {
+          "function": "function",
+          "struct": "struct",
+          "enum": "enum",
+          "typedef": "type_alias",
+          "union": "union",
+          "macro": "macro",
+          "member": "field",
+          "enumerator": "enum_member",
+          "variable": "variable"
+        }
+      },
+      "queue_id": "c"
+    },
+    "ctags": {
+      "languages": [
+        "C"
+      ],
+      "args": [
+        "--langmap=C:+.h"
+      ]
+    },
+    "notes": [
+      ".h files are routed by fathom's header sniff (C or C++); the oracle reads every .h as C"
+    ]
+  },
+  {
+    "manifest": {
+      "id": "cpp",
+      "display": "C++",
+      "kind": "language",
+      "lang_tag": "cpp",
+      "match": {
+        "extensions": [
+          ".cc",
+          ".cpp",
+          ".cxx",
+          ".hpp",
+          ".hh",
+          ".hxx"
+        ],
+        "basenames": []
+      },
+      "kinds": {
+        "cppFunc": {
+          "source_kind": "CppFunc",
+          "canonical": "function",
+          "callable": true
+        },
+        "cppClass": {
+          "source_kind": "CppClass",
+          "canonical": "class"
+        },
+        "cppStruct": {
+          "source_kind": "CppStruct",
+          "canonical": "struct"
+        },
+        "cppEnum": {
+          "source_kind": "CppEnum",
+          "canonical": "enum"
+        },
+        "cppNamespace": {
+          "source_kind": "CppNamespace",
+          "canonical": "namespace"
+        }
+      },
+      "required_kinds": [
+        "function",
+        "class",
+        "struct"
+      ],
+      "oracle_kinds": {
+        "ctags": {
+          "function": "function",
+          "class": "class",
+          "struct": "struct",
+          "enum": "enum",
+          "namespace": "namespace",
+          "typedef": "type_alias",
+          "union": "union",
+          "member": "field",
+          "macro": "macro",
+          "variable": "variable",
+          "enumerator": "enum_member"
+        }
+      },
+      "queue_id": "cpp"
+    },
+    "ctags": {
+      "languages": [
+        "C++"
+      ],
+      "args": []
+    }
+  },
+  {
+    "manifest": {
+      "id": "ruby",
+      "display": "Ruby",
+      "kind": "language",
+      "lang_tag": "ruby",
+      "match": {
+        "extensions": [
+          ".rb"
+        ],
+        "basenames": []
+      },
+      "kinds": {
+        "rubyClass": {
+          "source_kind": "RubyClass",
+          "canonical": "class"
+        },
+        "rubyModule": {
+          "source_kind": "RubyModule",
+          "canonical": "module"
+        },
+        "rubyMethod": {
+          "source_kind": "RubyMethod",
+          "canonical": "method",
+          "callable": true
+        }
+      },
+      "required_kinds": [
+        "class",
+        "module",
+        "method"
+      ],
+      "oracle_kinds": {
+        "ctags": {
+          "class": "class",
+          "module": "module",
+          "method": "method",
+          "singletonMethod": "method",
+          "accessor": "property",
+          "constant": "constant",
+          "alias": "method"
+        }
+      },
+      "queue_id": "ruby"
+    },
+    "ctags": {
+      "languages": [
+        "Ruby"
+      ],
+      "args": []
+    }
+  },
+  {
+    "manifest": {
+      "id": "csharp",
+      "display": "C#",
+      "kind": "language",
+      "lang_tag": "cs",
+      "match": {
+        "extensions": [
+          ".cs"
+        ],
+        "basenames": []
+      },
+      "kinds": {
+        "cSharpClass": {
+          "source_kind": "CSharpClass",
+          "canonical": "class"
+        },
+        "cSharpInterface": {
+          "source_kind": "CSharpInterface",
+          "canonical": "interface"
+        },
+        "cSharpStruct": {
+          "source_kind": "CSharpStruct",
+          "canonical": "struct"
+        },
+        "cSharpEnum": {
+          "source_kind": "CSharpEnum",
+          "canonical": "enum"
+        },
+        "cSharpMethod": {
+          "source_kind": "CSharpMethod",
+          "canonical": "method",
+          "callable": true
+        },
+        "cSharpNamespace": {
+          "source_kind": "CSharpNamespace",
+          "canonical": "namespace"
+        }
+      },
+      "required_kinds": [
+        "class",
+        "interface",
+        "struct",
+        "enum",
+        "method"
+      ],
+      "oracle_kinds": {
+        "ctags": {
+          "class": "class",
+          "interface": "interface",
+          "struct": "struct",
+          "enum": "enum",
+          "method": "method",
+          "namespace": "namespace",
+          "property": "property",
+          "field": "field",
+          "event": "field",
+          "enumerator": "enum_member"
+        }
+      },
+      "queue_id": "csharp"
+    },
+    "ctags": {
+      "languages": [
+        "C#"
+      ],
+      "args": []
+    }
+  },
+  {
+    "manifest": {
+      "id": "php",
+      "display": "PHP",
+      "kind": "language",
+      "lang_tag": "php",
+      "match": {
+        "extensions": [
+          ".php"
+        ],
+        "basenames": []
+      },
+      "kinds": {
+        "phpClass": {
+          "source_kind": "PhpClass",
+          "canonical": "class"
+        },
+        "phpInterface": {
+          "source_kind": "PhpInterface",
+          "canonical": "interface"
+        },
+        "phpTrait": {
+          "source_kind": "PhpTrait",
+          "canonical": "trait"
+        },
+        "phpFunction": {
+          "source_kind": "PhpFunction",
+          "canonical": "function",
+          "callable": true
+        },
+        "phpMethod": {
+          "source_kind": "PhpMethod",
+          "canonical": "method",
+          "callable": true
+        },
+        "phpEnum": {
+          "source_kind": "PhpEnum",
+          "canonical": "enum"
+        }
+      },
+      "required_kinds": [
+        "class",
+        "interface",
+        "trait",
+        "function"
+      ],
+      "oracle_kinds": {
+        "ctags": {
+          "class": "class",
+          "interface": "interface",
+          "trait": "trait",
+          "function": "function",
+          "function@scoped": "method",
+          "namespace": "namespace",
+          "variable": "variable",
+          "define": "constant"
+        }
+      },
+      "queue_id": "php"
+    },
+    "ctags": {
+      "languages": [
+        "PHP"
+      ],
+      "args": []
+    }
+  },
+  {
+    "manifest": {
+      "id": "bash",
+      "display": "Shell / Bash",
+      "kind": "language",
+      "lang_tag": "sh",
+      "match": {
+        "extensions": [
+          ".sh",
+          ".bash"
+        ],
+        "basenames": []
+      },
+      "kinds": {
+        "bashFunction": {
+          "source_kind": "BashFunction",
+          "canonical": "function",
+          "callable": true
+        }
+      },
+      "required_kinds": [
+        "function"
+      ],
+      "oracle_kinds": {
+        "ctags": {
+          "function": "function"
+        }
+      },
+      "queue_id": "bash"
+    },
+    "ctags": {
+      "languages": [
+        "Sh"
+      ],
+      "args": []
+    }
+  },
+  {
+    "manifest": {
+      "id": "lua",
+      "display": "Lua",
+      "kind": "language",
+      "lang_tag": "lua",
+      "match": {
+        "extensions": [
+          ".lua"
+        ],
+        "basenames": []
+      },
+      "kinds": {
+        "luaFunction": {
+          "source_kind": "LuaFunction",
+          "canonical": "function",
+          "callable": true
+        }
+      },
+      "required_kinds": [
+        "function"
+      ],
+      "oracle_kinds": {
+        "ctags": {
+          "function": "function"
+        }
+      },
+      "queue_id": "lua"
+    },
+    "ctags": {
+      "languages": [
+        "Lua"
+      ],
+      "args": []
+    }
+  },
+  {
+    "manifest": {
+      "id": "sql",
+      "display": "SQL",
+      "kind": "language",
+      "lang_tag": "sql",
+      "match": {
+        "extensions": [
+          ".sql"
+        ],
+        "basenames": []
+      },
+      "kinds": {
+        "sQLTable": {
+          "source_kind": "SQLTable",
+          "canonical": "table"
+        },
+        "sQLView": {
+          "source_kind": "SQLView",
+          "canonical": "view"
+        },
+        "sQLFunction": {
+          "source_kind": "SQLFunction",
+          "canonical": "function",
+          "callable": true
+        },
+        "sQLType": {
+          "source_kind": "SQLType",
+          "canonical": "type_alias"
+        }
+      },
+      "required_kinds": [
+        "table"
+      ],
+      "oracle_kinds": {
+        "ctags": {
+          "table": "table",
+          "view": "view",
+          "function": "function",
+          "procedure": "function"
+        }
+      },
+      "queue_id": "sql"
+    },
+    "ctags": {
+      "languages": [
+        "SQL"
+      ],
+      "args": []
+    },
+    "notes": [
+      "SQLIndex has no canonical kind and is excluded"
+    ]
+  },
+  {
+    "manifest": {
+      "id": "terraform",
+      "display": "Terraform / OpenTofu",
+      "kind": "tooling",
+      "lang_tag": "terraform",
+      "match": {
+        "extensions": [
+          ".tf"
+        ],
+        "basenames": []
+      },
+      "kinds": {
+        "terraformResource": {
+          "source_kind": "TerraformResource",
+          "canonical": "resource"
+        },
+        "terraformData": {
+          "source_kind": "TerraformData",
+          "canonical": "data_source"
+        },
+        "terraformModule": {
+          "source_kind": "TerraformModule",
+          "canonical": "module"
+        },
+        "terraformVariable": {
+          "source_kind": "TerraformVariable",
+          "canonical": "variable_decl"
+        },
+        "terraformOutput": {
+          "source_kind": "TerraformOutput",
+          "canonical": "output"
+        },
+        "terraformLocal": {
+          "source_kind": "TerraformLocal",
+          "canonical": "variable_decl"
+        }
+      },
+      "required_kinds": [
+        "resource",
+        "data_source",
+        "variable_decl",
+        "output"
+      ],
+      "oracle_kinds": {
+        "ctags": {
+          "resource": "resource",
+          "data": "data_source",
+          "module": "module",
+          "variable": "variable_decl",
+          "output": "output",
+          "local": "variable_decl"
+        }
+      },
+      "queue_id": "terraform"
+    },
+    "ctags": {
+      "languages": [
+        "Terraform"
+      ],
+      "args": []
+    },
+    "notes": [
+      "providers have no canonical kind and are excluded"
+    ]
+  },
+  {
+    "manifest": {
+      "id": "cmake",
+      "display": "CMake",
+      "kind": "tooling",
+      "lang_tag": "cmake",
+      "match": {
+        "extensions": [
+          ".cmake"
+        ],
+        "basenames": [
+          "CMakeLists.txt"
+        ]
+      },
+      "kinds": {
+        "cMakeTarget": {
+          "source_kind": "CMakeTarget",
+          "canonical": "target"
+        },
+        "cMakeFunction": {
+          "source_kind": "CMakeFunction",
+          "canonical": "function",
+          "callable": true
+        },
+        "cMakeOption": {
+          "source_kind": "CMakeOption",
+          "canonical": "variable_decl"
+        }
+      },
+      "required_kinds": [
+        "target"
+      ],
+      "oracle_kinds": {
+        "ctags": {
+          "target": "target",
+          "function": "function",
+          "macro": "function",
+          "option": "variable_decl"
+        }
+      },
+      "queue_id": "cmake"
+    },
+    "ctags": {
+      "languages": [
+        "CMake"
+      ],
+      "args": []
+    }
+  },
+  {
+    "manifest": {
+      "id": "protobuf",
+      "display": "Protocol Buffers",
+      "kind": "tooling",
+      "lang_tag": "proto",
+      "match": {
+        "extensions": [
+          ".proto"
+        ],
+        "basenames": []
+      },
+      "kinds": {
+        "protoMessage": {
+          "source_kind": "ProtoMessage",
+          "canonical": "message"
+        },
+        "protoService": {
+          "source_kind": "ProtoService",
+          "canonical": "service"
+        },
+        "protoRPC": {
+          "source_kind": "ProtoRPC",
+          "canonical": "rpc"
+        },
+        "protoEnum": {
+          "source_kind": "ProtoEnum",
+          "canonical": "enum"
+        }
+      },
+      "required_kinds": [
+        "message",
+        "service",
+        "rpc",
+        "enum"
+      ],
+      "oracle_kinds": {
+        "ctags": {
+          "message": "message",
+          "service": "service",
+          "rpc": "rpc",
+          "enum": "enum"
+        }
+      },
+      "queue_id": "protobuf"
+    },
+    "ctags": {
+      "languages": [
+        "Protobuf"
+      ],
+      "args": []
+    }
+  }
+]

@@ -22,6 +22,12 @@
 // docs/bench/competitors-ledger.jsonl:
 //
 //	indexbench compare -repo <dir> [-graphify <graph.json>] [-mcp <config.json> -tool <name> -arm <name>]
+//
+// The language-breadth instrument (ADR-048, docs/design/language-breadth.md
+// §10, §12) adds lang-probe (a file's tree and its dialect's captures),
+// lang-oracle (a dialect's reading against independent oracles) and
+// lang-tracker (docs/languages.md rendered from the queue and readings) and
+// lang-disclosure (the connector's unsupported-language table, LB-F25).
 package main
 
 import (
@@ -54,6 +60,18 @@ func mainRun(args []string, stdout, stderr io.Writer) int {
 	}
 	if len(args) > 0 && args[0] == "scip-oracle" {
 		return cmdScipOracle(args[1:], stdout, stderr)
+	}
+	if len(args) > 0 && args[0] == "lang-probe" {
+		return cmdLangProbe(args[1:], stdout, stderr)
+	}
+	if len(args) > 0 && args[0] == "lang-oracle" {
+		return cmdLangOracle(args[1:], stdout, stderr)
+	}
+	if len(args) > 0 && args[0] == "lang-tracker" {
+		return cmdLangTracker(args[1:], stdout, stderr)
+	}
+	if len(args) > 0 && args[0] == "lang-disclosure" {
+		return cmdLangDisclosure(args[1:], stdout, stderr)
 	}
 	return run(args, stdout, stderr)
 }

@@ -1,0 +1,143 @@
+{
+  "symbols": [
+    {
+      "name": "Outer",
+      "kind": "RubyModule",
+      "package": "shapes",
+      "line": 4,
+      "end_line": 49,
+      "tier": "verified"
+    },
+    {
+      "name": "Outer::Inner",
+      "kind": "RubyModule",
+      "package": "shapes",
+      "line": 7,
+      "end_line": 14,
+      "tier": "verified"
+    },
+    {
+      "name": "Outer::Inner::Deep",
+      "kind": "RubyClass",
+      "package": "shapes",
+      "line": 8,
+      "end_line": 13,
+      "tier": "verified"
+    },
+    {
+      "name": "Outer::Inner::Deep.call",
+      "kind": "RubyMethod",
+      "package": "shapes",
+      "line": 9,
+      "end_line": 12,
+      "signature": "def call(arg)",
+      "calls": [
+        "helper",
+        "parse"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Outer::Service",
+      "kind": "RubyClass",
+      "package": "shapes",
+      "line": 16,
+      "end_line": 48,
+      "tier": "verified"
+    },
+    {
+      "name": "Outer::Service.initialize",
+      "kind": "RubyMethod",
+      "package": "shapes",
+      "line": 20,
+      "end_line": 23,
+      "signature": "def initialize(name)",
+      "calls": [
+        "super"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Outer::Service.build",
+      "kind": "RubyMethod",
+      "package": "shapes",
+      "line": 25,
+      "end_line": 27,
+      "signature": "def self.build(*args)",
+      "calls": [
+        "configure",
+        "new",
+        "tap"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Outer::Service.each",
+      "kind": "RubyMethod",
+      "package": "shapes",
+      "line": 29,
+      "end_line": 31,
+      "signature": "def each(&block)",
+      "calls": [
+        "each"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Outer::Service.singleton_helper",
+      "kind": "RubyMethod",
+      "package": "shapes",
+      "line": 34,
+      "end_line": 36,
+      "signature": "def singleton_helper",
+      "tier": "verified"
+    },
+    {
+      "name": "Outer::Service.secret?",
+      "kind": "RubyMethod",
+      "package": "shapes",
+      "line": 41,
+      "end_line": 43,
+      "signature": "def secret?",
+      "tier": "verified"
+    },
+    {
+      "name": "Outer::Service.value=",
+      "kind": "RubyMethod",
+      "package": "shapes",
+      "line": 45,
+      "end_line": 47,
+      "signature": "def value=(v)",
+      "tier": "verified"
+    },
+    {
+      "name": "Outer::Reopened",
+      "kind": "RubyClass",
+      "package": "shapes",
+      "line": 51,
+      "end_line": 55,
+      "tier": "verified"
+    },
+    {
+      "name": "Outer::Reopened.method_missing",
+      "kind": "RubyMethod",
+      "package": "shapes",
+      "line": 52,
+      "end_line": 54,
+      "signature": "def method_missing(name, *args)",
+      "tier": "verified"
+    },
+    {
+      "name": "top_level",
+      "kind": "RubyMethod",
+      "package": "shapes",
+      "line": 57,
+      "end_line": 59,
+      "signature": "def top_level",
+      "calls": [
+        "puts"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

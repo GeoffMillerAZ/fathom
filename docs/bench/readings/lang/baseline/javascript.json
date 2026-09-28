@@ -1,0 +1,112 @@
+{
+  "dialect": "javascript",
+  "kind": "language",
+  "target_level": "L4",
+  "level_met": "none",
+  "grade": {
+    "L1": "unmet",
+    "L2": "not-attempted",
+    "L3": "not-attempted",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-09-28",
+  "fathom_commit": "56c18502",
+  "extractor": "incumbent",
+  "subjects": [
+    {
+      "name": "expressjs/express",
+      "sha": "9a34acf03cb818ff3f8bc40e44176e277a25cbb9",
+      "files": 141,
+      "bytes": 548685,
+      "counts": {
+        "callables": 127,
+        "fathom_defs": 127,
+        "kind_equal": 118,
+        "matched": 126,
+        "oracle_defs": 337
+      },
+      "families": {
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "class",
+        "function",
+        "method"
+      ],
+      "excluded_by_kind": {
+        "ctags:constant": 17,
+        "ctags:property": 720,
+        "ctags:variable": 507
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 160.51700000000002,
+        "max_file_ms": 9,
+        "peak_module_pages": 311,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "B",
+      "tool": "universal-ctags",
+      "version": "6.2.1"
+    }
+  ],
+  "metrics": {
+    "call_precision": null,
+    "call_recall": null,
+    "def_mapping": null,
+    "file_edge_precision": null,
+    "file_edge_recall": null,
+    "import_resolution": null,
+    "kind_agreement": 0.9365,
+    "range_agreement": null,
+    "signature_coverage": 0,
+    "sym_precision": 0.9921,
+    "sym_recall": 0.3739,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "kind_agreement": "B",
+    "signature_coverage": "B",
+    "sym_precision": "B",
+    "sym_recall": "B"
+  },
+  "required_kinds": [
+    "class",
+    "function",
+    "method"
+  ],
+  "kind_intersection": [
+    "class",
+    "function",
+    "method"
+  ],
+  "counts": {
+    "callables": 127,
+    "fathom_defs": 127,
+    "kind_equal": 118,
+    "matched": 126,
+    "oracle_defs": 337
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 3.42,
+    "max_file_ms": 9,
+    "peak_module_pages": 311,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "ctags:constant": 17,
+    "ctags:property": 720,
+    "ctags:variable": 507
+  },
+  "notes": [
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+  ],
+  "disposition": null
+}

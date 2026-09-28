@@ -1,0 +1,109 @@
+{
+  "dialect": "protobuf",
+  "kind": "tooling",
+  "target_level": "L3",
+  "level_met": "L1",
+  "grade": {
+    "L1": "good",
+    "L2": "not-attempted",
+    "L3": "not-attempted",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-09-28",
+  "fathom_commit": "56c18502",
+  "extractor": "incumbent",
+  "subjects": [
+    {
+      "name": "bufbuild/protovalidate",
+      "sha": "d06a71c9ba254a56c10a7085e1dd44d33cedeb56",
+      "files": 156,
+      "bytes": 521726,
+      "counts": {
+        "fathom_defs": 1240,
+        "kind_equal": 1198,
+        "matched": 1198,
+        "oracle_defs": 1202,
+        "range_eligible": 1153
+      },
+      "families": {
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "enum",
+        "message",
+        "rpc",
+        "service"
+      ],
+      "excluded_by_kind": {
+        "ctags:enumerator": 67,
+        "ctags:field": 1393,
+        "ctags:oneof": 83,
+        "ctags:package": 77
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 6.535999999999996,
+        "max_file_ms": 1,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "B",
+      "tool": "universal-ctags",
+      "version": "6.2.1"
+    }
+  ],
+  "metrics": {
+    "ref_precision": null,
+    "ref_recall": null,
+    "sym_precision": 0.9661,
+    "sym_recall": 0.9967,
+    "xref_precision": null,
+    "xref_recall": null
+  },
+  "metric_tiers": {
+    "sym_precision": "B",
+    "sym_recall": "B"
+  },
+  "required_kinds": [
+    "enum",
+    "message",
+    "rpc",
+    "service"
+  ],
+  "kind_intersection": [
+    "enum",
+    "message",
+    "rpc",
+    "service"
+  ],
+  "counts": {
+    "fathom_defs": 1240,
+    "kind_equal": 1198,
+    "matched": 1198,
+    "oracle_defs": 1202,
+    "range_eligible": 1153
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 79.82,
+    "max_file_ms": 1,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "ctags:enumerator": 67,
+    "ctags:field": 1393,
+    "ctags:oneof": 83,
+    "ctags:package": 77
+  },
+  "notes": [
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+  ],
+  "disposition": null
+}

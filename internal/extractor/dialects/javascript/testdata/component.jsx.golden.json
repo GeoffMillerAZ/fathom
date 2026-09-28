@@ -1,0 +1,53 @@
+{
+  "symbols": [
+    {
+      "name": "Button",
+      "kind": "JSFunc",
+      "package": "component",
+      "line": 3,
+      "end_line": 6,
+      "signature": "function Button({ label, onClick })",
+      "calls": [
+        "format"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "handle",
+      "kind": "JSFunc",
+      "package": "component",
+      "line": 4,
+      "end_line": 4,
+      "signature": "handle = () =>",
+      "calls": [
+        "onClick"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Panel",
+      "kind": "JSClass",
+      "package": "component",
+      "line": 8,
+      "end_line": 12,
+      "tier": "verified"
+    },
+    {
+      "name": "Panel.render",
+      "kind": "JSMethod",
+      "package": "component",
+      "line": 9,
+      "end_line": 11,
+      "signature": "render()",
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "React",
+      "module": "react",
+      "kind": "whole",
+      "line": 1
+    }
+  ]
+}

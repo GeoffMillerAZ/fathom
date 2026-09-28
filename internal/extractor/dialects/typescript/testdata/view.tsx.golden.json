@@ -1,0 +1,69 @@
+{
+  "symbols": [
+    {
+      "name": "Props",
+      "kind": "TSInterface",
+      "package": "view",
+      "line": 3,
+      "end_line": 5,
+      "tier": "verified"
+    },
+    {
+      "name": "View",
+      "kind": "JSFunc",
+      "package": "view",
+      "line": 7,
+      "end_line": 11,
+      "signature": "function View({ title }: Props)",
+      "calls": [
+        "render",
+        "useState"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "toggle",
+      "kind": "JSFunc",
+      "package": "view",
+      "line": 9,
+      "end_line": 9,
+      "signature": "toggle = () =>",
+      "calls": [
+        "setOpen"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Frame",
+      "kind": "JSClass",
+      "package": "view",
+      "line": 13,
+      "end_line": 17,
+      "tier": "verified"
+    },
+    {
+      "name": "Frame.render",
+      "kind": "JSMethod",
+      "package": "view",
+      "line": 14,
+      "end_line": 16,
+      "signature": "render()",
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "React",
+      "module": "react",
+      "kind": "whole",
+      "line": 1
+    },
+    {
+      "local": "useState",
+      "exported": "useState",
+      "module": "react",
+      "kind": "named",
+      "line": 1
+    }
+  ]
+}

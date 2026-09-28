@@ -1,0 +1,34 @@
+{
+  "id": "javascript",
+  "display": "JavaScript",
+  "kind": "language",
+  "engine": "tags",
+  "lang_tag": "js",
+  "match": {
+    "extensions": [".js", ".jsx", ".mjs", ".cjs"],
+    "basenames": [],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "grammar": { "blob": "javascript", "entry_point": "tree_sitter_javascript" },
+  "variants": [],
+  "queries": { "tags": "tags.scm", "imports": "imports.scm" },
+  "kinds": {
+    "class":    { "source_kind": "JSClass",  "canonical": "class",    "container": true },
+    "function": { "source_kind": "JSFunc",   "canonical": "function", "callable": true },
+    "method":   { "source_kind": "JSMethod", "canonical": "method",   "callable": true }
+  },
+  "required_kinds": ["class", "function", "method"],
+  "oracle_kinds": {
+    "ctags": { "class": "class", "function": "function", "generator": "function", "method": "method",
+               "getter": "method", "setter": "method", "property": "property", "field": "field",
+               "variable": "variable", "constant": "constant" }
+  },
+  "qualify": { "chain_containers": false, "container_sep": ".", "method_sep": "." },
+  "package": { "strategy": "dir" },
+  "imports": { "strategy": "relative-path" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L4",
+  "queue_id": "javascript"
+}

@@ -24,13 +24,13 @@ import (
 	"encoding/binary"
 	"fmt"
 	"runtime"
+	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
-	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 	"github.com/tetratelabs/wazero/sys"
 )
 
@@ -95,19 +95,12 @@ var guestNanotime sys.Nanotime
 // everything — degraded and counted, never a wedged daemon.
 var ParseHardBackstop time.Duration
 
-//go:embed grammars/javascript.wasm grammars/typescript.wasm grammars/python.wasm grammars/ruby.wasm grammars/kotlin.wasm
+// grammarFS holds the compressed blobs and the lock (LB-F12, LB-F13). A
+// blob is decompressed only when its grammar is first compiled
+// (openGrammarBlob); the lock names every blob the engine will load.
+//
+//go:embed grammars/*.wasm.gz grammars/grammars.lock.json
 var grammarFS embed.FS
-
-// blobPath maps a grammar name (the registry key extractors ask for) to its
-// embedded .wasm file. One blob may serve more than one entry point (e.g.
-// "typescript" exports both tree_sitter_typescript and tree_sitter_tsx).
-var blobPath = map[string]string{
-	"javascript": "grammars/javascript.wasm",
-	"typescript": "grammars/typescript.wasm",
-	"python":     "grammars/python.wasm",
-	"ruby":       "grammars/ruby.wasm",
-	"kotlin":     "grammars/kotlin.wasm",
-}
 
 // Sizeof constants for tree-sitter's public C structs (tree_sitter/api.h).
 // These are part of tree-sitter's stable embedder ABI, not an implementation
@@ -133,38 +126,46 @@ var liveModules atomic.Int64
 // closed in this process.
 func LiveModules() int64 { return liveModules.Load() }
 
+// peakModulePages is the largest linear memory (64 KiB pages) any grammar
+// module reached after a parse in this process — the language-breadth
+// reading's peak_module_pages (design §9, §10).
+var peakModulePages atomic.Uint32
+
+// PeakModulePages returns the largest module memory, in 64 KiB pages,
+// observed after any parse since the last ResetPeakModulePages.
+func PeakModulePages() uint32 { return peakModulePages.Load() }
+
+// ResetPeakModulePages zeroes the peak (a harness measuring one dialect).
+func ResetPeakModulePages() { peakModulePages.Store(0) }
+
+func notePages(pages uint32) {
+	for {
+		cur := peakModulePages.Load()
+		if pages <= cur || peakModulePages.CompareAndSwap(cur, pages) {
+			return
+		}
+	}
+}
+
 var (
 	runtimeOnce sync.Once
 	rt          wazero.Runtime
 	rtErr       error
-
-	compileMu sync.Mutex
-	compiled  = map[string]wazero.CompiledModule{}
 )
 
 // ensureRuntime lazily creates the single process-wide wazero Runtime and
 // instantiates the WASI shim every grammar module imports (fd_write/
 // fd_close from libc startup, clock_time_get for budget.c's deadline checks
-// — see PROVENANCE.md; nothing custom to implement). Safe to call
-// concurrently.
+// — see PROVENANCE.md; nothing custom to implement). The compilation cache
+// in force at that moment (EnableCompilationCache, LB-F26) is fixed for the
+// process. Safe to call concurrently.
 func ensureRuntime(ctx context.Context) (wazero.Runtime, error) {
 	runtimeOnce.Do(func() {
-		cfg := wazero.NewRuntimeConfig()
-		if compilerSupported() {
-			cfg = wazero.NewRuntimeConfigCompiler()
-		} else {
-			cfg = wazero.NewRuntimeConfigInterpreter()
-		}
-		// Deliberately NO WithCloseOnContextDone: parse cancellation is
-		// enforced inside the guest (fathom_parse_bounded, grammars/
-		// budget.c) via tree-sitter's own progress callback, so wazero's
-		// loop-back-edge termination checks — measured ~3x slower corpus-
-		// wide when tried — are not needed. See DefaultParseTimeout's doc.
-		cfg = cfg.WithMemoryLimitPages(MemoryLimitPages)
-		rt = wazero.NewRuntimeWithConfig(ctx, cfg)
-		if _, err := wasi_snapshot_preview1.Instantiate(ctx, rt); err != nil {
-			rtErr = fmt.Errorf("tsengine: instantiate WASI shim: %w", err)
-		}
+		cacheMu.Lock()
+		runtimeMade = true
+		dir := cacheDir
+		cacheMu.Unlock()
+		rt, _, rtErr = newRuntime(ctx, dir)
 	})
 	return rt, rtErr
 }
@@ -187,38 +188,6 @@ func compilerSupported() bool {
 	}
 }
 
-// compile returns the cached wazero.CompiledModule for the named blob,
-// compiling it on first use. Compilation is CPU-bound and safe to do once
-// per process; CompiledModule itself is safe for concurrent InstantiateModule
-// calls.
-func compile(ctx context.Context, name string) (wazero.CompiledModule, error) {
-	path, ok := blobPath[name]
-	if !ok {
-		return nil, fmt.Errorf("tsengine: unknown grammar %q", name)
-	}
-
-	compileMu.Lock()
-	defer compileMu.Unlock()
-	if cm, ok := compiled[name]; ok {
-		return cm, nil
-	}
-
-	r, err := ensureRuntime(ctx)
-	if err != nil {
-		return nil, err
-	}
-	buf, err := grammarFS.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("tsengine: read embedded blob %q: %w", path, err)
-	}
-	cm, err := r.CompileModule(ctx, buf)
-	if err != nil {
-		return nil, fmt.Errorf("tsengine: compile %q: %w", name, err)
-	}
-	compiled[name] = cm
-	return cm, nil
-}
-
 // Parser is one instantiated grammar module (its own linear memory) bound to
 // one language entry point, plus a live TSParser. Not safe for concurrent
 // use from multiple goroutines — create one per goroutine.
@@ -236,6 +205,22 @@ type Parser struct {
 	parserPtr uint32
 	closed    atomic.Bool
 	released  atomic.Bool // the module has been closed and uncounted
+	// cached holds values that live inside this module (compiled queries)
+	// for the Parser's owner; they die with it (Cached, SetCached).
+	cached map[string]any
+}
+
+// Cached returns the value SetCached stored under key on this Parser, or
+// nil. A pooled Parser's owner keeps its compiled queries here, so they are
+// reused with the module and dropped when the pool closes it.
+func (p *Parser) Cached(key string) any { return p.cached[key] }
+
+// SetCached stores v under key on this Parser (see Cached).
+func (p *Parser) SetCached(key string, v any) {
+	if p.cached == nil {
+		p.cached = map[string]any{}
+	}
+	p.cached[key] = v
 }
 
 // release uncounts the module once it is closed (RT-107).
@@ -263,26 +248,30 @@ var requiredExports = []string{
 	"ts_query_capture_name_for_id",
 }
 
+// probeExports are the node-walk functions build.sh exports that only the
+// probe (Tree.SExpr, LB-F20) calls. Resolved when present, never required:
+// extraction must not fail on a blob built without them.
+var probeExports = []string{
+	"ts_node_type", "ts_node_is_named", "ts_node_child", "ts_node_child_count",
+	"ts_node_named_child_count", "ts_node_field_name_for_child",
+}
+
 // NewParser compiles (if needed) and instantiates the named grammar blob,
 // resolves entryPoint (e.g. "tree_sitter_typescript") to get the TSLanguage,
 // and creates a TSParser bound to it. Call Close when done — it frees the
 // underlying wazero module (and with it every allocation this Parser made).
 func NewParser(ctx context.Context, grammar, entryPoint string) (*Parser, error) {
-	cm, err := compile(ctx, grammar)
+	cg, err := defaultCompiled.acquire(ctx, grammar)
 	if err != nil {
 		return nil, err
 	}
 	r, err := ensureRuntime(ctx)
 	if err != nil {
+		cg.release()
 		return nil, err
 	}
-	modCfg := wazero.NewModuleConfig().WithName("")
-	if guestNanotime != nil {
-		modCfg = modCfg.WithNanotime(guestNanotime, sys.ClockResolution(time.Millisecond))
-	} else {
-		modCfg = modCfg.WithSysNanotime()
-	}
-	mod, err := r.InstantiateModule(ctx, cm, modCfg)
+	mod, err := r.InstantiateModule(ctx, cg.cm, wazeroModuleConfig())
+	cg.release()
 	if err != nil {
 		return nil, fmt.Errorf("tsengine: instantiate %q: %w", grammar, err)
 	}
@@ -300,6 +289,11 @@ func NewParser(ctx context.Context, grammar, entryPoint string) (*Parser, error)
 			return fail(fmt.Errorf("tsengine: grammar %q missing required export %q", grammar, name))
 		}
 		p.fns[name] = &fn
+	}
+	for _, name := range probeExports {
+		if fn := mod.ExportedFunction(name); fn != nil {
+			p.fns[name] = &fn
+		}
 	}
 
 	entryFn := mod.ExportedFunction(entryPoint)
@@ -510,6 +504,7 @@ func (p *Parser) Parse(src []byte) (*Tree, error) {
 		// entry).
 		return nil, fmt.Errorf("tsengine: parse aborted after %v budget (pathological input?)", ParseTimeout)
 	}
+	notePages(p.mod.Memory().Size() / 65536)
 	return &Tree{p: p, treePtr: treePtr, src: src}, nil
 }
 
@@ -613,6 +608,22 @@ func (p *Parser) readNode(ptr uint32) (Node, error) {
 type Query struct {
 	p   *Parser
 	ptr uint32
+	// patterns holds each pattern's host-side predicates and #set!
+	// settings, indexed like Match.PatternIndex (predicates.go, LB-F2).
+	patterns []patternMeta
+}
+
+// PatternCount is the number of top-level patterns the host read from the
+// query source — every Match.PatternIndex is below it.
+func (q *Query) PatternCount() int { return len(q.patterns) }
+
+// PatternSetting returns the value a pattern's `(#set! key "value")`
+// directive gives key, or "" (LB-F6 reads injection.language this way).
+func (q *Query) PatternSetting(pattern uint16, key string) string {
+	if int(pattern) >= len(q.patterns) {
+		return ""
+	}
+	return q.patterns[pattern].settings[key]
 }
 
 // CompileQuery compiles src (tree-sitter query-language text) against this
@@ -650,7 +661,12 @@ func (p *Parser) CompileQuery(src string) (*Query, error) {
 		errType := binary.LittleEndian.Uint32(typeBytes)
 		return nil, fmt.Errorf("tsengine: query compile failed at byte offset %d (error type %d)", offset, errType)
 	}
-	return &Query{p: p, ptr: qPtr}, nil
+	metas, err := parseQueryPredicates(src)
+	if err != nil {
+		_, _ = p.call("ts_query_delete", uint64(qPtr))
+		return nil, fmt.Errorf("tsengine: query compile failed: %w", err)
+	}
+	return &Query{p: p, ptr: qPtr, patterns: metas}, nil
 }
 
 // Close releases the query's wasm-side allocation.
@@ -722,7 +738,7 @@ func (q *Query) Run(t *Tree) ([]Match, error) {
 	if err != nil {
 		return nil, err
 	}
-	return matchesAny.([]Match), nil
+	return q.filterByPredicates(matchesAny.([]Match), t.src), nil
 }
 
 // collectMatches drains the executed cursor into a Match slice. Runs on the
@@ -820,12 +836,32 @@ func (q *Query) captureName(id uint32) (string, error) {
 	return string(nameBytes), nil
 }
 
-// Grammars returns the registered grammar blob names (for capabilities/
-// docs surfacing — ADR-021 §4 / XT-5).
+// Grammars returns the embedded grammar blob names, sorted — the lock's
+// rows (for capabilities/docs surfacing — ADR-021 §4 / XT-5).
 func Grammars() []string {
-	names := make([]string, 0, len(blobPath))
-	for name := range blobPath {
-		names = append(names, name)
+	lock, err := embeddedLock()
+	if err != nil {
+		return nil
 	}
+	names := make([]string, 0, len(lock.Grammars))
+	for _, r := range lock.Grammars {
+		names = append(names, r.Blob)
+	}
+	sort.Strings(names)
 	return names
+}
+
+// filterByPredicates drops the matches whose pattern's text predicates fail
+// (LB-F2), keeping order.
+func (q *Query) filterByPredicates(matches []Match, src []byte) []Match {
+	out := matches[:0]
+	for _, m := range matches {
+		if int(m.PatternIndex) < len(q.patterns) {
+			if preds := q.patterns[m.PatternIndex].preds; len(preds) > 0 && !evalTextPredicates(preds, m, src) {
+				continue
+			}
+		}
+		out = append(out, m)
+	}
+	return out
 }

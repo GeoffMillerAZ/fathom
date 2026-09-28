@@ -1,0 +1,88 @@
+{
+  "core": {
+    "repo": "tree-sitter/tree-sitter",
+    "tag": "v0.26.11",
+    "commit": "64402de2857cc197ecc4ca3bc144ea91fda7e72e",
+    "tarball_sha256": "1bab01ed21464f3272665b9c60e39ee79f68da1333e80b23f2c9356569d06971",
+    "licence": "MIT"
+  },
+  "toolchain": { "zig": "0.16.0", "wasm_opt": "129" },
+  "grammars": [
+    {
+      "blob": "javascript",
+      "repo": "tree-sitter/tree-sitter-javascript",
+      "tag": "v0.25.0",
+      "commit": "44c892e0be055ac465d5eeddae6d3e194424e7de",
+      "tarball_sha256": "9712fc283d3dc01d996d20b6392143445d05867a7aad76fdd723824468428b86",
+      "licence": "MIT",
+      "entry_points": ["tree_sitter_javascript"],
+      "scanner": true,
+      "generate": false,
+      "abi": 15,
+      "blob_sha256": "7245ee58564f991827498e36b5ec14420b99759596490e3a74ed0993b24ed904",
+      "blob_bytes": 458741,
+      "gz_bytes": 114833
+    },
+    {
+      "blob": "kotlin",
+      "repo": "fwcd/tree-sitter-kotlin",
+      "tag": "0.3.8",
+      "commit": "e1a2d5ad1f61f5740677183cd4125bb071cd2f30",
+      "tarball_sha256": "7dd60975786bf9cb4be6a5176f5ccb5fed505f9929a012da30762505b1015669",
+      "licence": "MIT",
+      "entry_points": ["tree_sitter_kotlin"],
+      "scanner": true,
+      "generate": false,
+      "abi": 14,
+      "blob_sha256": "750a499adfc0a1339abebe5da80154eb6680c5732a3a5fdceaaace5053def3c3",
+      "blob_bytes": 2488435,
+      "gz_bytes": 510036
+    },
+    {
+      "blob": "python",
+      "repo": "tree-sitter/tree-sitter-python",
+      "tag": "v0.25.0",
+      "commit": "293fdc02038ee2bf0e2e206711b69c90ac0d413f",
+      "tarball_sha256": "4609a3665a620e117acf795ff01b9e965880f81745f287a16336f4ca86cf270c",
+      "licence": "MIT",
+      "entry_points": ["tree_sitter_python"],
+      "scanner": true,
+      "generate": false,
+      "abi": 15,
+      "blob_sha256": "ef1216ec19691690d3d237759d5ab8c3521e362423eef44f5e5234f7cb507ffc",
+      "blob_bytes": 539848,
+      "gz_bytes": 123581
+    },
+    {
+      "blob": "ruby",
+      "repo": "tree-sitter/tree-sitter-ruby",
+      "tag": "v0.23.1",
+      "commit": "71bd32fb7607035768799732addba884a37a6210",
+      "tarball_sha256": "e7e49577ddc1f2de8e42d42353b477e338c15bbb95b2558e123ddc13d88789f0",
+      "licence": "MIT",
+      "entry_points": ["tree_sitter_ruby"],
+      "scanner": true,
+      "generate": false,
+      "abi": 14,
+      "blob_sha256": "3299b506f05b73cb341de2cf65f1f327e9427e0149ce47d21f65af3d89b8924f",
+      "blob_bytes": 1710411,
+      "gz_bytes": 311992
+    },
+    {
+      "blob": "typescript",
+      "repo": "tree-sitter/tree-sitter-typescript",
+      "tag": "v0.23.2",
+      "commit": "f975a621f4e7f532fe322e13c4f79495e0a7b2e7",
+      "tarball_sha256": "2c4ce711ae8d1218a3b2f899189298159d672870b5b34dff5d937bed2f3e8983",
+      "licence": "MIT",
+      "entry_points": ["tree_sitter_typescript", "tree_sitter_tsx"],
+      "subdirs": ["typescript", "tsx"],
+      "scanner": true,
+      "generate": false,
+      "abi": 14,
+      "blob_sha256": "30080208c90581bf3b29b412e9ee2e9a11c89b36153b6a94cc07da7b5000afcb",
+      "blob_bytes": 2037040,
+      "gz_bytes": 422906
+    }
+  ]
+}

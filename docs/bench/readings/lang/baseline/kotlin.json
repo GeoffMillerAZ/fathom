@@ -1,0 +1,114 @@
+{
+  "dialect": "kotlin",
+  "kind": "language",
+  "target_level": "L4",
+  "level_met": "none",
+  "grade": {
+    "L1": "unmet",
+    "L2": "not-attempted",
+    "L3": "not-attempted",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-09-28",
+  "fathom_commit": "56c18502",
+  "extractor": "incumbent",
+  "subjects": [
+    {
+      "name": "square/okhttp",
+      "sha": "40a3b8749deaacf60a04c890aed052cb14ad36ee",
+      "files": 617,
+      "bytes": 4517299,
+      "counts": {
+        "callables": 7585,
+        "fathom_defs": 8562,
+        "kind_equal": 8123,
+        "matched": 8127,
+        "oracle_defs": 24117
+      },
+      "families": {
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "class",
+        "function",
+        "interface",
+        "property"
+      ],
+      "excluded_by_kind": {
+        "ctags:package": 569,
+        "ctags:typealias": 2,
+        "fathom:KotlinImport": 6828
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 1344.5600000000013,
+        "max_file_ms": 57,
+        "peak_module_pages": 602,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "B",
+      "tool": "universal-ctags",
+      "version": "6.2.1"
+    }
+  ],
+  "metrics": {
+    "call_precision": null,
+    "call_recall": null,
+    "def_mapping": null,
+    "file_edge_precision": null,
+    "file_edge_recall": null,
+    "import_resolution": null,
+    "kind_agreement": 0.9995,
+    "range_agreement": null,
+    "signature_coverage": 0,
+    "sym_precision": 0.9492,
+    "sym_recall": 0.337,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "kind_agreement": "B",
+    "signature_coverage": "B",
+    "sym_precision": "B",
+    "sym_recall": "B"
+  },
+  "required_kinds": [
+    "class",
+    "function",
+    "interface"
+  ],
+  "kind_intersection": [
+    "class",
+    "function",
+    "interface",
+    "property"
+  ],
+  "counts": {
+    "callables": 7585,
+    "fathom_defs": 8562,
+    "kind_equal": 8123,
+    "matched": 8127,
+    "oracle_defs": 24117
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 3.36,
+    "max_file_ms": 57,
+    "peak_module_pages": 602,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "ctags:package": 569,
+    "ctags:typealias": 2,
+    "fathom:KotlinImport": 6828
+  },
+  "notes": [
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+  ],
+  "disposition": null
+}

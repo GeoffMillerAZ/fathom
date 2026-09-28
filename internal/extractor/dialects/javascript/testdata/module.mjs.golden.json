@@ -1,0 +1,37 @@
+{
+  "symbols": [
+    {
+      "name": "exported",
+      "kind": "JSFunc",
+      "package": "module",
+      "line": 1,
+      "end_line": 3,
+      "signature": "function exported()",
+      "calls": [
+        "internal"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "internal",
+      "kind": "JSFunc",
+      "package": "module",
+      "line": 5,
+      "end_line": 7,
+      "signature": "function internal()",
+      "tier": "verified"
+    },
+    {
+      "name": "arrowExport",
+      "kind": "JSFunc",
+      "package": "module",
+      "line": 9,
+      "end_line": 9,
+      "signature": "arrowExport = () =>",
+      "calls": [
+        "exported"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

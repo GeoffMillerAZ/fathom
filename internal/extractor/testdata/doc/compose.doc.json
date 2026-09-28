@@ -1,0 +1,16 @@
+{
+  "decode": "yaml",
+  "detect": { "basenames": ["compose.yaml", "compose.yml", "docker-compose.yaml", "docker-compose.yml"] },
+  "entities": [
+    { "select": "$.services.*", "where": { "is_map": true }, "kind": "service", "source_kind": "ComposeService",
+      "name": "$key", "signature": "$.image" }
+  ],
+  "references": [
+    { "from": "service", "select": "$.depends_on[*]", "value": "$", "to_kind": "service", "edge": "depends_on" },
+    { "from": "service", "select": "$.depends_on.*", "value": "$key", "to_kind": "service", "edge": "depends_on" }
+  ],
+  "cross_file": [
+    { "from": "service", "select": "$.build", "value": "$.context | $", "resolve": "repo-path", "edge": "builds" },
+    { "from": "service", "select": "$.image", "value": "$", "resolve": "image-ref", "edge": "runs" }
+  ]
+}

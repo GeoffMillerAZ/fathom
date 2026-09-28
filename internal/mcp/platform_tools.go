@@ -16,6 +16,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/configdrift"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
@@ -69,6 +70,27 @@ type ServiceSummary struct {
 	// unsupported languages list_services reports instead of walking.
 	Unsupported map[string]int
 	FromSummary bool
+	// Classification is the summary row's dialect-gate counts (LB-F9,
+	// LB-F10, language-breadth §5): classified_by_sniff,
+	// ambiguous_unclassified and skipped_generated; nil when all zero.
+	Classification map[string]int
+}
+
+// classificationCountKeys are the service_summary excluded-count keys
+// list_services discloses as "classification".
+var classificationCountKeys = []string{fusion.CountClassifiedBySniff, fusion.ExcludedAmbiguous, fusion.ExcludedSkippedGenerated}
+
+func classificationCounts(excluded map[string]int) map[string]int {
+	var out map[string]int
+	for _, k := range classificationCountKeys {
+		if n := excluded[k]; n > 0 {
+			if out == nil {
+				out = map[string]int{}
+			}
+			out[k] = n
+		}
+	}
+	return out
 }
 
 // fleetSummaryBackend is the FleetBackend extension list_services answers
@@ -105,6 +127,7 @@ func ServiceSummaries(ctx context.Context, backend QueryInterface, fleet FleetBa
 				sum.SymbolCount = row.SymbolCount
 				sum.Languages = langStringsForKinds(row.SourceKinds)
 				sum.Unsupported = row.UnsupportedLangs
+				sum.Classification = classificationCounts(row.ExcludedCounts)
 			}
 		} else if aggErr, ok := fleet.(fleetSymbolAggregateErrBackend); ok {
 			// RT-41 (I38): a failed aggregate is a named error — the
@@ -273,6 +296,12 @@ func registerListServices(s *Server, backend QueryInterface, fleet FleetBackend)
 					rows[i] = map[string]any{"language": lang, "files": unsupported[lang]}
 				}
 				entry["unsupported_languages"] = rows
+			}
+			// LB-F9/LB-F10 (language-breadth §5): files a sniff classified,
+			// ambiguous files left unclassified, and generated/minified
+			// dialect files skipped — disclosed, never silent (ADR-021 §1).
+			if len(sum.Classification) > 0 {
+				entry["classification"] = sum.Classification
 			}
 			// DG-18: a service whose recorded corpus root has vanished
 			// (e.g. a cleaned-up scratch clone) is reported structurally

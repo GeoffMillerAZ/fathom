@@ -25,6 +25,7 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/extractor/tsengine"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
 
@@ -141,6 +142,13 @@ func runGC(o gcOptions) gcReport {
 				size = st.Size()
 			}
 			add(gcItem{Class: "daemon-records", Path: r.Path, Action: "delete", Bytes: size, Reason: fmt.Sprintf("pid %d is not running", r.Rec.PID)})
+		}
+
+		// wazero's compilation cache (LB-F26): other wazero versions'
+		// directories and entries unwritten for 30 days. Compiled machine
+		// code, not evidence: the next compile recreates what is still used.
+		for _, p := range tsengine.PrunableCompilationCache(o.Home, o.Now) {
+			add(gcItem{Class: "wazero-cache", Path: p, Action: "delete", Bytes: dirSize(p), Reason: "compiled grammar code of another wazero version, or unwritten for 30 days"})
 		}
 
 		// Diagnostic captures past 10 / 200 MiB per daemon.

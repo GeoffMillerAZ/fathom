@@ -70,6 +70,17 @@ tasks:
           cue vet -d '#Frontmatter' schema/skills/schema.cue "$fm.yaml" || { echo "cue vet FAILED: $skill"; rm -f "$fm.yaml"; exit 1; }
           rm -f "$fm.yaml"
         done
+        # LB-F1: every embedded dialect manifest vets against #Dialect.
+        for manifest in internal/extractor/dialects/*/dialect.json; do
+          [ -e "$manifest" ] || continue
+          cue vet -d '#Dialect' schema/dialect/dialect.cue "$manifest" || { echo "cue vet FAILED: $manifest"; exit 1; }
+        done
+        # LB-F8: every doc-engine spec (shipped and the P20 parity specs)
+        # vets against #Doc.
+        for spec in internal/extractor/dialects/*/doc.json internal/extractor/testdata/doc/*.doc.json; do
+          [ -e "$spec" ] || continue
+          cue vet -d '#Doc' schema/dialect/dialect.cue schema/dialect/doc.cue "$spec" || { echo "cue vet FAILED: $spec"; exit 1; }
+        done
         [ "$found" = 0 ] && echo "no schema.cue files yet"; exit 0
 
   test:
@@ -179,6 +190,7 @@ tasks:
         bash scripts/build-cache_test.sh
         bash scripts/gate-lease_test.sh
         bash scripts/tenancy-stress_test.sh
+        bash calibration/clone_test.sh
         bash third_party/agentic-kit/fathom-pack/scripts/push-check_test.sh
         bash third_party/agentic-kit/fathom-pack/scripts/push-http_test.sh
 
@@ -339,9 +351,14 @@ tasks:
       - "{{.GO}} build -o workspace/tmp/fathom ./cmd/fathom"
 
   calibrate-clone:
-    desc: "Shallow-clone the calibration corpus into workspace/ (optional: LANG filter, e.g. task calibrate-clone -- Python Helm)"
+    desc: "Shallow-clone the calibration corpus and calibration/corpus.d shards into workspace/ (optional filter: a language or shard id, e.g. task calibrate-clone -- Python swift)"
     cmds:
       - bash calibration/clone.sh {{.CLI_ARGS}}
+
+  calibrate-clean:
+    desc: "Delete one queue item's calibration clones (workspace/calibration/<id>/), e.g. task calibrate-clean -- swift (language-breadth §13.4)"
+    cmds:
+      - bash calibration/clean.sh {{.CLI_ARGS}}
 
   calibrate-baseline:
     desc: "Measure current extractors against the cloned corpus (optional LANG filter via -- )"

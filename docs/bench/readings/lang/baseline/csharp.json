@@ -1,0 +1,127 @@
+{
+  "dialect": "csharp",
+  "kind": "language",
+  "target_level": "L4",
+  "level_met": "none",
+  "grade": {
+    "L1": "unmet",
+    "L2": "not-attempted",
+    "L3": "not-attempted",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-09-28",
+  "fathom_commit": "56c18502",
+  "extractor": "incumbent",
+  "subjects": [
+    {
+      "name": "App-vNext/Polly",
+      "sha": "dc933fd172cbfae51b4ebc419014f4fed695cbb6",
+      "files": 801,
+      "bytes": 4479791,
+      "counts": {
+        "callables": 5073,
+        "fathom_defs": 6817,
+        "kind_equal": 5419,
+        "matched": 5456,
+        "oracle_defs": 5676,
+        "range_eligible": 5454,
+        "range_ok": 5452
+      },
+      "families": {
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "class",
+        "enum",
+        "interface",
+        "method",
+        "namespace",
+        "struct"
+      ],
+      "excluded_by_kind": {
+        "ctags:enumerator": 65,
+        "ctags:field": 1005,
+        "ctags:property": 471,
+        "ctags:typedef": 18
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 752.383,
+        "max_file_ms": 31,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "B",
+      "tool": "universal-ctags",
+      "version": "6.2.1"
+    }
+  ],
+  "metrics": {
+    "call_precision": null,
+    "call_recall": null,
+    "def_mapping": null,
+    "file_edge_precision": null,
+    "file_edge_recall": null,
+    "import_resolution": null,
+    "kind_agreement": 0.9932,
+    "range_agreement": 0.9996,
+    "signature_coverage": 0,
+    "sym_precision": 0.8004,
+    "sym_recall": 0.9612,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "kind_agreement": "B",
+    "range_agreement": "B",
+    "signature_coverage": "B",
+    "sym_precision": "B",
+    "sym_recall": "B"
+  },
+  "required_kinds": [
+    "class",
+    "enum",
+    "interface",
+    "method",
+    "struct"
+  ],
+  "kind_intersection": [
+    "class",
+    "enum",
+    "interface",
+    "method",
+    "namespace",
+    "struct"
+  ],
+  "counts": {
+    "callables": 5073,
+    "fathom_defs": 6817,
+    "kind_equal": 5419,
+    "matched": 5456,
+    "oracle_defs": 5676,
+    "range_eligible": 5454,
+    "range_ok": 5452
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 5.95,
+    "max_file_ms": 31,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "ctags:enumerator": 65,
+    "ctags:field": 1005,
+    "ctags:property": 471,
+    "ctags:typedef": 18
+  },
+  "notes": [
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+  ],
+  "disposition": null
+}

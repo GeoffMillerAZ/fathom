@@ -1,0 +1,113 @@
+{
+  "dialect": "sql",
+  "kind": "language",
+  "target_level": "L2",
+  "level_met": "none",
+  "grade": {
+    "L1": "unmet",
+    "L2": "not-attempted",
+    "L3": "not-attempted",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-09-28",
+  "fathom_commit": "56c18502",
+  "extractor": "incumbent",
+  "subjects": [
+    {
+      "name": "lerocha/chinook-database",
+      "sha": "7f67772503d71ba90f19283c38e93923addb43fa",
+      "files": 11,
+      "bytes": 6425616,
+      "counts": {
+        "fathom_defs": 121,
+        "kind_equal": 99,
+        "matched": 99,
+        "oracle_defs": 99
+      },
+      "families": {
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "function",
+        "table",
+        "view"
+      ],
+      "excluded_by_kind": {
+        "ctags:database": 7,
+        "ctags:field": 320,
+        "ctags:index": 88,
+        "fathom:SQLIndex": 110
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 23.61,
+        "max_file_ms": 2,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "B",
+      "tool": "universal-ctags",
+      "version": "6.2.1"
+    }
+  ],
+  "metrics": {
+    "call_precision": null,
+    "call_recall": null,
+    "def_mapping": null,
+    "file_edge_precision": null,
+    "file_edge_recall": null,
+    "import_resolution": null,
+    "kind_agreement": 1,
+    "range_agreement": null,
+    "signature_coverage": null,
+    "sym_precision": 0.8182,
+    "sym_recall": 1,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "kind_agreement": "B",
+    "sym_precision": "B",
+    "sym_recall": "B"
+  },
+  "not_applicable": [
+    "signature_coverage"
+  ],
+  "required_kinds": [
+    "table"
+  ],
+  "kind_intersection": [
+    "function",
+    "table",
+    "view"
+  ],
+  "counts": {
+    "fathom_defs": 121,
+    "kind_equal": 99,
+    "matched": 99,
+    "oracle_defs": 99
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 272.16,
+    "max_file_ms": 2,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "ctags:database": 7,
+    "ctags:field": 320,
+    "ctags:index": 88,
+    "fathom:SQLIndex": 110
+  },
+  "notes": [
+    "SQLIndex has no canonical kind and is excluded",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+  ],
+  "disposition": null
+}

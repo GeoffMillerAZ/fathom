@@ -231,6 +231,17 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 	if report.ClassifiedZero > 0 {
 		fmt.Fprintf(stdout, "classified-but-zero-symbols: %d\n", report.ClassifiedZero)
 	}
+	// LB-F9/LB-F10 (language-breadth §5): the dialect gate's counts, only
+	// when non-zero.
+	if report.SkippedGenerated > 0 {
+		fmt.Fprintf(stdout, "skipped_generated: %d\n", report.SkippedGenerated)
+	}
+	if report.ClassifiedBySniff > 0 {
+		fmt.Fprintf(stdout, "classified_by_sniff: %d\n", report.ClassifiedBySniff)
+	}
+	if report.AmbiguousUnclassified > 0 {
+		fmt.Fprintf(stdout, "ambiguous_unclassified: %d\n", report.AmbiguousUnclassified)
+	}
 	// Unsupported languages (O69): a known programming language with no
 	// registered extractor — named and counted rather than left
 	// indistinguishable from the generic unclassified/no-extractor path.

@@ -1,0 +1,28 @@
+{
+  "symbols": [
+    {
+      "name": "good",
+      "kind": "JSFunc",
+      "package": "broken",
+      "line": 1,
+      "end_line": 3,
+      "signature": "function good()",
+      "calls": [
+        "callOne"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "ok",
+      "kind": "JSMethod",
+      "package": "broken",
+      "line": 9,
+      "end_line": 11,
+      "signature": "ok()",
+      "calls": [
+        "callThree"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

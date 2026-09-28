@@ -1,0 +1,106 @@
+{
+  "dialect": "terraform",
+  "kind": "tooling",
+  "target_level": "L3",
+  "level_met": "none",
+  "grade": {
+    "L1": "unmet",
+    "L2": "not-attempted",
+    "L3": "not-attempted",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-09-28",
+  "fathom_commit": "56c18502",
+  "extractor": "incumbent",
+  "subjects": [
+    {
+      "name": "terraform-aws-modules/terraform-aws-vpc",
+      "sha": "b3abd6df2ecf052451a361ed55b8f06f8742a795",
+      "files": 77,
+      "bytes": 453543,
+      "counts": {
+        "fathom_defs": 1877,
+        "kind_equal": 1870,
+        "matched": 1870,
+        "oracle_defs": 2095
+      },
+      "families": {
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "data_source",
+        "module",
+        "output",
+        "resource",
+        "variable_decl"
+      ],
+      "excluded_by_kind": {
+        "ctags:provider": 13,
+        "fathom:TerraformProvider": 13
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 26.197999999999997,
+        "max_file_ms": 4,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "B",
+      "tool": "universal-ctags",
+      "version": "6.2.1"
+    }
+  ],
+  "metrics": {
+    "ref_precision": null,
+    "ref_recall": null,
+    "sym_precision": 0.9963,
+    "sym_recall": 0.8926,
+    "xref_precision": null,
+    "xref_recall": null
+  },
+  "metric_tiers": {
+    "sym_precision": "B",
+    "sym_recall": "B"
+  },
+  "required_kinds": [
+    "data_source",
+    "output",
+    "resource",
+    "variable_decl"
+  ],
+  "kind_intersection": [
+    "data_source",
+    "module",
+    "output",
+    "resource",
+    "variable_decl"
+  ],
+  "counts": {
+    "fathom_defs": 1877,
+    "kind_equal": 1870,
+    "matched": 1870,
+    "oracle_defs": 2095
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 17.31,
+    "max_file_ms": 4,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "ctags:provider": 13,
+    "fathom:TerraformProvider": 13
+  },
+  "notes": [
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "providers have no canonical kind and are excluded"
+  ],
+  "disposition": null
+}

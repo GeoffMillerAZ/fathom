@@ -144,6 +144,19 @@ func (p *Pipeline) ReingestFile(ctx context.Context, st store.Store, serviceID, 
 		return ReingestReport{}, nil
 	}
 
+	// LB-F9/LB-F10: the same dialect gate an ingest applies — a generated,
+	// minified or ambiguous dialect file loses its old observations and is
+	// fingerprinted, never extracted.
+	if gateDialectFile(relFile, content).excluded != "" {
+		if err := st.PurgeSource(ctx, serviceID, relFile); err != nil {
+			return ReingestReport{}, fmt.Errorf("fusion: ReingestFile purge %q: %w", relFile, err)
+		}
+		if err := st.SetFingerprint(ctx, serviceID, relFile, hash); err != nil {
+			return ReingestReport{}, fmt.Errorf("fusion: ReingestFile set fingerprint %q: %w", relFile, err)
+		}
+		return ReingestReport{}, nil
+	}
+
 	base := filepath.Base(relFile)
 	ext := filepath.Ext(relFile)
 	extExtractor, ok := p.exts[base]

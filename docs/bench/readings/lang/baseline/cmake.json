@@ -1,0 +1,106 @@
+{
+  "dialect": "cmake",
+  "kind": "tooling",
+  "target_level": "L3",
+  "level_met": "none",
+  "grade": {
+    "L1": "unmet",
+    "L2": "not-attempted",
+    "L3": "not-attempted",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-09-28",
+  "fathom_commit": "56c18502",
+  "extractor": "incumbent",
+  "subjects": [
+    {
+      "name": "fmtlib/fmt",
+      "sha": "5da4e9a3fb15626ba92969199061e0169ebc8a00",
+      "files": 11,
+      "bytes": 47816,
+      "counts": {
+        "callables": 10,
+        "fathom_defs": 46,
+        "kind_equal": 41,
+        "matched": 41,
+        "oracle_defs": 42,
+        "range_eligible": 10
+      },
+      "families": {
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "function",
+        "target",
+        "variable_decl"
+      ],
+      "excluded_by_kind": {
+        "ctags:project": 5,
+        "ctags:variable": 93,
+        "fathom:CMakeDependency": 3,
+        "fathom:CMakeProject": 5
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 0.37000000000000005,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "B",
+      "tool": "universal-ctags",
+      "version": "6.2.1"
+    }
+  ],
+  "metrics": {
+    "ref_precision": null,
+    "ref_recall": null,
+    "sym_precision": 0.8913,
+    "sym_recall": 0.9762,
+    "xref_precision": null,
+    "xref_recall": null
+  },
+  "metric_tiers": {
+    "sym_precision": "B",
+    "sym_recall": "B"
+  },
+  "required_kinds": [
+    "target"
+  ],
+  "kind_intersection": [
+    "function",
+    "target",
+    "variable_decl"
+  ],
+  "counts": {
+    "callables": 10,
+    "fathom_defs": 46,
+    "kind_equal": 41,
+    "matched": 41,
+    "oracle_defs": 42,
+    "range_eligible": 10
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 129.23,
+    "max_file_ms": 0,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "ctags:project": 5,
+    "ctags:variable": 93,
+    "fathom:CMakeDependency": 3,
+    "fathom:CMakeProject": 5
+  },
+  "notes": [
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+  ],
+  "disposition": null
+}

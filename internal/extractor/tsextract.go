@@ -1,36 +1,32 @@
 package extractor
 
 import (
+	"bytes"
 	"context"
-	"embed"
 	"errors"
 	"fmt"
+	"io/fs"
+	"path"
 	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
+	"unicode/utf8"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/extractor/tsengine"
 )
 
-// tsQueryFS embeds every language's tree-sitter query set (.scm) — the only
-// per-language "logic" TSExtractor needs beyond the shared engine (ADR-021
-// §4 / docs/plans/extraction-treesitter.md: "adding a language = grammar
-// blob + queries + fixtures, no new Go extraction logic").
-//
-//go:embed tsqueries/*.scm
-var tsQueryFS embed.FS
-
-// tsVariant is one (grammar blob, entry point, query file) triple a
+// tsVariant is one (grammar blob, entry point, dialect rules) triple a
 // TSExtractor may parse a file with. A single TSExtractor can span several
-// variants keyed by file extension — e.g. the "javascript" language spec
-// parses .ts/.tsx with the "typescript" grammar and its richer query set,
-// mirroring the incumbent JSExtractor's combined JS/TS/JSX/TSX scope.
+// variants keyed by file extension — e.g. the "javascript" extractor parses
+// .ts/.tsx with the typescript dialect's grammar and query set (see
+// tsExtractorGroups), mirroring the incumbent JSExtractor's combined
+// JS/TS/JSX/TSX scope.
 type tsVariant struct {
 	blob       string // tsengine grammar registry key
 	entryPoint string // exported tree_sitter_<x> function
-	queryFile  string // tsqueries/<name>.scm
+	rules      *tsDialectRules
 }
 
 // tsDefKind maps one query capture suffix (the text after "definition.", as
@@ -50,110 +46,152 @@ type tsDefKind struct {
 	Callable  bool
 }
 
-// tsLangSpec is everything NewTSExtractor needs for one language.
-type tsLangSpec struct {
-	name  string
+// tsDialectRules is one dialect manifest compiled for the engine: its
+// capture-kind table, qualification rule, strategies and query source.
+type tsDialectRules struct {
+	id    string
 	kinds map[string]tsDefKind // capture suffix -> mapping
 
-	// variantForExt selects the (grammar, entry point, query file) for a
-	// given lowercased file extension (including the leading '.'). extOf
-	// returning an extension absent from this map falls back to
-	// defaultVariant.
-	variantForExt  map[string]tsVariant
-	defaultVariant tsVariant
-
-	// chainContainers: true for languages where nested containers qualify
+	// chainContainers: true for dialects where nested containers qualify
 	// as "Outer::Inner" (Ruby's module/class nesting). false: only the
 	// immediate container's bare name is used (Python, JS/TS) — matching
 	// the incumbent CGO extractors' single-level scope tracking exactly.
 	chainContainers bool
 	containerSep    string // separator when chainContainers is true
 	methodSep       string // separator between a container's qualified name and a callable's own name
+
+	importStrategy  string // manifest imports.strategy ("" when the dialect has none)
+	packageStrategy string // manifest package.strategy
+	sigMax          int    // manifest signature.max_chars
+
+	queryFile string // dialects/<id>/<tags> (for messages and lang-probe)
+	query     string // tags query then imports query
+
+	injectionsQuery string // queries.injections (LB-F6), "" when none
 }
 
-var tsRegistry = map[string]*tsLangSpec{}
+// tsLangSpec is everything NewTSExtractor needs for one extractor: the
+// variant each extension selects.
+type tsLangSpec struct {
+	name string
 
-func init() {
-	jsVariant := tsVariant{blob: "javascript", entryPoint: "tree_sitter_javascript", queryFile: "javascript.scm"}
-	tsVariantTS := tsVariant{blob: "typescript", entryPoint: "tree_sitter_typescript", queryFile: "typescript.scm"}
-	tsVariantTSX := tsVariant{blob: "typescript", entryPoint: "tree_sitter_tsx", queryFile: "typescript.scm"}
+	// variantForExt selects the variant for a lowercased file extension
+	// (including the leading '.'); an extension absent from this map falls
+	// back to defaultVariant.
+	variantForExt  map[string]tsVariant
+	defaultVariant tsVariant
+}
 
-	tsRegistry["javascript"] = &tsLangSpec{
-		name: "javascript",
-		kinds: map[string]tsDefKind{
-			"class":     {Kind: core.KindJSClass, Container: true},
-			"function":  {Kind: core.KindJSFunc, Callable: true},
-			"method":    {Kind: core.KindJSMethod, Callable: true},
-			"interface": {Kind: core.KindTSInterface},
-			"type":      {Kind: core.KindTSType},
-			"enum":      {Kind: core.KindTSEnum},
-		},
-		variantForExt: map[string]tsVariant{
-			".js":  jsVariant,
-			".jsx": jsVariant,
-			".mjs": jsVariant,
-			".cjs": jsVariant,
-			".ts":  tsVariantTS,
-			".tsx": tsVariantTSX,
-			// J1 (app-kit O18/O32/O33): the TypeScript module-system pair —
-			// plain TS syntax, same grammar/query set as .ts, never JSX.
-			".mts": tsVariantTS,
-			".cts": tsVariantTS,
-		},
-		defaultVariant: jsVariant,
-		methodSep:      ".",
+// tsExtractorGroups are extractor names that span more than one dialect.
+// fusion registers one "javascript" extractor for .js/.jsx/.mjs/.cjs AND
+// .ts/.tsx/.mts/.cts (the incumbent JSExtractor's combined scope); the
+// first member's grammar is the default for an unclaimed extension.
+var tsExtractorGroups = map[string][]string{"javascript": {"javascript", "typescript"}}
+
+var (
+	tsRegistryOnce sync.Once
+	tsRegistryMap  map[string]*tsLangSpec
+	tsDialectMap   map[string]*tsLangSpec // one entry per tags dialect id
+	tsRegistryErr  error
+)
+
+// tsRegistry is built from the embedded dialect manifests (LB-F1, §3.1):
+// one spec per tags-engine dialect, plus the tsExtractorGroups.
+func tsRegistry() (map[string]*tsLangSpec, error) {
+	tsRegistryOnce.Do(func() {
+		tsRegistryMap, tsDialectMap, tsRegistryErr = buildTSRegistry()
+	})
+	return tsRegistryMap, tsRegistryErr
+}
+
+func buildTSRegistry() (map[string]*tsLangSpec, map[string]*tsLangSpec, error) {
+	ds, err := LoadDialects()
+	if err != nil {
+		return nil, nil, err
 	}
-
-	tsRegistry["python"] = &tsLangSpec{
-		name: "python",
-		kinds: map[string]tsDefKind{
-			"class":    {Kind: core.KindPyClass, Container: true},
-			"function": {Kind: core.KindPyFunc, Callable: true},
-			"variable": {Kind: core.KindPyVar},
-		},
-		defaultVariant: tsVariant{blob: "python", entryPoint: "tree_sitter_python", queryFile: "python.scm"},
-		methodSep:      ".",
+	all := map[string]*tsLangSpec{}
+	single := map[string]*tsLangSpec{}
+	for i := range ds {
+		d := ds[i]
+		if d.Engine != "tags" && d.Engine != "tags+doc" {
+			continue
+		}
+		rules, err := compileDialectRules(d)
+		if err != nil {
+			return nil, nil, err
+		}
+		spec := &tsLangSpec{
+			name:           d.ID,
+			variantForExt:  map[string]tsVariant{},
+			defaultVariant: tsVariant{blob: d.Grammar.Blob, entryPoint: d.Grammar.EntryPoint, rules: rules},
+		}
+		for _, e := range d.Match.Extensions {
+			spec.variantForExt[strings.ToLower(e)] = spec.defaultVariant
+		}
+		for _, v := range d.Variants {
+			vv := tsVariant{blob: d.Grammar.Blob, entryPoint: v.EntryPoint, rules: rules}
+			for _, e := range v.Extensions {
+				spec.variantForExt[strings.ToLower(e)] = vv
+			}
+		}
+		all[d.ID] = spec
+		single[d.ID] = spec
 	}
-
-	tsRegistry["ruby"] = &tsLangSpec{
-		name: "ruby",
-		kinds: map[string]tsDefKind{
-			"module": {Kind: core.KindRubyModule, Container: true},
-			"class":  {Kind: core.KindRubyClass, Container: true},
-			"method": {Kind: core.KindRubyMethod, Callable: true},
-		},
-		defaultVariant:  tsVariant{blob: "ruby", entryPoint: "tree_sitter_ruby", queryFile: "ruby.scm"},
-		chainContainers: true,
-		containerSep:    "::",
-		methodSep:       ".",
+	groups := make([]string, 0, len(tsExtractorGroups))
+	for g := range tsExtractorGroups {
+		groups = append(groups, g)
 	}
-
-	// Kotlin (wave P2, ADR-021 §4 new-language breadth — no CGO incumbent to
-	// calibrate against; see grammars/PROVENANCE.md). .kt and .kts share the
-	// one fwcd/tree-sitter-kotlin grammar (Kotlin scripts are valid Kotlin
-	// syntax under the same parser). chainContainers is true (Kotlin nested
-	// classes/objects are idiomatic, "Outer.Inner"), matching Java's own
-	// incumbent extractor's qualifyJava behavior for the same shape.
-	kotlinVariant := tsVariant{blob: "kotlin", entryPoint: "tree_sitter_kotlin", queryFile: "kotlin.scm"}
-	tsRegistry["kotlin"] = &tsLangSpec{
-		name: "kotlin",
-		kinds: map[string]tsDefKind{
-			"class":     {Kind: core.KindKotlinClass, Container: true},
-			"interface": {Kind: core.KindKotlinInterface, Container: true},
-			"object":    {Kind: core.KindKotlinObject, Container: true},
-			"function":  {Kind: core.KindKotlinFunction, Callable: true},
-			"property":  {Kind: core.KindKotlinProperty},
-			"import":    {Kind: core.KindKotlinImport},
-		},
-		variantForExt: map[string]tsVariant{
-			".kt":  kotlinVariant,
-			".kts": kotlinVariant,
-		},
-		defaultVariant:  kotlinVariant,
-		chainContainers: true,
-		containerSep:    ".",
-		methodSep:       ".",
+	sort.Strings(groups)
+	for _, g := range groups {
+		members := tsExtractorGroups[g]
+		spec := &tsLangSpec{name: g, variantForExt: map[string]tsVariant{}}
+		for i, m := range members {
+			ms, ok := single[m]
+			if !ok {
+				return nil, nil, fmt.Errorf("tsextract: group %q names unknown tags dialect %q", g, m)
+			}
+			if i == 0 {
+				spec.defaultVariant = ms.defaultVariant
+			}
+			for e, v := range ms.variantForExt {
+				spec.variantForExt[e] = v
+			}
+		}
+		all[g] = spec
 	}
+	return all, single, nil
+}
+
+func compileDialectRules(d Dialect) (*tsDialectRules, error) {
+	query, err := dialectQuerySource(dialectFS, d)
+	if err != nil {
+		return nil, err
+	}
+	r := &tsDialectRules{
+		id:              d.ID,
+		kinds:           map[string]tsDefKind{},
+		chainContainers: *d.Qualify.ChainContainers,
+		containerSep:    d.Qualify.ContainerSep,
+		methodSep:       d.Qualify.MethodSep,
+		packageStrategy: d.Package.Strategy,
+		sigMax:          d.Signature.MaxChars,
+		queryFile:       "dialects/" + d.ID + "/" + d.Queries.Tags,
+		query:           query,
+	}
+	if d.Imports != nil {
+		r.importStrategy = d.Imports.Strategy
+	}
+	if d.Queries.Injections != "" {
+		b, err := fs.ReadFile(dialectFS, path.Join("dialects", d.ID, d.Queries.Injections))
+		if err != nil {
+			return nil, fmt.Errorf("dialect %s: %w", d.ID, err)
+		}
+		r.injectionsQuery = string(b)
+	}
+	for key, k := range d.Kinds {
+		r.kinds[key] = tsDefKind{Kind: core.SourceKind(k.SourceKind), Container: k.Container, Callable: k.Callable}
+	}
+	return r, nil
 }
 
 // TSExtractor implements extractor.Extractor for one language using the
@@ -161,16 +199,17 @@ func init() {
 // parameterized entirely by a tsLangSpec: the grammar(s) to parse with and a
 // tree-sitter query (.scm) expressing which nodes are symbol definitions —
 // there is no per-language Go code beyond that data (see tsRegistry above
-// and internal/extractor/tsqueries/*.scm).
+// and internal/extractor/dialects/<id>/).
 //
 // Performance: a wazero module instantiation (fresh linear memory, data
 // segments copied in) costs far more than a CGO ts.NewParser() call, so
 // TSExtractor does NOT create one per Extract call the way the CGO
 // extractors create a fresh *ts.Parser per call (treesitter.WithTree).
-// Instead each (grammar, entry point) variant gets exactly one live
-// tsengine.Parser + compiled Query, created lazily on first use and reused
-// for the process's lifetime — the same long-lived-resource shape as the
-// CGO extractors' package-level `var pyLang = ts.NewLanguage(...)`. fusion's
+// Instead each (grammar, entry point) variant leases its Parser from the
+// process-wide pool (tsengine.AcquireParser, LB-F15) under a key naming
+// this extractor, with its compiled queries cached on that Parser: reused
+// while the pool keeps it, closed when the pool's six-module LRU cap or its
+// two-minute idle bound retires it, and re-instantiated on the next use. fusion's
 // pass-3 extraction is documented as sequential/single-goroutine per
 // Pipeline (internal/fusion/pipeline.go's extractAndStore), so e.mu is
 // essentially uncontended in practice; it exists so a TSExtractor
@@ -178,12 +217,13 @@ func init() {
 // daemon Pipeline) degrades to serialized correctness rather than wasm
 // linear-memory corruption, never the reverse.
 type TSExtractor struct {
-	spec    *tsLangSpec
-	queries map[string]string // queryFile -> source text (read once from the embedded FS)
+	spec *tsLangSpec
 
-	mu        sync.Mutex
-	parsers   map[string]*tsengine.Parser // variant key -> live parser
-	tsQueries map[string]*tsengine.Query  // variant key -> compiled query bound to that parser
+	mu sync.Mutex
+	// owner prefixes every pool key this extractor leases under, so its
+	// Parsers (and the queries cached on them) are its own and Close
+	// closes exactly them.
+	owner string
 
 	// faults counts engine faults (parse timeout, wasm trap, query-run
 	// failure) over this extractor's lifetime (critic M1). Every fault also
@@ -193,7 +233,19 @@ type TSExtractor struct {
 	// ruling: the incumbents are slated for deletion and must not be a
 	// load-bearing path). Surfaced per-ingest as fusion.Report.TSEngineFaults.
 	faults atomic.Int64
+
+	// typeRefs counts @reference.class/implementation/type captures over
+	// this extractor's lifetime (LB-F4): measured in readings, not stored.
+	typeRefs atomic.Int64
 }
+
+// TypeRefs returns the type references (§3.4) this extractor's queries have
+// captured over its lifetime; the harness reads it per file as a delta.
+func (e *TSExtractor) TypeRefs() int64 { return e.typeRefs.Load() }
+
+// Name is the registry key the extractor was built for (a tags dialect id,
+// or an extractor group such as "javascript").
+func (e *TSExtractor) Name() string { return e.spec.name }
 
 // ErrTSEngineFault marks an Extract error as a tree-sitter engine fault
 // (parse timeout on pathological input, a wasm trap, or a query-run
@@ -209,101 +261,74 @@ var ErrTSEngineFault = errors.New("tree-sitter engine fault")
 // whose parse or query run was aborted and one parser re-creation.
 func (e *TSExtractor) EngineFaults() int64 { return e.faults.Load() }
 
-// noteFault records an engine fault and drops the (possibly dead) cached
-// parser+query for variant so the next Extract rebuilds them. Caller must
-// hold e.mu.
-func (e *TSExtractor) noteFault(variant tsVariant) {
+// noteFault records an engine fault and discards the (possibly dead)
+// leased parser — and the queries cached on it — so the next Extract
+// instantiates afresh. Caller must hold e.mu.
+func (e *TSExtractor) noteFault(l *tsengine.Lease) {
 	e.faults.Add(1)
-	key := variant.key()
-	if p, ok := e.parsers[key]; ok {
-		_ = p.Close() // best-effort; a timed-out module is already closed
-		delete(e.parsers, key)
-	}
-	// The query object lives inside the same (now dropped) module instance —
-	// no separate close possible or needed.
-	delete(e.tsQueries, key)
+	l.Discard() // best-effort; a timed-out module is already closed
 }
 
-// Close releases every grammar module this extractor instantiated (RT-107):
-// its cached parsers and the queries compiled inside them. The extractor
-// stays usable — the next Extract instantiates afresh.
+// Close releases every grammar module this extractor leased (RT-107): its
+// pooled parsers and the queries compiled inside them. The extractor stays
+// usable — the next Extract leases afresh.
 func (e *TSExtractor) Close() {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	for key, p := range e.parsers {
-		_ = p.Close()
-		delete(e.parsers, key)
-	}
-	for key := range e.tsQueries {
-		delete(e.tsQueries, key) // lived inside the closed module
-	}
+	tsengine.CloseParsers(e.owner)
 }
 
-// variantKey identifies one (blob, entry point) pair for the parser/query
-// caches — two variants sharing a blob but different entry points (the
-// "typescript" grammar's tree_sitter_typescript vs tree_sitter_tsx) need
-// their own Parser, since a Parser is bound to one TSLanguage at creation.
-func (v tsVariant) key() string { return v.blob + "|" + v.entryPoint }
+// tsOwnerSeq numbers extractors for their pool keys.
+var tsOwnerSeq atomic.Uint64
 
-// NewTSExtractor returns a TSExtractor for the named language ("javascript",
-// "python", or "ruby" — see tsRegistry). "javascript" spans .js/.jsx/.ts/
-// .tsx (the extensions fusion registers — the incumbent JSExtractor's
-// combined scope); its variant table also maps .mjs/.cjs so the engine is
-// ready if the connector ever learns those extensions, but they are NOT
-// claimed as indexed today (see EngineProvenance).
+func newTSExtractorFromSpec(spec *tsLangSpec) *TSExtractor {
+	return &TSExtractor{spec: spec, owner: fmt.Sprintf("tsx%d|", tsOwnerSeq.Add(1))}
+}
+
+// key identifies one (dialect, blob, entry point) triple for the
+// parser/query caches — two variants sharing a blob but different entry
+// points (the "typescript" grammar's tree_sitter_typescript vs
+// tree_sitter_tsx) need their own Parser, since a Parser is bound to one
+// TSLanguage at creation, and two dialects on one grammar compile different
+// queries.
+func (v tsVariant) key() string { return v.rules.id + "|" + v.blob + "|" + v.entryPoint }
+
+// NewTSExtractor returns a TSExtractor for a tags-engine dialect id (every
+// embedded dialects/<id>/dialect.json with engine "tags") or an extractor
+// group (tsExtractorGroups: "javascript" spans the javascript and typescript
+// dialects, the extensions fusion registers for the incumbent JSExtractor's
+// combined scope).
 func NewTSExtractor(name string) (*TSExtractor, error) {
-	spec, ok := tsRegistry[name]
+	reg, err := tsRegistry()
+	if err != nil {
+		return nil, fmt.Errorf("tsextract: dialect registry: %w", err)
+	}
+	spec, ok := reg[name]
 	if !ok {
 		return nil, fmt.Errorf("tsextract: unknown language %q", name)
 	}
-	e := &TSExtractor{
-		spec:      spec,
-		queries:   map[string]string{},
-		parsers:   map[string]*tsengine.Parser{},
-		tsQueries: map[string]*tsengine.Query{},
-	}
-	seen := map[string]bool{}
-	for _, v := range allVariants(spec) {
-		if seen[v.queryFile] {
-			continue
-		}
-		seen[v.queryFile] = true
-		src, err := tsQueryFS.ReadFile("tsqueries/" + v.queryFile)
-		if err != nil {
-			return nil, fmt.Errorf("tsextract: read query %q: %w", v.queryFile, err)
-		}
-		e.queries[v.queryFile] = string(src)
-	}
-	return e, nil
+	return newTSExtractorFromSpec(spec), nil
 }
 
-// parserFor returns the cached (Parser, Query) pair for variant, creating
-// both on first use. Caller must hold e.mu.
-func (e *TSExtractor) parserFor(ctx context.Context, variant tsVariant) (*tsengine.Parser, *tsengine.Query, error) {
-	key := variant.key()
-	if p, ok := e.parsers[key]; ok {
-		return p, e.tsQueries[key], nil
-	}
-	p, err := tsengine.NewParser(ctx, variant.blob, variant.entryPoint)
+// leaseFor leases variant's pooled Parser and returns it with its compiled
+// tags query, compiling the query on the Parser's first use. The caller
+// releases the lease (or noteFault discards it). Caller must hold e.mu.
+func (e *TSExtractor) leaseFor(ctx context.Context, variant tsVariant) (*tsengine.Lease, *tsengine.Query, error) {
+	l, err := tsengine.AcquireParser(ctx, e.owner+variant.key(), variant.blob, variant.entryPoint)
 	if err != nil {
 		return nil, nil, fmt.Errorf("tsextract[%s]: %w", e.spec.name, err)
 	}
-	q, err := p.CompileQuery(e.queries[variant.queryFile])
+	p := l.Parser()
+	if q, ok := p.Cached("tags").(*tsengine.Query); ok {
+		return l, q, nil
+	}
+	q, err := p.CompileQuery(variant.rules.query)
 	if err != nil {
-		p.Close()
-		return nil, nil, fmt.Errorf("tsextract[%s]: compiling %s: %w", e.spec.name, variant.queryFile, err)
+		l.Discard()
+		return nil, nil, fmt.Errorf("tsextract[%s]: compiling %s: %w", e.spec.name, variant.rules.queryFile, err)
 	}
-	e.parsers[key] = p
-	e.tsQueries[key] = q
-	return p, q, nil
-}
-
-func allVariants(spec *tsLangSpec) []tsVariant {
-	variants := []tsVariant{spec.defaultVariant}
-	for _, v := range spec.variantForExt {
-		variants = append(variants, v)
-	}
-	return variants
+	p.SetCached("tags", q)
+	return l, q, nil
 }
 
 // extOf returns the lowercased extension (including the leading '.') of
@@ -339,11 +364,42 @@ func (e *TSExtractor) Extract(service, relPath string, src []byte) ([]core.Symbo
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
-	ctx := context.Background()
-	p, q, err := e.parserFor(ctx, variant)
+	nodes, injected, err := e.extractLocked(variant, service, relPath, src, "", 0, true)
 	if err != nil {
 		return nil, err
 	}
+	if len(injected) > 0 {
+		nodes = append(nodes, e.extractInjections(injected, service, relPath, src, nodes)...)
+	}
+	sort.Slice(nodes, func(i, j int) bool {
+		if nodes[i].Line != nodes[j].Line {
+			return nodes[i].Line < nodes[j].Line
+		}
+		return nodes[i].Name < nodes[j].Name
+	})
+	return nodes, nil
+}
+
+// tsInjection is one embedded-language range an injections query found.
+type tsInjection struct {
+	dialect    string
+	start, end uint32
+	row        int // 0-based host row the range starts on
+}
+
+// extractLocked runs one variant over src and returns its symbols (unsorted)
+// and, when withInjections, the injection ranges its injections query found.
+// pkgOverride replaces the dialect's package rule when non-empty (an
+// injected range takes its host file's package); lineOffset shifts every
+// line (an injected range's first row in the host). Caller holds e.mu.
+func (e *TSExtractor) extractLocked(variant tsVariant, service, relPath string, src []byte, pkgOverride string, lineOffset int, withInjections bool) ([]core.SymbolNode, []tsInjection, error) {
+	ctx := context.Background()
+	l, q, err := e.leaseFor(ctx, variant)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer l.Release() // a no-op after noteFault's Discard
+	p := l.Parser()
 
 	tree, err := p.Parse(src)
 	if err != nil {
@@ -353,43 +409,132 @@ func (e *TSExtractor) Extract(service, relPath string, src []byte) ([]core.Symbo
 		// typed error the fusion pipeline counts per-ingest. The pipeline's
 		// existing non-fatal extract-error path fingerprints the file so it
 		// is not retried until its bytes or the ExtractorEpoch change.
-		e.noteFault(variant)
-		return nil, fmt.Errorf("tsextract[%s] %s: parse: %v: %w", e.spec.name, relPath, err, ErrTSEngineFault)
+		e.noteFault(l)
+		return nil, nil, fmt.Errorf("tsextract[%s] %s: parse: %v: %w", e.spec.name, relPath, err, ErrTSEngineFault)
 	}
 	defer tree.Close()
 
 	matches, err := q.Run(tree)
 	if err != nil {
-		e.noteFault(variant)
-		return nil, fmt.Errorf("tsextract[%s] %s: query: %v: %w", e.spec.name, relPath, err, ErrTSEngineFault)
+		e.noteFault(l)
+		return nil, nil, fmt.Errorf("tsextract[%s] %s: query: %v: %w", e.spec.name, relPath, err, ErrTSEngineFault)
 	}
 
-	defs, calls := splitTSMatches(matches, e.spec.kinds, src)
+	rules := variant.rules
+	var injected []tsInjection
+	if withInjections && rules.injectionsQuery != "" {
+		injected, err = e.injectionRanges(variant, l, tree, src)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
+	defs, calls, typeRefs := splitTSMatches(matches, rules.kinds, src)
+	e.typeRefs.Add(int64(typeRefs))
 	resolveTSParents(defs)
-	qualifyTSDefs(defs, e.spec)
+	qualifyTSDefs(defs, rules)
 	attachTSCalls(defs, calls)
 
 	pkg := pkgFromPath(relPath)
+	switch {
+	case pkgOverride != "":
+		pkg = pkgOverride
+	case rules.packageStrategy == "none":
+		pkg = ""
+	case rules.packageStrategy == "capture":
+		tsPackageFromCapture(matches, src, defs, pkg)
+	}
 	nodes := make([]core.SymbolNode, 0, len(defs))
 	for _, d := range defs {
-		nodes = append(nodes, core.SymbolNode{
+		p := pkg
+		if d.pkg != "" {
+			p = d.pkg
+		}
+		n := core.SymbolNode{
 			Service:  service,
-			Package:  pkg,
+			Package:  p,
 			Name:     d.qualName,
 			Kind:     d.kind,
 			FilePath: relPath,
-			Line:     d.line,
+			Line:     d.line + lineOffset,
+			EndLine:  tsEndLine(src, d) + lineOffset,
 			Tier:     core.TierVerified,
 			Calls:    d.calls,
-		})
-	}
-	sort.Slice(nodes, func(i, j int) bool {
-		if nodes[i].Line != nodes[j].Line {
-			return nodes[i].Line < nodes[j].Line
 		}
-		return nodes[i].Name < nodes[j].Name
+		if d.callable {
+			n.Signature = tsSignature(src, d, rules.sigMax)
+		}
+		nodes = append(nodes, n)
+	}
+	return nodes, injected, nil
+}
+
+// injectionRanges runs variant's injections query over tree: every
+// @injection.content capture whose pattern sets a static
+// injection.language naming a registered tags dialect, sorted by start.
+// Caller holds e.mu.
+func (e *TSExtractor) injectionRanges(variant tsVariant, l *tsengine.Lease, tree *tsengine.Tree, src []byte) ([]tsInjection, error) {
+	p := l.Parser()
+	iq, ok := p.Cached("injections").(*tsengine.Query)
+	if !ok {
+		var err error
+		iq, err = p.CompileQuery(variant.rules.injectionsQuery)
+		if err != nil {
+			return nil, fmt.Errorf("tsextract[%s]: compiling injections of %s: %w", e.spec.name, variant.rules.id, err)
+		}
+		p.SetCached("injections", iq)
+	}
+	matches, err := iq.Run(tree)
+	if err != nil {
+		e.noteFault(l)
+		return nil, fmt.Errorf("tsextract[%s]: injections query: %v: %w", e.spec.name, err, ErrTSEngineFault)
+	}
+	if _, err := tsRegistry(); err != nil {
+		return nil, err
+	}
+	var out []tsInjection
+	for _, m := range matches {
+		lang := iq.PatternSetting(m.PatternIndex, "injection.language")
+		if _, known := tsDialectMap[lang]; !known {
+			continue
+		}
+		for _, c := range m.Captures {
+			if c.Name == "injection.content" && c.Node.EndByte > c.Node.StartByte && int(c.Node.EndByte) <= len(src) {
+				out = append(out, tsInjection{dialect: lang, start: c.Node.StartByte, end: c.Node.EndByte, row: int(c.Node.StartRow)})
+			}
+		}
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].start != out[j].start {
+			return out[i].start < out[j].start
+		}
+		return out[i].dialect < out[j].dialect
 	})
-	return nodes, nil
+	return out, nil
+}
+
+// extractInjections (LB-F6, design §3.6) runs each injected dialect over
+// its byte range as its own document: lines offset into the host, the host
+// file's package, one level deep (an injected range's own injections are
+// not run), and no qualification across the boundary — injected symbols
+// never nest under host definitions. A range whose extraction faults is
+// skipped (the fault is counted); the host's symbols stand. Caller holds
+// e.mu.
+func (e *TSExtractor) extractInjections(injected []tsInjection, service, relPath string, src []byte, host []core.SymbolNode) []core.SymbolNode {
+	pkg := pkgFromPath(relPath)
+	if len(host) > 0 && host[0].Package != "" {
+		pkg = host[0].Package
+	}
+	var out []core.SymbolNode
+	for _, inj := range injected {
+		v := tsDialectMap[inj.dialect].defaultVariant
+		nodes, _, err := e.extractLocked(v, service, relPath, src[inj.start:inj.end], pkg, inj.row, false)
+		if err != nil {
+			continue
+		}
+		out = append(out, nodes...)
+	}
+	return out
 }
 
 // tsDef is one query-captured symbol definition, positioned by byte range so
@@ -402,7 +547,10 @@ type tsDef struct {
 	name       string
 	start, end uint32
 	line       int
-	parent     int // index into the defs slice, -1 if none
+	parent     int    // index into the defs slice, -1 if none
+	bodyStart  uint32 // start of the @body capture, when hasBody
+	hasBody    bool
+	pkg        string // @scope.package's answer (LB-F5), "" for the file default
 	qualName   string
 	callSet    map[string]struct{}
 	calls      []string
@@ -413,27 +561,64 @@ type tsCallSite struct {
 	start, end uint32
 }
 
+// typeRefCaptures are the reference captures §3.4 counts but does not store
+// until a consumer exists.
+var typeRefCaptures = map[string]bool{"reference.class": true, "reference.implementation": true, "reference.type": true}
+
+// tsCalleeName is a call site's callee (LB-F4, design §3.4): the @name
+// captured inside the match's @reference.call when the query has one (the
+// tags convention), else the @reference.call node's own text (the five
+// pre-manifest queries capture the callee expression itself). ok is false
+// when the match has no @reference.call.
+func tsCalleeName(m tsengine.Match, src []byte) (callee string, site tsengine.Node, ok bool) {
+	var name *tsengine.Node
+	for i := range m.Captures {
+		c := &m.Captures[i]
+		switch c.Name {
+		case "reference.call":
+			site, ok = c.Node, true
+		case "name":
+			n := c.Node
+			name = &n
+		}
+	}
+	if !ok {
+		return "", site, false
+	}
+	if name != nil && name.StartByte >= site.StartByte && name.EndByte <= site.EndByte {
+		return name.Text(src), site, true
+	}
+	return site.Text(src), site, true
+}
+
 // splitTSMatches separates a query's flat match list into definitions (a
-// "name" + "definition.<kind>" capture pair) and call sites (a bare
-// "reference.call" capture) using src to resolve capture text.
-func splitTSMatches(matches []tsengine.Match, kinds map[string]tsDefKind, src []byte) ([]*tsDef, []tsCallSite) {
+// "name" + "definition.<kind>" capture pair) and call sites (a
+// "reference.call" capture, its callee per tsCalleeName) using src to
+// resolve capture text, and counts type references (typeRefCaptures).
+func splitTSMatches(matches []tsengine.Match, kinds map[string]tsDefKind, src []byte) ([]*tsDef, []tsCallSite, int) {
 	var defs []*tsDef
 	var calls []tsCallSite
+	typeRefs := 0
 	for _, m := range matches {
-		var nameNode *tsengine.Node
-		var defNode *tsengine.Node
+		if callee, site, ok := tsCalleeName(m, src); ok {
+			if callee != "" {
+				calls = append(calls, tsCallSite{text: callee, start: site.StartByte, end: site.EndByte})
+			}
+			continue
+		}
+		var nameNode, defNode, bodyNode *tsengine.Node
 		var defSuffix string
 		for i := range m.Captures {
 			c := &m.Captures[i]
 			switch {
+			case typeRefCaptures[c.Name]:
+				typeRefs++
 			case c.Name == "name":
 				n := c.Node
 				nameNode = &n
-			case c.Name == "reference.call":
-				text := c.Node.Text(src)
-				if text != "" {
-					calls = append(calls, tsCallSite{text: text, start: c.Node.StartByte, end: c.Node.EndByte})
-				}
+			case c.Name == "body":
+				n := c.Node
+				bodyNode = &n
 			case strings.HasPrefix(c.Name, "definition."):
 				n := c.Node
 				defNode = &n
@@ -451,7 +636,7 @@ func splitTSMatches(matches []tsengine.Match, kinds map[string]tsDefKind, src []
 		if name == "" {
 			continue
 		}
-		defs = append(defs, &tsDef{
+		d := &tsDef{
 			kind:      dk.Kind,
 			container: dk.Container,
 			callable:  dk.Callable,
@@ -460,9 +645,107 @@ func splitTSMatches(matches []tsengine.Match, kinds map[string]tsDefKind, src []
 			end:       defNode.EndByte,
 			line:      defNode.Line(),
 			parent:    -1,
-		})
+		}
+		if bodyNode != nil && bodyNode.StartByte >= d.start && bodyNode.StartByte <= d.end {
+			d.bodyStart, d.hasBody = bodyNode.StartByte, true
+		}
+		defs = append(defs, d)
 	}
-	return defs, calls
+	return defs, calls, typeRefs
+}
+
+// tsPackageFromCapture applies @scope.package (LB-F5, design §3.5) for a
+// manifest with package.strategy "capture". A capture whose match has no
+// @scope range is a file-wide package clause (Kotlin, Java, PHP): it
+// answers every definition. One whose match also captures @scope (a block
+// namespace, C#'s shape) answers the definitions inside that range, nested
+// ranges joined with "."; the innermost range chain wins over the file-wide
+// clause. A file with no capture keeps fallback (pkgFromPath).
+func tsPackageFromCapture(matches []tsengine.Match, src []byte, defs []*tsDef, fallback string) {
+	type scoped struct {
+		name       string
+		start, end uint32
+	}
+	fileWide := ""
+	var scopes []scoped
+	for _, m := range matches {
+		var name, scope *tsengine.Node
+		for i := range m.Captures {
+			c := &m.Captures[i]
+			switch c.Name {
+			case "scope.package":
+				n := c.Node
+				name = &n
+			case "scope":
+				n := c.Node
+				scope = &n
+			}
+		}
+		if name == nil {
+			continue
+		}
+		text := strings.Join(strings.Fields(name.Text(src)), "")
+		if text == "" {
+			continue
+		}
+		if scope == nil {
+			if fileWide == "" {
+				fileWide = text
+			}
+			continue
+		}
+		scopes = append(scopes, scoped{name: text, start: scope.StartByte, end: scope.EndByte})
+	}
+	sort.SliceStable(scopes, func(i, j int) bool { return scopes[i].start < scopes[j].start })
+	for _, d := range defs {
+		var parts []string
+		for _, s := range scopes {
+			if d.start >= s.start && d.end <= s.end {
+				parts = append(parts, s.name) // outer ranges sort first
+			}
+		}
+		switch {
+		case len(parts) > 0:
+			d.pkg = strings.Join(parts, ".")
+		case fileWide != "":
+			d.pkg = fileWide
+		default:
+			d.pkg = fallback
+		}
+	}
+}
+
+// tsEndLine is the 1-based line of the definition node's last byte (§3.3).
+func tsEndLine(src []byte, d *tsDef) int {
+	if d.end <= d.start || int(d.end) > len(src) {
+		return d.line
+	}
+	return d.line + bytes.Count(src[d.start:d.end-1], []byte{'\n'})
+}
+
+// tsSignature is a callable's signature (LB-F3, design §3.3): the
+// definition's source from its start to the start of its @body capture, or
+// its first line when the query captured no body; whitespace runs collapsed
+// to one space, trimmed, and capped at maxChars runes with a trailing "…".
+func tsSignature(src []byte, d *tsDef, maxChars int) string {
+	end := d.end
+	if d.hasBody {
+		end = d.bodyStart
+	} else if nl := bytes.IndexByte(src[d.start:d.end], '\n'); nl >= 0 {
+		end = d.start + uint32(nl)
+	}
+	if end <= d.start || int(end) > len(src) {
+		return ""
+	}
+	sig := strings.Join(strings.Fields(string(src[d.start:end])), " ")
+	if maxChars <= 0 {
+		maxChars = 200
+	}
+	if utf8.RuneCountInString(sig) > maxChars {
+		r := []rune(sig)
+		sig = strings.TrimRight(string(r[:maxChars-1]), " ") + "…"
+	}
+	return sig
 }
 
 // resolveTSParents computes each def's immediate structural parent (the
@@ -501,7 +784,7 @@ func resolveTSParents(defs []*tsDef) {
 // itself a container — a function nested inside another function never
 // inherits a class name, matching every incumbent CGO extractor's scope
 // rules exactly (see pyextract.go/jsextract.go/rubyextract.go).
-func qualifyTSDefs(defs []*tsDef, spec *tsLangSpec) {
+func qualifyTSDefs(defs []*tsDef, spec *tsDialectRules) {
 	resolved := make([]bool, len(defs))
 	var resolve func(i int) string
 	resolve = func(i int) string {
@@ -601,18 +884,18 @@ func attachTSCalls(defs []*tsDef, calls []tsCallSite) {
 // TestIngest_MjsCjsMtsCtsSymbolsIndexed (internal/fusion) pin real symbols
 // indexed end to end.
 func EngineProvenance() map[string]string {
-	return map[string]string{
-		".py":  "tree-sitter-wasm",
-		".js":  "tree-sitter-wasm",
-		".jsx": "tree-sitter-wasm",
-		".mjs": "tree-sitter-wasm",
-		".cjs": "tree-sitter-wasm",
-		".ts":  "tree-sitter-wasm",
-		".tsx": "tree-sitter-wasm",
-		".mts": "tree-sitter-wasm",
-		".cts": "tree-sitter-wasm",
-		".rb":  "tree-sitter-wasm",
-		".kt":  "tree-sitter-wasm",
-		".kts": "tree-sitter-wasm",
+	out := map[string]string{}
+	ds, err := LoadDialects()
+	if err != nil {
+		return out
 	}
+	for _, d := range ds {
+		if d.Engine != "tags" && d.Engine != "tags+doc" {
+			continue
+		}
+		for _, e := range dialectExtensions(d) {
+			out[e] = "tree-sitter-wasm"
+		}
+	}
+	return out
 }

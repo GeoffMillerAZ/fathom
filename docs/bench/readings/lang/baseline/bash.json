@@ -1,0 +1,102 @@
+{
+  "dialect": "bash",
+  "kind": "language",
+  "target_level": "L2",
+  "level_met": "none",
+  "grade": {
+    "L1": "unmet",
+    "L2": "not-attempted",
+    "L3": "not-attempted",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-09-28",
+  "fathom_commit": "56c18502",
+  "extractor": "incumbent",
+  "subjects": [
+    {
+      "name": "nvm-sh/nvm",
+      "sha": "a885b885fef16fac4bc544188fb25e9e37ae83e8",
+      "files": 6,
+      "bytes": 207481,
+      "counts": {
+        "callables": 170,
+        "fathom_defs": 170,
+        "kind_equal": 170,
+        "matched": 170,
+        "oracle_defs": 171
+      },
+      "families": {
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "function"
+      ],
+      "excluded_by_kind": {
+        "ctags:heredoc": 4
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 19.26,
+        "max_file_ms": 15,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "B",
+      "tool": "universal-ctags",
+      "version": "6.2.1"
+    }
+  ],
+  "metrics": {
+    "call_precision": null,
+    "call_recall": null,
+    "def_mapping": null,
+    "file_edge_precision": null,
+    "file_edge_recall": null,
+    "import_resolution": null,
+    "kind_agreement": 1,
+    "range_agreement": null,
+    "signature_coverage": 0,
+    "sym_precision": 1,
+    "sym_recall": 0.9942,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "kind_agreement": "B",
+    "signature_coverage": "B",
+    "sym_precision": "B",
+    "sym_recall": "B"
+  },
+  "required_kinds": [
+    "function"
+  ],
+  "kind_intersection": [
+    "function"
+  ],
+  "counts": {
+    "callables": 170,
+    "fathom_defs": 170,
+    "kind_equal": 170,
+    "matched": 170,
+    "oracle_defs": 171
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 10.77,
+    "max_file_ms": 15,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "ctags:heredoc": 4
+  },
+  "notes": [
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+  ],
+  "disposition": null
+}

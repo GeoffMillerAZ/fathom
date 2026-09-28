@@ -1,0 +1,24 @@
+{
+  "symbols": [
+    {
+      "name": "helper",
+      "kind": "JSFunc",
+      "package": "common",
+      "line": 7,
+      "end_line": 9,
+      "signature": "function helper()",
+      "calls": [
+        "module.exports.handler"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "path",
+      "module": "path",
+      "kind": "whole",
+      "line": 1
+    }
+  ]
+}

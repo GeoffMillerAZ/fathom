@@ -1,0 +1,129 @@
+{
+  "dialect": "c",
+  "kind": "language",
+  "target_level": "L4",
+  "level_met": "none",
+  "grade": {
+    "L1": "unmet",
+    "L2": "not-attempted",
+    "L3": "not-attempted",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-09-28",
+  "fathom_commit": "56c18502",
+  "extractor": "incumbent",
+  "subjects": [
+    {
+      "name": "libuv/libuv",
+      "sha": "abe835d41317b55b16260990821f89b4ee9e437b",
+      "files": 369,
+      "bytes": 3308179,
+      "counts": {
+        "callables": 3290,
+        "fathom_defs": 3566,
+        "kind_equal": 2878,
+        "matched": 2882,
+        "oracle_defs": 3873,
+        "range_eligible": 2777,
+        "range_ok": 2775
+      },
+      "families": {
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "enum",
+        "function",
+        "struct",
+        "type_alias"
+      ],
+      "excluded_by_kind": {
+        "ctags:enumerator": 307,
+        "ctags:macro": 3025,
+        "ctags:member": 953,
+        "ctags:union": 8,
+        "ctags:variable": 1300,
+        "fathom:CppEnum": 6,
+        "fathom:CppFunc": 1,
+        "fathom:CppStruct": 16
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 398.2310000000003,
+        "max_file_ms": 22,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "B",
+      "tool": "universal-ctags",
+      "version": "6.2.1"
+    }
+  ],
+  "metrics": {
+    "call_precision": null,
+    "call_recall": null,
+    "def_mapping": null,
+    "file_edge_precision": null,
+    "file_edge_recall": null,
+    "import_resolution": null,
+    "kind_agreement": 0.9986,
+    "range_agreement": 0.9993,
+    "signature_coverage": 0,
+    "sym_precision": 0.8082,
+    "sym_recall": 0.7441,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "kind_agreement": "B",
+    "range_agreement": "B",
+    "signature_coverage": "B",
+    "sym_precision": "B",
+    "sym_recall": "B"
+  },
+  "required_kinds": [
+    "function",
+    "struct"
+  ],
+  "kind_intersection": [
+    "enum",
+    "function",
+    "struct",
+    "type_alias"
+  ],
+  "counts": {
+    "callables": 3290,
+    "fathom_defs": 3566,
+    "kind_equal": 2878,
+    "matched": 2882,
+    "oracle_defs": 3873,
+    "range_eligible": 2777,
+    "range_ok": 2775
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 8.31,
+    "max_file_ms": 22,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "ctags:enumerator": 307,
+    "ctags:macro": 3025,
+    "ctags:member": 953,
+    "ctags:union": 8,
+    "ctags:variable": 1300,
+    "fathom:CppEnum": 6,
+    "fathom:CppFunc": 1,
+    "fathom:CppStruct": 16
+  },
+  "notes": [
+    ".h files are routed by fathom's header sniff (C or C++); the oracle reads every .h as C",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+  ],
+  "disposition": null
+}

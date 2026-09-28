@@ -1,21 +1,56 @@
 # Grammar blob provenance (ADR-021 §4, docs/plans/extraction-treesitter.md)
 
-Every `*.wasm` file in this directory is built by `build.sh` from **official,
+Every `*.wasm.gz` file in this directory is built by `build.sh <blob>` from **official,
 upstream tree-sitter sources only** — tree-sitter's own core C runtime plus
 each grammar's own C parser — statically linked into one self-contained
 `wasm32-wasi` module per language via `zig cc` (musl libc, no Emscripten). No
 third-party prebuilt `.wasm` artifact is vendored; no unverifiable blob is
 embedded.
 
-## What's linked into each blob
+## The lock and what it pins
 
-| Blob | Core runtime | Grammar(s) | Entry point(s) exported |
-|---|---|---|---|
-| `javascript.wasm` | tree-sitter core | tree-sitter-javascript | `tree_sitter_javascript` |
-| `typescript.wasm` | tree-sitter core | tree-sitter-typescript (both the `typescript/` and `tsx/` grammars in that repo) | `tree_sitter_typescript`, `tree_sitter_tsx` |
-| `python.wasm` | tree-sitter core | tree-sitter-python | `tree_sitter_python` |
-| `ruby.wasm` | tree-sitter core | tree-sitter-ruby | `tree_sitter_ruby` |
-| `kotlin.wasm` | tree-sitter core | tree-sitter-kotlin (fwcd) | `tree_sitter_kotlin` |
+`grammars.lock.json` (LB-F12, docs/design/language-breadth.md §8.1) is the record:
+for the core and every blob, the repository, tag, the commit the tag points at,
+the tarball's sha256 and the SPDX licence; for every blob, its entry points,
+grammar directories, ABI, the sha256 and size of the module and the size of the
+committed `.wasm.gz`. `TestGrammarLock` fails when a committed blob and its row
+disagree, when either exists without the other, or when a licence is off the
+ADR-048 allowlist; the engine refuses at load time any blob whose bytes the
+lock does not describe (I55). The tables below are rendered from the lock by
+`RenderProvenanceTables` — edit the lock, then run
+`go test ./internal/extractor/tsengine -run TestProvenanceRenderedFromLock -update-provenance`.
+
+<!-- BEGIN generated from grammars.lock.json by RenderProvenanceTables; do not edit -->
+
+### Pinned sources
+
+| Blob | Repository | Tag | Commit | Licence | Entry points | Tarball sha256 |
+|---|---|---|---|---|---|---|
+| core | tree-sitter/tree-sitter | v0.26.11 | `64402de2857cc197ecc4ca3bc144ea91fda7e72e` | MIT | — | `1bab01ed21464f3272665b9c60e39ee79f68da1333e80b23f2c9356569d06971` |
+| `javascript` | tree-sitter/tree-sitter-javascript | v0.25.0 | `44c892e0be055ac465d5eeddae6d3e194424e7de` | MIT | `tree_sitter_javascript` | `9712fc283d3dc01d996d20b6392143445d05867a7aad76fdd723824468428b86` |
+| `kotlin` | fwcd/tree-sitter-kotlin | 0.3.8 | `e1a2d5ad1f61f5740677183cd4125bb071cd2f30` | MIT | `tree_sitter_kotlin` | `7dd60975786bf9cb4be6a5176f5ccb5fed505f9929a012da30762505b1015669` |
+| `python` | tree-sitter/tree-sitter-python | v0.25.0 | `293fdc02038ee2bf0e2e206711b69c90ac0d413f` | MIT | `tree_sitter_python` | `4609a3665a620e117acf795ff01b9e965880f81745f287a16336f4ca86cf270c` |
+| `ruby` | tree-sitter/tree-sitter-ruby | v0.23.1 | `71bd32fb7607035768799732addba884a37a6210` | MIT | `tree_sitter_ruby` | `e7e49577ddc1f2de8e42d42353b477e338c15bbb95b2558e123ddc13d88789f0` |
+| `typescript` | tree-sitter/tree-sitter-typescript | v0.23.2 | `f975a621f4e7f532fe322e13c4f79495e0a7b2e7` | MIT | `tree_sitter_typescript`, `tree_sitter_tsx` | `2c4ce711ae8d1218a3b2f899189298159d672870b5b34dff5d937bed2f3e8983` |
+
+### Committed blobs
+
+| Blob | Grammar dirs | Scanner | ABI | Module bytes | `.wasm.gz` bytes | Module sha256 |
+|---|---|---|--:|--:|--:|---|
+| `javascript` | (root) | yes | 15 | 458,741 | 114,833 | `7245ee58564f991827498e36b5ec14420b99759596490e3a74ed0993b24ed904` |
+| `kotlin` | (root) | yes | 14 | 2,488,435 | 510,036 | `750a499adfc0a1339abebe5da80154eb6680c5732a3a5fdceaaace5053def3c3` |
+| `python` | (root) | yes | 15 | 539,848 | 123,581 | `ef1216ec19691690d3d237759d5ab8c3521e362423eef44f5e5234f7cb507ffc` |
+| `ruby` | (root) | yes | 14 | 1,710,411 | 311,992 | `3299b506f05b73cb341de2cf65f1f327e9427e0149ce47d21f65af3d89b8924f` |
+| `typescript` | typescript, tsx | yes | 14 | 2,037,040 | 422,906 | `30080208c90581bf3b29b412e9ee2e9a11c89b36153b6a94cc07da7b5000afcb` |
+| **total** | | | | 7,234,475 | 1,483,348 | |
+
+Toolchain that produced the committed blobs: zig 0.16.0, wasm-opt 129.
+
+<!-- END generated -->
+
+Before the lock, this file recorded the javascript and python v0.25.0 pins as
+the annotated tag objects' ids (`f76aea6…`, `d326e4c…`); the lock records the
+commits those tags point at (`git get-tar-commit-id` of each pinned tarball).
 
 Grammar versions are pinned to match the CGO grammar versions already in
 `go.mod` (`github.com/tree-sitter/tree-sitter-<lang>`) so the calibration
@@ -29,45 +64,17 @@ official tree-sitter-org repo) is pinned to its latest tagged release at
 build time (0.3.8) rather than matched to any go.mod entry, since fathom
 carries no CGO Kotlin bindings.
 
-## Resolved sources (pinned tag → commit SHA, as of this build)
-
-| Repo | Tag | Commit SHA |
-|---|---|---|
-| tree-sitter/tree-sitter (core runtime) | v0.26.11 | 64402de2857cc197ecc4ca3bc144ea91fda7e72e |
-| tree-sitter/tree-sitter-javascript | v0.25.0 | f76aea6aa47322ea5c208c9c2e67f4a350d554f3 |
-| tree-sitter/tree-sitter-typescript | v0.23.2 | f975a621f4e7f532fe322e13c4f79495e0a7b2e7 |
-| tree-sitter/tree-sitter-python | v0.25.0 | d326e4cad262cf681656e130960e49dfc04c03ea |
-| tree-sitter/tree-sitter-ruby | v0.23.1 | 71bd32fb7607035768799732addba884a37a6210 |
-| fwcd/tree-sitter-kotlin | 0.3.8 | e1a2d5ad1f61f5740677183cd4125bb071cd2f30 |
-
 The core runtime version does not need to match each grammar's own release
 train — tree-sitter's ABI is designed to be backwards-compatible (a newer
 runtime accepts older-but-in-range grammar ABI versions; `ts_language_abi_version`
 is checked at `ts_parser_set_language` time). Using one recent, well-tested
 core across all four languages is intentional, not an oversight.
 
-## Blob sizes and checksums (the committed blobs, after `wasm-opt -Oz`)
-
-Exact values — verify with `shasum -a 256 *.wasm` and `stat -f%z *.wasm` in
-this directory; build.sh prints both at the end of a rebuild:
-
-| Blob | Size (bytes) | sha256 (64 hex chars) |
-|---|--:|---|
-| `javascript.wasm` | 458,741 | `7245ee58564f991827498e36b5ec14420b99759596490e3a74ed0993b24ed904` |
-| `typescript.wasm` | 2,037,040 | `30080208c90581bf3b29b412e9ee2e9a11c89b36153b6a94cc07da7b5000afcb` |
-| `python.wasm` | 539,848 | `ef1216ec19691690d3d237759d5ab8c3521e362423eef44f5e5234f7cb507ffc` |
-| `ruby.wasm` | 1,710,411 | `3299b506f05b73cb341de2cf65f1f327e9427e0149ce47d21f65af3d89b8924f` |
-| `kotlin.wasm` | 2,488,435 | `750a499adfc0a1339abebe5da80154eb6680c5732a3a5fdceaaace5053def3c3` |
-
-(458,741 B ≈ 448 KiB; 2,037,040 B ≈ 1.94 MiB; 539,848 B ≈ 527 KiB;
-1,710,411 B ≈ 1.63 MiB; 2,488,435 B ≈ 2.37 MiB.) TypeScript is the largest
-blob among the original four because it statically links both the
-`typescript` and `tsx` grammars (each has its own large generated parse
-table) alongside the core; Ruby's grammar tables are large due to the
-language's syntactic ambiguity. Kotlin is the largest blob overall — its
-grammar (with an external scanner for indentation/soft-keyword handling and
-a large expression/type grammar) produces the biggest generated parse
-table of the five.
+Blobs are committed gzip-compressed (`gzip -9 -n`, LB-F13) and decompressed
+only on their grammar's first compile; the embedded `.wasm.gz` total is capped
+at 40 MiB by `TestEmbeddedGrammarBudget`. TypeScript's blob statically links
+both the `typescript` and `tsx` grammars; Kotlin's is the largest (a large
+expression/type grammar plus an external scanner).
 
 Each blob also compiles in `budget.c` (this directory, checked in — the only
 non-upstream C in the build): the deadline-bounded parse/query entry points
@@ -76,17 +83,30 @@ non-upstream C in the build): the deadline-bounded parse/query entry points
 (`fathom_node_end_byte`). See that file's header comments for why each
 exists.
 
-## Build recipe (reproducible — `./build.sh`)
+## Build recipe (reproducible — `./build.sh <blob>`)
+
+`build.sh <blob> [outdir]` reads the blob's lock row, fetches the pinned core
+and grammar tarballs, refuses a tarball whose sha256 or embedded commit differs
+from the lock and a licence file (top level, `queries/`, `src/`) that does not
+state the lock's allowlisted licence, runs a pinned `tree-sitter-cli generate`
+for a `"generate": true` grammar, then:
 
 ```
 zig cc --target=wasm32-wasi-musl -mexec-model=reactor \
-  -I <core>/lib/include -I <core>/lib/src -I <grammar>/src \
-  <core>/lib/src/lib.c <grammar>/src/parser.c [<grammar>/src/scanner.c] \
-  -o <lang>.wasm -Oz -Wl,--no-entry -Wl,--strip-debug \
+  -I <core>/lib/include -I <core>/lib/src \
+  <core>/lib/src/lib.c budget.c <grammar>/src/parser.c [<grammar>/src/scanner.c] \
+  -o <blob>.wasm -Oz -Wl,--no-entry -Wl,--strip-debug \
   -Wl,--export=<the C API subset internal/extractor/tsengine calls> \
   -Wl,--export=tree_sitter_<lang>
-wasm-opt -Oz <lang>.wasm -o <lang>.wasm --enable-bulk-memory   # ~25-30% smaller
+wasm-opt -Oz <blob>.wasm -o <blob>.wasm --enable-bulk-memory   # ~25-30% smaller
+gzip -9 -n -c <blob>.wasm > <blob>.wasm.gz
 ```
+
+and prints `blob_sha256`, `blob_bytes` and `gz_bytes` to paste into the row. A
+row with `"predicate_export": true` also exports `ts_query_predicates_for_pattern`;
+the five original blobs predate it and keep `false`, so they rebuild byte for
+byte (measured 2026-09-27: `build.sh typescript` with zig 0.16.0 and wasm-opt
+129 reproduced the committed module's sha256 exactly).
 
 `zig cc` targets `wasm32-wasi-musl`: Zig bundles a musl-based libc for that
 target, so `malloc`/`free`/`memcpy`/etc. are real, working libc calls compiled
@@ -98,20 +118,13 @@ practice) and `clock_time_get` (budget.c's CLOCK_MONOTONIC deadline checks)
 — wazero's stock `imports/wasi_snapshot_preview1` package satisfies all of
 them with no custom shim.
 
-Build-time tools (zig, wasm-opt) are **not** a runtime or `go build`
-dependency — the committed `.wasm` blobs are embedded via `go:embed` and
-consumed purely by wazero (pure Go) at runtime. Re-running `build.sh` requires
-network access (to fetch pinned upstream source tarballs) and is meant to be
-run on demand to refresh a pin, exactly like `calibration/clone.sh` — never
-as part of `task validate`.
-
-**Toolchain that produced the committed blobs**: `zig 0.16.0` (Homebrew
-bottle, arm64 macOS) and `wasm-opt version 129` (binaryen). Byte-identical
-third-party reproduction is NOT achievable across toolchain versions — a
-different zig (different bundled clang/wasm-ld) or binaryen emits different
-(functionally equivalent) code, so a rebuild verifies provenance by matching
-the *source* pins above, not by matching these sha256s. The digests bind the
-committed bytes; the pins + recipe bind what those bytes were built from.
+Build-time tools (zig, wasm-opt, jq) are **not** a runtime or `go build`
+dependency — the committed blobs are embedded via `go:embed` and consumed
+purely by wazero (pure Go) at runtime. Re-running `build.sh` requires network
+access (to fetch pinned upstream source tarballs) and is run on demand to
+add or refresh a pin, never as part of `task validate`. A different zig or
+binaryen than the lock's `toolchain` emits different (functionally
+equivalent) code; the script warns, and the new digests go into the lock.
 
 ## Runtime behavior note: the pathological-input bound (critic B1)
 

@@ -38,6 +38,11 @@ const (
 	// job, not this parser's); a call through LocalName.member resolves to
 	// a same-named top-level symbol in the target file.
 	ImportWhole
+	// ImportWildcard: every exported name of Module is bound unqualified
+	// (`import a.c.*`, `from x import *`); LocalName is "*". Emitted only by
+	// the generic @import.wildcard capture (LB-F7); ResolveFileEdges'
+	// strategies decide what, if anything, it resolves.
+	ImportWildcard
 )
 
 // ImportSpec is one name ResolveFileEdges can attribute a call site to,
@@ -59,27 +64,25 @@ func (e *TSExtractor) ExtractImports(relPath string, src []byte) ([]ImportSpec, 
 	defer e.mu.Unlock()
 
 	ctx := context.Background()
-	p, q, err := e.parserFor(ctx, variant)
+	l, q, err := e.leaseFor(ctx, variant)
 	if err != nil {
 		return nil, err
 	}
-	tree, err := p.Parse(src)
+	defer l.Release() // a no-op after noteFault's Discard
+	tree, err := l.Parser().Parse(src)
 	if err != nil {
-		e.noteFault(variant)
+		e.noteFault(l)
 		return nil, fmt.Errorf("tsextract[%s] %s: parse: %v: %w", e.spec.name, relPath, err, ErrTSEngineFault)
 	}
 	defer tree.Close()
 
 	matches, err := q.Run(tree)
 	if err != nil {
-		e.noteFault(variant)
+		e.noteFault(l)
 		return nil, fmt.Errorf("tsextract[%s] %s: query: %v: %w", e.spec.name, relPath, err, ErrTSEngineFault)
 	}
 
-	if e.spec.name == "python" {
-		return pythonImports(matches, src), nil
-	}
-	return jsImports(matches, src), nil
+	return importSpecsFromCaptures(matches, src), nil
 }
 
 // capMap flattens one Match's captures into a name->Node lookup — every
@@ -92,13 +95,26 @@ func capMap(m tsengine.Match) map[string]tsengine.Node {
 	return out
 }
 
-// jsImports turns javascript.scm/typescript.scm's "import.*" captures into
-// ImportSpecs. Tree-sitter matches patterns in the query-text order they
-// were written for a given start position, so for one import_statement the
-// specific (default/namespace/named) pattern's match always precedes the
-// generic bare-statement pattern's match — bareSeen below only needs to
-// remember statement byte ranges already claimed, never reorder anything.
-func jsImports(matches []tsengine.Match, src []byte) []ImportSpec {
+// importSpecsFromCaptures turns any dialect's "import.*" captures into
+// ImportSpecs (LB-F7, design §3.7). The generic vocabulary, for any
+// imports.scm:
+//
+//   - @import.stmt: the statement (its line is the spec's line);
+//   - @import.module: the module specifier (a quoted string is unquoted);
+//   - @import.name: one specific imported name -> ImportNamed, bound as
+//     @import.alias when present, else as the name;
+//   - @import.wildcard: every name of the module -> ImportWildcard ("*");
+//   - otherwise the whole module -> ImportWhole, bound as @import.alias when
+//     present, else as the module text.
+//
+// The forms the JavaScript/TypeScript and Python queries already used are
+// kept: import.default/namespace/named/bare_*/require* (JS) and
+// import.from*/rel* (Python). Tree-sitter matches patterns in the
+// query-text order they were written for a given start position, so for one
+// JS import_statement the specific (default/namespace/named) pattern's match
+// always precedes the bare-statement pattern's match — claimed below only
+// needs to remember statement byte ranges already recorded.
+func importSpecsFromCaptures(matches []tsengine.Match, src []byte) []ImportSpec {
 	var specs []ImportSpec
 	claimed := map[[2]uint32]bool{}
 
@@ -175,24 +191,6 @@ func jsImports(matches []tsengine.Match, src []byte) []ImportSpec {
 				Kind:   ImportNamed,
 				Line:   stmt.Line(),
 			})
-		}
-	}
-	return specs
-}
-
-// pythonImports turns python.scm's "import.*" captures into ImportSpecs.
-func pythonImports(matches []tsengine.Match, src []byte) []ImportSpec {
-	var specs []ImportSpec
-	for _, m := range matches {
-		caps := capMap(m)
-		switch {
-		case has(caps, "import.stmt"):
-			mod := caps["import.module"].Text(src)
-			local := mod
-			if alias, ok := caps["import.alias"]; ok {
-				local = alias.Text(src)
-			}
-			specs = append(specs, ImportSpec{LocalName: local, Module: mod, Kind: ImportWhole, Line: caps["import.stmt"].Line()})
 
 		case has(caps, "import.fromstmt"):
 			mod := caps["import.frommodule"].Text(src)
@@ -217,9 +215,48 @@ func pythonImports(matches []tsengine.Match, src []byte) []ImportSpec {
 				LocalName: local, ExportedName: name, Module: mod,
 				Kind: ImportNamed, Line: caps["import.relstmt"].Line(),
 			})
+
+		case has(caps, "import.module"):
+			if spec, ok := genericImportSpec(caps, src); ok {
+				specs = append(specs, spec)
+			}
 		}
 	}
 	return specs
+}
+
+// genericImportSpec is one match of the generic vocabulary (see
+// importSpecsFromCaptures).
+func genericImportSpec(caps map[string]tsengine.Node, src []byte) (ImportSpec, bool) {
+	mod := unquoteJS(caps["import.module"].Text(src))
+	if mod == "" {
+		return ImportSpec{}, false
+	}
+	line := caps["import.module"].Line()
+	if stmt, ok := caps["import.stmt"]; ok {
+		line = stmt.Line()
+	}
+	alias := ""
+	if a, ok := caps["import.alias"]; ok {
+		alias = a.Text(src)
+	}
+	switch {
+	case has(caps, "import.name"):
+		name := caps["import.name"].Text(src)
+		local := name
+		if alias != "" {
+			local = alias
+		}
+		return ImportSpec{LocalName: local, ExportedName: name, Module: mod, Kind: ImportNamed, Line: line}, true
+	case has(caps, "import.wildcard"):
+		return ImportSpec{LocalName: "*", Module: mod, Kind: ImportWildcard, Line: line}, true
+	default:
+		local := mod
+		if alias != "" {
+			local = alias
+		}
+		return ImportSpec{LocalName: local, Module: mod, Kind: ImportWhole, Line: line}, true
+	}
 }
 
 func has(caps map[string]tsengine.Node, name string) bool {
