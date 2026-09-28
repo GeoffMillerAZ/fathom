@@ -26,7 +26,10 @@
   "required_kinds": ["namespace", "class", "interface", "struct", "enum", "method", "property"],
   "oracle_kinds": {
     "ctags": { "namespace": "namespace", "class": "class", "interface": "interface",
-               "struct": "struct", "enum": "enum", "method": "method", "property": "property" }
+               "struct": "struct", "enum": "enum", "method": "method", "property": "property" },
+    "tool":  { "namespace": "namespace", "class": "class", "record": "class", "interface": "interface",
+               "struct": "struct", "recordStruct": "struct", "enum": "enum", "method": "method",
+               "constructor": "method", "conversionOperator": "method", "property": "property" }
   },
   "qualify": { "chain_containers": true, "container_sep": ".", "method_sep": "." },
   "package": { "strategy": "capture" },
