@@ -786,6 +786,53 @@ func TestCmdInit_DaemonDown(t *testing.T) {
 	if !strings.Contains(stdout, "unreachable") {
 		t.Errorf("expected an unreachable-daemon message: %s", stdout)
 	}
+
+	// 2026-09-28 stranger-check incident: a caller that treats "MANUAL:"/
+	// "ok " stdout as routine noise and filters it out must still see WHY
+	// init exited 2 — a plain "error:" line on stderr, naming the reason,
+	// with neither prefix a filter might drop.
+	stderr := errBuf.String()
+	if !strings.Contains(stderr, "error: exiting 2") {
+		t.Errorf("expected a non-MANUAL, non-\"ok \" reason on stderr for exit 2: %s", stderr)
+	}
+	if !strings.Contains(stderr, "unreachable") {
+		t.Errorf("expected stderr to name the reason (unreachable): %s", stderr)
+	}
+}
+
+// TestCmdInit_NotIndexedYet is the other exit-2 path: the daemon is
+// reachable and ingest ran, but the service never reads as indexed (a
+// slow-first-ingest timeout, or ingest itself reporting no symbols). Like
+// TestCmdInit_DaemonDown, exit 2 must still name the reason on stderr —
+// not only in a stdout "MANUAL:" line a caller's filter might drop
+// (2026-09-28 stranger-check incident).
+func TestCmdInit_NotIndexedYet(t *testing.T) {
+	t.Setenv("HOME", t.TempDir()) // CF-8: see TestCmdInit_WiresRepoEndToEnd
+	dir := t.TempDir()
+	svc := strings.ToLower(filepath.Base(dir))
+	// symbolCount 0: ingest "succeeds" but the service never reads as
+	// indexed, exactly like a first ingest that has not finished yet.
+	srv := fakeInitDaemon(t, svc, 0)
+	defer srv.Close()
+
+	var out, errBuf bytes.Buffer
+	code := cmdInit([]string{"--path", dir, "--url", srv.URL, "--bin", testBinPath}, &out, &errBuf)
+	if code != 2 {
+		t.Fatalf("exit = %d, want 2; stdout=%s stderr=%s", code, out.String(), errBuf.String())
+	}
+
+	stdout := out.String()
+	if !strings.Contains(stdout, "MANUAL:") {
+		t.Errorf("expected a MANUAL line explaining the unindexed service: %s", stdout)
+	}
+
+	stderr := errBuf.String()
+	if !strings.Contains(stderr, "error: exiting 2") {
+		t.Errorf("expected a non-MANUAL, non-\"ok \" reason on stderr for exit 2: %s", stderr)
+	}
+	if !strings.Contains(stderr, svc) {
+		t.Errorf("expected stderr to name the service: %s", stderr)
+	}
 }
 
 func TestResolveHooksScope(t *testing.T) {
