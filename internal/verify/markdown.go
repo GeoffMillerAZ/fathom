@@ -22,6 +22,30 @@ var taskLineRe = regexp.MustCompile(`^\s*[-*]\s+\[([ xX~\-])\]\s+(.*\S)\s*$`)
 // naturally either way. Group 1 is the ref/sha itself.
 var baselineLineRe = regexp.MustCompile(`(?i)^\s*Baseline:\s*(\S+)\s*$`)
 
+// proofLineRe matches the plan-level "Proof: <value>" header line
+// (ADR-049, docs/design/spec-interop.md §4), the same shape as
+// baselineLineRe: its own line, case-insensitive on the "Proof:" label,
+// one whitespace-free value. Group 1 is the value as written (e.g.
+// "certified"); parseProofHeader/ParseMarkdownPlan compare it
+// case-insensitively, so casing in the value itself is not normalized
+// here.
+var proofLineRe = regexp.MustCompile(`(?i)^\s*Proof:\s*(\S+)\s*$`)
+
+// parseProofHeader reports the plan-level "Proof: <value>" header's value
+// when line matches that shape exactly (its own line, not inside a
+// checkbox row's annotation block). ok is false otherwise, including for
+// a checkbox row whose title happens to contain "Proof: certified" —
+// taskLineRe's own leading "- [ ]"/"* [x]" shape never matches this
+// regexp, so the two never collide in practice, but callers are expected
+// to try this only on non-checkbox lines, mirroring how ParseMarkdownPlan
+// tries baselineLineRe first.
+func parseProofHeader(line string) (string, bool) {
+	if m := proofLineRe.FindStringSubmatch(line); m != nil {
+		return m[1], true
+	}
+	return "", false
+}
+
 // ParseMarkdownPlan turns a Markdown checklist (the kind people actually write —
 // e.g. tmp/TRACKING.md) into a verify.Plan, so verify_plan / gen-status-cue can
 // run against a real plan file rather than only structured tasks.
@@ -46,6 +70,12 @@ func ParseMarkdownPlan(service string, md []byte) Plan {
 		if plan.Baseline == "" {
 			if bm := baselineLineRe.FindStringSubmatch(line); bm != nil {
 				plan.Baseline = bm[1]
+				continue
+			}
+		}
+		if plan.Proof == "" {
+			if pv, ok := parseProofHeader(line); ok {
+				plan.Proof = pv
 				continue
 			}
 		}

@@ -23,8 +23,9 @@
 // verbs and navigation tools); "companion", the pre-reckoning compatible
 // alias, now SERVES THE SAME SET AS "extended" (POST /rpc/companion), so a
 // client that pinned it keeps its old tool set minus the reckoning's
-// deletions rather than losing tools outright. "modules" is the module
-// host's scoped set. The empty surface is the full registry.
+// deletions rather than losing tools outright. The empty surface is the
+// full registry. ("modules", the module host's scoped set at
+// /rpc/modules, was removed with the module MCP tools by SR-17.)
 //
 // The four group surfaces ("coding", "investigation", "shared", "platform")
 // were DELETED 2026-08-26 (ADR-014 amendment 2, docs/plans/honesty-fixes.md
@@ -49,15 +50,6 @@ const SurfaceCompanion = "companion"
 // amendment): the same allowlist as companion, at POST /rpc/agent — the path
 // the user-scope MCP registration points at.
 const SurfaceAgent = "agent"
-
-// SurfaceModules is the module-host scoped surface (docs/plans/
-// gke-module-host.md GKE-MH-5), served at POST /rpc/modules: the
-// GroupModules floor tool set (list_modules, module_obligations,
-// module_staleness) plus GroupShared, exactly like every other group
-// surface (platform/coding/investigation) — a new scoping boundary, not a
-// new capability contract (the plan's design section's doctrine-4
-// argument).
-const SurfaceModules = "modules"
 
 // SurfaceExtended is the opt-in surface the surface reckoning adds
 // (F-86, design §1.1), served at POST /rpc/extended: the default eight
@@ -93,7 +85,6 @@ var companionTools = func() map[string]bool {
 		"find_symbol":      true,
 		"ingest":           true,
 		"list_services":    true,
-		"memory_search":    true,
 		"obligations":      true,
 		"outline":          true,
 		"pack_context":     true,
@@ -178,41 +169,6 @@ var extendedTools = func() map[string]bool {
 	}
 	return m
 }()
-
-// hostedModulesTools is /rpc/modules' EXPLICIT allowlist while hosted mode
-// is active (Server.hostedModules, set by cmd/fathom's serve-http exactly
-// when --modules-token-env names a configured token — docs/plans/
-// gke-module-host.md GKE-MH-7, critic finding 2). Deliberately NOT
-// "GroupModules ∪ GroupShared" (the non-hosted default every other named
-// surface uses): GroupShared bundles tools bound to the FLEET backend
-// (repo_map, pack_context, staleness_report, find_symbol, …, all keyed by
-// an arbitrary caller-supplied "service" — a modules-token holder pivoting
-// through one of those would read the FLEET's own indexed services, not
-// just the mounted modules) and tools with real side effects (ingest
-// triggers a store write; compile_layer spends against a wired LLM; batch
-// can smuggle any other tool's call). A hosted module host serves ONLY the
-// module-host's own floor tools plus one meta tool. Every other GroupShared
-// tool is deliberately absent here — update this list and surface_test.go
-// together, the same discipline companionTools already documents.
-//
-// "status" (SR-23) replaces the two former entries "capabilities" and
-// "server_stats" it merged — but ONLY for its "tools"/"daemon" sections:
-// its "sources" section takes an arbitrary caller-supplied service and
-// reads THAT service's own file list, exactly the fleet-backend pivot
-// "list_sources" was excluded from this list for before the merge. Listing
-// "status" here does not reopen that hole: registerStatus itself refuses
-// section:"sources" under hosted-modules mode (meta.go), the same "coarse
-// allowlist plus a scope-aware refusal" shape hostedModuleBlocked below
-// uses for GroupModules tools.
-//
-//fathom:tenancy-allow pkg-map read-only lookup table of constants, never written after init: not a cache
-var hostedModulesTools = map[string]bool{
-	"list_modules":       true,
-	"module_obligations": true,
-	"module_query":       true,
-	"module_staleness":   true,
-	"status":             true,
-}
 
 // requestScope is the per-request surface selection carried in context.
 type requestScope struct {
@@ -312,7 +268,7 @@ func (sc requestScope) enforced() bool {
 // bare /rpc endpoint is the full surface.
 func ValidSurface(name string) bool {
 	switch name {
-	case SurfaceCompanion, SurfaceAgent, SurfaceExtended, SurfaceModules:
+	case SurfaceCompanion, SurfaceAgent, SurfaceExtended:
 		return true
 	}
 	return false
@@ -320,77 +276,36 @@ func ValidSurface(name string) bool {
 
 // SurfaceNames returns the valid named surfaces, sorted.
 func SurfaceNames() []string {
-	names := []string{SurfaceCompanion, SurfaceAgent, SurfaceExtended, SurfaceModules}
+	names := []string{SurfaceCompanion, SurfaceAgent, SurfaceExtended}
 	sort.Strings(names)
 	return names
 }
 
 // toolOnSurface reports whether d is visible on the named surface.
 // "" is the full registry; agent is the eight-tool default; companion and
-// extended share one explicit allowlist (see extendedTools); the
-// modules surface serves GroupModules + GroupShared — EXCEPT the modules
-// surface while hosted mode is active, which serves ONLY
-// hostedModulesTools' explicit allowlist (critic finding 2(a): GroupShared
-// carries fleet-backend reads and spend/write tools a modules-token holder
-// must never reach). "" (bare /rpc, the full registry) ALSO hides
-// GroupModules tools while hosted (finding 2(c): "an unauthenticated path
-// to module data must not exist when a token was configured" — bare /rpc
-// carries no auth check at all, so the only way to close that path is to
-// make GroupModules tools invisible there too; hostedModuleBlocked,
-// dispatch.go, additionally refuses to EXECUTE them there even if a caller
-// invokes tools/call directly without consulting tools/list).
+// extended share one explicit allowlist (see extendedTools).
 func (s *Server) toolOnSurface(surface string, d toolDescriptor) bool {
 	switch surface {
 	case "":
-		if s.hostedModules && d.group == GroupModules {
-			return false
-		}
 		return true
 	case SurfaceAgent:
 		return isDefaultSurfaceTool(d.Name)
 	case SurfaceCompanion, SurfaceExtended:
 		return extendedTools[d.Name]
-	case SurfaceModules:
-		if s.hostedModules {
-			return hostedModulesTools[d.Name]
-		}
-		return d.group == GroupShared || d.group == GroupModules
 	default:
-		// Unreachable: ValidSurface admits only the four named surfaces
-		// above. A path that is not one of them 404s in servehttp before
-		// reaching the registry (HF-5 deleted the group surfaces).
+		// Unreachable: ValidSurface admits only the named surfaces above. A
+		// path that is not one of them 404s in servehttp before reaching the
+		// registry (HF-5 deleted the group surfaces; SR-17 the modules one).
 		return false
 	}
 }
 
 // strictFor reports whether off-surface tools/call must be hard-gated
 // (never execute-and-flag) for the given surface: the global
-// strictSurfaces toggle (tests, future multi-tenant shapes), OR the
-// modules surface specifically while hosted mode is active — "strict
-// surfaces ON for that path" is a hosted-mode LAUNCH REQUIREMENT (GKE-MH-7,
-// critic finding 2(b)), not a manual opt-in an operator could forget to
-// flip; every other surface's execute-and-flag ergonomics (ADR-014
-// amendment) are unaffected.
-func (s *Server) strictFor(surface string) bool {
-	return s.strictSurfaces || (s.hostedModules && surface == SurfaceModules)
-}
-
-// hostedModuleBlocked reports whether a GroupModules tool call must be
-// refused OUTRIGHT — independent of sc.enforced()/strictSurfaces, and even
-// on bare /rpc, any other named surface, or a batch sub-call — because
-// hosted mode is active and the request did not arrive scoped to
-// SurfaceModules itself. This is the one place in this package where a
-// surface becomes an actual SECURITY boundary rather than ergonomics/
-// measurement (the package doc's own carve-out: "bare /rpc already serves
-// the full, unauthenticated registry" — hostedModuleBlocked is the
-// deliberate exception for a network-reachable deployment, docs/plans/
-// gke-module-host.md's design section, critic finding 2). The HTTP layer's
-// bearer-token middleware (cmd/fathom's modulesAuthMiddleware) already
-// gates ENTRY to /rpc/modules; this gates every OTHER path from ever
-// reaching a module tool once hosted mode is on, so "no unauthenticated
-// path to module data" has no other door.
-func (s *Server) hostedModuleBlocked(sc requestScope, d toolDescriptor) bool {
-	return s.hostedModules && d.group == GroupModules && sc.surface != SurfaceModules
+// strictSurfaces toggle (tests, future multi-tenant shapes). Every
+// surface's execute-and-flag ergonomics (ADR-014 amendment) otherwise hold.
+func (s *Server) strictFor(string) bool {
+	return s.strictSurfaces
 }
 
 // effectiveSurface resolves the surface for a request: HTTP requests use the

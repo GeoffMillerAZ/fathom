@@ -27,12 +27,9 @@ hooks, gates, CLAUDE.md/AGENTS.md — lives in [coding-agents.md](coding-agents.
 | `symbol_context` | MCP tool | Definition + direct callers + direct callees + related tests for one symbol |
 | `read_source` | MCP tool | Bounded, line-numbered raw-text read from the indexed corpus (200 lines / 8000 bytes per call by default, `max_bytes` up to 16000; the bytes are the `lines` array as sent, envelope and escaping included) — the agent surface's `sed -n`; refuses ignored or suppressed paths by name |
 | `references` | MCP tool | Occurrence search for an identifier or string (your service by default, `services: ["*"]` for the fleet), evidence-tiered — the structured alternative to grepping repo by repo |
-| `memory_search` | MCP tool | Anchored memories for a service, filtered by `query` and/or `file`; every entry carries `tier` and `state` (**experimental** — new, unmeasured) |
 | `entrypoints` | MCP tool | Likely program entry points: `main` functions, HTTP handlers, CLI root commands |
 | `search` (`kind: docs`) | MCP tool | Ranked full-text search over the indexed doc corpus (ADRs, `docs/intent/`, `docs/plans/`, design, vision) — BM25 fused with concern ranking (KR-4/KR-5, `docs/design/knowledge-retrieval.md`); requires `service` |
-| `batch` | MCP tool | Execute N tool calls in a single request |
 | `fathom prime` | CLI | Pull-tier session primer for harnesses without a SessionStart hook (Codex): prints the index/wiring status and the fathom-first discipline. Not yet listed by `fathom help` — `fathom prime -h` (`-dir`, `-url`) |
-| `fathom memory add\|list\|review\|show` | CLI | Anchored memory: a memory with no anchor (symbol/file/commit/claim/path) is refused; anchor drift marks it `suspect`/`orphaned` |
 | `gen-claude-md` | CLI | Generate a `CLAUDE.md` from stored symbols for static context injection |
 
 ---
@@ -60,9 +57,9 @@ Scenario: an agent is about to modify token validation in `auth-service` and nee
 profile switch: stdio `serve-mcp` always serves the full registry, and the
 shared HTTP daemon scopes by path — register against `POST /rpc/agent`
 (the curated coding hot loop; `/rpc/companion` is an identical
-alias) or `POST /rpc` for everything. Every tool below except
-`batch` is on the agent surface; the rest still execute
-there, flagged `off_surface` in the call log rather than refused.
+alias) or `POST /rpc` for everything. Every tool below is on the agent
+surface; a tool that is not still executes there, flagged `off_surface`
+in the call log rather than refused.
 
 **2. Query concern-scoped symbols** to find everything relevant to token validation:
 
@@ -100,19 +97,10 @@ pack_context {
 
 Returns `{ "included": [...], "tokens": 2847, "dropped": 4, "budget": 3000 }`. The four lowest-scoring symbols were dropped to stay within budget.
 
-**5. (Optional) Batch orientation calls** to save round-trips at session start:
-
-```json
-batch {
-  "calls": [
-    { "name": "entrypoints",    "arguments": { "service": "auth-service" } },
-    { "name": "repo_map",       "arguments": { "service": "auth-service", "budget": 2000 } },
-    { "name": "outline",        "arguments": { "service": "auth-service", "file": "internal/auth/token.go" } }
-  ]
-}
-```
-
-Returns all three results in one response. Use `batch` when the calls are independent and you want to minimise latency.
+(`batch` — running independent orientation calls, such as `entrypoints`,
+`repo_map` and `outline`, in one request to save round-trips — was
+unregistered by SR-19, surface reckoning F-77: 0 lifetime calls. Issue
+each call separately.)
 
 ---
 
@@ -122,7 +110,7 @@ Returns all three results in one response. Use `batch` when the calls are indepe
 
 **Raw text without leaving the surface**: `read_source { "service", "file", "start_line", "end_line" }` returns numbered lines from the *indexed* corpus — cite them as `file:line`. It reads what ingest walks: a `.fathomignore`'d or `fathom scope`-suppressed path is refused by name, with the unsuppress command in the refusal.
 
-**Memories beside obligations** (**experimental**, AM-6/AM-8): once a repo has `.fathom/memories.jsonl`, the edit-hook payload gains a `🧠 fathom memory — <file>:` block after the obligation lines, listing memories anchored to the edited file with `[tier, state]`, inside the same 150-token budget (displaced count named). `memory_search { "service", "query"?, "file"?, "limit"? }` is the pull path; retired memories never surface. File one with `fathom memory add --claim … --anchor symbol:Foo --evidence machine-check:…` — no anchor, no memory (put preferences in CLAUDE.md instead).
+**Anchored memory is gone** (SR-13, surface reckoning F-45, ADR-053): the `memory_search` tool, the `fathom memory` verbs and the edit hook's memory block were removed — 0 memories in any repository; continuity threads (`fathom thread note`) carry the hand-off, and preferences belong in CLAUDE.md.
 
 **Concern is required**: `query_symbols` and `pack_context` both require a `concern` argument. This is enforced at the API level — calls without it are rejected. The concern should describe the functional area being changed (e.g. `"auth token validation"`, `"payment retry logic"`), not a file name or symbol name.
 
@@ -161,4 +149,4 @@ Returns `{service, file, rules?, compiled_at_watermark?, index_stale?}`. An empt
 
 ## Maintained
 
-This doc covers: `query_symbols`, `find_symbol`, `outline`, `repo_map`, `pack_context`, `symbol_context`, `read_source`, `references`, `memory_search`, `entrypoints`, `search` (`kind: docs`), `batch`, `staleness_report`, `gen-claude-md`, `obligations`, `edit-hook` (incl. the memory block), `fathom memory` (`add`/`list`/`review`/`show`), `fathom prime` (listed by `fathom help`; `fathom prime -h`), the `budgets` block in `capabilities.cue`, and the `/rpc/agent` surface facts. Update it when these change.
+This doc covers: `query_symbols`, `find_symbol`, `outline`, `repo_map`, `pack_context`, `symbol_context`, `read_source`, `references`, `entrypoints`, `search` (`kind: docs`), `staleness_report`, `gen-claude-md`, `obligations`, `edit-hook`, `fathom prime` (listed by `fathom help`; `fathom prime -h`), the `budgets` block in `capabilities.cue`, and the `/rpc/agent` surface facts. Update it when these change.

@@ -393,61 +393,6 @@ func TestListServices_OmitsTypedEdgesWhenUnknown(t *testing.T) {
 	}
 }
 
-// ─── fleet_drift ──────────────────────────────────────────────────────────────
-
-func TestFleetDrift_DetectsDrift(t *testing.T) {
-	srv := newFleetServer(fleetFixture())
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 1020, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "fleet_drift",
-			"arguments": map[string]any{},
-		},
-	})
-	p := platformToolPayload(t, resp)
-	drift, ok := p["drift"].([]any)
-	if !ok {
-		t.Fatalf("fleet_drift.drift missing: %v", p)
-	}
-	// "Login" appears in both services with different kinds, so at least one drift item.
-	if len(drift) == 0 {
-		t.Error("fleet_drift: expected at least one drift item (Login has conflicting kinds)")
-	}
-	// Each item must have key, service, value, majority.
-	for _, raw := range drift {
-		item := raw.(map[string]any)
-		for _, field := range []string{"key", "service", "value", "majority"} {
-			if item[field] == nil {
-				t.Errorf("drift item missing field %q: %v", field, item)
-			}
-		}
-	}
-}
-
-func TestFleetDrift_NoDrift(t *testing.T) {
-	// Fleet where no symbol appears in more than one service — no drift possible.
-	fleet := &fakeFleet{
-		svcs: map[string][]core.SymbolNode{
-			"a": {{Service: "a", Name: "Foo", Kind: core.KindGoFunc}},
-			"b": {{Service: "b", Name: "Bar", Kind: core.KindGoFunc}},
-		},
-		obs: map[string][]core.Observation{},
-	}
-	srv := newFleetServer(fleet)
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 1021, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "fleet_drift",
-			"arguments": map[string]any{},
-		},
-	})
-	p := platformToolPayload(t, resp)
-	drift, _ := p["drift"].([]any)
-	if len(drift) != 0 {
-		t.Errorf("expected no drift when symbols don't overlap; got %v", drift)
-	}
-}
-
 // ─── cross_repo_callers / platform_callers ────────────────────────────────────
 
 func TestCrossRepoCallers_FindsCallers(t *testing.T) {
@@ -645,7 +590,7 @@ func TestPlatformProfile_ShowsFleetTools(t *testing.T) {
 	// HF-5 deleted the /rpc/platform surface (ADR-014 amendment 2). The
 	// GroupPlatform taxonomy still classifies these tools; that is the
 	// contract this test defends.
-	for _, name := range []string{"fleet_drift", "cross_repo_callers"} {
+	for _, name := range []string{"cross_repo_callers"} {
 		if got := srv.GroupOfForTest(name); got != mcp.GroupPlatform {
 			t.Errorf("tool %q registered in group %q, want %q", name, got, mcp.GroupPlatform)
 		}

@@ -55,6 +55,24 @@ func cmdClaim(args []string, stdout, stderr io.Writer) int {
 	}
 }
 
+// claimHumanCLIIdentity is the identity recorded for a corroborate/refute
+// verdict when no harness session is exported — a human running the CLI
+// directly, outside any wired hook. Never "": applyLearning's promotion
+// count needs a distinct, non-empty identity to attribute an event to.
+const claimHumanCLIIdentity = "human:cli"
+
+// claimVerdictIdentity resolves a corroborate/refute verdict's identity
+// (GL-13/GL-14 owner decision, docs/design/governance-learning.md §6): the
+// harness session id (currentSessionID, cmd/fathom/rate.go — the same
+// registry-driven resolution `fathom rate` uses) when the hook env carries
+// one, else claimHumanCLIIdentity.
+func claimVerdictIdentity() string {
+	if sid := currentSessionID(); sid != "" {
+		return sid
+	}
+	return claimHumanCLIIdentity
+}
+
 func printClaimUsage(w io.Writer) {
 	fmt.Fprintln(w, "Usage:")
 	fmt.Fprintln(w, "  fathom claim add          --store DB --service S --scope GLOB [--scope GLOB ...] --rule \"...\" [--remedy \"...\"] [--cite path#Lstart-Lend] [--json]")
@@ -147,12 +165,19 @@ func cmdClaimVerdict(args []string, stdout, stderr io.Writer, verdict string, ne
 		return 0
 	}
 
+	// GL-13/GL-14 owner decision (docs/design/governance-learning.md §6):
+	// a corroborate/refute verdict's identity is the harness session id
+	// when the hook env carries one, else the literal "human:cli" — never
+	// "" (applyLearning's distinct-session promotion count could never
+	// attribute an unidentified event to anyone).
+	identity := claimVerdictIdentity()
 	ev := core.ClaimEvent{
-		ClaimID: *claimID,
-		Verdict: verdict,
-		Author:  *author,
-		Note:    *note,
-		At:      time.Now().UTC(),
+		ClaimID:    *claimID,
+		Verdict:    verdict,
+		Author:     *author,
+		Note:       *note,
+		At:         time.Now().UTC(),
+		AssertedBy: core.AssertedBy("claim-add", identity),
 	}
 	if err := st.AppendClaimEvent(ctx, ev); err != nil {
 		fmt.Fprintf(stderr, "error: append claim event: %v\n", err)
@@ -165,7 +190,7 @@ func cmdClaimVerdict(args []string, stdout, stderr io.Writer, verdict string, ne
 	// already exactly "refuted" or "corroborated" (this function's two
 	// callers pass those literals), matching ruleOutcomeRefuted/
 	// ruleOutcomeCorroborated by value.
-	recordRuleOutcome(*claimID, verdict, "", "")
+	recordRuleOutcome(*claimID, verdict, identity, "")
 
 	if newStatus != "" {
 		if err := st.SetClaimStatus(ctx, *service, *claimID, newStatus); err != nil {

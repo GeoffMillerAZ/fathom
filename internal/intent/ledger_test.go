@@ -159,3 +159,46 @@ func TestDebtDeltaNeedsAnOlderRow(t *testing.T) {
 		t.Errorf("NewestDebt = %+v", newest)
 	}
 }
+
+// TestLearningLedgerRecordedAndDeduped is GL-14 (docs/plans/
+// governance-learning.md, design doc §6): a learning transition lands in
+// the SAME intent ledger the debt half already uses (KindLearning, not a
+// new file), LearningRecorded is the dedup a caller checks before
+// appending (a claim can only ever promote once and retire once, but a
+// caller that recomputed the same decision must not fill the ledger with
+// repeats), and RecentLearning returns rows within a window, newest first.
+func TestLearningLedgerRecordedAndDeduped(t *testing.T) {
+	t.Setenv("FATHOM_INTENT_LEDGER", filepath.Join(t.TempDir(), "l.jsonl"))
+	now := time.Now().UTC()
+
+	if intent.LearningRecorded(intent.ReadLedger(), "/r", "cl-1", "active") {
+		t.Fatal("nothing recorded yet")
+	}
+	if err := intent.AppendLedger(intent.LedgerRow{
+		Kind: intent.KindLearning, RepoRoot: "/r", ID: "cl-1", Verdict: "active",
+		Evidence: "3 corroborations from 2 distinct sessions, 0 refutes over 30d",
+		At:       now.Add(-1 * time.Hour).Format(time.RFC3339),
+	}); err != nil {
+		t.Fatalf("AppendLedger: %v", err)
+	}
+	if !intent.LearningRecorded(intent.ReadLedger(), "/r", "cl-1", "active") {
+		t.Error("LearningRecorded must find the row just written")
+	}
+	if intent.LearningRecorded(intent.ReadLedger(), "/r", "cl-1", "retired") {
+		t.Error("a DIFFERENT verdict for the same claim must not read as already recorded")
+	}
+	if intent.LearningRecorded(intent.ReadLedger(), "/other-repo", "cl-1", "active") {
+		t.Error("a different repo root must not read as already recorded")
+	}
+
+	_ = intent.AppendLedger(intent.LedgerRow{
+		Kind: intent.KindLearning, RepoRoot: "/r", ID: "cl-2", Verdict: "retired",
+		Evidence: "4 refutes > 1 corroboration",
+		At:       now.Add(-30 * 24 * time.Hour).Format(time.RFC3339), // outside a 14-day window
+	})
+
+	recent := intent.RecentLearning(intent.ReadLedger(), "/r", now.Add(-14*24*time.Hour))
+	if len(recent) != 1 || recent[0].ID != "cl-1" {
+		t.Fatalf("RecentLearning = %+v, want only cl-1 (cl-2 is outside the window)", recent)
+	}
+}

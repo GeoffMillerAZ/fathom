@@ -22,8 +22,8 @@ import (
 //fathom:tenancy-allow pkg-map read-only lookup table of constants, never written after init: not a cache
 var toolCostClasses = map[string]tenancy.Class{
 	// point: one row, one capped file, or the process's own counters.
-	"read_source": tenancy.ClassPoint, "memory_search": tenancy.ClassPoint, "history": tenancy.ClassPoint,
-	"list_modules": tenancy.ClassPoint,
+	// history (SR-12) was unregistered: 0 lifetime calls.
+	"read_source": tenancy.ClassPoint,
 	// batch holds no ticket of its own: each sub-call is admitted in its
 	// own class (admitBatchCall).
 	"batch": tenancy.ClassPoint,
@@ -32,12 +32,13 @@ var toolCostClasses = map[string]tenancy.Class{
 	"find_symbol": tenancy.ClassIndex, "find_callers": tenancy.ClassIndex,
 	"query_symbols": tenancy.ClassIndex, "pack_context": tenancy.ClassIndex, "repo_map": tenancy.ClassIndex,
 	"verify_plan": tenancy.ClassIndex, "test_impact": tenancy.ClassIndex,
-	"reachable": tenancy.ClassIndex, "dead_code": tenancy.ClassIndex, "community": tenancy.ClassIndex,
+	// reachable (SR-12) was unregistered: 0 lifetime calls; verify's
+	// reachable_from concept never called this tool.
+	"dead_code": tenancy.ClassIndex, "community": tenancy.ClassIndex,
 	"localize": tenancy.ClassIndex, "outline": tenancy.ClassIndex,
 	"complexity": tenancy.ClassIndex, "god_object": tenancy.ClassIndex,
 	"evidence_summary":   tenancy.ClassIndex,
 	"contradiction_scan": tenancy.ClassIndex, "findings_near": tenancy.ClassIndex,
-	"module_obligations": tenancy.ClassIndex, "module_query": tenancy.ClassIndex, "module_staleness": tenancy.ClassIndex,
 
 	// tree: a whole-tree read or a whole-service graph build.
 	// staleness_report (SR-28): moved here from "point" — its doc_drift
@@ -61,7 +62,6 @@ var toolCostClasses = map[string]tenancy.Class{
 	"secret_scan": tenancy.ClassTree, "cloc": tenancy.ClassTree,
 	"traceability": tenancy.ClassTree, "status": tenancy.ClassTree,
 	"references": tenancy.ClassTree, "blast_radius": tenancy.ClassTree,
-	"traverse": tenancy.ClassTree, "http_client_calls": tenancy.ClassTree,
 	"shell_out": tenancy.ClassTree, "proto_conformance": tenancy.ClassTree,
 	"staleness_report": tenancy.ClassTree,
 	// stale_docs (SR-28) was unregistered; its own scan runs inside
@@ -74,9 +74,12 @@ var toolCostClasses = map[string]tenancy.Class{
 	// spec_refs (SR-27) was unregistered; its one real consumer (the edit
 	// hook's spec-line RPC) now reads obligations' additive spec_refs
 	// section instead of a second call.
+	// traverse, http_client_calls (SR-12) were unregistered: 0 lifetime
+	// calls each.
 
 	// fleet: every service.
-	"list_services": tenancy.ClassFleet, "fleet_drift": tenancy.ClassFleet,
+	"list_services": tenancy.ClassFleet,
+	// fleet_drift (SR-12) was unregistered: 0 lifetime calls.
 	"cross_repo_callers": tenancy.ClassFleet, "review_diff": tenancy.ClassFleet,
 
 	// ingest: writes the store; one machine-wide.

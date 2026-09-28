@@ -23,8 +23,9 @@ type MemoryStore struct {
 	knowledgeCards map[kcKey]KnowledgeCard
 	docSummaries   map[fpKey]DocSummary
 	serviceMeta    map[string]ServiceMeta
-	commits        map[string][]Commit    // serviceID → commits (newest-first)
-	fileChurn      map[string][]FileChurn // serviceID → file_churn rows (TQ-1), sorted by path
+	commits        map[string][]Commit        // serviceID → commits (newest-first)
+	fileChurn      map[string][]FileChurn     // serviceID → file_churn rows (TQ-1), sorted by path
+	centrality     map[string]centralityEntry // serviceID → symbol_centrality rows (TQ-2)
 	claims         map[claimKey]core.SemanticClaim
 	claimLinks     map[string][]core.ClaimLink // claim_id → links (replace-semantic)
 	claimEvents    []core.ClaimEvent
@@ -91,6 +92,7 @@ func NewMemoryStore() *MemoryStore {
 		serviceMeta:    make(map[string]ServiceMeta),
 		commits:        make(map[string][]Commit),
 		fileChurn:      make(map[string][]FileChurn),
+		centrality:     make(map[string]centralityEntry),
 		claims:         make(map[claimKey]core.SemanticClaim),
 		claimLinks:     make(map[string][]core.ClaimLink),
 		typedEdges:     make(map[typedEdgeKey][]core.Edge),
@@ -381,6 +383,10 @@ func (m *MemoryStore) RemoveService(_ context.Context, serviceID string) (bool, 
 		removed = true
 		delete(m.fileChurn, serviceID)
 	}
+	if _, ok := m.centrality[serviceID]; ok {
+		removed = true
+		delete(m.centrality, serviceID)
+	}
 	keptRuns := m.compileRuns[:0]
 	for _, r := range m.compileRuns {
 		if r.ServiceID == serviceID {
@@ -462,6 +468,10 @@ func (m *MemoryStore) RenameService(_ context.Context, oldID, newID string) erro
 	if fc, ok := m.fileChurn[oldID]; ok {
 		delete(m.fileChurn, oldID)
 		m.fileChurn[newID] = fc
+	}
+	if ce, ok := m.centrality[oldID]; ok {
+		delete(m.centrality, oldID)
+		m.centrality[newID] = ce
 	}
 	for k, c := range m.claims {
 		if k.serviceID == oldID {
@@ -773,6 +783,21 @@ func (m *MemoryStore) PutClaims(_ context.Context, claims []core.SemanticClaim, 
 			}
 			if !existing.ValidFrom.IsZero() {
 				sc.ValidFrom = existing.ValidFrom
+			}
+			// GL-13: lifecycle durability mirrors the ClaimRefuted guard
+			// above — 'retired' is terminal and must survive a recompile
+			// that re-emits the same claim_id with the compiler's default
+			// (unset) lifecycle (see sqlite.go's PutClaims CASE WHEN for
+			// the same rule against the SQLite backend).
+			//
+			// GL-15 (design doc §7): the same recompile must not reopen a
+			// retired claim's validity window either — without this, the
+			// lifecycle guard above keeps Lifecycle=retired but ValidTo
+			// would take the incoming (ordinarily zero) value, an
+			// internally inconsistent "retired but open" row.
+			if existing.Lifecycle == core.LifecycleRetired {
+				sc.Lifecycle = core.LifecycleRetired
+				sc.ValidTo = existing.ValidTo
 			}
 		}
 		m.claims[key] = sc

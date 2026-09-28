@@ -14,10 +14,10 @@ v1.52.0, SQLite 3.53.2; probed 2026-09-27). No embeddings (vision 31 stands).
 - [x] Hash-gated doc ingest: only changed files re-index; deleted files' units removed in the same transaction {id: KR-8, symbol: IngestDocUnits, package: internal/docindex, reachable_from: TestIngestDocUnitsHashGated, needs: "KR-1,KR-3"}
 - [x] BM25 (heading weighted 3:1) fused with concern ranking by reciprocal rank fusion (k = 60), `LIMIT 50`, snippets and receipts (§5) {id: KR-4, symbol: RankDocs, package: internal/docindex, reachable_from: TestRankDocsFusion, needs: "KR-8"}
 - [x] `search` gains `kind: docs` (no new tool, law 4); `docs/mcp-tools.md` and the use-case `## Maintained` line updated in the same change {id: KR-5, symbol: searchDocs, package: internal/mcp, reachable_from: TestSearchDocsKind, needs: "KR-4"}
-- [ ] Doc-to-code links: backticked symbols, paths and contract keys resolved exactly, target hash stored at link time (§6) {id: KR-6, symbol: LinkDocSpans, package: internal/docindex, reachable_from: TestLinkDocSpansExactOnly, needs: "KR-8"}
-- [ ] Doc drift: a changed link target marks the span possibly stale; `staleness_report` gains a `doc_drift` section with the changing commit {id: KR-7, symbol: docDrift, package: internal/docindex, reachable_from: TestStalenessReportDocDrift, needs: "KR-6"}
-- [ ] Per-service byte budget on the FTS index with a named `elided` past it {id: KR-9, symbol: enforceDocBudget, package: internal/docindex, reachable_from: TestDocIndexBudgetNamesElision, needs: "KR-8"}
-- [ ] The doc-question bench slice: at least 30 questions whose answers live in docs, criterion registered before the run {id: KR-10, oracle: lexical, path: docs/bench/scenarios/doc-questions.md, pattern: "^Criterion registered", needs: "KR-5"}
+- [x] Doc-to-code links: backticked symbols, paths and contract keys resolved exactly, target hash stored at link time (§6) {id: KR-6, symbol: LinkDocSpans, package: internal/docindex, reachable_from: TestLinkDocSpansExactOnly, needs: "KR-8"}
+- [x] Doc drift: a changed link target marks the span possibly stale; `staleness_report` gains a `doc_drift` section with the changing commit {id: KR-7, symbol: docDrift, package: internal/docindex, reachable_from: TestStalenessReportDocDrift, needs: "KR-6"}
+- [x] Per-service byte budget on the FTS index with a named `elided` past it {id: KR-9, symbol: enforceDocBudget, package: internal/docindex, reachable_from: TestDocIndexBudgetNamesElision, needs: "KR-8"}
+- [x] The doc-question bench slice: at least 30 questions whose answers live in docs, criterion registered before the run {id: KR-10, oracle: lexical, path: docs/bench/scenarios/doc-questions.md, pattern: "^Criterion registered", needs: "KR-5"}
 
 ## Wave 4: dependency docs
 

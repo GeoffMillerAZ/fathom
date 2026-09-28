@@ -18,6 +18,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/projectrules"
+	riskreview "github.com/geoffmilleraz/fathom/internal/review"
 	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/pkg/client"
 )
@@ -53,7 +54,8 @@ func runReview(args []string, gitRunner func(args ...string) ([]byte, error), st
 	since := fs.String("since", "", "git ref to diff against (mutually exclusive with --manifest; one of the two is required)")
 	manifestPath := fs.String("manifest", "", "explicit changed-path manifest FILE (JSON [{\"path\":\"…\",\"sha256\":\"…\"}], mutually exclusive with --since); each path's CURRENT sha256 must match or the run refuses with \"manifest mismatch: <path>\" and exit 2 — never a silent re-read")
 	jsonOut := fs.Bool("json", false, "emit JSON (the ReviewResponse envelope) instead of a human-readable summary")
-	format := fs.String("format", "text", "output format: \"text\" (default) or \"github\" (VB-22: one deterministic Markdown PR comment — changed symbols with resolved callers and tier, call-site completeness, governing rules, a verify line for touched plan rows, affected tests/test gap, coverage; overrides --json)")
+	format := fs.String("format", "text", "output format: \"text\" (default) or \"github\" (VB-22: one deterministic Markdown PR comment — changed symbols with resolved callers and tier, call-site completeness, governing rules, a verify line for touched plan rows, affected tests/test gap, coverage; overrides --json); with --receipt, \"sarif\" or \"check\" instead (CX-6)")
+	receipt := fs.Bool("receipt", false, "render ONLY the change risk receipt (CX-1..CX-5, docs/design/change-and-compliance.md §2) through the shared emitter, instead of the full review — requires --format sarif or check (GL-20/GL-21). Fathom never posts, approves or blocks on its own authority from this output (ADR-040, CX-8): the check-run's conclusion is always \"neutral\"; CI decides what a band does.")
 	outPath := fs.String("out", "", "write the review report to this file instead of stdout (VB-23: a GitHub Action step captures --format github's comment body here, then hands the file to the upsert-comment step — docs/adoption/github-action.md); stdout then carries only a short confirmation line")
 	noPersist := fs.Bool("no-persist", false, "report only: never write findings to the claims store (the pre-push summary hook uses this); equivalent to --mode report")
 	mode := fs.String("mode", "", "\"report\" (never writes; --no-persist is an alias) or \"persist\" (default): write findings/idempotency records to the store, pinned by a store-state equality test on report mode including the error path (FL-15)")
@@ -76,7 +78,11 @@ func runReview(args []string, gitRunner func(args ...string) ([]byte, error), st
 		fs.Usage()
 		return 1
 	}
-	if *format != "text" && *format != "github" {
+	switch {
+	case *receipt && *format != "sarif" && *format != "check":
+		fmt.Fprintf(stderr, "error: --receipt requires --format sarif or check, got %q\n", *format)
+		return 1
+	case !*receipt && *format != "text" && *format != "github":
 		fmt.Fprintf(stderr, "error: --format must be \"text\" or \"github\", got %q\n", *format)
 		return 1
 	}
@@ -103,7 +109,7 @@ func runReview(args []string, gitRunner func(args ...string) ([]byte, error), st
 	}
 
 	body := func() int {
-		return runReviewBody(gitRunner, *storePath, *service, *since, *manifestPath, effectiveMode, *idempotencyKey, *expectIndexWatermark, *format, *jsonOut, *callLogFlag, *outPath, coverageProfileFlags, stdout, stderr)
+		return runReviewBody(gitRunner, *storePath, *service, *since, *manifestPath, effectiveMode, *idempotencyKey, *expectIndexWatermark, *format, *jsonOut, *receipt, *callLogFlag, *outPath, coverageProfileFlags, stdout, stderr)
 	}
 	if *budgetSeconds > 0 {
 		// The whole body races the budget. On excess the process prints a
@@ -132,7 +138,7 @@ func runReview(args []string, gitRunner func(args ...string) ([]byte, error), st
 	return body()
 }
 
-func runReviewBody(gitRunner func(args ...string) ([]byte, error), storePathV, serviceV, sinceV, manifestPathV, modeV, idempotencyKeyV, expectWatermarkV, formatV string, jsonOutV bool, callLogFlagV, outPathV string, coverageProfilesV []string, stdout, stderr io.Writer) int {
+func runReviewBody(gitRunner func(args ...string) ([]byte, error), storePathV, serviceV, sinceV, manifestPathV, modeV, idempotencyKeyV, expectWatermarkV, formatV string, jsonOutV, receiptV bool, callLogFlagV, outPathV string, coverageProfilesV []string, stdout, stderr io.Writer) int {
 	storePath, service, since, format, jsonOut, callLogFlag := &storePathV, &serviceV, &sinceV, &formatV, &jsonOutV, &callLogFlagV
 
 	// --out (VB-23): redirect the report body (github Markdown, JSON, or the
@@ -417,6 +423,22 @@ func runReviewBody(gitRunner func(args ...string) ([]byte, error), storePathV, s
 		}); rerr != nil {
 			fmt.Fprintf(stderr, "warning: recording idempotency key %q failed: %v\n", idempotencyKeyV, rerr)
 		}
+	}
+
+	// CX-6 (docs/plans/change-and-compliance.md, design doc §2): --receipt
+	// renders ONLY the change risk receipt, through the shared SARIF/
+	// check-run emitter, instead of the full review below — runReview's own
+	// flag validation already refused any --format but sarif/check when
+	// receiptV is true.
+	if receiptV {
+		table := riskreview.DefaultRiskTable()
+		if corpusRoot != "" {
+			if t, terr := riskreview.LoadRiskTable(filepath.Join(corpusRoot, ".fathom", "risk.cue")); terr == nil {
+				table = t
+			}
+		}
+		receiptOut := buildCLIRiskReceipt(in, v, table)
+		return finishReview(cmdReviewReceipt(reportW, formatV, receiptOut))
 	}
 
 	// VB-22 (docs/plans/verbs.md; docs/vision/29-verbs-not-lookups.md §3

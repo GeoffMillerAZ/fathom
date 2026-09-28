@@ -228,14 +228,10 @@ unset FATHOM_METRICS   # or: export FATHOM_METRICS=basic
 surface, never LLM spend. Turn it off once the tuning window is over; there
 is no reason to run `full` continuously today.
 
-**`/statusz`'s hosted-mode gating.** If you run `serve-http
---modules-token-env <VAR>` (a network-reachable, hosted deployment —
-`docs/plans/gke-module-host.md`), `GET /statusz` sits **inside** the same
-bearer-token allowlist that already gates `/rpc/modules` — it is not a
-separate, unauthenticated leak of index/service detail. On the default
-loopback-only daemon (no `--modules-token-env` configured), `/statusz`
-stays fully open, exactly like every other route (`/healthz`, `/metrics`,
-`/events`).
+**`/statusz` is loopback-only.** Hosted-modules mode (`--modules-token-env`) and
+the bearer gate that covered `/statusz` in it were removed by SR-17 (surface
+reckoning F-68); like every route (`/healthz`, `/metrics`, `/events`), `/statusz`
+answers only a loopback `Host`.
 
 ---
 

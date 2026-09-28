@@ -377,6 +377,13 @@ package config
 	connector?: #Connector
 	tenancy?:   #Tenancy
 	console?:   #Console
+
+	// zones (WI-1, docs/design/work-intelligence.md §2) names coarser
+	// work-intelligence zones by repo-relative path globs (internal/
+	// pathglob syntax, ** included): zone name to a non-empty glob list.
+	// Unset, a zone is a Go package's directory or, for other languages,
+	// the deepest directory holding indexed symbols.
+	zones?: [string]: [...string] & [_, ...]
 }
 
 // #Console bounds the Observatory console's own work (RT-118,

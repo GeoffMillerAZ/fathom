@@ -46,7 +46,7 @@ not fathom, gets the interactive screens — see
 | `fathom metrics series <metric>` | CLI | A time series for one named metric (see the list below), `--bucket day` (rollups plus today's live tail) or `--bucket hour` (computed entirely from live raw logs — no persisted hourly rollup exists). |
 | `fathom metrics rollup` | CLI | Builds one date's daily rollup file at `workspace/artifacts/metrics/daily/YYYY-MM-DD.json` — deterministic, overwrites idempotently for the same date, never deletes another date's file. |
 | `fathom metrics rotate` | CLI | The call log's retention verb: dry-run by default (reports what would move); `--apply` archives lines older than `--keep-days` to a dated sibling file — **never deletes**, per the design's "never delete raw data implicitly" rule. |
-| `GET /statusz` | HTTP | Daemon health, per-service index freshness, channel liveness, last compile per layer. JSON via `Accept: application/json` or `?format=json`; HTML otherwise. Loopback-only; gated inside the `/rpc/modules` bearer-token allowlist when `--modules-token-env` is configured. |
+| `GET /statusz` | HTTP | Daemon health, per-service index freshness, channel liveness, last compile per layer. JSON via `Accept: application/json` or `?format=json`; HTML otherwise. Loopback-only. |
 | `GET /observatory…` | HTTP | The daemon's observatory pages: `/observatory` (fleet), `/observatory/service?id=` (one service), `/observatory/wiring/` (preview/apply/undo of repo wiring), `/observatory/impact`, `/observatory/story`, `/observatory/brief` — loopback-only; see "Observatory series" below (**experimental**) |
 
 Every verb accepts `--since DURATION` (default 7 days) or `--from`/`--to`

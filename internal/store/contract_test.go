@@ -1446,6 +1446,91 @@ func storeContract(t *testing.T, s Store) {
 	})
 
 	// ------------------------------------------------------------------ //
+	// claims_lifecycle (GL-13, docs/plans/governance-learning.md, design
+	// doc §6): Lifecycle round-trips through PutClaims/ClaimsForService, a
+	// legacy row (Lifecycle=="") reads back unchanged rather than being
+	// coerced to a named state, and 'retired' survives a recompile exactly
+	// like 'refuted' status does above (the same durability class, a
+	// second axis).
+	// ------------------------------------------------------------------ //
+	t.Run("claims_lifecycle", func(t *testing.T) {
+		svc := "svc-claim-lifecycle"
+		base := core.SemanticClaim{
+			ServiceID: svc, Layer: "obligations", Kind: "obligation",
+			Subject: "CLAUDE.md#rule", Rule: "Use task validate before pushing.",
+			Scope: []string{"**"}, Tier: core.TierDocClaimed, TierProfile: "engineering",
+			Status: core.ClaimFresh, CompiledAt: time.Unix(1, 0).UTC(),
+		}
+
+		candidate := base
+		candidate.ClaimID = "cl-lifecycle-candidate"
+		candidate.Lifecycle = core.LifecycleCandidate
+		legacy := base
+		legacy.ClaimID = "cl-lifecycle-legacy"
+		// Lifecycle left "" — a claim written before this field existed.
+		retiring := base
+		retiring.ClaimID = "cl-lifecycle-retiring"
+		retiring.Lifecycle = core.LifecycleActive
+
+		if err := s.PutClaims(ctx, []core.SemanticClaim{candidate, legacy, retiring}, nil); err != nil {
+			t.Fatalf("PutClaims initial: %v", err)
+		}
+		got, err := s.ClaimsForService(ctx, svc, "")
+		if err != nil {
+			t.Fatalf("ClaimsForService: %v", err)
+		}
+		byID := make(map[string]core.SemanticClaim, len(got))
+		for _, c := range got {
+			byID[c.ClaimID] = c
+		}
+		if c, ok := byID[candidate.ClaimID]; !ok || c.Lifecycle != core.LifecycleCandidate {
+			t.Errorf("candidate lifecycle = %+v, want %q", c, core.LifecycleCandidate)
+		}
+		if c, ok := byID[legacy.ClaimID]; !ok || c.Lifecycle != "" {
+			t.Errorf("legacy lifecycle = %+v, want \"\" (not coerced)", c)
+		} else if c.Lifecycle.EffectiveLifecycle() != core.LifecycleActive {
+			t.Errorf("legacy EffectiveLifecycle() = %q, want active", c.Lifecycle.EffectiveLifecycle())
+		}
+
+		// applyLearning retires it (GL-13): the claim's own transition.
+		retired := retiring
+		retired.Lifecycle = core.LifecycleRetired
+		retired.ValidTo = time.Unix(2, 0).UTC()
+		if err := s.PutClaims(ctx, []core.SemanticClaim{retired}, nil); err != nil {
+			t.Fatalf("PutClaims retire: %v", err)
+		}
+
+		// A recompile re-emits the SAME claim_id unchanged, with the
+		// compiler's default (unset) lifecycle — this must not resurrect
+		// the retired claim, mirroring the refute-durability test above.
+		recompiled := retiring
+		recompiled.Lifecycle = ""
+		if err := s.PutClaims(ctx, []core.SemanticClaim{recompiled}, nil); err != nil {
+			t.Fatalf("PutClaims recompile: %v", err)
+		}
+
+		got, err = s.ClaimsForService(ctx, svc, "")
+		if err != nil {
+			t.Fatalf("ClaimsForService after recompile: %v", err)
+		}
+		byID = make(map[string]core.SemanticClaim, len(got))
+		for _, c := range got {
+			byID[c.ClaimID] = c
+		}
+		if c, ok := byID[retiring.ClaimID]; !ok || c.Lifecycle != core.LifecycleRetired {
+			t.Errorf("retired claim lifecycle after recompile = %+v, want %q (durability)", c, core.LifecycleRetired)
+		}
+		// GL-15 (design doc §7): the recompile above passed ValidTo's zero
+		// value (recompiled, like every compiler-emitted claim, never sets
+		// it) — a retired claim's closed window must survive that exactly
+		// like its lifecycle does, one instant above, or the row ends up
+		// internally inconsistent: lifecycle=retired but valid_to reopened.
+		if c, ok := byID[retiring.ClaimID]; !ok || !c.ValidTo.Equal(retired.ValidTo) {
+			t.Errorf("retired claim valid_to after recompile = %+v, want %v (window stays closed)", c, retired.ValidTo)
+		}
+	})
+
+	// ------------------------------------------------------------------ //
 	// external_findings (plan FL-7, vision 30 §3.3 item 4): the findings-loop
 	// importer's per-claim cursor row — upsert by (service_id, claim_id),
 	// round-trips every field, and a service-scoped list is sorted by

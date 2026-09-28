@@ -459,8 +459,8 @@ free of the route's write deadline. A refusal's `X-Fathom-Busy-Scope` is
 reads are admitted as `console-inprocess`. serve-http's HTTP server has a 5 s
 header timeout, 120 s idle timeout, 64 KiB header cap and a 150 s write
 deadline per route (none for `/events`), and every route requires a loopback
-`Host` (and a same-origin `Origin` when sent) unless `--modules-token-env`
-makes it a hosted deployment. The managed daemon answers a test binary
+`Host` (and a same-origin `Origin` when sent); the hosted-modules exception
+(`--modules-token-env`) was removed by SR-17. The managed daemon answers a test binary
 (`X-Fathom-Caller: …;test=1`) 409.
 
 **Quarantine.** A service whose ingest was halted at the exit mark (or was in

@@ -79,10 +79,14 @@ func RegisterSpecDialect(r *Registry, d SpecDialect) error {
 }
 
 // Default is the registry `fathom verify` uses: the native grammar plus
-// every shipped foreign dialect (wave 1: Spec Kit and OpenSpec).
+// every shipped foreign dialect (wave 1: Spec Kit and OpenSpec; wave 4:
+// Kiro, Task Master, GitHub task lists). GitHub task lists never
+// auto-claim a file (ghTaskListDialect.Detect/Claims): it is registered
+// so `--dialect gh-tasklist` resolves, not so ForFile/Detect ever picks
+// it.
 func Default() *Registry {
 	r := NewRegistry()
-	for _, d := range []SpecDialect{Native(), SpecKit(), OpenSpec()} {
+	for _, d := range []SpecDialect{Native(), SpecKit(), OpenSpec(), Kiro(), TaskMaster(), GHTaskList()} {
 		if err := RegisterSpecDialect(r, d); err != nil {
 			panic(err) // a programming error in the static list above
 		}

@@ -189,13 +189,19 @@ func TestEditHookPre_FindingsBlock_RendersAfterRulesAndVerdict(t *testing.T) {
 
 	var gotLayer string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// SR-60: renderPreEdit now also calls blast_radius on the same
+		// URL, which carries no "layer" argument — only the obligations
+		// call's own layer argument is ever captured here.
+		name := rpcRequestName(r)
 		var req struct {
 			Params struct {
 				Arguments map[string]any `json:"arguments"`
 			} `json:"params"`
 		}
 		_ = json.NewDecoder(r.Body).Decode(&req)
-		gotLayer, _ = req.Params.Arguments["layer"].(string)
+		if name == "obligations" {
+			gotLayer, _ = req.Params.Arguments["layer"].(string)
+		}
 		cannedPayload := map[string]any{
 			"service": strings.ToLower(filepath.Base(dir)),
 			"file":    "internal/auth/token.go",

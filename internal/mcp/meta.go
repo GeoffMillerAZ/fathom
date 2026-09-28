@@ -20,6 +20,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/docdrift"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/docindex"
 	"github.com/geoffmilleraz/fathom/internal/extractor"
 	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/gitro"
@@ -142,8 +143,7 @@ func statusDaemonSection(ctx context.Context, s *Server, args json.RawMessage) m
 // statusSourcesSection is status(section:"sources")'s answer — byte-
 // compatible with the retired `list_sources` tool (SR-23, F-11,
 // design §4). A required service, unlike the other two sections: it lists
-// THAT service's own files, the one section carrying a fleet-service pivot
-// risk (hostedModulesTools refuses it under hosted-modules mode).
+// THAT service's own files.
 func statusSourcesSection(ctx context.Context, backend QueryInterface, service string) (map[string]any, *rpcError) {
 	if backend == nil {
 		return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
@@ -200,14 +200,6 @@ func registerStatus(s *Server, backend QueryInterface) {
 		case "daemon":
 			return statusDaemonSection(ctx, s, args), nil
 		case "sources":
-			// SR-23: list_sources' fleet-service pivot risk survives the
-			// merge — a hosted-modules-scoped call refuses it outright even
-			// though "status" itself is on that surface's allowlist, mirroring
-			// list_sources' historical exclusion (surface.go's
-			// hostedModulesTools doc).
-			if s.hostedModules && scopeFrom(ctx).surface == SurfaceModules {
-				return nil, &rpcError{Code: ErrCodeParams, Message: `status: section "sources" is not available under hosted-modules mode`}
-			}
 			return statusSourcesSection(ctx, backend, p.Service)
 		default:
 			return nil, &rpcError{Code: ErrCodeParams, Message: `status: section must be "tools", "daemon", or "sources"`}
@@ -320,6 +312,43 @@ func stalenessDocDrift(ctx context.Context, backend QueryInterface, service stri
 	return result
 }
 
+// docDriftBackend is the optional backend capability KR-7's doc_link_drift
+// needs: docindex.StalenessDocDrift over the service's still-open doc_links
+// (KR-6), the same optional-capability pattern docsSearchBackend (KR-5)
+// already uses. pkg/client implements it; a backend that omits it (a bare
+// fake in a unit test, or any backend not wired to a store) simply gets no
+// doc_link_drift key — never an empty list standing in for "checked, found
+// nothing" (I38), since "checked" is exactly what did not happen.
+type docDriftBackend interface {
+	DocLinkDrift(ctx context.Context, service string) ([]docindex.DriftedDocLink, error)
+}
+
+// renderDocLinkDrift is KR-7's response shape for staleness_report's
+// doc_link_drift key: one object per drifted span, naming where it lives,
+// what it names, what changed, and — when the commit that moved the
+// target is on record — which one and when. §11: never a "wrong" verdict,
+// only what moved.
+func renderDocLinkDrift(drifted []docindex.DriftedDocLink) []any {
+	out := make([]any, len(drifted))
+	for i, d := range drifted {
+		row := map[string]any{
+			"path":         d.Path,
+			"heading":      d.HeadingPath,
+			"target_kind":  d.TargetKind,
+			"target":       d.Target,
+			"line":         d.Line,
+			"linked_hash":  d.LinkedHash,
+			"current_hash": d.CurrentHash,
+		}
+		if d.ChangedCommit != "" {
+			row["changed_commit"] = d.ChangedCommit
+			row["changed_at"] = d.ChangedAt
+		}
+		out[i] = row
+	}
+	return out
+}
+
 // ─── staleness_report ─────────────────────────────────────────────────────────
 
 func registerStalenessReport(s *Server, backend QueryInterface) {
@@ -398,6 +427,22 @@ func registerStalenessReport(s *Server, backend QueryInterface) {
 		}
 		// SR-28 (F-56, design §4): stale_docs' own scan, folded in.
 		resp["doc_drift"] = stalenessDocDrift(ctx, backend, p.Service, nodes)
+		// KR-7 (docs/design/knowledge-retrieval.md §6): doc_links-based
+		// drift, a DIFFERENT and additive signal from doc_drift above --
+		// doc_drift (SR-28) flags a span naming something the index no
+		// longer knows at ALL; doc_link_drift flags a span whose linked
+		// target's content changed (or vanished), attributed to the commit
+		// that moved it when one is on record. Separate keys on purpose:
+		// SR-28's existing shape and callers are untouched. Omitted
+		// entirely (never an empty list standing in for "checked, found
+		// nothing") when the backend has no doc-link-drift capability —
+		// docDriftBackend's own comment explains why that is not the same
+		// as "nothing drifted" (I38).
+		if ddb, ok := backend.(docDriftBackend); ok {
+			if drifted, err := ddb.DocLinkDrift(ctx, p.Service); err == nil {
+				resp["doc_link_drift"] = renderDocLinkDrift(drifted)
+			}
+		}
 		// RT-99 (§7.1): a re-ingest the refresh queue holds is named, so
 		// reingest_recommended is read beside "it is already on its way".
 		if q := s.RefreshQueue(); q != nil {

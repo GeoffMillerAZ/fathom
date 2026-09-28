@@ -562,6 +562,14 @@ func obligationsSummary(obl semantic.Obligations, rootScope bool) string {
 // the obligations handler additionally consults the service's
 // .fathom/modules.cue (docs/design/platform-modules.md §3.3) via
 // internal/modserve.Bind.
+// moduleBackend is what obligations needs from the module host to union in
+// a bound module's rules (modserve.Bind) — satisfied by *modulehost.Host
+// (serve-http --module) or a test fake. The module MCP tools that also read
+// it were removed by SR-17 (surface reckoning F-68).
+type moduleBackend interface {
+	modserve.ModuleFederator
+}
+
 func registerSemanticTools(s *Server, backend QueryInterface, modules moduleBackend) {
 	// obligations: return the compiled rules governing a file at decision time.
 	// Returns empty rules when no rules apply (zero-output-on-clean contract).

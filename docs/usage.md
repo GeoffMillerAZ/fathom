@@ -472,7 +472,7 @@ guidance rather than a bare driver error. The process reads JSON-RPC 2.0 message
 Serve the MCP JSON-RPC protocol over HTTP. Suited for multi-client, platform, and CI use.
 
 ```sh
-fathom serve-http --store <path> [--addr <host:port>] [--managed] [--idle-exit 20m] [--ttl 8h] [--exit-with-parent=true] [--allow-operator-state] [--module <store>]... [--modules-token-env <NAME>]
+fathom serve-http --store <path> [--addr <host:port>] [--managed] [--idle-exit 20m] [--ttl 8h] [--exit-with-parent=true] [--allow-operator-state] [--module <store>]...
 ```
 
 | Flag | Default | Description |
@@ -487,8 +487,7 @@ fathom serve-http --store <path> [--addr <host:port>] [--managed] [--idle-exit 2
 | `--lifecycle-id` | unset | Unmanaged: keep the lifecycle ledger (and so the crash-loop breaker) under `~/.fathom/daemon/<id>/lifecycle.jsonl` across relaunches — the stress harness's (RT-158). Never a managed label, an `addr-*` id or a path (refused, exit 1). Without it an unmanaged daemon keeps a per-process `addr-<port>-<pid>` ledger, removed on a clean exit. A breaker stop under it exits 0 but never writes `disabled.json` |
 | `--allow-operator-state` | `false` | Unmanaged: without it, a `--store` or `--call-log` resolving to the managed daemon's (from its record) is refused and serve-http exits 1 before opening anything |
 | `--call-log` | `<repo>/workspace/logs/mcp-calls.jsonl` (else `~/.fathom/logs/mcp-calls.jsonl`) | JSONL tool-call log, resolved from the daemon working directory's repository (§CLI subcommands); empty disables |
-| `--module` | — | Path to a conforming expert-module store, mounted READ-ONLY on `POST /rpc/modules`; repeatable; a non-conforming store aborts startup |
-| `--modules-token-env` | unset | NAME of an env var holding the bearer token for `POST /rpc/modules` (hosted mode); unset = no auth |
+| `--module` | — | Path to a conforming expert-module store, mounted READ-ONLY so `obligations` unions in bound modules' rules; repeatable; a non-conforming store aborts startup |
 
 **The memory budget (ADR-047, RT-29..RT-36).** Every serve-http samples its
 own `phys_footprint` and its child processes every 2 s and steps a ladder
@@ -559,8 +558,8 @@ cancels its read and a caller already gone is never run (an ingest runs
 detached). `[tenancy].admission` defaults to
 `observe` (every would-refuse logged and counted, nothing refused); `enforce`
 answers HTTP 503 + `Retry-After` + JSON-RPC `-32050`; `off` is the escape
-hatch. Every route requires a loopback `Host` (and a same-origin `Origin`),
-except a hosted `--modules-token-env` deployment; the managed daemon answers a
+hatch. Every route requires a loopback `Host` (and a same-origin `Origin`);
+the managed daemon answers a
 test binary (`X-Fathom-Caller … test=1`) 409. See
 [configuration.md](configuration.md#the-budget-tenancy-user-scope-only).
 
@@ -575,7 +574,7 @@ HTTP endpoints:
 | Method | Path | Description |
 |---|---|---|
 | `POST` | `/rpc` | Single JSON-RPC 2.0 request/response (4 MB body limit) — full tool surface |
-| `POST` | `/rpc/{surface}` | Same protocol scoped to a named surface (`agent`, `companion`, `coding`, `investigation`, `shared`, `platform`, `modules`): filters `tools/list`; an off-surface `tools/call` still **executes** and is logged `off_surface:true` (execute-and-flag, ADR-014 amendment) — the hard gate exists only behind `Server.strictSurfaces` and on hosted `/rpc/modules` |
+| `POST` | `/rpc/{surface}` | Same protocol scoped to a named surface (`agent`, `extended`, `companion`): filters `tools/list`; an off-surface `tools/call` still **executes** and is logged `off_surface:true` (execute-and-flag, ADR-014 amendment) — the hard gate exists only behind `Server.strictSurfaces` |
 | `GET` | `/healthz` | Liveness probe — returns `ok` |
 | `GET` | `/events` | Live freshness (OC-13): SSE with an `id:` per event (`<epoch>-<n>`: the epoch is this daemon process's boot ID, named in the opening `hello` event), a `: keepalive` every 25 s, replay of the last 64 events after `Last-Event-ID` (or `?last_event_id=`) — an id from another epoch (a reconnect across a daemon restart) replays the whole ring, the restart event first — at most 16 subscribers (the 17th gets 503 + `Retry-After`). Kinds: `ingest` (a service's indexed content moved; a hash-gated no-op re-ingest is not one), `compile` (one per new run), `verify` (the verify ledger, polled every 2 s), `session` (the row's repo label mapped to the service whose root it names; a label that is not a name fires only the unscoped `sessions` source), `daemon`. Events carry names and IDs only, never content |
 | `GET` | `/identity?path=DIR[&path=TOPLEVEL]` | Which indexed service a directory is, from the daemon's registry (RT-133; `docs/mcp-tools.md`) — the hooks' identity lookup |
@@ -833,11 +832,8 @@ of kind `no_cycles`/`cross_service_direction`) is refused, naming it. `FATHOM_EN
 `[guards] enforce = false` in `.fathom/config.toml` / `~/.fathom/config.toml`, turns every
 enforced rule in this repo back to advisory.
 
-When `<repo>/.fathom/memories.jsonl` exists, the payload also carries a separate
-`🧠 fathom memory — <file>:` block (AM-6, **experimental**) listing memories anchored to
-the edited file, each `[tier, state]`, ordered tier → specificity → id, inside the same
-150-token whole-payload budget (the displaced count is named); a memory RPC failure emits
-an `edit-hook/error` beat, never a block.
+The anchored-memory block (AM-6) is gone: SR-13 (surface reckoning F-45, ADR-053)
+removed anchored memory — 0 memories in any repository.
 
 ---
 
@@ -938,11 +934,11 @@ fathom verify --service <id> --plan docs/plans/<slug>.md [--plan <more>...] \
 
 | Flag | Default | Description |
 |---|---|---|
-| `--plan` | (required, repeatable) | Plan file(s) to verify: a plan-grammar-v2 Markdown checklist, or a foreign spec read in place (ADR-049) — Spec Kit's `specs/<feature>/tasks.md` (`T###` rows) or OpenSpec's `openspec/changes/<id>/tasks.md` (numbered rows, requirements linked from the change's spec deltas as `accept:`). A foreign task's contract is an inline fathom annotation, else the first file path it names (a lexical "exists and is non-empty" contract); a task naming nothing verifies `no-contract`. The file is never written; verdicts name its own lines (`(<file>:<line>)` in text, `line` in JSON), and daemon mode sends the plan synthesized into the native grammar |
+| `--plan` | (required, repeatable) | Plan file(s) to verify: a plan-grammar-v2 Markdown checklist, or a foreign spec read in place (ADR-049) — Spec Kit's `specs/<feature>/tasks.md` (`T###` rows), OpenSpec's `openspec/changes/<id>/tasks.md` (numbered rows, requirements linked from the change's spec deltas as `accept:`), Kiro's `.kiro/specs/<name>/tasks.md` (numbered rows, `_Requirements: 1.1, 2.3_` links resolved against the spec's `requirements.md` as `accept:`), Task Master's `.taskmaster/tasks/tasks.json` (tasks and subtasks — dotted ids like `1.1` — `status: "done"` as claimed, anchors from `details`/`testStrategy` text rather than the title), or a GitHub issue/PR task list exported to a file (plain checkbox rows, no id scheme — pass `--dialect gh-tasklist`, since unlike the others it carries no path or shape fathom can detect on its own). A foreign task's contract is an inline fathom annotation, else the first file path it names (a lexical "exists and is non-empty" contract); a task naming nothing verifies `no-contract`. The file is never written; verdicts name its own lines (`(<file>:<line>)` in text, `line` in JSON), and daemon mode sends the plan synthesized into the native grammar |
 | `--converge` | `false` | Also print each plan's converge report (ADR-049, `docs/design/spec-interop.md` §5): **claimed-unproven** tasks with their failing criterion, **unanchored** tasks (no contract), and **unclaimed code** — symbols whose definitions overlap a hunk of `git diff -U0 <base>` (working tree included) that no task anchors by `symbol:` or by naming its file. The last section reads the index's symbol ranges for the changed files only and needs `--store`; without it, or outside a git work tree, it says why it was not evaluated. JSON gains a `converge` array. Exit codes stay the gate's |
 | `--base` | the spec's creation commit | `--converge` only: the branch range's base ref |
 | `--write-fixups` | `false` | `--converge` only: write one open task per claimed-unproven and unclaimed item inside the spec's `<!-- fathom:begin converge -->` … `<!-- fathom:end converge -->` block (appended when absent), in the spec's own checkbox shape (`T###` numbered after the spec's own tasks for Spec Kit, a new top-level number for OpenSpec) and carrying a contract; a re-run replaces the block's contents; text outside the markers never changes (law 15), and a lone marker is refused (exit 2) |
-| `--dialect` | detected | Read every `--plan` with this dialect (`fathom-v2`, `speckit`, `openspec`) instead of detecting it by path and content shape; an unknown id is exit 2 |
+| `--dialect` | detected | Read every `--plan` with this dialect (`fathom-v2`, `speckit`, `openspec`, `kiro`, `taskmaster`, `gh-tasklist`) instead of detecting it by path and content shape; an unknown id is exit 2. `gh-tasklist` is never auto-detected (an exported GitHub issue/PR body carries no path or shape fathom can trust) and always needs this flag |
 | `--service` | (required) | Service ID to verify against |
 | `--store` | `""` | store path (direct mode, bypasses the daemon; required for CI) |
 | `--url` | `defaultFathomURL()` | fathom `serve-http` base URL (HTTP mode; ignored when `--store` is set). The daemon's response budget cuts a long plan's `verify_plan` answer; the cut rows are verified in follow-up calls, and a row whose verdict never arrives reads unknown (`verdict-elided`), never absent from the gate |
@@ -1429,7 +1425,7 @@ verdict and drift-flagged rules counted into the reason), `surface_traffic`
 (the custodian — a load error or a violation is the only red), `user_scope_ignore`,
 `user_scope_guard`, `guard_file` / `guard_dead_scopes` / `guard_include_modules_unbound`,
 `binding_file` / `binding_modules_mounted` / `binding_module_readiness` (SKIP names the real
-reason when `list_modules` is not registered: no `--module` store was mounted), `binary_on_path`,
+reason: `list_modules` was removed by SR-17, so a current daemon never advertises it), `binary_on_path`,
 `channels_env`, `ident_cache_env`, `metrics_tier`, `session_ledger_tokens`,
 `cpp_toolchain` (CMake repos: `compile_commands.json` present), and
 `decision_provider` (ADR-042, docs/vision/32-decision-port.md: `[decide] provider =
@@ -2507,6 +2503,29 @@ silently reported as zero rows.
    "max":3,"current":4,"baseline":3,"drift":1,"over_max":true}]}
 ```
 
+`refactor status --migration "<kind> <from> -> <to>" [--store DB] [--services
+a,b,c] [--json]` (CX-13, `docs/design/change-and-compliance.md` §4) is a
+second, separate mode: the FLEET-WIDE migration view for a declaration in
+`ParseMigration`'s own five-kind form (`symbol|import|route|config|pkg`),
+across every service the store knows (or the ones `--services` names).
+Store-direct like `refactor plan`: for each service, one at a time, it
+scans that service's own sources for occurrences of `from` (remaining) and
+`to` (done) — lexically via `internal/analysis/references`, upgraded to
+`typed` in any file `internal/analysis/callgraph` proves has a resolved
+caller of that symbol — and groups the result per repository
+(`review.MigrationSites`, CX-10). A service that cannot be read degrades
+into a named `degraded` entry rather than aborting the whole call. Purely
+read-only: it computes and reports, it never rewrites a site (the Moderne
+non-goal, refused as CX-X4).
+
+```json
+{"schema":"fathom.refactor.status.migration/v1",
+ "migration":{"kind":"symbol","from":"OldFunc","to":"NewFunc"},
+ "repositories":[{"repository":"svc-a",
+   "remaining":[{"file":"caller/user.go","line":5,"tier":"typed"}],
+   "done":[]}]}
+```
+
 ---
 
 ### `receipt` — a stranger's re-derivation (VB-20)
@@ -2938,24 +2957,14 @@ human-authored, sme-stated-capped claim minted directly, no recurrence or
 import batch required; `fathom claim refute --dry-run` previews which
 served rows a refutation would withhold before it is recorded.
 
-### `memory` — anchored memory (**experimental**)
+### `memory` — removed
 
-```sh
-fathom memory add    --store P --service S --claim TEXT --anchor KIND:REF [--anchor …] --evidence KIND:REF [--evidence …] [--tier T] [--confidence N] [--by ACTOR] [--root D] [--json]
-fathom memory list   --store P --service S [--state fresh|suspect|orphaned|retired] [--root D] [--json]
-fathom memory review --store P --service S [--id ID --resolve still-true|no-longer-true|rewrite --by ACTOR [--claim TEXT] [--note TEXT] [--commit C]] [--root D] [--json]
-fathom memory show   --id ID [--root D] [--json]
-```
-
-Memories live in `<root>/.fathom/memories.jsonl`. Anchor kinds, sharpest
-first: `symbol | file | commit | claim | path`; evidence kind sets the tier
-(`machine-check` → verified, `index` → pre-scan, `doc` → doc-claimed,
-`human` → sme-stated, `model` → assumed). A memory with no anchor is
-refused — that is a preference, not a memory about this codebase. Anchor
-drift moves a memory to `suspect` (tier dropped one step) or `orphaned`;
-retired memories never surface. Served by the `memory_search` MCP tool
-(agent surface) and the edit-hook memory block. Design:
-`docs/design/anchored-memory.md`.
+Anchored memory (`fathom memory add|list|review|show`, the `memory_search` MCP tool
+and the edit hook's memory block) was removed by SR-13 (surface reckoning F-45,
+ADR-053): 0 memories in any repository. Continuity threads (`fathom thread note`)
+carry what the next session must know. A `<repo>/.fathom/memories.jsonl` left from
+before is no longer read; `fathom purge` fails naming it so a quoted secret in it
+is never reported purged. Migration: `docs/upgrades/0.9.0-surface-reckoning.md`.
 
 ### `plugin` — one tree, two manifests
 
@@ -3250,10 +3259,9 @@ There is no profile-switching tool (the old `set_profile` was removed; ADR-014
 amendment, 2026-07-16): a stdio session always sees the full registry, and over
 HTTP a surface is selected by path — `POST /rpc/agent` is the curated 19-tool
 coding surface (`internal/mcp/surface.go`; also served at `/rpc/companion` for
-compatibility); bare `POST /rpc` is the full registry (54 tools plus
-`memory_search`). Off-surface calls execute and are logged `off_surface:true`
+compatibility); bare `POST /rpc` is the full registry. Off-surface calls execute and are logged `off_surface:true`
 rather than rejected; the hard gate exists only behind the server's
-`strictSurfaces` option and on hosted `/rpc/modules`.
+`strictSurfaces` option.
 
 See [mcp-tools.md](mcp-tools.md) for all tools, prompts, and resources, and
 [use-cases/coding-agents.md](use-cases/coding-agents.md) for the canonical

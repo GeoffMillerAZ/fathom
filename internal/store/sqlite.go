@@ -301,6 +301,7 @@ CREATE TABLE IF NOT EXISTS semantic_claims (
     valid_to               TEXT   NOT NULL DEFAULT '',
     asserted_by            TEXT   NOT NULL DEFAULT '',
     meta                   TEXT   NOT NULL DEFAULT '',
+    lifecycle              TEXT   NOT NULL DEFAULT '',
     PRIMARY KEY (service_id, claim_id)
 );
 
@@ -435,6 +436,11 @@ CREATE INDEX IF NOT EXISTS idx_observations_service_id
 		return err
 	}
 
+	// symbol_centrality (TQ-2) — same additive-table convention (centrality.go).
+	if err := s.createSymbolCentralitySchema(); err != nil {
+		return err
+	}
+
 	// docs_fts, doc_units, doc_links (KR-1, docs/design/knowledge-retrieval.md
 	// §4) — same additive-table convention (docindex.go). SQLite-only
 	// (docs_fts is an FTS5 virtual table; no MemoryStore equivalent, same as
@@ -530,6 +536,15 @@ CREATE INDEX IF NOT EXISTS idx_observations_service_id
 		{"test_runs", "commit_sha", `ALTER TABLE test_runs ADD COLUMN commit_sha TEXT NOT NULL DEFAULT ''`},
 		{"test_runs", "dirty", `ALTER TABLE test_runs ADD COLUMN dirty INTEGER NOT NULL DEFAULT 0`},
 		{"test_runs", "race", `ALTER TABLE test_runs ADD COLUMN race INTEGER NOT NULL DEFAULT 0`},
+		// GL-13 (docs/plans/governance-learning.md, design doc §6): a
+		// pre-existing store (including the live fleet store) predates the
+		// promotion/retirement lifecycle axis — PutClaims/ClaimsForService/
+		// ClaimsForServe must not fail with "no such column" on it; a
+		// legacy claim simply reads back with Lifecycle=="", which
+		// core.ClaimLifecycle.EffectiveLifecycle treats as already active
+		// (design doc owner decision: "default active"), same
+		// additive-migration bounce every earlier claim column hit.
+		{"semantic_claims", "lifecycle", `ALTER TABLE semantic_claims ADD COLUMN lifecycle TEXT NOT NULL DEFAULT ''`},
 	}
 	existingByTable := map[string]map[string]bool{}
 	for _, m := range migrations {
@@ -833,6 +848,7 @@ var serviceIDTables = []string{
 	"service_refs_state",
 	"file_imports",
 	"file_churn",
+	"symbol_centrality",
 }
 
 // RemoveService deletes every row for serviceID in one transaction — see the
@@ -1372,8 +1388,8 @@ func (s *SQLiteStore) PutClaims(ctx context.Context, claims []core.SemanticClaim
 INSERT INTO semantic_claims
     (service_id, claim_id, layer, layer_version, kind, subject, rule, scope,
      tier, tier_profile, status, model, prompt_version, repro_key, input_digest,
-     compiled_at_watermark, compiled_at, class, valid_from, valid_to, asserted_by, meta)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     compiled_at_watermark, compiled_at, class, valid_from, valid_to, asserted_by, meta, lifecycle)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT (service_id, claim_id) DO UPDATE SET
     layer                 = excluded.layer,
     layer_version         = excluded.layer_version,
@@ -1404,14 +1420,27 @@ ON CONFLICT (service_id, claim_id) DO UPDATE SET
     valid_from            = CASE WHEN semantic_claims.valid_from != '' THEN semantic_claims.valid_from ELSE excluded.valid_from END,
     -- valid_to mirrors status' own refutation-durability CASE above: a
     -- refuted claim's closed validity window survives every future
-    -- upsert exactly like its status does. A NON-refuted row (including
-    -- one this call is resurrecting from superseded back to fresh — see
-    -- status' own doc comment) takes the incoming value, which reopens
-    -- the window (an ordinary caller passes ValidTo's zero value/"" on a
-    -- normal write) exactly when the status resurrection itself does.
-    valid_to              = CASE WHEN semantic_claims.status = 'refuted' THEN semantic_claims.valid_to ELSE excluded.valid_to END,
+    -- upsert exactly like its status does. GL-15 (design doc §7) extends
+    -- the SAME guard to lifecycle='retired' — a retired claim's window
+    -- must survive a later recompile exactly like lifecycle itself does
+    -- (the CASE below), or the row ends up with the terminal lifecycle
+    -- but a reopened (excluded/incoming, ordinarily zero) validity
+    -- window: internally inconsistent and the exact silent-resurrection
+    -- shape retirement is terminal to prevent. A NON-refuted,
+    -- NON-retired row (including one this call is resurrecting from
+    -- superseded back to fresh — see status' own doc comment) takes the
+    -- incoming value, which reopens the window (an ordinary caller
+    -- passes ValidTo's zero value/"" on a normal write) exactly when the
+    -- status resurrection itself does.
+    valid_to              = CASE WHEN semantic_claims.status = 'refuted' OR semantic_claims.lifecycle = 'retired' THEN semantic_claims.valid_to ELSE excluded.valid_to END,
     asserted_by           = excluded.asserted_by,
-    meta                  = excluded.meta
+    meta                  = excluded.meta,
+    -- GL-13: lifecycle mirrors status' own refutation-durability CASE
+    -- above — 'retired' is this axis's terminal state, exactly like
+    -- 'refuted' is status's, and a recompile that re-emits the same
+    -- claim_id with the compiler's default (unset) lifecycle must not
+    -- silently resurrect a retired rule back to active.
+    lifecycle             = CASE WHEN semantic_claims.lifecycle = 'retired' THEN semantic_claims.lifecycle ELSE excluded.lifecycle END
 `)
 		if err != nil {
 			return fmt.Errorf("PutClaims prepare claims: %w", err)
@@ -1436,6 +1465,7 @@ ON CONFLICT (service_id, claim_id) DO UPDATE SET
 				c.Model, c.PromptVersion, c.ReproKey, c.InputDigest,
 				c.CompiledAtWatermark, c.CompiledAt.UnixNano(), string(c.Class),
 				formatClaimTime(c.ValidFrom), formatClaimTime(c.ValidTo), c.AssertedBy, metaText,
+				string(c.Lifecycle),
 			)
 			if err != nil {
 				return fmt.Errorf("PutClaims exec claim: %w", err)
@@ -1485,7 +1515,7 @@ VALUES (?, ?, ?, ?, ?, ?)
 func (s *SQLiteStore) ClaimsForService(ctx context.Context, serviceID, layer string) ([]core.SemanticClaim, error) {
 	const cols = `service_id, claim_id, layer, layer_version, kind, subject, rule, scope,
 	tier, tier_profile, status, model, prompt_version, repro_key, input_digest,
-	compiled_at_watermark, compiled_at, class, valid_from, valid_to, asserted_by, meta`
+	compiled_at_watermark, compiled_at, class, valid_from, valid_to, asserted_by, meta, lifecycle`
 	var (
 		rows *sql.Rows
 		err  error
@@ -1530,7 +1560,7 @@ var scopeReachAnywhereLike = []string{
 func (s *SQLiteStore) ClaimsForServe(ctx context.Context, serviceID string, layers []string, statuses []core.ClaimStatus, scopePrefixes []string) ([]core.SemanticClaim, error) {
 	const cols = `service_id, claim_id, layer, layer_version, kind, subject, rule, scope,
 	tier, tier_profile, status, model, prompt_version, repro_key, input_digest,
-	compiled_at_watermark, compiled_at, class, valid_from, valid_to, asserted_by, meta`
+	compiled_at_watermark, compiled_at, class, valid_from, valid_to, asserted_by, meta, lifecycle`
 
 	where := []string{"service_id = ?"}
 	args := []any{serviceID}
@@ -2153,6 +2183,7 @@ func scanClaims(rows *sql.Rows) ([]core.SemanticClaim, error) {
 			&c.Model, &c.PromptVersion, &c.ReproKey, &c.InputDigest,
 			&c.CompiledAtWatermark, &compiledAt, (*string)(&c.Class),
 			&validFromText, &validToText, &c.AssertedBy, &metaText,
+			(*string)(&c.Lifecycle),
 		); err != nil {
 			return nil, fmt.Errorf("scanClaims scan: %w", err)
 		}

@@ -343,16 +343,16 @@ immutable surface via the path (`internal/mcp/surface.go`). `POST /rpc/{surface}
 `tools/list` only — an off-surface `tools/call` still **executes** and is logged
 `off_surface:true` (execute-and-flag, ADR-014 amendment, 2026-07-16); surfaces are
 ergonomics and measurement, never a security boundary. The pre-amendment hard gate
-survives behind `Server.strictSurfaces` and on the hosted `/rpc/modules` surface only.
+survives behind `Server.strictSurfaces` only (the hosted `/rpc/modules` surface went with SR-17).
 `agent` (`/rpc/agent`; alias `companion`) is the curated 19-tool coding allowlist; the
-group surfaces mirror the groups plus `GroupShared`; the registry is 54 tools plus
-`memory_search` after the 2026-08-23 prune.
+group surfaces mirror the groups plus `GroupShared`; the registry was 54 tools after the 2026-08-23 prune and the surface reckoning
+(ADR-053) has removed more since (`memory_search` by SR-13).
 
 | Surface | Tool group | Purpose |
 |---|---|---|
 | `coding` | `GroupCoding` | Symbol navigation, complexity, call-graph, impact analysis |
 | `investigation` | `GroupInvestigation` | Cross-service, incident, callers/callees, test impact |
-| `shared` | `GroupShared` | Always available: `find_symbol`, `obligations`, `memory_search`, `ingest`, meta tools, security scans |
+| `shared` | `GroupShared` | Always available: `find_symbol`, `obligations`, `ingest`, meta tools, security scans |
 | `platform` | `GroupPlatform` | Fleet-wide: list services, cross-service search, drift, cross-repo callers |
 | `modules` | `GroupModules` | Read-only expert-module host (`serve-http --module`; hosted mode narrows it to an explicit allowlist) |
 
@@ -492,7 +492,6 @@ Each is a small package with one verb and one design doc; none edits the user's 
 | Capability registry — one list of what is on and why anything is off; `capabilities.cue` user/project (law 13) with the `budgets` block (BA-9, experimental) | `internal/capability` | `fathom capabilities`, doctor row, observatory | `docs/design/capability-registry.md`, `docs/design/budgeted-answers.md` |
 | Config custodian — falsifiable concerns over CLAUDE.md/AGENTS.md; six check kinds, one of which (`stanza_tools_served`) asks the daemon and degrades honestly | `internal/custodian` | `fathom config audit`, doctor `concerns`, session-brief line | `docs/design/config-custodian.md` |
 | Continuity threads — the work, not the session; repo-scoped, byte-budgeted brief (bet: experimental, 4/20) | `cmd/fathom/thread.go` (`~/.fathom/threads.jsonl`) | `fathom thread …`, SessionEnd/PreCompact hooks, `fathom prime` | `docs/design/continuity-threads.md` |
-| Anchored memory — claims bound to symbols/files/commits, drift-evaluated at read time; no anchor → refused (experimental) | `internal/memory` | `fathom memory …`, `memory_search` tool, edit-hook memory block | `docs/design/anchored-memory.md` |
 | Wiring + receipts (law 15) — plan → apply → receipt for every file fathom writes in a repo; hand-edited tracked regions blocked, `undo` reverses | `internal/wiring` | `fathom init`, `fleet reconcile --apply`, `fleet receipts|undo`, `/observatory/wiring/` | `docs/design/self-healing-fleet.md` |
 | Scope + purge — reversible suppression disclosed in every envelope; irreversible purge with a byte probe | `internal/scope` | `fathom scope …`, `fathom purge …` | `docs/design/scope-and-purge.md` |
 | Observability + research — call-log/hooks-log metrics, the observatory (30-day series, grade history experimental), the sanitized research bundle | `internal/metrics`, `internal/research`, `cmd/fathom/observatory*.go` | `fathom metrics …`, `/observatory`, `fathom research …` | `docs/design/observability-surfaces.md`, `docs/design/research-flywheel.md` |

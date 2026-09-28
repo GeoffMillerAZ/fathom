@@ -51,7 +51,7 @@ func TestRegistryCarriesNoZeroCallTools(t *testing.T) {
 }
 
 // toolTableSpan is the substring of docs/mcp-tools.md holding the tool
-// reference tables (Shared/Coding/Investigation/Platform/Module host) —
+// reference tables (Shared/Coding/Investigation/Platform) —
 // bounded so prompt and resource table rows (a disjoint namespace from
 // tools/list) never get counted as tool names.
 func toolTableSpan(t *testing.T, doc string) string {
@@ -113,13 +113,8 @@ func TestMcpToolsDocMatchesRegistry(t *testing.T) {
 		t.Fatalf("parsed zero tool names out of docs/mcp-tools.md — parser or doc structure broke")
 	}
 
-	// newModuleTestServer registers a genuine (non-nil) module backend so
-	// GroupModules tools (list_modules, module_obligations, module_query,
-	// module_staleness — documented in the "Module host tools" table) show
-	// up here too; NewServer(nil) never registers them at all (server.go:
-	// registerModuleTools only runs when a --module store was mounted), so
-	// comparing against that would false-flag every module tool as a stale
-	// doc row.
+	// A server with a module backend: the fullest registry shape serve-http
+	// builds (the module tools it once added were removed by SR-17).
 	srv, _ := newModuleTestServer()
 	resp := scopedRoundtrip(t, srv, context.Background(), request{
 		JSONRPC: "2.0", ID: 1, Method: "tools/list", Params: map[string]any{},

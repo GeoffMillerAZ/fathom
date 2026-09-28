@@ -1,7 +1,8 @@
 // Package mcp — analysis tool registrations backed by callgraph.Graph.
 //
-// registerAnalysisTools wires reachable, test_impact, and dead_code into the
-// server's tool registry. rename_impact was unregistered by SR-24 (F-13,
+// registerAnalysisTools wires test_impact into the server's tool registry.
+// reachable was unregistered by SR-12 (F-22) and dead_code by SR-19 (F-77,
+// both surface reckoning). rename_impact was unregistered by SR-24 (F-13,
 // design §4); renameImpactAnswer below is now reached through
 // blast_radius's kind:"rename" (blastRadiusByKind, extra_tools.go).
 //
@@ -21,16 +22,15 @@ import (
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
+	"github.com/geoffmilleraz/fathom/internal/certify"
 	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // registerAnalysisTools is called from registerTools (tools.go) and adds the
-// three surviving analysis tools. backend may be nil; tools that require it
+// one surviving analysis tool. backend may be nil; tools that require it
 // return ErrCodeInternal when backend == nil.
 func registerAnalysisTools(s *Server, backend QueryInterface) {
-	registerReachable(s, backend)
 	registerTestImpact(s, backend)
-	registerDeadCode(s, backend)
 }
 
 // ─── buildGraph is a shared helper ──────────────────────────────────────────
@@ -144,66 +144,12 @@ func renameImpactSummary(symbol string, callers []string) string {
 	return capSummary(summary)
 }
 
-// ─── reachable ────────────────────────────────────────────────────────────────
-
-func registerReachable(s *Server, backend QueryInterface) {
-	s.registerTool(toolDescriptor{
-		Name:        "reachable",
-		Description: "Report whether there is any directed call path from one symbol to another.",
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"service": map[string]any{
-					"type":        "string",
-					"description": "Service / repo identifier",
-				},
-				"from": map[string]any{
-					"type":        "string",
-					"description": "Starting symbol (bare name or fully-qualified SymbolKey)",
-				},
-				"to": map[string]any{
-					"type":        "string",
-					"description": "Target symbol (bare name or fully-qualified SymbolKey)",
-				},
-			},
-			"required": []string{"service", "from", "to"},
-		},
-		group: GroupCoding,
-	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
-		if backend == nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
-		}
-		var p struct {
-			Service string `json:"service"`
-			From    string `json:"from"`
-			To      string `json:"to"`
-		}
-		if err := json.Unmarshal(args, &p); err != nil {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "reachable: invalid args"}
-		}
-		if p.Service == "" {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "reachable: service required"}
-		}
-		if p.From == "" {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "reachable: from required"}
-		}
-		if p.To == "" {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "reachable: to required"}
-		}
-		g, rpcErr := buildGraph(ctx, s, backend, p.Service)
-		if rpcErr != nil {
-			return nil, rpcErr
-		}
-		return map[string]any{"reachable": callgraph.Reachable(g, p.From, p.To)}, nil
-	})
-}
-
 // ─── test_impact ──────────────────────────────────────────────────────────────
 
 func registerTestImpact(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "test_impact",
-		Description: "Every Test* function reaching symbol via the call graph — no text search walks it. Reach for it when you changed a symbol, to see what exercises it. Required: service, symbol.",
+		Description: "Every Test* function reaching symbol via the call graph; rank:\"risk\" instead ranks untested, dangerous symbols, factors cited. Reach for it when you changed a symbol, to see what exercises it. Required: service. symbol too, unless rank is set.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -215,8 +161,17 @@ func registerTestImpact(s *Server, backend QueryInterface) {
 					"type":        "string",
 					"description": "Symbol name (bare or fully-qualified)",
 				},
+				"rank": map[string]any{
+					"type":        "string",
+					"enum":        []string{"risk"},
+					"description": "\"risk\": rank the service's untested, dangerous symbols (each factor cited) instead of one symbol's tests",
+				},
+				"limit": map[string]any{
+					"type":        "integer",
+					"description": "rank:\"risk\" only: rows returned (default 20, max 500)",
+				},
 			},
-			"required": []string{"service", "symbol"},
+			"required": []string{"service"},
 		},
 		group: GroupInvestigation,
 	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
@@ -226,12 +181,21 @@ func registerTestImpact(s *Server, backend QueryInterface) {
 		var p struct {
 			Service string `json:"service"`
 			Symbol  string `json:"symbol"`
+			Rank    string `json:"rank"`
+			Limit   int    `json:"limit"`
 		}
 		if err := json.Unmarshal(args, &p); err != nil {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "test_impact: invalid args"}
 		}
 		if p.Service == "" {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "test_impact: service required"}
+		}
+		switch p.Rank {
+		case "":
+		case "risk":
+			return testImpactRiskRank(ctx, backend, p.Service, p.Limit)
+		default:
+			return nil, &rpcError{Code: ErrCodeParams, Message: fmt.Sprintf("test_impact: unknown rank %q (want \"risk\")", p.Rank)}
 		}
 		if p.Symbol == "" {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "test_impact: symbol required"}
@@ -268,6 +232,47 @@ func registerTestImpact(s *Server, backend QueryInterface) {
 	})
 }
 
+// testImpactRiskRank is test_impact's rank:"risk" answer (TQ-5,
+// docs/plans/test-intelligence.md; design doc §3 T1): the service's
+// risk-weighted coverage list from certify.RiskWeightedCoverage — a sort
+// over factors stored at ingest, never a graph walk (I48) — served
+// through the existing tool rather than a new one. tests stays present
+// and empty, so the payload keeps test_impact's shape. No coverage
+// profile is read on this path: every uncovered_share is 1 and its
+// citation says so.
+func testImpactRiskRank(ctx context.Context, backend QueryInterface, service string, limit int) (any, *rpcError) {
+	sb, ok := backend.(conserveBackend)
+	if !ok {
+		return nil, &rpcError{Code: ErrCodeInternal, Message: "test_impact: rank risk needs a store-backed backend"}
+	}
+	root, _, _, err := backend.ServiceMeta(ctx, service)
+	if err != nil {
+		return nil, &rpcError{Code: ErrCodeInternal, Message: "test_impact: service meta: " + err.Error()}
+	}
+	rep, err := certify.RiskWeightedCoverage(ctx, sb.Store(), service, root, certify.RiskOptions{Limit: limit})
+	if err != nil {
+		return nil, &rpcError{Code: ErrCodeInternal, Message: "test_impact: " + err.Error()}
+	}
+	result := map[string]any{"tests": []any{}, "resolution": resolutionMix{}, "risk": rep}
+	if ic := indexCommitFor(ctx, backend, service); ic != "" {
+		result["index_commit"] = ic
+	}
+	return withSummary(testImpactRiskSummary(rep), result), nil
+}
+
+// testImpactRiskSummary is rank:"risk"'s answer-first sentence: the top
+// symbol and its score, or why the list is empty.
+func testImpactRiskSummary(rep certify.RiskReport) string {
+	if len(rep.Rows) == 0 {
+		if rep.Watermark == "" {
+			return "no risk rank: centrality has not been computed for this service (re-ingest it)"
+		}
+		return "no risk rank: the service has no non-test symbols"
+	}
+	top := rep.Rows[0]
+	return capSummary(fmt.Sprintf("%d of %d symbols ranked by risk; highest: %s (%.3g)", len(rep.Rows), rep.Considered, top.Symbol, top.Risk))
+}
+
 // testImpactSummary renders test_impact's answer-first sentence (wave L1):
 // how many tests reach symbol, and the nearest one — built from tests (the
 // exact list the "tests" field returns) and infos (the same per-test depth
@@ -299,50 +304,9 @@ func testImpactSummary(symbol string, tests []string, infos map[string]depthInfo
 	return capSummary(summary)
 }
 
-// ─── dead_code ────────────────────────────────────────────────────────────────
-
-func registerDeadCode(s *Server, backend QueryInterface) {
-	s.registerTool(toolDescriptor{
-		Name:        "dead_code",
-		Description: "Find symbols that are neither reachable from any entrypoint nor called by anything else in the graph.",
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"service": map[string]any{
-					"type":        "string",
-					"description": "Service / repo identifier",
-				},
-				"entrypoints": map[string]any{
-					"type":        "array",
-					"items":       map[string]any{"type": "string"},
-					"description": "Entrypoint symbol names (bare or fully-qualified SymbolKeys); typically main functions or exported handlers",
-				},
-			},
-			"required": []string{"service"},
-		},
-		group: GroupCoding,
-	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
-		if backend == nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
-		}
-		var p struct {
-			Service     string   `json:"service"`
-			Entrypoints []string `json:"entrypoints"`
-		}
-		if err := json.Unmarshal(args, &p); err != nil {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "dead_code: invalid args"}
-		}
-		if p.Service == "" {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "dead_code: service required"}
-		}
-		g, rpcErr := buildGraph(ctx, s, backend, p.Service)
-		if rpcErr != nil {
-			return nil, rpcErr
-		}
-		dead := callgraph.DeadCode(g, p.Entrypoints)
-		return map[string]any{"dead": stringsToAny(dead)}, nil
-	})
-}
+// dead_code (F-77) was unregistered by SR-19 (surface reckoning): 0
+// lifetime calls; callgraph.DeadCode stays (only its own test calls it
+// now).
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 

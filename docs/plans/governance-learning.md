@@ -29,30 +29,16 @@ of signal exist.
 - [x] The signal source: served, complied, violated and blocked events per rule from the edit and PreToolUse hooks, appended to a rotated JSONL under `~/.fathom/` (16 MiB), never the transcript (§5) {id: GL-10, symbol: recordRuleOutcome, package: cmd/fathom, reachable_from: TestRuleOutcomeEventsRecorded}
 - [x] Rule effectiveness (U4): per-rule counts and rates with n; classes ignored, never triggered, effective, contested; remedies as proposals (§5) {id: GL-11, symbol: RuleEffectiveness, package: internal/semantic, reachable_from: TestRuleEffectivenessClasses, needs: "GL-10"}
 - [x] Published thresholds: `.fathom/learning.cue` schema with valid/invalid testdata, defaults in the binary (§6) {id: GL-12, oracle: lexical, path: schema/learning/schema.cue, pattern: "^#Learning:"}
-- [ ] Promotion and retirement under the thresholds; retirement closes the validity window, never deletes {id: GL-13, symbol: applyLearning, package: internal/semantic, reachable_from: TestLearningPromotesAndRetires, needs: "GL-11,GL-12"}
-  <!-- Left unchecked (attempt 1, worker w-gl-w2): design doc §6's "candidate"/
-       "active"/"retired" is a NEW axis, orthogonal to the existing
-       fresh/stale/contradicted/superseded/refuted ClaimStatus (a compiled
-       claim already serves at "fresh" with no candidate gate today) --
-       adding it correctly means either overloading ClaimStatus.Served()'s
-       existing serving semantics or adding a second status column to
-       SemanticClaim/the store schema, both bigger and riskier than the
-       remaining budget could TDD, wire, and verify honestly. It also needs
-       a session identity for "corroborations from >=2 distinct sessions"
-       that `fathom claim corroborate` does not carry today (no --session
-       flag; GL-10's Session field is always "" from that call site) --
-       a product decision, not a one-line fix. Left for a dedicated attempt
-       with room to extend the domain model and the CLI surface together. -->
-- [ ] Every promotion or retirement announced in the attention line and `fathom intent audit` with its signals; none silent {id: GL-14, symbol: learningAnnouncements, package: cmd/fathom, reachable_from: TestLearningNeverSilent, needs: "GL-13"}
-  <!-- Left unchecked (attempt 1, worker w-gl-w2): needs: GL-13, unimplemented this attempt. -->
+- [x] Promotion and retirement under the thresholds; retirement closes the validity window, never deletes {id: GL-13, symbol: applyLearning, package: internal/semantic, reachable_from: TestLearningPromotesAndRetires, needs: "GL-11,GL-12"}
+- [x] Every promotion or retirement announced in the attention line and `fathom intent audit` with its signals; none silent {id: GL-14, symbol: learningAnnouncements, package: cmd/fathom, reachable_from: TestLearningNeverSilent, needs: "GL-13"}
 
 ## Wave 3: validity windows everywhere, the rule-effectiveness view, layered diffs
 
-- [ ] Every claim-ending path sets `valid_to`; a test proves no claim-ending path deletes (SU-19 activated) (§7) {id: GL-15, symbol: closeClaimValidity, package: internal/semantic, reachable_from: TestNoClaimEndingPathDeletes}
+- [x] Every claim-ending path sets `valid_to`; a test proves no claim-ending path deletes (SU-19 activated) (§7) {id: GL-15, symbol: closeClaimValidity, package: internal/semantic, reachable_from: TestNoClaimEndingPathDeletes}
 - [ ] Memories, rules-file rules, learned-rule states and doc links gain `valid_from`/`valid_to`, additively {id: GL-16, symbol: PutMemoryValidity, package: internal/store, reachable_from: TestValidityWindowsBeyondClaims}
-- [ ] `as_of` on `memory_search`, `staleness_report` and the review verbs, beside `obligations` {id: GL-17, symbol: asOfFilter, package: internal/mcp, reachable_from: TestAsOfAcrossVerbs, needs: "GL-16"}
+- [ ] `as_of` on `staleness_report` and the review verbs, beside `obligations` {id: GL-17, symbol: asOfFilter, package: internal/mcp, reachable_from: TestAsOfAcrossVerbs, needs: "GL-16"}
 - [ ] The rule-effectiveness page on the console (U4) {id: GL-18, symbol: renderRuleEffectiveness, package: cmd/fathom, reachable_from: TestConsoleRuleEffectivenessPage, needs: "GL-11"}
-- [ ] Ignored rules proposed for a hook, never-triggered rules proposed for pruning, each with its evidence {id: GL-19, symbol: ruleRemedies, package: internal/semantic, reachable_from: TestRuleRemediesAreProposals, needs: "GL-11"}
+- [x] Ignored rules proposed for a hook, never-triggered rules proposed for pruning, each with its evidence {id: GL-19, symbol: ruleRemedies, package: internal/semantic, reachable_from: TestRuleRemediesAreProposals, needs: "GL-11"}
 - [x] `review_diff` layers changed files by blast radius (leaf, shared callee, cross-service provider) without a model (§8) {id: GL-22, symbol: layerDiffByBlastRadius, package: internal/mcp, reachable_from: TestReviewDiffLayers}
 
 ## Refused (recorded so they are not re-proposed)

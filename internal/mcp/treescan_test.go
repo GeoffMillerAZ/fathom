@@ -37,24 +37,27 @@ func TestQueryInterfaceHasNoWholeTreeRead(t *testing.T) {
 		t.Fatal("mcp.QueryInterface has no ScanSources")
 	}
 
+	// traceability, secret_scan and cloc (the original three examples)
+	// were unregistered by SR-12/SR-19 (surface reckoning, F-22/F-77);
+	// review_diff (buildReviewInput -> collectSources) is today's
+	// surviving whole-tree-read example, disclosing the same lower bound
+	// under "corpus_partial" instead of "partial".
 	fake := &budgetRecordingBackend{sourcesFakeBackend: sourcesFakeBackend{sources: []core.SourceFile{
 		{Path: "a.go", Content: []byte("// SPEC-1\npackage a\n"), Lang: "go"},
 		{Path: "b.go", Content: []byte("// SPEC-2\npackage b\n"), Lang: "go"},
 	}}}
 	srv := mcp.NewServer(fake)
-	for _, tool := range []string{"traceability", "secret_scan", "cloc"} {
-		fake.budgets = nil
-		got := callTool(t, srv, tool, map[string]any{"service": "svc"})
-		if len(fake.budgets) == 0 {
-			t.Fatalf("%s never scanned", tool)
+	fake.budgets = nil
+	got := callTool(t, srv, "review_diff", map[string]any{"service": "svc", "changed_files": []string{"a.go"}})
+	if len(fake.budgets) == 0 {
+		t.Fatal("review_diff never scanned")
+	}
+	for _, b := range fake.budgets {
+		if b.Bytes <= 0 {
+			t.Fatalf("review_diff scanned with no byte budget: %+v", b)
 		}
-		for _, b := range fake.budgets {
-			if b.Bytes <= 0 {
-				t.Fatalf("%s scanned with no byte budget: %+v", tool, b)
-			}
-		}
-		if p, _ := got["partial"].(string); !strings.Contains(p, "scanned 1/2 files: budget bytes") {
-			t.Fatalf("%s partial = %q, want the named lower bound", tool, got["partial"])
-		}
+	}
+	if p, _ := got["corpus_partial"].(string); !strings.Contains(p, "scanned 1/2 files: budget bytes") {
+		t.Fatalf("review_diff corpus_partial = %q, want the named lower bound", got["corpus_partial"])
 	}
 }

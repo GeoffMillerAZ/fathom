@@ -14,7 +14,6 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/cost"
 	"github.com/geoffmilleraz/fathom/internal/harness"
-	"github.com/geoffmilleraz/fathom/internal/memory"
 	"github.com/geoffmilleraz/fathom/internal/sdd"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
 )
@@ -164,6 +163,24 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 	// decode → payload → encode (HP-5): the payload is harness-free text;
 	// only the envelope around it belongs to the codec.
 	text, meta, ok := renderPostEdit(url, projDir, filePath, sessionID, hook.NewContent)
+	if meta.repoRelFile != "" && !meta.skipRuleVerdict {
+		// SR-48 (F-31): the file resolved against a real service this turn
+		// (whether or not a rule currently governs it) — compare its top
+		// served governing rule against the memo from the file's PRIOR
+		// resolved turn and ask a one-key verdict when the SAME rule is
+		// still being served (askruleverdict.go). Skipped when this call
+		// just consulted a guard stamp: that is the SAME edit's own
+		// --pre/--post pair, not a separate later turn (postEditMeta's own
+		// doc comment on skipRuleVerdict).
+		text, ok = withRuleVerdictAsk(sessionID, meta.service, meta.repoRelFile, meta.topRule, meta.topSrc, text, ok)
+		// SR-61 (F-27/U4): served/complied/violated per claim id, the SAME
+		// top-governing-rule turn-over-turn comparison SR-48 already reads
+		// above, generalized from rule text to the claim's stable id
+		// (ruleoutcome_track.go). Independent of withRuleVerdictAsk's own
+		// memo — this call can never change what the agent sees, only what
+		// the signal log records.
+		trackRuleOutcome(sessionID, meta.service, meta.repoRelFile, meta.topClaimID)
+	}
 	text, ok = withClaimMoment(url, projDir, filePath, sessionID, text, ok) // PC-22: a newly checked [x] on a depth-1 plan verifies now (edithook_claim.go)
 	text, ok = withSkipGainedNote(projDir, filePath, text, ok)              // O56 fix item 3: note a row gaining skip_test, daemon-free (edithook_skipnote.go)
 	if !ok {
@@ -183,14 +200,6 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 	if meta.displaced > 0 {
 		answeredMeta["displaced"] = strconv.Itoa(meta.displaced)
 	}
-	// AM-6: memory surfacing is measurable on day one through the same
-	// beat — a COUNT of memories shown and of those the budget displaced.
-	if meta.memShown > 0 {
-		answeredMeta["memories"] = strconv.Itoa(meta.memShown)
-	}
-	if meta.memDisplaced > 0 {
-		answeredMeta["memories_displaced"] = strconv.Itoa(meta.memDisplaced)
-	}
 	if meta.findingsShown > 0 {
 		answeredMeta["findings"] = strconv.Itoa(meta.findingsShown)
 	}
@@ -205,22 +214,48 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 // postEditMeta is what renderPostEdit learned while rendering — the counts
 // the answered beat and the story row carry beside the payload.
 type postEditMeta struct {
-	rules        int
-	repoRelFile  string
-	displaced    int
-	memShown     int
-	memDisplaced int
+	rules       int
+	repoRelFile string
+	displaced   int
 	// findingsShown/findingsOmitted (FL-20) are renderFindingsBlock's own
 	// counts — 0/0 when the block never rendered (no finding-kind rows, no
 	// overlap with the edited range, or the shared budget was already
 	// spent).
 	findingsShown   int
 	findingsOmitted int
+	// service, topRule/topSrc (SR-48, F-31) are the CURRENT top served
+	// governing rule for this file (govRules[0]'s Rule/Src) —
+	// topRule=="" when no governing rule matches the file at all this
+	// turn. withRuleVerdictAsk (askruleverdict.go) compares these against
+	// the prior turn's memo.
+	service string
+	topRule string
+	topSrc  string
+	// topClaimID (SR-61, surface reckoning F-27/U4) is govRules[0]'s own
+	// ClaimID — "" whenever the compiled rule behind it predates ClaimID
+	// (semantic.Obligation's own doc comment) or no rule governs the file
+	// this turn. trackRuleOutcome (ruleoutcome_track.go) keys the
+	// served/complied/violated signal off of THIS, never topRule/topSrc
+	// text, so a rule's wording changing across a recompile never reads
+	// as a different claim.
+	topClaimID string
+	// skipRuleVerdict is true when THIS post-hook call consulted a guard
+	// stamp (stampConsulted, above) — the second half of a --pre/--post
+	// pair for the SAME edit, moments apart, never a genuinely separate
+	// later turn. Without this gate, an edit governed by a --pre-wired
+	// guard would trip the "served rule ignored" ask on every single
+	// edit's own post-hook confirmation (the pre-hook's serving and the
+	// post-hook's echo of the SAME rule for the SAME edit would look
+	// identical to "served twice running, ignored"). The prior turn's
+	// memo is left untouched when this is true — neither consulted nor
+	// overwritten — so a LATER, genuinely separate turn still compares
+	// against whatever a real prior turn actually served.
+	skipRuleVerdict bool
 }
 
 // renderPostEdit builds the PostToolUse obligations payload for one edited
 // file as harness-free text (HP-5): obligations (delta-rendered against a
-// guard stamp), spec-ref lines, anchored memories — every budget and every
+// guard stamp), spec-ref lines — every budget and every
 // counting beat exactly as before the seam. ok=false is the silence
 // contract: nothing to say (or a refused/out-of-repo file, or a daemon
 // error) after the beat that names WHY has been emitted. The caller wraps
@@ -242,7 +277,6 @@ func renderPostEdit(url, projDir, filePath, sessionID, newContent string) (strin
 		specRefs    map[string][]specRefLoc
 		repoRelFile string
 		svcName     string
-		svcRoot     string
 		found       bool
 		resolved    bool
 	)
@@ -276,7 +310,7 @@ func renderPostEdit(url, projDir, filePath, sessionID, newContent string) (strin
 		}
 		justResolved := false
 		if !resolved {
-			resolved, svcName, repoRelFile, svcRoot = true, strings.ToLower(cand.name), rel, cand.root
+			resolved, svcName, repoRelFile = true, strings.ToLower(cand.name), rel
 			justResolved = true
 		}
 		name := strings.ToLower(cand.name)
@@ -295,7 +329,7 @@ func renderPostEdit(url, projDir, filePath, sessionID, newContent string) (strin
 			specRefs = sr
 		}
 		if len(o.Rules) > 0 || stale || o.CoverageSkipped != "" {
-			obl, indexStale, repoRelFile, svcName, svcRoot, found = o, stale, rel, name, cand.root, true
+			obl, indexStale, repoRelFile, svcName, found = o, stale, rel, name, true
 			specRefs = sr
 			break
 		}
@@ -412,7 +446,7 @@ func renderPostEdit(url, projDir, filePath, sessionID, newContent string) (strin
 	// lines — editedRangeFromFile best-effort locates that region from the
 	// tool's own proposed new_content against the file as it now stands
 	// (the edit already landed by PostToolUse time). Gated behind the SAME
-	// budget spec-lines/memories already share below: findings are
+	// budget spec-lines already share below: findings are
 	// advisory, lowest priority after the governing rules that precede
 	// them, so a payload that already spent its budget on rules drops
 	// findings first rather than growing further.
@@ -474,41 +508,25 @@ func renderPostEdit(url, projDir, filePath, sessionID, newContent string) (strin
 		}
 	}
 
-	// AM-6 (docs/design/anchored-memory.md §4): anchored memories ABOUT the
-	// edited file join the payload as a separate labeled block, through this
-	// same path — measured, budgeted and governed exactly as obligations
-	// are. Lowest priority in the ≤320-token budget: obligations are
-	// compile-time budgeted, spec lines drop first, memories take only what
-	// remains (drop lowest-ranked first, count the displaced). The daemon
-	// (memory_search, file-scoped) evaluates drift and labels every line;
-	// the hook only renders. Gated on the project's own memories file
-	// existing so the overwhelmingly common no-memories case costs no RPC,
-	// and silent on any error (hook doctrine) — silent on STDOUT, that is:
-	// a failed fetch emits the same edit-hook/error beat fetchObligations
-	// does, tagged target=memories, so the instrument can tell a memories
-	// outage from "no memories" rather than reading both as silence.
-	memShown, memDisplaced := 0, 0
-	if _, serr := os.Stat(memory.Path(svcRoot)); serr == nil && cost.Estimate(sb.String()) <= specLineTokenBudget {
-		if evs, more, ok := fetchMemories(url, svcName, repoRelFile, 2*time.Second); ok {
-			memShown, memDisplaced = injectMemories(&sb, repoRelFile, evs, specLineTokenBudget)
-			memDisplaced += more
-		} else {
-			emitBeat("edit-hook", "error", firingMeta(map[string]string{"phase": "post", "target": "memories"}, sessionID, filePath))
-		}
-	}
-
 	if sb.Len() == 0 {
 		emitBeat("edit-hook", "answered", firingMeta(map[string]string{"emitted": "false", "phase": "post"}, sessionID, filePath))
 		return "", postEditMeta{}, false // clean file (or unindexed project), no spec IDs → silent
+	}
+	topRule, topSrc, topClaimID := "", "", ""
+	if len(govRules) > 0 {
+		topRule, topSrc, topClaimID = govRules[0].Rule, govRules[0].Src, govRules[0].ClaimID
 	}
 	return sb.String(), postEditMeta{
 		rules:           len(renderRules),
 		repoRelFile:     repoRelFile,
 		displaced:       obl.Displaced,
-		memShown:        memShown,
-		memDisplaced:    memDisplaced,
 		findingsShown:   findingsShown,
 		findingsOmitted: findingsOmitted,
+		service:         svcName,
+		topRule:         topRule,
+		topSrc:          topSrc,
+		topClaimID:      topClaimID,
+		skipRuleVerdict: stampConsulted,
 	}, true
 }
 
@@ -793,127 +811,6 @@ func fetchObligations(baseURL, service, file string, maxRules int, timeout time.
 type specRefLoc struct {
 	File string `json:"file"`
 	Line int    `json:"line"`
-}
-
-// maxMemoriesPerEdit caps how many memories one edit asks the daemon for.
-// The ≤320-token payload fits a handful at most; the daemon's own
-// `displaced` count for anything beyond this cap is folded into the beat
-// meta so the truncation is never silent.
-const maxMemoriesPerEdit = 20
-
-// injectMemories appends the anchored-memory block (AM-6, docs/design/
-// anchored-memory.md §4) to sb: a header naming the file, then one bullet
-// per memory, each carrying its [tier · state] label, in the deterministic
-// surfacing order (tier, then anchor specificity, then id — the same
-// SortEvaluations memory_search uses). Retired and orphaned memories never
-// render (memory.Surfacing). budget is the whole-payload token budget: the
-// block keeps the highest-ranked prefix that fits, drops the rest and names
-// the count, so the block can never quietly inflate an edit's context. The
-// input order is irrelevant — the function sorts a copy. Returns how many
-// memories rendered and how many the budget displaced; when nothing
-// matches, sb is untouched.
-func injectMemories(sb *strings.Builder, file string, evs []memory.Evaluation, budget int) (shown, displaced int) {
-	live := memory.Surfacing(append([]memory.Evaluation(nil), evs...))
-	memory.SortEvaluations(live)
-	if len(live) == 0 {
-		return 0, 0
-	}
-	nl := ""
-	if sb.Len() > 0 {
-		nl = "\n"
-	}
-	base := sb.String()
-	header := fmt.Sprintf("%s🧠 fathom memory — %s:", nl, file)
-	var block strings.Builder
-	for i, e := range live {
-		line := "\n• " + e.ShortLine()
-		if cost.Estimate(base+header+block.String()+line) > budget {
-			displaced = len(live) - i
-			break
-		}
-		block.WriteString(line)
-		shown++
-	}
-	if shown == 0 {
-		// Nothing fit. Name the displacement in one short line when even
-		// that fits; otherwise the beat meta is the only record (silence
-		// is never a fabricated "no memories").
-		note := fmt.Sprintf("%s🧠 %d memory(ies) about %s not shown (budget)", nl, displaced, file)
-		if cost.Estimate(base+note) <= budget {
-			sb.WriteString(note)
-		}
-		return shown, displaced
-	}
-	sb.WriteString(header)
-	sb.WriteString(block.String())
-	if displaced > 0 {
-		fmt.Fprintf(sb, "\n⚠️ %d more memory(ies) not shown (budget)", displaced)
-	}
-	return shown, displaced
-}
-
-// fetchMemories calls the memory_search MCP tool file-scoped (AM-6): the
-// daemon lists the service's memories, keeps those whose anchors touch
-// file, evaluates drift against the index and labels every one. Returns
-// the evaluations (already surfacing-only and sorted, re-sorted by the
-// caller regardless), the daemon's own displaced count beyond
-// maxMemoriesPerEdit, and ok=false on any error — mirroring
-// fetchObligations's silent-on-error contract.
-func fetchMemories(baseURL, service, file string, timeout time.Duration) ([]memory.Evaluation, int, bool) {
-	reqBody, err := json.Marshal(map[string]any{
-		"jsonrpc": "2.0",
-		"id":      1,
-		"method":  "tools/call",
-		"params": map[string]any{
-			"name": "memory_search",
-			"arguments": map[string]any{
-				"service": service,
-				"file":    file,
-				"limit":   maxMemoriesPerEdit,
-			},
-		},
-	})
-	if err != nil {
-		return nil, 0, false
-	}
-
-	hc := &http.Client{Timeout: timeout}
-	req, err := originHeader(baseURL, bytes.NewReader(reqBody))
-	if err != nil {
-		return nil, 0, false
-	}
-	resp, err := hc.Do(req)
-	if err != nil {
-		return nil, 0, false
-	}
-	defer resp.Body.Close()
-	raw, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-	if err != nil {
-		return nil, 0, false
-	}
-
-	inner, err := unwrapRPCResult(raw)
-	if err != nil {
-		return nil, 0, false
-	}
-
-	var payload struct {
-		Memories  []memory.Evaluation `json:"memories"`
-		Displaced int                 `json:"displaced"`
-	}
-	if err := json.Unmarshal(inner, &payload); err != nil {
-		return nil, 0, false
-	}
-	// A memory without a tier and state is a claim the daemon never made:
-	// drop it here too rather than render an unlabelled line (§9).
-	out := make([]memory.Evaluation, 0, len(payload.Memories))
-	for _, e := range payload.Memories {
-		if e.Tier == "" || e.State == "" {
-			continue
-		}
-		out = append(out, e)
-	}
-	return out, payload.Displaced, true
 }
 
 // indexUncheckedLine (RT-26, I38) is the freshness line for an edited file

@@ -223,9 +223,6 @@ migration note (`docs/rename-migration.md` is the precedent; new ones go to
   `internal/store/format_v0_test.go` (`TestStoreFormatV0_RequiredSchema`).
 - Expert Module v0 manifest. Evidence: `docs/spec/expert-module-v0.md`, `schema/module/schema.cue`,
   `internal/modspec/schema_test.go`.
-- `module_query` wire contract v0 (`claim_id`, `anchor`, `watermark`). Evidence: commit 0df159d,
-  `docs/handoff/repo-strategy.md` §3. Leaves the compatibility surface with a `### Breaking`
-  line when SR-17 lands (the module MCP tools retired, ADR-053 decision 2).
 - Plan grammar v2: checkbox states, annotation keys, `id:`, dispositions, the
   checkbox-line rule. Evidence: `docs/plans/README.md`, `schema/plan/schema.cue`,
   `internal/verify/markdown.go`.

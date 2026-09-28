@@ -64,6 +64,7 @@ var storeMethodDisposition = map[string]string{
 	"ObservationsForSymbol":         "", // RT-85: find_symbol's point lookup
 	"ObservationsCalling":           "", // RT-85: find_callers' point lookup
 	"ServiceRefsFor":                "", // RT-89: routes and client calls name their file
+	"SymbolCentrality":              "", // TQ-2: each row names its symbol's file
 
 	// --- exempt, with the reason ---
 	"PutObservations":                "write path; suppression is a READ decision and must never change what is indexed (§3.5)",
@@ -95,6 +96,7 @@ var storeMethodDisposition = map[string]string{
 	"ListCommits":                    "git history, not indexed source content; suppressing a path never rewrites the repository's own log",
 	"FileChurn":                      "TQ-1: per-path commit counts derived from the same git history ListCommits exempts; no indexed source content, and suppressing a path never rewrites the repository's own log",
 	"SetFileChurn":                   "write path",
+	"SetSymbolCentrality":            "write path",
 	"ClaimsForService":               "claims are anchored through claim_links, which IS filtered; the claim row itself carries no path",
 	"ClaimsForServe":                 "SU-2: ClaimsForService's prefiltered sibling — same reasoning, same claim rows, only the WHERE narrowing differs; claims are anchored through claim_links, which IS filtered",
 	"ClaimEvents":                    "append-only verdict log keyed by claim id, no path and no content",
@@ -192,6 +194,12 @@ func seedSurfaceStore(t *testing.T, s store.Store) {
 		{Path: visibleRef, Size: 10},
 	}); err != nil {
 		t.Fatalf("WriteServiceSummary: %v", err)
+	}
+	if err := s.SetSymbolCentrality(ctx, svc, "c", []store.SymbolCentrality{
+		{Symbol: svc + "::secrets.Secret", File: hiddenRef, Callers: 1, Centrality: 1},
+		{Symbol: svc + "::internal.Ok", File: visibleRef, Callers: 0, Centrality: 0},
+	}); err != nil {
+		t.Fatalf("SetSymbolCentrality: %v", err)
 	}
 	if err := s.SetTypedEdgeStatus(ctx, svc, store.TypedEdgeStatusRecord{
 		Packages: 2, DiscoveryGaps: 2, DiscoveryGapFiles: []string{hiddenRef, visibleRef}, RecordedAt: now,
@@ -359,6 +367,13 @@ func TestSuppressionCoversEverySurface(t *testing.T) {
 					t.Fatal(err)
 				}
 				assertRefs(t, refsOf(got, func(e core.Edge) string { return e.FromFile }))
+			})
+			t.Run("SymbolCentrality", func(t *testing.T) {
+				_, got, err := g.SymbolCentrality(ctx, svc)
+				if err != nil {
+					t.Fatal(err)
+				}
+				assertRefs(t, refsOf(got, func(r store.SymbolCentrality) string { return r.File }))
 			})
 			t.Run("ListSourceRefs", func(t *testing.T) {
 				got, err := g.ListSourceRefs(ctx, svc)

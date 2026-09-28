@@ -490,97 +490,11 @@ func TestOutline_BudgetElision(t *testing.T) {
 // feeds repo_map's header (TestRepoMapHeaderCarriesEntrypoints,
 // extra_tools_test.go).
 
-// ─── complexity ───────────────────────────────────────────────────────────────
-
-func TestComplexityTool_Basic(t *testing.T) {
-	srv := newExtSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 250, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "complexity",
-			"arguments": map[string]any{"service": "svc"},
-		},
-	})
-	p := extToolPayload(t, resp)
-	if p["hotspots"] == nil || p["maintainability_index"] == nil {
-		t.Fatalf("complexity missing fields: %v", p)
-	}
-}
-
-func TestComplexityTool_MissingService(t *testing.T) {
-	srv := newExtSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 251, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "complexity",
-			"arguments": map[string]any{},
-		},
-	})
-	errObj, ok := resp["error"].(map[string]any)
-	if !ok {
-		t.Fatalf("expected error, got result: %v", resp)
-	}
-	if code := errObj["code"].(float64); code != float64(mcp.ErrCodeParams) {
-		t.Errorf("code = %v, want %v", code, mcp.ErrCodeParams)
-	}
-}
-
-// ─── god_object ───────────────────────────────────────────────────────────────
-
-func TestGodObject_Basic(t *testing.T) {
-	srv := newExtSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 260, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "god_object",
-			"arguments": map[string]any{"service": "svc"},
-		},
-	})
-	p := extToolPayload(t, resp)
-	if p["god_objects"] == nil {
-		t.Fatalf("god_objects missing: %v", p)
-	}
-}
-
-// ─── community ────────────────────────────────────────────────────────────────
-
-func TestCommunity_Basic(t *testing.T) {
-	srv := newExtSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 280, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "community",
-			"arguments": map[string]any{"service": "svc", "symbol": "A"},
-		},
-	})
-	p := extToolPayload(t, resp)
-	members, ok := p["members"].([]any)
-	if !ok {
-		t.Fatalf("community.members missing: %v", p)
-	}
-	// A is in pkg, so it should be related to B, C, TestFoo, Orphan (same package)
-	if len(members) == 0 {
-		t.Error("community(A): expected non-empty members (same-package nodes)")
-	}
-}
-
-func TestCommunity_MissingParams(t *testing.T) {
-	srv := newExtSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 281, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "community",
-			"arguments": map[string]any{"service": "svc"},
-		},
-	})
-	errObj, ok := resp["error"].(map[string]any)
-	if !ok {
-		t.Fatalf("expected error, got result: %v", resp)
-	}
-	if code := errObj["code"].(float64); code != float64(mcp.ErrCodeParams) {
-		t.Errorf("code = %v, want %v", code, mcp.ErrCodeParams)
-	}
-}
+// complexity, god_object and community were unregistered by SR-19
+// (surface reckoning F-77): 0 lifetime calls each; the underlying
+// analyses (internal/analysis/complexity, godobject, symbolnav.Community)
+// stay — only their own tests call them now; the complexity metric U13
+// reads is a separate stored column (internal/store/conformance.go).
 
 // meta: capabilities/server_stats/list_sources were unregistered by SR-23
 // (F-11, design §4); status(section:"tools"|"daemon"|"sources") answers
@@ -953,9 +867,6 @@ func TestNewToolsInCorrectProfile(t *testing.T) {
 	}{
 		{"symbol_context", mcp.GroupCoding},
 		{"outline", mcp.GroupCoding},
-		{"complexity", mcp.GroupCoding},
-		{"god_object", mcp.GroupCoding},
-		{"community", mcp.GroupInvestigation},
 	} {
 		if got := srv.GroupOfForTest(tc.name); got != tc.group {
 			t.Errorf("tool %q registered in group %q, want %q", tc.name, got, tc.group)

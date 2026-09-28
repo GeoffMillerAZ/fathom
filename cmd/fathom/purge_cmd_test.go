@@ -13,7 +13,6 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/filter"
-	"github.com/geoffmilleraz/fathom/internal/memory"
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
@@ -441,10 +440,14 @@ func TestClaimEventsRetentionDisclosed(t *testing.T) {
 	}
 }
 
-// TestPurgeTakesQuotingMemories is AM-12 at the verb level: the service's
-// <repo>/.fathom/memories.jsonl is a purge location — a memory may QUOTE
-// the purged content — and the run reports what it removed there.
-func TestPurgeTakesQuotingMemories(t *testing.T) {
+// TestPurgeNamesALeftoverMemoriesFile is AM-12 after SR-13 retired anchored
+// memory (surface reckoning F-45, ADR-053): nothing writes or reads
+// <repo>/.fathom/memories.jsonl any more, but a file left over from before
+// the retirement may still QUOTE purged content. A purge with no leftover
+// file reports the memories location as checked; one WITH a leftover file
+// fails loudly, naming it, rather than reporting a verified purge over a
+// file it did not filter (law 3).
+func TestPurgeNamesALeftoverMemoriesFile(t *testing.T) {
 	scopeHome(t)
 	root := purgeRepo(t)
 	storePath := filepath.Join(t.TempDir(), "fathom.sqlite")
@@ -454,43 +457,37 @@ func TestPurgeTakesQuotingMemories(t *testing.T) {
 	if rc := run([]string{"ingest", "--service", svc, "--path", root, "--store", storePath}, &out, &errOut); rc != 0 {
 		t.Fatalf("ingest rc=%d stderr=%s", rc, errOut.String())
 	}
-
-	memPath := memory.Path(root)
-	fs := memory.NewFileStore(memPath)
-	ctx := context.Background()
-	if err := fs.Put(ctx, memory.Memory{
-		ID: "m-quote", Service: svc,
-		Claim:   "the token is " + purgeCanary,
-		Anchors: []memory.Anchor{{Kind: memory.AnchorFile, Ref: "secrets/token.go"}},
-	}); err != nil {
-		t.Fatalf("Put: %v", err)
-	}
-	if err := fs.Put(ctx, memory.Memory{
-		ID: "m-keep", Service: svc,
-		Claim:   "keep.go is harmless",
-		Anchors: []memory.Anchor{{Kind: memory.AnchorFile, Ref: "internal/keep.go"}},
-	}); err != nil {
-		t.Fatalf("Put: %v", err)
+	purge := func() int {
+		out.Reset()
+		errOut.Reset()
+		return run([]string{
+			"purge", "secrets/**", "--service", svc, "--store", storePath,
+			"--reason", "leaked credential", "--probe", purgeCanary, "--yes",
+		}, &out, &errOut)
 	}
 
-	out.Reset()
-	errOut.Reset()
-	if rc := run([]string{
-		"purge", "secrets/**", "--service", svc, "--store", storePath,
-		"--reason", "leaked credential", "--probe", purgeCanary, "--yes",
-	}, &out, &errOut); rc != 0 {
+	// No leftover file: the location is checked and the purge verifies.
+	if rc := purge(); rc != 0 {
 		t.Fatalf("purge rc=%d stdout=%s stderr=%s", rc, out.String(), errOut.String())
-	}
-
-	data := readFileString(t, memPath)
-	if strings.Contains(data, purgeCanary) {
-		t.Fatalf("the memories file still quotes the purged content:\n%s", data)
-	}
-	if !strings.Contains(data, "m-keep") {
-		t.Fatal("the purge took an unrelated memory too")
 	}
 	if !strings.Contains(out.String(), string(store.LocMemories)) {
 		t.Fatalf("the report does not mention the memories location:\n%s", out.String())
+	}
+
+	// A leftover file from before SR-13: the purge refuses to call itself
+	// verified and names the file.
+	memPath := filepath.Join(root, ".fathom", "memories.jsonl")
+	if err := os.MkdirAll(filepath.Dir(memPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(memPath, []byte(`{"id":"m-quote","claim":"the token is `+purgeCanary+`"}`+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if rc := purge(); rc == 0 {
+		t.Fatalf("purge over a leftover memories file verified; stdout=%s", out.String())
+	}
+	if !strings.Contains(errOut.String()+out.String(), "memories.jsonl") {
+		t.Fatalf("the failure does not name the leftover file:\nstdout=%s\nstderr=%s", out.String(), errOut.String())
 	}
 }
 

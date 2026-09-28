@@ -1,10 +1,12 @@
 // Package mcp — fleet/platform MCP tool registrations.
 //
-// registerPlatformTools wires three tools in GroupPlatform:
+// registerPlatformTools wires two tools in GroupPlatform:
 //
 //	list_services        — services with metadata (languages, symbol counts)
-//	fleet_drift          — config-style version/kind drift across services
 //	cross_repo_callers   — callers of a symbol across all services via Calls edges
+//
+// fleet_drift (config-style version/kind drift across services) was
+// unregistered by SR-12 (surface reckoning, F-22): 0 lifetime calls.
 package mcp
 
 import (
@@ -14,7 +16,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/geoffmilleraz/fathom/internal/analysis/configdrift"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/store"
@@ -48,7 +49,10 @@ type FleetBackend interface {
 // injection when the dir name and service ID diverged).
 func registerPlatformTools(s *Server, backend QueryInterface, fleet FleetBackend) {
 	registerListServices(s, backend, fleet)
-	registerFleetDrift(s, fleet)
+	// registerFleetDrift (F-22) was unregistered by SR-12 (surface
+	// reckoning): 0 lifetime calls; internal/analysis/configdrift's
+	// Drift stays (only its own test imports it now, but the design row
+	// authorizes removing only the tool registration).
 	registerCrossRepoCallers(s, fleet, "cross_repo_callers", "Find all callers of a symbol across every service in the fleet via stored call edges.")
 }
 
@@ -340,64 +344,6 @@ func rootMissingCtx(ctx context.Context, frb fleetRootStatusBackend, svc string)
 		return cf.RootMissingCtx(ctx, svc)
 	}
 	return frb.RootMissing(svc)
-}
-
-// ─── fleet_drift ──────────────────────────────────────────────────────────────
-
-// registerFleetDrift reports version/kind drift across the fleet using the
-// configdrift engine.  It derives per-service "config" maps from each
-// service's SymbolNodes: for every symbol, the key is the symbol name and the
-// value is the kind string.  Services that share the same symbol name but
-// disagree on kind are reported as drifting.
-func registerFleetDrift(s *Server, fleet FleetBackend) {
-	s.registerTool(toolDescriptor{
-		Name:        "fleet_drift",
-		Description: "Report version/kind drift across services: symbols that appear in multiple services with conflicting kinds.",
-		InputSchema: map[string]any{
-			"type":       "object",
-			"properties": map[string]any{},
-		},
-		group: GroupPlatform,
-	}, func(_ context.Context, _ json.RawMessage) (any, *rpcError) {
-		if fleet == nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "no fleet backend configured"}
-		}
-		svcs := fleet.Services()
-
-		// Build configs map: service → (symbolName → kindString).
-		configs := make(map[string]map[string]string, len(svcs))
-		allKeys := make(map[string]struct{})
-		for _, svc := range svcs {
-			m := make(map[string]string)
-			for _, n := range fleet.SymbolsFor(svc) {
-				if n.Name == "" {
-					continue
-				}
-				m[n.Name] = string(n.Kind)
-				allKeys[n.Name] = struct{}{}
-			}
-			configs[svc] = m
-		}
-
-		// Collect keys.
-		keys := make([]string, 0, len(allKeys))
-		for k := range allKeys {
-			keys = append(keys, k)
-		}
-		sort.Strings(keys)
-
-		items := configdrift.Drift(configs, keys)
-		result := make([]any, len(items))
-		for i, item := range items {
-			result[i] = map[string]any{
-				"key":      item.Key,
-				"service":  item.Service,
-				"value":    item.Value,
-				"majority": item.Majority,
-			}
-		}
-		return map[string]any{"drift": result, "count": len(items)}, nil
-	})
 }
 
 // ─── cross_repo_callers / platform_callers ────────────────────────────────────

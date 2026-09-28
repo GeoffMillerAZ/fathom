@@ -51,8 +51,20 @@ type Obligation struct {
 	Rule string `json:"rule"`
 	// Src is the primary citation, "path#Lstart-Lend" — always attached
 	// (bounded blast radius: the agent can check the source in one Read).
-	Src  string `json:"src"`
-	Tier string `json:"tier"`
+	Src string `json:"src"`
+	// ClaimID (SR-61, surface reckoning F-27/U4) is the underlying claim's
+	// content-addressed identity (core.SemanticClaim.ClaimID) — the same
+	// id `fathom claim refute|corroborate --claim <id>` takes, and what
+	// the edit hook's per-claim served/complied/violated tracking
+	// (cmd/fathom/ruleoutcome.go) keys off of instead of Rule+Src text.
+	// Always populated for a real compiled claim; "" (omitted) only for a
+	// raw-tier fallback row (rawfallback.go), which has no claim behind
+	// it at all. It rides the agent-facing obligations payload too (the
+	// edit hook reads it over the same tools/call): measured +10-13% bytes
+	// per obligations call on the L1 replay (internal/indexbench
+	// testdata/l1-replay.json, re-baselined at the R3 wave gate).
+	ClaimID string `json:"claim_id,omitempty"`
+	Tier    string `json:"tier"`
 	// Kind labels a claim served from a non-obligation layer ("finding", …).
 	// Omitted for the obligations layer (FT-2) — existing consumers
 	// (cmd/fathom/edithook.go, the obligations MCP tool response) see the
@@ -1117,6 +1129,7 @@ func obligationsCoreTrace(ctx context.Context, st store.Store, serviceID, outFil
 		ob := Obligation{
 			Rule:       m.cl.Rule,
 			Src:        primaryCite[m.cl.ClaimID],
+			ClaimID:    m.cl.ClaimID,
 			Tier:       string(m.cl.Tier),
 			Layer:      m.cl.Layer,
 			AssertedBy: m.cl.AssertedBy,

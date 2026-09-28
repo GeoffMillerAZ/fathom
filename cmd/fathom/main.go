@@ -131,10 +131,16 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		if len(args) > 1 && args[1] == "status" {
 			return cmdRefactorStatus(args[2:], stdout, stderr)
 		}
-		fmt.Fprintln(stderr, "usage: fathom refactor plan <symbol|package|import> [--out FILE] [--service S] [--store DB]\n       fathom refactor status --plan FILE [--json]")
+		fmt.Fprintln(stderr, "usage: fathom refactor plan <symbol|package|import> [--out FILE] [--service S] [--store DB]\n       fathom refactor status --plan FILE [--json]\n       fathom refactor status --migration \"<kind> <from> -> <to>\" [--store DB] [--services a,b,c] [--json]")
 		return 2
 	case "review-key":
 		return cmdReviewKey(args[1:], stdout, stderr)
+	case "coverage":
+		if len(args) > 1 && args[1] == "ingest" {
+			return cmdCoverageIngest(args[2:], stdout, stderr)
+		}
+		fmt.Fprintln(stderr, "usage: fathom coverage ingest <file> --format lcov|cobertura|jacoco|coverage-py|istanbul|llvm-cov [--commit SHA] [--json]")
+		return 1
 	case "tests":
 		if len(args) > 1 && args[1] == "coverage" {
 			return cmdTestsCoverage(args[2:], stdout, stderr)
@@ -271,8 +277,6 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		return cmdScope(args[1:], stdout, stderr)
 	case "purge":
 		return cmdPurge(args[1:], stdout, stderr)
-	case "memory":
-		return cmdMemory(args[1:], stdout, stderr)
 	case "decide":
 		return cmdDecide(args[1:], stdout, stderr)
 	default:

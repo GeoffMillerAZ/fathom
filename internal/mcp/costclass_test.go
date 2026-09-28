@@ -18,7 +18,15 @@ func TestEveryToolDeclaresCostClass(t *testing.T) {
 	classes := srv.ToolCostClassesForTest()
 	// SR-27 (surface reckoning F-35) unregistered arch_conformance,
 	// spec_coverage and spec_refs — the floor moves down by 3 with them.
-	if len(classes) < 47 {
+	// SR-12 (F-22) unregistered http_client_calls, fleet_drift, reachable,
+	// traverse and history — the floor moves down by 5 more.
+	// SR-19 (F-77) unregistered complexity, god_object, community,
+	// dead_code, cloc, secret_scan, shell_out, proto_conformance,
+	// traceability, evidence_summary, contradiction_scan and batch — the
+	// floor moves down by 12 more.
+	// SR-13 (F-45) unregistered memory_search — down by 1 more.
+	// SR-17 (F-68) unregistered the four module tools — down by 4 more.
+	if len(classes) < 25 {
 		t.Fatalf("only %d tools registered — the registry did not build", len(classes))
 	}
 	valid := map[string]bool{"point": true, "index": true, "tree": true, "fleet": true, "ingest": true, "egress": true}

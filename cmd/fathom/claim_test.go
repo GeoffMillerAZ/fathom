@@ -12,6 +12,20 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
+// clearHarnessSessionEnv clears every harness's session-id variable
+// (primary and alias) known to internal/harness's registry — mirrors
+// TestHarnessSessionIDAndProjectDir's own clearing set (hookharness_test.go)
+// so a test asserting the "no harness session" default behaves the same
+// whether or not the real process (this very session, quite possibly)
+// happens to have one exported.
+func clearHarnessSessionEnv(t *testing.T) {
+	t.Helper()
+	t.Setenv("CLAUDE_SESSION_ID", "")
+	t.Setenv("CLAUDE_CODE_SESSION_ID", "")
+	t.Setenv("CLAUDECODE", "")
+	t.Setenv("GEMINI_SESSION_ID", "")
+}
+
 func seedClaim(t *testing.T, storePath, service, claimID string) {
 	t.Helper()
 	st, err := store.Open(storePath)
@@ -156,6 +170,88 @@ func TestClaim_RefuteAndCorroborate_RecordRuleOutcome(t *testing.T) {
 	if rows[1].RuleID != "cl-4" || rows[1].Event != ruleOutcomeCorroborated {
 		t.Errorf("row2 = %+v, want rule_id=cl-4 event=corroborated", rows[1])
 	}
+}
+
+// TestClaim_RefuteAndCorroborate_Identity is GL-13/GL-14's owner decision
+// (docs/design/governance-learning.md §6): a corroborate/refute verdict's
+// identity is the harness session id when the hook env carries one, else
+// the literal "human:cli" — never "" (which applyLearning's distinct-
+// session counting could never attribute to anyone). The identity lands
+// in BOTH the persisted ClaimEvent.AssertedBy (core.AssertedBy("claim-add",
+// identity), the same "kind:id" convention every other writer uses) and
+// GL-10's rule-outcome signal row (recordRuleOutcome's session argument) —
+// one identity, two readers, never a disconnected second channel.
+func TestClaim_RefuteAndCorroborate_Identity(t *testing.T) {
+	clearHarnessSessionEnv(t)
+
+	t.Run("no harness session: human:cli", func(t *testing.T) {
+		storePath := filepath.Join(t.TempDir(), "s.sqlite")
+		seedClaim(t, storePath, "wa-review", "cl-5")
+		logPath := filepath.Join(t.TempDir(), "rule-outcomes.jsonl")
+		t.Setenv("FATHOM_RULE_OUTCOME_LOG", logPath)
+
+		var out, errBuf bytes.Buffer
+		if code := run([]string{
+			"claim", "corroborate",
+			"--store", storePath, "--service", "wa-review", "--claim", "cl-5",
+			"--note", "confirmed",
+		}, &out, &errBuf); code != 0 {
+			t.Fatalf("claim corroborate exit = %d, stderr: %s", code, errBuf.String())
+		}
+
+		st, err := store.Open(storePath)
+		if err != nil {
+			t.Fatalf("re-open store: %v", err)
+		}
+		defer st.Close()
+		events, err := st.ClaimEvents(context.Background(), "cl-5")
+		if err != nil || len(events) != 1 {
+			t.Fatalf("ClaimEvents: %v / %d", err, len(events))
+		}
+		if want := "claim-add:human:cli"; events[0].AssertedBy != want {
+			t.Errorf("AssertedBy = %q, want %q", events[0].AssertedBy, want)
+		}
+
+		rows := readRuleOutcomeRows(t, logPath)
+		if len(rows) != 1 || rows[0].Session != "human:cli" {
+			t.Fatalf("rule-outcome rows = %+v, want one row with session=human:cli", rows)
+		}
+	})
+
+	t.Run("harness session set: carried through", func(t *testing.T) {
+		t.Setenv("CLAUDE_SESSION_ID", "sess-xyz")
+		storePath := filepath.Join(t.TempDir(), "s.sqlite")
+		seedClaim(t, storePath, "wa-review", "cl-6")
+		logPath := filepath.Join(t.TempDir(), "rule-outcomes.jsonl")
+		t.Setenv("FATHOM_RULE_OUTCOME_LOG", logPath)
+
+		var out, errBuf bytes.Buffer
+		if code := run([]string{
+			"claim", "refute",
+			"--store", storePath, "--service", "wa-review", "--claim", "cl-6",
+			"--note", "wrong",
+		}, &out, &errBuf); code != 0 {
+			t.Fatalf("claim refute exit = %d, stderr: %s", code, errBuf.String())
+		}
+
+		st, err := store.Open(storePath)
+		if err != nil {
+			t.Fatalf("re-open store: %v", err)
+		}
+		defer st.Close()
+		events, err := st.ClaimEvents(context.Background(), "cl-6")
+		if err != nil || len(events) != 1 {
+			t.Fatalf("ClaimEvents: %v / %d", err, len(events))
+		}
+		if want := "claim-add:sess-xyz"; events[0].AssertedBy != want {
+			t.Errorf("AssertedBy = %q, want %q", events[0].AssertedBy, want)
+		}
+
+		rows := readRuleOutcomeRows(t, logPath)
+		if len(rows) != 1 || rows[0].Session != "sess-xyz" {
+			t.Fatalf("rule-outcome rows = %+v, want one row with session=sess-xyz", rows)
+		}
+	})
 }
 
 func TestClaim_Errors(t *testing.T) {

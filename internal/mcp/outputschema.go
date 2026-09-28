@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/certify"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
 )
@@ -17,7 +18,7 @@ import (
 // tools/call (MCP 2025-06-18+), so a non-Claude client can machine-check
 // the envelope. The schemas are GENERATED from Go result types by
 // reflection (outputSchemaFor → schemaOf): the tools that already return a
-// typed struct (query_symbols, memory_search) contribute it directly; the
+// typed struct (query_symbols) contribute it directly; the
 // map-returning tools declare a result type below whose fields mirror the
 // keys the handler emits — `omitempty` marks a key the handler emits
 // conditionally, everything else is `required`. The spec's rule is
@@ -370,6 +371,9 @@ type testImpactResult struct {
 	// tests, and the daemon's watermark for the service.
 	Resolution  resolutionMix `json:"resolution"`
 	IndexCommit string        `json:"index_commit,omitempty"`
+	// Risk (TQ-5): rank:"risk"'s risk-weighted coverage list; tests is
+	// then empty.
+	Risk *certify.RiskReport `json:"risk,omitempty"`
 }
 
 // blastRadiusResult mirrors blast_radius' payload (extra_tools.go).
@@ -494,7 +498,6 @@ var agentResultTypes = map[string]reflect.Type{
 	"ingest":            reflect.TypeOf(ingestResult{}),
 	"list_services":     reflect.TypeOf(listServicesResult{}),
 	"localize":          reflect.TypeOf(localizeResult{}),
-	"memory_search":     reflect.TypeOf(memorySearchResult{}),
 	"obligations":       reflect.TypeOf(obligationsResult{}),
 	"outline":           reflect.TypeOf(outlineResult{}),
 	"pack_context":      reflect.TypeOf(packContextResult{}),
@@ -718,5 +721,4 @@ func itoa(i int) string {
 var (
 	_ = core.EdgeConfidenceResolved
 	_ symbolQueryResult
-	_ memorySearchResult
 )

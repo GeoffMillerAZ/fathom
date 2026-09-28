@@ -123,17 +123,6 @@ type Server struct {
 	// future multi-tenant shape.
 	strictSurfaces bool
 
-	// hostedModules is the module host's hosted-deployment mode (docs/plans/
-	// gke-module-host.md GKE-MH-7, critic finding 2): cmd/fathom's serve-http
-	// sets this via SetHostedModules exactly when --modules-token-env names a
-	// configured token. Unlike strictSurfaces, this DOES make /rpc/modules an
-	// actual security boundary (surface.go's hostedModulesTools/
-	// hostedModuleBlocked) — the local, loopback-only, unauthenticated daemon
-	// is unaffected (default false). Set once, before Serve/ListenAndServe
-	// begins accepting concurrent requests — same single-set-before-serving
-	// convention as strictSurfaces; no separate mutex.
-	hostedModules bool
-
 	// refreshQ is the daemon's refresh queue (RT-97): when set, the ingest
 	// tool's ingests run on it. Nil (stdio, tests) runs them in the call.
 	refreshQ atomic.Pointer[refresh.Queue]
@@ -194,12 +183,12 @@ func NewServerWithFleetAndLogger(backend QueryInterface, fleet FleetBackend, log
 }
 
 // NewServerWithModules constructs a Server wired to a per-service backend, a
-// fleet backend, a JSONL call logger, and the module host (docs/plans/
-// gke-module-host.md GKE-MH-5). modules registers the /rpc/modules-scoped
-// tool set (list_modules, module_obligations, module_staleness) — pass nil
-// (equivalent to NewServerWithFleetAndLogger) when no --module store was
-// mounted; a genuinely non-nil *modulehost.Host registers the tools. Any
-// other parameter may also be nil.
+// fleet backend, a JSONL call logger, and the module host (serve-http
+// --module): obligations unions in the rules of every module a service binds
+// in .fathom/modules.cue (docs/design/platform-modules.md §3.3). Pass nil
+// when no --module store was mounted. The module MCP tools and the
+// /rpc/modules surface it once also registered were removed by SR-17
+// (surface reckoning F-68).
 func NewServerWithModules(backend QueryInterface, fleet FleetBackend, logger *CallLogger, modules moduleBackend) *Server {
 	return newServer(backend, fleet, logger, modules)
 }
@@ -222,10 +211,6 @@ func newServer(backend QueryInterface, fleet FleetBackend, logger *CallLogger, m
 	registerBuiltins(s)
 	registerTools(s, backend, fleet, modules)
 	registerPlatformTools(s, backend, fleet)
-	registerMemoryTools(s, backend)
-	if modules != nil {
-		registerModuleTools(s, modules)
-	}
 	return s
 }
 
@@ -401,22 +386,6 @@ func (s *Server) totalRequests() int64 {
 // Exposed for tests and for any future multi-tenant deployment shape.
 func (s *Server) SetStrictSurfaces(v bool) {
 	s.strictSurfaces = v
-}
-
-// SetHostedModules toggles hosted-module-host mode (docs/plans/
-// gke-module-host.md, critic finding 2): when true, GroupModules tools are
-// reachable ONLY via the /rpc/modules-scoped path — /rpc/modules itself
-// serves a curated allowlist (hostedModulesTools) instead of the full
-// GroupShared set, off-surface calls on /rpc/modules are hard-gated (never
-// execute-and-flag, see strictFor), and GroupModules tools are hidden from
-// bare /rpc's tools/list AND refused outright if invoked there or via any
-// batch sub-call (hostedModuleBlocked). cmd/fathom's serve-http calls this
-// exactly when --modules-token-env names a configured token; the local,
-// loopback-only, unauthenticated daemon is unaffected (default false).
-// Call before Serve/ListenAndServe begins accepting requests — same
-// convention as SetStrictSurfaces.
-func (s *Server) SetHostedModules(v bool) {
-	s.hostedModules = v
 }
 
 // setProfile updates the active profile (must be a known surface name or "").

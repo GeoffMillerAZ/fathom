@@ -193,7 +193,6 @@ func assertElided(t *testing.T, tool string, payload map[string]any) {
 // pre-existing, differently-shaped disclosure for a shared cross-layer cap;
 // left as-is rather than reshaped into `elided` here.
 var truncatingTools = map[string]bool{
-	"memory_search": true, // proven live in memory_tools_test.go (TestMemorySearchOverTheServer)
 	"query_symbols": true,
 	"references":    true,
 	"repo_map":      true,

@@ -147,7 +147,7 @@ for svc in auth-service payment-service order-service; do
 done
 ```
 
-This populates the fleet for cross-repo queries (`cross_repo_callers`, `fleet_drift`) via the `platform` surface.
+This populates the fleet for cross-repo queries (`cross_repo_callers`) via the `platform` surface.
 
 Alternatively, use `platform-ingest` if your services are subdirectories under one root:
 
@@ -205,10 +205,10 @@ profile switch. Scoping now depends entirely on transport:
 | Surface | Endpoint | Contents |
 |---|---|---|
 | *(full)* | `POST /rpc` | Every registered tool, unauthenticated |
-| `agent` | `POST /rpc/agent` | The curated 19-tool coding hot loop (`docs/mcp-tools.md` lists it; `read_source` and `memory_search` included) — the recommended registration |
+| `agent` | `POST /rpc/agent` | The eight-tool default floor (surface reckoning SR-33; `docs/mcp-tools.md` lists it) — the recommended registration |
 | `companion` | `POST /rpc/companion` | Compatible alias for `agent`: identical 19-tool allowlist |
 | ~~`coding` / `investigation` / `shared` / `platform`~~ | *(deleted)* | Removed 2026-08-26 (ADR-014 amendment 2, HF-5) — unreachable by any wired client. The group taxonomy still classifies tools; use `POST /rpc`. |
-| `modules` | `POST /rpc/modules` | The GKE module host's floor tools (`list_modules`, `module_obligations`, `module_query`, `module_staleness`) over N conforming stores mounted read-only via `serve-http --module <path>` — see [mcp-tools.md](../mcp-tools.md)'s "Module host tools" section, including its hosted-mode (`--modules-token-env`) restriction |
+| ~~`modules`~~ | *(removed)* | SR-17 (surface reckoning F-68) removed `/rpc/modules`, its four tools and hosted-modules mode; `serve-http --module <path>` still mounts module stores for `obligations`' bindings |
 
 Register the daemon against the curated surface:
 
@@ -221,10 +221,7 @@ surface is never hard-rejected — it runs normally, and the daemon's call
 log (`--call-log`) records it with `off_surface:true` so real demand for a
 wider surface is measurable instead of argued. Surfaces are ergonomics and
 measurement, never a security boundary — bare `/rpc` already serves the
-full, unauthenticated registry (see [mcp-tools.md](../mcp-tools.md)). The
-one exception is `/rpc/modules` in hosted mode (`--modules-token-env`
-configured): there, off-allowlist calls hard-gate and the module tools
-become unreachable from every other path — see mcp-tools.md.
+full, unauthenticated registry, loopback-only (see [mcp-tools.md](../mcp-tools.md)).
 
 Then call `capabilities` to confirm what's visible on this request:
 
@@ -238,7 +235,7 @@ Returns:
   "active_surface": "agent",
   "active_profile": "",
   "tool_count": 17,
-  "tools": ["capabilities", "find_symbol", "memory_search", "read_source", "symbol_context", "verify_plan", ...]
+  "tools": ["blast_radius", "find_symbol", "obligations", "read_source", "symbol_context", "verify_plan", ...]
 }
 ```
 
@@ -412,7 +409,7 @@ Output is deterministic (symbols sorted by kind then name). The file includes a 
 - **One store, many services.** A single `fleet.sqlite` can hold all your services. There is no need for per-service store files unless you are using `platform-ingest` + `serve-http` in platform mode (which uses per-service `.sqlite` files).
 - **`workspace/` is gitignored** in fathom's own repo convention. Apply the same pattern in adopter repos: add `workspace/` to `.gitignore` so store files and generated artifacts are never committed.
 - **macOS build note.** `MACOSX_DEPLOYMENT_TARGET=14.0` is required because the tree-sitter extractor bindings compile CGO objects that need it to link cleanly (ADR-013) — not because of the store, which is pure Go and needs neither CGO nor a deployment target (SS-8/ADR-025 deleted the DuckDB backend that used to be the reason). On Linux this env var is ignored.
-- **No `concern`, no `query_symbols`.** The tools `query_symbols`, `pack_context`, and `contradiction_scan` all require a `concern` argument. `verify_plan` accepts it as optional. This is intentional (ADR-006) — it prevents unbounded symbol dumps and is the source of the token savings.
+- **No `concern`, no `query_symbols`.** The tools `query_symbols` and `pack_context` both require a `concern` argument. `verify_plan` accepts it as optional. This is intentional (ADR-006) — it prevents unbounded symbol dumps and is the source of the token savings. (`contradiction_scan` was unregistered, SR-19, surface reckoning F-77: 0 lifetime calls.)
 - **Prime every session (recommended).** Registering the MCP server makes the tools *available*; it doesn't make an agent *reach for them* — left to habit, agents grep. Add the `session-hook` SessionStart hook (see [usage.md → `session-hook`](../usage.md#session-hook)) so each session opens with "this repo is service X; use fathom before Grep/Read," or an honest signal when the index doesn't cover the repo.
 
 ---
@@ -432,4 +429,4 @@ Once fathom is wired in and returning results, see the per-use-case guides for h
 
 ## Maintained
 
-This doc covers: `init` (`--skills`, `--harness`, `--json`), `doctor`, `prime`, `ingest` (incl. `read-failed`, `--json`), `ingest-diff`, `watch`, `serve-mcp`, `serve-http` (incl. `--module`/`--modules-token-env`, `/statusz`, `/observatory`), `gen-claude-md`, `platform-ingest`, `version`, the `/rpc`/`/rpc/agent` (`/rpc/companion`)/`/rpc/modules` path-scoped surfaces, `capabilities`, `ingest` (MCP tool), `staleness_report`, `query_symbols`, `session-hook`, `edit-hook`, `fathom verify` (incl. the one-line provenance notice when the daemon's build is not this binary's), `fathom doctor`'s daemon_fresh and wiring_drift rows, `fathom fleet reconcile` (`--rebaseline`), `/statusz`'s build stamp (binary_commit, binary_dirty, built_at). Every verb here is listed by `fathom help` (the table renders from the dispatch table since 0.6.0); `fathom <verb> -h` shows flags. Update it when these change.
+This doc covers: `init` (`--skills`, `--harness`, `--json`), `doctor`, `prime`, `ingest` (incl. `read-failed`, `--json`), `ingest-diff`, `watch`, `serve-mcp`, `serve-http` (incl. `--module`, `/statusz`, `/observatory`), `gen-claude-md`, `platform-ingest`, `version`, the `/rpc`/`/rpc/agent`/`/rpc/extended` (`/rpc/companion`) path-scoped surfaces, `capabilities`, `ingest` (MCP tool), `staleness_report`, `query_symbols`, `session-hook`, `edit-hook`, `fathom verify` (incl. the one-line provenance notice when the daemon's build is not this binary's), `fathom doctor`'s daemon_fresh and wiring_drift rows, `fathom fleet reconcile` (`--rebaseline`), `/statusz`'s build stamp (binary_commit, binary_dirty, built_at). Every verb here is listed by `fathom help` (the table renders from the dispatch table since 0.6.0); `fathom <verb> -h` shows flags. Update it when these change.

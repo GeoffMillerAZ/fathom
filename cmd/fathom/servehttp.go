@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"crypto/subtle"
 	"errors"
 	"flag"
 	"fmt"
@@ -89,14 +88,13 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	autoRefresh := fs.Bool("auto-refresh", daemonAutoRefreshDefault(loaded.Config.Daemon), "re-ingest a service when its git HEAD drifts from the indexed commit, before answering queries")
 	callLogPath := fs.String("call-log", firstNonEmpty(loaded.Config.Daemon.CallLog, defaultCallLogPath()), "JSONL tool-call log path, resolved against the daemon working directory; empty to disable")
 	var modulePaths stringSliceFlag
-	fs.Var(&modulePaths, "module", "path to a conforming expert-module store (.sqlite/.db, docs/spec/expert-module-v0.md), mounted READ-ONLY on POST /rpc/modules; repeatable. A non-conforming or unreadable store aborts startup loudly (docs/plans/gke-module-host.md GKE-MH-1) rather than starting up silently degraded.")
+	fs.Var(&modulePaths, "module", "path to a conforming expert-module store (.sqlite/.db, docs/spec/expert-module-v0.md), mounted READ-ONLY so obligations unions in the rules of every module a service binds in .fathom/modules.cue; repeatable. A non-conforming or unreadable store aborts startup loudly (docs/plans/gke-module-host.md GKE-MH-1) rather than starting up silently degraded.")
 	managedFlag := fs.Bool("managed", false, "this is the operator's managed (launchd/systemd-supervised) daemon (§10.1; plist schema 2 passes it): it obeys ~/.fathom/daemon/disabled.json and paused.json (`fathom daemon stop|pause`) and is the only daemon that watches its own binary for self-restart. A launchd job under the default label or an installed fathom agent's Label is detected as managed without it. Unmanaged daemons are bounded: --exit-with-parent, --idle-exit, --ttl, no auto-refresh by default, switch files ignored, and the managed daemon's store and call log refused")
 	exitWithParent := fs.Bool("exit-with-parent", true, "unmanaged only: exit within 10 s of the parent process's death, SIGKILL included (RT-20)")
 	idleExit := fs.Duration("idle-exit", tenancy.DefaultUnmanagedBounds().IdleExit, "unmanaged only: exit after this long with no request in flight; 0 disables (RT-21)")
 	ttl := fs.Duration("ttl", tenancy.DefaultUnmanagedBounds().TTL, "unmanaged only: exit after this long regardless; 0 disables (RT-21)")
 	allowOperatorState := fs.Bool("allow-operator-state", false, "unmanaged only: allow --store/--call-log to name the managed daemon's store or call log (RT-22)")
 	lifecycleIDFlag := fs.String("lifecycle-id", "", "unmanaged only: keep the lifecycle ledger (and the crash-loop breaker) under ~/.fathom/daemon/<id>/ across relaunches — the stress harness's (RT-158); never a managed label. Default: a per-process addr-<port>-<pid> ledger")
-	modulesTokenEnv := fs.String("modules-token-env", "", "name of an environment variable holding the bearer token required for POST /rpc/modules (GKE-MH-7); unset = auth disabled (default — matches the loopback-only daemon's existing unauthenticated trust boundary). The token itself is never a flag or config value, only this env var's NAME.")
 
 	if err := fs.Parse(args); err != nil {
 		return 1
@@ -250,21 +248,6 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 
-	// GKE-MH-7: resolve the modules bearer token BEFORE opening anything —
-	// a --modules-token-env naming an empty/unset environment variable is a
-	// misconfiguration that must fail loudly, never silently leave auth
-	// disabled on what the operator believes is a protected path.
-	modulesToken := ""
-	if *modulesTokenEnv != "" {
-		modulesToken = os.Getenv(*modulesTokenEnv)
-		if modulesToken == "" {
-			msg := fmt.Sprintf("--modules-token-env=%s is set but that environment variable is empty or unset", *modulesTokenEnv)
-			flog.Error(msg)
-			exitRow(tenancy.ExitStartFailed, msg, 1)
-			return 1
-		}
-	}
-
 	// GKE-MH-1: mount every --module store read-only, conformance-checked
 	// against LevelL0 (the module host's floor — sufficient for
 	// internal/semantic.ObligationsFor and the staleness-report shape; see
@@ -363,7 +346,7 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	// RT-59 (§3.5): header, idle and per-route write timeouts and the
 	// loopback-Host guard; the managed daemon answers a test caller 409
 	// (RT-63).
-	httpSrv := newDaemonServer(act.middleware(swap), daemonServerOpts{managed: managed, hosted: modulesToken != ""})
+	httpSrv := newDaemonServer(act.middleware(swap), daemonServerOpts{managed: managed})
 	serveErr := make(chan error, 1)
 	//fathom:tenancy-allow bare-go daemon lifetime goroutine started once at serve-http startup and stopped by the drain
 	go func() { serveErr <- httpSrv.Serve(listener) }()
@@ -675,16 +658,6 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 		flog.Warn(fmt.Sprintf("%v — built-in budget defaults stand for that scope", e))
 	}
 	srv.SetBudgets(budgets)
-	// GKE-MH-7 (critic finding 2): a configured modules token means this is
-	// a hosted, network-reachable deployment — /rpc/modules must serve ONLY
-	// its own curated allowlist (never GroupShared's fleet-backend reads or
-	// write/spend tools), off-surface calls there must hard-gate (never
-	// execute-and-flag), and module tools must be unreachable via any other
-	// path (bare /rpc, another surface, a batch sub-call). Set BEFORE the
-	// handler is swapped in — never toggled while serving.
-	if modulesToken != "" {
-		srv.SetHostedModules(true)
-	}
 	// The console's dependencies (vision 35): serve-http owns them so the
 	// event feeders below publish to the same bus GET /events streams.
 	consoleDeps := newConsoleDeps(c, "http://"+*addr, time.Now())
@@ -697,7 +670,7 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 			return buildStatuszReport(ctx, c, consoleDeps.startTime, time.Now())
 		},
 		rpc: srv.HandleRequest})
-	handler := newHTTPHandlerWithAuthDeps(srv, c, modulesToken, *addr, ports, flog, consoleDeps)
+	handler := newHTTPHandlerLoggedDeps(srv, c, *addr, ports, flog, consoleDeps)
 
 	// Adopt a new binary without a human (selfrestart.go). launchd
 	// relaunches the job after the adoption exit (75, RT-11), which is what
@@ -872,8 +845,7 @@ func openCallLog(path string) (*os.File, error) {
 //	                      liveness, last compile per layer (Q-25/Q-26,
 //	                      docs/design/observability-surfaces.md §8 item 6);
 //	                      JSON via Accept: application/json or ?format=json,
-//	                      HTML otherwise; gated inside the /rpc/modules
-//	                      bearer-token allowlist when hosted (modulesAuthMiddleware)
+//	                      HTML otherwise
 //	GET  /findings/summary — repo-wide open finding-kind claim count + oldest
 //	                      compiled-at (FL-21, docs/vision/30-findings-loop.md
 //	                      §3.4); ?service=NAME required; never an MCP tool
@@ -892,25 +864,23 @@ func openCallLog(path string) (*os.File, error) {
 //	                      today; never an MCP tool
 //	POST /reload        — 200 OK stub; would reload a PlatformStore in production
 //
-// newHTTPHandlerWithAuth wraps newHTTPHandler with the /rpc/modules (AND,
-// Q-26, /statusz) bearer-token gate (GKE-MH-7). modulesToken == "" (the
-// default) disables the check entirely — identical behavior to
-// newHTTPHandler(srv, c), so every existing call site/test unaffected by
-// this row keeps working unchanged. ports is DP-9's decision port for
-// POST /route; pass nil for the pre-decision-port none-shaped behavior
-// (routeHandler treats a nil *decide.Ports the same as provider "none").
-// log is DG-5's per-request access logger (loggingMiddleware, wrapped
-// OUTSIDE the modules-auth gate so even a 401 gets an access-log line).
-func newHTTPHandlerWithAuth(srv *mcp.Server, c *client.Client, modulesToken, selfAddr string, ports *decide.Ports, log *dlog.Logger) http.Handler {
-	return newHTTPHandlerWithAuthDeps(srv, c, modulesToken, selfAddr, ports, log, nil)
+// newHTTPHandlerLogged wraps newHTTPHandler in DG-5's per-request access
+// logger (loggingMiddleware). ports is DP-9's decision port for POST /route;
+// pass nil for the none-shaped behavior (routeHandler treats a nil
+// *decide.Ports the same as provider "none"). The /rpc/modules bearer-token
+// gate that once sat inside it (GKE-MH-7, Q-26) went with hosted-modules
+// mode (SR-17, surface reckoning F-68): every route is loopback-only
+// (newDaemonServer's Host guard), /statusz included.
+func newHTTPHandlerLogged(srv *mcp.Server, c *client.Client, selfAddr string, ports *decide.Ports, log *dlog.Logger) http.Handler {
+	return newHTTPHandlerLoggedDeps(srv, c, selfAddr, ports, log, nil)
 }
 
-// newHTTPHandlerWithAuthDeps is newHTTPHandlerWithAuth with the console's
+// newHTTPHandlerLoggedDeps is newHTTPHandlerLogged with the console's
 // dependencies supplied by the caller — serve-http passes the deps whose
 // event bus its feeders publish to (console_events.go); nil builds fresh
 // ones, as every handler test does.
-func newHTTPHandlerWithAuthDeps(srv *mcp.Server, c *client.Client, modulesToken, selfAddr string, ports *decide.Ports, log *dlog.Logger, deps *consoleDeps) http.Handler {
-	return loggingMiddleware(modulesAuthMiddleware(newHTTPHandlerDeps(srv, c, selfAddr, ports, deps), modulesToken), log)
+func newHTTPHandlerLoggedDeps(srv *mcp.Server, c *client.Client, selfAddr string, ports *decide.Ports, log *dlog.Logger, deps *consoleDeps) http.Handler {
+	return loggingMiddleware(newHTTPHandlerDeps(srv, c, selfAddr, ports, deps), log)
 }
 
 // fathomRequestIDHeader is the response header loggingMiddleware stamps on
@@ -983,48 +953,6 @@ func loggingMiddleware(next http.Handler, log *dlog.Logger) http.Handler {
 	})
 }
 
-// modulesAuthMiddleware gates ONLY the /rpc/modules path (and its
-// sub-paths) behind a bearer token — every other route (including bare
-// /rpc and every other named surface) is untouched: the loopback-only
-// daemon's existing unauthenticated trust boundary (docs/mcp-tools.md)
-// stays exactly as it is. token == "" disables the check (default OFF —
-// auth is a launch requirement for a NETWORK-reachable deployment, which
-// does not exist until an operator opts in via --modules-token-env,
-// docs/plans/gke-module-host.md's design section).
-//
-// Comparison is constant-time (crypto/subtle.ConstantTimeCompare) so a
-// byte-by-byte mismatch never leaks timing information about how much of
-// the token matched. The configured token is never logged or echoed back —
-// only a boolean authorized/denied is observable from this middleware, and
-// the 401 body never repeats the caller-supplied credential.
-func modulesAuthMiddleware(next http.Handler, token string) http.Handler {
-	if token == "" {
-		return next
-	}
-	const prefix = "Bearer "
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Q-26 (docs/plans/expert-suite-q.md): /statusz sits INSIDE this
-		// same allowlist gate, not outside it — the phase-O critic finding
-		// #2 class (GKE-MH-7): a hosted, network-reachable deployment must
-		// not leak index/service detail through a route the modules-token
-		// gate doesn't cover. Loopback-only default (token == "" above)
-		// leaves /statusz fully open, exactly like every other route.
-		if r.URL.Path != "/rpc/modules" && !strings.HasPrefix(r.URL.Path, "/rpc/modules/") && r.URL.Path != "/statusz" {
-			next.ServeHTTP(w, r)
-			return
-		}
-		got := r.Header.Get("Authorization")
-		authorized := strings.HasPrefix(got, prefix) &&
-			subtle.ConstantTimeCompare([]byte(strings.TrimPrefix(got, prefix)), []byte(token)) == 1
-		if !authorized {
-			w.Header().Set("WWW-Authenticate", `Bearer realm="fathom-modules"`)
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
-}
-
 func newHTTPHandler(srv *mcp.Server, c *client.Client, selfAddr string, ports *decide.Ports) http.Handler {
 	return newHTTPHandlerDeps(srv, c, selfAddr, ports, nil)
 }
@@ -1039,10 +967,7 @@ func newHTTPHandlerDeps(srv *mcp.Server, c *client.Client, selfAddr string, port
 	state.startTime = deps.startTime
 
 	// GET /statusz (Q-25/Q-26): daemon health, per-service index
-	// freshness, channel liveness, last compile per layer. Registered
-	// unconditionally here — modulesAuthMiddleware (servehttp.go, wrapped
-	// around this handler by newHTTPHandlerWithAuth) is what gates it
-	// under hosted mode; this function itself has no notion of a token.
+	// freshness, channel liveness, last compile per layer.
 	// GET /findings/summary (FL-21, ADR-040 decision 5): a plain HTTP
 	// route, never an MCP tool — the session hook's own repo-wide "open
 	// findings: N" brief line.
@@ -1066,8 +991,7 @@ func newHTTPHandlerDeps(srv *mcp.Server, c *client.Client, selfAddr string, port
 	// The Observatory console (vision 35, ADR-045): every registered page
 	// (console_registry.go) on the console shell — /, /fleet,
 	// /projects/{svc}, /impact, /sessions, /sessions/{id}, /brief, /wiring,
-	// /statusz (GET /statusz is Q-25/Q-26's report; the modules gate above
-	// still covers it in hosted mode), /search — plus GET /events, the
+	// /statusz (GET /statusz is Q-25/Q-26's report), /search — plus GET /events, the
 	// shell's 404, and the legacy /observatory* routes (308 for HTML, the
 	// unchanged v1 JSON for ?format=json). The wiring mutations stay at
 	// /observatory/wiring/{preview,apply,undo} behind requireLocalMutation

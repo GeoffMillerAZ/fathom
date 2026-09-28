@@ -151,7 +151,6 @@ pkg-map	internal/mcp/outputschema.go	read-only lookup table of constants, never 
 pkg-map	internal/mcp/search_tool.go	read-only lookup table of constants, never written after init: not a cache
 pkg-map	internal/mcp/search_tool.go	read-only lookup table of constants, never written after init: not a cache
 pkg-map	internal/mcp/search_tool.go	read-only lookup table of constants, never written after init: not a cache
-pkg-map	internal/mcp/surface.go	read-only lookup table of constants, never written after init: not a cache
 sources	cmd/fathom/console_graphstore.go	the console's graph-store group: loads the shared memo snapshot once per watermark (single flight, memo-budgeted)
 sources	cmd/fathom/console_learn_ask.go	the Learn page's try-it runs one symbol listing for a chosen service under a 10 s request deadline; moving it onto the shared snapshot is follow-up work
 sources	internal/mcp/autorefresh.go	autorefresh's QueryInterface pass-through, which only forwards the call; the memo loader is the one caller

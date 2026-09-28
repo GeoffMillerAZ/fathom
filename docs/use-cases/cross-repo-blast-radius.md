@@ -17,7 +17,6 @@ Answer "if I change X, what breaks — here and in every other service?" across 
 | `test_impact` | MCP tool (investigation) | Test functions that transitively reach the symbol via the call graph |
 | `blast_radius` | MCP tool (investigation) | Blast radius of **changed files**: symbols defined there + their transitive callers + affected tests + touched files (widen with `max_depth:0, max_symbols:0` for the unbounded diff/PR recall its retired `diff_impact` alias gave, SR-25) |
 | `rename_impact` | MCP tool (coding) | Every call site that must be updated if the symbol is renamed |
-| `reachable` | MCP tool (coding) | Boolean: is there any directed call path from symbol A to symbol B? |
 | `cross_repo_callers` | MCP tool (platform) | All callers of a symbol **across every ingested service** via stored call edges (its `platform_callers` alias was deleted, SW-1) |
 | `references` | MCP tool (investigation) | Occurrence search for an identifier or string — across every service's source with `services: ["*"]`, evidence-tiered — catches string/config mentions no call edge records |
 | `list_services` | MCP tool (platform) | All services in the fleet with detected languages and symbol counts |
@@ -34,8 +33,7 @@ With fathom:
 1. **Call edges are pre-indexed** across ~25 languages. `cross_repo_callers` returns structured results in one round-trip instead of many grep passes.
 2. **Test impact is automatic.** `test_impact` walks the call graph transitively; Claude Code gets an exact test list to run rather than guessing.
 3. **Rename safety is explicit.** `rename_impact` returns every call site as a list; Claude Code can iterate it, edit each site, and confirm the list shrinks to zero.
-4. **Path existence is a boolean gate.** `reachable` lets Claude Code answer "does this change propagate to the payment path?" without speculative reasoning — reducing plan drift.
-5. **Interface-dispatch callers are no longer invisible.** For Go services (ADR-021 §3), `find_callers`/`blast_radius`/`symbol_context` additionally consume typed call edges: a caller reachable only through an interface method shared by several concrete implementations — previously an unconditional refusal, since the syntax-only graph can't disambiguate an overloaded method name — now shows up, kind-labeled (`direct` / `iface-dispatch`) in `find_callers`'s `typed_callers` and `symbol_context`'s `typed_edges`, and folded directly into `blast_radius`'s symbol/test/file sets.
+4. **Interface-dispatch callers are no longer invisible.** For Go services (ADR-021 §3), `find_callers`/`blast_radius`/`symbol_context` additionally consume typed call edges: a caller reachable only through an interface method shared by several concrete implementations — previously an unconditional refusal, since the syntax-only graph can't disambiguate an overloaded method name — now shows up, kind-labeled (`direct` / `iface-dispatch`) in `find_callers`'s `typed_callers` and `symbol_context`'s `typed_edges`, and folded directly into `blast_radius`'s symbol/test/file sets.
 
 The result: impact review that would take dozens of file reads and grep calls collapses to 3-5 structured tool calls, and Claude Code can cite specific files and line numbers from the evidence rather than hedging.
 
@@ -95,14 +93,6 @@ Returns `{ "tests": ["TestValidateToken_Expired", "TestRefreshSession_Invalid", 
 
 Returns the same caller list as `find_callers` but formatted as call sites — use this as the checklist to update.
 
-**6. Gate on reachability before touching the payment path.**
-
-```json
-{ "name": "reachable", "arguments": { "service": "payment-service", "from": "ProcessCheckout", "to": "ChargeCard" } }
-```
-
-Returns `{ "reachable": true }`. The checkout → charge path exists, so this change carries payment-path risk. Escalate review accordingly.
-
 **CLI equivalent (from a terminal, outside a Claude Code session):**
 
 ```sh
@@ -128,7 +118,7 @@ each caller's own service for its transitive reach there.
 
 ## Setup & notes
 
-**Surface:** there is no profile switch (`set_profile` was removed, SW-2). stdio `serve-mcp` serves the full registry; the shared HTTP daemon scopes by path — `POST /rpc/agent` (the 19-tool allowlist: `find_callers`, `references`, `list_services`, `staleness_report`, `ingest` are on it), and bare `POST /rpc` for everything (the group endpoints were deleted — HF-5). An off-surface call (`test_impact`, `rename_impact`, `reachable`, `cross_repo_*` from `/rpc/agent`) still executes — it is logged `off_surface:true`, never refused.
+**Surface:** there is no profile switch (`set_profile` was removed, SW-2). stdio `serve-mcp` serves the full registry; the shared HTTP daemon scopes by path — `POST /rpc/agent` (the 19-tool allowlist: `find_callers`, `references`, `list_services`, `staleness_report`, `ingest` are on it), and bare `POST /rpc` for everything (the group endpoints were deleted — HF-5). An off-surface call (`test_impact`, `rename_impact`, `cross_repo_*` from `/rpc/agent`) still executes — it is logged `off_surface:true`, never refused. (`reachable` was unregistered, SR-12, surface reckoning F-22: 0 lifetime calls.)
 
 **Cross-repo edges require call-edge data in the index.** If `cross_repo_callers` returns zero results for a symbol you know is called externally, the index was built without call edges populated. Re-ingest with a current build:
 
@@ -146,8 +136,8 @@ After ingest, verify the `Package` column and `Calls` edges are present by check
 
 **`--repos` flag is Go-only (legacy).** When using the CLI, omit `--repos` to get language-agnostic results. The flag filters to a subset of repos using Go module paths and does not apply to Python, TypeScript, Java, or other languages.
 
-**`concern` is not required for impact tools.** `find_callers`, `rename_impact`, `reachable`, `cross_repo_callers`, and `test_impact` take `symbol` as their scope — no `concern` argument needed. (`query_symbols` and `pack_context` do require `concern`; they are for a different pattern.)
+**`concern` is not required for impact tools.** `find_callers`, `rename_impact`, `cross_repo_callers`, and `test_impact` take `symbol` as their scope — no `concern` argument needed. (`query_symbols` and `pack_context` do require `concern`; they are for a different pattern.)
 
 ## Maintained
 
-This doc covers: `find_callers` (incl. `depth`, `edge_confidence`, `by_depth`, `transitive_callers`), `test_impact`, `blast_radius` (incl. `by_depth`), `rename_impact`, `reachable`, `cross_repo_callers`, `references`, `list_services`, `staleness_report`, `ingest`, `fathom platform-callers`. Update it when these change.
+This doc covers: `find_callers` (incl. `depth`, `edge_confidence`, `by_depth`, `transitive_callers`), `test_impact`, `blast_radius` (incl. `by_depth`), `rename_impact`, `cross_repo_callers`, `references`, `list_services`, `staleness_report`, `ingest`, `fathom platform-callers`. Update it when these change.

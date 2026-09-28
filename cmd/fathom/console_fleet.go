@@ -47,11 +47,23 @@ func buildFleetPage(cr *consoleRequest) (consoleOut, error) {
 	q := console.ParseFleetQuery(cr.r.URL.Query())
 	tbl := console.FleetTable(pr.projects, q)
 	metrics := consoleSharedMetrics(m, pr)
+	// SR-55 (F-57): the reconcile trigger runs ONLY on an explicit
+	// ?reconcile=1 — a person following the fleet page's own "Check wiring
+	// drift" button, never on every ordinary page load (which would make
+	// the read-only wiring walk over every repo cost something on the
+	// page's normal budget, and would blur "user-triggered" into "runs
+	// whenever anyone looks at the fleet").
+	reconcileTriggered := cr.r.URL.Query().Get("reconcile") == "1"
+	var reconcileDiffs []wiringDiff
+	if reconcileTriggered {
+		roots, svcByRoot := fleetReconcileRoots(pr.projects.Rows)
+		reconcileDiffs = consoleReconcileAction(roots, svcByRoot)
+	}
 	out := consoleOut{
 		Meta:    modelMeta(m),
 		Model:   tbl,
 		Metrics: pageMetrics(cr.page, metrics),
-		Body:    func() string { return renderFleet(tbl, metrics, m) },
+		Body:    func() string { return renderFleet(tbl, metrics, m, reconcileTriggered, reconcileDiffs) },
 	}
 	// The verb section is computed for JSON only: the fleet report walks
 	// every repository and is not on the HTML render path.
@@ -61,9 +73,9 @@ func buildFleetPage(cr *consoleRequest) (consoleOut, error) {
 	return out, nil
 }
 
-// renderFleet is the page body: the totals, the health rollup, then the
-// filterable table.
-func renderFleet(t console.FleetTableModel, metrics console.Metrics, m observatoryModel) string {
+// renderFleet is the page body: the totals, the health rollup, the
+// filterable table, then the wiring-drift panel (SR-55, F-57).
+func renderFleet(t console.FleetTableModel, metrics console.Metrics, m observatoryModel, reconcileTriggered bool, reconcileDiffs []wiringDiff) string {
 	var b strings.Builder
 	// The shared projections (OC-9): every row in the resolved log, the
 	// unattributed rows named in the caption, never dropped.
@@ -90,7 +102,123 @@ func renderFleet(t console.FleetTableModel, metrics console.Metrics, m observato
 	b.WriteString(`<div class="mt-4">` + renderFleetTablePanel(t, m) + `</div>`)
 	// RG-7: the realization grades over 30 days, the phase-U scoreboard.
 	b.WriteString(`<div class="mt-4">` + renderGradeDistribution(m) + `</div>`)
+	b.WriteString(`<div class="mt-4">` + renderFleetReconcile(reconcileTriggered, reconcileDiffs) + `</div>`)
 	return b.String()
+}
+
+// fleetReconcileRoots maps the fleet's own project rows into the
+// (roots, service-by-root) shape consoleReconcileAction takes — every row
+// with a known local Path, mirroring cmdFleetReconcile's own "only repos
+// whose path is known and stat-able" discipline (reconcile.go) minus the
+// stat (a path the registry itself gave the console is trusted the same
+// way the rest of this page already trusts it for every other panel).
+func fleetReconcileRoots(rows []console.ProjectFacts) ([]string, map[string]string) {
+	var roots []string
+	svcByRoot := map[string]string{}
+	for _, r := range rows {
+		if r.Path == "" {
+			continue
+		}
+		roots = append(roots, r.Path)
+		svcByRoot[r.Path] = r.Service
+	}
+	return roots, svcByRoot
+}
+
+// renderFleetReconcile is SR-55's own panel (F-57): a "Check wiring drift"
+// button when not yet triggered, or — once GET /fleet?reconcile=1 has
+// run — every repo's drift, with the CLI command that fixes it (--apply
+// stays CLI-only; see this file's own package doc comment for why).
+func renderFleetReconcile(triggered bool, diffs []wiringDiff) string {
+	// SourceKey "daemon" (console.EventDaemon's own key): wiring drift is
+	// fleet-wide, not scoped to one service's index/layers/plans/sessions —
+	// "daemon" is the one existing producible key that, like this panel,
+	// names no particular service (events.go's own EventDaemon).
+	const reconcileSourceKey = "daemon"
+	if !triggered {
+		return renderPanel(consolePanel{
+			ID: "reconcile", Title: "Wiring drift",
+			Question: "Is every project's hook/stanza/skill wiring still current with the template fathom ships?",
+			Verb:     "fathom fleet reconcile",
+			Source:   "a read-only walk of each project's .claude/settings.json, CLAUDE.md/AGENTS.md stanzas and shipped skill files",
+			State:    console.StatePresent, SourceKey: reconcileSourceKey,
+			Body: `<p class="text-sm text-ink-muted mb-2">Not checked this page load — reconcile runs only when asked (never on a schedule).</p>` +
+				form.RenderButton(form.Button{Label: "Check wiring drift", Href: "/fleet?reconcile=1", Variant: form.ButtonGhost}),
+		})
+	}
+	var driftedRepos int
+	var b strings.Builder
+	for _, d := range diffs {
+		if !wiringDiffHasDrift(d) {
+			continue
+		}
+		driftedRepos++
+		label := d.Repo
+		if d.Service != "" {
+			label = d.Service + " (" + d.Repo + ")"
+		}
+		fmt.Fprintf(&b, "<li><strong>%s</strong>: %s</li>", html.EscapeString(label), html.EscapeString(strings.Join(wiringDiffDriftSummary(d), "; ")))
+	}
+	body := `<p class="text-sm text-ink-muted mb-2">` + plural(driftedRepos, "project") + ` drifted, of ` + plural(len(diffs), "checked") + `.</p>`
+	if driftedRepos > 0 {
+		body += `<ul class="list-disc pl-5 text-sm space-y-1">` + b.String() + `</ul>` +
+			`<p class="text-sm text-ink-muted mt-2">Fix the safe subset: <code>fathom fleet reconcile --apply</code> (dry-run shown here first; applying is a deliberate, separate CLI step).</p>`
+	}
+	body += `<p class="mt-2">` + form.RenderButton(form.Button{Label: "Re-check", Href: "/fleet?reconcile=1", Variant: form.ButtonGhost}) + `</p>`
+	state := console.StatePresent
+	if driftedRepos > 0 {
+		state = console.StatePartial
+	}
+	return renderPanel(consolePanel{
+		ID: "reconcile", Title: "Wiring drift",
+		Question: "Is every project's hook/stanza/skill wiring still current with the template fathom ships?",
+		Verb:     "fathom fleet reconcile",
+		Source:   "a read-only walk of each project's .claude/settings.json, CLAUDE.md/AGENTS.md stanzas and shipped skill files",
+		State:    state, SourceKey: reconcileSourceKey,
+		Body: body,
+	})
+}
+
+// wiringDiffDriftSummary names each kind of drift a repo carries, in a
+// short human list — never the full wiringDiff dump, which cmdFleetReconcile's
+// own stdout already renders in full for whoever runs the CLI command
+// this panel names.
+func wiringDiffDriftSummary(d wiringDiff) []string {
+	var out []string
+	if n := len(d.Missing); n > 0 {
+		out = append(out, plural(n, "missing hook entry"))
+	}
+	if n := len(d.StaleCmds); n > 0 {
+		out = append(out, plural(n, "stale absolute path"))
+	}
+	if n := len(d.MissingSkills); n > 0 {
+		out = append(out, plural(n, "missing skill file"))
+	}
+	if n := len(d.StaleSkills); n > 0 {
+		out = append(out, plural(n, "stale skill file"))
+	}
+	if n := len(d.BlockedSkills); n > 0 {
+		out = append(out, plural(n, "blocked skill file")+" (hand-edited; not auto-applied)")
+	}
+	if d.StanzaNote != "" {
+		out = append(out, d.StanzaNote)
+	}
+	if n := len(d.StaleStanzas); n > 0 {
+		out = append(out, plural(n, "stale stanza"))
+	}
+	if n := len(d.DriftedStanzas); n > 0 {
+		out = append(out, plural(n, "hand-edited stanza")+" (blocked; not auto-applied)")
+	}
+	if d.SettingsNote != "" {
+		out = append(out, d.SettingsNote)
+	}
+	if n := len(d.WiringDrift); n > 0 {
+		out = append(out, plural(n, "MCP/skill entry")+" drifted")
+	}
+	if n := len(d.WiringUnreadable); n > 0 {
+		out = append(out, plural(n, "unreadable wiring file"))
+	}
+	return out
 }
 
 // ─── the health rollup ──────────────────────────────────────────────────

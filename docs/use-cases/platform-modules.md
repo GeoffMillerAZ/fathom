@@ -34,13 +34,11 @@ the edit-hook stack — lives in [coding-agents.md](coding-agents.md).
 | Name | Kind | What it gives you |
 |---|---|---|
 | `obligations` | MCP tool | Governing rules for a file — module-tagged and staleness-flagged once a binding exists, unchanged in shape otherwise |
-| `list_modules` | MCP tool | Every module store mounted on this daemon (module name, path, per-service watermark) |
-| `module_obligations` / `module_query` / `module_staleness` | MCP tool | The full federation surface a bound module's rules ride, scoped to one or every mounted module |
 | `fathom init` | CLI | Wires the PreToolUse guard hook and scaffolds commented `.fathom/guard.cue` / `.fathom/modules.cue` |
 | `fathom doctor` | CLI | Binding/guard config validity, unmounted bindings, sub-servable bindings, dead guards — see Setup & notes |
 | `fathom research report` | CLI | Guarded-edit pre\|post coverage and per-module serving counts (never fabricated when unmeasured) |
 | `fathom module init\|sources\|map\|compile\|eval\|doctor\|pack\|runs` | CLI | The producer side: author a module manifest (`module.cue`), map its sources onto a corpus, compile (dry-run by default, eval-gated), pack a conforming store for mounting — **experimental**: read-only before writable (law 9), no external consumer yet |
-| `serve-http --module <path>` / `--modules-token-env` | CLI | Mount a packed module store read-only on `POST /rpc/modules` (repeatable); the token env gates that surface for hosted deployments |
+| `serve-http --module <path>` | CLI | Mount a packed module store read-only (repeatable) so `obligations` unions in the rules of every module a service binds. The four module MCP tools, `/rpc/modules` and `--modules-token-env` were removed by SR-17 (surface reckoning F-68) |
 
 ---
 
@@ -205,10 +203,9 @@ unbind candidate, reported, never auto-removed.
 This doc covers: `.fathom/modules.cue` (schema: `schema/binding/`),
 `.fathom/guard.cue` (schema: `schema/guard/`), the `obligations` MCP
 tool's `module`/`displaced_repo`/`displaced_module`/`module_notes` fields,
-`list_modules`, `module_obligations`, `module_query`, `module_staleness`,
 `fathom edit-hook --pre`, `fathom module` (`init`/`sources`/`map`/
 `compile`/`eval`/`doctor`/`pack`/`runs`; schema: `schema/module/`),
-`serve-http --module`/`--modules-token-env`, and the `binding_file`/
+`serve-http --module`, and the `binding_file`/
 `guard_file`/`binding_modules_mounted`/`binding_module_readiness`/
 `guard_dead_scopes`/`guard_include_modules_unbound` doctor checks. Update
 it when these change.

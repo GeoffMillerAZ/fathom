@@ -177,18 +177,22 @@ func TestExtendedSurfaceToolsList(t *testing.T) {
 
 func TestCompanionSurfaceGatesToolsCall(t *testing.T) {
 	var buf bytes.Buffer
-	srv := mcp.NewServerWithLogger(&fakeBackend{}, mcp.NewCallLogger(&buf))
+	srv := mcp.NewServerWithFleetAndLogger(&fakeBackend{}, fleetFixture(), mcp.NewCallLogger(&buf))
 	ctx := mcp.WithRequestScope(context.Background(), "companion", true)
 
 	// Off-surface tools still execute — even shared-group ones like
-	// secret_scan (ADR-014 amendment: an error only teaches abandonment,
-	// which looks identical to no-demand in the call log). The call log
-	// records the pass-through with off_surface:true.
-	for _, tool := range []string{"secret_scan", "dead_code", "shell_out"} {
+	// cross_repo_callers (ADR-014 amendment: an error only teaches
+	// abandonment, which looks identical to no-demand in the call log).
+	// The call log records the pass-through with off_surface:true.
+	// (secret_scan, dead_code and shell_out, the original three
+	// off-surface examples, were unregistered by SR-12/SR-19, surface
+	// reckoning F-22/F-77; status joined the companion/extended surface
+	// itself at SR-23 and is no longer an off-surface example.)
+	for _, tool := range []string{"cross_repo_callers"} {
 		buf.Reset()
 		resp := scopedRoundtrip(t, srv, ctx, request{
 			JSONRPC: "2.0", ID: 2, Method: "tools/call",
-			Params: map[string]any{"name": tool, "arguments": map[string]any{"service": "svc"}},
+			Params: map[string]any{"name": tool, "arguments": map[string]any{"symbol": "Foo"}},
 		})
 		if resp["error"] != nil {
 			t.Fatalf("off-surface %q should execute-and-flag, got error: %v", tool, resp["error"])
@@ -225,118 +229,17 @@ func TestCompanionSurfaceGatesToolsCall(t *testing.T) {
 	srv.SetStrictSurfaces(true)
 	strict := scopedRoundtrip(t, srv, ctx, request{
 		JSONRPC: "2.0", ID: 4, Method: "tools/call",
-		Params: map[string]any{"name": "secret_scan", "arguments": map[string]any{"service": "svc"}},
+		Params: map[string]any{"name": "cross_repo_callers", "arguments": map[string]any{"symbol": "Foo"}},
 	})
 	errObj, ok := strict["error"].(map[string]any)
 	if !ok {
-		t.Fatalf("secret_scan under strictSurfaces: want error, got %v", strict)
+		t.Fatalf("cross_repo_callers under strictSurfaces: want error, got %v", strict)
 	}
 	if code := errObj["code"].(float64); code != float64(mcp.ErrCodeNotFound) {
 		t.Errorf("strictSurfaces: code = %v, want %v", code, mcp.ErrCodeNotFound)
 	}
 	if msg := errObj["message"].(string); !strings.Contains(msg, "surface") {
 		t.Errorf("strictSurfaces: error message %q should name the surface", msg)
-	}
-}
-
-// ─── batch cannot smuggle off-surface tools — but they still execute-and-flag ─
-
-func TestBatchGatedOnSurface(t *testing.T) {
-	srv := mcp.NewServer(&fakeBackend{})
-	ctx := mcp.WithRequestScope(context.Background(), "companion", true)
-	batchReq := request{
-		JSONRPC: "2.0", ID: 4, Method: "tools/call",
-		Params: map[string]any{
-			"name": "batch",
-			"arguments": map[string]any{
-				"calls": []map[string]any{
-					{"name": "secret_scan", "arguments": map[string]any{"service": "svc"}},
-					{"name": "find_symbol", "arguments": map[string]any{"service": "svc", "name": "Foo"}},
-				},
-			},
-		},
-	}
-	resp := scopedRoundtrip(t, srv, ctx, batchReq)
-	if resp["error"] != nil {
-		t.Fatalf("batch itself should succeed: %v", resp["error"])
-	}
-	// The envelope wraps the JSON payload as text content.
-	content := resp["result"].(map[string]any)["content"].([]any)
-	text := content[0].(map[string]any)["text"].(string)
-	var payload struct {
-		Results []struct {
-			Name  string `json:"name"`
-			Error string `json:"error"`
-		} `json:"results"`
-	}
-	if err := json.Unmarshal([]byte(text), &payload); err != nil {
-		t.Fatalf("batch payload parse: %v (text=%q)", err, text)
-	}
-	if len(payload.Results) != 2 {
-		t.Fatalf("batch results = %d, want 2", len(payload.Results))
-	}
-	// Off-surface sub-calls execute-and-flag too: secret_scan runs instead of
-	// being gated (ADR-014 amendment).
-	if payload.Results[0].Error != "" {
-		t.Errorf("secret_scan sub-call should execute-and-flag, got error %q", payload.Results[0].Error)
-	}
-	if payload.Results[1].Error != "" {
-		t.Errorf("find_symbol sub-call should succeed, got error %q", payload.Results[1].Error)
-	}
-
-	// strictSurfaces restores the pre-amendment gate for batch sub-calls too.
-	// batch itself is GroupShared, which dropped off the companion allowlist
-	// in this slice (companionTools omits batch/brief); under strict
-	// mode a companion-scoped batch call would be rejected outright before
-	// even reaching its sub-calls. Use the "shared" surface instead, where
-	// batch is NOT on the agent allowlist (surfaces week-1 dropped it), so
-	// under strictSurfaces the outer call itself is refused — HF-5 deleted
-	// the group surfaces this case used to ride ("shared"), and the agent
-	// surface is the only curated one left.
-	srv.SetStrictSurfaces(true)
-	sharedCtx := mcp.WithRequestScope(context.Background(), mcp.SurfaceAgent, true)
-	strictResp := scopedRoundtrip(t, srv, sharedCtx, request{
-		JSONRPC: "2.0", ID: 5, Method: "tools/call",
-		Params: map[string]any{
-			"name": "batch",
-			"arguments": map[string]any{
-				"calls": []map[string]any{
-					{"name": "find_callers", "arguments": map[string]any{"service": "svc", "symbol": "Foo"}},
-					{"name": "secret_scan", "arguments": map[string]any{"service": "svc"}},
-				},
-			},
-		},
-	})
-	if strictResp["error"] == nil {
-		t.Fatalf("batch is off the agent allowlist; strictSurfaces must refuse the outer call")
-	}
-	if msg, _ := strictResp["error"].(map[string]any)["message"].(string); !strings.Contains(msg, "batch") {
-		t.Errorf("strict refusal should name the tool: %q", msg)
-	}
-	return
-}
-
-// batchStrictTail is the pre-HF-5 remainder of TestBatchGatedOnSurface,
-// kept out of the compiled path: it asserted per-sub-call gating on a group
-// surface that no longer exists. The outer-call refusal above is the
-// surviving contract.
-func batchStrictTail(t *testing.T, strictResp map[string]any) {
-	strictContent := strictResp["result"].(map[string]any)["content"].([]any)
-	strictText := strictContent[0].(map[string]any)["text"].(string)
-	var strictPayload struct {
-		Results []struct {
-			Name  string `json:"name"`
-			Error string `json:"error"`
-		} `json:"results"`
-	}
-	if err := json.Unmarshal([]byte(strictText), &strictPayload); err != nil {
-		t.Fatalf("strict batch payload parse: %v (text=%q)", err, strictText)
-	}
-	if !strings.Contains(strictPayload.Results[0].Error, "surface") {
-		t.Errorf("find_callers sub-call (GroupInvestigation) under strictSurfaces on shared should be gated, got error %q", strictPayload.Results[0].Error)
-	}
-	if strictPayload.Results[1].Error != "" {
-		t.Errorf("secret_scan sub-call (GroupShared) should still succeed on the shared surface, got error %q", strictPayload.Results[1].Error)
 	}
 }
 
@@ -479,7 +382,7 @@ func TestPromptsScopedOnSurface(t *testing.T) {
 // ─── surface name validation ─────────────────────────────────────────────────
 
 func TestValidSurface(t *testing.T) {
-	for _, name := range []string{"agent", "companion", "extended", "modules"} {
+	for _, name := range []string{"agent", "companion", "extended"} {
 		if !mcp.ValidSurface(name) {
 			t.Errorf("ValidSurface(%q) = false, want true", name)
 		}
@@ -494,14 +397,14 @@ func TestValidSurface(t *testing.T) {
 			t.Errorf("ValidSurface(%q) = true — the group surfaces were deleted (HF-5)", name)
 		}
 	}
-	for _, name := range []string{"", "bogus", "Companion", "Agent", "full"} {
+	for _, name := range []string{"", "bogus", "Companion", "Agent", "full", "modules"} {
 		if mcp.ValidSurface(name) {
 			t.Errorf("ValidSurface(%q) = true, want false", name)
 		}
 	}
 	names := mcp.SurfaceNames()
-	if len(names) != 4 {
-		t.Fatalf("SurfaceNames() = %v, want 4 entries (agent, companion, extended, modules)", names)
+	if len(names) != 3 {
+		t.Fatalf("SurfaceNames() = %v, want 3 entries (agent, companion, extended; SR-17 removed modules)", names)
 	}
 	if !sort.StringsAreSorted(names) {
 		t.Errorf("SurfaceNames() not sorted: %v", names)
@@ -531,65 +434,9 @@ func TestCallLoggerRecordsSurface(t *testing.T) {
 	}
 }
 
-// ─── batch sub-calls are individually logged ─────────────────────────────────
-
-func TestCallLoggerRecordsBatchSubCalls(t *testing.T) {
-	var buf bytes.Buffer
-	srv := mcp.NewServerWithLogger(&fakeBackend{}, mcp.NewCallLogger(&buf))
-	ctx := mcp.WithRequestScope(context.Background(), "companion", true)
-	_ = scopedRoundtrip(t, srv, ctx, request{
-		JSONRPC: "2.0", ID: 15, Method: "tools/call",
-		Params: map[string]any{
-			"name": "batch",
-			"arguments": map[string]any{
-				"calls": []map[string]any{
-					{"name": "find_symbol", "arguments": map[string]any{"service": "svc", "name": "Foo"}},
-					{"name": "secret_scan", "arguments": map[string]any{"service": "svc"}},
-				},
-			},
-		},
-	})
-	lines := strings.Split(strings.TrimSpace(buf.String()), "\n")
-	// Two sub-call entries (via:"batch") plus the outer batch entry.
-	if len(lines) != 3 {
-		t.Fatalf("expected 3 log lines (2 sub-calls + batch), got %d: %q", len(lines), buf.String())
-	}
-	byTool := map[string]map[string]any{}
-	for _, line := range lines {
-		var entry map[string]any
-		if err := json.Unmarshal([]byte(line), &entry); err != nil {
-			t.Fatalf("log line parse: %v (line=%q)", err, line)
-		}
-		byTool[entry["tool"].(string)] = entry
-	}
-	sub, ok := byTool["find_symbol"]
-	if !ok {
-		t.Fatalf("find_symbol sub-call not logged: %v", byTool)
-	}
-	if sub["via"] != "batch" {
-		t.Errorf("sub-call via = %v, want batch", sub["via"])
-	}
-	if sub["surface"] != "companion" {
-		t.Errorf("sub-call surface = %v, want companion", sub["surface"])
-	}
-	// secret_scan is off the companion allowlist but execute-and-flags: it
-	// runs (no error) and its log entry carries off_surface:true.
-	offSurface, ok := byTool["secret_scan"]
-	if !ok {
-		t.Fatalf("off-surface secret_scan sub-call not logged: %v", byTool)
-	}
-	if errMsg, _ := offSurface["error"].(string); errMsg != "" {
-		t.Errorf("off-surface sub-call should execute-and-flag, not error, got %v", offSurface["error"])
-	}
-	if off, _ := offSurface["off_surface"].(bool); !off {
-		t.Errorf("off-surface sub-call should log off_surface:true, got %v", offSurface)
-	}
-	if outer, ok := byTool["batch"]; !ok {
-		t.Error("outer batch entry not logged")
-	} else if outer["via"] != nil {
-		t.Errorf("outer batch entry should have no via, got %v", outer["via"])
-	}
-}
+// TestCallLoggerRecordsBatchSubCalls was retired: batch and secret_scan,
+// its demonstration vehicles, were both unregistered by SR-19 (surface
+// reckoning, F-77).
 
 // TestGroupSurfacesRetired (HF-5, ADR-014 amendment 2) pins the deletion of
 // the four path-scoped group surfaces. They were reachable only by typing
@@ -604,13 +451,13 @@ func TestGroupSurfacesRetired(t *testing.T) {
 			t.Errorf("ValidSurface(%q) = true — HF-5 deleted the group surfaces", gone)
 		}
 	}
-	for _, kept := range []string{mcp.SurfaceAgent, mcp.SurfaceCompanion, mcp.SurfaceExtended, mcp.SurfaceModules} {
+	for _, kept := range []string{mcp.SurfaceAgent, mcp.SurfaceCompanion, mcp.SurfaceExtended} {
 		if !mcp.ValidSurface(kept) {
-			t.Errorf("ValidSurface(%q) = false — agent, companion, extended and modules survive", kept)
+			t.Errorf("ValidSurface(%q) = false — agent, companion and extended survive", kept)
 		}
 	}
-	if got := mcp.SurfaceNames(); len(got) != 4 {
-		t.Errorf("SurfaceNames() = %v, want exactly the four surviving surfaces", got)
+	if got := mcp.SurfaceNames(); len(got) != 3 {
+		t.Errorf("SurfaceNames() = %v, want exactly the three surviving surfaces", got)
 	}
 
 	// The taxonomy survives the surfaces: a tool still carries its group.

@@ -139,12 +139,11 @@
       "category": "cross_repo_callers",
       "prompt": "Which fathom internal packages (by file) import agentic-kit's foundations/review/scoring package? List each file path.",
       "ground_truth": [
-        "internal/memory/tier.go",
         "internal/query/engine.go",
         "internal/verify/verify.go"
       ],
       "scoring_rule": "all-of",
-      "source": "fathom @ 9f40934, grep -rln \"agentic-kit/foundations/review/scoring\" --include='*.go' . (excluding third_party/ and _test.go) RE-SWEPT (PB-1 sweep, 2026-09-02, tree at e8d2948): a third importer exists (internal/memory/tier.go), so the prompt's 'which two' premise leaked a stale count; premise reworded to not assert a count, importer added to ground_truth."
+      "source": "fathom @ 9f40934, grep -rln \"agentic-kit/foundations/review/scoring\" --include='*.go' . (excluding third_party/ and _test.go) RE-SWEPT (PB-1 sweep, 2026-09-02, tree at e8d2948): a third importer exists (internal/memory/tier.go), so the prompt's 'which two' premise leaked a stale count; premise reworded to not assert a count, importer added to ground_truth. RE-SWEPT (SR-13, surface reckoning F-45, 2026-09-28): internal/memory was deleted with anchored memory, so internal/memory/tier.go left ground_truth; the two remaining importers re-verified by the same grep."
     },
     {
       "id": "B1-T12",

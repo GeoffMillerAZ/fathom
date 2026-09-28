@@ -4,7 +4,6 @@
 package mcp_test
 
 import (
-	"encoding/json"
 	"strings"
 	"testing"
 
@@ -166,18 +165,19 @@ func TestReferencesAlias_ConflictingValuesErrorsLoudly(t *testing.T) {
 // TestDispatch_PreviouslyLenientTool_NowRefuses proves dispatch-level
 // required-field validation (P1-8) catches a missing declared-required
 // field BEFORE the handler runs, for a tool with more than one required
-// field: contradiction_scan declares "concern" required alongside
+// field: review_diff declares "changed_files" required alongside
 // "service" — omitting it must refuse at dispatch, never reach the
 // handler. (The original demonstration vehicle, spec_coverage, was
-// unregistered by SR-27, surface reckoning F-35.)
+// unregistered by SR-27, surface reckoning F-35; the second,
+// contradiction_scan, by SR-19, surface reckoning F-77.)
 func TestDispatch_PreviouslyLenientTool_NowRefuses(t *testing.T) {
 	srv := mcp.NewServer(&extendedFakeBackend{nodes: extFixtureNodes(), services: []string{"svc"}})
 	resp := roundtrip(t, srv, request{
 		JSONRPC: "2.0", ID: 11, Method: "tools/call",
-		Params: map[string]any{"name": "contradiction_scan", "arguments": map[string]any{"service": "svc"}},
+		Params: map[string]any{"name": "review_diff", "arguments": map[string]any{"service": "svc"}},
 	})
 	if code := rpcErrCode(t, resp); code != float64(mcp.ErrCodeParams) {
-		t.Errorf("code = %v, want %v (contradiction_scan declares \"concern\" required)", code, mcp.ErrCodeParams)
+		t.Errorf("code = %v, want %v (review_diff declares \"changed_files\" required)", code, mcp.ErrCodeParams)
 	}
 }
 
@@ -210,63 +210,9 @@ func TestDispatch_MissingRequiredField_UnaliasedTool(t *testing.T) {
 	}
 }
 
-// TestBatch_SubCallRequiredValidation_RefusesWithoutFailingBatch closes
-// the batch bypass the critic pass found: batch sub-calls invoke
-// te.handler directly, skipping handleToolsCallWithCtx's validateRequired
-// gate — so batch{calls:[{name:"contradiction_scan",arguments:{service}}]}
-// reached a handler without dispatch's own required-field gate running
-// first. (The original demonstration vehicle, spec_coverage, was
-// unregistered by SR-27, surface reckoning F-35; contradiction_scan's
-// second required field, "concern", plays the same role here.) The batch
-// loop now validates each sub-call before its handler runs. The failing
-// sub-call errors into ITS OWN batchResult; sibling sub-calls still run
-// (per batch's own contract: per-call errors never abort the batch).
-func TestBatch_SubCallRequiredValidation_RefusesWithoutFailingBatch(t *testing.T) {
-	srv := mcp.NewServer(&extendedFakeBackend{nodes: extFixtureNodes(), services: []string{"svc"}})
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 14, Method: "tools/call",
-		Params: map[string]any{
-			"name": "batch",
-			"arguments": map[string]any{
-				"calls": []map[string]any{
-					// Missing "concern" (declared required alongside "service").
-					{"name": "contradiction_scan", "arguments": map[string]any{"service": "svc"}},
-					// A valid sibling that must still run.
-					{"name": "outline", "arguments": map[string]any{"service": "svc", "file": "pkg/a.go"}},
-				},
-			},
-		},
-	})
-	if resp["error"] != nil {
-		t.Fatalf("the batch itself must not fail on a sub-call validation error: %v", resp["error"])
-	}
-	content := resp["result"].(map[string]any)["content"].([]any)
-	text := content[0].(map[string]any)["text"].(string)
-	var payload struct {
-		Results []struct {
-			Name   string `json:"name"`
-			Result any    `json:"result"`
-			Error  string `json:"error"`
-		} `json:"results"`
-	}
-	if err := json.Unmarshal([]byte(text), &payload); err != nil {
-		t.Fatalf("payload parse: %v (text=%q)", err, text)
-	}
-	if len(payload.Results) != 2 {
-		t.Fatalf("results = %d, want 2", len(payload.Results))
-	}
-	lp := payload.Results[0]
-	if lp.Name != "contradiction_scan" || lp.Error == "" {
-		t.Errorf("contradiction_scan sub-call should refuse (missing required \"concern\"), got %+v", lp)
-	}
-	if lp.Error != "" && !containsAll(lp.Error, "concern") {
-		t.Errorf("refusal should name the missing parameter, got %q", lp.Error)
-	}
-	sib := payload.Results[1]
-	if sib.Name != "outline" || sib.Error != "" || sib.Result == nil {
-		t.Errorf("sibling outline sub-call should still run and succeed, got %+v", sib)
-	}
-}
+// TestBatch_SubCallRequiredValidation_RefusesWithoutFailingBatch was
+// retired: batch (its demonstration vehicle, contradiction_scan, too) was
+// unregistered by SR-19 (surface reckoning, F-77).
 
 // containsAll reports whether s contains every one of subs as a substring.
 func containsAll(s string, subs ...string) bool {

@@ -39,6 +39,7 @@ does not).
 | `fathom conserve --since <ref>` (`--json`, `--strict`, `--plan FILE`) | CLI | The conservation report: every plane's verdict, findings, and missing inputs, `fathom.conserve/v1` |
 | `fathom refactor plan <target>` (`--out`, `--service`, `--store`) | CLI | Writes a gate-ready plan for retiring one symbol, import, or package: baseline, ratcheted absence rows, certified_by rows, a closing conserve instruction |
 | `fathom refactor status --plan FILE` (`--json`) | CLI | Each ratchet row's live count against `max:`, its count at the baseline, and drift landed on main since |
+| `fathom refactor status --migration "<kind> <from> -> <to>"` (`--store`, `--services`, `--json`) | CLI | The fleet-wide migration view: remaining/done sites per service, typed where available, lexical otherwise — read-only, never rewrites a site |
 | `fathom review --since <ref>` / `review_diff` (`since` arg) | CLI / MCP tool | The `integrity` and `conservation` dimensions folded into the same review a change already gets |
 | `fathom verify --since <ref>` | CLI | Self-declared rows and deleted rows rendered across the whole base..head range (I45), not just the last edit |
 | `fathom verify` (`gone:` plan key) | CLI | Proves an import, module, lexical pattern, or kept-but-unused symbol is actually gone — `Unknown`, never falsely proven, on a stale or partial index |
@@ -78,6 +79,24 @@ Each row's `current` count must move toward zero relative to `baseline`;
 branch (or on main, if you rebase) since the baseline, so a ratchet never
 silently loosens just because someone else's commit added a call the plan
 never anticipated.
+
+### Fleet-wide: the migration tracker (U9, CX-13)
+
+A migration spanning several repositories in the fleet is not one plan's
+ratchets — declare it once (`ParseMigration`'s five-kind form) and ask every
+service at once:
+
+```sh
+fathom refactor status --migration "symbol OldHandler -> NewHandler" --store workspace/db/fleet.sqlite --json
+```
+
+Reports remaining (still on `from`) and done (already on `to`) sites per
+service, each tiered `typed` (a resolved caller `internal/analysis/callgraph`
+confirmed) or `lexical` (a text match with no typed confirmation yet).
+`--services a,b,c` scopes to named services; omitted, every service the store
+knows is scanned, one at a time. A service that cannot be read is named in
+`degraded`, never silently dropped from the count. This is a report, not a
+transform — it never edits a site (the Moderne non-goal).
 
 ## 4. Conserve, then verify
 

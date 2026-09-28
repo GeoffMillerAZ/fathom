@@ -103,7 +103,7 @@ func TestBuildStatuszReport_ChannelsOff_NotedInReport(t *testing.T) {
 
 // ─── HTTP wiring: /statusz on serve-http ───────────────────────────────────
 
-func newStatuszTestHandler(t *testing.T, modulesToken string) http.Handler {
+func newStatuszTestHandler(t *testing.T) http.Handler {
 	t.Helper()
 	storePath := filepath.Join(t.TempDir(), "s.sqlite")
 	c, err := client.NewConstantClient(client.ModeLocal, storePath)
@@ -112,16 +112,16 @@ func newStatuszTestHandler(t *testing.T, modulesToken string) http.Handler {
 	}
 	t.Cleanup(func() { c.Close() })
 	srv := mcp.NewServer(c)
-	return newHTTPHandlerWithAuth(srv, c, modulesToken, "127.0.0.1:0", nil, testDiscardLogger())
+	return newHTTPHandlerLogged(srv, c, "127.0.0.1:0", nil, testDiscardLogger())
 }
 
 func TestStatusz_JSON_Loopback_NoAuthRequired(t *testing.T) {
-	handler := newStatuszTestHandler(t, "")
+	handler := newStatuszTestHandler(t)
 	req := httptest.NewRequest(http.MethodGet, "/statusz?format=json", nil)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want 200 (no modules token configured)", rec.Code)
+		t.Fatalf("status = %d, want 200 (loopback)", rec.Code)
 	}
 	var payload map[string]any
 	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
@@ -132,32 +132,8 @@ func TestStatusz_JSON_Loopback_NoAuthRequired(t *testing.T) {
 	}
 }
 
-// TestStatusz_HostedMode_RequiresBearerToken is the load-bearing
-// phase-O-critic-finding-#2-class proof: a request to /statusz with no
-// token, modules token configured, gets 401 — not a 200.
-func TestStatusz_HostedMode_RequiresBearerToken(t *testing.T) {
-	handler := newStatuszTestHandler(t, "s3cr3t")
-	req := httptest.NewRequest(http.MethodGet, "/statusz", nil)
-	rec := httptest.NewRecorder()
-	handler.ServeHTTP(rec, req)
-	if rec.Code != http.StatusUnauthorized {
-		t.Fatalf("status = %d, want 401 (hosted mode, no bearer token given)", rec.Code)
-	}
-}
-
-func TestStatusz_HostedMode_ValidToken_Serves(t *testing.T) {
-	handler := newStatuszTestHandler(t, "s3cr3t")
-	req := httptest.NewRequest(http.MethodGet, "/statusz?format=json", nil)
-	req.Header.Set("Authorization", "Bearer s3cr3t")
-	rec := httptest.NewRecorder()
-	handler.ServeHTTP(rec, req)
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want 200 (valid bearer token)", rec.Code)
-	}
-}
-
 func TestStatusz_HTML_DefaultRendering(t *testing.T) {
-	handler := newStatuszTestHandler(t, "")
+	handler := newStatuszTestHandler(t)
 	req := httptest.NewRequest(http.MethodGet, "/statusz", nil)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
@@ -171,7 +147,7 @@ func TestStatusz_HTML_DefaultRendering(t *testing.T) {
 }
 
 func TestStatusz_MethodNotAllowed(t *testing.T) {
-	handler := newStatuszTestHandler(t, "")
+	handler := newStatuszTestHandler(t)
 	req := httptest.NewRequest(http.MethodPost, "/statusz", nil)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)

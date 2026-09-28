@@ -345,13 +345,8 @@ func ClaimHonesty(h History, sessions []AgentSession, f HistoryFilter) ClaimHone
 			}
 			continue
 		}
-		id := ident{s.Harness, s.Model}
-		if id.harness == "" {
-			id.harness = "harness not recorded"
-		}
-		if id.model == "" {
-			id.model = ModelNotRecorded
-		}
+		// I58: the row key is the agent identity only (agentIdentityPart).
+		id := ident{agentIdentityPart(s.Harness, "harness not recorded"), agentIdentityPart(s.Model, ModelNotRecorded)}
 		if f.Agent != "" && f.Agent != id.harness && f.Agent != id.harness+"/"+id.model {
 			continue
 		}

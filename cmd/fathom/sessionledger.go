@@ -375,6 +375,7 @@ type transcriptSummary struct {
 	RepeatedReadTokensEst *int   // estimated tokens spent on 2nd+ reads
 	SidechainToolResults  int    // tool results inside sidechains (subagents)
 	ToolSearchTurns       int    // assistant turns spent loading deferred MCP schemas (BP-23/O24)
+	ToolCallsTotal        int    // every tool_use block, any name (PE-13's cost field)
 	ExplorationNote       string // the estimator disclosure, or the absence reason
 	Truncated             bool
 	// FirstTS is the earliest timestamped line in the transcript — when
@@ -551,6 +552,12 @@ type transcriptFold struct {
 	RepeatTokens      int                `json:"repeat_tokens"`
 	SidechainResults  int                `json:"sidechain_results"`
 	ToolSearchCount   int                `json:"tool_search_turns"`
+	// ToolCallsTotal counts every tool_use content block regardless of
+	// name (PE-13, docs/design/progress-and-economics.md §5) — unlike
+	// RawCalls/FathomCalls, which count only the exploration ledger's two
+	// tracked classes (Read/Grep/Glob and mcp__fathom__*), this is the
+	// whole-session tool-call count outcome economics prices.
+	ToolCallsTotal int `json:"tool_calls_total"`
 }
 
 // foldUse is one tool_use awaiting (or past) its result.
@@ -604,6 +611,7 @@ func (f *transcriptFold) add(l []byte, since *time.Time) {
 				if c.Type != "tool_use" {
 					continue
 				}
+				f.ToolCallsTotal++
 				if f.FirstEditTurn == nil && isEditTool(c.Name) {
 					t := f.TurnCount
 					f.FirstEditTurn = &t
@@ -715,6 +723,7 @@ func (f *transcriptFold) summary() transcriptSummary {
 	out.RawDiscoveryCalls = f.RawCalls
 	out.FathomCalls = f.FathomCalls
 	out.ToolSearchTurns = f.ToolSearchCount
+	out.ToolCallsTotal = f.ToolCallsTotal
 	out.RepeatedReadFiles = f.RepeatFiles
 	out.SidechainToolResults = f.SidechainResults
 	if f.SawResult {

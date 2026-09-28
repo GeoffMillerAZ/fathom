@@ -32,8 +32,10 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -42,7 +44,6 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/filter"
-	"github.com/geoffmilleraz/fathom/internal/memory"
 	"github.com/geoffmilleraz/fathom/internal/scope"
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
@@ -160,9 +161,11 @@ func cmdPurge(args []string, stdout, stderr io.Writer) int {
 
 	// The memories location (AM-12): reachable only when the service's
 	// repo root is on record; otherwise the report names the absence.
+	// Anchored memory is retired (SR-13), so the location is now only a
+	// check for a file left over from before the retirement.
 	var memPurger store.MemoryPurger
 	if meta, found, err := sq.GetServiceMeta(context.Background(), *service); err == nil && found && meta.Path != "" {
-		memPurger = memoriesAdapter{fs: memory.NewFileStore(memory.Path(meta.Path))}
+		memPurger = retiredMemoriesFile{path: filepath.Join(meta.Path, ".fathom", "memories.jsonl")}
 	}
 
 	// ---- phase 2 + 3: execute and verify ----
@@ -220,12 +223,23 @@ func cmdPurge(args []string, stdout, stderr io.Writer) int {
 	return verifyPurge(rep, stdout, stderr)
 }
 
-// memoriesAdapter satisfies store.MemoryPurger over internal/memory's
-// FileStore.
-type memoriesAdapter struct{ fs *memory.FileStore }
+// retiredMemoriesFile satisfies store.MemoryPurger for the anchored-memory
+// file SR-13 (surface reckoning F-45, ADR-053) retired along with
+// internal/memory. Nothing writes or reads <repo>/.fathom/memories.jsonl
+// any more, but a file left over from before the retirement may still
+// QUOTE purged content (AM-12). Absent, there is nothing to purge; present,
+// the purge fails naming it — it cannot filter a format it no longer
+// parses, and reporting a verified purge over it would be false (law 3).
+type retiredMemoriesFile struct{ path string }
 
-func (a memoriesAdapter) PurgeMemories(m store.PathMatcher) (int, error) {
-	return a.fs.PurgeMatching(m)
+func (r retiredMemoriesFile) PurgeMemories(store.PathMatcher) (int, error) {
+	if _, err := os.Stat(r.path); err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return 0, nil
+		}
+		return 0, fmt.Errorf("stat %s: %w", r.path, err)
+	}
+	return 0, fmt.Errorf("%s is a leftover of anchored memory, retired by SR-13 (ADR-053) and no longer read; it may quote the purged content and was NOT filtered — review and delete it, then re-run the purge", r.path)
 }
 
 // verifyPurge turns the store's tri-state verdict into the process's exit

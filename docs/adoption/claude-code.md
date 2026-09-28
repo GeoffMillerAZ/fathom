@@ -365,8 +365,8 @@ registered it from.
 
 **Why `/rpc/agent` and not bare `/rpc`.** The daemon serves several
 path-scoped surfaces of the same store (`docs/mcp-tools.md`): `/rpc` is the
-full registry — 55 tools on this build (54 after the 2026-08-23 prune of 34
-zero-call tools, plus `memory_search`), unauthenticated, includes `ingest`
+full registry (54 tools after the 2026-08-23 prune of 34 zero-call tools; the
+surface reckoning, ADR-053, removed more since), unauthenticated, includes `ingest`
 and `compile_layer`; `/rpc/agent` (aliased `/rpc/companion`) is the curated
 19-tool coding-agent hot loop (§10). Claude Code defers full-registry tool
 schemas until a tool is actually used, so `/rpc` costs little either way —
@@ -501,15 +501,10 @@ Until then the hook exits clean (silent), by design — see `docs/layers.md`
 for what `obligations` (and the other catalog layers — `adr-rules`,
 `spec-bindings`, `findings`) actually compile from.
 
-**Anchored memories ride the same payload** (AM-6, *experimental — new and
-unmeasured*): when `<repo>/.fathom/memories.jsonl` exists, the hook appends
-a separate `🧠 fathom memory — <file>:` block after the obligations/spec
-lines, one bullet per memory anchored to the edited file, each labeled
-`[tier, state]`, ordered tier → anchor specificity → id, inside the same
-150-token whole-payload budget (a displaced tail is counted, never silently
-dropped). No memories file, or nothing anchored to the file → nothing
-added; a memory RPC failure emits an `edit-hook/error` beat instead of
-guessing. §8 covers the `fathom memory` verbs that write the file.
+**Anchored memories no longer ride the payload**: SR-13 (surface reckoning
+F-45, ADR-053) removed anchored memory — the hook's memory block, the
+`memory_search` tool and the `fathom memory` verbs — for 0 memories in any
+repository.
 
 **The claim moment rides the same hook** (PC-22, vision 26 §4): when the
 edited file is a depth-1 `docs/plans/*.md` and the edit added at least one
@@ -896,17 +891,8 @@ Two more CUE files live here, both law-13-scoped (a user-scope default in
   audit to code-fact-shaped sentences in CLAUDE.md and beyond — including
   Claude Code's own per-project auto-memory under
   `~/.claude/projects/<encoded-root>/memory/*.md`, not only the stanza.
-- **`.fathom/memories.jsonl`** — anchored memory (AM-*, *experimental*):
-  `fathom memory add --store <db> --service <svc> --claim "…" --anchor
-  symbol:Name --evidence machine-check:<ref>` refuses a memory with no
-  anchor (that is a preference — put it in `CLAUDE.md`); the stored tier
-  is derived from the evidence kind, never from the claim. `memory list
-  [--state fresh|suspect|orphaned|retired]`, `memory show --id`, and
-  `memory review [--id … --resolve still-true|no-longer-true|rewrite --by
-  human]` run the drift loop: an anchor that moved makes the memory
-  `suspect`, a vanished one `orphaned`. The `memory_search` MCP tool (§10)
-  reads the same file; §7.2's edit hook injects what is anchored to the
-  file being edited.
+- **`.fathom/memories.jsonl`** — no longer read: anchored memory was removed
+  by SR-13 (ADR-053). A leftover file makes `fathom purge` fail naming it.
 
 ---
 
@@ -974,7 +960,6 @@ The `/rpc/agent` (aka `/rpc/companion`) allowlist (`docs/mcp-tools.md`):
 | `staleness_report` | Before trusting query results after heavy uncommitted edits, or when a query result looks stale/wrong |
 | `list_services` | You need to know what's actually indexed (service IDs, symbol counts, languages) before assuming a repo is in the fleet |
 | `ingest` | Force a re-index right now — after a commit, or when `staleness_report` says you should, or to onboard a repo that isn't indexed yet. A read failure comes back as a JSON-RPC error naming the cause (and the TCC hint), never `ok:true` (§2) |
-| `memory_search` | `{service, query?, file?, limit?}` — the one direct query over anchored memories (§8); every hit carries `tier` and `state`, retired memories never surface. *Experimental — new and unmeasured*; the edit hook's injection stays the primary path |
 
 The full registry (`/rpc`, 55 tools on this build) adds quality/impact
 analysis (`complexity`, `dead_code`, `blast_radius`, …), `test_impact`,
@@ -1230,7 +1215,7 @@ Then, inside a Claude Code session:
 
 - [ ] Calling `capabilities` returns `tool_count: 17` (or the count of
       whichever surface you registered) and lists `find_symbol`,
-      `query_symbols`, `symbol_context`, `verify_plan`, `memory_search`, …
+      `query_symbols`, `symbol_context`, `verify_plan`, …
 - [ ] `find_symbol` (or `query_symbols` with a `concern`) against a symbol
       you know exists returns a hit with `"tier": "verified"`.
 - [ ] After `fathom compile --service <svc> --dry-run=false` has run once,
@@ -1286,7 +1271,7 @@ degraded / refused), `scope`, `purge`, `serve-mcp`, `serve-http`,
 claim-moment verify), `stop-hook`, `config audit --hook`, `thread`
 (`brief`/`note`/`point`/`list`/`close`/`promote`/`handoff`, repo scoping),
 `task deploy`; the `/rpc`, `/rpc/agent` (`/rpc/companion`) HTTP surfaces;
-the 19-tool agent allowlist (incl. `read_source`, `memory_search`); the
+the agent allowlist (incl. `read_source`); the
 observatory pages (fleet, service, impact, brief, wiring); the
 `SessionStart`/`SessionEnd`/`PreCompact`/`PostToolUse`/`PreToolUse`/`Stop`
 Claude Code hook wiring; the lefthook pre-push verify gate; the ten

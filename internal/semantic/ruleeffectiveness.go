@@ -39,6 +39,18 @@ type RuleOutcomeEvent struct {
 	RuleID string
 	Event  string
 	At     time.Time
+
+	// Session (GL-13, design doc §6) is the identity that produced the
+	// event — the harness session id, or "human:cli" for a human running
+	// the CLI with no harness session exported (cmd/fathom's
+	// claimVerdictIdentity). "" for an event whose writer predates this
+	// field, or a served/complied/violated/blocked row an edit/PreToolUse
+	// hook wrote before that wiring carries a session (GL-10's own scope).
+	// applyLearning (GL-13) is this field's only reader: RuleEffectiveness
+	// itself (GL-11) classifies by counts and rates alone and never looks
+	// at WHO produced an event, so adding this field changes nothing about
+	// its classification.
+	Session string
 }
 
 // RuleEffectivenessClass is one of design doc §5's four classes.

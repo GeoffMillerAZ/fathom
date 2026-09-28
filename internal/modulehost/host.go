@@ -1,9 +1,10 @@
 // Package modulehost implements fathom's GKE module host
 // (docs/plans/gke-module-host.md): `serve-http` mounts N conforming expert-
 // module stores (docs/spec/store-format-v0.md, docs/spec/
-// expert-module-v0.md) READ-ONLY, beside the main fleet store, and answers
-// federated, provenance-carrying queries over one scoped surface
-// (POST /rpc/modules — internal/mcp's registerModuleTools).
+// expert-module-v0.md) READ-ONLY, beside the main fleet store, so
+// `obligations` can union in the rules of every module a service binds
+// (internal/modserve's ModuleFederator). The scoped /rpc/modules surface
+// and its four MCP tools were removed by SR-17 (surface reckoning F-68).
 //
 // There is no write path to a mounted module, structurally
 // (docs/vision/12-governed-knowledge-engine.md §2 law 9): every mount goes
@@ -26,7 +27,7 @@ import (
 
 // Module is one mounted, conforming module store.
 type Module struct {
-	// Name is the module's identity on /rpc/modules — the store filename's
+	// Name is the module's identity (what a binding names) — the store filename's
 	// stem by default (ModuleNameFromPath), or an explicit override passed
 	// to Host.Mount.
 	Name      string

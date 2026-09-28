@@ -50,13 +50,22 @@ type refactorStatusRow struct {
 
 func cmdRefactorStatus(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("refactor status", stderr)
-	planPath := fs.String("plan", "", "plan file to report on (required)")
+	planPath := fs.String("plan", "", "plan file to report on (required, unless --migration is given)")
 	jsonOut := fs.Bool("json", false, "emit JSON instead of a text table")
+	// CX-13 (design §4, U9): the fleet-wide migration view — a separate
+	// mode from the ratchet/drift report above (CV-34/ADR-044 §4's own
+	// purely git+file contract is unchanged when --migration is absent).
+	migrationText := fs.String("migration", "", "a migration declaration (\"<symbol|import|route|config|pkg> <from> -> <to>\"): report the fleet-wide migration view instead of ratchet status")
+	storePath := fs.String("store", defaultStorePath(), "store path (.sqlite/.db) — --migration mode only")
+	servicesFlag := fs.String("services", "", "comma-separated service IDs — --migration mode only (default: every service in the store)")
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
+	if *migrationText != "" {
+		return cmdRefactorStatusMigration(*migrationText, *storePath, splitCSV(*servicesFlag), *jsonOut, stdout, stderr)
+	}
 	if *planPath == "" {
-		fmt.Fprintln(stderr, "error: refactor status requires --plan FILE")
+		fmt.Fprintln(stderr, "error: refactor status requires --plan FILE (or --migration for the fleet-wide migration view)")
 		return 2
 	}
 

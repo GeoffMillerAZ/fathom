@@ -37,6 +37,11 @@ type ingestRun struct {
 	refs          []core.SourceRef
 	facts         map[string]fileFact
 	defaultIgnore int
+
+	// changed counts the files this ingest found new, changed or deleted
+	// — TQ-2's centrality memo recomputes when it is non-zero even at an
+	// unchanged watermark (a dirty working tree at the same HEAD).
+	changed int
 }
 
 // fileFact is what an ingest learned about one file without re-reading it.

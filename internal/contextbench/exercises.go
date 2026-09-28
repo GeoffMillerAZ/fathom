@@ -33,7 +33,6 @@ var agentSurfaceTools = []string{
 	"ingest",
 	"list_services",
 	"localize",
-	"memory_search",
 	"obligations",
 	"outline",
 	"pack_context",
@@ -95,7 +94,6 @@ var handlerTable = []handlerRule{
 	{Path: "internal/mcp/verify_plan_tool.go", Tools: []string{"verify_plan"}},
 	{Path: "internal/mcp/meta.go", Tools: []string{"status", "staleness_report"}, Why: "status (SR-23) merges the retired capabilities/server_stats/list_sources tools"},
 	{Path: "internal/mcp/platform_tools.go", Tools: []string{"list_services"}},
-	{Path: "internal/mcp/memory_tools.go", Tools: []string{"memory_search"}},
 	{Path: "internal/mcp/extra_tools.go", Tools: []string{"ingest", "pack_context", "repo_map"}},
 	{Path: "internal/mcp/budget.go", Tools: []string{"query_symbols", "references", "repo_map", "pack_context", "outline"}, Why: "the shared payload-budget helper truncates every list-returning tool"},
 	// Anything else under internal/mcp is shared plumbing (dispatch, the
