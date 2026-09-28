@@ -1,0 +1,32 @@
+id: php
+language: PHP
+# Measurement conventions (docs/bench/readings/lang/php.json): each subject is measured as
+# cloned; the dependencies are installed inside the clone only so scip-php can resolve vendor
+# symbols (vendor/ is excluded from both sides by the connector's own rules), and the clone is
+# deleted after measuring. scip-php needs composer.json, composer.lock and vendor/autoload.php
+# in the subject root; the two edits that gave them are in calibration/oracles/scip-php/README.md
+# (guzzle: guzzle/client-integration-tests removed from require-dev; monolog: config.lock true).
+repos:
+  - name: guzzle/guzzle
+    url: https://github.com/guzzle/guzzle
+    ref: 7.9.3
+    sha: 7b2f29fe81dc4da0ca0ea7d42107a0845946ea77
+    licence: MIT
+    idioms:
+      - 'PSR-4 autoload namespaces (GuzzleHttp\, GuzzleHttp\Handler\, GuzzleHttp\Promise\) with one class per file'
+      - 'grouped and aliased `use` statements plus `use function`/`use const` imports'
+      - 'top-level helper functions declared behind `if (!function_exists())` guards'
+      - 'traits and abstract classes shared by handlers and middleware'
+      - 'closures and static factory methods returning callables (middleware chains)'
+      - 'exception hierarchy under GuzzleHttp\Exception, PSR interface implementations'
+  - name: Seldaek/monolog
+    url: https://github.com/Seldaek/monolog
+    ref: 3.9.0
+    sha: 10d85740180ecba7896c87e06a166e0c95a0e3b6
+    licence: MIT
+    idioms:
+      - 'a backed `Level` enum with methods and `self::` cases beside PSR-3 interfaces'
+      - 'constructor property promotion with readonly and typed properties'
+      - 'abstract handler base classes with traits (ProcessableHandlerTrait)'
+      - '`#[\ReturnTypeWillChange]` attributes and first-class-callable style closures'
+      - 'static methods and late static binding across formatter and handler classes'

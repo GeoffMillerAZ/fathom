@@ -1,0 +1,103 @@
+{
+  "symbols": [
+    {
+      "name": "Alpha\\Core",
+      "kind": "PhpNamespace",
+      "package": "Alpha\\Core",
+      "line": 2,
+      "end_line": 17,
+      "tier": "verified"
+    },
+    {
+      "name": "Store",
+      "kind": "PhpInterface",
+      "package": "Alpha\\Core",
+      "line": 3,
+      "end_line": 6,
+      "tier": "verified"
+    },
+    {
+      "name": "Store.get",
+      "kind": "PhpMethod",
+      "package": "Alpha\\Core",
+      "line": 5,
+      "end_line": 5,
+      "signature": "public function get(string $key): ?string",
+      "tier": "verified"
+    },
+    {
+      "name": "MemoryStore",
+      "kind": "PhpClass",
+      "package": "Alpha\\Core",
+      "line": 8,
+      "end_line": 16,
+      "tier": "verified"
+    },
+    {
+      "name": "MemoryStore.get",
+      "kind": "PhpMethod",
+      "package": "Alpha\\Core",
+      "line": 12,
+      "end_line": 15,
+      "signature": "public function get(string $key): ?string",
+      "tier": "verified"
+    },
+    {
+      "name": "Beta",
+      "kind": "PhpNamespace",
+      "package": "Beta",
+      "line": 19,
+      "end_line": 34,
+      "tier": "verified"
+    },
+    {
+      "name": "connect",
+      "kind": "PhpFunction",
+      "package": "Beta",
+      "line": 22,
+      "end_line": 25,
+      "signature": "function connect(Store $s): void",
+      "calls": [
+        "get"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Cached",
+      "kind": "PhpTrait",
+      "package": "Beta",
+      "line": 27,
+      "end_line": 33,
+      "tier": "verified"
+    },
+    {
+      "name": "Cached.warm",
+      "kind": "PhpMethod",
+      "package": "Beta",
+      "line": 29,
+      "end_line": 32,
+      "signature": "public function warm(): void",
+      "calls": [
+        "flush"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "global_helper",
+      "kind": "PhpFunction",
+      "package": "braced",
+      "line": 37,
+      "end_line": 40,
+      "signature": "function global_helper(): int",
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "*",
+      "module": "Alpha\\Core\\Store",
+      "kind": "wildcard",
+      "line": 20
+    }
+  ]
+}

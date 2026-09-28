@@ -848,7 +848,13 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	p.exts[".scala"] = scala
 	p.exts[".sc"] = scala
 
-	// PHP
+	// PHP. LB-Q-php built and measured a tree-sitter dialect
+	// (internal/extractor/dialects/php/) — see docs/bench/readings/lang/php.json
+	// — that reads L1 excellent but not its target (L4): §11 step 2's merge
+	// gate requires the dialect to meet its target level, so the CGO incumbent
+	// stays the live dispatch here. A switch must bump ExtractorEpoch: the
+	// dialect adds a PhpNamespace symbol per namespaced file and sets Package
+	// from the declared namespace (dialects/php/PROVENANCE.md).
 	p.exts[".php"] = extractor.NewPhpExtractor()
 
 	// Bash (.sh .bash, shebangs). LB-Q-bash built and measured a

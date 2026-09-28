@@ -12,9 +12,11 @@ lines, bare names).
 |---|---|---|
 | scip-typescript/ | A | TypeScript, JavaScript |
 | scip-dotnet/ | A (def_mapping, typed_recall) | C# |
+| scip-php/ | A (calls, def_mapping, file edges) | PHP |
 | roslyn/ | B | C# |
 | javaparser/ | B | Java |
 | powershell-ast/ | B | PowerShell |
+| php-parser/ | B | PHP |
 | ts-tags/ | C | Bash (calls) |
 | sqlglot/ | C | SQL (foreign-key calls) |
 
