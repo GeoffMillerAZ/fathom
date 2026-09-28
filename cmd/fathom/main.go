@@ -135,6 +135,12 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		return 2
 	case "review-key":
 		return cmdReviewKey(args[1:], stdout, stderr)
+	case "coverage":
+		if len(args) > 1 && args[1] == "ingest" {
+			return cmdCoverageIngest(args[2:], stdout, stderr)
+		}
+		fmt.Fprintln(stderr, "usage: fathom coverage ingest <file> --format lcov|cobertura|jacoco|coverage-py|istanbul|llvm-cov [--commit SHA] [--json]")
+		return 1
 	case "tests":
 		if len(args) > 1 && args[1] == "coverage" {
 			return cmdTestsCoverage(args[2:], stdout, stderr)
