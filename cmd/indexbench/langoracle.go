@@ -192,6 +192,7 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name, c
 	var nodes []core.SymbolNode
 	var srcFiles []core.SourceFile
 	skipped := map[string]int{}
+	retimed := 0
 	// Warm-up: one untimed extraction compiles the dialect's grammar, so
 	// per-file times measure extraction, not the one-time lazy compile
 	// (design §9 charges that to the module pool, LB-F15).
@@ -214,9 +215,19 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name, c
 		if err != nil {
 			return res, err
 		}
+		inst := tsengine.Instantiations()
 		start := time.Now()
 		ex, err := extract(pipe, service, refs, ref.Path, content)
 		elapsed := time.Since(start)
+		if tsengine.Instantiations() != inst && ex.Skipped == "" {
+			// This file instantiated a grammar module the warm-up did not
+			// (an injected language's, e.g. HTML's <script>): time it again,
+			// warm, so a one-time compile is never charged to throughput.
+			start = time.Now()
+			ex, err = extract(pipe, service, refs, ref.Path, content)
+			elapsed = time.Since(start)
+			retimed++
+		}
 		if ex.Skipped != "" {
 			skipped[ex.Skipped]++
 			continue
@@ -246,6 +257,9 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name, c
 		return res, fmt.Errorf("subject %s has no %s files fathom would extract", root, spec.Manifest.ID)
 	}
 	sub.Tenancy.PeakModulePages = int(tsengine.PeakModulePages())
+	if retimed > 0 {
+		res.notes = append(res.notes, "a file whose extraction instantiated a grammar module after the warm-up (an injected language) is timed on a second, warm extraction")
+	}
 	for _, k := range sortedKeys(skipped) {
 		res.notes = append(res.notes, fmt.Sprintf("%s: %d files skipped by ingest's gates (%s)", name, skipped[k], k))
 	}
