@@ -13,7 +13,7 @@ import (
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/docindex"
-	mcp "github.com/geoffmilleraz/fathom/internal/mcp"
+	"github.com/geoffmilleraz/fathom/internal/mcp"
 )
 
 // docDriftFakeBackend adds the optional docLinkDrift capability
