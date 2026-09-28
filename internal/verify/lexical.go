@@ -193,7 +193,11 @@ func OverlayLocal(rep *Report, plan Plan, files FileEvidence) {
 		if t.Oracle == "" {
 			continue
 		}
-		rep.Tasks[i] = verifyTask(t, noEvidence{}, files, nil)
+		// proofCertified is irrelevant here: only oracle: rows are
+		// re-evaluated (the t.Oracle == "" guard above), and a row
+		// combining oracle: with symbol: is refused elsewhere (design
+		// §3.1) — the certified_by gate below is never reached for these.
+		rep.Tasks[i] = verifyTask(t, noEvidence{}, files, nil, false)
 	}
 	sum := Summary{Total: len(rep.Tasks)}
 	for _, v := range rep.Tasks {

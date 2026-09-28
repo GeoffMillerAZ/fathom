@@ -41,6 +41,15 @@ type Plan struct {
 	// plans, which pin no baseline.
 	Baseline string
 
+	// Proof is the plan-level "Proof: <value>" header line (ADR-049,
+	// docs/design/spec-interop.md §4), like Baseline:. The only value
+	// verifyTask acts on is "certified" (compared case-insensitively):
+	// once set, every symbol: row must also carry certified_by:, or is
+	// refused certificate-absent — through the same EvaluateCertifiedBy
+	// path an ordinary certified_by: row already goes through, with no
+	// skip_test escape. "" (unset) is today's tiers, unchanged.
+	Proof string
+
 	// DeletedRows is set externally by AnnotateSelfDeclared — NEVER by
 	// ParseMarkdownPlan (there is no per-plan annotation for it): the
 	// sorted IDs of rows present in the base plan and absent from this
@@ -580,10 +589,15 @@ func VerifyPlan(plan Plan, ev Evidence) Report {
 		contraBySymbol[c.Symbol] = append(contraBySymbol[c.Symbol], c)
 	}
 	files, _ := ev.(FileEvidence)
+	// ADR-049, design §4: "Proof: certified" is compared case-insensitively,
+	// the same way the "Proof:" label itself is matched by parseProofHeader —
+	// an author writing "Certified" in the header should not silently get
+	// today's tiers back.
+	proofCertified := strings.EqualFold(plan.Proof, "certified")
 
 	verdicts := make([]TaskVerdict, 0, len(plan.Tasks))
 	for _, t := range plan.Tasks {
-		verdicts = append(verdicts, verifyTask(t, ev, files, contraBySymbol))
+		verdicts = append(verdicts, verifyTask(t, ev, files, contraBySymbol, proofCertified))
 	}
 	// Deterministic order by task ID.
 	sort.Slice(verdicts, func(i, j int) bool { return verdicts[i].TaskID < verdicts[j].TaskID })
@@ -602,7 +616,11 @@ func VerifyPlan(plan Plan, ev Evidence) Report {
 	return Report{Service: plan.Service, Tasks: verdicts, Summary: sum}
 }
 
-func verifyTask(t Task, ev Evidence, files FileEvidence, contraBySymbol map[string][]core.Contradiction) TaskVerdict {
+// proofCertified is true when the plan's "Proof: certified" header
+// (ADR-049, design §4) is set: every symbol: row must then also carry
+// certified_by:, or is refused certificate-absent, with no skip_test
+// escape.
+func verifyTask(t Task, ev Evidence, files FileEvidence, contraBySymbol map[string][]core.Contradiction, proofCertified bool) TaskVerdict {
 	e := t.Expect
 	v := TaskVerdict{TaskID: t.ID, Title: t.Title, Status: Pass, Label: "verified", Claimed: t.Claimed, Skipped: t.Skipped, InProgress: t.InProgress, Line: t.Line, Weight: t.Weight}
 
@@ -761,6 +779,12 @@ func verifyTask(t Task, ev Evidence, files FileEvidence, contraBySymbol map[stri
 		// evidence than the old blanket refusal for an ambiguous method
 		// name — and is labeled distinctly in the pass detail.
 		switch {
+		case proofCertified && len(e.CertifiedBy) == 0:
+			// ADR-049, design §4: the plan-level header is the strongest
+			// gate — a row cannot escape it via skip_test, and this case
+			// is checked ahead of every skip_test case for exactly that
+			// reason.
+			fail("certified_by", "Proof: certified requires certified_by: on every symbol: row (docs/design/spec-interop.md §4)", "certificate-absent")
 		case e.SkipTest && e.SkipReason == "":
 			fail("skip_test", "skip_test: true with no skip: reason — bare skips are refused", "skip-without-reason")
 		case e.SkipTest && t.SelfSkipped:

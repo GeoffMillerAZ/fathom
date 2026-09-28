@@ -140,6 +140,12 @@ package plan
 	// `fathom conserve`.
 	baseline?: string
 
+	// proof is the "Proof: <value>" header line (ADR-049, spec-interop
+	// design §4). The only value verify acts on is "certified": every
+	// symbol row must then also carry certified_by, or is refused
+	// certificate-absent, with no skip_test escape.
+	proof?: string
+
 	// tasks is the list of tasks to verify.
 	tasks: [...#Task]
 }

@@ -50,7 +50,7 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 	}
 	fs := newFlagSet("verify", stderr)
 	var plans planFlags
-	fs.Var(&plans, "plan", "plan file (repeatable; ≥1 required): a Markdown checklist in plan grammar v2, or a foreign spec file read in place (Spec Kit specs/<feature>/tasks.md, OpenSpec openspec/changes/<id>/tasks.md)")
+	fs.Var(&plans, "plan", "plan file (repeatable; ≥1 required): a Markdown checklist in plan grammar v2, or a foreign spec file read in place (Spec Kit specs/<feature>/tasks.md, OpenSpec openspec/changes/<id>/tasks.md, Kiro .kiro/specs/<name>/tasks.md, Task Master .taskmaster/tasks/tasks.json, or a GitHub issue/PR task list exported to a file — pass --dialect gh-tasklist, since it carries no path fathom can detect)")
 	service := fs.String("service", "", "service ID (required)")
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL (HTTP mode)")
 	storePath := fs.String("store", "", "store path, .sqlite/.db (direct mode; bypasses daemon)")
@@ -64,7 +64,7 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 	mutationPath := fs.String("mutation", "", "VB-34: mutation-testing report (go-mutesting log output, or fathom's own JSON shape); a claimed row whose symbol has mutation score 0 gets a covered-not-asserted note (falls back to $"+mutationReportEnvVar+"; direct/--store mode only)")
 	strictMutation := fs.Bool("strict-mutation", false, "gate-fail a covered-not-asserted finding instead of noting it as advisory")
 	rowID := fs.String("row", "", "narrow the report and the gate to one row id (the console's row evidence renders `verify --row ID --json`); every plan is still verified and ledgered in full")
-	dialectID := fs.String("dialect", "", "spec dialect every --plan file is read with (fathom-v2 | speckit | openspec); default: detected per file by its path and content shape (ADR-049)")
+	dialectID := fs.String("dialect", "", "spec dialect every --plan file is read with (fathom-v2 | speckit | openspec | kiro | taskmaster | gh-tasklist); default: detected per file by its path and content shape (ADR-049) — gh-tasklist is never auto-detected and always needs this flag")
 	converge := fs.Bool("converge", false, "also print each plan's converge report (ADR-049, spec-interop design §5): claimed-unproven tasks with the failing criterion, unanchored tasks, and code changed on the spec's branch range that no task anchors (the last needs --store); exit codes are the gate's, unchanged")
 	convergeBase := fs.String("base", "", "--converge: the branch range's base ref (default: the commit that added the spec file)")
 	writeFixups := fs.Bool("write-fixups", false, "--converge: append a fix-up task per claimed-unproven and unclaimed item inside the spec's <!-- fathom:begin converge --> block, in the spec's own checkbox shape; text outside the markers never changes (law 15)")

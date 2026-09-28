@@ -77,6 +77,8 @@ tasks block.
 
 A plan-level `Baseline: <sha>` header line (its own line, not inside any row's `{…}` block — conventionally near the top of the file) pins the base commit every row in the plan is proved against (ADR-044 §4): `fathom refactor plan` writes it, `fathom refactor status` and `fathom conserve` (later rows) read it as `Plan.Baseline`.
 
+A plan-level `Proof: certified` header line (same shape as `Baseline:`, its own line, case-insensitive on the `Proof:` label) raises the bar for every `symbol:` row in the file (ADR-049, `docs/design/spec-interop.md` §4): each one must also carry `certified_by:`, or is refused `certificate-absent` — through the same `EvaluateCertifiedBy` path an ordinary `certified_by:` row already goes through, with **no `skip_test` escape** (the header is the strongest gate; it cannot be waived row by row). Unset (the default) is today's tiers, unchanged.
+
 > **Before reaching for `skip_test`:** a test statically reaches every function the
 > code it calls references as a *value* -- an HTTP handler registered through a mux,
 > a route-table literal, `http.HandlerFunc(h)`, middleware, or a method value is
