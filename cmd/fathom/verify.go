@@ -609,10 +609,12 @@ func verifyWithCaller(call func(planMD []byte) (httpVerifyResult, error), planMD
 	claimedByID := map[string]bool{}
 	skippedByID := map[string]bool{}
 	inProgressByID := map[string]bool{}
+	weightByID := map[string]int{}
 	for _, t := range localPlan.Tasks {
 		claimedByID[t.ID] = t.Claimed
 		skippedByID[t.ID] = t.Skipped
 		inProgressByID[t.ID] = t.InProgress
+		weightByID[t.ID] = t.Weight
 	}
 
 	verdicts := make([]verify.TaskVerdict, 0, len(localPlan.Tasks))
@@ -634,6 +636,7 @@ func verifyWithCaller(call func(planMD []byte) (httpVerifyResult, error), planMD
 			Claimed:    claimedByID[ht.ID],
 			Skipped:    skippedByID[ht.ID],
 			InProgress: inProgressByID[ht.ID],
+			Weight:     weightByID[ht.ID],
 		})
 	}
 	// A row the daemon never answered for: Unknown, with the reason.
@@ -646,7 +649,7 @@ func verifyWithCaller(call func(planMD []byte) (httpVerifyResult, error), planMD
 			TaskID: t.ID, Title: t.Title, Status: verify.Unknown, Label: "verdict-elided",
 			Criteria: []verify.Criterion{{Name: "verdict", Status: verify.Unknown,
 				Detail: "the daemon's verify_plan answer was cut by its response budget and this row's verdict never arrived — verify with --store, or narrow the plan"}},
-			Claimed: t.Claimed, Skipped: t.Skipped, InProgress: t.InProgress,
+			Claimed: t.Claimed, Skipped: t.Skipped, InProgress: t.InProgress, Weight: t.Weight,
 		})
 	}
 	sort.SliceStable(verdicts, func(i, j int) bool { return verdicts[i].TaskID < verdicts[j].TaskID })
