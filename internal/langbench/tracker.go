@@ -43,7 +43,6 @@ type TrackerInput struct {
 // whose extractors have no incumbent bench spec (no tier-B oracle exists
 // for them): queue id -> extractor.
 var registeredFormats = map[string]Registration{
-	"dockerfile":     {Extractor: "dockerextract.go", LangTag: "dockerfile"},
 	"github-actions": {Extractor: "ghaextract.go", LangTag: "yaml"},
 	"kubernetes":     {Extractor: "k8sextract.go", LangTag: "yaml"},
 	"docker-compose": {Extractor: "composeextract.go", LangTag: "yaml"},

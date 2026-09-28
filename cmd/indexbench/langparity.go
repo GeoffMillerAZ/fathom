@@ -27,7 +27,6 @@ var incumbentExtractors = map[string]func() extractor.Extractor{
 	"cppextract":        func() extractor.Extractor { return extractor.NewCppExtractor() },
 	"csharpextract":     func() extractor.Extractor { return extractor.NewCSharpExtractor() },
 	"cueextract":        func() extractor.Extractor { return extractor.NewCUEExtractor() },
-	"dockerextract":     func() extractor.Extractor { return extractor.NewDockerfileExtractor() },
 	"ghaextract":        func() extractor.Extractor { return extractor.NewGHAExtractor() },
 	"gomodextract":      func() extractor.Extractor { return extractor.NewGoModExtractor() },
 	"graphqlextract":    func() extractor.Extractor { return extractor.NewGraphQLExtractor() },

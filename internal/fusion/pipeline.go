@@ -557,7 +557,20 @@ func parseGitLog(serviceID, raw string) []store.Commit {
 // through deeper headers ([tool.black.sub]) or dotted keys at the first line
 // that writes under it, not at its parent's line — every already-indexed
 // pyproject.toml's [tool.*] sections were stored at line 1.
-const ExtractorEpoch = "15"
+// Epoch 16 (LB-Q-dockerfile, docs/design/language-breadth.md §13): Dockerfile
+// (bare "Dockerfile", "*.dockerfile") now extracts via
+// internal/extractor.NewTSExtractor("dockerfile") — tree-sitter via
+// wazero/WASM (camdencheek/tree-sitter-dockerfile) — retiring
+// DockerfileExtractor's line-scanner. DockerStage nodes now carry a real
+// Tier (TierVerified, not TierPreScan), an EndLine and a Signature, ARG/ENV
+// keys are extracted for the first time (DockerfileArg/DockerfileEnv), and a
+// stage's Calls now includes every FROM base reference unconditionally
+// (external images too, not only a match against an earlier stage's alias —
+// the tags engine's naive same-file call collection convention every other
+// tags dialect already follows, ADR-021 §3) — every already-indexed
+// Dockerfile/*.dockerfile's stored observations predate all of this, so the
+// salt bump forces re-extraction rather than leaving them silently stale.
+const ExtractorEpoch = "16"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares
@@ -719,9 +732,15 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	p.exts["values.yaml"] = extractor.NewHelmValuesExtractor()
 	p.exts[".tpl"] = extractor.NewHelmTemplateExtractor()
 
-	// Dockerfile (full-basename keys take precedence over extension dispatch)
-	p.exts["Dockerfile"] = extractor.NewDockerfileExtractor()
-	p.exts[".dockerfile"] = extractor.NewDockerfileExtractor()
+	// Dockerfile — tree-sitter via wazero/WASM (LB-Q-dockerfile, design
+	// §13/language-breadth): retires DockerfileExtractor's line-scanner.
+	// Full-basename key takes precedence over extension dispatch.
+	dockerfile, err := extractor.NewTSExtractor("dockerfile")
+	if err != nil {
+		panic(fmt.Sprintf("fusion: tsextract dockerfile: %v", err))
+	}
+	p.exts["Dockerfile"] = dockerfile
+	p.exts[".dockerfile"] = dockerfile
 
 	// Docker Compose (full-basename keys take precedence over .yaml k8s extractor)
 	compose := extractor.NewComposeExtractor()

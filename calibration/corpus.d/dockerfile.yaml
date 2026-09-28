@@ -1,0 +1,24 @@
+id: dockerfile
+language: Dockerfile
+# calibration/corpus.yaml's pre-existing "Dockerfile" entry (2026-06-15
+# curation) already pins docker/cli and docker/compose with rich, real
+# idiom coverage (heredocs, BuildKit RUN --mount flags, ARG/platform
+# interplay) — this shard adds only the queue entry's other named subject,
+# docker-library/python, instead of re-pinning what is already curated.
+repos:
+  - name: python
+    url: https://github.com/docker-library/python
+    ref: master
+    sha: 8f2cb2e1c9cae4d8f772fe61f1427c96acea3257
+    licence: MIT
+    # A rolling definitions repo with no release tags (git ls-remote's HEAD
+    # only) — ref names the branch, sha pins the commit actually measured,
+    # per §13.3's spirit even without a tag.
+    idioms:
+      - "one Dockerfile per (version, variant) pair, each a long single-stage
+        build with many chained ENV/ARG declarations and heredoc-free RUN
+        blocks"
+      - "ENV GPG_KEY / ENV PYTHON_VERSION style build-time configuration keys
+        threaded through the whole file"
+      - "FROM referencing a bare Debian/Alpine base image tag (buildpack-deps:
+        <codename>) — never a local stage"
