@@ -147,5 +147,15 @@ func recompute(r *Reading) {
 	if measured(FamilyL1) && counts[CntCallables] == 0 && r.Kind != "tooling" {
 		r.NotApplicable = []string{MSignatureCoverage}
 	}
+	// An L1 oracle that matched definitions but reported an end line for
+	// none of them cannot measure range_agreement: not_measured, disclosed,
+	// and L1 capped at good (§1.2) — never a failure, never excellence.
+	r.NotMeasured = nil
+	r.Notes = slices.DeleteFunc(r.Notes, func(n string) bool { return n == NoteRangeNotMeasured })
+	if measured(FamilyL1) && r.Kind != "tooling" && counts[CntMatched] > 0 && counts[CntRangeEligible] == 0 {
+		r.NotMeasured = []string{MRangeAgreement}
+		r.Notes = append(r.Notes, NoteRangeNotMeasured)
+		sort.Strings(r.Notes)
+	}
 	r.Finalize()
 }

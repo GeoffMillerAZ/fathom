@@ -59,6 +59,14 @@ The vision's table (§2) is normative. Restated as the harness computes them:
 | `def_mapping` | SCIP definitions of mappable kinds mapped to a fathom symbol ÷ those definitions | | | | | | | ≥ .95 | ≥ .85 |
 | `typed_recall` | SCIP reference edges present as typed edges at fathom granularity ÷ SCIP edges | | | | | | | ≥ .95 | ≥ .85 |
 
+**Not measured is not failed.** When the only available L1 oracle cannot report a field —
+universal-ctags writes no end line for HTML, TypeScript, JavaScript, Rust, Kotlin, Lua or
+PHP — the harness records `range_agreement` under the reading's `not_measured` (it is the
+only metric that may be) with a value of `null`, never a failure. The level is then met at
+most at grade **good**, never excellent, and the reading's notes say why. The rule is
+inferred from the data, not declared: an L1 oracle that matched definitions but gave an end
+line for none of them. A tier-A oracle that reports ends lifts the cap by measuring it.
+
 Always required, every level: `faults ≤ 0.1%` of files with every faulting file named;
 `throughput ≥ 1 MB/s/core`; `max_file_ms ≤ 2000`; `peak_module_pages ≤ 1024`.
 

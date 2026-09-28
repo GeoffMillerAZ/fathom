@@ -1,6 +1,7 @@
 package langbench
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
@@ -139,6 +140,38 @@ func TestMergeSubjects(t *testing.T) {
 	}
 	if err := r.Validate(); err != nil {
 		t.Fatalf("merged reading invalid: %v", err)
+	}
+}
+
+// TestMergeRangeNotMeasured (§1.2): an L1 oracle that reports no end line
+// for any matched definition leaves range_agreement not_measured — never a
+// failure — L1 is met at most at good, and the reading says why.
+func TestMergeRangeNotMeasured(t *testing.T) {
+	spec := pySpec(t)
+	r := NewReading(spec.Manifest, "L1")
+	s := Subject{Name: "o/a", Files: 10, Bytes: 2_000_000,
+		Counts:   map[string]int{CntOracleDefs: 100, CntFathomDefs: 100, CntMatched: 99, CntKindEqual: 99, CntCallables: 50, CntCallablesSigned: 50},
+		Families: map[string]string{FamilyL1: "B"}, KindIntersection: []string{"class", "function", "variable"},
+		Tenancy: &SubjectTenancy{ExtractMS: 1000, MaxFileMS: 40, PeakModulePages: 100},
+	}
+	MergeSubject(&r, s)
+	if r.Metrics[MRangeAgreement] != nil || len(r.NotMeasured) != 1 || r.NotMeasured[0] != MRangeAgreement {
+		t.Fatalf("range_agreement %v not_measured %v", r.Metrics[MRangeAgreement], r.NotMeasured)
+	}
+	if r.LevelMet != "L1" || r.Grade.L1 != GradeGood {
+		t.Errorf("level %s grade %+v, want L1 good", r.LevelMet, r.Grade)
+	}
+	if !slices.Contains(r.Notes, NoteRangeNotMeasured) {
+		t.Errorf("notes %v lack the disclosure", r.Notes)
+	}
+	if err := r.Validate(); err != nil {
+		t.Fatalf("Validate: %v", err)
+	}
+	// Once an oracle reports ends, the metric is measured and the note goes.
+	s.Counts = map[string]int{CntOracleDefs: 100, CntFathomDefs: 100, CntMatched: 99, CntKindEqual: 99, CntRangeEligible: 99, CntRangeOK: 99, CntCallables: 50, CntCallablesSigned: 50}
+	MergeSubject(&r, s)
+	if r.NotMeasured != nil || slices.Contains(r.Notes, NoteRangeNotMeasured) || r.Grade.L1 != GradeExcellent {
+		t.Errorf("measured again: not_measured %v notes %v grade %+v", r.NotMeasured, r.Notes, r.Grade)
 	}
 }
 
