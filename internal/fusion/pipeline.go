@@ -669,7 +669,13 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	p.exts[".c"] = c
 	p.exts[".h"] = extractor.NewCHeaderExtractor()
 
-	// C++
+	// C++. LB-Q-cpp built and measured a tree-sitter dialect
+	// (internal/extractor/dialects/cpp/) — see docs/bench/readings/lang/cpp.json
+	// — that reads L1 excellent but not its target (L4): §11 step 2's merge
+	// gate requires the dialect to meet its target level, so the CGO incumbent
+	// stays the live dispatch here (and behind cheaderextract.go's C++ branch).
+	// A switch must bump ExtractorEpoch: the dialect makes a namespace a
+	// container, so every namespaced symbol is renamed (dialects/cpp/PROVENANCE.md).
 	cpp := extractor.NewCppExtractor()
 	p.exts[".cc"] = cpp
 	p.exts[".cpp"] = cpp

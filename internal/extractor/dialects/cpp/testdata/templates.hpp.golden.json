@@ -1,0 +1,169 @@
+{
+  "symbols": [
+    {
+      "name": "ds",
+      "kind": "CppNamespace",
+      "package": "templates",
+      "line": 9,
+      "end_line": 59,
+      "tier": "verified"
+    },
+    {
+      "name": "ds.Map",
+      "kind": "CppClass",
+      "package": "templates",
+      "line": 12,
+      "end_line": 22,
+      "tier": "verified"
+    },
+    {
+      "name": "ds.Map.Entry",
+      "kind": "CppTypedef",
+      "package": "templates",
+      "line": 14,
+      "end_line": 14,
+      "tier": "verified"
+    },
+    {
+      "name": "ds.Map.Map",
+      "kind": "CppFunc",
+      "package": "templates",
+      "line": 15,
+      "end_line": 15,
+      "signature": "Map()",
+      "tier": "verified"
+    },
+    {
+      "name": "ds.Map.insert",
+      "kind": "CppFunc",
+      "package": "templates",
+      "line": 17,
+      "end_line": 17,
+      "signature": "bool insert(const K &key, const V &value)",
+      "tier": "verified"
+    },
+    {
+      "name": "ds.Map.for_each",
+      "kind": "CppFunc",
+      "package": "templates",
+      "line": 18,
+      "end_line": 18,
+      "signature": "void for_each(F fn) const",
+      "calls": [
+        "fn"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "ds.Map.at",
+      "kind": "CppFunc",
+      "package": "templates",
+      "line": 25,
+      "end_line": 25,
+      "signature": "V &Map<K, V>::at(const K &key)",
+      "calls": [
+        "front"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "ds.Map",
+      "kind": "CppClass",
+      "package": "templates",
+      "line": 28,
+      "end_line": 31,
+      "tier": "verified"
+    },
+    {
+      "name": "ds.Map.total",
+      "kind": "CppFunc",
+      "package": "templates",
+      "line": 30,
+      "end_line": 30,
+      "signature": "int total() const",
+      "tier": "verified"
+    },
+    {
+      "name": "ds.Vec",
+      "kind": "CppTypedef",
+      "package": "templates",
+      "line": 34,
+      "end_line": 34,
+      "tier": "verified"
+    },
+    {
+      "name": "ds.Holder",
+      "kind": "CppStruct",
+      "package": "templates",
+      "line": 37,
+      "end_line": 40,
+      "tier": "verified"
+    },
+    {
+      "name": "ds.Holder.get",
+      "kind": "CppFunc",
+      "package": "templates",
+      "line": 39,
+      "end_line": 39,
+      "signature": "T get() const",
+      "tier": "verified"
+    },
+    {
+      "name": "ds.Base",
+      "kind": "CppClass",
+      "package": "templates",
+      "line": 42,
+      "end_line": 46,
+      "tier": "verified"
+    },
+    {
+      "name": "ds.Derived",
+      "kind": "CppClass",
+      "package": "templates",
+      "line": 48,
+      "end_line": 51,
+      "tier": "verified"
+    },
+    {
+      "name": "ds.Derived.run",
+      "kind": "CppFunc",
+      "package": "templates",
+      "line": 50,
+      "end_line": 50,
+      "signature": "void run() override",
+      "tier": "verified"
+    },
+    {
+      "name": "ds.square",
+      "kind": "CppFunc",
+      "package": "templates",
+      "line": 55,
+      "end_line": 55,
+      "signature": "constexpr int square(int v) noexcept",
+      "tier": "verified"
+    },
+    {
+      "name": "ds.ok",
+      "kind": "CppFunc",
+      "package": "templates",
+      "line": 57,
+      "end_line": 57,
+      "signature": "[[nodiscard]] inline bool ok()",
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "<memory>",
+      "module": "<memory>",
+      "kind": "whole",
+      "line": 6
+    },
+    {
+      "local": "<vector>",
+      "module": "<vector>",
+      "kind": "whole",
+      "line": 7
+    }
+  ]
+}

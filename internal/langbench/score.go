@@ -53,8 +53,39 @@ const (
 // BareName is a qualified name's last segment (§1.4: qualified names are
 // compared on the last segment).
 func BareName(q string) string {
+	if op, ok := operatorName(q); ok {
+		return op
+	}
 	i := strings.LastIndexAny(q, ".:#/\\ )")
 	return q[i+1:]
+}
+
+// operatorName recognizes a symbolic operator's name in q (C++ and C#:
+// "Box.operator+", ctags' "operator +", "ns::Foo::operator()") and returns
+// its one canonical spelling, "operator" followed by the symbol without
+// spaces: tools disagree on the space (source `operator+`, universal-ctags
+// `operator +`) and the ")" closing "operator()" is part of the name, not a
+// separator (LB-Q-cpp). Named operators ("operator new") and conversions
+// ("operator bool") are not symbolic; they keep the last-segment rule, and so
+// does an identifier that merely contains the word.
+func operatorName(q string) (string, bool) {
+	const kw = "operator"
+	for from := len(q); from > 0; {
+		i := strings.LastIndex(q[:from], kw)
+		if i < 0 {
+			return "", false
+		}
+		from = i
+		if i > 0 && !strings.ContainsRune(".:#/\\ ", rune(q[i-1])) {
+			continue // "my_operator": not the keyword
+		}
+		rest := strings.TrimLeft(q[i+len(kw):], " ")
+		if rest == "" || !strings.ContainsRune("+-*/%^&|~!=<>,([", rune(rest[0])) {
+			continue
+		}
+		return kw + strings.ReplaceAll(rest, " ", ""), true
+	}
+	return "", false
 }
 
 // L1Result is one subject's §1.4 definition matching.
@@ -107,7 +138,11 @@ func ScoreL1(m Manifest, oracle string, nodes []core.SymbolNode, defs []OracleDe
 			res.Excluded[oracle+":"+d.Kind]++
 			continue
 		}
-		theirs = append(theirs, &scoredDef{path: d.Path, name: d.Name, canonical: c, line: d.Line, end: d.End})
+		name := d.Name
+		if op, ok := operatorName(name); ok && m.NameMatch != NameMatchIdentity {
+			name = op // one spelling per operator on both sides (BareName's rule)
+		}
+		theirs = append(theirs, &scoredDef{path: d.Path, name: name, canonical: c, line: d.Line, end: d.End})
 	}
 	res.Counts[CntFathomDefs] = len(mine)
 	res.Counts[CntOracleDefs] = len(theirs)

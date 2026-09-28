@@ -116,6 +116,12 @@ type DialectQualify struct {
 	ChainContainers *bool  `json:"chain_containers,omitempty"`
 	ContainerSep    string `json:"container_sep,omitempty"`
 	MethodSep       string `json:"method_sep,omitempty"`
+	// ScopeSep is the language's own scope-resolution operator ("::" for
+	// C++). When set, a definition name or callee that spells a scope path
+	// with it is normalized to ContainerSep (template arguments dropped), so
+	// an out-of-class definition "Widget::render" and an inline method share
+	// one key (normalizeScopedName). Empty: names are taken as captured.
+	ScopeSep string `json:"scope_sep,omitempty"`
 }
 
 // DialectPackage selects how SymbolNode.Package is set: "dir" (the

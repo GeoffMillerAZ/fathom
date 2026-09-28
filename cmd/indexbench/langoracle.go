@@ -30,7 +30,7 @@ const oracleTimeout = 20 * time.Minute
 
 // fileResolveLang names the dialects today's file resolver serves
 // (fusion.ResolveFileEdges), so file-edge metrics are measured for them.
-var fileResolveLang = map[string]string{"typescript": "javascript", "javascript": "javascript", "python": "python"}
+var fileResolveLang = map[string]string{"typescript": "javascript", "javascript": "javascript", "python": "python", "cpp": "cpp"}
 
 // cmdLangOracle is `indexbench lang-oracle` (LB-F23, design §10): one
 // subject's measurement of one dialect, merged into the dialect's reading.
@@ -254,6 +254,31 @@ func onlyMatch(globs []string, rel string) bool {
 	return false
 }
 
+// ownedSourceRefs are the subject's files the dialect is measured on: those
+// its manifest owns by basename, glob or extension (inside -only), plus, for
+// C++, the polyglot .h headers fusion's header router sends to the C++
+// extractor. No dialect claims .h (design §5 leaves it to that router, which
+// sniffs the source), so without this a C++ library's headers — most of fmt —
+// would be measured as nothing.
+func ownedSourceRefs(m langbench.Manifest, root string, refs []core.SourceRef, only []string) []core.SourceRef {
+	var out []core.SourceRef
+	for _, ref := range refs {
+		if !onlyMatch(only, ref.Path) {
+			continue
+		}
+		if m.Owns(ref.Path) {
+			out = append(out, ref)
+			continue
+		}
+		if m.ID == "cpp" && strings.EqualFold(filepath.Ext(ref.Path), ".h") {
+			if b, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(ref.Path))); err == nil && extractor.LooksLikeCppHeader(b) {
+				out = append(out, ref)
+			}
+		}
+	}
+	return out
+}
+
 // measureSubject measures one subject. with, when non-nil, extracts every
 // file the dialect owns instead of fusion's dispatch (lang-parity's dialect
 // side, §11); nil measures what ingest would run.
@@ -284,14 +309,11 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 	// Warm-up: one untimed extraction compiles the dialect's grammar, so
 	// per-file times measure extraction, not the one-time lazy compile
 	// (design §9 charges that to the module pool, LB-F15).
-	owned := func(p string) bool { return spec.Manifest.Owns(p) && onlyMatch(opts.only, p) }
+	ownedRefs := ownedSourceRefs(spec.Manifest, root, refs, opts.only)
 	if len(opts.only) > 0 {
 		res.notes = append(res.notes, fmt.Sprintf("%s: restricted to %s (-only; the files outside are a disclosed gap, not measured)", name, strings.Join(opts.only, ", ")))
 	}
-	for _, ref := range refs {
-		if !owned(ref.Path) {
-			continue
-		}
+	for _, ref := range ownedRefs {
 		if content, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(ref.Path))); err == nil {
 			if ex, _ := extract(pipe, service, refs, ref.Path, content); ex.Skipped == "" {
 				res.notes = append(res.notes, "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)")
@@ -299,10 +321,7 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 			}
 		}
 	}
-	for _, ref := range refs {
-		if !owned(ref.Path) {
-			continue
-		}
+	for _, ref := range ownedRefs {
 		content, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(ref.Path)))
 		if err != nil {
 			return res, err

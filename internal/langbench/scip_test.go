@@ -69,6 +69,14 @@ func TestScipBareName(t *testing.T) {
 		"scip-python python p 1 `a.b`/C#m().":      "m",
 		"scip-java maven g a 1 pkg/Outer#Inner#f.": "f",
 		"local 3": "",
+		// scip-clang: a class template's constructor carries its arguments,
+		// operators their own spelling.
+		"cxx . . $ fmt/v12/detail/basic_fp#`basic_fp<F>`(9640a3c01162c49).":              "basic_fp",
+		"cxx . . $ fmt/v12/basic_memory_buffer#append(edcd8b2679e9bd1a).":                "append",
+		"cxx . . $ fmt/v12/detail/default_arg_formatter#`operator()`(818385b192fd64d1).": "operator()",
+		"cxx . . $ fmt/v12/detail/`operator&`(30fe3d7215a1809e).":                        "operator&",
+		"cxx . . $ n/D#`operator<=>`(1).":                                                "operator<=>",
+		"cxx . . $ n/utf8_to_utf16#`operator basic_string_view`(2862b23f35b403d2).":      "basic_string_view",
 	} {
 		if got, _ := scipBareName(in); got != want {
 			t.Errorf("scipBareName(%q) = %q, want %q", in, got, want)

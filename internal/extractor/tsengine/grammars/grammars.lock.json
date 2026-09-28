@@ -39,6 +39,21 @@
       "gz_bytes": 136140
     },
     {
+      "blob": "cpp",
+      "repo": "tree-sitter/tree-sitter-cpp",
+      "tag": "v0.23.4",
+      "commit": "f41e1a044c8a84ea9fa8577fdd2eab92ec96de02",
+      "tarball_sha256": "7a2c55afe3028f4105f25762ea58cc16537d1f5a1dcd9cca90410b3cd5d46051",
+      "licence": "MIT",
+      "entry_points": ["tree_sitter_cpp"],
+      "scanner": true,
+      "generate": false,
+      "abi": 14,
+      "blob_sha256": "b5ca4b0cd346bc1cd1060fdc2151125a11ad7695da595157667a5e8b30b03e34",
+      "blob_bytes": 1935648,
+      "gz_bytes": 420154
+    },
+    {
       "blob": "csharp",
       "repo": "tree-sitter/tree-sitter-c-sharp",
       "tag": "v0.23.5",

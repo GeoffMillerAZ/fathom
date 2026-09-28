@@ -281,6 +281,10 @@ Rules the schema and `TestDialectManifests` enforce:
 - Every extension and basename is claimed by exactly one dialect, except where `match.sniff`
   splits an ambiguous extension (§5).
 - `target_level` matches the queue; the manifest never carries a claimed level.
+- `qualify.scope_sep` (optional; C++'s `"::"`): a definition name or callee spelled with the
+  language's own scope operator is rewritten to `container_sep` and its template argument lists
+  are dropped, so an out-of-class `Widget::render` and an inline `Widget.render` are one key
+  (LB-Q-cpp; `normalizeScopedName`). A dialect without it takes `@name` as captured.
 
 ### 2.3 Canonical kinds (closed)
 
@@ -586,8 +590,9 @@ go run ./cmd/indexbench lang-oracle \
   -out docs/bench/readings/lang/swift.json   # merges subjects: one reading per dialect
 ```
 
-It lists the subject's files through the connector's own discovery (so exclusions match),
-runs the dialect's extractor on each, runs the oracle(s) on the same file list, matches per
+It lists the subject's files through the connector's own discovery (so exclusions match) —
+for C++ also the `.h` headers the header router's sniff sends to C++, since no dialect claims
+`.h` (§5) — runs the dialect's extractor on each, runs the oracle(s) on the same file list, matches per
 §1.4, and writes the reading. `indexbench lang-probe -dialect <id> <file>` prints the
 S-expression of a small file (capped at 200 lines of output) and every capture the
 dialect's queries make on it — the tool a worker writes queries against, instead of reading

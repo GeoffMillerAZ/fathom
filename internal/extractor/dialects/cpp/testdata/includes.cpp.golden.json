@@ -1,0 +1,30 @@
+{
+  "symbols": [
+    {
+      "name": "use_local",
+      "kind": "CppFunc",
+      "package": "includes",
+      "line": 7,
+      "end_line": 9,
+      "signature": "int use_local()",
+      "calls": [
+        "local_value"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "includes_local.hpp",
+      "module": "includes_local.hpp",
+      "kind": "whole",
+      "line": 4
+    },
+    {
+      "local": "<vector>",
+      "module": "<vector>",
+      "kind": "whole",
+      "line": 5
+    }
+  ]
+}

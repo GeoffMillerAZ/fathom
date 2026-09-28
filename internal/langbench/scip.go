@@ -26,6 +26,11 @@ type SCIPResult struct {
 	// fathom definition's line span instead (owner decision D5), so call
 	// truth stays measurable; the reading discloses the count.
 	EnclosingFallback int
+	// CallTruth and Docs are the call pairs the index proves and the
+	// documents it covers: the worker's diagnosis of a precision or recall
+	// miss (pairs on either side of the comparison), never part of a reading.
+	CallTruth map[CallPair]bool
+	Docs      map[string]bool
 }
 
 // scipBareName returns a SCIP symbol's leaf descriptor name and whether it
@@ -49,11 +54,27 @@ func scipBareName(sym string) (string, bool) {
 	}
 	if strings.HasSuffix(s, "`") {
 		if i := strings.LastIndex(s[:len(s)-1], "`"); i >= 0 {
-			return s[i+1 : len(s)-1], callable
+			return leafName(s[i+1 : len(s)-1]), callable
 		}
 	}
 	i := strings.LastIndexAny(s, "/#.: ")
-	return s[i+1:], callable
+	return leafName(s[i+1:]), callable
+}
+
+// leafName is a SCIP descriptor's own name in the form BareName gives fathom's:
+// scip-clang spells a constructor of a class template with its arguments
+// ("basic_fp<F>") and a conversion or symbolic operator with the operator's
+// own spelling ("operator basic_string_view", "operator()"); a template
+// argument list is not part of the name, and BareName owns the operator rule.
+// Operators are left to BareName untouched ("operator<=>" ends in ">").
+func leafName(name string) string {
+	if strings.Contains(name, "operator") {
+		return BareName(name)
+	}
+	if i := strings.IndexByte(name, '<'); i > 0 && strings.HasSuffix(name, ">") {
+		name = name[:i]
+	}
+	return name
 }
 
 type scipDef struct {
@@ -175,6 +196,7 @@ func ScoreSCIP(raw []byte, service string, nodes []core.SymbolNode) (SCIPResult,
 	}
 	found := FathomCallPairs(nodes, docs)
 	ScorePairs(truth, found, res.Counts, CntCallTruth, CntCallTruthFound, CntCallFathom, CntCallFathomInTrue)
+	res.CallTruth, res.Docs = truth, docs
 
 	imp, err := fscip.ImportIndex(service, raw, nodes)
 	if err != nil {
