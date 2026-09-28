@@ -170,6 +170,15 @@ type Regression struct {
 	ChangedCommit string `json:"changed_commit,omitempty"`
 	State         string `json:"state"`
 	Criterion     string `json:"criterion,omitempty"`
+	// Kind distinguishes ProofRegressions' original plan-row shape (left
+	// "" here — PE-8's own callers are unaffected) from the generalized
+	// sources AllProofRegressions merges (WI-20/WI-21, design doc §3
+	// "U12"): "plan" (this same shape, labeled), "certificate",
+	// "invariant" or "conservation". Additive: regressions.go's own file.
+	Kind string `json:"kind,omitempty"`
+	// Test names the certifying test for a "certificate" or "invariant"
+	// kind regression; empty for "plan" and "conservation".
+	Test string `json:"test,omitempty"`
 }
 
 // ProofRegressions lists every regression as of the filter's To whose
