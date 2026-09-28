@@ -551,6 +551,8 @@ Evidence: `docs/app-kit.md`.
 
 - **Every fathom receipt now carries an estimated token count beside its response bytes, and the project workspace's Recent-calls table shows it per answer (PE-20/PE-21, `docs/design/progress-and-economics.md` §5).** `internal/mcp`'s `receiptTokens` runs `internal/cost.Estimate`'s four-characters-per-token heuristic over the exact marshaled bytes the existing byte count came from, named `response_tokens` beside `response_bytes` in the call log; the console renders `~N tok`, an explicit `—` for a call logged before the field existed, never a fabricated zero-cost answer.
 
+- **Governance that learns, wave 1 begins (GL-1, GL-20, GL-21; `docs/plans/governance-learning.md`, design doc §3/§8): a `RulesSource` port for every client's rules files, and reviewer output through the existing SARIF/check-run path.** `internal/semantic.RegisterRulesSource`/`RulesSourceCorpus` gate a registered client rules reader (Cursor/Copilot/Kiro/Bugbot/Gemini land in later rows) by a configured off/warn/error level and feed it into the SAME compile path CLAUDE.md/AGENTS.md already use, so I27 is enforced once, for every source. `fathom obligations --format sarif` and `fathom verify --format check-run` render served obligations, review findings and gate refusals as SARIF 2.1.0 or a GitHub check-run JSON body; fathom writes both, never posts either.
+
 ## [0.8.0] -- 2026-09-02
 
 **What this release is.** fathom stopped being a Claude Code program and
