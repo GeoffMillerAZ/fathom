@@ -6,7 +6,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
-// TestStalenessReportDocDrift pins KR-7 (design §6): an open doc_links row
+// TestDocDriftMovedTarget pins KR-7's core comparison (design §6): an open doc_links row
 // whose target's CURRENT content hash no longer matches what was frozen at
 // link time is reported drifted — attributed to the most recent commit
 // that touched the target's own file, when one is known; a link whose
@@ -14,7 +14,7 @@ import (
 // never silently treated as "still fine"; an unchanged link produces no
 // drift at all; and §11's own rule holds structurally — DriftedDocLink
 // carries no "wrong" verdict field, only what moved and (maybe) when.
-func TestStalenessReportDocDrift(t *testing.T) {
+func TestDocDriftMovedTarget(t *testing.T) {
 	links := []store.DocLinkView{
 		{UnitID: "u1", Path: "docs/design/x.md", HeadingPath: "X > A", TargetKind: "symbol", Target: "Foo", Line: 5, LinkTier: "exact", TargetHashAtLink: "h-foo-v1"},
 		{UnitID: "u2", Path: "docs/design/x.md", HeadingPath: "X > B", TargetKind: "path", Target: "a/b.go", Line: 9, LinkTier: "exact", TargetHashAtLink: "h-path-v1"},

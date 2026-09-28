@@ -17,7 +17,11 @@ package docindex
 // (§6's own word); docDrift itself never says more.
 
 import (
+	"context"
+	"fmt"
 	"sort"
+	"strings"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
@@ -113,4 +117,99 @@ func docDrift(links []store.DocLinkView, current CurrentTargetFunc, commitForPat
 		return out[i].Target < out[j].Target
 	})
 	return out
+}
+
+// StalenessDocDrift is docDrift's store-backed entrypoint: every still-open
+// doc_links row for serviceID (store.OpenDocLinks, KR-6), re-resolved
+// against st's live index right now, attributed to the most recent of the
+// service's own stored commits (ListCommits, already newest-first) that
+// touched the target's file. Returns ErrDocIndexUnavailable for a
+// non-SQLite store, matching RankDocs' (KR-4) and Resolver's own refusal
+// shape rather than reporting an empty, indistinguishable "nothing
+// drifted" (I38) when there is in fact no doc index to check at all.
+//
+// Symbol resolution mirrors LinkDocSpans' Resolver contract exactly —
+// "exactly one indexed symbol" — via the store's own ObservationsForSymbol
+// candidate lookup narrowed to the same bare/suffix name rule
+// internal/query/engine.go's symbolMatches applies (this package does not
+// import internal/query to reuse it byte-for-byte, to avoid coupling a
+// pure-comparison package to the query engine for one filter; the rule
+// itself — exact name, or a ".name" suffix match either direction — is
+// simple enough to restate here). A "key" target always resolves
+// Exists: false until SG-2's contract_keys table lands, same as
+// Resolver.ResolveContractKey's own documented degrade.
+func StalenessDocDrift(ctx context.Context, st store.Store, serviceID string) ([]DriftedDocLink, error) {
+	sq, ok := st.(*store.SQLiteStore)
+	if !ok {
+		return nil, ErrDocIndexUnavailable
+	}
+	links, err := sq.OpenDocLinks(ctx, serviceID)
+	if err != nil {
+		return nil, fmt.Errorf("StalenessDocDrift: open links: %w", err)
+	}
+	if len(links) == 0 {
+		return nil, nil
+	}
+
+	commits, err := sq.ListCommits(ctx, serviceID)
+	if err != nil {
+		return nil, fmt.Errorf("StalenessDocDrift: commits: %w", err)
+	}
+	commitForPath := func(path string) (string, string, bool) {
+		for _, c := range commits { // ListCommits: ORDER BY date DESC, so the first match is the most recent
+			for _, f := range c.Files {
+				if f == path {
+					return c.Hash, time.Unix(0, c.Date).UTC().Format(time.RFC3339), true
+				}
+			}
+		}
+		return "", "", false
+	}
+
+	current := func(kind, target string) TargetResolution {
+		switch kind {
+		case "path":
+			hash, found, ferr := sq.Fingerprint(ctx, serviceID, target)
+			if ferr != nil || !found {
+				return TargetResolution{}
+			}
+			return TargetResolution{Exists: true, Hash: hash, File: target}
+		case "symbol":
+			return resolveSymbolNow(ctx, sq, serviceID, target)
+		default: // "key": no contract_keys table to check yet (SG-2)
+			return TargetResolution{}
+		}
+	}
+
+	return docDrift(links, current, commitForPath), nil
+}
+
+// resolveSymbolNow narrows ObservationsForSymbol's candidate superset to
+// bare/suffix name matches and returns a live resolution only when exactly
+// one DISTINCT symbol name matches — multiple observations of the very
+// same symbol (re-extracted across passes) are not ambiguity.
+func resolveSymbolNow(ctx context.Context, sq *store.SQLiteStore, serviceID, name string) TargetResolution {
+	obs, err := sq.ObservationsForSymbol(ctx, serviceID, name)
+	if err != nil {
+		return TargetResolution{}
+	}
+	type hit struct{ hash, file string }
+	seen := map[string]hit{}
+	for _, o := range obs {
+		if !(o.Symbol == name || strings.HasSuffix(o.Symbol, "."+name) || strings.HasSuffix(name, "."+o.Symbol)) {
+			continue
+		}
+		file := o.SourceRef
+		if i := strings.LastIndexByte(file, ':'); i >= 0 {
+			file = file[:i]
+		}
+		seen[o.Symbol] = hit{hash: o.ContentHash, file: file}
+	}
+	if len(seen) != 1 {
+		return TargetResolution{}
+	}
+	for _, h := range seen {
+		return TargetResolution{Exists: true, Hash: h.hash, File: h.file}
+	}
+	return TargetResolution{} // unreachable
 }
