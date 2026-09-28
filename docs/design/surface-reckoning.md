@@ -1,7 +1,6 @@
 # The surface reckoning — the feature scorecard as decisions
 
-Status: proposed 2026-09-27 (ADR draft `docs/design/drafts/adr-surface-reckoning.md`; the
-orchestrator assigns the number). Input: the owner-accepted feature scorecard (86 features,
+Status: accepted 2026-09-27 (ADR-053). Input: the owner-accepted feature scorecard (86 features,
 2026-09-27; sources: 97,898 MCP calls, 286,758 hook events, the verify and session ledgers,
 the fleet store read-only) and the roadmap memo (N1–N8, T1–T8, U1–U16). Plan:
 `docs/plans/surface-reckoning.md` (prefix `SR`). Governing rules: law 4 / principle P4 (no
@@ -103,7 +102,7 @@ registration (`TestMcpToolsDocMatchesRegistry` holds the three-place contract).
 | SR-15 | F-53 `brief` (MCP tool) — **refined** | `registerBrief`, `truncatedBriefResult` | — | none | `use-cases/coding-agents.md`, `coding-context.md`, `spec-verification.md` | **retire** D1-1, D1-2 (expert-depth) |
 | SR-16 | F-53 `research` — **refined to freeze** | `fathom research` leaves top-level help | `internal/research` and the verb, hidden: ADR-046 decision 6 names the research bundle as the only route for the retro corpus, and `schema/research-bundle` is its closed allowlist | — | none | P-2, P-4, P-13, P-14, GKE-W1-7/8/10, IR-5, R-2, R-3, O-22, O-23 stay proven |
 | SR-17 | F-68 expert-module MCP tools | `list_modules`, `module_obligations`, `module_query`, `module_staleness`, the `/rpc/modules` surface and hosted-modules mode (`hostedModulesTools`, `--modules-token-env`) | the Expert Module v0 manifest, `schema/module`, `.fathom/modules.cue`, `internal/modspec`, `fathom module` verbs (eval/kill gates) — the pack format layers already use; all compatibility-surface items except the wire contract | `cmd/fathom/doctor_modules.go` (fixed in `edcc2352` to ask `tools/list` first — becomes an always-absent row, then removed) | `use-cases/platform-modules.md`, `getting-started.md`; skill `fathom-doctor` (+ `dist/`) | **retire** GKE-MH-5; J-*, FA-4..6, O-5, O-6 anchor the kept module code and stay proven |
-| SR-18 | F-70 assess lanes — **freeze** | `fathom assess` leaves help | `internal/assess`, the `assess` capability (default off), the ledger: ADR-046 is accepted; the ADR draft marks it *frozen*, not superseded, until an owner pull | — | none | DO-3, IR-3 stay proven |
+| SR-18 | F-70 assess lanes — **freeze** | `fathom assess` leaves help | `internal/assess`, the `assess` capability (default off), the ledger: ADR-046 is accepted; ADR-053 marks it *frozen*, not superseded, until an owner pull | — | none | DO-3, IR-3 stay proven |
 | SR-19 | F-77 twelve legacy analyzers as tools | `complexity`, `god_object`, `community`, `dead_code`, `cloc`, `secret_scan`, `shell_out`, `proto_conformance`, `traceability`, `evidence_summary`, `contradiction_scan`, `batch` registrations and handlers | the complexity metric (a stored column, `internal/store/conformance.go`) as U13's input; traceability's join logic moves to U8's evidence pack when that is built (not a tool); `batch` admission code in the governor becomes dead and goes with it | `cmd/fathom/governor_rpc.go`, `lifecycle_gate.go` special-case `batch` (delete the branches) | `use-cases/fleet-health.md`, `incident-investigation.md`, `change-review.md`, `spec-verification.md`, `coding-context.md`, `getting-started.md`; skill `fathom-plan` (+ `dist/`) names `traceability` | **retire** RT-60 (`admitBatchCall`) |
 | SR-20 | F-78 four canned prompts | `investigate_incident`, `onboard_service`, `plan_requirement`, `review_change` | `registerPromptsHandlers` stays and serves an empty `prompts/list` (the protocol capability is kept; C3-1 stays proven) | `governor.go` and `tenancy/inflight.go` name `onboard_service` as an ingest-class tool — delete the dead string | `docs/mcp-tools.md` §Prompts | none |
 
@@ -236,15 +235,14 @@ support matrix tracks as the `client` kind (`docs/design/support-matrix.md`).
   — verify's `reachable_from` walks the call graph in `internal/verify`. Nothing to keep.
 - **F-11 counts.** The agent surface is 25 tools, not 19 (§1).
 
-## 9. Edits for the orchestrator (records this subagent may not touch)
+## 9. Edits for the orchestrator (records this subagent may not touch) — done
 
 - `docs/intent/scope.md` compatibility surface: "The 19-tool agent surface allowlist" →
   "The default agent surface (8 tools), the `extended` surface, tool names and schemas,
   `POST /rpc/agent`, `/rpc/extended` and the `/rpc/companion` alias (→ extended)"; drop
-  "`module_query` wire contract v0" when SR-17 lands (retired, Breaking).
-- `ADR.md`: the draft in `docs/design/drafts/adr-surface-reckoning.md` (one record; it
-  amends ADR-014, freezes ADR-046, records the module-tool removal against the Expert
-  Module line).
-- Vision 15 §3 and the roadmap memo's N1: `package_deps` is already deleted (SR-11).
+  "`module_query` wire contract v0" when SR-17 lands (retired, Breaking). Done.
+- `ADR.md`: folded in as ADR-053 (it amends ADR-014, freezes ADR-046, records the
+  module-tool removal against the Expert Module line). Done.
+- Vision 15 §3 and the roadmap memo's N1: `package_deps` is already deleted (SR-11). Done.
 - `docs/intent/futures.md`: none required; anchored memory is removed with "revisit only
   with demand" — record it as a future only if the owner wants the trigger kept.

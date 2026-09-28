@@ -1,7 +1,7 @@
 # The support matrix — what fathom supports, computed, never kept
 
-Status: proposed 2026-09-27 (ADR draft `docs/design/drafts/adr-surface-reckoning.md`,
-record B). Plan: `docs/plans/support-matrix.md` (prefix `SM`). Schema: `schema/support/`.
+Status: accepted 2026-09-27 (ADR-054). Plan: `docs/plans/support-matrix.md` (prefix `SM`).
+Schema: `schema/support/`.
 Builds on ADR-048 (a level is a reading, not a registration; I54), ADR-029 (harness
 adapters are data behind one seam), ADR-018 (CUE is schema and validator, never an
 authoring or execution surface), ADR-045 (every console panel renders a verb; every number

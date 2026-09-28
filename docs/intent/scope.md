@@ -218,7 +218,8 @@ migration note (`docs/rename-migration.md` is the precedent; new ones go to
 - Expert Module v0 manifest. Evidence: `docs/spec/expert-module-v0.md`, `schema/module/schema.cue`,
   `internal/modspec/schema_test.go`.
 - `module_query` wire contract v0 (`claim_id`, `anchor`, `watermark`). Evidence: commit 0df159d,
-  `docs/handoff/repo-strategy.md` §3.
+  `docs/handoff/repo-strategy.md` §3. Leaves the compatibility surface with a `### Breaking`
+  line when SR-17 lands (the module MCP tools retired, ADR-053 decision 2).
 - Plan grammar v2: checkbox states, annotation keys, `id:`, dispositions, the
   checkbox-line rule. Evidence: `docs/plans/README.md`, `schema/plan/schema.cue`,
   `internal/verify/markdown.go`.
@@ -252,8 +253,11 @@ migration note (`docs/rename-migration.md` is the precedent; new ones go to
   `pattern`). Evidence: ADR-030, `schema/plan/schema.cue`.
 - The `<!-- fathom:begin -->`…`<!-- fathom:end -->` stanza region in `CLAUDE.md` and
   `AGENTS.md` (fleet reconcile compares content, law 15). Evidence: `CHANGELOG.md` 2026-08-13.
-- The 19-tool agent surface allowlist, tool names and schemas, `POST /rpc/agent` and the
-  `/rpc/companion` alias. Evidence: `docs/mcp-tools.md`, `internal/mcp/surface.go`.
+- The default agent surface (8 tools, named in ADR-053: `find_symbol`, `search`,
+  `read_source`, `symbol_context`, `obligations`, `verify_plan`, `blast_radius`,
+  `review_diff`) at `POST /rpc/agent`; the `extended` opt-in surface (21 tools) at
+  `POST /rpc/extended`; tool names and schemas; the `/rpc/companion` alias (→ `extended`).
+  Evidence: `docs/mcp-tools.md`, `internal/mcp/surface.go`.
 - The `.fathom/` files an adopter commits: `concerns.cue`, `guard.cue`, `capabilities.cue`,
   `modules.cue`, `layers/`, `rules/`, `observations.md`. Evidence: `schema/{binding,guard,config,semantic,rules}`.
 - The `~/.fathom/` files: `config.toml`, `capabilities.cue`, `concerns.cue`,
