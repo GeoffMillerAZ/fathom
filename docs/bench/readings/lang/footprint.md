@@ -26,3 +26,24 @@ Compiled machine code per grammar (wazero compiler, arm64, measured by
 size): javascript 844,395; kotlin 1,795,795; python 810,771; ruby 1,257,427;
 typescript 943,867 bytes (0.46×–1.84× the module). The memo registry is
 charged the module size (`blob_bytes`), since wazero does not report it.
+
+## LB-M4 wave 1, 2026-09-28
+
+Measured at a15b29a3 (lq-integ, wave 1 merged) on darwin/arm64, go 1.26.3,
+`CGO_ENABLED=1`, `go build ./cmd/fathom` (no `-ldflags`), seven embedded
+grammars (wave 1 added `css`, `html`; Terraform and the manifest formats are
+pure Go and embed nothing).
+
+| Build | `cmd/fathom` bytes | Embedded `.wasm.gz` bytes |
+|---|--:|--:|
+| d0caa732 (baseline, five grammars) | 91,720,434 | 1,483,348 |
+| a15b29a3 (wave 1, seven grammars) | 91,975,346 | 1,618,705 |
+
+Per grammar (`.wasm.gz`): css 74,133; html 61,224; javascript 114,833;
+kotlin 510,036; python 123,581; ruby 311,992; typescript 422,906.
+
+The wave grew the binary 254,912 bytes and the embedded grammars 135,357.
+The embedded total is 3.9% of the 40 MiB (41,943,040-byte) cap and far
+below LB-F14's 36 MiB pack trigger.
+
+LB-M4 verdict: PASS (wave 1: 1,618,705 of 41,943,040 bytes)
