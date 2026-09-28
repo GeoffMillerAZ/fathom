@@ -36,6 +36,11 @@ var typedEdgeProducers = map[string]string{
 	"ruby":   "scip:scip-ruby",
 	"cs":     "scip:scip-dotnet",
 
+	// file: fusion.ResolveFileEdges' relative-path strategy resolves this
+	// dialect's src/href/@import specs to in-repo files (tier pre-scan,
+	// LB-F11) — no SCIP producer and no native pass.
+	"html": "file",
+
 	// syntax: call names by syntax only — every other registered
 	// language, CUE included (see the doc comment above).
 	"cue":        "syntax",

@@ -1,0 +1,33 @@
+{
+  "id": "html",
+  "display": "HTML",
+  "kind": "language",
+  "engine": "tags",
+  "lang_tag": "html",
+  "match": {
+    "extensions": [".html", ".htm"],
+    "basenames": [],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "grammar": { "blob": "html", "entry_point": "tree_sitter_html" },
+  "variants": [],
+  "queries": { "tags": "tags.scm", "imports": "imports.scm", "injections": "injections.scm" },
+  "kinds": {
+    "label":          { "source_kind": "HTMLId",            "canonical": "label" },
+    "custom_element": { "source_kind": "HTMLCustomElement", "canonical": "element",  "container": true },
+    "form":           { "source_kind": "HTMLForm",          "canonical": "route",    "container": true },
+    "field":          { "source_kind": "HTMLFormField",     "canonical": "field" }
+  },
+  "required_kinds": ["label"],
+  "oracle_kinds": {
+    "ctags": { "id": "label" }
+  },
+  "qualify": { "chain_containers": false, "container_sep": ".", "method_sep": "." },
+  "package": { "strategy": "dir" },
+  "imports": { "strategy": "relative-path", "relative": true },
+  "signature": { "max_chars": 200 },
+  "target_level": "L3",
+  "queue_id": "html"
+}

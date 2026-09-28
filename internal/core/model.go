@@ -84,6 +84,13 @@ const (
 	KindKotlinProperty  SourceKind = "KotlinProperty"
 	KindKotlinImport    SourceKind = "KotlinImport"
 
+	// HTML (LB-Q-html, language-breadth: new — no incumbent bespoke walker
+	// existed for HTML before this dialect). KindHTMLId is an element's
+	// `id` attribute (the one HTML kind universal-ctags' HTML parser
+	// tags as a definition; PythonClass/KotlinClass precedent for a
+	// dialect's primary connector-classification kind).
+	KindHTMLId SourceKind = "HTMLId"
+
 	// Rust
 	KindRustFn     SourceKind = "RustFn"
 	KindRustStruct SourceKind = "RustStruct"

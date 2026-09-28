@@ -393,6 +393,42 @@
   },
   {
     "manifest": {
+      "id": "html",
+      "display": "HTML",
+      "kind": "language",
+      "lang_tag": "html",
+      "match": {
+        "extensions": [
+          ".html",
+          ".htm"
+        ],
+        "basenames": []
+      },
+      "kinds": {
+        "id": {
+          "source_kind": "HTMLId",
+          "canonical": "label"
+        }
+      },
+      "required_kinds": [
+        "label"
+      ],
+      "oracle_kinds": {
+        "ctags": {
+          "id": "label"
+        }
+      },
+      "queue_id": "html"
+    },
+    "ctags": {
+      "languages": [
+        "HTML"
+      ],
+      "args": []
+    }
+  },
+  {
+    "manifest": {
       "id": "scala",
       "display": "Scala",
       "kind": "language",

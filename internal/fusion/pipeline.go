@@ -511,7 +511,15 @@ func parseGitLog(serviceID, raw string) []store.Commit {
 // Epoch 9 (LB-F10, design §5): the generated/minified gate — a minified or
 // generator-marked file of a manifest dialect is no longer extracted; its
 // stored observations predate the gate, so the salt bump purges them.
-const ExtractorEpoch = "9"
+// Epoch 10 (LB-Q-html, docs/design/language-breadth.md §13): HTML (.html/
+// .htm) now extracts via internal/extractor.NewTSExtractor("html") — tree-
+// sitter via wazero/WASM, a fleet gap with no incumbent — where every such
+// file previously fell through to "no extractor registered" and was
+// fingerprinted (never re-sniffed) by that dead-end path, the same class
+// epoch 7 fixed for Kotlin; the salt bump forces those files through the
+// new extractor on the next ingest instead of leaving them silently stuck
+// on a stale "unsupported" fingerprint.
+const ExtractorEpoch = "10"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares
@@ -624,6 +632,16 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	}
 	p.exts[".kt"] = kt
 	p.exts[".kts"] = kt
+
+	// HTML — tree-sitter via wazero/WASM (LB-Q-html, design
+	// §13/language-breadth): new; no incumbent bespoke walker existed for
+	// HTML (a fleet gap, not a port), so there is no calibration gate.
+	html, err := extractor.NewTSExtractor("html")
+	if err != nil {
+		panic(fmt.Sprintf("fusion: tsextract html: %v", err))
+	}
+	p.exts[".html"] = html
+	p.exts[".htm"] = html
 
 	// Terraform HCL
 	p.exts[".tf"] = extractor.NewHCLExtractor()

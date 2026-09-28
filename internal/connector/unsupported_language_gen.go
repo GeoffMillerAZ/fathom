@@ -54,8 +54,6 @@ var unsupportedLangExtMap = map[string]string{
 	".hlsli":   "hlsl",
 	".hrl":     "erlang",
 	".hs":      "haskell",
-	".htm":     "html",
-	".html":    "html",
 	".jl":      "julia",
 	".less":    "less",
 	".lisp":    "commonlisp",

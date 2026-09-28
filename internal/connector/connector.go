@@ -101,6 +101,10 @@ var extClassMap = map[string]classification{
 	".kt":  {core.KindKotlinClass, "kotlin"},
 	".kts": {core.KindKotlinClass, "kotlin"},
 
+	// HTML (LB-Q-html, language-breadth: new — a fleet gap, no incumbent).
+	".html": {core.KindHTMLId, "html"},
+	".htm":  {core.KindHTMLId, "html"},
+
 	// C
 	".c": {core.KindCFunc, "c"},
 	".h": {core.KindCFunc, "c"},
