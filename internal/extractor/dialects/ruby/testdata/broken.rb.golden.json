@@ -5,6 +5,8 @@
       "kind": "RubyMethod",
       "package": "broken",
       "line": 1,
+      "end_line": 3,
+      "signature": "def good",
       "tier": "verified"
     },
     {
@@ -12,6 +14,7 @@
       "kind": "RubyClass",
       "package": "broken",
       "line": 8,
+      "end_line": 12,
       "tier": "verified"
     },
     {
@@ -19,6 +22,8 @@
       "kind": "RubyMethod",
       "package": "broken",
       "line": 9,
+      "end_line": 11,
+      "signature": "def ok",
       "tier": "verified"
     }
   ]

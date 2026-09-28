@@ -5,6 +5,7 @@
       "kind": "TSInterface",
       "package": "shapes",
       "line": 5,
+      "end_line": 8,
       "tier": "verified"
     },
     {
@@ -12,6 +13,7 @@
       "kind": "TSType",
       "package": "shapes",
       "line": 10,
+      "end_line": 10,
       "tier": "verified"
     },
     {
@@ -19,6 +21,7 @@
       "kind": "TSType",
       "package": "shapes",
       "line": 11,
+      "end_line": 11,
       "tier": "verified"
     },
     {
@@ -26,6 +29,7 @@
       "kind": "TSEnum",
       "package": "shapes",
       "line": 13,
+      "end_line": 16,
       "tier": "verified"
     },
     {
@@ -33,6 +37,7 @@
       "kind": "TSEnum",
       "package": "shapes",
       "line": 18,
+      "end_line": 18,
       "tier": "verified"
     },
     {
@@ -40,6 +45,8 @@
       "kind": "JSMethod",
       "package": "shapes",
       "line": 24,
+      "end_line": 26,
+      "signature": "constructor(private readonly cfg: Config)",
       "calls": [
         "util.log"
       ],
@@ -50,6 +57,8 @@
       "kind": "JSMethod",
       "package": "shapes",
       "line": 30,
+      "end_line": 35,
+      "signature": "protected describe( prefix: string, suffix?: string, ): string",
       "calls": [
         "format"
       ],
@@ -60,6 +69,8 @@
       "kind": "JSMethod",
       "package": "shapes",
       "line": 37,
+      "end_line": 39,
+      "signature": "#secret(): void",
       "calls": [
         "this.describe"
       ],
@@ -70,6 +81,7 @@
       "kind": "JSClass",
       "package": "shapes",
       "line": 43,
+      "end_line": 47,
       "tier": "verified"
     },
     {
@@ -77,6 +89,8 @@
       "kind": "JSMethod",
       "package": "shapes",
       "line": 44,
+      "end_line": 46,
+      "signature": "area(): number",
       "calls": [
         "square"
       ],
@@ -87,6 +101,8 @@
       "kind": "JSFunc",
       "package": "shapes",
       "line": 49,
+      "end_line": 51,
+      "signature": "function create<T>(kind: string): T",
       "calls": [
         "factory.make"
       ],
@@ -97,6 +113,8 @@
       "kind": "JSFunc",
       "package": "shapes",
       "line": 53,
+      "end_line": 53,
+      "signature": "arrow = async (n: number): Promise<number> =>",
       "calls": [
         "compute"
       ],
@@ -107,6 +125,8 @@
       "kind": "JSFunc",
       "package": "shapes",
       "line": 56,
+      "end_line": 58,
+      "signature": "function inner()",
       "calls": [
         "outer"
       ],

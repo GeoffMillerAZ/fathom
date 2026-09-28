@@ -41,7 +41,8 @@
 ; class/object member methods (fwcd/tree-sitter-kotlin has no separate
 ; method_declaration) — same precedent as KindPyFunc covering both.
 (function_declaration
-  (simple_identifier) @name) @definition.function
+  (simple_identifier) @name
+  (function_body)? @body) @definition.function
 
 ; Only a top-level (direct child of source_file) property counts as a
 ; KotlinProperty, mirroring python.scm's module-level-only KindPyVar
@@ -68,3 +69,6 @@
 (call_expression
   .
   (_) @reference.call)
+
+; @body (LB-F3, design §3.3): a callable's Signature is its definition's text up to
+; the start of this capture, whitespace collapsed; without it, the first line.

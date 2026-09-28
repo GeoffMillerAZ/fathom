@@ -5,6 +5,7 @@
       "kind": "PythonVar",
       "package": "shapes",
       "line": 8,
+      "end_line": 8,
       "tier": "verified"
     },
     {
@@ -12,6 +13,7 @@
       "kind": "PythonVar",
       "package": "shapes",
       "line": 10,
+      "end_line": 10,
       "tier": "verified"
     },
     {
@@ -19,6 +21,8 @@
       "kind": "PythonFunc",
       "package": "shapes",
       "line": 13,
+      "end_line": 17,
+      "signature": "def top(a, b=2, *args, **kwargs):",
       "calls": [
         "check",
         "helper",
@@ -31,6 +35,8 @@
       "kind": "PythonFunc",
       "package": "shapes",
       "line": 20,
+      "end_line": 21,
+      "signature": "async def fetch(url):",
       "calls": [
         "client.get"
       ],
@@ -41,6 +47,8 @@
       "kind": "PythonFunc",
       "package": "shapes",
       "line": 25,
+      "end_line": 29,
+      "signature": "def decorated( first, second, ):",
       "tier": "verified"
     },
     {
@@ -48,6 +56,7 @@
       "kind": "PythonClass",
       "package": "shapes",
       "line": 32,
+      "end_line": 51,
       "tier": "verified"
     },
     {
@@ -55,6 +64,8 @@
       "kind": "PythonFunc",
       "package": "shapes",
       "line": 35,
+      "end_line": 37,
+      "signature": "def __init__(self, value):",
       "calls": [
         "super",
         "super().__init__"
@@ -66,6 +77,8 @@
       "kind": "PythonFunc",
       "package": "shapes",
       "line": 40,
+      "end_line": 41,
+      "signature": "def size(self):",
       "calls": [
         "len"
       ],
@@ -76,6 +89,8 @@
       "kind": "PythonFunc",
       "package": "shapes",
       "line": 44,
+      "end_line": 45,
+      "signature": "def build(*parts):",
       "calls": [
         "Base"
       ],
@@ -86,6 +101,7 @@
       "kind": "PythonClass",
       "package": "shapes",
       "line": 47,
+      "end_line": 51,
       "tier": "verified"
     },
     {
@@ -93,6 +109,8 @@
       "kind": "PythonFunc",
       "package": "shapes",
       "line": 48,
+      "end_line": 51,
+      "signature": "def deep(self):",
       "calls": [
         "local"
       ],
@@ -103,6 +121,8 @@
       "kind": "PythonFunc",
       "package": "shapes",
       "line": 49,
+      "end_line": 50,
+      "signature": "def local():",
       "calls": [
         "compute"
       ],
@@ -113,6 +133,7 @@
       "kind": "PythonClass",
       "package": "shapes",
       "line": 54,
+      "end_line": 57,
       "tier": "verified"
     },
     {
@@ -120,6 +141,8 @@
       "kind": "PythonFunc",
       "package": "shapes",
       "line": 55,
+      "end_line": 57,
+      "signature": "def method(self):",
       "calls": [
         "Base.build",
         "self.build"
@@ -131,6 +154,8 @@
       "kind": "PythonFunc",
       "package": "shapes",
       "line": 60,
+      "end_line": 64,
+      "signature": "def outer():",
       "tier": "verified"
     },
     {
@@ -138,6 +163,7 @@
       "kind": "PythonClass",
       "package": "shapes",
       "line": 61,
+      "end_line": 63,
       "tier": "verified"
     },
     {
@@ -145,6 +171,8 @@
       "kind": "PythonFunc",
       "package": "shapes",
       "line": 62,
+      "end_line": 63,
+      "signature": "def m(self):",
       "tier": "verified"
     }
   ],

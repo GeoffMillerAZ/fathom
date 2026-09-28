@@ -10,13 +10,18 @@
   name: (_) @name) @definition.class
 
 (method
-  name: (_) @name) @definition.method
+  name: (_) @name
+  body: (_)? @body) @definition.method
 
 (singleton_method
-  name: (_) @name) @definition.method
+  name: (_) @name
+  body: (_)? @body) @definition.method
 
 ; Naive same-file call collection — mirrors the incumbent CGO extractor's
 ; CollectCalls ("method" field text of a `call` node), not a typed/resolved
 ; edge.
 (call
   method: (_) @reference.call)
+
+; @body (LB-F3, design §3.3): a callable's Signature is its definition's text up to
+; the start of this capture, whitespace collapsed; without it, the first line.

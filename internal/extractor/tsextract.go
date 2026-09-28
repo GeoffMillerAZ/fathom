@@ -1,6 +1,7 @@
 package extractor
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -8,6 +9,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"unicode/utf8"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/extractor/tsengine"
@@ -380,16 +382,21 @@ func (e *TSExtractor) Extract(service, relPath string, src []byte) ([]core.Symbo
 	pkg := pkgFromPath(relPath)
 	nodes := make([]core.SymbolNode, 0, len(defs))
 	for _, d := range defs {
-		nodes = append(nodes, core.SymbolNode{
+		n := core.SymbolNode{
 			Service:  service,
 			Package:  pkg,
 			Name:     d.qualName,
 			Kind:     d.kind,
 			FilePath: relPath,
 			Line:     d.line,
+			EndLine:  tsEndLine(src, d),
 			Tier:     core.TierVerified,
 			Calls:    d.calls,
-		})
+		}
+		if d.callable {
+			n.Signature = tsSignature(src, d, rules.sigMax)
+		}
+		nodes = append(nodes, n)
 	}
 	sort.Slice(nodes, func(i, j int) bool {
 		if nodes[i].Line != nodes[j].Line {
@@ -410,7 +417,9 @@ type tsDef struct {
 	name       string
 	start, end uint32
 	line       int
-	parent     int // index into the defs slice, -1 if none
+	parent     int    // index into the defs slice, -1 if none
+	bodyStart  uint32 // start of the @body capture, when hasBody
+	hasBody    bool
 	qualName   string
 	callSet    map[string]struct{}
 	calls      []string
@@ -428,8 +437,7 @@ func splitTSMatches(matches []tsengine.Match, kinds map[string]tsDefKind, src []
 	var defs []*tsDef
 	var calls []tsCallSite
 	for _, m := range matches {
-		var nameNode *tsengine.Node
-		var defNode *tsengine.Node
+		var nameNode, defNode, bodyNode *tsengine.Node
 		var defSuffix string
 		for i := range m.Captures {
 			c := &m.Captures[i]
@@ -437,6 +445,9 @@ func splitTSMatches(matches []tsengine.Match, kinds map[string]tsDefKind, src []
 			case c.Name == "name":
 				n := c.Node
 				nameNode = &n
+			case c.Name == "body":
+				n := c.Node
+				bodyNode = &n
 			case c.Name == "reference.call":
 				text := c.Node.Text(src)
 				if text != "" {
@@ -459,7 +470,7 @@ func splitTSMatches(matches []tsengine.Match, kinds map[string]tsDefKind, src []
 		if name == "" {
 			continue
 		}
-		defs = append(defs, &tsDef{
+		d := &tsDef{
 			kind:      dk.Kind,
 			container: dk.Container,
 			callable:  dk.Callable,
@@ -468,9 +479,46 @@ func splitTSMatches(matches []tsengine.Match, kinds map[string]tsDefKind, src []
 			end:       defNode.EndByte,
 			line:      defNode.Line(),
 			parent:    -1,
-		})
+		}
+		if bodyNode != nil && bodyNode.StartByte >= d.start && bodyNode.StartByte <= d.end {
+			d.bodyStart, d.hasBody = bodyNode.StartByte, true
+		}
+		defs = append(defs, d)
 	}
 	return defs, calls
+}
+
+// tsEndLine is the 1-based line of the definition node's last byte (§3.3).
+func tsEndLine(src []byte, d *tsDef) int {
+	if d.end <= d.start || int(d.end) > len(src) {
+		return d.line
+	}
+	return d.line + bytes.Count(src[d.start:d.end-1], []byte{'\n'})
+}
+
+// tsSignature is a callable's signature (LB-F3, design §3.3): the
+// definition's source from its start to the start of its @body capture, or
+// its first line when the query captured no body; whitespace runs collapsed
+// to one space, trimmed, and capped at maxChars runes with a trailing "…".
+func tsSignature(src []byte, d *tsDef, maxChars int) string {
+	end := d.end
+	if d.hasBody {
+		end = d.bodyStart
+	} else if nl := bytes.IndexByte(src[d.start:d.end], '\n'); nl >= 0 {
+		end = d.start + uint32(nl)
+	}
+	if end <= d.start || int(end) > len(src) {
+		return ""
+	}
+	sig := strings.Join(strings.Fields(string(src[d.start:end])), " ")
+	if maxChars <= 0 {
+		maxChars = 200
+	}
+	if utf8.RuneCountInString(sig) > maxChars {
+		r := []rune(sig)
+		sig = strings.TrimRight(string(r[:maxChars-1]), " ") + "…"
+	}
+	return sig
 }
 
 // resolveTSParents computes each def's immediate structural parent (the

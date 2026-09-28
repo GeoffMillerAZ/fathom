@@ -12,18 +12,21 @@
   name: (_) @name) @definition.class
 
 (function_declaration
-  name: (identifier) @name) @definition.function
+  name: (identifier) @name
+  body: (_) @body) @definition.function
 
 (generator_function_declaration
-  name: (identifier) @name) @definition.function
+  name: (identifier) @name
+  body: (_) @body) @definition.function
 
 ; Name alternation per critic B2 — see javascript.scm's comment.
 (method_definition
-  name: [(property_identifier) (private_property_identifier) (computed_property_name)] @name) @definition.method
+  name: [(property_identifier) (private_property_identifier) (computed_property_name)] @name
+  body: (_) @body) @definition.method
 
 (variable_declarator
   name: (identifier) @name
-  value: [(arrow_function) (function_expression)]) @definition.function
+  value: [(arrow_function body: (_) @body) (function_expression body: (_) @body)]) @definition.function
 
 (interface_declaration
   name: (type_identifier) @name) @definition.interface
@@ -36,3 +39,6 @@
 
 (call_expression
   function: (_) @reference.call)
+
+; @body (LB-F3, design §3.3): a callable's Signature is its definition's text up to
+; the start of this capture, whitespace collapsed; without it, the first line.

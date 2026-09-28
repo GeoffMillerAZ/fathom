@@ -5,6 +5,7 @@
       "kind": "RubyModule",
       "package": "shapes",
       "line": 4,
+      "end_line": 49,
       "tier": "verified"
     },
     {
@@ -12,6 +13,7 @@
       "kind": "RubyModule",
       "package": "shapes",
       "line": 7,
+      "end_line": 14,
       "tier": "verified"
     },
     {
@@ -19,6 +21,7 @@
       "kind": "RubyClass",
       "package": "shapes",
       "line": 8,
+      "end_line": 13,
       "tier": "verified"
     },
     {
@@ -26,6 +29,8 @@
       "kind": "RubyMethod",
       "package": "shapes",
       "line": 9,
+      "end_line": 12,
+      "signature": "def call(arg)",
       "calls": [
         "helper",
         "parse"
@@ -37,6 +42,7 @@
       "kind": "RubyClass",
       "package": "shapes",
       "line": 16,
+      "end_line": 48,
       "tier": "verified"
     },
     {
@@ -44,6 +50,8 @@
       "kind": "RubyMethod",
       "package": "shapes",
       "line": 20,
+      "end_line": 23,
+      "signature": "def initialize(name)",
       "calls": [
         "super"
       ],
@@ -54,6 +62,8 @@
       "kind": "RubyMethod",
       "package": "shapes",
       "line": 25,
+      "end_line": 27,
+      "signature": "def self.build(*args)",
       "calls": [
         "configure",
         "new",
@@ -66,6 +76,8 @@
       "kind": "RubyMethod",
       "package": "shapes",
       "line": 29,
+      "end_line": 31,
+      "signature": "def each(&block)",
       "calls": [
         "each"
       ],
@@ -76,6 +88,8 @@
       "kind": "RubyMethod",
       "package": "shapes",
       "line": 34,
+      "end_line": 36,
+      "signature": "def singleton_helper",
       "tier": "verified"
     },
     {
@@ -83,6 +97,8 @@
       "kind": "RubyMethod",
       "package": "shapes",
       "line": 41,
+      "end_line": 43,
+      "signature": "def secret?",
       "tier": "verified"
     },
     {
@@ -90,6 +106,8 @@
       "kind": "RubyMethod",
       "package": "shapes",
       "line": 45,
+      "end_line": 47,
+      "signature": "def value=(v)",
       "tier": "verified"
     },
     {
@@ -97,6 +115,7 @@
       "kind": "RubyClass",
       "package": "shapes",
       "line": 51,
+      "end_line": 55,
       "tier": "verified"
     },
     {
@@ -104,6 +123,8 @@
       "kind": "RubyMethod",
       "package": "shapes",
       "line": 52,
+      "end_line": 54,
+      "signature": "def method_missing(name, *args)",
       "tier": "verified"
     },
     {
@@ -111,6 +132,8 @@
       "kind": "RubyMethod",
       "package": "shapes",
       "line": 57,
+      "end_line": 59,
+      "signature": "def top_level",
       "calls": [
         "puts"
       ],

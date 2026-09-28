@@ -5,6 +5,7 @@
       "kind": "TSType",
       "package": "module",
       "line": 1,
+      "end_line": 1,
       "tier": "verified"
     },
     {
@@ -12,6 +13,8 @@
       "kind": "JSFunc",
       "package": "module",
       "line": 3,
+      "end_line": 5,
+      "signature": "function load(id: Id): Promise<string>",
       "calls": [
         "read"
       ],

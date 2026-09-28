@@ -5,6 +5,8 @@
       "kind": "JSFunc",
       "package": "broken",
       "line": 1,
+      "end_line": 3,
+      "signature": "function good()",
       "calls": [
         "callOne"
       ],
@@ -15,6 +17,8 @@
       "kind": "JSMethod",
       "package": "broken",
       "line": 9,
+      "end_line": 11,
+      "signature": "ok()",
       "calls": [
         "callThree"
       ],

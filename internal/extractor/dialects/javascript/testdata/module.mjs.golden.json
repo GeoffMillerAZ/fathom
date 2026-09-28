@@ -5,6 +5,8 @@
       "kind": "JSFunc",
       "package": "module",
       "line": 1,
+      "end_line": 3,
+      "signature": "function exported()",
       "calls": [
         "internal"
       ],
@@ -15,6 +17,8 @@
       "kind": "JSFunc",
       "package": "module",
       "line": 5,
+      "end_line": 7,
+      "signature": "function internal()",
       "tier": "verified"
     },
     {
@@ -22,6 +26,8 @@
       "kind": "JSFunc",
       "package": "module",
       "line": 9,
+      "end_line": 9,
+      "signature": "arrowExport = () =>",
       "calls": [
         "exported"
       ],

@@ -13,7 +13,8 @@
   name: (identifier) @name) @definition.class
 
 (function_definition
-  name: (identifier) @name) @definition.function
+  name: (identifier) @name
+  body: (_) @body) @definition.function
 
 ; Only a DIRECT top-level assignment counts as a module-level variable — the
 ; nesting in this pattern (module > expression_statement > assignment) is a
@@ -30,3 +31,6 @@
 ; tree-sitter-derived call edges beyond this are deferred, see XT-7).
 (call
   function: (_) @reference.call)
+
+; @body (LB-F3, design §3.3): a callable's Signature is its definition's text up to
+; the start of this capture, whitespace collapsed; without it, the first line.

@@ -5,6 +5,8 @@
       "kind": "JSFunc",
       "package": "broken",
       "line": 1,
+      "end_line": 3,
+      "signature": "function good(): void",
       "calls": [
         "callOne"
       ],
@@ -15,6 +17,7 @@
       "kind": "TSInterface",
       "package": "broken",
       "line": 5,
+      "end_line": 9,
       "tier": "verified"
     }
   ]

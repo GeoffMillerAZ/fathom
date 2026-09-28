@@ -5,6 +5,8 @@
       "kind": "KotlinFunction",
       "package": "broken",
       "line": 1,
+      "end_line": 3,
+      "signature": "fun good()",
       "calls": [
         "callOne"
       ],
@@ -15,6 +17,7 @@
       "kind": "KotlinClass",
       "package": "broken",
       "line": 8,
+      "end_line": 12,
       "tier": "verified"
     },
     {
@@ -22,6 +25,8 @@
       "kind": "KotlinFunction",
       "package": "broken",
       "line": 9,
+      "end_line": 11,
+      "signature": "fun ok()",
       "calls": [
         "callThree"
       ],

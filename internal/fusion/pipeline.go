@@ -490,7 +490,11 @@ func parseGitLog(serviceID, raw string) []store.Commit {
 // KindJavaField and KindJavaImport, which the epoch-6 extractor never
 // captured — every already-indexed .java file's stored observations predate
 // both new kinds.
-const ExtractorEpoch = "7"
+// Epoch 8 (LB-F3, docs/design/language-breadth.md §3.3): the tags engine
+// (JavaScript, TypeScript, Python, Ruby, Kotlin) now fills EndLine for every
+// definition and Signature for every callable; stored observations for those
+// files carry neither, so the salt bump re-extracts them.
+const ExtractorEpoch = "8"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares
