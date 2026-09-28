@@ -1,0 +1,79 @@
+{
+  "symbols": [
+    {
+      "name": "\"orders\"",
+      "kind": "SQLTable",
+      "package": "quoted",
+      "line": 6,
+      "end_line": 8,
+      "signature": "CREATE TABLE IF NOT EXISTS \"public\".\"orders\"",
+      "tier": "verified"
+    },
+    {
+      "name": "id",
+      "kind": "SQLColumn",
+      "package": "quoted",
+      "line": 7,
+      "end_line": 7,
+      "tier": "verified"
+    },
+    {
+      "name": "`products`",
+      "kind": "SQLTable",
+      "package": "quoted",
+      "line": 10,
+      "end_line": 12,
+      "signature": "CREATE TABLE `schema_b`.`products`",
+      "tier": "verified"
+    },
+    {
+      "name": "id",
+      "kind": "SQLColumn",
+      "package": "quoted",
+      "line": 11,
+      "end_line": 11,
+      "tier": "verified"
+    },
+    {
+      "name": "temp_staging",
+      "kind": "SQLTable",
+      "package": "quoted",
+      "line": 14,
+      "end_line": 16,
+      "signature": "CREATE TEMPORARY TABLE temp_staging",
+      "tier": "verified"
+    },
+    {
+      "name": "row_data",
+      "kind": "SQLColumn",
+      "package": "quoted",
+      "line": 15,
+      "end_line": 15,
+      "tier": "verified"
+    },
+    {
+      "name": "active_users",
+      "kind": "SQLView",
+      "package": "quoted",
+      "line": 18,
+      "end_line": 19,
+      "tier": "verified"
+    },
+    {
+      "name": "order_summary",
+      "kind": "SQLView",
+      "package": "quoted",
+      "line": 21,
+      "end_line": 22,
+      "tier": "verified"
+    },
+    {
+      "name": "idx_orders_user",
+      "kind": "SQLIndex",
+      "package": "quoted",
+      "line": 24,
+      "end_line": 24,
+      "tier": "verified"
+    }
+  ]
+}

@@ -35,6 +35,7 @@ lock does not describe (I55). The tables below are rendered from the lock by
 | `kotlin` | fwcd/tree-sitter-kotlin | 0.3.8 | `e1a2d5ad1f61f5740677183cd4125bb071cd2f30` | MIT | `tree_sitter_kotlin` | `7dd60975786bf9cb4be6a5176f5ccb5fed505f9929a012da30762505b1015669` |
 | `python` | tree-sitter/tree-sitter-python | v0.25.0 | `293fdc02038ee2bf0e2e206711b69c90ac0d413f` | MIT | `tree_sitter_python` | `4609a3665a620e117acf795ff01b9e965880f81745f287a16336f4ca86cf270c` |
 | `ruby` | tree-sitter/tree-sitter-ruby | v0.23.1 | `71bd32fb7607035768799732addba884a37a6210` | MIT | `tree_sitter_ruby` | `e7e49577ddc1f2de8e42d42353b477e338c15bbb95b2558e123ddc13d88789f0` |
+| `sql` | DerekStride/tree-sitter-sql | v0.3.11 | `7b51ecda191d36b92f5a90a8d1bc3faef1c7b8b8` | MIT | `tree_sitter_sql` | `1fe13cb1e50dd9da9f22aed3cb9430fc9dae05a734a6049926fc12f6d8ecd3ae` |
 | `typescript` | tree-sitter/tree-sitter-typescript | v0.23.2 | `f975a621f4e7f532fe322e13c4f79495e0a7b2e7` | MIT | `tree_sitter_typescript`, `tree_sitter_tsx` | `2c4ce711ae8d1218a3b2f899189298159d672870b5b34dff5d937bed2f3e8983` |
 
 ### Committed blobs
@@ -49,10 +50,11 @@ lock does not describe (I55). The tables below are rendered from the lock by
 | `kotlin` | (root) | yes | 14 | 2,488,435 | 510,036 | `750a499adfc0a1339abebe5da80154eb6680c5732a3a5fdceaaace5053def3c3` |
 | `python` | (root) | yes | 15 | 539,848 | 123,581 | `ef1216ec19691690d3d237759d5ab8c3521e362423eef44f5e5234f7cb507ffc` |
 | `ruby` | (root) | yes | 14 | 1,710,411 | 311,992 | `3299b506f05b73cb341de2cf65f1f327e9427e0149ce47d21f65af3d89b8924f` |
+| `sql` | (root) | yes | 15 | 2,102,436 | 380,125 | `71d65822fb9af6262dcd4c3f9b54fd24d1b834609ecafd4d75e19ef8be71d4fc` |
 | `typescript` | typescript, tsx | yes | 14 | 2,037,040 | 422,906 | `30080208c90581bf3b29b412e9ee2e9a11c89b36153b6a94cc07da7b5000afcb` |
-| **total** | | | | 8,367,038 | 1,824,170 | |
+| **total** | | | | 10,469,474 | 2,204,295 | |
 
-Toolchain that produced the committed blobs: zig 0.16.0, wasm-opt 129.
+Toolchain that produced the committed blobs: zig 0.16.0, wasm-opt 129, tree-sitter-cli 0.26.11.
 
 <!-- END generated -->
 

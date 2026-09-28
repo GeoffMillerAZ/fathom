@@ -1,0 +1,106 @@
+{
+  "symbols": [
+    {
+      "name": "users",
+      "kind": "SQLTable",
+      "package": "shapes",
+      "line": 3,
+      "end_line": 7,
+      "signature": "CREATE TABLE users",
+      "tier": "verified"
+    },
+    {
+      "name": "id",
+      "kind": "SQLColumn",
+      "package": "shapes",
+      "line": 4,
+      "end_line": 4,
+      "tier": "verified"
+    },
+    {
+      "name": "name",
+      "kind": "SQLColumn",
+      "package": "shapes",
+      "line": 5,
+      "end_line": 5,
+      "tier": "verified"
+    },
+    {
+      "name": "email",
+      "kind": "SQLColumn",
+      "package": "shapes",
+      "line": 6,
+      "end_line": 6,
+      "tier": "verified"
+    },
+    {
+      "name": "orders",
+      "kind": "SQLTable",
+      "package": "shapes",
+      "line": 9,
+      "end_line": 14,
+      "signature": "CREATE TABLE orders",
+      "calls": [
+        "users"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "id",
+      "kind": "SQLColumn",
+      "package": "shapes",
+      "line": 10,
+      "end_line": 10,
+      "tier": "verified"
+    },
+    {
+      "name": "user_id",
+      "kind": "SQLColumn",
+      "package": "shapes",
+      "line": 11,
+      "end_line": 11,
+      "tier": "verified"
+    },
+    {
+      "name": "total",
+      "kind": "SQLColumn",
+      "package": "shapes",
+      "line": 12,
+      "end_line": 12,
+      "tier": "verified"
+    },
+    {
+      "name": "active_users",
+      "kind": "SQLView",
+      "package": "shapes",
+      "line": 16,
+      "end_line": 17,
+      "tier": "verified"
+    },
+    {
+      "name": "idx_users_email",
+      "kind": "SQLIndex",
+      "package": "shapes",
+      "line": 19,
+      "end_line": 19,
+      "tier": "verified"
+    },
+    {
+      "name": "calculate_total",
+      "kind": "SQLFunction",
+      "package": "shapes",
+      "line": 21,
+      "end_line": 29,
+      "signature": "CREATE FUNCTION calculate_total( p_order_id INT, p_discount NUMERIC ) RETURNS NUMERIC",
+      "tier": "verified"
+    },
+    {
+      "name": "order_status",
+      "kind": "SQLType",
+      "package": "shapes",
+      "line": 38,
+      "end_line": 38,
+      "tier": "verified"
+    }
+  ]
+}
