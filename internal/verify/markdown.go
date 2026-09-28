@@ -65,6 +65,7 @@ func ParseMarkdownPlan(service string, md []byte) Plan {
 			Skipped:    check == "-",
 			InProgress: check == "~",
 			Line:       i + 1,
+			Weight:     1,
 
 			AnnotationSuspect: suspect,
 		}
@@ -166,6 +167,10 @@ func ParseMarkdownPlan(service string, md []byte) Plan {
 			t.Max, t.BoundsInvalid = parseIntAnnotation(ann, "max", t.BoundsInvalid)
 			t.Min, t.BoundsInvalid = parseIntAnnotation(ann, "min", t.BoundsInvalid)
 			t.Eq, t.BoundsInvalid = parseIntAnnotation(ann, "eq", t.BoundsInvalid)
+			// Spec interop (ADR-049, design §4): weight: and accept:,
+			// both non-gating.
+			t.Weight, t.WeightInvalid = parseWeight(ann)
+			t.Accept = parseAccept(ann)
 		}
 		plan.Tasks = append(plan.Tasks, t)
 	}
@@ -290,6 +295,8 @@ var annotationKeys = []string{
 	"run_id", "task", "arm", "min_trials",
 	// refactor-conservation grammar (ADR-044, vision 34)
 	"gone", "tests", "retires", "surface_change",
+	// spec interop (ADR-049, docs/design/spec-interop.md §4)
+	"weight", "accept",
 }
 
 // ParseAnnotation is parseAnnotation's exported face for callers outside
@@ -418,6 +425,30 @@ func parseIntAnnotation(ann map[string]string, key string, invalid []string) (*i
 		return nil, append(invalid, key)
 	}
 	return &n, invalid
+}
+
+// parseWeight reads the optional `weight:` key (ADR-049, spec-interop design
+// §4): a positive base-10 integer, the row's share of a weighted rollup.
+// Absent returns (1, ""). Present and not a positive integer returns 1 and
+// the quoted raw value, which LintPlan refuses — loud, never a silently
+// reweighted row (O4's lesson applied to a numeric key).
+func parseWeight(ann map[string]string) (int, string) {
+	v, ok := ann["weight"]
+	if !ok {
+		return 1, ""
+	}
+	n, err := strconv.Atoi(strings.TrimSpace(v))
+	if err != nil || n < 1 {
+		return 1, strconv.Quote(v)
+	}
+	return n, ""
+}
+
+// parseAccept reads the optional `accept:` key (ADR-049, spec-interop design
+// §4): acceptance text, conventionally quoted because it carries commas.
+// Non-gating by construction — nothing in verifyTask reads it.
+func parseAccept(ann map[string]string) string {
+	return strings.TrimSpace(ann["accept"])
 }
 
 func truthy(s string) bool {

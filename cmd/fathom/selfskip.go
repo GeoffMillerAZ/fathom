@@ -54,14 +54,21 @@ func headParentFileVersion(repoDir, rel string) []byte {
 // wasn't there yet" IS informative — it means a currently-claimed skipped
 // row's skip was, in fact, just added.
 func priorSelfSkipPlan(root, rel, service string, workingTreeMD []byte) *verify.Plan {
+	return priorSelfSkipPlanWith(root, rel, service, workingTreeMD, verify.ParseMarkdownPlan)
+}
+
+// priorSelfSkipPlanWith is priorSelfSkipPlan reading the prior version with
+// parse — a foreign spec file's own dialect (ADR-049), so its task ids
+// match the working tree's.
+func priorSelfSkipPlanWith(root, rel, service string, workingTreeMD []byte, parse func(string, []byte) verify.Plan) *verify.Plan {
 	if gitToplevel(root) == "" {
 		return nil // not a git repo (or git unavailable) — inapplicable
 	}
 	headMD := headFileVersion(root, rel)
 	if headMD != nil && !bytes.Equal(headMD, workingTreeMD) {
-		p := verify.ParseMarkdownPlan(service, headMD)
+		p := parse(service, headMD)
 		return &p
 	}
-	p := verify.ParseMarkdownPlan(service, headParentFileVersion(root, rel))
+	p := parse(service, headParentFileVersion(root, rel))
 	return &p
 }

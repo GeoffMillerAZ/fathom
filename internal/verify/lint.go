@@ -49,6 +49,9 @@ func LintPlan(p Plan) []string {
 		for _, key := range t.BoundsInvalid {
 			out = append(out, fmt.Sprintf("%s: %s: value is not an integer", t.ID, key))
 		}
+		if t.WeightInvalid != "" {
+			out = append(out, fmt.Sprintf("%s: weight: %s is not a positive integer (want 1 or more; the row counts as weight 1)", t.ID, t.WeightInvalid))
+		}
 		if t.Oracle == "ledger" {
 			out = append(out, lintLedgerOracle(t)...)
 		} else {

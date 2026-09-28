@@ -67,6 +67,13 @@ plan: #Plan & {
 			surface_change: ["json:foo.Bar.tag"]
 		},
 		{
+			// ADR-049 (SI-7/SI-8): weight and accept, both non-gating.
+			id:     "T-7a"
+			title:  "payment client retries"
+			weight: 3
+			accept: "WHEN the client times out THE SYSTEM SHALL retry"
+		},
+		{
 			// CV-29: bounded lexical oracle.
 			id:    "T-8"
 			title: "at most 2 references remain"

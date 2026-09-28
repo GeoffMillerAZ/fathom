@@ -1,0 +1,1 @@
+- [ ] a native row {id: N-1, symbol: Foo}
