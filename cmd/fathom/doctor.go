@@ -90,6 +90,7 @@ func cmdDoctor(args []string, stdout, stderr io.Writer) int {
 	jsonOut := fs.Bool("json", false, "emit JSON instead of a human table")
 	brief := fs.Bool("brief", false, "FAIL rows only, at most 5 lines, exit 0 always — the payload of the harness Setup event (HP-31; doctor_brief.go)")
 	repoOnly := fs.Bool("repo-only", false, "only the checks that read the repository's own files — hooks, gates, stanza, skills, wiring drift, .fathom config (no daemon, harness process or ledger); the Observatory's project wiring tab renders it (doctor_repoonly.go)")
+	stranger := fs.Bool("stranger", false, "SR-53/G16: time install to first proven answer against the 5-minute bar via scripts/stranger-check.sh (fathom's own repo only; skipped elsewhere) — slow (up to 10 minutes), ignored with --repo-only")
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
@@ -151,6 +152,9 @@ func cmdDoctor(args []string, stdout, stderr io.Writer) int {
 		checks = doctorRepoChecks(root, harness)
 	} else {
 		checks = runDoctorChecks(root, explicitSvc, harness, *url)
+		if *stranger {
+			checks = append(checks, doctorStrangerRow(root)) // SR-53 (F-51, G16): opt-in, slow — never part of the default run
+		}
 	}
 
 	if *brief {
