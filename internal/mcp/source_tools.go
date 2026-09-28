@@ -31,7 +31,9 @@ func registerSourceTools(s *Server, backend QueryInterface) {
 	// ── shared/security ──────────────────────────────────────────────────────
 	registerSecretScan(s, backend)
 	registerShellOut(s, backend)
-	registerHTTPClientCalls(s, backend)
+	// registerHTTPClientCalls (F-22) was unregistered by SR-12 (surface
+	// reckoning): 0 lifetime calls; security.HTTPClientCalls stays
+	// (cmd/fathom/report.go still calls it).
 
 	// ── coding ───────────────────────────────────────────────────────────────
 	registerCloc(s, backend)
@@ -134,44 +136,6 @@ func registerShellOut(s *Server, backend QueryInterface) {
 				continue // never regex-scan binary content (ADR-021 §1 / LT-2)
 			}
 			all = append(all, security.ShellOut(f.Path, f.Content)...)
-		}
-		sortSecurityFindings(all)
-		return withPartial(map[string]any{"findings": securityFindingsToAny(all)}, cov), nil
-	})
-}
-
-// ─── http_client_calls ────────────────────────────────────────────────────────
-
-func registerHTTPClientCalls(s *Server, backend QueryInterface) {
-	s.registerTool(toolDescriptor{
-		Name:        "http_client_calls",
-		Description: "Find HTTP client call sites: http.Get/Post/.Do() in Go, fetch/axios/requests in JS/TS/Python.",
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"service": map[string]any{"type": "string", "description": "Service / repo identifier"},
-			},
-			"required": []string{"service"},
-		},
-		group: GroupShared,
-	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
-		if backend == nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
-		}
-		service, rpcErr := serviceArg(args, "http_client_calls")
-		if rpcErr != nil {
-			return nil, rpcErr
-		}
-		files, cov, rpcErr := fetchSources(ctx, backend, service)
-		if rpcErr != nil {
-			return nil, rpcErr
-		}
-		var all []security.Finding
-		for _, f := range files {
-			if f.Lang == core.LangBinary {
-				continue // never regex-scan binary content (ADR-021 §1 / LT-2)
-			}
-			all = append(all, security.HTTPClientCalls(f.Path, f.Content)...)
 		}
 		sortSecurityFindings(all)
 		return withPartial(map[string]any{"findings": securityFindingsToAny(all)}, cov), nil

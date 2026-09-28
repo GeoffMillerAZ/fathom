@@ -5,11 +5,10 @@
 // registry as of the landed commit — one name added per removal row's
 // own commit, mirroring how docs/upgrades/0.9.0-surface-reckoning.md's
 // migration table and this plan's `Verified:` lines grow. It is
-// deliberately NOT the plan's full eventual removal set: most of wave 2's
-// DITCH/MERGE rows (SR-11..SR-13, SR-17, SR-19, SR-22..SR-24) are still
-// `[ ]` in the plan, and their tools are still registered — listing them
-// here before their own row lands would make this test provably false,
-// which law "done means proven" forbids.
+// deliberately NOT the plan's full eventual removal set: SR-13, SR-17 and
+// SR-19 are still `[ ]` in the plan, and their tools are still
+// registered — listing them here before their own row lands would make
+// this test provably false, which law "done means proven" forbids.
 package mcp_test
 
 import (
@@ -32,6 +31,9 @@ import (
 //     already ran both in-process (runArch, runSpecCoverage)
 //   - spec_refs: SR-27 (F-35) — the edit hook's one real consumer reads
 //     obligations' additive spec_refs section instead
+//   - http_client_calls, fleet_drift, reachable, traverse, history: SR-12
+//     (F-22) — 0 lifetime calls each; verify's `reachable_from` concept
+//     never called the `reachable` tool
 var reckoningTools = []string{
 	"api_diff",
 	"arch_conformance",
@@ -41,9 +43,14 @@ var reckoningTools = []string{
 	"diff_impact",
 	"discoveries",
 	"find_callees",
+	"fleet_drift",
+	"history",
+	"http_client_calls",
+	"reachable",
 	"spec_coverage",
 	"spec_refs",
 	"stale_docs",
+	"traverse",
 }
 
 // TestRegistryCarriesNoReckonedTools is the SR-35 acceptance test: none of

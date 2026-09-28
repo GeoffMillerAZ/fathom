@@ -256,64 +256,6 @@ func TestRenameImpact_MissingSymbolParam(t *testing.T) {
 	}
 }
 
-// ─── reachable ────────────────────────────────────────────────────────────────
-
-func TestReachable_True(t *testing.T) {
-	srv := newAnalysisSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 110, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "reachable",
-			"arguments": map[string]any{"service": "svc", "from": "A", "to": "C"},
-		},
-	})
-	payload := toolPayload(t, resp)
-	reach, ok := payload["reachable"].(bool)
-	if !ok {
-		t.Fatalf("payload.reachable missing or wrong type: %v", payload)
-	}
-	if !reach {
-		t.Error("reachable(A,C) should be true")
-	}
-}
-
-func TestReachable_False(t *testing.T) {
-	srv := newAnalysisSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 111, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "reachable",
-			"arguments": map[string]any{"service": "svc", "from": "C", "to": "A"},
-		},
-	})
-	payload := toolPayload(t, resp)
-	reach, ok := payload["reachable"].(bool)
-	if !ok {
-		t.Fatalf("payload.reachable missing or wrong type: %v", payload)
-	}
-	if reach {
-		t.Error("reachable(C,A) should be false")
-	}
-}
-
-func TestReachable_MissingParams(t *testing.T) {
-	srv := newAnalysisSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 112, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "reachable",
-			"arguments": map[string]any{"service": "svc", "from": "A"},
-		},
-	})
-	errObj, ok := resp["error"].(map[string]any)
-	if !ok {
-		t.Fatalf("expected error for missing 'to', got result: %v", resp)
-	}
-	if code := errObj["code"].(float64); code != float64(mcp.ErrCodeParams) {
-		t.Errorf("code = %v, want %v", code, mcp.ErrCodeParams)
-	}
-}
-
 // ─── test_impact ──────────────────────────────────────────────────────────────
 
 func TestTestImpact_ReachesTestFoo(t *testing.T) {
@@ -459,7 +401,6 @@ func TestAnalysisToolsInCorrectProfile(t *testing.T) {
 		name  string
 		group mcp.ToolGroup
 	}{
-		{"reachable", mcp.GroupCoding},
 		{"dead_code", mcp.GroupCoding},
 		{"test_impact", mcp.GroupInvestigation},
 	} {

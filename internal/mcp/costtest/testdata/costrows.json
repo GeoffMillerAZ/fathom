@@ -14,10 +14,7 @@
     "find_callers": {"args": {"service": "$service", "symbol": "validateEntry"}},
     "find_symbol": {"args": {"service": "$service", "name": "Post"}},
     "findings_near": {"args": {"service": "$service", "subject": "Post"}},
-    "fleet_drift": {"args": {}},
     "god_object": {"args": {"service": "$service"}},
-    "history": {"args": {"service": "$service", "symbol": "Post"}},
-    "http_client_calls": {"args": {"service": "$service"}},
     "ingest": {"args": {"service": "$service"}},
     "list_services": {"args": {}},
     "localize": {"args": {"service": "$service", "concern": "ledger balance"}},
@@ -27,7 +24,6 @@
     "pack_context": {"args": {"service": "$service", "concern": "ledger"}},
     "proto_conformance": {"args": {"service": "$service"}},
     "query_symbols": {"args": {"service": "$service", "concern": "ledger"}},
-    "reachable": {"args": {"service": "$service", "from": "Post", "to": "applyEntry"}},
     "read_source": {"args": {"service": "$service", "file": "ledger.go"}},
     "references": {"args": {"query": "validateEntry", "services": ["$service"]}},
     "remove_service": {"args": {"service": "no-such-service"}, "note": "a service that does not exist: the harness never removes a fleet service it measures other rows against"},
@@ -42,7 +38,6 @@
     "symbol_context": {"args": {"service": "$service", "symbol": "Post"}},
     "test_impact": {"args": {"service": "$service", "symbol": "validateEntry"}},
     "traceability": {"args": {"service": "$service"}},
-    "traverse": {"args": {"service": "$service", "start": "Post"}},
     "verify_plan": {"args": {"service": "$service", "plan_markdown": "# plan\n\n- [ ] Post exists {id: CT-1, symbol: Post}\n"}}
   }
 }

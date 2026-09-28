@@ -147,7 +147,7 @@ for svc in auth-service payment-service order-service; do
 done
 ```
 
-This populates the fleet for cross-repo queries (`cross_repo_callers`, `fleet_drift`) via the `platform` surface.
+This populates the fleet for cross-repo queries (`cross_repo_callers`) via the `platform` surface.
 
 Alternatively, use `platform-ingest` if your services are subdirectories under one root:
 

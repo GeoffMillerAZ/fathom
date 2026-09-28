@@ -28,7 +28,6 @@ import (
 // three surviving analysis tools. backend may be nil; tools that require it
 // return ErrCodeInternal when backend == nil.
 func registerAnalysisTools(s *Server, backend QueryInterface) {
-	registerReachable(s, backend)
 	registerTestImpact(s, backend)
 	registerDeadCode(s, backend)
 }
@@ -142,60 +141,6 @@ func renameImpactSummary(symbol string, callers []string) string {
 		summary += fmt.Sprintf(" (+%d more)", len(callers)-n)
 	}
 	return capSummary(summary)
-}
-
-// ─── reachable ────────────────────────────────────────────────────────────────
-
-func registerReachable(s *Server, backend QueryInterface) {
-	s.registerTool(toolDescriptor{
-		Name:        "reachable",
-		Description: "Report whether there is any directed call path from one symbol to another.",
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"service": map[string]any{
-					"type":        "string",
-					"description": "Service / repo identifier",
-				},
-				"from": map[string]any{
-					"type":        "string",
-					"description": "Starting symbol (bare name or fully-qualified SymbolKey)",
-				},
-				"to": map[string]any{
-					"type":        "string",
-					"description": "Target symbol (bare name or fully-qualified SymbolKey)",
-				},
-			},
-			"required": []string{"service", "from", "to"},
-		},
-		group: GroupCoding,
-	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
-		if backend == nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
-		}
-		var p struct {
-			Service string `json:"service"`
-			From    string `json:"from"`
-			To      string `json:"to"`
-		}
-		if err := json.Unmarshal(args, &p); err != nil {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "reachable: invalid args"}
-		}
-		if p.Service == "" {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "reachable: service required"}
-		}
-		if p.From == "" {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "reachable: from required"}
-		}
-		if p.To == "" {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "reachable: to required"}
-		}
-		g, rpcErr := buildGraph(ctx, s, backend, p.Service)
-		if rpcErr != nil {
-			return nil, rpcErr
-		}
-		return map[string]any{"reachable": callgraph.Reachable(g, p.From, p.To)}, nil
-	})
 }
 
 // ─── test_impact ──────────────────────────────────────────────────────────────

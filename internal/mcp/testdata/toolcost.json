@@ -53,21 +53,9 @@
       "measured": "index",
       "basis": "static read: ListAllSymbols + TypedEdges for one service"
     },
-    "fleet_drift": {
-      "measured": "fleet",
-      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
-    },
     "god_object": {
       "measured": "index",
       "basis": "static read: ListAllSymbols for one service"
-    },
-    "history": {
-      "measured": "point",
-      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
-    },
-    "http_client_calls": {
-      "measured": "tree",
-      "basis": "static read: client.Sources (whole-tree read)"
     },
     "ingest": {
       "measured": "ingest",
@@ -118,10 +106,6 @@
       "basis": "static read: client.Sources (whole-tree read)"
     },
     "query_symbols": {
-      "measured": "index",
-      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
-    },
-    "reachable": {
       "measured": "index",
       "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
     },
@@ -180,10 +164,6 @@
     "traceability": {
       "measured": "tree",
       "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
-    },
-    "traverse": {
-      "measured": "tree",
-      "basis": "static read: client.Sources (whole-tree read) + ListAllSymbols"
     },
     "verify_plan": {
       "measured": "index",

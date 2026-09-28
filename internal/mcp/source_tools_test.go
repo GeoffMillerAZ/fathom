@@ -61,16 +61,6 @@ def health_check():
     pass
 `
 
-// jsSrc is a tiny JS file with an HTTP client call and a process.env read.
-const jsSrc = `const axios = require('axios');
-
-const apiKey = process.env.API_KEY;
-
-async function fetchData() {
-  return axios.get('/api/v1/users');
-}
-`
-
 func newSourcesSrv(files []core.SourceFile) *mcp.Server {
 	be := &sourcesFakeBackend{
 		extendedFakeBackend: extendedFakeBackend{
@@ -227,49 +217,6 @@ func TestShellOut_MissingService(t *testing.T) {
 	}
 }
 
-// ─── http_client_calls ────────────────────────────────────────────────────────
-
-func TestHTTPClientCalls_Basic(t *testing.T) {
-	files := []core.SourceFile{
-		{Path: "client.js", Content: []byte(jsSrc), Lang: "js"},
-	}
-	srv := newSourcesSrv(files)
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 1020, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "http_client_calls",
-			"arguments": map[string]any{"service": "svc"},
-		},
-	})
-	p := sourcesToolPayload(t, resp)
-	findings, ok := p["findings"].([]any)
-	if !ok {
-		t.Fatalf("http_client_calls: findings missing: %v", p)
-	}
-	// jsSrc has axios.get → expect at least one finding.
-	if len(findings) == 0 {
-		t.Error("http_client_calls: expected at least one finding for axios.get")
-	}
-}
-
-func TestHTTPClientCalls_MissingService(t *testing.T) {
-	srv := newSourcesSrv(nil)
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 1021, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "http_client_calls",
-			"arguments": map[string]any{},
-		},
-	})
-	errObj, ok := resp["error"].(map[string]any)
-	if !ok {
-		t.Fatalf("expected error, got result: %v", resp)
-	}
-	if code := errObj["code"].(float64); code != float64(mcp.ErrCodeParams) {
-		t.Errorf("code = %v, want %v", code, mcp.ErrCodeParams)
-	}
-}
-
 // ─── cloc ─────────────────────────────────────────────────────────────────────
 
 func TestCloc_Basic(t *testing.T) {
@@ -333,7 +280,6 @@ func TestSourceToolsInCorrectProfile(t *testing.T) {
 	}{
 		{"secret_scan", mcp.GroupShared},
 		{"shell_out", mcp.GroupShared},
-		{"http_client_calls", mcp.GroupShared},
 		{"cloc", mcp.GroupCoding},
 	} {
 		if got := srv.GroupOfForTest(tc.name); got != tc.group {
@@ -347,7 +293,7 @@ func TestSourceToolsInCorrectProfile(t *testing.T) {
 func TestSourceTools_NilBackend(t *testing.T) {
 	srv := mcp.NewServer(nil)
 	for _, toolName := range []string{
-		"secret_scan", "shell_out", "http_client_calls", "cloc",
+		"secret_scan", "shell_out", "cloc",
 	} {
 		resp := roundtrip(t, srv, request{
 			JSONRPC: "2.0", ID: 9000, Method: "tools/call",
