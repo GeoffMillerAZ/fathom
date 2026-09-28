@@ -423,11 +423,10 @@ type promptArg struct {
 }
 
 // cannedPrompts is fathom's built-in prompts: empty since SR-20 (surface
-// reckoning F-78) removed the four (investigate_incident, review_change,
-// onboard_service, plan_requirement) for zero lifetime calls.
-// registerPromptsHandlers stays wired below and serves an empty
-// prompts/list — the MCP prompts capability is kept, the canned content
-// is not.
+// reckoning F-78) removed the four canned workflow prompts the plan row
+// names (each 0 lifetime calls). registerPromptsHandlers stays wired below
+// and serves an empty prompts/list — the MCP prompts capability is kept,
+// the canned content is not.
 var cannedPrompts = []promptDef{}
 
 // promptIndex is a fast-lookup map built once at package init.

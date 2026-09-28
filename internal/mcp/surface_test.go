@@ -430,7 +430,7 @@ func TestPromptsScopedOnSurface(t *testing.T) {
 	}
 	got := scopedRoundtrip(t, srv, ctx, request{
 		JSONRPC: "2.0", ID: 35, Method: "prompts/get",
-		Params: map[string]any{"name": "investigate_incident", "arguments": map[string]any{"service": "svc", "symptom": "x"}},
+		Params: map[string]any{"name": "no_such_prompt", "arguments": map[string]any{"service": "svc"}},
 	})
 	errObj, ok := got["error"].(map[string]any)
 	if !ok {

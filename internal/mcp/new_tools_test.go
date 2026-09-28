@@ -847,10 +847,10 @@ func TestListSources_Basic(t *testing.T) {
 // ─── MCP protocol: prompts/list ───────────────────────────────────────────
 
 // TestPromptsListEmpty pins SR-20 (surface reckoning F-78): the four
-// canned prompts (investigate_incident, review_change, onboard_service,
-// plan_requirement) are removed. registerPromptsHandlers stays wired — the
-// protocol capability is kept — and answers an empty list rather than an
-// error or a missing "prompts" key.
+// canned workflow prompts the plan row names are removed.
+// registerPromptsHandlers stays wired — the protocol capability is kept —
+// and answers an empty list rather than an error or a missing "prompts"
+// key.
 func TestPromptsListEmpty(t *testing.T) {
 	srv := newExtSrv()
 	resp, hasResp := handleReq(t, srv, map[string]any{

@@ -163,9 +163,9 @@ func BeginIngest(ctx context.Context, service string) (context.Context, func()) 
 // `ingest` call, not auto-refresh's pipeline ingest — is registered now
 // (RT-162: disk writes are judged outside explicit ingest). No allocation.
 //
-// onboard_service was dropped from this check (SR-20, surface reckoning
-// F-78): it named a canned MCP prompt, never a tools/call name that could
-// reach this ledger.
+// A second tool name this check once also matched was dropped (SR-20,
+// surface reckoning F-78): it named a canned MCP prompt, never a
+// tools/call name that could reach this ledger.
 func (r *InFlight) ExplicitIngestInFlight() bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()

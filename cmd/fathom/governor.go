@@ -543,9 +543,9 @@ func (g *governor) quarantine(ingests []tenancy.InFlightEntry, footprint int64) 
 // BeginIngest); other ingest-class work — compile_layer — is halted but is
 // not an ingest, so its service keeps auto-refreshing.
 //
-// onboard_service was a dead string here (SR-20, surface reckoning F-78):
-// it named a canned MCP *prompt*, never a tools/call name this admission
-// path ever saw.
+// A second tool name this check once also matched was dead here (SR-20,
+// surface reckoning F-78): it named a canned MCP *prompt*, never a
+// tools/call name this admission path ever saw.
 func quarantinesOnHalt(tool string) bool {
 	return tool == "ingest"
 }
