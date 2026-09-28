@@ -15,6 +15,7 @@ lines, bare names).
 | roslyn/ | B | C# |
 | javaparser/ | B | Java |
 | ts-tags/ | C | Bash (calls) |
+| sqlglot/ | C | SQL (foreign-key calls) |
 
 ## Tool-format oracles (D4, LB-F30)
 

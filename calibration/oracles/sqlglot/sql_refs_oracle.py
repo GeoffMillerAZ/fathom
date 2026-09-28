@@ -4,10 +4,14 @@
 Owner decision D5 (docs/design/language-breadth.md §1.5): DerekStride's
 tree-sitter-sql ships no tags.scm, so SQL's L2 truth comes from an
 independent parser library (design §1.3, tier C): sqlglot parses every
-CREATE TABLE and emits, as the neutral oracle file's `calls`,
-  (column, referenced table) for an inline `col ... REFERENCES t(...)`,
-  (table,  referenced table) for a table-level `[CONSTRAINT c] FOREIGN KEY (...) REFERENCES t`,
-names bare (schema and quotes dropped). A statement sqlglot cannot parse is
+CREATE TABLE and emits, as the neutral oracle file's `calls`, one
+(table, referenced table) pair per inline `col ... REFERENCES t(...)` and per
+table-level `[CONSTRAINT c] FOREIGN KEY (...) REFERENCES t` — the table is
+the enclosing definition of both (§1.4: the column definition IS the
+reference site, so the definition strictly containing it is the table) —
+names bare (schema and quotes dropped). A foreign key added later by
+`ALTER TABLE ... ADD CONSTRAINT` has no enclosing definition and is not a
+pair (pg_dump's style: pagila's keys are all of this shape). A statement sqlglot cannot parse is
 skipped and counted on stderr, never guessed.
 
 usage: sql_refs_oracle.py [--dialect GLOB=DIALECT ...] [--default postgres] <subject> [files...]
@@ -24,7 +28,7 @@ def bare(name):
 
 
 def pairs_for(sql, dialect):
-    out, failed = [], 0
+    out = []
     for chunk in sqlglot.parse(sql, read=dialect, error_level=sqlglot.ErrorLevel.IGNORE):
         if chunk is None or not isinstance(chunk, exp.Create) or (chunk.args.get("kind") or "").upper() != "TABLE":
             continue
@@ -37,7 +41,7 @@ def pairs_for(sql, dialect):
                 for c in e.constraints:
                     ref = c.kind if isinstance(c, exp.ColumnConstraint) else None
                     if isinstance(ref, exp.Reference):
-                        out.append((bare(e.name), bare(ref.this.this.name if isinstance(ref.this, exp.Schema) else ref.this.name)))
+                        out.append((table, bare(ref.this.this.name if isinstance(ref.this, exp.Schema) else ref.this.name)))
             else:
                 fks = [e] if isinstance(e, exp.ForeignKey) else list(e.find_all(exp.ForeignKey))
                 for fk in fks:
@@ -45,7 +49,7 @@ def pairs_for(sql, dialect):
                     if isinstance(ref, exp.Reference):
                         t = ref.this.this if isinstance(ref.this, exp.Schema) else ref.this
                         out.append((table, bare(t.name)))
-    return out, failed
+    return out
 
 
 def main():
@@ -65,7 +69,7 @@ def main():
         with open(os.path.join(a.subject, rel), encoding="utf-8", errors="replace") as f:
             sql = f.read()
         try:
-            pairs, _ = pairs_for(sql, dialect)
+            pairs = pairs_for(sql, dialect)
         except Exception as e:  # a file sqlglot rejects whole
             print(f"skip {rel}: {e}", file=sys.stderr)
             continue
