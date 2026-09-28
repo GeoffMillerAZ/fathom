@@ -458,7 +458,7 @@ func defaultAssessGuidance(root, rel, channel string) (string, string, bool) {
 		if !ok {
 			return "", "", false
 		}
-		obl, found, _, err := fetchObligations(url, svc, srel, 6, 3*time.Second, "")
+		obl, found, _, _, err := fetchObligations(url, svc, srel, 6, 3*time.Second, "")
 		if err != nil || !found || len(obl.Rules) == 0 {
 			return "", "", false
 		}

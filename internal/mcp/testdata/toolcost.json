@@ -1,10 +1,6 @@
 {
   "_comment": "The committed measured cost class of every registered MCP tool (design §3.1, RT-152). A declared class (internal/mcp/costclass.go) is at least this; a row moves down only in the commit that rewrites the tool and carries its cost assertion (RT-93, or the rewrite's own allocation assertion before RT-93 exists). \"audit\" rows are the read-only audit of 4200482a; \"static read\" rows were classified from what the handler loads, pending the §4.8 cost harness.",
   "tools": {
-    "arch_conformance": {
-      "measured": "index",
-      "basis": "static read: ListAllSymbols + ServiceMeta"
-    },
     "batch": {
       "measured": "point",
       "basis": "static read: dispatch only; holds no ticket, each sub-call is admitted and measured in its own class"
@@ -39,10 +35,6 @@
     },
     "dead_code": {
       "measured": "index",
-      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
-    },
-    "discoveries": {
-      "measured": "tree",
       "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
     },
     "evidence_summary": {
@@ -169,21 +161,9 @@
       "measured": "tree",
       "basis": "static read: client.Sources (whole-tree read)"
     },
-    "spec_coverage": {
-      "measured": "tree",
-      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
-    },
-    "spec_refs": {
-      "measured": "tree",
-      "basis": "static read: client.Sources (whole-tree read)"
-    },
-    "stale_docs": {
-      "measured": "tree",
-      "basis": "static read: client.Sources (whole-tree read)"
-    },
     "staleness_report": {
-      "measured": "point",
-      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
+      "measured": "tree",
+      "basis": "SR-28 merge of stale_docs (tree, a whole-tree Markdown scan) into the doc_drift section; declared at the merged cost"
     },
     "status": {
       "measured": "tree",

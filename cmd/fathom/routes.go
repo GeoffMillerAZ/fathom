@@ -4,6 +4,10 @@
 // sessions.jsonl's own recorded windows (discoveries.go), since the call
 // log carries no session id of its own. Resolved fresh, grouped by
 // package prefix, dropped the moment the index no longer confirms them.
+//
+// cmdRoutes is reached through `fathom prime --routes` (SR-29, surface
+// reckoning F-47, design §4) — it is no longer dispatched as its own
+// top-level verb (0 lifetime calls as one).
 package main
 
 import (
@@ -132,10 +136,10 @@ func routePackagePrefix(ptr string) string {
 	return pkgHint
 }
 
-// cmdRoutes implements `fathom routes [package|concern]`: every routed
-// pointer (>= 2 distinct sessions, last 30 days), resolved fresh and
-// dropped when the index no longer confirms it, grouped by package prefix
-// and optionally filtered to one named prefix.
+// cmdRoutes implements `fathom prime --routes [package|concern]`: every
+// routed pointer (>= 2 distinct sessions, last 30 days), resolved fresh
+// and dropped when the index no longer confirms it, grouped by package
+// prefix and optionally filtered to one named prefix.
 func cmdRoutes(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("routes", stderr)
 	root := fs.String("root", ".", "repository root")
@@ -278,5 +282,5 @@ func routesSummaryLine(root, service string, now time.Time) string {
 	for _, r := range routedPointers(logPath, service, windows, now.Add(-routesWindow), root) {
 		pkgs[routePackagePrefix(r.Pointer)] = true
 	}
-	return fmt.Sprintf("routes known for %d package(s) — fathom routes", len(pkgs))
+	return fmt.Sprintf("routes known for %d package(s) — fathom prime --routes", len(pkgs))
 }

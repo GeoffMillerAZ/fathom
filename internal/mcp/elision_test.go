@@ -224,12 +224,6 @@ var textElisionTools = map[string]bool{
 // NEW tool — absent from every list — fails TestEveryTruncatingToolDiscloses
 // loudly instead of silently passing as exempt.
 var nonTruncatingTools = map[string]bool{
-	// discoveries cuts its rendered pointer list at a byte budget with its
-	// own inline "…N more: fathom discoveries --budget" notice (RC-26/
-	// RC-27, docs/vision/28-receipts.md §4) — the same "own inline
-	// notice" shape as read_source below, not elisionFor's
-	// {count, of, ordering, how_to_get_more} object.
-	"discoveries":   true,
 	"rename_impact": true, "reachable": true, "safe_delete_check": true,
 	"test_impact": true, "dead_code": true,
 	"complexity": true, "god_object": true, "community": true,
@@ -238,8 +232,8 @@ var nonTruncatingTools = map[string]bool{
 	"blast_radius": true, "spec_coverage": true,
 	"traceability": true, "evidence_summary": true, "contradiction_scan": true,
 	"verify_plan": true, "review_diff": true, "findings_near": true,
-	"arch_conformance": true, "stale_docs": true,
-	"dep_drift": true, "ingest": true, "remove_service": true,
+	"arch_conformance": true,
+	"dep_drift":        true, "ingest": true, "remove_service": true,
 	"rename_service": true, "cross_repo_blast_radius": true, "batch": true,
 	"proto_conformance": true, "spec_refs": true,
 	"traverse": true, "history": true, "obligations": true,

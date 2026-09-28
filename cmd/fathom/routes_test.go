@@ -15,6 +15,51 @@ import (
 	"time"
 )
 
+// TestPrimeRoutesFlagDelegatesToCmdRoutes is SR-29's proof (surface
+// reckoning F-47, design §4) that `routes` "becomes prime --routes": the
+// flag reaches the exact same cmdRoutes render a bare `fathom routes`
+// invocation used to, byte for byte, and every other prime flag
+// (`--url`/`--dir`) is left for cmdPrime's own parsing untouched.
+func TestPrimeRoutesFlagDelegatesToCmdRoutes(t *testing.T) {
+	threadEnv(t)
+	root := t.TempDir()
+	now := time.Now().UTC()
+	windowsPath := filepath.Join(root, "sessions.jsonl")
+	t.Setenv("FATHOM_SESSIONS_LOG", windowsPath)
+	recordSessionWindow(root, sessionWindowRow{SchemaVersion: 1, SessionID: "s1", Cwd: root, Service: "fathom", Started: now.Add(-2 * time.Hour).Format(time.RFC3339)})
+	recordSessionWindow(root, sessionWindowRow{SchemaVersion: 1, SessionID: "s2", Cwd: root, Service: "fathom", Started: now.Add(-time.Hour).Format(time.RFC3339)})
+	logPath := filepath.Join(root, "calls.jsonl")
+	writeDiscoCallLogFixture(t, logPath, []string{
+		`{"ts":"` + now.Add(-90*time.Minute).Format(time.RFC3339Nano) + `","service":"fathom","pointers":["pkg.Routed"]}`,
+		`{"ts":"` + now.Add(-30*time.Minute).Format(time.RFC3339Nano) + `","service":"fathom","pointers":["pkg.Routed"]}`,
+	})
+	routesArgs := []string{
+		"--root", root, "--service", "fathom", "--call-log", logPath,
+		"--url", "http://127.0.0.1:1", // never listening: index unreachable
+	}
+
+	var wantOut, wantErr bytes.Buffer
+	wantCode := cmdRoutes(routesArgs, &wantOut, &wantErr)
+
+	var gotOut, gotErr bytes.Buffer
+	primeArgs := append([]string{"--routes"}, routesArgs...)
+	gotCode := cmdPrime(primeArgs, &gotOut, &gotErr)
+
+	if gotCode != wantCode {
+		t.Fatalf("cmdPrime(--routes) exit = %d, want cmdRoutes' own %d", gotCode, wantCode)
+	}
+	if gotOut.String() != wantOut.String() {
+		t.Errorf("cmdPrime(--routes) output = %q, want the identical cmdRoutes render %q", gotOut.String(), wantOut.String())
+	}
+
+	// The flag may appear anywhere in the argument list, not only first.
+	var reorderedOut bytes.Buffer
+	reordered := append(append([]string{}, routesArgs...), "--routes")
+	if code := cmdPrime(reordered, &reorderedOut, &bytes.Buffer{}); code != wantCode || reorderedOut.String() != wantOut.String() {
+		t.Errorf("cmdPrime with --routes last = (%d, %q), want (%d, %q)", code, reorderedOut.String(), wantCode, wantOut.String())
+	}
+}
+
 func TestCmdRoutes_ReportsUnreachableIndexInsteadOfEmptyList(t *testing.T) {
 	threadEnv(t)
 	root := t.TempDir()

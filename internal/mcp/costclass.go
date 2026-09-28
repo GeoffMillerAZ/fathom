@@ -22,8 +22,7 @@ import (
 //fathom:tenancy-allow pkg-map read-only lookup table of constants, never written after init: not a cache
 var toolCostClasses = map[string]tenancy.Class{
 	// point: one row, one capped file, or the process's own counters.
-	"staleness_report": tenancy.ClassPoint,
-	"read_source":      tenancy.ClassPoint, "memory_search": tenancy.ClassPoint, "history": tenancy.ClassPoint,
+	"read_source": tenancy.ClassPoint, "memory_search": tenancy.ClassPoint, "history": tenancy.ClassPoint,
 	"list_modules": tenancy.ClassPoint,
 	// batch holds no ticket of its own: each sub-call is admitted in its
 	// own class (admitBatchCall).
@@ -36,11 +35,14 @@ var toolCostClasses = map[string]tenancy.Class{
 	"reachable": tenancy.ClassIndex, "dead_code": tenancy.ClassIndex, "community": tenancy.ClassIndex,
 	"localize": tenancy.ClassIndex, "outline": tenancy.ClassIndex,
 	"complexity": tenancy.ClassIndex, "god_object": tenancy.ClassIndex,
-	"arch_conformance": tenancy.ClassIndex, "evidence_summary": tenancy.ClassIndex,
+	"evidence_summary":   tenancy.ClassIndex,
 	"contradiction_scan": tenancy.ClassIndex, "findings_near": tenancy.ClassIndex,
 	"module_obligations": tenancy.ClassIndex, "module_query": tenancy.ClassIndex, "module_staleness": tenancy.ClassIndex,
 
 	// tree: a whole-tree read or a whole-service graph build.
+	// staleness_report (SR-28): moved here from "point" — its doc_drift
+	// section (the retired stale_docs tool's own scan, folded in) now runs
+	// a ScanSources pass on every call.
 	// status (SR-23): declared at its heaviest section's cost — the
 	// "sources" section walks a whole service's symbols exactly like the
 	// retired list_sources did; "tools"/"daemon" are cheaper (point) but
@@ -50,13 +52,28 @@ var toolCostClasses = map[string]tenancy.Class{
 	// rename_impact/safe_delete_check tools' own answers, declared index/
 	// tree before the merge) are no cheaper than that default, and one
 	// tool declares one class for all three kinds.
+	// obligations (SR-27): stays "tree" — its additive spec_refs section
+	// (obligationsSpecRefs) uses search's own bounded, streaming grep
+	// (searchRun/resolveCorpusRoot), never a second aggregated whole-tree
+	// Sources fetch, so folding the retired spec_refs tool's function in
+	// added no new whole-tree contender and no class bump.
 	"symbol_context": tenancy.ClassTree, "obligations": tenancy.ClassTree, "search": tenancy.ClassTree,
-	"secret_scan": tenancy.ClassTree, "cloc": tenancy.ClassTree, "spec_coverage": tenancy.ClassTree,
+	"secret_scan": tenancy.ClassTree, "cloc": tenancy.ClassTree,
 	"traceability": tenancy.ClassTree, "status": tenancy.ClassTree,
-	"discoveries": tenancy.ClassTree, "references": tenancy.ClassTree, "blast_radius": tenancy.ClassTree,
+	"references": tenancy.ClassTree, "blast_radius": tenancy.ClassTree,
 	"traverse": tenancy.ClassTree, "http_client_calls": tenancy.ClassTree,
-	"shell_out": tenancy.ClassTree, "proto_conformance": tenancy.ClassTree, "spec_refs": tenancy.ClassTree,
-	"stale_docs": tenancy.ClassTree,
+	"shell_out": tenancy.ClassTree, "proto_conformance": tenancy.ClassTree,
+	"staleness_report": tenancy.ClassTree,
+	// stale_docs (SR-28) was unregistered; its own scan runs inside
+	// staleness_report now (the entry above), never as a second call.
+	// discoveries (SR-29) was unregistered; the SubagentStart hook's own
+	// push-form render (a separate, unbudgeted CLI-side query) covers it.
+	// arch_conformance, spec_coverage (SR-27) were unregistered; review_diff's
+	// engine already ran both checks in-process (runArch, runSpecCoverage,
+	// internal/analysis/review/engine.go).
+	// spec_refs (SR-27) was unregistered; its one real consumer (the edit
+	// hook's spec-line RPC) now reads obligations' additive spec_refs
+	// section instead of a second call.
 
 	// fleet: every service.
 	"list_services": tenancy.ClassFleet, "fleet_drift": tenancy.ClassFleet,

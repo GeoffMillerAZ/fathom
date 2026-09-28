@@ -75,3 +75,44 @@ func TestRun_MetricsDispatch_ThroughMain(t *testing.T) {
 		t.Fatalf("exit = %d, stderr: %s", code, errBuf.String())
 	}
 }
+
+// TestMetricsSubverbsMatchRetiredVerbs is SR-31's acceptance test (surface
+// reckoning F-52, design §4): `fathom metrics <sub>` reaches byte-for-byte
+// the same output and exit code the retired top-level verb does, for each
+// of the five consolidated subverbs — cmdMetrics is a pure dispatcher for
+// them too, never a reimplementation. An unrecognized flag is used as the
+// probe: it fails at each command's own fs.Parse (or, for arm, its
+// subcommand switch) before any file/state I/O, so the comparison is
+// deterministic and has no side effects to isolate.
+func TestMetricsSubverbsMatchRetiredVerbs(t *testing.T) {
+	cases := []struct {
+		sub  string
+		call func(args []string, stdout, stderr *bytes.Buffer) int
+	}{
+		{"instrument", func(a []string, o, e *bytes.Buffer) int { return cmdInstrument(a, o, e) }},
+		{"flywheel", func(a []string, o, e *bytes.Buffer) int { return cmdFlywheel(a, o, e) }},
+		{"retro", func(a []string, o, e *bytes.Buffer) int { return cmdRetro(a, o, e) }},
+		{"rate", func(a []string, o, e *bytes.Buffer) int { return cmdRate(a, o, e) }},
+		{"arm", func(a []string, o, e *bytes.Buffer) int { return cmdArm(a, o, e) }},
+	}
+	probe := []string{"--zz-bogus-flag"}
+	for _, c := range cases {
+		t.Run(c.sub, func(t *testing.T) {
+			var wantOut, wantErr bytes.Buffer
+			wantCode := c.call(probe, &wantOut, &wantErr)
+
+			var gotOut, gotErr bytes.Buffer
+			gotCode := cmdMetrics(append([]string{c.sub}, probe...), &gotOut, &gotErr)
+
+			if gotCode != wantCode {
+				t.Errorf("metrics %s: exit = %d, want the retired verb's own %d", c.sub, gotCode, wantCode)
+			}
+			if gotOut.String() != wantOut.String() {
+				t.Errorf("metrics %s: stdout = %q, want %q", c.sub, gotOut.String(), wantOut.String())
+			}
+			if gotErr.String() != wantErr.String() {
+				t.Errorf("metrics %s: stderr = %q, want %q", c.sub, gotErr.String(), wantErr.String())
+			}
+		})
+	}
+}

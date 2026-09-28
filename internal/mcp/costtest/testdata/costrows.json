@@ -1,7 +1,6 @@
 {
   "_comment": "One cost row per registered MCP tool (design §4.8, RT-93): the arguments the harness calls it with against the generated fleet (\"$service\" is costtest.QueriedService, the same size at 1x and 10x). expect_error names why a call cannot answer on the fixture; such a row still measures what the refusal costs. TestEveryToolHasCostRow fails when a registered tool has no row or a row names no tool.",
   "tools": {
-    "arch_conformance": {"args": {"service": "$service"}},
     "batch": {"args": {"calls": [{"tool": "find_symbol", "arguments": {"service": "$service", "name": "Post"}}]}},
     "blast_radius": {"args": {"service": "$service", "changed_files": ["ledger.go"]}},
     "cloc": {"args": {"service": "$service"}},
@@ -11,7 +10,6 @@
     "contradiction_scan": {"args": {"service": "$service", "concern": "ledger"}},
     "cross_repo_callers": {"args": {"symbol": "Post"}},
     "dead_code": {"args": {"service": "$service"}},
-    "discoveries": {"args": {"service": "$service"}},
     "evidence_summary": {"args": {"service": "$service"}},
     "find_callers": {"args": {"service": "$service", "symbol": "validateEntry"}},
     "find_symbol": {"args": {"service": "$service", "name": "Post"}},
@@ -39,9 +37,6 @@
     "search": {"args": {"service": "$service", "pattern": "validateEntry"}},
     "secret_scan": {"args": {"service": "$service"}},
     "shell_out": {"args": {"service": "$service"}},
-    "spec_coverage": {"args": {"service": "$service", "spec_ids": ["RT-1"]}},
-    "spec_refs": {"args": {"service": "$service"}},
-    "stale_docs": {"args": {"service": "$service"}},
     "staleness_report": {"args": {"service": "$service"}},
     "status": {"args": {"section": "sources", "service": "$service"}},
     "symbol_context": {"args": {"service": "$service", "symbol": "Post"}},

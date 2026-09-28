@@ -81,8 +81,9 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		return cmdPrime(args[1:], stdout, stderr)
 	case "discoveries":
 		return cmdDiscoveries(args[1:], stdout, stderr)
-	case "routes":
-		return cmdRoutes(args[1:], stdout, stderr)
+	// "routes" (SR-29, surface reckoning F-47) is no longer its own
+	// top-level verb — cmdRoutes is now reached only through cmdPrime's
+	// --routes flag ("prime" case above).
 	case "query":
 		return cmdQuery(args[1:], stdout, stderr)
 	case "inspect":

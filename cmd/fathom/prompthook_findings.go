@@ -51,7 +51,7 @@ func countFindingsAcrossFiles(url, service string, files []string, deadline time
 			if remaining <= 0 {
 				return
 			}
-			obl, _, ok, _ := fetchObligations(url, service, f, 0, remaining, semantic.ObligationLayerAll)
+			obl, _, _, ok, _ := fetchObligations(url, service, f, 0, remaining, semantic.ObligationLayerAll)
 			results[i] = fileResult{rows: obl.Rules, ok: ok, attempted: true}
 		}(i, f)
 	}

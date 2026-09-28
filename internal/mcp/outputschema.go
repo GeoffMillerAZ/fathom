@@ -489,7 +489,6 @@ type capabilitiesResult struct {
 var agentResultTypes = map[string]reflect.Type{
 	"blast_radius":      reflect.TypeOf(blastRadiusResult{}),
 	"capabilities":      reflect.TypeOf(capabilitiesResult{}),
-	"discoveries":       reflect.TypeOf(discoveriesResult{}),
 	"find_callers":      reflect.TypeOf(findCallersResult{}),
 	"find_symbol":       reflect.TypeOf(findSymbolResult{}),
 	"ingest":            reflect.TypeOf(ingestResult{}),

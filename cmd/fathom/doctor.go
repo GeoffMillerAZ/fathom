@@ -276,6 +276,7 @@ func runDoctorChecks(root, explicitSvc, harness, baseURL string) []doctorCheck {
 		func() doctorCheck { return checkWiringDrift(root, harness) },  // PC-29: hooks, stanzas, MCP entries, owned skills (doctor_wiring.go)
 		func() doctorCheck { return checkConfigValid(root) },
 		func() doctorCheck { return checkDecisionProvider(root, providerClientBuilder) }, // DP-4 (ADR-042): is the configured [decide] provider viable? (doctor_decide.go)
+		func() doctorCheck { return doctorProvidersRow(root, providerClientBuilder) },    // SR-32 (surface reckoning F-71): CF-5's own auth probe, folded in (doctor_providers.go); CF-6 (smoke) never runs here
 		func() doctorCheck { return checkObligationsServed(hc, baseURL, root, explicitSvc, daemonUp) },
 		func() doctorCheck { return checkSurfaceTraffic(hc, baseURL, daemonUp, root) },
 		// Phase O (docs/design/platform-modules.md §4 / guarded-edits.md

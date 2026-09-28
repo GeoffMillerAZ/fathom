@@ -605,6 +605,42 @@ func TestStalenessReport_Basic(t *testing.T) {
 	}
 }
 
+// TestStalenessReportDocDrift is SR-28's acceptance test (surface reckoning,
+// F-56, design §4): staleness_report carries the retired stale_docs tool's
+// own scan — a Markdown span naming a symbol the index no longer knows —
+// as an additive doc_drift section, so a caller no longer needs a second
+// tool call to learn its docs have drifted from the code.
+func TestStalenessReportDocDrift(t *testing.T) {
+	srv := mcp.NewServer(&sourcesFakeBackend{
+		extendedFakeBackend: extendedFakeBackend{
+			nodes:    []core.SymbolNode{{Service: "svc", Name: "Foo"}},
+			services: []string{"svc"},
+		},
+		sources: []core.SourceFile{
+			{Path: "docs/README.md", Content: []byte("See `NonExistentSymbol` for details."), Lang: "md"},
+		},
+	})
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 323, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "staleness_report",
+			"arguments": map[string]any{"service": "svc"},
+		},
+	})
+	p := extToolPayload(t, resp)
+	drifts, ok := p["doc_drift"].([]any)
+	if !ok {
+		t.Fatalf("staleness_report: doc_drift missing or wrong shape: %v", p)
+	}
+	if len(drifts) == 0 {
+		t.Fatalf("staleness_report: expected a doc_drift entry for the stale symbol reference, got none: %v", p)
+	}
+	d, ok := drifts[0].(map[string]any)
+	if !ok || d["file"] != "docs/README.md" || d["ref"] != "NonExistentSymbol" {
+		t.Errorf("doc_drift[0] = %v, want file docs/README.md ref NonExistentSymbol", drifts[0])
+	}
+}
+
 func TestStalenessReport_MissingService(t *testing.T) {
 	srv := newExtSrv()
 	resp := roundtrip(t, srv, request{
