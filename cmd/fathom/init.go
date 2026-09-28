@@ -1002,11 +1002,15 @@ const (
 // The four chains below name ONLY the default eight-tool floor (surface
 // reckoning F-86, SR-33, SR-34: TestStanzaNamesOnlyDefaultSurfaceTools) —
 // a client registered at /rpc/agent cannot call anything else, so naming
-// one here would teach a call that fails. The wider verb set
-// (find_callers, references, repo_map, pack_context, test_impact,
-// localize, rename_impact, safe_delete_check, …) is disclosed separately
-// in fathomStanzaTemplate as reachable one hop away at /rpc/extended, not
-// folded into this table.
+// one here would teach a call that fails. fathomStanzaTemplate discloses
+// the wider verb set too, but by DESCRIPTION only (never an exact
+// snake_case tool name) — the config custodian's stanza_tools_served
+// check (CC-14, internal/custodian/stanza.go) flags any backticked or
+// bare underscore-bearing identifier in the stanza that the /rpc/agent
+// registry does not serve, and an extended-only verb never does. Naming
+// one by its exact identifier here would trip that check the same way
+// the old arrow-chains did — this table AND the disclosure sentence must
+// both stay identifier-clean of anything off the default floor.
 const openingMovesTable = "Opening moves by task shape (first 2-3 calls, then edit):\n" +
 	"- bug report / stack trace / failing test: search -> symbol_context -> read_source\n" +
 	"- feature/change: search -> obligations -> symbol_context\n" +
@@ -1027,13 +1031,11 @@ const fathomStanzaTemplate = "## fathom code intelligence\n" +
 	"the current text at a cited line is `read_source`. A literal string, a\n" +
 	"config value, a log line, or a document-versus-document contradiction\n" +
 	"is `search`'s job (grep with a receipt, RC-24), not the other tools'.\n" +
-	"Read files to *edit* them, not to discover them. The full resolved\n" +
-	"caller list, is-this-still-true/what-was-known (`staleness_report`),\n" +
-	"and the rest of the wider verb set — `find_callers`, `references`,\n" +
-	"`outline`, `repo_map`, `pack_context`, `test_impact`, `localize`,\n" +
-	"`list_services` — live one hop away at `/rpc/extended` (or its\n" +
-	"`/rpc/companion` alias); register that surface instead of\n" +
-	"`/rpc/agent` for a session that needs them.\n" +
+	"Read files to *edit* them, not to discover them. The wider verb set\n" +
+	"— the full resolved caller graph, staleness and what-was-known, and\n" +
+	"more — lives one hop away at `/rpc/extended` (or its `/rpc/companion`\n" +
+	"alias); register that surface instead of `/rpc/agent` for a session\n" +
+	"that needs it.\n" +
 	"\n" +
 	openingMovesTable + "\n" +
 	"\n" +

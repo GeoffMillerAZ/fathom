@@ -73,31 +73,30 @@ Contribution routing and disposition evidence: `docs/app-kit.md#selected-metadat
 | CLI/workspace; use-case guides (keep `## Maintained` current) | `docs/usage.md`, `docs/use-cases/` |
 | Friction log (`fathom observe`; the narrative log is frozen) | `.fathom/observations.md` (live); `docs/dogfood-observations.md` (historical) |
 | Original design docs (gitignored, local-only); roadmap = `fathom plans status` + `docs/intent/scope.md` | `tmp/design_inspiration/files/` |
-<!-- fathom:begin v3 sha256:14a63374af15eabfcfaaf5553d85b8ec4397ff0ca5696a02a3d31abfd88e5fba -->
+<!-- fathom:begin v3 sha256:e2e089f74ee8c0a8457d2e2b23ac8b4e548b3180a0b52cca5e52aa8232841f55 -->
 ## fathom code intelligence
 
 This repo is indexed by fathom as service "fathom". Route by
 question shape (SB-7, docs/vision/27-strengths-bench.md §8 — the home
-bench found "index before any grep" over-broad): where / who-calls /
-what-breaks resolve via the fathom MCP tools (`find_symbol`,
-`references`, `symbol_context`, `outline`, `repo_map`, `pack_context`,
-`verify_plan`); what-governs this repository is `obligations` with no
-path (the root conventions); is this still true / what was known is
-`staleness_report` (RC-23, docs/vision/28-receipts.md §3.5). A literal
-string, a config value, a log line, or a document-versus-document
-contradiction is `search`'s job (grep with a receipt, RC-24), not the
-other tools'.
-Read files to *edit* them, not to discover them.
+bench found "index before any grep" over-broad), on this session's
+default eight-tool MCP registration (surface reckoning F-86): where a
+symbol is defined is `find_symbol`; who-calls it, briefly (definition,
+a capped caller/callee list, tests) is `symbol_context`; what-breaks
+is `blast_radius`; a composed review verdict over a diff is
+`review_diff`; what-governs this repository is `obligations` with no
+path (the root conventions); is a plan's box proven is `verify_plan`;
+the current text at a cited line is `read_source`. A literal string, a
+config value, a log line, or a document-versus-document contradiction
+is `search`'s job (grep with a receipt, RC-24), not the other tools'.
+Read files to *edit* them, not to discover them. The wider verb set
+— the full resolved caller graph, staleness and what-was-known, and
+more — lives one hop away at `/rpc/extended` (or its `/rpc/companion`
+alias); register that surface instead of `/rpc/agent` for a session
+that needs it.
 
-Opening moves by task shape (first 2-3 calls, then edit):
-- bug report / stack trace / failing test: localize -> symbol_context -> find_callers
-- feature/change: repo_map -> pack_context(concern) -> test_impact
-- review/verify: review_diff -> obligations -> references
-- refactor/delete: rename_impact / safe_delete_check -> references
-
-Refresh the index via the `ingest` MCP tool (`{"service":"fathom"}`) at
-session start and after each commit; it is hash-gated, so a clean repo
-refreshes in well under a second.
+The index refreshes itself: a read of a drifted service answers from
+what it has and queues a re-ingest in the background (RT-99) —
+nothing to call.
 
 Obligations — governing rules for the file you are about to touch, and
 where `docs/intent/` exists its matched invariants — are injected on every

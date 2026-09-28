@@ -8,8 +8,14 @@
 // by QUESTION SHAPE instead — where/who-calls/what-breaks reach for the
 // index; RC-23 (docs/vision/28-receipts.md §3.5) names the tool per shape:
 // what-governs is `obligations` with no path, is-this-still-true/
-// what-was-known is `staleness_report`; a literal string, a config value,
-// a log line, or a document-versus-document contradiction reach for grep.
+// what-was-known is `staleness_report` on the primers (subagent,
+// SessionStart) that always run on the full surface. The stanza fathom
+// init writes is held to a narrower promise (SR-34, surface reckoning):
+// it names only tools the default eight-tool /rpc/agent registration
+// actually serves, so it names the what-was-known CONCEPT without citing
+// staleness_report's identifier — a client on the default surface cannot
+// call it. A literal string, a config value, a log line, or a
+// document-versus-document contradiction reach for grep, in every case.
 package main
 
 import (
@@ -27,7 +33,7 @@ func assertRoutesByQuestionShape(t *testing.T, label, text string) {
 			t.Errorf("%s: still carries the retired blanket phrase %q:\n%s", label, retired, text)
 		}
 	}
-	for _, want := range []string{"question shape", "who-calls", "what-breaks", "what-governs", "staleness_report", "grep"} {
+	for _, want := range []string{"question shape", "who-calls", "what-breaks", "what-governs", "staleness", "grep"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("%s: missing question-shape routing phrase %q:\n%s", label, want, text)
 		}

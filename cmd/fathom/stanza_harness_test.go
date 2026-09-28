@@ -28,13 +28,11 @@ const preSeamStanzaTemplate = "## fathom code intelligence\n" +
 	"the current text at a cited line is `read_source`. A literal string, a\n" +
 	"config value, a log line, or a document-versus-document contradiction\n" +
 	"is `search`'s job (grep with a receipt, RC-24), not the other tools'.\n" +
-	"Read files to *edit* them, not to discover them. The full resolved\n" +
-	"caller list, is-this-still-true/what-was-known (`staleness_report`),\n" +
-	"and the rest of the wider verb set — `find_callers`, `references`,\n" +
-	"`outline`, `repo_map`, `pack_context`, `test_impact`, `localize`,\n" +
-	"`list_services` — live one hop away at `/rpc/extended` (or its\n" +
-	"`/rpc/companion` alias); register that surface instead of\n" +
-	"`/rpc/agent` for a session that needs them.\n" +
+	"Read files to *edit* them, not to discover them. The wider verb set\n" +
+	"— the full resolved caller graph, staleness and what-was-known, and\n" +
+	"more — lives one hop away at `/rpc/extended` (or its `/rpc/companion`\n" +
+	"alias); register that surface instead of `/rpc/agent` for a session\n" +
+	"that needs it.\n" +
 	"\n" +
 	"Opening moves by task shape (first 2-3 calls, then edit):\n" +
 	"- bug report / stack trace / failing test: search -> symbol_context -> read_source\n" +
