@@ -79,6 +79,9 @@ func harnessHookKeys(root, id, binPath string) ([]wiring.Key, []string) {
 	}
 	f, ok := d.InitHookFile()
 	if !ok {
+		if _, flat := harness.FlatHookShape(d); flat {
+			return nil, []string{unwritableHooksNote(d)}
+		}
 		return nil, []string{fmt.Sprintf("hooks: %s documents no repo-scoped hook file this build can write — nothing written; wire its user-scope file by hand if you want them", d.Display)}
 	}
 	present := harnessHookEntriesPresent(root, f, hookSpecsFor(id))
@@ -205,6 +208,13 @@ func unwritableHooksNote(d harness.Descriptor) string {
 			userFile = f.Path
 			break
 		}
+	}
+	if flat, ok := harness.FlatHookShape(d); ok {
+		// GL-7/GL-8: a flat hook file (Cursor, Copilot) is one the
+		// json-hook editor does not address — init writes nothing and
+		// points at the verb that prints the exact entries.
+		return fmt.Sprintf("hooks: NOT written — %s's %s is a flat hook file init does not edit. Print the %d entries to merge with: fathom harness hooks --harness %s (unverified on this machine until a live session's beats)",
+			d.Display, flat.Path, len(d.Hooks), d.ID)
 	}
 	if userFile == "" {
 		return fmt.Sprintf("hooks: %s documents no hook file this build can write — nothing written; the pull tier (`fathom prime`, the `obligations` MCP tool) carries the same content", d.Display)

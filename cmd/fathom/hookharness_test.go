@@ -29,12 +29,12 @@ func TestResolveHookHarness(t *testing.T) {
 		}
 	}
 
-	errb.Reset()
-	if _, ok := resolveHookHarness("cursor", &errb); ok {
-		t.Fatal("cursor is a data row with no codec; must not resolve")
-	}
-	if lines := strings.Count(strings.TrimSpace(errb.String()), "\n") + 1; lines != 1 || !strings.Contains(errb.String(), "not wired") {
-		t.Errorf("cursor: want ONE stderr line naming the unwired codec, got %q", errb.String())
+	// GL-7/GL-8: Cursor and Copilot carry codecs now.
+	for _, id := range []string{"cursor", "copilot"} {
+		errb.Reset()
+		if c, ok := resolveHookHarness(id, &errb); !ok || c.ID() != id || errb.Len() != 0 {
+			t.Fatalf("%s: codec must resolve silently: ok=%v stderr=%q", id, ok, errb.String())
+		}
 	}
 
 	errb.Reset()

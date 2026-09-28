@@ -111,8 +111,10 @@ func TestHarnessHookKeysAddOnlyAndNeverUserGlobal(t *testing.T) {
 			t.Errorf("the present spec was re-planned: %+v", k)
 		}
 	}
-	if keys, notes := harnessHookKeys(root, "cursor", "/opt/fathom"); len(keys) != 0 || len(notes) != 0 {
-		t.Errorf("a data row plans nothing: %v %v", keys, notes)
+	// GL-7: Cursor's hook file is flat — init plans nothing and points at
+	// the verb that prints the entries.
+	if keys, notes := harnessHookKeys(root, "cursor", "/opt/fathom"); len(keys) != 0 || len(notes) != 1 || !strings.Contains(notes[0], "fathom harness hooks --harness cursor") {
+		t.Errorf("a flat hook file plans nothing and names the printing verb: %v %v", keys, notes)
 	}
 	if keys, _ := harnessHookKeys(root, harness.ClaudeCode, "/opt/fathom"); len(keys) == 0 {
 		t.Error("claude-code is wired too (init.go keeps its own path, but the builder must not refuse it)")
@@ -279,7 +281,7 @@ func TestCheckHarnessHookFilesNeverPasses(t *testing.T) {
 	if c.Status != doctorSkipped || !strings.Contains(c.Reason, "did not parse") || !strings.Contains(c.Reason, "invisible") {
 		t.Errorf("unparsable = %+v", c)
 	}
-	if cu := checkHarnessHookFiles(dir, "cursor"); cu.Status != doctorSkipped || !strings.Contains(cu.Reason, "not wire") {
+	if cu := checkHarnessHookFiles(dir, "cursor"); cu.Status != doctorSkipped || !strings.Contains(cu.Reason, "0 of 7") || !strings.Contains(cu.Remedy, "fathom harness hooks --harness cursor") {
 		t.Errorf("cursor = %+v", cu)
 	}
 	if cl := checkHarnessHookFiles(dir, "claude"); cl.Status != doctorSkipped || !strings.Contains(cl.Reason, "hooks_installed") {
