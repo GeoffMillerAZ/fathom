@@ -8,15 +8,15 @@ stays the `gone: callers` modifier (ADR-044) and is not reused.
 
 ## Wave 1: the port, Spec Kit, OpenSpec, the converge report, the grammar keys
 
-- [ ] The `SpecDialect` port and deterministic detection by path and content shape (§3) {id: SI-1, symbol: RegisterSpecDialect, package: internal/specdialect, reachable_from: TestSpecDialectRegistryDetect}
-- [ ] The native dialect wraps `ParseMarkdownPlan` with zero output change on every plan in `docs/plans/` {id: SI-2, symbol: nativeDialectParse, package: internal/specdialect, reachable_from: TestNativeDialectMatchesParseMarkdownPlan, needs: "SI-1"}
-- [ ] Spec Kit adapter: `specs/<feature>/tasks.md` tasks with `T###` ids, `[x]`/`[X]`, anchors from named paths and inline annotations; positions reported in the foreign file {id: SI-3, symbol: specKitParse, package: internal/specdialect, reachable_from: TestSpecKitAdapterInPlace, needs: "SI-1"}
-- [ ] OpenSpec adapter: `openspec/changes/<id>/tasks.md` and requirement ids from spec deltas {id: SI-4, symbol: openSpecParse, package: internal/specdialect, reachable_from: TestOpenSpecAdapterInPlace, needs: "SI-1"}
-- [ ] `fathom verify --plan <foreign file>` dispatches to the claiming dialect; `--dialect` overrides; exit codes 0/1/2 unchanged; foreign files byte-identical after the run {id: SI-9, symbol: dialectForPlan, package: cmd/fathom, reachable_from: TestVerifyForeignPlanInPlace, needs: "SI-3"}
-- [ ] The converge report (`verify --converge`): claimed-unproven, unanchored, and unclaimed code on the spec's branch range (§5) {id: SI-5, symbol: Converge, package: internal/specdialect, reachable_from: TestConvergeThreeSections, needs: "SI-9"}
-- [ ] `--write-fixups` appends tasks only inside the fathom converge block, in the dialect's own checkbox shape; text outside the markers never changes (law 15) {id: SI-6, symbol: writeConvergeBlock, package: internal/specdialect, reachable_from: TestWriteFixupsOnlyInsideMarkers, needs: "SI-5"}
-- [ ] `weight:` joins the grammar: positive integer, default 1, lint refuses anything else; parsed into `Task.Weight` {id: SI-7, symbol: parseWeight, package: internal/verify, reachable_from: TestParseWeightKey}
-- [ ] `accept:` joins the grammar and `annotationKeys` (I22): quoted acceptance text, never gating by itself {id: SI-8, symbol: parseAccept, package: internal/verify, reachable_from: TestParseAcceptKey}
+- [x] The `SpecDialect` port and deterministic detection by path and content shape (§3) {id: SI-1, symbol: RegisterSpecDialect, package: internal/specdialect, reachable_from: TestSpecDialectRegistryDetect}
+- [x] The native dialect wraps `ParseMarkdownPlan` with zero output change on every plan in `docs/plans/` {id: SI-2, symbol: nativeDialectParse, package: internal/specdialect, reachable_from: TestNativeDialectMatchesParseMarkdownPlan, needs: "SI-1"}
+- [x] Spec Kit adapter: `specs/<feature>/tasks.md` tasks with `T###` ids, `[x]`/`[X]`, anchors from named paths and inline annotations; positions reported in the foreign file {id: SI-3, symbol: specKitParse, package: internal/specdialect, reachable_from: TestSpecKitAdapterInPlace, needs: "SI-1"}
+- [x] OpenSpec adapter: `openspec/changes/<id>/tasks.md` and requirement ids from spec deltas {id: SI-4, symbol: openSpecParse, package: internal/specdialect, reachable_from: TestOpenSpecAdapterInPlace, needs: "SI-1"}
+- [x] `fathom verify --plan <foreign file>` dispatches to the claiming dialect; `--dialect` overrides; exit codes 0/1/2 unchanged; foreign files byte-identical after the run {id: SI-9, symbol: dialectForPlan, package: cmd/fathom, reachable_from: TestVerifyForeignPlanInPlace, needs: "SI-3"}
+- [x] The converge report (`verify --converge`): claimed-unproven, unanchored, and unclaimed code on the spec's branch range (§5) {id: SI-5, symbol: Converge, package: internal/specdialect, reachable_from: TestConvergeThreeSections, needs: "SI-9"}
+- [x] `--write-fixups` appends tasks only inside the fathom converge block, in the dialect's own checkbox shape; text outside the markers never changes (law 15) {id: SI-6, symbol: writeConvergeBlock, package: internal/specdialect, reachable_from: TestWriteFixupsOnlyInsideMarkers, needs: "SI-5"}
+- [x] `weight:` joins the grammar: positive integer, default 1, lint refuses anything else; parsed into `Task.Weight` {id: SI-7, symbol: parseWeight, package: internal/verify, reachable_from: TestParseWeightKey}
+- [x] `accept:` joins the grammar and `annotationKeys` (I22): quoted acceptance text, never gating by itself {id: SI-8, symbol: parseAccept, package: internal/verify, reachable_from: TestParseAcceptKey}
 
 ## Wave 4: more dialects, the certified tier everywhere, Jev's proposals
 
