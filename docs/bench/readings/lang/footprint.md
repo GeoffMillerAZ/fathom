@@ -47,3 +47,26 @@ The embedded total is 3.9% of the 40 MiB (41,943,040-byte) cap and far
 below LB-F14's 36 MiB pack trigger.
 
 LB-M4 verdict: PASS (wave 1: 1,618,705 of 41,943,040 bytes)
+
+## LB-M4 wave 1b, 2026-09-28
+
+Measured at 20304d19 (lq-integ, wave 1b merged) on darwin/arm64, go 1.26.3,
+`CGO_ENABLED=1`, `go build ./cmd/fathom` (no `-ldflags`), wazero v1.12.0,
+thirteen embedded grammars (wave 1b added `bash`, `c`, `csharp`,
+`dockerfile`, `java`, `sql`; GitHub Actions and Kubernetes are doc-engine
+formats and embed nothing; `cpp` and the TypeScript rework did not merge).
+
+| Build | `cmd/fathom` bytes | Embedded `.wasm.gz` bytes |
+|---|--:|--:|
+| a15b29a3 (wave 1, seven grammars) | 91,975,346 | 1,618,705 |
+| 20304d19 (wave 1b, thirteen grammars) | 93,609,890 | 3,184,249 |
+
+Per grammar added (`.wasm.gz`): bash 262,984; c 136,140; csharp 603,861;
+dockerfile 69,325; java 113,109; sql 380,125.
+
+The wave grew the binary 1,634,544 bytes and the embedded grammars
+1,565,544. The embedded total is 7.6% of the 40 MiB (41,943,040-byte) cap
+and far below LB-F14's 36 MiB pack trigger; the mean is now 244,942
+compressed bytes a grammar.
+
+LB-M4 verdict: PASS (wave 1b: 3,184,249 of 41,943,040 bytes)
