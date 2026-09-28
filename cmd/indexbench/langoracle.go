@@ -74,15 +74,15 @@ func cmdLangOracle(args []string, stdout, stderr io.Writer) int {
 	if target == "" {
 		target = "L1"
 	}
+	ctx := context.Background()
 	if *commit == "" {
-		*commit = gitOut(".", "rev-parse", "--short", "HEAD")
+		*commit = gitOut(ctx, ".", "rev-parse", "--short", "HEAD")
 	}
 	name := *subjectName
 	if name == "" {
 		name = filepath.Base(filepath.Clean(*subject))
 	}
 
-	ctx := context.Background()
 	m, err := measureSubject(ctx, spec, *subject, name, *ctagsPath, *scipPath, *toolOracle)
 	if err != nil {
 		fmt.Fprintln(stderr, "lang-oracle:", err)
@@ -173,7 +173,7 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name, c
 	defer pipe.Close()
 	tsengine.ResetPeakModulePages()
 
-	sub := langbench.Subject{Name: name, SHA: gitOut(root, "rev-parse", "HEAD"), Counts: map[string]int{},
+	sub := langbench.Subject{Name: name, SHA: gitOut(ctx, root, "rev-parse", "HEAD"), Counts: map[string]int{},
 		Families: map[string]string{}, ExcludedByKind: map[string]int{}, Tenancy: &langbench.SubjectTenancy{FaultingFiles: []string{}}}
 	var files []string
 	var nodes []core.SymbolNode
@@ -238,7 +238,7 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name, c
 
 	// Tier B: universal-ctags over exactly the files fathom read.
 	ctagsRun := langbench.OracleRun{Tier: "B", Tool: "universal-ctags"}
-	switch bin, version, why := findCtags(ctagsBin); {
+	switch bin, version, why := findCtags(ctx, ctagsBin); {
 	case len(spec.Ctags.Languages) == 0:
 		ctagsRun.Status = "unavailable: universal-ctags has no parser for this dialect"
 	case why != "":
@@ -361,7 +361,7 @@ var universalCtagsRE = regexp.MustCompile(`Universal Ctags ([0-9][^,( ]*)`)
 
 // findCtags resolves a universal-ctags binary and its version; why is
 // non-empty when none is usable (BSD ctags, absent).
-func findCtags(flagPath string) (bin, version, why string) {
+func findCtags(ctx context.Context, flagPath string) (bin, version, why string) {
 	candidates := []string{flagPath}
 	if flagPath == "" {
 		candidates = []string{filepath.Join("workspace", "tools", "ctags")}
@@ -374,7 +374,7 @@ func findCtags(flagPath string) (bin, version, why string) {
 		if c == "" {
 			continue
 		}
-		outb, err := exec.Command(c, "--version").Output()
+		outb, err := exec.CommandContext(ctx, c, "--version").Output()
 		if err != nil {
 			why = fmt.Sprintf("%s: %v", c, err)
 			continue
@@ -485,8 +485,8 @@ func orDefault(s, d string) string {
 	return s
 }
 
-func gitOut(dir string, args ...string) string {
-	outb, err := exec.Command("git", append([]string{"-C", dir}, args...)...).Output()
+func gitOut(ctx context.Context, dir string, args ...string) string {
+	outb, err := exec.CommandContext(ctx, "git", append([]string{"-C", dir}, args...)...).Output()
 	if err != nil {
 		return ""
 	}
