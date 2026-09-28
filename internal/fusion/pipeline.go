@@ -1563,54 +1563,14 @@ func (s *extractSink) add(ctx context.Context, pf pendingFile) error {
 		return nil
 	}
 
-	base := filepath.Base(pf.ref.Path)
-	ext := filepath.Ext(pf.ref.Path)
-
-	var extExtractor extractor.Extractor
-	var toolKind ToolKind
-	ok := false
-
-	switch {
-	case ext == ".yaml" || ext == ".yml":
-		switch {
-		case strings.Contains(filepath.ToSlash(pf.ref.Path), ".github/workflows/"):
-			// GHA dispatch was never the grounded defect — keep the
-			// existing YAMLExtractor wrapper unchanged.
-			extExtractor, ok = p.exts[ext]
-			toolKind = ToolGHA
-		default:
-			if e, hit := p.exts[base]; hit {
-				// Already unambiguous by basename (Chart.yaml,
-				// values.yaml, kustomization.*, compose.*,
-				// docker-compose.*) — no content sniff needed.
-				extExtractor, ok = e, true
-				toolKind = toolKindForBasename(base)
-			} else {
-				kind := Classify(pf.ref.Path, pf.content, idx)
-				toolKind = kind
-				if kind == ToolUnclassified {
-					stats.unclassified++
-					atomic.AddInt64(&p.unclassifiedTotal, 1)
-					if err := p.st.SetFingerprint(ctx, serviceID, pf.ref.Path, pf.hash); err != nil {
-						return fmt.Errorf("fusion: set fingerprint %q: %w", pf.ref.Path, err)
-					}
-					return nil
-				}
-				extExtractor, ok = p.toolExts[kind]
-			}
+	extExtractor, toolKind, ok, unclassified := p.resolveExtractor(pf.ref.Path, pf.content, idx)
+	if unclassified {
+		stats.unclassified++
+		atomic.AddInt64(&p.unclassifiedTotal, 1)
+		if err := p.st.SetFingerprint(ctx, serviceID, pf.ref.Path, pf.hash); err != nil {
+			return fmt.Errorf("fusion: set fingerprint %q: %w", pf.ref.Path, err)
 		}
-	case ext == ".cue":
-		// Classify never changes which extractor runs for .cue files —
-		// only the ToolKind tag recorded on the resulting observations.
-		extExtractor, ok = p.exts[ext]
-		toolKind = Classify(pf.ref.Path, pf.content, idx)
-	default:
-		// Unchanged fast path: try full basename first (e.g. "go.mod"),
-		// then extension.
-		extExtractor, ok = p.exts[base]
-		if !ok {
-			extExtractor, ok = p.exts[ext]
-		}
+		return nil
 	}
 
 	if !ok {
@@ -1810,4 +1770,89 @@ func joinDocHeadings(nodes []core.SymbolNode) string {
 		result += p
 	}
 	return result
+}
+
+// resolveExtractor is ingest's per-file dispatch: which extractor reads
+// relPath, the ToolKind its observations carry, and whether a YAML file
+// was left unclassified (never extracted, counted). Shared by extraction
+// and ExtractForBench so the language-breadth harness measures exactly
+// the dispatch ingest runs (LB-F23).
+func (p *Pipeline) resolveExtractor(relPath string, content []byte, idx *siblingIndex) (e extractor.Extractor, toolKind ToolKind, ok, unclassified bool) {
+	base := filepath.Base(relPath)
+	ext := filepath.Ext(relPath)
+	switch {
+	case ext == ".yaml" || ext == ".yml":
+		switch {
+		case strings.Contains(filepath.ToSlash(relPath), ".github/workflows/"):
+			// GHA dispatch was never the grounded defect — keep the
+			// existing YAMLExtractor wrapper unchanged.
+			e, ok = p.exts[ext]
+			toolKind = ToolGHA
+		default:
+			if hitE, hit := p.exts[base]; hit {
+				// Already unambiguous by basename (Chart.yaml,
+				// values.yaml, kustomization.*, compose.*,
+				// docker-compose.*) — no content sniff needed.
+				e, ok = hitE, true
+				toolKind = toolKindForBasename(base)
+			} else {
+				kind := Classify(relPath, content, idx)
+				toolKind = kind
+				if kind == ToolUnclassified {
+					return nil, kind, false, true
+				}
+				e, ok = p.toolExts[kind]
+			}
+		}
+	case ext == ".cue":
+		// Classify never changes which extractor runs for .cue files —
+		// only the ToolKind tag recorded on the resulting observations.
+		e, ok = p.exts[ext]
+		toolKind = Classify(relPath, content, idx)
+	default:
+		// Unchanged fast path: try full basename first (e.g. "go.mod"),
+		// then extension.
+		e, ok = p.exts[base]
+		if !ok {
+			e, ok = p.exts[ext]
+		}
+	}
+	return e, toolKind, ok, false
+}
+
+// BenchExtraction is the result of extracting one file outside a store.
+type BenchExtraction struct {
+	Nodes    []core.SymbolNode
+	ToolKind ToolKind
+	// Skipped names why no extractor ran: "binary", "oversize",
+	// "unclassified" or "no-extractor"; "" when one did.
+	Skipped string
+}
+
+// ExtractForBench runs ingest's gates (binary, size cap) and dispatch on
+// one file and returns the extractor's nodes, touching no store — the
+// language-breadth harness's in-process extraction (LB-F23, design §10).
+// refs is the service's Discover list (the sibling index YAML
+// classification reads).
+func (p *Pipeline) ExtractForBench(serviceID string, refs []core.SourceRef, relPath string, content []byte) (BenchExtraction, error) {
+	if connector.IsBinary(content) {
+		return BenchExtraction{Skipped: "binary"}, nil
+	}
+	if len(content) > MaxExtractSize {
+		return BenchExtraction{Skipped: "oversize"}, nil
+	}
+	idx, ok := p.siblingIdx[serviceID]
+	if !ok {
+		idx = buildSiblingIndex(refs)
+		p.siblingIdx[serviceID] = idx
+	}
+	e, tk, ok, unclassified := p.resolveExtractor(relPath, content, idx)
+	switch {
+	case unclassified:
+		return BenchExtraction{ToolKind: tk, Skipped: "unclassified"}, nil
+	case !ok:
+		return BenchExtraction{Skipped: "no-extractor"}, nil
+	}
+	nodes, err := e.Extract(serviceID, relPath, content)
+	return BenchExtraction{Nodes: nodes, ToolKind: tk}, err
 }

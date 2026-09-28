@@ -121,6 +121,27 @@ var liveModules atomic.Int64
 // closed in this process.
 func LiveModules() int64 { return liveModules.Load() }
 
+// peakModulePages is the largest linear memory (64 KiB pages) any grammar
+// module reached after a parse in this process — the language-breadth
+// reading's peak_module_pages (design §9, §10).
+var peakModulePages atomic.Uint32
+
+// PeakModulePages returns the largest module memory, in 64 KiB pages,
+// observed after any parse since the last ResetPeakModulePages.
+func PeakModulePages() uint32 { return peakModulePages.Load() }
+
+// ResetPeakModulePages zeroes the peak (a harness measuring one dialect).
+func ResetPeakModulePages() { peakModulePages.Store(0) }
+
+func notePages(pages uint32) {
+	for {
+		cur := peakModulePages.Load()
+		if pages <= cur || peakModulePages.CompareAndSwap(cur, pages) {
+			return
+		}
+	}
+}
+
 var (
 	runtimeOnce sync.Once
 	rt          wazero.Runtime
@@ -505,6 +526,7 @@ func (p *Parser) Parse(src []byte) (*Tree, error) {
 		// entry).
 		return nil, fmt.Errorf("tsengine: parse aborted after %v budget (pathological input?)", ParseTimeout)
 	}
+	notePages(p.mod.Memory().Size() / 65536)
 	return &Tree{p: p, treePtr: treePtr, src: src}, nil
 }
 

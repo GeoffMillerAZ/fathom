@@ -50,3 +50,22 @@ func TestTreeSExpr(t *testing.T) {
 		t.Fatalf("SExpr(3) = %d lines, %d truncated", len(capped), truncated)
 	}
 }
+
+// TestPeakModulePages: a parse records its module's memory for the
+// language-breadth reading's peak_module_pages.
+func TestPeakModulePages(t *testing.T) {
+	ResetPeakModulePages()
+	p, err := NewParser(context.Background(), "python", "tree_sitter_python")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer p.Close()
+	tree, err := p.Parse([]byte("x = 1\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	tree.Close()
+	if got := PeakModulePages(); got == 0 || got > MemoryLimitPages {
+		t.Fatalf("PeakModulePages = %d, want in (0, %d]", got, MemoryLimitPages)
+	}
+}

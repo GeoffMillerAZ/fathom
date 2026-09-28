@@ -132,6 +132,14 @@ type Subject struct {
 	SHA   string `json:"sha,omitempty"`
 	Files int    `json:"files"`
 	Bytes int64  `json:"bytes"`
+	// The raw measurement a merged reading is recomputed from (LB-F23):
+	// counts by name, the tier each oracle family was measured at, the
+	// kinds excluded and intersected, and the subject's tenancy.
+	Counts           map[string]int    `json:"counts,omitempty"`
+	Families         map[string]string `json:"families,omitempty"`
+	KindIntersection []string          `json:"kind_intersection,omitempty"`
+	ExcludedByKind   map[string]int    `json:"excluded_by_kind,omitempty"`
+	Tenancy          *SubjectTenancy   `json:"tenancy,omitempty"`
 }
 
 // OracleRun names an oracle a reading used.
@@ -359,8 +367,13 @@ func (r Reading) Validate() error {
 	if len(r.Subjects) == 0 {
 		return fmt.Errorf("reading %s: no subjects", r.Dialect)
 	}
+	// The refusal guards a MEASURED L1: an L1 oracle that ran with a
+	// required kind outside the intersection would prove a level over a
+	// hole. A reading whose L1 oracle was unavailable proves nothing at L1
+	// and says so in its oracles.
+	l1Measured := r.Metrics[MSymRecall] != nil || r.Metrics[MSymPrecision] != nil
 	for _, k := range r.RequiredKinds {
-		if !slices.Contains(r.KindIntersection, k) {
+		if l1Measured && !slices.Contains(r.KindIntersection, k) {
 			return fmt.Errorf("reading %s: required kind %q is outside the kind intersection — refused (§1.4)", r.Dialect, k)
 		}
 	}
