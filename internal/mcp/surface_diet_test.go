@@ -1,6 +1,9 @@
 package mcp
 
-import "testing"
+import (
+	"sort"
+	"testing"
+)
 
 // TestAgentSurfaceDiet pins TD-2 (docs/plans/exploration-ledger.md): the
 // agent surface is the curated set — every schema on it taxes EVERY
@@ -38,5 +41,46 @@ func TestAgentSurfaceDiet(t *testing.T) {
 		if !on[want] {
 			t.Errorf("golden tool %q missing from the agent surface", want)
 		}
+	}
+}
+
+// TestDefaultSurfaceIsEight is the surface reckoning's own diet test
+// (F-86, design §1.1, plan SR-33): POST /rpc/agent — the primary path the
+// user-scope MCP registration points at — serves exactly the eight-tool
+// floor, not the wider companion/extended allowlist AgentSurfaceTools
+// still describes. Growing this set is the same measured-case discipline
+// TestAgentSurfaceDiet already documents for the wider surface; the long
+// tail lives one opt-in hop away at /rpc/extended (and /rpc/companion, its
+// compatible alias), never silently back on the default.
+func TestDefaultSurfaceIsEight(t *testing.T) {
+	srv := NewServer(nil)
+	descs := srv.visibleToolsFor(SurfaceAgent)
+	if len(descs) != 8 {
+		names := make([]string, len(descs))
+		for i, d := range descs {
+			names[i] = d.Name
+		}
+		sort.Strings(names)
+		t.Fatalf("/rpc/agent serves %d tools, want exactly 8: %v", len(descs), names)
+	}
+	want := []string{
+		"blast_radius", "find_symbol", "obligations", "read_source",
+		"review_diff", "search", "symbol_context", "verify_plan",
+	}
+	sort.Strings(want)
+	got := make([]string, len(descs))
+	for i, d := range descs {
+		got[i] = d.Name
+	}
+	sort.Strings(got)
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("/rpc/agent surface mismatch at %d: got %q want %q\nfull: %v", i, got[i], want[i], got)
+		}
+	}
+	// DefaultSurfaceTools is the same set exported for callers outside the
+	// package (SR-34's stanza generation among them).
+	if exported := DefaultSurfaceTools(); len(exported) != 8 {
+		t.Errorf("DefaultSurfaceTools() = %v, want 8 entries", exported)
 	}
 }

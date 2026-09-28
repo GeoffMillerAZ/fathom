@@ -17,12 +17,17 @@ func TestStanzaCarriesOpeningMovesAndPrime(t *testing.T) {
 	// call is what wires WF-9's reachability contract.
 	stanza := fathomStanza("fathom", false)
 
+	// SR-34 (surface reckoning F-86, design §1.1) rewrote the table's
+	// arrow-chains to name only the default eight-tool floor
+	// (TestStanzaNamesOnlyDefaultSurfaceTools pins that property directly);
+	// this test keeps pinning the table's presence, position and the
+	// session-start upgrade WF-9 added.
 	for _, want := range []string{
 		"Opening moves by task shape (first 2-3 calls, then edit):",
-		"bug report / stack trace / failing test: localize -> symbol_context -> find_callers",
-		"feature/change: repo_map -> pack_context(concern) -> test_impact",
-		"review/verify: review_diff -> obligations -> references",
-		"refactor/delete: rename_impact / safe_delete_check -> references",
+		"bug report / stack trace / failing test: search -> symbol_context -> read_source",
+		"feature/change: search -> obligations -> symbol_context",
+		"review/verify: review_diff -> obligations -> verify_plan",
+		"refactor/delete: blast_radius -> review_diff -> verify_plan",
 		"fathom prime",
 	} {
 		if !strings.Contains(stanza, want) {
@@ -36,15 +41,16 @@ func TestStanzaCarriesOpeningMovesAndPrime(t *testing.T) {
 		t.Error("stanza still carries the old `fathom thread brief` session-start instruction — it must upgrade to `fathom prime`")
 	}
 
-	// Position: the table sits between the tool list and the ingest
-	// paragraph.
+	// Position: the table sits between the tool list and the auto-refresh
+	// paragraph (SR-34 replaced the old `ingest` instruction with one
+	// explaining that a read auto-refreshes — nothing to call).
 	toolListIdx := strings.Index(stanza, "Read files to *edit* them")
 	tableIdx := strings.Index(stanza, "Opening moves by task shape")
-	ingestIdx := strings.Index(stanza, "Refresh the index via the `ingest` MCP tool")
-	if toolListIdx < 0 || tableIdx < 0 || ingestIdx < 0 {
-		t.Fatalf("could not locate all three anchors: toolList=%d table=%d ingest=%d", toolListIdx, tableIdx, ingestIdx)
+	refreshIdx := strings.Index(stanza, "The index refreshes itself")
+	if toolListIdx < 0 || tableIdx < 0 || refreshIdx < 0 {
+		t.Fatalf("could not locate all three anchors: toolList=%d table=%d refresh=%d", toolListIdx, tableIdx, refreshIdx)
 	}
-	if !(toolListIdx < tableIdx && tableIdx < ingestIdx) {
-		t.Errorf("opening-moves table must sit between the tool list and the ingest paragraph: toolList=%d table=%d ingest=%d", toolListIdx, tableIdx, ingestIdx)
+	if !(toolListIdx < tableIdx && tableIdx < refreshIdx) {
+		t.Errorf("opening-moves table must sit between the tool list and the auto-refresh paragraph: toolList=%d table=%d refresh=%d", toolListIdx, tableIdx, refreshIdx)
 	}
 }

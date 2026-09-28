@@ -52,9 +52,9 @@ falsely.
 
 ### 2.3 The surface
 
-- [ ] F-86: `/rpc/agent` serves the default eight (`find_symbol`, `search`, `read_source`, `symbol_context`, `obligations`, `verify_plan`, `blast_radius`, `review_diff`); `/rpc/extended` serves the 21-tool opt-in set and `/rpc/companion` aliases it; the diet test caps the default at 8 {id: SR-33, symbol: toolOnSurface, package: internal/mcp, reachable_from: TestDefaultSurfaceIsEight}
-- [ ] The fathom stanza stops telling agents to call `ingest` (auto-refresh queues it) and names only default-surface tools; `fathom init` writes the new stanza {id: SR-34, symbol: fathomStanzaBodyFor, package: cmd/fathom, reachable_from: TestStanzaNamesOnlyDefaultSurfaceTools}
-- [ ] The registry pin: no tool the reckoning removed is registered on any surface (the `surface_prune_test.go` precedent) {id: SR-35, symbol: NewServer, package: internal/mcp, reachable_from: TestRegistryCarriesNoReckonedTools}
+- [x] F-86: `/rpc/agent` serves the default eight (`find_symbol`, `search`, `read_source`, `symbol_context`, `obligations`, `verify_plan`, `blast_radius`, `review_diff`); `/rpc/extended` serves the 21-tool opt-in set and `/rpc/companion` aliases it; the diet test caps the default at 8 {id: SR-33, symbol: toolOnSurface, package: internal/mcp, reachable_from: TestDefaultSurfaceIsEight}
+- [x] The fathom stanza stops telling agents to call `ingest` (auto-refresh queues it) and names only default-surface tools; `fathom init` writes the new stanza {id: SR-34, symbol: fathomStanzaBodyFor, package: cmd/fathom, reachable_from: TestStanzaNamesOnlyDefaultSurfaceTools}
+- [x] The registry pin: no tool the reckoning removed is registered on any surface (the `surface_prune_test.go` precedent) {id: SR-35, symbol: NewServer, package: internal/mcp, reachable_from: TestRegistryCarriesNoReckonedTools}
 - [ ] The migration note lists every removed tool, verb and prompt with its replacement, and `CHANGELOG.md` carries the `### Breaking` block {id: SR-36, oracle: lexical, path: docs/upgrades/0.9.0-surface-reckoning.md, pattern: "^\| `cross_repo_blast_radius` \|"}
 
 ## Wave 3 — IMPROVE (design §5)

@@ -8,164 +8,26 @@ import (
 )
 
 // ─── BA-7: the narrow (agent) surface profile's schema byte ceiling ────────
-
-// agentSurfaceSchemaByteCeiling is an ASSERTED ceiling on the agent
-// surface's serialized tool schema bytes (docs/design/budgeted-answers.md
-// §4): measured at 11,839 bytes / 16 tools when this test was written
-// (matching the design doc's own cited figure exactly). A tool added to the
-// surface without a measured case (§4 point 2) pushes past this and fails
-// the build; the lower bound catches the opposite defect — an empty or
-// broken surface silently reading as "cheap".
 //
-// Re-pinned 2026-09-02 for the served contract (docs/plans/reach-parity.md
-// RP-9..RP-11), measured on the same 17 tools: 15,980 bytes with the
-// per-tool "Reach for it when …" / "Required: …" sentences (RP-9) and
-// 28,705 bytes with annotations (RP-10) and generated outputSchema (RP-11)
-// on top — the schema budget more than doubled, and that number is the
-// price of a contract a non-Claude client can machine-check; the
-// capabilities tool now reports it live as schema_bytes so the next change
-// is measured too. The band below brackets that measurement, not a hope.
-//
-// BP-22 re-pin, 2026-09-12, CORRECTED 2026-09-13 (O32). The band is
-// unchanged. The 2026-09-12 probe reported 0 ToolSearch turns with and
-// without alwaysLoad, but it read the stream's `init` tool list — which
-// names every MCP tool whether or not its schema is deferred — and its
-// prompt never made the model call a fathom tool, so deferral had nothing
-// to show. The 2026-09-13 probe that DID demand a fathom call, headless
-// `claude -p --output-format stream-json` on 2.1.270 against the same
-// 17-tool / 28.7 kB surface:
-//
-//	alwaysLoad unset → 1 ToolSearch turn before the first fathom call
-//	alwaysLoad:true  → 0 ToolSearch turns
-//
-// Claude Code's MCP docs (2.1.270) say the same: with ENABLE_TOOL_SEARCH
-// unset EVERY MCP tool schema is deferred behind ToolSearch, no threshold;
-// `alwaysLoad: true` exempts a server. The full home run of 2026-09-13
-// paid ≥1 ToolSearch turn in every fathom cell (11% of the arm's tokens).
-// So the O24 tax is real in headless sessions, the remedy is the
-// alwaysLoad bit (written by `fathom plugin render`, the bench config and
-// the descriptor note), and this band stays a BUDGET — the schema size
-// was never what decided deferral.
-//
-// The band is deliberately not tightened toward the ~16 kB July figure.
-// Reaching it would mean deleting either the generated outputSchemas
-// (10,693 bytes — the machine-checkable contract RP-11 exists to provide)
-// or the per-tool "Reach for it when …" sentences and argument
-// descriptions that make the surface discoverable, to chase a threshold
-// that is measurably not binding. `$ref`/`$defs` compaction was evaluated
-// and rejected on evidence: every repeated sub-schema repeats ACROSS tools,
-// and tools/list gives each tool its own independent schema document, so
-// in-document refs save exactly 0 bytes (measured).
+// This band tracked POST /rpc/agent from BA-7 (11,839 B / 16 tools) through
+// O101 (18,008 B / 25 tools, docs/design/budgeted-answers.md §4,
+// docs/plans/reach-parity.md RP-9..RP-11, docs/vision/05-surfaces.md's cost
+// complaint) — the full re-pin history, tool by tool and byte by byte, is
+// in git blame on this comment, not repeated here. Surface reckoning F-86
+// (design §1.1, plan SR-33) ends that history: /rpc/agent is no longer the
+// 25-tool allowlist this band measured. It now serves the eight-tool floor
+// below, TestAgentSurfaceBudget/TestAgentSurfaceArgSchemaUnchanged
+// (internal/mcp) keep gating the WIDER companion/extended surface's own
+// per-tool prose and argument-schema structure, and nothing here still
+// asserts against the retired 25-tool number.
 const (
-	// agentSurfaceSchemaByteFloor dropped from 26000 with O101 (below): the
-	// floor must bracket the diet total, not the pre-diet one.
-	agentSurfaceSchemaByteFloor = 16000
-	// agentSurfaceSchemaByteCeiling was 30000 before SB-1..SB-5
-	// (docs/plans/strengths-bench.md): references/read_source/find_symbol
-	// gained longer, more specific descriptions and new response fields
-	// (implementations, elided, occurrence_tier/depth/service, max_bytes),
-	// and five tools gained a "this result IS the answer" sentence — a
-	// measured, deliberate widening (O31/O32's over-payload findings), not
-	// a new tool (still 17, TestNarrowProfileSchemaBytes' own pin).
-	// Re-pinned again 2026-09-13: `find_callers`/`references`/`outline`/
-	// `symbol_context`/`staleness_report`/`repo_map` gained budget/
-	// `scope_required` fields and descriptions (RC-19/RC-20), and
-	// `references` gained `implementations` (RC-21) — 36,948 bytes
-	// measured (vision 28, receipts).
-	// RC-24 (docs/plans/receipts.md) then added `search` — the
-	// grep-with-a-receipt tool, ships SB-48 — as an 18th agent-surface
-	// tool: 40,204 bytes measured with RC-19/20/21 combined. A genuinely
-	// new tool, not a widened description (TestAgentSurfaceDiet's own pin
-	// moved to 18 alongside it).
-	// Re-pinned again for `discoveries` (RC-27, docs/vision/
-	// 28-receipts.md §4) — a second deliberate, pre-registered exception to
-	// the agent-surface diet (surface_diet_test.go), alongside `search`,
-	// carrying its own kill criterion: 41,733 bytes measured at 19 tools
-	// combined with RC-19/20/21/24.
-	// Re-pinned again for ADR-035 decision 1 (docs/vision/
-	// 29-verbs-not-lookups.md §3 wave A, plan VB-1/VB-2): `blast_radius`,
-	// `review_diff`, `test_impact` and `rename_impact` join the surface —
-	// the answers grep cannot give, never another lookup pitched on token
-	// savings — plus `safe_delete_check`, a genuinely new tool: 52,273
-	// bytes measured at 24 tools (TestAgentSurfaceDiet's own pin moved to
-	// 24 alongside it).
-	// Re-pinned again for VB-19 (ADR-035 decision 4, docs/vision/
-	// 29-verbs-not-lookups.md §3 wave E): every result schema for
-	// find_callers/references/blast_radius/symbol_context/safe_delete_check/
-	// rename_impact/test_impact/review_diff gained `resolution: {typed,
-	// heuristic}` and `index_commit` — still 24 tools, a widened result
-	// shape, not a new one: 54,872 bytes measured.
-	// Re-pinned once more for wave G (plan VB-26): `localize` joins the
-	// surface — where a bug lives before anyone knows the file, R10's own
-	// case (LocAgent/SHERLOC) — 56,655 bytes measured at 25 tools
-	// (TestAgentSurfaceDiet's own pin moved to 25 alongside it).
-	// Re-pinned once more integrating wave N5 with the concurrently merged
-	// waves N8/N10/N11 (O54 addendum, O60's `layer_coverage` unknown-status
-	// shape on `obligations`, and other sibling-wave description growth) —
-	// still 25 tools, no new tool: 59,094 bytes measured, then 60,918 by the
-	// time fl-wave-10 (below) started.
-	//
-	// Re-pinned 2026-09-18 (fl-wave-10, docs/vision/05-surfaces.md's own
-	// cost complaint): a description DIET, not a tool change — still 25
-	// tools (TestAgentSurfaceDiet's own pin, unmoved). Every agent-surface
-	// tool description was cut to the grammar `docs/mcp-tools.md` already
-	// documented in full: one opening sentence, at most two sentences on
-	// the result shape a caller must know (budget/elision, tiers,
-	// checked:false), the "Reach for it when …" routing sentence, and the
-	// "Required: …" line — plan-row ids (SB-xx/VB-xx/RC-xx/O-numbers), ADR
-	// cross-references and migration notes moved to docs/mcp-tools.md
-	// (nothing lost, address only). Five tools (find_symbol/find_callers/
-	// symbol_context/verify_plan/obligations) keep a short "this result IS
-	// the answer … a follow-up call only …" stop sentence as one of their
-	// two result-shape sentences — SB-4's own measured H1 finding
-	// (agent_surface_stop_test.go's TestAgentSurfaceDescriptionsStateWhenToStop),
-	// not design history, so the diet trims it, never cuts it. Argument
-	// schemas (names/types/enums/required) are BYTE-IDENTICAL — pinned by
-	// internal/mcp's TestAgentSurfaceArgSchemaUnchanged against a pre-diet
-	// golden; only prose shrank. Measured 60,918 → 47,480 bytes: a 22% cut
-	// of the SERVED total, and a 43% cut of the actually in-scope prose
-	// (description + argument-description bytes: 31,273 → 17,787). The
-	// remaining ~29.6 kB is a fixed floor this wave never touched —
-	// generated `outputSchema` (18,626 B, RP-11's machine-checkable
-	// contract) + `annotations` (2,227 B, RP-10) + argument-schema
-	// STRUCTURE (~6,700 B: property names/types/enums/required, protected
-	// by the golden above) — so docs/vision/05-surfaces.md's aspirational
-	// ≤36,000 B target is not reachable by a description diet alone without
-	// cutting one of those three, which this brief put out of scope.
-	// TestAgentSurfaceDescriptionsWithinCaps pinned the per-tool cap (700 B;
-	// 1000 B for review_diff/obligations/references/search) and the
-	// per-argument cap (200 B) as of fl-wave-10.
-	//
-	// Re-pinned 2026-09-18 (O101, the wave-diet brief; bench evidence:
-	// lookups-ts/-py sessions carried a median 15,219 cache-read
-	// tokens/turn on the wired arm vs 5,165 on grep — a ~10k-token fixed
-	// tax every turn). Two levers, both in internal/mcp: (1) `outputSchema`
-	// (RP-11, 18,827 B measured — 39% of the pre-wave 48,341 B payload)
-	// moved OFF tools/list by default (dispatch.go's toolsListEntries,
-	// gated by contractsFrom/WithContracts) — still generated on request via
-	// the HTTP `?contracts=true` query param (cmd/fathom's servehttp.go),
-	// still pinned in the registry by TestOutputSchemasMatchLiveResults,
-	// which now opts in explicitly rather than assuming the wire carries
-	// it. (2) Every agent-surface description tightened to ONE flat 260 B
-	// cap (no more 700/1000 B tiers — the four composed tools fit too) and
-	// every argument-property description to 120 B
-	// (surface_description_caps_test.go); alias/history prose dropped, the
-	// aliases themselves unchanged. Measured 48,341 → 18,008 B (62.7%
-	// cut) — internal/mcp's TestAgentSurfaceBudget is the new from-scratch
-	// budget test (total/per-tool/per-description, all asserted together,
-	// logged per-tool via `go test -v`); its own comment carries the
-	// accounting for why the brief's own ≤16,000 B aspiration is not fully
-	// reached (annotations + argument-schema structure + JSON wire
-	// overhead form a ~10.7 kB floor this wave did not touch, the same
-	// shape as outputSchema's floor before it). Argument SCHEMA STRUCTURE
-	// (names/types/enums/required) stays pinned by
-	// TestAgentSurfaceArgSchemaUnchanged — some properties lost their
-	// "description" key entirely (self-explanatory by name, e.g. a task's
-	// "id"/"title", or already fully covered in docs/mcp-tools.md, e.g.
-	// obligations' claim-feedback args and verify_plan's `package`/
-	// `concern`, both extended there in the same change) — stripped before
-	// comparison either way, so the golden is unaffected.
-	agentSurfaceSchemaByteCeiling = 18700 // 17,998 measured 2026-09-18 (O101) + headroom
+	// The eight-tool floor: blast_radius, find_symbol, obligations,
+	// read_source, review_diff, search, symbol_context, verify_plan.
+	agentDefaultSurfaceToolCount = 8
+	// 7,715-7,725 measured 2026-09-27 (SR-33), well inside the design doc's
+	// own ≤9,000 B target (docs/design/surface-reckoning.md §1); + headroom.
+	agentDefaultSurfaceSchemaByteFloor   = 7000
+	agentDefaultSurfaceSchemaByteCeiling = 8200
 )
 
 // TestNarrowProfileSchemaBytes is BA-7: the narrow/agent surface profile
@@ -177,13 +39,13 @@ func TestNarrowProfileSchemaBytes(t *testing.T) {
 	hc := &http.Client{}
 
 	tools, schemaBytes := surfaceSchemaTax(hc, ts.URL)
-	if tools != 25 {
-		t.Errorf("agent surface tools = %d, want 25 (TestAgentSurfaceDiet's own pin: 19 + the four ADR-035 verbs + safe_delete_check + localize)", tools)
+	if tools != agentDefaultSurfaceToolCount {
+		t.Errorf("agent surface tools = %d, want %d (surface reckoning F-86/SR-33: TestDefaultSurfaceIsEight's own pin)", tools, agentDefaultSurfaceToolCount)
 	}
-	if schemaBytes < agentSurfaceSchemaByteFloor || schemaBytes > agentSurfaceSchemaByteCeiling {
+	if schemaBytes < agentDefaultSurfaceSchemaByteFloor || schemaBytes > agentDefaultSurfaceSchemaByteCeiling {
 		t.Errorf("agent surface schema bytes = %d, want between %d and %d — "+
 			"either the surface widened (add a tool only with a measured case) or shrank unexpectedly",
-			schemaBytes, agentSurfaceSchemaByteFloor, agentSurfaceSchemaByteCeiling)
+			schemaBytes, agentDefaultSurfaceSchemaByteFloor, agentDefaultSurfaceSchemaByteCeiling)
 	}
 }
 

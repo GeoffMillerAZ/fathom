@@ -53,18 +53,24 @@ only) each request selects an immutable **surface** via the path:
 | Surface | Endpoint | Contents |
 |---|---|---|
 | *(full)* | `POST /rpc` | Every registered tool, unauthenticated — the default for schema-deferring clients such as Claude Code; includes `ingest` (writes) and `compile_layer` (LLM spend). Hides the four module tools instead when the daemon is in hosted-modules mode (see below) |
-| `agent` | `POST /rpc/agent` | The primary agent surface (see below) — the user-scope MCP registration points here |
-| `companion` | `POST /rpc/companion` | Compatible alias for `agent`: identical allowlist |
+| `agent` | `POST /rpc/agent` | The default eight-tool floor (see below) — the user-scope MCP registration points here |
+| `extended` | `POST /rpc/extended` | The opt-in superset (see below): the default eight plus the navigation/context/freshness tools and the remaining promoted verbs |
+| `companion` | `POST /rpc/companion` | Compatible alias for `extended` (not `agent`): a client already pinned to `companion` keeps its old tool set minus the surface reckoning's own deletions/merges |
 | ~~`coding` / `investigation` / `shared` / `platform`~~ | *(deleted)* | The four group surfaces were removed 2026-08-26 (ADR-014 amendment 2, `docs/plans/honesty-fixes.md` HF-5): no client registration, stanza, skill, or doc ever pointed at one, so their zero traffic proved exposure-zero, not demand-zero (law 8) — they go on law 4's ground, a surface with no reachable consumer. The group **taxonomy** (`GroupCoding`, `GroupInvestigation`, …) still classifies every tool. Use `POST /rpc` for everything, `POST /rpc/agent` for the curated hot loop. |
 | `modules` | `POST /rpc/modules` | The module host's floor tool set (docs/plans/gke-module-host.md) — see "Module host tools" below for the tool list and the hosted-mode restriction |
 
-**Agent/companion allowlist (19 tools):** `capabilities`, `discoveries`, `entrypoints`,
-`find_callers`, `find_symbol`, `ingest`, `list_services`, `memory_search`, `obligations`,
-`outline`, `pack_context`, `query_symbols`, `read_source`, `references`, `repo_map`,
-`search`, `staleness_report`, `symbol_context`, `verify_plan`. `search` (RC-24) and
-`discoveries` (RC-27, docs/vision/28-receipts.md §4) are the two deliberate exceptions
-to the 19-tool diet cap (`surface_diet_test.go`, TD-2) — each added with a
-pre-registered kill criterion, not a hunch.
+**Agent default (8 tools, surface reckoning F-86, `docs/design/surface-reckoning.md`
+§1.1):** `blast_radius`, `find_symbol`, `obligations`, `read_source`, `review_diff`,
+`search`, `symbol_context`, `verify_plan` — the answers an agent gets before opting
+into anything else (`TestDefaultSurfaceIsEight`).
+
+**Extended/companion allowlist (20 tools, growing to 21 once SR-23 registers
+`status`):** the default eight above plus `find_callers`, `findings_near`, `ingest`,
+`list_services`, `localize`, `outline`, `pack_context`, `query_symbols`, `references`,
+`repo_map`, `staleness_report`, `test_impact`. `capabilities`, `discoveries`,
+`entrypoints`, `memory_search`, `rename_impact` and `safe_delete_check` left the
+curated surfaces this way too — each merged into a surviving tool or removed outright
+by its own SR-* row in wave 2, not this one.
 `memory_search` (AM-8,
 docs/design/anchored-memory.md §4) is the third net-new tool on this allowlist — the
 one direct query over anchored memories, every answer labeled with tier and state;
