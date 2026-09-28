@@ -31,6 +31,7 @@ import (
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
+	"github.com/tetratelabs/wazero/sys"
 )
 
 // DefaultParseTimeout bounds each potentially-unbounded guest phase (the
@@ -61,6 +62,17 @@ const DefaultParseTimeout = 10 * time.Second
 // without a 10s wait; production code must not mutate it. Set it before any
 // parsing starts — it is read (unsynchronized) at each Parse.
 var ParseTimeout = DefaultParseTimeout
+
+// guestNanotime is the monotonic clock budget.c's deadline checks read (WASI
+// clock_time_get). Nil — production — is the host's real clock
+// (WithSysNanotime). It MUST be set explicitly: wazero's default monotonic
+// clock is a FAKE that advances 1ms per reading, under which ParseTimeout
+// silently meant "ParseTimeout/1ms progress callbacks" (x100 tree-sitter
+// operations) rather than elapsed time — a 300ms budget became ~30,000 query
+// ops, ~8s of CPU on the pathological tree (more under load), and the 10s
+// default ~1,000,000 ops. Tests inject a deterministic clock here to assert
+// the cancel in operations, independent of machine load. Read at NewParser.
+var guestNanotime sys.Nanotime
 
 // ParseHardBackstop is the wall-clock bound on each potentially-unbounded
 // guest operation (the parse call, and the whole query match loop),
@@ -264,7 +276,13 @@ func NewParser(ctx context.Context, grammar, entryPoint string) (*Parser, error)
 	if err != nil {
 		return nil, err
 	}
-	mod, err := r.InstantiateModule(ctx, cm, wazero.NewModuleConfig().WithName(""))
+	modCfg := wazero.NewModuleConfig().WithName("")
+	if guestNanotime != nil {
+		modCfg = modCfg.WithNanotime(guestNanotime, sys.ClockResolution(time.Millisecond))
+	} else {
+		modCfg = modCfg.WithSysNanotime()
+	}
+	mod, err := r.InstantiateModule(ctx, cm, modCfg)
 	if err != nil {
 		return nil, fmt.Errorf("tsengine: instantiate %q: %w", grammar, err)
 	}

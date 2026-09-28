@@ -52,12 +52,14 @@ static uint64_t fathom_now_ns(void) {
 }
 
 /* NOTE: no amortization of the clock read. It was tried (clock every 16th
- * callback) and reverted: on the pathological input the query cursor's
- * progress callbacks arrive at a slow REAL-TIME cadence (~8s between
- * deadline expiry and the next check under load), so widening the cadence
- * 16x pushed guest cancellation past the entire 45s scan — the budget
- * became decorative. The per-callback clock_gettime (a WASI host call)
- * costs ~2% user CPU corpus-wide: cheap insurance. */
+ * callback) and reverted: it pushed guest cancellation past the entire 45s
+ * scan. (Measured 2026-09-27: until then the host never configured a real
+ * clock, so wazero's default fake monotonic clock — +1ms per reading — made
+ * every budget a callback COUNT: the whole pathological scan is ~3,000
+ * callbacks, a 10s budget 10,000, and reading every 16th callback cut the
+ * count 16x. The host now passes WithSysNanotime; see tsengine.go
+ * guestNanotime.) The per-callback clock_gettime (a WASI host call) costs
+ * ~2% user CPU corpus-wide: cheap insurance. */
 static bool fathom_expired(void) {
   if (fathom_now_ns() >= fathom_deadline_ns) {
     fathom_cancelled = 1;

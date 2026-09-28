@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -64,11 +65,47 @@ func TestParser_GuestBudgetBoundsPathologicalParse(t *testing.T) {
 // actually went. The guest budget cancels it; cancellation surfaces as an
 // ERROR (never a silently truncated match set, since the C API reports
 // cancellation as ordinary exhaustion); the Parser survives.
+//
+// The bound is asserted in PROGRESS, not time, so the test measures the
+// cancel and not the machine: the guest reads its clock once when the scan
+// is armed and once per progress callback (every 100 tree-sitter query
+// operations), so a test clock that advances exactly 1ms per reading turns
+// a budget of B ms into exactly B callbacks, whatever the load, -race or
+// core type. (Wall- and CPU-time versions of this test flaked under the
+// pre-push gate: the same cancel point cost 8s of CPU unloaded and 34.5s on
+// a loaded efficiency core.) The whole unbounded scan is ~3,000 callbacks
+// (measured; ~43s of CPU). The test proves the ratio itself: a scan whose
+// clock is held still is still running at stallReads callbacks, and the
+// budgeted scan stopped at budgetMS — at most a tenth of that.
 func TestQuery_GuestBudgetBoundsPathologicalQueryRun(t *testing.T) {
+	const budgetMS = 5
+	const stallReads = 10 * budgetMS
+
 	savedTimeout, savedBackstop := ParseTimeout, ParseHardBackstop
 	ParseTimeout = time.Hour // let the parse complete (it takes ~70ms)
+	// Effectively disabled: it is wall clock, so under load it could abandon
+	// a healthy scan mid-way and fail this test for the machine's sake. A
+	// cancel that never fires shows as the whole scan completing with no
+	// error (~43s+ of CPU), which the run helper rejects.
 	ParseHardBackstop = 10 * time.Minute
 	defer func() { ParseTimeout, ParseHardBackstop = savedTimeout, savedBackstop }()
+
+	// The test clock: +1ms per reading, or held still while stalled until
+	// the stallReads'th reading, when it jumps an hour ahead (so the stalled
+	// scan's own budget can then cancel it).
+	var reads, now atomic.Int64
+	var stalled atomic.Bool
+	guestNanotime = func() int64 {
+		n := reads.Add(1)
+		if stalled.Load() {
+			if n >= stallReads {
+				return now.Add(int64(time.Hour))
+			}
+			return now.Load()
+		}
+		return now.Add(int64(time.Millisecond))
+	}
+	defer func() { guestNanotime = nil }()
 
 	ctx := context.Background()
 	p, err := NewParser(ctx, "javascript", "tree_sitter_javascript")
@@ -91,38 +128,34 @@ func TestQuery_GuestBudgetBoundsPathologicalQueryRun(t *testing.T) {
 	}
 	defer q.Close()
 
-	// The bound is asserted on the CPU the scan burned, not on wall clock.
-	// The guest budget is checked by tree-sitter's progress callback every
-	// ~100 query operations, and on this tree an operation's cost grows as
-	// the scan proceeds: a 300ms budget is observed at ~8s of guest CPU
-	// (measured 8.25s, with or without RT-107's memory cap; a 1ms budget
-	// fires at ~28ms), against ~43-53s for the whole unbounded scan. That is
-	// CPU work, so on a loaded machine its wall time stretches with the
-	// share of a core the test gets — the pre-push gate saw 49.7s wall for
-	// the same ~8s — and a wall-clock bound here measured the machine, not
-	// the cancel. The wall-clock guarantee under any load is the host-side
-	// backstop's job (TestEngine_HardBackstopAbandonsRunawayCall); this test
-	// isolates the guest cancel, so it bounds the work the cancel allows.
-	// RUSAGE_SELF is process-wide: this must not run beside another wasm
-	// scan (no test in this package is parallel, and none before this one
-	// leaves an abandoned runaway burning).
-	ParseTimeout = 300 * time.Millisecond
-	cpu0 := processCPU(t)
-	start := time.Now()
-	_, err = q.Run(tree)
-	elapsed := time.Since(start)
-	burned := processCPU(t) - cpu0
-
-	if err == nil {
-		t.Fatal("Run over the pathological tree returned no error — the query budget did not fire")
+	run := func(label string) int64 {
+		t.Helper()
+		reads.Store(0)
+		_, err := q.Run(tree)
+		got := reads.Load()
+		if err == nil {
+			t.Fatalf("%s: Run over the pathological tree returned no error after %d clock readings — the query budget did not fire", label, got)
+		}
+		if !strings.Contains(err.Error(), "query aborted after") {
+			t.Fatalf("%s: Run error = %v, want the guest budget's cancel (not the hard backstop)", label, err)
+		}
+		return got
 	}
-	t.Logf("query cancel: %v CPU, %v wall", burned, elapsed)
-	// 30s, the bound this test always used, now in CPU: the cancelled scan
-	// is ~8s on a performance core (11.8s measured with 3x the cores busy),
-	// the whole scan 43s+ and more on a slower core, so 30s still separates
-	// "the cancel fired" from "the scan ran out".
-	if burned > 30*time.Second {
-		t.Fatalf("Run burned %v CPU (%v wall) — the query cancel did not bound the scan (the whole unbounded scan is ~43-53s)", burned, elapsed)
+
+	// 1. The scan is long: with the clock held still it is still running
+	// at the stallReads'th progress check.
+	stalled.Store(true)
+	if got := run("stalled clock"); got != stallReads {
+		t.Fatalf("stalled clock: cancelled after %d readings, want exactly %d — the scan ended before that many progress checks, so a %d-callback budget proves nothing", got, stallReads, budgetMS)
+	}
+
+	// 2. The budget cancels it at exactly budgetMS progress checks (+1: the
+	// reading that arms the deadline) — a tenth of what the scan provably
+	// needs, and ~1/600 of the whole scan.
+	stalled.Store(false)
+	ParseTimeout = budgetMS * time.Millisecond
+	if got := run("budgeted"); got != budgetMS+1 {
+		t.Fatalf("budgeted: cancelled after %d clock readings, want exactly %d (arm + %d progress checks)", got, budgetMS+1, budgetMS)
 	}
 
 	// The SAME parser must still work for a healthy file.
@@ -150,7 +183,9 @@ func TestQuery_GuestBudgetBoundsPathologicalQueryRun(t *testing.T) {
 func TestEngine_HardBackstopAbandonsRunawayCall(t *testing.T) {
 	savedTimeout, savedBackstop := ParseTimeout, ParseHardBackstop
 	ParseTimeout = time.Hour // no guest budget will ever fire
-	ParseHardBackstop = 2 * time.Second
+	// The setup parse (~70ms of work) must not race a 2s wall clock on a
+	// loaded machine; the 2s backstop is armed only for the runaway scan.
+	ParseHardBackstop = 10 * time.Minute
 	defer func() { ParseTimeout, ParseHardBackstop = savedTimeout, savedBackstop }()
 
 	ctx := context.Background()
@@ -173,6 +208,7 @@ func TestEngine_HardBackstopAbandonsRunawayCall(t *testing.T) {
 	}
 	defer q.Close()
 
+	ParseHardBackstop = 2 * time.Second
 	start := time.Now()
 	_, err = q.Run(tree) // the 45s+ scan; guest budget disabled -> backstop must fire
 	elapsed := time.Since(start)
@@ -185,6 +221,7 @@ func TestEngine_HardBackstopAbandonsRunawayCall(t *testing.T) {
 	}
 
 	// The abandoned parser is dead — a fresh Parser must work immediately.
+	ParseHardBackstop = 10 * time.Minute
 	p2, err := NewParser(ctx, "javascript", "tree_sitter_javascript")
 	if err != nil {
 		t.Fatalf("NewParser after abandonment: %v", err)
