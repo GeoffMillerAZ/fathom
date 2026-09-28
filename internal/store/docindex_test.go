@@ -194,3 +194,97 @@ VALUES ('fathom', ?, 'symbol', ?, 1, 'exact', 'h', 0, ?)`, unitID, target, valid
 		}
 	}
 }
+
+// TestSyncDocLinksForUnit pins KR-6's write side (§4's validity-window
+// rule, applied per link): an unchanged link is left completely untouched
+// — its target_hash_at_link and valid_from never move, which is what lets
+// KR-7's docDrift compare a frozen link-time hash against a fresh
+// resolution — a removed link is closed (valid_to set, never deleted), and
+// a new link is inserted open.
+func TestSyncDocLinksForUnit(t *testing.T) {
+	ctx := context.Background()
+	sq, err := NewSQLiteStore(filepath.Join(t.TempDir(), "synclinks.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = sq.Close() })
+	const svc = "fathom"
+
+	if err := sq.PutDocUnits(ctx, svc, "x.md", []DocUnit{{
+		UnitID: "u1", Path: "x.md", HeadingPath: "Section", Kind: "section", Body: "body",
+	}}); err != nil {
+		t.Fatal(err)
+	}
+
+	first := []DocLink{
+		{TargetKind: "symbol", Target: "Foo", Line: 5, LinkTier: "exact", TargetHashAtLink: "hash-foo-v1"},
+		{TargetKind: "path", Target: "a/b.go", Line: 6, LinkTier: "exact", TargetHashAtLink: "hash-path-v1"},
+	}
+	if err := sq.SyncDocLinksForUnit(ctx, svc, "u1", first, 1000); err != nil {
+		t.Fatalf("first sync: %v", err)
+	}
+
+	open, err := sq.OpenDocLinks(ctx, svc)
+	if err != nil {
+		t.Fatalf("OpenDocLinks after first sync: %v", err)
+	}
+	if len(open) != 2 {
+		t.Fatalf("OpenDocLinks after first sync = %+v, want 2", open)
+	}
+
+	// Second sync: "Foo" reappears UNCHANGED (same target/line — its
+	// TargetHashAtLink here is deliberately a DIFFERENT value than what
+	// was stored, simulating what a caller would pass if it re-resolved
+	// the symbol; the stored row must still keep the ORIGINAL hash,
+	// proving the sync never overwrites an already-open link);
+	// "a/b.go" is gone (the span was edited out or the path no longer
+	// resolves); "Bar" is new.
+	second := []DocLink{
+		{TargetKind: "symbol", Target: "Foo", Line: 5, LinkTier: "exact", TargetHashAtLink: "hash-foo-v2-SHOULD-NOT-BE-STORED"},
+		{TargetKind: "symbol", Target: "Bar", Line: 7, LinkTier: "exact", TargetHashAtLink: "hash-bar-v1"},
+	}
+	if err := sq.SyncDocLinksForUnit(ctx, svc, "u1", second, 2000); err != nil {
+		t.Fatalf("second sync: %v", err)
+	}
+
+	open, err = sq.OpenDocLinks(ctx, svc)
+	if err != nil {
+		t.Fatalf("OpenDocLinks after second sync: %v", err)
+	}
+	if len(open) != 2 {
+		t.Fatalf("OpenDocLinks after second sync = %+v, want 2 (Foo kept, Bar new, a/b.go closed)", open)
+	}
+	byTarget := make(map[string]DocLinkView, len(open))
+	for _, l := range open {
+		byTarget[l.Target] = l
+	}
+	foo, ok := byTarget["Foo"]
+	if !ok {
+		t.Fatalf("OpenDocLinks missing Foo: %+v", open)
+	}
+	if foo.TargetHashAtLink != "hash-foo-v1" {
+		t.Errorf("Foo TargetHashAtLink = %q, want frozen at %q (unchanged link must not be overwritten)", foo.TargetHashAtLink, "hash-foo-v1")
+	}
+	if foo.ValidFrom != 1000 {
+		t.Errorf("Foo ValidFrom = %d, want 1000 (unchanged link's valid_from must not move)", foo.ValidFrom)
+	}
+	if _, ok := byTarget["a/b.go"]; ok {
+		t.Errorf("a/b.go still open after being dropped from the fresh set: %+v", open)
+	}
+	bar, ok := byTarget["Bar"]
+	if !ok {
+		t.Fatalf("OpenDocLinks missing new Bar: %+v", open)
+	}
+	if bar.TargetHashAtLink != "hash-bar-v1" || bar.ValidFrom != 2000 {
+		t.Errorf("Bar = %+v, want hash hash-bar-v1, valid_from 2000", bar)
+	}
+
+	// a/b.go's row must still exist, closed, never deleted (§4).
+	var validTo int64
+	if err := sq.db.QueryRowContext(ctx, `SELECT valid_to FROM doc_links WHERE service_id = ? AND unit_id = ? AND target = ?`, svc, "u1", "a/b.go").Scan(&validTo); err != nil {
+		t.Fatalf("a/b.go row missing entirely (must be closed, not deleted): %v", err)
+	}
+	if validTo != 2000 {
+		t.Errorf("a/b.go valid_to = %d, want 2000", validTo)
+	}
+}

@@ -291,6 +291,156 @@ ORDER BY n DESC, unit_id ASC`, strings.Join(placeholders, ","))
 	return out, rows.Err()
 }
 
+// DocLink is one fresh, resolved span (internal/docindex.LinkDocSpans,
+// KR-6) ready to reconcile into doc_links for one unit —
+// SyncDocLinksForUnit's input shape. It mirrors internal/docindex.Link
+// field-for-field but lives here, never imported from that package, since
+// internal/docindex already imports internal/store (KR-1/KR-4/KR-8) and a
+// reverse import would cycle.
+type DocLink struct {
+	TargetKind       string
+	Target           string
+	Line             int
+	LinkTier         string
+	TargetHashAtLink string
+}
+
+// DocLinkView is one still-open (valid_to = 0) doc_links row joined back
+// to its unit's location — everything KR-7's docDrift needs to report a
+// possibly-stale span without a second query per row.
+type DocLinkView struct {
+	UnitID           string
+	Path             string
+	HeadingPath      string
+	TargetKind       string
+	Target           string
+	Line             int
+	LinkTier         string
+	TargetHashAtLink string
+	ValidFrom        int64
+}
+
+// docLinkKey identifies one doc_links row for the purpose of deciding
+// whether a fresh link is the SAME link as an already-open one (§4's
+// validity-window rule applied per link, not per unit): the tuple a
+// human/agent would call "the same span naming the same thing".
+type docLinkKey struct {
+	kind   string
+	target string
+	line   int
+}
+
+// SyncDocLinksForUnit reconciles unitID's doc_links rows against fresh —
+// the set LinkDocSpans (KR-6) computed for the unit's CURRENT body — under
+// §4's validity-window rule, applied per link:
+//
+//   - A fresh link whose (target_kind, target, line) matches an already-open
+//     row is left COMPLETELY untouched: its target_hash_at_link and
+//     valid_from never move. This is the point — KR-7's docDrift compares
+//     that frozen link-time hash against a fresh resolution to notice the
+//     target moved; overwriting it on every re-ingest would make drift
+//     undetectable.
+//   - A fresh link with no matching open row is inserted, valid_from = now,
+//     valid_to = 0.
+//   - An open row with no matching fresh link (the span was edited out of
+//     the doc, or its target no longer resolves) is CLOSED: valid_to = now.
+//     Never deleted (§4).
+func (s *SQLiteStore) SyncDocLinksForUnit(ctx context.Context, serviceID, unitID string, fresh []DocLink, now int64) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("SyncDocLinksForUnit begin: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	rows, err := tx.QueryContext(ctx, `
+SELECT target_kind, target, line FROM doc_links
+WHERE service_id = ? AND unit_id = ? AND valid_to = 0`, serviceID, unitID)
+	if err != nil {
+		return fmt.Errorf("SyncDocLinksForUnit query open: %w", err)
+	}
+	open := map[docLinkKey]bool{}
+	for rows.Next() {
+		var k docLinkKey
+		if err := rows.Scan(&k.kind, &k.target, &k.line); err != nil {
+			rows.Close()
+			return fmt.Errorf("SyncDocLinksForUnit scan open: %w", err)
+		}
+		open[k] = true
+	}
+	rowsErr := rows.Err()
+	rows.Close()
+	if rowsErr != nil {
+		return fmt.Errorf("SyncDocLinksForUnit rows: %w", rowsErr)
+	}
+
+	freshKeys := make(map[docLinkKey]bool, len(fresh))
+	for _, f := range fresh {
+		freshKeys[docLinkKey{f.TargetKind, f.Target, f.Line}] = true
+	}
+
+	closeStmt, err := tx.PrepareContext(ctx, `
+UPDATE doc_links SET valid_to = ?
+WHERE service_id = ? AND unit_id = ? AND target_kind = ? AND target = ? AND line = ? AND valid_to = 0`)
+	if err != nil {
+		return fmt.Errorf("SyncDocLinksForUnit prepare close: %w", err)
+	}
+	defer closeStmt.Close()
+	for k := range open {
+		if freshKeys[k] {
+			continue
+		}
+		if _, err := closeStmt.ExecContext(ctx, now, serviceID, unitID, k.kind, k.target, k.line); err != nil {
+			return fmt.Errorf("SyncDocLinksForUnit close: %w", err)
+		}
+	}
+
+	insertStmt, err := tx.PrepareContext(ctx, `
+INSERT INTO doc_links (service_id, unit_id, target_kind, target, line, link_tier, target_hash_at_link, valid_from, valid_to)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)`)
+	if err != nil {
+		return fmt.Errorf("SyncDocLinksForUnit prepare insert: %w", err)
+	}
+	defer insertStmt.Close()
+	for _, f := range fresh {
+		k := docLinkKey{f.TargetKind, f.Target, f.Line}
+		if open[k] {
+			continue
+		}
+		if _, err := insertStmt.ExecContext(ctx, serviceID, unitID, f.TargetKind, f.Target, f.Line, f.LinkTier, f.TargetHashAtLink, now); err != nil {
+			return fmt.Errorf("SyncDocLinksForUnit insert: %w", err)
+		}
+	}
+
+	return tx.Commit()
+}
+
+// OpenDocLinks returns every still-open (valid_to = 0) doc_links row for
+// serviceID, joined to its unit's path and heading path, sorted by path
+// then line then target (I2/determinism). KR-7's docDrift is the caller:
+// it re-resolves each row's target and compares the fresh hash against
+// TargetHashAtLink.
+func (s *SQLiteStore) OpenDocLinks(ctx context.Context, serviceID string) ([]DocLinkView, error) {
+	rows, err := s.db.QueryContext(ctx, `
+SELECT dl.unit_id, du.path, du.heading_path, dl.target_kind, dl.target, dl.line, dl.link_tier, dl.target_hash_at_link, dl.valid_from
+FROM doc_links dl
+JOIN doc_units du ON du.service_id = dl.service_id AND du.unit_id = dl.unit_id
+WHERE dl.service_id = ? AND dl.valid_to = 0
+ORDER BY du.path, dl.line, dl.target`, serviceID)
+	if err != nil {
+		return nil, fmt.Errorf("OpenDocLinks: %w", err)
+	}
+	defer rows.Close()
+	var out []DocLinkView
+	for rows.Next() {
+		var v DocLinkView
+		if err := rows.Scan(&v.UnitID, &v.Path, &v.HeadingPath, &v.TargetKind, &v.Target, &v.Line, &v.LinkTier, &v.TargetHashAtLink, &v.ValidFrom); err != nil {
+			return nil, fmt.Errorf("OpenDocLinks scan: %w", err)
+		}
+		out = append(out, v)
+	}
+	return out, rows.Err()
+}
+
 // QueryDocUnits runs `docs_fts MATCH query` bounded to serviceID, ordered by
 // bm25 (best match first — SQLite's bm25() is a cost, lower is better,
 // hence the plain ascending ORDER BY), LIMIT limit (§5: 50 is the caller's
