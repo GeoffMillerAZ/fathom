@@ -113,13 +113,21 @@ func TestEditHookPre_MatchedGuard_FetchesAndRenders(t *testing.T) {
 
 	var gotMaxRules float64
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// SR-60: renderPreEdit now also calls blast_radius on the same
+		// URL — captured here too (harmlessly, into the same generic
+		// obligations-shaped payload below), so gotMaxRules is only ever
+		// set from the obligations call itself, never overwritten by a
+		// tool call that carries no max_rules argument at all.
+		name := rpcRequestName(r)
 		var req struct {
 			Params struct {
 				Arguments map[string]any `json:"arguments"`
 			} `json:"params"`
 		}
 		_ = json.NewDecoder(r.Body).Decode(&req)
-		gotMaxRules, _ = req.Params.Arguments["max_rules"].(float64)
+		if name == "obligations" {
+			gotMaxRules, _ = req.Params.Arguments["max_rules"].(float64)
+		}
 		cannedPayload := map[string]any{
 			"service": strings.ToLower(filepath.Base(dir)),
 			"file":    "internal/store/db.go",

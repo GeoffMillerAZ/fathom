@@ -325,6 +325,19 @@ func renderPreEdit(url, projDir, filePath, sessionID string) (preEditResult, boo
 		}
 	}
 
+	// SR-60 (surface reckoning F-12, design doc §6): a one-line blast-
+	// radius trailer — "N callers, M tests reach this" — fetched under its
+	// own small, additive budget (blastRadiusTimeout), rendered LAST:
+	// governing rules and findings are the guard's primary signal, blast
+	// radius a secondary heads-up. blastLineFor degrades to "" on any
+	// failure or a genuinely caller-free file, so a slow or unreachable
+	// blast_radius call never withholds anything else the guard already
+	// has to say (the fetchMemories precedent, edithook.go).
+	if blastLine := blastLineFor(url, svcName, repoRelFile); blastLine != "" {
+		writeHeaderIfNeeded()
+		sb.WriteString("\n" + blastLine)
+	}
+
 	if sb.Len() == 0 {
 		emitBeat("edit-hook", "answered", firingMeta(map[string]string{"emitted": "false", "phase": "pre", "target": "file"}, sessionID, filePath))
 		return preEditResult{}, false // guard matched but had nothing to say (no note, no rules, not stale)
