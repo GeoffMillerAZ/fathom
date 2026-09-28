@@ -20,5 +20,6 @@ func DefaultRegistry() *Registry {
 	for _, d := range []string{"openapi", "yaml", "json"} {
 		must(d, openAPISource{})
 	}
+	must("proto", protoSource{})
 	return r
 }
