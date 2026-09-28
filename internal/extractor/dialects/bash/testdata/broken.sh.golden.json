@@ -1,0 +1,28 @@
+{
+  "symbols": [
+    {
+      "name": "good",
+      "kind": "BashFunction",
+      "package": "broken",
+      "line": 7,
+      "end_line": 9,
+      "signature": "good()",
+      "calls": [
+        "echo"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "survivor",
+      "kind": "BashFunction",
+      "package": "broken",
+      "line": 16,
+      "end_line": 18,
+      "signature": "survivor()",
+      "calls": [
+        "echo"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

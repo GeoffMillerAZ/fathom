@@ -824,7 +824,15 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	// PHP
 	p.exts[".php"] = extractor.NewPhpExtractor()
 
-	// Bash
+	// Bash (.sh .bash, shebangs). LB-Q-bash built and measured a
+	// tree-sitter dialect (internal/extractor/dialects/bash/) — see
+	// docs/bench/readings/lang/bash.json — but its target (L2) is not met
+	// (§11 step 2's merge gate): the call-recall/call-precision metrics
+	// have no oracle at all for a language dialect (FamilyCalls is fed
+	// only by ScoreSCIP, tier A, and no SCIP producer exists for Bash) —
+	// L1 reads good. The CGO incumbent stays the live dispatch here; only
+	// a future item that reaches L2 (or a retargeted level, or a wired
+	// tier-C/tool calls oracle) switches this line.
 	bash := extractor.NewBashExtractor()
 	p.exts[".sh"] = bash
 	p.exts[".bash"] = bash

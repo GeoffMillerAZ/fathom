@@ -82,7 +82,7 @@ Milestone M1 progress: languages at L1 excellent 1/20, at L2 0/12, at L3 0/8, at
 | CSS (.css) | language | tags | tree-sitter/tree-sitter-css (MIT) | L3 | none (measured) | B universal-ctags 6.2.1 | file | 2026-09-28 | LB-Q-css |
 | SQL (.sql; schema and migrations) | language | tags | DerekStride/tree-sitter-sql (MIT) | L2 | none (measured) | B universal-ctags 6.2.1 | syntax | 2026-09-28 | LB-Q-sql |
 | npm/pnpm/yarn package manifests (package.json, workspaces) | tool format | doc | pure-go:encoding/json (n/a) | L3 | L1 (L1 excellent) | A npm pkg get 11.16.0 | syntax | 2026-09-28 | LB-Q-package-json |
-| Shell / Bash (.sh .bash, shebangs) | language | tags | tree-sitter/tree-sitter-bash (MIT) | L2 | tolerated | — | syntax | — | LB-Q-bash |
+| Shell / Bash (.sh .bash, shebangs) | language | tags | tree-sitter/tree-sitter-bash (MIT) | L2 | L1 (L1 good) | B universal-ctags 6.2.1 | — | 2026-09-28 | LB-Q-bash |
 | Java (.java) | language | tags | tree-sitter/tree-sitter-java (MIT) | L4 | tolerated | — | scip:scip-java | — | LB-Q-java |
 | Python packaging (pyproject.toml, requirements*.txt, setup.cfg) | tool format | doc | pure-go:github.com/pelletier/go-toml/v2 (n/a) | L2 | L2 (L1 good, L2 good) | C tomllib reference parse tomllib(python3.14) | syntax | 2026-09-28 | at target (LB-Q-python-packaging) |
 | C# (.cs) | language | tags | tree-sitter/tree-sitter-c-sharp (MIT) | L4 | tolerated | — | scip:scip-dotnet | — | LB-Q-csharp |
