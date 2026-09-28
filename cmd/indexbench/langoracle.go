@@ -361,8 +361,10 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 	// Tier B: universal-ctags over exactly the files fathom read.
 	ctagsRun := langbench.OracleRun{Tier: "B", Tool: "universal-ctags"}
 	switch bin, version, why := findCtags(ctx, opts.ctags); {
-	case opts.scipDefs:
-		ctagsRun = langbench.OracleRun{} // D2: the SCIP index is this subject's L1 oracle
+	case opts.scipDefs || toolsCarryDefinitions(opts.tools):
+		// D2: a stronger oracle (the SCIP index, or an oracle file's
+		// definitions) is this subject's one L1 oracle.
+		ctagsRun = langbench.OracleRun{}
 	case len(spec.Ctags.Languages) == 0:
 		ctagsRun.Status = "unavailable: universal-ctags has no parser for this dialect"
 	case why != "":
@@ -758,4 +760,22 @@ func gitOut(ctx context.Context, dir string, args ...string) string {
 		return ""
 	}
 	return strings.TrimSpace(string(outb))
+}
+
+// toolsCarryDefinitions reports whether any neutral oracle file carries
+// definitions (an unreadable file is left to scoreToolOracle to report).
+func toolsCarryDefinitions(paths []string) bool {
+	for _, p := range paths {
+		b, err := os.ReadFile(p)
+		if err != nil {
+			continue
+		}
+		var probe struct {
+			Definitions []json.RawMessage `json:"definitions"`
+		}
+		if json.Unmarshal(b, &probe) == nil && len(probe.Definitions) > 0 {
+			return true
+		}
+	}
+	return false
 }

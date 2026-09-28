@@ -98,14 +98,22 @@ func TestLangOracleInstruments(t *testing.T) {
 	 {"path":"main.ts","from":"run","to":"greet"},
 	 {"path":"main.ts","from":"run","to":"missing"}]}`), 0o644)
 	out2 := filepath.Join(t.TempDir(), "typescript.json")
+	// A working ctags is present: an oracle file carrying definitions is
+	// this subject's L1 oracle instead (D2), never a refused second one.
+	ctags := fakeCtags(t, t.TempDir(), `{"_type": "tag", "name": "add", "path": "math.ts", "line": 1, "kind": "function", "end": 3}`+"\n")
 	args = []string{"-dialect", "typescript", "-manifest", manPath, "-subject", subject, "-subject-name", "fx",
-		"-ctags", filepath.Join(t.TempDir(), "absent"), "-tool-oracle", defs, "-tool-oracle", calls, "-out", out2, "-queue", queue}
+		"-ctags", ctags, "-tool-oracle", defs, "-tool-oracle", calls, "-out", out2, "-queue", queue}
 	if code := cmdLangOracle(args, &stdout, &stderr); code != 0 {
 		t.Fatalf("exit %d: %s", code, stderr.String())
 	}
 	r = readReading(t, out2)
 	if r.MetricTiers[langbench.MSymRecall] != "B" || r.MetricTiers[langbench.MCallRecall] != "C" {
 		t.Fatalf("tiers %v", r.MetricTiers)
+	}
+	for _, o := range r.Oracles {
+		if o.Tool == "universal-ctags" {
+			t.Errorf("ctags listed although an oracle file carried the definitions: %+v", o)
+		}
 	}
 	if got := *r.Metrics[langbench.MCallRecall]; got < 0.66 || got > 0.67 {
 		t.Errorf("call_recall = %v, want 2/3", got)
