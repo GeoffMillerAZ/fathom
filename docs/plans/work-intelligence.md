@@ -15,21 +15,21 @@ Design: `docs/design/work-intelligence.md` (section numbers below are its). Goal
 
 ## Wave 3: zones, U1, U2, U3, U5, U13
 
-- [ ] Zones: package or deepest symbol directory by default, `[zones]` globs override; a change splits evenly across its zones (§2) {id: WI-1, symbol: ZoneOf, package: internal/console, reachable_from: TestZoneOfDefaultsAndOverrides}
-- [ ] U1 per zone, and CI minutes from a CI summary file the user names, bound to a commit {id: WI-2, symbol: costPerZone, package: internal/console, reachable_from: TestCostPerZoneAndCIMinutes, needs: "WI-1,progress-and-economics.md#PE-15"}
-- [ ] U1 split between first-attempt proofs and proofs after claimed-unproven retries {id: WI-3, symbol: firstAttemptSplit, package: internal/console, reachable_from: TestFirstAttemptSplit, needs: "WI-2"}
-- [ ] Effort per proven change: tokens, turns, wall time, rework within 7 days, reverted edits, claimed-unproven retries {id: WI-4, symbol: EffortPerProvenChange, package: internal/console, reachable_from: TestEffortPerProvenChange, needs: "progress-and-economics.md#PE-15"}
-- [ ] U2 the interest rate per zone: median effort over the fleet median, with n, IQR and model mix {id: WI-5, symbol: InterestRate, package: internal/console, reachable_from: TestInterestRateByZone, needs: "WI-1,WI-4"}
-- [ ] Friction signals per file, symbol and zone: rediscovery, blocked edits, claimed-unproven, reverts, search loops (§3 U3) {id: WI-6, symbol: FrictionSignals, package: internal/console, reachable_from: TestFrictionSignals, needs: "governance-learning.md#GL-10"}
-- [ ] Friction remedies computed from the pattern table, shown as proposals with evidence, never applied {id: WI-7, symbol: frictionRemedies, package: internal/console, reachable_from: TestFrictionRemediesAreProposals, needs: "WI-6"}
-- [ ] The friction map on the console {id: WI-8, symbol: renderFrictionMap, package: cmd/fathom, reachable_from: TestConsoleFrictionMap, needs: "WI-7"}
-- [ ] U5 the scorecard per (model, harness, effort): proven rows, honesty, cost per proven row, rework, n; cells below n = 10 greyed; confounders shown {id: WI-9, symbol: ModelScorecard, package: internal/console, reachable_from: TestModelScorecardDescriptive, needs: "WI-4"}
-- [ ] Causal sentences on the scorecard only when G2's admissibility test passes; otherwise the page says descriptive {id: WI-10, symbol: scorecardCausalGate, package: internal/console, reachable_from: TestScorecardCausalOnlyWhenAdmissible, needs: "WI-9"}
-- [ ] The scorecard, interest-rate and cost-per-zone pages on the console {id: WI-11, symbol: renderWorkIntelligence, package: cmd/fathom, reachable_from: TestConsoleWorkIntelligencePages, needs: "WI-5,WI-9"}
-- [ ] U13 hotspots: size (L1 range, named proxy), churn, centrality, uncovered share, distinct-author count as a bus-factor flag, over T1's stored factors {id: WI-12, symbol: Hotspots, package: internal/console, reachable_from: TestHotspotsOverStoredFactors, needs: "test-intelligence.md#TQ-4"}
-- [ ] The hotspots view {id: WI-13, symbol: renderHotspots, package: cmd/fathom, reachable_from: TestConsoleHotspots, needs: "WI-12"}
-- [ ] I58: every work-intelligence and progress view keys rows by agent identity only; a human name or email never appears as a row key {id: WI-14, symbol: agentIdentityKey, package: internal/console, reachable_from: TestWorkViewsKeyByAgentIdentityOnly}
-- [ ] Nearest-neighbour index over the last 5,000 proven rows' feature vectors, rebuilt in the background {id: WI-15, symbol: rowFeatureIndex, package: internal/console, reachable_from: TestRowFeatureIndexBounded, needs: "WI-5"}
+- [x] Zones: package or deepest symbol directory by default, `[zones]` globs override; a change splits evenly across its zones (§2) {id: WI-1, symbol: ZoneOf, package: internal/console, reachable_from: TestZoneOfDefaultsAndOverrides}
+- [x] U1 per zone, and CI minutes from a CI summary file the user names, bound to a commit {id: WI-2, symbol: costPerZone, package: internal/console, reachable_from: TestCostPerZoneAndCIMinutes, needs: "WI-1,progress-and-economics.md#PE-15"}
+- [x] U1 split between first-attempt proofs and proofs after claimed-unproven retries {id: WI-3, symbol: firstAttemptSplit, package: internal/console, reachable_from: TestFirstAttemptSplit, needs: "WI-2"}
+- [x] Effort per proven change: tokens, turns, wall time, rework within 7 days, reverted edits, claimed-unproven retries {id: WI-4, symbol: EffortPerProvenChange, package: internal/console, reachable_from: TestEffortPerProvenChange, needs: "progress-and-economics.md#PE-15"}
+- [x] U2 the interest rate per zone: median effort over the fleet median, with n, IQR and model mix {id: WI-5, symbol: InterestRate, package: internal/console, reachable_from: TestInterestRateByZone, needs: "WI-1,WI-4"}
+- [x] Friction signals per file, symbol and zone: rediscovery, blocked edits, claimed-unproven, reverts, search loops (§3 U3) {id: WI-6, symbol: FrictionSignals, package: internal/console, reachable_from: TestFrictionSignals, needs: "governance-learning.md#GL-10"}
+- [x] Friction remedies computed from the pattern table, shown as proposals with evidence, never applied {id: WI-7, symbol: frictionRemedies, package: internal/console, reachable_from: TestFrictionRemediesAreProposals, needs: "WI-6"}
+- [x] The friction map on the console {id: WI-8, symbol: renderFrictionMap, package: cmd/fathom, reachable_from: TestConsoleFrictionMap, needs: "WI-7"}
+- [x] U5 the scorecard per (model, harness, effort): proven rows, honesty, cost per proven row, rework, n; cells below n = 10 greyed; confounders shown {id: WI-9, symbol: ModelScorecard, package: internal/console, reachable_from: TestModelScorecardDescriptive, needs: "WI-4"}
+- [x] Causal sentences on the scorecard only when G2's admissibility test passes; otherwise the page says descriptive {id: WI-10, symbol: scorecardCausalGate, package: internal/console, reachable_from: TestScorecardCausalOnlyWhenAdmissible, needs: "WI-9"}
+- [x] The scorecard, interest-rate and cost-per-zone pages on the console {id: WI-11, symbol: renderWorkIntelligence, package: cmd/fathom, reachable_from: TestConsoleWorkIntelligencePages, needs: "WI-5,WI-9"}
+- [x] U13 hotspots: size (L1 range, named proxy), churn, centrality, uncovered share, distinct-author count as a bus-factor flag, over T1's stored factors {id: WI-12, symbol: Hotspots, package: internal/console, reachable_from: TestHotspotsOverStoredFactors, needs: "test-intelligence.md#TQ-4"}
+- [x] The hotspots view {id: WI-13, symbol: renderHotspots, package: cmd/fathom, reachable_from: TestConsoleHotspots, needs: "WI-12"}
+- [x] I58: every work-intelligence and progress view keys rows by agent identity only; a human name or email never appears as a row key {id: WI-14, symbol: agentIdentityKey, package: internal/console, reachable_from: TestWorkViewsKeyByAgentIdentityOnly}
+- [x] Nearest-neighbour index over the last 5,000 proven rows' feature vectors, rebuilt in the background {id: WI-15, symbol: rowFeatureIndex, package: internal/console, reachable_from: TestRowFeatureIndexBounded, needs: "WI-5"}
 
 ## Wave 4: task preflight (U6, the Jev site)
 

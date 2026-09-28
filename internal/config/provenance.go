@@ -103,6 +103,23 @@ func mergeLayer(cfg *Config, prov Provenance, raw map[string]any, source Source,
 			prov["console.conserve_max_files"] = SourceInfo{source, path}
 		}
 	}
+
+	// [zones] (WI-1): like every other slice-valued field, the layer that
+	// sets the table wins outright — a zone map has no per-entry merge
+	// that would not silently mix two layers' partitions.
+	if zm, ok := raw["zones"].(map[string]any); ok {
+		zones := make(map[string][]string, len(zm))
+		for name, v := range zm {
+			arr, _ := v.([]any)
+			for _, g := range arr {
+				if s, ok := g.(string); ok {
+					zones[name] = append(zones[name], s)
+				}
+			}
+		}
+		cfg.Zones = zones
+		prov["zones"] = SourceInfo{source, path}
+	}
 }
 
 // mergeSurfaceFields merges the `[surface]` table's `pattern` array-of-

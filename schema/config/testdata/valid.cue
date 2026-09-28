@@ -121,3 +121,11 @@ exampleTenancySized: #Config & {
 exampleConsole: #Config & {
 	console: conserve_max_files: 200
 }
+
+// Work-intelligence zones by path glob (WI-1).
+exampleZones: #Config & {
+	zones: {
+		payments: ["internal/pay/**", "cmd/payd/*"]
+		console: ["internal/console/**"]
+	}
+}
