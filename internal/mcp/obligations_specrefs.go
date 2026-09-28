@@ -8,11 +8,11 @@ package mcp
 // fetches, so a second round trip is never needed.
 import (
 	"context"
-	"os"
 	"regexp"
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/connector"
+	"github.com/geoffmilleraz/fathom/internal/corpus"
 	"github.com/geoffmilleraz/fathom/internal/sdd"
 )
 
@@ -69,8 +69,8 @@ func obligationsSpecRefs(ctx context.Context, backend QueryInterface, service, f
 	if err != nil {
 		return nil
 	}
-	raw, err := os.ReadFile(full)
-	if err != nil {
+	raw, ex, err := corpus.ReadFileCapped(ctx, full, sourceReadMaxFileBytes)
+	if err != nil || ex != nil {
 		return nil
 	}
 	ids, err := sdd.ExtractRefsFromText(string(raw), "")
