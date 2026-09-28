@@ -389,11 +389,21 @@ func (e *TSExtractor) Extract(service, relPath string, src []byte) ([]core.Symbo
 	attachTSCalls(defs, calls)
 
 	pkg := pkgFromPath(relPath)
+	switch rules.packageStrategy {
+	case "none":
+		pkg = ""
+	case "capture":
+		tsPackageFromCapture(matches, src, defs, pkg)
+	}
 	nodes := make([]core.SymbolNode, 0, len(defs))
 	for _, d := range defs {
+		p := pkg
+		if d.pkg != "" {
+			p = d.pkg
+		}
 		n := core.SymbolNode{
 			Service:  service,
-			Package:  pkg,
+			Package:  p,
 			Name:     d.qualName,
 			Kind:     d.kind,
 			FilePath: relPath,
@@ -429,6 +439,7 @@ type tsDef struct {
 	parent     int    // index into the defs slice, -1 if none
 	bodyStart  uint32 // start of the @body capture, when hasBody
 	hasBody    bool
+	pkg        string // @scope.package's answer (LB-F5), "" for the file default
 	qualName   string
 	callSet    map[string]struct{}
 	calls      []string
@@ -530,6 +541,67 @@ func splitTSMatches(matches []tsengine.Match, kinds map[string]tsDefKind, src []
 		defs = append(defs, d)
 	}
 	return defs, calls, typeRefs
+}
+
+// tsPackageFromCapture applies @scope.package (LB-F5, design §3.5) for a
+// manifest with package.strategy "capture". A capture whose match has no
+// @scope range is a file-wide package clause (Kotlin, Java, PHP): it
+// answers every definition. One whose match also captures @scope (a block
+// namespace, C#'s shape) answers the definitions inside that range, nested
+// ranges joined with "."; the innermost range chain wins over the file-wide
+// clause. A file with no capture keeps fallback (pkgFromPath).
+func tsPackageFromCapture(matches []tsengine.Match, src []byte, defs []*tsDef, fallback string) {
+	type scoped struct {
+		name       string
+		start, end uint32
+	}
+	fileWide := ""
+	var scopes []scoped
+	for _, m := range matches {
+		var name, scope *tsengine.Node
+		for i := range m.Captures {
+			c := &m.Captures[i]
+			switch c.Name {
+			case "scope.package":
+				n := c.Node
+				name = &n
+			case "scope":
+				n := c.Node
+				scope = &n
+			}
+		}
+		if name == nil {
+			continue
+		}
+		text := strings.Join(strings.Fields(name.Text(src)), "")
+		if text == "" {
+			continue
+		}
+		if scope == nil {
+			if fileWide == "" {
+				fileWide = text
+			}
+			continue
+		}
+		scopes = append(scopes, scoped{name: text, start: scope.StartByte, end: scope.EndByte})
+	}
+	sort.SliceStable(scopes, func(i, j int) bool { return scopes[i].start < scopes[j].start })
+	for _, d := range defs {
+		var parts []string
+		for _, s := range scopes {
+			if d.start >= s.start && d.end <= s.end {
+				parts = append(parts, s.name) // outer ranges sort first
+			}
+		}
+		switch {
+		case len(parts) > 0:
+			d.pkg = strings.Join(parts, ".")
+		case fileWide != "":
+			d.pkg = fileWide
+		default:
+			d.pkg = fallback
+		}
+	}
 }
 
 // tsEndLine is the 1-based line of the definition node's last byte (§3.3).
