@@ -71,7 +71,11 @@ pkill -f "$hold" 2>/dev/null || true
 # The default priority is nice 10, never macOS background QoS (which ran
 # the gate ~3x slower and timed cmd/fathom out).
 got_nice="$(env -u FATHOM_GATE_NICE bash "${SCRIPT_DIR}/gate-lease.sh" sh -c 'ps -o nice= -p $$' | tr -d ' ')"
-[ "$got_nice" = "10" ] || fail "default priority: nice $got_nice, want 10"
+# nice is relative: under a caller already niced (the gate runs this test inside its
+# own lease, at nice 10) the lease adds 10 more, capped at 20.
+base_nice="$(ps -o nice= -p $$ | tr -d ' ')"
+want_nice=$(( base_nice + 10 )); [ "$want_nice" -gt 20 ] && want_nice=20
+[ "$got_nice" = "$want_nice" ] || fail "default priority: nice $got_nice, want $want_nice (caller at $base_nice)"
 
 # The pre-push gate's heavy steps (the scratch ingest and the verify runs)
 # take the lease too, not only `task validate` (§12.3).
