@@ -1448,6 +1448,7 @@ ON CONFLICT (service_id, claim_id) DO UPDATE SET
 		defer stmt.Close()
 
 		for _, c := range claims {
+			c = stampClaimValidFrom(c)
 			scopeJSON, err := json.Marshal(c.Scope)
 			if err != nil {
 				return fmt.Errorf("PutClaims marshal scope: %w", err)
@@ -2202,6 +2203,23 @@ func scanClaims(rows *sql.Rows) ([]core.SemanticClaim, error) {
 		return nil, fmt.Errorf("scanClaims rows: %w", err)
 	}
 	return result, nil
+}
+
+// stampClaimValidFrom is GL-16's activation of SU-19's valid_from (design
+// doc governance-learning §7): every writer that mints a claim — the
+// compiler, a rules-file source, a learned rule — sets CompiledAt but none
+// of them ever set ValidFrom, so a compiled claim's window was open to the
+// beginning of time and an as_of before its mint still served it. A claim
+// whose writer left ValidFrom zero is stamped with its own CompiledAt; a
+// writer's explicit ValidFrom wins, and a claim with no compile time at
+// all stays zero (unconstrained — the only honest reading of a row that
+// predates the column). Both backends stamp here, and both upserts keep
+// the FIRST stored value, so a recompile never moves a claim's history.
+func stampClaimValidFrom(c core.SemanticClaim) core.SemanticClaim {
+	if c.ValidFrom.IsZero() && !c.CompiledAt.IsZero() {
+		c.ValidFrom = c.CompiledAt.UTC()
+	}
+	return c
 }
 
 // formatClaimTime renders a claim's ValidFrom/ValidTo (SU-19) as the store's

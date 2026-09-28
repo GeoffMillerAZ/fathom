@@ -770,7 +770,7 @@ func (m *MemoryStore) PutClaims(_ context.Context, claims []core.SemanticClaim, 
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	for _, c := range claims {
-		sc := c
+		sc := stampClaimValidFrom(c)
 		if c.Scope != nil {
 			sc.Scope = make([]string, len(c.Scope))
 			copy(sc.Scope, c.Scope)
