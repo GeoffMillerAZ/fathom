@@ -1,15 +1,20 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 
 	skillsdist "github.com/geoffmilleraz/fathom/dist/agents/skills"
 	"github.com/geoffmilleraz/fathom/internal/buildinfo"
 	"github.com/geoffmilleraz/fathom/internal/harness"
+	"github.com/geoffmilleraz/fathom/internal/mcp"
 )
 
 // fathom plugin render (vision 16 R1, plan IO-25; RP-6 two manifests):
@@ -56,7 +61,7 @@ const (
 // rendered once loads in Claude Code (which reads its own manifest and
 // auto-discovers `skills/`) and in every Agent Plugins client (VS Code,
 // Cursor, Copilot, Codex, Kiro, …). Deterministic: no build stamp.
-func renderAgentPluginManifest(mcpURL string) (pluginJSON, mcpJSON map[string]any) {
+func renderAgentPluginManifest(mcpURL, defaultSurfaceHeader string) (pluginJSON, mcpJSON map[string]any) {
 	pluginJSON = map[string]any{
 		"$schema":     agentPluginSchemaURL,
 		"name":        "fathom",
@@ -73,10 +78,99 @@ func renderAgentPluginManifest(mcpURL string) (pluginJSON, mcpJSON map[string]an
 			// manifest, and schema/plugin/schema.cue's #AgentMCP does not
 			// admit the field — it is Claude Code's own, and it rides the
 			// Claude plugin's .mcp.json below (BP-22).
-			"fathom": map[string]any{"type": "streamable-http", "url": mcpURL},
+			//
+			// The header documents the default surface (RH-5,
+			// docs/design/reach.md §4): #AgentPlugin is a closed schema
+			// with no metadata field, so `headers` — the one open field
+			// #HTTPServer admits — carries it here instead. Informational
+			// only; the daemon does not read it back.
+			"fathom": map[string]any{
+				"type":    "streamable-http",
+				"url":     mcpURL,
+				"headers": map[string]any{"X-Fathom-Default-Surface": defaultSurfaceHeader},
+			},
 		},
 	}
 	return pluginJSON, mcpJSON
+}
+
+// renderPluginSurface returns the default agent surface's tool names
+// (sorted) and the named opt-in groups this render stamps into the plugin
+// tree (RH-5, docs/design/reach.md §4): "the plugin bundle... render[s]
+// the default surface and group settings into both manifests". Read
+// straight from the registry (internal/mcp.DefaultSurfaceTools/
+// ExtendedSurfaceTools) rather than hand-copied, so an installed plugin
+// can never document a surface the daemon does not actually serve.
+//
+// "extended" is the one opt-in group the registry serves today (POST
+// /rpc/extended, and /rpc/companion as its compatible alias) — the design
+// doc's named groups (review/explore/memory/system/admin, docs/design/
+// reach.md §3) are RH-2's `[surface] groups` config, not yet implemented;
+// this documents what the surface reckoning actually shipped (SR-33..35),
+// not the not-yet-built config surface.
+func renderPluginSurface() (defaultTools []string, groups map[string][]string) {
+	defaultTools = mcp.DefaultSurfaceTools()
+	groups = map[string][]string{
+		"extended": mcp.ExtendedSurfaceTools(),
+	}
+	return defaultTools, groups
+}
+
+// pluginTemplateDigestPin is TestPluginTemplateDigestPinned's golden value
+// for pluginVersion "0.2.0". Regenerate with pluginTemplateDigest() (see
+// that test) and bump pluginVersion in the SAME change whenever this pin
+// moves — the digest is what makes a template edit visible; the version
+// bump is the deliberate human act it demands (docs/design/reach.md §4).
+const pluginTemplateDigestPin = "7a960a82302d50e5"
+
+// pluginTemplateDigest is a stable sha256 (hex, first 16 chars) over every
+// deterministic input `plugin render` turns into the shipped tree: the
+// skill sources, the hook spec table, and the default surface/groups
+// renderPluginSurface stamps into the manifests. Deliberately EXCLUDES
+// pluginVersion and buildinfo.Version() (varying build metadata that would
+// make the digest chase its own tail). internal/CLAUDE.md's determinism
+// contract holds: no clock, no map-iteration order (every input is sorted
+// first).
+func pluginTemplateDigest() (string, error) {
+	h := sha256.New()
+
+	names := append([]string(nil), skillsdist.Names...)
+	sort.Strings(names)
+	for _, name := range names {
+		content, err := renderSkill(skillsTargetAgents, name)
+		if err != nil {
+			return "", fmt.Errorf("skill %q: %w", name, err)
+		}
+		fmt.Fprintf(h, "skill:%s:%d:", name, len(content))
+		h.Write(content)
+	}
+
+	specs := append([]hookSpec(nil), hookSpecsFor(harness.ClaudeCode)...)
+	sort.Slice(specs, func(i, j int) bool {
+		if specs[i].event != specs[j].event {
+			return specs[i].event < specs[j].event
+		}
+		if specs[i].matcher != specs[j].matcher {
+			return specs[i].matcher < specs[j].matcher
+		}
+		return specs[i].sub < specs[j].sub
+	})
+	for _, s := range specs {
+		fmt.Fprintf(h, "hook:%s:%s:%s:%d:%v:", s.event, s.matcher, s.sub, s.timeout, s.async)
+	}
+
+	defaultTools, groups := renderPluginSurface()
+	fmt.Fprintf(h, "default:%v:", defaultTools)
+	groupNames := make([]string, 0, len(groups))
+	for name := range groups {
+		groupNames = append(groupNames, name)
+	}
+	sort.Strings(groupNames)
+	for _, name := range groupNames {
+		fmt.Fprintf(h, "group:%s:%v:", name, groups[name])
+	}
+
+	return hex.EncodeToString(h.Sum(nil))[:16], nil
 }
 
 func cmdPluginRender(args []string, stdout, stderr io.Writer) int {
@@ -88,6 +182,12 @@ func cmdPluginRender(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
+	// RH-5 (docs/design/reach.md §4): the default surface and its opt-in
+	// groups, read from the live registry — stamped into every manifest
+	// below rather than hand-copied.
+	defaultTools, groups := renderPluginSurface()
+	defaultSurfaceHeader := strings.Join(defaultTools, ",")
+
 	// .claude-plugin/plugin.json — Claude Code's manifest.
 	manifest := map[string]any{
 		"name":        "fathom",
@@ -95,7 +195,11 @@ func cmdPluginRender(args []string, stdout, stderr io.Writer) int {
 		"version":     pluginVersion,
 		"description": pluginDescription,
 		"author":      map[string]any{"name": "fathom"},
-		"metadata":    map[string]any{"fathomVersion": buildinfo.Version()},
+		"metadata": map[string]any{
+			"fathomVersion":  buildinfo.Version(),
+			"defaultSurface": defaultTools,
+			"surfaceGroups":  groups,
+		},
 	}
 	if err := writeJSON(filepath.Join(*out, ".claude-plugin", "plugin.json"), manifest); err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
@@ -103,7 +207,7 @@ func cmdPluginRender(args []string, stdout, stderr io.Writer) int {
 	}
 
 	// plugin.json + mcp.json — the Agent Plugins 1.0 pair (RP-6).
-	agentPlugin, agentMCP := renderAgentPluginManifest(*mcpURL)
+	agentPlugin, agentMCP := renderAgentPluginManifest(*mcpURL, defaultSurfaceHeader)
 	if err := writeJSON(filepath.Join(*out, "plugin.json"), agentPlugin); err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
@@ -171,7 +275,14 @@ func cmdPluginRender(args []string, stdout, stderr io.Writer) int {
 			// turns with it and without it. Claude Code's own .mcp.json
 			// shape, not the portable agent-plugins.org one above, which
 			// does not admit the field.
-			"fathom": map[string]any{"type": "http", "url": *mcpURL, "alwaysLoad": true},
+			"fathom": map[string]any{
+				"type":       "http",
+				"url":        *mcpURL,
+				"alwaysLoad": true,
+				// RH-5: the same default-surface header the portable
+				// mcp.json carries above (renderAgentPluginManifest).
+				"headers": map[string]any{"X-Fathom-Default-Surface": defaultSurfaceHeader},
+			},
 		},
 	}); err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
