@@ -77,7 +77,7 @@ The report: `scripts/stranger-check.sh` went from 110 s to 235 s after the langu
 (`1e87fffa`). Measured on darwin/arm64 (10 cores) against the same input — a `git archive`
 of `88c961ed` (the tree after waves 1–1b and round 2's harness work) — with two binaries:
 **pre** = `8a165059` (the first-parent commit just before the language merge) and **head** =
-`88c961ed`. Every run held `/Volumes/m2ext/tmp/lang-measure.lock`; sibling agents' gates
+`88c961ed`. Every run held `<scratch>/lang-measure.lock`; sibling agents' gates
 still ran (load average 9–16 on 10 cores throughout), which is the point below.
 
 **Daemon ingest, stranger-shaped** (fresh `HOME`, so a cold Go build cache for the typed

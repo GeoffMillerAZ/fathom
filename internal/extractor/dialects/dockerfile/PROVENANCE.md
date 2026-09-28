@@ -36,7 +36,7 @@
   sandboxed worker (Colima is not running; starting one is out of scope and disk-prohibitive
   for a single queue item), so `docker buildx build --print=outline` itself cannot run; the
   scratch tool that walked this same official AST offline (never committed; a throwaway,
-  outside fathom's own module) is `/Volumes/m2ext/tmp/lang-dockerfile/oracle-gen/main.go` at
+  outside fathom's own module) is `<scratch>/lang-dockerfile/oracle-gen/main.go` at
   measurement time — reproducible from `github.com/moby/buildkit/frontend/dockerfile` v0.33.0
   directly. `hadolint --format json` is a linter (parse-only signal), not a definitions source,
   so it named no oracle role here; universal-ctags 6.2.1 has no Dockerfile language at all
