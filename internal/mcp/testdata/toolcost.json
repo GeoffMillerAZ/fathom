@@ -13,10 +13,6 @@
       "measured": "tree",
       "basis": "design §3.1: moves to index only with the derived facts (§6); today a whole-service graph build (loadNavGraphs)"
     },
-    "capabilities": {
-      "measured": "point",
-      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
-    },
     "cloc": {
       "measured": "tree",
       "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
@@ -91,10 +87,6 @@
     },
     "list_services": {
       "measured": "fleet",
-      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
-    },
-    "list_sources": {
-      "measured": "tree",
       "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
     },
     "localize": {
@@ -181,10 +173,6 @@
       "measured": "tree",
       "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
     },
-    "server_stats": {
-      "measured": "point",
-      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
-    },
     "shell_out": {
       "measured": "tree",
       "basis": "static read: client.Sources (whole-tree read)"
@@ -204,6 +192,10 @@
     "staleness_report": {
       "measured": "point",
       "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
+    },
+    "status": {
+      "measured": "tree",
+      "basis": "SR-23 merge of capabilities/server_stats (point) and list_sources (tree, a whole-service symbol read for the \"sources\" section); declared at the heaviest section's cost"
     },
     "symbol_context": {
       "measured": "tree",

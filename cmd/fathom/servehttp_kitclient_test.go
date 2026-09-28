@@ -64,9 +64,11 @@ func TestServeHTTPNegotiatesWithKitClient(t *testing.T) {
 		t.Errorf("NOT PROVEN: %s — tools/list changed between two calls: %v", kitClientSentence, err)
 	}
 
-	text, err := c.CallTool(ctx, "capabilities", json.RawMessage(`{}`))
+	// SR-23: capabilities merged into status(section:"tools"), byte-
+	// compatible with its own {active_surface, tool_count, schema_bytes, ...}.
+	text, err := c.CallTool(ctx, "status", json.RawMessage(`{"section":"tools"}`))
 	if err != nil {
-		t.Fatalf("NOT PROVEN: %s — tools/call capabilities: %v", kitClientSentence, err)
+		t.Fatalf("NOT PROVEN: %s — tools/call status: %v", kitClientSentence, err)
 	}
 	var caps struct {
 		ActiveSurface string `json:"active_surface"`
@@ -74,10 +76,10 @@ func TestServeHTTPNegotiatesWithKitClient(t *testing.T) {
 		SchemaBytes   int    `json:"schema_bytes"`
 	}
 	if err := json.Unmarshal([]byte(text), &caps); err != nil {
-		t.Fatalf("NOT PROVEN: %s — capabilities text block is not JSON: %v (%q)", kitClientSentence, err, text)
+		t.Fatalf("NOT PROVEN: %s — status text block is not JSON: %v (%q)", kitClientSentence, err, text)
 	}
 	if caps.ActiveSurface != mcp.SurfaceAgent || caps.ToolCount != len(want) || caps.SchemaBytes == 0 {
-		t.Errorf("NOT PROVEN: %s — capabilities over the kit client = %+v", kitClientSentence, caps)
+		t.Errorf("NOT PROVEN: %s — status(section:tools) over the kit client = %+v", kitClientSentence, caps)
 	}
 	t.Logf("agent surface schema budget: %d bytes per session (tools/list, %d tools)", caps.SchemaBytes, caps.ToolCount)
 }

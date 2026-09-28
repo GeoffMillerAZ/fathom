@@ -28,7 +28,6 @@ import (
 // fails when the two drift, so the copy cannot go quietly stale.
 var agentSurfaceTools = []string{
 	"blast_radius",
-	"capabilities",
 	"discoveries",
 	"find_callers",
 	"find_symbol",
@@ -98,7 +97,7 @@ var handlerTable = []handlerRule{
 	{Path: "internal/mcp/readsource.go", Tools: []string{"read_source"}},
 	{Path: "internal/mcp/semantic_tools.go", Tools: []string{"obligations"}},
 	{Path: "internal/mcp/verify_plan_tool.go", Tools: []string{"verify_plan"}},
-	{Path: "internal/mcp/meta.go", Tools: []string{"capabilities", "staleness_report"}},
+	{Path: "internal/mcp/meta.go", Tools: []string{"status", "staleness_report"}, Why: "status (SR-23) merges the retired capabilities/server_stats/list_sources tools"},
 	{Path: "internal/mcp/platform_tools.go", Tools: []string{"list_services"}},
 	{Path: "internal/mcp/memory_tools.go", Tools: []string{"memory_search"}},
 	{Path: "internal/mcp/extra_tools.go", Tools: []string{"ingest", "pack_context", "repo_map"}},

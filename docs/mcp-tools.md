@@ -64,13 +64,14 @@ only) each request selects an immutable **surface** via the path:
 `search`, `symbol_context`, `verify_plan` — the answers an agent gets before opting
 into anything else (`TestDefaultSurfaceIsEight`).
 
-**Extended/companion allowlist (20 tools, growing to 21 once SR-23 registers
-`status`):** the default eight above plus `find_callers`, `findings_near`, `ingest`,
-`list_services`, `localize`, `outline`, `pack_context`, `query_symbols`, `references`,
-`repo_map`, `staleness_report`, `test_impact`. `capabilities`, `discoveries`,
-`entrypoints`, `memory_search`, `rename_impact` and `safe_delete_check` left the
-curated surfaces this way too — each merged into a surviving tool or removed outright
-by its own SR-* row in wave 2, not this one.
+**Extended/companion allowlist (21 tools):** the default eight above plus
+`find_callers`, `findings_near`, `ingest`, `list_services`, `localize`, `outline`,
+`pack_context`, `query_symbols`, `references`, `repo_map`, `staleness_report`,
+`status`, `test_impact`. `capabilities`, `discoveries`, `entrypoints`, `memory_search`,
+`rename_impact` and `safe_delete_check` left the curated surfaces this way too — each
+merged into a surviving tool or removed outright by its own SR-* row in wave 2, not
+this one; `status` (SR-23, F-11) is the one merge that lands ON this list, since it
+answers what `capabilities` used to.
 `memory_search` (AM-8,
 docs/design/anchored-memory.md §4) is the third net-new tool on this allowlist — the
 one direct query over anchored memories, every answer labeled with tier and state;
@@ -438,7 +439,6 @@ elided, bytes_read, reason}` in its envelope (or its `batch` entry). A test bina
 | `arch_conformance` | `index` |
 | `batch` | `point` |
 | `blast_radius` | `tree` |
-| `capabilities` | `point` |
 | `cloc` | `tree` |
 | `community` | `index` |
 | `compile_layer` | `ingest` |
@@ -458,7 +458,6 @@ elided, bytes_read, reason}` in its envelope (or its `batch` entry). A test bina
 | `ingest` | `ingest` |
 | `list_modules` | `point` |
 | `list_services` | `fleet` |
-| `list_sources` | `tree` |
 | `localize` | `index` |
 | `memory_search` | `point` |
 | `module_obligations` | `index` |
@@ -480,12 +479,12 @@ elided, bytes_read, reason}` in its envelope (or its `batch` entry). A test bina
 | `safe_delete_check` | `tree` |
 | `search` | `tree` |
 | `secret_scan` | `tree` |
-| `server_stats` | `point` |
 | `shell_out` | `tree` |
 | `spec_coverage` | `tree` |
 | `spec_refs` | `tree` |
 | `stale_docs` | `tree` |
 | `staleness_report` | `point` |
+| `status` | `tree` |
 | `symbol_context` | `tree` |
 | `test_impact` | `index` |
 | `traceability` | `tree` |
@@ -501,10 +500,8 @@ exception: the `agent`/`companion` surface shows only its explicit allowlist (se
 | Tool | Arguments | Returns | Purpose |
 |---|---|---|---|
 | `find_symbol` | `service` (req), `name` (req) | `{symbols: [SymbolNode], matched_via, truncated?, elided?, did_you_mean?, implementations?: [{name, file_path, line, via}]}` | Locate symbol definitions with tiered matching: exact/key-suffix → case-insensitive → substring (capped at 20, tightest first); a full miss returns up to 5 concern-ranked `did_you_mean` suggestions. **J3(b)** (app-kit O22): the case-insensitive tier (name match, then a package-name match) also caps at 20 rows, carrying `truncated:true` and the standard `elided` disclosure (`{count, of, ordering, how_to_get_more}`) when more matched — a query naming a whole package no longer floods the response with every exported symbol. `matched_via` = `exact` \| `case_insensitive` \| `substring` \| `none`. An exact hit on a single Go interface additionally carries `implementations` (SB-5, docs/plans/strengths-bench.md): the concrete types satisfying it, `via` = `"typed"` (a persisted interface-dispatch edge confirms a real call-site dispatch), `"assertion"` (a `var _ Iface = (*T)(nil)` in source), or `"method_set"` (structural name-only match over indexed `GoMethod` symbols) — in that preference order, deterministic and sorted by name. Also on the agent/companion surface. |
-| `capabilities` | — | `{tools, active_surface, active_profile, tool_count, extraction_engines, schema_bytes}` | List the tools visible on this request's surface and the active surface/profile. Also on the agent/companion surface — the discovery escape hatch that makes a small surface safe. `extraction_engines` (ADR-021 §4 / XT-5) maps file extension → which engine actually produced its symbols for the languages this migration touched — `"tree-sitter-wasm"` (wazero-executed, `internal/extractor/tsengine`) for `.py`/`.js`/`.jsx`/`.mjs`/`.cjs`/`.ts`/`.tsx`/`.mts`/`.cts`/`.rb`/`.kt`/`.kts` (exactly the extensions the connector discovers; `.mjs`/`.cjs`/`.mts`/`.cts` joined in J1 — app-kit O18/O32/O33; `.pyi` is engine-parseable but still not wired, so not claimed). `.kt`/`.kts` (wave P2, O79) had no CGO incumbent to migrate FROM — ADR-021 §4's "new-language breadth" clause, not a calibration swap. Not a full 24-language registry — see `internal/extractor.EngineProvenance`. |
-| `server_stats` | `service` (opt) | `{uptime_seconds, request_count, started_at, unclassified_files?, oversize_files?, classified_zero_files?, typed_edges?}` | Return server uptime and total request count. When the backend supports it, also reports ingest **event counters** (ADR-021 §2): `unclassified_files` (yaml/cue-family files whose content matched no known tool), `oversize_files` (files skipped for exceeding the 2MB extraction cap), and `classified_zero_files` (per-tool map: files that DID classify but whose extractor emitted zero symbols). These count ingest events **since this server process started** — they reset on daemon restart and are not properties of the index (the same file re-ingested twice counts twice). Note: `unclassified` here (classifier verdict on yaml/cue content) is a different measure from cloc's `unclassified` language bucket (path has no registered extractor) — see the `cloc` row. With `service`, adds `typed_edges: {service, total, direct, iface_dispatch, unresolved}` (ADR-021 §3) — all-zero means the typed pass has not run for that store. |
+| `status` | `section` (req: `tools`\|`daemon`\|`sources`), `service` (opt for `tools`/`daemon`, req for `sources`) | Byte-compatible per section with the tools it replaced (see below) | **SR-23** (F-11, design §4) merges the retired `capabilities`/`server_stats`/`list_sources` tools behind one `section` argument — `list_services` (37,155 calls, hooks and the verify CLI) stays a separate tool, unaffected. `section:"tools"` is byte-compatible with the retired `capabilities`: `{tools, active_surface, active_profile, tool_count, extraction_engines, schema_bytes}` — the discovery escape hatch that makes a small surface safe; `extraction_engines` (ADR-021 §4 / XT-5) maps file extension → which engine actually produced its symbols (`"tree-sitter-wasm"`, wazero-executed, `internal/extractor/tsengine`, for `.py`/`.js`/`.jsx`/`.mjs`/`.cjs`/`.ts`/`.tsx`/`.mts`/`.cts`/`.rb`/`.kt`/`.kts` — see `internal/extractor.EngineProvenance`). `section:"daemon"` is byte-compatible with the retired `server_stats`: `{uptime_seconds, request_count, started_at, unclassified_files?, oversize_files?, classified_zero_files?, surface_traffic?, typed_edges?}` — ingest **event counters** (ADR-021 §2) since this server process started, `surface_traffic` (A1-1) per-surface `{calls, last_ts}` when a call logger is wired, and, with an optional `service`, `typed_edges: {service, total, direct, iface_dispatch, unresolved}` (ADR-021 §3, all-zero meaning the typed pass has not run for that store). `section:"sources"` is byte-compatible with the retired `list_sources`: `{sources: [string]}`, a required `service` — the one section carrying a fleet-service pivot risk, so it is the one section `hostedModulesTools` refuses under hosted-modules mode even though `status` itself is on that allowlist. Also on the agent/companion surface. |
 | `staleness_report` | `service` (req) | `{service, source_count, sources, indexed_commit, current_commit, reingest_recommended, layers?, elision?}` | Return a staleness summary: distinct source files, last-ingested state, and git-commit drift (`reingest_recommended` is `true` when the repo HEAD has advanced since the last ingest). When compiled claims exist, appends a `layers` map with a per-layer claims summary. **RC-19**: `sources` is budgeted (`fitToolBudget`, 16000 chars) — `source_count` always reports the TRUE total; a truncated `sources` list carries a one-line `elision`: `"elided: N more — refine with read_source or outline on the file you doubt (source_count is the full total)"`. **This is the tool for "is this still true" / "what was known"** (RC-23, docs/vision/28-receipts.md §3.5) — not a re-read of the file, not `obligations`. |
-| `list_sources` | `service` (req) | `{sources: [string]}` | List distinct source file paths ingested for the service |
 | `secret_scan` | `service` (req) | `{findings: [Finding]}` | Scan source files for hardcoded tokens, high-entropy strings, AWS keys, JWTs, PEM headers, credential-named variables |
 | `shell_out` | `service` (req) | `{findings: [Finding]}` | Find shell-out call sites: `exec.Command` (Go), `subprocess` (Python), `child_process` (JS/TS) |
 | `http_client_calls` | `service` (req) | `{findings: [Finding]}` | Find HTTP client call sites: `http.Get/Post/.Do()` (Go), `fetch`/`axios` (JS/TS), `requests` (Python) |
@@ -546,7 +543,7 @@ Symbol navigation, structural analysis, and impact analysis for active coding ta
 |---|---|---|---|
 | `complexity` | `service` (req), `top_n` (opt, default 10) | `{hotspots: [{name, file, line, complexity}], maintainability_index}` | Cyclomatic-complexity hotspots and Maintainability Index for the service |
 | `god_object` | `service` (req), `method_threshold` (opt, default 10), `field_threshold` (opt, default 10) | `{god_objects: [{type, methods, fields}]}` | Identify god-object types with too many methods or fields |
-| `cloc` | `service` (req) | `{by_lang: {lang: {blank, comment, code, total}}, total, binary: {files, bytes}, generated: {files, bytes}}` | Count blank, comment, and code lines per language, plus a grand total. Files with no registered extractor appear under the explicit `unclassified` label (a **language** bucket keyed on path — distinct from `server_stats`' `unclassified_files`, which is the yaml/cue content-classifier's event counter); binary files (NUL-byte sniff) are excluded from all line counts and reported only as a file-count/bytes `binary` bucket. Generated files (ADR-021 §2: a "Code generated ... DO NOT EDIT" header — for Go, the official convention line before the package clause; for other languages, a comment-token-prefixed marker in the first lines) get the same treatment via a `generated` bucket — excluded from `by_lang`/`total` so protoc/mockgen/stringer output never inflates the code-you-write line count. `cloc`'s `unclassified` bucket lumps every unregistered extension together, unnamed — for a NAMED breakdown of known-but-unextracted languages (e.g. `swift`), see `list_services`' `unsupported_languages` (O69) below. |
+| `cloc` | `service` (req) | `{by_lang: {lang: {blank, comment, code, total}}, total, binary: {files, bytes}, generated: {files, bytes}}` | Count blank, comment, and code lines per language, plus a grand total. Files with no registered extractor appear under the explicit `unclassified` label (a **language** bucket keyed on path — distinct from `status(section:"daemon")`'s `unclassified_files`, which is the yaml/cue content-classifier's event counter); binary files (NUL-byte sniff) are excluded from all line counts and reported only as a file-count/bytes `binary` bucket. Generated files (ADR-021 §2: a "Code generated ... DO NOT EDIT" header — for Go, the official convention line before the package clause; for other languages, a comment-token-prefixed marker in the first lines) get the same treatment via a `generated` bucket — excluded from `by_lang`/`total` so protoc/mockgen/stringer output never inflates the code-you-write line count. `cloc`'s `unclassified` bucket lumps every unregistered extension together, unnamed — for a NAMED breakdown of known-but-unextracted languages (e.g. `swift`), see `list_services`' `unsupported_languages` (O69) below. |
 | `arch_conformance` | `service` (req), `rules` (opt: `[{from_pkg,to_pkg,allow}]`, `"*"` wildcard), `deny_by_default` (opt bool) | `{violations: [{from,to,reason}], count, rule_source, checked, reason?}` | Check the service's call-graph edges against architectural layering rules. When `rules` is omitted, falls back to the service's own `.fathom/rules/archconformance.cue` project rule pack (C4-2/C4-3); `rule_source` names which source was used (`"inline"` \| `"project"` \| `"none"`), and `checked` is `false` (with a `reason`) when neither source had anything to check — never a clean-shaped `{violations:[],count:0}` for a check that didn't run (closes the C4-5 confirmed-bug instance). **Disclosed gap:** edges are built from function-origin/function-target call keys only — a method's `Package` is its receiver type, not its declaring Go package, so method-origin and method-target edges aren't yet normalized into the checked set (tracked fix: both-sides symbol-key→declaring-package resolution). |
 | `stale_docs` | `service` (req) | `{drifts: [{file, line, ref}], count}` | Scan Markdown source files for stale references: inline code spans or link targets that no longer correspond to a known symbol or file |
 | `proto_conformance` | `service` (req) | `{issues: [{file, location, rule, message}], count}` | Check `.proto` files for naming convention violations (PascalCase services/messages/RPCs, snake_case fields) |
@@ -637,10 +634,14 @@ unauthenticated daemon is unaffected. When a token IS configured, hosted mode is
 strictly narrower surface, not merely an auth check bolted onto the existing one:
 
 - `/rpc/modules` serves **only** `list_modules`, `module_obligations`, `module_query`,
-  `module_staleness`, `capabilities`, `server_stats` — never the rest of `GroupShared`
-  (no `ingest`, no `compile_layer`, no `batch`, no fleet-backed reads like `repo_map` /
-  `find_symbol` / `staleness_report` that a modules-token holder could otherwise pivot
-  through to read the fleet's own indexed services).
+  `module_staleness`, `status` — never the rest of `GroupShared` (no `ingest`, no
+  `compile_layer`, no `batch`, no fleet-backed reads like `repo_map` / `find_symbol` /
+  `staleness_report` that a modules-token holder could otherwise pivot through to read
+  the fleet's own indexed services). `status`'s own `section:"sources"` carries exactly
+  that pivot risk (an arbitrary caller-supplied service's file list, what `list_sources`
+  was excluded for before the SR-23 merge) and is refused even here — only
+  `section:"tools"`/`"daemon"` (the two harmless, dependency-free meta reads
+  `capabilities`/`server_stats` used to be) dispatch under hosted mode.
 - Off-allowlist calls on `/rpc/modules` are **hard-gated** (a named error), never
   execute-and-flag — the one surface in this server where that ADR-014 ergonomics
   choice is deliberately overridden.

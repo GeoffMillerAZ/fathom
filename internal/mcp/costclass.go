@@ -22,8 +22,8 @@ import (
 //fathom:tenancy-allow pkg-map read-only lookup table of constants, never written after init: not a cache
 var toolCostClasses = map[string]tenancy.Class{
 	// point: one row, one capped file, or the process's own counters.
-	"capabilities": tenancy.ClassPoint, "server_stats": tenancy.ClassPoint, "staleness_report": tenancy.ClassPoint,
-	"read_source": tenancy.ClassPoint, "memory_search": tenancy.ClassPoint, "history": tenancy.ClassPoint,
+	"staleness_report": tenancy.ClassPoint,
+	"read_source":      tenancy.ClassPoint, "memory_search": tenancy.ClassPoint, "history": tenancy.ClassPoint,
 	"list_modules": tenancy.ClassPoint,
 	// batch holds no ticket of its own: each sub-call is admitted in its
 	// own class (admitBatchCall).
@@ -41,9 +41,13 @@ var toolCostClasses = map[string]tenancy.Class{
 	"module_obligations": tenancy.ClassIndex, "module_query": tenancy.ClassIndex, "module_staleness": tenancy.ClassIndex,
 
 	// tree: a whole-tree read or a whole-service graph build.
+	// status (SR-23): declared at its heaviest section's cost — the
+	// "sources" section walks a whole service's symbols exactly like the
+	// retired list_sources did; "tools"/"daemon" are cheaper (point) but
+	// the tool declares one class for all three.
 	"symbol_context": tenancy.ClassTree, "obligations": tenancy.ClassTree, "search": tenancy.ClassTree,
 	"secret_scan": tenancy.ClassTree, "cloc": tenancy.ClassTree, "spec_coverage": tenancy.ClassTree,
-	"traceability": tenancy.ClassTree, "safe_delete_check": tenancy.ClassTree, "list_sources": tenancy.ClassTree,
+	"traceability": tenancy.ClassTree, "safe_delete_check": tenancy.ClassTree, "status": tenancy.ClassTree,
 	"discoveries": tenancy.ClassTree, "references": tenancy.ClassTree, "blast_radius": tenancy.ClassTree,
 	"traverse": tenancy.ClassTree, "http_client_calls": tenancy.ClassTree,
 	"shell_out": tenancy.ClassTree, "proto_conformance": tenancy.ClassTree, "spec_refs": tenancy.ClassTree,

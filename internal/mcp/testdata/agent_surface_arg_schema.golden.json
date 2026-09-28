@@ -31,10 +31,6 @@
     ],
     "type": "object"
   },
-  "capabilities": {
-    "properties": {},
-    "type": "object"
-  },
   "discoveries": {
     "properties": {
       "budget": {

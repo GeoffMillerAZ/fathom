@@ -490,8 +490,8 @@ func TestServeHTTPCompanionSurfaceToolsList(t *testing.T) {
 	// the right-sized surface, not the full registry.
 	want := map[string]int{
 		"/rpc/agent":     8,
-		"/rpc/companion": 20,
-		"/rpc/extended":  20,
+		"/rpc/companion": 21,
+		"/rpc/extended":  21,
 	}
 	for path, count := range want {
 		resp := postRPCPath(t, handler, path, rpcBody(t, map[string]any{

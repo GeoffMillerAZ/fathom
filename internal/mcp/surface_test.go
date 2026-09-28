@@ -37,8 +37,7 @@ var defaultWant = []string{
 // alias's) allowlist, pinned exactly (SR-33): the default eight plus the
 // navigation/context/freshness tools and the remaining promoted verbs.
 // "status" (design §1.1's capabilities/server_stats/list_sources merge,
-// SR-23) joins this list only once that row registers the tool — 20 total
-// until then, 21 after.
+// SR-23) joined this list once that row registered the tool — 21 total.
 var extendedWant = []string{
 	"blast_radius",
 	"find_callers",
@@ -57,6 +56,7 @@ var extendedWant = []string{
 	"review_diff",
 	"search",
 	"staleness_report",
+	"status",
 	"symbol_context",
 	"test_impact",
 	"verify_plan",
@@ -113,7 +113,7 @@ func toolNames(t *testing.T, resp map[string]any) []string {
 // the two lists' own lengths here, never independently counted by hand.
 const (
 	defaultWantCount  = 8
-	extendedWantCount = 20
+	extendedWantCount = 21
 )
 
 // TestDefaultSurfaceToolsList pins POST /rpc/agent's served allowlist
@@ -348,9 +348,11 @@ func batchStrictTail(t *testing.T, strictResp map[string]any) {
 // caller can reach it any more; that test also covers the stdio-profile vs.
 // HTTP-surface view equivalence and stdio's tools/call staying advisory.
 
-// ─── capabilities reports the active surface ─────────────────────────────────
+// ─── status(section:"tools") reports the active surface ──────────────────────
 
-func TestCapabilitiesReportsActiveSurface(t *testing.T) {
+// TestStatusToolsSectionReportsActiveSurface is the SR-23 successor to the
+// retired capabilities tool's own TestCapabilitiesReportsActiveSurface.
+func TestStatusToolsSectionReportsActiveSurface(t *testing.T) {
 	srv := mcp.NewServer(&fakeBackend{})
 	ctx := mcp.WithRequestScope(context.Background(), "coding", true)
 
@@ -360,16 +362,16 @@ func TestCapabilitiesReportsActiveSurface(t *testing.T) {
 
 	resp := scopedRoundtrip(t, srv, ctx, request{
 		JSONRPC: "2.0", ID: 9, Method: "tools/call",
-		Params: map[string]any{"name": "capabilities", "arguments": map[string]any{}},
+		Params: map[string]any{"name": "status", "arguments": map[string]any{"section": "tools"}},
 	})
 	if resp["error"] != nil {
-		t.Fatalf("capabilities: %v", resp["error"])
+		t.Fatalf(`status(section:"tools"): %v`, resp["error"])
 	}
 	content := resp["result"].(map[string]any)["content"].([]any)
 	text := content[0].(map[string]any)["text"].(string)
 	var payload map[string]any
 	if err := json.Unmarshal([]byte(text), &payload); err != nil {
-		t.Fatalf("capabilities payload parse: %v", err)
+		t.Fatalf(`status(section:"tools") payload parse: %v`, err)
 	}
 	if payload["active_surface"] != "coding" {
 		t.Errorf("active_surface = %v, want coding", payload["active_surface"])
@@ -378,18 +380,18 @@ func TestCapabilitiesReportsActiveSurface(t *testing.T) {
 		t.Errorf("tool_count = %v, want %d (the tools/list count on the same surface)", count, len(listed))
 	}
 
-	// capabilities was promoted onto the companion/agent allowlist
-	// (docs/vision/05-surfaces.md §3) — the discovery escape hatch a small,
-	// curated surface needs — so it dispatches there too, on both surface
-	// names.
+	// status is on /rpc/extended and its /rpc/companion alias (extendedTools,
+	// SR-23) but not the /rpc/agent floor — dispatches on both anyway,
+	// on-surface on companion and execute-and-flag (ADR-014 amendment) on
+	// agent.
 	for _, surface := range []string{mcp.SurfaceCompanion, mcp.SurfaceAgent} {
 		scCtx := mcp.WithRequestScope(context.Background(), surface, true)
 		got := scopedRoundtrip(t, srv, scCtx, request{
 			JSONRPC: "2.0", ID: 10, Method: "tools/call",
-			Params: map[string]any{"name": "capabilities", "arguments": map[string]any{}},
+			Params: map[string]any{"name": "status", "arguments": map[string]any{"section": "tools"}},
 		})
 		if got["error"] != nil {
-			t.Errorf("capabilities on %s surface: %v", surface, got["error"])
+			t.Errorf(`status(section:"tools") on %s surface: %v`, surface, got["error"])
 		}
 	}
 }

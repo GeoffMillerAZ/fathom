@@ -306,11 +306,11 @@ func TestCallLogRowCarriesClassOutcomeCaller(t *testing.T) {
 	// Without a gate (stdio) the class and outcome are still recorded.
 	var buf bytes.Buffer
 	plain := NewServerWithLogger(nil, NewCallLogger(&buf))
-	raw, _ := json.Marshal(map[string]any{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": map[string]any{"name": "capabilities", "arguments": map[string]any{}}})
+	raw, _ := json.Marshal(map[string]any{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": map[string]any{"name": "status", "arguments": map[string]any{"section": "tools"}}})
 	plain.HandleRequest(context.Background(), raw)
 	var row map[string]any
 	_ = json.Unmarshal(bytes.TrimSpace(buf.Bytes()), &row)
-	if row["class"] != "point" || row["outcome"] != "ok" {
+	if row["class"] != "tree" || row["outcome"] != "ok" {
 		t.Fatalf("ungated row %+v", row)
 	}
 }
