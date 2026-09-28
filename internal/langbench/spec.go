@@ -135,6 +135,27 @@ func (m Manifest) OracleCanonical(oracle, kind string, scoped bool) (string, boo
 	return c, ok
 }
 
+// RequiredCanonical maps required_kinds — the manifest's own kind keys
+// (§2.2) — to canonical kinds, sorted and deduplicated, so the §1.4 refusal
+// compares like with like. A required entry that is not a key (an
+// incumbent spec written in canonical terms) is kept as written.
+func (m Manifest) RequiredCanonical() []string {
+	seen := map[string]bool{}
+	out := []string{}
+	for _, k := range m.RequiredKinds {
+		c := k
+		if spec, ok := m.Kinds[k]; ok && spec.Canonical != "" {
+			c = spec.Canonical
+		}
+		if !seen[c] {
+			seen[c] = true
+			out = append(out, c)
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
 // Intersection is the sorted set of canonical kinds both the dialect and
 // the oracle produce (§1.4).
 func (m Manifest) Intersection(oracle string) []string {

@@ -95,7 +95,8 @@ and tiers alone; nobody types it.
   letters/names, SCIP descriptor suffixes) to a canonical kind. Definitions whose kind is
   outside the intersection on either side are excluded from both counts and reported as
   `excluded_by_kind`. A dialect may not exclude a kind the vision's L1 list names for the
-  language (the manifest's `required_kinds`) — the harness refuses the reading.
+  language (the manifest's `required_kinds`, which are its own kind keys, checked through
+  their canonical kinds — a reading records them canonical) — the harness refuses the reading.
 - **Calls**: truth pairs are (enclosing definition, callee bare name) derived from SCIP
   reference occurrences whose symbol is callable (SCIP method descriptor `().`), inside a
   definition that maps to a fathom symbol.

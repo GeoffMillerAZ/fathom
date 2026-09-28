@@ -440,7 +440,7 @@ func loadOrNewReading(path string, m langbench.Manifest, target string) (langben
 	if r.Dialect != m.ID {
 		return langbench.Reading{}, fmt.Errorf("%s holds dialect %q, not %q", path, r.Dialect, m.ID)
 	}
-	r.RequiredKinds = append([]string(nil), m.RequiredKinds...)
+	r.RequiredKinds = m.RequiredCanonical()
 	return r, nil
 }
 

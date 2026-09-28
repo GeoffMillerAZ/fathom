@@ -22,7 +22,7 @@ func NewReading(m Manifest, target string) Reading {
 	if kind == "" {
 		kind = "language"
 	}
-	r := Reading{Dialect: m.ID, Kind: kind, TargetLevel: target, RequiredKinds: append([]string(nil), m.RequiredKinds...)}
+	r := Reading{Dialect: m.ID, Kind: kind, TargetLevel: target, RequiredKinds: m.RequiredCanonical()}
 	r.Finalize()
 	return r
 }

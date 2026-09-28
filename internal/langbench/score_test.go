@@ -175,6 +175,37 @@ func TestMergeRangeNotMeasured(t *testing.T) {
 	}
 }
 
+// TestRequiredKindsThroughCanonical (§1.4): required_kinds are the
+// manifest's own kind keys; the refusal checks them through the canonical
+// mapping, so a key never has to be renamed to its canonical string.
+func TestRequiredKindsThroughCanonical(t *testing.T) {
+	m, err := ParseManifest([]byte(`{"id":"swift","kind":"language",
+		"kinds":{"protocol":{"source_kind":"SwiftProtocol","canonical":"interface"},
+		         "function":{"source_kind":"SwiftFunc","canonical":"function","callable":true}},
+		"required_kinds":["protocol","function"],
+		"oracle_kinds":{"ctags":{"protocol":"interface","func":"function"}}}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := m.RequiredCanonical(); !slices.Equal(got, []string{"function", "interface"}) {
+		t.Fatalf("RequiredCanonical = %v", got)
+	}
+	r := NewReading(m, "L1")
+	nodes := []core.SymbolNode{{Name: "P", Kind: "SwiftProtocol", FilePath: "a.swift", Line: 1, EndLine: 3},
+		{Name: "f", Kind: "SwiftFunc", FilePath: "a.swift", Line: 5, EndLine: 6, Signature: "func f()"}}
+	defs := []OracleDef{{Path: "a.swift", Name: "P", Kind: "protocol", Line: 1, End: 3}, {Path: "a.swift", Name: "f", Kind: "func", Line: 5, End: 6}}
+	l1 := ScoreL1(m, "ctags", nodes, defs)
+	MergeSubject(&r, Subject{Name: "s", Files: 1, Bytes: 1 << 20, Counts: l1.Counts, Families: map[string]string{FamilyL1: "B"},
+		KindIntersection: l1.Intersection, Tenancy: &SubjectTenancy{ExtractMS: 1, MaxFileMS: 1}})
+	if err := r.Validate(); err != nil {
+		t.Fatalf("a required key mapped into the intersection was refused: %v", err)
+	}
+	r.RequiredKinds = append(r.RequiredKinds, "enum")
+	if err := r.Validate(); err == nil {
+		t.Fatal("a required kind outside the intersection was accepted")
+	}
+}
+
 func TestIncumbentSpecsCoherent(t *testing.T) {
 	specs, err := Incumbents()
 	if err != nil {
@@ -192,7 +223,7 @@ func TestIncumbentSpecsCoherent(t *testing.T) {
 			continue
 		}
 		inter := m.Intersection("ctags")
-		for _, k := range m.RequiredKinds {
+		for _, k := range m.RequiredCanonical() {
 			found := false
 			for _, i := range inter {
 				found = found || i == k
