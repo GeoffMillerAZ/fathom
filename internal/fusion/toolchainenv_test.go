@@ -175,7 +175,9 @@ func TestToolchainCapNeverRaisesAndCanBeLifted(t *testing.T) {
 			t.Fatal(err)
 		}
 		cmd := exec.Command(shim)
-		cmd.Env = append([]string{"PATH=/usr/bin:/bin"}, env...)
+		// The caller's own GOMAXPROCS/GOFLAGS are blanked (the shim reads
+		// empty as unset) so each case sees exactly its env; later entries win.
+		cmd.Env = append(append(os.Environ(), "GOMAXPROCS=", "GOFLAGS="), env...)
 		out, err := cmd.Output()
 		if err != nil {
 			t.Fatalf("shim: %v", err)
