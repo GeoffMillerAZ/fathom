@@ -341,6 +341,19 @@ type Group[K comparable, V any] struct {
 	entries  map[K]*entry[V]
 	flights  map[K]*flight[V]
 	counters GroupStats
+	onEvict  func(K, V) // SetOnEvict; nil for heap-only values
+}
+
+// SetOnEvict registers fn to be told of every value that leaves the cache
+// (an LRU, shed or refuse eviction, a watermark eviction, Reset, Remove, a
+// replacement), once per value, so a group whose values hold resources
+// outside the Go heap — compiled grammar code (LB-F15) — can release them.
+// fn runs with the registry and group locks held: it must be quick and must
+// not call back into memo. Set it before the group is used.
+func (g *Group[K, V]) SetOnEvict(fn func(K, V)) {
+	g.mu.Lock()
+	g.onEvict = fn
+	g.mu.Unlock()
 }
 
 type entry[V any] struct {
@@ -396,6 +409,9 @@ func (g *Group[K, V]) evictLocked(e *entryRef, reason DropReason) {
 	k := e.key.(K)
 	if cur, ok := g.entries[k]; ok && cur.ref == e {
 		delete(g.entries, k)
+		if g.onEvict != nil {
+			g.onEvict(k, cur.val)
+		}
 	}
 	g.counters.Evictions[reason]++
 	g.mu.Unlock()
@@ -616,6 +632,9 @@ func (g *Group[K, V]) insertLocked(key K, val V, size int64, service, mark strin
 	}
 	if old, ok := g.entries[key]; ok {
 		r.removeLocked(old.ref)
+		if g.onEvict != nil {
+			g.onEvict(key, old.val)
+		}
 	}
 	ref := &entryRef{g: g, key: key, service: service, mark: mark, bytes: size}
 	ref.elem = r.lru.PushFront(ref)
@@ -642,6 +661,9 @@ func (g *Group[K, V]) evictOldestOwnLocked(keep *entryRef) {
 			continue
 		}
 		k := e.key.(K)
+		if cur, ok := g.entries[k]; ok && g.onEvict != nil {
+			g.onEvict(k, cur.val)
+		}
 		delete(g.entries, k)
 		g.counters.Evictions[ReasonMaxEntries]++
 		g.reg.removeLocked(e)
