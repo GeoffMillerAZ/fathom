@@ -1,0 +1,76 @@
+{
+  "symbols": [
+    {
+      "name": "App\\Calls",
+      "kind": "PhpNamespace",
+      "package": "App\\Calls",
+      "line": 2,
+      "end_line": 2,
+      "tier": "verified"
+    },
+    {
+      "name": "plain",
+      "kind": "PhpFunction",
+      "package": "App\\Calls",
+      "line": 6,
+      "end_line": 14,
+      "signature": "function plain(): void",
+      "calls": [
+        "local_fn",
+        "qualified",
+        "strlen",
+        "strtoupper"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Caller",
+      "kind": "PhpClass",
+      "package": "App\\Calls",
+      "line": 16,
+      "end_line": 40,
+      "tier": "verified"
+    },
+    {
+      "name": "Caller.run",
+      "kind": "PhpMethod",
+      "package": "App\\Calls",
+      "line": 18,
+      "end_line": 29,
+      "signature": "public function run(Service $svc): void",
+      "calls": [
+        "array_map",
+        "boot",
+        "create",
+        "decode",
+        "fetch",
+        "fluent",
+        "helper",
+        "maybe",
+        "run",
+        "wrap"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Caller.helper",
+      "kind": "PhpMethod",
+      "package": "App\\Calls",
+      "line": 31,
+      "end_line": 39,
+      "signature": "private function helper( int $one, int $two ): int",
+      "calls": [
+        "sum"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "*",
+      "module": "App\\Net\\Service",
+      "kind": "wildcard",
+      "line": 4
+    }
+  ]
+}

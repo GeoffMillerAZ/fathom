@@ -1,0 +1,86 @@
+{
+  "symbols": [
+    {
+      "name": "App\\Consumer",
+      "kind": "PhpNamespace",
+      "package": "App\\Consumer",
+      "line": 3,
+      "end_line": 3,
+      "tier": "verified"
+    },
+    {
+      "name": "Reader",
+      "kind": "PhpClass",
+      "package": "App\\Consumer",
+      "line": 12,
+      "end_line": 18,
+      "tier": "verified"
+    },
+    {
+      "name": "Reader.load",
+      "kind": "PhpMethod",
+      "package": "App\\Consumer",
+      "line": 14,
+      "end_line": 17,
+      "signature": "public function load(string $path): string",
+      "calls": [
+        "format",
+        "load"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "*",
+      "module": "Psr\\Log\\LoggerInterface",
+      "kind": "wildcard",
+      "line": 5
+    },
+    {
+      "local": "Assist",
+      "module": "App\\Util\\Helper",
+      "kind": "whole",
+      "line": 6
+    },
+    {
+      "local": "Str",
+      "exported": "Str",
+      "module": "App\\Util",
+      "kind": "named",
+      "line": 7
+    },
+    {
+      "local": "A",
+      "exported": "Arr",
+      "module": "App\\Util",
+      "kind": "named",
+      "line": 7
+    },
+    {
+      "local": "Deep\\Thing",
+      "exported": "Deep\\Thing",
+      "module": "App\\Util",
+      "kind": "named",
+      "line": 7
+    },
+    {
+      "local": "*",
+      "module": "App\\Util\\format",
+      "kind": "wildcard",
+      "line": 8
+    },
+    {
+      "local": "*",
+      "module": "App\\Util\\VERSION",
+      "kind": "wildcard",
+      "line": 9
+    },
+    {
+      "local": "*",
+      "module": "\\App\\Legacy\\Old",
+      "kind": "wildcard",
+      "line": 10
+    }
+  ]
+}

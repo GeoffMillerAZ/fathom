@@ -1,0 +1,219 @@
+{
+  "dialect": "php",
+  "kind": "language",
+  "target_level": "L4",
+  "level_met": "L1",
+  "grade": {
+    "L1": "excellent",
+    "L2": "unmet",
+    "L3": "unmet",
+    "L4": "unmet"
+  },
+  "measured_at": "2026-09-28",
+  "fathom_commit": "5d73ecea",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "Seldaek/monolog",
+      "sha": "10d85740180ecba7896c87e06a166e0c95a0e3b6",
+      "files": 217,
+      "bytes": 862340,
+      "counts": {
+        "call_fathom": 4558,
+        "call_fathom_in_truth": 3300,
+        "call_truth": 3300,
+        "call_truth_found": 3300,
+        "callables": 1365,
+        "callables_signed": 1365,
+        "fathom_defs": 1814,
+        "file_edges_fathom": 0,
+        "file_edges_truth": 829,
+        "kind_equal": 1814,
+        "matched": 1814,
+        "oracle_defs": 1814,
+        "range_eligible": 1814,
+        "range_ok": 1814,
+        "scip_defs": 2054,
+        "scip_defs_mapped": 1592,
+        "scip_edges": 0,
+        "scip_edges_typed": 0
+      },
+      "families": {
+        "calls": "A",
+        "defmap": "A",
+        "file_edges": "A",
+        "l1": "B",
+        "typed": "A"
+      },
+      "kind_intersection": [
+        "class",
+        "enum",
+        "function",
+        "interface",
+        "method",
+        "namespace",
+        "trait"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 229.22700000000003,
+        "extract_cpu_ms": 230.09199999999996,
+        "max_file_ms": 8,
+        "peak_module_pages": 339,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "guzzle/guzzle",
+      "sha": "7b2f29fe81dc4da0ca0ea7d42107a0845946ea77",
+      "files": 74,
+      "bytes": 464048,
+      "counts": {
+        "call_fathom": 1519,
+        "call_fathom_in_truth": 908,
+        "call_truth": 908,
+        "call_truth_found": 908,
+        "callables": 691,
+        "callables_signed": 691,
+        "fathom_defs": 834,
+        "file_edges_fathom": 1,
+        "file_edges_truth": 137,
+        "kind_equal": 834,
+        "matched": 834,
+        "oracle_defs": 834,
+        "range_eligible": 834,
+        "range_ok": 834,
+        "scip_defs": 595,
+        "scip_defs_mapped": 494,
+        "scip_edges": 0,
+        "scip_edges_typed": 0
+      },
+      "families": {
+        "calls": "A",
+        "defmap": "A",
+        "file_edges": "A",
+        "l1": "B",
+        "typed": "A"
+      },
+      "kind_intersection": [
+        "class",
+        "enum",
+        "function",
+        "interface",
+        "method",
+        "namespace",
+        "trait"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 156.02899999999997,
+        "extract_cpu_ms": 153.21100000000004,
+        "max_file_ms": 15,
+        "peak_module_pages": 351,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "B",
+      "tool": "php-parser",
+      "version": "5.7.0.0"
+    },
+    {
+      "tier": "A",
+      "tool": "scip-php",
+      "version": "0.0.1"
+    }
+  ],
+  "metrics": {
+    "call_precision": 0.6924,
+    "call_recall": 1,
+    "def_mapping": 0.7875,
+    "file_edge_precision": 0,
+    "file_edge_recall": 0,
+    "import_resolution": null,
+    "kind_agreement": 1,
+    "range_agreement": 1,
+    "signature_coverage": 1,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "call_precision": "A",
+    "call_recall": "A",
+    "def_mapping": "A",
+    "file_edge_precision": "A",
+    "file_edge_recall": "A",
+    "kind_agreement": "B",
+    "range_agreement": "B",
+    "signature_coverage": "B",
+    "sym_precision": "B",
+    "sym_recall": "B"
+  },
+  "required_kinds": [
+    "class",
+    "function",
+    "interface",
+    "method",
+    "namespace",
+    "trait"
+  ],
+  "kind_intersection": [
+    "class",
+    "enum",
+    "function",
+    "interface",
+    "method",
+    "namespace",
+    "trait"
+  ],
+  "counts": {
+    "call_fathom": 6077,
+    "call_fathom_in_truth": 4208,
+    "call_truth": 4208,
+    "call_truth_found": 4208,
+    "callables": 2056,
+    "callables_signed": 2056,
+    "fathom_defs": 2648,
+    "file_edges_fathom": 1,
+    "file_edges_truth": 966,
+    "kind_equal": 2648,
+    "matched": 2648,
+    "oracle_defs": 2648,
+    "range_eligible": 2648,
+    "range_ok": 2648,
+    "scip_defs": 2649,
+    "scip_defs_mapped": 2086,
+    "scip_edges": 0,
+    "scip_edges_typed": 0
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 3.46,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 3.44,
+    "max_file_ms": 15,
+    "peak_module_pages": 351,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    "Seldaek/monolog: 1592 SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)",
+    "guzzle/guzzle: 494 SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)",
+    "import_resolution not measured: in-repo spec counts arrive with the L3 strategies (LB-F11)",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "grammar: tree-sitter-php v0.24.2 (the tag the incumbent phpextract.go's binding pins), php.wasm.gz 191,343 bytes gzip (811,496 raw), 351 peak module pages",
+    "subjects are measured as cloned, with dependencies installed only so scip-php can resolve vendor symbols (vendor/ is excluded from both sides by the connector; tests/ is measured, SCIP indexes it too): guzzle/guzzle 7.9.3 with composer install after removing guzzle/client-integration-tests (it needs the composer-bin plugin's second install, and plugins were off), Seldaek/monolog 3.9.0 after flipping composer.json's config.lock so a composer.lock exists (calibration/corpus.d/php.yaml)",
+    "L1 oracle: nikic/php-parser 5.7.0 syntax dump (tier B, D2; calibration/oracles/php-parser) because universal-ctags 6.2.1 is deficient for PHP: it writes no end line, has no enum kind (an enum is not tagged, and its methods come out as namespace-level functions: 8 kind mismatches on monolog's Level), and names a namespace with its full path, which the bare-name comparison cannot match. An unscored ctags run over the same files matched every class, interface, trait, function and method (2,394 of 2,394 on both sides, kind_agreement .9967); sym_recall and sym_precision read .9044 only through the 253 namespaces, and range_agreement was not measured",
+    "L2 oracle: scip-php (HEAD 71a5b117, tool_version 0.0.1, PHP 8.5.8 static CLI, tier A) resolves no method call on a vendor-typed receiver (a RequestInterface parameter's getUri, getBody, hasHeader: 351 of the 2,055 src pairs are absent from the index, 1,258 of monolog's 4,558 and 611 of guzzle's 1,519 in all; PHPUnit mocks and dev-dependency receivers in tests/ add the rest): every SCIP call pair is found (call_recall 1.0) but call_precision is .6924, so L2 is unmet. Against the php-parser dump's call pairs (tier B, not scored here: one calls oracle per subject, D5 keeps a SCIP index that gives references at tier A) both are 1.0 on identical pair sets (4,558 monolog, 2,571 guzzle), L2 good",
+    "def_mapping .7875: the SCIP definitions this dialect does not emit are properties, class constants and enum cases (about 20%: 101 of 595 on guzzle, 422 of 2,054 on monolog); the incumbent reads .7829",
+    "typed_recall not measured: scip-php sets no enclosing_range (verified: 0 of 4,334 definitions), so internal/scip.ImportIndex, which falls back to the definition's name token, attributes no reference (the gap LB-Q-cpp-rest records for scip-clang)",
+    "L3 is not gradeable: the harness computes no import_resolution; file_edge_precision 0 and recall 0 (one edge on guzzle: tests/UtilsTest.php to the src/ helper functions, absent from the index; 966 SCIP file edges) because a PHP call reaches the resolver as its called name alone, tree-sitter-php having no node that spans a receiver and its method, so a class-qualified call cannot be tied to a use statement (only a function called through a namespace alias resolves, TestResolveFileEdges_PhpUse)"
+  ],
+  "disposition": "partial: target L4, met L1 excellent against a php-parser 5.7.0 syntax dump (tier B, D2; universal-ctags writes no end line and cannot see enums) on guzzle/guzzle 7.9.3 and Seldaek/monolog 3.9.0, 291 files (sym_recall 1, sym_precision 1, kind_agreement 1, range_agreement 1, signature_coverage 1; 3.46 MB/CPU-s, 0 faults, 351 peak module pages, php.wasm.gz 191,343 bytes). L2 unmet: call_recall 1.0 but call_precision .6924 against scip-php (tier A, D5 enclosing fallback) — the index leaves method calls on vendor-typed receivers unresolved, so 1,869 of this dialect's 6,077 call pairs are absent from it; against the php-parser dump's call pairs (tier B) both are 1.0, L2 good. L3 is not gradeable (the harness computes no import_resolution) and file_edge precision/recall read 0 (a PHP call reaches the resolver as its called name alone). L4 typed_recall is not measured (scip-php sets no enclosing_range) and def_mapping .7875 misses .85 (properties, class constants and enum cases are not emitted). Per design section 11 step 2 the target is not met, so fusion's PHP dispatch is unchanged and the CGO incumbent phpextract.go stays live. Trigger: the harness accepts a tier-B calls oracle for L2 (or scip-php resolves vendor-typed methods), the tags engine composes a receiver with a callee name, ImportIndex gains the mapped-definition line-span fallback, and the dialect extracts properties and constants; a dispatch switch then bumps ExtractorEpoch."
+}
