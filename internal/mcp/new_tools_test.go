@@ -486,40 +486,9 @@ func TestOutline_BudgetElision(t *testing.T) {
 	assertRC19Elision(t, p, "read_source with start_line/end_line")
 }
 
-// ─── entrypoints ──────────────────────────────────────────────────────────────
-
-func TestEntrypoints_Basic(t *testing.T) {
-	srv := newExtSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 240, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "entrypoints",
-			"arguments": map[string]any{"service": "svc"},
-		},
-	})
-	p := extToolPayload(t, resp)
-	if p["entrypoints"] == nil {
-		t.Fatalf("entrypoints missing: %v", p)
-	}
-}
-
-func TestEntrypoints_MissingService(t *testing.T) {
-	srv := newExtSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 241, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "entrypoints",
-			"arguments": map[string]any{},
-		},
-	})
-	errObj, ok := resp["error"].(map[string]any)
-	if !ok {
-		t.Fatalf("expected error, got result: %v", resp)
-	}
-	if code := errObj["code"].(float64); code != float64(mcp.ErrCodeParams) {
-		t.Errorf("code = %v, want %v", code, mcp.ErrCodeParams)
-	}
-}
+// entrypoints was unregistered by SR-22 (F-10, design §4): its detector now
+// feeds repo_map's header (TestRepoMapHeaderCarriesEntrypoints,
+// extra_tools_test.go).
 
 // ─── complexity ───────────────────────────────────────────────────────────────
 
@@ -1032,7 +1001,7 @@ func TestCallLogger_TimestampValid(t *testing.T) {
 	_ = roundtrip(t, srv, request{
 		JSONRPC: "2.0", ID: 700, Method: "tools/call",
 		Params: map[string]any{
-			"name":      "entrypoints",
+			"name":      "repo_map",
 			"arguments": map[string]any{"service": "svc"},
 		},
 	})
@@ -1071,7 +1040,6 @@ func TestNewToolsInCorrectProfile(t *testing.T) {
 	}{
 		{"symbol_context", mcp.GroupCoding},
 		{"outline", mcp.GroupCoding},
-		{"entrypoints", mcp.GroupCoding},
 		{"complexity", mcp.GroupCoding},
 		{"god_object", mcp.GroupCoding},
 		{"community", mcp.GroupInvestigation},

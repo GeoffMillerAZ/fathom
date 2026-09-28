@@ -29,7 +29,7 @@ func TestAbandonedByGovernorCallIsNamedInResponseAndLog(t *testing.T) {
 		cancel(tenancy.ErrAbandonedByGovernor)
 		raw, _ := json.Marshal(map[string]any{
 			"jsonrpc": "2.0", "id": 1, "method": "tools/call",
-			"params": map[string]any{"name": "entrypoints", "arguments": map[string]any{"service": "svc"}},
+			"params": map[string]any{"name": "repo_map", "arguments": map[string]any{"service": "svc"}},
 		})
 		resp, ok := srv.HandleRequest(ctx, raw)
 		if !ok {
@@ -68,7 +68,7 @@ func TestAbandonedByGovernorCallIsNamedInResponseAndLog(t *testing.T) {
 	cancel()
 	raw, _ := json.Marshal(map[string]any{
 		"jsonrpc": "2.0", "id": 2, "method": "tools/call",
-		"params": map[string]any{"name": "entrypoints", "arguments": map[string]any{"service": "svc"}},
+		"params": map[string]any{"name": "repo_map", "arguments": map[string]any{"service": "svc"}},
 	})
 	resp, _ := srv.HandleRequest(ctx, raw)
 	if strings.Contains(string(resp), "abandoned-by-governor") {

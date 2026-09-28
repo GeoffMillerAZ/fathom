@@ -16,7 +16,7 @@ import (
 func TestEveryToolDeclaresCostClass(t *testing.T) {
 	srv, _ := newModuleTestServer()
 	classes := srv.ToolCostClassesForTest()
-	if len(classes) < 57 {
+	if len(classes) < 56 {
 		t.Fatalf("only %d tools registered — the registry did not build", len(classes))
 	}
 	valid := map[string]bool{"point": true, "index": true, "tree": true, "fleet": true, "ingest": true, "egress": true}

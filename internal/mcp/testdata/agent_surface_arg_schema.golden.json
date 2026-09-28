@@ -55,18 +55,6 @@
     ],
     "type": "object"
   },
-  "entrypoints": {
-    "properties": {
-      "service": {
-        "description": "Service / repo identifier",
-        "type": "string"
-      }
-    },
-    "required": [
-      "service"
-    ],
-    "type": "object"
-  },
   "find_callers": {
     "properties": {
       "depth": {

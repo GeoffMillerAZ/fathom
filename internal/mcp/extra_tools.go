@@ -31,6 +31,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/analysis/proto"
 	"github.com/geoffmilleraz/fathom/internal/analysis/routes"
 	"github.com/geoffmilleraz/fathom/internal/analysis/serviceref"
+	"github.com/geoffmilleraz/fathom/internal/analysis/symbolnav"
 	"github.com/geoffmilleraz/fathom/internal/concern"
 	"github.com/geoffmilleraz/fathom/internal/context/packer"
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -1121,6 +1122,25 @@ func registerIngest(s *Server, backend QueryInterface) {
 
 // ─── context: repo_map ────────────────────────────────────────────────────────
 
+// repoMapEntrypointCap bounds repo_map's "entrypoints" header (SR-22,
+// F-10, design §4): the same symbolnav.Entrypoints detector the retired
+// `entrypoints` tool used, capped so a service with hundreds of HTTP
+// handlers never turns the header into its own unbounded listing.
+const repoMapEntrypointCap = 10
+
+// repoMapEntrypoints returns repo_map's header entrypoints — capped at
+// repoMapEntrypointCap — and how many were cut beyond the cap (0 when
+// everything fit). Nil input or no detected entrypoints returns (nil, 0)
+// so the caller can omit the field entirely rather than serve an empty one.
+func repoMapEntrypoints(nodes []core.SymbolNode) ([]symbolNodeDTO, int) {
+	eps := symbolnav.Entrypoints(nodes)
+	total := len(eps)
+	if total > repoMapEntrypointCap {
+		eps = eps[:repoMapEntrypointCap]
+	}
+	return toNodeDTOs(eps), total - len(eps)
+}
+
 func registerRepoMap(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "repo_map",
@@ -1162,6 +1182,15 @@ func registerRepoMap(s *Server, backend QueryInterface) {
 		// than widening that package's signature (out of this row's scope).
 		included := strings.Count(mapStr, "\n")
 		resp := map[string]any{"map": mapStr, "budget": budget}
+		// SR-22 (F-10, design §4): the header carries likely entrypoints —
+		// the same detector the unregistered `entrypoints` tool used —
+		// capped at repoMapEntrypointCap, honest-absence when none exist.
+		if eps, more := repoMapEntrypoints(nodes); len(eps) > 0 {
+			resp["entrypoints"] = eps
+			if more > 0 {
+				resp["entrypoints_more"] = more
+			}
+		}
 		if el := elisionFor(included, len(nodes), "outbound call-edge count, most-connected first, ties by package+name", "re-call with a larger budget"); el != nil {
 			resp["elided"] = el
 			// RC-19: the same one-line disclosure the other four newly-

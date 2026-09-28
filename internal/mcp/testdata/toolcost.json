@@ -49,10 +49,6 @@
       "measured": "tree",
       "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
     },
-    "entrypoints": {
-      "measured": "index",
-      "basis": "static read: ListAllSymbols for one service"
-    },
     "evidence_summary": {
       "measured": "index",
       "basis": "static read: ListAllSymbols for one service"

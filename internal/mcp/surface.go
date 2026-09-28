@@ -85,7 +85,6 @@ var companionTools = func() map[string]bool {
 	m := map[string]bool{
 		"capabilities":     true,
 		"discoveries":      true,
-		"entrypoints":      true,
 		"find_callers":     true,
 		"find_symbol":      true,
 		"ingest":           true,

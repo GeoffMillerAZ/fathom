@@ -25,7 +25,6 @@ var DiscoveryIndexTools = map[string]bool{
 	"repo_map":       true,
 	"pack_context":   true,
 	"read_source":    true,
-	"entrypoints":    true,
 }
 
 // IsDiscoveryIndexTool reports whether tool is one of fathom's own

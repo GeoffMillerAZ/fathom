@@ -746,6 +746,68 @@ func TestRepoMap_ElisionLine(t *testing.T) {
 	}
 }
 
+// repoMapEntrypointFixture builds n exported HTTP-handler-shaped functions
+// plus one "main", for repo_map's entrypoints-header proof (SR-22, F-10):
+// the same symbolnav.Entrypoints detector the retired `entrypoints` tool
+// used, capped at 10 with a "more" count.
+func repoMapEntrypointFixture(n int) []core.SymbolNode {
+	nodes := make([]core.SymbolNode, n+1)
+	nodes[0] = core.SymbolNode{Service: "svc", Package: "pkg", Name: "main", Kind: core.KindGoFunc, FilePath: "cmd/main.go", Line: 1, Signature: "func()"}
+	for i := 0; i < n; i++ {
+		nodes[i+1] = core.SymbolNode{
+			Service: "svc", Package: "pkg", Name: fmt.Sprintf("Handler%04d", i),
+			Kind: core.KindGoFunc, FilePath: "pkg/handlers.go", Line: i + 2,
+			Signature: "func(http.ResponseWriter, *http.Request)",
+		}
+	}
+	return nodes
+}
+
+// TestRepoMapHeaderCarriesEntrypoints (SR-22, F-10): repo_map's response
+// carries an "entrypoints" header — the same detector the unregistered
+// `entrypoints` tool used — capped at 10 rows, with "entrypoints_more"
+// naming how many were cut.
+func TestRepoMapHeaderCarriesEntrypoints(t *testing.T) {
+	srv := mcp.NewServer(&extendedFakeBackend{nodes: repoMapEntrypointFixture(12), services: []string{"svc"}})
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 1282, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "repo_map",
+			"arguments": map[string]any{"service": "svc", "budget": 4000},
+		},
+	})
+	p := xtraPayload(t, resp)
+	eps, ok := p["entrypoints"].([]any)
+	if !ok || len(eps) != 10 {
+		t.Fatalf("entrypoints = %v, want 10 capped rows", p["entrypoints"])
+	}
+	more, ok := p["entrypoints_more"].(float64)
+	if !ok || int(more) != 3 {
+		t.Fatalf("entrypoints_more = %v, want 3 (13 total - 10 capped)", p["entrypoints_more"])
+	}
+}
+
+// TestRepoMapHeaderOmitsEntrypointsWhenNone: a service with no likely
+// entrypoint (the existing repo_map fixtures) never gets a fabricated
+// header — the field is absent, not an empty list pretending to be one.
+func TestRepoMapHeaderOmitsEntrypointsWhenNone(t *testing.T) {
+	srv := newExtraSrv()
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 1283, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "repo_map",
+			"arguments": map[string]any{"service": "svc", "budget": 500},
+		},
+	})
+	p := xtraPayload(t, resp)
+	if _, ok := p["entrypoints"]; ok {
+		t.Errorf("entrypoints present though the fixture has none: %v", p["entrypoints"])
+	}
+	if _, ok := p["entrypoints_more"]; ok {
+		t.Errorf("entrypoints_more present though the fixture has none: %v", p["entrypoints_more"])
+	}
+}
+
 // ─── pack_context ─────────────────────────────────────────────────────────────
 
 func TestPackContext_Basic(t *testing.T) {

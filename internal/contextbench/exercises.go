@@ -30,7 +30,6 @@ var agentSurfaceTools = []string{
 	"blast_radius",
 	"capabilities",
 	"discoveries",
-	"entrypoints",
 	"find_callers",
 	"find_symbol",
 	"ingest",
@@ -88,7 +87,7 @@ type handlerRule struct {
 // and compilation layers those handlers read through.
 var handlerTable = []handlerRule{
 	{Path: "internal/mcp/tools.go", Tools: []string{"find_symbol", "find_callers", "query_symbols"}, Why: "the three symbol tools are registered here"},
-	{Path: "internal/mcp/nav_tools.go", Tools: []string{"entrypoints", "outline", "symbol_context"}},
+	{Path: "internal/mcp/nav_tools.go", Tools: []string{"outline", "symbol_context"}},
 	{Path: "internal/mcp/references_tool.go", Tools: []string{"references"}},
 	{Path: "internal/mcp/discoveries_tool.go", Tools: []string{"discoveries"}},
 	{Path: "internal/mcp/analysis_tools.go", Tools: []string{"rename_impact", "test_impact"}, Why: "the impact verbs promoted by VB-1"},
@@ -108,8 +107,8 @@ var handlerTable = []handlerRule{
 	// surface allowlist, schemas): it can move every tool on the surface.
 	{Path: "internal/mcp/", Tools: agentSurfaceTools, Why: "shared MCP plumbing: dispatch, surfaces, schemas"},
 	{Path: "internal/semantic/", Tools: []string{"obligations", "staleness_report", "verify_plan"}, Why: "the layer compiler and claim server feed the governance tools"},
-	{Path: "internal/query/", Tools: []string{"find_symbol", "find_callers", "references", "symbol_context", "outline", "entrypoints", "query_symbols", "repo_map", "pack_context"}, Why: "the query engine every navigation tool reads through"},
-	{Path: "internal/fusion/", Tools: []string{"find_symbol", "find_callers", "references", "symbol_context", "outline", "entrypoints", "query_symbols", "repo_map", "pack_context", "ingest"}, Why: "extraction and fusion decide what the index contains at all"},
+	{Path: "internal/query/", Tools: []string{"find_symbol", "find_callers", "references", "symbol_context", "outline", "query_symbols", "repo_map", "pack_context"}, Why: "the query engine every navigation tool reads through"},
+	{Path: "internal/fusion/", Tools: []string{"find_symbol", "find_callers", "references", "symbol_context", "outline", "query_symbols", "repo_map", "pack_context", "ingest"}, Why: "extraction and fusion decide what the index contains at all"},
 }
 
 // ToolsForFiles maps changed repo-relative paths to the agent-surface
