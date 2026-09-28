@@ -52,7 +52,7 @@ func TestSpecDialectRegistryDetect(t *testing.T) {
 	if got, want := r.IDs(), []string{"fake", "fathom-v2", "openspec", "speckit"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("IDs = %v, want %v", got, want)
 	}
-	if got, want := Default().IDs(), []string{"fathom-v2", "gh-tasklist", "kiro", "openspec", "speckit"}; !reflect.DeepEqual(got, want) {
+	if got, want := Default().IDs(), []string{"fathom-v2", "gh-tasklist", "kiro", "openspec", "speckit", "taskmaster"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("Default IDs = %v, want %v", got, want)
 	}
 
