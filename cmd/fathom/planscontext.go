@@ -46,6 +46,8 @@ func cmdPlansContext(args []string, stdout, stderr io.Writer) int {
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL (HTTP mode)")
 	storePath := fs.String("store", "", "store path, .sqlite/.db (direct mode; bypasses daemon)")
 	budget := fs.Int("budget", defaultContextBudget, "byte budget for the rendered pack (elided beyond this)")
+	preflight := fs.Bool("preflight", false, "also print the row's task preflight: difficulty profile and advisory tier recommendation (WI-16, WI-17; needs --store)")
+	score := fs.Bool("score", false, "with --preflight: also ask the decision port for its Score (WI-18; only with [decide] configured and the preflight site allowed)")
 	if err := fs.Parse(args[1:]); err != nil {
 		return 1
 	}
@@ -81,11 +83,14 @@ func cmdPlansContext(args []string, stdout, stderr io.Writer) int {
 	idx, idxErr := openCtxIndex(*service, *storePath, *url)
 	segs := renderContextPack(*task, planFile, idx, idxErr)
 	fmt.Fprint(stdout, budgetContextPack(segs, *budget))
+	if *preflight || *score {
+		runPreflight(context.Background(), *task, planFile, *service, *storePath, *score, stdout, stderr)
+	}
 	return 0
 }
 
 func printPlansContextUsage(w io.Writer) {
-	fmt.Fprintln(w, "Usage: fathom plans context <plan.md> --row <id> --service S [--store DB | --url URL] [--budget N]")
+	fmt.Fprintln(w, "Usage: fathom plans context <plan.md> --row <id> --service S [--store DB | --url URL] [--budget N] [--preflight [--score]]")
 }
 
 // ─── pointer resolution ─────────────────────────────────────────────────────

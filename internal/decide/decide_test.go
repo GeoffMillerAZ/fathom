@@ -207,6 +207,22 @@ func TestSiteAllowed_Allowlist(t *testing.T) {
 		}
 	})
 
+	t.Run("preflight is a known site (WI-18): task preflight's Score speaks only through the port", func(t *testing.T) {
+		if decide.SitePreflight != "preflight" {
+			t.Errorf("SitePreflight = %q, want \"preflight\" (the [decide] sites vocabulary)", decide.SitePreflight)
+		}
+		found := false
+		for _, s := range decide.AllSites {
+			found = found || s == decide.SitePreflight
+		}
+		if !found {
+			t.Error("AllSites does not list preflight — doctor could never name it as blocked")
+		}
+		if decide.SiteAllowed(config.Decide{Sites: []string{decide.SiteRoute}}, decide.SitePreflight) {
+			t.Error("a narrowed allowlist without preflight must refuse it")
+		}
+	})
+
 	t.Run("a nil or empty Sites allows nothing (fail-closed egress, never fail-open)", func(t *testing.T) {
 		if decide.SiteAllowed(config.Decide{}, decide.SiteRoute) {
 			t.Error("SiteAllowed with a zero-value Decide{} (nil Sites) = true, want false")

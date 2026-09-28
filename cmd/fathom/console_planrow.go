@@ -80,17 +80,23 @@ func buildPlanRowPage(cr *consoleRequest) (consoleOut, error) {
 			sections[verb] = verifyJSONDoc(narrowed, verifyGateFailures(narrowed, false, false))
 		}
 	}
-	body := func() string { return renderRowEvidence(view, verb, "plans:"+sr.Service) }
+	pre, preWhy := buildPlanRowPreflight(cr, sr, plan, row)
+	body := func() string {
+		return renderRowEvidence(view, verb, "plans:"+sr.Service) + `<div class="mt-4">` + renderPreflightPanel(pre, preWhy, sr, plan, row, "plans:"+sr.Service) + `</div>`
+	}
 	title := id + " · " + row.Title
 	return consoleOut{
 		Title: title,
-		Crumbs: []chrome.Crumb{{Label: "Plans", Href: "/plans"}, {Label: sr.Service, Href: "/plans?svc=" + url.QueryEscape(sr.Service)},
+		Crumbs: []chrome.Crumb{
+			{Label: "Plans", Href: "/plans"},
+			{Label: sr.Service, Href: "/plans?svc=" + url.QueryEscape(sr.Service)},
 			{Label: plan.Title, Href: planHref(sr.Service, plan.Slug())},
 			// The row's own crumb is its id: the heading carries the title,
 			// and a sentence-long last crumb wrapped under the trail.
-			{Label: id}},
+			{Label: id},
+		},
 		Meta:  []string{fmt.Sprintf("%s:%d", plan.Rel, row.Line), stateBadge[view.State].Label, view.Contract.Kind},
-		Model: view, Sections: sections, Verbs: []string{verb},
+		Model: planRowModel{RowEvidenceView: view, Preflight: pre, PreflightErr: preWhy}, Sections: sections, Verbs: []string{verb},
 		Body: body,
 		// The drawer's fragment is a person opening this row's evidence
 		// over the plan page: a view of this page (UX-M4 reads it).
