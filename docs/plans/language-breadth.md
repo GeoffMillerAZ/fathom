@@ -77,7 +77,8 @@ cannot reach its target keeps its contract and gains a `[-]` sibling
 
 ## Measurements (op)
 
-- [ ] (op) LB-M1: baseline readings with the new harness for every language and format registered today, taken before LB-F1 lands, committed under `docs/bench/readings/lang/baseline/` {id: LB-M1, oracle: lexical, path: docs/bench/readings/lang/baseline/README.md, pattern: "^Baseline taken at [0-9a-f]+", needs: "LB-F23"}
+- [x] (op) LB-M1: baseline readings with the new harness for every language and format registered today, taken before LB-F1 lands, committed under `docs/bench/readings/lang/baseline/` {id: LB-M1, oracle: lexical, path: docs/bench/readings/lang/baseline/README.md, pattern: "^Baseline taken at [0-9a-f]+", needs: "LB-F23"}
+- [-] (op) LB-M1 beyond the 18 ctags-readable dialects: Scala and the registered tool formats without a tier-B oracle (Dockerfile, GitHub Actions, Kubernetes, Compose, Helm, Kustomize, OpenAPI, go.mod, CUE, Markdown, templ, GraphQL, JSON/TOML) {id: LB-M1-rest, disposition: deferred, reason: "no tier-B oracle: universal-ctags 6.2.1 has no Scala parser and none for these formats; SCIP producers were not installed on the measuring machine", trigger: "each format's queue item measures it against its tool-native oracle, or scip-java runs for Scala"}
 - [ ] (op) LB-M2-1: after wave 1, every reading regenerated at HEAD by Haiku; no dialect's `level_met` or grade regressed; the wave's token spend per item recorded {id: LB-M2-1, oracle: lexical, path: docs/bench/readings/lang/waves.md, pattern: "^## Wave 1 re-measure", needs: "LB-Q-kubernetes"}
 - [ ] (op) LB-M2-2: the same after wave 2 {id: LB-M2-2, oracle: lexical, path: docs/bench/readings/lang/waves.md, pattern: "^## Wave 2 re-measure", needs: "LB-Q-msbuild"}
 - [ ] (op) LB-M2-3: the same after wave 3 {id: LB-M2-3, oracle: lexical, path: docs/bench/readings/lang/waves.md, pattern: "^## Wave 3 re-measure", needs: "LB-Q-circleci"}

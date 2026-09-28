@@ -1,0 +1,131 @@
+{
+  "dialect": "go",
+  "kind": "language",
+  "target_level": "L4",
+  "level_met": "L1",
+  "grade": {
+    "L1": "good",
+    "L2": "not-attempted",
+    "L3": "not-attempted",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-09-28",
+  "fathom_commit": "56c18502",
+  "extractor": "incumbent",
+  "subjects": [
+    {
+      "name": "spf13/cobra",
+      "sha": "adbc8813901bba65827259daa8e22ff94ec1f30e",
+      "files": 36,
+      "bytes": 512600,
+      "counts": {
+        "callables": 595,
+        "callables_signed": 595,
+        "fathom_defs": 637,
+        "kind_equal": 635,
+        "matched": 635,
+        "oracle_defs": 682,
+        "range_eligible": 612,
+        "range_ok": 612
+      },
+      "families": {
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "constant",
+        "function",
+        "interface",
+        "method",
+        "struct",
+        "variable"
+      ],
+      "excluded_by_kind": {
+        "ctags:member": 102,
+        "ctags:methodSpec": 1,
+        "ctags:package": 36,
+        "ctags:packageName": 2,
+        "ctags:talias": 2
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 23.105000000000008,
+        "max_file_ms": 8,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "B",
+      "tool": "universal-ctags",
+      "version": "6.2.1"
+    }
+  ],
+  "metrics": {
+    "call_precision": null,
+    "call_recall": null,
+    "def_mapping": null,
+    "file_edge_precision": null,
+    "file_edge_recall": null,
+    "import_resolution": null,
+    "kind_agreement": 1,
+    "range_agreement": 1,
+    "signature_coverage": 1,
+    "sym_precision": 0.9969,
+    "sym_recall": 0.9311,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "kind_agreement": "B",
+    "range_agreement": "B",
+    "signature_coverage": "B",
+    "sym_precision": "B",
+    "sym_recall": "B"
+  },
+  "required_kinds": [
+    "function",
+    "interface",
+    "method",
+    "struct"
+  ],
+  "kind_intersection": [
+    "constant",
+    "function",
+    "interface",
+    "method",
+    "struct",
+    "variable"
+  ],
+  "counts": {
+    "callables": 595,
+    "callables_signed": 595,
+    "fathom_defs": 637,
+    "kind_equal": 635,
+    "matched": 635,
+    "oracle_defs": 682,
+    "range_eligible": 612,
+    "range_ok": 612
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 22.19,
+    "max_file_ms": 8,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "ctags:member": 102,
+    "ctags:methodSpec": 1,
+    "ctags:package": 36,
+    "ctags:packageName": 2,
+    "ctags:talias": 2
+  },
+  "notes": [
+    "GoType covers every named type; ctags struct and type both map to struct",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+  ],
+  "disposition": null
+}

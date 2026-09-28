@@ -1,0 +1,126 @@
+{
+  "dialect": "rust",
+  "kind": "language",
+  "target_level": "L4",
+  "level_met": "none",
+  "grade": {
+    "L1": "unmet",
+    "L2": "not-attempted",
+    "L3": "not-attempted",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-09-28",
+  "fathom_commit": "56c18502",
+  "extractor": "incumbent",
+  "subjects": [
+    {
+      "name": "BurntSushi/ripgrep",
+      "sha": "3fce3b5bb0236da2df6d99672afb8a719642eca7",
+      "files": 110,
+      "bytes": 1902104,
+      "counts": {
+        "callables": 2914,
+        "fathom_defs": 3880,
+        "kind_equal": 3770,
+        "matched": 3770,
+        "oracle_defs": 3923
+      },
+      "families": {
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "class",
+        "enum",
+        "function",
+        "module",
+        "struct",
+        "trait"
+      ],
+      "excluded_by_kind": {
+        "ctags:constant": 74,
+        "ctags:enumerator": 273,
+        "ctags:field": 748,
+        "ctags:macro": 30,
+        "ctags:typedef": 48,
+        "ctags:variable": 52
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 236.87999999999988,
+        "max_file_ms": 28,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "B",
+      "tool": "universal-ctags",
+      "version": "6.2.1"
+    }
+  ],
+  "metrics": {
+    "call_precision": null,
+    "call_recall": null,
+    "def_mapping": null,
+    "file_edge_precision": null,
+    "file_edge_recall": null,
+    "import_resolution": null,
+    "kind_agreement": 1,
+    "range_agreement": null,
+    "signature_coverage": 0,
+    "sym_precision": 0.9716,
+    "sym_recall": 0.961,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "kind_agreement": "B",
+    "signature_coverage": "B",
+    "sym_precision": "B",
+    "sym_recall": "B"
+  },
+  "required_kinds": [
+    "enum",
+    "function",
+    "struct",
+    "trait"
+  ],
+  "kind_intersection": [
+    "class",
+    "enum",
+    "function",
+    "module",
+    "struct",
+    "trait"
+  ],
+  "counts": {
+    "callables": 2914,
+    "fathom_defs": 3880,
+    "kind_equal": 3770,
+    "matched": 3770,
+    "oracle_defs": 3923
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 8.03,
+    "max_file_ms": 28,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "ctags:constant": 74,
+    "ctags:enumerator": 273,
+    "ctags:field": 748,
+    "ctags:macro": 30,
+    "ctags:typedef": 48,
+    "ctags:variable": 52
+  },
+  "notes": [
+    "fathom emits methods as RustFn; ctags method maps to function",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+  ],
+  "disposition": null
+}

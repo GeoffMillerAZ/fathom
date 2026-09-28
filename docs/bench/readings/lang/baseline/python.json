@@ -1,0 +1,113 @@
+{
+  "dialect": "python",
+  "kind": "language",
+  "target_level": "L4",
+  "level_met": "none",
+  "grade": {
+    "L1": "unmet",
+    "L2": "not-attempted",
+    "L3": "not-attempted",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-09-28",
+  "fathom_commit": "56c18502",
+  "extractor": "incumbent",
+  "subjects": [
+    {
+      "name": "pallets/flask",
+      "sha": "d73fa1cdcbd8b1465c151db8924ba58b1dd14e35",
+      "files": 83,
+      "bytes": 589437,
+      "counts": {
+        "callables": 1462,
+        "fathom_defs": 1756,
+        "kind_equal": 1756,
+        "matched": 1756,
+        "oracle_defs": 1870,
+        "range_eligible": 1622
+      },
+      "families": {
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "class",
+        "function",
+        "variable"
+      ],
+      "excluded_by_kind": {
+        "ctags:namespace": 32,
+        "ctags:unknown": 62
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 130.132,
+        "max_file_ms": 19,
+        "peak_module_pages": 350,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "B",
+      "tool": "universal-ctags",
+      "version": "6.2.1"
+    }
+  ],
+  "metrics": {
+    "call_precision": null,
+    "call_recall": null,
+    "def_mapping": null,
+    "file_edge_precision": null,
+    "file_edge_recall": null,
+    "import_resolution": null,
+    "kind_agreement": 1,
+    "range_agreement": 0,
+    "signature_coverage": 0,
+    "sym_precision": 1,
+    "sym_recall": 0.939,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "kind_agreement": "B",
+    "range_agreement": "B",
+    "signature_coverage": "B",
+    "sym_precision": "B",
+    "sym_recall": "B"
+  },
+  "required_kinds": [
+    "class",
+    "function"
+  ],
+  "kind_intersection": [
+    "class",
+    "function",
+    "variable"
+  ],
+  "counts": {
+    "callables": 1462,
+    "fathom_defs": 1756,
+    "kind_equal": 1756,
+    "matched": 1756,
+    "oracle_defs": 1870,
+    "range_eligible": 1622
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 4.53,
+    "max_file_ms": 19,
+    "peak_module_pages": 350,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "ctags:namespace": 32,
+    "ctags:unknown": 62
+  },
+  "notes": [
+    "fathom's Python taxonomy has no method kind (a method is a PythonFunc qualified by its class), so ctags member maps to function",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+  ],
+  "disposition": null
+}

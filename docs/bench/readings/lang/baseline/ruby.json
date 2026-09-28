@@ -1,0 +1,113 @@
+{
+  "dialect": "ruby",
+  "kind": "language",
+  "target_level": "L3",
+  "level_met": "none",
+  "grade": {
+    "L1": "unmet",
+    "L2": "not-attempted",
+    "L3": "not-attempted",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-09-28",
+  "fathom_commit": "56c18502",
+  "extractor": "incumbent",
+  "subjects": [
+    {
+      "name": "sinatra/sinatra",
+      "sha": "cb22afd7902b566b6eaba6c4ea89739494a65d12",
+      "files": 147,
+      "bytes": 678753,
+      "counts": {
+        "callables": 896,
+        "fathom_defs": 1165,
+        "kind_equal": 1154,
+        "matched": 1154,
+        "oracle_defs": 1271,
+        "range_eligible": 1154
+      },
+      "families": {
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "class",
+        "method",
+        "module"
+      ],
+      "excluded_by_kind": {
+        "ctags:accessor": 59,
+        "ctags:constant": 53
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 235.0819999999999,
+        "max_file_ms": 21,
+        "peak_module_pages": 428,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "B",
+      "tool": "universal-ctags",
+      "version": "6.2.1"
+    }
+  ],
+  "metrics": {
+    "call_precision": null,
+    "call_recall": null,
+    "def_mapping": null,
+    "file_edge_precision": null,
+    "file_edge_recall": null,
+    "import_resolution": null,
+    "kind_agreement": 1,
+    "range_agreement": 0,
+    "signature_coverage": 0,
+    "sym_precision": 0.9906,
+    "sym_recall": 0.9079,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "kind_agreement": "B",
+    "range_agreement": "B",
+    "signature_coverage": "B",
+    "sym_precision": "B",
+    "sym_recall": "B"
+  },
+  "required_kinds": [
+    "class",
+    "method",
+    "module"
+  ],
+  "kind_intersection": [
+    "class",
+    "method",
+    "module"
+  ],
+  "counts": {
+    "callables": 896,
+    "fathom_defs": 1165,
+    "kind_equal": 1154,
+    "matched": 1154,
+    "oracle_defs": 1271,
+    "range_eligible": 1154
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 2.89,
+    "max_file_ms": 21,
+    "peak_module_pages": 428,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "ctags:accessor": 59,
+    "ctags:constant": 53
+  },
+  "notes": [
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+  ],
+  "disposition": null
+}

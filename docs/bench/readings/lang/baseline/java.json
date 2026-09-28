@@ -1,0 +1,122 @@
+{
+  "dialect": "java",
+  "kind": "language",
+  "target_level": "L4",
+  "level_met": "none",
+  "grade": {
+    "L1": "unmet",
+    "L2": "not-attempted",
+    "L3": "not-attempted",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-09-28",
+  "fathom_commit": "56c18502",
+  "extractor": "incumbent",
+  "subjects": [
+    {
+      "name": "square/retrofit",
+      "sha": "e27d855b7b029e7f907dfc52205fdb3e9c603c16",
+      "files": 306,
+      "bytes": 1284851,
+      "counts": {
+        "callables": 2221,
+        "fathom_defs": 3501,
+        "kind_equal": 3500,
+        "matched": 3500,
+        "oracle_defs": 3576,
+        "range_eligible": 3500,
+        "range_ok": 3500
+      },
+      "families": {
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "class",
+        "enum",
+        "field",
+        "interface",
+        "method"
+      ],
+      "excluded_by_kind": {
+        "ctags:enumConstant": 4,
+        "ctags:package": 306,
+        "fathom:JavaImport": 2954
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 139.43600000000015,
+        "max_file_ms": 14,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "B",
+      "tool": "universal-ctags",
+      "version": "6.2.1"
+    }
+  ],
+  "metrics": {
+    "call_precision": null,
+    "call_recall": null,
+    "def_mapping": null,
+    "file_edge_precision": null,
+    "file_edge_recall": null,
+    "import_resolution": null,
+    "kind_agreement": 1,
+    "range_agreement": 1,
+    "signature_coverage": 0,
+    "sym_precision": 0.9997,
+    "sym_recall": 0.9787,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "kind_agreement": "B",
+    "range_agreement": "B",
+    "signature_coverage": "B",
+    "sym_precision": "B",
+    "sym_recall": "B"
+  },
+  "required_kinds": [
+    "class",
+    "enum",
+    "interface",
+    "method"
+  ],
+  "kind_intersection": [
+    "class",
+    "enum",
+    "field",
+    "interface",
+    "method"
+  ],
+  "counts": {
+    "callables": 2221,
+    "fathom_defs": 3501,
+    "kind_equal": 3500,
+    "matched": 3500,
+    "oracle_defs": 3576,
+    "range_eligible": 3500,
+    "range_ok": 3500
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 9.21,
+    "max_file_ms": 14,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "ctags:enumConstant": 4,
+    "ctags:package": 306,
+    "fathom:JavaImport": 2954
+  },
+  "notes": [
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+  ],
+  "disposition": null
+}
