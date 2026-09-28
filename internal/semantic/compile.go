@@ -646,7 +646,14 @@ sectionLoop:
 		}
 		for _, old := range bySubject[subj] {
 			if !emitted[old.ClaimID] && old.Status != core.ClaimSuperseded {
-				if err := c.St.SetClaimStatus(ctx, in.ServiceID, old.ClaimID, core.ClaimSuperseded); err != nil {
+				// GL-15 (design doc §7): supersession is a claim-ending
+				// transition exactly like refute — close the validity
+				// window at the same instant the status flips, never
+				// leave it open. closeClaimValidity replaces a bare
+				// SetClaimStatus call that used to leave ValidTo
+				// untouched here (every OTHER claim-ending path already
+				// paired the two calls by hand; this one had drifted).
+				if err := closeClaimValidity(ctx, c.St, in.ServiceID, old.ClaimID, core.ClaimSuperseded, now()); err != nil {
 					return run, fmt.Errorf("semantic: supersede %s: %w", old.ClaimID, err)
 				}
 			}

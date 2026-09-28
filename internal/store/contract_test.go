@@ -1520,6 +1520,14 @@ func storeContract(t *testing.T, s Store) {
 		if c, ok := byID[retiring.ClaimID]; !ok || c.Lifecycle != core.LifecycleRetired {
 			t.Errorf("retired claim lifecycle after recompile = %+v, want %q (durability)", c, core.LifecycleRetired)
 		}
+		// GL-15 (design doc §7): the recompile above passed ValidTo's zero
+		// value (recompiled, like every compiler-emitted claim, never sets
+		// it) — a retired claim's closed window must survive that exactly
+		// like its lifecycle does, one instant above, or the row ends up
+		// internally inconsistent: lifecycle=retired but valid_to reopened.
+		if c, ok := byID[retiring.ClaimID]; !ok || !c.ValidTo.Equal(retired.ValidTo) {
+			t.Errorf("retired claim valid_to after recompile = %+v, want %v (window stays closed)", c, retired.ValidTo)
+		}
 	})
 
 	// ------------------------------------------------------------------ //

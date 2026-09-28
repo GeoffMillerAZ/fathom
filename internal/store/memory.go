@@ -789,8 +789,15 @@ func (m *MemoryStore) PutClaims(_ context.Context, claims []core.SemanticClaim, 
 			// that re-emits the same claim_id with the compiler's default
 			// (unset) lifecycle (see sqlite.go's PutClaims CASE WHEN for
 			// the same rule against the SQLite backend).
+			//
+			// GL-15 (design doc §7): the same recompile must not reopen a
+			// retired claim's validity window either — without this, the
+			// lifecycle guard above keeps Lifecycle=retired but ValidTo
+			// would take the incoming (ordinarily zero) value, an
+			// internally inconsistent "retired but open" row.
 			if existing.Lifecycle == core.LifecycleRetired {
 				sc.Lifecycle = core.LifecycleRetired
+				sc.ValidTo = existing.ValidTo
 			}
 		}
 		m.claims[key] = sc

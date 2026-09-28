@@ -34,7 +34,7 @@ of signal exist.
 
 ## Wave 3: validity windows everywhere, the rule-effectiveness view, layered diffs
 
-- [ ] Every claim-ending path sets `valid_to`; a test proves no claim-ending path deletes (SU-19 activated) (§7) {id: GL-15, symbol: closeClaimValidity, package: internal/semantic, reachable_from: TestNoClaimEndingPathDeletes}
+- [x] Every claim-ending path sets `valid_to`; a test proves no claim-ending path deletes (SU-19 activated) (§7) {id: GL-15, symbol: closeClaimValidity, package: internal/semantic, reachable_from: TestNoClaimEndingPathDeletes}
 - [ ] Memories, rules-file rules, learned-rule states and doc links gain `valid_from`/`valid_to`, additively {id: GL-16, symbol: PutMemoryValidity, package: internal/store, reachable_from: TestValidityWindowsBeyondClaims}
 - [ ] `as_of` on `memory_search`, `staleness_report` and the review verbs, beside `obligations` {id: GL-17, symbol: asOfFilter, package: internal/mcp, reachable_from: TestAsOfAcrossVerbs, needs: "GL-16"}
 - [ ] The rule-effectiveness page on the console (U4) {id: GL-18, symbol: renderRuleEffectiveness, package: cmd/fathom, reachable_from: TestConsoleRuleEffectivenessPage, needs: "GL-11"}

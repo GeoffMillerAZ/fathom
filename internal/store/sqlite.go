@@ -1420,12 +1420,19 @@ ON CONFLICT (service_id, claim_id) DO UPDATE SET
     valid_from            = CASE WHEN semantic_claims.valid_from != '' THEN semantic_claims.valid_from ELSE excluded.valid_from END,
     -- valid_to mirrors status' own refutation-durability CASE above: a
     -- refuted claim's closed validity window survives every future
-    -- upsert exactly like its status does. A NON-refuted row (including
-    -- one this call is resurrecting from superseded back to fresh — see
-    -- status' own doc comment) takes the incoming value, which reopens
-    -- the window (an ordinary caller passes ValidTo's zero value/"" on a
-    -- normal write) exactly when the status resurrection itself does.
-    valid_to              = CASE WHEN semantic_claims.status = 'refuted' THEN semantic_claims.valid_to ELSE excluded.valid_to END,
+    -- upsert exactly like its status does. GL-15 (design doc §7) extends
+    -- the SAME guard to lifecycle='retired' — a retired claim's window
+    -- must survive a later recompile exactly like lifecycle itself does
+    -- (the CASE below), or the row ends up with the terminal lifecycle
+    -- but a reopened (excluded/incoming, ordinarily zero) validity
+    -- window: internally inconsistent and the exact silent-resurrection
+    -- shape retirement is terminal to prevent. A NON-refuted,
+    -- NON-retired row (including one this call is resurrecting from
+    -- superseded back to fresh — see status' own doc comment) takes the
+    -- incoming value, which reopens the window (an ordinary caller
+    -- passes ValidTo's zero value/"" on a normal write) exactly when the
+    -- status resurrection itself does.
+    valid_to              = CASE WHEN semantic_claims.status = 'refuted' OR semantic_claims.lifecycle = 'retired' THEN semantic_claims.valid_to ELSE excluded.valid_to END,
     asserted_by           = excluded.asserted_by,
     meta                  = excluded.meta,
     -- GL-13: lifecycle mirrors status' own refutation-durability CASE
