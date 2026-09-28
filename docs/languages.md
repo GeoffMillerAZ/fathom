@@ -71,7 +71,7 @@ Milestone M1 progress: languages at L1 excellent 0/20, at L2 0/12, at L3 0/8, at
 
 | Language or format | Kind | Engine | Grammar / parser | Target | Level met | Oracles | Typed edges | Reading | Next |
 |---|---|---|---|---|---|---|---|---|---|
-| TypeScript (.ts .tsx .mts .cts) | language | tags | tree-sitter/tree-sitter-typescript (MIT) | L4 | tolerated | — | scip:scip-typescript | — | LB-Q-typescript |
+| TypeScript (.ts .tsx .mts .cts) | language | tags | tree-sitter/tree-sitter-typescript (MIT) | L4 | none (measured) | A scip-typescript 0.4.0; B universal-ctags 6.2.1 | scip:scip-typescript | 2026-09-28 | LB-Q-typescript |
 | JavaScript (.js .jsx .mjs .cjs) | language | tags | tree-sitter/tree-sitter-javascript (MIT) | L4 | tolerated | — | scip:scip-typescript | — | LB-Q-javascript |
 | Dockerfile / Containerfile | tool format | tags | camdencheek/tree-sitter-dockerfile (Apache-2.0) | L3 | tolerated | — | syntax | — | LB-Q-dockerfile |
 | Python (.py .pyi) | language | tags | tree-sitter/tree-sitter-python (MIT) | L4 | tolerated | — | scip:scip-python | — | LB-Q-python |
