@@ -8,7 +8,7 @@
     },
     "count_field": "rules",
     "budget_ms": 250,
-    "bytes": 885,
+    "bytes": 904,
     "result_count": 3,
     "displaced": 0
   },
@@ -21,7 +21,7 @@
     },
     "count_field": "rules",
     "budget_ms": 250,
-    "bytes": 682,
+    "bytes": 701,
     "result_count": 2,
     "displaced": 0
   },
@@ -34,7 +34,7 @@
     },
     "count_field": "rules",
     "budget_ms": 250,
-    "bytes": 741,
+    "bytes": 760,
     "result_count": 2,
     "displaced": 0
   },
@@ -62,7 +62,7 @@
     },
     "count_field": "occurrences",
     "budget_ms": 250,
-    "bytes": 1916,
+    "bytes": 1935,
     "result_count": 12,
     "displaced": 0
   },
@@ -116,7 +116,7 @@
       "service": "ledger-service"
     },
     "budget_ms": 250,
-    "bytes": 457,
+    "bytes": 484,
     "result_count": 0,
     "displaced": 0
   },
@@ -141,7 +141,7 @@
     },
     "count_field": "sources",
     "budget_ms": 250,
-    "bytes": 345,
+    "bytes": 360,
     "result_count": 1,
     "displaced": 0
   },
