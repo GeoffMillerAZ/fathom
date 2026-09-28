@@ -184,8 +184,8 @@ owner's decisions, binding on the harness and every reading after them:
 | Item | Wave 1b | Round 2 | L1 oracle | L2 oracle |
 |---|---|---|---|---|
 | c | none (0.62 MB/s wall) | L1 good | ctags (B) | scip-clang (A, D5 fallback): precision short |
-| typescript | none | L1 excellent | scip-typescript (A) + D3 | scip-typescript: precision short |
-| javascript | none | L1 excellent | scip-typescript (A) + D3 | scip-typescript: not adequate for untyped JS |
+| typescript | none | L1 good | scip-typescript (A) + D3 (module scope) | scip-typescript: precision short |
+| javascript | none | none (sym_precision .84) | scip-typescript (A) + D3 (module scope) | scip-typescript: not adequate for untyped JS |
 | java | none | L2 good | JavaParser dump (B) | JavaParser dump (B) |
 | csharp | none | L1 excellent | Roslyn dump (B) | scip-dotnet (A): precision short |
 | sql | none | L2 good | ctags (B), restricted families | sqlglot FK pairs (C) |

@@ -185,7 +185,7 @@ func recompute(r *Reading) {
 	}
 	r.Notes = slices.DeleteFunc(r.Notes, func(n string) bool { return strings.HasPrefix(n, noteAdjudicatedPrefix) })
 	if n := counts[CntAdjudicated]; n > 0 {
-		r.Notes = append(r.Notes, fmt.Sprintf("%s%d dialect-only definitions the L1 oracle is verified to miss (each listed under its subject's adjudicated, admitted by langbench.Adjudicate's deterministic file:line and name check, owner decision D3) are left out of sym_precision's denominator", noteAdjudicatedPrefix, n))
+		r.Notes = append(r.Notes, fmt.Sprintf("%s%d dialect-only definitions the L1 oracle is verified to miss (each listed under its subject's adjudicated, admitted by langbench.Adjudicate's deterministic file:line, name and module-scope check, owner decision D3) are left out of sym_precision's denominator", noteAdjudicatedPrefix, n))
 		sort.Strings(r.Notes)
 	}
 	r.Finalize()
