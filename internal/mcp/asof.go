@@ -52,18 +52,18 @@ type docLinksAsOfBackend interface {
 	DocLinksAsOf(ctx context.Context, service string, at time.Time) ([]store.DocLinkView, error)
 }
 
-// asOfFilter is one resolved `as_of` instant. The nil filter is "now": every
+// asOfWindow is one resolved `as_of` instant. The nil filter is "now": every
 // method is safe on it and changes nothing, so a verb threads one value
 // through whether or not the caller asked for a date.
-type asOfFilter struct {
+type asOfWindow struct {
 	at time.Time
 }
 
-// newAsOfFilter resolves raw for service on behalf of tool. "" is the nil
+// asOfFilter resolves raw for service on behalf of tool. "" is the nil
 // filter (the live answer). An unparseable value, or a commit sha the index
 // does not know, is a params error naming tool — never a silent fall back to
 // now.
-func newAsOfFilter(ctx context.Context, backend QueryInterface, service, raw, tool string) (*asOfFilter, *rpcError) {
+func asOfFilter(ctx context.Context, backend QueryInterface, service, raw, tool string) (*asOfWindow, *rpcError) {
 	if raw == "" {
 		return nil, nil
 	}
@@ -75,14 +75,14 @@ func newAsOfFilter(ctx context.Context, backend QueryInterface, service, raw, to
 	if err != nil {
 		return nil, &rpcError{Code: ErrCodeParams, Message: tool + ": " + err.Error()}
 	}
-	return &asOfFilter{at: at}, nil
+	return &asOfWindow{at: at}, nil
 }
 
 // active reports whether the caller asked for a date.
-func (f *asOfFilter) active() bool { return f != nil }
+func (f *asOfWindow) active() bool { return f != nil }
 
 // instant is the resolved time (zero for the nil filter).
-func (f *asOfFilter) instant() time.Time {
+func (f *asOfWindow) instant() time.Time {
 	if f == nil {
 		return time.Time{}
 	}
@@ -92,7 +92,7 @@ func (f *asOfFilter) instant() time.Time {
 // label is the RFC3339 instant echoed back in every as_of answer ("" for
 // the nil filter, so an omitted field stays byte-identical to the live
 // payload).
-func (f *asOfFilter) label() string {
+func (f *asOfWindow) label() string {
 	if f == nil {
 		return ""
 	}
@@ -103,7 +103,7 @@ func (f *asOfFilter) label() string {
 // their original order; the nil filter returns them all. It looks at the
 // window alone — a claim superseded since still answers for a date before it
 // was superseded, which is the whole point.
-func (f *asOfFilter) claims(in []core.SemanticClaim) []core.SemanticClaim {
+func (f *asOfWindow) claims(in []core.SemanticClaim) []core.SemanticClaim {
 	if f == nil {
 		return in
 	}
@@ -121,7 +121,7 @@ func (f *asOfFilter) claims(in []core.SemanticClaim) []core.SemanticClaim {
 // misreport a since-superseded claim as superseded on a date it was in
 // force, so the dated answer counts what was in force (`valid`) and nothing
 // else.
-func (f *asOfFilter) layerTally(in []core.SemanticClaim) map[string]any {
+func (f *asOfWindow) layerTally(in []core.SemanticClaim) map[string]any {
 	perLayer := map[string]int{}
 	for _, c := range f.claims(in) {
 		perLayer[c.Layer]++
@@ -143,7 +143,7 @@ func (f *asOfFilter) layerTally(in []core.SemanticClaim) map[string]any {
 // backend cannot read it. The other sections of staleness_report (sources,
 // commit drift, refresh, typed edges) read the index as it stands, and
 // as_of_scope says so.
-func stalenessAsOf(ctx context.Context, backend QueryInterface, service string, f *asOfFilter, resp map[string]any) {
+func stalenessAsOf(ctx context.Context, backend QueryInterface, service string, f *asOfWindow, resp map[string]any) {
 	resp["as_of"] = f.label()
 	resp["as_of_scope"] = "layers and doc_links_as_of are answered as of " + f.label() +
 		"; sources, commits, refresh and typed_edges are the index as it stands now, and doc_link_drift (a comparison with now) is left out"

@@ -122,7 +122,7 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "review_diff: changed_files required"}
 		}
 
-		asOf, aerr := newAsOfFilter(ctx, backend, p.Service, p.AsOf, "review_diff")
+		asOf, aerr := asOfFilter(ctx, backend, p.Service, p.AsOf, "review_diff")
 		if aerr != nil {
 			return nil, aerr
 		}
@@ -445,7 +445,7 @@ type reviewCorpus struct {
 	cov   corpus.Coverage
 }
 
-func buildReviewInput(ctx context.Context, backend QueryInterface, service string, changedFiles []string, concern, since string, asOf *asOfFilter) (review.Input, reviewCorpus, *rpcError) {
+func buildReviewInput(ctx context.Context, backend QueryInterface, service string, changedFiles []string, concern, since string, asOf *asOfWindow) (review.Input, reviewCorpus, *rpcError) {
 	nodes, err := serviceSymbols(ctx, backend, service)
 	if err != nil {
 		return review.Input{}, reviewCorpus{}, &rpcError{Code: ErrCodeInternal, Message: err.Error()}

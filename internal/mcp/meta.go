@@ -387,7 +387,7 @@ func registerStalenessReport(s *Server, backend QueryInterface) {
 		if p.Service == "" {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "staleness_report: service required"}
 		}
-		asOf, aerr := newAsOfFilter(ctx, backend, p.Service, p.AsOf, "staleness_report")
+		asOf, aerr := asOfFilter(ctx, backend, p.Service, p.AsOf, "staleness_report")
 		if aerr != nil {
 			return nil, aerr
 		}

@@ -59,7 +59,7 @@ func registerFindingsNear(s *Server, backend QueryInterface) {
 		if p.Service == "" || p.Subject == "" {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "findings_near: service and subject are required"}
 		}
-		asOf, aerr := newAsOfFilter(ctx, backend, p.Service, p.AsOf, "findings_near")
+		asOf, aerr := asOfFilter(ctx, backend, p.Service, p.AsOf, "findings_near")
 		if aerr != nil {
 			return nil, aerr
 		}

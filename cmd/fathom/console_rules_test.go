@@ -124,6 +124,17 @@ func TestConsoleRuleEffectivenessPage(t *testing.T) {
 	if err := json.Unmarshal(env.Sections[env.Verbs[0]], &view); err != nil {
 		t.Fatal(err)
 	}
+	// The page body is this view rendered: every rule's statement and class
+	// word, and the same verb chip.
+	rendered := renderRuleEffectiveness(view, env.Verbs[0])
+	for _, r := range view.Rows {
+		if !strings.Contains(rendered, r.Statement) {
+			t.Errorf("the rendered body lacks the rule %q", r.Statement)
+		}
+	}
+	if !strings.Contains(rendered, "fathom claim effectiveness --json") {
+		t.Error("the rendered body lacks its verb chip")
+	}
 	classes := map[string]string{}
 	for _, r := range view.Rows {
 		classes[r.RuleID] = r.Class

@@ -686,7 +686,7 @@ func registerSemanticTools(s *Server, backend QueryInterface, modules moduleBack
 				return nil, &rpcError{Code: ErrCodeInvalid, Message: "backend does not support as_of"}
 			}
 			// GL-17: one resolver for every verb that takes an as_of.
-			asOf, aerr := newAsOfFilter(ctx, backend, p.Service, p.AsOf, "obligations")
+			asOf, aerr := asOfFilter(ctx, backend, p.Service, p.AsOf, "obligations")
 			if aerr != nil {
 				return nil, aerr
 			}

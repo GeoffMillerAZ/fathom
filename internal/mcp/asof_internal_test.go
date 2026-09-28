@@ -99,6 +99,17 @@ func newAsOfSeed(t *testing.T) asOfSeed {
 	}
 }
 
+// commitsOnly is a QueryInterface that knows only its commit history, for the
+// resolver's own test.
+type commitsOnly struct {
+	QueryInterface
+	commits []CommitInfo
+}
+
+func (c commitsOnly) ListCommits(context.Context, string) ([]CommitInfo, error) {
+	return c.commits, nil
+}
+
 // callToolFailure returns the JSON-RPC error a tool call answered with ("" when it succeeded).
 func callToolFailure(t *testing.T, srv *Server, name string, args map[string]any) string {
 	t.Helper()
@@ -155,6 +166,30 @@ func sameStrings(got, want []string) bool {
 func TestAsOfAcrossVerbs(t *testing.T) {
 	seed := newAsOfSeed(t)
 	srv := seed.srv
+
+	// One resolver behind every verb: nothing asked is now, a timestamp or an
+	// indexed commit sha is an instant, anything else is a params error that
+	// names the tool.
+	t.Run("resolver", func(t *testing.T) {
+		ctx := context.Background()
+		backend := commitsOnly{commits: []CommitInfo{{Hash: "abcdef0123456789", Date: "2026-02-01T00:00:00Z"}}}
+		if f, rerr := asOfFilter(ctx, backend, "svc", "", "staleness_report"); f != nil || rerr != nil {
+			t.Errorf("nothing asked = %v, %v; want the nil filter (now)", f, rerr)
+		}
+		f, rerr := asOfFilter(ctx, backend, "svc", "2026-03-01T00:00:00Z", "staleness_report")
+		if rerr != nil || f.label() != "2026-03-01T00:00:00Z" {
+			t.Errorf("a timestamp = %v, %v", f, rerr)
+		}
+		f, rerr = asOfFilter(ctx, backend, "svc", "abcdef0", "review_diff")
+		if rerr != nil || f.label() != seed.mid {
+			t.Errorf("a commit sha = %v, %v; want the commit's date %s", f, rerr, seed.mid)
+		}
+		for _, bad := range []string{"deadbee", "abc", "last tuesday"} {
+			if _, rerr := asOfFilter(ctx, backend, "svc", bad, "findings_near"); rerr == nil || !strings.HasPrefix(rerr.Message, "findings_near: ") || rerr.Code != ErrCodeParams {
+				t.Errorf("as_of %q = %+v, want a params error naming the tool", bad, rerr)
+			}
+		}
+	})
 
 	t.Run("obligations", func(t *testing.T) {
 		for _, tc := range []struct {
@@ -305,7 +340,7 @@ func TestAsOfAcrossVerbs(t *testing.T) {
 // TestAsOfFilter pins the resolver on its own: nil is now and changes
 // nothing, and the window is half-open like core.SemanticClaim.ValidAt.
 func TestAsOfFilter(t *testing.T) {
-	var none *asOfFilter
+	var none *asOfWindow
 	if none.active() || none.label() != "" || !none.instant().IsZero() {
 		t.Error("the nil filter is 'now': inactive, no label, no instant")
 	}
@@ -315,7 +350,7 @@ func TestAsOfFilter(t *testing.T) {
 	}
 	jan := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	mar := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
-	f := &asOfFilter{at: mar}
+	f := &asOfWindow{at: mar}
 	kept := f.claims([]core.SemanticClaim{
 		{ClaimID: "closed-at-instant", ValidFrom: jan, ValidTo: mar},
 		{ClaimID: "opens-at-instant", ValidFrom: mar},
