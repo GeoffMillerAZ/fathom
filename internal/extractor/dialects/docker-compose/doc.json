@@ -1,0 +1,26 @@
+{
+  "decode": "yaml",
+  "detect": {
+    "basenames": ["docker-compose.yml", "docker-compose.yaml", "compose.yml", "compose.yaml"],
+    "globs": [
+      "**/docker-compose.*.yml", "**/docker-compose.*.yaml",
+      "**/docker-compose-*.yml", "**/docker-compose-*.yaml",
+      "**/compose.*.yml", "**/compose.*.yaml",
+      "**/compose-*.yml", "**/compose-*.yaml"
+    ]
+  },
+  "entities": [
+    { "select": "$.services.*", "where": { "is_map": true },
+      "kind": "service", "source_kind": "ComposeService", "name": "$key",
+      "signature": ".image | .build.context | .build" }
+  ],
+  "references": [
+    { "from": "service", "select": "$.depends_on[*]", "value": "$", "to_kind": "service", "edge": "depends_on" },
+    { "from": "service", "select": "$.depends_on.*", "value": "$key", "to_kind": "service", "edge": "depends_on" }
+  ],
+  "cross_file": [
+    { "from": "service", "select": "$.extends.file", "value": "$", "resolve": "repo-path", "edge": "extends" },
+    { "select": "$.include[*]", "value": "$", "resolve": "repo-path", "edge": "includes" },
+    { "select": "$.include[*].path[*]", "value": "$", "resolve": "repo-path", "edge": "includes" }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "symbols": [
+    { "name": "web", "kind": "ComposeService", "package": "basic", "line": 3, "end_line": 9, "signature": "nginx:1.27",
+      "calls": ["api", "cache"], "tier": "verified" },
+    { "name": "api", "kind": "ComposeService", "package": "basic", "line": 10, "end_line": 19, "signature": "./api",
+      "calls": ["cache", "db"], "tier": "verified" },
+    { "name": "db", "kind": "ComposeService", "package": "basic", "line": 20, "end_line": 23, "signature": "postgres:16", "tier": "verified" },
+    { "name": "cache", "kind": "ComposeService", "package": "basic", "line": 24, "end_line": 25, "signature": "./cache", "tier": "verified" },
+    { "name": "worker", "kind": "ComposeService", "package": "basic", "line": 26, "end_line": 27,
+      "signature": "registry.example.com/shop/worker:${TAG:-latest}", "tier": "verified" }
+  ],
+  "cross_file": []
+}

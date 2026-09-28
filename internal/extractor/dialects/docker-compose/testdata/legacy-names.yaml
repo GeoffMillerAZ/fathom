@@ -1,0 +1,15 @@
+version: "2.4"
+services:
+  my_service:
+    image: "repo/app@sha256:0123abcd"
+    links:
+      - db:database
+    depends_on:
+      - web-1
+  web-1:
+    image: nginx
+    extra_hosts: ["a:1.2.3.4"]
+  "app.v2":
+    build: .
+    depends_on:
+      - my_service
