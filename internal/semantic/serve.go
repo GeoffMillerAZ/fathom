@@ -59,8 +59,10 @@ type Obligation struct {
 	// (cmd/fathom/ruleoutcome.go) keys off of instead of Rule+Src text.
 	// Always populated for a real compiled claim; "" (omitted) only for a
 	// raw-tier fallback row (rawfallback.go), which has no claim behind
-	// it at all — a payload with no such row is byte-identical to what it
-	// was before this field existed.
+	// it at all. It rides the agent-facing obligations payload too (the
+	// edit hook reads it over the same tools/call): measured +10-13% bytes
+	// per obligations call on the L1 replay (internal/indexbench
+	// testdata/l1-replay.json, re-baselined at the R3 wave gate).
 	ClaimID string `json:"claim_id,omitempty"`
 	Tier    string `json:"tier"`
 	// Kind labels a claim served from a non-obligation layer ("finding", …).
