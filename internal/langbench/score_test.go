@@ -302,3 +302,39 @@ func TestComparePortParity(t *testing.T) {
 		t.Fatalf("unmet target merged: %+v", p)
 	}
 }
+
+// TestThroughputIsCPUTime (owner decision D1, 2026-09-28): the throughput
+// floor is judged on bytes per CPU-second of the extraction process, not
+// wall clock, so a reading taken while other workers contend for the CPU is
+// not failed by the contention. A subject that recorded no CPU time (a
+// reading measured before D1) falls back to wall clock, and the reading
+// says which basis it used.
+func TestThroughputIsCPUTime(t *testing.T) {
+	spec := pySpec(t)
+	r := NewReading(spec.Manifest, "L1")
+	s := Subject{Name: "o/a", Files: 10, Bytes: 1_000_000,
+		Counts:   map[string]int{CntOracleDefs: 100, CntFathomDefs: 100, CntMatched: 99, CntKindEqual: 99, CntRangeEligible: 99, CntRangeOK: 99, CntCallables: 50, CntCallablesSigned: 50},
+		Families: map[string]string{FamilyL1: "B"}, KindIntersection: []string{"class", "function", "variable"},
+		// 1 MB in 1.6 s of wall (0.62 MB/s: contended) but 0.5 s of CPU (2 MB/s).
+		Tenancy: &SubjectTenancy{ExtractMS: 1600, ExtractCPUMS: 500, MaxFileMS: 40, PeakModulePages: 100},
+	}
+	MergeSubject(&r, s)
+	if r.Tenancy.ThroughputMBs != 2 || r.Tenancy.ThroughputBasis != ThroughputBasisCPU || r.Tenancy.WallThroughputMBs != 0.63 {
+		t.Fatalf("tenancy = %+v, want 2 MB/s on the cpu basis (wall 0.63 disclosed)", r.Tenancy)
+	}
+	if r.LevelMet != "L1" {
+		t.Fatalf("a contended wall clock failed the floor: level %s", r.LevelMet)
+	}
+	// A pre-D1 subject (no CPU time) falls back to wall clock for the whole
+	// reading: a mixed basis would be neither number.
+	old := s
+	old.Name = "o/b"
+	old.Tenancy = &SubjectTenancy{ExtractMS: 1600, MaxFileMS: 40, PeakModulePages: 100}
+	MergeSubject(&r, old)
+	if r.Tenancy.ThroughputBasis != ThroughputBasisWall || r.Tenancy.ThroughputMBs != 0.63 || r.LevelMet != LevelNone {
+		t.Fatalf("wall fallback: tenancy %+v level %s", r.Tenancy, r.LevelMet)
+	}
+	if err := r.Validate(); err != nil {
+		t.Fatal(err)
+	}
+}

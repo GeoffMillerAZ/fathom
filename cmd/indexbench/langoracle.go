@@ -265,16 +265,16 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name, c
 			return res, err
 		}
 		inst := tsengine.Instantiations()
-		start := time.Now()
+		start, cpu0 := time.Now(), processCPU()
 		ex, err := extract(pipe, service, refs, ref.Path, content)
-		elapsed := time.Since(start)
+		elapsed, cpu := time.Since(start), processCPU()-cpu0
 		if tsengine.Instantiations() != inst && ex.Skipped == "" {
 			// This file instantiated a grammar module the warm-up did not
 			// (an injected language's, e.g. HTML's <script>): time it again,
 			// warm, so a one-time compile is never charged to throughput.
-			start = time.Now()
+			start, cpu0 = time.Now(), processCPU()
 			ex, err = extract(pipe, service, refs, ref.Path, content)
-			elapsed = time.Since(start)
+			elapsed, cpu = time.Since(start), processCPU()-cpu0
 			retimed++
 		}
 		if ex.Skipped != "" {
@@ -285,6 +285,7 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name, c
 		sub.Files++
 		sub.Bytes += int64(len(content))
 		sub.Tenancy.ExtractMS += float64(elapsed.Microseconds()) / 1000
+		sub.Tenancy.ExtractCPUMS += float64(cpu.Microseconds()) / 1000
 		sub.Tenancy.MaxFileMS = max(sub.Tenancy.MaxFileMS, elapsed.Milliseconds())
 		if err != nil {
 			sub.Tenancy.Faults++

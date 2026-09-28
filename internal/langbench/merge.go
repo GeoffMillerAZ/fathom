@@ -8,12 +8,16 @@ import (
 
 // SubjectTenancy is one subject's raw resource numbers.
 type SubjectTenancy struct {
-	Faults          int      `json:"faults"`
-	FaultingFiles   []string `json:"faulting_files"`
-	ExtractMS       float64  `json:"extract_ms"`
-	MaxFileMS       int64    `json:"max_file_ms"`
-	PeakModulePages int      `json:"peak_module_pages"`
-	CompiledBytes   int64    `json:"compiled_bytes"`
+	Faults        int      `json:"faults"`
+	FaultingFiles []string `json:"faulting_files"`
+	ExtractMS     float64  `json:"extract_ms"`
+	// ExtractCPUMS is the extraction process's CPU time (user+system)
+	// over the same timed extractions (owner decision D1); 0 on a
+	// subject measured before D1.
+	ExtractCPUMS    float64 `json:"extract_cpu_ms,omitempty"`
+	MaxFileMS       int64   `json:"max_file_ms"`
+	PeakModulePages int     `json:"peak_module_pages"`
+	CompiledBytes   int64   `json:"compiled_bytes"`
 }
 
 // NewReading starts an empty reading for a dialect.
@@ -75,7 +79,8 @@ func recompute(r *Reading) {
 	inter := map[string]bool{}
 	var ten Tenancy
 	var bytes int64
-	var ms float64
+	var ms, cpuMS float64
+	allCPU := len(r.Subjects) > 0
 	for _, s := range r.Subjects {
 		for k, v := range s.Counts {
 			counts[k] += v
@@ -98,13 +103,22 @@ func recompute(r *Reading) {
 				ten.FaultingFiles = append(ten.FaultingFiles, s.Name+":"+f)
 			}
 			ms += t.ExtractMS
+			cpuMS += t.ExtractCPUMS
+			allCPU = allCPU && t.ExtractCPUMS > 0
 			ten.MaxFileMS = max(ten.MaxFileMS, t.MaxFileMS)
 			ten.PeakModulePages = max(ten.PeakModulePages, t.PeakModulePages)
 			ten.CompiledBytes = max(ten.CompiledBytes, t.CompiledBytes)
 		}
 	}
-	if ms > 0 {
-		ten.ThroughputMBs = math.Round(float64(bytes)/1e6/(ms/1000)*100) / 100
+	mbs := func(ms float64) float64 { return math.Round(float64(bytes)/1e6/(ms/1000)*100) / 100 }
+	switch {
+	case allCPU && cpuMS > 0:
+		ten.ThroughputMBs, ten.ThroughputBasis = mbs(cpuMS), ThroughputBasisCPU
+		if ms > 0 {
+			ten.WallThroughputMBs = mbs(ms)
+		}
+	case ms > 0:
+		ten.ThroughputMBs, ten.ThroughputBasis = mbs(ms), ThroughputBasisWall
 	}
 	r.Tenancy = ten
 	r.Counts = counts

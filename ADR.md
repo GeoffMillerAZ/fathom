@@ -2617,6 +2617,10 @@ long tail" moves from planned to deferred: dialect packs wait for embedded compr
 grammars to near the 40 MiB cap, and the Support page's dialects view showing the running
 total against the cap is the trigger.
 
+**Amended 2026-09-28 (owner decisions, round 2; design §1.5).** D1: decision 1's
+"≥ 1 MB/s/core" is judged on CPU time — bytes per CPU-second of the extraction process —
+not wall clock, so contention from other workers never fails a reading.
+
 ## ADR-049: The proof-layer roadmap: a kitchen-sink gate, pillars inside the tenancy lane, reach before depth, views never trackers, no Rust rewrite (2026-09-27)
 
 **Status.** Accepted 2026-09-27. Owner decision memo of 2026-09-27 over the agentic-coding landscape scan of the same date and the owner's notes N1 to N8. Vision: `docs/vision/38-proof-layer-roadmap.md`. Designs: `docs/design/reach.md`, `docs/design/spec-interop.md`, `docs/design/knowledge-retrieval.md`, `docs/design/governance-learning.md`, `docs/design/progress-and-economics.md`; the system graph is ADR-050. Plans: `docs/plans/reach.md` (RH-), `docs/plans/spec-interop.md` (SI-), `docs/plans/knowledge-retrieval.md` (KR-), `docs/plans/governance-learning.md` (GL-), `docs/plans/progress-and-economics.md` (PE-), `docs/plans/system-graph.md` (SG-). Goals G16 to G22; G15 names vision 37's M2 and M3 as its next bets. Promotes futures F20 and the plugin part of F2; promotes F14's output format only; F13 stays gated by vision 31. Invariants I56, I57.

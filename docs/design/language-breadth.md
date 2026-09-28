@@ -68,7 +68,8 @@ inferred from the data, not declared: an L1 oracle that matched definitions but 
 line for none of them. A tier-A oracle that reports ends lifts the cap by measuring it.
 
 Always required, every level: `faults ≤ 0.1%` of files with every faulting file named;
-`throughput ≥ 1 MB/s/core`; `max_file_ms ≤ 2000`; `peak_module_pages ≤ 1024`.
+`throughput ≥ 1 MB/s/core`, judged on CPU time (bytes per CPU-second of the extraction
+process, `throughput_basis: "cpu"`; D1, §1.5); `max_file_ms ≤ 2000`; `peak_module_pages ≤ 1024`.
 
 Tool formats: L1 `sym_recall` and `sym_precision` ≥ .98 (good ≥ .95); L2 reference
 recall and precision ≥ .95 (good ≥ .90); L3 precision ≥ .95, recall ≥ .80 (good .90/.60).
@@ -108,6 +109,19 @@ and tiers alone; nobody types it.
   and test fixtures inside the subject are excluded by the same rules fathom's connector
   applies, so the oracle is run over exactly the file list fathom would read (the harness
   passes it `-L <filelist>`).
+
+### 1.5 Owner decisions, round 2 (2026-09-28)
+
+Wave 1b showed the bottleneck had become the measuring instruments, not the dialects. The
+owner's decisions, binding on the harness and every reading after them:
+
+- **D1 — throughput is CPU time.** The §1.2 floor is bytes per CPU-second of the
+  extraction process (user + system, `getrusage` around exactly the timed extractions),
+  not wall clock, so a reading taken while other workers run is not failed by contention.
+  The reading records `throughput_basis: "cpu"` and discloses `wall_throughput_mb_s`; a
+  subject measured before D1 (no `extract_cpu_ms`) puts the whole reading back on the
+  wall-clock basis, never a mix. C's wave-1b reading (0.62 MB/s wall) is re-graded by
+  re-measurement.
 
 ---
 
