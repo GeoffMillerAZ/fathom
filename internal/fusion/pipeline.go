@@ -1450,6 +1450,11 @@ func (p *Pipeline) recordIngestMeta(ctx context.Context, svc core.ServiceRef, co
 		changed = run.changed
 	}
 	p.recordCentrality(ctx, svc.ID, commit, changed)
+
+	// CX-20 (change-and-compliance design §5 step 2): the violation count
+	// per archconformance deny rule, appended as one reading at the SAME
+	// final commit — the drift radar's trend is an ingest-time fact.
+	p.recordViolationTrend(ctx, svc, commit, changed)
 }
 
 // deletedRefs lists the source_refs stored for serviceID that are absent

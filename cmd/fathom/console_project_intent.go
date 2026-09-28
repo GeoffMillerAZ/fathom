@@ -31,6 +31,7 @@ import (
 	"github.com/geoffmilleraz/app-kit/appkit/ui/viz"
 	"github.com/geoffmilleraz/fathom/internal/console"
 	"github.com/geoffmilleraz/fathom/internal/intent"
+	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
 const verbIntentAuditReadOnly = "fathom intent audit --read-only --json --root {root} --service {svc} --url {url}"
@@ -51,6 +52,9 @@ type projectIntentModel struct {
 	Error    string                   `json:"error,omitempty"`
 	AuditAt  string                   `json:"audit_at,omitempty"`
 	View     *console.IntentViewModel `json:"view,omitempty"`
+	// Radar is the drift radar (CX-22): fired computable triggers and the
+	// deny rules whose ingest-time violation count rose.
+	Radar *driftRadarModel `json:"radar,omitempty"`
 }
 
 // intentAuditResult is one read-only audit run, as the memo keeps it.
@@ -88,9 +92,12 @@ func intentAuditKey(root, svc string, plansGeneration uint64) string {
 }
 
 // readOnlyIntentAudit runs (or recalls) the read-only audit for root.
-func readOnlyIntentAudit(root, svc, selfURL string, plansGeneration uint64, now time.Time) (intentAuditRun, time.Time, error) {
+func readOnlyIntentAudit(root, svc, selfURL string, st store.Store, plansGeneration uint64, now time.Time) (intentAuditRun, time.Time, error) {
 	r, at := intentAuditMemo.do(intentAuditKey(root, svc, plansGeneration), now, func() (intentAuditResult, time.Duration) {
-		run, err := runIntentAudit(intentAuditOptions{Root: root, Service: svc, URL: selfURL, ReadOnly: true, HTTP: consoleRPCClient(30 * time.Second)})
+		// The daemon's own store answers a computable trigger's
+		// arch_violations instrument (CX-21) — read because this tab was
+		// opened, never on a schedule.
+		run, err := runIntentAudit(intentAuditOptions{Root: root, Service: svc, URL: selfURL, ReadOnly: true, HTTP: consoleRPCClient(30 * time.Second), Store: st})
 		keep := intentAuditTTL
 		if err != nil || !run.Audit.Coverage.Complete() {
 			keep = intentAuditRetryTTL
@@ -122,7 +129,11 @@ func buildProjectIntentPage(cr *consoleRequest) (consoleOut, error) {
 		}
 		return out, nil
 	}
-	run, at, aerr := readOnlyIntentAudit(pc.root, pc.svc, cr.deps.selfURL, cr.deps.sourceGeneration(cr.r.Context(), "plans:"+pc.svc), cr.now)
+	var st store.Store
+	if cr.deps.c != nil {
+		st = cr.deps.c.Store()
+	}
+	run, at, aerr := readOnlyIntentAudit(pc.root, pc.svc, cr.deps.selfURL, st, cr.deps.sourceGeneration(cr.r.Context(), "plans:"+pc.svc), cr.now)
 	if aerr != nil {
 		model.Error = aerr.Error()
 		out.Model = model
@@ -135,15 +146,24 @@ func buildProjectIntentPage(cr *consoleRequest) (consoleOut, error) {
 	out.Verbs = []string{verb}
 	view := console.IntentView(run.Corpus, run.Audit, run.Ledger, at)
 	model.View, model.AuditAt = &view, at.UTC().Format(time.RFC3339)
+	// CX-22: the drift radar — the audit's trigger verdicts and the
+	// service's ingest-time violation readings (one small per-service read).
+	var trend []store.ArchViolationReading
+	terr := fmt.Errorf("no store")
+	if st != nil {
+		trend, terr = st.ArchViolationTrend(cr.r.Context(), pc.svc)
+	}
+	radar := buildDriftRadar(run.Audit.Triggers, trend, terr)
+	model.Radar = &radar
 	out.Model = model
 	out.Sections = map[string]any{verb: intentAuditPayload(run.Corpus, run.Audit, run.Ledger, at)}
 	out.Body = func() string {
-		return renderProjectTabs(pc.svc, "intent") + projectBody(renderProjectIntent(pc, view, verb, at))
+		return renderProjectTabs(pc.svc, "intent") + projectBody(renderProjectIntent(pc, view, verb, at, &radar))
 	}
 	return out, nil
 }
 
-func renderProjectIntent(pc projectContext, v console.IntentViewModel, verb string, at time.Time) string {
+func renderProjectIntent(pc projectContext, v console.IntentViewModel, verb string, at time.Time, radar *driftRadarModel) string {
 	var b strings.Builder
 	// No corpus to show: absent when the repository has none (a choice),
 	// an error naming the files when one exists and cannot be read (I38) —
@@ -170,6 +190,9 @@ func renderProjectIntent(pc projectContext, v console.IntentViewModel, verb stri
 		valueStat("recorded audits", v.DebtState),
 	}, stat.BandOptions{AriaLabel: pc.svc + " intent"}))
 	fresh := "audited " + at.UTC().Format("2006-01-02 15:04:05 UTC") + " (read-only; re-run when the commit, a verify row for " + pc.svc + " or the intent ledger changes, else kept up to five minutes)"
+	if radar != nil {
+		b.WriteString(`<div class="mt-4">` + driftRadarPanel(pc.svc, verb, fresh, *radar) + `</div>`)
+	}
 
 	// Invariants.
 	var inv strings.Builder

@@ -1829,8 +1829,9 @@ minutes, at most hourly (`journal_size_limit` is 64 MiB).
 ### `intent` — the intent corpus, audited (ADR-026, **experimental**)
 
 ```sh
-fathom intent audit    [--root .] [--json] [--kind conditions|invariants|unproven] [--fresh] [--top N] [--read-only]
+fathom intent audit    [--root .] [--json] [--kind conditions|triggers|invariants|unproven] [--fresh] [--top N] [--read-only] [--store DB]
 fathom intent doctrine [--root .] [--json] [--kind visions|bets] [--top N]
+fathom intent adr-rules [--root .] [--json]
 fathom intent export --guard [--root .]
 ```
 
@@ -1864,11 +1865,36 @@ practice, which is a choice.
 | U14 | a sensitive-surface row whose globs match no file — it has silently stopped guarding |
 | U13 | a guard entry whose intent provenance no longer matches the router, or a sensitive surface no guard covers |
 
+**Computable triggers (CX-21, F9's computable subset).** A `Revisit when` or
+`Promote when` condition carrying an instrument and a threshold in the bet-block
+shape is evaluated by this run — and only by a run: the daemon never evaluates a
+trigger on its own.
+
+```markdown
+**Revisit when.** the layers erode {instrument: arch_violations, threshold: ">= 3"}
+Promote when: the rule holds {instrument: "arch_violations:a -> b", threshold: "== 0"}
+```
+
+Instruments: `arch_violations` (the newest ingest-time violation reading, summed
+over its deny rules; read from `--store`, default the workspace store),
+`arch_violations:<from> -> <to>` (one rule's count), and `plans_failing` (claimed
+rows the verify ledger refutes at HEAD). A threshold is a comparison with a number
+(`>=`, `>`, `<=`, `<`, `==`, `!=`). Each trigger reads `fired` or `not fired` with
+its reading; one whose instrument is unknown, whose threshold is not a comparison,
+or whose reading could not be taken reads `unevaluated` with the reason; a prose
+trigger is listed as unevaluated, human-judged. `--json` carries them as `triggers`.
+
 Every source it could NOT compute is named with the reason — an audit that
 silently yields nothing is indistinguishable from a healthy repo. A file that
 cannot be READ (as opposed to one that is absent) makes every count a named
 lower bound, `≥ N (k source(s) unreadable: <path>: <errno>)`, and `--json`
 carries `coverage.complete` (ADR-027).
+
+`adr-rules` PROPOSES an archconformance deny rule for each dependency statement in
+the decision records ("X never imports Y", "X must not import Y", "X calls Y, never
+Z", "X imports neither Y nor Z"), each with its ADR, `file:line` and sentence, and
+marks the ones `.fathom/rules/archconformance.cue` already holds. A human accepts a
+proposal by adding it there; **fathom never writes that file** (CX-19, F24).
 
 `export --guard` PROPOSES `.fathom/guard.cue` entries from the router's
 sensitive-surface rows, stamped with per-row provenance so staleness stays
@@ -2528,6 +2554,33 @@ non-goal, refused as CX-X4).
 
 ---
 
+### `trace` — the evidence pack (CX-14..CX-18)
+
+`fathom trace export --standard <id> --out <dir> [--service S] [--store DB]
+[--commit REF]` (U8, `docs/design/change-and-compliance.md` §3) writes an
+evidence pack, only when asked. It reads, at the commit (default `HEAD`,
+via `git show`), every `docs/plans/*.md`, the repository-authored standard
+mapping `.fathom/trace/<id>.cue` (shape: `schema/trace/schema.cue` —
+`standard`, and `clauses` naming requirement ids or RE2 `patterns`; fathom
+ships no standard's clauses, ADR-011) and the decision records (`ADR.md`
+headings, `docs/intent/invariants.md` ids), plus the store's verify and
+certificate readings for the service. The pack:
+
+| File | Carries |
+|---|---|
+| `matrix.json`, `matrix.md` | per requirement (a plan row, a foreign spec task, or `<row>/accept`): status, code, test, certificate, attested run, decision — each cell `{state, reading}`; the mapping's clauses with the requirements each resolves and any id it names that the matrix lacks |
+| `digests.json` | sha256 of every artifact read at the commit |
+| `readings.json` | per-plan verify totals, the certificates joined, any source that could not be read |
+| `COMMIT` | the commit |
+| `MANIFEST.sha256` | `sha256  file` for every other file |
+
+`fathom trace verify <dir> [--store DB]` recomputes the pack at its own
+`COMMIT` and compares every file byte for byte (exit 0), or names each
+difference by file and, for the matrix, by `<plan>#<requirement>.<column>`
+(exit 1); a pack that no longer matches its own manifest is named too.
+Store readings are read as they stand: re-verify against a store indexed at
+the pack's commit.
+
 ### `receipt` — a stranger's re-derivation (VB-20)
 
 ```sh
@@ -3013,7 +3066,7 @@ unreadable store) render on the same shell with the reason and the remedy.
 | `/fleet` | Every project in one table — `?sort=<column>&dir=asc\|desc`, `?health=failed\|degraded\|unknown\|healthy`, `?q=` (name or path), `?lang=`, `?page=` — rolled up by health; the default order is unrealized value (RG-4); the JSON carries `fathom fleet report --json` computed by the verb's own function |
 | `/projects/{svc}` | One project's workspace (was `/observatory/service?id=S`): nine tabs, each a URL — Overview here; Index, Intent, Activity and Wiring at `/projects/{svc}/index`, `/intent`, `/activity`, `/wiring`; Governance, Plans, Proof and Refactor open `/layers`, `/plans`, `/certifications` and `/refactors` with `?svc=` |
 | `/projects/{svc}/index` | Languages with engine and tier, typed share and edge kinds, inventory keys (`fathom report evidence --service S --store P --json`); `?symbol=` draws the code neighborhood (callers and callees to depth 2, resolved solid and heuristic dashed, six per column and the rest aggregated, with a table); the read-only Scope panel (`fathom scope list`; `?scope=<glob>` previews what a suppression would hide and what a purge would delete, per location, and names the commands — the page runs neither) |
-| `/projects/{svc}/intent` | `fathom intent audit --read-only`: invariants with rung and audit state, decisions/futures/questions with their conditions, unproven claims, debt over time; a run is kept five minutes per commit |
+| `/projects/{svc}/intent` | `fathom intent audit --read-only`: the drift radar (decisions due for review — computable triggers that fired — and the archconformance rules whose ingest-time violation count rose, with the commits that added them), invariants with rung and audit state, decisions/futures/questions with their conditions, unproven claims, debt over time; a run is kept five minutes per commit |
 | `/projects/{svc}/activity` | The project's calls from the resolved call log (a day strip, `fathom metrics traffic --by tool` over the 14-day window, the newest calls) and its sessions from the ledger |
 | `/projects/{svc}/wiring` | `fathom doctor --repo-only` rows, drift (failing wiring rows plus the preview plan's apply and BLOCKED items), receipts (`fathom fleet receipts`), beside the unchanged Preview → Apply → Undo |
 | `/layers` | The strata, the projects × layers coverage matrix (a cell nothing compiled is hatched "not compiled", never 0) and the claim lifecycle — `fathom layers strata --json`, `fathom layers coverage --json` |

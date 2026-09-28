@@ -65,6 +65,10 @@ type Audit struct {
 	ByKind map[string]int
 	// Annotated is how many conditions carry an oracle — K0's demand signal.
 	Annotated int
+	// Triggers are the revisit and promote conditions' verdicts (CX-21):
+	// computable ones read through AuditInput.Instruments at this run,
+	// prose ones listed unevaluated. Sorted by file then line.
+	Triggers []TriggerVerdict
 	// Coverage is what the corpus reader could and could not see (ADR-027).
 	// When it is incomplete EVERY count in this struct is a lower bound,
 	// because the sources that would have raised it are the ones that could
@@ -117,6 +121,10 @@ type AuditInput struct {
 	// SurfaceFiles counts files in the tree matching a surface's globs, and
 	// reports whether it could look at all. nil → U14 uncomputable.
 	SurfaceFiles func(globs []string) (int, bool)
+	// Instruments reads the named instruments of computable revisit and
+	// promote triggers (CX-21), on demand at this run only. nil → every
+	// computable trigger is unevaluated and named uncomputable.
+	Instruments  InstrumentReader
 	Ledger       []LedgerRow
 	Now          time.Time
 	IncidentDays int // U6's window; 0 → 30, the practice's own check-14 threshold
@@ -160,6 +168,18 @@ func RunAudit(in AuditInput) Audit {
 	for _, c := range in.Corpus.Conditions {
 		if c.Annotated() {
 			a.Annotated++
+		}
+	}
+	a.Triggers = evalComputableTriggers(in.Corpus, in.Instruments)
+	if in.Instruments == nil {
+		computable := 0
+		for _, t := range a.Triggers {
+			if t.Instrument != "" {
+				computable++
+			}
+		}
+		if computable > 0 {
+			a.Uncomputable = append(a.Uncomputable, fmt.Sprintf("computable triggers: %d revisit/promote condition(s) name an instrument, and this run was given no instrument reader", computable))
 		}
 	}
 	sort.Strings(a.Uncomputable)

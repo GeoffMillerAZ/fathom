@@ -443,6 +443,18 @@ type Store interface {
 	// stored). Rows in a suppressed file are dropped.
 	SymbolCentrality(ctx context.Context, serviceID string) (string, []SymbolCentrality, error)
 
+	// AppendArchViolations appends one reading to serviceID's
+	// arch_violation_trend (CX-20): the violation count per deny rule at
+	// the ingest of commit, each row carrying the previous reading's commit
+	// and its change since it. Computed at ingest by
+	// internal/fusion.recordViolationTrend, never at request time. The
+	// newest ArchViolationKeep readings are kept. Returns the rows written.
+	AppendArchViolations(ctx context.Context, serviceID, commit string, at int64, counts []ArchRuleCount) ([]ArchViolationReading, error)
+
+	// ArchViolationTrend returns serviceID's readings sorted by seq then
+	// rule; nil with no error when none are stored.
+	ArchViolationTrend(ctx context.Context, serviceID string) ([]ArchViolationReading, error)
+
 	// PutClaims upserts semantic claims by (service_id, claim_id). For every
 	// distinct claim_id that appears in links, the stored link set for that
 	// claim is replaced (delete-then-insert). Empty inputs are a no-op.
