@@ -56,6 +56,7 @@ func cmdLangOracle(args []string, stdout, stderr io.Writer) int {
 	var toolOracles multiFlag
 	fs.Var(&toolOracles, "tool-oracle", "oracle JSON in the neutral shape (definitions, calls, references; tier A unless it says otherwise; repeatable)")
 	adjudicate := fs.String("adjudicate", "", "oracle-deficiency disclosure JSON (owner decision D3): dialect-only definitions the L1 oracle is verified to miss, each admitted only by a deterministic file:line and name check, listed in the reading and left out of sym_precision's denominator")
+	unmatched := fs.String("unmatched", "", "write this subject's L1 misses both ways (dialect_only, oracle_only) as JSON — the worker's diagnosis and the source of D3 adjudication candidates; never part of the reading")
 	only := fs.String("only", "", "comma-separated globs (subject-relative, * within a segment, ** across): measure only these files — e.g. the SQL families a grammar supports (D2); the reading names the restriction")
 	out := fs.String("out", "", "reading to write; an existing reading of the same dialect is merged (required)")
 	queuePath := fs.String("queue", "docs/plans/language-breadth.queue.json", "the queue (for the dialect's target level)")
@@ -141,7 +142,7 @@ func cmdLangOracle(args []string, stdout, stderr io.Writer) int {
 			onlyGlobs = append(onlyGlobs, g)
 		}
 	}
-	m, err := measureSubject(ctx, spec, *subject, name, oracleOpts{ctags: *ctagsPath, scip: *scipPath, scipDefs: *scipDefs, tools: toolOracles, only: onlyGlobs, adjudicate: *adjudicate}, with)
+	m, err := measureSubject(ctx, spec, *subject, name, oracleOpts{ctags: *ctagsPath, scip: *scipPath, scipDefs: *scipDefs, tools: toolOracles, only: onlyGlobs, adjudicate: *adjudicate, unmatched: *unmatched}, with)
 	if err != nil {
 		fmt.Fprintln(stderr, "lang-oracle:", err)
 		return 1
@@ -237,6 +238,7 @@ type oracleOpts struct {
 	tools      []string // neutral oracle JSON files (definitions, calls, references)
 	only       []string // globs restricting the subject's files (D2, SQL)
 	adjudicate string   // oracle-deficiency disclosure file (D3)
+	unmatched  string   // where to write the L1 misses both ways (diagnosis)
 }
 
 // onlyMatch reports whether rel is inside the -only restriction.
@@ -392,7 +394,10 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 			return res, err
 		}
 		if opts.scipDefs {
-			all, _, _, err := langbench.SCIPDefs(raw)
+			all, _, _, err := langbench.SCIPDefs(raw, func(p string) []byte {
+				b, _ := os.ReadFile(filepath.Join(root, filepath.FromSlash(p)))
+				return b
+			})
 			if err != nil {
 				return res, err
 			}
@@ -445,6 +450,15 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 			res.notes = append(res.notes, fmt.Sprintf("%s: %d tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)", name, dropped))
 		}
 		res.oracles = append(res.oracles, run)
+	}
+	if opts.unmatched != "" && l1res != nil {
+		b, err := json.MarshalIndent(map[string][]langbench.OracleDef{"dialect_only": l1res.DialectOnly, "oracle_only": l1res.OracleOnly}, "", " ")
+		if err != nil {
+			return res, err
+		}
+		if err := os.WriteFile(opts.unmatched, b, 0o644); err != nil {
+			return res, err
+		}
 	}
 	if opts.adjudicate != "" {
 		if l1res == nil {

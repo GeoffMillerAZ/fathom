@@ -1,0 +1,12 @@
+{
+  "arrow-const": {
+    "why": "scip-typescript records a variable initialized with an arrow function or function expression as a variable (hover `const f: () => …`), not a function; fathom and universal-ctags call it a function (verified: zod packages/zod/src/v3/types.ts:5080 `const ostring = () => …`)",
+    "pattern": "\\b(?:const|let|var)\\s+{name}\\b(?s:.*?)=\\s*(?:async\\s*)?(?:function\\b|(?s:.*?)=>)",
+    "kinds": ["function"]
+  },
+  "object-literal-method": {
+    "why": "scip-typescript records a contextually typed object-literal method as a reference (symbol_roles 0) to the member it implements, not a definition (verified: zod packages/zod/src/v4/classic/schemas.ts:316 `transform(tx) {` is a reference to ZodType#transform().)",
+    "pattern": "^\\s*(?:async\\s+)?(?:\\*\\s*)?(?:get\\s+|set\\s+)?\\[?[\"']?{name}[\"']?\\]?\\s*(?:<[^\\n]*>)?\\s*\\(",
+    "kinds": ["method"]
+  }
+}

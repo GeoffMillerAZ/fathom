@@ -1,7 +1,9 @@
 package langbench
 
 import (
+	"bytes"
 	"fmt"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -221,6 +223,7 @@ var docKeywords = map[string]bool{
 	"const": true, "type": true, "module": true, "namespace": true, "struct": true,
 	"record": true, "trait": true, "getter": true, "setter": true, "alias": true,
 	"macro": true, "event": true, "delegate": true, "operator": true, "object": true,
+	"get": true, "set": true,
 }
 
 var docModifiers = map[string]bool{
@@ -292,17 +295,29 @@ func scipDescriptorKind(sym string) (kind string, scoped bool) {
 }
 
 // SCIPDefs reads a SCIP index as a tier-A L1 oracle (owner decision D2):
-// every definition occurrence of a named, non-local, non-parameter symbol,
-// with its 1-based line, its enclosing range's last line (0 when the
-// producer gives none), and a kind — SymbolInformation.kind lowercased
-// when set, else the documentation's declaration keyword, else the
-// descriptor suffix ("function", "type", "term", "namespace", "macro",
-// "meta") — Scoped when the symbol's parent is a type (a manifest's
-// "<kind>@scoped" oracle key). A constructor's SCIP name (`<constructor>`,
-// `<init>`) becomes the name languages give it: "constructor" for
-// TypeScript/JavaScript's, the enclosing type's name for the JVM's.
-// Sorted by path, line, name.
-func SCIPDefs(raw []byte) (defs []OracleDef, tool, version string, err error) {
+// every definition occurrence of a named, non-parameter symbol, with its
+// 1-based line, its enclosing range's last line (0 when the producer gives
+// none), and a kind — SymbolInformation.kind lowercased when set, else the
+// documentation's declaration keyword, else the descriptor suffix
+// ("function", "type", "term", "namespace", "macro", "meta") — Scoped when
+// the symbol's parent is a type (a manifest's "<kind>@scoped" oracle key).
+//
+// src (nil: no source reads) supplies the subject's files for what the
+// symbol string alone cannot say: a local symbol ("local N" — a function,
+// class, type or interface declared inside another definition) is named by
+// the identifier at its own occurrence range, admitted only when its
+// documentation names a declaration keyword other than a variable's or a
+// parameter's; and a symbol with more than one definition occurrence
+// (TypeScript declaration merging: `interface X` and `const X`) takes each
+// occurrence's kind from the declaration keyword written before its name
+// on that line, since its one SymbolInformation describes only one of them
+// — and so does every definition whose line writes such a keyword before
+// its name (scip-typescript's hover for a merged `const X` reads
+// "interface X"): the written keyword outranks the hover text.
+// Accessor and constructor names become the names languages give them:
+// `<get>x`/`<set>x` -> x, `<constructor>` -> "constructor", JVM `<init>` ->
+// the enclosing type's name. Sorted by path, line, name.
+func SCIPDefs(raw []byte, src func(path string) []byte) (defs []OracleDef, tool, version string, err error) {
 	idx := &scippb.Index{}
 	if err := proto.Unmarshal(raw, idx); err != nil {
 		return nil, "", "", fmt.Errorf("scip: decode index: %w", err)
@@ -310,41 +325,87 @@ func SCIPDefs(raw []byte) (defs []OracleDef, tool, version string, err error) {
 	if ti := idx.GetMetadata().GetToolInfo(); ti != nil {
 		tool, version = ti.GetName(), ti.GetVersion()
 	}
+	defCount := map[string]int{}
+	for _, d := range idx.GetDocuments() {
+		for _, o := range d.GetOccurrences() {
+			if o.GetSymbolRoles()&int32(scippb.SymbolRole_Definition) != 0 {
+				defCount[o.GetSymbol()]++
+			}
+		}
+	}
 	for _, d := range idx.GetDocuments() {
 		info := map[string]*scippb.SymbolInformation{}
 		for _, si := range d.GetSymbols() {
 			info[si.GetSymbol()] = si
+		}
+		var lines [][]byte
+		if src != nil {
+			lines = bytes.Split(src(d.GetRelativePath()), []byte("\n"))
+		}
+		lineText := func(l int) string {
+			if l < 0 || l >= len(lines) {
+				return ""
+			}
+			return string(lines[l])
 		}
 		for _, o := range d.GetOccurrences() {
 			if o.GetSymbolRoles()&int32(scippb.SymbolRole_Definition) == 0 {
 				continue
 			}
 			sym := o.GetSymbol()
-			name, _ := scipBareName(sym)
 			r, ok := rangeOf(o.GetRange())
-			if name == "" || !ok {
+			if !ok {
 				continue
 			}
-			kind, scoped := scipDescriptorKind(sym)
-			if si := info[sym]; si != nil {
+			docKind := ""
+			si := info[sym]
+			if si != nil {
 				if k := si.GetKind(); k != scippb.SymbolInformation_UnspecifiedKind {
-					kind = strings.ToLower(k.String())
+					docKind = strings.ToLower(k.String())
 				} else {
 					for _, doc := range si.GetDocumentation() {
 						if k := docKeyword(doc); k != "" {
-							kind = k
+							docKind = k
 							break
 						}
 					}
 				}
 			}
-			switch name {
-			case "<constructor>":
+			name, _ := scipBareName(sym)
+			kind, scoped := scipDescriptorKind(sym)
+			if strings.HasPrefix(sym, "local ") {
+				switch docKind {
+				case "", "var", "let", "const", "parameter", "property", "field":
+					continue
+				}
+				if t := lineText(int(r[0])); r[0] == r[2] && int(r[1]) < int(r[3]) && int(r[3]) <= len(t) {
+					name, kind = t[r[1]:r[3]], "function"
+				} else {
+					continue
+				}
+			}
+			if name == "" {
+				continue
+			}
+			if docKind != "" {
+				kind = docKind
+			}
+			if src != nil {
+				if t := lineText(int(r[0])); int(r[1]) <= len(t) {
+					if k := keywordBefore(t[:r[1]]); k != "" {
+						kind = k
+					}
+				}
+			}
+			switch {
+			case name == "<constructor>":
 				name = "constructor"
-			case "<init>":
+			case name == "<init>":
 				if parent := strings.TrimSuffix(sym[:strings.LastIndex(sym, "`<init>`")], "#"); parent != "" {
 					name, _ = scipBareName(parent + "#")
 				}
+			case strings.HasPrefix(name, "<get>"), strings.HasPrefix(name, "<set>"):
+				name = name[len("<get>"):]
 			}
 			def := OracleDef{Path: d.GetRelativePath(), Name: name, Line: int(r[0]) + 1, Kind: kind, Scoped: scoped}
 			if enc, ok := rangeOf(o.GetEnclosingRange()); ok {
@@ -364,4 +425,24 @@ func SCIPDefs(raw []byte) (defs []OracleDef, tool, version string, err error) {
 		return a.Name < b.Name
 	})
 	return defs, tool, version, nil
+}
+
+var wordRE = regexp.MustCompile(`[A-Za-z_]+`)
+
+// keywordBefore is the declaration keyword closest before a name on its
+// line ("export const " -> const), skipping modifiers; "" when the nearest
+// non-modifier word is no declaration keyword.
+func keywordBefore(prefix string) string {
+	words := wordRE.FindAllString(prefix, -1)
+	for i := len(words) - 1; i >= 0; i-- {
+		w := words[i]
+		if docModifiers[w] {
+			continue
+		}
+		if docKeywords[w] {
+			return w
+		}
+		return ""
+	}
+	return ""
 }
