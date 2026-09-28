@@ -11,8 +11,8 @@
     { "name": "build-step", "kind": "GHAStep", "package": "ci", "line": 30, "end_line": 32, "signature": "Build", "tier": "verified" }
   ],
   "cross_file": [
-    { "from": "lint", "edge": "uses_action", "raw": "actions/checkout@v4", "target": "actions/checkout@v4", "strategy": "module-source", "line": 11 },
-    { "from": "test", "edge": "uses_action", "raw": "actions/setup-go@v5", "target": "actions/setup-go@v5", "strategy": "module-source", "line": 20 },
-    { "from": "build", "edge": "uses_action", "raw": "actions/checkout@v4", "target": "actions/checkout@v4", "strategy": "module-source", "line": 29 }
+    { "from": "lint", "edge": "uses_action", "raw": "actions/checkout@v4", "target": "actions/checkout@v4", "strategy": "repo-root", "line": 11 },
+    { "from": "test", "edge": "uses_action", "raw": "actions/setup-go@v5", "target": "actions/setup-go@v5", "strategy": "repo-root", "line": 20 },
+    { "from": "build", "edge": "uses_action", "raw": "actions/checkout@v4", "target": "actions/checkout@v4", "strategy": "repo-root", "line": 29 }
   ]
 }

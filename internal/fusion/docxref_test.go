@@ -59,6 +59,23 @@ func xrefBrief(xs []DocXref) []string {
 // whose labels include the selector; nothing resolving to its own origin
 // is kept.
 func TestResolveDocXrefs(t *testing.T) {
+	t.Run("github-actions repo-root", func(t *testing.T) {
+		fs := docFiles(t, "github-actions", map[string]string{
+			".github/workflows/ci.yml": "name: CI\non: push\njobs:\n  build:\n    runs-on: x\n    steps:\n      - uses: ./.github/actions/setup\n      - uses: actions/checkout@v4\n  call:\n    uses: ./.github/workflows/reuse.yml\n",
+			".github/workflows/reuse.yml": "name: Reuse\non: workflow_call\njobs:\n  r:\n    runs-on: x\n    steps:\n      - run: echo\n",
+			".github/actions/setup/action.yml": "name: Setup\nruns:\n  using: composite\n  steps:\n    - uses: ./.github/actions/inner\n",
+			".github/actions/inner/action.yaml": "name: Inner\nruns:\n  using: composite\n  steps:\n    - run: echo\n",
+		})
+		got := xrefBrief(ResolveDocXrefs(fs))
+		want := []string{
+			".github/actions/setup/action.yml:Setup -uses_action-> .github/actions/inner/action.yaml:Inner",
+			".github/workflows/ci.yml:build -uses_action-> .github/actions/setup/action.yml:Setup",
+			".github/workflows/ci.yml:call -calls_workflow-> .github/workflows/reuse.yml:Reuse",
+		}
+		if !reflect.DeepEqual(got, want) {
+			t.Fatalf("got %q\nwant %q", got, want)
+		}
+	})
 	t.Run("package-json workspaces and dependencies", func(t *testing.T) {
 		fs := docFiles(t, "package-json", map[string]string{
 			"package.json":            `{"name":"root","workspaces":["packages/*"],"devDependencies":{"left-pad":"1"}}`,
