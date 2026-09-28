@@ -28,8 +28,8 @@ func (h *diskHost) ReadHost(s *tenancy.Sample) {
 
 // TestDiskWritesJudgedInStatuszMetricsAndDoctor pins RT-162's surfaces
 // (design §12.4, §13.3): the governor feeds every sample's bytes written
-// into the 24 h ring, split by whether an explicit ingest (the `ingest` or
-// `onboard_service` tool — not auto-refresh's pipeline ingest) was in
+// into the 24 h ring, split by whether an explicit ingest (the `ingest`
+// tool — not auto-refresh's pipeline ingest) was in
 // flight; /statusz's tenancy block and /metrics carry the judgment; and
 // doctor's disk_writes row WARNs over 2 GiB/day, disclosed, never enforced.
 func TestDiskWritesJudgedInStatuszMetricsAndDoctor(t *testing.T) {

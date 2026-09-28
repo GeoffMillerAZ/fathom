@@ -17,7 +17,6 @@ Triage a production symptom fast using pre-computed call graphs, complexity hots
 
 | Name | Kind | What it gives you |
 |---|---|---|
-| `investigate_incident` | MCP prompt | Structured investigation sequence: entrypoints → complexity → call hierarchy → community → staleness; returns step-by-step tool instructions tailored to `service` + `symptom` |
 | `entrypoints` | MCP tool | Main functions, HTTP handlers, CLI root commands — the surface most likely to be the entry to the failing path |
 | `localize` | MCP tool | "Which file is this in" from a stack trace, a failing test name, an error string, or a bare description — seeds resolve, then expand two hops through the call graph, ranked and cited, before you have a symbol name to hand `find_callers` |
 | `find_callers` | MCP tool | All symbols that call a named symbol; traces a function up through its callers |
@@ -57,24 +56,7 @@ Together these move the investigation from open-ended code reading to a directed
 
 Scenario: `checkout-service` is returning HTTP 500 on `POST /checkout` after a recent deploy. You need to identify the failing path, scope the impact, and find the regressing commit.
 
-**1. Start the structured investigation prompt.**
-
-```json
-{
-  "method": "prompts/get",
-  "params": {
-    "name": "investigate_incident",
-    "arguments": {
-      "service": "checkout-service",
-      "symptom": "POST /checkout returning 500 after deploy"
-    }
-  }
-}
-```
-
-The prompt returns an ordered sequence of tool calls to run. Follow it, but the steps below capture the essential pattern.
-
-**2. Check staleness before trusting any results.**
+**1. Check staleness before trusting any results.**
 
 ```json
 { "name": "staleness_report", "arguments": { "service": "checkout-service" } }
@@ -82,7 +64,7 @@ The prompt returns an ordered sequence of tool calls to run. Follow it, but the 
 
 Returns: `{ "reingest_recommended": false, "indexed_commit": "a3f1c9d", "current_commit": "a3f1c9d" }` — index is current, proceed.
 
-**3. Find the HTTP surface.**
+**2. Find the HTTP surface.**
 
 ```json
 { "name": "entrypoints", "arguments": { "service": "checkout-service" } }
@@ -90,7 +72,7 @@ Returns: `{ "reingest_recommended": false, "indexed_commit": "a3f1c9d", "current
 
 Returns: `{ "entrypoints": [{ "name": "HandleCheckout", "file_path": "internal/handler/checkout.go", "line": 42 }, ...] }` — `HandleCheckout` is the likely entry point.
 
-**4. Trace callers of the failing handler to understand how it is reached.**
+**3. Trace callers of the failing handler to understand how it is reached.**
 
 ```json
 { "name": "find_callers", "arguments": { "service": "checkout-service", "symbol": "HandleCheckout" } }
@@ -98,7 +80,7 @@ Returns: `{ "entrypoints": [{ "name": "HandleCheckout", "file_path": "internal/h
 
 Returns: `{ "callers": [{ "name": "RegisterRoutes", "file_path": "internal/server/routes.go" }] }` — one router registration, no unexpected callers.
 
-**5. Scope the blast radius of the files changed in the deploy.**
+**4. Scope the blast radius of the files changed in the deploy.**
 
 ```json
 {
@@ -115,7 +97,7 @@ Returns: `{ "callers": [{ "name": "RegisterRoutes", "file_path": "internal/serve
 
 Returns: `{ "symbols": ["ProcessPayment", "HandleCheckout", "ValidateCart", ...], "tests": ["TestProcessPayment", "TestHandleCheckout_Error"], "files": ["internal/payment/processor.go", "internal/handler/checkout.go", "internal/cart/validate.go"] }` — `ValidateCart` is also in the blast radius, which is unexpected and worth investigating.
 
-**6. Find the regressing commit.**
+**5. Find the regressing commit.**
 
 ```json
 {
@@ -130,7 +112,7 @@ Returns: `{ "symbols": ["ProcessPayment", "HandleCheckout", "ValidateCart", ...]
 
 Returns the 10 most recent commits that touched `ValidateCart`'s file, newest-first, with dates, authors, and messages. The most recent commit message reads "refactor: simplify cart validation error handling" — a plausible regression site.
 
-**7. Check for doc-vs-code contradictions in the checkout concern.**
+**6. Check for doc-vs-code contradictions in the checkout concern.**
 
 ```json
 {
@@ -141,7 +123,7 @@ Returns the 10 most recent commits that touched `ValidateCart`'s file, newest-fi
 
 Returns: `{ "contradictions": [{ "symbol": "ValidateCart", "kind_a": "GoFunc", "kind_b": "GoMethod", "type": "kind_conflict" }] }` — `ValidateCart` appears as both a function and a method across sources. This signals the refactor changed its signature in a way the index has partially captured.
 
-**8. Map the community around `ValidateCart` to see what else is entangled.**
+**7. Map the community around `ValidateCart` to see what else is entangled.**
 
 ```json
 { "name": "community", "arguments": { "service": "checkout-service", "symbol": "ValidateCart" } }
@@ -151,7 +133,7 @@ Returns: `{ "members": ["HandleCheckout", "CartService", "ErrInvalidCart", "Test
 
 At this point you have: the failing entry point, the blast radius of the deploy, the regressing commit, a contradiction that explains the runtime confusion, and a tight symbol community to read. That is enough to open the right files with full context.
 
-**9. Check whether this failure class has shown up here before.**
+**8. Check whether this failure class has shown up here before.**
 
 ```json
 { "name": "findings_near", "arguments": { "service": "checkout-service", "subject": "ValidateCart", "hops": 2 } }
@@ -163,7 +145,7 @@ Returns: `{ "found": true, "findings": [{ "claim_id": "...", "class": "error-han
 
 ## Setup & notes
 
-**Surface.** There is no profile switch (`set_profile` was removed, SW-2). stdio `serve-mcp` serves the full registry; over the shared HTTP daemon the path is the scope — the investigation tools (`find_callers`, `blast_radius`, `history`, `contradiction_scan`, `evidence_summary`, `community`, `traverse`, `findings_near`) are served by bare `POST /rpc` since HF-5 deleted the group endpoints; `POST /rpc/agent` lists the 19-tool allowlist (`entrypoints`, `find_callers`, `staleness_report`, `memory_search`, `ingest` are on it). An off-surface call still executes, logged `off_surface:true` — never refused. Prompts follow the surface: `investigate_incident` is hidden on a surface missing one of its tools, so fetch it over `/rpc`.
+**Surface.** There is no profile switch (`set_profile` was removed, SW-2). stdio `serve-mcp` serves the full registry; over the shared HTTP daemon the path is the scope — the investigation tools (`find_callers`, `blast_radius`, `history`, `contradiction_scan`, `evidence_summary`, `community`, `traverse`, `findings_near`) are served by bare `POST /rpc` since HF-5 deleted the group endpoints; `POST /rpc/agent` lists the agent allowlist (`entrypoints`, `find_callers`, `staleness_report`, `memory_search`, `ingest` are on it). An off-surface call still executes, logged `off_surface:true` — never refused. The `investigate_incident` canned prompt this section used to reference is gone (SR-20, surface reckoning F-78, zero lifetime calls); `prompts/list` now answers empty everywhere.
 
 **"Did we already know this?"** Before reading cold, ask `memory_search { "service": "checkout-service", "file": "internal/cart/validate.go" }` — a `fresh` memory is an earlier session's proven claim about this code; a `suspect` one names the anchor that moved since it was confirmed. When the investigation settles a fact worth keeping, `fathom memory add … --anchor file:internal/cart/validate.go --evidence machine-check:<test>` files it; an unanchored note is refused.
 
@@ -187,4 +169,4 @@ Returns: `{ "found": true, "findings": [{ "claim_id": "...", "class": "error-han
 
 ## Maintained
 
-This doc covers: `investigate_incident`, `entrypoints`, `localize`, `find_callers`, `blast_radius`, `history`, `contradiction_scan`, `evidence_summary`, `community`, `traverse`, `findings_near`, `memory_search`, `staleness_report`, `ingest`, `fathom findings` (`near`/`status`), `fathom memory` (`add`/`list`/`review`/`show`), `fathom scope` (`list`/`preview`/`suppress`/`unsuppress`). Update it when these change.
+This doc covers: `entrypoints`, `localize`, `find_callers`, `blast_radius`, `history`, `contradiction_scan`, `evidence_summary`, `community`, `traverse`, `findings_near`, `memory_search`, `staleness_report`, `ingest`, `fathom findings` (`near`/`status`), `fathom memory` (`add`/`list`/`review`/`show`), `fathom scope` (`list`/`preview`/`suppress`/`unsuppress`). Update it when these change.

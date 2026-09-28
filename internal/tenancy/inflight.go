@@ -149,8 +149,8 @@ func (r *InFlight) Cancel(cause error, classes ...Class) []InFlightEntry {
 
 // OriginPipeline is the origin of the pipeline's own ingest registration
 // (BeginIngest): every ingest, explicit or auto-refresh, registers under
-// it; an explicit ingest also has its /rpc ticket (tool ingest or
-// onboard_service, the caller's origin).
+// it; an explicit ingest also has its /rpc ticket (tool ingest, the
+// caller's origin).
 const OriginPipeline = "pipeline"
 
 // BeginIngest registers an ingest of service in DefaultInFlight: its ctx
@@ -160,14 +160,17 @@ func BeginIngest(ctx context.Context, service string) (context.Context, func()) 
 }
 
 // ExplicitIngestInFlight reports whether an explicit ingest — an /rpc
-// `ingest` or `onboard_service` call, not auto-refresh's pipeline ingest —
-// is registered now (RT-162: disk writes are judged outside explicit
-// ingest). No allocation.
+// `ingest` call, not auto-refresh's pipeline ingest — is registered now
+// (RT-162: disk writes are judged outside explicit ingest). No allocation.
+//
+// onboard_service was dropped from this check (SR-20, surface reckoning
+// F-78): it named a canned MCP prompt, never a tools/call name that could
+// reach this ledger.
 func (r *InFlight) ExplicitIngestInFlight() bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	for _, e := range r.entries {
-		if e.Class == ClassIngest && e.Origin != OriginPipeline && (e.Tool == "ingest" || e.Tool == "onboard_service") {
+		if e.Class == ClassIngest && e.Origin != OriginPipeline && e.Tool == "ingest" {
 			return true
 		}
 	}

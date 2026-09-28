@@ -693,33 +693,13 @@ fix for the T08 class in `docs/plans/home-bench.md`'s H3-1 row.
 
 ## Prompts
 
-Fathom registers four canned prompts (via `prompts/list` and `prompts/get`). Each prompt
-returns a structured sequence of instructions that guides an AI agent to use the
-appropriate fathom tools for the task.
-
-| Prompt | Arguments | Purpose |
-|---|---|---|
-| `investigate_incident` | `service` (req), `symptom` (req) | Guide an investigation into a production incident: entrypoints → complexity hotspots → find callers → community → staleness check |
-| `review_change` | `service` (req), `changed_files` (req), `change` (opt), `concern` (opt) | Review a code change for safety by calling the composed `review_diff` verb (C3-1, `docs/plans/review-verb.md`) — one cited verdict instead of a manual tool sequence |
-| `onboard_service` | `service` (req) | Generate an onboarding tour for a new engineer: entrypoints → sources → god objects |
-| `plan_requirement` | `service` (req), `requirement` (req) | Plan implementation of a new requirement: entrypoints → complexity → dead code |
-
-### Using a prompt
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "method": "prompts/get",
-  "params": {
-    "name": "investigate_incident",
-    "arguments": {
-      "service": "payment-service",
-      "symptom": "POST /checkout returning 500 after deploy"
-    }
-  }
-}
-```
+Fathom's four canned prompts (`investigate_incident`, `review_change`, `onboard_service`,
+`plan_requirement`) were removed by the surface reckoning (SR-20, F-78): zero lifetime
+calls in `calls.json`, and each one's workflow is a direct call away — `review_diff` for
+review, `entrypoints`/`find_callers`/`staleness_report` for investigation and onboarding,
+`entrypoints`/`find_callers` for planning. `prompts/list` and `prompts/get` stay wired
+(the MCP prompts capability is kept) and answer an empty list / a not-found error —
+never a protocol-level refusal.
 
 ---
 

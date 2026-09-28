@@ -540,10 +540,14 @@ func (g *governor) quarantine(ingests []tenancy.InFlightEntry, footprint int64) 
 
 // quarantinesOnHalt reports whether halting ingest-class work named tool
 // quarantines its service: an ingest does (the MCP ingest tool, pkg/client's
-// BeginIngest, onboard_service); other ingest-class work — compile_layer —
-// is halted but is not an ingest, so its service keeps auto-refreshing.
+// BeginIngest); other ingest-class work — compile_layer — is halted but is
+// not an ingest, so its service keeps auto-refreshing.
+//
+// onboard_service was a dead string here (SR-20, surface reckoning F-78):
+// it named a canned MCP *prompt*, never a tools/call name this admission
+// path ever saw.
 func quarantinesOnHalt(tool string) bool {
-	return tool == "ingest" || tool == "onboard_service"
+	return tool == "ingest"
 }
 
 // topInFlight names the oldest n in-flight entries: tool(class, service,

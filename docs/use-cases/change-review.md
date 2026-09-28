@@ -24,7 +24,6 @@ Review a diff or pull request with automated impact analysis and conformance gat
 | `dep_drift` | MCP tool (coding) | Dependency version mismatches between two services' lockfiles |
 | `proto_conformance` | MCP tool (coding) | Naming convention violations in `.proto` files |
 | `stale_docs` | MCP tool (coding) | Markdown files with inline-code or link references that no longer match known symbols or files |
-| `review_change` | MCP prompt | Calls `review_diff` for a structured, one-call review of a code change |
 | `ingest` | MCP tool (shared) | Re-ingest a service in-session to refresh the store before querying |
 | `staleness_report` | MCP tool (shared) | Check whether the indexed state has drifted from the current HEAD |
 | `fathom review` | CLI | Store-direct CLI mirror of `review_diff`: resolves changed files via `git diff --name-only <ref>`, runs the same engine (used by the non-blocking pre-push summary, `docs/plans/review-verb.md` C3-1); `--budget-seconds N` (with `--no-persist`) prints a named skip and exits 0 on excess. Not yet listed by `fathom help` — `fathom review -h` |
@@ -114,25 +113,9 @@ Returns one cited verdict:
 
 **`review_diff` writes to the claims store — deliberately, and only the oracle dimensions.** `findings_persisted:true` reports that the `arch_conformance` and `spec_coverage` findings (the deterministic-oracle dimensions — never `obligations`, which re-serves already-compiled claims, and never `impact` context noise) were persisted as content-addressed claims on the `findings` layer, each anchored with a hashed line citation and a scope fingerprint so the daemon's post-refresh citation sweep and remediation-drift pass verify them instead of falsifying them. The write is idempotent (an identical re-run upserts identical rows) and self-reconciling: a review-minted claim whose finding a later run over the same files no longer emits is flipped to `superseded` — absent = fixed. If the PR author disputes the violation, `fathom claim refute --claim 3f9a… --note "..."` (or the `obligations` tool's `action:"refute"`) suppresses it durably — a later `review_diff` call re-emitting the identical finding carries `status:"refuted"` (excluded from `count`, still listed) instead of re-flagging it.
 
-Alternatively, invoke the `review_change` prompt to get the same call pre-structured:
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "method": "prompts/get",
-  "params": {
-    "name": "review_change",
-    "arguments": {
-      "service": "payment-service",
-      "changed_files": "internal/api/handler.go",
-      "change": "handler now calls store.Query directly"
-    }
-  }
-}
-```
-
-The returned prompt instructs the agent to call `review_diff` with those arguments and how to read the resulting verdict.
+The `review_change` canned prompt that used to pre-structure this same call is gone
+(SR-20, surface reckoning F-78, zero lifetime calls) — call `review_diff` directly, as
+above.
 
 **CLI equivalent:**
 
@@ -319,4 +302,4 @@ The section above is fathom's OWN findings (`fathom report`, compiled through th
 
 ## Maintained
 
-This doc covers: `review_diff` (the composed verb, C1-1/C2-1, `docs/plans/review-verb.md`; incl. its `test_impact` block — `affected_tests` and `test_gap`, BD-4) and its `fathom review` CLI mirror (which prints the same block, BD-5) (incl. `--no-persist`, `--budget-seconds`; `fathom review -h`), `diff_impact`, `api_diff`, `arch_conformance` (incl. its `.fathom/rules/archconformance.cue` project rule packs and `rule_source`/`checked` response fields), `dep_drift`, `proto_conformance`, `stale_docs`, `findings_near`, `fathom findings` (`near`/`status`; `fathom findings import`/`fathom findings candidates` land in another wave, FL-10/FL-23, `docs/plans/findings-loop.md`), `review_change` (MCP prompt), `ingest`, `staleness_report`, `fathom ingest-diff`, `fathom verify` (`--quiet`, `--strict`), the pre-push `fathom review` summary step (C3-1), `fathom report`, `fathom claim` (add/refute/corroborate). Update it when these change.
+This doc covers: `review_diff` (the composed verb, C1-1/C2-1, `docs/plans/review-verb.md`; incl. its `test_impact` block — `affected_tests` and `test_gap`, BD-4) and its `fathom review` CLI mirror (which prints the same block, BD-5) (incl. `--no-persist`, `--budget-seconds`; `fathom review -h`), `diff_impact`, `api_diff`, `arch_conformance` (incl. its `.fathom/rules/archconformance.cue` project rule packs and `rule_source`/`checked` response fields), `dep_drift`, `proto_conformance`, `stale_docs`, `findings_near`, `fathom findings` (`near`/`status`; `fathom findings import`/`fathom findings candidates` land in another wave, FL-10/FL-23, `docs/plans/findings-loop.md`), `ingest`, `staleness_report`, `fathom ingest-diff`, `fathom verify` (`--quiet`, `--strict`), the pre-push `fathom review` summary step (C3-1), `fathom report`, `fathom claim` (add/refute/corroborate). Update it when these change.
