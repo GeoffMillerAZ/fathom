@@ -25,7 +25,7 @@ func dialectForPlan(reg *specdialect.Registry, path string, content []byte, over
 	}
 	d, ok := reg.ForFile(path, content)
 	if !ok {
-		return nil, fmt.Errorf("plan %q: no spec dialect claims it — fathom verify reads Markdown checklists (plan grammar v2, Spec Kit, OpenSpec, Kiro); pass --dialect <%s> to choose one", path, strings.Join(reg.IDs(), "|"))
+		return nil, fmt.Errorf("plan %q: no spec dialect claims it — fathom verify reads Markdown checklists (plan grammar v2, Spec Kit, OpenSpec, Kiro); an exported GitHub issue/PR task list is never auto-detected; pass --dialect <%s> to choose one", path, strings.Join(reg.IDs(), "|"))
 	}
 	return d, nil
 }
