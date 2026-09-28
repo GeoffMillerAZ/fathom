@@ -10,8 +10,8 @@ package certify
 // Flakiness never leaves a certificate silently reported at the top
 // tier: evaluateCertificate drops an otherwise-earned TierVerified to
 // TierPreScan when flaky is true — the SAME ladder-drop convention
-// internal/memory's own dropOne uses for its "suspect" penalty
-// (internal/memory/tier.go: "inventing a sixth tier... would be a new
+// anchored memory's dropOne used for its "suspect" penalty before
+// SR-13 retired internal/memory ("inventing a sixth tier... would be a new
 // ladder", refused there and here) rather than inventing a "suspect"
 // EvidenceTier value that core's own ladder does not know how to sort.
 import (
