@@ -88,7 +88,7 @@ falsely.
 - [ ] (op) Findings loop (F-33): Review Kit publishing is armed on one real repository and an import receipt shows findings > 0 {id: SR-64, oracle: lexical, path: docs/bench/readings/findings-armed.md, pattern: "^Imported: [1-9]"}
 - [ ] SCIP import (F-74): `fathom init` runs `scip-typescript` / `scip-python` when installed and imports the index {id: SR-65, symbol: initRunSCIP, package: cmd/fathom, reachable_from: TestInitRunsSCIPWhenInstalled}
 - [ ] (op) ui-appkit pack (F-67): compiled on app-kit and one consumer; UI rule violations measured {id: SR-66, oracle: lexical, path: docs/bench/readings/ui-appkit-pack.md, pattern: "^Compiled claims: [1-9]"}
-- [ ] Call log and hook log: one reader over both logs feeds the U1–U5 views {id: SR-67, symbol: ReadActivityRecord, package: internal/metrics, reachable_from: TestActivityRecordJoinsCallAndHookLogs}
+- [x] Call log and hook log: one reader over both logs feeds the U1–U5 views {id: SR-67, symbol: ReadActivityRecord, package: internal/metrics, reachable_from: TestActivityRecordJoinsCallAndHookLogs}
 - [ ] Verify and session ledgers: the join by session id that N2 burn-up and N3 cost-per-proven-row read {id: SR-68, symbol: JoinLedgersBySession, package: internal/metrics, reachable_from: TestJoinVerifyAndSessionLedgers}
 
 ## Measurements
