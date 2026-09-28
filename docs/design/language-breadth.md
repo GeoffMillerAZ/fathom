@@ -278,8 +278,30 @@ alternation `|`), implemented in Go over the decoded tree — no expression lang
 templating. Formats whose meaning needs evaluation (Helm templates, Jsonnet, Starlark,
 Nix, CUE) are not doc-engine formats: they are syntax dialects on the tags engine, and
 where a tool can evaluate them it is the tier-A oracle. A doc-engine tool format reaches
-L3 through `cross_file` selectors resolved by strategy (`repo-path`, `image-ref`,
-`module-source`, `service-name`).
+L3 through `cross_file` selectors resolved by strategy (`repo-path`, `repo-root`,
+`image-ref`, `module-source`, `service-name`, `label-selector`).
+
+**Cross-file references reach the store (LB-F30, owner decision D4, 2026-09-28).** One
+resolver, `fusion.ResolveDocXrefs`, serves ingest and the harness: `repo-path`, `repo-root`
+and a relative `module-source` name a file, the one doc file directly in a named directory,
+or every such file in the directories a glob names (`packages/*`), and resolve to that
+file's first root entity (an entity selected at `$`); a non-relative `module-source` or a
+`service-name` resolves to the one entity of that name in another file; `label-selector`
+joins every entity whose declared `labels` (a top-level `labels` list: `from`, `select`,
+`scope`, `scope_default`) include the selector map, in the same scope. `repo-root` resolves
+`./x` from the repository root (GitHub Actions' `uses:` convention), every other strategy
+from the referring file's directory. A `cross_file` entry may carry a `where` filter on its
+origin (the Service-only selector), and an entity a `qualify` list (`[".kind",
+".metadata.namespace"]` names a Kubernetes object `Deployment/prod/web`, the incumbent's
+naming, so a Service and a Deployment sharing a name keep distinct keys). **Edge shape:** a
+file-tier typed edge (`core.EdgeFileResolved`, tier pre-scan, never presented as typed) from
+the referring entity's symbol to the referenced entity's, stored under the typed_edges key
+`doc-xref` and replaced wholesale by an ingest pass gated like the file resolver's — the
+same table and label `ResolveFileEdges` writes. A reference leaving the repository (a
+registry package, a remote action, an image) resolves to nothing here: crossing
+repositories is the `service_ref`/`module_ref` layer's job (§1.1). A reference resolving to
+its own origin's key is dropped. The harness scores exactly the resolver's output
+(`xref_precision`/`xref_recall`, §10), so the bench never scores an edge ingest drops.
 
 ## 5. Classification
 

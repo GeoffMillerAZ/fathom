@@ -224,6 +224,11 @@ type Report struct {
 	// RT-108: FileResolveReused counts files whose imports came from
 	// file_imports (not read, not parsed); FileResolveFaults counts files
 	// whose import parse faulted, FileResolveFaultFiles names up to five;
+	// DocXrefEdges is the number of doc-engine cross-file reference edges
+	// the doc-xref pass stored (LB-F30); DocXrefSkipped names why it did
+	// not run ("" when it ran).
+	DocXrefEdges   int
+	DocXrefSkipped string
 	// FileResolveSkipped names why the pass did not run ("" when it ran).
 	FileResolveReused     int
 	FileResolveFaults     int
@@ -1379,6 +1384,14 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 		// never moved (RT-109), so the halted run never reads as fresh; fail
 		// with the named cause instead of a shorter index.
 		return finish(fmt.Errorf("fusion: file-resolved edge pass %q: %w", svc.ID, fileErr))
+	}
+
+	// Doc-engine cross-file references (LB-F30, docs/design/
+	// language-breadth.md §4): additive, never blocks ingest.
+	docN, docSkip, docErr := p.enrichDocXrefEdges(ctx, svc, refs, changed)
+	report.DocXrefEdges, report.DocXrefSkipped = docN, docSkip
+	if docErr != nil {
+		return finish(fmt.Errorf("fusion: doc-xref edge pass %q: %w", svc.ID, docErr))
 	}
 
 	// ── Orphan purge, then the final commit ──────────────────────────────────
