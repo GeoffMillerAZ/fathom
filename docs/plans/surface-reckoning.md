@@ -37,11 +37,11 @@ falsely.
 
 ### 2.2 MERGE (design §4)
 
-- [ ] F-05: `find_callees` is unregistered; `symbol_context` is the answer for callees {id: SR-21, gone: pattern "Name:\s+.find_callees.", paths: "internal/mcp/"}
+- [x] F-05: `find_callees` is unregistered; `symbol_context` is the answer for callees {id: SR-21, gone: pattern "Name:\s+.find_callees.", paths: "internal/mcp/"}
 - [ ] F-10: `repo_map`'s header carries the entrypoints (capped at 10 with a `more` count) and the `entrypoints` tool is unregistered {id: SR-22, symbol: repoMapEntrypoints, package: internal/mcp, reachable_from: TestRepoMapHeaderCarriesEntrypoints}
 - [ ] F-11: one `status` tool answers the `tools`, `daemon` and `sources` sections byte-compatibly with `capabilities`, `server_stats` and `list_sources`, which are unregistered; doctor and the console call `status`; AD-1, AD-2, AD-4, A1-1, A1-2, K3-1, K4-1 and P1-7 are re-anchored onto `registerStatus` {id: SR-23, symbol: registerStatus, package: internal/mcp, reachable_from: TestStatusSectionsMatchRetiredTools}
 - [ ] F-13: `blast_radius` takes `kind: change|rename|delete`; `rename` returns today's rename_impact answer and `delete` today's safe_delete_check answer (proven-zero receipt included); both tools are unregistered and `promotedVerbs()` drops `rename_impact` {id: SR-24, symbol: blastRadiusByKind, package: internal/mcp, reachable_from: TestBlastRadiusKindsMatchRetiredVerbs}
-- [ ] F-16: `diff_impact` is unregistered; `review_diff` is the verb {id: SR-25, gone: pattern "Name:\s+.diff_impact.", paths: "internal/mcp/"}
+- [x] F-16: `diff_impact` is unregistered; `review_diff` is the verb {id: SR-25, gone: pattern "Name:\s+.diff_impact.", paths: "internal/mcp/"}
 - [ ] F-20: the `api_diff` tool is unregistered; the calibrated API delta stays in `conserve` {id: SR-26, gone: pattern "Name:\s+.api_diff.", paths: "internal/mcp/"}
 - [ ] F-35: `arch_conformance`, `spec_coverage` and `spec_refs` are unregistered; the edit hook reads spec references from an additive `spec_refs` section of the `obligations` answer; P1-4, C4-3 and C4-5 are re-anchored onto the review engine's `runArch` {id: SR-27, symbol: obligationsSpecRefs, package: internal/mcp, reachable_from: TestEditHookReadsSpecRefsFromObligations}
 - [ ] F-56: `staleness_report` carries `doc_drift` (doc spans naming a symbol that no longer exists) and `stale_docs` is unregistered {id: SR-28, symbol: stalenessDocDrift, package: internal/mcp, reachable_from: TestStalenessReportDocDrift}
