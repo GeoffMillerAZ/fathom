@@ -15,7 +15,9 @@
       "line": 4,
       "end_line": 6,
       "signature": "int good()",
-      "calls": ["helper"],
+      "calls": [
+        "helper"
+      ],
       "tier": "verified"
     },
     {

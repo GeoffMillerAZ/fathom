@@ -15,7 +15,9 @@
       "line": 4,
       "end_line": 4,
       "signature": "FROM golang:${GO_VERSION} AS build",
-      "calls": ["golang"],
+      "calls": [
+        "golang"
+      ],
       "tier": "verified"
     },
     {
@@ -41,7 +43,9 @@
       "line": 11,
       "end_line": 11,
       "signature": "FROM build AS test",
-      "calls": ["build"],
+      "calls": [
+        "build"
+      ],
       "tier": "verified"
     },
     {
@@ -51,7 +55,9 @@
       "line": 14,
       "end_line": 14,
       "signature": "FROM alpine:3.19 AS final",
-      "calls": ["alpine"],
+      "calls": [
+        "alpine"
+      ],
       "tier": "verified"
     },
     {
@@ -66,7 +72,7 @@
       "name": "APP_PORT",
       "kind": "DockerfileEnv",
       "package": "multistage",
-      "line": 15,
+      "line": 16,
       "end_line": 16,
       "tier": "verified"
     }

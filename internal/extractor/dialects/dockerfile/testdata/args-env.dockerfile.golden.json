@@ -7,7 +7,9 @@
       "line": 1,
       "end_line": 1,
       "signature": "FROM --platform=linux/amd64 debian:bookworm-slim AS base",
-      "calls": ["debian"],
+      "calls": [
+        "debian"
+      ],
       "tier": "verified"
     },
     {

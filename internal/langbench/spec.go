@@ -30,6 +30,9 @@ type Manifest struct {
 	NameMatch   string `json:"name_match,omitempty"`
 	TargetLevel string `json:"target_level"`
 	QueueID     string `json:"queue_id"`
+	// Ctags is the manifest's own tier-B invocation (extractor.DialectCtags),
+	// for a dialect the embedded incumbents.json spec does not cover.
+	Ctags *CtagsSpec `json:"ctags,omitempty"`
 }
 
 // ManifestMatch is a manifest's classification keys.

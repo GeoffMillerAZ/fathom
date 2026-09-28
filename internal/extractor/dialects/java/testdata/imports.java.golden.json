@@ -47,7 +47,9 @@
       "line": 9,
       "end_line": 11,
       "signature": "void run()",
-      "calls": ["max"],
+      "calls": [
+        "max"
+      ],
       "tier": "verified"
     }
   ],

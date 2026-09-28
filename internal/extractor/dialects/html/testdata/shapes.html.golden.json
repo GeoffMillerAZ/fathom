@@ -100,6 +100,14 @@
       "end_line": 28,
       "signature": "function helper(name)",
       "tier": "verified"
+    },
+    {
+      "name": ".foo",
+      "kind": "CSSSelector",
+      "package": "shapes",
+      "line": 31,
+      "end_line": 31,
+      "tier": "verified"
     }
   ],
   "imports": [

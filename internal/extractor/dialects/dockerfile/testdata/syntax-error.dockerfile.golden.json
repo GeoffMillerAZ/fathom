@@ -7,7 +7,9 @@
       "line": 1,
       "end_line": 1,
       "signature": "FROM alpine:3.19 AS base",
-      "calls": ["alpine"],
+      "calls": [
+        "alpine"
+      ],
       "tier": "verified"
     },
     {

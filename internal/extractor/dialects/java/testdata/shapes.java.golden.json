@@ -56,7 +56,10 @@
       "line": 13,
       "end_line": 21,
       "signature": "public int sum( int a, int b )",
-      "calls": ["doThing", "staticThing"],
+      "calls": [
+        "doThing",
+        "staticThing"
+      ],
       "tier": "verified"
     },
     {

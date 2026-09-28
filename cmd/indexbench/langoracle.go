@@ -189,7 +189,13 @@ func resolveBenchSpec(id, manifestPath string) (langbench.BenchSpec, string, err
 			return langbench.BenchSpec{}, "", fmt.Errorf("%s: id %q, want %q", manifestPath, m.ID, id)
 		}
 		spec := langbench.BenchSpec{Manifest: m}
-		if hasInc {
+		switch {
+		case m.Ctags != nil:
+			// The manifest names its own tier-B invocation (design §13.4
+			// step 18) — every dialect after the five incumbents.json
+			// covers takes this path.
+			spec.Ctags = *m.Ctags
+		case hasInc:
 			spec.Ctags = inc.Ctags
 		}
 		return spec, "dialect", nil

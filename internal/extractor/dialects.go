@@ -48,6 +48,20 @@ type Dialect struct {
 	Signature   DialectSignature `json:"signature"`
 	TargetLevel string           `json:"target_level"`
 	QueueID     string           `json:"queue_id"`
+	// Ctags names the dialect's own universal-ctags invocation (design
+	// §13.4 step 18) for a tags dialect the langbench harness's
+	// incumbents.json (the five pre-manifest languages) does not cover —
+	// CSS onward. Omitted for a dialect ctags has no parser for.
+	Ctags *DialectCtags `json:"ctags,omitempty"`
+}
+
+// DialectCtags is one dialect's tier-B oracle invocation: universal-ctags'
+// own language name(s) (`ctags --list-languages`) and any extra flags its
+// run needs (mirrors langbench.CtagsSpec, the shape incumbents.json already
+// uses for the five migrated languages).
+type DialectCtags struct {
+	Languages []string `json:"languages"`
+	Args      []string `json:"args,omitempty"`
 }
 
 // DialectMatch is how a file is classified to the dialect (§5).

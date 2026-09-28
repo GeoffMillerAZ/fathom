@@ -13,13 +13,36 @@
 ; one match per direct child of `selectors`, each carrying the SAME
 ; enclosing rule_set as its definition range (so EndLine reflects the rule's
 ; real close-brace line even though ctags itself proves no end for CSS —
-; see PROVENANCE.md). `(_)` matches any selector shape: class_selector,
-; id_selector, pseudo_class_selector (`:root`, `a:hover`), tag_name,
-; universal_selector, attribute_selector, nesting_selector (CSS Nesting's
-; `&`).
+; see PROVENANCE.md; tsextract.go takes each match's OWN @name row for
+; Line, so a multi-line group's later members keep their real line even
+; though @definition.selector spans the whole rule_set).
+;
+; The alternation below, not `(_)`, is deliberate: `comment` is a "selectors"
+; sibling too — a trailing `/* note */` after a comma in a multi-line group
+; (real shape, testdata/comments.css) is itself a direct child of
+; `selectors`, and `(_)` matched it as a spurious definition named
+; "/* note */" (found against calibration/normalize.css, §13 step 21).
+; Every shape below was confirmed present with `indexbench lang-probe`
+; (never grammar.js/node-types.json): plain and compound (class_selector
+; nests for `.a.b`) tag/class/id/universal/attribute/pseudo-class/
+; pseudo-element/namespace/nesting selectors, and the four combinators.
 (rule_set
   (selectors
-    (_) @name)
+    [
+      (tag_name)
+      (universal_selector)
+      (class_selector)
+      (id_selector)
+      (attribute_selector)
+      (pseudo_class_selector)
+      (pseudo_element_selector)
+      (namespace_selector)
+      (nesting_selector)
+      (descendant_selector)
+      (child_selector)
+      (sibling_selector)
+      (adjacent_sibling_selector)
+    ] @name)
   (block) @body) @definition.selector
 
 ; @keyframes <name> { ... } — one definition per animation; the individual

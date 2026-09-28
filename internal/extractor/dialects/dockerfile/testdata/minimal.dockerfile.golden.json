@@ -7,7 +7,9 @@
       "line": 1,
       "end_line": 1,
       "signature": "FROM ubuntu:22.04",
-      "calls": ["ubuntu"],
+      "calls": [
+        "ubuntu"
+      ],
       "tier": "verified"
     }
   ]
