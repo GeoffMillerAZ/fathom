@@ -288,6 +288,9 @@ type Config struct {
 	Tests          Tests
 	Surface        Surface
 	Console        Console
+	// Zones is `[zones]` (WI-1): zone name to its repo-relative path
+	// globs. A layer that sets it replaces the whole table.
+	Zones map[string][]string
 }
 
 // SurfacePatterns returns cfg's configured `[[surface.pattern]]` entries

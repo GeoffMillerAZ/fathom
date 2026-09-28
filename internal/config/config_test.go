@@ -374,6 +374,32 @@ func TestLoad_ConsoleTable(t *testing.T) {
 	}
 }
 
+// TestLoad_ZonesTable pins `[zones]` (WI-1): name to globs decodes, the
+// project layer replaces the user's table outright, and an empty glob
+// list is a schema error.
+func TestLoad_ZonesTable(t *testing.T) {
+	dir := t.TempDir()
+	userPath := filepath.Join(dir, "user.toml")
+	projectPath := filepath.Join(dir, "project.toml")
+	writeTOML(t, userPath, "[zones]\nold = [\"x/**\"]\n")
+	writeTOML(t, projectPath, "[zones]\npayments = [\"internal/pay/**\", \"cmd/payd/*\"]\n")
+	loaded, err := Load(userPath, projectPath)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	z := loaded.Config.Zones
+	if len(z) != 1 || len(z["payments"]) != 2 || z["payments"][1] != "cmd/payd/*" {
+		t.Fatalf("zones = %v, want the project table only", z)
+	}
+	if loaded.Provenance["zones"].Path != projectPath {
+		t.Errorf("zones provenance = %+v", loaded.Provenance["zones"])
+	}
+	writeTOML(t, projectPath, "[zones]\nempty = []\n")
+	if _, err := Load("", projectPath); err == nil {
+		t.Error("an empty glob list must be rejected by the schema")
+	}
+}
+
 // TestLoad_GuardsTable pins ADR-038's escape hatch config field: `[guards]
 // enforce = false` decodes to an explicit *bool, provenance is recorded,
 // and project overrides user like every other field.
