@@ -438,23 +438,32 @@ func runCtags(ctx context.Context, bin, root string, files []string, cs langbenc
 }
 
 func loadOrNewReading(path string, m langbench.Manifest, target string) (langbench.Reading, error) {
-	b, err := os.ReadFile(path)
+	r, err := loadReading(path)
 	if errors.Is(err, os.ErrNotExist) {
 		return langbench.NewReading(m, target), nil
 	}
 	if err != nil {
 		return langbench.Reading{}, err
 	}
-	var r langbench.Reading
-	dec := json.NewDecoder(bytes.NewReader(b))
-	dec.DisallowUnknownFields()
-	if err := dec.Decode(&r); err != nil {
-		return langbench.Reading{}, fmt.Errorf("%s: %w", path, err)
-	}
 	if r.Dialect != m.ID {
 		return langbench.Reading{}, fmt.Errorf("%s holds dialect %q, not %q", path, r.Dialect, m.ID)
 	}
 	r.RequiredKinds = m.RequiredCanonical()
+	return r, nil
+}
+
+// loadReading decodes a committed reading strictly.
+func loadReading(path string) (langbench.Reading, error) {
+	var r langbench.Reading
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return r, err
+	}
+	dec := json.NewDecoder(bytes.NewReader(b))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&r); err != nil {
+		return r, fmt.Errorf("%s: %w", path, err)
+	}
 	return r, nil
 }
 

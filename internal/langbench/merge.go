@@ -62,6 +62,12 @@ func MergeSubject(r *Reading, s Subject) {
 	recompute(r)
 }
 
+// Regrade recomputes a reading from its recorded subjects under the
+// current harness rules (thresholds, not_measured, name and kind rules that
+// act on counts) without re-extracting: the subjects' raw counts are the
+// measurement, the level is always derived from them.
+func Regrade(r *Reading) { recompute(r) }
+
 func recompute(r *Reading) {
 	counts := map[string]int{}
 	tiers := map[string]string{}
