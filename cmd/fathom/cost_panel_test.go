@@ -26,8 +26,11 @@ const (
 	agentDefaultSurfaceToolCount = 8
 	// 7,715-7,725 measured 2026-09-27 (SR-33), well inside the design doc's
 	// own ≤9,000 B target (docs/design/surface-reckoning.md §1); + headroom.
+	// Re-pinned 2026-09-28 (roadmap wave R4b): 8,144 B at the wave's base,
+	// 8,329 B after it — search's `pkg` argument (KR-12, +174 B) and
+	// review_diff's `as_of` (GL-17, +11 B). Still under the ≤9,000 B target.
 	agentDefaultSurfaceSchemaByteFloor   = 7000
-	agentDefaultSurfaceSchemaByteCeiling = 8200
+	agentDefaultSurfaceSchemaByteCeiling = 8600
 )
 
 // TestNarrowProfileSchemaBytes is BA-7: the narrow/agent surface profile
