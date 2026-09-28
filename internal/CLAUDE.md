@@ -32,8 +32,9 @@ Shared types live in `internal/core`; extend it additively.
 
 ## Adding things
 
-- **Extractor**: implement `extractor.Extractor`, register by extension in
-  `fusion.New()`, add its ext→kind in `connector`, golden-test it.
+- **Extractor**: a new language or tool format is a dialect directory, not Go —
+  follow the worker recipe (`docs/design/language-breadth.md` §13, ADR-048); only the
+  engines, L3 strategies and native typed passes are Go.
 - **Analyzer**: a pure `internal/analysis/<name>` package over
   `[]core.SymbolNode` / `[]core.Observation`; deterministic; tested.
 - **MCP tool**: `registerTool` in `internal/mcp` with a `group`; extend the

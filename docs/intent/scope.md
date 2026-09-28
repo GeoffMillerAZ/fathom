@@ -53,6 +53,14 @@ and RT-M1 (seven days within budget, no exit rung) and RT-M3 (the stress harness
 wave-B and post-wave-D binaries) read PASS.
 {bet: responsible-tenant, instrument: "fathom plans status", threshold: "docs/plans/responsible-tenant.md at 0 open non-op rows; RT-M1 and RT-M3 read PASS", review: 2026-10-26}
 
+**G15. Language breadth and depth, measured (ADR-048, vision 37).** The owner's 2026-09-27
+directive: excellent, measured support for the languages and tool formats people use, most
+common first. A language counts at a level only when its committed reading proves it.
+Done when: the foundation rows of `docs/plans/language-breadth.md` are proven and LB-M6
+reads milestone M1 (20 languages at L1 excellent, 12 at L2, 8 at L3, 6 at L4; 15 tool
+formats at target) with LB-M3 (no footprint rise) PASS.
+{bet: language-breadth, instrument: "fathom plans status", threshold: "docs/plans/language-breadth.md LB-F rows proven; LB-M6 reads milestone M1; LB-M3 PASS", review: 2026-11-27}
+
 **G11. A reading, a hand-off and an answer carry their evidence (ADR-034).** The first
 round's 74 rows were voided by an instrument defect (the wired arm never had the tools; O41
 voided G10, ADR-033's ledger goal, on 2026-09-13 and it folds in here);

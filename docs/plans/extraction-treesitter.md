@@ -236,9 +236,9 @@ reproducible via `internal/extractor/tsengine/grammars/build.sh`.
 
 ## Deferred
 
-- [-] Remaining languages of the 30-language program (java, c#, c/cpp, scala, php, lua upgrades...) {id: XT-6, disposition: deferred, reason: "ship three proven languages first; the engine makes each subsequent one data-only", trigger: "per-language, when an indexed repo materially uses it — calibration gate per language as always"}
-- [-] Delete the CGO tree-sitter incumbents once tree-sitter-wasm has baked {id: XT-6b, disposition: deferred, reason: "tree-sitter-wasm is primary for js/ts/py/ruby; the CGO grammar bindings remain only as in-tree incumbents pending bake", trigger: "fleet runs N=7 days green on tree-sitter primary — then delete the CGO tree-sitter deps from go.mod and the incumbent extractors for py/ruby (js heuristic, pure Go, may stay as reference)"}
-- [-] Tree-sitter-derived call edges beyond symbols {id: XT-7, disposition: deferred, reason: "symbol truth first; call-edge queries per language are their own calibration problem", trigger: "first non-Go language where find_callers demand is evidenced by call-log queries"}
+- [-] Remaining languages of the 30-language program (java, c#, c/cpp, scala, php, lua upgrades...) {id: XT-6, disposition: refused, reason: "superseded by docs/plans/language-breadth.md (ADR-048): every remaining language is a queue item with a measured level"}
+- [-] Delete the CGO tree-sitter incumbents once tree-sitter-wasm has baked {id: XT-6b, disposition: refused, reason: "superseded by docs/plans/language-breadth.md (ADR-048): each port item retires its incumbent on measured parity and LB-F19 removes the CGO bindings"}
+- [-] Tree-sitter-derived call edges beyond symbols {id: XT-7, disposition: refused, reason: "superseded by docs/plans/language-breadth.md (ADR-048): L2 call edges are part of every queue item's target and measured against SCIP"}
 
 **Owner ruling (2026-07-22, closes the flag):** the 1.5× corpus budget is
 AMENDED to ≤2× incumbent corpus-wide, accepted at the measured 1.69×

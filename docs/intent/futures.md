@@ -12,16 +12,11 @@ futures may justify a free option today. The repo's own sequence is
 
 ## F1. CGO-free binary: the nine CGO tree-sitter languages move to the wazero engine (XT-6b)
 
-- Confidence: likely. Horizon: later.
-- Motivation: cross-compiled single-binary releases, no C toolchain at build time.
-  Evidence: ADR-025 "Consequence", `Taskfile.yml` header, `docs/vision/11` A5 ("XT-6b not yet fired").
-- Do not build: a migration ahead of per-language calibration; a second grammar build chain.
-- Preserve: every new language lands on `internal/extractor/tsengine` (query-driven `.scm`),
-  never on the CGO bindings; `internal/store` stays pure Go.
-- Promote when: a language's wazero recall on the calibration corpus meets the CGO
-  incumbent's, for each of the nine, or a release must be cross-compiled.
-- Drop if: the wasm32-wasi tree-sitter core stops building or a language cannot reach
-  parity on the corpus.
+- **Promoted 2026-09-27** by ADR-048 (owner directive; vision 37): the work is scope goal
+  G15 — each CGO walker's port item in `docs/plans/language-breadth.md` retires its
+  incumbent on measured parity (design `docs/design/language-breadth.md` §11), and LB-F19
+  removes the CGO tree-sitter modules from `go.mod`. Whether `CGO_ENABLED=0` builds follow is
+  measured then, not assumed. This entry is deleted when LB-F19 is proven.
 
 ## F2. Public release (H2): public repos, tagged binaries, brew tap, MCP registry, plugin bundle
 
