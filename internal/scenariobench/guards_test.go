@@ -1,6 +1,7 @@
 package scenariobench
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 	"sort"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/contextbench/publicloc"
 )
@@ -140,13 +142,39 @@ func testFuncExistsInTree(root, pkgDir, name string) (bool, error) {
 	return false, nil
 }
 
+// errGitHistoryUnavailable marks a lookup that cannot be answered because
+// this copy of the tree has no usable git history (no git binary, not a
+// git work tree, or the commit is not in a shallow or pruned clone). It is
+// neither a pass nor a failure: the caller skips with the reason, since the
+// detector's test could not be checked, not shown absent.
+var errGitHistoryUnavailable = errors.New("git history unavailable")
+
+// gitHistoryTimeout bounds each git call a guards lookup makes; every one
+// is a local, read-only object read.
+const gitHistoryTimeout = 30 * time.Second
+
+// gitReadAt runs a read-only git command in root under gitHistoryTimeout.
+func gitReadAt(root string, args ...string) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), gitHistoryTimeout)
+	defer cancel()
+	return exec.CommandContext(ctx, "git", append([]string{"-C", root}, args...)...).Output()
+}
+
 // testFuncExistsAtCommit is testFuncExistsInTree for a package the tree
 // has since retired: it reads pkgDir's *_test.go files at commit (the
 // task's base_commit, where the scenario's detector actually runs) out of
-// root's git history. A commit or package git cannot produce is an error,
-// never a pass.
+// root's git history. A package git cannot produce at a commit that is
+// present is an error, never a pass; a copy of the tree with no git
+// history at all (or without that commit) returns errGitHistoryUnavailable
+// so the caller can skip instead of guessing either way.
 func testFuncExistsAtCommit(root, commit, pkgDir, name string) (bool, error) {
-	ls, err := exec.Command("git", "-C", root, "ls-tree", "--name-only", commit+":"+pkgDir).Output()
+	if _, err := exec.LookPath("git"); err != nil {
+		return false, fmt.Errorf("%w: git is not on PATH", errGitHistoryUnavailable)
+	}
+	if _, err := gitReadAt(root, "cat-file", "-e", commit+"^{commit}"); err != nil {
+		return false, fmt.Errorf("%w: commit %s is not readable under %s (not a git work tree, or a shallow or pruned clone)", errGitHistoryUnavailable, commit, root)
+	}
+	ls, err := gitReadAt(root, "ls-tree", "--name-only", commit+":"+pkgDir)
 	if err != nil {
 		return false, fmt.Errorf("git ls-tree %s:%s: %w", commit, pkgDir, err)
 	}
@@ -154,7 +182,7 @@ func testFuncExistsAtCommit(root, commit, pkgDir, name string) (bool, error) {
 		if !strings.HasSuffix(file, "_test.go") {
 			continue
 		}
-		src, err := exec.Command("git", "-C", root, "show", commit+":"+pkgDir+"/"+file).Output()
+		src, err := gitReadAt(root, "show", commit+":"+pkgDir+"/"+file)
 		if err != nil {
 			return false, fmt.Errorf("git show %s:%s/%s: %w", commit, pkgDir, file, err)
 		}
@@ -200,6 +228,12 @@ func checkGuardsCorpusDetectors(t *testing.T, c Corpus) {
 	for _, task := range c.Tasks {
 		task := task
 		t.Run(task.ID, func(t *testing.T) {
+			var unverified []string
+			defer func() {
+				if len(unverified) > 0 && !t.Failed() {
+					t.Skipf("SKIPPED, not passed: %s", strings.Join(unverified, "; "))
+				}
+			}()
 			if task.Rule == nil {
 				t.Fatalf("task %s: no rule", task.ID)
 			}
@@ -245,7 +279,12 @@ func checkGuardsCorpusDetectors(t *testing.T, c Corpus) {
 						where = fmt.Sprintf("%q at base_commit %s", pkgDir, task.Subject.BaseCommit)
 						found, err = testFuncExistsAtCommit(moduleRoot, task.Subject.BaseCommit, pkgDir, testName)
 					}
-					if err != nil {
+					if errors.Is(err, errGitHistoryUnavailable) {
+						// Not a pass and not a failure: the test could not
+						// be looked up. The rest of the task is still
+						// checked; the subtest ends skipped with this.
+						unverified = append(unverified, fmt.Sprintf("detector %s: %s in %s not checked: %v", d.Name, testName, where, err))
+					} else if err != nil {
 						t.Errorf("task %s: detector %s: searching for %s in %s: %v", task.ID, d.Name, testName, where, err)
 					} else if !found {
 						t.Errorf("task %s: detector %s names test %s, which does not exist under %s", task.ID, d.Name, testName, where)
@@ -292,4 +331,78 @@ func checkGuardsCorpusDetectors(t *testing.T, c Corpus) {
 			}
 		})
 	}
+}
+
+// TestTestFuncExistsAtCommitWithoutHistory pins the skip contract: a copy
+// of the tree with no usable git history yields errGitHistoryUnavailable
+// (the caller skips with the reason), never a pass and never a hard
+// failure; and a commit git cannot resolve is that same sentinel, while a
+// package missing at a commit that IS present stays a plain error.
+func TestTestFuncExistsAtCommitWithoutHistory(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git is not on PATH: nothing to construct a repository with")
+	}
+	// Under a git hook these name the repository being pushed; a scratch
+	// repository must never inherit them (a commit here would land there).
+	for _, k := range []string{"GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE"} {
+		if old, had := os.LookupEnv(k); had {
+			os.Unsetenv(k)
+			t.Cleanup(func() { os.Setenv(k, old) })
+		}
+	}
+
+	t.Run("not_a_git_work_tree", func(t *testing.T) {
+		found, err := testFuncExistsAtCommit(t.TempDir(), "0123456789abcdef0123456789abcdef01234567", "internal/x", "TestX")
+		if found || !errors.Is(err, errGitHistoryUnavailable) {
+			t.Fatalf("got (%v, %v), want (false, errGitHistoryUnavailable)", found, err)
+		}
+	})
+
+	repo := t.TempDir()
+	run := func(args ...string) string {
+		t.Helper()
+		cmd := exec.Command("git", append([]string{"-C", repo}, args...)...)
+		cmd.Env = append(os.Environ(), "GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@example.com", "GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@example.com")
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
+		}
+		return strings.TrimSpace(string(out))
+	}
+	run("init", "-q")
+	if err := os.MkdirAll(filepath.Join(repo, "pkg"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	src := "package pkg\n\nimport \"testing\"\n\nfunc TestPresent(t *testing.T) {}\n"
+	if err := os.WriteFile(filepath.Join(repo, "pkg", "x_test.go"), []byte(src), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	run("add", ".")
+	run("commit", "-q", "-m", "seed")
+	head := run("rev-parse", "HEAD")
+
+	t.Run("commit_missing_from_history", func(t *testing.T) {
+		found, err := testFuncExistsAtCommit(repo, "0123456789abcdef0123456789abcdef01234567", "pkg", "TestPresent")
+		if found || !errors.Is(err, errGitHistoryUnavailable) {
+			t.Fatalf("got (%v, %v), want (false, errGitHistoryUnavailable)", found, err)
+		}
+	})
+	t.Run("present_test_is_found", func(t *testing.T) {
+		found, err := testFuncExistsAtCommit(repo, head, "pkg", "TestPresent")
+		if err != nil || !found {
+			t.Fatalf("got (%v, %v), want (true, nil)", found, err)
+		}
+	})
+	t.Run("absent_test_is_not_found_and_not_a_skip", func(t *testing.T) {
+		found, err := testFuncExistsAtCommit(repo, head, "pkg", "TestAbsent")
+		if err != nil || found {
+			t.Fatalf("got (%v, %v), want (false, nil)", found, err)
+		}
+	})
+	t.Run("missing_package_is_a_plain_error", func(t *testing.T) {
+		_, err := testFuncExistsAtCommit(repo, head, "nope", "TestPresent")
+		if err == nil || errors.Is(err, errGitHistoryUnavailable) {
+			t.Fatalf("err = %v, want a plain error naming the missing package, not the skip sentinel", err)
+		}
+	})
 }
