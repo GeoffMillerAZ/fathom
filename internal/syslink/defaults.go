@@ -17,5 +17,8 @@ func DefaultRegistry() *Registry {
 	for _, d := range []string{"javascript", "typescript", "tsx", "python"} {
 		must(d, scriptClientSource{})
 	}
+	for _, d := range []string{"openapi", "yaml", "json"} {
+		must(d, openAPISource{})
+	}
 	return r
 }
