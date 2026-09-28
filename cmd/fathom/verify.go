@@ -17,6 +17,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
 	"github.com/geoffmilleraz/fathom/internal/analysis/coverage"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/specdialect"
 	"github.com/geoffmilleraz/fathom/internal/verify"
 	"github.com/geoffmilleraz/fathom/pkg/client"
 )
@@ -49,7 +50,7 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 	}
 	fs := newFlagSet("verify", stderr)
 	var plans planFlags
-	fs.Var(&plans, "plan", "plan file (repeatable; ≥1 required; .md checklist)")
+	fs.Var(&plans, "plan", "plan file (repeatable; ≥1 required): a Markdown checklist in plan grammar v2, or a foreign spec file read in place (Spec Kit specs/<feature>/tasks.md, OpenSpec openspec/changes/<id>/tasks.md)")
 	service := fs.String("service", "", "service ID (required)")
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL (HTTP mode)")
 	storePath := fs.String("store", "", "store path, .sqlite/.db (direct mode; bypasses daemon)")
@@ -63,6 +64,7 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 	mutationPath := fs.String("mutation", "", "VB-34: mutation-testing report (go-mutesting log output, or fathom's own JSON shape); a claimed row whose symbol has mutation score 0 gets a covered-not-asserted note (falls back to $"+mutationReportEnvVar+"; direct/--store mode only)")
 	strictMutation := fs.Bool("strict-mutation", false, "gate-fail a covered-not-asserted finding instead of noting it as advisory")
 	rowID := fs.String("row", "", "narrow the report and the gate to one row id (the console's row evidence renders `verify --row ID --json`); every plan is still verified and ledgered in full")
+	dialectID := fs.String("dialect", "", "spec dialect every --plan file is read with (fathom-v2 | speckit | openspec); default: detected per file by its path and content shape (ADR-049)")
 	since := fs.String("since", "", "git ref to compare each --plan file against (ADR-044 §1.4, I45): a claimed row's skip/disposition/retires/surface_change/raised-max gained since <ref> is reported self-declared and never excuses a loss; rows present at <ref> and missing now are reported deleted. Applies only inside a git work tree; a ref the plan file did not exist at counts as every current row being self-declared.")
 
 	if err := fs.Parse(args); err != nil {
@@ -100,30 +102,41 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 	// derived from the local file, never from the daemon.
 	localPlans := make([]verify.Plan, 0, len(plans))
 	planBytes := make([][]byte, 0, len(plans))
+	// foreign marks a plan read through a foreign dialect (ADR-049): its
+	// verdict lines point into the author's own file, and the daemon is
+	// sent the plan synthesized into the native grammar, never the bytes.
+	foreign := make([]bool, 0, len(plans))
+	dialects := specdialect.Default()
 	for _, pf := range plans {
 		raw, err := os.ReadFile(pf)
 		if err != nil {
 			fmt.Fprintf(stderr, "error: reading plan %q: %v\n", pf, err)
 			return 2
 		}
-		if !strings.HasSuffix(pf, ".md") {
-			fmt.Fprintf(stderr, "error: plan %q: only .md checklist plans are supported by fathom verify\n", pf)
+		d, err := dialectForPlan(dialects, pf, raw, *dialectID)
+		if err != nil {
+			fmt.Fprintf(stderr, "error: %v\n", err)
 			return 2
 		}
-		lp := verify.ParseMarkdownPlan(*service, raw)
+		lp, err := parsePlanWith(d, *service, pf, raw)
+		if err != nil {
+			fmt.Fprintf(stderr, "error: %v\n", err)
+			return 2
+		}
+		parse := planParserFor(d, pf)
 		// O56: mark any claimed row whose skip_test/skip was added in the
 		// working tree or in the commit that flipped its box — self-skipped,
 		// never proven by the agent's own hand. Inapplicable (never flagged)
 		// outside a git repo, or when pf resolves outside root.
 		if absPF, aerr := filepath.Abs(pf); aerr == nil {
 			if rel, ok := relativeToRoot(root, absPF); ok {
-				lp = verify.AnnotateSelfSkip(lp, priorSelfSkipPlan(root, rel, *service, raw))
+				lp = verify.AnnotateSelfSkip(lp, priorSelfSkipPlanWith(root, rel, *service, raw, parse))
 				// ADR-044 §1.4 (I45, CV-14): --since widens the same
 				// question from "the one edit/commit that claimed this
 				// row" to "anywhere across base..head" — a declaration
 				// gained at ANY point in the range excuses nothing.
 				if *since != "" {
-					lp = verify.AnnotateSelfDeclared(lp, sinceRefPlan(root, rel, *since, *service))
+					lp = verify.AnnotateSelfDeclared(lp, sinceRefPlanWith(root, rel, *since, *service, parse))
 				}
 			}
 		}
@@ -145,6 +158,7 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 		}
 		localPlans = append(localPlans, lp)
 		planBytes = append(planBytes, raw)
+		foreign = append(foreign, d.ID() != specdialect.NativeID)
 	}
 
 	// The working tree lexical oracles (ADR-030) read: the tree the plan
@@ -191,7 +205,15 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 		// (below) when it is not this binary.
 		prov = verifyLedgerProvenance(hc, *url, "", *service)
 		for i, lp := range localPlans {
-			rep, err := verifyViaHTTP(hc, *url, *service, *concern, planBytes[i], lp)
+			// A foreign plan reaches the daemon synthesized into the
+			// native grammar (the daemon parses plan_markdown natively);
+			// the overlays below restore its foreign lines from lp.
+			wireMD, wirePlan := planBytes[i], lp
+			if foreign[i] {
+				wireMD = specdialect.Synthesize(lp)
+				wirePlan = verify.ParseMarkdownPlan(*service, wireMD)
+			}
+			rep, err := verifyViaHTTP(hc, *url, *service, *concern, wireMD, wirePlan)
 			if err != nil {
 				fmt.Fprintf(stderr, "error: %v\n", err)
 				return 2
@@ -247,7 +269,14 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 		enc.SetIndent("", "  ")
 		_ = enc.Encode(out)
 	} else if !gatePass || !*quietPass {
-		for _, rep := range reports {
+		for ri, rep := range reports {
+			// A foreign plan's rows name their line in the author's file
+			// (ADR-049); --row narrowing drops the index link, so only an
+			// un-narrowed run can say which file a report came from.
+			where := ""
+			if *rowID == "" && ri < len(foreign) && foreign[ri] {
+				where = plans[ri]
+			}
 			for _, tv := range rep.Tasks {
 				icon := verifyIcon(tv)
 				// --quiet: print only failing rows (✗), plus unknown rows (?)
@@ -256,7 +285,11 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 				if *quiet && icon != "✗" && !(*strict && icon == "?") {
 					continue
 				}
-				fmt.Fprintf(stdout, "%s [%s] %s\n", icon, tv.TaskID, tv.Title)
+				if where != "" && tv.Line > 0 {
+					fmt.Fprintf(stdout, "%s [%s] %s (%s:%d)\n", icon, tv.TaskID, tv.Title, where, tv.Line)
+				} else {
+					fmt.Fprintf(stdout, "%s [%s] %s\n", icon, tv.TaskID, tv.Title)
+				}
 				// CV-14 (ADR-044 §1.4, I45): --since's per-row rendering —
 				// printed for every row that carries one, claimed or not,
 				// failing or not, since a self-declared retirement/ratchet
@@ -810,6 +843,9 @@ func reportsToMaps(reports []verify.Report) []any {
 			}
 			if tv.Skipped {
 				tm["skipped"] = true
+			}
+			if tv.Line > 0 {
+				tm["line"] = tv.Line
 			}
 			tasks = append(tasks, tm)
 		}

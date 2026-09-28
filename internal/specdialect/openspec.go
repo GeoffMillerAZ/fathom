@@ -209,9 +209,8 @@ type siblingParser interface {
 }
 
 // ParseFile reads path (relative to root, or absolute) and parses it with
-// d, handing a sibling-aware dialect the sibling files it names (and only
-// those). Returns the plan, spans and the file's bytes as read — the
-// caller compares them after a run to prove the file was not touched.
+// d (ParseContent). Returns the plan, spans and the file's bytes as read —
+// the caller compares them after a run to prove the file was not touched.
 func ParseFile(d SpecDialect, root, path string) (verify.Plan, []Span, []byte, error) {
 	abs := path
 	if !filepath.IsAbs(abs) {
@@ -221,16 +220,22 @@ func ParseFile(d SpecDialect, root, path string) (verify.Plan, []Span, []byte, e
 	if err != nil {
 		return verify.Plan{}, nil, nil, err
 	}
+	plan, spans, err := ParseContent(d, abs, content)
+	return plan, spans, content, err
+}
+
+// ParseContent parses content (the bytes of the file at file, a path the
+// process can open) with d, handing a sibling-aware dialect the sibling
+// files it names — and only those.
+func ParseContent(d SpecDialect, file string, content []byte) (verify.Plan, []Span, error) {
 	if sp, ok := d.(siblingParser); ok {
 		sib := map[string][]byte{}
-		for _, p := range sp.SiblingPaths(abs) {
+		for _, p := range sp.SiblingPaths(file) {
 			if b, rerr := os.ReadFile(p); rerr == nil {
 				sib[p] = b
 			}
 		}
-		plan, spans, perr := sp.ParseWithSiblings(path, content, sib)
-		return plan, spans, content, perr
+		return sp.ParseWithSiblings(file, content, sib)
 	}
-	plan, spans, perr := d.Parse(path, content)
-	return plan, spans, content, perr
+	return d.Parse(file, content)
 }

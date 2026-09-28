@@ -931,12 +931,13 @@ push); exit `2` — operational error (daemon unreachable, service unindexed, em
 fathom verify --service <id> --plan docs/plans/<slug>.md [--plan <more>...] \
   [--store <path> | --url http://localhost:7575] [--strict] [--require-all] \
   [--concern <id>] [--json | --format text|json|sarif] [--quiet] [--quiet-pass] \
-  [--mutation <report>] [--strict-mutation] [--since <ref>]
+  [--mutation <report>] [--strict-mutation] [--since <ref>] [--dialect <id>]
 ```
 
 | Flag | Default | Description |
 |---|---|---|
-| `--plan` | (required, repeatable) | Markdown plan file(s) to verify |
+| `--plan` | (required, repeatable) | Plan file(s) to verify: a plan-grammar-v2 Markdown checklist, or a foreign spec read in place (ADR-049) — Spec Kit's `specs/<feature>/tasks.md` (`T###` rows) or OpenSpec's `openspec/changes/<id>/tasks.md` (numbered rows, requirements linked from the change's spec deltas as `accept:`). A foreign task's contract is an inline fathom annotation, else the first file path it names (a lexical "exists and is non-empty" contract); a task naming nothing verifies `no-contract`. The file is never written; verdicts name its own lines (`(<file>:<line>)` in text, `line` in JSON), and daemon mode sends the plan synthesized into the native grammar |
+| `--dialect` | detected | Read every `--plan` with this dialect (`fathom-v2`, `speckit`, `openspec`) instead of detecting it by path and content shape; an unknown id is exit 2 |
 | `--service` | (required) | Service ID to verify against |
 | `--store` | `""` | store path (direct mode, bypasses the daemon; required for CI) |
 | `--url` | `defaultFathomURL()` | fathom `serve-http` base URL (HTTP mode; ignored when `--store` is set). The daemon's response budget cuts a long plan's `verify_plan` answer; the cut rows are verified in follow-up calls, and a row whose verdict never arrives reads unknown (`verdict-elided`), never absent from the gate |
