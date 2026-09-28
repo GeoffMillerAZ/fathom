@@ -209,25 +209,64 @@ func MeasureFleet(ctx context.Context, f *Fleet, rows Rows) ([]Measurement, erro
 	sort.Strings(names)
 	var out []Measurement
 	for _, name := range names {
-		row := rows.Tools[name]
-		srv := NewServer(f)
-		srv.DropCaches()
-		args := row.ArgsFor(QueriedService)
-		class, ok := srv.ToolCostClass(name, args)
-		if !ok {
-			return nil, fmt.Errorf("costtest: row %s names no registered tool", name)
-		}
-		m := Measurement{Tool: name, Class: class, Scale: f.Scale}
-		var err error
-		if m.Cold, err = MeasureToolCost(ctx, srv, name, args); err != nil {
-			return nil, err
-		}
-		if m.Warm, err = MeasureToolCost(ctx, srv, name, args); err != nil {
+		m, err := measureTool(ctx, f, name, rows.Tools[name])
+		if err != nil {
 			return nil, err
 		}
 		out = append(out, m)
 	}
 	return out, nil
+}
+
+// measureTool is one tool's cold call on a fresh server with the memo
+// registry dropped, then its warm repeat.
+func measureTool(ctx context.Context, f *Fleet, name string, row Row) (Measurement, error) {
+	srv := NewServer(f)
+	srv.DropCaches()
+	args := row.ArgsFor(QueriedService)
+	class, ok := srv.ToolCostClass(name, args)
+	if !ok {
+		return Measurement{}, fmt.Errorf("costtest: row %s names no registered tool", name)
+	}
+	m := Measurement{Tool: name, Class: class, Scale: f.Scale}
+	var err error
+	if m.Cold, err = MeasureToolCost(ctx, srv, name, args); err != nil {
+		return m, err
+	}
+	if m.Warm, err = MeasureToolCost(ctx, srv, name, args); err != nil {
+		return m, err
+	}
+	return m, nil
+}
+
+// RemeasureRuns is how many times RemeasureMin repeats a tool's cold and
+// warm pair. Under -race, sync.Pool drops a quarter of its Puts at random,
+// so a call that reuses a pooled encode buffer (encoding/json's
+// encodeState) sometimes regrows it: a tool's allocations are bimodal
+// (capabilities: 0.18 or ~0.43 MiB at either scale), and one sample of
+// each scale can land in opposite modes. The noise only ever adds, so the
+// minimum of 16 runs sits in the low mode (0.55^16 ≈ 7e-5 to miss it).
+const RemeasureRuns = 16
+
+// RemeasureMin re-measures one tool RemeasureRuns times against f and
+// returns the first run with each phase's Allocs lowered to the minimum
+// seen. A fleet-proportional load is in every run, so the minimum removes
+// only additive noise, never real scaling.
+func RemeasureMin(ctx context.Context, f *Fleet, name string, row Row) (Measurement, error) {
+	var best Measurement
+	for i := range RemeasureRuns {
+		m, err := measureTool(ctx, f, name, row)
+		if err != nil {
+			return best, err
+		}
+		if i == 0 {
+			best = m
+			continue
+		}
+		best.Cold.Allocs = min(best.Cold.Allocs, m.Cold.Allocs)
+		best.Warm.Allocs = min(best.Warm.Allocs, m.Warm.Allocs)
+	}
+	return best, nil
 }
 
 // Check returns every way m breaks its class ceiling or its row's

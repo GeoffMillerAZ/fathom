@@ -159,9 +159,13 @@ func TestOversizeAndBinaryReadNothing(t *testing.T) {
 
 // TestPointIndexToolsScaleSublinearly (RT-94, I48): a point or index
 // call's allocations grow at most ScaleRatio when the fleet grows 10×
-// around the service it asks about.
+// around the service it asks about. A tool whose single samples break the
+// ratio is re-measured at both scales (RemeasureMin) and judged on the
+// minimums: run-to-run noise (race-mode sync.Pool drops) only adds, while
+// a fleet-proportional load survives the minimum.
 func TestPointIndexToolsScaleSublinearly(t *testing.T) {
 	measureAll(t)
+	ctx := context.Background()
 	var bad []string
 	checked := 0
 	for name, one := range measured.byScale[1] {
@@ -172,6 +176,17 @@ func TestPointIndexToolsScaleSublinearly(t *testing.T) {
 		}
 		if one.Class == tenancy.ClassPoint || one.Class == tenancy.ClassIndex {
 			checked++
+		}
+		if len(ScaleBreaks(one, ten)) > 0 {
+			row := measured.rows.Tools[name]
+			var err error
+			if one, err = RemeasureMin(ctx, measured.one, name, row); err != nil {
+				t.Fatal(err)
+			}
+			if ten, err = RemeasureMin(ctx, measured.ten, name, row); err != nil {
+				t.Fatal(err)
+			}
+			t.Logf("%s re-measured (min of %d): cold %d→%d B, warm %d→%d B", name, RemeasureRuns, one.Cold.Allocs, ten.Cold.Allocs, one.Warm.Allocs, ten.Warm.Allocs)
 		}
 		bad = append(bad, ScaleBreaks(one, ten)...)
 	}
