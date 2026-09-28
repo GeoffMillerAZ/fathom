@@ -14,6 +14,7 @@ lines, bare names).
 | scip-dotnet/ | A (def_mapping, typed_recall) | C# |
 | roslyn/ | B | C# |
 | javaparser/ | B | Java |
+| powershell-ast/ | B | PowerShell |
 | ts-tags/ | C | Bash (calls) |
 | sqlglot/ | C | SQL (foreign-key calls) |
 

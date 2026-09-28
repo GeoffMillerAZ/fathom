@@ -144,6 +144,21 @@
       "gz_bytes": 510036
     },
     {
+      "blob": "powershell",
+      "repo": "airbus-cert/tree-sitter-powershell",
+      "tag": "v0.26.5",
+      "commit": "d398441825243b00e317e87e1829b9d6a3e54ce0",
+      "tarball_sha256": "a949ac2bccd74b94b6199702c8b119cb353785e8a8828150a763b202ae8d4534",
+      "licence": "MIT",
+      "entry_points": ["tree_sitter_powershell"],
+      "scanner": true,
+      "generate": false,
+      "abi": 15,
+      "blob_sha256": "290c26ac0058dbc4eed6b79ef91031018fb5a892aa88b5a5b7e95beb9de01b46",
+      "blob_bytes": 841031,
+      "gz_bytes": 165241
+    },
+    {
       "blob": "python",
       "repo": "tree-sitter/tree-sitter-python",
       "tag": "v0.25.0",

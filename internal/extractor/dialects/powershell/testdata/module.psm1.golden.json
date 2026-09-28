@@ -1,0 +1,31 @@
+{
+  "symbols": [
+    {
+      "name": "Get-CachedValue",
+      "kind": "PowerShellFunction",
+      "package": "module",
+      "line": 6,
+      "end_line": 13,
+      "signature": "function Get-CachedValue { [CmdletBinding()] param([string]$Key)",
+      "calls": [
+        "ContainsKey",
+        "Resolve-Value"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Resolve-Value",
+      "kind": "PowerShellFunction",
+      "package": "module",
+      "line": 15,
+      "end_line": 21,
+      "signature": "function Resolve-Value { param([string]$Key)",
+      "calls": [
+        "Add",
+        "Join-Path",
+        "new"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

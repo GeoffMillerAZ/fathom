@@ -224,6 +224,14 @@ const (
 	// Bash
 	KindBashFunction SourceKind = "BashFunction"
 
+	// PowerShell (LB-Q-powershell, language-breadth: new — a fleet gap, no
+	// incumbent). KindPowerShellFunction is the manifest's primary
+	// connector-classification kind (a function, filter or workflow); the
+	// dialect's other kinds (class, enum, enum member, method) have no
+	// connector classification use and so get no constant of their own, same
+	// precedent as CSS's keyframes and HTML's form/field.
+	KindPowerShellFunction SourceKind = "PowerShellFunction"
+
 	// Lua
 	KindLuaFunction SourceKind = "LuaFunction"
 

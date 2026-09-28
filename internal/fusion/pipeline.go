@@ -580,7 +580,14 @@ func parseGitLog(serviceID, raw string) []store.Commit {
 // classes (their members are qualified by them), interface and abstract
 // method signatures, and function overload / `declare function` signatures —
 // every already-indexed .ts/.tsx file missed those definitions.
-const ExtractorEpoch = "17"
+// Epoch 18 (LB-Q-powershell, docs/design/language-breadth.md §13): PowerShell
+// (.ps1 .psm1 .psd1) now extracts via internal/extractor.NewTSExtractor
+// ("powershell") — tree-sitter via wazero/WASM, a fleet gap with no incumbent
+// — where every such file previously fell through to "no extractor
+// registered" and was fingerprinted (never re-sniffed) by that dead-end path,
+// the same class epochs 7, 10 and 11 fixed for Kotlin, HTML and CSS; the salt
+// bump forces those files through the new extractor on the next ingest.
+const ExtractorEpoch = "18"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares
