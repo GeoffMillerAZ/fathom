@@ -12,12 +12,24 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/docindex"
 )
 
+// RankedDoc is one `search kind: docs` hit: the unit, its line range and
+// heading path, whether its location marks it stale, a snippet, and the
+// fused score. It is an alias of the internal result type so a caller
+// outside this module can name what SearchDocs returns.
+type RankedDoc = docindex.RankedDoc
+
+// ErrDocIndexUnavailable is what SearchDocs and DocLinkDrift return when
+// the client's store carries no doc index (a store that is not SQLite
+// backed). It is the same value the internal package returns, so errors.Is
+// works against either name.
+var ErrDocIndexUnavailable = docindex.ErrDocIndexUnavailable
+
 // SearchDocs answers one `search kind: docs` query: docindex.RankDocs
 // against this client's own store. Returns docindex.ErrDocIndexUnavailable
 // when the underlying store is not a *store.SQLiteStore (e.g. a
 // MemoryStore-backed session) — the caller (internal/mcp's search tool)
 // turns that into a clear refusal rather than reporting zero hits, which
 // would be indistinguishable from a real "nothing matched" (I38).
-func (c *Client) SearchDocs(ctx context.Context, service, query string, concernSymbols []string, limit int) ([]docindex.RankedDoc, error) {
+func (c *Client) SearchDocs(ctx context.Context, service, query string, concernSymbols []string, limit int) ([]RankedDoc, error) {
 	return docindex.RankDocs(ctx, c.st, service, query, concernSymbols, limit)
 }
