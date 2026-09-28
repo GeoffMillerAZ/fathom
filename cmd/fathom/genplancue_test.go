@@ -15,7 +15,7 @@ const genPlanFixture = `# Fixture
 - [x] Grammar lands [FR-001] {id: G2-1, symbol: ParseMarkdownPlan, package: internal/verify, min_tier: verified}
 - [~] Long haul {id: W-2, reason: "kit-side done, donor NOT deleted"}
 - [-] Later {id: W-3, disposition: deferred, reason: "waiting on O6", trigger: "skip share <30%"}
-- [ ] Open {id: W-4, symbol: GateRequireAll, skip_test: true, skip: "cmd oracle pending"}
+- [ ] Open {id: W-4, symbol: GateRequireAll, skip_test: true, skip: "cmd oracle pending", weight: 3, accept: "WHEN asked, THE SYSTEM SHALL gate"}
 - [x] Measured {id: W-5, oracle: lexical, path: docs/measurements/m.md, pattern: "p95 ≈ 329"}
 - [x] Positional untyped line
 `

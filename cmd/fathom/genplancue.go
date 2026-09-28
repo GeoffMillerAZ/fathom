@@ -157,6 +157,14 @@ func renderPlanCUE(p verify.Plan) string {
 			}
 			b.WriteString("\t\t}\n")
 		}
+		// ADR-049 (SI-7/SI-8): weight (only when not the default 1) and
+		// accept sit on #Task beside the contract, never inside it.
+		if t.Weight > 1 {
+			fmt.Fprintf(&b, "\t\tweight: %d\n", t.Weight)
+		}
+		if t.Accept != "" {
+			fmt.Fprintf(&b, "\t\taccept: %q\n", t.Accept)
+		}
 		b.WriteString("\t},\n")
 	}
 	b.WriteString("]\n")
@@ -187,6 +195,8 @@ type cuePlanTask struct {
 	Reason      string         `json:"reason"`
 	Trigger     string         `json:"trigger"`
 	Expect      *cuePlanExpect `json:"expect"`
+	Weight      int            `json:"weight"`
+	Accept      string         `json:"accept"`
 }
 
 type cuePlanDoc struct {
@@ -217,6 +227,11 @@ func planFromCUE(src []byte) (verify.Plan, error) {
 			Disposition: ct.Disposition,
 			Reason:      ct.Reason,
 			Trigger:     ct.Trigger,
+			Weight:      ct.Weight,
+			Accept:      ct.Accept,
+		}
+		if t.Weight < 1 {
+			t.Weight = 1 // absent: the grammar's default
 		}
 		if ct.Expect != nil {
 			t.Expect = verify.Expect{
