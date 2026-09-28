@@ -361,4 +361,3 @@ func registerOutline(s *Server, backend QueryInterface) {
 		return resp, nil
 	})
 }
-

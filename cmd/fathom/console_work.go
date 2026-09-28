@@ -36,7 +36,7 @@ import (
 func init() {
 	declarePage(consolePage{
 		ID: "work", Route: "/work", Href: "/work", Group: "Proof", Order: 6, Nav: true,
-		Title: "Work intelligence",
+		Title:    "Work intelligence",
 		Question: "Where does agent effort go by zone, where do agents struggle, and which agent identity does which work here?",
 		Build:    buildWorkPage,
 	})
