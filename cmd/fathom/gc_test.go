@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/extractor/tsengine"
 )
 
 // gcTreeDigest hashes every path, size, mode and content under roots.
@@ -81,6 +83,12 @@ func TestGCDryRunDeletesNothing(t *testing.T) {
 	for i := 0; i < 12; i++ {
 		gcTouch(t, filepath.Join(fh, "daemon", "fathom-live", "diag", fmt.Sprintf("20260926T20%02d00Z-refuse", i), "heap.pb.gz"), 10, now)
 	}
+	// wazero's compilation cache (LB-F26): another version's directory and
+	// a current entry unwritten for 40 days go; a fresh entry stays.
+	wz := filepath.Join(fh, "cache", "wazero")
+	gcTouch(t, filepath.Join(wz, "v0.0.1", "stale"), 10, now)
+	gcTouch(t, filepath.Join(wz, tsengine.WazeroVersion(), "old"), 10, old)
+	gcTouch(t, filepath.Join(wz, tsengine.WazeroVersion(), "fresh"), 10, now)
 	gcTouch(t, filepath.Join(tmp, "fathom-edit-set-abc"), 10, now.Add(-48*time.Hour))
 	gcTouch(t, filepath.Join(tmp, "fathom-mcp-test-123", "x"), 10, now.Add(-48*time.Hour))
 	os.Chtimes(filepath.Join(tmp, "fathom-mcp-test-123"), now.Add(-48*time.Hour), now.Add(-48*time.Hour))
@@ -105,7 +113,7 @@ func TestGCDryRunDeletesNothing(t *testing.T) {
 	if dry.Applied || len(dry.Errors) > 0 {
 		t.Fatalf("dry run: applied %v errors %v", dry.Applied, dry.Errors)
 	}
-	want := map[string]int{"call-log": 2, "ledgers": 1, "session-stamps": 1, "daemon-records": 1, "diag": 2, "tmp": 2, "scenariobench-worktrees": 2, "workspace-bins": 2}
+	want := map[string]int{"call-log": 2, "ledgers": 1, "session-stamps": 1, "daemon-records": 1, "diag": 2, "tmp": 2, "scenariobench-worktrees": 2, "workspace-bins": 2, "wazero-cache": 2}
 	got := map[string]int{}
 	for _, it := range dry.Items {
 		got[it.Class]++
@@ -129,6 +137,12 @@ func TestGCDryRunDeletesNothing(t *testing.T) {
 	rep := runGC(gcOptions{Home: home, TmpDir: tmp, Workspace: ws, CallLog: callLog, Now: now, Alive: alive, Apply: true})
 	if len(rep.Errors) > 0 {
 		t.Fatalf("apply errors: %v", rep.Errors)
+	}
+	if _, err := os.Stat(filepath.Join(wz, tsengine.WazeroVersion(), "fresh")); err != nil {
+		t.Fatalf("gc deleted a fresh compilation-cache entry: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(wz, "v0.0.1")); !os.IsNotExist(err) {
+		t.Fatalf("another wazero version's cache survived --apply: %v", err)
 	}
 	if st, err := os.Stat(callLog); err != nil || st.Size() != callLogRotateBytes+1 {
 		t.Fatalf("gc never renames the live call log (the daemon's writer rotates it): %v", err)

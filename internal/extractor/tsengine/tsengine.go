@@ -31,7 +31,6 @@ import (
 
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
-	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 )
 
 // DefaultParseTimeout bounds each potentially-unbounded guest phase (the
@@ -148,26 +147,16 @@ var (
 // ensureRuntime lazily creates the single process-wide wazero Runtime and
 // instantiates the WASI shim every grammar module imports (fd_write/
 // fd_close from libc startup, clock_time_get for budget.c's deadline checks
-// — see PROVENANCE.md; nothing custom to implement). Safe to call
-// concurrently.
+// — see PROVENANCE.md; nothing custom to implement). The compilation cache
+// in force at that moment (EnableCompilationCache, LB-F26) is fixed for the
+// process. Safe to call concurrently.
 func ensureRuntime(ctx context.Context) (wazero.Runtime, error) {
 	runtimeOnce.Do(func() {
-		cfg := wazero.NewRuntimeConfig()
-		if compilerSupported() {
-			cfg = wazero.NewRuntimeConfigCompiler()
-		} else {
-			cfg = wazero.NewRuntimeConfigInterpreter()
-		}
-		// Deliberately NO WithCloseOnContextDone: parse cancellation is
-		// enforced inside the guest (fathom_parse_bounded, grammars/
-		// budget.c) via tree-sitter's own progress callback, so wazero's
-		// loop-back-edge termination checks — measured ~3x slower corpus-
-		// wide when tried — are not needed. See DefaultParseTimeout's doc.
-		cfg = cfg.WithMemoryLimitPages(MemoryLimitPages)
-		rt = wazero.NewRuntimeWithConfig(ctx, cfg)
-		if _, err := wasi_snapshot_preview1.Instantiate(ctx, rt); err != nil {
-			rtErr = fmt.Errorf("tsengine: instantiate WASI shim: %w", err)
-		}
+		cacheMu.Lock()
+		runtimeMade = true
+		dir := cacheDir
+		cacheMu.Unlock()
+		rt, _, rtErr = newRuntime(ctx, dir)
 	})
 	return rt, rtErr
 }

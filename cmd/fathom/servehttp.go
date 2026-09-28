@@ -22,6 +22,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/decide"
 	"github.com/geoffmilleraz/fathom/internal/dlog"
+	"github.com/geoffmilleraz/fathom/internal/extractor/tsengine"
 	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
 	"github.com/geoffmilleraz/fathom/internal/modulehost"
@@ -116,6 +117,16 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 		if dir, dirErr := daemonStateDir(); dirErr == nil {
 			//fathom:tenancy-allow bare-go daemon lifetime goroutine started once at serve-http startup and stopped by the drain
 			go watchPauseSwitch(dir, 2*time.Second, time.Now, flog, nil)
+		}
+	}
+	// LB-F26: only the managed daemon keeps compiled grammar code on disk,
+	// at user scope (~/.fathom/cache/wazero/<version>/, aged by `fathom
+	// gc`); an unmanaged daemon compiles in memory and leaves nothing.
+	if managed {
+		if home, hErr := os.UserHomeDir(); hErr == nil {
+			if cErr := tsengine.EnableCompilationCache(home); cErr != nil {
+				flog.Warn("serve-http: wazero compilation cache off: " + cErr.Error())
+			}
 		}
 	}
 	explicit := map[string]bool{}

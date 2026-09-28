@@ -1792,6 +1792,7 @@ and changes nothing — until `--apply`. Evidence is archived, never deleted:
 | `tmp` | `$TMPDIR` `fathom-edit-set*`, `fathom-*-test-*`, `fathom-stranger-check*` older than a day: deleted; entries of the hooks' caches (`fathom-filechanged`, `fathom-toplevel-cache`, `fathom-ident-cache`, `fathom-guard-stamps`) older than a day: deleted (the directories stay) |
 | `scenariobench-worktrees` | `workspace/artifacts/scenariobench/worktrees` beyond the newest 5 runs and older than 14 days (a `.pin` file exempts one): deleted |
 | `workspace-bins` | `workspace/tmp/fathom-bin-*` beyond the newest 3: deleted |
+| `wazero-cache` | `~/.fathom/cache/wazero/`: another wazero version's directory, and this version's compiled grammar code unwritten for 30 days: deleted (only the managed daemon writes it; the next compile recreates what is used) |
 
 Exit `0`, or `1` when any class could not be read or acted on (each error named).
 
