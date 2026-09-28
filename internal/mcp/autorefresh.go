@@ -18,6 +18,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/hookcache"
 	"github.com/geoffmilleraz/fathom/internal/refresh"
+	"github.com/geoffmilleraz/fathom/internal/scip"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
 	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
@@ -554,6 +555,14 @@ func (a *autoRefreshBackend) IngestServiceAt(ctx context.Context, service, path 
 		return fmt.Errorf("backend does not support onboarding by path")
 	}
 	return ia.IngestServiceAt(ctx, service, path)
+}
+
+func (a *autoRefreshBackend) ImportSCIP(ctx context.Context, serviceID, path string) (scip.Import, error) {
+	sb, ok := a.QueryInterface.(scipImportBackend)
+	if !ok {
+		return scip.Import{}, fmt.Errorf("backend does not import SCIP indexes")
+	}
+	return sb.ImportSCIP(ctx, serviceID, path)
 }
 
 // registrySurgeryBackend is the optional capability behind the

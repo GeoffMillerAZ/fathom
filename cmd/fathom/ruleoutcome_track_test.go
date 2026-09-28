@@ -8,9 +8,16 @@ package main
 // turn-over-turn comparison, generalized from rule text to a claim id.
 
 import (
+	"bytes"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/mcp"
+	"github.com/geoffmilleraz/fathom/internal/semantic"
 )
 
 func TestEditHookRecordsRuleOutcomes(t *testing.T) {
@@ -125,5 +132,41 @@ func TestTrackRuleOutcomeAtMemoRoundTrip(t *testing.T) {
 	// No session id: never read.
 	if _, found := readRuleOutcomeMemo("", service, file, now); found {
 		t.Errorf("session-less read found a memo, want always false")
+	}
+}
+
+// TestEditHookFetchDeclaresTheClaimIDOrigin pins the other half of SR-61's
+// payload cut-back: the daemon serves a rule's claim id only to origin
+// "edit-hook" (internal/mcp claimIDsForCaller), so the edit hook's own
+// obligations request must declare exactly that origin — a rename on
+// either side would silently stop the served/complied/violated signal.
+func TestEditHookFetchDeclaresTheClaimIDOrigin(t *testing.T) {
+	var gotOrigin string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotOrigin = r.Header.Get(originHeaderName)
+		fmt.Fprint(w, `{"jsonrpc":"2.0","id":1,"result":{"content":[{"type":"text","text":"{\"service\":\"svc\",\"file\":\"a.go\",\"rules\":[{\"rule\":\"r\",\"src\":\"d.md#L1-L1\",\"claim_id\":\"abc\",\"tier\":\"doc-claimed\"}]}"}]}}`)
+	}))
+	defer srv.Close()
+
+	orig := rpcOrigin
+	t.Cleanup(func() { rpcOrigin = orig })
+	rpcOrigin = ""
+	// cmdEditHook stamps rpcOrigin before it reads a single byte of stdin;
+	// a dead URL keeps this off the network.
+	var out, errb bytes.Buffer
+	cmdEditHook([]string{"--url", "http://127.0.0.1:1"}, &out, &errb)
+	if rpcOrigin != mcp.OriginEditHook {
+		t.Fatalf("cmdEditHook declares origin %q, want %q — the daemon serves claim ids to that origin only", rpcOrigin, mcp.OriginEditHook)
+	}
+
+	o, _, _, ok, err := fetchObligations(srv.URL, "svc", "a.go", 0, 2*time.Second, semantic.ObligationLayerAll)
+	if !ok || err != nil {
+		t.Fatalf("fetchObligations: ok=%v err=%v", ok, err)
+	}
+	if gotOrigin != mcp.OriginEditHook {
+		t.Errorf("request origin header = %q, want %q", gotOrigin, mcp.OriginEditHook)
+	}
+	if len(o.Rules) != 1 || o.Rules[0].ClaimID != "abc" {
+		t.Errorf("hook decoded rules = %+v, want the claim id kept", o.Rules)
 	}
 }

@@ -200,6 +200,7 @@ func buildExplainPage(cr *consoleRequest) (consoleOut, error) {
 		}
 		return consoleOut{}, err
 	}
+	se = withRuleOutcomes(se, cr.now) // SR-61: read at request time, never cached with the explanation
 	verb := strings.NewReplacer("{svc}", shellWord(svc), "{file}", shellWord(file), "{layer}", layer).Replace(verbExplainFile)
 	if file == "" {
 		verb = strings.NewReplacer("{svc}", shellWord(svc), "{layer}", layer).Replace(verbExplainRoot)
@@ -504,6 +505,9 @@ func renderAgentSees(se console.ServingExplanation) string {
 		if r.Status != "" {
 			ruleHTML += `<span class="block text-xs text-caution">served flagged ` + html.EscapeString(r.Status) + `</span>`
 		}
+		if o := ruleOutcomeHTML(se.Outcomes, r.ClaimID); o != "" {
+			ruleHTML += o
+		}
 		rows = append(rows, table.Row{
 			ID:        fmt.Sprintf("seen-%d", i+1),
 			Cells:     []string{num, r.Tier, r.Rule, r.Src, scope},
@@ -528,7 +532,31 @@ func renderAgentSees(se console.ServingExplanation) string {
 	if se.RawWhy != "" {
 		tbl += `<p class="mt-2 text-xs text-ink-muted">` + plural(raw, "raw row") + ` served first because ` + html.EscapeString(se.RawWhy) + `.</p>`
 	}
+	// The hook's record under each rule is read from a log on this machine;
+	// when there is none (or it cannot be read) say so once, never a zero.
+	if !se.Outcomes.Known() {
+		tbl += `<p class="mt-2 text-xs text-ink-muted" data-truth-state="` + string(se.Outcomes.State) + `" data-rule-outcomes-note>Hook record: ` + html.EscapeString(se.Outcomes.Reason) + `</p>`
+	}
 	return tbl
+}
+
+// ruleOutcomeHTML is one served rule's hook record under its statement
+// (SR-61): "3 served · 1 complied · 1 violated over the last 30 days", with
+// GL-11's class as a proposal when one applies. "" when the record is not
+// known or the rule has no claim id.
+func ruleOutcomeHTML(v console.Value[console.RuleOutcomeSet], claimID string) string {
+	if !v.Known() || claimID == "" {
+		return ""
+	}
+	c, ok := v.V.ByClaim(claimID)
+	if !ok {
+		return ""
+	}
+	line := fmt.Sprintf("%d served · %d complied · %d violated over the last %d days", c.Served, c.Complied, c.Violated, v.V.WindowDays)
+	if c.Class != "" {
+		line += " — " + strings.ReplaceAll(c.Class, "_", " ") + " (a proposal: " + c.Remedy + ")"
+	}
+	return `<span class="block text-xs text-ink-muted" data-rule-outcomes>` + html.EscapeString(line) + `</span>`
 }
 
 // renderExplainCoverage names the layer's coverage and the resume command.

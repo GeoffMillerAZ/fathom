@@ -95,6 +95,17 @@
   },
   "ingest": {
     "properties": {
+      "indexers": {
+        "description": "SCIP producers whose .fathom/scip/<name>.scip to import as typed edges after the ingest",
+        "items": {
+          "enum": [
+            "scip-typescript",
+            "scip-python"
+          ],
+          "type": "string"
+        },
+        "type": "array"
+      },
       "path": {
         "description": "Absolute corpus root \u2014 required only when first onboarding a new service",
         "type": "string"

@@ -1120,6 +1120,21 @@ statement once: two claims whose normalized statements are identical (case, back
 asterisks, whitespace and trailing punctuation aside) take one slot, and the duplicate
 is not counted as displaced (OC-33).
 
+Beside each served rule the verb shows what the edit hook recorded of it over the last
+30 days — `served`, `complied`, `violated` (SR-61, surface reckoning F-27/U4) — read from
+the hook's signal log (`~/.fathom/rule-outcomes.jsonl` and its rotated generation), and
+the console's `/explain` shows the same line under each rule of "What the agent saw at
+the edit". `--json` carries it as `outcomes` (`{window_days, rules: [{claim_id, served,
+complied, violated, blocked, refuted, corroborated, class?}]}`), a truth-stated value:
+**absent** with its reason when no hook has recorded anything on this machine, an
+**error** when the log exists and cannot be read, **partial** when malformed rows were
+left out, and a measured zero only when the log is there and the hook never served that
+rule. `class` is GL-11's proposal (`ignored`, `effective`, `contested`,
+`never_triggered`), shown only when the log is old enough to support it and never acted
+on. The rule's `claim_id` (what `fathom claim refute|corroborate --claim` takes) is in
+this output; the MCP `obligations` payload an agent reads carries neither the id nor the
+record — the id rides only on the edit hook's own request (origin `edit-hook`).
+
 ---
 
 ### `compile`
@@ -1328,7 +1343,7 @@ write-if-absent scaffolds `~/.fathom/config.toml`.
 ```sh
 fathom init [--path <dir>] [--service <id>] [--url http://localhost:7575] [--bin <path>] \
   [--harness claude-code|codex|gemini-cli|cursor|copilot|agents|none] \
-  [--skills[=claude|codex|agents|all|codex-prompts]] [--seed-user-ignore] [--json]
+  [--skills[=claude|codex|agents|all|codex-prompts]] [--seed-user-ignore] [--no-scip] [--json]
 ```
 
 | Flag | Default | Description |
@@ -1340,8 +1355,25 @@ fathom init [--path <dir>] [--service <id>] [--url http://localhost:7575] [--bin
 | `--harness` | `claude-code` | Which registry descriptor's vehicles to write (ADR-029); `none` = stanza + `.fathom/` only. Prints the descriptor's own `mcp add` line, never runs it |
 | `--skills` | omit = skip | Install the nine shipped agent skills. Bare `--skills` (= `all`) writes `.agents/skills/` (the Agent Skills standard path, spec-only frontmatter) **and** `.claude/skills/`; `codex` and `agents` write `.agents/skills/`; `claude` writes `.claude/skills/`; `codex-prompts` writes the deprecated user-global `~/.codex/prompts/` twin — the only user-global write, explicit only |
 | `--seed-user-ignore` | off | Seed `~/.fathom/ignore` with machine-junk defaults; prints exactly what it writes |
+| `--no-scip` | off | Skip the SCIP step below: by default init runs `scip-typescript` / `scip-python` when already installed for a repo of that language |
 | `--harness` | `claude-code` | Which registry descriptor's vehicles to write (ADR-029): `claude-code` (hooks into `.claude/settings.json`), `codex` (hooks into the repo's `.codex/hooks.json`, run after `/hooks` trust), `gemini-cli` (hooks into the repo's `.gemini/settings.json`, ms timeouts), `cursor` / `copilot` (data rows: stanza + skills, no hook file), `agents` (AGENTS.md + MCP), `none` (stanza + `.fathom/` only). Non-Claude descriptors are *unverified on this machine*; every one prints its own `mcp add` line and never writes a user-global file; a descriptor 60 days unverified after its codec landed is refused |
 | `--json` | off | Emit the run as JSON (below) instead of the narration |
+
+**SCIP typed edges (SR-65, F-74).** After the wiring, once the ingest confirmed the
+service, init runs `scip-typescript` (a repo with `tsconfig.json` or `package.json` at its
+root; `--infer-tsconfig` when there is no `tsconfig.json`) and `scip-python` (a repo with
+`pyproject.toml`, `setup.py`, `setup.cfg`, `requirements.txt` or `Pipfile`) **only when that
+toolchain is already on `PATH`** — init never installs anything; a producer that is not
+installed is named once ("not installed by init") and skipped, and a language the repo is
+not says nothing. Each runs in the repo root under a 10-minute deadline and writes
+`.fathom/scip/<name>.scip` (a directory that ignores itself). Init then calls the daemon's
+`ingest` tool once more with `indexers: [...]` naming the producers that left an index;
+the daemon imports each after the syntax pass, holding the ingest slot and declining an
+index over its admission budget, and init prints `ok <indexer>: N typed edge(s) (D direct
+/ U unresolved) via <producer>` — or `warning: <indexer> index not imported: <reason>`, or
+the O115 count of definitions that could not be mapped. A producer that fails or an
+import that is declined is a printed warning, never a non-zero exit. `--no-scip` skips the
+step (a producer type-checks the whole repository and can take minutes).
 
 **`--json` envelope.** `{service, root, exit_code, writes: [{path, action:
 created|updated|ok|shim, detail}], blocked: [{path, action: "blocked",

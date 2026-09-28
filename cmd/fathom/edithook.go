@@ -14,6 +14,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/cost"
 	"github.com/geoffmilleraz/fathom/internal/harness"
+	"github.com/geoffmilleraz/fathom/internal/mcp"
 	"github.com/geoffmilleraz/fathom/internal/sdd"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
 )
@@ -67,7 +68,7 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 	// fully-disabled run (empty), and no daemon call may be made, but the
 	// counting-only beats below still fire, stamped "arm":"off".
 	armOff := assistiveChannelsDisabled()
-	rpcOrigin = "edit-hook"
+	rpcOrigin = mcp.OriginEditHook // the daemon serves claim ids to this origin only (SR-61, claimIDsForCaller)
 	fs := newFlagSet("edit-hook", stderr)
 	urlFlag := fs.String("url", defaultFathomURL(), "fathom serve-http base URL")
 	pre := fs.Bool("pre", false, "run as the PreToolUse guard hook (docs/design/guarded-edits.md) instead of the default PostToolUse obligations hook")

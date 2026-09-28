@@ -279,6 +279,7 @@ func obligationLayers(ctx context.Context, backend QueryInterface, ob obligation
 //     catch-all crowding out a package rule reads very differently than
 //     the reverse.
 func renderObligationReceipt(ctx context.Context, backend QueryInterface, service string, obl semantic.Obligations, rootScope bool, servedLayer string, includeSnippets, indexStale bool) (map[string]any, string) {
+	obl.Rules = claimIDsForCaller(ctx, obl.Rules)
 	result := map[string]any{
 		"service": obl.Service,
 		"file":    obl.File,
@@ -556,6 +557,41 @@ func obligationsSummary(obl semantic.Obligations, rootScope bool) string {
 }
 
 // ─── registerSemanticTools ───────────────────────────────────────────────────
+
+// OriginEditHook is the origin cmd/fathom's edit hook declares on every
+// daemon request (rpcOrigin in edithook.go): the one caller that reads a
+// rule's claim id, and so the only one served it (claimIDsForCaller).
+const OriginEditHook = "edit-hook"
+
+// claimIDsForCaller is SR-61's cut-back (surface reckoning F-27/U4): a
+// rule's claim id (semantic.Obligation.ClaimID, a 64-hex content address)
+// keys the edit hook's served/complied/violated signal and nothing an
+// agent reads, yet riding on every rule it measured +10-13% bytes per
+// obligations call on the L1 replay. It is served only to the edit hook's
+// own request; every other caller gets rows without it, byte-identical to
+// a payload that never had the field. The slice is copied, never edited in
+// place: rules may be shared with the backend's memo.
+func claimIDsForCaller(ctx context.Context, rules []semantic.Obligation) []semantic.Obligation {
+	if originFrom(ctx) == OriginEditHook {
+		return rules
+	}
+	stripped := false
+	for _, r := range rules {
+		if r.ClaimID != "" {
+			stripped = true
+			break
+		}
+	}
+	if !stripped {
+		return rules
+	}
+	out := make([]semantic.Obligation, len(rules))
+	copy(out, rules)
+	for i := range out {
+		out[i].ClaimID = ""
+	}
+	return out
+}
 
 // registerSemanticTools wires the obligations and compile_layer MCP tools.
 // modules may be nil (no --module store mounted on this daemon); when set,
