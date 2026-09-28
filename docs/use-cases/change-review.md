@@ -21,9 +21,8 @@ Review a diff or pull request with automated impact analysis and conformance gat
 | `blast_radius` | MCP tool (investigation) | Blast radius of changed files: affected symbols, transitive callers, and related tests (widen with `max_depth:0, max_symbols:0` for the unbounded recall `diff_impact` used to give — SR-25 unregistered that alias) |
 | `arch_conformance` | MCP tool (coding) | Call-graph edges that violate declared layering rules |
 | `proto_conformance` | MCP tool (coding) | Naming convention violations in `.proto` files |
-| `stale_docs` | MCP tool (coding) | Markdown files with inline-code or link references that no longer match known symbols or files |
 | `ingest` | MCP tool (shared) | Re-ingest a service in-session to refresh the store before querying |
-| `staleness_report` | MCP tool (shared) | Check whether the indexed state has drifted from the current HEAD |
+| `staleness_report` | MCP tool (shared) | Check whether the indexed state has drifted from the current HEAD, plus (`doc_drift`) Markdown files with inline-code or link references that no longer match known symbols or files — the retired `stale_docs` tool's own scan, folded in (SR-28) |
 | `fathom review` | CLI | Store-direct CLI mirror of `review_diff`: resolves changed files via `git diff --name-only <ref>`, runs the same engine (used by the non-blocking pre-push summary, `docs/plans/review-verb.md` C3-1); `--budget-seconds N` (with `--no-persist`) prints a named skip and exits 0 on excess. Not yet listed by `fathom help` — `fathom review -h` |
 | `findings_near` / `fathom findings near\|status` | MCP tool / CLI | Prior findings within N call-graph hops of a symbol or file (precedent for a review comment), and the findings layer's entry-condition progress — **experimental** until ≥15–20 resolved findings exist |
 | `fathom ingest-diff` | CLI | Ingest only files changed since a given git ref, then exit (pre-session or CI use) |
@@ -209,10 +208,11 @@ Returns `{ "issues": [], "count": 0 }`. No violations.
 **Check doc and stale-docs coverage on changed files (optional).**
 
 ```json
-{ "name": "stale_docs", "arguments": { "service": "payment-service" } }
+{ "name": "staleness_report", "arguments": { "service": "payment-service" } }
 ```
 
-Returns any Markdown references that no longer resolve to known symbols or files.
+Returns any Markdown references that no longer resolve to known symbols or files in the
+response's `doc_drift` field (the retired `stale_docs` tool's own scan, folded in — SR-28).
 
 ---
 
@@ -220,7 +220,7 @@ Returns any Markdown references that no longer resolve to known symbols or files
 
 **`review_diff` never accepts inline architecture rules.** Unlike calling `arch_conformance` directly, `review_diff`'s `arch_conformance` dimension always resolves through the service's own `.fathom/rules/archconformance.cue` project rule pack (or reports `checked:false` when none exists) — there is no `rules` argument on `review_diff` itself. If you need to test rules that aren't committed yet, call `arch_conformance` directly with inline `rules`.
 
-**Surface.** `review_diff` and `blast_radius` are in the `investigation` group; the appendix's remaining tools (`arch_conformance`, `proto_conformance`, `stale_docs`) are in `coding`. There is no profile switch (`set_profile` was removed, SW-2): stdio `serve-mcp` serves the full registry; over the shared HTTP daemon the path is the scope (bare `POST /rpc` for everything (the group endpoints were deleted — HF-5)). None of these review tools is on the `/rpc/agent` allowlist, but an off-surface call still executes there — logged `off_surface:true`, never refused — so a session registered on `/rpc/agent` can run the whole review.
+**Surface.** `review_diff` and `blast_radius` are in the `investigation` group; the appendix's remaining tools (`arch_conformance`, `proto_conformance`) are in `coding`, and `staleness_report` (which now carries the doc-drift scan) is `shared`. There is no profile switch (`set_profile` was removed, SW-2): stdio `serve-mcp` serves the full registry; over the shared HTTP daemon the path is the scope (bare `POST /rpc` for everything (the group endpoints were deleted — HF-5)). None of these review tools is on the `/rpc/agent` allowlist, but an off-surface call still executes there — logged `off_surface:true`, never refused — so a session registered on `/rpc/agent` can run the whole review.
 
 **Precedent before verdict.** `findings_near { "service", "subject": "api.Handler", "hops": 2 }` (CLI: `fathom findings near api.Handler --store … --service …`) answers "was this flagged here before?" — live findings ranked by call-graph proximity, superseded ones only with `include_superseded`/`--include-superseded` and always labeled. `fathom findings status` reports how far the findings layer is from its entry condition (**experimental** until then).
 
@@ -277,4 +277,4 @@ The section above is fathom's OWN findings (`fathom report`, compiled through th
 
 ## Maintained
 
-This doc covers: `review_diff` (the composed verb, C1-1/C2-1, `docs/plans/review-verb.md`; incl. its `test_impact` block — `affected_tests` and `test_gap`, BD-4 — and its `conservation` dimension's surface-plane finding, the retired api_diff tool's replacement, SR-26) and its `fathom review` CLI mirror (which prints the same block, BD-5) (incl. `--no-persist`, `--budget-seconds`; `fathom review -h`), `blast_radius`, `arch_conformance` (incl. its `.fathom/rules/archconformance.cue` project rule packs and `rule_source`/`checked` response fields), `proto_conformance`, `stale_docs`, `findings_near`, `fathom findings` (`near`/`status`; `fathom findings import`/`fathom findings candidates` land in another wave, FL-10/FL-23, `docs/plans/findings-loop.md`), `ingest`, `staleness_report`, `fathom ingest-diff`, `fathom conserve`, `fathom verify` (`--quiet`, `--strict`), the pre-push `fathom review` summary step (C3-1), `fathom report`, `fathom claim` (add/refute/corroborate). Update it when these change.
+This doc covers: `review_diff` (the composed verb, C1-1/C2-1, `docs/plans/review-verb.md`; incl. its `test_impact` block — `affected_tests` and `test_gap`, BD-4 — and its `conservation` dimension's surface-plane finding, the retired api_diff tool's replacement, SR-26) and its `fathom review` CLI mirror (which prints the same block, BD-5) (incl. `--no-persist`, `--budget-seconds`; `fathom review -h`), `blast_radius`, `arch_conformance` (incl. its `.fathom/rules/archconformance.cue` project rule packs and `rule_source`/`checked` response fields), `proto_conformance`, `findings_near`, `fathom findings` (`near`/`status`; `fathom findings import`/`fathom findings candidates` land in another wave, FL-10/FL-23, `docs/plans/findings-loop.md`), `ingest`, `staleness_report`, `fathom ingest-diff`, `fathom conserve`, `fathom verify` (`--quiet`, `--strict`), the pre-push `fathom review` summary step (C3-1), `fathom report`, `fathom claim` (add/refute/corroborate). Update it when these change.

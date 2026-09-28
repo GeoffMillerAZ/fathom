@@ -41,7 +41,6 @@
     "shell_out": {"args": {"service": "$service"}},
     "spec_coverage": {"args": {"service": "$service", "spec_ids": ["RT-1"]}},
     "spec_refs": {"args": {"service": "$service"}},
-    "stale_docs": {"args": {"service": "$service"}},
     "staleness_report": {"args": {"service": "$service"}},
     "status": {"args": {"section": "sources", "service": "$service"}},
     "symbol_context": {"args": {"service": "$service", "symbol": "Post"}},

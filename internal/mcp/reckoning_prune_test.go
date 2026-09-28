@@ -25,6 +25,7 @@ import (
 //   - diff_impact: SR-25 (F-16)
 //   - api_diff: SR-26 (F-20)
 //   - brief (the MCP tool, not the CLI verb): SR-15 (F-53 refined)
+//   - stale_docs: SR-28 (F-56) — folded into staleness_report's doc_drift
 var reckoningTools = []string{
 	"api_diff",
 	"brief",
@@ -32,6 +33,7 @@ var reckoningTools = []string{
 	"dep_drift",
 	"diff_impact",
 	"find_callees",
+	"stale_docs",
 }
 
 // TestRegistryCarriesNoReckonedTools is the SR-35 acceptance test: none of

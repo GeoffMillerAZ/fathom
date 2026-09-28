@@ -645,30 +645,9 @@ func TestArchConformance_MethodEdgeNormalization_UnresolvedCalleeStaysRaw(t *tes
 	}
 }
 
-// ─── stale_docs ───────────────────────────────────────────────────────────────
-
-func TestStaleDocs_Basic(t *testing.T) {
-	srv := mcp.NewServer(&sourcesFakeBackend{
-		extendedFakeBackend: extendedFakeBackend{nodes: []core.SymbolNode{{Service: "svc", Name: "Foo"}}},
-		sources: []core.SourceFile{
-			{Path: "docs/README.md", Content: []byte("See `NonExistentSymbol` for details."), Lang: "md"},
-		},
-	})
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 1100, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "stale_docs",
-			"arguments": map[string]any{"service": "svc"},
-		},
-	})
-	p := xtraPayload(t, resp)
-	if p["drifts"] == nil {
-		t.Error("stale_docs: drifts missing")
-	}
-	if p["count"] == nil {
-		t.Error("stale_docs: count missing")
-	}
-}
+// stale_docs was unregistered by SR-28 (surface reckoning F-56): its scan
+// now runs in-process as staleness_report's doc_drift section
+// (TestStalenessReportDocDrift, internal/mcp/new_tools_test.go).
 
 // api_diff was unregistered by SR-26 (surface reckoning F-20): the
 // calibrated API delta stays in conserve's surface plane
@@ -980,7 +959,7 @@ func TestExtraToolsInList(t *testing.T) {
 	want := []string{
 		"blast_radius", "spec_coverage",
 		"traceability", "evidence_summary", "contradiction_scan",
-		"arch_conformance", "stale_docs",
+		"arch_conformance",
 		"ingest",
 		"repo_map", "pack_context",
 		"batch",

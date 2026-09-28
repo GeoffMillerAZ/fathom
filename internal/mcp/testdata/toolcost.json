@@ -177,13 +177,9 @@
       "measured": "tree",
       "basis": "static read: client.Sources (whole-tree read)"
     },
-    "stale_docs": {
-      "measured": "tree",
-      "basis": "static read: client.Sources (whole-tree read)"
-    },
     "staleness_report": {
-      "measured": "point",
-      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
+      "measured": "tree",
+      "basis": "SR-28 merge of stale_docs (tree, a whole-tree Markdown scan) into the doc_drift section; declared at the merged cost"
     },
     "status": {
       "measured": "tree",

@@ -7,7 +7,7 @@
 //	investigation: blast_radius, spec_coverage,
 //	               traceability, evidence_summary,
 //	               contradiction_scan, review_diff, search
-//	coding:        arch_conformance, stale_docs
+//	coding:        arch_conformance
 //	shared:        ingest
 //	context:       repo_map, pack_context
 //	ops/meta:      batch
@@ -20,13 +20,11 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
-	"sort"
 	"strings"
 	"time"
 	"unicode"
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/archconformance"
-	"github.com/geoffmilleraz/fathom/internal/analysis/docdrift"
 	"github.com/geoffmilleraz/fathom/internal/analysis/envkeys"
 	"github.com/geoffmilleraz/fathom/internal/analysis/proto"
 	"github.com/geoffmilleraz/fathom/internal/analysis/routes"
@@ -67,7 +65,10 @@ func registerExtraTools(s *Server, backend QueryInterface) {
 
 	// ── coding ───────────────────────────────────────────────────────────────
 	registerArchConformance(s, backend)
-	registerStaleDocs(s, backend)
+	// registerStaleDocs (F-56) was unregistered by SR-28 (surface reckoning):
+	// its own scan (docdrift.Analyze over every Markdown source) now runs
+	// in-process as staleness_report's doc_drift section (stalenessDocDrift,
+	// internal/mcp/meta.go) — one tool call instead of two.
 	// registerAPIDiff (F-20) was unregistered by SR-26 (surface reckoning):
 	// the calibrated API delta stays in `conserve`'s surface plane
 	// (internal/conserve/surface.go, ADR-044), which reuses the same
@@ -702,73 +703,6 @@ func registerArchConformance(s *Server, backend QueryInterface) {
 			resp["reason"] = reason
 		}
 		return resp, nil
-	})
-}
-
-// ─── coding: stale_docs ───────────────────────────────────────────────────────
-
-func registerStaleDocs(s *Server, backend QueryInterface) {
-	s.registerTool(toolDescriptor{
-		Name:        "stale_docs",
-		Description: "Scan Markdown source files for stale references: inline code spans or link targets that no longer correspond to known symbols or files.",
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"service": map[string]any{"type": "string", "description": "Service / repo identifier"},
-			},
-			"required": []string{"service"},
-		},
-		group: GroupCoding,
-	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
-		if backend == nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
-		}
-		svc, rpcErr := serviceArg(args, "stale_docs")
-		if rpcErr != nil {
-			return nil, rpcErr
-		}
-		files, cov, rpcErr := fetchSources(ctx, backend, svc)
-		if rpcErr != nil {
-			return nil, rpcErr
-		}
-		nodes, err := serviceSymbols(ctx, backend, svc)
-		if err != nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
-		}
-		// Build known-symbol and known-file sets.
-		knownSymbols := make(map[string]bool, len(nodes))
-		for _, n := range nodes {
-			knownSymbols[n.Name] = true
-		}
-		knownFiles := make(map[string]bool, len(files))
-		for _, f := range files {
-			knownFiles[f.Path] = true
-		}
-		var allDrifts []docdrift.Drift
-		for _, f := range files {
-			if f.Lang != "md" {
-				continue
-			}
-			allDrifts = append(allDrifts, docdrift.Analyze(f.Path, string(f.Content), knownSymbols, knownFiles)...)
-		}
-		sort.Slice(allDrifts, func(i, j int) bool {
-			if allDrifts[i].File != allDrifts[j].File {
-				return allDrifts[i].File < allDrifts[j].File
-			}
-			if allDrifts[i].Line != allDrifts[j].Line {
-				return allDrifts[i].Line < allDrifts[j].Line
-			}
-			return allDrifts[i].Ref < allDrifts[j].Ref
-		})
-		result := make([]any, len(allDrifts))
-		for i, d := range allDrifts {
-			result[i] = map[string]any{
-				"file": d.File,
-				"line": d.Line,
-				"ref":  d.Ref,
-			}
-		}
-		return withPartial(map[string]any{"drifts": result, "count": len(result)}, cov), nil
 	})
 }
 

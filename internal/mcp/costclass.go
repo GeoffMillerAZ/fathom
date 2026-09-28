@@ -22,8 +22,7 @@ import (
 //fathom:tenancy-allow pkg-map read-only lookup table of constants, never written after init: not a cache
 var toolCostClasses = map[string]tenancy.Class{
 	// point: one row, one capped file, or the process's own counters.
-	"staleness_report": tenancy.ClassPoint,
-	"read_source":      tenancy.ClassPoint, "memory_search": tenancy.ClassPoint, "history": tenancy.ClassPoint,
+	"read_source": tenancy.ClassPoint, "memory_search": tenancy.ClassPoint, "history": tenancy.ClassPoint,
 	"list_modules": tenancy.ClassPoint,
 	// batch holds no ticket of its own: each sub-call is admitted in its
 	// own class (admitBatchCall).
@@ -41,6 +40,9 @@ var toolCostClasses = map[string]tenancy.Class{
 	"module_obligations": tenancy.ClassIndex, "module_query": tenancy.ClassIndex, "module_staleness": tenancy.ClassIndex,
 
 	// tree: a whole-tree read or a whole-service graph build.
+	// staleness_report (SR-28): moved here from "point" — its doc_drift
+	// section (the retired stale_docs tool's own scan, folded in) now runs
+	// a ScanSources pass on every call.
 	// status (SR-23): declared at its heaviest section's cost — the
 	// "sources" section walks a whole service's symbols exactly like the
 	// retired list_sources did; "tools"/"daemon" are cheaper (point) but
@@ -56,7 +58,9 @@ var toolCostClasses = map[string]tenancy.Class{
 	"discoveries": tenancy.ClassTree, "references": tenancy.ClassTree, "blast_radius": tenancy.ClassTree,
 	"traverse": tenancy.ClassTree, "http_client_calls": tenancy.ClassTree,
 	"shell_out": tenancy.ClassTree, "proto_conformance": tenancy.ClassTree, "spec_refs": tenancy.ClassTree,
-	"stale_docs": tenancy.ClassTree,
+	"staleness_report": tenancy.ClassTree,
+	// stale_docs (SR-28) was unregistered; its own scan runs inside
+	// staleness_report now (the entry above), never as a second call.
 
 	// fleet: every service.
 	"list_services": tenancy.ClassFleet, "fleet_drift": tenancy.ClassFleet,

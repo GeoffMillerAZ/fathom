@@ -18,6 +18,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/analysis/docdrift"
+	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/extractor"
 	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/gitro"
@@ -271,6 +273,53 @@ type autoRefreshStatsBackend interface {
 	AutoRefreshTotal() int64
 }
 
+// stalenessDocDrift computes staleness_report's additive doc_drift section
+// (SR-28, F-56, design §4): the retired stale_docs tool's own scan — a
+// Markdown inline code span or link target naming a symbol or file the
+// index no longer knows — folded into the one staleness answer instead of
+// a second tool call. nodes is the caller's already-fetched symbol list
+// (serviceSymbols), reused rather than queried twice.
+//
+// Errors and an empty corpus are both silent (nil): a scan the tree budget
+// cut short, or a backend with no source access at all, must never turn
+// "is my index stale" into a failure — the caller's own source_count/
+// sources fields already disclose a partial scan when one happened.
+func stalenessDocDrift(ctx context.Context, backend QueryInterface, service string, nodes []core.SymbolNode) []any {
+	files, _, rpcErr := fetchSources(ctx, backend, service)
+	if rpcErr != nil {
+		return nil
+	}
+	knownSymbols := make(map[string]bool, len(nodes))
+	for _, n := range nodes {
+		knownSymbols[n.Name] = true
+	}
+	knownFiles := make(map[string]bool, len(files))
+	for _, f := range files {
+		knownFiles[f.Path] = true
+	}
+	var allDrifts []docdrift.Drift
+	for _, f := range files {
+		if f.Lang != "md" {
+			continue
+		}
+		allDrifts = append(allDrifts, docdrift.Analyze(f.Path, string(f.Content), knownSymbols, knownFiles)...)
+	}
+	sort.Slice(allDrifts, func(i, j int) bool {
+		if allDrifts[i].File != allDrifts[j].File {
+			return allDrifts[i].File < allDrifts[j].File
+		}
+		if allDrifts[i].Line != allDrifts[j].Line {
+			return allDrifts[i].Line < allDrifts[j].Line
+		}
+		return allDrifts[i].Ref < allDrifts[j].Ref
+	})
+	result := make([]any, len(allDrifts))
+	for i, d := range allDrifts {
+		result[i] = map[string]any{"file": d.File, "line": d.Line, "ref": d.Ref}
+	}
+	return result
+}
+
 // ─── staleness_report ─────────────────────────────────────────────────────────
 
 func registerStalenessReport(s *Server, backend QueryInterface) {
@@ -347,6 +396,8 @@ func registerStalenessReport(s *Server, backend QueryInterface) {
 		if line := elisionLine(elidedCount, "read_source or outline on the file you doubt (source_count is the full total)"); line != "" {
 			resp["elision"] = line
 		}
+		// SR-28 (F-56, design §4): stale_docs' own scan, folded in.
+		resp["doc_drift"] = stalenessDocDrift(ctx, backend, p.Service, nodes)
 		// RT-99 (§7.1): a re-ingest the refresh queue holds is named, so
 		// reingest_recommended is read beside "it is already on its way".
 		if q := s.RefreshQueue(); q != nil {
