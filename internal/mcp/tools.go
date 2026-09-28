@@ -500,8 +500,10 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 	// Register navigation and structural analysis tools.
 	registerNavTools(s, backend, fleet)
 
-	// Register source-scanning analyzer tools.
-	registerSourceTools(s, backend)
+	// registerSourceTools (secret_scan, shell_out, http_client_calls, cloc)
+	// was retired by SR-12/SR-19 (surface reckoning): every tool it wired
+	// is unregistered, 0 lifetime calls each; fetchSources stays as a
+	// plain helper (meta.go still calls it).
 
 	// Register the bounded raw-text read tool (T5-4).
 	registerReadSource(s, backend)

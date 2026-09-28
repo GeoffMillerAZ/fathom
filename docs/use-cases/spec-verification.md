@@ -14,8 +14,6 @@ Stop trusting "done!" — verify each task against actual code evidence before a
 | Name | Kind | What it gives you |
 |---|---|---|
 | `verify_plan` | MCP tool | Per-task verdict (`verified`, `claimed-but-absent`, `present-but-untested`, `edge-not-wired`, `contradicted`, `likely-unconfirmed`, `spec-uncovered`) with cited evidence; accepts `service`, optional `concern`, and `tasks[]` |
-| `traceability` | MCP tool | Traces a spec ID forward to symbols and backward to observations, showing the evidence chain |
-| `contradiction_scan` | MCP tool | Finds observations that conflict with each other or with the spec within a concern scope |
 
 The standalone `spec_coverage` and `spec_refs` MCP tools were unregistered (SR-27, surface
 reckoning F-35): `review_diff`'s engine already ran `spec_coverage`'s identical check
@@ -24,6 +22,9 @@ over `changed_files` for a spec-coverage dimension scoped to a diff. `spec_refs`
 consumer, the edit hook, now reads the same `{spec_id: [{file, line}]}` map from an
 additive `spec_refs` section on the `obligations` answer (`file` required) instead of a
 second call — pass `file` to `obligations` for a symbol's own citation-location lookup.
+`traceability` and `contradiction_scan` were unregistered outright (SR-19, surface
+reckoning F-77): 0 lifetime calls each; `verify_plan`'s own per-task evidence chain and
+`obligations`' `spec_refs` section cover their real use.
 | `fathom gen-status-cue` | CLI | Render a deterministic `STATUS.cue` from a plan file + the live index — the plan stays the source of truth; `STATUS.cue` is regenerated, never hand-edited |
 | `fathom verify` | CLI | The done-means-proven gate over `docs/plans/*.md` (`--quiet`, `--strict`, `--require-all`, `--store`) — see below |
 | `fathom plans status\|next\|context\|lease\|leases\|archive\|restore` | CLI | Computed SDD progress, the work frontier, per-row context packs, advisory leases, and the governed archive lifecycle |
@@ -34,8 +35,7 @@ second call — pass `file` to `obligations` for a symbol's own citation-locatio
 Without fathom, an agent finishes a task and self-reports "done" based on what it wrote. Fathom replaces that with a structured evidence check:
 
 1. `verify_plan` walks each task's declared symbol through the index. It checks whether the symbol exists (`claimed-but-absent` if not), whether a test reaches it via the call graph (`present-but-untested` if not), whether the edge specified by `reachable_from` is wired, and whether any observation contradicts the spec.
-2. `contradiction_scan` with a `concern` argument surfaces conflicting evidence before the agent writes its summary — catching cases where two observations disagree about behavior.
-3. `review_diff`'s `spec_coverage` dimension gives the agent a compact rollup, scoped to the diff, it can include in a PR description or status comment without reading every file again.
+2. `review_diff`'s `spec_coverage` dimension gives the agent a compact rollup, scoped to the diff, it can include in a PR description or status comment without reading every file again.
 
 The payoff: the agent cannot hallucinate completion. Verdicts are derived from the index, not from the agent's recollection of what it wrote. The concern-scoping argument reduces token cost by ~77% by focusing the scan.
 
@@ -115,15 +115,7 @@ Result: `spec_refs["US-102"]` names only a doc-side citation, no implementing sy
 
 Result: the `spec_coverage` dimension's findings show `[US-103]` uncovered — no implementing symbol. The symbol was never committed.
 
-**4. Run `contradiction_scan` before any status report:**
-
-```json
-{ "service": "my-service", "concern": "payment-flow" }
-```
-
-Result: no contradictions found. Good — the two unfinished tasks are gaps, not conflicts.
-
-**5. After fixing T-02 and T-03**, re-ingest via the MCP `ingest` tool (not the CLI — a concurrent CLI write can contend with the session's own write and fail past `busy_timeout`, SQLite serializes writers per ADR-020):
+**4. After fixing T-02 and T-03**, re-ingest via the MCP `ingest` tool (not the CLI — a concurrent CLI write can contend with the session's own write and fail past `busy_timeout`, SQLite serializes writers per ADR-020):
 
 ```json
 { "service": "my-service" }
@@ -131,7 +123,7 @@ Result: no contradictions found. Good — the two unfinished tasks are gaps, not
 
 Then re-run `verify_plan`. All four tasks now return `verified`.
 
-**6. Render a status artifact for the PR / commit:**
+**5. Render a status artifact for the PR / commit:**
 
 ```sh
 fathom gen-status-cue \
@@ -236,7 +228,7 @@ bin/fathom plans restore docs/plans/archive/my-plan.md --root .
 
 ## Setup & notes
 
-**Surface:** there is no profile switch (`set_profile` was removed, SW-2). `verify_plan` is on the 19-tool `/rpc/agent` allowlist; `traceability` and `contradiction_scan` are in the `investigation` group taxonomy and served by bare `POST /rpc` (the group endpoints were deleted — HF-5). An off-surface call still executes over HTTP — logged `off_surface:true`, never refused; stdio `serve-mcp` serves everything.
+**Surface:** there is no profile switch (`set_profile` was removed, SW-2). `verify_plan` is on the 19-tool `/rpc/agent` allowlist. An off-surface call still executes over HTTP — logged `off_surface:true`, never refused; stdio `serve-mcp` serves everything. (`traceability` and `contradiction_scan` were unregistered, SR-19, surface reckoning F-77: 0 lifetime calls each.)
 
 **Continuity between sessions** (**experimental** — the thread bet is at 4/20): `fathom thread brief` at session start prints this repo's open items (the SessionStart hook does it for Claude Code; Codex runs it by hand, or `fathom prime`); `fathom thread note "…"` / `thread point` file on the current repo's daemon-resolved service id by default (`--thread` overrides; `general` only when nothing resolves); `thread list` and `brief` show this repo's items and one line `N open item(s) in other repos — fathom thread list --all-repos` (`--all` also shows closed and dormant); `thread close <id> --why <sha|row>` closes with a citation; `thread promote` scaffolds `docs/plans/<thread>.md` from a thread so it enters the gate. The `handoff_cites_instruments` custodian concern (`fathom config audit`) flags a handoff note that claims shipped work without citing a commit sha, an active plan row id, `fathom verify`, or a retro artifact.
 
@@ -254,4 +246,4 @@ bin/fathom plans restore docs/plans/archive/my-plan.md --root .
 
 ## Maintained
 
-This doc covers: `verify_plan`, `traceability`, `contradiction_scan`, `fathom gen-status-cue`, `fathom verify` (`--quiet`, `--quiet-pass`, `--strict`, `--require-all`, `--format sarif`; the reachability facts; the lexical oracle `{oracle: lexical, path, pattern}` and cross-plan `needs: <sibling>.md#<id>`), `fathom plans status` (incl. the measured-stale column), `fathom plans next` (`--eligible-only`, `--free`), `fathom plans context`, `fathom plans lease`/`leases`, `fathom plans archive`, `fathom plans restore`, `fathom thread` (`brief`/`note`/`point`/`list`/`close`/`promote`/`handoff`). Update it when these change.
+This doc covers: `verify_plan`, `fathom gen-status-cue`, `fathom verify` (`--quiet`, `--quiet-pass`, `--strict`, `--require-all`, `--format sarif`; the reachability facts; the lexical oracle `{oracle: lexical, path, pattern}` and cross-plan `needs: <sibling>.md#<id>`), `fathom plans status` (incl. the measured-stale column), `fathom plans next` (`--eligible-only`, `--free`), `fathom plans context`, `fathom plans lease`/`leases`, `fathom plans archive`, `fathom plans restore`, `fathom thread` (`brief`/`note`/`point`/`list`/`close`/`promote`/`handoff`). Update it when these change.

@@ -98,8 +98,9 @@ func writeBusy(w http.ResponseWriter, id json.RawMessage, reason, class, scope s
 }
 
 // rpcCallInfo parses the parts of a /rpc message the gate needs: the
-// call's class and, for a batch, every sub-call's class (classes[0] is
-// the call's own).
+// call's class (classes[0], the only entry — batch, RT-60, was
+// unregistered by SR-19, surface reckoning F-77, so a call no longer
+// fans out into per-sub-call classes here).
 func rpcCallInfo(raw []byte) (id json.RawMessage, tool string, classes []tenancy.Class, ok bool) {
 	var msg struct {
 		ID     json.RawMessage `json:"id"`
@@ -113,9 +114,6 @@ func rpcCallInfo(raw []byte) (id json.RawMessage, tool string, classes []tenancy
 		return nil, "", nil, false
 	}
 	classes = []tenancy.Class{rpcToolClass(msg.Params.Name, msg.Params.Arguments)}
-	if msg.Params.Name == "batch" {
-		classes = append(classes, rpcBatchClasses(msg.Params.Arguments)...)
-	}
 	return msg.ID, msg.Params.Name, classes, true
 }
 

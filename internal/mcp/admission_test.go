@@ -197,71 +197,9 @@ func TestRefusalIsNamedNeverEmpty(t *testing.T) {
 	}
 }
 
-// TestBatchCapsAndAdmitsEachCall (RT-60, §3.3): batch takes at most 16
-// calls, admits each in its own class (a refused sub-call is that entry's
-// named error, the batch itself answers), and stops when its context ends.
-func TestBatchCapsAndAdmitsEachCall(t *testing.T) {
-	r := newAdmissionRig(t, tenancy.ModeEnforce)
-	calls := make([]any, 17)
-	for i := range calls {
-		calls[i] = map[string]any{"name": "zz_point"}
-	}
-	got := r.call(t, context.Background(), "batch", map[string]any{"calls": calls})
-	if got.Error == nil || got.Error.Code != ErrCodeParams || !strings.Contains(got.Error.Message, "16") {
-		t.Fatalf("17 calls: want a named cap error, got %+v", got)
-	}
-
-	defer r.hold(t, tenancy.ClassTree, "search")()
-	ctx, refusal := WithRefusalSink(WithOrigin(context.Background(), "edit-hook"))
-	got = r.call(t, ctx, "batch", map[string]any{"calls": []any{
-		map[string]any{"name": "zz_point"}, map[string]any{"name": "zz_tree"},
-	}})
-	if got.Error != nil {
-		t.Fatalf("batch refused whole: %+v", got.Error)
-	}
-	results := batchResults(t, got)
-	if results[0]["error"] != nil || !strings.HasPrefix(fmt.Sprint(results[1]["error"]), "fathom busy: tree-class slots full") {
-		t.Fatalf("sub-calls not admitted each in its class: %+v", results)
-	}
-	if r.treeRuns.Load() != 0 {
-		t.Fatal("refused sub-call ran")
-	}
-	if refusal() != nil {
-		t.Fatal("a sub-call refusal must not turn the batch into a 503")
-	}
-
-	// The batch stops at ctx.Done(): nothing after the cancellation runs.
-	cctx, cancel := context.WithCancel(context.Background())
-	r.srv.registerTool(toolDescriptor{Name: "zz_cancel", InputSchema: map[string]any{"type": "object"}, group: GroupShared, cost: declareCost(tenancy.ClassPoint)},
-		func(context.Context, json.RawMessage) (any, *rpcError) { cancel(); return map[string]any{}, nil })
-	got = r.call(t, cctx, "batch", map[string]any{"calls": []any{
-		map[string]any{"name": "zz_cancel"}, map[string]any{"name": "zz_point"}, map[string]any{"name": "zz_point"},
-	}})
-	if got.Error != nil {
-		t.Fatalf("%+v", got.Error)
-	}
-	results = batchResults(t, got)
-	for _, i := range []int{1, 2} {
-		if !strings.Contains(fmt.Sprint(results[i]["error"]), "not run: the batch's context ended") {
-			t.Fatalf("call %d ran after the batch's context ended: %+v", i, results[i])
-		}
-	}
-}
-
-func batchResults(t *testing.T, got rpcResp) []map[string]any {
-	t.Helper()
-	sc, _ := got.Result["structuredContent"].(map[string]any)
-	if sc == nil {
-		content, _ := got.Result["content"].([]any)
-		first, _ := content[0].(map[string]any)
-		_ = json.Unmarshal([]byte(first["text"].(string)), &sc)
-	}
-	var out []map[string]any
-	for _, x := range sc["results"].([]any) {
-		out = append(out, x.(map[string]any))
-	}
-	return out
-}
+// TestBatchCapsAndAdmitsEachCall (RT-60, §3.3) was retired: batch was
+// unregistered by SR-19 (surface reckoning, F-77), and RT-60
+// (docs/plans/responsible-tenant.md) is retired with it.
 
 // TestCallLogRowCarriesClassOutcomeCaller (RT-64, §13.3): every call-log
 // row carries class, queued_ms, bytes_read, outcome and the caller's
@@ -361,8 +299,7 @@ func TestDecisionPortClosedUnderRefuse(t *testing.T) {
 // TestPanickingHandlerReleasesItsSlot (review finding, RT-56): a handler
 // that panics must not keep its admission slot, its in-flight entry or its
 // running count — one panic in a 1-slot class would otherwise refuse that
-// class for the life of the process. The panic answers a named error, in a
-// top-level call and in a batch sub-call alike.
+// class for the life of the process. The panic answers a named error.
 func TestPanickingHandlerReleasesItsSlot(t *testing.T) {
 	r := newAdmissionRig(t, tenancy.ModeEnforce)
 	obj := map[string]any{"type": "object"}
@@ -385,27 +322,16 @@ func TestPanickingHandlerReleasesItsSlot(t *testing.T) {
 	if got := r.call(t, WithOrigin(context.Background(), "edit-hook"), "zz_fleet", nil); got.Error != nil {
 		t.Fatalf("the panicked call kept its fleet slot: %s", got.Error.Message)
 	}
-	got, p = call("batch", map[string]any{"calls": []any{map[string]any{"name": "zz_boom"}}})
-	if p != nil || got.Error != nil {
-		t.Fatalf("batch: panic %v, error %+v", p, got.Error)
-	}
-	if res := batchResults(t, got); !strings.Contains(fmt.Sprint(res[0]["error"]), "boom") {
-		t.Fatalf("batch sub-call panic not named: %+v", res)
-	}
-	if got := r.call(t, WithOrigin(context.Background(), "edit-hook"), "zz_fleet", nil); got.Error != nil {
-		t.Fatalf("the panicked batch sub-call kept its fleet slot: %s", got.Error.Message)
-	}
 	if n := len(r.reg.Snapshot()); n != 0 {
 		t.Fatalf("%d in-flight entries left behind", n)
 	}
 }
 
-// TestPartialOnlyWhenStoppedAndNamedInBatch (review finding, RT-54/RT-57):
-// observe mode's meter never stops a producer, so an over-ceiling call's
-// complete answer is not labelled partial; under enforce a stopped call is
-// partial with its elided lower bound — in a batch sub-call too, never an
-// entry that looks complete.
-func TestPartialOnlyWhenStoppedAndNamedInBatch(t *testing.T) {
+// TestPartialOnlyWhenStopped (review finding, RT-54/RT-57): observe mode's
+// meter never stops a producer, so an over-ceiling call's complete answer
+// is not labelled partial; under enforce a stopped call is partial with
+// its elided lower bound.
+func TestPartialOnlyWhenStopped(t *testing.T) {
 	o := newAdmissionRig(t, tenancy.ModeObserve)
 	got := o.call(t, context.Background(), "zz_hungry", nil)
 	if got.Error != nil {
@@ -420,15 +346,6 @@ func TestPartialOnlyWhenStoppedAndNamedInBatch(t *testing.T) {
 	b, _ := got.Result["budget"].(map[string]any)
 	if b["partial"] != true || b["elided"] != float64(2) {
 		t.Fatalf("enforce partial block %+v, want partial with elided 2", b)
-	}
-	got = e.call(t, context.Background(), "batch", map[string]any{"calls": []any{map[string]any{"name": "zz_hungry"}}})
-	if got.Error != nil {
-		t.Fatal(got.Error.Message)
-	}
-	res := batchResults(t, got)
-	sb, _ := res[0]["budget"].(map[string]any)
-	if sb["partial"] != true || sb["elided"] != float64(2) {
-		t.Fatalf("batch sub-call dropped its partial block: %+v", res[0])
 	}
 }
 

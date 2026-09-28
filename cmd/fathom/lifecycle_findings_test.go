@@ -175,41 +175,10 @@ func TestManagedStartFailuresTripTheBreaker(t *testing.T) {
 	}
 }
 
-// TestBatchCannotBypassLifecycleModes (RT-39, RT-41, RT-44): batch is
-// gated by its sub-calls' classes — a batch of fleet/tree calls is refused
-// in safe mode, a batch carrying an ingest while draining or in store
-// distress; a batch of point/index calls is served.
-func TestBatchCannotBypassLifecycleModes(t *testing.T) {
-	resetLifecycleModes(t)
-	h := newTestHandler(t)
-	batch := func(names ...string) map[string]any {
-		calls := make([]any, 0, len(names))
-		for _, n := range names {
-			calls = append(calls, map[string]any{"name": n, "arguments": map[string]any{"service": "x"}})
-		}
-		return map[string]any{"calls": calls}
-	}
-	applySafeMode(&tenancy.SafeModeInfo{Since: time.Now(), Reason: "3 counted exits in 30m0s"}, nil)
-	if code, _, m := postToolCall(t, h, "batch", batch("search", "list_services"), ""); code != http.StatusServiceUnavailable || !strings.Contains(busyReason(m), "safe mode") {
-		t.Fatalf("batch{search,list_services} in safe mode: %d %v", code, m)
-	}
-	if code, _, m := postToolCall(t, h, "batch", batch("find_symbol", "capabilities"), ""); code != http.StatusOK || busyReason(m) != "" {
-		t.Fatalf("batch{find_symbol,capabilities} in safe mode: %d %v", code, m)
-	}
-	tenancy.SetSafeMode(nil)
-	draining.Store(true)
-	if code, _, m := postToolCall(t, h, "batch", batch("find_symbol", "ingest"), ""); code != http.StatusServiceUnavailable || !strings.Contains(busyReason(m), "draining") {
-		t.Fatalf("batch{ingest} while draining: %d %v", code, m)
-	}
-	draining.Store(false)
-	tenancy.NoteStoreDistress("disk full (SQLITE_FULL)", time.Now())
-	if code, _, m := postToolCall(t, h, "batch", batch("ingest"), ""); code != http.StatusServiceUnavailable || !strings.Contains(busyReason(m), "store distress") {
-		t.Fatalf("batch{ingest} in store distress: %d %v", code, m)
-	}
-	if c := rpcToolClass("batch", []byte(`{"calls":[{"name":"find_symbol"},{"name":"list_services"}]}`)); c != tenancy.ClassFleet {
-		t.Fatalf("batch class = %s, want its heaviest sub-call's (fleet)", c)
-	}
-}
+// TestBatchCannotBypassLifecycleModes (RT-39, RT-41, RT-44) was retired:
+// batch (RT-60) was unregistered by SR-19 (surface reckoning, F-77), and
+// with it classWeight/rpcBatchClasses and the batch sub-call-class fan-out
+// this test exercised.
 
 // TestBeginLifecycleNamesEveryDeadUnclosedStart (RT-37, §2.3): an alive
 // incumbent's unclosed start (a duplicate start found the port served)

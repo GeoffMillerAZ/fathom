@@ -1,7 +1,8 @@
 // Package mcp — analysis tool registrations backed by callgraph.Graph.
 //
-// registerAnalysisTools wires reachable, test_impact, and dead_code into the
-// server's tool registry. rename_impact was unregistered by SR-24 (F-13,
+// registerAnalysisTools wires test_impact into the server's tool registry.
+// reachable was unregistered by SR-12 (F-22) and dead_code by SR-19 (F-77,
+// both surface reckoning). rename_impact was unregistered by SR-24 (F-13,
 // design §4); renameImpactAnswer below is now reached through
 // blast_radius's kind:"rename" (blastRadiusByKind, extra_tools.go).
 //
@@ -26,12 +27,10 @@ import (
 )
 
 // registerAnalysisTools is called from registerTools (tools.go) and adds the
-// three surviving analysis tools. backend may be nil; tools that require it
+// one surviving analysis tool. backend may be nil; tools that require it
 // return ErrCodeInternal when backend == nil.
 func registerAnalysisTools(s *Server, backend QueryInterface) {
-	registerReachable(s, backend)
 	registerTestImpact(s, backend)
-	registerDeadCode(s, backend)
 }
 
 // ─── buildGraph is a shared helper ──────────────────────────────────────────
@@ -143,60 +142,6 @@ func renameImpactSummary(symbol string, callers []string) string {
 		summary += fmt.Sprintf(" (+%d more)", len(callers)-n)
 	}
 	return capSummary(summary)
-}
-
-// ─── reachable ────────────────────────────────────────────────────────────────
-
-func registerReachable(s *Server, backend QueryInterface) {
-	s.registerTool(toolDescriptor{
-		Name:        "reachable",
-		Description: "Report whether there is any directed call path from one symbol to another.",
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"service": map[string]any{
-					"type":        "string",
-					"description": "Service / repo identifier",
-				},
-				"from": map[string]any{
-					"type":        "string",
-					"description": "Starting symbol (bare name or fully-qualified SymbolKey)",
-				},
-				"to": map[string]any{
-					"type":        "string",
-					"description": "Target symbol (bare name or fully-qualified SymbolKey)",
-				},
-			},
-			"required": []string{"service", "from", "to"},
-		},
-		group: GroupCoding,
-	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
-		if backend == nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
-		}
-		var p struct {
-			Service string `json:"service"`
-			From    string `json:"from"`
-			To      string `json:"to"`
-		}
-		if err := json.Unmarshal(args, &p); err != nil {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "reachable: invalid args"}
-		}
-		if p.Service == "" {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "reachable: service required"}
-		}
-		if p.From == "" {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "reachable: from required"}
-		}
-		if p.To == "" {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "reachable: to required"}
-		}
-		g, rpcErr := buildGraph(ctx, s, backend, p.Service)
-		if rpcErr != nil {
-			return nil, rpcErr
-		}
-		return map[string]any{"reachable": callgraph.Reachable(g, p.From, p.To)}, nil
-	})
 }
 
 // ─── test_impact ──────────────────────────────────────────────────────────────
@@ -359,50 +304,9 @@ func testImpactSummary(symbol string, tests []string, infos map[string]depthInfo
 	return capSummary(summary)
 }
 
-// ─── dead_code ────────────────────────────────────────────────────────────────
-
-func registerDeadCode(s *Server, backend QueryInterface) {
-	s.registerTool(toolDescriptor{
-		Name:        "dead_code",
-		Description: "Find symbols that are neither reachable from any entrypoint nor called by anything else in the graph.",
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"service": map[string]any{
-					"type":        "string",
-					"description": "Service / repo identifier",
-				},
-				"entrypoints": map[string]any{
-					"type":        "array",
-					"items":       map[string]any{"type": "string"},
-					"description": "Entrypoint symbol names (bare or fully-qualified SymbolKeys); typically main functions or exported handlers",
-				},
-			},
-			"required": []string{"service"},
-		},
-		group: GroupCoding,
-	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
-		if backend == nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
-		}
-		var p struct {
-			Service     string   `json:"service"`
-			Entrypoints []string `json:"entrypoints"`
-		}
-		if err := json.Unmarshal(args, &p); err != nil {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "dead_code: invalid args"}
-		}
-		if p.Service == "" {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "dead_code: service required"}
-		}
-		g, rpcErr := buildGraph(ctx, s, backend, p.Service)
-		if rpcErr != nil {
-			return nil, rpcErr
-		}
-		dead := callgraph.DeadCode(g, p.Entrypoints)
-		return map[string]any{"dead": stringsToAny(dead)}, nil
-	})
-}
+// dead_code (F-77) was unregistered by SR-19 (surface reckoning): 0
+// lifetime calls; callgraph.DeadCode stays (only its own test calls it
+// now).
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 

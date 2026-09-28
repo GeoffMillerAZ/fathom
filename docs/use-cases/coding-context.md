@@ -30,7 +30,6 @@ hooks, gates, CLAUDE.md/AGENTS.md — lives in [coding-agents.md](coding-agents.
 | `memory_search` | MCP tool | Anchored memories for a service, filtered by `query` and/or `file`; every entry carries `tier` and `state` (**experimental** — new, unmeasured) |
 | `entrypoints` | MCP tool | Likely program entry points: `main` functions, HTTP handlers, CLI root commands |
 | `search` (`kind: docs`) | MCP tool | Ranked full-text search over the indexed doc corpus (ADRs, `docs/intent/`, `docs/plans/`, design, vision) — BM25 fused with concern ranking (KR-4/KR-5, `docs/design/knowledge-retrieval.md`); requires `service` |
-| `batch` | MCP tool | Execute N tool calls in a single request |
 | `fathom prime` | CLI | Pull-tier session primer for harnesses without a SessionStart hook (Codex): prints the index/wiring status and the fathom-first discipline. Not yet listed by `fathom help` — `fathom prime -h` (`-dir`, `-url`) |
 | `fathom memory add\|list\|review\|show` | CLI | Anchored memory: a memory with no anchor (symbol/file/commit/claim/path) is refused; anchor drift marks it `suspect`/`orphaned` |
 | `gen-claude-md` | CLI | Generate a `CLAUDE.md` from stored symbols for static context injection |
@@ -60,9 +59,9 @@ Scenario: an agent is about to modify token validation in `auth-service` and nee
 profile switch: stdio `serve-mcp` always serves the full registry, and the
 shared HTTP daemon scopes by path — register against `POST /rpc/agent`
 (the curated coding hot loop; `/rpc/companion` is an identical
-alias) or `POST /rpc` for everything. Every tool below except
-`batch` is on the agent surface; the rest still execute
-there, flagged `off_surface` in the call log rather than refused.
+alias) or `POST /rpc` for everything. Every tool below is on the agent
+surface; a tool that is not still executes there, flagged `off_surface`
+in the call log rather than refused.
 
 **2. Query concern-scoped symbols** to find everything relevant to token validation:
 
@@ -100,19 +99,10 @@ pack_context {
 
 Returns `{ "included": [...], "tokens": 2847, "dropped": 4, "budget": 3000 }`. The four lowest-scoring symbols were dropped to stay within budget.
 
-**5. (Optional) Batch orientation calls** to save round-trips at session start:
-
-```json
-batch {
-  "calls": [
-    { "name": "entrypoints",    "arguments": { "service": "auth-service" } },
-    { "name": "repo_map",       "arguments": { "service": "auth-service", "budget": 2000 } },
-    { "name": "outline",        "arguments": { "service": "auth-service", "file": "internal/auth/token.go" } }
-  ]
-}
-```
-
-Returns all three results in one response. Use `batch` when the calls are independent and you want to minimise latency.
+(`batch` — running independent orientation calls, such as `entrypoints`,
+`repo_map` and `outline`, in one request to save round-trips — was
+unregistered by SR-19, surface reckoning F-77: 0 lifetime calls. Issue
+each call separately.)
 
 ---
 
@@ -161,4 +151,4 @@ Returns `{service, file, rules?, compiled_at_watermark?, index_stale?}`. An empt
 
 ## Maintained
 
-This doc covers: `query_symbols`, `find_symbol`, `outline`, `repo_map`, `pack_context`, `symbol_context`, `read_source`, `references`, `memory_search`, `entrypoints`, `search` (`kind: docs`), `batch`, `staleness_report`, `gen-claude-md`, `obligations`, `edit-hook` (incl. the memory block), `fathom memory` (`add`/`list`/`review`/`show`), `fathom prime` (listed by `fathom help`; `fathom prime -h`), the `budgets` block in `capabilities.cue`, and the `/rpc/agent` surface facts. Update it when these change.
+This doc covers: `query_symbols`, `find_symbol`, `outline`, `repo_map`, `pack_context`, `symbol_context`, `read_source`, `references`, `memory_search`, `entrypoints`, `search` (`kind: docs`), `staleness_report`, `gen-claude-md`, `obligations`, `edit-hook` (incl. the memory block), `fathom memory` (`add`/`list`/`review`/`show`), `fathom prime` (listed by `fathom help`; `fathom prime -h`), the `budgets` block in `capabilities.cue`, and the `/rpc/agent` surface facts. Update it when these change.
