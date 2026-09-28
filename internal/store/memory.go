@@ -23,7 +23,8 @@ type MemoryStore struct {
 	knowledgeCards map[kcKey]KnowledgeCard
 	docSummaries   map[fpKey]DocSummary
 	serviceMeta    map[string]ServiceMeta
-	commits        map[string][]Commit // serviceID → commits (newest-first)
+	commits        map[string][]Commit    // serviceID → commits (newest-first)
+	fileChurn      map[string][]FileChurn // serviceID → file_churn rows (TQ-1), sorted by path
 	claims         map[claimKey]core.SemanticClaim
 	claimLinks     map[string][]core.ClaimLink // claim_id → links (replace-semantic)
 	claimEvents    []core.ClaimEvent
@@ -89,6 +90,7 @@ func NewMemoryStore() *MemoryStore {
 		docSummaries:   make(map[fpKey]DocSummary),
 		serviceMeta:    make(map[string]ServiceMeta),
 		commits:        make(map[string][]Commit),
+		fileChurn:      make(map[string][]FileChurn),
 		claims:         make(map[claimKey]core.SemanticClaim),
 		claimLinks:     make(map[string][]core.ClaimLink),
 		typedEdges:     make(map[typedEdgeKey][]core.Edge),
@@ -375,6 +377,10 @@ func (m *MemoryStore) RemoveService(_ context.Context, serviceID string) (bool, 
 		removed = true
 		delete(m.commits, serviceID)
 	}
+	if _, ok := m.fileChurn[serviceID]; ok {
+		removed = true
+		delete(m.fileChurn, serviceID)
+	}
 	keptRuns := m.compileRuns[:0]
 	for _, r := range m.compileRuns {
 		if r.ServiceID == serviceID {
@@ -452,6 +458,10 @@ func (m *MemoryStore) RenameService(_ context.Context, oldID, newID string) erro
 		}
 		delete(m.commits, oldID)
 		m.commits[newID] = commits
+	}
+	if fc, ok := m.fileChurn[oldID]; ok {
+		delete(m.fileChurn, oldID)
+		m.fileChurn[newID] = fc
 	}
 	for k, c := range m.claims {
 		if k.serviceID == oldID {

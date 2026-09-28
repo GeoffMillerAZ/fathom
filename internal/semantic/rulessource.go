@@ -33,6 +33,7 @@ import (
 	"sort"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/filter"
 )
 
 // RulesSourceLevel is one of "off" / "warn" / "error" (design doc §3).
@@ -142,4 +143,39 @@ func RulesSourceCorpus(root string, levels map[string]RulesSourceLevel) ([]core.
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Path < out[j].Path })
 	return out, applied
+}
+
+// WithRulesSources is the compile path's entry for the client readers
+// (GL-2..GL-6): corpus (the layer's own selection from the index) plus
+// every enabled source's files under root, minus any the layer's exclude
+// globs drop, deduplicated by path (a file both routes select is compiled
+// once) and sorted. root "" (a service with no known directory) returns
+// corpus unchanged. levels is the [rules.sources] map (nil: every source at
+// its default, warn).
+func WithRulesSources(corpus []core.SourceFile, root string, exclude []string, levels map[string]RulesSourceLevel) []core.SourceFile {
+	if root == "" {
+		return corpus
+	}
+	extra, _ := RulesSourceCorpus(root, levels)
+	if len(extra) == 0 {
+		return corpus
+	}
+	var excl *filter.Matcher
+	if len(exclude) > 0 {
+		excl = filter.New(exclude)
+	}
+	seen := make(map[string]bool, len(corpus))
+	out := append([]core.SourceFile(nil), corpus...)
+	for _, f := range corpus {
+		seen[f.Path] = true
+	}
+	for _, f := range extra {
+		if seen[f.Path] || (excl != nil && excl.Match(f.Path)) {
+			continue
+		}
+		seen[f.Path] = true
+		out = append(out, f)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Path < out[j].Path })
+	return out
 }

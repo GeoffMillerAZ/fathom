@@ -2,8 +2,12 @@
 // symbolnav, complexity, and godobject analysis packages.
 //
 // registerNavTools wires the coding-group tools:
-//   - symbol_context (carries callees too, SR-21), outline, entrypoints
+//   - symbol_context (carries callees too, SR-21), outline
 //   - complexity, god_object
+//
+// entrypoints was unregistered by SR-22 (F-10, design §4): repo_map's
+// header now carries the same symbolnav.Entrypoints detector, capped at 10
+// with a "more" count (repoMapEntrypoints, extra_tools.go).
 //
 // and the investigation-group tools:
 //   - community
@@ -26,7 +30,6 @@ import (
 func registerNavTools(s *Server, backend QueryInterface, fleet FleetBackend) {
 	registerSymbolContext(s, backend, fleet)
 	registerOutline(s, backend)
-	registerEntrypoints(s, backend)
 	registerComplexity(s, backend)
 	registerGodObject(s, backend)
 	registerCommunity(s, backend)
@@ -355,42 +358,6 @@ func registerOutline(s *Server, backend QueryInterface) {
 			resp["elision"] = line
 		}
 		return resp, nil
-	})
-}
-
-// ─── entrypoints ─────────────────────────────────────────────────────────────
-
-func registerEntrypoints(s *Server, backend QueryInterface) {
-	s.registerTool(toolDescriptor{
-		Name:        "entrypoints",
-		Description: "Lists likely program entrypoints: main functions, HTTP handlers, CLI root commands. Reach for it when orienting in an unfamiliar service. Required: service.",
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"service": map[string]any{"type": "string", "description": "Service / repo identifier"},
-			},
-			"required": []string{"service"},
-		},
-		group: GroupCoding,
-	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
-		if backend == nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
-		}
-		var p struct {
-			Service string `json:"service"`
-		}
-		if err := json.Unmarshal(args, &p); err != nil {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "entrypoints: invalid args"}
-		}
-		if p.Service == "" {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "entrypoints: service required"}
-		}
-		nodes, err := serviceSymbols(ctx, backend, p.Service)
-		if err != nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
-		}
-		eps := symbolnav.Entrypoints(nodes)
-		return map[string]any{"entrypoints": toNodeDTOs(eps)}, nil
 	})
 }
 

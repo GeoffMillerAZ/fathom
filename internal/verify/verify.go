@@ -277,6 +277,9 @@ type TaskVerdict struct {
 	Skipped    bool // propagated from Task.Skipped ([-])
 	InProgress bool // propagated from Task.InProgress ([~])
 	Line       int  // propagated from Task.Line (0 when unknown)
+	// Weight is propagated from Task.Weight (`weight:`, ADR-049): the row's
+	// share of a weighted rollup, never gating. 0 means unset, i.e. 1.
+	Weight int
 	// EvidenceFile / EvidenceLine are the resolved location of the task's
 	// claimed symbol when symbol_present passed — the SAME location
 	// verifyTask's own symbol_present Pass detail names in prose ("%s at
@@ -601,7 +604,7 @@ func VerifyPlan(plan Plan, ev Evidence) Report {
 
 func verifyTask(t Task, ev Evidence, files FileEvidence, contraBySymbol map[string][]core.Contradiction) TaskVerdict {
 	e := t.Expect
-	v := TaskVerdict{TaskID: t.ID, Title: t.Title, Status: Pass, Label: "verified", Claimed: t.Claimed, Skipped: t.Skipped, InProgress: t.InProgress, Line: t.Line}
+	v := TaskVerdict{TaskID: t.ID, Title: t.Title, Status: Pass, Label: "verified", Claimed: t.Claimed, Skipped: t.Skipped, InProgress: t.InProgress, Line: t.Line, Weight: t.Weight}
 
 	// fail downgrades the overall status and records the most salient label
 	// (first failure wins, since criteria are appended in priority order).

@@ -51,7 +51,7 @@ func classRank(c CallerClass) int {
 // plumbingTools are fathom's registry and identity round trips: a caller
 // reading them is plumbing whatever surface it arrived on (the survey's
 // list_services, 33k calls, "passing for adoption").
-var plumbingTools = map[string]bool{"list_services": true, "capabilities": true, "server_stats": true}
+var plumbingTools = map[string]bool{"list_services": true, "status": true}
 
 // gateTools are the gate's own verbs; off the agent surface they are the
 // gate running, not an agent asking.

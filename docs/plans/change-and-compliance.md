@@ -8,14 +8,14 @@ the computable subset of F9.
 
 ## Wave 2: the change risk receipt (U7)
 
-- [ ] The receipt's factors for a diff: blast radius, links touched (spec/typed counted, lower tiers listed), certificates affected, conservation, rows proven, rules touched, zone interest, uncertified contracts (§2) {id: CX-1, symbol: BuildRiskReceipt, package: internal/review, reachable_from: TestRiskReceiptFactorsCited}
-- [ ] The band from a published rule table (`.fathom/risk.cue`, defaults in the binary): the strongest reason, never a summed score {id: CX-2, symbol: riskBand, package: internal/review, reachable_from: TestRiskBandStrongestReason, needs: "CX-1"}
-- [ ] The risk rule table schema with valid/invalid testdata {id: CX-3, oracle: lexical, path: schema/risk/schema.cue, pattern: "^#RiskTable:"}
-- [ ] Suggested reviewers from CODEOWNERS and frequent committers to impacted providers, with the files that put them there, never ranked (I58) {id: CX-4, symbol: suggestReviewers, package: internal/review, reachable_from: TestSuggestReviewersFromOwnership, needs: "CX-1"}
+- [x] The receipt's factors for a diff: blast radius, links touched (spec/typed counted, lower tiers listed), certificates affected, conservation, rows proven, rules touched, zone interest, uncertified contracts (§2) {id: CX-1, symbol: BuildRiskReceipt, package: internal/review, reachable_from: TestRiskReceiptFactorsCited}
+- [x] The band from a published rule table (`.fathom/risk.cue`, defaults in the binary): the strongest reason, never a summed score {id: CX-2, symbol: riskBand, package: internal/review, reachable_from: TestRiskBandStrongestReason, needs: "CX-1"}
+- [x] The risk rule table schema with valid/invalid testdata {id: CX-3, oracle: lexical, path: schema/risk/schema.cue, pattern: "^#RiskTable:"}
+- [x] Suggested reviewers from CODEOWNERS and frequent committers to impacted providers, with the files that put them there, never ranked (I58) {id: CX-4, symbol: suggestReviewers, package: internal/review, reachable_from: TestSuggestReviewersFromOwnership, needs: "CX-1"}
 - [ ] `review_diff` gains the `receipt` section, additively {id: CX-5, symbol: reviewDiffReceipt, package: internal/mcp, reachable_from: TestReviewDiffCarriesReceipt, needs: "CX-2"}
 - [ ] `fathom review --receipt --format sarif|check` through the shared emitter {id: CX-6, symbol: cmdReviewReceipt, package: cmd/fathom, reachable_from: TestCmdReviewReceiptFormats, needs: "CX-5,governance-learning.md#GL-21"}
-- [ ] Links below `typed` appear in the receipt as listed hints and never move the band (I57) {id: CX-7, symbol: receiptLinkTiers, package: internal/review, reachable_from: TestReceiptHeuristicLinksNeverMoveBand, needs: "CX-1"}
-- [ ] Fathom never posts, approves or blocks on its own authority; CI decides what a band does (ADR-040's boundary) {id: CX-8, symbol: receiptAuthority, package: internal/review, reachable_from: TestReceiptNeverPostsOrBlocks, needs: "CX-6"}
+- [x] Links below `typed` appear in the receipt as listed hints and never move the band (I57) {id: CX-7, symbol: receiptLinkTiers, package: internal/review, reachable_from: TestReceiptHeuristicLinksNeverMoveBand, needs: "CX-1"}
+- [x] Fathom never posts, approves or blocks on its own authority; CI decides what a band does (ADR-040's boundary) {id: CX-8, symbol: receiptAuthority, package: internal/review, reachable_from: TestReceiptNeverPostsOrBlocks, needs: "CX-6"}
 
 ## Wave 3: the migration tracker (U9)
 

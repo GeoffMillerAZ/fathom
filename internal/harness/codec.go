@@ -121,6 +121,10 @@ func CodecFor(id string) (Codec, bool) {
 		return CodexCodec(), true
 	case "gemini":
 		return GeminiCodec(), true
+	case "cursor":
+		return CursorCodec(), true
+	case "copilot":
+		return CopilotCodec(), true
 	}
 	return nil, false
 }

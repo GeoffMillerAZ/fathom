@@ -1,6 +1,8 @@
 // Package mcp_test — analysis tool tests (TDD, fake backend, no DuckDB).
 //
-// Tests cover: rename_impact, reachable, test_impact, dead_code.  Each test
+// Tests cover: blast_radius kind:"rename" (renameImpactAnswer, the retired
+// rename_impact tool's own answer — SR-24), reachable, test_impact,
+// dead_code.  Each test
 // builds a richFakeBackend (defined below) with a
 // small call graph fixture and drives the MCP server exactly like the existing
 // tools_test.go tests — synchronous Serve call over a finite in-memory buffer.
@@ -113,15 +115,15 @@ func toolPayload(t *testing.T, resp map[string]any) map[string]any {
 	return payload
 }
 
-// ─── rename_impact ────────────────────────────────────────────────────────────
+// ─── blast_radius kind:"rename" (renameImpactAnswer, SR-24) ────────────────────
 
 func TestRenameImpact_DirectCallers(t *testing.T) {
 	srv := newAnalysisSrv()
 	resp := roundtrip(t, srv, request{
 		JSONRPC: "2.0", ID: 100, Method: "tools/call",
 		Params: map[string]any{
-			"name":      "rename_impact",
-			"arguments": map[string]any{"service": "svc", "symbol": "B"},
+			"name":      "blast_radius",
+			"arguments": map[string]any{"service": "svc", "kind": "rename", "symbol": "B"},
 		},
 	})
 	payload := toolPayload(t, resp)
@@ -165,8 +167,8 @@ func TestRenameImpact_ClaimsAnchored(t *testing.T) {
 	resp := roundtrip(t, srv, request{
 		JSONRPC: "2.0", ID: 101, Method: "tools/call",
 		Params: map[string]any{
-			"name":      "rename_impact",
-			"arguments": map[string]any{"service": "svc", "symbol": "B"},
+			"name":      "blast_radius",
+			"arguments": map[string]any{"service": "svc", "kind": "rename", "symbol": "B"},
 		},
 	})
 	payload := toolPayload(t, resp)
@@ -189,8 +191,8 @@ func TestRenameImpact_NoClaimsAnchored_OmitsField(t *testing.T) {
 	resp := roundtrip(t, srv, request{
 		JSONRPC: "2.0", ID: 102, Method: "tools/call",
 		Params: map[string]any{
-			"name":      "rename_impact",
-			"arguments": map[string]any{"service": "svc", "symbol": "B"},
+			"name":      "blast_radius",
+			"arguments": map[string]any{"service": "svc", "kind": "rename", "symbol": "B"},
 		},
 	})
 	payload := toolPayload(t, resp)
@@ -204,8 +206,8 @@ func TestRenameImpact_MissingSymbol(t *testing.T) {
 	resp := roundtrip(t, srv, request{
 		JSONRPC: "2.0", ID: 101, Method: "tools/call",
 		Params: map[string]any{
-			"name":      "rename_impact",
-			"arguments": map[string]any{"service": "svc", "symbol": "NoSuchFunc"},
+			"name":      "blast_radius",
+			"arguments": map[string]any{"service": "svc", "kind": "rename", "symbol": "NoSuchFunc"},
 		},
 	})
 	payload := toolPayload(t, resp)
@@ -223,8 +225,8 @@ func TestRenameImpact_MissingService(t *testing.T) {
 	resp := roundtrip(t, srv, request{
 		JSONRPC: "2.0", ID: 102, Method: "tools/call",
 		Params: map[string]any{
-			"name":      "rename_impact",
-			"arguments": map[string]any{"symbol": "B"},
+			"name":      "blast_radius",
+			"arguments": map[string]any{"kind": "rename", "symbol": "B"},
 		},
 	})
 	errObj, ok := resp["error"].(map[string]any)
@@ -241,8 +243,8 @@ func TestRenameImpact_MissingSymbolParam(t *testing.T) {
 	resp := roundtrip(t, srv, request{
 		JSONRPC: "2.0", ID: 103, Method: "tools/call",
 		Params: map[string]any{
-			"name":      "rename_impact",
-			"arguments": map[string]any{"service": "svc"},
+			"name":      "blast_radius",
+			"arguments": map[string]any{"service": "svc", "kind": "rename"},
 		},
 	})
 	errObj, ok := resp["error"].(map[string]any)
@@ -457,7 +459,6 @@ func TestAnalysisToolsInCorrectProfile(t *testing.T) {
 		name  string
 		group mcp.ToolGroup
 	}{
-		{"rename_impact", mcp.GroupCoding},
 		{"reachable", mcp.GroupCoding},
 		{"dead_code", mcp.GroupCoding},
 		{"test_impact", mcp.GroupInvestigation},

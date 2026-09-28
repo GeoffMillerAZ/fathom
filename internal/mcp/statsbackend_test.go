@@ -58,8 +58,8 @@ func TestServerStats_WithStatsBackend_ReportsCumulativeCounters(t *testing.T) {
 	resp := roundtrip(t, srv, request{
 		JSONRPC: "2.0", ID: 900, Method: "tools/call",
 		Params: map[string]any{
-			"name":      "server_stats",
-			"arguments": map[string]any{},
+			"name":      "status",
+			"arguments": map[string]any{"section": "daemon"},
 		},
 	})
 	p := extToolPayload(t, resp)
@@ -85,8 +85,8 @@ func TestServerStats_EmptyClassifiedZeroOmitted(t *testing.T) {
 	resp := roundtrip(t, srv, request{
 		JSONRPC: "2.0", ID: 904, Method: "tools/call",
 		Params: map[string]any{
-			"name":      "server_stats",
-			"arguments": map[string]any{},
+			"name":      "status",
+			"arguments": map[string]any{"section": "daemon"},
 		},
 	})
 	p := extToolPayload(t, resp)
@@ -100,8 +100,8 @@ func TestServerStats_WithoutStatsBackend_OmitsCounters(t *testing.T) {
 	resp := roundtrip(t, srv, request{
 		JSONRPC: "2.0", ID: 901, Method: "tools/call",
 		Params: map[string]any{
-			"name":      "server_stats",
-			"arguments": map[string]any{},
+			"name":      "status",
+			"arguments": map[string]any{"section": "daemon"},
 		},
 	})
 	p := extToolPayload(t, resp)
@@ -157,8 +157,8 @@ func TestServerStats_StatsForwardThroughAutoRefreshWrapper(t *testing.T) {
 	resp := roundtrip(t, srv, request{
 		JSONRPC: "2.0", ID: 903, Method: "tools/call",
 		Params: map[string]any{
-			"name":      "server_stats",
-			"arguments": map[string]any{},
+			"name":      "status",
+			"arguments": map[string]any{"section": "daemon"},
 		},
 	})
 	p := extToolPayload(t, resp)

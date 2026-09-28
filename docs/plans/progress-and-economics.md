@@ -15,18 +15,18 @@ status.
 
 ## Wave 2: proof history and the progress views
 
-- [ ] Verify ledger schema 3: an optional `rows` array (`id`, `state`, `criterion`, `weight`) written only when the plan's row digest changed; v1 and v2 rows still parse (§3) {id: PE-1, symbol: appendVerifyLedgerRows, package: cmd/fathom, reachable_from: TestVerifyLedgerSchema3RowsOnDigestChange}
-- [ ] Proof history as a projection: per row, its state over time from the ledger, bounded tail reads, cached in a `memo` group {id: PE-2, symbol: ProofHistory, package: internal/console, reachable_from: TestProofHistoryProjection, needs: "PE-1"}
-- [ ] `plans status --weighted` rolls up by `weight:` (fleet, project, plan, section) {id: PE-3, symbol: weightedRollup, package: cmd/fathom, reachable_from: TestPlansStatusWeighted, needs: "spec-interop.md#SI-7"}
-- [ ] The weighted table view (§4) {id: PE-4, symbol: renderWeightedTable, package: cmd/fathom, reachable_from: TestConsoleWeightedTable, needs: "PE-3"}
-- [ ] The derived kanban: Open, Claimed-unproven, Proven, Refused or deferred; read-only, cards link to the failing criterion {id: PE-5, symbol: renderDerivedKanban, package: cmd/fathom, reachable_from: TestConsoleDerivedKanbanReadOnly, needs: "PE-2"}
-- [ ] Burn-up with a projected finish: a linear fit over 14 days with its interval, hidden below 7 days of data {id: PE-6, symbol: BurnUp, package: internal/console, reachable_from: TestBurnUpProjectionNeedsSevenDays, needs: "PE-2"}
-- [ ] The frontier view from `plans next --eligible-only` {id: PE-7, symbol: renderFrontier, package: cmd/fathom, reachable_from: TestConsoleFrontier}
-- [ ] Proof regressions: rows once proven that now read otherwise, with the first changed reading and its commit {id: PE-8, symbol: ProofRegressions, package: internal/console, reachable_from: TestProofRegressionsWithCommit, needs: "PE-2"}
-- [ ] Time-to-proof per row (first appearance to first proven reading) {id: PE-9, symbol: TimeToProof, package: internal/console, reachable_from: TestTimeToProof, needs: "PE-2"}
-- [ ] Claim honesty per agent identity (model, harness), never per person (I58) {id: PE-10, symbol: ClaimHonesty, package: internal/console, reachable_from: TestClaimHonestyByAgentIdentity, needs: "PE-2"}
-- [ ] The heatmap (proven weight by plan and week), streaks and "proved today" as counts {id: PE-11, symbol: renderProofHeatmap, package: cmd/fathom, reachable_from: TestConsoleProofHeatmap, needs: "PE-2"}
-- [ ] Goal gauges per scope bet and filters on every view (service, plan, wave, goal, agent identity, date range) {id: PE-12, symbol: goalGauges, package: internal/console, reachable_from: TestGoalGaugesFromBets, needs: "PE-2"}
+- [x] Verify ledger schema 3: an optional `rows` array (`id`, `state`, `criterion`, `weight`) written only when the plan's row digest changed; v1 and v2 rows still parse (§3) {id: PE-1, symbol: appendVerifyLedgerRows, package: cmd/fathom, reachable_from: TestVerifyLedgerSchema3RowsOnDigestChange}
+- [x] Proof history as a projection: per row, its state over time from the ledger, bounded tail reads, cached in a `memo` group {id: PE-2, symbol: ProofHistory, package: internal/console, reachable_from: TestProofHistoryProjection, needs: "PE-1"}
+- [x] `plans status --weighted` rolls up by `weight:` (fleet, project, plan, section) {id: PE-3, symbol: weightedRollup, package: cmd/fathom, reachable_from: TestPlansStatusWeighted, needs: "spec-interop.md#SI-7"}
+- [x] The weighted table view (§4) {id: PE-4, symbol: renderWeightedTable, package: cmd/fathom, reachable_from: TestConsoleWeightedTable, needs: "PE-3"}
+- [x] The derived kanban: Open, Claimed-unproven, Proven, Refused or deferred; read-only, cards link to the failing criterion {id: PE-5, symbol: renderDerivedKanban, package: cmd/fathom, reachable_from: TestConsoleDerivedKanbanReadOnly, needs: "PE-2"}
+- [x] Burn-up with a projected finish: a linear fit over 14 days with its interval, hidden below 7 days of data {id: PE-6, symbol: BurnUp, package: internal/console, reachable_from: TestBurnUpProjectionNeedsSevenDays, needs: "PE-2"}
+- [x] The frontier view from `plans next --eligible-only` {id: PE-7, symbol: renderFrontier, package: cmd/fathom, reachable_from: TestConsoleFrontier}
+- [x] Proof regressions: rows once proven that now read otherwise, with the first changed reading and its commit {id: PE-8, symbol: ProofRegressions, package: internal/console, reachable_from: TestProofRegressionsWithCommit, needs: "PE-2"}
+- [x] Time-to-proof per row (first appearance to first proven reading) {id: PE-9, symbol: TimeToProof, package: internal/console, reachable_from: TestTimeToProof, needs: "PE-2"}
+- [x] Claim honesty per agent identity (model, harness), never per person (I58) {id: PE-10, symbol: ClaimHonesty, package: internal/console, reachable_from: TestClaimHonestyByAgentIdentity, needs: "PE-2"}
+- [x] The heatmap (proven weight by plan and week), streaks and "proved today" as counts {id: PE-11, symbol: renderProofHeatmap, package: cmd/fathom, reachable_from: TestConsoleProofHeatmap, needs: "PE-2"}
+- [x] Goal gauges per scope bet and filters on every view (service, plan, wave, goal, agent identity, date range) {id: PE-12, symbol: goalGauges, package: internal/console, reachable_from: TestGoalGaugesFromBets, needs: "PE-2"}
 
 ## Wave 3: outcome economics
 

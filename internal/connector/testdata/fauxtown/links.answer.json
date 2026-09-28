@@ -1,0 +1,63 @@
+{
+  "schema": 1,
+  "about": "The system-graph answer key for the fauxtown fixture fleet (docs/design/system-graph.md §13, plan SG-14). Written by hand from the fixture sources, before any link extractor ran over them: every true cross-service link with its expected tier (the weaker end, taken at the strongest provider end of that service), and the seeded negatives that must produce no link. File paths are relative to this directory. Consumed by indexbench link-oracle (SG-15), which reports precision and recall per kind and tier.",
+  "links": [
+    {
+      "kind": "route",
+      "key": "route:GET /items/{}",
+      "consumer": {"service": "checkout-service", "file": "checkout-service/checkout.go", "line": 19, "node": "FetchItem"},
+      "provider": {"service": "catalog-service", "node": "getItemHandler"},
+      "tier": "literal"
+    },
+    {
+      "kind": "route",
+      "key": "route:GET /orders/{}",
+      "consumer": {"service": "fulfillment-worker", "file": "fulfillment-worker/worker.go", "line": 15, "node": "fulfil"},
+      "provider": {"service": "orders-api", "node": "getOrder"},
+      "tier": "literal"
+    },
+    {
+      "kind": "route",
+      "key": "route:GET /orders",
+      "consumer": {"service": "storefront-web", "file": "storefront-web/src/api.ts", "line": 9, "node": "listOrders"},
+      "provider": {"service": "orders-api", "node": "listOrders"},
+      "tier": "literal"
+    },
+    {
+      "kind": "route",
+      "key": "route:POST /orders",
+      "consumer": {"service": "storefront-web", "file": "storefront-web/src/api.ts", "line": 13, "node": "createOrder"},
+      "provider": {"service": "orders-api", "node": "createOrder"},
+      "tier": "literal"
+    },
+    {
+      "kind": "route",
+      "key": "route:GET /orders/{}",
+      "consumer": {"service": "storefront-web", "file": "storefront-web/src/api.ts", "line": 17, "node": "getOrder"},
+      "provider": {"service": "orders-api", "node": "getOrder"},
+      "tier": "literal"
+    },
+    {
+      "kind": "rpc",
+      "key": "rpc:fleet.inventory.v1.Inventory/Reserve",
+      "consumer": {"service": "fulfillment-worker", "file": "fulfillment-worker/worker.go", "line": 18, "node": "fulfil"},
+      "provider": {"service": "inventory-grpc", "node": "fleet.inventory.v1.Inventory/Reserve"},
+      "tier": "typed"
+    },
+    {
+      "kind": "rpc",
+      "key": "rpc:fleet.inventory.v1.Inventory/Release",
+      "consumer": {"service": "storefront-web", "file": "storefront-web/src/api.ts", "line": 21, "node": "releaseStock"},
+      "provider": {"service": "inventory-grpc", "node": "fleet.inventory.v1.Inventory/Release"},
+      "tier": "typed"
+    }
+  ],
+  "negatives": [
+    {"kind": "route", "key": "route:POST /orders/{}/archive", "what": "a dead route: specified and registered by orders-api, called by no client"},
+    {"kind": "route", "key": "route:POST /items", "what": "a dead route: catalog-service registers it, no client calls it"},
+    {"kind": "route", "key": "route:DELETE /items/{}/hold", "what": "a client call no service provides (checkout-service HoldItem)"},
+    {"kind": "route", "key": "route:GET /orders-legacy/export", "what": "a client call no service provides (fulfillment-worker)"},
+    {"kind": "route", "key": "route:GET /orders/archive", "what": "a string that looks like a URL, never called (storefront-web help text)"},
+    {"kind": "rpc", "key": "rpc:fleet.inventory.v1.Inventory/Release", "what": "fulfillment-worker never calls Release: its stub offers the method, but no call site exists", "consumer_service": "fulfillment-worker"}
+  ]
+}

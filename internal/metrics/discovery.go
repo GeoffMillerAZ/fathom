@@ -25,7 +25,6 @@ var DiscoveryIndexTools = map[string]bool{
 	"repo_map":       true,
 	"pack_context":   true,
 	"read_source":    true,
-	"entrypoints":    true,
 }
 
 // IsDiscoveryIndexTool reports whether tool is one of fathom's own
@@ -41,7 +40,7 @@ func IsDiscoveryIndexTool(tool string) bool {
 // AggregateTraffic uses this (alongside IsDiscoveryIndexTool) so every call
 // lands in exactly one of discovery/plumbing/other, never double-counted.
 var PlumbingTools = map[string]bool{
-	"capabilities":     true,
+	"status":           true,
 	"ingest":           true,
 	"list_services":    true,
 	"obligations":      true,

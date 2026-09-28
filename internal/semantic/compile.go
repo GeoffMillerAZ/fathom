@@ -801,7 +801,13 @@ func (c *Compiler) verifyDraft(ctx context.Context, serviceID string, d claimDra
 	// matched by ANY glob is collected into scopeFiles (not just "matched at
 	// least one") — finding-kind claims need the full matched-file set below
 	// to anchor remediation-drift fingerprints (FT-6).
-	scope := append([]string(nil), d.Scope...)
+	// GL-2..GL-6 scope injection (rulesscope.go): a rules file that
+	// declares its own scope (Cursor globs, Copilot applyTo, Kiro
+	// fileMatchPattern) replaces the model's proposed scope here, BEFORE
+	// the floor and the match/breadth checks — the declared globs pass the
+	// same I27 verification any claim's scope does, never a bypass.
+	declared, audience := applyDeclaredScope(doc.Path, doc.Content, d.Scope)
+	scope := append([]string(nil), declared...)
 	if len(scope) == 0 {
 		return core.SemanticClaim{}, nil, rejectErr(causeMalformed, "empty scope")
 	}
@@ -891,6 +897,9 @@ func (c *Compiler) verifyDraft(ctx context.Context, serviceID string, d claimDra
 	for _, g := range scope {
 		links = append(links, core.ClaimLink{ClaimID: claim.ClaimID, Rel: core.RelScopes, TargetRef: g})
 	}
+	if audience != "" {
+		links = append(links, core.ClaimLink{ClaimID: claim.ClaimID, Rel: core.RelAudience, TargetRef: audience})
+	}
 	// Remediation-drift substrate (FT-6, docs/vision/03-findings-and-experts.md
 	// §2): for drift-tracked layers only (LC-2: serving.drift_tracked, not a
 	// kind=="finding" Go hardcode — findings sets it true, obligations
@@ -939,7 +948,10 @@ func (c *Compiler) verifyDraft(ctx context.Context, serviceID string, d claimDra
 // the directory they sit in, not the repo. A nested one is a human writing
 // "in THIS subtree, do X"; the compiler must not let an LLM restate it as a
 // repo-wide rule.
-var instructionFileBases = map[string]bool{"CLAUDE.md": true, "AGENTS.md": true}
+//
+// GEMINI.md (GL-6) is read as AGENTS.md is, and BUGBOT.md (GL-5) is scoped
+// to its own directory (design doc §3), so both floor the same way.
+var instructionFileBases = map[string]bool{"CLAUDE.md": true, "AGENTS.md": true, "GEMINI.md": true, "BUGBOT.md": true}
 
 // scopeFloorDir returns the subtree a governing document's claims are floored
 // to, or "" when the document imposes no floor. Only a NESTED instruction
@@ -952,6 +964,13 @@ func scopeFloorDir(docPath string) string {
 		return ""
 	}
 	dir = strings.Trim(dir, "/")
+	// GL-5: Bugbot's own location, <dir>/.cursor/BUGBOT.md, governs <dir>.
+	if base == bugbotFile {
+		if dir == ".cursor" {
+			return ""
+		}
+		dir = strings.TrimSuffix(dir, "/.cursor")
+	}
 	if dir == "" || dir == "." {
 		return ""
 	}

@@ -1,7 +1,9 @@
 // Package mcp — meta-tools, prompts, and resources.
 //
-// Meta tools (capabilities, server_stats, staleness_report, list_sources)
-// are registered in GroupShared.
+// Meta tools (status, staleness_report) are registered in GroupShared.
+// status (SR-23, F-11, design §4) merges the retired capabilities/
+// server_stats/list_sources tools behind one `section` argument,
+// byte-compatible per section (registerStatus below).
 //
 // MCP protocol endpoints:
 //   - prompts/list + prompts/get  (4 canned prompts)
@@ -16,6 +18,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/analysis/docdrift"
+	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/extractor"
 	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/gitro"
@@ -41,43 +45,177 @@ func currentGitHead(ctx context.Context, path string) string {
 
 // registerMeta wires meta-tools, prompts, and resources into s.
 func registerMeta(s *Server, backend QueryInterface) {
-	registerCapabilities(s)
-	registerServerStats(s)
+	registerStatus(s, backend)
 	registerStalenessReport(s, backend)
-	registerListSources(s, backend)
 	registerPromptsHandlers(s)
 	registerResourcesHandlers(s, backend)
 }
 
-// ─── capabilities ─────────────────────────────────────────────────────────────
+// ─── status ───────────────────────────────────────────────────────────────────
 
-func registerCapabilities(s *Server) {
+// statusToolsSection is status(section:"tools")'s answer — byte-compatible
+// with the retired `capabilities` tool (SR-23, F-11, design §4).
+func statusToolsSection(ctx context.Context, s *Server) map[string]any {
+	descs := s.visibleToolsCtx(ctx)
+	names := make([]any, len(descs))
+	for i, d := range descs {
+		names[i] = d.Name
+	}
+	return map[string]any{
+		"tools":              names,
+		"active_surface":     s.effectiveSurface(ctx),
+		"active_profile":     s.activeProfile(),
+		"tool_count":         len(descs),
+		"extraction_engines": extractor.EngineProvenance(),
+		"schema_bytes":       s.toolsListBytes(ctx),
+	}
+}
+
+// statusDaemonSection is status(section:"daemon")'s answer — byte-compatible
+// with the retired `server_stats` tool (SR-23, F-11, design §4).
+func statusDaemonSection(ctx context.Context, s *Server, args json.RawMessage) map[string]any {
+	uptime := time.Since(s.startTime)
+	result := map[string]any{
+		"uptime_seconds": uptime.Seconds(),
+		"request_count":  s.totalRequests(),
+		"started_at":     s.startTime.UTC().Format(time.RFC3339),
+	}
+	if sb, ok := s.backend.(statsBackend); ok {
+		unclassified, oversize := sb.IngestStats()
+		result["unclassified_files"] = unclassified
+		result["oversize_files"] = oversize
+	}
+	if cz, ok := s.backend.(classifiedZeroBackend); ok {
+		if m := cz.ClassifiedZeroStats(); len(m) > 0 {
+			result["classified_zero_files"] = m
+		}
+	}
+	// Emitted whenever a call logger is wired — an EMPTY block is the
+	// truthful "instrument live, zero traffic" state a freshly
+	// restarted daemon is in; omission means the instrument itself is
+	// absent (nil receiver returns nil). Doctrine 7: an existence
+	// check must be able to tell those apart.
+	if traffic := s.callLogger.SurfaceTraffic(); traffic != nil {
+		result["surface_traffic"] = traffic
+	}
+
+	var p struct {
+		Service string `json:"service"`
+	}
+	_ = json.Unmarshal(args, &p) // best-effort: absent/invalid args just skip the service block
+
+	// Typed Go call-edge counters (ADR-021 §3): a Go service whose typed
+	// pass never ran (predates ADR-021 §3, or hasn't been re-ingested
+	// since) reports all-zero counts here — the visible signal ExtractorEpoch
+	// intentionally does NOT force (typed edges are new observations, not
+	// a Calls-semantics change, see docs/plans/callgraph-types.md).
+	// Note dispatch counts skew high in Go services with many error
+	// types: universe/stdlib interface dispatch (error.Error) fans out
+	// to every first-party implementer (see internal/fusion/typedcalls.go).
+	if p.Service != "" && s.backend != nil {
+		edges, err := s.backend.TypedEdges(ctx, p.Service)
+		if err == nil {
+			counts := map[string]int{"direct": 0, "iface_dispatch": 0, "unresolved": 0}
+			for _, e := range edges {
+				switch e.Kind {
+				case "direct":
+					counts["direct"]++
+				case "iface-dispatch":
+					counts["iface_dispatch"]++
+				case "unresolved":
+					counts["unresolved"]++
+				}
+			}
+			result["typed_edges"] = map[string]any{
+				"service":        p.Service,
+				"total":          len(edges),
+				"direct":         counts["direct"],
+				"iface_dispatch": counts["iface_dispatch"],
+				"unresolved":     counts["unresolved"],
+			}
+		}
+	}
+
+	return result
+}
+
+// statusSourcesSection is status(section:"sources")'s answer — byte-
+// compatible with the retired `list_sources` tool (SR-23, F-11,
+// design §4). A required service, unlike the other two sections: it lists
+// THAT service's own files, the one section carrying a fleet-service pivot
+// risk (hostedModulesTools refuses it under hosted-modules mode).
+func statusSourcesSection(ctx context.Context, backend QueryInterface, service string) (map[string]any, *rpcError) {
+	if backend == nil {
+		return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
+	}
+	if service == "" {
+		return nil, &rpcError{Code: ErrCodeParams, Message: `status: section "sources" requires service`}
+	}
+	nodes, err := serviceSymbols(ctx, backend, service)
+	if err != nil {
+		return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
+	}
+	seen := make(map[string]struct{}, len(nodes))
+	for _, n := range nodes {
+		if n.FilePath != "" {
+			seen[n.FilePath] = struct{}{}
+		}
+	}
+	sources := make([]string, 0, len(seen))
+	for f := range seen {
+		sources = append(sources, f)
+	}
+	sort.Strings(sources)
+	return map[string]any{"sources": stringsToAny(sources)}, nil
+}
+
+// registerStatus is the SR-23 merge (F-11, design §4): one tool answering
+// what the retired capabilities/server_stats/list_sources tools each
+// answered, byte-compatible per section — `list_services` (37,155 calls,
+// hooks and the verify CLI) stays a separate tool, unaffected.
+func registerStatus(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
-		Name:        "capabilities",
-		Description: "Lists tools on this surface, the active surface/profile, and schema_bytes. Reach for it when you need to know what's callable, or the cost. Required: none.",
+		Name:        "status",
+		Description: "One status endpoint for the retired capabilities/server_stats/list_sources tools: tools (this surface's callable set, active surface/profile, schema_bytes), daemon (uptime, request count, ingest/typed-edge counters), or sources (a service's ingested file list). Required: section.",
 		InputSchema: map[string]any{
-			"type":       "object",
-			"properties": map[string]any{},
+			"type": "object",
+			"properties": map[string]any{
+				"section": map[string]any{"type": "string", "enum": []string{"tools", "daemon", "sources"}, "description": `Which retired tool's answer to return: "tools" (capabilities), "daemon" (server_stats), "sources" (list_sources, requires service)`},
+				"service": map[string]any{"type": "string", "description": "Service / repo identifier — required for section \"sources\"; optional for \"daemon\" (adds typed_edges)"},
+			},
+			"required": []string{"section"},
 		},
 		group: GroupShared,
-	}, func(ctx context.Context, _ json.RawMessage) (any, *rpcError) {
-		descs := s.visibleToolsCtx(ctx)
-		names := make([]any, len(descs))
-		for i, d := range descs {
-			names[i] = d.Name
+	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
+		var p struct {
+			Section string `json:"section"`
+			Service string `json:"service"`
 		}
-		return map[string]any{
-			"tools":              names,
-			"active_surface":     s.effectiveSurface(ctx),
-			"active_profile":     s.activeProfile(),
-			"tool_count":         len(descs),
-			"extraction_engines": extractor.EngineProvenance(),
-			"schema_bytes":       s.toolsListBytes(ctx),
-		}, nil
+		if err := json.Unmarshal(args, &p); err != nil {
+			return nil, &rpcError{Code: ErrCodeParams, Message: "status: invalid args"}
+		}
+		switch p.Section {
+		case "tools":
+			return statusToolsSection(ctx, s), nil
+		case "daemon":
+			return statusDaemonSection(ctx, s, args), nil
+		case "sources":
+			// SR-23: list_sources' fleet-service pivot risk survives the
+			// merge — a hosted-modules-scoped call refuses it outright even
+			// though "status" itself is on that surface's allowlist, mirroring
+			// list_sources' historical exclusion (surface.go's
+			// hostedModulesTools doc).
+			if s.hostedModules && scopeFrom(ctx).surface == SurfaceModules {
+				return nil, &rpcError{Code: ErrCodeParams, Message: `status: section "sources" is not available under hosted-modules mode`}
+			}
+			return statusSourcesSection(ctx, backend, p.Service)
+		default:
+			return nil, &rpcError{Code: ErrCodeParams, Message: `status: section must be "tools", "daemon", or "sources"`}
+		}
 	})
 }
 
-// ─── server_stats ─────────────────────────────────────────────────────────────
+// ─── server_stats (retired, SR-23 — see registerStatus/statusDaemonSection) ───
 
 // statsBackend is the optional backend capability for the ADR-021 §2 / TI-6
 // process-lifetime unclassified/oversize counters (fusion.Pipeline.Stats,
@@ -135,82 +273,51 @@ type autoRefreshStatsBackend interface {
 	AutoRefreshTotal() int64
 }
 
-func registerServerStats(s *Server) {
-	s.registerTool(toolDescriptor{
-		Name:        "server_stats",
-		Description: "Return server uptime and total request count. When the backend supports it, also reports ingest-event counters accumulated since this server process started (unclassified/oversize/classified-but-zero files). When a call logger is wired in, also reports surface_traffic: per-surface {calls, last_ts} since this process started (A1-1) — answers \"is anything flowing on /rpc/agent?\" from the daemon itself. Pass an optional service to also get its typed Go call-edge counts (ADR-021 §3) — direct/interface-dispatch/unresolved — the honest signal for whether a store's typed pass has run at all.",
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"service": map[string]any{"type": "string", "description": "Optional service / repo identifier — adds typed_edges counts for it"},
-			},
-		},
-		group: GroupShared,
-	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
-		uptime := time.Since(s.startTime)
-		result := map[string]any{
-			"uptime_seconds": uptime.Seconds(),
-			"request_count":  s.totalRequests(),
-			"started_at":     s.startTime.UTC().Format(time.RFC3339),
+// stalenessDocDrift computes staleness_report's additive doc_drift section
+// (SR-28, F-56, design §4): the retired stale_docs tool's own scan — a
+// Markdown inline code span or link target naming a symbol or file the
+// index no longer knows — folded into the one staleness answer instead of
+// a second tool call. nodes is the caller's already-fetched symbol list
+// (serviceSymbols), reused rather than queried twice.
+//
+// Errors and an empty corpus are both silent (nil): a scan the tree budget
+// cut short, or a backend with no source access at all, must never turn
+// "is my index stale" into a failure — the caller's own source_count/
+// sources fields already disclose a partial scan when one happened.
+func stalenessDocDrift(ctx context.Context, backend QueryInterface, service string, nodes []core.SymbolNode) []any {
+	files, _, rpcErr := fetchSources(ctx, backend, service)
+	if rpcErr != nil {
+		return nil
+	}
+	knownSymbols := make(map[string]bool, len(nodes))
+	for _, n := range nodes {
+		knownSymbols[n.Name] = true
+	}
+	knownFiles := make(map[string]bool, len(files))
+	for _, f := range files {
+		knownFiles[f.Path] = true
+	}
+	var allDrifts []docdrift.Drift
+	for _, f := range files {
+		if f.Lang != "md" {
+			continue
 		}
-		if sb, ok := s.backend.(statsBackend); ok {
-			unclassified, oversize := sb.IngestStats()
-			result["unclassified_files"] = unclassified
-			result["oversize_files"] = oversize
+		allDrifts = append(allDrifts, docdrift.Analyze(f.Path, string(f.Content), knownSymbols, knownFiles)...)
+	}
+	sort.Slice(allDrifts, func(i, j int) bool {
+		if allDrifts[i].File != allDrifts[j].File {
+			return allDrifts[i].File < allDrifts[j].File
 		}
-		if cz, ok := s.backend.(classifiedZeroBackend); ok {
-			if m := cz.ClassifiedZeroStats(); len(m) > 0 {
-				result["classified_zero_files"] = m
-			}
+		if allDrifts[i].Line != allDrifts[j].Line {
+			return allDrifts[i].Line < allDrifts[j].Line
 		}
-		// Emitted whenever a call logger is wired — an EMPTY block is the
-		// truthful "instrument live, zero traffic" state a freshly
-		// restarted daemon is in; omission means the instrument itself is
-		// absent (nil receiver returns nil). Doctrine 7: an existence
-		// check must be able to tell those apart.
-		if traffic := s.callLogger.SurfaceTraffic(); traffic != nil {
-			result["surface_traffic"] = traffic
-		}
-
-		var p struct {
-			Service string `json:"service"`
-		}
-		_ = json.Unmarshal(args, &p) // best-effort: absent/invalid args just skip the service block
-
-		// Typed Go call-edge counters (ADR-021 §3): a Go service whose typed
-		// pass never ran (predates ADR-021 §3, or hasn't been re-ingested
-		// since) reports all-zero counts here — the visible signal ExtractorEpoch
-		// intentionally does NOT force (typed edges are new observations, not
-		// a Calls-semantics change, see docs/plans/callgraph-types.md).
-		// Note dispatch counts skew high in Go services with many error
-		// types: universe/stdlib interface dispatch (error.Error) fans out
-		// to every first-party implementer (see internal/fusion/typedcalls.go).
-		if p.Service != "" && s.backend != nil {
-			edges, err := s.backend.TypedEdges(ctx, p.Service)
-			if err == nil {
-				counts := map[string]int{"direct": 0, "iface_dispatch": 0, "unresolved": 0}
-				for _, e := range edges {
-					switch e.Kind {
-					case "direct":
-						counts["direct"]++
-					case "iface-dispatch":
-						counts["iface_dispatch"]++
-					case "unresolved":
-						counts["unresolved"]++
-					}
-				}
-				result["typed_edges"] = map[string]any{
-					"service":        p.Service,
-					"total":          len(edges),
-					"direct":         counts["direct"],
-					"iface_dispatch": counts["iface_dispatch"],
-					"unresolved":     counts["unresolved"],
-				}
-			}
-		}
-
-		return result, nil
+		return allDrifts[i].Ref < allDrifts[j].Ref
 	})
+	result := make([]any, len(allDrifts))
+	for i, d := range allDrifts {
+		result[i] = map[string]any{"file": d.File, "line": d.Line, "ref": d.Ref}
+	}
+	return result
 }
 
 // ─── staleness_report ─────────────────────────────────────────────────────────
@@ -289,6 +396,8 @@ func registerStalenessReport(s *Server, backend QueryInterface) {
 		if line := elisionLine(elidedCount, "read_source or outline on the file you doubt (source_count is the full total)"); line != "" {
 			resp["elision"] = line
 		}
+		// SR-28 (F-56, design §4): stale_docs' own scan, folded in.
+		resp["doc_drift"] = stalenessDocDrift(ctx, backend, p.Service, nodes)
 		// RT-99 (§7.1): a re-ingest the refresh queue holds is named, so
 		// reingest_recommended is read beside "it is already on its way".
 		if q := s.RefreshQueue(); q != nil {
@@ -352,52 +461,6 @@ func registerStalenessReport(s *Server, backend QueryInterface) {
 			}
 		}
 		return resp, nil
-	})
-}
-
-// ─── list_sources ─────────────────────────────────────────────────────────────
-
-func registerListSources(s *Server, backend QueryInterface) {
-	s.registerTool(toolDescriptor{
-		Name:        "list_sources",
-		Description: "List distinct source file references ingested for a service.",
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"service": map[string]any{"type": "string", "description": "Service / repo identifier"},
-			},
-			"required": []string{"service"},
-		},
-		group: GroupShared,
-	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
-		if backend == nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
-		}
-		var p struct {
-			Service string `json:"service"`
-		}
-		if err := json.Unmarshal(args, &p); err != nil {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "list_sources: invalid args"}
-		}
-		if p.Service == "" {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "list_sources: service required"}
-		}
-		nodes, err := serviceSymbols(ctx, backend, p.Service)
-		if err != nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
-		}
-		seen := make(map[string]struct{}, len(nodes))
-		for _, n := range nodes {
-			if n.FilePath != "" {
-				seen[n.FilePath] = struct{}{}
-			}
-		}
-		sources := make([]string, 0, len(seen))
-		for f := range seen {
-			sources = append(sources, f)
-		}
-		sort.Strings(sources)
-		return map[string]any{"sources": stringsToAny(sources)}, nil
 	})
 }
 

@@ -28,9 +28,6 @@ import (
 // fails when the two drift, so the copy cannot go quietly stale.
 var agentSurfaceTools = []string{
 	"blast_radius",
-	"capabilities",
-	"discoveries",
-	"entrypoints",
 	"find_callers",
 	"find_symbol",
 	"ingest",
@@ -43,10 +40,8 @@ var agentSurfaceTools = []string{
 	"query_symbols",
 	"read_source",
 	"references",
-	"rename_impact",
 	"repo_map",
 	"review_diff",
-	"safe_delete_check",
 	"search",
 	"staleness_report",
 	"symbol_context",
@@ -88,18 +83,17 @@ type handlerRule struct {
 // and compilation layers those handlers read through.
 var handlerTable = []handlerRule{
 	{Path: "internal/mcp/tools.go", Tools: []string{"find_symbol", "find_callers", "query_symbols"}, Why: "the three symbol tools are registered here"},
-	{Path: "internal/mcp/nav_tools.go", Tools: []string{"entrypoints", "outline", "symbol_context"}},
+	{Path: "internal/mcp/nav_tools.go", Tools: []string{"outline", "symbol_context"}},
 	{Path: "internal/mcp/references_tool.go", Tools: []string{"references"}},
-	{Path: "internal/mcp/discoveries_tool.go", Tools: []string{"discoveries"}},
-	{Path: "internal/mcp/analysis_tools.go", Tools: []string{"rename_impact", "test_impact"}, Why: "the impact verbs promoted by VB-1"},
-	{Path: "internal/mcp/extra_tools.go", Tools: []string{"blast_radius"}, Why: "promoted by VB-1"},
+	{Path: "internal/mcp/analysis_tools.go", Tools: []string{"blast_radius", "test_impact"}, Why: "the impact verbs promoted by VB-1; renameImpactAnswer (SR-24) feeds blast_radius's kind:\"rename\""},
+	{Path: "internal/mcp/extra_tools.go", Tools: []string{"blast_radius"}, Why: "promoted by VB-1; blastRadiusByKind (SR-24) also answers kind:\"rename\"/\"delete\""},
 	{Path: "internal/mcp/review_tool.go", Tools: []string{"review_diff"}, Why: "promoted by VB-1"},
-	{Path: "internal/mcp/safe_delete.go", Tools: []string{"safe_delete_check"}, Why: "VB-2"},
+	{Path: "internal/mcp/safe_delete.go", Tools: []string{"blast_radius"}, Why: "safeDeleteCheckAnswer (SR-24) feeds blast_radius's kind:\"delete\""},
 	{Path: "internal/mcp/localize_tool.go", Tools: []string{"localize"}, Why: "promoted by VB-26 (wave G)"},
 	{Path: "internal/mcp/readsource.go", Tools: []string{"read_source"}},
 	{Path: "internal/mcp/semantic_tools.go", Tools: []string{"obligations"}},
 	{Path: "internal/mcp/verify_plan_tool.go", Tools: []string{"verify_plan"}},
-	{Path: "internal/mcp/meta.go", Tools: []string{"capabilities", "staleness_report"}},
+	{Path: "internal/mcp/meta.go", Tools: []string{"status", "staleness_report"}, Why: "status (SR-23) merges the retired capabilities/server_stats/list_sources tools"},
 	{Path: "internal/mcp/platform_tools.go", Tools: []string{"list_services"}},
 	{Path: "internal/mcp/memory_tools.go", Tools: []string{"memory_search"}},
 	{Path: "internal/mcp/extra_tools.go", Tools: []string{"ingest", "pack_context", "repo_map"}},
@@ -108,8 +102,8 @@ var handlerTable = []handlerRule{
 	// surface allowlist, schemas): it can move every tool on the surface.
 	{Path: "internal/mcp/", Tools: agentSurfaceTools, Why: "shared MCP plumbing: dispatch, surfaces, schemas"},
 	{Path: "internal/semantic/", Tools: []string{"obligations", "staleness_report", "verify_plan"}, Why: "the layer compiler and claim server feed the governance tools"},
-	{Path: "internal/query/", Tools: []string{"find_symbol", "find_callers", "references", "symbol_context", "outline", "entrypoints", "query_symbols", "repo_map", "pack_context"}, Why: "the query engine every navigation tool reads through"},
-	{Path: "internal/fusion/", Tools: []string{"find_symbol", "find_callers", "references", "symbol_context", "outline", "entrypoints", "query_symbols", "repo_map", "pack_context", "ingest"}, Why: "extraction and fusion decide what the index contains at all"},
+	{Path: "internal/query/", Tools: []string{"find_symbol", "find_callers", "references", "symbol_context", "outline", "query_symbols", "repo_map", "pack_context"}, Why: "the query engine every navigation tool reads through"},
+	{Path: "internal/fusion/", Tools: []string{"find_symbol", "find_callers", "references", "symbol_context", "outline", "query_symbols", "repo_map", "pack_context", "ingest"}, Why: "extraction and fusion decide what the index contains at all"},
 }
 
 // ToolsForFiles maps changed repo-relative paths to the agent-surface

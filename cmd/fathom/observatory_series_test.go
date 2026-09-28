@@ -33,7 +33,7 @@ func seriesFixture() []adoptionCallEntry {
 		seriesRow("2026-08-23T09:05:00Z", "verify_plan", "alpha"),
 		seriesRow("2026-08-23T09:06:00Z", "list_services", "beta"),
 		seriesRow("2026-08-25T08:00:00Z", "list_services", "alpha"),
-		seriesRow("2026-08-25T08:01:00Z", "server_stats", ""),
+		seriesRow("2026-08-25T08:01:00Z", "status", ""),
 	}
 }
 

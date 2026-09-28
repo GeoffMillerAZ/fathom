@@ -1,13 +1,14 @@
 package harness
 
-// descriptors_data.go — the data-only descriptors (HP-20, ADR-029 §5):
-// Cursor and GitHub Copilot document hook contracts, but no local install
-// exists here and no adopter runs them (P20), so no codec is written. The
-// descriptor carries the documented field maps as DATA — a codec is a
-// fixture away when an adopter appears (HP-21, deferred) — and every hook
-// vehicle stays absent: the generated table says "hooks: not wired",
-// `init --harness=cursor|copilot` writes the stanza and skills and prints
-// the MCP line, and the pull tier carries the same content.
+// descriptors_data.go — the Cursor and GitHub Copilot descriptors (HP-20,
+// ADR-029 §5). Both document hook contracts; no local install exists here.
+// Until GL-7/GL-8 (docs/plans/governance-learning.md) they were data rows
+// with no codec. Now each carries a codec (codec_cursor.go,
+// codec_copilot.go) for its FLAT hook file, which `fathom harness hooks
+// --harness cursor|copilot` prints for the user to merge — init still
+// writes no hook file for either, and both stay `unverified` until a live
+// session's beats verify them (design doc §4; the demotion clock runs from
+// CodecLanded).
 //
 // Contracts (verbatim notes gathered 2026-09-02):
 //   Cursor   https://cursor.com/docs/hooks.md (no version stamp; example
@@ -91,21 +92,21 @@ var cursor = Descriptor{
 	},
 	Vehicles: pullTierVehicles(),
 	Notes: map[Capability]string{
-		CapPrime:               "run `fathom prime` at session start; sessionStart's additional_context is documented but no codec drives it (hooks: not wired)",
-		CapObligationsPostEdit: "call the `obligations` MCP tool before editing; no afterFileEdit/postToolUse hook is wired by this build",
+		CapPrime:               "run `fathom prime` at session start, or merge `fathom harness hooks --harness cursor` into .cursor/hooks.json (sessionStart additional_context through the codec; unverified until a live session)",
+		CapObligationsPostEdit: "call the `obligations` MCP tool before editing; the printed afterFileEdit entry injects additional_context, which Cursor may not honor there (UNSHOWN)",
 		CapGuardPreEdit:        "preToolUse has no context channel (permission only) — absent by §5.3, not merely unwired",
 		CapGuardPreShell:       "beforeShellExecution has no context channel — absent by §5.3",
 		CapDiscoveryObserve:    "beforeReadFile is a permission hook, not an observer; not encoded",
 		CapStopVerify:          "the pre-push verify gate is the backstop; stop's followup_message would auto-continue, which fathom never asks for",
 		CapDepositSessionEnd:   "`fathom thread note` before ending a session",
-		CapDepositPreCompact:   "documented preCompact contract, not wired",
+		CapDepositPreCompact:   "the printed PreCompact entry deposits a thread pointer; injects nothing",
 		CapSkills:              "`.agents/skills/<name>/SKILL.md` (`fathom init --skills=agents`); .cursor/skills, .claude/skills and .codex/skills are also read",
 		CapStanza:              "AGENTS.md natively (root + nested)",
 		CapClaimGate:           "not built (vision 26 §4)",
 		CapSessionLedger:       "unmeasured by design (law 12): no instrument reads a Cursor transcript",
 	},
 	FailMode:    "fail-open by default: crash, timeout or invalid JSON allows the action through; failClosed: true per hook blocks instead; exit 2 = permission deny; other exit codes = hook failed, action proceeds",
-	GatePosture: "fail-open unless failClosed; hooks not wired by this build (data row, no codec) — the git-native verify gate is the only enforcement",
+	GatePosture: "fail-open unless failClosed; hooks are printed by `fathom harness hooks`, never written by init — the git-native verify gate is the only enforcement",
 	ScopeMerge:  "Enterprise → Team → Project → User; all matching hooks from every source run and higher-priority sources win when responses conflict",
 	Skills: SkillsShape{
 		RepoDirs: []string{".agents/skills/{{name}}/SKILL.md", ".cursor/skills/{{name}}/SKILL.md", ".claude/skills/{{name}}/SKILL.md"},
@@ -127,6 +128,10 @@ var cursor = Descriptor{
 		ProjectDir: "CURSOR_PROJECT_DIR",
 		Note:       "CLAUDE_PROJECT_DIR is an alias; CURSOR_TRANSCRIPT_PATH, CURSOR_VERSION also exported to hooks; no session-id variable is documented",
 	},
+	// GL-7: the flat snake_case codec (codec_cursor.go); a live session's
+	// beats verify it, never the codec existing (design doc §4).
+	Codec:           "cursor",
+	CodecLanded:     "2026-09-28",
 	VerifiedAgainst: "unverified",
 }
 
@@ -206,21 +211,21 @@ var copilot = Descriptor{
 	},
 	Vehicles: pullTierVehicles(),
 	Notes: map[Capability]string{
-		CapPrime:               "run `fathom prime` at session start; sessionStart's additionalContext is documented but no codec drives it (hooks: not wired)",
-		CapObligationsPostEdit: "call the `obligations` MCP tool before editing; no postToolUse hook is wired by this build",
+		CapPrime:               "run `fathom prime` at session start, or merge `fathom harness hooks --harness copilot` into .github/hooks/fathom.json (SessionStart additionalContext through the codec; unverified until a live session)",
+		CapObligationsPostEdit: "call the `obligations` MCP tool before editing; the printed PostToolUse entry appends additionalContext (unverified until a live session)",
 		CapGuardPreEdit:        "preToolUse is fail-closed on hook error (a crashed guard would deny the edit) — absent by construction, never emulated",
 		CapGuardPreShell:       "same fail-closed preToolUse path — absent by construction",
 		CapDiscoveryObserve:    "view/grep/glob are hookable but no observer is wired",
 		CapStopVerify:          "the pre-push verify gate is the backstop",
 		CapDepositSessionEnd:   "`fathom thread note` before ending a session",
-		CapDepositPreCompact:   "documented preCompact contract, not wired",
+		CapDepositPreCompact:   "the printed PreCompact entry deposits a thread pointer; injects nothing",
 		CapSkills:              "`.agents/skills/<name>/SKILL.md` (`fathom init --skills=agents`); .github/skills and .claude/skills are also read",
 		CapStanza:              "AGENTS.md natively (also CLAUDE.md, GEMINI.md); VS Code needs chat.useAgentsMdFile",
 		CapClaimGate:           "not built (vision 26 §4)",
 		CapSessionLedger:       "unmeasured by design (law 12): no instrument reads a Copilot transcript",
 	},
 	FailMode:    "fail-open for every event except preToolUse command hooks, which are fail-closed on exit 2, crash or non-zero exit (timeouts are always fail-open); exit 2 is a warning elsewhere; 10 MiB output cap; disableAllHooks skips a file",
-	GatePosture: "fail-open except preToolUse (fail-closed on hook error); hooks not wired by this build (data row, no codec) — the git-native verify gate is the only enforcement",
+	GatePosture: "fail-open except preToolUse (fail-closed on hook error); hooks are printed by `fathom harness hooks`, never written by init — the git-native verify gate is the only enforcement",
 	ScopeMerge:  "policy → user → project → plugins, all combined; workspace hooks take precedence over user hooks in VS Code",
 	Skills: SkillsShape{
 		RepoDirs: []string{".github/skills/{{name}}/SKILL.md", ".agents/skills/{{name}}/SKILL.md", ".claude/skills/{{name}}/SKILL.md"},
@@ -242,12 +247,17 @@ var copilot = Descriptor{
 		Home: "COPILOT_HOME",
 		Note: "no project-dir or session-id variable is documented; hooks read cwd and session_id from stdin",
 	},
+	// GL-8: the flat-output codec (codec_copilot.go); unverified until a
+	// live session's beats say otherwise.
+	Codec:           "copilot",
+	CodecLanded:     "2026-09-28",
 	VerifiedAgainst: "unverified",
 }
 
 // DataOnlyDescriptors returns, in registry order, every descriptor that
 // documents a hook contract as data but carries no codec — the rows the
-// generated table labels "hooks: not wired". Today: cursor and copilot.
+// generated table labels "hooks: not wired". Today: none (GL-7/GL-8 gave
+// cursor and copilot their codecs).
 // The generic pull tier (no hooks at all) is not a data row; it is the
 // floor every descriptor degrades to.
 func DataOnlyDescriptors() []Descriptor {

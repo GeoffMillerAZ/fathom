@@ -224,24 +224,16 @@ var textElisionTools = map[string]bool{
 // NEW tool — absent from every list — fails TestEveryTruncatingToolDiscloses
 // loudly instead of silently passing as exempt.
 var nonTruncatingTools = map[string]bool{
-	// discoveries cuts its rendered pointer list at a byte budget with its
-	// own inline "…N more: fathom discoveries --budget" notice (RC-26/
-	// RC-27, docs/vision/28-receipts.md §4) — the same "own inline
-	// notice" shape as read_source below, not elisionFor's
-	// {count, of, ordering, how_to_get_more} object.
-	"discoveries":   true,
 	"rename_impact": true, "reachable": true, "safe_delete_check": true,
 	"test_impact": true, "dead_code": true,
-	"entrypoints": true,
-	"complexity":  true, "god_object": true, "community": true,
+	"complexity": true, "god_object": true, "community": true,
 	"secret_scan": true, "shell_out": true, "http_client_calls": true,
-	"cloc": true, "read_source": true, "capabilities": true,
-	"server_stats": true, "list_sources": true,
+	"cloc": true, "read_source": true, "status": true,
 	"blast_radius": true, "spec_coverage": true,
 	"traceability": true, "evidence_summary": true, "contradiction_scan": true,
 	"verify_plan": true, "review_diff": true, "findings_near": true,
-	"arch_conformance": true, "stale_docs": true,
-	"dep_drift": true, "ingest": true, "remove_service": true,
+	"arch_conformance": true,
+	"dep_drift":        true, "ingest": true, "remove_service": true,
 	"rename_service": true, "cross_repo_blast_radius": true, "batch": true,
 	"proto_conformance": true, "spec_refs": true,
 	"traverse": true, "history": true, "obligations": true,
@@ -518,8 +510,10 @@ func TestBudgetDefaultsFromRegistry(t *testing.T) {
 	if got := budgetDefaults("references", budgetSettings{}); got != 1500*charsPerToken {
 		t.Errorf("references built-in default = %d, want %d", got, 1500*charsPerToken)
 	}
-	if got, ok := budgetDefaultTokens("repo_map", budgetSettings{}); !ok || got != 2500 {
-		t.Errorf("repo_map built-in default = %d/%v, want 2500/true", got, ok)
+	// SR-41 (design §5): cut from the original 2,500 measured default —
+	// repo_map is orientation-only now, not the comprehensive answer.
+	if got, ok := budgetDefaultTokens("repo_map", budgetSettings{}); !ok || got != 1200 {
+		t.Errorf("repo_map built-in default = %d/%v, want 1200/true", got, ok)
 	}
 	if got, ok := budgetDefaultTokens("pack_context", budgetSettings{}); !ok || got != 4000 {
 		t.Errorf("pack_context built-in default = %d/%v, want 4000/true", got, ok)

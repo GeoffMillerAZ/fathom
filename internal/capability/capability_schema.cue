@@ -34,5 +34,5 @@
 #Budgets: {
 	list?:      int & >0 // query_symbols, references (built-in 1500)
 	composite?: int & >0 // pack_context (built-in 4000)
-	map?:       int & >0 // repo_map (built-in 2500)
+	map?:       int & >0 // repo_map (built-in 1200)
 }

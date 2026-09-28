@@ -1,5 +1,6 @@
-// A1-1 (docs/plans/activation.md): server_stats' surface_traffic block —
-// per-surface {calls, last_ts} — answers "is anything flowing on
+// A1-1 (docs/plans/activation.md): status(section:"daemon")'s
+// surface_traffic block (the retired server_stats tool's field, unchanged —
+// SR-23) — per-surface {calls, last_ts} — answers "is anything flowing on
 // /rpc/agent?" from the daemon itself, without tailing the JSONL call log.
 // Follows the IngestStats/ClassifiedZeroStats capability-block convention
 // (statsbackend_test.go): present + non-empty only when a call logger is
@@ -37,7 +38,7 @@ func TestServerStats_SurfaceTraffic_ReportsPerSurfaceCounts(t *testing.T) {
 
 	resp := scopedRoundtrip(t, srv, agentCtx, request{
 		JSONRPC: "2.0", ID: 4, Method: "tools/call",
-		Params: map[string]any{"name": "server_stats", "arguments": map[string]any{}},
+		Params: map[string]any{"name": "status", "arguments": map[string]any{"section": "daemon"}},
 	})
 	p := extToolPayload(t, resp)
 	traffic, ok := p["surface_traffic"].(map[string]any)
@@ -75,7 +76,7 @@ func TestServerStats_SurfaceTraffic_OmittedWithoutCallLogger(t *testing.T) {
 	srv := mcp.NewServer(&fakeBackend{})
 	resp := roundtrip(t, srv, request{
 		JSONRPC: "2.0", ID: 1, Method: "tools/call",
-		Params: map[string]any{"name": "server_stats", "arguments": map[string]any{}},
+		Params: map[string]any{"name": "status", "arguments": map[string]any{"section": "daemon"}},
 	})
 	p := extToolPayload(t, resp)
 	if _, ok := p["surface_traffic"]; ok {
@@ -95,7 +96,7 @@ func TestServerStats_SurfaceTraffic_ZeroCallsEmitsEmptyBlock(t *testing.T) {
 	srv := mcp.NewServerWithLogger(&fakeBackend{}, mcp.NewCallLogger(&buf))
 	resp := roundtrip(t, srv, request{
 		JSONRPC: "2.0", ID: 1, Method: "tools/call",
-		Params: map[string]any{"name": "server_stats", "arguments": map[string]any{}},
+		Params: map[string]any{"name": "status", "arguments": map[string]any{"section": "daemon"}},
 	})
 	p := extToolPayload(t, resp)
 	traffic, ok := p["surface_traffic"].(map[string]any)
@@ -122,7 +123,7 @@ func TestServerStats_SurfaceTraffic_StdioSurfaceCounted(t *testing.T) {
 	})
 	resp := roundtrip(t, srv, request{
 		JSONRPC: "2.0", ID: 2, Method: "tools/call",
-		Params: map[string]any{"name": "server_stats", "arguments": map[string]any{}},
+		Params: map[string]any{"name": "status", "arguments": map[string]any{"section": "daemon"}},
 	})
 	p := extToolPayload(t, resp)
 	traffic, ok := p["surface_traffic"].(map[string]any)

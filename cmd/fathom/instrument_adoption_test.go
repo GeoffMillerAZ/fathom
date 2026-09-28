@@ -306,7 +306,7 @@ func TestRegisteredToolNames_NilBackendMatchesKnownTools(t *testing.T) {
 	if err != nil {
 		t.Fatalf("registeredToolNames(\"\"): %v", err)
 	}
-	want := map[string]bool{"find_symbol": true, "capabilities": true, "verify_plan": true, "read_source": true}
+	want := map[string]bool{"find_symbol": true, "status": true, "verify_plan": true, "read_source": true}
 	seen := map[string]bool{}
 	for _, n := range names {
 		seen[n] = true
@@ -554,9 +554,9 @@ func TestCmdInstrumentAdoption_ZeroCallToolsListsUncalledRegisteredTool(t *testi
 	if code != 0 {
 		t.Fatalf("exit = %d, stderr: %s", code, stderr.String())
 	}
-	// "capabilities" is always registered and was not in the fixture log.
-	if !strings.Contains(stdout.String(), "capabilities") {
-		t.Errorf("output should list capabilities among zero-call tools:\n%s", stdout.String())
+	// "status" is always registered and was not in the fixture log.
+	if !strings.Contains(stdout.String(), "status") {
+		t.Errorf("output should list status among zero-call tools:\n%s", stdout.String())
 	}
 }
 

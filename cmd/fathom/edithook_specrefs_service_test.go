@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 )
@@ -15,10 +16,15 @@ import (
 // TestEditHookSpecRefsUseStanzaNamedService is the feature-audit regression
 // (170 of 306 live spec_refs calls failed with `client.Sources discover
 // "sextant"`): a checkout whose directory basename is NOT its service id
-// (…/sextant, registered as "fathom") must not send spec_refs the basename
-// when the daemon's identity lookup gives no answer. The repo's own stanza
-// names the service — the same fallback reconcile's stanzaServiceID uses —
-// so the hook must ask for that service, never the directory's name.
+// (…/sextant, registered as "fathom") must not send its obligations call —
+// which SR-27 (surface reckoning F-35) folded spec_refs' own information
+// into as an additive section — the basename when the daemon's identity
+// lookup gives no answer. The repo's own stanza names the service — the
+// same fallback reconcile's stanzaServiceID uses — so the hook must ask
+// for that service, never the directory's name. Before SR-27 this pinned
+// a SEPARATE spec_refs RPC's own identity resolution; now there is only
+// one call (obligations) to get right, and this test pins that it still
+// carries the fix through, spec line and all.
 func TestEditHookSpecRefsUseStanzaNamedService(t *testing.T) {
 	ceil := os.TempDir()
 	if resolved, err := filepath.EvalSymlinks(ceil); err == nil {
@@ -48,7 +54,6 @@ func TestEditHookSpecRefsUseStanzaNamedService(t *testing.T) {
 				Arguments struct {
 					Service string `json:"service"`
 					File    string `json:"file"`
-					Spec    string `json:"spec"`
 				} `json:"arguments"`
 			} `json:"params"`
 		}
@@ -59,13 +64,19 @@ func TestEditHookSpecRefsUseStanzaNamedService(t *testing.T) {
 		var payload any
 		switch req.Params.Name {
 		case "obligations":
-			payload = map[string]any{"service": req.Params.Arguments.Service, "file": req.Params.Arguments.File}
-		case "spec_refs":
-			payload = map[string]any{
-				"specs":         map[string]any{req.Params.Arguments.Spec: []any{map[string]any{"file": "docs/specs/us-042.md", "line": 10}}},
-				"total_refs":    1,
-				"files_scanned": 1,
+			// Only the correctly-resolved "fathom" identity carries a
+			// populated spec_refs section — any other candidate the loop
+			// probes (the raw "sextant" basename guess, say) gets an empty
+			// one, exactly like the real discover-mismatch failure this
+			// test pins: the citation must come from the right identity's
+			// answer, never a coincidentally-render-alike wrong one.
+			p := map[string]any{"service": req.Params.Arguments.Service, "file": req.Params.Arguments.File}
+			if req.Params.Arguments.Service == "fathom" {
+				p["spec_refs"] = map[string]any{
+					"US-042": []any{map[string]any{"file": "docs/specs/us-042.md", "line": 10}},
+				}
 			}
+			payload = p
 		default: // list_services and friends: the identity lookup has no answer
 			http.Error(w, "unexpected tool "+req.Params.Name, 400)
 			return
@@ -85,13 +96,23 @@ func TestEditHookSpecRefsUseStanzaNamedService(t *testing.T) {
 
 	mu.Lock()
 	defer mu.Unlock()
-	got := services["spec_refs"]
+	got := services["obligations"]
 	if len(got) == 0 {
-		t.Fatalf("spec_refs never queried; calls=%v", services)
+		t.Fatalf("obligations never queried; calls=%v", services)
 	}
+	askedFathom := false
 	for _, s := range got {
-		if s != "fathom" {
-			t.Errorf("spec_refs asked for service %q, want the stanza-named \"fathom\" (calls=%v)", s, services)
+		if s == "fathom" {
+			askedFathom = true
 		}
+	}
+	if !askedFathom {
+		t.Errorf("obligations never asked for the stanza-named service \"fathom\" (calls=%v)", services)
+	}
+	// The spec line must come from the "fathom" identity's own answer —
+	// the SR-1 regression this test pins: a wrong (basename-guessed)
+	// identity's empty spec_refs must never silently win.
+	if !strings.Contains(out.String(), "▸ implements [US-042] — defined at docs/specs/us-042.md:10") {
+		t.Errorf("expected the spec line rendered from the stanza-named service's own spec_refs section, got %q", out.String())
 	}
 }

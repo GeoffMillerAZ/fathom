@@ -13,24 +13,38 @@ of signal exist.
 ## Wave 1: every client's rules and hooks, reviewer output
 
 - [x] The `RulesSource` port feeding the existing compile path; every compiled rule still passes I27; `[rules.sources]` levels `off`/`warn`/`error` (§3) {id: GL-1, symbol: RegisterRulesSource, package: internal/semantic, reachable_from: TestRulesSourceLevels}
-- [ ] Cursor rules: `.cursor/rules/*.mdc` frontmatter `globs` become scope, `alwaysApply` repo scope {id: GL-2, symbol: cursorRulesRead, package: internal/semantic, reachable_from: TestCursorRulesScopes, needs: "GL-1"}
-- [ ] Copilot instructions: `.github/copilot-instructions.md` and `.github/instructions/*.instructions.md` with `applyTo` scope {id: GL-3, symbol: copilotInstructionsRead, package: internal/semantic, reachable_from: TestCopilotInstructionsApplyTo, needs: "GL-1"}
-- [ ] Kiro steering: `.kiro/steering/*.md` with `inclusion` and `fileMatchPattern`; `manual` compiled but not served unasked {id: GL-4, symbol: kiroSteeringRead, package: internal/semantic, reachable_from: TestKiroSteeringInclusion, needs: "GL-1"}
-- [ ] `BUGBOT.md` (nested, directory-scoped), served to review verbs by default {id: GL-5, symbol: bugbotRulesRead, package: internal/semantic, reachable_from: TestBugbotRulesDirectoryScope, needs: "GL-1"}
-- [ ] `GEMINI.md` (nested) read as `AGENTS.md` is {id: GL-6, symbol: geminiRulesRead, package: internal/semantic, reachable_from: TestGeminiRulesNested, needs: "GL-1"}
-- [ ] Cursor hook codec for the flat snake_case `.cursor/hooks.json` shape; `fathom harness hooks --harness cursor` prints entries (§4) {id: GL-7, symbol: cursorCodec, package: internal/harness, reachable_from: TestCursorCodecRoundTrip}
-- [ ] Copilot hook codec on the harness port {id: GL-8, symbol: copilotCodec, package: internal/harness, reachable_from: TestCopilotCodecRoundTrip}
+- [x] Cursor rules: `.cursor/rules/*.mdc` frontmatter `globs` become scope, `alwaysApply` repo scope {id: GL-2, symbol: cursorRulesRead, package: internal/semantic, reachable_from: TestCursorRulesScopes, needs: "GL-1"}
+- [x] Copilot instructions: `.github/copilot-instructions.md` and `.github/instructions/*.instructions.md` with `applyTo` scope {id: GL-3, symbol: copilotInstructionsRead, package: internal/semantic, reachable_from: TestCopilotInstructionsApplyTo, needs: "GL-1"}
+- [x] Kiro steering: `.kiro/steering/*.md` with `inclusion` and `fileMatchPattern`; `manual` compiled but not served unasked {id: GL-4, symbol: kiroSteeringRead, package: internal/semantic, reachable_from: TestKiroSteeringInclusion, needs: "GL-1"}
+- [x] `BUGBOT.md` (nested, directory-scoped), served to review verbs by default {id: GL-5, symbol: bugbotRulesRead, package: internal/semantic, reachable_from: TestBugbotRulesDirectoryScope, needs: "GL-1"}
+- [x] `GEMINI.md` (nested) read as `AGENTS.md` is {id: GL-6, symbol: geminiRulesRead, package: internal/semantic, reachable_from: TestGeminiRulesNested, needs: "GL-1"}
+- [x] Cursor hook codec for the flat snake_case `.cursor/hooks.json` shape; `fathom harness hooks --harness cursor` prints entries (§4) {id: GL-7, symbol: cursorCodec, package: internal/harness, reachable_from: TestCursorCodecRoundTrip}
+- [x] Copilot hook codec on the harness port {id: GL-8, symbol: copilotCodec, package: internal/harness, reachable_from: TestCopilotCodecRoundTrip}
 - [ ] Gemini CLI verified from a real session's beats; the descriptor leaves `unverified` only then (ADR-029) {id: GL-9, oracle: lexical, path: docs/adoption/gemini-cli.md, pattern: "^Verified live on [0-9]{4}-[0-9]{2}-[0-9]{2}"}
 - [x] SARIF for obligations and review findings through `verify.RenderSARIF` with their own rule vocabularies (§8) {id: GL-20, symbol: obligationsSARIF, package: cmd/fathom, reachable_from: TestObligationsAndReviewSARIF}
 - [x] A check-run payload (name, conclusion, summary, at most 50 annotations) written to stdout or a file, never posted {id: GL-21, symbol: renderCheckRun, package: internal/verify, reachable_from: TestCheckRunPayloadCapped}
 
 ## Wave 2: the signal source, rule effectiveness, learning
 
-- [ ] The signal source: served, complied, violated and blocked events per rule from the edit and PreToolUse hooks, appended to a rotated JSONL under `~/.fathom/` (16 MiB), never the transcript (§5) {id: GL-10, symbol: recordRuleOutcome, package: cmd/fathom, reachable_from: TestRuleOutcomeEventsRecorded}
-- [ ] Rule effectiveness (U4): per-rule counts and rates with n; classes ignored, never triggered, effective, contested; remedies as proposals (§5) {id: GL-11, symbol: RuleEffectiveness, package: internal/semantic, reachable_from: TestRuleEffectivenessClasses, needs: "GL-10"}
-- [ ] Published thresholds: `.fathom/learning.cue` schema with valid/invalid testdata, defaults in the binary (§6) {id: GL-12, oracle: lexical, path: schema/learning/schema.cue, pattern: "^#Learning:"}
+- [x] The signal source: served, complied, violated and blocked events per rule from the edit and PreToolUse hooks, appended to a rotated JSONL under `~/.fathom/` (16 MiB), never the transcript (§5) {id: GL-10, symbol: recordRuleOutcome, package: cmd/fathom, reachable_from: TestRuleOutcomeEventsRecorded}
+- [x] Rule effectiveness (U4): per-rule counts and rates with n; classes ignored, never triggered, effective, contested; remedies as proposals (§5) {id: GL-11, symbol: RuleEffectiveness, package: internal/semantic, reachable_from: TestRuleEffectivenessClasses, needs: "GL-10"}
+- [x] Published thresholds: `.fathom/learning.cue` schema with valid/invalid testdata, defaults in the binary (§6) {id: GL-12, oracle: lexical, path: schema/learning/schema.cue, pattern: "^#Learning:"}
 - [ ] Promotion and retirement under the thresholds; retirement closes the validity window, never deletes {id: GL-13, symbol: applyLearning, package: internal/semantic, reachable_from: TestLearningPromotesAndRetires, needs: "GL-11,GL-12"}
+  <!-- Left unchecked (attempt 1, worker w-gl-w2): design doc §6's "candidate"/
+       "active"/"retired" is a NEW axis, orthogonal to the existing
+       fresh/stale/contradicted/superseded/refuted ClaimStatus (a compiled
+       claim already serves at "fresh" with no candidate gate today) --
+       adding it correctly means either overloading ClaimStatus.Served()'s
+       existing serving semantics or adding a second status column to
+       SemanticClaim/the store schema, both bigger and riskier than the
+       remaining budget could TDD, wire, and verify honestly. It also needs
+       a session identity for "corroborations from >=2 distinct sessions"
+       that `fathom claim corroborate` does not carry today (no --session
+       flag; GL-10's Session field is always "" from that call site) --
+       a product decision, not a one-line fix. Left for a dedicated attempt
+       with room to extend the domain model and the CLI surface together. -->
 - [ ] Every promotion or retirement announced in the attention line and `fathom intent audit` with its signals; none silent {id: GL-14, symbol: learningAnnouncements, package: cmd/fathom, reachable_from: TestLearningNeverSilent, needs: "GL-13"}
+  <!-- Left unchecked (attempt 1, worker w-gl-w2): needs: GL-13, unimplemented this attempt. -->
 
 ## Wave 3: validity windows everywhere, the rule-effectiveness view, layered diffs
 
@@ -39,7 +53,7 @@ of signal exist.
 - [ ] `as_of` on `memory_search`, `staleness_report` and the review verbs, beside `obligations` {id: GL-17, symbol: asOfFilter, package: internal/mcp, reachable_from: TestAsOfAcrossVerbs, needs: "GL-16"}
 - [ ] The rule-effectiveness page on the console (U4) {id: GL-18, symbol: renderRuleEffectiveness, package: cmd/fathom, reachable_from: TestConsoleRuleEffectivenessPage, needs: "GL-11"}
 - [ ] Ignored rules proposed for a hook, never-triggered rules proposed for pruning, each with its evidence {id: GL-19, symbol: ruleRemedies, package: internal/semantic, reachable_from: TestRuleRemediesAreProposals, needs: "GL-11"}
-- [ ] `review_diff` layers changed files by blast radius (leaf, shared callee, cross-service provider) without a model (§8) {id: GL-22, symbol: layerDiffByBlastRadius, package: internal/mcp, reachable_from: TestReviewDiffLayers}
+- [x] `review_diff` layers changed files by blast radius (leaf, shared callee, cross-service provider) without a model (§8) {id: GL-22, symbol: layerDiffByBlastRadius, package: internal/mcp, reachable_from: TestReviewDiffLayers}
 
 ## Refused (recorded so they are not re-proposed)
 

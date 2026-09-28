@@ -1,5 +1,8 @@
 // Package mcp_test — safe_delete_check (ADR-035 decision 1, plan VB-2):
 // TDD tests plus the golden fixture-fleet test the plan row asks for.
+// Unregistered as a standalone tool by SR-24 (F-13, design §4); these tests
+// now drive it through blast_radius's kind:"delete" (safeDeleteCheckAnswer,
+// safe_delete.go), byte-compatible with what safe_delete_check returned.
 package mcp_test
 
 import (
@@ -31,7 +34,7 @@ func TestSafeDeleteCheck_Fauxtown_OneReferentOneNone(t *testing.T) {
 	srv := mcp.NewServer(c)
 
 	t.Run("validateCharge has one referent", func(t *testing.T) {
-		got := callTool(t, srv, "safe_delete_check", map[string]any{
+		got := callTool(t, srv, "blast_radius", map[string]any{"kind": "delete",
 			"service": "payment-service", "symbol": "validateCharge",
 		})
 		referents, ok := got["referents"].([]any)
@@ -57,7 +60,7 @@ func TestSafeDeleteCheck_Fauxtown_OneReferentOneNone(t *testing.T) {
 	})
 
 	t.Run("Charge has none — proven-zero receipt", func(t *testing.T) {
-		got := callTool(t, srv, "safe_delete_check", map[string]any{
+		got := callTool(t, srv, "blast_radius", map[string]any{"kind": "delete",
 			"service": "payment-service", "symbol": "Charge",
 		})
 		referents, ok := got["referents"].([]any)
@@ -86,7 +89,7 @@ func TestSafeDeleteCheck_Fauxtown_OneReferentOneNone(t *testing.T) {
 func TestSafeDeleteCheck_TypedAndHeuristicTiers(t *testing.T) {
 	srv := mcp.NewServer(newNavFake())
 
-	got := callTool(t, srv, "safe_delete_check", map[string]any{"service": "svc", "symbol": "Target"})
+	got := callTool(t, srv, "blast_radius", map[string]any{"kind": "delete", "service": "svc", "symbol": "Target"})
 	referents, ok := got["referents"].([]any)
 	if !ok || len(referents) != 2 {
 		t.Fatalf("referents = %v, want 2 rows (Real typed, Ghost heuristic)", got["referents"])
@@ -112,7 +115,7 @@ func TestSafeDeleteCheck_TypedAndHeuristicTiers(t *testing.T) {
 func TestSafeDeleteCheck_TestReferentsSeparate(t *testing.T) {
 	srv := mcp.NewServer(newNavFake())
 
-	got := callTool(t, srv, "safe_delete_check", map[string]any{"service": "svc", "symbol": "Real"})
+	got := callTool(t, srv, "blast_radius", map[string]any{"kind": "delete", "service": "svc", "symbol": "Real"})
 	referents, ok := got["referents"].([]any)
 	if !ok || len(referents) != 0 {
 		t.Fatalf("referents = %v, want an empty array — Real's only caller is a test", got["referents"])
@@ -138,7 +141,7 @@ func TestSafeDeleteCheck_InterfaceListsImplementations(t *testing.T) {
 	}
 	srv := mcp.NewServer(be)
 
-	got := callTool(t, srv, "safe_delete_check", map[string]any{"service": "svc", "symbol": "Writer"})
+	got := callTool(t, srv, "blast_radius", map[string]any{"kind": "delete", "service": "svc", "symbol": "Writer"})
 	referents, ok := got["referents"].([]any)
 	if !ok || len(referents) != 2 {
 		t.Fatalf("referents = %v, want 2 rows (FileWriter, NopWriter)", got["referents"])

@@ -72,10 +72,6 @@ type typedEdgeRef struct {
 	Kind string `json:"kind"`
 }
 
-type entrypointsResult struct {
-	Entrypoints []symbolNodeDTO `json:"entrypoints"`
-}
-
 type outlineResult struct {
 	Symbols []symbolNodeDTO `json:"symbols"`
 	// Elision (RC-19): present only when fitToolBudget cut "symbols".
@@ -272,6 +268,12 @@ type repoMapResult struct {
 	// budgeted tools carry, alongside the existing Elided struct below.
 	Elision string  `json:"elision,omitempty"`
 	Elided  *elided `json:"elided,omitempty"`
+	// Entrypoints/EntrypointsMore (SR-22, F-10, design §4): the header the
+	// unregistered `entrypoints` tool's detector now feeds instead, capped
+	// at repoMapEntrypointCap; both omitted (never an empty list) when the
+	// service has none.
+	Entrypoints     []symbolNodeDTO `json:"entrypoints,omitempty"`
+	EntrypointsMore int             `json:"entrypoints_more,omitempty"`
 }
 
 type stalenessReportResult struct {
@@ -420,6 +422,9 @@ type reviewDiffResult struct {
 	// ServiceRefUnextracted (RT-89) names services whose routes and client
 	// calls no ingest has extracted yet: their hops cannot appear.
 	ServiceRefUnextracted []string `json:"service_ref_unextracted,omitempty"`
+	// Layers (GL-22): changed_files grouped by blast radius, in review
+	// order — leaf, shared-callee, cross-service-provider.
+	Layers []diffLayer `json:"layers,omitempty"`
 }
 
 // safeDeleteCheckResult mirrors safe_delete_check's payload (safe_delete.go).
@@ -484,8 +489,6 @@ type capabilitiesResult struct {
 var agentResultTypes = map[string]reflect.Type{
 	"blast_radius":      reflect.TypeOf(blastRadiusResult{}),
 	"capabilities":      reflect.TypeOf(capabilitiesResult{}),
-	"discoveries":       reflect.TypeOf(discoveriesResult{}),
-	"entrypoints":       reflect.TypeOf(entrypointsResult{}),
 	"find_callers":      reflect.TypeOf(findCallersResult{}),
 	"find_symbol":       reflect.TypeOf(findSymbolResult{}),
 	"ingest":            reflect.TypeOf(ingestResult{}),

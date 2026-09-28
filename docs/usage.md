@@ -1435,8 +1435,13 @@ reason when `list_modules` is not registered: no `--module` store was mounted), 
 `decision_provider` (ADR-042, docs/vision/32-decision-port.md: `[decide] provider =
 none` is `skipped` naming it off; `llm` pings the configured profile lane and, when
 `decisions.jsonl` exists, names its last recorded `latency_ms`; any other value is a
-`fail`). The stanza check accepts both the v1 and the v3 (`sha256:`-digested) begin
-marker.
+`fail`), and `providers` (surface reckoning SR-31/SR-32: `fathom providers`'s own
+zero/near-zero-token `ProbeAll` pass folded in — `skipped` naming it when no
+`[profiles]` are configured and the bare env-overlay lane has nothing to probe,
+`fail` naming the first broken lane when a configured profile cannot authenticate,
+`pass` counting ok/not-probeable lanes otherwise; `providers` and `smoke` are hidden
+`fathom help` aliases now — `smoke`'s real-token spend is never run here). The stanza
+check accepts both the v1 and the v3 (`sha256:`-digested) begin marker.
 
 The tenancy rows (RT-49, RT-50; docs/design/responsible-tenant.md §13.3) read one
 `fathom resources` projection — the daemon's live `/statusz` tenancy block, else its
@@ -1474,6 +1479,7 @@ discipline, and the tie-in/latency-budget checks doctor itself doesn't run.
 
 ```sh
 fathom plans status  --service <svc> [--plan P]... [--store DB | --url U] [--json]   # per-plan rollup: total/proven/claimed-unproven/measured-stale/open/deferred/other-skipped
+fathom plans status  --service <svc> --weighted [--json]   # proven weight / total weight by fleet, project, plan and section (`weight:`, default 1; [-] rows carry none)
 fathom plans next    --service <svc> [--eligible-only] [--free] [--root DIR] [--json] # the ordered work frontier, with {id, symbol, package} anchors
 fathom plans history --service <svc> --plan P [--url U] [--json]                      # the burn-up: scope and claimed rows per commit of the plan, the ledger's proven trend (absent under 14 days of rows), the cross-check
 fathom plans history [--service <svc>] [--url U] [--json]                             # no --plan: the claimed-vs-proven trend of the current plans of one service (or every registered one), from the verify ledger's runs of those plans only
@@ -2845,7 +2851,19 @@ fathom metrics catches       [--kind K]... [--service S] [--days N] [--page N] [
 fathom metrics sessions      [--arm on|off] [--repo R] [--q TEXT] [--sort at|turns|first_edit|tokens|fathom_calls|catches] [--asc] [--page N] [--per-page 50] [--json]
 fathom metrics sessions      --id SESSION [--channel C]... [--page N] [--per-page 500] [--json]
 fathom metrics load          [--call-log P] [--url U] [--json]
+fathom metrics instrument    [--log PATH] [--window DUR] | --adoption [...]   # SR-31: same as `fathom instrument`
+fathom metrics flywheel      [--service S] [--url U] [--json]                # SR-31: same as `fathom flywheel`
+fathom metrics retro         [--session S] [--project DIR] [--write] [--json] # SR-31: same as `fathom retro`
+fathom metrics rate          <1-5> [--note "..."] [--session S] [--repo R] | --list  # SR-31: same as `fathom rate`
+fathom metrics arm           off --for D --sessions N [--note ...] | on      # SR-31: same as `fathom arm`
 ```
+
+Surface reckoning SR-31 (`docs/design/surface-reckoning.md` §4): `instrument`,
+`flywheel`, `retro`, `rate` and `arm` are subverbs of `metrics` now — the
+observability verb was already their natural home. The five top-level verbs
+stay fully dispatched (hidden from `fathom help` only) for one release, so
+existing hooks and skills keep working; prefer the `metrics` form in new
+scripts.
 
 Design: `docs/design/observability-surfaces.md`. `traffic --by day` groups by UTC
 day and `--by caller` by caller class — agent, edit hook, gate, refresh, plumbing or
@@ -3003,6 +3021,7 @@ unreadable store) render on the same shell with the reason and the remedy.
 | `/wiring` | Per-repo Preview → Apply → Undo (the POSTs stay at `/observatory/wiring/*` behind the local gate) |
 | `/statusz` | Daemon status (JSON schema 3 unchanged) |
 | `/plans` (`?svc=`, `?page=`) | Every plan across the fleet (or one repository) with a proof bar counted from the gate's verdicts, the claimed-but-unproven gap as the headline (a named lower bound while rows sit measured-stale), and the claimed-vs-proven trend of the scope's current plans once the verify ledger holds 14 days of their rows; carries `fathom plans status --service S --json` per repository and `fathom plans history [--service S] --json` for the trend |
+| `/progress` (`?svc=`, `?plan=`, `?wave=`, `?goal=`, `?agent=`, `?from=`, `?to=`) | Read-only views over computed state (PE-4..PE-12): goal gauges per scope bet, weighted progress by fleet/repository/plan/wave (`plans status --weighted`), the derived kanban (Open, Claimed-unproven, Proven, Refused or deferred; cards link to the row and its failing criterion), the frontier (`plans next --eligible-only`), the burn-up with a projected finish (a 14-day linear fit with its interval, withheld under 7 days), proof regressions with the commit that changed them, time-to-proof, claim honesty per agent identity (never per person), and the proof heatmap with streak and proved-today counts — all projected from the verify ledger's schema-3 proof history |
 | `/plans/{svc}/{plan}` | The plan's proof bar, its rows by state on a read-only board (each card names its contract kind; a card opens the row's evidence in a drawer, and is a link without JavaScript), every row as a table, and the burn-up; carries `plans status`, `plans next` and `plans history` for the plan |
 | `/plans/{svc}/{plan}/rows/{id}` | One row's evidence: contract, verdict criterion by criterion, the call path from its test to its symbol (or the line its lexical oracle matched), and its history from the plan's commits; `?format=fragment` is the drawer's body; carries `fathom verify --row ID --json` |
 | `/certifications` (`?svc=`) | Targets by their best certificate's state (heatmap and table), each repository's line, and the gap list with remedies; carries `certify status` (and, for one repository, `certify gaps`), each chip naming the daemon's `--store` |

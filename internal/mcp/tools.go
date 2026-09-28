@@ -89,7 +89,10 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 		}
 		topN := p.Top
 		if topN <= 0 {
-			topN = 20
+			// SR-43 (F-24, design §5): cut from 20 — query_symbols is a
+			// ranked shortlist, not a listing; a caller after more
+			// re-calls with an explicit "top".
+			topN = querySymbolsDefaultTopN
 		}
 		result, err := backend.QuerySymbols(ctx, core.Query{
 			ServiceID: p.Service,
@@ -104,12 +107,13 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 		nodes, el := applyBudget(nodes, budgetDefaults("query_symbols", s.budgets),
 			"relevance score, descending",
 			"re-call with a larger budget, or narrow concern/keywords")
-		return symbolQueryResult{
+		truncated := el != nil || len(result.Nodes) >= topN
+		return withSummary(querySymbolsAnswerLine(nodes, p.Concern, truncated), symbolQueryResult{
 			Nodes:     nodes,
 			Staleness: result.Staleness,
-			Truncated: el != nil || len(result.Nodes) >= topN,
+			Truncated: truncated,
 			Elided:    el,
-		}, nil
+		}), nil
 	})
 
 	// find_callers — k-hop callers of a symbol.
@@ -483,11 +487,11 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 	})
 
 	// Register analysis tools (call-graph and import-cycle analysis).
+	// safe_delete_check and rename_impact (ADR-035 decision 1, plan VB-2)
+	// were unregistered as standalone tools by SR-24 (F-13, design §4);
+	// their answers are reached through blast_radius's kind argument now
+	// (blastRadiusByKind, extra_tools.go).
 	registerAnalysisTools(s, backend)
-
-	// Register safe_delete_check, rename_impact's read-only sibling
-	// (ADR-035 decision 1, plan VB-2).
-	registerSafeDeleteCheck(s, backend)
 
 	// Register localize — the bounded, budgeted, logged localization walk
 	// (ADR-035 decision 1 follow-on, vision 29 Wave G, plan VB-26).
@@ -511,9 +515,10 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 	// Register semantic-layer tools (obligations, compile_layer).
 	registerSemanticTools(s, backend, modules)
 
-	// Register "discoveries" — the pull form of the call-log pointer
-	// brief (RC-27, docs/vision/28-receipts.md §4).
-	registerDiscoveries(s, backend)
+	// registerDiscoveries (RC-27, docs/vision/28-receipts.md §4) was
+	// unregistered by SR-29 (surface reckoning F-47): 0 lifetime calls; the
+	// SubagentStart hook's push-form render (subagentDiscoveries,
+	// cmd/fathom/discoveries.go) already covers the need.
 }
 
 // ─── DTOs ────────────────────────────────────────────────────────────────────
@@ -551,6 +556,30 @@ type symbolQueryResult struct {
 	// Elided (BA-1) discloses what applyBudget cut, when it cut anything —
 	// nil (omitted) for a complete answer.
 	Elided *elided `json:"elided,omitempty"`
+}
+
+// querySymbolsDefaultTopN (SR-43, F-24, design §5) is query_symbols'
+// default result count when the caller omits "top" — cut from 20: a
+// ranked shortlist earns its place by being short, and a caller after
+// more re-calls with an explicit "top".
+const querySymbolsDefaultTopN = 10
+
+// querySymbolsAnswerLine renders query_symbols' answer-first sentence
+// (wave L1, SR-43): the count for concern, and the top hit's name, kind
+// and location — built from nodes, the exact (post-budget) rows the
+// "nodes" field returns, so the summary can never name a row the body
+// does not carry. truncated notes when more exist than the response kept.
+func querySymbolsAnswerLine(nodes []symbolNodeDTO, concern string, truncated bool) string {
+	if len(nodes) == 0 {
+		return fmt.Sprintf("no symbols for concern %q", concern)
+	}
+	first := nodes[0]
+	summary := fmt.Sprintf("%d symbol%s for concern %q; top: %s (%s) %s:%d",
+		len(nodes), pluralS(len(nodes)), concern, first.Name, first.Kind, first.FilePath, first.Line)
+	if truncated {
+		summary += " (more available)"
+	}
+	return capSummary(summary)
 }
 
 func toNodeDTOs(nodes []core.SymbolNode) []symbolNodeDTO {

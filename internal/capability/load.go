@@ -224,7 +224,7 @@ func ExampleTemplate(r Registry) []byte {
 	b.WriteString("// budgets: {\n")
 	b.WriteString("//     list:      1500 // query_symbols, references\n")
 	b.WriteString("//     composite: 4000 // pack_context\n")
-	b.WriteString("//     map:       2500 // repo_map\n")
+	b.WriteString("//     map:       1200 // repo_map\n")
 	b.WriteString("// }\n")
 	return []byte(b.String())
 }

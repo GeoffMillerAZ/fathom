@@ -37,7 +37,13 @@ const (
 var measuredDefaults = map[toolBudgetClass]int{
 	classList:      1500,
 	classComposite: 4000,
-	classMap:       2500,
+	// classMap (SR-41, F-02 design §5) was 2,500 (docs/design/budgeted-
+	// answers.md §3's original measurement): repo_map is an orientation
+	// tool, not a comprehensive one — the cut default plus the
+	// "orientation-only" envelope label (registerRepoMap) push a caller
+	// that wants more toward a narrower tool (query_symbols, pack_context)
+	// instead of a bigger map.
+	classMap: 1200,
 }
 
 // charsPerToken is the same ~4-bytes-per-token estimate used fleet-wide

@@ -78,6 +78,17 @@ type obligationLayerBackend interface {
 	ObligationsLayer(ctx context.Context, service, file string, maxRules int, layer semantic.ObligationLayerFilter) (semantic.Obligations, error)
 }
 
+// reviewObligationsBackend is the optional backend capability a review
+// verb asks for its obligations through (GL-5, docs/design/governance-
+// learning.md §3): the same file-scoped serve as obligationsBackend, plus
+// the review-audience claims (BUGBOT.md rules) the edit hook never sees.
+// pkg/client implements it with semantic.ObligationsOptions.Review; a
+// backend that omits it degrades to plain Obligations — review rules
+// simply absent, never an error.
+type reviewObligationsBackend interface {
+	ReviewObligations(ctx context.Context, service, file string, maxRules int) (semantic.Obligations, error)
+}
+
 // rootObligationsLayerBackend is obligationLayerBackend's root-scope
 // sibling (semantic.RootObligationsForLayer).
 type rootObligationsLayerBackend interface {
@@ -490,6 +501,17 @@ func renderObligationReceipt(ctx context.Context, backend QueryInterface, servic
 	}
 	if coverageSkipped != "" {
 		result["coverage_skipped"] = coverageSkipped
+	}
+	// SR-27 (surface reckoning F-35): the retired spec_refs tool's one
+	// real consumer (the edit hook, 306 calls) reads this additive
+	// section instead of a second RPC. Same gate as the raw-fallback
+	// prepend above: a real file, not a root-scope or as-of (historical)
+	// call — obligationsSpecRefs itself never errors, only degrades to
+	// nil, so this never affects the rest of the answer.
+	if !rootScope && obl.File != "" && obl.AsOf == "" {
+		if refs := obligationsSpecRefs(ctx, backend, service, obl.File); len(refs) > 0 {
+			result["spec_refs"] = refs
+		}
 	}
 	return result, summary
 }

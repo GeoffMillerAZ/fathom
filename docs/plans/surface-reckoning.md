@@ -38,17 +38,17 @@ falsely.
 ### 2.2 MERGE (design §4)
 
 - [x] F-05: `find_callees` is unregistered; `symbol_context` is the answer for callees {id: SR-21, gone: pattern "Name:\s+.find_callees.", paths: "internal/mcp/"}
-- [ ] F-10: `repo_map`'s header carries the entrypoints (capped at 10 with a `more` count) and the `entrypoints` tool is unregistered {id: SR-22, symbol: repoMapEntrypoints, package: internal/mcp, reachable_from: TestRepoMapHeaderCarriesEntrypoints}
-- [ ] F-11: one `status` tool answers the `tools`, `daemon` and `sources` sections byte-compatibly with `capabilities`, `server_stats` and `list_sources`, which are unregistered; doctor and the console call `status`; AD-1, AD-2, AD-4, A1-1, A1-2, K3-1, K4-1 and P1-7 are re-anchored onto `registerStatus` {id: SR-23, symbol: registerStatus, package: internal/mcp, reachable_from: TestStatusSectionsMatchRetiredTools}
-- [ ] F-13: `blast_radius` takes `kind: change|rename|delete`; `rename` returns today's rename_impact answer and `delete` today's safe_delete_check answer (proven-zero receipt included); both tools are unregistered and `promotedVerbs()` drops `rename_impact` {id: SR-24, symbol: blastRadiusByKind, package: internal/mcp, reachable_from: TestBlastRadiusKindsMatchRetiredVerbs}
+- [x] F-10: `repo_map`'s header carries the entrypoints (capped at 10 with a `more` count) and the `entrypoints` tool is unregistered {id: SR-22, symbol: repoMapEntrypoints, package: internal/mcp, reachable_from: TestRepoMapHeaderCarriesEntrypoints}
+- [x] F-11: one `status` tool answers the `tools`, `daemon` and `sources` sections byte-compatibly with `capabilities`, `server_stats` and `list_sources`, which are unregistered; doctor and the console call `status`; AD-1, AD-2, AD-4, A1-1, A1-2, K3-1, K4-1 and P1-7 are re-anchored onto `registerStatus` {id: SR-23, symbol: registerStatus, package: internal/mcp, reachable_from: TestStatusSectionsMatchRetiredTools}
+- [x] F-13: `blast_radius` takes `kind: change|rename|delete`; `rename` returns today's rename_impact answer and `delete` today's safe_delete_check answer (proven-zero receipt included); both tools are unregistered and `promotedVerbs()` drops `rename_impact` {id: SR-24, symbol: blastRadiusByKind, package: internal/mcp, reachable_from: TestBlastRadiusKindsMatchRetiredVerbs}
 - [x] F-16: `diff_impact` is unregistered; `review_diff` is the verb {id: SR-25, gone: pattern "Name:\s+.diff_impact.", paths: "internal/mcp/"}
 - [x] F-20: the `api_diff` tool is unregistered; the calibrated API delta stays in `conserve` {id: SR-26, gone: pattern "Name:\s+.api_diff.", paths: "internal/mcp/"}
-- [ ] F-35: `arch_conformance`, `spec_coverage` and `spec_refs` are unregistered; the edit hook reads spec references from an additive `spec_refs` section of the `obligations` answer; P1-4, C4-3 and C4-5 are re-anchored onto the review engine's `runArch` {id: SR-27, symbol: obligationsSpecRefs, package: internal/mcp, reachable_from: TestEditHookReadsSpecRefsFromObligations}
-- [ ] F-56: `staleness_report` carries `doc_drift` (doc spans naming a symbol that no longer exists) and `stale_docs` is unregistered {id: SR-28, symbol: stalenessDocDrift, package: internal/mcp, reachable_from: TestStalenessReportDocDrift}
-- [ ] F-47: the `discoveries` tool is unregistered and `routes` becomes `prime --routes`; RC-27 is re-anchored onto the session brief's discovery renderer {id: SR-29, gone: pattern "Name:\s+.discoveries.", paths: "internal/mcp/"}
+- [x] F-35: `arch_conformance`, `spec_coverage` and `spec_refs` are unregistered; the edit hook reads spec references from an additive `spec_refs` section of the `obligations` answer; P1-4, C4-3 and C4-5 are re-anchored onto the review engine's `runArch` {id: SR-27, symbol: obligationsSpecRefs, package: internal/mcp, reachable_from: TestEditHookReadsSpecRefsFromObligations}
+- [x] F-56: `staleness_report` carries `doc_drift` (doc spans naming a symbol that no longer exists) and `stale_docs` is unregistered {id: SR-28, symbol: stalenessDocDrift, package: internal/mcp, reachable_from: TestStalenessReportDocDrift}
+- [x] F-47: the `discoveries` tool is unregistered and `routes` becomes `prime --routes`; RC-27 is re-anchored onto the session brief's discovery renderer {id: SR-29, gone: pattern "Name:\s+.discoveries.", paths: "internal/mcp/"}
 - [x] F-44: `gen-status-cue` and `gen-plan-cue` leave top-level help; the ADR-018 round-trip is unchanged {id: SR-30, symbol: printUsage, package: cmd/fathom, reachable_from: TestUsageOmitsInternalVerbs}
-- [ ] F-52: `metrics` is the one verb (`instrument`, `flywheel`, `retro`, `rate`, `arm` as subverbs); the old verbs are hidden aliases for one release {id: SR-31, symbol: cmdMetrics, package: cmd/fathom, reachable_from: TestMetricsSubverbsMatchRetiredVerbs}
-- [ ] F-71: doctor has a `providers` row running the auth and one-token probes; `providers` and `smoke` are hidden aliases {id: SR-32, symbol: doctorProvidersRow, package: cmd/fathom, reachable_from: TestDoctorProvidersRow}
+- [x] F-52: `metrics` is the one verb (`instrument`, `flywheel`, `retro`, `rate`, `arm` as subverbs); the old verbs are hidden aliases for one release {id: SR-31, symbol: cmdMetrics, package: cmd/fathom, reachable_from: TestMetricsSubverbsMatchRetiredVerbs}
+- [x] F-71: doctor has a `providers` row running the auth and one-token probes; `providers` and `smoke` are hidden aliases {id: SR-32, symbol: doctorProvidersRow, package: cmd/fathom, reachable_from: TestDoctorProvidersRow}
 
 ### 2.3 The surface
 
@@ -59,13 +59,13 @@ falsely.
 
 ## Wave 3 — IMPROVE (design §5)
 
-- [ ] F-02: `references` defaults to exact; a free-text query is answered by `search` with `routed_from: references`, never refused {id: SR-40, symbol: registerReferences, package: internal/mcp, reachable_from: TestReferencesRoutesFreeTextToSearch}
-- [ ] F-07: `repo_map`'s default budget is cut and its envelope says `orientation-only` {id: SR-41, symbol: registerRepoMap, package: internal/mcp, reachable_from: TestRepoMapDefaultBudgetOrientationOnly}
+- [x] F-02: `references` defaults to exact; a free-text query is answered by `search` with `routed_from: references`, never refused {id: SR-40, symbol: registerReferences, package: internal/mcp, reachable_from: TestReferencesRoutesFreeTextToSearch}
+- [x] F-07: `repo_map`'s default budget is cut and its envelope says `orientation-only` {id: SR-41, symbol: registerRepoMap, package: internal/mcp, reachable_from: TestRepoMapDefaultBudgetOrientationOnly}
 - [ ] (op) F-23: BP-46 is read; `pack_context` is kept with the reading cited, or folded into `query_symbols` and unregistered {id: SR-42, oracle: lexical, path: docs/bench/readings/bp-46-pack-context.md, pattern: "^Verdict: (keep|fold)"}
-- [ ] F-24: `query_symbols` opens with a one-line `answer:` and a lower default top-N {id: SR-43, symbol: querySymbolsAnswerLine, package: internal/mcp, reachable_from: TestQuerySymbolsAnswerFirst}
-- [ ] F-25: the prompt hook routes a stack trace, a failing test name or an error string to `localize` deterministically {id: SR-44, symbol: routeIssueShapedPrompt, package: cmd/fathom, reachable_from: TestPromptHookRoutesIssueShapesToLocalize}
+- [x] F-24: `query_symbols` opens with a one-line `answer:` and a lower default top-N {id: SR-43, symbol: querySymbolsAnswerLine, package: internal/mcp, reachable_from: TestQuerySymbolsAnswerFirst}
+- [x] F-25: the prompt hook routes a stack trace, a failing test name or an error string to `localize` deterministically {id: SR-44, symbol: routeIssueShapedPrompt, package: cmd/fathom, reachable_from: TestPromptHookRoutesIssueShapesToLocalize}
 - [ ] F-26: a checkable served rule compiles to an `enforce: true` guard and the `obligations` answer marks it checkable {id: SR-45, symbol: guardFromCheckableRule, package: internal/guardspec, reachable_from: TestCheckableRuleCompilesToGuard}
-- [ ] F-28: `fathom init` wires the prompt hook by default {id: SR-46, symbol: cmdInit, package: cmd/fathom, reachable_from: TestInitWiresPromptHookByDefault}
+- [x] F-28: `fathom init` wires the prompt hook by default {id: SR-46, symbol: cmdInit, package: cmd/fathom, reachable_from: TestInitWiresPromptHookByDefault}
 - [ ] F-29: guard verdicts are emitted as SARIF 2.1.0 {id: SR-47, symbol: guardVerdictsSARIF, package: internal/guardspec, reachable_from: TestGuardVerdictsSARIFGolden}
 - [ ] F-31: when a served rule is violated, the next edit-hook turn asks for a one-key verdict and writes it as refute or corroborate {id: SR-48, symbol: askRuleVerdict, package: cmd/fathom, reachable_from: TestEditHookAsksVerdictOnIgnoredRule}
 - [ ] F-34: `review_diff` emits the change risk receipt (U7) — blast radius, certificates, conservation, rules, reviewers — as SARIF and a GitHub check payload {id: SR-49, symbol: changeRiskReceipt, package: internal/analysis/review, reachable_from: TestChangeRiskReceiptGolden}
@@ -84,12 +84,12 @@ falsely.
 - [ ] blast_radius (F-12): `review_diff` includes the blast-radius summary and the pre-edit hook adds one line of callers and tests reached {id: SR-60, symbol: editHookBlastLine, package: cmd/fathom, reachable_from: TestPreEditHookBlastLine}
 - [ ] Per-rule counts (F-27, U4): the edit hook records served, complied and violated per claim id; `obligations` and the console show them {id: SR-61, symbol: recordRuleOutcome, package: cmd/fathom, reachable_from: TestEditHookRecordsRuleOutcomes}
 - [ ] Certifications (F-41): liveness bound to the commit (O114), service resolution fixed, certificates declared on fathom itself {id: SR-62, symbol: certificateLiveAtCommit, package: internal/certify, reachable_from: TestCertificateLivenessBoundToCommit}
-- [ ] Conservation (F-42): `fathom init` wires `conserve` on the pushed range into every adopter's pre-push gate by default (today only this repo's `lefthook.yml` runs it) and review shows its plane verdicts {id: SR-63, symbol: initPrePushConserve, package: cmd/fathom, reachable_from: TestInitWiresConservePrePush}
+- [x] Conservation (F-42): `fathom init` wires `conserve` on the pushed range into every adopter's pre-push gate by default (today only this repo's `lefthook.yml` runs it) and review shows its plane verdicts {id: SR-63, symbol: initPrePushConserve, package: cmd/fathom, reachable_from: TestInitWiresConservePrePush}
 - [ ] (op) Findings loop (F-33): Review Kit publishing is armed on one real repository and an import receipt shows findings > 0 {id: SR-64, oracle: lexical, path: docs/bench/readings/findings-armed.md, pattern: "^Imported: [1-9]"}
 - [ ] SCIP import (F-74): `fathom init` runs `scip-typescript` / `scip-python` when installed and imports the index {id: SR-65, symbol: initRunSCIP, package: cmd/fathom, reachable_from: TestInitRunsSCIPWhenInstalled}
 - [ ] (op) ui-appkit pack (F-67): compiled on app-kit and one consumer; UI rule violations measured {id: SR-66, oracle: lexical, path: docs/bench/readings/ui-appkit-pack.md, pattern: "^Compiled claims: [1-9]"}
-- [ ] Call log and hook log: one reader over both logs feeds the U1–U5 views {id: SR-67, symbol: ReadActivityRecord, package: internal/metrics, reachable_from: TestActivityRecordJoinsCallAndHookLogs}
-- [ ] Verify and session ledgers: the join by session id that N2 burn-up and N3 cost-per-proven-row read {id: SR-68, symbol: JoinLedgersBySession, package: internal/metrics, reachable_from: TestJoinVerifyAndSessionLedgers}
+- [x] Call log and hook log: one reader over both logs feeds the U1–U5 views {id: SR-67, symbol: ReadActivityRecord, package: internal/metrics, reachable_from: TestActivityRecordJoinsCallAndHookLogs}
+- [x] Verify and session ledgers: the join by session id that N2 burn-up and N3 cost-per-proven-row read {id: SR-68, symbol: JoinLedgersBySession, package: internal/metrics, reachable_from: TestJoinVerifyAndSessionLedgers}
 
 ## Measurements
 

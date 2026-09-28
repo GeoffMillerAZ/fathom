@@ -49,11 +49,30 @@ type verifyLedgerRow struct {
 	// [x]). Additive; rows written before the field are origin-unknown,
 	// never backfilled as cli.
 	Origin string `json:"origin,omitempty"`
+	// Digest (schema 3, PE-1) names the plan's per-row verdicts at this
+	// reading — every schema-3 row carries it. Rows is those verdicts,
+	// written only when Digest differs from the plan's previous reading, so
+	// a gate re-run on an unchanged tree appends counts without the array
+	// (design §3's size bound). v1/v2 rows have neither.
+	Digest string                   `json:"digest,omitempty"`
+	Rows   []verifyLedgerRowVerdict `json:"rows,omitempty"`
+}
+
+// verifyLedgerRowVerdict is one plan row at one reading (schema 3). State
+// is open, claimed-proven, claimed-unproven, unknown or dispositioned;
+// Criterion is the first failing (else undecidable) criterion of a claimed
+// row the gate did not prove; Weight is the row's `weight:` (1 unset).
+type verifyLedgerRowVerdict struct {
+	ID        string `json:"id"`
+	State     string `json:"state"`
+	Criterion string `json:"criterion,omitempty"`
+	Weight    int    `json:"weight"`
 }
 
 // verifyLedgerSchemaVersion: 1 = counts + tree commit; 2 adds the
-// provenance triple and the origin above (additive — v1 rows still parse).
-const verifyLedgerSchemaVersion = 2
+// provenance triple and the origin above; 3 adds the row digest and the
+// per-row verdicts (additive — v1 and v2 rows still parse).
+const verifyLedgerSchemaVersion = 3
 
 // The three verify origins. PC-26's pre-registered reading counts rows
 // with verifyOriginClaimMoment whose Failing > 0.
@@ -118,6 +137,7 @@ func appendVerifyLedgerFrom(origin, root string, planFiles []string, service str
 		return
 	}
 	defer f.Close()
+	prev := lastLedgerDigests(f, verifyLedgerDigestTail)
 	enc := json.NewEncoder(f)
 	at := time.Now().UTC().Format(time.RFC3339)
 	for i, rep := range reports {
@@ -126,6 +146,7 @@ func appendVerifyLedgerFrom(origin, root string, planFiles []string, service str
 			Plan: planFiles[i], Commit: commit, Origin: origin,
 			DaemonCommit: prov.DaemonCommit, StoreCommit: prov.StoreCommit, BinaryCommit: prov.BinaryCommit,
 		}
+		appendVerifyLedgerRows(&row, rep, prev)
 		for _, tv := range rep.Tasks {
 			row.Total++
 			if tv.Claimed && !tv.Skipped {

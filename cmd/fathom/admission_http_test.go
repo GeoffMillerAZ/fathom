@@ -53,7 +53,8 @@ func TestClientDisconnectCancelsReadWork(t *testing.T) {
 	h, g := gatedTestHandler(t, tenancy.ModeObserve)
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // the client is already gone
-	req := httptest.NewRequest(http.MethodPost, "/rpc", strings.NewReader(toolsCall("capabilities"))).WithContext(ctx)
+	readSourceCall, _ := json.Marshal(map[string]any{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": map[string]any{"name": "read_source", "arguments": map[string]any{"service": "svc", "file": "a.go"}}})
+	req := httptest.NewRequest(http.MethodPost, "/rpc", strings.NewReader(string(readSourceCall))).WithContext(ctx)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	if !strings.Contains(rec.Body.String(), "caller went away") {

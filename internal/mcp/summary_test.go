@@ -7,10 +7,11 @@
 // indexbench.NewFauxtownIndex — the same fixture l1-replay.json's golden
 // entries already use), matching this package's own established
 // convention (see TestSafeDeleteCheck_Fauxtown_OneReferentOneNone). The
-// remaining four (rename_impact, test_impact, safe_delete_check, search)
-// reuse the lightweight fake backends already established for those tools
-// in this package (richFakeBackend, the fauxtown safe_delete_check
-// fixture, newSearchServer).
+// remaining four (blast_radius kind:"rename", test_impact, blast_radius
+// kind:"delete", search — the first and third retired as standalone
+// rename_impact/safe_delete_check tools by SR-24) reuse the lightweight
+// fake backends already established for those tools in this package
+// (richFakeBackend, the fauxtown safe_delete_check fixture, newSearchServer).
 package mcp_test
 
 import (
@@ -132,14 +133,14 @@ func TestLocalizeSummary_Fauxtown(t *testing.T) {
 func TestSafeDeleteCheckSummary_Fauxtown(t *testing.T) {
 	srv := newFauxtownServer(t)
 
-	got := callTool(t, srv, "safe_delete_check", map[string]any{"service": "payment-service", "symbol": "validateCharge"})
+	got := callTool(t, srv, "blast_radius", map[string]any{"kind": "delete", "service": "payment-service", "symbol": "validateCharge"})
 	want := "1 referent for validateCharge: payment-service/payment.go:26"
 	if s, _ := got["summary"].(string); s != want {
 		t.Errorf("validateCharge summary = %q, want %q", s, want)
 	}
 
 	// Charge is never called in the fixture — the proven-zero receipt line.
-	got2 := callTool(t, srv, "safe_delete_check", map[string]any{"service": "payment-service", "symbol": "Charge"})
+	got2 := callTool(t, srv, "blast_radius", map[string]any{"kind": "delete", "service": "payment-service", "symbol": "Charge"})
 	s2, _ := got2["summary"].(string)
 	if !strings.HasPrefix(s2, "0 referents for Charge — proven zero (") {
 		t.Errorf("Charge summary = %q, want the proven-zero receipt line", s2)
@@ -150,7 +151,7 @@ func TestSafeDeleteCheckSummary_Fauxtown(t *testing.T) {
 
 func TestRenameImpactSummary(t *testing.T) {
 	srv := newAnalysisSrv()
-	payload := callTool(t, srv, "rename_impact", map[string]any{"service": "svc", "symbol": "B"})
+	payload := callTool(t, srv, "blast_radius", map[string]any{"kind": "rename", "service": "svc", "symbol": "B"})
 	summary, _ := payload["summary"].(string)
 	want := "1 call site for B: svc::pkg.A"
 	if summary != want {
@@ -160,7 +161,7 @@ func TestRenameImpactSummary(t *testing.T) {
 
 func TestRenameImpactSummary_NoCallers(t *testing.T) {
 	srv := newAnalysisSrv()
-	payload := callTool(t, srv, "rename_impact", map[string]any{"service": "svc", "symbol": "NoSuchFunc"})
+	payload := callTool(t, srv, "blast_radius", map[string]any{"kind": "rename", "service": "svc", "symbol": "NoSuchFunc"})
 	summary, _ := payload["summary"].(string)
 	if !strings.Contains(summary, "0 call sites") {
 		t.Errorf("summary = %q, want it to say 0 call sites", summary)

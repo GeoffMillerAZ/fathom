@@ -1,10 +1,6 @@
 {
   "_comment": "The committed measured cost class of every registered MCP tool (design §3.1, RT-152). A declared class (internal/mcp/costclass.go) is at least this; a row moves down only in the commit that rewrites the tool and carries its cost assertion (RT-93, or the rewrite's own allocation assertion before RT-93 exists). \"audit\" rows are the read-only audit of 4200482a; \"static read\" rows were classified from what the handler loads, pending the §4.8 cost harness.",
   "tools": {
-    "arch_conformance": {
-      "measured": "index",
-      "basis": "static read: ListAllSymbols + ServiceMeta"
-    },
     "batch": {
       "measured": "point",
       "basis": "static read: dispatch only; holds no ticket, each sub-call is admitted and measured in its own class"
@@ -12,10 +8,6 @@
     "blast_radius": {
       "measured": "tree",
       "basis": "design §3.1: moves to index only with the derived facts (§6); today a whole-service graph build (loadNavGraphs)"
-    },
-    "capabilities": {
-      "measured": "point",
-      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
     },
     "cloc": {
       "measured": "tree",
@@ -44,14 +36,6 @@
     "dead_code": {
       "measured": "index",
       "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
-    },
-    "discoveries": {
-      "measured": "tree",
-      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
-    },
-    "entrypoints": {
-      "measured": "index",
-      "basis": "static read: ListAllSymbols for one service"
     },
     "evidence_summary": {
       "measured": "index",
@@ -95,10 +79,6 @@
     },
     "list_services": {
       "measured": "fleet",
-      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
-    },
-    "list_sources": {
-      "measured": "tree",
       "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
     },
     "localize": {
@@ -157,10 +137,6 @@
       "measured": "ingest",
       "basis": "static read: deletes a service from the store (a store write)"
     },
-    "rename_impact": {
-      "measured": "index",
-      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
-    },
     "rename_service": {
       "measured": "ingest",
       "basis": "static read: rewrites a service id in the store (a store write)"
@@ -173,10 +149,6 @@
       "measured": "fleet",
       "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
     },
-    "safe_delete_check": {
-      "measured": "tree",
-      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
-    },
     "search": {
       "measured": "tree",
       "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
@@ -185,29 +157,17 @@
       "measured": "tree",
       "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
     },
-    "server_stats": {
-      "measured": "point",
-      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
-    },
     "shell_out": {
       "measured": "tree",
       "basis": "static read: client.Sources (whole-tree read)"
     },
-    "spec_coverage": {
-      "measured": "tree",
-      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
-    },
-    "spec_refs": {
-      "measured": "tree",
-      "basis": "static read: client.Sources (whole-tree read)"
-    },
-    "stale_docs": {
-      "measured": "tree",
-      "basis": "static read: client.Sources (whole-tree read)"
-    },
     "staleness_report": {
-      "measured": "point",
-      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
+      "measured": "tree",
+      "basis": "SR-28 merge of stale_docs (tree, a whole-tree Markdown scan) into the doc_drift section; declared at the merged cost"
+    },
+    "status": {
+      "measured": "tree",
+      "basis": "SR-23 merge of capabilities/server_stats (point) and list_sources (tree, a whole-service symbol read for the \"sources\" section); declared at the heaviest section's cost"
     },
     "symbol_context": {
       "measured": "tree",

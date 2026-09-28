@@ -276,6 +276,7 @@ func runDoctorChecks(root, explicitSvc, harness, baseURL string) []doctorCheck {
 		func() doctorCheck { return checkWiringDrift(root, harness) },  // PC-29: hooks, stanzas, MCP entries, owned skills (doctor_wiring.go)
 		func() doctorCheck { return checkConfigValid(root) },
 		func() doctorCheck { return checkDecisionProvider(root, providerClientBuilder) }, // DP-4 (ADR-042): is the configured [decide] provider viable? (doctor_decide.go)
+		func() doctorCheck { return doctorProvidersRow(root, providerClientBuilder) },    // SR-32 (surface reckoning F-71): CF-5's own auth probe, folded in (doctor_providers.go); CF-6 (smoke) never runs here
 		func() doctorCheck { return checkObligationsServed(hc, baseURL, root, explicitSvc, daemonUp) },
 		func() doctorCheck { return checkSurfaceTraffic(hc, baseURL, daemonUp, root) },
 		// Phase O (docs/design/platform-modules.md §4 / guarded-edits.md
@@ -1862,8 +1863,9 @@ func checkObligationsServed(hc *http.Client, baseURL, root, explicitSvc string, 
 // checkSurfaceTraffic is the CLI-native twin of
 // scripts/check-surface-traffic.sh's existence-check semantics ("has this
 // surface fired", not "did it fire recently"), scoped to the "agent"
-// surface (the recommended registration target per §1). Scope caveat,
-// from server_stats' own tool description (internal/mcp/meta.go): the
+// surface (the recommended registration target per §1). Scope caveat, from
+// status(section:"daemon")'s own tool description (internal/mcp/meta.go;
+// the retired server_stats tool's field, unchanged — SR-23): the
 // surface_traffic counters are PROCESS-LIFETIME — "since this process
 // started", reset on every daemon restart — so a zero here means "no
 // calls since this daemon process started", never "no calls ever".
@@ -1872,10 +1874,10 @@ func checkSurfaceTraffic(hc *http.Client, baseURL string, daemonUp bool, root st
 	remedy := "deploy a binary built after A1-1 (surface_traffic instrumentation) — docs/adoption/claude-code.md §5's deploy step"
 
 	if !daemonUp {
-		return doctorCheck{Name: name, Status: doctorSkipped, Reason: "daemon unreachable — cannot query server_stats (see daemon_reachable)"}
+		return doctorCheck{Name: name, Status: doctorSkipped, Reason: "daemon unreachable — cannot query status (see daemon_reachable)"}
 	}
 
-	req, err := originHeader(baseURL, strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"server_stats","arguments":{}}}`))
+	req, err := originHeader(baseURL, strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"status","arguments":{"section":"daemon"}}}`))
 	if err != nil {
 		return doctorCheck{Name: name, Status: doctorSkipped, Reason: err.Error()}
 	}
@@ -1890,7 +1892,7 @@ func checkSurfaceTraffic(hc *http.Client, baseURL string, daemonUp bool, root st
 	}
 	inner, err := unwrapRPCResult(raw)
 	if err != nil {
-		return doctorCheck{Name: name, Status: doctorFail, Reason: fmt.Sprintf("server_stats: %v", err), Remedy: remedy}
+		return doctorCheck{Name: name, Status: doctorFail, Reason: fmt.Sprintf("status: %v", err), Remedy: remedy}
 	}
 	var payload struct {
 		SurfaceTraffic map[string]struct {
@@ -1899,10 +1901,10 @@ func checkSurfaceTraffic(hc *http.Client, baseURL string, daemonUp bool, root st
 		} `json:"surface_traffic"`
 	}
 	if err := json.Unmarshal(inner, &payload); err != nil {
-		return doctorCheck{Name: name, Status: doctorSkipped, Reason: fmt.Sprintf("parsing server_stats response: %v", err)}
+		return doctorCheck{Name: name, Status: doctorSkipped, Reason: fmt.Sprintf("parsing status response: %v", err)}
 	}
 	if payload.SurfaceTraffic == nil {
-		return doctorCheck{Name: name, Status: doctorFail, Reason: "server_stats has no surface_traffic block — the daemon predates A1-1 call-log instrumentation, or no call logger is wired (--call-log)", Remedy: remedy}
+		return doctorCheck{Name: name, Status: doctorFail, Reason: "status(section:daemon) has no surface_traffic block — the daemon predates A1-1 call-log instrumentation, or no call logger is wired (--call-log)", Remedy: remedy}
 	}
 	entry, ok := payload.SurfaceTraffic["agent"]
 	if ok && entry.Calls > 0 {

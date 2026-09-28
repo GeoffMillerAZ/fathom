@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -67,6 +68,54 @@ func refuseNonSymbolQuery(query string, regexDeclared bool) string {
 		return ""
 	}
 	return fmt.Sprintf("references: query %q is not one of the three accepted forms — an identifier (e.g. \"FindMe\"), a dotted path (\"pkg.Sym\" or \"Type.Method\"), or a declared regular expression (regex: true)", query)
+}
+
+// referencesRouteToSearch answers a free-text references query (SR-40,
+// F-02, design §5) by handing it to search — the same scope references
+// itself would have resolved (referencesScope), the query escaped with
+// regexp.QuoteMeta since a free-text query is a literal phrase, never an
+// intended pattern. The answer carries routed_from so a caller can tell
+// the two tools' shapes apart, and degrades per service exactly as
+// references itself does (O36: one service's failure never aborts the
+// call) rather than aborting on the first unsearchable service.
+func referencesRouteToSearch(ctx context.Context, backend QueryInterface, query string, requestedServices []string, limit int) (any, *rpcError) {
+	svcs, scope, scopeErr := referencesScope(ctx, backend, requestedServices)
+	if scopeErr != nil {
+		return nil, scopeErr
+	}
+	pattern := regexp.QuoteMeta(query)
+	var hits []searchHit
+	var engines []string
+	var partials []string
+	for _, svc := range svcs {
+		res, rpcErr := searchByService(ctx, backend, svc, pattern, limit)
+		if rpcErr != nil {
+			partials = append(partials, svc+": "+rpcErr.Message)
+			continue
+		}
+		hits = append(hits, res.Hits...)
+		if res.Engine != "" && !slices.Contains(engines, res.Engine) {
+			engines = append(engines, res.Engine)
+		}
+		if res.Partial != "" {
+			partials = append(partials, svc+": "+res.Partial)
+		}
+	}
+	if len(hits) > limit {
+		hits = hits[:limit]
+		partials = append(partials, fmt.Sprintf("stopped at max %d", limit))
+	}
+	resp := map[string]any{
+		"query":       query,
+		"routed_from": "references",
+		"hits":        hits,
+		"engine":      strings.Join(engines, ","),
+		"scope":       scope,
+	}
+	if len(partials) > 0 {
+		resp["partial"] = strings.Join(partials, "; ")
+	}
+	return withSummary(searchSummary(hits), resp), nil
 }
 
 // interfaceMethodQuery reports whether query names a method exactly one
@@ -294,13 +343,20 @@ func registerReferences(s *Server, backend QueryInterface) {
 		if p.Query == "" {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "references: query required"}
 		}
-		if msg := refuseNonSymbolQuery(p.Query, p.Regex); msg != "" {
-			return nil, &rpcError{Code: ErrCodeParams, Message: msg}
-		}
 
 		maxOccs := p.Max
 		if maxOccs <= 0 {
 			maxOccs = referencesDefaultMax
+		}
+
+		// SR-40 (F-02, design §5): a free-text query — not one of the
+		// three accepted symbol forms and not a declared regex — is
+		// answered by search instead of refused. refuseNonSymbolQuery
+		// keeps its refusal message only for the (now unreachable from
+		// here) callers that still want it explained; the route itself
+		// never surfaces an error for this shape.
+		if msg := refuseNonSymbolQuery(p.Query, p.Regex); msg != "" {
+			return referencesRouteToSearch(ctx, backend, p.Query, p.Services, maxOccs)
 		}
 
 		// Resolve service list (RT-86, RT-159).

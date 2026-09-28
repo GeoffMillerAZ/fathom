@@ -84,7 +84,7 @@ func mergeObligationsAcrossFiles(url, service string, files []string, deadline t
 			if remaining <= 0 {
 				return // deadline passed while queued behind the concurrency cap
 			}
-			obl, indexStale, ok, _ := fetchObligations(url, service, f, 0, remaining, "")
+			obl, indexStale, _, ok, _ := fetchObligations(url, service, f, 0, remaining, "")
 			results[i] = fileResult{obl: obl, indexStale: indexStale, ok: ok, attempted: true}
 		}(i, f)
 	}

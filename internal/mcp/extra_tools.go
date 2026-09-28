@@ -4,10 +4,9 @@
 // registerExtraTools is called from registerTools (tools.go) and adds tools in
 // the following groups:
 //
-//	investigation: blast_radius, spec_coverage,
+//	investigation: blast_radius,
 //	               traceability, evidence_summary,
 //	               contradiction_scan, review_diff, search
-//	coding:        arch_conformance, stale_docs
 //	shared:        ingest
 //	context:       repo_map, pack_context
 //	ops/meta:      batch
@@ -20,24 +19,21 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
-	"sort"
 	"strings"
 	"time"
 	"unicode"
 
-	"github.com/geoffmilleraz/fathom/internal/analysis/archconformance"
-	"github.com/geoffmilleraz/fathom/internal/analysis/docdrift"
 	"github.com/geoffmilleraz/fathom/internal/analysis/envkeys"
 	"github.com/geoffmilleraz/fathom/internal/analysis/proto"
 	"github.com/geoffmilleraz/fathom/internal/analysis/routes"
 	"github.com/geoffmilleraz/fathom/internal/analysis/serviceref"
+	"github.com/geoffmilleraz/fathom/internal/analysis/symbolnav"
 	"github.com/geoffmilleraz/fathom/internal/concern"
 	"github.com/geoffmilleraz/fathom/internal/context/packer"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/graph"
 	"github.com/geoffmilleraz/fathom/internal/hookcache"
-	"github.com/geoffmilleraz/fathom/internal/projectrules"
 	"github.com/geoffmilleraz/fathom/internal/refresh"
 	"github.com/geoffmilleraz/fathom/internal/sdd"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
@@ -54,7 +50,10 @@ func registerExtraTools(s *Server, backend QueryInterface) {
 	// reckoning): it was a thin alias for blast_radius, and review_diff
 	// (which already runs blast_radius in-process) is the verb for a
 	// diff/PR impact question.
-	registerSpecCoverage(s, backend)
+	// registerSpecCoverage (F-35) was unregistered by SR-27 (surface
+	// reckoning): review_diff's engine already runs the identical check
+	// in-process (runSpecCoverage, internal/analysis/review/engine.go)
+	// via the same sdd package this tool called directly.
 	registerTraceability(s, backend)
 	registerEvidenceSummary(s, backend)
 	registerContradictionScan(s, backend)
@@ -65,8 +64,15 @@ func registerExtraTools(s *Server, backend QueryInterface) {
 	registerFindingsNear(s, backend)
 
 	// ── coding ───────────────────────────────────────────────────────────────
-	registerArchConformance(s, backend)
-	registerStaleDocs(s, backend)
+	// registerArchConformance (F-35) was unregistered by SR-27 (surface
+	// reckoning): review_diff's engine already runs the identical check
+	// in-process (runArch, internal/analysis/review/engine.go) via the
+	// same archconformance/projectrules packages this tool called
+	// directly — one caller instead of two, no logic lost.
+	// registerStaleDocs (F-56) was unregistered by SR-28 (surface reckoning):
+	// its own scan (docdrift.Analyze over every Markdown source) now runs
+	// in-process as staleness_report's doc_drift section (stalenessDocDrift,
+	// internal/mcp/meta.go) — one tool call instead of two.
 	// registerAPIDiff (F-20) was unregistered by SR-26 (surface reckoning):
 	// the calibrated API delta stays in `conserve`'s surface plane
 	// (internal/conserve/surface.go, ADR-044), which reuses the same
@@ -96,7 +102,12 @@ func registerExtraTools(s *Server, backend QueryInterface) {
 	registerProtoConformance(s, backend)
 
 	// ── spec / context ───────────────────────────────────────────────────────
-	registerSpecRefs(s, backend)
+	// registerSpecRefs (F-35) was unregistered by SR-27 (surface
+	// reckoning): its one real consumer, the edit hook's spec-line RPC
+	// (306 calls), now reads the identical spec_id → locations map from
+	// the obligations answer's additive spec_refs section
+	// (obligationsSpecRefs, internal/mcp/semantic_tools.go) instead of a
+	// second call.
 	// registerBrief was unregistered by SR-15 (surface reckoning F-53,
 	// refined): the MCP brief tool had 0 lifetime calls and overlaps
 	// pack_context; the CLI's renderBriefMD/briefTuning (the console's
@@ -187,26 +198,27 @@ func withServiceRefHops(m map[string]any, hops []serviceref.Hop, unextracted []s
 func registerBlastRadius(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "blast_radius",
-		Description: "Blast radius of changed files: symbols, transitive callers, tests, edge_confidence-labeled. Reach for it when a file changed and you need who transitively breaks. Required: service, changed_files.",
+		Description: `Blast radius of changed files (kind:"change"), every rename call site (kind:"rename"), or a symbol's remaining referents (kind:"delete"). Reach for it when a change, rename, or delete needs who breaks. Required: service.`,
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
 				"service":           map[string]any{"type": "string", "description": "Service / repo identifier"},
+				"kind":              map[string]any{"type": "string", "enum": []string{"change", "rename", "delete"}, "description": `"change" (default, changed_files), "rename"/"delete" (need symbol) — grep gives none of the three.`},
 				"changed_files":     map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Repo-relative file paths that changed"},
+				"symbol":            map[string]any{"type": "string", "description": "Symbol name (bare or fully-qualified)"},
 				"include_heuristic": map[string]any{"type": "boolean", "description": "Also follow syntax-only edges. Default false."},
-				"max_depth":         map[string]any{"type": "integer", "description": "Hops from the changed files (default 2; 0 = unbounded)"},
-				"max_symbols":       map[string]any{"type": "integer", "description": "Symbols listed, shallowest first (default 500)"},
+				"max_depth":         map[string]any{"type": "integer", "description": "Hops from the changed files (default 2; 0 = unbounded)."},
+				"max_symbols":       map[string]any{"type": "integer", "description": "Symbols listed, shallowest first (default 500)."},
 			},
-			"required": []string{"service", "changed_files"},
+			"required": []string{"service"},
 		},
 		group: GroupInvestigation,
 	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
-		if backend == nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
-		}
 		var p struct {
 			Service          string   `json:"service"`
+			Kind             string   `json:"kind"`
 			ChangedFiles     []string `json:"changed_files"`
+			Symbol           string   `json:"symbol"`
 			IncludeHeuristic bool     `json:"include_heuristic"`
 			MaxDepth         *int     `json:"max_depth"`
 			MaxSymbols       *int     `json:"max_symbols"`
@@ -214,51 +226,78 @@ func registerBlastRadius(s *Server, backend QueryInterface) {
 		if err := json.Unmarshal(args, &p); err != nil {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "blast_radius: invalid args"}
 		}
-		if p.Service == "" {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "blast_radius: service required"}
-		}
-		if len(p.ChangedFiles) == 0 {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "blast_radius: changed_files required"}
-		}
-		navs := s.loadNavGraphs(ctx, backend, p.Service)
-		if navs == nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "blast_radius: no symbols for service " + p.Service}
-		}
-		// BP-27: bounded, resolved-by-default. The unbounded both-kinds
-		// walk (impact.BlastRadiusWithTypedEdges) is untouched and is still
-		// what the verify engine's reachability reads.
-		res := blastRadiusResolved(navs, p.ChangedFiles, p.IncludeHeuristic,
-			intOr(p.MaxDepth, defaultBlastDepth), intOr(p.MaxSymbols, defaultBlastSymbols))
-		result := map[string]any{
-			"symbols":       stringsToAny(res.Symbols),
-			"tests":         stringsToAny(res.Tests),
-			"files":         stringsToAny(res.Files),
-			"edge_filter":   res.EdgeFilter,
-			"total_symbols": res.TotalSymbols,
-			"truncated":     res.Truncated,
-			"depth_capped":  res.DepthCapped,
-			"max_depth":     res.MaxDepthReached,
-			// BD-3 (docs/plans/blast-depth.md): the same symbols regrouped
-			// by distance from the changed files, each labeled with the
-			// confidence of the edge that pulled it in — under the SAME
-			// graph and bounds the listing used (BP-27).
-			"by_depth": res.Buckets,
-			// resolution (VB-19): the same by_depth counts, summed to one
-			// envelope-level typed/heuristic mix.
-			"resolution": resolutionFromBlastBuckets(res.Buckets),
-			// VB-30: other services whose outbound HTTP client call joins a
-			// route one of changed_files registers — a hop no same-process
-			// call graph can see. Each entry kind:"service_ref",
-			// tier:"heuristic". Empty (never omitted) when the fleet has
-			// fewer than two services or no such hop exists.
-		}
-		hops, unextracted := serviceRefHopsInto(ctx, backend, p.Service, p.ChangedFiles)
-		withServiceRefHops(result, hops, unextracted)
-		if ic := indexCommitFor(ctx, backend, p.Service); ic != "" {
-			result["index_commit"] = ic
-		}
-		return withSummary(blastRadiusSummary(res.Buckets, len(res.Tests)), result), nil
+		return blastRadiusByKind(ctx, s, backend, p.Kind, p.Service, p.ChangedFiles, p.Symbol, p.IncludeHeuristic, p.MaxDepth, p.MaxSymbols)
 	})
+}
+
+// blastRadiusByKind is blast_radius' kind dispatch (SR-24, F-13, design
+// §4): "change" (the default) is the tool's own long-standing answer;
+// "rename" and "delete" are the retired rename_impact/safe_delete_check
+// tools' exact answers, unregistered as standalone tools and reached here
+// instead — promotedVerbs() lost rename_impact accordingly.
+func blastRadiusByKind(ctx context.Context, s *Server, backend QueryInterface, kind, service string, changedFiles []string, symbol string, includeHeuristic bool, maxDepth, maxSymbols *int) (any, *rpcError) {
+	switch kind {
+	case "", "change":
+		return blastRadiusChangeAnswer(ctx, s, backend, service, changedFiles, includeHeuristic, maxDepth, maxSymbols)
+	case "rename":
+		return renameImpactAnswer(ctx, backend, service, symbol)
+	case "delete":
+		return safeDeleteCheckAnswer(ctx, s, backend, service, symbol)
+	default:
+		return nil, &rpcError{Code: ErrCodeParams, Message: `blast_radius: kind must be "change", "rename", or "delete"`}
+	}
+}
+
+// blastRadiusChangeAnswer is blast_radius' original (and default,
+// kind:"change") answer, unchanged by the SR-24 merge.
+func blastRadiusChangeAnswer(ctx context.Context, s *Server, backend QueryInterface, service string, changedFiles []string, includeHeuristic bool, maxDepth, maxSymbols *int) (any, *rpcError) {
+	if backend == nil {
+		return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
+	}
+	if service == "" {
+		return nil, &rpcError{Code: ErrCodeParams, Message: "blast_radius: service required"}
+	}
+	if len(changedFiles) == 0 {
+		return nil, &rpcError{Code: ErrCodeParams, Message: "blast_radius: changed_files required"}
+	}
+	navs := s.loadNavGraphs(ctx, backend, service)
+	if navs == nil {
+		return nil, &rpcError{Code: ErrCodeInternal, Message: "blast_radius: no symbols for service " + service}
+	}
+	// BP-27: bounded, resolved-by-default. The unbounded both-kinds
+	// walk (impact.BlastRadiusWithTypedEdges) is untouched and is still
+	// what the verify engine's reachability reads.
+	res := blastRadiusResolved(navs, changedFiles, includeHeuristic,
+		intOr(maxDepth, defaultBlastDepth), intOr(maxSymbols, defaultBlastSymbols))
+	result := map[string]any{
+		"symbols":       stringsToAny(res.Symbols),
+		"tests":         stringsToAny(res.Tests),
+		"files":         stringsToAny(res.Files),
+		"edge_filter":   res.EdgeFilter,
+		"total_symbols": res.TotalSymbols,
+		"truncated":     res.Truncated,
+		"depth_capped":  res.DepthCapped,
+		"max_depth":     res.MaxDepthReached,
+		// BD-3 (docs/plans/blast-depth.md): the same symbols regrouped
+		// by distance from the changed files, each labeled with the
+		// confidence of the edge that pulled it in — under the SAME
+		// graph and bounds the listing used (BP-27).
+		"by_depth": res.Buckets,
+		// resolution (VB-19): the same by_depth counts, summed to one
+		// envelope-level typed/heuristic mix.
+		"resolution": resolutionFromBlastBuckets(res.Buckets),
+		// VB-30: other services whose outbound HTTP client call joins a
+		// route one of changed_files registers — a hop no same-process
+		// call graph can see. Each entry kind:"service_ref",
+		// tier:"heuristic". Empty (never omitted) when the fleet has
+		// fewer than two services or no such hop exists.
+	}
+	hops, unextracted := serviceRefHopsInto(ctx, backend, service, changedFiles)
+	withServiceRefHops(result, hops, unextracted)
+	if ic := indexCommitFor(ctx, backend, service); ic != "" {
+		result["index_commit"] = ic
+	}
+	return withSummary(blastRadiusSummary(res.Buckets, len(res.Tests)), result), nil
 }
 
 // blastRadiusSummary renders blast_radius' answer-first sentence (wave L1):
@@ -305,91 +344,6 @@ func intOr(p *int, def int) int {
 		return def
 	}
 	return *p
-}
-
-// ─── investigation: spec_coverage ────────────────────────────────────────────
-
-func registerSpecCoverage(s *Server, backend QueryInterface) {
-	s.registerTool(toolDescriptor{
-		Name:        "spec_coverage",
-		Description: "Build a spec coverage matrix: for each declared spec ID report which symbols implement it, which specs are uncovered, and which referenced IDs are orphans (not in the declared set).",
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"service":  map[string]any{"type": "string", "description": "Service / repo identifier"},
-				"spec_ids": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Declared spec IDs (e.g. [\"[US-001]\",\"[EP-002]\"])"},
-				"prefixes": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Spec-ID prefixes to scan for (default: US, EP, FR, NFR)"},
-			},
-			"required": []string{"service", "spec_ids"},
-		},
-		group: GroupInvestigation,
-	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
-		if backend == nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
-		}
-		var p struct {
-			Service  string   `json:"service"`
-			SpecIDs  []string `json:"spec_ids"`
-			Prefixes []string `json:"prefixes"`
-		}
-		if err := json.Unmarshal(args, &p); err != nil {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "spec_coverage: invalid args"}
-		}
-		if p.Service == "" {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "spec_coverage: service required"}
-		}
-		// Scan sources for spec refs under the tree budget (RT-71); a
-		// partial scan is named in the answer.
-		files, specCov, _ := collectSources(ctx, backend, p.Service)
-		nodes, err := serviceSymbols(ctx, backend, p.Service)
-		if err != nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
-		}
-		// Build codeRefs map: symbol → []specID.
-		codeRefs := make(map[string][]string)
-		// From nodes (claim text may contain spec refs).
-		for _, n := range nodes {
-			var refs []string
-			if len(p.Prefixes) > 0 {
-				refs = sdd.ExtractRefsWithPrefixes(n.Signature+" "+n.Name, p.Prefixes)
-			} else {
-				refs = sdd.ExtractRefs(n.Signature + " " + n.Name)
-			}
-			if len(refs) > 0 {
-				codeRefs[n.Name] = refs
-			}
-		}
-		// From source files.
-		for _, f := range files {
-			var refs []string
-			if len(p.Prefixes) > 0 {
-				refs = sdd.ExtractRefsWithPrefixes(string(f.Content), p.Prefixes)
-			} else {
-				refs = sdd.ExtractRefs(string(f.Content))
-			}
-			if len(refs) > 0 {
-				key := f.Path
-				codeRefs[key] = append(codeRefs[key], refs...)
-			}
-		}
-		matrix := sdd.BuildMatrix(p.SpecIDs, codeRefs)
-		uncovered := matrix.Uncovered(p.SpecIDs)
-		orphans := matrix.Orphans(codeRefs)
-		// Build coverage map spec → symbols.
-		covered := make(map[string]any, len(p.SpecIDs))
-		for _, id := range p.SpecIDs {
-			syms := matrix.Coverage(id)
-			if syms == nil {
-				syms = []string{}
-			}
-			covered[id] = stringsToAny(syms)
-		}
-		return withPartial(map[string]any{
-			"coverage":  covered,
-			"uncovered": stringsToAny(uncovered),
-			"orphans":   stringsToAny(orphans),
-		}, specCov), nil
-	})
 }
 
 // ─── investigation: traceability ─────────────────────────────────────────────
@@ -560,186 +514,6 @@ func registerContradictionScan(s *Server, backend QueryInterface) {
 			})
 		}
 		return map[string]any{"contradictions": out, "count": len(out)}, nil
-	})
-}
-
-// ─── coding: arch_conformance ─────────────────────────────────────────────────
-
-func registerArchConformance(s *Server, backend QueryInterface) {
-	s.registerTool(toolDescriptor{
-		Name:        "arch_conformance",
-		Description: "Check the service call-graph edges against architectural layering rules and report violations. When no inline rules are passed, falls back to the service's own .fathom/rules/archconformance.cue project rule pack; the response's rule_source names which source was used (\"inline\" | \"project\" | \"none\"), and checked is false (with a reason) when no rules were available from either source — never a clean-shaped zero-violation answer for a check that did not run.",
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"service": map[string]any{"type": "string", "description": "Service / repo identifier"},
-				"rules": map[string]any{
-					"type":        "array",
-					"description": "List of {from_pkg,to_pkg,allow} rules. Use \"*\" as wildcard. When omitted or empty, the service's .fathom/rules/archconformance.cue project rule pack is used if present.",
-					"items": map[string]any{
-						"type": "object",
-						"properties": map[string]any{
-							"from_pkg": map[string]any{"type": "string"},
-							"to_pkg":   map[string]any{"type": "string"},
-							"allow":    map[string]any{"type": "boolean"},
-						},
-					},
-				},
-				"deny_by_default": map[string]any{"type": "boolean", "description": "Deny edges not matched by any allow rule. When project rules are used, this is OR'd with that rule pack's own deny_by_default."},
-			},
-			"required": []string{"service"},
-		},
-		group: GroupCoding,
-	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
-		if backend == nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
-		}
-		var p struct {
-			Service       string `json:"service"`
-			DenyByDefault bool   `json:"deny_by_default"`
-			Rules         []struct {
-				FromPkg string `json:"from_pkg"`
-				ToPkg   string `json:"to_pkg"`
-				Allow   bool   `json:"allow"`
-			} `json:"rules"`
-		}
-		if err := json.Unmarshal(args, &p); err != nil {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "arch_conformance: invalid args"}
-		}
-		if p.Service == "" {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "arch_conformance: service required"}
-		}
-		nodes, err := serviceSymbols(ctx, backend, p.Service)
-		if err != nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
-		}
-		// Build edges from Calls, both sides normalized to DECLARING
-		// packages (P1-4, closes the C4-4 disclosed gap — see schema/
-		// rules/archconformance/schema.cue #Rule, now updated to "closed").
-		// archconformance.Check derives a rule-matchable "package" as
-		// everything before an edge's LAST dot (pkgOf); EdgesFromNodes
-		// resolves both FromSymbol and ToSymbol to "declPkg.BareName" so
-		// that holds for METHOD-origin and method-TARGET edges too, not
-		// only function-to-function ones — see EdgesFromNodes' own doc
-		// comment for how. Shared with review_diff (C1-1) via the
-		// archconformance package — one implementation, never two that
-		// could drift.
-		edges := archconformance.EdgesFromNodes(nodes)
-
-		inlineRules := make([]archconformance.Rule, len(p.Rules))
-		for i, r := range p.Rules {
-			inlineRules[i] = archconformance.Rule{FromPkg: r.FromPkg, ToPkg: r.ToPkg, Allow: r.Allow}
-		}
-
-		// C4-2/C4-3: when the caller passes no inline rules, fall back to
-		// the service's own project rule pack — and report honestly
-		// (checked:false + reason) when neither source has anything to
-		// check, rather than the confirmed C4-5 bug of a clean-shaped
-		// {violations:[],count:0} indistinguishable from a real scan.
-		// projectrules.ResolveRules is the single shared implementation of
-		// this three-way split (also used by review_diff, C1-1).
-		corpusRoot := ""
-		if path, _, found, metaErr := backend.ServiceMeta(ctx, p.Service); metaErr == nil && found {
-			corpusRoot = path
-		}
-		rules, ruleSource, denyByDefault, checked, reason, resolveErr := projectrules.ResolveRules(corpusRoot, inlineRules, p.DenyByDefault)
-		if resolveErr != nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "arch_conformance: project rules: " + resolveErr.Error()}
-		}
-
-		var violations []archconformance.Violation
-		if checked {
-			var opts []archconformance.Option
-			if denyByDefault {
-				opts = append(opts, archconformance.DenyByDefault())
-			}
-			violations = archconformance.Check(edges, rules, opts...)
-		}
-		result := make([]any, len(violations))
-		for i, v := range violations {
-			result[i] = map[string]any{
-				"from":   v.From,
-				"to":     v.To,
-				"reason": v.Reason,
-			}
-		}
-		resp := map[string]any{
-			"violations":  result,
-			"count":       len(violations),
-			"rule_source": ruleSource,
-			"checked":     checked,
-		}
-		if !checked {
-			resp["reason"] = reason
-		}
-		return resp, nil
-	})
-}
-
-// ─── coding: stale_docs ───────────────────────────────────────────────────────
-
-func registerStaleDocs(s *Server, backend QueryInterface) {
-	s.registerTool(toolDescriptor{
-		Name:        "stale_docs",
-		Description: "Scan Markdown source files for stale references: inline code spans or link targets that no longer correspond to known symbols or files.",
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"service": map[string]any{"type": "string", "description": "Service / repo identifier"},
-			},
-			"required": []string{"service"},
-		},
-		group: GroupCoding,
-	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
-		if backend == nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
-		}
-		svc, rpcErr := serviceArg(args, "stale_docs")
-		if rpcErr != nil {
-			return nil, rpcErr
-		}
-		files, cov, rpcErr := fetchSources(ctx, backend, svc)
-		if rpcErr != nil {
-			return nil, rpcErr
-		}
-		nodes, err := serviceSymbols(ctx, backend, svc)
-		if err != nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
-		}
-		// Build known-symbol and known-file sets.
-		knownSymbols := make(map[string]bool, len(nodes))
-		for _, n := range nodes {
-			knownSymbols[n.Name] = true
-		}
-		knownFiles := make(map[string]bool, len(files))
-		for _, f := range files {
-			knownFiles[f.Path] = true
-		}
-		var allDrifts []docdrift.Drift
-		for _, f := range files {
-			if f.Lang != "md" {
-				continue
-			}
-			allDrifts = append(allDrifts, docdrift.Analyze(f.Path, string(f.Content), knownSymbols, knownFiles)...)
-		}
-		sort.Slice(allDrifts, func(i, j int) bool {
-			if allDrifts[i].File != allDrifts[j].File {
-				return allDrifts[i].File < allDrifts[j].File
-			}
-			if allDrifts[i].Line != allDrifts[j].Line {
-				return allDrifts[i].Line < allDrifts[j].Line
-			}
-			return allDrifts[i].Ref < allDrifts[j].Ref
-		})
-		result := make([]any, len(allDrifts))
-		for i, d := range allDrifts {
-			result[i] = map[string]any{
-				"file": d.File,
-				"line": d.Line,
-				"ref":  d.Ref,
-			}
-		}
-		return withPartial(map[string]any{"drifts": result, "count": len(result)}, cov), nil
 	})
 }
 
@@ -1121,6 +895,25 @@ func registerIngest(s *Server, backend QueryInterface) {
 
 // ─── context: repo_map ────────────────────────────────────────────────────────
 
+// repoMapEntrypointCap bounds repo_map's "entrypoints" header (SR-22,
+// F-10, design §4): the same symbolnav.Entrypoints detector the retired
+// `entrypoints` tool used, capped so a service with hundreds of HTTP
+// handlers never turns the header into its own unbounded listing.
+const repoMapEntrypointCap = 10
+
+// repoMapEntrypoints returns repo_map's header entrypoints — capped at
+// repoMapEntrypointCap — and how many were cut beyond the cap (0 when
+// everything fit). Nil input or no detected entrypoints returns (nil, 0)
+// so the caller can omit the field entirely rather than serve an empty one.
+func repoMapEntrypoints(nodes []core.SymbolNode) ([]symbolNodeDTO, int) {
+	eps := symbolnav.Entrypoints(nodes)
+	total := len(eps)
+	if total > repoMapEntrypointCap {
+		eps = eps[:repoMapEntrypointCap]
+	}
+	return toNodeDTOs(eps), total - len(eps)
+}
+
 func registerRepoMap(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "repo_map",
@@ -1161,7 +954,21 @@ func registerRepoMap(s *Server, backend QueryInterface) {
 		// count is recovered from its own one-line-per-symbol output rather
 		// than widening that package's signature (out of this row's scope).
 		included := strings.Count(mapStr, "\n")
-		resp := map[string]any{"map": mapStr, "budget": budget}
+		// SR-41 (F-07, design §5): repo_map is an orientation tool, never
+		// the exhaustive answer — "label" says so in every response
+		// regardless of budget, so a caller that widened the budget still
+		// sees the same steer toward query_symbols/pack_context for
+		// anything more specific.
+		resp := map[string]any{"map": mapStr, "budget": budget, "label": "orientation-only"}
+		// SR-22 (F-10, design §4): the header carries likely entrypoints —
+		// the same detector the unregistered `entrypoints` tool used —
+		// capped at repoMapEntrypointCap, honest-absence when none exist.
+		if eps, more := repoMapEntrypoints(nodes); len(eps) > 0 {
+			resp["entrypoints"] = eps
+			if more > 0 {
+				resp["entrypoints_more"] = more
+			}
+		}
 		if el := elisionFor(included, len(nodes), "outbound call-edge count, most-connected first, ties by package+name", "re-call with a larger budget"); el != nil {
 			resp["elided"] = el
 			// RC-19: the same one-line disclosure the other four newly-
@@ -1467,68 +1274,6 @@ func registerProtoConformance(s *Server, backend QueryInterface) {
 			}
 		}
 		return withPartial(map[string]any{"issues": allIssues, "count": len(allIssues)}, cov), nil
-	})
-}
-
-// ─── spec / context: spec_refs ────────────────────────────────────────────────
-
-func registerSpecRefs(s *Server, backend QueryInterface) {
-	s.registerTool(toolDescriptor{
-		Name: "spec_refs",
-		Description: "Scan service source files for spec-ID references and return a grouped map of spec_id → [{file, line}]. " +
-			"Covers bracketed IDs ([US-042], [EP-013]), milestone IDs (M18.2), and doc references (doc 31). " +
-			"Results are deterministically sorted (spec_id asc, file asc, line asc).",
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"service": map[string]any{"type": "string", "description": "Service / repo identifier"},
-				"pattern": map[string]any{"type": "string", "description": "Optional regex override (default covers [US/EP/FR/NFR-N], MN.N, doc N)"},
-				"spec":    map[string]any{"type": "string", "description": "Optional: filter output to a single normalised spec ID (e.g. \"M18.2\")"},
-			},
-			"required": []string{"service"},
-		},
-		group: GroupInvestigation,
-	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
-		if backend == nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
-		}
-		var p struct {
-			Service string `json:"service"`
-			Pattern string `json:"pattern"`
-			Spec    string `json:"spec"`
-		}
-		if err := json.Unmarshal(args, &p); err != nil {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "spec_refs: invalid args"}
-		}
-		if p.Service == "" {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "spec_refs: service required"}
-		}
-		files, cov, rpcErr := fetchSources(ctx, backend, p.Service)
-		if rpcErr != nil {
-			return nil, rpcErr
-		}
-		// Build path→content map for the pure ExtractFileRefs function.
-		fileMap := make(map[string]string, len(files))
-		for _, f := range files {
-			fileMap[f.Path] = string(f.Content)
-		}
-		refs, scanned, err := sdd.ExtractFileRefs(fileMap, p.Pattern, p.Spec)
-		if err != nil {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "spec_refs: invalid pattern: " + err.Error()}
-		}
-		// Group refs by spec_id.
-		specsMap := make(map[string][]any)
-		for _, r := range refs {
-			specsMap[r.SpecID] = append(specsMap[r.SpecID], map[string]any{
-				"file": r.File,
-				"line": r.Line,
-			})
-		}
-		return withPartial(map[string]any{
-			"specs":         specsMap,
-			"total_refs":    len(refs),
-			"files_scanned": scanned,
-		}, cov), nil
 	})
 }
 

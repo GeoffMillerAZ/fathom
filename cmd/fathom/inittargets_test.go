@@ -53,7 +53,7 @@ func TestInitTargetsFor(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cursor.Hooks || !reflect.DeepEqual(cursor.StanzaFiles, []string{"AGENTS.md"}) || !strings.Contains(cursor.HooksNote, "not wired") || !strings.Contains(cursor.MCPAddLine, ".cursor/mcp.json") {
+	if cursor.Hooks || !reflect.DeepEqual(cursor.StanzaFiles, []string{"AGENTS.md"}) || !strings.Contains(cursor.HooksNote, "fathom harness hooks --harness cursor") || !strings.Contains(cursor.MCPAddLine, ".cursor/mcp.json") {
 		t.Errorf("cursor targets = %+v", cursor)
 	}
 

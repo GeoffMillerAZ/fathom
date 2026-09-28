@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package fleet.inventory.v1;
+
+service Inventory {
+  rpc Reserve(ReserveRequest) returns (ReserveResponse);
+  rpc Release(ReleaseRequest) returns (ReleaseResponse);
+}
+
+message ReserveRequest { string sku = 1; int32 qty = 2; }
+message ReserveResponse { bool ok = 1; }
+message ReleaseRequest { string sku = 1; }
+message ReleaseResponse {}

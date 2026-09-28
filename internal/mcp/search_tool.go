@@ -29,6 +29,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -45,6 +46,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/corpus"
+	"github.com/geoffmilleraz/fathom/internal/docindex"
 	"github.com/geoffmilleraz/fathom/internal/filter"
 )
 
@@ -139,6 +141,11 @@ type searchHit struct {
 	Flags string   `json:"flags,omitempty"`
 	Class string   `json:"class,omitempty"`
 	Ctx   []string `json:"ctx,omitempty"`
+	// Heading and Score are set only for a `kind: docs` hit (KR-5): Heading
+	// is the doc unit's heading path, Score its fused reciprocal-rank-fusion
+	// value (higher is better, KR-4). A grep-shaped hit never sets either.
+	Heading string  `json:"heading,omitempty"`
+	Score   float64 `json:"score,omitempty"`
 }
 
 // searchResult is search's top-level answer.
@@ -199,6 +206,10 @@ func registerSearch(s *Server, backend QueryInterface) {
 					"type":        "integer",
 					"description": "Lines of context around each hit (default 0)",
 				},
+				"kind": map[string]any{
+					"type":        "string",
+					"description": "\"docs\" ranks the indexed doc corpus (ADRs, intent, plans, design) instead of grepping; requires service.",
+				},
 			},
 			"required": []string{"pattern"},
 		},
@@ -212,12 +223,22 @@ func registerSearch(s *Server, backend QueryInterface) {
 			Case    *bool  `json:"case"`
 			Limit   int    `json:"limit"`
 			Context int    `json:"context"`
+			Kind    string `json:"kind"`
 		}
 		if err := json.Unmarshal(args, &p); err != nil {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "search: invalid args"}
 		}
 		if p.Pattern == "" {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "search: pattern required"}
+		}
+		if p.Kind != "" && p.Kind != "docs" {
+			return nil, &rpcError{Code: ErrCodeParams, Message: fmt.Sprintf("search: unknown kind %q (must be \"docs\" or omitted)", p.Kind)}
+		}
+		if p.Kind == "docs" {
+			if p.Service == "" || p.Root != "" {
+				return nil, &rpcError{Code: ErrCodeParams, Message: "search: kind \"docs\" requires service (root does not apply)"}
+			}
+			return searchDocs(ctx, backend, p.Service, p.Pattern, p.Limit)
 		}
 		if (p.Service == "") == (p.Root == "") {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "search: give exactly one of service or root"}
@@ -328,6 +349,145 @@ func registerSearch(s *Server, backend QueryInterface) {
 		}
 		return searchResult{Summary: searchSummary(kept), Hits: kept, Engine: engine, Elided: el, Partial: partial}, nil
 	})
+}
+
+// searchByService runs the same service-scoped grep-with-receipt search as
+// the "search" tool's own handler, factored out for reuse by other tools
+// (SR-40, F-02, design §5: references routes a free-text query here rather
+// than refusing it). pattern is a Go regexp exactly as search's own
+// "pattern" field is — a caller with a literal string escapes it with
+// regexp.QuoteMeta first, same as any other search caller would.
+func searchByService(ctx context.Context, backend QueryInterface, service, pattern string, limit int) (searchResult, *rpcError) {
+	if backend == nil {
+		return searchResult{}, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
+	}
+	re, reErr := regexp.Compile(pattern)
+	if reErr != nil {
+		return searchResult{}, &rpcError{Code: ErrCodeParams, Message: "search: invalid pattern: " + reErr.Error()}
+	}
+	root, err := resolveCorpusRoot(ctx, backend, service)
+	if err != nil {
+		return searchResult{}, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
+	}
+	var byFile map[string][]core.SymbolNode
+	if nodes, err := serviceSymbols(ctx, backend, service); err == nil {
+		byFile = groupSymbolsByFile(nodes)
+	}
+	// Same fail-closed exclusions discipline as registerSearch's own
+	// service path (V-review): an exclusion load error refuses rather
+	// than searching unfiltered.
+	ignore, ignorePatterns, _, ierr := connector.LoadIgnoreScopedForWithPatterns(root, service)
+	if ierr != nil {
+		return searchResult{}, &rpcError{Code: ErrCodeInternal, Message: fmt.Sprintf("search: refusing to search service %q: its exclusions could not be loaded (%v) — searching without them could disclose purged or excluded content", service, ierr)}
+	}
+	if limit <= 0 {
+		limit = searchDefaultLimit
+	}
+	rawHits, engine, capped, err := searchRun(ctx, root, searchOpts{
+		pattern: pattern, caseSensitive: true, limit: limit, ignore: ignore, ignorePatterns: ignorePatterns,
+	})
+	if err != nil {
+		return searchResult{}, &rpcError{Code: ErrCodeInternal, Message: "search: " + err.Error()}
+	}
+	sort.Slice(rawHits, func(i, j int) bool {
+		if rawHits[i].File != rawHits[j].File {
+			return rawHits[i].File < rawHits[j].File
+		}
+		return rawHits[i].Line < rawHits[j].Line
+	})
+	total := len(rawHits)
+	limited := rawHits
+	if len(limited) > limit {
+		limited = limited[:limit]
+	}
+	flagsCache := map[string][]string{}
+	linesCache := map[string][]string{}
+	hits := make([]searchHit, 0, len(limited))
+	for _, rh := range limited {
+		hits = append(hits, renderSearchHit(ctx, rh, re, byFile, flagsCache, linesCache, root))
+	}
+	kept, truncated := fitToBudget(hits, 0)
+	var el *elided
+	if truncated || total > len(kept) {
+		el = elisionFor(len(kept), total, "path, then line", "narrow path or pattern")
+	}
+	partial := ""
+	if capped != "" {
+		partial = fmt.Sprintf("≥ %d hits (%s)", total, capped)
+	}
+	return searchResult{Summary: searchSummary(kept), Hits: kept, Engine: engine, Elided: el, Partial: partial}, nil
+}
+
+// docsSearchBackend is the optional backend capability `search kind: docs`
+// (KR-5) needs: BM25-plus-concern ranking over the indexed doc corpus
+// (KR-4's docindex.RankDocs), the same optional-capability pattern
+// obligationsBackend and friends already use. pkg/client implements it; a
+// backend that omits it (a bare fake in a unit test, or any backend not
+// wired to a store at all) makes `kind: docs` refuse with a clear message
+// rather than silently falling back to grep.
+type docsSearchBackend interface {
+	SearchDocs(ctx context.Context, service, query string, concernSymbols []string, limit int) ([]docindex.RankedDoc, error)
+}
+
+// searchDocs answers `search kind: docs` (KR-5,
+// docs/design/knowledge-retrieval.md §5): docindex.RankDocs via the
+// backend's SearchDocs, rendered into the same searchResult/searchHit
+// envelope grep-shaped search uses (law 4: no new tool). concernSymbols is
+// always empty here — a bare search call carries no concern context to
+// boost by; a caller that wants concern-boosted doc ranking has one
+// through pack_context instead.
+func searchDocs(ctx context.Context, backend QueryInterface, service, query string, limit int) (any, *rpcError) {
+	if backend == nil {
+		return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
+	}
+	db, ok := backend.(docsSearchBackend)
+	if !ok {
+		return nil, &rpcError{Code: ErrCodeInternal, Message: "search: kind \"docs\" is not available on this backend"}
+	}
+	if limit <= 0 {
+		limit = searchDefaultLimit
+	}
+	ranked, err := db.SearchDocs(ctx, service, query, nil, limit)
+	if err != nil {
+		if errors.Is(err, docindex.ErrDocIndexUnavailable) {
+			return nil, &rpcError{Code: ErrCodeInternal, Message: "search: kind \"docs\" needs a SQLite-backed store; none is configured for this session"}
+		}
+		return nil, &rpcError{Code: ErrCodeInternal, Message: "search: " + err.Error()}
+	}
+	hits := make([]searchHit, 0, len(ranked))
+	for _, r := range ranked {
+		loc := r.Path + ":" + strconv.Itoa(r.LineStart)
+		if r.LineEnd > r.LineStart {
+			loc += "-" + strconv.Itoa(r.LineEnd)
+		}
+		flags := ""
+		if r.StaleByLocation {
+			flags = "stale_by_location"
+		}
+		hits = append(hits, searchHit{
+			Loc: loc, Text: r.Snippet, Kind: r.Kind, Flags: flags,
+			Heading: r.HeadingPath, Score: r.Score,
+		})
+	}
+	partial := ""
+	if len(hits) == limit {
+		partial = fmt.Sprintf("results capped at %d (increase limit or narrow the query for more)", limit)
+	}
+	return searchResult{Summary: searchDocsSummary(hits), Hits: hits, Engine: "docs-fts", Partial: partial}, nil
+}
+
+// searchDocsSummary mirrors searchSummary's answer-first shape for a
+// `kind: docs` result: hit count and the first hit's location plus its
+// heading path (the docs equivalent of a grep hit's enclosing symbol).
+func searchDocsSummary(hits []searchHit) string {
+	if len(hits) == 0 {
+		return "no doc hits"
+	}
+	first := hits[0].Loc
+	if hits[0].Heading != "" {
+		first += " (" + hits[0].Heading + ")"
+	}
+	return capSummary(fmt.Sprintf("%d doc hit%s; first: %s", len(hits), pluralS(len(hits)), first))
 }
 
 // searchSummary renders search's answer-first sentence (wave L1): the hit

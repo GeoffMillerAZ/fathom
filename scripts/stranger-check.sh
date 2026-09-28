@@ -190,9 +190,11 @@ t_first_answer=$EPOCHREALTIME
 
 # 5. One real tool call against /rpc/agent, the way a stranger's first
 #    session makes one — this is what proves the surface answers, and it
-#    is what doctor's surface_traffic row counts.
+#    is what doctor's surface_traffic row counts. find_symbol, not
+#    capabilities: SR-23 merged capabilities into status, which is not on
+#    the /rpc/agent floor, so the old call answered "unknown tool".
 if ! curl -s --max-time 5 -H 'Content-Type: application/json' \
-      -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"capabilities","arguments":{}}}' \
+      -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"find_symbol","arguments":{"service":"stranger","name":"main"}}}' \
       "${url}/rpc/agent" | grep -q '"result"'; then
   echo "stranger-check: FAIL a tools/call against ${url}/rpc/agent returned no result" >&2
   exit 1
