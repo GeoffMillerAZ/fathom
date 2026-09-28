@@ -136,7 +136,7 @@ func buildProjectIntentPage(cr *consoleRequest) (consoleOut, error) {
 	view := console.IntentView(run.Corpus, run.Audit, run.Ledger, at)
 	model.View, model.AuditAt = &view, at.UTC().Format(time.RFC3339)
 	out.Model = model
-	out.Sections = map[string]any{verb: intentAuditPayload(run.Corpus, run.Audit, run.Ledger)}
+	out.Sections = map[string]any{verb: intentAuditPayload(run.Corpus, run.Audit, run.Ledger, at)}
 	out.Body = func() string {
 		return renderProjectTabs(pc.svc, "intent") + projectBody(renderProjectIntent(pc, view, verb, at))
 	}

@@ -34,6 +34,13 @@ import (
 
 const intentTopDefault = 20
 
+// intentAuditLearningWindow (GL-14, design doc §6) is how far back `fathom
+// intent audit` reports a promotion/retirement — wide enough to span a
+// promotion's own 30-day evidence window (design doc §6's default), so a
+// transition that just happened is still visible on the NEXT audit even
+// when it was recorded a few weeks into the reporting gap.
+const intentAuditLearningWindow = 30 * 24 * time.Hour
+
 func cmdIntent(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
 		fmt.Fprintln(stderr, "error: intent requires a subcommand (audit, doctrine, export, render)")
@@ -95,7 +102,7 @@ func cmdIntentAudit(args []string, stdout, stderr io.Writer) int {
 		_, _ = stdout.Write(verify.RenderSARIF("fathom intent audit", intentAuditSARIF(abs, corpus, audit)))
 		return 0
 	}
-	renderIntentAudit(stdout, corpus, audit, ledger, strings.Split(*kind, ","), *top)
+	renderIntentAudit(stdout, corpus, audit, ledger, strings.Split(*kind, ","), *top, time.Now().UTC())
 	return 0
 }
 
@@ -270,7 +277,7 @@ func intentAuditSARIF(root string, c intent.Corpus, a intent.Audit) []verify.SAR
 	return out
 }
 
-func renderIntentAudit(w io.Writer, c intent.Corpus, a intent.Audit, ledger []intent.LedgerRow, kinds []string, top int) {
+func renderIntentAudit(w io.Writer, c intent.Corpus, a intent.Audit, ledger []intent.LedgerRow, kinds []string, top int, now time.Time) {
 	want := func(k string) bool {
 		if len(kinds) == 0 || (len(kinds) == 1 && kinds[0] == "") {
 			return true
@@ -297,6 +304,16 @@ func renderIntentAudit(w io.Writer, c intent.Corpus, a intent.Audit, ledger []in
 		fmt.Fprintf(w, "  clock: started %s with %d repo(s) in the population\n", row.At, len(row.Population))
 	} else {
 		fmt.Fprintln(w, "  clock: not started (no sibling consumer repo seen yet — kill clocks are not running)")
+	}
+	// GL-14 (design doc §6): every promotion/retirement applyLearning made,
+	// announced HERE with its signals — the same ledger rows
+	// learningAttentionFragment counts, never re-derived.
+	if learning := intent.RecentLearning(ledger, c.Root, now.Add(-intentAuditLearningWindow)); len(learning) > 0 {
+		fmt.Fprintf(w, "  learning: %d promotion/retirement(s) in the last %d days\n",
+			len(learning), int(intentAuditLearningWindow.Hours()/24))
+		for _, r := range learning {
+			fmt.Fprintf(w, "    %s → %s — %s (%s)\n", r.ID, r.Verdict, r.Evidence, r.At)
+		}
 	}
 	for _, n := range c.NestedRouters {
 		fmt.Fprintf(w, "  NOTE: nested router %s found and NOT audited (v1 audits the repo root only)\n", n)
@@ -386,7 +403,7 @@ func joinInvIDs(invs []intent.Invariant) string {
 func emitIntentJSON(w io.Writer, c intent.Corpus, a intent.Audit, ledger []intent.LedgerRow) int {
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
-	if err := enc.Encode(intentAuditPayload(c, a, ledger)); err != nil {
+	if err := enc.Encode(intentAuditPayload(c, a, ledger, time.Now().UTC())); err != nil {
 		return 1
 	}
 	return 0
@@ -394,8 +411,9 @@ func emitIntentJSON(w io.Writer, c intent.Corpus, a intent.Audit, ledger []inten
 
 // intentAuditPayload is `intent audit --json`'s document — the verb prints
 // it and the intent tab carries it as the verb's section (P10).
-func intentAuditPayload(c intent.Corpus, a intent.Audit, ledger []intent.LedgerRow) map[string]any {
+func intentAuditPayload(c intent.Corpus, a intent.Audit, ledger []intent.LedgerRow, now time.Time) map[string]any {
 	clock, hasClock := intent.Clock(ledger, c.Root)
+	learning := intent.RecentLearning(ledger, c.Root, now.Add(-intentAuditLearningWindow))
 	payload := map[string]any{
 		"root":           c.Root,
 		"tier":           c.Tier,
@@ -425,6 +443,11 @@ func intentAuditPayload(c intent.Corpus, a intent.Audit, ledger []intent.LedgerR
 	if hasClock {
 		payload["clock_started_at"] = clock.At
 		payload["population"] = clock.Population
+	}
+	if len(learning) > 0 {
+		// GL-14: the SAME ledger rows the text report and the attention
+		// line's count read — never a second source.
+		payload["learning"] = learning
 	}
 	return payload
 }

@@ -40,6 +40,16 @@ const (
 	// KindClock is the law-6 stamp: the moment a kill clock started, with
 	// the consumer population present at that moment.
 	KindClock LedgerKind = "clock"
+	// KindLearning (GL-14, docs/plans/governance-learning.md, design doc
+	// §6) is one promotion or retirement applyLearning (internal/semantic)
+	// made: ID is the claim id, Verdict is the lifecycle it moved TO
+	// ("active" | "retired"), Evidence carries the signals that justified
+	// it (LearningDecision.Reason, verbatim — GL-X1: every state change is
+	// announced with its signals, never silent). Written by cmd/fathom's
+	// learningAnnouncements, the SAME ledger the intent debt half already
+	// uses — "extended, not doubled" (intentattention.go's own doctrine),
+	// not a second learning-specific file.
+	KindLearning LedgerKind = "learning"
 )
 
 // LedgerRow is one append-only record.
@@ -227,6 +237,37 @@ func DebtBefore(rows []LedgerRow, root string, cutoff time.Time) (LedgerRow, boo
 		}
 	}
 	return best, found
+}
+
+// LearningRecorded reports whether a (root, claim id, verdict) learning
+// transition is already in rows — the dedup a caller checks before
+// appending, so a re-run over the same already-persisted lifecycle state
+// (e.g. a caller that computed decisions again before writing them back to
+// the store) does not fill the ledger with repeats of a transition that,
+// by applyLearning's own state machine, can only ever happen once per
+// claim (candidate→active, or active→retired — never revisited).
+func LearningRecorded(rows []LedgerRow, root, claimID, verdict string) bool {
+	for _, r := range rows {
+		if r.Kind == KindLearning && r.RepoRoot == root && r.ID == claimID && r.Verdict == verdict {
+			return true
+		}
+	}
+	return false
+}
+
+// RecentLearning returns every learning row for root at or after since,
+// newest first — the attention line's fragment and `fathom intent audit`'s
+// own report both read this rather than re-deriving a window filter.
+func RecentLearning(rows []LedgerRow, root string, since time.Time) []LedgerRow {
+	stamp := since.UTC().Format(time.RFC3339)
+	var out []LedgerRow
+	for _, r := range rows {
+		if r.Kind == KindLearning && r.RepoRoot == root && r.At >= stamp {
+			out = append(out, r)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].At > out[j].At })
+	return out
 }
 
 // Baseline returns the newest clock row for root that actually carries a K1

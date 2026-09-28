@@ -99,6 +99,51 @@ func TestCmdIntentAuditJSON(t *testing.T) {
 	}
 }
 
+// TestCmdIntentAudit_LearningSection is GL-14's "announced ... in fathom
+// intent audit" half: a promotion/retirement recorded by
+// learningAnnouncements shows up in BOTH the text report and --json, read
+// off the SAME ledger row the attention line counts — never re-derived.
+func TestCmdIntentAudit_LearningSection(t *testing.T) {
+	root := t.TempDir()
+	writeCorpusFixture(t, root)
+	ledgerPath := filepath.Join(root, "intent-ledger.jsonl")
+	t.Setenv("FATHOM_INTENT_LEDGER", ledgerPath)
+	t.Setenv("FATHOM_VERIFY_LEDGER", filepath.Join(root, "verify-ledger.jsonl"))
+
+	if err := intent.AppendLedger(intent.LedgerRow{
+		Kind: intent.KindLearning, RepoRoot: root, ID: "cl-learned-1", Verdict: "active",
+		Evidence: "3 corroborations from 2 distinct sessions, 0 refutes over 30d",
+	}); err != nil {
+		t.Fatalf("AppendLedger: %v", err)
+	}
+
+	var out, errBuf bytes.Buffer
+	if code := cmdIntent([]string{"audit", "--root", root, "--url", "http://127.0.0.1:1", "--service", "svc"}, &out, &errBuf); code != 0 {
+		t.Fatalf("audit exit %d: %s", code, errBuf.String())
+	}
+	got := out.String()
+	for _, want := range []string{"learning:", "cl-learned-1", "active", "3 corroborations from 2 distinct sessions"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("text report missing %q:\n%s", want, got)
+		}
+	}
+
+	out.Reset()
+	errBuf.Reset()
+	if code := cmdIntent([]string{"audit", "--root", root, "--url", "http://127.0.0.1:1", "--service", "svc", "--json"}, &out, &errBuf); code != 0 {
+		t.Fatalf("audit --json exit %d: %s", code, errBuf.String())
+	}
+	var payload struct {
+		Learning []intent.LedgerRow `json:"learning"`
+	}
+	if err := json.Unmarshal(out.Bytes(), &payload); err != nil {
+		t.Fatalf("--json must emit valid JSON: %v\n%s", err, out.String())
+	}
+	if len(payload.Learning) != 1 || payload.Learning[0].ID != "cl-learned-1" {
+		t.Errorf("--json learning = %+v, want one row for cl-learned-1", payload.Learning)
+	}
+}
+
 // TestExportGuardProposesNeverWrites (EP-21): the edit-time channel for
 // intent is a PROPOSAL, printed for a human to paste. Fathom must not write
 // .fathom/guard.cue — law 15, and the custodian's PROPOSE precedent.

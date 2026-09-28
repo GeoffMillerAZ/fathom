@@ -35,6 +35,11 @@ const (
 	// evidence about a fortnight ago — and a stale nag trains a reader to
 	// ignore the line, which costs more than the silence does.
 	debtMaxAge = 14 * 24 * time.Hour
+	// learningAttentionWindow (GL-14) is how far back the attention line
+	// counts a promotion/retirement — a session should hear about LAST
+	// week's learning, not a transition from months ago that every prior
+	// session already saw and acted on.
+	learningAttentionWindow = 7 * 24 * time.Hour
 )
 
 // intentAttentionFragment renders the intent half — `unproven M (+k) · fired F`
@@ -101,6 +106,22 @@ func splitDebt(byKind map[string]int) (unproven, fired int) {
 	return unproven, fired
 }
 
+// learningAttentionFragment renders the learning half — `learning N` — from
+// the intent ledger's KindLearning rows within learningAttentionWindow
+// (GL-14, design doc §6: "every promotion or retirement announced in the
+// attention line ... with its signals"). The count alone fits the shared
+// line's budget; the signals themselves are one `fathom intent audit` away,
+// the same drill-down convention the config/intent halves already use.
+// "" when nothing was recorded in the window — silence is correct when
+// there is genuinely nothing to report.
+func learningAttentionFragment(projDir string, now time.Time) string {
+	rows := intent.RecentLearning(intent.ReadLedger(), projDir, now.Add(-learningAttentionWindow))
+	if len(rows) == 0 {
+		return ""
+	}
+	return fmt.Sprintf("learning %d", len(rows))
+}
+
 // attentionLine composes the one attention line for projDir: the custodian's
 // violated-concern count and the intent fragment, joined by `·`, remedied by
 // the ONE verb that covers both (`fathom doctor` carries the config row and
@@ -118,6 +139,11 @@ func attentionLine(projDir string, now time.Time) string {
 		parts = append(parts, frag)
 	}
 	if frag := intentAttentionFragment(projDir, now); frag != "" {
+		parts = append(parts, frag)
+	}
+	// GL-14: extended, not doubled — one more fragment on the SAME shared
+	// line, never a second line.
+	if frag := learningAttentionFragment(projDir, now); frag != "" {
 		parts = append(parts, frag)
 	}
 	if len(parts) == 0 {

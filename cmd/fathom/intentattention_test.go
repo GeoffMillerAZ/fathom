@@ -66,6 +66,61 @@ func TestAttentionLineExtendedNotDoubled(t *testing.T) {
 	}
 }
 
+// TestLearningAttentionFragment is GL-14: a promotion/retirement recorded
+// within learningAttentionWindow renders as `learning N`, joins the SAME
+// shared line as config/intent (extended, not doubled — mirrors
+// TestAttentionLineExtendedNotDoubled above), and a row outside the window
+// or for a different repo root is silent.
+func TestLearningAttentionFragment(t *testing.T) {
+	now := time.Date(2026, 8, 26, 12, 0, 0, 0, time.UTC)
+	root := t.TempDir()
+	other := t.TempDir()
+
+	t.Run("nothing recorded: silent", func(t *testing.T) {
+		t.Setenv("FATHOM_INTENT_LEDGER", filepath.Join(t.TempDir(), "l.jsonl"))
+		if got := learningAttentionFragment(root, now); got != "" {
+			t.Fatalf("want silence, got %q", got)
+		}
+	})
+
+	t.Run("recorded within the window: counted", func(t *testing.T) {
+		t.Setenv("FATHOM_INTENT_LEDGER", filepath.Join(t.TempDir(), "l.jsonl"))
+		_ = intent.AppendLedger(intent.LedgerRow{
+			Kind: intent.KindLearning, RepoRoot: root, ID: "cl-1", Verdict: "active",
+			Evidence: "3 corroborations from 2 sessions", At: now.Add(-time.Hour).Format(time.RFC3339),
+		})
+		_ = intent.AppendLedger(intent.LedgerRow{
+			Kind: intent.KindLearning, RepoRoot: root, ID: "cl-2", Verdict: "retired",
+			Evidence: "never triggered for 180d", At: now.Add(-2 * time.Hour).Format(time.RFC3339),
+		})
+		// Outside the window and for a different repo root — neither counts.
+		_ = intent.AppendLedger(intent.LedgerRow{
+			Kind: intent.KindLearning, RepoRoot: root, ID: "cl-3", Verdict: "retired",
+			At: now.Add(-30 * 24 * time.Hour).Format(time.RFC3339),
+		})
+		_ = intent.AppendLedger(intent.LedgerRow{
+			Kind: intent.KindLearning, RepoRoot: other, ID: "cl-4", Verdict: "active",
+			At: now.Add(-time.Hour).Format(time.RFC3339),
+		})
+
+		if got := learningAttentionFragment(root, now); got != "learning 2" {
+			t.Fatalf("fragment = %q, want %q", got, "learning 2")
+		}
+
+		writeConcernFixture(t, root) // 1 violated concern, so the line isn't empty either way
+		line := attentionLine(root, now)
+		if !strings.Contains(line, "learning 2") {
+			t.Fatalf("attentionLine = %q, missing the learning fragment", line)
+		}
+		if !strings.Contains(line, "config 1") {
+			t.Fatalf("attentionLine = %q, the learning fragment must EXTEND the line, not replace it", line)
+		}
+		if strings.Count(line, "\n") != 0 {
+			t.Fatalf("the attention surface is ONE line, got %q", line)
+		}
+	})
+}
+
 // A recorded audit that found nothing, a repo with no recorded audit, and an
 // audit too old to be evidence all print NOTHING — the line exists only when
 // there is something true to say.
