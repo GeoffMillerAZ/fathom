@@ -29,8 +29,10 @@ of signal exist.
 - [x] The signal source: served, complied, violated and blocked events per rule from the edit and PreToolUse hooks, appended to a rotated JSONL under `~/.fathom/` (16 MiB), never the transcript (§5) {id: GL-10, symbol: recordRuleOutcome, package: cmd/fathom, reachable_from: TestRuleOutcomeEventsRecorded}
 - [x] Rule effectiveness (U4): per-rule counts and rates with n; classes ignored, never triggered, effective, contested; remedies as proposals (§5) {id: GL-11, symbol: RuleEffectiveness, package: internal/semantic, reachable_from: TestRuleEffectivenessClasses, needs: "GL-10"}
 - [x] Published thresholds: `.fathom/learning.cue` schema with valid/invalid testdata, defaults in the binary (§6) {id: GL-12, oracle: lexical, path: schema/learning/schema.cue, pattern: "^#Learning:"}
-- [x] Promotion and retirement under the thresholds; retirement closes the validity window, never deletes {id: GL-13, symbol: applyLearning, package: internal/semantic, reachable_from: TestLearningPromotesAndRetires, needs: "GL-11,GL-12"}
-- [x] Every promotion or retirement announced in the attention line and `fathom intent audit` with its signals; none silent {id: GL-14, symbol: learningAnnouncements, package: cmd/fathom, reachable_from: TestLearningNeverSilent, needs: "GL-13"}
+- [ ] Promotion and retirement under the thresholds; retirement closes the validity window, never deletes {id: GL-13, symbol: applyLearning, package: internal/semantic, reachable_from: TestLearningPromotesAndRetires, needs: "GL-11,GL-12"}
+  <!-- library landed 53143690; product wiring open: nothing reads the GL-10 outcome log, loads .fathom/learning.cue (LoadLearningThresholds) or calls applyLearning, so no claim is ever promoted or retired. GL-11's RuleEffectiveness has the same gap. -->
+- [ ] Every promotion or retirement announced in the attention line and `fathom intent audit` with its signals; none silent {id: GL-14, symbol: learningAnnouncements, package: cmd/fathom, reachable_from: TestLearningNeverSilent, needs: "GL-13"}
+  <!-- library landed 0a333ae5; product wiring open: the attention line and `fathom intent audit` read intent.KindLearning ledger rows, but learningAnnouncements, their only writer, is never called (waits on GL-13). -->
 
 ## Wave 3: validity windows everywhere, the rule-effectiveness view, layered diffs
 
@@ -38,7 +40,8 @@ of signal exist.
 - [ ] Memories, rules-file rules, learned-rule states and doc links gain `valid_from`/`valid_to`, additively {id: GL-16, symbol: PutMemoryValidity, package: internal/store, reachable_from: TestValidityWindowsBeyondClaims}
 - [ ] `as_of` on `staleness_report` and the review verbs, beside `obligations` {id: GL-17, symbol: asOfFilter, package: internal/mcp, reachable_from: TestAsOfAcrossVerbs, needs: "GL-16"}
 - [ ] The rule-effectiveness page on the console (U4) {id: GL-18, symbol: renderRuleEffectiveness, package: cmd/fathom, reachable_from: TestConsoleRuleEffectivenessPage, needs: "GL-11"}
-- [x] Ignored rules proposed for a hook, never-triggered rules proposed for pruning, each with its evidence {id: GL-19, symbol: ruleRemedies, package: internal/semantic, reachable_from: TestRuleRemediesAreProposals, needs: "GL-11"}
+- [ ] Ignored rules proposed for a hook, never-triggered rules proposed for pruning, each with its evidence {id: GL-19, symbol: ruleRemedies, package: internal/semantic, reachable_from: TestRuleRemediesAreProposals, needs: "GL-11"}
+  <!-- library landed 811c0b09; product wiring open: no verb or console page renders ruleRemedies (GL-18 is the console page). -->
 - [x] `review_diff` layers changed files by blast radius (leaf, shared callee, cross-service provider) without a model (§8) {id: GL-22, symbol: layerDiffByBlastRadius, package: internal/mcp, reachable_from: TestReviewDiffLayers}
 
 ## Refused (recorded so they are not re-proposed)

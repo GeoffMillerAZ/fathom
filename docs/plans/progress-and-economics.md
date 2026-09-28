@@ -30,13 +30,18 @@ status.
 
 ## Wave 3: outcome economics
 
-- [x] Transcript cost fields from the incremental fold (tokens in and out, cache reads and writes, tool calls), Claude Code {id: PE-13, symbol: foldTranscriptCost, package: cmd/fathom, reachable_from: TestFoldTranscriptCostIncremental}
+- [x] Transcript cost fields from the incremental fold (tokens in and out, cache reads and writes, tool calls), Claude Code, library: `foldTranscriptCost`; the Stop hook already records tokens and cache fields, but not the tool-call count (PE-13w) {id: PE-13, symbol: foldTranscriptCost, package: cmd/fathom, reachable_from: TestFoldTranscriptCostIncremental}
+- [ ] The Stop hook's session-ledger row carries the tool-call count from the same fold, beside the token and cache fields it already records {id: PE-13w, symbol: buildSessionLedgerEntry, package: cmd/fathom, reachable_from: TestSessionLedgerEntryCarriesToolCalls, needs: "PE-13"}
 - [ ] Codex session files read by the same fold on the harness port {id: PE-14, symbol: codexSessionCost, package: internal/harness, reachable_from: TestCodexSessionCost}
 - [x] The join: a session's proven outcome from verify readings whose commit it produced; unjoined share named {id: PE-15, symbol: JoinSessionProof, package: internal/console, reachable_from: TestJoinSessionProofUnjoinedNamed, needs: "PE-2,PE-13"}
-- [x] A user-editable price table (`~/.fathom/prices.toml`), no network; cost per proven row per plan and language {id: PE-16, symbol: loadPriceTable, package: internal/cost, reachable_from: TestPriceTableNoNetwork}
-- [x] Fathom-on versus off shown only when G2's admissibility test passes for the compared units; otherwise the panel names why it is withheld {id: PE-17, symbol: admissibleComparison, package: internal/console, reachable_from: TestOnOffWithheldUnlessAdmissible, needs: "PE-15"}
-- [x] Tool-call mix and cache hit rate per session and plan {id: PE-18, symbol: ToolMix, package: internal/console, reachable_from: TestToolMixAndCacheHit, needs: "PE-13"}
-- [x] The live session feed, read-only over the SSE channel {id: PE-19, symbol: renderSessionFeed, package: cmd/fathom, reachable_from: TestConsoleSessionFeed, needs: "PE-15"}
+- [x] A user-editable price table (`~/.fathom/prices.toml`), no network, library: `loadPriceTable`; nothing prices a session with it yet (PE-16w) {id: PE-16, symbol: loadPriceTable, package: internal/cost, reachable_from: TestPriceTableNoNetwork}
+- [ ] The console prices sessions through the loaded table: cost per proven row per plan and language on `/progress` {id: PE-16w, symbol: buildProgressPage, package: cmd/fathom, reachable_from: TestProgressPagePricesSessionsThroughPriceTable, needs: "PE-16"}
+- [x] G2's admissibility test, library: `admissibleComparison` withholds a compared pair unless admissible; only the model scorecard's causal gate uses it today (PE-17w) {id: PE-17, symbol: admissibleComparison, package: internal/console, reachable_from: TestOnOffWithheldUnlessAdmissible, needs: "PE-15"}
+- [ ] Fathom-on versus off shown only when G2's admissibility test passes for the compared units; otherwise the panel names why it is withheld, and `fathom rate`'s on/off verdict goes through the same test {id: PE-17w, symbol: evaluateABCriterion, package: cmd/fathom, reachable_from: TestOnOffVerdictWithheldUnlessAdmissible, needs: "PE-17,PE-15"}
+- [x] Tool-call mix and cache hit rate, library: `ToolMix` per session and plan; no page shows it yet (PE-18w) {id: PE-18, symbol: ToolMix, package: internal/console, reachable_from: TestToolMixAndCacheHit, needs: "PE-13"}
+- [ ] The session page shows each session's tool-call mix and cache hit rate, and the plan page shows them per plan {id: PE-18w, symbol: buildSessionPage, package: cmd/fathom, reachable_from: TestSessionPageShowsToolMixAndCacheHit, needs: "PE-18"}
+- [x] The live session feed, library: `renderSessionFeed` renders the read-only feed table; no route serves it yet (PE-19w) {id: PE-19, symbol: renderSessionFeed, package: cmd/fathom, reachable_from: TestConsoleSessionFeed, needs: "PE-15"}
+- [ ] The live session feed is served on `/sessions`, read-only over the SSE channel {id: PE-19w, symbol: buildSessionsPage, package: cmd/fathom, reachable_from: TestSessionsPageServesLiveFeed, needs: "PE-19"}
 
 ## Refused (recorded so they are not re-proposed)
 
