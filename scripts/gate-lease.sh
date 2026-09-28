@@ -11,8 +11,15 @@
 # its holder dies, so there is no stale lease to break. A waiter says who
 # holds it ("waiting for gate lease held by pid N (repo X)").
 #
-# The command runs at background priority: `taskpolicy -b` on macOS, else
-# `nice -n 10`. FATHOM_GATE_NICE=off runs it at normal priority.
+# The command runs niced (`nice -n 10`): it yields the CPU to interactive
+# work but is not clamped. FATHOM_GATE_NICE=off runs it at normal priority;
+# FATHOM_GATE_NICE=background runs it under macOS's `taskpolicy -b` instead.
+# Not the default: background QoS confines the gate to the efficiency cores
+# and throttles its I/O, and measured 2026-09-27 (M-series, two agents
+# busy) `go test -race -p=1 ./cmd/fathom` took 441 s under it against 174 s
+# at normal priority and 168 s under `nice -n 10`; every package slowed
+# ~3x alike (fusion 74 s -> 438 s in the gate), pushing cmd/fathom past
+# go test's 10 min default timeout.
 #
 # macOS ships no flock(1); perl's flock(2) is the lock (perl is on every
 # macOS and nearly every Linux). The perl process holds the lock and waits
@@ -30,13 +37,21 @@ mkdir -p "$(dirname "$lock")"
 repo="$(git rev-parse --show-toplevel 2>/dev/null || pwd -P)"
 
 prio=()
-if [ "${FATHOM_GATE_NICE:-on}" != "off" ]; then
-  if command -v taskpolicy >/dev/null 2>&1; then
-    prio=(taskpolicy -b)
-  elif command -v nice >/dev/null 2>&1; then
-    prio=(nice -n 10)
-  fi
-fi
+case "${FATHOM_GATE_NICE:-on}" in
+  off) ;;
+  background)
+    if command -v taskpolicy >/dev/null 2>&1; then
+      prio=(taskpolicy -b)
+    elif command -v nice >/dev/null 2>&1; then
+      prio=(nice -n 10)
+    fi
+    ;;
+  *)
+    if command -v nice >/dev/null 2>&1; then
+      prio=(nice -n 10)
+    fi
+    ;;
+esac
 
 command -v perl >/dev/null 2>&1 || { echo "gate-lease: perl is required for the gate lease (flock)" >&2; exit 2; }
 

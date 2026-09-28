@@ -33,7 +33,8 @@ on every validate/push — the store stays pure Go; only the tree-sitter extract
 gates on one machine — other repositories, other agents, a pre-push — queue on an flock
 at `~/.fathom/locks/gate.lock` (`FATHOM_GATE_LOCK` overrides) and say who holds it
 (`gate-lease: waiting for gate lease held by pid N (repo X)`); the gate runs at background
-priority (`taskpolicy -b` on macOS, else `nice -n 10`; `FATHOM_GATE_NICE=off` opts out)
+priority (`nice -n 10`; `FATHOM_GATE_NICE=off` opts out, `FATHOM_GATE_NICE=background` uses macOS's
+`taskpolicy -b`, which measured ~3x slower: `cmd/fathom` 441 s against 168 s niced)
 and `go test -p 4`. `task validate:unleased` is the same gate without the lease.
 
 ### Pushing (`task push`)

@@ -1183,7 +1183,9 @@ class, the largest classes, internal-disk free. Targets: `workspace/` ≤ 3 GiB 
 
 - A machine-wide lease `flock ~/.fathom/locks/gate.lock` queues concurrent `task
   validate`/pre-push runs (`waiting for gate lease held by pid N (repo X)`).
-- Gate runs use `taskpolicy -b` on macOS or `nice -n 10`, and `go test -p 4`.
+- Gate runs use `nice -n 10` and `go test -p 4`. (First shipped as `taskpolicy -b` on macOS;
+  background QoS ran every package ~3x slower — `cmd/fathom` 441 s against 168 s niced —
+  and timed the gate out, so it is opt-in via `FATHOM_GATE_NICE=background`.)
 - The post-commit relink runs in the background, niced; the post-commit ingest becomes
   `POST /refresh-request` (202, coalesced), refused at refuse and in safe mode.
 - The post-commit hook's failure message says what happened (`daemon refresh failed: …;

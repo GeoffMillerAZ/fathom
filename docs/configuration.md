@@ -279,7 +279,8 @@ design §12.3) tune the machine-wide gate lease `task validate` runs under
 (`scripts/gate-lease.sh`). `FATHOM_GATE_LOCK` is the lease's flock file (default
 `~/.fathom/locks/gate.lock`): every gate on the machine that names the same file queues
 on it, so point concurrent checkouts at one file, not one each. `FATHOM_GATE_NICE=off`
-runs the gate at normal priority instead of `taskpolicy -b` (macOS) or `nice -n 10`.
+runs the gate at normal priority instead of `nice -n 10`; `FATHOM_GATE_NICE=background` runs it
+under macOS's `taskpolicy -b` (efficiency cores, throttled I/O — measured ~3x slower).
 `task validate:unleased` is the same gate without the lease. See `docs/usage.md`.
 
 ## The budget: `[tenancy]` (user scope only)

@@ -82,8 +82,8 @@ TASK_FLAGS=--verbose ./scripts/ci.sh
 
 `task validate` runs under it (RT-129, design §12.3): an flock on
 `~/.fathom/locks/gate.lock` (`FATHOM_GATE_LOCK` overrides) queues concurrent gates on one
-machine and names the holder; the command runs at background priority (`taskpolicy -b` on
-macOS, else `nice -n 10`; `FATHOM_GATE_NICE=off` opts out). `gate-lease_test.sh` (in
+machine and names the holder; the command runs niced (`nice -n 10`; `FATHOM_GATE_NICE=off`
+opts out, `=background` uses macOS's `taskpolicy -b`). `gate-lease_test.sh` (in
 `task scripts-check`) proves two holders serialize.
 
 ## tenancy-stress.sh

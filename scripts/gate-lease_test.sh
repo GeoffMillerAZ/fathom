@@ -68,6 +68,11 @@ bash "${SCRIPT_DIR}/gate-lease.sh" true || fail "the lease after a killed holder
 [ $(( $(date +%s) - start )) -lt 5 ] || fail "a killed holder's lease was not released"
 pkill -f "$hold" 2>/dev/null || true
 
+# The default priority is nice 10, never macOS background QoS (which ran
+# the gate ~3x slower and timed cmd/fathom out).
+got_nice="$(env -u FATHOM_GATE_NICE bash "${SCRIPT_DIR}/gate-lease.sh" sh -c 'ps -o nice= -p $$' | tr -d ' ')"
+[ "$got_nice" = "10" ] || fail "default priority: nice $got_nice, want 10"
+
 # The pre-push gate's heavy steps (the scratch ingest and the verify runs)
 # take the lease too, not only `task validate` (§12.3).
 hooks="${SCRIPT_DIR}/../lefthook.yml"

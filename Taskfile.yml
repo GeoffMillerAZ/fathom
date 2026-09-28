@@ -205,7 +205,8 @@ tasks:
     desc: Full gate under the machine-wide gate lease, at background priority (RT-129) — see validate:unleased
     # RT-129 (§12.3): concurrent gates on one machine queue on one flock
     # (~/.fathom/locks/gate.lock; FATHOM_GATE_LOCK overrides) and run under
-    # taskpolicy -b / nice -n 10 (FATHOM_GATE_NICE=off opts out).
+    # nice -n 10 (FATHOM_GATE_NICE=off opts out; =background is macOS
+    # taskpolicy -b, ~3x slower — see scripts/gate-lease.sh).
     cmds: ["bash scripts/gate-lease.sh task validate:unleased"]
 
   validate:unleased:
