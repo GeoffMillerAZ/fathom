@@ -57,7 +57,8 @@ and `includes` references to other map ids. Entries are never copied.
 They live on different axes. A semantic layer says what is TRUE or BINDING about code (governed claims:
 rules, bindings, labels, and the proposed self-invalidating semantic columns). A live map says which part of
 the code MATTERS for a purpose (a saved, re-run query: a working set). Layers are the vocabulary; live maps
-are saved questions written in that vocabulary.
+are saved questions written in that vocabulary. The layer side of this pairing is
+`docs/design/semantic-layers.md` section 4.9.
 
 1. Live maps query layers ("handlers where 'validates input' is no", "code governed by ADR-048 rules and
    touched by the language plan"), so maps get sharper as layers grow.
@@ -77,7 +78,7 @@ environment variable or flag; the code footprint of an active program that every
 dead-code candidates; the product's core loop for onboarding.
 
 **Lifetime.** A live map is permanent only when named and used; idle unnamed maps decay. Layers keep their
-own freshness and lifecycle (candidate, active, retired). Live maps are the designed extension; they are
+own freshness and lifecycle (candidate, active, retired). Live maps are the designed extension (future F50; rows XM-D1, XM-D4, XM-D5); they are
 built after the handoff A/B passes, and their storage stays in existing thread fields until RT-M1 reads PASS.
 
 ## 4. Discoverability: maps arrive, agents do not have to look (binding)
@@ -97,7 +98,7 @@ rule is delivery by configuration. Four channels:
 
 **Descriptions** follow MCP tool-description practice: a required purpose line (the question the map
 answers; a named map without one is refused), when to use, scope summary, live freshness counts, creator and
-last used. Fathom computes scope, freshness and usage; the creator writes the purpose (a cheap model may
+last used. Fathom computes scope, freshness and usage (XM-15); the creator writes the purpose (a cheap model may
 draft it, optional). **Surface:** no new default tool; `map` on the extended surface and the CLI; reminders
 are injected context. **Measure:** pointer precision (expanded over shown) and reuse rate (mounted after
 handoff); pointers expanded under 10 percent are cut.

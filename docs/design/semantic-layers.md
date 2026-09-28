@@ -279,6 +279,20 @@ instances, not one.
 5. **Extension recipes, semantic spec-satisfaction, naming precedent** — later;
    each ships only with its consumer tool + eval + gate.
 
+### 4.9 Live maps: saved questions written in the layers' vocabulary (added 2026-09-29, ADR-056)
+
+Exploration maps (`docs/design/exploration-maps.md`, plan `docs/plans/exploration-maps.md`) are complementary to
+layers, not a second layer system. Different axes: a layer says what is TRUE or BINDING about code (claims:
+rules, bindings, labels, the semantic columns proposed in `docs/design/judged-predicates.md` section 5); a live
+map says which part of the code MATTERS for a purpose (a saved, re-run query, a working set). Layers are the
+vocabulary, live maps are saved questions in it. Four interplays: (1) live maps query layers ("handlers where
+'validates input' is no"), so maps sharpen as layers grow; (2) maps scope layers, so an expensive column (a
+model judgment) is computed only inside the maps that need it, the cost control for judged columns; (3) a live
+map reused by many agents or sessions graduates to a named concern in a layer, and a claim gains a "used by map
+X" signal that feeds rule effectiveness; (4) one freshness machine: §4.3's content-hash drift invalidates both.
+A layer keeps its own freshness and lifecycle (candidate, active, retired); a live map is permanent only when
+named and used. Live maps are deferred behind the handoff A/B and RT-M1 (future F50).
+
 ## 5. Expert modules: the north star this design already serves
 
 The owner's second vision: standalone, high-performance, queryable **expert
