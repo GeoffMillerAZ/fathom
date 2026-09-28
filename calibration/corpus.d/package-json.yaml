@@ -1,0 +1,30 @@
+id: package-json
+language: package.json
+repos:
+  - name: babel/babel
+    url: https://github.com/babel/babel
+    ref: v7.29.9
+    sha: 54405f212b4e6a40f0e1dfba9293b0e3f3dd20e3
+    licence: MIT
+    subpath: packages
+    idioms:
+      - "a real npm/yarn workspaces monorepo: a private root package.json
+        (workspaces glob) plus ~250 member package.json files under
+        packages/*"
+      - "scripts (build/test/prepublish-style), bin entries (the babel
+        CLI), and exports maps on the published packages"
+      - "internal cross-package dependency ranges (`@babel/core` etc.)
+        naming sibling workspace members by their published name"
+  - name: vercel/next.js
+    url: https://github.com/vercel/next.js
+    ref: v16.3.6
+    sha: a758ffcf501f6f1ddb03175bd1033508424c261e
+    licence: MIT
+    subpath: packages
+    idioms:
+      - "a real pnpm/turbo workspaces monorepo: a private root
+        package.json plus member package.json files under packages/*"
+      - "bin entries (the `next` CLI) and conditional exports maps
+        (import/require/types) on the published packages"
+      - "peerDependencies and optionalDependencies alongside plain
+        dependencies/devDependencies"

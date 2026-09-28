@@ -409,6 +409,23 @@ func LoadDocExtractor(d Dialect) (*DocExtractor, error) {
 	return loadDocExtractor(dialectFS, d)
 }
 
+// NewDocDialectExtractor finds id's embedded manifest and builds its
+// document engine (LB-F8, design §4) — the fusion dispatch table's
+// (internal/fusion/pipeline.go) constructor for a "doc"/"tags+doc" dialect,
+// the same role NewTSExtractor(id) plays for a "tags" one.
+func NewDocDialectExtractor(id string) (*DocExtractor, error) {
+	dialects, err := LoadDialects()
+	if err != nil {
+		return nil, err
+	}
+	for _, d := range dialects {
+		if d.ID == id {
+			return LoadDocExtractor(d)
+		}
+	}
+	return nil, fmt.Errorf("dialect %q not found (doc engine)", id)
+}
+
 // loadDocExtractor reads and compiles d's doc spec and checks that every
 // entity's source_kind is one the manifest declares — the manifest's kinds
 // stay the one place the registry learns a dialect's SourceKinds.

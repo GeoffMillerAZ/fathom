@@ -181,6 +181,14 @@ const (
 	// JSON
 	KindJSONKey SourceKind = "JSONKey"
 
+	// package.json (LB-Q-package-json, language-breadth: new — a doc-engine
+	// tool format, no incumbent). KindPackageJSONPackage is the manifest's
+	// own entity (the connector-classification kind); the dialect's other
+	// kinds (script, bin, export) have no connector-classification use and
+	// so get no constant of their own, same precedent as CSS's
+	// keyframes/custom_property.
+	KindPackageJSONPackage SourceKind = "PackageJSONPackage"
+
 	// Scala
 	KindScalaClass  SourceKind = "ScalaClass"
 	KindScalaObject SourceKind = "ScalaObject"

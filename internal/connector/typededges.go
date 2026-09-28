@@ -59,6 +59,13 @@ var typedEdgeProducers = map[string]string{
 	"toml":       "syntax",
 	"json":       "syntax",
 	"templ":      "syntax",
+
+	// package.json (LB-Q-package-json): its cross_file selectors
+	// (workspace-member globs, dependency edges, design §4) are not wired
+	// into fusion.ResolveFileEdges or any SCIP producer, so "syntax" is
+	// the honest baseline claim, same as JSON/TOML/CUE above (ADR-027: a
+	// mechanism is claimed only once it exists in code).
+	"package-json": "syntax",
 }
 
 // TypedEdgeProducer returns lang's typed-edge producer string — "native",

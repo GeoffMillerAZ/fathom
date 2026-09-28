@@ -527,7 +527,15 @@ func parseGitLog(serviceID, raw string) []store.Commit {
 // epochs 7 and 10 fixed for Kotlin and HTML; the salt bump forces those
 // files through the new extractor on the next ingest instead of leaving
 // them silently stuck on a stale "unsupported" fingerprint.
-const ExtractorEpoch = "11"
+// Epoch 12 (LB-Q-package-json, docs/design/language-breadth.md §13/§4): a
+// basename match on "package.json" now routes to the doc-engine
+// package-json dialect (package/script/bin/export entities, dependency and
+// workspace cross-file references) instead of the generic JSONExtractor's
+// top-level-key dump (KindJSONKey, Line always 0) — every already-indexed
+// package.json's stored observations were produced by that generic path,
+// so the salt bump forces re-extraction rather than leaving them silently
+// stale.
+const ExtractorEpoch = "12"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares
@@ -734,6 +742,17 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 
 	// JSON
 	p.exts[".json"] = extractor.NewJSONExtractor()
+
+	// npm/pnpm/yarn package manifest (LB-Q-package-json, language-breadth:
+	// new — a doc-engine tool format, no incumbent). resolveExtractor's
+	// basename lookup (p.exts[base]) runs before the ".json" extension
+	// fallback above, so this dialect — not the generic JSONExtractor —
+	// governs every "package.json" file.
+	pkgJSON, err := extractor.NewDocDialectExtractor("package-json")
+	if err != nil {
+		panic(fmt.Sprintf("fusion: doc-dialect package-json: %v", err))
+	}
+	p.exts["package.json"] = pkgJSON
 
 	// Scala
 	scala := extractor.NewScalaExtractor()

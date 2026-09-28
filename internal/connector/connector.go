@@ -162,6 +162,12 @@ var extClassMap = map[string]classification{
 	// JSON
 	".json": {core.KindJSONKey, "json"},
 
+	// npm/pnpm/yarn package manifest (LB-Q-package-json, language-breadth:
+	// new — a doc-engine tool format, no incumbent). The basename check
+	// (kindForFile/classify) takes precedence over ".json" above, so this
+	// entry — not the generic JSON one — governs every "package.json" file.
+	"package.json": {core.KindPackageJSONPackage, "package-json"},
+
 	// Scala
 	".scala": {core.KindScalaClass, "scala"},
 	".sc":    {core.KindScalaClass, "scala"},

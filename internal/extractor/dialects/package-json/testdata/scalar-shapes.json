@@ -1,0 +1,12 @@
+{
+  "name": "acme-cli",
+  "version": "1.0.0",
+  "bin": "./bin/cli.js",
+  "exports": "./dist/index.js",
+  "peerDependencies": {
+    "react": ">=18"
+  },
+  "optionalDependencies": {
+    "fsevents": "^2.3.3"
+  }
+}

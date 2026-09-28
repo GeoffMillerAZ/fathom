@@ -1,0 +1,6 @@
+{
+  "name": "acme-broken",
+  "scripts": {
+    "build": "tsc",
+  }
+  "version": "1.0.0"

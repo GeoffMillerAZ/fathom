@@ -284,7 +284,7 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name, c
 	}
 
 	if toolOracle != "" {
-		run, err := scoreToolOracle(toolOracle, spec.Manifest, nodes, sub)
+		run, err := scoreToolOracle(toolOracle, spec.Manifest, nodes, &sub)
 		if err != nil {
 			return res, err
 		}
@@ -314,7 +314,14 @@ type toolOracleFile struct {
 	} `json:"references"`
 }
 
-func scoreToolOracle(path string, m langbench.Manifest, nodes []core.SymbolNode, sub langbench.Subject) (langbench.OracleRun, error) {
+// sub is a pointer: on success (len(defs) > 0), this is the subject's ONLY
+// source of KindIntersection/FamilyL1 when no ctags oracle ran (the common
+// case for a tool format), so the caller's copy must observe the write —
+// a by-value sub previously dropped the KindIntersection slice-reassignment
+// silently, refusing every tool-oracle-only reading at Validate (§1.4)
+// with "required kind ... outside the kind intersection" even though the
+// oracle and manifest agreed (LB-Q-package-json).
+func scoreToolOracle(path string, m langbench.Manifest, nodes []core.SymbolNode, sub *langbench.Subject) (langbench.OracleRun, error) {
 	b, err := os.ReadFile(path)
 	if err != nil {
 		return langbench.OracleRun{}, err
