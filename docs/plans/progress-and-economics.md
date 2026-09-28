@@ -32,7 +32,7 @@ status.
 
 - [x] Transcript cost fields from the incremental fold (tokens in and out, cache reads and writes, tool calls), Claude Code {id: PE-13, symbol: foldTranscriptCost, package: cmd/fathom, reachable_from: TestFoldTranscriptCostIncremental}
 - [ ] Codex session files read by the same fold on the harness port {id: PE-14, symbol: codexSessionCost, package: internal/harness, reachable_from: TestCodexSessionCost}
-- [ ] The join: a session's proven outcome from verify readings whose commit it produced; unjoined share named {id: PE-15, symbol: JoinSessionProof, package: internal/console, reachable_from: TestJoinSessionProofUnjoinedNamed, needs: "PE-2,PE-13"}
+- [x] The join: a session's proven outcome from verify readings whose commit it produced; unjoined share named {id: PE-15, symbol: JoinSessionProof, package: internal/console, reachable_from: TestJoinSessionProofUnjoinedNamed, needs: "PE-2,PE-13"}
 - [x] A user-editable price table (`~/.fathom/prices.toml`), no network; cost per proven row per plan and language {id: PE-16, symbol: loadPriceTable, package: internal/cost, reachable_from: TestPriceTableNoNetwork}
 - [ ] Fathom-on versus off shown only when G2's admissibility test passes for the compared units; otherwise the panel names why it is withheld {id: PE-17, symbol: admissibleComparison, package: internal/console, reachable_from: TestOnOffWithheldUnlessAdmissible, needs: "PE-15"}
 - [ ] Tool-call mix and cache hit rate per session and plan {id: PE-18, symbol: ToolMix, package: internal/console, reachable_from: TestToolMixAndCacheHit, needs: "PE-13"}
