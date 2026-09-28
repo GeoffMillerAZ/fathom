@@ -5,10 +5,10 @@
 // registry as of the landed commit — one name added per removal row's
 // own commit, mirroring how docs/upgrades/0.9.0-surface-reckoning.md's
 // migration table and this plan's `Verified:` lines grow. It is
-// deliberately NOT the plan's full eventual removal set: SR-13, SR-17 and
-// SR-19 are still `[ ]` in the plan, and their tools are still
-// registered — listing them here before their own row lands would make
-// this test provably false, which law "done means proven" forbids.
+// deliberately NOT the plan's full eventual removal set: SR-13 and SR-17
+// are still `[ ]` in the plan, and their tools are still registered —
+// listing them here before their own row lands would make this test
+// provably false, which law "done means proven" forbids.
 package mcp_test
 
 import (
@@ -34,22 +34,39 @@ import (
 //   - http_client_calls, fleet_drift, reachable, traverse, history: SR-12
 //     (F-22) — 0 lifetime calls each; verify's `reachable_from` concept
 //     never called the `reachable` tool
+//   - complexity, god_object, community, dead_code, cloc, secret_scan,
+//     shell_out, proto_conformance, traceability, evidence_summary,
+//     contradiction_scan, batch: SR-19 (F-77) — the twelve legacy
+//     analyzer tools; the complexity metric stays as a stored column
+//     (internal/store/conformance.go) for U13
 var reckoningTools = []string{
 	"api_diff",
 	"arch_conformance",
+	"batch",
 	"brief",
+	"cloc",
+	"community",
+	"complexity",
+	"contradiction_scan",
 	"cross_repo_blast_radius",
+	"dead_code",
 	"dep_drift",
 	"diff_impact",
 	"discoveries",
+	"evidence_summary",
 	"find_callees",
 	"fleet_drift",
+	"god_object",
 	"history",
 	"http_client_calls",
+	"proto_conformance",
 	"reachable",
+	"secret_scan",
+	"shell_out",
 	"spec_coverage",
 	"spec_refs",
 	"stale_docs",
+	"traceability",
 	"traverse",
 }
 

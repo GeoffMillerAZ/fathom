@@ -5,15 +5,15 @@ package mcp_test
 // SetHostedModules(true) is active (mirrors cmd/fathom's serve-http
 // enabling it exactly when --modules-token-env names a configured token),
 // /rpc/modules serves ONLY its own curated allowlist — never GroupShared's
-// fleet-backend reads or write/spend tools (ingest, compile_layer, batch)
-// — off-surface calls there are hard-gated (never execute-and-flag), and
-// module tools are unreachable via bare /rpc or a batch sub-call. The
+// fleet-backend reads or write/spend tools (ingest, compile_layer) — off-
+// surface calls there are hard-gated (never execute-and-flag), and module
+// tools are unreachable via bare /rpc. (batch, and the sub-call-smuggling
+// gate it needed, were unregistered by SR-19, surface reckoning F-77.) The
 // NON-hosted default (no token configured) is unchanged from before this
 // fix: GroupShared-inclusive, execute-and-flag.
 
 import (
 	"context"
-	"encoding/json"
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/mcp"
@@ -144,41 +144,10 @@ func TestHostedModules_ModuleToolsRefusedOnBareRPC(t *testing.T) {
 	}
 }
 
-func TestHostedModules_ModuleToolsRefusedViaBatchSubCall(t *testing.T) {
-	srv := newHostedModuleTestServer()
-	ctx := mcp.WithRequestScope(context.Background(), "", true) // bare /rpc
-	resp := scopedRoundtrip(t, srv, ctx, request{
-		JSONRPC: "2.0", ID: 6, Method: "tools/call",
-		Params: map[string]any{
-			"name": "batch",
-			"arguments": map[string]any{
-				"calls": []map[string]any{
-					{"name": "list_modules", "arguments": map[string]any{}},
-				},
-			},
-		},
-	})
-	if resp["error"] != nil {
-		t.Fatalf("batch itself should succeed: %v", resp["error"])
-	}
-	content := resp["result"].(map[string]any)["content"].([]any)
-	text := content[0].(map[string]any)["text"].(string)
-	var payload struct {
-		Results []struct {
-			Name  string `json:"name"`
-			Error string `json:"error"`
-		} `json:"results"`
-	}
-	if err := json.Unmarshal([]byte(text), &payload); err != nil {
-		t.Fatalf("batch payload parse: %v", err)
-	}
-	if len(payload.Results) != 1 {
-		t.Fatalf("batch results = %d, want 1", len(payload.Results))
-	}
-	if payload.Results[0].Error == "" {
-		t.Error("list_modules batch sub-call must be refused while hosted, not smuggled through")
-	}
-}
+// TestHostedModules_ModuleToolsRefusedViaBatchSubCall was retired: batch
+// (RT-60) was unregistered by SR-19 (surface reckoning, F-77), so the
+// sub-call-smuggling gate it proved (hostedModuleBlocked inside
+// registerBatch's handler) no longer has a caller to prove it through.
 
 // ─── (d) non-hosted default is unchanged ──────────────────────────────────
 
@@ -193,8 +162,8 @@ func TestHostedModules_NonHostedDefaultUnchanged(t *testing.T) {
 		nameSet[n] = true
 	}
 	// Non-hosted "modules" surface is GroupShared-inclusive, same as every
-	// other named group surface — batch/ingest/etc. ARE visible here.
-	for _, want := range []string{"list_modules", "module_query", "batch", "ingest"} {
+	// other named group surface — ingest/etc. ARE visible here.
+	for _, want := range []string{"list_modules", "module_query", "ingest"} {
 		if !nameSet[want] {
 			t.Errorf("non-hosted modules surface missing %q (should be GroupShared-inclusive): got %v", want, names)
 		}

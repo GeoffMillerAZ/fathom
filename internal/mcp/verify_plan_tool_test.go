@@ -307,30 +307,9 @@ func TestVerifyPlan_VerdictOutcomeReachesCallLog(t *testing.T) {
 		}
 	})
 
-	t.Run("via_batch", func(t *testing.T) {
-		var buf bytes.Buffer
-		srv := mcp.NewServerWithLogger(newVerifyBackend(), mcp.NewCallLogger(&buf))
-		resp := roundtrip(t, srv, request{
-			JSONRPC: "2.0", ID: 3102, Method: "tools/call",
-			Params: map[string]any{
-				"name": "batch",
-				"arguments": map[string]any{
-					"calls": []map[string]any{{"name": "verify_plan", "arguments": args}},
-				},
-			},
-		})
-		if resp["error"] != nil {
-			t.Fatalf("unexpected error: %v", resp["error"])
-		}
-		entry := callLogEntryFor(t, &buf, "verify_plan", "batch")
-		logged, ok := entry["verdict_outcome"].(map[string]any)
-		if !ok {
-			t.Fatalf("batch sub-call logged entry missing verdict_outcome: %v", entry)
-		}
-		if logged["claimed"] != float64(2) || logged["verified"] != float64(1) || logged["failing"] != float64(1) {
-			t.Errorf("batch logged verdict_outcome = %v, want claimed:2 verified:1 failing:1", logged)
-		}
-	})
+	// The "via_batch" subtest (verdict_outcome reaching the call log
+	// through a batch sub-call, via:"batch") was retired: batch was
+	// unregistered by SR-19 (surface reckoning, F-77).
 
 	t.Run("no_claimed_tasks_omits_field", func(t *testing.T) {
 		var buf bytes.Buffer

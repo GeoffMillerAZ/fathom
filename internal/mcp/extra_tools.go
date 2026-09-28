@@ -23,16 +23,13 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/geoffmilleraz/fathom/internal/analysis/proto"
 	"github.com/geoffmilleraz/fathom/internal/analysis/serviceref"
 	"github.com/geoffmilleraz/fathom/internal/analysis/symbolnav"
-	"github.com/geoffmilleraz/fathom/internal/concern"
 	"github.com/geoffmilleraz/fathom/internal/context/packer"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/hookcache"
 	"github.com/geoffmilleraz/fathom/internal/refresh"
-	"github.com/geoffmilleraz/fathom/internal/sdd"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
 	"github.com/geoffmilleraz/fathom/internal/worktree"
 )
@@ -51,9 +48,10 @@ func registerExtraTools(s *Server, backend QueryInterface) {
 	// reckoning): review_diff's engine already runs the identical check
 	// in-process (runSpecCoverage, internal/analysis/review/engine.go)
 	// via the same sdd package this tool called directly.
-	registerTraceability(s, backend)
-	registerEvidenceSummary(s, backend)
-	registerContradictionScan(s, backend)
+	// registerTraceability, registerEvidenceSummary,
+	// registerContradictionScan (F-77) were unregistered by SR-19 (surface
+	// reckoning): 0 lifetime calls each; traceability's spec-ID join
+	// logic moves to U8's evidence pack when that is built (not a tool).
 	registerReferences(s, backend)
 	registerSearch(s, backend)
 	registerVerifyPlan(s, backend)
@@ -92,11 +90,16 @@ func registerExtraTools(s *Server, backend QueryInterface) {
 	registerRepoMap(s, backend)
 	registerPackContext(s, backend)
 
-	// ── ops / meta ───────────────────────────────────────────────────────────
-	registerBatch(s)
+	// registerBatch (F-77) was unregistered by SR-19 (surface reckoning):
+	// 0 lifetime calls; admitBatchCall, batchCall and batchResult went
+	// with it — RT-60 is retired (docs/plans/responsible-tenant.md); the
+	// governor's rpcToolClass/rpcBatchClasses batch branches
+	// (cmd/fathom/governor_rpc.go) and lifecycleGate's batch append
+	// (cmd/fathom/lifecycle_gate.go) go too.
 
-	// ── proto ────────────────────────────────────────────────────────────────
-	registerProtoConformance(s, backend)
+	// registerProtoConformance (F-77) was unregistered by SR-19 (surface
+	// reckoning): 0 lifetime calls; internal/analysis/proto stays for its
+	// own test only.
 
 	// ── spec / context ───────────────────────────────────────────────────────
 	// registerSpecRefs (F-35) was unregistered by SR-27 (surface
@@ -344,177 +347,6 @@ func intOr(p *int, def int) int {
 		return def
 	}
 	return *p
-}
-
-// ─── investigation: traceability ─────────────────────────────────────────────
-
-func registerTraceability(s *Server, backend QueryInterface) {
-	s.registerTool(toolDescriptor{
-		Name:        "traceability",
-		Description: "Extract spec-ID references from source files and build a symbol → spec-ID traceability map.",
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"service":  map[string]any{"type": "string", "description": "Service / repo identifier"},
-				"prefixes": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Spec-ID prefixes (default: US, EP, FR, NFR)"},
-			},
-			"required": []string{"service"},
-		},
-		group: GroupInvestigation,
-	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
-		if backend == nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
-		}
-		var p struct {
-			Service  string   `json:"service"`
-			Prefixes []string `json:"prefixes"`
-		}
-		if err := json.Unmarshal(args, &p); err != nil {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "traceability: invalid args"}
-		}
-		if p.Service == "" {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "traceability: service required"}
-		}
-		files, cov, _ := collectSources(ctx, backend, p.Service)
-		refs := make(map[string]any)
-		for _, f := range files {
-			var specRefs []string
-			if len(p.Prefixes) > 0 {
-				specRefs = sdd.ExtractRefsWithPrefixes(string(f.Content), p.Prefixes)
-			} else {
-				specRefs = sdd.ExtractRefs(string(f.Content))
-			}
-			if len(specRefs) > 0 {
-				refs[f.Path] = stringsToAny(specRefs)
-			}
-		}
-		return withPartial(map[string]any{"refs": refs}, cov), nil
-	})
-}
-
-// ─── investigation: evidence_summary ─────────────────────────────────────────
-
-func registerEvidenceSummary(s *Server, backend QueryInterface) {
-	s.registerTool(toolDescriptor{
-		Name:        "evidence_summary",
-		Description: "Return per-tier observation counts for a service (verified, pre-scan, doc-claimed, sme-stated, assumed).",
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"service": map[string]any{"type": "string", "description": "Service / repo identifier"},
-			},
-			"required": []string{"service"},
-		},
-		group: GroupInvestigation,
-	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
-		if backend == nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
-		}
-		svc, rpcErr := serviceArg(args, "evidence_summary")
-		if rpcErr != nil {
-			return nil, rpcErr
-		}
-		// Derive observations from ListAllSymbols: convert each SymbolNode's Tier to a fake Observation.
-		nodes, err := serviceSymbols(ctx, backend, svc)
-		if err != nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
-		}
-		obs := make([]core.Observation, len(nodes))
-		for i, n := range nodes {
-			obs[i] = core.Observation{
-				ServiceID:    n.Service,
-				EvidenceTier: n.Tier,
-				Symbol:       n.Name,
-			}
-		}
-		summary := concern.EvidenceSummary(obs)
-		result := make(map[string]any, len(summary))
-		for tier, count := range summary {
-			result[string(tier)] = count
-		}
-		return map[string]any{"summary": result}, nil
-	})
-}
-
-// ─── investigation: contradiction_scan ───────────────────────────────────────
-
-func registerContradictionScan(s *Server, backend QueryInterface) {
-	s.registerTool(toolDescriptor{
-		Name:        "contradiction_scan",
-		Description: "Scan query results for contradictions: symbols that appear with conflicting kinds across sources.",
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"service": map[string]any{"type": "string", "description": "Service / repo identifier"},
-				"concern": map[string]any{"type": "string", "description": "Concern ID to scope the scan"},
-			},
-			"required": []string{"service", "concern"},
-		},
-		group: GroupInvestigation,
-	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
-		if backend == nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
-		}
-		var p struct {
-			Service string `json:"service"`
-			Concern string `json:"concern"`
-		}
-		if err := json.Unmarshal(args, &p); err != nil {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "contradiction_scan: invalid args"}
-		}
-		if p.Service == "" {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "contradiction_scan: service required"}
-		}
-		if p.Concern == "" {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "contradiction_scan: concern required"}
-		}
-		result, err := backend.QuerySymbols(ctx, core.Query{
-			ServiceID: p.Service,
-			ConcernID: p.Concern,
-			TopN:      200,
-		})
-		if err != nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
-		}
-		// Use embedded contradictions if the backend returns them.
-		contras := result.Contradictions
-		out := make([]any, len(contras))
-		for i, c := range contras {
-			out[i] = map[string]any{
-				"symbol":       c.Symbol,
-				"claim_a":      c.A.Claim,
-				"claim_b":      c.B.Claim,
-				"tier_a":       string(c.A.EvidenceTier),
-				"tier_b":       string(c.B.EvidenceTier),
-				"source_ref_a": c.A.SourceRef,
-				"source_ref_b": c.B.SourceRef,
-			}
-		}
-		// Also detect kind-conflicts across nodes.
-		kindByName := make(map[string]string)
-		type conflict struct {
-			symbol string
-			kindA  string
-			kindB  string
-		}
-		var conflicts []conflict
-		for _, n := range result.Nodes {
-			if prev, seen := kindByName[n.Name]; seen && prev != string(n.Kind) {
-				conflicts = append(conflicts, conflict{n.Name, prev, string(n.Kind)})
-			} else {
-				kindByName[n.Name] = string(n.Kind)
-			}
-		}
-		for _, cf := range conflicts {
-			out = append(out, map[string]any{
-				"symbol": cf.symbol,
-				"kind_a": cf.kindA,
-				"kind_b": cf.kindB,
-				"type":   "kind_conflict",
-			})
-		}
-		return map[string]any{"contradictions": out, "count": len(out)}, nil
-	})
 }
 
 // ─── shared: registry surgery ────────────────────────────────────────────────
@@ -1071,208 +903,5 @@ func registerPackContext(s *Server, backend QueryInterface) {
 			resp["elided"] = el
 		}
 		return resp, nil
-	})
-}
-
-// ─── ops/meta: batch ──────────────────────────────────────────────────────────
-
-// batchCall describes one call inside a batch request.
-type batchCall struct {
-	Name      string          `json:"name"`
-	Arguments json.RawMessage `json:"arguments"`
-}
-
-// batchMaxCalls caps a batch's sub-calls (RT-60, design §3.3).
-const batchMaxCalls = 16
-
-// admitBatchCall admits one batch sub-call in its own class under the
-// batch's context (and so its deadline); a refusal is that sub-call's
-// named error, never the batch's 503 (RT-60).
-func (s *Server) admitBatchCall(ctx context.Context, te toolEntry, args json.RawMessage) (context.Context, *tenancy.Ticket, *rpcError) {
-	return s.admitToolCall(ctx, te, args, false)
-}
-
-// batchResult is the result of one call in a batch, with a per-call error field.
-type batchResult struct {
-	Name   string `json:"name"`
-	Result any    `json:"result,omitempty"`
-	Error  string `json:"error,omitempty"`
-	// Budget is a stopped sub-call's partial block (RT-57): an entry
-	// never looks complete when its producer was stopped.
-	Budget map[string]any `json:"budget,omitempty"`
-}
-
-func registerBatch(s *Server) {
-	s.registerTool(toolDescriptor{
-		Name:        "batch",
-		Description: "Execute up to 16 tool calls in a single request. Per-call errors are reported in the result rather than aborting the entire batch.",
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"calls": map[string]any{
-					"type":        "array",
-					"description": "List of {name, arguments} tool calls to execute",
-					"items": map[string]any{
-						"type": "object",
-						"properties": map[string]any{
-							"name":      map[string]any{"type": "string"},
-							"arguments": map[string]any{"type": "object"},
-						},
-					},
-				},
-			},
-			"required": []string{"calls"},
-		},
-		group: GroupShared,
-	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
-		var p struct {
-			Calls []batchCall `json:"calls"`
-		}
-		if err := json.Unmarshal(args, &p); err != nil {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "batch: invalid args"}
-		}
-		if len(p.Calls) == 0 {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "batch: calls required"}
-		}
-		// RT-60 (design §3.3): at most batchMaxCalls sub-calls; the batch
-		// holds no ticket, each sub-call is admitted in its own class.
-		if len(p.Calls) > batchMaxCalls {
-			return nil, &rpcError{Code: ErrCodeParams, Message: fmt.Sprintf("batch: at most %d calls per batch (got %d) — split it", batchMaxCalls, len(p.Calls))}
-		}
-		results := make([]any, len(p.Calls))
-		sc := scopeFrom(ctx)
-		// Sub-calls are logged individually (via:"batch") so surface telemetry
-		// counts the tools a batch actually exercised, not just "batch".
-		logSub := func(name, group string, argsRaw json.RawMessage, offSurface bool, claimsAttached int, verdictOutcome map[string]int, subResult any, latency time.Duration, rpcErr *rpcError, meta callMeta) {
-			if s.callLogger == nil {
-				return
-			}
-			var sa struct {
-				Service string `json:"service"`
-			}
-			_ = json.Unmarshal(argsRaw, &sa)
-			var subErr error
-			if rpcErr != nil {
-				subErr = &rpcErrWrapper{rpcErr}
-			}
-			subCount, subVia := outcomeFrom(subResult)
-			s.callLogger.log(name, sa.Service, group, s.effectiveSurface(ctx), "batch", originFrom(ctx), offSurface, claimsAttached, verdictOutcome, s.recordCallOutcome(ctx, meta, callOutcome{ResultCount: subCount, MatchedVia: subVia}), latency, subErr)
-		}
-		for i, call := range p.Calls {
-			// RT-60: the batch stops when its context ends — nothing after
-			// the cancellation runs, and each unrun call says so.
-			if err := ctx.Err(); err != nil {
-				results[i] = batchResult{Name: call.Name, Error: "not run: the batch's context ended (" + err.Error() + ")"}
-				continue
-			}
-			argsRaw := call.Arguments
-			if argsRaw == nil {
-				argsRaw = json.RawMessage("{}")
-			}
-			te, ok := s.findTool(call.Name)
-			if !ok {
-				results[i] = batchResult{Name: call.Name, Error: "tool not found: " + call.Name}
-				continue
-			}
-			// Hosted-modules security gate (GKE-MH-7, critic finding 2):
-			// batch is itself GroupShared, not GroupModules, so it is
-			// excluded from hostedModulesTools' allowlist and cannot even
-			// be CALLED on the modules surface while hosted (strictFor
-			// makes that a hard gate) — but a batch invoked from bare
-			// /rpc, or any other named surface, must still be refused
-			// from smuggling a GroupModules sub-call through, exactly
-			// like handleToolsCallWithCtx's own check (dispatch.go).
-			if s.hostedModuleBlocked(sc, te.desc) {
-				gateErr := &rpcError{Code: ErrCodeNotFound, Message: "tool " + call.Name + " requires the " + SurfaceModules + " surface (hosted mode is active)"}
-				logSub(call.Name, string(te.desc.group), argsRaw, false, 0, nil, nil, 0, gateErr, callMeta{})
-				results[i] = batchResult{Name: call.Name, Error: gateErr.Message}
-				continue
-			}
-			subOff := false
-			if sc.enforced() && !s.toolOnSurface(sc.surface, te.desc) {
-				if s.strictFor(sc.surface) {
-					gateErr := &rpcError{Code: ErrCodeNotFound, Message: "tool " + call.Name + " is not on the " + sc.surface + " surface; POST /rpc serves the full surface"}
-					logSub(call.Name, string(te.desc.group), argsRaw, false, 0, nil, nil, 0, gateErr, callMeta{})
-					results[i] = batchResult{Name: call.Name, Error: gateErr.Message}
-					continue
-				}
-				subOff = true
-			}
-			// P1-8: batch sub-calls get the same dispatch-level required-field
-			// gate handleToolsCallWithCtx applies (validateRequired,
-			// dispatch.go) — without this, batch{calls:[...]} was a bypass
-			// route straight to the handler, keeping the exact
-			// previously-lenient-handler hole (license_policy et al.) open.
-			// A failing sub-call errors into ITS OWN batchResult (and is
-			// logged like any other sub-call error) — never the whole batch.
-			if valErr := validateRequired(te.desc, argsRaw); valErr != nil {
-				logSub(call.Name, string(te.desc.group), argsRaw, subOff, 0, nil, nil, 0, valErr, callMeta{})
-				results[i] = batchResult{Name: call.Name, Error: valErr.Message}
-				continue
-			}
-			start := time.Now()
-			subCtx, tk, busy := s.admitBatchCall(ctx, te, argsRaw)
-			if busy != nil {
-				logSub(call.Name, string(te.desc.group), argsRaw, subOff, 0, nil, nil, 0, busy, callMeta{class: costClassOf(te, argsRaw), outcome: string(tenancy.OutcomeRefused)})
-				results[i] = batchResult{Name: call.Name, Error: busy.Message}
-				continue
-			}
-			result, rpcErr := runHandler(subCtx, te, argsRaw)
-			result, rpcErr, partial, meta := s.settleCall(subCtx, call.Name, tk, result, rpcErr)
-			meta.class = costClassOf(te, argsRaw)
-			logSub(call.Name, string(te.desc.group), argsRaw, subOff, claimsAttachedFrom(result), verdictOutcomeFrom(result), result, time.Since(start), rpcErr, meta)
-			if rpcErr != nil {
-				results[i] = batchResult{Name: call.Name, Error: rpcErr.Message}
-				continue
-			}
-			results[i] = batchResult{Name: call.Name, Result: result, Budget: partial}
-		}
-		return map[string]any{"results": results, "count": len(results)}, nil
-	})
-}
-
-// ─── proto: proto_conformance ─────────────────────────────────────────────────
-
-func registerProtoConformance(s *Server, backend QueryInterface) {
-	s.registerTool(toolDescriptor{
-		Name:        "proto_conformance",
-		Description: "Check .proto files for naming convention violations (PascalCase services/messages/RPCs, snake_case fields).",
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"service": map[string]any{"type": "string", "description": "Service / repo identifier"},
-			},
-			"required": []string{"service"},
-		},
-		group: GroupCoding,
-	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
-		if backend == nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
-		}
-		svc, rpcErr := serviceArg(args, "proto_conformance")
-		if rpcErr != nil {
-			return nil, rpcErr
-		}
-		files, cov, rpcErr := fetchSources(ctx, backend, svc)
-		if rpcErr != nil {
-			return nil, rpcErr
-		}
-		var allIssues []any
-		for _, f := range files {
-			if !strings.HasSuffix(f.Path, ".proto") {
-				continue
-			}
-			c := proto.Parse(string(f.Content))
-			issues := proto.Conformance(c)
-			for _, iss := range issues {
-				allIssues = append(allIssues, map[string]any{
-					"file":     f.Path,
-					"location": iss.Location,
-					"rule":     iss.Rule,
-					"message":  iss.Message,
-				})
-			}
-		}
-		return withPartial(map[string]any{"issues": allIssues, "count": len(allIssues)}, cov), nil
 	})
 }

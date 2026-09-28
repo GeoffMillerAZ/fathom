@@ -323,71 +323,9 @@ func TestTestImpact_MissingParams(t *testing.T) {
 	}
 }
 
-// ─── dead_code ────────────────────────────────────────────────────────────────
-
-func TestDeadCode_FindsOrphan(t *testing.T) {
-	srv := newAnalysisSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 140, Method: "tools/call",
-		Params: map[string]any{
-			"name": "dead_code",
-			"arguments": map[string]any{
-				"service":     "svc",
-				"entrypoints": []string{"svc::pkg.TestFoo"},
-			},
-		},
-	})
-	payload := toolPayload(t, resp)
-	dead, ok := payload["dead"].([]any)
-	if !ok {
-		t.Fatalf("payload.dead missing or wrong type: %v", payload)
-	}
-	found := false
-	for _, raw := range dead {
-		if s, ok := raw.(string); ok && s == "svc::pkg.Orphan" {
-			found = true
-		}
-	}
-	if !found {
-		t.Errorf("dead_code: Orphan not in results: %v", dead)
-	}
-}
-
-func TestDeadCode_EmptyEntrypoints(t *testing.T) {
-	srv := newAnalysisSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 141, Method: "tools/call",
-		Params: map[string]any{
-			"name": "dead_code",
-			"arguments": map[string]any{
-				"service":     "svc",
-				"entrypoints": []string{},
-			},
-		},
-	})
-	payload := toolPayload(t, resp)
-	if payload["dead"] == nil {
-		t.Error("dead_code: 'dead' key missing")
-	}
-}
-
-func TestDeadCode_MissingService(t *testing.T) {
-	srv := newAnalysisSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 142, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "dead_code",
-			"arguments": map[string]any{"entrypoints": []string{"A"}},
-		},
-	})
-	errObj, ok := resp["error"].(map[string]any)
-	if !ok {
-		t.Fatalf("expected error for missing service, got result: %v", resp)
-	}
-	if code := errObj["code"].(float64); code != float64(mcp.ErrCodeParams) {
-		t.Errorf("code = %v, want %v", code, mcp.ErrCodeParams)
-	}
-}
+// dead_code (F-77) was unregistered by SR-19 (surface reckoning): 0
+// lifetime calls; callgraph.DeadCode stays (only its own test calls it
+// now).
 
 // ─── profile membership ───────────────────────────────────────────────────────
 
@@ -401,7 +339,6 @@ func TestAnalysisToolsInCorrectProfile(t *testing.T) {
 		name  string
 		group mcp.ToolGroup
 	}{
-		{"dead_code", mcp.GroupCoding},
 		{"test_impact", mcp.GroupInvestigation},
 	} {
 		if got := srv.GroupOfForTest(tc.name); got != tc.group {

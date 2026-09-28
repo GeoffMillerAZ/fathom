@@ -124,87 +124,10 @@ func TestBlastRadius_MissingService(t *testing.T) {
 // review_diff's engine already runs the identical check in-process
 // (runSpecCoverage, internal/analysis/review/engine.go) via the same
 // sdd package this tool called directly — no logic lost.
-// ─── traceability ─────────────────────────────────────────────────────────────
 
-func TestTraceability_Basic(t *testing.T) {
-	srv := mcp.NewServer(&sourcesFakeBackend{
-		extendedFakeBackend: extendedFakeBackend{
-			nodes: []core.SymbolNode{{Service: "svc", Name: "Foo", Kind: core.KindGoFunc}},
-		},
-		sources: []core.SourceFile{
-			{Path: "pkg/x.go", Content: []byte("// [US-001] implements user story"), Lang: "go"},
-		},
-	})
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 1040, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "traceability",
-			"arguments": map[string]any{"service": "svc"},
-		},
-	})
-	p := xtraPayload(t, resp)
-	if p["refs"] == nil {
-		t.Error("traceability: refs missing")
-	}
-}
-
-func TestTraceability_MissingService(t *testing.T) {
-	srv := newExtraSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 1041, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "traceability",
-			"arguments": map[string]any{},
-		},
-	})
-	xtraError(t, resp)
-}
-
-// ─── evidence_summary ─────────────────────────────────────────────────────────
-
-func TestEvidenceSummary_Basic(t *testing.T) {
-	srv := newExtraSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 1060, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "evidence_summary",
-			"arguments": map[string]any{"service": "svc"},
-		},
-	})
-	p := xtraPayload(t, resp)
-	if p["summary"] == nil {
-		t.Error("evidence_summary: summary missing")
-	}
-}
-
-// ─── contradiction_scan ───────────────────────────────────────────────────────
-
-func TestContradictionScan_Basic(t *testing.T) {
-	srv := newExtraSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 1070, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "contradiction_scan",
-			"arguments": map[string]any{"service": "svc", "concern": "any"},
-		},
-	})
-	p := xtraPayload(t, resp)
-	if p["contradictions"] == nil {
-		t.Error("contradiction_scan: contradictions missing")
-	}
-}
-
-func TestContradictionScan_MissingConcern(t *testing.T) {
-	srv := newExtraSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 1071, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "contradiction_scan",
-			"arguments": map[string]any{"service": "svc"},
-		},
-	})
-	xtraError(t, resp)
-}
+// traceability, evidence_summary and contradiction_scan were unregistered
+// by SR-19 (surface reckoning F-77): 0 lifetime calls each; traceability's
+// spec-ID join logic moves to U8's evidence pack when that is built.
 
 // arch_conformance was unregistered by SR-27 (surface reckoning F-35):
 // review_diff's engine already runs the identical check in-process
@@ -444,92 +367,9 @@ func TestPackContext_HyphenatedConcernIDStillAccepted(t *testing.T) {
 	}
 }
 
-// ─── batch ────────────────────────────────────────────────────────────────────
-
-func TestBatch_Basic(t *testing.T) {
-	srv := newExtraSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 1320, Method: "tools/call",
-		Params: map[string]any{
-			"name": "batch",
-			"arguments": map[string]any{
-				"calls": []map[string]any{
-					{"name": "complexity", "arguments": map[string]any{"service": "svc", "top_n": 5}},
-					{"name": "evidence_summary", "arguments": map[string]any{"service": "svc"}},
-				},
-			},
-		},
-	})
-	p := xtraPayload(t, resp)
-	results, ok := p["results"].([]any)
-	if !ok {
-		t.Fatalf("batch: results missing or not array")
-	}
-	if len(results) != 2 {
-		t.Errorf("batch: expected 2 results, got %d", len(results))
-	}
-}
-
-func TestBatch_UnknownTool(t *testing.T) {
-	srv := newExtraSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 1321, Method: "tools/call",
-		Params: map[string]any{
-			"name": "batch",
-			"arguments": map[string]any{
-				"calls": []map[string]any{
-					{"name": "no_such_tool", "arguments": map[string]any{}},
-				},
-			},
-		},
-	})
-	p := xtraPayload(t, resp)
-	results := p["results"].([]any)
-	r := results[0].(map[string]any)
-	if r["error"] == nil {
-		t.Error("batch: expected per-call error for unknown tool")
-	}
-}
-
-func TestBatch_MissingCalls(t *testing.T) {
-	srv := newExtraSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 1322, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "batch",
-			"arguments": map[string]any{},
-		},
-	})
-	xtraError(t, resp)
-}
-
-// ─── proto_conformance ────────────────────────────────────────────────────────
-
-func TestProtoConformance_Basic(t *testing.T) {
-	protoSrc := `syntax = "proto3";
-package hello;
-service greeter {
-  rpc sayHello (hello_request) returns (hello_reply);
-}
-message hello_request { string Name = 1; }
-message hello_reply { string Message = 2; }
-`
-	srv := mcp.NewServer(&sourcesFakeBackend{
-		extendedFakeBackend: extendedFakeBackend{},
-		sources:             []core.SourceFile{{Path: "proto/bad.proto", Content: []byte(protoSrc), Lang: "proto"}},
-	})
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 1340, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "proto_conformance",
-			"arguments": map[string]any{"service": "svc"},
-		},
-	})
-	p := xtraPayload(t, resp)
-	if p["issues"] == nil {
-		t.Error("proto_conformance: issues missing")
-	}
-}
+// batch (TestBatch_Basic/_UnknownTool/_MissingCalls) and proto_conformance
+// (TestProtoConformance_Basic) were retired: both were unregistered by
+// SR-19 (surface reckoning, F-77), 0 lifetime calls each.
 
 // ─── tools list coverage ──────────────────────────────────────────────────────
 
@@ -552,15 +392,27 @@ func TestExtraToolsInList(t *testing.T) {
 
 	want := []string{
 		"blast_radius",
-		"traceability", "evidence_summary", "contradiction_scan",
 		"ingest",
 		"repo_map", "pack_context",
-		"batch",
-		"proto_conformance",
 	}
 	for _, name := range want {
 		if !names[name] {
 			t.Errorf("extra tool %q not found in tools/list", name)
+		}
+	}
+
+	// SR-19 (surface reckoning F-77): the twelve legacy analyzer tools
+	// (complexity, god_object, community, dead_code, cloc, secret_scan,
+	// shell_out, proto_conformance, traceability, evidence_summary,
+	// contradiction_scan, batch) are unregistered — 0 lifetime calls
+	// each; the governor's batch branches go with batch, RT-60 retires.
+	for _, name := range []string{
+		"complexity", "god_object", "community", "dead_code", "cloc",
+		"secret_scan", "shell_out", "proto_conformance", "traceability",
+		"evidence_summary", "contradiction_scan", "batch",
+	} {
+		if names[name] {
+			t.Errorf("reckoning-removed tool %q is still in tools/list", name)
 		}
 	}
 

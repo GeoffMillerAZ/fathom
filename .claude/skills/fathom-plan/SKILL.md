@@ -34,9 +34,10 @@ any convention beyond what's below.
      or a cover-up.
 3. If the plan implements/verifies a spec, get the spec's bracketed ID(s)
    (`[US-042]`, `[EP-013]`, `[FR-7]`, or a milestone form like `M18.2`) —
-   `traceability` will confirm the ID is real (the standalone `spec_refs`
-   tool was unregistered, SR-27; `obligations`'s additive `spec_refs`
-   section confirms one file's own citations, given `file`).
+   `obligations`'s additive `spec_refs` section confirms one file's own
+   citations, given `file` (the standalone `spec_refs` tool was
+   unregistered, SR-27; `traceability`, the other tool that once traced a
+   spec ID, was unregistered outright by SR-19, F-77 — 0 lifetime calls).
 
 ## Checklist format
 

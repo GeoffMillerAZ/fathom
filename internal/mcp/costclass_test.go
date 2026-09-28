@@ -20,7 +20,11 @@ func TestEveryToolDeclaresCostClass(t *testing.T) {
 	// spec_coverage and spec_refs — the floor moves down by 3 with them.
 	// SR-12 (F-22) unregistered http_client_calls, fleet_drift, reachable,
 	// traverse and history — the floor moves down by 5 more.
-	if len(classes) < 42 {
+	// SR-19 (F-77) unregistered complexity, god_object, community,
+	// dead_code, cloc, secret_scan, shell_out, proto_conformance,
+	// traceability, evidence_summary, contradiction_scan and batch — the
+	// floor moves down by 12 more.
+	if len(classes) < 30 {
 		t.Fatalf("only %d tools registered — the registry did not build", len(classes))
 	}
 	valid := map[string]bool{"point": true, "index": true, "tree": true, "fleet": true, "ingest": true, "egress": true}

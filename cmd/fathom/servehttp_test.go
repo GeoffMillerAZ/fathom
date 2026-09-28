@@ -523,16 +523,18 @@ func TestServeHTTPOffSurfaceExecutesAndFlags(t *testing.T) {
 	srv := mcp.NewServerWithFleetAndLogger(c, nil, mcp.NewCallLogger(&buf))
 	handler := newHTTPHandler(srv, c, "127.0.0.1:0", nil)
 
-	// secret_scan is off the companion allowlist. It still reaches the
-	// handler — any error it returns is its own backend error (no checkout
-	// for "svc" on disk), never the surface-gate message.
+	// remove_service is off the companion allowlist (GroupShared, and
+	// idempotent — removing an unknown service returns removed:false, no
+	// side effect on this fresh store). It still reaches the handler —
+	// secret_scan, the original off-surface example, was unregistered by
+	// SR-19 (surface reckoning F-77): 0 lifetime calls.
 	resp := postRPCPath(t, handler, "/rpc/companion", rpcBody(t, map[string]any{
 		"jsonrpc": "2.0", "id": 21, "method": "tools/call",
-		"params": map[string]any{"name": "secret_scan", "arguments": map[string]any{"service": "svc"}},
+		"params": map[string]any{"name": "remove_service", "arguments": map[string]any{"service": "svc"}},
 	}))
 	if errObj, ok := resp["error"].(map[string]any); ok {
 		if msg, _ := errObj["message"].(string); strings.Contains(msg, "is not on the") {
-			t.Fatalf("off-surface secret_scan should execute, not be gated: %v", msg)
+			t.Fatalf("off-surface remove_service should execute, not be gated: %v", msg)
 		}
 	}
 	line := strings.TrimSpace(buf.String())
@@ -544,11 +546,11 @@ func TestServeHTTPOffSurfaceExecutesAndFlags(t *testing.T) {
 	srv.SetStrictSurfaces(true)
 	strictResp := postRPCPath(t, handler, "/rpc/companion", rpcBody(t, map[string]any{
 		"jsonrpc": "2.0", "id": 22, "method": "tools/call",
-		"params": map[string]any{"name": "secret_scan", "arguments": map[string]any{"service": "svc"}},
+		"params": map[string]any{"name": "remove_service", "arguments": map[string]any{"service": "svc"}},
 	}))
 	errObj, ok := strictResp["error"].(map[string]any)
 	if !ok {
-		t.Fatalf("secret_scan under strictSurfaces: want error, got %v", strictResp)
+		t.Fatalf("remove_service under strictSurfaces: want error, got %v", strictResp)
 	}
 	if msg := errObj["message"].(string); !strings.Contains(msg, "surface") {
 		t.Errorf("error message %q should name the surface", msg)

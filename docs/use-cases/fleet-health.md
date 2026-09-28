@@ -1,15 +1,14 @@
 # Fleet & Codebase Health
 
-Use fathom to get an objective quality and security posture across an entire fleet of services, or drill into a single repo's complexity and dependency surface.
+Use fathom to get an objective fleet-wiring posture across an entire fleet of services. (The per-service MCP quality/security scanners this doc used to cover — `complexity`, `god_object`, `secret_scan`, `shell_out`, `cloc` — were unregistered by SR-19, surface reckoning F-77: 0 lifetime calls each.)
 
 ---
 
 ## When to use this
 
-- You want a fleet-wide sweep: which services exist, what languages they use, and where security or quality risks concentrate.
+- You want a fleet-wide sweep: which services exist and what languages they use.
 - You are preparing for a platform review, incident post-mortem, or architectural audit and need facts, not guesses.
-- You need to identify refactor targets — high-complexity functions, god objects, or services with significant technical debt.
-- You want a dependency inventory (SBOM-style) or a line-count breakdown before making a build or upgrade decision.
+- You want to check a repo's fathom wiring health, or its `.fathom/concerns.cue` contract, across the fleet.
 
 ---
 
@@ -18,11 +17,6 @@ Use fathom to get an objective quality and security posture across an entire fle
 | Name | Kind | What it gives you |
 |---|---|---|
 | `list_services` | MCP tool | All ingested services with symbol counts and detected languages |
-| `complexity` | MCP tool | Cyclomatic-complexity hotspots and Maintainability Index for one service |
-| `god_object` | MCP tool | Types with too many methods or fields — structural debt signals |
-| `secret_scan` | MCP tool | Hardcoded tokens, high-entropy strings, credential-named variables |
-| `shell_out` | MCP tool | Shell-out call sites (exec, subprocess, child_process) |
-| `cloc` | MCP tool | Line counts by language (blank / comment / code) |
 | `staleness_report` | MCP tool | Whether the index is in sync with HEAD; flags `reingest_recommended` |
 | `ingest` | MCP tool | Re-index a service in-session after commits; a run that could read nothing is a JSON-RPC error naming the cause, never `ok:true` |
 | `fathom ingest` | CLI | Index a repo into the fleet store (avoid while a session is writing the same store — SQLite serializes writers, ADR-020); prints a `read-failed: N file(s)` column and exits 1 (`ingest degraded`/`ingest refused`) when files could not be read |
@@ -42,8 +36,7 @@ Without fathom, an agent doing a health sweep reads files, greps, and re-derives
 With fathom:
 
 - **Fleet orientation in one call.** `list_services` returns symbol counts and languages for every ingested service. The agent knows the fleet's shape before reading a single file.
-- **Targeted security sweeps.** `secret_scan` and `shell_out` run against the pre-indexed store. Findings carry file and line — the agent can surface them directly or use them to open exactly the right files.
-- **Complexity-driven refactor targeting.** `complexity` returns the top-N hotspot functions with cyclomatic scores and an overall Maintainability Index. The agent proposes concrete refactor targets with evidence, not intuition.
+- **Wiring health in one call.** `fathom fleet report`/`reconcile` names every repo's hook/stanza/shim drift without the agent re-deriving it per repo.
 
 The result: the agent spends tokens on analysis and recommendations, not on discovery and file parsing.
 
@@ -73,69 +66,23 @@ Returns:
 
 The agent now knows three services are indexed. `payment-service` is the largest.
 
-**Step 2 — Security posture sweep across services**
+**Step 2 — Check fleet wiring health**
 
-For each service, call the two security tools. Here shown for `payment-service`:
-
-```json
-{ "name": "secret_scan",       "arguments": { "service": "payment-service" } }
-{ "name": "shell_out",         "arguments": { "service": "payment-service" } }
+```sh
+fathom fleet report --json
 ```
 
-`secret_scan` returns a finding:
-```json
-{
-  "findings": [
-    { "file": "internal/gateway/client.go", "line": 34, "rule": "high-entropy-string", "message": "possible hardcoded secret" }
-  ]
-}
-```
-
-`shell_out` returns empty.
-
-The agent logs: `payment-service` has 1 secret-scan hit. Repeat for the remaining services to build the fleet-wide posture.
-
-**Step 3 — Find complexity hotspots in the highest-risk service**
-
-```json
-{ "name": "complexity", "arguments": { "service": "payment-service", "top_n": 5 } }
-```
-
-Returns:
-```json
-{
-  "hotspots": [
-    { "name": "ProcessCheckout",   "file": "internal/checkout/handler.go", "line": 88,  "complexity": 24 },
-    { "name": "ValidateLineItems", "file": "internal/checkout/validate.go", "line": 201, "complexity": 18 }
-  ],
-  "maintainability_index": 52
-}
-```
-
-A Maintainability Index of 52 (scale 0–100; below 65 is a concern) and a complexity-24 function give the agent concrete, citable targets for the sprint backlog.
-
-**Step 4 — Check for god objects**
-
-```json
-{ "name": "god_object", "arguments": { "service": "payment-service", "method_threshold": 10, "field_threshold": 10 } }
-```
-
-Returns:
-```json
-{
-  "god_objects": [
-    { "type": "CheckoutService", "methods": 17, "fields": 6 }
-  ]
-}
-```
+Names each repo's hook/stanza/shim state — a *stale* stanza, a missing hook, or *up to
+date* — without the agent re-deriving wiring drift per repo. `fathom fleet reconcile
+--apply` writes the fix, one receipt per repo.
 
 ---
 
 ## Setup & notes
 
-**Surfaces:** there is no profile switch (`set_profile` was removed, SW-2). stdio `serve-mcp` serves the full registry. Over the shared HTTP daemon the path is the scope: the group endpoints were deleted 2026-08-26 (HF-5), so bare `POST /rpc` serves the fleet and quality tools (`list_services`, `cross_repo_*`, `complexity`, `god_object`, `cloc`, `secret_scan`, `staleness_report`, `ingest`); `POST /rpc/agent` is the 19-tool allowlist (`list_services`, `staleness_report`, `ingest` are on it; the security and quality tools are not). An off-surface call still executes and is logged `off_surface:true` — never refused — so one registration serves every step above. (`fleet_drift` was unregistered, SR-12, surface reckoning F-22: 0 lifetime calls.)
+**Surfaces:** there is no profile switch (`set_profile` was removed, SW-2). stdio `serve-mcp` serves the full registry. Over the shared HTTP daemon the path is the scope: the group endpoints were deleted 2026-08-26 (HF-5), so bare `POST /rpc` serves the fleet tools (`list_services`, `cross_repo_*`, `staleness_report`, `ingest`); `POST /rpc/agent` is the 19-tool allowlist (`list_services`, `staleness_report`, `ingest` are on it). An off-surface call still executes and is logged `off_surface:true` — never refused. (`fleet_drift` was unregistered, SR-12, surface reckoning F-22; `complexity`, `god_object`, `cloc`, `secret_scan`, `shell_out` by SR-19, F-77 — 0 lifetime calls each.)
 
-**Concern argument:** The tools in this use case do **not** require a `concern` argument — they are structural/metric queries, not concern-scoped symbol searches. (`query_symbols` and `pack_context` require a concern; those are covered in other use-case docs.)
+**Concern argument:** `list_services` and `staleness_report` do **not** require a `concern` argument — they are structural queries, not concern-scoped symbol searches. (`query_symbols` and `pack_context` require a concern; those are covered in other use-case docs.)
 
 **Staleness:** A long-running `serve-mcp` session can outlive commits. Before a posture sweep, call `staleness_report` per service to check whether `reingest_recommended` is `true`. If it is, re-index with the `ingest` MCP tool (not the CLI — a concurrent CLI write can contend with the server's own write and fail past `busy_timeout`, SQLite serializes writers per ADR-020):
 
@@ -167,4 +114,4 @@ fathom ingest --service payment-service --path /path/to/payment-service
 
 ## Maintained
 
-This doc covers: `list_services`, `complexity`, `god_object`, `secret_scan`, `shell_out`, `cloc`, `staleness_report`, `ingest` (incl. `root` and the worktree re-root refusal), `fathom ingest` (incl. `read-failed`/`degraded`/`refused`, the worktree re-root refusal), `fathom fleet` (`report`/`reconcile`/`receipts`/`undo`; `reconcile` plans the shipped skills through the wiring engine — a hand-authored copy is BLOCKED by name; `fathom fleet -h`), `fathom doctor`, `fathom config audit`, `fathom config propose`, `fathom capabilities` (`list`/`explain`/`set`), `fathom scope` (reversible suppression: list/suppress/unsuppress/preview), `fathom purge` (irreversible, verified removal + history). Update it when these change.
+This doc covers: `list_services`, `staleness_report`, `ingest` (incl. `root` and the worktree re-root refusal), `fathom ingest` (incl. `read-failed`/`degraded`/`refused`, the worktree re-root refusal), `fathom fleet` (`report`/`reconcile`/`receipts`/`undo`; `reconcile` plans the shipped skills through the wiring engine — a hand-authored copy is BLOCKED by name; `fathom fleet -h`), `fathom doctor`, `fathom config audit`, `fathom config propose`, `fathom capabilities` (`list`/`explain`/`set`), `fathom scope` (reversible suppression: list/suppress/unsuppress/preview), `fathom purge` (irreversible, verified removal + history). Update it when these change.
