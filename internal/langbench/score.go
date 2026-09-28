@@ -62,6 +62,10 @@ type L1Result struct {
 	Counts       map[string]int
 	Excluded     map[string]int
 	Intersection []string
+	// DialectOnly are fathom's definitions inside the kind intersection
+	// the oracle matched nothing to (name in the dialect's match form) —
+	// the only candidates an adjudication may admit (D3).
+	DialectOnly []OracleDef
 }
 
 type scoredDef struct {
@@ -162,6 +166,11 @@ func ScoreL1(m Manifest, oracle string, nodes []core.SymbolNode, defs []OracleDe
 			if p.f.end > 0 && d >= -1 && d <= 1 {
 				res.Counts[CntRangeOK]++
 			}
+		}
+	}
+	for _, d := range mine {
+		if !d.matched {
+			res.DialectOnly = append(res.DialectOnly, OracleDef{Path: d.path, Name: d.name, Line: d.line, End: d.end, Kind: d.canonical})
 		}
 	}
 	return res

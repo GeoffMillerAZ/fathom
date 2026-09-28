@@ -139,6 +139,16 @@ owner's decisions, binding on the harness and every reading after them:
   instruments only (installed under the measurement scratch dir), never product
   dependencies. An instrument that cannot be installed is recorded with why, and the
   reading keeps ctags with the deficiency disclosed — L1 capped at good.
+- **D3 — oracle-deficiency disclosure.** A reading may carry an adjudicated set of
+  dialect-only definitions the L1 oracle is verified to miss (`lang-oracle -adjudicate
+  <file>`: classes, each with a `why` and an optional structural `pattern` where `{name}`
+  stands for the name, and the claimed `path`/`line`/`name`/`class` entries). An entry is
+  admitted only by `langbench.Adjudicate`'s deterministic check — fathom emitted that name
+  at exactly that line inside the kind intersection, the oracle matched nothing to it, and
+  the definition's source text contains the name (and the class pattern) — never by a
+  model's judgment. Admitted entries leave `sym_precision`'s denominator (never recall's
+  numerator), are listed under their subject's `adjudicated`, and the reading carries an
+  `adjudicated:` note; refused claims are counted and named in the notes.
 - **D5 — an L2 calls oracle for every language dialect.** Where no SCIP producer exists
   (bash, SQL …), call pairs come from the grammar's upstream `queries/tags.scm` run by an
   independent runtime (py-tree-sitter or the tree-sitter CLI): each `@reference.call`'s
@@ -511,7 +521,8 @@ go run ./cmd/indexbench lang-oracle \
   [-scip workspace/tmp/scip/swift-alamofire.scip] \
   [-scip-defs]                                 # L1 from the SCIP index, tier A (D2)
   [-tool-oracle workspace/tmp/oracle/<id>-<subject>.json]...   # repeatable (D2, D5)
-  [-only 'dir/**/*.sql,other.sql'] \             # restrict the subject (D2)
+  [-only 'dir/**/*.sql,other.sql']               # restrict the subject (D2)
+  [-adjudicate calibration/adjudications/<id>.json] \  # verified oracle misses (D3)
   -out docs/bench/readings/lang/swift.json   # merges subjects: one reading per dialect
 ```
 

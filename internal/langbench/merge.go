@@ -1,9 +1,11 @@
 package langbench
 
 import (
+	"fmt"
 	"math"
 	"slices"
 	"sort"
+	"strings"
 )
 
 // SubjectTenancy is one subject's raw resource numbers.
@@ -149,7 +151,7 @@ func recompute(r *Reading) {
 		metricTiers[metric] = tiers[fam]
 	}
 	set(FamilyL1, MSymRecall, ratio(counts[CntMatched], counts[CntOracleDefs]))
-	set(FamilyL1, MSymPrecision, ratio(counts[CntMatched], counts[CntFathomDefs]))
+	set(FamilyL1, MSymPrecision, ratio(counts[CntMatched], counts[CntFathomDefs]-counts[CntAdjudicated]))
 	set(FamilyL1, MKindAgreement, ratio(counts[CntKindEqual], counts[CntMatched]))
 	set(FamilyL1, MRangeAgreement, ratio(counts[CntRangeOK], counts[CntRangeEligible]))
 	set(FamilyL1, MSignatureCoverage, ratio(counts[CntCallablesSigned], counts[CntCallables]))
@@ -177,5 +179,13 @@ func recompute(r *Reading) {
 		r.Notes = append(r.Notes, NoteRangeNotMeasured)
 		sort.Strings(r.Notes)
 	}
+	r.Notes = slices.DeleteFunc(r.Notes, func(n string) bool { return strings.HasPrefix(n, noteAdjudicatedPrefix) })
+	if n := counts[CntAdjudicated]; n > 0 {
+		r.Notes = append(r.Notes, fmt.Sprintf("%s%d dialect-only definitions the L1 oracle is verified to miss (each listed under its subject's adjudicated, admitted by langbench.Adjudicate's deterministic file:line and name check, owner decision D3) are left out of sym_precision's denominator", noteAdjudicatedPrefix, n))
+		sort.Strings(r.Notes)
+	}
 	r.Finalize()
 }
+
+// noteAdjudicatedPrefix opens the reading's D3 disclosure note.
+const noteAdjudicatedPrefix = "adjudicated: "

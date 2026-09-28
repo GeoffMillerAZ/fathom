@@ -127,3 +127,44 @@ func TestLangOracleInstruments(t *testing.T) {
 		t.Errorf("an oracle definition on a file outside -only was scored: sym_recall %v", got)
 	}
 }
+
+// TestLangOracleAdjudicate (owner decision D3): -adjudicate admits a
+// dialect-only definition by the deterministic check, lists it under the
+// subject, and lifts it out of sym_precision's denominator.
+func TestLangOracleAdjudicate(t *testing.T) {
+	subject := tsFixtureSubject(t)
+	man, _ := os.ReadFile(filepath.Join("..", "..", "internal", "extractor", "dialects", "typescript", "dialect.json"))
+	var m map[string]any
+	_ = json.Unmarshal(man, &m)
+	m["oracle_kinds"].(map[string]any)["tool"] = map[string]string{"cls": "class", "fn": "function", "meth": "method", "iface": "interface", "enum": "enum"}
+	manPath := filepath.Join(t.TempDir(), "dialect.json")
+	b, _ := json.Marshal(m)
+	_ = os.WriteFile(manPath, b, 0o644)
+	dir := t.TempDir()
+	defs := filepath.Join(dir, "defs.json") // an oracle that misses run
+	_ = os.WriteFile(defs, []byte(`{"tool":"dumper","tier":"B","definitions":[
+	 {"path":"greeter.ts","name":"Greeter","line":3,"end":8,"kind":"cls"},
+	 {"path":"greeter.ts","name":"greet","line":4,"end":7,"kind":"meth"},
+	 {"path":"math.ts","name":"add","line":1,"end":3,"kind":"fn"}]}`), 0o644)
+	adj := filepath.Join(dir, "adj.json")
+	_ = os.WriteFile(adj, []byte(`{"classes":{"exported-fn":{"why":"the dumper skips exported functions","pattern":"function\\s+{name}\\b"}},
+	 "definitions":[{"path":"main.ts","line":3,"name":"run","class":"exported-fn"},{"path":"main.ts","line":3,"name":"nope","class":"exported-fn"}]}`), 0o644)
+	out := filepath.Join(t.TempDir(), "typescript.json")
+	var stdout, stderr bytes.Buffer
+	args := []string{"-dialect", "typescript", "-manifest", manPath, "-subject", subject, "-subject-name", "fx",
+		"-ctags", filepath.Join(t.TempDir(), "absent"), "-tool-oracle", defs, "-adjudicate", adj, "-out", out,
+		"-queue", filepath.Join("..", "..", "docs", "plans", "language-breadth.queue.json")}
+	if code := cmdLangOracle(args, &stdout, &stderr); code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr.String())
+	}
+	r := readReading(t, out)
+	if got := *r.Metrics[langbench.MSymPrecision]; got != 1 {
+		t.Errorf("sym_precision = %v, want 1 (3 matched of 4, one adjudicated)", got)
+	}
+	if !slices.Equal(r.Subjects[0].Adjudicated, []string{"main.ts:3 run (exported-fn)"}) {
+		t.Errorf("adjudicated = %v", r.Subjects[0].Adjudicated)
+	}
+	if !slices.ContainsFunc(r.Notes, func(n string) bool { return strings.Contains(n, "1 adjudication claims refused") }) {
+		t.Errorf("the refused claim is not disclosed: %v", r.Notes)
+	}
+}

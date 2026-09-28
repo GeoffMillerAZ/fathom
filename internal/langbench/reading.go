@@ -159,6 +159,9 @@ type Subject struct {
 	KindIntersection []string          `json:"kind_intersection,omitempty"`
 	ExcludedByKind   map[string]int    `json:"excluded_by_kind,omitempty"`
 	Tenancy          *SubjectTenancy   `json:"tenancy,omitempty"`
+	// Adjudicated lists the dialect-only definitions admitted by
+	// langbench.Adjudicate (D3) as "path:line name (class)".
+	Adjudicated []string `json:"adjudicated,omitempty"`
 }
 
 // OracleRun names an oracle a reading used.
