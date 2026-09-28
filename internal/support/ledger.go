@@ -52,6 +52,12 @@ func AppendLedger(path string, row LedgerRow) error {
 	return nil
 }
 
+// LoadLedgerRows reads path's committed rows without appending anything —
+// the read-only half of AppendLedger (SM-10, design §4), for a caller (the
+// `fathom support` CLI) that only needs Project's regression history, never
+// a write. A missing file is an empty ledger, never an error.
+func LoadLedgerRows(path string) ([]LedgerRow, error) { return readLedger(path) }
+
 // readLedger reads path's existing JSONL rows; a missing file is an empty
 // ledger, never an error (the first AppendLedger call creates it).
 func readLedger(path string) ([]LedgerRow, error) {

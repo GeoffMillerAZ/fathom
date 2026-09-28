@@ -33,3 +33,10 @@ func clientRegistry() []RegistryEntry {
 	sort.Slice(entries, func(i, j int) bool { return entries[i].ID < entries[j].ID })
 	return entries
 }
+
+// ClientRegistry is clientRegistry's exported form (SM-10, design §4): the
+// `fathom support` CLI's join lives outside this package (it must read the
+// language queue and dialect manifests too, which this package never
+// imports), so it needs the client kind's registry through a public seam
+// rather than reaching into harness.All() a second time itself.
+func ClientRegistry() []RegistryEntry { return clientRegistry() }

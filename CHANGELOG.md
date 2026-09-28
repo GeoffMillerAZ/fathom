@@ -533,6 +533,8 @@ Evidence: `docs/app-kit.md`.
 
 - **Fixed (O116 residual): a `fathom ingest -scip` re-import now clears a package's stale typed edges when the package vanishes from the index ENTIRELY, not only when it drops to zero edges.** `pkg/client.Client.ImportSCIP` writes each SCIP index's packages under a `"scip:<index path>::"` store namespace (mirroring the CUE typed pass's own `"cue:"` convention) and reconciles that namespace after every import — clearing any previously-written package the current decode no longer names at all (source deleted/renamed, or the producer stopped emitting it), while never touching the Go typed pass's bare-keyed rows or another SCIP file's own namespace. No store schema change. `TestImportSCIP_O116_VanishedPackageClearsStaleEdges` and `TestImportSCIP_O116_GoTypedPassPackageSurvivesSCIPReimport` (`pkg/client/scip_o116_test.go`), both on `store.NewMemoryStore()` and `store.NewSQLiteStore("")`.
 
+- **New `fathom support [--kind language|tool|client|spec|rules|coverage|contract|ecosystem] [--json]` (SM-10, `docs/design/support-matrix.md` §4): a table and one-line summary per kind, or the `fathom.support/v1` JSON, joining each kind's registry, declared targets and committed readings into the computed matrix; no MCP tool is added.** `docs/plans/support.targets.json` gains declared target rows for the named clients, rules-file readers, coverage formats, contract-key kinds and dependency ecosystems (SM-13, SM-15..SM-18) — the spec-dialect rows (SM-14) wait on the spec-interop plan landing.
+
 ## [0.8.0] -- 2026-09-02
 
 **What this release is.** fathom stopped being a Claude Code program and

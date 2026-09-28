@@ -93,6 +93,7 @@ var verbTable = []verb{
 	{Name: "plugin", Summary: "plugin render [--out DIR] [--mcp-url U] [--marketplace]: render one plugin tree carrying both the Claude Code and the Agent Plugins 1.0 manifests over one skills/ dir"},
 	{Name: "decide", Summary: "The decision port (ADR-042): log [--site S] [--json] — the provider, its sites, the ruling log beside the call log and the latest calibration reading's table"},
 	{Name: "harness", Summary: "The harness registry (ADR-029): list [--json] | capabilities [--harness ID] [--json] | matrix [--url U] [--json] — every vehicle per capability, unverified rows say so"},
+	{Name: "support", Summary: "The support matrix (SM): [--kind language|tool|client|spec|rules|coverage|contract|ecosystem] [--json] — computed support level per kind, never a hand-kept catalog"},
 	{Name: "version", Summary: "Print version information"},
 	{Name: "help", Summary: "Show this help message"},
 }

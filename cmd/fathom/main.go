@@ -187,6 +187,8 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		return 1
 	case "harness":
 		return cmdHarness(args[1:], stdout, stderr)
+	case "support":
+		return cmdSupport(args[1:], stdout, stderr)
 	case "brief":
 		return cmdBrief(args[1:], stdout, stderr)
 	case "capabilities":
