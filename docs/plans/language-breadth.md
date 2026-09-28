@@ -28,7 +28,7 @@ cannot reach its target keeps its contract and gains a `[-]` sibling
 - [ ] `indexbench lang-probe`: the S-expression of a small file and every capture a dialect's queries make on it, output capped at 200 lines — the worker's query-writing tool (§10, §13 step 12) {id: LB-F20, symbol: cmdLangProbe, package: cmd/indexbench, reachable_from: TestCmdLangProbe}
 - [ ] Calibration shards: `calibration/corpus.d/<id>.yaml` read by `clone.sh` alongside `corpus.yaml`, a `subpath` field, and `task calibrate-clean -- <id>` (§13.3) {id: LB-F21, oracle: lexical, path: calibration/clone.sh, pattern: "corpus\.d"}
 - [ ] `docs/languages.md` is generated from manifests, readings and the queue (`indexbench lang-tracker`), a registered dialect without a reading shows `tolerated`, the milestone line is computed, and the tracker test refuses a level above its reading (§12, I54) {id: LB-F17, symbol: RenderTracker, package: internal/langbench, reachable_from: TestLanguagesTrackerIsGenerated, needs: "LB-F16,LB-F22"}
-- [ ] The dialect manifest schema in CUE with valid/invalid testdata pairs (`schema/CLAUDE.md` conventions) (§2.2) {id: LB-F29, oracle: lexical, path: schema/dialect/dialect.cue, pattern: "^#Dialect:"}
+- [x] The dialect manifest schema in CUE with valid/invalid testdata pairs (`schema/CLAUDE.md` conventions) (§2.2) {id: LB-F29, oracle: lexical, path: schema/dialect/dialect.cue, pattern: "^#Dialect:"}
 
 ### F.2 The tags-query engine (§3)
 
