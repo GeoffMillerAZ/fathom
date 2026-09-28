@@ -362,3 +362,38 @@ passes the calibration check on a new sample; the row otherwise stands.
   capability table can join them later.
 - Promote when: SG-M4 reads PASS for a second ecosystem.
 - Drop if: an ecosystem-native capability tool covers the fleet's languages.
+
+## F32. Review Kit merges into fathom
+
+- Confidence: speculative. Horizon: someday. Evidence: ADR-055 (D3), `docs/vision/39-feature-map-and-review.md` §4.
+- Motivation: the owner's instinct that review is superpowered by fathom is right, but the
+  2026-09-28 decision is that the two stay a family (one contract, a shared bundle), not one
+  codebase — ADR-040's authority boundary (fathom never approves, disputes, tailors or closes),
+  the hosted/org-feature conflict with fathom's non-goals and tenancy, Review Kit's
+  works-with-no-fathom independence rule, and fathom's own surface shrink (ADR-053) all argue
+  against it today.
+- Do not build: absorbing Review Kit's standards, dispositions, admission, signed execution or
+  hosted view into fathom's codebase.
+- Preserve: the versioned evidence contract (ADR-055 decision 8) as the seam; Review Kit's
+  standalone (no-fathom) path.
+- Promote when: at least 70% of Review Kit's requirements evaluated in a quarter depend on a
+  fathom evidence lane; or at least 5 adopters exist and every one installs both; or the
+  evidence contract takes more than 3 breaking changes in a quarter (the seam costs more than
+  it saves); or the owner decides to sell one product (then bundle first, merge code last).
+- Drop if: the versioned evidence contract holds stable and adopters keep choosing one tool or
+  the other rather than both.
+
+## F33. Review Kit moves into its own repository beside fathom
+
+- Confidence: likely. Horizon: later.
+- Motivation: Review Kit lives inside the `platform-engineering` monorepo today; the owner's
+  answer of 2026-09-28, on the same review-versus-merge question ADR-055 settles, is that it
+  eventually moves out to sit beside fathom, but not now. Evidence: ADR-055 decision 8 and
+  Consequences; `docs/vision/39-feature-map-and-review.md` §9.
+- Do not build: the split, a new repository, or any repo-scoped tooling before it is promoted.
+- Preserve: the versioned evidence contract (F32's seam) works the same whether Review Kit
+  lives in the monorepo or its own repository — the split is packaging, not a contract change.
+- Promote when: the family bundle (ADR-055 decision 8, one installer, shared naming, shared
+  licence) ships; or Review Kit's release cadence diverges from platform-engineering's; or a
+  second adopter installs Review Kit standalone.
+- Drop if: Review Kit stays tied to monorepo-only consumers.

@@ -139,6 +139,12 @@ byte-identically), CX-M3 (one real migration tracked to proven completion), SG-M
 catalog covers every fleet service) and CX-M4 (the drift radar live) read PASS.
 {bet: change-compliance, instrument: "fathom plans status", threshold: "CX-M1 receipts on every PR in at least 2 repos; CX-M2 byte-identical re-verify; CX-M3 one migration proven complete; SG-M6 catalog for every fleet service; CX-M4 radar live", review: 2027-01-31}
 
+**G26. The feature map is measured against the owner's own scorecard (ADR-055).** Done when:
+`docs/plans/feature-map.md`'s FM-M1 (evidence columns match the hand-built 86-feature
+scorecard on at least 90% of cells) and FM-M2 (verdict-proposal agreement at least 0.8 at
+n at least 3, or the proposal path is dropped) read PASS.
+{bet: feature-map, instrument: "fathom plans status", threshold: "FM-M1 at least 90% cell match against the 86-feature scorecard; FM-M2 verdict-proposal agreement at least 0.8 or the path is dropped", review: 2027-01-31}
+
 **G11. A reading, a hand-off and an answer carry their evidence (ADR-034).** The first
 round's 74 rows were voided by an instrument defect (the wired arm never had the tools; O41
 voided G10, ADR-033's ledger goal, on 2026-09-13 and it folds in here);
