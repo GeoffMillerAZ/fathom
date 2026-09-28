@@ -168,6 +168,16 @@ var extClassMap = map[string]classification{
 	// entry — not the generic JSON one — governs every "package.json" file.
 	"package.json": {core.KindPackageJSONPackage, "package-json"},
 
+	// Python packaging (LB-Q-python-packaging, language-breadth: new — a
+	// doc-engine tool format, no incumbent). The basename check
+	// (kindForFile/classify) takes precedence over ".toml" (the generic
+	// TOML classification above), so this entry — not the generic one —
+	// governs every "pyproject.toml" file. requirements*.txt and
+	// setup.cfg from the same queue entry are not classified here: the
+	// doc engine decodes only YAML/JSON/TOML/XML (design §4), and neither
+	// is one of those (§14.2 disposition, LB-Q-python-packaging-rest).
+	"pyproject.toml": {core.KindPyProjectPackage, "python-packaging"},
+
 	// Scala
 	".scala": {core.KindScalaClass, "scala"},
 	".sc":    {core.KindScalaClass, "scala"},

@@ -1,0 +1,29 @@
+{
+  "decode": "toml",
+  "detect": { "basenames": ["pyproject.toml"] },
+  "entities": [
+    { "select": "$.project", "where": { "is_map": true },
+      "kind": "package", "source_kind": "PyProjectPackage", "name": ".name", "signature": ".version" },
+    { "select": "$.tool.poetry", "where": { "is_map": true },
+      "kind": "package", "source_kind": "PyProjectPackage", "name": ".name", "signature": ".version" },
+    { "select": "$.project.scripts.*", "where": { "is_scalar": true },
+      "kind": "route", "source_kind": "PyProjectScript", "name": "$key", "signature": "$" },
+    { "select": "$.project.gui-scripts.*", "where": { "is_scalar": true },
+      "kind": "route", "source_kind": "PyProjectScript", "name": "$key", "signature": "$" },
+    { "select": "$.project.entry-points.*.*", "where": { "is_scalar": true },
+      "kind": "route", "source_kind": "PyProjectEntryPoint", "name": "$key", "signature": "$" },
+    { "select": "$.tool.*", "where": { "is_map": true },
+      "kind": "section", "source_kind": "PyProjectTool", "name": "$key" },
+    { "select": "$.dependency-groups.*", "where": { "is_seq": true },
+      "kind": "target", "source_kind": "PyProjectDepGroup", "name": "$key" }
+  ],
+  "references": [
+    { "from": "target", "select": "$[*].include-group", "value": "$", "to_kind": "target", "edge": "includes" }
+  ],
+  "cross_file": [
+    { "select": "$.project.dependencies[*]", "value": "$", "resolve": "module-source", "edge": "depends_on" },
+    { "select": "$.project.optional-dependencies.*[*]", "value": "$", "resolve": "module-source", "edge": "optional_depends_on" },
+    { "select": "$.dependency-groups.*[*]", "value": "$", "resolve": "module-source", "edge": "dev_depends_on" },
+    { "select": "$.build-system.requires[*]", "value": "$", "resolve": "module-source", "edge": "build_depends_on" }
+  ]
+}

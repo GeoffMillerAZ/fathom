@@ -1,0 +1,30 @@
+{
+  "id": "python-packaging",
+  "display": "Python packaging (pyproject.toml)",
+  "kind": "tooling",
+  "engine": "doc",
+  "lang_tag": "python-packaging",
+  "match": {
+    "extensions": [],
+    "basenames": ["pyproject.toml"],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "variants": [],
+  "kinds": {
+    "package":    { "source_kind": "PyProjectPackage",  "canonical": "package" },
+    "script":     { "source_kind": "PyProjectScript",   "canonical": "route" },
+    "entrypoint": { "source_kind": "PyProjectEntryPoint","canonical": "route" },
+    "tool":       { "source_kind": "PyProjectTool",      "canonical": "section" },
+    "depgroup":   { "source_kind": "PyProjectDepGroup",  "canonical": "target" }
+  },
+  "required_kinds": ["package"],
+  "oracle_kinds": {
+    "tool": { "package": "package", "route": "route", "section": "section", "target": "target" }
+  },
+  "package": { "strategy": "none" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L2",
+  "queue_id": "python-packaging"
+}

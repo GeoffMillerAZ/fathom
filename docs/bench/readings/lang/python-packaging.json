@@ -1,0 +1,144 @@
+{
+  "dialect": "python-packaging",
+  "kind": "tooling",
+  "target_level": "L2",
+  "level_met": "none",
+  "grade": {
+    "L1": "unmet",
+    "L2": "good",
+    "L3": "not-attempted",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-09-28",
+  "fathom_commit": "e52f326d",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "fastapi",
+      "sha": "95f8322ee1dcda7ceace7b1c4f6c9915b36d748f",
+      "files": 1,
+      "bytes": 11573,
+      "counts": {
+        "fathom_defs": 16,
+        "kind_equal": 12,
+        "matched": 12,
+        "oracle_defs": 16,
+        "ref_fathom": 5,
+        "ref_fathom_in_truth": 5,
+        "ref_truth": 5,
+        "ref_truth_found": 5
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C"
+      },
+      "kind_intersection": [
+        "package",
+        "route",
+        "section",
+        "target"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 0.652,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "pip",
+      "sha": "634a6ec1a5d9dcc2433571cdb2f4c58a4bb29caf",
+      "files": 20,
+      "bytes": 13500,
+      "counts": {
+        "fathom_defs": 20,
+        "kind_equal": 16,
+        "matched": 16,
+        "oracle_defs": 20,
+        "ref_fathom": 1,
+        "ref_fathom_in_truth": 1,
+        "ref_truth": 1,
+        "ref_truth_found": 1
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C"
+      },
+      "kind_intersection": [
+        "package",
+        "route",
+        "section",
+        "target"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 0.8930000000000002,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "C",
+      "tool": "tomllib reference parse",
+      "version": "tomllib(python3.14)"
+    },
+    {
+      "tier": "B",
+      "tool": "universal-ctags",
+      "status": "unavailable: universal-ctags has no parser for this dialect"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 1,
+    "ref_recall": 1,
+    "sym_precision": 0.7778,
+    "sym_recall": 0.7778,
+    "xref_precision": null,
+    "xref_recall": null
+  },
+  "metric_tiers": {
+    "ref_precision": "C",
+    "ref_recall": "C",
+    "sym_precision": "C",
+    "sym_recall": "C"
+  },
+  "required_kinds": [
+    "package"
+  ],
+  "kind_intersection": [
+    "package",
+    "route",
+    "section",
+    "target"
+  ],
+  "counts": {
+    "fathom_defs": 36,
+    "kind_equal": 28,
+    "matched": 28,
+    "oracle_defs": 36,
+    "ref_fathom": 6,
+    "ref_fathom_in_truth": 6,
+    "ref_truth": 6,
+    "ref_truth_found": 6
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 16.23,
+    "max_file_ms": 0,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "requirements*.txt and setup.cfg are unclassified (no ini/lines doc-engine decode format exists, design Sec4); only pyproject.toml is measured here"
+  ],
+  "disposition": "the [tool.*] section entities (PyProjectTool) are the entire gap: 8 of 36 fathom_defs vs oracle_defs (all four are otherwise identical: package/route/target all match exactly, kind_intersection == every declared kind). Root cause, confirmed directly by dumping fathom's own nodes against the tomllib oracle per file: internal/extractor/docdecode.go's tomlLocator.lineOf falls back to the ENCLOSING table's own line (ultimately the document root, line 1) when a table has neither its own header line nor a plain assignment line -- exactly what happens for a [tool.X] section that is never given its own bare header, only reached through a deeper dotted header (pip: [tool.flit.sdist] with no [tool.flit], [tool.pytest.ini_options] with no [tool.pytest], [tool.coverage.run/paths/report] with no [tool.coverage]; fastapi: [tool.ruff.lint] with no [tool.ruff], [tool.coverage.run/report/html] with no [tool.coverage], [tool.ty.src] with no [tool.ty], [tool.typos.files/default/...] with no [tool.typos]; a third pip nested pyproject.toml, tests/data/packages/requiresPaste/pyproject.toml, has the same [tool.flit.metadata]-only shape) -- both subjects use this real, common TOML idiom (configuring a tool only through its sub-tables) for 7 of their tool sections combined. fathom reports these at line 1 (Delta from the oracle's correct line, the earliest sub-header, is always far past the |Delta| <= 2 match window), so sym_recall/sym_precision land at .7778 (28/36) against the L1 good floor .90/.95 for tool formats -- L1 stays unmet and L2/L3 cannot be claimed from it (design Sec14.1) even though the ref_recall/ref_precision family (the PEP 735 include-group intra-file reference -- the one place this format has an entity-to-entity edge the doc engine's selectors can express, same gap LB-Q-package-json-rest documented as absent for that dialect) measured perfectly (1.0/1.0, 6/6 true edges found, fastapi alone contributing a real 5-edge include-group chain: dev -> tests/docs/translations, docs -> docs-tests, tests -> docs-tests). This is not a doc.json selector gap (the $.tool.* select is correct; every one of these sections IS emitted, just at the wrong line) and not something this dialect's manifest can fix: internal/extractor/docdecode.go's tomlLocator is a shared primitive every TOML doc-engine dialect (Cargo.toml-shaped formats included) depends on, so the fix belongs there, not in a per-dialect query or fixture. LB-Q-python-packaging stays unchecked; see LB-Q-python-packaging-rest. requirements*.txt and setup.cfg from the same queue entry are separately out of reach at any level: the doc engine decodes only YAML/JSON/TOML/XML (design Sec4) and neither is one of those, so they are left unclassified rather than routed to a dialect that would silently emit nothing for them (Sec14.2); pyproject.toml (the one format the pinned grammar_source, pure-go:github.com/pelletier/go-toml/v2, actually parses) is the only one this queue item's dialect covers. Trigger: an Opus-reviewed internal/extractor/docdecode.go change gives tomlLocator.lineOf a better fallback for an implicit-only intermediate table -- the earliest line among its own descendant headers, which a from-scratch independent re-check (this reading's own oracle script) already computes and which is what a human reading the file would call \"where tool.X starts\" -- then python-packaging.json is re-measured; independently, a future queue item or Opus decision may add an ini/lines decode format to the doc engine, at which point setup.cfg and requirements*.txt could be re-targeted onto this dialect or a sibling one."
+}

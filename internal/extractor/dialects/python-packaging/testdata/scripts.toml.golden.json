@@ -1,0 +1,9 @@
+{
+  "symbols": [
+    { "name": "acme-cli", "kind": "PyProjectPackage", "package": "pyproject", "line": 1, "end_line": 12, "signature": "0.3.0", "tier": "verified" },
+    { "name": "acme", "kind": "PyProjectScript", "package": "pyproject", "line": 6, "end_line": 6, "signature": "acme.cli:main", "tier": "verified" },
+    { "name": "acme-gui", "kind": "PyProjectScript", "package": "pyproject", "line": 9, "end_line": 9, "signature": "acme.gui:run", "tier": "verified" },
+    { "name": "foo", "kind": "PyProjectEntryPoint", "package": "pyproject", "line": 12, "end_line": 12, "signature": "acme.cli:foo", "tier": "verified" }
+  ],
+  "cross_file": []
+}

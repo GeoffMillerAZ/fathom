@@ -535,7 +535,16 @@ func parseGitLog(serviceID, raw string) []store.Commit {
 // package.json's stored observations were produced by that generic path,
 // so the salt bump forces re-extraction rather than leaving them silently
 // stale.
-const ExtractorEpoch = "12"
+// Epoch 13 (LB-Q-python-packaging, docs/design/language-breadth.md §13/§4):
+// a basename match on "pyproject.toml" now routes to the doc-engine
+// python-packaging dialect (package/script/entrypoint/tool/dependency-group
+// entities, an include-group intra-file reference, and dependency/
+// build-system cross-file references) instead of the generic
+// TOMLExtractor's bare table/key dump (KindTOMLTable/KindTOMLKey) — every
+// already-indexed pyproject.toml's stored observations were produced by
+// that generic path, so the salt bump forces re-extraction rather than
+// leaving them silently stale.
+const ExtractorEpoch = "13"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares
@@ -753,6 +762,19 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 		panic(fmt.Sprintf("fusion: doc-dialect package-json: %v", err))
 	}
 	p.exts["package.json"] = pkgJSON
+
+	// Python packaging (LB-Q-python-packaging, language-breadth: new — a
+	// doc-engine tool format, no incumbent). resolveExtractor's basename
+	// lookup (p.exts[base]) runs before the ".toml" extension fallback
+	// above, so this dialect — not the generic TOMLExtractor — governs
+	// every "pyproject.toml" file. requirements*.txt and setup.cfg from
+	// the same queue entry are left unclassified (LB-Q-python-packaging-
+	// rest): the doc engine decodes only YAML/JSON/TOML/XML (design §4).
+	pyProject, err := extractor.NewDocDialectExtractor("python-packaging")
+	if err != nil {
+		panic(fmt.Sprintf("fusion: doc-dialect python-packaging: %v", err))
+	}
+	p.exts["pyproject.toml"] = pyProject
 
 	// Scala
 	scala := extractor.NewScalaExtractor()

@@ -66,6 +66,14 @@ var typedEdgeProducers = map[string]string{
 	// the honest baseline claim, same as JSON/TOML/CUE above (ADR-027: a
 	// mechanism is claimed only once it exists in code).
 	"package-json": "syntax",
+
+	// pyproject.toml (LB-Q-python-packaging): its cross_file selectors
+	// (dependency, optional-dependency, dependency-group and build-system
+	// edges, design §4) are not wired into fusion.ResolveFileEdges or any
+	// SCIP producer, so "syntax" is the honest baseline claim, same as
+	// package.json above (ADR-027: a mechanism is claimed only once it
+	// exists in code).
+	"python-packaging": "syntax",
 }
 
 // TypedEdgeProducer returns lang's typed-edge producer string — "native",
