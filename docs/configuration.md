@@ -546,6 +546,15 @@ answer at or above `route_confidence` (unchanged — that bookkeeping is
 separate from what the line SAYS), and no other `[decide]` site's calibration
 is affected.
 
+**SR-44 (F-25, `docs/plans/surface-reckoning.md` §5) adds a deterministic
+pre-check ahead of this whole calibration story.** `routeLineFor`
+(`cmd/fathom/prompthook.go`) recognizes three lexically unambiguous issue
+shapes — a stack trace, a failing test name, an error string
+(`routeIssueShapedPrompt`) — and answers `localize` directly, with an
+UNHEDGED line and no `POST /route` call at all: these shapes need no LLM
+judgment, and the 45.7%-right calibration above never applies to them.
+Everything else still goes through `POST /route` exactly as before.
+
 `route_timeout_ms` (O109) bounds `POST /route`'s own decider call — the design
 point is a **sub-second decision model** (Jev-class latency measured 70-500ms),
 which is what the 3000ms default is generous for. An LLM-lane provider measured

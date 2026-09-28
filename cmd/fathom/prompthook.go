@@ -20,6 +20,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -120,7 +121,7 @@ func cmdPromptHook(args []string, stdout, stderr io.Writer) int {
 	// route line is a bonus this hook can afford to skip, never a reason
 	// to starve it. A route line can stand alone (a prompt naming nothing
 	// obligations resolves, e.g. "why does X crash", is still routable).
-	route := routeLine(&http.Client{Timeout: deadlineRemaining(deadline)}, url, prompt, deadline)
+	route := routeLineFor(&http.Client{Timeout: deadlineRemaining(deadline)}, url, prompt, deadline)
 	text, ok = combineWithRouteLine(text, ok, route)
 	if !ok {
 		return 0 // nothing resolved and no route line either — silence contract
@@ -450,4 +451,65 @@ func routeLine(hc *http.Client, baseURL, prompt string, deadline time.Time) stri
 	default:
 		return "" // "unsure", or an unrecognized band string — say nothing
 	}
+}
+
+// issueStackFrameRE matches one stack-frame-shaped line: a Go/JS/Rust
+// "file.ext:line" frame, a Java/JS "at pkg.Type.method(file:line)" frame,
+// or a Python "File "path", line N" frame — mirroring (not importing:
+// cmd/fathom does not reach into internal/mcp's unexported detectors)
+// internal/mcp/localize_tool.go's own localizeFrameColonRE/
+// localizeFramePyRE shapes.
+var issueStackFrameRE = regexp.MustCompile(`(?m)^\s*(at\s+[\w.$]+\(.*\)|[\w./-]+\.[A-Za-z0-9]+:\d+(:\d+)?\s*(\+0x[0-9a-f]+)?|File "[^"]+", line \d+)\s*$`)
+
+// issueErrorLineRE matches an unambiguous error/panic/traceback header: a
+// Go panic, a Python traceback header, a goroutine dump header, or a
+// "SomeError:"/"SomeException:" message line (Java/JS/Python-shaped).
+// Deliberately narrow (RC-24/SB-2 doctrine: a false positive here fires a
+// deterministic, unhedged claim — precision matters more than recall) so
+// ordinary prose that merely discusses "errors" never matches.
+var issueErrorLineRE = regexp.MustCompile(`(?m)^\s*(panic:\s|Traceback \(most recent call last\):|goroutine \d+ \[|[A-Za-z_][A-Za-z0-9_.]*(Error|Exception):\s)`)
+
+// issueFailingTestRE matches a go-test-shaped failure line naming a Test
+// function ("--- FAIL: TestFoo" or "FAIL: TestFoo/case").
+var issueFailingTestRE = regexp.MustCompile(`(?m)^\s*(---\s+)?\bFAIL(ED)?\b[:\s]+Test[A-Za-z0-9_]*(/[^\s()]+)?`)
+
+// issueBareTestNameRE matches a prompt that IS, in its entirety (trimmed),
+// a test name — the shape a caller gets from copy-pasting `go test`'s own
+// "--- FAIL: TestFoo" line's name back out, or an IDE's "run failing
+// test" action.
+var issueBareTestNameRE = regexp.MustCompile(`^Test[A-Za-z0-9_]*(/[^\s()]+)?$`)
+
+// routeIssueShapedPrompt is SR-44's deterministic half of DP-9 routing
+// (F-25, design §5): a stack trace, a failing test name, or an error
+// string is lexically unambiguous — unlike the probabilistic POST /route
+// call (ADR-042, CV-M11: proceed-band matched its own adjudicated gold
+// tool only 45.7% of the time on lca), these three shapes need no
+// judgment call. ok is false for anything else, leaving routeLineFor to
+// fall back to the HTTP decision port as before.
+func routeIssueShapedPrompt(prompt string) (verb, shape string, ok bool) {
+	trimmed := strings.TrimSpace(prompt)
+	if trimmed == "" {
+		return "", "", false
+	}
+	switch {
+	case issueBareTestNameRE.MatchString(trimmed),
+		issueFailingTestRE.MatchString(trimmed),
+		issueErrorLineRE.MatchString(trimmed),
+		len(issueStackFrameRE.FindAllString(trimmed, 2)) >= 2:
+		return "localize", "issue", true
+	default:
+		return "", "", false
+	}
+}
+
+// routeLineFor resolves the prompt hook's one-line routing hint. A
+// deterministic issue-shape match (routeIssueShapedPrompt) short-circuits
+// entirely — no HTTP call, no hedge, since the shape itself is the
+// evidence. Everything else still asks POST /route exactly as routeLine
+// always has.
+func routeLineFor(hc *http.Client, baseURL, prompt string, deadline time.Time) string {
+	if verb, shape, ok := routeIssueShapedPrompt(prompt); ok {
+		return fmt.Sprintf("fathom route: this prompt is %s-shaped (a stack trace, failing test, or error string); %s is the opening move.", shape, verb)
+	}
+	return routeLine(hc, baseURL, prompt, deadline)
 }
