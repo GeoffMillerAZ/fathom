@@ -70,3 +70,58 @@ and far below LB-F14's 36 MiB pack trigger; the mean is now 244,942
 compressed bytes a grammar.
 
 LB-M4 verdict: PASS (wave 1b: 3,184,249 of 41,943,040 bytes)
+
+## Ingest cost after wave 1b (coordinator, 2026-09-28)
+
+The report: `scripts/stranger-check.sh` went from 110 s to 235 s after the language merge
+(`1e87fffa`). Measured on darwin/arm64 (10 cores) against the same input — a `git archive`
+of `88c961ed` (the tree after waves 1–1b and round 2's harness work) — with two binaries:
+**pre** = `8a165059` (the first-parent commit just before the language merge) and **head** =
+`88c961ed`. Every run held `/Volumes/m2ext/tmp/lang-measure.lock`; sibling agents' gates
+still ran (load average 9–16 on 10 cores throughout), which is the point below.
+
+**Daemon ingest, stranger-shaped** (fresh `HOME`, so a cold Go build cache for the typed
+pass; `serve-http` + `fathom init`, the step that was 125 s of the 164 s stranger-check):
+
+| Run | init wall | Go typed-edge pass | daemon's own CPU |
+|---|--:|--:|--:|
+| pre (1) | 135.2 s | 2m02 | 21.2 s |
+| head (1) | 160.4 s | 2m22 | 26.9 s |
+| pre (2) | 185.3 s | 2m55 | — |
+| head (2) | 95.2 s | 1m21 | — |
+| pre (3) | 100.2 s | 1m29 | — |
+| head (3) | 115.3 s | 1m41 | — |
+
+The wall is the typed-edge pass: 85–95% of every run, and it is the `go` toolchain as a
+child process (type-checking the module's 259 packages for export data from a cold build
+cache, niced under RT-106's toolchain cap), not extraction — the daemon itself is 7–11%
+busy in a 30 s CPU profile (`syscall.rawsyscalln`, SQLite, `go/parser`), and its own CPU
+is 21–27 s of a 95–185 s run. The same binary on the same input swings 81 s → 175 s
+with host load, so pre and head overlap completely: the 110 s → 235 s reading is host
+contention on the typed pass, not the language merge.
+
+**In-process ingest** (`cmdIngest` under `pprof`, warm Go build cache, fresh store and
+compilation cache each run; the second of two runs each, the first pre run paid a cold
+cache at 199 s user):
+
+| Binary | wall | user + sys CPU | `fusion.(*Pipeline).Ingest` cum. |
+|---|--:|--:|--:|
+| pre | 44.4 s | 30.3 s | 13.3 s |
+| head | 31.5 s | 29.2 s | 11.8 s |
+
+Profile top entries (head): `EnrichTypedEdges` 5.9 s (of which `PutTypedEdges` 4.8 s,
+SQLite), `extractSink.flush`/`PutObservations` 3.0 s, `resolveFileEdges` (Go) 2.2 s,
+`EnrichCUEEdges` 1.3 s, `ScanCertifiesMarkers` 0.5 s, and the language program's only
+new line: wazero `CompileModule` 0.44 s — each grammar compiled once per process (a cold
+compilation cache; warm, it is a file read). Dialect classification (`ClassifyDialect`,
+the per-file rule loop, and the generated/minified sniff) is below pprof's 0.01 s cut.
+
+**Verdict.** No hot path to fix: grammar modules are compiled once per process and
+reused across files (RT-107 holds), and dispatch cost does not register. The guard
+`internal/fusion.TestIngestCostGuard` pins it machine-independently: an ingest of 2 or of
+40 files per wasm dialect (TypeScript, JavaScript, Python, HTML, CSS, Dockerfile)
+instantiates the same number of grammar modules (9 at concurrency 2; the ceiling is
+grammars × concurrency, and the count may not grow with the file count). The stranger
+check's wall belongs to the cold-cache Go typed pass under host load — a tenancy-lane
+question (warm the typed pass's build cache, or measure that step on CPU like D1), not a
+language one.
