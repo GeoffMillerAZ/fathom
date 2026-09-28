@@ -2845,7 +2845,19 @@ fathom metrics catches       [--kind K]... [--service S] [--days N] [--page N] [
 fathom metrics sessions      [--arm on|off] [--repo R] [--q TEXT] [--sort at|turns|first_edit|tokens|fathom_calls|catches] [--asc] [--page N] [--per-page 50] [--json]
 fathom metrics sessions      --id SESSION [--channel C]... [--page N] [--per-page 500] [--json]
 fathom metrics load          [--call-log P] [--url U] [--json]
+fathom metrics instrument    [--log PATH] [--window DUR] | --adoption [...]   # SR-31: same as `fathom instrument`
+fathom metrics flywheel      [--service S] [--url U] [--json]                # SR-31: same as `fathom flywheel`
+fathom metrics retro         [--session S] [--project DIR] [--write] [--json] # SR-31: same as `fathom retro`
+fathom metrics rate          <1-5> [--note "..."] [--session S] [--repo R] | --list  # SR-31: same as `fathom rate`
+fathom metrics arm           off --for D --sessions N [--note ...] | on      # SR-31: same as `fathom arm`
 ```
+
+Surface reckoning SR-31 (`docs/design/surface-reckoning.md` §4): `instrument`,
+`flywheel`, `retro`, `rate` and `arm` are subverbs of `metrics` now — the
+observability verb was already their natural home. The five top-level verbs
+stay fully dispatched (hidden from `fathom help` only) for one release, so
+existing hooks and skills keep working; prefer the `metrics` form in new
+scripts.
 
 Design: `docs/design/observability-surfaces.md`. `traffic --by day` groups by UTC
 day and `--by caller` by caller class — agent, edit hook, gate, refresh, plumbing or

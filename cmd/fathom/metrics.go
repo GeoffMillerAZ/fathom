@@ -6,6 +6,17 @@ package main
 // `fathom metrics {spend,traffic,channels,interventions,series}` verbs,
 // plus `rollup`/`rotate` (the daily-rollup builder and the explicit,
 // archive-never-delete retention verb).
+//
+// SR-31 (surface reckoning F-52, design §4) folds `instrument`, `flywheel`,
+// `retro`, `rate` and `arm` in as five more subverbs of this SAME `metrics`
+// dispatcher — the measurement/observability verb was already the natural
+// home, not a new competing one. cmdMetrics stays a pure dispatcher for
+// these too: each keeps its own flags, output and exit code byte-for-byte
+// (TestMetricsSubverbsMatchRetiredVerbs). The five top-level verbs
+// themselves stay fully dispatched and callable — verbs.go's `Hidden`
+// flag (the SR-16/SR-18/SR-30/SR-32 precedent) freezes them out of
+// `fathom help` for one release, so hooks and skills that already call
+// them directly keep working, then they go.
 
 import (
 	"fmt"
@@ -13,9 +24,14 @@ import (
 	"time"
 )
 
+// metricsVerbList is the one place both the empty-args and unknown-verb
+// error messages draw their verb list from, so SR-31's five additions
+// never drift out of sync between the two.
+const metricsVerbList = "spend | traffic | channels | interventions | series | rollup | rotate | impact | catches | sessions | load | instrument | flywheel | retro | rate | arm"
+
 func cmdMetrics(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
-		fmt.Fprintln(stderr, "error: metrics requires a verb: spend | traffic | channels | interventions | series | rollup | rotate | impact | catches | sessions | load")
+		fmt.Fprintf(stderr, "error: metrics requires a verb: %s\n", metricsVerbList)
 		printMetricsUsage(stderr)
 		return 1
 	}
@@ -42,8 +58,20 @@ func cmdMetrics(args []string, stdout, stderr io.Writer) int {
 		return cmdMetricsLoad(args[1:], stdout, stderr)
 	case "sessions":
 		return cmdMetricsSessions(args[1:], stdout, stderr)
+	// SR-31 (surface reckoning F-52, design §4): the five verbs the
+	// reckoning consolidates, dispatched byte-for-byte unchanged.
+	case "instrument":
+		return cmdInstrument(args[1:], stdout, stderr)
+	case "flywheel":
+		return cmdFlywheel(args[1:], stdout, stderr)
+	case "retro":
+		return cmdRetro(args[1:], stdout, stderr)
+	case "rate":
+		return cmdRate(args[1:], stdout, stderr)
+	case "arm":
+		return cmdArm(args[1:], stdout, stderr)
 	default:
-		fmt.Fprintf(stderr, "error: unknown metrics verb %q (want spend | traffic | channels | interventions | series | rollup | rotate | impact | catches | sessions | load)\n", args[0])
+		fmt.Fprintf(stderr, "error: unknown metrics verb %q (want %s)\n", args[0], metricsVerbList)
 		printMetricsUsage(stderr)
 		return 1
 	}
@@ -63,6 +91,11 @@ func printMetricsUsage(w io.Writer) {
 	fmt.Fprintln(w, "  fathom metrics sessions      [--arm on|off] [--repo R] [--q TEXT] [--sort KEY] [--asc] [--page N] [--per-page N] [--json]")
 	fmt.Fprintln(w, "  fathom metrics sessions      --id SESSION [--channel C]... [--page N] [--per-page N] [--json]")
 	fmt.Fprintln(w, "  fathom metrics load          [--call-log PATH] [--url U] [--json]")
+	fmt.Fprintln(w, "  fathom metrics instrument    [--log PATH] [--window DUR] | --adoption [...] (the flywheel gauge)")
+	fmt.Fprintln(w, "  fathom metrics flywheel      [--service S] [--url U] [--json]")
+	fmt.Fprintln(w, "  fathom metrics retro         [--session S] [--project DIR] [--write] [--json]")
+	fmt.Fprintln(w, "  fathom metrics rate          <1-5> [--note \"...\"] [--session S] [--repo R] | --list")
+	fmt.Fprintln(w, "  fathom metrics arm           off --for D --sessions N [--note ...] | on")
 }
 
 // resolveMetricsWindow is every metrics verb's shared --since/--from/--to
