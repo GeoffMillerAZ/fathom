@@ -1014,3 +1014,76 @@ func TestReviewDiff_ServesReviewAudienceRules(t *testing.T) {
 	}
 	t.Fatal("missing obligations dimension")
 }
+
+// TestReviewDiffCarriesReceipt proves CX-5 (docs/plans/change-and-
+// compliance.md, design doc §2): review_diff's payload gains an ADDITIVE
+// "receipt" section built from internal/review.BuildRiskReceipt (CX-1..
+// CX-4) over data review_diff already resolves for its own verdict — no
+// new store capability required. A contradicted (Status:"contradicted")
+// obligation on a changed file becomes a warn-level rules_touched factor
+// (runObligations' own sev mapping), so the band is exactly "medium": no
+// other factor in this small fixture fires high or medium.
+func TestReviewDiffCarriesReceipt(t *testing.T) {
+	fake := &reviewFakeBackend{
+		extendedFakeBackend: extendedFakeBackend{nodes: extFixtureNodes(), services: []string{"svc"}},
+		obligations: map[string]semantic.Obligations{
+			"pkg/a.go": {
+				Service: "svc", File: "pkg/a.go",
+				Rules: []semantic.Obligation{{Rule: "Sort outputs.", Src: "CLAUDE.md#L1-L1", Tier: "doc-claimed", Status: "contradicted"}},
+			},
+		},
+	}
+	srv := mcp.NewServer(fake)
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 5, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "review_diff",
+			"arguments": map[string]any{"service": "svc", "changed_files": []string{"pkg/a.go"}},
+		},
+	})
+	p := extToolPayload(t, resp)
+
+	// Additive: every field TestReviewDiff_ObligationsScoped already
+	// proves review_diff carries is still there.
+	if _, ok := p["dimensions"]; !ok {
+		t.Fatal("review_diff dropped its existing \"dimensions\" field — receipt must be additive")
+	}
+
+	raw, ok := p["receipt"]
+	if !ok {
+		t.Fatal("review_diff payload missing \"receipt\"")
+	}
+	receipt, ok := raw.(map[string]any)
+	if !ok {
+		t.Fatalf("receipt is not an object: %T", raw)
+	}
+
+	factors, ok := receipt["factors"].([]any)
+	if !ok || len(factors) != 8 {
+		t.Fatalf("receipt.factors = %v, want the 8 fixed CX-1 factors", receipt["factors"])
+	}
+	if receipt["authority"] == "" || receipt["authority"] == nil {
+		t.Error("receipt.authority must always be set (ADR-040 boundary, CX-8)")
+	}
+	if got, want := receipt["band"], "medium"; got != want {
+		t.Errorf("receipt.band = %v, want %q (exactly one warn-level rule touched, nothing else fires)", got, want)
+	}
+
+	var rulesFactor map[string]any
+	for _, f := range factors {
+		fm := f.(map[string]any)
+		if fm["name"] == "rules_touched" {
+			rulesFactor = fm
+		}
+	}
+	if rulesFactor == nil {
+		t.Fatal("receipt.factors missing \"rules_touched\"")
+	}
+	if rulesFactor["weight"] != "medium" {
+		t.Errorf("rules_touched.weight = %v, want \"medium\"", rulesFactor["weight"])
+	}
+	ev, _ := rulesFactor["evidence"].([]any)
+	if len(ev) != 1 || !strings.Contains(ev[0].(string), "Sort outputs.") {
+		t.Errorf("rules_touched.evidence = %v, want the contradicted obligation cited", rulesFactor["evidence"])
+	}
+}

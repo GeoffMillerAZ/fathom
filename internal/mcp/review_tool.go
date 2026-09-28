@@ -24,6 +24,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/corpus"
 	"github.com/geoffmilleraz/fathom/internal/memo"
 	"github.com/geoffmilleraz/fathom/internal/projectrules"
+	riskreview "github.com/geoffmilleraz/fathom/internal/review"
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
@@ -179,6 +180,24 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 		// callee, cross-service provider) from the graph and hops above.
 		if gerr == nil {
 			payload["layers"] = layerDiffByBlastRadius(ng.Both, ng.Nodes, in.ChangedFiles, hops)
+			// CX-5 (docs/plans/change-and-compliance.md §2): the change risk
+			// receipt, additive, over the SAME graph/hops/verdict this call
+			// already resolved — review_receipt.go's own doc comment names
+			// exactly what is and is not wired yet. The risk table is the
+			// repo's own `.fathom/risk.cue` when present (LoadRiskTable's
+			// dual-mode load), the binary default otherwise — never the
+			// daemon process's cwd (only read under in.Root, the service's
+			// own resolved corpus root; "" skips the read, the same
+			// corpusRoot-gated discipline every other read in this file
+			// already keeps).
+			table := riskreview.DefaultRiskTable()
+			if in.Root != "" {
+				if t, terr := riskreview.LoadRiskTable(filepath.Join(in.Root, ".fathom", "risk.cue")); terr == nil {
+					table = t
+				}
+			}
+			receipt := reviewDiffReceipt(ng.Both, ng.Nodes, in, v, hops, table)
+			payload["receipt"] = riskReceiptPayload(receipt)
 		}
 		return payload, nil
 	})
