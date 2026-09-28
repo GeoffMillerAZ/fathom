@@ -1833,8 +1833,9 @@ minutes, at most hourly (`journal_size_limit` is 64 MiB).
 ### `intent` — the intent corpus, audited (ADR-026, **experimental**)
 
 ```sh
-fathom intent audit    [--root .] [--json] [--kind conditions|invariants|unproven] [--fresh] [--top N] [--read-only]
+fathom intent audit    [--root .] [--json] [--kind conditions|triggers|invariants|unproven] [--fresh] [--top N] [--read-only] [--store DB]
 fathom intent doctrine [--root .] [--json] [--kind visions|bets] [--top N]
+fathom intent adr-rules [--root .] [--json]
 fathom intent export --guard [--root .]
 ```
 
@@ -1868,11 +1869,36 @@ practice, which is a choice.
 | U14 | a sensitive-surface row whose globs match no file — it has silently stopped guarding |
 | U13 | a guard entry whose intent provenance no longer matches the router, or a sensitive surface no guard covers |
 
+**Computable triggers (CX-21, F9's computable subset).** A `Revisit when` or
+`Promote when` condition carrying an instrument and a threshold in the bet-block
+shape is evaluated by this run — and only by a run: the daemon never evaluates a
+trigger on its own.
+
+```markdown
+**Revisit when.** the layers erode {instrument: arch_violations, threshold: ">= 3"}
+Promote when: the rule holds {instrument: "arch_violations:a -> b", threshold: "== 0"}
+```
+
+Instruments: `arch_violations` (the newest ingest-time violation reading, summed
+over its deny rules; read from `--store`, default the workspace store),
+`arch_violations:<from> -> <to>` (one rule's count), and `plans_failing` (claimed
+rows the verify ledger refutes at HEAD). A threshold is a comparison with a number
+(`>=`, `>`, `<=`, `<`, `==`, `!=`). Each trigger reads `fired` or `not fired` with
+its reading; one whose instrument is unknown, whose threshold is not a comparison,
+or whose reading could not be taken reads `unevaluated` with the reason; a prose
+trigger is listed as unevaluated, human-judged. `--json` carries them as `triggers`.
+
 Every source it could NOT compute is named with the reason — an audit that
 silently yields nothing is indistinguishable from a healthy repo. A file that
 cannot be READ (as opposed to one that is absent) makes every count a named
 lower bound, `≥ N (k source(s) unreadable: <path>: <errno>)`, and `--json`
 carries `coverage.complete` (ADR-027).
+
+`adr-rules` PROPOSES an archconformance deny rule for each dependency statement in
+the decision records ("X never imports Y", "X must not import Y", "X calls Y, never
+Z", "X imports neither Y nor Z"), each with its ADR, `file:line` and sentence, and
+marks the ones `.fathom/rules/archconformance.cue` already holds. A human accepts a
+proposal by adding it there; **fathom never writes that file** (CX-19, F24).
 
 `export --guard` PROPOSES `.fathom/guard.cue` entries from the router's
 sensitive-surface rows, stamped with per-row provenance so staleness stays
