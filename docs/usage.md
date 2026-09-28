@@ -2507,6 +2507,29 @@ silently reported as zero rows.
    "max":3,"current":4,"baseline":3,"drift":1,"over_max":true}]}
 ```
 
+`refactor status --migration "<kind> <from> -> <to>" [--store DB] [--services
+a,b,c] [--json]` (CX-13, `docs/design/change-and-compliance.md` §4) is a
+second, separate mode: the FLEET-WIDE migration view for a declaration in
+`ParseMigration`'s own five-kind form (`symbol|import|route|config|pkg`),
+across every service the store knows (or the ones `--services` names).
+Store-direct like `refactor plan`: for each service, one at a time, it
+scans that service's own sources for occurrences of `from` (remaining) and
+`to` (done) — lexically via `internal/analysis/references`, upgraded to
+`typed` in any file `internal/analysis/callgraph` proves has a resolved
+caller of that symbol — and groups the result per repository
+(`review.MigrationSites`, CX-10). A service that cannot be read degrades
+into a named `degraded` entry rather than aborting the whole call. Purely
+read-only: it computes and reports, it never rewrites a site (the Moderne
+non-goal, refused as CX-X4).
+
+```json
+{"schema":"fathom.refactor.status.migration/v1",
+ "migration":{"kind":"symbol","from":"OldFunc","to":"NewFunc"},
+ "repositories":[{"repository":"svc-a",
+   "remaining":[{"file":"caller/user.go","line":5,"tier":"typed"}],
+   "done":[]}]}
+```
+
 ---
 
 ### `receipt` — a stranger's re-derivation (VB-20)
