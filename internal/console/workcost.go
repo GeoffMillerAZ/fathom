@@ -74,9 +74,10 @@ type ProvenChange struct {
 	// Retries counts the claimed-unproven readings of its rows before
 	// they were proven (the history records a state change, so repeated
 	// unproven readings with no change in between count once).
-	Retries int         `json:"claimed_unproven_retries"`
-	Zones   []ZoneShare `json:"zones"`
-	session string
+	Retries int `json:"claimed_unproven_retries"`
+	// Weight is the proven rows' summed plan weight at their proof.
+	Weight int         `json:"weight"`
+	Zones  []ZoneShare `json:"zones"`
 }
 
 // FirstAttempt reports whether the change was proven with no
@@ -107,12 +108,18 @@ func EffortPerProvenChange(join JoinResult, h History, sessions []SessionEffort,
 			}
 			c := byCommit[key]
 			if c == nil {
-				c = &ProvenChange{Commit: pr.Commit, At: pr.At, Harness: so.Harness, Model: so.Model, session: so.SessionID}
+				c = &ProvenChange{Commit: pr.Commit, At: pr.At, Harness: agentIdentityPart(so.Harness, "unknown"), Model: agentIdentityPart(so.Model, "unknown")}
 				byCommit[key] = c
 				order = append(order, key)
 			}
 			c.Rows = append(c.Rows, RowKey(pr.Service, pr.Plan, pr.ID))
-			c.Retries += retriesBefore(rows[RowKey(pr.Service, pr.Plan, pr.ID)], pr.At)
+			rh := rows[RowKey(pr.Service, pr.Plan, pr.ID)]
+			c.Retries += retriesBefore(rh, pr.At)
+			if rr, ok := rh.StateAt(pr.At); ok {
+				c.Weight += max(rr.Weight, 1)
+			} else {
+				c.Weight++
+			}
 		}
 		s, known := effort[so.SessionID]
 		k := float64(len(order))
@@ -120,7 +127,7 @@ func EffortPerProvenChange(join JoinResult, h History, sessions []SessionEffort,
 			c := byCommit[key]
 			c.Known = known
 			if known {
-				c.Effort = s.Effort
+				c.Effort = agentIdentityPart(s.Effort, "")
 				c.Tokens = float64(s.TokensIn+s.TokensOut) / k
 				c.Turns = float64(s.Turns) / k
 				c.WallSeconds = float64(s.WallSeconds) / k
@@ -524,15 +531,25 @@ func InterestRate(changes []ProvenChange) InterestModel {
 
 // agentIdentityKey is the only row key a work-intelligence or progress
 // view uses: harness, model and effort setting — the agent identity,
-// never a person (I58). A part that carries an email address or a git
-// "Name <email>" author form is replaced by "unknown" rather than keyed.
+// never a person (I58).
 func agentIdentityKey(harness, model, effort string) string {
-	part := func(s string) string {
-		s = strings.TrimSpace(s)
-		if s == "" || strings.ContainsAny(s, "@<>") {
-			return "unknown"
-		}
-		return strings.ReplaceAll(s, "|", "/")
-	}
-	return part(harness) + "|" + part(model) + "|" + part(effort)
+	return agentIdentityPart(harness, "unknown") + "|" + agentIdentityPart(model, "unknown") + "|" + agentIdentityPart(effort, "unknown")
 }
+
+// agentIdentityPart is one part of an agent identity: a part that is
+// empty is fallback, and a part carrying an email address or a git
+// "Name <email>" author form is never keyed — it becomes
+// IdentityWithheld (I58: a human name or email is never a row key).
+func agentIdentityPart(s, fallback string) string {
+	s = strings.TrimSpace(s)
+	switch {
+	case s == "":
+		return fallback
+	case strings.ContainsAny(s, "@<>"):
+		return IdentityWithheld
+	}
+	return strings.ReplaceAll(s, "|", "/")
+}
+
+// IdentityWithheld replaces an identity part that looked like a person.
+const IdentityWithheld = "withheld (not an agent identity)"
