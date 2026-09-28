@@ -155,7 +155,7 @@ func TestLangOracleAdjudicate(t *testing.T) {
 	 {"path":"greeter.ts","name":"greet","line":4,"end":7,"kind":"meth"},
 	 {"path":"math.ts","name":"add","line":1,"end":3,"kind":"fn"}]}`), 0o644)
 	adj := filepath.Join(dir, "adj.json")
-	_ = os.WriteFile(adj, []byte(`{"classes":{"exported-fn":{"why":"the dumper skips exported functions","pattern":"function\\s+{name}\\b"}},
+	_ = os.WriteFile(adj, []byte(`{"classes":{"exported-fn":{"why":"the dumper skips exported functions","pattern":"function\\s+{name}\\b","scope":"module"}},
 	 "definitions":[{"path":"main.ts","line":3,"name":"run","class":"exported-fn"},{"path":"main.ts","line":3,"name":"nope","class":"exported-fn"}]}`), 0o644)
 	out := filepath.Join(t.TempDir(), "typescript.json")
 	var stdout, stderr bytes.Buffer

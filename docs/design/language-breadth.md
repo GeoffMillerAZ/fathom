@@ -141,8 +141,14 @@ owner's decisions, binding on the harness and every reading after them:
   reading keeps ctags with the deficiency disclosed — L1 capped at good.
 - **D3 — oracle-deficiency disclosure.** A reading may carry an adjudicated set of
   dialect-only definitions the L1 oracle is verified to miss (`lang-oracle -adjudicate
-  <file>`: classes, each with a `why` and an optional structural `pattern` where `{name}`
-  stands for the name, and the claimed `path`/`line`/`name`/`class` entries). An entry is
+  <file>`: classes, each with a `why`, an optional structural `pattern` where `{name}`
+  stands for the name and a required `scope`, and the claimed `path`/`line`/`name`/`class`
+  entries). A miss is valid only when the oracle failed to report a real definition of a
+  scored kind — never a dialect's over-extraction the oracle deliberately excludes
+  (locals, callback helpers, object-literal keys): the only scope is `module`, whose
+  definition's line starts at column 0 with no emitted definition enclosing it (an
+  audit of the first sets found 69% of sampled TypeScript and 29% of JavaScript
+  admissions were locals or object-literal keys). An entry is
   admitted only by `langbench.Adjudicate`'s deterministic check — fathom emitted that name
   at exactly that line inside the kind intersection, the oracle matched nothing to it, and
   the definition's source text contains the name (and the class pattern) — never by a

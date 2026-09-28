@@ -2628,8 +2628,10 @@ Roslyn dump; SQL on the families its grammar supports); node, a JVM and .NET are
 instruments only. D5: every language dialect gets an L2 calls oracle — SCIP references
 (tier A) or the grammar's upstream `tags.scm` references in an independent runtime (tier C).
 D3: a reading may carry an adjudicated set of dialect-only definitions the oracle is verified
-to miss, each admitted by a deterministic file:line and name check (never a model's
-judgment), listed, and left out of `sym_precision`'s denominator.
+to miss, each admitted by a deterministic file:line, name and scope check (never a model's
+judgment), listed, and left out of `sym_precision`'s denominator. Only a real module-scope
+definition the oracle failed to report qualifies (column 0, no emitted definition enclosing
+it); a local, callback helper or object-literal key the oracle deliberately excludes never does.
 D7: C#'s unaliased `using X;` is a wildcard import resolved through the namespace's declaring
 files, and a dotted call through a wildcard-imported type resolves to its member.
 

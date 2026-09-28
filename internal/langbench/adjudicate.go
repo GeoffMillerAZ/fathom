@@ -3,6 +3,7 @@ package langbench
 import (
 	"fmt"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 
@@ -23,11 +24,21 @@ type Adjudication struct {
 	Definitions []AdjudicatedDef             `json:"definitions"`
 }
 
-// AdjudicationClass is one kind of oracle deficiency.
+// AdjudicationClass is one kind of oracle deficiency. Scope names where its
+// definitions must sit, checked structurally; "module" is the only scope
+// (ScopeModule). A class without one admits nothing: a local, a callback's
+// helper or an object-literal key is a dialect's over-extraction the oracle
+// deliberately excludes, never an oracle miss.
 type AdjudicationClass struct {
 	Why     string `json:"why"`
 	Pattern string `json:"pattern,omitempty"`
+	Scope   string `json:"scope,omitempty"`
 }
+
+// ScopeModule admits a definition only at a file's top level: its first
+// line starts at column 0 and no definition fathom emitted in that file
+// encloses it.
+const ScopeModule = "module"
 
 // AdjudicatedDef is one claimed dialect-only definition.
 type AdjudicatedDef struct {
@@ -38,7 +49,8 @@ type AdjudicatedDef struct {
 }
 
 // Adjudicate admits each claimed definition by a deterministic check only —
-// never anyone's judgment: fathom emitted a definition of that name at
+// never anyone's judgment: its class names a scope and the definition sits
+// in it (ScopeModule), fathom emitted a definition of that name at
 // exactly that file:line inside the kind intersection, the L1 oracle
 // matched nothing to it (it is dialect-only), and the definition's source
 // text (its first line through at most two more, never past its end)
@@ -56,7 +68,10 @@ func Adjudicate(l1 *L1Result, nodes []core.SymbolNode, adj Adjudication, src fun
 		dialectOnly[key{d.Path, d.Name, d.Line}] = d.End
 	}
 	emitted := map[key]bool{}
+	type span struct{ line, end int }
+	spans := map[string][]span{}
 	for _, n := range nodes {
+		spans[n.FilePath] = append(spans[n.FilePath], span{n.Line, n.EndLine})
 		emitted[key{n.FilePath, BareName(n.Name), n.Line}] = true
 		emitted[key{n.FilePath, n.Name, n.Line}] = true
 	}
@@ -68,6 +83,10 @@ func Adjudicate(l1 *L1Result, nodes []core.SymbolNode, adj Adjudication, src fun
 		class, ok := adj.Classes[e.Class]
 		if !ok || strings.TrimSpace(class.Why) == "" {
 			refuse("no such class, or a class without a why")
+			continue
+		}
+		if class.Scope != ScopeModule {
+			refuse("the class names no scope (module)")
 			continue
 		}
 		k := key{e.Path, e.Name, e.Line}
@@ -90,6 +109,14 @@ func Adjudicate(l1 *L1Result, nodes []core.SymbolNode, adj Adjudication, src fun
 		}
 		if e.Line < 1 || e.Line > len(lines) {
 			refuse("line outside the file")
+			continue
+		}
+		if first := lines[e.Line-1]; first == "" || first[0] == ' ' || first[0] == '\t' {
+			refuse("not at module scope: its line is indented")
+			continue
+		}
+		if slices.ContainsFunc(spans[e.Path], func(s span) bool { return s.line < e.Line && s.end >= e.Line }) {
+			refuse("not at module scope: an emitted definition encloses it")
 			continue
 		}
 		text := strings.Join(lines[e.Line-1:last], "\n")

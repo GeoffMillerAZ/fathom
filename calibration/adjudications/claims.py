@@ -10,8 +10,11 @@ its end) matches the class pattern ({name} = the escaped name) becomes a
 claim. This only drafts: `lang-oracle -adjudicate` re-checks every claim
 deterministically (langbench.Adjudicate) and admits or refuses it; the
 reading lists what it admitted. Classes carry `why` (the verified oracle
-deficiency, with a file:line that shows it) and `kinds` (the canonical
-kinds they may claim; the harness ignores `kinds`).
+deficiency, with a file:line that shows it), `scope` (only "module":
+the harness refuses a claim whose line is indented or that an emitted
+definition encloses — a local is over-extraction, never an oracle miss)
+and `kinds` (the canonical kinds they may claim; the harness ignores
+`kinds`).
 """
 import json, re, sys
 
@@ -36,7 +39,7 @@ for d in unmatched.get("dialect_only") or []:
         if re.search(c["pattern"].replace("{name}", re.escape(name)), text):
             claims.append({"path": path, "line": line, "name": name, "class": cname})
             break
-out = {"classes": {k: {"why": v["why"], "pattern": v["pattern"]} for k, v in classes.items()},
+out = {"classes": {k: {"why": v["why"], "pattern": v["pattern"], "scope": v.get("scope", "")} for k, v in classes.items()},
        "definitions": claims}
 json.dump(out, sys.stdout, indent=1)
 print()
