@@ -61,9 +61,9 @@ func xrefBrief(xs []DocXref) []string {
 func TestResolveDocXrefs(t *testing.T) {
 	t.Run("github-actions repo-root", func(t *testing.T) {
 		fs := docFiles(t, "github-actions", map[string]string{
-			".github/workflows/ci.yml": "name: CI\non: push\njobs:\n  build:\n    runs-on: x\n    steps:\n      - uses: ./.github/actions/setup\n      - uses: actions/checkout@v4\n  call:\n    uses: ./.github/workflows/reuse.yml\n",
-			".github/workflows/reuse.yml": "name: Reuse\non: workflow_call\njobs:\n  r:\n    runs-on: x\n    steps:\n      - run: echo\n",
-			".github/actions/setup/action.yml": "name: Setup\nruns:\n  using: composite\n  steps:\n    - uses: ./.github/actions/inner\n",
+			".github/workflows/ci.yml":          "name: CI\non: push\njobs:\n  build:\n    runs-on: x\n    steps:\n      - uses: ./.github/actions/setup\n      - uses: actions/checkout@v4\n  call:\n    uses: ./.github/workflows/reuse.yml\n",
+			".github/workflows/reuse.yml":       "name: Reuse\non: workflow_call\njobs:\n  r:\n    runs-on: x\n    steps:\n      - run: echo\n",
+			".github/actions/setup/action.yml":  "name: Setup\nruns:\n  using: composite\n  steps:\n    - uses: ./.github/actions/inner\n",
 			".github/actions/inner/action.yaml": "name: Inner\nruns:\n  using: composite\n  steps:\n    - run: echo\n",
 		})
 		got := xrefBrief(ResolveDocXrefs(fs))
@@ -71,6 +71,21 @@ func TestResolveDocXrefs(t *testing.T) {
 			".github/actions/setup/action.yml:Setup -uses_action-> .github/actions/inner/action.yaml:Inner",
 			".github/workflows/ci.yml:build -uses_action-> .github/actions/setup/action.yml:Setup",
 			".github/workflows/ci.yml:call -calls_workflow-> .github/workflows/reuse.yml:Reuse",
+		}
+		if !reflect.DeepEqual(got, want) {
+			t.Fatalf("got %q\nwant %q", got, want)
+		}
+	})
+	t.Run("kubernetes label-selector", func(t *testing.T) {
+		fs := docFiles(t, "kubernetes", map[string]string{
+			"k8s/web.yaml": "apiVersion: v1\nkind: Service\nmetadata:\n  name: web\nspec:\n  selector:\n    app: web\n---\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: web\nspec:\n  selector:\n    matchLabels:\n      app: web\n  template:\n    metadata:\n      labels:\n        app: web\n",
+			"k8s/db.yaml":  "apiVersion: apps/v1\nkind: StatefulSet\nmetadata:\n  name: db\n  namespace: data\nspec:\n  template:\n    metadata:\n      labels:\n        app: web\n",
+			"k8s/job.yaml": "apiVersion: batch/v1\nkind: Job\nmetadata:\n  name: migrate\nspec:\n  template:\n    metadata:\n      labels:\n        app: web\n        role: job\n",
+		})
+		got := xrefBrief(ResolveDocXrefs(fs))
+		want := []string{
+			"k8s/web.yaml:Service/web -selects-> k8s/job.yaml:Job/migrate",
+			"k8s/web.yaml:Service/web -selects-> k8s/web.yaml:Deployment/web",
 		}
 		if !reflect.DeepEqual(got, want) {
 			t.Fatalf("got %q\nwant %q", got, want)

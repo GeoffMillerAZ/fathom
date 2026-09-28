@@ -1,10 +1,10 @@
 {
   "symbols": [
-    { "name": "worker", "kind": "K8sWorkload", "package": "refs", "line": 1, "end_line": 35, "signature": "Deployment",
+    { "name": "Deployment/production/worker", "kind": "K8sWorkload", "package": "refs", "line": 1, "end_line": 35, "signature": "Deployment",
       "calls": ["db-config", "db-secret", "worker-config", "worker-sa", "worker-secret", "worker-volume-config", "worker-volume-secret"],
       "tier": "verified" },
     { "name": "registry.example.com/worker:v1", "kind": "K8sContainer", "package": "refs", "line": 11, "end_line": 28, "signature": "worker", "tier": "verified" },
-    { "name": "debug-pod", "kind": "K8sWorkload", "package": "refs", "line": 37, "end_line": 48, "signature": "Pod",
+    { "name": "Pod/debug-pod", "kind": "K8sWorkload", "package": "refs", "line": 37, "end_line": 48, "signature": "Pod",
       "calls": ["debug-config", "debug-sa"], "tier": "verified" },
     { "name": "busybox:latest", "kind": "K8sContainer", "package": "refs", "line": 44, "end_line": 48, "signature": "debug", "tier": "verified" }
   ],

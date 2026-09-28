@@ -74,6 +74,7 @@ package dialect
 
 #DocLabels: {
 	from:           string & !=""
+	where?:         #DocWhere
 	select:         #DocSelector
 	scope?:         #DocValue
 	scope_default?: string & !=""

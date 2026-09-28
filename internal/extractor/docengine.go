@@ -43,10 +43,12 @@ type DocSpec struct {
 // a value expression on the document root, names the join scope
 // (ScopeDefault when it is empty).
 type DocLabels struct {
-	From         string `json:"from"`
-	Select       string `json:"select"`
-	Scope        string `json:"scope,omitempty"`
-	ScopeDefault string `json:"scope_default,omitempty"`
+	From string `json:"from"`
+	// Where filters the origin entity's node (a Pod's own labels).
+	Where        *DocWhere `json:"where,omitempty"`
+	Select       string    `json:"select"`
+	Scope        string    `json:"scope,omitempty"`
+	ScopeDefault string    `json:"scope_default,omitempty"`
 }
 
 // DocLabelSet is one entity's label map.
@@ -197,8 +199,9 @@ type compiledEntity struct {
 
 type compiledLabels struct {
 	DocLabels
-	sel   docPath
-	scope docValue
+	sel    docPath
+	scope  docValue
+	equals []docEquals
 }
 
 type docEquals struct {
@@ -346,6 +349,11 @@ func NewDocExtractor(spec DocSpec) (*DocExtractor, error) {
 		}
 		if cl.scope, err = compileScope(l.Scope); err != nil {
 			return nil, fmt.Errorf("%s: scope: %w", where, err)
+		}
+		if l.Where != nil {
+			if cl.equals, err = compileEquals(l.Where.Equals, where); err != nil {
+				return nil, err
+			}
 		}
 		x.labels = append(x.labels, cl)
 	}
@@ -511,6 +519,9 @@ func (x *DocExtractor) ExtractDoc(service, relPath string, src []byte) (DocResul
 			cl := &x.labels[i]
 			for _, h := range hits {
 				if h.ent.Kind != cl.From && h.ent.SourceKind != cl.From {
+					continue
+				}
+				if cl.Where != nil && !whereMatches(*cl.Where, cl.equals, docMatch{node: h.node}) {
 					continue
 				}
 				for _, m := range cl.sel.eval(h.node, "") {
