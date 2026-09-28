@@ -522,6 +522,17 @@
   },
   "test_impact": {
     "properties": {
+      "limit": {
+        "description": "rank:\"risk\" only: rows returned (default 20, max 500)",
+        "type": "integer"
+      },
+      "rank": {
+        "description": "\"risk\": rank the service's untested, dangerous symbols (each factor cited) instead of one symbol's tests",
+        "enum": [
+          "risk"
+        ],
+        "type": "string"
+      },
       "service": {
         "description": "Service / repo identifier",
         "type": "string"
@@ -532,8 +543,7 @@
       }
     },
     "required": [
-      "service",
-      "symbol"
+      "service"
     ],
     "type": "object"
   },

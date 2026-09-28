@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/certify"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
 )
@@ -370,6 +371,9 @@ type testImpactResult struct {
 	// tests, and the daemon's watermark for the service.
 	Resolution  resolutionMix `json:"resolution"`
 	IndexCommit string        `json:"index_commit,omitempty"`
+	// Risk (TQ-5): rank:"risk"'s risk-weighted coverage list; tests is
+	// then empty.
+	Risk *certify.RiskReport `json:"risk,omitempty"`
 }
 
 // blastRadiusResult mirrors blast_radius' payload (extra_tools.go).

@@ -13,13 +13,13 @@ open in `docs/plans/test-certifications.md`. T7's rows are TC rows; only its mea
 ## Wave 2: risk-weighted coverage (T1) and the test portfolio (T2)
 
 - [x] Churn per file (commits in 180 days) computed at ingest through `gitro` and stored; never at request time; the retired churn analyzer stays retired {id: TQ-1, symbol: computeFileChurn, package: internal/fusion, reachable_from: TestFileChurnAtIngest}
-- [ ] Centrality per symbol (transitive caller count, normalized) memoized at ingest {id: TQ-2, symbol: computeCentrality, package: internal/fusion, reachable_from: TestCentralityAtIngest}
-- [ ] Governance severity per file (highest governing rule level) and incident count per file from incident records and findings {id: TQ-3, symbol: riskInputs, package: internal/certify, reachable_from: TestRiskInputsSeverityAndIncidents}
-- [ ] The risk rank: product of normalized factors, each shown with its citation, sorted with a `LIMIT` (§3 T1) {id: TQ-4, symbol: RiskWeightedCoverage, package: internal/certify, reachable_from: TestRiskWeightedCoverageExplainable, needs: "TQ-1,TQ-2,TQ-3"}
-- [ ] `test_impact` with `rank: risk` serves the list (no new tool) {id: TQ-5, symbol: testImpactRiskRank, package: internal/mcp, reachable_from: TestTestImpactRiskRank, needs: "TQ-4"}
-- [ ] The test portfolio classes: certifying, reaching governed code, orphan, redundant (exact set equality), critical target without a certificate (§3 T2) {id: TQ-6, symbol: ClassifyTests, package: internal/certify, reachable_from: TestClassifyTestsPortfolio}
-- [ ] A purpose line per test: what it certifies at which strength, or "reaches X, certifies nothing" {id: TQ-7, symbol: testPurpose, package: internal/certify, reachable_from: TestTestPurposeLine, needs: "TQ-6"}
-- [ ] The portfolio and risk views on the console {id: TQ-8, symbol: renderTestPortfolio, package: cmd/fathom, reachable_from: TestConsoleTestPortfolio, needs: "TQ-4,TQ-6"}
+- [x] Centrality per symbol (transitive caller count, normalized) memoized at ingest {id: TQ-2, symbol: computeCentrality, package: internal/fusion, reachable_from: TestCentralityAtIngest}
+- [x] Governance severity per file (enforced guard 1.0, fresh obligation claim 0.5, else 0.1; design §1) and incident count per file from incident records and findings {id: TQ-3, symbol: riskInputs, package: internal/certify, reachable_from: TestRiskInputsSeverityAndIncidents}
+- [x] The risk rank: product of normalized factors, each shown with its citation, sorted with a `LIMIT` (§3 T1) {id: TQ-4, symbol: RiskWeightedCoverage, package: internal/certify, reachable_from: TestRiskWeightedCoverageExplainable, needs: "TQ-1,TQ-2,TQ-3"}
+- [x] `test_impact` with `rank: risk` serves the list (no new tool) {id: TQ-5, symbol: testImpactRiskRank, package: internal/mcp, reachable_from: TestTestImpactRiskRank, needs: "TQ-4"}
+- [x] The test portfolio classes: certifying, reaching governed code, orphan, redundant (exact set equality), critical target without a certificate (§3 T2) {id: TQ-6, symbol: ClassifyTests, package: internal/certify, reachable_from: TestClassifyTestsPortfolio}
+- [x] A purpose line per test: what it certifies at which strength, or "reaches X, certifies nothing" {id: TQ-7, symbol: testPurpose, package: internal/certify, reachable_from: TestTestPurposeLine, needs: "TQ-6"}
+- [x] The portfolio and risk views on the console {id: TQ-8, symbol: renderTestPortfolio, package: cmd/fathom, reachable_from: TestConsoleTestPortfolio, needs: "TQ-4,TQ-6"}
 
 ## Wave 3: coverage for every language (T3) and certifying-first selection (T4)
 

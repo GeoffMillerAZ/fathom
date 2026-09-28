@@ -431,6 +431,18 @@ type Store interface {
 	// Returns nil slice with no error when none are stored.
 	FileChurn(ctx context.Context, serviceID string) ([]FileChurn, error)
 
+	// SetSymbolCentrality replaces all symbol_centrality rows for
+	// serviceID — TQ-2's per-symbol transitive caller count, normalized,
+	// computed at ingest by internal/fusion.computeCentrality — stamped
+	// with watermark, the memo key the next ingest compares before
+	// recomputing.
+	SetSymbolCentrality(ctx context.Context, serviceID, watermark string, rows []SymbolCentrality) error
+
+	// SymbolCentrality returns serviceID's symbol_centrality rows sorted by
+	// symbol and the watermark they were computed at ("" when none are
+	// stored). Rows in a suppressed file are dropped.
+	SymbolCentrality(ctx context.Context, serviceID string) (string, []SymbolCentrality, error)
+
 	// PutClaims upserts semantic claims by (service_id, claim_id). For every
 	// distinct claim_id that appears in links, the stored link set for that
 	// claim is replaced (delete-then-insert). Empty inputs are a no-op.

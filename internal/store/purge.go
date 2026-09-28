@@ -81,6 +81,10 @@ const (
 	// including an oversize or unreadable one that has no fingerprint.
 	LocFileStats   PurgeLocation = "file_stats"
 	LocFileImports PurgeLocation = "file_imports"
+	// LocFileChurn is file_churn.path (TQ-1) and LocSymbolCentrality
+	// symbol_centrality.file (TQ-2): both name indexed paths.
+	LocFileChurn        PurgeLocation = "file_churn"
+	LocSymbolCentrality PurgeLocation = "symbol_centrality"
 )
 
 // The non-SQL locations, reported separately because they have no row
@@ -99,6 +103,7 @@ func PurgeLocations() []PurgeLocation {
 		LocObservations, LocFingerprints, LocDocSummaries, LocKnowledgeCards,
 		LocTypedEdges, LocTypedEdgeFingerprints, LocSemanticClaims,
 		LocClaimLinks, LocClaimEvents, LocFileStats, LocFileImports,
+		LocFileChurn, LocSymbolCentrality,
 	}
 }
 
@@ -524,6 +529,8 @@ func resolvePurgeTargets(ctx context.Context, db *sql.DB, serviceID string, m Pa
 		{LocKnowledgeCards, `SELECT file FROM knowledge_cards WHERE service_id = ? AND file <> ''`},
 		{LocFileStats, `SELECT path FROM file_stats WHERE service_id = ?`},
 		{LocFileImports, `SELECT path FROM file_imports WHERE service_id = ?`},
+		{LocFileChurn, `SELECT path FROM file_churn WHERE service_id = ?`},
+		{LocSymbolCentrality, `SELECT DISTINCT file FROM symbol_centrality WHERE service_id = ? AND file <> ''`},
 	} {
 		vals, err := queryStrings(ctx, db, q.query, serviceID)
 		if err != nil {
@@ -724,6 +731,14 @@ func (s *SQLiteStore) executePurge(ctx context.Context, serviceID string, plan *
 		return out, err
 	}
 	if err := del(`DELETE FROM file_imports WHERE service_id = ? AND path IN (%s)`, plan.byLocation[LocFileImports], true); err != nil {
+		return out, err
+	}
+	// TQ-1/TQ-2: churn and centrality rows name the purged paths; the next
+	// ingest recomputes both.
+	if err := del(`DELETE FROM file_churn WHERE service_id = ? AND path IN (%s)`, plan.byLocation[LocFileChurn], true); err != nil {
+		return out, err
+	}
+	if err := del(`DELETE FROM symbol_centrality WHERE service_id = ? AND file IN (%s)`, plan.byLocation[LocSymbolCentrality], true); err != nil {
 		return out, err
 	}
 	if err := del(`DELETE FROM typed_edges WHERE service_id = ? AND from_file IN (%s)`, plan.byLocation[LocTypedEdges], true); err != nil {

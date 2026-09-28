@@ -18,6 +18,17 @@ exercise the library API an upgrade changed. Fathom holds the other halves of th
 centrality from the typed graph, governance severity from claims, incident history, liveness
 from certificates, and (soon) links and dependency APIs from the system graph.
 
+Owner decisions (2026-09-28), binding on T1:
+
+- **Centrality (TQ-2)** is the transitive caller count over the SCC condensation of the call
+  graph (syntax plus typed edges): one bitset union per component in topological order, never
+  a BFS per symbol. It is computed at ingest and memoized per watermark: an ingest at the
+  stored watermark that changed no input file keeps the stored rows.
+- **Governance severity (TQ-3)** per file is 1.0 if an enforced guard (`enforce: true` in
+  `.fathom/guard.cue`) scopes the file, 0.5 if any fresh obligation claim's scope matches it,
+  and 0.1 otherwise. This replaces the rule-level mapping (`error`/`warn`) in the T1 table:
+  obligation claims carry no level, and an enforced guard is the only rule that denies.
+
 ## 2. What is shipped and stays where it is
 
 Certificates (test T of kind K at strength S certifies target X), the liveness states (live,
@@ -40,7 +51,7 @@ explainable:
 | uncovered_share | coverage blocks joined to the symbol (RC-37 onward; T3 for other languages) |
 | centrality | transitive caller count from the typed graph, normalized (the `blast_radius` walk, memoized at ingest) |
 | churn | commits touching the symbol's file in 180 days, computed at ingest through `gitro` (a stored fact, never at request time; the retired churn analyzer is not revived) |
-| severity | the highest level of a governing rule scoped to the file (`error` 1.0, `warn` 0.5, none 0.1) |
+| severity | enforced guard scoping the file 1.0, fresh obligation claim 0.5, none 0.1 (§1 owner decision) |
 | incidents | incident records (`docs/intent/incidents.md`, findings) whose evidence names the file |
 
 Output: a ranked list, "untested and dangerous", each row with its factors and citations.
