@@ -23,11 +23,12 @@ func TestPlansStatusWeighted(t *testing.T) {
 	// The rollup over known verdicts: W-1 proven, W-2 failing.
 	parsed := verify.ParseMarkdownPlan("payment-service", raw)
 	verdict := map[string]verify.CriterionStatus{"W-1": verify.Pass, "W-2": verify.Fail, "W-3": verify.Pass}
+	secs := planSectionsOf(raw)
 	var rows []planRow
 	for _, tk := range parsed.Tasks {
-		rows = append(rows, planRow{PlanFile: pf, Task: tk, Verdict: verify.TaskVerdict{TaskID: tk.ID, Status: verdict[tk.ID]}})
+		rows = append(rows, planRow{PlanFile: pf, Task: tk, Verdict: verify.TaskVerdict{TaskID: tk.ID, Status: verdict[tk.ID]}, Section: sectionAt(secs, tk.Line)})
 	}
-	fleet := weightedRollup("payment-service", []string{pf}, [][]planRow{rows}, [][]planSection{planSectionsOf(raw)})
+	fleet := weightedRollup("payment-service", []string{pf}, [][]planRow{rows})
 	if fleet.Scope != "fleet" || fleet.Proven != 3 || fleet.Total != 6 || len(fleet.Children) != 1 {
 		t.Fatalf("fleet rollup wrong: %+v", fleet)
 	}

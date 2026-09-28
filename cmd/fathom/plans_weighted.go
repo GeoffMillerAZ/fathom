@@ -13,7 +13,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/verify"
@@ -74,19 +73,33 @@ func rowWeight(t verify.Task) int {
 }
 
 // weightedRollup builds the fleet → project → plan → section tree over one
-// service's plans. sections[i] is plans[i]'s headings.
-func weightedRollup(service string, plans []string, rowSets [][]planRow, sections [][]planSection) weightedScope {
+// service's plans (each row's Section names its wave).
+func weightedRollup(service string, plans []string, rowSets [][]planRow) weightedScope {
+	return weightedFleet([]weightedScope{weightedProject(service, plans, rowSets)})
+}
+
+// weightedFleet sums projects into the fleet.
+func weightedFleet(projects []weightedScope) weightedScope {
+	fleet := weightedScope{Scope: "fleet", Name: "fleet"}
+	for _, p := range projects {
+		fleet.Proven, fleet.Total, fleet.Rows = fleet.Proven+p.Proven, fleet.Total+p.Total, fleet.Rows+p.Rows
+		fleet.Children = append(fleet.Children, p)
+	}
+	return fleet
+}
+
+// weightedProject is one service's plans, each by section.
+func weightedProject(service string, plans []string, rowSets [][]planRow) weightedScope {
 	proj := weightedScope{Scope: "project", Name: service}
 	for i, pf := range plans {
 		plan := weightedScope{Scope: "plan", Name: pf}
-		var secs []planSection
-		if i < len(sections) {
-			secs = sections[i]
-		}
 		bySec := map[string]*weightedScope{}
 		var order []string
 		for _, r := range rowSets[i] {
-			label := sectionAt(secs, r.Task.Line)
+			label := r.Section
+			if label == "" {
+				label = noSection
+			}
 			s := bySec[label]
 			if s == nil {
 				s = &weightedScope{Scope: "section", Name: label}
@@ -111,19 +124,7 @@ func weightedRollup(service string, plans []string, rowSets [][]planRow, section
 		proj.Proven, proj.Total, proj.Rows = proj.Proven+plan.Proven, proj.Total+plan.Total, proj.Rows+plan.Rows
 		proj.Children = append(proj.Children, plan)
 	}
-	return weightedScope{Scope: "fleet", Name: "fleet", Proven: proj.Proven, Total: proj.Total, Rows: proj.Rows, Children: []weightedScope{proj}}
-}
-
-// readPlanSections reads each plan's headings; an unreadable plan has none
-// (its rows fall under noSection — the verify run already read it).
-func readPlanSections(plans []string) [][]planSection {
-	out := make([][]planSection, len(plans))
-	for i, pf := range plans {
-		if raw, err := os.ReadFile(pf); err == nil {
-			out[i] = planSectionsOf(raw)
-		}
-	}
-	return out
+	return proj
 }
 
 // weightedShare renders proven/total and the percentage.

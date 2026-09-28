@@ -66,6 +66,9 @@ type planRow struct {
 	PlanFile string
 	Task     verify.Task
 	Verdict  verify.TaskVerdict
+	// Section is the plan's `## ` heading the row sits under (noSection
+	// above the first one) — the wave a weighted rollup groups by (PE-3).
+	Section string
 }
 
 // activePlanFiles returns the sorted list of active (non-archived) plan
@@ -127,6 +130,8 @@ type planComputed struct {
 	File   string
 	Plan   verify.Plan
 	Report verify.Report
+	// Sections are the plan's `## ` headings, read from the same bytes.
+	Sections []planSection
 }
 
 // rows joins the plan's tasks, in document order, with their verdicts.
@@ -137,7 +142,7 @@ func (pc planComputed) rows() []planRow {
 	}
 	rows := make([]planRow, 0, len(pc.Plan.Tasks))
 	for _, t := range pc.Plan.Tasks {
-		rows = append(rows, planRow{PlanFile: pc.File, Task: t, Verdict: verdictByID[t.ID]})
+		rows = append(rows, planRow{PlanFile: pc.File, Task: t, Verdict: verdictByID[t.ID], Section: sectionAt(pc.Sections, t.Line)})
 	}
 	return rows
 }
@@ -228,7 +233,7 @@ func computePlanReports(planFiles []string, service, storePath, urlStr string, o
 
 	out := make([]planComputed, len(planFiles))
 	for i, pf := range planFiles {
-		out[i] = planComputed{File: pf, Plan: localPlans[i], Report: reports[i]}
+		out[i] = planComputed{File: pf, Plan: localPlans[i], Report: reports[i], Sections: planSectionsOf(raws[i])}
 	}
 	return out, nil
 }
@@ -378,7 +383,7 @@ func cmdPlansStatus(args []string, stdout, stderr io.Writer) int {
 	}
 
 	if *weighted {
-		writeWeighted(stdout, weightedRollup(*service, files, rowSets, readPlanSections(files)), *jsonOut)
+		writeWeighted(stdout, weightedRollup(*service, files, rowSets), *jsonOut)
 		return 0
 	}
 

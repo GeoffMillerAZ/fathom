@@ -253,9 +253,7 @@ func renderPlanBoard(v console.PlanLedgerView) string {
 			})
 		}
 	}
-	var buf bytes.Buffer
-	//fathom:tenancy-allow bg-ctx templ render into a buffer: the context only carries templ values, nothing is cancelled or read
-	_ = kanban.Board(cols, cards).Render(context.Background(), &buf)
+	board := renderKanbanBoard(cols, cards)
 	note := ""
 	if cut > 0 {
 		note = `<p class="mt-2 text-xs text-ink-muted" data-board-cut>` + fmt.Sprintf("Each lane shows its first %d cards; %s more are in the table below — every lane's badge counts all its rows.", boardLaneCards, plural(cut, "row")) + `</p>`
@@ -263,7 +261,16 @@ func renderPlanBoard(v console.PlanLedgerView) string {
 	if len(empty) > 0 {
 		note += `<p class="mt-2 text-xs text-ink-muted" data-board-empty>` + html.EscapeString("No rows are "+strings.Join(empty, ", ")+" — those lanes are not drawn.") + `</p>`
 	}
-	return `<div role="region" aria-label="Rows by state, one lane per state" data-plan-board>` + readOnlyBoard(buf.String()) + `</div>` + note
+	return `<div role="region" aria-label="Rows by state, one lane per state" data-plan-board>` + readOnlyBoard(board) + `</div>` + note
+}
+
+// renderKanbanBoard renders the kit's kanban board to a string (the plan
+// page's board and the Progress page's derived board).
+func renderKanbanBoard(cols []kanban.Column, cards []kanban.CardItem) string {
+	var buf bytes.Buffer
+	//fathom:tenancy-allow bg-ctx templ render into a buffer: the context only carries templ values, nothing is cancelled or read
+	_ = kanban.Board(cols, cards).Render(context.Background(), &buf)
+	return buf.String()
 }
 
 // readOnlyBoard takes the drag affordances off the kit's board: it has no
