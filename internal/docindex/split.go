@@ -27,10 +27,17 @@ const (
 	// annotation as its own unit, pulled out of the surrounding section's
 	// body so it is never indexed twice.
 	DocKindPlan DocKind = "plan"
-	// DocKindOther is every other Markdown source §3 lists (intent, design,
-	// vision, general docs): leaf heading sections only — a heading becomes
-	// a unit exactly when it owns body text directly beneath it, before its
-	// first child heading (or the next heading at any level, if it has no
+	// DocKindIntent is a docs/intent/*.md file: "a `##` section or a
+	// numbered record" (§3) — every heading's span is eligible for further
+	// splitting at bold-numbered-record paragraphs (`**G20. Title.** ...`,
+	// the same shape docs/intent/scope.md's goals and ADR.md's labels both
+	// use); a span with no such paragraph is kept whole as one section, so
+	// a heading with plain prose still gets exactly one unit.
+	DocKindIntent DocKind = "intent"
+	// DocKindOther is every other Markdown source §3 lists (design, vision,
+	// general docs): leaf heading sections only — a heading becomes a unit
+	// exactly when it owns body text directly beneath it, before its first
+	// child heading (or the next heading at any level, if it has no
 	// children); a purely structural heading with no text of its own is
 	// never emitted as an (empty) unit, only kept on the path stack for its
 	// descendants.
@@ -39,9 +46,10 @@ const (
 
 // Unit kinds recorded on doc_units.kind (design §3/§4's "kind per unit").
 const (
-	KindADRSection = "adr-section"
-	KindPlanRow    = "plan-row"
-	KindSection    = "section"
+	KindADRSection    = "adr-section"
+	KindIntentSection = "intent-section"
+	KindPlanRow       = "plan-row"
+	KindSection       = "section"
 )
 
 // Unit is one section SplitDocUnits produces: a heading path, its 1-based
@@ -98,7 +106,11 @@ func SplitDocUnits(kind DocKind, content string) []Unit {
 
 	switch kind {
 	case DocKindADR:
-		return splitADR(rawLines, heads)
+		return splitBoldLabeled(rawLines, heads, KindADRSection, func(h headingLine) bool {
+			return h.level == 2 && adrHeadRE.MatchString(h.text)
+		})
+	case DocKindIntent:
+		return splitBoldLabeled(rawLines, heads, KindIntentSection, func(headingLine) bool { return true })
 	case DocKindPlan:
 		return splitPlan(rawLines, heads)
 	default:
@@ -193,27 +205,38 @@ func splitLeafSectionsExcluding(rawLines []string, heads []headingLine, exclude 
 	return units
 }
 
-// splitADR applies DocKindADR's rule: within each `## ADR-NNN ...` section's
-// span, split further at bold-label paragraphs (`**Label.** text`); text
-// before the first label (rare) is its own unit under the bare ADR heading
-// path.
-func splitADR(rawLines []string, heads []headingLine) []Unit {
+// splitBoldLabeled applies the ADR/intent rule (§3): within every eligible
+// heading's span (as decided by eligible), split further at bold-label
+// paragraphs (`**Label.** text` or `**G20. Title.** text`); a span with no
+// such paragraph is kept whole as one unit (that is Intent's "a `##`
+// section OR a numbered record" — no record means the section is the
+// whole record). A top-of-file preamble before the first heading is
+// included too, treated as its own always-eligible span, so a document
+// that opens with prose never silently drops it.
+func splitBoldLabeled(rawLines []string, heads []headingLine, kind string, eligible func(headingLine) bool) []Unit {
 	paths := headingPathStack(heads)
 	var units []Unit
+	if len(heads) == 0 || heads[0].line > 1 {
+		end := len(rawLines) + 1
+		if len(heads) > 0 {
+			end = heads[0].line
+		}
+		units = append(units, splitBoldLabeledSection(rawLines, "", 1, end, kind)...)
+	}
 	for i, h := range heads {
-		if h.level != 2 || !adrHeadRE.MatchString(h.text) {
+		if !eligible(h) {
 			continue
 		}
 		end := len(rawLines) + 1
 		if i+1 < len(heads) {
 			end = heads[i+1].line
 		}
-		units = append(units, splitADRSection(rawLines, paths[i], h.line+1, end)...)
+		units = append(units, splitBoldLabeledSection(rawLines, paths[i], h.line+1, end, kind)...)
 	}
 	return units
 }
 
-func splitADRSection(rawLines []string, sectionPath string, start, endBefore int) []Unit {
+func splitBoldLabeledSection(rawLines []string, sectionPath string, start, endBefore int, kind string) []Unit {
 	type label struct {
 		text string
 		line int
@@ -235,7 +258,7 @@ func splitADRSection(rawLines []string, sectionPath string, start, endBefore int
 			HeadingPath: sectionPath,
 			LineStart:   start,
 			LineEnd:     max(start, firstLabelLine-1),
-			Kind:        KindADRSection,
+			Kind:        kind,
 			Body:        body,
 		})
 	}
@@ -248,11 +271,15 @@ func splitADRSection(rawLines []string, sectionPath string, start, endBefore int
 		if body == "" {
 			continue
 		}
+		path := lb.text
+		if sectionPath != "" {
+			path = sectionPath + " > " + lb.text
+		}
 		units = append(units, Unit{
-			HeadingPath: sectionPath + " > " + lb.text,
+			HeadingPath: path,
 			LineStart:   lb.line,
 			LineEnd:     next - 1,
-			Kind:        KindADRSection,
+			Kind:        kind,
 			Body:        body,
 		})
 	}

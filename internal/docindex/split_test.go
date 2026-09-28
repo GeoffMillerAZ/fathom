@@ -156,6 +156,47 @@ func TestSplitDocUnitsPlanRows(t *testing.T) {
 	}
 }
 
+// TestSplitDocUnitsIntentRecords pins the intent rule (§3): "a `##` section
+// or a numbered record" — a heading with a plain-prose body becomes one
+// unit, while a heading whose body is bold-numbered records (the shape
+// docs/intent/scope.md's goals and ADR.md's labels both use) splits at
+// each record.
+func TestSplitDocUnitsIntentRecords(t *testing.T) {
+	content := `# Scope
+
+## Current goals
+
+**G2. The A/B becomes admissible.** Done when: fathom flywheel reports enough units.
+
+**G3. The continuity-thread bet reaches its sample.** Done when: 20 units.
+
+## Plain section
+
+just prose, no numbered records here
+`
+	units := SplitDocUnits(DocKindIntent, content)
+	var paths []string
+	for _, u := range units {
+		paths = append(paths, u.HeadingPath)
+		if u.Kind != KindIntentSection {
+			t.Errorf("unit %q Kind = %q, want %q", u.HeadingPath, u.Kind, KindIntentSection)
+		}
+	}
+	wantPaths := []string{
+		"Scope > Current goals > G2. The A/B becomes admissible",
+		"Scope > Current goals > G3. The continuity-thread bet reaches its sample",
+		"Scope > Plain section",
+	}
+	if len(paths) != len(wantPaths) {
+		t.Fatalf("SplitDocUnits(intent) paths = %v, want %v", paths, wantPaths)
+	}
+	for i, p := range wantPaths {
+		if paths[i] != p {
+			t.Errorf("unit %d path = %q, want %q", i, paths[i], p)
+		}
+	}
+}
+
 // TestSplitDocUnitsEmpty pins that an empty or heading-free document yields
 // no units rather than panicking or emitting an empty-body unit.
 func TestSplitDocUnitsEmpty(t *testing.T) {
