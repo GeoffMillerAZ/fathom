@@ -1,0 +1,155 @@
+{
+  "dialect": "c",
+  "kind": "language",
+  "target_level": "L4",
+  "level_met": "none",
+  "grade": {
+    "L1": "good",
+    "L2": "unmet",
+    "L3": "not-attempted",
+    "L4": "unmet"
+  },
+  "measured_at": "2026-09-28",
+  "fathom_commit": "0e2c7702",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "libuv",
+      "sha": "840404ce8ba7cc0204be52389a6cfff9f2c90fb6",
+      "files": 331,
+      "bytes": 2814983,
+      "counts": {
+        "call_fathom": 2325,
+        "call_truth": 0,
+        "callables": 2696,
+        "callables_signed": 2696,
+        "fathom_defs": 4035,
+        "kind_equal": 3988,
+        "matched": 3988,
+        "oracle_defs": 4631,
+        "range_eligible": 3955,
+        "range_ok": 3949,
+        "scip_defs": 2343,
+        "scip_defs_mapped": 624,
+        "scip_edges": 2052,
+        "scip_edges_typed": 0
+      },
+      "families": {
+        "calls": "A",
+        "defmap": "A",
+        "l1": "B",
+        "typed": "A"
+      },
+      "kind_intersection": [
+        "enum",
+        "function",
+        "macro",
+        "struct",
+        "type_alias",
+        "union"
+      ],
+      "excluded_by_kind": {
+        "ctags:enumerator": 46,
+        "ctags:member": 451,
+        "ctags:variable": 1276
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 4514.759000000001,
+        "max_file_ms": 275,
+        "peak_module_pages": 374,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "scip-clang",
+      "version": "0.4.0"
+    },
+    {
+      "tier": "B",
+      "tool": "universal-ctags",
+      "version": "6.2.1"
+    }
+  ],
+  "metrics": {
+    "call_precision": 0,
+    "call_recall": null,
+    "def_mapping": 0.2663,
+    "file_edge_precision": null,
+    "file_edge_recall": null,
+    "import_resolution": null,
+    "kind_agreement": 1,
+    "range_agreement": 0.9985,
+    "signature_coverage": 1,
+    "sym_precision": 0.9884,
+    "sym_recall": 0.8612,
+    "typed_recall": 0
+  },
+  "metric_tiers": {
+    "call_precision": "A",
+    "def_mapping": "A",
+    "kind_agreement": "B",
+    "range_agreement": "B",
+    "signature_coverage": "B",
+    "sym_precision": "B",
+    "sym_recall": "B",
+    "typed_recall": "A"
+  },
+  "required_kinds": [
+    "enum",
+    "function",
+    "macro",
+    "struct",
+    "type_alias",
+    "union"
+  ],
+  "kind_intersection": [
+    "enum",
+    "function",
+    "macro",
+    "struct",
+    "type_alias",
+    "union"
+  ],
+  "counts": {
+    "call_fathom": 2325,
+    "call_truth": 0,
+    "callables": 2696,
+    "callables_signed": 2696,
+    "fathom_defs": 4035,
+    "kind_equal": 3988,
+    "matched": 3988,
+    "oracle_defs": 4631,
+    "range_eligible": 3955,
+    "range_ok": 3949,
+    "scip_defs": 2343,
+    "scip_defs_mapped": 624,
+    "scip_edges": 2052,
+    "scip_edges_typed": 0
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 0.62,
+    "max_file_ms": 275,
+    "peak_module_pages": 374,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "ctags:enumerator": 46,
+    "ctags:member": 451,
+    "ctags:variable": 1276
+  },
+  "notes": [
+    "import_resolution not measured: in-repo spec counts arrive with the L3 strategies (LB-F11)",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "sym_recall capped below excellent by universal-ctags 6.2.1's own heuristic, not a missed query: any `MACRO_NAME(args) {` at file scope (libuv's TEST_IMPL/BENCHMARK_IMPL test-registration macros, 507 uses across test/*.c) is tagged by ctags as a function literally named by the macro identifier (verified directly: ctags emits {name: \"TEST_IMPL\", kind: \"function\", end: <the whole body's close brace>}), which fathom's real tree-sitter parse correctly does not do (TEST_IMPL(name) is a call_expression, not a function_definition, with no preprocessor expansion) — an oracle-heuristic gap, the same shape as LB-Q-css's BareName and LB-Q-html's range_agreement precedents, not a fixable pattern",
+    "call_precision/call_recall/typed_recall are 0/0/0 with a real, clean SCIP index (2.1 s, 0 errored TUs, 37 hand-built compile_commands.json entries covering libuv's darwin/APPLE CMakeLists.txt file set) because scip-clang v0.4.0 never sets occurrence.enclosing_range on any definition (verified directly: 5,716 definition occurrences, 0 with an enclosing_range) — internal/langbench.ScoreSCIP's call-pair attribution requires it to find a reference's containing definition, so it finds none regardless of subject or compile_commands.json completeness; this is a foundation-level internal/langbench gap (LB-F16's domain), not something a queue worker's tags.scm/imports.scm can route around",
+    "L3's import_resolution/file_edge metrics are separately not wired into indexbench lang-oracle for any dialect yet (the note above is boilerplate in the harness); the include-path strategy itself is proven end-to-end for this dialect by internal/fusion.TestResolveFileEdges_CIncludes (a #include \"util.h\" resolving a same-scope call across two fixture files), not by this reading"
+  ],
+  "disposition": "deferred: target L4 not reached. L1 good (ctags tier B; see notes for the recall cap). L2/L4 blocked on an internal/langbench.ScoreSCIP fix (definitions need an enclosing-range fallback — e.g. a definition's own [Line,EndLine] — for scip-clang's output, which never sets occurrence.enclosing_range); L3's harness wiring (import_resolution/file_edge scoring) is unbuilt for any dialect. Trigger: internal/langbench gains an enclosing-range fallback for a SCIP producer that omits it, or a newer scip-clang sets it — then re-run indexbench lang-oracle -dialect c with a real compile_commands.json (this attempt's is calibration/corpus.d/c.yaml's libuv, hand-built from its CMakeLists.txt darwin file list — see PROVENANCE.md) and re-measure."
+}

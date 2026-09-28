@@ -22,6 +22,10 @@ type CHeaderExtractor struct {
 }
 
 // NewCHeaderExtractor returns a header router over fresh C and C++ extractors.
+// (LB-Q-c built and measured a tree-sitter "c" dialect alongside these CGO
+// walkers — internal/extractor/dialects/c/ — but its L4 target is not met,
+// so §11 step 2's merge gate keeps the CGO incumbent as the live dispatch
+// here; see docs/bench/readings/lang/c.json and pipeline.go's own note.)
 func NewCHeaderExtractor() *CHeaderExtractor {
 	return &CHeaderExtractor{c: NewCExtractor(), cpp: NewCppExtractor()}
 }

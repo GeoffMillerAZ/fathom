@@ -1,0 +1,30 @@
+{
+  "symbols": [
+    {
+      "name": "use_local",
+      "kind": "CFunc",
+      "package": "includes",
+      "line": 7,
+      "end_line": 9,
+      "signature": "int use_local(void)",
+      "calls": [
+        "local_value"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "includes_local.h",
+      "module": "includes_local.h",
+      "kind": "whole",
+      "line": 4
+    },
+    {
+      "local": "<stdio.h>",
+      "module": "<stdio.h>",
+      "kind": "whole",
+      "line": 5
+    }
+  ]
+}

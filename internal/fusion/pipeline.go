@@ -631,7 +631,13 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	p.exts[".rs"] = extractor.NewRustExtractor()
 
 	// C (.h is polyglot: the header router sniffs C++ signals and picks the
-	// grammar per file — docs/plans/cpp-toolchain.md CT-3)
+	// grammar per file — docs/plans/cpp-toolchain.md CT-3). LB-Q-c built and
+	// measured a tree-sitter dialect (internal/extractor/dialects/c/) — see
+	// docs/bench/readings/lang/c.json — but its target (L4) is not met (§11
+	// step 2's merge gate: "every L1 metric ≥ the incumbent's AND the
+	// dialect meets its target level"), so the CGO incumbent stays the live
+	// dispatch here; only a future queue item that reaches L4 (or a
+	// retargeted level) switches this line.
 	c := extractor.NewCExtractor()
 	p.exts[".c"] = c
 	p.exts[".h"] = extractor.NewCHeaderExtractor()
