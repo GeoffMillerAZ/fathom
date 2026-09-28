@@ -27,6 +27,8 @@
   "required_kinds": ["class", "interface", "enum", "record", "annotation", "method", "field"],
   "oracle_kinds": {
     "ctags": { "class": "class", "interface": "interface", "enum": "enum", "annotation": "interface",
+               "method": "method", "field": "field", "enumConstant": "enum_member" },
+    "tool":  { "class": "class", "interface": "interface", "enum": "enum", "record": "class", "annotation": "interface",
                "method": "method", "field": "field", "enumConstant": "enum_member" }
   },
   "qualify": { "chain_containers": true, "container_sep": ".", "method_sep": "." },
