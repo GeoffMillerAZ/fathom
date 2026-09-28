@@ -6,13 +6,21 @@ import (
 	"testing"
 )
 
-func writeFile(t *testing.T, root, rel string) {
+// writeFile writes rel under root, creating parent directories as needed.
+// With no extra content argument it writes a minimal placeholder Markdown
+// body; a test that cares about the actual content (e.g. ingest_test.go)
+// passes it explicitly.
+func writeFile(t *testing.T, root, rel string, content ...string) {
 	t.Helper()
 	p := filepath.Join(root, filepath.FromSlash(rel))
 	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(p, []byte("# "+rel+"\n\nbody\n"), 0o644); err != nil {
+	body := "# " + rel + "\n\nbody\n"
+	if len(content) > 0 {
+		body = content[0]
+	}
+	if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
 		t.Fatal(err)
 	}
 }

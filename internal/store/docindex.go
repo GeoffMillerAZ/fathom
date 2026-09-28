@@ -219,6 +219,28 @@ FROM doc_units WHERE service_id = ? AND path = ? ORDER BY line_start`, serviceID
 	return out, rows.Err()
 }
 
+// DocIndexedPaths returns every distinct path with rows in doc_units for
+// serviceID, sorted. The hash-gated ingest (KR-8) diffs this against a fresh
+// corpus walk to find a deleted file: a path indexed before that the walk no
+// longer finds, whose units must be removed in the same ingest.
+func (s *SQLiteStore) DocIndexedPaths(ctx context.Context, serviceID string) ([]string, error) {
+	rows, err := s.db.QueryContext(ctx, `
+SELECT DISTINCT path FROM doc_units WHERE service_id = ? ORDER BY path`, serviceID)
+	if err != nil {
+		return nil, fmt.Errorf("DocIndexedPaths query: %w", err)
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var p string
+		if err := rows.Scan(&p); err != nil {
+			return nil, fmt.Errorf("DocIndexedPaths scan: %w", err)
+		}
+		out = append(out, p)
+	}
+	return out, rows.Err()
+}
+
 // QueryDocUnits runs `docs_fts MATCH query` bounded to serviceID, ordered by
 // bm25 (best match first — SQLite's bm25() is a cost, lower is better,
 // hence the plain ascending ORDER BY), LIMIT limit (§5: 50 is the caller's
