@@ -7,7 +7,7 @@
 //	investigation: blast_radius, spec_coverage,
 //	               traceability, evidence_summary,
 //	               contradiction_scan, review_diff, search
-//	coding:        arch_conformance, stale_docs, api_diff
+//	coding:        arch_conformance, stale_docs
 //	shared:        ingest
 //	context:       repo_map, pack_context
 //	ops/meta:      batch
@@ -25,7 +25,6 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/geoffmilleraz/fathom/internal/analysis/apisurface"
 	"github.com/geoffmilleraz/fathom/internal/analysis/archconformance"
 	"github.com/geoffmilleraz/fathom/internal/analysis/docdrift"
 	"github.com/geoffmilleraz/fathom/internal/analysis/envkeys"
@@ -68,7 +67,10 @@ func registerExtraTools(s *Server, backend QueryInterface) {
 	// ── coding ───────────────────────────────────────────────────────────────
 	registerArchConformance(s, backend)
 	registerStaleDocs(s, backend)
-	registerAPIDiff(s, backend)
+	// registerAPIDiff (F-20) was unregistered by SR-26 (surface reckoning):
+	// the calibrated API delta stays in `conserve`'s surface plane
+	// (internal/conserve/surface.go, ADR-044), which reuses the same
+	// internal/analysis/apisurface package this tool called directly.
 	// registerDepDrift (F-18) was unregistered by SR-10 (surface reckoning):
 	// 0 lifetime calls; internal/analysis/deps and internal/depgraph stay
 	// for vision 15's system graph (N1's engine seam).
@@ -738,69 +740,6 @@ func registerStaleDocs(s *Server, backend QueryInterface) {
 			}
 		}
 		return withPartial(map[string]any{"drifts": result, "count": len(result)}, cov), nil
-	})
-}
-
-// ─── coding: api_diff ─────────────────────────────────────────────────────────
-
-func registerAPIDiff(s *Server, backend QueryInterface) {
-	s.registerTool(toolDescriptor{
-		Name:        "api_diff",
-		Description: "Compute the API surface diff between two services: added, removed, and changed exported symbols.",
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"service_a": map[string]any{"type": "string", "description": "Baseline service identifier"},
-				"service_b": map[string]any{"type": "string", "description": "New service identifier"},
-			},
-			"required": []string{"service_a", "service_b"},
-		},
-		group: GroupCoding,
-	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
-		if backend == nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
-		}
-		var p struct {
-			ServiceA string `json:"service_a"`
-			ServiceB string `json:"service_b"`
-		}
-		if err := json.Unmarshal(args, &p); err != nil {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "api_diff: invalid args"}
-		}
-		if p.ServiceA == "" {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "api_diff: service_a required"}
-		}
-		if p.ServiceB == "" {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "api_diff: service_b required"}
-		}
-		nodesA, err := serviceSymbols(ctx, backend, p.ServiceA)
-		if err != nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "list service_a: " + err.Error()}
-		}
-		nodesB, err := serviceSymbols(ctx, backend, p.ServiceB)
-		if err != nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "list service_b: " + err.Error()}
-		}
-		surfaceA := apisurface.Surface(nodesA)
-		surfaceB := apisurface.Surface(nodesB)
-		changes := apisurface.Diff(surfaceA, surfaceB)
-		added := changes.Added
-		if added == nil {
-			added = []string{}
-		}
-		removed := changes.Removed
-		if removed == nil {
-			removed = []string{}
-		}
-		changed := changes.Changed
-		if changed == nil {
-			changed = []string{}
-		}
-		return map[string]any{
-			"added":   stringsToAny(added),
-			"removed": stringsToAny(removed),
-			"changed": stringsToAny(changed),
-		}, nil
 	})
 }
 

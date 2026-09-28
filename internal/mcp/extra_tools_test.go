@@ -670,34 +670,10 @@ func TestStaleDocs_Basic(t *testing.T) {
 	}
 }
 
-// ─── api_diff ─────────────────────────────────────────────────────────────────
-
-func TestAPIDiff_Basic(t *testing.T) {
-	srv := newExtraSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 1190, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "api_diff",
-			"arguments": map[string]any{"service_a": "svc", "service_b": "svc"},
-		},
-	})
-	p := xtraPayload(t, resp)
-	if p["added"] == nil || p["removed"] == nil || p["changed"] == nil {
-		t.Error("api_diff: missing added/removed/changed fields")
-	}
-}
-
-func TestAPIDiff_MissingServiceB(t *testing.T) {
-	srv := newExtraSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 1191, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "api_diff",
-			"arguments": map[string]any{"service_a": "svc"},
-		},
-	})
-	xtraError(t, resp)
-}
+// api_diff was unregistered by SR-26 (surface reckoning F-20): the
+// calibrated API delta stays in conserve's surface plane
+// (internal/conserve/surface.go), which reuses internal/analysis/apisurface
+// directly — this MCP tool had no caller left to serve.
 
 // ─── ingest ───────────────────────────────────────────────────────────────────
 
@@ -942,7 +918,7 @@ func TestExtraToolsInList(t *testing.T) {
 	want := []string{
 		"blast_radius", "spec_coverage",
 		"traceability", "evidence_summary", "contradiction_scan",
-		"arch_conformance", "stale_docs", "api_diff",
+		"arch_conformance", "stale_docs",
 		"ingest",
 		"repo_map", "pack_context",
 		"batch",

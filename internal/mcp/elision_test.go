@@ -240,7 +240,7 @@ var nonTruncatingTools = map[string]bool{
 	"blast_radius": true, "spec_coverage": true,
 	"traceability": true, "evidence_summary": true, "contradiction_scan": true,
 	"verify_plan": true, "review_diff": true, "findings_near": true,
-	"arch_conformance": true, "stale_docs": true, "api_diff": true,
+	"arch_conformance": true, "stale_docs": true,
 	"dep_drift": true, "ingest": true, "remove_service": true,
 	"rename_service": true, "cross_repo_blast_radius": true, "batch": true,
 	"proto_conformance": true, "spec_refs": true,
