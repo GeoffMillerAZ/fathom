@@ -382,7 +382,7 @@ var codex = Descriptor{
 		CapDepositPreCompact:    "PreCompact entry writes one thread pointer; injects nothing",
 		CapSkills:               "`.agents/skills/<name>/SKILL.md` (`fathom init --skills=agents`); `~/.codex/prompts` is the legacy twin. Discovery on this build is still unverified — the verifying session did not invoke a skill",
 		CapClaimGate:            "the PostToolUse hook IS wired here, but it serves obligations only — the claim check rides Claude Code's edit payload and is not ported; the pre-push verify gate is the backstop (vision 26 §4)",
-		CapSessionLedger:        "unmeasured by design (law 12): the rollout transcript format is not stable and no instrument reads it",
+		CapSessionLedger:        "unmeasured by design (law 12): the session ledger and the ON/OFF arm take no Codex row; the rollout's token_count events are read for cost only, by CodexSessionCost (PE-14, outcome economics), never for a savings claim",
 		CapStanzaLoaded:         "no instructions-loaded event is documented; the stanza check reads the file, not the harness",
 		CapConfigAudit:          "run `fathom config audit` by hand; no config-change event is documented",
 		CapSubagentPrime:        "SubagentStart in CODEX_HOME/hooks.json injects the ≤600 B index-first primer; wired and documented, but no subagent ran in the verifying session — the one wave-3 row on this harness that is still unmeasured",
