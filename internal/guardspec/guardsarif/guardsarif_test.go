@@ -1,10 +1,11 @@
-package guardspec
+package guardsarif
 
 import (
 	"encoding/json"
 	"strings"
 	"testing"
 
+	"github.com/geoffmilleraz/fathom/internal/guardspec"
 	"github.com/geoffmilleraz/fathom/internal/verify"
 )
 
@@ -17,9 +18,9 @@ import (
 // package directory as the location. Deterministic: the SAME violations
 // render byte-identical SARIF on a second call.
 func TestGuardVerdictsSARIFGolden(t *testing.T) {
-	violations := []Violation{
-		{RuleID: "no-store-in-cli", Kind: ImportDirection, Severity: SeverityError, From: "cmd/fathom", To: "internal/store", Message: "cmd/fathom imports internal/store: cmd/fathom may not import internal/store directly"},
-		{RuleID: "ledger-boundary", Kind: Boundary, Severity: SeverityWarn, From: "internal/other", To: "internal/ledger", Message: "internal/other imports guarded package internal/ledger without being on the allow list: only internal/payment may import internal/ledger"},
+	violations := []guardspec.Violation{
+		{RuleID: "no-store-in-cli", Kind: guardspec.ImportDirection, Severity: guardspec.SeverityError, From: "cmd/fathom", To: "internal/store", Message: "cmd/fathom imports internal/store: cmd/fathom may not import internal/store directly"},
+		{RuleID: "ledger-boundary", Kind: guardspec.Boundary, Severity: guardspec.SeverityWarn, From: "internal/other", To: "internal/ledger", Message: "internal/other imports guarded package internal/ledger without being on the allow list: only internal/payment may import internal/ledger"},
 	}
 
 	results := guardVerdictsSARIF(violations)
