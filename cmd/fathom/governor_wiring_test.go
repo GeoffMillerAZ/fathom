@@ -21,7 +21,7 @@ func TestServingRefuseDropsEveryCache(t *testing.T) {
 		names[d.name] = true
 		d.drop() // every drop runs on a fresh daemon without panicking
 	}
-	for _, want := range []string{"console memos", "fleet memos", "graph and navigation caches", "obligations memos", "ingest stat records"} {
+	for _, want := range []string{"console memos", "fleet memos", "graph and navigation caches", "obligations memos", "ingest stat records", "idle grammar modules"} {
 		if !names[want] {
 			t.Errorf("ladder drops %v lack %q", names, want)
 		}

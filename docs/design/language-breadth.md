@@ -430,8 +430,8 @@ licence is on the allowlist, with the same header.
 | Mechanism | Bound | Row |
 |---|---|---|
 | Lazy grammar load | a grammar is decompressed and compiled only when a file of its dialect is extracted | LB-F13 |
-| Process-wide parser pool | ≤ 6 live parser modules (LRU across all dialects); a module idle 2 minutes is closed; `tsengine.LiveModules()` stays the instrument | LB-F15 |
-| Compiled-code accounting | each compiled grammar's size (measured once at compile, recorded in the reading) is charged to the memo registry's byte budget (I51); shed evicts least-recently-used compiled grammars, refuse drops all | LB-F15 |
+| Process-wide parser pool | ≤ 6 live parser modules (LRU across all dialects, `tsengine.AcquireParser`, keyed by extractor and variant so compiled queries stay with their owner); a module idle 2 minutes is closed; a leased module is never closed under its holder (past the cap the surplus closes at release); `tsengine.LiveModules()` stays the instrument, `PoolPeak()` the proof's | LB-F15 |
+| Compiled-code accounting | each compiled grammar is a `grammar_code` memo group entry charged at its lock row's `blob_bytes` (wazero does not report compiled size; measured on arm64, wazero v1.12.0, the code is 0.46×–1.84× the module) against the memo registry's byte budget (I51); shed evicts least-recently-used compiled grammars, refuse drops all and closes idle modules; an evicted grammar's code is closed once no parser is being made from it | LB-F15 |
 | Module memory | RT-107's `MemoryLimitPages = 1024` (64 MiB) per module, unchanged | existing |
 | Per-file gates | 2 MiB cap, binary sniff, minified/generated sniff, known-fault fingerprint | existing + LB-F10 |
 | Guest budgets | parse and query-scan deadline 10 s, host backstop 20 s | existing |

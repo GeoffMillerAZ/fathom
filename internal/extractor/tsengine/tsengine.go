@@ -139,9 +139,6 @@ var (
 	runtimeOnce sync.Once
 	rt          wazero.Runtime
 	rtErr       error
-
-	compileMu sync.Mutex
-	compiled  = map[string]wazero.CompiledModule{}
 )
 
 // ensureRuntime lazily creates the single process-wide wazero Runtime and
@@ -179,33 +176,6 @@ func compilerSupported() bool {
 	}
 }
 
-// compile returns the cached wazero.CompiledModule for the named blob,
-// compiling it on first use. Compilation is CPU-bound and safe to do once
-// per process; CompiledModule itself is safe for concurrent InstantiateModule
-// calls.
-func compile(ctx context.Context, name string) (wazero.CompiledModule, error) {
-	compileMu.Lock()
-	defer compileMu.Unlock()
-	if cm, ok := compiled[name]; ok {
-		return cm, nil
-	}
-
-	r, err := ensureRuntime(ctx)
-	if err != nil {
-		return nil, err
-	}
-	buf, err := openGrammarBlob(name)
-	if err != nil {
-		return nil, err
-	}
-	cm, err := r.CompileModule(ctx, buf)
-	if err != nil {
-		return nil, fmt.Errorf("tsengine: compile %q: %w", name, err)
-	}
-	compiled[name] = cm
-	return cm, nil
-}
-
 // Parser is one instantiated grammar module (its own linear memory) bound to
 // one language entry point, plus a live TSParser. Not safe for concurrent
 // use from multiple goroutines — create one per goroutine.
@@ -223,6 +193,22 @@ type Parser struct {
 	parserPtr uint32
 	closed    atomic.Bool
 	released  atomic.Bool // the module has been closed and uncounted
+	// cached holds values that live inside this module (compiled queries)
+	// for the Parser's owner; they die with it (Cached, SetCached).
+	cached map[string]any
+}
+
+// Cached returns the value SetCached stored under key on this Parser, or
+// nil. A pooled Parser's owner keeps its compiled queries here, so they are
+// reused with the module and dropped when the pool closes it.
+func (p *Parser) Cached(key string) any { return p.cached[key] }
+
+// SetCached stores v under key on this Parser (see Cached).
+func (p *Parser) SetCached(key string, v any) {
+	if p.cached == nil {
+		p.cached = map[string]any{}
+	}
+	p.cached[key] = v
 }
 
 // release uncounts the module once it is closed (RT-107).
@@ -263,15 +249,17 @@ var probeExports = []string{
 // and creates a TSParser bound to it. Call Close when done — it frees the
 // underlying wazero module (and with it every allocation this Parser made).
 func NewParser(ctx context.Context, grammar, entryPoint string) (*Parser, error) {
-	cm, err := compile(ctx, grammar)
+	cg, err := defaultCompiled.acquire(ctx, grammar)
 	if err != nil {
 		return nil, err
 	}
 	r, err := ensureRuntime(ctx)
 	if err != nil {
+		cg.release()
 		return nil, err
 	}
-	mod, err := r.InstantiateModule(ctx, cm, wazero.NewModuleConfig().WithName(""))
+	mod, err := r.InstantiateModule(ctx, cg.cm, wazeroModuleConfig())
+	cg.release()
 	if err != nil {
 		return nil, fmt.Errorf("tsengine: instantiate %q: %w", grammar, err)
 	}

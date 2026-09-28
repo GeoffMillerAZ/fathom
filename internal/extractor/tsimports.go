@@ -64,20 +64,21 @@ func (e *TSExtractor) ExtractImports(relPath string, src []byte) ([]ImportSpec, 
 	defer e.mu.Unlock()
 
 	ctx := context.Background()
-	p, q, err := e.parserFor(ctx, variant)
+	l, q, err := e.leaseFor(ctx, variant)
 	if err != nil {
 		return nil, err
 	}
-	tree, err := p.Parse(src)
+	defer l.Release() // a no-op after noteFault's Discard
+	tree, err := l.Parser().Parse(src)
 	if err != nil {
-		e.noteFault(variant)
+		e.noteFault(l)
 		return nil, fmt.Errorf("tsextract[%s] %s: parse: %v: %w", e.spec.name, relPath, err, ErrTSEngineFault)
 	}
 	defer tree.Close()
 
 	matches, err := q.Run(tree)
 	if err != nil {
-		e.noteFault(variant)
+		e.noteFault(l)
 		return nil, fmt.Errorf("tsextract[%s] %s: query: %v: %w", e.spec.name, relPath, err, ErrTSEngineFault)
 	}
 

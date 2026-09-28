@@ -1,7 +1,6 @@
 package tsengine
 
 import (
-	"context"
 	"fmt"
 	"io/fs"
 	"sync"
@@ -79,16 +78,4 @@ func blobOpenCounts() map[string]int {
 		out[k] = v
 	}
 	return out
-}
-
-// dropCompiled closes every cached compiled grammar; the next parser for a
-// grammar recompiles it. Live parsers keep running (wazero allows closing a
-// compiled module with instances outstanding).
-func dropCompiled() {
-	compileMu.Lock()
-	defer compileMu.Unlock()
-	for name, cm := range compiled {
-		_ = cm.Close(context.Background())
-		delete(compiled, name)
-	}
 }

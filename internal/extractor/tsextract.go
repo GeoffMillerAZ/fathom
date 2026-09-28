@@ -205,10 +205,11 @@ func compileDialectRules(d Dialect) (*tsDialectRules, error) {
 // segments copied in) costs far more than a CGO ts.NewParser() call, so
 // TSExtractor does NOT create one per Extract call the way the CGO
 // extractors create a fresh *ts.Parser per call (treesitter.WithTree).
-// Instead each (grammar, entry point) variant gets exactly one live
-// tsengine.Parser + compiled Query, created lazily on first use and reused
-// for the process's lifetime — the same long-lived-resource shape as the
-// CGO extractors' package-level `var pyLang = ts.NewLanguage(...)`. fusion's
+// Instead each (grammar, entry point) variant leases its Parser from the
+// process-wide pool (tsengine.AcquireParser, LB-F15) under a key naming
+// this extractor, with its compiled queries cached on that Parser: reused
+// while the pool keeps it, closed when the pool's six-module LRU cap or its
+// two-minute idle bound retires it, and re-instantiated on the next use. fusion's
 // pass-3 extraction is documented as sequential/single-goroutine per
 // Pipeline (internal/fusion/pipeline.go's extractAndStore), so e.mu is
 // essentially uncontended in practice; it exists so a TSExtractor
@@ -218,12 +219,11 @@ func compileDialectRules(d Dialect) (*tsDialectRules, error) {
 type TSExtractor struct {
 	spec *tsLangSpec
 
-	mu        sync.Mutex
-	parsers   map[string]*tsengine.Parser // variant key -> live parser
-	tsQueries map[string]*tsengine.Query  // variant key -> compiled query bound to that parser
-	// injQueries: variant key -> compiled injections query (LB-F6), bound
-	// to the same parser and dropped with it.
-	injQueries map[string]*tsengine.Query
+	mu sync.Mutex
+	// owner prefixes every pool key this extractor leases under, so its
+	// Parsers (and the queries cached on them) are its own and Close
+	// closes exactly them.
+	owner string
 
 	// faults counts engine faults (parse timeout, wasm trap, query-run
 	// failure) over this extractor's lifetime (critic M1). Every fault also
@@ -261,38 +261,28 @@ var ErrTSEngineFault = errors.New("tree-sitter engine fault")
 // whose parse or query run was aborted and one parser re-creation.
 func (e *TSExtractor) EngineFaults() int64 { return e.faults.Load() }
 
-// noteFault records an engine fault and drops the (possibly dead) cached
-// parser+query for variant so the next Extract rebuilds them. Caller must
-// hold e.mu.
-func (e *TSExtractor) noteFault(variant tsVariant) {
+// noteFault records an engine fault and discards the (possibly dead)
+// leased parser — and the queries cached on it — so the next Extract
+// instantiates afresh. Caller must hold e.mu.
+func (e *TSExtractor) noteFault(l *tsengine.Lease) {
 	e.faults.Add(1)
-	key := variant.key()
-	if p, ok := e.parsers[key]; ok {
-		_ = p.Close() // best-effort; a timed-out module is already closed
-		delete(e.parsers, key)
-	}
-	// The query object lives inside the same (now dropped) module instance —
-	// no separate close possible or needed.
-	delete(e.tsQueries, key)
-	delete(e.injQueries, key)
+	l.Discard() // best-effort; a timed-out module is already closed
 }
 
-// Close releases every grammar module this extractor instantiated (RT-107):
-// its cached parsers and the queries compiled inside them. The extractor
-// stays usable — the next Extract instantiates afresh.
+// Close releases every grammar module this extractor leased (RT-107): its
+// pooled parsers and the queries compiled inside them. The extractor stays
+// usable — the next Extract leases afresh.
 func (e *TSExtractor) Close() {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	for key, p := range e.parsers {
-		_ = p.Close()
-		delete(e.parsers, key)
-	}
-	for key := range e.tsQueries {
-		delete(e.tsQueries, key) // lived inside the closed module
-	}
-	for key := range e.injQueries {
-		delete(e.injQueries, key)
-	}
+	tsengine.CloseParsers(e.owner)
+}
+
+// tsOwnerSeq numbers extractors for their pool keys.
+var tsOwnerSeq atomic.Uint64
+
+func newTSExtractorFromSpec(spec *tsLangSpec) *TSExtractor {
+	return &TSExtractor{spec: spec, owner: fmt.Sprintf("tsx%d|", tsOwnerSeq.Add(1))}
 }
 
 // key identifies one (dialect, blob, entry point) triple for the
@@ -317,33 +307,28 @@ func NewTSExtractor(name string) (*TSExtractor, error) {
 	if !ok {
 		return nil, fmt.Errorf("tsextract: unknown language %q", name)
 	}
-	return &TSExtractor{
-		spec:       spec,
-		parsers:    map[string]*tsengine.Parser{},
-		tsQueries:  map[string]*tsengine.Query{},
-		injQueries: map[string]*tsengine.Query{},
-	}, nil
+	return newTSExtractorFromSpec(spec), nil
 }
 
-// parserFor returns the cached (Parser, Query) pair for variant, creating
-// both on first use. Caller must hold e.mu.
-func (e *TSExtractor) parserFor(ctx context.Context, variant tsVariant) (*tsengine.Parser, *tsengine.Query, error) {
-	key := variant.key()
-	if p, ok := e.parsers[key]; ok {
-		return p, e.tsQueries[key], nil
-	}
-	p, err := tsengine.NewParser(ctx, variant.blob, variant.entryPoint)
+// leaseFor leases variant's pooled Parser and returns it with its compiled
+// tags query, compiling the query on the Parser's first use. The caller
+// releases the lease (or noteFault discards it). Caller must hold e.mu.
+func (e *TSExtractor) leaseFor(ctx context.Context, variant tsVariant) (*tsengine.Lease, *tsengine.Query, error) {
+	l, err := tsengine.AcquireParser(ctx, e.owner+variant.key(), variant.blob, variant.entryPoint)
 	if err != nil {
 		return nil, nil, fmt.Errorf("tsextract[%s]: %w", e.spec.name, err)
 	}
+	p := l.Parser()
+	if q, ok := p.Cached("tags").(*tsengine.Query); ok {
+		return l, q, nil
+	}
 	q, err := p.CompileQuery(variant.rules.query)
 	if err != nil {
-		p.Close()
+		l.Discard()
 		return nil, nil, fmt.Errorf("tsextract[%s]: compiling %s: %w", e.spec.name, variant.rules.queryFile, err)
 	}
-	e.parsers[key] = p
-	e.tsQueries[key] = q
-	return p, q, nil
+	p.SetCached("tags", q)
+	return l, q, nil
 }
 
 // extOf returns the lowercased extension (including the leading '.') of
@@ -409,10 +394,12 @@ type tsInjection struct {
 // line (an injected range's first row in the host). Caller holds e.mu.
 func (e *TSExtractor) extractLocked(variant tsVariant, service, relPath string, src []byte, pkgOverride string, lineOffset int, withInjections bool) ([]core.SymbolNode, []tsInjection, error) {
 	ctx := context.Background()
-	p, q, err := e.parserFor(ctx, variant)
+	l, q, err := e.leaseFor(ctx, variant)
 	if err != nil {
 		return nil, nil, err
 	}
+	defer l.Release() // a no-op after noteFault's Discard
+	p := l.Parser()
 
 	tree, err := p.Parse(src)
 	if err != nil {
@@ -422,21 +409,21 @@ func (e *TSExtractor) extractLocked(variant tsVariant, service, relPath string, 
 		// typed error the fusion pipeline counts per-ingest. The pipeline's
 		// existing non-fatal extract-error path fingerprints the file so it
 		// is not retried until its bytes or the ExtractorEpoch change.
-		e.noteFault(variant)
+		e.noteFault(l)
 		return nil, nil, fmt.Errorf("tsextract[%s] %s: parse: %v: %w", e.spec.name, relPath, err, ErrTSEngineFault)
 	}
 	defer tree.Close()
 
 	matches, err := q.Run(tree)
 	if err != nil {
-		e.noteFault(variant)
+		e.noteFault(l)
 		return nil, nil, fmt.Errorf("tsextract[%s] %s: query: %v: %w", e.spec.name, relPath, err, ErrTSEngineFault)
 	}
 
 	rules := variant.rules
 	var injected []tsInjection
 	if withInjections && rules.injectionsQuery != "" {
-		injected, err = e.injectionRanges(variant, tree, src)
+		injected, err = e.injectionRanges(variant, l, tree, src)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -486,21 +473,20 @@ func (e *TSExtractor) extractLocked(variant tsVariant, service, relPath string, 
 // @injection.content capture whose pattern sets a static
 // injection.language naming a registered tags dialect, sorted by start.
 // Caller holds e.mu.
-func (e *TSExtractor) injectionRanges(variant tsVariant, tree *tsengine.Tree, src []byte) ([]tsInjection, error) {
-	key := variant.key()
-	iq, ok := e.injQueries[key]
+func (e *TSExtractor) injectionRanges(variant tsVariant, l *tsengine.Lease, tree *tsengine.Tree, src []byte) ([]tsInjection, error) {
+	p := l.Parser()
+	iq, ok := p.Cached("injections").(*tsengine.Query)
 	if !ok {
-		p := e.parsers[key]
 		var err error
 		iq, err = p.CompileQuery(variant.rules.injectionsQuery)
 		if err != nil {
 			return nil, fmt.Errorf("tsextract[%s]: compiling injections of %s: %w", e.spec.name, variant.rules.id, err)
 		}
-		e.injQueries[key] = iq
+		p.SetCached("injections", iq)
 	}
 	matches, err := iq.Run(tree)
 	if err != nil {
-		e.noteFault(variant)
+		e.noteFault(l)
 		return nil, fmt.Errorf("tsextract[%s]: injections query: %v: %w", e.spec.name, err, ErrTSEngineFault)
 	}
 	if _, err := tsRegistry(); err != nil {

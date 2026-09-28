@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
-	"github.com/geoffmilleraz/fathom/internal/extractor/tsengine"
 )
 
 // testTSExtractor builds a TSExtractor over one ad-hoc dialect: grammar
@@ -17,12 +16,7 @@ func testTSExtractor(blob, entry, query string, kinds map[string]tsDefKind, muta
 		mutate(rules)
 	}
 	v := tsVariant{blob: blob, entryPoint: entry, rules: rules}
-	return &TSExtractor{
-		spec:       &tsLangSpec{name: "test", variantForExt: map[string]tsVariant{}, defaultVariant: v},
-		parsers:    map[string]*tsengine.Parser{},
-		tsQueries:  map[string]*tsengine.Query{},
-		injQueries: map[string]*tsengine.Query{},
-	}
+	return newTSExtractorFromSpec(&tsLangSpec{name: "test", variantForExt: map[string]tsVariant{}, defaultVariant: v})
 }
 
 // TestTSReferenceNameCapture (LB-F4, design §3.4): a @name inside

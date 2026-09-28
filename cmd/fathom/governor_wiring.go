@@ -17,6 +17,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/console"
 	"github.com/geoffmilleraz/fathom/internal/dlog"
+	"github.com/geoffmilleraz/fathom/internal/extractor/tsengine"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
 	"github.com/geoffmilleraz/fathom/internal/memo"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
@@ -70,9 +71,13 @@ func servingLadderActions(srv *mcp.Server, c *client.Client, fleet *fleetAdapter
 			{"graph and navigation caches", srv.DropCaches},
 			{"obligations memos", c.DropHotPathMemos},
 			{"ingest stat records", c.DropIngestStats},
+			// LB-F15: idle grammar modules (up to 64 MiB each) close now;
+			// a module leased mid-extraction closes at its release.
+			{"idle grammar modules", tsengine.CloseIdleParsers},
 		},
 		dropIdle: []namedDrop{
 			{"memo registry", func() { memo.Drop(memo.ReasonIdle) }},
+			{"idle grammar modules", tsengine.CloseIdleParsers},
 		},
 		pauseBackground: func(p bool) { backgroundPaused.Store(p) },
 	}
