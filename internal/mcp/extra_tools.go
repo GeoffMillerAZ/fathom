@@ -954,7 +954,12 @@ func registerRepoMap(s *Server, backend QueryInterface) {
 		// count is recovered from its own one-line-per-symbol output rather
 		// than widening that package's signature (out of this row's scope).
 		included := strings.Count(mapStr, "\n")
-		resp := map[string]any{"map": mapStr, "budget": budget}
+		// SR-41 (F-07, design §5): repo_map is an orientation tool, never
+		// the exhaustive answer — "label" says so in every response
+		// regardless of budget, so a caller that widened the budget still
+		// sees the same steer toward query_symbols/pack_context for
+		// anything more specific.
+		resp := map[string]any{"map": mapStr, "budget": budget, "label": "orientation-only"}
 		// SR-22 (F-10, design §4): the header carries likely entrypoints —
 		// the same detector the unregistered `entrypoints` tool used —
 		// capped at repoMapEntrypointCap, honest-absence when none exist.

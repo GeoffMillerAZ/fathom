@@ -83,7 +83,7 @@ records response sizes per tool.
 | point lookup (`find_symbol`, `read_source`) | none | the answer is inherently small |
 | list (`references`, `find_callers`, `query_symbols`) | 1,500 | the common case fits; the pathological case is the reason this exists |
 | composite (`symbol_context`, `pack_context`) | 4,000 | the point of these is breadth |
-| map (`repo_map`, `outline`) | 2,500 | a map that does not fit is not a map |
+| map (`repo_map`, `outline`) | 1,200 (was 2,500; cut by SR-41, `docs/plans/surface-reckoning.md`) | orientation only — every `repo_map` answer says so in its envelope; a caller that wants more reaches for `query_symbols`/`pack_context` |
 
 Defaults are per-capability-registry settings (phase T), so a project that
 wants tighter or looser budgets sets them once in

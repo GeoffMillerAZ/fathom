@@ -19,7 +19,7 @@ import (
 //	budgets: {
 //		list:      1500 // query_symbols, references
 //		composite: 4000 // pack_context
-//		map:       2500 // repo_map
+//		map:       1200 // repo_map
 //	}
 //
 // Each class sizes exactly the tools internal/mcp/budget_defaults.go

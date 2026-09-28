@@ -510,8 +510,10 @@ func TestBudgetDefaultsFromRegistry(t *testing.T) {
 	if got := budgetDefaults("references", budgetSettings{}); got != 1500*charsPerToken {
 		t.Errorf("references built-in default = %d, want %d", got, 1500*charsPerToken)
 	}
-	if got, ok := budgetDefaultTokens("repo_map", budgetSettings{}); !ok || got != 2500 {
-		t.Errorf("repo_map built-in default = %d/%v, want 2500/true", got, ok)
+	// SR-41 (design §5): cut from the original 2,500 measured default —
+	// repo_map is orientation-only now, not the comprehensive answer.
+	if got, ok := budgetDefaultTokens("repo_map", budgetSettings{}); !ok || got != 1200 {
+		t.Errorf("repo_map built-in default = %d/%v, want 1200/true", got, ok)
 	}
 	if got, ok := budgetDefaultTokens("pack_context", budgetSettings{}); !ok || got != 4000 {
 		t.Errorf("pack_context built-in default = %d/%v, want 4000/true", got, ok)

@@ -292,6 +292,33 @@ func TestRepoMap_ElisionLine(t *testing.T) {
 	}
 }
 
+// TestRepoMapDefaultBudgetOrientationOnly pins SR-41 (F-07, design §5):
+// with no explicit budget, repo_map resolves to the new, cut "map" class
+// default (mapClassDefaultTokens, down from 2,500) — and every answer
+// carries the "orientation-only" label in the envelope, the same wording
+// as the design row, so an agent building a mental model from repo_map
+// alone knows to follow up with a narrower tool rather than treat the map
+// as exhaustive.
+func TestRepoMapDefaultBudgetOrientationOnly(t *testing.T) {
+	srv := newExtraSrv()
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 1284, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "repo_map",
+			"arguments": map[string]any{"service": "svc"},
+		},
+	})
+	p := xtraPayload(t, resp)
+	const wantDefault = 1200 // SR-41: cut from the old 2,500 measured default
+	budget, ok := p["budget"].(float64)
+	if !ok || int(budget) != wantDefault {
+		t.Fatalf("repo_map default budget = %v, want %d (cut, map class)", p["budget"], wantDefault)
+	}
+	if got := p["label"]; got != "orientation-only" {
+		t.Fatalf(`repo_map envelope label = %v, want "orientation-only"`, got)
+	}
+}
+
 // repoMapEntrypointFixture builds n exported HTTP-handler-shaped functions
 // plus one "main", for repo_map's entrypoints-header proof (SR-22, F-10):
 // the same symbolnav.Entrypoints detector the retired `entrypoints` tool

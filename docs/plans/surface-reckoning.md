@@ -60,7 +60,7 @@ falsely.
 ## Wave 3 — IMPROVE (design §5)
 
 - [x] F-02: `references` defaults to exact; a free-text query is answered by `search` with `routed_from: references`, never refused {id: SR-40, symbol: registerReferences, package: internal/mcp, reachable_from: TestReferencesRoutesFreeTextToSearch}
-- [ ] F-07: `repo_map`'s default budget is cut and its envelope says `orientation-only` {id: SR-41, symbol: registerRepoMap, package: internal/mcp, reachable_from: TestRepoMapDefaultBudgetOrientationOnly}
+- [x] F-07: `repo_map`'s default budget is cut and its envelope says `orientation-only` {id: SR-41, symbol: registerRepoMap, package: internal/mcp, reachable_from: TestRepoMapDefaultBudgetOrientationOnly}
 - [ ] (op) F-23: BP-46 is read; `pack_context` is kept with the reading cited, or folded into `query_symbols` and unregistered {id: SR-42, oracle: lexical, path: docs/bench/readings/bp-46-pack-context.md, pattern: "^Verdict: (keep|fold)"}
 - [ ] F-24: `query_symbols` opens with a one-line `answer:` and a lower default top-N {id: SR-43, symbol: querySymbolsAnswerLine, package: internal/mcp, reachable_from: TestQuerySymbolsAnswerFirst}
 - [ ] F-25: the prompt hook routes a stack trace, a failing test name or an error string to `localize` deterministically {id: SR-44, symbol: routeIssueShapedPrompt, package: cmd/fathom, reachable_from: TestPromptHookRoutesIssueShapesToLocalize}
