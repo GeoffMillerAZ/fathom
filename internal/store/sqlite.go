@@ -435,6 +435,14 @@ CREATE INDEX IF NOT EXISTS idx_observations_service_id
 		return err
 	}
 
+	// docs_fts, doc_units, doc_links (KR-1, docs/design/knowledge-retrieval.md
+	// §4) — same additive-table convention (docindex.go). SQLite-only
+	// (docs_fts is an FTS5 virtual table; no MemoryStore equivalent, same as
+	// the physical-purge/VACUUM path — see docindex.go's doc comment).
+	if err := s.createDocIndexSchema(); err != nil {
+		return err
+	}
+
 	// Conditional migrations for SQLite stores created before a column
 	// existed. The "no ALTER cruft" stance above holds for the fleet store
 	// (freshly migrated), but scratch/workspace SQLite stores created by
