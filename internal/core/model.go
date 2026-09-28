@@ -28,6 +28,7 @@ const (
 	KindTerraformOutput   SourceKind = "TerraformOutput"
 	KindTerraformProvider SourceKind = "TerraformProvider"
 	KindTerraformLocal    SourceKind = "TerraformLocal"
+	KindTerraformVarValue SourceKind = "TerraformVarValue"
 	KindK8sWorkload       SourceKind = "K8sWorkload"
 	KindK8sContainer      SourceKind = "K8sContainer"
 	KindCUEDefinition     SourceKind = "CUEDefinition"
@@ -65,6 +66,12 @@ const (
 	// stays a separate, not-yet-triggered slice).
 	KindJavaField  SourceKind = "JavaField"
 	KindJavaImport SourceKind = "JavaImport"
+	// KindJavaAnnotation is new with the LB-Q-java tags-engine port
+	// (docs/design/language-breadth.md §13): the incumbent CGO walker never
+	// emitted annotation type declarations ("@interface Foo { ... }") at
+	// all — a port may add kinds beyond the incumbent, never drop one
+	// (§11 step 3), same precedent as CUnion/CMacro for LB-Q-c.
+	KindJavaAnnotation SourceKind = "JavaAnnotation"
 
 	// Ruby
 	KindRubyClass  SourceKind = "RubyClass"
@@ -83,6 +90,21 @@ const (
 	KindKotlinFunction  SourceKind = "KotlinFunction"
 	KindKotlinProperty  SourceKind = "KotlinProperty"
 	KindKotlinImport    SourceKind = "KotlinImport"
+
+	// HTML (LB-Q-html, language-breadth: new — no incumbent bespoke walker
+	// existed for HTML before this dialect). KindHTMLId is an element's
+	// `id` attribute (the one HTML kind universal-ctags' HTML parser
+	// tags as a definition; PythonClass/KotlinClass precedent for a
+	// dialect's primary connector-classification kind).
+	KindHTMLId SourceKind = "HTMLId"
+
+	// CSS (LB-Q-css, language-breadth: new — a fleet gap, no incumbent).
+	// KindCSSSelector is a rule's selector (the manifest's one
+	// required_kind and universal-ctags' only CSS kind); the dialect's
+	// other kinds (keyframes, custom properties) have no connector
+	// classification use and so get no constant of their own, same
+	// precedent as HTML's custom_element/form/field.
+	KindCSSSelector SourceKind = "CSSSelector"
 
 	// Rust
 	KindRustFn     SourceKind = "RustFn"
@@ -165,6 +187,25 @@ const (
 
 	// JSON
 	KindJSONKey SourceKind = "JSONKey"
+
+	// package.json (LB-Q-package-json, language-breadth: new — a doc-engine
+	// tool format, no incumbent). KindPackageJSONPackage is the manifest's
+	// own entity (the connector-classification kind); the dialect's other
+	// kinds (script, bin, export) have no connector-classification use and
+	// so get no constant of their own, same precedent as CSS's
+	// keyframes/custom_property.
+	KindPackageJSONPackage SourceKind = "PackageJSONPackage"
+
+	// pyproject.toml (LB-Q-python-packaging, language-breadth: new — a
+	// doc-engine tool format, no incumbent; requirements*.txt and
+	// setup.cfg from the same queue entry stay unclassified, §14.2: the
+	// doc engine decodes only YAML/JSON/TOML/XML, design §4, and neither
+	// format is one of those). KindPyProjectPackage is the manifest's own
+	// entity (the connector-classification kind); the dialect's other
+	// kinds (script, entrypoint, tool, depgroup) have no
+	// connector-classification use and so get no constant of their own,
+	// same precedent as package.json's script/bin/export.
+	KindPyProjectPackage SourceKind = "PyProjectPackage"
 
 	// Scala
 	KindScalaClass  SourceKind = "ScalaClass"

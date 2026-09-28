@@ -39,12 +39,29 @@ type Dialect struct {
 	// RequiredKinds are keys of Kinds (§1.4).
 	RequiredKinds []string                     `json:"required_kinds"`
 	OracleKinds   map[string]map[string]string `json:"oracle_kinds"`
-	Qualify       DialectQualify               `json:"qualify"`
-	Package       DialectPackage               `json:"package"`
-	Imports       *DialectImports              `json:"imports,omitempty"`
-	Signature     DialectSignature             `json:"signature"`
-	TargetLevel   string                       `json:"target_level"`
-	QueueID       string                       `json:"queue_id"`
+	// NameMatch is the harness's name comparison (§1.4): "bare" (default)
+	// or "identity". Extraction never reads it.
+	NameMatch   string           `json:"name_match,omitempty"`
+	Qualify     DialectQualify   `json:"qualify"`
+	Package     DialectPackage   `json:"package"`
+	Imports     *DialectImports  `json:"imports,omitempty"`
+	Signature   DialectSignature `json:"signature"`
+	TargetLevel string           `json:"target_level"`
+	QueueID     string           `json:"queue_id"`
+	// Ctags names the dialect's own universal-ctags invocation (design
+	// §13.4 step 18) for a tags dialect the langbench harness's
+	// incumbents.json (the five pre-manifest languages) does not cover —
+	// CSS onward. Omitted for a dialect ctags has no parser for.
+	Ctags *DialectCtags `json:"ctags,omitempty"`
+}
+
+// DialectCtags is one dialect's tier-B oracle invocation: universal-ctags'
+// own language name(s) (`ctags --list-languages`) and any extra flags its
+// run needs (mirrors langbench.CtagsSpec, the shape incumbents.json already
+// uses for the five migrated languages).
+type DialectCtags struct {
+	Languages []string `json:"languages"`
+	Args      []string `json:"args,omitempty"`
 }
 
 // DialectMatch is how a file is classified to the dialect (§5).
@@ -343,6 +360,9 @@ func checkDialect(fsys fs.FS, dir string, d Dialect) error {
 			return fmt.Errorf("kind %q: empty source_kind", key)
 		}
 	}
+	if d.NameMatch != "" && d.NameMatch != "bare" && d.NameMatch != "identity" {
+		return fmt.Errorf("name_match %q is not bare or identity", d.NameMatch)
+	}
 	for _, rk := range d.RequiredKinds {
 		found := false
 		for key, k := range d.Kinds {
@@ -407,6 +427,23 @@ func checkDialect(fsys fs.FS, dir string, d Dialect) error {
 // dialect from its embedded doc.json (LB-F8, design §4).
 func LoadDocExtractor(d Dialect) (*DocExtractor, error) {
 	return loadDocExtractor(dialectFS, d)
+}
+
+// NewDocDialectExtractor finds id's embedded manifest and builds its
+// document engine (LB-F8, design §4) — the fusion dispatch table's
+// (internal/fusion/pipeline.go) constructor for a "doc"/"tags+doc" dialect,
+// the same role NewTSExtractor(id) plays for a "tags" one.
+func NewDocDialectExtractor(id string) (*DocExtractor, error) {
+	dialects, err := LoadDialects()
+	if err != nil {
+		return nil, err
+	}
+	for _, d := range dialects {
+		if d.ID == id {
+			return LoadDocExtractor(d)
+		}
+	}
+	return nil, fmt.Errorf("dialect %q not found (doc engine)", id)
 }
 
 // loadDocExtractor reads and compiles d's doc spec and checks that every

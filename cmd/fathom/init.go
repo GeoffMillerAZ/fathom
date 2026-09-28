@@ -44,7 +44,14 @@ import (
 //	2 — wiring is complete but the daemon is unreachable, or reachable but
 //	    the service still has no symbols (operational; mirrors verify's
 //	    fail-open §5.3 doctrine — init must never look "broken" for a reason
-//	    that has nothing to do with the files it wrote)
+//	    that has nothing to do with the files it wrote). The specific reason
+//	    is always printed as a "MANUAL:" line on stdout AND, since the
+//	    2026-09-28 stranger-check incident (a bare "fathom init exited 2"
+//	    with no visible cause — the MANUAL line was there, but a caller
+//	    filtering "routine" stdout noise dropped it too), as a plain
+//	    "error:" line on stderr that names the reason without a "MANUAL:"
+//	    or "ok " prefix a filter might treat as routine — exit 2 must never
+//	    look silent.
 //	1 — never returned for an operational reason EXCEPT a --skills marker
 //	    conflict: a file already exists at a skill's target path and is not
 //	    fathom-owned (no fathom:owned marker) — a real, non-operational
@@ -154,8 +161,16 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 	indexed, ingestErr := initIngest(*url, svc, root, stdout)
 	if ingestErr != nil {
 		printDaemonDownInstructions(stdout, *url)
+		// A "MANUAL:" line above already names this, but a caller that
+		// treats "MANUAL:"/"ok " stdout as routine noise (scripts/
+		// stranger-check.sh's diagnostic filter did exactly this,
+		// 2026-09-28) would see exit 2 with no visible cause. This line
+		// carries neither prefix and goes to stderr, so it survives any
+		// such filter.
+		fmt.Fprintf(stderr, "error: exiting 2 — fathom daemon at %s is unreachable; wiring finished, only the index is unconfirmed (see the MANUAL line(s) above)\n", *url)
 		exitCode = 2
 	} else if !indexed {
+		fmt.Fprintf(stderr, "error: exiting 2 — service %q did not confirm as indexed; wiring finished, only the index is unconfirmed (see the MANUAL line above for why)\n", svc)
 		exitCode = 2
 	}
 
@@ -537,7 +552,7 @@ func writeIfAbsent(p, content, label string, stdout io.Writer) error {
 // reports no symbols yet returns ok=false, err=nil with its own MANUAL line
 // already printed.
 func initIngest(baseURL, svc, root string, stdout io.Writer) (bool, error) {
-	return initIngestWith(baseURL, svc, root, stdout, initIngestTiming{request: 60 * time.Second, pollEvery: 5 * time.Second, pollFor: 15 * time.Minute})
+	return initIngestWith(baseURL, svc, root, stdout, initIngestTiming{request: 60 * time.Second, pollEvery: 5 * time.Second, pollFor: defaultIngestPollFor})
 }
 
 // initIngestTiming bounds init's ingest request and, when that request
@@ -546,6 +561,23 @@ func initIngest(baseURL, svc, root string, stdout io.Writer) (bool, error) {
 type initIngestTiming struct {
 	request, pollEvery, pollFor time.Duration
 }
+
+// defaultIngestPollFor is how long init waits for a first, from-scratch
+// ingest of a large repository to read as indexed before giving up
+// (fail-open, exit 2). Raised from 15m to 30m on 2026-09-28: the
+// language-breadth merge (ExtractorEpoch 9->16, internal/fusion/pipeline.go —
+// new tree-sitter/WASM dialects for HTML, CSS and Dockerfile, plus
+// fusion.New's catch-all loop wiring every remaining declared dialect)
+// roughly doubled a from-scratch stranger-check ingest's wall time
+// uncontended (measured: 110s at 2bb0c6ef -> ~235s after the merge,
+// docs/bench/readings/reach/). `task validate` runs stranger-check
+// CONCURRENTLY with other CPU-heavy gate deps (scenariobench's own
+// `go test -race`, the full race suite) — under that contention the old
+// 15m budget was no longer enough headroom and a legitimately-slow-but-
+// succeeding ingest read as "exit 2" (the 2026-09-28 stranger-check
+// incident). 30m gives roughly the same multiple of headroom over the
+// current uncontended measurement that 15m gave over the pre-merge one.
+const defaultIngestPollFor = 30 * time.Minute
 
 // initIngestWith is initIngest with its timing injected. A request that
 // times out or drops mid-response is not "daemon down": a first ingest of a

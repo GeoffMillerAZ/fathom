@@ -1,0 +1,25 @@
+name: My Helper
+description: Does helper things
+inputs:
+  token:
+    description: A GitHub token
+    required: true
+  mode:
+    description: Which mode to run
+    required: false
+    default: fast
+outputs:
+  result:
+    description: The result value
+    value: ${{ steps.compute.outputs.value }}
+runs:
+  using: composite
+  steps:
+    - id: compute
+      name: Compute
+      run: echo "value=42" >> "$GITHUB_OUTPUT"
+      shell: bash
+    - name: Call helper action
+      uses: ./.github/actions/other-helper
+    - name: Checkout
+      uses: actions/checkout@v4

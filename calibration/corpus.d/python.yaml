@@ -1,0 +1,26 @@
+id: python
+language: Python
+repos:
+  - name: fastapi
+    url: https://github.com/fastapi/fastapi
+    ref: 0.119.1
+    sha: 864b569cf8453654fc3bc2c64108c0f644e2918c
+    licence: MIT
+    idioms:
+      - heavy decorators (route decorators, Depends)
+      - extensive type hints / generics (typing.Annotated)
+      - Pydantic models (class-based with field annotations)
+      - async def endpoints
+      - dependency-injection callables
+      - overloaded signatures (@overload)
+  - name: flask
+    url: https://github.com/pallets/flask
+    ref: 3.1.3
+    sha: 22d924701a6ae2e4cd01e9a15bbaf3946094af65
+    licence: BSD-3-Clause
+    idioms:
+      - decorators (@app.route, @property)
+      - class methods / classmethods / staticmethods
+      - type-annotated public API
+      - __all__ exports
+      - nested helper functions / closures

@@ -15,9 +15,10 @@
   "variants": [],
   "queries": { "tags": "tags.scm", "imports": "imports.scm" },
   "kinds": {
-    "class":    { "source_kind": "PythonClass", "canonical": "class",    "container": true },
-    "function": { "source_kind": "PythonFunc",  "canonical": "function", "callable": true },
-    "variable": { "source_kind": "PythonVar",   "canonical": "variable" }
+    "class":    { "source_kind": "PythonClass",     "canonical": "class",      "container": true },
+    "function": { "source_kind": "PythonFunc",      "canonical": "function",   "callable": true },
+    "variable": { "source_kind": "PythonVar",       "canonical": "variable" },
+    "type":     { "source_kind": "PythonTypeAlias", "canonical": "type_alias" }
   },
   "required_kinds": ["class", "function"],
   "oracle_kinds": {

@@ -1,0 +1,25 @@
+{
+  "name": "@acme/widgets",
+  "version": "2.3.1",
+  "description": "Widget utilities shared across the fleet",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "jest --coverage",
+    "lint": "eslint src"
+  },
+  "bin": {
+    "widgets": "./bin/widgets.js"
+  },
+  "exports": {
+    ".": "./dist/index.js",
+    "./utils": "./dist/utils.js"
+  },
+  "dependencies": {
+    "lodash": "^4.17.21",
+    "@acme/core": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}

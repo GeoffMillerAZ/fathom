@@ -2909,3 +2909,111 @@ surface; `package_deps` still listed a month after deletion).
   derivation rule, never a hand-set status).
 - Embedded grammars reach 36 MiB (90% of the cap): the packs deferral's trigger fires.
 - The closure test is bypassed or loosened to land a registry entry without a target.
+
+## ADR-055: The feature map is fathom's; review stays a family, not a merge (2026-09-28)
+
+**Status.** Accepted 2026-09-28. Owner decision memo of 2026-09-28 (the owner delegated the
+call). Inputs: the owner's questions (the feature scorecard as a fathom feature, overrides,
+specs as the source, what maps to what, and whether fathom should become the code review tool
+and absorb Review Kit); the published Feature Scorecard (artifact L6rb59VErh4wU5BYNf4bEo, 86
+features with owner verdicts, 2026-09-27); Review Kit (`platform-engineering/kits/review-kit`,
+`leadsman`) and its fathom uplift brief (`docs/design/fathom-uplifts.md`). Vision:
+`docs/vision/39-feature-map-and-review.md`. Design: `docs/design/feature-map.md`. Plan:
+`docs/plans/feature-map.md` (FM-, wave 5). Goal G26. Extends ADR-040 (findings loop authority
+boundary), ADR-044 (inventory keys), ADR-050 (system graph contract keys), ADR-053 (surface
+reckoning), ADR-054 (support matrix as a projection, never a hand-kept status list).
+
+**Context.** Review Kit already covers standards authored as CUE catalogs, soundings,
+dispositions, admission with live forge approval, signed execution, system/security/practice
+reviews, and a hosted view (DATUM), by explicit design working with no fathom installed.
+Fathom's own invariant (ADR-040) is that it never approves, disputes, tailors or closes a
+finding; the review kit stays the organizational record. The owner's instinct that review is
+superpowered by fathom is right — fathom is the only tool holding the joined evidence (usage,
+proof, tests, bench readings, cost) a review verdict needs — but that does not by itself argue
+for one codebase.
+
+**Decision.**
+1. *The feature map is a fathom feature (D1), computed and evidence-bound.* A feature is a
+   named capability anchored to surface keys (`cli:`, `mcp:`, `route:`, `rpc:`, `page:`, public
+   API symbols; ADR-044/050 keys). Source of truth: an authored `docs/features.md`
+   (plan-grammar-style rows: id, name, keys, owner, cited ADR/spec) plus auto-proposed
+   candidates from the surface inventory; unmapped keys are reported by a closure check (like
+   ADR-054). Fathom never decides the verdict.
+2. *Every fact per feature is a join, never a new engine* (the join rule, ADR-051 decision 1):
+   code reached, specs/plan rows citing it (proven/open/regressed), ADRs, tests and live
+   certificates with risk-weighted coverage (T1/T2), usage where a source exists (fathom's call
+   and hook logs; for a service, an imported access-log or analytics count file as evidence,
+   otherwise "unknown", never guessed), cost and debt interest (U1/U2 per feature), churn,
+   owners (CODEOWNERS + history), docs linked (KR), flags and config read (env:/config:),
+   dependencies (pkg:), incidents citing it.
+3. *Implementation health is a published rule table*, the same shape as the risk band (CX-2):
+   the strongest matched factor wins, never a summed opaque score, every reason cited with its
+   evidence. Value needs usage or a human; where no usage source exists it shows "not measured".
+4. *Verdicts (keep, improve, merge, ditch)* are authored by a human as a cited claim in the
+   features file, or proposed by the decision port as a proposal only, calibrated against the
+   owner's 86 labeled verdicts of 2026-09-27 (agreement bar at least 0.8 at n at least 3, else
+   the proposal path is dropped). Never auto-applied; a ditch proposal flows into the
+   surface-reckoning pattern (callers proof, re-anchor or refuse the citing rows), never a
+   direct delete.
+5. *Overrides and criteria are a Standard*, which is Review Kit's job (a `product-portfolio`
+   catalog). Fathom's local fallback is a small `.fathom/features.cue` rule table, the same
+   shape as the risk table, with defaults in the binary. The spec standard is the source:
+   `docs/features.md` rows use plan grammar v2 anchors, and ADRs stay the generic spec that
+   features cite.
+6. *Surfaces:* `fathom features [--json]`, a console page (value x implementation scatter with
+   verdict shapes, a filterable table, an underused list, a ditch list), and an artifact-style
+   export. The Feature Scorecard artifact becomes the first reading this reproduces.
+7. *Do not merge Review Kit into fathom now (D3). One family, two tools, one contract.* Into
+   fathom (code-grounded, per change, computed): the change risk receipt (U7), SARIF and
+   checks, the feature map, conservation, certification facts, the architecture drift radar
+   (U11); `fathom review` is the code-review surface. Stays in Review Kit (organizational
+   assurance): standards and catalogs, requirement severity, dispositions (dispute, accept,
+   tailor), admission with live forge approval, signed execution, and the non-code domains
+   (infra, ops, well-architected, security posture, economics, practice, org controls) plus
+   DATUM (hosted).
+8. *Instead of merging:* (a) a versioned evidence contract (the uplift brief's P0) so every
+   fathom lane Review Kit consumes is stable and receipted; (b) Review Kit's own code-parsing
+   may optionally consume fathom when present, keeping its standalone path; (c) Review Kit
+   concern packs compile into fathom obligations at the edit (packs already exist); (d) a
+   family bundle: one installer and one plugin that installs fathom plus leadsman, shared
+   nautical naming (fathom, leadsman, sounding, datum), shared licence (FSL). Review Kit's
+   eventual move into its own repository beside fathom is a decided future, not built now (the
+   owner, 2026-09-28 — see Consequences).
+9. *Sequencing.* After `docs/plans/system-graph.md#SG-2` (contract-key storage) and
+   work-intelligence's U1/U2 rows; plan prefix FM-, wave 5. Measurement: re-derive fathom's own
+   86-feature scorecard; evidence columns match the hand-built one on at least 90% of cells;
+   verdict proposals at least 0.8 agreement or dropped.
+
+**Alternatives rejected.**
+- *Merge Review Kit into fathom outright.* Authority: fathom's invariant and ADR-040 say
+  fathom never approves or closes; admission and dispositions are authority by design. Hosted
+  and org features conflict with fathom's non-goals and tenancy. Review Kit's independence rule
+  (works with no fathom) is what lets an organization adopt it without the index. Scope: fathom
+  is shrinking its surface (ADR-053); absorbing roughly 170 Go files of a different domain
+  undoes that. The valuable part of a merge — one install, one experience — is a distribution
+  problem solvable without merging code.
+- *A hand-maintained feature list.* Drifts within weeks like every hand-kept status table has
+  (ADR-054's precedent).
+- *Fathom deciding or auto-applying a verdict.* The same authority boundary (ADR-040) and the
+  refusal of a model deciding done (ADR-049 decision 12).
+
+**Consequences.**
+- New: `internal/featuremap`, `docs/features.md` (authored, outside `docs/plans/`), a
+  `.fathom/features.cue` local fallback, the `fathom features` verb, the console Features page,
+  an artifact-style export, plan `docs/plans/feature-map.md` (FM-).
+- Review Kit gains a versioned evidence contract to consume (its uplift brief's P0); its
+  concern packs continue compiling into fathom obligations at the edit.
+- `docs/intent/futures.md` gains two entries: "Review Kit merge into fathom" (contingent on
+  this record's Revisit-when below) and "Review Kit in its own repo beside fathom" — the
+  owner answered 2026-09-28 that this is where Review Kit eventually lands, but not now:
+  recorded as a decided future (confidence likely, horizon later), not an open question.
+- `docs/intent/scope.md` gains goal G26, gated on the feature-map measurement instrument
+  (`fathom plans status`).
+
+**Revisit when.**
+- At least 70% of Review Kit's requirements evaluated in a quarter depend on a fathom evidence
+  lane.
+- At least 5 adopters exist and every one installs both fathom and Review Kit.
+- The evidence contract takes more than 3 breaking changes in a quarter (the seam costs more
+  than it saves).
+- The owner decides to sell one product (then bundle first, merge code last).

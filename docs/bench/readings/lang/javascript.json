@@ -1,0 +1,207 @@
+{
+  "dialect": "javascript",
+  "kind": "language",
+  "target_level": "L4",
+  "level_met": "none",
+  "grade": {
+    "L1": "unmet",
+    "L2": "unmet",
+    "L3": "unmet",
+    "L4": "unmet"
+  },
+  "measured_at": "2026-09-28",
+  "fathom_commit": "c2b6965a",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "axios/axios",
+      "sha": "cdcfd214c169a1acba8e267ab8e77ff4dfec3105",
+      "files": 158,
+      "bytes": 432267,
+      "counts": {
+        "call_fathom": 0,
+        "call_truth": 0,
+        "callables": 308,
+        "callables_signed": 308,
+        "fathom_defs": 318,
+        "file_edges_fathom": 32,
+        "file_edges_truth": 1,
+        "kind_equal": 286,
+        "matched": 290,
+        "oracle_defs": 388,
+        "scip_defs": 987,
+        "scip_edges": 2245,
+        "scip_edges_typed": 0
+      },
+      "families": {
+        "calls": "A",
+        "defmap": "A",
+        "file_edges": "A",
+        "l1": "B",
+        "typed": "A"
+      },
+      "kind_intersection": [
+        "class",
+        "function",
+        "method"
+      ],
+      "excluded_by_kind": {
+        "ctags:constant": 237,
+        "ctags:field": 4,
+        "ctags:property": 1434,
+        "ctags:variable": 204
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 121.83200000000005,
+        "max_file_ms": 22,
+        "peak_module_pages": 334,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "expressjs/express",
+      "sha": "df0abc9333a3398b97b71f6ea7cd77d5ea3e9f97",
+      "files": 152,
+      "bytes": 590443,
+      "counts": {
+        "call_fathom": 579,
+        "call_fathom_in_truth": 24,
+        "call_truth": 31,
+        "call_truth_found": 24,
+        "callables": 256,
+        "callables_signed": 256,
+        "fathom_defs": 256,
+        "file_edges_agree": 3,
+        "file_edges_fathom": 3,
+        "file_edges_truth": 163,
+        "kind_equal": 240,
+        "matched": 250,
+        "oracle_defs": 383,
+        "scip_defs": 1552,
+        "scip_defs_mapped": 73,
+        "scip_edges": 14720,
+        "scip_edges_typed": 34
+      },
+      "families": {
+        "calls": "A",
+        "defmap": "A",
+        "file_edges": "A",
+        "l1": "B",
+        "typed": "A"
+      },
+      "kind_intersection": [
+        "class",
+        "function",
+        "method"
+      ],
+      "excluded_by_kind": {
+        "ctags:property": 773,
+        "ctags:variable": 580
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 176.12799999999993,
+        "max_file_ms": 10,
+        "peak_module_pages": 315,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "scip-typescript",
+      "version": "0.4.0"
+    },
+    {
+      "tier": "B",
+      "tool": "universal-ctags",
+      "version": "6.2.1"
+    }
+  ],
+  "metrics": {
+    "call_precision": 0.0415,
+    "call_recall": 0.7742,
+    "def_mapping": 0.0288,
+    "file_edge_precision": 0.0857,
+    "file_edge_recall": 0.0183,
+    "import_resolution": null,
+    "kind_agreement": 0.9741,
+    "range_agreement": null,
+    "signature_coverage": 1,
+    "sym_precision": 0.9408,
+    "sym_recall": 0.7004,
+    "typed_recall": 0.002
+  },
+  "metric_tiers": {
+    "call_precision": "A",
+    "call_recall": "A",
+    "def_mapping": "A",
+    "file_edge_precision": "A",
+    "file_edge_recall": "A",
+    "kind_agreement": "B",
+    "signature_coverage": "B",
+    "sym_precision": "B",
+    "sym_recall": "B",
+    "typed_recall": "A"
+  },
+  "not_measured": [
+    "range_agreement"
+  ],
+  "required_kinds": [
+    "class",
+    "function",
+    "method"
+  ],
+  "kind_intersection": [
+    "class",
+    "function",
+    "method"
+  ],
+  "counts": {
+    "call_fathom": 579,
+    "call_fathom_in_truth": 24,
+    "call_truth": 31,
+    "call_truth_found": 24,
+    "callables": 564,
+    "callables_signed": 564,
+    "fathom_defs": 574,
+    "file_edges_agree": 3,
+    "file_edges_fathom": 35,
+    "file_edges_truth": 164,
+    "kind_equal": 526,
+    "matched": 540,
+    "oracle_defs": 771,
+    "scip_defs": 2539,
+    "scip_defs_mapped": 73,
+    "scip_edges": 16965,
+    "scip_edges_typed": 34
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 3.43,
+    "max_file_ms": 22,
+    "peak_module_pages": 334,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "ctags:constant": 237,
+    "ctags:field": 4,
+    "ctags:property": 2207,
+    "ctags:variable": 784
+  },
+  "notes": [
+    "axios/axios: 1 files skipped by ingest's gates (generated)",
+    "def_mapping/typed_recall near zero: the same scip-typescript@0.4.0 position-mapping shortfall already recorded for TypeScript (docs/languages.md, O115) — not specific to this dialect",
+    "import_resolution not measured: in-repo spec counts arrive with the L3 strategies (LB-F11)",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "range_agreement not measured: the L1 oracle reported no end line for any matched definition, so L1 can be met at most at good, never excellent (design §1.2)",
+    "regraded at 06815345 from the recorded subject counts (harness rules only; extraction as measured at c2b6965a)",
+    "sym_recall gap root-caused, not just measured: tags.scm now captures assignment-based definitions (Foo.prototype.bar = fn, app.foo = fn), which moved combined sym_recall .39-\u003e.70 on express alone before axios was added, but two more real ctags-recognized shapes (module.exports.foo = fn; a bare `foo = fn` with no const/let/var) were deliberately left uncaptured because both already appear in TestTagsDialectParity's frozen fixtures (common.cjs, shapes.js) and adding them changes that frozen output — confirmed empirically (diagnostic-only, not committed) that admitting both anyway only moves combined sym_recall to .717, so the frozen-parity boundary is not the dominant blocker; the dominant one is universal-ctags' own JS heuristics, which double-tag a named function-expression assigned to a property inconsistently (verified directly: identical `exports.helper = function helper(){}`-shaped code sometimes emits one oracle tag, sometimes two, under the same ctags run) and inflate the L1 oracle denominator in a way no 1:1 structural query can match"
+  ],
+  "disposition": "deferred: sym_recall .70 vs the L1 good floor .85 (express+axios) after a real tags.scm fix (assignment-based definitions); the residual gap is dominated by universal-ctags' own inconsistent double-tagging of named function-expression property assignments (tier B oracle noise, not a fathom capture gap) plus two remaining assignment shapes withheld because they collide with TestTagsDialectParity's frozen legacy goldens (LB-F1) — widening those goldens is not this worker's call. def_mapping/typed_recall are separately near zero from the pre-existing scip-typescript position-mapping shortfall (O115) shared with TypeScript, so L4 was out of reach regardless of L1."
+}

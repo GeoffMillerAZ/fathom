@@ -1,0 +1,16 @@
+{
+  "name": "acme-monorepo",
+  "private": true,
+  "version": "0.0.0",
+  "workspaces": [
+    "packages/*",
+    "apps/web"
+  ],
+  "scripts": {
+    "build": "turbo run build",
+    "postinstall": "husky install"
+  },
+  "devDependencies": {
+    "turbo": "^2.0.0"
+  }
+}

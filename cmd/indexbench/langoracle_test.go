@@ -126,6 +126,21 @@ func TestCmdLangOracle(t *testing.T) {
 		t.Errorf("absent ctags: metrics %v level %s oracles %+v", r2.Metrics, r2.LevelMet, r2.Oracles)
 	}
 
+	// An injected grammar first met after the warm-up is re-timed warm,
+	// never charged to throughput as a one-time compile.
+	htmlSubj := t.TempDir()
+	_ = os.WriteFile(filepath.Join(htmlSubj, "a.html"), []byte("<html><body><div id=\"a\"></div></body></html>\n"), 0o644)
+	_ = os.WriteFile(filepath.Join(htmlSubj, "b.html"), []byte("<html><body><div id=\"b\"></div><script>function f() { return 1 }</script></body></html>\n"), 0o644)
+	out3 := filepath.Join(t.TempDir(), "html.json")
+	if code := cmdLangOracle([]string{"-dialect", "html", "-manifest", filepath.Join("..", "..", "internal", "extractor", "dialects", "html", "dialect.json"),
+		"-subject", htmlSubj, "-ctags", ctags, "-out", out3}, &stdout, &stderr); code != 0 {
+		t.Fatalf("html exit %d: %s", code, stderr.String())
+	}
+	raw, _ = os.ReadFile(out3)
+	if !strings.Contains(string(raw), "timed on a second, warm extraction") {
+		t.Errorf("an injected grammar's first file was not re-timed:\n%s", raw)
+	}
+
 	// Usage errors.
 	if code := cmdLangOracle([]string{"-dialect", "cobol", "-subject", subject, "-out", out2}, &stdout, &stderr); code != 2 {
 		t.Errorf("unknown dialect exit %d, want 2", code)

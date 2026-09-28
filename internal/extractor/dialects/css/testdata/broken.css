@@ -1,0 +1,11 @@
+.ok-before {
+  color: red;
+}
+
+.broken {
+  content: "unterminated string;
+}
+
+.also-ok {
+  color: green;
+}

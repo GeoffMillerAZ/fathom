@@ -1,0 +1,226 @@
+{
+  "dialect": "typescript",
+  "kind": "language",
+  "target_level": "L4",
+  "level_met": "none",
+  "grade": {
+    "L1": "unmet",
+    "L2": "unmet",
+    "L3": "unmet",
+    "L4": "unmet"
+  },
+  "measured_at": "2026-09-28",
+  "fathom_commit": "c2b6965a",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "nest",
+      "sha": "9ff83d540f50e96eb0093b4eb0dd96191aa6a285",
+      "files": 1673,
+      "bytes": 3330699,
+      "counts": {
+        "call_fathom": 5736,
+        "call_fathom_in_truth": 3243,
+        "call_truth": 4433,
+        "call_truth_found": 3243,
+        "callables": 3590,
+        "callables_signed": 3590,
+        "fathom_defs": 5722,
+        "file_edges_agree": 96,
+        "file_edges_fathom": 103,
+        "file_edges_truth": 4748,
+        "kind_equal": 4552,
+        "matched": 4552,
+        "oracle_defs": 4951,
+        "scip_defs": 9314,
+        "scip_defs_mapped": 3355,
+        "scip_edges": 38146,
+        "scip_edges_typed": 9948
+      },
+      "families": {
+        "calls": "A",
+        "defmap": "A",
+        "file_edges": "A",
+        "l1": "B",
+        "typed": "A"
+      },
+      "kind_intersection": [
+        "class",
+        "enum",
+        "function",
+        "interface",
+        "method",
+        "type_alias"
+      ],
+      "excluded_by_kind": {
+        "ctags:constant": 7546,
+        "ctags:enumerator": 264,
+        "ctags:namespace": 1,
+        "ctags:property": 2106,
+        "ctags:variable": 1117
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 905.6860000000005,
+        "max_file_ms": 10,
+        "peak_module_pages": 395,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "zod",
+      "sha": "1fb56a5c18c27102dbc92260a4007c7732a0ccca",
+      "files": 375,
+      "bytes": 2343949,
+      "counts": {
+        "call_fathom": 2107,
+        "call_fathom_in_truth": 1352,
+        "call_truth": 1486,
+        "call_truth_found": 1352,
+        "callables": 1415,
+        "callables_signed": 1415,
+        "fathom_defs": 3021,
+        "file_edges_fathom": 0,
+        "file_edges_truth": 1242,
+        "kind_equal": 2313,
+        "matched": 2313,
+        "oracle_defs": 2652,
+        "scip_defs": 11563,
+        "scip_defs_mapped": 2069,
+        "scip_edges": 117783,
+        "scip_edges_typed": 11442
+      },
+      "families": {
+        "calls": "A",
+        "defmap": "A",
+        "file_edges": "A",
+        "l1": "B",
+        "typed": "A"
+      },
+      "kind_intersection": [
+        "class",
+        "enum",
+        "function",
+        "interface",
+        "method",
+        "type_alias"
+      ],
+      "excluded_by_kind": {
+        "ctags:constant": 5972,
+        "ctags:enumerator": 89,
+        "ctags:namespace": 8,
+        "ctags:property": 1114,
+        "ctags:variable": 37
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 653.5799999999994,
+        "max_file_ms": 44,
+        "peak_module_pages": 467,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "scip-typescript",
+      "version": "0.4.0"
+    },
+    {
+      "tier": "B",
+      "tool": "universal-ctags",
+      "version": "6.2.1"
+    }
+  ],
+  "metrics": {
+    "call_precision": 0.5859,
+    "call_recall": 0.7763,
+    "def_mapping": 0.2598,
+    "file_edge_precision": 0.932,
+    "file_edge_recall": 0.016,
+    "import_resolution": null,
+    "kind_agreement": 1,
+    "range_agreement": null,
+    "signature_coverage": 1,
+    "sym_precision": 0.7852,
+    "sym_recall": 0.9029,
+    "typed_recall": 0.1372
+  },
+  "metric_tiers": {
+    "call_precision": "A",
+    "call_recall": "A",
+    "def_mapping": "A",
+    "file_edge_precision": "A",
+    "file_edge_recall": "A",
+    "kind_agreement": "B",
+    "signature_coverage": "B",
+    "sym_precision": "B",
+    "sym_recall": "B",
+    "typed_recall": "A"
+  },
+  "not_measured": [
+    "range_agreement"
+  ],
+  "required_kinds": [
+    "class",
+    "enum",
+    "function",
+    "interface",
+    "method"
+  ],
+  "kind_intersection": [
+    "class",
+    "enum",
+    "function",
+    "interface",
+    "method",
+    "type_alias"
+  ],
+  "counts": {
+    "call_fathom": 7843,
+    "call_fathom_in_truth": 4595,
+    "call_truth": 5919,
+    "call_truth_found": 4595,
+    "callables": 5005,
+    "callables_signed": 5005,
+    "fathom_defs": 8743,
+    "file_edges_agree": 96,
+    "file_edges_fathom": 103,
+    "file_edges_truth": 5990,
+    "kind_equal": 6865,
+    "matched": 6865,
+    "oracle_defs": 7603,
+    "scip_defs": 20877,
+    "scip_defs_mapped": 5424,
+    "scip_edges": 155929,
+    "scip_edges_typed": 21390
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 3.64,
+    "max_file_ms": 44,
+    "peak_module_pages": 467,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "ctags:constant": 13518,
+    "ctags:enumerator": 353,
+    "ctags:namespace": 9,
+    "ctags:property": 3220,
+    "ctags:variable": 1154
+  },
+  "notes": [
+    "call_precision (0.5859-0.6417) is naive same-file call collection attributing a nested closure's calls to its nearest tracked enclosing definition, which a SCIP truth pair keyed to the (often untracked, e.g. an inline arrow-function callback) innermost lexical scope will not match; call_recall (0.78-0.91) is comparatively strong. This is the existing, documented naive-collection limitation (tsextract.go's own CollectCalls comment), not new to this reading.",
+    "import_resolution not measured: in-repo spec counts arrive with the L3 strategies (LB-F11)",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "range_agreement not computed: universal-ctags 6.2.1's TypeScript parser never populates the JSON 'end' field for any tag on either subject, so the oracle side of the ratio has no denominator.",
+    "range_agreement not measured: the L1 oracle reported no end line for any matched definition, so L1 can be met at most at good, never excellent (design §1.2)",
+    "regraded at 06815345 from the recorded subject counts (harness rules only; extraction as measured at c2b6965a)",
+    "sym_precision (0.7852) fails L1 good (.90): universal-ctags 6.2.1's TypeScript parser loses class-body scope after a multi-line signature or a decorated/generic-heavy member, so it drops or mis-scopes real methods it should tag (e.g. nest's packages/core/injector/injector.ts: ctags tags only 'constructor' with scope 'Injector class' and reports every other method of that class, 50 by fathom's own tree-sitter count, as an unscoped top-level 'constant'/'function'). Reproduces even on this dialect's own fixture: internal/extractor/dialects/typescript/testdata/shapes.ts's `describe` method (a multi-line parameter list) is dropped by ctags entirely though every golden for it passes. Not a query-fixable gap — the loss is on the oracle side, not the extraction side."
+  ],
+  "disposition": "deferred: tier B (universal-ctags 6.2.1) cannot prove L1 good on real TypeScript (sym_precision 0.7852 vs .90) because it mis-scopes/drops real class methods behind multi-line signatures and decorator/generic-heavy bodies; needs a tier C oracle (the grammar's own upstream tags.scm via the tree-sitter CLI) or an upstream ctags fix before L1-L4 can be proven here. LB-Q-typescript stays unchecked; see LB-Q-typescript-rest."
+}

@@ -1,0 +1,13 @@
+{
+  "symbols": [
+    { "name": "web-app", "kind": "K8sWorkload", "package": "containers", "line": 1, "end_line": 16, "signature": "Deployment", "tier": "verified" },
+    { "name": "registry.example.com/web:v1.2.3", "kind": "K8sContainer", "package": "containers", "line": 10, "end_line": 11, "signature": "web", "tier": "verified" },
+    { "name": "envoyproxy/envoy:v1.28.0", "kind": "K8sContainer", "package": "containers", "line": 12, "end_line": 13, "signature": "sidecar", "tier": "verified" },
+    { "name": "registry.example.com/migrator:latest", "kind": "K8sContainer", "package": "containers", "line": 15, "end_line": 16, "signature": "migrator", "tier": "verified" }
+  ],
+  "cross_file": [
+    { "from": "registry.example.com/web:v1.2.3", "edge": "runs", "raw": "registry.example.com/web:v1.2.3", "target": "registry.example.com/web:v1.2.3", "strategy": "image-ref", "line": 11 },
+    { "from": "envoyproxy/envoy:v1.28.0", "edge": "runs", "raw": "envoyproxy/envoy:v1.28.0", "target": "envoyproxy/envoy:v1.28.0", "strategy": "image-ref", "line": 13 },
+    { "from": "registry.example.com/migrator:latest", "edge": "runs", "raw": "registry.example.com/migrator:latest", "target": "registry.example.com/migrator:latest", "strategy": "image-ref", "line": 16 }
+  ]
+}

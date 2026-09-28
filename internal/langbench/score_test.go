@@ -1,6 +1,7 @@
 package langbench
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
@@ -48,6 +49,49 @@ func TestBareName(t *testing.T) {
 		if got := BareName(in); got != want {
 			t.Errorf("BareName(%q) = %q, want %q", in, got, want)
 		}
+	}
+}
+
+// TestNameMatchIdentity (§1.4): a dialect whose identifiers carry
+// punctuation (CSS selectors, npm names, script names, export paths)
+// declares name_match "identity"; its names are compared whole. The
+// default keeps the last-segment rule.
+func TestNameMatchIdentity(t *testing.T) {
+	src := `{"id":"css","kind":"language",%s
+		"kinds":{"selector":{"source_kind":"CSSSelector","canonical":"selector"}},
+		"required_kinds":["selector"],"oracle_kinds":{"ctags":{"class":"selector","id":"selector","selector":"selector"}}}`
+	names := []string{".a", "#b", "a:hover", "@babel/core", "codesandbox:build", "./utils"}
+	var nodes []core.SymbolNode
+	var defs []OracleDef
+	for i, n := range names {
+		nodes = append(nodes, core.SymbolNode{Name: n, Kind: "CSSSelector", FilePath: "x.css", Line: 10 * (i + 1)})
+		defs = append(defs, OracleDef{Path: "x.css", Name: n, Kind: "selector", Line: 10 * (i + 1)})
+	}
+	for _, tc := range []struct {
+		field string
+		want  int
+	}{{`"name_match":"identity",`, len(names)}, {``, 0}} {
+		m, err := ParseManifest([]byte(strings.Replace(src, "%s", tc.field, 1)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := ScoreL1(m, "ctags", nodes, defs).Counts[CntMatched]; got != tc.want {
+			t.Errorf("name_match %q: matched %d, want %d", tc.field, got, tc.want)
+		}
+	}
+	m, _ := ParseManifest([]byte(strings.Replace(src, "%s", `"name_match":"identity",`, 1)))
+	if got := m.MatchName("@babel/core"); got != "@babel/core" {
+		t.Errorf("identity MatchName = %q", got)
+	}
+	if got := (Manifest{}).MatchName("a.b"); got != "b" {
+		t.Errorf("default MatchName = %q", got)
+	}
+	pairs := m.CallPairs([]core.SymbolNode{{Name: "codesandbox:build", FilePath: "package.json", Calls: []string{"build:js"}}}, nil)
+	if !pairs[CallPair{Path: "package.json", Caller: "codesandbox:build", Callee: "build:js"}] {
+		t.Errorf("identity call pairs = %v", pairs)
+	}
+	if _, err := ParseManifest([]byte(strings.Replace(src, "%s", `"name_match":"exact",`, 1))); err == nil {
+		t.Error("an unknown name_match was accepted")
 	}
 }
 
@@ -142,6 +186,69 @@ func TestMergeSubjects(t *testing.T) {
 	}
 }
 
+// TestMergeRangeNotMeasured (§1.2): an L1 oracle that reports no end line
+// for any matched definition leaves range_agreement not_measured — never a
+// failure — L1 is met at most at good, and the reading says why.
+func TestMergeRangeNotMeasured(t *testing.T) {
+	spec := pySpec(t)
+	r := NewReading(spec.Manifest, "L1")
+	s := Subject{Name: "o/a", Files: 10, Bytes: 2_000_000,
+		Counts:   map[string]int{CntOracleDefs: 100, CntFathomDefs: 100, CntMatched: 99, CntKindEqual: 99, CntCallables: 50, CntCallablesSigned: 50},
+		Families: map[string]string{FamilyL1: "B"}, KindIntersection: []string{"class", "function", "variable"},
+		Tenancy: &SubjectTenancy{ExtractMS: 1000, MaxFileMS: 40, PeakModulePages: 100},
+	}
+	MergeSubject(&r, s)
+	if r.Metrics[MRangeAgreement] != nil || len(r.NotMeasured) != 1 || r.NotMeasured[0] != MRangeAgreement {
+		t.Fatalf("range_agreement %v not_measured %v", r.Metrics[MRangeAgreement], r.NotMeasured)
+	}
+	if r.LevelMet != "L1" || r.Grade.L1 != GradeGood {
+		t.Errorf("level %s grade %+v, want L1 good", r.LevelMet, r.Grade)
+	}
+	if !slices.Contains(r.Notes, NoteRangeNotMeasured) {
+		t.Errorf("notes %v lack the disclosure", r.Notes)
+	}
+	if err := r.Validate(); err != nil {
+		t.Fatalf("Validate: %v", err)
+	}
+	// Once an oracle reports ends, the metric is measured and the note goes.
+	s.Counts = map[string]int{CntOracleDefs: 100, CntFathomDefs: 100, CntMatched: 99, CntKindEqual: 99, CntRangeEligible: 99, CntRangeOK: 99, CntCallables: 50, CntCallablesSigned: 50}
+	MergeSubject(&r, s)
+	if r.NotMeasured != nil || slices.Contains(r.Notes, NoteRangeNotMeasured) || r.Grade.L1 != GradeExcellent {
+		t.Errorf("measured again: not_measured %v notes %v grade %+v", r.NotMeasured, r.Notes, r.Grade)
+	}
+}
+
+// TestRequiredKindsThroughCanonical (§1.4): required_kinds are the
+// manifest's own kind keys; the refusal checks them through the canonical
+// mapping, so a key never has to be renamed to its canonical string.
+func TestRequiredKindsThroughCanonical(t *testing.T) {
+	m, err := ParseManifest([]byte(`{"id":"swift","kind":"language",
+		"kinds":{"protocol":{"source_kind":"SwiftProtocol","canonical":"interface"},
+		         "function":{"source_kind":"SwiftFunc","canonical":"function","callable":true}},
+		"required_kinds":["protocol","function"],
+		"oracle_kinds":{"ctags":{"protocol":"interface","func":"function"}}}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := m.RequiredCanonical(); !slices.Equal(got, []string{"function", "interface"}) {
+		t.Fatalf("RequiredCanonical = %v", got)
+	}
+	r := NewReading(m, "L1")
+	nodes := []core.SymbolNode{{Name: "P", Kind: "SwiftProtocol", FilePath: "a.swift", Line: 1, EndLine: 3},
+		{Name: "f", Kind: "SwiftFunc", FilePath: "a.swift", Line: 5, EndLine: 6, Signature: "func f()"}}
+	defs := []OracleDef{{Path: "a.swift", Name: "P", Kind: "protocol", Line: 1, End: 3}, {Path: "a.swift", Name: "f", Kind: "func", Line: 5, End: 6}}
+	l1 := ScoreL1(m, "ctags", nodes, defs)
+	MergeSubject(&r, Subject{Name: "s", Files: 1, Bytes: 1 << 20, Counts: l1.Counts, Families: map[string]string{FamilyL1: "B"},
+		KindIntersection: l1.Intersection, Tenancy: &SubjectTenancy{ExtractMS: 1, MaxFileMS: 1}})
+	if err := r.Validate(); err != nil {
+		t.Fatalf("a required key mapped into the intersection was refused: %v", err)
+	}
+	r.RequiredKinds = append(r.RequiredKinds, "enum")
+	if err := r.Validate(); err == nil {
+		t.Fatal("a required kind outside the intersection was accepted")
+	}
+}
+
 func TestIncumbentSpecsCoherent(t *testing.T) {
 	specs, err := Incumbents()
 	if err != nil {
@@ -159,7 +266,7 @@ func TestIncumbentSpecsCoherent(t *testing.T) {
 			continue
 		}
 		inter := m.Intersection("ctags")
-		for _, k := range m.RequiredKinds {
+		for _, k := range m.RequiredCanonical() {
 			found := false
 			for _, i := range inter {
 				found = found || i == k
@@ -168,5 +275,30 @@ func TestIncumbentSpecsCoherent(t *testing.T) {
 				t.Errorf("%s: required kind %s outside the ctags intersection %v", m.ID, k, inter)
 			}
 		}
+	}
+}
+
+// TestComparePortParity (§11 step 2): a gated L1 metric below the
+// incumbent's, or measured by the incumbent and not by the dialect, refuses
+// the merge; so does an unmet target; ungated metrics only report.
+func TestComparePortParity(t *testing.T) {
+	mk := func(level string, m map[string]*float64) Reading {
+		return Reading{Dialect: "x", Kind: "language", LevelMet: level, Metrics: m}
+	}
+	inc := mk("L1", map[string]*float64{MSymRecall: f(0.90), MSymPrecision: f(0.90), MRangeAgreement: f(0.80), MCallRecall: f(0.9)})
+	good := mk("L2", map[string]*float64{MSymRecall: f(0.95), MSymPrecision: f(0.90), MRangeAgreement: f(0.85), MCallRecall: f(0.5)})
+	if p := ComparePortParity(inc, good, "old", "L2", map[string]int{"K": 1}, map[string]int{"K": 2, "N": 1}); !p.Merge || len(p.KindsGained) != 1 || len(p.KindsLost) != 0 {
+		t.Fatalf("better dialect refused: %+v", p)
+	}
+	worse := mk("L2", map[string]*float64{MSymRecall: f(0.89), MSymPrecision: f(0.90), MRangeAgreement: f(0.85)})
+	if p := ComparePortParity(inc, worse, "old", "L2", nil, nil); p.Merge || len(p.Reasons) != 1 || !strings.Contains(p.Reasons[0], MSymRecall) {
+		t.Fatalf("worse sym_recall merged: %+v", p)
+	}
+	unmeasured := mk("L2", map[string]*float64{MSymRecall: f(0.95), MSymPrecision: f(0.95)})
+	if p := ComparePortParity(inc, unmeasured, "old", "L2", nil, nil); p.Merge {
+		t.Fatalf("range measured by the incumbent only merged: %+v", p)
+	}
+	if p := ComparePortParity(inc, good, "old", "L3", map[string]int{"Gone": 1}, nil); p.Merge || p.KindsLost[0] != "Gone" {
+		t.Fatalf("unmet target merged: %+v", p)
 	}
 }

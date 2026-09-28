@@ -1,0 +1,16 @@
+name: Deploy
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+    with:
+      target: release
+  publish:
+    needs: build
+    uses: octo-org/shared-workflows/.github/workflows/publish.yml@v2
+    secrets: inherit

@@ -25,7 +25,9 @@
 //
 // The language-breadth instrument (ADR-048, docs/design/language-breadth.md
 // §10, §12) adds lang-probe (a file's tree and its dialect's captures),
-// lang-oracle (a dialect's reading against independent oracles) and
+// lang-oracle (a dialect's reading against independent oracles),
+// lang-parity (a port's dialect against the incumbent it retires, §11),
+// lang-regrade (a committed reading recomputed under changed harness rules) and
 // lang-tracker (docs/languages.md rendered from the queue and readings) and
 // lang-disclosure (the connector's unsupported-language table, LB-F25).
 package main
@@ -66,6 +68,12 @@ func mainRun(args []string, stdout, stderr io.Writer) int {
 	}
 	if len(args) > 0 && args[0] == "lang-oracle" {
 		return cmdLangOracle(args[1:], stdout, stderr)
+	}
+	if len(args) > 0 && args[0] == "lang-parity" {
+		return cmdLangParity(args[1:], stdout, stderr)
+	}
+	if len(args) > 0 && args[0] == "lang-regrade" {
+		return cmdLangRegrade(args[1:], stdout, stderr)
 	}
 	if len(args) > 0 && args[0] == "lang-tracker" {
 		return cmdLangTracker(args[1:], stdout, stderr)

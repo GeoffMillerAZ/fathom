@@ -1,0 +1,136 @@
+{
+  "dialect": "css",
+  "kind": "language",
+  "target_level": "L3",
+  "level_met": "none",
+  "grade": {
+    "L1": "unmet",
+    "L2": "not-attempted",
+    "L3": "not-attempted",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-09-28",
+  "fathom_commit": "06815345",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "normalize.css",
+      "sha": "dafaf9ee60ff76173954aca755c78a6912a0ee6c",
+      "files": 1,
+      "bytes": 7546,
+      "counts": {
+        "fathom_defs": 71,
+        "kind_equal": 54,
+        "matched": 54,
+        "oracle_defs": 70
+      },
+      "families": {
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "selector"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 0.95,
+        "max_file_ms": 0,
+        "peak_module_pages": 271,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "pico",
+      "sha": "1039a4788d6abc368d5485ae6bac84a8f0e3096f",
+      "files": 119,
+      "bytes": 10216590,
+      "counts": {
+        "fathom_defs": 78191,
+        "kind_equal": 27651,
+        "matched": 27651,
+        "oracle_defs": 194677
+      },
+      "families": {
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "selector"
+      ],
+      "excluded_by_kind": {
+        "fathom:CSSCustomProperty": 55074,
+        "fathom:CSSKeyframes": 434
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 2760.5540000000015,
+        "max_file_ms": 28,
+        "peak_module_pages": 312,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "B",
+      "tool": "universal-ctags",
+      "version": "6.2.1"
+    }
+  ],
+  "metrics": {
+    "call_precision": null,
+    "call_recall": null,
+    "def_mapping": null,
+    "file_edge_precision": null,
+    "file_edge_recall": null,
+    "import_resolution": null,
+    "kind_agreement": 1,
+    "range_agreement": null,
+    "signature_coverage": null,
+    "sym_precision": 0.354,
+    "sym_recall": 0.1423,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "kind_agreement": "B",
+    "sym_precision": "B",
+    "sym_recall": "B"
+  },
+  "not_applicable": [
+    "signature_coverage"
+  ],
+  "not_measured": [
+    "range_agreement"
+  ],
+  "required_kinds": [
+    "selector"
+  ],
+  "kind_intersection": [
+    "selector"
+  ],
+  "counts": {
+    "fathom_defs": 78262,
+    "kind_equal": 27705,
+    "matched": 27705,
+    "oracle_defs": 194747
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 3.7,
+    "max_file_ms": 28,
+    "peak_module_pages": 312,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "fathom:CSSCustomProperty": 55074,
+    "fathom:CSSKeyframes": 434
+  },
+  "notes": [
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "pico: 119 files skipped by ingest's gates (generated)",
+    "range_agreement not measured: the L1 oracle reported no end line for any matched definition, so L1 can be met at most at good, never excellent (design §1.2)",
+    "tree-sitter-css v0.25.0 (the latest tagged release; verified via git ls-remote, no newer tag exists) cannot parse the CSS Selectors Level 4 multi-argument form `:not(A, B, C)` — confirmed directly with `indexbench lang-probe` on pico's `input:not([type=submit], [type=button], ...)`: the parser emits an ERROR at `input` and recovers by flattening the bracketed arguments into a bogus top-level comma selector list, which both inflates fathom_defs and produces names neither side agrees on. This repeats across most of pico's 119 measured files (the same shared rule), dominating its per-subject counts (fathom_defs 78,191 vs oracle_defs 194,677, only 7,936 matched) and swamping normalize.css's much closer count (71 vs 70, 46 matched) in the merged total. Upstream-grammar-limited; not a tags.scm defect and not fixable by re-pinning (no newer release)."
+  ],
+  "disposition": "deferred: below L1 — ctags' per-physical-line attribution of multi-line selector lists and tree-sitter-css v0.25.0's `:not(A, B)` misparse (LB-Q-css-rest)"
+}

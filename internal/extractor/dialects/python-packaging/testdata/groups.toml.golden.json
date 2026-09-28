@@ -1,0 +1,13 @@
+{
+  "symbols": [
+    { "name": "acme-tools", "kind": "PyProjectPackage", "package": "pyproject", "line": 1, "end_line": 3, "signature": "0.9.0", "tier": "verified" },
+    { "name": "ruff", "kind": "PyProjectTool", "package": "pyproject", "line": 5, "end_line": 6, "tier": "verified" },
+    { "name": "mypy", "kind": "PyProjectTool", "package": "pyproject", "line": 8, "end_line": 9, "tier": "verified" },
+    { "name": "test", "kind": "PyProjectDepGroup", "package": "pyproject", "line": 12, "end_line": 12, "tier": "verified" },
+    { "name": "dev", "kind": "PyProjectDepGroup", "package": "pyproject", "line": 13, "end_line": 13, "tier": "verified", "calls": ["test"] }
+  ],
+  "cross_file": [
+    { "from": "", "edge": "dev_depends_on", "raw": "pytest", "target": "pytest", "strategy": "module-source", "line": 12 },
+    { "from": "", "edge": "dev_depends_on", "raw": "ruff", "target": "ruff", "strategy": "module-source", "line": 13 }
+  ]
+}

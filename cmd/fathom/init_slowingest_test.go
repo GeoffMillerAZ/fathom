@@ -45,6 +45,22 @@ func TestInitIngest_SlowFirstIngestWaitsForIndexed(t *testing.T) {
 	}
 }
 
+// defaultIngestPollFor must keep real headroom over an uncontended
+// from-scratch ingest of this repository. Raised 15m -> 30m on 2026-09-28
+// after the language-breadth merge (ExtractorEpoch 9->16) roughly doubled
+// stranger-check's uncontended ingest time (110s -> ~235s,
+// docs/bench/readings/reach/) and `task validate` running stranger-check
+// concurrently with other CPU-heavy gate deps ate the rest of the old 15m
+// budget, reproducing the exact "fathom init exited 2" failure mode
+// TestInitIngest_SlowFirstIngestWaitsForIndexed was written for a day
+// earlier. This pins the budget so a future silent shrink cannot
+// reintroduce the same incident.
+func TestInitIngest_DefaultPollBudgetHasThirtyMinuteHeadroom(t *testing.T) {
+	if defaultIngestPollFor < 30*time.Minute {
+		t.Fatalf("defaultIngestPollFor = %s, want >= 30m (see comment at its definition)", defaultIngestPollFor)
+	}
+}
+
 // A daemon that is not listening is still daemon-down.
 func TestInitIngest_RefusedConnectionIsDaemonDown(t *testing.T) {
 	ts := httptest.NewServer(http.NotFoundHandler())

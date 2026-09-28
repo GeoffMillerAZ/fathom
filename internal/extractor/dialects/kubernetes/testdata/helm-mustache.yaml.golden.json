@@ -1,0 +1,6 @@
+{
+  "symbols": [
+    { "name": "valid-config", "kind": "K8sWorkload", "package": "helm-mustache", "line": 1, "end_line": 4, "signature": "ConfigMap", "tier": "verified" }
+  ],
+  "cross_file": []
+}

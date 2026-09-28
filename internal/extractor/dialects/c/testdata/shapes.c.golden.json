@@ -1,0 +1,113 @@
+{
+  "symbols": [
+    {
+      "name": "MAX_SIZE",
+      "kind": "CMacro",
+      "package": "shapes",
+      "line": 4,
+      "end_line": 4,
+      "tier": "verified"
+    },
+    {
+      "name": "SQUARE",
+      "kind": "CMacro",
+      "package": "shapes",
+      "line": 6,
+      "end_line": 6,
+      "tier": "verified"
+    },
+    {
+      "name": "Color",
+      "kind": "CEnum",
+      "package": "shapes",
+      "line": 8,
+      "end_line": 12,
+      "tier": "verified"
+    },
+    {
+      "name": "Point",
+      "kind": "CStruct",
+      "package": "shapes",
+      "line": 14,
+      "end_line": 17,
+      "tier": "verified"
+    },
+    {
+      "name": "Value",
+      "kind": "CUnion",
+      "package": "shapes",
+      "line": 19,
+      "end_line": 22,
+      "tier": "verified"
+    },
+    {
+      "name": "PointAlias",
+      "kind": "CTypedef",
+      "package": "shapes",
+      "line": 24,
+      "end_line": 24,
+      "tier": "verified"
+    },
+    {
+      "name": "Callback",
+      "kind": "CTypedef",
+      "package": "shapes",
+      "line": 26,
+      "end_line": 26,
+      "tier": "verified"
+    },
+    {
+      "name": "Handler",
+      "kind": "CStruct",
+      "package": "shapes",
+      "line": 28,
+      "end_line": 30,
+      "tier": "verified"
+    },
+    {
+      "name": "helper",
+      "kind": "CFunc",
+      "package": "shapes",
+      "line": 32,
+      "end_line": 34,
+      "signature": "static int helper(int a)",
+      "calls": [
+        "SQUARE"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "add",
+      "kind": "CFunc",
+      "package": "shapes",
+      "line": 36,
+      "end_line": 41,
+      "signature": "int add( int a, int b )",
+      "calls": [
+        "helper"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "make_point",
+      "kind": "CFunc",
+      "package": "shapes",
+      "line": 43,
+      "end_line": 47,
+      "signature": "void *make_point(int x, int y)",
+      "tier": "verified"
+    },
+    {
+      "name": "dispatch",
+      "kind": "CFunc",
+      "package": "shapes",
+      "line": 49,
+      "end_line": 51,
+      "signature": "int dispatch(struct Handler *ctx, int v)",
+      "calls": [
+        "ctx->run"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

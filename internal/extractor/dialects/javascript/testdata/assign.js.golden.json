@@ -1,0 +1,61 @@
+{
+  "symbols": [
+    {
+      "name": "View",
+      "kind": "JSFunc",
+      "package": "assign",
+      "line": 8,
+      "end_line": 10,
+      "signature": "function View(name)",
+      "tier": "verified"
+    },
+    {
+      "name": "render",
+      "kind": "JSMethod",
+      "package": "assign",
+      "line": 12,
+      "end_line": 14,
+      "signature": "View.prototype.render = function render(options)",
+      "tier": "verified"
+    },
+    {
+      "name": "lookup",
+      "kind": "JSMethod",
+      "package": "assign",
+      "line": 16,
+      "end_line": 18,
+      "signature": "View.prototype.lookup = function (name)",
+      "tier": "verified"
+    },
+    {
+      "name": "set",
+      "kind": "JSFunc",
+      "package": "assign",
+      "line": 22,
+      "end_line": 24,
+      "signature": "app.set = function set(key, val)",
+      "tier": "verified"
+    },
+    {
+      "name": "use",
+      "kind": "JSFunc",
+      "package": "assign",
+      "line": 26,
+      "end_line": 26,
+      "signature": "app.use = (fn) =>",
+      "calls": [
+        "fn"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "helper",
+      "kind": "JSFunc",
+      "package": "assign",
+      "line": 28,
+      "end_line": 30,
+      "signature": "exports.helper = function helper(x)",
+      "tier": "verified"
+    }
+  ]
+}

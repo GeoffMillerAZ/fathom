@@ -36,6 +36,12 @@ var typedEdgeProducers = map[string]string{
 	"ruby":   "scip:scip-ruby",
 	"cs":     "scip:scip-dotnet",
 
+	// file: fusion.ResolveFileEdges' relative-path strategy resolves this
+	// dialect's src/href/@import specs to in-repo files (tier pre-scan,
+	// LB-F11) — no SCIP producer and no native pass.
+	"html": "file",
+	"css":  "file",
+
 	// syntax: call names by syntax only — every other registered
 	// language, CUE included (see the doc comment above).
 	"cue":        "syntax",
@@ -53,6 +59,21 @@ var typedEdgeProducers = map[string]string{
 	"toml":       "syntax",
 	"json":       "syntax",
 	"templ":      "syntax",
+
+	// package.json (LB-Q-package-json): its cross_file selectors
+	// (workspace-member globs, dependency edges, design §4) are not wired
+	// into fusion.ResolveFileEdges or any SCIP producer, so "syntax" is
+	// the honest baseline claim, same as JSON/TOML/CUE above (ADR-027: a
+	// mechanism is claimed only once it exists in code).
+	"package-json": "syntax",
+
+	// pyproject.toml (LB-Q-python-packaging): its cross_file selectors
+	// (dependency, optional-dependency, dependency-group and build-system
+	// edges, design §4) are not wired into fusion.ResolveFileEdges or any
+	// SCIP producer, so "syntax" is the honest baseline claim, same as
+	// package.json above (ADR-027: a mechanism is claimed only once it
+	// exists in code).
+	"python-packaging": "syntax",
 }
 
 // TypedEdgeProducer returns lang's typed-edge producer string — "native",

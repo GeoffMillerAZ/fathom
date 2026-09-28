@@ -1,0 +1,24 @@
+{
+  "symbols": [
+    {
+      "name": "base",
+      "kind": "DockerStage",
+      "package": "syntax-error",
+      "line": 1,
+      "end_line": 1,
+      "signature": "FROM alpine:3.19 AS base",
+      "calls": [
+        "alpine"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "AFTER_ERROR",
+      "kind": "DockerfileArg",
+      "package": "syntax-error",
+      "line": 3,
+      "end_line": 3,
+      "tier": "verified"
+    }
+  ]
+}

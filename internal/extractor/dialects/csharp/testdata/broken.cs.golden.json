@@ -1,0 +1,46 @@
+{
+  "symbols": [
+    {
+      "name": "MyApp.Broken",
+      "kind": "CSharpNamespace",
+      "package": "MyApp.Broken",
+      "line": 1,
+      "end_line": 1,
+      "tier": "verified"
+    },
+    {
+      "name": "Good",
+      "kind": "CSharpClass",
+      "package": "MyApp.Broken",
+      "line": 3,
+      "end_line": 6,
+      "tier": "verified"
+    },
+    {
+      "name": "Good.Fine",
+      "kind": "CSharpMethod",
+      "package": "MyApp.Broken",
+      "line": 5,
+      "end_line": 5,
+      "signature": "public void Fine()",
+      "tier": "verified"
+    },
+    {
+      "name": "Survivor",
+      "kind": "CSharpClass",
+      "package": "MyApp.Broken",
+      "line": 10,
+      "end_line": 13,
+      "tier": "verified"
+    },
+    {
+      "name": "Survivor.StillHere",
+      "kind": "CSharpMethod",
+      "package": "MyApp.Broken",
+      "line": 12,
+      "end_line": 12,
+      "signature": "public void StillHere()",
+      "tier": "verified"
+    }
+  ]
+}

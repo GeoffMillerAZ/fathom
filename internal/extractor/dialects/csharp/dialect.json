@@ -1,0 +1,37 @@
+{
+  "id": "csharp",
+  "display": "C#",
+  "kind": "language",
+  "engine": "tags",
+  "lang_tag": "csharp",
+  "match": {
+    "extensions": [".cs"],
+    "basenames": [],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "grammar": { "blob": "csharp", "entry_point": "tree_sitter_c_sharp" },
+  "variants": [],
+  "queries": { "tags": "tags.scm", "imports": "imports.scm" },
+  "kinds": {
+    "namespace": { "source_kind": "CSharpNamespace", "canonical": "namespace" },
+    "class":     { "source_kind": "CSharpClass",     "canonical": "class",     "container": true },
+    "interface": { "source_kind": "CSharpInterface", "canonical": "interface", "container": true },
+    "struct":    { "source_kind": "CSharpStruct",    "canonical": "struct",    "container": true },
+    "enum":      { "source_kind": "CSharpEnum",      "canonical": "enum" },
+    "method":    { "source_kind": "CSharpMethod",    "canonical": "method",    "callable": true },
+    "property":  { "source_kind": "CSharpProperty",  "canonical": "property" }
+  },
+  "required_kinds": ["namespace", "class", "interface", "struct", "enum", "method", "property"],
+  "oracle_kinds": {
+    "ctags": { "namespace": "namespace", "class": "class", "interface": "interface",
+               "struct": "struct", "enum": "enum", "method": "method", "property": "property" }
+  },
+  "qualify": { "chain_containers": true, "container_sep": ".", "method_sep": "." },
+  "package": { "strategy": "capture" },
+  "imports": { "strategy": "namespace-dir", "suffixes": [".cs"] },
+  "signature": { "max_chars": 200 },
+  "target_level": "L4",
+  "queue_id": "csharp"
+}

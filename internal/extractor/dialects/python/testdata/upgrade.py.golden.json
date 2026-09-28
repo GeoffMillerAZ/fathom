@@ -1,0 +1,58 @@
+{
+  "symbols": [
+    {
+      "name": "IntOrStr",
+      "kind": "PythonTypeAlias",
+      "package": "upgrade",
+      "line": 4,
+      "end_line": 4,
+      "tier": "verified"
+    },
+    {
+      "name": "Model",
+      "kind": "PythonClass",
+      "package": "upgrade",
+      "line": 7,
+      "end_line": 25,
+      "tier": "verified"
+    },
+    {
+      "name": "count",
+      "kind": "PythonVar",
+      "package": "upgrade",
+      "line": 9,
+      "end_line": 9,
+      "tier": "verified"
+    },
+    {
+      "name": "Model.label",
+      "kind": "PythonFunc",
+      "package": "upgrade",
+      "line": 13,
+      "end_line": 14,
+      "signature": "def label(self):",
+      "tier": "verified"
+    },
+    {
+      "name": "Model.label",
+      "kind": "PythonFunc",
+      "package": "upgrade",
+      "line": 17,
+      "end_line": 18,
+      "signature": "def label(self, value):",
+      "tier": "verified"
+    },
+    {
+      "name": "Model.handle",
+      "kind": "PythonFunc",
+      "package": "upgrade",
+      "line": 24,
+      "end_line": 25,
+      "signature": "def handle(self):",
+      "calls": [
+        "call_it"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

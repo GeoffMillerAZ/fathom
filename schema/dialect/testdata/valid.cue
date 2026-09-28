@@ -54,6 +54,7 @@ gitlabCI: #Dialect & {
 	}
 	required_kinds: ["job"]
 	oracle_kinds: {tool: {job: "job"}}
+	name_match: "identity"
 	target_level: "L3"
 	queue_id:     "gitlab-ci"
 }

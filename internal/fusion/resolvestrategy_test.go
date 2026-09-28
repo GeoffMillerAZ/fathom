@@ -210,7 +210,8 @@ func dialectImports(t *testing.T, lang string) extractor.FileResolveLang {
 
 // TestFileResolveLangsFromManifests: the resolver's languages are exactly
 // the tags dialects whose manifest names an imports query and a strategy —
-// today JavaScript/TypeScript (one extractor group) and Python.
+// today JavaScript/TypeScript (one extractor group), Python, HTML, CSS, C,
+// Java and C#.
 func TestFileResolveLangsFromManifests(t *testing.T) {
 	langs, err := extractor.FileResolveLangs()
 	if err != nil {
@@ -220,11 +221,11 @@ func TestFileResolveLangsFromManifests(t *testing.T) {
 	for _, l := range langs {
 		got[l.Lang] = l.Strategy
 	}
-	want := map[string]string{"javascript": "relative-path", "python": "dotted-module"}
+	want := map[string]string{"javascript": "relative-path", "python": "dotted-module", "html": "relative-path", "css": "relative-path", "c": "include-path", "java": "namespace-dir", "csharp": "namespace-dir"}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("FileResolveLangs = %v, want %v", got, want)
 	}
-	for path, lang := range map[string]string{"a.ts": "javascript", "a.tsx": "javascript", "a.mjs": "javascript", "a.cts": "javascript", "a.py": "python", "a.rb": "", "a.kt": "", "a.go": ""} {
+	for path, lang := range map[string]string{"a.ts": "javascript", "a.tsx": "javascript", "a.mjs": "javascript", "a.cts": "javascript", "a.py": "python", "a.rb": "", "a.kt": "", "a.go": "", "a.html": "html", "a.htm": "html", "a.css": "css", "a.c": "c", "a.java": "java", "a.cs": "csharp"} {
 		if g := fileResolveLangFor(path); g != lang {
 			t.Errorf("fileResolveLangFor(%s) = %q, want %q", path, g, lang)
 		}

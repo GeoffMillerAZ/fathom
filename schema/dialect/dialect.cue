@@ -44,6 +44,13 @@ import "struct"
 	// descriptor suffixes, a tool-native oracle's kinds) to canonical kinds.
 	oracle_kinds: {[#OracleName]: {[string]: #Canonical}} | *{}
 
+	// name_match is how the harness compares a definition's name with an
+	// oracle's (§1.4): "bare" (the default) keeps the qualified name's last
+	// segment; "identity" compares the whole name, for dialects whose
+	// identifiers carry punctuation (CSS `.a` `#b` `:hover`, npm
+	// `@babel/core`, script `codesandbox:build`, export `./utils`).
+	name_match: *"bare" | "identity"
+
 	qualify: {
 		chain_containers: bool | *true
 		container_sep:    string | *"."
@@ -71,6 +78,15 @@ import "struct"
 	signature: {
 		max_chars: int & >0 & <=200 | *200
 	} | *{max_chars: 200}
+
+	// ctags is the dialect's own tier-B (§1.3) oracle invocation — universal-
+	// ctags' own language name(s) and any extra flags (design §13.4 step 18)
+	// — for a dialect internal/langbench's embedded incumbents.json (the
+	// five pre-manifest languages) does not already cover.
+	ctags?: {
+		languages: [...(string & !="")]
+		args?: [...string]
+	}
 
 	target_level: #Level
 	// queue_id equals id: the dialect is its queue entry's (§2.2).

@@ -78,6 +78,30 @@ func TestPolyglotIngestHoldsModulePool(t *testing.T) {
 		t.Fatalf("%d live modules after the ingest, cap %d", live, tsengine.MaxLiveModules)
 	}
 
+	// The ingest above only compiles a dialect's grammar when fusion
+	// actually reaches it: a dialect fusion still dispatches to its CGO/
+	// regex incumbent (a port not yet merged, §11) is reached only through
+	// the file-resolved-edges pass (design §7.2), and that pass skips any
+	// dialect with no imports.scm (an L1/L2-target dialect, §13.2 step 13:
+	// "L3 only"). So this warms every remaining registered grammar
+	// directly — the assertion below is about every embedded blob's
+	// tenancy accounting (LB-F15), not about fusion's own dispatch
+	// routing, which other tests already cover.
+	ds, err := extractor.LoadDialects()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, d := range ds {
+		if d.Grammar == nil {
+			continue
+		}
+		wp, err := tsengine.NewParser(context.Background(), d.Grammar.Blob, d.Grammar.EntryPoint)
+		if err != nil {
+			t.Fatalf("warm %s (%s): %v", d.ID, d.Grammar.Blob, err)
+		}
+		wp.Close()
+	}
+
 	lock, err := tsengine.LoadGrammarLock()
 	if err != nil {
 		t.Fatal(err)

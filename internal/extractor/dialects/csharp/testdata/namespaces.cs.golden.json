@@ -1,0 +1,54 @@
+{
+  "symbols": [
+    {
+      "name": "Outer",
+      "kind": "CSharpNamespace",
+      "package": "Outer",
+      "line": 1,
+      "end_line": 15,
+      "tier": "verified"
+    },
+    {
+      "name": "Top",
+      "kind": "CSharpClass",
+      "package": "Outer",
+      "line": 3,
+      "end_line": 6,
+      "tier": "verified"
+    },
+    {
+      "name": "Top.A",
+      "kind": "CSharpMethod",
+      "package": "Outer",
+      "line": 5,
+      "end_line": 5,
+      "signature": "public void A()",
+      "tier": "verified"
+    },
+    {
+      "name": "Inner",
+      "kind": "CSharpNamespace",
+      "package": "Outer.Inner",
+      "line": 8,
+      "end_line": 14,
+      "tier": "verified"
+    },
+    {
+      "name": "Deep",
+      "kind": "CSharpClass",
+      "package": "Outer.Inner",
+      "line": 10,
+      "end_line": 13,
+      "tier": "verified"
+    },
+    {
+      "name": "Deep.B",
+      "kind": "CSharpMethod",
+      "package": "Outer.Inner",
+      "line": 12,
+      "end_line": 12,
+      "signature": "public void B()",
+      "tier": "verified"
+    }
+  ]
+}

@@ -1,0 +1,126 @@
+{
+  "dialect": "package-json",
+  "kind": "tooling",
+  "target_level": "L3",
+  "level_met": "L1",
+  "grade": {
+    "L1": "excellent",
+    "L2": "not-attempted",
+    "L3": "not-attempted",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-09-28",
+  "fathom_commit": "c5a1859a",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "babel",
+      "sha": "54405f212b4e6a40f0e1dfba9293b0e3f3dd20e3",
+      "files": 199,
+      "bytes": 387098,
+      "counts": {
+        "fathom_defs": 1637,
+        "kind_equal": 1637,
+        "matched": 1637,
+        "oracle_defs": 1638
+      },
+      "families": {
+        "l1": "A"
+      },
+      "kind_intersection": [
+        "package",
+        "route",
+        "task"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 7.254999999999994,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "next.js",
+      "sha": "a758ffcf501f6f1ddb03175bd1033508424c261e",
+      "files": 185,
+      "bytes": 78175,
+      "counts": {
+        "fathom_defs": 515,
+        "kind_equal": 515,
+        "matched": 515,
+        "oracle_defs": 516
+      },
+      "families": {
+        "l1": "A"
+      },
+      "kind_intersection": [
+        "package",
+        "route",
+        "task"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 2.1539999999999937,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "npm pkg get",
+      "version": "11.16.0"
+    },
+    {
+      "tier": "B",
+      "tool": "universal-ctags",
+      "status": "unavailable: universal-ctags has no parser for this dialect"
+    }
+  ],
+  "metrics": {
+    "ref_precision": null,
+    "ref_recall": null,
+    "sym_precision": 1,
+    "sym_recall": 0.9991,
+    "xref_precision": null,
+    "xref_recall": null
+  },
+  "metric_tiers": {
+    "sym_precision": "A",
+    "sym_recall": "A"
+  },
+  "required_kinds": [
+    "package"
+  ],
+  "kind_intersection": [
+    "package",
+    "route",
+    "task"
+  ],
+  "counts": {
+    "fathom_defs": 2152,
+    "kind_equal": 2152,
+    "matched": 2152,
+    "oracle_defs": 2154
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 49.45,
+    "max_file_ms": 0,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    "next.js: 1 files skipped by ingest's gates (generated)",
+    "next.js: 236 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+  ],
+  "disposition": "deferred: L1 excellent; L2 has no intra-file reference to measure and L3 waits on xref scoring (LB-F30) (LB-Q-package-json-rest)"
+}

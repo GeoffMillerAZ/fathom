@@ -1,0 +1,7 @@
+{
+  "symbols": [
+    { "name": "widgets.example.com", "kind": "K8sWorkload", "package": "crd", "line": 1, "end_line": 9, "signature": "CustomResourceDefinition", "tier": "verified" },
+    { "name": "my-widget", "kind": "K8sWorkload", "package": "crd", "line": 11, "end_line": 17, "signature": "Widget", "tier": "verified" }
+  ],
+  "cross_file": []
+}

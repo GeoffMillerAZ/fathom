@@ -1,0 +1,218 @@
+{
+  "dialect": "go",
+  "kind": "language",
+  "target_level": "L4",
+  "level_met": "L1",
+  "grade": {
+    "L1": "good",
+    "L2": "unmet",
+    "L3": "not-attempted",
+    "L4": "unmet"
+  },
+  "measured_at": "2026-09-28",
+  "fathom_commit": "02b4f386",
+  "extractor": "incumbent",
+  "subjects": [
+    {
+      "name": "cli/cli",
+      "sha": "45ffa3c668f7105e92089220d42aa64c9acbd11c",
+      "files": 736,
+      "bytes": 5015607,
+      "counts": {
+        "call_fathom": 29107,
+        "call_fathom_in_truth": 20737,
+        "call_truth": 23244,
+        "call_truth_found": 20737,
+        "callables": 4061,
+        "callables_signed": 4061,
+        "fathom_defs": 5243,
+        "kind_equal": 5240,
+        "matched": 5241,
+        "oracle_defs": 5601,
+        "range_eligible": 4983,
+        "range_ok": 4983,
+        "scip_defs": 11968,
+        "scip_defs_mapped": 5205,
+        "scip_edges": 170645,
+        "scip_edges_typed": 51735
+      },
+      "families": {
+        "calls": "A",
+        "defmap": "A",
+        "l1": "B",
+        "typed": "A"
+      },
+      "kind_intersection": [
+        "constant",
+        "function",
+        "interface",
+        "method",
+        "struct",
+        "variable"
+      ],
+      "excluded_by_kind": {
+        "ctags:anonMember": 49,
+        "ctags:member": 3510,
+        "ctags:methodSpec": 298,
+        "ctags:package": 736,
+        "ctags:packageName": 355,
+        "ctags:talias": 2
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 120.4969999999999,
+        "max_file_ms": 2,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "spf13/cobra",
+      "sha": "40b5bc1437a564fc795d388b23835e84f54cd1d1",
+      "files": 36,
+      "bytes": 505298,
+      "counts": {
+        "call_fathom": 2842,
+        "call_fathom_in_truth": 2413,
+        "call_truth": 2741,
+        "call_truth_found": 2413,
+        "callables": 585,
+        "callables_signed": 585,
+        "fathom_defs": 627,
+        "kind_equal": 625,
+        "matched": 625,
+        "oracle_defs": 672,
+        "range_eligible": 602,
+        "range_ok": 602,
+        "scip_defs": 825,
+        "scip_defs_mapped": 626,
+        "scip_edges": 14112,
+        "scip_edges_typed": 6203
+      },
+      "families": {
+        "calls": "A",
+        "defmap": "A",
+        "l1": "B",
+        "typed": "A"
+      },
+      "kind_intersection": [
+        "constant",
+        "function",
+        "interface",
+        "method",
+        "struct",
+        "variable"
+      ],
+      "excluded_by_kind": {
+        "ctags:member": 101,
+        "ctags:methodSpec": 1,
+        "ctags:package": 36,
+        "ctags:packageName": 2,
+        "ctags:talias": 2
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 13.413999999999994,
+        "max_file_ms": 2,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "scip-go",
+      "version": "0.2.7"
+    },
+    {
+      "tier": "B",
+      "tool": "universal-ctags",
+      "version": "6.2.1"
+    }
+  ],
+  "metrics": {
+    "call_precision": 0.7246,
+    "call_recall": 0.8909,
+    "def_mapping": 0.4558,
+    "file_edge_precision": null,
+    "file_edge_recall": null,
+    "import_resolution": null,
+    "kind_agreement": 0.9998,
+    "range_agreement": 1,
+    "signature_coverage": 1,
+    "sym_precision": 0.9993,
+    "sym_recall": 0.9351,
+    "typed_recall": 0.3136
+  },
+  "metric_tiers": {
+    "call_precision": "A",
+    "call_recall": "A",
+    "def_mapping": "A",
+    "kind_agreement": "B",
+    "range_agreement": "B",
+    "signature_coverage": "B",
+    "sym_precision": "B",
+    "sym_recall": "B",
+    "typed_recall": "A"
+  },
+  "required_kinds": [
+    "function",
+    "interface",
+    "method",
+    "struct"
+  ],
+  "kind_intersection": [
+    "constant",
+    "function",
+    "interface",
+    "method",
+    "struct",
+    "variable"
+  ],
+  "counts": {
+    "call_fathom": 31949,
+    "call_fathom_in_truth": 23150,
+    "call_truth": 25985,
+    "call_truth_found": 23150,
+    "callables": 4646,
+    "callables_signed": 4646,
+    "fathom_defs": 5870,
+    "kind_equal": 5865,
+    "matched": 5866,
+    "oracle_defs": 6273,
+    "range_eligible": 5585,
+    "range_ok": 5585,
+    "scip_defs": 12793,
+    "scip_defs_mapped": 5831,
+    "scip_edges": 184757,
+    "scip_edges_typed": 57938
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 41.23,
+    "max_file_ms": 2,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "ctags:anonMember": 49,
+    "ctags:member": 3611,
+    "ctags:methodSpec": 299,
+    "ctags:package": 772,
+    "ctags:packageName": 357,
+    "ctags:talias": 4
+  },
+  "notes": [
+    "GoType covers every named type; ctags struct and type both map to struct",
+    "goextract.go's token.CONST/token.VAR cases skip every name failing ast.IsExported before emitting a node (lines ~196 and ~221); func/method/type declarations carry no such check. Measured directly: of ctags' 360 unexported var+const tags on cli/cli (195 var + 165 const, counted from the same -L filelist fathom read), fathom emits zero -- this is the dominant source of the combined 407-definition sym_recall gap (6273 oracle_defs - 5866 matched), not an oracle artifact or a query fix; a tags-engine dialect has no analogous exported-only rule",
+    "import_resolution not measured: in-repo spec counts arrive with the L3 strategies (LB-F11); Go is absent from cmd/indexbench/langoracle.go's fileResolveLang table (only typescript/javascript/python are wired to fusion.ResolveFileEdges), so file_edge_precision/recall and import_resolution are needs-strategy, not merely unattempted by choice",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "spf13/cobra's pinned tag v1.9.1 (corpus.yaml sha a655097f...) now resolves upstream to 40b5bc14... (git warned 'is not a commit' against the pinned sha; the tag was force-moved after corpus.yaml was written) -- cloned and measured at the tag's current target, actual SHA recorded per subject, not force-checked-out to the stale sha",
+    "def_mapping .4558 and typed_recall .3136 read low relative to Python's .76/.31 chiefly because scip-go's definition set is far finer-grained than fathom's Go extractor: scip_defs 12793 includes every local variable, struct field, and function parameter, none of which fathom emits (by design, not a mapping bug) -- the same 'SCIP's finer granularity, expected' shape already documented for scip-python/scip-typescript (O115, docs/languages.md), not re-diagnosed as a new defect here"
+  ],
+  "disposition": "partial: L1 reaches good (sym_recall .9351, sym_precision .9993, kind_agreement .9998, range_agreement 1, signature_coverage 1) but misses the .95 excellent floor on sym_recall alone -- root-caused directly (see notes) to goextract.go's exported-only filter on top-level var/const declarations, a real, worker-fixable extractor gap outside this measure-only item's 'no engine change' scope (queue entry note). L2 is unmet: call_recall .8909 clears the good floor (.75) but call_precision .7246 misses it (.85) -- the same same-file bare-callee-name collision every native/tags extractor shares (documented for Python/TS), not fixable by measurement alone. L3 is needs-strategy: Go is not wired into fusion.ResolveFileEdges's fileResolveLang table, so file_edge_precision/recall and import_resolution were never attempted, not merely unmet. L4 is unmet: def_mapping .4558 and typed_recall .3136 both miss the .85 good floor, expected given scip-go's much finer definition granularity than the top-level-only Go extractor (see notes) -- closing this needs either a richer native extractor (locals/fields/params) or accepting the granularity gap as structural, an Opus-level call. LB-Q-go stays unchecked; see LB-Q-go-rest. Trigger: a worker fixes the var/const export filter in goextract.go (drop ast.IsExported for CONST/VAR, matching FUNC's unconditional emission) and Go is added to fileResolveLang, then this item re-measures from L1 good upward."
+}

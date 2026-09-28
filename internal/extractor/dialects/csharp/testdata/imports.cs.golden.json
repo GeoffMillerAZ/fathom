@@ -1,0 +1,61 @@
+{
+  "symbols": [
+    {
+      "name": "MyApp.Consumer",
+      "kind": "CSharpNamespace",
+      "package": "MyApp.Consumer",
+      "line": 7,
+      "end_line": 13,
+      "tier": "verified"
+    },
+    {
+      "name": "Reader",
+      "kind": "CSharpClass",
+      "package": "MyApp.Consumer",
+      "line": 9,
+      "end_line": 12,
+      "tier": "verified"
+    },
+    {
+      "name": "Reader.Load",
+      "kind": "CSharpMethod",
+      "package": "MyApp.Consumer",
+      "line": 11,
+      "end_line": 11,
+      "signature": "public void Load()",
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "System",
+      "module": "System",
+      "kind": "whole",
+      "line": 1
+    },
+    {
+      "local": "System.Collections.Generic",
+      "module": "System.Collections.Generic",
+      "kind": "whole",
+      "line": 2
+    },
+    {
+      "local": "Json",
+      "module": "MyApp.Shapes",
+      "kind": "whole",
+      "line": 3
+    },
+    {
+      "local": "System.Math",
+      "module": "System.Math",
+      "kind": "whole",
+      "line": 4
+    },
+    {
+      "local": "System.Linq",
+      "module": "System.Linq",
+      "kind": "whole",
+      "line": 5
+    }
+  ]
+}

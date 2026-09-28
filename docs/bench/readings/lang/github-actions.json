@@ -1,0 +1,147 @@
+{
+  "dialect": "github-actions",
+  "kind": "tooling",
+  "target_level": "L3",
+  "level_met": "L2",
+  "grade": {
+    "L1": "good",
+    "L2": "good",
+    "L3": "not-attempted",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-09-28",
+  "fathom_commit": "585f31f4",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "actions/starter-workflows",
+      "sha": "e3c451d60f119b71caebf13c98ac45da6e15b4b7",
+      "files": 9,
+      "bytes": 5249,
+      "counts": {
+        "fathom_defs": 31,
+        "kind_equal": 31,
+        "matched": 31,
+        "oracle_defs": 31
+      },
+      "families": {
+        "l1": "C"
+      },
+      "kind_intersection": [
+        "job",
+        "output",
+        "resource",
+        "step",
+        "target",
+        "variable_decl"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 0.228,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "cli/cli",
+      "sha": "fdd9e7646b7b8ce1d77f738e412ffc608c2f0545",
+      "files": 15,
+      "bytes": 35142,
+      "counts": {
+        "fathom_defs": 81,
+        "kind_equal": 81,
+        "matched": 81,
+        "oracle_defs": 81,
+        "ref_fathom": 6,
+        "ref_fathom_in_truth": 6,
+        "ref_truth": 6,
+        "ref_truth_found": 6
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C"
+      },
+      "kind_intersection": [
+        "job",
+        "output",
+        "resource",
+        "step",
+        "target",
+        "variable_decl"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 0.8540000000000004,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "C",
+      "tool": "actionlint",
+      "version": "v1.7.12"
+    },
+    {
+      "tier": "B",
+      "tool": "universal-ctags",
+      "status": "unavailable: universal-ctags has no parser for this dialect"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 1,
+    "ref_recall": 1,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "xref_precision": null,
+    "xref_recall": null
+  },
+  "metric_tiers": {
+    "ref_precision": "C",
+    "ref_recall": "C",
+    "sym_precision": "C",
+    "sym_recall": "C"
+  },
+  "required_kinds": [
+    "job",
+    "resource",
+    "target"
+  ],
+  "kind_intersection": [
+    "job",
+    "output",
+    "resource",
+    "step",
+    "target",
+    "variable_decl"
+  ],
+  "counts": {
+    "fathom_defs": 112,
+    "kind_equal": 112,
+    "matched": 112,
+    "oracle_defs": 112,
+    "ref_fathom": 6,
+    "ref_fathom_in_truth": 6,
+    "ref_truth": 6,
+    "ref_truth_found": 6
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 37.33,
+    "max_file_ms": 0,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    "cli/cli: 2 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+  ],
+  "disposition": "deferred: L2 good (sym_recall/sym_precision/ref_recall/ref_precision all 1.0, tier C actionlint v1.7.12 AST oracle — action.yml inputs/outputs are extracted and golden-tested but not exercised by either calibration subject — neither contains an action.yml/action.yaml file — so variable_decl/output are simply unattested in this measurement, not a miss); L3 blocked by two independent gaps, not query-fixable: xref scoring is open (LB-F30, shared with LB-Q-package-json-rest) and, separately, needs-strategy — GHA's uses:/reusable-workflow local-path convention (`./path`) is repository-root-relative while every existing cross_file strategy (repo-path, module-source) resolves a `./` value relative to the referring file's own directory, so file-resolved edges would misresolve whenever the workflow or action.yml is not at the repo root (the common case: .github/workflows/*.yml and .github/actions/*/action.yml are nested) — verified directly on both calibration subjects' own uses: values (github-actions/PROVENANCE.md)"
+}

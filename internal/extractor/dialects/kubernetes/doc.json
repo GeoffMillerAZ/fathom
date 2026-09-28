@@ -1,0 +1,55 @@
+{
+  "decode": "yaml",
+  "multi_document": true,
+  "detect": { "require_keys": ["kind", "metadata"] },
+  "entities": [
+    { "select": "$", "where": { "has_key": ["kind", "metadata"] },
+      "kind": "resource", "source_kind": "K8sWorkload", "name": ".metadata.name", "signature": ".kind" },
+
+    { "select": "$.spec.containers[*]", "where": { "is_map": true, "has_key": ["image"] },
+      "kind": "data_source", "source_kind": "K8sContainer", "name": ".image", "signature": ".name" },
+    { "select": "$.spec.initContainers[*]", "where": { "is_map": true, "has_key": ["image"] },
+      "kind": "data_source", "source_kind": "K8sContainer", "name": ".image", "signature": ".name" },
+    { "select": "$.spec.template.spec.containers[*]", "where": { "is_map": true, "has_key": ["image"] },
+      "kind": "data_source", "source_kind": "K8sContainer", "name": ".image", "signature": ".name" },
+    { "select": "$.spec.template.spec.initContainers[*]", "where": { "is_map": true, "has_key": ["image"] },
+      "kind": "data_source", "source_kind": "K8sContainer", "name": ".image", "signature": ".name" },
+
+    { "select": "$.spec.selector.*", "where": { "is_scalar": true },
+      "kind": "selector", "source_kind": "K8sSelector", "name": "$key", "signature": "$" },
+    { "select": "$.spec.selector.matchLabels.*", "where": { "is_scalar": true },
+      "kind": "selector", "source_kind": "K8sSelector", "name": "$key", "signature": "$" }
+  ],
+  "references": [
+    { "from": "resource", "select": "$.spec.serviceAccountName", "value": "$", "to_kind": "resource", "edge": "service_account" },
+    { "from": "resource", "select": "$.spec.template.spec.serviceAccountName", "value": "$", "to_kind": "resource", "edge": "service_account" },
+
+    { "from": "resource", "select": "$.spec.containers[*].envFrom[*].configMapRef.name", "value": "$", "to_kind": "resource", "edge": "config_map_ref" },
+    { "from": "resource", "select": "$.spec.initContainers[*].envFrom[*].configMapRef.name", "value": "$", "to_kind": "resource", "edge": "config_map_ref" },
+    { "from": "resource", "select": "$.spec.template.spec.containers[*].envFrom[*].configMapRef.name", "value": "$", "to_kind": "resource", "edge": "config_map_ref" },
+    { "from": "resource", "select": "$.spec.template.spec.initContainers[*].envFrom[*].configMapRef.name", "value": "$", "to_kind": "resource", "edge": "config_map_ref" },
+
+    { "from": "resource", "select": "$.spec.containers[*].envFrom[*].secretRef.name", "value": "$", "to_kind": "resource", "edge": "secret_ref" },
+    { "from": "resource", "select": "$.spec.initContainers[*].envFrom[*].secretRef.name", "value": "$", "to_kind": "resource", "edge": "secret_ref" },
+    { "from": "resource", "select": "$.spec.template.spec.containers[*].envFrom[*].secretRef.name", "value": "$", "to_kind": "resource", "edge": "secret_ref" },
+    { "from": "resource", "select": "$.spec.template.spec.initContainers[*].envFrom[*].secretRef.name", "value": "$", "to_kind": "resource", "edge": "secret_ref" },
+
+    { "from": "resource", "select": "$.spec.containers[*].env[*].valueFrom.configMapKeyRef.name", "value": "$", "to_kind": "resource", "edge": "config_map_ref" },
+    { "from": "resource", "select": "$.spec.initContainers[*].env[*].valueFrom.configMapKeyRef.name", "value": "$", "to_kind": "resource", "edge": "config_map_ref" },
+    { "from": "resource", "select": "$.spec.template.spec.containers[*].env[*].valueFrom.configMapKeyRef.name", "value": "$", "to_kind": "resource", "edge": "config_map_ref" },
+    { "from": "resource", "select": "$.spec.template.spec.initContainers[*].env[*].valueFrom.configMapKeyRef.name", "value": "$", "to_kind": "resource", "edge": "config_map_ref" },
+
+    { "from": "resource", "select": "$.spec.containers[*].env[*].valueFrom.secretKeyRef.name", "value": "$", "to_kind": "resource", "edge": "secret_ref" },
+    { "from": "resource", "select": "$.spec.initContainers[*].env[*].valueFrom.secretKeyRef.name", "value": "$", "to_kind": "resource", "edge": "secret_ref" },
+    { "from": "resource", "select": "$.spec.template.spec.containers[*].env[*].valueFrom.secretKeyRef.name", "value": "$", "to_kind": "resource", "edge": "secret_ref" },
+    { "from": "resource", "select": "$.spec.template.spec.initContainers[*].env[*].valueFrom.secretKeyRef.name", "value": "$", "to_kind": "resource", "edge": "secret_ref" },
+
+    { "from": "resource", "select": "$.spec.volumes[*].configMap.name", "value": "$", "to_kind": "resource", "edge": "config_map_ref" },
+    { "from": "resource", "select": "$.spec.template.spec.volumes[*].configMap.name", "value": "$", "to_kind": "resource", "edge": "config_map_ref" },
+    { "from": "resource", "select": "$.spec.volumes[*].secret.secretName", "value": "$", "to_kind": "resource", "edge": "secret_ref" },
+    { "from": "resource", "select": "$.spec.template.spec.volumes[*].secret.secretName", "value": "$", "to_kind": "resource", "edge": "secret_ref" }
+  ],
+  "cross_file": [
+    { "from": "data_source", "select": "$.image", "value": "$", "resolve": "image-ref", "edge": "runs" }
+  ]
+}

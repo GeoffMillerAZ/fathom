@@ -1,0 +1,48 @@
+{
+  "symbols": [
+    {
+      "name": "base",
+      "kind": "DockerStage",
+      "package": "args-env",
+      "line": 1,
+      "end_line": 1,
+      "signature": "FROM --platform=linux/amd64 debian:bookworm-slim AS base",
+      "calls": [
+        "debian"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "DEBUG",
+      "kind": "DockerfileArg",
+      "package": "args-env",
+      "line": 2,
+      "end_line": 2,
+      "tier": "verified"
+    },
+    {
+      "name": "LEGACY_STYLE",
+      "kind": "DockerfileEnv",
+      "package": "args-env",
+      "line": 3,
+      "end_line": 3,
+      "tier": "verified"
+    },
+    {
+      "name": "A",
+      "kind": "DockerfileEnv",
+      "package": "args-env",
+      "line": 4,
+      "end_line": 4,
+      "tier": "verified"
+    },
+    {
+      "name": "B",
+      "kind": "DockerfileEnv",
+      "package": "args-env",
+      "line": 4,
+      "end_line": 4,
+      "tier": "verified"
+    }
+  ]
+}

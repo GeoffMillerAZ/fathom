@@ -1,0 +1,29 @@
+id: kubernetes
+language: Kubernetes manifests
+repos:
+  - name: kubernetes/examples
+    url: https://github.com/kubernetes/examples
+    ref: master
+    sha: d6b8cd27eacb51e651a1aa6f7c190a28713eff6e
+    licence: Apache-2.0
+    idioms:
+      - "a wide range of hand-written multi-document manifests (Deployment,
+        Service, Job, ReplicationController, StatefulSet, ConfigMap) across
+        many small example apps, one directory per app"
+      - "Service selectors matched against Pod/Deployment template labels;
+        container images from public registries"
+      - "occasional malformed/incomplete snippets (docs excerpts saved as
+        .yaml) alongside real applyable manifests"
+  - name: GoogleCloudPlatform/microservices-demo
+    url: https://github.com/GoogleCloudPlatform/microservices-demo
+    ref: main
+    sha: 38e7348eb289eb5b87c0c6e8cb19ced0449dc389
+    licence: Apache-2.0
+    subpath: kubernetes-manifests
+    idioms:
+      - "a real 11-microservice application's Kubernetes manifests: one
+        Deployment+Service pair per microservice, consistent label/selector
+        conventions across the whole set"
+      - "serviceAccountName, resource requests/limits, readiness/liveness
+        probes, and env/envFrom on every container"
+      - "container images pinned to a shared registry with per-service tags"

@@ -1,0 +1,11 @@
+{
+  "symbols": [
+    { "name": "Deploy", "kind": "GHAWorkflow", "package": "deploy", "line": 1, "end_line": 16, "tier": "verified" },
+    { "name": "build", "kind": "GHAJob", "package": "deploy", "line": 9, "end_line": 12, "tier": "verified" },
+    { "name": "publish", "kind": "GHAJob", "package": "deploy", "line": 13, "end_line": 16, "calls": ["build"], "tier": "verified" }
+  ],
+  "cross_file": [
+    { "from": "build", "edge": "calls_workflow", "raw": "./.github/workflows/build.yml", "target": ".github/workflows/.github/workflows/build.yml", "strategy": "module-source", "line": 10 },
+    { "from": "publish", "edge": "calls_workflow", "raw": "octo-org/shared-workflows/.github/workflows/publish.yml@v2", "target": "octo-org/shared-workflows/.github/workflows/publish.yml@v2", "strategy": "module-source", "line": 15 }
+  ]
+}

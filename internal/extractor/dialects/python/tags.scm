@@ -19,11 +19,47 @@
 ; Only a DIRECT top-level assignment counts as a module-level variable — the
 ; nesting in this pattern (module > expression_statement > assignment) is a
 ; structural constraint the query engine enforces, so assignments inside a
-; function or class body never match this pattern at all.
+; function or class body never match this pattern at all. (Also matches an
+; annotated module-level alias with a value, e.g. `Vector: TypeAlias =
+; list[float]` — universal-ctags tags that shape as kind "variable" too, so
+; no separate pattern is needed for it.)
 (module
   (expression_statement
     (assignment
       left: (identifier) @name)) @definition.variable)
+
+; A class-level attribute declared with a type annotation AND a default
+; value (the dataclass/Pydantic idiom: `count: int = 0`) — universal-ctags
+; tags this shape as kind "variable" too (verified directly), so it joins
+; the same @definition.variable kind. Two related shapes are deliberately
+; NOT matched here: a bare, unannotated class attribute (`attr = 1`, no
+; `type:` field) — TestTagsDialectParity's frozen shapes.py fixture already
+; contains exactly that shape uncaptured, and widening this pattern to admit
+; it regresses that frozen legacy-parity output (LB-F1), the same
+; not-a-worker's-call-to-make precedent javascript's tags.scm documents for
+; its own withheld assignment shapes; and an annotation-only field with no
+; value (`name: str`, Pydantic's own most common shape) — universal-ctags
+; itself never tags a Python annotation without a value (verified directly:
+; zero tags emitted), so admitting it would only cost sym_precision with no
+; recall to show for it.
+(class_definition
+  body: (block
+    (expression_statement
+      (assignment
+        left: (identifier) @name
+        type: (type)
+        right: (_))) @definition.variable))
+
+; PEP 695 `type X = ...` (tree-sitter-python's type_alias_statement, in the
+; grammar since it added 3.12 support; pinned v0.25.0 has it). universal-
+; ctags 6.2.1 does not recognize this statement at all (verified directly:
+; a real `type` statement gets zero tags), so it is deliberately left out of
+; oracle_kinds — excluded_by_kind, never scored — while still landing in
+; fathom's own symbol table, which is real value a bench metric doesn't
+; capture. Mirrors typescript's "type" kind/canonical "type_alias" naming.
+(type_alias_statement
+  left: (type
+    (identifier) @name)) @definition.type
 
 ; Naive same-file call collection (whatever expression is being called, as
 ; source text) — mirrors the incumbent CGO extractor's CollectCalls, not a

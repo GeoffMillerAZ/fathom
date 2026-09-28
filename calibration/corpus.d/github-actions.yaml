@@ -1,0 +1,30 @@
+id: github-actions
+language: GitHub Actions workflows and composite actions
+repos:
+  - name: actions/starter-workflows
+    url: https://github.com/actions/starter-workflows
+    ref: main
+    sha: e3c451d60f119b71caebf13c98ac45da6e15b4b7
+    licence: MIT (CC0 for some template content)
+    idioms:
+      - "dozens of independent workflow files, each a realistic CI
+        template (ci/, deployments/, pages/, automation/, code-scanning/):
+        varied `on:` shapes (bare scalar, list, mapping with branches/
+        paths/schedule), multi-job pipelines with `needs:` edges"
+      - "third-party and first-party `uses:` action references across a
+        wide version-pin style range (`@v4`, `@v2.1.0`, a full commit SHA)"
+      - "the repo's own `.github/workflows/` CI (validating the templates
+        themselves) alongside the template corpus proper"
+  - name: cli/cli
+    url: https://github.com/cli/cli
+    ref: v2.80.0
+    sha: fdd9e7646b7b8ce1d77f738e412ffc608c2f0545
+    licence: MIT
+    idioms:
+      - "a real production CI/CD pipeline: lint/test/build/release jobs
+        with `needs:` chains and matrix-adjacent runs-on values"
+      - "reusable local composite actions under `.github/actions/` invoked
+        by local-path `uses: ./.github/actions/<name>`"
+      - "release-automation workflows with job-level conditionals and a
+        mix of first-party (`actions/checkout@v4`) and GitHub CLI project
+        action references"

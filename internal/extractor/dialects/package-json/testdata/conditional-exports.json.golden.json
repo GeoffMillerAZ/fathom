@@ -1,0 +1,8 @@
+{
+  "symbols": [
+    { "name": "acme-dual", "kind": "PackageJSONPackage", "package": "package", "line": 1, "end_line": 13, "signature": "4.1.0", "tier": "verified" },
+    { "name": ".", "kind": "PackageJSONExport", "package": "package", "line": 5, "end_line": 8, "signature": "./dist/index.mjs", "tier": "verified" },
+    { "name": "./legacy", "kind": "PackageJSONExport", "package": "package", "line": 9, "end_line": 11, "signature": "./dist/legacy.js", "tier": "verified" }
+  ],
+  "cross_file": []
+}

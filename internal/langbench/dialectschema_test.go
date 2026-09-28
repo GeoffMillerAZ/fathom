@@ -65,6 +65,7 @@ func TestDialectManifestSchema(t *testing.T) {
 		"signature too long":   `{signature: {max_chars: 300}}`,
 		"extension no dot":     `{match: {extensions: ["go"]}}`,
 		"level past L4":        `{target_level: "L5"}`,
+		"name_match off list":  `{name_match: "exact"}`,
 	}
 	for name, patch := range cases {
 		src := schema + "\nbad: #Dialect & " + base + " & " + patch

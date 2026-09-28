@@ -1,0 +1,28 @@
+id: html
+language: HTML
+repos:
+  - name: html5-boilerplate
+    url: https://github.com/h5bp/html5-boilerplate
+    ref: v9.0.1
+    sha: 90066899f33e83c0866f8e078e97f9b82999db58
+    licence: MIT
+    idioms:
+      - the boilerplate's own ids (skip links, page wrapper)
+      - external stylesheet/script src/href to sibling files
+      - a browser-upgrade / conditional-comment style block
+  - name: bootstrap
+    url: https://github.com/twbs/bootstrap
+    ref: v5.3.8
+    sha: 25aa8cc0b32f0d1a54be575347e6d84b70b1acd7
+    licence: MIT
+    subpath: js/tests/visual
+    idioms:
+      - real component demo pages (modal, carousel, dropdown, tooltip) with
+        many ids and data-bs-* attributes
+      - forms and named inputs
+      - inline <style> blocks and sibling-relative CSS/JS href/src
+    notes: >
+      the docs site moved to Astro (.mdx) at this tag — no built-in
+      "examples" tree of raw .html remains at the repo root, so this shard
+      uses the small, real, idiomatic HTML the JS test suite ships instead
+      (verified directly via a blobless clone: 13 files, ~150 KB)
