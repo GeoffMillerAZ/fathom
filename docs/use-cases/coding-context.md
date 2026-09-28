@@ -27,11 +27,9 @@ hooks, gates, CLAUDE.md/AGENTS.md — lives in [coding-agents.md](coding-agents.
 | `symbol_context` | MCP tool | Definition + direct callers + direct callees + related tests for one symbol |
 | `read_source` | MCP tool | Bounded, line-numbered raw-text read from the indexed corpus (200 lines / 8000 bytes per call by default, `max_bytes` up to 16000; the bytes are the `lines` array as sent, envelope and escaping included) — the agent surface's `sed -n`; refuses ignored or suppressed paths by name |
 | `references` | MCP tool | Occurrence search for an identifier or string (your service by default, `services: ["*"]` for the fleet), evidence-tiered — the structured alternative to grepping repo by repo |
-| `memory_search` | MCP tool | Anchored memories for a service, filtered by `query` and/or `file`; every entry carries `tier` and `state` (**experimental** — new, unmeasured) |
 | `entrypoints` | MCP tool | Likely program entry points: `main` functions, HTTP handlers, CLI root commands |
 | `search` (`kind: docs`) | MCP tool | Ranked full-text search over the indexed doc corpus (ADRs, `docs/intent/`, `docs/plans/`, design, vision) — BM25 fused with concern ranking (KR-4/KR-5, `docs/design/knowledge-retrieval.md`); requires `service` |
 | `fathom prime` | CLI | Pull-tier session primer for harnesses without a SessionStart hook (Codex): prints the index/wiring status and the fathom-first discipline. Not yet listed by `fathom help` — `fathom prime -h` (`-dir`, `-url`) |
-| `fathom memory add\|list\|review\|show` | CLI | Anchored memory: a memory with no anchor (symbol/file/commit/claim/path) is refused; anchor drift marks it `suspect`/`orphaned` |
 | `gen-claude-md` | CLI | Generate a `CLAUDE.md` from stored symbols for static context injection |
 
 ---
@@ -112,7 +110,7 @@ each call separately.)
 
 **Raw text without leaving the surface**: `read_source { "service", "file", "start_line", "end_line" }` returns numbered lines from the *indexed* corpus — cite them as `file:line`. It reads what ingest walks: a `.fathomignore`'d or `fathom scope`-suppressed path is refused by name, with the unsuppress command in the refusal.
 
-**Memories beside obligations** (**experimental**, AM-6/AM-8): once a repo has `.fathom/memories.jsonl`, the edit-hook payload gains a `🧠 fathom memory — <file>:` block after the obligation lines, listing memories anchored to the edited file with `[tier, state]`, inside the same 150-token budget (displaced count named). `memory_search { "service", "query"?, "file"?, "limit"? }` is the pull path; retired memories never surface. File one with `fathom memory add --claim … --anchor symbol:Foo --evidence machine-check:…` — no anchor, no memory (put preferences in CLAUDE.md instead).
+**Anchored memory is gone** (SR-13, surface reckoning F-45, ADR-053): the `memory_search` tool, the `fathom memory` verbs and the edit hook's memory block were removed — 0 memories in any repository; continuity threads (`fathom thread note`) carry the hand-off, and preferences belong in CLAUDE.md.
 
 **Concern is required**: `query_symbols` and `pack_context` both require a `concern` argument. This is enforced at the API level — calls without it are rejected. The concern should describe the functional area being changed (e.g. `"auth token validation"`, `"payment retry logic"`), not a file name or symbol name.
 
@@ -151,4 +149,4 @@ Returns `{service, file, rules?, compiled_at_watermark?, index_stale?}`. An empt
 
 ## Maintained
 
-This doc covers: `query_symbols`, `find_symbol`, `outline`, `repo_map`, `pack_context`, `symbol_context`, `read_source`, `references`, `memory_search`, `entrypoints`, `search` (`kind: docs`), `staleness_report`, `gen-claude-md`, `obligations`, `edit-hook` (incl. the memory block), `fathom memory` (`add`/`list`/`review`/`show`), `fathom prime` (listed by `fathom help`; `fathom prime -h`), the `budgets` block in `capabilities.cue`, and the `/rpc/agent` surface facts. Update it when these change.
+This doc covers: `query_symbols`, `find_symbol`, `outline`, `repo_map`, `pack_context`, `symbol_context`, `read_source`, `references`, `entrypoints`, `search` (`kind: docs`), `staleness_report`, `gen-claude-md`, `obligations`, `edit-hook`, `fathom prime` (listed by `fathom help`; `fathom prime -h`), the `budgets` block in `capabilities.cue`, and the `/rpc/agent` surface facts. Update it when these change.

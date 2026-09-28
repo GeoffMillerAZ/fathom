@@ -219,7 +219,7 @@ registry (see [mcp-tools.md](mcp-tools.md)):
   schemas (only names are injected until a tool is used), so the full registry costs ~600 tokens per
   session and every tool stays one on-demand load away.
 - `POST /rpc/agent` (alias `POST /rpc/companion`) — the curated 19-tool coding-agent surface
-  (includes `read_source`, the bounded raw-text read, and `memory_search`). Register this for MCP
+  (includes `read_source`, the bounded raw-text read). Register this for MCP
   clients that load **all** tool schemas into context up front (Cursor, generic MCP hosts), or
   anywhere you want a slim surface: it cuts the schema payload ~80%. Off-surface calls still
   **execute and are flagged** `off_surface:true` in the call log (ADR-014 amendment) — surfaces are

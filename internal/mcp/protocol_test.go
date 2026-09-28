@@ -3,6 +3,7 @@ package mcp
 import (
 	"context"
 	"encoding/json"
+	"reflect"
 	"regexp"
 	"sort"
 	"strings"
@@ -211,8 +212,16 @@ func TestOutputSchemaGeneration(t *testing.T) {
 	if outputSchemaFor("compile_layer") != nil {
 		t.Error("an undeclared long-tail tool must advertise no outputSchema")
 	}
-	// memory_search: embedded memory.Evaluation fields are inlined.
-	ms := outputSchemaFor("memory_search")["properties"].(map[string]any)["memories"].(map[string]any)["items"].(map[string]any)["properties"].(map[string]any)
+	// Embedded struct fields are inlined (memory_search, which carried the
+	// only embedded result type, was retired by SR-13; the rule stays).
+	type embeddedInner struct {
+		Claim string `json:"claim"`
+	}
+	type embeddedOuter struct {
+		embeddedInner
+		Tier string `json:"tier"`
+	}
+	ms := schemaOf(reflect.TypeOf(embeddedOuter{}))["properties"].(map[string]any)
 	if _, ok := ms["claim"]; !ok {
 		t.Errorf("embedded struct fields not inlined: %v", ms)
 	}

@@ -833,11 +833,8 @@ of kind `no_cycles`/`cross_service_direction`) is refused, naming it. `FATHOM_EN
 `[guards] enforce = false` in `.fathom/config.toml` / `~/.fathom/config.toml`, turns every
 enforced rule in this repo back to advisory.
 
-When `<repo>/.fathom/memories.jsonl` exists, the payload also carries a separate
-`🧠 fathom memory — <file>:` block (AM-6, **experimental**) listing memories anchored to
-the edited file, each `[tier, state]`, ordered tier → specificity → id, inside the same
-150-token whole-payload budget (the displaced count is named); a memory RPC failure emits
-an `edit-hook/error` beat, never a block.
+The anchored-memory block (AM-6) is gone: SR-13 (surface reckoning F-45, ADR-053)
+removed anchored memory — 0 memories in any repository.
 
 ---
 
@@ -2961,24 +2958,14 @@ human-authored, sme-stated-capped claim minted directly, no recurrence or
 import batch required; `fathom claim refute --dry-run` previews which
 served rows a refutation would withhold before it is recorded.
 
-### `memory` — anchored memory (**experimental**)
+### `memory` — removed
 
-```sh
-fathom memory add    --store P --service S --claim TEXT --anchor KIND:REF [--anchor …] --evidence KIND:REF [--evidence …] [--tier T] [--confidence N] [--by ACTOR] [--root D] [--json]
-fathom memory list   --store P --service S [--state fresh|suspect|orphaned|retired] [--root D] [--json]
-fathom memory review --store P --service S [--id ID --resolve still-true|no-longer-true|rewrite --by ACTOR [--claim TEXT] [--note TEXT] [--commit C]] [--root D] [--json]
-fathom memory show   --id ID [--root D] [--json]
-```
-
-Memories live in `<root>/.fathom/memories.jsonl`. Anchor kinds, sharpest
-first: `symbol | file | commit | claim | path`; evidence kind sets the tier
-(`machine-check` → verified, `index` → pre-scan, `doc` → doc-claimed,
-`human` → sme-stated, `model` → assumed). A memory with no anchor is
-refused — that is a preference, not a memory about this codebase. Anchor
-drift moves a memory to `suspect` (tier dropped one step) or `orphaned`;
-retired memories never surface. Served by the `memory_search` MCP tool
-(agent surface) and the edit-hook memory block. Design:
-`docs/design/anchored-memory.md`.
+Anchored memory (`fathom memory add|list|review|show`, the `memory_search` MCP tool
+and the edit hook's memory block) was removed by SR-13 (surface reckoning F-45,
+ADR-053): 0 memories in any repository. Continuity threads (`fathom thread note`)
+carry what the next session must know. A `<repo>/.fathom/memories.jsonl` left from
+before is no longer read; `fathom purge` fails naming it so a quoted secret in it
+is never reported purged. Migration: `docs/upgrades/0.9.0-surface-reckoning.md`.
 
 ### `plugin` — one tree, two manifests
 
@@ -3273,8 +3260,7 @@ There is no profile-switching tool (the old `set_profile` was removed; ADR-014
 amendment, 2026-07-16): a stdio session always sees the full registry, and over
 HTTP a surface is selected by path — `POST /rpc/agent` is the curated 19-tool
 coding surface (`internal/mcp/surface.go`; also served at `/rpc/companion` for
-compatibility); bare `POST /rpc` is the full registry (54 tools plus
-`memory_search`). Off-surface calls execute and are logged `off_surface:true`
+compatibility); bare `POST /rpc` is the full registry. Off-surface calls execute and are logged `off_surface:true`
 rather than rejected; the hard gate exists only behind the server's
 `strictSurfaces` option and on hosted `/rpc/modules`.
 

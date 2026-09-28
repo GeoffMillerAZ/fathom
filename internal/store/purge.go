@@ -131,8 +131,9 @@ type VectorPurger interface {
 
 // MemoryPurger is the anchored-memory file (<repo>/.fathom/memories.jsonl,
 // AM-12): a memory's free-form claim text may QUOTE the purged content, so
-// a purge that leaves it has not purged. internal/memory.FileStore's
-// PurgeMatching satisfies it through a one-line adapter at the CLI.
+// a purge that leaves it has not purged. Anchored memory itself was retired
+// by SR-13 (ADR-053); the CLI's retiredMemoriesFile satisfies this by
+// failing the purge when a leftover file is present.
 type MemoryPurger interface {
 	PurgeMemories(m PathMatcher) (int, error)
 }

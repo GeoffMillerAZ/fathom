@@ -222,7 +222,6 @@ func newServer(backend QueryInterface, fleet FleetBackend, logger *CallLogger, m
 	registerBuiltins(s)
 	registerTools(s, backend, fleet, modules)
 	registerPlatformTools(s, backend, fleet)
-	registerMemoryTools(s, backend)
 	if modules != nil {
 		registerModuleTools(s, modules)
 	}

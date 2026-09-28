@@ -39,6 +39,8 @@ import (
 //     contradiction_scan, batch: SR-19 (F-77) — the twelve legacy
 //     analyzer tools; the complexity metric stays as a stored column
 //     (internal/store/conformance.go) for U13
+//   - memory_search: SR-13 (F-45) — anchored memory is removed outright
+//     (0 memories in any repo; continuity threads carry the hand-off)
 var reckoningTools = []string{
 	"api_diff",
 	"arch_conformance",
@@ -59,6 +61,7 @@ var reckoningTools = []string{
 	"god_object",
 	"history",
 	"http_client_calls",
+	"memory_search",
 	"proto_conformance",
 	"reachable",
 	"secret_scan",

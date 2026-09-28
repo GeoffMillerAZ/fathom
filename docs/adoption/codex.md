@@ -148,9 +148,8 @@ codex mcp add fathom --url http://127.0.0.1:7575/rpc/agent
 ```
 
 `/rpc/agent` is the same curated 19-tool surface Claude Code registers
-against (§10 of the Claude Code guide — incl. `read_source` and the
-*experimental* `memory_search`); the full registry (55 tools on this
-build) is at `/rpc` if you want everything. Off-surface calls still
+against (§10 of the Claude Code guide — incl. `read_source`); the full registry
+is at `/rpc` if you want everything. Off-surface calls still
 execute and are only flagged in the call log — surfaces are never a
 security boundary.
 

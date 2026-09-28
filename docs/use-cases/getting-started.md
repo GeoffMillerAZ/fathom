@@ -205,7 +205,7 @@ profile switch. Scoping now depends entirely on transport:
 | Surface | Endpoint | Contents |
 |---|---|---|
 | *(full)* | `POST /rpc` | Every registered tool, unauthenticated |
-| `agent` | `POST /rpc/agent` | The curated 19-tool coding hot loop (`docs/mcp-tools.md` lists it; `read_source` and `memory_search` included) — the recommended registration |
+| `agent` | `POST /rpc/agent` | The eight-tool default floor (surface reckoning SR-33; `docs/mcp-tools.md` lists it) — the recommended registration |
 | `companion` | `POST /rpc/companion` | Compatible alias for `agent`: identical 19-tool allowlist |
 | ~~`coding` / `investigation` / `shared` / `platform`~~ | *(deleted)* | Removed 2026-08-26 (ADR-014 amendment 2, HF-5) — unreachable by any wired client. The group taxonomy still classifies tools; use `POST /rpc`. |
 | `modules` | `POST /rpc/modules` | The GKE module host's floor tools (`list_modules`, `module_obligations`, `module_query`, `module_staleness`) over N conforming stores mounted read-only via `serve-http --module <path>` — see [mcp-tools.md](../mcp-tools.md)'s "Module host tools" section, including its hosted-mode (`--modules-token-env`) restriction |
@@ -238,7 +238,7 @@ Returns:
   "active_surface": "agent",
   "active_profile": "",
   "tool_count": 17,
-  "tools": ["capabilities", "find_symbol", "memory_search", "read_source", "symbol_context", "verify_plan", ...]
+  "tools": ["blast_radius", "find_symbol", "obligations", "read_source", "symbol_context", "verify_plan", ...]
 }
 ```
 

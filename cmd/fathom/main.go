@@ -277,8 +277,6 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		return cmdScope(args[1:], stdout, stderr)
 	case "purge":
 		return cmdPurge(args[1:], stdout, stderr)
-	case "memory":
-		return cmdMemory(args[1:], stdout, stderr)
 	case "decide":
 		return cmdDecide(args[1:], stdout, stderr)
 	default:

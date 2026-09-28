@@ -23,7 +23,7 @@ import (
 var toolCostClasses = map[string]tenancy.Class{
 	// point: one row, one capped file, or the process's own counters.
 	// history (SR-12) was unregistered: 0 lifetime calls.
-	"read_source": tenancy.ClassPoint, "memory_search": tenancy.ClassPoint,
+	"read_source":  tenancy.ClassPoint,
 	"list_modules": tenancy.ClassPoint,
 	// batch holds no ticket of its own: each sub-call is admitted in its
 	// own class (admitBatchCall).

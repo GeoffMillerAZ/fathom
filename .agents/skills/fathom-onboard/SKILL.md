@@ -176,11 +176,12 @@ claude mcp get fathom            # expect: Type: http · Status: ✔ Connected
 ```
 
 `--scope user` makes it available to every session and subagent, not just
-this repo. `/rpc/agent` (aliased `/rpc/companion`) is the curated surface
-(`capabilities`, `entrypoints`, `find_callers`, `find_symbol`, `ingest`,
-`list_services`, `memory_search`, `obligations`, `outline`, `pack_context`,
-`query_symbols`, `read_source`, `references`, `repo_map`, `staleness_report`,
-`symbol_context`, `verify_plan`); `/rpc` is the full registry (every tool in
+this repo. `/rpc/agent` is the eight-tool default floor (`blast_radius`,
+`find_symbol`, `obligations`, `read_source`, `review_diff`, `search`,
+`symbol_context`, `verify_plan`); `/rpc/extended` (aliased `/rpc/companion`)
+adds the opt-in set (`find_callers`, `findings_near`, `ingest`, `list_services`,
+`localize`, `outline`, `pack_context`, `query_symbols`, `references`,
+`repo_map`, `staleness_report`, `status`, `test_impact`); `/rpc` is the full registry (every tool in
 `docs/mcp-tools.md`, test-synced to the code) — register that under a second
 name if you want both. Surfaces execute-and-flag an off-surface call; they
 are not a security boundary:
@@ -247,7 +248,7 @@ tools. **Restart the session once.**
 | `session-hook` | `SessionStart`, `startup\|resume\|clear\|compact` | `fathom session-hook` | Pings the daemon, injects "this repo is service X" or an honest daemon-down/not-indexed signal — plus, on `startup`/`clear` only (where context was actually lost), the continuity thread brief (≤2,400 bytes, budget-enforced) and a config-custodian attention line when a registered concern is violated. `resume`/`compact` inject nothing extra. Always exits 0. |
 | `session-end-hook` | `SessionEnd` | `fathom session-end-hook` | Continuity deposit: on `/clear`/logout, ONE mechanical fact per repo (dirty files, stashes, claimed-unproven rows — latest supersedes, self-closes when the tree comes clean). Writes to disk, injects nothing. |
 | `pre-compact-hook` | `PreCompact`, `manual\|auto` | `fathom pre-compact-hook` | Files a pointer (session id + repo) before compaction so the pre-summary span stays findable. Never reads transcript content; injects nothing. |
-| `edit-hook` | `PostToolUse`, `Edit\|Write\|MultiEdit` | `fathom edit-hook` | Injects governing rules (`obligations`) for the touched file, ≤150 tokens, silent when clean or when the daemon/layer isn't ready. When `.fathom/memories.jsonl` exists, a second block `🧠 fathom memory — <file>:` lists anchored memories for that file, each `[tier · state]`, inside the same 150-token budget (**experimental**, AM-6). |
+| `edit-hook` | `PostToolUse`, `Edit\|Write\|MultiEdit` | `fathom edit-hook` | Injects governing rules (`obligations`) for the touched file, ≤150 tokens, silent when clean or when the daemon/layer isn't ready. |
 | `edit-hook --pre` (guarded edits) | `PreToolUse`, three matcher groups: `Edit\|Write\|MultiEdit`, `Bash`, `Grep\|Glob\|Read` | `fathom edit-hook --pre` | Silent unless `.fathom/guard.cue` names the file/command (a local check, zero daemon calls on a miss); when it matches, injects the guard's note plus obligations BEFORE the edit/command runs. The `Grep\|Glob\|Read` group only counts discovery (the exploration ledger). See §7 and `docs/use-cases/platform-modules.md`. |
 | `stop-hook` | `Stop` | `fathom stop-hook` | Re-verifies plan tasks newly claimed `[x]` this session; advisory by default, add `--block` to the command to make it a real gate. |
 
@@ -304,10 +305,6 @@ exit codes.
   an unknown key is refused with a did-you-mean) sets answer budgets
   project → user → built-in; honoured by `serve-http`, not yet by stdio
   `serve-mcp` (**experimental**, BA-9).
-- `.fathom/memories.jsonl` — anchored memory (`fathom memory add|list|
-  review|show`): a memory with no anchor is refused, drift marks it
-  suspect/orphaned; served by `memory_search` and the edit hook
-  (**experimental**).
 - `.fathom/receipts.jsonl` (gitignored) — one receipt per wiring apply;
   `fathom fleet receipts` lists them, `fathom fleet undo --last|<id>`
   reverses one.

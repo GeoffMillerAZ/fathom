@@ -264,8 +264,8 @@ both manifests), `ingest` (`--json`), `compile`, `layers`
 `session-hook`, `session-end-hook`, `pre-compact-hook`, `prime`, `fleet` (`report`/
 `reconcile`/`receipts`/`undo`) — every one listed by `fathom help` (the table
 renders from the dispatch table) and answering `fathom <verb> -h`.
-MCP: the `/rpc/agent` surface (19 tools, `read_source` and `memory_search`
-included — see `docs/mcp-tools.md`).
+MCP: the `/rpc/agent` surface (the eight-tool default floor, surface reckoning
+SR-33 — see `docs/mcp-tools.md`).
 Phase O (`.fathom/guard.cue`, `.fathom/modules.cue`) is covered in
 [platform-modules.md](platform-modules.md). When any of these change,
 update this doc's examples and this line.

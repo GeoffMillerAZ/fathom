@@ -41,10 +41,6 @@
       "measured": "index",
       "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
     },
-    "memory_search": {
-      "measured": "point",
-      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
-    },
     "module_obligations": {
       "measured": "index",
       "basis": "static read: obligations over each mounted module store (store rows, no corpus read)"

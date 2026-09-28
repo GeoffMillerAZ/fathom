@@ -145,7 +145,7 @@ at 97%+ of the entire log's volume with no dedup.
    governing rules for a file before editing it. Read files to *edit*
    them, not to discover them. The index is fleet-wide, so cross-repo
    questions are one query. (These are the core of the 25-tool `agent`
-   surface — see `docs/mcp-tools.md`; `memory_search` is **experimental**;
+   surface — see `docs/mcp-tools.md`;
    `search` (RC-24) and `discoveries` (RC-27, its own kill criterion — see
    "Discoveries and routes" below) are the newest members.)
    Every Edit/Write also gets governing rules injected via the PostToolUse

@@ -149,30 +149,6 @@
     ],
     "type": "object"
   },
-  "memory_search": {
-    "properties": {
-      "file": {
-        "description": "Repo-relative file to scope to",
-        "type": "string"
-      },
-      "limit": {
-        "description": "Max results (default 20)",
-        "type": "integer"
-      },
-      "query": {
-        "description": "Substring terms over claim/anchor keys; empty = all",
-        "type": "string"
-      },
-      "service": {
-        "description": "Service / repo identifier",
-        "type": "string"
-      }
-    },
-    "required": [
-      "service"
-    ],
-    "type": "object"
-  },
   "obligations": {
     "properties": {
       "action": {

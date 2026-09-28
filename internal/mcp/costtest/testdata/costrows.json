@@ -10,7 +10,6 @@
     "ingest": {"args": {"service": "$service"}},
     "list_services": {"args": {}},
     "localize": {"args": {"service": "$service", "concern": "ledger balance"}},
-    "memory_search": {"args": {"service": "$service", "query": "ledger"}},
     "obligations": {"args": {"service": "$service", "file": "ledger.go"}},
     "outline": {"args": {"service": "$service", "file": "ledger.go"}},
     "pack_context": {"args": {"service": "$service", "concern": "ledger"}},

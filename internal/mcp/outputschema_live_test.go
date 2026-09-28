@@ -12,8 +12,8 @@ import (
 )
 
 // schemaFakeBackend serves every agent-surface tool well enough to produce
-// a real result: symbols with edges, a corpus root on disk (read_source,
-// memory_search), sources (references, staleness_report).
+// a real result: symbols with edges, a corpus root on disk (read_source),
+// sources (references, staleness_report).
 type schemaFakeBackend struct {
 	reviewFakeBackend
 }
@@ -84,7 +84,6 @@ func TestOutputSchemasMatchLiveResults(t *testing.T) {
 		"ingest":            {"service": "svc"},
 		"list_services":     {},
 		"localize":          {"service": "svc", "concern": "billing"},
-		"memory_search":     {"service": "svc", "query": "A"},
 		"obligations":       {"service": "svc", "file": "pkg/a.go"},
 		"outline":           {"service": "svc", "file": "pkg/a.go"},
 		"pack_context":      {"service": "svc", "concern": "billing"},

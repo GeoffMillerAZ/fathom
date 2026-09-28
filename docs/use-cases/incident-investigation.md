@@ -20,10 +20,8 @@ Triage a production symptom fast using pre-computed call graphs — without read
 | `find_callers` | MCP tool | All symbols that call a named symbol; traces a function up through its callers |
 | `blast_radius` | MCP tool | Given a set of changed files, returns all transitively affected symbols, test functions, and file paths |
 | `findings_near` | MCP tool | Prior review/audit findings whose scope lies within N call-graph hops of a symbol or file, ranked by proximity then recency — "has anyone seen this before?" (docs/design/findings-as-evidence.md) |
-| `memory_search` | MCP tool | Anchored memories touching a file or matching a query, each labeled `tier` and `state` — what an earlier session learned about this code, and whether its anchor has since drifted (**experimental**, unmeasured) |
 | `staleness_report` | MCP tool | Whether the index has fallen behind HEAD; `reingest_recommended: true` means results may be stale |
 | `fathom findings near\|status` | CLI | Store-direct twin of `findings_near` (`--hops`, `--include-superseded`), and the findings layer's entry-condition progress (`status`) — the layer is **experimental** until ≥15–20 resolved findings exist |
-| `fathom memory add\|list\|review\|show` | CLI | File what the investigation established as an anchored memory (symbol/file/commit anchor + evidence kind); `review` triages `suspect`/`orphaned` ones |
 | `fathom scope list\|preview` | CLI | See what the index deliberately hides: any tool answer narrowed by a suppression carries a `suppressed` block naming the reason and the reversing command |
 
 ---
@@ -101,9 +99,9 @@ Returns: `{ "found": true, "findings": [{ "claim_id": "...", "class": "error-han
 
 ## Setup & notes
 
-**Surface.** There is no profile switch (`set_profile` was removed, SW-2). stdio `serve-mcp` serves the full registry; over the shared HTTP daemon the path is the scope — the investigation tools (`find_callers`, `blast_radius`, `findings_near`) are served by bare `POST /rpc` since HF-5 deleted the group endpoints; `POST /rpc/agent` lists the agent allowlist (`entrypoints`, `find_callers`, `staleness_report`, `memory_search`, `ingest` are on it). An off-surface call still executes, logged `off_surface:true` — never refused. The `investigate_incident` canned prompt this section used to reference is gone (SR-20, surface reckoning F-78, zero lifetime calls); `prompts/list` now answers empty everywhere. `history` and `traverse` were unregistered (SR-12, surface reckoning F-22); `contradiction_scan`, `evidence_summary` and `community` by SR-19 (F-77) — 0 lifetime calls each.
+**Surface.** There is no profile switch (`set_profile` was removed, SW-2). stdio `serve-mcp` serves the full registry; over the shared HTTP daemon the path is the scope — the investigation tools (`find_callers`, `blast_radius`, `findings_near`) are served by bare `POST /rpc` since HF-5 deleted the group endpoints; `POST /rpc/agent` lists the agent allowlist (`entrypoints`, `find_callers`, `staleness_report`, `ingest` are on it). An off-surface call still executes, logged `off_surface:true` — never refused. The `investigate_incident` canned prompt this section used to reference is gone (SR-20, surface reckoning F-78, zero lifetime calls); `prompts/list` now answers empty everywhere. `history` and `traverse` were unregistered (SR-12, surface reckoning F-22); `contradiction_scan`, `evidence_summary` and `community` by SR-19 (F-77) — 0 lifetime calls each.
 
-**"Did we already know this?"** Before reading cold, ask `memory_search { "service": "checkout-service", "file": "internal/cart/validate.go" }` — a `fresh` memory is an earlier session's proven claim about this code; a `suspect` one names the anchor that moved since it was confirmed. When the investigation settles a fact worth keeping, `fathom memory add … --anchor file:internal/cart/validate.go --evidence machine-check:<test>` files it; an unanchored note is refused.
+**"Did we already know this?"** Anchored memory (`memory_search`, `fathom memory`) was removed by SR-13 (surface reckoning F-45, ADR-053) — 0 memories in any repository. Record what the investigation established as a continuity thread note (`fathom thread note "…"`) so the next session's primer carries it.
 
 **What the index hides on purpose.** A `suppressed` block in any answer means a `fathom scope suppress` narrowed it — `fathom scope list` shows the id and reason, `fathom scope unsuppress <id>` reverses it. Nothing is hidden silently (law 3).
 
@@ -118,4 +116,4 @@ Returns: `{ "found": true, "findings": [{ "claim_id": "...", "class": "error-han
 
 ## Maintained
 
-This doc covers: `entrypoints`, `localize`, `find_callers`, `blast_radius`, `findings_near`, `memory_search`, `staleness_report`, `ingest`, `fathom findings` (`near`/`status`), `fathom memory` (`add`/`list`/`review`/`show`), `fathom scope` (`list`/`preview`/`suppress`/`unsuppress`). Update it when these change.
+This doc covers: `entrypoints`, `localize`, `find_callers`, `blast_radius`, `findings_near`, `staleness_report`, `ingest`, `fathom findings` (`near`/`status`), `fathom scope` (`list`/`preview`/`suppress`/`unsuppress`). Update it when these change.
