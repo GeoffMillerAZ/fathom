@@ -415,11 +415,14 @@ func TestReferencesOccurrenceUnder100Bytes(t *testing.T) {
 	}
 }
 
-// TestReferences_RefusesNonSymbolQuery (SB-2, O31): a query that is not an
-// identifier, a dotted path, or a declared regex is refused, naming the
-// three accepted forms — the O31 junk query ("func (s *") that kept
-// exploring must never reach the source scan again.
-func TestReferences_RefusesNonSymbolQuery(t *testing.T) {
+// TestReferences_RoutesNonSymbolQueryToSearch (SB-2, O31, superseded by
+// SR-40/F-02, design §5): the O31 junk query ("func (s *") that once kept
+// a heuristic definition scan exploring is, as of SR-40, never refused —
+// it is routed to search instead (TestReferencesRoutesFreeTextToSearch
+// pins the routed answer's shape against a real fixture; this test pins
+// only that the OLD refusal is gone and the route is visible even when no
+// service has a corpus root recorded).
+func TestReferences_RoutesNonSymbolQueryToSearch(t *testing.T) {
 	srv, _ := newReferencesSrv()
 	resp := roundtrip(t, srv, request{
 		JSONRPC: "2.0", ID: 2021, Method: "tools/call",
@@ -428,15 +431,12 @@ func TestReferences_RefusesNonSymbolQuery(t *testing.T) {
 			"arguments": map[string]any{"services": []any{"*"}, "query": "func (s *"},
 		},
 	})
-	errObj := xtraError(t, resp)
-	if code := errObj["code"].(float64); code != float64(mcp.ErrCodeParams) {
-		t.Errorf("expected params error code, got %v", code)
+	if resp["error"] != nil {
+		t.Fatalf("SR-40: a free-text query must never be refused; got error: %v", resp["error"])
 	}
-	msg, _ := errObj["message"].(string)
-	for _, form := range []string{"identifier", "dotted path", "regular expression"} {
-		if !strings.Contains(msg, form) {
-			t.Errorf("refusal message %q does not name accepted form %q", msg, form)
-		}
+	payload := callTool(t, srv, "references", map[string]any{"services": []any{"*"}, "query": "func (s *"})
+	if got := payload["routed_from"]; got != "references" {
+		t.Errorf("routed_from = %v, want %q", got, "references")
 	}
 }
 

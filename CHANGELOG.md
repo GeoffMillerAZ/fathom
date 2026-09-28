@@ -578,6 +578,8 @@ Evidence: `docs/app-kit.md`.
 
 - **`search` gains `kind: "docs"`: ranked full-text search over the indexed doc corpus, no new tool (KR-1..KR-5, `docs/design/knowledge-retrieval.md`).** New `docs_fts`/`doc_units`/`doc_links` tables (SQLite FTS5, `porter unicode61`, additive to store format v0); a hash-gated ingest splits every ADR section (further split at bold paragraph labels), intent record, plan row, and design/vision/general-docs heading section into a unit, and answers a query with BM25 (heading weighted 3:1) fused with the concern ranker by reciprocal rank fusion (k = 60). `search kind: "docs"` requires `service` (not `root`); hits carry `heading` and `score` alongside the usual `loc`/`text`/`kind`/`flags`, and `engine` reports `"docs-fts"`. `docs/plans/archive/` and `tmp/` sources are indexed but flagged `stale_by_location`, never dropped. SQLite-only for now (a MemoryStore-backed session refuses the call by name rather than answering an indistinguishable empty result); doc-to-code links and drift detection (KR-6/KR-7) are not yet wired.
 
+- **`references` no longer refuses a free-text query (SR-40, F-02, `docs/plans/surface-reckoning.md` §5): it is answered by `search` instead, escaped as a literal phrase across the same scope `references` itself would have used.** The answer carries `routed_from: "references"` and search's own shape (`hits`, `engine`, `scope`) rather than `definitions`/`occurrences`; a query that IS one of the three accepted forms (bare identifier, dotted path, declared `regex: true`) is unaffected and still takes the ordinary path. `refuseNonSymbolQuery` itself is unchanged — it now decides the route, not a refusal.
+
 ## [0.8.0] -- 2026-09-02
 
 **What this release is.** fathom stopped being a Claude Code program and

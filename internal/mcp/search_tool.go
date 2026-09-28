@@ -351,6 +351,73 @@ func registerSearch(s *Server, backend QueryInterface) {
 	})
 }
 
+// searchByService runs the same service-scoped grep-with-receipt search as
+// the "search" tool's own handler, factored out for reuse by other tools
+// (SR-40, F-02, design §5: references routes a free-text query here rather
+// than refusing it). pattern is a Go regexp exactly as search's own
+// "pattern" field is — a caller with a literal string escapes it with
+// regexp.QuoteMeta first, same as any other search caller would.
+func searchByService(ctx context.Context, backend QueryInterface, service, pattern string, limit int) (searchResult, *rpcError) {
+	if backend == nil {
+		return searchResult{}, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
+	}
+	re, reErr := regexp.Compile(pattern)
+	if reErr != nil {
+		return searchResult{}, &rpcError{Code: ErrCodeParams, Message: "search: invalid pattern: " + reErr.Error()}
+	}
+	root, err := resolveCorpusRoot(ctx, backend, service)
+	if err != nil {
+		return searchResult{}, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
+	}
+	var byFile map[string][]core.SymbolNode
+	if nodes, err := serviceSymbols(ctx, backend, service); err == nil {
+		byFile = groupSymbolsByFile(nodes)
+	}
+	// Same fail-closed exclusions discipline as registerSearch's own
+	// service path (V-review): an exclusion load error refuses rather
+	// than searching unfiltered.
+	ignore, ignorePatterns, _, ierr := connector.LoadIgnoreScopedForWithPatterns(root, service)
+	if ierr != nil {
+		return searchResult{}, &rpcError{Code: ErrCodeInternal, Message: fmt.Sprintf("search: refusing to search service %q: its exclusions could not be loaded (%v) — searching without them could disclose purged or excluded content", service, ierr)}
+	}
+	if limit <= 0 {
+		limit = searchDefaultLimit
+	}
+	rawHits, engine, capped, err := searchRun(ctx, root, searchOpts{
+		pattern: pattern, caseSensitive: true, limit: limit, ignore: ignore, ignorePatterns: ignorePatterns,
+	})
+	if err != nil {
+		return searchResult{}, &rpcError{Code: ErrCodeInternal, Message: "search: " + err.Error()}
+	}
+	sort.Slice(rawHits, func(i, j int) bool {
+		if rawHits[i].File != rawHits[j].File {
+			return rawHits[i].File < rawHits[j].File
+		}
+		return rawHits[i].Line < rawHits[j].Line
+	})
+	total := len(rawHits)
+	limited := rawHits
+	if len(limited) > limit {
+		limited = limited[:limit]
+	}
+	flagsCache := map[string][]string{}
+	linesCache := map[string][]string{}
+	hits := make([]searchHit, 0, len(limited))
+	for _, rh := range limited {
+		hits = append(hits, renderSearchHit(ctx, rh, re, byFile, flagsCache, linesCache, root))
+	}
+	kept, truncated := fitToBudget(hits, 0)
+	var el *elided
+	if truncated || total > len(kept) {
+		el = elisionFor(len(kept), total, "path, then line", "narrow path or pattern")
+	}
+	partial := ""
+	if capped != "" {
+		partial = fmt.Sprintf("≥ %d hits (%s)", total, capped)
+	}
+	return searchResult{Summary: searchSummary(kept), Hits: kept, Engine: engine, Elided: el, Partial: partial}, nil
+}
+
 // docsSearchBackend is the optional backend capability `search kind: docs`
 // (KR-5) needs: BM25-plus-concern ranking over the indexed doc corpus
 // (KR-4's docindex.RankDocs), the same optional-capability pattern
