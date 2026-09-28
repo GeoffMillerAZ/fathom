@@ -54,7 +54,7 @@ cannot reach its target keeps its contract and gains a `[-]` sibling
 
 ### F.5 Grammars, distribution and tenancy (§8, §9)
 
-- [ ] `grammars.lock.json` with repo, tag, commit, tarball sha256, blob sha256, sizes and SPDX per grammar; a blob or a lock row without its partner, a digest mismatch, or a licence off the allowlist fails (§8.1, §8.2, I55) {id: LB-F12, symbol: VerifyGrammarLock, package: internal/extractor/tsengine, reachable_from: TestGrammarLock}
+- [x] `grammars.lock.json` with repo, tag, commit, tarball sha256, blob sha256, sizes and SPDX per grammar; a blob or a lock row without its partner, a digest mismatch, or a licence off the allowlist fails (§8.1, §8.2, I55) {id: LB-F12, symbol: VerifyGrammarLock, package: internal/extractor/tsengine, reachable_from: TestGrammarLock}
 - [ ] `build.sh <blob>` builds one grammar from the lock (pinned tarball, sha256 check, predicate export, `wasm-opt -Oz`, gzip -9) and `PROVENANCE.md` is rendered from the lock (§8.1) {id: LB-F28, oracle: lexical, path: internal/extractor/tsengine/grammars/build.sh, pattern: "grammars\.lock\.json", needs: "LB-F12"}
 - [ ] Blobs committed as `.wasm.gz`, embedded, decompressed and compiled only on first use; the embedded total is capped at 40 MiB by test (§8.3) {id: LB-F13, symbol: openGrammarBlob, package: internal/extractor/tsengine, reachable_from: TestLazyGrammarLoad, needs: "LB-F12"}
 - [ ] wazero's compilation cache at user scope only, off for unmanaged daemons, aged by `fathom gc` (§8.3) {id: LB-F26, symbol: compilationCacheDir, package: internal/extractor/tsengine, reachable_from: TestCompilationCacheUserScopeOnly, needs: "LB-F13"}

@@ -83,7 +83,7 @@ var ParseTimeout = DefaultParseTimeout
 // everything — degraded and counted, never a wedged daemon.
 var ParseHardBackstop time.Duration
 
-//go:embed grammars/javascript.wasm grammars/typescript.wasm grammars/python.wasm grammars/ruby.wasm grammars/kotlin.wasm
+//go:embed grammars/javascript.wasm grammars/typescript.wasm grammars/python.wasm grammars/ruby.wasm grammars/kotlin.wasm grammars/grammars.lock.json
 var grammarFS embed.FS
 
 // blobPath maps a grammar name (the registry key extractors ask for) to its

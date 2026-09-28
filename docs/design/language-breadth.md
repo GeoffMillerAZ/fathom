@@ -361,7 +361,7 @@ variables in `build.sh` and the hand-kept tables in `PROVENANCE.md`:
   "grammars": [
     { "blob": "swift", "repo": "alex-pinkus/tree-sitter-swift", "tag": "0.7.1",
       "commit": "<40 hex>", "tarball_sha256": "<64 hex>", "licence": "MIT",
-      "entry_points": ["tree_sitter_swift"], "subdir": "", "scanner": true,
+      "entry_points": ["tree_sitter_swift"], "subdirs": [], "scanner": true,
       "generate": false, "abi": 14,
       "blob_sha256": "<64 hex, of the uncompressed .wasm>", "blob_bytes": 0, "gz_bytes": 0 }
   ]
@@ -370,7 +370,11 @@ variables in `build.sh` and the hand-kept tables in `PROVENANCE.md`:
 
 `build.sh <blob>` builds one grammar from the lock (fetch tarball, check `tarball_sha256`,
 compile with the existing zig recipe plus the predicate export, `wasm-opt -Oz`, gzip -9),
-and prints the three numbers to paste back. A grammar whose release ships only
+and prints the three numbers to paste back. `subdirs` lists the grammar directories under the
+repository root when there is more than one (tree-sitter-typescript: `typescript`, `tsx`);
+empty means the root. `commit` is the commit the tag points at (`git get-tar-commit-id` of the
+tarball), never an annotated tag object's id. The lock is decoded strictly: an unknown field
+is an error. A grammar whose release ships only
 `grammar.js` sets `"generate": true` and the recipe runs a pinned `tree-sitter-cli` via
 `npx --yes tree-sitter-cli@<pinned> generate` in scratch (never a global install).
 `PROVENANCE.md` becomes a generated rendering of the lock plus the prose that is there today.
