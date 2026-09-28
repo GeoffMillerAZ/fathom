@@ -38,6 +38,8 @@ language-native SCIP indexer), **file** (per-file resolver, tier pre-scan, label
 | C | heuristic (`cextract.go`, `cheaderextract.go`) | no | curl, libuv, sqlite | **scip** via scip-clang | grammar |
 | C++ | heuristic (`cppextract.go`) | no | (corpus.yaml) | **scip** via scip-clang | grammar |
 | Ruby | tree-sitter (wasm) | yes | sinatra, jekyll, fastlane | **scip** via scip-ruby | oracle |
+| HTML | tree-sitter (wasm) | yes | html5-boilerplate, bootstrap (visual tests) | **file** — `src`/`href` resolve via the relative-path strategy (LB-F11); no SCIP producer exists for HTML, so this is the ceiling until one does | — |
+| CSS | tree-sitter (wasm) | yes | normalize.css, pico | **file** — `@import` resolves via the relative-path strategy (LB-F11); no SCIP producer exists for CSS, so this is the ceiling until one does | BareName's separator set mismatches CSS's own `.`/`#`/`:` selector-marker punctuation (internal/langbench/score.go, Opus); tree-sitter-css > v0.25.0 for `:not(A, B)` |
 | C# | heuristic (`csharpextract.go`) | no | (corpus.yaml) | **scip** via scip-dotnet | grammar |
 | PHP | heuristic (`phpextract.go`) | no | laravel, guzzle, monolog | **syntax** (no mature exporter) | grammar; file resolver |
 | Swift | **none** — disclosed as unsupported, reported per service by `list_services` | no | (corpus.yaml) | **none** | extractor (fleet demand: app-kit) |
@@ -46,7 +48,7 @@ language-native SCIP indexer), **file** (per-file resolver, tier pre-scan, label
 | SQL | heuristic (`sqlextract.go`) | no | — | **syntax** | — |
 | Terraform/HCL | pure Go (`hclextract.go`) | n/a | (corpus.yaml) | **syntax** (resource references) | — |
 | Kubernetes YAML, Helm, Kustomize, docker-compose | pure Go | n/a | (corpus.yaml) | **syntax** (`service_ref` cross-repo edges) | — |
-| Dockerfile, CMake, GitHub Actions, proto, GraphQL, OpenAPI, JSON, TOML, templ, Markdown, go.mod | pure Go | n/a | (corpus.yaml where listed) | **syntax** | — |
+| Dockerfile, CMake, GitHub Actions, proto, GraphQL, OpenAPI, JSON, TOML, templ, Markdown, go.mod, package.json, pyproject.toml | pure Go | n/a | (corpus.yaml where listed) | **syntax** | — |
 
 Disclosed as unsupported (named per service in `list_services`, never silently skipped; `internal/connector/unsupported_language.go`): Clojure, Crystal, Dart, Elixir, Elm, Erlang, F#, Groovy, Haskell, Julia, Nim, OCaml, Swift, Zig.
 
@@ -67,28 +69,28 @@ reading's computed `level_met` with each met level's grade; `tolerated` is regis
 no reading yet; `unsupported (disclosed)` is queued, not registered, and named per service
 by `list_services`.
 
-Milestone M1 progress: languages at L1 excellent 0/20, at L2 0/12, at L3 0/8, at L4 0/6; tool formats at target 0/15
+Milestone M1 progress: languages at L1 excellent 1/20, at L2 0/12, at L3 0/8, at L4 0/6; tool formats at target 1/15
 
 | Language or format | Kind | Engine | Grammar / parser | Target | Level met | Oracles | Typed edges | Reading | Next |
 |---|---|---|---|---|---|---|---|---|---|
-| TypeScript (.ts .tsx .mts .cts) | language | tags | tree-sitter/tree-sitter-typescript (MIT) | L4 | tolerated | — | scip:scip-typescript | — | LB-Q-typescript |
-| JavaScript (.js .jsx .mjs .cjs) | language | tags | tree-sitter/tree-sitter-javascript (MIT) | L4 | tolerated | — | scip:scip-typescript | — | LB-Q-javascript |
-| Dockerfile / Containerfile | tool format | tags | camdencheek/tree-sitter-dockerfile (Apache-2.0) | L3 | tolerated | — | syntax | — | LB-Q-dockerfile |
-| Python (.py .pyi) | language | tags | tree-sitter/tree-sitter-python (MIT) | L4 | tolerated | — | scip:scip-python | — | LB-Q-python |
-| HTML (.html .htm) | language | tags | tree-sitter/tree-sitter-html (MIT) | L3 | unsupported (disclosed) | — | — | — | LB-Q-html |
-| GitHub Actions workflows and composite actions | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | tolerated | — | syntax | — | LB-Q-github-actions |
-| CSS (.css) | language | tags | tree-sitter/tree-sitter-css (MIT) | L3 | unsupported (disclosed) | — | — | — | LB-Q-css |
-| SQL (.sql; schema and migrations) | language | tags | DerekStride/tree-sitter-sql (MIT) | L2 | tolerated | — | syntax | — | LB-Q-sql |
-| npm/pnpm/yarn package manifests (package.json, workspaces) | tool format | doc | pure-go:encoding/json (n/a) | L3 | unsupported (disclosed) | — | — | — | LB-Q-package-json |
-| Shell / Bash (.sh .bash, shebangs) | language | tags | tree-sitter/tree-sitter-bash (MIT) | L2 | tolerated | — | syntax | — | LB-Q-bash |
-| Java (.java) | language | tags | tree-sitter/tree-sitter-java (MIT) | L4 | tolerated | — | scip:scip-java | — | LB-Q-java |
-| Python packaging (pyproject.toml, requirements*.txt, setup.cfg) | tool format | doc | pure-go:github.com/pelletier/go-toml/v2 (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-python-packaging |
-| C# (.cs) | language | tags | tree-sitter/tree-sitter-c-sharp (MIT) | L4 | tolerated | — | scip:scip-dotnet | — | LB-Q-csharp |
-| C (.c, .h by sniff) | language | tags | tree-sitter/tree-sitter-c (MIT) | L4 | tolerated | — | scip:scip-clang | — | LB-Q-c |
-| Terraform / OpenTofu (.tf .tfvars .tf.json) | tool format | native | native:github.com/hashicorp/hcl/v2 (MPL-2.0 (library dependency, unmodified)) | L3 | tolerated | — | syntax | — | LB-Q-terraform |
+| TypeScript (.ts .tsx .mts .cts) | language | tags | tree-sitter/tree-sitter-typescript (MIT) | L4 | none (measured) | A scip-typescript 0.4.0; B universal-ctags 6.2.1 | scip:scip-typescript | 2026-09-28 | LB-Q-typescript |
+| JavaScript (.js .jsx .mjs .cjs) | language | tags | tree-sitter/tree-sitter-javascript (MIT) | L4 | none (measured) | A scip-typescript 0.4.0; B universal-ctags 6.2.1 | scip:scip-typescript | 2026-09-28 | LB-Q-javascript |
+| Dockerfile / Containerfile | tool format | tags | camdencheek/tree-sitter-dockerfile (Apache-2.0) | L3 | L2 (L1 excellent, L2 excellent) | A buildkit-dockerfile-parser github.com/moby/buildkit v0.33.0 frontend/dockerfile (docker buildx build --print=outline substitute — no Docker daemon in this sandbox) | syntax | 2026-09-28 | LB-Q-dockerfile |
+| Python (.py .pyi) | language | tags | tree-sitter/tree-sitter-python (MIT) | L4 | L1 (L1 excellent) | A scip-python 0.6.6; B universal-ctags 6.2.1 | scip:scip-python | 2026-09-28 | LB-Q-python |
+| HTML (.html .htm) | language | tags | tree-sitter/tree-sitter-html (MIT) | L3 | L1 (L1 good) | B universal-ctags 6.2.1 | file | 2026-09-28 | LB-Q-html |
+| GitHub Actions workflows and composite actions | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L2 (L1 good, L2 good) | C actionlint v1.7.12 | — | 2026-09-28 | LB-Q-github-actions |
+| CSS (.css) | language | tags | tree-sitter/tree-sitter-css (MIT) | L3 | none (measured) | B universal-ctags 6.2.1 | file | 2026-09-28 | LB-Q-css |
+| SQL (.sql; schema and migrations) | language | tags | DerekStride/tree-sitter-sql (MIT) | L2 | none (measured) | B universal-ctags 6.2.1 | syntax | 2026-09-28 | LB-Q-sql |
+| npm/pnpm/yarn package manifests (package.json, workspaces) | tool format | doc | pure-go:encoding/json (n/a) | L3 | L1 (L1 excellent) | A npm pkg get 11.16.0 | syntax | 2026-09-28 | LB-Q-package-json |
+| Shell / Bash (.sh .bash, shebangs) | language | tags | tree-sitter/tree-sitter-bash (MIT) | L2 | L1 (L1 good) | B universal-ctags 6.2.1 | — | 2026-09-28 | LB-Q-bash |
+| Java (.java) | language | tags | tree-sitter/tree-sitter-java (MIT) | L4 | none (measured) | B universal-ctags 6.2.1 | scip:scip-java | 2026-09-28 | LB-Q-java |
+| Python packaging (pyproject.toml, requirements*.txt, setup.cfg) | tool format | doc | pure-go:github.com/pelletier/go-toml/v2 (n/a) | L2 | L2 (L1 good, L2 good) | C tomllib reference parse tomllib(python3.14) | syntax | 2026-09-28 | at target (LB-Q-python-packaging) |
+| C# (.cs) | language | tags | tree-sitter/tree-sitter-c-sharp (MIT) | L4 | none (measured) | B universal-ctags 6.2.1 | — | 2026-09-28 | LB-Q-csharp |
+| C (.c, .h by sniff) | language | tags | tree-sitter/tree-sitter-c (MIT) | L4 | none (measured) | A scip-clang 0.4.0; B universal-ctags 6.2.1 | scip:scip-clang | 2026-09-28 | LB-Q-c |
+| Terraform / OpenTofu (.tf .tfvars .tf.json) | tool format | native | native:github.com/hashicorp/hcl/v2 (MPL-2.0 (library dependency, unmodified)) | L3 | L1 (L1 excellent) | B universal-ctags 6.2.1 | syntax | 2026-09-28 | LB-Q-terraform |
 | C++ (.cc .cpp .cxx .hpp .hh .hxx, .h by sniff) | language | tags | tree-sitter/tree-sitter-cpp (MIT) | L4 | tolerated | — | scip:scip-clang | — | LB-Q-cpp |
-| Go (.go) | language | native | native:go/parser+go/types (BSD-3-Clause) | L4 | tolerated | — | native | — | LB-Q-go |
-| Kubernetes manifests (incl. CRDs) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | tolerated | — | syntax | — | LB-Q-kubernetes |
+| Go (.go) | language | native | native:go/parser+go/types (BSD-3-Clause) | L4 | L1 (L1 good) | A scip-go 0.2.7; B universal-ctags 6.2.1 | native | 2026-09-28 | LB-Q-go |
+| Kubernetes manifests (incl. CRDs) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L2 (L1 good, L2 good) | C fathom-worker independent yaml.v3 walk (LB-Q-kubernetes oracle.go, not committed) gopkg.in/yaml.v3 | — | 2026-09-28 | LB-Q-kubernetes |
 | PowerShell (.ps1 .psm1 .psd1) | language | tags | airbus-cert/tree-sitter-powershell (MIT (verify at pin)) | L2 | unsupported (disclosed) | — | — | — | LB-Q-powershell |
 | Docker Compose files | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | tolerated | — | syntax | — | LB-Q-docker-compose |
 | PHP (.php) | language | tags | tree-sitter/tree-sitter-php (MIT) | L4 | tolerated | — | syntax | — | LB-Q-php |

@@ -1,0 +1,9 @@
+{
+  "symbols": [
+    { "name": "smoke", "kind": "GHAJob", "package": "smoke", "line": 3, "end_line": 9, "signature": "ubuntu-latest", "tier": "verified" },
+    { "name": "docker://alpine:3.19", "kind": "GHAAction", "package": "smoke", "line": 6, "end_line": 9, "signature": "Run in container", "tier": "verified" }
+  ],
+  "cross_file": [
+    { "from": "smoke", "edge": "uses_action", "raw": "docker://alpine:3.19", "target": "docker://alpine:3.19", "strategy": "module-source", "line": 7 }
+  ]
+}

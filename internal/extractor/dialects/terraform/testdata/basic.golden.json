@@ -1,0 +1,87 @@
+[
+  {
+    "name": "var.cidr",
+    "kind": "TerraformVariable",
+    "line": 1,
+    "end_line": 3,
+    "signature": "variable \"cidr\"",
+    "tier": "verified"
+  },
+  {
+    "name": "local.name",
+    "kind": "TerraformLocal",
+    "line": 6,
+    "end_line": 6,
+    "signature": "locals { name }",
+    "calls": [
+      "var.cidr"
+    ],
+    "tier": "verified"
+  },
+  {
+    "name": "data.aws_ami.ubuntu",
+    "kind": "TerraformData",
+    "line": 9,
+    "end_line": 11,
+    "signature": "data \"aws_ami\" \"ubuntu\"",
+    "tier": "verified"
+  },
+  {
+    "name": "aws_vpc.main",
+    "kind": "TerraformResource",
+    "line": 13,
+    "end_line": 15,
+    "signature": "resource \"aws_vpc\" \"main\"",
+    "calls": [
+      "var.cidr"
+    ],
+    "tier": "verified"
+  },
+  {
+    "name": "aws_subnet.public",
+    "kind": "TerraformResource",
+    "line": 17,
+    "end_line": 21,
+    "signature": "resource \"aws_subnet\" \"public\"",
+    "calls": [
+      "aws_vpc.main",
+      "data.aws_ami.ubuntu"
+    ],
+    "tier": "verified"
+  },
+  {
+    "name": "output.vpc_id",
+    "kind": "TerraformOutput",
+    "line": 23,
+    "end_line": 25,
+    "signature": "output \"vpc_id\"",
+    "calls": [
+      "aws_vpc.main"
+    ],
+    "tier": "verified"
+  },
+  {
+    "name": "module.vpc",
+    "kind": "TerraformModule",
+    "line": 27,
+    "end_line": 29,
+    "signature": "module \"vpc\" { source = \"./modules/vpc\" }",
+    "tier": "verified"
+  },
+  {
+    "name": "module.registry_vpc",
+    "kind": "TerraformModule",
+    "line": 31,
+    "end_line": 34,
+    "signature": "module \"registry_vpc\" { source = \"terraform-aws-modules/vpc/aws\" }",
+    "tier": "verified"
+  },
+  {
+    "name": "provider.aws",
+    "kind": "TerraformProvider",
+    "line": 36,
+    "end_line": 38,
+    "signature": "provider \"aws\"",
+    "tier": "verified"
+  }
+]

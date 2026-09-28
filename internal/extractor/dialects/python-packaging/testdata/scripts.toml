@@ -1,0 +1,12 @@
+[project]
+name = "acme-cli"
+version = "0.3.0"
+
+[project.scripts]
+acme = "acme.cli:main"
+
+[project.gui-scripts]
+acme-gui = "acme.gui:run"
+
+[project.entry-points."console_scripts"]
+foo = "acme.cli:foo"

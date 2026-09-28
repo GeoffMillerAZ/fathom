@@ -1,0 +1,6 @@
+{
+  "symbols": [
+    { "name": "acme-demo", "kind": "PyProjectPackage", "package": "pyproject", "line": 1, "end_line": 3, "signature": "1.2.0", "tier": "verified" }
+  ],
+  "cross_file": []
+}

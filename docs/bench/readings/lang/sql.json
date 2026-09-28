@@ -1,0 +1,167 @@
+{
+  "dialect": "sql",
+  "kind": "language",
+  "target_level": "L2",
+  "level_met": "none",
+  "grade": {
+    "L1": "unmet",
+    "L2": "not-attempted",
+    "L3": "not-attempted",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-09-28",
+  "fathom_commit": "bdbf3817",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "lerocha/chinook-database",
+      "sha": "4a944a942426e1f3263fe539155fb7ef92b04b4a",
+      "files": 11,
+      "bytes": 6521297,
+      "counts": {
+        "callables": 121,
+        "callables_signed": 121,
+        "fathom_defs": 231,
+        "kind_equal": 187,
+        "matched": 187,
+        "oracle_defs": 507
+      },
+      "families": {
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "column",
+        "function",
+        "key",
+        "table",
+        "view"
+      ],
+      "excluded_by_kind": {
+        "ctags:database": 7
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 24.532999999999998,
+        "max_file_ms": 2,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "sqitchers/sqitch",
+      "sha": "ce0550c45ade3527d0c7f981c934e1ea4bdd6c19",
+      "files": 66,
+      "bytes": 175769,
+      "counts": {
+        "callables": 137,
+        "callables_signed": 137,
+        "fathom_defs": 139,
+        "kind_equal": 59,
+        "matched": 59,
+        "oracle_defs": 505
+      },
+      "families": {
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "column",
+        "function",
+        "key",
+        "table",
+        "view"
+      ],
+      "excluded_by_kind": {
+        "ctags:cursor": 1,
+        "ctags:schema": 12,
+        "ctags:trigger": 2,
+        "ctags:variable": 4,
+        "fathom:SQLType": 2
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 0.9990000000000003,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "B",
+      "tool": "universal-ctags",
+      "version": "6.2.1"
+    }
+  ],
+  "metrics": {
+    "call_precision": null,
+    "call_recall": null,
+    "def_mapping": null,
+    "file_edge_precision": null,
+    "file_edge_recall": null,
+    "import_resolution": null,
+    "kind_agreement": 1,
+    "range_agreement": null,
+    "signature_coverage": 1,
+    "sym_precision": 0.6649,
+    "sym_recall": 0.2431,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "kind_agreement": "B",
+    "signature_coverage": "B",
+    "sym_precision": "B",
+    "sym_recall": "B"
+  },
+  "not_measured": [
+    "range_agreement"
+  ],
+  "required_kinds": [
+    "column",
+    "function",
+    "key",
+    "table",
+    "view"
+  ],
+  "kind_intersection": [
+    "column",
+    "function",
+    "key",
+    "table",
+    "view"
+  ],
+  "counts": {
+    "callables": 258,
+    "callables_signed": 258,
+    "fathom_defs": 370,
+    "kind_equal": 246,
+    "matched": 246,
+    "oracle_defs": 1012
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 262.3,
+    "max_file_ms": 2,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "ctags:cursor": 1,
+    "ctags:database": 7,
+    "ctags:schema": 12,
+    "ctags:trigger": 2,
+    "ctags:variable": 4,
+    "fathom:SQLType": 2
+  },
+  "notes": [
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "range_agreement not measured: the L1 oracle reported no end line for any matched definition, so L1 can be met at most at good, never excellent (design §1.2)",
+    "sym_recall/sym_precision collapse on both subjects for a dialect-variance reason, not a query gap: isolating chinook-database's Sqlite-flavoured file alone (the same 11 tables, ANSI/SQLite DDL only) measures sym_recall 1.0, sym_precision 1.0, L1 good — every required kind extracted cleanly (verified directly, not committed as its own reading). The aggregate falls because chinook-database ships the identical schema six more times in vendor SQL DerekStride/tree-sitter-sql v0.3.11 does not parse: SqlServer's [bracket]-quoted identifiers inside a CONSTRAINT ... PRIMARY KEY CLUSTERED clause desync the parser (verified: `CONSTRAINT [PK_Album] PRIMARY KEY CLUSTERED ([AlbumId])` yields an ERROR node whose recovery misfires a bogus column_definition named \"PK_Album\") and Oracle/Db2-specific DDL likewise ERRORs out; sqitch's t/ fixtures are the same shape one level further (deploy/revert/verify SQL across sqlite, pg, mysql, oracle, firebird, vertica, exasol engines)",
+    "a second, independent factor: universal-ctags 6.2.1 itself is not a reliable L1 oracle for MySQL's backtick-quoted DDL — isolating chinook-database's MySQL file alone, ctags emits exactly one tag for the whole file (name \"`\", kind \"database\", from `CREATE DATABASE \\`Chinook\\`;`) while fathom's tree-sitter parse correctly finds all 22 definitions (verified directly); every MySQL-flavoured definition in both subjects therefore scores as an unmatched fathom def (precision loss) rather than a recall miss, through no fault of the query or grammar",
+    "engine variance is disclosed as designed (LB-Q-sql's own note): 'CONSTRAINT ... FOREIGN KEY ... REFERENCES' with a named constraint desyncs the same way as PRIMARY KEY CLUSTERED (ERROR-recovers into a usable `constraint` node — see broken.sql testdata and PROVENANCE.md); bare, unnamed FOREIGN KEY (...) REFERENCES ... parses cleanly and its FK edge is captured as an L2 reference.call on the enclosing table"
+  ],
+  "disposition": "deferred: target L2 not reached; L1 itself measures unmet on the merged calibration subjects, both blocked on tooling outside this dialect's queries — DerekStride/tree-sitter-sql v0.3.11 does not parse T-SQL bracket-quoted CONSTRAINT ... CLUSTERED clauses or (per the same failure shape, unverified in isolation) Oracle/Db2-specific DDL, and universal-ctags 6.2.1 mistags MySQL backtick-quoted DDL almost entirely (one bogus tag for a whole file, verified directly) rather than refusing to run — so its L1 numbers are not a trustworthy floor for MySQL content either. On standard/ANSI/SQLite-flavoured SQL alone (chinook-database's Chinook_Sqlite.sql, measured in isolation, not committed as its own reading) this same dialect reaches sym_recall 1.0, sym_precision 1.0, L1 good. L2's own blocker is separate and structural: no SCIP producer or upstream tags.scm exists for SQL, so call_recall/call_precision have no tier A/C truth to measure against at any subject (design §1.4, calibration/README.md); FK references are extracted as L2 reference.call edges regardless (dialects/sql/tags.scm), just unscored. Trigger: (a) an L1 blocker — either a tree-sitter-sql fork/version with real T-SQL and Oracle/Db2 support, or re-scoping calibration_subjects/corpus.d/sql.yaml's subpath away from chinook-database's non-Postgres variants and sqitch's non-sqlite/pg engine fixtures (an Opus call: the queue named these subjects deliberately, and this reading's own evidence is the case for revisiting them); (b) an L2 blocker — a maintained SQL SCIP producer, or an upstream tags.scm this dialect could adopt as a tier-C call oracle."
+}

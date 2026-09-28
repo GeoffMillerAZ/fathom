@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+  namespace: production
+spec:
+  template:
+    spec:
+      serviceAccountName: worker-sa
+      containers:
+        - name: worker
+          image: registry.example.com/worker:v1
+          envFrom:
+            - configMapRef:
+                name: worker-config
+            - secretRef:
+                name: worker-secret
+          env:
+            - name: DB_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: db-config
+                  key: host
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-secret
+                  key: password
+      volumes:
+        - name: config-vol
+          configMap:
+            name: worker-volume-config
+        - name: secret-vol
+          secret:
+            secretName: worker-volume-secret
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: debug-pod
+spec:
+  serviceAccountName: debug-sa
+  containers:
+    - name: debug
+      image: busybox:latest
+      envFrom:
+        - configMapRef:
+            name: debug-config

@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Shapes</title>
+  <link rel="stylesheet" href="./style.css">
+  <script src="./app.js"></script>
+</head>
+<body>
+  <h1 id="top">Welcome</h1>
+  <nav id="main-nav" class="nav primary">
+    <a href="#top">Top</a>
+  </nav>
+  <my-widget data-x="1">
+    <span id="inner">hi</span>
+  </my-widget>
+  <img id="logo" src="./logo.png"/>
+  <form id="signup" action="/signup" method="post">
+    <input type="text" name="email" id="email-field">
+    <input type="hidden" name="source" value="site"/>
+    <button type="submit">Go</button>
+  </form>
+  <script>
+    function greet(name) {
+      return helper(name);
+    }
+    function helper(name) {
+      return "hi " + name;
+    }
+  </script>
+  <style>
+    .foo { color: red; }
+  </style>
+</body>
+</html>

@@ -1,0 +1,141 @@
+{
+  "symbols": [
+    {
+      "name": "com.example.util.Helper",
+      "kind": "JavaImport",
+      "package": "com.example.shapes",
+      "line": 3,
+      "end_line": 3,
+      "tier": "verified"
+    },
+    {
+      "name": "Widget",
+      "kind": "JavaClass",
+      "package": "com.example.shapes",
+      "line": 5,
+      "end_line": 26,
+      "tier": "verified"
+    },
+    {
+      "name": "count",
+      "kind": "JavaField",
+      "package": "com.example.shapes",
+      "line": 6,
+      "end_line": 6,
+      "tier": "verified"
+    },
+    {
+      "name": "label",
+      "kind": "JavaField",
+      "package": "com.example.shapes",
+      "line": 7,
+      "end_line": 7,
+      "tier": "verified"
+    },
+    {
+      "name": "name",
+      "kind": "JavaField",
+      "package": "com.example.shapes",
+      "line": 7,
+      "end_line": 7,
+      "tier": "verified"
+    },
+    {
+      "name": "Widget.Widget",
+      "kind": "JavaMethod",
+      "package": "com.example.shapes",
+      "line": 9,
+      "end_line": 11,
+      "signature": "public Widget(String name)",
+      "tier": "verified"
+    },
+    {
+      "name": "Widget.sum",
+      "kind": "JavaMethod",
+      "package": "com.example.shapes",
+      "line": 13,
+      "end_line": 21,
+      "signature": "public int sum( int a, int b )",
+      "calls": [
+        "doThing",
+        "staticThing"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Widget.Inner",
+      "kind": "JavaClass",
+      "package": "com.example.shapes",
+      "line": 23,
+      "end_line": 25,
+      "tier": "verified"
+    },
+    {
+      "name": "Widget.Inner.innerMethod",
+      "kind": "JavaMethod",
+      "package": "com.example.shapes",
+      "line": 24,
+      "end_line": 24,
+      "signature": "void innerMethod()",
+      "tier": "verified"
+    },
+    {
+      "name": "Shape",
+      "kind": "JavaInterface",
+      "package": "com.example.shapes",
+      "line": 28,
+      "end_line": 30,
+      "tier": "verified"
+    },
+    {
+      "name": "Shape.area",
+      "kind": "JavaMethod",
+      "package": "com.example.shapes",
+      "line": 29,
+      "end_line": 29,
+      "signature": "int area();",
+      "tier": "verified"
+    },
+    {
+      "name": "Color",
+      "kind": "JavaEnum",
+      "package": "com.example.shapes",
+      "line": 32,
+      "end_line": 34,
+      "tier": "verified"
+    },
+    {
+      "name": "Point",
+      "kind": "JavaRecord",
+      "package": "com.example.shapes",
+      "line": 36,
+      "end_line": 38,
+      "tier": "verified"
+    },
+    {
+      "name": "Point.sum",
+      "kind": "JavaMethod",
+      "package": "com.example.shapes",
+      "line": 37,
+      "end_line": 37,
+      "signature": "int sum()",
+      "tier": "verified"
+    },
+    {
+      "name": "MyAnno",
+      "kind": "JavaAnnotation",
+      "package": "com.example.shapes",
+      "line": 40,
+      "end_line": 42,
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "com.example.util.Helper",
+      "module": "com.example.util.Helper",
+      "kind": "whole",
+      "line": 3
+    }
+  ]
+}

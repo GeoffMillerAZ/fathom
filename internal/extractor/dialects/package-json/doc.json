@@ -1,0 +1,21 @@
+{
+  "decode": "json",
+  "detect": { "basenames": ["package.json"] },
+  "entities": [
+    { "select": "$", "where": { "is_map": true },
+      "kind": "package", "source_kind": "PackageJSONPackage", "name": ".name", "signature": ".version" },
+    { "select": "$.scripts.*", "where": { "is_scalar": true },
+      "kind": "task", "source_kind": "PackageJSONScript", "name": "$key", "signature": "$" },
+    { "select": "$.bin.*", "where": { "is_scalar": true },
+      "kind": "route", "source_kind": "PackageJSONBin", "name": "$key", "signature": "$" },
+    { "select": "$.exports.*",
+      "kind": "route", "source_kind": "PackageJSONExport", "name": "$key", "signature": ".import | .require | .default | $" }
+  ],
+  "cross_file": [
+    { "select": "$.workspaces[*]", "value": "$", "resolve": "repo-path", "edge": "workspace_member" },
+    { "select": "$.dependencies.*", "value": "$key", "resolve": "module-source", "edge": "depends_on" },
+    { "select": "$.devDependencies.*", "value": "$key", "resolve": "module-source", "edge": "dev_depends_on" },
+    { "select": "$.peerDependencies.*", "value": "$key", "resolve": "module-source", "edge": "peer_depends_on" },
+    { "select": "$.optionalDependencies.*", "value": "$key", "resolve": "module-source", "edge": "optional_depends_on" }
+  ]
+}

@@ -1,0 +1,31 @@
+id: python-packaging
+language: Python packaging
+repos:
+  - name: pypa/pip
+    url: https://github.com/pypa/pip
+    ref: 26.2.1
+    sha: 634a6ec1a5d9dcc2433571cdb2f4c58a4bb29caf
+    licence: MIT
+    idioms:
+      - "a PEP 621 [project] table with dynamic version, project.scripts
+        (the pip/pip3 console entries) and project.urls"
+      - "[build-system] (flit-core) and [dependency-groups] with a real
+        PEP 735 include-group reference (test-common-wheels includes
+        test)"
+      - "many [tool.*] sections (flit, towncrier, vendoring, ruff, mypy
+        with [[tool.mypy.overrides]] array-of-tables, pytest, coverage,
+        check-sdist)"
+  - name: fastapi/fastapi
+    url: https://github.com/fastapi/fastapi
+    ref: 0.141.1
+    sha: 95f8322ee1dcda7ceace7b1c4f6c9915b36d748f
+    licence: MIT
+    subpath: scripts
+    idioms:
+      - "a PEP 621 [project] table plus project.optional-dependencies
+        and project.scripts"
+      - "[dependency-groups] with several real PEP 735 include-group
+        chains (dev -> tests/docs/translations, docs -> docs-tests,
+        tests -> docs-tests) — the richest include-group subject found"
+      - "[tool.*] sections including nested tool.ruff.lint/tool.typos.*
+        tables and [[tool.mypy.overrides]] array-of-tables"

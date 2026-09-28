@@ -1,0 +1,36 @@
+id: sql
+language: SQL
+repos:
+  - name: chinook-database
+    url: https://github.com/lerocha/chinook-database
+    ref: v1.4.5
+    sha: 4a944a942426e1f3263fe539155fb7ef92b04b4a
+    # GitHub's own detector reads this repo as other/unassertable (it ships
+    # LICENSE.md, not LICENSE), but the file's text is plain MIT.
+    licence: MIT
+    idioms:
+      - 'one flat schema file per RDBMS dialect (ChinookDb_Sqlite.sql,
+        ChinookDb_PostgreSql.sql, ChinookDb_MySql.sql): the same 11-table
+        catalog reissued across several CREATE TABLE dialects'
+      - 'double-quoted, schema-bare table and column identifiers throughout
+        the ANSI/PostgreSQL variant (quoted Artist, quoted AlbumId, ...)'
+      - 'every table an explicit CONSTRAINT-named PRIMARY KEY and one or more
+        CONSTRAINT-named FOREIGN KEY ... REFERENCES clauses (the fact table
+        InvoiceLine alone carries three)'
+      - 'CREATE INDEX statements grouped in a block after every table is
+        defined, not interleaved with their owning CREATE TABLE'
+  - name: sqitch
+    url: https://github.com/sqitchers/sqitch
+    ref: v1.6.1
+    sha: ce0550c45ade3527d0c7f981c934e1ea4bdd6c19
+    licence: MIT
+    idioms:
+      - 'a database change-management tool''s own test fixtures: t/sql/ and
+        t/pg/ hold small, hand-written deploy/revert/verify .sql scripts
+        (Sqitch''s own DDL for tracking changes, plus fixtures per engine)'
+      - 'CREATE TABLE ... plpgsql function bodies (CREATE OR REPLACE
+        FUNCTION ... AS dollar-quoted body LANGUAGE plpgsql) in the
+        PostgreSQL registry schema'
+      - 'CREATE VIEW definitions joining the registry''s own tracking tables'
+      - 'mixed single- and double-quoted identifiers across the sqlite, pg,
+        mysql, oracle and vertica engine variants under t/'

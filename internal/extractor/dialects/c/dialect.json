@@ -1,0 +1,36 @@
+{
+  "id": "c",
+  "display": "C",
+  "kind": "language",
+  "engine": "tags",
+  "lang_tag": "c",
+  "match": {
+    "extensions": [".c"],
+    "basenames": [],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "grammar": { "blob": "c", "entry_point": "tree_sitter_c" },
+  "variants": [],
+  "queries": { "tags": "tags.scm", "imports": "imports.scm" },
+  "kinds": {
+    "function": { "source_kind": "CFunc",    "canonical": "function",   "callable": true },
+    "struct":   { "source_kind": "CStruct",  "canonical": "struct" },
+    "union":    { "source_kind": "CUnion",   "canonical": "union" },
+    "enum":     { "source_kind": "CEnum",    "canonical": "enum" },
+    "typedef":  { "source_kind": "CTypedef", "canonical": "type_alias" },
+    "macro":    { "source_kind": "CMacro",   "canonical": "macro" }
+  },
+  "required_kinds": ["function", "struct", "union", "enum", "typedef", "macro"],
+  "oracle_kinds": {
+    "ctags": { "function": "function", "struct": "struct", "union": "union", "enum": "enum",
+               "typedef": "type_alias", "macro": "macro" }
+  },
+  "qualify": { "chain_containers": false, "container_sep": ".", "method_sep": "." },
+  "package": { "strategy": "dir" },
+  "imports": { "strategy": "include-path" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L4",
+  "queue_id": "c"
+}

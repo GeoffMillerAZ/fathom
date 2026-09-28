@@ -1,0 +1,13 @@
+{
+  "symbols": [
+    { "name": "acme-web", "kind": "PyProjectPackage", "package": "pyproject", "line": 1, "end_line": 7, "signature": "2.0.0", "tier": "verified" }
+  ],
+  "cross_file": [
+    { "from": "", "edge": "depends_on", "raw": "click", "target": "click", "strategy": "module-source", "line": 4 },
+    { "from": "", "edge": "depends_on", "raw": "requests>=2.0", "target": "requests>=2.0", "strategy": "module-source", "line": 4 },
+    { "from": "", "edge": "optional_depends_on", "raw": "coverage", "target": "coverage", "strategy": "module-source", "line": 7 },
+    { "from": "", "edge": "optional_depends_on", "raw": "pytest", "target": "pytest", "strategy": "module-source", "line": 7 },
+    { "from": "", "edge": "build_depends_on", "raw": "setuptools>=61.0", "target": "setuptools>=61.0", "strategy": "module-source", "line": 10 },
+    { "from": "", "edge": "build_depends_on", "raw": "wheel", "target": "wheel", "strategy": "module-source", "line": 10 }
+  ]
+}

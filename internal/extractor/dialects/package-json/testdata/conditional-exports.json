@@ -1,0 +1,13 @@
+{
+  "name": "acme-dual",
+  "version": "4.1.0",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    },
+    "./legacy": {
+      "default": "./dist/legacy.js"
+    }
+  }
+}

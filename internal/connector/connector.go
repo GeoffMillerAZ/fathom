@@ -66,10 +66,11 @@ var extClassMap = map[string]classification{
 	"go.mod": {core.KindModuleDep, "go"},
 
 	// Infrastructure / config
-	".tf":   {core.KindTerraformResource, "terraform"},
-	".cue":  {core.KindCUEDefinition, "cue"},
-	".yaml": {core.KindK8sWorkload, "yaml"},
-	".yml":  {core.KindK8sWorkload, "yaml"},
+	".tf":     {core.KindTerraformResource, "terraform"},
+	".tfvars": {core.KindTerraformVarValue, "terraform"},
+	".cue":    {core.KindCUEDefinition, "cue"},
+	".yaml":   {core.KindK8sWorkload, "yaml"},
+	".yml":    {core.KindK8sWorkload, "yaml"},
 
 	// Documentation
 	".md": {core.KindDocChunk, "md"},
@@ -100,6 +101,13 @@ var extClassMap = map[string]classification{
 	// same grammar/extractor as .kt.
 	".kt":  {core.KindKotlinClass, "kotlin"},
 	".kts": {core.KindKotlinClass, "kotlin"},
+
+	// HTML (LB-Q-html, language-breadth: new — a fleet gap, no incumbent).
+	".html": {core.KindHTMLId, "html"},
+	".htm":  {core.KindHTMLId, "html"},
+
+	// CSS (LB-Q-css, language-breadth: new — a fleet gap, no incumbent).
+	".css": {core.KindCSSSelector, "css"},
 
 	// C
 	".c": {core.KindCFunc, "c"},
@@ -154,6 +162,22 @@ var extClassMap = map[string]classification{
 
 	// JSON
 	".json": {core.KindJSONKey, "json"},
+
+	// npm/pnpm/yarn package manifest (LB-Q-package-json, language-breadth:
+	// new — a doc-engine tool format, no incumbent). The basename check
+	// (kindForFile/classify) takes precedence over ".json" above, so this
+	// entry — not the generic JSON one — governs every "package.json" file.
+	"package.json": {core.KindPackageJSONPackage, "package-json"},
+
+	// Python packaging (LB-Q-python-packaging, language-breadth: new — a
+	// doc-engine tool format, no incumbent). The basename check
+	// (kindForFile/classify) takes precedence over ".toml" (the generic
+	// TOML classification above), so this entry — not the generic one —
+	// governs every "pyproject.toml" file. requirements*.txt and
+	// setup.cfg from the same queue entry are not classified here: the
+	// doc engine decodes only YAML/JSON/TOML/XML (design §4), and neither
+	// is one of those (§14.2 disposition, LB-Q-python-packaging-rest).
+	"pyproject.toml": {core.KindPyProjectPackage, "python-packaging"},
 
 	// Scala
 	".scala": {core.KindScalaClass, "scala"},

@@ -1,0 +1,144 @@
+{
+  "dialect": "python-packaging",
+  "kind": "tooling",
+  "target_level": "L2",
+  "level_met": "L2",
+  "grade": {
+    "L1": "good",
+    "L2": "good",
+    "L3": "not-attempted",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-09-28",
+  "fathom_commit": "c5a1859a",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "fastapi",
+      "sha": "95f8322ee1dcda7ceace7b1c4f6c9915b36d748f",
+      "files": 1,
+      "bytes": 11573,
+      "counts": {
+        "fathom_defs": 16,
+        "kind_equal": 16,
+        "matched": 16,
+        "oracle_defs": 16,
+        "ref_fathom": 5,
+        "ref_fathom_in_truth": 5,
+        "ref_truth": 5,
+        "ref_truth_found": 5
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C"
+      },
+      "kind_intersection": [
+        "package",
+        "route",
+        "section",
+        "target"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 0.596,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "pip",
+      "sha": "634a6ec1a5d9dcc2433571cdb2f4c58a4bb29caf",
+      "files": 20,
+      "bytes": 13500,
+      "counts": {
+        "fathom_defs": 20,
+        "kind_equal": 20,
+        "matched": 20,
+        "oracle_defs": 20,
+        "ref_fathom": 1,
+        "ref_fathom_in_truth": 1,
+        "ref_truth": 1,
+        "ref_truth_found": 1
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C"
+      },
+      "kind_intersection": [
+        "package",
+        "route",
+        "section",
+        "target"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 1.118,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "C",
+      "tool": "tomllib reference parse",
+      "version": "tomllib(python3.14)"
+    },
+    {
+      "tier": "B",
+      "tool": "universal-ctags",
+      "status": "unavailable: universal-ctags has no parser for this dialect"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 1,
+    "ref_recall": 1,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "xref_precision": null,
+    "xref_recall": null
+  },
+  "metric_tiers": {
+    "ref_precision": "C",
+    "ref_recall": "C",
+    "sym_precision": "C",
+    "sym_recall": "C"
+  },
+  "required_kinds": [
+    "package"
+  ],
+  "kind_intersection": [
+    "package",
+    "route",
+    "section",
+    "target"
+  ],
+  "counts": {
+    "fathom_defs": 36,
+    "kind_equal": 36,
+    "matched": 36,
+    "oracle_defs": 36,
+    "ref_fathom": 6,
+    "ref_fathom_in_truth": 6,
+    "ref_truth": 6,
+    "ref_truth_found": 6
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 14.63,
+    "max_file_ms": 0,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "requirements*.txt and setup.cfg are unclassified (no ini/lines doc-engine decode format exists, design Sec4); only pyproject.toml is measured here"
+  ],
+  "disposition": "partial: pyproject.toml meets the L2 target; requirements*.txt and setup.cfg are unclassified (LB-Q-python-packaging-rest)"
+}

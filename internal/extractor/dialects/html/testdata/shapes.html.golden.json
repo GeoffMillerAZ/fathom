@@ -1,0 +1,133 @@
+{
+  "symbols": [
+    {
+      "name": "top",
+      "kind": "HTMLId",
+      "package": "shapes",
+      "line": 9,
+      "end_line": 9,
+      "tier": "verified"
+    },
+    {
+      "name": "main-nav",
+      "kind": "HTMLId",
+      "package": "shapes",
+      "line": 10,
+      "end_line": 12,
+      "tier": "verified"
+    },
+    {
+      "name": "my-widget",
+      "kind": "HTMLCustomElement",
+      "package": "shapes",
+      "line": 13,
+      "end_line": 15,
+      "tier": "verified"
+    },
+    {
+      "name": "inner",
+      "kind": "HTMLId",
+      "package": "shapes",
+      "line": 14,
+      "end_line": 14,
+      "tier": "verified"
+    },
+    {
+      "name": "logo",
+      "kind": "HTMLId",
+      "package": "shapes",
+      "line": 16,
+      "end_line": 16,
+      "tier": "verified"
+    },
+    {
+      "name": "/signup",
+      "kind": "HTMLForm",
+      "package": "shapes",
+      "line": 17,
+      "end_line": 21,
+      "tier": "verified"
+    },
+    {
+      "name": "signup",
+      "kind": "HTMLId",
+      "package": "shapes",
+      "line": 17,
+      "end_line": 21,
+      "tier": "verified"
+    },
+    {
+      "name": "email",
+      "kind": "HTMLFormField",
+      "package": "shapes",
+      "line": 18,
+      "end_line": 19,
+      "tier": "verified"
+    },
+    {
+      "name": "email-field",
+      "kind": "HTMLId",
+      "package": "shapes",
+      "line": 18,
+      "end_line": 19,
+      "tier": "verified"
+    },
+    {
+      "name": "source",
+      "kind": "HTMLFormField",
+      "package": "shapes",
+      "line": 19,
+      "end_line": 19,
+      "tier": "verified"
+    },
+    {
+      "name": "greet",
+      "kind": "JSFunc",
+      "package": "shapes",
+      "line": 23,
+      "end_line": 25,
+      "signature": "function greet(name)",
+      "calls": [
+        "helper"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "helper",
+      "kind": "JSFunc",
+      "package": "shapes",
+      "line": 26,
+      "end_line": 28,
+      "signature": "function helper(name)",
+      "tier": "verified"
+    },
+    {
+      "name": ".foo",
+      "kind": "CSSSelector",
+      "package": "shapes",
+      "line": 31,
+      "end_line": 31,
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "./style.css",
+      "module": "./style.css",
+      "kind": "whole",
+      "line": 5
+    },
+    {
+      "local": "./app.js",
+      "module": "./app.js",
+      "kind": "whole",
+      "line": 6
+    },
+    {
+      "local": "./logo.png",
+      "module": "./logo.png",
+      "kind": "whole",
+      "line": 16
+    }
+  ]
+}

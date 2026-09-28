@@ -77,6 +77,19 @@ func TestLevelMetFromMetricsAndTiers(t *testing.T) {
 			r.Metrics[MRangeAgreement] = nil
 			r.MetricTiers = tiers("B", r.Metrics)
 		}, want{LevelNone, Grade{L1: GradeUnmet, L2: GradeNotAttempted, L3: GradeNotAttempted, L4: GradeNotAttempted}}},
+		{"range not measured caps L1 at good", func(r *Reading) {
+			r.Metrics = l1Metrics(0.99)
+			r.Metrics[MRangeAgreement] = nil
+			r.NotMeasured = []string{MRangeAgreement}
+			r.MetricTiers = tiers("B", r.Metrics)
+		}, want{"L1", Grade{L1: GradeGood, L2: GradeNotAttempted, L3: GradeNotAttempted, L4: GradeNotAttempted}}},
+		{"range not measured never rescues a failing metric", func(r *Reading) {
+			r.Metrics = l1Metrics(0.99)
+			r.Metrics[MRangeAgreement] = nil
+			r.Metrics[MSymPrecision] = f(0.5)
+			r.NotMeasured = []string{MRangeAgreement}
+			r.MetricTiers = tiers("B", r.Metrics)
+		}, want{LevelNone, Grade{L1: GradeUnmet, L2: GradeNotAttempted, L3: GradeNotAttempted, L4: GradeNotAttempted}}},
 		{"no callables", func(r *Reading) {
 			r.Metrics = l1Metrics(0.97)
 			r.Metrics[MSignatureCoverage] = nil
@@ -160,6 +173,8 @@ func TestValidateReading(t *testing.T) {
 		"unknown metric":         func(r *Reading) { r.Metrics["vibes"] = f(1); r.MetricTiers["vibes"] = "A" },
 		"out of range":           func(r *Reading) { r.Metrics[MSymRecall] = f(1.5) },
 		"bad n/a":                func(r *Reading) { r.NotApplicable = []string{MSymRecall} },
+		"bad not-measured":       func(r *Reading) { r.Metrics[MSymRecall] = nil; r.NotMeasured = []string{MSymRecall} },
+		"not-measured has value": func(r *Reading) { r.NotMeasured = []string{MRangeAgreement} },
 		"faults unnamed":         func(r *Reading) { r.Tenancy.Faults = 1 },
 		"no subject":             func(r *Reading) { r.Subjects = nil },
 		"bad kind":               func(r *Reading) { r.Kind = "prose" },

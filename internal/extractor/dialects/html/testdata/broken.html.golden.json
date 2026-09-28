@@ -1,0 +1,28 @@
+{
+  "symbols": [
+    {
+      "name": "wrapper",
+      "kind": "HTMLId",
+      "package": "broken",
+      "line": 4,
+      "end_line": 7,
+      "tier": "verified"
+    },
+    {
+      "name": "lead",
+      "kind": "HTMLId",
+      "package": "broken",
+      "line": 5,
+      "end_line": 7,
+      "tier": "verified"
+    },
+    {
+      "name": "tail",
+      "kind": "HTMLId",
+      "package": "broken",
+      "line": 6,
+      "end_line": 6,
+      "tier": "verified"
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+.card {
+  color: black;
+
+  &:hover {
+    color: blue;
+  }
+
+  .title {
+    font-weight: bold;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+[data-state="open"] {
+  display: block;
+}

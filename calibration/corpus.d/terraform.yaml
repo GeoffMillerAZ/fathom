@@ -1,0 +1,29 @@
+id: terraform
+language: Terraform
+repos:
+  - name: terraform-aws-vpc
+    url: https://github.com/terraform-aws-modules/terraform-aws-vpc
+    ref: v6.7.3
+    sha: b3abd6df2ecf052451a361ed55b8f06f8742a795
+    licence: Apache-2.0
+    idioms:
+      - "resources and data sources referencing each other by
+        `<type>.<name>.<attr>` inside the same file (subnet -> vpc, route
+        -> route_table)"
+      - "many `count`/`for_each`-driven resource blocks (public/private/
+        database subnet families) with `var.*` and `local.*` references
+        throughout"
+      - "a `locals` block computing derived values from `var.*` used across
+        many later resources"
+  - name: terraform-aws-eks
+    url: https://github.com/terraform-aws-modules/terraform-aws-eks
+    ref: v21.26.0
+    sha: 323c633629b8e4306d94eb1392d7400a80143621
+    licence: Apache-2.0
+    idioms:
+      - "nested local modules referenced by relative path (`module \"x\" {
+        source = \"./modules/...\" }`) alongside registry-sourced modules"
+      - "outputs re-exporting a module's own outputs
+        (`module.eks.cluster_arn`)"
+      - "`dynamic` blocks and deeply nested resource bodies (IAM policy
+        documents) that reference `var.*`/`local.*` many levels deep"

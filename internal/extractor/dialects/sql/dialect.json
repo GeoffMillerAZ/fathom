@@ -1,0 +1,35 @@
+{
+  "id": "sql",
+  "display": "SQL",
+  "kind": "language",
+  "engine": "tags",
+  "lang_tag": "sql",
+  "match": {
+    "extensions": [".sql"],
+    "basenames": [],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "grammar": { "blob": "sql", "entry_point": "tree_sitter_sql" },
+  "variants": [],
+  "queries": { "tags": "tags.scm" },
+  "kinds": {
+    "table":     { "source_kind": "SQLTable",    "canonical": "table",     "container": true, "callable": true },
+    "view":      { "source_kind": "SQLView",     "canonical": "view",     "container": true },
+    "index":     { "source_kind": "SQLIndex",    "canonical": "key" },
+    "function":  { "source_kind": "SQLFunction", "canonical": "function", "callable": true },
+    "type":      { "source_kind": "SQLType",     "canonical": "type_alias" },
+    "column":    { "source_kind": "SQLColumn",   "canonical": "column" }
+  },
+  "required_kinds": ["table", "view", "index", "function", "column"],
+  "oracle_kinds": {
+    "ctags": { "table": "table", "view": "view", "index": "key", "function": "function",
+               "procedure": "function", "field": "column" }
+  },
+  "qualify": { "chain_containers": true, "container_sep": ".", "method_sep": "." },
+  "package": { "strategy": "dir" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L2",
+  "queue_id": "sql"
+}

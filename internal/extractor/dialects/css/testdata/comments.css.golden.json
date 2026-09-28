@@ -1,0 +1,68 @@
+{
+  "symbols": [
+    {
+      "name": "button",
+      "kind": "CSSSelector",
+      "package": "comments",
+      "line": 1,
+      "end_line": 7,
+      "tier": "verified"
+    },
+    {
+      "name": "html input[type=\"button\"]",
+      "kind": "CSSSelector",
+      "package": "comments",
+      "line": 2,
+      "end_line": 7,
+      "tier": "verified"
+    },
+    {
+      "name": "input[type=\"reset\"]",
+      "kind": "CSSSelector",
+      "package": "comments",
+      "line": 3,
+      "end_line": 7,
+      "tier": "verified"
+    },
+    {
+      "name": "input[type=\"submit\"]",
+      "kind": "CSSSelector",
+      "package": "comments",
+      "line": 4,
+      "end_line": 7,
+      "tier": "verified"
+    },
+    {
+      "name": ".a .b",
+      "kind": "CSSSelector",
+      "package": "comments",
+      "line": 9,
+      "end_line": 14,
+      "tier": "verified"
+    },
+    {
+      "name": ".c > .d",
+      "kind": "CSSSelector",
+      "package": "comments",
+      "line": 10,
+      "end_line": 14,
+      "tier": "verified"
+    },
+    {
+      "name": ".e ~ .f",
+      "kind": "CSSSelector",
+      "package": "comments",
+      "line": 11,
+      "end_line": 14,
+      "tier": "verified"
+    },
+    {
+      "name": ".g + .h",
+      "kind": "CSSSelector",
+      "package": "comments",
+      "line": 12,
+      "end_line": 14,
+      "tier": "verified"
+    }
+  ]
+}

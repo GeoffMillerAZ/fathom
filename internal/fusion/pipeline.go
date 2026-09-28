@@ -511,7 +511,66 @@ func parseGitLog(serviceID, raw string) []store.Commit {
 // Epoch 9 (LB-F10, design §5): the generated/minified gate — a minified or
 // generator-marked file of a manifest dialect is no longer extracted; its
 // stored observations predate the gate, so the salt bump purges them.
-const ExtractorEpoch = "9"
+// Epoch 10 (LB-Q-html, docs/design/language-breadth.md §13): HTML (.html/
+// .htm) now extracts via internal/extractor.NewTSExtractor("html") — tree-
+// sitter via wazero/WASM, a fleet gap with no incumbent — where every such
+// file previously fell through to "no extractor registered" and was
+// fingerprinted (never re-sniffed) by that dead-end path, the same class
+// epoch 7 fixed for Kotlin; the salt bump forces those files through the
+// new extractor on the next ingest instead of leaving them silently stuck
+// on a stale "unsupported" fingerprint.
+// Epoch 11 (LB-Q-css, docs/design/language-breadth.md §13): CSS (.css) now
+// extracts via internal/extractor.NewTSExtractor("css") — tree-sitter via
+// wazero/WASM, a fleet gap with no incumbent — where every .css file
+// previously fell through to "no extractor registered" and was
+// fingerprinted (never re-sniffed) by that dead-end path, the same class
+// epochs 7 and 10 fixed for Kotlin and HTML; the salt bump forces those
+// files through the new extractor on the next ingest instead of leaving
+// them silently stuck on a stale "unsupported" fingerprint.
+// Epoch 12 (LB-Q-package-json, docs/design/language-breadth.md §13/§4): a
+// basename match on "package.json" now routes to the doc-engine
+// package-json dialect (package/script/bin/export entities, dependency and
+// workspace cross-file references) instead of the generic JSONExtractor's
+// top-level-key dump (KindJSONKey, Line always 0) — every already-indexed
+// package.json's stored observations were produced by that generic path,
+// so the salt bump forces re-extraction rather than leaving them silently
+// stale.
+// Epoch 13 (LB-Q-python-packaging, docs/design/language-breadth.md §13/§4):
+// a basename match on "pyproject.toml" now routes to the doc-engine
+// python-packaging dialect (package/script/entrypoint/tool/dependency-group
+// entities, an include-group intra-file reference, and dependency/
+// build-system cross-file references) instead of the generic
+// TOMLExtractor's bare table/key dump (KindTOMLTable/KindTOMLKey) — every
+// already-indexed pyproject.toml's stored observations were produced by
+// that generic path, so the salt bump forces re-extraction rather than
+// leaving them silently stale.
+// Epoch 14 (LB-Q-terraform, docs/design/language-breadth.md §13): HCLExtractor
+// now emits intra-file Calls (resource/data/module/var/local reference edges,
+// including depends_on) on resource/data/module/output/locals symbols, records
+// a module's source (local path or registry ref) in its Signature, and .tfvars
+// files now extract per-key TerraformVarValue symbols instead of falling
+// through to "no extractor registered" — every already-indexed .tf file's
+// stored observations were produced by the OLD extractor with no Calls and a
+// bare Signature, so the salt bump forces re-extraction rather than leaving
+// them silently stale.
+// Epoch 15: the doc engine's TOML locator places a table reached only
+// through deeper headers ([tool.black.sub]) or dotted keys at the first line
+// that writes under it, not at its parent's line — every already-indexed
+// pyproject.toml's [tool.*] sections were stored at line 1.
+// Epoch 16 (LB-Q-dockerfile, docs/design/language-breadth.md §13): Dockerfile
+// (bare "Dockerfile", "*.dockerfile") now extracts via
+// internal/extractor.NewTSExtractor("dockerfile") — tree-sitter via
+// wazero/WASM (camdencheek/tree-sitter-dockerfile) — retiring
+// DockerfileExtractor's line-scanner. DockerStage nodes now carry a real
+// Tier (TierVerified, not TierPreScan), an EndLine and a Signature, ARG/ENV
+// keys are extracted for the first time (DockerfileArg/DockerfileEnv), and a
+// stage's Calls now includes every FROM base reference unconditionally
+// (external images too, not only a match against an earlier stage's alias —
+// the tags engine's naive same-file call collection convention every other
+// tags dialect already follows, ADR-021 §3) — every already-indexed
+// Dockerfile/*.dockerfile's stored observations predate all of this, so the
+// salt bump forces re-extraction rather than leaving them silently stale.
+const ExtractorEpoch = "16"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares
@@ -578,14 +637,24 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	p.exts[".mts"] = js
 	p.exts[".cts"] = js
 
-	// Java
+	// Java. LB-Q-java built and measured a tree-sitter dialect
+	// (internal/extractor/dialects/java/) — see docs/bench/readings/lang/java.json —
+	// but even its L1 falls short (§11 step 2's merge gate: the incumbent stays
+	// fusion's live dispatch until the dialect's target level is met); see
+	// internal/extractor/dialects/java/PROVENANCE.md for the measured detail.
 	p.exts[".java"] = extractor.NewJavaExtractor()
 
 	// Rust
 	p.exts[".rs"] = extractor.NewRustExtractor()
 
 	// C (.h is polyglot: the header router sniffs C++ signals and picks the
-	// grammar per file — docs/plans/cpp-toolchain.md CT-3)
+	// grammar per file — docs/plans/cpp-toolchain.md CT-3). LB-Q-c built and
+	// measured a tree-sitter dialect (internal/extractor/dialects/c/) — see
+	// docs/bench/readings/lang/c.json — but its target (L4) is not met (§11
+	// step 2's merge gate: "every L1 metric ≥ the incumbent's AND the
+	// dialect meets its target level"), so the CGO incumbent stays the live
+	// dispatch here; only a future queue item that reaches L4 (or a
+	// retargeted level) switches this line.
 	c := extractor.NewCExtractor()
 	p.exts[".c"] = c
 	p.exts[".h"] = extractor.NewCHeaderExtractor()
@@ -625,8 +694,29 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	p.exts[".kt"] = kt
 	p.exts[".kts"] = kt
 
+	// HTML — tree-sitter via wazero/WASM (LB-Q-html, design
+	// §13/language-breadth): new; no incumbent bespoke walker existed for
+	// HTML (a fleet gap, not a port), so there is no calibration gate.
+	html, err := extractor.NewTSExtractor("html")
+	if err != nil {
+		panic(fmt.Sprintf("fusion: tsextract html: %v", err))
+	}
+	p.exts[".html"] = html
+	p.exts[".htm"] = html
+
+	// CSS — tree-sitter via wazero/WASM (LB-Q-css, design
+	// §13/language-breadth): new; no incumbent bespoke walker existed for
+	// CSS (a fleet gap, not a port), so there is no calibration gate.
+	css, err := extractor.NewTSExtractor("css")
+	if err != nil {
+		panic(fmt.Sprintf("fusion: tsextract css: %v", err))
+	}
+	p.exts[".css"] = css
+
 	// Terraform HCL
-	p.exts[".tf"] = extractor.NewHCLExtractor()
+	hcl := extractor.NewHCLExtractor()
+	p.exts[".tf"] = hcl
+	p.exts[".tfvars"] = hcl
 
 	// YAML: route .github/workflows/* to GHA extractor, everything else to K8s.
 	k8s := extractor.NewK8sExtractor()
@@ -652,9 +742,15 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	p.exts["values.yaml"] = extractor.NewHelmValuesExtractor()
 	p.exts[".tpl"] = extractor.NewHelmTemplateExtractor()
 
-	// Dockerfile (full-basename keys take precedence over extension dispatch)
-	p.exts["Dockerfile"] = extractor.NewDockerfileExtractor()
-	p.exts[".dockerfile"] = extractor.NewDockerfileExtractor()
+	// Dockerfile — tree-sitter via wazero/WASM (LB-Q-dockerfile, design
+	// §13/language-breadth): retires DockerfileExtractor's line-scanner.
+	// Full-basename key takes precedence over extension dispatch.
+	dockerfile, err := extractor.NewTSExtractor("dockerfile")
+	if err != nil {
+		panic(fmt.Sprintf("fusion: tsextract dockerfile: %v", err))
+	}
+	p.exts["Dockerfile"] = dockerfile
+	p.exts[".dockerfile"] = dockerfile
 
 	// Docker Compose (full-basename keys take precedence over .yaml k8s extractor)
 	compose := extractor.NewComposeExtractor()
@@ -700,6 +796,30 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	// JSON
 	p.exts[".json"] = extractor.NewJSONExtractor()
 
+	// npm/pnpm/yarn package manifest (LB-Q-package-json, language-breadth:
+	// new — a doc-engine tool format, no incumbent). resolveExtractor's
+	// basename lookup (p.exts[base]) runs before the ".json" extension
+	// fallback above, so this dialect — not the generic JSONExtractor —
+	// governs every "package.json" file.
+	pkgJSON, err := extractor.NewDocDialectExtractor("package-json")
+	if err != nil {
+		panic(fmt.Sprintf("fusion: doc-dialect package-json: %v", err))
+	}
+	p.exts["package.json"] = pkgJSON
+
+	// Python packaging (LB-Q-python-packaging, language-breadth: new — a
+	// doc-engine tool format, no incumbent). resolveExtractor's basename
+	// lookup (p.exts[base]) runs before the ".toml" extension fallback
+	// above, so this dialect — not the generic TOMLExtractor — governs
+	// every "pyproject.toml" file. requirements*.txt and setup.cfg from
+	// the same queue entry are left unclassified (LB-Q-python-packaging-
+	// rest): the doc engine decodes only YAML/JSON/TOML/XML (design §4).
+	pyProject, err := extractor.NewDocDialectExtractor("python-packaging")
+	if err != nil {
+		panic(fmt.Sprintf("fusion: doc-dialect python-packaging: %v", err))
+	}
+	p.exts["pyproject.toml"] = pyProject
+
 	// Scala
 	scala := extractor.NewScalaExtractor()
 	p.exts[".scala"] = scala
@@ -708,13 +828,62 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	// PHP
 	p.exts[".php"] = extractor.NewPhpExtractor()
 
-	// Bash
+	// Bash (.sh .bash, shebangs). LB-Q-bash built and measured a
+	// tree-sitter dialect (internal/extractor/dialects/bash/) — see
+	// docs/bench/readings/lang/bash.json — but its target (L2) is not met
+	// (§11 step 2's merge gate): the call-recall/call-precision metrics
+	// have no oracle at all for a language dialect (FamilyCalls is fed
+	// only by ScoreSCIP, tier A, and no SCIP producer exists for Bash) —
+	// L1 reads good. The CGO incumbent stays the live dispatch here; only
+	// a future item that reaches L2 (or a retargeted level, or a wired
+	// tier-C/tool calls oracle) switches this line.
 	bash := extractor.NewBashExtractor()
 	p.exts[".sh"] = bash
 	p.exts[".bash"] = bash
 
 	// Lua
 	p.exts[".lua"] = extractor.NewLuaExtractor()
+
+	// Every other embedded tags-engine dialect (design §2.1: "fusion.New
+	// registers every manifest's extensions and basenames"). The five
+	// lines above wire javascript/typescript/python/ruby/kotlin by hand
+	// (their own grammar/variant selection lives inside TSExtractor); a
+	// dialect added later by the language-breadth queue — CSS onward —
+	// had no such line and, before this, silently dispatched to no
+	// extractor at all (extraction returned "no-extractor" for every one
+	// of its files, in both real ingest and indexbench lang-oracle). This
+	// registers each remaining tags-engine manifest's extensions,
+	// basenames and variant extensions that no earlier line already
+	// claimed; a key already claimed above is left untouched. A manifest
+	// load error here leaves nothing registered — the same fail-open
+	// convention as dialectgate.go's dialectRules — since
+	// TestDialectManifests already fails the build on a bad manifest.
+	if ds, dErr := extractor.LoadDialects(); dErr == nil {
+		for _, d := range ds {
+			if d.Engine != "tags" {
+				continue
+			}
+			keys := append([]string(nil), d.Match.Extensions...)
+			keys = append(keys, d.Match.Basenames...)
+			for _, v := range d.Variants {
+				keys = append(keys, v.Extensions...)
+			}
+			var e extractor.Extractor
+			for _, k := range keys {
+				if _, claimed := p.exts[k]; claimed {
+					continue
+				}
+				if e == nil {
+					var nerr error
+					e, nerr = extractor.NewTSExtractor(d.ID)
+					if nerr != nil {
+						panic(fmt.Sprintf("fusion: tsextract %s: %v", d.ID, nerr))
+					}
+				}
+				p.exts[k] = e
+			}
+		}
+	}
 
 	return p
 }
@@ -1895,6 +2064,17 @@ type BenchExtraction struct {
 // refs is the service's Discover list (the sibling index YAML
 // classification reads).
 func (p *Pipeline) ExtractForBench(serviceID string, refs []core.SourceRef, relPath string, content []byte) (BenchExtraction, error) {
+	return p.extractForBench(nil, serviceID, refs, relPath, content)
+}
+
+// ExtractForBenchWith runs ingest's gates on one file and then e, not
+// dispatch's choice — the retirement protocol's parity run (LB-F18, design
+// §11), which measures a dialect while its incumbent is still dispatched.
+func (p *Pipeline) ExtractForBenchWith(e extractor.Extractor, serviceID string, refs []core.SourceRef, relPath string, content []byte) (BenchExtraction, error) {
+	return p.extractForBench(e, serviceID, refs, relPath, content)
+}
+
+func (p *Pipeline) extractForBench(with extractor.Extractor, serviceID string, refs []core.SourceRef, relPath string, content []byte) (BenchExtraction, error) {
 	if connector.IsBinary(content) {
 		return BenchExtraction{Skipped: "binary"}, nil
 	}
@@ -1914,6 +2094,8 @@ func (p *Pipeline) ExtractForBench(serviceID string, refs []core.SourceRef, relP
 	}
 	e, tk, ok, unclassified := p.resolveExtractor(relPath, content, idx)
 	switch {
+	case with != nil:
+		e = with
 	case unclassified:
 		return BenchExtraction{ToolKind: tk, Skipped: "unclassified"}, nil
 	case !ok:

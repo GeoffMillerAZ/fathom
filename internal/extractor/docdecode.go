@@ -399,12 +399,34 @@ func newTOMLLocator(src []byte) *tomlLocator {
 }
 
 // lineOf is the line keyPath is written on: its header, or its assignment
-// (plain or dotted) within an enclosing table; fallback when neither.
+// (plain or dotted) within an enclosing table; else, for a table that is
+// only implicit — reached through deeper headers ([tool.x.sub]) or dotted
+// keys (x.y = 1) — the first line that writes under it; fallback when none.
 func (l *tomlLocator) lineOf(keyPath []string, fallback int) int {
+	if line, ok := l.explicitLine(keyPath, fallback); ok {
+		return line
+	}
+	prefix := strings.Join(keyPath, ".") + "."
+	for _, t := range l.lines {
+		full := t.table
+		if !t.isHeader {
+			full = t.key
+			if t.table != "" {
+				full = t.table + "." + t.key
+			}
+		}
+		if strings.HasPrefix(full, prefix) {
+			return t.line
+		}
+	}
+	return fallback
+}
+
+func (l *tomlLocator) explicitLine(keyPath []string, fallback int) (int, bool) {
 	full := strings.Join(keyPath, ".")
 	for _, t := range l.lines {
 		if t.isHeader && t.table == full {
-			return t.line
+			return t.line, true
 		}
 	}
 	for _, t := range l.lines {
@@ -412,15 +434,15 @@ func (l *tomlLocator) lineOf(keyPath []string, fallback int) int {
 			continue
 		}
 		if t.table == "" && t.key == full {
-			return t.line
+			return t.line, true
 		}
 		if t.table != "" && strings.HasPrefix(full, t.table+".") && t.key == strings.TrimPrefix(full, t.table+".") {
 			if t.line >= fallback {
-				return t.line
+				return t.line, true
 			}
 		}
 	}
-	return fallback
+	return 0, false
 }
 
 // arrayTableLine is the line of the i-th `[[keyPath]]` header.

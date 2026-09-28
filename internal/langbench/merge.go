@@ -22,7 +22,7 @@ func NewReading(m Manifest, target string) Reading {
 	if kind == "" {
 		kind = "language"
 	}
-	r := Reading{Dialect: m.ID, Kind: kind, TargetLevel: target, RequiredKinds: append([]string(nil), m.RequiredKinds...)}
+	r := Reading{Dialect: m.ID, Kind: kind, TargetLevel: target, RequiredKinds: m.RequiredCanonical()}
 	r.Finalize()
 	return r
 }
@@ -61,6 +61,12 @@ func MergeSubject(r *Reading, s Subject) {
 	sort.Slice(r.Subjects, func(i, j int) bool { return r.Subjects[i].Name < r.Subjects[j].Name })
 	recompute(r)
 }
+
+// Regrade recomputes a reading from its recorded subjects under the
+// current harness rules (thresholds, not_measured, name and kind rules that
+// act on counts) without re-extracting: the subjects' raw counts are the
+// measurement, the level is always derived from them.
+func Regrade(r *Reading) { recompute(r) }
 
 func recompute(r *Reading) {
 	counts := map[string]int{}
@@ -146,6 +152,16 @@ func recompute(r *Reading) {
 	r.NotApplicable = nil
 	if measured(FamilyL1) && counts[CntCallables] == 0 && r.Kind != "tooling" {
 		r.NotApplicable = []string{MSignatureCoverage}
+	}
+	// An L1 oracle that matched definitions but reported an end line for
+	// none of them cannot measure range_agreement: not_measured, disclosed,
+	// and L1 capped at good (§1.2) — never a failure, never excellence.
+	r.NotMeasured = nil
+	r.Notes = slices.DeleteFunc(r.Notes, func(n string) bool { return n == NoteRangeNotMeasured })
+	if measured(FamilyL1) && r.Kind != "tooling" && counts[CntMatched] > 0 && counts[CntRangeEligible] == 0 {
+		r.NotMeasured = []string{MRangeAgreement}
+		r.Notes = append(r.Notes, NoteRangeNotMeasured)
+		sort.Strings(r.Notes)
 	}
 	r.Finalize()
 }

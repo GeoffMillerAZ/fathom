@@ -75,6 +75,18 @@ var toolThresholds = map[string][]threshold{
 // not-applicable: a dialect with no callable kind has no signatures.
 var notApplicableAllowed = []string{MSignatureCoverage}
 
+// notMeasuredAllowed lists the metrics a reading may record as
+// not_measured: the field exists in the language, but the only available
+// L1 oracle cannot report it (universal-ctags writes no end line for
+// HTML, TypeScript, JavaScript, Rust, Kotlin, Lua or PHP). A not-measured
+// metric is never a failure, and never proof: the level it belongs to is
+// met at most at good (§1.2).
+var notMeasuredAllowed = []string{MRangeAgreement}
+
+// NoteRangeNotMeasured is the disclosure a reading carries while
+// range_agreement is not_measured.
+const NoteRangeNotMeasured = "range_agreement not measured: the L1 oracle reported no end line for any matched definition, so L1 can be met at most at good, never excellent (design §1.2)"
+
 // Tenancy floors (§1.2, always required).
 const (
 	MaxFaultRatio      = 0.001
@@ -178,6 +190,7 @@ type Reading struct {
 	Metrics          map[string]*float64 `json:"metrics"`
 	MetricTiers      map[string]string   `json:"metric_tiers"`
 	NotApplicable    []string            `json:"not_applicable,omitempty"`
+	NotMeasured      []string            `json:"not_measured,omitempty"`
 	RequiredKinds    []string            `json:"required_kinds"`
 	KindIntersection []string            `json:"kind_intersection"`
 	Counts           map[string]int      `json:"counts,omitempty"`
@@ -267,8 +280,13 @@ func LevelMet(r Reading) (string, Grade) {
 func gradeLevel(r Reading, level string, ts []threshold) string {
 	measured, missing := 0, 0
 	grade := GradeExcellent
+	capped := false
 	for _, t := range ts {
 		if slices.Contains(r.NotApplicable, t.metric) {
+			continue
+		}
+		if slices.Contains(r.NotMeasured, t.metric) && r.Metrics[t.metric] == nil {
+			capped = true
 			continue
 		}
 		v := r.Metrics[t.metric]
@@ -296,6 +314,8 @@ func gradeLevel(r Reading, level string, ts []threshold) string {
 		return GradeNotAttempted
 	case missing > 0:
 		return GradeUnmet
+	case capped:
+		return minGrade(grade, GradeGood)
 	}
 	return grade
 }
@@ -306,6 +326,7 @@ func (r *Reading) Finalize() {
 	sort.Strings(r.RequiredKinds)
 	sort.Strings(r.KindIntersection)
 	sort.Strings(r.NotApplicable)
+	sort.Strings(r.NotMeasured)
 	sort.Strings(r.Tenancy.FaultingFiles)
 	if r.RequiredKinds == nil {
 		r.RequiredKinds = []string{}
@@ -394,6 +415,14 @@ func (r Reading) Validate() error {
 	for _, name := range r.NotApplicable {
 		if !slices.Contains(notApplicableAllowed, name) {
 			return fmt.Errorf("reading %s: %s may not be declared not-applicable", r.Dialect, name)
+		}
+	}
+	for _, name := range r.NotMeasured {
+		if !slices.Contains(notMeasuredAllowed, name) {
+			return fmt.Errorf("reading %s: %s may not be declared not_measured", r.Dialect, name)
+		}
+		if r.Metrics[name] != nil {
+			return fmt.Errorf("reading %s: %s is declared not_measured but has a value", r.Dialect, name)
 		}
 	}
 	if r.Tenancy.Faults != len(r.Tenancy.FaultingFiles) {

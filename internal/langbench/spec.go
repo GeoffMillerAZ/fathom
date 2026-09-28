@@ -8,6 +8,8 @@ import (
 	"slices"
 	"sort"
 	"strings"
+
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // Manifest is the subset of a dialect manifest (schema/dialect, design
@@ -17,19 +19,27 @@ type Manifest struct {
 	ID            string                       `json:"id"`
 	Display       string                       `json:"display"`
 	Kind          string                       `json:"kind"`
+	Engine        string                       `json:"engine,omitempty"`
 	LangTag       string                       `json:"lang_tag"`
 	Match         ManifestMatch                `json:"match"`
 	Kinds         map[string]KindSpec          `json:"kinds"`
 	RequiredKinds []string                     `json:"required_kinds"`
 	OracleKinds   map[string]map[string]string `json:"oracle_kinds"`
-	TargetLevel   string                       `json:"target_level"`
-	QueueID       string                       `json:"queue_id"`
+	// NameMatch is how names are compared with an oracle's (§1.4):
+	// NameMatchBare (default) or NameMatchIdentity.
+	NameMatch   string `json:"name_match,omitempty"`
+	TargetLevel string `json:"target_level"`
+	QueueID     string `json:"queue_id"`
+	// Ctags is the manifest's own tier-B invocation (extractor.DialectCtags),
+	// for a dialect the embedded incumbents.json spec does not cover.
+	Ctags *CtagsSpec `json:"ctags,omitempty"`
 }
 
 // ManifestMatch is a manifest's classification keys.
 type ManifestMatch struct {
 	Extensions []string `json:"extensions"`
 	Basenames  []string `json:"basenames"`
+	Globs      []string `json:"globs"`
 }
 
 // KindSpec maps one of a dialect's kinds to a SourceKind and a canonical
@@ -97,17 +107,87 @@ func ParseManifest(b []byte) (Manifest, error) {
 	if !QueueIDPattern.MatchString(m.ID) {
 		return Manifest{}, fmt.Errorf("manifest id %q must match %s", m.ID, QueueIDPattern)
 	}
+	if m.NameMatch != "" && m.NameMatch != NameMatchBare && m.NameMatch != NameMatchIdentity {
+		return Manifest{}, fmt.Errorf("manifest %s: name_match %q is not %q or %q", m.ID, m.NameMatch, NameMatchBare, NameMatchIdentity)
+	}
 	return m, nil
 }
 
-// Owns reports whether relPath is one of this dialect's files by basename
-// or extension (the classification keys; sniffing arrives with LB-F9).
+// Name-match modes (§1.4, the manifest's name_match).
+const (
+	NameMatchBare     = "bare"
+	NameMatchIdentity = "identity"
+)
+
+// MatchName is the form of a fathom name the harness compares with an
+// oracle's: the whole name for an identity dialect, else its last segment
+// (BareName).
+func (m Manifest) MatchName(q string) string {
+	if m.NameMatch == NameMatchIdentity {
+		return q
+	}
+	return BareName(q)
+}
+
+// CallPairs is FathomCallPairs under the dialect's name matching.
+func (m Manifest) CallPairs(nodes []core.SymbolNode, files map[string]bool) map[CallPair]bool {
+	return callPairs(nodes, files, m.MatchName)
+}
+
+// Owns reports whether relPath is one of this dialect's files by basename,
+// path glob or extension (the classification keys; sniffing is
+// connector.ClassifyDialect's job, LB-F9, and is not replicated here: a
+// bench subject's files are unambiguous by construction).
+//
+// Found and fixed alongside LB-Q-github-actions: this had checked only
+// Basenames and Extensions, silently ignoring Match.Globs (ManifestMatch
+// never even decoded the field) — every glob-only dialect (a workflow file
+// under .github/workflows/, which is a path shape, not a basename or
+// extension) measured zero files from lang-oracle although
+// connector.ClassifyDialect (production ingest) already classified them
+// correctly; the gap was in this bench-only helper alone.
 func (m Manifest) Owns(relPath string) bool {
 	base := path.Base(relPath)
 	if slices.Contains(m.Match.Basenames, base) {
 		return true
 	}
+	for _, g := range m.Match.Globs {
+		if globMatch(g, relPath) {
+			return true
+		}
+	}
 	return slices.Contains(m.Match.Extensions, strings.ToLower(path.Ext(base)))
+}
+
+// globMatch matches a slash path against a manifest glob: path.Match per
+// segment, with a "**" segment matching zero or more segments. Mirrors
+// internal/connector's globMatch (design §5) exactly, so the bench
+// harness's file discovery agrees with production classification; kept
+// local rather than imported since internal/connector does not depend on
+// internal/langbench and this package stays free of that dependency too.
+func globMatch(pattern, p string) bool {
+	return globSegs(strings.Split(pattern, "/"), strings.Split(p, "/"))
+}
+
+func globSegs(pat, segs []string) bool {
+	for len(pat) > 0 {
+		if pat[0] == "**" {
+			for i := 0; i <= len(segs); i++ {
+				if globSegs(pat[1:], segs[i:]) {
+					return true
+				}
+			}
+			return false
+		}
+		if len(segs) == 0 {
+			return false
+		}
+		if ok, err := path.Match(pat[0], segs[0]); err != nil || !ok {
+			return false
+		}
+		pat, segs = pat[1:], segs[1:]
+	}
+	return len(segs) == 0
 }
 
 // CanonicalForSource maps a SourceKind the extractor emitted to its
@@ -133,6 +213,27 @@ func (m Manifest) OracleCanonical(oracle, kind string, scoped bool) (string, boo
 	}
 	c, ok := table[kind]
 	return c, ok
+}
+
+// RequiredCanonical maps required_kinds — the manifest's own kind keys
+// (§2.2) — to canonical kinds, sorted and deduplicated, so the §1.4 refusal
+// compares like with like. A required entry that is not a key (an
+// incumbent spec written in canonical terms) is kept as written.
+func (m Manifest) RequiredCanonical() []string {
+	seen := map[string]bool{}
+	out := []string{}
+	for _, k := range m.RequiredKinds {
+		c := k
+		if spec, ok := m.Kinds[k]; ok && spec.Canonical != "" {
+			c = spec.Canonical
+		}
+		if !seen[c] {
+			seen[c] = true
+			out = append(out, c)
+		}
+	}
+	sort.Strings(out)
+	return out
 }
 
 // Intersection is the sorted set of canonical kinds both the dialect and

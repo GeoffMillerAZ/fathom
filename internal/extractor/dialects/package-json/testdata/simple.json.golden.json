@@ -1,0 +1,16 @@
+{
+  "symbols": [
+    { "name": "@acme/widgets", "kind": "PackageJSONPackage", "package": "package", "line": 1, "end_line": 25, "signature": "2.3.1", "tier": "verified" },
+    { "name": "build", "kind": "PackageJSONScript", "package": "package", "line": 7, "end_line": 7, "signature": "tsc -p tsconfig.json", "tier": "verified" },
+    { "name": "test", "kind": "PackageJSONScript", "package": "package", "line": 8, "end_line": 8, "signature": "jest --coverage", "tier": "verified" },
+    { "name": "lint", "kind": "PackageJSONScript", "package": "package", "line": 9, "end_line": 9, "signature": "eslint src", "tier": "verified" },
+    { "name": "widgets", "kind": "PackageJSONBin", "package": "package", "line": 12, "end_line": 12, "signature": "./bin/widgets.js", "tier": "verified" },
+    { "name": ".", "kind": "PackageJSONExport", "package": "package", "line": 15, "end_line": 15, "signature": "./dist/index.js", "tier": "verified" },
+    { "name": "./utils", "kind": "PackageJSONExport", "package": "package", "line": 16, "end_line": 16, "signature": "./dist/utils.js", "tier": "verified" }
+  ],
+  "cross_file": [
+    { "from": "", "edge": "depends_on", "raw": "lodash", "target": "lodash", "strategy": "module-source", "line": 19 },
+    { "from": "", "edge": "depends_on", "raw": "@acme/core", "target": "@acme/core", "strategy": "module-source", "line": 20 },
+    { "from": "", "edge": "dev_depends_on", "raw": "typescript", "target": "typescript", "strategy": "module-source", "line": 23 }
+  ]
+}

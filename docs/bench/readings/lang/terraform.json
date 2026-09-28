@@ -1,0 +1,147 @@
+{
+  "dialect": "terraform",
+  "kind": "tooling",
+  "target_level": "L3",
+  "level_met": "L1",
+  "grade": {
+    "L1": "excellent",
+    "L2": "not-attempted",
+    "L3": "not-attempted",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-09-28",
+  "fathom_commit": "bb66c4fd",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "terraform-aws-modules/terraform-aws-eks",
+      "sha": "323c633629b8e4306d94eb1392d7400a80143621",
+      "files": 87,
+      "bytes": 523029,
+      "counts": {
+        "fathom_defs": 1047,
+        "kind_equal": 1016,
+        "matched": 1016,
+        "oracle_defs": 1016
+      },
+      "families": {
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "data_source",
+        "module",
+        "output",
+        "resource",
+        "variable_decl"
+      ],
+      "excluded_by_kind": {
+        "ctags:local": 394,
+        "ctags:provider": 13,
+        "fathom:TerraformLocal": 187,
+        "fathom:TerraformProvider": 13
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 30.447999999999993,
+        "max_file_ms": 3,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "terraform-aws-modules/terraform-aws-vpc",
+      "sha": "b3abd6df2ecf052451a361ed55b8f06f8742a795",
+      "files": 77,
+      "bytes": 453543,
+      "counts": {
+        "fathom_defs": 1757,
+        "kind_equal": 1750,
+        "matched": 1750,
+        "oracle_defs": 1750
+      },
+      "families": {
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "data_source",
+        "module",
+        "output",
+        "resource",
+        "variable_decl"
+      ],
+      "excluded_by_kind": {
+        "ctags:local": 345,
+        "ctags:provider": 13,
+        "fathom:TerraformLocal": 120,
+        "fathom:TerraformProvider": 13
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 29.595999999999997,
+        "max_file_ms": 3,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "B",
+      "tool": "universal-ctags",
+      "version": "6.2.1"
+    }
+  ],
+  "metrics": {
+    "ref_precision": null,
+    "ref_recall": null,
+    "sym_precision": 0.9864,
+    "sym_recall": 1,
+    "xref_precision": null,
+    "xref_recall": null
+  },
+  "metric_tiers": {
+    "sym_precision": "B",
+    "sym_recall": "B"
+  },
+  "required_kinds": [
+    "data_source",
+    "output",
+    "resource",
+    "variable_decl"
+  ],
+  "kind_intersection": [
+    "data_source",
+    "module",
+    "output",
+    "resource",
+    "variable_decl"
+  ],
+  "counts": {
+    "fathom_defs": 2804,
+    "kind_equal": 2766,
+    "matched": 2766,
+    "oracle_defs": 2766
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 16.26,
+    "max_file_ms": 3,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "ctags:local": 739,
+    "ctags:provider": 26,
+    "fathom:TerraformLocal": 307,
+    "fathom:TerraformProvider": 26
+  },
+  "notes": [
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "providers have no canonical kind and are excluded",
+    "universal-ctags 6.2.1's Terraform parser tags every key = value pair inside a nested object/list literal within a locals block's own attribute value as its own separate 'local' definition (verified directly: examples/network-acls/main.tf's locals.network_acls = {...} nested rule maps alone produce 16 spurious 'cidr_block' local tags at one nesting depth) -- of ctags' 739 combined 'local' tags across both subjects, 100% of the unmatched ones (225 on terraform-aws-vpc alone) are this false-positive class; every real resource/data/module/variable/output ctags tag matched a fathom definition (0 misses). 'local' is therefore excluded from both sides' kind intersection (like 'provider') rather than trusted as ground truth."
+  ],
+  "disposition": "deferred: L1 is excellent (sym_recall 1.0, sym_precision .9864) once universal-ctags' 'local' kind is excluded from the kind intersection as unreliable ground truth (see notes) -- the terraform queue item's L3 target is out of reach this pass. L2 (tool-format 'reference recall/precision', design table 1.2) and L3 (import_resolution / file_edge_precision/recall) both need an oracle at tier A or C (design table 1.3); this item's named oracle is 'terraform graph (tier A, offline init)', which needs `terraform init` to resolve every subject's declared providers. Measured directly against the registry before attempting it: the AWS provider alone (both subjects use it; eks additionally needs kubernetes/helm/tls/cloudinit/null/local/time) ships a 127 MiB compressed darwin/arm64 zip (registry.terraform.io metadata, 2026-09-28) -- an uncompressed Go provider binary of that class typically lands 2-3x larger, and combined with the terraform CLI itself (26 MiB compressed) and eks's extra providers this exceeds the language-breadth run's stated 300 MiB per-worker disk ceiling well before a single `terraform graph` runs, even held only transiently. No tier-C oracle is available either: an independent second implementation of HCL reference extraction would need to be written and would not be genuinely independent of this dialect's own hashicorp/hcl/v2-based extractor without real, separate authorship -- self-grading the extractor's own Calls output with a same-library second pass is exactly the kind of ungrounded measurement design §14.2 rules out. The Calls edges (design §1.1 L2 'resource reference edges': resource/data/module/output intra-file references, locals per-attribute, depends_on) and module source recording (local-path and registry refs, in Signature) are implemented and unit-tested (internal/extractor/hclextract_test.go) but genuinely unmeasured -- 'not-attempted', not claimed. LB-Q-terraform stays unchecked; see LB-Q-terraform-rest. Trigger: a shared, pre-populated offline provider mirror (built once, reused across every terraform-dependent queue item rather than downloaded per item) makes tier A tractable within the disk budget, or an Opus-reviewed decision accepts a tier-C independent HCL reference parser (a second, separately-authored implementation, not this dialect's own extractor run twice) for L2/L3."
+}

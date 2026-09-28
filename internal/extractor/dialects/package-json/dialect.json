@@ -1,0 +1,30 @@
+{
+  "id": "package-json",
+  "display": "npm package manifest (package.json)",
+  "kind": "tooling",
+  "engine": "doc",
+  "lang_tag": "package-json",
+  "match": {
+    "extensions": [],
+    "basenames": ["package.json"],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "variants": [],
+  "kinds": {
+    "package": { "source_kind": "PackageJSONPackage", "canonical": "package" },
+    "script":  { "source_kind": "PackageJSONScript",  "canonical": "task" },
+    "bin":     { "source_kind": "PackageJSONBin",      "canonical": "route" },
+    "export":  { "source_kind": "PackageJSONExport",   "canonical": "route" }
+  },
+  "required_kinds": ["package"],
+  "oracle_kinds": {
+    "tool": { "package": "package", "task": "task", "route": "route" }
+  },
+  "name_match": "identity",
+  "package": { "strategy": "none" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L3",
+  "queue_id": "package-json"
+}

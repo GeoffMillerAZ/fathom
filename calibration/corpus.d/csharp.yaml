@@ -1,0 +1,35 @@
+id: csharp
+language: C#
+repos:
+  - name: Newtonsoft.Json
+    url: https://github.com/JamesNK/Newtonsoft.Json
+    ref: 13.0.4
+    sha: 4e13299d4b0ec96bd4df9954ef646bd2d1b5bf2a
+    licence: MIT
+    idioms:
+      - 'block-scoped namespaces throughout (namespace Newtonsoft.Json { ... }),
+        not the newer file-scoped form'
+      - 'a large partial-class surface (JsonSerializer, JsonTextReader/Writer)
+        with #if NET20/NET35/PORTABLE conditional members'
+      - 'properties everywhere: auto-properties, explicit get/set backing
+        fields, and several expression-bodied ("=>") ones'
+      - 'generic classes and methods with where-clause constraints
+        (JsonConverter<T>, IList<T> members)'
+      - 'a handful of C# records and readonly structs in the newer
+        Newtonsoft.Json.Linq surface'
+  - name: Polly
+    url: https://github.com/App-vNext/Polly
+    ref: 8.8.0
+    sha: 9ad5ae9b4ff9beb4321b0762249ce173b984f817
+    licence: BSD-3-Clause
+    idioms:
+      - 'file-scoped namespaces throughout (the newer C# 10+ style,
+        "namespace Polly.Retry;") — the opposite convention from
+        Newtonsoft.Json, deliberately paired to exercise both shapes'
+      - 'partial classes split across several files per policy family
+        (Retry/, CircuitBreaker/, Fallback/) sharing one type name'
+      - 'fluent builder classes with heavily chained generic methods
+        (ResiliencePipelineBuilder<TResult>)'
+      - 'interfaces with default-implemented members and a large surface of
+        internal sealed classes implementing them'
+      - 'primary-constructor records used for strategy options (C# 12 shape)'

@@ -1,0 +1,27 @@
+id: c
+language: C
+repos:
+  - name: libuv
+    url: https://github.com/libuv/libuv
+    ref: v1.53.0
+    sha: 840404ce8ba7cc0204be52389a6cfff9f2c90fb6
+    licence: MIT
+    idioms:
+      - opaque handle structs embedding a common uv_handle_t base (struct-of-struct
+        "inheritance")
+      - function-pointer typedefs for callbacks (uv_close_cb, uv_alloc_cb, ...)
+      - heavy use of platform #ifdef (unix/ vs win/ trees) and internal.h-only statics
+      - enum-based type tags (uv_handle_type, uv_req_type)
+      - macro-heavy code generation (UV_HANDLE_FIELDS, UV_REQ_FIELDS)
+  - name: curl
+    url: https://github.com/curl/curl
+    ref: curl-8_22_0
+    sha: 01346829096c61b372692f6dc43ffa778c6caccd
+    licence: curl
+    idioms:
+      - large option-struct-driven API (struct Curl_easy, struct connectdata)
+      - vtable-style dispatch structs of function pointers per protocol handler
+      - extensive object-like and function-like macros (curl_easy_setopt, DEBUGF)
+      - anonymous unions/structs inside protocol state structs
+      - a public headers/ tree distinct from an internal lib/ tree (include-path
+        breadth across two roots)

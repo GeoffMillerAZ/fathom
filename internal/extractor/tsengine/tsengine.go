@@ -126,6 +126,16 @@ var liveModules atomic.Int64
 // closed in this process.
 func LiveModules() int64 { return liveModules.Load() }
 
+// instantiations counts every grammar module instantiated in this process,
+// monotonically.
+var instantiations atomic.Int64
+
+// Instantiations is the number of grammar modules this process has ever
+// instantiated: the language-breadth harness re-times a file whose
+// extraction instantiated one, so a lazy compile is never charged to
+// extraction throughput (design §9, §10).
+func Instantiations() int64 { return instantiations.Load() }
+
 // peakModulePages is the largest linear memory (64 KiB pages) any grammar
 // module reached after a parse in this process — the language-breadth
 // reading's peak_module_pages (design §9, §10).
@@ -276,6 +286,7 @@ func NewParser(ctx context.Context, grammar, entryPoint string) (*Parser, error)
 		return nil, fmt.Errorf("tsengine: instantiate %q: %w", grammar, err)
 	}
 	liveModules.Add(1)
+	instantiations.Add(1)
 	fail := func(err error) (*Parser, error) {
 		mod.Close(ctx)
 		liveModules.Add(-1)

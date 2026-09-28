@@ -59,6 +59,14 @@ The vision's table (§2) is normative. Restated as the harness computes them:
 | `def_mapping` | SCIP definitions of mappable kinds mapped to a fathom symbol ÷ those definitions | | | | | | | ≥ .95 | ≥ .85 |
 | `typed_recall` | SCIP reference edges present as typed edges at fathom granularity ÷ SCIP edges | | | | | | | ≥ .95 | ≥ .85 |
 
+**Not measured is not failed.** When the only available L1 oracle cannot report a field —
+universal-ctags writes no end line for HTML, TypeScript, JavaScript, Rust, Kotlin, Lua or
+PHP — the harness records `range_agreement` under the reading's `not_measured` (it is the
+only metric that may be) with a value of `null`, never a failure. The level is then met at
+most at grade **good**, never excellent, and the reading's notes say why. The rule is
+inferred from the data, not declared: an L1 oracle that matched definitions but gave an end
+line for none of them. A tier-A oracle that reports ends lifts the cap by measuring it.
+
 Always required, every level: `faults ≤ 0.1%` of files with every faulting file named;
 `throughput ≥ 1 MB/s/core`; `max_file_ms ≤ 2000`; `peak_module_pages ≤ 1024`.
 
@@ -80,14 +88,19 @@ and tiers alone; nobody types it.
 ### 1.4 Matching rules
 
 - **Definitions**: key (path, name, line). A fathom definition matches an oracle definition
-  in the same file with the same bare name and |Δline| ≤ 2 (decorators and attributes move
+  in the same file with the same name and |Δline| ≤ 2 (decorators and attributes move
   a definition's first line); nearest wins, one-to-one. Qualified names are compared on the
   last segment; containment is checked separately (`scope_agreement`, reported, not gated).
+  A dialect whose identifiers carry punctuation — CSS selectors (`.a`, `#b`, `:hover`), npm
+  names (`@babel/core`), script names (`codesandbox:build`), export paths (`./utils`) —
+  declares `"name_match": "identity"` in its manifest and its names are compared whole
+  (default `"bare"`, the last-segment rule). The same mode governs reference pairs.
 - **Kind intersection**: the manifest's `oracle_kinds` maps each oracle kind (ctags kind
   letters/names, SCIP descriptor suffixes) to a canonical kind. Definitions whose kind is
   outside the intersection on either side are excluded from both counts and reported as
   `excluded_by_kind`. A dialect may not exclude a kind the vision's L1 list names for the
-  language (the manifest's `required_kinds`) — the harness refuses the reading.
+  language (the manifest's `required_kinds`, which are its own kind keys, checked through
+  their canonical kinds — a reading records them canonical) — the harness refuses the reading.
 - **Calls**: truth pairs are (enclosing definition, callee bare name) derived from SCIP
   reference occurrences whose symbol is callable (SCIP method descriptor `().`), inside a
   definition that maps to a fathom symbol.
@@ -508,6 +521,14 @@ least their current output. The protocol (LB-F18, and each port item):
 2. `indexbench lang-parity -dialect <id> -incumbent <extractor>` runs both on the calibration
    subjects and reports, per metric, new minus old against the same oracle. The port may
    merge when every L1 metric is ≥ the incumbent's and the target level is met.
+   `-incumbent` names the retired file's stem (`dockerextract`, `sqlextract`, …; empty
+   measures what fusion dispatches today); `-subject [name=]dir`, `-scip [name=]path` and
+   `-tool-oracle [name=]path` repeat per subject; the dialect runs through its own engine
+   (tags or doc) while the incumbent is still dispatched. The incumbent's side is scored with
+   the dialect's oracle mapping plus its LB-M1 spec's kinds. Exit 0 = merge, 1 = refused
+   (a gated L1 metric below the incumbent's, or measured by the incumbent and not the
+   dialect, or the target unmet), 2 = usage; the kinds diff is printed for step 3, and
+   `-out` writes the report as JSON.
 3. Switch dispatch to the dialect, delete the incumbent and its CGO grammar import, bump
    `ExtractorEpoch`, record the kinds diff (identical `SourceKind` strings are required; a
    kind the incumbent emitted and the dialect does not is a regression unless the row's

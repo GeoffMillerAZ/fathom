@@ -19,6 +19,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/extractor"
 	"github.com/geoffmilleraz/fathom/internal/extractor/tsengine"
 	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/langbench"
@@ -33,10 +34,15 @@ var fileResolveLang = map[string]string{"typescript": "javascript", "javascript"
 
 // cmdLangOracle is `indexbench lang-oracle` (LB-F23, design §10): one
 // subject's measurement of one dialect, merged into the dialect's reading.
-// No daemon, no store: the connector lists the subject's files, fusion's
-// own dispatch extracts them in process, universal-ctags (tier B), a SCIP
-// index (tier A) and a tool-native oracle (tier A) are scored per §1.4,
-// and the reading's level is computed, never typed.
+// No daemon, no store: the connector lists the subject's files, the
+// dialect's OWN extractor runs them in process (design §10: "runs the
+// dialect's extractor on each" — never fusion's live dispatch, which for a
+// port whose incumbent hasn't been switched in yet (§11 step 2's merge
+// gate) would silently measure the wrong extractor: verified directly, a
+// latent gap this fix closes — see resolveBenchSpec's "with" below),
+// universal-ctags (tier B), a SCIP index (tier A) and a tool-native oracle
+// (tier A) are scored per §1.4, and the reading's level is computed, never
+// typed.
 func cmdLangOracle(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("lang-oracle", flag.ContinueOnError)
 	fs.SetOutput(stderr)
@@ -83,7 +89,45 @@ func cmdLangOracle(args []string, stdout, stderr io.Writer) int {
 		name = filepath.Base(filepath.Clean(*subject))
 	}
 
-	m, err := measureSubject(ctx, spec, *subject, name, *ctagsPath, *scipPath, *toolOracle)
+	// Measure the dialect's OWN extractor (ExtractForBenchWith, LB-F18),
+	// never fusion's live dispatch: a port whose incumbent still occupies
+	// pipeline.go's extension map (§11 step 2's merge gate not yet passed)
+	// would otherwise be measured as its own incumbent — wrong extractor,
+	// wrong reading, and undetectable from the output alone (kept
+	// SourceKind strings, §11 step 3, make the incumbent's nodes still
+	// "kind-valid" against the new manifest). Verified directly: before
+	// this fix, `lang-oracle -dialect c` on the c dialect's own fixtures
+	// read signature_coverage 0 (the CGO incumbent never sets Signature at
+	// all) despite the dialect itself signing every callable.
+	//
+	// The doc engine needs the identical treatment (LB-Q-kubernetes found
+	// it missing): a doc-engine PORT still dispatched through its
+	// incumbent (kubernetes: k8sextract.go, via p.toolExts[ToolK8sManifest])
+	// was silently measured as that incumbent instead of the new
+	// DocExtractor — dialectExtractor in langparity.go already branches on
+	// engine "doc" via NewDocDialectExtractor; this mirrors it here.
+	var with extractor.Extractor
+	if source == "dialect" {
+		switch spec.Manifest.Engine {
+		case "tags", "tags+doc":
+			ts, tserr := extractor.NewTSExtractor(*dialect)
+			if tserr != nil {
+				fmt.Fprintln(stderr, "lang-oracle:", tserr)
+				return 1
+			}
+			defer ts.Close()
+			with = ts
+		case "doc":
+			doc, docerr := extractor.NewDocDialectExtractor(*dialect)
+			if docerr != nil {
+				fmt.Fprintln(stderr, "lang-oracle:", docerr)
+				return 1
+			}
+			with = doc
+		}
+	}
+
+	m, err := measureSubject(ctx, spec, *subject, name, *ctagsPath, *scipPath, *toolOracle, with)
 	if err != nil {
 		fmt.Fprintln(stderr, "lang-oracle:", err)
 		return 1
@@ -145,7 +189,13 @@ func resolveBenchSpec(id, manifestPath string) (langbench.BenchSpec, string, err
 			return langbench.BenchSpec{}, "", fmt.Errorf("%s: id %q, want %q", manifestPath, m.ID, id)
 		}
 		spec := langbench.BenchSpec{Manifest: m}
-		if hasInc {
+		switch {
+		case m.Ctags != nil:
+			// The manifest names its own tier-B invocation (design §13.4
+			// step 18) — every dialect after the five incumbents.json
+			// covers takes this path.
+			spec.Ctags = *m.Ctags
+		case hasInc:
 			spec.Ctags = inc.Ctags
 		}
 		return spec, "dialect", nil
@@ -160,10 +210,22 @@ type subjectMeasurement struct {
 	subject langbench.Subject
 	oracles []langbench.OracleRun
 	notes   []string
+	// kinds counts the SourceKinds extracted from the dialect's files (the
+	// parity run's kinds diff, §11 step 3).
+	kinds map[string]int
 }
 
-func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name, ctagsBin, scipPath, toolOracle string) (subjectMeasurement, error) {
-	var res subjectMeasurement
+// measureSubject measures one subject. with, when non-nil, extracts every
+// file the dialect owns instead of fusion's dispatch (lang-parity's dialect
+// side, §11); nil measures what ingest would run.
+func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name, ctagsBin, scipPath, toolOracle string, with extractor.Extractor) (subjectMeasurement, error) {
+	res := subjectMeasurement{kinds: map[string]int{}}
+	extract := func(pipe *fusion.Pipeline, service string, refs []core.SourceRef, rel string, content []byte) (fusion.BenchExtraction, error) {
+		if with != nil {
+			return pipe.ExtractForBenchWith(with, service, refs, rel, content)
+		}
+		return pipe.ExtractForBench(service, refs, rel, content)
+	}
 	const service = "langbench"
 	refs, err := connector.NewLocalConnector().Discover(ctx, core.ServiceRef{ID: service, Path: root})
 	if err != nil {
@@ -179,6 +241,7 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name, c
 	var nodes []core.SymbolNode
 	var srcFiles []core.SourceFile
 	skipped := map[string]int{}
+	retimed := 0
 	// Warm-up: one untimed extraction compiles the dialect's grammar, so
 	// per-file times measure extraction, not the one-time lazy compile
 	// (design §9 charges that to the module pool, LB-F15).
@@ -187,7 +250,7 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name, c
 			continue
 		}
 		if content, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(ref.Path))); err == nil {
-			if ex, _ := pipe.ExtractForBench(service, refs, ref.Path, content); ex.Skipped == "" {
+			if ex, _ := extract(pipe, service, refs, ref.Path, content); ex.Skipped == "" {
 				res.notes = append(res.notes, "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)")
 				break
 			}
@@ -201,9 +264,19 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name, c
 		if err != nil {
 			return res, err
 		}
+		inst := tsengine.Instantiations()
 		start := time.Now()
-		ex, err := pipe.ExtractForBench(service, refs, ref.Path, content)
+		ex, err := extract(pipe, service, refs, ref.Path, content)
 		elapsed := time.Since(start)
+		if tsengine.Instantiations() != inst && ex.Skipped == "" {
+			// This file instantiated a grammar module the warm-up did not
+			// (an injected language's, e.g. HTML's <script>): time it again,
+			// warm, so a one-time compile is never charged to throughput.
+			start = time.Now()
+			ex, err = extract(pipe, service, refs, ref.Path, content)
+			elapsed = time.Since(start)
+			retimed++
+		}
 		if ex.Skipped != "" {
 			skipped[ex.Skipped]++
 			continue
@@ -224,6 +297,7 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name, c
 		for _, n := range ex.Nodes {
 			if n.FilePath == ref.Path {
 				nodes = append(nodes, n)
+				res.kinds[string(n.Kind)]++
 			}
 		}
 		srcFiles = append(srcFiles, core.SourceFile{Path: ref.Path, Content: content})
@@ -232,6 +306,9 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name, c
 		return res, fmt.Errorf("subject %s has no %s files fathom would extract", root, spec.Manifest.ID)
 	}
 	sub.Tenancy.PeakModulePages = int(tsengine.PeakModulePages())
+	if retimed > 0 {
+		res.notes = append(res.notes, "a file whose extraction instantiated a grammar module after the warm-up (an injected language) is timed on a second, warm extraction")
+	}
 	for _, k := range sortedKeys(skipped) {
 		res.notes = append(res.notes, fmt.Sprintf("%s: %d files skipped by ingest's gates (%s)", name, skipped[k], k))
 	}
@@ -284,9 +361,16 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name, c
 	}
 
 	if toolOracle != "" {
-		run, err := scoreToolOracle(toolOracle, spec.Manifest, nodes, sub)
+		inScope := map[string]bool{}
+		for _, f := range files {
+			inScope[f] = true
+		}
+		run, dropped, err := scoreToolOracle(toolOracle, spec.Manifest, nodes, &sub, inScope)
 		if err != nil {
 			return res, err
+		}
+		if dropped > 0 {
+			res.notes = append(res.notes, fmt.Sprintf("%s: %d tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)", name, dropped))
 		}
 		res.oracles = append(res.oracles, run)
 	}
@@ -314,28 +398,44 @@ type toolOracleFile struct {
 	} `json:"references"`
 }
 
-func scoreToolOracle(path string, m langbench.Manifest, nodes []core.SymbolNode, sub langbench.Subject) (langbench.OracleRun, error) {
+// sub is a pointer: on success (len(defs) > 0), this is the subject's ONLY
+// source of KindIntersection/FamilyL1 when no ctags oracle ran (the common
+// case for a tool format), so the caller's copy must observe the write —
+// a by-value sub previously dropped the KindIntersection slice-reassignment
+// silently, refusing every tool-oracle-only reading at Validate (§1.4)
+// with "required kind ... outside the kind intersection" even though the
+// oracle and manifest agreed (LB-Q-package-json).
+//
+// inScope is the file list fathom read (§1.4 Scope): an oracle entry on
+// any other file is dropped and counted, never scored as a miss.
+func scoreToolOracle(path string, m langbench.Manifest, nodes []core.SymbolNode, sub *langbench.Subject, inScope map[string]bool) (langbench.OracleRun, int, error) {
+	fail := func(err error) (langbench.OracleRun, int, error) { return langbench.OracleRun{}, 0, err }
 	b, err := os.ReadFile(path)
 	if err != nil {
-		return langbench.OracleRun{}, err
+		return fail(err)
 	}
 	var tf toolOracleFile
 	dec := json.NewDecoder(bytes.NewReader(b))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(&tf); err != nil {
-		return langbench.OracleRun{}, fmt.Errorf("%s: %w", path, err)
+		return fail(fmt.Errorf("%s: %w", path, err))
 	}
 	tier := orDefault(tf.Tier, "A")
 	if tf.Tool == "" || !slices.Contains([]string{"A", "B", "C", "D"}, tier) {
-		return langbench.OracleRun{}, fmt.Errorf("%s: tool and a tier A-D are required", path)
+		return fail(fmt.Errorf("%s: tool and a tier A-D are required", path))
 	}
+	dropped := 0
 	var defs []langbench.OracleDef
 	for _, d := range tf.Definitions {
+		if !inScope[d.Path] {
+			dropped++
+			continue
+		}
 		defs = append(defs, langbench.OracleDef{Path: d.Path, Name: d.Name, Line: d.Line, End: d.End, Kind: d.Kind})
 	}
 	if len(defs) > 0 {
 		if _, done := sub.Families[langbench.FamilyL1]; done {
-			return langbench.OracleRun{}, fmt.Errorf("%s: definitions given alongside ctags; measure one L1 oracle per subject", path)
+			return fail(fmt.Errorf("%s: definitions given alongside ctags; measure one L1 oracle per subject", path))
 		}
 		l1 := langbench.ScoreL1(m, "tool", nodes, defs)
 		addCounts(sub.Counts, l1.Counts)
@@ -347,14 +447,18 @@ func scoreToolOracle(path string, m langbench.Manifest, nodes []core.SymbolNode,
 		truth := map[langbench.CallPair]bool{}
 		files := map[string]bool{}
 		for _, r := range tf.References {
-			truth[langbench.CallPair{Path: r.Path, Caller: langbench.BareName(r.From), Callee: langbench.BareName(r.To)}] = true
+			if !inScope[r.Path] {
+				dropped++
+				continue
+			}
+			truth[langbench.CallPair{Path: r.Path, Caller: m.MatchName(r.From), Callee: m.MatchName(r.To)}] = true
 			files[r.Path] = true
 		}
-		found := langbench.FathomCallPairs(nodes, files)
+		found := m.CallPairs(nodes, files)
 		langbench.ScorePairs(truth, found, sub.Counts, langbench.CntRefTruth, langbench.CntRefTruthFound, langbench.CntRefFathom, langbench.CntRefFathomInTrue)
 		sub.Families[langbench.FamilyRefs] = tier
 	}
-	return langbench.OracleRun{Tier: tier, Tool: tf.Tool, Version: tf.Version}, nil
+	return langbench.OracleRun{Tier: tier, Tool: tf.Tool, Version: tf.Version}, dropped, nil
 }
 
 var universalCtagsRE = regexp.MustCompile(`Universal Ctags ([0-9][^,( ]*)`)
@@ -417,23 +521,32 @@ func runCtags(ctx context.Context, bin, root string, files []string, cs langbenc
 }
 
 func loadOrNewReading(path string, m langbench.Manifest, target string) (langbench.Reading, error) {
-	b, err := os.ReadFile(path)
+	r, err := loadReading(path)
 	if errors.Is(err, os.ErrNotExist) {
 		return langbench.NewReading(m, target), nil
 	}
 	if err != nil {
 		return langbench.Reading{}, err
 	}
-	var r langbench.Reading
-	dec := json.NewDecoder(bytes.NewReader(b))
-	dec.DisallowUnknownFields()
-	if err := dec.Decode(&r); err != nil {
-		return langbench.Reading{}, fmt.Errorf("%s: %w", path, err)
-	}
 	if r.Dialect != m.ID {
 		return langbench.Reading{}, fmt.Errorf("%s holds dialect %q, not %q", path, r.Dialect, m.ID)
 	}
-	r.RequiredKinds = append([]string(nil), m.RequiredKinds...)
+	r.RequiredKinds = m.RequiredCanonical()
+	return r, nil
+}
+
+// loadReading decodes a committed reading strictly.
+func loadReading(path string) (langbench.Reading, error) {
+	var r langbench.Reading
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return r, err
+	}
+	dec := json.NewDecoder(bytes.NewReader(b))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&r); err != nil {
+		return r, fmt.Errorf("%s: %w", path, err)
+	}
 	return r, nil
 }
 

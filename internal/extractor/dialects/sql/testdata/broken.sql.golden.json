@@ -1,0 +1,29 @@
+{
+  "symbols": [
+    {
+      "name": "survivor_before",
+      "kind": "SQLTable",
+      "package": "broken",
+      "line": 5,
+      "end_line": 7,
+      "signature": "CREATE TABLE survivor_before",
+      "tier": "verified"
+    },
+    {
+      "name": "id",
+      "kind": "SQLColumn",
+      "package": "broken",
+      "line": 6,
+      "end_line": 6,
+      "tier": "verified"
+    },
+    {
+      "name": "survivor_after",
+      "kind": "SQLView",
+      "package": "broken",
+      "line": 16,
+      "end_line": 17,
+      "tier": "verified"
+    }
+  ]
+}
