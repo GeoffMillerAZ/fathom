@@ -774,6 +774,14 @@ func (m *MemoryStore) PutClaims(_ context.Context, claims []core.SemanticClaim, 
 			if !existing.ValidFrom.IsZero() {
 				sc.ValidFrom = existing.ValidFrom
 			}
+			// GL-13: lifecycle durability mirrors the ClaimRefuted guard
+			// above — 'retired' is terminal and must survive a recompile
+			// that re-emits the same claim_id with the compiler's default
+			// (unset) lifecycle (see sqlite.go's PutClaims CASE WHEN for
+			// the same rule against the SQLite backend).
+			if existing.Lifecycle == core.LifecycleRetired {
+				sc.Lifecycle = core.LifecycleRetired
+			}
 		}
 		m.claims[key] = sc
 	}

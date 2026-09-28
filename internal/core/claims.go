@@ -50,6 +50,71 @@ func (s ClaimStatus) Valid() bool {
 	return false
 }
 
+// ClaimLifecycle (GL-13, docs/plans/governance-learning.md; design doc
+// docs/design/governance-learning.md §6 "Rules that learn") is the
+// promotion/retirement axis — ORTHOGONAL to ClaimStatus. Status judges a
+// claim's freshness/veracity (is the citation still there, did a human
+// reject it); Lifecycle judges whether a rule has earned enough
+// corroborating evidence to be treated as established, independent of
+// that. A claim can be ClaimFresh and LifecycleCandidate at once (an
+// unproven-but-current rule), or ClaimStale and LifecycleActive (an
+// established rule whose citation drifted).
+//
+// Owner decision (attempt 2, worker w-gl-w2-rest): this is an ADDITIVE
+// axis, never overloaded onto ClaimStatus — see internal/semantic's
+// applyLearning (GL-13) for the promotion/retirement rule that transitions
+// it, and cmd/fathom's learningAnnouncements (GL-14) for how a transition
+// is announced.
+type ClaimLifecycle string
+
+const (
+	// LifecycleCandidate — a compiled claim or finding-derived rule that has
+	// not yet earned enough corroboration to be treated as established.
+	// Nothing in this codebase mints a claim at this state yet (v1: every
+	// compiled claim is minted active, no candidate gate) — the state
+	// exists so a future producer (a finding-derived rule) has somewhere to
+	// start, and applyLearning already knows how to promote out of it.
+	LifecycleCandidate ClaimLifecycle = "candidate"
+	// LifecycleActive — the default: an established rule, served normally
+	// (subject to ClaimStatus.Served() as always). Every claim minted
+	// before this field existed reads Lifecycle=="" from the store, which
+	// EffectiveLifecycle treats as LifecycleActive — the "default active"
+	// owner decision, and the same empty-means-already-serving convention
+	// ValidFrom/AssertedBy/Meta each established for their own additive
+	// migration.
+	LifecycleActive ClaimLifecycle = "active"
+	// LifecycleRetired — a validity-window-closed rule (SetClaimValidTo is
+	// always called alongside this transition — GL-13's own "retirement
+	// closes the validity window, never deletes"). Terminal: once retired,
+	// a claim never transitions again (applyLearning never reads a retired
+	// claim's signals again, and internal/store's PutClaims durability
+	// guard, mirroring the existing ClaimRefuted status guard, refuses to
+	// let a recompile's default write silently resurrect it).
+	LifecycleRetired ClaimLifecycle = "retired"
+)
+
+// Valid reports whether l is a known ClaimLifecycle, INCLUDING "" (a
+// legacy/unset claim is a valid state, not a malformed one — see
+// EffectiveLifecycle).
+func (l ClaimLifecycle) Valid() bool {
+	switch l {
+	case "", LifecycleCandidate, LifecycleActive, LifecycleRetired:
+		return true
+	}
+	return false
+}
+
+// EffectiveLifecycle returns l, or LifecycleActive when l is "" — the
+// additive-migration default every reader must apply instead of treating
+// an empty column as "unknown" or "candidate" (design doc §6 owner
+// decision: "default active").
+func (l ClaimLifecycle) EffectiveLifecycle() ClaimLifecycle {
+	if l == "" {
+		return LifecycleActive
+	}
+	return l
+}
+
 // Served reports whether a claim in this status may appear in a payload
 // (flagged or not). Superseded and refuted claims are never served.
 func (s ClaimStatus) Served() bool {
@@ -80,6 +145,15 @@ type SemanticClaim struct {
 	TierProfile string
 
 	Status ClaimStatus
+
+	// Lifecycle (GL-13, design doc §6) is the promotion/retirement axis —
+	// see ClaimLifecycle's own doc comment for why it is additive and
+	// orthogonal to Status rather than a new Status value. "" for every
+	// claim written before this field existed (additive migration, same
+	// empty-string store column convention as ValidFrom/AssertedBy/Meta
+	// below) — read it through EffectiveLifecycle(), never compared to
+	// LifecycleActive directly, so a legacy claim reads as already active.
+	Lifecycle ClaimLifecycle
 
 	// Provenance (flattened; the full aiprovenance retrofit attaches by ClaimID).
 	Model         string // model ID that compiled the claim ("" for deterministic passes)
@@ -563,9 +637,14 @@ type ClaimEvent struct {
 	// contradicted events carry "sweep:<claim_id>" (see semantic.Sweep),
 	// an import's closure/revocation events carry the SAME
 	// "import:<producer>@<version>" identity as the claim they close, and a
-	// human `fathom claim refute`/`corroborate` carries "claim-add:<session>"
-	// when a hook session id is available. "" for an event whose writer
-	// predates this field or had no identity to record.
+	// human `fathom claim refute`/`corroborate` carries
+	// "claim-add:<session>" — GL-13/GL-14's owner decision
+	// (docs/design/governance-learning.md §6, cmd/fathom's
+	// claimVerdictIdentity) resolves <session> to the harness session id
+	// when the hook env carries one, else the literal "human:cli", so this
+	// is ALWAYS populated for a claim refute/corroborate written after that
+	// decision landed — never "" for lack of an identity. "" remains for
+	// an event whose writer predates this field.
 	AssertedBy string
 }
 

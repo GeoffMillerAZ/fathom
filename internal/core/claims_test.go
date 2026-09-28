@@ -21,6 +21,46 @@ func TestValidVerdict_Vocabulary(t *testing.T) {
 	}
 }
 
+// TestClaimLifecycle_ValidAndEffective is GL-13 (docs/plans/
+// governance-learning.md, design doc §6): the promotion/retirement axis
+// validates its own vocabulary (including "", a legacy/unset claim — a
+// valid state, not a malformed one) and EffectiveLifecycle applies the
+// owner decision's stated default ("default active") without mutating the
+// stored value itself.
+func TestClaimLifecycle_ValidAndEffective(t *testing.T) {
+	good := []ClaimLifecycle{"", LifecycleCandidate, LifecycleActive, LifecycleRetired}
+	for _, l := range good {
+		if !l.Valid() {
+			t.Errorf("ClaimLifecycle(%q).Valid() = false, want true", l)
+		}
+	}
+	if ClaimLifecycle("promoted").Valid() {
+		t.Error(`ClaimLifecycle("promoted").Valid() = true, want false`)
+	}
+
+	cases := []struct {
+		in   ClaimLifecycle
+		want ClaimLifecycle
+	}{
+		{"", LifecycleActive},
+		{LifecycleCandidate, LifecycleCandidate},
+		{LifecycleActive, LifecycleActive},
+		{LifecycleRetired, LifecycleRetired},
+	}
+	for _, tc := range cases {
+		if got := tc.in.EffectiveLifecycle(); got != tc.want {
+			t.Errorf("ClaimLifecycle(%q).EffectiveLifecycle() = %q, want %q", tc.in, got, tc.want)
+		}
+	}
+	// EffectiveLifecycle never mutates the receiver's own stored form —
+	// only a caller that assigns the result changes anything.
+	var l ClaimLifecycle
+	_ = l.EffectiveLifecycle()
+	if l != "" {
+		t.Errorf("EffectiveLifecycle mutated the receiver: %q", l)
+	}
+}
+
 // TestResolutionKind_FindingsLoopValues is FL-3: ResolutionExternalClosure
 // and ResolutionRevoked join ResolutionCodeChange/ResolutionScopeDisappearance
 // additively, distinct string values, none colliding.

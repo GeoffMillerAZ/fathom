@@ -98,6 +98,39 @@ in the binary. Every promotion or retirement is announced in the next session's 
 and in `fathom intent audit`, with the signals that moved it. Nothing learns until GL-10's
 signal source has 30 days of data; GL-M2 is not read before that.
 
+### 6.1 Owner decisions (GL-13/GL-14, attempt 2, worker w-gl-w2-rest)
+
+Two implementation questions §6 left open were decided so GL-13/GL-14 could
+proceed:
+
+1. **Lifecycle is an additive, orthogonal axis, never an overload of
+   Status.** `candidate` | `active` | `retired`, default `active`, lives
+   on `core.SemanticClaim.Lifecycle` (store column `semantic_claims.
+   lifecycle`, same additive-migration convention as every other claim
+   column since SU-19). It is judged INDEPENDENTLY of ClaimStatus
+   (fresh/stale/contradicted/superseded/refuted) — a claim can be
+   `ClaimFresh` and `LifecycleCandidate` at once. `""` (a claim written
+   before this field existed) reads as already active
+   (`ClaimLifecycle.EffectiveLifecycle()`), never as unknown or candidate
+   — no compile path mints a claim at `candidate` yet (v1: every compiled
+   claim is minted active, exactly as before this axis existed); the state
+   exists for a future producer (a finding-derived rule) and for
+   `applyLearning` (internal/semantic) to promote/retire out of.
+   Retirement is terminal and durable: a recompile that re-emits the same
+   claim_id with the compiler's default (unset) lifecycle must not
+   silently resurrect a retired rule — `PutClaims`' `ON CONFLICT` guards
+   `lifecycle` exactly like it already guards `status` for `refuted`.
+
+2. **Corroborate/refute identity.** `fathom claim corroborate`/`refute`
+   record the verdict's identity as the harness session id when the hook
+   env carries one (the same registry-driven resolution `fathom rate`
+   uses), else the literal `human:cli` — never `""`, since §6's promotion
+   rule needs a distinct, attributable identity per corroboration to count
+   "from at least 2 distinct sessions". The identity lands in both
+   `ClaimEvent.AssertedBy` (`claim-add:<identity>`, the existing "kind:id"
+   convention) and GL-10's rule-outcome signal row (its `session` field) —
+   one identity, two readers, never a second channel.
+
 ## 7. Validity windows everywhere a fact ends (N8.2)
 
 `semantic_claims` already has `valid_from`/`valid_to` (SU-19) and `obligations` answers
