@@ -13,11 +13,11 @@ import (
 	"sync"
 )
 
-// dialectFS embeds every dialect directory's manifest and queries
+// dialectFS embeds every dialect directory's manifest, doc spec and queries
 // (docs/design/language-breadth.md §2.1, ADR-048). Fixtures and goldens under
 // testdata/ are test inputs and are not embedded.
 //
-//go:embed dialects/*/dialect.json dialects/*/*.scm
+//go:embed dialects/*/*.json dialects/*/*.scm
 var dialectFS embed.FS
 
 // Dialect is one internal/extractor/dialects/<id>/dialect.json (§2.2). The
@@ -348,7 +348,46 @@ func checkDialect(fsys fs.FS, dir string, d Dialect) error {
 			return fmt.Errorf("query %s: %w", q, err)
 		}
 	}
+	if d.Engine == "doc" || d.Engine == "tags+doc" {
+		if _, err := loadDocExtractor(fsys, d); err != nil {
+			return err
+		}
+	}
 	return nil
+}
+
+// LoadDocExtractor builds the document engine for a doc or tags+doc
+// dialect from its embedded doc.json (LB-F8, design §4).
+func LoadDocExtractor(d Dialect) (*DocExtractor, error) {
+	return loadDocExtractor(dialectFS, d)
+}
+
+// loadDocExtractor reads and compiles d's doc spec and checks that every
+// entity's source_kind is one the manifest declares — the manifest's kinds
+// stay the one place the registry learns a dialect's SourceKinds.
+func loadDocExtractor(fsys fs.FS, d Dialect) (*DocExtractor, error) {
+	name := d.Doc
+	if name == "" {
+		name = "doc.json"
+	}
+	b, err := fs.ReadFile(fsys, path.Join("dialects", d.ID, name))
+	if err != nil {
+		return nil, fmt.Errorf("doc spec %s: %w", name, err)
+	}
+	spec, err := ParseDocSpec(b)
+	if err != nil {
+		return nil, err
+	}
+	declared := map[string]bool{}
+	for _, k := range d.Kinds {
+		declared[k.SourceKind] = true
+	}
+	for i, e := range spec.Entities {
+		if !declared[e.SourceKind] {
+			return nil, fmt.Errorf("doc spec: entities[%d] source_kind %q is not a kind the manifest declares", i, e.SourceKind)
+		}
+	}
+	return NewDocExtractor(spec)
 }
 
 func sortedKindKeys(d Dialect) []string {

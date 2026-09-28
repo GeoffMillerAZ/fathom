@@ -75,6 +75,12 @@ tasks:
           [ -e "$manifest" ] || continue
           cue vet -d '#Dialect' schema/dialect/dialect.cue "$manifest" || { echo "cue vet FAILED: $manifest"; exit 1; }
         done
+        # LB-F8: every doc-engine spec (shipped and the P20 parity specs)
+        # vets against #Doc.
+        for spec in internal/extractor/dialects/*/doc.json internal/extractor/testdata/doc/*.doc.json; do
+          [ -e "$spec" ] || continue
+          cue vet -d '#Doc' schema/dialect/dialect.cue schema/dialect/doc.cue "$spec" || { echo "cue vet FAILED: $spec"; exit 1; }
+        done
         [ "$found" = 0 ] && echo "no schema.cue files yet"; exit 0
 
   test:

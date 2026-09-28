@@ -29,7 +29,7 @@ import "struct"
 		imports?:    =~"\\.scm$"
 		injections?: =~"\\.scm$"
 	}
-	if engine == "doc" {
+	if engine == "doc" || engine == "tags+doc" {
 		doc: =~"\\.json$" | *"doc.json"
 	}
 

@@ -67,6 +67,33 @@ func TestDialectManifests(t *testing.T) {
 
 // TestLoadDialectsRefuses holds the cross-dialect rules against bad
 // manifests: each case must fail with an error naming the rule.
+const docManifest = `{"id":"d","display":"D","kind":"tooling","engine":"doc","lang_tag":"yaml",
+"match":{"basenames":["d.yml"]},"doc":"doc.json","kinds":{"job":{"source_kind":"DJob","canonical":"job"}},
+"required_kinds":["job"],"target_level":"L2","queue_id":"d"}`
+
+const docSpecOK = `{"decode":"yaml","detect":{},"entities":[{"select":"$.*","kind":"job","source_kind":"DJob","name":"$key"}]}`
+
+// TestLoadDialects_DocEngine: a doc-engine dialect loads with its doc.json
+// and yields a working DocExtractor (LB-F8).
+func TestLoadDialects_DocEngine(t *testing.T) {
+	fsys := fstest.MapFS{
+		"dialects/d/dialect.json": &fstest.MapFile{Data: []byte(docManifest)},
+		"dialects/d/doc.json":     &fstest.MapFile{Data: []byte(docSpecOK)},
+	}
+	ds, err := loadDialects(fsys)
+	if err != nil || len(ds) != 1 {
+		t.Fatalf("loadDialects = %v, %v", ds, err)
+	}
+	x, err := loadDocExtractor(fsys, ds[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	nodes, _ := x.Extract("s", "d.yml", []byte("build: {}\ntest: {}\n"))
+	if len(nodes) != 2 || nodes[0].Name != "build" || nodes[0].Kind != "DJob" {
+		t.Fatalf("nodes = %+v", nodes)
+	}
+}
+
 func TestLoadDialectsRefuses(t *testing.T) {
 	base := func(id, kind, ext string) string {
 		return `{"id":"` + id + `","display":"X","kind":"language","engine":"tags","lang_tag":"x",
@@ -94,10 +121,15 @@ func TestLoadDialectsRefuses(t *testing.T) {
 			"dialects/a/dialect.json": base("a", "AF", ".x"), "dialects/a/tags.scm": "",
 			"dialects/b/dialect.json": base("b", "BF", ".x"), "dialects/b/tags.scm": "",
 		}, "already claimed"},
-		"bad canonical":       {map[string]string{"dialects/a/dialect.json": strings.Replace(base("a", "AF", ".a"), `"function"`, `"gizmo"`, 1), "dialects/a/tags.scm": ""}, "closed list"},
-		"missing query":       {map[string]string{"dialects/a/dialect.json": base("a", "AF", ".a")}, "query tags.scm"},
-		"unknown field":       {map[string]string{"dialects/a/dialect.json": strings.Replace(base("a", "AF", ".a"), `"display"`, `"level_met":"L4","display"`, 1), "dialects/a/tags.scm": ""}, "unknown field"},
-		"bad sniff":           {map[string]string{"dialects/a/dialect.json": strings.Replace(base("a", "AF", ".a"), `"extensions":[".a"]`, `"extensions":[".a"],"sniff":{"extensions":[".q"],"pattern":"(","priority":0}`, 1), "dialects/a/tags.scm": ""}, "match.sniff.pattern"},
+		"bad canonical":    {map[string]string{"dialects/a/dialect.json": strings.Replace(base("a", "AF", ".a"), `"function"`, `"gizmo"`, 1), "dialects/a/tags.scm": ""}, "closed list"},
+		"missing query":    {map[string]string{"dialects/a/dialect.json": base("a", "AF", ".a")}, "query tags.scm"},
+		"unknown field":    {map[string]string{"dialects/a/dialect.json": strings.Replace(base("a", "AF", ".a"), `"display"`, `"level_met":"L4","display"`, 1), "dialects/a/tags.scm": ""}, "unknown field"},
+		"bad sniff":        {map[string]string{"dialects/a/dialect.json": strings.Replace(base("a", "AF", ".a"), `"extensions":[".a"]`, `"extensions":[".a"],"sniff":{"extensions":[".q"],"pattern":"(","priority":0}`, 1), "dialects/a/tags.scm": ""}, "match.sniff.pattern"},
+		"doc spec missing": {map[string]string{"dialects/d/dialect.json": docManifest}, "doc spec doc.json"},
+		"doc kind undeclared": {map[string]string{"dialects/d/dialect.json": docManifest,
+			"dialects/d/doc.json": strings.Replace(docSpecOK, "DJob", "Other", 1)}, "not a kind the manifest declares"},
+		"doc bad selector": {map[string]string{"dialects/d/dialect.json": docManifest,
+			"dialects/d/doc.json": strings.Replace(docSpecOK, `"$.*"`, `"$..x"`, 1)}, "select"},
 		"required undeclared": {map[string]string{"dialects/a/dialect.json": strings.Replace(base("a", "AF", ".a"), `"required_kinds":["f"]`, `"required_kinds":["class"]`, 1), "dialects/a/tags.scm": ""}, "not a declared kind"},
 	}
 	for name, c := range cases {

@@ -1,0 +1,16 @@
+{
+  "decode": "yaml",
+  "detect": { "globs": [".github/workflows/*.yml", ".github/workflows/*.yaml"] },
+  "entities": [
+    { "select": "$.jobs.*", "where": { "is_map": true }, "kind": "job", "source_kind": "GHAJob",
+      "name": "$key", "signature": "$.runs-on[*]" },
+    { "select": "$.jobs.*.steps[*]", "where": { "has_key": ["uses"] }, "kind": "step", "source_kind": "GHAAction",
+      "name": ".uses", "signature": ".name" }
+  ],
+  "references": [
+    { "from": "job", "select": "$.needs[*]", "value": "$", "to_kind": "job", "edge": "needs" }
+  ],
+  "cross_file": [
+    { "from": "step", "select": "$.uses", "value": "$", "resolve": "repo-path", "edge": "uses" }
+  ]
+}
