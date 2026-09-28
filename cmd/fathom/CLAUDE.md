@@ -2,7 +2,7 @@
 
 The web surfaces — the Observatory console (vision 35, ADR-045: `/`, `/fleet`,
 `/projects/{svc}`, `/impact`, `/sessions`, `/brief`, `/wiring`, `/statusz`,
-`/search`, `/plans`, `/certifications`, `/refactors`, served by serve-http;
+`/search`, `/plans`, `/certifications`, `/refactors`, `/support`, served by serve-http;
 the legacy `/observatory*` routes redirect) —
 are rendered by Go files here on **app-kit** (Path A, Go server-rendered).
 **Every console page and component lives in its own `console_<name>.go` and
