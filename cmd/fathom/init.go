@@ -999,32 +999,47 @@ const (
 // embeds it (below) and the subagent primer re-renders it (HP-26,
 // sessionhook_events.go). A subagent that never read the stanza gets the
 // same four lines, not a second dialect of them.
+// The four chains below name ONLY the default eight-tool floor (surface
+// reckoning F-86, SR-33, SR-34: TestStanzaNamesOnlyDefaultSurfaceTools) —
+// a client registered at /rpc/agent cannot call anything else, so naming
+// one here would teach a call that fails. The wider verb set
+// (find_callers, references, repo_map, pack_context, test_impact,
+// localize, rename_impact, safe_delete_check, …) is disclosed separately
+// in fathomStanzaTemplate as reachable one hop away at /rpc/extended, not
+// folded into this table.
 const openingMovesTable = "Opening moves by task shape (first 2-3 calls, then edit):\n" +
-	"- bug report / stack trace / failing test: localize -> symbol_context -> find_callers\n" +
-	"- feature/change: repo_map -> pack_context(concern) -> test_impact\n" +
-	"- review/verify: review_diff -> obligations -> references\n" +
-	"- refactor/delete: rename_impact / safe_delete_check -> references"
+	"- bug report / stack trace / failing test: search -> symbol_context -> read_source\n" +
+	"- feature/change: search -> obligations -> symbol_context\n" +
+	"- review/verify: review_diff -> obligations -> verify_plan\n" +
+	"- refactor/delete: blast_radius -> review_diff -> verify_plan"
 
 const fathomStanzaTemplate = "## fathom code intelligence\n" +
 	"\n" +
 	"This repo is indexed by fathom as service \"{{SERVICE}}\". Route by\n" +
 	"question shape (SB-7, docs/vision/27-strengths-bench.md §8 — the home\n" +
-	"bench found \"index before any grep\" over-broad): where / who-calls /\n" +
-	"what-breaks resolve via the fathom MCP tools (`find_symbol`,\n" +
-	"`references`, `symbol_context`, `outline`, `repo_map`, `pack_context`,\n" +
-	"`verify_plan`); what-governs this repository is `obligations` with no\n" +
-	"path (the root conventions); is this still true / what was known is\n" +
-	"`staleness_report` (RC-23, docs/vision/28-receipts.md §3.5). A literal\n" +
-	"string, a config value, a log line, or a document-versus-document\n" +
-	"contradiction is `search`'s job (grep with a receipt, RC-24), not the\n" +
-	"other tools'.\n" +
-	"Read files to *edit* them, not to discover them.\n" +
+	"bench found \"index before any grep\" over-broad), on this session's\n" +
+	"default eight-tool MCP registration (surface reckoning F-86): where a\n" +
+	"symbol is defined is `find_symbol`; who-calls it, briefly (definition,\n" +
+	"a capped caller/callee list, tests) is `symbol_context`; what-breaks\n" +
+	"is `blast_radius`; a composed review verdict over a diff is\n" +
+	"`review_diff`; what-governs this repository is `obligations` with no\n" +
+	"path (the root conventions); is a plan's box proven is `verify_plan`;\n" +
+	"the current text at a cited line is `read_source`. A literal string, a\n" +
+	"config value, a log line, or a document-versus-document contradiction\n" +
+	"is `search`'s job (grep with a receipt, RC-24), not the other tools'.\n" +
+	"Read files to *edit* them, not to discover them. The full resolved\n" +
+	"caller list, is-this-still-true/what-was-known (`staleness_report`),\n" +
+	"and the rest of the wider verb set — `find_callers`, `references`,\n" +
+	"`outline`, `repo_map`, `pack_context`, `test_impact`, `localize`,\n" +
+	"`list_services` — live one hop away at `/rpc/extended` (or its\n" +
+	"`/rpc/companion` alias); register that surface instead of\n" +
+	"`/rpc/agent` for a session that needs them.\n" +
 	"\n" +
 	openingMovesTable + "\n" +
 	"\n" +
-	"Refresh the index via the `ingest` MCP tool (`{\"service\":\"{{SERVICE}}\"}`) at\n" +
-	"session start and after each commit; it is hash-gated, so a clean repo\n" +
-	"refreshes in well under a second.\n" +
+	"The index refreshes itself: a read of a drifted service answers from\n" +
+	"what it has and queues a re-ingest in the background (RT-99) —\n" +
+	"nothing to call.\n" +
 	"\n" +
 	"{{OBLIGATIONS}}\n" +
 	"\n" +

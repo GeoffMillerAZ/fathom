@@ -59,16 +59,18 @@ func applyStanzaOnce(t *testing.T, root string) (lines int, notes []string) {
 
 // TestStanzaRefresh_IdempotentLineCount pins O57 item 3's first property:
 // re-rendering the fathom region over an existing region must not change
-// the file's line count when the stanza itself has not changed. 74 chrome
-// lines is exactly what a fresh insert of the untrimmed (drop-0) stanza
-// fills to a 120-line router_thin budget — this repo's own CLAUDE.md
-// shape — so the first apply must land at 120 and the second, re-run over
-// what the first one wrote, must leave it at 120 too (and must not report
-// anything dropped, since drop 0 already fit).
+// the file's line count when the stanza itself has not changed. 67 chrome
+// lines is exactly what a fresh insert of the untrimmed (drop-0) stanza —
+// 52 lines with its markers plus the one blank separator line a non-empty
+// base file needs, as of SR-34's surface-reckoning rewrite — fills to a
+// 120-line router_thin budget — this repo's own CLAUDE.md shape — so the
+// first apply must land at 120 and the second, re-run over what the first
+// one wrote, must leave it at 120 too (and must not report anything
+// dropped, since drop 0 already fit).
 func TestStanzaRefresh_IdempotentLineCount(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	root := t.TempDir()
-	writeRouterThinFixture(t, root, 120, 74)
+	writeRouterThinFixture(t, root, 120, 67)
 
 	lines1, notes1 := applyStanzaOnce(t, root)
 	if lines1 != 120 {
@@ -107,10 +109,10 @@ func TestStanzaRefresh_IdempotentLineCount(t *testing.T) {
 func TestStanzaRefresh_TrimsToFitRouterThinBudget(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	root := t.TempDir()
-	// 74 chrome lines exactly fits an untrimmed insert to 120 (see the
-	// idempotency test above); 77 is 3 lines past that, so the untrimmed
+	// 67 chrome lines exactly fits an untrimmed insert to 120 (see the
+	// idempotency test above); 70 is 3 lines past that, so the untrimmed
 	// stanza would land the file at 123 — over the 120-line budget.
-	writeRouterThinFixture(t, root, 120, 77)
+	writeRouterThinFixture(t, root, 120, 70)
 
 	lines, notes := applyStanzaOnce(t, root)
 	if lines > 120 {
