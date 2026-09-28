@@ -1,0 +1,288 @@
+# 38 - The proof layer, widened: the roadmap through 2027-01
+
+Status: accepted 2026-09-27 (ADR-049, ADR-050, ADR-051). Owner decision memo of 2026-09-27
+over the agentic-coding landscape scan of the same date (about 60 tools), the owner's notes
+N1 to N8, and its binding addendum "What only fathom can do" (T1 to T8, U1 to U16). Designs:
+`docs/design/system-graph.md`, `docs/design/spec-interop.md`,
+`docs/design/knowledge-retrieval.md`, `docs/design/governance-learning.md`,
+`docs/design/progress-and-economics.md`, `docs/design/reach.md`,
+`docs/design/test-intelligence.md`, `docs/design/work-intelligence.md`,
+`docs/design/change-and-compliance.md`. Plans: `docs/plans/system-graph.md` (SG-),
+`docs/plans/spec-interop.md` (SI-), `docs/plans/knowledge-retrieval.md` (KR-),
+`docs/plans/governance-learning.md` (GL-), `docs/plans/progress-and-economics.md` (PE-),
+`docs/plans/reach.md` (RH-), `docs/plans/test-intelligence.md` (TQ-),
+`docs/plans/work-intelligence.md` (WI-), `docs/plans/change-and-compliance.md` (CX-). Goals
+G16 to G25, and G15's named M2 and M3, in `docs/intent/scope.md`. Promotes futures F20, the plugin part
+of F2, F24, and the computable subset of F9; promotes F14's output format only.
+
+## 1. The thesis stays; the ambition widens
+
+Fathom is the proof layer for code: it computes what breaks, which rule governs, and whether
+work is really done, and it cites the evidence. The 2026-09 market has many ways to find
+code (grep, language servers, a dozen new graph tools) and many ways to describe work
+(specs, memories, rules files). It has very few ways to prove things about code. Spec Kit's
+converge step and OpenSpec's verify ask a model; review bots guess at impact; the new graph
+tools read syntax inside one repository. That gap is fathom's lane, and review and
+governance is where the year's money went.
+
+The roadmap does not add engines for their own sake. It widens what fathom can prove, takes
+the proof to where people already work, and makes it visible.
+
+### 1.1 Where we stand (read from the tree, not argued)
+
+| Fact | Evidence |
+|---|---|
+| A cross-service edge already exists: `service_ref`, a heuristic-tier join of Go HTTP client call sites to route registrations on a normalized (method, path template) key | `internal/analysis/serviceref` (VB-30) |
+| Language-neutral inventory keys `route:`, `rpc:`, `env:`, `cli:` are extracted for conservation | `internal/analysis/inventory` (ADR-044) |
+| `dep_drift` and `cross_repo_blast_radius` are registered with zero lifetime calls; `package_deps` was already deleted by the surface prune | `internal/mcp/extra_tools.go`; `internal/mcp/surface_prune_test.go` |
+| The plugin directory is generated (Claude Code and Agent Plugins 1.0 manifests) but not published or install-tested in a second client | `fathom plugin render` (`cmd/fathom/pluginrender.go`, IO-25, RP-6) |
+| Gate refusals, `intent audit` and `config audit` render SARIF 2.1.0 | `internal/verify/sarif.go` (PC-21) |
+| Semantic claims carry a bi-temporal validity window and `obligations` answers `as_of` | `internal/core/claims.go` `ValidFrom`/`ValidTo` (SU-19, ADR-041 decision 7) |
+| The rule compiler reads `CLAUDE.md` and `AGENTS.md` as instruction files, no other client's rules | `internal/semantic/compile.go` `instructionFileBases` |
+| Cursor and Copilot are descriptor rows; Gemini CLI ships `unverified`; Claude Code and Codex are verified | `internal/harness/descriptors_data.go`; scope "Harnesses" |
+| Every verify run appends one row per plan (counts, commit, provenance, origin) to `~/.fathom/verify-ledger.jsonl`, about 17,000 readings on the reference machine; readers take only the newest row per plan; rows carry no per-row verdicts yet | `cmd/fathom/verifyledger.go` (SD-1, schema 2) |
+| The session ledger holds 3,359 sessions; the Stop hook folds each transcript incrementally | `~/.fathom/session-ledger.jsonl`; `cmd/fathom/transcript_offset.go` |
+| `blast_radius` read precision 1.00 on 9 audited calls | feature audit, 2026-09-27 |
+| The learning signals are empty: 0 memories, 0 human claim verdicts, 0 live certificate declarations on the reference machine | feature audit, 2026-09-27 |
+| The requirement-to-test link already exists as a proof contract: `certified_by:` verifies only on a `live` certificate (newest attested run passed, bound to a clean commit, reach unchanged) | ADR-043, `docs/design/test-certifications.md` |
+| The pure-Go SQLite driver supports FTS5 with `bm25()` and `snippet()` | probe on `modernc.org/sqlite` v1.52.0 (SQLite 3.53.2), 2026-09-27 |
+| The agent surface is 25 tools: 19 lookups, five promoted verbs (ADR-035) and `safe_delete_check` | `internal/mcp/surface.go` `companionTools` |
+
+## 2. The kitchen-sink gate
+
+Every accepted item names which of these it serves and the instrument that proves it.
+Anything that serves none is refused, however popular.
+
+- **(a) Widen what fathom can prove**: more languages, more edge kinds, across repositories,
+  services and dependencies.
+- **(b) Deliver proof where people already work**: their clients, their spec tools, their
+  rules files, their reviewers.
+- **(c) Make the proof visible**: progress and economics computed from instruments.
+
+An item that names a letter but no instrument is not accepted yet; it goes to
+`futures.md` with a Promote-when.
+
+## 3. The pillars
+
+| Pillar | Serves | Goals | What it adds |
+|---|---|---|---|
+| **Widen the graph** | a | G15, G17, G18 | languages (running), the system graph (one link model over routes, RPCs, GraphQL, topics, tables, config, images and dependency APIs), dependency API indexes read from local caches, a service catalog that cannot rot (U10) |
+| **Proof depth** | a | G23 | test intelligence: risk-weighted coverage, the test portfolio, coverage for every language, certifying-first selection, contract certificates on links, upgrade test reach (T1 to T8) |
+| **Know the words** | a | G20 | full-text retrieval over docs, decisions, plans and memories; doc spans linked to code; doc drift as a staleness fact |
+| **Deliver where work happens** | b | G16, G19, G21 | one-plugin install, a small default surface, every client's rules and hooks, spec-tool interop with a converge report, rules that learn and are measured (U4), SARIF and a check for reviewers |
+| **Review and compliance** | b | G25 | the change risk receipt (U7), the traceability matrix and evidence pack (U8), the migration tracker (U9), the architecture drift radar (U11) |
+| **Make proof visible** | c | G22 | proof history as a projection of the verify ledger, weighted progress views, outcome economics (cost per proven row) over the session ledger |
+| **Work intelligence** | c | G24 | the joins of agent activity, code and proof: cost per proven outcome by zone (U1), the debt interest rate (U2), the friction map (U3), the model and harness scorecard (U5), task preflight (U6), proof regressions generalized (U12), hotspots with context (U13) |
+| **Stay a good guest** (lane) | all | G14 | the tenancy budget every pillar lives inside |
+
+## 4. What only fathom can do: the joins
+
+Fathom holds eight assets, locally and deterministically:
+
+1. a resolved, typed call graph across repositories (soon the system graph and the dependency plane);
+2. governing claims with citations, served and enforced at the edit;
+3. proof: verify of plan rows, certifications, conservation, and proof history;
+4. receipts and evidence tiers on every answer, with drift and staleness;
+5. the agent activity record: the MCP call log, the hook log, session transcripts, discoveries, threads;
+6. the machine-readable intent corpus: invariants, decisions with revisit triggers, goals as bets;
+7. the fleet on one machine;
+8. git history joined to all of it (watermarks, co-change).
+
+Every other tool holds one or two. The unique products are the **joins**, and each accepted
+one is a projection and a view over assets that already exist, never a new engine. That is
+this part's kitchen-sink guard: a join that needs a new engine is sent back.
+
+**Test intelligence (T, plan TQ-, pillar Proof depth).** Certificates, liveness, the
+`certify` verbs and Go coverage by layer shipped (vision 33, ADR-043, TC-1 to TC-24, RC-37
+onward); TC-M2 to TC-M4 stay open in `docs/plans/test-certifications.md` and are referenced,
+not duplicated. Added: T1 risk-weighted coverage (coverage times centrality, churn,
+governance severity and incident history, ranked); T2 the test portfolio (orphan,
+redundant, and critical-uncertified); T3 coverage ingest for every language (lcov,
+Cobertura, JaCoCo, coverage.py JSON, Istanbul, llvm-cov); T4 certifying-first test selection
+for a diff; T5 contract certificates on system-graph links (takes TC-25); T6
+dependency-upgrade test reach; T7 flakiness and commit-bound receipts made measured (the TC
+rows stand); T8 the requirement-linked tier, which is `certified_by:` (§10).
+
+**The ranked products (U).**
+
+| # | Product | Verdict | Joins (assets) | Plan |
+|---|---|---|---|---|
+| U1 | Cost per proven outcome, by plan, language and code zone, with CI minutes | accept (extends N3) | 5, 3, 1 | PE-, WI- |
+| U2 | Technical-debt interest rate: measured agent effort per proven change, per zone | accept | 5, 3, 1, 8 | WI- |
+| U3 | Agent friction map with computed remedies (proposals, never applied) | accept | 5, 2, 4 | WI- |
+| U4 | Rule effectiveness: served, complied, violated, blocked, refuted per rule | accept, in governance learning | 2, 5 | GL- |
+| U5 | Model and harness scorecard on your own code, descriptive, n and confounders shown | accept | 5, 3 | WI- |
+| U6 | Task preflight: a difficulty profile and a recommended model tier, advisory | accept; the best Jev site, A/B'd | 1, 2, 3, 5 | WI- |
+| U7 | Change risk receipt for a PR, every reason cited, suggested reviewers | accept | 1, 2, 3, 4, 8 | CX- |
+| U8 | Traceability matrix and a dated evidence pack that re-verifies | accept (export on request) | 6, 3, 1 | CX- |
+| U9 | Migration tracker computed from code, proven complete by conservation | accept (tracks, never transforms) | 1, 3, 8 | CX- |
+| U10 | A service catalog that cannot rot, exportable to catalog-info on request | accept, in the system graph | 1, 3, 7 | SG- |
+| U11 | Architecture drift radar: decisions compiled to rules, triggers evaluated | accept (promotes F24, F9's computable subset) | 6, 1, 8 | CX- |
+| U12 | Proof regressions generalized, with the breaking commit | accept | 3, 8 | WI- over the verify ledger |
+| U13 | Hotspots with context, a view over T1's data | accept as a view | 1, 3, 8 | WI- |
+| U14 | Onboarding path | defer (F30) | | |
+| U15 | Capability reach (network, filesystem, exec) | defer (F31) | | |
+| U16 | Doc truth | covered by doc drift (G20) | | |
+
+**A dependency the joins share.** The learning products (U4, N8.1) and parts of U3 read
+signals that are empty today: 0 memories, 0 human claim verdicts, 0 live certificate
+declarations on the reference machine. GL-10 builds the signal source (hook outcomes as
+complied, violated and blocked events) before any threshold can move a rule, and GL-M2 is
+not read until 30 days of signal exist.
+
+## 5. Verdicts on the owner's notes
+
+| Note | Verdict | Serves | Shape |
+|---|---|---|---|
+| N1 dependencies | accept, reshaped | a | never download; read what the toolchain already fetched; index each (package, version) public API once per machine, content-addressed, shared by every service, lazily and under budget; upgrade impact, usage map, vuln reach (wave 4), version-exact docs. The lockfile graph comes through a port; ci-kit owns the engine (vision 15 §3). Dependency API is the `pkg:` kind of the system graph (ADR-050) |
+| N2 progress | accept as views | c | status is derived by verify, never set. Optional row `weight:`; proof history is a projection of the existing verify ledger (about 17,000 readings), which gains per-row verdicts additively (schema 3) so burn-up and regressions are computed; views listed in `docs/design/progress-and-economics.md` |
+| N3 usage dashboard | accept narrowly | c | outcome economics only: cost per proven outcome, a projection joining the session ledger (3,359 sessions) and transcripts to verify readings. A generic token dashboard is refused |
+| N4 spec formats | accept (promotes F20) | b | a spec-dialect port with plan grammar v2 as the canonical model; read in place; converge report; `weight:` and `accept:` added; the test-tied tier is the existing `certified_by:`; Jev proposes anchors for unanchored foreign tasks behind a calibration gate |
+| N5 languages | accepted (ADR-048); ladder named | a | vision 37 §5's M2 and M3 named in G15 as the next bets (§9.3) |
+| N6 cross-service | accept as the system graph | a | one provides/consumes model, one link table, three verbs, four evidence tiers; heuristic links never gate (I57) |
+| N7 documentation search | accept | a | FTS5, section-aware, BM25 fused with concern ranking; doc-to-code links; doc drift; no embeddings (vision 31 stands) |
+| N8 semantic layers | accept four upgrades | b | rules that learn under published thresholds (after a signal source exists); validity windows activated and served everywhere a fact ends (the columns exist); every client's rules files as sources; serve through every client's hooks; SARIF and a check for reviewers |
+
+## 6. Verdicts on the landscape's Now, Next and Later
+
+| Item | Verdict | Where |
+|---|---|---|
+| One-command plugin (Claude Code marketplace, Copilot Agent Plugins) | accept; publication stays the owner's Q4 call | reach, RH- |
+| Small default surface (six to eight tools, rest opt-in) | accept | reach, RH- |
+| Proof layer under Spec Kit and OpenSpec | accept | spec interop, SI- |
+| Every client's rules files, with off/warn/error | accept | governance, GL- |
+| Hooks for every client | accept | governance, GL- |
+| Rules that learn from feedback | accept | governance, GL- |
+| Invalidated facts with dates | accept (extends SU-19) | governance, GL- |
+| SARIF and a GitHub check for reviewers | accept (output format of F14 only) | governance, GL- |
+| Calls between services | accept | system graph, SG- |
+| Tests tied to requirements | accept as `certified_by:` for foreign dialects | spec interop, SI- |
+| Layered diffs by blast radius, no model | accept | governance, GL- |
+| Cost of every answer | accept | progress and economics, PE- |
+| Co-change scoring as an independent oracle for `blast_radius` | accept | system graph, SG- |
+| Live updates | accept under budget, with an incremental-equals-full check | system graph, SG- (wave 4) |
+| Full-text search | accept, pulled to wave 2 | knowledge retrieval, KR- |
+| A shared team index snapshot | defer | futures F27 |
+| Answer events for background agents | defer | futures F28 |
+
+## 7. What we refuse (recorded so it is not re-proposed)
+
+- A model deciding done. Jev and every model propose; only a contract proves.
+- Auto-capture without a budget.
+- Redis, a graph database, a vector database, or any second store.
+- A generic token-usage dashboard.
+- Kanban write-back, or any status set by a drag or a click.
+- Downloading dependencies, advisories or docs by default (I56).
+- A tool per edge kind (law 4): one link model, three verbs.
+- Embeddings before the vision 31 bench passes.
+- Hosted anything (the scope non-goal stands).
+- Rewriting a foreign spec file outside fathom-marked blocks (law 15).
+- A productivity score for a human, or any ranking of people (I58). Per-author figures are
+  agent identities (model, harness, effort), never persons.
+- Predictive estimates ("AI will size your sprint") without a calibrated reading.
+- Any auto-applied remedy: friction remedies and learned rules are proposals with receipts.
+
+## 8. Stack, and the Rust verdict
+
+**The stack stays.** One static Go binary, pure-Go SQLite in WAL mode, tree-sitter grammars
+on wazero, no Node, Python, Docker or JVM runtime, one loopback daemon under an OS-measured
+memory budget (ADR-047). The peers in the scan are mostly TypeScript or Python processes
+with Chroma, Kuzu, Neo4j, Redis or Postgres beside them and one language server per
+language; the scan records users reporting tens of gigabytes for some clients. Fathom's
+stack is among the leanest and most predictable in the field. That is a reading of their
+documentation, not a head-to-head benchmark, and RH-M5 measures it on one shared corpus
+before anyone repeats it as a claim. Fathom's own costs are known: garbage-collected heap
+growth on large graphs (ADR-047's waves) and wasm parser memory (RT-107).
+
+**Rust: do not rewrite.** Go is not the bottleneck: parsing is tree-sitter compiled to wasm,
+the store is SQLite. A Rust extraction worker would add a second toolchain, a process or FFI
+seam and a second language on a bus factor of one, for gains the budget work already
+delivers. **Revisit when** the typed-pass or extraction children cannot meet the 300 MiB
+ingest target after the RT waves, or garbage-collection pauses show in hook p99 at fleet
+scale (RT-M7's GC CPU reading above 25% below the refuse rung). The cheap experiment if
+that fires is a Rust-compiled wasm grammar or query module run under wazero: no FFI, the
+same sandbox, the same module cap (futures F29).
+
+## 9. Sequencing
+
+### 9.1 Lanes (run throughout)
+
+- **Lane A, tenancy (G14).** Finishing. It gates everything that adds load: no wave-2 row
+  that adds a table, a background job or a cache starts until RT-M1's first week reads PASS.
+- **Lane B, languages (G15).** Running on the ADR-048 queue; the system graph's framework
+  extractors ride on its dialects.
+
+### 9.2 Waves
+
+| Wave | Theme | Items (plan rows) |
+|---|---|---|
+| 1 | Reach: cheap, high leverage | default surface and opt-in groups (RH-1..RH-4); plugin bundle install-tested in two clients (RH-5..RH-8); rules readers for six client formats (GL-1..GL-6); hooks for Cursor and Gemini verified (GL-7..GL-9); spec-dialect port with Spec Kit and OpenSpec adapters and the converge report (SI-1..SI-9); SARIF for obligations and review findings (GL-20..GL-21); cost in every answer (PE-20..PE-21) |
+| 2 | Deepen | system graph core: the key grammar, the tables, the port, route/rpc/OpenAPI/proto extractors and HTTP clients, the three verbs (SG-1..SG-16); FTS5 docs and doc drift (KR-1..KR-10); proof history and progress views (PE-1..PE-12); the learning signal source and learning rules (GL-10..GL-14); the change risk receipt U7 (CX-1..CX-8); proof regressions generalized U12 (WI-20..WI-22); risk-weighted coverage T1 and the test portfolio T2 (TQ-1..TQ-8) |
+| 3 | Widen | dependency API index and upgrade impact (SG-30..SG-40); topics, tables and config links (SG-17..SG-22); contract drift (SG-23..SG-25); validity windows beyond claims (GL-15..GL-17); outcome economics (PE-13..PE-19); co-change oracle (SG-26..SG-27); layered diffs (GL-22); U1 to U5 (WI-1..WI-15, GL-18..GL-19); coverage for every language T3 and certifying-first selection T4 (TQ-9..TQ-16); the migration tracker U9 (CX-9..CX-13); the service catalog U10 (SG-43..SG-45) |
+| 4 | Complete | live updates under budget (SG-28..SG-29); Kiro, BMAD, Task Master and GitHub task-list adapters (SI-10..SI-13); the certified proof tier everywhere (SI-14..SI-15); Jev anchor proposals behind their calibration gate (SI-16..SI-17); vuln reach (SG-41..SG-42); dependency docs (KR-11..KR-12); task preflight U6 (WI-16..WI-19); the evidence pack U8 (CX-14..CX-18); the drift radar U11 (CX-19..CX-23); contract certificates T5 and upgrade test reach T6 (TQ-17..TQ-20) |
+
+Each wave closes with its measurement rows (the `-M` rows of each plan) read and committed,
+honest either way.
+
+### 9.3 G15's ladder, named
+
+N5 asked to raise the milestone ladder. Vision 37 §5 already defines M2 (45 languages at L1
+with 35 excellent, 25 at L2, 14 at L3, 10 at L4; 30 tool formats) and M3 (60+ at L1, 35 at
+L2, 20 at L3, 12 at L4; 40+ tool formats), with plan rows LB-M6-M2 and LB-M6-M3. Those stand
+unchanged; the memo's indicative figures are not used. Scope G15 now names M2 and M3 as the
+next bets after M1. Today no language has a committed reading and only Go (and partly SQL)
+fill `Signature`, so no other language can prove L1 good until LB-F3 lands: every current
+level is an unmeasured estimate.
+
+## 10. Corrections to the memo (the tree or the memo itself disagreed)
+
+1. **`tests:` is taken.** Plan grammar v2 already has `tests:` (a `gone: callers` modifier,
+   ADR-044, in the compatibility surface). The test-tied tier is the existing `certified_by:`
+   (ADR-043), whose `live` state already means "the newest attested run passed at a clean
+   commit and the reach has not moved". No new key; foreign dialects map their
+   requirement-to-test references onto it, and a plan-level `Proof: certified` header makes
+   it the default for a plan (spec interop §4).
+2. **Three zero-call tools are two.** `package_deps` was deleted by the surface prune. The
+   system graph's verbs replace `dep_drift` and `cross_repo_blast_radius`; tool count stays
+   flat (law 4).
+3. **Bi-temporal claims exist.** SU-19 shipped `valid_from`/`valid_to` on `semantic_claims`
+   and an `as_of` read on `obligations`. N8.2 is activate and serve, not a schema change for
+   claims: every path that ends a fact sets the window, `as_of` reaches every verb that reads
+   claims, and memories, rules-file rules, learned-rule states and doc links gain the same
+   window additively.
+4. **SARIF exists for the gate.** The new work is SARIF for obligations, review findings and
+   system-graph drift, plus a check-run payload; the emitter is reused.
+5. **The plugin renders already.** The new work is the published bundle, the trimmed default
+   surface inside it, and a timed install in two clients.
+6. **M2 and M3 exist.** Vision 37 §5 and LB-M6-M2/M3 already define both milestones; they
+   stand as written and the memo's indicative figures are not used (§9.3).
+7. **Proof history and economics are projections.** The verify ledger (about 17,000
+   readings) and the session ledger (3,359 sessions) exist. N2's "proof history ledger" is the
+   verify ledger with per-row verdicts added additively (schema 3), and N3/U1 join the session
+   ledger; no new ledger file.
+8. **Claim honesty per author.** N2 lists claim honesty "per author/agent"; the addendum
+   refuses any per-human score. Claim honesty and every per-author figure are computed per
+   agent identity (model, harness, effort) only (I58).
+9. **Churn and complexity analyzers are gone.** `internal/analysis/churn` and
+   `internal/analysis/cognitive` were retired (`docs/plans/retire-unused-analyzers.md`). T1
+   and U13 do not bring them back: churn is a git-derived fact computed at ingest through
+   `gitro`, and symbol size from L1 ranges (ADR-048) stands in for complexity, named as a
+   proxy wherever it is shown.
+10. **T5 is TC-25.** Contract certificates on cross-service links were deferred in
+   `docs/plans/test-certifications.md` (TC-25, trigger TC-M2 plus two services declaring port
+   certificates). TQ-17 takes the work with TC-M2 as its `needs:`.
+11. **Learning needs a signal first.** N8.1 and U4 assume corroborate/refute signals; the
+   reference machine has none (0 human claim verdicts). The signal source is a plan row
+   (GL-10) that lands before any threshold row.
+
+## 11. How this fits what is decided
+
+Law 4 holds (one link model, three verbs replacing two dead tools, the default surface
+shrinks). Law 15 holds (foreign spec files and rules files are read, never rewritten outside
+fathom's markers). ADR-011 holds (no fixture, key or doc names an organization). ADR-041
+holds (SQLite is the record, no graph database, embeddings removed). ADR-042's route-site
+calibration failure is why Jev has no role in link matching and a gated role in anchor
+inference. ADR-047 bounds every new cache, table and background job. The dispatch non-goal
+holds: fathom computes and shows; it never schedules, assigns or retries, and task preflight
+(U6) recommends a model tier for the harness to accept or ignore. The Moderne non-goal holds:
+the migration tracker (U9) counts and proves, never transforms.

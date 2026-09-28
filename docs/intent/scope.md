@@ -60,6 +60,84 @@ Done when: the foundation rows of `docs/plans/language-breadth.md` are proven an
 reads milestone M1 (20 languages at L1 excellent, 12 at L2, 8 at L3, 6 at L4; 15 tool
 formats at target) with LB-M3 (no footprint rise) PASS.
 {bet: language-breadth, instrument: "fathom plans status", threshold: "docs/plans/language-breadth.md LB-F rows proven; LB-M6 reads milestone M1; LB-M3 PASS", review: 2026-11-27}
+Named 2026-09-27 (ADR-049, vision 38 §9.3): after M1 the ladder continues to vision 37 §5's M2
+(45 languages at L1 with 35 excellent, 25 at L2, 14 at L3, 10 at L4; 30 tool formats at
+target; LB-M6-M2) and M3 (60+ at L1, 35 at L2, 20 at L3, 12 at L4; 40+ tool formats;
+LB-M6-M3). M2 and M3 are the next bets once M1 is read; this goal closes on M1. Today no
+language has a committed reading and only Go (and partly SQL) fill `Signature`, so every
+current level is an unmeasured estimate until LB-F3 and LB-M1 land.
+
+**G16. Reach: fathom installs in one step and serves the clients people use (ADR-049,
+vision 38).** The owner's 2026-09-27 wave 1. Done when: `docs/plans/reach.md` and the wave-1
+rows of `docs/plans/governance-learning.md` are proven and RH-M1 (a stranger reaches a first
+proven answer in at most 5 minutes, timed by `stranger-check`), RH-M2 (the plugin installs in
+Claude Code and one other client), RH-M3 (default agent surface at most 8 tools), GL-M1
+(rules read from at least 6 client formats) and GL-M4 (hooks live in at least 3 clients) read
+PASS.
+{bet: reach, instrument: "fathom plans status", threshold: "RH-M1 at most 5 minutes install to first proven answer; RH-M2 plugin installs in 2 clients; RH-M3 default surface at most 8 tools; GL-M1 at least 6 rules formats; GL-M4 hooks live in at least 3 clients", review: 2026-11-27}
+
+**G17. The system graph: proof crosses service boundaries (ADR-050).** Done when: the
+wave-2 and wave-3 rows of `docs/plans/system-graph.md` are proven and SG-M1 (route, rpc, gql,
+topic, table and env links on the fixture fleet at precision at least 0.95 and recall at least
+0.85 for the spec and typed tiers), SG-M2 (`contract_drift` catches at least 90% of seeded
+breaking changes) and SG-M3 (`system_impact` answered on the home fleet with every link's
+tier named) read PASS.
+{bet: system-graph, instrument: "fathom plans status", threshold: "SG-M1 precision at least 0.95 and recall at least 0.85 per kind for spec+typed tiers; SG-M2 drift catches at least 90% of seeded breaks; SG-M3 home-fleet reading", review: 2027-01-15}
+
+**G18. Dependencies: upgrade impact from what is already on disk (ADR-050).** Done when: the
+dependency rows of `docs/plans/system-graph.md` are proven and SG-M4 (upgrade impact for Go,
+npm, PyPI, Maven and Cargo at precision at least 0.9 on the seeded-upgrade corpus) and SG-M5
+(the dependency API index is shared fleet-wide, one index per package version, within the
+memory budget, with no network access) read PASS.
+{bet: dependencies, instrument: "fathom plans status", threshold: "SG-M4 upgrade-impact precision at least 0.9 in 5 ecosystems; SG-M5 one shared index per package version, footprint within budget, zero dials", review: 2027-01-31}
+
+**G19. Spec interop and the certified proof tier (ADR-049).** Done when:
+`docs/plans/spec-interop.md` is proven through wave 4 and SI-M1 (5 spec dialects verify in
+place), SI-M2 (the converge report on a real Spec Kit or OpenSpec project), SI-M3 (a plan
+under `Proof: certified` verifies only on live certificates) and SI-M4 (Jev anchor inference
+passes calibration, or is dropped with the reading) read PASS or record the drop.
+{bet: spec-interop, instrument: "fathom plans status", threshold: "SI-M1 5 dialects verify in place; SI-M2 converge report read; SI-M3 certified tier live; SI-M4 calibration at least 9 in 10 or the drop recorded", review: 2026-12-15}
+
+**G20. Knowledge retrieval: doc questions answered at grep's rate or better (ADR-049).**
+Done when: `docs/plans/knowledge-retrieval.md` wave 2 is proven and KR-M1 (the doc-question
+bench slice passes at least grep's rate at no more than 1.0x grep's bytes) and KR-M2 (doc drift
+reported by `staleness_report` on seeded symbol changes, recall at least 0.9) read PASS.
+{bet: knowledge-retrieval, instrument: "fathom plans status", threshold: "KR-M1 pass rate at least grep's at no more than 1.0x bytes; KR-M2 doc-drift recall at least 0.9", review: 2026-12-15}
+
+**G21. Governance that learns and reaches reviewers (ADR-049).** Done when:
+`docs/plans/governance-learning.md` is proven and GL-M2 (promotions and retirements under
+the published thresholds, fewer than 1 in 10 promotions refuted within 30 days), GL-M3
+(`as_of` answers across claims, memories and learned-rule states) and GL-M5 (SARIF or the
+check payload consumed by one external reviewer) read PASS.
+{bet: governance-learning, instrument: "fathom plans status", threshold: "GL-M2 fewer than 1 in 10 promotions refuted in 30 days; GL-M3 as_of reading; GL-M5 one external reviewer consumes the output", review: 2027-01-15}
+
+**G22. Progress and economics, computed (ADR-049).** Done when:
+`docs/plans/progress-and-economics.md` is proven and PE-M1 (every number on the progress
+and economics pages traces to an instrument), PE-M2 (the proof history ledger reconstructs
+burn-up and proof regressions for 30 days), PE-M3 (tokens per proven row joined for Claude
+Code and Codex sessions) and PE-M4 (the pages measured like G13's UX-M1) read PASS.
+{bet: progress-economics, instrument: "fathom plans status", threshold: "PE-M1 every number traced; PE-M2 30-day ledger reconstruction; PE-M3 cost per proven row for 2 harnesses; PE-M4 UX reading PASS", review: 2026-12-31}
+
+**G23. Test intelligence: the tests that matter, ranked and selected (ADR-051).** Done when:
+`docs/plans/test-intelligence.md` rows for T1 to T5 are proven and TQ-M1 (risk-weighted
+coverage ranked on the home fleet), TQ-M2 (certifying-first selection re-proves every touched
+certificate while running at most 40% of the suite on a replayed month of diffs) and TQ-M3
+(coverage ingested for at least 5 languages) read PASS.
+{bet: test-intelligence, instrument: "fathom plans status", threshold: "TQ-M1 home-fleet ranking read; TQ-M2 every touched certificate re-proved at no more than 40% of the suite; TQ-M3 coverage for at least 5 languages", review: 2027-01-15}
+
+**G24. Work intelligence: effort, friction and cost joined to proof (ADR-051).** Done when:
+`docs/plans/work-intelligence.md` is proven and WI-M1 (U1 to U6 on the console, every number
+from an instrument), WI-M2 (U2's interest rate computed on at least 3 repositories with at
+least 30 proven rows each) and WI-M4 (U6's preflight A/B read, keep or drop) read PASS or
+record the drop.
+{bet: work-intelligence, instrument: "fathom plans status", threshold: "WI-M1 U1-U6 traced to instruments; WI-M2 interest rate on at least 3 repos with at least 30 proven rows each; WI-M4 preflight A/B keep-or-drop recorded", review: 2027-01-31}
+
+**G25. Change and compliance receipts (ADR-051).** Done when:
+`docs/plans/change-and-compliance.md` is proven and CX-M1 (the risk receipt on every PR in at
+least 2 repositories with SARIF or check output), CX-M2 (an evidence pack re-verifies
+byte-identically), CX-M3 (one real migration tracked to proven completion), SG-M6 (the
+catalog covers every fleet service) and CX-M4 (the drift radar live) read PASS.
+{bet: change-compliance, instrument: "fathom plans status", threshold: "CX-M1 receipts on every PR in at least 2 repos; CX-M2 byte-identical re-verify; CX-M3 one migration proven complete; SG-M6 catalog for every fleet service; CX-M4 radar live", review: 2027-01-31}
 
 **G11. A reading, a hand-off and an answer carry their evidence (ADR-034).** The first
 round's 74 rows were voided by an instrument defect (the wired arm never had the tools; O41
@@ -211,7 +289,18 @@ Pre-1.0: breaking changes bump minor. The line still gets written.
   distribution channel (`07` R2). Revisit when: ≥15–20 resolved findings exist and a
   consumer asks.
 - **No dispatch loop.** Fathom never watches, schedules, retries, spawns, or kicks off;
-  no task tracker, no workflow engine (`docs/vision/24` dispatch boundary, `09`). Revisit when: never.
+  no task tracker, no workflow engine (`docs/vision/24` dispatch boundary, `09`). Progress
+  views (weighted tables, a derived kanban, burn-up) are not a tracker: they read verify's
+  verdicts and write nothing; no status is set by a drag, a click or an assignment (ADR-049
+  decision 4). Revisit when: never.
+- **No productivity score for people.** Fathom measures work, code and agents, never ranks
+  people: every per-author figure is an agent identity (model, harness, effort), and no view
+  keys a row by a human (I58, ADR-051). Predictive estimates without a calibrated reading and
+  auto-applied remedies are refused with it. Revisit when: never.
+- **No generic token-usage dashboard.** Why: the clients and their usage tools own raw
+  tokens, sessions and spend; a copy is commodity. Fathom shows cost only joined to what was
+  proven (cost per proven row, ADR-049 decision 5). Revisit when: a client stops exposing its
+  own usage and an adopter asks in writing.
 - **No transformation or migration engine.** Why: the Moderne trap (`01` §3). Revisit when: never.
 - **No tool joins a surface without call-log justification; no net tool growth** (law
   4; product-vision standing non-goals). Revisit when: never.
