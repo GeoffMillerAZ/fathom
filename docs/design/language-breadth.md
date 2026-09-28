@@ -523,6 +523,12 @@ The reading (`internal/langbench.Reading`, JSON, indented, stable key order):
 }
 ```
 
+A tool-native oracle file may carry `cross_references` (`[{path, from, to_path, to}]`; `to`
+omitted compares at file granularity): the harness scores them against
+`fusion.ResolveDocXrefs` over the dialect's files as `xref_precision`/`xref_recall` at the
+file's tier (LB-F30, §4). Bench-only oracles that write this shape live under
+`calibration/oracles/` (tier C: github-actions, kubernetes).
+
 `level_met` is the highest level whose metrics all pass at excellent or good with an
 admissible tier; `grade` says which. The file is written with
 `json.MarshalIndent(reading, "", "  ")` so `"level_met": "L3"` is always one line — the plan
