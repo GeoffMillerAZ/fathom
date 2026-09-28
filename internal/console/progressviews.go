@@ -514,8 +514,8 @@ type ProgressCard struct {
 
 // ProgressColumn is one column of the derived board.
 type ProgressColumn struct {
-	ID    string      `json:"id"`
-	Label string      `json:"label"`
+	ID    string         `json:"id"`
+	Label string         `json:"label"`
 	Cards []ProgressCard `json:"cards"`
 }
 

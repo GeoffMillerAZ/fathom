@@ -1473,6 +1473,7 @@ discipline, and the tie-in/latency-budget checks doctor itself doesn't run.
 
 ```sh
 fathom plans status  --service <svc> [--plan P]... [--store DB | --url U] [--json]   # per-plan rollup: total/proven/claimed-unproven/measured-stale/open/deferred/other-skipped
+fathom plans status  --service <svc> --weighted [--json]   # proven weight / total weight by fleet, project, plan and section (`weight:`, default 1; [-] rows carry none)
 fathom plans next    --service <svc> [--eligible-only] [--free] [--root DIR] [--json] # the ordered work frontier, with {id, symbol, package} anchors
 fathom plans history --service <svc> --plan P [--url U] [--json]                      # the burn-up: scope and claimed rows per commit of the plan, the ledger's proven trend (absent under 14 days of rows), the cross-check
 fathom plans history [--service <svc>] [--url U] [--json]                             # no --plan: the claimed-vs-proven trend of the current plans of one service (or every registered one), from the verify ledger's runs of those plans only

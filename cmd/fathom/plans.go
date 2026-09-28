@@ -348,6 +348,7 @@ func cmdPlansStatus(args []string, stdout, stderr io.Writer) int {
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL (HTTP mode)")
 	storePath := fs.String("store", "", "store path, .sqlite/.db (direct mode; bypasses daemon)")
 	jsonOut := fs.Bool("json", false, "emit JSON instead of a human table")
+	weighted := fs.Bool("weighted", false, "roll proven weight over total weight up by fleet, project, plan and section (PE-3)")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
@@ -374,6 +375,11 @@ func cmdPlansStatus(args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
+	}
+
+	if *weighted {
+		writeWeighted(stdout, weightedRollup(*service, files, rowSets, readPlanSections(files)), *jsonOut)
+		return 0
 	}
 
 	daemonStale, staleWhy := false, ""
