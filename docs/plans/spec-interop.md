@@ -20,7 +20,7 @@ stays the `gone: callers` modifier (ADR-044) and is not reused.
 
 ## Wave 4: more dialects, the certified tier everywhere, Jev's proposals
 
-- [ ] Kiro adapter: `.kiro/specs/<name>/tasks.md` with `_Requirements:_` references resolved into `requirements.md` (EARS) {id: SI-10, symbol: kiroParse, package: internal/specdialect, reachable_from: TestKiroAdapterRequirements, needs: "SI-1"}
+- [x] Kiro adapter: `.kiro/specs/<name>/tasks.md` with `_Requirements:_` references resolved into `requirements.md` (EARS) {id: SI-10, symbol: kiroParse, package: internal/specdialect, reachable_from: TestKiroAdapterRequirements, needs: "SI-1"}
 - [ ] BMAD adapter: story files with acceptance criteria and a task list {id: SI-11, symbol: bmadParse, package: internal/specdialect, reachable_from: TestBMADAdapterStories, needs: "SI-1"}
 - [ ] Task Master adapter: `.taskmaster/tasks/tasks.json` tasks and subtasks, `status: done` as claimed {id: SI-12, symbol: taskMasterParse, package: internal/specdialect, reachable_from: TestTaskMasterAdapterJSON, needs: "SI-1"}
 - [ ] GitHub task-list adapter over an issue or PR body exported to a file the user passes {id: SI-13, symbol: ghTaskListParse, package: internal/specdialect, reachable_from: TestGitHubTaskListAdapter, needs: "SI-1"}
