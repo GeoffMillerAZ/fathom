@@ -1,0 +1,45 @@
+{
+  "symbols": [
+    {
+      "name": "API_KEY",
+      "kind": "BashVariable",
+      "package": "functions",
+      "line": 8,
+      "end_line": 8,
+      "tier": "verified"
+    },
+    {
+      "name": "greet",
+      "kind": "BashFunction",
+      "package": "functions",
+      "line": 12,
+      "end_line": 15,
+      "signature": "function greet()",
+      "calls": [
+        "echo"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "deploy",
+      "kind": "BashFunction",
+      "package": "functions",
+      "line": 17,
+      "end_line": 21,
+      "signature": "deploy()",
+      "calls": [
+        "echo",
+        "greet"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "DEPLOY_STAGE",
+      "kind": "BashVariable",
+      "package": "functions",
+      "line": 18,
+      "end_line": 18,
+      "tier": "verified"
+    }
+  ]
+}

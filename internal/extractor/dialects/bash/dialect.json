@@ -1,0 +1,30 @@
+{
+  "id": "bash",
+  "display": "Bash",
+  "kind": "language",
+  "engine": "tags",
+  "lang_tag": "bash",
+  "match": {
+    "extensions": [".sh", ".bash"],
+    "basenames": [],
+    "globs": [],
+    "shebangs": ["bash", "sh"],
+    "sniff": null
+  },
+  "grammar": { "blob": "bash", "entry_point": "tree_sitter_bash" },
+  "variants": [],
+  "queries": { "tags": "tags.scm" },
+  "kinds": {
+    "function": { "source_kind": "BashFunction", "canonical": "function", "callable": true },
+    "variable": { "source_kind": "BashVariable", "canonical": "variable" }
+  },
+  "required_kinds": ["function"],
+  "oracle_kinds": {
+    "ctags": { "function": "function" }
+  },
+  "qualify": { "chain_containers": false, "container_sep": ".", "method_sep": "." },
+  "package": { "strategy": "dir" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L2",
+  "queue_id": "bash"
+}
