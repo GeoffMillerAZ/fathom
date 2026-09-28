@@ -360,6 +360,9 @@ func pinConsoleVerbClocks(t *testing.T, f *consoleFixture) {
 	prev := certifyGapsNow
 	certifyGapsNow = func() time.Time { return f.now }
 	t.Cleanup(func() { certifyGapsNow = prev })
+	prevRules := ruleEffectivenessNow
+	ruleEffectivenessNow = func() time.Time { return f.now }
+	t.Cleanup(func() { ruleEffectivenessNow = prevRules })
 	// `fathom resources` (the Operate Tenancy panel, RT-121) over the same
 	// fixed inputs for the page and the verb: no live census, host or
 	// hooks read.

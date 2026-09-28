@@ -784,6 +784,32 @@ func (a *autoRefreshBackend) CompileLayer(ctx context.Context, service, layer st
 	return cb.CompileLayer(ctx, service, layer, dryRun)
 }
 
+// ClaimsForService forwards the service's claims with their validity windows
+// (GL-17): findings_near, review_diff's certifications and every dated
+// `as_of` answer read them through claimsListBackend/findingsBackend/
+// certificationsBackend, and without this forward the wrapper (serve-http's
+// default) stripped the capability — the same O7 class as every other
+// optional capability in this file — so those verbs degraded on a real
+// daemon. A service-wide read, never ensure()d, like ClaimsSummary.
+func (a *autoRefreshBackend) ClaimsForService(ctx context.Context, serviceID, layer string) ([]core.SemanticClaim, error) {
+	cb, ok := a.QueryInterface.(claimsListBackend)
+	if !ok {
+		return nil, errSemanticUnsupported
+	}
+	return cb.ClaimsForService(ctx, serviceID, layer)
+}
+
+// DocLinksAsOf forwards GL-16's dated doc-link read for staleness_report's
+// `as_of`: without it the wrapper would strip the capability on a real
+// daemon and every dated staleness answer would name doc links unavailable.
+func (a *autoRefreshBackend) DocLinksAsOf(ctx context.Context, service string, at time.Time) ([]store.DocLinkView, error) {
+	lb, ok := a.QueryInterface.(docLinksAsOfBackend)
+	if !ok {
+		return nil, errSemanticUnsupported
+	}
+	return lb.DocLinksAsOf(ctx, service, at)
+}
+
 func (a *autoRefreshBackend) ClaimsSummary(ctx context.Context, service string) (map[string]any, error) {
 	cs, ok := a.QueryInterface.(claimsSummaryBackend)
 	if !ok {

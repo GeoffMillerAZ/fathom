@@ -35,9 +35,9 @@ of signal exist.
 ## Wave 3: validity windows everywhere, the rule-effectiveness view, layered diffs
 
 - [x] Every claim-ending path sets `valid_to`; a test proves no claim-ending path deletes (SU-19 activated) (§7) {id: GL-15, symbol: closeClaimValidity, package: internal/semantic, reachable_from: TestNoClaimEndingPathDeletes}
-- [ ] Memories, rules-file rules, learned-rule states and doc links gain `valid_from`/`valid_to`, additively {id: GL-16, symbol: PutMemoryValidity, package: internal/store, reachable_from: TestValidityWindowsBeyondClaims}
-- [ ] `as_of` on `staleness_report` and the review verbs, beside `obligations` {id: GL-17, symbol: asOfFilter, package: internal/mcp, reachable_from: TestAsOfAcrossVerbs, needs: "GL-16"}
-- [ ] The rule-effectiveness page on the console (U4) {id: GL-18, symbol: renderRuleEffectiveness, package: cmd/fathom, reachable_from: TestConsoleRuleEffectivenessPage, needs: "GL-11"}
+- [x] Claims (which carry rules-file rules and learned-rule states) open their `valid_from` at mint, and doc links answer as of a date, both additively; re-scoped 2026-09-28 (owner decision): anchored memories are being deleted (SR-13), so they gain no window and the original anchor `PutMemoryValidity` is retired for `DocLinksAsOf` {id: GL-16, symbol: DocLinksAsOf, package: internal/store, reachable_from: TestValidityWindowsBeyondClaims}
+- [x] `as_of` on `staleness_report` and the review verbs (`review_diff`, `findings_near`), beside `obligations`, all through one resolver; re-scoped 2026-09-28 (owner decision): `memory_search` is being deleted (SR-13), so it gets none {id: GL-17, symbol: asOfFilter, package: internal/mcp, reachable_from: TestAsOfAcrossVerbs, needs: "GL-16"}
+- [x] The rule-effectiveness page on the console (U4) {id: GL-18, symbol: renderRuleEffectiveness, package: cmd/fathom, reachable_from: TestConsoleRuleEffectivenessPage, needs: "GL-11"}
 - [x] Ignored rules proposed for a hook, never-triggered rules proposed for pruning, each with its evidence {id: GL-19, symbol: ruleRemedies, package: internal/semantic, reachable_from: TestRuleRemediesAreProposals, needs: "GL-11"}
 - [x] `review_diff` layers changed files by blast radius (leaf, shared callee, cross-service provider) without a model (§8) {id: GL-22, symbol: layerDiffByBlastRadius, package: internal/mcp, reachable_from: TestReviewDiffLayers}
 
@@ -52,6 +52,6 @@ of signal exist.
 
 - [ ] (op) GL-M1: rules read from at least 6 client formats on fixtures, each compiled rule citing its source line {id: GL-M1, oracle: lexical, path: docs/bench/readings/governance/rules-formats.md, pattern: "^GL-M1 verdict: PASS", needs: "GL-2,GL-3,GL-4,GL-5,GL-6"}
 - [ ] (op) GL-M2: after 30 days of signal, promotions and retirements under the published thresholds with fewer than 1 in 10 promotions refuted within 30 days {id: GL-M2, oracle: lexical, path: docs/bench/readings/governance/learning.md, pattern: "^GL-M2 verdict: PASS", needs: "GL-14"}
-- [ ] (op) GL-M3: `as_of` answers for claims, memories and learned-rule states on a seeded history {id: GL-M3, oracle: lexical, path: docs/bench/readings/governance/as-of.md, pattern: "^GL-M3 verdict: PASS", needs: "GL-17"}
+- [ ] (op) GL-M3: `as_of` answers for claims, learned-rule states and doc links on a seeded history (memories dropped: anchored memory is being deleted, SR-13) {id: GL-M3, oracle: lexical, path: docs/bench/readings/governance/as-of.md, pattern: "^GL-M3 verdict: PASS", needs: "GL-17"}
 - [ ] (op) GL-M4: hooks verified live in at least 3 clients (descriptor state `verified` from real beats) {id: GL-M4, oracle: lexical, path: docs/bench/readings/governance/hooks-live.md, pattern: "^GL-M4 verdict: PASS", needs: "GL-9"}
 - [ ] (op) GL-M5: SARIF or the check payload consumed by one external reviewer {id: GL-M5, oracle: lexical, path: docs/bench/readings/governance/reviewer.md, pattern: "^GL-M5 verdict: PASS", needs: "GL-20,GL-21"}

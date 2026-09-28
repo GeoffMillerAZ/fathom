@@ -22,13 +22,18 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
+	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/buildinfo"
+	"github.com/geoffmilleraz/fathom/internal/console"
 	"github.com/geoffmilleraz/fathom/internal/dlog"
+	"github.com/geoffmilleraz/fathom/internal/semantic"
 )
 
 // Rule outcome event kinds (design doc §5's table plus the existing claim
@@ -144,4 +149,75 @@ func recordRuleOutcome(ruleID, event, session, file string) {
 	// comment).
 	b = append(b, '\n')
 	_, _ = f.Write(b)
+}
+
+// ruleOutcomeReadMax bounds a read of the signal log to the size the writer
+// rotates it at (GL-10's 16 MiB): a log past it — a rotation not yet run —
+// is read from its newest bytes, so a request never reads more than the
+// writer would have kept. A var so a test can shrink it (as
+// ruleOutcomeLogRotateBytes is).
+var ruleOutcomeReadMax int64 = 16 << 20
+
+// readRuleOutcomeSignal reads the signal log at path for the rule-
+// effectiveness view (GL-18): the newest ruleOutcomeReadMax bytes, whole
+// lines only, each row that parses becoming one semantic.RuleOutcomeEvent.
+// A missing log is an absent signal, never a signal of nothing; a log that
+// exists and cannot be read is an error naming why; a row that does not parse
+// is counted in Skipped, not silently dropped. The rotated archive is not
+// read: the view's windows are 30 and 90 days and it says how far back the
+// log it read reaches.
+func readRuleOutcomeSignal(path string) console.RuleSignal {
+	sig := console.RuleSignal{Source: path}
+	if path == "" {
+		sig.State, sig.Reason = console.StateAbsent, "no home directory to keep a rule-outcome log in"
+		return sig
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			sig.State, sig.Reason = console.StateAbsent, "no rule-outcome log at "+path+": the edit hook records one row for each rule it serves"
+			return sig
+		}
+		sig.State, sig.Reason = console.StateError, err.Error()
+		return sig
+	}
+	defer f.Close()
+	fi, err := f.Stat()
+	if err != nil {
+		sig.State, sig.Reason = console.StateError, err.Error()
+		return sig
+	}
+	var r io.Reader = f
+	dropFirst := false
+	if fi.Size() > ruleOutcomeReadMax {
+		if _, err := f.Seek(fi.Size()-ruleOutcomeReadMax, io.SeekStart); err != nil {
+			sig.State, sig.Reason = console.StateError, err.Error()
+			return sig
+		}
+		dropFirst = true // the first line is cut mid-row
+	}
+	sc := bufio.NewScanner(io.LimitReader(r, ruleOutcomeReadMax))
+	sc.Buffer(make([]byte, 0, 64<<10), 1<<20)
+	sig.State = console.StatePresent
+	for sc.Scan() {
+		if dropFirst {
+			dropFirst = false
+			continue
+		}
+		var e ruleOutcomeEvent
+		if err := json.Unmarshal(sc.Bytes(), &e); err != nil || e.RuleID == "" || e.Event == "" {
+			sig.Skipped++
+			continue
+		}
+		at, err := time.Parse(time.RFC3339Nano, e.TS)
+		if err != nil {
+			sig.Skipped++
+			continue
+		}
+		sig.Events = append(sig.Events, semantic.RuleOutcomeEvent{RuleID: e.RuleID, Event: e.Event, At: at.UTC(), Session: e.Session})
+	}
+	if err := sc.Err(); err != nil {
+		sig.State, sig.Reason, sig.Events = console.StateError, fmt.Sprintf("reading %s: %v", path, err), nil
+	}
+	return sig
 }

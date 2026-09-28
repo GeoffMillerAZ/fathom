@@ -305,9 +305,10 @@ type DocLink struct {
 	TargetHashAtLink string
 }
 
-// DocLinkView is one still-open (valid_to = 0) doc_links row joined back
-// to its unit's location — everything KR-7's docDrift needs to report a
-// possibly-stale span without a second query per row.
+// DocLinkView is one doc_links row joined back to its unit's location —
+// everything KR-7's docDrift needs to report a possibly-stale span without
+// a second query per row. OpenDocLinks returns only still-open rows
+// (ValidTo 0); DocLinksAsOf (GL-16) may also return a since-closed one.
 type DocLinkView struct {
 	UnitID           string
 	Path             string
@@ -318,6 +319,9 @@ type DocLinkView struct {
 	LinkTier         string
 	TargetHashAtLink string
 	ValidFrom        int64
+	// ValidTo is 0 while the link still holds and the instant it stopped
+	// holding otherwise (GL-16): closed, never deleted.
+	ValidTo int64
 }
 
 // docLinkKey identifies one doc_links row for the purpose of deciding
@@ -435,6 +439,36 @@ ORDER BY du.path, dl.line, dl.target`, serviceID)
 		var v DocLinkView
 		if err := rows.Scan(&v.UnitID, &v.Path, &v.HeadingPath, &v.TargetKind, &v.Target, &v.Line, &v.LinkTier, &v.TargetHashAtLink, &v.ValidFrom); err != nil {
 			return nil, fmt.Errorf("OpenDocLinks scan: %w", err)
+		}
+		out = append(out, v)
+	}
+	return out, rows.Err()
+}
+
+// DocLinksAsOf is GL-16's read of the doc-link validity window (design doc
+// governance-learning §7): every doc_links row for serviceID whose window
+// [valid_from, valid_to) contained at — a link that has since been closed
+// still answers for a date before it closed, a link that opened later does
+// not, and valid_to = 0 means still open. It is the store half of "what
+// did the docs point at on date D"; at is in the unit the writer stamped
+// (SyncDocLinksForUnit's now — UnixNano at ingest). Sorted like
+// OpenDocLinks (path, line, target) so the answer is deterministic.
+func (s *SQLiteStore) DocLinksAsOf(ctx context.Context, serviceID string, at int64) ([]DocLinkView, error) {
+	rows, err := s.db.QueryContext(ctx, `
+SELECT dl.unit_id, du.path, du.heading_path, dl.target_kind, dl.target, dl.line, dl.link_tier, dl.target_hash_at_link, dl.valid_from, dl.valid_to
+FROM doc_links dl
+JOIN doc_units du ON du.service_id = dl.service_id AND du.unit_id = dl.unit_id
+WHERE dl.service_id = ? AND dl.valid_from <= ? AND (dl.valid_to = 0 OR dl.valid_to > ?)
+ORDER BY du.path, dl.line, dl.target`, serviceID, at, at)
+	if err != nil {
+		return nil, fmt.Errorf("DocLinksAsOf: %w", err)
+	}
+	defer rows.Close()
+	var out []DocLinkView
+	for rows.Next() {
+		var v DocLinkView
+		if err := rows.Scan(&v.UnitID, &v.Path, &v.HeadingPath, &v.TargetKind, &v.Target, &v.Line, &v.LinkTier, &v.TargetHashAtLink, &v.ValidFrom, &v.ValidTo); err != nil {
+			return nil, fmt.Errorf("DocLinksAsOf scan: %w", err)
 		}
 		out = append(out, v)
 	}

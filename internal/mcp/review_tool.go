@@ -25,6 +25,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/memo"
 	"github.com/geoffmilleraz/fathom/internal/projectrules"
 	riskreview "github.com/geoffmilleraz/fathom/internal/review"
+	"github.com/geoffmilleraz/fathom/internal/semantic"
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
@@ -77,7 +78,8 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 				"changed_files":    map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Repo-relative changed file paths"},
 				"concern":          map[string]any{"type": "string", "description": "Optional concern token (descriptive only)"},
 				"since":            map[string]any{"type": "string", "description": "Base commit ref (ADR-044); feeds integrity + conservation."},
-				"coverage_profile": map[string]any{"type": "string", "description": "Single-profile alias for coverage_profiles, labeled layer \"unit\". Ignored when coverage_profiles is given."},
+				"as_of":            map[string]any{"type": "string"},
+				"coverage_profile": map[string]any{"type": "string", "description": "Alias for one coverage_profiles entry, layer \"unit\"; ignored when coverage_profiles is set."},
 				"coverage_profiles": map[string]any{
 					"type":        "array",
 					"description": "One entry per test layer: {layer, path}. Enables per-layer coverage; omit for no coverage dimension.",
@@ -100,6 +102,7 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 			ChangedFiles []string `json:"changed_files"`
 			Concern      string   `json:"concern"`
 			Since        string   `json:"since"`
+			AsOf         string   `json:"as_of"`
 			// CoverageProfile is the single-profile alias; CoverageProfiles
 			// is the real multi-layer form. CoverageProfiles wins when both
 			// are given.
@@ -119,7 +122,16 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "review_diff: changed_files required"}
 		}
 
-		in, sources, rpcErr := buildReviewInput(ctx, backend, p.Service, p.ChangedFiles, p.Concern, p.Since)
+		asOf, aerr := asOfFilter(ctx, backend, p.Service, p.AsOf, "review_diff")
+		if aerr != nil {
+			return nil, aerr
+		}
+		if asOf.active() {
+			if _, ok := backend.(obligationsAsOfBackend); !ok {
+				return nil, &rpcError{Code: ErrCodeInvalid, Message: "review_diff: backend does not support as_of"}
+			}
+		}
+		in, sources, rpcErr := buildReviewInput(ctx, backend, p.Service, p.ChangedFiles, p.Concern, p.Since, asOf)
 		if rpcErr != nil {
 			return nil, rpcErr
 		}
@@ -142,9 +154,20 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 			}
 		}
 		v := review.Run(in)
-		persisted, resolutions := applyAndPersistFindings(ctx, backend, &v, sources)
+		// GL-17: a dated review is a read of the past — it never writes the
+		// findings claims or supersedes the predecessors a live run
+		// reconciles, so findings_persisted is honestly false.
+		persisted, resolutions := false, map[string]string(nil)
+		if !asOf.active() {
+			persisted, resolutions = applyAndPersistFindings(ctx, backend, &v, sources)
+		}
 
 		payload := v.Payload(persisted)
+		if asOf.active() {
+			payload["as_of"] = asOf.label()
+			payload["as_of_scope"] = "obligations and certifications are answered as of " + asOf.label() +
+				"; impact, architecture, spec, test and integrity dimensions read the code and index as they stand now; nothing was persisted"
+		}
 		if note := partialNote(sources.cov); note != "" {
 			payload["corpus_partial"] = note
 		}
@@ -422,7 +445,7 @@ type reviewCorpus struct {
 	cov   corpus.Coverage
 }
 
-func buildReviewInput(ctx context.Context, backend QueryInterface, service string, changedFiles []string, concern, since string) (review.Input, reviewCorpus, *rpcError) {
+func buildReviewInput(ctx context.Context, backend QueryInterface, service string, changedFiles []string, concern, since string, asOf *asOfWindow) (review.Input, reviewCorpus, *rpcError) {
 	nodes, err := serviceSymbols(ctx, backend, service)
 	if err != nil {
 		return review.Input{}, reviewCorpus{}, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
@@ -445,6 +468,17 @@ func buildReviewInput(ctx context.Context, backend QueryInterface, service strin
 		serve := ob.Obligations
 		if rb, ok := backend.(reviewObligationsBackend); ok {
 			serve = rb.ReviewObligations
+		}
+		// GL-17: a dated review asks what governed each file then. The
+		// as-of answer is the general obligations read (ObligationsAsOf
+		// names no audience split), and review_diff has already refused a
+		// backend without it.
+		if asOf.active() {
+			if aob, ok := backend.(obligationsAsOfBackend); ok {
+				serve = func(ctx context.Context, service, file string, max int) (semantic.Obligations, error) {
+					return aob.ObligationsAsOf(ctx, service, file, max, asOf.instant())
+				}
+			}
 		}
 		for _, f := range changedFiles {
 			obl, oerr := serve(ctx, service, f, 0)
@@ -469,7 +503,7 @@ func buildReviewInput(ctx context.Context, backend QueryInterface, service strin
 	if cb, ok := backend.(certificationsBackend); ok {
 		in.CertificationsSupported = true
 		if certClaims, cerr := cb.ClaimsForService(ctx, service, certify.Layer); cerr == nil {
-			records := certify.Records(certClaims)
+			records := certify.Records(asOf.claims(certClaims))
 			in.CertificationsDeclared = len(records) > 0
 			if in.CertificationsDeclared {
 				changedSet := make(map[string]bool, len(changedFiles))
