@@ -158,6 +158,14 @@ func cmdClaimVerdict(args []string, stdout, stderr io.Writer, verdict string, ne
 		fmt.Fprintf(stderr, "error: append claim event: %v\n", err)
 		return 1
 	}
+	// GL-10 (docs/plans/governance-learning.md, design doc §5): a human
+	// verdict is one of the six event kinds the rule-effectiveness signal
+	// source records, feeding the SAME log the edit and PreToolUse hooks
+	// do — never a second, disconnected verdict channel. verdict is
+	// already exactly "refuted" or "corroborated" (this function's two
+	// callers pass those literals), matching ruleOutcomeRefuted/
+	// ruleOutcomeCorroborated by value.
+	recordRuleOutcome(*claimID, verdict, "", "")
 
 	if newStatus != "" {
 		if err := st.SetClaimStatus(ctx, *service, *claimID, newStatus); err != nil {

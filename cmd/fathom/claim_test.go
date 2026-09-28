@@ -115,6 +115,49 @@ func TestClaim_Corroborate_NeverPromotesStatus(t *testing.T) {
 	}
 }
 
+// TestClaim_RefuteAndCorroborate_RecordRuleOutcome is GL-10's wiring proof:
+// design doc §5 names the existing refuted/corroborated claim verdicts as
+// two of the six event kinds the signal source records, so `fathom claim
+// refute`/`corroborate` must feed recordRuleOutcome exactly like the edit
+// and PreToolUse hooks do — not a second, disconnected verdict channel.
+func TestClaim_RefuteAndCorroborate_RecordRuleOutcome(t *testing.T) {
+	storePath := filepath.Join(t.TempDir(), "s.sqlite")
+	seedClaim(t, storePath, "wa-review", "cl-3")
+	seedClaim(t, storePath, "wa-review", "cl-4")
+
+	logPath := filepath.Join(t.TempDir(), "rule-outcomes.jsonl")
+	t.Setenv("FATHOM_RULE_OUTCOME_LOG", logPath)
+
+	var out, errBuf bytes.Buffer
+	if code := run([]string{
+		"claim", "refute",
+		"--store", storePath, "--service", "wa-review", "--claim", "cl-3",
+		"--note", "wrong", "--author", "alice",
+	}, &out, &errBuf); code != 0 {
+		t.Fatalf("claim refute exit = %d, stderr: %s", code, errBuf.String())
+	}
+	out.Reset()
+	errBuf.Reset()
+	if code := run([]string{
+		"claim", "corroborate",
+		"--store", storePath, "--service", "wa-review", "--claim", "cl-4",
+		"--note", "confirmed",
+	}, &out, &errBuf); code != 0 {
+		t.Fatalf("claim corroborate exit = %d, stderr: %s", code, errBuf.String())
+	}
+
+	rows := readRuleOutcomeRows(t, logPath)
+	if len(rows) != 2 {
+		t.Fatalf("want 2 recorded rule-outcome rows, got %d: %+v", len(rows), rows)
+	}
+	if rows[0].RuleID != "cl-3" || rows[0].Event != ruleOutcomeRefuted {
+		t.Errorf("row1 = %+v, want rule_id=cl-3 event=refuted", rows[0])
+	}
+	if rows[1].RuleID != "cl-4" || rows[1].Event != ruleOutcomeCorroborated {
+		t.Errorf("row2 = %+v, want rule_id=cl-4 event=corroborated", rows[1])
+	}
+}
+
 func TestClaim_Errors(t *testing.T) {
 	storePath := filepath.Join(t.TempDir(), "s.sqlite")
 	seedClaim(t, storePath, "wa-review", "cl-3")
