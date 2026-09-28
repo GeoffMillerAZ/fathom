@@ -296,6 +296,7 @@ func mechanicalSessionFacts(root string) string {
 	var wg sync.WaitGroup
 	for i, step := range steps {
 		wg.Add(1)
+		//fathom:tenancy-allow bare-go hook-side fan-out of four fixed session-end reads, joined by a WaitGroup under the hook deadline
 		go func() {
 			defer wg.Done()
 			found[i] = step()

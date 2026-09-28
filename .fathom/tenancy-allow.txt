@@ -8,6 +8,7 @@ bare-go	cmd/fathom/console_events.go	the feeder goroutine, one per event stream,
 bare-go	cmd/fathom/console_tenancy_panel.go	one background rebuild at a time (c.building), signalled through c.done
 bare-go	cmd/fathom/discoveries.go	one-shot CLI: a single reader goroutine raced against the command's timeout
 bare-go	cmd/fathom/governor_wiring.go	the governor's sampler, one per process, stopped by its cancel
+bare-go	cmd/fathom/lifecyclehooks.go	hook-side fan-out of four fixed session-end reads, joined by a WaitGroup under the hook deadline
 bare-go	cmd/fathom/obligationsmerge.go	hook-side fan-out bounded by the file list, joined by a WaitGroup under the hook deadline
 bare-go	cmd/fathom/observatory.go	one background rebuild at a time (obsCache.building), signalled through obsCache.done
 bare-go	cmd/fathom/plans.go	CLI fan-out, one goroutine per local plan, joined by a WaitGroup
@@ -77,7 +78,6 @@ exec-noctx	cmd/fathom/doctor.go	one-shot CLI verb with no request context; the g
 exec-noctx	cmd/fathom/doctor.go	one-shot CLI verb with no request context; the git/child call ends with the process
 exec-noctx	cmd/fathom/doctor.go	one-shot CLI verb with no request context; the git/child call ends with the process
 exec-noctx	cmd/fathom/intentbaseline.go	one-shot CLI verb with no request context; the git/child call ends with the process
-exec-noctx	cmd/fathom/lifecyclehooks.go	hook process bounded by its hookguard deadline, which kills the process tree; no request context to pass
 exec-noctx	cmd/fathom/lifecyclehooks.go	hook process bounded by its hookguard deadline, which kills the process tree; no request context to pass
 exec-noctx	cmd/fathom/module.go	one-shot CLI verb with no request context; the git/child call ends with the process
 exec-noctx	cmd/fathom/plans_archive.go	one-shot CLI verb with no request context; the git/child call ends with the process
