@@ -7,7 +7,7 @@ package fusion_test
 // extractor wired into this repo at the time; TestIngest_UnsupportedLanguageDisclosed
 // originally pinned Kotlin as the disclosure fixture. Wave P2 (O81) closed
 // the Kotlin gap itself (extractor.NewTSExtractor("kotlin"),
-// internal/extractor/tsengine/grammars/kotlin.wasm), so this file now uses
+// internal/extractor/tsengine/grammars/kotlin.wasm.gz), so this file now uses
 // Swift — a language that still has no extractor — to keep proving the
 // DISCLOSURE mechanism in general: Report.UnsupportedLanguages must name the
 // language and count the files fusion silently skips, rather than leaving

@@ -24,6 +24,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"runtime"
+	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -83,19 +84,12 @@ var ParseTimeout = DefaultParseTimeout
 // everything — degraded and counted, never a wedged daemon.
 var ParseHardBackstop time.Duration
 
-//go:embed grammars/javascript.wasm grammars/typescript.wasm grammars/python.wasm grammars/ruby.wasm grammars/kotlin.wasm grammars/grammars.lock.json
+// grammarFS holds the compressed blobs and the lock (LB-F12, LB-F13). A
+// blob is decompressed only when its grammar is first compiled
+// (openGrammarBlob); the lock names every blob the engine will load.
+//
+//go:embed grammars/*.wasm.gz grammars/grammars.lock.json
 var grammarFS embed.FS
-
-// blobPath maps a grammar name (the registry key extractors ask for) to its
-// embedded .wasm file. One blob may serve more than one entry point (e.g.
-// "typescript" exports both tree_sitter_typescript and tree_sitter_tsx).
-var blobPath = map[string]string{
-	"javascript": "grammars/javascript.wasm",
-	"typescript": "grammars/typescript.wasm",
-	"python":     "grammars/python.wasm",
-	"ruby":       "grammars/ruby.wasm",
-	"kotlin":     "grammars/kotlin.wasm",
-}
 
 // Sizeof constants for tree-sitter's public C structs (tree_sitter/api.h).
 // These are part of tree-sitter's stable embedder ABI, not an implementation
@@ -201,11 +195,6 @@ func compilerSupported() bool {
 // per process; CompiledModule itself is safe for concurrent InstantiateModule
 // calls.
 func compile(ctx context.Context, name string) (wazero.CompiledModule, error) {
-	path, ok := blobPath[name]
-	if !ok {
-		return nil, fmt.Errorf("tsengine: unknown grammar %q", name)
-	}
-
 	compileMu.Lock()
 	defer compileMu.Unlock()
 	if cm, ok := compiled[name]; ok {
@@ -216,9 +205,9 @@ func compile(ctx context.Context, name string) (wazero.CompiledModule, error) {
 	if err != nil {
 		return nil, err
 	}
-	buf, err := grammarFS.ReadFile(path)
+	buf, err := openGrammarBlob(name)
 	if err != nil {
-		return nil, fmt.Errorf("tsengine: read embedded blob %q: %w", path, err)
+		return nil, err
 	}
 	cm, err := r.CompileModule(ctx, buf)
 	if err != nil {
@@ -858,13 +847,18 @@ func (q *Query) captureName(id uint32) (string, error) {
 	return string(nameBytes), nil
 }
 
-// Grammars returns the registered grammar blob names (for capabilities/
-// docs surfacing — ADR-021 §4 / XT-5).
+// Grammars returns the embedded grammar blob names, sorted — the lock's
+// rows (for capabilities/docs surfacing — ADR-021 §4 / XT-5).
 func Grammars() []string {
-	names := make([]string, 0, len(blobPath))
-	for name := range blobPath {
-		names = append(names, name)
+	lock, err := embeddedLock()
+	if err != nil {
+		return nil
 	}
+	names := make([]string, 0, len(lock.Grammars))
+	for _, r := range lock.Grammars {
+		names = append(names, r.Blob)
+	}
+	sort.Strings(names)
 	return names
 }
 

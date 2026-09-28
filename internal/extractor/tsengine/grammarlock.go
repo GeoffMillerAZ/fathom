@@ -211,17 +211,13 @@ func VerifyGrammarLock(lock GrammarLock, dir fs.FS) error {
 	for _, e := range entries {
 		name := e.Name()
 		var blob string
-		var compressed bool
 		switch {
 		case strings.HasSuffix(name, ".wasm.gz"):
-			blob, compressed = strings.TrimSuffix(name, ".wasm.gz"), true
+			blob = strings.TrimSuffix(name, ".wasm.gz")
 		case strings.HasSuffix(name, ".wasm"):
-			blob = strings.TrimSuffix(name, ".wasm")
-		default:
+			add("%s: %s is committed uncompressed; blobs are <blob>.wasm.gz (design §8.3)", strings.TrimSuffix(name, ".wasm"), name)
 			continue
-		}
-		if seen[blob] {
-			add("%s: committed both compressed and uncompressed", blob)
+		default:
 			continue
 		}
 		seen[blob] = true
@@ -235,13 +231,13 @@ func VerifyGrammarLock(lock GrammarLock, dir fs.FS) error {
 			add("%s: open %s: %v", blob, name, err)
 			continue
 		}
-		raw, gzBytes, err := readBlob(f, compressed)
+		raw, gzBytes, err := readBlob(f)
 		_ = f.Close()
 		if err != nil {
 			add("%s: read %s: %v", blob, name, err)
 			continue
 		}
-		if compressed && gzBytes != r.GzBytes {
+		if gzBytes != r.GzBytes {
 			add("%s: %s is %d bytes, lock gz_bytes %d", blob, name, gzBytes, r.GzBytes)
 		}
 		if int64(len(raw)) != r.BlobBytes {
@@ -277,16 +273,8 @@ func sha256Hex(b []byte) string {
 // file must fail, not exhaust memory. The largest blob today is 2.4 MiB.
 const maxBlobBytes = 64 << 20
 
-// readBlob returns the uncompressed module and, when compressed, the size
-// of the compressed file.
-func readBlob(r io.Reader, compressed bool) (raw []byte, gzBytes int64, err error) {
-	if !compressed {
-		raw, err = io.ReadAll(io.LimitReader(r, maxBlobBytes+1))
-		if err == nil && len(raw) > maxBlobBytes {
-			err = fmt.Errorf("module over %d bytes", maxBlobBytes)
-		}
-		return raw, 0, err
-	}
+// readBlob returns the uncompressed module and the compressed file's size.
+func readBlob(r io.Reader) (raw []byte, gzBytes int64, err error) {
 	z, err := io.ReadAll(r)
 	if err != nil {
 		return nil, 0, err

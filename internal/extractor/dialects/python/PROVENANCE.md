@@ -1,6 +1,6 @@
 # python — provenance
 
-- Grammar: `tree-sitter/tree-sitter-python v0.25.0` (MIT), built into `internal/extractor/tsengine/grammars/python.wasm`;
+- Grammar: `tree-sitter/tree-sitter-python v0.25.0` (MIT), built into `internal/extractor/tsengine/grammars/python.wasm.gz`;
   pins and digests in `internal/extractor/tsengine/grammars/PROVENANCE.md`.
 - `tags.scm`: moved unchanged from `internal/extractor/tsqueries/python.scm` (LB-F1). Written in this
   repository during the tree-sitter migration (ADR-021 §4); the definition shapes follow the

@@ -258,7 +258,7 @@ func BuildLCACorpus(records []LCARecord, path string) (Corpus, error) {
 			// Kotlin tasks (bumble-tech/appyx, theopenconversationkit/tock,
 			// square/kotlinpoet) despite the fwcd 0.3.8 tree-sitter grammar
 			// already being in the tree (internal/extractor/tsengine/
-			// grammars/kotlin.wasm, internal/extractor/dialects/kotlin/tags.scm,
+			// grammars/kotlin.wasm.gz, internal/extractor/dialects/kotlin/tags.scm,
 			// docs/languages.md's Kotlin row: "tree-sitter (wasm, fwcd
 			// 0.3.8)", "Grammar in tree: yes") — unchanged since that run.
 			// This round (SU-14) only changes localize's own ranking and

@@ -1,6 +1,6 @@
 # javascript — provenance
 
-- Grammar: `tree-sitter/tree-sitter-javascript v0.25.0` (MIT), built into `internal/extractor/tsengine/grammars/javascript.wasm`;
+- Grammar: `tree-sitter/tree-sitter-javascript v0.25.0` (MIT), built into `internal/extractor/tsengine/grammars/javascript.wasm.gz`;
   pins and digests in `internal/extractor/tsengine/grammars/PROVENANCE.md`.
 - `tags.scm`: moved unchanged from `internal/extractor/tsqueries/javascript.scm` (LB-F1). Written in this
   repository during the tree-sitter migration (ADR-021 §4); the definition shapes follow the

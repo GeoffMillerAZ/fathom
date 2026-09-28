@@ -281,7 +281,7 @@ grammar or extractor wired into this repo today; adding one is a separate, large
 (a real extractor/grammar, TDD'd against a calibration fixture) — this is disclosure only,
 never a fake extraction. Kotlin was on this list through wave P1; wave P2 (O79) closed it
 — `.kt`/`.kts` now extract via `internal/extractor.NewTSExtractor("kotlin")` (tree-sitter
-via wazero/WASM, ADR-021 §4, `internal/extractor/tsengine/grammars/kotlin.wasm`) — the
+via wazero/WASM, ADR-021 §4, `internal/extractor/tsengine/grammars/kotlin.wasm.gz`) — the
 first language added for new-language breadth rather than a CGO-incumbent swap.
 
 The pipeline is hash-gated: unchanged files (same SHA-256 as the stored fingerprint) are

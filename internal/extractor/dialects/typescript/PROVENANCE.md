@@ -1,6 +1,6 @@
 # typescript — provenance
 
-- Grammar: `tree-sitter/tree-sitter-typescript v0.23.2` (MIT), built into `internal/extractor/tsengine/grammars/typescript.wasm`;
+- Grammar: `tree-sitter/tree-sitter-typescript v0.23.2` (MIT), built into `internal/extractor/tsengine/grammars/typescript.wasm.gz`;
   pins and digests in `internal/extractor/tsengine/grammars/PROVENANCE.md`.
 - `tags.scm`: moved unchanged from `internal/extractor/tsqueries/typescript.scm` (LB-F1). Written in this
   repository during the tree-sitter migration (ADR-021 §4); the definition shapes follow the
