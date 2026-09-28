@@ -6,6 +6,7 @@ import (
 	"flag"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -175,6 +176,58 @@ func TestTagsDialectParity(t *testing.T) {
 				gb, wb := marshalGolden(got.legacyProjection()), marshalGolden(want.legacyProjection())
 				if !bytes.Equal(gb, wb) {
 					t.Errorf("%s: parity broken\n--- got\n%s\n--- want\n%s", fx, gb, wb)
+				}
+			}
+		})
+	}
+}
+
+// TestDialectGoldens (design §13.2 step 10) is every tags-engine dialect's
+// own golden check: unlike TestTagsDialectParity (which holds the five
+// pre-manifest languages to a legacy projection dropping EndLine and
+// Signature), this compares the extractor's FULL output — the shape any
+// new dialect (CSS onward) is actually held to. migratedTagsDialects stay
+// covered by the parity test above and are skipped here so a fixture is
+// never graded twice under two different projections.
+func TestDialectGoldens(t *testing.T) {
+	ds, err := LoadDialects()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, d := range ds {
+		if d.Engine != "tags" || slices.Contains(migratedTagsDialects, d.ID) {
+			continue
+		}
+		dir := filepath.Join("dialects", d.ID, "testdata")
+		if _, err := os.Stat(dir); err != nil {
+			continue // no fixtures committed yet for this dialect
+		}
+		t.Run(d.ID, func(t *testing.T) {
+			e, err := NewTSExtractor(d.ID)
+			if err != nil {
+				t.Fatalf("NewTSExtractor(%s): %v", d.ID, err)
+			}
+			defer e.Close()
+			for _, fx := range dialectFixtures(t, d.ID) {
+				got := extractGolden(t, e, fx)
+				gp := goldenPathFor(fx)
+				if *updateGoldens {
+					if err := os.WriteFile(gp, marshalGolden(got), 0o644); err != nil {
+						t.Fatal(err)
+					}
+					continue
+				}
+				raw, err := os.ReadFile(gp)
+				if err != nil {
+					t.Fatalf("read golden: %v (run with -update to create)", err)
+				}
+				var want goldenFile
+				if err := json.Unmarshal(raw, &want); err != nil {
+					t.Fatalf("%s: %v", gp, err)
+				}
+				gb, wb := marshalGolden(got), marshalGolden(want)
+				if !bytes.Equal(gb, wb) {
+					t.Errorf("%s: golden mismatch\n--- got\n%s\n--- want\n%s", fx, gb, wb)
 				}
 			}
 		})

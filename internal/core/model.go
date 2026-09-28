@@ -186,6 +186,9 @@ const (
 	// Lua
 	KindLuaFunction SourceKind = "LuaFunction"
 
+	// CSS (language-breadth queue: LB-Q-css)
+	KindCSSSelector SourceKind = "CSSSelector"
+
 	// Kustomize (ADR-021 §2 / TI-3): entries under a kustomization.yaml's
 	// resources/patches/images lists, emitted as reference observations —
 	// previously parsed-then-discarded because the generic k8s extractor

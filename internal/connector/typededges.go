@@ -53,6 +53,14 @@ var typedEdgeProducers = map[string]string{
 	"toml":       "syntax",
 	"json":       "syntax",
 	"templ":      "syntax",
+
+	// file: no maintained SCIP producer for CSS (design §7's producer
+	// table has no CSS row), but its manifest names an imports query and
+	// a relative-path strategy (LB-F11), so @import edges DO reach the
+	// file-resolved pass (internal/fusion.ResolveFileEdges) — a stronger,
+	// honest claim than the syntax-only floor, though still heuristic
+	// tier (core.EdgeConfidenceOf never presents it as typed).
+	"css": "file",
 }
 
 // TypedEdgeProducer returns lang's typed-edge producer string — "native",

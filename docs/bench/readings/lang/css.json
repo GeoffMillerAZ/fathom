@@ -1,0 +1,132 @@
+{
+  "dialect": "css",
+  "kind": "language",
+  "target_level": "L3",
+  "level_met": "none",
+  "grade": {
+    "L1": "unmet",
+    "L2": "not-attempted",
+    "L3": "not-attempted",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-09-28",
+  "fathom_commit": "3a02c3be",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "normalize.css",
+      "sha": "dafaf9ee60ff76173954aca755c78a6912a0ee6c",
+      "files": 1,
+      "bytes": 7546,
+      "counts": {
+        "fathom_defs": 70,
+        "kind_equal": 58,
+        "matched": 58,
+        "oracle_defs": 70
+      },
+      "families": {
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "selector"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 1.383,
+        "max_file_ms": 1,
+        "peak_module_pages": 271,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "pico",
+      "sha": "1039a4788d6abc368d5485ae6bac84a8f0e3096f",
+      "files": 119,
+      "bytes": 10216590,
+      "counts": {
+        "fathom_defs": 78191,
+        "kind_equal": 9726,
+        "matched": 9726,
+        "oracle_defs": 194677
+      },
+      "families": {
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "selector"
+      ],
+      "excluded_by_kind": {
+        "fathom:CSSCustomProperty": 55074,
+        "fathom:CSSKeyframes": 434
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 4532.73,
+        "max_file_ms": 48,
+        "peak_module_pages": 312,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "B",
+      "tool": "universal-ctags",
+      "version": "6.2.1"
+    }
+  ],
+  "metrics": {
+    "call_precision": null,
+    "call_recall": null,
+    "def_mapping": null,
+    "file_edge_precision": null,
+    "file_edge_recall": null,
+    "import_resolution": null,
+    "kind_agreement": 1,
+    "range_agreement": null,
+    "signature_coverage": null,
+    "sym_precision": 0.125,
+    "sym_recall": 0.0502,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "kind_agreement": "B",
+    "sym_precision": "B",
+    "sym_recall": "B"
+  },
+  "not_applicable": [
+    "signature_coverage"
+  ],
+  "required_kinds": [
+    "selector"
+  ],
+  "kind_intersection": [
+    "selector"
+  ],
+  "counts": {
+    "fathom_defs": 78261,
+    "kind_equal": 9784,
+    "matched": 9784,
+    "oracle_defs": 194747
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 2.25,
+    "max_file_ms": 48,
+    "peak_module_pages": 312,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "fathom:CSSCustomProperty": 55074,
+    "fathom:CSSKeyframes": 434
+  },
+  "notes": [
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "pico: 119 files skipped by ingest's gates (generated)",
+    "sym_recall/sym_precision are dominated by pico: universal-ctags 6.2.1's CSS parser mis-tokenizes multi-line functional-pseudo-class selector lists (:has()/:is()/:not() with comma-separated, paren-nested arguments, e.g. pico.css:190-207) -- verified by inspecting its raw JSON output: spurious tags with names like \"').contrast'\" from a stray split at an inner ')'. On normalize.css alone (no such syntax), the same dialect matches 58/70 (sym_recall 0.83, sym_precision 0.83); on pico's 119-file corpus, ctags emits 194,677 selector-kind tags against fathom's 78,191 correctly-parsed (tree-sitter) ones. Not query- fixable: the mismatch is in the oracle's tokenization, not fathom's extraction (LB-Q-css disposition)."
+  ],
+  "disposition": "deferred: L1 sym_recall/sym_precision (0.05/0.13 combined; 0.83/0.83 on normalize.css alone) miss good (.85/.90) because universal-ctags 6.2.1's CSS parser cannot tokenize picocss/pico's :has()/:is()/:not() multi-line comma-selector lists -- a verified oracle limitation, not an extraction defect (see notes). Trigger: a ctags release that parses nested-paren comma selectors correctly, or an Opus-approved calibration-subject substitution for LB-Q-css's second slot."
+}

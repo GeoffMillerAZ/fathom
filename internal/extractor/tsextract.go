@@ -547,13 +547,21 @@ type tsDef struct {
 	name       string
 	start, end uint32
 	line       int
-	parent     int    // index into the defs slice, -1 if none
-	bodyStart  uint32 // start of the @body capture, when hasBody
-	hasBody    bool
-	pkg        string // @scope.package's answer (LB-F5), "" for the file default
-	qualName   string
-	callSet    map[string]struct{}
-	calls      []string
+	// defLine is the DEFINITION node's own start line (defNode.Line()),
+	// independent of `line` above (nameNode.Line() -- see splitTSMatches).
+	// tsEndLine adds its within-range newline count to THIS, never to
+	// `line`: the two diverge exactly when N names share one definition
+	// (CSS's grouped selector list is the only case today), and using
+	// `line` there double-counts the gap between the name and the
+	// definition's own start, both for group members after the first.
+	defLine   int
+	parent    int    // index into the defs slice, -1 if none
+	bodyStart uint32 // start of the @body capture, when hasBody
+	hasBody   bool
+	pkg       string // @scope.package's answer (LB-F5), "" for the file default
+	qualName  string
+	callSet   map[string]struct{}
+	calls     []string
 }
 
 type tsCallSite struct {
@@ -643,8 +651,23 @@ func splitTSMatches(matches []tsengine.Match, kinds map[string]tsDefKind, src []
 			name:      name,
 			start:     defNode.StartByte,
 			end:       defNode.EndByte,
-			line:      defNode.Line(),
-			parent:    -1,
+			// The definition's OWN name's row, not the (possibly
+			// shared) definition node's row: for a single name per
+			// definition -- every kind but one -- the two coincide, so
+			// this changes nothing. CSS's grouped selector list is the
+			// exception a query alone cannot express: one rule_set
+			// (@definition.selector, needed whole for a correct
+			// EndLine -- the rule's closing brace) produces N matches,
+			// one per comma-separated @name, each on its OWN source
+			// line when the group spans multiple lines. Before this,
+			// every selector past the first inherited the rule_set's
+			// STARTING line -- up to many lines wrong, both in the
+			// store (a wrong find_symbol/references location) and
+			// against ctags, which reports each selector's real line
+			// (design section 1.4's matching tolerance is |line delta| <= 2).
+			line:    nameNode.Line(),
+			defLine: defNode.Line(),
+			parent:  -1,
 		}
 		if bodyNode != nil && bodyNode.StartByte >= d.start && bodyNode.StartByte <= d.end {
 			d.bodyStart, d.hasBody = bodyNode.StartByte, true
@@ -720,7 +743,10 @@ func tsEndLine(src []byte, d *tsDef) int {
 	if d.end <= d.start || int(d.end) > len(src) {
 		return d.line
 	}
-	return d.line + bytes.Count(src[d.start:d.end-1], []byte{'\n'})
+	// defLine, not line: they diverge when N names share one definition
+	// (see tsDef.defLine's doc) and the newline count below is counted
+	// from the DEFINITION's own start (d.start), never the name's.
+	return d.defLine + bytes.Count(src[d.start:d.end-1], []byte{'\n'})
 }
 
 // tsSignature is a callable's signature (LB-F3, design §3.3): the

@@ -27,6 +27,7 @@ lock does not describe (I55). The tables below are rendered from the lock by
 | Blob | Repository | Tag | Commit | Licence | Entry points | Tarball sha256 |
 |---|---|---|---|---|---|---|
 | core | tree-sitter/tree-sitter | v0.26.11 | `64402de2857cc197ecc4ca3bc144ea91fda7e72e` | MIT | — | `1bab01ed21464f3272665b9c60e39ee79f68da1333e80b23f2c9356569d06971` |
+| `css` | tree-sitter/tree-sitter-css | v0.25.0 | `dda5cfc5722c429eaba1c910ca32c2c0c5bb1a3f` | MIT | `tree_sitter_css` | `03965344d8c0435dc54fb45b281578420bb7db8b99df4d34e7e74105a274cb79` |
 | `javascript` | tree-sitter/tree-sitter-javascript | v0.25.0 | `44c892e0be055ac465d5eeddae6d3e194424e7de` | MIT | `tree_sitter_javascript` | `9712fc283d3dc01d996d20b6392143445d05867a7aad76fdd723824468428b86` |
 | `kotlin` | fwcd/tree-sitter-kotlin | 0.3.8 | `e1a2d5ad1f61f5740677183cd4125bb071cd2f30` | MIT | `tree_sitter_kotlin` | `7dd60975786bf9cb4be6a5176f5ccb5fed505f9929a012da30762505b1015669` |
 | `python` | tree-sitter/tree-sitter-python | v0.25.0 | `293fdc02038ee2bf0e2e206711b69c90ac0d413f` | MIT | `tree_sitter_python` | `4609a3665a620e117acf795ff01b9e965880f81745f287a16336f4ca86cf270c` |
@@ -37,12 +38,13 @@ lock does not describe (I55). The tables below are rendered from the lock by
 
 | Blob | Grammar dirs | Scanner | ABI | Module bytes | `.wasm.gz` bytes | Module sha256 |
 |---|---|---|--:|--:|--:|---|
+| `css` | (root) | yes | 15 | 250,838 | 74,133 | `e99413feca59f90b54899d5257f0068ea82fea71e30aeb55f6342a104c23fd2f` |
 | `javascript` | (root) | yes | 15 | 458,741 | 114,833 | `7245ee58564f991827498e36b5ec14420b99759596490e3a74ed0993b24ed904` |
 | `kotlin` | (root) | yes | 14 | 2,488,435 | 510,036 | `750a499adfc0a1339abebe5da80154eb6680c5732a3a5fdceaaace5053def3c3` |
 | `python` | (root) | yes | 15 | 539,848 | 123,581 | `ef1216ec19691690d3d237759d5ab8c3521e362423eef44f5e5234f7cb507ffc` |
 | `ruby` | (root) | yes | 14 | 1,710,411 | 311,992 | `3299b506f05b73cb341de2cf65f1f327e9427e0149ce47d21f65af3d89b8924f` |
 | `typescript` | typescript, tsx | yes | 14 | 2,037,040 | 422,906 | `30080208c90581bf3b29b412e9ee2e9a11c89b36153b6a94cc07da7b5000afcb` |
-| **total** | | | | 7,234,475 | 1,483,348 | |
+| **total** | | | | 7,485,313 | 1,557,481 | |
 
 Toolchain that produced the committed blobs: zig 0.16.0, wasm-opt 129.
 

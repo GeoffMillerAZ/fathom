@@ -168,6 +168,9 @@ var extClassMap = map[string]classification{
 
 	// Lua
 	".lua": {core.KindLuaFunction, "lua"},
+
+	// CSS (language-breadth queue: LB-Q-css)
+	".css": {core.KindCSSSelector, "css"},
 }
 
 // classify looks up base (full basename, e.g. "go.mod", "Dockerfile") first —

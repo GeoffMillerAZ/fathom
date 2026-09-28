@@ -1,0 +1,14 @@
+button,
+html input[type="button"], /* 1 */
+input[type="reset"],
+input[type="submit"] {
+  -webkit-appearance: button; /* 2 */
+  cursor: pointer;
+}
+
+.a .b,
+.c > .d,
+.e ~ .f,
+.g + .h {
+  color: red;
+}

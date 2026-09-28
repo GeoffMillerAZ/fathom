@@ -1,0 +1,90 @@
+{
+  "symbols": [
+    {
+      "name": ":root",
+      "kind": "CSSSelector",
+      "package": "shapes",
+      "line": 4,
+      "end_line": 7,
+      "tier": "verified"
+    },
+    {
+      "name": "--primary-color",
+      "kind": "CSSCustomProperty",
+      "package": "shapes",
+      "line": 5,
+      "end_line": 5,
+      "tier": "verified"
+    },
+    {
+      "name": "--spacing-sm",
+      "kind": "CSSCustomProperty",
+      "package": "shapes",
+      "line": 6,
+      "end_line": 6,
+      "tier": "verified"
+    },
+    {
+      "name": ".button",
+      "kind": "CSSSelector",
+      "package": "shapes",
+      "line": 9,
+      "end_line": 12,
+      "tier": "verified"
+    },
+    {
+      "name": ".button--large",
+      "kind": "CSSSelector",
+      "package": "shapes",
+      "line": 9,
+      "end_line": 12,
+      "tier": "verified"
+    },
+    {
+      "name": "#header",
+      "kind": "CSSSelector",
+      "package": "shapes",
+      "line": 14,
+      "end_line": 16,
+      "tier": "verified"
+    },
+    {
+      "name": "a:hover",
+      "kind": "CSSSelector",
+      "package": "shapes",
+      "line": 18,
+      "end_line": 20,
+      "tier": "verified"
+    },
+    {
+      "name": ".button",
+      "kind": "CSSSelector",
+      "package": "shapes",
+      "line": 23,
+      "end_line": 25,
+      "tier": "verified"
+    },
+    {
+      "name": "spin",
+      "kind": "CSSKeyframes",
+      "package": "shapes",
+      "line": 28,
+      "end_line": 31,
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "base.css",
+      "module": "base.css",
+      "kind": "whole",
+      "line": 1
+    },
+    {
+      "local": "theme.css",
+      "module": "theme.css",
+      "kind": "whole",
+      "line": 2
+    }
+  ]
+}

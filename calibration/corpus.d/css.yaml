@@ -1,0 +1,25 @@
+id: css
+language: CSS
+repos:
+  - name: normalize.css
+    url: https://github.com/necolas/normalize.css
+    ref: v2.1.3
+    sha: dafaf9ee60ff76173954aca755c78a6912a0ee6c
+    licence: MIT
+    idioms:
+      - browser-vendor-prefixed selectors and properties
+      - "attribute selectors ([type=\"button\"])"
+      - pseudo-class and pseudo-element selectors
+      - grouped comma selectors
+  - name: pico
+    url: https://github.com/picocss/pico
+    ref: v2.1.1
+    sha: 1039a4788d6abc368d5485ae6bac84a8f0e3096f
+    licence: MIT
+    subpath: css
+    idioms:
+      - "extensive custom properties (--pico-*)"
+      - "@media queries (breakpoints, prefers-color-scheme)"
+      - "nested selectors and CSS nesting (&)"
+      - "@keyframes animations"
+      - attribute and combinator selectors

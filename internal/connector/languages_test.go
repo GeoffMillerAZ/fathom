@@ -74,6 +74,7 @@ var langRowHint = map[string]string{
 	"toml":       "TOML",
 	"json":       "JSON",
 	"templ":      "templ",
+	"css":        "| CSS ",
 }
 
 // registryLangTags returns the sorted, deduplicated set of Lang tags

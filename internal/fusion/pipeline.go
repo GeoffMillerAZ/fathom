@@ -716,6 +716,47 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	// Lua
 	p.exts[".lua"] = extractor.NewLuaExtractor()
 
+	// Every other embedded tags-engine dialect (design §2.1: "fusion.New
+	// registers every manifest's extensions and basenames"). The five
+	// lines above wire javascript/typescript/python/ruby/kotlin by hand
+	// (their own grammar/variant selection lives inside TSExtractor); a
+	// dialect added later by the language-breadth queue — CSS onward —
+	// had no such line and, before this, silently dispatched to no
+	// extractor at all (extraction returned "no-extractor" for every one
+	// of its files, in both real ingest and indexbench lang-oracle). This
+	// registers each remaining tags-engine manifest's extensions,
+	// basenames and variant extensions that no earlier line already
+	// claimed; a key already claimed above is left untouched. A manifest
+	// load error here leaves nothing registered — the same fail-open
+	// convention as dialectgate.go's dialectRules — since
+	// TestDialectManifests already fails the build on a bad manifest.
+	if ds, dErr := extractor.LoadDialects(); dErr == nil {
+		for _, d := range ds {
+			if d.Engine != "tags" {
+				continue
+			}
+			keys := append([]string(nil), d.Match.Extensions...)
+			keys = append(keys, d.Match.Basenames...)
+			for _, v := range d.Variants {
+				keys = append(keys, v.Extensions...)
+			}
+			var e extractor.Extractor
+			for _, k := range keys {
+				if _, claimed := p.exts[k]; claimed {
+					continue
+				}
+				if e == nil {
+					var nerr error
+					e, nerr = extractor.NewTSExtractor(d.ID)
+					if nerr != nil {
+						panic(fmt.Sprintf("fusion: tsextract %s: %v", d.ID, nerr))
+					}
+				}
+				p.exts[k] = e
+			}
+		}
+	}
+
 	return p
 }
 
