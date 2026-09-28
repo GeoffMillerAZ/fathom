@@ -416,6 +416,30 @@ type ObligationsOptions struct {
 	// caller that builds ObligationsOptions directly outside that path (a
 	// test, most commonly).
 	RerankTimeout time.Duration
+	// Review (GL-5) marks a review verb's call: claims whose RelAudience is
+	// core.AudienceReview (BUGBOT.md rules) are served only when it is
+	// true; the edit hook never sets it, so a review rule never reaches an
+	// edit (design doc §3: "served to review verbs, not the edit hook by
+	// default").
+	Review bool
+	// IncludeManual (GL-4) is the explicit ask: claims whose RelAudience is
+	// core.AudienceManual (Kiro `inclusion: manual`) are compiled but
+	// served only when a caller asks for them by setting this.
+	IncludeManual bool
+}
+
+// admitsAudience reports whether a claim with the given RelAudience is
+// served under opts: an unmarked claim always is.
+func (opts ObligationsOptions) admitsAudience(audience string) bool {
+	switch audience {
+	case "":
+		return true
+	case core.AudienceReview:
+		return opts.Review
+	case core.AudienceManual:
+		return opts.IncludeManual
+	}
+	return false
 }
 
 // ObligationsForOpts is ObligationsFor's decision-port sibling (DP-7): file-
@@ -836,6 +860,7 @@ func obligationsCoreTrace(ctx context.Context, st store.Store, serviceID, outFil
 		}
 	}
 	citedText := citedTextResolver(root, anchorText)
+	audience := audienceOf(links)
 	// RT-174: the symbol-only contract rows the served claims-role claims
 	// cite, resolved in one read of just those names (symbolFileLookup),
 	// never the service's whole observation set.
@@ -858,6 +883,11 @@ func obligationsCoreTrace(ctx context.Context, st store.Store, serviceID, outFil
 
 	var matched []scored
 	for _, cl := range served {
+		// GL-4/GL-5: a manual or review-only rules-file claim is never
+		// served to a caller that did not ask for its audience.
+		if !opts.admitsAudience(audience[cl.ClaimID]) {
+			continue
+		}
 		claims := layerRole(cl.Layer) == RoleClaims
 		scope := cl.Scope
 		contractBound := false

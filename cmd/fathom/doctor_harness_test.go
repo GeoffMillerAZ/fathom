@@ -107,7 +107,7 @@ func TestCheckHooksNonClaudeReasons(t *testing.T) {
 		t.Errorf("gemini-cli hooks_installed = %+v", g)
 	}
 	cu := checkHooksInstalled(t.TempDir(), "cursor")
-	if cu.Status != doctorSkipped || !strings.Contains(cu.Reason, "not wired") || !strings.Contains(cu.Reason, "Cursor") {
+	if cu.Status != doctorSkipped || !strings.Contains(cu.Reason, "harness_hooks") || !strings.Contains(cu.Reason, "Cursor") {
 		t.Errorf("cursor hooks_installed = %+v", cu)
 	}
 	a := checkHooksFiring(nil, "http://127.0.0.1:1", false, t.TempDir(), "agents")

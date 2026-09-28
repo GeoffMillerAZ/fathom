@@ -420,6 +420,9 @@ type reviewDiffResult struct {
 	// ServiceRefUnextracted (RT-89) names services whose routes and client
 	// calls no ingest has extracted yet: their hops cannot appear.
 	ServiceRefUnextracted []string `json:"service_ref_unextracted,omitempty"`
+	// Layers (GL-22): changed_files grouped by blast radius, in review
+	// order — leaf, shared-callee, cross-service-provider.
+	Layers []diffLayer `json:"layers,omitempty"`
 }
 
 // safeDeleteCheckResult mirrors safe_delete_check's payload (safe_delete.go).

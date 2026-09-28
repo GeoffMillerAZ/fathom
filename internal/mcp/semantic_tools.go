@@ -78,6 +78,17 @@ type obligationLayerBackend interface {
 	ObligationsLayer(ctx context.Context, service, file string, maxRules int, layer semantic.ObligationLayerFilter) (semantic.Obligations, error)
 }
 
+// reviewObligationsBackend is the optional backend capability a review
+// verb asks for its obligations through (GL-5, docs/design/governance-
+// learning.md §3): the same file-scoped serve as obligationsBackend, plus
+// the review-audience claims (BUGBOT.md rules) the edit hook never sees.
+// pkg/client implements it with semantic.ObligationsOptions.Review; a
+// backend that omits it degrades to plain Obligations — review rules
+// simply absent, never an error.
+type reviewObligationsBackend interface {
+	ReviewObligations(ctx context.Context, service, file string, maxRules int) (semantic.Obligations, error)
+}
+
 // rootObligationsLayerBackend is obligationLayerBackend's root-scope
 // sibling (semantic.RootObligationsForLayer).
 type rootObligationsLayerBackend interface {

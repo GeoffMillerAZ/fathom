@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/harness"
@@ -63,7 +64,11 @@ func checkHarnessHookFiles(root, harnessLabel string) doctorCheck {
 	}
 	reason += "; a present entry is not a firing hook — the descriptor is unverified on this machine (only hooks_firing beats from a real " + d.Display + " session can verify it)"
 	remedy := ""
+	_, flat := harness.FlatHookShape(d)
 	switch {
+	case flat && len(missing) > 0:
+		// GL-7/GL-8: init cannot write a flat hook file; the verb prints it.
+		remedy = "fathom harness hooks --harness " + d.ID + " — merge the printed entries into the named file"
 	case len(fileNotes) > 0 && found < len(specs):
 		remedy = "make the named file readable/parsable, then re-run doctor; `fathom init --harness=" + d.ID + " --path " + root + "` adds the missing entries"
 	case len(missing) > 0:
@@ -87,6 +92,16 @@ func harnessHookEntriesByScope(root string, d harness.Descriptor, specs []hookSp
 	present := map[hookSpecKey][]string{}
 	var fileNotes []string
 	for _, f := range d.HookFiles {
+		if f.Kind == "" && f.Scope == "project" && (f.Shape == "cursor-hooks" || f.Shape == "copilot-hooks") {
+			// GL-7/GL-8: a flat hook file the user merged by hand is read
+			// (never written): one entry per binding, no nested group.
+			p, n := flatHookEntries(root, f, specs)
+			for k, v := range p {
+				present[k] = append(present[k], v...)
+			}
+			fileNotes = append(fileNotes, n...)
+			continue
+		}
 		if f.Kind == "" {
 			continue // documented, not addressable by an editor — nothing to read
 		}
@@ -151,4 +166,50 @@ func harnessUserPath(d harness.Descriptor, descriptorPath string) (string, bool)
 		return "", false
 	}
 	return filepath.Join(home, filepath.FromSlash(rel)), true
+}
+
+// flatHookEntries reads a project flat hook file (Cursor's
+// .cursor/hooks.json, Copilot's .github/hooks/*.json — a glob) and
+// reports which fathom specs it carries: an entry under the spec's event
+// whose matcher equals the spec's and whose command (Cursor `command`,
+// Copilot `bash` or `command`) contains the spec's marker.
+func flatHookEntries(root string, f harness.HookFile, specs []hookSpec) (map[hookSpecKey][]string, []string) {
+	present := map[hookSpecKey][]string{}
+	var notes []string
+	paths, _ := filepath.Glob(filepath.Join(root, filepath.FromSlash(f.Path)))
+	sort.Strings(paths)
+	for _, p := range paths {
+		rel, _ := filepath.Rel(root, p)
+		rel = filepath.ToSlash(rel)
+		data, err := os.ReadFile(p)
+		if err != nil {
+			notes = append(notes, fmt.Sprintf("%s exists but could not be read (%v) — entries there are invisible to this check", rel, err))
+			continue
+		}
+		var parsed struct {
+			Hooks map[string][]map[string]any `json:"hooks"`
+		}
+		if err := json.Unmarshal(data, &parsed); err != nil {
+			notes = append(notes, fmt.Sprintf("%s did not parse as JSON (%v) — entries there are invisible to this check", rel, err))
+			continue
+		}
+		for _, spec := range specs {
+			for _, e := range parsed.Hooks[spec.event] {
+				matcher, _ := e["matcher"].(string)
+				if matcher != spec.matcher {
+					continue
+				}
+				cmd, _ := e["command"].(string)
+				if bash, _ := e["bash"].(string); bash != "" {
+					cmd = bash
+				}
+				if strings.Contains(cmd, spec.marker) {
+					k := hookSpecKeyOf(spec)
+					present[k] = append(present[k], f.Scope+" "+rel)
+					break
+				}
+			}
+		}
+	}
+	return present, notes
 }

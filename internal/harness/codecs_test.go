@@ -510,7 +510,7 @@ func TestWiredCodecsStartTheDemotionClock(t *testing.T) {
 			out = append(out, d.ID)
 		}
 		return out
-	}(); strings.Join(ids, ",") != "cursor,copilot" {
+	}(); len(ids) != 0 {
 		t.Errorf("DataOnlyDescriptors = %v", ids)
 	}
 }

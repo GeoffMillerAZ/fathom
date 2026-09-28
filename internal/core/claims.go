@@ -224,6 +224,22 @@ const (
 	// flipping stale) and by rename_impact (to name claims anchored to a
 	// renamed symbol).
 	RelAnchors = "anchors"
+	// RelAudience (GL-4, GL-5; docs/design/governance-learning.md §3)
+	// narrows WHO a claim is served to: TargetRef is AudienceManual (a
+	// rules file its author marked on-request only — Kiro's
+	// `inclusion: manual`, a Cursor rule with neither globs nor
+	// alwaysApply) or AudienceReview (a BUGBOT.md review rule, served to
+	// review verbs, not the edit hook). A claim with no such link is
+	// served everywhere, exactly as before this rel existed. Written at
+	// compile from the rules file's own declared shape; TargetHash is
+	// always empty.
+	RelAudience = "audience"
+)
+
+// Audience values carried by a RelAudience link's TargetRef.
+const (
+	AudienceManual = "manual"
+	AudienceReview = "review"
 )
 
 // AssertedBy builds the canonical "kind:id" form every claim/event writer

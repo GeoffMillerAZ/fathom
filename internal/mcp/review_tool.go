@@ -161,7 +161,8 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 		// Governance dimensions (obligations, arch_conformance, spec
 		// coverage, test coverage) are not edge-derived and are outside
 		// this tally.
-		if ng, gerr := loadNavGraphsErr(ctx, backend, p.Service); gerr == nil {
+		ng, gerr := loadNavGraphsErr(ctx, backend, p.Service)
+		if gerr == nil {
 			payload["resolution"] = resolutionFromBlastBuckets(blastRadiusByDepth(ng.Both, ng.Nodes, in.ChangedFiles))
 		}
 		if ic := indexCommitFor(ctx, backend, p.Service); ic != "" {
@@ -174,6 +175,11 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 		// test_impact above).
 		hops, unextracted := serviceRefHopsInto(ctx, backend, p.Service, p.ChangedFiles)
 		withServiceRefHops(payload, hops, unextracted)
+		// GL-22: the changed files layered by blast radius (leaf, shared
+		// callee, cross-service provider) from the graph and hops above.
+		if gerr == nil {
+			payload["layers"] = layerDiffByBlastRadius(ng.Both, ng.Nodes, in.ChangedFiles, hops)
+		}
 		return payload, nil
 	})
 }
@@ -407,8 +413,14 @@ func buildReviewInput(ctx context.Context, backend QueryInterface, service strin
 	if ob, ok := backend.(obligationsBackend); ok {
 		in.ObligationsSupported = true
 		in.ObligationsByFile = make(map[string][]review.ObligationRule, len(changedFiles))
+		// GL-5: a review verb is served the review-audience rules
+		// (BUGBOT.md) too, when the backend can tell them apart.
+		serve := ob.Obligations
+		if rb, ok := backend.(reviewObligationsBackend); ok {
+			serve = rb.ReviewObligations
+		}
 		for _, f := range changedFiles {
-			obl, oerr := ob.Obligations(ctx, service, f, 0)
+			obl, oerr := serve(ctx, service, f, 0)
 			if oerr != nil {
 				continue // best-effort per file: a lookup error degrades that file's rules, not the whole dimension
 			}

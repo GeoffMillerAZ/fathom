@@ -238,6 +238,23 @@ func cmdHarnessHooks(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 
+	// GL-7/GL-8: Cursor's .cursor/hooks.json and Copilot's
+	// .github/hooks/*.json are FLAT ({version:1, hooks:{event:[entry]}}),
+	// not the nested settings shape below — the harness package renders
+	// them from the same bindings.
+	if flat, ok := harness.FlatHookShape(d); ok {
+		raw, _, err := harness.RenderFlatHooks(d, bin)
+		if err != nil {
+			fmt.Fprintf(stderr, "error: %v\n", err)
+			return 1
+		}
+		fmt.Fprintf(stdout, "# %d fathom hook entries for %s — merge into %s (%s scope)\n", len(specs), d.Display, flat.Path, flat.Scope)
+		fmt.Fprintf(stdout, "# %s is %s until a live session's beats verify it\n", d.Display, d.VerifiedAgainst)
+		fmt.Fprintln(stdout, "# fathom never writes it: merge it yourself")
+		fmt.Fprintln(stdout, string(raw))
+		return 0
+	}
+
 	// Which file, and the unit its timeouts are in, come from the
 	// descriptor — never from a literal here.
 	var target harness.HookFile

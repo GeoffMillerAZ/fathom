@@ -179,6 +179,19 @@ func (c *Client) Obligations(ctx context.Context, service, file string, maxRules
 	return obl, err
 }
 
+// ReviewObligations is Obligations for a review verb (GL-5,
+// docs/design/governance-learning.md §3): the same serve plus the claims
+// whose audience is review — BUGBOT.md rules, which the edit hook's
+// Obligations never serves.
+func (c *Client) ReviewObligations(ctx context.Context, service, file string, maxRules int) (semantic.Obligations, error) {
+	opts := c.decisionOpts()
+	opts.Review = true
+	obl, err := semantic.ObligationsForOpts(ctx, c.st, service, file, maxRules, opts)
+	c.decideRec.Append(obl.Decisions)
+	c.recordDecisionErrors(obl.DecisionErrors)
+	return obl, err
+}
+
 // ObligationsAsOf answers "what governed file AT asOf" (SU-19, ADR-041
 // decision 7) — see semantic.ObligationsAsOf's own doc comment for why this
 // is a separate, slower read path from Obligations/ObligationsLayer. DP-9:
@@ -604,6 +617,12 @@ func (c *Client) compileLayer(ctx context.Context, service, layerName string, dr
 		return core.CompileRun{}, fmt.Errorf("client.CompileLayer: fetch sources: %w", err)
 	}
 	corpus := semantic.SelectCorpus(files, layer.CorpusInclude, layer.CorpusExclude)
+	// GL-2..GL-6: the governing layer also compiles every client's own
+	// rules files (Cursor, Copilot, Kiro, Bugbot, Gemini), read from the
+	// service root at compile — the same compile path, the same I27 checks.
+	if layer.Name == semantic.LayerObligations {
+		corpus = semantic.WithRulesSources(corpus, root, layer.CorpusExclude, nil)
+	}
 
 	// Collect distinct sorted SourceRefs from the live index for scope verification.
 	obs, err := c.st.QueryObservations(ctx, service, "")
