@@ -420,6 +420,17 @@ type Store interface {
 	// Returns nil slice with no error when no commits are stored.
 	ListCommits(ctx context.Context, serviceID string) ([]Commit, error)
 
+	// SetFileChurn replaces all file_churn rows for serviceID with churn —
+	// the T1 risk factor (docs/plans/test-intelligence.md TQ-1) computed at
+	// ingest by internal/fusion.computeFileChurn from the service's own
+	// commits, never recomputed at request time. Idempotent: repeated
+	// calls replace the stored set, mirroring SetCommits.
+	SetFileChurn(ctx context.Context, serviceID string, churn []FileChurn) error
+
+	// FileChurn returns serviceID's file_churn rows sorted by path.
+	// Returns nil slice with no error when none are stored.
+	FileChurn(ctx context.Context, serviceID string) ([]FileChurn, error)
+
 	// PutClaims upserts semantic claims by (service_id, claim_id). For every
 	// distinct claim_id that appears in links, the stored link set for that
 	// claim is replaced (delete-then-insert). Empty inputs are a no-op.

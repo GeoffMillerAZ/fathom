@@ -430,6 +430,11 @@ CREATE INDEX IF NOT EXISTS idx_observations_service_id
 		return err
 	}
 
+	// file_churn (TQ-1) — same additive-table convention (filechurn.go).
+	if err := s.createFileChurnSchema(); err != nil {
+		return err
+	}
+
 	// Conditional migrations for SQLite stores created before a column
 	// existed. The "no ALTER cruft" stance above holds for the fleet store
 	// (freshly migrated), but scratch/workspace SQLite stores created by
@@ -819,6 +824,7 @@ var serviceIDTables = []string{
 	"service_http_calls",
 	"service_refs_state",
 	"file_imports",
+	"file_churn",
 }
 
 // RemoveService deletes every row for serviceID in one transaction — see the

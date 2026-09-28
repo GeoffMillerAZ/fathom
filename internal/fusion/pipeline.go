@@ -1265,6 +1265,10 @@ func (p *Pipeline) recordIngestMeta(ctx context.Context, svc core.ServiceRef, co
 	if raw := p.gitLogFn(svc.Path); raw != "" {
 		if cs := parseGitLog(svc.ID, raw); len(cs) > 0 {
 			_ = p.st.SetCommits(ctx, svc.ID, cs)
+			// TQ-1 (design doc §3 T1): churn per file, computed from the
+			// SAME commit set just stored, at the SAME ingest — never a
+			// separate request-time walk (I48).
+			_ = p.st.SetFileChurn(ctx, svc.ID, computeFileChurn(cs, time.Now()))
 		}
 	}
 }
