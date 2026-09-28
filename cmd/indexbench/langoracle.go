@@ -373,6 +373,17 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name, c
 			res.notes = append(res.notes, fmt.Sprintf("%s: %d tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)", name, dropped))
 		}
 		res.oracles = append(res.oracles, run)
+		// ── LB-F30: cross-file references (langoracle_xref.go) ──
+		if doc, ok := with.(*extractor.DocExtractor); ok {
+			n, err := scoreXrefOracle(toolOracle, doc, service, srcFiles, &sub, inScope)
+			if err != nil {
+				return res, err
+			}
+			if n > 0 {
+				res.notes = append(res.notes, fmt.Sprintf("%s: %d oracle cross-references on files fathom does not read were left out of scope (§1.4)", name, n))
+			}
+		}
+		// ── end LB-F30 ──
 	}
 	res.subject = sub
 	return res, nil
@@ -396,6 +407,8 @@ type toolOracleFile struct {
 		From string `json:"from"`
 		To   string `json:"to"`
 	} `json:"references"`
+	// CrossReferences are LB-F30's cross-file references (xrefOracle).
+	CrossReferences []xrefOracleEntry `json:"cross_references,omitempty"`
 }
 
 // sub is a pointer: on success (len(defs) > 0), this is the subject's ONLY
