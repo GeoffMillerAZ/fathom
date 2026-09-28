@@ -160,43 +160,6 @@ func key(pkg, name string) string {
 	return core.SymbolKey("svc", pkg, name)
 }
 
-// ─── Callees ─────────────────────────────────────────────────────────────────
-
-func TestCallees_basic(t *testing.T) {
-	nodes, g := buildFixture()
-	got := symbolnav.Callees(g, nodes, "svc::lib.B")
-	want := []string{key("lib", "C"), key("lib", "D")}
-	sort.Strings(want)
-	if !reflect.DeepEqual(got, want) {
-		t.Errorf("Callees(B) = %v; want %v", got, want)
-	}
-}
-
-func TestCallees_leaf(t *testing.T) {
-	nodes, g := buildFixture()
-	got := symbolnav.Callees(g, nodes, "svc::lib.C")
-	if len(got) != 0 {
-		t.Errorf("Callees(C) = %v; want []", got)
-	}
-}
-
-func TestCallees_unknown(t *testing.T) {
-	nodes, g := buildFixture()
-	got := symbolnav.Callees(g, nodes, "no::such.Symbol")
-	if len(got) != 0 {
-		t.Errorf("Callees(unknown) = %v; want []", got)
-	}
-}
-
-func TestCallees_deterministic(t *testing.T) {
-	nodes, g := buildFixture()
-	a := symbolnav.Callees(g, nodes, "svc::lib.B")
-	b := symbolnav.Callees(g, nodes, "svc::lib.B")
-	if !reflect.DeepEqual(a, b) {
-		t.Errorf("Callees not deterministic: %v vs %v", a, b)
-	}
-}
-
 // ─── CallHierarchy ───────────────────────────────────────────────────────────
 
 func TestCallHierarchy_depthZero(t *testing.T) {

@@ -4,10 +4,10 @@
 // registerExtraTools is called from registerTools (tools.go) and adds tools in
 // the following groups:
 //
-//	investigation: blast_radius, diff_impact, spec_coverage,
+//	investigation: blast_radius, spec_coverage,
 //	               traceability, evidence_summary,
 //	               contradiction_scan, review_diff, search
-//	coding:        arch_conformance, stale_docs, api_diff
+//	coding:        arch_conformance, stale_docs
 //	shared:        ingest
 //	context:       repo_map, pack_context
 //	ops/meta:      batch
@@ -25,11 +25,9 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/geoffmilleraz/fathom/internal/analysis/apisurface"
 	"github.com/geoffmilleraz/fathom/internal/analysis/archconformance"
 	"github.com/geoffmilleraz/fathom/internal/analysis/docdrift"
 	"github.com/geoffmilleraz/fathom/internal/analysis/envkeys"
-	"github.com/geoffmilleraz/fathom/internal/analysis/impact"
 	"github.com/geoffmilleraz/fathom/internal/analysis/proto"
 	"github.com/geoffmilleraz/fathom/internal/analysis/routes"
 	"github.com/geoffmilleraz/fathom/internal/analysis/serviceref"
@@ -52,7 +50,10 @@ import (
 func registerExtraTools(s *Server, backend QueryInterface) {
 	// ── investigation ────────────────────────────────────────────────────────
 	registerBlastRadius(s, backend)
-	registerDiffImpact(s, backend)
+	// registerDiffImpact (F-16) was unregistered by SR-25 (surface
+	// reckoning): it was a thin alias for blast_radius, and review_diff
+	// (which already runs blast_radius in-process) is the verb for a
+	// diff/PR impact question.
 	registerSpecCoverage(s, backend)
 	registerTraceability(s, backend)
 	registerEvidenceSummary(s, backend)
@@ -66,7 +67,10 @@ func registerExtraTools(s *Server, backend QueryInterface) {
 	// ── coding ───────────────────────────────────────────────────────────────
 	registerArchConformance(s, backend)
 	registerStaleDocs(s, backend)
-	registerAPIDiff(s, backend)
+	// registerAPIDiff (F-20) was unregistered by SR-26 (surface reckoning):
+	// the calibrated API delta stays in `conserve`'s surface plane
+	// (internal/conserve/surface.go, ADR-044), which reuses the same
+	// internal/analysis/apisurface package this tool called directly.
 	// registerDepDrift (F-18) was unregistered by SR-10 (surface reckoning):
 	// 0 lifetime calls; internal/analysis/deps and internal/depgraph stay
 	// for vision 15's system graph (N1's engine seam).
@@ -301,55 +305,6 @@ func intOr(p *int, def int) int {
 		return def
 	}
 	return *p
-}
-
-// ─── investigation: diff_impact ──────────────────────────────────────────────
-
-func registerDiffImpact(s *Server, backend QueryInterface) {
-	s.registerTool(toolDescriptor{
-		Name:        "diff_impact",
-		Description: "Alias for blast_radius suited for diff/PR workflows: compute the impact set of changed files (symbols + callers + tests).",
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"service":       map[string]any{"type": "string", "description": "Service / repo identifier"},
-				"changed_files": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Repo-relative file paths that changed"},
-			},
-			"required": []string{"service", "changed_files"},
-		},
-		group: GroupInvestigation,
-	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
-		if backend == nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
-		}
-		var p struct {
-			Service      string   `json:"service"`
-			ChangedFiles []string `json:"changed_files"`
-		}
-		if err := json.Unmarshal(args, &p); err != nil {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "diff_impact: invalid args"}
-		}
-		if p.Service == "" {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "diff_impact: service required"}
-		}
-		if len(p.ChangedFiles) == 0 {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "diff_impact: changed_files required"}
-		}
-		// RT-74: the graph store's syntax+typed graph (typed Go call edges,
-		// ADR-021 §3, additive on the transitive-caller walk — a non-Go
-		// service contributes none), never a per-call build.
-		ng, err := loadNavGraphsErr(ctx, backend, p.Service)
-		if err != nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
-		}
-		result := impact.BlastRadiusOn(ng.Both, ng.Nodes, p.ChangedFiles)
-		return map[string]any{
-			"symbols":  stringsToAny(result.Symbols),
-			"tests":    stringsToAny(result.Tests),
-			"files":    stringsToAny(result.Files),
-			"by_depth": blastRadiusByDepth(ng.Both, ng.Nodes, p.ChangedFiles), // BD-3, identical to blast_radius
-		}, nil
-	})
 }
 
 // ─── investigation: spec_coverage ────────────────────────────────────────────
@@ -785,69 +740,6 @@ func registerStaleDocs(s *Server, backend QueryInterface) {
 			}
 		}
 		return withPartial(map[string]any{"drifts": result, "count": len(result)}, cov), nil
-	})
-}
-
-// ─── coding: api_diff ─────────────────────────────────────────────────────────
-
-func registerAPIDiff(s *Server, backend QueryInterface) {
-	s.registerTool(toolDescriptor{
-		Name:        "api_diff",
-		Description: "Compute the API surface diff between two services: added, removed, and changed exported symbols.",
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"service_a": map[string]any{"type": "string", "description": "Baseline service identifier"},
-				"service_b": map[string]any{"type": "string", "description": "New service identifier"},
-			},
-			"required": []string{"service_a", "service_b"},
-		},
-		group: GroupCoding,
-	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
-		if backend == nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
-		}
-		var p struct {
-			ServiceA string `json:"service_a"`
-			ServiceB string `json:"service_b"`
-		}
-		if err := json.Unmarshal(args, &p); err != nil {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "api_diff: invalid args"}
-		}
-		if p.ServiceA == "" {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "api_diff: service_a required"}
-		}
-		if p.ServiceB == "" {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "api_diff: service_b required"}
-		}
-		nodesA, err := serviceSymbols(ctx, backend, p.ServiceA)
-		if err != nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "list service_a: " + err.Error()}
-		}
-		nodesB, err := serviceSymbols(ctx, backend, p.ServiceB)
-		if err != nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "list service_b: " + err.Error()}
-		}
-		surfaceA := apisurface.Surface(nodesA)
-		surfaceB := apisurface.Surface(nodesB)
-		changes := apisurface.Diff(surfaceA, surfaceB)
-		added := changes.Added
-		if added == nil {
-			added = []string{}
-		}
-		removed := changes.Removed
-		if removed == nil {
-			removed = []string{}
-		}
-		changed := changes.Changed
-		if changed == nil {
-			changed = []string{}
-		}
-		return map[string]any{
-			"added":   stringsToAny(added),
-			"removed": stringsToAny(removed),
-			"changed": stringsToAny(changed),
-		}, nil
 	})
 }
 

@@ -78,27 +78,6 @@ func buildForwardIndex(g *callgraph.Graph, nodes []core.SymbolNode) forwardIndex
 	return idx
 }
 
-// ─── Callees ─────────────────────────────────────────────────────────────────
-
-// Callees returns the sorted canonical keys of the direct callees of symbol.
-// symbol may be a full SymbolKey or a bare function name.
-//
-// nodes is the same slice that was passed to callgraph.Build when constructing g.
-func Callees(g *callgraph.Graph, nodes []core.SymbolNode, symbol string) []string {
-	idx := buildForwardIndex(g, nodes)
-	key := resolveSymbol(nodes, symbol)
-	if key == "" {
-		return []string{}
-	}
-	cs := idx[key]
-	if len(cs) == 0 {
-		return []string{}
-	}
-	out := make([]string, len(cs))
-	copy(out, cs)
-	return out // already sorted by buildForwardIndex
-}
-
 // ─── CallHierarchy ───────────────────────────────────────────────────────────
 
 // CallHierarchy returns a tree rooted at symbol that expands both the forward

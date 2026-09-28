@@ -33,7 +33,7 @@ var verbTable = []verb{
 	{Name: "ingest-diff", Summary: "Ingest only files changed since a git ref"},
 	{Name: "watch", Summary: "Poll for file changes and re-ingest automatically"},
 	{Name: "gen-claude-md", Summary: "Generate a CLAUDE.md from stored symbols"},
-	{Name: "gen-status-cue", Summary: "Generate a CUE status file from a plan + evidence"},
+	{Name: "gen-status-cue", Summary: "Generate a CUE status file from a plan + evidence", Hidden: true}, // SR-30: internal dev/round-trip tooling (ADR-018 decision 3), not agent-facing
 	{Name: "gen-platform-manifest", Summary: "Generate a platform manifest from *.sqlite/*.db store files"},
 	{Name: "inspect", Summary: "List stored symbols for a service"},
 	{Name: "query", Summary: "Query symbols for a concern"},
@@ -71,7 +71,7 @@ var verbTable = []verb{
 	{Name: "daemon", Summary: "The serve-http launchd agent: install (writes the plist with YOUR paths and starts it; --reconcile migrates an installed one) | status | stop (the kill switch) | start | pause | resume | uninstall"},
 	{Name: "resources", Summary: "What the daemon takes from this machine, from files (works when it is down): budget, footprint history, lifecycle, quarantine, host, in-flight, hooks, scratch daemons, disk, last capture; exit 0 within budget, 1 over/crash-looping/stopped/leaked, 2 unreadable [--json] [--since 24h] [--id ID]"},
 	{Name: "gc", Summary: "Disk retention by class (call log rotated and archived — never deleted; old session stamps, dead daemon records, stale test temp dirs, old scenario-bench worktrees and build binaries, diag captures past 10/200 MiB); dry run by default [--apply] [--json] [--workspace DIR] [--call-log PATH]"},
-	{Name: "gen-plan-cue", Summary: "Emit the generated CUE shadow of a Markdown plan (round-trip verified)"},
+	{Name: "gen-plan-cue", Summary: "Emit the generated CUE shadow of a Markdown plan (round-trip verified)", Hidden: true}, // SR-30: internal dev/round-trip tooling (ADR-018 decision 3), not agent-facing
 	{Name: "instrument", Summary: "Channel-health report: injection coverage, rollup, liveness alarms (--adoption: the flywheel gauge)"},
 	{Name: "observe", Summary: "File a structured friction observation into .fathom/observations.md"},
 	{Name: "init", Summary: "One-command repo wiring: .fathomignore, ingest, Claude Code hooks, CLAUDE.md/AGENTS.md stanza"},

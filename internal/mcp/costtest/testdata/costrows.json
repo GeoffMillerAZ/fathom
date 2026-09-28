@@ -1,7 +1,6 @@
 {
   "_comment": "One cost row per registered MCP tool (design §4.8, RT-93): the arguments the harness calls it with against the generated fleet (\"$service\" is costtest.QueriedService, the same size at 1x and 10x). expect_error names why a call cannot answer on the fixture; such a row still measures what the refusal costs. TestEveryToolHasCostRow fails when a registered tool has no row or a row names no tool.",
   "tools": {
-    "api_diff": {"args": {"service_a": "$service", "service_b": "payment-service"}},
     "arch_conformance": {"args": {"service": "$service"}},
     "batch": {"args": {"calls": [{"tool": "find_symbol", "arguments": {"service": "$service", "name": "Post"}}]}},
     "blast_radius": {"args": {"service": "$service", "changed_files": ["ledger.go"]}},
@@ -13,11 +12,9 @@
     "contradiction_scan": {"args": {"service": "$service", "concern": "ledger"}},
     "cross_repo_callers": {"args": {"symbol": "Post"}},
     "dead_code": {"args": {"service": "$service"}},
-    "diff_impact": {"args": {"service": "$service", "changed_files": ["ledger.go"]}},
     "discoveries": {"args": {"service": "$service"}},
     "entrypoints": {"args": {"service": "$service"}},
     "evidence_summary": {"args": {"service": "$service"}},
-    "find_callees": {"args": {"service": "$service", "symbol": "Post"}},
     "find_callers": {"args": {"service": "$service", "symbol": "validateEntry"}},
     "find_symbol": {"args": {"service": "$service", "name": "Post"}},
     "findings_near": {"args": {"service": "$service", "subject": "Post"}},

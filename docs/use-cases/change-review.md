@@ -17,9 +17,8 @@ Review a diff or pull request with automated impact analysis and conformance gat
 
 | Name | Kind | What it gives you |
 |---|---|---|
-| `review_diff` | MCP tool (investigation) | **The composed verb** (C1-1, `docs/plans/review-verb.md`): diff impact + obligations/findings + architecture conformance + spec coverage in ONE cited verdict, over an explicit `changed_files` list |
-| `diff_impact` | MCP tool (investigation) | Blast radius of changed files: affected symbols, transitive callers, and related tests |
-| `api_diff` | MCP tool (coding) | Added, removed, and changed exported symbols between two services |
+| `review_diff` | MCP tool (investigation) | **The composed verb** (C1-1, `docs/plans/review-verb.md`): diff impact + obligations/findings + architecture conformance + spec coverage in ONE cited verdict, over an explicit `changed_files` list; pass `since` for its `conservation` dimension, which reports the `surface` plane's exported-API base→head delta (below) |
+| `blast_radius` | MCP tool (investigation) | Blast radius of changed files: affected symbols, transitive callers, and related tests (widen with `max_depth:0, max_symbols:0` for the unbounded recall `diff_impact` used to give — SR-25 unregistered that alias) |
 | `arch_conformance` | MCP tool (coding) | Call-graph edges that violate declared layering rules |
 | `proto_conformance` | MCP tool (coding) | Naming convention violations in `.proto` files |
 | `stale_docs` | MCP tool (coding) | Markdown files with inline-code or link references that no longer match known symbols or files |
@@ -134,19 +133,23 @@ Before `review_diff` existed, reviewing a change meant calling each analyzer sep
 
 ```json
 {
-  "name": "diff_impact",
+  "name": "blast_radius",
   "arguments": {
     "service": "payment-service",
     "changed_files": [
       "internal/billing/invoice.go",
       "internal/billing/retry.go",
       "internal/store/txn.go"
-    ]
+    ],
+    "max_depth": 0,
+    "max_symbols": 0
   }
 }
 ```
 
-Returns:
+`max_depth: 0, max_symbols: 0` widen past `blast_radius`'s bounded default (depth 2, 500
+symbols) to the unbounded, full-recall walk the retired `diff_impact` alias always ran —
+what a PR review wants. Returns:
 ```json
 {
   "symbols": ["billing.CreateInvoice", "billing.RetryCharge", "store.RunTxn", "store.CommitTxn"],
@@ -156,28 +159,25 @@ Returns:
 }
 ```
 
-**Check for public API breakage.** `api_diff` compares the exported symbol surface of two independently-indexed service snapshots — here `payment-service-base` is the pre-PR snapshot and `payment-service` is the current one.
+**Check for public API breakage.** The `api_diff` tool that used to compare two independently-indexed service snapshots was unregistered (SR-26, F-20): the calibrated API delta stays in `conserve`'s `surface` plane, which reads the SAME repository's base→head delta instead of two separately-ingested snapshots — no second service ID to maintain. Call `review_diff` with `since` set to the PR's base ref:
 
 ```json
 {
-  "name": "api_diff",
+  "name": "review_diff",
   "arguments": {
-    "service_a": "payment-service-base",
-    "service_b": "payment-service"
+    "service": "payment-service",
+    "changed_files": ["internal/billing/invoice.go"],
+    "since": "origin/main"
   }
 }
 ```
 
-Returns:
+Its `conservation` dimension's `surface` plane finding reports:
 ```json
-{
-  "added":   ["billing.InvoiceV2"],
-  "removed": ["billing.Invoice"],
-  "changed": ["billing.CreateInvoice"]
-}
+{"plane": "surface", "kind": "removed", "key": "api:billing.Invoice", "detail": "func()", "declared": "none"}
 ```
 
-`billing.Invoice` was removed — a breaking public API change.
+`billing.Invoice` was removed — a breaking public API change. (`fathom conserve --since origin/main --service payment-service` runs the same check store-direct, outside a review session.)
 
 **Check architectural layering.**
 
@@ -220,13 +220,13 @@ Returns any Markdown references that no longer resolve to known symbols or files
 
 **`review_diff` never accepts inline architecture rules.** Unlike calling `arch_conformance` directly, `review_diff`'s `arch_conformance` dimension always resolves through the service's own `.fathom/rules/archconformance.cue` project rule pack (or reports `checked:false` when none exists) — there is no `rules` argument on `review_diff` itself. If you need to test rules that aren't committed yet, call `arch_conformance` directly with inline `rules`.
 
-**Surface.** `review_diff` and `diff_impact` are in the `investigation` group; the appendix's remaining tools (`api_diff`, `arch_conformance`, `proto_conformance`, `stale_docs`) are in `coding`. There is no profile switch (`set_profile` was removed, SW-2): stdio `serve-mcp` serves the full registry; over the shared HTTP daemon the path is the scope (bare `POST /rpc` for everything (the group endpoints were deleted — HF-5)). None of these review tools is on the `/rpc/agent` allowlist, but an off-surface call still executes there — logged `off_surface:true`, never refused — so a session registered on `/rpc/agent` can run the whole review.
+**Surface.** `review_diff` and `blast_radius` are in the `investigation` group; the appendix's remaining tools (`arch_conformance`, `proto_conformance`, `stale_docs`) are in `coding`. There is no profile switch (`set_profile` was removed, SW-2): stdio `serve-mcp` serves the full registry; over the shared HTTP daemon the path is the scope (bare `POST /rpc` for everything (the group endpoints were deleted — HF-5)). None of these review tools is on the `/rpc/agent` allowlist, but an off-surface call still executes there — logged `off_surface:true`, never refused — so a session registered on `/rpc/agent` can run the whole review.
 
 **Precedent before verdict.** `findings_near { "service", "subject": "api.Handler", "hops": 2 }` (CLI: `fathom findings near api.Handler --store … --service …`) answers "was this flagged here before?" — live findings ranked by call-graph proximity, superseded ones only with `include_superseded`/`--include-superseded` and always labeled. `fathom findings status` reports how far the findings layer is from its entry condition (**experimental** until then).
 
-**`api_diff` requires two indexed snapshots.** The tool compares the exported symbol stores of `service_a` and `service_b`. To compare before/after a PR, you need the baseline service indexed separately — either as a second service ID pointing at the base branch checkout, or by re-ingesting the current branch under a distinct service ID (e.g. `payment-service-base`).
+**The `surface` plane needs `since`.** Without it, `review_diff`'s `conservation` dimension reports `checked:false, reason:"needs a base ref"` — the plane has nothing to diff against. `since` resolves against the service's own indexed corpus root, never the daemon's cwd.
 
-**`diff_impact` does not require a `concern`.** It takes `changed_files` instead. Pass repo-relative paths as returned by `git diff --name-only <base>`.
+**`blast_radius` does not require a `concern`.** It takes `changed_files` instead. Pass repo-relative paths as returned by `git diff --name-only <base>`.
 
 **CLI alternative for CI.** When no MCP session is running, use the CLI to update the store before running queries:
 
@@ -277,4 +277,4 @@ The section above is fathom's OWN findings (`fathom report`, compiled through th
 
 ## Maintained
 
-This doc covers: `review_diff` (the composed verb, C1-1/C2-1, `docs/plans/review-verb.md`; incl. its `test_impact` block — `affected_tests` and `test_gap`, BD-4) and its `fathom review` CLI mirror (which prints the same block, BD-5) (incl. `--no-persist`, `--budget-seconds`; `fathom review -h`), `diff_impact`, `api_diff`, `arch_conformance` (incl. its `.fathom/rules/archconformance.cue` project rule packs and `rule_source`/`checked` response fields), `proto_conformance`, `stale_docs`, `findings_near`, `fathom findings` (`near`/`status`; `fathom findings import`/`fathom findings candidates` land in another wave, FL-10/FL-23, `docs/plans/findings-loop.md`), `ingest`, `staleness_report`, `fathom ingest-diff`, `fathom verify` (`--quiet`, `--strict`), the pre-push `fathom review` summary step (C3-1), `fathom report`, `fathom claim` (add/refute/corroborate). Update it when these change.
+This doc covers: `review_diff` (the composed verb, C1-1/C2-1, `docs/plans/review-verb.md`; incl. its `test_impact` block — `affected_tests` and `test_gap`, BD-4 — and its `conservation` dimension's surface-plane finding, the retired api_diff tool's replacement, SR-26) and its `fathom review` CLI mirror (which prints the same block, BD-5) (incl. `--no-persist`, `--budget-seconds`; `fathom review -h`), `blast_radius`, `arch_conformance` (incl. its `.fathom/rules/archconformance.cue` project rule packs and `rule_source`/`checked` response fields), `proto_conformance`, `stale_docs`, `findings_near`, `fathom findings` (`near`/`status`; `fathom findings import`/`fathom findings candidates` land in another wave, FL-10/FL-23, `docs/plans/findings-loop.md`), `ingest`, `staleness_report`, `fathom ingest-diff`, `fathom conserve`, `fathom verify` (`--quiet`, `--strict`), the pre-push `fathom review` summary step (C3-1), `fathom report`, `fathom claim` (add/refute/corroborate). Update it when these change.
