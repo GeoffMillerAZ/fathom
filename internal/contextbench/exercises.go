@@ -28,7 +28,6 @@ import (
 // fails when the two drift, so the copy cannot go quietly stale.
 var agentSurfaceTools = []string{
 	"blast_radius",
-	"discoveries",
 	"find_callers",
 	"find_symbol",
 	"ingest",
@@ -86,7 +85,6 @@ var handlerTable = []handlerRule{
 	{Path: "internal/mcp/tools.go", Tools: []string{"find_symbol", "find_callers", "query_symbols"}, Why: "the three symbol tools are registered here"},
 	{Path: "internal/mcp/nav_tools.go", Tools: []string{"outline", "symbol_context"}},
 	{Path: "internal/mcp/references_tool.go", Tools: []string{"references"}},
-	{Path: "internal/mcp/discoveries_tool.go", Tools: []string{"discoveries"}},
 	{Path: "internal/mcp/analysis_tools.go", Tools: []string{"blast_radius", "test_impact"}, Why: "the impact verbs promoted by VB-1; renameImpactAnswer (SR-24) feeds blast_radius's kind:\"rename\""},
 	{Path: "internal/mcp/extra_tools.go", Tools: []string{"blast_radius"}, Why: "promoted by VB-1; blastRadiusByKind (SR-24) also answers kind:\"rename\"/\"delete\""},
 	{Path: "internal/mcp/review_tool.go", Tools: []string{"review_diff"}, Why: "promoted by VB-1"},
