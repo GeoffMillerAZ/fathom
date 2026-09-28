@@ -16,22 +16,22 @@ before `responsible-tenant.md#RT-M1` reads PASS.
 
 ## Wave 2: the core (§3 to §7)
 
-- [ ] The contract key grammar: `ParseContractKey` accepts the eleven kinds, normalizes each body (§3), refuses anything else by name, and round-trips ADR-044's four kinds byte-identically {id: SG-1, symbol: ParseContractKey, package: internal/syslink, reachable_from: TestParseContractKeyKindsAndNormalization}
+- [x] The contract key grammar: `ParseContractKey` accepts the eleven kinds, normalizes each body (§3), refuses anything else by name, and round-trips ADR-044's four kinds byte-identically {id: SG-1, symbol: ParseContractKey, package: internal/syslink, reachable_from: TestParseContractKeyKindsAndNormalization}
 - [ ] Store tables `contract_keys` and `system_links`, additive to store format v0 with their indexes (§6); `TestStoreFormatV0_RequiredSchema` still passes {id: SG-2, symbol: PutContractKeys, package: internal/store, reachable_from: TestContractKeysRoundTrip, needs: "responsible-tenant.md#RT-M1"}
-- [ ] The `ContractSource` port and registry by dialect id (§5); a source records extractor id and epoch on every row {id: SG-3, symbol: RegisterContractSource, package: internal/syslink, reachable_from: TestContractSourceRegistry}
-- [ ] Route providers: `routes.Extract` results become `route:` provides rows with node ids and tiers {id: SG-4, symbol: routeProvides, package: internal/syslink, reachable_from: TestRouteProvidesFromExtractor, needs: "SG-1,SG-3"}
-- [ ] Go HTTP client consumers: `ExtractClientCalls` results become `route:` consumes rows at `literal` or `template` tier {id: SG-5, symbol: goClientConsumes, package: internal/syslink, reachable_from: TestGoClientConsumesTiers, needs: "SG-1,SG-3"}
-- [ ] HTTP client consumers for JS/TS (fetch, axios, ky) and Python (requests, httpx, aiohttp) as dialect queries (§5) {id: SG-6, symbol: scriptClientConsumes, package: internal/syslink, reachable_from: TestScriptClientConsumes, needs: "SG-3"}
-- [ ] OpenAPI 3.x documents provide `route:` keys at `spec` tier, bound by `operationId` (§5) {id: SG-7, symbol: openAPIProvides, package: internal/syslink, reachable_from: TestOpenAPIProvidesSpecTier, needs: "SG-3"}
-- [ ] Proto service definitions provide `rpc:` keys at `spec` tier; Go gRPC stub calls consume them at `typed` tier {id: SG-8, symbol: protoRPCKeys, package: internal/syslink, reachable_from: TestProtoProvidesAndStubConsumes, needs: "SG-3"}
-- [ ] The link join: provides/consumes matched by key, tier = the weaker end, evidence at both ends (§4) {id: SG-9, symbol: MatchLinks, package: internal/syslink, reachable_from: TestMatchLinksTierIsWeakerEnd, needs: "SG-2"}
+- [x] The `ContractSource` port and registry by dialect id (§5); a source records extractor id and epoch on every row {id: SG-3, symbol: RegisterContractSource, package: internal/syslink, reachable_from: TestContractSourceRegistry}
+- [x] Route providers: `routes.Extract` results become `route:` provides rows with node ids and tiers {id: SG-4, symbol: routeProvides, package: internal/syslink, reachable_from: TestRouteProvidesFromExtractor, needs: "SG-1,SG-3"}
+- [x] Go HTTP client consumers: `ExtractClientCalls` results become `route:` consumes rows at `literal` or `template` tier {id: SG-5, symbol: goClientConsumes, package: internal/syslink, reachable_from: TestGoClientConsumesTiers, needs: "SG-1,SG-3"}
+- [x] HTTP client consumers for JS/TS (fetch, axios, ky) and Python (requests, httpx, aiohttp) as dialect queries (§5) {id: SG-6, symbol: scriptClientConsumes, package: internal/syslink, reachable_from: TestScriptClientConsumes, needs: "SG-3"}
+- [x] OpenAPI 3.x documents provide `route:` keys at `spec` tier, bound by `operationId` (§5) {id: SG-7, symbol: openAPIProvides, package: internal/syslink, reachable_from: TestOpenAPIProvidesSpecTier, needs: "SG-3"}
+- [x] Proto service definitions provide `rpc:` keys at `spec` tier; Go gRPC stub calls consume them at `typed` tier {id: SG-8, symbol: protoRPCKeys, package: internal/syslink, reachable_from: TestProtoProvidesAndStubConsumes, needs: "SG-3"}
+- [x] The link join: provides/consumes matched by key, tier = the weaker end, evidence at both ends (§4) {id: SG-9, symbol: MatchLinks, package: internal/syslink, reachable_from: TestMatchLinksTierIsWeakerEnd, needs: "SG-2"}
 - [ ] Incremental link refresh after an ingest, only for keys that ingest changed; a deleted provider closes its links {id: SG-10, symbol: RefreshLinksForKeys, package: internal/syslink, reachable_from: TestRefreshLinksOnlyChangedKeys, needs: "SG-9"}
 - [ ] `fathom links` verb with `--json` and the `links` MCP tool in the `system` group (§7) {id: SG-11, symbol: cmdLinks, package: cmd/fathom, reachable_from: TestCmdLinksJSON, needs: "SG-9"}
 - [ ] `fathom system-impact` verb and the `system_impact` MCP tool: local walk, links, consumer callers, grouped by kind and tier (§7) {id: SG-12, symbol: SystemImpact, package: internal/syslink, reachable_from: TestSystemImpactCrossesServices, needs: "SG-9"}
 - [ ] `cross_repo_blast_radius` retired once `system_impact` lands (law 4: tool count flat) {id: SG-13, gone: pattern "Name:\s+.cross_repo_blast_radius.", paths: "internal/mcp/", needs: "SG-12"}
-- [ ] Fauxtown gains the fixture fleet (an OpenAPI-first service, a gRPC service with Go and TS clients, seeded negatives) and `links.answer.json` (§12) {id: SG-14, oracle: lexical, path: internal/connector/testdata/fauxtown/links.answer.json, pattern: "kind.: .route"}
+- [x] Fauxtown gains the fixture fleet (an OpenAPI-first service, a gRPC service with Go and TS clients, seeded negatives) and `links.answer.json` (§12) {id: SG-14, oracle: lexical, path: internal/connector/testdata/fauxtown/links.answer.json, pattern: "kind.: .route"}
 - [ ] `indexbench link-oracle`: ingest the fleet, compare `system_links` to the answer key, write precision and recall per kind and tier {id: SG-15, symbol: cmdLinkOracle, package: cmd/indexbench, reachable_from: TestCmdLinkOracle, needs: "SG-14"}
-- [ ] I57: a `literal` or `template` link never passes or fails a verify row, a conservation plane or a review verdict {id: SG-16, symbol: linkGates, package: internal/syslink, reachable_from: TestHeuristicLinksNeverGate, needs: "SG-9"}
+- [x] I57: a `literal` or `template` link never passes or fails a verify row, a conservation plane or a review verdict {id: SG-16, symbol: linkGates, package: internal/syslink, reachable_from: TestHeuristicLinksNeverGate, needs: "SG-9"}
 
 ## Wave 3: more kinds, drift, co-change, dependencies, the catalog
 

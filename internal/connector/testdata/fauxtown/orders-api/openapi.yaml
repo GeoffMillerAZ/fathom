@@ -1,0 +1,18 @@
+openapi: 3.0.3
+info:
+  title: Orders
+  version: "1.0"
+servers:
+  - url: https://orders.fauxtown.example
+paths:
+  /orders:
+    get:
+      operationId: listOrders
+    post:
+      operationId: createOrder
+  /orders/{orderId}:
+    get:
+      operationId: getOrder
+  /orders/{orderId}/archive:
+    post:
+      operationId: archiveOrder
