@@ -70,9 +70,9 @@ func TestRuleEffectivenessClasses(t *testing.T) {
 	}
 
 	cases := []struct {
-		id       string
-		class    RuleEffectivenessClass
-		remedy   string
+		id     string
+		class  RuleEffectivenessClass
+		remedy string
 	}{
 		{"ignored-rule", RuleClassIgnored, "move to a hook (deny) or rewrite with the violating example"},
 		{"effective-rule", RuleClassEffective, "keep"},
