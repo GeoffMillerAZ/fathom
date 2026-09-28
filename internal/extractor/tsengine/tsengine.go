@@ -630,6 +630,22 @@ func (p *Parser) readNode(ptr uint32) (Node, error) {
 type Query struct {
 	p   *Parser
 	ptr uint32
+	// patterns holds each pattern's host-side predicates and #set!
+	// settings, indexed like Match.PatternIndex (predicates.go, LB-F2).
+	patterns []patternMeta
+}
+
+// PatternCount is the number of top-level patterns the host read from the
+// query source — every Match.PatternIndex is below it.
+func (q *Query) PatternCount() int { return len(q.patterns) }
+
+// PatternSetting returns the value a pattern's `(#set! key "value")`
+// directive gives key, or "" (LB-F6 reads injection.language this way).
+func (q *Query) PatternSetting(pattern uint16, key string) string {
+	if int(pattern) >= len(q.patterns) {
+		return ""
+	}
+	return q.patterns[pattern].settings[key]
 }
 
 // CompileQuery compiles src (tree-sitter query-language text) against this
@@ -667,7 +683,12 @@ func (p *Parser) CompileQuery(src string) (*Query, error) {
 		errType := binary.LittleEndian.Uint32(typeBytes)
 		return nil, fmt.Errorf("tsengine: query compile failed at byte offset %d (error type %d)", offset, errType)
 	}
-	return &Query{p: p, ptr: qPtr}, nil
+	metas, err := parseQueryPredicates(src)
+	if err != nil {
+		_, _ = p.call("ts_query_delete", uint64(qPtr))
+		return nil, fmt.Errorf("tsengine: query compile failed: %w", err)
+	}
+	return &Query{p: p, ptr: qPtr, patterns: metas}, nil
 }
 
 // Close releases the query's wasm-side allocation.
@@ -739,7 +760,7 @@ func (q *Query) Run(t *Tree) ([]Match, error) {
 	if err != nil {
 		return nil, err
 	}
-	return matchesAny.([]Match), nil
+	return q.filterByPredicates(matchesAny.([]Match), t.src), nil
 }
 
 // collectMatches drains the executed cursor into a Match slice. Runs on the
@@ -845,4 +866,19 @@ func Grammars() []string {
 		names = append(names, name)
 	}
 	return names
+}
+
+// filterByPredicates drops the matches whose pattern's text predicates fail
+// (LB-F2), keeping order.
+func (q *Query) filterByPredicates(matches []Match, src []byte) []Match {
+	out := matches[:0]
+	for _, m := range matches {
+		if int(m.PatternIndex) < len(q.patterns) {
+			if preds := q.patterns[m.PatternIndex].preds; len(preds) > 0 && !evalTextPredicates(preds, m, src) {
+				continue
+			}
+		}
+		out = append(out, m)
+	}
+	return out
 }

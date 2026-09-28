@@ -1,11 +1,10 @@
 ; dialects/python/tags.scm — symbol + call queries for the wazero tree-sitter engine
 ; (internal/extractor.NewTSExtractor("python"), ADR-021 §4).
 ;
-; Deliberately predicate-free (no #eq?/#strip!/#select-adjacent! etc. — those
-; tree-sitter query predicates are evaluated by the calling application, not
-; the C query engine itself, and this engine's query runner does not
-; implement predicate evaluation; every pattern here relies on structural
-; matching alone, which the query engine evaluates natively). Adapted from
+; Predicate-free: every pattern here relies on structural matching alone.
+; (The engine evaluates #eq?/#match?/#any-of? and their negations host-side
+; since LB-F2 — tsengine/predicates.go — but these patterns predate it and
+; need none.) Adapted from
 ; tree-sitter-python's own queries/tags.scm (upstream, same repo as the
 ; grammar) with the doc-comment association predicates dropped, since fathom
 ; extracts symbols, not documentation.
