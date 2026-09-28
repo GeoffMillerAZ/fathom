@@ -23,6 +23,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/console"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
+	"github.com/geoffmilleraz/fathom/internal/verify"
 )
 
 // servedObligationsJSON is the default --json: the list an agent is served.
@@ -55,6 +56,7 @@ func cmdObligations(args []string, stdout, stderr io.Writer) int {
 	file := fs.String("file", "", "repo-relative file being edited; omit for the root-scope question")
 	layer := fs.String("layer", "rules", `which claims to serve: "rules" (the obligations tool's default), "claims" (plan-row bindings) or "all"`)
 	explain := fs.Bool("explain", false, "explain the answer: every candidate by scope tier, the ranking, the cap, and each displaced rule's reason")
+	format := fs.String("format", "", "output format: text (default) | sarif — SARIF 2.1.0 of the served rules, one rule per tier, located at each rule's own citation (GL-20; overrides --json, --explain unread)")
 	kf := addKnowledgeFlags(fs)
 	if err := fs.Parse(reorderFlagsFirst(fs, args)); err != nil {
 		return 1
@@ -67,6 +69,12 @@ func cmdObligations(args []string, stdout, stderr io.Writer) int {
 	case semantic.ObligationLayerRules, semantic.ObligationLayerClaims, semantic.ObligationLayerAll:
 	default:
 		fmt.Fprintf(stderr, "error: --layer must be rules, claims or all, got %q\n", *layer)
+		return 1
+	}
+	switch *format {
+	case "", "sarif":
+	default:
+		fmt.Fprintf(stderr, "error: --format %q: want sarif\n", *format)
 		return 1
 	}
 	ks := resolveKnowledgeStore(*kf.store, *kf.url)
@@ -83,6 +91,9 @@ func cmdObligations(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	switch {
+	case *format == "sarif":
+		_, _ = stdout.Write(verify.RenderSARIF("fathom obligations", obligationsSARIF(se.AgentSees)))
+		return 0
 	case *kf.json && *explain:
 		return jsonExit(writeKnowledgeJSON(stdout, se), stderr)
 	case *kf.json:
