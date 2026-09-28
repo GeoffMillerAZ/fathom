@@ -55,6 +55,12 @@ type ActivityCall struct {
 	Surface   string  `json:"surface"`
 	LatencyMS float64 `json:"latency_ms"`
 	Error     string  `json:"error,omitempty"`
+	// ResponseTokens (PE-21, docs/design/progress-and-economics.md §5)
+	// mirrors internal/mcp.callLogEntry's own "response_tokens" field: the
+	// estimated cost of this one answer (PE-20's receiptTokens), beside its
+	// tool, latency and outcome — 0 on a row logged before the estimate
+	// existed, rendered as "not accounted", never a fabricated zero.
+	ResponseTokens int `json:"response_tokens,omitempty"`
 }
 
 // ActivityDay is one day of the window.
@@ -100,13 +106,14 @@ type ProjectActivityModel struct {
 
 // callRow is the slice of a call-log row the projection reads.
 type callRow struct {
-	TS        string  `json:"ts"`
-	Tool      string  `json:"tool"`
-	Service   string  `json:"service"`
-	Surface   string  `json:"surface"`
-	Origin    string  `json:"origin"`
-	LatencyMS float64 `json:"latency_ms"`
-	Error     string  `json:"error"`
+	TS             string  `json:"ts"`
+	Tool           string  `json:"tool"`
+	Service        string  `json:"service"`
+	Surface        string  `json:"surface"`
+	Origin         string  `json:"origin"`
+	LatencyMS      float64 `json:"latency_ms"`
+	Error          string  `json:"error"`
+	ResponseTokens int     `json:"response_tokens"`
 }
 
 // ProjectActivity reads the resolved call log and the session ledger for
@@ -167,7 +174,7 @@ func ProjectActivity(src Sources, in ActivityInput) ProjectActivityModel {
 			if c.Error != "" {
 				errs++
 			}
-			recent = append(recent, ActivityCall{At: ts.UTC().Format(time.RFC3339), Tool: c.Tool, Surface: c.Surface, LatencyMS: c.LatencyMS, Error: c.Error})
+			recent = append(recent, ActivityCall{At: ts.UTC().Format(time.RFC3339), Tool: c.Tool, Surface: c.Surface, LatencyMS: c.LatencyMS, Error: c.Error, ResponseTokens: c.ResponseTokens})
 		}
 	}
 	for d := start; d.Before(end); d = d.AddDate(0, 0, 1) {

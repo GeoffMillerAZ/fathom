@@ -31,7 +31,7 @@ func TestProjectActivity_FromResolvedLog(t *testing.T) {
 		`{"ts":"2026-09-10T10:00:00Z","tool":"find_symbol","service":"fathom","surface":"agent","latency_ms":3}`, // outside the window
 		`{"ts":"2026-09-24T10:00:00Z","tool":"find_symbol","service":"fathom","surface":"agent","latency_ms":3}`,
 		`{"ts":"2026-09-24T11:00:00Z","tool":"obligations","service":"fathom","surface":"","latency_ms":5,"error":"boom"}`,
-		`{"ts":"2026-09-25T09:00:00.123Z","tool":"references","service":"Fathom","surface":"agent","latency_ms":4}`,
+		`{"ts":"2026-09-25T09:00:00.123Z","tool":"references","service":"Fathom","surface":"agent","latency_ms":4,"response_tokens":7}`,
 		`{"ts":"2026-09-25T09:30:00Z","tool":"list_services","service":"fathom","origin":"console","latency_ms":1}`, // the console reading itself
 		`{"ts":"2026-09-25T09:31:00Z","tool":"find_symbol","service":"app-kit","surface":"agent","latency_ms":2}`,   // another project
 		`{"ts":"2026-09-25T09:32:00Z","tool":"verify_plan","service":"","latency_ms":9}`,                            // unattributed
@@ -89,6 +89,15 @@ func TestProjectActivity_FromResolvedLog(t *testing.T) {
 	}
 	if len(m.Recent) != 3 || m.Recent[0].Tool != "references" || m.Recent[1].Error != "boom" {
 		t.Errorf("recent newest first = %+v", m.Recent)
+	}
+	// PE-21: a row's own "response_tokens" (PE-20's receiptTokens estimate)
+	// travels into the recent call it becomes; a row logged before the
+	// estimate existed decodes as 0, never a fabricated positive number.
+	if m.Recent[0].ResponseTokens != 7 {
+		t.Errorf("recent[0].ResponseTokens = %d, want 7 (from its own row)", m.Recent[0].ResponseTokens)
+	}
+	if m.Recent[1].ResponseTokens != 0 || m.Recent[2].ResponseTokens != 0 {
+		t.Errorf("recent[1..2].ResponseTokens = %d,%d, want 0 (no response_tokens field on those rows)", m.Recent[1].ResponseTokens, m.Recent[2].ResponseTokens)
 	}
 	if m.Sessions != shared || m.Sessions.V != 3 {
 		t.Fatalf("sessions = %+v, want the shared metric %+v itself", m.Sessions, shared)

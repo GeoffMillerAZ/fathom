@@ -10,8 +10,8 @@ status.
 
 ## Wave 1: cost in every answer
 
-- [ ] Every receipt carries an estimated token count beside its bytes (`cost.Estimate`, named as an estimate) {id: PE-20, symbol: receiptTokens, package: internal/mcp, reachable_from: TestReceiptCarriesTokenEstimate}
-- [ ] The console shows the cost of each answer on the call-log pages {id: PE-21, symbol: renderAnswerCost, package: cmd/fathom, reachable_from: TestConsoleAnswerCost, needs: "PE-20"}
+- [x] Every receipt carries an estimated token count beside its bytes (`cost.Estimate`, named as an estimate) {id: PE-20, symbol: receiptTokens, package: internal/mcp, reachable_from: TestReceiptCarriesTokenEstimate}
+- [x] The console shows the cost of each answer on the call-log pages {id: PE-21, symbol: renderAnswerCost, package: cmd/fathom, reachable_from: TestConsoleAnswerCost, needs: "PE-20"}
 
 ## Wave 2: proof history and the progress views
 

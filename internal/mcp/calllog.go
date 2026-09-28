@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/buildinfo"
+	"github.com/geoffmilleraz/fathom/internal/cost"
 )
 
 // callLogSchemaVersion identifies this record type's field semantics.
@@ -80,6 +81,14 @@ type callLogEntry struct {
 	// way recordResponseCost treats it as "not accounted", never as a
 	// genuine zero-byte call.
 	ResponseBytes int `json:"response_bytes,omitempty"`
+	// ResponseTokens (PE-20, docs/design/progress-and-economics.md §5) is
+	// receiptTokens' estimate for this same response, carried beside
+	// ResponseBytes: internal/cost.Estimate over the exact marshaled bytes
+	// ResponseBytes counted, named as an estimate (four characters per
+	// token), never presented as a measured count. 0 on a row logged before
+	// this field existed — indistinguishable from a genuine zero-byte
+	// response, exactly how ResponseBytes' own zero already reads.
+	ResponseTokens int `json:"response_tokens,omitempty"`
 	// ElidedCount (BA-1/BA-8) mirrors the response's own "elided.count" when
 	// present — nil for a call whose result carries no elided block at all
 	// (either a non-truncating tool, or a truncating one that returned
@@ -182,7 +191,11 @@ type callOutcome struct {
 	// per-call outcome bundle as ResultCount/MatchedVia so log's signature
 	// does not grow another positional parameter.
 	ResponseBytes int
-	ElidedCount   *int
+	// ResponseTokens (PE-20) is receiptTokens' estimate for the same bytes
+	// ResponseBytes counted — set by the same caller, from the same []byte,
+	// so the two numbers can never disagree about which response they cost.
+	ResponseTokens int
+	ElidedCount    *int
 	// Pointers (RC-25) is the pre-extracted discovery-pointer list for
 	// this call's result — computed by dispatch.go's pointer-extraction
 	// hook (resultPointers) before the call is logged.
@@ -226,6 +239,7 @@ func (l *CallLogger) log(tool, service, group, surface, via, origin string, offS
 		ResultCount:    outcome.ResultCount,
 		MatchedVia:     outcome.MatchedVia,
 		ResponseBytes:  outcome.ResponseBytes,
+		ResponseTokens: outcome.ResponseTokens,
 		ElidedCount:    outcome.ElidedCount,
 		LatencyMS:      float64(latency.Milliseconds()),
 		Pointers:       outcome.Pointers,
@@ -472,6 +486,15 @@ func outcomeFrom(result any) (*int, string) {
 		return &n, via
 	}
 	return nil, ""
+}
+
+// receiptTokens estimates one receipt's token cost from the exact bytes its
+// ResponseBytes count came from (PE-20, docs/design/progress-and-economics.md
+// §5): internal/cost.Estimate's four-characters-per-token heuristic over the
+// marshaled response, named as an estimate beside the measured byte count —
+// never presented as a measured token count.
+func receiptTokens(response []byte) int {
+	return cost.Estimate(string(response))
 }
 
 // ToolCost is one tool's response-size totals over a window (BA-6): what
