@@ -90,7 +90,7 @@ Milestone M1 progress: languages at L1 excellent 1/20, at L2 0/12, at L3 0/8, at
 | Terraform / OpenTofu (.tf .tfvars .tf.json) | tool format | native | native:github.com/hashicorp/hcl/v2 (MPL-2.0 (library dependency, unmodified)) | L3 | L1 (L1 excellent) | B universal-ctags 6.2.1 | syntax | 2026-09-28 | LB-Q-terraform |
 | C++ (.cc .cpp .cxx .hpp .hh .hxx, .h by sniff) | language | tags | tree-sitter/tree-sitter-cpp (MIT) | L4 | tolerated | — | scip:scip-clang | — | LB-Q-cpp |
 | Go (.go) | language | native | native:go/parser+go/types (BSD-3-Clause) | L4 | L1 (L1 good) | A scip-go 0.2.7; B universal-ctags 6.2.1 | native | 2026-09-28 | LB-Q-go |
-| Kubernetes manifests (incl. CRDs) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | tolerated | — | syntax | — | LB-Q-kubernetes |
+| Kubernetes manifests (incl. CRDs) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L2 (L1 good, L2 good) | C fathom-worker independent yaml.v3 walk (LB-Q-kubernetes oracle.go, not committed) gopkg.in/yaml.v3 | — | 2026-09-28 | LB-Q-kubernetes |
 | PowerShell (.ps1 .psm1 .psd1) | language | tags | airbus-cert/tree-sitter-powershell (MIT (verify at pin)) | L2 | unsupported (disclosed) | — | — | — | LB-Q-powershell |
 | Docker Compose files | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | tolerated | — | syntax | — | LB-Q-docker-compose |
 | PHP (.php) | language | tags | tree-sitter/tree-sitter-php (MIT) | L4 | tolerated | — | syntax | — | LB-Q-php |

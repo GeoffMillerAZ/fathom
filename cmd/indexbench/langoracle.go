@@ -99,15 +99,32 @@ func cmdLangOracle(args []string, stdout, stderr io.Writer) int {
 	// this fix, `lang-oracle -dialect c` on the c dialect's own fixtures
 	// read signature_coverage 0 (the CGO incumbent never sets Signature at
 	// all) despite the dialect itself signing every callable.
+	//
+	// The doc engine needs the identical treatment (LB-Q-kubernetes found
+	// it missing): a doc-engine PORT still dispatched through its
+	// incumbent (kubernetes: k8sextract.go, via p.toolExts[ToolK8sManifest])
+	// was silently measured as that incumbent instead of the new
+	// DocExtractor — dialectExtractor in langparity.go already branches on
+	// engine "doc" via NewDocDialectExtractor; this mirrors it here.
 	var with extractor.Extractor
-	if source == "dialect" && (spec.Manifest.Engine == "tags" || spec.Manifest.Engine == "tags+doc") {
-		ts, tserr := extractor.NewTSExtractor(*dialect)
-		if tserr != nil {
-			fmt.Fprintln(stderr, "lang-oracle:", tserr)
-			return 1
+	if source == "dialect" {
+		switch spec.Manifest.Engine {
+		case "tags", "tags+doc":
+			ts, tserr := extractor.NewTSExtractor(*dialect)
+			if tserr != nil {
+				fmt.Fprintln(stderr, "lang-oracle:", tserr)
+				return 1
+			}
+			defer ts.Close()
+			with = ts
+		case "doc":
+			doc, docerr := extractor.NewDocDialectExtractor(*dialect)
+			if docerr != nil {
+				fmt.Fprintln(stderr, "lang-oracle:", docerr)
+				return 1
+			}
+			with = doc
 		}
-		defer ts.Close()
-		with = ts
 	}
 
 	m, err := measureSubject(ctx, spec, *subject, name, *ctagsPath, *scipPath, *toolOracle, with)

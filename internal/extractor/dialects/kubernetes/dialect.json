@@ -1,0 +1,29 @@
+{
+  "id": "kubernetes",
+  "display": "Kubernetes manifests (incl. CRDs)",
+  "kind": "tooling",
+  "engine": "doc",
+  "lang_tag": "kubernetes",
+  "match": {
+    "extensions": [".yaml", ".yml"],
+    "basenames": [],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "variants": [],
+  "kinds": {
+    "resource":  { "source_kind": "K8sWorkload",  "canonical": "resource" },
+    "container": { "source_kind": "K8sContainer", "canonical": "data_source" },
+    "selector":  { "source_kind": "K8sSelector",  "canonical": "selector" }
+  },
+  "required_kinds": ["resource"],
+  "oracle_kinds": {
+    "tool": { "resource": "resource", "data_source": "data_source" }
+  },
+  "name_match": "identity",
+  "package": { "strategy": "none" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L3",
+  "queue_id": "kubernetes"
+}

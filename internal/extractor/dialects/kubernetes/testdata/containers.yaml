@@ -1,0 +1,16 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-app
+  namespace: staging
+spec:
+  template:
+    spec:
+      containers:
+        - name: web
+          image: registry.example.com/web:v1.2.3
+        - name: sidecar
+          image: envoyproxy/envoy:v1.28.0
+      initContainers:
+        - name: migrator
+          image: registry.example.com/migrator:latest

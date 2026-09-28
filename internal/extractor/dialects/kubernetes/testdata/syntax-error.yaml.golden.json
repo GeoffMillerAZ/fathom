@@ -1,0 +1,6 @@
+{
+  "symbols": [
+    { "name": "good-config", "kind": "K8sWorkload", "package": "syntax-error", "line": 1, "end_line": 6, "signature": "ConfigMap", "tier": "verified" }
+  ],
+  "cross_file": []
+}
