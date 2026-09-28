@@ -38,7 +38,7 @@ of signal exist.
 - [ ] Memories, rules-file rules, learned-rule states and doc links gain `valid_from`/`valid_to`, additively {id: GL-16, symbol: PutMemoryValidity, package: internal/store, reachable_from: TestValidityWindowsBeyondClaims}
 - [ ] `as_of` on `memory_search`, `staleness_report` and the review verbs, beside `obligations` {id: GL-17, symbol: asOfFilter, package: internal/mcp, reachable_from: TestAsOfAcrossVerbs, needs: "GL-16"}
 - [ ] The rule-effectiveness page on the console (U4) {id: GL-18, symbol: renderRuleEffectiveness, package: cmd/fathom, reachable_from: TestConsoleRuleEffectivenessPage, needs: "GL-11"}
-- [ ] Ignored rules proposed for a hook, never-triggered rules proposed for pruning, each with its evidence {id: GL-19, symbol: ruleRemedies, package: internal/semantic, reachable_from: TestRuleRemediesAreProposals, needs: "GL-11"}
+- [x] Ignored rules proposed for a hook, never-triggered rules proposed for pruning, each with its evidence {id: GL-19, symbol: ruleRemedies, package: internal/semantic, reachable_from: TestRuleRemediesAreProposals, needs: "GL-11"}
 - [x] `review_diff` layers changed files by blast radius (leaf, shared callee, cross-service provider) without a model (§8) {id: GL-22, symbol: layerDiffByBlastRadius, package: internal/mcp, reachable_from: TestReviewDiffLayers}
 
 ## Refused (recorded so they are not re-proposed)
