@@ -38,7 +38,7 @@ cannot reach its target keeps its contract and gains a `[-]` sibling
 - [x] `EndLine` from the definition node and `Signature` cut at the `@body` capture, collapsed and capped (§3.3) {id: LB-F3, symbol: tsSignature, package: internal/extractor, reachable_from: TestTSExtractRangesAndSignatures, needs: "LB-F1"}
 - [x] The callee is the `@name` inside `@reference.call` when present, else today's expression text; type references counted, not stored (§3.4) {id: LB-F4, symbol: tsCalleeName, package: internal/extractor, reachable_from: TestTSReferenceNameCapture, needs: "LB-F1"}
 - [x] `@scope.package` sets `SymbolNode.Package` for manifests with `package.strategy = "capture"` (§3.5) {id: LB-F5, symbol: tsPackageFromCapture, package: internal/extractor, reachable_from: TestTSPackageCapture, needs: "LB-F1"}
-- [ ] One-level injections from `injections.scm` with a static `injection.language`, lines offset, nothing qualified across the boundary (§3.6) {id: LB-F6, symbol: extractInjections, package: internal/extractor, reachable_from: TestTSInjections, needs: "LB-F1"}
+- [x] One-level injections from `injections.scm` with a static `injection.language`, lines offset, nothing qualified across the boundary (§3.6) {id: LB-F6, symbol: extractInjections, package: internal/extractor, reachable_from: TestTSInjections, needs: "LB-F1"}
 - [ ] Import captures generalized (`@import.stmt/module/name/alias/wildcard`, the existing `from`/`rel` forms kept) for any dialect's `imports.scm` (§3.7) {id: LB-F7, symbol: importSpecsFromCaptures, package: internal/extractor, reachable_from: TestDialectImportsGeneric, needs: "LB-F1"}
 
 ### F.3 The document engine and classification (§4, §5)

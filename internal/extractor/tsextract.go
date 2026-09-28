@@ -5,6 +5,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
+	"path"
 	"sort"
 	"strings"
 	"sync"
@@ -64,6 +66,8 @@ type tsDialectRules struct {
 
 	queryFile string // dialects/<id>/<tags> (for messages and lang-probe)
 	query     string // tags query then imports query
+
+	injectionsQuery string // queries.injections (LB-F6), "" when none
 }
 
 // tsLangSpec is everything NewTSExtractor needs for one extractor: the
@@ -177,6 +181,13 @@ func compileDialectRules(d Dialect) (*tsDialectRules, error) {
 	if d.Imports != nil {
 		r.importStrategy = d.Imports.Strategy
 	}
+	if d.Queries.Injections != "" {
+		b, err := fs.ReadFile(dialectFS, path.Join("dialects", d.ID, d.Queries.Injections))
+		if err != nil {
+			return nil, fmt.Errorf("dialect %s: %w", d.ID, err)
+		}
+		r.injectionsQuery = string(b)
+	}
 	for key, k := range d.Kinds {
 		r.kinds[key] = tsDefKind{Kind: core.SourceKind(k.SourceKind), Container: k.Container, Callable: k.Callable}
 	}
@@ -210,6 +221,9 @@ type TSExtractor struct {
 	mu        sync.Mutex
 	parsers   map[string]*tsengine.Parser // variant key -> live parser
 	tsQueries map[string]*tsengine.Query  // variant key -> compiled query bound to that parser
+	// injQueries: variant key -> compiled injections query (LB-F6), bound
+	// to the same parser and dropped with it.
+	injQueries map[string]*tsengine.Query
 
 	// faults counts engine faults (parse timeout, wasm trap, query-run
 	// failure) over this extractor's lifetime (critic M1). Every fault also
@@ -256,6 +270,7 @@ func (e *TSExtractor) noteFault(variant tsVariant) {
 	// The query object lives inside the same (now dropped) module instance —
 	// no separate close possible or needed.
 	delete(e.tsQueries, key)
+	delete(e.injQueries, key)
 }
 
 // Close releases every grammar module this extractor instantiated (RT-107):
@@ -270,6 +285,9 @@ func (e *TSExtractor) Close() {
 	}
 	for key := range e.tsQueries {
 		delete(e.tsQueries, key) // lived inside the closed module
+	}
+	for key := range e.injQueries {
+		delete(e.injQueries, key)
 	}
 }
 
@@ -296,9 +314,10 @@ func NewTSExtractor(name string) (*TSExtractor, error) {
 		return nil, fmt.Errorf("tsextract: unknown language %q", name)
 	}
 	return &TSExtractor{
-		spec:      spec,
-		parsers:   map[string]*tsengine.Parser{},
-		tsQueries: map[string]*tsengine.Query{},
+		spec:       spec,
+		parsers:    map[string]*tsengine.Parser{},
+		tsQueries:  map[string]*tsengine.Query{},
+		injQueries: map[string]*tsengine.Query{},
 	}, nil
 }
 
@@ -356,10 +375,39 @@ func (e *TSExtractor) Extract(service, relPath string, src []byte) ([]core.Symbo
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
+	nodes, injected, err := e.extractLocked(variant, service, relPath, src, "", 0, true)
+	if err != nil {
+		return nil, err
+	}
+	if len(injected) > 0 {
+		nodes = append(nodes, e.extractInjections(injected, service, relPath, src, nodes)...)
+	}
+	sort.Slice(nodes, func(i, j int) bool {
+		if nodes[i].Line != nodes[j].Line {
+			return nodes[i].Line < nodes[j].Line
+		}
+		return nodes[i].Name < nodes[j].Name
+	})
+	return nodes, nil
+}
+
+// tsInjection is one embedded-language range an injections query found.
+type tsInjection struct {
+	dialect    string
+	start, end uint32
+	row        int // 0-based host row the range starts on
+}
+
+// extractLocked runs one variant over src and returns its symbols (unsorted)
+// and, when withInjections, the injection ranges its injections query found.
+// pkgOverride replaces the dialect's package rule when non-empty (an
+// injected range takes its host file's package); lineOffset shifts every
+// line (an injected range's first row in the host). Caller holds e.mu.
+func (e *TSExtractor) extractLocked(variant tsVariant, service, relPath string, src []byte, pkgOverride string, lineOffset int, withInjections bool) ([]core.SymbolNode, []tsInjection, error) {
 	ctx := context.Background()
 	p, q, err := e.parserFor(ctx, variant)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	tree, err := p.Parse(src)
@@ -371,17 +419,25 @@ func (e *TSExtractor) Extract(service, relPath string, src []byte) ([]core.Symbo
 		// existing non-fatal extract-error path fingerprints the file so it
 		// is not retried until its bytes or the ExtractorEpoch change.
 		e.noteFault(variant)
-		return nil, fmt.Errorf("tsextract[%s] %s: parse: %v: %w", e.spec.name, relPath, err, ErrTSEngineFault)
+		return nil, nil, fmt.Errorf("tsextract[%s] %s: parse: %v: %w", e.spec.name, relPath, err, ErrTSEngineFault)
 	}
 	defer tree.Close()
 
 	matches, err := q.Run(tree)
 	if err != nil {
 		e.noteFault(variant)
-		return nil, fmt.Errorf("tsextract[%s] %s: query: %v: %w", e.spec.name, relPath, err, ErrTSEngineFault)
+		return nil, nil, fmt.Errorf("tsextract[%s] %s: query: %v: %w", e.spec.name, relPath, err, ErrTSEngineFault)
 	}
 
 	rules := variant.rules
+	var injected []tsInjection
+	if withInjections && rules.injectionsQuery != "" {
+		injected, err = e.injectionRanges(variant, tree, src)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
 	defs, calls, typeRefs := splitTSMatches(matches, rules.kinds, src)
 	e.typeRefs.Add(int64(typeRefs))
 	resolveTSParents(defs)
@@ -389,10 +445,12 @@ func (e *TSExtractor) Extract(service, relPath string, src []byte) ([]core.Symbo
 	attachTSCalls(defs, calls)
 
 	pkg := pkgFromPath(relPath)
-	switch rules.packageStrategy {
-	case "none":
+	switch {
+	case pkgOverride != "":
+		pkg = pkgOverride
+	case rules.packageStrategy == "none":
 		pkg = ""
-	case "capture":
+	case rules.packageStrategy == "capture":
 		tsPackageFromCapture(matches, src, defs, pkg)
 	}
 	nodes := make([]core.SymbolNode, 0, len(defs))
@@ -407,8 +465,8 @@ func (e *TSExtractor) Extract(service, relPath string, src []byte) ([]core.Symbo
 			Name:     d.qualName,
 			Kind:     d.kind,
 			FilePath: relPath,
-			Line:     d.line,
-			EndLine:  tsEndLine(src, d),
+			Line:     d.line + lineOffset,
+			EndLine:  tsEndLine(src, d) + lineOffset,
 			Tier:     core.TierVerified,
 			Calls:    d.calls,
 		}
@@ -417,13 +475,76 @@ func (e *TSExtractor) Extract(service, relPath string, src []byte) ([]core.Symbo
 		}
 		nodes = append(nodes, n)
 	}
-	sort.Slice(nodes, func(i, j int) bool {
-		if nodes[i].Line != nodes[j].Line {
-			return nodes[i].Line < nodes[j].Line
+	return nodes, injected, nil
+}
+
+// injectionRanges runs variant's injections query over tree: every
+// @injection.content capture whose pattern sets a static
+// injection.language naming a registered tags dialect, sorted by start.
+// Caller holds e.mu.
+func (e *TSExtractor) injectionRanges(variant tsVariant, tree *tsengine.Tree, src []byte) ([]tsInjection, error) {
+	key := variant.key()
+	iq, ok := e.injQueries[key]
+	if !ok {
+		p := e.parsers[key]
+		var err error
+		iq, err = p.CompileQuery(variant.rules.injectionsQuery)
+		if err != nil {
+			return nil, fmt.Errorf("tsextract[%s]: compiling injections of %s: %w", e.spec.name, variant.rules.id, err)
 		}
-		return nodes[i].Name < nodes[j].Name
+		e.injQueries[key] = iq
+	}
+	matches, err := iq.Run(tree)
+	if err != nil {
+		e.noteFault(variant)
+		return nil, fmt.Errorf("tsextract[%s]: injections query: %v: %w", e.spec.name, err, ErrTSEngineFault)
+	}
+	if _, err := tsRegistry(); err != nil {
+		return nil, err
+	}
+	var out []tsInjection
+	for _, m := range matches {
+		lang := iq.PatternSetting(m.PatternIndex, "injection.language")
+		if _, known := tsDialectMap[lang]; !known {
+			continue
+		}
+		for _, c := range m.Captures {
+			if c.Name == "injection.content" && c.Node.EndByte > c.Node.StartByte && int(c.Node.EndByte) <= len(src) {
+				out = append(out, tsInjection{dialect: lang, start: c.Node.StartByte, end: c.Node.EndByte, row: int(c.Node.StartRow)})
+			}
+		}
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].start != out[j].start {
+			return out[i].start < out[j].start
+		}
+		return out[i].dialect < out[j].dialect
 	})
-	return nodes, nil
+	return out, nil
+}
+
+// extractInjections (LB-F6, design §3.6) runs each injected dialect over
+// its byte range as its own document: lines offset into the host, the host
+// file's package, one level deep (an injected range's own injections are
+// not run), and no qualification across the boundary — injected symbols
+// never nest under host definitions. A range whose extraction faults is
+// skipped (the fault is counted); the host's symbols stand. Caller holds
+// e.mu.
+func (e *TSExtractor) extractInjections(injected []tsInjection, service, relPath string, src []byte, host []core.SymbolNode) []core.SymbolNode {
+	pkg := pkgFromPath(relPath)
+	if len(host) > 0 && host[0].Package != "" {
+		pkg = host[0].Package
+	}
+	var out []core.SymbolNode
+	for _, inj := range injected {
+		v := tsDialectMap[inj.dialect].defaultVariant
+		nodes, _, err := e.extractLocked(v, service, relPath, src[inj.start:inj.end], pkg, inj.row, false)
+		if err != nil {
+			continue
+		}
+		out = append(out, nodes...)
+	}
+	return out
 }
 
 // tsDef is one query-captured symbol definition, positioned by byte range so

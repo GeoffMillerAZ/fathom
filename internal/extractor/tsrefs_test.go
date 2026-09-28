@@ -18,9 +18,10 @@ func testTSExtractor(blob, entry, query string, kinds map[string]tsDefKind, muta
 	}
 	v := tsVariant{blob: blob, entryPoint: entry, rules: rules}
 	return &TSExtractor{
-		spec:      &tsLangSpec{name: "test", variantForExt: map[string]tsVariant{}, defaultVariant: v},
-		parsers:   map[string]*tsengine.Parser{},
-		tsQueries: map[string]*tsengine.Query{},
+		spec:       &tsLangSpec{name: "test", variantForExt: map[string]tsVariant{}, defaultVariant: v},
+		parsers:    map[string]*tsengine.Parser{},
+		tsQueries:  map[string]*tsengine.Query{},
+		injQueries: map[string]*tsengine.Query{},
 	}
 }
 

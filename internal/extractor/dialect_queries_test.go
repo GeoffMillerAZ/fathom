@@ -34,6 +34,13 @@ func TestDialectQueriesCompile(t *testing.T) {
 				if err != nil {
 					t.Fatalf("%s: %v", v.rules.queryFile, err)
 				}
+				if v.rules.injectionsQuery != "" {
+					iq, err := p.CompileQuery(v.rules.injectionsQuery)
+					if err != nil {
+						t.Fatalf("%s injections: %v", id, err)
+					}
+					iq.Close()
+				}
 				if _, err := os.Stat("dialects/" + id + "/testdata"); err != nil {
 					return
 				}
