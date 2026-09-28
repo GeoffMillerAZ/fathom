@@ -37,6 +37,10 @@ detection, and not built until it has its own calibration (R3, R4).
 **Experiment.** Nudges A/B by session hash. **Bar (the owner's):** episodes get shorter and cost per proven
 weight point drops. **Kill:** keep detection and reports, drop the nudge. Cost: $0 for detection.
 
+**Where it lands.** The rows are WS-1 to WS-7, WS-D1 (the deferred classifier) and WS-M1, WS-M2; the decision
+record's "Lands: WI and PE" is satisfied by pointers in those plans and by PE-22, the page that shows stall cost
+and cost per weight point, so nothing here is written twice.
+
 ## 2. Estimated weights and cost per weight point
 
 **What exists on main.** The plan grammar's `weight:` (a positive integer, default 1, never gating, SI-7)
@@ -64,7 +68,9 @@ regression on the same features is the natural model and will probably win, whic
 This also governs the estimator: a model may refine an estimated weight only after passing this test.
 
 **Mechanism.** A 5-fold held-out logistic regression versus the model's score, both settled by effort to
-proof (the session ledger joined to the verify ledger: about 3.4k sessions and 19.5k readings). **Cost:**
+proof (the session ledger joined to the verify ledger: about 3.4k sessions and 19.5k readings). Correction
+2026-09-29: most of those readings sit under scratch paths (13,514 of 19,639), so the join reads the ledger
+through the registered-roots filter (PE-24), and the corpus is counted again after filtering. **Cost:**
 pennies. **Bar:** the model beats the fitted baseline on held-out AUROC by at least 0.05 with the CI
 excluding 0. **Kill:** otherwise the U6 site uses the fitted model and the model is dropped there. **Depends
 on** the features existing: WI-16 to WI-19 are still open rows (`docs/plans/work-intelligence.md`), so E4

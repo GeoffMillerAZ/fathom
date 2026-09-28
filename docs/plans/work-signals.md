@@ -10,6 +10,11 @@ provider; the nudge and any model refinement are experiments with kill criteria.
 `docs/plans/work-intelligence.md` (WI-16 to WI-19 are still open, so E4 waits for them) and
 `docs/plans/progress-and-economics.md` (PE-15, PE-16).
 
+This plan is where the owner's stall-detection note (decision E3) and the preflight baseline (E4) land;
+`work-intelligence.md` and `progress-and-economics.md` carry pointers and the page row PE-22, never copies. Every
+ledger read here goes through the registered-roots filter (PE-24): 13,514 of the 19,639 verify-ledger rows on
+2026-09-28 sat under scratch paths, so a fold or a fit over the raw file would learn from scratch runs.
+
 ## Wave 1: detection and reports (section 1)
 
 - [ ] The deterministic stall detectors: the same test failing N times, an identical tool call repeated, edit-then-revert cycles, verify failing repeatedly on one row, a grep loop right after a fathom answer, tokens burned since the last proof progress above a threshold, frequent compactions {id: WS-1, symbol: DetectStalls, package: internal/stall, reachable_from: TestDetectStallsEachPattern, needs: "test-run-hook.md#TR-7", weight: 3}
@@ -29,14 +34,18 @@ provider; the nudge and any model refinement are experiments with kill criteria.
 
 - [ ] `EstimateRowWeight`: a deterministic estimate from the anchor type, planned files and the blast radius of the anchor's package, dependent rows, and the effort of similar proven rows from the U6 feature index; shown as "estimated weight" beside any authored weight and never overwriting it {id: WS-8, symbol: EstimateRowWeight, package: internal/console, reachable_from: TestEstimateRowWeightNeverOverwritesAuthored, needs: "work-intelligence.md#WI-16", weight: 3}
 - [ ] One command accepts an estimate into the plan as the author's own weight {id: WS-9, symbol: cmdPlansWeightAccept, package: cmd/fathom, reachable_from: TestCmdPlansWeightAcceptWritesAuthoredWeight, needs: "WS-8"}
-- [ ] Cost per proven WEIGHT POINT, not only per row, on the Progress and Economics pages, per model, harness and zone {id: WS-10, symbol: CostPerWeightPoint, package: internal/console, reachable_from: TestCostPerWeightPointPerModelAndZone, needs: "progress-and-economics.md#PE-15,progress-and-economics.md#PE-16,WS-9"}
+- [ ] Cost per proven WEIGHT POINT, not only per row, on the Progress and Economics pages, per model, harness and zone {id: WS-10, symbol: CostPerWeightPoint, package: internal/console, reachable_from: TestCostPerWeightPointPerModelAndZone, needs: "progress-and-economics.md#PE-15,progress-and-economics.md#PE-16,progress-and-economics.md#PE-24,WS-9"}
 - [ ] With provider none the estimate is the deterministic one; a model may refine it only after passing calibration {id: WS-11, symbol: EstimateRowWeight, package: internal/console, reachable_from: TestEstimatedWeightProviderNoneIsDeterministic, needs: "WS-8"}
 - [ ] (op) WS-M3: the estimated-weight error against actual effort (tokens, turns, wall time per proven row) is published {id: WS-M3, oracle: lexical, path: docs/bench/readings/work-signals/weight-error.md, pattern: "^WS-M3 reading:", needs: "WS-10"}
 
 ## Wave 4: the preflight site against a fitted baseline, E4 (section 3)
 
-- [ ] A 5-fold held-out logistic regression on the U6 features, settled by effort to proof (the session ledger joined to the verify ledger) {id: WS-12, symbol: fitPreflightBaseline, package: internal/console, reachable_from: TestFitPreflightBaselineHeldOutFiveFold, needs: "work-intelligence.md#WI-16,work-intelligence.md#WI-19"}
+- [ ] A 5-fold held-out logistic regression on the U6 features, settled by effort to proof (the session ledger joined to the verify ledger) {id: WS-12, symbol: fitPreflightBaseline, package: internal/console, reachable_from: TestFitPreflightBaselineHeldOutFiveFold, needs: "work-intelligence.md#WI-16,work-intelligence.md#WI-19,progress-and-economics.md#PE-24"}
 - [ ] (op) WS-M4: the model's score beats the fitted baseline on held-out AUROC by at least 0.05 with the CI excluding 0, or the U6 model site is dropped and the fitted model serves {id: WS-M4, oracle: lexical, path: docs/bench/readings/work-signals/preflight-baseline.md, pattern: "^WS-M4 verdict: (PASS|DROP)", needs: "WS-12"}
+
+## Deferred (recorded so they are not re-proposed)
+
+- [-] A typed model classifies ambiguous stall episodes as productive iteration versus stuck: sampled, calibrated against the owner's labels through the one-key verdict, an opt-in site (it joins `decide.OptInSites` when built, R2), never required for detection {id: WS-D1, disposition: deferred, reason: "detection is deterministic first (WS-X2); the classifier needs its own calibration (R3, R4) and episodes the deterministic checks cannot settle", trigger: "WS-M1 shows ambiguous episodes exist and a provider passes calibration on this site (R3)"}
 
 ## Refused (recorded so they are not re-proposed)
 

@@ -7,6 +7,10 @@ Design: `docs/design/work-intelligence.md` (section numbers below are its). Goal
 (the join rule, ADR-051 decision 1); proof history and the session join come from
 `docs/plans/progress-and-economics.md`. Invariant I58 rises from `stated` as WI-14 lands.
 
+Stall detection, estimated weights, cost per proven weight point and the preflight baseline (decisions E3 and E4 of
+the 2026-09-29 judgment research) are `docs/plans/work-signals.md`; they read WI-4, WI-5, WI-9 and WI-15 to WI-19
+and are not repeated here. WI-16 to WI-19 stay open and are what WS-8 and WS-12 wait for.
+
 ## Wave 2: proof regressions generalized (U12)
 
 - [x] Certificate regressions: live to flaky, broken or unproven, with the reading and commit {id: WI-20, symbol: certificateRegressions, package: internal/console, reachable_from: TestCertificateRegressionsWithCommit}
@@ -35,7 +39,7 @@ Design: `docs/design/work-intelligence.md` (section numbers below are its). Goal
 
 - [ ] The difficulty profile of a row: blast radius, governed rules and levels, certificates to re-prove, zone interest, k = 5 similar rows' effort {id: WI-16, symbol: DifficultyProfile, package: internal/console, reachable_from: TestDifficultyProfileDeterministic, needs: "WI-15"}
 - [ ] The deterministic tier recommendation from a published rule table; advisory, printed by `plans context --row` and on the console; never dispatches {id: WI-17, symbol: recommendTier, package: internal/console, reachable_from: TestRecommendTierAdvisoryOnly, needs: "WI-16"}
-- [ ] The decision port's Score over the same features, shown with its calibration, only with `[decide]` configured (I42) {id: WI-18, symbol: preflightScore, package: internal/console, reachable_from: TestPreflightScoreOnlyWithProvider, needs: "WI-16"}
+- [ ] The decision port's Score over the same features, shown with its calibration, only with `[decide]` configured (I42); it may refine an estimated row weight (`work-signals.md#WS-11`) only after it beats a fitted baseline (`work-signals.md#WS-M4`) {id: WI-18, symbol: preflightScore, package: internal/console, reachable_from: TestPreflightScoreOnlyWithProvider, needs: "WI-16"}
 - [ ] Outcomes recorded (model used, effort, proven or not) to calibrate the preflight {id: WI-19, symbol: recordPreflightOutcome, package: internal/console, reachable_from: TestRecordPreflightOutcome, needs: "WI-17"}
 
 ## Refused (recorded so they are not re-proposed)
