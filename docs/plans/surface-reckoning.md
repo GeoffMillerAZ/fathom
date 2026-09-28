@@ -65,7 +65,7 @@ falsely.
 - [x] F-24: `query_symbols` opens with a one-line `answer:` and a lower default top-N {id: SR-43, symbol: querySymbolsAnswerLine, package: internal/mcp, reachable_from: TestQuerySymbolsAnswerFirst}
 - [x] F-25: the prompt hook routes a stack trace, a failing test name or an error string to `localize` deterministically {id: SR-44, symbol: routeIssueShapedPrompt, package: cmd/fathom, reachable_from: TestPromptHookRoutesIssueShapesToLocalize}
 - [ ] F-26: a checkable served rule compiles to an `enforce: true` guard and the `obligations` answer marks it checkable {id: SR-45, symbol: guardFromCheckableRule, package: internal/guardspec, reachable_from: TestCheckableRuleCompilesToGuard}
-- [ ] F-28: `fathom init` wires the prompt hook by default {id: SR-46, symbol: cmdInit, package: cmd/fathom, reachable_from: TestInitWiresPromptHookByDefault}
+- [x] F-28: `fathom init` wires the prompt hook by default {id: SR-46, symbol: cmdInit, package: cmd/fathom, reachable_from: TestInitWiresPromptHookByDefault}
 - [ ] F-29: guard verdicts are emitted as SARIF 2.1.0 {id: SR-47, symbol: guardVerdictsSARIF, package: internal/guardspec, reachable_from: TestGuardVerdictsSARIFGolden}
 - [ ] F-31: when a served rule is violated, the next edit-hook turn asks for a one-key verdict and writes it as refute or corroborate {id: SR-48, symbol: askRuleVerdict, package: cmd/fathom, reachable_from: TestEditHookAsksVerdictOnIgnoredRule}
 - [ ] F-34: `review_diff` emits the change risk receipt (U7) — blast radius, certificates, conservation, rules, reviewers — as SARIF and a GitHub check payload {id: SR-49, symbol: changeRiskReceipt, package: internal/analysis/review, reachable_from: TestChangeRiskReceiptGolden}
