@@ -39,6 +39,21 @@
       "gz_bytes": 136140
     },
     {
+      "blob": "csharp",
+      "repo": "tree-sitter/tree-sitter-c-sharp",
+      "tag": "v0.23.5",
+      "commit": "cac6d5fb595f5811a076336682d5d595ac1c9e85",
+      "tarball_sha256": "9628b164369071019368618bdefa446f0aab8acaac47b75d5dfb209e93b8903b",
+      "licence": "MIT",
+      "entry_points": ["tree_sitter_c_sharp"],
+      "scanner": true,
+      "generate": false,
+      "abi": 15,
+      "blob_sha256": "b0700502f93f8e6fa577c47faa1dfcd53ae8b7467d16c621102238e75de8159f",
+      "blob_bytes": 3056786,
+      "gz_bytes": 603861
+    },
+    {
       "blob": "css",
       "repo": "tree-sitter/tree-sitter-css",
       "tag": "v0.25.0",
