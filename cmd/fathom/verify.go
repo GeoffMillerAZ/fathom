@@ -58,7 +58,7 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 	requireAll := fs.Bool("require-all", false, "wave gate: additionally fail on open/in-progress tasks (ADR-018 §2)")
 	concern := fs.String("concern", "", "optional concern for contradiction scoping")
 	jsonOut := fs.Bool("json", false, "emit JSON report + gate result instead of human text")
-	format := fs.String("format", "", "output format: text (default) | json | sarif — SARIF 2.1.0 of the refusals, one rule per criterion, located at the plan line (PC-21)")
+	format := fs.String("format", "", "output format: text (default) | json | sarif | check-run — SARIF 2.1.0 of the refusals, one rule per criterion, located at the plan line (PC-21); check-run is a GitHub check-run JSON body (name, conclusion, output.summary/annotations, capped at 50 annotations) written here, never posted (GL-21)")
 	quietPass := fs.Bool("quiet-pass", false, "suppress output when gate passes (exit 0)")
 	quiet := fs.Bool("quiet", false, "print only failing (and, with --strict, unknown) task rows plus the summary; composes with --quiet-pass")
 	mutationPath := fs.String("mutation", "", "VB-34: mutation-testing report (go-mutesting log output, or fathom's own JSON shape); a claimed row whose symbol has mutation score 0 gets a covered-not-asserted note (falls back to $"+mutationReportEnvVar+"; direct/--store mode only)")
@@ -80,9 +80,9 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 		*format = "json"
 	}
 	switch *format {
-	case "", "text", "json", "sarif":
+	case "", "text", "json", "sarif", "check-run":
 	default:
-		fmt.Fprintf(stderr, "error: --format %q: want text, json or sarif\n", *format)
+		fmt.Fprintf(stderr, "error: --format %q: want text, json, sarif or check-run\n", *format)
 		return 2
 	}
 	if (*writeFixups || *convergeBase != "") && !*converge {
@@ -290,6 +290,33 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 
 	if *format == "sarif" {
 		_, _ = stdout.Write(verify.RenderSARIF("fathom verify", verify.GateSARIF(plans, reports, *strict)))
+	} else if *format == "check-run" {
+		// GL-21 (design doc §8 "Check payload"): the same refusals GateSARIF
+		// renders, as a GitHub check-run body instead — fathom writes it
+		// here and never posts it (the caller's CI, or a forge app, does).
+		total, claimed, passed, failed := 0, 0, 0, 0
+		for _, rep := range reports {
+			for _, tv := range rep.Tasks {
+				total++
+				if tv.Claimed && !tv.Skipped {
+					claimed++
+					switch {
+					case tv.Status == verify.Pass:
+						passed++
+					case tv.Status == verify.Fail:
+						failed++
+					case *strict && tv.Status == verify.Unknown:
+						failed++
+					}
+				}
+			}
+		}
+		conclusion := "success"
+		if !gatePass {
+			conclusion = "failure"
+		}
+		summary := fmt.Sprintf("%d tasks total; %d claimed: %d verified, %d failing", total, claimed, passed, failed)
+		_, _ = stdout.Write(verify.RenderCheckRun("fathom verify", conclusion, summary, verify.GateCheckRunAnnotations(plans, reports, *strict)))
 	} else if *format == "json" {
 		out := verifyJSONDoc(reports, allFail)
 		if *converge {
@@ -373,7 +400,7 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 			}
 		}
 	}
-	if *converge && *format != "json" && *format != "sarif" {
+	if *converge && *format != "json" && *format != "sarif" && *format != "check-run" {
 		for _, r := range converged {
 			specdialect.RenderConverge(stdout, r)
 		}
