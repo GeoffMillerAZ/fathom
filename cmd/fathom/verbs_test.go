@@ -101,6 +101,37 @@ func TestUsageOmitsFrozenVerbs(t *testing.T) {
 	}
 }
 
+// TestUsageOmitsInternalVerbs pins SR-30 (surface reckoning F-44 "CUE
+// shadows"): `gen-status-cue` and `gen-plan-cue` are internal dev/round-trip
+// tooling (ADR-018 decision 3), not agent-facing verbs. They stay fully
+// dispatched — verbNames()/isVerb() still name them, so the round-trip
+// tests and any script calling them directly keep working — but leave
+// `fathom help`'s rendered output.
+func TestUsageOmitsInternalVerbs(t *testing.T) {
+	for _, name := range []string{"gen-status-cue", "gen-plan-cue"} {
+		if !isVerb(name) {
+			t.Errorf("%q must stay dispatched (internal, not deleted)", name)
+		}
+	}
+	var out bytes.Buffer
+	printUsage(&out)
+	rendered := out.String()
+	for _, name := range []string{"gen-status-cue", "gen-plan-cue"} {
+		if strings.Contains(rendered, "  "+name+" ") {
+			t.Errorf("printUsage output names internal verb %q — it should be hidden from help", name)
+		}
+	}
+	var found []string
+	for _, v := range verbTable {
+		if (v.Name == "gen-status-cue" || v.Name == "gen-plan-cue") && !v.Hidden {
+			found = append(found, v.Name)
+		}
+	}
+	if len(found) > 0 {
+		t.Errorf("verbTable rows not marked Hidden: %v", found)
+	}
+}
+
 // maintainedLineNames returns the snake_case tool names and CLI verb names
 // a `## Maintained` line claims. Use-case docs end with such a line naming
 // what the doc depends on; on 2026-08-25 four of them still named
