@@ -283,17 +283,27 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 	}
 }
 
+// printUsage renders the dispatched verb table, skipping any verb frozen
+// out of help (verb.Hidden, SR-16/SR-18): still fully dispatched and
+// callable (TestHelpListsEveryDispatchedVerb pins that), just not
+// something an agent discovers by browsing `fathom help`.
 func printUsage(w io.Writer) {
 	fmt.Fprintln(w, "Usage: fathom <subcommand> [flags]")
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "Subcommands:")
 	width := 0
 	for _, v := range verbTable {
+		if v.Hidden {
+			continue
+		}
 		if n := len(v.Name); n > width {
 			width = n
 		}
 	}
 	for _, v := range verbTable {
+		if v.Hidden {
+			continue
+		}
 		fmt.Fprintf(w, "  %-*s  %s\n", width, v.Name, v.Summary)
 	}
 }

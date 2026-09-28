@@ -17,6 +17,14 @@ package main
 type verb struct {
 	Name    string
 	Summary string
+	// Hidden freezes a verb out of `fathom help` (SR-16/SR-18, surface
+	// reckoning F-53/F-70) while it stays fully dispatched and callable—
+	// for a verb an ADR keeps alive on a closed allowlist (research,
+	// ADR-046 decision 6) or behind an off-by-default capability (assess,
+	// ADR-046/ADR-053), not one anyone should discover by browsing help.
+	// TestHelpListsEveryDispatchedVerb still requires it dispatched AND in
+	// this table; only printUsage's rendering skips it.
+	Hidden bool
 }
 
 // verbTable is every subcommand `main` dispatches, in help order.
@@ -76,12 +84,12 @@ var verbTable = []verb{
 	{Name: "rate", Summary: "Rate this session 1-5: the OUTCOME half of the A/B criterion (fewer tokens is not a win if you got less done)"},
 	{Name: "arm", Summary: "A/B counterfactual arm (law 12): off --for D --sessions N [--note ...] | on"},
 	{Name: "narrate", Summary: "Self-expiring story mode: on --for D --sessions N [--note ...] | off"},
-	{Name: "assess", Summary: "Priced, explicit, off by default: a model judges a unit's on-disk work (typed questions, never the transcript): [--session S] [--interventions] [--dry-run] [--json] | spend"},
+	{Name: "assess", Summary: "Priced, explicit, off by default: a model judges a unit's on-disk work (typed questions, never the transcript): [--session S] [--interventions] [--dry-run] [--json] | spend", Hidden: true}, // SR-18: frozen (ADR-046/ADR-053)
 	{Name: "retro", Summary: "Did the firings help? Join a session's interventions to outcomes: [--session S | latest stamped] [--write] [--json]"},
 	{Name: "brief", Summary: "Write the shareable markdown value brief (honesty covenant included) to ~/.fathom/briefs, or --print"},
 	{Name: "thread", Summary: "Continuity threads: brief | note | point | list | close | promote | handoff — the work, not the session (vision 21)"},
 	{Name: "fleet", Summary: "Fleet operations: report | reconcile [--apply] | realization --service S | receipts | undo <receipt> (every write receipted, every receipt reversible) | remedy: time-to-remedy per repository from the report snapshots"},
-	{Name: "research", Summary: "The research flywheel: report (aggregate local evidence) | bundle (sanitized, shareable summary)"},
+	{Name: "research", Summary: "The research flywheel: report (aggregate local evidence) | bundle (sanitized, shareable summary)", Hidden: true}, // SR-16: frozen (ADR-046 decision 6), not deleted
 	{Name: "module", Summary: "Expert-module lifecycle: init | sources | map | compile | eval | doctor | pack | runs"},
 	{Name: "rules", Summary: "Compiled governance (VB-13/VB-14): gen-test [--root DIR] [--out DIR] emits a Go test from .fathom/guard.cue's layer_rules | replay --since <ref|N> [--rules FILE] [--json]: evaluate today's rules against past commits (VB-16)"},
 	{Name: "receipt", Summary: "A stranger's re-derivation (VB-20): verify [--repo DIR] <receipt.json> checks a saved answer against a bare git checkout with go/types and git alone — no daemon, no store"},
