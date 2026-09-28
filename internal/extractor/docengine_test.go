@@ -219,6 +219,40 @@ name = "two"
 		}
 	})
 
+	// A table reached only through deeper headers ([tool.black.sub]) or
+	// dotted keys (isort.profile under [tool]) is implicit: it lives where
+	// it is first written, never at its parent's line (LB-Q-python-packaging).
+	t.Run("toml implicit tables", func(t *testing.T) {
+		x := mustDoc(t, `{"decode":"toml","detect":{},"entities":[
+  {"select":"$.tool.*","kind":"section","source_kind":"PyProjectTool","name":"$key"}]}`)
+		src := `[project]
+name = "demo"
+
+[tool]
+isort.profile = "black"
+
+[tool.black.sub]
+x = 1
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E"]
+`
+		r, err := x.ExtractDoc("s", "pyproject.toml", []byte(src))
+		if err != nil {
+			t.Fatal(err)
+		}
+		lines := map[string]int{}
+		for _, n := range r.Nodes {
+			lines[n.Name] = n.Line
+		}
+		if want := map[string]int{"isort": 5, "black": 7, "ruff": 10}; !reflect.DeepEqual(lines, want) {
+			t.Fatalf("lines = %v, want %v", lines, want)
+		}
+	})
+
 	t.Run("xml", func(t *testing.T) {
 		x := mustDoc(t, `{"decode":"xml","detect":{},"entities":[
   {"select":"$","kind":"module","source_kind":"MavenProject","name":".artifactId","signature":".groupId"},

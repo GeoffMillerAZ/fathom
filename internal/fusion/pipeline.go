@@ -553,7 +553,11 @@ func parseGitLog(serviceID, raw string) []store.Commit {
 // stored observations were produced by the OLD extractor with no Calls and a
 // bare Signature, so the salt bump forces re-extraction rather than leaving
 // them silently stale.
-const ExtractorEpoch = "14"
+// Epoch 15: the doc engine's TOML locator places a table reached only
+// through deeper headers ([tool.black.sub]) or dotted keys at the first line
+// that writes under it, not at its parent's line — every already-indexed
+// pyproject.toml's [tool.*] sections were stored at line 1.
+const ExtractorEpoch = "15"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares
