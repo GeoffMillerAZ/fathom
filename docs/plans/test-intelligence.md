@@ -23,12 +23,12 @@ open in `docs/plans/test-certifications.md`. T7's rows are TC rows; only its mea
 
 ## Wave 3: coverage for every language (T3) and certifying-first selection (T4)
 
-- [ ] One block model for foreign coverage; `fathom coverage ingest <file>` bound to a commit or `unbound` (never gating), streamed, 256 MiB cap {id: TQ-9, symbol: cmdCoverageIngest, package: cmd/fathom, reachable_from: TestCmdCoverageIngestBindsCommit}
-- [ ] lcov (`.info`) parser {id: TQ-10, symbol: ParseLcov, package: internal/analysis/coverage, reachable_from: TestParseLcov, needs: "TQ-9"}
-- [ ] Cobertura XML and JaCoCo XML parsers {id: TQ-11, symbol: ParseCoberturaJaCoCo, package: internal/analysis/coverage, reachable_from: TestParseCoberturaJaCoCo, needs: "TQ-9"}
-- [ ] coverage.py JSON and Istanbul `coverage-final.json` parsers {id: TQ-12, symbol: ParseCoveragePyIstanbul, package: internal/analysis/coverage, reachable_from: TestParseCoveragePyIstanbul, needs: "TQ-9"}
-- [ ] llvm-cov JSON export parser {id: TQ-13, symbol: ParseLLVMCov, package: internal/analysis/coverage, reachable_from: TestParseLLVMCov, needs: "TQ-9"}
-- [ ] Foreign blocks join to symbols by line range where the language has L1 ranges (LB-F3), else at file level, named {id: TQ-14, symbol: joinForeignBlocks, package: internal/analysis/coverage, reachable_from: TestJoinForeignBlocksByRange, needs: "TQ-10,language-breadth.md#LB-F3"}
+- [x] One block model for foreign coverage; `fathom coverage ingest <file>` bound to a commit or `unbound` (never gating), streamed, 256 MiB cap {id: TQ-9, symbol: cmdCoverageIngest, package: cmd/fathom, reachable_from: TestCmdCoverageIngestBindsCommit}
+- [x] lcov (`.info`) parser {id: TQ-10, symbol: ParseLcov, package: internal/analysis/coverage, reachable_from: TestParseLcov, needs: "TQ-9"}
+- [x] Cobertura XML and JaCoCo XML parsers {id: TQ-11, symbol: ParseCoberturaJaCoCo, package: internal/analysis/coverage, reachable_from: TestParseCoberturaJaCoCo, needs: "TQ-9"}
+- [x] coverage.py JSON and Istanbul `coverage-final.json` parsers {id: TQ-12, symbol: ParseCoveragePyIstanbul, package: internal/analysis/coverage, reachable_from: TestParseCoveragePyIstanbul, needs: "TQ-9"}
+- [x] llvm-cov JSON export parser {id: TQ-13, symbol: ParseLLVMCov, package: internal/analysis/coverage, reachable_from: TestParseLLVMCov, needs: "TQ-9"}
+- [x] Foreign blocks join to symbols by line range where the language has L1 ranges (LB-F3), else at file level, named {id: TQ-14, symbol: joinForeignBlocks, package: internal/analysis/coverage, reachable_from: TestJoinForeignBlocksByRange, needs: "TQ-10,language-breadth.md#LB-F3"}
 - [ ] Certifying-first selection: the minimal set re-proving every touched certificate (greedy set cover, deterministic tie-break), `--safe` adds every reaching test (§3 T4) {id: TQ-15, symbol: SelectCertifyingFirst, package: internal/certify, reachable_from: TestSelectCertifyingFirstCoversTouched}
 - [ ] The selection's CI time saved from attested run durations, recorded for economics {id: TQ-16, symbol: selectionTimeSaved, package: internal/certify, reachable_from: TestSelectionTimeSaved, needs: "TQ-15"}
 
