@@ -55,8 +55,8 @@ func TestCompiledGrammarsChargedToMemo(t *testing.T) {
 	}
 	defer mod.Close(ctx)
 
-	// Shed: trim to one grammar's worth — python (least recently used... it
-	// was just re-acquired, so javascript goes first).
+	// Shed: trim to one grammar's worth. python was just re-acquired, so
+	// javascript is the least recently used and goes.
 	reg.SetBudget(py.BlobBytes+js.BlobBytes, 0)
 	reg.Trim(memo.ReasonShed, float64(py.BlobBytes)/float64(py.BlobBytes+js.BlobBytes))
 	if !cgJS.isClosed() {
