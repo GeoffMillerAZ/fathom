@@ -101,3 +101,21 @@ by: owner (with counsel). Nothing is built until a contribution is offered.
 **Q30. Is "Fathom" protectable as a trademark?** Other products use the name; the licence's
 Trademarks clause reserves marks but establishes none. Blocks: F2's public naming (a
 marketplace listing, a brew tap). Answerable by: owner (with counsel). Not legal advice.
+
+**Q31. Can a fast typed-judgment model read code well enough to order or prune anything?** Nobody has
+measured it: the model reads literally, cannot count or compare and does not follow indirection, and code is
+full of indirection. J0 (`docs/plans/judged-predicates.md` JP-M1) is the kill screen, with a lexical baseline the
+model must beat. Blocks: `fathom ask`, the traversal scorer and files at scale (F34, F36, F37). Answerable by:
+evidence (JP-M1), then owner.
+
+**Q32. What do the harness hooks carry at the moments the judgment program needs?** Unverified: whether
+PostToolUse(Bash) input carries an exit code and whether a failing test command arrives as PostToolUse or
+PostToolUseFailure (TR-V1); whether SessionStart with source `compact` fires and accepts additional context
+(CA-V1); whether the SubagentStart input carries the sub-agent's prompt, and whether RC-28's 591-byte rows are
+boilerplate (XM-V1). Blocks: the test-run hook's registration and exit-code use, carry-across, and relevance
+selected map entries. Answerable by: evidence (the three verification readings).
+
+**Q33. Unfreeze the assess lanes (ADR-046) as the judged-telemetry host, or supersede them?** Judged telemetry
+would otherwise rebuild assess's consent capability, spend isolation and judge process, and a parallel lane is
+refused; assess itself is frozen by ADR-053. Blocks: the sampler, queue and judgments table (F40), needed only
+after RT-M1 reads PASS. Answerable by: owner.

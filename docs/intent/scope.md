@@ -145,6 +145,44 @@ scorecard on at least 90% of cells) and FM-M2 (verdict-proposal agreement at lea
 n at least 3, or the proposal path is dropped) read PASS.
 {bet: feature-map, instrument: "fathom plans status", threshold: "FM-M1 at least 90% cell match against the 86-feature scorecard; FM-M2 verdict-proposal agreement at least 0.8 or the path is dropped", review: 2027-01-31}
 
+**G27. Level 10 through fathom: the test-run hook is measured against control and raw level 10 (ADR-056).**
+Done when: `docs/plans/test-run-hook.md` TR-M1 reads PASS (arm B, the hook at tiers 0 and 1 with provider none,
+uses at least 20 percent fewer tokens-to-green than control, the paired CI excludes 0, correctness does not drop)
+or reads FAIL with the reading published and the hook left off, and TR-M2 (raw level 10 read against B) is
+published either way.
+{bet: test-run-hook, instrument: "fathom plans status", threshold: "TR-M1 arm B at least 20 percent fewer tokens-to-green than control with the paired CI excluding 0 and no correctness drop, or the FAIL reading published with the hook left off; TR-M2 raw level 10 read either way", review: 2027-01-31}
+
+**G28. Does a typed judgment model read code? Decided before any site reads code with one (ADR-056).**
+Done when: `docs/plans/judged-predicates.md` JP-M1 (the J0 kill screen) reads PASS or KILL. A KILL drops F34, F36
+and F37; a PASS is followed by the 40-handlers cell JP-M3, read against arm A (arm C at least 40 percent fewer
+tokens at recall and precision within 0.05, CI excluding 0). The showcase property is never a security property.
+{bet: judged-predicates, instrument: "fathom plans status", threshold: "JP-M1 J0 screen reads PASS or KILL before any code-reading site is built; if PASS, JP-M3 arm C at least 40 percent fewer tokens than control at recall and precision within 0.05 with the CI excluding 0", review: 2027-02-15}
+
+**G29. Judgments are calibrated, not assumed (ADR-056).** Done when: `docs/plans/judgment-foundations.md`
+JF-1 to JF-12 are proven (the renamed rule-outcome events, per-site opt-in, `route` off by default, the
+deterministic certify ladder, calibration readings), JF-M1 (a first calibration reading) exists, and
+`docs/plans/judged-telemetry.md` JT-M1 reads PASS (`failure_kind` judged versus settled or human agreement at
+least 0.8 on at least 100 adjudicated items across at least 3 sittings) or the template is dropped.
+{bet: judged-calibration, instrument: "fathom plans status", threshold: "JF-1 to JF-12 proven; JF-M1 first calibration reading; JT-M1 judged versus human agreement at least 0.8 on at least 100 adjudicated items across at least 3 sittings, or the template dropped", review: 2027-03-15}
+
+**G30. Exploration maps cut sub-agent tokens without losing accuracy, or are not built (ADR-056).**
+Done when: `docs/plans/exploration-maps.md` XM-M1 records BUILD or KILL from the 14-day re-derivation reading, and
+if BUILD, XM-M2 (the A/B on identical briefs) reads at least 25 percent fewer sub-agent tokens, no accuracy loss
+and under 5 percent stale entries.
+{bet: exploration-maps, instrument: "fathom plans status", threshold: "XM-M1 records BUILD or KILL; if BUILD, XM-M2 at least 25 percent fewer sub-agent tokens with no accuracy loss and under 5 percent stale entries", review: 2027-01-31}
+
+**G31. Context survives compaction, measured, or the deliberate silence stands (ADR-056).** Done when:
+`docs/plans/carry-across.md` CA-V1 verifies the hook, CA-M1 (Reading 0) records BUILD or STOP, and if BUILD,
+CA-M2 reads re-reads of the pre-compaction set down at least 30 percent with the CI excluding 0 and tokens-to-proof
+not worse.
+{bet: carry-across, instrument: "fathom plans status", threshold: "CA-V1 verified; CA-M1 records BUILD or STOP; if BUILD, CA-M2 re-reads of the pre-compaction set down at least 30 percent with the CI excluding 0 and tokens-to-proof not worse", review: 2027-01-15}
+
+**G32. Work signals: stalls detected without a model, weights estimated with a published error (ADR-056).**
+Done when: `docs/plans/work-signals.md` WS-M1 (candidate stall episodes checked against abandoned sessions and later
+green runs), WS-M2 (the nudge A/B, keep or drop), WS-M3 (the estimated-weight error published) and WS-M4 (the
+preflight model against a fitted baseline, keep or drop) are read.
+{bet: work-signals, instrument: "fathom plans status", threshold: "WS-M1 episodes checked against abandoned sessions and green runs; WS-M2 nudge keep or drop recorded; WS-M3 estimated-weight error published; WS-M4 preflight model keep or drop recorded", review: 2027-02-28}
+
 **G11. A reading, a hand-off and an answer carry their evidence (ADR-034).** The first
 round's 74 rows were voided by an instrument defect (the wired arm never had the tools; O41
 voided G10, ADR-033's ledger goal, on 2026-09-13 and it folds in here);

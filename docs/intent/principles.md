@@ -86,6 +86,15 @@ parent leaves, and stays visible when it cannot answer. A request pays for its a
 for the repository (P19). Self-protection is deterministic thresholds, never judgement.
 Source: ADR-047, `docs/vision/36-responsible-tenant.md`, INC-23.
 
+**P24. Judgment rides the improvement curve; proof never moves.** Fast typed-judgment models (Jev is the first)
+will keep improving in accuracy, calibration, price and latency, and fathom rides that curve without redesign:
+every judgment is a typed decision-port site (a schema plus a provider), every site owns a calibration set that
+grows, features are deterministic with provider none and use judgment only in the bands where calibration has
+passed, judgments are cached by (template, content hash) stamped with provider and model and kept apart from
+proof, and nothing locks in a vendor. A model answer is never a receipt a stranger can re-derive, however good
+the model becomes, and judgment never replaces proof for anything fathom can compute. No feature is built whose
+value exists only if a future model arrives. Source: ADR-056, `docs/design/judgment-foundations.md` section 2.
+
 ## Tensions
 
 **T1. Fail-open pre-push vs gate strength.** Default: pre-push fails open on exit 2, CI

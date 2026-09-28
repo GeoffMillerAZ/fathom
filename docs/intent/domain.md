@@ -45,6 +45,15 @@ shaped decisions, and the assumptions the design rests on.
   Source: law 6, `docs/vision/11-dial-to-eleven.md` §2.
 - **kill clock** — the 30-day zero-call window after which a tool is deleted; it starts
   only when a consumer population exists. Source: law 8; `docs/vision/05-surfaces.md`.
+- **decision-port site**: one typed judgment question shape (`route`, `certify_suggest`, `triage_failure`,
+  `ask`, ...) that talks to a provider only when the repository lists it in `[decide] sites`; every site added
+  after ADR-056 is opt-in. Source: ADR-042, ADR-056.
+- **judged**: the tier label on any decision-port answer shown to a reader: a model's judgment, uncalibrated
+  until its (site, template, provider, resolved model) reading clears the bar, never a code fact or proof.
+  Source: ADR-056, I59.
+- **exploration map**: an anchored record (symbol key plus content hash plus a why line) of which code matters for
+  a purpose, composable by reference and delivered at handoff rather than looked up; a live map is a saved query
+  beside the semantic layers' claims. Source: ADR-056, `docs/design/exploration-maps.md`.
 - **law N** — doctrine laws 1–15. Source: `docs/vision/11` §2 (1–8), `12` (9), `13`
   (10–12), `14` (13–14), `20` §6 (15); summarized in `principles.md`.
 
@@ -140,6 +149,19 @@ shaped decisions, and the assumptions the design rests on.
   differently as tars. Consequence: the vendor drift guard hashes per-file content. Source: ADR-019.
 - Tree-sitter grammar `.wasm` blobs target the Emscripten ABI, not bare wazero; the working
   path compiles tree-sitter's own core plus one grammar to wasm32-wasi. Source: ADR-013, ADR-021 §4.
+- A typed-judgment model (Jev 1.13 through the `typesafe` provider) answers choice, score and noul questions over
+  one state. It cannot generate text, cannot count or compare dates, does not follow indirection and is weak on
+  negation. Limits: 64k tokens per request (32k for the state plus the longest question), 20 requests per second
+  binding before tokens do, no multi-state batch endpoint; measured 421 to 587 ms at about 22k tokens of state
+  (130 to 375 ms for small states); $0.042 per million input tokens, output free. An llm lane costs 17 to 41
+  times more per call and took 1.5 to 2.8 s (3 of 6 calls timed out at 3 s). Consequence: judged sites are
+  text-shaped and small-unit, fan out one row per call, and the llm lane serves the CLI only. Source: ADR-042
+  amendments, ADR-056, `docs/design/judgment-foundations.md` section 4.
+- In Claude Code a hook cannot trigger compaction, PreCompact can block but cannot inject context, only
+  SessionStart with source `compact` can add context afterwards, and a system message from UserPromptSubmit or
+  Stop reaches the user only. Consequence: carry-across is the only fathom-side compaction piece; acting on
+  "compact now" needs a harness that owns compaction. To verify against the current version (Q32). Source:
+  `docs/design/carry-across.md` section 1.
 
 ## Assumptions
 
@@ -164,3 +186,7 @@ shaped decisions, and the assumptions the design rests on.
   mirror serves. If the kit becomes public, ADR-019's mirror is removable.
 - Kill clocks have a consumer population (sessions from non-fathom repos in the call log).
   If false, zero-call is exposure-zero and nothing may be killed. Source: law 8.
+- Fast typed-judgment models keep improving (P24) and Jev stays available. If false: nothing breaks by
+  construction, because every judged feature has a deterministic path and provider `none` is the default; only
+  an optional provider lane and its calibration readings are lost. Jev signups were paused on 2026-09-22 and its
+  OpenRouter access is alpha. Source: ADR-056.

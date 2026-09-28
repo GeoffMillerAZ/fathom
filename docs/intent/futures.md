@@ -93,6 +93,10 @@ futures may justify a free option today. The repo's own sequence is
 - Motivation: the first non-citable claim kind. Evidence: ADR-016.
 - Do not build: the tier. Preserve: `tier_profile` column (ADR-017); tiers declared in CUE.
 - Promote when: a non-citable claim kind is proposed with its own eval. Drop if: never needed.
+- **Named 2026-09-29 (ADR-056):** a decision-port template that passes R3's pruning-and-gating bar may graduate
+  to a judged layer whose rows are claims at this tier; J0 plus that template's calibration reading is the eval
+  this entry asks for, and the graduation needs its own ADR because `schema/semantic/schema.cue` rejects the tier
+  today. Nothing is built (`docs/plans/judged-predicates.md` JP-16).
 
 ## F8. Hosted read-only expert host (law 9)
 
@@ -238,6 +242,11 @@ always hedged, never firm, at any confidence (ADR-042's 2026-09-24 wave-2
 amendment). Revisit `route`'s own use specifically when a routing change
 passes the calibration check on a new sample; the row otherwise stands.
 
+**Read again 2026-09-29 (ADR-056):** `typesafe` is one provider of an optional port, never a default and never a
+dependency; every new decision site is opt-in per repository even with a provider set, calibration is per
+(site, provider, resolved model), and Jev's signups were paused on 2026-09-22 with OpenRouter access in alpha, so
+nothing may depend on it (P24). The entry's own drop-if stands.
+
 - Confidence: plausible. Horizon: when access exists. Evidence: ADR-042, `docs/vision/32-decision-port.md`, the 2026-09-22 assessment.
 - Promote when: an API key exists AND one site's A/B (compile pre-filter, obligations rank, or routing) shows a gain over the `llm` adapter at n ≥ 3. Drop if: the vendor's calibration fails our own adjudicated cells (0.9 not right nine times in ten) or the service is withdrawn.
 - Preserve: the port's three kinds mirror the vendor primitives; an adapter is an HTTP client, never a change to a site.
@@ -274,6 +283,9 @@ passes the calibration check on a new sample; the row otherwise stands.
 - Promote when: a frontier over 100 sites exists with an A/B corpus (ordering), or file-tier
   precision is published and a JavaScript or Python rename corpus exists (same-concept).
 - Drop if: either A/B is null or negative against the deterministic baseline.
+- **Named 2026-09-29 (ADR-056):** review narrowing (which callers depend on a change) and migration-site
+  disambiguation stay under this entry, with the same Promote-when (a frontier over 100 sites plus an A/B corpus);
+  the earlier "plan-only" promise for them is dropped.
 
 ## F24. Architectural decisions compiled into refutable dependency rules
 
@@ -397,3 +409,166 @@ passes the calibration check on a new sample; the row otherwise stands.
   licence) ships; or Review Kit's release cadence diverges from platform-engineering's; or a
   second adopter installs Review Kit standalone.
 - Drop if: Review Kit stays tied to monorepo-only consumers.
+
+## F34. `fathom ask`: judged predicates over spans the graph selects
+
+- Confidence: plausible. Horizon: later. Evidence: ADR-056, `docs/design/judged-predicates.md` section 3.
+- Motivation: level 10's own question generalized: an agent asks a typed model about N code units without reading
+  N files, fathom being the planner (it selects rows, computes what is computable, assembles the unit and its
+  context, builds options from index facts) and the model a semantic predicate on the residue only.
+- Do not build: the verb, an MCP tool, a computable-operator grammar (existing tools answer those), a model that
+  decides what is computable, or any answer that prunes before R3's bar.
+- Preserve: opt-in per site (`ask` is in `decide.OptInSites`), provider none returns the computed rows and the
+  redacted request plan, a CLI verb plus a lazily loaded skill adds no schema bytes.
+- Promote when: J0 (`docs/plans/judged-predicates.md` JP-M1) passes and the model beats the lexical baseline.
+- Drop if: J0 fails, or the 40-handlers cell shows arm C under 40 percent fewer tokens than control at recall and
+  precision within 0.05.
+
+## F35. Tier 2 of the test-run hook: a failure-kind judgment
+
+- Confidence: plausible. Horizon: later. Evidence: ADR-056, `docs/design/test-run-hook.md` section 5.
+- Motivation: after the deterministic line names the failing tests and the changed symbols they reach, a choice
+  over code bug, environment, timing, outdated expectation or other can settle itself from where the fix lands.
+- Do not build: the site, or any display of `test_expectation_outdated` before it clears R3's bar (it licenses
+  editing a test to match buggy output).
+- Preserve: the hook's line is byte-identical with any provider; the parse keeps a settle-able failure record.
+- Promote when: the hook has logged at least 100 failing runs later followed by green, and J0 has run.
+- Drop if: arm C fails to beat arm B by 10 percent on turns or correctness, or agreement stays under 0.8 after
+  one template revision.
+
+## F36. Question-directed traversal (`localize kind: question`)
+
+- Confidence: plausible. Horizon: later. Evidence: ADR-056, `docs/design/judged-predicates.md` section 4.
+- Motivation: exploration as a best-first walk of the typed neighbours, scored against the agent's own question,
+  strong nodes never pruned; its natural delivery is as a builder of exploration maps.
+- Do not build: a scorer before the deterministic traversal beats control, or a new tool.
+- Preserve: `localize`'s loop and hop budget; the pruned list with reasons.
+- Promote when: the maps A/B (`docs/plans/exploration-maps.md` XM-M2) passes, so a delivery channel exists.
+- Drop if: provider-none traversal fails to beat control by 25 percent on tokens-to-correct-answer, or J0 kills.
+
+## F37. Files at scale: judged semantic columns (level 9)
+
+- Confidence: plausible. Horizon: later. Evidence: ADR-056, `docs/design/judged-predicates.md` section 5.
+- Motivation: one cheap question per unit, run only on units whose content hash changed and scoped to a live
+  map's footprint, for the residue no computation labels (test kind, concern membership, role among declared
+  layers). Computable labels are refused as model work.
+- Do not build: the judged layer, the job, or any column that prunes; nothing security-shaped is ever served.
+- Preserve: content-hash freshness, the memo registry's byte budget, options from index facts.
+- Promote when: J0 passes, RT-M1 reads PASS, and a named consumer's own bench metric judges it.
+- Drop if: J0 fails, or a graduated label changes no consumer's ranking measurably within 30 days.
+
+## F38. When-to-compact advice
+
+- Confidence: plausible. Horizon: someday. Evidence: ADR-056, `docs/design/carry-across.md` section 6.
+- Motivation: a task-switch judgment at the prompt, shown to the user only; the act of compacting belongs to a
+  harness that owns compaction.
+- Do not build: advice without carry-across, or anything that claims fathom can compact.
+- Preserve: the computed working set as a CLI a harness can call.
+- Promote when: carry-across passes (CA-M2) and the route site is re-admitted.
+- Drop if: carry-across fails its A/B.
+
+## F39. Fitted recalibration and site auto-disable
+
+- Confidence: plausible. Horizon: later. Evidence: ADR-056, `docs/design/judgment-foundations.md` section 8.
+- Motivation: a per-site map from raw provider confidence to a calibrated band, and a site that disables itself
+  when its rolling Brier score falls below the base rate.
+- Do not build: a fit before the data, or auto-disable without a minimum n per window (it flaps).
+- Preserve: the calibration reading per (site, template, provider, resolved model).
+- Promote when: one (site, provider, model) holds at least 100 labels.
+- Drop if: no site reaches 100 labels within a year.
+
+## F40. The judged-telemetry sampler, queue, background judge, judgments table and durable memo
+
+- Confidence: plausible. Horizon: someday. Evidence: ADR-056, `docs/design/judged-telemetry.md` section 4.
+- Motivation: more labels than settlement supplies, and a memo where the llm lane makes repeats costly.
+- Do not build: any of them before RT-M1 reads PASS, or a lane parallel to the assess lanes.
+- Preserve: spend labels that keep judging spend out of every A/B unit (I46); the owner's call to unfreeze assess
+  or supersede it, made before this is built.
+- Promote when: RT-M1 reads PASS and tier 2 (F35) or `ask` (F34) needs more labels than settlement supplies.
+- Drop if: settlement plus batched adjudication supply every template's labels for 90 days.
+
+## F41. Guard proposals from rule outcomes
+
+- Confidence: plausible. Horizon: later. Evidence: ADR-056, `docs/design/judged-telemetry.md` section 5.
+- Motivation: a rule with a checkable condition that is repeatedly not met becomes a deterministic guard proposal
+  a human accepts.
+- Do not build: a proposal that sets `enforce: true` on its own, or model-judged hunks written into tests.
+- Preserve: the renamed rule-outcome events (`docs/plans/judgment-foundations.md` JF-1).
+- Promote when: JF-1 has shipped and 30 days of relabeled outcomes show such a rule.
+- Drop if: no rule has a checkable condition after 90 days.
+
+## F42. MCP exposure of test-run or ask output
+
+- Confidence: plausible. Horizon: someday. Evidence: ADR-056 rule R6, `docs/design/test-run-hook.md` section 8.
+- Motivation: the CLI and hook are the delivery; an MCP parameter is the pull path if agents demonstrably want it.
+- Do not build: a new tool; the exposure is a parameter of `localize` (kind: test_output) or `test_impact`.
+- Preserve: the extended surface and an unchanged tool count.
+- Promote when: hook or CLI use reaches at least 5 percent of sessions.
+- Drop if: use stays under 5 percent for 180 days after the hook and the CLI both exist.
+
+## F43. A `--plan-only` export for other harnesses
+
+- Confidence: plausible. Horizon: later. Evidence: ADR-056, `docs/design/judged-predicates.md` section 3.
+- Motivation: fathom plans and redacts the request; any harness, or Review Kit's typed-judgment lane, makes the
+  call with its own key, so fathom has zero egress.
+- Do not build: the export before a consumer names itself.
+- Preserve: the redacted request plan as a stable shape inside `ask`.
+- Promote when: a named consumer asks for it.
+- Drop if: no consumer asks within a year of `ask` shipping.
+
+## F44. Set algebra over exploration maps
+
+- Confidence: plausible. Horizon: later. Evidence: ADR-056, `docs/design/exploration-maps.md` section 2.
+- Motivation: "the base map minus what is already done" for a brief.
+- Do not build: intersection or difference; union by reference is the only composition.
+- Preserve: maps are DAGs of references with anchored entries, never copies.
+- Promote when: a real brief needs a base minus what is already done.
+- Drop if: union covers every observed handoff for 60 days.
+
+## F45. ADR-to-rule pair judgments
+
+- Confidence: speculative. Horizon: someday. Evidence: ADR-056 decision 12.
+- Motivation: proposing arch rules for adopters whose ADRs name packages but who have no arch rules.
+- Do not build: it before an adopter needs it; negation-shaped questions are a typed model's weakness.
+- Preserve: options built from the repository's own package names.
+- Promote when: an adopter repository has many ADRs that name packages and no arch rules.
+- Drop if: no such adopter appears within a year.
+
+## F46. Doc-drift triage
+
+- Confidence: plausible. Horizon: later. Evidence: ADR-056 decision 12, `docs/plans/knowledge-retrieval.md`.
+- Motivation: ordering flagged doc spans by how likely the changed symbol made them wrong; deterministic order
+  stays the default.
+- Do not build: a model that marks a doc wrong (drift means the target moved, nothing more).
+- Preserve: doc-to-code links and their freshness flags.
+- Promote when: knowledge-retrieval doc linking ships and more than 20 spans are flagged per week.
+- Drop if: flags stay at 20 a week or fewer for 90 days.
+
+## F47. An injection screen for served third-party text
+
+- Confidence: speculative. Horizon: someday. Evidence: ADR-056 decision 12.
+- Motivation: a typed flag on text fathom serves that came from outside the repository.
+- Do not build: it before fathom serves third-party text by default; it can only flag.
+- Preserve: served text carries its source.
+- Promote when: fathom serves third-party text by default, or an injection incident occurs.
+- Drop if: fathom still serves no third-party text after a year.
+
+## F48. Skill suggestion at the prompt
+
+- Confidence: speculative. Horizon: someday. Evidence: ADR-056 decision 12.
+- Motivation: the same prompt-classification shape as route, choosing among installed skills.
+- Do not build: it while route is off by default.
+- Preserve: the route site's deterministic precheck.
+- Promote when: route is re-admitted (`docs/plans/judgment-foundations.md` JF-8).
+- Drop if: route is dropped.
+
+## F49. Friction episode classification and product feedback
+
+- Confidence: speculative. Horizon: someday. Evidence: ADR-056 decision 12, `docs/design/judged-telemetry.md` section 5.
+- Motivation: classifying the unclassified residue of a work-intelligence friction map (U3), and aggregated
+  counts and taxonomy labels for fathom's own maintainers through the research bundle's closed allowlist, run by
+  a human (P13, I14).
+- Do not build: either before its consumer exists or before labels worth sharing exist.
+- Preserve: deterministic friction classes first; the research bundle's allowlist.
+- Promote when: U3 exists (classification), or labels worth sharing exist (feedback).
+- Drop if: U3 is refused, or no labels worth sharing exist within a year.
