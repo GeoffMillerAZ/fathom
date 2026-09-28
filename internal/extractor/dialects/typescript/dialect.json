@@ -1,0 +1,40 @@
+{
+  "id": "typescript",
+  "display": "TypeScript",
+  "kind": "language",
+  "engine": "tags",
+  "lang_tag": "ts",
+  "match": {
+    "extensions": [".ts", ".mts", ".cts"],
+    "basenames": [],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "grammar": { "blob": "typescript", "entry_point": "tree_sitter_typescript" },
+  "variants": [
+    { "id": "tsx", "entry_point": "tree_sitter_tsx", "extensions": [".tsx"] }
+  ],
+  "queries": { "tags": "tags.scm", "imports": "imports.scm" },
+  "kinds": {
+    "class":     { "source_kind": "JSClass",     "canonical": "class",      "container": true },
+    "function":  { "source_kind": "JSFunc",      "canonical": "function",   "callable": true },
+    "method":    { "source_kind": "JSMethod",    "canonical": "method",     "callable": true },
+    "interface": { "source_kind": "TSInterface", "canonical": "interface" },
+    "type":      { "source_kind": "TSType",      "canonical": "type_alias" },
+    "enum":      { "source_kind": "TSEnum",      "canonical": "enum" }
+  },
+  "required_kinds": ["class", "function", "method", "interface", "enum"],
+  "oracle_kinds": {
+    "ctags": { "class": "class", "function": "function", "generator": "function", "method": "method",
+               "interface": "interface", "enum": "enum", "alias": "type_alias", "namespace": "namespace",
+               "property": "property", "variable": "variable", "constant": "constant",
+               "enumerator": "enum_member" }
+  },
+  "qualify": { "chain_containers": false, "container_sep": ".", "method_sep": "." },
+  "package": { "strategy": "dir" },
+  "imports": { "strategy": "relative-path" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L4",
+  "queue_id": "typescript"
+}

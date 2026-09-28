@@ -68,3 +68,21 @@ oracle to prove L1), no callables were in scope, or the metric is not a tool-for
 
 Regenerate a reading: `go run ./cmd/indexbench lang-oracle -dialect <id> -subject <clone>
 -subject-name <owner/repo> -out docs/bench/readings/lang/baseline/<id>.json`.
+
+## LB-F1 parity (the move onto dialect manifests)
+
+TSExtractor's registry moved from Go tables and `internal/extractor/tsqueries/` to
+`internal/extractor/dialects/{javascript,typescript,python,ruby,kotlin}/`. Extraction over the
+five subjects above, symbols and import specs serialised file by file (EndLine and Signature
+excluded, both empty before LB-F3), is byte-identical before (fdbc2ee4) and after:
+
+| Subject | Files | Symbols | sha256 of the dump |
+|---|---|---|---|
+| pallets/flask@d73fa1cd | 83 | 1756 | cf52e8f03ca333bd2e6f9756985799855898b995fe037c8a8e653cf785d79de8 |
+| expressjs/express@9a34acf0 | 141 | 127 | cec1e913c1df65b874834b38fc57cd829706407c3bf0674dd08454a63e2a75f9 |
+| colinhacks/zod@2bf7b063 | 523 | 4058 | 3ecff8d8b08cc204fb08713d80a44aa5ca841d90cca93494a6c39ec83033a7af |
+| sinatra/sinatra@cb22afd7 | 147 | 1165 | 9db26e55f9ae013056603ef607fc792ee1e336e3c72fd7f26f688146fcf0b284 |
+| square/okhttp@40a3b874 | 617 | 15390 | ab7322e31be0f2b3a425b60cc13c6f9621dabc454a3ed2609aeea9cb04def747 |
+
+The fixtures' goldens (`dialects/<id>/testdata/*.golden.json`, written by the pre-manifest
+engine) hold the same parity in the gate: `TestTagsDialectParity`.

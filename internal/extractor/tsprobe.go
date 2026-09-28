@@ -16,12 +16,14 @@ type ProbeTarget struct {
 	Query      string
 }
 
-// TagsDialects returns the sorted ids of every dialect on the tags engine.
-// Until LB-F1 builds the registry from manifests, these are TSExtractor's
-// built-in languages.
+// TagsDialects returns the sorted ids of every dialect on the tags engine —
+// every embedded manifest with engine "tags" (LB-F1).
 func TagsDialects() []string {
-	ids := make([]string, 0, len(tsRegistry))
-	for id := range tsRegistry {
+	if _, err := tsRegistry(); err != nil {
+		return nil
+	}
+	ids := make([]string, 0, len(tsDialectMap))
+	for id := range tsDialectMap {
 		ids = append(ids, id)
 	}
 	sort.Strings(ids)
@@ -29,9 +31,13 @@ func TagsDialects() []string {
 }
 
 // ProbeTargetFor resolves dialect and a file path to the variant the tags
-// engine would parse that file with, and that variant's query source.
+// engine would parse that file with, and that variant's query source (the
+// tags query, then the imports query).
 func ProbeTargetFor(dialect, relPath string) (ProbeTarget, error) {
-	spec, ok := tsRegistry[dialect]
+	if _, err := tsRegistry(); err != nil {
+		return ProbeTarget{}, err
+	}
+	spec, ok := tsDialectMap[dialect]
 	if !ok {
 		return ProbeTarget{}, fmt.Errorf("unknown tags dialect %q (known: %v)", dialect, TagsDialects())
 	}
@@ -39,9 +45,5 @@ func ProbeTargetFor(dialect, relPath string) (ProbeTarget, error) {
 	if ev, ok := spec.variantForExt[extOf(relPath)]; ok {
 		v = ev
 	}
-	src, err := tsQueryFS.ReadFile("tsqueries/" + v.queryFile)
-	if err != nil {
-		return ProbeTarget{}, fmt.Errorf("read query %s: %w", v.queryFile, err)
-	}
-	return ProbeTarget{Dialect: dialect, Blob: v.blob, EntryPoint: v.entryPoint, QueryFile: v.queryFile, Query: string(src)}, nil
+	return ProbeTarget{Dialect: dialect, Blob: v.blob, EntryPoint: v.entryPoint, QueryFile: v.rules.queryFile, Query: v.rules.query}, nil
 }

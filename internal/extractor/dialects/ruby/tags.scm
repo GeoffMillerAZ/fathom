@@ -1,4 +1,4 @@
-; ruby.scm — symbol + call queries for the wazero tree-sitter engine
+; dialects/ruby/tags.scm — symbol + call queries for the wazero tree-sitter engine
 ; (internal/extractor.NewTSExtractor("ruby"), ADR-021 §4).
 ;
 ; Predicate-free by design — see python.scm's header comment for why.

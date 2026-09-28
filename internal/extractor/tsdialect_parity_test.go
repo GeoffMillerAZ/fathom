@@ -150,11 +150,7 @@ func marshalGolden(g goldenFile) []byte {
 func TestTagsDialectParity(t *testing.T) {
 	for _, id := range migratedTagsDialects {
 		t.Run(id, func(t *testing.T) {
-			name := id
-			if id == "typescript" {
-				name = "javascript"
-			}
-			e, err := NewTSExtractor(name)
+			e, err := NewTSExtractor(id)
 			if err != nil {
 				t.Fatalf("NewTSExtractor(%s): %v", id, err)
 			}

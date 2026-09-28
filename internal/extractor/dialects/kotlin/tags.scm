@@ -1,4 +1,4 @@
-; kotlin.scm — symbol + call queries for the wazero tree-sitter engine
+; dialects/kotlin/tags.scm — symbol + call queries for the wazero tree-sitter engine
 ; (internal/extractor.NewTSExtractor("kotlin"), ADR-021 §4, wave P2).
 ;
 ; Predicate-free by design — see python.scm's header comment for why. Unlike

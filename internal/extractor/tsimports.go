@@ -76,7 +76,7 @@ func (e *TSExtractor) ExtractImports(relPath string, src []byte) ([]ImportSpec, 
 		return nil, fmt.Errorf("tsextract[%s] %s: query: %v: %w", e.spec.name, relPath, err, ErrTSEngineFault)
 	}
 
-	if e.spec.name == "python" {
+	if variant.rules.importStrategy == "dotted-module" {
 		return pythonImports(matches, src), nil
 	}
 	return jsImports(matches, src), nil

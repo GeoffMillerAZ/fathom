@@ -2,7 +2,6 @@ package extractor
 
 import (
 	"context"
-	"embed"
 	"errors"
 	"fmt"
 	"sort"
@@ -14,23 +13,16 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/extractor/tsengine"
 )
 
-// tsQueryFS embeds every language's tree-sitter query set (.scm) — the only
-// per-language "logic" TSExtractor needs beyond the shared engine (ADR-021
-// §4 / docs/plans/extraction-treesitter.md: "adding a language = grammar
-// blob + queries + fixtures, no new Go extraction logic").
-//
-//go:embed tsqueries/*.scm
-var tsQueryFS embed.FS
-
-// tsVariant is one (grammar blob, entry point, query file) triple a
+// tsVariant is one (grammar blob, entry point, dialect rules) triple a
 // TSExtractor may parse a file with. A single TSExtractor can span several
-// variants keyed by file extension — e.g. the "javascript" language spec
-// parses .ts/.tsx with the "typescript" grammar and its richer query set,
-// mirroring the incumbent JSExtractor's combined JS/TS/JSX/TSX scope.
+// variants keyed by file extension — e.g. the "javascript" extractor parses
+// .ts/.tsx with the typescript dialect's grammar and query set (see
+// tsExtractorGroups), mirroring the incumbent JSExtractor's combined
+// JS/TS/JSX/TSX scope.
 type tsVariant struct {
 	blob       string // tsengine grammar registry key
 	entryPoint string // exported tree_sitter_<x> function
-	queryFile  string // tsqueries/<name>.scm
+	rules      *tsDialectRules
 }
 
 // tsDefKind maps one query capture suffix (the text after "definition.", as
@@ -50,110 +42,143 @@ type tsDefKind struct {
 	Callable  bool
 }
 
-// tsLangSpec is everything NewTSExtractor needs for one language.
-type tsLangSpec struct {
-	name  string
+// tsDialectRules is one dialect manifest compiled for the engine: its
+// capture-kind table, qualification rule, strategies and query source.
+type tsDialectRules struct {
+	id    string
 	kinds map[string]tsDefKind // capture suffix -> mapping
 
-	// variantForExt selects the (grammar, entry point, query file) for a
-	// given lowercased file extension (including the leading '.'). extOf
-	// returning an extension absent from this map falls back to
-	// defaultVariant.
-	variantForExt  map[string]tsVariant
-	defaultVariant tsVariant
-
-	// chainContainers: true for languages where nested containers qualify
+	// chainContainers: true for dialects where nested containers qualify
 	// as "Outer::Inner" (Ruby's module/class nesting). false: only the
 	// immediate container's bare name is used (Python, JS/TS) — matching
 	// the incumbent CGO extractors' single-level scope tracking exactly.
 	chainContainers bool
 	containerSep    string // separator when chainContainers is true
 	methodSep       string // separator between a container's qualified name and a callable's own name
+
+	importStrategy  string // manifest imports.strategy ("" when the dialect has none)
+	packageStrategy string // manifest package.strategy
+	sigMax          int    // manifest signature.max_chars
+
+	queryFile string // dialects/<id>/<tags> (for messages and lang-probe)
+	query     string // tags query then imports query
 }
 
-var tsRegistry = map[string]*tsLangSpec{}
+// tsLangSpec is everything NewTSExtractor needs for one extractor: the
+// variant each extension selects.
+type tsLangSpec struct {
+	name string
 
-func init() {
-	jsVariant := tsVariant{blob: "javascript", entryPoint: "tree_sitter_javascript", queryFile: "javascript.scm"}
-	tsVariantTS := tsVariant{blob: "typescript", entryPoint: "tree_sitter_typescript", queryFile: "typescript.scm"}
-	tsVariantTSX := tsVariant{blob: "typescript", entryPoint: "tree_sitter_tsx", queryFile: "typescript.scm"}
+	// variantForExt selects the variant for a lowercased file extension
+	// (including the leading '.'); an extension absent from this map falls
+	// back to defaultVariant.
+	variantForExt  map[string]tsVariant
+	defaultVariant tsVariant
+}
 
-	tsRegistry["javascript"] = &tsLangSpec{
-		name: "javascript",
-		kinds: map[string]tsDefKind{
-			"class":     {Kind: core.KindJSClass, Container: true},
-			"function":  {Kind: core.KindJSFunc, Callable: true},
-			"method":    {Kind: core.KindJSMethod, Callable: true},
-			"interface": {Kind: core.KindTSInterface},
-			"type":      {Kind: core.KindTSType},
-			"enum":      {Kind: core.KindTSEnum},
-		},
-		variantForExt: map[string]tsVariant{
-			".js":  jsVariant,
-			".jsx": jsVariant,
-			".mjs": jsVariant,
-			".cjs": jsVariant,
-			".ts":  tsVariantTS,
-			".tsx": tsVariantTSX,
-			// J1 (app-kit O18/O32/O33): the TypeScript module-system pair —
-			// plain TS syntax, same grammar/query set as .ts, never JSX.
-			".mts": tsVariantTS,
-			".cts": tsVariantTS,
-		},
-		defaultVariant: jsVariant,
-		methodSep:      ".",
+// tsExtractorGroups are extractor names that span more than one dialect.
+// fusion registers one "javascript" extractor for .js/.jsx/.mjs/.cjs AND
+// .ts/.tsx/.mts/.cts (the incumbent JSExtractor's combined scope); the
+// first member's grammar is the default for an unclaimed extension.
+var tsExtractorGroups = map[string][]string{"javascript": {"javascript", "typescript"}}
+
+var (
+	tsRegistryOnce sync.Once
+	tsRegistryMap  map[string]*tsLangSpec
+	tsDialectMap   map[string]*tsLangSpec // one entry per tags dialect id
+	tsRegistryErr  error
+)
+
+// tsRegistry is built from the embedded dialect manifests (LB-F1, §3.1):
+// one spec per tags-engine dialect, plus the tsExtractorGroups.
+func tsRegistry() (map[string]*tsLangSpec, error) {
+	tsRegistryOnce.Do(func() {
+		tsRegistryMap, tsDialectMap, tsRegistryErr = buildTSRegistry()
+	})
+	return tsRegistryMap, tsRegistryErr
+}
+
+func buildTSRegistry() (map[string]*tsLangSpec, map[string]*tsLangSpec, error) {
+	ds, err := LoadDialects()
+	if err != nil {
+		return nil, nil, err
 	}
-
-	tsRegistry["python"] = &tsLangSpec{
-		name: "python",
-		kinds: map[string]tsDefKind{
-			"class":    {Kind: core.KindPyClass, Container: true},
-			"function": {Kind: core.KindPyFunc, Callable: true},
-			"variable": {Kind: core.KindPyVar},
-		},
-		defaultVariant: tsVariant{blob: "python", entryPoint: "tree_sitter_python", queryFile: "python.scm"},
-		methodSep:      ".",
+	all := map[string]*tsLangSpec{}
+	single := map[string]*tsLangSpec{}
+	for i := range ds {
+		d := ds[i]
+		if d.Engine != "tags" && d.Engine != "tags+doc" {
+			continue
+		}
+		rules, err := compileDialectRules(d)
+		if err != nil {
+			return nil, nil, err
+		}
+		spec := &tsLangSpec{
+			name:           d.ID,
+			variantForExt:  map[string]tsVariant{},
+			defaultVariant: tsVariant{blob: d.Grammar.Blob, entryPoint: d.Grammar.EntryPoint, rules: rules},
+		}
+		for _, e := range d.Match.Extensions {
+			spec.variantForExt[strings.ToLower(e)] = spec.defaultVariant
+		}
+		for _, v := range d.Variants {
+			vv := tsVariant{blob: d.Grammar.Blob, entryPoint: v.EntryPoint, rules: rules}
+			for _, e := range v.Extensions {
+				spec.variantForExt[strings.ToLower(e)] = vv
+			}
+		}
+		all[d.ID] = spec
+		single[d.ID] = spec
 	}
-
-	tsRegistry["ruby"] = &tsLangSpec{
-		name: "ruby",
-		kinds: map[string]tsDefKind{
-			"module": {Kind: core.KindRubyModule, Container: true},
-			"class":  {Kind: core.KindRubyClass, Container: true},
-			"method": {Kind: core.KindRubyMethod, Callable: true},
-		},
-		defaultVariant:  tsVariant{blob: "ruby", entryPoint: "tree_sitter_ruby", queryFile: "ruby.scm"},
-		chainContainers: true,
-		containerSep:    "::",
-		methodSep:       ".",
+	groups := make([]string, 0, len(tsExtractorGroups))
+	for g := range tsExtractorGroups {
+		groups = append(groups, g)
 	}
-
-	// Kotlin (wave P2, ADR-021 §4 new-language breadth — no CGO incumbent to
-	// calibrate against; see grammars/PROVENANCE.md). .kt and .kts share the
-	// one fwcd/tree-sitter-kotlin grammar (Kotlin scripts are valid Kotlin
-	// syntax under the same parser). chainContainers is true (Kotlin nested
-	// classes/objects are idiomatic, "Outer.Inner"), matching Java's own
-	// incumbent extractor's qualifyJava behavior for the same shape.
-	kotlinVariant := tsVariant{blob: "kotlin", entryPoint: "tree_sitter_kotlin", queryFile: "kotlin.scm"}
-	tsRegistry["kotlin"] = &tsLangSpec{
-		name: "kotlin",
-		kinds: map[string]tsDefKind{
-			"class":     {Kind: core.KindKotlinClass, Container: true},
-			"interface": {Kind: core.KindKotlinInterface, Container: true},
-			"object":    {Kind: core.KindKotlinObject, Container: true},
-			"function":  {Kind: core.KindKotlinFunction, Callable: true},
-			"property":  {Kind: core.KindKotlinProperty},
-			"import":    {Kind: core.KindKotlinImport},
-		},
-		variantForExt: map[string]tsVariant{
-			".kt":  kotlinVariant,
-			".kts": kotlinVariant,
-		},
-		defaultVariant:  kotlinVariant,
-		chainContainers: true,
-		containerSep:    ".",
-		methodSep:       ".",
+	sort.Strings(groups)
+	for _, g := range groups {
+		members := tsExtractorGroups[g]
+		spec := &tsLangSpec{name: g, variantForExt: map[string]tsVariant{}}
+		for i, m := range members {
+			ms, ok := single[m]
+			if !ok {
+				return nil, nil, fmt.Errorf("tsextract: group %q names unknown tags dialect %q", g, m)
+			}
+			if i == 0 {
+				spec.defaultVariant = ms.defaultVariant
+			}
+			for e, v := range ms.variantForExt {
+				spec.variantForExt[e] = v
+			}
+		}
+		all[g] = spec
 	}
+	return all, single, nil
+}
+
+func compileDialectRules(d Dialect) (*tsDialectRules, error) {
+	query, err := dialectQuerySource(dialectFS, d)
+	if err != nil {
+		return nil, err
+	}
+	r := &tsDialectRules{
+		id:              d.ID,
+		kinds:           map[string]tsDefKind{},
+		chainContainers: *d.Qualify.ChainContainers,
+		containerSep:    d.Qualify.ContainerSep,
+		methodSep:       d.Qualify.MethodSep,
+		packageStrategy: d.Package.Strategy,
+		sigMax:          d.Signature.MaxChars,
+		queryFile:       "dialects/" + d.ID + "/" + d.Queries.Tags,
+		query:           query,
+	}
+	if d.Imports != nil {
+		r.importStrategy = d.Imports.Strategy
+	}
+	for key, k := range d.Kinds {
+		r.kinds[key] = tsDefKind{Kind: core.SourceKind(k.SourceKind), Container: k.Container, Callable: k.Callable}
+	}
+	return r, nil
 }
 
 // TSExtractor implements extractor.Extractor for one language using the
@@ -161,7 +186,7 @@ func init() {
 // parameterized entirely by a tsLangSpec: the grammar(s) to parse with and a
 // tree-sitter query (.scm) expressing which nodes are symbol definitions —
 // there is no per-language Go code beyond that data (see tsRegistry above
-// and internal/extractor/tsqueries/*.scm).
+// and internal/extractor/dialects/<id>/).
 //
 // Performance: a wazero module instantiation (fresh linear memory, data
 // segments copied in) costs far more than a CGO ts.NewParser() call, so
@@ -178,8 +203,7 @@ func init() {
 // daemon Pipeline) degrades to serialized correctness rather than wasm
 // linear-memory corruption, never the reverse.
 type TSExtractor struct {
-	spec    *tsLangSpec
-	queries map[string]string // queryFile -> source text (read once from the embedded FS)
+	spec *tsLangSpec
 
 	mu        sync.Mutex
 	parsers   map[string]*tsengine.Parser // variant key -> live parser
@@ -239,42 +263,33 @@ func (e *TSExtractor) Close() {
 	}
 }
 
-// variantKey identifies one (blob, entry point) pair for the parser/query
-// caches — two variants sharing a blob but different entry points (the
-// "typescript" grammar's tree_sitter_typescript vs tree_sitter_tsx) need
-// their own Parser, since a Parser is bound to one TSLanguage at creation.
-func (v tsVariant) key() string { return v.blob + "|" + v.entryPoint }
+// key identifies one (dialect, blob, entry point) triple for the
+// parser/query caches — two variants sharing a blob but different entry
+// points (the "typescript" grammar's tree_sitter_typescript vs
+// tree_sitter_tsx) need their own Parser, since a Parser is bound to one
+// TSLanguage at creation, and two dialects on one grammar compile different
+// queries.
+func (v tsVariant) key() string { return v.rules.id + "|" + v.blob + "|" + v.entryPoint }
 
-// NewTSExtractor returns a TSExtractor for the named language ("javascript",
-// "python", or "ruby" — see tsRegistry). "javascript" spans .js/.jsx/.ts/
-// .tsx (the extensions fusion registers — the incumbent JSExtractor's
-// combined scope); its variant table also maps .mjs/.cjs so the engine is
-// ready if the connector ever learns those extensions, but they are NOT
-// claimed as indexed today (see EngineProvenance).
+// NewTSExtractor returns a TSExtractor for a tags-engine dialect id (every
+// embedded dialects/<id>/dialect.json with engine "tags") or an extractor
+// group (tsExtractorGroups: "javascript" spans the javascript and typescript
+// dialects, the extensions fusion registers for the incumbent JSExtractor's
+// combined scope).
 func NewTSExtractor(name string) (*TSExtractor, error) {
-	spec, ok := tsRegistry[name]
+	reg, err := tsRegistry()
+	if err != nil {
+		return nil, fmt.Errorf("tsextract: dialect registry: %w", err)
+	}
+	spec, ok := reg[name]
 	if !ok {
 		return nil, fmt.Errorf("tsextract: unknown language %q", name)
 	}
-	e := &TSExtractor{
+	return &TSExtractor{
 		spec:      spec,
-		queries:   map[string]string{},
 		parsers:   map[string]*tsengine.Parser{},
 		tsQueries: map[string]*tsengine.Query{},
-	}
-	seen := map[string]bool{}
-	for _, v := range allVariants(spec) {
-		if seen[v.queryFile] {
-			continue
-		}
-		seen[v.queryFile] = true
-		src, err := tsQueryFS.ReadFile("tsqueries/" + v.queryFile)
-		if err != nil {
-			return nil, fmt.Errorf("tsextract: read query %q: %w", v.queryFile, err)
-		}
-		e.queries[v.queryFile] = string(src)
-	}
-	return e, nil
+	}, nil
 }
 
 // parserFor returns the cached (Parser, Query) pair for variant, creating
@@ -288,22 +303,14 @@ func (e *TSExtractor) parserFor(ctx context.Context, variant tsVariant) (*tsengi
 	if err != nil {
 		return nil, nil, fmt.Errorf("tsextract[%s]: %w", e.spec.name, err)
 	}
-	q, err := p.CompileQuery(e.queries[variant.queryFile])
+	q, err := p.CompileQuery(variant.rules.query)
 	if err != nil {
 		p.Close()
-		return nil, nil, fmt.Errorf("tsextract[%s]: compiling %s: %w", e.spec.name, variant.queryFile, err)
+		return nil, nil, fmt.Errorf("tsextract[%s]: compiling %s: %w", e.spec.name, variant.rules.queryFile, err)
 	}
 	e.parsers[key] = p
 	e.tsQueries[key] = q
 	return p, q, nil
-}
-
-func allVariants(spec *tsLangSpec) []tsVariant {
-	variants := []tsVariant{spec.defaultVariant}
-	for _, v := range spec.variantForExt {
-		variants = append(variants, v)
-	}
-	return variants
 }
 
 // extOf returns the lowercased extension (including the leading '.') of
@@ -364,9 +371,10 @@ func (e *TSExtractor) Extract(service, relPath string, src []byte) ([]core.Symbo
 		return nil, fmt.Errorf("tsextract[%s] %s: query: %v: %w", e.spec.name, relPath, err, ErrTSEngineFault)
 	}
 
-	defs, calls := splitTSMatches(matches, e.spec.kinds, src)
+	rules := variant.rules
+	defs, calls := splitTSMatches(matches, rules.kinds, src)
 	resolveTSParents(defs)
-	qualifyTSDefs(defs, e.spec)
+	qualifyTSDefs(defs, rules)
 	attachTSCalls(defs, calls)
 
 	pkg := pkgFromPath(relPath)
@@ -501,7 +509,7 @@ func resolveTSParents(defs []*tsDef) {
 // itself a container — a function nested inside another function never
 // inherits a class name, matching every incumbent CGO extractor's scope
 // rules exactly (see pyextract.go/jsextract.go/rubyextract.go).
-func qualifyTSDefs(defs []*tsDef, spec *tsLangSpec) {
+func qualifyTSDefs(defs []*tsDef, spec *tsDialectRules) {
 	resolved := make([]bool, len(defs))
 	var resolve func(i int) string
 	resolve = func(i int) string {
@@ -601,18 +609,18 @@ func attachTSCalls(defs []*tsDef, calls []tsCallSite) {
 // TestIngest_MjsCjsMtsCtsSymbolsIndexed (internal/fusion) pin real symbols
 // indexed end to end.
 func EngineProvenance() map[string]string {
-	return map[string]string{
-		".py":  "tree-sitter-wasm",
-		".js":  "tree-sitter-wasm",
-		".jsx": "tree-sitter-wasm",
-		".mjs": "tree-sitter-wasm",
-		".cjs": "tree-sitter-wasm",
-		".ts":  "tree-sitter-wasm",
-		".tsx": "tree-sitter-wasm",
-		".mts": "tree-sitter-wasm",
-		".cts": "tree-sitter-wasm",
-		".rb":  "tree-sitter-wasm",
-		".kt":  "tree-sitter-wasm",
-		".kts": "tree-sitter-wasm",
+	out := map[string]string{}
+	ds, err := LoadDialects()
+	if err != nil {
+		return out
 	}
+	for _, d := range ds {
+		if d.Engine != "tags" && d.Engine != "tags+doc" {
+			continue
+		}
+		for _, e := range dialectExtensions(d) {
+			out[e] = "tree-sitter-wasm"
+		}
+	}
+	return out
 }

@@ -70,6 +70,11 @@ tasks:
           cue vet -d '#Frontmatter' schema/skills/schema.cue "$fm.yaml" || { echo "cue vet FAILED: $skill"; rm -f "$fm.yaml"; exit 1; }
           rm -f "$fm.yaml"
         done
+        # LB-F1: every embedded dialect manifest vets against #Dialect.
+        for manifest in internal/extractor/dialects/*/dialect.json; do
+          [ -e "$manifest" ] || continue
+          cue vet -d '#Dialect' schema/dialect/dialect.cue "$manifest" || { echo "cue vet FAILED: $manifest"; exit 1; }
+        done
         [ "$found" = 0 ] && echo "no schema.cue files yet"; exit 0
 
   test:
