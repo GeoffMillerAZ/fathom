@@ -519,6 +519,10 @@
         "description": "Lines of context before and after each hit (default 0).",
         "type": "integer"
       },
+      "kind": {
+        "description": "\"docs\" ranks the indexed doc corpus (ADRs, intent, plans, design) instead of grepping; requires service.",
+        "type": "string"
+      },
       "limit": {
         "description": "Maximum hits returned (default 50).",
         "type": "integer"

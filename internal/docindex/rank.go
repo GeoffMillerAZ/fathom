@@ -17,11 +17,21 @@ package docindex
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
+
+// ErrDocIndexUnavailable is RankDocs' error when st is not a
+// *store.SQLiteStore — docs_fts is SQLite-only (docindex.go's/store's own
+// doc comment). A MemoryStore-backed session (session mode, some tests) has
+// no doc index at all, which is a different outcome from "no hits matched
+// this query" and must never be reported the same way (I38): a caller
+// checks for this error and says so, rather than treating it as zero
+// results.
+var ErrDocIndexUnavailable = errors.New("docindex: no doc index for this store backend (SQLite-only)")
 
 // rrfK is reciprocal rank fusion's k constant (§5: "k = 60").
 const rrfK = 60.0
@@ -50,13 +60,16 @@ type RankedDoc struct {
 	Bytes           int
 }
 
-// RankDocs answers one `search kind: docs` query (§5). st must be a
-// *store.SQLiteStore with a populated doc index (docindex.go's doc comment:
-// docs_fts is SQLite-only) — a nil st or a query error is returned as an
-// error, never a silent empty result (I38). limit <= 0 defaults to 50 (§5).
-func RankDocs(ctx context.Context, st *store.SQLiteStore, serviceID, query string, concernSymbols []string, limit int) ([]RankedDoc, error) {
-	if st == nil {
-		return nil, fmt.Errorf("RankDocs: nil store")
+// RankDocs answers one `search kind: docs` query (§5). st is the generic
+// store.Store interface (matching semantic.ObligationsForOpts' own
+// convention of taking the interface and dispatching internally) — RankDocs
+// type-asserts to *store.SQLiteStore itself and returns
+// ErrDocIndexUnavailable for any other backend (including nil), rather than
+// asking every caller to do that check. limit <= 0 defaults to 50 (§5).
+func RankDocs(ctx context.Context, st store.Store, serviceID, query string, concernSymbols []string, limit int) ([]RankedDoc, error) {
+	sq, ok := st.(*store.SQLiteStore)
+	if !ok {
+		return nil, ErrDocIndexUnavailable
 	}
 	if limit <= 0 {
 		limit = 50
@@ -66,7 +79,7 @@ func RankDocs(ctx context.Context, st *store.SQLiteStore, serviceID, query strin
 		pool = limit
 	}
 
-	hits, err := st.QueryDocUnits(ctx, serviceID, query, pool)
+	hits, err := sq.QueryDocUnits(ctx, serviceID, query, pool)
 	if err != nil {
 		return nil, fmt.Errorf("RankDocs: %w", err)
 	}
@@ -74,7 +87,7 @@ func RankDocs(ctx context.Context, st *store.SQLiteStore, serviceID, query strin
 		return nil, nil
 	}
 
-	linkMatches, err := st.DocUnitsLinkedToTargets(ctx, serviceID, concernSymbols)
+	linkMatches, err := sq.DocUnitsLinkedToTargets(ctx, serviceID, concernSymbols)
 	if err != nil {
 		return nil, fmt.Errorf("RankDocs: concern links: %w", err)
 	}
