@@ -61,6 +61,7 @@ func cmdSupport(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("support", stderr)
 	kindFlag := fs.String("kind", "", "limit to one kind: "+strings.Join(supportKindNames(), "|"))
 	jsonOut := fs.Bool("json", false, "emit the fathom.support/v1 matrix as JSON")
+	rootFlag := fs.String("root", "", "the fathom checkout whose matrix to project (default: the current directory)")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
@@ -68,12 +69,17 @@ func cmdSupport(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "error: unknown --kind %q (want %s)\n", *kindFlag, strings.Join(supportKindNames(), "|"))
 		return 1
 	}
-	root, err := os.Getwd()
-	if err != nil {
-		fmt.Fprintf(stderr, "error: %v\n", err)
-		return 1
+	root := *rootFlag
+	if root == "" {
+		wd, err := os.Getwd()
+		if err != nil {
+			fmt.Fprintf(stderr, "error: %v\n", err)
+			return 1
+		}
+		root = wd
 	}
-	src, err := loadSupportSources(root)
+	//fathom:tenancy-allow bg-ctx a one-shot CLI process: nothing outlives it to cancel
+	src, err := loadSupportSources(context.Background(), root)
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
@@ -116,7 +122,7 @@ type supportSources struct {
 // loadSupportSources reads every file buildSupportMatrix needs from a
 // checkout at root — the only function in this file that touches disk. It
 // never dials the daemon (design §4/§6: "no network").
-func loadSupportSources(root string) (supportSources, error) {
+func loadSupportSources(ctx context.Context, root string) (supportSources, error) {
 	tin, err := langbench.TrackerInputFromRepo(root)
 	if err != nil {
 		return supportSources{}, fmt.Errorf("support: %w", err)
@@ -129,7 +135,7 @@ func loadSupportSources(root string) (supportSources, error) {
 	if err != nil {
 		return supportSources{}, err
 	}
-	commit, _ := gitro.Head(context.Background(), root) // "" is fine: Matrix.Commit is descriptive, never gating
+	commit, _ := gitro.Head(ctx, root) // "" is fine: Matrix.Commit is descriptive, never gating
 	return supportSources{
 		Queue:      tin.Queue,
 		Readings:   tin.Readings,

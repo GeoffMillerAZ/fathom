@@ -317,6 +317,27 @@ swimlanes and its `ViewDensity` strip past 150 catches, `viz.Heatmap` with truth
   literal the caller writes (`evChart`), and `TestConsoleWaveF_OperatePanelsNameTheVerbsThatPrintThem`
   holds `app.css` to it. (Fathom-local; the kit's own classes are all literals.)
 
+## Support page (2026-09-27)
+
+`/support` (SM-20..SM-25, `docs/design/support-matrix.md` §5) uses the `d9dd789` mirror
+unchanged and no new kit package: `table.Table`, `stat.RenderBand`, `viz.MeterRow` (the
+embedded-grammar total against the 40 MiB cap), `viz.Sparkline` per run of measured days
+(an absent day is a dashed chip, never a stroke), and `form.RenderField`/`RenderSelect`/
+`RenderButton` for the URL-held filters. `task ui:css` regenerated `app.css` for the new
+literal classes.
+
+- **Support page heatmap — FATHOM-SM-KIT-01 (candidate, SM-26 open):** the kit was
+  searched first (appkit MCP `search_capabilities "heatmap"`: none; `viz.Heatmap` in the
+  mirror). `viz.Heatmap` is a numeric opacity ramp with value/zero/missing/unknown/error
+  truth states; the support matrix is a closed categorical vocabulary of nine states that
+  must each read as a shape and a label, never colour alone. Fathom therefore renders the
+  matrix as a `table.Table` whose cells are a role-coloured glyph plus its word inside a
+  native `<details>` (hover title and opened body name the reading and the plan row
+  verdict), with a legend of all nine marks. Expected upstream: a categorical-state matrix
+  (per-state glyph, label and role, a legend, a per-cell disclosure) in `viz` or `table`;
+  until it is built and promoted (D13) SM-26 stays open. The heatmap tables inherit
+  FATHOM-F-KIT-03 (no phone layout; the scroll wrapper keeps the page from overflowing).
+
 ## Current mirror and palette convergence (2026-09-25)
 
 FATHOM-GUIDE-01 landed on main at mirror `f7ab0fbd`, then took one reviewed bump to
