@@ -570,6 +570,7 @@ Evidence: `docs/app-kit.md`.
 - Every Claude Code MCP entry fathom writes now sets `alwaysLoad: true`, avoiding a wasted `ToolSearch` turn per session on a headless run.
 - The CGO Java extractor now also emits field and import declarations; `ExtractorEpoch` bumps 6→7, forcing re-extraction of every already-indexed `.java` file on next ingest.
 - `fathom review --format github`'s "Changed symbols" caller listing now walks to depth 2 (direct callers plus callers-of-callers), labeled `[tier, depth N]`, instead of stopping at direct callers only; call-site completeness counts stay direct-callers-only. Moved the M15/VB-24 historical-PR recall bench from 5/42 (11.9%) to 6/42 (14.3%) with 0 regressions and 0 false findings — still well short of the row's 30% floor (`docs/bench/readings/review-recall-loop-2026-09-18.md`).
+- **`fathom harness capabilities` says what a Codex rollout is read for (PE-14).** The Codex `session-ledger` note no longer calls the rollout format unstable and unread: `harness.CodexSessionCost` reads token totals and tool calls from `~/.codex/sessions` for cost per proven row, never for a savings claim; the row stays `absent`.
 
 ### Fixed
 - **The tree-sitter engine's parse and query budget is elapsed time, as documented.** The guest read wazero's default fake clock (+1ms per reading), so the 10s budget meant ~1,000,000 query operations and never fired on a pathological file (the whole `({[`x50,000 scan is ~300,000) — only the 20s hard backstop bounded it; a 300ms budget now cancels that scan at ~0.3s instead of ~8s of CPU.

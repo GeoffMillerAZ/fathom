@@ -1331,6 +1331,14 @@ stops being the interchange envelope; a descriptor reaches 60 days
 unverified; or `hooks_firing` verifies Codex on a real install (widen the
 Harnesses boundary, then revisit whether the Codex lane earns an instrument).
 
+**Amendment (2026-09-28, PE-14).** The measurement clause fires in part: a Codex rollout
+(`~/.codex/sessions`) carries cumulative token usage and every tool call, in one schema read
+unchanged across codex-cli 0.45.0 to 0.154.x (327 files, read-only), and `harness.CodexSessionCost`
+reads it for outcome economics (`docs/design/progress-and-economics.md` §5). It is an instrument
+for cost only: the Codex `session-ledger` vehicle stays absent, no ON/OFF arm exists, and G2's rule
+stands (no savings number is admissible for any harness). The descriptor note that called the
+rollout format "not stable" is corrected; the rest of the record stands.
+
 ## ADR-030: A lexical oracle proves non-code plan rows (2026-09-02)
 
 **Status.** Accepted. **Type.** Process / architecture. Design:
