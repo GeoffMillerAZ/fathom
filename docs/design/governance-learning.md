@@ -76,6 +76,16 @@ checkable condition holds after it), `violated` (the condition fails after the e
 `blocked` (the deny fired), plus the existing `refuted`/`corroborated` claim verdicts. Rows go
 to a bounded, rotated JSONL under `~/.fathom/` (the call-log precedent), never the transcript.
 
+**Correction 2026-09-29 (ADR-056, `docs/plans/judgment-foundations.md` JF-1).** As implemented
+(`cmd/fathom/ruleoutcome_track.go`, SR-61), `violated` means the SAME claim topped the file's served
+set on the file's previous resolved turn, and `complied` means the top claim changed. Rules are
+served by glob scope, so for a prose rule with no checkable condition these two events measure scope
+persistence and churn, not compliance: a repeat edit of the same file reads `violated` whether or not
+the edit complied. Every GL-10 reading built on them (the classes below, GL-11's counts) is read as
+"still served" and "top changed" until the events are renamed `still_served` and `top_changed` and
+`violated` is kept only for a rule with a checkable condition. Compliance for prose rules is not
+measured; judged compliance is refused (ADR-056, `docs/design/judged-telemetry.md` section 5).
+
 **Rule effectiveness** is a projection: per rule, counts and rates over a window, with n.
 Classes, each with a computed remedy shown as a proposal:
 
@@ -174,11 +184,13 @@ check payloads are rendered from verb output already computed.
 
 ## 11. Jev, weighed
 
-- **Where it could help:** proposing a rewrite of an ignored rule.
+- **Where it could help:** choosing among candidate rewrites of an ignored rule that code or an
+  llm produced. Jev cannot generate text; it can only choose among candidates it is handed
+  (corrected 2026-09-29, ADR-056; the earlier wording, "proposing a rewrite", assumed generation).
 - **Where it cannot:** promotion, retirement, levels or compliance. Those are counts against
-  published thresholds.
+  published thresholds, and judged compliance is refused (ADR-049 decision 7, ADR-056).
 - **Cost:** a call per ignored rule per review, bounded by `[decide]`.
-- **The measurement:** a blind review of 20 proposed rewrites against the originals; keep only
+- **The measurement:** a blind review of 20 candidate rewrites against the originals; keep only
   if at least 14 are preferred. Not before GL-M2.
 
 ## 12. Refused

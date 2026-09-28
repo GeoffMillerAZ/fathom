@@ -111,7 +111,9 @@ Rust `///` comments. Never fetched (I56). Wave 4.
 
 ## 10. Jev, weighed
 
-- **Where it could help:** query reformulation for vague questions.
+- **Where it could help:** choosing among candidate reformulations of a vague question that code
+  or an llm produced. Jev cannot generate text, so it cannot reformulate a query itself; at most
+  it picks among candidates it is handed (corrected 2026-09-29, ADR-056).
 - **Where it cannot:** ranking or linking; both must be deterministic and re-derivable.
 - **Cost:** a model call per query on the hottest read path.
 - **The measurement that would open it:** KR-M1 failing on a class of questions where a
