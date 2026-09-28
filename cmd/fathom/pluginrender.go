@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -173,12 +174,78 @@ func pluginTemplateDigest() (string, error) {
 	return hex.EncodeToString(h.Sum(nil))[:16], nil
 }
 
+// pluginRootTokenPattern matches the Agent Plugins standard's two
+// plugin-relative substitution variables.
+var pluginRootTokenPattern = regexp.MustCompile(`\$\{PLUGIN_(ROOT|DATA)\}`)
+
+// noPluginRootTokens walks v (as decoded JSON: map[string]any,
+// []any, string, ...) and errors if any string value depends on
+// ${PLUGIN_ROOT} or ${PLUGIN_DATA} — the two Agent Plugins substitution
+// variables Cursor is documented NOT to expand (cursor.com/docs/
+// reference/plugins, fetched 2026-09-28), unlike every other Agent
+// Plugins client. fathom's render never needs them (a loopback URL, no
+// plugin-relative command), so this is a guard against a future render
+// regressing into relying on them for the Cursor manifest specifically.
+func noPluginRootTokens(v any) error {
+	switch t := v.(type) {
+	case string:
+		if pluginRootTokenPattern.MatchString(t) {
+			return fmt.Errorf("value %q depends on a plugin-relative token Cursor does not expand", t)
+		}
+	case map[string]any:
+		keys := make([]string, 0, len(t))
+		for k := range t {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			if err := noPluginRootTokens(t[k]); err != nil {
+				return err
+			}
+		}
+	case []any:
+		for _, e := range t {
+			if err := noPluginRootTokens(e); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// renderCursorPlugin returns Cursor's own plugin manifest (RH-8,
+// docs/design/reach.md §4: "a --client cursor render where Cursor's
+// plugin shape differs"): .cursor-plugin/plugin.json, whose `mcpServers`
+// field is a path STRING pointing at a sibling mcp.json rather than an
+// inline server map — the one documented structural difference from the
+// portable Agent Plugins pair `fathom plugin render` already writes
+// (cursor.com/docs/reference/plugins, fetched 2026-09-28). It reuses that
+// already-rendered mcp.json (mcpJSON, for the ${PLUGIN_ROOT}/${PLUGIN_DATA}
+// guard only — see noPluginRootTokens) instead of duplicating its content.
+func renderCursorPlugin(mcpJSON map[string]any) (map[string]any, error) {
+	if err := noPluginRootTokens(mcpJSON); err != nil {
+		return nil, fmt.Errorf("cursor manifest: %w", err)
+	}
+	return map[string]any{
+		"$schema":     agentPluginSchemaURL,
+		"name":        "fathom",
+		"version":     pluginVersion,
+		"description": pluginDescription,
+		"mcpServers":  "./mcp.json",
+	}, nil
+}
+
 func cmdPluginRender(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("plugin render", stderr)
 	out := fs.String("out", "fathom-plugin", "output directory (created/overwritten — it belongs to the generator)")
 	mcpURL := fs.String("mcp-url", "http://localhost:7575/rpc/agent", "daemon endpoint the plugin registers")
 	marketplace := fs.Bool("marketplace", false, "also write .claude-plugin/marketplace.json beside the plugin dir")
+	client := fs.String("client", "", `additional client-specific manifest to render alongside the portable pair ("cursor")`)
 	if err := fs.Parse(args); err != nil {
+		return 1
+	}
+	if *client != "" && *client != "cursor" {
+		fmt.Fprintf(stderr, "error: --client %q is not supported (only \"cursor\")\n", *client)
 		return 1
 	}
 
@@ -215,6 +282,21 @@ func cmdPluginRender(args []string, stdout, stderr io.Writer) int {
 	if err := writeJSON(filepath.Join(*out, "mcp.json"), agentMCP); err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
+	}
+
+	// .cursor-plugin/plugin.json — Cursor's own manifest (RH-8), opt-in via
+	// --client cursor: its shape differs from both dialects already
+	// rendered above (renderCursorPlugin).
+	if *client == "cursor" {
+		cursorManifest, err := renderCursorPlugin(agentMCP)
+		if err != nil {
+			fmt.Fprintf(stderr, "error: %v\n", err)
+			return 1
+		}
+		if err := writeJSON(filepath.Join(*out, ".cursor-plugin", "plugin.json"), cursorManifest); err != nil {
+			fmt.Fprintf(stderr, "error: %v\n", err)
+			return 1
+		}
 	}
 
 	// skills/ — ONE tree, spec-only frontmatter (agentsVariant): the six
@@ -306,8 +388,12 @@ func cmdPluginRender(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 
-	fmt.Fprintf(stdout, "plugin rendered: %s (v%s, %d skills, %d hook groups, MCP → %s; .claude-plugin/plugin.json + Agent Plugins 1.0 plugin.json/mcp.json over one skills/ tree) — validate with `claude plugin validate --strict %s`\n",
-		*out, pluginVersion, len(skillsdist.Names), len(specs), *mcpURL, *out)
+	clientNote := ""
+	if *client == "cursor" {
+		clientNote = " + .cursor-plugin/plugin.json"
+	}
+	fmt.Fprintf(stdout, "plugin rendered: %s (v%s, %d skills, %d hook groups, MCP → %s; .claude-plugin/plugin.json + Agent Plugins 1.0 plugin.json/mcp.json%s over one skills/ tree) — validate with `claude plugin validate --strict %s`\n",
+		*out, pluginVersion, len(skillsdist.Names), len(specs), *mcpURL, clientNote, *out)
 	return 0
 }
 

@@ -165,3 +165,79 @@ func TestPluginTemplateDigestPinned(t *testing.T) {
 			got, pluginTemplateDigestPin, pinnedForVersion)
 	}
 }
+
+// TestPluginRenderCursor pins RH-8 (docs/plans/reach.md, docs/design/
+// reach.md §4): `--client cursor` renders Cursor's OWN manifest dialect
+// alongside the portable Agent Plugins pair — .cursor-plugin/plugin.json,
+// whose `mcpServers` field is a path STRING pointing at the sibling
+// mcp.json, not an inline server map (cursor.com/docs/reference/plugins,
+// fetched 2026-09-28) — reusing the already-rendered mcp.json rather than
+// duplicating its content. Without --client cursor, no such file is
+// written; the portable pair and Claude's own manifest are unaffected
+// either way.
+func TestPluginRenderCursor(t *testing.T) {
+	out := filepath.Join(t.TempDir(), "fathom-plugin")
+	var stdout, stderr bytes.Buffer
+	if code := cmdPluginRender([]string{"--out", out, "--client", "cursor"}, &stdout, &stderr); code != 0 {
+		t.Fatalf("exit: %s", stderr.String())
+	}
+
+	data, err := os.ReadFile(filepath.Join(out, ".cursor-plugin", "plugin.json"))
+	if err != nil {
+		t.Fatalf(".cursor-plugin/plugin.json missing: %v", err)
+	}
+	var manifest map[string]any
+	if err := json.Unmarshal(data, &manifest); err != nil {
+		t.Fatal(err)
+	}
+	if manifest["name"] != "fathom" {
+		t.Errorf("name = %v, want fathom", manifest["name"])
+	}
+	if manifest["mcpServers"] != "./mcp.json" {
+		t.Errorf(`mcpServers = %v, want "./mcp.json" (a path, not an inline object — Cursor's own shape)`, manifest["mcpServers"])
+	}
+
+	// The portable pair is unaffected — still present, still valid JSON.
+	if _, err := os.Stat(filepath.Join(out, "mcp.json")); err != nil {
+		t.Errorf("mcp.json missing after --client cursor: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(out, ".claude-plugin", "plugin.json")); err != nil {
+		t.Errorf(".claude-plugin/plugin.json missing after --client cursor: %v", err)
+	}
+
+	// Without --client, no Cursor manifest is written.
+	out2 := filepath.Join(t.TempDir(), "fathom-plugin")
+	if code := cmdPluginRender([]string{"--out", out2}, &stdout, &stderr); code != 0 {
+		t.Fatalf("exit: %s", stderr.String())
+	}
+	if _, err := os.Stat(filepath.Join(out2, ".cursor-plugin", "plugin.json")); !os.IsNotExist(err) {
+		t.Errorf(".cursor-plugin/plugin.json should not exist without --client cursor (err=%v)", err)
+	}
+}
+
+// TestRenderCursorPluginRefusesPluginRootTokens guards the documented
+// incompatibility (cursor.com/docs/reference/plugins, fetched
+// 2026-09-28): "Cursor does not expand the standard's ${PLUGIN_ROOT} and
+// ${PLUGIN_DATA} variables in mcp.json." fathom's own render never needs
+// them (a loopback URL, no plugin-relative command), so this is a guard
+// against a FUTURE render regressing into relying on them for Cursor
+// specifically, not a live behavior today.
+func TestRenderCursorPluginRefusesPluginRootTokens(t *testing.T) {
+	bad := map[string]any{
+		"mcpServers": map[string]any{
+			"fathom": map[string]any{"type": "stdio", "command": "${PLUGIN_ROOT}/bin/fathom"},
+		},
+	}
+	if _, err := renderCursorPlugin(bad); err == nil {
+		t.Fatal("expected an error for a mcp.json depending on ${PLUGIN_ROOT} (Cursor does not expand it)")
+	}
+
+	ok := map[string]any{
+		"mcpServers": map[string]any{
+			"fathom": map[string]any{"type": "streamable-http", "url": "http://localhost:7575/rpc/agent"},
+		},
+	}
+	if _, err := renderCursorPlugin(ok); err != nil {
+		t.Fatalf("unexpected error for a token-free mcp.json: %v", err)
+	}
+}
