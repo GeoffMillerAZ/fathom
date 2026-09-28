@@ -1,0 +1,55 @@
+{
+  "symbols": [
+    {
+      "name": "Good",
+      "kind": "JavaClass",
+      "package": "com.example.broken",
+      "line": 3,
+      "end_line": 7,
+      "tier": "verified"
+    },
+    {
+      "name": "Good.good",
+      "kind": "JavaMethod",
+      "package": "com.example.broken",
+      "line": 4,
+      "end_line": 6,
+      "signature": "int good()",
+      "calls": ["helper"],
+      "tier": "verified"
+    },
+    {
+      "name": "Broken",
+      "kind": "JavaClass",
+      "package": "com.example.broken",
+      "line": 9,
+      "end_line": 13,
+      "tier": "verified"
+    },
+    {
+      "name": "Broken.broken",
+      "kind": "JavaMethod",
+      "package": "com.example.broken",
+      "line": 10,
+      "end_line": 12,
+      "signature": "int broken(int a, @#$)",
+      "tier": "verified"
+    },
+    {
+      "name": "Survivor",
+      "kind": "JavaClass",
+      "package": "com.example.broken",
+      "line": 15,
+      "end_line": 17,
+      "tier": "verified"
+    },
+    {
+      "name": "ok",
+      "kind": "JavaField",
+      "package": "com.example.broken",
+      "line": 16,
+      "end_line": 16,
+      "tier": "verified"
+    }
+  ]
+}

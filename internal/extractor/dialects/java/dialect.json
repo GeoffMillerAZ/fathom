@@ -1,0 +1,38 @@
+{
+  "id": "java",
+  "display": "Java",
+  "kind": "language",
+  "engine": "tags",
+  "lang_tag": "java",
+  "match": {
+    "extensions": [".java"],
+    "basenames": [],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "grammar": { "blob": "java", "entry_point": "tree_sitter_java" },
+  "variants": [],
+  "queries": { "tags": "tags.scm", "imports": "imports.scm" },
+  "kinds": {
+    "class":      { "source_kind": "JavaClass",      "canonical": "class",     "container": true },
+    "interface":  { "source_kind": "JavaInterface",  "canonical": "interface", "container": true },
+    "enum":       { "source_kind": "JavaEnum",       "canonical": "enum",      "container": true },
+    "record":     { "source_kind": "JavaRecord",     "canonical": "class",     "container": true },
+    "annotation": { "source_kind": "JavaAnnotation", "canonical": "interface", "container": true },
+    "method":     { "source_kind": "JavaMethod",     "canonical": "method",    "callable": true },
+    "field":      { "source_kind": "JavaField",      "canonical": "field" },
+    "import":     { "source_kind": "JavaImport",     "canonical": "import" }
+  },
+  "required_kinds": ["class", "interface", "enum", "record", "annotation", "method", "field"],
+  "oracle_kinds": {
+    "ctags": { "class": "class", "interface": "interface", "enum": "enum", "annotation": "interface",
+               "method": "method", "field": "field", "enumConstant": "enum_member" }
+  },
+  "qualify": { "chain_containers": true, "container_sep": ".", "method_sep": "." },
+  "package": { "strategy": "capture" },
+  "imports": { "strategy": "namespace-dir", "suffixes": [".java"] },
+  "signature": { "max_chars": 200 },
+  "target_level": "L4",
+  "queue_id": "java"
+}

@@ -637,7 +637,11 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	p.exts[".mts"] = js
 	p.exts[".cts"] = js
 
-	// Java
+	// Java. LB-Q-java built and measured a tree-sitter dialect
+	// (internal/extractor/dialects/java/) — see docs/bench/readings/lang/java.json —
+	// but even its L1 falls short (§11 step 2's merge gate: the incumbent stays
+	// fusion's live dispatch until the dialect's target level is met); see
+	// internal/extractor/dialects/java/PROVENANCE.md for the measured detail.
 	p.exts[".java"] = extractor.NewJavaExtractor()
 
 	// Rust

@@ -66,6 +66,12 @@ const (
 	// stays a separate, not-yet-triggered slice).
 	KindJavaField  SourceKind = "JavaField"
 	KindJavaImport SourceKind = "JavaImport"
+	// KindJavaAnnotation is new with the LB-Q-java tags-engine port
+	// (docs/design/language-breadth.md §13): the incumbent CGO walker never
+	// emitted annotation type declarations ("@interface Foo { ... }") at
+	// all — a port may add kinds beyond the incumbent, never drop one
+	// (§11 step 3), same precedent as CUnion/CMacro for LB-Q-c.
+	KindJavaAnnotation SourceKind = "JavaAnnotation"
 
 	// Ruby
 	KindRubyClass  SourceKind = "RubyClass"

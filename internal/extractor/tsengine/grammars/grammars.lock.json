@@ -84,6 +84,21 @@
       "gz_bytes": 61224
     },
     {
+      "blob": "java",
+      "repo": "tree-sitter/tree-sitter-java",
+      "tag": "v0.23.5",
+      "commit": "94703d5a6bed02b98e438d7cad1136c01a60ba2c",
+      "tarball_sha256": "cb199e0faae4b2c08425f88cbb51c1a9319612e7b96315a174a624db9bf3d9f0",
+      "licence": "MIT",
+      "entry_points": ["tree_sitter_java"],
+      "scanner": false,
+      "generate": false,
+      "abi": 14,
+      "blob_sha256": "335ca5db18443f9ff6bbb917bccd3c79425991bdf1d3474b62a64169c58405b4",
+      "blob_bytes": 401009,
+      "gz_bytes": 113109
+    },
+    {
       "blob": "javascript",
       "repo": "tree-sitter/tree-sitter-javascript",
       "tag": "v0.25.0",

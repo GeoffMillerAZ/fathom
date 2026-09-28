@@ -1,0 +1,26 @@
+id: java
+language: Java
+repos:
+  - name: google/guava
+    url: https://github.com/google/guava
+    ref: v33.7.1
+    sha: c5b5a383a1f7f4a84c17de910f61181011c95908
+    licence: Apache-2.0
+    subpath: guava/src
+    idioms:
+      - heavy static-factory and builder patterns (ImmutableList.of, CacheBuilder)
+      - deep generic bounded-wildcard signatures (<K, V extends Comparable<V>>)
+      - nested static classes implementing an outer interface (AbstractIterator subclasses)
+      - annotation-driven contracts (@Nullable, @CanIgnoreReturnValue, @GwtCompatible)
+      - package-private helper classes alongside one public entry point per file
+  - name: square/retrofit
+    url: https://github.com/square/retrofit
+    ref: "3.0.0"
+    sha: 3ab0f1a2c18666adb79ebf4eacef6fbc40d3e801
+    licence: Apache-2.0
+    idioms:
+      - annotation-heavy declarative HTTP interfaces (@GET, @POST, @Path, @Query)
+      - a multi-module Gradle layout (retrofit/, retrofit-converters/*, retrofit-adapters/*)
+      - records used for small immutable value carriers (Java 17+ modules)
+      - static nested Builder classes with fluent chained setters
+      - reflection-heavy runtime dispatch (Proxy.newProxyInstance, ServiceMethod)

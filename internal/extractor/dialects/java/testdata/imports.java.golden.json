@@ -1,0 +1,80 @@
+{
+  "symbols": [
+    {
+      "name": "com.example.util.Helper",
+      "kind": "JavaImport",
+      "package": "com.example.app",
+      "line": 3,
+      "end_line": 3,
+      "tier": "verified"
+    },
+    {
+      "name": "com.example.other",
+      "kind": "JavaImport",
+      "package": "com.example.app",
+      "line": 4,
+      "end_line": 4,
+      "tier": "verified"
+    },
+    {
+      "name": "java.lang.Math.max",
+      "kind": "JavaImport",
+      "package": "com.example.app",
+      "line": 5,
+      "end_line": 5,
+      "tier": "verified"
+    },
+    {
+      "name": "java.lang.Math",
+      "kind": "JavaImport",
+      "package": "com.example.app",
+      "line": 6,
+      "end_line": 6,
+      "tier": "verified"
+    },
+    {
+      "name": "App",
+      "kind": "JavaClass",
+      "package": "com.example.app",
+      "line": 8,
+      "end_line": 12,
+      "tier": "verified"
+    },
+    {
+      "name": "App.run",
+      "kind": "JavaMethod",
+      "package": "com.example.app",
+      "line": 9,
+      "end_line": 11,
+      "signature": "void run()",
+      "calls": ["max"],
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "com.example.util.Helper",
+      "module": "com.example.util.Helper",
+      "kind": "whole",
+      "line": 3
+    },
+    {
+      "local": "*",
+      "module": "com.example.other",
+      "kind": "named",
+      "line": 4
+    },
+    {
+      "local": "java.lang.Math.max",
+      "module": "java.lang.Math.max",
+      "kind": "whole",
+      "line": 5
+    },
+    {
+      "local": "*",
+      "module": "java.lang.Math",
+      "kind": "named",
+      "line": 6
+    }
+  ]
+}
