@@ -50,8 +50,8 @@ var toolCostClasses = map[string]tenancy.Class{
 	"stale_docs": tenancy.ClassTree,
 
 	// fleet: every service.
-	"list_services": tenancy.ClassFleet, "fleet_drift": tenancy.ClassFleet, "cross_repo_blast_radius": tenancy.ClassFleet,
-	"cross_repo_callers": tenancy.ClassFleet, "review_diff": tenancy.ClassFleet, "dep_drift": tenancy.ClassFleet,
+	"list_services": tenancy.ClassFleet, "fleet_drift": tenancy.ClassFleet,
+	"cross_repo_callers": tenancy.ClassFleet, "review_diff": tenancy.ClassFleet,
 
 	// ingest: writes the store; one machine-wide.
 	"ingest": tenancy.ClassIngest, "compile_layer": tenancy.ClassIngest,

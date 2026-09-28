@@ -41,20 +41,12 @@
       "measured": "index",
       "basis": "static read: QuerySymbols over one service"
     },
-    "cross_repo_blast_radius": {
-      "measured": "fleet",
-      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
-    },
     "cross_repo_callers": {
       "measured": "fleet",
       "basis": "static read: every registered service (fleet backend)"
     },
     "dead_code": {
       "measured": "index",
-      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
-    },
-    "dep_drift": {
-      "measured": "fleet",
       "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
     },
     "diff_impact": {

@@ -202,8 +202,10 @@ func TestPointIndexToolsScaleSublinearly(t *testing.T) {
 // stampedeCases are one tool per memo group it builds and per class that
 // builds through memo: the index navigation (snapshot, typed edges,
 // graphs), the tree obligations walk (layer coverage paths, and the hot
-// reads it single-flights), symbol_context's graph, and the fleet's
-// cross-service blast radius (a snapshot and routes per service).
+// reads it single-flights), symbol_context's graph, and review_diff's
+// fleet-wide service_ref hop walk (serviceRefHopsInto: a snapshot and
+// routes per service — the same memo group cross_repo_blast_radius built
+// before SR-10, surface reckoning, unregistered it).
 var stampedeCases = []struct {
 	tool string
 	args string
@@ -211,7 +213,7 @@ var stampedeCases = []struct {
 	{"find_callers", `{"service":"ledger-service","symbol":"validateEntry"}`},
 	{"obligations", `{"service":"ledger-service","file":"ledger.go"}`},
 	{"symbol_context", `{"service":"ledger-service","symbol":"Post"}`},
-	{"cross_repo_blast_radius", `{"symbol":"Post"}`},
+	{"review_diff", `{"service":"ledger-service","changed_files":["ledger.go"]}`},
 }
 
 // TestColdStampedeOneBuildPerKey (RT-95): 32 concurrent cold callers start

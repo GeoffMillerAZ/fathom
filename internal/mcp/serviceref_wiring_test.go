@@ -1,7 +1,9 @@
-// Package mcp_test — VB-30 wiring: blast_radius, cross_repo_blast_radius
-// and review_diff each report service_ref hops (kind "service_ref", tier
-// "heuristic") using the fauxtown checkout-service/catalog-service fixture
-// pair (internal/analysis/serviceref's own golden fixture).
+// Package mcp_test — VB-30 wiring: blast_radius and review_diff each
+// report service_ref hops (kind "service_ref", tier "heuristic") using the
+// fauxtown checkout-service/catalog-service fixture pair
+// (internal/analysis/serviceref's own golden fixture). cross_repo_blast_radius
+// carried this same wiring until SR-10 (surface reckoning F-17) removed it
+// for 0 lifetime calls.
 package mcp_test
 
 import (
@@ -67,7 +69,7 @@ func readServiceRefFixture(t *testing.T, root, svc, name string) []byte {
 
 // newServiceRefServer builds a two-service fleet (catalog-service,
 // checkout-service) from the real fauxtown fixture files, wired for
-// blast_radius/cross_repo_blast_radius/review_diff to walk.
+// blast_radius/review_diff to walk.
 func newServiceRefServer(t *testing.T) (*mcp.Server, string, string) {
 	t.Helper()
 	root := fauxtownRootForMCP(t)
@@ -168,19 +170,6 @@ func TestBlastRadius_ServiceRefHops_EmptyWhenNoRouteChanged(t *testing.T) {
 	}
 }
 
-func TestCrossRepoBlastRadius_ServiceRefHops(t *testing.T) {
-	srv, _, _ := newServiceRefServer(t)
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 1, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "cross_repo_blast_radius",
-			"arguments": map[string]any{"symbol": "getItemHandler"},
-		},
-	})
-	payload := xtraPayload(t, resp)
-	assertServiceRefHopShape(t, firstServiceRefHop(t, payload))
-}
-
 func TestReviewDiff_ServiceRefHops(t *testing.T) {
 	srv, catalogFile, _ := newServiceRefServer(t)
 	resp := roundtrip(t, srv, request{
@@ -192,87 +181,6 @@ func TestReviewDiff_ServiceRefHops(t *testing.T) {
 	})
 	payload := xtraPayload(t, resp)
 	assertServiceRefHopShape(t, firstServiceRefHop(t, payload))
-}
-
-// TestCrossRepoBlastRadius_ServiceRefHops_Ambiguous proves the fan-out path
-// (VB-30 wave-i review, BLOCK 3): when a SECOND service also registers
-// GET /items/:id, checkout-service's call joins BOTH — the edge is never
-// dropped for being ambiguous — and every resulting hop is marked
-// ambiguous:true with the full (sorted) candidate list, so a consumer can
-// tell this apart from the unique-join case the other tests in this file
-// cover.
-func TestCrossRepoBlastRadius_ServiceRefHops_Ambiguous(t *testing.T) {
-	root := fauxtownRootForMCP(t)
-	catalogSrc := readServiceRefFixture(t, root, "catalog-service", "catalog.go")
-	checkoutSrc := readServiceRefFixture(t, root, "checkout-service", "checkout.go")
-
-	// inventorySrc registers the SAME (GET, /items/:id) route AND the same
-	// handler name (getItemHandler) catalog-service does, in a THIRD
-	// service — cross_repo_blast_radius filters service_ref_hops by
-	// ToHandler == the queried symbol name, so seeing BOTH ambiguous hops
-	// in one response needs both services to name their handler the same
-	// (plausible in practice: two services independently implementing a
-	// similarly-named handler for "the" item-lookup route). Kept inline
-	// here (rather than as a new fauxtown fixture file) since no other
-	// test needs a durable third service.
-	inventorySrc := []byte(`package inventory
-
-import "context"
-
-type Router interface {
-	GET(path string, handler HandlerFunc)
-}
-type HandlerFunc func(ctx context.Context) error
-
-func RegisterRoutes(r Router) {
-	r.GET("/items/:id", getItemHandler)
-}
-
-func getItemHandler(ctx context.Context) error {
-	return nil
-}
-`)
-
-	backend := &serviceRefFakeBackend{
-		extendedFakeBackend: extendedFakeBackend{
-			nodes: []core.SymbolNode{
-				{Service: "catalog-service", Package: "catalog", Name: "getItemHandler", Kind: core.KindGoFunc, FilePath: "catalog-service/catalog.go", Line: 34},
-			},
-			services: []string{"catalog-service", "checkout-service", "inventory-service"},
-		},
-		bySvc: map[string][]core.SourceFile{
-			"catalog-service":   {{Path: "catalog-service/catalog.go", Content: catalogSrc, Lang: "go"}},
-			"checkout-service":  {{Path: "checkout-service/checkout.go", Content: checkoutSrc, Lang: "go"}},
-			"inventory-service": {{Path: "inventory-service/inventory.go", Content: inventorySrc, Lang: "go"}},
-		},
-	}
-	srv := mcp.NewServer(backend)
-
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 1, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "cross_repo_blast_radius",
-			"arguments": map[string]any{"symbol": "getItemHandler"},
-		},
-	})
-	payload := xtraPayload(t, resp)
-	raw, ok := payload["service_ref_hops"].([]any)
-	if !ok || len(raw) != 2 {
-		t.Fatalf("service_ref_hops = %#v, want 2 entries (catalog-service AND inventory-service)", payload["service_ref_hops"])
-	}
-	wantCandidates := []any{"catalog-service", "inventory-service"}
-	for _, r := range raw {
-		hop, ok := r.(map[string]any)
-		if !ok {
-			t.Fatalf("hop is not an object: %#v", r)
-		}
-		if hop["ambiguous"] != true {
-			t.Errorf("hop[ambiguous] = %v, want true (two services register GET /items/:id)", hop["ambiguous"])
-		}
-		if !reflect.DeepEqual(hop["candidates"], wantCandidates) {
-			t.Errorf("hop[candidates] = %v, want %v", hop["candidates"], wantCandidates)
-		}
-	}
 }
 
 func (b *serviceRefFakeBackend) ScanSources(ctx context.Context, svc string, bud corpus.Budget, fn func(core.SourceFile) bool) (corpus.Coverage, error) {

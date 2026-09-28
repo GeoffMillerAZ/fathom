@@ -21,7 +21,6 @@ Answer "if I change X, what breaks — here and in every other service?" across 
 | `reachable` | MCP tool (coding) | Boolean: is there any directed call path from symbol A to symbol B? |
 | `cross_repo_callers` | MCP tool (platform) | All callers of a symbol **across every ingested service** via stored call edges (its `platform_callers` alias was deleted, SW-1) |
 | `references` | MCP tool (investigation) | Occurrence search for an identifier or string — across every service's source with `services: ["*"]`, evidence-tiered — catches string/config mentions no call edge records |
-| `cross_repo_blast_radius` | MCP tool (platform) | Blast radius of a **symbol across all services**: the symbol plus every cross-service caller |
 | `list_services` | MCP tool (platform) | All services in the fleet with detected languages and symbol counts |
 | `staleness_report` | MCP tool (shared) | Whether the index is out of date vs. current HEAD |
 | `ingest` | MCP tool | Re-index a service in-session to pull in new call edges |
@@ -123,13 +122,10 @@ When you have a set of changed files (a PR, a commit), use `blast_radius` (or it
 
 Returns the defined symbols, their transitive callers, the affected tests, and the touched files.
 
-For a single symbol's reach across the **whole fleet** in one call, use `cross_repo_blast_radius`:
-
-```json
-{ "name": "cross_repo_blast_radius", "arguments": { "symbol": "ValidateToken" } }
-```
-
-Returns the symbol in each service plus every cross-service caller — the one-call answer to "who is affected, fleet-wide?"
+For a single symbol's reach across the **whole fleet**, `cross_repo_blast_radius` was
+removed (SR-10, surface reckoning F-17, zero lifetime calls); use `cross_repo_callers`
+to find the symbol's cross-service callers, then `blast_radius` (or `find_callers`) in
+each caller's own service for its transitive reach there.
 
 ## Setup & notes
 
@@ -155,4 +151,4 @@ After ingest, verify the `Package` column and `Calls` edges are present by check
 
 ## Maintained
 
-This doc covers: `find_callers` (incl. `depth`, `edge_confidence`, `by_depth`, `transitive_callers`), `test_impact`, `blast_radius` (incl. `by_depth`), `diff_impact`, `rename_impact`, `reachable`, `cross_repo_callers`, `cross_repo_blast_radius`, `references`, `list_services`, `staleness_report`, `ingest`, `fathom platform-callers`. Update it when these change.
+This doc covers: `find_callers` (incl. `depth`, `edge_confidence`, `by_depth`, `transitive_callers`), `test_impact`, `blast_radius` (incl. `by_depth`), `diff_impact`, `rename_impact`, `reachable`, `cross_repo_callers`, `references`, `list_services`, `staleness_report`, `ingest`, `fathom platform-callers`. Update it when these change.

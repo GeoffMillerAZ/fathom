@@ -2,8 +2,8 @@ package mcp
 
 // servicerefs_memo.go — RT-89 (docs/design/responsible-tenant.md §6): a
 // service's ingest-extracted routes and client calls are read once per
-// (store, service, watermark) and shared by blast_radius,
-// cross_repo_blast_radius and review_diff, never re-read per call. A
+// (store, service, watermark) and shared by blast_radius and review_diff,
+// never re-read per call. A
 // per-file refresh replaces one file's rows without moving the watermark,
 // so the refresh path drops the entry (Server.DropServiceRefs).
 

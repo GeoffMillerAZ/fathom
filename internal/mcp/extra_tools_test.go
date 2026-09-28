@@ -716,44 +716,6 @@ func TestAPIDiff_MissingServiceB(t *testing.T) {
 	xtraError(t, resp)
 }
 
-// ─── dep_drift ────────────────────────────────────────────────────────────────
-
-func TestDepDrift_Basic(t *testing.T) {
-	gomod := `module example.com
-go 1.21
-require github.com/foo/bar v1.2.3
-`
-	srv := mcp.NewServer(&sourcesFakeBackend{
-		extendedFakeBackend: extendedFakeBackend{services: []string{"svcA", "svcB"}},
-		sources: []core.SourceFile{
-			{Path: "go.mod", Content: []byte(gomod), Lang: "go"},
-		},
-	})
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 1200, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "dep_drift",
-			"arguments": map[string]any{"service_a": "svcA", "service_b": "svcB"},
-		},
-	})
-	p := xtraPayload(t, resp)
-	if p["drift"] == nil {
-		t.Error("dep_drift: drift missing")
-	}
-}
-
-func TestDepDrift_MissingServiceB(t *testing.T) {
-	srv := newExtraSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 1201, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "dep_drift",
-			"arguments": map[string]any{"service_a": "svcA"},
-		},
-	})
-	xtraError(t, resp)
-}
-
 // ─── ingest ───────────────────────────────────────────────────────────────────
 
 func TestIngest_Basic(t *testing.T) {
@@ -777,35 +739,6 @@ func TestIngest_MissingService(t *testing.T) {
 		JSONRPC: "2.0", ID: 1261, Method: "tools/call",
 		Params: map[string]any{
 			"name":      "ingest",
-			"arguments": map[string]any{},
-		},
-	})
-	xtraError(t, resp)
-}
-
-// ─── cross_repo_blast_radius ──────────────────────────────────────────────────
-
-func TestCrossRepoBlastRadius_Basic(t *testing.T) {
-	srv := newExtraSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 1270, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "cross_repo_blast_radius",
-			"arguments": map[string]any{"symbol": "Alpha"},
-		},
-	})
-	p := xtraPayload(t, resp)
-	if p["hits"] == nil {
-		t.Error("cross_repo_blast_radius: hits missing")
-	}
-}
-
-func TestCrossRepoBlastRadius_MissingSymbol(t *testing.T) {
-	srv := newExtraSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 1271, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "cross_repo_blast_radius",
 			"arguments": map[string]any{},
 		},
 	})
@@ -1027,8 +960,7 @@ func TestExtraToolsInList(t *testing.T) {
 		"blast_radius", "diff_impact", "spec_coverage",
 		"traceability", "evidence_summary", "contradiction_scan",
 		"arch_conformance", "stale_docs", "api_diff",
-		"dep_drift", "ingest",
-		"cross_repo_blast_radius",
+		"ingest",
 		"repo_map", "pack_context",
 		"batch",
 		"proto_conformance",
@@ -1045,6 +977,14 @@ func TestExtraToolsInList(t *testing.T) {
 	// and overlaps pack_context.
 	if names["brief"] {
 		t.Error("brief tool is still registered — SR-15 unregisters it")
+	}
+	// SR-10 (surface reckoning F-17/F-18): dep_drift and
+	// cross_repo_blast_radius are unregistered — 0 lifetime calls.
+	if names["dep_drift"] {
+		t.Error("dep_drift tool is still registered — SR-10 unregisters it")
+	}
+	if names["cross_repo_blast_radius"] {
+		t.Error("cross_repo_blast_radius tool is still registered — SR-10 unregisters it")
 	}
 }
 
