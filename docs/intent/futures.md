@@ -25,7 +25,10 @@ futures may justify a free option today. The repo's own sequence is
   published context-bench. Evidence: `docs/design/product-vision.md` §4 H2.
 - Do not build: brew tap, registry listings, marketing, a hosted anything.
 - Preserve: `fathom init` works on a cold clone; the in-tree kit mirror (ADR-019) keeps a
-  kit-less build possible; no org-specific content (ADR-011).
+  kit-less build possible; no org-specific content (ADR-011); the kit mirrors
+  (`third_party/agentic-kit`, the app-kit adoption) carry licences compatible with
+  distribution inside an FSL-1.1-ALv2 work (ADR-052; satisfied 2026-09-27, both kits are FSL,
+  re-checked on any pin bump); Q29 and Q30 are answered before any public release.
 - Promote when: the H1 exit criteria are green (instrument valid ≥4 weeks; injection ≥90%;
   verify gate live in ≥2 repos ≥4 weeks; surface pruned; portability passing; context-bench win).
 - Drop if: the owner decides fathom stays a personal force-multiplier (`docs/vision/07` Q4).

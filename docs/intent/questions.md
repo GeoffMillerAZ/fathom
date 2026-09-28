@@ -92,3 +92,12 @@ ran, plus the 21 changed files fathom does not analyze, instead of 47 files; on 
 weaker-tested repository the flagged set grows instead of hiding the gaps. At deny the
 pack's findings block instead of warn. Blocks: arming the pack at deny
 (`.reviewkit/config.cue`). Answerable by: owner.
+
+**Q29. CLA, or DCO plus an explicit grant, for outside contributions?** FSL-1.1-ALv2
+(ADR-052) keeps dual or commercial licensing possible only if the licensor holds enough
+rights in every contribution. Blocks: accepting a first outside contribution; F2. Answerable
+by: owner (with counsel). Nothing is built until a contribution is offered.
+
+**Q30. Is "Fathom" protectable as a trademark?** Other products use the name; the licence's
+Trademarks clause reserves marks but establishes none. Blocks: F2's public naming (a
+marketplace listing, a brew tap). Answerable by: owner (with counsel). Not legal advice.

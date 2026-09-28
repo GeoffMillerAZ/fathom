@@ -137,3 +137,7 @@ Implementation status is computed, never asserted: `fathom plans status
 --service fathom` (the verify gate over every active `docs/plans/*.md`).
 Scope and roadmap: `docs/intent/scope.md` via the router `docs/intent/README.md`.
 Key decisions are in `ADR.md` (indexed at `docs/intent/decisions/README.md`).
+
+## License
+
+Source-available under the Functional Source License, [FSL-1.1-ALv2](LICENSE.md): each release converts to Apache-2.0 two years after it is published (ADR-052).

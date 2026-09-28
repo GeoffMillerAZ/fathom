@@ -1232,6 +1232,11 @@ or `pack_context` traffic rises enough for tiering to have a consumer; or
 fathom adopts a root LICENSE, at which point clause 1's hard reason should
 be restated in terms of that licence rather than the absence of one.
 
+**Amendment (2026-09-27, ADR-052).** The revisit trigger fired: fathom adopted FSL-1.1-ALv2.
+Clause 1's hard reason is restated: AGPL-3.0 code cannot be vendored, linked or embedded
+because its copyleft would require the combined work to be distributed under AGPL, which is
+incompatible with FSL's Competing Use restriction. The soft reasons and clause 2 stand.
+
 ## ADR-029: Harness adapters are data behind one seam; a second harness's inject tier ships unverified (2026-09-02)
 
 **Status.** Accepted under the delegated ownership of 2026-07-07 and the
@@ -2702,3 +2707,35 @@ only then does a firm line for a high-confidence band become warranted again.
 - T4's selection misses a certificate a full run would have caught on the replayed month (TQ-M2): selection goes advisory.
 - An adopter or regulator rejects the evidence pack format: revisit U8's mapping file shape.
 
+## ADR-052: Fathom is source-available under FSL-1.1-ALv2, converting to Apache-2.0 after two years (2026-09-27)
+
+**Status.** Accepted 2026-09-27 (owner decision). Licence text: root `LICENSE.md`, the canonical template from fsl.software fetched verbatim 2026-09-27 (sha256 of the unfilled template `36b6082235c0a2105174927fc57cc6ae9c41f45a08af2bdcaee18a8dace56177`, identical to the getsentry/fsl.software repository copy), with the notice filled as "Copyright 2026 Geoff Miller". Fires ADR-028's revisit trigger ("fathom adopts a root LICENSE"). Not legal advice.
+
+**Context.** The owner wants the source public and wants no one to sell fathom, or a competing product built from it, without him. MIT and Apache-2.0 permit exactly that resale. AGPL-3.0 permits commercial resale as long as the source is shared. The Functional Source License forbids "Competing Use" (making the software available in a commercial product or service that substitutes for it or offers substantially similar functionality) for two years per release, then each release converts irrevocably to Apache-2.0, which keeps an eventual-open promise and a patent grant that adopters can rely on.
+
+**Decision.**
+1. *Licence.* Fathom is licensed under FSL-1.1-ALv2, copyright holder Geoff Miller, 2026. Each release converts to Apache-2.0 on its second anniversary.
+2. *How it is described.* "Source-available, converts to Apache-2.0 after two years." Never "open source": FSL is not OSI-approved.
+3. *Contributions.* Outside contributions need a CLA or a DCO plus an explicit licence grant, so dual or commercial licensing stays possible. Recorded as an open question (Q29); nothing is built until a first outside contribution is offered.
+4. *Kit mirrors.* The in-tree mirrors must carry licences compatible with distribution inside an FSL work before any public release (F2's preserve list). Satisfied on 2026-09-27: agentic-kit was relicensed from MIT to FSL the same day, and app-kit is FSL; a pin bump that changes either licence re-opens the check.
+5. *Third-party inputs keep their own licences.* ADR-048's allowlist (permissive sources only, GPL-family tools as separate processes) already fits an FSL work; an FSL-licensed third-party source stays refused as a grammar or query input, as ADR-048 says.
+6. *ADR-028 clause 1 restated.* AGPL-3.0 code still cannot be vendored, linked or embedded: its copyleft would require the combined work to be distributed under AGPL, which is incompatible with FSL's Competing Use restriction. The absence of a licence is no longer the reason; the incompatibility is.
+7. *The name.* Trademark on "Fathom" is a separate open question (Q30): other products use the name. The licence's Trademarks clause reserves our marks; it does not establish one.
+
+**Alternatives rejected.**
+- *MIT or Apache-2.0 now.* Permits a competitor to sell fathom or a hosted copy.
+- *AGPL-3.0.* Permits commercial resale with source shared; closes dual licensing without a CLA.
+- *BUSL (Business Source License).* Similar intent, but a per-release custom "additional use grant" and a change date of up to four years; FSL is shorter, standardized and pre-committed to Apache-2.0.
+- *Closed source.* The owner wants the source public.
+
+**Consequences.**
+- `LICENSE.md` at the root; `README.md` gains a one-line License section.
+- `docs/intent/questions.md` gains Q29 (CLA or DCO plus grant) and Q30 (trademark).
+- F2's preserve list names the kit-mirror licence check (satisfied at today's pins).
+- ADR-028's clause 1 reason is restated (above).
+
+**Revisit when.**
+- An adopter or contributor refuses FSL in writing.
+- A commercial licence is requested.
+- A first outside contribution is offered (answer Q29 first).
+- The FSL steward publishes a new version, or a court or the OSI changes how FSL is treated.
