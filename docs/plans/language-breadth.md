@@ -64,7 +64,7 @@ cannot reach its target keeps its contract and gains a `[-]` sibling
 
 ### F.6 Retirement (§11)
 
-- [ ] `indexbench lang-parity`: incumbent against dialect on the same subjects and oracle, per-metric delta, `SourceKind` diff; the merge rule of §11 step 2 as its exit code {id: LB-F18, symbol: cmdLangParity, package: cmd/indexbench, reachable_from: TestCmdLangParity, needs: "LB-F23"}
+- [x] `indexbench lang-parity`: incumbent against dialect on the same subjects and oracle, per-metric delta, `SourceKind` diff; the merge rule of §11 step 2 as its exit code {id: LB-F18, symbol: cmdLangParity, package: cmd/indexbench, reachable_from: TestCmdLangParity, needs: "LB-F23"}
 - [ ] The CGO tree-sitter bindings leave `go.mod` once the last walker is retired; `internal/CLAUDE.md` and ADR-013's status corrected (§11 step 4, F1) {id: LB-F19, gone: module github.com/tree-sitter/go-tree-sitter, needs: "LB-Q-java,LB-Q-csharp,LB-Q-bash,LB-Q-c,LB-Q-cpp,LB-Q-php,LB-Q-rust,LB-Q-lua,LB-Q-scala"}
 
 ### F.7 Refused and deferred (recorded so they are not re-proposed)
