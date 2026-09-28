@@ -26,12 +26,15 @@ import (
 //   - api_diff: SR-26 (F-20)
 //   - brief (the MCP tool, not the CLI verb): SR-15 (F-53 refined)
 //   - stale_docs: SR-28 (F-56) — folded into staleness_report's doc_drift
+//   - discoveries: SR-29 (F-47) — the SubagentStart hook's push-form
+//     render already covers the need
 var reckoningTools = []string{
 	"api_diff",
 	"brief",
 	"cross_repo_blast_radius",
 	"dep_drift",
 	"diff_impact",
+	"discoveries",
 	"find_callees",
 	"stale_docs",
 }

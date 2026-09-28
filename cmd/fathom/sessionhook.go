@@ -281,7 +281,24 @@ func composeContinuityAndCustodian(identity, projDir string, now time.Time) (pri
 // pushed. Always exits 0, even when the daemon is unreachable —
 // buildSessionContext already degrades to an honest status line rather
 // than an error, and priming must never fail a session open.
+//
+// `--routes` (SR-29, surface reckoning F-47, design §4) routes to
+// cmdRoutes instead: `routes` is no longer its own top-level verb (0
+// lifetime calls as one), so `fathom prime --routes [package|concern]` is
+// the one entry point now. Detected by a plain scan BEFORE prime's own
+// flag set parses args — cmdRoutes owns its own disjoint flag set
+// (service/root/store/call-log/json), which prime's flags do not and must
+// not shadow — so every existing `--url`/`--dir` prime caller, and every
+// existing `routes` flag/arg, is unaffected.
 func cmdPrime(args []string, stdout, stderr io.Writer) int {
+	for i, a := range args {
+		if a == "--routes" || a == "-routes" {
+			rest := make([]string, 0, len(args)-1)
+			rest = append(rest, args[:i]...)
+			rest = append(rest, args[i+1:]...)
+			return cmdRoutes(rest, stdout, stderr)
+		}
+	}
 	rpcOrigin = "prime"
 	fs := newFlagSet("prime", stderr)
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL")

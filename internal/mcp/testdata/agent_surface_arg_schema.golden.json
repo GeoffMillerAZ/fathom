@@ -13,7 +13,7 @@
         "type": "boolean"
       },
       "kind": {
-        "description": "\"change\" (default, changed_files), \"rename\"/\"delete\" (need symbol) — grep gives none of the three.",
+        "description": "\"change\" (default, changed_files), \"rename\"/\"delete\" (need symbol) \u2014 grep gives none of the three.",
         "enum": [
           "change",
           "rename",
@@ -43,26 +43,6 @@
     ],
     "type": "object"
   },
-  "discoveries": {
-    "properties": {
-      "budget": {
-        "description": "Byte budget for the rendered list (default 4000)",
-        "type": "integer"
-      },
-      "service": {
-        "description": "Service / repo identifier",
-        "type": "string"
-      },
-      "since": {
-        "description": "RFC3339 timestamp; only pointers established at/after it (default: all recorded history)",
-        "type": "string"
-      }
-    },
-    "required": [
-      "service"
-    ],
-    "type": "object"
-  },
   "find_callers": {
     "properties": {
       "depth": {
@@ -82,7 +62,7 @@
         "type": "string"
       },
       "with_signatures": {
-        "description": "SB-47: include each caller's full signature (\"sig\") on the wire row. Default false — the compact {loc, c} shape omits it.",
+        "description": "SB-47: include each caller's full signature (\"sig\") on the wire row. Default false \u2014 the compact {loc, c} shape omits it.",
         "type": "boolean"
       }
     },
@@ -95,7 +75,7 @@
   "find_symbol": {
     "properties": {
       "name": {
-        "description": "Symbol name (bare or fully-qualified; exact spelling not required). Alias: \"symbol\" (additive — same field, either name works; both may be given only if they agree).",
+        "description": "Symbol name (bare or fully-qualified; exact spelling not required). Alias: \"symbol\" (additive \u2014 same field, either name works; both may be given only if they agree).",
         "type": "string"
       },
       "service": {
@@ -116,11 +96,11 @@
   "ingest": {
     "properties": {
       "path": {
-        "description": "Absolute corpus root — required only when first onboarding a new service",
+        "description": "Absolute corpus root \u2014 required only when first onboarding a new service",
         "type": "string"
       },
       "remap": {
-        "description": "Authorize re-pointing an EXISTING service's recorded root at a different path (O82). Without it, a differing path is refused — a hook must never re-point a service.",
+        "description": "Authorize re-pointing an EXISTING service's recorded root at a different path (O82). Without it, a differing path is refused \u2014 a hook must never re-point a service.",
         "type": "boolean"
       },
       "service": {
@@ -140,15 +120,15 @@
   "localize": {
     "properties": {
       "budget": {
-        "description": "Maximum hops (default 12, max 40) — always a floor under a bounded, terminating answer, never rejected for being too high",
+        "description": "Maximum hops (default 12, max 40) \u2014 always a floor under a bounded, terminating answer, never rejected for being too high",
         "type": "integer"
       },
       "concern": {
-        "description": "A free-text description of the area or problem — significant terms are searched",
+        "description": "A free-text description of the area or problem \u2014 significant terms are searched",
         "type": "string"
       },
       "error": {
-        "description": "An error message, verbatim — quoted literals and any embedded file:line frames are parsed out as seeds",
+        "description": "An error message, verbatim \u2014 quoted literals and any embedded file:line frames are parsed out as seeds",
         "type": "string"
       },
       "failing_test": {
@@ -160,7 +140,7 @@
         "type": "string"
       },
       "stack_trace": {
-        "description": "A stack trace or traceback, verbatim — file:line frames and function names are parsed out as seeds",
+        "description": "A stack trace or traceback, verbatim \u2014 file:line frames and function names are parsed out as seeds",
         "type": "string"
       }
     },
@@ -216,7 +196,7 @@
         "type": "string"
       },
       "file": {
-        "description": "Repo-relative file path being edited. Omit (with no action) for root-scope obligations — \"what governs this repository\" — instead of an error.",
+        "description": "Repo-relative file path being edited. Omit (with no action) for root-scope obligations \u2014 \"what governs this repository\" \u2014 instead of an error.",
         "type": "string"
       },
       "include_snippets": {
@@ -295,7 +275,7 @@
   "query_symbols": {
     "properties": {
       "concern": {
-        "description": "Concern ID to scope the query (e.g. \"authentication\"). Alias: \"symbol\" (additive — same field, either name works; both may be given only if they agree).",
+        "description": "Concern ID to scope the query (e.g. \"authentication\"). Alias: \"symbol\" (additive \u2014 same field, either name works; both may be given only if they agree).",
         "type": "string"
       },
       "keywords": {
@@ -360,7 +340,7 @@
         "type": "boolean"
       },
       "exact": {
-        "description": "SB-45: keep only occurrences the typed pass confirmed (edge_confidence: resolved) — identifier uses, never a comment or doc mention. Defaults to true when at least one queried service's last ingest reported typed edges (staleness_report's typed_edges); false restores every text occurrence. A service with no typed reference sites for this query falls back automatically and is named in degraded.",
+        "description": "SB-45: keep only occurrences the typed pass confirmed (edge_confidence: resolved) \u2014 identifier uses, never a comment or doc mention. Defaults to true when at least one queried service's last ingest reported typed edges (staleness_report's typed_edges); false restores every text occurrence. A service with no typed reference sites for this query falls back automatically and is named in degraded.",
         "type": "boolean"
       },
       "include_heuristic": {
@@ -372,7 +352,7 @@
         "type": "integer"
       },
       "query": {
-        "description": "String to search for: an identifier, a dotted path (\"pkg.Sym\" or \"Type.Method\"), or a regex (with regex: true). Alias: \"symbol\" (additive — same field, either name works; both may be given only if they agree).",
+        "description": "String to search for: an identifier, a dotted path (\"pkg.Sym\" or \"Type.Method\"), or a regex (with regex: true). Alias: \"symbol\" (additive \u2014 same field, either name works; both may be given only if they agree).",
         "type": "string"
       },
       "regex": {
@@ -434,7 +414,7 @@
         "type": "string"
       },
       "coverage_profiles": {
-        "description": "Optional: one entry per test layer — {layer, path}, each path repo-relative under the service's corpus root (e.g. workspace/cov/unit.out). Enables the \"coverage\" dimension with real per-layer attribution; absent (and no coverage_profile) = checked:false, reason \"no coverage profile supplied\".",
+        "description": "Optional: one entry per test layer \u2014 {layer, path}, each path repo-relative under the service's corpus root (e.g. workspace/cov/unit.out). Enables the \"coverage\" dimension with real per-layer attribution; absent (and no coverage_profile) = checked:false, reason \"no coverage profile supplied\".",
         "items": {
           "properties": {
             "layer": {
@@ -486,7 +466,7 @@
         "type": "string"
       },
       "pattern": {
-        "description": "Regular expression to search for (Go regexp syntax — must compile; the same pattern text is handed to ripgrep when it runs the search).",
+        "description": "Regular expression to search for (Go regexp syntax \u2014 must compile; the same pattern text is handed to ripgrep when it runs the search).",
         "type": "string"
       },
       "root": {
@@ -494,7 +474,7 @@
         "type": "string"
       },
       "service": {
-        "description": "Service / repo identifier — searches its indexed corpus root and enables sym/kind receipts. Give exactly one of service or root.",
+        "description": "Service / repo identifier \u2014 searches its indexed corpus root and enables sym/kind receipts. Give exactly one of service or root.",
         "type": "string"
       }
     },
@@ -564,7 +544,7 @@
         "type": "string"
       },
       "plan_path": {
-        "description": "Repo-relative path plan_markdown was read from. Optional; when given and the service's recorded corpus root is a real git checkout, a claimed row's skip_test is checked against git history — a skip added in the same edit/commit that claims the row done is refused as self-skipped (O56), never graded by the agent's own hand.",
+        "description": "Repo-relative path plan_markdown was read from. Optional; when given and the service's recorded corpus root is a real git checkout, a claimed row's skip_test is checked against git history \u2014 a skip added in the same edit/commit that claims the row done is refused as self-skipped (O56), never graded by the agent's own hand.",
         "type": "string"
       },
       "service": {
@@ -603,7 +583,7 @@
               "type": "string"
             },
             "skip": {
-              "description": "Justification for skip_test — mirrors the Markdown checklist's `skip:` annotation key. A bare skip_test with no reason is refused as skip-without-reason (O56).",
+              "description": "Justification for skip_test \u2014 mirrors the Markdown checklist's `skip:` annotation key. A bare skip_test with no reason is refused as skip-without-reason (O56).",
               "type": "string"
             },
             "skip_test": {

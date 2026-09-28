@@ -41,10 +41,6 @@
       "measured": "index",
       "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
     },
-    "discoveries": {
-      "measured": "tree",
-      "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
-    },
     "evidence_summary": {
       "measured": "index",
       "basis": "static read: ListAllSymbols for one service"

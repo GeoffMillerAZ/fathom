@@ -511,9 +511,10 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 	// Register semantic-layer tools (obligations, compile_layer).
 	registerSemanticTools(s, backend, modules)
 
-	// Register "discoveries" — the pull form of the call-log pointer
-	// brief (RC-27, docs/vision/28-receipts.md §4).
-	registerDiscoveries(s, backend)
+	// registerDiscoveries (RC-27, docs/vision/28-receipts.md §4) was
+	// unregistered by SR-29 (surface reckoning F-47): 0 lifetime calls; the
+	// SubagentStart hook's push-form render (subagentDiscoveries,
+	// cmd/fathom/discoveries.go) already covers the need.
 }
 
 // ─── DTOs ────────────────────────────────────────────────────────────────────

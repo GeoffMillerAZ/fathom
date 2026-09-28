@@ -79,7 +79,6 @@ func TestOutputSchemasMatchLiveResults(t *testing.T) {
 
 	args := map[string]map[string]any{
 		"blast_radius":      {"service": "svc", "changed_files": []string{"pkg/a.go"}},
-		"discoveries":       {"service": "svc"},
 		"find_callers":      {"service": "svc", "symbol": "B", "depth": 0},
 		"find_symbol":       {"service": "svc", "name": "A"},
 		"ingest":            {"service": "svc"},

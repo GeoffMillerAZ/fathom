@@ -55,12 +55,14 @@ var toolCostClasses = map[string]tenancy.Class{
 	"symbol_context": tenancy.ClassTree, "obligations": tenancy.ClassTree, "search": tenancy.ClassTree,
 	"secret_scan": tenancy.ClassTree, "cloc": tenancy.ClassTree, "spec_coverage": tenancy.ClassTree,
 	"traceability": tenancy.ClassTree, "status": tenancy.ClassTree,
-	"discoveries": tenancy.ClassTree, "references": tenancy.ClassTree, "blast_radius": tenancy.ClassTree,
+	"references": tenancy.ClassTree, "blast_radius": tenancy.ClassTree,
 	"traverse": tenancy.ClassTree, "http_client_calls": tenancy.ClassTree,
 	"shell_out": tenancy.ClassTree, "proto_conformance": tenancy.ClassTree, "spec_refs": tenancy.ClassTree,
 	"staleness_report": tenancy.ClassTree,
 	// stale_docs (SR-28) was unregistered; its own scan runs inside
 	// staleness_report now (the entry above), never as a second call.
+	// discoveries (SR-29) was unregistered; the SubagentStart hook's own
+	// push-form render (a separate, unbudgeted CLI-side query) covers it.
 
 	// fleet: every service.
 	"list_services": tenancy.ClassFleet, "fleet_drift": tenancy.ClassFleet,

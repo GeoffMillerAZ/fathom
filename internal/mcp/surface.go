@@ -84,10 +84,11 @@ const SurfaceExtended = "extended"
 // safe_delete_check left this map at SR-24 (F-13, design §4) — it is
 // unregistered as a standalone tool, its answer now blast_radius' own
 // kind:"delete" (blastRadiusByKind, extra_tools.go), and blast_radius was
-// already promoted below via promotedVerbs().
+// already promoted below via promotedVerbs(). discoveries left this map at
+// SR-29 (F-47, design §4) — 0 lifetime calls; the SubagentStart hook's
+// push-form render already covers the need.
 var companionTools = func() map[string]bool {
 	m := map[string]bool{
-		"discoveries":      true,
 		"find_callers":     true,
 		"find_symbol":      true,
 		"ingest":           true,
