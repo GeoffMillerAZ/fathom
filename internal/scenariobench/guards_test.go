@@ -2,7 +2,9 @@ package scenariobench
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -138,6 +140,37 @@ func testFuncExistsInTree(root, pkgDir, name string) (bool, error) {
 	return false, nil
 }
 
+// testFuncExistsAtCommit is testFuncExistsInTree for a package the tree
+// has since retired: it reads pkgDir's *_test.go files at commit (the
+// task's base_commit, where the scenario's detector actually runs) out of
+// root's git history. A commit or package git cannot produce is an error,
+// never a pass.
+func testFuncExistsAtCommit(root, commit, pkgDir, name string) (bool, error) {
+	ls, err := exec.Command("git", "-C", root, "ls-tree", "--name-only", commit+":"+pkgDir).Output()
+	if err != nil {
+		return false, fmt.Errorf("git ls-tree %s:%s: %w", commit, pkgDir, err)
+	}
+	for _, file := range strings.Fields(string(ls)) {
+		if !strings.HasSuffix(file, "_test.go") {
+			continue
+		}
+		src, err := exec.Command("git", "-C", root, "show", commit+":"+pkgDir+"/"+file).Output()
+		if err != nil {
+			return false, fmt.Errorf("git show %s:%s/%s: %w", commit, pkgDir, file, err)
+		}
+		spans, err := publicloc.FuncSpans(src, file)
+		if err != nil {
+			continue
+		}
+		for _, sp := range spans {
+			if sp.Name == name {
+				return true, nil
+			}
+		}
+	}
+	return false, nil
+}
+
 // TestGuardsCorpusDetectorsExist is SB-24's anchor: every task's detector
 // command is runnable in this tree (a go/task/cue/bash verb, or something
 // on PATH), every `go test -run TestX` detector names a TestX this tree
@@ -200,10 +233,22 @@ func checkGuardsCorpusDetectors(t *testing.T, c Corpus) {
 						// and then this exact detector command for real.
 						continue
 					}
-					if found, err := testFuncExistsInTree(moduleRoot, pkgDir, testName); err != nil {
-						t.Errorf("task %s: detector %s: searching for %s in %q: %v", task.ID, d.Name, testName, pkgDir, err)
+					found, err := testFuncExistsInTree(moduleRoot, pkgDir, testName)
+					where := fmt.Sprintf("%q", pkgDir)
+					if errors.Is(err, fs.ErrNotExist) && pkgDir != "" && task.Subject.BaseCommit != "" {
+						// A package retired from this tree after the task's
+						// base_commit (guards-adr-028's internal/memory,
+						// SR-13 / ADR-053) is still where the scenario runs:
+						// the subject is checked out at base_commit, so the
+						// detector's test must exist THERE. It is looked up
+						// in git history, never assumed.
+						where = fmt.Sprintf("%q at base_commit %s", pkgDir, task.Subject.BaseCommit)
+						found, err = testFuncExistsAtCommit(moduleRoot, task.Subject.BaseCommit, pkgDir, testName)
+					}
+					if err != nil {
+						t.Errorf("task %s: detector %s: searching for %s in %s: %v", task.ID, d.Name, testName, where, err)
 					} else if !found {
-						t.Errorf("task %s: detector %s names test %s, which does not exist under %q", task.ID, d.Name, testName, pkgDir)
+						t.Errorf("task %s: detector %s names test %s, which does not exist under %s", task.ID, d.Name, testName, where)
 					}
 				}
 			}
