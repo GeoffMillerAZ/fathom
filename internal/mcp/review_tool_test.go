@@ -967,3 +967,50 @@ func TestReviewDiff_PartialScanKeepsCitationLinks(t *testing.T) {
 		t.Fatalf("a partial scan stripped the cites link: %+v", fake.links[id])
 	}
 }
+
+// reviewAudienceBackend adds reviewObligationsBackend: the review verb's
+// serve carries one more rule (a BUGBOT.md review rule) than the edit
+// serve does.
+type reviewAudienceBackend struct {
+	reviewFakeBackend
+	review map[string]semantic.Obligations
+}
+
+func (r *reviewAudienceBackend) ReviewObligations(_ context.Context, _, file string, _ int) (semantic.Obligations, error) {
+	return r.review[file], nil
+}
+
+// TestReviewDiff_ServesReviewAudienceRules (GL-5): review_diff asks the
+// backend's review serve, so a BUGBOT.md rule reaches the review verb.
+func TestReviewDiff_ServesReviewAudienceRules(t *testing.T) {
+	edit := semantic.Obligations{Service: "svc", File: "pkg/a.go", Rules: []semantic.Obligation{{Rule: "Sort outputs.", Src: "CLAUDE.md#L1-L1", Tier: "doc-claimed"}}}
+	rev := edit
+	rev.Rules = append(append([]semantic.Obligation(nil), edit.Rules...), semantic.Obligation{Rule: "Flag unchecked errors.", Src: "BUGBOT.md#L3-L3", Tier: "doc-claimed"})
+	fake := &reviewAudienceBackend{
+		reviewFakeBackend: reviewFakeBackend{
+			extendedFakeBackend: extendedFakeBackend{nodes: extFixtureNodes(), services: []string{"svc"}},
+			obligations:         map[string]semantic.Obligations{"pkg/a.go": edit},
+		},
+		review: map[string]semantic.Obligations{"pkg/a.go": rev},
+	}
+	srv := mcp.NewServer(fake)
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 4, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "review_diff",
+			"arguments": map[string]any{"service": "svc", "changed_files": []string{"pkg/a.go"}},
+		},
+	})
+	p := extToolPayload(t, resp)
+	for _, raw := range p["dimensions"].([]any) {
+		d := raw.(map[string]any)
+		if d["name"] != "obligations" {
+			continue
+		}
+		if n := len(d["findings"].([]any)); n != 2 {
+			t.Fatalf("review_diff obligations findings = %d, want 2 (the review rule included)", n)
+		}
+		return
+	}
+	t.Fatal("missing obligations dimension")
+}

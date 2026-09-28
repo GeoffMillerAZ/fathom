@@ -407,8 +407,14 @@ func buildReviewInput(ctx context.Context, backend QueryInterface, service strin
 	if ob, ok := backend.(obligationsBackend); ok {
 		in.ObligationsSupported = true
 		in.ObligationsByFile = make(map[string][]review.ObligationRule, len(changedFiles))
+		// GL-5: a review verb is served the review-audience rules
+		// (BUGBOT.md) too, when the backend can tell them apart.
+		serve := ob.Obligations
+		if rb, ok := backend.(reviewObligationsBackend); ok {
+			serve = rb.ReviewObligations
+		}
 		for _, f := range changedFiles {
-			obl, oerr := ob.Obligations(ctx, service, f, 0)
+			obl, oerr := serve(ctx, service, f, 0)
 			if oerr != nil {
 				continue // best-effort per file: a lookup error degrades that file's rules, not the whole dimension
 			}

@@ -715,6 +715,21 @@ func (a *autoRefreshBackend) ObligationsLayer(ctx context.Context, service, file
 	return ob.Obligations(ctx, service, file, maxRules)
 }
 
+// ReviewObligations forwards GL-5's review-audience serve, degrading to
+// plain Obligations (review rules absent) for an inner backend without it —
+// the same graceful degrade ObligationsLayer keeps above.
+func (a *autoRefreshBackend) ReviewObligations(ctx context.Context, service, file string, maxRules int) (semantic.Obligations, error) {
+	a.ensure(ctx, service)
+	if rb, ok := a.QueryInterface.(reviewObligationsBackend); ok {
+		return rb.ReviewObligations(ctx, service, file, maxRules)
+	}
+	ob, ok := a.QueryInterface.(obligationsBackend)
+	if !ok {
+		return semantic.Obligations{}, errSemanticUnsupported
+	}
+	return ob.Obligations(ctx, service, file, maxRules)
+}
+
 // RootObligationsLayer is ObligationsLayer's root-scope sibling — same
 // forward, same ensure(), and the SAME reason it must degrade to
 // rootObligations (never errSemanticUnsupported) when the inner backend
