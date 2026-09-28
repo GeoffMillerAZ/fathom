@@ -312,9 +312,16 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name, c
 	}
 
 	if toolOracle != "" {
-		run, err := scoreToolOracle(toolOracle, spec.Manifest, nodes, &sub)
+		inScope := map[string]bool{}
+		for _, f := range files {
+			inScope[f] = true
+		}
+		run, dropped, err := scoreToolOracle(toolOracle, spec.Manifest, nodes, &sub, inScope)
 		if err != nil {
 			return res, err
+		}
+		if dropped > 0 {
+			res.notes = append(res.notes, fmt.Sprintf("%s: %d tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)", name, dropped))
 		}
 		res.oracles = append(res.oracles, run)
 	}
@@ -349,28 +356,37 @@ type toolOracleFile struct {
 // silently, refusing every tool-oracle-only reading at Validate (§1.4)
 // with "required kind ... outside the kind intersection" even though the
 // oracle and manifest agreed (LB-Q-package-json).
-func scoreToolOracle(path string, m langbench.Manifest, nodes []core.SymbolNode, sub *langbench.Subject) (langbench.OracleRun, error) {
+//
+// inScope is the file list fathom read (§1.4 Scope): an oracle entry on
+// any other file is dropped and counted, never scored as a miss.
+func scoreToolOracle(path string, m langbench.Manifest, nodes []core.SymbolNode, sub *langbench.Subject, inScope map[string]bool) (langbench.OracleRun, int, error) {
+	fail := func(err error) (langbench.OracleRun, int, error) { return langbench.OracleRun{}, 0, err }
 	b, err := os.ReadFile(path)
 	if err != nil {
-		return langbench.OracleRun{}, err
+		return fail(err)
 	}
 	var tf toolOracleFile
 	dec := json.NewDecoder(bytes.NewReader(b))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(&tf); err != nil {
-		return langbench.OracleRun{}, fmt.Errorf("%s: %w", path, err)
+		return fail(fmt.Errorf("%s: %w", path, err))
 	}
 	tier := orDefault(tf.Tier, "A")
 	if tf.Tool == "" || !slices.Contains([]string{"A", "B", "C", "D"}, tier) {
-		return langbench.OracleRun{}, fmt.Errorf("%s: tool and a tier A-D are required", path)
+		return fail(fmt.Errorf("%s: tool and a tier A-D are required", path))
 	}
+	dropped := 0
 	var defs []langbench.OracleDef
 	for _, d := range tf.Definitions {
+		if !inScope[d.Path] {
+			dropped++
+			continue
+		}
 		defs = append(defs, langbench.OracleDef{Path: d.Path, Name: d.Name, Line: d.Line, End: d.End, Kind: d.Kind})
 	}
 	if len(defs) > 0 {
 		if _, done := sub.Families[langbench.FamilyL1]; done {
-			return langbench.OracleRun{}, fmt.Errorf("%s: definitions given alongside ctags; measure one L1 oracle per subject", path)
+			return fail(fmt.Errorf("%s: definitions given alongside ctags; measure one L1 oracle per subject", path))
 		}
 		l1 := langbench.ScoreL1(m, "tool", nodes, defs)
 		addCounts(sub.Counts, l1.Counts)
@@ -382,6 +398,10 @@ func scoreToolOracle(path string, m langbench.Manifest, nodes []core.SymbolNode,
 		truth := map[langbench.CallPair]bool{}
 		files := map[string]bool{}
 		for _, r := range tf.References {
+			if !inScope[r.Path] {
+				dropped++
+				continue
+			}
 			truth[langbench.CallPair{Path: r.Path, Caller: m.MatchName(r.From), Callee: m.MatchName(r.To)}] = true
 			files[r.Path] = true
 		}
@@ -389,7 +409,7 @@ func scoreToolOracle(path string, m langbench.Manifest, nodes []core.SymbolNode,
 		langbench.ScorePairs(truth, found, sub.Counts, langbench.CntRefTruth, langbench.CntRefTruthFound, langbench.CntRefFathom, langbench.CntRefFathomInTrue)
 		sub.Families[langbench.FamilyRefs] = tier
 	}
-	return langbench.OracleRun{Tier: tier, Tool: tf.Tool, Version: tf.Version}, nil
+	return langbench.OracleRun{Tier: tier, Tool: tf.Tool, Version: tf.Version}, dropped, nil
 }
 
 var universalCtagsRE = regexp.MustCompile(`Universal Ctags ([0-9][^,( ]*)`)

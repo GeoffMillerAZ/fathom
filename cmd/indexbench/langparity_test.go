@@ -29,7 +29,8 @@ func TestCmdLangParity(t *testing.T) {
 	if err := os.WriteFile(oracle, []byte(`{"tool":"tomllib","version":"3","tier":"C","definitions":[
 		{"path":"pyproject.toml","name":"demo","line":1,"kind":"package"},
 		{"path":"pyproject.toml","name":"demo","line":6,"kind":"route"},
-		{"path":"pyproject.toml","name":"black","line":8,"kind":"section"}]}`), 0o644); err != nil {
+		{"path":"pyproject.toml","name":"black","line":8,"kind":"section"},
+		{"path":"vendor/other/pyproject.toml","name":"ghost","line":1,"kind":"package"}]}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	manifest := filepath.Join("..", "..", "internal", "extractor", "dialects", "python-packaging", "dialect.json")
