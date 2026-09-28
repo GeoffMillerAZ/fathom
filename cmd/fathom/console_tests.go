@@ -183,16 +183,22 @@ func riskNote(reason string) string {
 }
 
 func renderTestsScopeNav(m testPortfolioModel) string {
+	return renderRepoScopeNav("/tests", m.Repositories, m.Service)
+}
+
+// renderRepoScopeNav is a per-repository page's chooser: one link per
+// repository to base?svc=, the current one marked.
+func renderRepoScopeNav(base string, repos []string, current string) string {
 	var b strings.Builder
 	b.WriteString(`<nav aria-label="Choose a repository" class="mb-4 flex flex-wrap gap-2">`)
-	for _, s := range m.Repositories {
+	for _, s := range repos {
 		cls := "inline-flex min-h-11 items-center rounded-full border border-line px-3 text-sm text-ink hover:bg-surface-sunken focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
 		cur := ""
-		if s == m.Service {
+		if s == current {
 			cls = "inline-flex min-h-11 items-center rounded-full border border-accent bg-accent-soft px-3 text-sm font-medium text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
 			cur = ` aria-current="page"`
 		}
-		b.WriteString(`<a href="/tests?svc=` + html.EscapeString(url.QueryEscape(s)) + `" class="` + cls + `"` + cur + `>` + html.EscapeString(s) + `</a>`)
+		b.WriteString(`<a href="` + base + `?svc=` + html.EscapeString(url.QueryEscape(s)) + `" class="` + cls + `"` + cur + `>` + html.EscapeString(s) + `</a>`)
 	}
 	b.WriteString(`</nav>`)
 	return b.String()

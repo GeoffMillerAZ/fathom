@@ -355,7 +355,7 @@ func frictionRemedies(m FrictionMap, in RemedyInputs) []Remedy {
 				}
 				text := "rule " + b.Rule + ": " + in.RuleText[b.Rule]
 				if in.RuleText[b.Rule] == "" {
-					text = "rule " + b.Rule + ": its text was not found in the governing rules"
+					text = "rule " + b.Rule + ": its text was not read for this view"
 				}
 				add(h, PatternRepeatedBlocks, fmt.Sprintf("rule %s blocked %d edits here: it may be unclear — review its text against the blocked edits", b.Rule, b.N), text)
 			}
