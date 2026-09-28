@@ -1434,8 +1434,13 @@ reason when `list_modules` is not registered: no `--module` store was mounted), 
 `decision_provider` (ADR-042, docs/vision/32-decision-port.md: `[decide] provider =
 none` is `skipped` naming it off; `llm` pings the configured profile lane and, when
 `decisions.jsonl` exists, names its last recorded `latency_ms`; any other value is a
-`fail`). The stanza check accepts both the v1 and the v3 (`sha256:`-digested) begin
-marker.
+`fail`), and `providers` (surface reckoning SR-31/SR-32: `fathom providers`'s own
+zero/near-zero-token `ProbeAll` pass folded in — `skipped` naming it when no
+`[profiles]` are configured and the bare env-overlay lane has nothing to probe,
+`fail` naming the first broken lane when a configured profile cannot authenticate,
+`pass` counting ok/not-probeable lanes otherwise; `providers` and `smoke` are hidden
+`fathom help` aliases now — `smoke`'s real-token spend is never run here). The stanza
+check accepts both the v1 and the v3 (`sha256:`-digested) begin marker.
 
 The tenancy rows (RT-49, RT-50; docs/design/responsible-tenant.md §13.3) read one
 `fathom resources` projection — the daemon's live `/statusz` tenancy block, else its

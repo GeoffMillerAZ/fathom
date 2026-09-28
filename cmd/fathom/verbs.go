@@ -75,8 +75,8 @@ var verbTable = []verb{
 	{Name: "observe", Summary: "File a structured friction observation into .fathom/observations.md"},
 	{Name: "init", Summary: "One-command repo wiring: .fathomignore, ingest, Claude Code hooks, CLAUDE.md/AGENTS.md stanza"},
 	{Name: "config", Summary: "Print the effective configuration (--explain for per-key provenance) | audit (custodian concerns) | propose (a diff for each mechanically mendable violation; writes nothing)"},
-	{Name: "providers", Summary: "Auth-health probe across configured LLM profiles (zero/near-zero tokens)"},
-	{Name: "smoke", Summary: "One tiny real completion per profile: model, latency, tokens, cost"},
+	{Name: "providers", Summary: "Auth-health probe across configured LLM profiles (zero/near-zero tokens)", Hidden: true}, // SR-32: fathom doctor's providers row covers this; stays fully dispatched
+	{Name: "smoke", Summary: "One tiny real completion per profile: model, latency, tokens, cost", Hidden: true},           // SR-32: opt-in real spend, never run from doctor; stays fully dispatched
 	{Name: "doctor", Summary: "Deterministic wiring diagnosis: registration, daemon, hooks, stanza, skills, config, obligations, traffic"},
 	{Name: "capabilities", Summary: "What is switched on here and WHY anything is off: list | explain <id> | set <id> on|off"},
 	{Name: "flywheel", Summary: "Are the feedback loops closed? Each loop CLOSED/OPEN/IDLE with its evidence and remedy", Hidden: true},                                                                                     // SR-31: fathom metrics flywheel covers this; stays fully dispatched
