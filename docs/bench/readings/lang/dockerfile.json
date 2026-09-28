@@ -1,0 +1,186 @@
+{
+  "dialect": "dockerfile",
+  "kind": "tooling",
+  "target_level": "L3",
+  "level_met": "L2",
+  "grade": {
+    "L1": "excellent",
+    "L2": "excellent",
+    "L3": "not-attempted",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-09-28",
+  "fathom_commit": "0e2c7702",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "docker-cli",
+      "sha": "d1c06ef6b41d88d76866aea43c246cd7c63d04fa",
+      "files": 1,
+      "bytes": 5701,
+      "counts": {
+        "callables": 23,
+        "callables_signed": 23,
+        "fathom_defs": 50,
+        "kind_equal": 50,
+        "matched": 50,
+        "oracle_defs": 52,
+        "range_eligible": 23,
+        "range_ok": 23,
+        "ref_fathom": 23,
+        "ref_fathom_in_truth": 23,
+        "ref_truth": 23,
+        "ref_truth_found": 23
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A"
+      },
+      "kind_intersection": [
+        "stage",
+        "variable_decl"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 1.622,
+        "max_file_ms": 1,
+        "peak_module_pages": 271,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "docker-compose",
+      "sha": "a32dc3da722e6b2e4fbfc72e40b1a697c4686460",
+      "files": 30,
+      "bytes": 28916,
+      "counts": {
+        "callables": 60,
+        "callables_signed": 60,
+        "fathom_defs": 134,
+        "kind_equal": 133,
+        "matched": 133,
+        "oracle_defs": 133,
+        "range_eligible": 59,
+        "range_ok": 59,
+        "ref_fathom": 59,
+        "ref_fathom_in_truth": 59,
+        "ref_truth": 59,
+        "ref_truth_found": 59
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A"
+      },
+      "kind_intersection": [
+        "stage",
+        "variable_decl"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 19.231,
+        "max_file_ms": 10,
+        "peak_module_pages": 271,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "docker-library-python",
+      "sha": "8f2cb2e1c9cae4d8f772fe61f1427c96acea3257",
+      "files": 42,
+      "bytes": 163912,
+      "counts": {
+        "callables": 42,
+        "callables_signed": 42,
+        "fathom_defs": 210,
+        "kind_equal": 210,
+        "matched": 210,
+        "oracle_defs": 210,
+        "range_eligible": 42,
+        "range_ok": 42,
+        "ref_fathom": 42,
+        "ref_fathom_in_truth": 42,
+        "ref_truth": 42,
+        "ref_truth_found": 42
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A"
+      },
+      "kind_intersection": [
+        "stage",
+        "variable_decl"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 42.50699999999999,
+        "max_file_ms": 1,
+        "peak_module_pages": 271,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "buildkit-dockerfile-parser",
+      "version": "github.com/moby/buildkit v0.33.0 frontend/dockerfile (docker buildx build --print=outline substitute — no Docker daemon in this sandbox)"
+    },
+    {
+      "tier": "B",
+      "tool": "universal-ctags",
+      "status": "unavailable: universal-ctags has no parser for this dialect"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 1,
+    "ref_recall": 1,
+    "sym_precision": 0.9975,
+    "sym_recall": 0.9949,
+    "xref_precision": null,
+    "xref_recall": null
+  },
+  "metric_tiers": {
+    "ref_precision": "A",
+    "ref_recall": "A",
+    "sym_precision": "A",
+    "sym_recall": "A"
+  },
+  "required_kinds": [
+    "stage",
+    "variable_decl"
+  ],
+  "kind_intersection": [
+    "stage",
+    "variable_decl"
+  ],
+  "counts": {
+    "callables": 125,
+    "callables_signed": 125,
+    "fathom_defs": 394,
+    "kind_equal": 393,
+    "matched": 393,
+    "oracle_defs": 395,
+    "range_eligible": 124,
+    "range_ok": 124,
+    "ref_fathom": 124,
+    "ref_fathom_in_truth": 124,
+    "ref_truth": 124,
+    "ref_truth_found": 124
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 3.13,
+    "max_file_ms": 10,
+    "peak_module_pages": 271,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+  ],
+  "disposition": "partial: L1 and L2 are both excellent against a tier-A oracle (buildkit-dockerfile-parser, the same official parser docker buildx build --print=outline uses internally -- no Docker daemon is reachable in this sandbox to run buildx itself) across 3 real subjects/73 files (docker/cli, docker/compose, docker-library/python): sym_recall .9949, sym_precision .9975, ref_recall 1.0, ref_precision 1.0 -- a stage's FROM base (prior stage or external image) is captured unconditionally, matching every other tags dialect's naive same-file call convention. L3 is needs-strategy, for two independent, code-verified reasons, not one query fix: (1) the closed tags-engine import-strategy set (schema/dialect/dialect.cue #ImportStrategy; internal/fusion/resolvestrategy.go's resolveByStrategy switch) has no strategy that maps a FROM's local image tag to the OTHER Dockerfile that built it -- unlike doc-engine cross_file's image-ref (compose.yml declares image+build together; a bare Dockerfile carries no such mapping on its own); (2) even with a strategy, internal/langbench.recompute() never populates xref_precision/xref_recall for kind==\"tooling\" (its keys list for tooling omits them entirely, and no FamilyXref exists) -- L3 is presently unmeasurable for ANY tool-format dialect, a foundation gap outside one worker's dialects/\u003cid\u003e/ directory (design §2.1's isolation rule), not something to invent around here. COPY --from=\u003cstage\u003e is deliberately not captured either (dialects/dockerfile/tags.scm's header): the grammar keeps every instruction a flat sibling of source_file (a stage's body is a textual run between one FROM and the next, never a subtree under it), so a copy_instruction several instructions after its stage's from_instruction is never contained by it -- attachTSCalls's containment rule would silently drop the capture; modeling that needs a sequential-section scope tree-sitter's query language cannot express, and reworking attachTSCalls is a shared tsextract.go change, again outside this dialect's directory. LB-Q-dockerfile stays unchecked; see LB-Q-dockerfile-rest. Trigger: an Opus-reviewed foundation change adds (a) a tags-engine import strategy for tool-declared local image tags (or an equivalent repo-wide image-tag index a manifest can name) and (b) xref scoring for kind==\"tooling\" readings in internal/langbench.recompute()."
+}

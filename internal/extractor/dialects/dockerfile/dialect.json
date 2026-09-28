@@ -1,0 +1,32 @@
+{
+  "id": "dockerfile",
+  "display": "Dockerfile / Containerfile",
+  "kind": "tooling",
+  "engine": "tags",
+  "lang_tag": "dockerfile",
+  "match": {
+    "extensions": [".dockerfile"],
+    "basenames": ["Dockerfile"],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "grammar": { "blob": "dockerfile", "entry_point": "tree_sitter_dockerfile" },
+  "variants": [],
+  "queries": { "tags": "tags.scm" },
+  "kinds": {
+    "stage": { "source_kind": "DockerStage", "canonical": "stage", "callable": true },
+    "arg":   { "source_kind": "DockerfileArg", "canonical": "variable_decl" },
+    "env":   { "source_kind": "DockerfileEnv", "canonical": "variable_decl" }
+  },
+  "required_kinds": ["stage", "arg", "env"],
+  "oracle_kinds": {
+    "tool": { "stage": "stage", "arg": "variable_decl", "env": "variable_decl" }
+  },
+  "name_match": "identity",
+  "qualify": { "chain_containers": false, "container_sep": ".", "method_sep": "." },
+  "package": { "strategy": "dir" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L3",
+  "queue_id": "dockerfile"
+}

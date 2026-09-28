@@ -1,0 +1,14 @@
+{
+  "symbols": [
+    {
+      "name": "ubuntu:22.04",
+      "kind": "DockerStage",
+      "package": "minimal",
+      "line": 1,
+      "end_line": 1,
+      "signature": "FROM ubuntu:22.04",
+      "calls": ["ubuntu"],
+      "tier": "verified"
+    }
+  ]
+}

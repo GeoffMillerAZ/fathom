@@ -39,6 +39,21 @@
       "gz_bytes": 74133
     },
     {
+      "blob": "dockerfile",
+      "repo": "camdencheek/tree-sitter-dockerfile",
+      "tag": "v0.2.0",
+      "commit": "868e44ce378deb68aac902a9db68ff82d2299dd0",
+      "tarball_sha256": "8cbdf50838cc55e841aa9585a1a09e5b8c41454ae30ce0a93a7bd71adb140818",
+      "licence": "MIT",
+      "entry_points": ["tree_sitter_dockerfile"],
+      "scanner": true,
+      "generate": false,
+      "abi": 14,
+      "blob_sha256": "81274400989b6ac9f9d9d0cc9618b0ca5045214742468279fdf089d214e5b6ac",
+      "blob_bytes": 171375,
+      "gz_bytes": 69325
+    },
+    {
       "blob": "html",
       "repo": "tree-sitter/tree-sitter-html",
       "tag": "v0.23.2",

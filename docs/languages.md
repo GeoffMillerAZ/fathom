@@ -75,7 +75,7 @@ Milestone M1 progress: languages at L1 excellent 1/20, at L2 0/12, at L3 0/8, at
 |---|---|---|---|---|---|---|---|---|---|
 | TypeScript (.ts .tsx .mts .cts) | language | tags | tree-sitter/tree-sitter-typescript (MIT) | L4 | none (measured) | A scip-typescript 0.4.0; B universal-ctags 6.2.1 | scip:scip-typescript | 2026-09-28 | LB-Q-typescript |
 | JavaScript (.js .jsx .mjs .cjs) | language | tags | tree-sitter/tree-sitter-javascript (MIT) | L4 | none (measured) | A scip-typescript 0.4.0; B universal-ctags 6.2.1 | scip:scip-typescript | 2026-09-28 | LB-Q-javascript |
-| Dockerfile / Containerfile | tool format | tags | camdencheek/tree-sitter-dockerfile (Apache-2.0) | L3 | tolerated | — | syntax | — | LB-Q-dockerfile |
+| Dockerfile / Containerfile | tool format | tags | camdencheek/tree-sitter-dockerfile (Apache-2.0) | L3 | L2 (L1 excellent, L2 excellent) | A buildkit-dockerfile-parser github.com/moby/buildkit v0.33.0 frontend/dockerfile (docker buildx build --print=outline substitute — no Docker daemon in this sandbox) | syntax | 2026-09-28 | LB-Q-dockerfile |
 | Python (.py .pyi) | language | tags | tree-sitter/tree-sitter-python (MIT) | L4 | L1 (L1 excellent) | A scip-python 0.6.6; B universal-ctags 6.2.1 | scip:scip-python | 2026-09-28 | LB-Q-python |
 | HTML (.html .htm) | language | tags | tree-sitter/tree-sitter-html (MIT) | L3 | L1 (L1 good) | B universal-ctags 6.2.1 | file | 2026-09-28 | LB-Q-html |
 | GitHub Actions workflows and composite actions | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | tolerated | — | syntax | — | LB-Q-github-actions |
