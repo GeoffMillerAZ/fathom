@@ -19,6 +19,7 @@ type Manifest struct {
 	ID            string                       `json:"id"`
 	Display       string                       `json:"display"`
 	Kind          string                       `json:"kind"`
+	Engine        string                       `json:"engine,omitempty"`
 	LangTag       string                       `json:"lang_tag"`
 	Match         ManifestMatch                `json:"match"`
 	Kinds         map[string]KindSpec          `json:"kinds"`

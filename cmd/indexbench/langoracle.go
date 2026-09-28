@@ -19,6 +19,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/extractor"
 	"github.com/geoffmilleraz/fathom/internal/extractor/tsengine"
 	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/langbench"
@@ -83,7 +84,7 @@ func cmdLangOracle(args []string, stdout, stderr io.Writer) int {
 		name = filepath.Base(filepath.Clean(*subject))
 	}
 
-	m, err := measureSubject(ctx, spec, *subject, name, *ctagsPath, *scipPath, *toolOracle)
+	m, err := measureSubject(ctx, spec, *subject, name, *ctagsPath, *scipPath, *toolOracle, nil)
 	if err != nil {
 		fmt.Fprintln(stderr, "lang-oracle:", err)
 		return 1
@@ -160,10 +161,22 @@ type subjectMeasurement struct {
 	subject langbench.Subject
 	oracles []langbench.OracleRun
 	notes   []string
+	// kinds counts the SourceKinds extracted from the dialect's files (the
+	// parity run's kinds diff, §11 step 3).
+	kinds map[string]int
 }
 
-func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name, ctagsBin, scipPath, toolOracle string) (subjectMeasurement, error) {
-	var res subjectMeasurement
+// measureSubject measures one subject. with, when non-nil, extracts every
+// file the dialect owns instead of fusion's dispatch (lang-parity's dialect
+// side, §11); nil measures what ingest would run.
+func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name, ctagsBin, scipPath, toolOracle string, with extractor.Extractor) (subjectMeasurement, error) {
+	res := subjectMeasurement{kinds: map[string]int{}}
+	extract := func(pipe *fusion.Pipeline, service string, refs []core.SourceRef, rel string, content []byte) (fusion.BenchExtraction, error) {
+		if with != nil {
+			return pipe.ExtractForBenchWith(with, service, refs, rel, content)
+		}
+		return pipe.ExtractForBench(service, refs, rel, content)
+	}
 	const service = "langbench"
 	refs, err := connector.NewLocalConnector().Discover(ctx, core.ServiceRef{ID: service, Path: root})
 	if err != nil {
@@ -187,7 +200,7 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name, c
 			continue
 		}
 		if content, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(ref.Path))); err == nil {
-			if ex, _ := pipe.ExtractForBench(service, refs, ref.Path, content); ex.Skipped == "" {
+			if ex, _ := extract(pipe, service, refs, ref.Path, content); ex.Skipped == "" {
 				res.notes = append(res.notes, "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)")
 				break
 			}
@@ -202,7 +215,7 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name, c
 			return res, err
 		}
 		start := time.Now()
-		ex, err := pipe.ExtractForBench(service, refs, ref.Path, content)
+		ex, err := extract(pipe, service, refs, ref.Path, content)
 		elapsed := time.Since(start)
 		if ex.Skipped != "" {
 			skipped[ex.Skipped]++
@@ -224,6 +237,7 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name, c
 		for _, n := range ex.Nodes {
 			if n.FilePath == ref.Path {
 				nodes = append(nodes, n)
+				res.kinds[string(n.Kind)]++
 			}
 		}
 		srcFiles = append(srcFiles, core.SourceFile{Path: ref.Path, Content: content})

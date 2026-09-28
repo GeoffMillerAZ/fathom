@@ -1982,6 +1982,17 @@ type BenchExtraction struct {
 // refs is the service's Discover list (the sibling index YAML
 // classification reads).
 func (p *Pipeline) ExtractForBench(serviceID string, refs []core.SourceRef, relPath string, content []byte) (BenchExtraction, error) {
+	return p.extractForBench(nil, serviceID, refs, relPath, content)
+}
+
+// ExtractForBenchWith runs ingest's gates on one file and then e, not
+// dispatch's choice — the retirement protocol's parity run (LB-F18, design
+// §11), which measures a dialect while its incumbent is still dispatched.
+func (p *Pipeline) ExtractForBenchWith(e extractor.Extractor, serviceID string, refs []core.SourceRef, relPath string, content []byte) (BenchExtraction, error) {
+	return p.extractForBench(e, serviceID, refs, relPath, content)
+}
+
+func (p *Pipeline) extractForBench(with extractor.Extractor, serviceID string, refs []core.SourceRef, relPath string, content []byte) (BenchExtraction, error) {
 	if connector.IsBinary(content) {
 		return BenchExtraction{Skipped: "binary"}, nil
 	}
@@ -2001,6 +2012,8 @@ func (p *Pipeline) ExtractForBench(serviceID string, refs []core.SourceRef, relP
 	}
 	e, tk, ok, unclassified := p.resolveExtractor(relPath, content, idx)
 	switch {
+	case with != nil:
+		e = with
 	case unclassified:
 		return BenchExtraction{ToolKind: tk, Skipped: "unclassified"}, nil
 	case !ok:

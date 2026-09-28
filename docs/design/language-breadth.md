@@ -521,6 +521,14 @@ least their current output. The protocol (LB-F18, and each port item):
 2. `indexbench lang-parity -dialect <id> -incumbent <extractor>` runs both on the calibration
    subjects and reports, per metric, new minus old against the same oracle. The port may
    merge when every L1 metric is ≥ the incumbent's and the target level is met.
+   `-incumbent` names the retired file's stem (`dockerextract`, `sqlextract`, …; empty
+   measures what fusion dispatches today); `-subject [name=]dir`, `-scip [name=]path` and
+   `-tool-oracle [name=]path` repeat per subject; the dialect runs through its own engine
+   (tags or doc) while the incumbent is still dispatched. The incumbent's side is scored with
+   the dialect's oracle mapping plus its LB-M1 spec's kinds. Exit 0 = merge, 1 = refused
+   (a gated L1 metric below the incumbent's, or measured by the incumbent and not the
+   dialect, or the target unmet), 2 = usage; the kinds diff is printed for step 3, and
+   `-out` writes the report as JSON.
 3. Switch dispatch to the dialect, delete the incumbent and its CGO grammar import, bump
    `ExtractorEpoch`, record the kinds diff (identical `SourceKind` strings are required; a
    kind the incumbent emitted and the dialect does not is a regression unless the row's
