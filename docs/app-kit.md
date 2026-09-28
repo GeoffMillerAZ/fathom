@@ -338,6 +338,30 @@ literal classes.
   until it is built and promoted (D13) SM-26 stays open. The heatmap tables inherit
   FATHOM-F-KIT-03 (no phone layout; the scroll wrapper keeps the page from overflowing).
 
+## Rule effectiveness page (2026-09-28)
+
+`/rules` (GL-18, U4, `docs/design/governance-learning.md` §5) uses the mirror unchanged
+and no new kit package: `table.Table` for the proposals and the rule table,
+`callout.Badge` for the class (the word is the channel, the role only tints it),
+`stat.RenderBand` with `stat.Absent` for every tile when the rule-outcome log is
+missing, `form.RenderField`/`RenderSelect`/`RenderButton` for the URL-held filters,
+`chrome.RenderEmptyState` and `chrome.RenderPagination` (behind `consolePager`), and
+`renderPanel` for the question, verb chip and source/denominator/freshness footer. The
+kit was searched first (appkit MCP `search_components`, MatDash: a hover table and
+status pills, nothing for a classified-rule table). No role colour is spelled by hand.
+
+- **Divergence — `app.css` not regenerated (2026-09-28).** `task ui:css` could not run on
+  the authoring machine: the pinned Tailwind binary in the user cache
+  (`~/Library/Caches/app-kit/tailwindcss/v4.3.0/`) is killed on exec (exit 137; `codesign
+  --verify`: invalid signature), a machine problem outside this repository. Every class
+  `console_rules.go` writes was checked to exist in the committed `app.css` (the filter
+  grid reuses `sm:grid-cols-[1fr_1fr_auto]` rather than a new arbitrary value), so the
+  page renders with the committed file; run `bash scripts/ui-css.sh --check` where the
+  binary runs before the next release.
+- **Not proven in a browser (2026-09-28).** The page is proven through the console's
+  HTML and JSON tests and the verb parity test; no both-theme screenshot was taken in
+  this change.
+
 ## Current mirror and palette convergence (2026-09-25)
 
 FATHOM-GUIDE-01 landed on main at mirror `f7ab0fbd`, then took one reviewed bump to

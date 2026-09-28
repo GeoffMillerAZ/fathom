@@ -33,7 +33,7 @@ import (
 // through the read-serving daemon.
 func cmdClaim(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
-		fmt.Fprintln(stderr, "error: claim requires a verb: add | refute | corroborate | show | list")
+		fmt.Fprintln(stderr, "error: claim requires a verb: add | refute | corroborate | show | list | effectiveness")
 		printClaimUsage(stderr)
 		return 1
 	}
@@ -42,6 +42,8 @@ func cmdClaim(args []string, stdout, stderr io.Writer) int {
 		return cmdClaimShow(args[1:], stdout, stderr)
 	case "list":
 		return cmdClaimList(args[1:], stdout, stderr)
+	case "effectiveness":
+		return cmdClaimEffectiveness(args[1:], stdout, stderr)
 	case "add":
 		return cmdClaimAdd(args[1:], stdout, stderr)
 	case "refute":
@@ -49,7 +51,7 @@ func cmdClaim(args []string, stdout, stderr io.Writer) int {
 	case "corroborate":
 		return cmdClaimVerdict(args[1:], stdout, stderr, "corroborated", "")
 	default:
-		fmt.Fprintf(stderr, "error: unknown claim verb %q (want add | refute | corroborate | show | list)\n", args[0])
+		fmt.Fprintf(stderr, "error: unknown claim verb %q (want add | refute | corroborate | show | list | effectiveness)\n", args[0])
 		printClaimUsage(stderr)
 		return 1
 	}
@@ -80,6 +82,7 @@ func printClaimUsage(w io.Writer) {
 	fmt.Fprintln(w, "  fathom claim corroborate  --store DB --service S --claim ID --note \"...\" [--author NAME]")
 	fmt.Fprintln(w, "  fathom claim show         <id> [--service S] [--json] [--store DB | --url U]")
 	fmt.Fprintln(w, "  fathom claim list         [--layer L] [--service S] [--status current|fresh|stale|contradicted|superseded|refuted|all] [--page N] [--json] [--store DB | --url U]")
+	fmt.Fprintln(w, "  fathom claim effectiveness [--service S] [--class ignored|contested|never_triggered|unclassified|effective|all] [--page N] [--json] [--store DB | --url U]")
 }
 
 // cmdClaimVerdict implements one triage verb. newStatus is the ClaimStatus to
