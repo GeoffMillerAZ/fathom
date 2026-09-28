@@ -44,6 +44,13 @@ import "struct"
 	// descriptor suffixes, a tool-native oracle's kinds) to canonical kinds.
 	oracle_kinds: {[#OracleName]: {[string]: #Canonical}} | *{}
 
+	// name_match is how the harness compares a definition's name with an
+	// oracle's (§1.4): "bare" (the default) keeps the qualified name's last
+	// segment; "identity" compares the whole name, for dialects whose
+	// identifiers carry punctuation (CSS `.a` `#b` `:hover`, npm
+	// `@babel/core`, script `codesandbox:build`, export `./utils`).
+	name_match: *"bare" | "identity"
+
 	qualify: {
 		chain_containers: bool | *true
 		container_sep:    string | *"."

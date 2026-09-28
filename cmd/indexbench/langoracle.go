@@ -354,10 +354,10 @@ func scoreToolOracle(path string, m langbench.Manifest, nodes []core.SymbolNode,
 		truth := map[langbench.CallPair]bool{}
 		files := map[string]bool{}
 		for _, r := range tf.References {
-			truth[langbench.CallPair{Path: r.Path, Caller: langbench.BareName(r.From), Callee: langbench.BareName(r.To)}] = true
+			truth[langbench.CallPair{Path: r.Path, Caller: m.MatchName(r.From), Callee: m.MatchName(r.To)}] = true
 			files[r.Path] = true
 		}
-		found := langbench.FathomCallPairs(nodes, files)
+		found := m.CallPairs(nodes, files)
 		langbench.ScorePairs(truth, found, sub.Counts, langbench.CntRefTruth, langbench.CntRefTruthFound, langbench.CntRefFathom, langbench.CntRefFathomInTrue)
 		sub.Families[langbench.FamilyRefs] = tier
 	}

@@ -52,6 +52,49 @@ func TestBareName(t *testing.T) {
 	}
 }
 
+// TestNameMatchIdentity (§1.4): a dialect whose identifiers carry
+// punctuation (CSS selectors, npm names, script names, export paths)
+// declares name_match "identity"; its names are compared whole. The
+// default keeps the last-segment rule.
+func TestNameMatchIdentity(t *testing.T) {
+	src := `{"id":"css","kind":"language",%s
+		"kinds":{"selector":{"source_kind":"CSSSelector","canonical":"selector"}},
+		"required_kinds":["selector"],"oracle_kinds":{"ctags":{"class":"selector","id":"selector","selector":"selector"}}}`
+	names := []string{".a", "#b", "a:hover", "@babel/core", "codesandbox:build", "./utils"}
+	var nodes []core.SymbolNode
+	var defs []OracleDef
+	for i, n := range names {
+		nodes = append(nodes, core.SymbolNode{Name: n, Kind: "CSSSelector", FilePath: "x.css", Line: 10 * (i + 1)})
+		defs = append(defs, OracleDef{Path: "x.css", Name: n, Kind: "selector", Line: 10 * (i + 1)})
+	}
+	for _, tc := range []struct {
+		field string
+		want  int
+	}{{`"name_match":"identity",`, len(names)}, {``, 0}} {
+		m, err := ParseManifest([]byte(strings.Replace(src, "%s", tc.field, 1)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := ScoreL1(m, "ctags", nodes, defs).Counts[CntMatched]; got != tc.want {
+			t.Errorf("name_match %q: matched %d, want %d", tc.field, got, tc.want)
+		}
+	}
+	m, _ := ParseManifest([]byte(strings.Replace(src, "%s", `"name_match":"identity",`, 1)))
+	if got := m.MatchName("@babel/core"); got != "@babel/core" {
+		t.Errorf("identity MatchName = %q", got)
+	}
+	if got := (Manifest{}).MatchName("a.b"); got != "b" {
+		t.Errorf("default MatchName = %q", got)
+	}
+	pairs := m.CallPairs([]core.SymbolNode{{Name: "codesandbox:build", FilePath: "package.json", Calls: []string{"build:js"}}}, nil)
+	if !pairs[CallPair{Path: "package.json", Caller: "codesandbox:build", Callee: "build:js"}] {
+		t.Errorf("identity call pairs = %v", pairs)
+	}
+	if _, err := ParseManifest([]byte(strings.Replace(src, "%s", `"name_match":"exact",`, 1))); err == nil {
+		t.Error("an unknown name_match was accepted")
+	}
+}
+
 // TestScoreL1 (§1.4): same file, same bare name, |Δline| ≤ 2, nearest
 // wins one-to-one; kinds outside the intersection are excluded from both
 // sides and reported.

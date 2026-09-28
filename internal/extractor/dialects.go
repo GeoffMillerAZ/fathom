@@ -39,12 +39,15 @@ type Dialect struct {
 	// RequiredKinds are keys of Kinds (§1.4).
 	RequiredKinds []string                     `json:"required_kinds"`
 	OracleKinds   map[string]map[string]string `json:"oracle_kinds"`
-	Qualify       DialectQualify               `json:"qualify"`
-	Package       DialectPackage               `json:"package"`
-	Imports       *DialectImports              `json:"imports,omitempty"`
-	Signature     DialectSignature             `json:"signature"`
-	TargetLevel   string                       `json:"target_level"`
-	QueueID       string                       `json:"queue_id"`
+	// NameMatch is the harness's name comparison (§1.4): "bare" (default)
+	// or "identity". Extraction never reads it.
+	NameMatch   string           `json:"name_match,omitempty"`
+	Qualify     DialectQualify   `json:"qualify"`
+	Package     DialectPackage   `json:"package"`
+	Imports     *DialectImports  `json:"imports,omitempty"`
+	Signature   DialectSignature `json:"signature"`
+	TargetLevel string           `json:"target_level"`
+	QueueID     string           `json:"queue_id"`
 }
 
 // DialectMatch is how a file is classified to the dialect (§5).
@@ -342,6 +345,9 @@ func checkDialect(fsys fs.FS, dir string, d Dialect) error {
 		if k.SourceKind == "" {
 			return fmt.Errorf("kind %q: empty source_kind", key)
 		}
+	}
+	if d.NameMatch != "" && d.NameMatch != "bare" && d.NameMatch != "identity" {
+		return fmt.Errorf("name_match %q is not bare or identity", d.NameMatch)
 	}
 	for _, rk := range d.RequiredKinds {
 		found := false

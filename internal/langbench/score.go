@@ -90,7 +90,7 @@ func ScoreL1(m Manifest, oracle string, nodes []core.SymbolNode, defs []OracleDe
 			res.Excluded["fathom:"+string(n.Kind)]++
 			continue
 		}
-		mine = append(mine, &scoredDef{path: n.FilePath, name: BareName(n.Name), canonical: c, line: n.Line, end: n.EndLine,
+		mine = append(mine, &scoredDef{path: n.FilePath, name: m.MatchName(n.Name), canonical: c, line: n.Line, end: n.EndLine,
 			callable: callable, signed: strings.TrimSpace(n.Signature) != ""})
 	}
 	var theirs []*scoredDef
@@ -176,17 +176,21 @@ type CallPair struct {
 // FathomCallPairs returns the extractor's call pairs over files, each
 // callee reduced to its last dotted segment (§1.1 L2).
 func FathomCallPairs(nodes []core.SymbolNode, files map[string]bool) map[CallPair]bool {
+	return callPairs(nodes, files, BareName)
+}
+
+func callPairs(nodes []core.SymbolNode, files map[string]bool, name func(string) string) map[CallPair]bool {
 	out := map[CallPair]bool{}
 	for _, n := range nodes {
 		if files != nil && !files[n.FilePath] {
 			continue
 		}
 		for _, c := range n.Calls {
-			callee := BareName(c)
+			callee := name(c)
 			if callee == "" {
 				continue
 			}
-			out[CallPair{n.FilePath, BareName(n.Name), callee}] = true
+			out[CallPair{n.FilePath, name(n.Name), callee}] = true
 		}
 	}
 	return out

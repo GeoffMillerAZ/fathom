@@ -23,6 +23,7 @@
   "oracle_kinds": {
     "ctags": { "class": "selector", "id": "selector", "selector": "selector" }
   },
+  "name_match": "identity",
   "qualify": { "chain_containers": false, "container_sep": ".", "method_sep": "." },
   "package": { "strategy": "dir" },
   "imports": { "strategy": "relative-path", "relative": true, "suffixes": [".css"] },

@@ -22,6 +22,7 @@
   "oracle_kinds": {
     "tool": { "package": "package", "task": "task", "route": "route" }
   },
+  "name_match": "identity",
   "package": { "strategy": "none" },
   "signature": { "max_chars": 200 },
   "target_level": "L3",

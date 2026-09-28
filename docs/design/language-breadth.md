@@ -88,9 +88,13 @@ and tiers alone; nobody types it.
 ### 1.4 Matching rules
 
 - **Definitions**: key (path, name, line). A fathom definition matches an oracle definition
-  in the same file with the same bare name and |Δline| ≤ 2 (decorators and attributes move
+  in the same file with the same name and |Δline| ≤ 2 (decorators and attributes move
   a definition's first line); nearest wins, one-to-one. Qualified names are compared on the
   last segment; containment is checked separately (`scope_agreement`, reported, not gated).
+  A dialect whose identifiers carry punctuation — CSS selectors (`.a`, `#b`, `:hover`), npm
+  names (`@babel/core`), script names (`codesandbox:build`), export paths (`./utils`) —
+  declares `"name_match": "identity"` in its manifest and its names are compared whole
+  (default `"bare"`, the last-segment rule). The same mode governs reference pairs.
 - **Kind intersection**: the manifest's `oracle_kinds` maps each oracle kind (ctags kind
   letters/names, SCIP descriptor suffixes) to a canonical kind. Definitions whose kind is
   outside the intersection on either side are excluded from both counts and reported as

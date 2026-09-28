@@ -8,6 +8,8 @@ import (
 	"slices"
 	"sort"
 	"strings"
+
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // Manifest is the subset of a dialect manifest (schema/dialect, design
@@ -22,8 +24,11 @@ type Manifest struct {
 	Kinds         map[string]KindSpec          `json:"kinds"`
 	RequiredKinds []string                     `json:"required_kinds"`
 	OracleKinds   map[string]map[string]string `json:"oracle_kinds"`
-	TargetLevel   string                       `json:"target_level"`
-	QueueID       string                       `json:"queue_id"`
+	// NameMatch is how names are compared with an oracle's (§1.4):
+	// NameMatchBare (default) or NameMatchIdentity.
+	NameMatch   string `json:"name_match,omitempty"`
+	TargetLevel string `json:"target_level"`
+	QueueID     string `json:"queue_id"`
 }
 
 // ManifestMatch is a manifest's classification keys.
@@ -97,7 +102,31 @@ func ParseManifest(b []byte) (Manifest, error) {
 	if !QueueIDPattern.MatchString(m.ID) {
 		return Manifest{}, fmt.Errorf("manifest id %q must match %s", m.ID, QueueIDPattern)
 	}
+	if m.NameMatch != "" && m.NameMatch != NameMatchBare && m.NameMatch != NameMatchIdentity {
+		return Manifest{}, fmt.Errorf("manifest %s: name_match %q is not %q or %q", m.ID, m.NameMatch, NameMatchBare, NameMatchIdentity)
+	}
 	return m, nil
+}
+
+// Name-match modes (§1.4, the manifest's name_match).
+const (
+	NameMatchBare     = "bare"
+	NameMatchIdentity = "identity"
+)
+
+// MatchName is the form of a fathom name the harness compares with an
+// oracle's: the whole name for an identity dialect, else its last segment
+// (BareName).
+func (m Manifest) MatchName(q string) string {
+	if m.NameMatch == NameMatchIdentity {
+		return q
+	}
+	return BareName(q)
+}
+
+// CallPairs is FathomCallPairs under the dialect's name matching.
+func (m Manifest) CallPairs(nodes []core.SymbolNode, files map[string]bool) map[CallPair]bool {
+	return callPairs(nodes, files, m.MatchName)
 }
 
 // Owns reports whether relPath is one of this dialect's files by basename
