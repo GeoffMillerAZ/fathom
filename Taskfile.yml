@@ -179,6 +179,7 @@ tasks:
         bash scripts/build-cache_test.sh
         bash scripts/gate-lease_test.sh
         bash scripts/tenancy-stress_test.sh
+        bash calibration/clone_test.sh
         bash third_party/agentic-kit/fathom-pack/scripts/push-check_test.sh
         bash third_party/agentic-kit/fathom-pack/scripts/push-http_test.sh
 
@@ -339,9 +340,14 @@ tasks:
       - "{{.GO}} build -o workspace/tmp/fathom ./cmd/fathom"
 
   calibrate-clone:
-    desc: "Shallow-clone the calibration corpus into workspace/ (optional: LANG filter, e.g. task calibrate-clone -- Python Helm)"
+    desc: "Shallow-clone the calibration corpus and calibration/corpus.d shards into workspace/ (optional filter: a language or shard id, e.g. task calibrate-clone -- Python swift)"
     cmds:
       - bash calibration/clone.sh {{.CLI_ARGS}}
+
+  calibrate-clean:
+    desc: "Delete one queue item's calibration clones (workspace/calibration/<id>/), e.g. task calibrate-clean -- swift (language-breadth §13.4)"
+    cmds:
+      - bash calibration/clean.sh {{.CLI_ARGS}}
 
   calibrate-baseline:
     desc: "Measure current extractors against the cloned corpus (optional LANG filter via -- )"

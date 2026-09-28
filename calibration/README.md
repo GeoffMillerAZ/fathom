@@ -12,6 +12,7 @@ This harness provides both.
 | File | Role |
 |---|---|
 | `corpus.yaml` | The curated manifest: per language/tool, the chosen public sample repos (pinned to a real commit SHA), plus the decided extraction approach (pure-Go parser vs tree-sitter vs SCIP) and the symbol kinds an excellent extractor should emit. **Checked in.** |
+| `corpus.d/<id>.yaml` | One shard per language-breadth queue item (`docs/design/language-breadth.md` §13.3): `id` (the queue id, equal to the file name), `language`, and `repos` with `name`, `url`, `ref` (a release tag), `sha` (from `git ls-remote`), `licence` (OSI-approved; read, never vendored), optional `subpath` (repos over 50 MB or 5,000 files of the language — cloned blob-less and sparse) and 3–6 `idioms`. Workers add shards here instead of editing `corpus.yaml`, so parallel items never collide. |
 | `clone.sh` | Shallow-clones (`--depth 1`, single-branch) every repo in the manifest into `workspace/calibration/<lang>/<repo>` (gitignored). Idempotent. |
 | `baseline.sh` | Ingests each cloned repo through the **real** fathom pipeline and reports symbols-found per extractor, vs a rough grep-based "expected definitions" proxy, to expose recall gaps. Writes `workspace/calibration/baseline-report.md`. |
 
@@ -23,6 +24,8 @@ repo lean and license-clean while staying fully reproducible (URL + pinned SHA).
 ```sh
 task calibrate                       # clone the whole corpus + run the baseline
 task calibrate-clone -- Python Helm  # clone only some languages/tools
+task calibrate-clone -- swift        # clone one shard (corpus.d/swift.yaml) into workspace/calibration/swift/
+task calibrate-clean -- swift        # delete that shard's clones
 task calibrate-baseline -- Python    # re-measure one language (uses existing clones)
 ```
 
