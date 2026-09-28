@@ -264,64 +264,38 @@ func TestEditHookResolvesThroughSymlinkedRoot(t *testing.T) {
 
 // ─── OP-4: spec-line injection ───────────────────────────────────────────────
 
-// specRefsFakeDaemon serves canned "obligations" and "spec_refs" MCP
-// responses, recording every spec_refs query it receives (for the ≤3 cap
-// assertion) behind a mutex-free atomic counter map is overkill here — a
-// plain slice guarded by the test's single-goroutine http round trips is
-// fine since net/http/httptest serves requests sequentially in these tests.
+// specRefsFakeDaemon serves a canned "obligations" MCP response. SR-27
+// (surface reckoning F-35) folded the retired spec_refs tool's
+// information into obligations' own additive `spec_refs` field, so one
+// canned response now covers what used to take two (an "obligations"
+// call plus a per-ID "spec_refs" call) — obligationsOut may carry a
+// "spec_refs" key shaped exactly like the real one:
+// {spec_id: [{file, line}]}.
 type specRefsFakeDaemon struct {
 	t              *testing.T
-	obligationsOut map[string]any   // canned obligations payload
-	specRefs       map[string][]any // spec ID -> canned []{file,line} locations
-	specQueries    []string         // every spec ID queried, in order
-	specRefsFail   bool             // force spec_refs to error
+	obligationsOut map[string]any // canned obligations payload (may carry "spec_refs")
 }
 
 func (f *specRefsFakeDaemon) start() *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
 			Params struct {
-				Name      string `json:"name"`
-				Arguments struct {
-					Service string `json:"service"`
-					File    string `json:"file"`
-					Spec    string `json:"spec"`
-				} `json:"arguments"`
+				Name string `json:"name"`
 			} `json:"params"`
 		}
 		_ = json.NewDecoder(r.Body).Decode(&req)
 
-		switch req.Params.Name {
-		case "obligations":
-			resp := map[string]any{
-				"jsonrpc": "2.0", "id": 1,
-				"result": map[string]any{"content": []any{
-					map[string]any{"type": "text", "text": mustJSON(f.obligationsOut)},
-				}},
-			}
-			json.NewEncoder(w).Encode(resp)
-		case "spec_refs":
-			f.specQueries = append(f.specQueries, req.Params.Arguments.Spec)
-			if f.specRefsFail {
-				http.Error(w, "spec_refs unavailable", 500)
-				return
-			}
-			specs := f.specRefs[req.Params.Arguments.Spec]
-			payload := map[string]any{
-				"specs":         map[string]any{req.Params.Arguments.Spec: specs},
-				"total_refs":    len(specs),
-				"files_scanned": 1,
-			}
-			resp := map[string]any{
-				"jsonrpc": "2.0", "id": 1,
-				"result": map[string]any{"content": []any{
-					map[string]any{"type": "text", "text": mustJSON(payload)},
-				}},
-			}
-			json.NewEncoder(w).Encode(resp)
-		default:
+		if req.Params.Name != "obligations" {
 			http.Error(w, "unexpected tool "+req.Params.Name, 400)
+			return
 		}
+		resp := map[string]any{
+			"jsonrpc": "2.0", "id": 1,
+			"result": map[string]any{"content": []any{
+				map[string]any{"type": "text", "text": mustJSON(f.obligationsOut)},
+			}},
+		}
+		json.NewEncoder(w).Encode(resp)
 	}))
 }
 
@@ -354,11 +328,11 @@ func TestEditHookInjectsSpecLineForCitedID(t *testing.T) {
 			"rules": []any{
 				map[string]any{"rule": "Sort all outputs.", "src": "CLAUDE.md#L4-L4", "tier": "doc-claimed"},
 			},
-		},
-		specRefs: map[string][]any{
-			"US-042": {
-				map[string]any{"file": rel, "line": 3},                     // the citing file itself — must be skipped
-				map[string]any{"file": "docs/specs/us-042.md", "line": 10}, // the definition — must be appended
+			"spec_refs": map[string]any{
+				"US-042": []any{
+					map[string]any{"file": rel, "line": 3},                     // the citing file itself — must be skipped
+					map[string]any{"file": "docs/specs/us-042.md", "line": 10}, // the definition — must be appended
+				},
 			},
 		},
 	}
@@ -406,10 +380,10 @@ func TestEditHookSpecLineDroppedWhenBudgetSpent(t *testing.T) {
 			"rules": []any{
 				map[string]any{"rule": longRule, "src": "CLAUDE.md#L4-L4", "tier": "doc-claimed"},
 			},
-		},
-		specRefs: map[string][]any{
-			"US-042": {
-				map[string]any{"file": "docs/specs/us-042.md", "line": 10},
+			"spec_refs": map[string]any{
+				"US-042": []any{
+					map[string]any{"file": "docs/specs/us-042.md", "line": 10},
+				},
 			},
 		},
 	}
@@ -431,17 +405,13 @@ func TestEditHookSpecLineDroppedWhenBudgetSpent(t *testing.T) {
 	if strings.Contains(outStr, "▸ implements") {
 		t.Errorf("spec line must be dropped once the token budget is already spent, got %q", outStr)
 	}
-	// Budget short-circuit: when obligations alone already exceed the budget,
-	// no spec_refs RPC is made at all — lines that cannot fit must not cost
-	// hook latency.
-	if len(fake.specQueries) != 0 {
-		t.Errorf("spec_refs queried %d time(s) with the budget already spent, want 0 (pre-loop short-circuit): %v", len(fake.specQueries), fake.specQueries)
-	}
 }
 
 // TestEditHookCapsSpecIDLookupsAtThree: a file citing more than three
-// distinct spec IDs must trigger at most three spec_refs lookups — a file
-// citing a dozen specs must not turn one edit into a dozen RPCs.
+// distinct spec IDs must render at most three spec lines — SR-27 folded
+// the per-ID spec_refs RPC into the SAME obligations call, so the cap
+// (maxSpecIDsPerEdit) now bounds how many of the IDs the obligations
+// answer's spec_refs map gets consulted for, not a separate RPC count.
 func TestEditHookCapsSpecIDLookupsAtThree(t *testing.T) {
 	dir := t.TempDir()
 	rel := "internal/core/engine.go"
@@ -456,13 +426,13 @@ func TestEditHookCapsSpecIDLookupsAtThree(t *testing.T) {
 			"rules": []any{
 				map[string]any{"rule": "Sort all outputs.", "src": "CLAUDE.md#L4-L4", "tier": "doc-claimed"},
 			},
-		},
-		specRefs: map[string][]any{
-			"US-001": {map[string]any{"file": "docs/specs/a.md", "line": 1}},
-			"US-002": {map[string]any{"file": "docs/specs/b.md", "line": 1}},
-			"US-003": {map[string]any{"file": "docs/specs/c.md", "line": 1}},
-			"US-004": {map[string]any{"file": "docs/specs/d.md", "line": 1}},
-			"US-005": {map[string]any{"file": "docs/specs/e.md", "line": 1}},
+			"spec_refs": map[string]any{
+				"US-001": []any{map[string]any{"file": "docs/specs/a.md", "line": 1}},
+				"US-002": []any{map[string]any{"file": "docs/specs/b.md", "line": 1}},
+				"US-003": []any{map[string]any{"file": "docs/specs/c.md", "line": 1}},
+				"US-004": []any{map[string]any{"file": "docs/specs/d.md", "line": 1}},
+				"US-005": []any{map[string]any{"file": "docs/specs/e.md", "line": 1}},
+			},
 		},
 	}
 	srv := fake.start()
@@ -476,8 +446,16 @@ func TestEditHookCapsSpecIDLookupsAtThree(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("edit-hook exit = %d, want 0", code)
 	}
-	if len(fake.specQueries) > 3 {
-		t.Errorf("spec_refs queried %d times, want at most 3 (cap): %v", len(fake.specQueries), fake.specQueries)
+	outStr := out.String()
+	for _, id := range []string{"US-001", "US-002", "US-003"} {
+		if !strings.Contains(outStr, "implements ["+id+"]") {
+			t.Errorf("expected a spec line for the first three IDs, missing %s: %q", id, outStr)
+		}
+	}
+	for _, id := range []string{"US-004", "US-005"} {
+		if strings.Contains(outStr, "implements ["+id+"]") {
+			t.Errorf("expected the cap to drop IDs past the first three, got %s: %q", id, outStr)
+		}
 	}
 }
 
@@ -496,10 +474,10 @@ func TestEditHookSpecLinesWithoutObligations(t *testing.T) {
 		obligationsOut: map[string]any{ // zero rules, not stale
 			"service": strings.ToLower(filepath.Base(dir)),
 			"file":    rel,
-		},
-		specRefs: map[string][]any{
-			"US-042": {
-				map[string]any{"file": "docs/specs/us-042.md", "line": 10},
+			"spec_refs": map[string]any{
+				"US-042": []any{
+					map[string]any{"file": "docs/specs/us-042.md", "line": 10},
+				},
 			},
 		},
 	}
@@ -537,8 +515,7 @@ func TestEditHookSpecLinesWithoutObligations(t *testing.T) {
 
 // TestEditHookSilentWhenNoRulesAndNoSpecIDs pins the zero-output-on-clean
 // contract after the OP-4 restructure: an in-root file with no matching
-// rules AND no cited spec IDs produces nothing — and no spec_refs RPC is
-// ever attempted (there are no IDs to look up).
+// rules AND no cited spec IDs produces nothing.
 func TestEditHookSilentWhenNoRulesAndNoSpecIDs(t *testing.T) {
 	dir := t.TempDir()
 	rel := "internal/core/engine.go"
@@ -565,15 +542,17 @@ func TestEditHookSilentWhenNoRulesAndNoSpecIDs(t *testing.T) {
 	if out.Len() != 0 {
 		t.Errorf("clean file with no spec IDs: expected no output, got %q", out.String())
 	}
-	if len(fake.specQueries) != 0 {
-		t.Errorf("spec_refs queried %d time(s) for a file with no spec IDs, want 0: %v", len(fake.specQueries), fake.specQueries)
-	}
 }
 
-// TestEditHookSilentOnSpecRefsError: spec_refs failing must not disturb the
-// already-built obligations payload (hook doctrine: silent on any error, and
-// only the additive part is at risk).
-func TestEditHookSilentOnSpecRefsError(t *testing.T) {
+// TestEditHookSpecLinesOmittedWhenObligationsCarriesNone: SR-27 folded
+// spec_refs into the SAME obligations call, so there is no longer a
+// separate RPC that can fail independently — the equivalent degrade is an
+// obligations answer whose spec_refs key is simply absent (exactly what
+// obligationsSpecRefs itself returns on any server-side degrade, per its
+// own doc comment: never an error, only nil). The edit hook must render
+// the obligations payload normally and show no spec line, never fail the
+// hook over an additive section that isn't there.
+func TestEditHookSpecLinesOmittedWhenObligationsCarriesNone(t *testing.T) {
 	dir := t.TempDir()
 	rel := "internal/core/engine.go"
 	abs := writeEditedFile(t, dir, rel, "package core\n\n// implements [US-042]\nfunc Engine() {}\n")
@@ -586,8 +565,8 @@ func TestEditHookSilentOnSpecRefsError(t *testing.T) {
 			"rules": []any{
 				map[string]any{"rule": "Sort all outputs.", "src": "CLAUDE.md#L4-L4", "tier": "doc-claimed"},
 			},
+			// no "spec_refs" key at all.
 		},
-		specRefsFail: true,
 	}
 	srv := fake.start()
 	defer srv.Close()
@@ -598,13 +577,13 @@ func TestEditHookSilentOnSpecRefsError(t *testing.T) {
 	var out, errBuf bytes.Buffer
 	code := runWithStdin([]string{"edit-hook", "--url=" + srv.URL}, nil, &out, &errBuf)
 	if code != 0 {
-		t.Fatalf("edit-hook exit = %d, want 0 (spec_refs errors must not fail the hook)", code)
+		t.Fatalf("edit-hook exit = %d, want 0 (an absent spec_refs section must not fail the hook)", code)
 	}
 	outStr := out.String()
 	if !strings.Contains(outStr, "Sort all outputs") {
-		t.Errorf("obligations payload must survive a spec_refs error, got %q", outStr)
+		t.Errorf("obligations payload must render fine with no spec_refs section, got %q", outStr)
 	}
 	if strings.Contains(outStr, "▸ implements") {
-		t.Errorf("no spec line should be present when spec_refs errors, got %q", outStr)
+		t.Errorf("no spec line should be present when obligations carries no spec_refs, got %q", outStr)
 	}
 }

@@ -502,6 +502,17 @@ func renderObligationReceipt(ctx context.Context, backend QueryInterface, servic
 	if coverageSkipped != "" {
 		result["coverage_skipped"] = coverageSkipped
 	}
+	// SR-27 (surface reckoning F-35): the retired spec_refs tool's one
+	// real consumer (the edit hook, 306 calls) reads this additive
+	// section instead of a second RPC. Same gate as the raw-fallback
+	// prepend above: a real file, not a root-scope or as-of (historical)
+	// call — obligationsSpecRefs itself never errors, only degrades to
+	// nil, so this never affects the rest of the answer.
+	if !rootScope && obl.File != "" && obl.AsOf == "" {
+		if refs := obligationsSpecRefs(ctx, backend, service, obl.File); len(refs) > 0 {
+			result["spec_refs"] = refs
+		}
+	}
 	return result, summary
 }
 

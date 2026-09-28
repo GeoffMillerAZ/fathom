@@ -4,10 +4,9 @@
 // registerExtraTools is called from registerTools (tools.go) and adds tools in
 // the following groups:
 //
-//	investigation: blast_radius, spec_coverage,
+//	investigation: blast_radius,
 //	               traceability, evidence_summary,
 //	               contradiction_scan, review_diff, search
-//	coding:        arch_conformance
 //	shared:        ingest
 //	context:       repo_map, pack_context
 //	ops/meta:      batch
@@ -24,7 +23,6 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/geoffmilleraz/fathom/internal/analysis/archconformance"
 	"github.com/geoffmilleraz/fathom/internal/analysis/envkeys"
 	"github.com/geoffmilleraz/fathom/internal/analysis/proto"
 	"github.com/geoffmilleraz/fathom/internal/analysis/routes"
@@ -36,7 +34,6 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/graph"
 	"github.com/geoffmilleraz/fathom/internal/hookcache"
-	"github.com/geoffmilleraz/fathom/internal/projectrules"
 	"github.com/geoffmilleraz/fathom/internal/refresh"
 	"github.com/geoffmilleraz/fathom/internal/sdd"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
@@ -53,7 +50,10 @@ func registerExtraTools(s *Server, backend QueryInterface) {
 	// reckoning): it was a thin alias for blast_radius, and review_diff
 	// (which already runs blast_radius in-process) is the verb for a
 	// diff/PR impact question.
-	registerSpecCoverage(s, backend)
+	// registerSpecCoverage (F-35) was unregistered by SR-27 (surface
+	// reckoning): review_diff's engine already runs the identical check
+	// in-process (runSpecCoverage, internal/analysis/review/engine.go)
+	// via the same sdd package this tool called directly.
 	registerTraceability(s, backend)
 	registerEvidenceSummary(s, backend)
 	registerContradictionScan(s, backend)
@@ -64,7 +64,11 @@ func registerExtraTools(s *Server, backend QueryInterface) {
 	registerFindingsNear(s, backend)
 
 	// ── coding ───────────────────────────────────────────────────────────────
-	registerArchConformance(s, backend)
+	// registerArchConformance (F-35) was unregistered by SR-27 (surface
+	// reckoning): review_diff's engine already runs the identical check
+	// in-process (runArch, internal/analysis/review/engine.go) via the
+	// same archconformance/projectrules packages this tool called
+	// directly — one caller instead of two, no logic lost.
 	// registerStaleDocs (F-56) was unregistered by SR-28 (surface reckoning):
 	// its own scan (docdrift.Analyze over every Markdown source) now runs
 	// in-process as staleness_report's doc_drift section (stalenessDocDrift,
@@ -98,7 +102,12 @@ func registerExtraTools(s *Server, backend QueryInterface) {
 	registerProtoConformance(s, backend)
 
 	// ── spec / context ───────────────────────────────────────────────────────
-	registerSpecRefs(s, backend)
+	// registerSpecRefs (F-35) was unregistered by SR-27 (surface
+	// reckoning): its one real consumer, the edit hook's spec-line RPC
+	// (306 calls), now reads the identical spec_id → locations map from
+	// the obligations answer's additive spec_refs section
+	// (obligationsSpecRefs, internal/mcp/semantic_tools.go) instead of a
+	// second call.
 	// registerBrief was unregistered by SR-15 (surface reckoning F-53,
 	// refined): the MCP brief tool had 0 lifetime calls and overlaps
 	// pack_context; the CLI's renderBriefMD/briefTuning (the console's
@@ -337,91 +346,6 @@ func intOr(p *int, def int) int {
 	return *p
 }
 
-// ─── investigation: spec_coverage ────────────────────────────────────────────
-
-func registerSpecCoverage(s *Server, backend QueryInterface) {
-	s.registerTool(toolDescriptor{
-		Name:        "spec_coverage",
-		Description: "Build a spec coverage matrix: for each declared spec ID report which symbols implement it, which specs are uncovered, and which referenced IDs are orphans (not in the declared set).",
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"service":  map[string]any{"type": "string", "description": "Service / repo identifier"},
-				"spec_ids": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Declared spec IDs (e.g. [\"[US-001]\",\"[EP-002]\"])"},
-				"prefixes": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Spec-ID prefixes to scan for (default: US, EP, FR, NFR)"},
-			},
-			"required": []string{"service", "spec_ids"},
-		},
-		group: GroupInvestigation,
-	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
-		if backend == nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
-		}
-		var p struct {
-			Service  string   `json:"service"`
-			SpecIDs  []string `json:"spec_ids"`
-			Prefixes []string `json:"prefixes"`
-		}
-		if err := json.Unmarshal(args, &p); err != nil {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "spec_coverage: invalid args"}
-		}
-		if p.Service == "" {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "spec_coverage: service required"}
-		}
-		// Scan sources for spec refs under the tree budget (RT-71); a
-		// partial scan is named in the answer.
-		files, specCov, _ := collectSources(ctx, backend, p.Service)
-		nodes, err := serviceSymbols(ctx, backend, p.Service)
-		if err != nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
-		}
-		// Build codeRefs map: symbol → []specID.
-		codeRefs := make(map[string][]string)
-		// From nodes (claim text may contain spec refs).
-		for _, n := range nodes {
-			var refs []string
-			if len(p.Prefixes) > 0 {
-				refs = sdd.ExtractRefsWithPrefixes(n.Signature+" "+n.Name, p.Prefixes)
-			} else {
-				refs = sdd.ExtractRefs(n.Signature + " " + n.Name)
-			}
-			if len(refs) > 0 {
-				codeRefs[n.Name] = refs
-			}
-		}
-		// From source files.
-		for _, f := range files {
-			var refs []string
-			if len(p.Prefixes) > 0 {
-				refs = sdd.ExtractRefsWithPrefixes(string(f.Content), p.Prefixes)
-			} else {
-				refs = sdd.ExtractRefs(string(f.Content))
-			}
-			if len(refs) > 0 {
-				key := f.Path
-				codeRefs[key] = append(codeRefs[key], refs...)
-			}
-		}
-		matrix := sdd.BuildMatrix(p.SpecIDs, codeRefs)
-		uncovered := matrix.Uncovered(p.SpecIDs)
-		orphans := matrix.Orphans(codeRefs)
-		// Build coverage map spec → symbols.
-		covered := make(map[string]any, len(p.SpecIDs))
-		for _, id := range p.SpecIDs {
-			syms := matrix.Coverage(id)
-			if syms == nil {
-				syms = []string{}
-			}
-			covered[id] = stringsToAny(syms)
-		}
-		return withPartial(map[string]any{
-			"coverage":  covered,
-			"uncovered": stringsToAny(uncovered),
-			"orphans":   stringsToAny(orphans),
-		}, specCov), nil
-	})
-}
-
 // ─── investigation: traceability ─────────────────────────────────────────────
 
 func registerTraceability(s *Server, backend QueryInterface) {
@@ -590,119 +514,6 @@ func registerContradictionScan(s *Server, backend QueryInterface) {
 			})
 		}
 		return map[string]any{"contradictions": out, "count": len(out)}, nil
-	})
-}
-
-// ─── coding: arch_conformance ─────────────────────────────────────────────────
-
-func registerArchConformance(s *Server, backend QueryInterface) {
-	s.registerTool(toolDescriptor{
-		Name:        "arch_conformance",
-		Description: "Check the service call-graph edges against architectural layering rules and report violations. When no inline rules are passed, falls back to the service's own .fathom/rules/archconformance.cue project rule pack; the response's rule_source names which source was used (\"inline\" | \"project\" | \"none\"), and checked is false (with a reason) when no rules were available from either source — never a clean-shaped zero-violation answer for a check that did not run.",
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"service": map[string]any{"type": "string", "description": "Service / repo identifier"},
-				"rules": map[string]any{
-					"type":        "array",
-					"description": "List of {from_pkg,to_pkg,allow} rules. Use \"*\" as wildcard. When omitted or empty, the service's .fathom/rules/archconformance.cue project rule pack is used if present.",
-					"items": map[string]any{
-						"type": "object",
-						"properties": map[string]any{
-							"from_pkg": map[string]any{"type": "string"},
-							"to_pkg":   map[string]any{"type": "string"},
-							"allow":    map[string]any{"type": "boolean"},
-						},
-					},
-				},
-				"deny_by_default": map[string]any{"type": "boolean", "description": "Deny edges not matched by any allow rule. When project rules are used, this is OR'd with that rule pack's own deny_by_default."},
-			},
-			"required": []string{"service"},
-		},
-		group: GroupCoding,
-	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
-		if backend == nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
-		}
-		var p struct {
-			Service       string `json:"service"`
-			DenyByDefault bool   `json:"deny_by_default"`
-			Rules         []struct {
-				FromPkg string `json:"from_pkg"`
-				ToPkg   string `json:"to_pkg"`
-				Allow   bool   `json:"allow"`
-			} `json:"rules"`
-		}
-		if err := json.Unmarshal(args, &p); err != nil {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "arch_conformance: invalid args"}
-		}
-		if p.Service == "" {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "arch_conformance: service required"}
-		}
-		nodes, err := serviceSymbols(ctx, backend, p.Service)
-		if err != nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
-		}
-		// Build edges from Calls, both sides normalized to DECLARING
-		// packages (P1-4, closes the C4-4 disclosed gap — see schema/
-		// rules/archconformance/schema.cue #Rule, now updated to "closed").
-		// archconformance.Check derives a rule-matchable "package" as
-		// everything before an edge's LAST dot (pkgOf); EdgesFromNodes
-		// resolves both FromSymbol and ToSymbol to "declPkg.BareName" so
-		// that holds for METHOD-origin and method-TARGET edges too, not
-		// only function-to-function ones — see EdgesFromNodes' own doc
-		// comment for how. Shared with review_diff (C1-1) via the
-		// archconformance package — one implementation, never two that
-		// could drift.
-		edges := archconformance.EdgesFromNodes(nodes)
-
-		inlineRules := make([]archconformance.Rule, len(p.Rules))
-		for i, r := range p.Rules {
-			inlineRules[i] = archconformance.Rule{FromPkg: r.FromPkg, ToPkg: r.ToPkg, Allow: r.Allow}
-		}
-
-		// C4-2/C4-3: when the caller passes no inline rules, fall back to
-		// the service's own project rule pack — and report honestly
-		// (checked:false + reason) when neither source has anything to
-		// check, rather than the confirmed C4-5 bug of a clean-shaped
-		// {violations:[],count:0} indistinguishable from a real scan.
-		// projectrules.ResolveRules is the single shared implementation of
-		// this three-way split (also used by review_diff, C1-1).
-		corpusRoot := ""
-		if path, _, found, metaErr := backend.ServiceMeta(ctx, p.Service); metaErr == nil && found {
-			corpusRoot = path
-		}
-		rules, ruleSource, denyByDefault, checked, reason, resolveErr := projectrules.ResolveRules(corpusRoot, inlineRules, p.DenyByDefault)
-		if resolveErr != nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "arch_conformance: project rules: " + resolveErr.Error()}
-		}
-
-		var violations []archconformance.Violation
-		if checked {
-			var opts []archconformance.Option
-			if denyByDefault {
-				opts = append(opts, archconformance.DenyByDefault())
-			}
-			violations = archconformance.Check(edges, rules, opts...)
-		}
-		result := make([]any, len(violations))
-		for i, v := range violations {
-			result[i] = map[string]any{
-				"from":   v.From,
-				"to":     v.To,
-				"reason": v.Reason,
-			}
-		}
-		resp := map[string]any{
-			"violations":  result,
-			"count":       len(violations),
-			"rule_source": ruleSource,
-			"checked":     checked,
-		}
-		if !checked {
-			resp["reason"] = reason
-		}
-		return resp, nil
 	})
 }
 
@@ -1458,68 +1269,6 @@ func registerProtoConformance(s *Server, backend QueryInterface) {
 			}
 		}
 		return withPartial(map[string]any{"issues": allIssues, "count": len(allIssues)}, cov), nil
-	})
-}
-
-// ─── spec / context: spec_refs ────────────────────────────────────────────────
-
-func registerSpecRefs(s *Server, backend QueryInterface) {
-	s.registerTool(toolDescriptor{
-		Name: "spec_refs",
-		Description: "Scan service source files for spec-ID references and return a grouped map of spec_id → [{file, line}]. " +
-			"Covers bracketed IDs ([US-042], [EP-013]), milestone IDs (M18.2), and doc references (doc 31). " +
-			"Results are deterministically sorted (spec_id asc, file asc, line asc).",
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"service": map[string]any{"type": "string", "description": "Service / repo identifier"},
-				"pattern": map[string]any{"type": "string", "description": "Optional regex override (default covers [US/EP/FR/NFR-N], MN.N, doc N)"},
-				"spec":    map[string]any{"type": "string", "description": "Optional: filter output to a single normalised spec ID (e.g. \"M18.2\")"},
-			},
-			"required": []string{"service"},
-		},
-		group: GroupInvestigation,
-	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
-		if backend == nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
-		}
-		var p struct {
-			Service string `json:"service"`
-			Pattern string `json:"pattern"`
-			Spec    string `json:"spec"`
-		}
-		if err := json.Unmarshal(args, &p); err != nil {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "spec_refs: invalid args"}
-		}
-		if p.Service == "" {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "spec_refs: service required"}
-		}
-		files, cov, rpcErr := fetchSources(ctx, backend, p.Service)
-		if rpcErr != nil {
-			return nil, rpcErr
-		}
-		// Build path→content map for the pure ExtractFileRefs function.
-		fileMap := make(map[string]string, len(files))
-		for _, f := range files {
-			fileMap[f.Path] = string(f.Content)
-		}
-		refs, scanned, err := sdd.ExtractFileRefs(fileMap, p.Pattern, p.Spec)
-		if err != nil {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "spec_refs: invalid pattern: " + err.Error()}
-		}
-		// Group refs by spec_id.
-		specsMap := make(map[string][]any)
-		for _, r := range refs {
-			specsMap[r.SpecID] = append(specsMap[r.SpecID], map[string]any{
-				"file": r.File,
-				"line": r.Line,
-			})
-		}
-		return withPartial(map[string]any{
-			"specs":         specsMap,
-			"total_refs":    len(refs),
-			"files_scanned": scanned,
-		}, cov), nil
 	})
 }
 

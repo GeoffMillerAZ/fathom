@@ -35,7 +35,7 @@ var toolCostClasses = map[string]tenancy.Class{
 	"reachable": tenancy.ClassIndex, "dead_code": tenancy.ClassIndex, "community": tenancy.ClassIndex,
 	"localize": tenancy.ClassIndex, "outline": tenancy.ClassIndex,
 	"complexity": tenancy.ClassIndex, "god_object": tenancy.ClassIndex,
-	"arch_conformance": tenancy.ClassIndex, "evidence_summary": tenancy.ClassIndex,
+	"evidence_summary":   tenancy.ClassIndex,
 	"contradiction_scan": tenancy.ClassIndex, "findings_near": tenancy.ClassIndex,
 	"module_obligations": tenancy.ClassIndex, "module_query": tenancy.ClassIndex, "module_staleness": tenancy.ClassIndex,
 
@@ -52,17 +52,28 @@ var toolCostClasses = map[string]tenancy.Class{
 	// rename_impact/safe_delete_check tools' own answers, declared index/
 	// tree before the merge) are no cheaper than that default, and one
 	// tool declares one class for all three kinds.
+	// obligations (SR-27): stays "tree" — its additive spec_refs section
+	// (obligationsSpecRefs) uses search's own bounded, streaming grep
+	// (searchRun/resolveCorpusRoot), never a second aggregated whole-tree
+	// Sources fetch, so folding the retired spec_refs tool's function in
+	// added no new whole-tree contender and no class bump.
 	"symbol_context": tenancy.ClassTree, "obligations": tenancy.ClassTree, "search": tenancy.ClassTree,
-	"secret_scan": tenancy.ClassTree, "cloc": tenancy.ClassTree, "spec_coverage": tenancy.ClassTree,
+	"secret_scan": tenancy.ClassTree, "cloc": tenancy.ClassTree,
 	"traceability": tenancy.ClassTree, "status": tenancy.ClassTree,
 	"references": tenancy.ClassTree, "blast_radius": tenancy.ClassTree,
 	"traverse": tenancy.ClassTree, "http_client_calls": tenancy.ClassTree,
-	"shell_out": tenancy.ClassTree, "proto_conformance": tenancy.ClassTree, "spec_refs": tenancy.ClassTree,
+	"shell_out": tenancy.ClassTree, "proto_conformance": tenancy.ClassTree,
 	"staleness_report": tenancy.ClassTree,
 	// stale_docs (SR-28) was unregistered; its own scan runs inside
 	// staleness_report now (the entry above), never as a second call.
 	// discoveries (SR-29) was unregistered; the SubagentStart hook's own
 	// push-form render (a separate, unbudgeted CLI-side query) covers it.
+	// arch_conformance, spec_coverage (SR-27) were unregistered; review_diff's
+	// engine already ran both checks in-process (runArch, runSpecCoverage,
+	// internal/analysis/review/engine.go).
+	// spec_refs (SR-27) was unregistered; its one real consumer (the edit
+	// hook's spec-line RPC) now reads obligations' additive spec_refs
+	// section instead of a second call.
 
 	// fleet: every service.
 	"list_services": tenancy.ClassFleet, "fleet_drift": tenancy.ClassFleet,

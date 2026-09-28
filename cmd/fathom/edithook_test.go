@@ -132,7 +132,7 @@ func TestFetchObligations_ReturnsReasonOnEachFailureBranch(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			url := tc.urlFor(t)
-			obl, stale, ok, err := fetchObligations(url, "myservice", "a.go", 0, 500*time.Millisecond, semantic.ObligationLayerAll)
+			obl, stale, _, ok, err := fetchObligations(url, "myservice", "a.go", 0, 500*time.Millisecond, semantic.ObligationLayerAll)
 			if ok {
 				t.Fatalf("ok = true, want false for %s", tc.name)
 			}

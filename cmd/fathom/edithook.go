@@ -239,6 +239,7 @@ func renderPostEdit(url, projDir, filePath, sessionID, newContent string) (strin
 	var (
 		obl         semantic.Obligations
 		indexStale  bool
+		specRefs    map[string][]specRefLoc
 		repoRelFile string
 		svcName     string
 		svcRoot     string
@@ -273,17 +274,29 @@ func renderPostEdit(url, projDir, filePath, sessionID, newContent string) (strin
 		if !ok {
 			continue
 		}
+		justResolved := false
 		if !resolved {
 			resolved, svcName, repoRelFile, svcRoot = true, strings.ToLower(cand.name), rel, cand.root
+			justResolved = true
 		}
 		name := strings.ToLower(cand.name)
-		o, stale, ok, ferr := fetchObligations(url, name, rel, 0, 2*time.Second, semantic.ObligationLayerAll)
+		o, stale, sr, ok, ferr := fetchObligations(url, name, rel, 0, 2*time.Second, semantic.ObligationLayerAll)
 		if !ok {
 			emitBeat("edit-hook", "error", firingMeta(map[string]string{"phase": "post", "reason": truncateBytes(ferr.Error(), reasonMetaMaxBytes)}, sessionID, filePath))
 			return "", postEditMeta{}, false // daemon down or error → silent
 		}
+		// SR-27 (surface reckoning F-35): specRefs must always come from
+		// whichever candidate's call is CURRENTLY bound to svcName/
+		// repoRelFile — the OP-4 block below renders spec lines against
+		// that identity. justResolved covers the first relativizing
+		// candidate (svcName just set, above); the found branch below
+		// covers a later candidate that REBINDS svcName to itself.
+		if justResolved {
+			specRefs = sr
+		}
 		if len(o.Rules) > 0 || stale || o.CoverageSkipped != "" {
 			obl, indexStale, repoRelFile, svcName, svcRoot, found = o, stale, rel, name, cand.root, true
+			specRefs = sr
 			break
 		}
 		// DG-11 (O15 regression): a daemon-verified candidate — one the
@@ -424,12 +437,15 @@ func renderPostEdit(url, projDir, filePath, sessionID, newContent string) (strin
 	// file cites bracketed spec IDs, tie those knowledge concepts to code by
 	// appending where each one is actually defined — beneath the obligations
 	// payload when there is one, as a payload of their own when there isn't.
-	// The ≤320-token budget covers the WHOLE payload and spec lines drop
-	// first: when obligations alone already spend it, skip every spec_refs
-	// RPC up front rather than paying hook latency for lines that cannot
-	// fit. Silent on any error (hook doctrine): a missing/unreadable file, a
-	// pattern error, or a daemon error simply means no spec lines, never a
-	// failure of the obligations payload already built above.
+	// SR-27 (surface reckoning F-35): each ID's OTHER citing locations come
+	// from specRefs, the additive spec_refs section the obligations call
+	// above already fetched (obligationsSpecRefs, internal/mcp) — never a
+	// second per-ID spec_refs RPC. The ≤320-token budget covers the WHOLE
+	// payload and spec lines drop first: when obligations alone already
+	// spend it, skip this block entirely. Silent on any error (hook
+	// doctrine): a missing/unreadable file or a pattern error simply means
+	// no spec lines, never a failure of the obligations payload already
+	// built above.
 	if cost.Estimate(sb.String()) <= specLineTokenBudget {
 		if raw, rerr := os.ReadFile(filePath); rerr == nil {
 			if ids, ierr := sdd.ExtractRefsFromText(string(raw), ""); ierr == nil && len(ids) > 0 {
@@ -437,11 +453,7 @@ func renderPostEdit(url, projDir, filePath, sessionID, newContent string) (strin
 					ids = ids[:maxSpecIDsPerEdit]
 				}
 				for _, id := range ids {
-					specs, ok := fetchSpecRefs(url, svcName, id)
-					if !ok {
-						continue
-					}
-					for _, loc := range specs[id] {
+					for _, loc := range specRefs[id] {
 						if loc.File == repoRelFile {
 							continue // the citing file itself, not the definition
 						}
@@ -681,7 +693,11 @@ func resolveSymlinks(p string) string {
 // hook's fail-open contract to the AGENT is unchanged (stdout still stays
 // silent on any error) — this only changes what a human can later learn
 // from the beat log.
-func fetchObligations(baseURL, service, file string, maxRules int, timeout time.Duration, layer semantic.ObligationLayerFilter) (semantic.Obligations, bool, bool, error) {
+// fetchObligations returns the decoded obligations answer, its index_stale
+// flag, its additive spec_refs section (SR-27, surface reckoning F-35 —
+// nil when the file cites nothing or the call was root-scope; never a
+// separate RPC), an ok flag, and an error.
+func fetchObligations(baseURL, service, file string, maxRules int, timeout time.Duration, layer semantic.ObligationLayerFilter) (semantic.Obligations, bool, map[string][]specRefLoc, bool, error) {
 	args := map[string]any{
 		"service": service,
 		"file":    file,
@@ -708,30 +724,30 @@ func fetchObligations(baseURL, service, file string, maxRules int, timeout time.
 		},
 	})
 	if err != nil {
-		return semantic.Obligations{}, false, false, fmt.Errorf("marshal request: %w", err)
+		return semantic.Obligations{}, false, nil, false, fmt.Errorf("marshal request: %w", err)
 	}
 
 	hc := &http.Client{Timeout: timeout}
 	req, err := originHeader(baseURL, bytes.NewReader(reqBody))
 	if err != nil {
-		return semantic.Obligations{}, false, false, fmt.Errorf("build request: %w", err)
+		return semantic.Obligations{}, false, nil, false, fmt.Errorf("build request: %w", err)
 	}
 	resp, err := hc.Do(req)
 	if err != nil {
-		return semantic.Obligations{}, false, false, fmt.Errorf("daemon request: %w", err)
+		return semantic.Obligations{}, false, nil, false, fmt.Errorf("daemon request: %w", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return semantic.Obligations{}, false, false, fmt.Errorf("daemon returned HTTP %d", resp.StatusCode)
+		return semantic.Obligations{}, false, nil, false, fmt.Errorf("daemon returned HTTP %d", resp.StatusCode)
 	}
 	raw, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if err != nil {
-		return semantic.Obligations{}, false, false, fmt.Errorf("read response body: %w", err)
+		return semantic.Obligations{}, false, nil, false, fmt.Errorf("read response body: %w", err)
 	}
 
 	inner, err := unwrapRPCResult(raw)
 	if err != nil {
-		return semantic.Obligations{}, false, false, fmt.Errorf("unwrap RPC result: %w", err)
+		return semantic.Obligations{}, false, nil, false, fmt.Errorf("unwrap RPC result: %w", err)
 	}
 
 	// Decode the obligations payload.
@@ -747,9 +763,13 @@ func fetchObligations(baseURL, service, file string, maxRules int, timeout time.
 		DisplacedModule     int                   `json:"displaced_module"`
 		ModuleNotes         []semantic.ModuleNote `json:"module_notes"`
 		CoverageSkipped     string                `json:"coverage_skipped"`
+		// SpecRefs (SR-27, surface reckoning F-35): the retired spec_refs
+		// tool's one real consumer, this hook's OP-4 spec-line block, reads
+		// it straight off THIS decode now — never a second RPC.
+		SpecRefs map[string][]specRefLoc `json:"spec_refs"`
 	}
 	if err := json.Unmarshal(inner, &payload); err != nil {
-		return semantic.Obligations{}, false, false, fmt.Errorf("decode obligations payload: %w", err)
+		return semantic.Obligations{}, false, nil, false, fmt.Errorf("decode obligations payload: %w", err)
 	}
 
 	obl := semantic.Obligations{
@@ -764,63 +784,15 @@ func fetchObligations(baseURL, service, file string, maxRules int, timeout time.
 		IndexUnchecked:  payload.IndexUnchecked,
 		CoverageSkipped: payload.CoverageSkipped,
 	}
-	return obl, payload.IndexStale, true, nil
+	return obl, payload.IndexStale, payload.SpecRefs, true, nil
 }
 
-// specRefLoc is one {file, line} location the spec_refs MCP tool reports for
-// a spec ID.
+// specRefLoc is one {file, line} location a spec ID is cited at — the
+// same shape internal/mcp's obligationsSpecRefs serves (SR-27, surface
+// reckoning F-35) on obligations' additive spec_refs section.
 type specRefLoc struct {
 	File string `json:"file"`
 	Line int    `json:"line"`
-}
-
-// fetchSpecRefs calls the spec_refs MCP tool for a single normalised spec ID
-// (OP-4), returning its {spec_id: [{file, line}]} map and ok=false on any
-// error — mirrors fetchObligations's silent-on-error contract.
-func fetchSpecRefs(baseURL, service, spec string) (map[string][]specRefLoc, bool) {
-	reqBody, err := json.Marshal(map[string]any{
-		"jsonrpc": "2.0",
-		"id":      1,
-		"method":  "tools/call",
-		"params": map[string]any{
-			"name": "spec_refs",
-			"arguments": map[string]any{
-				"service": service,
-				"spec":    spec,
-			},
-		},
-	})
-	if err != nil {
-		return nil, false
-	}
-
-	hc := &http.Client{Timeout: 2 * time.Second}
-	req, err := originHeader(baseURL, bytes.NewReader(reqBody))
-	if err != nil {
-		return nil, false
-	}
-	resp, err := hc.Do(req)
-	if err != nil {
-		return nil, false
-	}
-	defer resp.Body.Close()
-	raw, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-	if err != nil {
-		return nil, false
-	}
-
-	inner, err := unwrapRPCResult(raw)
-	if err != nil {
-		return nil, false
-	}
-
-	var payload struct {
-		Specs map[string][]specRefLoc `json:"specs"`
-	}
-	if err := json.Unmarshal(inner, &payload); err != nil {
-		return nil, false
-	}
-	return payload.Specs, true
 }
 
 // maxMemoriesPerEdit caps how many memories one edit asks the daemon for.
