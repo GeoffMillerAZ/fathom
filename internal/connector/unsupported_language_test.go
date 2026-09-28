@@ -36,7 +36,8 @@ func TestUnsupportedLanguageForPath_KnownLanguages(t *testing.T) {
 		"Main.hs":      "haskell",
 		"lib.ml":       "ocaml",
 		"lib.mli":      "ocaml",
-		"Program.fs":   "fsharp",
+		// "Program.fs" is not listed since LB-F25: .fs is F# or a GLSL
+		// fragment shader by sniff (design §5), so it is never disclosed.
 		"script.fsx":   "fsharp",
 		"mod.erl":      "erlang",
 		"mod.hrl":      "erlang",
@@ -84,6 +85,10 @@ func TestUnsupportedLanguageForPath_NonCodeNeverMatches(t *testing.T) {
 		"requirements.txt",
 		"noext",
 		"image.png",
+		"Program.fs", // ambiguous: F# or GLSL (design §5)
+		"lib.m",      // ambiguous: Objective-C or MATLAB
+		"top.v",      // ambiguous: Verilog, Coq or V
+		"tool.pl",    // ambiguous: Perl or Prolog
 	} {
 		if lang, ok := connector.UnsupportedLanguageForPath(path); ok {
 			t.Errorf("UnsupportedLanguageForPath(%q) = (%q, true), want ok=false", path, lang)
