@@ -13,10 +13,10 @@ registry.
 
 ## The agent surface
 
-- [x] Companion membership becomes the 15-tool agent set: minus batch and brief, plus verify_plan and capabilities; served at /rpc/agent with /rpc/companion as a compatible alias {id: SW-3, symbol: TestCompanionSurfaceToolsList, package: internal/mcp, skip_test: true, skip: "the membership pin test IS the anchor; nothing reaches a test"}
+- [-] Companion membership becomes the 15-tool agent set: minus batch and brief, plus verify_plan and capabilities; served at /rpc/agent with /rpc/companion as a compatible alias {id: SW-3, disposition: refused, reason: "superseded by ADR-053/SR-33 (surface reckoning): /rpc/agent now serves the default eight, not the 15-tool companion set, and /rpc/companion aliases the 21-tool /rpc/extended instead; TestCompanionSurfaceToolsList is gone, replaced by TestDefaultSurfaceToolsList and TestExtendedSurfaceToolsList which pin a different membership entirely — re-anchoring here would misstate what those tests prove"}
 - [x] Off-surface tools/call executes and is logged with an off-surface flag instead of erroring; hard gating stays available behind a server option {id: SW-4, symbol: toolOnSurface, package: internal/mcp, reachable_from: TestAdoptionServiceScoped}
 - [x] serve-http default addr becomes loopback 127.0.0.1:7575 — surfaces were never a security boundary and the default must not listen on all interfaces {id: SW-5, symbol: runServeHTTP, package: cmd/fathom}
-- [x] ADR-014 amendment recorded in ADR.md; docs/mcp-tools.md + surface_test.go updated in the same change (the three-place membership contract) {id: SW-6, symbol: TestCompanionSurfaceToolsList, skip_test: true, skip: "docs deliverable anchored to the membership pin test per plans-README rule"}
+- [-] ADR-014 amendment recorded in ADR.md; docs/mcp-tools.md + surface_test.go updated in the same change (the three-place membership contract) {id: SW-6, disposition: refused, reason: "superseded by ADR-053/SR-33 (surface reckoning): the membership this row documented (the 15-tool companion set at /rpc/agent) no longer exists; the same discipline continues under ADR-053's own membership tests (TestDefaultSurfaceToolsList, TestExtendedSurfaceToolsList) and docs, tracked by that record, not this one"}
 
 ## Operator step (recorded when done)
 
