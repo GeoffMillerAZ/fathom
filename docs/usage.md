@@ -1117,6 +1117,21 @@ statement once: two claims whose normalized statements are identical (case, back
 asterisks, whitespace and trailing punctuation aside) take one slot, and the duplicate
 is not counted as displaced (OC-33).
 
+Beside each served rule the verb shows what the edit hook recorded of it over the last
+30 days — `served`, `complied`, `violated` (SR-61, surface reckoning F-27/U4) — read from
+the hook's signal log (`~/.fathom/rule-outcomes.jsonl` and its rotated generation), and
+the console's `/explain` shows the same line under each rule of "What the agent saw at
+the edit". `--json` carries it as `outcomes` (`{window_days, rules: [{claim_id, served,
+complied, violated, blocked, refuted, corroborated, class?}]}`), a truth-stated value:
+**absent** with its reason when no hook has recorded anything on this machine, an
+**error** when the log exists and cannot be read, **partial** when malformed rows were
+left out, and a measured zero only when the log is there and the hook never served that
+rule. `class` is GL-11's proposal (`ignored`, `effective`, `contested`,
+`never_triggered`), shown only when the log is old enough to support it and never acted
+on. The rule's `claim_id` (what `fathom claim refute|corroborate --claim` takes) is in
+this output; the MCP `obligations` payload an agent reads carries neither the id nor the
+record — the id rides only on the edit hook's own request (origin `edit-hook`).
+
 ---
 
 ### `compile`
