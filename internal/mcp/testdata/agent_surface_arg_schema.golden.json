@@ -463,6 +463,10 @@
         "description": "Regular expression to search for (Go regexp syntax \u2014 must compile; the same pattern text is handed to ripgrep when it runs the search).",
         "type": "string"
       },
+      "pkg": {
+        "description": "With kind docs: pkg:<eco>/<name>@<ver>, that pinned version's docs from the local cache, never fetched.",
+        "type": "string"
+      },
       "root": {
         "description": "Absolute filesystem directory to search directly (no index lookup, so sym/kind are omitted; flags/class still render). Give exactly one of service or root.",
         "type": "string"

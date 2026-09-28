@@ -242,6 +242,48 @@ SELECT DISTINCT path FROM doc_units WHERE service_id = ? ORDER BY path`, service
 	return out, rows.Err()
 }
 
+// DocIndexedServiceIDs returns the distinct service ids with doc_units rows
+// whose id starts with prefix, sorted — KR-12's way of naming which versions
+// of a package have indexed docs without a scan of every service: a range
+// over doc_units' (service_id, ...) primary key. The prefix is required
+// (empty is refused) and is ASCII by construction (a pkg: key).
+func (s *SQLiteStore) DocIndexedServiceIDs(ctx context.Context, prefix string) ([]string, error) {
+	if prefix == "" {
+		return nil, fmt.Errorf("DocIndexedServiceIDs: a prefix is required")
+	}
+	rows, err := s.db.QueryContext(ctx, `
+SELECT DISTINCT service_id FROM doc_units
+WHERE service_id >= ? AND service_id < ? ORDER BY service_id`, prefix, prefixUpperBound(prefix))
+	if err != nil {
+		return nil, fmt.Errorf("DocIndexedServiceIDs query: %w", err)
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("DocIndexedServiceIDs scan: %w", err)
+		}
+		out = append(out, id)
+	}
+	return out, rows.Err()
+}
+
+// prefixUpperBound is the smallest string greater than every string with the
+// given prefix: the prefix with its last byte incremented (carrying past a
+// 0xff), so `>= prefix AND < bound` is exactly "starts with prefix" under
+// SQLite's binary collation.
+func prefixUpperBound(prefix string) string {
+	b := []byte(prefix)
+	for i := len(b) - 1; i >= 0; i-- {
+		if b[i] < 0xff {
+			b[i]++
+			return string(b[:i+1])
+		}
+	}
+	return string(b) + "\x00"
+}
+
 // DocLinkMatch is one doc_units unit with at least one still-holding
 // (valid_to = 0) doc_links row naming one of RankDocs' concernSymbols
 // targets, and how many distinct such targets it names. KR-4's fusion uses

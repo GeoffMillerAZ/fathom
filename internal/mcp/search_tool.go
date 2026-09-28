@@ -159,6 +159,14 @@ type searchResult struct {
 	// Partial (RT-88, I38) names an engine bound that stopped the search —
 	// its total is then a lower bound.
 	Partial string `json:"partial,omitempty"`
+	// Pkg, Status and Reason are set only by a `kind: docs` search scoped to
+	// a `pkg:` key (KR-12). Pkg is the exact package version answered from;
+	// Status ("not_indexed", "unpinned") and Reason are set only when that
+	// version could not be answered — an answered search carries neither, so
+	// an absent status never hides a refusal (I38).
+	Pkg    string `json:"pkg,omitempty"`
+	Status string `json:"status,omitempty"`
+	Reason string `json:"reason,omitempty"`
 }
 
 // searchRawHit is one match before receipts are attached: what either
@@ -210,6 +218,10 @@ func registerSearch(s *Server, backend QueryInterface) {
 					"type":        "string",
 					"description": "\"docs\" ranks the indexed doc corpus (ADRs, intent, plans, design) instead of grepping; requires service.",
 				},
+				"pkg": map[string]any{
+					"type":        "string",
+					"description": "With kind docs: pkg:<eco>/<name>@<ver>, that pinned version's docs from the local cache, never fetched.",
+				},
 			},
 			"required": []string{"pattern"},
 		},
@@ -224,6 +236,7 @@ func registerSearch(s *Server, backend QueryInterface) {
 			Limit   int    `json:"limit"`
 			Context int    `json:"context"`
 			Kind    string `json:"kind"`
+			Pkg     string `json:"pkg"`
 		}
 		if err := json.Unmarshal(args, &p); err != nil {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "search: invalid args"}
@@ -234,9 +247,17 @@ func registerSearch(s *Server, backend QueryInterface) {
 		if p.Kind != "" && p.Kind != "docs" {
 			return nil, &rpcError{Code: ErrCodeParams, Message: fmt.Sprintf("search: unknown kind %q (must be \"docs\" or omitted)", p.Kind)}
 		}
+		if p.Pkg != "" && p.Kind != "docs" {
+			return nil, &rpcError{Code: ErrCodeParams, Message: "search: pkg scopes a docs search; give kind \"docs\" with it"}
+		}
 		if p.Kind == "docs" {
-			if p.Service == "" || p.Root != "" {
+			// A pkg scope names a machine-wide dependency version, not one
+			// repository, so it needs no service.
+			if (p.Service == "" && p.Pkg == "") || p.Root != "" {
 				return nil, &rpcError{Code: ErrCodeParams, Message: "search: kind \"docs\" requires service (root does not apply)"}
+			}
+			if p.Pkg != "" {
+				return searchPkgDocsKind(ctx, backend, p.Pkg, p.Pattern, p.Limit)
 			}
 			return searchDocs(ctx, backend, p.Service, p.Pattern, p.Limit)
 		}
@@ -454,6 +475,19 @@ func searchDocs(ctx context.Context, backend QueryInterface, service, query stri
 		}
 		return nil, &rpcError{Code: ErrCodeInternal, Message: "search: " + err.Error()}
 	}
+	hits := renderDocHits(ranked)
+	partial := ""
+	if len(hits) == limit {
+		partial = fmt.Sprintf("results capped at %d (increase limit or narrow the query for more)", limit)
+	}
+	return searchResult{Summary: searchDocsSummary(hits), Hits: hits, Engine: "docs-fts", Partial: partial}, nil
+}
+
+// renderDocHits renders ranked doc units into search's hit envelope: loc
+// (path:line or path:lineStart-lineEnd), the snippet as text, the unit's
+// kind, its heading path and fused score, and `stale_by_location` as a flag.
+// The result is never nil, so an empty answer marshals as [] not null.
+func renderDocHits(ranked []docindex.RankedDoc) []searchHit {
 	hits := make([]searchHit, 0, len(ranked))
 	for _, r := range ranked {
 		loc := r.Path + ":" + strconv.Itoa(r.LineStart)
@@ -469,11 +503,75 @@ func searchDocs(ctx context.Context, backend QueryInterface, service, query stri
 			Heading: r.HeadingPath, Score: r.Score,
 		})
 	}
-	partial := ""
-	if len(hits) == limit {
-		partial = fmt.Sprintf("results capped at %d (increase limit or narrow the query for more)", limit)
+	return hits
+}
+
+// pkgDocsSearchBackend is the optional backend capability a `kind: docs`
+// search scoped to a `pkg:` key (KR-12) needs: docindex.SearchPkgDocs over
+// the doc units IngestDepDocs indexed from the local toolchain cache.
+// pkg/client implements it; a backend that omits it refuses the call by
+// name rather than ignoring the scope.
+type pkgDocsSearchBackend interface {
+	SearchPkgDocs(ctx context.Context, pkgKey, query string, limit int) (docindex.PkgDocsResult, error)
+}
+
+// searchPkgDocsKind answers `search kind: docs pkg: K` (KR-12,
+// docs/design/knowledge-retrieval.md §7): the ranked doc units of exactly
+// that package version, in the same envelope as an unscoped docs search plus
+// `pkg`. A version the index does not hold, or a scope with no version, is
+// answered by `status` and `reason` (with the indexed versions), never as an
+// empty hit list that would read as a real no-match (I38).
+func searchPkgDocsKind(ctx context.Context, backend QueryInterface, pkg, query string, limit int) (any, *rpcError) {
+	if backend == nil {
+		return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
 	}
-	return searchResult{Summary: searchDocsSummary(hits), Hits: hits, Engine: "docs-fts", Partial: partial}, nil
+	db, ok := backend.(pkgDocsSearchBackend)
+	if !ok {
+		return nil, &rpcError{Code: ErrCodeInternal, Message: "search: kind \"docs\" with pkg is not available on this backend"}
+	}
+	if limit <= 0 {
+		limit = searchDefaultLimit
+	}
+	res, err := db.SearchPkgDocs(ctx, pkg, query, limit)
+	if err != nil {
+		switch {
+		case errors.Is(err, docindex.ErrBadPkgKey):
+			return nil, &rpcError{Code: ErrCodeParams, Message: "search: " + err.Error()}
+		case errors.Is(err, docindex.ErrDocIndexUnavailable):
+			return nil, &rpcError{Code: ErrCodeInternal, Message: "search: kind \"docs\" needs a SQLite-backed store; none is configured for this session"}
+		}
+		return nil, &rpcError{Code: ErrCodeInternal, Message: "search: " + err.Error()}
+	}
+	out := searchResult{Hits: renderDocHits(res.Hits), Engine: "docs-fts", Pkg: res.Key, Partial: res.Partial}
+	if res.State != docindex.PkgDocsAnswered {
+		out.Status = string(res.State)
+		out.Reason = res.Reason
+		out.Summary = capSummary(fmt.Sprintf("%s: %s; indexed versions: %s", res.Key, pkgStatusPhrase(res.State), pkgVersionsPhrase(res.IndexedVersions)))
+		return out, nil
+	}
+	out.Summary = searchDocsSummary(out.Hits)
+	if len(out.Hits) == limit {
+		capped := fmt.Sprintf("results capped at %d (increase limit or narrow the query for more)", limit)
+		if out.Partial != "" {
+			capped += "; " + out.Partial
+		}
+		out.Partial = capped
+	}
+	return out, nil
+}
+
+func pkgStatusPhrase(s docindex.PkgDocsState) string {
+	if s == docindex.PkgDocsUnpinned {
+		return "no version given (docs are version-exact)"
+	}
+	return "not indexed"
+}
+
+func pkgVersionsPhrase(vs []string) string {
+	if len(vs) == 0 {
+		return "none"
+	}
+	return strings.Join(vs, ", ")
 }
 
 // searchDocsSummary mirrors searchSummary's answer-first shape for a

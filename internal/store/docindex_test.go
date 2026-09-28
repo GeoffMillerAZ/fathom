@@ -288,3 +288,37 @@ func TestSyncDocLinksForUnit(t *testing.T) {
 		t.Errorf("a/b.go valid_to = %d, want 2000", validTo)
 	}
 }
+
+// TestDocIndexedServiceIDsByPrefix pins the store half of KR-12's
+// version-exact scope: the service ids that carry doc units under a
+// prefix, sorted, with a prefix that ends at a delimiter never matching a
+// longer sibling ("pkg:golang/x/y@" is not "pkg:golang/x/yy@..."), and an
+// empty prefix refused rather than answered with a whole-index scan.
+func TestDocIndexedServiceIDsByPrefix(t *testing.T) {
+	ctx := context.Background()
+	sq, err := NewSQLiteStore(filepath.Join(t.TempDir(), "docindex.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = sq.Close() })
+
+	for _, svc := range []string{"pkg:golang/x/y@v2.0.0", "pkg:golang/x/y@v1.0.0", "pkg:golang/x/yy@v1.0.0", "pkg:npm/x/y@1.0.0", "fathom"} {
+		if err := sq.PutDocUnits(ctx, svc, "README.md", []DocUnit{{UnitID: "u", Path: "README.md", HeadingPath: "h", Kind: "dep-readme", ContentHash: "c", Body: "body"}}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got, err := sq.DocIndexedServiceIDs(ctx, "pkg:golang/x/y@")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "pkg:golang/x/y@v1.0.0,pkg:golang/x/y@v2.0.0"; strings.Join(got, ",") != want {
+		t.Fatalf("DocIndexedServiceIDs = %v, want %s", got, want)
+	}
+	none, err := sq.DocIndexedServiceIDs(ctx, "pkg:golang/absent@")
+	if err != nil || len(none) != 0 {
+		t.Fatalf("absent prefix = %v, %v; want none", none, err)
+	}
+	if _, err := sq.DocIndexedServiceIDs(ctx, ""); err == nil {
+		t.Fatal("an empty prefix must be refused, not answered with a scan of every service")
+	}
+}
