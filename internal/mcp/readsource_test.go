@@ -600,16 +600,17 @@ func TestReadSource_EmptyFile_ZeroTotalLines(t *testing.T) {
 
 func TestReadSource_OnAgentSurface(t *testing.T) {
 	if !companionTools_contains(t, "read_source") {
-		t.Error("read_source must be on the companion/agent allowlist (T5-4)")
+		t.Error("read_source must be on the agent default surface (T5-4)")
 	}
 }
 
 // companionTools_contains is a tiny local check independent of
-// TestCompanionSurfaceToolsList's exact-match assertion, so this file keeps
-// its own direct evidence that read_source is on the curated surface.
+// TestDefaultSurfaceToolsList's exact-match assertion, so this file keeps
+// its own direct evidence that read_source is on the curated default
+// surface (surface reckoning SR-33 renamed companionWant to defaultWant).
 func companionTools_contains(t *testing.T, name string) bool {
 	t.Helper()
-	for _, n := range companionWant {
+	for _, n := range defaultWant {
 		if n == name {
 			return true
 		}

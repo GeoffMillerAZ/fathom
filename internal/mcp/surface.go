@@ -16,10 +16,15 @@
 // behind Server.strictSurfaces (see SetStrictSurfaces) for any future
 // multi-tenant shape.
 //
-// Surfaces: "agent" is the primary curated allowlist for coding-agent
-// sessions, served at POST /rpc/agent; "companion" is a compatible alias
-// (identical allowlist, POST /rpc/companion); "modules" is the module host's
-// scoped set. The empty surface is the full registry.
+// Surfaces: "agent" is the default floor for coding-agent sessions (the
+// eight-tool cap the surface reckoning sets, F-86, design §1.1), served at
+// POST /rpc/agent — the path the user-scope MCP registration points at.
+// "extended" is the opt-in superset (the default eight plus the promoted
+// verbs and navigation tools); "companion", the pre-reckoning compatible
+// alias, now SERVES THE SAME SET AS "extended" (POST /rpc/companion), so a
+// client that pinned it keeps its old tool set minus the reckoning's
+// deletions rather than losing tools outright. "modules" is the module
+// host's scoped set. The empty surface is the full registry.
 //
 // The four group surfaces ("coding", "investigation", "shared", "platform")
 // were DELETED 2026-08-26 (ADR-014 amendment 2, docs/plans/honesty-fixes.md
@@ -53,6 +58,17 @@ const SurfaceAgent = "agent"
 // new capability contract (the plan's design section's doctrine-4
 // argument).
 const SurfaceModules = "modules"
+
+// SurfaceExtended is the opt-in surface the surface reckoning adds
+// (F-86, design §1.1), served at POST /rpc/extended: the default eight
+// (SurfaceAgent) plus the promoted verbs and navigation tools a session
+// can reach without paying their schema cost by default. "companion", the
+// pre-reckoning name, is a compatible alias onto this same set — not onto
+// SurfaceAgent's now-smaller floor — so a client already pinned to
+// /rpc/companion keeps its old tool set minus whatever the reckoning's
+// other rows delete or merge, rather than silently losing tools when the
+// default shrank.
+const SurfaceExtended = "extended"
 
 // companionTools is the coding-companion allowlist: the navigation /
 // context / freshness hot loop an agentic coding session needs, and nothing
@@ -91,6 +107,63 @@ var companionTools = func() map[string]bool {
 		m[v.Name] = true
 	}
 	m["safe_delete_check"] = true
+	return m
+}()
+
+// defaultSurfaceTools is the /rpc/agent floor the surface reckoning sets
+// (F-86, design §1.1): the eight answers an agent gets before opting into
+// anything else, capped by TestDefaultSurfaceIsEight. Membership is a
+// contract change — update that test and docs/mcp-tools.md together.
+var defaultSurfaceTools = map[string]bool{
+	"blast_radius":   true,
+	"find_symbol":    true,
+	"obligations":    true,
+	"read_source":    true,
+	"review_diff":    true,
+	"search":         true,
+	"symbol_context": true,
+	"verify_plan":    true,
+}
+
+// extendedTools is /rpc/extended's opt-in set (F-86, design §1.1): the
+// default eight plus the navigation/context/freshness tools and the
+// remaining promoted verbs an agent can reach without paying their schema
+// cost on every session. /rpc/companion, the pre-reckoning compatible
+// alias, moves here (toolOnSurface below) instead of staying pinned to the
+// now-smaller default, so a client that pinned "companion" keeps its old
+// tool set minus the reckoning's own deletions/merges (capabilities,
+// discoveries, entrypoints, memory_search, rename_impact and
+// safe_delete_check all leave the curated surfaces this way — each by its
+// own SR-* row, not this one — because they are either merged into a
+// surviving tool or removed outright elsewhere in wave 2).
+//
+// "status" (design §1.1's merge of capabilities/server_stats/list_sources,
+// SR-23) is deliberately NOT listed yet: that tool does not exist until
+// SR-23 registers it. Adding the name here now would claim a 21st member
+// this repo cannot yet serve; SR-23's own commit adds it in the same
+// change that registers the tool, so extended goes 20 -> 21 then, not
+// before.
+var extendedTools = func() map[string]bool {
+	m := map[string]bool{}
+	for name := range defaultSurfaceTools {
+		m[name] = true
+	}
+	for _, name := range []string{
+		"find_callers",
+		"findings_near",
+		"ingest",
+		"list_services",
+		"localize",
+		"outline",
+		"pack_context",
+		"query_symbols",
+		"references",
+		"repo_map",
+		"staleness_report",
+		"test_impact",
+	} {
+		m[name] = true
+	}
 	return m
 }()
 
@@ -219,7 +292,7 @@ func (sc requestScope) enforced() bool {
 // bare /rpc endpoint is the full surface.
 func ValidSurface(name string) bool {
 	switch name {
-	case SurfaceCompanion, SurfaceAgent, SurfaceModules:
+	case SurfaceCompanion, SurfaceAgent, SurfaceExtended, SurfaceModules:
 		return true
 	}
 	return false
@@ -227,13 +300,14 @@ func ValidSurface(name string) bool {
 
 // SurfaceNames returns the valid named surfaces, sorted.
 func SurfaceNames() []string {
-	names := []string{SurfaceCompanion, SurfaceAgent, SurfaceModules}
+	names := []string{SurfaceCompanion, SurfaceAgent, SurfaceExtended, SurfaceModules}
 	sort.Strings(names)
 	return names
 }
 
 // toolOnSurface reports whether d is visible on the named surface.
-// "" is the full registry; agent/companion is the explicit allowlist; the
+// "" is the full registry; agent is the eight-tool default; companion and
+// extended share one explicit allowlist (see extendedTools); the
 // modules surface serves GroupModules + GroupShared — EXCEPT the modules
 // surface while hosted mode is active, which serves ONLY
 // hostedModulesTools' explicit allowlist (critic finding 2(a): GroupShared
@@ -252,15 +326,17 @@ func (s *Server) toolOnSurface(surface string, d toolDescriptor) bool {
 			return false
 		}
 		return true
-	case SurfaceCompanion, SurfaceAgent:
-		return companionTools[d.Name]
+	case SurfaceAgent:
+		return defaultSurfaceTools[d.Name]
+	case SurfaceCompanion, SurfaceExtended:
+		return extendedTools[d.Name]
 	case SurfaceModules:
 		if s.hostedModules {
 			return hostedModulesTools[d.Name]
 		}
 		return d.group == GroupShared || d.group == GroupModules
 	default:
-		// Unreachable: ValidSurface admits only the three named surfaces
+		// Unreachable: ValidSurface admits only the four named surfaces
 		// above. A path that is not one of them 404s in servehttp before
 		// reaching the registry (HF-5 deleted the group surfaces).
 		return false
@@ -345,14 +421,40 @@ func (s *Server) promptOnScope(ctx context.Context, def *promptDef) bool {
 	return true
 }
 
-// AgentSurfaceTools returns the agent/companion surface's tool allowlist,
-// sorted — the set an agent session can actually reach. Consumers (the
-// adoption gauge, IO-10/O6) partition zero-call evidence with it so
-// "unused on this surface" and "not exposed on this surface" stop reading
-// as the same remedy.
+// AgentSurfaceTools returns the pre-reckoning curated allowlist, sorted —
+// the full set an agent session can reach across the companion/extended
+// surfaces (companionTools; kept for the bench pyramid's committed copy,
+// the adoption gauge and the capability probe, none of which this row
+// touches). It is no longer what POST /rpc/agent itself serves — that is
+// DefaultSurfaceTools now (F-86, design §1.1); use ExtendedSurfaceTools
+// for what /rpc/companion and /rpc/extended serve today.
 func AgentSurfaceTools() []string {
 	out := make([]string, 0, len(companionTools))
 	for name := range companionTools {
+		out = append(out, name)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// DefaultSurfaceTools returns POST /rpc/agent's default allowlist, sorted:
+// the eight-tool floor the surface reckoning sets (F-86, design §1.1,
+// TestDefaultSurfaceIsEight).
+func DefaultSurfaceTools() []string {
+	out := make([]string, 0, len(defaultSurfaceTools))
+	for name := range defaultSurfaceTools {
+		out = append(out, name)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// ExtendedSurfaceTools returns POST /rpc/extended's (and its companion
+// alias's) allowlist, sorted: the default eight plus the opt-in set
+// (F-86, design §1.1).
+func ExtendedSurfaceTools() []string {
+	out := make([]string, 0, len(extendedTools))
+	for name := range extendedTools {
 		out = append(out, name)
 	}
 	sort.Strings(out)

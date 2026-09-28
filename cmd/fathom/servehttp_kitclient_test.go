@@ -52,7 +52,9 @@ func TestServeHTTPNegotiatesWithKitClient(t *testing.T) {
 	for _, tl := range tools {
 		names = append(names, tl.Name)
 	}
-	want := mcp.AgentSurfaceTools()
+	// SR-33 (surface reckoning F-86): /rpc/agent now serves the eight-tool
+	// default, not the wider allowlist AgentSurfaceTools still names.
+	want := mcp.DefaultSurfaceTools()
 	if strings.Join(names, ",") != strings.Join(want, ",") {
 		t.Errorf("NOT PROVEN: %s — /rpc/agent listed %v through the kit client, want the pinned allowlist %v", kitClientSentence, names, want)
 	}

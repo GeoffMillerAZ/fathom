@@ -30,7 +30,10 @@ func TestSetProfileDirect(t *testing.T) {
 		t.Fatalf("setProfile(bogus) = %v, want ErrCodeParams", err)
 	}
 
-	// A known profile filters stdio tools/list to the companion allowlist.
+	// A known profile filters stdio tools/list to the companion allowlist —
+	// SR-33 (surface reckoning F-86) moved that allowlist onto extendedTools
+	// (companion is now extended's compatible alias, not the pre-reckoning
+	// companionTools set).
 	if err := srv.setProfile(SurfaceCompanion); err != nil {
 		t.Fatalf("setProfile(companion): %v", err)
 	}
@@ -39,11 +42,11 @@ func TestSetProfileDirect(t *testing.T) {
 	}
 	stdioCtx := context.Background()
 	companionDescs := srv.visibleToolsCtx(stdioCtx)
-	if len(companionDescs) != len(companionTools) {
-		t.Fatalf("stdio companion profile lists %d tools, want %d", len(companionDescs), len(companionTools))
+	if len(companionDescs) != len(extendedTools) {
+		t.Fatalf("stdio companion profile lists %d tools, want %d", len(companionDescs), len(extendedTools))
 	}
 	for _, d := range companionDescs {
-		if !companionTools[d.Name] {
+		if !extendedTools[d.Name] {
 			t.Errorf("stdio companion profile listed off-allowlist tool %q", d.Name)
 		}
 	}
@@ -71,9 +74,10 @@ func TestSetProfileDirect(t *testing.T) {
 
 	// tools/call stays advisory on stdio: a plain background context carries
 	// no request scope (WithRequestScope is only ever attached by the HTTP
-	// layer), so scopeFrom(ctx).enforced() is always false and an off-profile
-	// tool (find_callers is GroupInvestigation, not on the companion
-	// allowlist) must still dispatch regardless of the active profile.
+	// layer), so scopeFrom(ctx).enforced() is always false — a tool must
+	// still dispatch regardless of the active profile or its surface
+	// membership (find_callers is GroupInvestigation and, since SR-33, on
+	// the companion/extended allowlist but not the smaller agent default).
 	if err := srv.setProfile(SurfaceCompanion); err != nil {
 		t.Fatalf("setProfile(companion): %v", err)
 	}

@@ -18,44 +18,43 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/mcp"
 )
 
-// companionWant is the curated agent allowlist, pinned exactly
-// (docs/vision/05-surfaces.md §3: companion 15, minus batch and brief, plus
-// verify_plan and capabilities; T5-4, docs/plans/trust-and-tokenomics.md,
-// added read_source as the program's second net-new tool — 16 total;
-// AM-8 added memory_search — 17; RC-24, docs/plans/receipts.md, added
-// search, the grep-with-a-receipt tool — 18 total; RC-27, docs/vision/
-// 28-receipts.md §4, added discoveries, the hand-off receipt tool — 19
-// total; ADR-035 decision 1 (docs/vision/29-verbs-not-lookups.md §3 wave
-// A, plan VB-1/VB-2) promotes blast_radius, review_diff, test_impact and
-// rename_impact — the answers grep cannot give, never another lookup
-// pitched on token savings — and adds safe_delete_check, rename_impact's
-// read-only sibling — 24 total; wave G (plan VB-26) promotes localize,
-// the bounded/budgeted/logged localization walk — 25 total,
-// companionWantCount below).
-// Changing the surface is deliberate: update this list and docs/mcp-tools.md
-// together. Served identically at both /rpc/agent (the primary path) and
-// /rpc/companion (a compatible alias).
-var companionWant = []string{
+// defaultWant is POST /rpc/agent's floor, pinned exactly (surface reckoning
+// F-86, design §1.1, plan SR-33): the eight answers an agent gets before
+// opting into anything else. Changing it is deliberate: update this list,
+// extendedWant below and docs/mcp-tools.md together.
+var defaultWant = []string{
 	"blast_radius",
-	"capabilities",
-	"discoveries",
-	"entrypoints",
+	"find_symbol",
+	"obligations",
+	"read_source",
+	"review_diff",
+	"search",
+	"symbol_context",
+	"verify_plan",
+}
+
+// extendedWant is POST /rpc/extended's (and its /rpc/companion compatible
+// alias's) allowlist, pinned exactly (SR-33): the default eight plus the
+// navigation/context/freshness tools and the remaining promoted verbs.
+// "status" (design §1.1's capabilities/server_stats/list_sources merge,
+// SR-23) joins this list only once that row registers the tool — 20 total
+// until then, 21 after.
+var extendedWant = []string{
+	"blast_radius",
 	"find_callers",
 	"find_symbol",
+	"findings_near",
 	"ingest",
 	"list_services",
 	"localize",
-	"memory_search",
 	"obligations",
 	"outline",
 	"pack_context",
 	"query_symbols",
 	"read_source",
 	"references",
-	"rename_impact",
 	"repo_map",
 	"review_diff",
-	"safe_delete_check",
 	"search",
 	"staleness_report",
 	"symbol_context",
@@ -106,25 +105,59 @@ func toolNames(t *testing.T, resp map[string]any) []string {
 
 // ─── companion surface: tools/list is exactly the allowlist ─────────────────
 
-// companionWantCount pins the agent-surface tool count (V-review MINOR:
-// prose docs drifted to "17-tool"/"18-tool" after RC-27 added discoveries
-// without this assertion catching it) — the ONE place the number lives as
-// a checked fact; docs/mcp-tools.md, docs/CLAUDE.md, internal/CLAUDE.md and
-// every other prose mention are asserted equal to companionWant's own
-// length here, never independently counted by hand.
-const companionWantCount = 25
+// defaultWantCount and extendedWantCount pin the two surfaces' tool counts
+// (V-review MINOR: prose docs drifted to "17-tool"/"18-tool" after RC-27
+// added discoveries without this assertion catching it) — the ONE place
+// each number lives as a checked fact; docs/mcp-tools.md, docs/CLAUDE.md,
+// internal/CLAUDE.md and every other prose mention are asserted equal to
+// the two lists' own lengths here, never independently counted by hand.
+const (
+	defaultWantCount  = 8
+	extendedWantCount = 20
+)
 
-func TestCompanionSurfaceToolsList(t *testing.T) {
-	if len(companionWant) != companionWantCount {
-		t.Fatalf("companionWant has %d entries, want %d — update companionWantCount, docs/mcp-tools.md, docs/CLAUDE.md and internal/CLAUDE.md together", len(companionWant), companionWantCount)
+// TestDefaultSurfaceToolsList pins POST /rpc/agent's served allowlist
+// exactly (surface reckoning F-86, design §1.1, plan SR-33): the
+// eight-tool floor, not the wider set /rpc/companion and /rpc/extended
+// carry (TestExtendedSurfaceToolsList below).
+func TestDefaultSurfaceToolsList(t *testing.T) {
+	if len(defaultWant) != defaultWantCount {
+		t.Fatalf("defaultWant has %d entries, want %d — update defaultWantCount, docs/mcp-tools.md, docs/CLAUDE.md and internal/CLAUDE.md together", len(defaultWant), defaultWantCount)
 	}
 	srv := mcp.NewServer(&fakeBackend{})
-	want := append([]string(nil), companionWant...)
+	want := append([]string(nil), defaultWant...)
 	sort.Strings(want)
 
-	// /rpc/agent is the primary surface; /rpc/companion is a compatible
-	// alias — both must serve the identical allowlist.
-	for _, surface := range []string{mcp.SurfaceAgent, mcp.SurfaceCompanion} {
+	ctx := mcp.WithRequestScope(context.Background(), mcp.SurfaceAgent, true)
+	names := toolNames(t, scopedRoundtrip(t, srv, ctx, request{
+		JSONRPC: "2.0", ID: 1, Method: "tools/list", Params: map[string]any{},
+	}))
+	if len(names) != len(want) {
+		t.Fatalf("agent surface has %d tools, want %d\n got: %v\nwant: %v", len(names), len(want), names, want)
+	}
+	for i := range want {
+		if names[i] != want[i] {
+			t.Fatalf("agent surface mismatch at %d: got %q want %q\nfull: %v", i, names[i], want[i], names)
+		}
+	}
+}
+
+// TestExtendedSurfaceToolsList pins POST /rpc/extended and its
+// POST /rpc/companion compatible alias exactly (SR-33): both must serve
+// the identical, wider allowlist — the default eight plus the opt-in set —
+// never the pre-reckoning companion allowlist AgentSurfaceTools still
+// names.
+func TestExtendedSurfaceToolsList(t *testing.T) {
+	if len(extendedWant) != extendedWantCount {
+		t.Fatalf("extendedWant has %d entries, want %d — update extendedWantCount, docs/mcp-tools.md, docs/CLAUDE.md and internal/CLAUDE.md together", len(extendedWant), extendedWantCount)
+	}
+	srv := mcp.NewServer(&fakeBackend{})
+	want := append([]string(nil), extendedWant...)
+	sort.Strings(want)
+
+	// /rpc/extended is the primary opt-in surface; /rpc/companion is a
+	// compatible alias — both must serve the identical allowlist.
+	for _, surface := range []string{mcp.SurfaceExtended, mcp.SurfaceCompanion} {
 		ctx := mcp.WithRequestScope(context.Background(), surface, true)
 		names := toolNames(t, scopedRoundtrip(t, srv, ctx, request{
 			JSONRPC: "2.0", ID: 1, Method: "tools/list", Params: map[string]any{},
@@ -444,7 +477,7 @@ func TestPromptsScopedOnSurface(t *testing.T) {
 // ─── surface name validation ─────────────────────────────────────────────────
 
 func TestValidSurface(t *testing.T) {
-	for _, name := range []string{"agent", "companion", "modules"} {
+	for _, name := range []string{"agent", "companion", "extended", "modules"} {
 		if !mcp.ValidSurface(name) {
 			t.Errorf("ValidSurface(%q) = false, want true", name)
 		}
@@ -465,8 +498,8 @@ func TestValidSurface(t *testing.T) {
 		}
 	}
 	names := mcp.SurfaceNames()
-	if len(names) != 3 {
-		t.Fatalf("SurfaceNames() = %v, want 3 entries (agent, companion, modules)", names)
+	if len(names) != 4 {
+		t.Fatalf("SurfaceNames() = %v, want 4 entries (agent, companion, extended, modules)", names)
 	}
 	if !sort.StringsAreSorted(names) {
 		t.Errorf("SurfaceNames() not sorted: %v", names)
@@ -569,13 +602,13 @@ func TestGroupSurfacesRetired(t *testing.T) {
 			t.Errorf("ValidSurface(%q) = true — HF-5 deleted the group surfaces", gone)
 		}
 	}
-	for _, kept := range []string{mcp.SurfaceAgent, mcp.SurfaceCompanion, mcp.SurfaceModules} {
+	for _, kept := range []string{mcp.SurfaceAgent, mcp.SurfaceCompanion, mcp.SurfaceExtended, mcp.SurfaceModules} {
 		if !mcp.ValidSurface(kept) {
-			t.Errorf("ValidSurface(%q) = false — agent, companion and modules survive", kept)
+			t.Errorf("ValidSurface(%q) = false — agent, companion, extended and modules survive", kept)
 		}
 	}
-	if got := mcp.SurfaceNames(); len(got) != 3 {
-		t.Errorf("SurfaceNames() = %v, want exactly the three surviving surfaces", got)
+	if got := mcp.SurfaceNames(); len(got) != 4 {
+		t.Errorf("SurfaceNames() = %v, want exactly the four surviving surfaces", got)
 	}
 
 	// The taxonomy survives the surfaces: a tool still carries its group.

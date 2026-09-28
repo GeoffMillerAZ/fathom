@@ -29,7 +29,10 @@ func TestListServicesCountErrorConformsToSchema(t *testing.T) {
 	t.Cleanup(tenancy.ResetLifecycleStateForTest)
 	fleet := countErrFleet{fakeFleet: &fakeFleet{svcs: map[string][]core.SymbolNode{"svc": nil}}, err: errors.New("database or disk is full (13)")}
 	srv := mcp.NewServerWithFleet(&extendedFakeBackend{services: []string{"svc"}}, fleet)
-	ctx := mcp.WithContracts(mcp.WithRequestScope(context.Background(), mcp.SurfaceAgent, true), true)
+	// list_services lives on the extended surface (SR-33 moved it off
+	// /rpc/agent's now-eight-tool default); either scoped surface serves
+	// its outputSchema identically, this test's actual concern.
+	ctx := mcp.WithContracts(mcp.WithRequestScope(context.Background(), mcp.SurfaceExtended, true), true)
 	listResp := scopedRoundtrip(t, srv, ctx, request{JSONRPC: "2.0", ID: 1, Method: "tools/list", Params: map[string]any{}})
 	var schema map[string]any
 	for _, raw := range listResp["result"].(map[string]any)["tools"].([]any) {

@@ -141,6 +141,10 @@ func TestInitializeEchoesSupportedVersion(t *testing.T) {
 	}
 }
 
+// TestToolsListOrderPinnedAndAnnotated pins POST /rpc/agent's served order
+// and annotations against DefaultSurfaceTools (F-86, design §1.1,
+// SR-33) — the eight-tool floor, not the wider companion/extended
+// allowlist AgentSurfaceTools still names.
 func TestToolsListOrderPinnedAndAnnotated(t *testing.T) {
 	srv := NewServer(nil)
 	ctx := WithRequestScope(context.Background(), SurfaceAgent, true)
@@ -162,8 +166,8 @@ func TestToolsListOrderPinnedAndAnnotated(t *testing.T) {
 	if !sort.StringsAreSorted(names) {
 		t.Errorf("tools/list order is not ascending by name: %v", names)
 	}
-	if strings.Join(names, ",") != strings.Join(AgentSurfaceTools(), ",") {
-		t.Errorf("agent tools/list = %v, want the pinned allowlist %v", names, AgentSurfaceTools())
+	if strings.Join(names, ",") != strings.Join(DefaultSurfaceTools(), ",") {
+		t.Errorf("agent tools/list = %v, want the pinned allowlist %v", names, DefaultSurfaceTools())
 	}
 	// Byte-stable across calls (the per-session schema budget is a number,
 	// not a range).
