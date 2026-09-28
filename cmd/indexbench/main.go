@@ -66,6 +66,9 @@ func mainRun(args []string, stdout, stderr io.Writer) int {
 	if len(args) > 0 && args[0] == "lang-oracle" {
 		return cmdLangOracle(args[1:], stdout, stderr)
 	}
+	if len(args) > 0 && args[0] == "lang-tracker" {
+		return cmdLangTracker(args[1:], stdout, stderr)
+	}
 	return run(args, stdout, stderr)
 }
 
