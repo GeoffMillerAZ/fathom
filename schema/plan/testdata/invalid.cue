@@ -19,3 +19,6 @@ package plan
 
 // 5. oracle outside the ADR-030 vocabulary (only "lexical" exists):
 // bad5: #Task & {id: "T-5", expect: {oracle: "vibes", path: "docs/x.md", pattern: "y"}}
+
+// 6. weight below 1 (ADR-049: a positive integer, default 1):
+// bad6: #Task & {id: "T-6", weight: 0}
