@@ -45,7 +45,6 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/projectrules"
 	"github.com/geoffmilleraz/fathom/internal/refresh"
 	"github.com/geoffmilleraz/fathom/internal/sdd"
-	"github.com/geoffmilleraz/fathom/internal/semantic"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
 	"github.com/geoffmilleraz/fathom/internal/worktree"
 )
@@ -93,7 +92,10 @@ func registerExtraTools(s *Server, backend QueryInterface) {
 
 	// ── spec / context ───────────────────────────────────────────────────────
 	registerSpecRefs(s, backend)
-	registerBrief(s, backend)
+	// registerBrief was unregistered by SR-15 (surface reckoning F-53,
+	// refined): the MCP brief tool had 0 lifetime calls and overlaps
+	// pack_context; the CLI's renderBriefMD/briefTuning (the console's
+	// /brief page) are a separate implementation and are unaffected.
 
 	// ── graph traversal ──────────────────────────────────────────────────────
 	registerTraverse(s, backend)
@@ -1808,215 +1810,6 @@ func registerSpecRefs(s *Server, backend QueryInterface) {
 			"files_scanned": scanned,
 		}, cov), nil
 	})
-}
-
-// ─── spec / context: brief ────────────────────────────────────────────────────
-
-// defaultBriefBudget is the default char budget for the brief tool (≈4000 tokens × 4 chars/tok).
-const defaultBriefBudget = 16000
-
-func registerBrief(s *Server, backend QueryInterface) {
-	s.registerTool(toolDescriptor{
-		Name: "brief",
-		Description: "Pre-pack worker context in one call: resolve named symbols, run concern-scoped query, and return a paste-ready markdown brief. " +
-			"Respects a char budget; truncated output says so explicitly.",
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"service": map[string]any{"type": "string", "description": "Service / repo identifier"},
-				"symbols": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Optional symbol names to resolve via find_symbol"},
-				"concern": map[string]any{"type": "string", "description": "Optional concern keyword for query_symbols hit list"},
-				"budget":  map[string]any{"type": "integer", "description": "Character budget (default 16000 ≈ 4000 tokens)"},
-			},
-			"required": []string{"service"},
-		},
-		group: GroupShared,
-	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
-		if backend == nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
-		}
-		var p struct {
-			Service string   `json:"service"`
-			Symbols []string `json:"symbols"`
-			Concern string   `json:"concern"`
-			Budget  int      `json:"budget"`
-		}
-		if err := json.Unmarshal(args, &p); err != nil {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "brief: invalid args"}
-		}
-		if p.Service == "" {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "brief: service required"}
-		}
-		budget := p.Budget
-		if budget <= 0 {
-			budget = defaultBriefBudget
-		}
-		charBudget := budget * 4
-
-		// Fetch staleness summary for the header.
-		stalenessNote := "unknown"
-		if _, ic, found, _ := backend.ServiceMeta(ctx, p.Service); found {
-			if ic != "" {
-				stalenessNote = "indexed at commit " + ic[:min8(len(ic), 8)]
-			} else {
-				stalenessNote = "indexed (no git)"
-			}
-		}
-
-		var sb strings.Builder
-		fmt.Fprintf(&sb, "## Pre-packed context (fathom brief · service %s · %s)\n", p.Service, stalenessNote)
-
-		// Distinct file paths resolved along the way — the join key D1
-		// (docs/plans/expert-depth.md) uses to attach governed claims below;
-		// collected here rather than re-resolving symbols/concern a second
-		// time.
-		var paths []string
-		pathSeen := map[string]bool{}
-		addPath := func(path string) {
-			if path == "" || pathSeen[path] {
-				return
-			}
-			pathSeen[path] = true
-			paths = append(paths, path)
-		}
-
-		// Symbols section.
-		if len(p.Symbols) > 0 {
-			fmt.Fprintf(&sb, "\n### Symbols\n")
-			for _, sym := range p.Symbols {
-				nodes, err := backend.FindSymbol(ctx, p.Service, sym)
-				if err != nil || len(nodes) == 0 {
-					fmt.Fprintf(&sb, "- `%s` — NOT FOUND — verify before use\n", sym)
-					continue
-				}
-				n := nodes[0]
-				sig := n.Signature
-				if sig == "" {
-					sig = string(n.Kind)
-				}
-				fmt.Fprintf(&sb, "- `%s` — `%s` — %s:%d\n", n.Name, sig, n.FilePath, n.Line)
-				addPath(n.FilePath)
-			}
-			if sb.Len() > charBudget {
-				return truncatedBriefResult(&sb, charBudget), nil
-			}
-		}
-
-		// Concern section.
-		if p.Concern != "" {
-			fmt.Fprintf(&sb, "\n### Concern: %s\n", p.Concern)
-			result, err := backend.QuerySymbols(ctx, core.Query{
-				ServiceID: p.Service,
-				ConcernID: p.Concern,
-				TopN:      20,
-			})
-			if err == nil {
-				for _, n := range result.Nodes {
-					if sb.Len() > charBudget {
-						break
-					}
-					sig := n.Signature
-					if sig == "" {
-						sig = string(n.Kind)
-					}
-					fmt.Fprintf(&sb, "- `%s` — %s — %s:%d — %s\n", n.Name, string(n.Kind), n.FilePath, n.Line, sig)
-					addPath(n.FilePath)
-				}
-			}
-			if sb.Len() > charBudget {
-				return truncatedBriefResult(&sb, charBudget), nil
-			}
-		}
-
-		// Governing claims section (D1, docs/plans/expert-depth.md): after
-		// the deterministic packing above, attach any served semantic claims
-		// (obligations layer and beyond) scoped to the paths this brief just
-		// resolved — verbatim rule text, citation, and tier, with the
-		// serving state labeled whenever it isn't fresh. Reuses
-		// obligationsBackend.Obligations (the SAME served-claim selection
-		// and scope-glob matching the obligations tool uses) rather than
-		// adding a new store surface or matching logic.
-		claimsAttached := 0
-		if cb, ok := backend.(obligationsBackend); ok && len(paths) > 0 {
-			type claimKey struct{ rule, src string }
-			seen := map[claimKey]bool{}
-			var rules []semantic.Obligation
-			for _, path := range paths {
-				obl, err := cb.Obligations(ctx, p.Service, path, 0)
-				if err != nil {
-					continue
-				}
-				for _, r := range obl.Rules {
-					k := claimKey{r.Rule, r.Src}
-					if seen[k] {
-						continue
-					}
-					seen[k] = true
-					rules = append(rules, r)
-				}
-			}
-			if len(rules) > 0 {
-				sort.Slice(rules, func(i, j int) bool {
-					if rules[i].Rule != rules[j].Rule {
-						return rules[i].Rule < rules[j].Rule
-					}
-					return rules[i].Src < rules[j].Src
-				})
-				fmt.Fprintf(&sb, "\n### Governing claims\n")
-				for _, r := range rules {
-					state := ""
-					if r.Status != "" {
-						state = " [" + r.Status + "]"
-					}
-					fmt.Fprintf(&sb, "- %s — src:%s tier:%s%s\n", r.Rule, r.Src, r.Tier, state)
-				}
-				claimsAttached = len(rules)
-				if sb.Len() > charBudget {
-					// The truncated shape must still carry the telemetry
-					// field: claims WERE attached (and partially served) —
-					// dropping the count here would log a claims-serving
-					// truncated brief as claims_attached:0 and silently
-					// poison D1's 30-day hit-rate kill clock.
-					result := truncatedBriefResult(&sb, charBudget)
-					result["claims_attached"] = claimsAttached
-					return result, nil
-				}
-			}
-		}
-
-		result := map[string]any{"brief": sb.String()}
-		if claimsAttached > 0 {
-			// D1-2: surfaced to the call log too (claimsAttachedFrom,
-			// calllog.go) so claims-block hit rate is visible per call.
-			result["claims_attached"] = claimsAttached
-		}
-		return result, nil
-	})
-}
-
-// truncatedBriefResult trims the brief to charBudget chars and appends a
-// clear truncation notice, then returns the result payload.
-func truncatedBriefResult(sb *strings.Builder, charBudget int) map[string]any {
-	text := sb.String()
-	remaining := len(text) - charBudget
-	if remaining < 0 {
-		remaining = 0
-	}
-	trimmed := text[:charBudget]
-	// Find a safe line boundary.
-	if i := strings.LastIndex(trimmed, "\n"); i > 0 {
-		trimmed = trimmed[:i]
-	}
-	notice := fmt.Sprintf("\n\n…truncated at budget (%d more chars)\n", remaining)
-	return map[string]any{"brief": trimmed + notice}
-}
-
-// min8 returns the minimum of a and b (avoids importing math for one call).
-func min8(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }
 
 // ─── investigation: history ───────────────────────────────────────────────────

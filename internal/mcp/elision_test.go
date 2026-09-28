@@ -227,7 +227,7 @@ var nonTruncatingTools = map[string]bool{
 	// discoveries cuts its rendered pointer list at a byte budget with its
 	// own inline "…N more: fathom discoveries --budget" notice (RC-26/
 	// RC-27, docs/vision/28-receipts.md §4) — the same "own inline
-	// notice" shape as brief/read_source below, not elisionFor's
+	// notice" shape as read_source below, not elisionFor's
 	// {count, of, ordering, how_to_get_more} object.
 	"discoveries":   true,
 	"rename_impact": true, "reachable": true, "safe_delete_check": true,
@@ -243,7 +243,7 @@ var nonTruncatingTools = map[string]bool{
 	"arch_conformance": true, "stale_docs": true, "api_diff": true,
 	"dep_drift": true, "ingest": true, "remove_service": true,
 	"rename_service": true, "cross_repo_blast_radius": true, "batch": true,
-	"proto_conformance": true, "spec_refs": true, "brief": true,
+	"proto_conformance": true, "spec_refs": true,
 	"traverse": true, "history": true, "obligations": true,
 	"compile_layer": true, "list_services": true, "fleet_drift": true,
 	"cross_repo_callers": true,

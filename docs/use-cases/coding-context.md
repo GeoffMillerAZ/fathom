@@ -11,7 +11,6 @@ hooks, gates, CLAUDE.md/AGENTS.md — lives in [coding-agents.md](coding-agents.
 
 - An agent is about to edit code in a specific area and needs to understand the relevant symbols, callers, and call graph without reading every file.
 - You want to assemble a tight, ranked context bundle that fits inside a token budget.
-- You need a paste-ready brief for a worker sub-agent that should not receive the full codebase.
 - You want a structural overview of a repo (entry points, most-connected symbols) as a lightweight orientation step.
 
 ---
@@ -25,7 +24,6 @@ hooks, gates, CLAUDE.md/AGENTS.md — lives in [coding-agents.md](coding-agents.
 | `outline` | MCP tool | All symbols in a specific file, ordered by line number |
 | `repo_map` | MCP tool | Budget-bounded symbol map ranked by outbound call-edge count |
 | `pack_context` | MCP tool | Packs ranked evidence items into a token budget; `concern` and `service` required |
-| `brief` | MCP tool | Paste-ready markdown brief combining symbol resolution + concern query; respects a char budget |
 | `symbol_context` | MCP tool | Definition + direct callers + direct callees + related tests for one symbol |
 | `read_source` | MCP tool | Bounded, line-numbered raw-text read from the indexed corpus (200 lines / 8000 bytes per call by default, `max_bytes` up to 16000; the bytes are the `lines` array as sent, envelope and escaping included) — the agent surface's `sed -n`; refuses ignored or suppressed paths by name |
 | `references` | MCP tool | Occurrence search for an identifier or string (your service by default, `services: ["*"]` for the fleet), evidence-tiered — the structured alternative to grepping repo by repo |
@@ -51,7 +49,6 @@ The concrete payoffs:
 - **Fewer tokens**: concern + budget gating means context stays within model limits even for large services.
 - **Honest gating**: results carry a `staleness` field; the agent can detect when the index is behind HEAD and trigger a re-ingest before trusting the data.
 - **Cross-file visibility**: `symbol_context` surfaces callers and callees across the repo in one call, eliminating the need for grep sweeps to understand impact.
-- **Worker-ready briefs**: `brief` produces a single markdown string a parent agent can paste into a sub-agent's prompt, with explicit truncation notices when the budget is reached.
 
 ---
 
@@ -62,8 +59,8 @@ Scenario: an agent is about to modify token validation in `auth-service` and nee
 **1. Pick the surface at registration time, not per call.** There is no
 profile switch: stdio `serve-mcp` always serves the full registry, and the
 shared HTTP daemon scopes by path — register against `POST /rpc/agent`
-(the curated 19-tool coding hot loop; `/rpc/companion` is an identical
-alias) or `POST /rpc` for everything. Every tool below except `brief`,
+(the curated coding hot loop; `/rpc/companion` is an identical
+alias) or `POST /rpc` for everything. Every tool below except
 `find_callees` and `batch` is on the agent surface; the rest still execute
 there, flagged `off_surface` in the call log rather than refused.
 
@@ -103,20 +100,7 @@ pack_context {
 
 Returns `{ "included": [...], "tokens": 2847, "dropped": 4, "budget": 3000 }`. The four lowest-scoring symbols were dropped to stay within budget.
 
-**5. (Optional) Prepare a worker brief** if handing off to a sub-agent:
-
-```json
-brief {
-  "service": "auth-service",
-  "concern": "auth token validation",
-  "symbols": ["ValidateToken", "CheckExpiry"],
-  "budget": 16000
-}
-```
-
-Returns `{ "brief": "# auth-service — auth token validation\n\n..." }` — a self-contained markdown string ready to paste.
-
-**6. (Optional) Batch orientation calls** to save round-trips at session start:
+**5. (Optional) Batch orientation calls** to save round-trips at session start:
 
 ```json
 batch {
@@ -144,7 +128,7 @@ Returns all three results in one response. Use `batch` when the calls are indepe
 
 **Re-ingest when stale**: `serve-mcp` is a long-running process; the index can fall behind after commits. Check `staleness_report` or inspect the `staleness` field on `query_symbols` results. To refresh in-session, call the `ingest` MCP tool — a concurrent CLI `ingest` can contend with the session's own writes (SQLite serializes writers, ADR-020) and fail past `busy_timeout`.
 
-**Budget units**: `pack_context` and `repo_map` `budget` is in tokens (default 4000). `brief` `budget` is in characters (default 16000). `read_source` `max_bytes` is in bytes of the `lines` array as sent (default 8000, ceiling 16000). Set these according to your model's context headroom. Elision is always disclosed in the response, never silent.
+**Budget units**: `pack_context` and `repo_map` `budget` is in tokens (default 4000). `read_source` `max_bytes` is in bytes of the `lines` array as sent (default 8000, ceiling 16000). Set these according to your model's context headroom. Elision is always disclosed in the response, never silent.
 
 **Project-settable defaults** (**experimental**, BA-9): a `budgets` block in `.fathom/capabilities.cue` (project, governs) or `~/.fathom/capabilities.cue` (user default) sets the class defaults in tokens — `budgets: { list: 1500, composite: 4000, map: 2500 }`, where `list` = `query_symbols`/`references`, `composite` = `pack_context`, `map` = `repo_map`. The block is closed: an unknown key is refused with a did-you-mean. `find_symbol`, `find_callers`, `symbol_context` and `outline` are not class-budgeted. Honoured by the `serve-http` daemon; stdio `serve-mcp` still uses the built-ins.
 
@@ -177,4 +161,4 @@ Returns `{service, file, rules?, compiled_at_watermark?, index_stale?}`. An empt
 
 ## Maintained
 
-This doc covers: `query_symbols`, `find_symbol`, `outline`, `repo_map`, `pack_context`, `brief`, `symbol_context`, `read_source`, `references`, `memory_search`, `find_callees`, `entrypoints`, `batch`, `staleness_report`, `gen-claude-md`, `obligations`, `edit-hook` (incl. the memory block), `fathom memory` (`add`/`list`/`review`/`show`), `fathom prime` (listed by `fathom help`; `fathom prime -h`), the `budgets` block in `capabilities.cue`, and the `/rpc/agent` surface facts. Update it when these change.
+This doc covers: `query_symbols`, `find_symbol`, `outline`, `repo_map`, `pack_context`, `symbol_context`, `read_source`, `references`, `memory_search`, `find_callees`, `entrypoints`, `batch`, `staleness_report`, `gen-claude-md`, `obligations`, `edit-hook` (incl. the memory block), `fathom memory` (`add`/`list`/`review`/`show`), `fathom prime` (listed by `fathom help`; `fathom prime -h`), the `budgets` block in `capabilities.cue`, and the `/rpc/agent` surface facts. Update it when these change.

@@ -45,7 +45,7 @@ var toolCostClasses = map[string]tenancy.Class{
 	"secret_scan": tenancy.ClassTree, "cloc": tenancy.ClassTree, "spec_coverage": tenancy.ClassTree,
 	"traceability": tenancy.ClassTree, "safe_delete_check": tenancy.ClassTree, "list_sources": tenancy.ClassTree,
 	"discoveries": tenancy.ClassTree, "references": tenancy.ClassTree, "blast_radius": tenancy.ClassTree,
-	"brief": tenancy.ClassTree, "traverse": tenancy.ClassTree, "http_client_calls": tenancy.ClassTree,
+	"traverse": tenancy.ClassTree, "http_client_calls": tenancy.ClassTree,
 	"shell_out": tenancy.ClassTree, "proto_conformance": tenancy.ClassTree, "spec_refs": tenancy.ClassTree,
 	"stale_docs": tenancy.ClassTree,
 

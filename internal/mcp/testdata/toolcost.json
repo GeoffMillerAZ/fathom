@@ -17,10 +17,6 @@
       "measured": "tree",
       "basis": "design §3.1: moves to index only with the derived facts (§6); today a whole-service graph build (loadNavGraphs)"
     },
-    "brief": {
-      "measured": "tree",
-      "basis": "static read: obligations and symbol queries for one service (obligations is tree until its rewrites carry a cost assertion)"
-    },
     "capabilities": {
       "measured": "point",
       "basis": "audit of 4200482a (design §3.1 table, by today's cost)"
