@@ -10,12 +10,19 @@ package main
 // the row now says that.
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 )
+
+// The audit follow-up: the translation alone still sent the doomed call,
+// once per doctor run — 338 "tool not found: list_modules" rows in the call
+// log. moduleListForDoctor now asks tools/list first and never calls a tool
+// the daemon does not advertise.
 
 // errModulesUnserved is the honest reason list_modules answers "tool not
 // found": the daemon mounted no module store at start.
@@ -27,6 +34,9 @@ var errModulesUnserved = errors.New("not served by this daemon: no module store 
 // module → store path. A "tool not found" answer is translated to
 // errModulesUnserved; any other failure is returned as-is.
 func moduleListForDoctor(hc *http.Client, baseURL string) (map[string]string, error) {
+	if advertised, known := toolAdvertised(hc, baseURL, "list_modules"); known && !advertised {
+		return nil, errModulesUnserved
+	}
 	inner, err := callMCPTool(hc, baseURL, "list_modules", map[string]any{})
 	if err != nil {
 		if strings.Contains(err.Error(), "tool not found") {
@@ -50,4 +60,40 @@ func moduleListForDoctor(hc *http.Client, baseURL string) (map[string]string, er
 		}
 	}
 	return out, nil
+}
+
+// toolAdvertised reports whether the full surface's tools/list names tool.
+// known is false when tools/list gave no usable answer (unreachable, an
+// error, no tools array) — the caller then falls back to calling the tool
+// and reading its error, exactly as before.
+func toolAdvertised(hc *http.Client, baseURL, tool string) (advertised, known bool) {
+	req, err := originHeader(baseURL, bytes.NewReader([]byte(`{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}`)))
+	if err != nil {
+		return false, false
+	}
+	resp, err := hc.Do(req)
+	if err != nil {
+		return false, false
+	}
+	defer resp.Body.Close()
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, 1<<22))
+	if err != nil || resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return false, false
+	}
+	var env struct {
+		Result struct {
+			Tools []struct {
+				Name string `json:"name"`
+			} `json:"tools"`
+		} `json:"result"`
+	}
+	if json.Unmarshal(raw, &env) != nil || len(env.Result.Tools) == 0 {
+		return false, false
+	}
+	for _, t := range env.Result.Tools {
+		if t.Name == tool {
+			return true, true
+		}
+	}
+	return false, true
 }
