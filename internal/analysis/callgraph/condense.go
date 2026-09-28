@@ -155,7 +155,6 @@ func (b bitset) union(o bitset) {
 		b[i] |= o[i]
 	}
 }
-func (b bitset) has(i int) bool { return b[i/64]&(1<<(uint(i)%64)) != 0 }
 
 // closure computes, for each component in walk order, the set of
 // components reachable along next (succ for descendants, pred for
@@ -263,18 +262,8 @@ func ForwardReach(g *Graph, sources []string) *Reach {
 // Keys returns source's reach set as sorted canonical keys (nil when it
 // reaches nothing or is unknown).
 func (r *Reach) Keys(source string) []string {
-	s, ok := r.sets[source]
-	if !ok {
-		return nil
-	}
 	var out []string
-	for comp := range r.c.members {
-		if s.has(comp) {
-			for _, v := range r.c.members[comp] {
-				out = append(out, r.c.keys[v])
-			}
-		}
-	}
+	r.Each(source, func(k string) { out = append(out, k) })
 	sort.Strings(out)
 	return out
 }
@@ -289,4 +278,22 @@ func (r *Reach) Fingerprint(source string) string {
 		h.Write([]byte{0})
 	}
 	return hex.EncodeToString(h.Sum(nil))
+}
+
+// Each calls fn with every key in source's reach set, in component order
+// (not sorted; use Keys for a sorted list). It visits set bits only.
+func (r *Reach) Each(source string, fn func(key string)) {
+	s, ok := r.sets[source]
+	if !ok {
+		return
+	}
+	for w, word := range s {
+		for word != 0 {
+			b := bits.TrailingZeros64(word)
+			for _, v := range r.c.members[w*64+b] {
+				fn(r.c.keys[v])
+			}
+			word &= word - 1
+		}
+	}
 }
