@@ -385,6 +385,21 @@
       "blob_sha256": "30080208c90581bf3b29b412e9ee2e9a11c89b36153b6a94cc07da7b5000afcb",
       "blob_bytes": 2037040,
       "gz_bytes": 422906
+    },
+    {
+      "blob": "vhdl",
+      "repo": "jpt13653903/tree-sitter-vhdl",
+      "tag": "v2.0.3",
+      "commit": "a7cf493d07dbcf52ca287596451ae3fb8b12099f",
+      "tarball_sha256": "0afd50c99d2ee6277c9b183a6fb160173cf8635b3e14900a8dfc3dbbd6e93378",
+      "licence": "MIT",
+      "entry_points": ["tree_sitter_vhdl"],
+      "scanner": true,
+      "generate": false,
+      "abi": 15,
+      "blob_sha256": "3ec7500d69a8177a073f8c42e01fc4b40b4ac7c0259654e781375b3223189a1c",
+      "blob_bytes": 1314192,
+      "gz_bytes": 240100
     }
   ]
 }

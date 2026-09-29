@@ -1,0 +1,24 @@
+id: vhdl
+language: VHDL
+# VUnit is mostly Python: the harness reads only the .vhd and .vhdl files the vhdl dialect owns (330 of them).
+repos:
+  - name: stnolting/neorv32
+    url: https://github.com/stnolting/neorv32
+    ref: v1.13.6
+    sha: e25059f2d7fa948342516c0722bbf2b19039ab3c
+    licence: BSD-3-Clause
+    idioms:
+      - "one entity and one architecture per file (64 files), with generic and port clauses and labelled processes (56 files)"
+      - "record types with many elements (26 files) and generate statements (38 files)"
+      - "component declarations (12 files) and configuration declarations (26 files)"
+      - "a package and its body for the core's types and functions (2 files with `package body`)"
+  - name: VUnit/vunit
+    url: https://github.com/VUnit/vunit
+    ref: v5.0.0-dev.13
+    sha: ae9b175ae63247cc4abae69f640e423c0c4a57a2
+    licence: MPL-2.0
+    idioms:
+      - "packages and package bodies (118 and 83 files) full of overloaded impure functions and procedures with multi-line parameter lists"
+      - "protected types (VHDL-2008, 6 files) whose methods are declared inside the type"
+      - "context declarations (142 files) and testbench entities with no ports"
+      - "labelled processes (182 files), generate statements and vendored OSVVM (Apache-2.0) sources under vunit/vhdl/osvvm"

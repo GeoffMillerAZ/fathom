@@ -294,12 +294,14 @@ const (
 	// as PowerShell's class and enum and Makefile's variable.
 	KindDartClass SourceKind = "DartClass"
 
-	// Ada (LB-Q-ada, language-breadth: new — a fleet gap, no incumbent).
-	// KindAdaPackage is the manifest's primary connector-classification kind;
-	// the dialect's other kinds (specs, subprograms, tasks, entries, types)
-	// have no connector classification use and so get no constant of their
-	// own, same precedent as Dart's.
+	// Ada and VHDL (LB-Q-ada, LB-Q-vhdl, language-breadth: new — fleet gaps, no
+	// incumbent). KindAdaPackage and KindVhdlEntity are each manifest's primary
+	// connector-classification kind; the dialects' other kinds (specs, subprograms,
+	// tasks, entries, types; architectures, processes, components) have no
+	// connector classification use and so get no constant of their own, same
+	// precedent as Dart's.
 	KindAdaPackage SourceKind = "AdaPackage"
+	KindVhdlEntity SourceKind = "VhdlEntity"
 
 	// Kustomize (ADR-021 §2 / TI-3): entries under a kustomization.yaml's
 	// resources/patches/images lists, emitted as reference observations —

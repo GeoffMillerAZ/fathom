@@ -717,15 +717,18 @@ func parseGitLog(serviceID, raw string) []store.Commit {
 // cmds and defer as Calls, and the includes that resolve to another Taskfile of
 // the repository) where each was fingerprinted as unclassified YAML; the salt
 // bump re-reads them.
-// Epoch 35 (LB-Q-ada, docs/design/language-breadth.md §13): .ads and .adb files
-// now extract via internal/extractor.NewTSExtractor("ada") — tree-sitter via
-// wazero/WASM, a fleet gap with no incumbent: package specifications and
+// Epoch 35 (LB-Q-ada, LB-Q-vhdl, docs/design/language-breadth.md §13): .ads
+// and .adb files now extract via internal/extractor.NewTSExtractor("ada") and
+// .vhd and .vhdl files via NewTSExtractor("vhdl") — tree-sitter via
+// wazero/WASM, fleet gaps with no incumbent. Ada: package specifications and
 // bodies, subprograms (bodies, declarations, instantiations, renamings,
 // expression functions), tasks, protected objects, entries, types, subtypes,
 // exceptions and constants, each callable with a Signature and an EndLine and
-// its calls named by callee. Every such file was fingerprinted by the
-// no-extractor path ("no extractor registered", the epoch 18 class), so the
-// salt bump re-reads them.
+// its calls named by callee. VHDL: entities, architectures, packages and
+// package bodies, labelled processes, functions and procedures (bodies and
+// declarations), types, subtypes, record elements and components. Every such
+// file was fingerprinted by the no-extractor path ("no extractor registered",
+// the epoch 18 class), so the salt bump re-reads them.
 const ExtractorEpoch = "35"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file

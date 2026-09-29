@@ -1,0 +1,46 @@
+{
+  "symbols": [
+    {
+      "name": "alu",
+      "kind": "VhdlEntity",
+      "package": "alu",
+      "line": 6,
+      "end_line": 12,
+      "tier": "verified"
+    },
+    {
+      "name": "rtl",
+      "kind": "VhdlArchitecture",
+      "package": "alu",
+      "line": 14,
+      "end_line": 26,
+      "tier": "verified"
+    },
+    {
+      "name": "rtl.select_op",
+      "kind": "VhdlProcess",
+      "package": "alu",
+      "line": 17,
+      "end_line": 24,
+      "signature": "select_op : process (a, b, op)",
+      "tier": "verified"
+    },
+    {
+      "name": "sim",
+      "kind": "VhdlArchitecture",
+      "package": "alu",
+      "line": 28,
+      "end_line": 43,
+      "tier": "verified"
+    },
+    {
+      "name": "sim.drive",
+      "kind": "VhdlProcess",
+      "package": "alu",
+      "line": 37,
+      "end_line": 41,
+      "signature": "drive : process",
+      "tier": "verified"
+    }
+  ]
+}

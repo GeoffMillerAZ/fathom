@@ -85,8 +85,6 @@ var unsupportedLangExtMap = map[string]string{
 	".vb":      "vbnet",
 	".vert":    "glsl",
 	".vh":      "verilog",
-	".vhd":     "vhdl",
-	".vhdl":    "vhdl",
 	".vim":     "vimscript",
 	".vue":     "vue",
 	".wgsl":    "wgsl",

@@ -54,6 +54,7 @@ var typedEdgeProducers = map[string]string{
 	"makefile":   "syntax",
 	"lua":        "syntax",
 	"ada":        "syntax",
+	"vhdl":       "syntax",
 	"sql":        "syntax",
 	"terraform":  "syntax",
 	"yaml":       "syntax",
