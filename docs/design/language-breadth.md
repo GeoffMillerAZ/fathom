@@ -639,6 +639,17 @@ oracle output stays under `workspace/`.
 level is never higher than its reading's `level_met`, and a registered dialect without a
 reading is listed as `tolerated`.
 
+**Producer-specific rules (LB-Q-rust, 2026-09-28).** A SCIP producer's own vocabulary is read
+by the harness where it would otherwise score a definition or a call no source text spells:
+rust-analyzer's `impl#[Type]name().` members (`]` closes a descriptor), its macro-expanded
+definitions (a definition with no declaration keyword before it at its reported position is
+`Generated`, left out of L1 and counted as `<oracle>:macro-generated`), its file-module definition
+(a multi-line whole-file range, recovered at the `mod x;` reference), its macro references (a call
+by the macro's name) and its operator references (`?`, `==`, `!x`, `*x`, `a[i]` resolve to trait
+methods at the operator's range: no call is written, so a callable reference whose range is not the
+callee's name leaves the L2 truth, counted as `scip_calls_unwritten`). `langbench.SCIPOptionsFor`
+selects the call-site rules per dialect; every other dialect keeps the zero options.
+
 ## 11. Retiring heuristics and bespoke walkers
 
 The nine CGO walkers and three regex extractors each have a queue item whose target is at

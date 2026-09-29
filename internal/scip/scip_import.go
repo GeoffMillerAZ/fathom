@@ -342,7 +342,8 @@ func descriptorLeafName(sym string) (string, bool) {
 	// any of those characters literally, e.g. a file name) is never split
 	// on them.
 	leaf := trimmed
-	if sepAt := lastUnquotedAny(trimmed, "/#.:"); sepAt >= 0 {
+	// ']' closes a descriptor as well (rust-analyzer: `impl#[Type]name().`).
+	if sepAt := lastUnquotedAny(trimmed, "/#.:]"); sepAt >= 0 {
 		leaf = trimmed[sepAt+1:]
 	}
 	leaf = strings.Trim(leaf, "`")

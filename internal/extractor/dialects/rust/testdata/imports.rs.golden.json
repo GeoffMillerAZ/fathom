@@ -1,0 +1,177 @@
+{
+  "symbols": [
+    {
+      "name": "child",
+      "kind": "RustMod",
+      "package": "imports",
+      "line": 2,
+      "end_line": 2,
+      "tier": "verified"
+    },
+    {
+      "name": "inline_mod",
+      "kind": "RustMod",
+      "package": "imports",
+      "line": 3,
+      "end_line": 3,
+      "tier": "verified"
+    },
+    {
+      "name": "entry",
+      "kind": "RustFn",
+      "package": "imports",
+      "line": 16,
+      "end_line": 18,
+      "signature": "pub fn entry() -> u32",
+      "calls": [
+        "c",
+        "item"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "child",
+      "module": "child",
+      "kind": "whole",
+      "line": 2
+    },
+    {
+      "local": "a",
+      "module": "a",
+      "kind": "whole",
+      "line": 4
+    },
+    {
+      "local": "c",
+      "exported": "c",
+      "module": "a::b",
+      "kind": "named",
+      "line": 5
+    },
+    {
+      "local": "c",
+      "module": "a::b::c",
+      "kind": "whole",
+      "line": 5
+    },
+    {
+      "local": "d",
+      "exported": "c",
+      "module": "a::b",
+      "kind": "named",
+      "line": 6
+    },
+    {
+      "local": "d",
+      "module": "a::b::c",
+      "kind": "whole",
+      "line": 6
+    },
+    {
+      "local": "y",
+      "exported": "y",
+      "module": "crate::x",
+      "kind": "named",
+      "line": 7
+    },
+    {
+      "local": "y",
+      "module": "crate::x::y",
+      "kind": "whole",
+      "line": 7
+    },
+    {
+      "local": "io",
+      "exported": "io",
+      "module": "::std",
+      "kind": "named",
+      "line": 8
+    },
+    {
+      "local": "io",
+      "module": "::std::io",
+      "kind": "whole",
+      "line": 8
+    },
+    {
+      "local": "n",
+      "exported": "n",
+      "module": "self::m",
+      "kind": "named",
+      "line": 9
+    },
+    {
+      "local": "n",
+      "module": "self::m::n",
+      "kind": "whole",
+      "line": 9
+    },
+    {
+      "local": "sup",
+      "exported": "sup",
+      "module": "super",
+      "kind": "named",
+      "line": 10
+    },
+    {
+      "local": "sup",
+      "module": "super::sup",
+      "kind": "whole",
+      "line": 10
+    },
+    {
+      "local": "*",
+      "module": "a::b",
+      "kind": "wildcard",
+      "line": 11
+    },
+    {
+      "local": "b",
+      "exported": "b",
+      "module": "a",
+      "kind": "named",
+      "line": 12
+    },
+    {
+      "local": "d2",
+      "exported": "c",
+      "module": "a",
+      "kind": "named",
+      "line": 12
+    },
+    {
+      "local": "a",
+      "module": "a",
+      "kind": "whole",
+      "line": 12
+    },
+    {
+      "local": "q",
+      "exported": "q",
+      "module": "p",
+      "kind": "named",
+      "line": 13
+    },
+    {
+      "local": "r",
+      "module": "r",
+      "kind": "whole",
+      "line": 13
+    },
+    {
+      "local": "deep",
+      "module": "crate::deep",
+      "kind": "whole",
+      "line": 14
+    },
+    {
+      "local": "item",
+      "exported": "item",
+      "module": "crate::deep",
+      "kind": "named",
+      "line": 14
+    }
+  ]
+}

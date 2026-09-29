@@ -24,6 +24,10 @@ const (
 	CntCallFathom       = "call_fathom"
 	CntCallFathomInTrue = "call_fathom_in_truth"
 
+	// CntScipCallsUnwritten counts callable references left out of call
+	// truth because no call is written at their range (SCIPOptions).
+	CntScipCallsUnwritten = "scip_calls_unwritten"
+
 	CntScipDefs       = "scip_defs"
 	CntScipDefsMapped = "scip_defs_mapped"
 	CntScipEdges      = "scip_edges"
@@ -133,6 +137,10 @@ func ScoreL1(m Manifest, oracle string, nodes []core.SymbolNode, defs []OracleDe
 	}
 	var theirs []*scoredDef
 	for _, d := range defs {
+		if d.Generated {
+			res.Excluded[oracle+":macro-generated"]++
+			continue
+		}
 		c, ok := m.OracleCanonical(oracle, d.Kind, d.Scoped)
 		if !ok || !in[c] {
 			res.Excluded[oracle+":"+d.Kind]++

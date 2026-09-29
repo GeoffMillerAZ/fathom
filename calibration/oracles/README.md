@@ -13,6 +13,7 @@ lines, bare names).
 | scip-typescript/ | A | TypeScript, JavaScript |
 | scip-dotnet/ | A (def_mapping, typed_recall) | C# |
 | scip-php/ | A (calls, def_mapping, file edges) | PHP |
+| rust-analyzer/ | A (definitions, calls, def_mapping, typed_recall, file edges) | Rust |
 | roslyn/ | B | C# |
 | javaparser/ | B | Java |
 | powershell-ast/ | B | PowerShell |

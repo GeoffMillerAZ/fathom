@@ -70,7 +70,7 @@ reading's computed `level_met` with each met level's grade; `tolerated` is regis
 no reading yet; `unsupported (disclosed)` is queued, not registered, and named per service
 by `list_services`.
 
-Milestone M1 progress: languages at L1 excellent 6/20, at L2 4/12, at L3 0/8, at L4 0/6; tool formats at target 3/15
+Milestone M1 progress: languages at L1 excellent 7/20, at L2 5/12, at L3 0/8, at L4 0/6; tool formats at target 3/15
 
 | Language or format | Kind | Engine | Grammar / parser | Target | Level met | Oracles | Typed edges | Reading | Next |
 |---|---|---|---|---|---|---|---|---|---|
@@ -96,7 +96,7 @@ Milestone M1 progress: languages at L1 excellent 6/20, at L2 4/12, at L3 0/8, at
 | Docker Compose files | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L2 (L1 excellent, L2 excellent) | A docker compose config --format json 5.1.4; C docker-compose-xref-oracle (independent yaml.v3 walk of extends.file and build) gopkg.in/yaml.v3 v3.0.1 | — | 2026-09-28 | LB-Q-docker-compose |
 | PHP (.php) | language | tags | tree-sitter/tree-sitter-php (MIT) | L4 | L1 (L1 excellent) | B php-parser 5.7.0.0; A scip-php 0.0.1 | syntax | 2026-09-28 | LB-Q-php |
 | Helm charts (Chart.yaml, values.yaml, templates/*.yaml, *.tpl) | tool format | tags+doc | ngalaiko/tree-sitter-go-template (MIT (verify at pin)) | L3 | tolerated | — | syntax | — | LB-Q-helm |
-| Rust (.rs) | language | tags | tree-sitter/tree-sitter-rust (MIT) | L4 | tolerated | — | scip:rust-analyzer | — | LB-Q-rust |
+| Rust (.rs) | language | tags | tree-sitter/tree-sitter-rust (MIT) | L4 | L2 (L1 excellent, L2 excellent) | A rust-analyzer 1.98.1 (48a229ce 2026-09-01) | scip:rust-analyzer | 2026-09-29 | LB-Q-rust |
 | Makefile / GNU make (Makefile, *.mk, GNUmakefile) | tool format | tags | tree-sitter-grammars/tree-sitter-make (MIT) | L2 | unsupported (disclosed) | — | — | — | LB-Q-makefile |
 | Kotlin (.kt .kts) | language | tags | fwcd/tree-sitter-kotlin (MIT) | L4 | tolerated | — | scip:scip-java | — | LB-Q-kotlin |
 | Lua (.lua) | language | tags | tree-sitter-grammars/tree-sitter-lua (MIT) | L2 | tolerated | — | syntax | — | LB-Q-lua |
