@@ -1,0 +1,9 @@
+{
+  "symbols": [
+    { "name": "build.targets", "kind": "MSBuildProject", "package": "build", "line": 1, "end_line": 13, "tier": "verified" },
+    { "name": "Prepare", "kind": "MSBuildTarget", "package": "build", "line": 3, "end_line": 3, "tier": "verified" },
+    { "name": "Compile", "kind": "MSBuildTarget", "package": "build", "line": 4, "end_line": 6, "tier": "verified" },
+    { "name": "Resolve", "kind": "MSBuildTarget", "package": "build", "line": 7, "end_line": 11, "tier": "verified" }
+  ],
+  "cross_file": []
+}

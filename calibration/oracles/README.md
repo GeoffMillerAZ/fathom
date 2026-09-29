@@ -44,6 +44,7 @@ imported by fathom, never a product dependency — and is run from its own direc
 | `maven` | A (`definitions`); C (`-refs`) | `mvn help:effective-pom` (Apache Maven 3.9.11, maven-help-plugin 3.5.2, JDK 21) run once at the subject's root POM, offline; `encoding/xml` for each POM's file and `<project>` line, the modules a walk reaches (profile modules included) and the `-refs` decode | definitions (one `package` per reactor project, at its `<project>` start tag); with `-refs`, `references` (the parent's artifactId and every direct dependency's, per POM, cross-checked against the effective POM) and `cross_references` (a `<module>` to the POM Maven's module rule names, a `<parent>` and a declared dependency to the reactor project whose effective groupId:artifactId equals it, entity granularity) | `cd calibration/oracles/maven && JAVA_HOME=<jdk> go run . -subject <checkout> -mvn <mvn> -m2 <local repo outside the subject> -offline [-profiles release] -effective <scratch>/maven-<subject>-eff.xml [-files-out <file>] > workspace/tmp/oracle/maven-<subject>.json`, and again with `-refs` (same `-effective` file, which the first run wrote) into `maven-<subject>-refs.json`; pass both to `lang-oracle -tool-oracle` (definitions file first) |
 | `cargo` | A | `cargo metadata --no-deps --format-version 1` and `cargo metadata --all-features --format-version 1` (cargo 1.98.1, rustc 1.98.1), run at each workspace root; `go-toml/v2` for the raw cross-check | definitions (one `package` per workspace member, at line 1: the package entity is the manifest itself), `references` (every dependency of each package as the tool lists it, whatever its kind or target table, by real package name), `cross_references` (a resolved dependency edge between two packages of the subject, `[patch]` applied, and the `workspace` entity to each member the tool lists, entity granularity) | `cd calibration/oracles/cargo && PATH=<rustc bin>:$PATH go run . -subject <checkout> -cargo <cargo> -home <scratch CARGO_HOME outside the subject> [-root <manifest>]... [-offline] [-files-out <file>] > workspace/tmp/oracle/cargo-<subject>.json`; pass it to `lang-oracle -tool-oracle` |
 | `go-mod` | A | `go mod edit -json`, `go work edit -json` and `go list -e -m -json all` (go1.26.3), run at each go.mod and go.work of the subject; standard library only | definitions (a `module` per go.mod, at its module directive; a `package` per require; a `key` per replace of a go.mod or go.work, `replace/<old>[@<version>]`; per go.work a `namespace`, `workspace`, at its first directive, and a `key` per use, `use/<directory as written>`), `references` (a module to each module it requires), `cross_references` (a require the tool resolves to a directory of the subject holding a go.mod, module to module; a replace to a local directory the tool evaluated as the module's replacement, replace entity to that module; a go.work use the tool lists as a workspace module, use entity to that module; entity granularity) | `cd calibration/oracles/go-mod && go run . -subject <checkout> -modcache <scratch GOMODCACHE outside the subject> > workspace/tmp/oracle/go-mod-<subject>.json`; pass it to `lang-oracle -tool-oracle` |
+| `msbuild` | A | `dotnet msbuild` (MSBuild 18.9.11 in .NET SDK 10.0.401): `-getItem:PackageReference,ProjectReference -getProperty:TargetFramework,TargetFrameworks` per project, framework and configuration, and `-preprocess` for the files an evaluation imported; `encoding/xml` for each file's `<Project>` line and the cross-check decode | definitions (a `package` per evaluated project file and per file of the subject an evaluation imported, at its `<Project>` start tag), `references` (a `PackageReference` item, from the file that defined it), `cross_references` (a `ProjectReference` item, from the file that defined it to the project MSBuild resolves it to, when that is a file of the subject; entity granularity) | `cd calibration/oracles/msbuild && go build -o <scratch>/msbuild-oracle . && DOTNET_ROOT=<sdk> <scratch>/msbuild-oracle -subject <checkout> [-under <dir>] -dotnet <sdk>/dotnet -scratch <scratch dir outside the subject> > workspace/tmp/oracle/msbuild-<subject>.json` |
 
 `cargo` is tier A throughout: the tool itself evaluates each workspace (which manifests are members, each
 package's name, each package's dependencies with `workspace = true` inheritance, renames and target
@@ -86,6 +87,31 @@ the truth: measure a reactor's own files with `lang-oracle -only` (`apache/maven
 declares comes from an independent struct decode of the raw POM, kept honest by the cross-checks
 (`declared-not-effective`, `parent-mismatch`, the `build/plugins` count); its cross-file edges join by
 groupId:artifactId where the dialect joins by artifactId, so the xref metrics measure that shortcut.
+
+`msbuild` is tier A throughout: MSBuild itself evaluates each project (its Sdk, every import, every
+condition and property) and names, for each item it lists, the file that defined it
+(`DefiningProjectFullPath`), so what a file declares is the tool's word and a `Directory.Build.props` is
+credited with the references it writes and not the projects that import it. One evaluation sees one
+configuration and one target framework, so each project is evaluated for Debug and Release, for its default
+framework and for each framework its `TargetFrameworks` lists, and the items are unioned; a condition on
+anything else (a Windows-only framework on a macOS run, an environment variable) stays false, and the
+independent decode inside the oracle prints what a file writes that no evaluation listed
+(`declared-not-in-tool`; 3 over Polly, 0 over aspnetcore) and what the tool lists that no file writes
+(`tool-not-declared`), and checks every `<Target Name>` the files declare against the tool's preprocessed
+projects. `-preprocess` brackets each imported file with `<Import …>` and `</Import>` markers, which is where
+the imported props and targets files (also definitions) come from. The SDK is installed inside the scratch
+directory (`dotnet-install.sh --version 10.0.401`, with `DOTNET_ROOT`, `NUGET_PACKAGES` and
+`DOTNET_CLI_HOME` under it and `DOTNET_ROLL_FORWARD=Major`; a `global.json` that pins another SDK band does not
+stop `dotnet msbuild` run from outside the checkout) and deleted with it. A project the tool cannot evaluate is
+listed on stderr and left out (its file is then a dialect-only definition); every project evaluated in both
+subjects. `dotnet/aspnetcore` cannot be evaluated from a clean checkout: its root `Directory.Build.props` and
+`.targets` import `artifacts/bin/GenerateFiles/Directory.Build.{props,targets}`, which its own first build step
+writes, so the run creates both as empty `<Project />` files in the scratch clone (outside git; the corpus
+shard's `sparse:` list is the MSBuild files only, plus `eng/` and the internal-testing props a test project
+imports) and measures `src/Http` with `lang-oracle -only 'src/Http/**'`. Its Arcade SDK turns `<Reference>`
+items into ProjectReferences in `eng/targets/ResolveReferences.targets`, so those edges are that file's,
+outside the measured tree. Imports are read but not scored (the dialect draws no Import edge); `.sln` files
+are not decoded, so `dotnet sln list` is not an oracle here.
 
 `gitlab-ci` is tier A for definitions because the tool itself evaluates each pipeline (includes,
 remote templates, `extends`, matrix expansion) and rejects one it cannot; the tool is not offline

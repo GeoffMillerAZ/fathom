@@ -656,7 +656,13 @@ func parseGitLog(serviceID, raw string) []store.Commit {
 // no extractor read before, is indexed; every already-indexed go.mod was
 // extracted by the scanner and every go.work fingerprinted as unclassified, so
 // the salt bump re-reads them.
-const ExtractorEpoch = "28"
+// Epoch 29 (LB-Q-msbuild, docs/design/language-breadth.md §13/§4): a .csproj,
+// .fsproj, .vbproj, .props or .targets file now extracts through the doc-engine
+// msbuild dialect (the file's project entity named by the file, its targets, its
+// PackageReferences as Calls, and the ProjectReference edges that resolve to
+// another project of the repository) where each was fingerprinted as an
+// unclassified .NET build file; the salt bump re-reads them.
+const ExtractorEpoch = "29"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares
@@ -961,6 +967,19 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 		panic(fmt.Sprintf("fusion: doc-dialect cargo: %v", err))
 	}
 	p.exts["Cargo.toml"] = cargo
+
+	// MSBuild (LB-Q-msbuild, language-breadth: new — a doc-engine tool format,
+	// no incumbent). No extractor claims these extensions, so the extension
+	// lookup (p.exts[ext]) governs every project, props and targets file;
+	// .user sidecars, solutions and other XML stay unclassified, as the
+	// manifest's match says.
+	msbuild, err := extractor.NewDocDialectExtractor("msbuild")
+	if err != nil {
+		panic(fmt.Sprintf("fusion: doc-dialect msbuild: %v", err))
+	}
+	for _, ext := range []string{".csproj", ".fsproj", ".vbproj", ".props", ".targets"} {
+		p.exts[ext] = msbuild
+	}
 
 	// Scala
 	scala := extractor.NewScalaExtractor()

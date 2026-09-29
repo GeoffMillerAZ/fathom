@@ -198,6 +198,18 @@ var extClassMap = map[string]classification{
 	// clippy.toml, rustfmt.toml, deny.toml and Cargo.lock are not claimed.
 	"Cargo.toml": {core.KindCargoPackage, "cargo"},
 
+	// MSBuild (LB-Q-msbuild, language-breadth: new — a doc-engine tool
+	// format, no incumbent). The projects of the three .NET languages and the
+	// props and targets files they import: every one an MSBuild <Project>
+	// document. A project's sidecar (App.csproj.user), the solution files
+	// (.sln, and .slnx, whose root is a <Solution>) and other XML
+	// (packages.config, app.config) are not claimed.
+	".csproj":  {core.KindMSBuildProject, "msbuild"},
+	".fsproj":  {core.KindMSBuildProject, "msbuild"},
+	".vbproj":  {core.KindMSBuildProject, "msbuild"},
+	".props":   {core.KindMSBuildProject, "msbuild"},
+	".targets": {core.KindMSBuildProject, "msbuild"},
+
 	// Python packaging (LB-Q-python-packaging, language-breadth: new — a
 	// doc-engine tool format, no incumbent). The basename check
 	// (kindForFile/classify) takes precedence over ".toml" (the generic

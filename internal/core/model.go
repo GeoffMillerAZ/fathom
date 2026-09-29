@@ -223,6 +223,14 @@ const (
 	KindGoModule    SourceKind = "GoModule"
 	KindGoWorkspace SourceKind = "GoWorkspace"
 
+	// MSBuild projects, props and targets (LB-Q-msbuild, language-breadth:
+	// new — a doc-engine tool format, no incumbent). KindMSBuildProject is a
+	// file's own entity (the connector-classification kind, named by the file:
+	// a .csproj, .fsproj, .vbproj, .props or .targets); the dialect's target
+	// kind has no connector-classification use and so gets no constant of its
+	// own, the package.json and Cargo.toml precedent.
+	KindMSBuildProject SourceKind = "MSBuildProject"
+
 	// pyproject.toml (LB-Q-python-packaging, language-breadth: new — a
 	// doc-engine tool format, no incumbent; requirements*.txt and
 	// setup.cfg from the same queue entry stay unclassified, §14.2: the

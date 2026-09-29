@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Lost" Version="1.0.0" />

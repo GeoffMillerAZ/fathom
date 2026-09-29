@@ -1,0 +1,59 @@
+id: msbuild
+language: MSBuild projects (.csproj .fsproj .vbproj .props .targets)
+# The queue entry names App-vNext/Polly (BSD-3-Clause) and dotnet/aspnetcore (MIT),
+# both read only, never vendored. Polly is the whole-repository subject: 21 project,
+# props and targets files at 8.8.0 (an SDK-style .NET solution with central package
+# management and a shared eng/ of props and targets, one F# sample). aspnetcore is
+# measured on its src/Http tree (the queue's src/Http subpath): the repository is far
+# over 50 MB, and a project there imports the repository's eng/ props and targets and
+# the root Directory.Build.*, which the tool needs to evaluate it, so the shard clones
+# only the MSBuild files (no sources) of src/Http and src/, the root's own files, eng/ and
+# the internal-testing build files a test project imports (src/Testing/src/build). A
+# clean checkout cannot be evaluated: the root Directory.Build.props/targets import
+# artifacts/bin/GenerateFiles/Directory.Build.{props,targets}, which the repository's own
+# first build step writes, so the oracle run stubs both as empty <Project /> files (see
+# calibration/oracles/README.md; the stubs sit outside git and go with the clone).
+repos:
+  - name: App-vNext/Polly
+    url: https://github.com/App-vNext/Polly.git
+    ref: 8.8.0
+    sha: 9ad5ae9b4ff9beb4321b0762249ce173b984f817
+    licence: BSD-3-Clause
+    idioms:
+      - "SDK-style projects whose ProjectReferences are written with backslashes
+        (..\\..\\src\\Polly.Core\\Polly.Core.csproj) and whose items come partly from a
+        Directory.Build.props import chain"
+      - "central package management: Directory.Packages.props declares each
+        PackageVersion, a project's PackageReference names only the package"
+      - "shared props and targets under eng/ imported with $(MSBuildThisFileDirectory)
+        and by a $(ProjectType) property (eng/$(ProjectType).targets)"
+      - "a multi-targeted library (TargetFrameworks net8.0;net6.0;netstandard2.0;net472)
+        with PackageReferences that only some target frameworks apply, and an F# sample
+        (Intro.FSharp.fsproj)"
+  - name: dotnet/aspnetcore
+    url: https://github.com/dotnet/aspnetcore.git
+    ref: v10.0.12
+    sha: cb21a42eafcd44cc35fad48d99dc82ff7512ce2f
+    licence: MIT
+    sparse:
+      - "/*"
+      - "!/*/"
+      - "/eng/"
+      - "/src/Http/**/*.csproj"
+      - "/src/Http/**/*.props"
+      - "/src/Http/**/*.targets"
+      - "/src/Http/**/*.fsproj"
+      - "/src/Http/**/*.vbproj"
+      - "/src/*.props"
+      - "/src/*.targets"
+      - "/src/Testing/src/build/"
+    idioms:
+      - "the Arcade SDK: global.json msbuild-sdks, an eng/ tree of shared props and
+        targets, and Directory.Build.props/targets at the root, in src/ and in src/Http"
+      - "ProjectReferences written from the repository root ($(RepoRoot)src\\...) and
+        relative (..\\..\\Http.Abstractions\\src\\...) in one tree, and assembly references
+        the build turns into project references (<Reference Include=...>)"
+      - "a src/test/sample layout per component (Http.Abstractions/src, /test, /perf)
+        with test projects that reference the shipped ones"
+      - "PackageReference items declared in Directory.Build.props and eng/ files that every
+        project below inherits, next to the ones a project writes itself"
