@@ -130,7 +130,7 @@
       "rule": {
         "id": "ADR-014§execute-and-flag",
         "text": "An off-surface `tools/call` (or `batch` sub-call) executes normally and the JSONL call log records it with `off_surface:true`, instead of returning a 'not on the surface' error; hard-gating stays available only behind the opt-in `Server.strictSurfaces`, never as the default — surfaces are ergonomics and measurement, never a security boundary.",
-        "source": "ADR.md#L573"
+        "source": "ADR.md#L576"
       },
       "predictions": {
         "full": "no-effect: internal/mcp/dispatch.go's own comment sits directly above the surface check ('Execute-and-flag (ADR-014 amendment): an off-surface call runs and is LOGGED as off_surface — an error teaches agents to abandon the surface'), naming the ADR at the exact edit site — obligations add nothing a careful read of the file being touched didn't already say",
