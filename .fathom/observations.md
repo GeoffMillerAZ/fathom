@@ -2328,3 +2328,29 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** the dialect fixes the path length with `#match?` on the whole reference and walks to the last identifier with leading and sibling anchors, one pattern per length from one to eight (dialects/protobuf/tags.scm); a dialect that needs the last named child elsewhere should check lang-probe before trusting a trailing anchor
 - **Status:** open (worked around)
 - **Impact:** a query that relies on a trailing anchor silently over-captures (here every package segment became a callee: call precision, and file-resolved edges named by a package segment)
+
+### O204 — an oracle's dotted name is compared whole while the dialect's is cut to its last segment, so an Ada child unit is a miss on both sides
+
+- **Symptom:** an oracle's dotted name is compared whole while the dialect's is cut to its last segment, so an Ada child unit is a miss on both sides
+- **Evidence:**
+  - **Tool:** indexbench lang-oracle (internal/langbench/score.go ScoreL1)
+  - **Expected:** design section 1.4: qualified names are compared on the last segment, the oracle's and the dialect's alike
+  - **Actual:** universal-ctags names 'package GNATCOLL.Arg_Lists' GNATCOLL.Arg_Lists, the dialect's name becomes Arg_Lists, so 573 units were dialect-only and oracle-only at once: sym_precision .8909 and level_met none for a dialect that finds them all
+  - **Repro:** go run ./cmd/indexbench lang-oracle -dialect ada -subject workspace/calibration/ada/alire -out workspace/tmp/x.json -unmatched workspace/tmp/x-unmatched.json, then read dialect_only and oracle_only for the dotted units (573 across gnatcoll-core and alire)
+- **Root cause:** ScoreL1 cut the fathom name with MatchName (BareName) and passed the oracle's name through only the operator rule, so any oracle that writes a language's own expanded name whole never matched (no earlier dialect had one)
+- **Fix:** `oracleMatchName` (internal/langbench/score.go, 728cb294) cuts an oracle name that is a dotted identifier path to its last identifier and leaves any other punctuation whole, so name_match identity and TestNameMatchIdentity are untouched; design D2 Ada records it; the harness is shared and an Opus-level place (the tracker names BareName's separators for CSS), so the integrator reviews the commit
+- **Status:** fixed (728cb294, on w6-adavhdl; integrator review)
+- **Impact:** any dialect whose oracle writes a dotted name (Ada child units, VHDL none) reads far below its true precision and recall; without the fix LB-Q-ada read level_met none
+
+### O205 — on a store that holds no ingest of the service, tests select answers '0 test(s) selected, 0 touched certificate(s)' with no hint that the index is empty
+
+- **Symptom:** on a store that holds no ingest of the service, tests select answers '0 test(s) selected, 0 touched certificate(s)' with no hint that the index is empty
+- **Evidence:**
+  - **Tool:** fathom tests select --since 9ea6da5f --safe --store $FATHOM_CACHE_ROOT/verify.sqlite --service fathom
+  - **Expected:** an error or a one-line note that the store has no index for the service, so a worker knows the selection proves nothing
+  - **Actual:** 'certifying-first selection --since 9ea6da5f (--safe: plus every test that reaches a changed symbol): 0 test(s) selected, 0 touched certificate(s), 0 with no certifying test', exit 0, right after the worker's clone and before its first ingest
+  - **Repro:** a fresh clone, source genv-wave.sh, then the command above before any 'fathom ingest --store $FATHOM_CACHE_ROOT/verify.sqlite'
+- **Root cause:** not isolated; an empty store answers the same zeros a change with no tests does, and nothing in the output says which it was
+- **Fix:** none yet; a worker ingests its clone first (17 minutes cold on this repository under a busy machine, 5 minutes incremental) or runs the registered `go test` set; docs/guides/agent-waves.md's EW-11 step could name the ingest as a precondition
+- **Status:** open
+- **Impact:** the EW-11 step reads as passed when it selected nothing; the brief's ordering puts it before the first ingest, so every worker's first run is this empty answer
