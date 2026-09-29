@@ -207,4 +207,9 @@ func TestPinLossesGuardDoneNeedsIsAPin(t *testing.T) {
 	if len(got) != 1 || got[0].Silent() || !got[0].SourceEdited {
 		t.Fatalf("with the note rewritten: %+v, want one retired loss (not silent, source edited)", got)
 	}
+	// No decision in the range names TestStoreFormat, so the retirement still
+	// blocks (PR-12, ADR-057's K4 clause).
+	if got[0].DecisionCite != "" || !got[0].Blocks() {
+		t.Errorf("uncited retirement: cite %q, blocks %v; want no cite and a block", got[0].DecisionCite, got[0].Blocks())
+	}
 }

@@ -2598,16 +2598,23 @@ never one, and a test moved unchanged to another changed file is not lost.
 
 ```text
 pin lost (silent, blocks): deleted TestBackendForPath_DuckDBLoudlyRefused, named by invariant_enforcement docs/intent/invariants.md:23 and still named there at head, TestBackendForPath_DuckDBOpensAsSQLite is new in its place (internal/store/backend_test.go:114)
-pin retired (review): deleted TestPinned, named at base by invariant_enforcement docs/intent/invariants.md:5; the source was edited and no longer names it
-integrity pins: 1 silent loss(es), 1 retired pin(s)
+pin retired without a decision cite (blocks): deleted TestOpenPlatform_LoneDuckDBFileErrorsLoud, named at base by invariant_enforcement docs/intent/invariants.md:23; the source was edited and no longer names it, but no decision record or dated decision line added in the range names it
+pin retired (review): deleted TestPinned, named at base by invariant_enforcement docs/intent/invariants.md:5; the source was edited and no longer names it; decision cite ADR.md:5
+integrity pins: 1 silent loss(es), 1 uncited retirement(s), 1 cited retirement(s)
 ```
 
-It exits 1 only on a **silent** loss: the lost test is still named by its
+It exits 1 on a **silent** loss: the lost test is still named by its
 source at head. A **retired** pin, whose naming source was edited in the
-range and no longer names it, is printed for review and exits 0. An input
-the check could not read exits 2, like any other operational failure; the
-pre-push step fails open on it. It combines with `--strict` (either can
-exit 1).
+range and no longer names it, also exits 1 unless the range cites a
+decision that names it (PR-12, ADR-057's K4 clause): a line added in the
+range that names the test and either sits in a decision record (`ADR.md`,
+`docs/adr/**`, `docs/intent/decisions/**`) or is a dated decision line (an
+ISO date and `decision`, `decided`, `retire`, `retired` or `retires` on the
+same line) in any changed file. A line under `docs/plans/**` never counts,
+and a line only moved is not added. A cited retirement is printed for
+review with its cite and exits 0. An input the check could not read exits
+2, like any other operational failure; the pre-push step fails open on it.
+It combines with `--strict` (either can exit 1).
 
 #### The reading set (design §3.4, ADR-044 amended 2026-09-25, Q22)
 

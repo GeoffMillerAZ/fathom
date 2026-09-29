@@ -7,7 +7,8 @@ Grammar v2 (`docs/plans/README.md`). A row flips to `[x]` only when
 
 The accepted core is the commit pin line (PR-1 to PR-7) with two ledger fixes that ride SR-61 (PR-10, PR-11) and
 JF-1 landing alone. PR-8 (a silent pin loss blocks at pre-push) was accepted on 2026-09-29 by the owner-architect and confirmed by the owner the same day (Q34
-answered); PR-9 builds it. PR-M0 is
+answered); PR-9 builds it. K4 fired on PR-M0's replay (O161): PR-12 exempts a retired pin only when the range
+cites a decision naming it. PR-M0 is
 a $0 replay that must pass before PR-3 is built (kill K1); PR-M1 is 30 days of record mode; PR-M2 is a bench that
 needs the owner's approval of about $76 (`docs/intent/autonomy.md`). The rows after "Deferred and refused" record
 what was considered so it is not re-proposed.
@@ -31,6 +32,7 @@ what was considered so it is not re-proposed.
 
 - [x] (op) PR-8: the owner accepts or rejects blocking a silent pin loss at pre-push, recorded on the `PR-8 decision.` line of ADR-057 (Q34) {id: PR-8, oracle: lexical, path: ADR.md, pattern: "^\*\*PR-8 decision\.\*\* (accepted|rejected)"}
 - [x] `fathom conserve --strict-plane integrity` exits 1 only on a loss whose naming source still names the test at head, prints a retired pin for review without failing, and lefthook's refactor-conserve uses it {id: PR-9, symbol: cmdConserve, package: cmd/fathom, reachable_from: TestConserveStrictIntegrityBlocksOnlySilentPinLoss, needs: "PR-1,PR-8"}
+- [x] A retired pin is exempt at pre-push only with a decision cite in the range: an added line naming the test in a decision record, or a dated decision line; plan rows never count (ADR-057 K4, O161) {id: PR-12, symbol: decisionCites, package: internal/conserve, reachable_from: TestPinLossRetirementNeedsDecisionCite, needs: "PR-9"}
 
 ## Wave 3: ledger rows that ride SR-61
 

@@ -2247,8 +2247,8 @@ tests being added) is what catches that, not a second reading of the prose.
   - **Actual:** all 58 transcripts under benchroot-raw-2026-09-23/guards-fathom-r{1,2} carry claude_code_version 2.1.278 and 2026-09-21 timestamps; the ledger records guards-pilot-6 on 2.1.273 and guards-pilot-8 on 2.1.274 (2026-09-17) and has rows whose run_id is literally guards-fathom-r1 (cbfbfeb7) and guards-fathom-r2 (05448187) matching the directories cell for cell; guards-fathom-r1's i28/control/t1 is graded violated where pilot 7's borrowed cell passed, so r1 cannot be pilot 7's either
   - **Repro:** grep -o 'claude_code_version":"[^"]*' <raw>/guards-fathom-r2/*/attempt-1/session-0-single.stream.jsonl | sort -u; jq -r 'select(.run_id|test("guards-(pilot-[68]|fathom-r[12])"))|[.run_id,.harness_version,.generated_at]|@tsv' docs/bench/scenarios-ledger.jsonl | sort -u
 - **Root cause:** CV-M1 inferred the run from a reading's borrowed-cell note, not from the ledger's run ids or the transcripts' harness version; pilot 6 ran at a023dc7, before 7150215e (O77) persisted cell diffs under raw, and pilot 8's raw directory was not kept in this root.
-- **Fix:** PR-M0 (`docs/bench/readings/served-not-kept/pr-m0-replay.md`) replays every guards cell on disk under its own run id and grades it against that run's ledger rows; CV-M1's measurements stand, its run label does not. Not yet corrected: the "pilot 8" wording in CV-M1, ADR-057's context and `docs/design/served-not-kept.md` section 2.
-- **Status:** open
+- **Fix:** PR-M0 (`docs/bench/readings/served-not-kept/pr-m0-replay.md`) replays every guards cell on disk under its own run id and grades it against that run's ledger rows; CV-M1's measurements stand, its run label does not. `cef40647` adds dated corrections (2026-09-29) naming guards-fathom-r2 where CV-M1's cells were called pilot 8: the CV-M1 reading (its file name kept so links hold), ADR-057's context and `docs/design/served-not-kept.md` (section 2 and PR-M0's scope in section 5). Statements from pilot 8's own reading (its i28 grades, the defeated detectors, 4 violations in 11 cells) are pilot 8's and stay.
+- **Status:** fixed (2026-09-29, `cef40647`)
 - **Impact:** the i28 evidence behind ADR-057 is real but belongs to guards-fathom-r2; a reader checking it against pilot 8's ledger rows or reading finds a different i28/control grade and cannot reconcile them.
 
 ### O161 — PR-9's retired-pin exemption passes 3 of the 5 i28 violations: the agent rewrote I28's row to name its new test, once with no decision record
@@ -2260,8 +2260,8 @@ tests being added) is what catches that, not a second reading of the prose.
   - **Actual:** r1 i28 control t1: invariants.md I28 row rewritten, no ADR.md change; r2 i28 control t2 and r2 i28 full t1: I28 row rewritten plus an ADR-025 amendment in the same diff; r1 i28 full t2 and r2 i28 full t2: source untouched, still named at head, so PR-9 blocks them
   - **Repro:** docs/bench/readings/served-not-kept/pr-m0-method: ./replay.sh then ./summarize.py; read the pin view column of part-a.tsv for the i28 rows
 - **Root cause:** by design (ADR-057 PR-8 decision): a loss whose naming source was edited in the range and no longer names the test at head is a retirement, printed for review. These agents predate any pin line and were not gaming; they rewrote the rule to match the behavior they had just changed, which is the case K4 and ADR-057's third revisit clause name.
-- **Fix:** none in PR-9 (built as accepted). The owner's call, per K4: whether the pre-push exemption should require a decision cite in the range (an ADR.md change would have exempted 2 of the 3; the plan files the agents also wrote would not count).
-- **Status:** open
+- **Fix:** none in PR-9 (built as accepted). K4's pre-specified response, taken as PR-12 (`c6394056`): a retired pin is exempt at pre-push only when a line added in the range names the lost test in a decision record (`ADR.md`, `docs/adr/**`, `docs/intent/decisions/**`) or on a dated decision line; a `docs/plans/**` line never counts. The r2 ADR-025 amendments name `BackendForPath`, not the lost test, so they do not exempt either. Replay: 5 of 5 violating i28 cells exit 1, the refused cell exits 0; no retirement in the last 50 guarded commits of main (`pr-m0-replay.md` addendum, `cef40647`). INC-26 records the incident
+- **Status:** fixed by PR-12 (2026-09-29, `c6394056`)
 - **Impact:** on this evidence the pre-push block stops 2 of 5 i28 violations; the pin line (PR-3) still names all 5, adding "its source was edited in this commit" for the 3.
 
 ### O162 — `tests select --safe` names 1119 tests for an additive one-field change to `integrity.GuardedInput`: the reach set widens through interface dispatch to every command test
@@ -2328,3 +2328,16 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** the dialect fixes the path length with `#match?` on the whole reference and walks to the last identifier with leading and sibling anchors, one pattern per length from one to eight (dialects/protobuf/tags.scm); a dialect that needs the last named child elsewhere should check lang-probe before trusting a trailing anchor
 - **Status:** open (worked around)
 - **Impact:** a query that relies on a trailing anchor silently over-captures (here every package segment became a callee: call precision, and file-resolved edges named by a package segment)
+
+### O180 — PR-9's silent-loss rule would block 2 of the last 50 guarded commits of main, each on one assertion call fewer in a pinned test
+
+- **Symptom:** PR-12's false-block check (ADR-057 revisit clause 2) ran `fathom conserve --since C^ --strict-plane integrity` over the last 50 commits touching a guarded test file or a pin's naming source; it found no retirement, but two commits exit 1 on `weakened` silent losses, a rule PR-9 already had
+- **Evidence:**
+  - **Tool:** `fathom conserve --strict-plane integrity` (PR-9's rule; PR-12 does not change it), `docs/bench/readings/served-not-kept/pr-m0-method/false-block-pr12.sh`
+  - **Expected:** CV-M2's 0 false losses in 50 commits (2026-09-24) to hold, or every block to be a real weakening
+  - **Actual:** `5b6e96cb` (EW-7, the wall-bound sweep): `TestDisabledFileCheckedBeforeStoreOpen` 7 to 6 assertion calls (I-row at invariants.md:82) and `TestGroup_StampedeOneBuildCtxAwareWaiters` 12 to 11 (invariants.md:80); `b3b8b1bc` (EW-16): `TestLefthook_PrePushVerifyReadsTheChangeRange` 6 to 5 (invariants.md:59). Both predate PR-9 (2026-09-28); the first-parent set of 50 shows no pin line at all
+  - **Repro:** `git worktree add --detach wt 5b6e96cbc7 && cd wt && fathom conserve --since 5b6e96cbc7^ --service fb --store <empty> --json`, then read the integrity plane's `weakened` findings
+- **Root cause:** not adjudicated. EW-7 replaced wall-clock bounds with CPU-time or progress bounds, so one assertion call fewer may be the change itself and not a weakening; `weakened` counts assertion calls and cannot tell
+- **Fix:** none. ADR-057's revisit clause 2: the owner adjudicates each block (name the loss kind). An explanation in the commit message does not unblock the pre-push step
+- **Status:** open (owner adjudication)
+- **Impact:** if both are false, PR-9's pre-push block misfires on 2 of 50 guarded commits (4 percent), all `weakened`; that is the K2-style signal for narrowing `weakened` at pre-push

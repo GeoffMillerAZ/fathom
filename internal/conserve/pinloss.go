@@ -21,7 +21,9 @@ package conserve
 // when Root is ""). The guarded set comes from this package's own base-side
 // helpers (scopeEvidenceAt, manifestCertifiesAt, invariantTestsAt,
 // guardDoneNeedsAt), the same ones the integrity plane uses, so the two can never disagree about what is
-// pinned. Output is sorted and deterministic.
+// pinned. Output is sorted and deterministic. A retirement (no naming source
+// still names the lost test at head) carries its decision cite, if the range
+// has one (PR-12, pinloss_cite.go); PinLoss.Blocks is the pre-push verdict.
 
 import (
 	"context"
@@ -111,11 +113,21 @@ type PinLoss struct {
 	// SourceEdited: a naming source was edited in the range (its file is in
 	// ChangedFiles, or a marker no longer sits on the test).
 	SourceEdited bool `json:"source_edited"`
+	// DecisionCite is "path:line" of a line added in the range that names the
+	// test as a decision (PR-12, pinloss_cite.go): in a decision record, or a
+	// dated decision line; never a docs/plans line. Looked for only on a
+	// retirement (StillNamedAtHead false); "" when there is none.
+	DecisionCite string `json:"decision_cite,omitempty"`
 }
 
-// Silent reports whether l blocks at pre-push (ADR-057's PR-8 decision): the
+// Silent reports whether l is a silent loss (ADR-057's PR-8 decision): the
 // test is lost while its naming source still names it at head.
 func (l PinLoss) Silent() bool { return l.StillNamedAtHead }
+
+// Blocks reports whether l blocks at pre-push: a silent loss, or a retirement
+// with no decision cite in the range (PR-12, ADR-057's K4 revisit clause,
+// O161). Only a cited retirement is printed for review and passes.
+func (l PinLoss) Blocks() bool { return l.StillNamedAtHead || l.DecisionCite == "" }
 
 // PinLosses returns every lost pin over in's range, sorted by test, kind and
 // base location. A read error is returned, never swallowed: a check that
@@ -202,6 +214,23 @@ func PinLosses(ctx context.Context, in PinLossInput) ([]PinLoss, error) {
 			return a.Line < b.Line
 		})
 		out = append(out, l)
+	}
+	var retired []string
+	for _, l := range out {
+		if !l.StillNamedAtHead {
+			retired = append(retired, l.Test)
+		}
+	}
+	if len(retired) > 0 {
+		cites := decisionCites(baseFile, headFile, in.ChangedFiles, retired)
+		if readErr != nil {
+			return nil, readErr
+		}
+		for i := range out {
+			if !out[i].StillNamedAtHead {
+				out[i].DecisionCite = cites[out[i].Test]
+			}
+		}
 	}
 	sort.SliceStable(out, func(i, j int) bool {
 		a, b := out[i], out[j]

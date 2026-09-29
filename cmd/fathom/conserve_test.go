@@ -408,10 +408,12 @@ func headSHAOf(t *testing.T, root string) string {
 }
 
 // TestConserveStrictIntegrityBlocksOnlySilentPinLoss pins PR-9 (ADR-057's
-// PR-8 decision): `fathom conserve --strict-plane integrity` exits 1 only on
-// a silent pin loss (the lost test is still named by its source at head),
-// prints a retired pin (its naming source dropped the name in the range) for
-// review and exits 0, and keeps exit 2 for an operational error.
+// PR-8 decision): `fathom conserve --strict-plane integrity` exits 1 on a
+// silent pin loss (the lost test is still named by its source at head),
+// prints a retired pin (its naming source dropped the name in the range)
+// that a decision in the range names for review and exits 0 (PR-12: an
+// uncited one blocks, TestConserveStrictIntegrityBlocksUncitedRetirement),
+// and keeps exit 2 for an operational error.
 func TestConserveStrictIntegrityBlocksOnlySilentPinLoss(t *testing.T) {
 	const pinned = "func TestPinned(t *testing.T) {\n\tif got := 1 + 1; got != 2 {\n\t\tt.Fatalf(\"got %d\", got)\n\t}\n}\n"
 	const replaced = "func TestReplaced(t *testing.T) {\n\tif got := 2 + 2; got == 5 {\n\t\tt.Fatalf(\"got %d\", got)\n\t}\n}\n"
@@ -451,15 +453,19 @@ func TestConserveStrictIntegrityBlocksOnlySilentPinLoss(t *testing.T) {
 		}
 	})
 
-	t.Run("retired pin is printed and passes", func(t *testing.T) {
+	t.Run("cited retirement is printed and passes", func(t *testing.T) {
 		repo, base := setup(t)
 		repo.writePlan("docs/intent/invariants.md", invariants("TestReplaced"))
+		repo.writePlan("ADR.md", "# Decisions\n\n## ADR-1: sums\n\nTestPinned retires: TestReplaced pins the new sum.\n")
 		code, stdout, stderr := run(t, repo, base, "--strict-plane", "integrity")
 		if code != 0 {
-			t.Fatalf("exit = %d, want 0 (I1 was edited to drop the name: retired); stdout=%s stderr=%s", code, stdout, stderr)
+			t.Fatalf("exit = %d, want 0 (I1 dropped the name and ADR.md names the retired test); stdout=%s stderr=%s", code, stdout, stderr)
 		}
-		if !strings.Contains(stdout, "retired") || !strings.Contains(stdout, "TestPinned") {
-			t.Errorf("stdout does not print the retired pin for review:\n%s", stdout)
+		for _, want := range []string{"pin retired (review)", "TestPinned", "decision cite ADR.md:5",
+			"integrity pins: 0 silent loss(es), 0 uncited retirement(s), 1 cited retirement(s)"} {
+			if !strings.Contains(stdout, want) {
+				t.Errorf("stdout lacks %q:\n%s", want, stdout)
+			}
 		}
 	})
 
@@ -506,6 +512,69 @@ func TestConserveStrictIntegrityBlocksOnlySilentPinLoss(t *testing.T) {
 		repo.writePlan("pkg/extra_test.go", "package pkg\n\nimport \"testing\"\n\n"+replaced)
 		if code, stdout, stderr := run(t, repo, base, "--strict-plane", "integrity"); code != 0 {
 			t.Errorf("exit = %d, want 0; stdout=%s stderr=%s", code, stdout, stderr)
+		}
+	})
+}
+
+// TestConserveStrictIntegrityBlocksUncitedRetirement pins PR-12 (ADR-057's K4
+// revisit clause, fired by O161): a retired pin, whose naming source was
+// edited in the range to drop the test, blocks unless a line added in the
+// range cites a decision naming it (in a decision record, or a dated decision
+// line); a docs/plans row never counts, the shape of the PR-M0 replay's r1
+// i28 cells.
+func TestConserveStrictIntegrityBlocksUncitedRetirement(t *testing.T) {
+	const pinned = "func TestPinned(t *testing.T) {\n\tif got := 1 + 1; got != 2 {\n\t\tt.Fatalf(\"got %d\", got)\n\t}\n}\n"
+	const replaced = "func TestReplaced(t *testing.T) {\n\tif got := 2 + 2; got == 5 {\n\t\tt.Fatalf(\"got %d\", got)\n\t}\n}\n"
+	invariants := func(test string) string {
+		return "# Invariants\n\n| # | Invariant | Enforced by | Source |\n|---|---|---|---|\n| I1 | sums hold | test `" + test + "` | ADR-1 |\n"
+	}
+	const adr = "# Decisions\n\n## ADR-1: sums\n\nSums hold.\n"
+	setup := func(t *testing.T) (*selfSkipGitRepo, string) {
+		repo := newSelfSkipGitRepo(t)
+		repo.writePlan("docs/intent/invariants.md", invariants("TestPinned"))
+		repo.writePlan("ADR.md", adr)
+		repo.writePlan("pkg/p_test.go", "package pkg\n\nimport \"testing\"\n\n"+pinned)
+		repo.commitAll("base commit")
+		base := headSHAOf(t, repo.root)
+		// The pinned test is replaced, and I1 is rewritten to name the new one.
+		repo.writePlan("pkg/p_test.go", "package pkg\n\nimport \"testing\"\n\n"+replaced)
+		repo.writePlan("docs/intent/invariants.md", invariants("TestReplaced"))
+		return repo, base
+	}
+	run := func(t *testing.T, repo *selfSkipGitRepo, base string) (int, string, string) {
+		storePath := filepath.Join(t.TempDir(), "conserve.sqlite")
+		return runInDir(t, repo.root, []string{"conserve", "--since", base, "--service", "svc", "--store", storePath, "--strict-plane", "integrity"})
+	}
+
+	t.Run("plan row only blocks", func(t *testing.T) {
+		repo, base := setup(t)
+		repo.writePlan("docs/plans/sums.md", "# Sums\n\n- [x] 2026-09-21 decision: replace TestPinned with TestReplaced {id: S-1}\n")
+		repo.writePlan("ADR.md", adr+"\n**Amended (2026-09-21).** ADR-1's sum changes.\n")
+		code, stdout, stderr := run(t, repo, base)
+		if code != 1 {
+			t.Fatalf("exit = %d, want 1 (no decision record or dated decision line names TestPinned); stdout=%s stderr=%s", code, stdout, stderr)
+		}
+		for _, want := range []string{
+			"pin retired without a decision cite (blocks): deleted TestPinned",
+			"invariant_enforcement docs/intent/invariants.md:5",
+			"no decision record or dated decision line added in the range names it",
+			"integrity pins: 0 silent loss(es), 1 uncited retirement(s), 0 cited retirement(s)",
+		} {
+			if !strings.Contains(stdout, want) {
+				t.Errorf("stdout lacks %q:\n%s", want, stdout)
+			}
+		}
+	})
+
+	t.Run("dated decision line passes", func(t *testing.T) {
+		repo, base := setup(t)
+		repo.writePlan("docs/intent/invariants.md", invariants("TestReplaced")+"\n- 2026-09-21: TestPinned retired; TestReplaced pins the new sum.\n")
+		code, stdout, stderr := run(t, repo, base)
+		if code != 0 {
+			t.Fatalf("exit = %d, want 0 (a dated decision line names TestPinned); stdout=%s stderr=%s", code, stdout, stderr)
+		}
+		if !strings.Contains(stdout, "decision cite docs/intent/invariants.md:7") {
+			t.Errorf("stdout does not name the cite:\n%s", stdout)
 		}
 	})
 }

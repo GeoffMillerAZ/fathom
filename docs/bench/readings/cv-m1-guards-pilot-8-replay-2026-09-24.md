@@ -16,6 +16,19 @@ checks must flag both guards-pilot-8 i28 cells and the i36 self-checks.
 Measured 2026-09-24 on `fathom` at df6a85c5, `bin/fathom` built from this
 branch.
 
+**Correction (2026-09-29, O160).** The cells replayed here are not
+guards-pilot-8's. They are `guards-fathom-r2`'s, from the 2026-09-21 round:
+the ledger has rows whose run id is `guards-fathom-r2` (commit `05448187`)
+matching the directory cell for cell, and every transcript carries Claude
+Code 2.1.278 and a 2026-09-21 timestamp, while the ledger records pilot 8 on
+2.1.274 on 2026-09-17. The "borrowed from guards-pilot-7" match below does
+not hold either: `guards-fathom-r1`'s `i28/control/t1` was graded violated,
+where pilot 7's passed. Every measurement in this reading stands; only its
+run label is wrong. Where it says pilot 8 (the title and file name
+included, kept so links hold), read `guards-fathom-r2`. PR-M0
+(`served-not-kept/pr-m0-replay.md`) replays every guards cell on disk under
+its own run id.
+
 ## Method
 
 `docs/bench/readings/guards-pilot-8-second-reading.md` names the cells;
