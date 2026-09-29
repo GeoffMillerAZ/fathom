@@ -45,16 +45,16 @@ shaped decisions, and the assumptions the design rests on.
   Source: law 6, `docs/vision/11-dial-to-eleven.md` §2.
 - **kill clock** — the 30-day zero-call window after which a tool is deleted; it starts
   only when a consumer population exists. Source: law 8; `docs/vision/05-surfaces.md`.
-- **decision-port site**: one typed judgment question shape (`route`, `certify_suggest`, `triage_failure`,
+- **decision-port site** — one typed judgment question shape (`route`, `certify_suggest`, `triage_failure`,
   `ask`, ...) that talks to a provider only when the repository lists it in `[decide] sites`; every site added
   after ADR-056 is opt-in. Source: ADR-042, ADR-056.
-- **judged**: the tier label on any decision-port answer shown to a reader: a model's judgment, uncalibrated
+- **judged** — the tier label on any decision-port answer shown to a reader: a model's judgment, uncalibrated
   until its (site, template, provider, resolved model) reading clears the bar, never a code fact or proof.
   Source: ADR-056, I62.
-- **exploration map**: an anchored record (symbol key plus content hash plus a why line) of which code matters for
+- **exploration map** — an anchored record (symbol key plus content hash plus a why line) of which code matters for
   a purpose, composable by reference and delivered at handoff rather than looked up; a live map is a saved query
   beside the semantic layers' claims. Source: ADR-056, `docs/design/exploration-maps.md`.
-- **pin / pin loss / pin line**: a *pin* is a test that a governing source names (an invariant's test column, a
+- **pin / pin loss / pin line** — a *pin* is a test that a governing source names (an invariant's test column, a
   `// certifies:` marker, a `tests/*.cue` manifest entry, a scope evidence line, a guard's `done needs:`); a
   *pin loss* is a commit that deletes, renames, weakens or skips it, changes its golden file or moves its marker
   (*silent* when its source still names it at head, *retired* when the same range edits the naming source); the
