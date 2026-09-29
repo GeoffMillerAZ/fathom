@@ -1,0 +1,23 @@
+// proto2: a group, an extension range, an extend inside a message and one at file level.
+syntax = "proto2";
+
+package acme.legacy;
+
+message Envelope {
+  optional group Header = 1 {
+    optional string id = 2;
+    optional Envelope parent = 3;
+  }
+  extensions 100 to 199;
+  extend Envelope {
+    optional Stamp stamp = 100;
+  }
+}
+
+message Stamp {
+  required int32 at = 1;
+}
+
+extend Envelope {
+  optional Stamp top_stamp = 101;
+}

@@ -1,0 +1,35 @@
+{
+  "id": "protobuf",
+  "display": "Protocol Buffers",
+  "kind": "tooling",
+  "engine": "tags",
+  "lang_tag": "proto",
+  "match": {
+    "extensions": [".proto"],
+    "basenames": [],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "grammar": { "blob": "protobuf", "entry_point": "tree_sitter_proto" },
+  "variants": [],
+  "queries": { "tags": "tags.scm", "imports": "imports.scm" },
+  "kinds": {
+    "message": { "source_kind": "ProtoMessage", "canonical": "message", "container": true, "callable": true },
+    "enum":    { "source_kind": "ProtoEnum",    "canonical": "enum",    "container": true },
+    "service": { "source_kind": "ProtoService", "canonical": "service", "container": true },
+    "rpc":     { "source_kind": "ProtoRPC",     "canonical": "rpc",     "callable": true }
+  },
+  "required_kinds": ["message", "enum", "service", "rpc"],
+  "oracle_kinds": {
+    "tool":  { "message": "message", "enum": "enum", "service": "service", "rpc": "rpc" },
+    "ctags": { "message": "message", "enum": "enum", "service": "service", "rpc": "rpc" }
+  },
+  "qualify": { "chain_containers": true, "container_sep": ".", "method_sep": "." },
+  "package": { "strategy": "dir" },
+  "imports": { "strategy": "file-symbol" },
+  "signature": { "max_chars": 200 },
+  "ctags": { "languages": ["Protobuf"] },
+  "target_level": "L3",
+  "queue_id": "protobuf"
+}

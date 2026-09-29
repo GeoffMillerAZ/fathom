@@ -1,0 +1,29 @@
+id: protobuf
+language: Protocol Buffers
+# Both subjects are cloned sparse to their .proto files and buf configs: protoc and the dialect read
+# nothing else, and grpc-go's Go tree is not needed to compile its protos.
+repos:
+  - name: grpc/grpc-go
+    url: https://github.com/grpc/grpc-go
+    ref: v1.84.0
+    sha: e84aa5ab15d1d2b29d54f838312ad490cb7551a8
+    licence: Apache-2.0
+    sparse: ["**/*.proto", "**/buf.yaml", "**/buf.gen.yaml", "**/buf.work.yaml"]
+    idioms:
+      - 'services with unary and streaming rpcs (stream request, stream response, both)'
+      - 'messages nesting messages and enums, referenced as Outer.Inner'
+      - 'package-qualified references to imported messages (grpc.testing.Empty)'
+      - 'oneof members and repeated fields of message type'
+      - 'imports rooted at the repository root and google/protobuf well-known types'
+  - name: bufbuild/protovalidate
+    url: https://github.com/bufbuild/protovalidate
+    ref: v1.2.2
+    sha: 4baed765070e580226a0a30bf2a357cc027dc1f7
+    licence: Apache-2.0
+    sparse: ["**/*.proto", "**/buf.yaml", "**/buf.gen.yaml", "**/buf.work.yaml", "**/buf.lock"]
+    idioms:
+      - 'proto2 extensions (extend google.protobuf.FieldOptions) and field options on every field'
+      - 'deeply nested oneofs of typed rule messages'
+      - 'map fields whose value is a message type'
+      - 'proto2, proto3 and editions files side by side (buf module roots under proto/)'
+      - 'imports rooted at buf module roots rather than the repository root'
