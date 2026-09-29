@@ -154,6 +154,11 @@ The `stanza_loaded` row:
 - In a repo with no root CLAUDE file, it SKIPs with this reason: "Claude Code (≥2.1.277) loads
   AGENTS.md through the agents-md setting without an InstructionsLoaded event; no harness-side
   evidence exists here; stanza_present covers the file side".
+- Where `stanza_present` WARNs that Claude Code will not load AGENTS.md (an ancestor CLAUDE file,
+  the `claude-md` setting, a release before 2.1.277), the same SKIP says so instead: "no
+  harness-side evidence exists here, and stanza_present warns Claude Code will not load
+  AGENTS.md: <its reasons>", with its remedies. The named reason above claims a load only where
+  nothing warns.
 - A beat for AGENTS.md arriving through a CLAUDE.md import PASSes.
 
 The InstructionsLoaded hook stays wired: it still fires for CLAUDE files, for imports, and for

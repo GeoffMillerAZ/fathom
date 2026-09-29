@@ -1510,7 +1510,8 @@ settings, or `claude --version` before 2.1.277; PASS names the load path),
 `stanza_loaded` (the harness-side twin of `stanza_present`, PC-25: PASS when an
 `InstructionsLoaded` beat names this repo's `AGENTS.md` or a root CLAUDE file,
 SKIP naming the wiring date when none does, and SKIP by name in a repository with
-no root CLAUDE file, where Claude Code loads `AGENTS.md` without the event — never
+no root CLAUDE file, where Claude Code loads `AGENTS.md` without the event, or with
+`stanza_present`'s warning and remedy when that warns Claude Code will not load it — never
 FAIL), `skills_installed` (resolving the `.agents/skills` link), `wiring_drift` (PC-29: hooks,
 stanza regions, each harness's MCP server entry — argv and env/header NAMES, never values —
 and `fathom:owned` skill files against the digests in `.fathom/owned.json`; PASS at zero
