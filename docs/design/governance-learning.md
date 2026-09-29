@@ -83,8 +83,8 @@ served by glob scope, so for a prose rule with no checkable condition these two 
 persistence and churn, not compliance: a repeat edit of the same file reads `violated` whether or not
 the edit complied. Every GL-10 reading built on them (the classes below, GL-11's counts) is read as
 "still served" and "top changed" until the events are renamed `still_served` and `top_changed` and
-`violated` is kept only for a rule with a checkable condition. Compliance for prose rules is not
-measured; judged compliance is refused (ADR-056, `docs/design/judged-telemetry.md` section 5).
+`violated` is dropped (amended 2026-09-29, ADR-057: a checkable rule denies and records `blocked`, and the
+tracker evaluates no check). Compliance for prose rules is not measured; judged compliance is refused (ADR-056, `docs/design/judged-telemetry.md` section 5).
 
 **Rule effectiveness** is a projection: per rule, counts and rates over a window, with n.
 Classes, each with a computed remedy shown as a proposal:
@@ -152,6 +152,17 @@ proceed:
   additively;
 - `as_of` is accepted by `memory_search`, `staleness_report`, `obligations` (exists) and the
   review verbs, answering "what did we know on date D".
+
+### 7.1 A knowledge-health panel (GL-23)
+
+One console view answers "which of what fathom knows is stale, superseded but still fresh, never served or
+contradicted?": stale claims (`staleness_report`); claims whose deciding record was superseded but that still read
+fresh (`valid_to` closes them once GL-16 and GL-17 land; finding 8 of
+`docs/assessments/2026-09-28-semantic-layers-evidence.md`); claims never served (the per-rule counts of GL-10, read
+by GL-18); and contradicted claims. Each count links to the instrument that produced it. It is a view over
+instruments that exist or are planned, never a new verb (law 4) and never a new store. It came from the Claude OS
+comparison's "knowledge-health report" borrow (`docs/assessments/2026-09-27-fathom-and-claude-os.md`, ADR-049
+amendment 2026-09-29).
 
 ## 8. Reviewer output
 

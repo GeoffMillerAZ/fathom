@@ -121,9 +121,10 @@ top claim changed. Rules are served by glob scope, so a prose rule with no check
 fires on a recompile or scope churn. The signal measures scope persistence and churn.
 
 **Change.** Rename the events to `still_served` and `top_changed` in the tracker and in every reader
-(the rule-outcome report, config propose, config audit and the config-change hook); keep `violated`
-only for a rule with a checkable condition, if any exists; read existing ledger rows under their new
-names and never drop them; re-label the GL-10 readings (a correction note in
+(the rule-outcome report, config propose, config audit and the config-change hook); drop `violated`
+(amended 2026-09-29, ADR-057: the tracker evaluates no check, a checkable rule denies and records `blocked`
+(PR-10), and pin losses have their own beat, so the name would have no writer and would invite the defect
+back); read existing ledger rows under their new names and never drop them; re-label the GL-10 readings (a correction note in
 `docs/design/governance-learning.md`); file the defect with `fathom observe`. Cost $0; it does not
 depend on any provider.
 

@@ -13,7 +13,7 @@ a table or a new tool. The rows sit beside `docs/plans/decision-port.md` (DP), `
 
 ## Wave 0: the instrument and the guards (sections 4 to 7)
 
-- [ ] A1: the rule-outcome tracker emits `still_served` (was `violated`) and `top_changed` (was `complied`); `violated` is kept only for a rule with a checkable condition (section 5) {id: JF-1, symbol: trackRuleOutcomeAt, package: cmd/fathom, reachable_from: TestRuleOutcomeRepeatEditEmitsStillServedNeverViolated, needs: "surface-reckoning.md#SR-61"}
+- [ ] A1: the rule-outcome tracker emits `still_served` (was `violated`) and `top_changed` (was `complied`); `violated` is dropped, because the tracker evaluates no check: a checkable rule denies and records `blocked` (PR-10), and pin losses have their own beat (section 5, ADR-057) {id: JF-1, symbol: trackRuleOutcomeAt, package: cmd/fathom, reachable_from: TestRuleOutcomeRepeatEditEmitsStillServedNeverViolated, needs: "surface-reckoning.md#SR-61"}
 - [ ] A1: every reader of the old event names (the rule-outcome report, config propose, config audit, the config-change hook) reads the new names, and existing ledger rows are read under their new names, never dropped {id: JF-2, symbol: recordRuleOutcome, package: cmd/fathom, reachable_from: TestRuleOutcomeReadersMapOldEventNames, needs: "JF-1"}
 - [x] A1: the GL-10 readings are re-labeled: the governance-learning design carries the correction that the old events measured scope persistence, not compliance {id: JF-3, oracle: lexical, path: docs/design/governance-learning.md, pattern: "Correction 2026-09-29"}
 - [x] A1: the defect is filed with `fathom observe` (O120), so the mislabeled instrument is on the live log {id: JF-22, oracle: lexical, path: .fathom/observations.md, pattern: "^### O120 "}
