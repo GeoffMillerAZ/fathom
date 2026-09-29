@@ -311,6 +311,12 @@ func TestHTTPAnchorIndexAsksFindSymbol(t *testing.T) {
 		t.Errorf("find_symbol was asked %v; want the qualified query, then its bare name", asked)
 	}
 
+	// find_symbol's answer carries no package name, so the Go spelling
+	// package.Name resolves through the directory's tail (design section 2).
+	if m, err := r.resolveAnchor("fusion.ResolveImportSpecs"); err != nil || m.Key != "internal/fusion.ResolveImportSpecs" || m.Tier != explmap.AnchorPackage {
+		t.Errorf("resolveAnchor(fusion.ResolveImportSpecs) = %+v, %v; want the fusion symbol at the package tier", m, err)
+	}
+
 	var amb *explmap.AmbiguousAnchorError
 	if _, err := r.resolveAnchor("ResolveImportSpecs"); !errors.As(err, &amb) || amb.Total != 2 {
 		t.Errorf("the bare name of two symbols: %v, want an ambiguity error listing both", err)

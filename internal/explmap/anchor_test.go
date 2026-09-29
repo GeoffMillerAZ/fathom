@@ -99,6 +99,16 @@ func TestMapAnchorResolvesLikeFindSymbol(t *testing.T) {
 		}
 	}
 
+	// A daemon's find_symbol answer names no package: package.Name is then
+	// the tail of the directory at a path boundary.
+	daemon := []core.SymbolNode{anchorNode("", "Spec", "cmd/a/b/x.go", 2, 4), anchorNode("", "Spec", "cmd/c/x.go", 5, 6)}
+	for _, q := range []string{"b.Spec", "a/b.Spec"} {
+		got, err := ResolveAnchorSymbol(daemon, q)
+		if err != nil || got.Key != "cmd/a/b.Spec" || got.Tier != AnchorPackage {
+			t.Errorf("ResolveAnchorSymbol(%q) over package-less nodes = %+v, %v; want cmd/a/b.Spec at the package tier", q, got, err)
+		}
+	}
+
 	// No match at any tier is a miss.
 	for _, q := range []string{"NoSuchThing", "fusion.NoSuchThing", "", "   ", "a b"} {
 		if _, err := ResolveAnchorSymbol(anchorNodes(), q); !errors.Is(err, ErrAnchorNotFound) {

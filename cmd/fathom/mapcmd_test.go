@@ -362,6 +362,24 @@ func TestMapNamedByThePlannerOutlivesTheSessionThatFiledIt(t *testing.T) {
 	if life["kept"] != "permanent" {
 		t.Errorf("kept (named before the session ended) = %q in %v, want permanent and listed", life["kept"], life)
 	}
+	// The read that ended scratch wrote its closure row; a named map's header
+	// is never closed (design section 2, XM-32).
+	rows := loadThreadRowsRaw(threadsPath())
+	mapOfHeader := map[string]string{}
+	for _, r := range rows {
+		if r.Kind == mapHeaderKind {
+			mapOfHeader[r.ID] = r.Pointers["map"]
+		}
+	}
+	closed := map[string]bool{}
+	for _, r := range rows {
+		if id, ok := mapOfHeader[r.ID]; ok && r.ClosedAt != "" {
+			closed[id] = true
+		}
+	}
+	if closed["kept"] || !closed["scratch"] {
+		t.Errorf("closure rows for %v; want scratch's and never kept's (named before its condition held)", closed)
+	}
 	if _, listed := life["scratch"]; listed {
 		t.Errorf("scratch (never named) is still listed after its session ended: %v", life)
 	}
