@@ -44,6 +44,12 @@ type HookInput struct {
 	// AgentType is the subagent's type on the subagent-start event
 	// (Claude Code: agent_type); "" when the harness does not name one.
 	AgentType string
+	// AgentID is the new subagent's own id on the subagent-start event
+	// (Claude Code: agent_id). It is the only moment fathom sees the id: the
+	// subagent's Bash environment does not carry it, and a subagent that
+	// files exploration-map entries needs it for `--agent` (XM-8, XM-14).
+	// "" on every other event and when the harness does not name one.
+	AgentID string
 	// ToolError is the failure message on the tool-failure event.
 	ToolError string
 	// ToolOutput is the text a shell tool call printed (TR-2, TR-V1):
@@ -248,6 +254,7 @@ func (c claudeCodec) DecodeInput(ev Event, raw []byte) (HookInput, error) {
 		in.FilePath = env.FilePath
 	case EventSubagentStart:
 		in.AgentType = env.AgentType
+		in.AgentID = env.AgentID
 		in.Source = env.AgentID
 	case EventToolFailure:
 		in.ToolError = env.Error

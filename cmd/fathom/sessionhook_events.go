@@ -52,8 +52,10 @@ const subagentPrimerCut = " …[cut at the subagent primer's byte cap]"
 // (Claude Code's subagent-start hook fires inside the parent's session,
 // never a subagent-minted one of its own), used to look up that session's
 // recorded start (sessionStartFor) so the discoveries brief covers
-// exactly what the parent had established, not an arbitrary window.
-func subagentPrimer(baseURL, projDir, parentSessionID string) string {
+// exactly what the parent had established, not an arbitrary window. agentID is
+// the new sub-agent's own id from the same event (XM-8): the one place fathom
+// can tell the sub-agent the id it files map entries under.
+func subagentPrimer(baseURL, projDir, parentSessionID, agentID string) string {
 	name, info, ok := subagentIdentity(baseURL, projDir, parentSessionID)
 	if !ok {
 		return ""
@@ -80,20 +82,15 @@ func subagentPrimer(baseURL, projDir, parentSessionID string) string {
 	}
 	// RC-28: the parent's discoveries since its own recorded start, within
 	// 1200 bytes TOTAL — the constant 600-byte primer above stays the cap
-	// when there is nothing to append (subagentPrimerBudget).
+	// when there is nothing to append (subagentPrimerBudget). XM-8: the one
+	// map id the parent filed rides at the head of that chunk, inside the same
+	// cap, and joinSubagentPrimer lets the brief yield bytes before the id does.
 	budget := subagentPrimerBudget
-	if disc := subagentDiscoveries(baseURL, projDir, name, parentSessionID, time.Now()); disc != "" {
-		primer += "\n" + disc
+	disc := subagentDiscoveries(baseURL, projDir, name, parentSessionID, agentID, subagentDiscoveriesPrimerBudget-len(primer)-1, time.Now())
+	if disc != "" {
 		budget = subagentDiscoveriesPrimerBudget
 	}
-	if len(primer) > budget {
-		keep := budget - len(subagentPrimerCut)
-		if keep < 0 {
-			keep = 0
-		}
-		primer = primer[:keep] + subagentPrimerCut
-	}
-	return primer
+	return joinSubagentPrimer(primer, disc, budget)
 }
 
 // subagentDiscoveriesPrimerBudget is the SubagentStart primer's TOTAL cap

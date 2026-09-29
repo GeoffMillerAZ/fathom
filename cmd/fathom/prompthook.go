@@ -131,6 +131,7 @@ func cmdPromptHook(args []string, stdout, stderr io.Writer) int {
 	// obligations resolves, e.g. "why does X crash", is still routable).
 	route := routeLineFor(&http.Client{Timeout: deadlineRemaining(deadline)}, url, prompt, deadline)
 	text, ok = combineWithRouteLine(text, ok, route)
+	text, ok = withPromptMapPointer(projDir, prompt, sessionID, text, ok) // XM-11: one line naming an exploration map this prompt's paths or symbols lie in, once per session, daemon-free (maphooks.go)
 	if !ok {
 		return 0 // nothing resolved and no route line either — silence contract
 	}
