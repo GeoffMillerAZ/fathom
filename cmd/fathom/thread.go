@@ -432,6 +432,7 @@ func cmdThreadNote(args []string, stdout, stderr io.Writer) int {
 	agent := fs.String("agent", "", "with --map: the appending sub-agent's id, recorded as the entry's provenance")
 	storePath := fs.String("store", "", "with --map: resolve a symbol anchor from this store (default: the daemon)")
 	url := fs.String("url", defaultFathomURL(), "with --map: fathom daemon URL for a symbol anchor")
+	service := fs.String("service", "", "with --map: the service a symbol anchor resolves in (default: the one the daemon names for this repository)")
 	mapRefs := fs.String("map-ref", "", "reference these exploration maps (space- or comma-separated ids) from the note: the session brief re-surfaces them when work on the thread resumes (XM-13)")
 	if err := fs.Parse(args); err != nil {
 		return 1
@@ -446,7 +447,7 @@ func cmdThreadNote(args []string, stdout, stderr io.Writer) int {
 	if *mapID != "" {
 		return cmdThreadNoteMap(mapEntryFlags{
 			mapID: *mapID, anchor: *anchor, why: *why, lead: lead, agent: *agent,
-			thread: *thread, completes: *completes, repo: *repo, store: *storePath, url: *url,
+			thread: *thread, completes: *completes, repo: *repo, store: *storePath, url: *url, service: *service,
 		}, stdout, stderr)
 	}
 	if strings.TrimSpace(lead) == "" {

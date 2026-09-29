@@ -77,6 +77,38 @@ for an isolated worker, and the surface reckoning asks a measured case before a 
 tool the hook's push form covered). `TestDefaultSurfaceUnchangedByMap` pins the default at its eight and fails a
 map-shaped tool that is not on the extended surface.
 
+**As built (naming, XM-32, 2026-09-29).** "Named" is what makes a map durable, and the lifetime rule now says
+so in one place: `Map.Ended` is false for a named map, so `mapLifetime` and the alive test read a named map as
+permanent (and as keeping what it includes) whether its filing condition (the session-end default, a
+`--completes-when`) held before the name or after it. Before this the rule tested "ended" ahead of "named", and
+`map name` restated the header with the first header's `completes_when` carried forward, so a map the planner
+named at the end of a session was gone from the next session's brief and resume (O143). Naming does not rewrite
+the condition (the threads fold carries a restated header's missing `completes_when` forward from the previous
+row, so dropping it would not stick); the header keeps it as a record, the closure row is not written for a named
+map, and a map named after its session ended comes back. Unnamed maps end as before.
+
+**As built (anchors, XM-31, 2026-09-29).** A symbol anchor is resolved by `explmap.ResolveAnchorSymbol`, one
+function over an index's symbols with `find_symbol`'s ladder (exact, a bare method name, `package.Name`,
+case-insensitive; the first tier that matches anything decides), used by the append and by the read-time
+re-resolution alike. The entry stores the canonical `dir.Name` key whatever spelling was typed (the typed one stays
+as its `anchor`), so one symbol has one key and a Type.Method symbol is no longer cut through its method at the
+last dot. Ambiguity is an error that lists candidates, never first-match-wins; an index that could not be reached
+(the service unnamed, the daemon warming or down, the store unusable) is its own error with the cause and the
+retry, never "does not resolve". The store path lists the service's symbols; the daemon path asks `find_symbol`
+for the query and its bare name and applies the same tiers to the answer, which carries no package name, so its
+`package.Name` tier reads the directory's tail. Read-time re-resolution of a key filed before this change works
+through the same tiers, and `map show` and `map compose` take `--service` as an append does, so a worker in an
+isolated clone reads its map through its own scratch store.
+
+**As built (dedupe on append, XM-33, 2026-09-29).** Resolution already merged entries with one dedup key at read
+time; the append now checks the map's own entries by that key (a symbol key without its `svc::` prefix, or a
+span, plus the content hash) before it files. A repeated why files nothing. A different why is still a row in
+the log, since an append adds and never edits, but a row that names the entry it annotates (`annotates`), and the
+read folds it into that entry's `Notes` (why, agent id, session, time), so the map holds one entry per anchor and
+every hook that quotes an entry count counts it once. Notes serve as annotations after the entry's own why, the
+same rule as a farther map's. Included maps are not consulted at append: a base's entry and a top map's entry of
+one anchor stay two rows that resolution merges, as XM-4 says. Rows filed before this are not rewritten.
+
 ## 3. Live maps and semantic layers are complementary (binding)
 
 They live on different axes. A semantic layer says what is TRUE or BINDING about code (governed claims:

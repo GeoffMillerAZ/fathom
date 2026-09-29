@@ -78,6 +78,35 @@ type Entry struct {
 	// Commit is the repository HEAD at filing: the base a stale entry's diff
 	// size is measured against.
 	Commit string
+	// Notes are later why lines filed for the same anchor on the same map
+	// (XM-33): an append of an anchor the map already carries does not make a
+	// second entry, it adds a note here, with its provenance, in filing order.
+	Notes []Note
+}
+
+// Note is one later why line for an entry already on the map, with the
+// provenance it was filed with.
+type Note struct {
+	Why     string
+	AgentID string
+	Session string
+	FiledAt time.Time
+}
+
+// CarriesWhy reports whether the entry's own why or one of its notes already
+// says why (compared as one trimmed line): a why that is already there adds
+// nothing.
+func (e Entry) CarriesWhy(why string) bool {
+	why = strings.TrimSpace(why)
+	if strings.TrimSpace(e.Why) == why {
+		return true
+	}
+	for _, n := range e.Notes {
+		if strings.TrimSpace(n.Why) == why {
+			return true
+		}
+	}
+	return false
 }
 
 // SpanRef is the entry's span as a citation, `path#Lx-Ly`.
@@ -88,12 +117,13 @@ func (e Entry) SpanRef() string {
 	return core.CiteRef(e.Path, e.Start, e.End)
 }
 
-// Key is the dedup key of resolution (XM-4): the anchor (the symbol key when
-// the entry names a symbol, else its span) plus the content hash. Two entries
-// with one key name the same code in the same state, whoever filed them.
+// Key is the dedup key of resolution (XM-4) and of an append (XM-33): the anchor
+// (the symbol key when the entry names a symbol, its service prefix dropped,
+// else its span) plus the content hash. Two entries with one key name the same
+// code in the same state, whoever filed them.
 func (e Entry) Key() string {
 	if e.Symbol != "" {
-		return "sym:" + e.Symbol + "@" + e.Hash
+		return "sym:" + NormalizeSymbol(e.Symbol) + "@" + e.Hash
 	}
 	return "span:" + e.SpanRef() + "@" + e.Hash
 }
@@ -109,7 +139,8 @@ type IncludeDrop struct {
 type Map struct {
 	ID   string
 	Kind Kind
-	// Name makes a map named: durable, and never without a Purpose (XM-7).
+	// Name makes a map named: durable (XM-32: it outlives the condition it was
+	// filed under), and never without a Purpose (XM-7).
 	Name string
 	// Purpose is the question the map answers (authored, one line).
 	Purpose string
@@ -126,17 +157,32 @@ type Map struct {
 	// LastUsed is the latest write to the map (an append, a header change).
 	LastUsed time.Time
 	// EndedAt is when the map's own thread condition held or it was closed;
-	// zero while it has not ended.
+	// zero while it has not ended. A named map records it and is still not
+	// Ended (see Ended).
 	EndedAt time.Time
 	// Drops are the includes this map stopped carrying.
 	Drops []IncludeDrop
 }
 
+// OwnEntry finds the map's own entry (not an included map's) with the given
+// dedup key: the first one filed.
+func (m Map) OwnEntry(key string) (Entry, bool) {
+	for _, e := range m.Entries {
+		if e.Key() == key {
+			return e, true
+		}
+	}
+	return Entry{}, false
+}
+
 // Named reports whether the map carries a name.
 func (m Map) Named() bool { return strings.TrimSpace(m.Name) != "" }
 
-// Ended reports whether the map's own condition has ended it.
-func (m Map) Ended() bool { return !m.EndedAt.IsZero() }
+// Ended reports whether the map's own condition has ended it. A named map is
+// never ended (XM-32, O143): naming is what makes a map durable, so the
+// condition a run filed it under (the end of that session) does not end it,
+// whether the name came before the condition held or after.
+func (m Map) Ended() bool { return !m.EndedAt.IsZero() && !m.Named() }
 
 // Lookup finds a map by id.
 type Lookup interface {

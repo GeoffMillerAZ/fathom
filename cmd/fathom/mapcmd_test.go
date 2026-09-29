@@ -126,11 +126,12 @@ func TestThreadNoteMapEntryAnchoredWithHash(t *testing.T) {
 	}
 
 	// A symbol anchor records the key and hashes the span it resolves to.
-	it, err := appendMapEntry(mapEntryRequest{Map: "run-1", Anchor: "a.Handle", Why: "entry", Root: repo, Now: time.Now()},
+	res, err := appendMapEntry(mapEntryRequest{Map: "run-1", Anchor: "a.Handle", Why: "entry", Root: repo, Now: time.Now()},
 		fakeSyms{"a.Handle": {"a.go", 3, 5}})
 	if err != nil {
 		t.Fatalf("symbol anchor: %v", err)
 	}
+	it := res.Item
 	if it.Pointers["symbol"] != "a.Handle" || it.Pointers["span"] != "a.go#L3-L5" || it.Pointers["hash"] != want {
 		t.Errorf("symbol entry = %v", it.Pointers)
 	}
@@ -167,8 +168,9 @@ func TestThreadNoteMapEntryAnchoredWithHash(t *testing.T) {
 // TestSubagentAppendCarriesAgentIDProvenance pins XM-14: a sub-agent appends
 // to a map with its agent id as provenance, an append never edits an existing
 // entry (the parent's row is byte-identical afterwards, and the same anchor
-// with another why is a second entry), a composite refuses entries, and a
-// composite a sub-agent mints and passes down carries references only.
+// with another why is a second row, a note on that entry: XM-33), a composite
+// refuses entries, and a composite a sub-agent mints and passes down carries
+// references only.
 func TestSubagentAppendCarriesAgentIDProvenance(t *testing.T) {
 	repo := mapRepo(t)
 	if code, _, errs := runCLI(t, threadCLI, "note", "--map", "plan", "--anchor", "a.go#L3-L5", "--why", "the handler", "--repo", repo); code != 0 {
@@ -183,7 +185,10 @@ func TestSubagentAppendCarriesAgentIDProvenance(t *testing.T) {
 	}
 	entries := mapRows(t, mapEntryKind)
 	if len(entries) != 2 {
-		t.Fatalf("entry rows = %d, want 2: an append adds, never edits", len(entries))
+		t.Fatalf("rows = %d, want 2: an append adds a row, never edits one", len(entries))
+	}
+	if entries[1].Pointers["annotates"] != entries[0].ID {
+		t.Errorf("the sub-agent's row annotates %q, want the parent's entry %s: the same anchor is one entry with a note, not a second entry", entries[1].Pointers["annotates"], entries[0].ID)
 	}
 	if entries[0].ID == entries[1].ID {
 		t.Fatalf("the sub-agent's append reused the parent's row id %s", entries[0].ID)
@@ -196,10 +201,13 @@ func TestSubagentAppendCarriesAgentIDProvenance(t *testing.T) {
 		t.Errorf("provenance = parent %q, sub-agent %q; want none and agent-7", entries[0].Pointers["agent_id"], entries[1].Pointers["agent_id"])
 	}
 
-	// Both annotations survive resolution, with their provenance.
+	// Both annotations survive resolution, with their provenance: one entry,
+	// the sub-agent's why a note on it.
 	set := loadMapSet(repo, time.Now())
-	if got := len(set.maps["plan"].Entries); got != 2 {
-		t.Fatalf("map entries = %d, want 2", got)
+	plan := set.maps["plan"]
+	if len(plan.Entries) != 1 || len(plan.Entries[0].Notes) != 1 || plan.Entries[0].Notes[0].AgentID != "agent-7" ||
+		plan.Entries[0].Notes[0].Why != "where errors are swallowed" {
+		t.Fatalf("map entries = %+v, want one entry carrying agent-7's why as a note", plan.Entries)
 	}
 
 	// The sub-agent files its own map and mints a composite to pass down.
@@ -303,5 +311,176 @@ func TestMapNameRestatementKeepsWhatItDoesNotRestate(t *testing.T) {
 	m := loadMapSet(repo, time.Now()).maps["auth"]
 	if m.Name != "Auth surface" || m.WhenToUse != "before touching auth" || m.Purpose != "Where is the token checked and refreshed?" {
 		t.Errorf("after a purpose-only restatement: name %q, when %q, purpose %q; want the name and when line kept", m.Name, m.WhenToUse, m.Purpose)
+	}
+}
+
+// TestMapNamedByThePlannerOutlivesTheSessionThatFiledIt pins XM-32 (O143)
+// through the product: a map filed with the default session-end condition and
+// then named stays listed, and is served by the hooks, after that session's
+// end note exists; a map named only after its session ended is durable from
+// then; an unnamed map filed the same way ends.
+func TestMapNamedByThePlannerOutlivesTheSessionThatFiledIt(t *testing.T) {
+	repo := mapRepo(t)
+	for _, id := range []string{"kept", "late", "scratch"} {
+		if code, _, errs := runCLI(t, mapCLI, "new", id, "--purpose", "Where is "+id+" handled?", "--repo", repo); code != 0 {
+			t.Fatalf("new %s: %s", id, errs)
+		}
+		if code, _, errs := runCLI(t, threadCLI, "note", "--map", id, "--anchor", "a.go#L3-L5", "--why", "the handler", "--repo", repo); code != 0 {
+			t.Fatalf("entry on %s: %s", id, errs)
+		}
+	}
+	if code, out, errs := runCLI(t, mapCLI, "name", "kept", "--purpose", "Where is kept handled?", "--repo", repo); code != 0 {
+		t.Fatalf("name kept: %s", errs)
+	} else if !strings.Contains(out, "durable") {
+		t.Errorf("name output = %q, want it to say the map is durable now", out)
+	}
+
+	// The planner's session ends.
+	seedItem(t, "se-parent", "session-end", "session ended", func(it *threadItem) {
+		it.Pointers = map[string]string{"session_id": "sess-parent"}
+	})
+
+	list := func() map[string]string {
+		t.Helper()
+		code, out, errs := runCLI(t, mapCLI, "list", "--json", "--repo", repo)
+		if code != 0 {
+			t.Fatalf("list: %s", errs)
+		}
+		var got struct {
+			Maps []struct{ ID, Lifetime string } `json:"maps"`
+		}
+		if err := json.Unmarshal([]byte(out), &got); err != nil {
+			t.Fatalf("list json: %v\n%s", err, out)
+		}
+		life := map[string]string{}
+		for _, m := range got.Maps {
+			life[m.ID] = m.Lifetime
+		}
+		return life
+	}
+	life := list()
+	if life["kept"] != "permanent" {
+		t.Errorf("kept (named before the session ended) = %q in %v, want permanent and listed", life["kept"], life)
+	}
+	if _, listed := life["scratch"]; listed {
+		t.Errorf("scratch (never named) is still listed after its session ended: %v", life)
+	}
+	if _, listed := life["late"]; listed {
+		t.Errorf("late (not named yet) is still listed after its session ended: %v", life)
+	}
+
+	// Naming a map after its session ended makes it durable from then.
+	if code, _, errs := runCLI(t, mapCLI, "name", "late", "--purpose", "Where is late handled?", "--repo", repo); code != 0 {
+		t.Fatalf("name late: %s", errs)
+	}
+	life = list()
+	if life["late"] != "permanent" {
+		t.Errorf("late (named after the session ended) = %q in %v, want permanent", life["late"], life)
+	}
+
+	// The next session hears of the durable maps (the hooks that deliver maps
+	// read this set: the brief, the pre-compact resume, the location pointer)
+	// and not of the ended one.
+	set := loadMapSet(repo, time.Now())
+	states := explmap.Lifetimes(set.maps)
+	if states["kept"].State != explmap.Permanent || states["late"].State != explmap.Permanent || states["scratch"].State != explmap.Ended {
+		t.Errorf("lifetimes = kept %s, late %s, scratch %s; want permanent, permanent, ended",
+			states["kept"].State, states["late"].State, states["scratch"].State)
+	}
+	_, alive := loadAliveMaps(repo, time.Now())
+	if strings.Join(alive, " ") != "kept late" && strings.Join(alive, " ") != "late kept" {
+		t.Errorf("the hooks' alive maps = %v, want kept and late only", alive)
+	}
+}
+
+// TestMapAppendDedupesByAnchorKey pins XM-33 (O149) through the product verbs:
+// an append of an anchor the map already carries files no second entry. The same
+// why adds nothing at all; another why (or the same code under another
+// spelling of its symbol) becomes a note on the first entry with its own
+// provenance, and the first entry's row is never touched. Code that changed
+// since the first entry is another entry, and another anchor is another entry.
+func TestMapAppendDedupesByAnchorKey(t *testing.T) {
+	repo := mapRepo(t)
+	withMapIndex(t, &mapIndexHarness{service: "svc", open: fixedIndex(
+		tableNode("a", "Handle", "a.go", 3, 5), tableNode("a", "Other", "a.go", 7, 7))})
+	rows := func() int { return len(loadThreadRowsRaw(threadsPath())) }
+	app := func(id, anchor, why string, extra ...string) (int, string, string) {
+		args := append([]string{"append", id, "--anchor", anchor, "--why", why, "--repo", repo, "--service", "svc"}, extra...)
+		return runCLI(t, mapCLI, args...)
+	}
+
+	if code, _, errs := app("m", "a.go#L3-L5", "the handler"); code != 0 {
+		t.Fatalf("first append: %s", errs)
+	}
+	first := mapRows(t, mapEntryKind)[0]
+	firstJSON, _ := json.Marshal(first)
+
+	// The same anchor and the same why: nothing is filed, and it is said.
+	before := rows()
+	code, out, errs := app("m", "a.go#L3-L5", "the handler")
+	if code != 0 || rows() != before || !strings.Contains(out, "already") || !strings.Contains(out, first.ID) {
+		t.Errorf("same anchor, same why: exit %d, %d new rows, %q %q; want 0 rows and an 'already on the map' line naming %s", code, rows()-before, out, errs, first.ID)
+	}
+
+	// Another why, by a sub-agent: a note on the first entry with its provenance.
+	code, out, errs = app("m", "a.go#L3-L5", "where errors are swallowed", "--agent", "agent-7")
+	if code != 0 || !strings.Contains(out, "annotated") || !strings.Contains(out, first.ID) {
+		t.Fatalf("same anchor, another why: exit %d, %q %q; want an 'annotated' line naming %s", code, out, errs, first.ID)
+	}
+	m := loadMapSet(repo, time.Now()).maps["m"]
+	if len(m.Entries) != 1 || len(m.Entries[0].Notes) != 1 || m.Entries[0].Notes[0].AgentID != "agent-7" {
+		t.Fatalf("entries = %+v, want one entry with agent-7's note", m.Entries)
+	}
+	if now := mapRows(t, mapEntryKind)[0]; func() bool { b, _ := json.Marshal(now); return string(b) != string(firstJSON) }() {
+		t.Errorf("the first entry's row changed: an append never edits an existing entry")
+	}
+
+	// That why again, from another agent: nothing new to say.
+	before = rows()
+	if code, out, _ := app("m", "a.go#L3-L5", "where errors are swallowed", "--agent", "agent-8"); code != 0 || rows() != before || !strings.Contains(out, "already") {
+		t.Errorf("a repeated note: exit %d, %d new rows, %q; want none", code, rows()-before, out)
+	}
+
+	// The same symbol in every spelling is one entry: it is filed once, and the
+	// rest are already there (the same why) or notes (another why).
+	if code, _, errs := app("sym", "Handle", "the entry"); code != 0 {
+		t.Fatalf("symbol append: %s", errs)
+	}
+	before = rows()
+	for _, spelling := range []string{"a.Handle", "handle", "svc::a.Handle"} {
+		if code, out, errs := app("sym", spelling, "the entry"); code != 0 || !strings.Contains(out, "already") {
+			t.Errorf("%q again: exit %d, %q %q; want 'already'", spelling, code, out, errs)
+		}
+	}
+	if rows() != before {
+		t.Errorf("respelling one symbol wrote %d rows, want none", rows()-before)
+	}
+	if code, _, errs := app("sym", "a.Handle", "another reason", "--agent", "agent-9"); code != 0 {
+		t.Fatalf("symbol note: %s", errs)
+	}
+	sym := loadMapSet(repo, time.Now()).maps["sym"]
+	if len(sym.Entries) != 1 || len(sym.Entries[0].Notes) != 1 || sym.Entries[0].Symbol != "a.Handle" {
+		t.Errorf("sym = %+v, want one symbol entry carrying one note", sym.Entries)
+	}
+
+	// Another anchor is another entry; so is the same span once its code changed.
+	if code, _, errs := app("m", "a.go#L7-L7", "the other one"); code != 0 {
+		t.Fatalf("other anchor: %s", errs)
+	}
+	if err := os.WriteFile(filepath.Join(repo, "a.go"), []byte(strings.Replace(mapFixtureGo, "return nil", "return errors.New(\"x\")", 1)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if code, _, errs := app("m", "a.go#L3-L5", "the handler, changed"); code != 0 {
+		t.Fatalf("changed span: %s", errs)
+	}
+	m = loadMapSet(repo, time.Now()).maps["m"]
+	if len(m.Entries) != 3 {
+		t.Errorf("entries = %d, want 3: the first, the other span, and the same span after its code changed", len(m.Entries))
+	}
+
+	// The read serves one line per entry, the notes beside it.
+	code, out, errs = runCLI(t, mapCLI, "show", "sym", "--repo", repo, "--budget", "0")
+	if code != 0 || strings.Count(out, "a.Handle") < 1 || !strings.Contains(out, "another reason") || !strings.Contains(out, "1 entry") {
+		t.Errorf("show sym: exit %d, %q %q; want one entry with its note", code, out, errs)
 	}
 }

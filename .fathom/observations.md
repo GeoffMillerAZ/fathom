@@ -2157,7 +2157,7 @@ tests being added) is what catches that, not a second reading of the prose.
   - **Repro:** file an entry with the session's id set, name the map, add a `session-end` thread row for that session, then read `loadMapSet` and `Lifetimes`
 - **Root cause:** `map name` restates the header through `writeMapHeader`, which copies the first header's `completes_when` forward (`mapHeaderRow` takes `base.CompletesWhen`), and `mapLifetime` tests `Ended` before it tests `Named`
 - **Fix:** none in the hooks slice, which only reads the lifetime: XM-6 and XM-7 own it. Either `map name` drops the condition (a named map is durable), or the lifetime rule tests `Named` first; design section 2 has to say which
-- **Status:** open
+- **Status:** fixed by XM-32 (2026-09-29): a named map is never ended (`Map.Ended`), so the lifetime rule reads it permanent and alive whether the name came before or after its condition held, and a named header is not closed. `map name` could not drop the condition: the threads fold carries a restated header's missing `completes_when` forward. Design section 2 has the dated note
 - **Impact:** a map the planner names at the end of a session is gone from the next session's brief, from the pre-compact resume and from the location pointer; only a map still inside its own session is served, which is the handoff case and not the resume case
 
 ### O144 — `TestIntentTab_RefreshAfterAnUpdateReaudits` races the fixture's handler on `f.now`, so `go test -race ./cmd/fathom` fails on about one run in six
@@ -2199,6 +2199,19 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Status:** open
 - **Impact:** a tier-B cpp reading understates import edge precision and lists these includes as unattested; `import_resolution` is a rate over the includes the compiler entered under this run's flags, so an include the oracle cannot see is neither a hit nor a miss in it (218 of 218 is not a claim about the 79)
 
+### O147 — `fathom map append --anchor` resolves only package-qualified symbol keys, and blames the anchor when the service or the index is what it could not reach
+
+- **Symptom:** the wave-D worker's `map append --anchor` failed with "does not resolve in the index" for the bare name `ResolveImportSpecs` and the Go-style `fusion.ResolveImportSpecs` although `find_symbol` finds both, and right after a deploy a valid anchor failed the same way; only `internal/fusion.ResolveImportSpecs` and `fathom::internal/fusion.ResolveImportSpecs` worked, and both landed on the map as two entries for one symbol (O149)
+- **Evidence:**
+  - **Tool:** `fathom map append --anchor` (`appendMapEntry`, `ctxSymbolResolver`); reproduced on a scratch ingest of this checkout with `--store`
+  - **Expected:** an anchor resolves the way `find_symbol` does (exact, then package.Name, then case-insensitive); an ambiguous name lists its candidates and files nothing; an index that is unreachable or still warming is named as such, with the retry
+  - **Actual:** with `--store <scratch store of fathom>` every spelling above, and `resolveimportspecs`, read `anchor "X" does not resolve in the index`; `map append` has no `--service`, so the service is `threadScopeFor(root).service` (a 1.5 s daemon lookup, empty when it times out or the repo is not the daemon's), and the store is asked for the symbols of service "" (none). Against the daemon the same empty service ends at "names a symbol, and no index is reachable" with the cause dropped. The wave's report of the post-deploy failure was not reproduced here (no deploy from a worker)
+  - **Repro:** `fathom map new r1 --purpose q; fathom map append r1 --store <scratch store of fathom> --anchor ResolveImportSpecs --why w`, then `fusion.ResolveImportSpecs`, `internal/fusion.ResolveImportSpecs`, `fathom::internal/fusion.ResolveImportSpecs`, `resolveimportspecs`
+- **Root cause:** three things. The service is never named by the caller (no flag) and an unanswered lookup leaves it empty; the resolver asks `symbolnav.SymbolContext` by the bare name after `splitPointer` cuts the anchor at its last dot (so a `Type.Method` anchor is cut through its method, and an ambiguous bare name is "not found", not a list); and `cmdThreadNoteMap` drops the index-open error, so "unreachable" and "not found" read alike
+- **Fix:** XM-31: `--service`, a bounded wait for a warming daemon, one resolver with `find_symbol`'s tiers (`explmap.ResolveAnchorSymbol`) that stores the canonical `dir.Name` key, an ambiguity error that lists candidates and files nothing, and an unreachable-index error that names the cause and the retry
+- **Status:** fixed by XM-31 (2026-09-29): `map append` and `thread note --map` take `--service`, wait up to 8 s for a daemon that does not answer, resolve through `explmap.ResolveAnchorSymbol` (find_symbol's tiers, canonical `dir.Name` key, candidates listed on ambiguity, nothing filed) and name an unreachable index with the cause and the retry. `map show` and `map compose` take `--service` too, so the read-time re-resolution of a worker's clone needs no daemon lookup either
+- **Impact:** an orchestrator's or a worker's first appends to a wave map fail or file the wrong spelling, and the error sends the caller to check an anchor that is fine
+
 ### O148 — the csharp dialect loses a file's namespace when two `#if`/`#else` method headers share one body, so a type declared there resolves by no `using` of it
 
 - **Symptom:** after O145's fix, Newtonsoft.Json's `import_resolution` reads 13 of 313: the other 300 are `using Assert = Newtonsoft.Json.Tests.XUnitAssert;`, which stays unresolved though XUnitAssert is declared in the repository
@@ -2211,3 +2224,16 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** none yet. Options: take the file's package from a `namespace` declaration found in an ERROR-recovered tree (a query over the first `namespace` keyword and its qualified name), or read only one branch of each `#if` group before parsing, as the C# compiler does for the symbols it defines
 - **Status:** open
 - **Impact:** every symbol of such a file is outside its namespace for namespace-dir's declared lookups (a `using` wildcard, alias or `using static` naming it resolves to nothing) and for `Package`-keyed queries; C#'s `import_resolution` reads .0854 (28 of 328), and the 300 statements naming XUnitAssert are 91% of its in-repo imports
+
+### O149 — `fathom map append` of an anchor the map already carries files a duplicate entry, and one symbol under two spellings lands as two entries
+
+- **Symptom:** `fathom map show wave-d --budget 1200` printed the same range twice: `internal/fusion.ResolveImportSpecs` and `fathom::internal/fusion.ResolveImportSpecs`, one span, one why, two lines
+- **Evidence:**
+  - **Tool:** `fathom map show wave-d --budget 1200` (2026-09-29, the wave-D map: 4 entries from 3 anchors); `fathom map append` twice with the same anchor on a scratch map
+  - **Expected:** one entry per anchor; a second why for it an annotation with its provenance (XM-4), and a repeated why nothing at all
+  - **Actual:** every append filed a new entry row. Resolution merged only entries whose dedup keys were equal (a span, or the symbol string as typed, plus the content hash), so one symbol under two spellings stayed two items and two lines; `Map.Entries`, and the "N entries" every hook quotes, counted every row
+  - **Repro:** `fathom map append m --anchor internal/fusion.ResolveImportSpecs --why w` and again with `--anchor fathom::internal/fusion.ResolveImportSpecs`, then `fathom map show m`
+- **Root cause:** `appendMapEntry` never looked at what the map already carried, and `Entry.Key` used the symbol string as typed
+- **Fix:** XM-33: the append reads the map's own entries by dedup key (`Map.OwnEntry`, the key ignoring a `svc::` prefix); the same why files nothing, another is a row with an `annotates` pointer that the read folds into the first entry's `Notes`, served as another annotation; the first entry's row is never touched. XM-31's canonical `dir.Name` key makes one symbol one key whatever spelling was typed
+- **Status:** fixed by XM-33 (2026-09-29). Rows filed before it are not rewritten: two rows of one symbol read as one item, but `Entries` still counts both
+- **Impact:** a wave map grew by every worker's re-append, the entry counts in the brief, the pointer line and the sub-agent primer overstated the map, and `map show` spent its 1,200 bytes on one range twice

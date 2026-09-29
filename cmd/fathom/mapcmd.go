@@ -28,7 +28,7 @@ const mapGitTimeout = 5 * time.Second
 
 // mapEntryFlags carries `thread note --map`'s flags.
 type mapEntryFlags struct {
-	mapID, anchor, why, lead, agent, thread, completes, repo, store, url string
+	mapID, anchor, why, lead, agent, thread, completes, repo, store, url, service string
 }
 
 // cmdThreadNoteMap is `fathom thread note --map ID --anchor A --why W`.
@@ -49,12 +49,14 @@ func cmdThreadNoteMap(f mapEntryFlags, stdout, stderr io.Writer) int {
 	root, _ := filepath.Abs(f.repo)
 	var syms mapSymbolResolver
 	if _, _, _, symbol, ok := explmap.ParseAnchor(f.anchor); ok && symbol != "" {
-		idx, idxErr := openCtxIndex(threadScopeFor(root).service, f.store, f.url)
-		if idxErr == nil {
-			syms = ctxSymbolResolver{idx: idx}
+		idx, idxErr := openMapAnchorIndex(root, f.service, f.store, f.url)
+		if idxErr != nil {
+			syms = downIndex{err: idxErr}
+		} else {
+			syms = idx
 		}
 	}
-	it, err := appendMapEntry(mapEntryRequest{
+	res, err := appendMapEntry(mapEntryRequest{
 		Map: f.mapID, Anchor: f.anchor, Why: why, AgentID: f.agent,
 		Thread: f.thread, Root: root, Completes: cond, Now: time.Now(),
 	}, syms)
@@ -66,7 +68,14 @@ func cmdThreadNoteMap(f mapEntryFlags, stdout, stderr io.Writer) int {
 	if f.agent != "" {
 		by = " by " + f.agent
 	}
-	fmt.Fprintf(stdout, "filed %s on map %q: %s (hash %s)%s\n", it.ID, f.mapID, it.Pointers["span"], it.Pointers["hash"][:12], by)
+	switch it := res.Item; res.Outcome {
+	case mapAlready:
+		fmt.Fprintf(stdout, "map %q already carries %s (entry %s) with that why: nothing filed\n", f.mapID, res.Entry.SpanRef(), res.Entry.ID)
+	case mapAnnotated:
+		fmt.Fprintf(stdout, "annotated entry %s on map %q: %s, a second why (row %s)%s\n", res.Entry.ID, f.mapID, it.Pointers["span"], it.ID, by)
+	default:
+		fmt.Fprintf(stdout, "filed %s on map %q: %s (hash %s)%s\n", it.ID, f.mapID, it.Pointers["span"], it.Pointers["hash"][:12], by)
+	}
 	return 0
 }
 
@@ -78,16 +87,30 @@ func (r ctxSymbolResolver) symbolSpan(key string) (string, int, int, bool) {
 	if r.idx == nil {
 		return "", 0, 0, false
 	}
+	// The read side resolves a stored key the way an append does (XM-31), so a
+	// key filed in any spelling, a Type.Method one included, finds its span.
+	if _, ok := r.idx.(anchorIndex); ok {
+		m, err := r.resolveAnchor(key)
+		if err != nil {
+			return "", 0, 0, false
+		}
+		return m.Node.FilePath, m.Node.Line, anchorEnd(m.Node), true
+	}
 	pkg, name := splitPointer(key)
 	sctx, ok := r.idx.resolveSymbol(pkg, name)
 	if !ok || sctx.Def.FilePath == "" || sctx.Def.Line < 1 {
 		return "", 0, 0, false
 	}
-	end := sctx.Def.EndLine
-	if end < sctx.Def.Line {
-		end = sctx.Def.Line // an extractor that computes no end line: the declaration line
+	return sctx.Def.FilePath, sctx.Def.Line, anchorEnd(sctx.Def), true
+}
+
+// anchorEnd is the last line of a symbol's span: its end line, or its
+// declaration line for an extractor that computes none.
+func anchorEnd(n core.SymbolNode) int {
+	if n.EndLine < n.Line {
+		return n.Line
 	}
-	return sctx.Def.FilePath, sctx.Def.Line, end, true
+	return n.EndLine
 }
 
 // repoMapSource is explmap.Source over a repository: its files now, the index
@@ -198,8 +221,8 @@ func splitLeadIDs(args []string) (ids, rest []string) {
 // (XM-7), and a reader of a brief or a pointer judges relevance by it, so `new`
 // requires it (the implicit creation by a first `append` files none). The map is
 // ephemeral: it lives until its condition holds (default: the end of this
-// session) and is kept while a live map includes it; `map name` names it, but
-// does not yet lift that condition (O143).
+// session) and is kept while a live map includes it; `map name` makes it durable
+// and the condition no longer ends it (XM-32).
 func cmdMapNew(args []string, stdout, stderr io.Writer) int {
 	ids, rest := splitLeadIDs(args)
 	fs := newFlagSet("map new", stderr)
@@ -259,6 +282,7 @@ func cmdMapAppend(args []string, stdout, stderr io.Writer) int {
 	repo := fs.String("repo", ".", "repository")
 	storePath := fs.String("store", "", "resolve a symbol anchor from this store (default: the daemon)")
 	url := fs.String("url", defaultFathomURL(), "fathom daemon URL for a symbol anchor")
+	service := fs.String("service", "", "the service a symbol anchor resolves in (default: the one the daemon names for this repository; required with --store when it names none)")
 	if err := fs.Parse(rest); err != nil {
 		return 1
 	}
@@ -269,14 +293,14 @@ func cmdMapAppend(args []string, stdout, stderr io.Writer) int {
 	}
 	return cmdThreadNoteMap(mapEntryFlags{
 		mapID: ids[0], anchor: *anchor, why: *why, agent: *agent,
-		thread: *thread, completes: *completes, repo: *repo, store: *storePath, url: *url,
+		thread: *thread, completes: *completes, repo: *repo, store: *storePath, url: *url, service: *service,
 	}, stdout, stderr)
 }
 
 // cmdMapName is `fathom map name ID --purpose "…" [--as NAME] [--when "…"]`:
-// a named map is durable when it carries no condition (O143: naming does not yet
-// lift one), and a named map without its purpose line is
-// refused (XM-7, explmap.Validate).
+// a named map is durable, whatever condition it was filed under and whether the
+// name comes before or after that condition held (XM-32, O143), and a named map
+// without its purpose line is refused (XM-7, explmap.Validate).
 func cmdMapName(args []string, stdout, stderr io.Writer) int {
 	ids, rest := splitLeadIDs(args)
 	fs := newFlagSet("map name", stderr)
@@ -315,7 +339,7 @@ func cmdMapName(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
 	}
-	fmt.Fprintf(stdout, "named map %q %q: %s\n", m.ID, m.Name, strings.TrimSpace(m.Purpose))
+	fmt.Fprintf(stdout, "named map %q %q: %s (durable: it is kept past the session that filed it)\n", m.ID, m.Name, strings.TrimSpace(m.Purpose))
 	return 0
 }
 
@@ -388,6 +412,7 @@ func cmdMapCompose(args []string, stdout, stderr io.Writer) int {
 	repo := fs.String("repo", ".", "repository")
 	storePath := fs.String("store", "", "resolve symbol anchors from this store (default: the daemon)")
 	url := fs.String("url", defaultFathomURL(), "fathom daemon URL")
+	service := fs.String("service", "", "the service symbol anchors resolve in (default: the one the daemon names for this repository)")
 	jsonOut := fs.Bool("json", false, "emit the composite id and its expansion as JSON")
 	idOnly := fs.Bool("id-only", false, "print only the id (one line), for a brief or a script to capture")
 	if err := fs.Parse(rest); err != nil {
@@ -395,7 +420,7 @@ func cmdMapCompose(args []string, stdout, stderr io.Writer) int {
 	}
 	ids = append(ids, fs.Args()...)
 	if len(ids) == 0 {
-		fmt.Fprintln(stderr, "usage: fathom map compose ID… [--agent A] [--id-only] [--json]")
+		fmt.Fprintln(stderr, "usage: fathom map compose ID… [--agent A] [--id-only] [--json] [--store S --service X]")
 		return 1
 	}
 	root, _ := filepath.Abs(*repo)
@@ -421,7 +446,7 @@ func cmdMapCompose(args []string, stdout, stderr io.Writer) int {
 		return 0
 	}
 	x, err := explmap.Expand(id, set.maps, newRepoMapSource(root, func() mapSymbolResolver {
-		return openMapSymbols(root, *storePath, *url)
+		return openMapSymbols(root, *storePath, *url, *service)
 	}))
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
@@ -519,8 +544,11 @@ func cmdMapList(args []string, stdout, stderr io.Writer) int {
 
 // mapSourceSymbols opens the index for symbol re-resolution; nil (symbol
 // entries then re-resolve only by their filed span) when it is unreachable.
-func mapSourceSymbols(root, storePath, url string) mapSymbolResolver {
-	idx, err := openCtxIndex(threadScopeFor(root).service, storePath, url)
+func mapSourceSymbols(root, storePath, url, service string) mapSymbolResolver {
+	if service == "" {
+		service = mapServiceOf(root)
+	}
+	idx, err := mapOpenIndex(service, storePath, url)
 	if err != nil {
 		return nil
 	}
