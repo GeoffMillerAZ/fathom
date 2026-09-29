@@ -40,6 +40,12 @@ type GuardedInput struct {
 	// bytes (this package's own helper, since intent.Corpus does not
 	// parse that section into a structured list — see its doc comment).
 	SurfaceEvidenceTests []string
+	// GuardDoneNeedsTests is every Test-shaped name a guard note's
+	// `done needs:` segment names in .fathom/guard.cue at the same point
+	// in time as the rest (ReasonGuardDoneNeeds, ADR-057 decision 3). The
+	// caller parses the guard file and flattens the names; this package
+	// does no I/O.
+	GuardDoneNeedsTests []string
 	// ChangedSymbols/Reaches: optional reachability oracle for
 	// ReasonReach. Reaches(test, symbol) reports whether test statically
 	// reaches symbol; nil means "no index available" (design §1.2's own
@@ -50,8 +56,8 @@ type GuardedInput struct {
 }
 
 // GuardedTests returns every guarded Test* function found across
-// in.Sources, each with every reason it qualifies (design §1.2). A test
-// matching none of the five reasons is not guarded and is omitted — a
+// in.Sources, each with every reason it qualifies (design §1.2, plus
+// ReasonGuardDoneNeeds). A test matching none of the six reasons is not guarded and is omitted — a
 // clean, ordinary test the conservation checks have no opinion about.
 //
 // Sorted by (File, Line, Name) for determinism; a name that appears more
@@ -64,6 +70,7 @@ func GuardedTests(in GuardedInput) []GuardedTest {
 	manifestSet := toStringSet(in.ManifestCertifies)
 	invariantSet := toStringSet(in.InvariantTests)
 	surfaceSet := toStringSet(in.SurfaceEvidenceTests)
+	doneNeedsSet := toStringSet(in.GuardDoneNeedsTests)
 
 	var out []GuardedTest
 	for _, src := range in.Sources {
@@ -84,6 +91,9 @@ func GuardedTests(in GuardedInput) []GuardedTest {
 			}
 			if surfaceSet[t.Name] {
 				reasons = append(reasons, ReasonSurface)
+			}
+			if doneNeedsSet[t.Name] {
+				reasons = append(reasons, ReasonGuardDoneNeeds)
 			}
 			if in.Reaches != nil {
 				for _, sym := range in.ChangedSymbols {

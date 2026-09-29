@@ -25,7 +25,8 @@ package integrity
 
 import "sort"
 
-// GuardReason names one of ADR-044 §1.2's five reasons a test is guarded.
+// GuardReason names one of ADR-044 §1.2's five reasons a test is guarded,
+// plus the one ADR-057 decision 3 adds (ReasonGuardDoneNeeds).
 type GuardReason string
 
 const (
@@ -45,6 +46,12 @@ const (
 	// caller-supplied call graph (nil/absent means "no index available" —
 	// this reason then contributes nothing, never fabricated).
 	ReasonReach GuardReason = "reaches_changed_symbol"
+	// ReasonGuardDoneNeeds: the test is named in a `done needs:` segment
+	// of a guard note in .fathom/guard.cue (ADR-057 decision 3: a guard
+	// that names its test protects it). An additive value in
+	// fathom.conserve/v1; the caller extracts the names, this package
+	// reads no guard file.
+	ReasonGuardDoneNeeds GuardReason = "guard_done_needs"
 )
 
 // Kind is one integrity finding's classification (design §1.3's table,

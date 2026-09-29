@@ -69,12 +69,14 @@ func (integrityPlane) Check(ctx context.Context, in Input) (findings []Finding, 
 	scopeEvidence := scopeEvidenceAt(in.BaseFile)
 	manifestCertifies := manifestCertifiesAt(ctx, in)
 	invariantTests := invariantTestsAt(in.BaseFile)
+	guardDoneNeeds := guardDoneNeedsAt(in.BaseFile)
 	changedSymbols, reaches := reachabilityFrom(ctx, in)
 
 	guard := integrity.GuardedInput{
 		ManifestCertifies:    manifestCertifies,
 		InvariantTests:       invariantTests,
 		SurfaceEvidenceTests: scopeEvidence,
+		GuardDoneNeedsTests:  guardDoneNeeds,
 		ChangedSymbols:       changedSymbols,
 		Reaches:              reaches,
 	}

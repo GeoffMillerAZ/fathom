@@ -168,26 +168,36 @@ pre-push:
         fi
         echo "$out"
         exit 0
-    # fathom conserve — ADR-044 §6/CV-47: a NON-BLOCKING refactor-
-    # conservation SUMMARY printed on every push, the same warning-only
-    # discipline the review step above already follows (never --strict,
-    # so bin/fathom conserve itself never returns non-zero for a finding —
-    # only for an operational failure). --since prefers the branch's own
-    # upstream (`@{u}`) so a feature branch conserves against what it will
-    # actually merge into, falling back to `origin/main` when there is no
-    # upstream yet (a brand-new branch, a fresh clone that never pushed).
-    # This step ALWAYS exits 0, whatever bin/fathom conserve itself
-    # returns: a missing bin/fathom, an unresolvable ref, or any other
-    # operational error degrades to a single fail-open line, never a
-    # blocking failure (docs/design/coding-agent-excellence.md §5.3) —
-    # `fathom verify` above is the gate; this is advisory visibility only.
+    # fathom conserve — ADR-044 §6/CV-47: the refactor-conservation
+    # summary printed on every push, advisory for every plane EXCEPT one
+    # finding: `--strict-plane integrity` (PR-9, ADR-057's PR-8 decision,
+    # accepted by the owner 2026-09-29) exits 1 on a SILENT pin loss — a
+    # test a governing source names (an invariant's enforcement column, a
+    # tests/*.cue manifest entry, a scope evidence line, a certifies
+    # marker, a guard note's done needs), lost in the pushed range while
+    # that source still names it at head. A retired pin (its source was
+    # edited in the range to drop the name) is printed for review and passes. Exit 1 passes through and
+    # blocks the push; everything else stays warning-only. --since prefers
+    # the branch's own upstream (`@{u}`) so a feature branch conserves
+    # against what it will actually merge into, falling back to
+    # `origin/main` when there is no upstream yet (a brand-new branch, a
+    # fresh clone that never pushed). A missing bin/fathom or any other
+    # non-zero exit (2: an unresolvable ref, an unreadable input) degrades
+    # to a single fail-open line, never a blocking failure
+    # (docs/design/coding-agent-excellence.md §5.3).
     refactor-conserve:
       run: |
         [ -x bin/fathom ] || exit 0
         since=$(git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null)
         [ -n "$since" ] || since="origin/main"
-        out=$(bin/fathom conserve --service fathom --since "$since" --store workspace/db/fleet.sqlite 2>&1)
-        if [ $? -eq 2 ]; then
+        out=$(bin/fathom conserve --service fathom --since "$since" --store workspace/db/fleet.sqlite --strict-plane integrity 2>&1)
+        rc=$?
+        if [ $rc -eq 1 ]; then
+          echo "$out"
+          echo "fathom conserve: a silent pin loss blocks this push (ADR-057, PR-9)"
+          exit 1
+        fi
+        if [ $rc -ne 0 ]; then
           echo "fathom conserve: operational error — skipped (fail-open, see docs/design/coding-agent-excellence.md §5.3)"
           exit 0
         fi

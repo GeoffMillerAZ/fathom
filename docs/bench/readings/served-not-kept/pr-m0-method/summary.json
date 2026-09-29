@@ -1,0 +1,36 @@
+{
+  "ambiguous_flagged": [],
+  "attempts": 56,
+  "changed_files": 418,
+  "changed_files_seen_by_a_fragment": 169,
+  "clean_flagged": [],
+  "fire_cells": [
+    [
+      "head",
+      "guards-fathom-r1",
+      "guards-i2-store-purego-control-t1",
+      "violating",
+      [
+        "cgo_purity:store-no-cgo"
+      ]
+    ],
+    [
+      "head",
+      "guards-fathom-r2",
+      "guards-i2-store-purego-full-t2",
+      "violating",
+      [
+        "cgo_purity:store-no-cgo"
+      ]
+    ]
+  ],
+  "i28_missed": [],
+  "i28_violating": [
+    "guards-fathom-r1/guards-i28-duckdb-path-control-t1",
+    "guards-fathom-r1/guards-i28-duckdb-path-full-t2",
+    "guards-fathom-r2/guards-i28-duckdb-path-control-t2",
+    "guards-fathom-r2/guards-i28-duckdb-path-full-t1",
+    "guards-fathom-r2/guards-i28-duckdb-path-full-t2"
+  ],
+  "verdict": "PASS"
+}

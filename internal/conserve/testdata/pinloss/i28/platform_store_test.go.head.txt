@@ -1,0 +1,250 @@
+package store
+
+import (
+	"context"
+	"os"
+	"path/filepath"
+	"sort"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/core"
+)
+
+// seedService creates <dir>/<id>.sqlite and writes obs into it, then closes it.
+// The file is left on disk so OpenPlatform can pick it up.
+func seedService(t *testing.T, dir, id string, obs []core.Observation) {
+	t.Helper()
+	seedServiceExt(t, dir, id, ".sqlite", obs)
+}
+
+// seedServiceExt is seedService parameterized by extension, so tests can seed
+// stores under a non-default recognized extension (e.g. ".db").
+func seedServiceExt(t *testing.T, dir, id, ext string, obs []core.Observation) {
+	t.Helper()
+	path := filepath.Join(dir, id+ext)
+	s, err := BackendForPath(path)
+	if err != nil {
+		t.Fatalf("seedServiceExt BackendForPath %q: %v", path, err)
+	}
+	if err := s.PutObservations(context.Background(), obs); err != nil {
+		_ = s.Close()
+		t.Fatalf("seedServiceExt PutObservations: %v", err)
+	}
+	if err := s.Close(); err != nil {
+		t.Fatalf("seedServiceExt Close: %v", err)
+	}
+}
+
+func nowObs(serviceID, symbol string) core.Observation {
+	return core.Observation{
+		ServiceID:    serviceID,
+		ConcernID:    "auth",
+		SourceRef:    serviceID + "/main.go",
+		SourceKind:   core.KindGoFunc,
+		EvidenceTier: core.TierVerified,
+		Symbol:       symbol,
+		Claim:        "func " + symbol + "()",
+		ContentHash:  symbol,
+		IngestedAt:   time.Now().UTC(),
+	}
+}
+
+// ─── OpenPlatform: two services ───────────────────────────────────────────────
+
+func TestOpenPlatform_TwoServices(t *testing.T) {
+	dir := t.TempDir()
+	seedService(t, dir, "alpha", []core.Observation{nowObs("alpha", "Login")})
+	seedService(t, dir, "beta", []core.Observation{nowObs("beta", "Charge")})
+
+	ps, err := OpenPlatform(dir)
+	if err != nil {
+		t.Fatalf("OpenPlatform: %v", err)
+	}
+	defer ps.Close()
+
+	// ServiceIDs must be sorted.
+	ids := ps.ServiceIDs()
+	if len(ids) != 2 {
+		t.Fatalf("ServiceIDs() len = %d, want 2; got %v", len(ids), ids)
+	}
+	if !sort.StringsAreSorted(ids) {
+		t.Errorf("ServiceIDs() not sorted: %v", ids)
+	}
+	for i, want := range []string{"alpha", "beta"} {
+		if ids[i] != want {
+			t.Errorf("ids[%d] = %q, want %q", i, ids[i], want)
+		}
+	}
+
+	// Get returns true for known services and false for unknown.
+	if _, ok := ps.Get("alpha"); !ok {
+		t.Error("Get(alpha) returned false, want true")
+	}
+	if _, ok := ps.Get("unknown"); ok {
+		t.Error("Get(unknown) returned true, want false")
+	}
+}
+
+// ─── QueryAll ────────────────────────────────────────────────────────────────
+
+func TestPlatformStore_QueryAll(t *testing.T) {
+	dir := t.TempDir()
+	seedService(t, dir, "svc1", []core.Observation{nowObs("svc1", "Login")})
+	seedService(t, dir, "svc2", []core.Observation{nowObs("svc2", "Charge")})
+
+	ps, err := OpenPlatform(dir)
+	if err != nil {
+		t.Fatalf("OpenPlatform: %v", err)
+	}
+	defer ps.Close()
+
+	// QueryAll("") should return observations for every service.
+	all := ps.QueryAll(context.Background(), "")
+	if _, ok := all["svc1"]; !ok {
+		t.Error("QueryAll: svc1 missing from results")
+	}
+	if _, ok := all["svc2"]; !ok {
+		t.Error("QueryAll: svc2 missing from results")
+	}
+
+	// QueryAll with a concern only present in svc1.
+	byAuth := ps.QueryAll(context.Background(), "auth")
+	// Both seedService calls used ConcernID="auth" so both should appear.
+	if _, ok := byAuth["svc1"]; !ok {
+		t.Error("QueryAll(auth): svc1 missing")
+	}
+}
+
+// ─── Reload ───────────────────────────────────────────────────────────────────
+
+func TestPlatformStore_Reload(t *testing.T) {
+	dir := t.TempDir()
+	seedService(t, dir, "svc1", []core.Observation{nowObs("svc1", "F")})
+
+	ps, err := OpenPlatform(dir)
+	if err != nil {
+		t.Fatalf("OpenPlatform: %v", err)
+	}
+	defer ps.Close()
+
+	if ids := ps.ServiceIDs(); len(ids) != 1 {
+		t.Fatalf("before Reload: want 1 service, got %v", ids)
+	}
+
+	// Add svc2 to the directory.
+	seedService(t, dir, "svc2", []core.Observation{nowObs("svc2", "G")})
+
+	if err := ps.Reload(); err != nil {
+		t.Fatalf("Reload: %v", err)
+	}
+
+	ids := ps.ServiceIDs()
+	if len(ids) != 2 {
+		t.Fatalf("after Reload: want 2 services, got %v", ids)
+	}
+	if _, ok := ps.Get("svc2"); !ok {
+		t.Error("after Reload: Get(svc2) returned false")
+	}
+}
+
+// ─── edge cases ───────────────────────────────────────────────────────────────
+
+func TestOpenPlatform_EmptyDir(t *testing.T) {
+	dir := t.TempDir()
+	ps, err := OpenPlatform(dir)
+	if err != nil {
+		t.Fatalf("OpenPlatform empty dir: %v", err)
+	}
+	defer ps.Close()
+	if ids := ps.ServiceIDs(); len(ids) != 0 {
+		t.Errorf("empty dir: ServiceIDs() = %v, want []", ids)
+	}
+}
+
+func TestOpenPlatform_UnrecognizedFilesIgnored(t *testing.T) {
+	dir := t.TempDir()
+	// Plant a non-store file; it must be silently ignored.
+	if err := os.WriteFile(filepath.Join(dir, "README.txt"), []byte("hi"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	seedService(t, dir, "only", []core.Observation{nowObs("only", "X")})
+
+	ps, err := OpenPlatform(dir)
+	if err != nil {
+		t.Fatalf("OpenPlatform: %v", err)
+	}
+	defer ps.Close()
+
+	ids := ps.ServiceIDs()
+	if len(ids) != 1 || ids[0] != "only" {
+		t.Errorf("ServiceIDs() = %v, want [only]", ids)
+	}
+}
+
+// ─── stale pre-SS-8 .duckdb leftovers ──────────────────────────────────────
+
+// TestOpenPlatform_StaleDuckDBSiblingIgnored is the SS-8 shape of the F2
+// regression: a directory holding BOTH svc.duckdb (a leftover from before
+// SS-8 deleted the DuckDB backend) and svc.sqlite. ReadDir's name-sort yields
+// the .duckdb first, and the original first-wins load made the migrated
+// store silently invisible. The platform store must serve the .sqlite one
+// WITHOUT ever calling BackendForPath on the stale .duckdb file (which would
+// now fail loudly) — the collision resolution must short-circuit to the
+// winner before opening anything.
+func TestOpenPlatform_StaleDuckDBSiblingIgnored(t *testing.T) {
+	dir := t.TempDir()
+	// The stale .duckdb is a placeholder file written directly — it can no
+	// longer be opened as a store at all (SS-8), so it is planted as raw
+	// bytes rather than through seedServiceExt/BackendForPath.
+	if err := os.WriteFile(filepath.Join(dir, "svc.duckdb"), []byte("stale pre-SS-8 store"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	seedServiceExt(t, dir, "svc", ".sqlite", []core.Observation{nowObs("svc", "MigratedSymbol")})
+
+	ps, err := OpenPlatform(dir)
+	if err != nil {
+		t.Fatalf("OpenPlatform: %v", err)
+	}
+	defer ps.Close()
+
+	ids := ps.ServiceIDs()
+	if len(ids) != 1 || ids[0] != "svc" {
+		t.Fatalf("ServiceIDs() = %v, want [svc] (one service, not one per file)", ids)
+	}
+
+	s, ok := ps.Get("svc")
+	if !ok {
+		t.Fatal("Get(svc) returned false")
+	}
+	if _, isSQLite := s.(*SQLiteStore); !isSQLite {
+		t.Fatalf("svc backend = %T, want *SQLiteStore (the surviving store must win)", s)
+	}
+	obs, err := s.QueryObservations(context.Background(), "svc", "")
+	if err != nil {
+		t.Fatalf("QueryObservations: %v", err)
+	}
+	if len(obs) != 1 || obs[0].Symbol != "MigratedSymbol" {
+		t.Errorf("served observations = %+v, want the sqlite store's MigratedSymbol", obs)
+	}
+}
+
+// TestOpenPlatform_LoneDuckDBFileErrorsLoud proves that a lone stale .duckdb
+// file — no .sqlite sibling to win the collision — is opened as SQLite, so a
+// non-SQLite payload (a genuine DuckDB file) makes OpenPlatform fail loudly,
+// naming the offending path, rather than silently skipping the service.
+func TestOpenPlatform_LoneDuckDBFileErrorsLoud(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "orphan.duckdb"), []byte("stale pre-SS-8 store"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := OpenPlatform(dir)
+	if err == nil {
+		t.Fatal("OpenPlatform with a lone .duckdb file succeeded, want a loud error")
+	}
+	if !strings.Contains(err.Error(), "orphan.duckdb") {
+		t.Errorf("error = %q, want it to name orphan.duckdb", err.Error())
+	}
+}

@@ -157,8 +157,15 @@ never a single file).
 A test is guarded when, at base, it carries a `// certifies:` marker, is named by
 a `#Certifies` entry, is named in `docs/intent/invariants.md`'s enforcement
 column, is named as Evidence on the compatibility surface in
-`docs/intent/scope.md`, or reaches a changed symbol (when an index is
-available). `integrity.GuardedTests` returns the set with the reason for each.
+`docs/intent/scope.md`, is named in a `done needs:` segment of a guard note in
+`.fathom/guard.cue`, or reaches a changed symbol (when an index is available).
+`integrity.GuardedTests` returns the set with the reason for each: the wire
+values are `certifies_marker`, `manifest_entry`, `invariant_enforcement`,
+`compatibility_surface`, `guard_done_needs` and `reaches_changed_symbol`.
+`guard_done_needs` (ADR-057 decision 3) is additive in `fathom.conserve/v1`; the
+integrity plane reads the guard file at base through `guardspec` and takes only
+Test-shaped names from the segment. Like the marker, manifest, invariant and
+surface reasons it names the test, so a rename of such a test is a loss.
 
 ### 1.3 Test integrity findings (Go; other languages report `unproven`)
 

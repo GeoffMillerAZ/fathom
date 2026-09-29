@@ -117,13 +117,16 @@ code; an unpiped failing command arrives as PostToolUseFailure with `Exit code N
 (536 of 541 failing runs scanned) as PostToolUse. XM-V1 (`docs/bench/readings/exploration-maps/handoff-facts.md`):
 the SubagentStart input carries no prompt (the common fields plus `agent_id` and `agent_type`), and RC-28's
 591-byte rows are the constant base primer with no discoveries brief (549 of 874 emitted rows are base-only).
-Unverified: whether SessionStart with source `compact` fires and accepts additional context
-(CA-V1); whether the shell PostToolUse input carries the command's stdout (git's `[branch sha]`
-summary line) and whether context added there reaches the model, in Claude Code and in Codex (PR-V1); what a
-Stop block does in Claude Code (PR-V2); whether hooks fired inside a sub-agent carry `agent_id` (PR-V3).
-Blocks: the test-run hook's registration and exit-code use, carry-across, the
-commit pin line for any harness but Claude Code (PR-3 needs PR-V1), turn-end feedback (PR-D2) and orchestrator
-constraints (F54). Answerable by: evidence (the verification readings).
+PR-V1 (`docs/bench/readings/served-not-kept/hook-facts.md`, 2026-09-29): Claude Code 2.1.284's
+PostToolUse(Bash) carries the command's stdout and, when git prints it, the `[branch sha]` summary line (also
+pre-parsed as `gitOperation.commit.sha`), but `git commit -q` prints none (71 percent of the 2,446 successful commit
+results scanned, which fired ADR-057's revisit trigger); context added by a PostToolUse hook reaches the model in
+Claude Code and, observed for `apply_patch`, in Codex 0.158.0. Unverified: whether SessionStart with source `compact`
+fires and accepts additional context (CA-V1); what Codex's PostToolUse `tool_response` holds for a shell command
+(one captured Bash hook input settles it; no $0 source does); what a Stop block does in Claude Code (PR-V2); whether
+hooks fired inside a sub-agent carry `agent_id` (PR-V3). Blocks: the test-run hook's registration and exit-code use,
+carry-across, the commit pin line for Codex (its shell input is unverified), turn-end feedback (PR-D2) and
+orchestrator constraints (F54). Answerable by: evidence (the verification readings).
 
 **Q33. Unfreeze the assess lanes (ADR-046) as the judged-telemetry host, or supersede them?** Judged telemetry
 would otherwise rebuild assess's consent capability, spend isolation and judge process, and a parallel lane is
