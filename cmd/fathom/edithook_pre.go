@@ -92,6 +92,7 @@ func cmdEditHookPreFile(codec harness.Codec, filePath, cwd, sessionID, newConten
 			// full miss.
 		} else {
 			emitBeat("edit-hook", "denied", firingMeta(map[string]string{"phase": "pre", "target": "file"}, sessionID, filePath))
+			recordBlockedOutcome(d.OutcomeID(), sessionID, d.File) // PR-10: only a deny the codec encoded blocked anything
 			fmt.Fprintln(stdout, string(out))
 			return 0
 		}
@@ -371,6 +372,7 @@ func cmdEditHookPreCommand(codec harness.Codec, command, cwd, sessionID, url str
 		out, err := codec.EncodeOutput(harness.EventPreTool, harness.HookOutput{Deny: true, DenyReason: d.Reason})
 		if err == nil {
 			emitBeat("edit-hook", "denied", firingMeta(map[string]string{"phase": "pre", "target": "command"}, sessionID, ""))
+			recordBlockedOutcome(d.OutcomeID(), sessionID, d.File) // PR-10: only a deny the codec encoded blocked anything
 			fmt.Fprintln(stdout, string(out))
 			return 0
 		}
