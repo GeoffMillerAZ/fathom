@@ -38,13 +38,13 @@ func h1LoadDoc(t *testing.T, rel string) core.SourceFile {
 
 // h1Corpus loads exactly the obligations layer's own real corpus include
 // list (internal/semantic/layers/obligations/layer.cue) at HEAD: the root
-// CLAUDE.md, ADR.md, docs/plans/README.md, and every nested CLAUDE.md this
+// AGENTS.md, ADR.md, docs/plans/README.md, and every nested AGENTS.md this
 // repository actually carries.
 func h1Corpus(t *testing.T) []core.SourceFile {
 	t.Helper()
 	paths := []string{
-		"CLAUDE.md", "ADR.md", "docs/plans/README.md",
-		"internal/CLAUDE.md", "docs/CLAUDE.md", "schema/CLAUDE.md", "cmd/fathom/CLAUDE.md",
+		"AGENTS.md", "ADR.md", "docs/plans/README.md",
+		"internal/AGENTS.md", "docs/AGENTS.md", "schema/AGENTS.md", "cmd/fathom/AGENTS.md",
 	}
 	docs := make([]core.SourceFile, 0, len(paths))
 	for _, p := range paths {
@@ -57,7 +57,7 @@ func h1Corpus(t *testing.T) []core.SourceFile {
 // (wave O3, item 3): like VB-12's own free-oracle reading (docs/plans/
 // verbs.md, "skip_test: true... free oracle run; evidence is the committed
 // baseline and post-change readings"), a real-corpus lexical ranking
-// quality number is still exploratory — ADR.md and the CLAUDE.md guides
+// quality number is still exploratory — ADR.md and the AGENTS.md guides
 // grow and reorganise, and a wording change five ADRs away can legitimately
 // shift a borderline case in or out of a top-3 window. But the two cases
 // wave O2 already fixed (H1-T01, H1-T12) are no longer merely diagnostic:
@@ -85,7 +85,7 @@ func TestH1GovernanceTasks_RawFallbackOffline(t *testing.T) {
 		{
 			id: "H1-T01", file: "internal/extractor/goextract.go",
 			want: "Adding things", hardGate: true,
-			note: "internal/CLAUDE.md's extractor-wiring rule (fusion.New, golden-test)",
+			note: "internal/AGENTS.md's extractor-wiring rule (fusion.New, golden-test)",
 		},
 		{
 			id: "H1-T02", file: "internal/core/model.go", extra: []string{"Edge", "EdgeKind"},
@@ -93,7 +93,7 @@ func TestH1GovernanceTasks_RawFallbackOffline(t *testing.T) {
 			note: "typed call-edge kinds live on core.Edge",
 			missWhy: "wave O4 item 1 (the narrowed cross-tier cap: \"the nearer candidate is " +
 				"itself STRONG\", not \"the nearer candidate has ANY hit\") DOES fix the " +
-				"originally-diagnosed block — internal/CLAUDE.md's other same-tier sections carry " +
+				"originally-diagnosed block — internal/AGENTS.md's other same-tier sections carry " +
 				"only a weak, ancestor-only hit on the bare token \"internal\" and no longer keep " +
 				"their tier against a strong root candidate; proven in isolation, on a clean " +
 				"synthetic corpus free of this repo's own self-reference " +
@@ -114,7 +114,7 @@ func TestH1GovernanceTasks_RawFallbackOffline(t *testing.T) {
 		{
 			id: "H1-T08", file: "cmd/fathom/emit.go",
 			want: "Non-negotiables",
-			note: "root CLAUDE.md's workspace/ convention row",
+			note: "root AGENTS.md's workspace/ convention row",
 			missWhy: "wave O3 item 2 (behaviour-token relevance) needs the edited file's own " +
 				"source text to scan for a signal (os.WriteFile, MkdirAll, …) — but " +
 				"cmd/fathom/emit.go is a synthetic scenariobench path with no real file on disk " +

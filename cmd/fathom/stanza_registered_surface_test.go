@@ -146,15 +146,16 @@ func TestStanzaNamesOnlyRegisteredSurfaceTools(t *testing.T) {
 }
 
 // checkRepoAgentFilesNameOnlyServedTools holds this repository's own
-// CLAUDE.md and AGENTS.md — the whole files, not only the marked stanza — to
-// the same rule: a line that names a tool served beyond the default eight
-// must also name the surface that serves it, or it teaches a call that fails
-// (the hand-written routing rows told sessions to refresh via `ingest` and
-// to resolve via `references`, neither on /rpc/agent).
+// AGENTS.md — its one instruction file (ADR-059), the whole file, not only
+// the marked stanza — to the same rule: a line that names a tool served
+// beyond the default eight must also name the surface that serves it, or it
+// teaches a call that fails (the hand-written routing rows told sessions to
+// refresh via `ingest` and to resolve via `references`, neither on
+// /rpc/agent).
 func checkRepoAgentFilesNameOnlyServedTools(t *testing.T) {
 	root := repoRootForDocs(t)
 	off := offDefaultSurfaceTools()
-	for _, f := range stanzaFiles {
+	for _, f := range []string{"AGENTS.md"} {
 		raw, err := os.ReadFile(filepath.Join(root, f))
 		if err != nil {
 			t.Fatalf("%s: %v", f, err)

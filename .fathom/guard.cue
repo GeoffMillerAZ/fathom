@@ -173,7 +173,7 @@ layer_rules: [
 	{
 		id:       "core-no-mcp-or-cmd"
 		kind:     "import_direction"
-		sentence: "internal/core imports nothing from internal/mcp or cmd/ — the domain model is the keystone (CLAUDE.md), never a consumer of the surfaces built on it."
+		sentence: "internal/core imports nothing from internal/mcp or cmd/ — the domain model is the keystone (AGENTS.md), never a consumer of the surfaces built on it."
 		from: ["internal/core"]
 		to: ["internal/mcp", "cmd/**"]
 	},

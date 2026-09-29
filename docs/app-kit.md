@@ -1,7 +1,7 @@
 # App-kit adoption: evidence workspace
 
 Consumer [intent](intent/README.md), [product context](../PRODUCT.md) and the
-[UI doctrine](../cmd/fathom/CLAUDE.md) govern this selection. It executes existing
+[UI doctrine](../cmd/fathom/AGENTS.md) govern this selection. It executes existing
 architecture; no metric model, daemon behavior or future has been promoted.
 
 ## Selected surface and design
@@ -433,7 +433,7 @@ dark/narrow journey: preview/refusal/repair/reset plus pointer/Enter ZIP exports
 identical reviewed bytes and clean owned-process shutdown. Large-number chart geometry,
 zoom, full accessibility, memory/cancellation and human usability remain open; the guide
 remains experimental. Earlier failed receipts remain intact.
-The existing identical CLAUDE.md/AGENTS.md routers already route here; no host settings
+The existing AGENTS.md router already routes here; no host settings
 change is needed. **FATHOM-GUIDE-01:** adopt the shared guide, keep domain validity
 repairs here, and return sanitized missingness/build-reliability tests and lessons to
 app-kit. Revisit shared promotion only after independent consumer task evidence;

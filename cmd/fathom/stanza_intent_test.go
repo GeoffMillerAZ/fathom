@@ -76,7 +76,7 @@ func TestThisRepoStanzaStaysPlainWhileItsChannelIsUnwired(t *testing.T) {
 	if intentChannelWired(root) {
 		t.Skip("this repo's guard.cue now carries intent provenance — the sentence is expected")
 	}
-	for _, name := range []string{"CLAUDE.md", "AGENTS.md"} {
+	for _, name := range []string{"AGENTS.md"} {
 		b, err := os.ReadFile(filepath.Join(root, name))
 		if err != nil {
 			t.Fatal(err)

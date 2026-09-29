@@ -126,11 +126,11 @@
         ]
       },
       "predictions": {
-        "full": "wins: answered directly by the obligations tool's compiled rule for this file, which cites internal/CLAUDE.md by line — no competitor tool reads governance docs at all.",
+        "full": "wins: answered directly by the obligations tool's compiled rule for this file, which cites internal/AGENTS.md by line — no competitor tool reads governance docs at all.",
         "graphify": "ties grep, below fathom: query_graph/get_node answer code structure, not documented conventions.",
         "serena": "ties grep, below fathom: find_symbol/find_referencing_symbols answer code structure, not documented conventions.",
         "gopls": "ties grep, below fathom: go_symbol_references answers code structure, not documented conventions.",
-        "grep": "below fathom: the rule is on disk in internal/CLAUDE.md and grep-findable given the right file, but nothing points the agent at it directly the way obligations() does."
+        "grep": "below fathom: the rule is on disk in internal/AGENTS.md and grep-findable given the right file, but nothing points the agent at it directly the way obligations() does."
       },
       "requires": [
         "compiled-layer"
@@ -391,15 +391,15 @@
       },
       "oracle": {
         "answer_all_of": [
-          "CLAUDE.md#L15"
+          "AGENTS.md#L10"
         ]
       },
       "predictions": {
-        "full": "wins: the obligations tool's compiled rule for the root CLAUDE.md names the exact citation directly.",
+        "full": "wins: the obligations tool's compiled rule for the root AGENTS.md names the exact citation directly.",
         "graphify": "ties grep, below fathom: no tool surface for a documented convention's citation.",
         "serena": "ties grep, below fathom: no tool surface for a documented convention's citation.",
         "gopls": "ties grep, below fathom: no tool surface for a documented convention's citation.",
-        "grep": "below fathom only in directness: CLAUDE.md is short enough that a full read finds the workspace/ row readily; predicted a near-tie with the competitor arms and slightly below fathom."
+        "grep": "below fathom only in directness: AGENTS.md is short enough that a full read finds the workspace/ row readily; predicted a near-tie with the competitor arms and slightly below fathom."
       },
       "derivation": "Copied verbatim from testdata/contextbench/tasks-home.json id H1-T08 (workspace/ token dropped as leaked per BP-2; scored on the citation alone). category hand-assigned ('claim_provenance'); not a ClassifyChange shape."
     },
@@ -475,7 +475,7 @@
     {
       "id": "H1-T11",
       "category": "contradiction",
-      "prompt": "A teammate proposes adding this line to fathom's CLAUDE.md: \"fathom ingest is always safe to run directly against the shared store, even while the daemon is running.\" Does this proposed addition contradict any EXISTING statement already in fathom's CLAUDE.md (or in the guide its Index-first rule row points to for the full text)? If so, quote the key conflicting phrase from the existing text.",
+      "prompt": "A teammate proposes adding this line to fathom's AGENTS.md: \"fathom ingest is always safe to run directly against the shared store, even while the daemon is running.\" Does this proposed addition contradict any EXISTING statement already in fathom's AGENTS.md (or in the guide its Index-first rule row points to for the full text)? If so, quote the key conflicting phrase from the existing text.",
       "subject": {
         "repo_url": "https://github.com/geoffmilleraz/fathom",
         "base_commit": "1b8765d",
@@ -503,14 +503,14 @@
         "graphify": "no-effect: same reason — a doc-prose contradiction is outside every arm's special tool.",
         "serena": "no-effect: same reason.",
         "gopls": "no-effect: same reason.",
-        "grep": "no-effect: reading CLAUDE.md and docs/guides/fleet-index.md directly is exactly as effective as any other arm's path here."
+        "grep": "no-effect: reading AGENTS.md and docs/guides/fleet-index.md directly is exactly as effective as any other arm's path here."
       },
       "derivation": "Copied verbatim from testdata/contextbench/tasks-home.json id H1-T11. category hand-assigned ('contradiction'); not a ClassifyChange shape. This is the corpus's deliberate no-effect task: predictions are identical across every arm, honestly, per vision 27 §6's instruction to include a no-effect prediction where it is the honest one."
     },
     {
       "id": "H1-T12",
       "category": "staleness",
-      "prompt": "A rule governing internal/core/model.go reads 'Maintain shared types in `internal/core` and extend them additively.', cited to CLAUDE.md#L83-L84. (a) Check whether CLAUDE.md#L83-L84 still contains this rule's text at the current HEAD; answer in exactly the form 'verdict: stale' or 'verdict: fresh'. (b) If it moved, cite the line on which the rule's text actually appears today, in the citation form `<file>#L<n>` (e.g. `docs/example.md#L7`).",
+      "prompt": "A rule governing internal/core/model.go reads 'Maintain shared types in `internal/core` and extend them additively.', cited to AGENTS.md#L83-L84. (a) Check whether AGENTS.md#L83-L84 still contains this rule's text at the current HEAD; answer in exactly the form 'verdict: stale' or 'verdict: fresh'. (b) If it moved, cite the line on which the rule's text actually appears today, in the citation form `<file>#L<n>` (e.g. `docs/example.md#L7`).",
       "subject": {
         "repo_url": "https://github.com/geoffmilleraz/fathom",
         "base_commit": "1b8765d",
@@ -530,15 +530,15 @@
       "oracle": {
         "answer_all_of": [
           "verdict: stale",
-          "CLAUDE.md#L48"
+          "AGENTS.md#L40"
         ]
       },
       "predictions": {
-        "full": "wins in directness: staleness_report states the verdict in one call; (b) still needs a read of the current CLAUDE.md to find where the text moved to.",
-        "graphify": "below fathom, plausible partial credit: the prompt supplies the historical citation, so any arm can check CLAUDE.md#L83-L84 against the rule's wording by reading it directly and answer (a) by comparison; no tool surface gives an edge on (b).",
+        "full": "wins in directness: staleness_report states the verdict in one call; (b) still needs a read of the current AGENTS.md to find where the text moved to.",
+        "graphify": "below fathom, plausible partial credit: the prompt supplies the historical citation, so any arm can check AGENTS.md#L83-L84 against the rule's wording by reading it directly and answer (a) by comparison; no tool surface gives an edge on (b).",
         "serena": "below fathom, plausible partial credit — same reasoning as graphify.",
         "gopls": "below fathom, plausible partial credit — same reasoning as graphify.",
-        "grep": "below fathom, plausible partial credit: the prompt hands every arm the historical citation, so a direct read of CLAUDE.md#L83-L84 versus the rule's own wording answers (a); grep for the rule's distinctive phrase answers (b)."
+        "grep": "below fathom, plausible partial credit: the prompt hands every arm the historical citation, so a direct read of AGENTS.md#L83-L84 versus the rule's own wording answers (a); grep for the rule's distinctive phrase answers (b)."
       },
       "requires": [
         "compiled-layer"
@@ -660,6 +660,7 @@
     }
   ],
   "notes": {
+    "instruction_file_repoint": "2026-09-29 (ADR-059, plan AG-23): this repo carries AGENTS.md as its one instruction file (CLAUDE.md and internal/CLAUDE.md moved with their line layout unchanged). H1-T08 and H1-T12 gold citations are re-derived at this tree: AGENTS.md#L10 (the workspace/ row of the Non-negotiables table) and AGENTS.md#L40 (the domain-model row), the same anchors testdata/contextbench/tasks-home.json pins and TestHomeCorpusTruthAtHead checks; the earlier CLAUDE.md#L15 and #L48 no longer named those rows. Prompts and the predictions that name the file follow. The arms' instructions_text (graphify, gopls) is left as written: it says to grep the nearest governance doc and names no line.",
     "gold_source": "Ground truth for H1-T01..H1-T13 is testdata/contextbench/tasks-home.json's own ground_truth/scoring_rule/class fields at the same task id — copied into notes.gold below rather than duplicated inline in each task's derivation, to avoid the two corpora drifting apart under separate edits.",
     "gold": {
       "H1-T01": {
@@ -715,7 +716,7 @@
       },
       "H1-T08": {
         "ground_truth": [
-          "CLAUDE.md#L15"
+          "AGENTS.md#L10"
         ],
         "scoring_rule": "exact-match"
       },
@@ -742,7 +743,7 @@
       "H1-T12": {
         "ground_truth": [
           "verdict: stale",
-          "CLAUDE.md#L48"
+          "AGENTS.md#L40"
         ],
         "scoring_rule": "all-of"
       },

@@ -104,7 +104,7 @@
     {
       "id": "B1-T08",
       "category": "what_governs",
-      "prompt": "Per fathom's CLAUDE.md, which ADR made pure-Go SQLite the store backend whose default path is workspace/db/fathom.sqlite (the ADR named first in the CLAUDE.md line that says `internal/store` stays pure Go)?",
+      "prompt": "Per fathom's AGENTS.md, which ADR made pure-Go SQLite the store backend whose default path is workspace/db/fathom.sqlite (the ADR named first in the AGENTS.md line that says `internal/store` stays pure Go)?",
       "ground_truth": [
         "ADR-020"
       ],
