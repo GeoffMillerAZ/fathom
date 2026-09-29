@@ -1,6 +1,7 @@
 // learning_test.go — GL-13 (docs/plans/governance-learning.md, design doc
-// §6 "Rules that learn"): TestLearningPromotesAndRetires is this row's
-// proof anchor (reachable_from).
+// §6 "Rules that learn"): applyLearning's own decisions, pure. The row's
+// proof anchor (reachable_from) is cmd/fathom's TestLearningPromotesAndRetires,
+// which reaches applyLearning through `fathom claim learn`.
 package semantic
 
 import (
@@ -10,7 +11,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
-func TestLearningPromotesAndRetires(t *testing.T) {
+func TestApplyLearningPromotesAndRetires(t *testing.T) {
 	now := time.Date(2026, 9, 28, 12, 0, 0, 0, time.UTC)
 	thresholds := DefaultLearningThresholds() // 3/2/30d promote, 3 refutes retire, 180d never-triggered
 

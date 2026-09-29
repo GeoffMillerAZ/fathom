@@ -66,6 +66,7 @@ type ingestDocsJSON struct {
 	Unchanged    int                  `json:"unchanged"`
 	Deleted      int                  `json:"deleted"`
 	UnitsWritten int                  `json:"units_written"`
+	LinksWritten int                  `json:"links_written"`
 	UnitsElided  int                  `json:"units_elided,omitempty"`
 	ElidedBytes  int                  `json:"elided_bytes,omitempty"`
 	Elided       []ingestDocElidedRow `json:"elided,omitempty"`
@@ -247,7 +248,7 @@ func renderIngestJSON(w io.Writer, service, svcPath string, report client.Report
 	if d := report.DocIndex; d.FilesScanned > 0 || d.FilesDeleted > 0 || report.DocIndexSkipped != "" {
 		docs := &ingestDocsJSON{
 			Files: d.FilesScanned, Changed: d.FilesChanged, Unchanged: d.FilesUnchanged, Deleted: d.FilesDeleted,
-			UnitsWritten: d.UnitsWritten, UnitsElided: d.UnitsElided, ElidedBytes: d.ElidedBytes,
+			UnitsWritten: d.UnitsWritten, LinksWritten: d.LinksWritten, UnitsElided: d.UnitsElided, ElidedBytes: d.ElidedBytes,
 			Skipped: report.DocIndexSkipped,
 		}
 		for _, e := range d.Elided {
