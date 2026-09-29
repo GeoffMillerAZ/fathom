@@ -53,7 +53,7 @@ what was considered so it is not re-proposed.
 - [-] Orchestrator constraints carried to sub-agents {id: PR-D8, disposition: deferred, reason: "no consumer yet", trigger: "the handoff maps exist (XM-M1 reads BUILD at 15 percent or more re-derivation and XM-M2 reads PASS) and sub-agent hooks carry agent_id, PR-V3 (F54)"}
 - [-] Unserved scanning of guard and layer rules, as a receipt-only counter {id: PR-D9, disposition: deferred, reason: "it checks rules the agent never saw", trigger: "PR-M2 shows retrieval misses dominate"}
 - [-] Per-agent keeping tables as a view keyed by agent identity {id: PR-D10, disposition: deferred, reason: "no volume, and I58 keys any per-author figure by agent identity, never a person", trigger: "K6 clears: at least 20 pin checks a week on registered roots"}
-- [-] A model setting kept or broken {id: PR-X1, disposition: refused, reason: "R7, I59 and ADR-056 d13: a judgment never sets a status"}
+- [-] A model setting kept or broken {id: PR-X1, disposition: refused, reason: "R7, I62 and ADR-056 d13: a judgment never sets a status"}
 - [-] A waiver or bypass command inside the feedback line {id: PR-X2, disposition: refused, reason: "a sanctioned bypass beside the fact becomes the cheapest exit, which is how i28 failed"}
 - [-] Turn-end lines delivered on the next UserPromptSubmit {id: PR-X3, disposition: refused, reason: "it arrives after the agent reported done, which is the served-but-ignored channel again"}
 - [-] Guard and layer evaluators over the whole file after each edit {id: PR-X4, disposition: refused, reason: "fragment-tuned checks misfire on existing content and read kept vacuously for advisory rules"}

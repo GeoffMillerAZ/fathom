@@ -35,10 +35,10 @@ a table or a new tool. The rows sit beside `docs/plans/decision-port.md` (DP), `
 - [ ] Fathom's own call sites follow the kit's hardening: they use the generic kind name and the `decision/llm` and `decision/typesafe` constructors, and existing config and `decisions.jsonl` rows that say `noul` still read {id: JF-24, symbol: Open, package: internal/decide, reachable_from: TestDecideOpenUsesSubpackageAdaptersAndStillReadsNoulRows, needs: "JF-14"}
 - [-] A fitted recalibration map (Platt or temperature) and site auto-disable {id: JF-15, disposition: deferred, reason: "a fit at n near 100 is noise and cannot repair route's non-monotonic failure; auto-disable needs a minimum n per window or it flaps", trigger: "one (site, provider, model) holds at least 100 labels (F39)"}
 
-## Invariants I59 to I61 (ADR-056)
+## Invariants I60 to I62 (ADR-056)
 
-- [ ] I59: a judgment prunes, gates or reorders a default list only when its calibration reading's Wilson 95 percent lower bound is at least 0.90, and every removed row is named {id: JF-19, symbol: judgmentMayPrune, package: internal/decide, reachable_from: TestJudgmentNeverPrunesBelowR3Bar, needs: "JF-11"}
-- [ ] I59: a security property is never judged for serving; a template naming one is refused {id: JF-20, symbol: refuseSecurityTemplate, package: internal/decide, reachable_from: TestSecurityPropertiesNeverJudgedForServing, needs: "JF-4"}
+- [ ] I62: a judgment prunes, gates or reorders a default list only when its calibration reading's Wilson 95 percent lower bound is at least 0.90, and every removed row is named {id: JF-19, symbol: judgmentMayPrune, package: internal/decide, reachable_from: TestJudgmentNeverPrunesBelowR3Bar, needs: "JF-11"}
+- [ ] I62: a security property is never judged for serving; a template naming one is refused {id: JF-20, symbol: refuseSecurityTemplate, package: internal/decide, reachable_from: TestSecurityPropertiesNeverJudgedForServing, needs: "JF-4"}
 - [ ] I61: a request plan carries only the spans, assembled context and question text a site declares, secret-shaped strings redacted and counted, `[decide] exclude` honoured, and prints exactly what would leave {id: JF-21, symbol: buildRequestPlan, package: internal/decide, reachable_from: TestRequestPlanCarriesOnlyDeclaredSpansRedacted, needs: "JF-4"}
 
 ## Corrections and records (sections 9 and 2)

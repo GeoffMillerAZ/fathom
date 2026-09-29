@@ -210,7 +210,7 @@ and **PR-V3** (whether hooks fired inside a sub-agent carry `agent_id`). PR-V1 g
 
 | Item | Reason |
 |---|---|
-| A model (Jev or any other) setting kept or broken (PR-X1) | R7, I59, ADR-056 decision 13: a judgment never sets a status |
+| A model (Jev or any other) setting kept or broken (PR-X1) | R7, I62, ADR-056 decision 13: a judgment never sets a status |
 | A bypass in the line, for example `or: fathom claim waive <id>` (PR-X2) | in i28 the agent took the cheapest exit; a sanctioned bypass beside the fact becomes the new cheapest exit |
 | Turn-end lines delivered on the next UserPromptSubmit (PR-X3) | they arrive after the agent reported done, next to a new task: the served-but-ignored channel again |
 | `guard_eval` and `layer_eval` on the whole file after each edit (PR-X4) | fragment-tuned checks misfire on existing content (45 of 366 files) and read kept vacuously when `!Enforce` |
@@ -224,7 +224,7 @@ and **PR-V3** (whether hooks fired inside a sub-agent carry `agent_id`). PR-V1 g
 
 ## 8. Jev, weighed
 
-- **Jev never resolves anything here.** Kept and broken are statuses (R7, I59). Judged compliance is refused
+- **Jev never resolves anything here.** Kept and broken are statuses (R7, I62). Judged compliance is refused
   (ADR-056 decision 13), and a hook never opens the port (I14 as amended). With provider none (the default)
   every element of this design runs unchanged: nothing here calls the port.
 - **Its only credible role is upstream.** `propose_check` would be a typed choice over the closed check kinds
@@ -251,7 +251,7 @@ refused rows PR-D1 to PR-D10 and PR-X1 to PR-X11), grammar v2, all open, nothing
   pin losses have their own beat, so the name would have no writer and would invite O120 back. O120 carries the
   addendum.
 - **Futures** F53 (`propose_check`) and F54 (orchestrator constraints on a sub-agent).
-- **Observations** (through `fathom observe`): O122 (SR-45's "the obligations answer marks it checkable" half
+- **Observations** (through `fathom observe`): O123 (SR-45's "the obligations answer marks it checkable" half
   has only test callers) and, in the same pass, the I53 rung re-read in `docs/intent/invariants.md`.
 - **CHANGELOG.** A line with PR-6, for the new `[hooks] pin_check` key, when the row lands.
 

@@ -21,7 +21,7 @@ level 10 as its own arm). Every new Jev feature is its own opt-in per repository
 working path without Jev. Nobody has measured Jev's accuracy on code.
 
 **Not claimed:** that Jev reads code well (*unmeasured*), that any of this saves tokens (*hypothesis*,
-benches pending), or that a judgment is proof (it never is, however good the model becomes: I59).
+benches pending), or that a judgment is proof (it never is, however good the model becomes: I62).
 
 ## What Jev is, in our words
 
@@ -183,7 +183,7 @@ trace none. Names in the traces are illustrative except where the records give t
 | The hook saves at least 20 percent of tokens-to-green | hypothesis | the level 10 cell decides; not run |
 | `ask` saves at least 40 percent at equal recall and precision | hypothesis | the 40-handlers cell decides, after J0; not run |
 | Fathom adds something to raw level 10 | hypothesis | raw `ask_jev` runs as its own arm; the result is published either way |
-| A judgment is proof | refused | I59: never served as a code fact, sets no status, blocks nothing |
+| A judgment is proof | refused | I62: never served as a code fact, sets no status, blocks nothing |
 
 ## The idea board: 34 ideas, each with one verdict
 
@@ -243,13 +243,13 @@ never on because a repository set a provider, never a broken feature when it fai
 tool. Evidence: never an uncalibrated confidence shown as calibrated (a hint needs 90 of 100 right at the
 shown confidence, pruning needs a Wilson 95 percent lower bound of at least 0.90), never an unpinned model
 (pin `jev-1.13.0`, log the resolved model), never proof (a hook row is not an attested run), never written
-text. These are ADR-056 rules R1 to R8, principle P24 and invariants I59 to I61.
+text. These are ADR-056 rules R1 to R8, principle P24 and invariants I60 to I62.
 
 ## What it drove
 
 | Decision | Where |
 |---|---|
-| Judgment at the port, proof first; the decision-model bet; rules R1 to R8; per-site opt-in | ADR-056; P24; I59 to I61 |
+| Judgment at the port, proof first; the decision-model bet; rules R1 to R8; per-site opt-in | ADR-056; P24; I60 to I62 |
 | Goals G27 to G32 and futures F34 to F49 | `docs/intent/scope.md`; `docs/intent/futures.md` |
 | The test-run hook, J0, calibration, carry-across, maps, stall detection and preflight plans | TR-, JP-, JF-, JT-, CA-, XM-, WS- |
 | The provenance rule for third-party summaries | this file; `docs/assessments/README.md` conventions |

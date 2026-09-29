@@ -656,7 +656,7 @@ nothing may depend on it (P24). The entry's own drop-if stands.
   an import boundary and the other guard checks), and a human accepts the proposal. It chooses only the kind:
   the arguments (globs, test names) still have to be generated, and generation is the port's weak side (ADR-056).
 - Do not build: it before J0 passes and the labeled set reaches 50 (about 21 rules have a check today); any
-  auto-accept; a model that sets kept or broken (R7, I59); a check kind outside the closed set.
+  auto-accept; a model that sets kept or broken (R7, I62); a check kind outside the closed set.
 - Preserve: the closed set of guard check kinds; rules labeled by whether a check already exists; human
   acceptance of every proposal.
 - Promote when: J0 (`docs/plans/judged-predicates.md` JP-M1) reads PASS, the labeled set reaches 50, and prose

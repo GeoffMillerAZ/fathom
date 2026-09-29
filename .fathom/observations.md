@@ -1926,7 +1926,7 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Status:** open
 - **Impact:** every reading that joins or counts ledger rows without a root filter is inflated or skewed until PE-24 lands, among them proof history and burn-up (PE-2, PE-6), cost per proven row (PE-16), the unjoined share of the session join (PE-15), the verify-gate figure, and the corpus that decision E4 (WS-12) would fit on. Not measured: how far each figure moves once the scratch rows are excluded, which PE-M5 reads.
 
-### O122 - SR-45 is marked [x] but the half that says the obligations answer marks a served rule checkable exists only as a library: guardFromCheckableRule and LayerRuleIsCheckable have test callers only, so no served answer carries the mark
+### O123 - SR-45 is marked [x] but the half that says the obligations answer marks a served rule checkable exists only as a library: guardFromCheckableRule and LayerRuleIsCheckable have test callers only, so no served answer carries the mark
 
 - **Symptom:** SR-45 is marked [x] but the half that says the obligations answer marks a served rule checkable exists only as a library: guardFromCheckableRule and LayerRuleIsCheckable have test callers only, so no served answer carries the mark
 - **Evidence:**
@@ -1939,7 +1939,7 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Status:** open
 - **Impact:** the ladder of ADR-057 (a checkable rule denies, a prose rule advises) is stated but not visible in what the agent is served; a reading that splits served rules by checkable would find every rule unmarked. No wrong verdict is served (the deny path itself works, ADR-038); the mark is missing, not false.
 
-### O123 - The shared build-cache prune race failed pre-push gates: the prune lock in scripts/lib/build-cache.sh serializes pruners but not builders, so a build that starts during go clean -cache reads a cache being deleted
+### O124 - The shared build-cache prune race failed pre-push gates: the prune lock in scripts/lib/build-cache.sh serializes pruners but not builders, so a build that starts during go clean -cache reads a cache being deleted
 
 - **Symptom:** Pre-push gates failed while another process pruned the shared Go build cache; the gate scripts were moved to a private `FATHOM_CACHE_ROOT` to stop it
 - **Evidence:**
@@ -1952,7 +1952,7 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Status:** open
 - **Impact:** a failed gate costs a full run (about 40 minutes) and reads as a code failure until someone notices the cache error; the private-root workaround leaves the shared-root path unfixed for any operator who runs two builds at once
 
-### O124 - The intent living docs are over the project-intent size budget and the 2026-09-27..29 program grew them without the prune that should ride with new records: futures.md 692 lines, scope.md 375 and domain.md 198 against a budget of 150 each
+### O125 - The intent living docs are over the project-intent size budget and the 2026-09-27..29 program grew them without the prune that should ride with new records: futures.md 692 lines, scope.md 375 and domain.md 198 against a budget of 150 each
 
 - **Symptom:** The program added goals G27 to G33, futures F34 to F55, questions Q31 to Q34 and principle P24 to `docs/intent/` without running `intent-prune`; the living docs that were already over budget on 2026-09-27 (futures.md 399 and scope.md 326 lines on origin main) grew further
 - **Evidence:**
