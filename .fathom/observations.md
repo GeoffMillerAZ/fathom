@@ -1912,6 +1912,7 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** planned, not yet landed: `docs/plans/judgment-foundations.md` JF-1 renames the events `still_served` and `top_changed` and keeps `violated` only for a rule with a checkable condition, JF-2 makes every reader read the new names and map old ledger rows, and the GL-10 readings carry a correction note (`docs/design/governance-learning.md` section 5, done 2026-09-29). ADR-056 decision 8.
 - **Status:** open
 - **Impact:** every governance-learning reading built on these events (GL-10 counts, GL-11's ignored and effective classes) is mislabeled until the rename lands; whether GL-13 has already promoted or retired a rule from them was not checked. Not measured on a ledger: `~/.fathom/rule-outcomes.jsonl` did not exist on the reference machine at the time of the reading.
+- **Addendum (2026-09-29, ADR-057):** JF-1 lands alone and drops the clause that keeps `violated` for a rule with a checkable condition. The tracker evaluates no check: a checkable rule denies and records `blocked` (PR-10 in `docs/plans/served-not-kept.md`), pin losses have their own `pin` beat, and a `violated` name with no writer would invite this defect back. The design notes (`docs/design/judgment-foundations.md` section 5, `docs/design/governance-learning.md` section 5) carry the same amendment.
 
 ### O121 - Scratch-clone runs of fathom verify and fathom intent audit append rows keyed by scratch paths to the user-level verify and intent ledgers, so 13,514 of 19,639 verify-ledger rows (and 91 of 180 intent-ledger rows) on 2026-09-28 describe throwaway clones and distort proof history and economics
 
@@ -1924,3 +1925,29 @@ tests being added) is what catches that, not a second reading of the prose.
   - **Fix:** planned, not yet landed: `docs/plans/progress-and-economics.md` PE-23 to PE-25 (readers filter to registered service roots and name the ignored count), PE-26 to PE-28 (a documented FATHOM_HOME and --ledger override that test and scratch runs use), PE-29 (a `fathom gc` class `ledger-unregistered` that archives, never deletes, on the owner's command) and the PE-M5 reading; design `docs/design/progress-and-economics.md` section 11
 - **Status:** open
 - **Impact:** every reading that joins or counts ledger rows without a root filter is inflated or skewed until PE-24 lands, among them proof history and burn-up (PE-2, PE-6), cost per proven row (PE-16), the unjoined share of the session join (PE-15), the verify-gate figure, and the corpus that decision E4 (WS-12) would fit on. Not measured: how far each figure moves once the scratch rows are excluded, which PE-M5 reads.
+
+### O122 - SR-45 is marked [x] but the half that says the obligations answer marks a served rule checkable exists only as a library: guardFromCheckableRule and LayerRuleIsCheckable have test callers only, so no served answer carries the mark
+
+- **Symptom:** SR-45 is marked [x] but the half that says the obligations answer marks a served rule checkable exists only as a library: guardFromCheckableRule and LayerRuleIsCheckable have test callers only, so no served answer carries the mark
+- **Evidence:**
+  - **Tool:** internal/guardspec/checkablerule.go (SR-45, F-26), the obligations answer path
+  - **Expected:** a served rule that compiles to an `enforce: true` guard is marked checkable in the obligations answer the agent reads, so the agent and every reading can tell a rule that denies from one that only advises (the SR-45 row says the answer marks it checkable)
+  - **Actual:** `LayerRuleIsCheckable` is reached only through `guardFromCheckableRule`, and `guardFromCheckableRule` is called only from `checkablerule_test.go`; no obligations output path calls either. Found independently by the promises critic (2026-09-29) while reading the guard and rule-outcome paths; the row was flipped `[x]` on the library half
+  - **Repro:** `grep -rn "LayerRuleIsCheckable\|guardFromCheckableRule" --include='*.go' .` and read the callers (non-test: only the package's own chain); call `obligations` for a file governed by an enforced guard and look for a checkable mark
+- **Root cause:** the row proved the library (`TestCheckableRuleCompilesToGuard`) and stopped: the wiring half (mark the served rule in the obligations answer) has no consumer, so the row is proven by tests and reached by no product entry point ("done means wired"). Nothing else reads the mark, so the checkable/not-checkable split is invisible to agents and to `docs/design/served-not-kept.md`'s ladder.
+- **Fix:** planned, not yet landed: a separate wiring row (the integration line tracks it as SR-45w) that marks a served rule checkable in the obligations answer through `LayerRuleIsCheckable` and proves it from the answer, not the library; until it lands SR-45 reads library-only.
+- **Status:** open
+- **Impact:** the ladder of ADR-057 (a checkable rule denies, a prose rule advises) is stated but not visible in what the agent is served; a reading that splits served rules by checkable would find every rule unmarked. No wrong verdict is served (the deny path itself works, ADR-038); the mark is missing, not false.
+
+### O123 - The shared build-cache prune race failed pre-push gates: the prune lock in scripts/lib/build-cache.sh serializes pruners but not builders, so a build that starts during go clean -cache reads a cache being deleted
+
+- **Symptom:** Pre-push gates failed while another process pruned the shared Go build cache; the gate scripts were moved to a private `FATHOM_CACHE_ROOT` to stop it
+- **Evidence:**
+  - **Tool:** scripts/lib/build-cache.sh (I39, ADR-039), the pre-push gate
+  - **Expected:** a prune above `FATHOM_CACHE_MAX_MIB` never fails a concurrent build; a gate run is unaffected by another run's cache trim
+  - **Actual:** the prune branch takes its lock with `mkdir` and the lock only stops a second pruner (it prints "prune already in progress; continuing" and builds on), so builders that continue race the `go clean -cache`; found in the 2026-09-28 gate runs when parallel worker waves shared one cache root
+  - **Repro:** read the size guard around `go clean -cache` in `scripts/lib/build-cache.sh`; run two gates against one `FATHOM_CACHE_ROOT` whose Go build cache is above `FATHOM_CACHE_MAX_MIB`. The mechanism is inferred from the code path; it was not reproduced from a saved log
+- **Root cause:** suspected: the lock excludes pruners from each other, not builders from a pruner, so nothing keeps a live build away from a cache being deleted
+- **Fix:** planned, not yet landed: check fathom's own cache pruning under I39 for the same race (make a prune wait for, or run only between, builds, or prune by age and never the whole cache); the interim fix is operational: gates and worker waves run with a private `FATHOM_CACHE_ROOT` (agentic-kit's orchestration guidance names it), and `scripts/build-cache_test.sh` should gain a concurrent-build case
+- **Status:** open
+- **Impact:** a failed gate costs a full run (about 40 minutes) and reads as a code failure until someone notices the cache error; the private-root workaround leaves the shared-root path unfixed for any operator who runs two builds at once
