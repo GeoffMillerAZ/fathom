@@ -226,12 +226,18 @@ func cmdThreadPromoteRoute(route, planFile, row, repo, service, url, storePath, 
 		fmt.Fprintf(stderr, "error: row %q's recorded line %d is out of range for %q\n", row, task.Line, planFile)
 		return 1
 	}
-	newLine, ok := verify.UpsertAnnotationField(lines[task.Line-1], "ctx", strings.Join(merged, " "))
+	// A wrapped row (G2-5) is edited as the lines the parser read for it:
+	// its annotation block may sit on a continuation line, or span two.
+	end := task.EndLine
+	if end < task.Line || end > len(lines) {
+		end = task.Line
+	}
+	newText, ok := verify.UpsertAnnotationField(strings.Join(lines[task.Line-1:end], "\n"), "ctx", strings.Join(merged, " "))
 	if !ok {
 		fmt.Fprintf(stderr, "error: row %q's annotation could not be safely edited (a malformed/suspect block) — fix it by hand first\n", row)
 		return 1
 	}
-	lines[task.Line-1] = newLine
+	lines = append(append(append([]string{}, lines[:task.Line-1]...), strings.Split(newText, "\n")...), lines[end:]...)
 	if err := os.WriteFile(planFile, []byte(strings.Join(lines, "\n")), 0o644); err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1

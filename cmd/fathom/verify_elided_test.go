@@ -142,3 +142,53 @@ func TestVerifyViaHTTP_CompletesElidedAnswers(t *testing.T) {
 		t.Errorf("uncut answer = %d tasks in %d calls (%v)", len(rep.Tasks), *calls, err)
 	}
 }
+
+// TestVerifyWithCaller_BuildingAnswerIsFollowedUp: a daemon whose call graph
+// is still building answers verify_plan with every row elided and a named
+// partial (EW-22, O130); the gate's caller asks again and gets the rows from
+// the build the first call left running, and a row that still never
+// arrives is Unknown naming why.
+func TestVerifyWithCaller_BuildingAnswerIsFollowedUp(t *testing.T) {
+	md := []byte("# p\n\n- [x] one {id: A-1, symbol: One}\n- [x] two {id: A-2, symbol: Two}\n")
+	plan := verify.ParseMarkdownPlan("svc", md)
+	const building = "the call graph for this index state is still building"
+	answer := func(ready bool) httpVerifyResult {
+		var hvr httpVerifyResult
+		hvr.Service = "svc"
+		if !ready {
+			hvr.Partial = building
+			hvr.Elided = &struct {
+				Count int `json:"count"`
+				Of    int `json:"of"`
+			}{Count: 2, Of: 2}
+			return hvr
+		}
+		for _, id := range []string{"A-1", "A-2"} {
+			hvr.Tasks = append(hvr.Tasks, httpVerifyTask{ID: id, Status: "pass", Label: "verified"})
+		}
+		hvr.Summary.Total, hvr.Summary.Pass = 2, 2
+		return hvr
+	}
+
+	calls := 0
+	rep, err := verifyWithCaller(func([]byte) (httpVerifyResult, error) {
+		calls++
+		return answer(calls > 1), nil
+	}, md, plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if calls != 2 || rep.Summary.Pass != 2 || len(rep.Tasks) != 2 {
+		t.Fatalf("calls %d, report %+v: the building answer must be followed up", calls, rep)
+	}
+
+	rep, err = verifyWithCaller(func([]byte) (httpVerifyResult, error) { return answer(false), nil }, md, plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, v := range rep.Tasks {
+		if v.Status != verify.Unknown || len(v.Criteria) != 1 || !strings.Contains(v.Criteria[0].Detail, building) {
+			t.Fatalf("a row the build never answered = %+v, want Unknown naming the build", v)
+		}
+	}
+}

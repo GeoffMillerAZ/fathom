@@ -91,6 +91,25 @@ type Graph struct {
 	// CT-6). nil until AddTypedEdges is called at least once.
 	edgeKind map[string]core.EdgeKind
 
+	// instantiates holds, per caller key, the type keys of the typed pass's
+	// core.EdgeInstantiates facts (EW-15): the first-party types with
+	// methods whose values the caller's body holds. Never call edges — the
+	// product walk reads them to follow an interface dispatch edge only
+	// into a type some reached caller instantiates. nil until
+	// AddTypedEdges sees one.
+	instantiates map[string][]string
+
+	// typedFiles is every file the typed pass resolved a Go call site,
+	// value reference or instantiation in (any Go typed edge's FromFile):
+	// there a receiver-variable method call the syntax pass matched by
+	// name alone is superseded by the typed pass's own answer (EW-15).
+	typedFiles map[string]bool
+	// typedDirs is the directory of every typedFiles entry: a package the
+	// typed pass resolved at all. One it did not (it failed to load)
+	// carries no instantiation facts, so the product walk never prunes an
+	// interface dispatch into its types.
+	typedDirs map[string]bool
+
 	// dispatchOut counts, per caller key, how many EdgeIfaceDispatch edges
 	// originate from it — the "N implementers" reported in verify's verdict
 	// detail. If a caller has more than one distinct interface-dispatch call
@@ -657,10 +676,21 @@ func AddTypedEdges(g *Graph, edges []core.Edge) {
 	}
 	calleesTouched := make(map[string]bool)
 	callersTouched := make(map[string]bool)
+	instTouched := make(map[string]bool)
 
 	for _, e := range edges {
 		if e.FromSymbol == "" || e.ToSymbol == "" {
 			continue
+		}
+		switch e.Kind {
+		case core.EdgeDirect, core.EdgeIfaceDispatch, core.EdgeFuncValue, core.EdgeUnresolved, core.EdgeInstantiates:
+			if e.FromFile != "" {
+				if g.typedFiles == nil {
+					g.typedFiles, g.typedDirs = make(map[string]bool), make(map[string]bool)
+				}
+				g.typedFiles[e.FromFile] = true
+				g.typedDirs[path.Dir(e.FromFile)] = true
+			}
 		}
 		if _, ok := g.nodes[e.ToSymbol]; !ok {
 			continue
@@ -671,6 +701,17 @@ func AddTypedEdges(g *Graph, edges []core.Edge) {
 				continue
 			}
 			g.nodes[e.FromSymbol] = n
+		}
+		if e.Kind == core.EdgeInstantiates {
+			// A fact about the caller, never a call edge.
+			if g.instantiates == nil {
+				g.instantiates = make(map[string][]string)
+			}
+			if !containsStr(g.instantiates[e.FromSymbol], e.ToSymbol) {
+				g.instantiates[e.FromSymbol] = append(g.instantiates[e.FromSymbol], e.ToSymbol)
+				instTouched[e.FromSymbol] = true
+			}
+			continue
 		}
 		ek := e.FromSymbol + "\x00" + e.ToSymbol
 		if _, marked := g.edgeKind[ek]; !marked {
@@ -693,6 +734,9 @@ func AddTypedEdges(g *Graph, edges []core.Edge) {
 	}
 	for k := range callersTouched {
 		sort.Strings(g.callers[k])
+	}
+	for k := range instTouched {
+		sort.Strings(g.instantiates[k])
 	}
 }
 

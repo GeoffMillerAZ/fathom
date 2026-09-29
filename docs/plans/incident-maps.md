@@ -9,7 +9,8 @@ XM-M6, XM-M7), whose ids stay reserved there.
 The build is deferred by the owner. Nothing below starts until its own gate reads: wave 0 builds nothing in the
 product, wave F fixes two defects in shipped code whenever the owner chooses, wave 1 needs IM-M0 to read BUILD,
 and wave 2 needs IM-M2 to read KEEP and a named consumer (IM-V1). Root rows name (op) readings, never a deferred
-row, because a deferred row satisfies a `needs:` edge by its disposition alone (G2-6). No row here needs a
+row: before G2-6 a deferred row satisfied a `needs:` edge by its disposition alone, and since G2-6 it blocks until
+it revives. No row here needs a
 provider. A reading's pattern accepts either verdict, so a KILL or DROP reading proves the reading row and would
 leave the rows behind it eligible: the change that records such a verdict also marks the wave it gated `[-]` with a
 refused disposition. The deferred and refused rows at the end are recorded so they are not re-proposed.

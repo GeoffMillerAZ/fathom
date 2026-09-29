@@ -81,8 +81,11 @@ var (
 	graphGroup    = NewGroup[graphKey, *callgraph.Graph]("graphstore", Options{WatermarkScoped: true, Keep: true, ExpectedCost: graphCost})
 	// productGroup holds each graph's product-entry reach set (verify's
 	// `wired` criterion, ADR-018 amendment 2026-09-28): one O(V+E) walk
-	// per (store, service, watermark, kind), dropped with its graph.
-	productGroup = NewGroup[graphKey, *callgraph.ProductReach]("product_reach", Options{WatermarkScoped: true})
+	// per (store, service, watermark, kind), dropped with its graph. Its
+	// build nests the graph's (GraphFor) when that is not built yet, so it
+	// is kept like one: a walk a caller gave up on finishes for the next
+	// caller instead of being cancelled with it (EW-22, O130).
+	productGroup = NewGroup[graphKey, *callgraph.ProductReach]("product_reach", Options{WatermarkScoped: true, Keep: true, ExpectedCost: graphCost})
 )
 
 // Snapshot is one service's symbols at one watermark. Immutable: callers

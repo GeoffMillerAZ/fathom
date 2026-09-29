@@ -444,7 +444,24 @@ const (
 	// every consumer (find_callers/resolved_nav/blast_radius) inherits that
 	// via EdgeConfidenceOf rather than switching on Kind itself.
 	EdgeFileResolved EdgeKind = "file-resolved"
+	// EdgeInstantiates is a fact, not a call: FromSymbol's body (a
+	// function, or "<pkg>.init" for package variable initializers) holds a
+	// value of the first-party named type ToSymbol names — a type with
+	// methods, or one a struct the body holds contains — so ToSymbol's
+	// methods can be reached through an interface from there. The Go
+	// typed pass emits one per (function, type) (TypedEdgeEpoch 4, EW-15);
+	// the product wiring check reads them to follow an interface dispatch
+	// edge only into a type the reached code instantiates (rapid type
+	// analysis). Every caller/callee reader skips this kind: it is never a
+	// graph edge.
+	EdgeInstantiates EdgeKind = "instantiates"
 )
+
+// ToolKindGoBuildExcluded marks the symbols of a Go file that no default
+// build compiles — a `//go:build ignore` generator, a `//go:build tools`
+// file, a custom-tag variant (EW-15). Such a file is indexed like any
+// other, but its `func main` is never a product entry point.
+const ToolKindGoBuildExcluded = "go-build-excluded"
 
 // Edge is a directed call/reference edge between two symbols.
 //

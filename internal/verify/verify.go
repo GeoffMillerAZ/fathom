@@ -104,6 +104,16 @@ type Task struct {
 	// location a SARIF result points at (PC-21). 0 when the plan did not
 	// come from Markdown.
 	Line int
+	// EndLine is the 1-based last line the parser read for this row: Line
+	// for a one-line row, the last indented continuation line for a
+	// wrapped one (G2-5). A writer that edits the row's annotation edits
+	// lines Line..EndLine. 0 when the plan did not come from Markdown.
+	EndLine int
+	// UnreadAnnotation holds an annotation block found on an UNINDENTED
+	// line directly under a row that carries none (G2-5): Markdown may read
+	// that line as the row's lazy continuation, the parser does not, and
+	// LintPlan names it so the contract is never lost silently.
+	UnreadAnnotation string
 
 	// Oracle names a non-index acceptance contract. "lexical" (ADR-030):
 	// OraclePath is a repo-relative file that must exist and be non-empty

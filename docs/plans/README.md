@@ -62,7 +62,7 @@ tasks block.
 | `min_trials` | `oracle: ledger` only: the trial floor the matched row's own per-cell trial count must meet or exceed — a scenario row's `trials`, or a home row's own `min_trials` (never its run-total `treatment_trials`, which inflates with task count and proves nothing about replication). | `1` |
 | `criterion` | `oracle: ledger` only, task/arm-less rows: disambiguates a `run_id` that matches more than one home row (the same run scored under two registered criteria) by naming the one row's `evaluation.criterion_id`. Refused as ambiguous, naming the criteria present, when omitted and more than one row matches. | unset |
 | `accept_verdict` | `oracle: ledger` only: `any` certifies the claim even though the matched row's own `evaluation.verdict` is `fail` or `indeterminate` — otherwise such a row is refused, naming the reason. | unset (refuses a fail/indeterminate row) |
-| `needs` | Comma-separated row ids this row waits on (eligibility, never gating). `<sibling>.md#<id>` names a row in another plan under the same directory: lint checks the shape, `fathom verify` and `plans next` read the sibling's authored state (claimed or dispositioned satisfies; its verdict is not recomputed). | unset |
+| `needs` | Comma-separated row ids this row waits on (eligibility, never gating). Only a claimed row satisfies (in the same plan, claimed and verified). **Deferred is not done:** a `[-]` target keeps the row blocked — a deferred one until it revives, and a refused one (or any disposition but deferred) names the row as needing re-planning in `plans next`, never silently eligible (G2-6). `<sibling>.md#<id>` names a row in another plan under the same directory: lint checks the shape, `fathom verify` and `plans next` read the sibling's authored state by the same rule (its verdict is not recomputed). | unset |
 | `certified_by` | Test name(s) whose compiled certifications-layer claim (vision 33 / ADR-043 stage 1, `docs/design/test-certifications.md` §4) must be `live` and scoped to the row's `symbol` for the row to verify. Repeatable via a comma-separated value, same convention as `needs` — **double-quote a multi-test value** (`certified_by: "TestA,TestB"`); a single test needs no quoting. When set, it REPLACES the ordinary `test_reaches`/`skip_test` requirement: only `certified` proves the row — `certificate-unproven`, `certificate-broken`, `certificate-unreachable`, and `certificate-absent` never do (`internal/verify.EvaluateCertifiedBy`). | unset |
 | `strength` | `certified_by` only: the minimum certification strength (design doc §1's closed, ordered ladder: `smoke` < `asserts` < `golden` < `property` < `conformance` < `mutation-killed`) every named test's certificate must meet or exceed. | `asserts` |
 | `max` | `oracle: lexical` only (CV-29, ADR-044 §3.1): the pattern's match count must be at most this many. Refused combined with `eq`. Also evaluated (CV-27/CV-28, `internal/verify.EvaluateGone`) off a `gone: pattern` row as its ratchet ceiling — the SAME bound, against the pattern's total match count across every scanned file, not a single file's count; `fathom refactor status` (a later row) additionally compares the live count against the baseline for drift reporting. | unset (no ceiling; a lexical row with no bound at all keeps the original "at least one match" default; a `gone: pattern` row with no bound at all instead defaults to "exactly zero," since it proves absence) |
@@ -150,7 +150,12 @@ reaches its function: verify walks the same syntax+typed call graph
 package-level variable initializers of every package those link. MCP tool
 handlers, CLI verbs, console routes and hook entries are reached through
 the binary that registers them (a registered handler is a func-value edge,
-I23). The criterion is `wired`:
+I23). The walk does not count (EW-15): a bare reference assigned to the
+blank identifier (`var _ = f`); a `main` in a file no default build compiles
+(`//go:build ignore`); a syntax-only guess at a method call's receiver in a
+file the typed pass resolved; or an interface dispatch into a type no reached
+code instantiates. A func literal held in a package variable still counts
+whether or not anything calls the variable (O133). The criterion is `wired`:
 
 | Outcome | Status | When |
 |---|---|---|
@@ -167,11 +172,17 @@ anchored on the product entry that must call it.
 
 ## Annotation placement (load-bearing)
 
-The annotation block must sit **on the checkbox line itself**. The parser is
-line-based: an annotation on a continuation (wrapped) line is silently
-ignored, and the task verifies as `no-contract` instead of carrying its
-intended contract. Keep the checkbox, title, spec IDs, and `{…}` block on one
-line, however long.
+The annotation block sits **on the checkbox line**, or on the row's
+**indented continuation lines** (G2-5). When the checkbox line carries no
+`{…}` block, the parser reads every indented line under it, up to a blank
+line, a list item, an HTML comment or a code fence, as part of the row: title
+text, spec IDs and the block, which may itself span lines. A row whose
+checkbox line carries its block reads that line alone, so a note indented
+under it is never part of it. An annotation on an **unindented** line under a
+row is not read (Markdown's lazy continuation is usually the next paragraph);
+`LintPlan` names it, and the row verifies as `no-contract` until it is
+indented or joined. One line stays the simplest form, and the only one a
+fathom older than G2-5 reads.
 
 ## Honesty boundary
 

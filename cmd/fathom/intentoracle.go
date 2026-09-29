@@ -141,7 +141,8 @@ func (o *indexOracle) resolveNames(names []string) (map[string]bool, error) {
 		return nil, err
 	}
 	var payload struct {
-		Tasks []struct {
+		Partial string `json:"partial"`
+		Tasks   []struct {
 			ID       string `json:"id"`
 			Criteria []struct {
 				Name   string `json:"name"`
@@ -153,6 +154,9 @@ func (o *indexOracle) resolveNames(names []string) (map[string]bool, error) {
 		return nil, err
 	}
 	if len(payload.Tasks) == 0 {
+		if payload.Partial != "" {
+			return nil, fmt.Errorf("verify_plan answered before any row was verified for service %q (%s) — not an answer yet", o.service, payload.Partial)
+		}
 		return nil, fmt.Errorf("verify_plan returned no tasks for service %q — empty or stale index, not an answer", o.service)
 	}
 	out := make(map[string]bool, len(names))

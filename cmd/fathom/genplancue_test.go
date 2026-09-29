@@ -37,11 +37,9 @@ func TestGenPlanCue_RoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("planFromCUE: %v\n%s", err, doc)
 	}
-	// Line is the row's position in the Markdown — a SARIF location, not
-	// part of the contract — so the typed shadow does not carry it.
-	for i := range plan.Tasks {
-		plan.Tasks[i].Line = 0
-	}
+	// The row's Markdown position is not part of the contract, so the
+	// typed shadow does not carry it.
+	stripMarkdownPosition(&plan)
 	if !reflect.DeepEqual(plan, back) {
 		t.Fatalf("round-trip loss:\n md: %+v\ncue: %+v\ndoc:\n%s", plan, back, doc)
 	}

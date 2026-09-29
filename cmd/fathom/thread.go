@@ -21,6 +21,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/verify"
 )
 
 const threadSchemaVersion = 1
@@ -218,9 +220,11 @@ func threadConditionHolds(c threadCondition, repoRoot string, items []threadItem
 		if err != nil {
 			return false
 		}
-		for _, line := range strings.Split(string(data), "\n") {
-			if strings.Contains(line, "{id: "+c.Row+",") || strings.Contains(line, "{id: "+c.Row+"}") {
-				return strings.HasPrefix(strings.TrimSpace(line), "- [x]")
+		// The plan grammar's own parser, so a wrapped row (its id on a
+		// continuation line, G2-5) is found by id like any other.
+		for _, t := range verify.ParseMarkdownPlan("", data).Tasks {
+			if t.ID == c.Row {
+				return t.Claimed
 			}
 		}
 		return false

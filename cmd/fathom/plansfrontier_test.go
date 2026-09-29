@@ -11,8 +11,8 @@ import (
 
 // TestFrontierEligibilityDerivesFromNeeds pins WF-4: frontier rows carry
 // derived eligible/blocked_on — eligible iff every needs: target is
-// claimed-and-verified or skipped-with-disposition; a row with no needs:
-// is eligible by definition. Pure function of (plan, evidence), computed
+// claimed-and-verified (a dispositioned [-] target never satisfies, G2-6);
+// a row with no needs: is eligible by definition. Pure function of (plan, evidence), computed
 // at query time — nothing stored.
 func TestFrontierEligibilityDerivesFromNeeds(t *testing.T) {
 	rows := []planRow{
@@ -67,8 +67,8 @@ func TestFrontierEligibilityDerivesFromNeeds(t *testing.T) {
 	if !ok {
 		t.Fatal("A-5 missing from frontier")
 	}
-	if !a5.Eligible {
-		t.Errorf("A-5 should be eligible: its only needs-target is skipped-with-disposition, blocked_on=%+v", a5.BlockedOn)
+	if a5.Eligible || len(a5.Replan) != 1 || a5.Replan[0] != "A-6" {
+		t.Errorf("A-5 should be blocked and named for re-planning: its only needs-target is refused (G2-6), got %+v", a5)
 	}
 
 	a7, ok := byID["A-7"]

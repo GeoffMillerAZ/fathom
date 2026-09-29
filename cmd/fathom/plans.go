@@ -441,10 +441,16 @@ type frontierRow struct {
 	// Eligible/BlockedOn (WF-4, vision 24 §3): pure derived eligibility —
 	// a function of (plan, evidence) computed at query time, nothing
 	// stored. A row with no needs: is eligible by definition; a row whose
-	// every needs-target is claimed-and-verified or skipped-with-
-	// disposition is eligible too.
+	// every needs-target is claimed-and-verified is eligible too. A
+	// dispositioned [-] target never satisfies (G2-6): deferred is not
+	// done, and a refused one will never be built.
 	Eligible  bool         `json:"eligible"`
 	BlockedOn []blockedDep `json:"blocked_on,omitempty"`
+	// Replan names the needs-targets that carry a disposition other than
+	// deferred (refused today; superseded, should the grammar gain it):
+	// the row waits on work that will not be built, so it needs
+	// re-planning, not waiting (G2-6).
+	Replan []string `json:"replan,omitempty"`
 
 	// Leased/LeaseHolder/LeaseExpires (WF-6, vision 24 §4): decoration
 	// from a fresh (non-released, unexpired) lease on this row, derived
@@ -475,14 +481,20 @@ func rowByID(rows []planRow) map[string]planRow {
 }
 
 // depSatisfied reports whether row counts as a satisfied needs-target:
-// claimed-and-verified, or skipped-with-disposition (WF-4's exact
-// eligibility predicate).
+// claimed-and-verified, nothing else. A skipped [-] row never satisfies
+// (G2-6): a deferred one is not done yet, and a refused one never will be
+// (needsReplan names its dependents).
 func depSatisfied(row planRow) bool {
 	t := row.Task
-	if t.Skipped {
-		return t.Disposition != ""
-	}
-	return t.Claimed && row.Verdict.Status == verify.Pass
+	return !t.Skipped && t.Claimed && row.Verdict.Status == verify.Pass
+}
+
+// needsReplan reports whether a needs-target's disposition means it will
+// not be built: any disposition but deferred (refused today; a superseded
+// one would read the same, should the grammar gain it). Its dependents
+// need re-planning rather than waiting (G2-6).
+func needsReplan(t verify.Task) bool {
+	return t.Skipped && t.Disposition != "" && t.Disposition != "deferred"
 }
 
 // depState names an unmet needs-target's current state for blocked_on,
@@ -490,6 +502,8 @@ func depSatisfied(row planRow) bool {
 func depState(row planRow) string {
 	t := row.Task
 	switch {
+	case t.Skipped && t.Disposition != "":
+		return t.Disposition // deferred, or refused (needsReplan)
 	case t.Skipped:
 		return "skipped-other" // skipped with no disposition — still unmet
 	case t.Claimed:
@@ -505,26 +519,33 @@ func depState(row planRow) string {
 }
 
 // rowEligibility computes eligible + blocked_on for one task's needs:
-// list against byID (WF-4, vision 24 §3). A cross-plan target
-// ("<sibling>.md#<id>", PC-10) is read from planDir: its AUTHORED state
-// decides — claimed or skipped-with-disposition satisfies, anything else
-// blocks — because the sibling's verdict is not recomputed here; the
-// blocked state says which plan it lives in.
-func rowEligibility(t verify.Task, byID map[string]planRow, planDir string) (bool, []blockedDep) {
+// list against byID (WF-4, vision 24 §3), plus replan: the targets that
+// will not be built (needsReplan). A cross-plan target ("<sibling>.md#<id>",
+// PC-10) is read from planDir: its AUTHORED state decides — claimed
+// satisfies, anything else blocks, a deferred row included (G2-6) — because
+// the sibling's verdict is not recomputed here; the blocked state says
+// which plan it lives in.
+func rowEligibility(t verify.Task, byID map[string]planRow, planDir string) (bool, []blockedDep, []string) {
 	if len(t.Needs) == 0 {
-		return true, nil
+		return true, nil, nil
 	}
-	var blocked []blockedDep
+	var (
+		blocked []blockedDep
+		replan  []string
+	)
 	for _, id := range t.Needs {
 		if _, cross := verify.ParseCrossPlanNeed(id); cross {
 			sib, err := verify.ResolveCrossPlanNeed(planDir, id)
 			switch {
 			case err != nil:
 				blocked = append(blocked, blockedDep{ID: id, State: "missing"})
-			case sib.Skipped && sib.Disposition != "", sib.Claimed:
+			case sib.Claimed && !sib.Skipped:
 				// satisfied by authored state (sibling verdict not recomputed)
 			default:
 				blocked = append(blocked, blockedDep{ID: id, State: depState(planRow{Task: sib}) + " (sibling plan)"})
+				if needsReplan(sib) {
+					replan = append(replan, id)
+				}
 			}
 			continue
 		}
@@ -535,9 +556,12 @@ func rowEligibility(t verify.Task, byID map[string]planRow, planDir string) (boo
 		}
 		if !depSatisfied(dep) {
 			blocked = append(blocked, blockedDep{ID: id, State: depState(dep)})
+			if needsReplan(dep.Task) {
+				replan = append(replan, id)
+			}
 		}
 	}
-	return len(blocked) == 0, blocked
+	return len(blocked) == 0, blocked, replan
 }
 
 // freshLeasesByRow indexes leases' currently-fresh events by
@@ -619,7 +643,7 @@ func frontierForPlan(rows []planRow, leases []leaseRow, now time.Time) []frontie
 			}
 		}
 
-		fr.Eligible, fr.BlockedOn = rowEligibility(t, byID, filepath.Dir(row.PlanFile))
+		fr.Eligible, fr.BlockedOn, fr.Replan = rowEligibility(t, byID, filepath.Dir(row.PlanFile))
 
 		if fresh := freshByRow[filepath.Base(row.PlanFile)+"|"+t.ID]; len(fresh) > 0 {
 			lease := pickDisplayLease(fresh)
@@ -735,6 +759,9 @@ func cmdPlansNext(args []string, stdout, stderr io.Writer) int {
 				ids[i] = b.ID
 			}
 			line += fmt.Sprintf(" (blocked on %s)", strings.Join(ids, ", "))
+		}
+		if len(r.Replan) > 0 {
+			line += fmt.Sprintf(" — needs re-planning: %s will not be built", strings.Join(r.Replan, ", "))
 		}
 		if r.Leased {
 			remaining := "0m"
