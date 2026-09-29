@@ -228,6 +228,7 @@
     "ctags:variable": 34
   },
   "notes": [
+    "integration review 2026-09-29 (kept): namespaces as containers (ns.Name) and qualify.scope_sep are in the dialect's goldens (shapes.cpp: geo.detail.scale, outer.inner.deep) and its CHANGELOG line; the dialect is not dispatched, so no indexed output changes and no ExtractorEpoch bump is due until the dispatch switch, which LB-Q-cpp-rest's trigger names. qualify.scope_sep applies only to a manifest that declares it (cpp and rust, neither dispatched)",
     "fmtlib/fmt: 1865 SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)",
     "fmtlib/fmt: restricted to include/**, src/**, test/*.cc, test/*.h, test/fuzzing/** (-only; the files outside are a disclosed gap, not measured)",
     "import_resolution not measured: in-repo spec counts arrive with the L3 strategies (LB-F11)",

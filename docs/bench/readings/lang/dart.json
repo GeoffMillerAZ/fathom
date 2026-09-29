@@ -573,6 +573,7 @@
     "scip:namespace": 29
   },
   "notes": [
+    "integration review 2026-09-29 (kept): the tags engine's @end capture is used by dialects/dart/tags.scm alone and only ever extends a definition; the scip-dart rules are keyed on scip-dart's symbols and SCIPOptionsFor(\"dart\"); the wave's dart commits (a4e653b6, e9efdbc2, 3ecb38d7) changed no other dialect's goldens, and TestDialectGoldens passes for every dialect",
     "bloc/packages/bloc: 91 callable references have no call written at their range (a tear-off such as `onError: c.addError`, an operator, the super(...) of an initializer) and are left out of the call truth (L2 is call sites)",
     "bloc/packages/bloc_concurrency: 10 callable references have no call written at their range (a tear-off such as `onError: c.addError`, an operator, the super(...) of an initializer) and are left out of the call truth (L2 is call sites)",
     "bloc/packages/bloc_test: 14 callable references have no call written at their range (a tear-off such as `onError: c.addError`, an operator, the super(...) of an initializer) and are left out of the call truth (L2 is call sites)",

@@ -180,6 +180,7 @@
     "fathom:KotlinImport": 14363
   },
   "notes": [
+    "integration review 2026-09-29 (kept, tier B): the Kotlin PSI dump is tier B on D2's own precedent. Roslyn, the C# compiler's parser, is tier B there, and the Kotlin compiler's PSI parser is the same instrument: the reference implementation's syntactic parser, stronger than tier C's independent parser library and, resolving nothing, not the type checker tier A names. Tier B caps L2 at good, as recorded",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
     "oracle: KotlinPsiDump (calibration/oracles/kotlin-psi), kotlin-compiler-embeddable 2.3.20's own PSI parser run as a separate JVM process, tier B on the D2 precedent (JavaParser for Java, Roslyn for C#): an independent syntactic parser reporting the dialect's declared kinds with a range each, and call pairs. The tier is a claim for Opus review, not a harness fact",
     "universal-ctags 6.2.1 (tier B) is not the L1 oracle and is unscored: it writes no end line for Kotlin (range_agreement unmeasurable, L1 capped at good) and lists every local val/var, primary-constructor parameter and lambda as a definition and each unnamed companion object as Companion; against the previous dialect on the same 1,363 files it listed 60,761 definitions to the dialect's 16,335 (sym_recall .2617, sym_precision .9733, kind_agreement .9999)",

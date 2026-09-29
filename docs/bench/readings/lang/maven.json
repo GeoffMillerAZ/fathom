@@ -156,6 +156,7 @@
     "fathom:MavenPlugin": 77
   },
   "notes": [
+    "integration review 2026-09-29: the level holds for apache/maven's 15 reactor POMs only (-only 'pom.xml,*/pom.xml'), not for the repository. With its other 366 pom.xml (test and integration-test fixtures the tool does not build) in scope the same run reads sym_precision .0397, xref_precision .4343, xref_recall .6515 and level_met none: a fixture POM is indexed but not attested (LB-Q-maven-rest). apache/dubbo is measured whole",
     "maven: restricted to pom.xml, */pom.xml (-only; the files outside are a disclosed gap, not measured)",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
   ],

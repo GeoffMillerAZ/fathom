@@ -251,6 +251,7 @@
     "scip:variable": 3293
   },
   "notes": [
+    "integration review 2026-09-29 (fixed): the rust-analyzer rules this reading needed in the shared SCIP instruments (']' closing a descriptor in scipBareName, scipDescriptorKind and internal/scip's descriptorLeafName; a multi-line definition range read as a whole-file module in SCIPDefs) now apply to rust-analyzer's symbols only (and in langbench to scip-dart's, whose reading was taken under them), so every reading taken before them (C, C++, C#, Go, Python, TypeScript, JavaScript, PHP) scores exactly as it did; this reading's own scoring is unchanged",
     "BurntSushi/ripgrep: 3448 callable references have no call written at their range (an operator rust-analyzer resolves to its trait method: ?, ==, !x, *x, a[i], a + b) and are left out of the call truth (L2 is call sites)",
     "clap-rs/clap: 2439 callable references have no call written at their range (an operator rust-analyzer resolves to its trait method: ?, ==, !x, *x, a[i], a + b) and are left out of the call truth (L2 is call sites)",
     "import_resolution not measured: in-repo spec counts arrive with the L3 strategies (LB-F11)",

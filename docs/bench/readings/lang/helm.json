@@ -161,6 +161,7 @@
   },
   "excluded_by_kind": {},
   "notes": [
+    "integration review 2026-09-29 (kept): LB-Q-helm-rest states the dispatch is not switched because lang-parity reads MERGE and a switch drops the K8sWorkload and K8sContainer symbols helmtemplateyaml.go recovers from templated manifests; this reading's L3 good is the dialect's measured level, not what ingest runs today",
     "L2 (ref_recall, ref_precision) is scored on include/template calls made inside a named template: 3,511 literal-name calls, 3,052 distinct (template, callee) pairs; 44,852 more (92.7% of the 48,363 in the two subjects) sit in manifest bodies outside any define, belong to no symbol and are not call edges: they are HelmTemplateRef symbols, scored at L1",
     "L3 edges: 181 (bitnami/charts 174, prometheus-community/helm-charts 7), by the dependency's repository: 1 file:// path and 180 oci:// registry addresses, no URLs; only the file:// edge is a local path helm itself resolves, the rest join a dependency's name to the one in-repo chart of that name (the monorepo convention the package.json dialect also uses) and would be false where an unrelated chart shares the name",
     "a file whose extraction instantiated a grammar module after the warm-up (an injected language) is timed on a second, warm extraction",

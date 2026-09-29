@@ -148,6 +148,7 @@
     "fathom:MSBuildTarget": 4
   },
   "notes": [
+    "integration review 2026-09-29 (kept): both doc-engine additions this dialect needs have tests, $file (TestDocEngineFileValue, TestDocEngineFileValueFirstAlternativeWins) and a backslash in a repo-path, resolved and climbing out of the repository (TestDocEngineRepoPathBackslash); no other doc dialect writes either, and no other golden changed",
     "dotnet/aspnetcore: 12 oracle cross-references on files fathom does not read were left out of scope (§1.4)",
     "dotnet/aspnetcore: 31 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
     "dotnet/aspnetcore: restricted to src/Http/** (-only; the files outside are a disclosed gap, not measured)",
