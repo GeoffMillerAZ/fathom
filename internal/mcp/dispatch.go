@@ -170,11 +170,14 @@ func (s *Server) toolsListEntries(ctx context.Context) []any {
 	return tools
 }
 
-// toolsListBytes is the serialised size of this request's tools/list —
+// surfaceSchemaBytes is the serialised size of this request's tools/list —
 // the per-session schema budget every MCP-connected client pays before
-// any work happens (TD-2's diet, reported by the capabilities tool as
-// schema_bytes so growth is measured, not guessed).
-func (s *Server) toolsListBytes(ctx context.Context) int {
+// any work happens (TD-2's diet, reported by status(section:"tools") as
+// schema_bytes so growth is measured, not guessed). The request's surface
+// and contracts flag decide what is counted, so the same call measures
+// /rpc/agent, /rpc/extended and the bare /rpc; the default surface's budget
+// is TestDefaultSurfaceSchemaBytesBudget (surface reckoning SR-M1).
+func (s *Server) surfaceSchemaBytes(ctx context.Context) int {
 	b, err := json.Marshal(map[string]any{"tools": s.toolsListEntries(ctx)})
 	if err != nil {
 		return 0

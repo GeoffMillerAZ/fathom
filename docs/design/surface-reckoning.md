@@ -27,6 +27,11 @@ bare-`/rpc` count):
 | Agent surface (`POST /rpc/agent`, `/rpc/companion`) | 25 | 8 (default) | 18,310 | ≤ 9,000 |
 | Canned prompts (`prompts/list`) | 4 | 0 | 1,539 | 0 |
 
+Measured after (SR-M1, `TestDefaultSurfaceSchemaBytesBudget`, base `4ae46d03`, same method): `/rpc/agent`
+8 tools, 8,339 bytes (the ≤ 9,000 bar holds); `/rpc/extended` and `/rpc/companion` 21 tools, 18,308; bare `/rpc` 25
+tools, 20,143, which stands 1,143 bytes over the table's ≤ 19,000 target (the row gates the default only; the other
+surfaces are pinned at what they measure).
+
 The scorecard's "19 tools today" is the base allowlist in `internal/mcp/surface.go`;
 `promotedVerbs()` (five) and `safe_delete_check` bring the served agent surface to 25.
 `docs/intent/scope.md` still says "the 19-tool agent surface allowlist" — a stale line the

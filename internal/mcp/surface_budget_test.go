@@ -109,11 +109,11 @@ func TestAgentSurfaceBudget(t *testing.T) {
 
 	// wireTotal is the ACTUAL served payload — json.Marshal({"tools":
 	// [...]})  — the same computation status(section:"tools")' schema_bytes
-	// uses (toolsListBytes, dispatch.go). It differs from the per-entry sum
+	// uses (surfaceSchemaBytes, dispatch.go). It differs from the per-entry sum
 	// above by the array/wrapper punctuation (commas, brackets, the
 	// "tools" key), so the budget itself is asserted against this number,
 	// not the sum.
-	wireTotal := s.toolsListBytes(ctx)
+	wireTotal := s.surfaceSchemaBytes(ctx)
 	t.Logf("agent surface tools/list (contracts=false): %d bytes as served (with wrapper)", wireTotal)
 	if wireTotal > agentSurfaceTotalByteCeiling {
 		t.Errorf("agent surface tools/list = %d bytes, want <= %d", wireTotal, agentSurfaceTotalByteCeiling)

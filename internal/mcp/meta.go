@@ -68,7 +68,7 @@ func statusToolsSection(ctx context.Context, s *Server) map[string]any {
 		"active_profile":     s.activeProfile(),
 		"tool_count":         len(descs),
 		"extraction_engines": extractor.EngineProvenance(),
-		"schema_bytes":       s.toolsListBytes(ctx),
+		"schema_bytes":       s.surfaceSchemaBytes(ctx),
 	}
 }
 
