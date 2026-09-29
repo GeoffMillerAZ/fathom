@@ -242,7 +242,13 @@ func TestParseVerdictReply(t *testing.T) {
 		{"c", "corroborated", "", true},
 		{"  R  ", "refuted", "", true},
 		{"c: the violation is real", "corroborated", "the violation is real", true},
-		{"r does not apply to generated code", "refuted", "does not apply to generated code", true},
+		{"r: does not apply to generated code", "refuted", "does not apply to generated code", true},
+		{"r : superseded by ADR-060", "refuted", "superseded by ADR-060", true},
+		// A key and prose with no colon is chat shorthand, never a verdict:
+		// a refute flips the claim's status and closes its validity window.
+		{"r u sure the tests pass?", "", "", false},
+		{"c the diff above", "", "", false},
+		{"r does not apply to generated code", "", "", false},
 		{"cr", "", "", false},
 		{"c'mon", "", "", false},
 		{"run it", "", "", false},

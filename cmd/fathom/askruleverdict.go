@@ -191,7 +191,7 @@ func askRuleVerdict(prior *ruleVerdictMemo, rule, src, claimID string) string {
 	}
 	return fmt.Sprintf(
 		"🔁 served rule ignored — still applies after this edit: %s (%s) [claim %s]\n"+
-			"  ask the user for a one-key verdict as their next prompt: c — corroborate (the rule is right, the violation is real) — or r — refute (this rule is wrong or does not apply here); a note may follow the key (\"r: superseded by ADR-060\"). The next edit records it against claim %s.\n"+
+			"  ask the user for a one-key verdict as their next prompt: c — corroborate (the rule is right, the violation is real) — or r — refute (this rule is wrong or does not apply here); a note may follow the key after a colon (\"r: superseded by ADR-060\"). The next edit records it against claim %s.\n"+
 			"  by hand: `fathom claim corroborate|refute --claim %s --note \"...\"`.",
 		rule, src, claimID, claimID, claimID)
 }
@@ -298,9 +298,11 @@ func readPendingVerdictAsk(sessionID string, now time.Time) (pendingVerdictAsk, 
 }
 
 // parseVerdictReply reads an exact one-key reply: the whole prompt is `c`
-// or `r` (either case), optionally followed by whitespace or a colon and
-// a note. Anything else — a word that starts with c or r, prose — is not
-// a reply (GL-X4: never an inference from prose).
+// or `r` (either case), optionally followed by a colon and a note
+// (`r: superseded by ADR-060`). Anything else — a word that starts with c
+// or r, a key followed by prose with no colon ("r u sure?"), prose — is
+// not a reply (GL-X4: never an inference from prose); a refute flips the
+// claim's status, so chat shorthand must never read as one.
 func parseVerdictReply(prompt string) (verdict, note string, ok bool) {
 	p := strings.TrimSpace(prompt)
 	if p == "" {
@@ -314,16 +316,14 @@ func parseVerdictReply(prompt string) (verdict, note string, ok bool) {
 	default:
 		return "", "", false
 	}
-	rest := p[1:]
+	rest := strings.TrimSpace(p[1:])
 	if rest == "" {
 		return verdict, "", true
 	}
-	switch rest[0] {
-	case ':', ' ', '\t', '\n', '\r':
-	default:
+	if rest[0] != ':' {
 		return "", "", false
 	}
-	return verdict, strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(rest), ":")), true
+	return verdict, strings.TrimSpace(rest[1:]), true
 }
 
 // verdictReplyNow is the prompt hook's clock for recordVerdictReply — a

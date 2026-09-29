@@ -900,9 +900,10 @@ enforced rule in this repo back to advisory.
 **The one-key verdict (SR-48, SR-48w, F-31).** When the same served rule tops a file's
 obligations two resolved turns running, the next turn asks for a verdict and names the rule's
 claim id. The user answers with their next prompt: exactly `c` (corroborate) or `r` (refute),
-optionally followed by a note (`r: superseded by ADR-060`). The `prompt-hook` records only that
-exact shape, and only while the session has an ask pending (4 h); a word that starts with c or
-r, or any other prose, is an ordinary prompt. The following edit-hook turn writes the answer
+optionally followed by a colon and a note (`r: does not apply to generated code`). The `prompt-hook` records
+only that exact shape, and only while the session has an ask pending (4 h); a word that starts
+with c or r, a key followed by prose with no colon (`r u sure?`), or any other prose, is an
+ordinary prompt. The following edit-hook turn writes the answer
 through the same core as `fathom claim corroborate|refute` into the store the daemon records
 (`--url`), attributed to the session: the claim event, the rule-outcome row, and for a refute
 the status flip and the closed validity window. It says so in one line, once; if the store
