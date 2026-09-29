@@ -69,7 +69,7 @@ func renderAgentPluginManifest(mcpURL, defaultSurfaceHeader string) (pluginJSON,
 		"version":     pluginVersion,
 		"description": pluginDescription,
 		"author":      map[string]any{"name": "fathom"},
-		"license":     "MIT",
+		"license":     "FSL-1.1-ALv2", // ADR-052: fathom is source-available under FSL-1.1-ALv2
 		"keywords":    []string{"code-intelligence", "mcp", "skills", "verify-gate"},
 	}
 	mcpJSON = map[string]any{

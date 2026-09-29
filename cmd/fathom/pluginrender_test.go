@@ -241,3 +241,22 @@ func TestRenderCursorPluginRefusesPluginRootTokens(t *testing.T) {
 		t.Fatalf("unexpected error for a token-free mcp.json: %v", err)
 	}
 }
+
+// The Agent Plugins manifest names the licence the repository's LICENSE.md
+// grants (ADR-052), read from that file's Abbreviation section, so a
+// distributed bundle never declares a licence fathom does not carry.
+func TestPluginManifestLicenseIsTheRepositorys(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join("..", "..", "LICENSE.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, rest, ok := strings.Cut(string(raw), "## Abbreviation")
+	fields := strings.Fields(rest)
+	if !ok || len(fields) == 0 {
+		t.Fatal("LICENSE.md has no Abbreviation section")
+	}
+	plugin, _ := renderAgentPluginManifest("http://127.0.0.1:7575/mcp", "")
+	if got := plugin["license"]; got != fields[0] {
+		t.Errorf("plugin.json license = %v, want LICENSE.md's %q", got, fields[0])
+	}
+}

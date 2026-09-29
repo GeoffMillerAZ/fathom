@@ -588,6 +588,7 @@ Evidence: `docs/app-kit.md`.
 - **`fathom harness capabilities` says what a Codex rollout is for (PE-14).** The Codex `session-ledger` note no longer calls the rollout format unstable: its token totals and tool calls are for cost per proven row, never a savings claim, and the note names the reader as a library no verb or hook calls yet; the row stays `absent`.
 
 ### Fixed
+- `fathom plugin render` writes `"license": "FSL-1.1-ALv2"` into the Agent Plugins `plugin.json`, the licence `LICENSE.md` grants (ADR-052); it wrote `MIT`, which fathom is not released under.
 - **The tree-sitter engine's parse and query budget is elapsed time, as documented.** The guest read wazero's default fake clock (+1ms per reading), so the 10s budget meant ~1,000,000 query operations and never fired on a pathological file (the whole `({[`x50,000 scan is ~300,000) — only the 20s hard backstop bounded it; a 300ms budget now cancels that scan at ~0.3s instead of ~8s of CPU.
 - An ingest in which every file failed to read, over a service with no index to protect, is no longer recorded complete at HEAD with zero fingerprints (which auto-refresh then never retried): it writes nothing, records no watermark, stays `in_progress` for a retry and reports outcome `incomplete` (`--json`), naming the failure.
 - An ingest onboarding a new service no longer fails for every file (`stat <service>/<path>: no such file or directory`) when a read names that service while it runs: a read's Discover of the not-yet-recorded root no longer replaces the ingest's root.
