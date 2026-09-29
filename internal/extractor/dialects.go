@@ -47,8 +47,13 @@ type Dialect struct {
 	// before qualification — the grammar's own spelling of a name (a
 	// quoted string literal, a `.Values.` accessor prefix) is not the
 	// symbol's key. Omitted: names are taken as captured.
-	Names       *DialectNames    `json:"names,omitempty"`
-	Package     DialectPackage   `json:"package"`
+	Names   *DialectNames  `json:"names,omitempty"`
+	Package DialectPackage `json:"package"`
+	// Preprocess names the dialect's pre-parse step (the closed set
+	// tsPreprocessors, schema #Dialect.preprocess): a file whose tree has a
+	// syntax error is parsed as each text the step gives, and the first tree
+	// with none is read (O148). Omitted: the file is parsed as written.
+	Preprocess  string           `json:"preprocess,omitempty"`
 	Imports     *DialectImports  `json:"imports,omitempty"`
 	Signature   DialectSignature `json:"signature"`
 	TargetLevel string           `json:"target_level"`

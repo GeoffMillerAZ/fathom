@@ -71,7 +71,22 @@ type tsDialectRules struct {
 	query     string // tags query then imports query
 
 	injectionsQuery string // queries.injections (LB-F6), "" when none
+
+	// preprocess is the manifest's pre-parse step (tsPreprocessors), nil
+	// when it names none.
+	preprocess func(src []byte) [][]byte
 }
+
+// tsPreprocessors are the pre-parse steps a manifest's preprocess names:
+// each returns the texts, in order, to parse a file as when it does not
+// parse as written (none when a rewrite would change nothing).
+var tsPreprocessors = map[string]func(src []byte) [][]byte{
+	"csharp-conditionals": csharpConditionalTexts,
+}
+
+// tsErrorQuery captures every node a tree-sitter parse could not fit to
+// the grammar.
+const tsErrorQuery = "[(ERROR) (MISSING)] @error"
 
 // tsLangSpec is everything NewTSExtractor needs for one extractor: the
 // variant each extension selects.
@@ -187,6 +202,13 @@ func compileDialectRules(d Dialect) (*tsDialectRules, error) {
 	}
 	if d.Names != nil {
 		r.trimQuotes, r.stripPrefix = d.Names.TrimQuotes, d.Names.StripPrefix
+	}
+	if d.Preprocess != "" {
+		pre, ok := tsPreprocessors[d.Preprocess]
+		if !ok {
+			return nil, fmt.Errorf("dialect %s: unknown preprocess %q", d.ID, d.Preprocess)
+		}
+		r.preprocess = pre
 	}
 	if d.Queries.Injections != "" {
 		b, err := fs.ReadFile(dialectFS, path.Join("dialects", d.ID, d.Queries.Injections))
@@ -419,7 +441,15 @@ func (e *TSExtractor) extractLocked(variant tsVariant, service, relPath string, 
 		e.noteFault(l)
 		return nil, nil, fmt.Errorf("tsextract[%s] %s: parse: %v: %w", e.spec.name, relPath, err, ErrTSEngineFault)
 	}
-	defer tree.Close()
+	defer func() { tree.Close() }() // the tree preprocessing swaps in, when it does
+
+	rules := variant.rules
+	if rules.preprocess != nil {
+		if tree, src, err = tsPreprocessed(p, tree, src, rules.preprocess); err != nil {
+			e.noteFault(l)
+			return nil, nil, fmt.Errorf("tsextract[%s] %s: preprocess: %v: %w", e.spec.name, relPath, err, ErrTSEngineFault)
+		}
+	}
 
 	matches, err := q.Run(tree)
 	if err != nil {
@@ -427,7 +457,6 @@ func (e *TSExtractor) extractLocked(variant tsVariant, service, relPath string, 
 		return nil, nil, fmt.Errorf("tsextract[%s] %s: query: %v: %w", e.spec.name, relPath, err, ErrTSEngineFault)
 	}
 
-	rules := variant.rules
 	var injected []tsInjection
 	if withInjections && rules.injectionsQuery != "" {
 		injected, err = e.injectionRanges(variant, l, tree, src)
@@ -474,6 +503,48 @@ func (e *TSExtractor) extractLocked(variant tsVariant, service, relPath string, 
 		nodes = append(nodes, n)
 	}
 	return nodes, injected, nil
+}
+
+// tsPreprocessed applies a dialect's pre-parse step (O148): when tree has a
+// syntax error, each text pre gives is parsed in turn, and the first tree
+// with none replaces tree, its text src. A file that parses as written is
+// read as written. Every tree not returned is closed.
+func tsPreprocessed(p *tsengine.Parser, tree *tsengine.Tree, src []byte, pre func([]byte) [][]byte) (*tsengine.Tree, []byte, error) {
+	bad, err := tsHasError(p, tree)
+	if err != nil || !bad {
+		return tree, src, err
+	}
+	for _, text := range pre(src) {
+		t2, err := p.Parse(text)
+		if err != nil {
+			return tree, src, err
+		}
+		if bad, err = tsHasError(p, t2); err != nil || bad {
+			t2.Close()
+			if err != nil {
+				return tree, src, err
+			}
+			continue
+		}
+		tree.Close()
+		return t2, text, nil
+	}
+	return tree, src, nil
+}
+
+// tsHasError reports whether tree holds an ERROR or MISSING node (the
+// query is compiled once per Parser and cached on it).
+func tsHasError(p *tsengine.Parser, tree *tsengine.Tree) (bool, error) {
+	q, ok := p.Cached("errors").(*tsengine.Query)
+	if !ok {
+		var err error
+		if q, err = p.CompileQuery(tsErrorQuery); err != nil {
+			return false, err
+		}
+		p.SetCached("errors", q)
+	}
+	ms, err := q.Run(tree)
+	return len(ms) > 0, err
 }
 
 // injectionRanges runs variant's injections query over tree: every

@@ -104,6 +104,27 @@
   constructs the dialect's own `TSExtractor` and measures it directly
   whenever `resolveBenchSpec` found a `dialect.json`. This affects every
   other not-yet-merged port's own future re-measurement, not just this one.
+- `preprocess: "csharp-conditionals"` (O148, LB-F46): this grammar parses an
+  `#if` group as a node whose branches must each hold whole declarations, so a
+  group whose branches are two headers of one body (Newtonsoft.Json's
+  `TestFixtureBase.cs` L279-L284: `#if DNXCORE50 / protected TestFixtureBase()
+  / #else / [SetUp] protected void TestSetup() / #endif`, then the body), or
+  one that closes a type and opens another, can leave the file's
+  `namespace_declaration` unparsed, and every symbol then falls back to the
+  directory's package. A file whose tree has an ERROR or MISSING node is
+  parsed as `csharpConditionalTexts` (`csharpextract.go`) gives it: first
+  with each group's directive lines blanked, every branch kept; then with
+  each group read as its first branch. The first tree with no error is read;
+  otherwise the file as written. Blanking keeps every byte offset and line.
+  The CGO incumbent calls the same step (`withCSharpTree`). Measured on both
+  subjects (the CGO grammar): of the 65 of Newtonsoft.Json's 944 files and 4
+  of Polly's 801 with an error as written, 42 and 3 parse under it, 39 and 2
+  of them with every branch kept; the first-branch
+  reading drops a member declared only in an `#elif`/`#else` of such a file
+  (`testdata/conditional.cs`'s `OnlyElse`). The compiler's own reading with
+  no symbol defined was measured and refused: it drops every `#if
+  HAVE_ASYNC`-wrapped file (sym_recall .9876 to .9623) and never reads
+  `XUnitAssert`, which is declared under `#if DNXCORE50`.
 - `testdata/`: fixtures written in this repository. `shapes.cs` (file-scoped
   namespace, every required kind, a nested class, a multi-line method
   signature, two call shapes — plain and qualified, two partial `Circle`
@@ -111,7 +132,10 @@
   proving `@scope.package` nesting joins with "."); `imports.cs` (all five
   `using` shapes for L3); `operators.cs` (a conversion operator pair);
   `broken.cs` (a syntax error the parser must survive, `Good`/`Survivor`
-  still extracting either side of it). Goldens hand-derived from the
+  still extracting either side of it); `conditional.cs` (O148's shape,
+  reduced from `TestFixtureBase.cs` with its trigger kept, read as first
+  branches) and `branches.cs` (a group inside an argument list, read with its
+  directive lines blanked and every branch kept). Goldens hand-derived from the
   documented engine algorithms (`tsextract.go`'s `tsSignature`/`tsEndLine`/
   `qualifyTSDefs`/`tsPackageFromCapture`) applied to each fixture's own
   content, cross-checked against `indexbench lang-probe`'s real capture

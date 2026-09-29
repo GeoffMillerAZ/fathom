@@ -717,7 +717,15 @@ func parseGitLog(serviceID, raw string) []store.Commit {
 // cmds and defer as Calls, and the includes that resolve to another Taskfile of
 // the repository) where each was fingerprinted as unclassified YAML; the salt
 // bump re-reads them.
-const ExtractorEpoch = "34"
+// Epoch 35 (O148, LB-F46): a .cs file whose tree has a syntax error is parsed
+// again with each #if group's directive lines blanked, then with each group
+// read as its first branch, and the first tree with no error is read
+// (csharpConditionalTexts, withCSharpTree): such a file now yields its
+// CSharpNamespace symbol, its types' members qualify under the right type,
+// and a member declared only in an #elif or #else branch of a file read as
+// first branches is no longer extracted. Every such file was fingerprinted by
+// the old reading, so the salt bump re-reads them.
+const ExtractorEpoch = "35"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares

@@ -1,0 +1,50 @@
+{
+  "symbols": [
+    {
+      "name": "Fixture.Branches",
+      "kind": "CSharpNamespace",
+      "package": "Fixture.Branches",
+      "line": 1,
+      "end_line": 20,
+      "tier": "verified"
+    },
+    {
+      "name": "Reader",
+      "kind": "CSharpClass",
+      "package": "Fixture.Branches",
+      "line": 3,
+      "end_line": 19,
+      "tier": "verified"
+    },
+    {
+      "name": "Reader.Read",
+      "kind": "CSharpMethod",
+      "package": "Fixture.Branches",
+      "line": 5,
+      "end_line": 12,
+      "signature": "public int Read(int a, int b)",
+      "calls": [
+        "Sum"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Reader.Fast",
+      "kind": "CSharpMethod",
+      "package": "Fixture.Branches",
+      "line": 15,
+      "end_line": 15,
+      "signature": "public void Fast()",
+      "tier": "verified"
+    },
+    {
+      "name": "Reader.Slow",
+      "kind": "CSharpMethod",
+      "package": "Fixture.Branches",
+      "line": 17,
+      "end_line": 17,
+      "signature": "public void Slow()",
+      "tier": "verified"
+    }
+  ]
+}

@@ -13,7 +13,7 @@ import (
 	"testing"
 )
 
-var csharpFixtures = []string{"shapes.cs", "namespaces.cs", "imports.cs", "operators.cs", "broken.cs"}
+var csharpFixtures = []string{"shapes.cs", "namespaces.cs", "imports.cs", "operators.cs", "broken.cs", "conditional.cs", "branches.cs"}
 
 // TestCSharpDialectGoldens runs every named dialects/csharp/testdata/*.cs
 // fixture through NewTSExtractor("csharp") and compares symbols + imports

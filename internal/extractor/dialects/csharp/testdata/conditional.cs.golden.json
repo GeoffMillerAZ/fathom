@@ -1,0 +1,119 @@
+{
+  "symbols": [
+    {
+      "name": "Fixture.Conditional",
+      "kind": "CSharpNamespace",
+      "package": "Fixture.Conditional",
+      "line": 3,
+      "end_line": 82,
+      "tier": "verified"
+    },
+    {
+      "name": "Utils",
+      "kind": "CSharpClass",
+      "package": "Fixture.Conditional",
+      "line": 5,
+      "end_line": 10,
+      "tier": "verified"
+    },
+    {
+      "name": "Utils.Name",
+      "kind": "CSharpMethod",
+      "package": "Fixture.Conditional",
+      "line": 7,
+      "end_line": 9,
+      "signature": "public static string Name(Type type)",
+      "tier": "verified"
+    },
+    {
+      "name": "Widget",
+      "kind": "CSharpClass",
+      "package": "Fixture.Conditional",
+      "line": 12,
+      "end_line": 43,
+      "tier": "verified"
+    },
+    {
+      "name": "Widget.Before",
+      "kind": "CSharpMethod",
+      "package": "Fixture.Conditional",
+      "line": 14,
+      "end_line": 16,
+      "signature": "public void Before(object expected, object actual)",
+      "tier": "verified"
+    },
+    {
+      "name": "Widget.Check",
+      "kind": "CSharpMethod",
+      "package": "Fixture.Conditional",
+      "line": 18,
+      "end_line": 26,
+      "signature": "public void Check(string message = null, params object[] args)",
+      "tier": "verified"
+    },
+    {
+      "name": "Widget.Widget",
+      "kind": "CSharpMethod",
+      "package": "Fixture.Conditional",
+      "line": 29,
+      "end_line": 36,
+      "signature": "protected Widget()",
+      "tier": "verified"
+    },
+    {
+      "name": "Widget.OnlyFeature",
+      "kind": "CSharpMethod",
+      "package": "Fixture.Conditional",
+      "line": 39,
+      "end_line": 39,
+      "signature": "public void OnlyFeature()",
+      "tier": "verified"
+    },
+    {
+      "name": "Checks",
+      "kind": "CSharpClass",
+      "package": "Fixture.Conditional",
+      "line": 45,
+      "end_line": 81,
+      "tier": "verified"
+    },
+    {
+      "name": "Checks.Equal",
+      "kind": "CSharpMethod",
+      "package": "Fixture.Conditional",
+      "line": 47,
+      "end_line": 49,
+      "signature": "public static void Equal(string expected, string actual)",
+      "tier": "verified"
+    },
+    {
+      "name": "Checks.Normalize",
+      "kind": "CSharpMethod",
+      "package": "Fixture.Conditional",
+      "line": 51,
+      "end_line": 67,
+      "signature": "public static string Normalize(string s)",
+      "tier": "verified"
+    },
+    {
+      "name": "Checks.ThrowsAsync",
+      "kind": "CSharpMethod",
+      "package": "Fixture.Conditional",
+      "line": 69,
+      "end_line": 80,
+      "signature": "public static async Task<T> ThrowsAsync<T>(Func<Task> action, params string[] messages)",
+      "calls": [
+        "string.Join"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "*",
+      "module": "System",
+      "kind": "wildcard",
+      "line": 1
+    }
+  ]
+}
