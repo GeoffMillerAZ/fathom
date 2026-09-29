@@ -111,3 +111,122 @@ func TestDarwinHostSampleZeroAlloc(t *testing.T) {
 		t.Fatalf("hw.memsize unread")
 	}
 }
+
+// ownPinnedHost is the REAL darwin host (newTenancyHost's darwinHost,
+// whose ReadHost walks the child tree through fathom_read_host) with the
+// readings other than the children pinned: own footprint injected, pressure
+// normal, swap and the swap volume unknown, so only the children the real
+// host sampled can move the ladder.
+type ownPinnedHost struct {
+	real *darwinHost
+	own  int64
+}
+
+func (h ownPinnedHost) ReadHost(s *tenancy.Sample) {
+	h.real.ReadHost(s)
+	s.Footprint = h.own
+	s.Pressure = tenancy.PressureNormal
+	s.SwapUsed, s.SwapTotal, s.SwapVolumeFree = tenancy.Unknown, tenancy.Unknown, tenancy.Unknown
+}
+
+// RT-161 on the product path: the governor's host is newTenancyHost's
+// darwinHost, and its ReadHost fills Sample.Children and ChildCount through
+// the cgo fathom_read_host every tick (childTreeFootprint is only a test
+// wrapper over the same C walk). The real host samples a child tree, the
+// reading falls once the tree is killed, and the real host's children count
+// toward the shed and the refuse marks.
+func TestRealHostChildTreeCountedTowardShedAndRefuse(t *testing.T) {
+	t.Cleanup(func() { tenancy.PublishLevel(tenancy.LevelNormal); activeGovernor.Store(nil) })
+	h := newTenancyHost(t.TempDir())
+	real, ok := h.(*darwinHost)
+	if !ok {
+		t.Fatalf("newTenancyHost on darwin must build the darwin host, got %T", h)
+	}
+	rt := tenancy.NewRuntimeReader()
+	var s tenancy.Sample
+	tenancy.SampleHost(h, rt, time.Now(), 0, &s)
+	if s.Children < 0 {
+		t.Fatalf("the real host must list the child tree: %+v", s)
+	}
+	before, n0 := s.Children, s.ChildCount
+
+	// A child with a grandchild: sh → sleep.
+	cmd := exec.Command("/bin/sh", "-c", "/bin/sleep 60 & wait")
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = cmd.Process.Kill(); _, _ = cmd.Process.Wait() })
+	deadline := time.Now().Add(waitSafety)
+	for time.Now().Before(deadline) {
+		tenancy.SampleHost(h, rt, time.Now(), 0, &s)
+		if s.ChildCount >= n0+2 {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	if s.ChildCount < n0+2 || s.Children <= before || s.Children <= 0 || s.ChildCount < 1 {
+		t.Fatalf("the real host must sample the child tree (sh and its sleep): %d processes, %d bytes (before %d, %d)", s.ChildCount, s.Children, n0, before)
+	}
+	children, count := s.Children, s.ChildCount
+
+	b, _ := tenancy.ResolveBudget(tenancy.Config{EnvBudget: 64 * tenancy.MiB}, tenancy.HostFacts{RAM: 32 * tenancy.GiB, NumCPU: 8, Managed: true})
+	// ladder ticks a governor over the real host with own footprint pinned
+	// and returns the level after two samples, and its log.
+	ladder := func(own int64) (tenancy.Level, string, *governor) {
+		tenancy.PublishLevel(tenancy.LevelNormal)
+		var logs []string
+		g := newGovernor(governorConfig{
+			budget: b, host: ownPinnedHost{real: real, own: own}, inflight: tenancy.NewInFlight(nil),
+			logf: func(m string) { logs = append(logs, m) }, exit: func(int) { t.Fatalf("no exit expected") },
+		})
+		now := time.Now()
+		g.tick(now, 0)
+		g.tick(now.Add(tenancy.SampleEvery), 0)
+		return tenancy.CurrentLevel(), strings.Join(logs, "\n"), g
+	}
+
+	// Own footprint below the shed mark; own + the real children over it.
+	shedOwn := b.Shed - children/2
+	lvl, logs, g := ladder(shedOwn)
+	if lvl < tenancy.LevelShed {
+		t.Fatalf("own %d below shed %d, real children %d: the ladder must count them (level %s)", shedOwn, b.Shed, children, lvl)
+	}
+	if !strings.Contains(logs, "children") {
+		t.Fatalf("the shed transition names the children: %s", logs)
+	}
+	activeGovernor.Store(g)
+	if m := governorMetricLines(); !strings.Contains(m, "fathom_children_footprint_bytes ") || strings.Contains(m, "fathom_children_footprint_bytes 0\n") {
+		t.Fatalf("/metrics discloses the real host's children: %s", m)
+	}
+	if snap := g.snapshot(); snap.Children <= 0 || snap.ChildCount < 2 {
+		t.Fatalf("the snapshot (resources) carries the real host's children: %+v", snap)
+	}
+	activeGovernor.Store(nil)
+
+	// Own footprint below the refuse mark; own + the real children over it.
+	refuseOwn := b.Refuse - children/2
+	if lvl, logs, _ := ladder(refuseOwn); lvl != tenancy.LevelRefuse {
+		t.Fatalf("own %d below refuse %d, real children %d: the ladder must refuse (level %s): %s", refuseOwn, b.Refuse, children, lvl, logs)
+	}
+
+	// Killed, the tree's reading falls, and the same own footprint no
+	// longer crosses the shed mark: the children were what crossed it.
+	if killed := killChildTree(os.Getpid()); killed < 2 {
+		t.Fatalf("killChildTree signalled %d, want sh and sleep", killed)
+	}
+	_, _ = cmd.Process.Wait()
+	deadline = time.Now().Add(waitSafety)
+	for time.Now().Before(deadline) {
+		tenancy.SampleHost(h, rt, time.Now(), 0, &s)
+		if s.ChildCount < count && s.Children < children {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	if s.ChildCount >= count || s.Children >= children {
+		t.Fatalf("after the kill the real host's reading must fall: %d processes, %d bytes (was %d, %d)", s.ChildCount, s.Children, count, children)
+	}
+	if lvl, logs, _ := ladder(shedOwn); lvl != tenancy.LevelNormal {
+		t.Fatalf("without the children own %d stays below shed %d (level %s): %s", shedOwn, b.Shed, lvl, logs)
+	}
+}

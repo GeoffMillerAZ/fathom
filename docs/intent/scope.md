@@ -21,15 +21,12 @@ reports 20 units and the flywheel's continuity loop states keep or kill
 {bet: thread-bet, instrument: "fathom flywheel", threshold: "20 fresh-with-brief units (threadBetCheck), then the continuity loop states keep or kill", review: 2026-10-25}
 
 **G4. Ambient fathom closes.** Done when: `fathom plans status` shows
-`docs/plans/ambient-fathom.md` with 0 open and 0 claimed-unproven rows. Open: SH-9,
-SP-10, RG-5, RG-9 (observatory UI/wiring), OP-1 (the A/B, G2), OP-2 (deploy). DO-3 and
-IR-3/4/5 (the assess lanes) are designed (`docs/design/assess-lanes.md`, ADR-046) and
-proven 2026-09-25.
+`docs/plans/ambient-fathom.md` with 0 open and 0 claimed-unproven rows. Open (5 of 93 on
+2026-09-29, 0 claimed-unproven): SH-2 (the owned-keys ledger), SP-10 (the Scope panel's
+purge half), BA-6 (response-cost accounting, which lands with wave E's ship), RG-9 (the
+app-kit viz wiring row) and OP-1 (the A/B, G2). DO-3 and IR-3/4/5 (the assess lanes) are
+designed (`docs/design/assess-lanes.md`, ADR-046) and proven 2026-09-25.
 {bet: ambient-closes, instrument: "fathom plans status", threshold: "docs/plans/ambient-fathom.md at 0 open and 0 claimed-unproven rows", review: 2026-10-25}
-
-**G5. The custodian closes.** Done when: `docs/plans/custodian.md` shows 0 open and 0
-claimed-unproven. Open: SD-2/3/4 (SDD panel); DP-2 is refused (superseded by EP-9).
-{bet: custodian-closes, instrument: "fathom plans status", threshold: "docs/plans/custodian.md at 0 open and 0 claimed-unproven rows", review: 2026-10-25}
 
 **G9. The bench is honest, cheap to re-run, and the 2026-09-13 reading is the baseline.**
 BP-1..25 proved (L0 index oracle, L1 payload replay, L2 corpus gate, per-key cell memoization,
