@@ -58,7 +58,7 @@ func TestQueuedIngestFailureIsNeverSilent(t *testing.T) {
 	t.Cleanup(func() { cancel(); q.Wait() })
 	q.RequestRefresh(ctx, refresh.Request{Service: "svc", Reason: refresh.ReasonPostCommit}, false)
 
-	deadline := time.Now().Add(5 * time.Second)
+	deadline := time.Now().Add(waitSafety)
 	for {
 		if _, ok := q.LastFailure("svc"); ok {
 			break

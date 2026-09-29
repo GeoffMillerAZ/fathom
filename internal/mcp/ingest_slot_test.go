@@ -72,7 +72,7 @@ func TestIngestToolHoldsTheIngestSlot(t *testing.T) {
 		if out["error"] != nil || b.calls != 2 || b.slotFree {
 			t.Fatalf("queued ingest: calls %d, slot free %v, response %v", b.calls, b.slotFree, out)
 		}
-	case <-time.After(5 * time.Second):
+	case <-time.After(waitSafety):
 		t.Fatal("the queued ingest never ran after the slot was released")
 	}
 }

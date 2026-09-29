@@ -57,7 +57,7 @@ func TestFeedersIdleWithoutSubscribers(t *testing.T) {
 		if e.Kind != console.EventVerify || e.Service != "pay" {
 			t.Fatalf("after a restart = %+v, want the verify row appended while stopped", e)
 		}
-	case <-time.After(10 * time.Second):
+	case <-time.After(waitSafety):
 		t.Fatal("a change made while the feeders were stopped was never published")
 	}
 

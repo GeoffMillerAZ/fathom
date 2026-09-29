@@ -7,9 +7,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -23,23 +25,33 @@ var errBoom = errors.New("boom: mock decider failure")
 
 func postRoute(t *testing.T, handler http.Handler, prompt string) (*http.Response, routeResponse) {
 	t.Helper()
+	resp, out, err := postRouteE(handler, prompt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return resp, out
+}
+
+// postRouteE is postRoute returning its error instead of failing the test,
+// for a call made off the test goroutine (returnsUnaided).
+func postRouteE(handler http.Handler, prompt string) (*http.Response, routeResponse, error) {
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
 
 	body, err := json.Marshal(routeRequest{Prompt: prompt})
 	if err != nil {
-		t.Fatalf("marshal request: %v", err)
+		return nil, routeResponse{}, fmt.Errorf("marshal request: %w", err)
 	}
 	resp, err := http.Post(srv.URL+"/route", "application/json", bytes.NewReader(body))
 	if err != nil {
-		t.Fatalf("POST /route: %v", err)
+		return nil, routeResponse{}, fmt.Errorf("POST /route: %w", err)
 	}
 	defer resp.Body.Close()
 	var out routeResponse
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		t.Fatalf("decode response: %v", err)
+		return nil, routeResponse{}, fmt.Errorf("decode response: %w", err)
 	}
-	return resp, out
+	return resp, out, nil
 }
 
 // TestRouteHandler_NoneAndLLM pins DP-9's reachable_from (routeHandler,
@@ -236,19 +248,34 @@ func TestRouteHandler_NoneAndLLM(t *testing.T) {
 }
 
 // slowDecider is a decision.Decider whose Decide call blocks for delay
-// (or until ctx is done, whichever comes first) before answering resp —
-// used to prove routeHandler actually bounds the call by
-// ports.Cfg.RouteTimeoutMS rather than the old fixed 3s constant.
+// (or until ctx is done, whichever comes first) before answering resp. A
+// zero delay never answers on its own: it holds until ctx ends, recording
+// the time the ctx had left on entry (-1: no deadline) — used to prove
+// routeHandler bounds the call by ports.Cfg.RouteTimeoutMS rather than the
+// old fixed 3s constant, from the ctx it hands the decider and not from how
+// long the call took (EW-7).
 type slowDecider struct {
 	delay time.Duration
 	resp  decision.Response
+	left  *atomic.Int64 // nanoseconds of ctx left on entry; nil: not recorded
 }
 
 func (s slowDecider) Name() string { return "slow" }
 
 func (s slowDecider) Decide(ctx context.Context, _ decision.Request) (decision.Response, error) {
+	if s.left != nil {
+		left := time.Duration(-1)
+		if dl, ok := ctx.Deadline(); ok {
+			left = time.Until(dl)
+		}
+		s.left.Store(int64(left))
+	}
+	var answer <-chan time.Time
+	if s.delay > 0 {
+		answer = time.After(s.delay)
+	}
 	select {
-	case <-time.After(s.delay):
+	case <-answer:
 		return s.resp, nil
 	case <-ctx.Done():
 		return decision.Response{}, ctx.Err()
@@ -265,7 +292,9 @@ func TestRouteHandler_ConfigurableTimeout(t *testing.T) {
 	t.Run("short route_timeout_ms times out a slow decider", func(t *testing.T) {
 		var buf bytes.Buffer
 		rec := decide.NewRecorder(&buf, time.Now, "v-test")
-		slow := slowDecider{delay: 2 * time.Second, resp: decision.Response{
+		var left atomic.Int64
+		left.Store(int64(time.Hour)) // "never called" reads as far over the budget
+		slow := slowDecider{left: &left, resp: decision.Response{
 			Provider: "slow",
 			Answers: map[string]decision.Answer{
 				"verb": {ID: "verb", Kind: decision.KindChoice, Choice: "localize", Confidence: 0.95},
@@ -273,9 +302,18 @@ func TestRouteHandler_ConfigurableTimeout(t *testing.T) {
 		}}
 		ports := &decide.Ports{Decider: slow, Cfg: config.Decide{Provider: "llm", RouteTimeoutMS: 100, Sites: []string{decide.SiteRoute}}, Recorder: rec}
 
-		start := time.Now()
-		resp, out := postRoute(t, routeHandler(ports), "some prompt")
-		elapsed := time.Since(start)
+		// The decider never answers on its own, so the handler returning is
+		// the timeout firing; how much of the ctx was left on entry says
+		// which timeout it was.
+		var resp *http.Response
+		var out routeResponse
+		var postErr error
+		returnsUnaided(t, "routeHandler over a decider that never answers", func() {
+			resp, out, postErr = postRouteE(routeHandler(ports), "some prompt")
+		})
+		if postErr != nil {
+			t.Fatal(postErr)
+		}
 
 		if resp.StatusCode != http.StatusOK {
 			t.Fatalf("status = %d, want 200 (a timeout must never 5xx)", resp.StatusCode)
@@ -286,12 +324,12 @@ func TestRouteHandler_ConfigurableTimeout(t *testing.T) {
 		if out.Error == "" {
 			t.Errorf("Error is empty, want it to name the timeout")
 		}
-		// The 2s decider delay must never be waited out — a generous upper
-		// bound (well under the decider's own 2s delay, comfortably above
-		// the 100ms budget) proves the SHORT timeout fired, not the old
-		// fixed 3s one and not the decider's own delay.
-		if elapsed >= time.Second {
-			t.Errorf("elapsed = %v, want well under 1s (route_timeout_ms=100 should have fired, not the decider's 2s delay or the old fixed 3s)", elapsed)
+		// The ctx the decider was handed carried the 100 ms budget: the SHORT
+		// timeout, not the old fixed 3s one (the decider never answers, so
+		// nothing else could have ended the call). The time left on entry
+		// can only be smaller than the budget on a slow machine, never larger.
+		if got := time.Duration(left.Load()); got < 0 || got > 100*time.Millisecond {
+			t.Errorf("the decider's ctx had %v left on entry, want a deadline within the route_timeout_ms=100 budget (not the old fixed 3s)", got)
 		}
 	})
 

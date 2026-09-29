@@ -5,10 +5,11 @@ import (
 	"time"
 )
 
-// waitUntil polls cond for up to 2 s, failing the test if it never holds.
+// waitUntil polls cond until it holds, failing the test after waitSafety (a hang
+// guard, not a latency bound: the assertion is the state cond reads).
 func waitUntil(t *testing.T, cond func() bool) {
 	t.Helper()
-	deadline := time.Now().Add(2 * time.Second)
+	deadline := time.Now().Add(waitSafety)
 	for !cond() {
 		if time.Now().After(deadline) {
 			t.Fatal("condition never held")

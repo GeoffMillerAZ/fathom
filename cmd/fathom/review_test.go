@@ -1085,18 +1085,22 @@ func TestRecordReviewSupersedeEvents_StoreWriteFails_LoggedNotFatal(t *testing.T
 // an impatient wrapper kills the push.
 func TestReviewNonInteractive(t *testing.T) {
 	t.Run("budget_exceeded_names_the_skip_and_exits_zero", func(t *testing.T) {
+		// The budgeted body blocks until the run has returned (the release
+		// closes after), so runReview returning at all is "the budget bounded
+		// the run"; the 1 s budget is the input.
+		release := make(chan struct{})
+		t.Cleanup(func() { close(release) })
 		slowGit := func(args ...string) ([]byte, error) {
-			time.Sleep(3 * time.Second) // deterministic slowness inside the budgeted body
+			<-release
 			return []byte("a.go\n"), nil
 		}
 		var stdout, stderr bytes.Buffer
-		start := time.Now()
-		code := runReview([]string{"--service", "svc", "--since", "origin/main", "--no-persist", "--budget-seconds", "1", "--store", filepath.Join(t.TempDir(), "s.sqlite")}, slowGit, &stdout, &stderr)
+		var code int
+		returnsUnaided(t, "runReview over a body that blocks past its budget", func() {
+			code = runReview([]string{"--service", "svc", "--since", "origin/main", "--no-persist", "--budget-seconds", "1", "--store", filepath.Join(t.TempDir(), "s.sqlite")}, slowGit, &stdout, &stderr)
+		})
 		if code != 0 {
 			t.Fatalf("exit = %d, want 0 (advisory is fail-open): %s", code, stderr.String())
-		}
-		if elapsed := time.Since(start); elapsed > 2500*time.Millisecond {
-			t.Errorf("budget did not bound the run: %s", elapsed)
 		}
 		if !strings.Contains(stdout.String(), "budget exceeded") {
 			t.Errorf("skip must be named, got: %q", stdout.String())

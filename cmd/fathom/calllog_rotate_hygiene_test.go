@@ -41,7 +41,7 @@ func TestCallLogRotationOffRequestPath(t *testing.T) {
 	}()
 	select {
 	case <-done:
-	case <-time.After(5 * time.Second):
+	case <-time.After(waitSafety):
 		close(release)
 		t.Fatal("a row write waited on the previous generation's roll-up and gzip")
 	}

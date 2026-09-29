@@ -9,9 +9,19 @@ package main
 // a real git history, and the lefthook step itself, run by bash against a
 // stub binary so the test pins the arguments the gate passes and its exit
 // policy (1 blocks, 2 fails open).
+//
+// EW-16: the range's base is the remote sha lefthook hands the step on stdin
+// (`use_stdin: true`; git feeds pre-push "<local ref> <local sha> <remote ref>
+// <remote sha>" per pushed ref), the ref this push replaces, so a stale local
+// origin/main neither blocks a legitimate push nor widens the range. A new
+// branch (an all-zero remote sha), a remote sha this clone does not hold, a
+// delete-only push or no stdin at all fall back to the merge-base with
+// origin/main and say so. The step runs under every bash the gate meets,
+// macOS /bin/bash 3.2 included.
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -110,12 +120,51 @@ func lefthookStepRun(t *testing.T, hook, step string) string {
 	return run
 }
 
+// gateShells lists the bashes the step runs under, each once: macOS
+// /bin/bash (3.2, the oldest the gate meets, and what lefthook's own `sh`
+// is on a stock Mac) and the first bash on PATH.
+func gateShells(t *testing.T) []string {
+	t.Helper()
+	var shells, versions []string
+	for _, cand := range []string{"/bin/bash", "bash"} {
+		path, err := exec.LookPath(cand)
+		if err != nil {
+			continue
+		}
+		out, err := exec.Command(path, "--version").Output()
+		if err != nil {
+			continue
+		}
+		first, _, _ := strings.Cut(string(out), "\n")
+		dup := false
+		for _, v := range versions {
+			dup = dup || v == first
+		}
+		if !dup {
+			shells, versions = append(shells, path), append(versions, first)
+		}
+	}
+	if len(shells) == 0 {
+		t.Skip("bash not available")
+	}
+	return shells
+}
+
+// eachGateShell runs fn once per shell as a named subtest.
+func eachGateShell(t *testing.T, fn func(t *testing.T, shell string)) {
+	t.Helper()
+	for i, shell := range gateShells(t) {
+		t.Run(fmt.Sprintf("shell%d_%s", i, filepath.Base(shell)), func(t *testing.T) { fn(t, shell) })
+	}
+}
+
 // gateSandbox is a throwaway git repository with a stub bin/fathom that logs
 // its arguments and exits with $FATHOM_STUB_VERIFY_EXIT for verify, and a
 // pass-through scripts/gate-lease.sh, so the lefthook step runs for real
 // without a store, a lease or the project repository.
 type gateSandbox struct {
 	root, log string
+	repo      *selfSkipGitRepo
 }
 
 func newGateSandbox(t *testing.T, withOriginMain bool) gateSandbox {
@@ -148,15 +197,18 @@ func newGateSandbox(t *testing.T, withOriginMain bool) gateSandbox {
 			t.Fatal(err)
 		}
 	}
-	return gateSandbox{root: repo.root, log: filepath.Join(t.TempDir(), "stub.log")}
+	return gateSandbox{root: repo.root, log: filepath.Join(t.TempDir(), "stub.log"), repo: repo}
 }
 
-func (g gateSandbox) run(t *testing.T, body, verifyExit string) (code int, out, calls string) {
+// run executes the step body under shell with stdin as the pre-push ref
+// lines (empty: no stdin, as when the step is run by hand).
+func (g gateSandbox) run(t *testing.T, shell, body, verifyExit, stdin string) (code int, out, calls string) {
 	t.Helper()
 	_ = os.Remove(g.log)
-	cmd := exec.Command("bash", "-c", body)
+	cmd := exec.Command(shell, "-c", body)
 	cmd.Dir = g.root
 	cmd.Env = append(os.Environ(), "FATHOM_STUB_LOG="+g.log, "FATHOM_STUB_VERIFY_EXIT="+verifyExit)
+	cmd.Stdin = strings.NewReader(stdin)
 	var buf bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &buf, &buf
 	err := cmd.Run()
@@ -170,41 +222,50 @@ func (g gateSandbox) run(t *testing.T, body, verifyExit string) (code int, out, 
 	return code, buf.String(), string(logged)
 }
 
-// TestLefthook_PrePushVerifyReadsTheChangeRange runs lefthook.yml's own
-// pre-push verify body: every verify call carries --strict and --since the
-// merge-base with origin/main; verify's exit 1 blocks the push and exit 2
-// fails open.
-func TestLefthook_PrePushVerifyReadsTheChangeRange(t *testing.T) {
-	body := lefthookStepRun(t, "pre-push", "verify")
-	g := newGateSandbox(t, true)
-	base := gitRevParse(t, g.root, "HEAD~1")
-
-	code, out, calls := g.run(t, body, "0")
-	if code != 0 {
-		t.Fatalf("verify exit 0: want the step to pass, got %d\n%s", code, out)
-	}
-	var verifyCalls []string
+// verifyCall returns the sandbox's one logged `verify` call.
+func verifyCall(t *testing.T, calls string) string {
+	t.Helper()
+	var found []string
 	for _, l := range strings.Split(strings.TrimSpace(calls), "\n") {
 		if strings.HasPrefix(l, "verify ") {
-			verifyCalls = append(verifyCalls, l)
+			found = append(found, l)
 		}
 	}
-	if len(verifyCalls) != 1 {
+	if len(found) != 1 {
 		t.Fatalf("want one verify call (one plan), got %q", calls)
 	}
-	if !strings.HasPrefix(verifyCalls[0], "verify --strict --since "+base+" ") || !strings.Contains(verifyCalls[0], "--plan docs/plans/p.md") {
-		t.Errorf("verify call = %q, want --strict --since %s over docs/plans/p.md", verifyCalls[0], base)
-	}
+	return found[0]
+}
 
-	if code, out, _ := g.run(t, body, "1"); code != 1 {
-		t.Errorf("verify exit 1 (a refused row, a self-declared waiver among them) must block the push, got %d\n%s", code, out)
-	} else if !strings.Contains(out, "the range was read from "+base) {
-		t.Errorf("a block under --since must name the base it read, so a stale origin/main is diagnosable, got:\n%s", out)
-	}
-	code, out, _ = g.run(t, body, "2")
-	if code != 0 || !strings.Contains(out, "fail-open") {
-		t.Errorf("verify exit 2 must fail open with a named line, got %d\n%s", code, out)
-	}
+// TestLefthook_PrePushVerifyReadsTheChangeRange runs lefthook.yml's own
+// pre-push verify body with no stdin (the step run by hand): every verify
+// call carries --strict and --since the merge-base with origin/main;
+// verify's exit 1 blocks the push and exit 2 fails open.
+func TestLefthook_PrePushVerifyReadsTheChangeRange(t *testing.T) {
+	body := lefthookStepRun(t, "pre-push", "verify")
+	eachGateShell(t, func(t *testing.T, shell string) {
+		g := newGateSandbox(t, true)
+		base := gitRevParse(t, g.root, "HEAD~1")
+
+		code, out, calls := g.run(t, shell, body, "0", "")
+		if code != 0 {
+			t.Fatalf("verify exit 0: want the step to pass, got %d\n%s", code, out)
+		}
+		vc := verifyCall(t, calls)
+		if !strings.HasPrefix(vc, "verify --strict --since "+base+" ") || !strings.Contains(vc, "--plan docs/plans/p.md") {
+			t.Errorf("verify call = %q, want --strict --since %s over docs/plans/p.md", vc, base)
+		}
+
+		if code, out, _ := g.run(t, shell, body, "1", ""); code != 1 {
+			t.Errorf("verify exit 1 (a refused row, a self-declared waiver among them) must block the push, got %d\n%s", code, out)
+		} else if !strings.Contains(out, "the range was read from "+base) {
+			t.Errorf("a block under --since must name the base it read, so a stale origin/main is diagnosable, got:\n%s", out)
+		}
+		code, out, _ = g.run(t, shell, body, "2", "")
+		if code != 0 || !strings.Contains(out, "fail-open") {
+			t.Errorf("verify exit 2 must fail open with a named line, got %d\n%s", code, out)
+		}
+	})
 }
 
 // TestLefthook_PrePushVerifyWithoutOriginMainSaysSo: no origin/main ref, no
@@ -212,19 +273,226 @@ func TestLefthook_PrePushVerifyReadsTheChangeRange(t *testing.T) {
 // not check, rather than failing the push or passing in silence.
 func TestLefthook_PrePushVerifyWithoutOriginMainSaysSo(t *testing.T) {
 	body := lefthookStepRun(t, "pre-push", "verify")
-	g := newGateSandbox(t, false)
+	eachGateShell(t, func(t *testing.T, shell string) {
+		g := newGateSandbox(t, false)
 
-	code, out, calls := g.run(t, body, "0")
-	if code != 0 {
-		t.Fatalf("want the step to pass, got %d\n%s", code, out)
+		code, out, calls := g.run(t, shell, body, "0", "")
+		if code != 0 {
+			t.Fatalf("want the step to pass, got %d\n%s", code, out)
+		}
+		if !strings.Contains(out, "no merge-base with origin/main") {
+			t.Errorf("want the no-merge-base line, got:\n%s", out)
+		}
+		if strings.Contains(calls, "--since") || !strings.Contains(calls, "verify --strict --store ") {
+			t.Errorf("want verify --strict without --since, got %q", calls)
+		}
+		if code, out, _ := g.run(t, shell, body, "1", ""); code != 1 || strings.Contains(out, "the range was read from") {
+			t.Errorf("without a merge-base a block still blocks and names no range base, got %d\n%s", code, out)
+		}
+	})
+}
+
+// refLine is one line git feeds a pre-push hook.
+func refLine(lref, lsha, rref, rsha string) string {
+	return lref + " " + lsha + " " + rref + " " + rsha + "\n"
+}
+
+var zeroSHA = strings.Repeat("0", 40)
+
+// TestLefthook_PrePushVerifyReadsTheRemoteShaFromStdin (EW-16): the range
+// base is the remote sha on stdin, not the local origin/main. The sandbox's
+// origin/main is stale on purpose: two commits behind the remote's tip.
+func TestLefthook_PrePushVerifyReadsTheRemoteShaFromStdin(t *testing.T) {
+	body := lefthookStepRun(t, "pre-push", "verify")
+	eachGateShell(t, func(t *testing.T, shell string) {
+		g := newGateSandbox(t, true) // origin/main = base; HEAD = "the pushed change"
+		g.repo.writePlan("docs/plans/p.md", sinceGateWaivedDone+"<!-- this push -->\n")
+		g.repo.commitAll("this push")
+		head := gitRevParse(t, g.root, "HEAD")
+		remoteTip := gitRevParse(t, g.root, "HEAD~1") // what the remote holds
+		staleBase := gitRevParse(t, g.root, "HEAD~2") // origin/main, stale
+		since := func(t *testing.T, calls string) string {
+			t.Helper()
+			f := strings.Fields(verifyCall(t, calls))
+			for i, w := range f {
+				if w == "--since" && i+1 < len(f) {
+					return f[i+1]
+				}
+			}
+			return ""
+		}
+
+		t.Run("the remote sha replaces the stale origin/main as the base", func(t *testing.T) {
+			stdin := refLine("refs/heads/main", head, "refs/heads/main", remoteTip)
+			code, out, calls := g.run(t, shell, body, "0", stdin)
+			if code != 0 {
+				t.Fatalf("want the step to pass, got %d\n%s", code, out)
+			}
+			if got := since(t, calls); got != remoteTip {
+				t.Errorf("--since %s, want the remote sha %s (a stale origin/main would give %s)", got, remoteTip, staleBase)
+			}
+			code, out, _ = g.run(t, shell, body, "1", stdin)
+			if code != 1 || !strings.Contains(out, "the range was read from "+remoteTip+" (the remote sha this push replaces)") {
+				t.Errorf("a block must name the remote sha it read, got %d\n%s", code, out)
+			}
+			if strings.Contains(out, "fetch main") {
+				t.Errorf("a block on a remote-sha range has no stale-origin remedy to offer, got:\n%s", out)
+			}
+		})
+
+		t.Run("a new branch has no remote sha and falls back to the merge-base, saying so", func(t *testing.T) {
+			stdin := refLine("refs/heads/feat", head, "refs/heads/feat", zeroSHA)
+			code, out, calls := g.run(t, shell, body, "0", stdin)
+			if code != 0 {
+				t.Fatalf("want the step to pass, got %d\n%s", code, out)
+			}
+			if got := since(t, calls); got != staleBase {
+				t.Errorf("--since %s, want the merge-base with origin/main %s", got, staleBase)
+			}
+			if !strings.Contains(out, "new branch") || !strings.Contains(out, "merge-base with origin/main") {
+				t.Errorf("the fallback must say why, got:\n%s", out)
+			}
+			if code, out, _ := g.run(t, shell, body, "1", stdin); code != 1 || !strings.Contains(out, "the range was read from "+staleBase+" (merge-base with origin/main)") {
+				t.Errorf("a block on the merge-base fallback names it, got %d\n%s", code, out)
+			}
+		})
+
+		t.Run("a remote sha this clone does not hold falls back, saying so", func(t *testing.T) {
+			unknown := strings.Repeat("ab", 20)
+			stdin := refLine("refs/heads/main", head, "refs/heads/main", unknown)
+			code, out, calls := g.run(t, shell, body, "0", stdin)
+			if code != 0 {
+				t.Fatalf("want the step to pass, got %d\n%s", code, out)
+			}
+			if got := since(t, calls); got != staleBase {
+				t.Errorf("--since %s, want the merge-base fallback %s", got, staleBase)
+			}
+			if !strings.Contains(out, unknown) || !strings.Contains(out, "not a commit in this clone") {
+				t.Errorf("the fallback must name the sha it could not use, got:\n%s", out)
+			}
+		})
+
+		t.Run("a force push reads the fork point, not a remote sha outside HEAD's history", func(t *testing.T) {
+			branch := strings.TrimSpace(func() string {
+				out, err := exec.Command("git", "-C", g.root, "rev-parse", "--abbrev-ref", "HEAD").Output()
+				if err != nil {
+					t.Fatal(err)
+				}
+				return string(out)
+			}())
+			g.repo.run("checkout", "-q", "-b", "rewritten", staleBase)
+			g.repo.writePlan("docs/plans/p.md", sinceGateOpenRow+"<!-- the remote's own history -->\n")
+			g.repo.commitAll("a commit only the remote has")
+			diverged := gitRevParse(t, g.root, "HEAD")
+			g.repo.run("checkout", "-q", branch)
+			stdin := refLine("refs/heads/main", head, "refs/heads/main", diverged)
+			_, out, calls := g.run(t, shell, body, "0", stdin)
+			if got := since(t, calls); got != staleBase {
+				t.Errorf("--since %s, want the fork point %s\n%s", got, staleBase, out)
+			}
+		})
+
+		t.Run("no stdin, a delete-only push or a blank line fall back to the merge-base", func(t *testing.T) {
+			for name, stdin := range map[string]string{
+				"empty":       "",
+				"delete only": refLine("(delete)", zeroSHA, "refs/heads/old", remoteTip),
+				"blank":       "\n",
+			} {
+				code, out, calls := g.run(t, shell, body, "0", stdin)
+				if code != 0 {
+					t.Fatalf("%s: want the step to pass, got %d\n%s", name, code, out)
+				}
+				if got := since(t, calls); got != staleBase {
+					t.Errorf("%s: --since %s, want the merge-base %s", name, got, staleBase)
+				}
+			}
+		})
+
+		t.Run("with several refs the one pushing HEAD names the base", func(t *testing.T) {
+			stdin := refLine("refs/tags/v1", gitRevParse(t, g.root, "HEAD~2"), "refs/tags/v1", zeroSHA) +
+				refLine("refs/heads/main", head, "refs/heads/main", remoteTip)
+			_, out, calls := g.run(t, shell, body, "0", stdin)
+			if got := since(t, calls); got != remoteTip {
+				t.Errorf("--since %s, want the remote sha of the ref pushing HEAD %s\n%s", got, remoteTip, out)
+			}
+		})
+	})
+}
+
+// TestLefthook_PrePushVerifyReceivesStdinFromLefthook (EW-16): the whole
+// path through the real lefthook. The repository's own verify command (its
+// `use_stdin` setting and its body, nothing else of lefthook.yml) runs on a
+// real `git push` from a clone whose origin/main is stale, and the stub
+// bin/fathom sees --since the remote's tip. Without `use_stdin: true` in
+// lefthook.yml lefthook hands the step no stdin, and the step falls back to
+// the stale origin/main: this test is red then. Skipped without lefthook.
+func TestLefthook_PrePushVerifyReceivesStdinFromLefthook(t *testing.T) {
+	if _, err := exec.LookPath("lefthook"); err != nil {
+		t.Skip("lefthook not available")
 	}
-	if !strings.Contains(out, "no merge-base with origin/main") {
-		t.Errorf("want the no-merge-base line, got:\n%s", out)
+	raw, err := os.ReadFile(filepath.Join("..", "..", "lefthook.yml"))
+	if err != nil {
+		t.Fatal(err)
 	}
-	if strings.Contains(calls, "--since") || !strings.Contains(calls, "verify --strict --store ") {
-		t.Errorf("want verify --strict without --since, got %q", calls)
+	var doc struct {
+		PrePush struct {
+			Commands map[string]struct {
+				Run      string `yaml:"run"`
+				UseStdin bool   `yaml:"use_stdin"`
+			} `yaml:"commands"`
+		} `yaml:"pre-push"`
 	}
-	if code, out, _ := g.run(t, body, "1"); code != 1 || strings.Contains(out, "the range was read from") {
-		t.Errorf("without a merge-base a block still blocks and names no range base, got %d\n%s", code, out)
+	if err := yaml.Unmarshal(raw, &doc); err != nil {
+		t.Fatal(err)
+	}
+	verify, ok := doc.PrePush.Commands["verify"]
+	if !ok {
+		t.Fatal("lefthook.yml has no pre-push verify command")
+	}
+	only, err := yaml.Marshal(map[string]any{"pre-push": map[string]any{"commands": map[string]any{
+		"verify": map[string]any{"run": verify.Run, "use_stdin": verify.UseStdin},
+	}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	g := newGateSandbox(t, true) // origin/main = base (soon stale); HEAD = pushed change
+	remote := filepath.Join(t.TempDir(), "remote.git")
+	if out, err := exec.Command("git", "init", "-q", "--bare", remote).CombinedOutput(); err != nil {
+		t.Fatalf("git init --bare: %v\n%s", err, out)
+	}
+	g.repo.run("remote", "add", "origin", remote)
+	g.repo.run("push", "-q", "--no-verify", "origin", "HEAD:refs/heads/main") // the remote's tip
+	remoteTip := gitRevParse(t, g.root, "HEAD")
+	staleBase := gitRevParse(t, g.root, "HEAD~1")
+	g.repo.run("update-ref", "refs/remotes/origin/main", staleBase) // this clone never fetched
+	g.repo.writePlan("docs/plans/p.md", sinceGateWaivedDone+"<!-- this push -->\n")
+	g.repo.commitAll("this push")
+
+	if err := os.WriteFile(filepath.Join(g.root, "lefthook.yml"), only, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	env := []string{"FATHOM_STUB_LOG=" + g.log, "FATHOM_STUB_VERIFY_EXIT=0"}
+	for _, kv := range os.Environ() {
+		if !strings.HasPrefix(kv, "LEFTHOOK=") { // LEFTHOOK=0 opts out of the very hook under test
+			env = append(env, kv)
+		}
+	}
+	lh := exec.Command("lefthook", "install")
+	lh.Dir, lh.Env = g.root, env
+	if out, err := lh.CombinedOutput(); err != nil {
+		t.Fatalf("lefthook install: %v\n%s", err, out)
+	}
+	push := exec.Command("git", "push", "origin", "HEAD:refs/heads/main")
+	push.Dir, push.Env = g.root, env
+	if out, err := push.CombinedOutput(); err != nil {
+		t.Fatalf("git push through lefthook: %v\n%s", err, out)
+	}
+	logged, err := os.ReadFile(g.log)
+	if err != nil {
+		t.Fatalf("the pre-push hook never ran the verify step: %v", err)
+	}
+	if vc := verifyCall(t, string(logged)); !strings.HasPrefix(vc, "verify --strict --since "+remoteTip+" ") {
+		t.Errorf("verify call = %q, want --since the remote tip %s (the stale origin/main is %s)", vc, remoteTip, staleBase)
 	}
 }

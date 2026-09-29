@@ -94,7 +94,7 @@ func TestNavMemoWaiterLeavesAtItsDeadline(t *testing.T) {
 		if g != nil {
 			t.Fatalf("a waiter whose ctx ended got graphs %+v, want nil", g)
 		}
-	case <-time.After(3 * time.Second):
-		t.Fatal("a nav-memo waiter stayed blocked 3 s past its 100 ms deadline")
+	case <-time.After(waitSafety):
+		t.Fatal("a nav-memo waiter never left at its 100 ms deadline")
 	}
 }

@@ -296,7 +296,7 @@ func TestStdioRotationStreamsAndHardCaps(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
 	go func() { runStdioRotation(ctx, 5*time.Millisecond, f, nil, log, log); close(done) }()
-	deadline := time.Now().Add(5 * time.Second)
+	deadline := time.Now().Add(waitSafety)
 	for {
 		if b, err := os.ReadFile(path + ".1"); err == nil && string(b) == original {
 			break

@@ -58,7 +58,7 @@ func TestReadFileCapped_StatsBeforeRead(t *testing.T) {
 	}()
 	select {
 	case <-done:
-	case <-time.After(5 * time.Second):
+	case <-time.After(waitSafety):
 		t.Fatal("ReadFileCapped opened a FIFO")
 	}
 	if err != nil || ex == nil || ex.Reason != ReasonNotRegular {

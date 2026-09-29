@@ -1961,8 +1961,8 @@ tests being added) is what catches that, not a second reading of the prose.
   - **Actual:** the prune branch takes its lock with `mkdir` and the lock only stops a second pruner (it prints "prune already in progress; continuing" and builds on), so builders that continue race the `go clean -cache`; found in the 2026-09-28 gate runs when parallel worker waves shared one cache root
   - **Repro:** read the size guard around `go clean -cache` in `scripts/lib/build-cache.sh`; run two gates against one `FATHOM_CACHE_ROOT` whose Go build cache is above `FATHOM_CACHE_MAX_MIB`. The mechanism is inferred from the code path; it was not reproduced from a saved log
 - **Root cause:** suspected: the lock excludes pruners from each other, not builders from a pruner, so nothing keeps a live build away from a cache being deleted
-- **Fix:** planned, not yet landed: check fathom's own cache pruning under I39 for the same race (make a prune wait for, or run only between, builds, or prune by age and never the whole cache); the interim fix is operational: gates and worker waves run with a private `FATHOM_CACHE_ROOT` (agentic-kit's orchestration guidance names it), and `scripts/build-cache_test.sh` should gain a concurrent-build case
-- **Status:** open
+- **Fix:** EW-4: the guard no longer runs `go clean -cache` at all. `fathom_cache_trim` (scripts/lib/build-cache.sh) deletes entries by age in three passes (unused for 7, 3, then 1 days; Go stamps an entry's mtime when a build uses it), stops at the first pass under `FATHOM_CACHE_MAX_MIB`, never removes an entry used within the last day, and reports a cache that stays over the limit. The prune lock is removed (an age trim is idempotent). fathom's own Go code has no cache prune; this script was the only site. ADR-039 carries the dated amendment; I39 and docs/usage.md say the new rule
+- **Status:** fixed — proven by `scripts/build-cache_test.sh` (`task scripts-check`): the over-limit guard never invokes go, stale entries are trimmed and a fresh one kept, a builder reading an entry through three trims never sees it missing, a cache under the limit is untouched, and the script never spells the whole-cache clean (EW-4's lexical oracle). The mechanism stays inferred from the code path; the race itself was never reproduced from a saved log.
 - **Impact:** a failed gate costs a full run (about 40 minutes) and reads as a code failure until someone notices the cache error; the private-root workaround leaves the shared-root path unfixed for any operator who runs two builds at once
 
 ### O125 - The intent living docs are over the project-intent size budget and the 2026-09-27..29 program grew them without the prune that should ride with new records: futures.md 692 lines, scope.md 375 and domain.md 198 against a budget of 150 each
@@ -2026,8 +2026,8 @@ tests being added) is what catches that, not a second reading of the prose.
   - **Actual:** launchd showed spawn failed with OS_REASON_CODESIGNING and ThrottleInterval 60; the new daemon came up 61s after the old one drained; the wait is 30 tries at 1s (push 78 and push 79 deploys)
   - **Repro:** task deploy on macOS with the launchd agent installed; read launchctl print for last exit reason
 - **Root cause:** launchd's ThrottleInterval 60 delays the respawn after a spawn that failed with OS_REASON_CODESIGNING; the Taskfile waits 30 tries at 1s.
-- **Fix:** EW-17: wait past the throttle interval and print launchd's last exit reason on a failed spawn; find why the first spawn after the signed mv fails codesigning.
-- **Status:** open
+- **Fix:** EW-17: `task deploy` ends on `scripts/deploy-wait.sh`, which waits throttle + exit timeout + a 30 s margin, read from `launchctl print` ("minimum runtime" is ThrottleInterval: 60 + 20 + 30 = 110 polls for the installed agent), and prints launchd's last exit reason and job state when the wait runs out or a bring-up needed more than 5 polls. It only ever runs `launchctl print`. Why the first spawn after the signed mv fails codesigning is not answered here: O132.
+- **Status:** fixed — the symptom (a deploy reporting failure while the daemon came up 61 s later) is gone and proven by `scripts/deploy-wait_test.sh` against a fake curl and a fake launchctl (a daemon healthy on poll 62 passes; one that never comes up fails after 110 polls naming `last exit reason = OS_REASON_CODESIGNING` and the job state; the script runs no launchctl verb but print); `task deploy` itself was not run. The cause of the failed first spawn stays open as O132.
 - **Impact:** Both deploys of 2026-09-29 reported failure although the daemon served HEAD; the last two asserts were run by hand.
 
 ### O130 — the first verify after a deploy or ingest is abandoned at the index-class deadline; the same call seconds later answers in 0.36s
@@ -2042,3 +2042,16 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** warm the product-reach memo after an ingest or daemon start (it is a pure function of the watermark), or let verify_plan wait for an in-flight walk up to its own deadline; efficiency-wave row EW-22.
 - **Status:** open
 - **Impact:** every first verify after a deploy or commit fails; agents read it as a verify failure or retry blind.
+
+### O132 — the first spawn of the daemon after `task deploy`'s signed mv fails with OS_REASON_CODESIGNING and launchd throttles the respawn for 60 s
+
+- **Symptom:** the first spawn of the launchd daemon after `task deploy` replaces the installed binary fails with OS_REASON_CODESIGNING; launchd holds the respawn back by ThrottleInterval (60 s), so the daemon serves the new binary about a minute later than the deploy expects
+- **Evidence:**
+  - **Tool:** task deploy, launchd (the agent's plist has ThrottleInterval 60)
+  - **Expected:** the first spawn of the freshly signed binary succeeds and the daemon is healthy within the drain time
+  - **Actual:** O129's deploys of 2026-09-29: spawn failed with OS_REASON_CODESIGNING, the new daemon came up 61 s after the old one drained. A read-only `launchctl print gui/501/<label>` on the running job still carries `last exit reason = OS_REASON_CODESIGNING`, `minimum runtime = 60`, `exit timeout = 20`, `runs = 11` and a `LWCR` block whose `cdhash` requirement lists a hash ("managed LWCR | has LWCR" in properties)
+  - **Repro:** task deploy on macOS with the launchd agent installed, then `launchctl print gui/$(id -u)/<label>` and read `last exit reason` and `runs`
+- **Root cause:** not established. Suspected, not shown: launchd's light-weight code requirement for the job pins the cdhash of the binary it last spawned, so a rebuilt and re-signed binary at the same path fails the first spawn and the requirement is refreshed by the failure. What would show it: the LWCR block before and after a deploy, and whether a `codesign -dvv` cdhash matches the block
+- **Fix:** none yet. EW-17 removes the false failure (the deploy waits out the throttle and names the reason) but not the minute of downtime; the kill-switch and `launchctl bootout`/`bootstrap` are the owner's to run, so a fix that re-registers the job is a proposal for the owner, not a step an agent takes
+- **Status:** open
+- **Impact:** every deploy of a rebuilt daemon costs about a minute in which the fathom MCP tools and hooks fail open or error

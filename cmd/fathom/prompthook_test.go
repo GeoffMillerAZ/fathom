@@ -78,8 +78,15 @@ func fakeSlowPromptDaemon(t *testing.T, obligationsByFile map[string]any, delayB
 		_ = json.NewDecoder(r.Body).Decode(&req)
 		if req.Params.Name == "obligations" {
 			if d, ok := delayByFile[req.Params.Arguments.File]; ok {
+				// A zero delay never answers on its own: it holds until the
+				// client gives up (its own Timeout fired), so the hook
+				// returning means the shared deadline fired (EW-7).
+				var answer <-chan time.Time
+				if d > 0 {
+					answer = time.After(d)
+				}
 				select {
-				case <-time.After(d):
+				case <-answer:
 				case <-r.Context().Done(): // the client gave up (its own Timeout fired): stop holding the connection open
 					return
 				}
@@ -140,25 +147,20 @@ func TestPromptHook_SlowDaemonReturnsWithinBudget(t *testing.T) {
 			"rules":   []any{map[string]any{"rule": "Register every tool in the mcp registry.", "src": "internal/CLAUDE.md#L4-L4", "tier": "doc-claimed", "layer": "obligations"}},
 		},
 	}, map[string]time.Duration{
-		"internal/mcp/tools.go": 5 * time.Second, // far longer than the 300ms deadline: must time out, not block the hook
+		"internal/mcp/tools.go": 0, // never answers: the 300ms deadline must end it, not block the hook
 	})
 	defer srv.Close()
 
 	promptHookStdin(t, dir, "please update internal/store/backend.go and internal/mcp/tools.go together")
 
 	var out, errBuf bytes.Buffer
-	start := time.Now()
-	code := runWithStdin([]string{"prompt-hook", "--url=" + srv.URL}, nil, &out, &errBuf)
-	elapsed := time.Since(start)
+	var code int
+	returnsUnaided(t, "prompt-hook against a daemon that never answers for one file", func() {
+		code = runWithStdin([]string{"prompt-hook", "--url=" + srv.URL}, nil, &out, &errBuf)
+	})
 
 	if code != 0 {
 		t.Fatalf("prompt-hook exit = %d, want 0; stderr=%s", code, errBuf.String())
-	}
-	// Generous margin above the 300ms deadline (scheduling/HTTP overhead),
-	// but nowhere near the slow file's 5s artificial delay or what a
-	// sequential-with-a-fresh-timeout-each-call implementation would take.
-	if elapsed > 2*time.Second {
-		t.Fatalf("prompt-hook took %s, want well under the slow file's 5s delay (shared 300ms deadline should have bounded it)", elapsed)
 	}
 	if !strings.Contains(out.String(), "ADR-025") {
 		t.Fatalf("output missing the fast file's rule: %s", out.String())

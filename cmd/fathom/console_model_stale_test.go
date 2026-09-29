@@ -48,17 +48,16 @@ func TestObservatoryModelServesStaleWhileRebuilding(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			start := time.Now()
 			m := cachedObservatoryModel("http://x", later)
 			if m.GeneratedAt != "2026-09-27T12:00:00Z" {
 				t.Errorf("a stale read got %q", m.GeneratedAt)
 			}
-			if d := time.Since(start); d > time.Second {
-				t.Errorf("a stale read waited %s for the rebuild", d)
-			}
 		}()
 	}
-	wg.Wait()
+	// The rebuild stays blocked (release closes below), so a stale read that
+	// waited on it could not return: all eight returning is "served the last
+	// model at once".
+	returnsUnaided(t, "eight stale reads while the model rebuilds", wg.Wait)
 	waitUntil(t, func() bool { return builds.Load() == 2 })
 	// The rebuild runs outside the lock: the cache stays usable meanwhile
 	// (the governor's drop takes the same lock).
@@ -66,7 +65,7 @@ func TestObservatoryModelServesStaleWhileRebuilding(t *testing.T) {
 	go func() { consoleMemoDrops(); close(dropped) }()
 	select {
 	case <-dropped:
-	case <-time.After(2 * time.Second):
+	case <-time.After(waitSafety):
 		t.Fatal("the cache's lock was held while the model rebuilt")
 	}
 	close(release)
@@ -142,7 +141,7 @@ func TestObservatoryModelNeverServesAnEmptyModel(t *testing.T) {
 		if m.GeneratedAt == "" {
 			t.Fatalf("a cold read after a drop got the empty model: %+v", m)
 		}
-	case <-time.After(5 * time.Second):
+	case <-time.After(waitSafety):
 		t.Fatal("the cold read never returned")
 	}
 
@@ -187,7 +186,7 @@ func TestColdModelWaitHonoursTheRequest(t *testing.T) {
 		if m.DegradedNote == "" {
 			t.Fatalf("an abandoned cold read = %+v; want a model naming why", m)
 		}
-	case <-time.After(3 * time.Second):
+	case <-time.After(waitSafety):
 		t.Fatal("the request ended and the cold read is still waiting on the build")
 	}
 }

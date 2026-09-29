@@ -79,12 +79,15 @@ func TestOperateResourcesOffTheRequestPath(t *testing.T) {
 	}
 	later := t0.Add(operateResourcesTTL + time.Second)
 	for i := 0; i < 4; i++ {
-		start := time.Now()
-		if rep := operateResourcesCached("http://x", later); rep.GeneratedAt != "1" {
+		// The census build stays blocked (release closes below), so a stale
+		// read that waited on it could not return: returning is "served
+		// the last report at once".
+		var rep resourcesReport
+		returnsUnaided(t, "a stale operate read while the census rebuilds", func() {
+			rep = operateResourcesCached("http://x", later)
+		})
+		if rep.GeneratedAt != "1" {
 			t.Errorf("a stale read got %q", rep.GeneratedAt)
-		}
-		if d := time.Since(start); d > time.Second {
-			t.Errorf("a stale read waited %s for the census", d)
 		}
 	}
 	waitUntil(t, func() bool { return builds.Load() == 2 })
@@ -115,7 +118,7 @@ func TestOperateResourcesOffTheRequestPath(t *testing.T) {
 	}()
 	select {
 	case <-locked:
-	case <-time.After(2 * time.Second):
+	case <-time.After(waitSafety):
 		t.Fatal("the operate cache's lock was held while the projection built")
 	}
 	close(hold)

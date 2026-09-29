@@ -71,14 +71,16 @@ func TestGate_HookNeverWaitsForHeavy(t *testing.T) {
 	defer fleet.Release(OutcomeOK)
 
 	for _, c := range []Class{ClassTree, ClassFleet} {
-		start := time.Now()
-		tk, ref := g.Admit(ctx, Request{Tool: "obligations", Class: c, Origin: OriginHook})
+		// Both heavy slots stay held until the test ends, so an Admit that
+		// queued for one could never return: returning is "never waits".
+		var tk *Ticket
+		var ref *Refusal
+		returnsUnaided(t, c.String()+": a hook asking a full heavy class", func() {
+			tk, ref = g.Admit(ctx, Request{Tool: "obligations", Class: c, Origin: OriginHook})
+		})
 		if tk != nil {
 			tk.Release(OutcomeOK)
 			t.Fatalf("%s: hook admitted into a full class", c)
-		}
-		if el := time.Since(start); el > 50*time.Millisecond {
-			t.Fatalf("%s: hook waited %s for a heavy slot; it must never wait", c, el)
 		}
 		if ref == nil || ref.Code != RefusalSlots {
 			t.Fatalf("%s: want a slots refusal, got %+v", c, ref)
@@ -124,7 +126,7 @@ func TestGate_WaiterHonoursContext(t *testing.T) {
 		if ref == nil || ref.Code != RefusalCallerGone {
 			t.Fatalf("want caller-gone, got %+v", ref)
 		}
-	case <-time.After(2 * time.Second):
+	case <-time.After(waitSafety):
 		t.Fatal("a cancelled waiter stayed queued")
 	}
 
@@ -145,7 +147,7 @@ func TestGate_WaiterHonoursContext(t *testing.T) {
 			t.Errorf("queued time not recorded")
 		}
 		tk.Release(OutcomeOK)
-	case <-time.After(2 * time.Second):
+	case <-time.After(waitSafety):
 		t.Fatal("waiter never got the released slot")
 	}
 }
@@ -182,19 +184,30 @@ func TestGate_DeadlineFeasibility(t *testing.T) {
 // cancellation reaches it through the in-flight registry.
 func TestGate_ClassDeadlineAndRefuseRung(t *testing.T) {
 	reg := NewInFlight(nil)
-	g := NewGate(GateConfig{Budget: testBudget(t), Mode: ModeEnforce, InFlight: reg})
-	tk, ref := g.Admit(context.Background(), Request{Tool: "search", Class: ClassTree, Origin: OriginAgent})
-	if ref != nil {
-		t.Fatal(ref.Reason)
+	// The gate reads one frozen instant, so the time each ticket has left is
+	// exact (class deadline 60 s; the client's own nearer 3 s) and the
+	// context's wall-clock deadline is now+that for the moment Admit builds
+	// it: it lies between the readings either side of the call. A stalled
+	// machine only widens the bracket, never breaks it.
+	now0 := time.Now()
+	g := NewGate(GateConfig{Budget: testBudget(t), Mode: ModeEnforce, InFlight: reg, Now: func() time.Time { return now0 }})
+	admitDeadline := func(req Request) (dl, lo, hi time.Time, tk *Ticket) {
+		lo = time.Now()
+		tk, ref := g.Admit(context.Background(), req)
+		hi = time.Now()
+		if ref != nil {
+			t.Fatal(ref.Reason)
+		}
+		dl, _ = tk.Context().Deadline()
+		return dl, lo, hi, tk
 	}
-	dl, ok := tk.Context().Deadline()
-	if !ok || time.Until(dl) > 60*time.Second || time.Until(dl) < 55*time.Second {
-		t.Fatalf("tree ticket deadline %v, want ≈ now+60s", dl)
+	dl, lo, hi, tk := admitDeadline(Request{Tool: "search", Class: ClassTree, Origin: OriginAgent})
+	if dl.Before(lo.Add(60*time.Second)) || dl.After(hi.Add(60*time.Second)) {
+		t.Fatalf("tree ticket deadline %v, want now+60s within [%v, %v]", dl, lo.Add(60*time.Second), hi.Add(60*time.Second))
 	}
-	near := time.Now().Add(3 * time.Second)
-	tk2, _ := g.Admit(context.Background(), Request{Tool: "find_symbol", Class: ClassIndex, Origin: OriginAgent, Deadline: near})
-	if dl2, _ := tk2.Context().Deadline(); dl2.Sub(near).Abs() > 50*time.Millisecond {
-		t.Fatalf("index ticket deadline %v, want the client's %v", dl2, near)
+	dl2, lo2, hi2, tk2 := admitDeadline(Request{Tool: "find_symbol", Class: ClassIndex, Origin: OriginAgent, Deadline: now0.Add(3 * time.Second)})
+	if dl2.Before(lo2.Add(3*time.Second)) || dl2.After(hi2.Add(3*time.Second)) {
+		t.Fatalf("index ticket deadline %v, want the client's 3s within [%v, %v]", dl2, lo2.Add(3*time.Second), hi2.Add(3*time.Second))
 	}
 	tk2.Release(OutcomeOK)
 	if got := reg.Cancel(ErrAbandonedByGovernor, ClassTree); len(got) != 1 || got[0].Tool != "search" {
@@ -269,13 +282,15 @@ func TestGate_ObserveNeverRefuses(t *testing.T) {
 	g, logs := newTestGate(t, ModeObserve, LevelNormal)
 	var held []*Ticket
 	for range 3 {
-		start := time.Now()
-		tk, ref := g.Admit(context.Background(), Request{Tool: "search", Class: ClassTree, Origin: OriginHook})
+		// Each admitted ticket stays held, so the third Admit, over the
+		// class's one slot, could not return if observe mode queued it.
+		var tk *Ticket
+		var ref *Refusal
+		returnsUnaided(t, "observe mode: an Admit into a full class", func() {
+			tk, ref = g.Admit(context.Background(), Request{Tool: "search", Class: ClassTree, Origin: OriginHook})
+		})
 		if ref != nil || tk == nil {
 			t.Fatalf("observe refused: %+v", ref)
-		}
-		if time.Since(start) > 50*time.Millisecond {
-			t.Fatal("observe waited")
 		}
 		held = append(held, tk)
 	}
@@ -350,7 +365,7 @@ func TestGate_MetricLinesSorted(t *testing.T) {
 
 func waitFor(t *testing.T, cond func() bool) {
 	t.Helper()
-	deadline := time.Now().Add(2 * time.Second)
+	deadline := time.Now().Add(waitSafety)
 	for !cond() {
 		if time.Now().After(deadline) {
 			t.Fatal("condition never held")

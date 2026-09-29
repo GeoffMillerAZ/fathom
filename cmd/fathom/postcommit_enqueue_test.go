@@ -75,20 +75,23 @@ func TestPostCommitEnqueuesRefresh(t *testing.T) {
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 
+	// The queued ingest stays blocked until the test's cleanup closes
+	// release, so a hook that waited on it could not return: returning is
+	// "it did not wait on the ingest".
 	var out, errBuf bytes.Buffer
-	begin := time.Now()
-	if code := cmdPostCommitHook([]string{"--dir", root, "--url", srv.URL, "--service", "svc", "--timeout", "5s"}, &out, &errBuf); code != 0 {
-		t.Fatalf("exit %d: %s", code, errBuf.String())
-	}
-	if d := time.Since(begin); d > 3*time.Second {
-		t.Fatalf("the hook took %s — it waited on the ingest", d)
+	var hookCode int
+	returnsUnaided(t, "the post-commit hook while its ingest is blocked", func() {
+		hookCode = cmdPostCommitHook([]string{"--dir", root, "--url", srv.URL, "--service", "svc", "--timeout", "5s"}, &out, &errBuf)
+	})
+	if hookCode != 0 {
+		t.Fatalf("exit %d: %s", hookCode, errBuf.String())
 	}
 	if !strings.Contains(out.String(), "queued a refresh of \"svc\" through the daemon") {
 		t.Fatalf("success line %q; want it to say the refresh was queued", out.String())
 	}
 	select {
 	case <-started:
-	case <-time.After(5 * time.Second):
+	case <-time.After(waitSafety):
 		t.Fatal("the queued refresh never ran")
 	}
 	// A second commit while the ingest runs: 202, coalesced into the one
@@ -181,7 +184,7 @@ func TestRefreshFileDefersToQueuedServiceRefresh(t *testing.T) {
 		t.Fatalf("/refresh-file during a service refresh: %+v; want skipped, naming the running refresh and its follow-up", out)
 	}
 	letGo()
-	deadline := time.Now().Add(5 * time.Second)
+	deadline := time.Now().Add(waitSafety)
 	for atomic.LoadInt32(&runs) < 2 {
 		if time.Now().After(deadline) {
 			t.Fatalf("runs = %d: the edit's follow-up refresh never ran — the file stays stale", atomic.LoadInt32(&runs))

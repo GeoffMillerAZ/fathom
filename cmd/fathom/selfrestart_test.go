@@ -88,7 +88,7 @@ func TestSelfRestartAdoptsAVerifiedBinary(t *testing.T) {
 
 	select {
 	case <-done:
-	case <-time.After(5 * time.Second):
+	case <-time.After(waitSafety):
 		t.Fatalf("the watcher never adopted the new binary; log:\n%s", out.String())
 	}
 	// A schema-2 plist (KeepAlive {SuccessfulExit: false}) reads exit 0 as
@@ -124,7 +124,7 @@ func TestSelfRestartRefusesABinaryThatCannotRun(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	deadline := time.Now().Add(2 * time.Second)
+	deadline := time.Now().Add(waitSafety)
 	for time.Now().Before(deadline) {
 		if strings.Contains(out.String(), "REFUSED") {
 			break
@@ -218,7 +218,7 @@ func TestWatchOwnBinary_AdoptLineIncludesBuildAge(t *testing.T) {
 
 	select {
 	case <-done:
-	case <-time.After(5 * time.Second):
+	case <-time.After(waitSafety):
 		t.Fatalf("the watcher never adopted the new binary; log:\n%s", out.String())
 	}
 	log := out.String()

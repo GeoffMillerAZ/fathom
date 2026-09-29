@@ -93,17 +93,20 @@ func TestGate_TimingUsesInjectedClock(t *testing.T) {
 			asked = d
 			return fire, func() bool { return true }
 		}})
+	lo := time.Now()
 	held, ref := g.Admit(context.Background(), Request{Tool: "search", Class: ClassTree, Origin: OriginAgent})
+	hi := time.Now()
 	if ref != nil {
 		t.Fatal(ref.Reason)
 	}
 	// The class deadline is computed on the injected clock: a year-2000
-	// clock must still give a live ~60 s ticket, not an expired one.
+	// clock must still give a live 60 s ticket, not an expired one — 60 s
+	// from the instant Admit built the ctx, between the readings either side.
 	if err := held.Context().Err(); err != nil {
 		t.Fatalf("class deadline computed on the wall clock: ticket ctx %v", err)
 	}
-	if dl, ok := held.Context().Deadline(); !ok || time.Until(dl) < 55*time.Second || time.Until(dl) > 61*time.Second {
-		t.Fatalf("tree ticket deadline %v, want ≈ 60 s out", dl)
+	if dl, ok := held.Context().Deadline(); !ok || dl.Before(lo.Add(60*time.Second)) || dl.After(hi.Add(60*time.Second)) {
+		t.Fatalf("tree ticket deadline %v, want 60 s out within [%v, %v]", dl, lo.Add(60*time.Second), hi.Add(60*time.Second))
 	}
 	got := make(chan *Refusal, 1)
 	go func() {

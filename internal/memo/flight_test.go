@@ -48,7 +48,7 @@ func TestGraphFor_NestedFlightAtShedNeverWedges(t *testing.T) {
 	none := func(context.Context) ([]core.Edge, error) { return nil, nil }
 	sc := Scope{Store: "nested-shed", Service: "svc", Watermark: "w1"}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), waitSafety)
 	defer cancel()
 	snap, err := SnapshotFor(ctx, sc, load)
 	if err != nil {
@@ -75,12 +75,14 @@ func TestGraphFor_NestedFlightAtShedNeverWedges(t *testing.T) {
 	time.Sleep(20 * time.Millisecond)
 	short, cancelShort := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancelShort()
-	start := time.Now()
-	if _, err := GraphFor(short, snap2, GraphResolved, none); err != nil && !errors.Is(err, context.DeadlineExceeded) {
-		t.Fatalf("waiter err = %v", err)
-	}
-	if time.Since(start) > time.Second {
-		t.Fatal("a waiter for the rebuild token outstayed its ctx")
+	// The typed load holds the token until gate closes below, so a waiter
+	// that outstayed its ctx could never return.
+	var werr error
+	returnsUnaided(t, "a waiter for the rebuild token", func() {
+		_, werr = GraphFor(short, snap2, GraphResolved, none)
+	})
+	if werr != nil && !errors.Is(werr, context.DeadlineExceeded) {
+		t.Fatalf("waiter err = %v", werr)
 	}
 	close(gate)
 	if err := <-typedDone; err != nil {
@@ -110,7 +112,7 @@ func TestGroup_KeepNeedsExpectedCostAndRefuseCancelsFlights(t *testing.T) {
 	})
 	select {
 	case <-cancelled:
-	case <-time.After(time.Second):
+	case <-time.After(waitSafety):
 		t.Fatal("a Keep flight with no expected cost outlived its last waiter")
 	}
 
@@ -135,7 +137,7 @@ func TestGroup_KeepNeedsExpectedCostAndRefuseCancelsFlights(t *testing.T) {
 	reg.Drop(ReasonRefuse)
 	select {
 	case <-stopped:
-	case <-time.After(time.Second):
+	case <-time.After(waitSafety):
 		t.Fatal("refuse did not cancel the flight in progress")
 	}
 	time.Sleep(10 * time.Millisecond)

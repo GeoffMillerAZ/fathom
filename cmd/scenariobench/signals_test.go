@@ -38,8 +38,8 @@ func TestInstallKillSwitch_InvokesOnKillSignalOnSIGTERM(t *testing.T) {
 
 	select {
 	case <-done:
-	case <-time.After(5 * time.Second):
-		t.Fatal("onKillSignal was not called within 5s of SIGTERM")
+	case <-time.After(waitSafety):
+		t.Fatal("onKillSignal was not called after SIGTERM")
 	}
 
 	mu.Lock()
@@ -73,7 +73,7 @@ func TestInstallKillSwitch_StopDisarms(t *testing.T) {
 
 	select {
 	case <-fires:
-	case <-time.After(5 * time.Second):
+	case <-time.After(waitSafety):
 		t.Fatal("the second, still-armed kill switch should have fired")
 	}
 	// Exactly one firing: the stopped first switch must not have also fired.

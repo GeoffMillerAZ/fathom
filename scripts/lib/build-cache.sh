@@ -4,6 +4,46 @@
 # fathom_cache_configure before invoking Go or uv. An unset
 # FATHOM_CACHE_ROOT preserves the caller's normal toolchain environment.
 
+# fathom_cache_trim DIR MAX_MIB: bring a Go build cache under MAX_MIB by
+# deleting entries by age, never the whole cache (O124, EW-4). Go stamps an
+# entry's mtime whenever a build uses it, so an entry touched inside the last
+# day may be in a live build's hands and is never removed; the older ones go
+# in three passes (unused for 7 days, then 3, then 1) and the loop stops at
+# the first pass that fits. A whole-cache clean deletes what a build that
+# started a moment earlier is about to read, which is what failed pre-push
+# gates when two builds shared one root. Still over the limit after the last
+# pass is reported and the build goes on: a slow start beats a failed one.
+# fathom_cache_kib DIR: DIR's size in KiB, or nothing when it cannot be
+# measured. Always succeeds: a build writing into DIR can make du exit
+# non-zero mid-walk, and a caller under `set -e -o pipefail` must not die on
+# that.
+fathom_cache_kib() {
+  du -sk "$1" 2>/dev/null | awk 'NR == 1 { print $1 }' || true
+}
+
+fathom_cache_trim() {
+  local dir="$1" max_mib="$2" limit_kib size_kib days
+  limit_kib="$((max_mib * 1024))"
+  size_kib="$(fathom_cache_kib "$dir")"
+  if [ -z "$size_kib" ]; then
+    echo "fathom cache: warning: could not measure $dir; size guard skipped" >&2
+    return 0
+  fi
+  [ "$size_kib" -gt "$limit_kib" ] || return 0
+  echo "fathom cache: Go build cache exceeds ${max_mib} MiB; trimming entries unused for 7, 3 then 1 days in $dir" >&2
+  for days in 7 3 1; do
+    # Entries sit two directories down (xx/<hash>-a, xx/<hash>-d); the
+    # top-level README and trim.txt are not entries.
+    find "$dir" -mindepth 2 -type f -mmin "+$((days * 1440))" -delete 2>/dev/null || true
+    size_kib="$(fathom_cache_kib "$dir")"
+    if [ -n "$size_kib" ] && [ "$size_kib" -le "$limit_kib" ]; then
+      return 0
+    fi
+  done
+  echo "fathom cache: Go build cache is still above ${max_mib} MiB after trimming entries unused for a day; entries used within the last day are never removed (a running build may hold them), so it stays" >&2
+  return 0
+}
+
 fathom_cache_configure() {
   if [ "${FATHOM_CACHE_CONFIGURED:-}" = "1" ]; then
     return 0
@@ -59,22 +99,7 @@ fathom_cache_configure() {
   esac
 
   if [ "$max_mib" -gt 0 ]; then
-    local size_kib
-    size_kib="$(du -sk "$GOCACHE" 2>/dev/null | awk 'NR == 1 { print $1 }')"
-    if [ -z "$size_kib" ]; then
-      echo "fathom cache: warning: could not measure $GOCACHE; size guard skipped" >&2
-    elif [ "$size_kib" -gt "$((max_mib * 1024))" ]; then
-      local lock="$root/.go-build-prune.lock"
-      if mkdir "$lock" 2>/dev/null; then
-        (
-          trap 'rmdir "$lock" 2>/dev/null || true' EXIT
-          echo "fathom cache: Go build cache exceeds ${max_mib} MiB; pruning $GOCACHE" >&2
-          command "${FATHOM_GO_BINARY:-go}" clean -cache
-        ) || return 2
-      else
-        echo "fathom cache: prune already in progress; continuing" >&2
-      fi
-    fi
+    fathom_cache_trim "$GOCACHE" "$max_mib"
   fi
 
   export FATHOM_CACHE_CONFIGURED=1

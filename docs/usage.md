@@ -83,8 +83,11 @@ The root must be absolute, pre-existing, and writable. Requiring it to exist is
 intentional: if a removable volume is absent, Fathom refuses instead of recreating the
 mount path on the system disk. The build flow derives `GOCACHE`, `GOMODCACHE`,
 `GOTMPDIR`, `TMPDIR`, and `UV_CACHE_DIR` beneath that root. Before a supported Go
-invocation, a build cache larger than `FATHOM_CACHE_MAX_MIB` is cleared with
-`go clean -cache`; module downloads are retained.
+invocation, a build cache larger than `FATHOM_CACHE_MAX_MIB` is trimmed by entry age
+(entries unused for 7 days go first, then 3, then 1; an entry used within the last day is
+never removed, because a running build may hold it, so the cache can stay above the limit
+and the guard says so); module downloads are retained. To empty the build cache
+outright, run `go clean -cache` yourself with no build running.
 
 Raw `go` commands bypass repository policy. Use `task test`, `task build`, or the
 corresponding repository script when cache placement matters.

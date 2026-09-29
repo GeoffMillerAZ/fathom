@@ -53,7 +53,7 @@ func TestConsoleMemo_ColdKeyNeverBlocksWarmKey(t *testing.T) {
 		if v != "w" {
 			t.Errorf("warm key = %q, want its stored value", v)
 		}
-	case <-time.After(2 * time.Second):
+	case <-time.After(waitSafety):
 		t.Fatal("a stored key waited behind another key's computation")
 	}
 	close(release)
@@ -95,7 +95,7 @@ func TestConsoleMemoWaiterHonoursContext(t *testing.T) {
 		v, _ := m.do("k", time.Now(), func() (int, time.Duration) { <-release; return 1, -1 })
 		first <- v
 	}()
-	deadline := time.Now().Add(2 * time.Second)
+	deadline := time.Now().Add(waitSafety)
 	for {
 		m.mu.Lock()
 		inFlight := m.flights["k"] != nil
@@ -110,12 +110,14 @@ func TestConsoleMemoWaiterHonoursContext(t *testing.T) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Millisecond)
 	defer cancel()
-	start := time.Now()
-	if _, _, ok := m.doCtx(ctx, "k", time.Now(), func() (int, time.Duration) { return 2, -1 }); ok {
+	// The first computation stays blocked (release closes below), so a waiter
+	// that outstayed its ctx could not return; the 30 ms is the caller's input.
+	var ok bool
+	returnsUnaided(t, "a memo waiter whose ctx ended", func() {
+		_, _, ok = m.doCtx(ctx, "k", time.Now(), func() (int, time.Duration) { return 2, -1 })
+	})
+	if ok {
 		t.Fatal("a waiter whose ctx ended reported a value")
-	}
-	if el := time.Since(start); el > time.Second {
-		t.Fatalf("memo waiter stayed %s after its ctx ended", el)
 	}
 	close(release)
 	if v := <-first; v != 1 {

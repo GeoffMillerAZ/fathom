@@ -34,7 +34,7 @@ func TestRunMemoryScavenger_CallsFreeOnEveryTick(t *testing.T) {
 
 	select {
 	case <-done:
-	case <-time.After(2 * time.Second):
+	case <-time.After(waitSafety):
 		t.Fatal("runMemoryScavenger did not exit after ctx cancellation")
 	}
 
@@ -56,7 +56,7 @@ func TestRunMemoryScavenger_ZeroIntervalIsNoOp(t *testing.T) {
 	}()
 	select {
 	case <-done:
-	case <-time.After(2 * time.Second):
+	case <-time.After(waitSafety):
 		t.Fatal("runMemoryScavenger(interval<=0) did not return promptly")
 	}
 	if called {
@@ -85,7 +85,7 @@ func TestRunMemoryScavenger_LogsHeapDelta(t *testing.T) {
 	cancel()
 	select {
 	case <-done:
-	case <-time.After(2 * time.Second):
+	case <-time.After(waitSafety):
 		t.Fatal("runMemoryScavenger did not exit after ctx cancellation")
 	}
 

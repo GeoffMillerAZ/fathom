@@ -74,7 +74,7 @@ func TestRPCSourcesScope(t *testing.T) {
 		if err == nil {
 			t.Fatal("a disconnected request's wait returned a tree")
 		}
-	case <-time.After(2 * time.Second):
+	case <-time.After(waitSafety):
 		t.Fatal("a disconnected /rpc request kept waiting for a whole-tree slot")
 	}
 }

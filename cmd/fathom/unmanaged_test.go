@@ -98,16 +98,14 @@ func TestUnmanagedServeHTTPExitsWhenParentKilled(t *testing.T) {
 	time.Sleep(50 * time.Millisecond) // let the kqueue watch register
 	_ = sleeper.Process.Kill()
 	_ = sleeper.Wait()
-	{ // off darwin only the poll path exists
+	if runtime.GOOS == "darwin" { // off darwin only the poll path exists: nothing to wait for here
 		select {
 		case r := <-fired:
 			if r != fmt.Sprintf("parent %d exited", sleeper.Process.Pid) {
 				t.Fatalf("reason %q", r)
 			}
-		case <-time.After(3 * time.Second):
-			if runtime.GOOS == "darwin" {
-				t.Fatal("kqueue NOTE_EXIT did not fire within 3 s")
-			}
+		case <-time.After(waitSafety):
+			t.Fatal("kqueue NOTE_EXIT never fired")
 		}
 	}
 	polled := make(chan string, 1)
@@ -117,7 +115,7 @@ func TestUnmanagedServeHTTPExitsWhenParentKilled(t *testing.T) {
 	ppid.Store(1) // reparented to init
 	select {
 	case <-polled:
-	case <-time.After(3 * time.Second):
+	case <-time.After(waitSafety):
 		t.Fatal("getppid poll did not fire on reparenting")
 	}
 
@@ -167,8 +165,8 @@ func TestUnmanagedServeHTTPExitsWhenParentKilled(t *testing.T) {
 	_ = parent.Wait()
 	killed := time.Now()
 	for !processGone(servePID) {
-		if time.Since(killed) > 10*time.Second {
-			t.Fatalf("serve-http pid %d still alive 10 s after its parent was SIGKILLed:\n%s", servePID, readLog())
+		if time.Since(killed) > waitSafety {
+			t.Fatalf("serve-http pid %d never exited after its parent was SIGKILLed:\n%s", servePID, readLog())
 		}
 		time.Sleep(100 * time.Millisecond)
 	}

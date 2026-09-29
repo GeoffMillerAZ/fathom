@@ -112,7 +112,7 @@ func TestEventBus_ReplayBoundAndKeepalive(t *testing.T) {
 	}()
 	select {
 	case <-done:
-	case <-time.After(5 * time.Second):
+	case <-time.After(waitSafety):
 		t.Fatal("publisher blocked on a slow subscriber")
 	}
 	drained := 0
@@ -132,7 +132,7 @@ func TestEventBus_ReplayBoundAndKeepalive(t *testing.T) {
 	}
 	ts := httptest.NewServer(fresh)
 	defer ts.Close()
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), waitSafety)
 	defer cancel()
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, ts.URL, nil)
 	req.Header.Set("Last-Event-ID", "e1-1")
@@ -216,7 +216,7 @@ func TestEventBus_ReplaySurvivesDaemonRestart(t *testing.T) {
 	// Over HTTP: the old process's Last-Event-ID still gets the restart.
 	ts := httptest.NewServer(fresh)
 	defer ts.Close()
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), waitSafety)
 	defer cancel()
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, ts.URL, nil)
 	req.Header.Set("Last-Event-ID", cursor)
@@ -302,7 +302,7 @@ func TestEventBus_GapNamesEverySource(t *testing.T) {
 	}
 	ts := httptest.NewServer(bus)
 	defer ts.Close()
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), waitSafety)
 	defer cancel()
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, ts.URL, nil)
 	req.Header.Set("Last-Event-ID", "g1-1")

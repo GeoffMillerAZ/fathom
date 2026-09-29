@@ -41,7 +41,7 @@ func TestChildFootprintCountedTowardShedAndRefuse(t *testing.T) {
 	t.Cleanup(func() { _ = cmd.Process.Kill(); _, _ = cmd.Process.Wait() })
 	var bytes int64
 	var n int
-	deadline := time.Now().Add(5 * time.Second)
+	deadline := time.Now().Add(waitSafety)
 	for time.Now().Before(deadline) {
 		bytes, n, _ = childTreeFootprint(os.Getpid())
 		if n >= n0+2 {
@@ -88,7 +88,7 @@ func TestChildFootprintCountedTowardShedAndRefuse(t *testing.T) {
 	go func() { done <- cmd.Wait() }()
 	select {
 	case <-done:
-	case <-time.After(5 * time.Second):
+	case <-time.After(waitSafety):
 		t.Fatalf("the child tree survived killChildTree")
 	}
 }

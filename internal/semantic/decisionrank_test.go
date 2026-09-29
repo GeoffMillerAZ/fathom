@@ -533,22 +533,56 @@ func (s *slowDecider) Decide(ctx context.Context, req decision.Request) (decisio
 	}
 }
 
+// blockedDecider never answers on its own: Decide holds until its ctx ends,
+// and records the time the ctx had left when Decide was entered. A test then
+// proves the budget was applied from the ctx the decider was handed, not from
+// how long the call took: a budget that were ignored leaves the ctx without a
+// deadline and the decider blocked for good.
+type blockedDecider struct {
+	inner decision.Decider
+	mu    sync.Mutex
+	left  []time.Duration // per Decide call; -1: the ctx carried no deadline
+}
+
+func (b *blockedDecider) Name() string { return b.inner.Name() }
+
+func (b *blockedDecider) Decide(ctx context.Context, _ decision.Request) (decision.Response, error) {
+	left := time.Duration(-1)
+	if dl, ok := ctx.Deadline(); ok {
+		left = time.Until(dl)
+	}
+	b.mu.Lock()
+	b.left = append(b.left, left)
+	b.mu.Unlock()
+	<-ctx.Done()
+	return decision.Response{}, ctx.Err()
+}
+
 // TestRerankWithinTiers_BudgetBoundsWallTime is DP-25's own acceptance test
-// (O109): a Decider that respects ctx but is genuinely slow must never hold
-// rerankWithinTiers hostage past its own configured budget.
+// (O109): a Decider that respects ctx but never answers must never hold
+// rerankWithinTiers hostage past its own configured budget. Nothing here
+// reads a wall clock (EW-7): the decider blocks until its ctx ends, so the
+// call returning at all means the budget fired, and the ctx it was handed
+// carried the 100 ms budget, not a longer one.
 func TestRerankWithinTiers_BudgetBoundsWallTime(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("tight budget: prompt return, lexical order, note set, error rows", func(t *testing.T) {
 		matched := buildMatchedRuleSet(3)
-		slow := &slowDecider{inner: decision.NewMockDecider("llm"), sleep: 5 * time.Second}
+		slow := &blockedDecider{inner: decision.NewMockDecider("llm")}
 
-		start := time.Now()
-		oc := rerankWithinTiers(ctx, slow, rerankTestFile, "", matched, len(matched), 100*time.Millisecond)
-		elapsed := time.Since(start)
+		var oc rerankOutcome
+		returnsUnaided(t, "rerankWithinTiers with a decider that never answers", func() {
+			oc = rerankWithinTiers(ctx, slow, rerankTestFile, "", matched, len(matched), 100*time.Millisecond)
+		})
 
-		if elapsed >= 500*time.Millisecond {
-			t.Errorf("wall time = %v, want < 500ms (a 100ms budget must not wait for a 5s decider)", elapsed)
+		if len(slow.left) == 0 {
+			t.Fatal("the decider was never asked")
+		}
+		for i, left := range slow.left {
+			if left < 0 || left > 100*time.Millisecond {
+				t.Errorf("decide call %d: its ctx had %v left, want a deadline within the 100ms budget", i, left)
+			}
 		}
 		if oc.Ranked {
 			t.Error("Ranked = true, want false (the only chunk timed out)")
@@ -582,7 +616,7 @@ func TestRerankWithinTiers_BudgetBoundsWallTime(t *testing.T) {
 		inner := decision.NewMockDecider("llm", decision.MockEntry{Response: mockNoulResponse("llm", answers)})
 		slow := &slowDecider{inner: inner, sleep: 50 * time.Millisecond}
 
-		oc := rerankWithinTiers(ctx, slow, rerankTestFile, "", matched, len(matched), 5*time.Second)
+		oc := rerankWithinTiers(ctx, slow, rerankTestFile, "", matched, len(matched), waitSafety)
 		if !oc.Ranked {
 			t.Error("Ranked = false, want true")
 		}

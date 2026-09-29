@@ -214,7 +214,7 @@ func TestServeHTTPEventsHello_ThroughLoggingMiddleware(t *testing.T) {
 	ts := httptest.NewServer(handler)
 	t.Cleanup(ts.Close)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), waitSafety)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, ts.URL+"/events", nil)
 	if err != nil {
@@ -245,8 +245,8 @@ func TestServeHTTPEventsHello_ThroughLoggingMiddleware(t *testing.T) {
 		if !strings.Contains(r.body, "hello") {
 			t.Errorf("GET /events body (through loggingMiddleware) = %q, want to contain \"hello\"", r.body)
 		}
-	case <-time.After(1500 * time.Millisecond):
-		t.Fatal("GET /events through the full newHTTPHandlerLogged chain delivered no bytes within 1.5s — loggingResponseWriter must forward Flush() to the underlying http.ResponseWriter (DG-5 regression)")
+	case <-time.After(waitSafety):
+		t.Fatal("GET /events through the full newHTTPHandlerLogged chain delivered no bytes — loggingResponseWriter must forward Flush() to the underlying http.ResponseWriter (DG-5 regression)")
 	}
 }
 

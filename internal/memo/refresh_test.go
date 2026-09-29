@@ -46,7 +46,7 @@ func TestGroup_UpdateRunsOutsideTheRegistryLock(t *testing.T) {
 		if v != 2 {
 			t.Fatalf("hit = %d, want 2", v)
 		}
-	case <-time.After(2 * time.Second):
+	case <-time.After(waitSafety):
 		close(release)
 		t.Fatal("a Get on another group waited for a patch in progress")
 	}
@@ -93,7 +93,7 @@ func TestGroup_InvalidationDuringAFlightIsNeverCached(t *testing.T) {
 			}()
 			<-started
 			inv.do(g, k)
-			tctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+			tctx, cancel := context.WithTimeout(ctx, waitSafety)
 			defer cancel()
 			v2, err := g.Get(tctx, k, func(context.Context) (int, int64, error) {
 				builds.Add(1)

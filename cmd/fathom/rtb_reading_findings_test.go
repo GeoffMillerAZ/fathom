@@ -28,20 +28,21 @@ func TestWarmupRefusesHookOriginsAtOnce(t *testing.T) {
 	resetLifecycleModes(t)
 	now := time.Now()
 	tenancy.SetWarmup(now, time.Minute)
-	g := newWarmupGate(func() string { return "observe" }, 2*time.Second)
+	// The queue wait is an hour: a hook origin that queued for the held
+	// slot could not return by itself, so returning is "refused at once".
+	g := newWarmupGate(func() string { return "observe" }, time.Hour)
 	rel, ref := g.acquire(context.Background(), tenancy.ClassTree, "symbol_context", "", now)
 	if ref != nil {
 		t.Fatalf("first tree call refused: %+v", ref)
 	}
 	defer rel()
 	for _, origin := range []string{"edit-hook", "session-hook", "prime", "post-commit-hook"} {
-		start := time.Now()
-		_, ref := g.acquire(context.Background(), tenancy.ClassTree, "obligations", origin, now)
+		var ref *lcRefusal
+		returnsUnaided(t, origin+": a hook asking for the held warm-up slot", func() {
+			_, ref = g.acquire(context.Background(), tenancy.ClassTree, "obligations", origin, now)
+		})
 		if ref == nil {
 			t.Fatalf("%s: second tree call during warm-up admitted", origin)
-		}
-		if waited := time.Since(start); waited > 500*time.Millisecond {
-			t.Fatalf("%s: waited %v for the warm-up slot; a hook is refused at once", origin, waited)
 		}
 	}
 }

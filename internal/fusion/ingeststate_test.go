@@ -107,7 +107,7 @@ func TestWatermarkNotAdvancedByKilledIngest(t *testing.T) {
 		go func() { _, err := newPipe(bs).Ingest(ctx, svc); done <- err }()
 		select {
 		case <-bs.entered:
-		case <-time.After(10 * time.Second):
+		case <-time.After(waitSafety):
 			t.Fatal("ingest never reached its first write")
 		}
 		// A SIGKILL here leaves the store exactly as it is now.
@@ -174,7 +174,7 @@ func TestFirstIngestKilledKeepsCorpusPath(t *testing.T) {
 	defer func() { close(bs.release); <-done }()
 	select {
 	case <-bs.entered:
-	case <-time.After(10 * time.Second):
+	case <-time.After(waitSafety):
 		t.Fatal("ingest never reached its first write")
 	}
 	if _, found, _ := mem.GetServiceMeta(ctx, "fresh"); found {

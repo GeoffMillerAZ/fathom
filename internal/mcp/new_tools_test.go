@@ -825,6 +825,7 @@ func TestCallLogger_TimestampValid(t *testing.T) {
 	backend := &extendedFakeBackend{nodes: extFixtureNodes(), services: []string{"svc"}}
 	srv := mcp.NewServerWithLogger(backend, logger)
 
+	before := time.Now()
 	_ = roundtrip(t, srv, request{
 		JSONRPC: "2.0", ID: 700, Method: "tools/call",
 		Params: map[string]any{
@@ -832,6 +833,7 @@ func TestCallLogger_TimestampValid(t *testing.T) {
 			"arguments": map[string]any{"service": "svc"},
 		},
 	})
+	after := time.Now()
 
 	lines := strings.Split(strings.TrimSpace(buf.String()), "\n")
 	if len(lines) == 0 || lines[0] == "" {
@@ -849,8 +851,10 @@ func TestCallLogger_TimestampValid(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ts not RFC3339: %v (value=%q)", err, tsStr)
 	}
-	if time.Since(ts) > 10*time.Second {
-		t.Errorf("ts too far in the past: %v", ts)
+	// The entry was stamped during the call: between the clock readings
+	// either side of it (a stalled machine only widens the bracket).
+	if ts.Before(before.Truncate(0)) || ts.After(after.Truncate(0)) {
+		t.Errorf("ts %v outside the call's own window [%v, %v]", ts, before, after)
 	}
 }
 

@@ -66,12 +66,12 @@ func TestEnsureIngestSurvivesRequestCancelAndSerializes(t *testing.T) {
 	go func() { arA.ensure(ctxA, "svc-a"); arB.ensure(context.Background(), "svc-b"); close(returned) }()
 	select {
 	case <-returned:
-	case <-time.After(2 * time.Second):
+	case <-time.After(waitSafety):
 		t.Fatal("ensure waited for an ingest; RT-99: it only requests one")
 	}
 	select {
 	case <-started:
-	case <-time.After(5 * time.Second):
+	case <-time.After(waitSafety):
 		t.Fatal("no queued ingest started")
 	}
 	cancelA() // the requester goes away mid-ingest
@@ -170,49 +170,39 @@ func TestEnsureJoinersServeStaleDuringInflightIngest(t *testing.T) {
 	go func() { ar.ensure(context.Background(), "svc"); close(firstDone) }()
 	select {
 	case <-started:
-	case <-time.After(5 * time.Second):
+	case <-time.After(waitSafety):
 		t.Fatal("ingest never started")
 	}
 
+	// The ingest stays held (release closes only after the checks) so a read
+	// that waited on it would never come back on its own: every read must
+	// return while the ingest is still in flight, and waitSafety is only the
+	// hang guard that turns a read stuck behind it into a named failure.
 	const readers = 20
 	var wg sync.WaitGroup
-	var blocked atomic.Int32
+	var returned atomic.Int32
+	read := func() {
+		defer wg.Done()
+		ar.ensure(context.Background(), "svc")
+		returned.Add(1)
+	}
 	for i := 0; i < readers; i++ {
 		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			d := make(chan struct{})
-			go func() { ar.ensure(context.Background(), "svc"); close(d) }()
-			select {
-			case <-d:
-			case <-time.After(time.Second):
-				blocked.Add(1)
-				<-d
-			}
-		}()
+		go read()
 	}
 	// A read that sees a newer head than the running ingest's also answers at once.
 	head.Store("newer")
 	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		d := make(chan struct{})
-		go func() { ar.ensure(context.Background(), "svc"); close(d) }()
-		select {
-		case <-d:
-		case <-time.After(time.Second):
-			blocked.Add(1)
-			<-d
-		}
-	}()
+	go read()
 
-	joinDeadline := time.Now().Add(1500 * time.Millisecond)
-	for blocked.Load() == 0 && time.Now().Before(joinDeadline) {
-		time.Sleep(10 * time.Millisecond)
-	}
-	if got := blocked.Load(); got != 0 {
+	allReturned := make(chan struct{})
+	go func() { wg.Wait(); close(allReturned) }()
+	select {
+	case <-allReturned:
+	case <-time.After(waitSafety):
+		got := readers + 1 - int(returned.Load())
 		close(release)
-		wg.Wait()
+		<-allReturned
 		t.Fatalf("%d of %d concurrent reads blocked on another read's in-flight ingest; want 0 (serve stale)", got, readers+1)
 	}
 	if n := len(started); n != 0 {

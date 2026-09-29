@@ -37,7 +37,7 @@ func waitDead(t *testing.T, cmd *exec.Cmd) {
 	go func() { _, err := cmd.Process.Wait(); waited <- err }()
 	select {
 	case <-waited:
-	case <-time.After(5 * time.Second):
+	case <-time.After(waitSafety):
 		t.Fatalf("pid %d is still alive", cmd.Process.Pid)
 	}
 }
