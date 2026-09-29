@@ -159,3 +159,21 @@ those families; regrading changed no other metric, and both readings' L1 numbers
 
 Tracker line, unchanged: `Milestone M1 progress: languages at L1 excellent 11/20, at L2 9/12, at L3 0/8, at L4
 0/6; tool formats at target 10/15`.
+
+## Import strategies, 2026-09-29 (O145 fixes 928ec49a and 9de28530; LB-F43 to LB-F45)
+
+O145's three strategy gaps are fixed and `import_resolution` re-measured on round 2's SCIP indexes (tier A) and
+pinned clones. No level and no L3 row moved: TypeScript and JavaScript still miss L3 on file_edge_recall, and
+C# on `import_resolution` itself.
+
+| Language | Subject | Before | After | L3 grade |
+|---|---|---|---|---|
+| TypeScript | zod | 0 (0 of 504) | 1 (504 of 504) | unmet (file_edge_recall .0224) |
+| TypeScript | nest | 1 (3,271) | 1 (3,271) | |
+| JavaScript | express | .3419 (53 of 155) | 1 (155 of 155) | unmet (file_edge_recall .0897) |
+| JavaScript | axios | 1 (232) | 1 (232) | |
+| C# | Polly | 0 (0 of 15) | 1 (15 of 15) | unmet (was not attempted): .0854 overall |
+| C# | Newtonsoft.Json | 0 (0 of 313) | .0415 (13 of 313) | 300 name a type in a file the dialect parses without its namespace (O148) |
+
+The counts were spliced into each recorded subject beside the families measured earlier; regrading changed no
+other metric. The tracker is unchanged.
