@@ -173,7 +173,7 @@ These are owner actions, not code, and they gate the honesty of everything
 above. Listed here so they are not lost.
 
 - [ ] (op) the counterfactual pilot is run: `fathom arm off --sessions 20` after pre-registering criteria — the only instrument that can license a savings claim (law 12) {id: OP-1, skip_test: true, skip: "operator action; expert-suite-p.md carries the pre-registered protocol"}
-- [ ] (op) the deployed daemon binary matches HEAD before any of the above is judged live — a committed fix reaches the daemon only after a deliberate deploy {id: OP-2, skip_test: true, skip: "operator action; CLAUDE.md documents the deploy sequence"}
+- [ ] (op) the deployed daemon binary matches HEAD before any of the above is judged live — a committed fix reaches the daemon only after a deliberate deploy {id: OP-2, skip_test: true, skip: "operator action; AGENTS.md documents the deploy sequence"}
 
 ## Phase DO — outcomes derived, not self-reported (docs/design/continuity-threads.md §4.1, owner field report 2026-08-14)
 
