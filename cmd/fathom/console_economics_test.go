@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -200,4 +201,87 @@ func TestSessionsPageServesLiveFeed(t *testing.T) {
 	}
 	mustContain(t, "/sessions", page, `data-live-page data-live-url="/events"`, `id="live-feed"`)
 	assertRoleUtilitiesOnly(t, page)
+}
+
+// PE-16w: /progress prices each joined session by its recorded model
+// through the user's price table (internal/cost LoadPriceTable), and shows
+// USD and tokens per proven row per plan and per language (the proven
+// row's anchor file, as the index resolved it). A session whose model is
+// not in the table is unpriced, never $0.00, and the PE-24 caveat is named.
+func TestProgressPagePricesSessionsThroughPriceTable(t *testing.T) {
+	f := newConsoleFixture(t)
+	prices := filepath.Join(t.TempDir(), "prices.toml")
+	mustWrite(t, prices, "[models.\"claude-opus-4-5\"]\ninput_per_mtok = 15.0\noutput_per_mtok = 75.0\ncache_read_per_mtok = 1.5\ncache_write_per_mtok = 18.75\n")
+	t.Setenv("FATHOM_PRICE_TABLE", prices)
+	appendLedgerRows(t, f,
+		`{"schema_version":2,"session_id":"sess-priced","arm":"on","repo":"proof-service","at":"2026-09-20T12:00:00Z","duration_ms":10800000,"tokens_in":1000000,"tokens_out":100000,"tokens_cache_read":0,"tokens_cache_create":0,"tokens_note":"","harness":"claude-code","model":"claude-opus-4-5"}`,
+		`{"schema_version":2,"session_id":"sess-unpriced","arm":"on","repo":"proof-service","at":"2026-09-22T12:00:00Z","duration_ms":10800000,"tokens_in":500,"tokens_out":50,"tokens_note":"","harness":"codex","model":"gpt-not-in-table"}`,
+	)
+	line := func(when, rows string) string {
+		return fmt.Sprintf(`{"schema_version":3,"at":%q,"repo_root":"/r/proof-service","service":"proof-service","plan":"docs/plans/settlement.md","commit":"","origin":"cli","total":2,"claimed":1,"verified":1,"digest":%q,"rows":[%s]}`, when, when, rows)
+	}
+	mustWrite(t, os.Getenv("FATHOM_VERIFY_LEDGER"), strings.Join([]string{
+		line("2026-09-15T08:00:00Z", `{"id":"S-1","state":"open","weight":1},{"id":"S-2","state":"open","weight":1}`),
+		line("2026-09-20T11:00:00Z", `{"id":"S-1","state":"claimed-proven","weight":1},{"id":"S-2","state":"open","weight":1}`),
+		line("2026-09-22T11:00:00Z", `{"id":"S-1","state":"claimed-proven","weight":1},{"id":"S-2","state":"claimed-proven","weight":1}`),
+	}, "\n")+"\n")
+	resetObsCache()
+	// The plan's verdicts (each proven row's anchor file) come from the
+	// plans cache; the plan page waits for them.
+	if code, _, _ := f.get(t, "/plans/proof-service/settlement"); code != http.StatusOK {
+		t.Fatalf("plan page = %d", code)
+	}
+
+	out, body := buildDirect(t, f, "progress", "/progress?svc=proof-service")
+	pm, ok := out.Model.(progressPageModel)
+	if !ok {
+		t.Fatalf("progress model is %T", out.Model)
+	}
+	e := pm.Economics
+	if e.PriceTable != prices || e.JoinedRows != 2 {
+		t.Fatalf("economics = %+v", e)
+	}
+	var plan *progressCostRow
+	for i := range e.PerPlan {
+		if e.PerPlan[i].Plan == "docs/plans/settlement.md" {
+			plan = &e.PerPlan[i]
+		}
+	}
+	if plan == nil || plan.Rows != 2 || plan.Priced != 1 {
+		t.Fatalf("per-plan cost = %+v", e.PerPlan)
+	}
+	// $15/MTok in × 1M + $75/MTok out × 0.1M = $22.50 over the one priced row.
+	if !plan.USDPerRow.Known() || plan.USDPerRow.V != 22.5 {
+		t.Errorf("USD per proven row = %+v, want 22.50 over the priced row", plan.USDPerRow)
+	}
+	if !plan.TokensPerRow.Known() || plan.TokensPerRow.V != (1100000+550)/2.0 {
+		t.Errorf("tokens per proven row = %+v, want the mean of both rows' in+out", plan.TokensPerRow)
+	}
+	langs := map[string]progressCostRow{}
+	for _, r := range e.PerLanguage {
+		langs[r.Language] = r
+	}
+	if r, ok := langs["go"]; !ok || r.Rows != 2 {
+		t.Errorf("per-language cost = %+v, want both rows under go (settle.go)", e.PerLanguage)
+	}
+	if !strings.Contains(strings.Join(e.Unpriced, " "), "gpt-not-in-table") {
+		t.Errorf("the unpriced model is named: %v", e.Unpriced)
+	}
+	mustContain(t, "progress", body, `id="cost-per-row"`, "$22.50", "gpt-not-in-table", "unpriced", "PE-24", "docs/plans/settlement.md")
+	if strings.Contains(body, "$0.00") {
+		t.Error("an unpriced session must never render as $0.00")
+	}
+
+	// Every session unpriced: the per-row USD is absent, named, not $0.00.
+	mustWrite(t, prices, "")
+	resetObsCache()
+	out, body = buildDirect(t, f, "progress", "/progress?svc=proof-service")
+	for _, r := range out.Model.(progressPageModel).Economics.PerPlan {
+		if r.USDPerRow.Known() {
+			t.Errorf("an empty price table priced %s: %+v", r.Plan, r.USDPerRow)
+		}
+	}
+	if strings.Contains(body, "$0.00") {
+		t.Error("an empty price table must never render $0.00")
+	}
 }
