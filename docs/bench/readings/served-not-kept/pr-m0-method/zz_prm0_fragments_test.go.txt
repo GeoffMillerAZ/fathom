@@ -1,0 +1,128 @@
+package guardspec
+
+// THROWAWAY (PR-M0 part B, never committed as Go): runs the ADR-038 fragment
+// evaluators over every Edit/Write/MultiEdit fragment the guards cells proposed,
+// against a guard.cue copy with Enforce forced on for every guard and layer rule.
+// Drop the .txt and copy this file into internal/guardspec/ of a scratch clone at
+// fa240083, then run fragments.sh (it sets the environment below).
+//
+//   PRM0_FRAGMENTS  JSONL from extract_fragments.py
+//   PRM0_CONFIGS    comma list of label=path/to/guard.cue
+//   PRM0_OUT        JSONL written here: one line per (config, fragment)
+
+import (
+	"bufio"
+	"encoding/json"
+	"os"
+	"strings"
+	"testing"
+)
+
+type prm0Fragment struct {
+	Run     string `json:"run"`
+	Cell    string `json:"cell"`
+	Task    string `json:"task"`
+	Arm     string `json:"arm"`
+	Trial   int    `json:"trial"`
+	Attempt string `json:"attempt"`
+	Idx     int    `json:"idx"`
+	Tool    string `json:"tool"`
+	Path    string `json:"path"`
+	New     string `json:"new"`
+	Old     string `json:"old"`
+}
+
+type prm0Fire struct {
+	CheckID string `json:"check"`
+	RuleID  string `json:"rule"`
+	Message string `json:"message"`
+}
+
+type prm0Result struct {
+	Config  string     `json:"config"`
+	Run     string     `json:"run"`
+	Cell    string     `json:"cell"`
+	Task    string     `json:"task"`
+	Arm     string     `json:"arm"`
+	Trial   int        `json:"trial"`
+	Attempt string     `json:"attempt"`
+	Idx     int        `json:"idx"`
+	Tool    string     `json:"tool"`
+	Path    string     `json:"path"`
+	Fires   []prm0Fire `json:"fires"`
+	Guards  int        `json:"guards_evaluated"`
+	Layers  int        `json:"layer_rules_evaluated"`
+}
+
+func TestPRM0Fragments(t *testing.T) {
+	fragPath, configs, outPath := os.Getenv("PRM0_FRAGMENTS"), os.Getenv("PRM0_CONFIGS"), os.Getenv("PRM0_OUT")
+	if fragPath == "" || configs == "" || outPath == "" {
+		t.Skip("PR-M0 harness: set PRM0_FRAGMENTS, PRM0_CONFIGS and PRM0_OUT")
+	}
+	const modulePrefix = "github.com/geoffmilleraz/fathom/"
+
+	var frags []prm0Fragment
+	f, err := os.Open(fragPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sc := bufio.NewScanner(f)
+	sc.Buffer(make([]byte, 0, 1<<20), 64<<20)
+	for sc.Scan() {
+		var fr prm0Fragment
+		if err := json.Unmarshal(sc.Bytes(), &fr); err != nil {
+			t.Fatal(err)
+		}
+		frags = append(frags, fr)
+	}
+	if err := sc.Err(); err != nil {
+		t.Fatal(err)
+	}
+	f.Close()
+
+	out, err := os.Create(outPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer out.Close()
+	enc := json.NewEncoder(out)
+
+	for _, spec := range strings.Split(configs, ",") {
+		label, path, ok := strings.Cut(spec, "=")
+		if !ok {
+			t.Fatalf("PRM0_CONFIGS entry %q is not label=path", spec)
+		}
+		gs, err := LoadGuards(path)
+		if err != nil {
+			t.Fatalf("%s: %v", path, err)
+		}
+		lrs, err := LoadLayerRules(path)
+		if err != nil {
+			t.Fatalf("%s: %v", path, err)
+		}
+		for i := range gs.Guards {
+			gs.Guards[i].Enforce = true
+		}
+		for i := range lrs.Rules {
+			lrs.Rules[i].Enforce = true
+		}
+		for _, fr := range frags {
+			r := prm0Result{Config: label, Run: fr.Run, Cell: fr.Cell, Task: fr.Task, Arm: fr.Arm, Trial: fr.Trial,
+				Attempt: fr.Attempt, Idx: fr.Idx, Tool: fr.Tool, Path: fr.Path,
+				Guards: len(gs.Guards), Layers: len(lrs.Rules), Fires: []prm0Fire{}}
+			for _, g := range gs.Guards {
+				for _, v := range EvaluateGuardEnforcement(g, fr.Path, fr.New, fr.Old) {
+					r.Fires = append(r.Fires, prm0Fire{CheckID: v.CheckID, RuleID: v.RuleID, Message: v.Message})
+				}
+			}
+			for _, lr := range lrs.Rules {
+				for _, v := range EvaluateLayerRuleEnforcement(lr, modulePrefix, fr.Path, fr.New) {
+					r.Fires = append(r.Fires, prm0Fire{CheckID: v.CheckID, RuleID: v.RuleID, Message: v.Message})
+				}
+			}
+			if err := enc.Encode(r); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+}

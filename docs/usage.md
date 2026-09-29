@@ -2561,7 +2561,7 @@ code path this CLI calls — a Go embedder gets byte-identical answers.
 ### `conserve` — the refactor-conservation report (ADR-044, CV-19)
 
 ```sh
-fathom conserve --since <git-ref> --service <id> [--store DB] [--json] [--strict] [--plan FILE ...] [--residue-max N] [--coverage-meta FILE]
+fathom conserve --since <git-ref> --service <id> [--store DB] [--json] [--strict] [--strict-plane integrity] [--plan FILE ...] [--residue-max N] [--coverage-meta FILE]
 ```
 
 Runs every registered `internal/conserve.Plane` (`surface`, `certificates`,
@@ -2631,6 +2631,31 @@ language among the changed files. `--strict` exits 1 when any plane's
 verdict is `losses` (2 is reserved for an operational failure — a bad
 `--since` ref, an unreadable store; 0 otherwise, --strict included, when
 no plane reports losses).
+
+`--strict-plane integrity` (PR-9, ADR-057) is the one per-plane gate, the
+one `lefthook.yml`'s pre-push `refactor-conserve` step runs: it checks the
+range's **pins**, the tests a governing source names (an invariant's
+enforcement column in `docs/intent/invariants.md`, a `tests/*.cue` manifest
+entry, a compatibility-surface evidence line in `docs/intent/scope.md`, a
+`// certifies:` marker, a `done needs:` segment of a guard note in
+`.fathom/guard.cue`), with reach off, and prints one line per lost pin
+after the report (on stderr under `--json`, so stdout stays the
+`fathom.conserve/v1` document). The loss kinds are `deleted`, `renamed`,
+`weakened`, `skipped`, `golden_changed` and `marker_moved`; `edited` is
+never one, and a test moved unchanged to another changed file is not lost.
+
+```text
+pin lost (silent, blocks): deleted TestBackendForPath_DuckDBLoudlyRefused, named by invariant_enforcement docs/intent/invariants.md:23 and still named there at head, TestBackendForPath_DuckDBOpensAsSQLite is new in its place (internal/store/backend_test.go:114)
+pin retired (review): deleted TestPinned, named at base by invariant_enforcement docs/intent/invariants.md:5; the source was edited and no longer names it
+integrity pins: 1 silent loss(es), 1 retired pin(s)
+```
+
+It exits 1 only on a **silent** loss: the lost test is still named by its
+source at head. A **retired** pin, whose naming source was edited in the
+range and no longer names it, is printed for review and exits 0. An input
+the check could not read exits 2, like any other operational failure; the
+pre-push step fails open on it. It combines with `--strict` (either can
+exit 1).
 
 #### The reading set (design §3.4, ADR-044 amended 2026-09-25, Q22)
 

@@ -2315,3 +2315,55 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** none yet. Options: leave doc units out of the changed-symbol set, or key them by their heading path as `search kind: docs` prints it
 - **Status:** open
 - **Impact:** the list a worker reads to see what is untested is mostly prose headings, and the garbled names cannot be looked up in the file they came from
+
+### O160 — CV-M1's "pilot 8" cells are the 2026-09-21 round's guards-fathom-r2; pilots 6 and 8 have no cells on disk
+
+- **Symptom:** CV-M1 names the raw directory guards-fathom-r2 as guards-pilot 8's cells, but the cells on disk are the 2026-09-21 round's guards-fathom-r1/r2; ADR-057, the served-not-kept design and PR-M0's brief all cite 'pilot 8' for them
+- **Evidence:**
+  - **Tool:** docs/bench/readings/cv-m1-guards-pilot-8-replay-2026-09-24.md (CV-M1's cell attribution)
+  - **Expected:** a replay reading names the run its cells came from, checked against the ledger
+  - **Actual:** all 58 transcripts under benchroot-raw-2026-09-23/guards-fathom-r{1,2} carry claude_code_version 2.1.278 and 2026-09-21 timestamps; the ledger records guards-pilot-6 on 2.1.273 and guards-pilot-8 on 2.1.274 (2026-09-17) and has rows whose run_id is literally guards-fathom-r1 (cbfbfeb7) and guards-fathom-r2 (05448187) matching the directories cell for cell; guards-fathom-r1's i28/control/t1 is graded violated where pilot 7's borrowed cell passed, so r1 cannot be pilot 7's either
+  - **Repro:** grep -o 'claude_code_version":"[^"]*' <raw>/guards-fathom-r2/*/attempt-1/session-0-single.stream.jsonl | sort -u; jq -r 'select(.run_id|test("guards-(pilot-[68]|fathom-r[12])"))|[.run_id,.harness_version,.generated_at]|@tsv' docs/bench/scenarios-ledger.jsonl | sort -u
+- **Root cause:** CV-M1 inferred the run from a reading's borrowed-cell note, not from the ledger's run ids or the transcripts' harness version; pilot 6 ran at a023dc7, before 7150215e (O77) persisted cell diffs under raw, and pilot 8's raw directory was not kept in this root.
+- **Fix:** PR-M0 (`docs/bench/readings/served-not-kept/pr-m0-replay.md`) replays every guards cell on disk under its own run id and grades it against that run's ledger rows; CV-M1's measurements stand, its run label does not. Not yet corrected: the "pilot 8" wording in CV-M1, ADR-057's context and `docs/design/served-not-kept.md` section 2.
+- **Status:** open
+- **Impact:** the i28 evidence behind ADR-057 is real but belongs to guards-fathom-r2; a reader checking it against pilot 8's ledger rows or reading finds a different i28/control grade and cannot reconcile them.
+
+### O161 — PR-9's retired-pin exemption passes 3 of the 5 i28 violations: the agent rewrote I28's row to name its new test, once with no decision record
+
+- **Symptom:** in the PR-M0 replay, 3 of the 5 oracle-violating i28 cells also rewrote invariant I28's row to name the new test, so PR-9's rule reads them as a retired pin (printed, exit 0) and blocks only 2 of 5; one of the 3 (guards-fathom-r1 i28 control t1) and the unscored r1 i28 control t2 did it with no decision record in the range
+- **Evidence:**
+  - **Tool:** PR-9's accepted rule (fathom conserve --strict-plane integrity, ADR-057 PR-8 decision)
+  - **Expected:** a pre-push block on a lost pin that the governing rule still requires; a retirement exempted only when a decision says so (K4)
+  - **Actual:** r1 i28 control t1: invariants.md I28 row rewritten, no ADR.md change; r2 i28 control t2 and r2 i28 full t1: I28 row rewritten plus an ADR-025 amendment in the same diff; r1 i28 full t2 and r2 i28 full t2: source untouched, still named at head, so PR-9 blocks them
+  - **Repro:** docs/bench/readings/served-not-kept/pr-m0-method: ./replay.sh then ./summarize.py; read the pin view column of part-a.tsv for the i28 rows
+- **Root cause:** by design (ADR-057 PR-8 decision): a loss whose naming source was edited in the range and no longer names the test at head is a retirement, printed for review. These agents predate any pin line and were not gaming; they rewrote the rule to match the behavior they had just changed, which is the case K4 and ADR-057's third revisit clause name.
+- **Fix:** none in PR-9 (built as accepted). The owner's call, per K4: whether the pre-push exemption should require a decision cite in the range (an ADR.md change would have exempted 2 of the 3; the plan files the agents also wrote would not count).
+- **Status:** open
+- **Impact:** on this evidence the pre-push block stops 2 of 5 i28 violations; the pin line (PR-3) still names all 5, adding "its source was edited in this commit" for the 3.
+
+### O162 — `tests select --safe` names 1119 tests for an additive one-field change to `integrity.GuardedInput`: the reach set widens through interface dispatch to every command test
+
+- **Symptom:** PR-2 (2026-09-29) adds one field to `GuardedInput` and one reason const; `fathom tests select --safe --since HEAD` selects 1119 tests, 22,472 characters of `go test ./cmd/fathom -run '^(...)'` alone, so the printed command is not one a person types (this worker ran it from the `--json` invocations through a script: `cmd/fathom` 86 s, `internal/mcp` 10 s, both ok)
+- **Evidence:**
+  - **Tool:** `fathom tests select --safe --since HEAD --service fathom --store workspace/db/fathom.sqlite` on a scratch ingest of the worker clone
+  - **Expected:** a selection near the packages that import the changed code (`internal/analysis/integrity` and `internal/conserve`, the only importer)
+  - **Actual:** 1119 tests across `cmd/fathom`, `internal/mcp`, `internal/indexbench` and `internal/mcp/costtest`; `verify --row PR-2` shows why: `1109 test(s) statically reach it ... (reached via interface dispatch, 12 implementer(s))`
+  - **Repro:** add a field to `integrity.GuardedInput`, ingest, run the command above
+- **Root cause:** not verified in this session; the verify line's `reached via interface dispatch, 12 implementer(s)` is the widening step it names
+- **Fix:** none yet; a `--safe` output that names its per-package counts first, or a cap with the tail named, would make it runnable
+- **Status:** open
+- **Impact:** the selection is a superset a worker cannot read; the row's `test_reaches` criterion passes on any of the 1109, so neither line says which test exercises the change (the one that does is `reachable_from`, `TestGuardedTestsIncludesGuardDoneNeeds`, and it is what `edge_wired` checks)
+
+### O163 — a blocked row cannot join the served rows of the rule it blocked: the enforce deny knows a guard note or an invariant id, and every other row in the ledger carries a claim id
+
+- **Symptom:** after PR-10 `~/.fathom/rule-outcomes.jsonl` holds `blocked` rows keyed `enforce:<check id>:<rule id>` while the served, complied and violated rows of the same rule are keyed by a claim id, so `RuleEffectiveness` and the console's rule view never put a rule's blocks beside its serves; the view counts each `enforce:` id under "rule ids in the signal log that are not claims", a note worded for a removed project or a compiled-away rule
+- **Evidence:**
+  - **Tool:** `go test -race -run TestEnforceDenyWritesBlockedOutcome ./cmd/fathom/`, and `internal/console/ruleeffect.go` (the `unknown` count and its note)
+  - **Expected:** a rule that denies an edit reads served N, blocked M in one row of the effectiveness view
+  - **Actual:** the block's key is `enforce:forbidden_path:<guard note>`, `enforce:org_token:I19`, `enforce:secret_literal:I28-secrets` or a layer rule id, and never equals a claim id (a claim id is 64 hex characters with no colon)
+  - **Repro:** run the test above (it writes the rows to a temp ledger), then read that ledger through `readRuleOutcomeSignal` into the console's rule view
+- **Root cause:** a claim id is content-addressed over (layer, kind, subject, repro key) when the corpus compiles (`core.ClaimID`) and needs the store; an `EnforceViolation`'s `RuleID` is a guard Note (a guard has no id field), an invariant id or a layer rule id, and the pre-hook enforcement path is daemon-free (I53), so it cannot look a claim up
+- **Fix:** none yet, and none needed while PR-D6 (the deferred GL-11 reclassification) is written to exclude enforce:true rules from effectiveness; the `enforce:` prefix is the key that exclusion reads. If a join is ever wanted: resolve `enforce:` keys to claim ids at read time in the effectiveness view (a store read, never a hook read), or give a guard an optional `claim:` id in guard.cue; and reword the unknown-ids note so it does not call an `enforce:` id a removed rule
+- **Status:** open
+- **Impact:** none on the deny (the row is a signal and never gates); blocked counts are absent from the rule view's classes until PR-D6 or a join lands
