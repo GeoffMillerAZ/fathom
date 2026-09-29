@@ -51,7 +51,7 @@ func TestAttentionLineExtendedNotDoubled(t *testing.T) {
 		debtRow(root, now.Add(-time.Minute).Format(time.RFC3339), map[string]int{"U2": 6, "U11": 2, "U5": 1}),
 	)
 
-	line := attentionLine(root, now)
+	line := attentionLine(root, now, unreadRoots)
 	if strings.Count(line, "\n") != 0 {
 		t.Fatalf("the attention surface is ONE line, got %q", line)
 	}
@@ -78,7 +78,7 @@ func TestLearningAttentionFragment(t *testing.T) {
 
 	t.Run("nothing recorded: silent", func(t *testing.T) {
 		t.Setenv("FATHOM_INTENT_LEDGER", filepath.Join(t.TempDir(), "l.jsonl"))
-		if got := learningAttentionFragment(root, now); got != "" {
+		if got := learningAttentionFragment(root, now, unreadRoots); got != "" {
 			t.Fatalf("want silence, got %q", got)
 		}
 	})
@@ -103,12 +103,12 @@ func TestLearningAttentionFragment(t *testing.T) {
 			At: now.Add(-time.Hour).Format(time.RFC3339),
 		})
 
-		if got := learningAttentionFragment(root, now); got != "learning 2" {
+		if got := learningAttentionFragment(root, now, unreadRoots); got != "learning 2" {
 			t.Fatalf("fragment = %q, want %q", got, "learning 2")
 		}
 
 		writeConcernFixture(t, root) // 1 violated concern, so the line isn't empty either way
-		line := attentionLine(root, now)
+		line := attentionLine(root, now, unreadRoots)
 		if !strings.Contains(line, "learning 2") {
 			t.Fatalf("attentionLine = %q, missing the learning fragment", line)
 		}
@@ -141,7 +141,7 @@ func TestIntentAttentionFragmentSilentWhenNothingToSay(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			writeDebtRows(t, tc.rows...)
-			if got := intentAttentionFragment(root, now); got != "" {
+			if got := intentAttentionFragment(root, now, unreadRoots); got != "" {
 				t.Fatalf("want silence, got %q", got)
 			}
 		})
@@ -160,7 +160,7 @@ func TestDebtDeltaOnlyOnARiseAgainstAPriorSession(t *testing.T) {
 		debtRow(root, now.Add(-48*time.Hour).Format(time.RFC3339), map[string]int{"U2": 9}),
 		debtRow(root, now.Add(-time.Minute).Format(time.RFC3339), map[string]int{"U2": 3}),
 	)
-	if got := intentAttentionFragment(root, now); got != "unproven 3" {
+	if got := intentAttentionFragment(root, now, unreadRoots); got != "unproven 3" {
 		t.Fatalf("a fall must print no delta, got %q", got)
 	}
 
@@ -169,7 +169,7 @@ func TestDebtDeltaOnlyOnARiseAgainstAPriorSession(t *testing.T) {
 		debtRow(root, now.Add(-2*time.Hour).Format(time.RFC3339), map[string]int{"U2": 1}),
 		debtRow(root, now.Add(-time.Minute).Format(time.RFC3339), map[string]int{"U2": 5}),
 	)
-	if got := intentAttentionFragment(root, now); got != "unproven 5" {
+	if got := intentAttentionFragment(root, now, unreadRoots); got != "unproven 5" {
 		t.Fatalf("a baseline inside the session window is not a baseline, got %q", got)
 	}
 }

@@ -64,6 +64,9 @@ type fleetReport struct {
 	// CallLog names the rule that chose CallLogPath (OC-2), additively.
 	CallLog    console.ResolvedCallLog `json:"call_log"`
 	LedgerNote string                  `json:"ledger_note,omitempty"`
+	// IntentLedgerNote names the intent-ledger rows the unproven column
+	// left out because their root is not a registered service root (PE-25).
+	IntentLedgerNote string `json:"intent_ledger_note,omitempty"`
 	// Unregistered names the call-log rows whose service the registry does
 	// not list (OC-H2): no service row counts them.
 	Unregistered console.Unregistered `json:"unregistered_calls"`
@@ -237,8 +240,10 @@ func buildFleetReport(hc *http.Client, url string, now time.Time) (fleetReport, 
 		rep.LedgerNote = "session ledger not readable — session counts are not measured, never zero"
 	}
 
-	// One ledger read for the whole fleet (EP-23) — read, never computed.
-	intentLedger := intent.ReadLedger()
+	// One ledger read for the whole fleet (EP-23) — read, never computed —
+	// under the registered roots this registry read names (PE-25).
+	intentLedger, intentIgnored := intent.ReadRegisteredLedger(ledgerRootsOf(svcs, nil))
+	rep.IntentLedgerNote = intentIgnored.Phrase(intentLedgerNoun)
 
 	names := make([]string, 0, len(svcs))
 	for name := range svcs {
@@ -518,6 +523,9 @@ func renderFleetReportMD(rep fleetReport) string {
 	}
 	if rep.LedgerNote != "" {
 		fmt.Fprintf(&b, "> %s\n", rep.LedgerNote)
+	}
+	if rep.IntentLedgerNote != "" {
+		fmt.Fprintf(&b, "> intent ledger: %s\n", rep.IntentLedgerNote)
 	}
 	b.WriteString("\n| service | freshness | symbols | calls (agent) | sessions | open obs | unproven | hooks | stanza |\n|---|---|---|---|---|---|---|---|---|\n")
 	for _, r := range rep.Services {

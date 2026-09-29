@@ -108,12 +108,15 @@ func cmdIntentAudit(args []string, stdout, stderr io.Writer) int {
 
 	switch *format {
 	case "json":
-		return emitIntentJSON(stdout, corpus, audit, ledger)
+		return emitIntentJSON(stdout, corpus, audit, ledger, run.LedgerIgnored)
 	case "sarif":
 		_, _ = stdout.Write(verify.RenderSARIF("fathom intent audit", intentAuditSARIF(abs, corpus, audit)))
 		return 0
 	}
 	renderIntentAudit(stdout, corpus, audit, ledger, strings.Split(*kind, ","), *top, time.Now().UTC())
+	if p := run.LedgerIgnored.Phrase(intentLedgerNoun); p != "" {
+		fmt.Fprintf(stdout, "\nintent ledger: %s\n", p) // PE-25
+	}
 	return 0
 }
 
@@ -140,7 +143,10 @@ type intentAuditRun struct {
 	Service string
 	Corpus  intent.Corpus
 	Audit   intent.Audit
-	Ledger  []intent.LedgerRow
+	// Ledger is the intent ledger's rows under the registered service
+	// roots; LedgerIgnored is what that left out (PE-25).
+	Ledger        []intent.LedgerRow
+	LedgerIgnored ledgerroots.Ignored
 }
 
 // runIntentAudit is `fathom intent audit` minus its rendering: the verb
@@ -181,7 +187,7 @@ func runIntentAudit(o intentAuditOptions) (intentAuditRun, error) {
 	rows, note := planRowStates(abs, roots)
 	guardNotes, guardScopes, guardNote2 := repoGuardNotes(abs)
 	contracts, contractNote, contractCoverage := planRowContracts(abs)
-	ledger := intent.ReadLedger()
+	ledger, ledgerIgnored := intent.ReadRegisteredLedger(roots) // PE-25
 	head := gitHeadShort(abs)
 	audit := intent.RunAudit(intent.AuditInput{
 		Corpus:   corpus,
@@ -206,7 +212,7 @@ func runIntentAudit(o intentAuditOptions) (intentAuditRun, error) {
 		Ledger:      ledger,
 		Now:         time.Now().UTC(),
 	})
-	run := intentAuditRun{Service: svc, Corpus: corpus, Audit: audit, Ledger: ledger}
+	run := intentAuditRun{Service: svc, Corpus: corpus, Audit: audit, Ledger: ledger, LedgerIgnored: ledgerIgnored}
 	if o.ReadOnly {
 		return run, nil
 	}
@@ -430,13 +436,25 @@ func joinInvIDs(invs []intent.Invariant) string {
 	return strings.Join(ids, ", ")
 }
 
-func emitIntentJSON(w io.Writer, c intent.Corpus, a intent.Audit, ledger []intent.LedgerRow) int {
+func emitIntentJSON(w io.Writer, c intent.Corpus, a intent.Audit, ledger []intent.LedgerRow, ignored ledgerroots.Ignored) int {
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
-	if err := enc.Encode(intentAuditPayload(c, a, ledger, time.Now().UTC())); err != nil {
+	if err := enc.Encode(withLedgerIgnored(intentAuditPayload(c, a, ledger, time.Now().UTC()), ignored)); err != nil {
 		return 1
 	}
 	return 0
+}
+
+// intentLedgerNoun names an intent-ledger row in an ignored phrase.
+const intentLedgerNoun = "intent-ledger row"
+
+// withLedgerIgnored names, in the audit's JSON, the intent-ledger rows the
+// registered-roots rule left out (PE-25) — "" keys nothing.
+func withLedgerIgnored(payload map[string]any, ignored ledgerroots.Ignored) map[string]any {
+	if p := ignored.Phrase(intentLedgerNoun); p != "" {
+		payload["ledger_ignored"] = p
+	}
+	return payload
 }
 
 // intentAuditPayload is `intent audit --json`'s document — the verb prints

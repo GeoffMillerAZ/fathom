@@ -322,7 +322,7 @@ func runDoctorChecks(root, explicitSvc, harness, baseURL string) []doctorCheck {
 		// CC-6 (docs/plans/custodian.md): the config custodian — are this
 		// repo's registered config contracts still true?
 		func() doctorCheck { return checkConcerns(root) },
-		func() doctorCheck { return checkIntent(root) },
+		func() doctorCheck { return checkIntent(root, ledgerRoots()) },
 		func() doctorCheck { return checkUnprovenClaims(root, baseURL, explicitSvc, ledgerRoots()) },
 		// DP-3/DP-4 (docs/plans/custodian.md): the doctrine plane — the
 		// vision promotion pipeline and goals as pre-registered bets

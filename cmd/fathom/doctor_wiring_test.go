@@ -76,7 +76,7 @@ func TestCheckWiringDrift(t *testing.T) {
 	if frag := wiringDriftAttention(root); frag != "wiring drift 2" {
 		t.Errorf("attention fragment = %q, want 'wiring drift 2'", frag)
 	}
-	if line := attentionLine(root, time.Now()); !strings.Contains(line, "wiring drift 2") || !strings.HasSuffix(line, "fathom doctor") {
+	if line := attentionLine(root, time.Now(), unreadRoots); !strings.Contains(line, "wiring drift 2") || !strings.HasSuffix(line, "fathom doctor") {
 		t.Errorf("attention line = %q", line)
 	}
 
