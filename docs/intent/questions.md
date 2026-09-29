@@ -8,7 +8,10 @@ INC-1 closure. Answerable by: owner (deletion is ask-first).
 
 **Q4. Force-multiplier or product?** `docs/vision/07` Q4 ("who pays, and does anyone
 need to?") has no written answer; it decides whether F2 (public release) is promoted or
-dropped and what the A/B verdict (G2) is for. Answerable by: owner.
+dropped and what the A/B verdict (G2) is for. Evidence added 2026-09-27
+(`docs/assessments/2026-09-27-agentic-coding-landscape.md`): free-only tools struggled (Roo Code shut down, Vibe
+Kanban found no business model, Continue was absorbed by Cursor), the money went to review and governance (fathom's
+lane), and stars followed one-command packaging more than depth. Answerable by: owner.
 
 **Q5. The threat model.** The fleet's source is served unauthenticated on loopback to any
 local process (`docs/vision/20` §7 Q2). Accept single-user in writing, or make law 9
