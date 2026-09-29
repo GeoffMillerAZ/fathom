@@ -6,7 +6,7 @@
 // the tiers and key rows (§4), the ContractSource port and its registry by
 // dialect id (§5), the wave-2 sources (routes, HTTP clients, OpenAPI,
 // proto/gRPC) and the in-memory link join. Everything here is pure and
-// deterministic (internal/CLAUDE.md): no I/O, no clock, sorted outputs.
+// deterministic (internal/AGENTS.md): no I/O, no clock, sorted outputs.
 // Persistence (§6's contract_keys and system_links tables) is a separate
 // slice gated by ADR-049 decision 2's tenancy lane.
 package syslink

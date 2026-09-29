@@ -14,7 +14,7 @@ package docindex
 // its production implementation and its indexer (SG-37) the caller of
 // IngestDepDocs. This file owns only "what a located directory says": pure
 // reading, bounded (design system-graph §8.3: 8 MiB of source per package,
-// 2 MiB per file), deterministic (internal/CLAUDE.md: sorted output, no
+// 2 MiB per file), deterministic (internal/AGENTS.md: sorted output, no
 // clock), public surface only.
 //
 // The Maven and NuGet readers are not part of KR-11's list (Go, .d.ts,
@@ -346,7 +346,7 @@ func depDocUnitsLimited(ctx context.Context, loc DepCacheLocator, ref PkgRef, li
 	}
 
 	// WalkDir visits a directory's entries lexically; sort anyway so the
-	// order never rests on it (internal/CLAUDE.md).
+	// order never rests on it (internal/AGENTS.md).
 	sort.Slice(srcFiles, func(i, j int) bool { return srcFiles[i].Path < srcFiles[j].Path })
 	sort.Slice(rep.Skipped, func(i, j int) bool { return rep.Skipped[i].Path < rep.Skipped[j].Path })
 	return append(readmeFiles, srcFiles...), rep, nil

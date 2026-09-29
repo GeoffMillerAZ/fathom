@@ -112,7 +112,7 @@ func TestRiskReceiptLowBand(t *testing.T) {
 }
 
 // TestRiskReceiptDeterministic proves the determinism contract
-// (internal/CLAUDE.md): identical Input always produces byte-identical
+// (internal/AGENTS.md): identical Input always produces byte-identical
 // output, regardless of slice input order (every internal sort is applied).
 func TestRiskReceiptDeterministic(t *testing.T) {
 	in := Input{

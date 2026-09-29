@@ -59,7 +59,7 @@ const (
 
 // Fixed factor names, in the FIXED order the design doc's table lists them
 // and BuildRiskReceipt always emits them (determinism contract,
-// internal/CLAUDE.md: identical Input always produces an identical,
+// internal/AGENTS.md: identical Input always produces an identical,
 // identically-ordered Receipt).
 const (
 	FactorBlastRadius  = "blast_radius"
@@ -111,7 +111,7 @@ type CertificateRef struct {
 
 // RowVerdict is one plan row the change claims, and fathom verify's own
 // verdict on it — mirrors the same "claimed but unproven" shape
-// docs/CLAUDE.md's gate speaks about.
+// docs/AGENTS.md's gate speaks about.
 type RowVerdict struct {
 	ID string
 	// Verdict is "proven" or "unproven". Only claimed (checked) rows

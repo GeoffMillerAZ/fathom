@@ -37,7 +37,7 @@
 #     --bare cannot use — verified live, "Not logged in"), and --safe-mode
 #     disables MCP servers even with an explicit --mcp-config (verified
 #     live). All arms therefore run in the default startup mode, so
-#     CLAUDE.md + user memory load identically for every arm — a fixed,
+#     AGENTS.md + user memory load identically for every arm — a fixed,
 #     symmetric baseline of cache_creation/cache_read tokens per call
 #     (tens of thousands of tokens; see the summary's per-arm totals). This
 #     means TotalTokens as reported is dominated by that shared baseline,
@@ -51,7 +51,7 @@
 #     servers at all. No arm can accidentally use the user's other
 #     registered servers.
 #   - mcp__fathom__ingest is explicitly disallowed for arm "fathom" — this
-#     script performs read-only queries against the daemon only (CLAUDE.md:
+#     script performs read-only queries against the daemon only (AGENTS.md:
 #     never mutate the shared fleet store from a worker script). If the
 #     daemon is unreachable at all, arm "fathom" is skipped entirely (not
 #     faked) and every task's fathom-arm cell is ABSENT in the results
@@ -70,7 +70,7 @@
 #     also a path a live editor may be changing mid-run. The export (and
 #     the scratch binary+store) live under `${TMPDIR:-/tmp}/fathom-context-
 #     bench/` — OUTSIDE this checkout, a deliberate DIVERGENCE from
-#     CLAUDE.md's workspace/ convention (the scripts/stranger-check.sh
+#     AGENTS.md's workspace/ convention (the scripts/stranger-check.sh
 #     precedent): nested under $ROOT, every honest served path inside the
 #     export also carries $ROOT as a string prefix, which false-positived
 #     the path-leak check below on every answer (see prepare_session_root).
@@ -405,7 +405,7 @@ fi
 # never the live checkout, so a session and the daemon answering it read
 # identical bytes.
 #
-# DIVERGENCE from CLAUDE.md's workspace/ convention (the stranger-check.sh
+# DIVERGENCE from AGENTS.md's workspace/ convention (the stranger-check.sh
 # precedent, scripts/stranger-check.sh): the export lives under
 # `${TMPDIR:-/tmp}/fathom-context-bench/`, OUTSIDE this checkout, not
 # `workspace/tmp/`. Nested under $ROOT (workspace/tmp/'s literal meaning),

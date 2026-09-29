@@ -108,7 +108,7 @@ func runCommitFromEnvelope(env envInfoWire, subjects []inTotoSubject) (commit st
 		// and would still name their algorithm the same way); preferred
 		// explicitly, with a sorted-key fallback so a differently-keyed
 		// digest map never resolves by Go's randomized map iteration
-		// order (internal/CLAUDE.md: map iteration order must never
+		// order (internal/AGENTS.md: map iteration order must never
 		// reach a result).
 		if sha1 := s.Digest["sha1"]; sha1 != "" {
 			return sha1, false, false

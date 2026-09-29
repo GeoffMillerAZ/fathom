@@ -7,7 +7,7 @@
 // doctor row instead of a shell script nobody's `fathom doctor` run
 // exercises or gates on. `doorStrangerCheck` itself is a pure,
 // clock-injected verdict over caller-supplied steps (never a bare
-// time.Now() — the determinism contract, internal/CLAUDE.md) so the
+// time.Now() — the determinism contract, internal/AGENTS.md) so the
 // pass/fail boundary is provable without a single real timed operation;
 // doctorStrangerRow supplies the real step, invoked via exec.CommandContext
 // (contexted, never a bare exec.Command — the tenancy-lint discipline

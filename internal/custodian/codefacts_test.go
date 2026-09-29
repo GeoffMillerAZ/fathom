@@ -93,7 +93,7 @@ func TestClassifySentenceLabelledSet(t *testing.T) {
 	exactAccuracy := float64(exactMatches) / float64(len(labels))
 
 	// Sorted, not a map iteration — determinism is a contract even in a
-	// log line (internal/CLAUDE.md).
+	// log line (internal/AGENTS.md).
 	classNames := make([]string, 0, len(byClass))
 	for c := range byClass {
 		classNames = append(classNames, string(c))

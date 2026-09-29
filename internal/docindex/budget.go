@@ -3,7 +3,7 @@ package docindex
 // budget.go — enforceDocBudget (KR-9, docs/design/knowledge-retrieval.md
 // §8: "Index size... capped per service by the byte budget, with a named
 // `elided` when a service exceeds it"). Pure and deterministic
-// (internal/CLAUDE.md): given a service's full candidate doc_units set and
+// (internal/AGENTS.md): given a service's full candidate doc_units set and
 // a byte budget, decides which units fit and which are elided — each named
 // by path and heading path, never a silent drop (I38's "an unreadable
 // input is never a healthy zero" carried over to "an over-budget corpus is

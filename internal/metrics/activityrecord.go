@@ -14,7 +14,7 @@ package metrics
 // interventions.go): callers decode both logs (cmd/fathom already does —
 // readCallLog/adoptionCallEntry for the call log, heartbeat.Load for the
 // hooks beat log) and pass the decoded rows in; this file does no I/O,
-// per internal/CLAUDE.md's determinism contract.
+// per internal/AGENTS.md's determinism contract.
 
 import (
 	"sort"
@@ -60,7 +60,7 @@ type ActivityRecord struct {
 // ReadActivityRecord joins calls (already-decoded call-log rows) and
 // beats (already-decoded hooks-beat-log rows) into one ActivityRecord per
 // distinct session id, sorted by session id for a deterministic order
-// (internal/CLAUDE.md's determinism contract — every aggregator in this
+// (internal/AGENTS.md's determinism contract — every aggregator in this
 // package returns a stable order, never map iteration order). A row with
 // no session id (a call or beat logged outside any live session — a CLI
 // verb run standalone, a gate step) is grouped under the empty-string

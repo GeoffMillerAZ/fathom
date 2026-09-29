@@ -2,7 +2,7 @@ package dialect
 
 // INVALID examples — kept commented so `cue vet ./...` stays green; the Go
 // test (internal/langbench/dialectschema_test.go) asserts each fails when
-// unified with #Dialect (schema/CLAUDE.md convention). Each is the minimal
+// unified with #Dialect (schema/AGENTS.md convention). Each is the minimal
 // Go manifest below with one defect.
 //
 // base: {id: "go", display: "Go", kind: "language", engine: "native", lang_tag: "go",

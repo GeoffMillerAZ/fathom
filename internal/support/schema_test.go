@@ -2,7 +2,7 @@ package support
 
 // schema_test.go asserts schema/support/testdata/invalid.cue's six
 // commented cases actually fail (SM-2), the same "negatives are Go-
-// asserted, never live-vetted" convention schema/CLAUDE.md documents and
+// asserted, never live-vetted" convention schema/AGENTS.md documents and
 // internal/modspec/schema_test.go established for #Module. It also proves
 // the positive half of SM-2's contract: schema/support/testdata/valid.cue's
 // worked `matrix` example vets against #Matrix through ValidateMatrixJSON,

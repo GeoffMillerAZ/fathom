@@ -72,7 +72,7 @@ var fixtureClaims = []fixtureClaim{
 // SeedFixtureClaims writes the fixture semantic layer for every Go service of
 // the fixture fleet. compiledAt is fixed, never time.Now(): a claim stamped
 // with the real clock makes a committed golden a time bomb (internal/
-// CLAUDE.md's determinism contract).
+// AGENTS.md's determinism contract).
 func SeedFixtureClaims(ctx context.Context, st store.Store) error {
 	compiledAt := time.Date(2026, 9, 12, 0, 0, 0, 0, time.UTC)
 	for _, svc := range FauxtownGoServices {

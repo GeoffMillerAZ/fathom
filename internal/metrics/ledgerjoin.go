@@ -60,7 +60,7 @@ type JoinedSession struct {
 
 // JoinLedgersBySession groups verifyRuns and sessions by their shared
 // Session field. joined is sorted by session id for a deterministic order
-// (internal/CLAUDE.md's determinism contract); a session-ledger row with
+// (internal/AGENTS.md's determinism contract); a session-ledger row with
 // no verify runs still appears (Ledger set, VerifyRuns nil) — a session
 // that never ran verify is a real, measured fact (I38: never a silent
 // zero standing in for "not read"). unjoined is every verify-ledger row

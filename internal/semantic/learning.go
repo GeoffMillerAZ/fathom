@@ -15,7 +15,7 @@
 // learningAnnouncements to announce — applyLearning itself writes nothing
 // and announces nothing; it only decides.
 //
-// Determinism (internal/CLAUDE.md): now is the injected clock, never
+// Determinism (internal/AGENTS.md): now is the injected clock, never
 // time.Now() here; output claims are returned in the SAME order as the
 // input (a caller's own PutClaims ordering is undisturbed), and decisions
 // are sorted by ClaimID.

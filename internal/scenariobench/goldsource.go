@@ -190,7 +190,7 @@ var readLineRE = regexp.MustCompile(`(?m)^\s*(\d+)(?:→|\t)`)
 // what a lookup task's own gold token looks like when the fact being
 // checked is "this exact line of this exact file" (fathom's obligations
 // tool composes citations in exactly this shape, e.g.
-// "internal/CLAUDE.md#L3").
+// "internal/AGENTS.md#L3").
 var citationRE = regexp.MustCompile(`^(.+)#L(\d+)$`)
 
 // isCitationToken reports whether tok is shaped like a composed citation.
@@ -220,7 +220,7 @@ func composeCitations(body, toolInputFile string) []string {
 // citationMatches reports whether tok (a gold "path#Lnn" citation) is
 // satisfied by candidate (one of composeCitations' own "path#Lnn"
 // strings): the SAME line number, and the path matching by suffix
-// (sameFile) — a gold token's own path form ("internal/CLAUDE.md") need
+// (sameFile) — a gold token's own path form ("internal/AGENTS.md") need
 // not equal the tool's exactly (an absolute worktree path, say).
 func citationMatches(tok, candidate string) bool {
 	tokM := citationRE.FindStringSubmatch(tok)

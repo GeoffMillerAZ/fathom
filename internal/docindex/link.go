@@ -5,7 +5,7 @@ package docindex
 // fenced-code-block line, a symbol, a repo-relative path, or a contract
 // key that resolves EXACTLY — never a best guess, and never a bare word
 // outside backticks (KR-X2, refused: "too noisy to link; exact targets
-// only"). Pure and deterministic (internal/CLAUDE.md): the actual lookups
+// only"). Pure and deterministic (internal/AGENTS.md): the actual lookups
 // (does a symbol resolve to exactly one indexed match, does a path exist,
 // is a contract key registered) are the caller's Resolver — this file has
 // no store I/O of its own, matching RankDocs' (KR-4) own precedent of

@@ -85,5 +85,5 @@ stray .md file there. `docs/plans/archive/` is out of gate scope. Essentials:
 - A research or assessment pass is finished only when its summary is in `docs/assessments/` and every decision it
   drove is in the records (an ADR or dated amendment, futures, scope, plan rows). An artifact (a page, a
   scratch file) is never the record.
-- Root `CLAUDE.md` is a router (≤120 lines) with resolving pointers —
+- Root `AGENTS.md` is a router (≤120 lines) with resolving pointers —
   `fathom config audit` (`.fathom/concerns.cue`) polices both.

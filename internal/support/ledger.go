@@ -5,7 +5,7 @@ package support
 // append-only in the sense that a row, once written, is never dropped or
 // mutated by a later call — but its ON-DISK order is kept sorted (by
 // reading_date, then kind/id/capability) on every write, so a reader never
-// has to sort a growing file itself (internal/CLAUDE.md: "sort every output
+// has to sort a growing file itself (internal/AGENTS.md: "sort every output
 // slice").
 
 import (

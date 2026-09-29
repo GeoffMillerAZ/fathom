@@ -34,7 +34,7 @@ tiles with invented zeroes; implied savings without a counterfactual; narrative
 presented as evidence; unexplained grades; a dashboard that hides a degraded read.
 These are the project's own named failure modes, not a new external brand brief.
 Sources: [principles](docs/intent/principles.md),
-[UI doctrine](cmd/fathom/CLAUDE.md).
+[UI doctrine](cmd/fathom/AGENTS.md).
 
 ## Design Principles
 

@@ -6,7 +6,7 @@
 //
 // Compute is pure over its Inputs: every file read, git walk, and store
 // lookup happens in the caller (pkg/client.ReviewKey, shared by cmd/fathom/
-// reviewkey.go — internal/CLAUDE.md's injected-I/O convention). The one
+// reviewkey.go — internal/AGENTS.md's injected-I/O convention). The one
 // exception is the dependency closure, which Compute itself walks — over
 // data the caller already resolved (Nodes/TypedEdges) — by reusing
 // internal/analysis/callgraph's typed-edge-only graph (BuildResolved/

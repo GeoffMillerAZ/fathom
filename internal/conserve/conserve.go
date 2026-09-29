@@ -207,7 +207,7 @@ type Report struct {
 // Check must be a pure function of in (and whatever ctx cancels): no
 // global state, no clock, no writes. Determinism here is what lets Run's
 // own output be schema-stable (docs/design/refactor-conservation.md,
-// internal/CLAUDE.md).
+// internal/AGENTS.md).
 type Plane interface {
 	Name() string
 	Check(ctx context.Context, in Input) (findings []Finding, missing []string)

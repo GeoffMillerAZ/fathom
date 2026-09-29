@@ -66,7 +66,7 @@ const ruleOutcomeSchemaVersion = 1
 var ruleOutcomeLogRotateBytes int64 = 16 << 20
 
 // ruleOutcomeNow is the injected clock. cmd/fathom is a log-writer, not
-// internal/'s query/analysis logic (internal/CLAUDE.md's determinism
+// internal/'s query/analysis logic (internal/AGENTS.md's determinism
 // contract targets THAT layer's time.Now ban) — this package var mirrors
 // cmd/fathom's own existing precedent (certifyGapsNow, callLogNow) so a
 // test can pin the timestamp without a real wall-clock race.

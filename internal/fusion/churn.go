@@ -28,7 +28,7 @@ const churnWindow = 180 * 24 * time.Hour
 // with no Date (unparsed, Date == 0) is treated as outside the window: an
 // unparseable date must never be silently counted as maximally fresh.
 //
-// asOf is the caller's own clock (internal/CLAUDE.md determinism: inject
+// asOf is the caller's own clock (internal/AGENTS.md determinism: inject
 // clocks, never call time.Now() in analysis logic) — recordIngestMeta
 // passes the same "now" it stamps the ingest's ServiceMeta with.
 // Sorted by path (Store contract: deterministic output order).

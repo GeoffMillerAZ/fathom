@@ -52,8 +52,8 @@
       },
       "rule": {
         "id": "Determinism is a contract",
-        "text": "Sort every output slice; map iteration order must never reach a result. (internal/CLAUDE.md -- the only file in this repo that states this; internal/analysis/fanout's own source carries no local comment about sorting or determinism.)",
-        "source": "internal/CLAUDE.md#L3"
+        "text": "Sort every output slice; map iteration order must never reach a result. (internal/AGENTS.md -- the only file in this repo that states this; internal/analysis/fanout's own source carries no local comment about sorting or determinism.)",
+        "source": "internal/AGENTS.md#L3"
       },
       "predictions": {
         "full": "win: internal/CLAUDE.md's determinism obligation is bound to edits under internal/analysis, so it fires on this brand-new Targets field before an unsorted map-range append reaches Compute's return value",
@@ -200,7 +200,7 @@
       },
       "rule": {
         "id": "core-no-mcp-or-cmd",
-        "text": "internal/core imports nothing from internal/mcp or cmd/ -- the domain model is the keystone, never a consumer of the surfaces built on it. Compiled as a layer_rule in .fathom/guard.cue (kind import_direction; `fathom rules gen-test` -> rules/layer_rules_test.go); no CLAUDE.md or ADR states this specific import direction in prose -- only the compiled guard and its generated test carry it.",
+        "text": "internal/core imports nothing from internal/mcp or cmd/ -- the domain model is the keystone, never a consumer of the surfaces built on it. Compiled as a layer_rule in .fathom/guard.cue (kind import_direction; `fathom rules gen-test` -> rules/layer_rules_test.go); no AGENTS.md or ADR states this specific import direction in prose -- only the compiled guard and its generated test carry it.",
         "source": ".fathom/guard.cue#L174"
       },
       "predictions": {
@@ -257,8 +257,8 @@
       },
       "rule": {
         "id": "docs/use-cases/",
-        "text": "docs/use-cases/: exactly one doc per use case; when an MCP tool or CLI command is added/renamed/removed, update that doc's ## Maintained line and the catalog in docs/mcp-tools.md. (docs/CLAUDE.md -- a THIRD file, internal/mcp/surface.go's own registry, is what TestMcpToolsDocMatchesRegistry holds the catalog to; one bullet in one file, two directories away from cmd/fathom/internal/mcp, governs all three at once.)",
-        "source": "docs/CLAUDE.md#L72"
+        "text": "docs/use-cases/: exactly one doc per use case; when an MCP tool or CLI command is added/renamed/removed, update that doc's ## Maintained line and the catalog in docs/mcp-tools.md. (docs/AGENTS.md -- a THIRD file, internal/mcp/surface.go's own registry, is what TestMcpToolsDocMatchesRegistry holds the catalog to; one bullet in one file, two directories away from cmd/fathom/internal/mcp, governs all three at once.)",
+        "source": "docs/AGENTS.md#L72"
       },
       "predictions": {
         "full": "win: docs/CLAUDE.md's docs-upkeep obligation binds to edits under internal/mcp and names both docs/mcp-tools.md and the use-case doc's Maintained line together, serving the THIRD file's requirement at the same moment the first two get done",
@@ -300,8 +300,8 @@
       },
       "rule": {
         "id": "Verified:",
-        "text": "Change records: conventional commit with a `Verified:` line, one commit per reviewable unit, no WIP on main. (CLAUDE.md's Project intent section; the full grammar lives in agentic-kit/docs/project-intent/changes.md, a file this line only points at.)",
-        "source": "CLAUDE.md#L26"
+        "text": "Change records: conventional commit with a `Verified:` line, one commit per reviewable unit, no WIP on main. (AGENTS.md's Project intent section; the full grammar lives in agentic-kit/docs/project-intent/changes.md, a file this line only points at.)",
+        "source": "AGENTS.md#L26"
       },
       "predictions": {
         "full": "no-effect: obligations serve on PostToolUse Edit/Write, never on the Bash call a `git commit` runs through, and the Verified-line convention sits in the subject's root CLAUDE.md outside fathom's own managed stanza region either way -- this task exists to find that boundary honestly, not to claim a win obligations cannot structurally reach",
@@ -334,6 +334,7 @@
     "wave": "receipts.md RC-50 (plan wave 5)",
     "subject_repo": "the fathom repo itself, dogfooding its own guides/ADRs/compiled guard against its own author -- the third guards corpus, redesigned after guards-fathom.json (SB-24) and guards-adr.json (SB-49)",
     "authored": "2026-09-14",
+    "instruction_file_repoint": "2026-09-29 (ADR-059, plan AG-23): this repo carries AGENTS.md as its one instruction file (CLAUDE.md, docs/CLAUDE.md and internal/CLAUDE.md moved with their line layout unchanged). Each rule.source and rule.text names the file as this tree carries it, and guards_test.go re-derives every source line against this tree. derivation, predictions, description and the setup heredoc are provenance of the subject at base_commit dd0311c and name the file as that commit carries it (CLAUDE.md); a bench run checks that commit out and reads it there.",
     "purpose": "M1's claim (vision 27 §1) is that a rule served at the edit moment beats the same rule sitting as prose the agent must remember to reread. guards-fathom.json could not test that claim honestly -- every rule sat in a CLAUDE.md both arms read. guards-adr.json fixed that for ADR-only rules but still found five of eight edit sites carrying an adjacent comment naming the same rule. This corpus goes one step further on six placements chosen for maximum distance from the edit site: (a) a package guide the edited file never cites, (b) an ADR that names no package at all, (c) a decoy comment that argues the OPPOSITE of the true rule, (d) a rule that exists ONLY in the compiled obligations layer with no prose statement anywhere in the tree, (e) one bullet governing three separate files at once, and (f) a process rule that fires at a commit, a moment no PostToolUse hook was ever wired to reach -- registered honestly as a boundary test, not a win.",
     "scaffold_via_setup": "Tasks (a) and (c) need an edit site (a small analyzer package; a store search helper with a deliberately misleading CGO comment) that would mislead a real contributor if committed to this repo's actual internal/analysis or internal/store trees. Each task's subject.setup (Subject.Setup, types.go; PrepareSubject runs it in the worktree BEFORE the first ingest) writes that scaffold with a heredoc at cell-prepare time instead -- real for the length of one worktree's life, never real on main. Tasks (b), (d), (e) and (f) touch files this repo already carries and need no setup.",
     "change_present": "Four of six tasks carry a change-present detector (first in their list): a positive check that the requested edit exists in the tree, so a session that does nothing cannot pass by never violating the rule (guards-pilot-1, 2026-09-13: an unstarted session scored PASS on an untouched tree). Task e's own registry-has-tool detector serves the same purpose in its list. Task f has none -- its own detector (a commit's Verified: line) cannot be satisfied by an untouched tree at all, since it requires a commit to exist.",

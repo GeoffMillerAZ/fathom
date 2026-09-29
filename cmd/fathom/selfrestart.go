@@ -84,7 +84,7 @@ func selfRestartDisabled() bool {
 var selfRestartBuildStamp = buildinfo.Read
 
 // selfRestartNow is the injected wall clock the adoption line's "built ...
-// ago" figure is computed against (internal/CLAUDE.md's determinism
+// ago" figure is computed against (internal/AGENTS.md's determinism
 // contract: operational logs still inject `now` so assertions on emitted
 // lines are not flaky). Production leaves this as time.Now; tests swap it.
 var selfRestartNow = time.Now

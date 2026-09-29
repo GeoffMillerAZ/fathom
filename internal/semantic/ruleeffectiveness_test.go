@@ -93,7 +93,7 @@ func TestRuleEffectivenessClasses(t *testing.T) {
 		}
 	}
 
-	// Output is sorted by RuleID (determinism contract, internal/CLAUDE.md).
+	// Output is sorted by RuleID (determinism contract, internal/AGENTS.md).
 	for i := 1; i < len(got); i++ {
 		if got[i-1].RuleID > got[i].RuleID {
 			t.Errorf("output not sorted by RuleID: %q before %q", got[i-1].RuleID, got[i].RuleID)

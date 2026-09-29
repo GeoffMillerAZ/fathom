@@ -196,7 +196,7 @@ func cmdThreadPromoteRoute(route, planFile, row, repo, service, url, storePath, 
 		}
 		pointers = append(pointers, r.Pointer)
 	}
-	sort.Strings(pointers) // determinism (internal/CLAUDE.md)
+	sort.Strings(pointers) // determinism (internal/AGENTS.md)
 	if len(pointers) == 0 {
 		fmt.Fprintf(stderr, "error: no routed pointer under package %q resolves against the live index — nothing to write\n", route)
 		return 1

@@ -381,7 +381,7 @@ changing mid-run.
 
 The export, and the scratch binary/store, live under
 `${TMPDIR:-/tmp}/fathom-context-bench/` — OUTSIDE this checkout, a
-deliberate DIVERGENCE from CLAUDE.md's workspace/ convention (the
+deliberate DIVERGENCE from AGENTS.md's workspace/ convention (the
 `scripts/stranger-check.sh` precedent). A first cut put them under
 `workspace/tmp/`, nested inside the checkout; every honest served path
 inside a nested export also carries the live checkout's own path as a

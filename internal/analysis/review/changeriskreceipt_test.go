@@ -19,7 +19,7 @@ import (
 // check-run's fixed "neutral" conclusion (CX-8/ADR-040: fathom cites
 // evidence, never scores pass/fail on its own authority). Both renderings
 // are byte-identical on a second render over the same receipt — the
-// determinism contract, internal/CLAUDE.md.
+// determinism contract, internal/AGENTS.md.
 func TestChangeRiskReceiptGolden(t *testing.T) {
 	in := riskreview.Input{
 		ChangedFiles:          []string{"internal/widget/widget.go"},
