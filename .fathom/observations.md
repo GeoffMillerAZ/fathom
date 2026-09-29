@@ -2289,3 +2289,29 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** none yet. Options: compute the span's line from the body's own first line, and key a link by (unit, kind, target) with the line as data
 - **Status:** open
 - **Impact:** drift lines point at the heading, and drift can clear by accident when a doc is edited above the stale span
+
+### O156 — a scratch re-ingest after a failed typed pass keeps its partial typed edges, so a wedge during the first ingest cannot be repaired by running it again
+
+- **Symptom:** the first scratch ingest of a wave worker's clone failed 123 of 389 packages' typed loading on an "Operation not permitted" wedge; the same command run again after `tccutil reset` said the pass was skipped and its partial edges stand, so only deleting the store and ingesting from scratch (6.5 min) gave a whole one
+- **Evidence:**
+  - **Tool:** `fathom ingest --store "$FATHOM_CACHE_ROOT/verify.sqlite" --service fathom --path .` in a `genv-wave.sh` shell (2026-09-29, wave `we`, worker `we-verbs`), twice
+  - **Expected:** the second run redoes the packages whose loading failed, or says which flag does
+  - **Actual:** first run: `error: ingest degraded: typed-edge pass failed: 123/389 package(s) failed typed loading (... mkdir /Volumes/m2ext/tmp/fathom-build/w-we-verbs/gotmp/go-build3461279143/b748/: operation not permitted; ...)`; second run: `typed-edges: skipped — no input changed since the last pass, which completed with package(s) that failed typed loading — its partial typed edges stand (stored typed edges kept)`
+  - **Repro:** ingest a Go repository into a fresh scratch store while reads under the external volume fail with EPERM, reset the TCC grant, and ingest the same path again
+- **Root cause:** not established here; the second run's own message names the rule it applied, that a Go input unchanged since the last pass skips the pass whatever that pass's failed packages were (RT-104)
+- **Fix:** none yet. Options: a pass that had failed packages is never a reason to skip the next one, or the skip line names the flag that forces the typed pass
+- **Status:** open
+- **Impact:** a worker that retries after the wedge verifies its rows against an index missing a third of the typed edges (the `wired` and `gone:` criteria read them), and the only way out is a full re-ingest it has to know to do by hand
+
+### O157 — `fathom tests select --safe` lists a doc heading as a changed symbol no test reaches, under a name with its backticked word cut out
+
+- **Symptom:** after editing docs/usage.md, the selection's "no test reaches it" list carried about 35 lines like `fathom::docs/usage.— disk retention by class (docs/usage.md#L2049-L2049): no test reaches it`, ahead of the handful of real symbols, and the name is not the heading's (`### `gc` — disk retention by class`)
+- **Evidence:**
+  - **Tool:** `fathom tests select --since c77683d4 --safe --store "$FATHOM_CACHE_ROOT/verify.sqlite" --service fathom` (2026-09-29, wave `we`, worker `we-verbs`, after a scratch ingest of a branch that touched docs/usage.md)
+  - **Expected:** the list names code symbols a test does not reach; a prose heading is no test's business, and any name it carries is the heading's
+  - **Actual:** every heading of the changed file is listed as a symbol with a `docs/usage.` prefix and its heading text with each backticked word removed, e.g. `docs/usage.— layer rules as tests, and as history (VB-14, VB-16, SR-47w)` for `### `rules` — layer rules as tests, and as history (VB-14, VB-16, SR-47w)`
+  - **Repro:** change any line of docs/usage.md in a scratch clone, ingest it, run `fathom tests select --since <base> --safe`
+- **Root cause:** not established here; the doc index's heading units reach the selection's changed-symbol set with a key cut at the first backtick
+- **Fix:** none yet. Options: leave doc units out of the changed-symbol set, or key them by their heading path as `search kind: docs` prints it
+- **Status:** open
+- **Impact:** the list a worker reads to see what is untested is mostly prose headings, and the garbled names cannot be looked up in the file they came from

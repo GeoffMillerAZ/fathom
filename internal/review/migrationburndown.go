@@ -44,6 +44,14 @@ type RepoRows struct {
 	Rows       []RowVerdict
 	Unexcused  bool
 	Detail     string
+	// ConservationUnproven, when non-empty, says the conservation verdict
+	// was never established for this repository and why — `fathom conserve`
+	// was not run, could not be, or a plane reported an input missing
+	// (I44). Proven rows alone do not complete a migration: "no unexcused
+	// loss" must have been checked, so a repository carrying this is
+	// incomplete whatever its rows say. Empty means conservation ran and
+	// Unexcused is its answer.
+	ConservationUnproven string
 }
 
 // RepoMigrationBurnDown is one repository's burn-down series for a
@@ -113,6 +121,9 @@ func migrationRepoComplete(r RepoRows) (complete bool, reason string) {
 				reason += " (" + r.Detail + ")"
 			}
 		}
+		if r.ConservationUnproven != "" {
+			reason += "; conservation not established: " + r.ConservationUnproven
+		}
 		return false, reason
 	}
 	if r.Unexcused {
@@ -120,7 +131,13 @@ func migrationRepoComplete(r RepoRows) (complete bool, reason string) {
 		if r.Detail != "" {
 			reason += ": " + r.Detail
 		}
+		if r.ConservationUnproven != "" {
+			reason += "; conservation not established: " + r.ConservationUnproven
+		}
 		return false, reason
+	}
+	if r.ConservationUnproven != "" {
+		return false, "conservation not established in " + r.Repository + ": " + r.ConservationUnproven
 	}
 	return true, ""
 }

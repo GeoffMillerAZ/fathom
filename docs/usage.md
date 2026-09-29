@@ -2837,7 +2837,7 @@ silently reported as zero rows.
 ```
 
 `refactor status --migration "<kind> <from> -> <to>" [--store DB] [--services
-a,b,c] [--json]` (CX-13, `docs/design/change-and-compliance.md` §4) is a
+a,b,c] [--conserve-since <ref>] [--json]` (CX-13, `docs/design/change-and-compliance.md` §4) is a
 second, separate mode: the FLEET-WIDE migration view for a declaration in
 `ParseMigration`'s own five-kind form (`symbol|import|route|config|pkg`),
 across every service the store knows (or the ones `--services` names).
@@ -2851,12 +2851,44 @@ into a named `degraded` entry rather than aborting the whole call. Purely
 read-only: it computes and reports, it never rewrites a site (the Moderne
 non-goal, refused as CX-X4).
 
+Each remaining site names its **blocker** beside it (CX-11w,
+`review.MigrationBlockers`): `generated` when its file has a
+`// Code generated ... DO NOT EDIT.` header (or another language's marker) or the
+repository's root `.gitattributes` marks it `linguist-generated` (nested
+`.gitattributes` are not read), and `governed` — citing the rule id, with a warn
+rule shown as `<id> (warn)` — when a layer rule in the repository's
+`.fathom/guard.cue` forbids the file's package the migration's `to`: an
+`import_direction` rule with the file in `from` and the `to` in its `to`, or a
+`boundary` rule with the file off its `allow` list and the `to` in `guarded`. The
+`to` is a directory: an import migration's as written or relative to the go.mod
+module, a symbol migration's the directory of each indexed declaration of that
+name; a route, config or pkg migration names none, so only generated code blocks
+it. A governed file that is also generated reports the rule.
+
+Each repository with a site or a `gone:` row also prints its **burn-down and
+completion verdict** (CX-12w, `review.MigrationBurnDown`). The rows are the
+repository's own `docs/plans/*.md` rows whose `gone:` contract names `from`
+(`callers` or `pattern` for a symbol, `import` or `pattern` for an import,
+`module` or `pattern` for a pkg, `pattern` otherwise), each proven when the
+verify ledger's newest reading of it says so and unproven when it says otherwise or
+never read it. The series is those rows' verdicts over time from the same ledger
+(`console.ProofHistory`): at each reading where one changed, how many are claimed
+and how many proven. A repository is complete only when every row is proven and
+conservation is established with no unexcused loss: `--conserve-since <ref>` runs
+`fathom conserve --since <ref>` in each such repository, and without it none is
+complete — the reason says conservation was not run, never that it passed.
+
 ```json
 {"schema":"fathom.refactor.status.migration/v1",
  "migration":{"kind":"symbol","from":"OldFunc","to":"NewFunc"},
+ "conserve_since":"origin/main",
  "repositories":[{"repository":"svc-a",
-   "remaining":[{"file":"caller/user.go","line":5,"tier":"typed"}],
-   "done":[]}]}
+   "remaining":[{"file":"caller/user.go","line":5,"tier":"typed",
+     "blocker":{"reason":"governed","rule":"caller-not-newpkg"}}],
+   "done":[],
+   "burn_down":{"rows":[{"plan":"docs/plans/mig.md","id":"MG-1","verdict":"proven"}],
+     "series":[{"at":"2026-09-22T10:00:00Z","claimed":1,"proven":1,"remaining":0}],
+     "complete":false,"reason":"…","conservation":"not run"}}]}
 ```
 
 ---
@@ -2955,12 +2987,22 @@ so the verdict is never inferred from reach alone.
 | `--repo` | current directory | git checkout to re-derive from |
 | `--run-tests` | `false` | `certification` kind only: actually run the named test instead of reporting `unverified (no run)` |
 
+### `rules` — layer rules as tests, and as history (VB-14, VB-16, SR-47w)
+
+```
+fathom rules gen-test [--root DIR] [--out DIR]
+fathom rules replay --since <ref|N> [--root DIR] [--rules FILE] [--format table|json|sarif] [--json]
+```
+
+`gen-test` compiles `.fathom/guard.cue`'s `layer_rules` to a Go test file. `replay` evaluates today's rules against every commit in a range (`ref..HEAD`, or the last N commits) and reports which commits would have failed the gate and which violations each one introduced versus inherited. `--format table` is the default; `--json` (or `--format json`) is the whole report. `--format sarif` emits SARIF 2.1.0 through the shared emitter (`guardsarif`, `verify.RenderSARIF`): one result per violation at the commit that introduced it (an inherited repeat is not a second finding), one rule per rule id, `error` or `warning` from the rule's severity, located at the offending package, the commit named in the message. `--format` wins over `--json`.
+
 ### `tests coverage` / `tests select` — coverage, mutation, and test selection
 
 Full walkthrough: [docs/use-cases/test-coverage.md](use-cases/test-coverage.md).
 
 ```sh
 fathom tests coverage --profile [layer=]<file> [--profile <more>...] \
+  [--foreign <format>=<file>...] \
   [--service <id>] [--store <path>] [--diff <ref>] [--mutation <report>] [--json]
 
 fathom tests select --since <ref> [--safe] [--profile [layer=]<file>...] \
@@ -2973,6 +3015,17 @@ per layer, plus `ANY`), or `--diff <ref>` to narrow to changed symbols with
 no covering test in any layer. `--mutation <report>` (VB-34) adds a
 `MUTATION` score column (0.0-1.0) from a joined mutation-testing report — see
 "Mutation" in the use-case doc for the two accepted report shapes.
+
+`--foreign <format>=<file>` (repeatable; TQ-14w) joins a non-Go coverage report to the same
+indexed symbols, in the formats `fathom coverage ingest --format` accepts (`lcov`, `cobertura`,
+`jacoco`, `coverage-py`, `istanbul`, `llvm-cov`), read under the same 256 MiB cap. A file whose
+function symbols all carry line ranges is joined per symbol; a file whose symbols do not (or has
+none) is joined per file and printed under `FILE-LEVEL`, never guessed at symbol granularity; a
+report file no indexed file matches is named under `UNMATCHED`. `--profile` is optional when
+`--foreign` is given. `--json` carries both views under `foreign` (`by_symbol` and `by_file`, each
+row's `level` naming its granularity, plus `inputs` and `unmatched_files`) beside the Go view.
+`--diff` and `--mutation` narrow and score the Go `--profile` view only, so `--diff` is refused
+with `--foreign`.
 
 `tests select --since <ref>` leads with the certifying-first selection (T4: TQ-15w,
 TQ-16w, SR-50): the minimal set of tests that re-proves every LIVE certificate the diff
@@ -2995,7 +3048,8 @@ measured predicted catch-rate — never a fabricated one.
 
 | Flag (`tests coverage`) | Default | Description |
 |---|---|---|
-| `--profile` | (required, repeatable) | Go cover profile, as `[layer=]path`; a bare path defaults to layer `unit` |
+| `--profile` | (required unless `--foreign`; repeatable) | Go cover profile, as `[layer=]path`; a bare path defaults to layer `unit` |
+| `--foreign` | (none, repeatable) | non-Go coverage report as `<format>=<file>`, joined to symbols by line range where the language has them, else per file |
 | `--service` | resolved from cwd | Service ID |
 | `--store` | `<repo>/workspace/db/fathom.sqlite` | store path |
 | `--diff` | `""` | git ref: narrow to changed symbols with no covering test in any layer |
