@@ -28,7 +28,8 @@ func (b QueueBlock) Eligible() bool { return len(b.Blocked) == 0 && len(b.Replan
 // another queue item (LB-Q-<id>: cpp on c, scss/less on css) is also
 // satisfied when that item has a committed reading at L1 or better, even while
 // its own row stays open for a higher target or is deferred — unless it is
-// refused. level returns an item's committed level_met and whether a reading
+// refused (its row or its -rest sibling, RefusedItems), which also means
+// re-planning. level returns an item's committed level_met and whether a reading
 // exists. The same rule as `fathom plans next` (depSatisfied, needsReplan),
 // read from the authored checkboxes: this function recomputes no verdict.
 func QueueEligibility(q []QueueEntry, plan verify.Plan, level func(id string) (string, bool)) map[string]QueueBlock {
@@ -40,6 +41,7 @@ func QueueEligibility(q []QueueEntry, plan verify.Plan, level func(id string) (s
 	for _, e := range q {
 		queued[e.ID] = true
 	}
+	refusedItem := RefusedItems(q, plan) // row or -rest sibling refused (§14.2)
 	out := map[string]QueueBlock{}
 	for _, e := range q {
 		var b QueueBlock
@@ -53,6 +55,10 @@ func QueueEligibility(q []QueueEntry, plan verify.Plan, level func(id string) (s
 				continue
 			}
 			if id, isQ := strings.CutPrefix(d, "LB-Q-"); isQ && queued[id] {
+				if _, no := refusedItem[id]; no {
+					b.Replan = append(b.Replan, d)
+					continue
+				}
 				if l, ok := level(id); ok && slices.Contains(Levels, l) {
 					continue
 				}

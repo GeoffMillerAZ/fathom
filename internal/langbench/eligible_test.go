@@ -73,7 +73,9 @@ func TestQueueEligibilityDeferredIsNotDone(t *testing.T) {
 	 {"id":"p","plan_row":"LB-Q-p","kind":"language","target_level":"L4","engine":"tags","depends_on":["LB-F1"]},
 	 {"id":"r","plan_row":"LB-Q-r","kind":"language","target_level":"L4","engine":"tags","depends_on":["LB-F1"]},
 	 {"id":"d","plan_row":"LB-Q-d","kind":"language","target_level":"L2","engine":"tags","depends_on":["LB-Q-p"]},
-	 {"id":"e","plan_row":"LB-Q-e","kind":"language","target_level":"L2","engine":"tags","depends_on":["LB-Q-r","LB-F3"]}]`))
+	 {"id":"e","plan_row":"LB-Q-e","kind":"language","target_level":"L2","engine":"tags","depends_on":["LB-Q-r","LB-F3"]},
+	 {"id":"s","plan_row":"LB-Q-s","kind":"language","target_level":"L3","engine":"tags","depends_on":["LB-F1"]},
+	 {"id":"f","plan_row":"LB-Q-f","kind":"language","target_level":"L2","engine":"tags","depends_on":["LB-Q-s"]}]`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,8 +90,11 @@ func TestQueueEligibilityDeferredIsNotDone(t *testing.T) {
 - [-] r {id: LB-Q-r, disposition: refused, reason: "licence"}
 - [ ] d {id: LB-Q-d, oracle: lexical, path: x, pattern: y}
 - [ ] e {id: LB-Q-e, oracle: lexical, path: x, pattern: y}
+- [ ] s {id: LB-Q-s, oracle: lexical, path: x, pattern: y}
+- [-] s rest {id: LB-Q-s-rest, disposition: refused, reason: "parse errors"}
+- [ ] f {id: LB-Q-f, oracle: lexical, path: x, pattern: y}
 `))
-	levels := map[string]string{"p": "L1", "r": "L2"}
+	levels := map[string]string{"p": "L1", "r": "L2", "s": "L2"}
 	got := QueueEligibility(q, plan, func(id string) (string, bool) { l, ok := levels[id]; return l, ok })
 	want := map[string]QueueBlock{
 		"a": {Blocked: []string{"LB-F3"}},                             // deferred is not done
@@ -99,6 +104,8 @@ func TestQueueEligibilityDeferredIsNotDone(t *testing.T) {
 		"r": {},                                                       //
 		"d": {},                                                       // D6: p's reading is at L1
 		"e": {Blocked: []string{"LB-F3"}, Replan: []string{"LB-Q-r"}}, // a refused item's reading satisfies nothing
+		"s": {},
+		"f": {Replan: []string{"LB-Q-s"}}, // s's row is open but its -rest sibling is refused (§14.2)
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("QueueEligibility =\n%+v\nwant\n%+v", got, want)
