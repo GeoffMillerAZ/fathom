@@ -166,6 +166,7 @@
     "fathom:CargoWorkspace": 4
   },
   "notes": [
+    "integration critic 2026-09-29: like Maven's, the level holds for rust-lang/cargo's 27 workspace manifests only (-only), not for the repository: with its other 614 Cargo.toml (test-suite fixtures the tool does not build as members) in scope the same run reads sym_precision .0495, xref_precision .2403 and level_met none, so a fixture manifest is indexed but not attested (LB-Q-cargo-rest)",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
     "rust-lang/cargo: restricted to Cargo.toml, benches/*/Cargo.toml, crates/*/Cargo.toml, credential/*/Cargo.toml (-only; the files outside are a disclosed gap, not measured)"
   ],

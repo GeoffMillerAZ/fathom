@@ -119,14 +119,17 @@ TypeScript to L1, Java and SQL to L2, Bash from L1 to L2, and GitHub Actions and
 L3. Wave 2's seventeen items added C++ and PHP at L1; Dart, Rust, Kotlin, Lua, PowerShell and Ruby at
 L2; Docker Compose and Makefile at L2; and Cargo, Go modules, MSBuild, GitLab CI, Maven and Helm at L3.
 C++, PHP and Rust are measured dialects not yet dispatched (their CGO incumbents stay live), and Helm's
-dispatch stays on its incumbents (`LB-Q-helm-rest`); Maven's L3 holds for apache/maven's reactor POMs
-only.
+and Docker Compose's dispatch stays on their incumbents (`LB-Q-helm-rest`, `LB-Q-docker-compose-rest`);
+Maven's L3 holds for apache/maven's reactor POMs only, and Cargo's for rust-lang/cargo's workspace
+manifests only.
 
 The integration review's other adjudications left every level as the worker recorded it: Makefile's
 two ctags corrections are oracle-bug fixes (L1 excellent kept), Kotlin's PSI dump is tier B by D2's
 Roslyn precedent, Rust's shared SCIP rules are now scoped to rust-analyzer (no earlier reading moves),
 and Dart's engine and scip-dart changes move no other golden (each reading carries its one-line
-disposition).
+disposition). The critic pass kept Lua's luaparse dump at tier B, the one tier its reading flagged for
+review, with PowerShell's and PHP's parser dumps (ctags is verified deficient for all three; design
+§1.5 D2), so their L1 excellent grades stand.
 
 Tracker line: `Milestone M1 progress: languages at L1 excellent 11/20, at L2 9/12, at L3 0/8, at L4
 0/6; tool formats at target 10/15`.

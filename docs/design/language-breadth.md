@@ -175,6 +175,18 @@ owner's decisions, binding on the harness and every reading after them:
   Swift is refused (`LB-Q-swift-rest`): the dialect stays built, tested and measured, fusion does not
   dispatch it (`refusedDialects`), and the tracker, milestones and support matrix claim no level for it
   until a tree-sitter-swift commit parses both subjects under the line.*
+- **D2, PowerShell, PHP and Lua (LB-Q-powershell, LB-Q-php, LB-Q-lua; integration review,
+  2026-09-29).** universal-ctags is verified deficient for all three: it writes no end line for any
+  of their tags (`range_agreement` cannot be measured), and it tags no PowerShell class method,
+  constructor or property, has no PHP enum kind and names a PHP namespace by its full path, and
+  tags Lua text as a function by pattern (228 on the subjects). Each is measured against a parser's
+  syntax dump at tier B, like JavaParser, whose place in D2 is the precedent for an independent
+  parser library: PowerShell's own (`System.Management.Automation.Language.Parser`,
+  `calibration/oracles/powershell-ast`), nikic/php-parser 5.7.0 (`calibration/oracles/php-parser`)
+  and luaparse 0.3.1 (`calibration/oracles/luaparse`, which shares no code with tree-sitter). Lua's
+  definition scope (a function stored in a statically named slot) is the dialect author's rule,
+  stated in the oracle's README; ctags, reading by pattern, agrees on 4,191 of the dialect's 4,265
+  definitions, so the rule is not the dialect's alone.
 
 - **D3 — oracle-deficiency disclosure.** A reading may carry an adjudicated set of
   dialect-only definitions the L1 oracle is verified to miss (`lang-oracle -adjudicate
