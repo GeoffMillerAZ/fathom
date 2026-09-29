@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"testing"
-	"time"
 )
 
 // TestFakeMCPServer is not a real test: it is re-executed as a subprocess
@@ -106,7 +105,7 @@ func TestProbeReferencesViaMCP_SerenaJSON(t *testing.T) {
 	cfg := helperMCPConfig(t, "find_referencing_symbols",
 		`{"pkg/caller.go":{"Function":[{"name_path":"Caller","body_location":{"start_line":10,"end_line":20},"content_around_reference":"...  11:\tx := 1\n  >  12:\ty := Target(x)\n...  13:\treturn y"}]}}`)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), waitSafety)
 	defer cancel()
 
 	set, err := ProbeReferencesViaMCP(ctx, cfg, "find_referencing_symbols", []TruthSymbol{
@@ -125,7 +124,7 @@ func TestProbeReferencesViaMCP_GoplsProse(t *testing.T) {
 	cfg := helperMCPConfig(t, "go_symbol_references",
 		"Found 1 reference. Located in the file: pkg/caller.go, the symbol is located on line 42.")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), waitSafety)
 	defer cancel()
 
 	set, err := ProbeReferencesViaMCP(ctx, cfg, "go_symbol_references", []TruthSymbol{
@@ -145,7 +144,7 @@ func TestProbeReferencesViaMCP_MultipleSymbolsAndSites(t *testing.T) {
 		"Located in the file: a.go, the symbol is located on line 1. "+
 			"Located in the file: b.go, the symbol is located on line 2.")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), waitSafety)
 	defer cancel()
 
 	set, err := ProbeReferencesViaMCP(ctx, cfg, "go_symbol_references", []TruthSymbol{
@@ -162,7 +161,7 @@ func TestProbeReferencesViaMCP_MultipleSymbolsAndSites(t *testing.T) {
 
 func TestProbeReferencesViaMCP_UnknownToolRefuses(t *testing.T) {
 	cfg := helperMCPConfig(t, "some_tool", "irrelevant")
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), waitSafety)
 	defer cancel()
 
 	if _, err := ProbeReferencesViaMCP(ctx, cfg, "no_such_tool", []TruthSymbol{{Name: "X", File: "x.go"}}); err == nil {

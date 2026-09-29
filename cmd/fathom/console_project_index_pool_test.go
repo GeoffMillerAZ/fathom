@@ -42,7 +42,7 @@ func TestProjectIndexRunsInTheJobPool(t *testing.T) {
 			if d.facts.Service != "proof-service" {
 				t.Errorf("index = %+v", d.facts)
 			}
-		case <-time.After(5 * time.Second):
+		case <-time.After(waitSafety):
 			t.Fatal("the index read never finished")
 		}
 	}
@@ -96,7 +96,7 @@ func TestProjectIndexWaitHonoursTheRequest(t *testing.T) {
 		if d.facts.InventoryErr == "" {
 			t.Errorf("an abandoned wait = %+v; want the unfinished read named", d.facts)
 		}
-	case <-time.After(3 * time.Second):
+	case <-time.After(waitSafety):
 		close(release)
 		t.Fatal("the request's context ended and projectIndexFor is still blocked on the pool")
 	}
@@ -110,7 +110,7 @@ func TestProjectIndexWaitHonoursTheRequest(t *testing.T) {
 		if d.facts.Service != "proof-service" || d.facts.InventoryErr != "" {
 			t.Fatalf("the next request = %+v; want the read's own facts", d.facts)
 		}
-	case <-time.After(5 * time.Second):
+	case <-time.After(waitSafety):
 		t.Fatal("the read never finished")
 	}
 }

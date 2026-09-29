@@ -368,7 +368,7 @@ func TestDisconnectStopsTheHandler(t *testing.T) {
 	ctx, leave := context.WithCancel(context.Background())
 	done := make(chan rpcResp, 1)
 	go func() { done <- r.call(t, ctx, "zz_slow", nil) }()
-	deadline := time.Now().Add(2 * time.Second)
+	deadline := time.Now().Add(waitSafety)
 	for len(r.reg.Snapshot()) == 0 {
 		if time.Now().After(deadline) {
 			t.Fatal("zz_slow never started")
@@ -381,7 +381,7 @@ func TestDisconnectStopsTheHandler(t *testing.T) {
 		if got.Error == nil || got.Error.Data["outcome"] != "abandoned" {
 			t.Fatalf("mid-call disconnect: %+v", got)
 		}
-	case <-time.After(2 * time.Second):
+	case <-time.After(waitSafety):
 		t.Fatal("the handler kept running after its caller left")
 	}
 	if n := len(r.reg.Snapshot()); n != 0 {

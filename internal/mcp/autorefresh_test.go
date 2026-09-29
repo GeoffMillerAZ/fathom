@@ -95,7 +95,7 @@ func startTestQueue(t testing.TB, q *refresh.Queue) {
 // ensure never waits for one; a test that counts ingests waits here).
 func settle(t testing.TB, ar *autoRefreshBackend) {
 	t.Helper()
-	deadline := time.Now().Add(5 * time.Second)
+	deadline := time.Now().Add(waitSafety)
 	for {
 		ar.mu.Lock()
 		n := len(ar.pending)

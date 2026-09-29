@@ -473,7 +473,7 @@ func TestPrepareSubject_RefusesResetWithLiveSessionInWorktree(t *testing.T) {
 	go func() { _, err := stray.Process.Wait(); waited <- err }()
 	select {
 	case <-waited:
-	case <-time.After(5 * time.Second):
+	case <-time.After(waitSafety):
 		t.Fatal("stray session did not die")
 	}
 	wt2, err := PrepareSubject(context.Background(), task, arm, root)

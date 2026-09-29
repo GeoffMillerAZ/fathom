@@ -439,11 +439,11 @@ func fakeSlowResolverDaemon(t *testing.T) *httptest.Server {
 			env := map[string]any{"result": map[string]any{"content": []map[string]any{{"type": "text", "text": inner}}}}
 			_ = json.NewEncoder(w).Encode(env)
 		case "symbol_context":
-			// Slower than subagentDiscoveriesDeadline (the fixture's whole
-			// point) but short enough that the test — and the httptest
-			// server's own Close() waiting out this handler afterward —
-			// stays fast; the assertions run well before this returns.
-			time.Sleep(subagentDiscoveriesDeadline + 3*time.Second)
+			// Never answers on its own (the fixture's whole point): it holds
+			// until the client gives up, so a caller that returned did so
+			// at its own deadline, and the server's Close() is not kept
+			// waiting on this handler once the client has left.
+			<-r.Context().Done()
 		default:
 			http.Error(w, "unknown tool", 400)
 		}
@@ -468,13 +468,10 @@ func TestSubagentDiscoveries_ReturnsWithinDeadlineWhenIndexIsSlow(t *testing.T) 
 	})
 	srv := fakeSlowResolverDaemon(t)
 
-	start := time.Now()
-	got := subagentDiscoveries(srv.URL, root, "fathom", "parent-1", now)
-	elapsed := time.Since(start)
-
-	if elapsed > subagentDiscoveriesDeadline+2*time.Second {
-		t.Fatalf("subagentDiscoveries took %v with a slow index, want it bounded near its %v deadline", elapsed, subagentDiscoveriesDeadline)
-	}
+	var got string
+	returnsUnaided(t, "subagentDiscoveries against an index that never answers", func() {
+		got = subagentDiscoveries(srv.URL, root, "fathom", "parent-1", now)
+	})
 	if got != "" {
 		t.Errorf("subagentDiscoveries past its deadline = %q, want \"\" so the constant primer ships alone", got)
 	}
@@ -502,13 +499,10 @@ func TestSubagentPrimer_ShipsAloneWithIdentityIntactWhenDiscoveriesIndexIsSlow(t
 	})
 	srv := fakeSlowResolverDaemon(t)
 
-	start := time.Now()
-	primer := subagentPrimer(srv.URL, root, "parent-1")
-	elapsed := time.Since(start)
-
-	if elapsed > subagentDiscoveriesDeadline+3*time.Second {
-		t.Fatalf("subagentPrimer took %v with a slow discoveries index, want it bounded near the %v discoveries deadline", elapsed, subagentDiscoveriesDeadline)
-	}
+	var primer string
+	returnsUnaided(t, "subagentPrimer against a discoveries index that never answers", func() {
+		primer = subagentPrimer(srv.URL, root, "parent-1")
+	})
 	if !strings.Contains(primer, `indexed service "fathom"`) {
 		t.Errorf("subagentPrimer with a slow discoveries index = %q, want the identity line intact", primer)
 	}

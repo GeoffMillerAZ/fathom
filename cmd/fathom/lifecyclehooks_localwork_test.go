@@ -57,13 +57,13 @@ func TestSessionEndFactsStopAtTheHookDeadline(t *testing.T) {
 // that counts arrivals and releases when the fourth has started; a
 // sequential chain never gets the second one started, so the count stalls at
 // one. The barrier waits on that count with a large safety bound (a hang
-// guard, barrierSafety), never a two-second timer a loaded machine can miss
+// guard, waitSafety), never a two-second timer a loaded machine can miss
 // while its goroutines are merely slow to start.
 func TestSessionEndFactsBarrierCountsProgress(t *testing.T) {
 	repo := hookRepo(t)
 	const reads = 4
 
-	barrier := newProgressBarrier(reads, barrierSafety)
+	barrier := newProgressBarrier(reads, waitSafety)
 	stubSessionFactsGit(t, func(prev func(string, ...string) string, root string, args ...string) string {
 		barrier.Arrive()
 		return prev(root, args...)

@@ -544,13 +544,13 @@ func TestLayerCoveragePathsLeaderHonoursCancel(t *testing.T) {
 	cancel()
 	select {
 	case <-done:
-	case <-time.After(2 * time.Second):
+	case <-time.After(waitSafety):
 		close(g.release)
 		t.Fatal("the leading caller kept waiting on the corpus walk after its context was cancelled")
 	}
 	close(g.release)
 	// The detached walk completes and is memoized: the next call walks nothing.
-	deadline := time.Now().Add(2 * time.Second)
+	deadline := time.Now().Add(waitSafety)
 	for {
 		if _, _, err := c.ObligationsLayerCoverage(context.Background(), "svc"); err != nil {
 			t.Fatal(err)
@@ -638,7 +638,7 @@ func TestObligationsHotPathReaderAgnosticTripwire(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-	case <-time.After(5 * time.Second):
+	case <-time.After(waitSafety):
 		// Unblock the stuck reader so the test binary can exit.
 		if f, err := os.OpenFile(filepath.Join(dir, "internal", "a", "tripwire.go"), os.O_WRONLY, 0); err == nil {
 			f.Close()

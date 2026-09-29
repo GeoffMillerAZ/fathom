@@ -17,7 +17,6 @@ import (
 	"regexp"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/console"
 )
@@ -128,7 +127,7 @@ func TestConsoleLive_PanelsCarrySourcesAndMarkWithoutMoving(t *testing.T) {
 	if _, err := f.deps.bus.Publish(console.Event{Kind: console.EventVerify, Service: "payment-service", Name: "plan.md", Ref: "pass"}); err != nil {
 		t.Fatal(err)
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), waitSafety)
 	defer cancel()
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, f.ts.URL+"/events", nil)
 	req.Header.Set("Last-Event-ID", cursor)

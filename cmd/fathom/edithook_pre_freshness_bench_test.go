@@ -4,7 +4,10 @@ package main
 // ADR-041 decisions 3/4): the whole pre-edit path, including a REAL
 // per-file refresh (real fusion extraction over a real store — never a
 // canned response), must stay well under the hook's own <=2s budget; the
-// design's own target for this specific addition is p50 < 150ms. Skipped
+// design's own target for this specific addition is p50 < 150ms, read as CPU
+// time (what the path costs however long a busy machine kept it waiting for
+// a core, EW-7; where the platform has no CPU reading the bound is skipped
+// and the numbers are only logged). Skipped
 // under -short (a synthetic-file benchmark run 20 times is not free on a
 // slow CI runner); the measured number is always logged via t.Log so a
 // -short run still shows intent even when it skips the assertion.
@@ -124,6 +127,7 @@ func TestEditHookPre_FreshnessRefresh_P50Under150ms(t *testing.T) {
 
 	const runs = 20
 	durations := make([]time.Duration, 0, runs)
+	cpuOK := true
 	for i := 0; i < runs; i++ {
 		// Force a real, DIFFERENT-from-stored hash every run, so every
 		// iteration takes the genuine stale -> refresh -> re-answer path
@@ -136,9 +140,11 @@ func TestEditHookPre_FreshnessRefresh_P50Under150ms(t *testing.T) {
 		hookStdin(t, hookInput)
 
 		var out, errBuf bytes.Buffer
-		start := time.Now()
+		cpu0, ok := processCPUTime()
 		code := runWithStdin([]string{"edit-hook", "--pre", "--url=" + srv.URL}, nil, &out, &errBuf)
-		elapsed := time.Since(start)
+		cpu1, _ := processCPUTime()
+		cpuOK = cpuOK && ok
+		elapsed := cpu1 - cpu0
 		if code != 0 {
 			t.Fatalf("run %d: exit = %d, stderr=%s", i, code, errBuf.String())
 		}
@@ -150,8 +156,12 @@ func TestEditHookPre_FreshnessRefresh_P50Under150ms(t *testing.T) {
 
 	sort.Slice(durations, func(i, j int) bool { return durations[i] < durations[j] })
 	p50 := durations[len(durations)/2]
-	t.Logf("pre-edit + real per-file refresh, %d runs: p50=%s min=%s max=%s", runs, p50, durations[0], durations[len(durations)-1])
+	t.Logf("pre-edit + real per-file refresh, %d runs: p50=%s min=%s max=%s (CPU time)", runs, p50, durations[0], durations[len(durations)-1])
+	if !cpuOK {
+		t.Log("no CPU reading on this platform: the p50 bound is skipped")
+		return
+	}
 	if p50 > 150*time.Millisecond {
-		t.Errorf("p50 = %s, want <= 150ms", p50)
+		t.Errorf("p50 = %s of CPU, want <= 150ms", p50)
 	}
 }

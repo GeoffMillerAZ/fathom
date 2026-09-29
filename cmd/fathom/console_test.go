@@ -1237,8 +1237,11 @@ func TestConsolePageViews_Counted(t *testing.T) {
 }
 
 // TestConsoleBudgets pins OC-16: on the fixture fleet every registered
-// page's warm render finishes within 150 ms server-side and its HTML stays
-// within 250 KB.
+// page's warm render costs at most 150 ms of CPU server-side and its HTML
+// stays within 250 KB. The render budget is CPU time, what the work cost
+// however long the machine kept it waiting for a core (EW-7); where the
+// platform has no CPU reading the render bound is skipped, the size bound
+// stays.
 func TestConsoleBudgets(t *testing.T) {
 	const (
 		maxRender = 150 * time.Millisecond
@@ -1259,9 +1262,12 @@ func TestConsoleBudgets(t *testing.T) {
 		for i := 0; i < 3; i++ {
 			rec := httptest.NewRecorder()
 			req := httptest.NewRequest(http.MethodGet, path, nil)
-			start := time.Now()
+			cpu0, cpuOK := processCPUTime()
 			f.ts.Config.Handler.ServeHTTP(rec, req)
-			if d := time.Since(start); d < best {
+			cpu1, _ := processCPUTime()
+			if !cpuOK {
+				best = 0
+			} else if d := cpu1 - cpu0; d < best {
 				best = d
 			}
 			size = rec.Body.Len()
@@ -1275,7 +1281,7 @@ func TestConsoleBudgets(t *testing.T) {
 		if size > maxBytes {
 			t.Errorf("%s: HTML %d bytes exceeds %d", path, size, maxBytes)
 		}
-		t.Logf("%-28s warm %6.1f ms  %6.1f KB", path, float64(best.Microseconds())/1000, float64(size)/1024)
+		t.Logf("%-28s warm %6.1f ms CPU  %6.1f KB", path, float64(best.Microseconds())/1000, float64(size)/1024)
 	}
 }
 

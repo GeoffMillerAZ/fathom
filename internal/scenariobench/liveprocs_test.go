@@ -49,7 +49,7 @@ func TestKillAllLiveProcessGroups(t *testing.T) {
 	go func() { _, err := stand.Process.Wait(); waited <- err }()
 	select {
 	case <-waited:
-	case <-time.After(5 * time.Second):
+	case <-time.After(waitSafety):
 		t.Fatalf("sleep stand-in pid %d is still alive after KillAllLiveProcessGroups", pgid)
 	}
 

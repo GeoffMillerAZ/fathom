@@ -318,7 +318,7 @@ func TestTranscriptSummaryFrom_NonRegularFile_Refused(t *testing.T) {
 		if ts.TurnCount != nil {
 			t.Fatal("expected a FIFO to be refused as non-regular, not read")
 		}
-	case <-time.After(3 * time.Second):
+	case <-time.After(waitSafety):
 		t.Fatal("transcriptSummaryFrom hung reading a FIFO — the IsRegular guard did not fire")
 	}
 }

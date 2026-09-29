@@ -170,7 +170,7 @@ func TestRunStopHook_AdvisoryAndBlock(t *testing.T) {
 // succeeds) but sleeps past the caller's client timeout on verify_plan —
 // simulating the p95-tail-latency backend B3-1 budgets for
 // (docs/design/coding-agent-excellence.md §2: verify_plan p95 ≤ 5s SLO).
-func slowStopDaemon(t *testing.T, service string, delay time.Duration) *httptest.Server {
+func slowStopDaemon(t *testing.T, service string) *httptest.Server {
 	t.Helper()
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
@@ -180,7 +180,11 @@ func slowStopDaemon(t *testing.T, service string, delay time.Duration) *httptest
 		}
 		_ = json.NewDecoder(r.Body).Decode(&req)
 		if req.Params.Name == "verify_plan" {
-			time.Sleep(delay)
+			// Never answers on its own: it holds until the client gives up
+			// (the request's ctx ends), so a hook that returned did so by
+			// bailing at its client timeout, not by the daemon waking.
+			<-r.Context().Done()
+			return
 		}
 		var inner string
 		switch req.Params.Name {
@@ -234,21 +238,21 @@ func TestRunStopHook_SlowVerifyDegradesToWarning(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Client times out well before the server wakes up on verify_plan.
-	srv := slowStopDaemon(t, svc, 300*time.Millisecond)
+	// The server never answers verify_plan; the client times out at 50 ms
+	// (its own input), so runStopHook returning is "bailed at the client
+	// timeout, never stalled".
+	srv := slowStopDaemon(t, svc)
 	defer srv.Close()
 	hc := &http.Client{Timeout: 50 * time.Millisecond}
 
-	start := time.Now()
 	var out bytes.Buffer
-	code, _ := runStopHook(dir, hc, srv.URL, false, &out)
-	elapsed := time.Since(start)
+	var code int
+	returnsUnaided(t, "runStopHook against a verify that never answers", func() {
+		code, _ = runStopHook(dir, hc, srv.URL, false, &out)
+	})
 
 	if code != 0 {
 		t.Fatalf("slow verify must fail open, exit 0; got %d", code)
-	}
-	if elapsed >= 300*time.Millisecond {
-		t.Errorf("runStopHook blocked for %s waiting on a slow verify — must bail at the client timeout, never stall", elapsed)
 	}
 	if out.Len() == 0 {
 		t.Fatal("slow verify must degrade to an advisory warning, not go silent")

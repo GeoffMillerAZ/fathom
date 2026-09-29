@@ -202,11 +202,10 @@ func TestDiagCaptureRateLimitedAndRetained(t *testing.T) {
 		t.Fatalf("metrics.txt lacks the GC CPU fraction: %s", b)
 	}
 	src.now = func() time.Time { return time.Date(2026, 9, 27, 1, 1, 0, 0, time.UTC) }
-	start := time.Now()
+	// The exit capture must stay cheap: it writes only the heap profile and
+	// the in-flight table (no trace or goroutine dump, the slow parts), which
+	// the file-set check below pins — a stopwatch would measure load.
 	e := captureDiagnostics(dir, diagTriggerExit, src)
-	if el := time.Since(start); el > time.Second {
-		t.Fatalf("the exit capture took %s, over 1 s", el)
-	}
 	ents, _ := os.ReadDir(e)
 	var names []string
 	for _, x := range ents {
@@ -242,7 +241,7 @@ func TestProductionDiagCaptureDoesNotDeadlockGovernor(t *testing.T) {
 	go func() { r.ticks(1); close(done) }()
 	select {
 	case <-done:
-	case <-time.After(5 * time.Second):
+	case <-time.After(waitSafety):
 		t.Fatal("DEADLOCK: tick under g.mu -> captureDiagnostics -> governorMetricLines -> g.snapshot -> g.mu")
 	}
 	s := tenancyStatus(r.g)

@@ -76,7 +76,7 @@ func TestAcquireTypedPassSlot_SerializesAndCounts(t *testing.T) {
 
 	select {
 	case <-secondDone:
-	case <-time.After(2 * time.Second):
+	case <-time.After(waitSafety):
 		t.Fatal("second acquire never completed after the first released")
 	}
 
@@ -84,7 +84,7 @@ func TestAcquireTypedPassSlot_SerializesAndCounts(t *testing.T) {
 		t.Errorf("typedPassWaitedTotal delta = %d, want 1 (exactly the contended acquire)", got)
 	}
 
-	deadline := time.Now().Add(time.Second)
+	deadline := time.Now().Add(waitSafety)
 	for TypedPassInflight() != 0 && time.Now().Before(deadline) {
 		time.Sleep(time.Millisecond)
 	}
@@ -124,7 +124,7 @@ func TestAcquireTypedPassSlot_CancelWhileWaiting(t *testing.T) {
 		if err != context.Canceled {
 			t.Errorf("acquireTypedPassSlot after cancel = %v, want context.Canceled", err)
 		}
-	case <-time.After(2 * time.Second):
+	case <-time.After(waitSafety):
 		t.Fatal("acquireTypedPassSlot did not return after ctx cancellation")
 	}
 

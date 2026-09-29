@@ -57,7 +57,7 @@ func TestJobs_BoundedSingleFlightDropsSuperseded(t *testing.T) {
 	}
 	select {
 	case <-c1.Done():
-	case <-time.After(2 * time.Second):
+	case <-time.After(waitSafety):
 		t.Fatal("a superseded queued job must finish (dropped) at once")
 	}
 	if !c1.Dropped() || c2.Dropped() {
@@ -81,7 +81,7 @@ func TestJobs_BoundedSingleFlightDropsSuperseded(t *testing.T) {
 	for _, job := range []*Job{a, b, c2, d} {
 		select {
 		case <-job.Done():
-		case <-time.After(5 * time.Second):
+		case <-time.After(waitSafety):
 			t.Fatalf("job %s never finished", job.Key)
 		}
 	}
@@ -114,7 +114,7 @@ func TestJobs_BoundedSingleFlightDropsSuperseded(t *testing.T) {
 
 func waitFor(t *testing.T, cond func() bool) {
 	t.Helper()
-	deadline := time.Now().Add(5 * time.Second)
+	deadline := time.Now().Add(waitSafety)
 	for !cond() {
 		if time.Now().After(deadline) {
 			t.Fatal("condition not reached")

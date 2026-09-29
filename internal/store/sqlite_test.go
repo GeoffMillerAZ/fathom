@@ -990,8 +990,8 @@ func TestSQLite_ReaderDuringWriter(t *testing.T) {
 		if err != nil {
 			t.Fatalf("reader query while writer transaction open: %v", err)
 		}
-	case <-time.After(5 * time.Second):
-		t.Fatal("reader blocked for 5s behind an open (uncommitted) writer transaction — WAL concurrent-read semantics did not hold")
+	case <-time.After(waitSafety):
+		t.Fatal("reader blocked behind an open (uncommitted) writer transaction — WAL concurrent-read semantics did not hold")
 	}
 
 	// Clean up: roll back the writer's uncommitted transaction.

@@ -9,11 +9,6 @@ import (
 	"time"
 )
 
-// barrierSafety is the bound a progressBarrier waits for its count before it
-// gives up: a hang guard sized for a machine that is starved for a minute,
-// never a latency the code under test is held to (EW-2, EW-7).
-const barrierSafety = time.Minute
-
 // progressBarrier holds each of want arrivals until all of them have
 // arrived, so a test proves "these run together" from a count of progress,
 // not from a timer racing the scheduler. Only if the count never completes
@@ -73,7 +68,7 @@ func (b *progressBarrier) Describe() string {
 // safety bound plays no part however late the last one is.
 func TestProgressBarrierReleasesOnTheCountNotATimer(t *testing.T) {
 	const want = 4
-	b := newProgressBarrier(want, barrierSafety)
+	b := newProgressBarrier(want, waitSafety)
 	released := make(chan bool, want)
 	var wg sync.WaitGroup
 	for i := 0; i < want; i++ {

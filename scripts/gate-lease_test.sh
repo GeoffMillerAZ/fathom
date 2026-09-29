@@ -53,20 +53,38 @@ rc=$?
 set -e
 [ "$rc" -eq 7 ] || fail "exit status: got $rc, want 7"
 
-# A killed holder releases the lease (the kernel drops the flock).
+# A killed holder releases the lease (the kernel drops the flock). The killed
+# holder's orphaned stub sleeps for an hour (it records its pid and execs
+# sleep, so it is one process the test can kill), so a lease that were still
+# held would leave the next holder waiting for good: the next holder finishing
+# at all is "released at once", and the poll below is only a hang guard (600
+# polls of 0.1 s), never a latency the lease is held to (EW-7).
 hold="${scratch}/hold.sh"
-printf '#!/usr/bin/env bash\nsleep 30\n' >"$hold"
+hold_pid="${scratch}/hold.pid"
+printf '#!/usr/bin/env bash\necho $$ >"$1"\nexec sleep 3600\n' >"$hold"
 chmod +x "$hold"
-bash "${SCRIPT_DIR}/gate-lease.sh" "$hold" &
+trap 'kill "$(cat "$hold_pid" 2>/dev/null)" 2>/dev/null || true; rm -rf "$scratch"' EXIT
+bash "${SCRIPT_DIR}/gate-lease.sh" "$hold" "$hold_pid" &
 pk=$!
-sleep 0.3
+for _ in $(seq 1 100); do
+  [ -s "$hold_pid" ] && break
+  sleep 0.05
+done
+[ -s "$hold_pid" ] || fail "the holder never started"
 kill -9 "$pk" 2>/dev/null || true
 wait "$pk" 2>/dev/null || true
-start=$(date +%s)
-bash "${SCRIPT_DIR}/gate-lease.sh" true || fail "the lease after a killed holder"
-# The orphaned stub keeps no lock: the next holder got it at once.
-[ $(( $(date +%s) - start )) -lt 5 ] || fail "a killed holder's lease was not released"
-pkill -f "$hold" 2>/dev/null || true
+bash "${SCRIPT_DIR}/gate-lease.sh" true &
+pn=$!
+for _ in $(seq 1 600); do
+  kill -0 "$pn" 2>/dev/null || break
+  sleep 0.1
+done
+if kill -0 "$pn" 2>/dev/null; then
+  kill "$pn" 2>/dev/null || true
+  fail "a killed holder's lease was not released"
+fi
+wait "$pn" || fail "the lease after a killed holder"
+kill "$(cat "$hold_pid")" 2>/dev/null || true
 
 # The default priority is nice 10, never macOS background QoS (which ran
 # the gate ~3x slower and timed cmd/fathom out).

@@ -67,14 +67,15 @@ func TestSourcesSlotHooksNeverWait(t *testing.T) {
 	<-conn.entered
 	<-conn.entered
 
-	// A hook never waits: an immediate, named skip.
-	start := time.Now()
-	_, err := c.Sources(client.WithHookOrigin(ctx), "svc")
+	// A hook never waits: an immediate, named skip. Both slots stay held
+	// (the holders' gate closes only at the end), so a call that queued for
+	// one could never return.
+	var err error
+	returnsUnaided(t, "a hook-origin Sources with both slots held", func() {
+		_, err = c.Sources(client.WithHookOrigin(ctx), "svc")
+	})
 	if !errors.Is(err, client.ErrSourcesBusy) {
 		t.Fatalf("hook-origin Sources with both slots held = %v, want ErrSourcesBusy", err)
-	}
-	if d := time.Since(start); d > 100*time.Millisecond {
-		t.Fatalf("a hook-origin caller waited %v for a slot", d)
 	}
 	if want := "coverage skipped: whole-tree read in progress"; err.Error() != want {
 		t.Fatalf("skip text = %q, want %q", err.Error(), want)
@@ -183,7 +184,10 @@ func TestSourcesScopeHoldsSlotUntilDone(t *testing.T) {
 		t.Fatalf("hook Sources while two scopes hold their slots = %v, want ErrSourcesBusy", err)
 	}
 	// Re-entrant: the same scope reads again without waiting.
-	short, cancel := context.WithTimeout(s1, 200*time.Millisecond)
+	// Both slots are held by the two scopes, so a call that queued for one
+	// could not be served: the scope's own slot is reused or the ctx bound
+	// (a hang guard, waitSafety) ends the wait with an error.
+	short, cancel := context.WithTimeout(s1, waitSafety)
 	defer cancel()
 	if _, err := c.Sources(short, "svc"); err != nil {
 		t.Fatalf("second Sources in the same scope = %v, want it to reuse the held slot", err)
@@ -222,7 +226,7 @@ func TestSourcesScopeAbandonEndsWait(t *testing.T) {
 		if !errors.Is(err, context.Canceled) {
 			t.Fatalf("abandoned waiter err = %v, want context.Canceled", err)
 		}
-	case <-time.After(2 * time.Second):
+	case <-time.After(waitSafety):
 		t.Fatal("an abandoned request kept waiting for a whole-tree slot")
 	}
 }
@@ -266,7 +270,7 @@ func TestScanSourcesAbandonStopsWalk(t *testing.T) {
 		if !errors.Is(err, context.Canceled) {
 			t.Fatalf("abandoned scan err = %v, want context.Canceled", err)
 		}
-	case <-time.After(2 * time.Second):
+	case <-time.After(waitSafety):
 		t.Fatal("an abandoned ScanSources kept walking the tree")
 	}
 }

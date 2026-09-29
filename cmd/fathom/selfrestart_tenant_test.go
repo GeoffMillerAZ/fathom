@@ -107,7 +107,7 @@ func TestWatchOwnBinaryHashesOnlyOnStatChange(t *testing.T) {
 		replaceBinary(t, bin, "fathom v0.1.0 @ bbbbbbbbbbbbbbbb")
 		select {
 		case <-done:
-		case <-time.After(5 * time.Second):
+		case <-time.After(waitSafety):
 			t.Fatalf("never adopted; log:\n%s", out.String())
 		}
 		if got := exited.Load(); got != int32(adoptionExitCode()) {
@@ -153,7 +153,7 @@ func TestWatchOwnBinaryHashesOnlyOnStatChange(t *testing.T) {
 		fakeBinary(t, bin, "fathom v0.1.0 @ bbbbbbbbbbbbbbbb", 0)
 		select {
 		case <-done:
-		case <-time.After(5 * time.Second):
+		case <-time.After(waitSafety):
 			t.Fatalf("never adopted; log:\n%s", out.String())
 		}
 		if got := exited.Load(); got != int32(adoptionExitCode()) {
@@ -203,7 +203,7 @@ func TestWatchOwnBinaryHashesOnlyOnStatChange(t *testing.T) {
 		clock.Store(now.Add(5 * time.Minute).UnixNano())
 		select {
 		case <-done:
-		case <-time.After(5 * time.Second):
+		case <-time.After(waitSafety):
 			t.Fatalf("never adopted after the cooldown; log:\n%s", out.String())
 		}
 		last, ok, err := lastAdoption(ledger)
@@ -298,7 +298,7 @@ func TestWatchOwnBinaryRetriesAFailedHash(t *testing.T) {
 	fakeBinary(t, bin, "fathom v0.1.0 @ bbbbbbbbbbbbbbbb", 0)
 	select {
 	case <-done:
-	case <-time.After(5 * time.Second):
+	case <-time.After(waitSafety):
 		t.Fatalf("a transient hash failure stranded the deploy (hashes=%d); log:\n%s", calls.Load(), out.String())
 	}
 	if !strings.Contains(out.String(), "read interrupted") {
@@ -336,7 +336,7 @@ func TestWatchOwnBinaryReverifiesAfterATransientRefusal(t *testing.T) {
 	}
 	select {
 	case <-done:
-	case <-time.After(5 * time.Second):
+	case <-time.After(waitSafety):
 		t.Fatalf("a good binary refused once was never re-verified; log:\n%s", out.String())
 	}
 	if got := exited.Load(); got != int32(adoptionExitCode()) {
@@ -381,6 +381,18 @@ func TestWatchOwnBinaryUnreadableLedgerFallsBackToUptime(t *testing.T) {
 	time.Sleep(20 * time.Millisecond)
 	fakeBinary(t, bin, "fathom v0.1.0 @ bbbbbbbbbbbbbbbb", 0)
 	clock.Store(start.Add(time.Minute).UnixNano())
+	// Progress first: wait until the watcher has either adopted or named the
+	// unreadable ledger, so the checks below do not race its first poll on a
+	// loaded machine. The window after it is a negative wait (nothing may
+	// happen), which can only under-detect, never fail a correct watcher.
+	waitUntil(t, func() bool {
+		select {
+		case <-done:
+			return true
+		default:
+		}
+		return strings.Contains(out.String(), "cannot read the lifecycle ledger")
+	})
 	select {
 	case <-done:
 		t.Fatalf("adopted with an unreadable ledger 1 min into this process; the cooldown is unknown:\n%s", out.String())
@@ -392,7 +404,7 @@ func TestWatchOwnBinaryUnreadableLedgerFallsBackToUptime(t *testing.T) {
 	clock.Store(start.Add(5 * time.Minute).UnixNano())
 	select {
 	case <-done:
-	case <-time.After(5 * time.Second):
+	case <-time.After(waitSafety):
 		t.Fatalf("never adopted once this process had run a full cooldown; log:\n%s", out.String())
 	}
 }
@@ -481,7 +493,7 @@ func replaceBinary(t *testing.T, path, prints string) {
 // watcher goroutine's first polls on a loaded machine.
 func waitHashes(t *testing.T, hashes *atomic.Int32, n int32) {
 	t.Helper()
-	deadline := time.Now().Add(10 * time.Second)
+	deadline := time.Now().Add(waitSafety)
 	for hashes.Load() < n {
 		if time.Now().After(deadline) {
 			t.Fatalf("watcher hashed %d times in 10s, want at least %d", hashes.Load(), n)

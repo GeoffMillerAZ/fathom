@@ -47,7 +47,7 @@ func TestReapStaleScratchDaemon(t *testing.T) {
 	go func() { _, err := stray.Process.Wait(); waited <- err }()
 	select {
 	case <-waited:
-	case <-time.After(5 * time.Second):
+	case <-time.After(waitSafety):
 		t.Fatalf("stray daemon pid %d is still alive after the reap", stray.Process.Pid)
 	}
 

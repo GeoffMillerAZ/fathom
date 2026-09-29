@@ -112,7 +112,7 @@ func TestCitedTextResolverStatsBeforeReading(t *testing.T) {
 		if got[2] != "- [ ] x {id: A-1, package: pkg}" {
 			t.Errorf("regular citation = %q", got[2])
 		}
-	case <-time.After(3 * time.Second):
+	case <-time.After(waitSafety):
 		t.Fatal("citedTextResolver blocked reading a FIFO: it reads before it stats")
 	}
 }

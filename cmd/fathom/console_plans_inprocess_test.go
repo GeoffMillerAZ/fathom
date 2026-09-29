@@ -106,10 +106,15 @@ func TestConsolePlansVerifyInProcessNoRequeue(t *testing.T) {
 	consolePlanVerifyDeadline = 100 * time.Millisecond
 	t.Cleanup(func() { consolePlanVerifyDeadline = prevDeadline })
 	raw, _ := os.ReadFile(planPath)
-	start := time.Now()
-	_, err := verifyPlanInProcess(deps, "proof-service", raw, parsePlanForVerify("proof-service", root, planPath, raw))
-	if err == nil || !strings.Contains(err.Error(), "deadline") || time.Since(start) > 5*time.Second {
-		t.Errorf("a hung verify_plan = %v after %s; want the deadline named", err, time.Since(start))
+	// The rpc never answers on its own (it holds until its ctx ends), so
+	// verifyPlanInProcess returning is the 100 ms deadline cutting it off;
+	// the deadline is the input.
+	var err error
+	returnsUnaided(t, "verifyPlanInProcess over an rpc that never answers", func() {
+		_, err = verifyPlanInProcess(deps, "proof-service", raw, parsePlanForVerify("proof-service", root, planPath, raw))
+	})
+	if err == nil || !strings.Contains(err.Error(), "deadline") {
+		t.Errorf("a hung verify_plan = %v; want the deadline named", err)
 	}
 }
 
@@ -142,7 +147,7 @@ func TestConsolePlanVerifyPanicFinishes(t *testing.T) {
 	}
 	select {
 	case <-e.done:
-	case <-time.After(10 * time.Second):
+	case <-time.After(waitSafety):
 		t.Fatal("a panicking verification never released its waiters")
 	}
 	p.mu.Lock()

@@ -67,11 +67,16 @@ func TestClientDisconnectCancelsReadWork(t *testing.T) {
 	// rpcContext: the request's ctx, bounded by X-Fathom-Deadline.
 	r := httptest.NewRequest(http.MethodPost, "/rpc", nil)
 	r.Header.Set("X-Fathom-Deadline", "250")
+	// The deadline is 250 ms from the instant rpcContext read the clock, so
+	// it lies between the readings either side of the call: a stalled machine
+	// only widens the bracket, never breaks it.
+	lo := time.Now()
 	rctx, done := rpcContext(r, "")
+	hi := time.Now()
 	defer done()
 	dl, ok := rctx.Deadline()
-	if !ok || time.Until(dl) > 250*time.Millisecond || time.Until(dl) < 100*time.Millisecond {
-		t.Fatalf("X-Fathom-Deadline 250 ms: ctx deadline %v", dl)
+	if !ok || dl.Before(lo.Add(250*time.Millisecond)) || dl.After(hi.Add(250*time.Millisecond)) {
+		t.Fatalf("X-Fathom-Deadline 250 ms: ctx deadline %v, want within [%v, %v]", dl, lo.Add(250*time.Millisecond), hi.Add(250*time.Millisecond))
 	}
 	rc, rcancel := context.WithCancel(context.Background())
 	r2 := httptest.NewRequest(http.MethodPost, "/rpc", nil).WithContext(rc)
@@ -81,7 +86,7 @@ func TestClientDisconnectCancelsReadWork(t *testing.T) {
 	rcancel()
 	select {
 	case <-r2ctx.Done():
-	case <-time.After(time.Second):
+	case <-time.After(waitSafety):
 		t.Fatal("the rpc ctx outlived its request")
 	}
 }
@@ -128,15 +133,19 @@ func TestDaemonServerTimeoutsAndLoopbackHost(t *testing.T) {
 	mu.Lock()
 	seen = nil
 	mu.Unlock()
+	lo := time.Now()
 	serve("127.0.0.1:7581", "", "/rpc/agent")
+	hi := time.Now()
 	serve("127.0.0.1:7581", "", "/events")
 	mu.Lock()
 	defer mu.Unlock()
 	if len(seen) != 2 {
 		t.Fatalf("write deadlines set %d times, want 2", len(seen))
 	}
-	if d := time.Until(seen[0]); d < 140*time.Second || d > 150*time.Second {
-		t.Fatalf("/rpc write deadline in %s, want 150 s", d)
+	// 150 s from the instant the handler read the clock: between the
+	// readings either side of the request.
+	if seen[0].Before(lo.Add(150*time.Second)) || seen[0].After(hi.Add(150*time.Second)) {
+		t.Fatalf("/rpc write deadline %v, want 150 s out within [%v, %v]", seen[0], lo.Add(150*time.Second), hi.Add(150*time.Second))
 	}
 	if !seen[1].IsZero() {
 		t.Fatalf("/events (SSE) has a write deadline %v; it must have none", seen[1])

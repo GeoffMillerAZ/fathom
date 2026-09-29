@@ -19,7 +19,7 @@ import (
 func TestCommandTreeKillsGrandchildOnCancel(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	cmd := commandTree(ctx, "sh", "-c", "sleep 60 & echo $!; wait")
+	cmd := commandTree(ctx, "sh", "-c", "sleep 3600 & echo $!; wait")
 	out, err := cmd.StdoutPipe()
 	if err != nil {
 		t.Fatal(err)
@@ -35,13 +35,13 @@ func TestCommandTreeKillsGrandchildOnCancel(t *testing.T) {
 	if err != nil {
 		t.Fatalf("grandchild pid %q: %v", line, err)
 	}
-	start := time.Now()
+	// The grandchild sleeps for an hour and holds the pipe Wait drains, so a
+	// tree that was not killed leaves Wait blocked for good: returning is
+	// "the tree was killed promptly". Never leak the sleep, whatever happens.
+	t.Cleanup(func() { _ = syscall.Kill(grandchild, syscall.SIGKILL) })
 	cancel()
-	_ = cmd.Wait()
-	if waited := time.Since(start); waited > 5*time.Second {
-		t.Fatalf("Wait took %v after cancel, want the tree killed promptly", waited)
-	}
-	deadline := time.Now().Add(3 * time.Second)
+	returnsUnaided(t, "cmd.Wait after cancel with a grandchild holding the pipe", func() { _ = cmd.Wait() })
+	deadline := time.Now().Add(waitSafety)
 	for syscall.Kill(grandchild, 0) == nil {
 		if time.Now().After(deadline) {
 			_ = syscall.Kill(grandchild, syscall.SIGKILL)

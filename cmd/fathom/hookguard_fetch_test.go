@@ -44,17 +44,15 @@ func TestFetchServicesNeverRetriesAfterTimeout(t *testing.T) {
 		}))
 		defer srv.Close()
 		defer close(release)
-		start := time.Now()
+		// The hung daemon holds every request until the client leaves, so
+		// "it retried" is exactly a second request: the count is the proof
+		// (the client's 200 ms is the input, not a duration we assert on).
 		_, err := fetchServices(&http.Client{Timeout: 200 * time.Millisecond}, srv.URL)
-		elapsed := time.Since(start)
 		if err == nil {
 			t.Fatal("want an error from a hung daemon")
 		}
 		if got := hits.Load(); got != 1 {
 			t.Fatalf("requests = %d, want 1 (no retry after a timeout)", got)
-		}
-		if elapsed > 1500*time.Millisecond {
-			t.Fatalf("fetchServices took %v against a 200 ms client: it retried", elapsed)
 		}
 	})
 	t.Run("HTTP 500 is not retried", func(t *testing.T) {

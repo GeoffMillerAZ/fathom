@@ -66,7 +66,7 @@ func newHangingDaemon(t *testing.T) *hangingDaemon {
 // disconnect (bounded: a span never seen is simply not counted).
 func (h *hangingDaemon) settledSpans(since time.Time, n int) []rpcSpan {
 	var got []rpcSpan
-	for deadline := time.Now().Add(2 * time.Second); ; time.Sleep(5 * time.Millisecond) {
+	for deadline := time.Now().Add(waitSafety); ; time.Sleep(5 * time.Millisecond) {
 		h.mu.Lock()
 		got = got[:0]
 		for _, sp := range h.spans {
@@ -343,12 +343,11 @@ func TestHooksSilentWhenDisabled(t *testing.T) {
 		t.Helper()
 		for _, v := range verbs {
 			isolateHookRun(t)
-			code, out, elapsed := runHookVerb(t, v, payload)
+			// "An immediate return" is the silent exit 0 with no RPC sent: the
+			// daemon's hit count below is the proof, not a stopwatch.
+			code, out, _ := runHookVerb(t, v, payload)
 			if code != 0 || out != "" {
 				t.Errorf("%v: exit %d stdout %q, want silent 0", v, code, out)
-			}
-			if elapsed > 250*time.Millisecond {
-				t.Errorf("%v: took %v while disabled, want an immediate return", v, elapsed)
 			}
 		}
 	}

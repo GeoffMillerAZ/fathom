@@ -48,7 +48,7 @@ func TestScavengerLogsReleasedAndFootprint(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		done := make(chan struct{})
 		go func() { runMemoryScavenger(ctx, 5*time.Millisecond, log, func() {}, mem.read); close(done) }()
-		deadline := time.Now().Add(5 * time.Second)
+		deadline := time.Now().Add(waitSafety)
 		for {
 			mu.Lock()
 			out := buf.String()

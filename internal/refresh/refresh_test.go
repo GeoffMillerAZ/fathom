@@ -86,7 +86,7 @@ func waitStarted(t *testing.T, f *fakeRunner, want string) {
 		if got != want {
 			t.Fatalf("started %q, want %q", got, want)
 		}
-	case <-time.After(5 * time.Second):
+	case <-time.After(waitSafety):
 		t.Fatalf("no run of %q started", want)
 	}
 }
@@ -146,7 +146,7 @@ func TestRefresh_OneInFlightOneFollowUp(t *testing.T) {
 	waitStarted(t, f, "b")
 	f.release("b")
 	waitStarted(t, f, "a")
-	deadline := time.After(5 * time.Second)
+	deadline := time.After(waitSafety)
 	for q.StateOf("a") != StateIdle {
 		select {
 		case <-deadline:
@@ -210,7 +210,7 @@ func TestIngestSurvivesDisconnectAndCoalesces(t *testing.T) {
 		if !errors.Is(st.Err, context.Canceled) {
 			t.Fatalf("disconnected waiter: %+v; want its own context's error", st)
 		}
-	case <-time.After(2 * time.Second):
+	case <-time.After(waitSafety):
 		t.Fatal("a disconnected waiter did not return at once")
 	}
 
@@ -380,7 +380,7 @@ func TestRefresh_DemandOrderAndStartupStagger(t *testing.T) {
 			if err == nil || !strings.Contains(err.Error(), "refuse") {
 				t.Fatalf("paused job dropped at refuse with %v; want the refusal", err)
 			}
-		case <-time.After(2 * time.Second):
+		case <-time.After(waitSafety):
 			t.Fatal("a paused job was not dropped at refuse")
 		}
 		if f.count("p") != 0 {

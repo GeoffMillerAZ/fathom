@@ -61,13 +61,15 @@ func TestGroup_StampedeOneBuildCtxAwareWaiters(t *testing.T) {
 	// A ctx-bound waiter joins the same flight and leaves at its deadline.
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
 	defer cancel()
-	start := time.Now()
-	_, err := g.Get(ctx, k, func(context.Context) (int, int64, error) { t.Error("second build"); return 0, 0, nil })
+	// The flight's build stays blocked (release closes below), so a waiter
+	// that ignored its ctx could never return: returning is "left at its
+	// deadline", and the 20 ms is the caller's own input.
+	var err error
+	returnsUnaided(t, "a ctx-bound waiter on a blocked flight", func() {
+		_, err = g.Get(ctx, k, func(context.Context) (int, int64, error) { t.Error("second build"); return 0, 0, nil })
+	})
 	if !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("waiter err = %v, want deadline", err)
-	}
-	if time.Since(start) > 2*time.Second {
-		t.Fatal("waiter did not leave at its deadline")
 	}
 	close(release)
 	wg.Wait()
@@ -102,7 +104,7 @@ func TestGroup_StampedeOneBuildCtxAwareWaiters(t *testing.T) {
 	}
 	select {
 	case <-cancelled:
-	case <-time.After(2 * time.Second):
+	case <-time.After(waitSafety):
 		t.Fatal("flight not cancelled when its last waiter left")
 	}
 	if st := g.stats(); st.Cancelled != 1 || st.Flights != 2 {
@@ -126,7 +128,7 @@ func TestGroup_StampedeOneBuildCtxAwareWaiters(t *testing.T) {
 		}
 		return 7, 1, bctx.Err()
 	})
-	deadline := time.Now().Add(2 * time.Second)
+	deadline := time.Now().Add(waitSafety)
 	for {
 		if v, ok := kg.Peek(k3); ok && v == 7 {
 			break

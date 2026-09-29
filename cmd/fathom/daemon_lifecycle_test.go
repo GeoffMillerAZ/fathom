@@ -189,7 +189,7 @@ func TestStopKillsDaemonIgnoringSIGTERM(t *testing.T) {
 		<-waited
 	})
 	ops := realDaemonOps{}
-	deadline := time.Now().Add(10 * time.Second)
+	deadline := time.Now().Add(waitSafety)
 	for !ops.PortOpen(addr) {
 		if time.Now().After(deadline) {
 			t.Fatal("helper never listened")
@@ -216,7 +216,7 @@ func TestStopKillsDaemonIgnoringSIGTERM(t *testing.T) {
 	}
 	select {
 	case <-waited:
-	case <-time.After(5 * time.Second):
+	case <-time.After(waitSafety):
 		t.Fatal("the helper is still running after stop reported success")
 	}
 	if ops.PortOpen(addr) {
@@ -269,7 +269,7 @@ func TestDaemonStartPauseResume(t *testing.T) {
 	go func() { watchPauseSwitch(dir, 5*time.Millisecond, time.Now, nil, stopTick); close(done) }()
 	waitFor := func(want bool) {
 		t.Helper()
-		deadline := time.Now().Add(5 * time.Second)
+		deadline := time.Now().Add(waitSafety)
 		for safeModeActive() != want {
 			if time.Now().After(deadline) {
 				t.Fatalf("safe mode never became %v", want)

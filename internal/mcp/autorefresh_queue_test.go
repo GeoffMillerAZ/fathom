@@ -33,13 +33,13 @@ func TestEnsureNeverIngestsInline(t *testing.T) {
 	}()
 	select {
 	case <-returned:
-	case <-time.After(2 * time.Second):
+	case <-time.After(waitSafety):
 		close(release)
 		t.Fatal("the read waited on the ingest; it must answer from the index as it stands")
 	}
 	select {
 	case <-started:
-	case <-time.After(5 * time.Second):
+	case <-time.After(waitSafety):
 		t.Fatal("the requested re-ingest never ran on the queue")
 	}
 	note := notes.render()["svc"]
@@ -84,7 +84,7 @@ func TestEnsureNeverIngestsInline(t *testing.T) {
 	go func() { pub.ensure(context.Background(), "svc"); close(done) }()
 	select {
 	case <-done:
-	case <-time.After(2 * time.Second):
+	case <-time.After(waitSafety):
 		t.Fatal("NewAutoRefresh's ensure waited on the ingest")
 	}
 	<-pf.started

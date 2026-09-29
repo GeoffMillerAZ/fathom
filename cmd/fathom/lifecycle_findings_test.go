@@ -107,7 +107,7 @@ func TestUnmanagedStoreWaitHonoursTTL(t *testing.T) {
 			b, _ := os.ReadFile(logPath)
 			t.Fatalf("exit: %v\n%s", err, b)
 		}
-	case <-time.After(8 * time.Second):
+	case <-time.After(waitSafety):
 		b, _ := os.ReadFile(logPath)
 		t.Fatalf("an unmanaged daemon waiting for its store outlived --ttl 1s:\n%s", b)
 	}
