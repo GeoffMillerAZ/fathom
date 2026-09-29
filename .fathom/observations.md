@@ -2094,3 +2094,16 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** none yet, deliberately: whether to drop function words, or rank an OR of the words by bm25, is what KR-M1's doc-question slice measures (docs/plans/knowledge-retrieval.md); widening without that reading returns loosely related sections an agent would trust.
 - **Status:** open
 - **Impact:** An agent that asks a docs question in a sentence is told there is nothing, and falls back to grep or opens the document whole, which is the cost KR-8 was meant to remove.
+
+### O139 — doctor's `stanza_loaded` passes on InstructionsLoaded beats that name a root CLAUDE.md the checkout no longer has
+
+- **Symptom:** `fathom doctor` on the main checkout reports `stanza_loaded` PASS ("CLAUDE.md loaded by a session … 7 beat(s)") although the checkout has no CLAUDE.md, `.claude/CLAUDE.md` or `CLAUDE.local.md` and `stanza_present` in the same run says "no CLAUDE file"
+- **Evidence:**
+  - **Tool:** fathom doctor --service fathom --path <main checkout> (read-only, 2026-09-29, after push 81 removed the root CLAUDE files under ADR-059)
+  - **Expected:** a repository with no root CLAUDE file and no beat for its AGENTS.md reads as the named agents-md SKIP (AG-12): the harness has reported nothing about this stanza
+  - **Actual:** PASS on 7 `instructions-loaded` beats for the root CLAUDE.md (latest 2026-09-29T00:57:48Z, before the conversion); `checkStanzaLoaded` matches a beat's `file_path` against `stanzaLoadedFiles` and never asks whether that file still exists
+  - **Repro:** `fathom doctor --service fathom` in a repository whose root CLAUDE.md was deleted after a session loaded it; compare `stanza_present` (no CLAUDE file) with `stanza_loaded` (PASS)
+- **Root cause:** `checkStanzaLoaded` (cmd/fathom/doctor_stanza_loaded.go) counts any beat for a listed file under the repository root, whether or not the file is still there, so a deleted CLAUDE.md's old beats outlive it in the log.
+- **Fix:** none yet: count a beat only when its file exists in the checkout, or only when it is newer than the file's last change; either one turns this repository's row back into the named SKIP until a session loads AGENTS.md (which writes no beat, so the SKIP is the expected steady state).
+- **Status:** open
+- **Impact:** the row says the harness reported loading the stanza when the only reports are for a file that is gone, so a reader takes a stale PASS for evidence; the stop-1 reading (docs/bench/readings/efficiency-wave/stops.md) says so instead of citing it.
