@@ -1990,3 +1990,55 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** (1) keep a path or package candidate only when it exists in the index or the working tree at that path, else drop it; (2) skip, or cap, the hook when the prompt is an agent relay the harness marks as one; (3) serve an identical rule set at most once per session, the same dedupe as O122
 - **Status:** open
 - **Impact:** six rules plus a displaced count injected into an orchestration turn from text no one typed; filed from the 2026-09-29 O122 addendum, where it was drafted as "the O123 candidate" before the sweep's records took O123 to O125
+
+### O127 — a worker re-rooted the shared daemon's own fathom service onto its scratch clone, and every fathom answer in the orchestrating session then resolved against a deleted tree
+
+- **Symptom:** a worker re-rooted the shared daemon's own fathom service onto its scratch clone, and every fathom answer in the orchestrating session then resolved against a deleted tree
+- **Evidence:**
+  - **Tool:** ingest (MCP, remap)
+  - **Expected:** a worker's scratch ingest never re-points a service whose current root is a live checkout; doctor names a service whose root no longer exists
+  - **Actual:** after the push 78 deploy the fathom service root was a deleted roadmap-worker clone (<scratch>/rm/w-gl-w3); the SessionStart hook reported index state unknown
+  - **Repro:** from a clone of a registered repository, call the ingest tool with path=<clone> and remap=true against the owner's daemon, then delete the clone
+- **Root cause:** A worker called the `ingest` tool with its clone path and `remap: true` against the owner's daemon; nothing isolates workers from the shared daemon, and remap accepts any path.
+- **Fix:** EW-8 worker isolation (FATHOM_HOME, no shared-daemon ingest from a worker); EW-19 remap guard; EW-20 doctor names a missing root. Repaired 2026-09-29: owner checkout fast-forwarded, then ingest {service: fathom, path: <owner checkout>, remap: true}: 27,589 symbols, 78,554 typed edges, 259 packages re-resolved (TypedEdgeEpoch 3), daemon RSS peak 1.25 GB against the 3 GiB shed mark.
+- **Status:** open
+- **Impact:** Every fathom answer in the orchestrating session resolved against a deleted tree until repaired.
+
+### O128 — a long ingest over /rpc answers with an empty body although the ingest succeeds
+
+- **Symptom:** a long ingest over /rpc answers with an empty body although the ingest succeeds
+- **Evidence:**
+  - **Tool:** ingest (/rpc tools/call)
+  - **Expected:** a JSON-RPC result, or the queue state as /refresh-request answers
+  - **Actual:** a remap ingest of a 27,589-symbol repository took 3m30s and curl received no JSON; list_services then showed the ingest had completed
+  - **Repro:** curl -m 900 -X POST <daemon>/rpc with tools/call ingest {service, path, remap: true} on a cold typed pass
+- **Root cause:** Probably a server write timeout shorter than a cold ingest: the answer is dropped after the work completes.
+- **Fix:** EW-18: past the write budget answer with the refresh queue's state, as /refresh-request does.
+- **Status:** open
+- **Impact:** The caller cannot tell success from failure; a retry repeats a multi-minute ingest.
+
+### O129 — task deploy exits 201 at its healthz wait while the deploy succeeds
+
+- **Symptom:** task deploy exits 201 at its healthz wait while the deploy succeeds
+- **Evidence:**
+  - **Tool:** task deploy
+  - **Expected:** the health wait covers launchd's respawn throttle and names launchd's last exit reason on a failed spawn
+  - **Actual:** launchd showed spawn failed with OS_REASON_CODESIGNING and ThrottleInterval 60; the new daemon came up 61s after the old one drained; the wait is 30 tries at 1s (push 78 and push 79 deploys)
+  - **Repro:** task deploy on macOS with the launchd agent installed; read launchctl print for last exit reason
+- **Root cause:** launchd's ThrottleInterval 60 delays the respawn after a spawn that failed with OS_REASON_CODESIGNING; the Taskfile waits 30 tries at 1s.
+- **Fix:** EW-17: wait past the throttle interval and print launchd's last exit reason on a failed spawn; find why the first spawn after the signed mv fails codesigning.
+- **Status:** open
+- **Impact:** Both deploys of 2026-09-29 reported failure although the daemon served HEAD; the last two asserts were run by hand.
+
+### O130 — the first verify after a deploy or ingest is abandoned at the index-class deadline; the same call seconds later answers in 0.36s
+
+- **Symptom:** the first verify after a deploy or ingest is abandoned at the index-class deadline; the same call seconds later answers in 0.36s
+- **Evidence:**
+  - **Tool:** verify (daemon verify_plan)
+  - **Expected:** the first call waits for, or is served from, the product-reach walk the wired check needs, or answers with a named partial
+  - **Actual:** RPC error: abandoned: the call's deadline passed ... verify_plan did not finish and no partial answer is served; the retry answered 34 tasks, 1 claimed, 1 verified
+  - **Repro:** task deploy (or an ingest of a large Go service), then fathom verify --service fathom --plan docs/plans/efficiency-wave.md
+- **Root cause:** Probably the wired check's product-reach walk (memo group product_reach, one walk per watermark) runs cold inside the first verify_plan after the watermark moves and exceeds the index-class deadline; the walk completes and caches, so the retry is fast.
+- **Fix:** warm the product-reach memo after an ingest or daemon start (it is a pure function of the watermark), or let verify_plan wait for an in-flight walk up to its own deadline; efficiency-wave row EW-22.
+- **Status:** open
+- **Impact:** every first verify after a deploy or commit fails; agents read it as a verify failure or retry blind.
