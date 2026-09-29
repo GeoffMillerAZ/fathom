@@ -2237,3 +2237,29 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** XM-33: the append reads the map's own entries by dedup key (`Map.OwnEntry`, the key ignoring a `svc::` prefix); the same why files nothing, another is a row with an `annotates` pointer that the read folds into the first entry's `Notes`, served as another annotation; the first entry's row is never touched. XM-31's canonical `dir.Name` key makes one symbol one key whatever spelling was typed
 - **Status:** fixed by XM-33 (2026-09-29). Rows filed before it are not rewritten: two rows of one symbol read as one item, but `Entries` still counts both
 - **Impact:** a wave map grew by every worker's re-append, the entry counts in the brief, the pointer line and the sub-agent primer overstated the map, and `map show` spent its 1,200 bytes on one range twice
+
+### O154 — `fathom claim learn` would retire every rule the edit hook serves below the top once the log covers 180 days: only the top rule records `served`
+
+- **Symptom:** GL-13's never-triggered retirement reads "no `served` event for 180 days", but the edit hook records `served` only for the file's top governing rule (ruleoutcome_track.go's deliberate scope), and the MCP `obligations` tool an agent calls records none
+- **Evidence:**
+  - **Tool:** `fathom claim learn` (GL-13, cmd/fathom/claim_learn.go) over the rule-outcome log; `trackRuleOutcome` (cmd/fathom/ruleoutcome_track.go) writes `served` for `meta.topClaimID` only
+  - **Expected:** a rule served second to sixth on every edit reads as triggered
+  - **Actual:** it has no `served` row at all, so applyLearning retires it as never triggered once the claim is 180 days old
+  - **Repro:** a governing claim that never tops a file's served set, a log reaching back 181 days, `fathom claim learn --service S` names it `active → retired (never triggered for 180d)`
+- **Root cause:** the signal source (GL-10/SR-61) was scoped to the top rule for its complied/violated comparison; retirement reads the same `served` count as if it covered the whole served set
+- **Fix:** none yet. The verb holds a never-triggered retirement, named, while the log does not reach back over the whole window (today every one: the log began in September 2026), so nothing is retired from it before the owner decides. Options: record `served` for every rule the hook serves (complied/violated stay top-only), or read never-triggered from GL-11's classification over a full served set
+- **Status:** open (held by the coverage gate until about 2027-03)
+- **Impact:** without a fix, the first `claim learn --apply` after the log covers 180 days retires most governing rules, announced but wrong
+
+### O155 — a doc link's line is its section's heading line, and a section that moves re-keys its links, clearing drift the move did not address
+
+- **Symptom:** KR-6's links carry `line` = the unit's LineStart plus the span's offset in the body, so a span on a section's first body line reads as the heading's line (TestStalenessReportDocLinkDrift: the span is on line 5, doc_link_drift says 3); and doc_links identity is (kind, target, line), so an edit above a section shifts every link in it to a new key
+- **Evidence:**
+  - **Tool:** `staleness_report` `doc_link_drift` after a real ingest (internal/mcp/docdrift_wiring_test.go); `store.SyncDocLinksForUnit`'s key; `docindex.LinkDocSpans`' own "best-effort" line note
+  - **Expected:** the span's own line; a link that survives an unrelated edit above it keeps its link-time hash
+  - **Actual:** the heading's line; the moved link closes and reopens with the target's current hash, so a drift it carried disappears without the doc being corrected
+  - **Repro:** link a symbol from a section, change the symbol (drift reported), insert a line above the section, re-ingest: the drift is gone
+- **Root cause:** the splitters' Body does not start at LineStart, and the link key includes the line
+- **Fix:** none yet. Options: compute the span's line from the body's own first line, and key a link by (unit, kind, target) with the line as data
+- **Status:** open
+- **Impact:** drift lines point at the heading, and drift can clear by accident when a doc is edited above the stale span
