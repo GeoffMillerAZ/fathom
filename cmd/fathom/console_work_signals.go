@@ -388,7 +388,9 @@ func workPointerIsFile(root string) func(string) bool {
 // is its own run of one (counted, never chained to an unrelated call).
 // Every pointer a call returned becomes a discovery pointer established
 // when its session's last call in the tail landed, so a session never
-// "rediscovers" what it found itself.
+// "rediscovers" what it found itself. A row naming no session establishes
+// none (O153): its later re-find could be its own session's, which is not
+// a rediscovery, and nothing tells the two apart; the note counts them.
 func workCallEvents(logPath string, sr serviceRoot) ([]console.ActivityEvent, []console.DiscoveryPointer, string) {
 	if logPath == "" {
 		return nil, nil, "search and lookup events: no call log resolved for this page"
@@ -407,7 +409,7 @@ func workCallEvents(logPath string, sr serviceRoot) ([]console.ActivityEvent, []
 	var events []console.ActivityEvent
 	var found []established
 	lastAt := map[string]string{}
-	sequenced, unsequenced := 0, 0
+	sequenced, unsequenced, unestablished := 0, 0, 0
 	for i, line := range strings.Split(string(data), "\n") {
 		e, kind := decodeCallLogLine([]byte(line))
 		if kind != callLogLineEntry || !strings.EqualFold(e.Service, sr.Service) {
@@ -429,7 +431,11 @@ func workCallEvents(logPath string, sr serviceRoot) ([]console.ActivityEvent, []
 			lastAt[key] = at
 		}
 		if len(extra.Pointers) > 0 {
-			found = append(found, established{key, extra.Pointers})
+			if strings.HasPrefix(key, "s:") {
+				found = append(found, established{key, extra.Pointers})
+			} else {
+				unestablished += len(extra.Pointers)
+			}
 		}
 		ak := workToolKind(e.Tool)
 		if ak == "" {
@@ -463,8 +469,8 @@ func workCallEvents(logPath string, sr serviceRoot) ([]console.ActivityEvent, []
 	if unsequenced == 1 {
 		rows = "row names"
 	}
-	return events, pointers, fmt.Sprintf("search and lookup events: %d from the call log %s (the newest %d MiB), %d sequenced by session into runs an edit in the rule-outcome log ends (%d %s no session and %s not sequenced; a turn's answer is not recorded, so a run may span turns)",
-		len(events), logPath, workCallTailBytes>>20, sequenced, unsequenced, rows, map[bool]string{true: "is", false: "are"}[unsequenced == 1])
+	return events, pointers, fmt.Sprintf("search and lookup events: %d from the call log %s (the newest %d MiB), %d sequenced by session into runs an edit in the rule-outcome log ends (%d %s no session and %s not sequenced; a turn's answer is not recorded, so a run may span turns); discovery pointers: %d from rows naming no session not established (a session's own re-find would read as a rediscovery)",
+		len(events), logPath, workCallTailBytes>>20, sequenced, unsequenced, rows, map[bool]string{true: "is", false: "are"}[unsequenced == 1], unestablished)
 }
 
 // workRuleEdits turns the rule-outcome log's edit-hook events — a rule

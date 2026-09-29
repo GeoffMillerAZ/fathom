@@ -403,6 +403,34 @@ func TestComputeWorkReadsFrictionSignals(t *testing.T) {
 	}
 }
 
+// O153: a call-log row naming no session establishes no discovery pointer.
+// Its later re-find could be the same session's own, which is not a
+// rediscovery, and with no session the two cannot be told apart — so two
+// session-less finds of one symbol count no rediscovery, and the sources
+// name the pointers left unestablished instead of reading high.
+func TestWorkSessionlessCallsEstablishNoPointer(t *testing.T) {
+	r := newWorkRepo(t)
+	m := workLedgers(t, r)
+	ts := func(min int) string {
+		return r.base.Add(20*24*time.Hour + time.Duration(min)*time.Minute).Format(time.RFC3339Nano)
+	}
+	sessionless := func(min int) string {
+		return fmt.Sprintf(`{"schema_version":3,"ts":%q,"tool":"find_symbol","service":"svc","latency_ms":1,"pointers":["internal/pay.Refund"]}`, ts(min))
+	}
+	workActivity(t, r, &m, sessionless(30), sessionless(31))
+	idx := fakeWorkIndex{files: map[string]string{"web.AddC": "web/c.go"}}
+	model := computeWork(context.Background(), m, serviceRoot{Service: "svc", Root: r.root}, r.base.Add(28*24*time.Hour), idx)
+	for _, h := range model.Friction.Map.Symbols {
+		if h.Key == "internal/pay.Refund" && h.Counts.Rediscovery != 0 {
+			t.Errorf("two session-less finds of one symbol read as a rediscovery: %+v", h.Counts)
+		}
+	}
+	read := strings.Join(model.FrictionRead, "\n")
+	if !strings.Contains(read, "3 from rows naming no session not established") {
+		t.Errorf("the sources do not name the session-less pointers left unestablished:\n%s", read)
+	}
+}
+
 // WI-7w: /work passes the remedy table real inputs — rule texts, the
 // loop-end symbols' reference counts and doc-link drift — so every
 // pattern can fire, each a proposal with its evidence.

@@ -2262,7 +2262,7 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Root cause:** RT-164 added the caller identity for admission and tenancy, where a process is enough; nothing ever needed the harness session there
 - **Fix:** none yet. Options: the session hook exports the harness session id and `serve-mcp` stamps it on every call; or the MCP HTTP registration passes it as a header the harness expands. A pid-keyed run would not do: the rule-outcome log's edits carry the harness session, so no edit would ever end it
 - **Status:** open
-- **Impact:** `/work`'s search-loop signal and the "search loops ending in a symbol with no references" remedy cannot fire on real traffic; rediscovery still counts, but with no session to tell calls apart a later call re-finding any earlier call's pointer counts, the same session's included, so it reads high until calls carry their session
+- **Impact:** `/work`'s search-loop signal and the "search loops ending in a symbol with no references" remedy cannot fire on real traffic; rediscovery counts only against pointers an agent filed or a session-stamped call established: a row naming no session establishes no pointer (the wave E audit's fix; before it, any later call re-finding an earlier call's pointer counted, the same session's included, so it read high), and the sources name how many pointers were left unestablished
 
 ### O154 — `fathom claim learn` would retire every rule the edit hook serves below the top once the log covers 180 days: only the top rule records `served`
 
@@ -2296,7 +2296,7 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Evidence:**
   - **Tool:** `fathom ingest --store "$FATHOM_CACHE_ROOT/verify.sqlite" --service fathom --path .` in a `genv-wave.sh` shell (2026-09-29, wave `we`, worker `we-verbs`), twice
   - **Expected:** the second run redoes the packages whose loading failed, or says which flag does
-  - **Actual:** first run: `error: ingest degraded: typed-edge pass failed: 123/389 package(s) failed typed loading (... mkdir /Volumes/m2ext/tmp/fathom-build/w-we-verbs/gotmp/go-build3461279143/b748/: operation not permitted; ...)`; second run: `typed-edges: skipped — no input changed since the last pass, which completed with package(s) that failed typed loading — its partial typed edges stand (stored typed edges kept)`
+  - **Actual:** first run: `error: ingest degraded: typed-edge pass failed: 123/389 package(s) failed typed loading (... mkdir $GOTMPDIR/go-build3461279143/b748/: operation not permitted; ...)`; second run: `typed-edges: skipped — no input changed since the last pass, which completed with package(s) that failed typed loading — its partial typed edges stand (stored typed edges kept)`
   - **Repro:** ingest a Go repository into a fresh scratch store while reads under the external volume fail with EPERM, reset the TCC grant, and ingest the same path again
 - **Root cause:** not established here; the second run's own message names the rule it applied, that a Go input unchanged since the last pass skips the pass whatever that pass's failed packages were (RT-104)
 - **Fix:** none yet. Options: a pass that had failed packages is never a reason to skip the next one, or the skip line names the flag that forces the typed pass
