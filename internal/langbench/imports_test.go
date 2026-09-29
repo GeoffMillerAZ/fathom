@@ -23,6 +23,9 @@ func TestScoreImports(t *testing.T) {
 		{Path: "a.ts", StartLine: 6, EndLine: 6, Local: "e", Targets: []string{"w.ts"}}, // another file
 		{Path: "a.ts", StartLine: 7, EndLine: 7, Local: "f"},                            // external, unresolved
 		{Path: "a.ts", StartLine: 8, EndLine: 8, Local: "g", Targets: []string{"v.ts"}}, // unattested
+		// A target that is the importer itself or a file not measured is
+		// no resolution: the import counts, as neither resolved nor unattested.
+		{Path: "a.ts", StartLine: 9, EndLine: 9, Local: "h", Targets: []string{"a.ts", "out.ts"}},
 		// Two readings of one `use net::connect;` binding: one resolves.
 		{Path: "b.rs", StartLine: 1, EndLine: 1, Local: "connect"},
 		{Path: "b.rs", StartLine: 1, EndLine: 1, Local: "connect", Targets: []string{"net.rs"}},
@@ -47,7 +50,7 @@ func TestScoreImports(t *testing.T) {
 	counts := map[string]int{}
 	ScoreImports(truth, sites, inScope, counts)
 	want := map[string]int{
-		CntImports: 7, CntImportsInRepo: 5, CntImportsAgree: 3, CntImportsUnresolved: 1,
+		CntImports: 8, CntImportsInRepo: 5, CntImportsAgree: 3, CntImportsUnresolved: 1,
 		CntImportsElsewhere: 1, CntImportsUnattested: 1,
 		CntImportEdgesTruth: 5, CntImportEdgesFathom: 4, CntImportEdgesAgree: 2,
 		CntImportOracleUnpaired: 1, CntImportOracleOutOfScope: 1,

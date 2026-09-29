@@ -10,6 +10,7 @@ package fusion_test
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -157,5 +158,37 @@ func TestResolveImportSpecsCoverFileEdges(t *testing.T) {
 				t.Errorf("fixture draws no cross-file edge: the property is vacuous")
 			}
 		})
+	}
+}
+
+// TestResolveImportSpecsNamedFallsBackToModule (design §10): a named import
+// whose name no file of its module defines at the top level, and which names
+// no submodule, resolves to the module's files — the strategy found the
+// module; which of its names is bound is the call edges' question.
+func TestResolveImportSpecsNamedFallsBackToModule(t *testing.T) {
+	dir := t.TempDir()
+	for rel, src := range map[string]string{
+		"Cargo.toml":  "[package]\nname = \"app\"\nversion = \"0.1.0\"\nedition = \"2021\"\n",
+		"src/main.rs": "mod util;\n\nuse crate::util::Missing;\n\nfn main() {}\n",
+		"src/util.rs": "pub fn helper() {}\n",
+	} {
+		p := filepath.Join(dir, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(src), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	files, symbols := loadFileResolveFixture(t, dir, "rust", []string{"src/main.rs", "src/util.rs"})
+	ris, report := fusion.ResolveImportSpecs(context.Background(), "rust", dir, files, symbols)
+	if report.Skipped {
+		t.Fatalf("skipped: %s", report.SkipReason)
+	}
+	got := resolvedImportStrings(ris)
+	// The named reading of `use crate::util::Missing;`: util.rs defines no
+	// Missing, and crate::util::Missing is no submodule, so the module's file.
+	if want := "src/main.rs:3-3:Missing<-crate::util=>src/util.rs"; !slices.Contains(got, want) {
+		t.Errorf("resolved imports lack %q:\n     %s", want, strings.Join(got, "\n     "))
 	}
 }
