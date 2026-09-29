@@ -329,7 +329,10 @@ Legend:
 AG-13 (corpus widening) lands and a recompile reads non-zero guide coverage **before** AG-22
 deletes the CLAUDE files. Evidence: `console` knowledge coverage, or
 `fathom layers status obligations` naming `AGENTS.md` sources. That makes AG-22 depend on AG-13
-through `needs:`.
+through `needs:`. The move changes every guide section's path, and the digest gate keys on the
+section's subject, so today that recompile pays a model call for text it already compiled. AG-26
+(open) carries the claims of a section whose content digest matches one compiled at another path,
+re-cited to the new path, with no model call.
 
 ## 4. The record
 
