@@ -3,6 +3,7 @@ package explmap
 import (
 	"errors"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -16,7 +17,7 @@ func withEntries(m Map, es ...Entry) Map {
 }
 
 func ent(path string, start, end int, hash, why string) Entry {
-	return Entry{Anchor: path + "#L" + itoa(start) + "-L" + itoa(end), Path: path, Start: start, End: end, Hash: hash, Why: why}
+	return Entry{Anchor: path + "#L" + strconv.Itoa(start) + "-L" + strconv.Itoa(end), Path: path, Start: start, End: end, Hash: hash, Why: why}
 }
 
 // TestMintCompositeMapCarriesOnlyReferences pins XM-3: the handoff carries ONE

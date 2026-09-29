@@ -18,7 +18,6 @@ package explmap
 import (
 	"regexp"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -217,5 +216,3 @@ func HashText(text string) string {
 	h, _ := core.HashLines([]byte(text), 1, n)
 	return h
 }
-
-func itoa(n int) string { return strconv.Itoa(n) }
