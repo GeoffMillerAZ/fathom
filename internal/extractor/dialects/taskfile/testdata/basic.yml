@@ -1,0 +1,66 @@
+# https://taskfile.dev
+version: '3'
+
+includes:
+  docs: ./docs
+  api:
+    taskfile: ./api/Taskfile.yml
+    dir: ./api
+    optional: true
+
+vars:
+  BIN: "{{.ROOT_DIR}}/bin"
+
+tasks:
+  default:
+    desc: Build and test
+    cmds:
+      - task: build
+      - task: test
+      - task: docs:build
+
+  build:
+    desc: Build the binary
+    aliases: [b]
+    deps: [generate, lint]
+    sources:
+      - ./**/*.go
+    cmds:
+      - go build -o {{.BIN}}/app ./cmd/app
+
+  generate:
+    internal: true
+    cmds:
+      - go generate ./...
+
+  lint:
+    deps:
+      - task: generate
+        vars: { MODE: fast }
+      - for: [a, b]
+        task: check
+    cmds:
+      - golangci-lint run
+
+  check:
+    cmds:
+      - echo {{.ITEM}}
+
+  test:
+    desc: Run the tests
+    deps: [build]
+    cmds:
+      - cmd: go test ./...
+      - defer: { task: clean }
+      - defer: rm -f coverage.out
+
+  clean: rm -rf bin
+
+  ci: [lint, test]
+
+  release:*:
+    desc: Cut a release
+    cmds:
+      - task: build
+
+  todo:

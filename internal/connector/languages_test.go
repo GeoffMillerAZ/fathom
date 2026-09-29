@@ -86,6 +86,7 @@ var langRowHint = map[string]string{
 	"cargo":            "Cargo.toml",
 	"go-mod":           "go.mod, go.work,",
 	"kustomize":        "Kustomize",
+	"taskfile":         "Taskfile.yml",
 }
 
 // registryLangTags returns the sorted, deduplicated set of Lang tags

@@ -1,0 +1,7 @@
+version: '3'
+tasks:
+  build:
+    cmds: [unterminated
+  test:
+    cmds:
+      - echo ok

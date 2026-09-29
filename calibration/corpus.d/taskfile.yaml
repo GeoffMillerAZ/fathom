@@ -1,0 +1,47 @@
+id: taskfile
+language: "Taskfile (go-task Taskfile.yml)"
+# The queue entry names go-task/task and go-task/examples (both MIT, read only, never
+# vendored). Neither is thick: the connector never reads testdata, and go-task/task keeps
+# 205 of its 208 Taskfiles there, so what fathom sees of it is a root Taskfile that includes
+# website/ (one directory include) and two under website/; go-task/examples holds one
+# Taskfile. A third subject, Runtime-Radar/runtime-radar (Apache-2.0, sparse: its Taskfiles
+# only), adds what the two lack: a real monorepo whose root Taskfile includes twelve
+# per-service Taskfiles by file path. It is an addition to the queue's two, recorded in the
+# reading's notes. v3.52.0 is the release the installed `task` is.
+repos:
+  - name: go-task/task
+    url: https://github.com/go-task/task.git
+    ref: v3.52.0
+    sha: 536f490187b5338a6a83fc9bc67aed02702a534e
+    licence: MIT
+    idioms:
+      - "tasks whose keys carry colons (generate:mocks, install:mockery) and a wildcard
+        task (release:*), which are names, not namespaces"
+      - "an include written as a mapping with `taskfile: ./website` (a directory, whose
+        Taskfile the tool finds by its own search order), aliases and a `dir:`"
+      - "task calls in cmds (`- task: generate:mocks`), deps lists, dynamic variables
+        (`sh:`) and status checks"
+      - "a test tree the connector never reads (180 Taskfiles under testdata: cycles,
+        includes, flattening, internal and remote tasks)"
+  - name: go-task/examples
+    url: https://github.com/go-task/examples.git
+    ref: main
+    sha: c57278bcf08acd347a0292dc18dd5672dfc1485f
+    licence: MIT
+    idioms:
+      - "one Taskfile of a small web application: default and clean tasks, deps
+        lists (`deps: [js, css]`), task calls in cmds and aliases"
+      - "sources and generates lists and variables written with templates"
+  - name: Runtime-Radar/runtime-radar
+    url: https://github.com/Runtime-Radar/runtime-radar.git
+    ref: v0.3.0
+    sha: 7a3dec53943ed6f9bf2f3530b34763e42551e2f6
+    licence: Apache-2.0
+    sparse: ["**/Taskfile.yml"]
+    idioms:
+      - "a monorepo root that includes twelve per-service Taskfiles by file path
+        (`taskfile: ./auth-center/Taskfile.yml`, `dir: ./auth-center`), ten of them
+        `optional: true`"
+      - "global and task-level dynamic variables (`sh: echo `pwd``, `git describe`)"
+      - "vendored dependencies that ship their own Taskfile (vendor/), which the
+        connector never reads"

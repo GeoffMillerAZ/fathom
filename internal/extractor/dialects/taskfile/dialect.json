@@ -1,0 +1,31 @@
+{
+  "id": "taskfile",
+  "display": "Taskfile (go-task: Taskfile.yml)",
+  "kind": "tooling",
+  "engine": "doc",
+  "lang_tag": "taskfile",
+  "match": {
+    "extensions": [],
+    "basenames": [
+      "Taskfile.yml", "Taskfile.yaml", "taskfile.yml", "taskfile.yaml",
+      "Taskfile.dist.yml", "Taskfile.dist.yaml", "taskfile.dist.yml", "taskfile.dist.yaml"
+    ],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "variants": [],
+  "kinds": {
+    "taskfile": { "source_kind": "Taskfile",     "canonical": "package" },
+    "task":     { "source_kind": "TaskfileTask", "canonical": "task" }
+  },
+  "required_kinds": ["taskfile", "task"],
+  "oracle_kinds": {
+    "tool": { "package": "package", "task": "task" }
+  },
+  "name_match": "identity",
+  "package": { "strategy": "none" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L3",
+  "queue_id": "taskfile"
+}

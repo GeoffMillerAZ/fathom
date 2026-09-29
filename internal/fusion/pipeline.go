@@ -707,7 +707,15 @@ func parseGitLog(serviceID, raw string) []store.Commit {
 // concatenation) where the incumbent composed Kind/name and newName:newTag.
 // Every already-indexed kustomization file was extracted by the incumbent, so
 // the salt bump re-reads them.
-const ExtractorEpoch = "33"
+// Epoch 34 (LB-Q-taskfile, docs/design/language-breadth.md §13/§4): a
+// Taskfile.yml, Taskfile.yaml, taskfile.yml, taskfile.yaml, Taskfile.dist.yml,
+// Taskfile.dist.yaml, taskfile.dist.yml or taskfile.dist.yaml now extracts
+// through the doc-engine taskfile dialect (the file's Taskfile entity named by
+// the file, each task named by its key as written, the tasks it names in deps,
+// cmds and defer as Calls, and the includes that resolve to another Taskfile of
+// the repository) where each was fingerprinted as unclassified YAML; the salt
+// bump re-reads them.
+const ExtractorEpoch = "34"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares
@@ -1034,6 +1042,22 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	}
 	for _, ext := range []string{".csproj", ".fsproj", ".vbproj", ".props", ".targets"} {
 		p.exts[ext] = msbuild
+	}
+
+	// Taskfile (LB-Q-taskfile, language-breadth: new, a doc-engine tool format,
+	// no incumbent). A .yml or .yaml file with one of go-task's eight basenames
+	// is unambiguous by name (resolveExtractor's basename lookup, before the
+	// classifier that left these unclassified); an included Taskfile under
+	// another name stays unclassified, as the manifest's match says.
+	taskfile, err := extractor.NewDocDialectExtractor("taskfile")
+	if err != nil {
+		panic(fmt.Sprintf("fusion: doc-dialect taskfile: %v", err))
+	}
+	for _, name := range []string{
+		"Taskfile.yml", "Taskfile.yaml", "taskfile.yml", "taskfile.yaml",
+		"Taskfile.dist.yml", "Taskfile.dist.yaml", "taskfile.dist.yml", "taskfile.dist.yaml",
+	} {
+		p.exts[name] = taskfile
 	}
 
 	// Scala
