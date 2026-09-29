@@ -275,6 +275,13 @@ var extClassMap = map[string]classification{
 	// Emacs Lisp (LB-Q-emacs-lisp: a new tree-sitter dialect, no incumbent).
 	".el": {core.KindEmacsLispFunction, "emacs-lisp"},
 
+	// Common Lisp (LB-Q-commonlisp: a new tree-sitter dialect, no incumbent).
+	// .asd is an ASDF system definition, a Lisp file the dialect claims and
+	// extracts nothing from. .cl and .l are not claimed (OpenCL C and Lex).
+	".lisp": {core.KindCommonLispFunction, "commonlisp"},
+	".lsp":  {core.KindCommonLispFunction, "commonlisp"},
+	".asd":  {core.KindCommonLispFunction, "commonlisp"},
+
 	// Swift (LB-Q-swift) is not classified: its dialect is built and measured
 	// but refused (design §14.2, parse errors over the 5% line), so .swift
 	// stays disclosed as unsupported (unsupported_language_gen.go).

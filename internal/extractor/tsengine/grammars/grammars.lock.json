@@ -39,6 +39,21 @@
       "gz_bytes": 136140
     },
     {
+      "blob": "commonlisp",
+      "repo": "tree-sitter-grammars/tree-sitter-commonlisp",
+      "tag": "v0.4.1",
+      "commit": "9db594efb43574c5fe4a1f880568b1f0d0ee6057",
+      "tarball_sha256": "f9767782bf94e82b847094f632f2db95b342e0ab54b1b8c8234cc1d6ac6c69a5",
+      "licence": "MIT",
+      "entry_points": ["tree_sitter_commonlisp"],
+      "scanner": false,
+      "generate": false,
+      "abi": 14,
+      "blob_sha256": "f9cbfce7bf5a6723d457925aa258cd9e224ebeab8988f369b710fe7a11581c12",
+      "blob_bytes": 839432,
+      "gz_bytes": 158920
+    },
+    {
       "blob": "cpp",
       "repo": "tree-sitter/tree-sitter-cpp",
       "tag": "v0.23.4",

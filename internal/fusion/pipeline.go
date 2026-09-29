@@ -717,14 +717,18 @@ func parseGitLog(serviceID, raw string) []store.Commit {
 // cmds and defer as Calls, and the includes that resolve to another Taskfile of
 // the repository) where each was fingerprinted as unclassified YAML; the salt
 // bump re-reads them.
-// Epoch 35 (LB-Q-emacs-lisp): .el files now extract through
-// internal/extractor.NewTSExtractor("emacs-lisp") — tree-sitter via wazero/WASM,
-// a fleet gap with no incumbent: defun, defmacro, defsubst, cl-defun, cl-defmacro
+// Epoch 35 (LB-Q-emacs-lisp, LB-Q-commonlisp): .el files now extract through
+// internal/extractor.NewTSExtractor("emacs-lisp") and .lisp, .lsp and .asd files
+// through NewTSExtractor("commonlisp") — tree-sitter via wazero/WASM, two fleet gaps
+// with no incumbent. Emacs Lisp: defun, defmacro, defsubst, cl-defun, cl-defmacro
 // and cl-defsubst (each with a Signature and an EndLine), defvar and defvar-local
 // (a bare `(defvar x)` too), defcustom, defconst, defface, defgroup, define-inline,
 // defalias, the derived and minor modes, cl-defgeneric and cl-defmethod, cl-defstruct
-// and eieio's defclass, at the top level or below it. Every such file was
-// fingerprinted by the no-extractor path, so the salt bump re-reads them.
+// and eieio's defclass, at the top level or below it. Common Lisp: defun, defmacro,
+// defgeneric (a `(setf name)` one too) and defmethod (each with a Signature and an
+// EndLine), defvar, defparameter, defconstant, deftype, defstruct and defclass, at
+// the top level or below it; an .asd file is claimed and defines nothing. Every such
+// file was fingerprinted by the no-extractor path, so the salt bump re-reads them.
 const ExtractorEpoch = "35"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file

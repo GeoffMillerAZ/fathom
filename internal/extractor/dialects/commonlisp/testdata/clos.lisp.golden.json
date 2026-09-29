@@ -1,0 +1,130 @@
+{
+  "symbols": [
+    {
+      "name": "describe-it",
+      "kind": "CommonLispGeneric",
+      "package": "clos",
+      "line": 5,
+      "end_line": 8,
+      "signature": "(defgeneric describe-it (thing stream)",
+      "tier": "verified"
+    },
+    {
+      "name": "describe-it",
+      "kind": "CommonLispMethod",
+      "package": "clos",
+      "line": 10,
+      "end_line": 11,
+      "signature": "(defmethod describe-it ((thing integer) stream)",
+      "tier": "verified"
+    },
+    {
+      "name": "describe-it",
+      "kind": "CommonLispMethod",
+      "package": "clos",
+      "line": 13,
+      "end_line": 14,
+      "signature": "(defmethod describe-it :before ((thing number) stream)",
+      "tier": "verified"
+    },
+    {
+      "name": "describe-it",
+      "kind": "CommonLispMethod",
+      "package": "clos",
+      "line": 16,
+      "end_line": 17,
+      "signature": "(defmethod describe-it :after ((thing number) stream)",
+      "tier": "verified"
+    },
+    {
+      "name": "describe-it",
+      "kind": "CommonLispMethod",
+      "package": "clos",
+      "line": 19,
+      "end_line": 20,
+      "signature": "(defmethod describe-it :around ((thing number) stream)",
+      "tier": "verified"
+    },
+    {
+      "name": "describe-it",
+      "kind": "CommonLispMethod",
+      "package": "clos",
+      "line": 22,
+      "end_line": 23,
+      "signature": "(defmethod describe-it ((thing (eql :none)) stream)",
+      "tier": "verified"
+    },
+    {
+      "name": "describe-it",
+      "kind": "CommonLispMethod",
+      "package": "clos",
+      "line": 25,
+      "end_line": 28,
+      "signature": "(defmethod describe-it ((thing string) (stream stream) &key (quote t) &allow-other-keys)",
+      "tier": "verified"
+    },
+    {
+      "name": "initialize-instance",
+      "kind": "CommonLispMethod",
+      "package": "clos",
+      "line": 30,
+      "end_line": 31,
+      "signature": "(defmethod initialize-instance :after ((object base-thing) &key)",
+      "tier": "verified"
+    },
+    {
+      "name": "print-object",
+      "kind": "CommonLispMethod",
+      "package": "clos",
+      "line": 33,
+      "end_line": 35,
+      "signature": "(defmethod print-object ((object base-thing) stream)",
+      "tier": "verified"
+    },
+    {
+      "name": "size",
+      "kind": "CommonLispGeneric",
+      "package": "clos",
+      "line": 37,
+      "end_line": 37,
+      "signature": "(defgeneric size (container))",
+      "tier": "verified"
+    },
+    {
+      "name": "size",
+      "kind": "CommonLispMethod",
+      "package": "clos",
+      "line": 39,
+      "end_line": 40,
+      "signature": "(defmethod size ((container list))",
+      "tier": "verified"
+    },
+    {
+      "name": "size",
+      "kind": "CommonLispMethod",
+      "package": "clos",
+      "line": 42,
+      "end_line": 43,
+      "signature": "(defmethod size ((container hash-table))",
+      "tier": "verified"
+    },
+    {
+      "name": "size",
+      "kind": "CommonLispGeneric",
+      "package": "clos",
+      "line": 45,
+      "end_line": 45,
+      "signature": "(defgeneric (setf size) (value container))",
+      "tier": "verified"
+    },
+    {
+      "name": "size",
+      "kind": "CommonLispMethod",
+      "package": "clos",
+      "line": 47,
+      "end_line": 48,
+      "signature": "(defmethod (setf size) (value (container list))",
+      "tier": "verified"
+    }
+  ]
+}

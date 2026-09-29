@@ -302,6 +302,14 @@ const (
 	// so get no constant of their own, same precedent as Dart's.
 	KindEmacsLispFunction SourceKind = "EmacsLispFunction"
 
+	// Common Lisp (LB-Q-commonlisp, language-breadth: new — a fleet gap, no
+	// incumbent). KindCommonLispFunction is the manifest's primary
+	// connector-classification kind; the dialect's other kinds (macro, class,
+	// generic, method, struct, variable, parameter, const, type) have no
+	// connector classification use and so get no constant of their own, same
+	// precedent as Dart's.
+	KindCommonLispFunction SourceKind = "CommonLispFunction"
+
 	// Kustomize (ADR-021 §2 / TI-3): entries under a kustomization.yaml's
 	// resources/patches/images lists, emitted as reference observations —
 	// previously parsed-then-discarded because the generic k8s extractor
