@@ -661,7 +661,14 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	// internal/extractor/dialects/java/PROVENANCE.md for the measured detail.
 	p.exts[".java"] = extractor.NewJavaExtractor()
 
-	// Rust
+	// Rust. LB-Q-rust built and measured a tree-sitter dialect
+	// (internal/extractor/dialects/rust/) — see docs/bench/readings/lang/rust.json
+	// — that reads L2 excellent but not its target (L4): §11 step 2's merge
+	// gate requires the dialect to meet its target level, so the CGO incumbent
+	// stays the live dispatch here. A switch must bump ExtractorEpoch: the
+	// dialect names an impl by its head type instead of the type field's
+	// source text and adds trait methods, unions, aliases, consts, statics and
+	// macros (dialects/rust/PROVENANCE.md).
 	p.exts[".rs"] = extractor.NewRustExtractor()
 
 	// C (.h is polyglot: the header router sniffs C++ signals and picks the

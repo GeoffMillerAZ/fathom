@@ -1,0 +1,414 @@
+{
+  "symbols": [
+    {
+      "name": "MAX_RETRIES",
+      "kind": "RustConst",
+      "package": "shapes",
+      "line": 5,
+      "end_line": 5,
+      "tier": "verified"
+    },
+    {
+      "name": "GREETING",
+      "kind": "RustStatic",
+      "package": "shapes",
+      "line": 6,
+      "end_line": 6,
+      "tier": "verified"
+    },
+    {
+      "name": "Result",
+      "kind": "RustTypeAlias",
+      "package": "shapes",
+      "line": 8,
+      "end_line": 8,
+      "tier": "verified"
+    },
+    {
+      "name": "square",
+      "kind": "RustMacro",
+      "package": "shapes",
+      "line": 11,
+      "end_line": 15,
+      "tier": "verified"
+    },
+    {
+      "name": "net",
+      "kind": "RustMod",
+      "package": "shapes",
+      "line": 17,
+      "end_line": 33,
+      "tier": "verified"
+    },
+    {
+      "name": "PORT",
+      "kind": "RustConst",
+      "package": "shapes",
+      "line": 18,
+      "end_line": 18,
+      "tier": "verified"
+    },
+    {
+      "name": "connect",
+      "kind": "RustFn",
+      "package": "shapes",
+      "line": 20,
+      "end_line": 22,
+      "signature": "pub fn connect(host: &str) -> bool",
+      "calls": [
+        "is_empty"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "tcp",
+      "kind": "RustMod",
+      "package": "shapes",
+      "line": 24,
+      "end_line": 32,
+      "tier": "verified"
+    },
+    {
+      "name": "Conn",
+      "kind": "RustStruct",
+      "package": "shapes",
+      "line": 25,
+      "end_line": 27,
+      "tier": "verified"
+    },
+    {
+      "name": "open",
+      "kind": "RustFn",
+      "package": "shapes",
+      "line": 29,
+      "end_line": 31,
+      "signature": "pub fn open() -> Conn",
+      "tier": "verified"
+    },
+    {
+      "name": "util",
+      "kind": "RustMod",
+      "package": "shapes",
+      "line": 35,
+      "end_line": 35,
+      "tier": "verified"
+    },
+    {
+      "name": "Unit",
+      "kind": "RustStruct",
+      "package": "shapes",
+      "line": 37,
+      "end_line": 37,
+      "tier": "verified"
+    },
+    {
+      "name": "Pair",
+      "kind": "RustStruct",
+      "package": "shapes",
+      "line": 39,
+      "end_line": 39,
+      "tier": "verified"
+    },
+    {
+      "name": "Widget",
+      "kind": "RustStruct",
+      "package": "shapes",
+      "line": 42,
+      "end_line": 48,
+      "tier": "verified"
+    },
+    {
+      "name": "Shape",
+      "kind": "RustEnum",
+      "package": "shapes",
+      "line": 50,
+      "end_line": 54,
+      "tier": "verified"
+    },
+    {
+      "name": "Bits",
+      "kind": "RustUnion",
+      "package": "shapes",
+      "line": 56,
+      "end_line": 59,
+      "tier": "verified"
+    },
+    {
+      "name": "Render",
+      "kind": "RustTrait",
+      "package": "shapes",
+      "line": 61,
+      "end_line": 70,
+      "tier": "verified"
+    },
+    {
+      "name": "Render.render",
+      "kind": "RustFn",
+      "package": "shapes",
+      "line": 65,
+      "end_line": 65,
+      "signature": "fn render(&self) -> String",
+      "tier": "verified"
+    },
+    {
+      "name": "Render.describe",
+      "kind": "RustFn",
+      "package": "shapes",
+      "line": 67,
+      "end_line": 69,
+      "signature": "fn describe(&self) -> String",
+      "calls": [
+        "format",
+        "render"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Widget",
+      "kind": "RustImpl",
+      "package": "shapes",
+      "line": 72,
+      "end_line": 88,
+      "tier": "verified"
+    },
+    {
+      "name": "Widget.new",
+      "kind": "RustFn",
+      "package": "shapes",
+      "line": 75,
+      "end_line": 77,
+      "signature": "pub fn new(id: u32, payload: T) -> Self",
+      "tier": "verified"
+    },
+    {
+      "name": "Widget.with_payload",
+      "kind": "RustFn",
+      "package": "shapes",
+      "line": 79,
+      "end_line": 87,
+      "signature": "pub fn with_payload<U>( &self, other: U, ) -> Widget<U> where U: Clone,",
+      "tier": "verified"
+    },
+    {
+      "name": "Unit",
+      "kind": "RustImpl",
+      "package": "shapes",
+      "line": 90,
+      "end_line": 94,
+      "tier": "verified"
+    },
+    {
+      "name": "Unit.fmt",
+      "kind": "RustFn",
+      "package": "shapes",
+      "line": 91,
+      "end_line": 93,
+      "signature": "fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result",
+      "calls": [
+        "write"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Vec",
+      "kind": "RustImpl",
+      "package": "shapes",
+      "line": 96,
+      "end_line": 103,
+      "tier": "verified"
+    },
+    {
+      "name": "Vec.render",
+      "kind": "RustFn",
+      "package": "shapes",
+      "line": 100,
+      "end_line": 102,
+      "signature": "fn render(&self) -> String",
+      "calls": [
+        "String.new"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "str",
+      "kind": "RustImpl",
+      "package": "shapes",
+      "line": 105,
+      "end_line": 112,
+      "tier": "verified"
+    },
+    {
+      "name": "str.render",
+      "kind": "RustFn",
+      "package": "shapes",
+      "line": 109,
+      "end_line": 111,
+      "signature": "fn render(&self) -> String",
+      "calls": [
+        "to_string"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "[u8]",
+      "kind": "RustImpl",
+      "package": "shapes",
+      "line": 114,
+      "end_line": 121,
+      "tier": "verified"
+    },
+    {
+      "name": "[u8].render",
+      "kind": "RustFn",
+      "package": "shapes",
+      "line": 118,
+      "end_line": 120,
+      "signature": "fn render(&self) -> String",
+      "calls": [
+        "String.new"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Conn",
+      "kind": "RustImpl",
+      "package": "shapes",
+      "line": 123,
+      "end_line": 125,
+      "tier": "verified"
+    },
+    {
+      "name": "Conn.close",
+      "kind": "RustFn",
+      "package": "shapes",
+      "line": 124,
+      "end_line": 124,
+      "signature": "pub fn close(self)",
+      "tier": "verified"
+    },
+    {
+      "name": "fetch",
+      "kind": "RustFn",
+      "package": "shapes",
+      "line": 127,
+      "end_line": 129,
+      "signature": "pub async fn fetch(url: &str) -> Result<String>",
+      "calls": [
+        "to_string"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "zero",
+      "kind": "RustFn",
+      "package": "shapes",
+      "line": 131,
+      "end_line": 133,
+      "signature": "pub const fn zero() -> u32",
+      "tier": "verified"
+    },
+    {
+      "name": "ffi_entry",
+      "kind": "RustFn",
+      "package": "shapes",
+      "line": 135,
+      "end_line": 137,
+      "signature": "pub(crate) unsafe extern \"C\" fn ffi_entry(x: i32) -> i32",
+      "tier": "verified"
+    },
+    {
+      "name": "abs",
+      "kind": "RustFn",
+      "package": "shapes",
+      "line": 140,
+      "end_line": 140,
+      "signature": "fn abs(x: i32) -> i32",
+      "tier": "verified"
+    },
+    {
+      "name": "outer",
+      "kind": "RustFn",
+      "package": "shapes",
+      "line": 143,
+      "end_line": 148,
+      "signature": "fn outer()",
+      "calls": [
+        "inner"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "inner",
+      "kind": "RustFn",
+      "package": "shapes",
+      "line": 144,
+      "end_line": 144,
+      "signature": "fn inner()",
+      "tier": "verified"
+    },
+    {
+      "name": "Local",
+      "kind": "RustStruct",
+      "package": "shapes",
+      "line": 145,
+      "end_line": 145,
+      "tier": "verified"
+    },
+    {
+      "name": "SCRATCH",
+      "kind": "RustConst",
+      "package": "shapes",
+      "line": 146,
+      "end_line": 146,
+      "tier": "verified"
+    },
+    {
+      "name": "tests",
+      "kind": "RustMod",
+      "package": "shapes",
+      "line": 151,
+      "end_line": 158,
+      "tier": "verified"
+    },
+    {
+      "name": "works",
+      "kind": "RustFn",
+      "package": "shapes",
+      "line": 155,
+      "end_line": 157,
+      "signature": "fn works()",
+      "calls": [
+        "assert",
+        "zero"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "fmt",
+      "exported": "fmt",
+      "module": "std",
+      "kind": "named",
+      "line": 3
+    },
+    {
+      "local": "fmt",
+      "module": "std::fmt",
+      "kind": "whole",
+      "line": 3
+    },
+    {
+      "local": "util",
+      "module": "util",
+      "kind": "whole",
+      "line": 35
+    },
+    {
+      "local": "*",
+      "module": "super",
+      "kind": "wildcard",
+      "line": 152
+    }
+  ]
+}

@@ -1,0 +1,71 @@
+{
+  "symbols": [
+    {
+      "name": "good",
+      "kind": "RustFn",
+      "package": "broken",
+      "line": 3,
+      "end_line": 5,
+      "signature": "pub fn good() -> u32",
+      "tier": "verified"
+    },
+    {
+      "name": "Holder",
+      "kind": "RustStruct",
+      "package": "broken",
+      "line": 7,
+      "end_line": 9,
+      "tier": "verified"
+    },
+    {
+      "name": "Holder",
+      "kind": "RustImpl",
+      "package": "broken",
+      "line": 11,
+      "end_line": 23,
+      "tier": "verified"
+    },
+    {
+      "name": "Holder.read",
+      "kind": "RustFn",
+      "package": "broken",
+      "line": 12,
+      "end_line": 14,
+      "signature": "pub fn read(&self) -> u32",
+      "tier": "verified"
+    },
+    {
+      "name": "Holder.broken",
+      "kind": "RustFn",
+      "package": "broken",
+      "line": 16,
+      "end_line": 18,
+      "signature": "fn broken(",
+      "tier": "verified"
+    },
+    {
+      "name": "Holder.after",
+      "kind": "RustFn",
+      "package": "broken",
+      "line": 20,
+      "end_line": 22,
+      "signature": "pub fn after(&self) -> u32",
+      "calls": [
+        "good"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "survivor",
+      "kind": "RustFn",
+      "package": "broken",
+      "line": 25,
+      "end_line": 27,
+      "signature": "pub fn survivor(x: u32) -> u32",
+      "calls": [
+        "good"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

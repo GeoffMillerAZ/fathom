@@ -236,6 +236,21 @@
       "gz_bytes": 311992
     },
     {
+      "blob": "rust",
+      "repo": "tree-sitter/tree-sitter-rust",
+      "tag": "v0.24.2",
+      "commit": "77a3747266f4d621d0757825e6b11edcbf991ca5",
+      "tarball_sha256": "061e90a539a55a6aa65dceb0ad6425c50ab1a6e3e6d4ba430e2795ed4550f10e",
+      "licence": "MIT",
+      "entry_points": ["tree_sitter_rust"],
+      "scanner": true,
+      "generate": false,
+      "abi": 15,
+      "blob_sha256": "cf86df357ff237e6c95d24a5f5609e4f4cd45f1700d065ddae5d22099a99ee1c",
+      "blob_bytes": 841090,
+      "gz_bytes": 204421
+    },
+    {
       "blob": "sql",
       "repo": "DerekStride/tree-sitter-sql",
       "tag": "v0.3.11",

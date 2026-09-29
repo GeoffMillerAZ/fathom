@@ -57,7 +57,9 @@ func scipBareName(sym string) (string, bool) {
 			return leafName(s[i+1 : len(s)-1]), callable
 		}
 	}
-	i := strings.LastIndexAny(s, "/#.: ")
+	// "]" ends a descriptor too: rust-analyzer writes an impl block's members
+	// as `impl#[Type]name().`, where `[Type]` is a descriptor of its own.
+	i := strings.LastIndexAny(s, "/#.:] ")
 	return leafName(s[i+1:]), callable
 }
 
@@ -108,6 +110,40 @@ func contains(outer, inner [4]int32) bool {
 // of the index's reference edges fathom's SCIP import keeps as typed
 // edges, internal/scip.ImportIndex), and the cross-file edge set.
 func ScoreSCIP(raw []byte, service string, nodes []core.SymbolNode) (SCIPResult, error) {
+	return ScoreSCIPWith(raw, service, nodes, SCIPOptions{})
+}
+
+// SCIPOptions are a language's rules for what its SCIP producer's references
+// prove as call sites (LB-Q-rust). The zero value is every other language's:
+// a callable descriptor ("name().") is a call.
+type SCIPOptions struct {
+	// Source reads a subject file (nil: no source reads); WrittenCallsOnly
+	// needs it.
+	Source func(path string) []byte
+	// MacroCalls: a reference to a macro symbol (descriptor suffix "!") is a
+	// call. Rust writes `println!(..)` as a call to `println`, as the
+	// incumbent extractor's own contract records; rust-analyzer references
+	// every invocation by the macro's name.
+	MacroCalls bool
+	// WrittenCallsOnly: a callable reference is a call site only when the
+	// source at its range is the callee's own name. rust-analyzer resolves an
+	// operator to its trait method — `?` to branch, `a == b` to eq, `!x` to
+	// not, `*x` to deref, `a[i]` to index — at the operator's own range: no
+	// call is written there, so no extractor of call sites can find one. The
+	// occurrences left out are counted (CntScipCallsUnwritten) and disclosed.
+	WrittenCallsOnly bool
+}
+
+// SCIPOptionsFor is the option set for a dialect's SCIP producer.
+func SCIPOptionsFor(dialect string, src func(path string) []byte) SCIPOptions {
+	if dialect == "rust" {
+		return SCIPOptions{Source: src, MacroCalls: true, WrittenCallsOnly: src != nil}
+	}
+	return SCIPOptions{}
+}
+
+// ScoreSCIPWith is ScoreSCIP under a language's call-site rules.
+func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCIPOptions) (SCIPResult, error) {
 	idx := &scippb.Index{}
 	if err := proto.Unmarshal(raw, idx); err != nil {
 		return SCIPResult{}, fmt.Errorf("scip: decode index: %w", err)
@@ -167,6 +203,10 @@ func ScoreSCIP(raw []byte, service string, nodes []core.SymbolNode) (SCIPResult,
 	truth := map[CallPair]bool{}
 	for _, d := range idx.GetDocuments() {
 		doc := d.GetRelativePath()
+		var srcLines [][]byte
+		if opts.WrittenCallsOnly && opts.Source != nil {
+			srcLines = bytes.Split(opts.Source(doc), []byte("\n"))
+		}
 		for _, o := range d.GetOccurrences() {
 			if o.GetSymbolRoles()&int32(scippb.SymbolRole_Definition) != 0 {
 				continue
@@ -179,7 +219,14 @@ func ScoreSCIP(raw []byte, service string, nodes []core.SymbolNode) (SCIPResult,
 				res.FileEdges[[2]string{doc, to}] = true
 			}
 			callee, callable := scipBareName(o.GetSymbol())
+			if opts.MacroCalls && strings.HasSuffix(o.GetSymbol(), "!") {
+				callable = true
+			}
 			if !callable || callee == "" {
+				continue
+			}
+			if srcLines != nil && !writtenAt(srcLines, r, callee) {
+				res.Counts[CntScipCallsUnwritten]++
 				continue
 			}
 			var inner *scipDef
@@ -205,6 +252,20 @@ func ScoreSCIP(raw []byte, service string, nodes []core.SymbolNode) (SCIPResult,
 	res.Counts[CntScipEdgesTyped] = imp.Report.Direct
 	res.Counts[CntScipEdges] = imp.Report.Direct + imp.Report.Skipped["unmapped-endpoint"]
 	return res, nil
+}
+
+// writtenAt reports whether the source at range r (0-based line, start and
+// end columns) is the callee's own name, allowing a raw identifier's r# prefix.
+func writtenAt(lines [][]byte, r [4]int32, callee string) bool {
+	if r[0] != r[2] || int(r[0]) >= len(lines) {
+		return false
+	}
+	line := lines[r[0]]
+	if r[1] < 0 || r[1] > r[3] || int(r[3]) > len(line) {
+		return false
+	}
+	text := strings.TrimPrefix(string(line[r[1]:r[3]]), "r#")
+	return text == strings.TrimPrefix(callee, "r#")
 }
 
 // ScoreFileEdges compares fathom's file-resolved edges (FromFile ->
@@ -310,10 +371,12 @@ func scipDescriptorKind(sym string) (kind string, scoped bool) {
 		if i := strings.LastIndex(s[:len(s)-1], "`"); i >= 0 {
 			s = s[:i]
 		}
-	} else if i := strings.LastIndexAny(s, "/#.: "); i >= 0 {
+	} else if i := strings.LastIndexAny(s, "/#.:] "); i >= 0 {
 		s = s[:i+1]
 	}
-	return kind, strings.HasSuffix(s, "#")
+	// An impl block has no name of its own: rust-analyzer's members of one sit
+	// under `impl#[Type]` or `impl#[Type][Trait]`, a type member like any other.
+	return kind, strings.HasSuffix(s, "#") || (strings.HasSuffix(s, "]") && strings.Contains(s, "impl#["))
 }
 
 // SCIPDefs reads a SCIP index as a tier-A L1 oracle (owner decision D2):
@@ -355,15 +418,29 @@ func SCIPDefs(raw []byte, src func(path string) []byte) (defs []OracleDef, tool,
 			}
 		}
 	}
+	// rust-analyzer expands macros and names every module by its file, which
+	// its definitions show two ways no source-level extractor can match; both
+	// are read from the subject's own source (see rustDeclSite, fileModules).
+	isRA := tool == "rust-analyzer"
+	docLines := map[string][][]byte{}
+	linesOf := func(path string) [][]byte {
+		if src == nil {
+			return nil
+		}
+		l, ok := docLines[path]
+		if !ok {
+			l = bytes.Split(src(path), []byte("\n"))
+			docLines[path] = l
+		}
+		return l
+	}
+	fileModules := map[string]bool{} // module symbols whose one definition is their whole file
 	for _, d := range idx.GetDocuments() {
 		info := map[string]*scippb.SymbolInformation{}
 		for _, si := range d.GetSymbols() {
 			info[si.GetSymbol()] = si
 		}
-		var lines [][]byte
-		if src != nil {
-			lines = bytes.Split(src(d.GetRelativePath()), []byte("\n"))
-		}
+		lines := linesOf(d.GetRelativePath())
 		lineText := func(l int) string {
 			if l < 0 || l >= len(lines) {
 				return ""
@@ -377,6 +454,17 @@ func SCIPDefs(raw []byte, src func(path string) []byte) (defs []OracleDef, tool,
 			sym := o.GetSymbol()
 			r, ok := rangeOf(o.GetRange())
 			if !ok {
+				continue
+			}
+			if r[0] != r[2] {
+				// A name is written on one line. A multi-line range is a
+				// whole-file module occurrence (rust-analyzer's, for the
+				// `crate/` root and for every file module `mod x;` names),
+				// not a definition anyone wrote: none is emitted here. A file
+				// module's declaration is recovered below from its reference.
+				if isRA && strings.HasSuffix(sym, "/") {
+					fileModules[sym] = true
+				}
 				continue
 			}
 			docKind := ""
@@ -433,7 +521,33 @@ func SCIPDefs(raw []byte, src func(path string) []byte) (defs []OracleDef, tool,
 			if enc, ok := rangeOf(o.GetEnclosingRange()); ok {
 				def.End = int(enc[2]) + 1
 			}
+			if isRA && src != nil && rustDeclKinds[kind] {
+				if t := lineText(int(r[0])); int(r[1]) <= len(t) && !rustDeclSite(t[:r[1]]) {
+					def.Generated = true
+				}
+			}
 			defs = append(defs, def)
+		}
+	}
+	if len(fileModules) > 0 && src != nil {
+		// A file module (`mod x;`) is defined by its whole file; the
+		// declaration a reader sees is the reference written after `mod`.
+		for _, d := range idx.GetDocuments() {
+			lines := linesOf(d.GetRelativePath())
+			for _, o := range d.GetOccurrences() {
+				if o.GetSymbolRoles()&int32(scippb.SymbolRole_Definition) != 0 || !fileModules[o.GetSymbol()] {
+					continue
+				}
+				r, ok := rangeOf(o.GetRange())
+				if !ok || r[0] != r[2] || int(r[0]) >= len(lines) || int(r[1]) > len(lines[r[0]]) {
+					continue
+				}
+				if !rustModRE.Match(lines[r[0]][:r[1]]) {
+					continue
+				}
+				name, _ := scipBareName(o.GetSymbol())
+				defs = append(defs, OracleDef{Path: d.GetRelativePath(), Name: name, Line: int(r[0]) + 1, End: int(r[0]) + 1, Kind: "module"})
+			}
 		}
 	}
 	sort.SliceStable(defs, func(i, j int) bool {
@@ -448,6 +562,26 @@ func SCIPDefs(raw []byte, src func(path string) []byte) (defs []OracleDef, tool,
 	})
 	return defs, tool, version, nil
 }
+
+// rustDeclKinds are the kinds whose definition must be written where the
+// producer reports it (fields, variants and locals are not checked).
+var rustDeclKinds = map[string]bool{
+	"function": true, "method": true, "staticmethod": true, "traitmethod": true, "struct": true,
+	"enum": true, "trait": true, "constant": true, "const": true, "staticvariable": true,
+	"typealias": true, "type": true, "macro": true, "module": true,
+}
+
+var (
+	rustDeclRE = regexp.MustCompile(`\b(?:fn|struct|enum|union|trait|type|const|static|static\s+mut|mod|macro_rules!|macro)\s+(?:r#)?$`)
+	rustModRE  = regexp.MustCompile(`\bmod\s+(?:r#)?$`)
+)
+
+// rustDeclSite reports whether prefix — the text before a reported
+// definition's name on its line — ends in a Rust declaration keyword. A
+// definition rust-analyzer reports with none was generated by a macro's
+// expansion (globset's `syntax!(literal1, ...)` writes no `fn literal1`); it
+// exists only after expansion, so no syntactic extractor can see it.
+func rustDeclSite(prefix string) bool { return rustDeclRE.MatchString(prefix) }
 
 var wordRE = regexp.MustCompile(`[A-Za-z_]+`)
 

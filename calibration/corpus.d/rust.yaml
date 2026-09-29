@@ -1,0 +1,29 @@
+id: rust
+language: Rust
+# Measurement conventions (docs/bench/readings/lang/rust.json): each subject is measured as
+# cloned; the dependencies rust-analyzer needs to resolve types are fetched into a scratch
+# CARGO_HOME (never the clone), and target/ is a scratch CARGO_TARGET_DIR outside it. `sha` is
+# the peeled commit of the release tag (both are annotated tags).
+repos:
+  - name: BurntSushi/ripgrep
+    url: https://github.com/BurntSushi/ripgrep
+    ref: 14.1.1
+    sha: 4649aa9700619f94cf9c66876e9549d83420e16c
+    licence: MIT OR Unlicense
+    idioms:
+      - 'a Cargo workspace of small library crates (grep-*, ignore, globset) beside the rg binary'
+      - 'traits with generic implementors and trait impls for reference and boxed receivers'
+      - 'enums with data and error enums implementing Display and From'
+      - 'nested inline modules, #[cfg(test)] mod tests blocks and macro_rules! helpers'
+      - 'builder-pattern structs with chained &mut self setters and iterators over closures'
+  - name: clap-rs/clap
+    url: https://github.com/clap-rs/clap
+    ref: v4.6.1
+    sha: ac5fda6a799e4c640d671edd1111d4a5e723dc1a
+    licence: MIT OR Apache-2.0
+    idioms:
+      - 'a proc-macro crate (clap_derive) built on syn, quote and proc_macro2'
+      - 'builder types with many #[must_use] consuming setters and trait default methods'
+      - 'feature-gated modules and items (#[cfg(feature = "...")])'
+      - 'generic traits with associated types and impl blocks over several type parameters'
+      - 'declarative macros invoked with call-shaped arguments (arg!, value_parser!)'

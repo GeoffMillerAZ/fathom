@@ -1,0 +1,300 @@
+{
+  "symbols": [
+    {
+      "name": "parse",
+      "kind": "RustMod",
+      "package": "generics",
+      "line": 3,
+      "end_line": 35,
+      "tier": "verified"
+    },
+    {
+      "name": "Token",
+      "kind": "RustStruct",
+      "package": "generics",
+      "line": 6,
+      "end_line": 8,
+      "tier": "verified"
+    },
+    {
+      "name": "Token",
+      "kind": "RustImpl",
+      "package": "generics",
+      "line": 10,
+      "end_line": 18,
+      "tier": "verified"
+    },
+    {
+      "name": "Token.new",
+      "kind": "RustFn",
+      "package": "generics",
+      "line": 11,
+      "end_line": 13,
+      "signature": "pub fn new(text: &'a str) -> Token<'a>",
+      "tier": "verified"
+    },
+    {
+      "name": "Token.len",
+      "kind": "RustFn",
+      "package": "generics",
+      "line": 15,
+      "end_line": 17,
+      "signature": "pub fn len(&self) -> usize",
+      "calls": [
+        "len"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Token",
+      "kind": "RustImpl",
+      "package": "generics",
+      "line": 20,
+      "end_line": 26,
+      "tier": "verified"
+    },
+    {
+      "name": "Token.next",
+      "kind": "RustFn",
+      "package": "generics",
+      "line": 23,
+      "end_line": 25,
+      "signature": "fn next(&mut self) -> Option<char>",
+      "calls": [
+        "chars",
+        "next"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Token",
+      "kind": "RustImpl",
+      "package": "generics",
+      "line": 28,
+      "end_line": 34,
+      "tier": "verified"
+    },
+    {
+      "name": "Token.from_str",
+      "kind": "RustFn",
+      "package": "generics",
+      "line": 31,
+      "end_line": 33,
+      "signature": "fn from_str(s: &str) -> Result<Self, ()>",
+      "tier": "verified"
+    },
+    {
+      "name": "Visitor",
+      "kind": "RustTrait",
+      "package": "generics",
+      "line": 37,
+      "end_line": 49,
+      "tier": "verified"
+    },
+    {
+      "name": "Visitor.visit",
+      "kind": "RustFn",
+      "package": "generics",
+      "line": 41,
+      "end_line": 41,
+      "signature": "fn visit(&mut self, node: &T) -> bool",
+      "tier": "verified"
+    },
+    {
+      "name": "Visitor.visit_all",
+      "kind": "RustFn",
+      "package": "generics",
+      "line": 43,
+      "end_line": 48,
+      "signature": "fn visit_all<I>(&mut self, nodes: I) -> bool where I: IntoIterator<Item = T>,",
+      "calls": [
+        "all",
+        "into_iter",
+        "visit"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Vec",
+      "kind": "RustImpl",
+      "package": "generics",
+      "line": 51,
+      "end_line": 56,
+      "tier": "verified"
+    },
+    {
+      "name": "Vec.visit",
+      "kind": "RustFn",
+      "package": "generics",
+      "line": 52,
+      "end_line": 55,
+      "signature": "fn visit(&mut self, node: &T) -> bool",
+      "calls": [
+        "clone",
+        "push"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Box",
+      "kind": "RustImpl",
+      "package": "generics",
+      "line": 58,
+      "end_line": 62,
+      "tier": "verified"
+    },
+    {
+      "name": "Box.visit",
+      "kind": "RustFn",
+      "package": "generics",
+      "line": 59,
+      "end_line": 61,
+      "signature": "fn visit(&mut self, node: &u8) -> bool",
+      "tier": "verified"
+    },
+    {
+      "name": "Wrapper",
+      "kind": "RustStruct",
+      "package": "generics",
+      "line": 64,
+      "end_line": 64,
+      "tier": "verified"
+    },
+    {
+      "name": "Wrapper",
+      "kind": "RustImpl",
+      "package": "generics",
+      "line": 66,
+      "end_line": 70,
+      "tier": "verified"
+    },
+    {
+      "name": "Wrapper.from",
+      "kind": "RustFn",
+      "package": "generics",
+      "line": 67,
+      "end_line": 69,
+      "signature": "fn from(t: T) -> Self",
+      "tier": "verified"
+    },
+    {
+      "name": "make_adder",
+      "kind": "RustFn",
+      "package": "generics",
+      "line": 72,
+      "end_line": 74,
+      "signature": "pub fn make_adder(n: u32) -> impl Fn(u32) -> u32",
+      "tier": "verified"
+    },
+    {
+      "name": "boxed",
+      "kind": "RustFn",
+      "package": "generics",
+      "line": 76,
+      "end_line": 78,
+      "signature": "pub fn boxed() -> Box<dyn Fn(u32) -> u32>",
+      "calls": [
+        "Box.new",
+        "make_adder"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "with_local_impl",
+      "kind": "RustFn",
+      "package": "generics",
+      "line": 80,
+      "end_line": 90,
+      "signature": "fn with_local_impl()",
+      "calls": [
+        "Point.origin"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Point",
+      "kind": "RustStruct",
+      "package": "generics",
+      "line": 81,
+      "end_line": 81,
+      "tier": "verified"
+    },
+    {
+      "name": "Point",
+      "kind": "RustImpl",
+      "package": "generics",
+      "line": 83,
+      "end_line": 87,
+      "tier": "verified"
+    },
+    {
+      "name": "Point.origin",
+      "kind": "RustFn",
+      "package": "generics",
+      "line": 84,
+      "end_line": 86,
+      "signature": "fn origin() -> Point",
+      "tier": "verified"
+    },
+    {
+      "name": "Plain",
+      "kind": "RustStruct",
+      "package": "generics",
+      "line": 92,
+      "end_line": 92,
+      "tier": "verified"
+    },
+    {
+      "name": "[u8]",
+      "kind": "RustImpl",
+      "package": "generics",
+      "line": 94,
+      "end_line": 98,
+      "tier": "verified"
+    },
+    {
+      "name": "[u8].visit",
+      "kind": "RustFn",
+      "package": "generics",
+      "line": 95,
+      "end_line": 97,
+      "signature": "fn visit(&mut self, node: &u8) -> bool",
+      "calls": [
+        "len"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Plain",
+      "kind": "RustImpl",
+      "package": "generics",
+      "line": 100,
+      "end_line": 104,
+      "tier": "verified"
+    },
+    {
+      "name": "Plain.visit",
+      "kind": "RustFn",
+      "package": "generics",
+      "line": 101,
+      "end_line": 103,
+      "signature": "fn visit(&mut self, node: &u8) -> bool",
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "FromStr",
+      "exported": "FromStr",
+      "module": "std::str",
+      "kind": "named",
+      "line": 4
+    },
+    {
+      "local": "FromStr",
+      "module": "std::str::FromStr",
+      "kind": "whole",
+      "line": 4
+    }
+  ]
+}

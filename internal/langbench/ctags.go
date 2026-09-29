@@ -16,6 +16,10 @@ type OracleDef struct {
 	End    int // 0 when the oracle gives no end
 	Kind   string
 	Scoped bool // the definition is a member of a type (ctags scope other than a package/namespace/module)
+	// Generated marks a definition the producer found inside a macro's
+	// expansion — none is written at its position (rust-analyzer). It is not
+	// scored: a syntactic extractor cannot see it, and the reading counts it.
+	Generated bool
 }
 
 // CtagsArgs is the tier-B invocation (§1.3): JSON output with line, kind
