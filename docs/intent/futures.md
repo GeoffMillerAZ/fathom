@@ -67,6 +67,13 @@ futures may justify a free option today. The repo's own sequence is
   finding-kind claim regardless of origin, so an imported review-kit finding (once `fathom
   findings import` lands, FL-10) counts toward the same ≥15–20 threshold this future is
   watching — the findings loop widens the funnel, it does not promote anything by itself.
+- Note (2026-09-29, incident maps): the form this future takes is incident maps
+  (`docs/design/exploration-maps.md` section 3c): live maps prepared ahead for critical paths, joining owners,
+  the suspect list, certificates, knobs and past incidents, served by `localize` from a stack trace with no
+  model and no network. They are gated on live maps (XM-D1, whose trigger is XM-M2 and RT-M1 reading PASS,
+  `docs/plans/exploration-maps.md` XM-26 to XM-30), not on the resolved-finding count above; that count still
+  gates precedent compiled from a non-git corpus. Fathom never mitigates and the no-command-center non-goal
+  stands. Related: F52.
 
 ## F5. Provider pack type (TX-3)
 
@@ -608,3 +615,20 @@ nothing may depend on it (P24). The entry's own drop-if stands.
   labeled verdicts reaches agreement of at least 0.8 at n of at least 3 (FM-M2's bar).
 - Drop if: J0 kills the code-reading sites, or the calibration misses the bar and the owner's labeled verdicts
   have not grown within a year.
+
+## F52. Review Kit concern packs declare their scope as live-map queries
+
+- Confidence: plausible. Horizon: later. Evidence: ADR-055 decision 8, ADR-056, `docs/design/exploration-maps.md`
+  section 3c, `docs/plans/exploration-maps.md` XM-23 to XM-25.
+- Motivation: a review or well-architected concern ("every outbound network call", "every write path to table
+  X", "every flag reader") is a set of code, and findings are the violations inside it. A pack whose scope is a
+  live-map query reviews the current code and catches code that newly enters the scope, where a fixed list goes
+  stale; paired with a check it makes a periodic review a standing property.
+- Do not build: it before live maps exist and the evidence contract has a scope field; any conversion, scoring
+  or judgment of a finding by fathom (ADR-040, ADR-055: findings stay under Review Kit's authority); a concern
+  scope that only works with fathom present.
+- Preserve: the versioned evidence contract as the seam (ADR-055 decision 8), a scope as a query in the layers'
+  vocabulary, findings as point claims outside maps, and a pack with no scope field working exactly as today.
+  The Review Kit side is a future on its own plan; the fathom side is the evidence-contract row XM-23.
+- Promote when: live maps land (F50 promoted, XM-D1) and the evidence contract has a scope field.
+- Drop if: Review Kit declines to carry a scope field on its concern packs.

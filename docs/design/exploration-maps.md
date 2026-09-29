@@ -129,6 +129,71 @@ maps are promoted):
 dispatch boundary, and R5 (storage stays in existing thread fields until RT-M1 reads PASS). With provider
 `none` items 1 to 5 work as written: every one is a deterministic join, clause or comparison. $0 egress.
 
+## 3c. Concern scopes and incident maps (binding frame; built when live maps are promoted, XM-D1)
+
+Owner question 2026-09-29, architect decision. Can live maps carry review concerns, well-architected concerns
+and incident readiness? The scope of a concern and the prepared paths of an incident, yes. The findings, no.
+
+**Findings are not maps.** A finding is a point claim with a severity and a lifecycle, under Review Kit's
+authority (ADR-040, ADR-055): a verdict on one place. A map is a working set: a purpose and the code that
+matters for it. Fathom serves an imported finding beside the governing rules at the edit and never converts,
+scores or judges one, and a finding is never stored as a map entry.
+
+**A concern's scope is a live map** (rows XM-23 to XM-25, each needs XM-D1). A review or well-architected concern
+("every outbound network call", "every write path to table X", "every flag reader") is a set of code, and
+findings are the violations inside it. Review Kit concern packs may declare that scope as a fathom live-map
+query carried over the evidence contract (ADR-055 decision 8), so a review always covers the current code and
+code that newly enters a concern's scope is caught, where a fixed file list goes stale. Fathom's side is an
+optional `scope` field on the evidence contract, a query in the layers' vocabulary that fathom evaluates and
+serves as a map whose entries carry the clause that selected them (section 3b, item 2). Review Kit's side is a
+future on its own plan; a pack with no scope field works exactly as it does today, and Review Kit keeps its
+fathom-less path. Fathom computes membership. It does not choose which concerns matter or decide whether the
+code inside one conforms (future F52).
+
+**Well-architected concerns become continuous.** A concern map plus a check turns a periodic review into a
+standing property. The map says which code the concern covers, the check (a guard, or an assertion evaluated
+whenever the map is served, the same shape as section 3b's `structural_claim`) says what must hold there, and
+both are recomputed on read instead of re-reviewed on a calendar. A daemon that is down reads unable-to-check,
+never a violation.
+
+**Incident maps** (rows XM-26 to XM-28; the form future F4, the failure-mode playbook, takes). An incident map
+is a live map prepared ahead for a critical path, and each one joins:
+
+- owners (the ownership file);
+- the recent changes inside its footprint, the suspect list: commits in the last N hours or days, N set on the
+  map;
+- the covering tests and their certificates, and recent failures;
+- the flags and configuration the footprint reads, the knobs;
+- linked findings and past incidents (`docs/intent/incidents.md` records that name the path);
+- runbook and dashboard links, stored as data and never fetched.
+
+**The incident flow.** During an incident, `localize` given a stack trace or an error maps its frames to the
+incident maps that contain those symbols and returns the suspect list, the reach, the owners and the knobs. It
+is computed locally, with no model and no network: a runbook link is shown, never opened. The default order is
+deterministic. A typed judgment model has one optional role, ordering the suspect list after a calibration
+reading, and never decides membership (section 6; XM-D9).
+
+**Boundaries.** There is no incident command center: the non-goal in `docs/intent/scope.md` stands, and a map is
+served data, not a workspace, a chat or a timeline anyone edits during the incident. Fathom never mitigates: it
+never toggles a flag, rolls back, restarts, pages or opens a ticket. The knobs are listed so a human, or an agent
+holding its own authority, can act. The flow is read-only (XM-28), inside the dispatch boundary and law 15.
+
+**Experiments** (rows XM-29 and XM-30, readings XM-M6 and XM-M7; each has a kill path):
+
+1. **Postmortems update the map.** An incident's outcome names the incident map it created or sharpened for the
+   affected path, extending the rule in `docs/intent/incidents.md` (an invariant, a test or a decision) with the
+   map, once incident maps exist. That extension is planned and marked in the rule text, not in force. Reading
+   XM-M6 asks, on incidents over mapped paths, whether `localize` named the map and whether its suspect list held
+   the change that proved to be the cause. The bar is fixed before the run.
+2. **A readiness report per critical incident map.** Owners present, runbook link present, live certificates,
+   flags present, change volume. Review Kit owns the standard of what ready means; fathom computes the facts and
+   grades nothing. Reading XM-M7 asks whether a gap the report named was later confirmed by a real incident or
+   review and closed by an owner. The bar is fixed before the run.
+
+**What does not change.** No new default tool (P4, ADR-053), fathom writes only what it owns (law 15), R5
+(storage stays in existing thread fields until RT-M1 reads PASS). With provider `none` everything above works as
+written: every item is a deterministic join, clause or comparison. $0 egress; links are data, never fetched.
+
 ## 4. Discoverability: maps arrive, agents do not have to look (binding)
 
 Discoveries and anchored memory failed because they depended on agents choosing to look. Fathom's founding
@@ -176,7 +241,8 @@ boilerplate.
 The planner already decided what matters, so a model is mostly unnecessary. Optional roles, none required for
 any map to work: drafting a purpose line (an llm, human-committed); computing an expensive judged column only
 inside a map's footprint (after J0 and RT-M1); selecting entries for a task on a map over budget
-(`map show --for '<task>'`, one noul per entry, deferred until the hook input carries the prompt); and a
+(`map show --for '<task>'`, one noul per entry, deferred until the hook input carries the prompt); ordering an
+incident map's suspect list (section 3c, XM-D9, deferred until a calibration reading); and a
 planner's question-directed traversal becoming a map (`docs/design/judged-predicates.md` section 4, F36,
 triggered by XM-M2 passing). With provider `none` every map feature works.
 
@@ -194,3 +260,5 @@ why lines, never source text beyond spans a reader could already read.
 | XM-M3 | pointer precision at least 10 percent (expanded over shown) and the reuse rate reported |
 | XM-M4 | the instruction-file swap A/B (section 3b, item 4): bytes fall, structural answers as accurate, tokens to proof not worse, bar fixed before the run; otherwise the prose stays |
 | XM-M5 | membership signals (section 3b, item 5): structure moves against query noise, and whether a receipt line changed an action; the receipt line is dropped when it never did |
+| XM-M6 | postmortem map updates (section 3c, experiment 1): on incidents over mapped paths, whether `localize` named the map and its suspect list held the cause; bar fixed before the run |
+| XM-M7 | the readiness report (section 3c, experiment 2): whether a named gap was confirmed by a real incident or review and closed; bar fixed before the run |
