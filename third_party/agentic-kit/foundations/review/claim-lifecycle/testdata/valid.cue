@@ -94,7 +94,7 @@ validClaimViewNoGrade: claimlifecycle.#ClaimView & {
 }
 
 // validClaimViewWithGrade demonstrates a ClaimView with a full ClaimGrade,
-// preserving FloorTier and Promoted (CLAUDE.md invariant §4, §6).
+// preserving FloorTier and Promoted (docs/practices.md §2).
 validClaimViewWithGrade: claimlifecycle.#ClaimView & {
 	ClaimID: "claim-008"
 	Text:    "Supported claim with evidence grade."

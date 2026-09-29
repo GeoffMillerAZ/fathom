@@ -13,28 +13,85 @@ import (
 )
 
 type hostOwnership struct {
-	Version             int                        `json:"version"`
-	Host                string                     `json:"host"`
-	Root                string                     `json:"root"`
-	Binary              string                     `json:"binary"`
-	BinaryHash          string                     `json:"binary_hash"`
-	PolicyHash          string                     `json:"policy_hash"`
-	ConfigBeforeHash    string                     `json:"config_before_hash"`
-	ConfigExisted       bool                       `json:"config_existed"`
-	InstructionsExisted bool                       `json:"instructions_existed"`
-	Stanza              string                     `json:"stanza"`
-	Entries             map[string]json.RawMessage `json:"entries"`
+	Version             int    `json:"version"`
+	Host                string `json:"host"`
+	Root                string `json:"root"`
+	Binary              string `json:"binary"`
+	BinaryHash          string `json:"binary_hash"`
+	PolicyHash          string `json:"policy_hash"`
+	ConfigBeforeHash    string `json:"config_before_hash"`
+	ConfigExisted       bool   `json:"config_existed"`
+	InstructionsExisted bool   `json:"instructions_existed"`
+	// InstructionsPath is where Stanza lives. A record written before the
+	// one-instruction-file change has none and, for claude, means CLAUDE.md.
+	InstructionsPath string `json:"instructions_path,omitempty"`
+	Stanza           string `json:"stanza"`
+	// ImportPath and Import record the @AGENTS.md import this install appended
+	// to an existing CLAUDE.md; both are empty when the adopter already had one.
+	ImportPath string                     `json:"import_path,omitempty"`
+	Import     string                     `json:"import,omitempty"`
+	Entries    map[string]json.RawMessage `json:"entries"`
 }
+
+const (
+	// hostInstructionsFile is the one instruction file both hosts read: Codex
+	// natively, Claude Code natively while no CLAUDE.md exists and through an
+	// @AGENTS.md import otherwise (docs/project-intent/integration.md section 2).
+	hostInstructionsFile = "AGENTS.md"
+	// hostClaudeFile is the Claude-only file. The installer never creates it;
+	// it edits one the adopter already has, only to add the import.
+	hostClaudeFile = "CLAUDE.md"
+	// hostLegacyClaudeInstructions is where installs made before the
+	// one-instruction-file change put their Claude stanza.
+	hostLegacyClaudeInstructions = "CLAUDE.md"
+
+	hostImportBegin = "<!-- agentic-kit:host:claude:import:begin -->"
+	hostImportEnd   = "<!-- agentic-kit:host:claude:import:end -->"
+)
 
 func hostPaths(host string) (config, instructions, policy, ownership string) {
 	config = ".claude/settings.json"
-	instructions = "CLAUDE.md"
 	if host == "codex" {
 		config = ".codex/hooks.json"
-		instructions = "AGENTS.md"
 	}
 	base := ".agentic-kit/hosts/" + host + "/"
-	return config, instructions, base + "policy.json", base + "ownership.json"
+	return config, hostInstructionsFile, base + "policy.json", base + "ownership.json"
+}
+
+// hostInstructionPath is where an existing install's stanza lives.
+func hostInstructionPath(host string, own hostOwnership) string {
+	if own.InstructionsPath != "" {
+		return own.InstructionsPath
+	}
+	if host == "claude" {
+		return hostLegacyClaudeInstructions
+	}
+	return hostInstructionsFile
+}
+
+// hostImportBlock is the marked text appended to a CLAUDE.md that does not
+// yet import AGENTS.md. It is an import only, never a copy of the stanza.
+func hostImportBlock() string {
+	return "\n\n" + hostImportBegin + "\n@AGENTS.md\n" + hostImportEnd + "\n"
+}
+
+// hostImportsAgents reports whether text has a line that imports AGENTS.md
+// outside a fenced code block. Claude Code does not follow an import shown in
+// code, and a mention inside prose is not a line of its own, so a missed match
+// only adds a redundant import (a file imported twice loads once).
+func hostImportsAgents(text []byte) bool {
+	fenced := false
+	for _, line := range strings.Split(string(text), "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "```") || strings.HasPrefix(line, "~~~") {
+			fenced = !fenced
+			continue
+		}
+		if !fenced && (line == "@AGENTS.md" || line == "@./AGENTS.md") {
+			return true
+		}
+	}
+	return false
 }
 
 // hostRead rejects symlink components and special files as well as escapes.
@@ -160,6 +217,19 @@ func planHostInstall(root *os.Root, rootPath, host, binary string, policy hostPo
 	if bytes.Contains(text, []byte("<!-- agentic-kit:host:"+host+":")) {
 		return hostPlan{}, errors.New("unowned instruction marker exists")
 	}
+	// Claude Code skips AGENTS.md while a CLAUDE.md exists unless that file
+	// imports it. Add the import to the adopter's own CLAUDE.md; never create one.
+	var claudeText []byte
+	claudeExists, needsImport := false, false
+	if host == "claude" {
+		if claudeText, claudeExists, err = hostRead(root, hostClaudeFile); err != nil {
+			return hostPlan{}, err
+		}
+		if bytes.Contains(claudeText, []byte(hostImportBegin)) || bytes.Contains(claudeText, []byte(hostImportEnd)) {
+			return hostPlan{}, errors.New("unowned import marker exists")
+		}
+		needsImport = claudeExists && !hostImportsAgents(claudeText)
+	}
 	doc, hooks, err := hostConfig(config)
 	if err != nil {
 		return hostPlan{}, err
@@ -187,15 +257,21 @@ func planHostInstall(root *os.Root, rootPath, host, binary string, policy hostPo
 		entries[event] = raw
 	}
 	doc["hooks"], _ = json.Marshal(hooks)
-	own := hostOwnership{Version: hostFormatVersion, Host: host, Root: rootPath, Binary: binary, BinaryHash: hostHash(binaryBytes), PolicyHash: hostHash(policyBytes), ConfigBeforeHash: hostHash(config), ConfigExisted: configExists, InstructionsExisted: textExists, Stanza: hostStanza(host, policy), Entries: entries}
+	own := hostOwnership{Version: hostFormatVersion, Host: host, Root: rootPath, Binary: binary, BinaryHash: hostHash(binaryBytes), PolicyHash: hostHash(policyBytes), ConfigBeforeHash: hostHash(config), ConfigExisted: configExists, InstructionsExisted: textExists, InstructionsPath: instructionPath, Stanza: hostStanza(host, policy), Entries: entries}
+	if needsImport {
+		own.ImportPath, own.Import = hostClaudeFile, hostImportBlock()
+	}
 	// Ownership goes first, hooks last. An interrupted install has a recovery
 	// record before any native hook can reference its policy.
 	changes := []hostFileChange{
 		{Path: ownershipPath, After: string(hostJSON(own)), AfterExists: true},
 		{Path: policyPath, After: string(policyBytes), AfterExists: true},
 		{Path: instructionPath, Before: string(text), BeforeExists: textExists, After: string(text) + own.Stanza, AfterExists: true},
-		{Path: configPath, Before: string(config), BeforeExists: configExists, After: string(hostJSON(doc)), AfterExists: true},
 	}
+	if needsImport {
+		changes = append(changes, hostFileChange{Path: hostClaudeFile, Before: string(claudeText), BeforeExists: true, After: string(claudeText) + own.Import, AfterExists: true})
+	}
+	changes = append(changes, hostFileChange{Path: configPath, Before: string(config), BeforeExists: configExists, After: string(hostJSON(doc)), AfterExists: true})
 	return sealHostPlan(hostPlan{Version: hostFormatVersion, Host: host, Root: rootPath, Operation: "install", Changes: changes}), nil
 }
 
@@ -208,11 +284,17 @@ func validateHostOwnership(own hostOwnership, host, rootPath string) error {
 			return errors.New("missing owned event")
 		}
 	}
+	if own.InstructionsPath != "" && own.InstructionsPath != hostInstructionsFile && !(host == "claude" && own.InstructionsPath == hostLegacyClaudeInstructions) {
+		return errors.New("invalid host ownership record")
+	}
+	if (own.ImportPath != "" || own.Import != "") && (host != "claude" || own.ImportPath != hostClaudeFile || !strings.Contains(own.Import, hostImportBegin) || !strings.Contains(own.Import, hostImportEnd)) {
+		return errors.New("invalid host ownership record")
+	}
 	return nil
 }
 
 func planHostUninstall(root *os.Root, rootPath, host string) (hostPlan, error) {
-	configPath, instructionPath, policyPath, ownershipPath := hostPaths(host)
+	configPath, _, policyPath, ownershipPath := hostPaths(host)
 	ownershipRaw, exists, err := hostRead(root, ownershipPath)
 	if err != nil || !exists {
 		return hostPlan{}, errors.New("host ownership record missing or unreadable")
@@ -224,6 +306,7 @@ func planHostUninstall(root *os.Root, rootPath, host string) (hostPlan, error) {
 	if err = validateHostOwnership(own, host, rootPath); err != nil {
 		return hostPlan{}, err
 	}
+	instructionPath := hostInstructionPath(host, own)
 	config, configExists, err := hostRead(root, configPath)
 	if err != nil {
 		return hostPlan{}, err
@@ -284,6 +367,24 @@ func planHostUninstall(root *os.Root, rootPath, host string) (hostPlan, error) {
 		if count == 1 {
 			after := strings.Replace(string(text), own.Stanza, "", 1)
 			changes = append(changes, hostFileChange{Path: instructionPath, Before: string(text), BeforeExists: true, After: after, AfterExists: own.InstructionsExisted || after != ""})
+		}
+	}
+	if own.Import != "" {
+		claude, claudeExists, err := hostRead(root, own.ImportPath)
+		if err != nil {
+			return hostPlan{}, err
+		}
+		if claudeExists {
+			count := strings.Count(string(claude), own.Import)
+			if count == 0 && (strings.Contains(string(claude), hostImportBegin) || strings.Contains(string(claude), hostImportEnd)) {
+				return hostPlan{}, errors.New("owned import block changed")
+			}
+			if count > 1 {
+				return hostPlan{}, errors.New("duplicate owned import block")
+			}
+			if count == 1 {
+				changes = append(changes, hostFileChange{Path: own.ImportPath, Before: string(claude), BeforeExists: true, After: strings.Replace(string(claude), own.Import, "", 1), AfterExists: true})
+			}
 		}
 	}
 	policy, policyExists, err := hostRead(root, policyPath)
@@ -395,7 +496,9 @@ func hostConfigDigest(root *os.Root, host string) (string, error) {
 	config, instructions, policy, ownership := hostPaths(host)
 	paths := []string{config, instructions, policy, ownership}
 	if host == "claude" {
-		paths = append(paths, ".claude/settings.local.json")
+		// CLAUDE.md decides whether Claude Code loads AGENTS.md at all; a
+		// pre-change install still keeps its stanza there.
+		paths = append(paths, ".claude/settings.local.json", hostClaudeFile)
 	} else {
 		paths = append(paths, ".codex/config.toml")
 	}

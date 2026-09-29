@@ -303,7 +303,7 @@ func validateSHA256Hex(h string) error {
 //
 // Design note: a legacy bare-Confidence span is always treated as the weakest
 // tier so it can never over-claim epistemic strength until it is explicitly
-// graded. This upholds CLAUDE.md invariant #4.
+// graded. This upholds the weakest-link grading rule (docs/practices.md §2).
 func (s Span) EffectiveGrade() evidencegrade.Grade {
 	if s.Grade != nil {
 		return *s.Grade

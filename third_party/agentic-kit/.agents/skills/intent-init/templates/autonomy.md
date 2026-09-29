@@ -2,7 +2,7 @@
 
 <!-- What an agent may do unasked, must ask first, and never does, in this repo. This is
      policy about action, so a three-line summary also lives in the always-loaded
-     conventions (CLAUDE.md / AGENTS.md); this file is the full source. Under 60 lines.
+     conventions (AGENTS.md); this file is the full source. Under 60 lines.
      Rationale: agentic-kit/docs/project-intent/operating.md §1. -->
 
 ## Branch model

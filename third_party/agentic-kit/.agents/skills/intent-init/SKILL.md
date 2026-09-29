@@ -3,7 +3,7 @@ name: intent-init
 description: >
   Bootstrap a repo's Project Intent system: docs/intent/ (router, principles,
   invariants, domain, scope, futures, questions, autonomy, incidents), a decisions index,
-  CHANGELOG.md, and the CLAUDE.md/AGENTS.md stanzas, populated from evidence in the repo
+  CHANGELOG.md, and the AGENTS.md stanzas, populated from evidence in the repo
   and pointing at existing VISION or ADR documents instead of copying them. Use for a
   new repo, an existing repo without docs/intent/, or to add a missing piece to one.
 ---
@@ -48,8 +48,12 @@ Part of the `intent-*` family. Rationale: `agentic-kit/docs/project-intent/READM
 5. **Router**: fill the docs map, the routing table, the sensitive surfaces with the
    evidence each requires, and the `Verified against` footer (tool names and versions).
 6. **Wire**: the six-line project stanza and the four-line change-records rule
-   (`integration.md` §2, `changes.md` §8) into `CLAUDE.md` and `AGENTS.md`, identical
-   text. A three-line autonomy summary next to them. Do not import the tree.
+   (`integration.md` §2, `changes.md` §8) into `AGENTS.md` only, one copy. A three-line
+   autonomy summary next to them. Do not import the tree. If the repo has a `CLAUDE.md`
+   (or `.claude/CLAUDE.md`, `CLAUDE.local.md`), keep its own content and give it one
+   line, `@AGENTS.md` (`@../AGENTS.md` from `.claude/`), because Claude Code skips
+   `AGENTS.md` when a CLAUDE file exists and nothing imports it. Never paste the stanza
+   into it and never create one.
 7. **Monorepo**: if the repo holds more than one product, nested modules, or components
    with different evolution paths (`docs/project-intent/monorepo.md` §1), write
    `repo.md` from `templates/repo.md`: why one repository, membership rule, the
@@ -57,7 +61,7 @@ Part of the `intent-*` family. Rationale: `agentic-kit/docs/project-intent/READM
    `inbound from` per row, dependency direction, procedures, ecosystem. Give a component
    its own `<component>/docs/intent/` only if it passes the own-intent test (own
    audience, cadence, or roadmap); its router's first paragraph links to root; add the
-   nested stanza (`integration.md` §2b) to that component's `CLAUDE.md` and `AGENTS.md`.
+   nested stanza (`integration.md` §2b) to that component's `AGENTS.md`.
 8. **New repo**: same, but `vision.md` and `scope.md` come from the brief, `futures.md`
    holds only what the brief names, and `decisions/` starts with the two or three
    choices the brief already made that pass the threshold.

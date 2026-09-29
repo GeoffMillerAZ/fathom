@@ -435,7 +435,7 @@ it open is free. Full practice: `docs/project-intent/README.md`.
 
 | Component | Role |
 |---|---|
-| `docs/project-intent/` | methodology, agent integration (Claude Code, Codex, generic `AGENTS.md`), examples of good and bad future-proofing |
+| `docs/project-intent/` | methodology, agent integration (Claude Code, Codex, generic `AGENTS.md`; one instruction file), examples of good and bad future-proofing |
 | `.agents/skills/intent-*/` | the on-demand skills — `intent-init`, `intent-design`, `intent-decide`, `intent-audit`, `intent-doctor`, `intent-prune`, `intent-release`, `intent-incident` — and the templates they copy; `install-intent.sh` puts them on a harness's path |
 
 **STATUS: shipped** as docs and a skill; no Go package, by design. Revisit when a second
@@ -896,7 +896,7 @@ row. Briefs name the caller; reports are claims and the audit is the evidence.
 
 | Component | Role |
 |---|---|
-| `TRACKING.md` discipline (CLAUDE.md) | `[x]` only when tests pass and the full gate is green; the same rule, one level up from a row |
+| `TRACKING.md` discipline (AGENTS.md) | `[x]` only when tests pass and the full gate is green; the same rule, one level up from a row |
 | [assurance.md](intent/assurance.md) | separates implementation, enforcement and adoption, so a shipped component does not read as a wired consumer (§1's status paragraph is the kit's own instance) |
 
 **STATUS: roadmap, guidance only.** No kit package computes reachability from entry

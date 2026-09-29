@@ -40,7 +40,7 @@ func runAdoptionDraft(ctx context.Context, args []string, stdout, stderr io.Writ
 	addValues("layer", "selected catalog layer", &opts.Layers, 6)
 	addValues("capability", "selected exact capability ID", &opts.Capabilities, 64)
 	addValues("artifact", "existing root-relative regular file to hash", &opts.Artifacts, 64)
-	fs.BoolVar(&opts.Agents, "agents", false, "require matching CLAUDE.md/AGENTS.md routers when checked; does not install them")
+	fs.BoolVar(&opts.Agents, "agents", false, "require the canonical router in AGENTS.md when checked (a CLAUDE.md, if any, must import or carry it); does not install it")
 	moduleFile := fs.String("module-file", "", "optional root-relative module declaration file (requires --module-version; not read)")
 	moduleVersion := fs.String("module-version", "", "explicit exact kit version (requires --module-file; never inferred)")
 	allowLocal := fs.Bool("allow-local-replace", false, "explicitly allow development replacement for the selected module only")

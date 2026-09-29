@@ -36,12 +36,12 @@ type PromotionRule struct {
 //   - Promoted is true when promotion actually changed the tier.
 //   - PromotionReason is a human-readable explanation (empty when Promoted=false).
 //   - DroppedSpanIDs lists any spans that were neither Necessary nor Independent
-//     (invariant §7: no silent truncation). Callers should surface these to
+//     (no silent truncation, docs/practices.md §11). Callers should surface these to
 //     end-users — the analyst believes they submitted evidence that was evaluated,
 //     but it was not. An empty slice means all spans participated.
 //   - AIContributedConfidence is the incremental confidence added solely by
-//     TierInferred corroborating spans (CLAUDE.md invariant §3: AI contributions
-//     must be labelled). It equals (aggregate confidence with inferred corroborators)
+//     TierInferred corroborating spans (AI contributions must be labelled,
+//     docs/practices.md §2). It equals (aggregate confidence with inferred corroborators)
 //     minus (aggregate confidence without them), rounded to 10 decimal places.
 //     Zero means no TierInferred corroborators were present or they added nothing.
 //     Callers displaying a high Confidence value should warn when this field is
@@ -92,7 +92,7 @@ type ClaimGrade struct {
 //     corroborating spans whose tier is strictly stronger than FloorTier.
 //   - FloorTier is NOT TierInferred. If FloorTier is TierInferred (any necessary
 //     span is inferred), promotion is blocked — AI-inferred evidence can never
-//     lift a claim above inferred (hard invariant from CLAUDE.md §4).
+//     lift a claim above inferred (hard invariant, docs/practices.md §2).
 //
 // When promotion applies, the effective tier is the weakest tier among the
 // qualifying corroborating spans (conservative: we only promote as far as

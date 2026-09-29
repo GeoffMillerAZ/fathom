@@ -13,6 +13,10 @@ package main
 // with no root CLAUDE file the SKIP is named (ADR-059, AG-12): Claude Code
 // loads AGENTS.md natively there and writes no InstructionsLoaded event,
 // so no harness-side evidence can exist; the row never synthesizes a PASS.
+// That named SKIP says Claude Code loads the file only where stanza_present
+// does not warn that it will not (an ancestor CLAUDE file, the claude-md
+// setting, a release before 2.1.277); where it does warn, the SKIP repeats the
+// warning and its remedy instead of claiming a load.
 
 import (
 	"fmt"
@@ -65,7 +69,7 @@ func checkStanzaLoaded(root string) doctorCheck {
 		hits = append(hits, b)
 	}
 	if len(hits) == 0 && rootClaudeFile(root) == "" {
-		return doctorCheck{Name: name, Status: doctorSkipped, Reason: stanzaLoadedNoClaudeReason}
+		return stanzaLoadedNoClaudeSkip(root)
 	}
 	if len(hits) == 0 {
 		return doctorCheck{
@@ -80,6 +84,25 @@ func checkStanzaLoaded(root string) doctorCheck {
 	latest := hits[0]
 	reason := fmt.Sprintf("%s loaded by a session (%s, latest %s, %d beat(s))", filepath.Base(latest.Meta["file_path"]), stanzaLoadedReasonLabel(latest), latest.At.UTC().Format(time.RFC3339), len(hits))
 	return doctorCheck{Name: name, Status: doctorPass, Reason: reason}
+}
+
+// stanzaLoadedNoClaudeSkip is the SKIP for a repository with no root CLAUDE
+// file and no beat. It reads the same load path stanza_present reads
+// (claudeLoadPath): with no warning it is the named agents-md SKIP; with one,
+// the load that SKIP would claim is the load stanza_present denies, so it
+// carries stanza_present's machine-side reasons and remedies instead.
+func stanzaLoadedNoClaudeSkip(root string) doctorCheck {
+	const name = "stanza_loaded"
+	reasons, remedies := claudeLoadPath(root, true).warnings()
+	if len(reasons) == 0 {
+		return doctorCheck{Name: name, Status: doctorSkipped, Reason: stanzaLoadedNoClaudeReason}
+	}
+	return doctorCheck{
+		Name:   name,
+		Status: doctorSkipped,
+		Reason: "no harness-side evidence exists here, and stanza_present warns Claude Code will not load AGENTS.md: " + strings.Join(reasons, "; "),
+		Remedy: strings.Join(dedupeStrings(remedies), "; "),
+	}
 }
 
 // stanzaLoadedReasonLabel renders the beat's load_reason and memory_type

@@ -2,12 +2,12 @@
 // under review. Every state change is recorded as an immutable ClaimEvent in
 // a hash-chained ClaimLedger; the current view is always derived by projection.
 //
-// Provenance invariants (CLAUDE.md §1–4, §6):
+// Provenance invariants (docs/practices.md §2):
 //   - Every event carries an Author (human or AI with full provenance).
 //   - The ledger is append-only; no event is ever mutated or deleted.
 //   - Timestamps are set by the ledger's injected clock (never inline time.Now()).
 //   - ClaimView.Grade is *evidencegrade.ClaimGrade so FloorTier and Promoted
-//     provenance are never discarded (invariant §4, §6).
+//     provenance are never discarded.
 //
 // Concurrency: ClaimLedger is safe for concurrent use; all access is serialised by the underlying event-store's sync.RWMutex.
 package claimlifecycle

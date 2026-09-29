@@ -33,11 +33,11 @@ the need (D8). Two consumers make it kit business (D13). Source: `compat.md` §D
 
 **P6. Mine, don't port.** Reference sources under `_reference/` are read and ported
 selectively with a named subscriber each; never imported, never copied wholesale.
-Source: uplift plan D8; CLAUDE.md §Where things live.
+Source: uplift plan D8; AGENTS.md §Where things live.
 
 **P7. Determinism is the default; nondeterminism is injected.** Clocks, randomness,
 network, subprocesses, and model calls sit behind seams; tests replay cassettes and
-never touch the network. Source: VISION belief 2; CLAUDE.md hard rules.
+never touch the network. Source: VISION belief 2; AGENTS.md hard rules.
 
 **P8. Fail closed, spend bounded.** Every paid call is budgeted before it is made;
 every buffer, cache, and loop states its bound and its behavior at the bound. Source:
@@ -45,7 +45,7 @@ VISION belief 4.
 
 **P9. Match the sibling's shape.** Read two sibling packages before adding one; the
 package doc states its concurrency contract; `schema.cue` where shape is data.
-Source: CLAUDE.md §Working style; junk gate.
+Source: AGENTS.md §Working style; junk gate.
 
 **P10. Owner ratifies what changes the promise.** Going public, 1.0, demoting a
 classification, retiring a package with a consumer: Geoff's call, recorded. Source:
@@ -84,7 +84,7 @@ containing half the tree is the failure to avoid. Source: `cmd/constitution-lint
 
 **T5. Agent-developed vs human-owned.** Default: agents build, the gate proves, Geoff
 ratifies decisions that change the promise. The gate substitutes for continuous review;
-it does not substitute for ratification. Source: CLAUDE.md line 3; uplift plan D4.
+it does not substitute for ratification. Source: AGENTS.md line 3; uplift plan D4.
 
 **T6. Verbose evidence vs readable change records.** Default: the `CHANGELOG.md` line is
 two sentences and links; rationale lives in a decision or the commit. The 500-word

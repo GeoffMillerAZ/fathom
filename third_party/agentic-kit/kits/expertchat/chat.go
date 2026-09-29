@@ -50,7 +50,7 @@ type Deps struct {
 
 	// Now is the injected clock, used only for telemetry event timestamps.
 	// Nil means time.Now — the documented bare-default this kit allows
-	// (CLAUDE.md: "kits do this routinely").
+	// (AGENTS.md: "kits do this routinely").
 	Now func() time.Time
 
 	// Sink, when non-nil, receives one telemetry event per Run outcome

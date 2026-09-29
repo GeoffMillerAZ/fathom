@@ -12,7 +12,7 @@ import (
 
 // slugPattern is the allowed shape for a single path segment: lowercase
 // ASCII letters, digits, and internal hyphens (kebab-case), matching the
-// kit's own directory-naming convention (CLAUDE.md: "Dirs are
+// kit's own directory-naming convention (AGENTS.md: "Dirs are
 // kebab-case").
 var slugPattern = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
 

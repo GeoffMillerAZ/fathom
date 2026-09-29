@@ -133,6 +133,18 @@ func TestCheckDeterministicAndReadOnly(t *testing.T) {
 	for _, id := range []string{"selection", "catalog", "profile", "contract", "artifact:1", "capability:1", "router:CLAUDE.md", "router:AGENTS.md"} {
 		adoptionCheckFinding(t, first, id, "pass")
 	}
+	// A consumer that keeps both files gets the report ADR-0024 produced: the
+	// router findings in the same order, with the same detail.
+	var routers []string
+	for _, finding := range first.Checks {
+		if strings.HasPrefix(finding.ID, "router:") {
+			routers = append(routers, finding.ID+"|"+finding.Detail)
+		}
+	}
+	const paired = "Canonical router text exists; this does not prove the host loaded it."
+	if !reflect.DeepEqual(routers, []string{"router:CLAUDE.md|" + paired, "router:AGENTS.md|" + paired}) {
+		t.Fatalf("paired-router report changed: %q", routers)
+	}
 	second := Check(context.Background(), root, DefaultManifest)
 	if !bytes.Equal(adoptionCheckJSON(t, first), adoptionCheckJSON(t, second)) {
 		t.Fatal("repeated checks over identical bytes produced different receipts")
@@ -322,6 +334,147 @@ func TestCheckPairedRoutersAndOptOut(t *testing.T) {
 				}
 			} else if code == 1 {
 				adoptionCheckFinding(t, report, "router:AGENTS.md", "fail")
+			}
+		})
+	}
+}
+
+// ADR-0088: AGENTS.md is the one instruction file, so it alone carries the
+// router. CLAUDE.md is optional; when present it must reach that router.
+func TestCheckAgentsMDAloneSatisfiesTheRouter(t *testing.T) {
+	root, _ := adoptionCheckFixture(t)
+	if err := os.Remove(filepath.Join(root, "CLAUDE.md")); err != nil {
+		t.Fatal(err)
+	}
+	before := adoptionCheckSnapshot(t, root)
+	first := Check(context.Background(), root, DefaultManifest)
+	adoptionCheckOutcome(t, first, 0, "passed")
+	adoptionCheckFinding(t, first, "router:AGENTS.md", "pass")
+	adoptionCheckFinding(t, first, "router:CLAUDE.md", "not-applicable")
+	for _, file := range first.Files {
+		if file.Path == "CLAUDE.md" {
+			t.Fatal("an absent CLAUDE.md was recorded as inspected evidence")
+		}
+	}
+	for _, finding := range first.Checks {
+		if finding.ID == "router:CLAUDE.md" && !strings.Contains(finding.Detail, "AGENTS.md") {
+			t.Fatalf("absent CLAUDE.md is not explained: %q", finding.Detail)
+		}
+	}
+	if !bytes.Equal(adoptionCheckJSON(t, first), adoptionCheckJSON(t, Check(context.Background(), root, DefaultManifest))) {
+		t.Fatal("repeated checks over identical bytes produced different receipts")
+	}
+	if !reflect.DeepEqual(before, adoptionCheckSnapshot(t, root)) {
+		t.Fatal("read-only check changed files or created directories")
+	}
+}
+
+func TestCheckClaudeMDMustReachTheAgentsMDRouter(t *testing.T) {
+	const wrongBlock = "<!-- appkit:begin -->\n## App-kit\n\nApp-kit adoption lives at docs/wrong.md.\n<!-- appkit:end -->\n"
+	for _, tc := range []struct {
+		name   string
+		claude string
+		pass   bool
+	}{
+		{"import line", "# Notes\n\n@AGENTS.md\n", true},
+		{"dot-slash import in a marked region", "<!-- region:begin -->\n@./AGENTS.md\n<!-- region:end -->\n", true},
+		{"import with CRLF and trailing space", "Notes\r\n@AGENTS.md  \r\n", true},
+		{"inline import", "Project rules live in @AGENTS.md and nowhere else.\n", true},
+		{"import after a closed code fence", "```sh\nls\n```\n@AGENTS.md\n", true},
+		{"legacy canonical copy stays valid", "# Notes\n\n{{router}}\nTail.\n", true},
+		{"import inside a code fence", "```markdown\n@AGENTS.md\n```\n", false},
+		{"import inside a tilde fence", "~~~\n@AGENTS.md\n~~~\n", false},
+		{"import inside a code span", "Write `@AGENTS.md` to import it.\n", false},
+		{"import of another file", "@docs/AGENTS.md\n@OTHER.md\n", false},
+		{"import with trailing text", "@AGENTS.md.bak\n", false},
+		{"unrelated instructions only", "# Consumer notes\n\nKeep tests fast.\n", false},
+		{"empty", "", false},
+		{"drifted legacy copy without an import", wrongBlock, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root, selection := adoptionCheckFixture(t)
+			router, err := Router(selection.Contract)
+			if err != nil {
+				t.Fatal(err)
+			}
+			adoptionCheckWrite(t, root, "CLAUDE.md", []byte(strings.ReplaceAll(tc.claude, "{{router}}", router)))
+			report := Check(context.Background(), root, DefaultManifest)
+			adoptionCheckFinding(t, report, "router:AGENTS.md", "pass")
+			if tc.pass {
+				adoptionCheckOutcome(t, report, 0, "passed")
+				adoptionCheckFinding(t, report, "router:CLAUDE.md", "pass")
+				return
+			}
+			adoptionCheckOutcome(t, report, 1, "failed")
+			adoptionCheckFinding(t, report, "router:CLAUDE.md", "fail")
+			for _, finding := range report.Checks {
+				if finding.ID == "router:CLAUDE.md" && !strings.Contains(finding.Remedy, "@AGENTS.md") {
+					t.Fatalf("the remedy does not name the import: %q", finding.Remedy)
+				}
+			}
+		})
+	}
+}
+
+func TestCheckRouterLivesInAgentsMDNotOnlyInClaudeMD(t *testing.T) {
+	for _, mode := range []string{"missing", "drift", "duplicate"} {
+		t.Run(mode, func(t *testing.T) {
+			root, selection := adoptionCheckFixture(t)
+			// CLAUDE.md imports AGENTS.md, so the router must actually be there.
+			adoptionCheckWrite(t, root, "CLAUDE.md", []byte("@AGENTS.md\n"))
+			block, err := Router(selection.Contract)
+			if err != nil {
+				t.Fatal(err)
+			}
+			switch mode {
+			case "missing":
+				if err := os.Remove(filepath.Join(root, "AGENTS.md")); err != nil {
+					t.Fatal(err)
+				}
+			case "drift":
+				adoptionCheckWrite(t, root, "AGENTS.md", []byte(strings.Replace(block, selection.Contract, "docs/wrong.md", 1)))
+			case "duplicate":
+				adoptionCheckWrite(t, root, "AGENTS.md", []byte(block+block))
+			}
+			report := Check(context.Background(), root, DefaultManifest)
+			adoptionCheckOutcome(t, report, 1, "failed")
+			adoptionCheckFinding(t, report, "router:AGENTS.md", "fail")
+			adoptionCheckFinding(t, report, "router:CLAUDE.md", "pass")
+		})
+	}
+}
+
+func TestCheckClaudeMDLinkedToAgentsMD(t *testing.T) {
+	for _, tc := range []struct {
+		name, target string
+		pass         bool
+	}{
+		{"link to AGENTS.md", "AGENTS.md", true},
+		{"dot-slash link to AGENTS.md", "./AGENTS.md", true},
+		{"link to another file", "OTHER.md", false},
+		{"absolute link", "/etc/hosts", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root, _ := adoptionCheckFixture(t)
+			adoptionCheckWrite(t, root, "OTHER.md", []byte("@AGENTS.md\n"))
+			if err := os.Remove(filepath.Join(root, "CLAUDE.md")); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Symlink(tc.target, filepath.Join(root, "CLAUDE.md")); err != nil {
+				t.Skipf("symlinks unavailable: %v", err)
+			}
+			report := Check(context.Background(), root, DefaultManifest)
+			if tc.pass {
+				adoptionCheckOutcome(t, report, 0, "passed")
+				adoptionCheckFinding(t, report, "router:CLAUDE.md", "pass")
+				return
+			}
+			adoptionCheckOutcome(t, report, 1, "failed")
+			adoptionCheckFinding(t, report, "router:CLAUDE.md", "fail")
+			for _, file := range report.Files {
+				if file.Path == "CLAUDE.md" {
+					t.Fatal("check followed a link that does not name AGENTS.md")
+				}
 			}
 		})
 	}

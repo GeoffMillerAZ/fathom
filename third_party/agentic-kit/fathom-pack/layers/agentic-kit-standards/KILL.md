@@ -12,7 +12,7 @@ bare time.Now, a checked box the gate never proved).
 
 **Kill criterion:** fails on call-rate but not quality → fold the top
 rules into the guard pack's notes and kill the layer. Fails on quality
-(claims drift from CLAUDE.md's actual text, or false positives erode the
+(claims drift from AGENTS.md's actual text, or false positives erode the
 channel) → kill; substrate cost was one pack directory.
 
 **Owner:** agentic-kit. Pack versions with the kit; a hard-rule change

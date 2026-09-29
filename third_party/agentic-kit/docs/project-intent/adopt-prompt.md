@@ -32,8 +32,9 @@ Then run `intent-init` for this repo, honoring these rules:
 5. **Preserve decision history.** Index existing records and their actual triggers.
    Where local ADR rules are append-only, do not rewrite a historical body to fit the
    template; keep a qualified pointer and record any reopened decision as a successor.
-6. **Wire the stanzas** from `integration.md` §2 into `CLAUDE.md` and `AGENTS.md`,
-   identical text, six plus four plus three lines. Do not import the tree.
+6. **Wire the stanzas** from `integration.md` §2 into `AGENTS.md`, one copy, six plus
+   four plus three lines. If a `CLAUDE.md` exists, it gets one line, `@AGENTS.md`, and
+   no copy of the stanza; never create one. Do not import the tree.
 7. **Autonomy.** Draft `autonomy.md` from how this repo is actually worked: which
    branch agents may push freely, what needs my approval, what is never done. Ask me
    only where the repo gives no evidence.

@@ -14,7 +14,7 @@
   clock seams at the kit's boundaries, org-agnostic data-not-code).
   Guards are deterministic and need no compiled layer.
 - `layers/agentic-kit-standards/` — the compile pack (prompt + kill gate +
-  manifest) turning CLAUDE.md/VISION.md/docs into cited obligations.
+  manifest) turning AGENTS.md/VISION.md/docs into cited obligations.
 
 ## Install
 

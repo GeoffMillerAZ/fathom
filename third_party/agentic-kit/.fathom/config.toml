@@ -1,0 +1,7 @@
+# fathom indexing config for this repository.
+
+[connector]
+# fathom skips directories named `coverage` by default (coverage-report caches).
+# foundations/investigation/coverage is a Go package with source, so re-include it;
+# a path with a slash re-includes just that one directory.
+include = ["foundations/investigation/coverage"]

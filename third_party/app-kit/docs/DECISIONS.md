@@ -30,7 +30,7 @@ No dated dependency claim in an old record is a current pin.
 | D21 | Scoped runtime profiles and platform proof (Partly superseded by 0027 for current targets) | [0021](adr/0021-runtime-profiles-and-platform-proof.md) |
 | D22 | Private whole-project references and adaptation fidelity (Accepted) | [0022](adr/0022-private-design-references-and-fidelity.md) |
 | D23 | Tested conversion pipeline and static/client runtime choices (Accepted) | [0023](adr/0023-profile-specific-conversion-and-client-compute.md) |
-| D24 | Explicit read-only adoption contracts (Accepted) | [0024](adr/0024-read-only-adoption-contract.md) |
+| D24 | Explicit read-only adoption contracts (Accepted; extended by 0088) | [0024](adr/0024-read-only-adoption-contract.md) |
 | D25 | Scoped static chart composition evidence (Accepted) | [0025](adr/0025-static-chart-composition-evidence.md) |
 | D26 | Isolated native host and authenticated HTML commands (Accepted) | [0026](adr/0026-isolated-http-desktop-experiment.md) |
 | D27 | Web/macOS now; Windows on demonstrated demand (Accepted) | [0027](adr/0027-web-and-macos-now-windows-on-demand.md) |
@@ -90,6 +90,7 @@ No dated dependency claim in an old record is a current pin.
 | D81 | Derive one table action column (Accepted; consistent rows, explicit empty-state reservation) | [0081](adr/0081-derive-one-table-action-column.md) |
 | D82 | Discover adoption capabilities without a host (Accepted; shared catalog, guarded exact pins, no consumer reads) | [0082](adr/0082-discover-adoption-capabilities-without-a-host.md) |
 | D83 | Render missing select values as unavailable prompts (Accepted; no valid fallback or automatic error) | [0083](adr/0083-render-missing-select-values-as-unavailable.md) |
+| D88 | AGENTS.md alone carries the adoption router (Accepted; CLAUDE.md optional, must link, import or carry it) | [0088](adr/0088-agents-md-carries-the-adoption-router.md) |
 
 ### D1 — Record durable decisions
 
@@ -422,3 +423,7 @@ Accepted. [Record](adr/0082-discover-adoption-capabilities-without-a-host.md); J
 ### D83 — Render missing select values as unavailable prompts
 
 Accepted. [Record](adr/0083-render-missing-select-values-as-unavailable.md); a nonempty value absent from the option set renders an empty selected disabled prompt, never a valid fallback or the raw missing value. A configured placeholder exclusively owns initially empty selection. Apps own validation, explanation and empty-option meaning; rebuild and review snapshots before adoption.
+
+### D88 — AGENTS.md alone carries the adoption router
+
+Accepted. [Record](adr/0088-agents-md-carries-the-adoption-router.md); with `agents: true` AGENTS.md must hold the canonical block once and alone satisfies the router requirement. An absent CLAUDE.md is not-applicable; a present one must link to AGENTS.md, import it, or still carry the block, else `router:CLAUDE.md` fails. No check that passed before fails now; the check stays static, writes nothing and proves no host load. Rebuild the CLI to pick it up.

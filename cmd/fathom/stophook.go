@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -11,11 +13,13 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/assess"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/gitro"
 	"github.com/geoffmilleraz/fathom/internal/harness"
 	"github.com/geoffmilleraz/fathom/internal/verify"
 )
@@ -145,6 +149,13 @@ func cmdStopHook(args []string, stdout, stderr io.Writer) int {
 // contract, and cmdRetro's own return code is never propagated to the
 // hook's exit code.
 func runStopHookRetro(projDir, sessionID string) {
+	if hookDeadlineSpent() {
+		// RT-7 (§11.1): past the deadline a hook skips its local work rather
+		// than run past its budget. The retro rewrites this session's one
+		// artifact each Stop (a whole beat-log read), so the next Stop lands
+		// it; the ledger row, which is measurement, is not skipped.
+		return
+	}
 	args := []string{"--project", projDir, "--write"}
 	if sessionID != "" {
 		args = append(args, "--session", sessionID)
@@ -221,6 +232,17 @@ func runStopHookWith(codec harness.Codec, projDir string, hc *http.Client, baseU
 		return 0, nil // no plans → nothing to prove
 	}
 
+	// The local scan runs first, and the daemon is asked nothing until it
+	// finds a plan that gained a claim: a Stop fires every turn and almost
+	// none of them claim anything, so a session that claimed nothing costs
+	// one git process and no RPC, however many plans the repository has
+	// (O140: the per-plan `git show` and the identity round trip put the
+	// hook's p99 past its deadline).
+	claims := plansWithNewClaims(projDir, entries)
+	if len(claims) == 0 {
+		return 0, nil
+	}
+
 	// Resolve the service identity: first candidate the daemon has indexed
 	// wins — same discipline as the edit-hook.
 	service := ""
@@ -241,20 +263,8 @@ func runStopHookWith(codec harness.Codec, projDir string, hc *http.Client, baseU
 
 	var complaints, timedOutPlans, busyPlans []string
 	verifiedAny := false
-	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".md") || strings.EqualFold(e.Name(), "README.md") {
-			continue
-		}
-		rel := filepath.Join("docs", "plans", e.Name())
-		newMD, err := os.ReadFile(filepath.Join(projDir, rel))
-		if err != nil {
-			continue
-		}
-		oldMD := headFileVersion(projDir, rel) // nil when new file / no git
-		newly := newlyClaimedTasks(oldMD, newMD, service)
-		if len(newly) == 0 {
-			continue
-		}
+	for _, c := range claims {
+		rel, newMD, newly := c.rel, c.md, c.newly
 		localPlan := verify.ParseMarkdownPlan(service, newMD)
 		rep, err := verifyViaHTTP(hc, baseURL, service, "", newMD, localPlan)
 		if err != nil {
@@ -331,6 +341,54 @@ func runStopHookWith(codec harness.Codec, projDir string, hc *http.Client, baseU
 	return 0, catches
 }
 
+// claimedPlan is a plan file that gained claimed tasks since HEAD: its path
+// relative to the project, its working-tree text, and the ids that are new.
+type claimedPlan struct {
+	rel   string
+	md    []byte
+	newly []string
+}
+
+// plansWithNewClaims is the Stop hook's local scan: the plans under
+// docs/plans whose working tree claims a task HEAD did not. It sends no RPC
+// and spawns one git process for all of them (headFileVersions). A plan
+// whose text has no `[x]` claims nothing and is not compared at all.
+// Task ids do not depend on the service name, so the scan needs none.
+func plansWithNewClaims(projDir string, entries []os.DirEntry) []claimedPlan {
+	type candidate struct {
+		rel string
+		md  []byte
+	}
+	var cands []candidate
+	var rels []string
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".md") || strings.EqualFold(e.Name(), "README.md") {
+			continue
+		}
+		rel := filepath.Join("docs", "plans", e.Name())
+		md, err := os.ReadFile(filepath.Join(projDir, rel))
+		if err != nil {
+			continue
+		}
+		if !bytes.Contains(md, []byte("[x]")) && !bytes.Contains(md, []byte("[X]")) {
+			continue // no claimed task, so nothing newly claimed
+		}
+		cands = append(cands, candidate{rel, md})
+		rels = append(rels, rel)
+	}
+	if len(cands) == 0 {
+		return nil
+	}
+	heads := headFileVersions(projDir, rels) // nil per file: new file / no git
+	var out []claimedPlan
+	for _, c := range cands {
+		if newly := newlyClaimedTasks(heads[c.rel], c.md, ""); len(newly) > 0 {
+			out = append(out, claimedPlan{rel: c.rel, md: c.md, newly: newly})
+		}
+	}
+	return out
+}
+
 // isTimeoutErr reports whether err (possibly wrapped, e.g. by verifyViaHTTP's
 // fmt.Errorf("...: %w", err)) is a client-side timeout — either an
 // *http.Client deadline (surfaced as a net.Error with Timeout() true,
@@ -374,6 +432,69 @@ func headFileVersion(repoDir, rel string) []byte {
 	out, err := cmd.Output()
 	if err != nil {
 		return nil
+	}
+	return out
+}
+
+// headFileVersions is headFileVersion for many files through one
+// `git cat-file --batch` process: rel → its content at HEAD, nil when HEAD
+// has no such file or git cannot answer (not a repository, git missing, the
+// hook's deadline passed). One spawn however many files are asked for; the
+// per-file `git show` it replaces cost a process each, which is what a
+// loaded machine multiplies.
+func headFileVersions(repoDir string, rels []string) map[string][]byte {
+	out := make(map[string][]byte, len(rels))
+	for _, rel := range rels {
+		out[rel] = nil
+	}
+	if len(rels) == 0 {
+		return out
+	}
+	var in bytes.Buffer
+	for _, rel := range rels {
+		fmt.Fprintf(&in, "HEAD:%s\n", filepath.ToSlash(rel))
+	}
+	ctx, cancel := testRunContext() // the hook's deadline, or none outside a hook
+	defer cancel()
+	cmd, cleanup, err := gitro.Command(ctx, repoDir, "cat-file", "--batch")
+	if err != nil {
+		cleanup()
+		return out
+	}
+	cmd.Stdin = &in
+	raw, err := cmd.Output()
+	cleanup()
+	if err != nil {
+		return out
+	}
+	r := bufio.NewReader(bytes.NewReader(raw))
+	for _, rel := range rels {
+		header, err := r.ReadString('\n')
+		if err != nil {
+			break
+		}
+		header = strings.TrimSuffix(header, "\n")
+		// "<object> missing" / "<object> ambiguous": no body follows.
+		if strings.HasSuffix(header, " missing") || strings.HasSuffix(header, " ambiguous") {
+			continue
+		}
+		// "<sha> <type> <size>", then size bytes and a newline.
+		f := strings.Fields(header)
+		if len(f) < 3 {
+			break
+		}
+		n, err := strconv.Atoi(f[2])
+		if err != nil || n < 0 {
+			break
+		}
+		body := make([]byte, n)
+		if _, err := io.ReadFull(r, body); err != nil {
+			break
+		}
+		_, _ = r.ReadByte() // the newline after the body
+		if f[1] == "blob" {
+			out[rel] = body
+		}
 	}
 	return out
 }

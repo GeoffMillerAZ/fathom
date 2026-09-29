@@ -14,7 +14,7 @@
 //   - foundations/telemetry/sink (optional) — Deps.Sink, wired exactly like
 //     kits/agent-harness's Deps.Sink; nil disables telemetry
 //
-// matching the kit's layering rule (CLAUDE.md: "kits compose foundations;
+// matching the kit's layering rule (AGENTS.md: "kits compose foundations;
 // imports point downward only"). expertchat imports NO fathom package —
 // the module host is reached only through the Retriever interface, kept
 // transport-thin. The HTTP implementation (HTTPRetriever, wire.go) speaks

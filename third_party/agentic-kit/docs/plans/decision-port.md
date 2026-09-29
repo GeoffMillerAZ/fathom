@@ -43,10 +43,10 @@ fixed, not a first draft.
   to a sorted `[]Record`, Usage/Latency copied onto each
   {id: DP-6, symbol: Records, package: foundations/decision}
 - [x] `MockDecider` test double for consumers exercising the `Decider`
-  interface without a real provider {id: DP-7, symbol: MockDecider, package: foundations/decision}
+  interface without a real provider {id: DP-7, symbol: NewMockDecider, package: foundations/decision}
 - [x] Golden fixtures pinning the rendered LLM prompt and OutputSchema for
   one fixed Request (`testdata/prompt.golden`, `testdata/schema.golden`) so
-  prompt/schema drift is visible in review {id: DP-8, symbol: TestLLM_Decide_GoldenPromptAndSchema, package: foundations/decision}
+  prompt/schema drift is visible in review {id: DP-8, symbol: LLM.Decide, package: foundations/decision}
 - [x] `schema.cue` (`#Kind`/`#Option`/`#Question`/`#Request`) + valid/invalid
   testdata pairs per the package-shape convention {id: DP-9, package: foundations/decision}
 - [ ] **`typesafe` adapter** — a `Decider` calling TypeSafe AI's System One

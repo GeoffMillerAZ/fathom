@@ -201,6 +201,7 @@ func TestCheckStanzaPresentAgentsMD(t *testing.T) {
 func TestStanzaLoadedSkipsByNameWithNoClaudeFile(t *testing.T) {
 	beatsPath := filepath.Join(t.TempDir(), "hooks.jsonl")
 	t.Setenv("FATHOM_HOOKS_LOG", beatsPath)
+	withClaudeLoadEnv(t, t.TempDir(), "", "2.1.284")
 	_, root := agentsRepo(t)
 	c := checkStanzaLoaded(root)
 	if c.Status != doctorSkipped || c.Reason != stanzaLoadedNoClaudeReason {
@@ -219,4 +220,73 @@ func TestStanzaLoadedSkipsByNameWithNoClaudeFile(t *testing.T) {
 	if c := checkStanzaLoaded(withClaude); c.Status != doctorPass || !strings.Contains(c.Reason, "AGENTS.md loaded by a session") {
 		t.Fatalf("an AGENTS.md beat through the import = %+v, want PASS", c)
 	}
+}
+
+// TestStanzaLoadedSkipNeverClaimsALoadStanzaPresentDenies pins the wording
+// pair: where stanza_present WARNs that Claude Code will not load AGENTS.md
+// (an ancestor CLAUDE file, the claude-md setting, a release before 2.1.277),
+// stanza_loaded's SKIP for an AGENTS.md-only repository names that warning and
+// its reasons; it never says Claude Code loads the file. Where nothing warns,
+// the named agents-md SKIP is unchanged.
+func TestStanzaLoadedSkipNeverClaimsALoadStanzaPresentDenies(t *testing.T) {
+	cases := []struct {
+		name  string
+		setup func(t *testing.T) (root string)
+		want  string // a fragment of the reason stanza_present gives, which the skip must repeat
+	}{
+		{"an ancestor CLAUDE.md", func(t *testing.T) string {
+			parent, root := agentsRepo(t)
+			writeRepoFile(t, parent, "CLAUDE.md", "workspace rules\n")
+			withClaudeLoadEnv(t, t.TempDir(), "", "2.1.284")
+			return root
+		}, "above the repository switches AGENTS.md off"},
+		{"the claude-md setting", func(t *testing.T) string {
+			home := t.TempDir()
+			writeRepoFile(t, home, ".claude/settings.json", `{"pluginConfigs":{"agents-md@builtin":{"options":{"instructionFiles":"claude-md"}}}}`)
+			withClaudeLoadEnv(t, home, "", "2.1.284")
+			_, root := agentsRepo(t)
+			return root
+		}, `so Claude Code does not load AGENTS.md`},
+		{"a Claude Code before 2.1.277", func(t *testing.T) string {
+			withClaudeLoadEnv(t, t.TempDir(), "", "2.1.270")
+			_, root := agentsRepo(t)
+			return root
+		}, "before 2.1.277"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("FATHOM_HOOKS_LOG", filepath.Join(t.TempDir(), "hooks.jsonl"))
+			root := tc.setup(t)
+			present := checkStanzaPresent(root)
+			if present.Status != doctorWarn || !strings.Contains(present.Reason, tc.want) {
+				t.Fatalf("stanza_present = %+v, want a WARN carrying %q", present, tc.want)
+			}
+			c := checkStanzaLoaded(root)
+			if c.Status != doctorSkipped {
+				t.Fatalf("stanza_loaded = %+v, want SKIP", c)
+			}
+			if c.Reason == stanzaLoadedNoClaudeReason || strings.Contains(c.Reason, "loads AGENTS.md") {
+				t.Errorf("stanza_loaded claims a load stanza_present denies: %q", c.Reason)
+			}
+			for _, need := range []string{"stanza_present warns Claude Code will not load AGENTS.md", tc.want} {
+				if !strings.Contains(c.Reason, need) {
+					t.Errorf("stanza_loaded reason %q lacks %q", c.Reason, need)
+				}
+			}
+			if c.Remedy == "" {
+				t.Error("stanza_loaded names the warning but no remedy")
+			}
+		})
+	}
+	t.Run("nothing warns keeps the named agents-md skip", func(t *testing.T) {
+		t.Setenv("FATHOM_HOOKS_LOG", filepath.Join(t.TempDir(), "hooks.jsonl"))
+		withClaudeLoadEnv(t, t.TempDir(), "", "2.1.284")
+		_, root := agentsRepo(t)
+		if p := checkStanzaPresent(root); p.Status != doctorPass {
+			t.Fatalf("stanza_present = %+v, want PASS", p)
+		}
+		if c := checkStanzaLoaded(root); c.Status != doctorSkipped || c.Reason != stanzaLoadedNoClaudeReason {
+			t.Fatalf("stanza_loaded = %+v, want the named agents-md SKIP", c)
+		}
+	})
 }

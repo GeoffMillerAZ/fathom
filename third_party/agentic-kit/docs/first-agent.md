@@ -226,7 +226,7 @@ have no trace.
 | [`docs/adopting.md`](adopting.md) | How to build a new project on the kit: recommended layout, the Config/Deps wiring pattern, observability |
 | [`docs/catalog.md`](catalog.md) | Every package in one line — find the right foundation for your use case |
 | [`docs/practices.md`](practices.md) | Agentic anti-patterns and which kit packages prevent them |
-| [`CLAUDE.md`](../CLAUDE.md) | Hard rules, package shape, the gate (`task validate`) |
+| [`AGENTS.md`](../AGENTS.md) | Hard rules, package shape, the gate (`task validate`) |
 | `scenarios/governed-investigation/` | Seeded end-to-end blueprint: evidence → investigation → finding |
 | `scenarios/governed-docextract-hitl/` | Seeded end-to-end blueprint: docextract + harness + hitl composing together |
 

@@ -169,11 +169,17 @@ the declared kit requirement. No replacement path is followed. Ambient Go enviro
 ancestor workspaces, module caches and effective dependency resolution are not checked.
 Pin verification here is declaration agreement, not a sibling-free clean-build proof.
 
-When `agents` is true, both root instruction files must contain exactly one matching
-block from `adoption router`. CRLF is normalized; unrelated instructions are preserved.
-The block points at the required human contract document, whose existence/nonempty
-content is checked but whose product/design completeness requires review.
-`agents:false` imposes no instruction-file requirement. Neither setting proves a host run.
+When `agents` is true, the root AGENTS.md must contain exactly one matching block from
+`adoption router` ([ADR-0088](../adr/0088-agents-md-carries-the-adoption-router.md));
+AGENTS.md alone satisfies the requirement. CRLF is normalized; unrelated instructions
+are preserved. A root CLAUDE.md is optional: absent is not-applicable, and a present one
+passes when it links to AGENTS.md (a symlink whose target is exactly `AGENTS.md`), imports
+it (an `@AGENTS.md` or `@./AGENTS.md` token outside code fences and code spans) or still
+carries the same block. Otherwise `router:CLAUDE.md` fails; add the import or remove the
+file. `.claude/CLAUDE.md` is not examined. The block points at the required human contract
+document, whose existence/nonempty content is checked but whose product/design
+completeness requires review. `agents:false` imposes no instruction-file requirement.
+Neither setting proves a host run.
 
 In that human contract, include a route to the [contribution loop](contribution-loop.md)
 (`get_kit_decision("contribution-loop")` or a reviewed pinned copy), its compact
@@ -205,7 +211,8 @@ Explicit root, consumer slug, profile and contract path are required.
 Select `--module-file go.mod --module-version v0.1.0` only for an actual reviewed
 requirement; `--allow-local-replace` explicitly permits development replacement.
 These are declarations, not resolved or inferred versions. `--agents` requires
-both canonical root instruction blocks when subsequently checked; default is false.
+the canonical router in AGENTS.md when subsequently checked (a CLAUDE.md, if any, must
+import or carry it); default is false.
 Neither option reads or creates its referenced files. A module-only or agent-only
 selection is valid; empty capabilities/artifacts are JSON arrays, not null.
 Non-CLI selections still need layers, and a wholly empty requirement is refused.

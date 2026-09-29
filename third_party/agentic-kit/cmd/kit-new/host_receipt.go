@@ -59,7 +59,7 @@ func hostControlKnown(name string) bool {
 }
 
 func validateInstalledHost(root *os.Root, rootPath, host string) (hostOwnership, hostPolicy, error) {
-	configPath, instructionPath, policyPath, ownershipPath := hostPaths(host)
+	configPath, _, policyPath, ownershipPath := hostPaths(host)
 	var own hostOwnership
 	var policy hostPolicy
 	raw, exists, err := hostRead(root, ownershipPath)
@@ -82,9 +82,21 @@ func validateInstalledHost(root *os.Root, rootPath, host string) (hostOwnership,
 	if err != nil {
 		return own, policy, err
 	}
+	instructionPath := hostInstructionPath(host, own)
 	text, exists, err := hostRead(root, instructionPath)
 	if err != nil || !exists || strings.Count(string(text), own.Stanza) != 1 {
 		return own, policy, errors.New("instruction stanza missing or drifted")
+	}
+	if host == "claude" && instructionPath == hostInstructionsFile {
+		// A CLAUDE.md that does not import AGENTS.md hides the stanza from Claude
+		// Code, whether the adopter wrote it before or after this install.
+		claude, claudeExists, err := hostRead(root, hostClaudeFile)
+		if err != nil {
+			return own, policy, err
+		}
+		if claudeExists && !hostImportsAgents(claude) {
+			return own, policy, errors.New("CLAUDE.md does not import AGENTS.md, so Claude Code will not load the managed stanza: add a line `@AGENTS.md` to it")
+		}
 	}
 	raw, exists, err = hostRead(root, configPath)
 	if err != nil || !exists {

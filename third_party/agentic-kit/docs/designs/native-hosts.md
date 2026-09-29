@@ -25,8 +25,18 @@ Hooks are partial guardrails, not a sandbox or a proof of task completion.
 
 | Host | Project hook file | Managed instruction file | Baseline gaps |
 | --- | --- | --- | --- |
-| Claude Code | `.claude/settings.json` | `CLAUDE.md` | Effective managed/user/CLI overrides and event enforcement need live observation |
+| Claude Code | `.claude/settings.json` | `AGENTS.md`, plus an `@AGENTS.md` import in an existing `CLAUDE.md` | Effective managed/user/CLI overrides and event enforcement need live observation |
 | Codex CLI | `.codex/hooks.json` | `AGENTS.md` | Existing-session `write_stdin` and hosted tools do not receive a new local PreToolUse hook |
+
+One instruction file: the stanza lives in `AGENTS.md` for both hosts and the installer never
+creates a `CLAUDE.md`, because Claude Code (2.1.277 and later) reads `AGENTS.md` natively only
+while no `CLAUDE.md`, `.claude/CLAUDE.md` or `CLAUDE.local.md` exists
+([integration](../project-intent/integration.md) section 2). Where the project already has a root `CLAUDE.md`
+with no standalone `@AGENTS.md` line outside a code fence, the install plan appends a marked import
+block to it (an import, never a second copy of the stanza) and records it in ownership. The
+baseline above (2.1.270) predates native `AGENTS.md` loading; that loading is documented, not
+observed here, so `nested-instructions`, `startup` and `resume` stay unknown until live evidence.
+`.claude/CLAUDE.md` and `CLAUDE.local.md` are not managed; doctor checks only the root file.
 
 Both install `SessionStart` (`startup|resume|compact`), `PreToolUse` (all local tool
 names), `PreCompact`, and `Stop` command hooks with a five-second timeout. Absolute,
@@ -72,7 +82,10 @@ Existing JSON keys and foreign hook entries survive semantically; whitespace is
 normalized. Instruction text outside the exact managed stanza survives byte-for-byte.
 
 Per-host `.agentic-kit/hosts/HOST/ownership.json` records original existence/config
-digest, exact owned hook entries/stanza, root, policy digest, and executable digest.
+digest, exact owned hook entries/stanza and the file holding it (`instructions_path`), the
+exact appended `CLAUDE.md` import block when there is one, root, policy digest, and executable
+digest. A record with no `instructions_path` predates the one-file layout: its Claude stanza is in
+`CLAUDE.md`, and validate and uninstall read it from there.
 The executable is caller-owned, regular, executable, at most 128 MiB, and never owned or
 deleted. Identical installation is a no-op; replacement requires reviewed uninstall
 and reinstall. Unowned policy files, duplicate/changed owned hooks, changed stanzas,
@@ -100,7 +113,8 @@ basis, and `ready`. Unknown host versions and failed/oversized/timed-out probes 
 unknown, not certified by resemblance to the baseline.
 
 Configuration digests include native hooks, instructions, policy, ownership, and
-Claude local settings or Codex project TOML. Doctor checks executable hash/mode,
+Claude local settings and `CLAUDE.md` or Codex project TOML. Doctor also fails a Claude
+install whose root `CLAUDE.md` does not import `AGENTS.md`. Doctor checks executable hash/mode,
 owned entries, obvious project hook disabling, and Codex's enabled hooks feature.
 It does not parse all TOML or establish effective trust/global/managed/CLI settings.
 Those remain live-observation scope. `ready` means configuration/runtime checks

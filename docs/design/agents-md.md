@@ -154,6 +154,11 @@ The `stanza_loaded` row:
 - In a repo with no root CLAUDE file, it SKIPs with this reason: "Claude Code (≥2.1.277) loads
   AGENTS.md through the agents-md setting without an InstructionsLoaded event; no harness-side
   evidence exists here; stanza_present covers the file side".
+- Where `stanza_present` WARNs that Claude Code will not load AGENTS.md (an ancestor CLAUDE file,
+  the `claude-md` setting, a release before 2.1.277), the same SKIP says so instead: "no
+  harness-side evidence exists here, and stanza_present warns Claude Code will not load
+  AGENTS.md: <its reasons>", with its remedies. The named reason above claims a load only where
+  nothing warns.
 - A beat for AGENTS.md arriving through a CLAUDE.md import PASSes.
 
 The InstructionsLoaded hook stays wired: it still fires for CLAUDE files, for imports, and for
@@ -330,9 +335,12 @@ AG-13 (corpus widening) lands and a recompile reads non-zero guide coverage **be
 deletes the CLAUDE files. Evidence: `console` knowledge coverage, or
 `fathom layers status obligations` naming `AGENTS.md` sources. That makes AG-22 depend on AG-13
 through `needs:`. The move changes every guide section's path, and the digest gate keys on the
-section's subject, so today that recompile pays a model call for text it already compiled. AG-26
-(open) carries the claims of a section whose content digest matches one compiled at another path,
-re-cited to the new path, with no model call.
+section's subject, so without AG-26 that recompile pays a model call for text it already compiled.
+AG-26 carries the claims of a section whose content digest and prompt identity match one compiled
+at another path, re-cited to the new path and lines, with no model call. The carry is one-to-one
+(`internal/semantic/carry.go`): exactly one departed subject and exactly one current section with
+the digest, one scope floor, no declared-scope rules file, and one line shift that re-anchors every
+citation; anything else compiles.
 
 ## 4. The record
 

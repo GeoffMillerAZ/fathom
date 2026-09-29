@@ -7,7 +7,7 @@
 // node.go/catalog.go are Flatten's output, computed and never
 // hand-authored, so they are not CUE-validated — CUE owns the authored
 // shape, Go owns the computed behavior, per the kit's own rule
-// (CLAUDE.md: "CUE owns the shape of data; Go owns behavior").
+// (AGENTS.md: "CUE owns the shape of data; Go owns behavior").
 package catalog
 
 // #Node is one authored catalog entry, recursively nested to whatever

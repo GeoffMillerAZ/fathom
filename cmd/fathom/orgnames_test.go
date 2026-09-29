@@ -73,6 +73,31 @@ func orgHits(line string, denylist []string) []string {
 	return guardspec.OrgHits(line, denylist)
 }
 
+// orgIdentityFile is the one tracked file whose identity lines are exempt
+// from the shape scan: git's own author map. It carries the maintainer's own
+// name and addresses, which every commit already publishes, so the scan's
+// "non-placeholder email" shape reads an identity as an organization there.
+const orgIdentityFile = ".mailmap"
+
+// mailmapIdentityRe is a .mailmap identity line and nothing more: names, then
+// one or two angle-bracketed addresses. No '@', ':' or '/' outside the
+// brackets, so a URL, a bare address or a trailing note is not an identity line.
+var mailmapIdentityRe = regexp.MustCompile(`^[^<>#@:/]*<[^<>\s]+>(?:[^<>#@:/]*<[^<>\s]+>)?\s*$`)
+
+// orgLineHits scans one line of the tracked file rel: the shared rule set
+// (orgHits), except that on a well-formed identity line of the root .mailmap
+// the email-shape rule is lifted. The denylist, the internal-host rule and
+// every other rule still scan it. A comment, a stray line and the same line
+// in any other file are scanned in full.
+func orgLineHits(rel, line string, denylist []string) []string {
+	if rel == orgIdentityFile && mailmapIdentityRe.MatchString(line) {
+		// The email-shape rule is the only one that needs an '@'; masking
+		// it lifts that rule alone and leaves every domain for the others.
+		return orgHits(strings.ReplaceAll(line, "@", " "), denylist)
+	}
+	return orgHits(line, denylist)
+}
+
 // orgScanFiles lists the files ADR-011 governs: the git-tracked tree
 // (repo-relative, forward slashes). Untracked scratch is not the repo.
 // Without git the whole tree is walked instead, minus the skip dirs.
@@ -157,6 +182,48 @@ func TestADR011EnforcedPatternsMatchOrgNames(t *testing.T) {
 	}
 }
 
+// TestOrgLineHitsExemptsOnlyMailmapIdentityLines pins the one exemption to
+// the shape scan: a well-formed identity line of the tracked .mailmap (names
+// and angle-bracketed addresses, nothing else) is git identity data, the
+// maintainer's own address that every commit already publishes, not an
+// organization's name. A comment, a stray line, or the same line in any other
+// file is scanned as before.
+func TestOrgLineHitsExemptsOnlyMailmapIdentityLines(t *testing.T) {
+	identity := "Jane Roe <jane@" + "mail.example.org> <jane@" + "corp-mail.example.net>"
+	realShape := "Jane Roe <jane.roe@" + "acme-widgets.com> <jane@" + "host.example.net>"
+	cases := []struct {
+		name, rel, line string
+		wantHit         bool
+	}{
+		{"an identity line of .mailmap", ".mailmap", realShape, false},
+		{"a name-only identity line", ".mailmap", "Jane Roe <jane.roe@" + "acme-widgets.com>", false},
+		{"the same line in another file", "docs/usage.md", realShape, true},
+		{"the same line in a nested .mailmap", "docs/.mailmap", realShape, true},
+		{"a comment naming an address", ".mailmap", "# reach jane.roe@" + "acme-widgets.com", true},
+		{"a stray line with a bare address", ".mailmap", "jane.roe@" + "acme-widgets.com", true},
+		{"a line carrying a URL", ".mailmap", "Jane Roe <jane.roe@" + "acme-widgets.com> https://acme-widgets.com/x", true},
+		{"a placeholder identity is clean everywhere", "docs/usage.md", identity, false},
+	}
+	for _, tc := range cases {
+		got := len(orgLineHits(tc.rel, tc.line, nil)) > 0
+		if got != tc.wantHit {
+			t.Errorf("%s: orgLineHits(%q, %q) hit = %v, want %v", tc.name, tc.rel, tc.line, got, tc.wantHit)
+		}
+	}
+
+	// The exemption lifts the email-shape rule alone. An organization named
+	// by the configured denylist, or an internal hostname, is still a hit on
+	// a .mailmap identity line: a third party's work address is no
+	// maintainer's identity.
+	if hits := orgLineHits(".mailmap", realShape, []string{"acme-widgets"}); len(hits) == 0 {
+		t.Errorf("a denylisted organization on a .mailmap identity line must hit: orgLineHits(%q) = none", realShape)
+	}
+	internalHost := "Jane Roe <jane@build." + "corp>"
+	if hits := orgLineHits(".mailmap", internalHost, nil); len(hits) == 0 {
+		t.Errorf("an internal hostname on a .mailmap identity line must hit: orgLineHits(%q) = none", internalHost)
+	}
+}
+
 // certifies: invariant I19 (asserts)
 func TestNoOrgSpecificNames(t *testing.T) {
 	root := repoRootForDocs(t)
@@ -217,7 +284,7 @@ func TestNoOrgSpecificNames(t *testing.T) {
 		sc := bufio.NewScanner(f)
 		sc.Buffer(make([]byte, 1<<20), 1<<20)
 		for n := 1; sc.Scan(); n++ {
-			if hits := orgHits(sc.Text(), denylist); len(hits) > 0 {
+			if hits := orgLineHits(rel, sc.Text(), denylist); len(hits) > 0 {
 				findings = append(findings, rel+":"+itoa(n)+": "+strings.Join(hits, ", "))
 			}
 		}

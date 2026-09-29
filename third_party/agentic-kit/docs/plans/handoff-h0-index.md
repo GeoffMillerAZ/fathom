@@ -107,7 +107,7 @@ the spec file or TRACKING, proceed.
 
 ## 5. Reading order for a fresh coordinator
 
-`VISION.md` → `CLAUDE.md` → this file → your `handoff-h*.md` spec →
+`VISION.md` → `AGENTS.md` → this file → your `handoff-h*.md` spec →
 `TRACKING.md` (your area) → `docs/plans/2026-07-uplift.md` §3 (decisions
 D1–D10) and §7 (merge-map) → the code your spec names. Total ≈ one hour of
 context; do not start implementing before finishing it.

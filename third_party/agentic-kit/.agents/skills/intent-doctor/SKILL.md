@@ -4,8 +4,8 @@ description: >
   Run structural checks of a repo's Project Intent wiring: router present and
   within budget, living docs within budget, decisions index matches the records, every
   record has Status and Revisit when, CHANGELOG shape and Release impact line,
-  compatibility surface, autonomy and incidents present, stanzas identical in CLAUDE.md
-  and AGENTS.md, intent-* skills resolvable for Claude Code and Codex, installed tool
+  compatibility surface, autonomy and incidents present, the stanzas in AGENTS.md
+  alone (a CLAUDE file only imports it), intent-* skills resolvable for Claude Code and Codex, installed tool
   versions vs the router's Verified-against line. Reports a table; never edits.
 ---
 
@@ -44,14 +44,14 @@ their files. The first paragraph may link to root after the title.
 | 12 | Unreleased budget | lines in `[Unreleased]` block | ≤ 60 (else `intent-prune`) |
 | 13 | Autonomy policy | `autonomy.md` has the three tiers and a branch model | present |
 | 14 | Incidents | `incidents.md` present; every open incident has an `Outcome:` line or is under 30 days old | ok |
-| 15 | Stanza identical | the `## Project intent` block (routing, change records, autonomy paragraphs) in `CLAUDE.md` and `AGENTS.md`, compared with blank lines removed | identical |
+| 15 | Stanza in one file | the `## Project intent` block (routing, change records, autonomy paragraphs) is in `AGENTS.md`; no `CLAUDE.md`, `.claude/CLAUDE.md` or `CLAUDE.local.md` exists, or each carries `@AGENTS.md` (`@../AGENTS.md` from `.claude/`) and no second copy of the block | one copy, reachable |
 | 16 | Skills resolve, Claude Code | inspect declared project-local or personal skill path | each declared skill resolves; identify source and shadowing |
 | 17 | Skills resolve, Codex | inspect declared project-local or personal skill path | same bodies as Claude Code; loading remains a separate host check |
 | 18 | Tool versions | `claude --version`, `codex --version` vs the router's `Verified against` line | equal, else WARN (re-verify integration) |
 | 19 | Links | every relative link in `docs/intent/*.md` and `D/README.md` resolves | all |
 | 20 | Dead pointers | every path named in the router exists (ignore placeholders containing `NNN`, `<`, or `*`) | all |
 | 21 | Charter (monorepo only: `docs/intent/repo.md` exists or > 1 `docs/intent/README.md`) | `repo.md` present; its component map lists every directory that has its own `docs/intent/`; every evolution cell uses the fixed vocabulary | all |
-| 22 | Nested stanzas (monorepo only) | every component with its own intent has the nested stanza in both `<component>/CLAUDE.md` and `<component>/AGENTS.md`, identical | all |
+| 22 | Nested stanzas (monorepo only) | every component with its own intent has the nested stanza in `<component>/AGENTS.md`; a nested CLAUDE file only imports it | all |
 | 23 | Component hygiene (monorepo only) | inherited authority, local document budgets, first paragraph links to root, goals have one owner | all |
 
 Use a repository's deterministic checker when available; name its coverage. Link and

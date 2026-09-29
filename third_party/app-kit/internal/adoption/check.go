@@ -8,6 +8,8 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"path"
+	"regexp"
 	"slices"
 	"strings"
 
@@ -131,6 +133,12 @@ func (r *reader) read(p string, limit int) ([]byte, error) {
 }
 
 func (r *Report) file(rd *reader, id, p string, limit int, required bool) ([]byte, bool) {
+	return r.fileAbsent(rd, id, p, limit, required, "Optional inventory file is absent; no selection inferred.")
+}
+
+// fileAbsent is file with the not-applicable explanation for an optional file
+// that does not exist, so a finding says why absence is acceptable.
+func (r *Report) fileAbsent(rd *reader, id, p string, limit int, required bool, absent string) ([]byte, bool) {
 	body, err := rd.read(p, limit)
 	if err == nil {
 		r.Files = append(r.Files, FileEvidence{p, hash(body), len(body)})
@@ -140,7 +148,7 @@ func (r *Report) file(rd *reader, id, p string, limit int, required bool) ([]byt
 	if errors.Is(err, fs.ErrNotExist) {
 		status, detail, remedy = "fail", "Required file is missing.", "Restore the selected file or review the adoption contract."
 		if !required {
-			status, detail, remedy = "not-applicable", "Optional inventory file is absent; no selection inferred.", ""
+			status, detail, remedy = "not-applicable", absent, ""
 		}
 	} else if errors.Is(err, errUnsafe) {
 		status, detail, remedy = "fail", "Path is not a regular, symlink-free file inside the selected root.", "Use an explicit consumer-owned regular file; do not follow external paths."
@@ -266,19 +274,93 @@ func Check(ctx context.Context, root, manifest string) Report {
 		if err != nil {
 			r.add("agent-routing", "fail", s.Contract, "Contract path cannot be represented in the short router.", "Use a plain relative documentation path.")
 		} else {
-			for _, p := range []string{"CLAUDE.md", "AGENTS.md"} {
-				if body, ok := r.file(rd, "router:"+p, p, 1<<20, true); ok {
-					text := strings.ReplaceAll(string(body), "\r\n", "\n")
-					if strings.Count(text, "<!-- appkit:begin -->") != 1 || strings.Count(text, "<!-- appkit:end -->") != 1 || !strings.Contains("\n"+text, "\n"+block) {
-						r.add("router:"+p, "fail", p, "Selected router is missing, duplicated or differs from the canonical short contract.", "Review appkit adoption router output and preserve unrelated consumer instructions.")
-					} else {
-						r.add("router:"+p, "pass", p, "Canonical router text exists; this does not prove the host loaded it.", "")
-					}
-				}
-			}
+			r.checkAgentRouting(rd, block)
 		}
 	}
 	return r.finish()
+}
+
+const (
+	routerPass = "Canonical router text exists; this does not prove the host loaded it."
+	routerFail = "Selected router is missing, duplicated or differs from the canonical short contract."
+	routerFix  = "Review appkit adoption router output and preserve unrelated consumer instructions."
+)
+
+// checkAgentRouting applies ADR-0088. AGENTS.md is the one instruction file and
+// must carry the canonical router. CLAUDE.md is optional; when it exists it must
+// reach that router, because a consumer that keeps one loads it in place of
+// AGENTS.md. Text and link parity is not host execution.
+func (r *Report) checkAgentRouting(rd *reader, block string) {
+	// CLAUDE.md first, then AGENTS.md: the report order of a consumer that keeps
+	// both files is unchanged from ADR-0024.
+	r.checkClaudeRouting(rd, block)
+	if body, ok := r.file(rd, "router:AGENTS.md", "AGENTS.md", 1<<20, true); ok {
+		if carriesRouter(body, block) {
+			r.add("router:AGENTS.md", "pass", "AGENTS.md", routerPass, "")
+		} else {
+			r.add("router:AGENTS.md", "fail", "AGENTS.md", routerFail, routerFix)
+		}
+	}
+}
+
+func (r *Report) checkClaudeRouting(rd *reader, block string) {
+	const id, p = "router:CLAUDE.md", "CLAUDE.md"
+	if info, err := rd.root.Lstat(p); err == nil && info.Mode()&os.ModeSymlink != 0 {
+		// The layout that keeps one file: CLAUDE.md is a link to AGENTS.md. Only
+		// that exact target counts; no other link is followed.
+		if target, err := rd.root.Readlink(p); err == nil && path.Clean(target) == "AGENTS.md" {
+			r.add(id, "pass", p, "CLAUDE.md links to AGENTS.md, the one instruction file; this does not prove the host loaded it.", "")
+			return
+		}
+	}
+	body, ok := r.fileAbsent(rd, id, p, 1<<20, false, "No CLAUDE.md; AGENTS.md is the one instruction file.")
+	if !ok {
+		return
+	}
+	switch {
+	case importsAgentsMD(body):
+		r.add(id, "pass", p, "CLAUDE.md imports AGENTS.md, the one instruction file; this does not prove the host loaded it.", "")
+	case carriesRouter(body, block):
+		r.add(id, "pass", p, routerPass, "")
+	default:
+		r.add(id, "fail", p, "CLAUDE.md neither imports AGENTS.md nor carries the canonical router, so the router is unreachable through it.", "Add an @AGENTS.md import line to CLAUDE.md, or remove CLAUDE.md; preserve unrelated consumer instructions.")
+	}
+}
+
+// carriesRouter reports whether the text holds the canonical marked block
+// exactly once.
+func carriesRouter(body []byte, block string) bool {
+	text := strings.ReplaceAll(string(body), "\r\n", "\n")
+	return strings.Count(text, "<!-- appkit:begin -->") == 1 && strings.Count(text, "<!-- appkit:end -->") == 1 && strings.Contains("\n"+text, "\n"+block)
+}
+
+var codeSpan = regexp.MustCompile("`[^`]*`")
+
+// importsAgentsMD reports whether CLAUDE.md text pulls AGENTS.md in with a
+// Claude Code memory import: a whitespace-delimited @AGENTS.md or @./AGENTS.md
+// token outside fenced code blocks and inline code spans, which the host does
+// not evaluate. Any other spelling is not counted, so a near miss fails loudly.
+func importsAgentsMD(body []byte) bool {
+	fence := ""
+	for _, line := range strings.Split(strings.ReplaceAll(string(body), "\r\n", "\n"), "\n") {
+		trimmed := strings.TrimSpace(line)
+		if fence != "" {
+			if strings.HasPrefix(trimmed, fence) {
+				fence = ""
+			}
+			continue
+		}
+		if strings.HasPrefix(trimmed, "```") || strings.HasPrefix(trimmed, "~~~") {
+			fence = trimmed[:3]
+			continue
+		}
+		for _, token := range strings.Fields(codeSpan.ReplaceAllString(line, " ")) {
+			if token == "@AGENTS.md" || token == "@./AGENTS.md" {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // Keep authoring and checking on one profile/layer/metadata-fit contract.

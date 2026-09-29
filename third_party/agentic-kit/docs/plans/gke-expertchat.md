@@ -5,7 +5,7 @@ package}` anchor below names a future agentic-kit symbol that does not exist
 in this repo's index and never will — `fathom verify` against this plan
 verifies nothing until it runs with `--service agentic-kit` against the
 kit's own index, once the kit's own gate (`task validate` in
-`../agentic-kit`, per that repo's `CLAUDE.md`) has landed the code these
+`../agentic-kit`, per that repo's `AGENTS.md`) has landed the code these
 rows claim. This plan lives under fathom's `docs/plans/` because it is part
 of the governed-knowledge-engine wave (`docs/vision/
 12-governed-knowledge-engine.md` §4 Phase H) and fathom's plan discipline is
@@ -26,7 +26,7 @@ Design (normative — see `docs/vision/12-governed-knowledge-engine.md` §3):
   `foundations/retrieval` (the module-host query step), and
   `foundations/telemetry` (the existence-check instrumentation
   `docs/vision/11-dial-to-eleven.md` §2 law 7 already names) — matching
-  the kit's own layering rule (`../agentic-kit/CLAUDE.md`: "kits compose
+  the kit's own layering rule (`../agentic-kit/AGENTS.md`: "kits compose
   foundations... imports point downward only").
 - **The governed answer loop's contract, stated normatively:** retrieve via
   the module host (`docs/plans/gke-module-host.md`'s `/rpc/modules`
