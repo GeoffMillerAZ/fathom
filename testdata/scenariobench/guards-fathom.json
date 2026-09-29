@@ -57,7 +57,7 @@
       "rule": {
         "id": "I31",
         "text": "Project-emitted artifacts default to workspace/ (gitignored); CLI -store/-call-log defaults resolve under the enclosing repository's workspace/ (from any subdirectory) or ~/.fathom/ outside a repository -- defaultStorePath/defaultCallLogPath (cmd/fathom/defaultpaths.go) -- never the bare cwd.",
-        "source": "docs/intent/invariants.md#L63"
+        "source": "docs/intent/invariants.md#L64"
       },
       "predictions": {
         "full": "win: the workspace/ default-path convention is bound to edits under cmd/fathom's flag/path-default files, so an obligation serves the rule exactly where a new debug-dump default path is being written, well before the naive 'just write it next to cwd' fix lands",
@@ -160,7 +160,7 @@
       "rule": {
         "id": "I19",
         "text": "No third-party or customer org names, hosts, or catalogs in code, docs, tests, or fixtures.",
-        "source": "docs/intent/invariants.md#L61"
+        "source": "docs/intent/invariants.md#L62"
       },
       "predictions": {
         "full": "win: the fixture is new, small, and directly named in the diff, so the obligation reaches exactly the file being written before a plausible-sounding real hostname or org name lands in it",
@@ -303,7 +303,7 @@
       "rule": {
         "id": "I36",
         "text": "One doc per use case under docs/use-cases/ whose ## Maintained contract names only registered tools and dispatched verbs.",
-        "source": "docs/intent/invariants.md#L65"
+        "source": "docs/intent/invariants.md#L66"
       },
       "predictions": {
         "full": "win: docs/CLAUDE.md's use-case upkeep contract is a doc-shaped obligation bound to edits under docs/use-cases/, which fires on a brand-new file there even though the prompt itself invites skipping the contract line",
