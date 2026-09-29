@@ -52,8 +52,9 @@ stale) — fail-open, not a verification failure.
 - **Deploy = `task deploy`, NEVER a raw `cp`**: cp truncates a running
   executable and an unsigned binary loses the daemon's TCC grant —
   `Taskfile.yml` deploy, `.fathom/observations.md` O10.
-- **Index-first**: fathom MCP tools before any Grep/Read sweep; refresh via
-  the `ingest` MCP tool, never a shell `fathom ingest` against the shared
+- **Index-first**: fathom MCP tools before any Grep/Read sweep; the index
+  refreshes itself on a read (RT-99), the `ingest` tool is served only at
+  `/rpc/extended`, and never a shell `fathom ingest` against the shared
   store — `docs/guides/fleet-index.md`.
 - **UI = app-kit doctrine**: never hand-write observatory markup —
   `cmd/fathom/CLAUDE.md`.

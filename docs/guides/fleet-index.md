@@ -158,9 +158,11 @@ at 97%+ of the entire log's volume with no dedup.
 2. **Refresh through the server, never the CLI.** SQLite (ADR-020) allows
    many concurrent readers, but writes still serialize — a shell
    `fathom ingest` racing the daemon's own writes can hit its busy_timeout
-   and fail with a lock error. Call the `ingest` MCP tool
-   (`{"service":"<this-repo>"}`) at session start and after each commit
-   (hash-gated, ~0.2s when clean). Because the store is shared, your refresh
+   and fail with a lock error. On the default eight-tool surface
+   (`/rpc/agent`) there is nothing to call: a read of a drifted service queues
+   its own refresh (RT-99). Where the `ingest` tool is served (`/rpc/extended`,
+   or the bare `/rpc`), call it (`{"service":"<this-repo>"}`) at session start
+   and after each commit (hash-gated, ~0.2s when clean). Because the store is shared, your refresh
    updates the index for *every* session. The tool is honest about a
    wedged reader (IT-14/IT-15): files it could not read are named with
    their errno and the call returns a JSON-RPC **error** (cause + hint),
