@@ -2094,3 +2094,16 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** none yet, deliberately: whether to drop function words, or rank an OR of the words by bm25, is what KR-M1's doc-question slice measures (docs/plans/knowledge-retrieval.md); widening without that reading returns loosely related sections an agent would trust.
 - **Status:** open
 - **Impact:** An agent that asks a docs question in a sentence is told there is nothing, and falls back to grep or opens the document whole, which is the cost KR-8 was meant to remove.
+
+### O143 — a named exploration map still ends with the session that filed it, so naming does not make it durable and the next session never hears of it
+
+- **Symptom:** `fathom map name ID --purpose "…"` on a map filed with the default session-end condition leaves it `ended` once that session's end note exists: `map list` hides it, and the hooks that deliver maps (XM-8, XM-11 to XM-13) do not name it
+- **Evidence:**
+  - **Tool:** a probe over `loadMapSet` and `explmap.Lifetimes` at the hooks branch (594cb173): `thread note --map auth …`, `map name auth --purpose …`, then a session-end note for the filing session
+  - **Expected:** docs/usage.md says `name` makes a map durable, and `mapLifetime` says an unreferenced named map is permanent
+  - **Actual:** the lifetime is `ended`, `completes_when` is still `session_ended` for the filing session, and `Named()` is true
+  - **Repro:** file an entry with the session's id set, name the map, add a `session-end` thread row for that session, then read `loadMapSet` and `Lifetimes`
+- **Root cause:** `map name` restates the header through `writeMapHeader`, which copies the first header's `completes_when` forward (`mapHeaderRow` takes `base.CompletesWhen`), and `mapLifetime` tests `Ended` before it tests `Named`
+- **Fix:** none in the hooks slice, which only reads the lifetime: XM-6 and XM-7 own it. Either `map name` drops the condition (a named map is durable), or the lifetime rule tests `Named` first; design section 2 has to say which
+- **Status:** open
+- **Impact:** a map the planner names at the end of a session is gone from the next session's brief, from the pre-compact resume and from the location pointer; only a map still inside its own session is served, which is the handoff case and not the resume case
