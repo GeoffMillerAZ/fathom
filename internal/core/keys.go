@@ -90,6 +90,7 @@ func (o Observation) ToSymbolNode() SymbolNode {
 		Calls:      o.Calls,
 		Tier:       o.EvidenceTier,
 		Complexity: o.Complexity,
+		ToolKind:   o.ToolKind,
 	}
 }
 

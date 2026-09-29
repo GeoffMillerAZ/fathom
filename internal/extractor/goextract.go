@@ -101,6 +101,14 @@ func (g *GoExtractor) Extract(service, relPath string, src []byte) ([]core.Symbo
 		}
 	}
 
+	// EW-15: a file no default build compiles still indexes, but is marked,
+	// so the product wiring check never takes its main for an entry point.
+	if defaultBuildExcludes(src) {
+		for i := range nodes {
+			nodes[i].ToolKind = core.ToolKindGoBuildExcluded
+		}
+	}
+
 	// Sort nodes for determinism: by Line, then Name.
 	sort.Slice(nodes, func(i, j int) bool {
 		if nodes[i].Line != nodes[j].Line {
@@ -431,6 +439,9 @@ func collectCalls(service, pkgName string, fn *ast.FuncDecl, localFuncs map[stri
 			for _, lhs := range node.Lhs {
 				skip[lhs] = true
 			}
+			if node.Tok == token.ASSIGN && allBlank(node.Lhs) {
+				skipBlankSinkRefs(skip, node.Rhs)
+			}
 			if len(node.Lhs) != len(node.Rhs) {
 				return true
 			}
@@ -461,6 +472,15 @@ func collectCalls(service, pkgName string, fn *ast.FuncDecl, localFuncs map[stri
 					continue
 				}
 				varPkg[lhsIdent.Name] = imp
+			}
+			return true
+
+		case *ast.ValueSpec:
+			// `var _ = f` in a body: a blank sink is no reference (EW-15).
+			for i, name := range node.Names {
+				if name.Name == "_" && i < len(node.Values) && len(node.Names) == len(node.Values) {
+					skipBlankSinkRefs(skip, node.Values[i:i+1])
+				}
 			}
 			return true
 
@@ -543,4 +563,35 @@ func collectCalls(service, pkgName string, fn *ast.FuncDecl, localFuncs map[stri
 	}
 	sort.Strings(keys)
 	return keys
+}
+
+// allBlank reports whether every expression is the blank identifier.
+func allBlank(exprs []ast.Expr) bool {
+	for _, e := range exprs {
+		if id, ok := e.(*ast.Ident); !ok || id.Name != "_" {
+			return false
+		}
+	}
+	return len(exprs) > 0
+}
+
+// skipBlankSinkRefs marks each value that is a bare function reference
+// (an identifier or a selector, parentheses aside) assigned to the blank
+// identifier: `_ = f` and `var _ = f` keep a name alive for the compiler
+// or a linter and never call it, so they are no reference (EW-15). A call
+// in the same position (`_ = f()`) still runs and still counts.
+func skipBlankSinkRefs(skip map[ast.Expr]bool, values []ast.Expr) {
+	for _, v := range values {
+		for {
+			p, ok := v.(*ast.ParenExpr)
+			if !ok {
+				break
+			}
+			v = p.X
+		}
+		switch v.(type) {
+		case *ast.Ident, *ast.SelectorExpr:
+			skip[v] = true
+		}
+	}
 }

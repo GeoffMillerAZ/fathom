@@ -262,6 +262,9 @@ func BuildFromNodes(service string, nodes []core.SymbolNode, typed []core.Edge, 
 	}
 
 	for _, e := range typed {
+		if e.Kind == core.EdgeInstantiates {
+			continue // a fact about the caller (EW-15), not a reference the export carries
+		}
 		fromInfo, ok := infoByKey[e.FromSymbol]
 		if !ok {
 			continue

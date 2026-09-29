@@ -567,7 +567,17 @@ func EnrichTypedEdges(ctx context.Context, st store.Store, serviceID, repoPath s
 					continue
 				}
 				processedFiles[filename] = true
-				if allowed != nil && !allowed[repoRelSlash(repoPath, filename)] {
+				// A cgo file compiles from a generated copy in the build
+				// cache whose //line directives name the source file: the
+				// source decides the scope (EW-15 — before this every file
+				// importing "C" was skipped, so nothing it called or
+				// instantiated was known). The generated _cgo_gotypes.go
+				// names no repository file and stays out.
+				src := filename
+				if pos := fset.Position(file.Package).Filename; pos != "" {
+					src = pos
+				}
+				if allowed != nil && !allowed[repoRelSlash(repoPath, src)] {
 					continue // ignored file within a partially allowed package
 				}
 			}
@@ -747,6 +757,12 @@ func resolveFileEdges(
 		if allowed[rel] {
 			return true
 		}
+		if rel == ".." || strings.HasPrefix(rel, "../") || filepath.IsAbs(rel) {
+			// Declared outside the repository: cgo's generated
+			// _Cfunc_ wrappers (a cgo file's C.f calls). Not indexed,
+			// never a discovery gap.
+			return false
+		}
 		droppedOutOfScope++
 		if !seenDroppedFile[rel] {
 			seenDroppedFile[rel] = true
@@ -758,6 +774,70 @@ func resolveFileEdges(
 			}
 		}
 		return false
+	}
+
+	// Instantiation facts (EW-15, core.EdgeInstantiates): the first-party
+	// named types with methods whose values a caller's body holds — any
+	// value expression or declared variable of the type or a pointer to it,
+	// and, for a struct, the types its fields hold, recursively (an
+	// embedded field's promoted methods, a zero-value field converted to an
+	// interface). The product wiring check follows an interface dispatch
+	// edge only into a type some reached caller instantiates. One fact per
+	// (caller, type).
+	instSeen := map[string]bool{} // callerKey+"\x00"+typeKey
+	typeInfo := map[*types.Named]struct {
+		key     string
+		methods bool
+		ok      bool
+	}{}
+	var noteType func(callerKey, fromFile string, t types.Type, depth int)
+	noteType = func(callerKey, fromFile string, t types.Type, depth int) {
+		if t == nil || depth > 8 {
+			return
+		}
+		t = types.Unalias(t)
+		if ptr, ok := t.(*types.Pointer); ok {
+			t = types.Unalias(ptr.Elem())
+		}
+		named, ok := t.(*types.Named)
+		if !ok {
+			return
+		}
+		named = named.Origin()
+		ti, cached := typeInfo[named]
+		if !cached {
+			obj := named.Obj()
+			if obj.Pkg() != nil && firstParty[obj.Pkg().Path()] && obj.Parent() == obj.Pkg().Scope() {
+				if pos := fset.Position(obj.Pos()); pos.Filename != "" {
+					rel := repoRelSlash(repoPath, pos.Filename)
+					if allowed == nil || allowed[rel] {
+						ti.key = core.SymbolKey(serviceID, core.QualifiedPackage(rel, obj.Pkg().Name()), obj.Name())
+						ti.methods = types.NewMethodSet(types.NewPointer(named)).Len() > 0
+						ti.ok = true
+					}
+				}
+			}
+			typeInfo[named] = ti
+		}
+		if !ti.ok {
+			return
+		}
+		k := callerKey + "\x00" + ti.key
+		if instSeen[k] {
+			return
+		}
+		instSeen[k] = true
+		if ti.methods {
+			edges = append(edges, core.Edge{
+				FromService: serviceID, FromFile: fromFile,
+				FromSymbol: callerKey, ToSymbol: ti.key, Kind: core.EdgeInstantiates,
+			})
+		}
+		if st, ok := named.Underlying().(*types.Struct); ok {
+			for i := 0; i < st.NumFields(); i++ {
+				noteType(callerKey, fromFile, st.Field(i).Type(), depth+1)
+			}
+		}
 	}
 
 	// walk resolves every call site and func-value reference under root and
@@ -818,7 +898,25 @@ func resolveFileEdges(
 		skip := map[ast.Expr]bool{}
 
 		ast.Inspect(root, func(n ast.Node) bool {
+			if e, ok := n.(ast.Expr); ok {
+				if tv, ok := info.Types[e]; ok && tv.IsValue() {
+					noteType(callerKey, fromFile, tv.Type, 0)
+				}
+			}
 			switch node := n.(type) {
+			case *ast.ValueSpec:
+				// `var x T` holds a T; `var _ = f` keeps a name alive and
+				// references nothing (EW-15).
+				for i, name := range node.Names {
+					if obj := info.Defs[name]; obj != nil {
+						noteType(callerKey, fromFile, obj.Type(), 0)
+					}
+					if name.Name == "_" && len(node.Names) == len(node.Values) {
+						skipBlankSinkRef(skip, node.Values[i])
+					}
+				}
+				return true
+
 			case *ast.CallExpr:
 				funExpr := node.Fun
 				for {
@@ -860,6 +958,12 @@ func resolveFileEdges(
 			case *ast.AssignStmt:
 				for _, lhs := range node.Lhs {
 					skip[lhs] = true
+				}
+				if node.Tok == token.ASSIGN && allBlankIdents(node.Lhs) {
+					// `_ = f` references nothing: a blank sink (EW-15).
+					for _, rhs := range node.Rhs {
+						skipBlankSinkRef(skip, rhs)
+					}
 				}
 				return true
 
@@ -917,7 +1021,19 @@ func resolveFileEdges(
 			initKey := core.SymbolKey(serviceID, core.QualifiedPackage(fromFile, pkg.Types.Name()), "init")
 			for _, spec := range gd.Specs {
 				if vs, ok := spec.(*ast.ValueSpec); ok {
-					for _, v := range vs.Values {
+					// A package variable holds a value of its type from
+					// start-up (EW-15)...
+					for _, name := range vs.Names {
+						if obj := info.Defs[name]; obj != nil && name.Name != "_" {
+							noteType(initKey, fromFile, obj.Type(), 0)
+						}
+					}
+					for i, v := range vs.Values {
+						// ...and `var _ = f` references nothing: it keeps a
+						// name alive for the compiler or a linter (EW-15).
+						if len(vs.Names) == len(vs.Values) && vs.Names[i].Name == "_" && isBareRef(v) {
+							continue
+						}
 						walk(v, initKey, fromFile)
 					}
 				}
@@ -1206,7 +1322,10 @@ func concreteMethod(mset *types.MethodSet, from *types.Package, methodName strin
 // (core.QualifiedPackage); every row written before it named the package
 // by declared name only. Epoch 3 (2026-09-28): a non-test init() is a
 // caller, its edges keyed "<pkg>.init"; rows written before it carry none.
-const TypedEdgeEpoch = "3"
+// Epoch 4 (EW-15): a caller's instantiation facts (core.EdgeInstantiates)
+// are stored, and a bare reference assigned to the blank identifier is no
+// longer a func-value edge; rows written before it carry the old reading.
+const TypedEdgeEpoch = "4"
 
 // packageContentHash hashes pkg's compiled Go files by repo-relative path +
 // content, sorted, under the TypedEdgeEpoch salt — the per-package cache
@@ -1242,4 +1361,48 @@ func repoRelSlash(repoPath, absPath string) string {
 		return filepath.ToSlash(absPath)
 	}
 	return filepath.ToSlash(rel)
+}
+
+// allBlankIdents reports whether every expression is the blank identifier.
+func allBlankIdents(exprs []ast.Expr) bool {
+	for _, e := range exprs {
+		if id, ok := e.(*ast.Ident); !ok || id.Name != "_" {
+			return false
+		}
+	}
+	return len(exprs) > 0
+}
+
+// isBareRef reports whether v, parentheses aside, is an identifier or a
+// selector: a reference to a name, never a call.
+func isBareRef(v ast.Expr) bool {
+	for {
+		p, ok := v.(*ast.ParenExpr)
+		if !ok {
+			break
+		}
+		v = p.X
+	}
+	switch v.(type) {
+	case *ast.Ident, *ast.SelectorExpr:
+		return true
+	}
+	return false
+}
+
+// skipBlankSinkRef marks v for the value-reference pass to skip when it is
+// a bare reference assigned to the blank identifier (`_ = f`): the name is
+// kept alive and never called, so it is no func-value edge (EW-15). A call
+// in the same position (`_ = f()`) is untouched and still counts.
+func skipBlankSinkRef(skip map[ast.Expr]bool, v ast.Expr) {
+	for {
+		p, ok := v.(*ast.ParenExpr)
+		if !ok {
+			break
+		}
+		v = p.X
+	}
+	if isBareRef(v) {
+		skip[v] = true
+	}
 }

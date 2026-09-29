@@ -41,17 +41,20 @@ import (
 // cache's own doc comment already promises.
 func (g *Graph) ReplacePackage(pkg string, newNodes []core.SymbolNode, typedEdges []core.Edge) *Graph {
 	ng := &Graph{
-		nodes:       cloneNodes(g.nodes),
-		callees:     cloneAdjacency(g.callees),
-		callers:     cloneAdjacency(g.callers),
-		byName:      cloneStrMap(g.byName),
-		byPkgName:   cloneStrMap(g.byPkgName),
-		byDirName:   cloneStrMap(g.byDirName),
-		byNameAll:   cloneAdjacency(g.byNameAll),
-		bySuffix:    cloneSuffixMap(g.bySuffix),
-		byDotSuffix: cloneSuffixMap(g.byDotSuffix),
-		edgeKind:    cloneEdgeKindMap(g.edgeKind),
-		dispatchOut: cloneIntMap(g.dispatchOut),
+		nodes:        cloneNodes(g.nodes),
+		callees:      cloneAdjacency(g.callees),
+		callers:      cloneAdjacency(g.callers),
+		byName:       cloneStrMap(g.byName),
+		byPkgName:    cloneStrMap(g.byPkgName),
+		byDirName:    cloneStrMap(g.byDirName),
+		byNameAll:    cloneAdjacency(g.byNameAll),
+		bySuffix:     cloneSuffixMap(g.bySuffix),
+		byDotSuffix:  cloneSuffixMap(g.byDotSuffix),
+		edgeKind:     cloneEdgeKindMap(g.edgeKind),
+		dispatchOut:  cloneIntMap(g.dispatchOut),
+		instantiates: cloneAdjacency(g.instantiates),
+		typedFiles:   cloneBoolMap(g.typedFiles),
+		typedDirs:    cloneBoolMap(g.typedDirs),
 	}
 
 	// newNodes == nil means "this package's symbols are unchanged" (SU-4's
@@ -96,6 +99,11 @@ func (g *Graph) ReplacePackage(pkg string, newNodes []core.SymbolNode, typedEdge
 		}
 		delete(ng.callees, k)
 		delete(ng.dispatchOut, k)
+		if typedEdges != nil {
+			// Its instantiation facts are typed edges too: replaced with
+			// the package's new ones below.
+			delete(ng.instantiates, k)
+		}
 
 		if surviving {
 			// This key is coming right back (its own node data may have
@@ -213,6 +221,17 @@ func cloneNodes(m map[string]core.SymbolNode) map[string]core.SymbolNode {
 
 func cloneStrMap(m map[string]string) map[string]string {
 	out := make(map[string]string, len(m))
+	for k, v := range m {
+		out[k] = v
+	}
+	return out
+}
+
+func cloneBoolMap(m map[string]bool) map[string]bool {
+	if m == nil {
+		return nil
+	}
+	out := make(map[string]bool, len(m))
 	for k, v := range m {
 		out[k] = v
 	}

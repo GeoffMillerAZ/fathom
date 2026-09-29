@@ -580,7 +580,11 @@ func parseGitLog(serviceID, raw string) []store.Commit {
 // classes (their members are qualified by them), interface and abstract
 // method signatures, and function overload / `declare function` signatures —
 // every already-indexed .ts/.tsx file missed those definitions.
-const ExtractorEpoch = "17"
+// Epoch 18 (EW-15): the Go extractor marks the symbols of a file no default
+// build compiles (a //go:build ignore generator) core.ToolKindGoBuildExcluded,
+// and a bare reference assigned to the blank identifier (`_ = f`) is no
+// longer recorded as a call — every already-indexed .go file predates both.
+const ExtractorEpoch = "18"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares

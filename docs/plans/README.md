@@ -150,7 +150,12 @@ reaches its function: verify walks the same syntax+typed call graph
 package-level variable initializers of every package those link. MCP tool
 handlers, CLI verbs, console routes and hook entries are reached through
 the binary that registers them (a registered handler is a func-value edge,
-I23). The criterion is `wired`:
+I23). The walk does not count (EW-15): a bare reference assigned to the
+blank identifier (`var _ = f`); a `main` in a file no default build compiles
+(`//go:build ignore`); a syntax-only guess at a method call's receiver in a
+file the typed pass resolved; or an interface dispatch into a type no reached
+code instantiates. A func literal held in a package variable still counts
+whether or not anything calls the variable (O133). The criterion is `wired`:
 
 | Outcome | Status | When |
 |---|---|---|

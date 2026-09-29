@@ -117,7 +117,12 @@ func statusDaemonSection(ctx context.Context, s *Server, args json.RawMessage) m
 		edges, err := s.backend.TypedEdges(ctx, p.Service)
 		if err == nil {
 			counts := map[string]int{"direct": 0, "iface_dispatch": 0, "unresolved": 0}
+			total := 0
 			for _, e := range edges {
+				if e.Kind == core.EdgeInstantiates {
+					continue // instantiation facts (EW-15) are not call edges
+				}
+				total++
 				switch e.Kind {
 				case "direct":
 					counts["direct"]++
@@ -129,7 +134,7 @@ func statusDaemonSection(ctx context.Context, s *Server, args json.RawMessage) m
 			}
 			result["typed_edges"] = map[string]any{
 				"service":        p.Service,
-				"total":          len(edges),
+				"total":          total,
 				"direct":         counts["direct"],
 				"iface_dispatch": counts["iface_dispatch"],
 				"unresolved":     counts["unresolved"],

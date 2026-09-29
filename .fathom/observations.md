@@ -2040,5 +2040,18 @@ tests being added) is what catches that, not a second reading of the prose.
   - **Repro:** task deploy (or an ingest of a large Go service), then fathom verify --service fathom --plan docs/plans/efficiency-wave.md
 - **Root cause:** Probably the wired check's product-reach walk (memo group product_reach, one walk per watermark) runs cold inside the first verify_plan after the watermark moves and exceeds the index-class deadline; the walk completes and caches, so the retry is fast.
 - **Fix:** warm the product-reach memo after an ingest or daemon start (it is a pure function of the watermark), or let verify_plan wait for an in-flight walk up to its own deadline; efficiency-wave row EW-22.
-- **Status:** open
+- **Status:** fixed (2026-09-29) — EW-22: verify_plan waits for its evidence stage no longer than its deadline less a reserve and otherwise answers with every row elided and a named partial; the builds are kept flights and the next call is served from them. Measured on a scratch store of this repository (28.5k symbols), the cold stage is the graph builds (syntax 2.7s, both 2.2s), not the walk (16ms); verify_plan no longer builds the two graphs it never read.
 - **Impact:** every first verify after a deploy or commit fails; agents read it as a verify failure or retry blind.
+
+### O133 — the wired check counts a function called only inside a func literal held in a package variable nothing invokes
+
+- **Symptom:** the wired check counts a function called only inside a func literal held in a package variable nothing invokes
+- **Evidence:**
+  - **Tool:** verify --strict (the wired criterion)
+  - **Expected:** `var swapForTest = func() int { return lib.DeadInVarClosure() }`, a variable main never calls, leaves DeadInVarClosure library-only
+  - **Actual:** the row verifies wired, entry `cmd/app/main.init`: the typed pass attributes every reference in a package variable's initializer, a func literal's body included, to the package's init, which runs whenever the package is linked
+  - **Repro:** the EW-15 adversarial corpus's case A3 (`var swapForTest` in cmd/app/main.go): ingest it and `fathom verify --strict` a row anchored on DeadInVarClosure
+- **Root cause:** a func literal in a package variable's initializer is created at init but runs only when the variable is called; the typed pass has no vertex for the variable (the Go extractor indexes exported package variables only) and resolves a call through a func-typed variable as unresolved, so there is nothing to attribute the literal's calls to but the init.
+- **Fix:** give every package-level func-typed variable a vertex, attribute its initializer's func literal to it, and resolve a call through the variable to it; the product walk then reaches the literal only when reached code calls the variable. EW-15 left this case open; a row (EW-25 is reserved) should carry it.
+- **Status:** open
+- **Impact:** one of the six rows the re-audit corpus's base reading got wrong still reads wired after EW-15 (the other five read library-only): a helper kept in a package variable "so tests can swap it" reads wired whether or not the product calls the variable.
