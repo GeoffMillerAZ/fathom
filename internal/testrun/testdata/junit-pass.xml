@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites tests="2" failures="0" errors="0" time="0.250">
+	<testsuite tests="1" failures="0" errors="0" time="0.127" name="example.com/shop/cart">
+		<testcase classname="example.com/shop/cart" name="TestTotal" time="0.000"></testcase>
+	</testsuite>
+	<testsuite tests="1" failures="0" errors="0" time="0.123" name="example.com/shop/money">
+		<testcase classname="example.com/shop/money" name="TestRound" time="0.000"></testcase>
+	</testsuite>
+</testsuites>

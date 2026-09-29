@@ -1,0 +1,3 @@
+ok  	example.com/shop/cart	0.127s
+?   	example.com/shop/empty	[no test files]
+ok  	example.com/shop/money	0.129s

@@ -84,6 +84,13 @@ func mergeLayer(cfg *Config, prov Provenance, raw map[string]any, source Source,
 		mergeTestsFields(&cfg.Tests, tm, source, path, prov)
 	}
 
+	if hm, ok := raw["hooks"].(map[string]any); ok {
+		if b, ok := hm["test_run"].(bool); ok {
+			cfg.Hooks.TestRun = b
+			prov["hooks.test_run"] = SourceInfo{source, path}
+		}
+	}
+
 	if cm, ok := raw["connector"].(map[string]any); ok {
 		if v, ok := cm["include"]; ok {
 			if list, ok := stringSlice(v); ok {
@@ -162,6 +169,12 @@ func mergeTestsFields(t *Tests, raw map[string]any, source Source, path string, 
 	}
 	set("results_dir", &t.ResultsDir)
 	set("artifacts_dir", &t.ArtifactsDir)
+	if v, ok := raw["commands"]; ok {
+		if list, ok := stringSlice(v); ok {
+			t.Commands = list
+			prov["tests.commands"] = SourceInfo{source, path}
+		}
+	}
 }
 
 func mergeProfileFields(p *Profile, raw map[string]any, name string, source Source, path string, prov Provenance) {

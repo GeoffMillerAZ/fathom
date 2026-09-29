@@ -331,9 +331,11 @@ func TestMergeHookSettings_PreservesExisting(t *testing.T) {
 	if bashGroup["matcher"] != "Bash" {
 		t.Fatalf("PostToolUse group 1 matcher = %v, want Bash", bashGroup["matcher"])
 	}
+	// TR-2 added the test-run hook to the same Bash group, beside
+	// edit-hook: two fathom entries, still no duplicate sibling group.
 	bashHooks, _ := bashGroup["hooks"].([]any)
-	if len(bashHooks) != 1 {
-		t.Fatalf("PostToolUse Bash hooks = %d, want 1 (fathom only): %v", len(bashHooks), bashHooks)
+	if len(bashHooks) != 2 {
+		t.Fatalf("PostToolUse Bash hooks = %d, want 2 (fathom edit-hook and the test-run hook): %v", len(bashHooks), bashHooks)
 	}
 
 	// Re-running against the merged output is a byte-identical no-op.

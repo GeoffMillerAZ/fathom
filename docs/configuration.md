@@ -758,6 +758,73 @@ is (project layer over user layer, `fathom config --explain` for
 provenance) — see `internal/config`'s `Tests` struct and
 `schema/config/schema.cue`'s `#Tests`.
 
+A third key, `commands`, lists the repository's own declared test commands
+for the test-run hook (next section):
+
+```toml
+[tests]
+commands = ["go test", "bin/itest"]   # optional; the layer that sets it replaces the list
+```
+
+## The test-run hook: `[hooks] test_run`
+
+The test-run hook (ADR-056 decision 6, `docs/design/test-run-hook.md`) is
+fathom's level 10, tiers 0 and 1, provider none. It is **off by default**
+until the level 10 bench (TR-M1) reads PASS; a repository opts in:
+
+```toml
+# .fathom/config.toml
+[hooks]
+test_run = true   # default false
+```
+
+What it does, once on:
+
+- It rides two Claude Code hook rows `fathom init` writes:
+  `PostToolUse(Bash)` → `fathom session-hook --event test-run` and
+  `PostToolUseFailure(Bash)` → `fathom session-hook --event failed-test-run`.
+  A piped test run (`go test ./... | tail -30`) arrives on the first with
+  no exit code; an unpiped run that exited non-zero on the second, with
+  the exit code in its `error` text
+  (`docs/bench/readings/test-run-hook/hook-facts.md`).
+- It acts only on a Bash command that runs one of the repository's
+  **declared** test commands: a Taskfile task, Makefile target or
+  package.json script that is test-named or runs a test runner (directly,
+  through a nested task or a dependency), the runner such a task invokes
+  (so `go test ./one/pkg -run TestX` matches a Taskfile whose test task
+  runs `go test ./...`), and every `[tests] commands` entry. Any other Bash
+  call exits before a daemon call.
+- Tier 0 parses plain `go test`, `go test -json` and JUnit XML into failing
+  test ids, panics, file:line frames and build errors, and reads a
+  three-way result: **pass** only when the runner's own summary covers
+  every package the output shows and the output was neither piped through
+  a filter nor cut by the harness; **fail** on any failure in the output or
+  a carried non-zero exit; **unknown** otherwise.
+- On a fail, tier 1 names the changed symbols each failing test reaches:
+  `test_impact` over the Go functions `git diff HEAD` touches, intersected
+  with the failing tests, and `localize` from the panic's stack or the
+  failing test with its hops capped at 4.
+- It injects **one line** (at most 700 bytes, a cut disclosed) and nothing
+  on a pass or an unknown result, for example
+  `🧪 fathom test run: 2 failed: TestRound (money_test.go:7), TestTotal (cart_test.go:9); both reach money.Round (changed in working tree, money/money.go:41) — full output: workspace/tmp/test-run/<hash>.log`.
+  The full output is saved at that path, named by its content hash
+  (`workspace/` should be gitignored in the repository, I31).
+- It logs **one row per matched run** to the existing hook log
+  (`~/.fathom/hooks.jsonl`, channel `test-run-hook`): the declared command,
+  the event, runner, result, failing test ids (at most 10) and counts, the
+  exit code when carried, and whether a line was emitted — never the
+  output's text, and marked `attested: false`: a piped output is not an
+  attested run and never counts as certificate evidence (I43).
+
+What it does not do: it never rewrites the tool output
+(`updatedToolOutput`), never blocks, never asks for a permission decision
+and never runs a command — the harness ran the test under its own
+permissions, and fathom only reads what came back (plus `git diff HEAD`, a
+read that never writes the repository). It stays inside its hook's
+deadline (5 s less the I53 margin): tier 1 past the deadline is dropped
+silently and the row says `deadline: missed`. No model is asked anything
+(provider none): the line is byte-identical whatever `[decide]` says.
+
 ## The console: `[console]`
 
 The Observatory console bounds its own background work

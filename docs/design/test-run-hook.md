@@ -120,7 +120,10 @@ sampled failures. **Kill:** if arm C fails to beat arm B by 10 percent on turns 
 ## 7. Open facts to verify before building
 
 Whether PostToolUse(Bash) input carries an exit code, and whether a failing test command arrives as
-PostToolUse or PostToolUseFailure (Q32, reading TR-V1). The daily test-failure volume (the sensor will
+PostToolUse or PostToolUseFailure (Q32, reading TR-V1). Answered 2026-09-29 for Claude Code 2.1.284
+(`docs/bench/readings/test-run-hook/hook-facts.md`): no exit code on PostToolUse; an unpiped failing
+command fires PostToolUseFailure with `Exit code N` leading `error`, a piped one (536 of 541 failing runs
+scanned) fires PostToolUse, so both registrations stay. The daily test-failure volume (the sensor will
 measure it).
 
 ## 8. Deferred and refused

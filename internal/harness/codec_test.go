@@ -307,6 +307,8 @@ func TestClaudeFieldMapsAgreeWithCodec(t *testing.T) {
 		"how_added": true, "triggered_by": true,
 		// O57 items 4/5.
 		"prompt": true,
+		// TR-2 (TR-V1's reading of the real keys).
+		"error": true, "tool_response.stdout": true, "tool_response.stderr": true,
 	}
 	writes := map[string]bool{
 		"hookSpecificOutput.additionalContext": true, "hookSpecificOutput.hookEventName": true,
@@ -368,5 +370,53 @@ func TestClaudeCodecUsesSystemMessageWhereAdditionalContextIsUndocumented(t *tes
 		if !strings.Contains(string(out), `"additionalContext":"primer"`) {
 			t.Errorf("%s: documented event must keep additionalContext, got %s", ev, out)
 		}
+	}
+}
+
+// TestClaudeCodecDecodesShellOutput pins the two envelope facts TR-V1
+// read from Claude Code 2.1.284 (docs/bench/readings/test-run-hook/
+// hook-facts.md): PostToolUse(Bash) carries the command's output in
+// tool_response.stdout/stderr and NO exit code; PostToolUseFailure carries
+// the failure in `error` (not `tool_error`), whose first line is
+// "Exit code N" for a command that exited non-zero.
+func TestClaudeCodecDecodesShellOutput(t *testing.T) {
+	c := ClaudeCodec()
+	post := `{"session_id":"s1","cwd":"/r","hook_event_name":"PostToolUse","tool_name":"Bash",
+	  "tool_input":{"command":"go test ./... 2>&1 | tail -5"},
+	  "tool_response":{"stdout":"--- FAIL: TestX (0.00s)\nFAIL\tex/p\t0.1s","stderr":"warn","interrupted":false,"isImage":false,"noOutputExpected":false},
+	  "tool_use_id":"t1","duration_ms":812}`
+	in, err := c.DecodeInput(EventPostTool, []byte(post))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if in.ToolOutput != "--- FAIL: TestX (0.00s)\nFAIL\tex/p\t0.1s\nwarn" || in.ExitCode != nil || in.OutputTruncated {
+		t.Errorf("PostToolUse(Bash) = output %q exit %v truncated %v", in.ToolOutput, in.ExitCode, in.OutputTruncated)
+	}
+	persisted := `{"tool_name":"Bash","tool_input":{"command":"go test ./..."},"tool_response":{"stdout":"ok  \tex/p\t0.1s","stderr":"","persistedOutputPath":"/tmp/x.txt","persistedOutputSize":90000}}`
+	if in, _ := c.DecodeInput(EventPostTool, []byte(persisted)); !in.OutputTruncated {
+		t.Error("a persisted (cut) output must read truncated")
+	}
+	if in, _ := c.DecodeInput(EventPostTool, []byte(claudePostToolUseWrite)); in.ToolOutput != "" {
+		t.Errorf("a Write result is not shell output: %q", in.ToolOutput)
+	}
+
+	fail := `{"session_id":"s1","cwd":"/r","hook_event_name":"PostToolUseFailure","tool_name":"Bash",
+	  "tool_input":{"command":"go test ./..."},"tool_use_id":"t2",
+	  "error":"Exit code 1\n--- FAIL: TestX (0.00s)\nFAIL\tex/p\t0.1s","is_interrupt":false,"duration_ms":900}`
+	in, err = c.DecodeInput(EventToolFailure, []byte(fail))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if in.ExitCode == nil || *in.ExitCode != 1 {
+		t.Errorf("exit code = %v, want 1 from the leading line", in.ExitCode)
+	}
+	if in.ToolOutput != "--- FAIL: TestX (0.00s)\nFAIL\tex/p\t0.1s" {
+		t.Errorf("failure output = %q", in.ToolOutput)
+	}
+	if !strings.HasPrefix(in.ToolError, "Exit code 1") || in.Command != "go test ./..." {
+		t.Errorf("ToolError = %q, command %q", in.ToolError, in.Command)
+	}
+	if in, _ := c.DecodeInput(EventToolFailure, []byte(`{"tool_name":"Bash","error":"Command timed out"}`)); in.ExitCode != nil || in.ToolOutput != "Command timed out" {
+		t.Errorf("no Exit code line: exit %v output %q", in.ExitCode, in.ToolOutput)
 	}
 }

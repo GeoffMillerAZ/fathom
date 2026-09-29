@@ -131,7 +131,7 @@ var claudeCode = Descriptor{
 		},
 		{
 			Capability: CapToolFailureAdvice, Event: EventToolFailure, Harness: "PostToolUseFailure", Matcher: "mcp__fathom__.*|mcp__plugin_[^_]*_fathom__.*", Verb: "session-hook --event tool-failure", Marker: "fathom session-hook --event tool-failure", TimeoutSec: 5, Vehicle: VehicleHookInject,
-			Input:  withKey(withKey(claudeToolIn, "tool_error", "tool_error"), "tool_use_id", "tool_use_id"),
+			Input:  withKey(withKey(claudeToolIn, "error", "error"), "tool_use_id", "tool_use_id"),
 			Output: claudeContextOut,
 			Note:   "the matcher covers BOTH the plain server-scoped tool names and the plugin-scoped mcp__plugin_<plugin>_<server>__<tool> form; the verb is silent for any tool that is not fathom's, so a failure anyone else owns costs nothing",
 		},
@@ -174,6 +174,24 @@ var claudeCode = Descriptor{
 			Output: claudeContextOut,
 			Note:   "a Bash command that writes a file (heredoc/redirection, sed -i, tee, cp/mv into the tree, git apply) never matched Edit|Write|MultiEdit and so never got obligations at all; edit-hook parses tool_input.command for a write shape and serves the written path(s), or the cwd's nearest guide on doubt (O57 item 4/5b)",
 		},
+		// TR-2 (docs/plans/test-run-hook.md, ADR-056 decision 6), appended
+		// after the O57 pair so nothing above moves. TR-V1 read Claude
+		// Code 2.1.284: a failing test command arrives on PostToolUse
+		// when piped (tool_response.stdout, no exit code) and on
+		// PostToolUseFailure when not (error, led by "Exit code N"), so the
+		// hook rides both. Neither marker is a substring of the other.
+		{
+			Capability: CapTestRunLine, Event: EventPostTool, Harness: "PostToolUse", Matcher: "Bash", Verb: "session-hook --event test-run", Marker: "fathom session-hook --event test-run", TimeoutSec: 5, Vehicle: VehicleHookInject,
+			Input:  withKey(withKey(claudeToolIn, "tool_response.stdout", "tool_response.stdout"), "tool_response.stderr", "tool_response.stderr"),
+			Output: claudeContextOut,
+			Note:   "opt-in ([hooks] test_run, default off): acts only on a Bash command that runs a declared test command (Taskfile, Makefile, package.json, [tests] commands) — any other command exits before a daemon call; one line on a failure, nothing on a pass or an unknown result; never rewrites the output, blocks or runs a command",
+		},
+		{
+			Capability: CapTestRunLine, Event: EventToolFailure, Harness: "PostToolUseFailure", Matcher: "Bash", Verb: "session-hook --event failed-test-run", Marker: "fathom session-hook --event failed-test-run", TimeoutSec: 5, Vehicle: VehicleHookInject,
+			Input:  withKey(withKey(claudeToolIn, "error", "error"), "tool_use_id", "tool_use_id"),
+			Output: claudeContextOut,
+			Note:   "the same hook for an unpiped test command that exited non-zero: `error` carries the output after its leading \"Exit code N\" line, the only place the harness carries an exit code",
+		},
 	},
 	// The full event surface of Claude Code 2.1.270, as the hooks
 	// reference lists it (fetched 2026-09-12). Every row fathom does not
@@ -210,6 +228,7 @@ var claudeCode = Descriptor{
 		CapSetupDoctor:          VehicleHookSilent,
 		CapPromptObligations:    VehicleHookInject,
 		CapObligationsPostShell: VehicleHookInject,
+		CapTestRunLine:          VehicleHookInject,
 	},
 	Notes: map[Capability]string{
 		CapPrime:                "SessionStart, gated to startup/clear (resume and compact keep their context)",
@@ -228,6 +247,7 @@ var claudeCode = Descriptor{
 		CapSetupDoctor:          "Setup runs `fathom doctor --brief` (FAIL rows only, ≤5 lines, exit 0); the event documents no additionalContext",
 		CapPromptObligations:    "UserPromptSubmit resolves the paths/packages/symbols the prompt names through the index and injects the union of rules governing them, capped (O57 items 4/5)",
 		CapObligationsPostShell: "PostToolUse on Bash: edit-hook parses tool_input.command for a write shape (redirection, sed -i, tee, cp/mv, git apply) and serves the written path(s), or the cwd's nearest guide on doubt",
+		CapTestRunLine:          "opt-in ([hooks] test_run): PostToolUse and PostToolUseFailure on Bash; after a declared test command fails, one line naming the failing tests and the changed symbols they reach, the full output saved under workspace/tmp; silent on a pass",
 	},
 	FailMode:    "exit 2 blocks on blockable events; on exit 0 the JSON decides; a timed-out or crashed hook's output is discarded and the action proceeds (fail-open)",
 	GatePosture: "advisory, fail-open (§5.3)",
@@ -370,6 +390,7 @@ var codex = Descriptor{
 		CapSetupDoctor:          VehicleAbsent,
 		CapPromptObligations:    VehicleAbsent,
 		CapObligationsPostShell: VehicleAbsent,
+		CapTestRunLine:          VehicleAbsent,
 	},
 	Notes: map[Capability]string{
 		CapPrime:                "SessionStart entry in CODEX_HOME/hooks.json, gated to startup/clear; runs only after `/hooks` trust. MEASURED firing 2026-09-12 — `fathom prime` stays the fallback for an untrusted or unwired install",
@@ -392,6 +413,7 @@ var codex = Descriptor{
 		CapSetupDoctor:          "Codex documents no setup event — run `fathom doctor --brief` by hand after wiring",
 		CapPromptObligations:    "Codex documents a UserPromptSubmit-shaped event but fathom has not ported prompt-hook to it yet — `fathom prime` covers identity/freshness, and `obligations` is a call away",
 		CapObligationsPostShell: "not ported to Codex yet — PostToolUse on apply_patch answers only the patch's own file",
+		CapTestRunLine:          "not ported to Codex yet — the test-run hook reads Claude Code's Bash envelope only",
 	},
 	FailMode:    "exit 2 + stderr blocks PreToolUse and UserPromptSubmit and continues Stop; other non-zero exits and timeouts are reported as hook failures and the action proceeds (fail-open); a non-managed hook runs only after /hooks trust of its exact hash; features.hooks gates all; SessionEnd's timeout is clamped to 3s with a notice (measured)",
 	GatePosture: "advisory, fail-open (§5.3); the hooks run only after /hooks trust — the git-native verify gate is the only enforcement",
@@ -527,6 +549,7 @@ var geminiCLI = Descriptor{
 		CapSetupDoctor:          VehicleAbsent,
 		CapPromptObligations:    VehicleAbsent,
 		CapObligationsPostShell: VehicleAbsent,
+		CapTestRunLine:          VehicleAbsent,
 	},
 	Notes: map[Capability]string{
 		CapSubagentPrime:        geminiWave3Note,
@@ -536,6 +559,7 @@ var geminiCLI = Descriptor{
 		CapSetupDoctor:          geminiWave3Note,
 		CapPromptObligations:    "not ported to Gemini CLI yet — `fathom prime` covers identity/freshness, and `obligations` is a call away",
 		CapObligationsPostShell: "not ported to Gemini CLI yet",
+		CapTestRunLine:          "not ported to Gemini CLI yet",
 		CapPrime:                "SessionStart entry in .gemini/settings.json (all sources; the verb gates to startup/clear); runs once accepted in `/hooks` — `fathom prime` is the fallback",
 		CapObligationsPostEdit:  "AfterTool on write_file|replace via additionalContext; the `obligations` MCP tool is the fallback until the hook is accepted",
 		CapGuardPreEdit:         "BeforeTool on write_file|replace as systemMessage (terminal, not model context) — additionalContext on BeforeTool is UNSHOWN",
@@ -649,6 +673,7 @@ func pullTierVehicles() map[Capability]Vehicle {
 		CapSetupDoctor:          VehicleAbsent,
 		CapPromptObligations:    VehicleAbsent,
 		CapObligationsPostShell: VehicleAbsent,
+		CapTestRunLine:          VehicleAbsent,
 	}
 }
 

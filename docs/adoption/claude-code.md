@@ -806,6 +806,15 @@ A repo wired before wave 3 gains exactly these seven entries on its next
 appended after the existing rows, and the pre-existing table is pinned
 byte-for-byte by `cmd/fathom/hookspecs_test.go`.
 
+The test-run hook (ADR-056 decision 6, `docs/design/test-run-hook.md`) adds
+two more rows, appended the same way. Both are inert until `[hooks] test_run
+= true` (see `docs/configuration.md`):
+
+| Event | Matcher | Command | Injects? | What it does |
+|---|---|---|---|---|
+| `PostToolUse` | `Bash` | `fathom session-hook --event test-run` | yes | after a Bash command that runs a declared test command, one line naming the failing tests and the changed symbols they reach; nothing on a pass. A piped test run (`\| tail`) arrives here, with no exit code |
+| `PostToolUseFailure` | `Bash` | `fathom session-hook --event failed-test-run` | yes | the same for an unpiped run that exited non-zero: the output arrives in `error`, led by `Exit code N` |
+
 ---
 
 ## 8. Per-project `.fathom/`

@@ -3,6 +3,7 @@ package harness
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -45,6 +46,18 @@ type HookInput struct {
 	AgentType string
 	// ToolError is the failure message on the tool-failure event.
 	ToolError string
+	// ToolOutput is the text a shell tool call printed (TR-2, TR-V1):
+	// Claude Code's PostToolUse tool_response stdout then stderr, or its
+	// PostToolUseFailure error text after the leading "Exit code N" line.
+	// "" for a tool whose result is not shell output.
+	ToolOutput string
+	// ExitCode is the shell command's exit status, set only when the
+	// envelope carries it (Claude Code: PostToolUseFailure's leading
+	// "Exit code N"); nil otherwise — PostToolUse never carries one.
+	ExitCode *int
+	// OutputTruncated reports that the harness cut ToolOutput and kept the
+	// rest elsewhere (Claude Code: tool_response.persistedOutputPath).
+	OutputTruncated bool
 	// Path is the directory an event is ABOUT rather than the session's
 	// own cwd: the new worktree's root (worktree-create), the root the
 	// session moved to or added (cwd-changed), or a Grep/Glob tool call's
@@ -186,16 +199,21 @@ type claudeEnvelope struct {
 	// 2026-09-12 against Claude Code 2.1.270). Each is read ONLY on the
 	// event that documents it — a field the documentation does not show
 	// on an event is not read there.
-	AgentID      string `json:"agent_id"`       // SubagentStart
-	AgentType    string `json:"agent_type"`     // SubagentStart
-	ToolError    string `json:"tool_error"`     // PostToolUseFailure
-	ToolUseID    string `json:"tool_use_id"`    // PostToolUseFailure
-	WorktreePath string `json:"worktree_path"`  // WorktreeCreate
-	PreviousCwd  string `json:"previous_cwd"`   // CwdChanged
-	DirPath      string `json:"directory_path"` // DirectoryAdded
-	HowAdded     string `json:"how_added"`      // DirectoryAdded
-	TriggeredBy  string `json:"triggered_by"`   // Setup
-	Prompt       string `json:"prompt"`         // UserPromptSubmit
+	AgentID   string `json:"agent_id"`   // SubagentStart
+	AgentType string `json:"agent_type"` // SubagentStart
+	// Error is PostToolUseFailure's failure text (TR-V1 read the key from
+	// Claude Code 2.1.284's hook-input construction); ToolError is the
+	// key this codec read before that reading, kept as a fallback.
+	Error        string          `json:"error"`          // PostToolUseFailure
+	ToolError    string          `json:"tool_error"`     // PostToolUseFailure (pre-TR-V1 key)
+	ToolUseID    string          `json:"tool_use_id"`    // PostToolUseFailure
+	ToolResponse json.RawMessage `json:"tool_response"`  // PostToolUse
+	WorktreePath string          `json:"worktree_path"`  // WorktreeCreate
+	PreviousCwd  string          `json:"previous_cwd"`   // CwdChanged
+	DirPath      string          `json:"directory_path"` // DirectoryAdded
+	HowAdded     string          `json:"how_added"`      // DirectoryAdded
+	TriggeredBy  string          `json:"triggered_by"`   // Setup
+	Prompt       string          `json:"prompt"`         // UserPromptSubmit
 }
 
 func (c claudeCodec) DecodeInput(ev Event, raw []byte) (HookInput, error) {
@@ -232,7 +250,13 @@ func (c claudeCodec) DecodeInput(ev Event, raw []byte) (HookInput, error) {
 		in.AgentType = env.AgentType
 		in.Source = env.AgentID
 	case EventToolFailure:
-		in.ToolError = env.ToolError
+		in.ToolError = env.Error
+		if in.ToolError == "" {
+			in.ToolError = env.ToolError
+		}
+		in.ToolOutput, in.ExitCode = claudeFailureOutput(in.ToolError)
+	case EventPostTool:
+		in.ToolOutput, in.OutputTruncated = claudeShellOutput(env.ToolResponse)
 	case EventWorktreeCreate:
 		in.Path = env.WorktreePath
 	case EventCwdChanged:
@@ -252,6 +276,46 @@ func (c claudeCodec) DecodeInput(ev Event, raw []byte) (HookInput, error) {
 		in.Prompt = env.Prompt
 	}
 	return in, nil
+}
+
+// claudeShellOutput reads a Bash tool_response ({stdout, stderr,
+// interrupted, isImage, ..., persistedOutputPath}): stdout, then stderr
+// on its own line, and whether the harness persisted a cut output
+// elsewhere. Any other tool's result reads as no shell output.
+func claudeShellOutput(raw json.RawMessage) (string, bool) {
+	if len(raw) == 0 || raw[0] != '{' {
+		return "", false
+	}
+	var r struct {
+		Stdout              *string `json:"stdout"`
+		Stderr              string  `json:"stderr"`
+		PersistedOutputPath string  `json:"persistedOutputPath"`
+	}
+	if json.Unmarshal(raw, &r) != nil || r.Stdout == nil {
+		return "", false
+	}
+	out := *r.Stdout
+	if r.Stderr != "" {
+		if out != "" {
+			out += "\n"
+		}
+		out += r.Stderr
+	}
+	return out, r.PersistedOutputPath != ""
+}
+
+// claudeFailureOutput splits PostToolUseFailure's error text: a leading
+// "Exit code N" line is the exit status (the only place Claude Code
+// carries one, TR-V1) and the rest is the command's output; without that
+// line the whole text is the output and the exit code is unknown.
+func claudeFailureOutput(errText string) (string, *int) {
+	first, rest, _ := strings.Cut(errText, "\n")
+	if n, ok := strings.CutPrefix(strings.TrimSpace(first), "Exit code "); ok {
+		if code, err := strconv.Atoi(n); err == nil {
+			return rest, &code
+		}
+	}
+	return errText, nil
 }
 
 // claudeProposedNewContent returns the text a Claude Code Edit/Write/

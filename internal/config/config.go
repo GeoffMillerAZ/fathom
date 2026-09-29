@@ -233,6 +233,21 @@ var DefaultDecide = Decide{
 type Tests struct {
 	ResultsDir   string `toml:"results_dir"`
 	ArtifactsDir string `toml:"artifacts_dir"`
+	// Commands (TR-1, docs/plans/test-run-hook.md) is the repository's own
+	// list of declared test commands ("go test", "bin/itest"), beside the
+	// ones read from its Taskfile, Makefile and package.json: the test-run
+	// hook acts only on a Bash command that invokes one of them. The layer
+	// that sets it replaces the whole list.
+	Commands []string `toml:"commands"`
+}
+
+// Hooks configures opt-in hook behaviours (schema.cue #Hooks).
+type Hooks struct {
+	// TestRun (TR-9, ADR-056 decision 6) turns on the test-run hook: after
+	// a Bash command that runs a declared test command, one line naming
+	// the failing tests and the changed symbols they reach. Default false
+	// until the level 10 bench (TR-M1) reads PASS.
+	TestRun bool
 }
 
 // Console configures the Observatory console's bounds (schema.cue
@@ -288,6 +303,7 @@ type Config struct {
 	Findings       Findings
 	Decide         Decide
 	Tests          Tests
+	Hooks          Hooks
 	Surface        Surface
 	Console        Console
 	// Zones is `[zones]` (WI-1): zone name to its repo-relative path

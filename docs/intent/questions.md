@@ -111,9 +111,10 @@ full of indirection. J0 (`docs/plans/judged-predicates.md` JP-M1) is the kill sc
 model must beat. Blocks: `fathom ask`, the traversal scorer and files at scale (F34, F36, F37). Answerable by:
 evidence (JP-M1), then owner.
 
-**Q32. What do the harness hooks carry at the moments the judgment program needs?** Unverified: whether
-PostToolUse(Bash) input carries an exit code and whether a failing test command arrives as PostToolUse or
-PostToolUseFailure (TR-V1); whether SessionStart with source `compact` fires and accepts additional context
+**Q32. What do the harness hooks carry at the moments the judgment program needs?** Answered for Claude
+Code 2.1.284 by TR-V1 (`docs/bench/readings/test-run-hook/hook-facts.md`): PostToolUse(Bash) carries no exit
+code; an unpiped failing command arrives as PostToolUseFailure with `Exit code N` leading `error`, a piped one
+(536 of 541 failing runs scanned) as PostToolUse. Unverified: whether SessionStart with source `compact` fires and accepts additional context
 (CA-V1); whether the SubagentStart input carries the sub-agent's prompt, and whether RC-28's 591-byte rows are
 boilerplate (XM-V1); whether the shell PostToolUse input carries the command's stdout (git's `[branch sha]`
 summary line) and whether context added there reaches the model, in Claude Code and in Codex (PR-V1); what a

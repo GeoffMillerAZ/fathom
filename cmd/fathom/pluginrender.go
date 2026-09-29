@@ -118,14 +118,16 @@ func renderPluginSurface() (defaultTools []string, groups map[string][]string) {
 }
 
 // pluginTemplateDigestPin is TestPluginTemplateDigestPinned's golden value
-// for pluginVersion "0.3.5" (bumped by G2-5: the fathom-plan skill's
-// SKILL.md says a wrapped row is read when its continuation lines are
-// indented, instead of "silently ignored"). Regenerate with
+// for pluginVersion "0.3.5" (bumped once for two unreleased template edits:
+// G2-5, the fathom-plan skill's SKILL.md says a wrapped row is read when its
+// continuation lines are indented, instead of "silently ignored"; and TR-2,
+// docs/plans/test-run-hook.md, the hook template gained the two test-run
+// rows and the fathom-rewire skill's template list names them). Regenerate with
 // pluginTemplateDigest() (see that test) and bump pluginVersion in the
 // SAME change whenever this pin moves — the digest is what makes a
 // template edit visible; the version bump is the deliberate human act it
 // demands (docs/design/reach.md §4).
-const pluginTemplateDigestPin = "636bbcf32bdc91fc"
+const pluginTemplateDigestPin = "0f1404024d979a5b"
 
 // pluginTemplateDigest is a stable sha256 (hex, first 16 chars) over every
 // deterministic input `plugin render` turns into the shipped tree: the

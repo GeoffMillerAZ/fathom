@@ -61,12 +61,22 @@ var promptHookSpecAddition = []hookSpec{
 	{event: "PostToolUse", matcher: "Bash", marker: "fathom edit-hook", sub: "edit-hook", timeout: 5},
 }
 
+// testRunHookSpecAddition is TR-2's two rows (docs/plans/test-run-hook.md),
+// appended after promptHookSpecAddition so nothing above moves: the
+// test-run hook on PostToolUse(Bash) and on PostToolUseFailure(Bash) —
+// TR-V1 read failing test runs arriving on both. The markers are chosen so
+// neither is a substring of the other.
+var testRunHookSpecAddition = []hookSpec{
+	{event: "PostToolUse", matcher: "Bash", marker: "fathom session-hook --event test-run", sub: "session-hook --event test-run", timeout: 5},
+	{event: "PostToolUseFailure", matcher: "Bash", marker: "fathom session-hook --event failed-test-run", sub: "session-hook --event failed-test-run", timeout: 5},
+}
+
 // TestHookSpecsForClaude pins HP-2: init, plugin render, reconcile and
 // doctor all read fathomHookSpecs, and fathomHookSpecs is now
 // hookSpecsFor("claude-code") — the pre-seam literal as a byte-identical
 // prefix, followed by the vision 26 §4 additions.
 func TestHookSpecsForClaude(t *testing.T) {
-	want := append(append(append(append([]hookSpec{}, preSeamFathomHookSpecs...), claimHookSpecAdditions...), waveThreeHookSpecAdditions...), promptHookSpecAddition...)
+	want := append(append(append(append(append([]hookSpec{}, preSeamFathomHookSpecs...), claimHookSpecAdditions...), waveThreeHookSpecAdditions...), promptHookSpecAddition...), testRunHookSpecAddition...)
 	got := hookSpecsFor(harness.ClaudeCode)
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("hookSpecsFor(claude-code) drifted from the pre-seam table + the vision 26 §4 + wave 3 additions:\n got %+v\nwant %+v", got, want)

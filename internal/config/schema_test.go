@@ -145,6 +145,10 @@ bad16: #Config & {
 bad17: #Config & {
 	console: conserve_max_files: 0
 }`},
+		{"[hooks] test_run is not a bool", `
+bad18: #Config & {
+	hooks: test_run: "yes"
+}`},
 	}
 
 	cctx := cuecontext.New()

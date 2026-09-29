@@ -94,6 +94,11 @@ const (
 	// Edit|Write|MultiEdit matcher entirely, so it never got obligations
 	// at all — O57 item 4/5(b).
 	CapObligationsPostShell Capability = "obligations-post-shell"
+	// CapTestRunLine is the test-run hook (ADR-056 decision 6, TR-2): after
+	// a Bash command that runs one of the repository's declared test
+	// commands fails, one line naming the failing tests and the changed
+	// symbols they reach; silent on a pass. Opt-in ([hooks] test_run).
+	CapTestRunLine Capability = "test-run-line"
 )
 
 // Capabilities is the fixed rendering order of every capability — the
@@ -107,6 +112,8 @@ var Capabilities = []Capability{
 	CapSubagentPrime, CapToolFailureAdvice, CapWorktreeAdvice, CapCwdPrime, CapSetupDoctor,
 	// O57 items 4/5, appended for the same reason.
 	CapPromptObligations, CapObligationsPostShell,
+	// TR-2, appended for the same reason.
+	CapTestRunLine,
 }
 
 // Vehicle is HOW a capability reaches a session on one harness.
