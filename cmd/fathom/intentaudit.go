@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -17,6 +18,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/guardspec"
 	"github.com/geoffmilleraz/fathom/internal/intent"
 	"github.com/geoffmilleraz/fathom/internal/readcoverage"
+	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/internal/verify"
 )
 
@@ -43,12 +45,14 @@ const intentAuditLearningWindow = 30 * 24 * time.Hour
 
 func cmdIntent(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
-		fmt.Fprintln(stderr, "error: intent requires a subcommand (audit, doctrine, export, render)")
+		fmt.Fprintln(stderr, "error: intent requires a subcommand (audit, adr-rules, doctrine, export, render)")
 		return 1
 	}
 	switch args[0] {
 	case "audit":
 		return cmdIntentAudit(args[1:], stdout, stderr)
+	case "adr-rules":
+		return cmdIntentADRRules(args[1:], stdout, stderr) // CX-19: intentadrrules.go
 	case "doctrine":
 		return cmdIntentDoctrine(args[1:], stdout, stderr) // DP-3/DP-4: intentdoctrine.go
 	case "export":
@@ -56,7 +60,7 @@ func cmdIntent(args []string, stdout, stderr io.Writer) int {
 	case "render":
 		return cmdIntentRender(args[1:], stdout, stderr) // HP-35: intent_playbook.go
 	}
-	fmt.Fprintf(stderr, "error: unknown intent subcommand %q (audit, doctrine, export, render)\n", args[0])
+	fmt.Fprintf(stderr, "error: unknown intent subcommand %q (audit, adr-rules, doctrine, export, render)\n", args[0])
 	return 1
 }
 
@@ -65,7 +69,8 @@ func cmdIntentAudit(args []string, stdout, stderr io.Writer) int {
 	root := fs.String("root", ".", "repository root")
 	service := fs.String("service", "", "service id (default: resolved from the repo)")
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL")
-	kind := fs.String("kind", "", "restrict to kinds: conditions|invariants|unproven (comma-separated)")
+	kind := fs.String("kind", "", "restrict to kinds: conditions|triggers|invariants|unproven (comma-separated)")
+	storePath := fs.String("store", defaultStorePath(), "store the arch_violations trigger instrument reads (CX-21); opened only when a trigger names it")
 	top := fs.Int("top", intentTopDefault, "max rows per section before eliding (0 = all)")
 	asJSON := fs.Bool("json", false, "emit JSON")
 	readOnly := fs.Bool("read-only", false, "render the audit and write NOTHING: no intent-ledger rows (clock, baseline, debt, the enforcement-probe cache) and no beat — the Observatory's intent tab runs it this way (OC-38)")
@@ -88,7 +93,7 @@ func cmdIntentAudit(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
 	}
-	run, err := runIntentAudit(intentAuditOptions{Root: abs, Service: *service, URL: *url, ReadOnly: *readOnly})
+	run, err := runIntentAudit(intentAuditOptions{Root: abs, Service: *service, URL: *url, ReadOnly: *readOnly, StorePath: *storePath})
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
@@ -117,6 +122,11 @@ type intentAuditOptions struct {
 	// HTTP, when set, carries the index oracle's requests (the console
 	// passes its origin-stamped client).
 	HTTP *http.Client
+	// Store is the open store a computable trigger's arch_violations
+	// instrument reads (the console passes the daemon's); when nil,
+	// StorePath is opened on first read (CX-21, intenttriggers.go).
+	Store     store.Store
+	StorePath string
 }
 
 // intentAuditRun is one run's inputs and findings.
@@ -177,6 +187,9 @@ func runIntentAudit(o intentAuditOptions) (intentAuditRun, error) {
 		GuardNotes:  guardNotes,
 		GuardScopes: guardScopes,
 		GuardNote:   guardNote2,
+		// CX-21: computable revisit/promote triggers read their instruments
+		// here, when the operator runs the audit — never on a schedule.
+		Instruments: intentInstruments(context.Background(), o.Store, o.StorePath, svc, rows),
 		Ledger:      ledger,
 		Now:         time.Now().UTC(),
 	})
@@ -339,6 +352,10 @@ func renderIntentAudit(w io.Writer, c intent.Corpus, a intent.Audit, ledger []in
 		}
 	}
 
+	if want("triggers") {
+		renderIntentTriggers(w, a.Triggers)
+	}
+
 	if want("invariants") {
 		byRung := map[intent.Rung]int{}
 		for _, inv := range c.Invariants {
@@ -439,6 +456,9 @@ func intentAuditPayload(c intent.Corpus, a intent.Audit, ledger []intent.LedgerR
 		"unenforced":   joinInvIDs(a.Unenforced),
 		"uncomputable": a.Uncomputable,
 		"ms":           a.Elapsed.Milliseconds(),
+		// CX-21: every revisit/promote condition's verdict — computable ones
+		// read at this run, prose ones unevaluated.
+		"triggers": a.Triggers,
 	}
 	if hasClock {
 		payload["clock_started_at"] = clock.At

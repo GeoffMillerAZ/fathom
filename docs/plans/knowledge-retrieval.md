@@ -25,8 +25,14 @@ v1.52.0, SQLite 3.53.2; probed 2026-09-27). No embeddings (vision 31 stands).
 
 ## Wave 4: dependency docs
 
-- [ ] Dependency doc units from the pinned version in the local cache (Go doc comments, `.d.ts` JSDoc, docstrings, Rust `///`, the package README), never fetched (I56) {id: KR-11, symbol: depDocUnits, package: internal/docindex, reachable_from: TestDepDocUnitsFromCache, needs: "system-graph.md#SG-37"}
-- [ ] `search kind: docs` scoped to a `pkg:` key answers from that version's docs {id: KR-12, symbol: searchPkgDocs, package: internal/docindex, reachable_from: TestSearchPkgDocsVersionExact, needs: "KR-11"}
+KR-11 reads the cache directory through a `DepCacheLocator` port (`internal/docindex/depdocs.go`);
+the dependency plane's cache locator (`system-graph.md#SG-36`) is its production implementation
+and the API indexer (SG-37) the caller of `IngestDepDocs`. Both rows are proven at the library
+and tool seams against fixture caches laid out like the toolchains' own; until SG-36 and SG-37
+land nothing fills the index in a running daemon, and a scoped search answers `not_indexed` by name.
+
+- [x] Dependency doc units from the pinned version in the local cache (Go doc comments, `.d.ts` JSDoc, docstrings, Rust `///`, the package README), never fetched (I56) {id: KR-11, symbol: depDocUnits, package: internal/docindex, reachable_from: TestDepDocUnitsFromCache, needs: "system-graph.md#SG-37"}
+- [x] `search kind: docs` scoped to a `pkg:` key answers from that version's docs {id: KR-12, symbol: searchPkgDocs, package: internal/docindex, reachable_from: TestSearchPkgDocsVersionExact, needs: "KR-11"}
 
 ## Refused (recorded so they are not re-proposed)
 

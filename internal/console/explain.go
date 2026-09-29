@@ -54,11 +54,18 @@ type ServingExplanation struct {
 	// Rerank says whether serving re-orders rules within a tier with a
 	// decision-port provider; the explanation never calls one.
 	Rerank string `json:"rerank"`
+	// Outcomes (SR-61) is what the edit hook has recorded of each served
+	// rule — served, complied, violated over the last 30 days — read from
+	// its signal log at request time, never cached with the explanation.
+	// ServingView leaves it absent; the caller that reads the log
+	// (cmd/fathom withRuleOutcomes) fills it in.
+	Outcomes Value[RuleOutcomeSet] `json:"outcomes"`
 }
 
 // ServingView folds the explanation and its enrichments.
 func ServingView(in ServingInputs) ServingExplanation {
-	out := ServingExplanation{ObligationsExplanation: in.Explanation, RawFallback: []semantic.Obligation{}}
+	out := ServingExplanation{ObligationsExplanation: in.Explanation, RawFallback: []semantic.Obligation{},
+		Outcomes: Absent[RuleOutcomeSet]("the edit hook's rule outcomes were not read for this view").WithSource(ruleOutcomeSource)}
 	if in.RawOK {
 		out.RawFallback = append(out.RawFallback, in.Raw...)
 		out.RawWhy = in.RawWhy

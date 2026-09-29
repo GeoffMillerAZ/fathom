@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -78,6 +79,7 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 	fs.Var(&skillsFlag, "skills", "install the ten shipped agent skills (fathom-activate/custodian/doctor/feedback/findings/impact/onboard/plan/rewire/verify): claude | codex | agents | all | codex-prompts (bare --skills = all = .agents/skills + .claude/skills; codex = .agents/skills; codex-prompts = the deprecated ~/.codex/prompts twin; omit to skip)")
 	seedUserIgnoreFlag := fs.Bool("seed-user-ignore", false, "seed ~/.fathom/ignore with machine-junk defaults (docs/design/scoped-config.md); prints exactly what it writes, never silent, requires this flag")
 	harnessFlag := fs.String("harness", "", "harness to wire (ADR-029): claude-code (default) | codex | gemini-cli | agents | none — init writes only that descriptor's declared vehicles and prints its own `mcp add` line; hooks are wired for claude-code only in this build")
+	noSCIPFlag := fs.Bool("no-scip", false, "do not run scip-typescript / scip-python: by default init runs whichever is already on PATH for a TypeScript/JavaScript or Python repo (never installing one) and has the daemon import its index as typed edges (SR-65); a producer type-checks the whole repository and can take minutes")
 	hooksScopeFlag := fs.String("hooks-scope", "auto", "Claude Code hook scope: auto (default) skips a fathom hook already wired at ~/.claude/settings.json; project writes every fathom hook at <root>/.claude/settings.json regardless of user scope — required for a clean room or CI harness that loads only project settings (e.g. claude --restricted --settings), which never sees user-scope hooks. Also settable via FATHOM_HOOKS_SCOPE=project.")
 	if err := fs.Parse(args); err != nil {
 		return 1
@@ -229,6 +231,15 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 	if err := installSkills(root, skillsMode, stdout); err != nil {
 		fmt.Fprintf(stderr, "error: installing skills: %v\n", err)
 		return 1
+	}
+
+	// f2. SCIP typed edges (SR-65, surface reckoning F-74): run scip-typescript
+	// / scip-python when already installed and the repo is that language,
+	// then have the daemon import the index. Last of the writes, so a
+	// producer's minutes never delay the wiring above, and never a reason
+	// for a non-zero exit — a producer that fails is a printed warning.
+	if !*noSCIPFlag {
+		initSCIPStep(context.Background(), *url, root, svc, indexed && ingestErr == nil, stdout, defaultSCIPInitDeps())
 	}
 
 	// g. manual steps init cannot do for you.

@@ -133,6 +133,8 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		}
 		fmt.Fprintln(stderr, "usage: fathom refactor plan <symbol|package|import> [--out FILE] [--service S] [--store DB]\n       fathom refactor status --plan FILE [--json]\n       fathom refactor status --migration \"<kind> <from> -> <to>\" [--store DB] [--services a,b,c] [--json]")
 		return 2
+	case "trace":
+		return cmdTrace(args[1:], stdout, stderr)
 	case "review-key":
 		return cmdReviewKey(args[1:], stdout, stderr)
 	case "coverage":

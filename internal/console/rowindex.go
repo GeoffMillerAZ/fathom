@@ -29,6 +29,12 @@ func FeaturesOf(c ProvenChange) []float64 {
 type indexedRow struct {
 	commit, at, agent string
 	vec               []float64
+	// The shape and measured effort U6 reads for a row's nearest
+	// neighbours (WI-16): the zones the change touched, its effort, and
+	// whether it was proven at the first attempt.
+	zones               []string
+	tokens, turns, wall float64
+	firstAttempt        bool
 }
 
 // RowFeatureIndex is the bounded index.
@@ -75,7 +81,15 @@ func rowFeatureIndex(changes []ProvenChange) *RowFeatureIndex {
 	}
 	ix.rows = make([]indexedRow, len(measured))
 	for i, c := range measured {
-		ix.rows[i] = indexedRow{commit: c.Commit, at: c.At, agent: c.Agent, vec: FeaturesOf(c)}
+		zs := make([]string, 0, len(c.Zones))
+		for _, z := range c.Zones {
+			zs = append(zs, z.Zone)
+		}
+		sort.Strings(zs)
+		ix.rows[i] = indexedRow{
+			commit: c.Commit, at: c.At, agent: c.Agent, vec: FeaturesOf(c), zones: zs,
+			tokens: c.Tokens, turns: c.Turns, wall: c.WallSeconds, firstAttempt: c.FirstAttempt(),
+		}
 	}
 	return ix
 }
@@ -96,6 +110,81 @@ func (ix *RowFeatureIndex) Nearest(v []float64, k int) []Neighbor {
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].Distance != out[j].Distance {
 			return out[i].Distance < out[j].Distance
+		}
+		return out[i].Commit < out[j].Commit
+	})
+	if k >= 0 && len(out) > k {
+		out = out[:k]
+	}
+	return out
+}
+
+// RowQuery is what is known of a row before work starts, in the
+// dimensions a proven change also has: the zones it touches, the
+// claimed-unproven readings it already has, and its plan weight.
+type RowQuery struct {
+	Zones   []string
+	Retries int
+	Weight  int
+}
+
+// SimilarRow is one nearest proven change with its measured effort.
+type SimilarRow struct {
+	Commit       string  `json:"commit"`
+	At           string  `json:"at"`
+	Agent        string  `json:"agent"`
+	Distance     float64 `json:"distance"`
+	SharedZones  int     `json:"shared_zones"`
+	Tokens       float64 `json:"tokens"`
+	Turns        float64 `json:"turns"`
+	WallSeconds  float64 `json:"wall_seconds"`
+	FirstAttempt bool    `json:"first_attempt"`
+}
+
+// similarDims are the FeatureNames dimensions a row has before work: the
+// zone count, the claimed-unproven retries and the row weight. The effort
+// dimensions are what U6 predicts, so they are never part of the distance.
+var similarDims = []int{3, 4, 5}
+
+// Similar returns the k proven changes nearest q: Euclidean over the
+// pre-work dimensions plus the share of the row's zones the change did not
+// touch (a change in the row's own zone outranks an identical shape
+// elsewhere). Ties go to the newest, then the commit — deterministic.
+func (ix *RowFeatureIndex) Similar(q RowQuery, k int) []SimilarRow {
+	qz := map[string]bool{}
+	for _, z := range q.Zones {
+		qz[z] = true
+	}
+	qv := make([]float64, len(FeatureNames))
+	qv[3], qv[4], qv[5] = float64(len(qz)), float64(q.Retries), float64(q.Weight)
+	out := make([]SimilarRow, 0, len(ix.rows))
+	for _, r := range ix.rows {
+		d := 0.0
+		for _, i := range similarDims {
+			d += (r.vec[i] - qv[i]) * (r.vec[i] - qv[i])
+		}
+		shared := 0
+		for _, z := range r.zones {
+			if qz[z] {
+				shared++
+			}
+		}
+		union := len(qz) + len(r.zones) - shared
+		if union > 0 {
+			miss := 1 - float64(shared)/float64(union)
+			d += miss * miss
+		}
+		out = append(out, SimilarRow{
+			Commit: r.commit, At: r.at, Agent: r.agent, Distance: math.Round(math.Sqrt(d)*1e6) / 1e6, SharedZones: shared,
+			Tokens: r.tokens, Turns: r.turns, WallSeconds: r.wall, FirstAttempt: r.firstAttempt,
+		})
+	}
+	sort.Slice(out, func(i, j int) bool {
+		switch {
+		case out[i].Distance != out[j].Distance:
+			return out[i].Distance < out[j].Distance
+		case out[i].At != out[j].At:
+			return out[i].At > out[j].At
 		}
 		return out[i].Commit < out[j].Commit
 	})

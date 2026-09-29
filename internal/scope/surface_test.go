@@ -131,6 +131,10 @@ var storeMethodDisposition = map[string]string{
 	// --- diagnostics sweep DG-10: restart-durable typed-edge status ---
 	"SetTypedEdgeStatus": "write path",
 	"TypedEdgeStatus":    "", // filtered: DiscoveryGapFiles names files, and a hidden one must not surface through list_services/staleness_report//statusz
+
+	// --- change and compliance CX-20: arch_violation_trend ---
+	"AppendArchViolations": "write path (one reading per ingest)",
+	"ArchViolationTrend":   "per-rule violation counts per reading (a deny rule key, a count, a commit), no path-anchored content",
 }
 
 func seedSurfaceStore(t *testing.T, s store.Store) {

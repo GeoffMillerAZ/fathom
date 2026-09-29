@@ -46,10 +46,10 @@ and are not repeated here. WI-16 to WI-19 stay open and are what WS-8 and WS-12 
 
 ## Wave 4: task preflight (U6, the Jev site)
 
-- [ ] The difficulty profile of a row: blast radius, governed rules and levels, certificates to re-prove, zone interest, k = 5 similar rows' effort {id: WI-16, symbol: DifficultyProfile, package: internal/console, reachable_from: TestDifficultyProfileDeterministic, needs: "WI-15"}
-- [ ] The deterministic tier recommendation from a published rule table; advisory, printed by `plans context --row` and on the console; never dispatches {id: WI-17, symbol: recommendTier, package: internal/console, reachable_from: TestRecommendTierAdvisoryOnly, needs: "WI-16"}
-- [ ] The decision port's Score over the same features, shown with its calibration, only with `[decide]` configured (I42); it may refine an estimated row weight (`work-signals.md#WS-11`) only after it beats a fitted baseline (`work-signals.md#WS-M4`) {id: WI-18, symbol: preflightScore, package: internal/console, reachable_from: TestPreflightScoreOnlyWithProvider, needs: "WI-16"}
-- [ ] Outcomes recorded (model used, effort, proven or not) to calibrate the preflight {id: WI-19, symbol: recordPreflightOutcome, package: internal/console, reachable_from: TestRecordPreflightOutcome, needs: "WI-17"}
+- [x] The difficulty profile of a row: blast radius, governed rules and levels, certificates to re-prove, zone interest, k = 5 similar rows' effort {id: WI-16, symbol: DifficultyProfile, package: internal/console, reachable_from: TestDifficultyProfileDeterministic, needs: "WI-15"}
+- [x] The deterministic tier recommendation from a published rule table; advisory, printed by `plans context --row` and on the console; never dispatches {id: WI-17, symbol: recommendTier, package: internal/console, reachable_from: TestRecommendTierAdvisoryOnly, needs: "WI-16"}
+- [x] The decision port's Score over the same features, shown with its calibration, only with `[decide]` configured (I42); it may refine an estimated row weight (`work-signals.md#WS-11`) only after it beats a fitted baseline (`work-signals.md#WS-M4`) {id: WI-18, symbol: preflightScore, package: internal/console, reachable_from: TestPreflightScoreOnlyWithProvider, needs: "WI-16"}
+- [x] Outcomes recorded (model used, effort, proven or not) to calibrate the preflight {id: WI-19, symbol: recordPreflightOutcome, package: internal/console, reachable_from: TestRecordPreflightOutcome, needs: "WI-17"}
 
 ## Refused (recorded so they are not re-proposed)
 

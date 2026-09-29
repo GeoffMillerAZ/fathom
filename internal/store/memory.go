@@ -23,9 +23,10 @@ type MemoryStore struct {
 	knowledgeCards map[kcKey]KnowledgeCard
 	docSummaries   map[fpKey]DocSummary
 	serviceMeta    map[string]ServiceMeta
-	commits        map[string][]Commit        // serviceID → commits (newest-first)
-	fileChurn      map[string][]FileChurn     // serviceID → file_churn rows (TQ-1), sorted by path
-	centrality     map[string]centralityEntry // serviceID → symbol_centrality rows (TQ-2)
+	commits        map[string][]Commit               // serviceID → commits (newest-first)
+	fileChurn      map[string][]FileChurn            // serviceID → file_churn rows (TQ-1), sorted by path
+	centrality     map[string]centralityEntry        // serviceID → symbol_centrality rows (TQ-2)
+	archViolations map[string][]ArchViolationReading // serviceID → arch_violation_trend rows (CX-20), by seq then rule
 	claims         map[claimKey]core.SemanticClaim
 	claimLinks     map[string][]core.ClaimLink // claim_id → links (replace-semantic)
 	claimEvents    []core.ClaimEvent
@@ -387,6 +388,10 @@ func (m *MemoryStore) RemoveService(_ context.Context, serviceID string) (bool, 
 		removed = true
 		delete(m.centrality, serviceID)
 	}
+	if _, ok := m.archViolations[serviceID]; ok {
+		removed = true
+		delete(m.archViolations, serviceID)
+	}
 	keptRuns := m.compileRuns[:0]
 	for _, r := range m.compileRuns {
 		if r.ServiceID == serviceID {
@@ -472,6 +477,10 @@ func (m *MemoryStore) RenameService(_ context.Context, oldID, newID string) erro
 	if ce, ok := m.centrality[oldID]; ok {
 		delete(m.centrality, oldID)
 		m.centrality[newID] = ce
+	}
+	if av, ok := m.archViolations[oldID]; ok {
+		delete(m.archViolations, oldID)
+		m.archViolations[newID] = av
 	}
 	for k, c := range m.claims {
 		if k.serviceID == oldID {
@@ -770,7 +779,7 @@ func (m *MemoryStore) PutClaims(_ context.Context, claims []core.SemanticClaim, 
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	for _, c := range claims {
-		sc := c
+		sc := stampClaimValidFrom(c)
 		if c.Scope != nil {
 			sc.Scope = make([]string, len(c.Scope))
 			copy(sc.Scope, c.Scope)

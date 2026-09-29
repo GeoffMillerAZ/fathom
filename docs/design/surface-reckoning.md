@@ -162,11 +162,11 @@ already is, instead of waiting to be asked.
 | Row | Item | The change |
 |---|---|---|
 | SR-60 | blast_radius (F-12) | `review_diff` includes the blast radius summary; the pre-edit hook adds a one-line "N callers, M tests reach this" when the edited symbol has callers; co-change oracle is a later row |
-| SR-61 | per-rule counts (F-27, U4) | the edit hook records served / complied / violated per claim id; `obligations` and the console show the counts |
+| SR-61 | per-rule counts (F-27, U4) | the edit hook records served / complied / violated per claim id; `obligations` and the console show the counts. **Owner bar (2026-09-28):** the claim id adds at most 3% bytes to an obligations call — it is served only to the edit hook's own request, an agent's payload does not carry it — and `TestPayloadReplay` only re-baselines downward. The plan splits the row: SR-61 the recording, SR-61a the reader (`fathom obligations`, `/explain`), SR-61b the payload bar |
 | SR-62 | certifications (F-41) | liveness bound to the commit (O114), service resolution fixed, certificates declared on fathom itself |
 | SR-63 | conservation (F-42) | `fathom init` wires `conserve` on the pushed range into every adopter's pre-push gate by default (today only this repo's `lefthook.yml` runs it); review shows plane verdicts |
 | SR-64 | findings loop (F-33) | Review Kit publishing armed on one real repository; the import receipt shows > 0 findings |
-| SR-65 | SCIP import (F-74) | `fathom init` runs `scip-typescript`/`scip-python` when installed and imports the index |
+| SR-65 | SCIP import (F-74) | `fathom init` runs `scip-typescript`/`scip-python` when installed and imports the index. **Owner decision (2026-09-28):** the `ingest` MCP tool gains an additive optional `indexers` parameter (a closed set: `scip-typescript`, `scip-python`); init passes a name only when that toolchain is already on PATH and never installs anything; the daemon imports the produced `.fathom/scip/<name>.scip` under the admission budget (the ingest slot, and a size ceiling from the gate) |
 | SR-66 | ui-appkit pack (F-67) | compiled on app-kit and one consumer; UI rule violations measured |
 | SR-67 | call log + hook log | the U1–U5 views read them (built in the work-intelligence plan); this row lands the shared reader over both logs |
 | SR-68 | verify + session ledgers | the N2 burn-up and N3 cost-per-proven-row views read them first (progress plan); this row lands the join by session id |

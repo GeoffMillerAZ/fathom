@@ -93,6 +93,53 @@ an A/B at n at least 3 per arm over at least 30 rows, Score versus the determini
 table, judged by cost per proven row and first-attempt proof rate. Drop the site if null or
 negative.
 
+**The profile and the rule table (WI-16, WI-17).** `internal/console.DifficultyProfile` joins
+what fathom already stores: the anchor's transitive callers (bounded walk, a capped count is a
+lower bound), the rules governing its files by level (`error`, `warn`, `info`, the change risk
+receipt's vocabulary), the certificates a change would re-prove, each of the row's zones' U2
+interest rate (a zone needs at least 3 proven changes to have one), the row's own
+claimed-unproven readings and plan weight, and the effort of the k = 5 nearest proven rows.
+"Nearest" is over the facts a past change also has: its zone count and overlap with the row's
+zones, its claimed-unproven retries and its weight. Blast radius, rules and certificates are not
+stored per past change, so they are not part of the distance, and the profile says so. Every
+part carries a truth state; an unknown fact is absent with its reason, never zero.
+
+The tier recommendation is the highest floor among the rules of this table that fire (revision
+1, `TierRuleTableVersion`). The tiers are relative to what the harness offers: `light` is its
+smallest, fastest model and lowest effort setting, `heavy` its largest and highest. Rules on one
+fact are banded, so at most one per fact fires. An unknown fact never lowers a tier and never
+certifies a light one: with rules unevaluated, a fired tier is "at least" and no fired rule
+means no recommendation.
+
+| Rule | When | Floor |
+|---|---|---|
+| T1 | more than 50 transitive callers of the anchor | heavy |
+| T2 | 11 to 50 transitive callers of the anchor | standard |
+| T3 | a governing rule at level error | heavy |
+| T4 | a governing rule at level warn and none at level error | standard |
+| T5 | 5 or more certificates to re-prove | heavy |
+| T6 | 1 to 4 certificates to re-prove | standard |
+| T7 | a zone's interest rate of 2.0 or more (a zone needs at least 3 proven changes to have one) | heavy |
+| T8 | a zone's interest rate from 1.2 up to 2.0 | standard |
+| T9 | 2 or more claimed-unproven readings of the row so far | heavy |
+| T10 | 1 claimed-unproven reading of the row so far | standard |
+| T11 | a plan row weight of 5 or more | standard |
+| T12 | the 5 nearest proven rows' median tokens at least 2.0x the fleet median (needs 3 such rows) | standard |
+| T13 | fewer than 50% of the 5 nearest proven rows proven at the first attempt (needs 3 such rows) | standard |
+
+**The Score and the outcomes (WI-18, WI-19).** With `[decide]` configured and `preflight` among
+`[decide] sites`, `fathom plans context --preflight --score` asks the port one `KindScore`
+question over the profile's measured numbers (the state names no row, symbol or path), the
+answer's level rounds to a tier, and the ruling is logged to `decisions.jsonl` as never applied
+(I42, I14). No provider, or a site the allowlist omits, means no call and the Score reads absent
+with its reason; an answer in the unsure band reads as no answer. The console never asks: a page
+view must not spend or send code off-host. `fathom plans outcome` records what happened, one
+ledger line per worked row: the agent identity (harness, model, effort; I58 withholds anything
+shaped like a person), proven or not, whether at the first attempt, and the tier the table and
+the Score had recommended. The calibration shown beside a recommendation is read back from those
+lines: per recommended tier, rows proven at the first attempt over rows with a known reading,
+descriptive only and uncalibrated below the scorecard's n = 10. WI-M4's A/B reads the same ledger.
+
 ### U12. Proof regressions, generalized
 
 Anything once proven that no longer holds, with the reading and commit where it changed:

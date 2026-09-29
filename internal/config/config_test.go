@@ -466,7 +466,7 @@ func TestConfig_DecideBlock(t *testing.T) {
 			RouteTimeoutMS:   3000,
 			RankWithinTier:   false,
 			RerankTimeoutMS:  1500,
-			Sites:            []string{"route", "compile_prefilter", "obligations_rerank", "certify_suggest", "assess"},
+			Sites:            []string{"route", "compile_prefilter", "obligations_rerank", "certify_suggest", "assess", "preflight"},
 		}
 		if !reflect.DeepEqual(loaded.Config.Decide, want) {
 			t.Errorf("Decide = %+v, want defaults %+v", loaded.Config.Decide, want)

@@ -80,7 +80,9 @@ func MisplacedBets(c Corpus) []Claim {
 	}
 	var out []Claim
 	for _, cond := range c.Conditions {
-		if goals[cond.File+"\x00"+cond.Record] {
+		if goals[cond.File+"\x00"+cond.Record] || cond.IsComputableTrigger() {
+			// A computable revisit/promote trigger is read by the audit
+			// (triggers.go, CX-21): not misplaced.
 			continue
 		}
 		var keys []string

@@ -29,16 +29,16 @@ the computable subset of F9.
 
 ## Wave 4: the evidence pack (U8) and the drift radar (U11)
 
-- [ ] The traceability matrix: requirement, code, test, certificate, attested run, decision, each cell with its live state and proving reading (§3) {id: CX-14, symbol: BuildTraceMatrix, package: internal/review, reachable_from: TestTraceMatrixLiveStates}
-- [ ] The standard mapping file schema (`.fathom/trace/<standard>.cue`), no clause text shipped (ADR-011) {id: CX-15, oracle: lexical, path: schema/trace/schema.cue, pattern: "^#StandardMapping:"}
-- [ ] `fathom trace export --standard --out` writes the matrix, digests, readings, commit and a sha256 manifest, only on request {id: CX-16, symbol: cmdTraceExport, package: cmd/fathom, reachable_from: TestCmdTraceExportManifest, needs: "CX-14,CX-15"}
-- [ ] `fathom trace verify <dir>` recomputes at the pack's commit and must be byte-identical, differences named by file and cell {id: CX-17, symbol: cmdTraceVerify, package: cmd/fathom, reachable_from: TestCmdTraceVerifyByteIdentical, needs: "CX-16"}
-- [ ] `accept:` criteria and foreign spec requirements appear as matrix requirements {id: CX-18, symbol: traceRequirements, package: internal/review, reachable_from: TestTraceRequirementsIncludeAccept, needs: "CX-14,spec-interop.md#SI-8"}
-- [ ] ADR dependency statements proposed as archconformance rules with citations; a human accepts each (F24 promoted) (§5) {id: CX-19, symbol: ProposeADRRules, package: internal/review, reachable_from: TestProposeADRRulesCited}
-- [ ] Violation counts per rule recorded at each ingest; the trend and the commits that added violations {id: CX-20, symbol: recordViolationTrend, package: internal/fusion, reachable_from: TestViolationTrendAtIngest}
-- [ ] Computable revisit and promote triggers (bet-block shape: an instrument and a threshold) evaluated by `fathom intent audit`, never by the daemon on its own; prose triggers listed as unevaluated (F9's subset) {id: CX-21, symbol: evalComputableTriggers, package: internal/intent, reachable_from: TestComputableTriggersEvaluatedOnDemand}
-- [ ] The radar on the console: decisions due for review and architecture eroding here {id: CX-22, symbol: renderDriftRadar, package: cmd/fathom, reachable_from: TestConsoleDriftRadar, needs: "CX-20,CX-21"}
-- [ ] The decision port proposes a rule from an ADR's prose only with `[decide]` configured; kept only if SI-style acceptance reads 8 of 10 {id: CX-23, symbol: proposeRuleFromADR, package: internal/review, reachable_from: TestProposeRuleFromADROnlyWithProvider, needs: "CX-19"}
+- [x] The traceability matrix: requirement, code, test, certificate, attested run, decision, each cell with its live state and proving reading (§3) {id: CX-14, symbol: BuildTraceMatrix, package: internal/review, reachable_from: TestTraceMatrixLiveStates}
+- [x] The standard mapping file schema (`.fathom/trace/<standard>.cue`), no clause text shipped (ADR-011) {id: CX-15, oracle: lexical, path: schema/trace/schema.cue, pattern: "^#StandardMapping:"}
+- [x] `fathom trace export --standard --out` writes the matrix, digests, readings, commit and a sha256 manifest, only on request {id: CX-16, symbol: cmdTraceExport, package: cmd/fathom, reachable_from: TestCmdTraceExportManifest, needs: "CX-14,CX-15"}
+- [x] `fathom trace verify <dir>` recomputes at the pack's commit and must be byte-identical, differences named by file and cell {id: CX-17, symbol: cmdTraceVerify, package: cmd/fathom, reachable_from: TestCmdTraceVerifyByteIdentical, needs: "CX-16"}
+- [x] `accept:` criteria and foreign spec requirements appear as matrix requirements {id: CX-18, symbol: traceRequirements, package: internal/review, reachable_from: TestTraceRequirementsIncludeAccept, needs: "CX-14,spec-interop.md#SI-8"}
+- [x] ADR dependency statements proposed as archconformance rules with citations; a human accepts each (F24 promoted) (§5) {id: CX-19, symbol: ProposeADRRules, package: internal/review, reachable_from: TestProposeADRRulesCited}
+- [x] Violation counts per rule recorded at each ingest; the trend and the commits that added violations {id: CX-20, symbol: recordViolationTrend, package: internal/fusion, reachable_from: TestViolationTrendAtIngest}
+- [x] Computable revisit and promote triggers (bet-block shape: an instrument and a threshold) evaluated by `fathom intent audit`, never by the daemon on its own; prose triggers listed as unevaluated (F9's subset) {id: CX-21, symbol: evalComputableTriggers, package: internal/intent, reachable_from: TestComputableTriggersEvaluatedOnDemand}
+- [x] The radar on the console: decisions due for review and architecture eroding here {id: CX-22, symbol: renderDriftRadar, package: cmd/fathom, reachable_from: TestConsoleDriftRadar, needs: "CX-20,CX-21"}
+- [x] The decision port proposes a rule from an ADR's prose only with `[decide]` configured; kept only if SI-style acceptance reads 8 of 10 {id: CX-23, symbol: proposeRuleFromADR, package: internal/review, reachable_from: TestProposeRuleFromADROnlyWithProvider, needs: "CX-19"}
 
 ## Refused (recorded so they are not re-proposed)
 

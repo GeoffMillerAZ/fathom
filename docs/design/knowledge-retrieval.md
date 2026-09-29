@@ -92,6 +92,14 @@ units are the package's own README and doc comments at the pinned version, read 
 cache directory. Go doc comments, `.d.ts` JSDoc, Python docstrings in `.pyi` or the module,
 Rust `///` comments. Never fetched (I56). Wave 4.
 
+Built (KR-11, KR-12): `depDocUnits` reads a directory a `DepCacheLocator` names (the dependency
+plane's cache locator is the production implementation), public surface only, within the 8 MiB
+per package and 2 MiB per file bounds; `IngestDepDocs` stores the units under the package's own
+`pkg:<ecosystem>/<name>@<version>` key as the service id in the existing tables, so a version's
+docs are a separate scope by construction; `search kind: docs pkg: K` answers from that scope
+alone. An unindexed version answers `not_indexed` with the versions that are indexed, and an
+unpinned key answers `unpinned` (never a guessed version). Maven and NuGet are refused by name.
+
 ## 8. Tenancy and cost
 
 | Cost | Bound |

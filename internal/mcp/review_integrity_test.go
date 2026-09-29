@@ -92,7 +92,7 @@ func TestBuildReviewInput_IntegrityDimensionWiredEndToEnd(t *testing.T) {
 		t.Fatalf("IngestServiceAt: %v", err)
 	}
 
-	in, _, rpcErr := buildReviewInput(ctx, c, "svc", []string{"pkg/x_test.go"}, "", base)
+	in, _, rpcErr := buildReviewInput(ctx, c, "svc", []string{"pkg/x_test.go"}, "", base, nil)
 	if rpcErr != nil {
 		t.Fatalf("buildReviewInput: %+v", rpcErr)
 	}
@@ -122,7 +122,7 @@ func TestBuildReviewInput_IntegrityDimensionNoSinceIsEmpty(t *testing.T) {
 		t.Fatalf("IngestServiceAt: %v", err)
 	}
 
-	in, _, rpcErr := buildReviewInput(ctx, c, "svc", []string{"pkg/x_test.go"}, "", "")
+	in, _, rpcErr := buildReviewInput(ctx, c, "svc", []string{"pkg/x_test.go"}, "", "", nil)
 	if rpcErr != nil {
 		t.Fatalf("buildReviewInput: %+v", rpcErr)
 	}

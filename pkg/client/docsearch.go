@@ -33,3 +33,13 @@ var ErrDocIndexUnavailable = docindex.ErrDocIndexUnavailable
 func (c *Client) SearchDocs(ctx context.Context, service, query string, concernSymbols []string, limit int) ([]RankedDoc, error) {
 	return docindex.RankDocs(ctx, c.st, service, query, concernSymbols, limit)
 }
+
+// SearchPkgDocs answers one `search kind: docs` query scoped to a `pkg:` key
+// (KR-12, docs/design/knowledge-retrieval.md §7): docindex.SearchPkgDocs
+// against this client's own store — the pkg/client half of internal/mcp's
+// pkgDocsSearchBackend. A malformed key is docindex.ErrBadPkgKey and a
+// non-SQLite store docindex.ErrDocIndexUnavailable; the search tool turns
+// each into its own refusal.
+func (c *Client) SearchPkgDocs(ctx context.Context, pkgKey, query string, limit int) (docindex.PkgDocsResult, error) {
+	return docindex.SearchPkgDocs(ctx, c.st, pkgKey, query, limit)
+}

@@ -147,6 +147,11 @@ type Server struct {
 	// gate is the admission gate (design §3.2, RT-56): set once by
 	// SetGate before serving; nil admits everything (stdio, tests).
 	gate *tenancy.Gate
+
+	// scipBudget overrides the largest SCIP index file the ingest tool's
+	// `indexers` import will decode (SetSCIPImportBudget); 0 derives it
+	// from the gate (scip_import.go).
+	scipBudget int64
 }
 
 // DropCaches drops the derived caches the server reads — the memo

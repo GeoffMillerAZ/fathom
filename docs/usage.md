@@ -582,7 +582,7 @@ HTTP endpoints:
 | `GET` | `/metrics` | Text metrics: `fathom_uptime_seconds`, `fathom_requests_total`, memory and memo gauges, the ladder (`fathom_tenancy_level`, `fathom_budget_bytes`, `fathom_footprint_bytes`, `fathom_children_footprint_bytes`, `fathom_host_pressure_level`, `fathom_swap_used_bytes`, `fathom_gc_cpu_fraction`, `fathom_quarantined_services`), admission (`fathom_inflight{class,origin}`, `fathom_queue{class}`, `fathom_slots{class}`, `fathom_rejected_total{class,reason,origin}`, `fathom_would_refuse_total{class,reason,origin}`, `fathom_calls_total{class,outcome}`, `fathom_admission_mode`, `fathom_test_callers_rejected_total`), `fathom_console_page_views_total{route=…}` (OC-15: HTML views per console route pattern since start; the durable 30-day record is `~/.fathom/console-views.jsonl`, `FATHOM_CONSOLE_VIEWS` overrides) and `fathom_console_event_subscribers` |
 | `GET` | `/statusz` | Daemon health, per-service index freshness, channel liveness, last compile per layer, (schema 2) the daemon's own build stamp `binary_commit` / `binary_dirty` / `built_at`, and (additive) the ladder's `tenancy` block — level, marks, the last sample and every unknown reading (`footprint unknown (ladder off)`), plus `quarantined` — JSON (schema 3, unchanged) via `Accept: application/json`/`?format=json`; HTML on the console shell otherwise, where every service names its typed-edge state — run by this daemon, recorded by an earlier daemon process (replayed from the store), failed with its reason, **does not apply** (no `go.mod` at the service root), or **unknown** (a Go module with no pass recorded anywhere), never blank (OC-6; `docs/design/observability-surfaces.md` §8 item 6). Gated inside the `/rpc/modules` bearer-token allowlist when `--modules-token-env` is configured; open on the default loopback-only daemon |
 | `POST` | `/reload` | Reload the store (PlatformStore re-scan in platform mode) |
-| `GET` | `/`, `/fleet`, `/projects/{svc}`, `/layers`, `/layers/{layer}`, `/claims`, `/claims/{id}`, `/packs`, `/explain`, `/impact`, `/sessions`, `/sessions/{id}`, `/brief`, `/wiring`, `/statusz`, `/search`, `/operate`, `/decide`, `/learn`, `/learn/ask`, `/learn/guides`, `/learn/guides/{slug}`, `/plans`, `/plans/{svc}/{plan}`, `/plans/{svc}/{plan}/rows/{id}`, `/certifications`, `/refactors` | The Observatory console (see below): every page on one shell; `?format=json` returns the page's envelope (`fathom.console.page/v1`) |
+| `GET` | `/`, `/fleet`, `/projects/{svc}`, `/layers`, `/layers/{layer}`, `/claims`, `/claims/{id}`, `/packs`, `/explain`, `/impact`, `/sessions`, `/sessions/{id}`, `/brief`, `/wiring`, `/statusz`, `/search`, `/operate`, `/decide`, `/learn`, `/learn/ask`, `/learn/guides`, `/learn/guides/{slug}`, `/plans`, `/plans/{svc}/{plan}`, `/plans/{svc}/{plan}/rows/{id}`, `/certifications`, `/refactors`, `/rules` | The Observatory console (see below): every page on one shell; `?format=json` returns the page's envelope (`fathom.console.page/v1`) |
 | `GET` | `/observatory`, `/observatory/service`, `/observatory/impact`, `/observatory/story`, `/observatory/brief`, `/observatory/session`, `/observatory/wiring/` | Legacy routes (OC-7): an HTML request is a **308** to the page's new home; `?format=json` still returns the old JSON unchanged (`observatoryModel` v1 and its per-page slices) |
 | `POST` | `/observatory/wiring/preview` · `apply` · `undo` | Law-15 wiring through `internal/wiring`: `preview` returns the plan + `plan_digest`; `apply` requires it (409 if the repo changed since preview) and returns a `receipt_digest`; `undo` requires that digest. All three refuse non-loopback `Host`, cross-origin `Origin`, unknown service ids, and paths that are not registered service roots (`requireLocalMutation`); a refusal, and a `GET` of any of the three, renders on the console shell with the reason and a way back to `/wiring` |
 
@@ -977,7 +977,10 @@ fathom claim refute       --store <path> --service <id> --claim <claim-id> --not
 fathom claim corroborate  --store <path> --service <id> --claim <claim-id> --note "..." [--author <name>]
 fathom claim show         <claim-id> [--service <id>] [--json] [--store <path> | --url <daemon>]
 fathom claim list         [--layer <name>] [--service <id>] [--status current|fresh|stale|contradicted|superseded|refuted|all] [--page N] [--json] [--store <path> | --url <daemon>]
+fathom claim effectiveness [--service <id>] [--class ignored|contested|never_triggered|unclassified|effective|all] [--page N] [--json] [--store <path> | --url <daemon>]
 ```
+
+`effectiveness` (GL-18, U4) prints, per governing rule (a current claim in a governing layer, not retired), the counts the edit hook's rule-outcome log (`~/.fathom/rule-outcomes.jsonl`, GL-10) holds over the last 30 days (served over 90), each with its n, and the class each falls in (design `governance-learning.md` §5) with the change the evidence proposes — move an ignored rule to a hook or rewrite it, prune or re-scope a never-triggered one. Every proposal is a proposal: nothing is applied. No log, or one that cannot be read, classifies nothing and says why; a rate needs 20 serves, below which the row shows its n; and never triggered is not judged until the log reaches back 90 days. `--json` is exactly `/rules`' section.
 
 `show` (OC-30) prints one claim whole — statement, citation, scope, tier, status,
 provenance and every verdict recorded against it — and `--json` is exactly the
@@ -1116,6 +1119,21 @@ surface's argument schemas are pinned and paid by every session). Serving serves
 statement once: two claims whose normalized statements are identical (case, backticks,
 asterisks, whitespace and trailing punctuation aside) take one slot, and the duplicate
 is not counted as displaced (OC-33).
+
+Beside each served rule the verb shows what the edit hook recorded of it over the last
+30 days — `served`, `complied`, `violated` (SR-61, surface reckoning F-27/U4) — read from
+the hook's signal log (`~/.fathom/rule-outcomes.jsonl` and its rotated generation), and
+the console's `/explain` shows the same line under each rule of "What the agent saw at
+the edit". `--json` carries it as `outcomes` (`{window_days, rules: [{claim_id, served,
+complied, violated, blocked, refuted, corroborated, class?}]}`), a truth-stated value:
+**absent** with its reason when no hook has recorded anything on this machine, an
+**error** when the log exists and cannot be read, **partial** when malformed rows were
+left out, and a measured zero only when the log is there and the hook never served that
+rule. `class` is GL-11's proposal (`ignored`, `effective`, `contested`,
+`never_triggered`), shown only when the log is old enough to support it and never acted
+on. The rule's `claim_id` (what `fathom claim refute|corroborate --claim` takes) is in
+this output; the MCP `obligations` payload an agent reads carries neither the id nor the
+record — the id rides only on the edit hook's own request (origin `edit-hook`).
 
 ---
 
@@ -1325,7 +1343,7 @@ write-if-absent scaffolds `~/.fathom/config.toml`.
 ```sh
 fathom init [--path <dir>] [--service <id>] [--url http://localhost:7575] [--bin <path>] \
   [--harness claude-code|codex|gemini-cli|cursor|copilot|agents|none] \
-  [--skills[=claude|codex|agents|all|codex-prompts]] [--seed-user-ignore] [--json]
+  [--skills[=claude|codex|agents|all|codex-prompts]] [--seed-user-ignore] [--no-scip] [--json]
 ```
 
 | Flag | Default | Description |
@@ -1337,8 +1355,25 @@ fathom init [--path <dir>] [--service <id>] [--url http://localhost:7575] [--bin
 | `--harness` | `claude-code` | Which registry descriptor's vehicles to write (ADR-029); `none` = stanza + `.fathom/` only. Prints the descriptor's own `mcp add` line, never runs it |
 | `--skills` | omit = skip | Install the nine shipped agent skills. Bare `--skills` (= `all`) writes `.agents/skills/` (the Agent Skills standard path, spec-only frontmatter) **and** `.claude/skills/`; `codex` and `agents` write `.agents/skills/`; `claude` writes `.claude/skills/`; `codex-prompts` writes the deprecated user-global `~/.codex/prompts/` twin — the only user-global write, explicit only |
 | `--seed-user-ignore` | off | Seed `~/.fathom/ignore` with machine-junk defaults; prints exactly what it writes |
+| `--no-scip` | off | Skip the SCIP step below: by default init runs `scip-typescript` / `scip-python` when already installed for a repo of that language |
 | `--harness` | `claude-code` | Which registry descriptor's vehicles to write (ADR-029): `claude-code` (hooks into `.claude/settings.json`), `codex` (hooks into the repo's `.codex/hooks.json`, run after `/hooks` trust), `gemini-cli` (hooks into the repo's `.gemini/settings.json`, ms timeouts), `cursor` / `copilot` (data rows: stanza + skills, no hook file), `agents` (AGENTS.md + MCP), `none` (stanza + `.fathom/` only). Non-Claude descriptors are *unverified on this machine*; every one prints its own `mcp add` line and never writes a user-global file; a descriptor 60 days unverified after its codec landed is refused |
 | `--json` | off | Emit the run as JSON (below) instead of the narration |
+
+**SCIP typed edges (SR-65, F-74).** After the wiring, once the ingest confirmed the
+service, init runs `scip-typescript` (a repo with `tsconfig.json` or `package.json` at its
+root; `--infer-tsconfig` when there is no `tsconfig.json`) and `scip-python` (a repo with
+`pyproject.toml`, `setup.py`, `setup.cfg`, `requirements.txt` or `Pipfile`) **only when that
+toolchain is already on `PATH`** — init never installs anything; a producer that is not
+installed is named once ("not installed by init") and skipped, and a language the repo is
+not says nothing. Each runs in the repo root under a 10-minute deadline and writes
+`.fathom/scip/<name>.scip` (a directory that ignores itself). Init then calls the daemon's
+`ingest` tool once more with `indexers: [...]` naming the producers that left an index;
+the daemon imports each after the syntax pass, holding the ingest slot and declining an
+index over its admission budget, and init prints `ok <indexer>: N typed edge(s) (D direct
+/ U unresolved) via <producer>` — or `warning: <indexer> index not imported: <reason>`, or
+the O115 count of definitions that could not be mapped. A producer that fails or an
+import that is declined is a printed warning, never a non-zero exit. `--no-scip` skips the
+step (a producer type-checks the whole repository and can take minutes).
 
 **`--json` envelope.** `{service, root, exit_code, writes: [{path, action:
 created|updated|ok|shim, detail}], blocked: [{path, action: "blocked",
@@ -1480,6 +1515,8 @@ fathom plans next    --service <svc> [--eligible-only] [--free] [--root DIR] [--
 fathom plans history --service <svc> --plan P [--url U] [--json]                      # the burn-up: scope and claimed rows per commit of the plan, the ledger's proven trend (absent under 14 days of rows), the cross-check
 fathom plans history [--service <svc>] [--url U] [--json]                             # no --plan: the claimed-vs-proven trend of the current plans of one service (or every registered one), from the verify ledger's runs of those plans only
 fathom plans context --service <svc> --row <id> [--budget 4000]                       # render a row's ctx: context pack (elided beyond the byte budget)
+fathom plans context <plan.md> --service <svc> --row <id> --store DB --preflight [--score] # + the row's task preflight: difficulty profile and advisory tier (WI-16..WI-18)
+fathom plans outcome <plan.md> --service <svc> --row <id> --result proven|unproven --model M [--effort E] [--tier T] # record what a preflight met (WI-19)
 fathom plans lease   --plan P <row-id> [--holder H] [--ttl 2h] [--release] [--root DIR] # TTL advisory lease on a row (.fathom/leases.jsonl)
 fathom plans leases  [--root DIR] [--json]                                            # list live leases
 fathom plans archive <plan> --service <svc> [--root DIR]   # retire a fully-proven plan to docs/plans/archive/ (out of gate scope)
@@ -1503,6 +1540,26 @@ lease. `archive` refuses unless every row id is lexically absorbed into
 narrative) — the refusal names all three. Heads-up: `plans status` currently
 verifies every active plan serially over HTTP (minutes on a large plan set —
 O29 in `docs/dogfood-observations.md` tracks the fix).
+
+**Task preflight (U6, `docs/design/work-intelligence.md`).** `plans context --preflight`
+(direct mode, `--store`) prints a row's difficulty profile — the anchor's transitive
+callers, the rules governing its files by level, the certificates a change would
+re-prove, its zones' interest rates, its own claimed-unproven readings and weight, and
+the effort of its 5 nearest proven rows — and the tier the published rule table
+(T1..T13, revision 1, in the design doc) draws from it: `light`, `standard` or `heavy`,
+relative to what your harness offers. It is advice: fathom recommends and the harness
+decides; nothing here starts, assigns or routes work. An unknown fact never lowers a tier
+or certifies a light one (with rules unevaluated the tier reads "at least"). `--score`
+also asks the decision port for its Score over the same measured numbers — never the
+row's text, symbol or paths — only with `[decide] provider` set and `preflight` in
+`[decide] sites`, one call per invocation, logged to `decisions.jsonl` as never applied.
+The plan-row console page shows the same profile and tier but never asks the port.
+`plans outcome` appends one line to `~/.fathom/preflight-outcomes.jsonl`
+(`FATHOM_PREFLIGHT_LEDGER`): the agent identity (harness, model, effort — a person's name
+or email is withheld), proven or not, and the tiers recommended; `--first-attempt` is read
+from the proof history for a proven row. The calibration under a preflight is read back
+from that ledger: per recommended tier, how many rows were proven at the first attempt,
+uncalibrated below 10 outcomes.
 
 ### `thread` — continuity across sessions (vision 21)
 
@@ -1829,8 +1886,9 @@ minutes, at most hourly (`journal_size_limit` is 64 MiB).
 ### `intent` — the intent corpus, audited (ADR-026, **experimental**)
 
 ```sh
-fathom intent audit    [--root .] [--json] [--kind conditions|invariants|unproven] [--fresh] [--top N] [--read-only]
+fathom intent audit    [--root .] [--json] [--kind conditions|triggers|invariants|unproven] [--fresh] [--top N] [--read-only] [--store DB]
 fathom intent doctrine [--root .] [--json] [--kind visions|bets] [--top N]
+fathom intent adr-rules [--root .] [--json]
 fathom intent export --guard [--root .]
 ```
 
@@ -1864,11 +1922,36 @@ practice, which is a choice.
 | U14 | a sensitive-surface row whose globs match no file — it has silently stopped guarding |
 | U13 | a guard entry whose intent provenance no longer matches the router, or a sensitive surface no guard covers |
 
+**Computable triggers (CX-21, F9's computable subset).** A `Revisit when` or
+`Promote when` condition carrying an instrument and a threshold in the bet-block
+shape is evaluated by this run — and only by a run: the daemon never evaluates a
+trigger on its own.
+
+```markdown
+**Revisit when.** the layers erode {instrument: arch_violations, threshold: ">= 3"}
+Promote when: the rule holds {instrument: "arch_violations:a -> b", threshold: "== 0"}
+```
+
+Instruments: `arch_violations` (the newest ingest-time violation reading, summed
+over its deny rules; read from `--store`, default the workspace store),
+`arch_violations:<from> -> <to>` (one rule's count), and `plans_failing` (claimed
+rows the verify ledger refutes at HEAD). A threshold is a comparison with a number
+(`>=`, `>`, `<=`, `<`, `==`, `!=`). Each trigger reads `fired` or `not fired` with
+its reading; one whose instrument is unknown, whose threshold is not a comparison,
+or whose reading could not be taken reads `unevaluated` with the reason; a prose
+trigger is listed as unevaluated, human-judged. `--json` carries them as `triggers`.
+
 Every source it could NOT compute is named with the reason — an audit that
 silently yields nothing is indistinguishable from a healthy repo. A file that
 cannot be READ (as opposed to one that is absent) makes every count a named
 lower bound, `≥ N (k source(s) unreadable: <path>: <errno>)`, and `--json`
 carries `coverage.complete` (ADR-027).
+
+`adr-rules` PROPOSES an archconformance deny rule for each dependency statement in
+the decision records ("X never imports Y", "X must not import Y", "X calls Y, never
+Z", "X imports neither Y nor Z"), each with its ADR, `file:line` and sentence, and
+marks the ones `.fathom/rules/archconformance.cue` already holds. A human accepts a
+proposal by adding it there; **fathom never writes that file** (CX-19, F24).
 
 `export --guard` PROPOSES `.fathom/guard.cue` entries from the router's
 sensitive-surface rows, stamped with per-row provenance so staleness stays
@@ -2528,6 +2611,33 @@ non-goal, refused as CX-X4).
 
 ---
 
+### `trace` — the evidence pack (CX-14..CX-18)
+
+`fathom trace export --standard <id> --out <dir> [--service S] [--store DB]
+[--commit REF]` (U8, `docs/design/change-and-compliance.md` §3) writes an
+evidence pack, only when asked. It reads, at the commit (default `HEAD`,
+via `git show`), every `docs/plans/*.md`, the repository-authored standard
+mapping `.fathom/trace/<id>.cue` (shape: `schema/trace/schema.cue` —
+`standard`, and `clauses` naming requirement ids or RE2 `patterns`; fathom
+ships no standard's clauses, ADR-011) and the decision records (`ADR.md`
+headings, `docs/intent/invariants.md` ids), plus the store's verify and
+certificate readings for the service. The pack:
+
+| File | Carries |
+|---|---|
+| `matrix.json`, `matrix.md` | per requirement (a plan row, a foreign spec task, or `<row>/accept`): status, code, test, certificate, attested run, decision — each cell `{state, reading}`; the mapping's clauses with the requirements each resolves and any id it names that the matrix lacks |
+| `digests.json` | sha256 of every artifact read at the commit |
+| `readings.json` | per-plan verify totals, the certificates joined, any source that could not be read |
+| `COMMIT` | the commit |
+| `MANIFEST.sha256` | `sha256  file` for every other file |
+
+`fathom trace verify <dir> [--store DB]` recomputes the pack at its own
+`COMMIT` and compares every file byte for byte (exit 0), or names each
+difference by file and, for the matrix, by `<plan>#<requirement>.<column>`
+(exit 1); a pack that no longer matches its own manifest is named too.
+Store readings are read as they stand: re-verify against a store indexed at
+the pack's commit.
+
 ### `receipt` — a stranger's re-derivation (VB-20)
 
 ```sh
@@ -3013,12 +3123,13 @@ unreadable store) render on the same shell with the reason and the remedy.
 | `/fleet` | Every project in one table — `?sort=<column>&dir=asc\|desc`, `?health=failed\|degraded\|unknown\|healthy`, `?q=` (name or path), `?lang=`, `?page=` — rolled up by health; the default order is unrealized value (RG-4); the JSON carries `fathom fleet report --json` computed by the verb's own function |
 | `/projects/{svc}` | One project's workspace (was `/observatory/service?id=S`): nine tabs, each a URL — Overview here; Index, Intent, Activity and Wiring at `/projects/{svc}/index`, `/intent`, `/activity`, `/wiring`; Governance, Plans, Proof and Refactor open `/layers`, `/plans`, `/certifications` and `/refactors` with `?svc=` |
 | `/projects/{svc}/index` | Languages with engine and tier, typed share and edge kinds, inventory keys (`fathom report evidence --service S --store P --json`); `?symbol=` draws the code neighborhood (callers and callees to depth 2, resolved solid and heuristic dashed, six per column and the rest aggregated, with a table); the read-only Scope panel (`fathom scope list`; `?scope=<glob>` previews what a suppression would hide and what a purge would delete, per location, and names the commands — the page runs neither) |
-| `/projects/{svc}/intent` | `fathom intent audit --read-only`: invariants with rung and audit state, decisions/futures/questions with their conditions, unproven claims, debt over time; a run is kept five minutes per commit |
+| `/projects/{svc}/intent` | `fathom intent audit --read-only`: the drift radar (decisions due for review — computable triggers that fired — and the archconformance rules whose ingest-time violation count rose, with the commits that added them), invariants with rung and audit state, decisions/futures/questions with their conditions, unproven claims, debt over time; a run is kept five minutes per commit |
 | `/projects/{svc}/activity` | The project's calls from the resolved call log (a day strip, `fathom metrics traffic --by tool` over the 14-day window, the newest calls) and its sessions from the ledger |
 | `/projects/{svc}/wiring` | `fathom doctor --repo-only` rows, drift (failing wiring rows plus the preview plan's apply and BLOCKED items), receipts (`fathom fleet receipts`), beside the unchanged Preview → Apply → Undo |
 | `/layers` | The strata, the projects × layers coverage matrix (a cell nothing compiled is hatched "not compiled", never 0) and the claim lifecycle — `fathom layers strata --json`, `fathom layers coverage --json` |
 | `/layers/{layer}` | One layer's compile runs, rejection reasons, projects and uncompiled scopes — `fathom layers show <layer> --json` |
 | `/claims?layer=&svc=&status=` | The claims a count counts, 50 a page (`&page=N`), each linked to its page; every claim count on `/layers`, `/layers/{layer}` and `/packs` links here — `fathom claim list --json` |
+| `/rules?svc=&class=` | Rule effectiveness (GL-18, U4): each governing rule with the edit hook's served, complied, violated, blocked and refuted counts over 30 days (served over 90), each with its n, the class it falls in — ignored, contested, never triggered, effective — and the change the evidence proposes (a proposal: fathom never edits a rules file or retires a rule from here). No rule-outcome log is an absent signal, not "never triggered", and never triggered waits until the log reaches back 90 days — `fathom claim effectiveness --json` |
 | `/claims/{id}` | One claim: statement, citation excerpt, scope, tier, status, events (`?svc=` when two projects hold the id) — `fathom claim show <id> --json` |
 | `/packs` | Dialect packs as a language × capability matrix and layer packs with where each is active — `fathom report packs --json` |
 | `/explain?svc=&file=` | The serving explainer: candidates by scope tier, the cap, the served list and each displaced rule's reason — `fathom obligations --explain --json` |

@@ -75,6 +75,11 @@ const (
 // violated once is not "50% ignored," it is unmeasured.
 const ruleEffectivenessMinN = 20
 
+// RuleEffectivenessMinServed is ruleEffectivenessMinN for renderers (GL-18):
+// the served count below which a rule's ratios are unmeasured and shown as
+// such, never as a percentage of a handful of events.
+const RuleEffectivenessMinServed = ruleEffectivenessMinN
+
 // ruleContestedMinRefutes / ruleIgnoredMinRatio / ruleEffectiveMinRatio are
 // design doc §5's table thresholds, named so classifyRule reads like the
 // table rather than a wall of literals.
@@ -91,6 +96,14 @@ const (
 const (
 	ruleEffectivenessWindow  = 30 * 24 * time.Hour
 	ruleNeverTriggeredWindow = 90 * 24 * time.Hour
+)
+
+// RuleRatioWindow and RuleNeverTriggeredWindow export the two windows for
+// renderers (GL-18): a view that says "served 0 times in 90 days" must be
+// able to check the signal log actually reaches back that far.
+const (
+	RuleRatioWindow          = ruleEffectivenessWindow
+	RuleNeverTriggeredWindow = ruleNeverTriggeredWindow
 )
 
 // RuleEffectivenessResult is one rule's computed classification: counts

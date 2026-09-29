@@ -25,6 +25,8 @@ import (
 //
 //	plans status  — per-plan rollup {proven, claimed-unproven, open, deferred-with-trigger}
 //	plans next    — the ordered, evidence-derived work frontier
+//	plans context — one row's discovery pack, and with --preflight its advisory task preflight (WI-16..WI-18)
+//	plans outcome — record what a row's preflight met: model, effort, proven or not (WI-19)
 //	plans history — a plan's burn-up from its git history and the verify ledger;
 //	                without --plan, the claimed-vs-proven trend of a service's (or
 //	                the registry's) current plans
@@ -44,6 +46,8 @@ func cmdPlans(args []string, stdout, stderr io.Writer) int {
 		return cmdPlansHistory(args[1:], stdout, stderr)
 	case "context":
 		return cmdPlansContext(args[1:], stdout, stderr)
+	case "outcome":
+		return cmdPlansOutcome(args[1:], stdout, stderr)
 	case "lease":
 		return cmdPlansLease(args[1:], stdout, stderr)
 	case "leases":
@@ -53,7 +57,7 @@ func cmdPlans(args []string, stdout, stderr io.Writer) int {
 	case "restore":
 		return cmdPlansRestore(args[1:], stdout, stderr)
 	default:
-		fmt.Fprintf(stderr, "error: unknown plans subcommand %q (want status, next, history, context, lease, leases, archive, restore)\n", args[0])
+		fmt.Fprintf(stderr, "error: unknown plans subcommand %q (want status, next, history, context, outcome, lease, leases, archive, restore)\n", args[0])
 		return 1
 	}
 }

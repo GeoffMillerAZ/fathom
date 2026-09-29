@@ -141,3 +141,73 @@ func Check(edges []core.Edge, rules []Rule, opts ...Option) []Violation {
 
 	return violations
 }
+
+// DenyByDefaultRule is the RuleCount key for violations no deny rule names
+// that DenyByDefault() makes violations.
+const DenyByDefaultRule = "(deny by default)"
+
+// RuleKey names a rule the way a violation-count reading keys it.
+func RuleKey(r Rule) string { return r.FromPkg + " -> " + r.ToPkg }
+
+// RuleCount is one deny rule's violation count over an edge set.
+type RuleCount struct {
+	Rule  string // RuleKey of a deny rule, or DenyByDefaultRule
+	Count int
+}
+
+// RuleCounts attributes Check's violations to the deny rules that forbid
+// them (CX-20, the drift radar's per-rule trend): one row per distinct deny
+// rule, zero counts included, so a reading distinguishes "checked, none"
+// from "not a rule"; plus a DenyByDefaultRule row when DenyByDefault() is
+// given. An edge two deny rules both match counts once under each, so the
+// per-rule sum can exceed len(Check(...)) — the rows answer "how many
+// edges break this rule", not a total. Sorted by rule.
+func RuleCounts(edges []core.Edge, rules []Rule, opts ...Option) []RuleCount {
+	cfg := &option{}
+	for _, o := range opts {
+		o(cfg)
+	}
+	counts := map[string]int{}
+	var denies []Rule
+	for _, r := range rules {
+		if r.Allow {
+			continue
+		}
+		if _, ok := counts[RuleKey(r)]; !ok {
+			counts[RuleKey(r)] = 0
+			denies = append(denies, r)
+		}
+	}
+	if cfg.denyByDefault {
+		counts[DenyByDefaultRule] = 0
+	}
+	for _, e := range edges {
+		fromPkg, toPkg := pkgOf(e.FromSymbol), pkgOf(e.ToSymbol)
+		allowed := false
+		for _, r := range rules {
+			if r.Allow && r.matches(fromPkg, toPkg) {
+				allowed = true
+				break
+			}
+		}
+		if allowed {
+			continue
+		}
+		denied := false
+		for _, r := range denies {
+			if r.matches(fromPkg, toPkg) {
+				counts[RuleKey(r)]++
+				denied = true
+			}
+		}
+		if !denied && cfg.denyByDefault {
+			counts[DenyByDefaultRule]++
+		}
+	}
+	out := make([]RuleCount, 0, len(counts))
+	for k, n := range counts {
+		out = append(out, RuleCount{Rule: k, Count: n})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Rule < out[j].Rule })
+	return out
+}

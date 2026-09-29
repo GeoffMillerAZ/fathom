@@ -18,6 +18,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/hookcache"
 	"github.com/geoffmilleraz/fathom/internal/refresh"
+	"github.com/geoffmilleraz/fathom/internal/scip"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
 	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
@@ -556,6 +557,14 @@ func (a *autoRefreshBackend) IngestServiceAt(ctx context.Context, service, path 
 	return ia.IngestServiceAt(ctx, service, path)
 }
 
+func (a *autoRefreshBackend) ImportSCIP(ctx context.Context, serviceID, path string) (scip.Import, error) {
+	sb, ok := a.QueryInterface.(scipImportBackend)
+	if !ok {
+		return scip.Import{}, fmt.Errorf("backend does not import SCIP indexes")
+	}
+	return sb.ImportSCIP(ctx, serviceID, path)
+}
+
 // registrySurgeryBackend is the optional capability behind the
 // remove_service / rename_service verbs (IO-3): both were asked for
 // verbatim on 2026-06-16 and every interim surgery was hand-run sqlite
@@ -782,6 +791,32 @@ func (a *autoRefreshBackend) CompileLayer(ctx context.Context, service, layer st
 		return core.CompileRun{}, errSemanticUnsupported
 	}
 	return cb.CompileLayer(ctx, service, layer, dryRun)
+}
+
+// ClaimsForService forwards the service's claims with their validity windows
+// (GL-17): findings_near, review_diff's certifications and every dated
+// `as_of` answer read them through claimsListBackend/findingsBackend/
+// certificationsBackend, and without this forward the wrapper (serve-http's
+// default) stripped the capability — the same O7 class as every other
+// optional capability in this file — so those verbs degraded on a real
+// daemon. A service-wide read, never ensure()d, like ClaimsSummary.
+func (a *autoRefreshBackend) ClaimsForService(ctx context.Context, serviceID, layer string) ([]core.SemanticClaim, error) {
+	cb, ok := a.QueryInterface.(claimsListBackend)
+	if !ok {
+		return nil, errSemanticUnsupported
+	}
+	return cb.ClaimsForService(ctx, serviceID, layer)
+}
+
+// DocLinksAsOf forwards GL-16's dated doc-link read for staleness_report's
+// `as_of`: without it the wrapper would strip the capability on a real
+// daemon and every dated staleness answer would name doc links unavailable.
+func (a *autoRefreshBackend) DocLinksAsOf(ctx context.Context, service string, at time.Time) ([]store.DocLinkView, error) {
+	lb, ok := a.QueryInterface.(docLinksAsOfBackend)
+	if !ok {
+		return nil, errSemanticUnsupported
+	}
+	return lb.DocLinksAsOf(ctx, service, at)
 }
 
 func (a *autoRefreshBackend) ClaimsSummary(ctx context.Context, service string) (map[string]any, error) {

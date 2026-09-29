@@ -53,3 +53,11 @@ func ruleRemedies(results []RuleEffectivenessResult) []RuleRemedy {
 	}
 	return out
 }
+
+// RuleRemedies is ruleRemedies for callers outside this package (the
+// console's rule-effectiveness page and `fathom claim effectiveness`, GL-18):
+// the same filter over the same results, so a page and the verb that prints
+// it cannot propose different remedies.
+func RuleRemedies(results []RuleEffectivenessResult) []RuleRemedy {
+	return ruleRemedies(results)
+}

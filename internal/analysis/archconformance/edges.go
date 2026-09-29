@@ -69,6 +69,19 @@ type edgeResolver struct {
 	byKey  map[string]core.SymbolNode
 	byName map[string]core.SymbolNode
 	nodes  []core.SymbolNode
+	// bySuffix indexes every dot-led suffix of every node key (".Name",
+	// ".Recv.Name", …) to the node carrying it, or to nothing when two
+	// nodes share it. Built on the first suffix lookup (CX-20: the drift
+	// radar runs EdgesFromNodes at every ingest of a repository with a
+	// rule pack, where the linear per-callee scan it replaces cost
+	// O(edges×nodes)).
+	bySuffix map[string]suffixEntry
+}
+
+// suffixEntry is one dot-led key suffix's owner and how many nodes carry it.
+type suffixEntry struct {
+	node  core.SymbolNode
+	count int
 }
 
 func newEdgeResolver(nodes []core.SymbolNode) *edgeResolver {
@@ -111,25 +124,52 @@ func (r *edgeResolver) resolve(raw string) (core.SymbolNode, bool) {
 	return core.SymbolNode{}, false
 }
 
-// uniqueSuffix scans every node per unresolved callee, making EdgesFromNodes
-// O(edges×nodes) in the worst case — measured ~33s for a two-service fleet
-// store in-process (critic pass, Wave 3a). Fine for the per-service
-// arch_conformance/review_diff calls it serves today; if it ever runs
-// fleet-wide or in a hot path, precompute a suffix index (last-two-segment
-// map, like callgraph.Build's byName/byPkgName) instead of this linear scan.
+// uniqueSuffix answers "which one node's key ends with this dot-led
+// suffix" from a suffix index built once per resolver. It used to scan every
+// node per unresolved callee — O(edges×nodes), measured ~33s for a
+// two-service fleet store (critic pass, Wave 3a) — which was fine per
+// arch_conformance call but not at every ingest (CX-20).
 func (r *edgeResolver) uniqueSuffix(suffix string) (core.SymbolNode, bool) {
-	var match core.SymbolNode
-	found := false
-	for _, n := range r.nodes {
-		if strings.HasSuffix(n.Key(), suffix) {
-			if found {
-				return core.SymbolNode{}, false // ambiguous
+	if !strings.HasPrefix(suffix, ".") {
+		// Every caller passes a dot-led suffix; anything else keeps the
+		// original linear scan's exact semantics.
+		var match core.SymbolNode
+		found := false
+		for _, n := range r.nodes {
+			if strings.HasSuffix(n.Key(), suffix) {
+				if found {
+					return core.SymbolNode{}, false // ambiguous
+				}
+				match = n
+				found = true
 			}
-			match = n
-			found = true
+		}
+		return match, found
+	}
+	if r.bySuffix == nil {
+		r.bySuffix = make(map[string]suffixEntry, 2*len(r.nodes))
+		for _, n := range r.nodes {
+			key := n.Key()
+			for i := 0; i < len(key); i++ {
+				if key[i] != '.' {
+					continue
+				}
+				e := r.bySuffix[key[i:]]
+				if e.count == 0 {
+					e.node = n
+				}
+				e.count++
+				r.bySuffix[key[i:]] = e
+			}
 		}
 	}
-	return match, found
+	// A key ending in the dot-led suffix carries it at exactly one dot, so
+	// the index answers the scan's question: one owner, or ambiguous.
+	e := r.bySuffix[suffix]
+	if e.count != 1 {
+		return core.SymbolNode{}, false
+	}
+	return e.node, true
 }
 
 // KeyIndex maps each node's NORMALIZED symbol key — the same

@@ -14,6 +14,12 @@ package main
 // them is paid by every connected session, while the explanation is read
 // by a person. The MCP obligations tool is unchanged; its default payload
 // and this verb's default output are the same served list.
+//
+// Beside each served rule the verb shows what the edit hook recorded of it
+// — served, complied, violated over the last 30 days (SR-61, F-27/U4;
+// ruleoutcome_read.go reads the hook's signal log). That record and the
+// rule's claim id are read here, by a person; the MCP payload an agent
+// reads carries neither (the id rides only to the edit hook itself).
 
 import (
 	"context"
@@ -40,6 +46,9 @@ type servedObligationsJSON struct {
 	Watermark       string                                `json:"compiled_at_watermark,omitempty"`
 	Coverage        console.Value[semantic.LayerCoverage] `json:"coverage"`
 	Note            string                                `json:"note,omitempty"`
+	// Outcomes is the edit hook's record of each served rule, keyed by
+	// claim id (SR-61); absent, never zero, when no hook has recorded yet.
+	Outcomes console.Value[console.RuleOutcomeSet] `json:"outcomes"`
 }
 
 func servedJSON(se console.ServingExplanation) servedObligationsJSON {
@@ -47,6 +56,7 @@ func servedJSON(se console.ServingExplanation) servedObligationsJSON {
 		Service: se.Service, File: se.File, Layer: se.Layer, Rules: se.AgentSees, RawWhy: se.RawWhy,
 		Displaced: se.Served.Displaced, DisplacedByTier: se.Served.DisplacedByTier, Deduped: se.Deduped,
 		RankedBy: se.Served.RankedBy, Watermark: se.Served.Watermark, Coverage: se.Coverage, Note: se.CoverageNote,
+		Outcomes: se.Outcomes,
 	}
 }
 
@@ -90,6 +100,7 @@ func cmdObligations(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
 	}
+	se = withRuleOutcomes(se, ruleOutcomeNow())
 	switch {
 	case *format == "sarif":
 		_, _ = stdout.Write(verify.RenderSARIF("fathom obligations", obligationsSARIF(se.AgentSees)))
@@ -116,6 +127,12 @@ func cmdObligations(args []string, stdout, stderr io.Writer) int {
 		if r.Why != "" {
 			fmt.Fprintf(stdout, "      %s\n", r.Why)
 		}
+		if line := ruleOutcomeText(se.Outcomes, r.ClaimID); line != "" {
+			fmt.Fprintf(stdout, "      %s\n", line)
+		}
+	}
+	if !se.Outcomes.Known() && len(se.AgentSees) > 0 {
+		fmt.Fprintf(stdout, "\nhook outcomes: %s\n", se.Outcomes.Reason)
 	}
 	if se.CoverageNote != "" {
 		fmt.Fprintf(stdout, "\nnote: %s\n", se.CoverageNote)
@@ -146,4 +163,30 @@ func cmdObligations(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 	return 0
+}
+
+// ruleOutcomeText is one served rule's hook record as the CLI prints it:
+// "hook, last 30 days: served 3 · complied 1 · violated 1", with the
+// human-verdict counts only when there are any and GL-11's class — a
+// proposal, never an action — when one applies. "" when the record is not
+// known or the rule has no claim id (a raw-fallback row has none).
+func ruleOutcomeText(v console.Value[console.RuleOutcomeSet], claimID string) string {
+	if !v.Known() || claimID == "" {
+		return ""
+	}
+	c, ok := v.V.ByClaim(claimID)
+	if !ok {
+		return ""
+	}
+	line := fmt.Sprintf("hook, last %d days: served %d · complied %d · violated %d", v.V.WindowDays, c.Served, c.Complied, c.Violated)
+	if c.Blocked > 0 {
+		line += fmt.Sprintf(" · blocked %d", c.Blocked)
+	}
+	if c.Refuted > 0 || c.Corroborated > 0 {
+		line += fmt.Sprintf(" · refuted %d · corroborated %d", c.Refuted, c.Corroborated)
+	}
+	if c.Class != "" {
+		line += fmt.Sprintf(" [%s — proposal: %s]", strings.ReplaceAll(c.Class, "_", " "), c.Remedy)
+	}
+	return line
 }

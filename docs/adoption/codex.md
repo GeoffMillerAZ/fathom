@@ -327,7 +327,7 @@ alone and why. The vehicle column is what fathom delivers on Codex
 | `stanza` | `stanza` | verified |
 | `verify-gate` | `gate` | verified |
 | `claim-gate` | `absent` | verified — the PostToolUse hook IS wired here, but it serves obligations only — the claim check rides Claude Code's edit payload and is not ported; the pre-push verify gate is the backstop (vision 26 §4) |
-| `session-ledger` | `absent` | verified — unmeasured by design (law 12): the rollout transcript format is not stable and no instrument reads it |
+| `session-ledger` | `absent` | verified — unmeasured by design (law 12): the session ledger and the ON/OFF arm take no Codex row; the rollout's token_count events are read for cost only, by CodexSessionCost (PE-14, outcome economics), never for a savings claim |
 | `stanza-loaded` | `absent` | verified — no instructions-loaded event is documented; the stanza check reads the file, not the harness |
 | `config-audit` | `absent` | verified — run `fathom config audit` by hand; no config-change event is documented |
 | `subagent-prime` | `hook-inject` | verified — SubagentStart in CODEX_HOME/hooks.json injects the ≤600 B index-first primer; wired and documented, but no subagent ran in the verifying session — the one wave-3 row on this harness that is still unmeasured |
@@ -449,7 +449,12 @@ and law 12 (`docs/design/production-tokenomics.md` §2: no savings claim
 without a counterfactual arm) forbids extrapolating Claude-arm numbers to
 Codex. Whatever the Claude-side A/B eventually shows, it says nothing about
 Codex sessions; a separate instrument would be required to say anything
-measured about this harness at all.
+measured about this harness at all. One such instrument now exists, for
+cost only: `harness.CodexSessionCost` (PE-14) reads a session's token totals
+and tool-call count from its rollout file under `~/.codex/sessions`,
+read-only and incrementally, so outcome economics can price a Codex session
+per proven row. It says what a session cost, never what fathom saved — there
+is still no ON/OFF arm on Codex.
 
 ---
 

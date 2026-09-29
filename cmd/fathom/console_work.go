@@ -63,6 +63,13 @@ type workPageModel struct {
 	FrictionRead []string               `json:"friction_sources"`
 	Hotspots     *console.HotspotsModel `json:"hotspots,omitempty"`
 	HotspotsErr  string                 `json:"hotspots_error,omitempty"`
+
+	// The inputs a task preflight (WI-16) reads from the same join, kept
+	// out of the page's JSON: the proven changes (U2's interest rate and
+	// WI-15's index are computed over them), the proof history and the zones.
+	changes []console.ProvenChange
+	history console.History
+	zones   console.Zones
 }
 
 var workMemo = consoleMemo[workPageModel]{max: 16}
@@ -84,12 +91,8 @@ func buildWorkPage(cr *consoleRequest) (consoleOut, error) {
 	meta := []string{"choose a repository", "generated " + m.GeneratedAt}
 	if scope != "" {
 		sr := roots[0]
-		key := strings.Join([]string{sr.Service, sr.Root, fileWatermark(verifyLedgerPath()), fileWatermark(sessionLedgerPath()),
-			fileWatermark(ruleOutcomeLogPath()), repoHeadNoFork(sr.Root)}, "\x00")
 		ctx := cr.r.Context()
-		model, _, _ = workMemo.doCtx(ctx, key, cr.now, func() (workPageModel, time.Duration) {
-			return computeWork(ctx, m, sr, cr.now), 2 * time.Minute
-		})
+		model = memoWork(ctx, cr, m, sr)
 		model.Service, model.Repositories = scope, repos
 		if r := readTestPortfolio(ctx, plansFor(cr.deps), sr); r.err != "" {
 			model.HotspotsErr = r.err
@@ -100,6 +103,19 @@ func buildWorkPage(cr *consoleRequest) (consoleOut, error) {
 		meta = []string{scope, "generated " + m.GeneratedAt}
 	}
 	return consoleOut{Meta: meta, Model: model, Verbs: []string{}, Body: func() string { return renderWorkPage(model) }}, nil
+}
+
+// memoWork is /work's computation for one repository, memoized per
+// (repository, ledgers, rule log, HEAD); the plan row page's preflight
+// reads the same memo, so a row's profile and the /work page cannot
+// disagree about the proven changes they are computed over.
+func memoWork(ctx context.Context, cr *consoleRequest, m observatoryModel, sr serviceRoot) workPageModel {
+	key := strings.Join([]string{sr.Service, sr.Root, fileWatermark(verifyLedgerPath()), fileWatermark(sessionLedgerPath()),
+		fileWatermark(ruleOutcomeLogPath()), repoHeadNoFork(sr.Root)}, "\x00")
+	model, _, _ := workMemo.doCtx(ctx, key, cr.now, func() (workPageModel, time.Duration) {
+		return computeWork(ctx, m, sr, cr.now), 2 * time.Minute
+	})
+	return model
 }
 
 // computeWork joins the proof history to the session ledger for one
@@ -124,6 +140,7 @@ func computeWork(ctx context.Context, m observatoryModel, sr serviceRoot, now ti
 	zones := console.NewZones(workZonesConfig(sr.Root), nil)
 	changes := console.EffortPerProvenChange(join, h, sessionEffortsOf(m), commits, zones)
 	model.Work = console.WorkIntelligence(changes, nil)
+	model.changes, model.history, model.zones = changes, h, zones
 
 	rules, ruleNote := workRuleEvents(sr.Root)
 	model.FrictionRead = []string{
