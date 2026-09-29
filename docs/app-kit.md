@@ -30,6 +30,26 @@ architecture; no metric model, daemon behavior or future has been promoted.
   snapshot has its own band. Keep the lower-bound sign with its number and give service
   detail links a keyboard outline and 44px target. Do not patch the mirror in place.
 
+## Mirror d34067a: AGENTS.md alone satisfies the router check (2026-09-29)
+
+The mirror moves from `9fa58e6` to app-kit main `d34067a7937732230e111f9d403012b7559508f3`
+(`APP_KIT_SIBLING=<clone of GitHub main> scripts/sync-vendor.sh app-kit`; the 11 changed kit
+files match `git diff --name-status 9fa58e6 d34067a` one for one). The one kit commit in between
+records app-kit's ADR-0088: `appkit adoption check` with `agents` selected requires the router
+block in `AGENTS.md` once, and an absent `CLAUDE.md` reads not-applicable (a present one passes
+when it links to or imports `AGENTS.md`, or still carries the block). Only
+`internal/adoption`, the `draft --agents` help text and the kit's docs change; no UI package,
+token, CSS source or capability record moves, so `guide-baseline.cue`, `theme.css` and
+`app.css` are untouched and the five capability pins stand.
+
+The `router:CLAUDE.md` divergence recorded under mirror `9fa58e6` below is cleared: the row
+now reads `N/A` ("No CLAUDE.md; AGENTS.md is the one instruction file") and the `AGENTS.md`
+router passes. `observatoryGuideRevision` names the new mirror, and `appkit.adoption.json`
+re-pins the two artifacts that moved with it, `third_party/app-kit/.vendor-commit` and
+`cmd/fathom/appkit_styleguide.go`. `(cd third_party/app-kit && go run ./cmd/appkit adoption
+check -root ../..)` passes with no FAIL row. Plan row AG-OP3 stays open: app-kit itself
+still keeps its root `CLAUDE.md`, so the kit is not yet converted by its own record.
+
 ## Mirror 9fa58e6: the stage-0 and F0 kit returns land (2026-09-29)
 
 The mirror moves from `d9dd789` to app-kit main `9fa58e64958079f02c7bb4a0333a49b70b479471`
@@ -117,7 +137,7 @@ else. `router:CLAUDE.md` is a recorded divergence: ADR-059 makes AGENTS.md this 
 instruction file, and the kit's checker still requires a matching `CLAUDE.md` router whenever
 `agents` is selected. The `AGENTS.md` router passes. The row stays FAIL until app-kit accepts an
 AGENTS.md-only router under its own record (plan row AG-OP3); fathom does not re-add a CLAUDE.md
-to satisfy it.
+to satisfy it. Cleared at mirror `d34067a` (above): app-kit's ADR-0088 accepts AGENTS.md alone.
 
 ## Mirror d9dd789: the console's kit contributions land (2026-09-25)
 
@@ -539,7 +559,7 @@ this integration does not close G3/G4, human usability or the memory/cancellatio
 
 `go.mod` declares app-kit `v0.0.0` with an in-tree replacement. ADR-019 requires its
 exact stamped mirror: `third_party/app-kit/.vendor-commit` is now
-`9fa58e64958079f02c7bb4a0333a49b70b479471` (earlier `bcfeb8e`, `f7ab0fbd`, `dc77e66`, then `d9dd789`).
+`d34067a7937732230e111f9d403012b7559508f3` (earlier `bcfeb8e`, `f7ab0fbd`, `dc77e66`, `d9dd789`, then `9fa58e6`).
 Local `go.work` instead resolves the sibling.
 The adoption checker observes declarations/hashes, not effective Go resolution;
 verify both modes. The owner authorized this scoped mirror refresh on 2026-09-14

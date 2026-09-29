@@ -78,7 +78,7 @@
     },
     {
       "path": "third_party/app-kit/.vendor-commit",
-      "sha256": "1e8b84ec3dc1059f3b0914b228400a9d7954f14a9257548c47c7958115f1a8e6"
+      "sha256": "a9313573e3d9956478aae4afd5f0227de3fbf323ab39f579b80825dc9b424e9b"
     },
     {
       "path": "scripts/ui-css.sh",
@@ -90,7 +90,7 @@
     },
     {
       "path": "cmd/fathom/appkit_styleguide.go",
-      "sha256": "bb04a223553e1c865c49a5db33a4f38375422aae63ec8a78b0b1b720025ae33a"
+      "sha256": "65ac257b1214a8691a726275c4792774e35a1547f1b2036f5c6d9921039ffb88"
     },
     {
       "path": "cmd/fathom/appkit_styleguide_test.go",

@@ -65,8 +65,8 @@ connected and successfully invoked are three separate observations.
    declared performance budgets. Return reusable fixes/tests via
    `get_kit_decision(id="contribution-loop")`; update the app's adoption and intent.
 
-Keep identical short project routers in CLAUDE.md/AGENTS.md as described in
-[adoption](adoption.md#agent-routing-in-each-consumer). A user-level reminder may
+Keep the short project router in AGENTS.md, with an `@AGENTS.md` import in any CLAUDE.md,
+as described in [adoption](adoption.md#agent-routing-in-each-consumer). A user-level reminder may
 route there; the [reviewable shared block](global-claude-ui-section.md) preserves
 the current reminder. Do not duplicate evolving architectural policy across globals.
 If appkit is unavailable, report it and use the selected pinned documentation.

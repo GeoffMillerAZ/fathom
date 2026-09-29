@@ -77,8 +77,11 @@ Neither an MCP connection nor catalog consumer history proves a new adoption or 
 
 ## Agent routing in each consumer
 
-Print `appkit adoption router --contract docs/app-kit.md` and review the same block
-for both CLAUDE.md and AGENTS.md. Preserve unrelated consumer policy.
+Print `appkit adoption router --contract docs/app-kit.md` and review the block for
+AGENTS.md, the one instruction file ([ADR-0088](../adr/0088-agents-md-carries-the-adoption-router.md)).
+A consumer that keeps a CLAUDE.md gives it an `@AGENTS.md` import line rather than a second
+copy; a legacy CLAUDE.md that already carries the same block still passes. Preserve
+unrelated consumer policy.
 
 ```markdown
 <!-- appkit:begin -->

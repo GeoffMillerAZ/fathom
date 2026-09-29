@@ -137,9 +137,12 @@ func TestDraftOptionalModuleAndAgentsAreDeclarationsNotReads(t *testing.T) {
 	adoptionCheckSave(t, root, selection)
 	report := Check(context.Background(), root, DefaultManifest)
 	adoptionCheckOutcome(t, report, 1, "failed")
-	for _, id := range []string{"contract", "module", "router:CLAUDE.md", "router:AGENTS.md"} {
+	for _, id := range []string{"contract", "module", "router:AGENTS.md"} {
 		adoptionCheckFinding(t, report, id, "fail")
 	}
+	// AGENTS.md is the one required instruction file (ADR-0088); an absent
+	// CLAUDE.md is not a failure.
+	adoptionCheckFinding(t, report, "router:CLAUDE.md", "not-applicable")
 }
 
 func TestDraftRejectsInvalidOrUnavailableInputsWithZeroSelection(t *testing.T) {

@@ -28,7 +28,7 @@ The register at [DECISIONS.md](../DECISIONS.md) is a compact compatibility point
 | [0021](0021-runtime-profiles-and-platform-proof.md) | Partly superseded by 0027 | platform | Scoped runtime profiles and platform proof | conformance failure or measured unmet requirement |
 | [0022](0022-private-design-references-and-fidelity.md) | Accepted | data | Private whole-project references and adaptation fidelity | source changes, unreproducible reference or skipped design review |
 | [0023](0023-profile-specific-conversion-and-client-compute.md) | Accepted | architecture | Tested conversion pipeline and static/client runtime choices | pilot fidelity/cost failure, stale receipt or unmet local interaction need |
-| [0024](0024-read-only-adoption-contract.md) | Accepted | architecture | Explicit read-only adoption contracts | missing-artifact false pass, incompatible consumer need or unrelated catalog drift |
+| [0024](0024-read-only-adoption-contract.md) | Accepted; extended by 0088 (agent routing) | architecture | Explicit read-only adoption contracts | missing-artifact false pass, incompatible consumer need or unrelated catalog drift |
 | [0025](0025-static-chart-composition-evidence.md) | Accepted | architecture | Scoped static chart composition evidence | planted false pass, escaped coverage or repeated unsupported shape |
 | [0026](0026-isolated-http-desktop-experiment.md) | Accepted | platform | Isolated native host and authenticated HTML commands | navigation/bridge boundary failure, target failure or adapter promotion |
 | [0027](0027-web-and-macos-now-windows-on-demand.md) | Accepted | platform | Web/macOS now; Windows on demonstrated demand | named Windows use case and authorized test host |
@@ -88,6 +88,7 @@ The register at [DECISIONS.md](../DECISIONS.md) is a compact compatibility point
 | [0081](0081-derive-one-table-action-column.md) | Accepted | ux | Derive one action column; align linked/unlinked rows and preserve explicit reservation | different consumer shape, mutated inputs or footer/header disagreement |
 | [0082](0082-discover-adoption-capabilities-without-a-host.md) | Accepted | architecture | Read-only CLI capability search and guarded exact metadata; no host or second catalog | transport disagreement, output bounds or repeated projection need |
 | [0083](0083-render-missing-select-values-as-unavailable.md) | Accepted | ux | Render missing select values as unavailable prompts, never valid substitutions | representation need, browser semantics or empty-option conflict |
+| [0088](0088-agents-md-carries-the-adoption-router.md) | Accepted | architecture | AGENTS.md alone carries the adoption router; CLAUDE.md is optional and must link, import or carry it | a host reads CLAUDE.md but not AGENTS.md, no paired block remains, or an import kept outside the root CLAUDE.md is refused |
 
 ## Recording and maintenance
 
@@ -107,4 +108,4 @@ Do not rewrite old source/version research as if it were reverified.
 The founding records often exceed the new budget; preserved history does not imply implementation. Protocol/document tests check index and status integrity, not
 architectural truth. Active goals and current platform claims live in root intent.
 
-Next ID: 0084. No reserved IDs. Check the current maximum before allocating.
+Next ID: 0089. No reserved IDs. Check the current maximum before allocating.
