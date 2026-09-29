@@ -54,8 +54,10 @@ renders them; most rows carry none.
 - Query with keywords, not a sentence: every word must match, so "what did we decide about
   embeddings" finds almost nothing (O137, open).
 - The doc index fills on an ingest by a binary with KR-8. The shared daemon has it after `task
-  deploy` and its next ingest; a worker's scratch ingest has it at once. An index that was never
-  doc-ingested refuses the query rather than answering empty (I38).
+  deploy` and its next ingest; a worker's scratch ingest has it at once. Before that ingest the
+  query answers `no doc hits`, the same answer a query nothing matches gets (only a store with no
+  doc index at all is refused), so an empty answer from the shared daemon proves nothing until it
+  has re-ingested.
 
 ## Select tests before a whole-package run (EW-11)
 

@@ -281,7 +281,8 @@ migration note (`docs/rename-migration.md` is the precedent; new ones go to
 - `fathom verify` exit codes 0/1/2 and the `--strict`, `--require-all`, `--quiet` flags;
   every wired repo's `lefthook.yml` depends on them. Evidence: `cmd/fathom/verify.go`.
 - Hook verbs and their stdin/stdout contracts: `session-hook` (`--event
-  instructions-loaded|subagent-start|tool-failure|cwd-changed`), `edit-hook [--pre]`,
+  instructions-loaded|subagent-start|tool-failure|cwd-changed|test-run|failed-test-run`),
+  `edit-hook [--pre]`,
   `stop-hook`, `session-end-hook`, `pre-compact-hook`, `config audit --hook [--event
   file-changed]`, `doctor --brief`, each with an additive `--harness <id>` (absent ⇒
   `claude-code`). `fathom init` writes them into `~/.claude/settings.json` and, under
