@@ -237,6 +237,34 @@ draft it, optional). **Surface:** no new default tool; `map` on the extended sur
 are injected context. **Measure:** pointer precision (expanded over shown) and reuse rate (mounted after
 handoff); pointers expanded under 10 percent are cut.
 
+**As built (hooks, 2026-09-29; XM-8, XM-11 to XM-13).** `cmd/fathom/maphooks.go`; all four channels are deterministic
+with provider none, need no daemon, and cost one file read in a repository whose threads log holds no map row.
+
+- *Handoff.* The SubagentStart input carries no prompt (XM-V1), so the id is chosen from the parent session's state: its
+  alive, non-composite maps whose header or any entry carries the parent's session id, minus any map another of them
+  includes. One map is handed as it is; several become a minted composite over at most six of them (most recently used
+  first, then taken in id order so the composite's id does not move when a different map was used last), stored once
+  with `completes_when` the parent session's end so it does not pin them past it. The map line leads the discoveries chunk
+  and carries the read command, the sub-agent's own id for `--agent` (the payload is the only place fathom sees it, so the
+  codec now exposes `HookInput.AgentID`) and the purpose, which yields bytes first; the brief is rendered to whole pointer
+  lines inside what the base primer leaves, and only a base too long to leave the id its room is trimmed. The id survives
+  RC-28's 1,200-byte cap by construction; the reading measured 28 of 325 briefed payloads cut at the cap.
+- *Relevance by location.* A footprint is the map's own entries: a touched file, a file under a touched directory, or a
+  touched symbol (the prompt's paths, packages and bare symbols come from the same extraction the obligations half of the
+  prompt hook uses; the edit hook's is the edited file). At most two lines a firing, once per session per map, kept as a
+  per-(session, map) marker under `$TMPDIR/fathom-map-pointer`, the mechanism the Bash-write hook's doubt marker uses and
+  `fathom gc` prunes; this is bookkeeping about what was said, not map storage. Freshness in the line is a file re-hash of
+  the map's own entries (capped at 60), with no index and no git, so a moved symbol reads as changed and `map show`
+  is what re-resolves and sizes it. No session id, no line: a line that cannot be once-only is not sent.
+- *Session brief.* At most three bullets ranked by being named by an open note of the thread, then by overlap with the
+  thread's recent files (the working tree's changed files and the file pointers its open notes carry), then by recent
+  use; the rest are counted. Composites are never named, and a map that has ended is not alive.
+- *Threads.* `thread note --map-ref` names maps a note references (each must exist); the pre-compact pointer carries the
+  alive maps the session filed or added to; the brief and the handoff show them as `[maps …]`. "Re-mounts" is read as
+  re-surfaced: a fresh session's brief (startup and clear, as ever) names them; nothing is injected at compact.
+- *Not built.* The pointer's "shown" count is not recorded anywhere, so XM-M3's precision has no denominator yet; the
+  reading adds the beat when it runs. The hint each channel gives names `fathom map show <id> --budget 1200` (XM-9).
+
 ## 5. The experiment (E2): measurement first
 
 **Step 1, a bench script over 14 days of transcripts (zero product build).** Measure the share of sub-agent

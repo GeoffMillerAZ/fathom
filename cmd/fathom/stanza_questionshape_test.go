@@ -52,7 +52,7 @@ func TestStanzaRoutesByQuestionShape(t *testing.T) {
 	defer srv.Close()
 
 	t.Run("subagent_primer", func(t *testing.T) {
-		primer := subagentPrimer(srv.URL, "fathom", "")
+		primer := subagentPrimer(srv.URL, "fathom", "", "")
 		if primer == "" {
 			t.Fatal("subagentPrimer returned \"\" — fakeDaemon must resolve \"fathom\" as an indexed service")
 		}

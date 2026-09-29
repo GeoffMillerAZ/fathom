@@ -1639,6 +1639,7 @@ fathom thread note    "text" [--thread T] [--kind K] [--completes-when …] [--r
 fathom thread point   "what happened" [--session S] [--thread T] [--repo .]          # side-task pointer
 fathom thread note    --map ID --anchor <symbol|path#Lx-Ly> --why "…" [--agent ID] [--completes-when …]
                                                # an exploration-map entry (ADR-056); see `map` below
+fathom thread note    "text" --map-ref ID[,ID…] # a note that references maps; the brief re-surfaces them (XM-13)
 fathom thread list    [--all-repos] [--all] [--thread T] [--repo .] [--json]   # this repo's open items; --all-repos: every repo; --all: also closed + dormant, every repo
                                                # --json: {kind:"list", items:[{id,status,kind,thread,text,repo,session_id,filed_at,closed_at,closed_by,commit,pointers}], hidden_other_repos}
 fathom thread close   <id> [--why …]
@@ -1688,6 +1689,36 @@ its diff size, and conflicting why lines are all kept with their provenance.
 each map's lifetime: pinned while an alive map includes it, permanent when
 named, else open with the time its idle clock started (a dropped include
 restarts it). CLI only: no MCP tool is added.
+
+**How maps arrive (XM-8, XM-11 to XM-13).** Nothing here needs an agent to
+look: four hooks the harness already fires carry a map to whoever needs it, each
+deterministic with provider none, silent when it has nothing true to say, and
+free (no daemon call) for a repository whose threads log holds no map.
+
+- **Handoff.** `SubagentStart` puts one map line at the head of the parent's
+  discoveries inside RC-28's 1,200-byte cap: the one map the parent session
+  filed, or, when it filed several, a minted composite of references that ends
+  with the session. The line gives `fathom map show <id> --budget 1200` and
+  the sub-agent's own id for `--agent`, which the payload alone carries (Claude
+  Code exports no agent id to a sub-agent's shell). The brief yields bytes
+  before the id does. The hook input carries no prompt (XM-V1), so the choice
+  is the parent's state, never the task.
+- **Relevance by location.** When a prompt names, or an edit touches, code
+  inside an alive map's own anchored entries (a file, a directory, or a symbol),
+  the prompt or edit hook adds one line per map, at most two per firing: the
+  purpose, the entry count, how many entries changed since filed (a file re-hash,
+  no index and no git), and the expand command. Once per session per map, kept
+  as a marker under `$TMPDIR/fathom-map-pointer` that `fathom gc` prunes; a
+  firing with no session id says nothing.
+- **Session brief.** `thread brief` (startup and clear only) names at most three
+  alive maps, one bullet each, ranked by being named by an open note of the
+  thread, then by overlap with the thread's recent files (the working tree's
+  changed files and the file pointers its open notes carry), then by recent use,
+  and counts the rest (`N more: fathom map list`).
+- **Threads.** `thread note "…" --map-ref ID` references maps (each must exist);
+  the pre-compact pointer carries the ids of the alive maps the session filed or
+  added to (`active maps: …`); `thread brief` and `thread handoff` show a note's
+  references as `[maps …]`, so a session that resumes the thread finds them.
 
 ### `config audit` — the config custodian (vision 22, "instructed means true")
 

@@ -229,7 +229,15 @@ const primerOverflowNote = " …[session primer truncated at its byte cap]"
 // injected (post-cut — the session stamp must not record bytes that never
 // reached the model) and whether the attention line fired.
 func composeContinuityAndCustodian(identity, projDir string, now time.Time) (primer string, briefBytes int, attention string) {
-	brief := renderThreadBrief(loadThreadItems(threadsPath()), projDir, threadBriefBudgetBytes, now)
+	items := loadThreadItems(threadsPath())
+	var mapLines []string
+	if threadsHoldMaps() {
+		// XM-12/XM-13: the brief names at most three maps, and re-surfaces the
+		// ones an open note (or the pre-compact pointer) references.
+		items = evaluateThreadConditions(items, projDir, now)
+		mapLines = briefMapLines(items, projDir, now)
+	}
+	brief := renderThreadBrief(items, projDir, threadBriefBudgetBytes, now, mapLines...)
 	line := attentionLine(projDir, now)
 	// RT-51: the tenancy line, only when the daemon is not normal (≤160 B).
 	tenancyLine := primerTenancyLine(now)

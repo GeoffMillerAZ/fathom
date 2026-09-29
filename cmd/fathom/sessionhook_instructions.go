@@ -76,7 +76,7 @@ func cmdSessionHookEvent(event string, args []string, stdin io.Reader, stdout, s
 		return recordInstructionsLoaded(codec, stdin)
 	case "subagent-start":
 		return runAdvisoryEvent(codec, harness.EventSubagentStart, "subagent-hook", stdin, stdout, func(in harness.HookInput) string {
-			return subagentPrimer(*url, root(in), in.SessionID)
+			return subagentPrimer(*url, root(in), in.SessionID, in.AgentID)
 		})
 	case "tool-failure":
 		return runAdvisoryEvent(codec, harness.EventToolFailure, "tool-failure-hook", stdin, stdout, func(in harness.HookInput) string {
