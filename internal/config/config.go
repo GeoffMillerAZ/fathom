@@ -32,6 +32,7 @@ import (
 	"cuelang.org/go/cue"
 	"cuelang.org/go/cue/cuecontext"
 	cueerrors "cuelang.org/go/cue/errors"
+	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 	toml "github.com/pelletier/go-toml/v2"
 )
 
@@ -319,11 +320,7 @@ func (e *LoadError) Unwrap() error { return e.Err }
 // DefaultUserPath returns ~/.fathom/config.toml, or "" if the user's home
 // directory cannot be resolved.
 func DefaultUserPath() string {
-	home, err := os.UserHomeDir()
-	if err != nil || home == "" {
-		return ""
-	}
-	return filepath.Join(home, ".fathom", "config.toml")
+	return fathomhome.Path("config.toml")
 }
 
 // DefaultProjectPath returns "<cwd>/.fathom/config.toml", or "" if the

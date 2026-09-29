@@ -28,6 +28,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 	"github.com/geoffmilleraz/fathom/internal/filter"
 )
 
@@ -43,11 +44,7 @@ func ServiceIgnoreDir() string {
 	if p := os.Getenv(ServiceIgnoreDirEnvVar); p != "" {
 		return p
 	}
-	home, err := os.UserHomeDir()
-	if err != nil || home == "" {
-		return ""
-	}
-	return filepath.Join(home, ".fathom", "ignore.d")
+	return fathomhome.Path("ignore.d")
 }
 
 // validServiceIgnoreID refuses a service id that cannot safely name a file

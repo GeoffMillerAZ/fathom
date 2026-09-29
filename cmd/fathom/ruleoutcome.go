@@ -33,6 +33,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/buildinfo"
 	"github.com/geoffmilleraz/fathom/internal/console"
 	"github.com/geoffmilleraz/fathom/internal/dlog"
+	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
 )
 
@@ -78,14 +79,7 @@ var ruleOutcomeNow = time.Now
 // the hooks beat log. "" (no override, no resolvable home dir) means
 // "cannot record" — recordRuleOutcome's caller treats that as silence.
 func ruleOutcomeLogPath() string {
-	if p := os.Getenv("FATHOM_RULE_OUTCOME_LOG"); p != "" {
-		return p
-	}
-	home, err := os.UserHomeDir()
-	if err != nil || home == "" {
-		return ""
-	}
-	return filepath.Join(home, ".fathom", "rule-outcomes.jsonl")
+	return fathomhome.PerFile("FATHOM_RULE_OUTCOME_LOG", "rule-outcomes.jsonl")
 }
 
 // ruleOutcomeEvent is one JSONL row.

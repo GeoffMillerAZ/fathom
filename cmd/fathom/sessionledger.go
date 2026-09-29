@@ -32,6 +32,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/buildinfo"
+	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 
 	heartbeat "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/heartbeat"
 )
@@ -41,14 +42,7 @@ import (
 // beatLogPath's own convention (hooks fire in every fleet repo, so the
 // ledger is not repo-scoped).
 func sessionLedgerPath() string {
-	if p := os.Getenv("FATHOM_SESSION_LEDGER"); p != "" {
-		return p
-	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return ""
-	}
-	return filepath.Join(home, ".fathom", "session-ledger.jsonl")
+	return fathomhome.PerFile("FATHOM_SESSION_LEDGER", "session-ledger.jsonl")
 }
 
 // sessionLedgerEntry is one session's row (docs/design/production-tokenomics.md

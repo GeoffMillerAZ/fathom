@@ -29,6 +29,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/console"
+	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 	"github.com/geoffmilleraz/fathom/internal/hookguard"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
@@ -534,7 +535,7 @@ func buildResources(env resourcesEnv, id, url string, since time.Duration) resou
 	if size == nil {
 		size = dirSize
 	}
-	rep.Disk.FathomHome = size(filepath.Join(env.home, ".fathom"))
+	rep.Disk.FathomHome = size(fathomhome.Under(env.home))
 	rep.Disk.WrittenByDaemon = tenancy.Unknown
 	rep.Disk.Judgment = resourcesDiskJudgment(blk)
 	if blk != nil {

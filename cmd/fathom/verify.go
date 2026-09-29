@@ -68,9 +68,14 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 	converge := fs.Bool("converge", false, "also print each plan's converge report (ADR-049, spec-interop design §5): claimed-unproven tasks with the failing criterion, unanchored tasks, and code changed on the spec's branch range that no task anchors (the last needs --store); exit codes are the gate's, unchanged")
 	convergeBase := fs.String("base", "", "--converge: the branch range's base ref (default: the commit that added the spec file)")
 	writeFixups := fs.Bool("write-fixups", false, "--converge: append a fix-up task per claimed-unproven and unclaimed item inside the spec's <!-- fathom:begin converge --> block, in the spec's own checkbox shape; text outside the markers never changes (law 15)")
+	ledgerFlag := fs.String("ledger", "", "the verify ledger this run appends to (default: $FATHOM_VERIFY_LEDGER, else verify-ledger.jsonl under $FATHOM_HOME or ~/.fathom); a scratch or test run names its own file so the operator's ledger is never touched")
 	since := fs.String("since", "", "git ref to compare each --plan file against (ADR-044 §1.4, I45): a claimed row's skip/disposition/retires/surface_change/raised-max gained since <ref> is reported self-declared and never excuses a loss; rows present at <ref> and missing now are reported deleted. Applies only inside a git work tree; a ref the plan file did not exist at counts as every current row being self-declared.")
 
 	if err := fs.Parse(args); err != nil {
+		return 2
+	}
+	if err := useLedgerFlag("FATHOM_VERIFY_LEDGER", *ledgerFlag); err != nil {
+		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 2
 	}
 	if *mutationPath == "" {

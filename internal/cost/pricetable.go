@@ -10,8 +10,8 @@ package cost
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 
+	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 	toml "github.com/pelletier/go-toml/v2"
 )
 
@@ -35,14 +35,7 @@ type ModelRate struct {
 // defaulting to ~/.fathom/prices.toml (mirrors sessionLedgerPath's own
 // per-user, env-overridable convention in cmd/fathom).
 func PriceTablePath() string {
-	if p := os.Getenv("FATHOM_PRICE_TABLE"); p != "" {
-		return p
-	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return ""
-	}
-	return filepath.Join(home, ".fathom", "prices.toml")
+	return fathomhome.PerFile("FATHOM_PRICE_TABLE", "prices.toml")
 }
 
 // loadPriceTable reads and parses path (typically PriceTablePath's

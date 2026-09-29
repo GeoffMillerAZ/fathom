@@ -43,6 +43,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/connector"
+	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 	"github.com/geoffmilleraz/fathom/internal/filter"
 	"github.com/geoffmilleraz/fathom/internal/scope"
 	"github.com/geoffmilleraz/fathom/internal/store"
@@ -57,11 +58,11 @@ func purgesPath() (string, error) {
 	if p := os.Getenv("FATHOM_PURGES"); p != "" {
 		return p, nil
 	}
-	home, err := os.UserHomeDir()
-	if err != nil || home == "" {
+	p := fathomhome.Path(purgesFileName)
+	if p == "" {
 		return "", fmt.Errorf("cannot resolve $HOME")
 	}
-	return filepath.Join(home, ".fathom", purgesFileName), nil
+	return p, nil
 }
 
 // purgeBetweenExecuteAndVerify is the test-only seam for SP-7's

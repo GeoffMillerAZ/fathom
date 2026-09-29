@@ -50,6 +50,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 )
 
 // EnvVar names the environment variable that carries the suppression
@@ -119,11 +121,7 @@ func PathFromEnv() string { return os.Getenv(EnvVar) }
 // cannot be resolved. main() uses it to default EnvVar for the real
 // binary; nothing else calls it implicitly.
 func DefaultUserPath() string {
-	home, err := os.UserHomeDir()
-	if err != nil || home == "" {
-		return ""
-	}
-	return SuppressionsPathIn(home)
+	return fathomhome.Path(SuppressionsFileName)
 }
 
 // SuppressionsPathIn returns home's suppression log path. Split from

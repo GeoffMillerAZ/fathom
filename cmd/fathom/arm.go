@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/buildinfo"
+	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 )
 
 // The measurement arm (vision 14 §2, plan IO-14): `fathom arm off` is the
@@ -42,14 +43,7 @@ type armState struct {
 const armSchemaVersion = 1
 
 func armStatePath() string {
-	if p := os.Getenv("FATHOM_ARM_STATE"); p != "" {
-		return p
-	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return ""
-	}
-	return filepath.Join(home, ".fathom", "arm.json")
+	return fathomhome.PerFile("FATHOM_ARM_STATE", "arm.json")
 }
 
 // loadArmState returns the current arm state and whether an OFF arm is

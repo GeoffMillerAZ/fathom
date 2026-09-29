@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 )
@@ -37,7 +38,7 @@ func WazeroVersion() string { return wazeroVersion }
 
 // compilationCacheRoot is ~/.fathom/cache/wazero under home.
 func compilationCacheRoot(home string) string {
-	return filepath.Join(home, ".fathom", "cache", "wazero")
+	return filepath.Join(fathomhome.Under(home), "cache", "wazero")
 }
 
 // compilationCacheDir is the one place wazero's compilation cache may live

@@ -30,6 +30,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/console"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/decide"
+	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 	"github.com/geoffmilleraz/fathom/internal/projectrules"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
 	"github.com/geoffmilleraz/fathom/internal/verify"
@@ -45,14 +46,7 @@ const (
 // preflightLedgerPath resolves the outcome ledger: $FATHOM_PREFLIGHT_LEDGER,
 // else ~/.fathom/preflight-outcomes.jsonl.
 func preflightLedgerPath() string {
-	if p := os.Getenv("FATHOM_PREFLIGHT_LEDGER"); p != "" {
-		return p
-	}
-	home, err := os.UserHomeDir()
-	if err != nil || home == "" {
-		return ""
-	}
-	return filepath.Join(home, ".fathom", "preflight-outcomes.jsonl")
+	return fathomhome.PerFile("FATHOM_PREFLIGHT_LEDGER", "preflight-outcomes.jsonl")
 }
 
 // preflightSources is what one preflight reads from the index: the

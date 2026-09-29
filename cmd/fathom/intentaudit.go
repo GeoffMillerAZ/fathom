@@ -74,8 +74,13 @@ func cmdIntentAudit(args []string, stdout, stderr io.Writer) int {
 	top := fs.Int("top", intentTopDefault, "max rows per section before eliding (0 = all)")
 	asJSON := fs.Bool("json", false, "emit JSON")
 	readOnly := fs.Bool("read-only", false, "render the audit and write NOTHING: no intent-ledger rows (clock, baseline, debt, the enforcement-probe cache) and no beat — the Observatory's intent tab runs it this way (OC-38)")
+	ledgerFlag := fs.String("ledger", "", "the intent ledger this run appends to (default: $FATHOM_INTENT_LEDGER, else intent-ledger.jsonl under $FATHOM_HOME or ~/.fathom); a scratch or test run names its own file so the operator's ledger is never touched")
 	format := fs.String("format", "", "output format: text (default) | json | sarif — SARIF 2.1.0 of the unproven claims, one rule per kind (U1, U2, …), located at the claim's file:line when the evidence names one (PC-21)")
 	if err := fs.Parse(args); err != nil {
+		return 1
+	}
+	if err := useLedgerFlag("FATHOM_INTENT_LEDGER", *ledgerFlag); err != nil {
+		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
 	}
 	if *asJSON && *format == "" {

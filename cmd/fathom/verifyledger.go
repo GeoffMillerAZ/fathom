@@ -22,6 +22,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 	"github.com/geoffmilleraz/fathom/internal/gitro"
 	"github.com/geoffmilleraz/fathom/internal/verify"
 )
@@ -105,14 +106,7 @@ func repoHeadNoFork(root string) string {
 }
 
 func verifyLedgerPath() string {
-	if p := os.Getenv("FATHOM_VERIFY_LEDGER"); p != "" {
-		return p
-	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return ""
-	}
-	return filepath.Join(home, ".fathom", "verify-ledger.jsonl")
+	return fathomhome.PerFile("FATHOM_VERIFY_LEDGER", "verify-ledger.jsonl")
 }
 
 func appendVerifyLedger(planFiles []string, service string, reports []verify.Report, prov verifyProvenance) {

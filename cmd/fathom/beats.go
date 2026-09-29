@@ -7,6 +7,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/buildinfo"
 	"github.com/geoffmilleraz/fathom/internal/dlog"
+	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 
 	heartbeat "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/heartbeat"
 )
@@ -15,14 +16,7 @@ import (
 // defaulting to ~/.fathom/hooks.jsonl. Hooks fire in every fleet repo, so the
 // log is per-user central, never per-repo.
 func beatLogPath() string {
-	if p := os.Getenv("FATHOM_HOOKS_LOG"); p != "" {
-		return p
-	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return ""
-	}
-	return filepath.Join(home, ".fathom", "hooks.jsonl")
+	return fathomhome.PerFile("FATHOM_HOOKS_LOG", "hooks.jsonl")
 }
 
 // beatLogRotateBytes bounds the beat log's on-disk size — critic finding

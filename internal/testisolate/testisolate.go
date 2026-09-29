@@ -39,9 +39,14 @@ const EnvTest = "FATHOM_TEST"
 // pinned path would fold every repository's state (and every service's
 // call log) into one — the code under test keys both per repository under
 // XDG_STATE_HOME, which is isolated instead.
+//
+// FATHOM_HOME (PE-26) is UNSET too: it would otherwise win over the isolated
+// HOME and send every per-user path (ledgers, stamps, daemon records) to
+// wherever the surrounding gate or scratch run pointed it. A test that
+// exercises the override sets it itself with t.Setenv.
 var IsolatedVars = []string{
 	"HOME", "FATHOM_STATE_DIR", "XDG_STATE_HOME", "FATHOM_CALL_LOG",
-	"FATHOM_THREADS", "FATHOM_HTTP", EnvTest,
+	"FATHOM_THREADS", "FATHOM_HTTP", "FATHOM_HOME", EnvTest,
 }
 
 // UnderTest reports whether this process is a test binary or was started
@@ -134,6 +139,7 @@ func IsolateAndRun(m Runner, o Options) int {
 		"FATHOM_CALL_LOG":  "",
 		"FATHOM_THREADS":   filepath.Join(root, "home", ".fathom", "threads.jsonl"),
 		"FATHOM_HTTP":      UnroutableURL,
+		"FATHOM_HOME":      "",
 		EnvTest:            "1",
 	}
 	for _, k := range IsolatedVars {

@@ -14,6 +14,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 	"github.com/geoffmilleraz/fathom/internal/hookcache"
 )
 
@@ -96,11 +97,7 @@ func (g *Guard) daemonDir() string {
 	if g.DaemonDir != "" {
 		return g.DaemonDir
 	}
-	home, err := os.UserHomeDir()
-	if err != nil || home == "" {
-		return ""
-	}
-	return filepath.Join(home, ".fathom", "daemon")
+	return fathomhome.Path("daemon")
 }
 
 // NormalizeURL folds a daemon address to scheme://host:port: a bare

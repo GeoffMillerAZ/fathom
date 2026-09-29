@@ -127,6 +127,10 @@ type Server struct {
 	// tool's ingests run on it. Nil (stdio, tests) runs them in the call.
 	refreshQ atomic.Pointer[refresh.Queue]
 
+	// ingestWaitNS is how long the ingest tool waits on the refresh queue for
+	// the run that serves a call, in nanoseconds; 0 is DefaultIngestWaitBudget.
+	ingestWaitNS atomic.Int64
+
 	// Stats for server_stats meta-tool.
 	startTime  time.Time
 	reqCount   int64
@@ -418,3 +422,29 @@ func (s *Server) SetRefreshQueue(q *refresh.Queue) { s.refreshQ.Store(q) }
 
 // RefreshQueue is the queue SetRefreshQueue installed, or nil.
 func (s *Server) RefreshQueue() *refresh.Queue { return s.refreshQ.Load() }
+
+// DefaultIngestWaitBudget is how long the ingest tool waits on the refresh
+// queue for its run before it answers with the queue's state instead (O128,
+// EW-18). It stays under the daemon's per-route write deadline (cmd/fathom
+// daemonRPCWriteTimeout, 150 s), so the answer is always written: a cold
+// typed pass of a 27,000-symbol repository ran 3m30s, the connection's write
+// deadline passed, and /rpc answered with an empty body although the ingest
+// succeeded.
+const DefaultIngestWaitBudget = 120 * time.Second
+
+// SetIngestWaitBudget sets how long an ingest call waits for its run before
+// answering with the queue's state; d <= 0 restores DefaultIngestWaitBudget.
+func (s *Server) SetIngestWaitBudget(d time.Duration) {
+	if d < 0 {
+		d = 0
+	}
+	s.ingestWaitNS.Store(int64(d))
+}
+
+// ingestWaitBudget is the wait budget in force.
+func (s *Server) ingestWaitBudget() time.Duration {
+	if d := time.Duration(s.ingestWaitNS.Load()); d > 0 {
+		return d
+	}
+	return DefaultIngestWaitBudget
+}

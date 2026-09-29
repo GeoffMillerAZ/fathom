@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/connector"
+	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 	"github.com/geoffmilleraz/fathom/internal/filter"
 	"github.com/geoffmilleraz/fathom/internal/guardspec"
 )
@@ -178,11 +179,10 @@ func walkForUserHiddenFiles(root string, projectOnly, union *filter.Matcher) []s
 // comment), pass on absence (the common case).
 func checkUserScopeGuard() doctorCheck {
 	const name = "user_scope_guard"
-	home, err := os.UserHomeDir()
-	if err != nil || home == "" {
+	path := fathomhome.Path("guard.cue")
+	if path == "" {
 		return doctorCheck{Name: name, Status: doctorPass, Reason: "no resolvable $HOME — no user-scope guard file to check"}
 	}
-	path := filepath.Join(home, ".fathom", "guard.cue")
 	if _, err := os.Stat(path); err != nil {
 		return doctorCheck{Name: name, Status: doctorPass, Reason: "no ~/.fathom/guard.cue configured"}
 	}

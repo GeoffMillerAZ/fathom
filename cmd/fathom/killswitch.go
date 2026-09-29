@@ -28,19 +28,17 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/dlog"
+	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
 
 // daemonStateDir is ~/.fathom/daemon — where the switch files live.
 func daemonStateDir() (string, error) {
-	home, err := os.UserHomeDir()
-	if err != nil || home == "" {
-		if err == nil {
-			err = fmt.Errorf("HOME is empty")
-		}
-		return "", err
+	dir := fathomhome.Path("daemon")
+	if dir == "" {
+		return "", fmt.Errorf("cannot resolve the fathom home directory (no $HOME, no %s)", fathomhome.Env)
 	}
-	return filepath.Join(home, ".fathom", "daemon"), nil
+	return dir, nil
 }
 
 // isManagedInvocation reports whether this serve-http is the managed daemon:

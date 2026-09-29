@@ -19,6 +19,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 	"github.com/geoffmilleraz/fathom/internal/harness"
 )
 
@@ -44,14 +45,7 @@ type sessionStamp struct {
 }
 
 func sessionStampDir() string {
-	if p := os.Getenv("FATHOM_SESSION_STAMPS"); p != "" {
-		return p
-	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return ""
-	}
-	return filepath.Join(home, ".fathom", "session-stamps")
+	return fathomhome.PerFile("FATHOM_SESSION_STAMPS", "session-stamps")
 }
 
 func writeSessionStamp(st sessionStamp) {

@@ -16,10 +16,14 @@
 package worktree
 
 import (
+	"context"
 	"fmt"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
+
+	"github.com/geoffmilleraz/fathom/internal/gitro"
 )
 
 // Marker is the path segment Claude Code's agent worktrees live under. Any
@@ -119,6 +123,25 @@ func CommonDir(dir string) (string, bool) {
 		return "", false
 	}
 	return absFrom(dir, common), true
+}
+
+// RepositoryIdentity names the repository dir is a checkout of: its root
+// commit or commits (`rev-list --max-parents=0 HEAD`), which every clone and
+// worktree of one repository shares and no other repository does — a remote
+// URL differs from clone to clone and the common dir differs between
+// clones, so neither names a repository. ok is false when dir is not a git
+// checkout git can answer for, or HEAD has no commit. Read-only (gitro).
+func RepositoryIdentity(ctx context.Context, dir string) (id string, ok bool) {
+	out, err := gitro.Output(ctx, dir, "rev-list", "--max-parents=0", "HEAD")
+	if err != nil {
+		return "", false
+	}
+	roots := strings.Fields(string(out))
+	if len(roots) == 0 {
+		return "", false
+	}
+	sort.Strings(roots)
+	return strings.Join(roots, ","), true
 }
 
 // absFrom resolves p — as git printed it, relative to dir when not absolute

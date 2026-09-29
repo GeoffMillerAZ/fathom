@@ -27,6 +27,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 )
 
 // remedyBaseline is the pre-registered 2026-08-08 measurement (design §7):
@@ -236,11 +238,7 @@ func roundHours(d time.Duration) float64 {
 
 // fleetSnapshotDir is where `fathom fleet report` writes its snapshots.
 func fleetSnapshotDir() string {
-	home, err := os.UserHomeDir()
-	if err != nil || home == "" {
-		return ""
-	}
-	return filepath.Join(home, ".fathom", "fleet")
+	return fathomhome.Path("fleet")
 }
 
 // loadFleetSnapshots reads every report-*.json under dir. A missing dir is

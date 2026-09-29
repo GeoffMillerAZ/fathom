@@ -3,6 +3,8 @@ package capability
 import (
 	"os"
 	"path/filepath"
+
+	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 )
 
 // ProjectPath returns "<root>/.fathom/capabilities.cue" for a repository
@@ -17,11 +19,7 @@ func ProjectPath(root string) string {
 // home directory cannot be resolved — which [LoadBudgets] treats as
 // absent, and which a writer must refuse rather than write to.
 func DefaultUserPath() string {
-	home, err := os.UserHomeDir()
-	if err != nil || home == "" {
-		return ""
-	}
-	return filepath.Join(home, ".fathom", UserFileName)
+	return fathomhome.Path(UserFileName)
 }
 
 // DefaultProjectPath returns [ProjectPath] of the working directory — the

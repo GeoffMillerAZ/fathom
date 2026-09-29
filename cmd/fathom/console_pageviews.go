@@ -26,6 +26,8 @@ import (
 	"sort"
 	"sync"
 	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 )
 
 // consolePageViews counts views.
@@ -42,14 +44,7 @@ func newConsolePageViews(logPath string) *consolePageViews {
 // consoleViewsLogPath is the durable log: FATHOM_CONSOLE_VIEWS, else
 // ~/.fathom/console-views.jsonl.
 func consoleViewsLogPath() string {
-	if p := os.Getenv("FATHOM_CONSOLE_VIEWS"); p != "" {
-		return p
-	}
-	home, err := os.UserHomeDir()
-	if err != nil || home == "" {
-		return ""
-	}
-	return filepath.Join(home, ".fathom", "console-views.jsonl")
+	return fathomhome.PerFile("FATHOM_CONSOLE_VIEWS", "console-views.jsonl")
 }
 
 // consoleViewRow is one durable view row: the route pattern and the time.

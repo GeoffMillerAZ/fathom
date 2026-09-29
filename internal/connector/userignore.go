@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 	"github.com/geoffmilleraz/fathom/internal/filter"
 )
 
@@ -23,11 +24,7 @@ const UserIgnoreFileName = "ignore"
 // UserIgnorePath returns ~/.fathom/ignore, or "" when $HOME cannot be
 // resolved (best-effort — callers treat "" as "no user-scope file").
 func UserIgnorePath() string {
-	home, err := os.UserHomeDir()
-	if err != nil || home == "" {
-		return ""
-	}
-	return filepath.Join(home, ".fathom", UserIgnoreFileName)
+	return fathomhome.Path(UserIgnoreFileName)
 }
 
 // ErrUserScopeReinclude is returned when a user-scope ignore file contains

@@ -14,7 +14,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"slices"
 	"strings"
 	"syscall"
@@ -22,6 +21,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/buildinfo"
 	"github.com/geoffmilleraz/fathom/internal/dlog"
+	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 )
 
 // binaryStat is the (size, mtime, inode) triple the watcher compares
@@ -117,11 +117,7 @@ func startSelfRestart(log *dlog.Logger, in selfRestartStart) bool {
 // lifecycleLedgerPath is ~/.fathom/daemon/<label>/lifecycle.jsonl (design
 // §2.3), or "" when HOME is unresolvable.
 func lifecycleLedgerPath(label string) string {
-	home, err := os.UserHomeDir()
-	if err != nil || home == "" || label == "" {
-		return ""
-	}
-	return filepath.Join(home, ".fathom", "daemon", label, "lifecycle.jsonl")
+	return fathomhome.Path("daemon", label, "lifecycle.jsonl")
 }
 
 // lifecycleSchemaVersion versions the ledger rows (I32's pattern).
