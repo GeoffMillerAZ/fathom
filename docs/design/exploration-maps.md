@@ -131,6 +131,13 @@ dispatch boundary, and R5 (storage stays in existing thread fields until RT-M1 r
 
 ## 3c. Concern scopes and incident maps (binding frame; built when live maps are promoted, XM-D1)
 
+**Amended 2026-09-29 (ADR-058).** Incident maps are committed declarations, not a map kind; see
+`docs/design/incident-maps.md`. That document replaces the incident-map paragraphs below on two points, the kind (a
+declaration in `.fathom/incidents.cue`, not a live map) and the gate (its own readings IM-M0, IM-M2 and a named
+consumer, not XM-D1 or XM-M2), and it carries rows XM-26 to XM-30, XM-M6 and XM-M7 forward as IM rows. What stays
+here: findings are not maps, a concern's scope is a live map (XM-23 to XM-25), a typed model may only order a
+suspect list after calibration (XM-D9), fathom never mitigates (XM-X3) and there is no command center (XM-X4).
+
 Owner question 2026-09-29, architect decision. Can live maps carry review concerns, well-architected concerns
 and incident readiness? The scope of a concern and the prepared paths of an incident, yes. The findings, no.
 
@@ -156,8 +163,9 @@ whenever the map is served, the same shape as section 3b's `structural_claim`) s
 both are recomputed on read instead of re-reviewed on a calendar. A daemon that is down reads unable-to-check,
 never a violation.
 
-**Incident maps** (rows XM-26 to XM-28; the form future F4, the failure-mode playbook, takes). An incident map
-is a live map prepared ahead for a critical path, and each one joins:
+**Incident maps** (superseded by the amendment above: originally rows XM-26 to XM-28, and the form future F4 was
+then thought to take). An incident map was specified as a live map prepared ahead for a critical path, and each one
+joins:
 
 - owners (the ownership file);
 - the recent changes inside its footprint, the suspect list: commits in the last N hours or days, N set on the
@@ -178,7 +186,8 @@ served data, not a workspace, a chat or a timeline anyone edits during the incid
 never toggles a flag, rolls back, restarts, pages or opens a ticket. The knobs are listed so a human, or an agent
 holding its own authority, can act. The flow is read-only (XM-28), inside the dispatch boundary and law 15.
 
-**Experiments** (rows XM-29 and XM-30, readings XM-M6 and XM-M7; each has a kill path):
+**Experiments** (originally rows XM-29 and XM-30 and readings XM-M6 and XM-M7, now IM-16, IM-14, IM-M3 and IM-M4 in
+`docs/plans/incident-maps.md`; each has a kill path):
 
 1. **Postmortems update the map.** An incident's outcome names the incident map it created or sharpened for the
    affected path, extending the rule in `docs/intent/incidents.md` (an invariant, a test or a decision) with the
@@ -260,5 +269,5 @@ why lines, never source text beyond spans a reader could already read.
 | XM-M3 | pointer precision at least 10 percent (expanded over shown) and the reuse rate reported |
 | XM-M4 | the instruction-file swap A/B (section 3b, item 4): bytes fall, structural answers as accurate, tokens to proof not worse, bar fixed before the run; otherwise the prose stays |
 | XM-M5 | membership signals (section 3b, item 5): structure moves against query noise, and whether a receipt line changed an action; the receipt line is dropped when it never did |
-| XM-M6 | postmortem map updates (section 3c, experiment 1): on incidents over mapped paths, whether `localize` named the map and its suspect list held the cause; bar fixed before the run |
-| XM-M7 | the readiness report (section 3c, experiment 2): whether a named gap was confirmed by a real incident or review and closed; bar fixed before the run |
+| XM-M6 | postmortem map updates (section 3c, experiment 1): on incidents over mapped paths, whether `localize` named the map and its suspect list held the cause; bar fixed before the run (moved to IM-M3, ADR-058) |
+| XM-M7 | the readiness report (section 3c, experiment 2): whether a named gap was confirmed by a real incident or review and closed; bar fixed before the run (moved to IM-M4, ADR-058) |

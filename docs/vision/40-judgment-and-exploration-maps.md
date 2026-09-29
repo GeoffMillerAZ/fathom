@@ -151,6 +151,7 @@ answers by construction: nothing depends on it. These are tracked as questions Q
 | `ask` | under 40 percent fewer tokens than control at recall and precision within 0.05: drop the judged tier |
 | Traversal | provider none under 25 percent better than control: drop it; the model under 15 percent better than none: drop the scorer |
 | Maps | re-derivation under 15 percent, or the A/B misses 25 percent fewer tokens: no handoff channel |
+| Incident maps | IM-M0 with both arms under 0.5 recall at 20 or a median list over 25 rows: no suspect facet; pointer expansion under 10 percent: cut the pointer |
 | Carry-across | Reading 0 stop rule, or re-reads not down 30 percent: keep the deliberate silence |
 | Stall nudge | episodes do not shorten or cost per weight point does not drop: keep detection, drop the nudge |
 | Preflight model | under 0.05 AUROC over a fitted baseline: the fitted model serves |
@@ -205,6 +206,18 @@ replacing structural prose in CLAUDE.md and AGENTS.md with named map references 
 never applies it; reading XM-M4), and map membership diffs become a per-map structural changelog and a line on
 the change risk receipt (reading XM-M5). Two are deferred until live maps exist: human docs rendered from maps
 and undocumented-territory coverage. Design section 3b; rows XM-17 to XM-22, XM-D7, XM-D8.
+
+**Concern scopes and incident maps (design section 3c, amended by ADR-058).** Findings are not maps: a finding is a
+point claim under Review Kit's authority and a map is a working set. A concern's scope may be a live-map query (rows
+XM-23 to XM-25, F52). Incident maps are a different kind and not a member of the map family: a committed declaration
+(`.fathom/incidents.cue`: symptoms, footprint, window, runbook path, links, blind spots), written ahead of time by a
+team and reviewed like code, served through `localize`, one prompt-hook line and one CLI verb, with a suspect list
+computed at request time from a bounded git read and nothing stored. The two kinds link only by reference: a
+declaration may later name a live map as its scope (IM-D4). Outward connection is a rendered link and a typed
+parameter such as the deployed SHA, never a fetch by fathom; probes (command templates) and MCP next queries are
+deferred behind an instrument and a consumer (F56), and fathom-side connectors, attach and any command center are
+refused. Its gate is a zero-build replay (IM-M0), pointer use (IM-M2) and a named consumer, not the handoff A/B.
+Design `docs/design/incident-maps.md`; plan `docs/plans/incident-maps.md` (IM-); future F55.
 
 **Where a typed model helps.** Mostly nowhere: the planner already decided what matters. Optional roles are a
 drafted purpose line, an expensive judged column inside a map's footprint (after J0), and a planner's traversal
