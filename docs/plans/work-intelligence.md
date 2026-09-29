@@ -42,7 +42,7 @@ and are not repeated here. WI-16 to WI-19 stay open and are what WS-8 and WS-12 
 - [x] The hotspots view {id: WI-13, symbol: renderHotspots, package: cmd/fathom, reachable_from: TestConsoleHotspots, needs: "WI-12"}
 - [x] I58: every work-intelligence and progress view keys rows by agent identity only; a human name or email never appears as a row key {id: WI-14, symbol: agentIdentityKey, package: internal/console, reachable_from: TestWorkViewsKeyByAgentIdentityOnly}
 - [ ] Nearest-neighbour index over the last 5,000 proven rows' feature vectors, rebuilt in the background {id: WI-15, symbol: rowFeatureIndex, package: internal/console, reachable_from: TestRowFeatureIndexBounded, needs: "WI-5"}
-  <!-- library landed 3832dbaa; product wiring open: rowFeatureIndex and RowFeatureIndexFor have no production caller and nothing rebuilds the index in the background (its consumer is WI-16 DifficultyProfile). -->
+  <!-- library landed 3832dbaa; WI-16's preflight (cmd/fathom/planspreflight.go) now calls RowFeatureIndexFor, so verify --strict reads rowFeatureIndex wired (2026-09-29), but the index is built on read and memoized per watermark: nothing rebuilds it in the background (ADR-049 decision 2 holds background work until RT-M1), so the row stays open on that clause. -->
 
 ## Wave 4: task preflight (U6, the Jev site)
 
