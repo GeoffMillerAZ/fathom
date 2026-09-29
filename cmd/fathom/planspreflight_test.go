@@ -197,7 +197,7 @@ func TestConsolePlanRowPreflight(t *testing.T) {
 		t.Error("the preflight panel offers no control that starts, assigns or routes work")
 	}
 	if regexp.MustCompile(`\b(bg|text|border)-(red|green|blue|gray|slate|zinc)-\d`).MatchString(panel) || strings.Contains(panel, "dark:") {
-		t.Error("role utilities only (cmd/fathom/CLAUDE.md)")
+		t.Error("role utilities only (cmd/fathom/AGENTS.md)")
 	}
 
 	env := f.pageJSON(t, "/plans/proof-service/settlement/rows/S-2")

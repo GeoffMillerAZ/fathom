@@ -14,7 +14,7 @@
 // — raw claude -p transcripts, per-arm ArmResult JSON, the aggregated
 // results-<ts>.json, and the rendered summary table — is a run artifact and
 // lands under workspace/artifacts/context-bench/ per the repo's workspace/
-// convention (CLAUDE.md), never committed.
+// convention (AGENTS.md), never committed.
 //
 // # Scoring rules
 //

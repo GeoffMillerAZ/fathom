@@ -3,7 +3,7 @@ package learning
 // INVALID examples — kept commented so `cue vet ./...` stays green; the Go
 // test (internal/semantic/learningthresholds_schema_test.go) asserts each
 // fails when uncommented into a unification (repo convention,
-// schema/CLAUDE.md).
+// schema/AGENTS.md).
 //
 // 1. Zero promotion corroboration threshold (must be > 0):
 // bad1: #Learning & {

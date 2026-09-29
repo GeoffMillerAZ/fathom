@@ -10,7 +10,7 @@ package review
 // Pure, like the rest of this package: the caller resolves plans, verify
 // verdicts and certificates (cmd/fathom trace export); this file joins
 // them. Identical input always yields an identical, identically-ordered
-// matrix (determinism contract, internal/CLAUDE.md) — `fathom trace verify`
+// matrix (determinism contract, internal/AGENTS.md) — `fathom trace verify`
 // depends on it for byte-identical re-verification.
 
 import (

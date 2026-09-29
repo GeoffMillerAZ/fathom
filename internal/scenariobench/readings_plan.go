@@ -18,7 +18,7 @@ import (
 // fix twice (the lesson O4 already paid for once).
 
 // planCheckboxRe matches a Markdown checklist item: "- [ ] title", "* [x]
-// title" — the same shape docs/CLAUDE.md's plan grammar v2 and
+// title" — the same shape docs/AGENTS.md's plan grammar v2 and
 // internal/verify's taskLineRe both use.
 var planCheckboxRe = regexp.MustCompile(`^\s*[-*]\s+\[([ xX~-])\]\s+(.*\S)\s*$`)
 

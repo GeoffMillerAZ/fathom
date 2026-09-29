@@ -9,7 +9,7 @@
 // internal/modulehost already imports internal/semantic (for
 // ObligationsFor, reused per module's store), so internal/semantic
 // importing internal/modulehost back would cycle. modserve sits ABOVE both
-// — it is the pure, independently-testable domain layer (CLAUDE.md's
+// — it is the pure, independently-testable domain layer (internal/AGENTS.md's
 // "Analyzer: a pure package... deterministic; tested" convention) that
 // internal/mcp's obligations tool handler calls; no MCP server needs to be
 // spun up to exercise Bind's merge/budget/staleness-note logic.

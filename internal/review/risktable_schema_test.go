@@ -1,6 +1,6 @@
 // risktable_schema_test.go asserts the schema/risk CUE negatives
 // documented, commented out, in schema/risk/testdata/invalid.cue (repo
-// convention, schema/CLAUDE.md; mirrors internal/testlayer/schema_test.go).
+// convention, schema/AGENTS.md; mirrors internal/testlayer/schema_test.go).
 package review
 
 import (

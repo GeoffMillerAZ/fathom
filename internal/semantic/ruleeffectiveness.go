@@ -10,7 +10,7 @@
 // promotion and retirement under published thresholds is GL-13's own,
 // separate, announced step).
 //
-// Determinism (internal/CLAUDE.md): now is injected by every caller, never
+// Determinism (internal/AGENTS.md): now is injected by every caller, never
 // read from time.Now() here; output is sorted by RuleID.
 package semantic
 
@@ -136,7 +136,7 @@ type RuleEffectivenessResult struct {
 // whole point for that class), plus any rule ID events mentions that
 // ruleIDs left out (an event that already happened is never dropped for a
 // caller's incomplete rule list). now is the injected clock
-// (internal/CLAUDE.md's determinism contract): production callers pass
+// (internal/AGENTS.md's determinism contract): production callers pass
 // time.Now(), tests pass a fixed instant. Output is sorted by RuleID.
 func RuleEffectiveness(ruleIDs []string, events []RuleOutcomeEvent, now time.Time) []RuleEffectivenessResult {
 	known := make(map[string]bool, len(ruleIDs))

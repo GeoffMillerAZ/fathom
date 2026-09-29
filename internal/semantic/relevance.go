@@ -6,7 +6,7 @@ package semantic
 // every rule inside a tier still fell back to document order (rawfallback's
 // own StartLine tie-break) or a raw byte-length/alphabetical tie-break
 // (obligationsCore's specificity/rule-text tie-break) once it got there.
-// vs-pilot-6 found the exact shape this produces: internal/CLAUDE.md's
+// vs-pilot-6 found the exact shape this produces: internal/AGENTS.md's
 // "Store purity" section (an unrelated decoy) served ahead of its own
 // "Adding things" section (the rule that actually names how to wire up a
 // new extractor) for internal/extractor/goextract.go, on every trial the
@@ -24,7 +24,7 @@ package semantic
 // it sits in each ordering).
 //
 // Deliberately NOT a length-normalised density (hits / len(text)): an
-// early version of this file scored internal/CLAUDE.md's "Adding things"
+// early version of this file scored internal/AGENTS.md's "Adding things"
 // section (19 lines, four different addition recipes, only one of which —
 // "Extractor" — is about goextract.go) BELOW the much shorter "Store
 // purity" section, purely because the other three recipes diluted the

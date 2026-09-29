@@ -728,7 +728,7 @@ func stickyInstrumentFaultMessage(lostReason string) (msg string, sticky bool) {
 	}
 }
 
-// ledgerClock is cmdLedger's own injected clock (internal/CLAUDE.md's
+// ledgerClock is cmdLedger's own injected clock (internal/AGENTS.md's
 // determinism contract: inject clocks, never call time.Now() directly in
 // logic a test needs to pin) — GeneratedAt on every row cmdLedger files
 // (O55 item 5). Tests override it for a deterministic timestamp; production

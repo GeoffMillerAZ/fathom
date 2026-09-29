@@ -16,7 +16,7 @@ import (
 // internal/verify.ParseMarkdownPlan (the same parser verify_plan/`fathom
 // verify` use), and report every row whose {symbol[, package]} contract
 // names a symbol defined in one of this diff's changed files. README.md is
-// never a gated plan (docs/CLAUDE.md) and is skipped. Best-effort: a glob
+// never a gated plan (docs/AGENTS.md) and is skipped. Best-effort: a glob
 // or read failure degrades to an empty result, never an error — this is a
 // review-comment enrichment, not a correctness-critical path. Deterministic:
 // results are sorted by (plan, row id).

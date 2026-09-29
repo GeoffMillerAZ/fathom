@@ -1,9 +1,9 @@
 # The fleet index — daemon, refresh discipline, deploys, dogfood
 
 How agents working in fathom (or any fleet repo) consume fathom itself. The
-root `CLAUDE.md` carries the one-line rules; this guide is the full
-instruction set. (Moved out of the root CLAUDE.md 2026-08-12 — this is the
-canonical home now.)
+root `AGENTS.md` carries the one-line rules; this guide is the full
+instruction set. (Moved out of the root instruction file, then CLAUDE.md,
+2026-08-12 — this is the canonical home now.)
 
 ## The always-on daemon
 

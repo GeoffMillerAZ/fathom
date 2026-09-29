@@ -170,7 +170,7 @@ func withRuleVerdictAsk(sessionID, service, repoRelFile, rule, src, text string,
 }
 
 // withRuleVerdictAskAt is withRuleVerdictAsk with an injected clock (the
-// determinism contract, internal/CLAUDE.md) — tests pin ruleVerdictMemoTTL
+// determinism contract, internal/AGENTS.md) — tests pin ruleVerdictMemoTTL
 // behavior through it.
 func withRuleVerdictAskAt(sessionID, service, repoRelFile, rule, src, text string, ok bool, now time.Time) (string, bool) {
 	prior, found := readRuleVerdictMemo(sessionID, service, repoRelFile, now)

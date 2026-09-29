@@ -134,7 +134,7 @@ const pluginTemplateDigestPin = "0f1404024d979a5b"
 // skill sources, the hook spec table, and the default surface/groups
 // renderPluginSurface stamps into the manifests. Deliberately EXCLUDES
 // pluginVersion and buildinfo.Version() (varying build metadata that would
-// make the digest chase its own tail). internal/CLAUDE.md's determinism
+// make the digest chase its own tail). internal/AGENTS.md's determinism
 // contract holds: no clock, no map-iteration order (every input is sorted
 // first).
 func pluginTemplateDigest() (string, error) {

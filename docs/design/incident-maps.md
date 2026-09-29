@@ -166,7 +166,7 @@ Computed, not authored: the owning module's manifests and lockfiles (`go.mod`, `
 lockfile, and the like) join the footprint as labeled "dependency inputs", because a dependency bump is a classic
 cause that a service-path glob misses.
 
-### 5.4 Load-time refusals (valid and invalid testdata pairs per `schema/CLAUDE.md`)
+### 5.4 Load-time refusals (valid and invalid testdata pairs per `schema/AGENTS.md`)
 
 - A missing `purpose`.
 - Secret-shaped strings, using the detector behind I14's research-bundle tests, plus structural denials the

@@ -41,7 +41,7 @@ type ProjectInput struct {
 // was met at an earlier date and the cell computed here does not currently
 // meet it. Entries sort by (kind, id); each entry's cells sort by the
 // capability's Level rank when it has one, else lexically. now is the
-// injected clock design §4 requires (internal/CLAUDE.md: never call
+// injected clock design §4 requires (internal/AGENTS.md: never call
 // time.Now() in query/analysis logic).
 func Project(in ProjectInput, now func() time.Time) Matrix {
 	entries := make([]Entry, 0, len(in.Entries))

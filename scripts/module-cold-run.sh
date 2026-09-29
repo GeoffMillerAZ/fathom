@@ -21,7 +21,7 @@
 #   scripts/module-cold-run.sh
 #
 # All state lives under workspace/tmp/module-cold-run-<pid>/ (repo
-# convention: CLAUDE.md's workspace/ discipline — never elsewhere in the
+# convention: AGENTS.md's workspace/ discipline — never elsewhere in the
 # tree) and is left in place on failure for inspection; a clean run removes
 # it.
 
@@ -51,7 +51,7 @@ step() { echo >&2; echo "== $* ==" >&2; }
 # without the echoed command line corrupting the captured JSON.
 run() { echo "+ $*" >&2; "$@"; }
 
-step "0. build a fresh fathom binary (never bin/fathom — that binary is the daemon's installed copy, CLAUDE.md's binary-staleness discipline)"
+step "0. build a fresh fathom binary (never bin/fathom — that binary is the daemon's installed copy, AGENTS.md's binary-staleness discipline)"
 export MACOSX_DEPLOYMENT_TARGET=14.0
 export CGO_ENABLED=1
 run go build -o "${BIN}" ./cmd/fathom

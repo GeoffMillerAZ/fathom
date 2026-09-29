@@ -78,7 +78,7 @@ precedent). Before the row is claimed, its commit carries:
    over MCP — the in-repo callers found on `86d4c5e2` are listed per row below and each is
    rewired first; (b) no shipped skill, stanza or `docs/use-cases/*.md` worked example
    directs an agent to it — each hit is rewritten in the same commit (a `## Maintained`
-   line updated per `docs/CLAUDE.md`).
+   line updated per `docs/AGENTS.md`).
 3. **Dependent plan rows.** A claimed `[x]` row anchored on a removed symbol would turn
    claimed-unproven. Where the capability survives under another symbol, the row is
    **re-anchored** in the same commit (title unchanged, new `symbol:`/`reachable_from:`).

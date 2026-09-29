@@ -1,6 +1,6 @@
 // learningthresholds_schema_test.go asserts the schema/learning CUE
 // negatives documented, commented out, in
-// schema/learning/testdata/invalid.cue (repo convention, schema/CLAUDE.md;
+// schema/learning/testdata/invalid.cue (repo convention, schema/AGENTS.md;
 // mirrors internal/review/risktable_schema_test.go's precedent for
 // schema/risk).
 package semantic

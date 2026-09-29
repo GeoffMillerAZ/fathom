@@ -10,7 +10,7 @@
 // function a fully-resolved GitHubReviewInput. NO model prose anywhere on
 // this path: every byte here is a fixed Go template over already-computed
 // data, so identical input always renders identical Markdown (the
-// determinism contract, internal/CLAUDE.md).
+// determinism contract, internal/AGENTS.md).
 package review
 
 import (

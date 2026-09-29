@@ -11,7 +11,7 @@ import (
 // surface-reckoning.md, design §5 row SR-53, F-51): doctorStrangerCheck
 // times a sequence of named steps against G16's 5-minute bar, using an
 // INJECTED clock (never a bare time.Now — the determinism contract,
-// internal/CLAUDE.md) so the pass/fail boundary is provably exact without
+// internal/AGENTS.md) so the pass/fail boundary is provably exact without
 // a single real timed operation.
 func TestDoctorStrangerCheckTimed(t *testing.T) {
 	fakeClock := func(times ...time.Time) func() time.Time {

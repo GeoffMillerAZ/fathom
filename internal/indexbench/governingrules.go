@@ -5,9 +5,9 @@
 // testdata/indexbench/governing-rules.json carries forty hand-derived
 // labels — {path, governing_rule: {source, line_hint, text}, notes} — one
 // per file across the fixture fleet and this repository's own tree, each
-// written by READING the file's actual governing doc (internal/CLAUDE.md,
-// cmd/fathom/CLAUDE.md, docs/CLAUDE.md, schema/CLAUDE.md, the root
-// CLAUDE.md, ADR.md, docs/intent/) — never by running the obligations
+// written by READING the file's actual governing doc (internal/AGENTS.md,
+// cmd/fathom/AGENTS.md, docs/AGENTS.md, schema/AGENTS.md, the root
+// AGENTS.md, ADR.md, docs/intent/) — never by running the obligations
 // engine and copying its answer. That independence is the whole point of a
 // FREE oracle (bench-pyramid §3.1's L0 discipline, applied to governance
 // instead of go/types): the label is a fact about the repository, not a

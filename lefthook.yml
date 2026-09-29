@@ -208,7 +208,7 @@ pre-push:
 #     This used to be a shell `fathom ingest --store workspace/db/fleet.sqlite`
 #     against the very store the daemon serves: the write path O16 rode when a
 #     wedged reader replaced a good index with a plausible empty one, and the
-#     thing CLAUDE.md's Index-first rule forbids. `post-commit-hook` calls the
+#     thing AGENTS.md's question-shape routing rule forbids. `post-commit-hook` calls the
 #     daemon's ingest tool instead and falls back to the store-direct path only
 #     when the daemon is unreachable — and there IT-15's refusal is in force.
 #     Always exits 0; a commit is never blocked on a refresh.

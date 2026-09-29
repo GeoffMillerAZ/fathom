@@ -5,7 +5,7 @@ package verify
 // check, unconditional and pure) AND it must not have been introduced by the
 // same edit/commit that claims the row done. THAT half needs one prior
 // version of the plan file to compare against — git history, which this
-// package otherwise never touches (VerifyPlan is pure, docs/CLAUDE.md). The
+// package otherwise never touches (VerifyPlan is pure, docs/AGENTS.md). The
 // split mirrors the lexical oracle's own FileEvidence/DirFiles/OverlayLocal
 // pattern exactly: the comparison is pure once handed bytes (AnnotateSelfSkip),
 // and the ONE git read that supplies those bytes lives entirely in the

@@ -71,7 +71,7 @@ package semantic
 	// only the slots left over — O23 is the defect this closes: six
 	// plan-row spec-bindings about C++, CUE and tree-sitter filled the
 	// whole budget for one Go file and displaced 65 more, and the
-	// internal/CLAUDE.md rule the file is actually governed by was not
+	// internal/AGENTS.md rule the file is actually governed by was not
 	// served at all. Displaced still counts BOTH roles, so the eviction
 	// stays visible.
 	//

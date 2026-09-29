@@ -46,7 +46,7 @@ an authoring surface or execution engine after the Dagger post-mortem (CUE as au
 UX and CUE as engine both failed with a funded team). The entries stay JSON (target lists,
 readings) and Go data (registries), authored where their owners already work. CUE checks
 their shape: `schema/support/schema.cue` validates the target file, the non-language
-readings and the `--json` output, with valid/invalid testdata pairs (`schema/CLAUDE.md`).
+readings and the `--json` output, with valid/invalid testdata pairs (`schema/AGENTS.md`).
 Nobody writes a matrix row in CUE.
 
 ## 2. Kinds, registries and targets
@@ -147,7 +147,7 @@ Route `/support`, group System, declared through `declarePage` in
 `cmd/fathom/console_support.go`; the projection lives in `internal/console` and renders
 `fathom support --json` (ADR-045: every panel renders a verb, and its footer names the
 verb, the sources, the denominator and the freshness). App-kit doctrine
-(`cmd/fathom/CLAUDE.md`): search the kit and the appkit MCP before any markup; role
+(`cmd/fathom/AGENTS.md`): search the kit and the appkit MCP before any markup; role
 utilities only; `stat.Absent` for anything uninstrumented; CSS through `task ui:css`; a
 screenshot of both themes before the row is claimed. If the kit has no heatmap, it is built
 and promoted upward (D13), not hand-rolled in this repo.

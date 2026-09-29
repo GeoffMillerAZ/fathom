@@ -209,7 +209,7 @@ func linkByConsumerLink(t *testing.T, links []syslink.Link, service, node string
 }
 
 // TestCertifyLinksDeterministic proves the order contract
-// (internal/CLAUDE.md): any permutation of the links and of each end's
+// (internal/AGENTS.md): any permutation of the links and of each end's
 // certificates yields the identical report, and the caller's inputs are
 // not reordered or mutated.
 func TestCertifyLinksDeterministic(t *testing.T) {

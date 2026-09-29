@@ -17,7 +17,7 @@ import (
 // WithGitLog → parseGitLog → SetCommits path gitlog_pipeline_test.go
 // exercises), never re-walked at request time, and stored so a later read
 // (store.FileChurn) is a plain lookup. Commit dates are built relative to
-// "now" at test time (internal/CLAUDE.md determinism: never mix a fixed
+// "now" at test time (internal/AGENTS.md determinism: never mix a fixed
 // fixture date with the real clock), so the test never crosses the 180-day
 // horizon as calendar time passes.
 func TestFileChurnAtIngest(t *testing.T) {

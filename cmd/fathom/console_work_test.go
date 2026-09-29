@@ -53,7 +53,7 @@ func TestConsoleWorkIntelligencePages(t *testing.T) {
 		t.Error("12 and 2 units are not G2-admissible: no causal sentence")
 	}
 	if regexp.MustCompile(`\b(bg|text|border)-(red|green|blue|gray|slate|zinc)-\d`).MatchString(out) || strings.Contains(out, "dark:") {
-		t.Error("role utilities only (cmd/fathom/CLAUDE.md)")
+		t.Error("role utilities only (cmd/fathom/AGENTS.md)")
 	}
 	empty := renderWorkIntelligence(console.WorkIntelligence(nil, nil), console.SourceRead{State: console.StatePresent}, 3, "")
 	if !strings.Contains(empty, "data-scorecard-empty") || !strings.Contains(empty, "3 proven rows unjoined") {

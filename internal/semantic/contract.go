@@ -7,7 +7,7 @@ package semantic
 // O23 is the defect. Asked what governs internal/extractor/goextract.go,
 // the obligations tool served six spec-bindings about C++ toolchains, CUE
 // and tree-sitter and displaced 65 more; not one of them named that
-// package, and the internal/CLAUDE.md extractor-wiring rule the file is
+// package, and the internal/AGENTS.md extractor-wiring rule the file is
 // actually governed by was not served at all. Every one of those rows had
 // bound to the file because its prose contained the word "extractor" — the
 // O14 defect at fleet scale.

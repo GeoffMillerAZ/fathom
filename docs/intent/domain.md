@@ -142,7 +142,7 @@ shaped decisions, and the assumptions the design rests on.
   prints only for startup and clear. Codex has no SessionStart hook, so `fathom thread
   brief` is instructed instead. Source: `CHANGELOG.md` 2026-08-13 (TH), `AGENTS.md`.
 - Go map iteration is randomized. Consequence: candidates are sorted before matching;
-  determinism is a tested contract. Source: `.fathom/observations.md` O1, `internal/CLAUDE.md`.
+  determinism is a tested contract. Source: `.fathom/observations.md` O1, `internal/AGENTS.md`.
 - SQLite WAL gives many cross-process readers beside one writer; DuckDB's single writer
   forced daemon-stop rituals and made daemon wedges total outages. Source: ADR-020.
 - The Go linker writes to `TMPDIR`, not `GOTMPDIR`; scratch inside the module makes

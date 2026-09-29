@@ -107,7 +107,7 @@ func cmdSupport(args []string, stdout, stderr io.Writer) int {
 
 // supportSources is every already-loaded input buildSupportMatrix needs —
 // no hidden file read, no hidden clock inside the join itself
-// (internal/CLAUDE.md's determinism contract, the same discipline design §4
+// (internal/AGENTS.md's determinism contract, the same discipline design §4
 // holds internal/support.Project to).
 type supportSources struct {
 	Queue      []langbench.QueueEntry

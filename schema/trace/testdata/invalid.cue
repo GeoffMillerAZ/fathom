@@ -2,7 +2,7 @@ package trace
 
 // INVALID examples — kept commented so `cue vet ./...` stays green; the Go
 // test (internal/review/tracemapping_schema_test.go) asserts each fails when
-// uncommented into a unification (repo convention, schema/CLAUDE.md).
+// uncommented into a unification (repo convention, schema/AGENTS.md).
 //
 // 1. No clauses (at least one is required):
 // bad1: #StandardMapping & {

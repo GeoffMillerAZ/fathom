@@ -15,7 +15,7 @@ import (
 
 // TestVerify_FindCallersReceipt_Reproduces is VB-20's golden test
 // (docs/plans/verbs.md): a receipt shaped like find_callers' own answer
-// over the fauxtown fixture fleet (internal/CLAUDE.md's deterministic
+// over the fauxtown fixture fleet (internal/AGENTS.md's deterministic
 // fixture fleet; payment-service, staged as its own module —
 // StageFauxtownModule, indexbench's own oracle-hermetic pattern) reproduces
 // from a BARE git checkout, using go/types and git alone — no fathom

@@ -20,7 +20,7 @@ package main
 //     absences, and its note says so. The scoreboard accrues once daily
 //     snapshots are recorded — it never back-fills.
 //
-// Rendering follows the house rules (cmd/fathom/CLAUDE.md, binding): kit
+// Rendering follows the house rules (cmd/fathom/AGENTS.md, binding): kit
 // charts only (viz.Sparkline per contiguous run of measured days, viz.Bars
 // for the distribution), stat.Absent for every absence, role utilities
 // only. A sparkline is drawn once per RUN of measured days — an absent day

@@ -83,7 +83,7 @@ func (l *Logger) FlushDedupe(now time.Time) {
 	}
 	l.dedupe.mu.Unlock()
 
-	// Determinism contract (internal/CLAUDE.md): map iteration order must
+	// Determinism contract (internal/AGENTS.md): map iteration order must
 	// never reach a result — sort by key before emitting.
 	sort.Slice(pending, func(i, j int) bool { return pending[i].key < pending[j].key })
 

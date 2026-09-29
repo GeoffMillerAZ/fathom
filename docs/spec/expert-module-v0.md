@@ -62,7 +62,7 @@ regardless of how good its answers otherwise sound.
 Normative shape: `schema/module/schema.cue`'s `#Module` definition, tested
 by `internal/modspec/schema_test.go` (positive: `schema/module/testdata/
 valid.cue`; negatives: `schema/module/testdata/invalid.cue`, asserted live by
-the Go test per this repo's schema convention — `schema/CLAUDE.md`).
+the Go test per this repo's schema convention — `schema/AGENTS.md`).
 
 **Closedness is an authoring gate, not a reader-conformance instrument.**
 `#Module` is a CUE *closed* struct — a manifest instance with an unrecognized

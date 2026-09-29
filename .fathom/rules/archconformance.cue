@@ -1,12 +1,12 @@
 // fathom's own architecture-conformance rule pack (C4-4,
 // docs/plans/review-verb.md) — dogfoods the three-layer boundary this repo's
-// own CLAUDE.md and ADR.md describe (see "## Architecture (three layers —
+// own AGENTS.md and ADR.md describe (see "## Architecture (three layers —
 // see ADR.md)"):
 //
 //   - internal/connector must not import internal/query.
 //   - internal/extractor must not import internal/mcp.
 //   - internal/analysis/* packages are pure: they import neither
-//     internal/mcp nor internal/store (CLAUDE.md's "Adding things ▸
+//     internal/mcp nor internal/store (internal/AGENTS.md's "Adding things ▸
 //     Analyzer" convention: "a pure internal/analysis/<name> package over
 //     []core.SymbolNode/[]core.Observation").
 //

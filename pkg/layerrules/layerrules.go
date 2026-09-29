@@ -10,7 +10,7 @@
 // test importing internal/guardspec directly builds only inside fathom's
 // own tree, breaking every external adopter — VB-15's whole "stranger"
 // premise). This package is the same shape as pkg/client's re-export of
-// internal/core/internal/semantic for external consumers (CLAUDE.md "The
+// internal/core/internal/semantic for external consumers (AGENTS.md "The
 // domain model is the keystone ... pkg/client re-exports for external
 // consumers"), scoped narrowly to what a generated layer_rules_test.go
 // needs.

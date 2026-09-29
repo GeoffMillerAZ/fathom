@@ -1456,7 +1456,7 @@ files at the end.
 file, `init`/`reconcile --apply` trim the stanza body — dropping the opening-moves worked
 example first, then the continuity paragraph — to the smallest cut that fits every budgeted
 file, applied identically to CLAUDE.md and AGENTS.md so the two never diverge; a trim
-prints the note naming which tier it dropped. **This repo's own `CLAUDE.md` sits at exactly
+prints the note naming which tier it dropped. **This repo's own `AGENTS.md` sits at exactly
 its 120-line budget right now** — the next line of growth here drops the opening-moves
 table first, before anything else in the stanza gives way.
 
