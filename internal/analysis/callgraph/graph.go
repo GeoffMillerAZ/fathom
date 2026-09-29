@@ -638,8 +638,13 @@ func TestImpact(g *Graph, symbol string) []string {
 // row from before a symbol was renamed or removed, or an EdgeUnresolved
 // edge — its ToSymbol is a "<unresolved:N>" callsite marker, never a real
 // key) is silently skipped: AddTypedEdges never invents a graph vertex the
-// extraction pass didn't produce. A (caller, callee) pair already present
-// from the syntax pass is not duplicated in the adjacency lists.
+// extraction pass didn't produce — with one exception, package
+// initialization. The typed pass attributes a package's variable
+// initializers to "<pkg>.init" (TypedEdgeEpoch 3); a package with such
+// initializers but no init() function has no indexed node under that key,
+// so its first edge adds one (packageInitNode). A (caller, callee) pair
+// already present from the syntax pass is not duplicated in the adjacency
+// lists.
 func AddTypedEdges(g *Graph, edges []core.Edge) {
 	if len(edges) == 0 {
 		return
@@ -657,11 +662,15 @@ func AddTypedEdges(g *Graph, edges []core.Edge) {
 		if e.FromSymbol == "" || e.ToSymbol == "" {
 			continue
 		}
-		if _, ok := g.nodes[e.FromSymbol]; !ok {
-			continue
-		}
 		if _, ok := g.nodes[e.ToSymbol]; !ok {
 			continue
+		}
+		if _, ok := g.nodes[e.FromSymbol]; !ok {
+			n, isInit := packageInitNode(e)
+			if !isInit {
+				continue
+			}
+			g.nodes[e.FromSymbol] = n
 		}
 		ek := e.FromSymbol + "\x00" + e.ToSymbol
 		if _, marked := g.edgeKind[ek]; !marked {
@@ -685,6 +694,28 @@ func AddTypedEdges(g *Graph, edges []core.Edge) {
 	for k := range callersTouched {
 		sort.Strings(g.callers[k])
 	}
+}
+
+// packageInitNode returns the vertex for a typed edge FROM a package's
+// initialization — "<svc>::<dir>/<pkg>.init", whose FromFile sits in that
+// package's directory — when no init() function put one in the index.
+// Anything else (a method key, a file outside the key's directory) is not
+// package initialization and gets no vertex.
+func packageInitNode(e core.Edge) (core.SymbolNode, bool) {
+	svc, rest, ok := strings.Cut(e.FromSymbol, "::")
+	if !ok || !strings.HasSuffix(rest, ".init") || e.FromFile == "" {
+		return core.SymbolNode{}, false
+	}
+	qual := strings.TrimSuffix(rest, ".init")
+	pkg := qual[strings.LastIndex(qual, "/")+1:]
+	if pkg == "" || strings.Contains(pkg, ".") {
+		return core.SymbolNode{}, false
+	}
+	n := core.SymbolNode{Service: svc, Package: pkg, Name: "init", Kind: core.KindGoFunc, FilePath: e.FromFile, Tier: core.TierVerified}
+	if n.Key() != e.FromSymbol {
+		return core.SymbolNode{}, false
+	}
+	return n, true
 }
 
 // containsStr reports whether want is present in ss.

@@ -760,29 +760,12 @@ func resolveFileEdges(
 		return false
 	}
 
-	for _, decl := range file.Decls {
-		fn, ok := decl.(*ast.FuncDecl)
-		if !ok || fn.Name == nil || fn.Body == nil {
-			continue
-		}
-		if fn.Name.Name == "init" {
-			// Documented skip: goextract records every init() under the
-			// bare name "init", so a package with more than one init has an
-			// ambiguous SymbolKey the store can hold multiple rows under —
-			// attaching typed edges to it could silently point at the
-			// wrong one. See the package doc.
-			continue
-		}
-		callerFn, ok := info.Defs[fn.Name].(*types.Func)
-		if !ok {
-			continue
-		}
-		callerKey, ok := symbolKeyForFunc(serviceID, repoPath, fset, callerFn)
-		if !ok {
-			continue
-		}
-		fromFile := repoRelSlash(repoPath, fset.Position(fn.Pos()).Filename)
-
+	// walk resolves every call site and func-value reference under root and
+	// attributes it to callerKey. It is the body walk of one FuncDecl — or
+	// of one file's package-level variable initializers, which Go runs as
+	// part of package initialization and so attributes to "<pkg>.init"
+	// (the same key the package's init() functions carry).
+	walk := func(root ast.Node, callerKey, fromFile string) {
 		// addDirect/addDispatch are shared by the call pass (EdgeDirect/
 		// EdgeIfaceDispatch below) and the value-ref pass (EdgeFuncValue):
 		// same firstParty/targetAllowed/symbolKeyForFunc discipline, only
@@ -834,7 +817,7 @@ func resolveFileEdges(
 		// Inspect itself reaches it.
 		skip := map[ast.Expr]bool{}
 
-		ast.Inspect(fn.Body, func(n ast.Node) bool {
+		ast.Inspect(root, func(n ast.Node) bool {
 			switch node := n.(type) {
 			case *ast.CallExpr:
 				funExpr := node.Fun
@@ -917,6 +900,57 @@ func resolveFileEdges(
 			}
 			return true
 		})
+	}
+
+	fileName := fset.Position(file.Pos()).Filename
+	testFile := strings.HasSuffix(fileName, "_test.go")
+	for _, decl := range file.Decls {
+		if gd, ok := decl.(*ast.GenDecl); ok && gd.Tok == token.VAR && !testFile && pkg.Types != nil {
+			// Package-level variable initializers (`var run = cmdRun`, a
+			// route table, `var g = memo.NewGroup[...](...)`, a func
+			// literal kept in a var so tests can swap it) have no
+			// enclosing function, so before TypedEdgeEpoch 3 nothing they
+			// referenced had a caller. They run during package
+			// initialization: "<pkg>.init" is their caller. A _test.go
+			// file's initializers are test code and stay out.
+			fromFile := repoRelSlash(repoPath, fileName)
+			initKey := core.SymbolKey(serviceID, core.QualifiedPackage(fromFile, pkg.Types.Name()), "init")
+			for _, spec := range gd.Specs {
+				if vs, ok := spec.(*ast.ValueSpec); ok {
+					for _, v := range vs.Values {
+						walk(v, initKey, fromFile)
+					}
+				}
+			}
+			continue
+		}
+		fn, ok := decl.(*ast.FuncDecl)
+		if !ok || fn.Name == nil || fn.Body == nil {
+			continue
+		}
+		if fn.Name.Name == "init" && testFile {
+			// Every init() of a package shares one key ("<pkg>.init" —
+			// goextract records each under the bare name), and the runtime
+			// runs every one of them whenever the package is linked, so a
+			// product init's edges are that key's edges: a page, verb or
+			// handler an init registers by reference is reached from the
+			// package's init (product wiring, ADR-018 amendment
+			// 2026-09-28). Each edge's FromFile still names the init that
+			// made it. A _test.go init is test code: attributing its
+			// edges to the same key would wire what only a test build
+			// registers, so it stays out.
+			continue
+		}
+		callerFn, ok := info.Defs[fn.Name].(*types.Func)
+		if !ok {
+			continue
+		}
+		callerKey, ok := symbolKeyForFunc(serviceID, repoPath, fset, callerFn)
+		if !ok {
+			continue
+		}
+		fromFile := repoRelSlash(repoPath, fset.Position(fn.Pos()).Filename)
+		walk(fn.Body, callerKey, fromFile)
 	}
 	return fileEdgeResult{
 		edges:             edges,
@@ -1170,8 +1204,9 @@ func concreteMethod(mset *types.MethodSet, from *types.Package, methodName strin
 // and invisible until a file in that package happened to change.
 // Epoch 2 = PC-32: from/to keys carry the package directory
 // (core.QualifiedPackage); every row written before it named the package
-// by declared name only.
-const TypedEdgeEpoch = "2"
+// by declared name only. Epoch 3 (2026-09-28): a non-test init() is a
+// caller, its edges keyed "<pkg>.init"; rows written before it carry none.
+const TypedEdgeEpoch = "3"
 
 // packageContentHash hashes pkg's compiled Go files by repo-relative path +
 // content, sorted, under the TypedEdgeEpoch salt — the per-package cache

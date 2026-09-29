@@ -18,7 +18,7 @@ import (
 // module (its own go.mod) used to exercise EnrichTypedEdges's resolution
 // rules: direct calls, interface dispatch (with the three ADR-021 §3 O9
 // residue shapes — adapter Complete, Store contract-suite dispatch, Ping),
-// func/method values, embedded promotion, generics, and multi-init skip.
+// func/method values, embedded promotion, generics, and multi-init keying.
 func typedFixtureDir(t *testing.T) string {
 	t.Helper()
 	abs, err := filepath.Abs(filepath.Join("testdata", "typedfixture"))
@@ -49,8 +49,8 @@ func key(pkg, name string) string { return core.SymbolKey("typedfixture", pkg, n
 
 // TestEnrichTypedEdges_Resolution is the CT-3 fixture matrix: direct call,
 // interface dispatch (2 impls, three residue shapes), func value, method
-// value, embedded promotion, generics instantiation, and the multi-init
-// documented skip — table-tested against the fixture module by calling
+// value, embedded promotion, generics instantiation, and multi-init keying
+// — table-tested against the fixture module by calling
 // EnrichTypedEdges directly (CT-2's entry point).
 func TestEnrichTypedEdges_Resolution(t *testing.T) {
 	dir := typedFixtureDir(t)
@@ -133,10 +133,26 @@ func TestEnrichTypedEdges_Resolution(t *testing.T) {
 		t.Errorf("CallGeneric direct edges = %v, want to contain Stack.Push", generic)
 	}
 
-	// --- Multi-init: no edges recorded FROM the ambiguous "init" caller key ---
+	// --- Multi-init: every non-test init() is one caller, "<pkg>.init" —
+	// the runtime runs them all when the package is linked, so what any of
+	// them calls is reached from that key (product wiring, TypedEdgeEpoch 3).
+	initDirect := set[key("typedfixture", "init")+"|"+string(core.EdgeDirect)]
+	if !contains(initDirect, key("typedfixture", "helper")) {
+		t.Errorf("init direct edges = %v, want to contain helper (called from the first init)", initDirect)
+	}
+	// Package-level variable initializers run at package initialization too:
+	// a route table's handler is a func-value edge from the init key, and a
+	// func literal kept in a var calls from it (varinit.go).
+	initValues := set[key("typedfixture", "init")+"|"+string(core.EdgeFuncValue)]
+	if !contains(initValues, key("typedfixture", "onlyInVarTable")) {
+		t.Errorf("init func-value edges = %v, want onlyInVarTable (a package-level route table)", initValues)
+	}
+	if !contains(initDirect, key("typedfixture", "onlyInVarClosure")) {
+		t.Errorf("init direct edges = %v, want onlyInVarClosure (called in a package-level func literal)", initDirect)
+	}
 	for _, e := range edges {
-		if strings.HasSuffix(e.FromSymbol, ".init") || strings.HasSuffix(e.FromSymbol, "::init") {
-			t.Errorf("found an edge from an init() caller (documented skip): %+v", e)
+		if strings.HasSuffix(e.FromSymbol, ".init") && strings.HasSuffix(e.FromFile, "_test.go") {
+			t.Errorf("found an edge from a _test.go init(): test code must not wire the package's init key: %+v", e)
 		}
 	}
 
