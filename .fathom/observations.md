@@ -1899,3 +1899,16 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** `compile.go:350` and `servehttp.go:131` now pass `knownModelInRatePerKTok, knownModelOutRatePerKTok` directly instead of the literal. Regression test: `TestRealRunWithLLMCallSitesShareNamedRateConstants` (`cmd/fathom/modelprice_test.go`) — a source-lexical check (neither call site builds without a live LLM provider, which no test in this suite exercises) asserting both files contain a `WithLLM(..., knownModelInRatePerKTok, knownModelOutRatePerKTok)` call and neither contains a literal `0.001`/`0.005` anywhere. Confirmed failing before the fix (both files: constant call missing, literal present) and passing after. `smoke.go`'s own separate copy is unchanged — out of this fix's named scope (the doc comment never claimed to include it).
 - **Status:** fixed.
 - **Impact:** was a drift risk, not a wrong number today (all three sites happened to agree on 0.001/0.005). Had a maintainer later repriced `defaultCompileModel` by editing only `modelprice.go`'s constants — reasonably trusting the doc comment — a dry-run estimate would have silently diverged from what an actual `--dry-run=false` compile or an MCP `compile_layer` call of the identical model actually billed, with no test to catch it.
+
+### O122 — the Bash-write hook treats a quoted `>` (echo "a -> b") or a quoted writer name as a file write and injects six unrelated root rules (__bash_write__.go nearest guide)
+
+- **Symptom:** the Bash-write hook treats a quoted `>` (echo "a -> b") or a quoted writer name as a file write and injects six unrelated root rules (__bash_write__.go nearest guide)
+- **Evidence:**
+  - **Tool:** PostToolUse Bash obligations hook
+  - **Expected:** no injection for a command that writes nothing; a Bash write is a redirect, tee, sed -i, mv/cp, or a known writer
+  - **Actual:** ~350 tokens of unrelated ADR rules per read-only Bash call in orchestration sessions
+  - **Repro:** `for id in a b; do echo "$id -> x"; done` via the Bash tool with the hook installed (also: an argument string that merely mentions `sed -i` or `tee`)
+- **Root cause:** `bashWriteTargets` (cmd/fathom/bashwrite.go) matches `redirectRe`, `sedInPlaceRe` and tee against raw command text without respecting quoting, so a `>` or a writer name inside a quoted argument is write-shaped; the target is then unresolvable, which takes the doubt branch in cmd/fathom/edithook_bashwrite.go and serves the cwd nearest guide (at the repo root: six unrelated root rules plus the displaced count)
+- **Fix:** blank single- and double-quoted spans and heredoc bodies before the write-shape scan (a quoted `>` is text, not a redirect); serve the doubt payload at most once per session per directory; efficiency wave row
+- **Status:** open
+- **Impact:** about 350 tokens injected per affected Bash call; an orchestration session hit it on 3 of its first 8 calls, none of which wrote a repo file through the flagged text
