@@ -110,8 +110,9 @@ ID=$(fathom map compose wave-b --id-only)             # one map comes back as it
   so a worker handed one appends to a map of its own (`map new … --agent`) and composes.
 - A symbol anchor needs the index (a daemon or `--store`); a `path#Lx-Ly` anchor needs neither.
 - The map ends with the orchestrator's session unless `map new` names another `--completes-when`
-  (for example `plan_row_checked:<plan>#<ROW-ID>`); `map name` does not yet carry it past that
-  session (O143).
+  (for example `plan_row_checked:<plan>#<ROW-ID>`); `map name ID --purpose "…"` makes it durable
+  whatever condition it was filed under, so the next session's brief and the pre-compact resume
+  still name it (XM-32).
 
 ## Consolidation: harvest, land, then remove
 

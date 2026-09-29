@@ -47,6 +47,10 @@ wave 3 or wave 4 before it.
 - [ ] (op) XM-M2: the A/B on identical briefs, with and without a map: at least 25 percent fewer sub-agent tokens, no accuracy loss, under 5 percent stale entries {id: XM-M2, oracle: lexical, path: docs/bench/readings/exploration-maps/handoff-ab.md, pattern: "^XM-M2 verdict: (PASS|FAIL)", needs: "XM-8,XM-11", weight: 5}
 - [ ] (op) XM-M3: pointer precision (expanded over shown) at least 10 percent, and the reuse rate (mounted after handoff) reported; pointers expanded under 10 percent are cut {id: XM-M3, oracle: lexical, path: docs/bench/readings/exploration-maps/pointer-precision.md, pattern: "^XM-M3 reading:", needs: "XM-11"}
 
+## Wave 2b: what the first use of maps by a wave found (2026-09-29, O143, O147, O149)
+
+- [ ] Naming makes a map durable: a map named before or after the condition it was filed under (the session-end default, a `--completes-when`) held stays listed, served by the brief, the pre-compact resume and the location pointer, and keeps what it includes alive; an unnamed map still ends {id: XM-32, symbol: Map.Ended, package: internal/explmap, reachable_from: TestMapNamedByThePlannerOutlivesTheSessionThatFiledIt, needs: "XM-6,XM-7"}
+
 ## Wave 3: live maps as documentation for agents, only after live maps are promoted (section 3b)
 
 - [ ] Maps carry their reasons: each live map links the ADRs and rules governing its footprint, a deterministic join with obligations by scope, and a handoff delivers structure plus rationale {id: XM-17, symbol: mapRationale, package: internal/explmap, reachable_from: TestExpandMapCarriesGoverningADRsAndRules, needs: "XM-D1,responsible-tenant.md#RT-M1"}

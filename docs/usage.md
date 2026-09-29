@@ -1693,12 +1693,13 @@ entry. `new` creates a map with its purpose line (required, one line of at most
 refuses a cycle and a chain deeper than 4. `compose` mints a composite made only
 of references (one id comes back as itself), expands it once and prints its
 counts, or with `--id-only` prints just the id so a brief can carry it.
-`name` names a map and refuses one without a purpose line. A named map with no
-`completes_when` is durable, but naming does not yet lift a condition the map
-already carries: a map first filed with the session-end default still ends with
-that session (O143). `list` shows each map's lifetime: pinned while an alive map
-includes it, permanent when named and not ended, ended once its condition held,
-else open with the time its idle clock started (a dropped include restarts it).
+`name` names a map and refuses one without a purpose line. A named map is
+durable whatever condition it was filed under (XM-32, O143): the session-end
+default or a `--completes-when` no longer ends it, whether the name comes before
+that condition held or after (naming a map its session already ended brings it
+back). `list` shows each map's lifetime: pinned while an alive map
+includes it, permanent when named, ended once its condition held on an unnamed
+map, else open with the time its idle clock started (a dropped include restarts it).
 
 `show` is the read: it expands the map's include DAG once (a base reached by two
 routes is one set of entries), then re-resolves **every** entry against the code

@@ -198,8 +198,8 @@ func splitLeadIDs(args []string) (ids, rest []string) {
 // (XM-7), and a reader of a brief or a pointer judges relevance by it, so `new`
 // requires it (the implicit creation by a first `append` files none). The map is
 // ephemeral: it lives until its condition holds (default: the end of this
-// session) and is kept while a live map includes it; `map name` names it, but
-// does not yet lift that condition (O143).
+// session) and is kept while a live map includes it; `map name` makes it durable
+// and the condition no longer ends it (XM-32).
 func cmdMapNew(args []string, stdout, stderr io.Writer) int {
 	ids, rest := splitLeadIDs(args)
 	fs := newFlagSet("map new", stderr)
@@ -274,9 +274,9 @@ func cmdMapAppend(args []string, stdout, stderr io.Writer) int {
 }
 
 // cmdMapName is `fathom map name ID --purpose "…" [--as NAME] [--when "…"]`:
-// a named map is durable when it carries no condition (O143: naming does not yet
-// lift one), and a named map without its purpose line is
-// refused (XM-7, explmap.Validate).
+// a named map is durable, whatever condition it was filed under and whether the
+// name comes before or after that condition held (XM-32, O143), and a named map
+// without its purpose line is refused (XM-7, explmap.Validate).
 func cmdMapName(args []string, stdout, stderr io.Writer) int {
 	ids, rest := splitLeadIDs(args)
 	fs := newFlagSet("map name", stderr)
@@ -315,7 +315,7 @@ func cmdMapName(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
 	}
-	fmt.Fprintf(stdout, "named map %q %q: %s\n", m.ID, m.Name, strings.TrimSpace(m.Purpose))
+	fmt.Fprintf(stdout, "named map %q %q: %s (durable: it is kept past the session that filed it)\n", m.ID, m.Name, strings.TrimSpace(m.Purpose))
 	return 0
 }
 

@@ -305,3 +305,82 @@ func TestMapNameRestatementKeepsWhatItDoesNotRestate(t *testing.T) {
 		t.Errorf("after a purpose-only restatement: name %q, when %q, purpose %q; want the name and when line kept", m.Name, m.WhenToUse, m.Purpose)
 	}
 }
+
+// TestMapNamedByThePlannerOutlivesTheSessionThatFiledIt pins XM-32 (O143)
+// through the product: a map filed with the default session-end condition and
+// then named stays listed, and is served by the hooks, after that session's
+// end note exists; a map named only after its session ended is durable from
+// then; an unnamed map filed the same way ends.
+func TestMapNamedByThePlannerOutlivesTheSessionThatFiledIt(t *testing.T) {
+	repo := mapRepo(t)
+	for _, id := range []string{"kept", "late", "scratch"} {
+		if code, _, errs := runCLI(t, mapCLI, "new", id, "--purpose", "Where is "+id+" handled?", "--repo", repo); code != 0 {
+			t.Fatalf("new %s: %s", id, errs)
+		}
+		if code, _, errs := runCLI(t, threadCLI, "note", "--map", id, "--anchor", "a.go#L3-L5", "--why", "the handler", "--repo", repo); code != 0 {
+			t.Fatalf("entry on %s: %s", id, errs)
+		}
+	}
+	if code, out, errs := runCLI(t, mapCLI, "name", "kept", "--purpose", "Where is kept handled?", "--repo", repo); code != 0 {
+		t.Fatalf("name kept: %s", errs)
+	} else if !strings.Contains(out, "durable") {
+		t.Errorf("name output = %q, want it to say the map is durable now", out)
+	}
+
+	// The planner's session ends.
+	seedItem(t, "se-parent", "session-end", "session ended", func(it *threadItem) {
+		it.Pointers = map[string]string{"session_id": "sess-parent"}
+	})
+
+	list := func() map[string]string {
+		t.Helper()
+		code, out, errs := runCLI(t, mapCLI, "list", "--json", "--repo", repo)
+		if code != 0 {
+			t.Fatalf("list: %s", errs)
+		}
+		var got struct {
+			Maps []struct{ ID, Lifetime string } `json:"maps"`
+		}
+		if err := json.Unmarshal([]byte(out), &got); err != nil {
+			t.Fatalf("list json: %v\n%s", err, out)
+		}
+		life := map[string]string{}
+		for _, m := range got.Maps {
+			life[m.ID] = m.Lifetime
+		}
+		return life
+	}
+	life := list()
+	if life["kept"] != "permanent" {
+		t.Errorf("kept (named before the session ended) = %q in %v, want permanent and listed", life["kept"], life)
+	}
+	if _, listed := life["scratch"]; listed {
+		t.Errorf("scratch (never named) is still listed after its session ended: %v", life)
+	}
+	if _, listed := life["late"]; listed {
+		t.Errorf("late (not named yet) is still listed after its session ended: %v", life)
+	}
+
+	// Naming a map after its session ended makes it durable from then.
+	if code, _, errs := runCLI(t, mapCLI, "name", "late", "--purpose", "Where is late handled?", "--repo", repo); code != 0 {
+		t.Fatalf("name late: %s", errs)
+	}
+	life = list()
+	if life["late"] != "permanent" {
+		t.Errorf("late (named after the session ended) = %q in %v, want permanent", life["late"], life)
+	}
+
+	// The next session hears of the durable maps (the hooks that deliver maps
+	// read this set: the brief, the pre-compact resume, the location pointer)
+	// and not of the ended one.
+	set := loadMapSet(repo, time.Now())
+	states := explmap.Lifetimes(set.maps)
+	if states["kept"].State != explmap.Permanent || states["late"].State != explmap.Permanent || states["scratch"].State != explmap.Ended {
+		t.Errorf("lifetimes = kept %s, late %s, scratch %s; want permanent, permanent, ended",
+			states["kept"].State, states["late"].State, states["scratch"].State)
+	}
+	_, alive := loadAliveMaps(repo, time.Now())
+	if strings.Join(alive, " ") != "kept late" && strings.Join(alive, " ") != "late kept" {
+		t.Errorf("the hooks' alive maps = %v, want kept and late only", alive)
+	}
+}

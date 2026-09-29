@@ -97,3 +97,44 @@ func TestMapLifetimeFollowsReferences(t *testing.T) {
 		t.Errorf("alone: e = %+v, want open since hour 0", got)
 	}
 }
+
+// TestNamedMapIsDurableWhateverItsFilingCondition pins XM-32 (O143) in the
+// model: naming a map makes it durable, so a map named at any point is
+// permanent even though the condition it was filed under (the end of the
+// session) held, and a named map that ended keeps what it includes alive. An
+// unnamed twin in the same state is still ended, and its includes are not kept.
+func TestNamedMapIsDurableWhateverItsFilingCondition(t *testing.T) {
+	base := used(eph("base"), 0)
+
+	named := used(eph("n", "base"), 1)
+	named.Name, named.Purpose = "auth", "Which handlers skip auth?"
+	named.EndedAt = at(3) // the session that filed it ended at hour 3
+	if named.Ended() {
+		t.Errorf("a named map whose filing condition held reads Ended() = true, want false: naming made it durable")
+	}
+	lt := Lifetimes(Maps{"base": base, "n": named})
+	if lt["n"].State != Permanent {
+		t.Errorf("named map after its condition held = %+v, want permanent", lt["n"])
+	}
+	if lt["base"].State != Pinned || len(lt["base"].PinnedBy) != 1 || lt["base"].PinnedBy[0] != "n" {
+		t.Errorf("base = %+v, want pinned by the named map that outlived its condition", lt["base"])
+	}
+
+	unnamed := used(eph("u", "base"), 1)
+	unnamed.EndedAt = at(3)
+	if !unnamed.Ended() {
+		t.Errorf("an unnamed map whose condition held must read Ended() = true")
+	}
+	lt = Lifetimes(Maps{"base": base, "u": unnamed})
+	if lt["u"].State != Ended || lt["base"].State != Open || !lt["base"].IdleSince.Equal(at(3)) {
+		t.Errorf("unnamed twin: u %+v, base %+v; want u ended and base open, its clock restarted at hour 3", lt["u"], lt["base"])
+	}
+
+	// A name that is only blanks names nothing.
+	blank := used(eph("b"), 1)
+	blank.Name = "   "
+	blank.EndedAt = at(3)
+	if got := Lifetimes(Maps{"b": blank})["b"]; got.State != Ended {
+		t.Errorf("a blank name = %+v, want ended: only a real name is durable", got)
+	}
+}

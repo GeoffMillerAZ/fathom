@@ -185,11 +185,14 @@ func loadMapSet(root string, now time.Time) mapSet {
 
 // evaluateMapConditions closes each open header whose condition now holds,
 // through the same condition check and the same durable closure row the
-// thread verbs use; the rows are checked against every folded row.
+// thread verbs use; the rows are checked against every folded row. A named
+// map's header is never closed (XM-32, O143): naming makes a map durable, so
+// the condition it was filed under no longer applies to it.
 func evaluateMapConditions(headers, all []threadItem, root string, now time.Time) []threadItem {
 	out := make([]threadItem, 0, len(headers))
 	for _, h := range headers {
-		if h.ClosedAt == "" && h.CompletesWhen != nil && threadConditionHolds(*h.CompletesWhen, root, all) {
+		named := strings.TrimSpace(h.Pointers["name"]) != ""
+		if !named && h.ClosedAt == "" && h.CompletesWhen != nil && threadConditionHolds(*h.CompletesWhen, root, all) {
 			h.ClosedAt = now.UTC().Format(time.RFC3339)
 			h.ClosedBy = "condition"
 			h.ClosedWhy = describeCondition(*h.CompletesWhen) + " now holds"

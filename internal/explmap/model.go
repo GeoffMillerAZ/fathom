@@ -109,7 +109,8 @@ type IncludeDrop struct {
 type Map struct {
 	ID   string
 	Kind Kind
-	// Name makes a map named: durable, and never without a Purpose (XM-7).
+	// Name makes a map named: durable (XM-32: it outlives the condition it was
+	// filed under), and never without a Purpose (XM-7).
 	Name string
 	// Purpose is the question the map answers (authored, one line).
 	Purpose string
@@ -126,7 +127,8 @@ type Map struct {
 	// LastUsed is the latest write to the map (an append, a header change).
 	LastUsed time.Time
 	// EndedAt is when the map's own thread condition held or it was closed;
-	// zero while it has not ended.
+	// zero while it has not ended. A named map records it and is still not
+	// Ended (see Ended).
 	EndedAt time.Time
 	// Drops are the includes this map stopped carrying.
 	Drops []IncludeDrop
@@ -135,8 +137,11 @@ type Map struct {
 // Named reports whether the map carries a name.
 func (m Map) Named() bool { return strings.TrimSpace(m.Name) != "" }
 
-// Ended reports whether the map's own condition has ended it.
-func (m Map) Ended() bool { return !m.EndedAt.IsZero() }
+// Ended reports whether the map's own condition has ended it. A named map is
+// never ended (XM-32, O143): naming is what makes a map durable, so the
+// condition a run filed it under (the end of that session) does not end it,
+// whether the name came before the condition held or after.
+func (m Map) Ended() bool { return !m.EndedAt.IsZero() && !m.Named() }
 
 // Lookup finds a map by id.
 type Lookup interface {

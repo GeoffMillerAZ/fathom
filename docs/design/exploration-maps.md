@@ -77,6 +77,16 @@ for an isolated worker, and the surface reckoning asks a measured case before a 
 tool the hook's push form covered). `TestDefaultSurfaceUnchangedByMap` pins the default at its eight and fails a
 map-shaped tool that is not on the extended surface.
 
+**As built (naming, XM-32, 2026-09-29).** "Named" is what makes a map durable, and the lifetime rule now says
+so in one place: `Map.Ended` is false for a named map, so `mapLifetime` and the alive test read a named map as
+permanent (and as keeping what it includes) whether its filing condition (the session-end default, a
+`--completes-when`) held before the name or after it. Before this the rule tested "ended" ahead of "named", and
+`map name` restated the header with the first header's `completes_when` carried forward, so a map the planner
+named at the end of a session was gone from the next session's brief and resume (O143). Naming does not rewrite
+the condition (the threads fold carries a restated header's missing `completes_when` forward from the previous
+row, so dropping it would not stick); the header keeps it as a record, the closure row is not written for a named
+map, and a map named after its session ended comes back. Unnamed maps end as before.
+
 ## 3. Live maps and semantic layers are complementary (binding)
 
 They live on different axes. A semantic layer says what is TRUE or BINDING about code (governed claims:

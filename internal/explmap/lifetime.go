@@ -11,7 +11,8 @@ type LifeState string
 const (
 	// Pinned: a map that is alive includes it; its idle clock is stopped.
 	Pinned LifeState = "pinned"
-	// Permanent: a named map; it does not decay while unreferenced.
+	// Permanent: a named map, whatever condition it was filed under (XM-32);
+	// it does not decay while unreferenced.
 	Permanent LifeState = "permanent"
 	// Open: unreferenced and not ended; idle since IdleSince. How long an
 	// idle map is kept is deliberately not decided here: the duration is set
@@ -47,12 +48,14 @@ func Lifetimes(all Maps) map[string]Lifetime {
 // mapLifetime is the lifetime rule for one map (XM-6): lifetimes follow
 // references. A map is pinned while a map that is itself alive includes it:
 // "alive" is a live map (a stored query, always alive while it exists) or any
-// map whose own condition has not ended it (a named one included), and a map pinned
-// by an alive map is alive in turn, so pinning follows the DAG. While pinned its
+// map whose own condition has not ended it (a named map is never ended: Map.Ended,
+// XM-32), and a map pinned by an alive map is alive in turn, so pinning
+// follows the DAG. While pinned its
 // idle clock is stopped; when the last such reference drops (the referrer drops
 // the include, or ends while nothing keeps it alive) the clock restarts at that
-// moment. An unreferenced named map is permanent; an unreferenced map whose
-// condition held is ended. aliveMemo caches aliveness across calls.
+// moment. An unreferenced named map is permanent, and stays so after the
+// condition it was filed under held; an unreferenced unnamed map whose condition
+// held is ended. aliveMemo caches aliveness across calls.
 func mapLifetime(id string, all Maps, aliveMemo map[string]bool) Lifetime {
 	m := all[id]
 	var pinnedBy []string
@@ -100,8 +103,7 @@ func mapLifetime(id string, all Maps, aliveMemo map[string]bool) Lifetime {
 }
 
 // isAlive reports whether a map keeps what it includes: a live map, a map not
-// ended (a named map is not ended until it is closed), or one pinned by an
-// alive map. visiting guards a cycle
+// ended (a named map is never ended, XM-32), or one pinned by an alive map. visiting guards a cycle
 // in corrupt data (cycles are refused at write): a map on its own route is not
 // alive through itself.
 func isAlive(id string, all Maps, memo, visiting map[string]bool) bool {
