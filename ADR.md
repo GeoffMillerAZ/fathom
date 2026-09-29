@@ -2110,8 +2110,9 @@ disk precisely when the operator believed the cache was external.
 native Go, temp, and uv environment. When set, it must name an absolute, pre-existing,
 writable directory; the helper derives build, module, temp, and uv subdirectories below
 it. `FATHOM_CACHE_MAX_MIB` bounds only the regenerable Go build cache (8192 by default,
-`0` disables), pruning it with `go clean -cache` before a supported Go invocation. A
-missing configured root refuses loudly and never falls back to internal storage.
+`0` disables), trimming it by entry age before a supported Go invocation (amended
+2026-09-29, below). A missing configured root refuses loudly and never falls back to
+internal storage.
 
 **Consequences.** Other machines need no configuration and retain standard tool
 behavior. A workstation may place Fathom caches on removable storage without embedding
@@ -2127,6 +2128,18 @@ TOML field (the binary cannot configure the toolchain needed to build itself).
 **Revisit when.** A portable project-local Go environment standard ships; a second
 supported build runner cannot share the shell contract; or measured automatic pruning
 materially harms iteration.
+
+**Amended 2026-09-29 (EW-4, O124): the guard trims by age and never cleans the whole
+cache.** The original prune ran `go clean -cache` behind a `mkdir` lock that kept two
+pruners apart but not a pruner from a build, so a build that started during the clean read
+a cache being deleted and the pre-push gate failed on it. The guard now deletes entries
+by age in three passes (unused for 7 days, then 3, then 1) and stops at the first that
+fits; an entry used within the last day is never removed, because Go stamps an entry's
+mtime when a build uses it and a live build may hold it. A cache still over the limit
+after the last pass is reported and the build goes on. The prune lock is gone: an age
+trim is idempotent and safe to run twice at once. `scripts/build-cache_test.sh` holds a
+builder reading an entry while the guard trims. An operator who wants the whole cache
+gone runs `go clean -cache` by hand with no build running.
 
 ## ADR-040: The findings loop — external review findings are governed projections served as obligations; fathom is a projection adapter, never the organizational record (2026-09-18)
 
