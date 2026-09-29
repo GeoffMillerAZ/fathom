@@ -1935,7 +1935,7 @@ tests being added) is what catches that, not a second reading of the prose.
   - **Actual:** ~350 tokens of unrelated ADR rules per read-only Bash call in orchestration sessions
   - **Repro:** `for id in a b; do echo "$id -> x"; done` via the Bash tool with the hook installed (also: an argument string that merely mentions `sed -i` or `tee`)
 - **Root cause:** `bashWriteTargets` (cmd/fathom/bashwrite.go) matches `redirectRe`, `sedInPlaceRe` and tee against raw command text without respecting quoting, so a `>` or a writer name inside a quoted argument is write-shaped; the target is then unresolvable, which takes the doubt branch in cmd/fathom/edithook_bashwrite.go and serves the cwd nearest guide (at the repo root: six unrelated root rules plus the displaced count)
-- **Fix:** blank single- and double-quoted spans and heredoc bodies before the write-shape scan (a quoted `>` is text, not a redirect); serve the doubt payload at most once per session per directory; efficiency wave row
+- **Fix:** blank single- and double-quoted spans and heredoc bodies before the write-shape scan (a quoted `>` is text, not a redirect); serve the doubt payload at most once per session per directory; efficiency wave row; addendum 2026-09-29: a heredoc body is data, so a `>` or a writer name inside it is never a target, and a write whose every target resolves outside all indexed roots (`printf ... >> ~/.claude/.../MEMORY.md`) is silent, because `len(files)==0` in cmd/fathom/edithook_bashwrite.go reads it as unresolvable today: doubt only when a target is unresolvable, never when it is resolved and foreign
 - **Status:** open
 - **Impact:** about 350 tokens injected per affected Bash call; an orchestration session hit it on 3 of its first 8 calls, none of which wrote a repo file through the flagged text
 
@@ -1977,3 +1977,16 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** planned, not yet landed: run `intent-prune` then `intent-doctor` in the change that merges the program's branches to main, never before the merge, so no record is lost in flight; every deleted goal or future must already be met, promoted or dropped by its own condition, never trimmed for length alone
 - **Status:** open
 - **Impact:** an agent routed to futures.md or scope.md loads two and a half (scope.md) to four and a half (futures.md) times the budgeted context before designing, and a long futures file hides which options are live; until the prune lands the budget row of `intent-doctor` fails
+
+### O126 — the prompt hook fires on a cross-agent relay message (a sub-agent's message, not typed by the user) and serves rules for path-like tokens that are not repo files
+
+- **Symptom:** the prompt hook fires on a cross-agent relay message (a sub-agent's message, not typed by the user) and serves rules for path-like tokens that are not repo files
+- **Evidence:**
+  - **Tool:** UserPromptSubmit prompt obligations hook
+  - **Expected:** no rules for a token that names no indexed or working-tree path; a relayed agent message is not a user prompt to govern
+  - **Actual:** a relay naming bin/fathom and a scratchpad script extracted bin/fathom as a directory (bin/fathom/__prompt__.go), the scratchpad path and an unrelated schema path, then served six rules and 178 more eligible
+  - **Repro:** relay a sub-agent message that mentions bin/fathom and a scratchpad path into a session with the prompt hook installed
+- **Root cause:** `resolvePromptCandidates` (cmd/fathom/prompthook.go) adds path and package tokens without checking that they exist (it assumes a prompt names repo-relative text), and a package token becomes `<dir>/__prompt__.go` even when `<dir>` is a file (`bin/fathom`) or absent; `isSystemNotification` screens harness notifications (SU-7) but not an agent relay message
+- **Fix:** (1) keep a path or package candidate only when it exists in the index or the working tree at that path, else drop it; (2) skip, or cap, the hook when the prompt is an agent relay the harness marks as one; (3) serve an identical rule set at most once per session, the same dedupe as O122
+- **Status:** open
+- **Impact:** six rules plus a displaced count injected into an orchestration turn from text no one typed; filed from the 2026-09-29 O122 addendum, where it was the O123 candidate
