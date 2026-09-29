@@ -152,6 +152,124 @@ func TestBashWriteTargets(t *testing.T) {
 			wantPaths:   []string{"internal/store/y.go", "z.go"},
 			wantWritten: true,
 		},
+
+		// EW-1 / O122: a quoted span is text, never a redirect or a writer.
+		{
+			name:        "a double-quoted arrow is text, not a redirect (the O122 repro)",
+			cmd:         `for id in a b; do echo "$id -> x"; done`,
+			wantPaths:   nil,
+			wantWritten: false,
+		},
+		{
+			name:        "a single-quoted > is text",
+			cmd:         `echo 'a > b'`,
+			wantPaths:   nil,
+			wantWritten: false,
+		},
+		{
+			name:        "a writer name inside a double-quoted argument is text (sed -i)",
+			cmd:         `echo "run sed -i on the file, then tee the result"`,
+			wantPaths:   nil,
+			wantWritten: false,
+		},
+		{
+			name:        "a writer name inside a single-quoted argument is text (cp, mv)",
+			cmd:         `git commit -m 'cp the draft over, mv the rest'`,
+			wantPaths:   nil,
+			wantWritten: false,
+		},
+		{
+			name:        "a quoted arrow does not hide a real redirect that follows it",
+			cmd:         `echo "a -> b" > internal/store/backend.go`,
+			wantPaths:   []string{"internal/store/backend.go"},
+			wantWritten: true,
+		},
+		{
+			name:        "a double-quoted redirect target is still a target",
+			cmd:         `cat > "internal/store/y.go"`,
+			wantPaths:   []string{"internal/store/y.go"},
+			wantWritten: true,
+		},
+		{
+			name:        "a single-quoted target with a space is still one target",
+			cmd:         `echo x > 'docs/a b.md'`,
+			wantPaths:   []string{"docs/a b.md"},
+			wantWritten: true,
+		},
+		{
+			name:        "sed -i with quoted script and a quoted > inside it",
+			cmd:         `sed -i 's/a > b/c/' internal/mcp/tools.go`,
+			wantPaths:   []string{"internal/mcp/tools.go"},
+			wantWritten: true,
+		},
+		{
+			name:        "an escaped quote does not open a quoted span",
+			cmd:         `echo \" > internal/store/y.go`,
+			wantPaths:   []string{"internal/store/y.go"},
+			wantWritten: true,
+		},
+		// EW-1 / O122 addendum: a heredoc body is data.
+		{
+			name: "a heredoc body naming a writer and a redirect is data; only the redirect before the body counts",
+			cmd: "cat > /tmp/x.sh <<'EOF'\n" +
+				"cp bin/fathom /usr/local/bin/fathom\n" +
+				"echo ${1:?usage} > out.txt\n" +
+				"tee -a log.txt\n" +
+				"EOF",
+			wantPaths:   []string{"/tmp/x.sh"},
+			wantWritten: true,
+		},
+		{
+			name: "a heredoc with no write outside its body is not write-shaped",
+			cmd: "cat <<'EOF'\n" +
+				"echo hi > out.txt\n" +
+				"cp a b\n" +
+				"EOF",
+			wantPaths:   nil,
+			wantWritten: false,
+		},
+		{
+			name: "an apostrophe in a heredoc body does not open a quote that swallows the next statement",
+			cmd: "cat <<EOF > a.go\n" +
+				"don't stop\n" +
+				"EOF\n" +
+				"echo y > b.go",
+			wantPaths:   []string{"a.go", "b.go"},
+			wantWritten: true,
+		},
+		{
+			name: "a <<- heredoc's terminator may be tab-indented",
+			cmd: "cat <<-END > a.go\n" +
+				"\tcp x y\n" +
+				"\tEND\n" +
+				"echo y > b.go",
+			wantPaths:   []string{"a.go", "b.go"},
+			wantWritten: true,
+		},
+		{
+			name:        "a here-string is not a heredoc",
+			cmd:         `cat <<< "x" > a.go`,
+			wantPaths:   []string{"a.go"},
+			wantWritten: true,
+		},
+		{
+			name:        "shell arithmetic shift is not a heredoc",
+			cmd:         "echo $((1<<3)) > a.go\necho y > b.go",
+			wantPaths:   []string{"a.go", "b.go"},
+			wantWritten: true,
+		},
+		{
+			name:        "a tilde target stays a tilde path, never a repo-relative one",
+			cmd:         `printf '%s\n' x >> ~/.claude/projects/p/memory/MEMORY.md`,
+			wantPaths:   []string{"~/.claude/projects/p/memory/MEMORY.md"},
+			wantWritten: true,
+		},
+		{
+			name:        "cd into a tilde directory keeps later targets tilde-rooted",
+			cmd:         `cd ~/notes && echo x > today.md`,
+			wantPaths:   []string{"~/notes/today.md"},
+			wantWritten: true,
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

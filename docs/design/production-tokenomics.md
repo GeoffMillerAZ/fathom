@@ -52,7 +52,7 @@ labeled an *estimate* — never presented as measured), rule count, and phase
 (pre/post). Aggregate in `research report` as:
 
 - total injected tokens in window, per channel (session brief, post-edit,
-  pre-edit guard, module rules);
+  pre-edit guard, module rules, post-bash);
 - per-edit distribution (p50/p95) — the number that answers "what does
   governance cost per edit";
 - **cost ledger, not savings ledger** (law 12): this section of the report

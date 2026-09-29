@@ -82,7 +82,7 @@ func TestPromptHook_FindingsCountLine(t *testing.T) {
 	})
 	defer srv.Close()
 
-	dir := t.TempDir()
+	dir := touchTree(t, t.TempDir(), "internal/auth/token.go") // EW-21: a prompt's path must exist to count
 	hookInput := fmt.Sprintf(`{"prompt":"fix internal/auth/token.go","cwd":%q}`, dir)
 	deadline := time.Now().Add(promptHookDeadlineBudget)
 	text, _, ok := renderPromptObligations(srv.URL, dir, "fix internal/auth/token.go", "sess", deadline)
@@ -113,7 +113,7 @@ func TestPromptHook_FindingsCountLine_ZeroFindingsSilent(t *testing.T) {
 		},
 	})
 	defer srv.Close()
-	dir := t.TempDir()
+	dir := touchTree(t, t.TempDir(), "a.go") // EW-21: a prompt's path must exist to count
 	deadline := time.Now().Add(promptHookDeadlineBudget)
 	text, _, ok := renderPromptObligations(srv.URL, dir, "fix a.go", "sess", deadline)
 	if !ok {

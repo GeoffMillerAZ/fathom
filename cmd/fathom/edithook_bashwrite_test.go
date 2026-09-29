@@ -2,11 +2,15 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 )
 
@@ -66,11 +70,14 @@ func TestEditHookBashWrite_ConfidentTargetServesGoverningRule(t *testing.T) {
 	}
 }
 
-// TestEditHookBashWrite_DoubtServesCwdNearestGuide pins O57 item 4/5(b)'s
+// TestEditHookBashWrite_DoubtNamesCwdNearestGuide pins O57 item 4/5(b)'s
 // doubt path: `git apply` writes something, but the parser cannot name
 // what — edit-hook falls back to the cwd's nearest guide rather than
-// staying silent.
-func TestEditHookBashWrite_DoubtServesCwdNearestGuide(t *testing.T) {
+// staying silent. Since EW-1 it says so in one line naming the directory
+// and how many rules govern it, never the rule bodies
+// (TestEditHookBashWriteDoubtServesAtMostOneLine pins the line's shape).
+func TestEditHookBashWrite_DoubtNamesCwdNearestGuide(t *testing.T) {
+	isolateBashDoubt(t)
 	dir := t.TempDir()
 	gitInitTempRepo(t, dir)
 	if err := os.MkdirAll(filepath.Join(dir, "internal", "mcp"), 0o755); err != nil {
@@ -88,18 +95,12 @@ func TestEditHookBashWrite_DoubtServesCwdNearestGuide(t *testing.T) {
 	}, nil)
 	defer srv.Close()
 
-	bashPostToolUseStdin(t, filepath.Join(dir, "internal", "mcp"), "git apply /tmp/fix.patch")
-
-	var out, errBuf bytes.Buffer
-	code := runWithStdin([]string{"edit-hook", "--url=" + srv.URL}, nil, &out, &errBuf)
-	if code != 0 {
-		t.Fatalf("edit-hook exit = %d, want 0; stderr=%s", code, errBuf.String())
+	got := runBashWriteHook(t, srv.URL, "s1", filepath.Join(dir, "internal", "mcp"), "git apply /tmp/fix.patch")
+	if !strings.Contains(got, "1 rule(s) govern internal/mcp") {
+		t.Fatalf("output does not name the cwd's directory and its rule count: %q", got)
 	}
-	if !strings.Contains(out.String(), "Register every tool in the mcp registry.") {
-		t.Fatalf("output missing the cwd's nearest-guide rule: %s", out.String())
-	}
-	if !strings.Contains(out.String(), "nearest guide") {
-		t.Fatalf("output does not say it fell back to the nearest guide: %s", out.String())
+	if strings.Contains(got, "Register every tool in the mcp registry.") {
+		t.Fatalf("the doubt line must not serve the rule body: %q", got)
 	}
 }
 
@@ -119,5 +120,282 @@ func TestEditHookBashWrite_SilentOnReadOnlyCommand(t *testing.T) {
 	}
 	if out.Len() != 0 {
 		t.Errorf("expected no output for a read-only Bash command, got %q", out.String())
+	}
+}
+
+// bashPostToolUseStdinSession is bashPostToolUseStdin with the session id a
+// test names, for the once-per-session cases.
+func bashPostToolUseStdinSession(t *testing.T, session, cwd, command string) {
+	t.Helper()
+	body := fmt.Sprintf(`{"session_id":%q,"cwd":%q,"tool_name":"Bash","tool_input":{"command":%q}}`, session, cwd, command)
+	hookStdin(t, body)
+}
+
+// isolateBashDoubt points the once-per-session doubt markers and the beat
+// log at fresh temp locations and returns the beat log's path.
+func isolateBashDoubt(t *testing.T) string {
+	t.Helper()
+	orig := bashDoubtDir
+	bashDoubtDir = filepath.Join(t.TempDir(), "fathom-bash-doubt")
+	t.Cleanup(func() { bashDoubtDir = orig })
+	beatLog := filepath.Join(t.TempDir(), "hooks.jsonl")
+	t.Setenv("FATHOM_HOOKS_LOG", beatLog)
+	return beatLog
+}
+
+// runBashWriteHook runs one PostToolUse Bash call through edit-hook and
+// returns the additionalContext it served ("" for silence).
+func runBashWriteHook(t *testing.T, srvURL, session, cwd, command string) string {
+	t.Helper()
+	bashPostToolUseStdinSession(t, session, cwd, command)
+	var out, errBuf bytes.Buffer
+	if code := runWithStdin([]string{"edit-hook", "--url=" + srvURL}, nil, &out, &errBuf); code != 0 {
+		t.Fatalf("edit-hook exit = %d, want 0; stderr=%s", code, errBuf.String())
+	}
+	if strings.TrimSpace(out.String()) == "" {
+		return ""
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(bytes.TrimSpace(out.Bytes()), &payload); err != nil {
+		t.Fatalf("edit-hook output not valid JSON: %v (%q)", err, out.String())
+	}
+	hook, _ := payload["hookSpecificOutput"].(map[string]any)
+	ctx, _ := hook["additionalContext"].(string)
+	return ctx
+}
+
+// obligationsCountingDaemon answers every obligations call with the same
+// rules (so a wrongly served foreign write is visible in the output too)
+// and counts those calls; list_services and everything else is empty.
+func obligationsCountingDaemon(t *testing.T, rules []any) (*httptest.Server, *int32) {
+	t.Helper()
+	var n int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			Params struct {
+				Name      string `json:"name"`
+				Arguments struct {
+					File string `json:"file"`
+				} `json:"arguments"`
+			} `json:"params"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		inner := "{}"
+		switch req.Params.Name {
+		case "obligations":
+			atomic.AddInt32(&n, 1)
+			inner = mustJSON(map[string]any{"service": "svc", "file": req.Params.Arguments.File, "rules": rules})
+		case "list_services":
+			inner = mustJSON(map[string]any{"services": []any{}})
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"jsonrpc": "2.0", "id": 1,
+			"result": map[string]any{"content": []any{map[string]any{"type": "text", "text": inner}}},
+		})
+	}))
+	return srv, &n
+}
+
+func sixRootRules() []any {
+	rules := make([]any, 0, 6)
+	for i := 1; i <= 6; i++ {
+		rules = append(rules, map[string]any{
+			"rule": fmt.Sprintf("Root rule number %d that says something long enough to cost real tokens when it is served for no reason.", i),
+			"src":  fmt.Sprintf("ADR.md#L%d-L%d", i*10, i*10+3), "tier": "doc-claimed", "layer": "adr-rules",
+		})
+	}
+	return rules
+}
+
+// readBeats returns the beat log's rows for one channel.
+func readBeats(t *testing.T, beatLog, channel string) []struct {
+	Kind string            `json:"kind"`
+	Meta map[string]string `json:"meta"`
+} {
+	t.Helper()
+	type beat struct {
+		Channel string            `json:"channel"`
+		Kind    string            `json:"kind"`
+		Meta    map[string]string `json:"meta"`
+	}
+	raw, err := os.ReadFile(beatLog)
+	if err != nil {
+		return nil
+	}
+	var out []struct {
+		Kind string            `json:"kind"`
+		Meta map[string]string `json:"meta"`
+	}
+	for _, line := range strings.Split(strings.TrimSpace(string(raw)), "\n") {
+		if line == "" {
+			continue
+		}
+		var b beat
+		if err := json.Unmarshal([]byte(line), &b); err != nil {
+			t.Fatalf("beat row %q: %v", line, err)
+		}
+		if b.Channel == channel {
+			out = append(out, struct {
+				Kind string            `json:"kind"`
+				Meta map[string]string `json:"meta"`
+			}{b.Kind, b.Meta})
+		}
+	}
+	return out
+}
+
+// EW-1 / O122: when the hook cannot name what a Bash command wrote it serves
+// ONE line, not the nearest guide's rules, once per session per directory,
+// and the emission is a payload-cost beat. Before this row the same call
+// served six unrelated root rules on every write-shaped Bash command (4,835
+// of 7,953 in 13 days).
+func TestEditHookBashWriteDoubtServesAtMostOneLine(t *testing.T) {
+	beatLog := isolateBashDoubt(t)
+	dir := t.TempDir()
+	gitInitTempRepo(t, dir)
+	for _, sub := range []string{"internal/mcp", "internal/store"} {
+		if err := os.MkdirAll(filepath.Join(dir, sub), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	srv, _ := obligationsCountingDaemon(t, sixRootRules())
+	defer srv.Close()
+
+	mcpDir := filepath.Join(dir, "internal", "mcp")
+	storeDir := filepath.Join(dir, "internal", "store")
+
+	first := runBashWriteHook(t, srv.URL, "s1", mcpDir, "git apply /tmp/fix.patch")
+	if first == "" {
+		t.Fatal("the first doubt in a session and directory served nothing; want one line")
+	}
+	if strings.Contains(first, "\n") {
+		t.Errorf("the doubt payload is more than one line: %q", first)
+	}
+	if len(first) > 320 {
+		t.Errorf("the doubt line is %d bytes; want a line, not a paragraph: %q", len(first), first)
+	}
+	if strings.Contains(first, "Root rule number") {
+		t.Errorf("the doubt line must not carry rule bodies: %q", first)
+	}
+	if !strings.Contains(first, "6 rule") {
+		t.Errorf("the doubt line should say how many rules govern the directory: %q", first)
+	}
+
+	if again := runBashWriteHook(t, srv.URL, "s1", mcpDir, "git apply /tmp/other.patch"); again != "" {
+		t.Errorf("a second doubt in the same session and directory served %q; want silence", again)
+	}
+	if other := runBashWriteHook(t, srv.URL, "s1", storeDir, "git apply /tmp/fix.patch"); other == "" || strings.Contains(other, "\n") {
+		t.Errorf("a first doubt in another directory should serve one line, got %q", other)
+	}
+	if next := runBashWriteHook(t, srv.URL, "s2", mcpDir, "git apply /tmp/fix.patch"); next == "" || strings.Contains(next, "\n") {
+		t.Errorf("a first doubt in a new session should serve one line, got %q", next)
+	}
+
+	beats := readBeats(t, beatLog, "payload-cost")
+	var postBash []map[string]string
+	for _, b := range beats {
+		if b.Kind == "post-bash" {
+			postBash = append(postBash, b.Meta)
+		}
+	}
+	if len(postBash) != 3 {
+		t.Fatalf("payload-cost post-bash beats = %d, want 3 (one per emission, none for the silent repeat): %v", len(postBash), beats)
+	}
+	if postBash[0]["bytes"] != fmt.Sprint(len(first)) {
+		t.Errorf("the beat's bytes = %q, want the emitted %d", postBash[0]["bytes"], len(first))
+	}
+	if postBash[0]["doubt"] != "true" {
+		t.Errorf("a doubt emission's beat should say doubt: %v", postBash[0])
+	}
+}
+
+// EW-1 / O122: a quoted `>` is text. The O122 repro command writes nothing,
+// so the hook is silent and never reaches the daemon.
+func TestEditHookBashWriteQuotedArrowIsSilent(t *testing.T) {
+	isolateBashDoubt(t)
+	dir := t.TempDir()
+	srv, calls := obligationsCountingDaemon(t, sixRootRules())
+	defer srv.Close()
+	for _, cmd := range []string{
+		`for id in a b; do echo "$id -> x"; done`,
+		`git commit -m 'cp the draft > over there, then sed -i it'`,
+		"cat <<'EOF'\necho hi > out.txt\ncp a b\nEOF",
+	} {
+		if got := runBashWriteHook(t, srv.URL, "s1", dir, cmd); got != "" {
+			t.Errorf("%q served %q; want silence", cmd, got)
+		}
+	}
+	if n := atomic.LoadInt32(calls); n != 0 {
+		t.Errorf("obligations calls = %d, want 0 for commands that write nothing", n)
+	}
+}
+
+// EW-1 / O122 addendum: a write whose every target resolves outside all
+// candidate roots is silent, not doubt: it is resolved and foreign, not
+// unresolvable.
+func TestEditHookBashWriteForeignTargetIsSilent(t *testing.T) {
+	isolateBashDoubt(t)
+	dir := t.TempDir()
+	gitInitTempRepo(t, dir)
+	t.Setenv("HOME", filepath.Join(t.TempDir(), "home"))
+	srv, calls := obligationsCountingDaemon(t, sixRootRules())
+	defer srv.Close()
+	for _, cmd := range []string{
+		`printf '%s\n' x >> /Users/someone/.claude/projects/p/memory/MEMORY.md`,
+		"cat > /tmp/scratch.sh <<'EOF'\ncp bin/fathom /usr/local/bin/fathom\necho ${1:?usage} > out.txt\nEOF",
+		`printf x >> ~/.claude/projects/p/memory/MEMORY.md`,
+		`echo x > ../outside.go`,
+		`cd /tmp/elsewhere && echo x > y.go`,
+	} {
+		if got := runBashWriteHook(t, srv.URL, "s1", dir, cmd); got != "" {
+			t.Errorf("%q served %q; want silence for a resolved foreign target", cmd, got)
+		}
+	}
+	if n := atomic.LoadInt32(calls); n != 0 {
+		t.Errorf("obligations calls = %d, want 0 when every target is foreign", n)
+	}
+}
+
+// A target that resolves INSIDE a candidate root still serves its governing
+// rules, whether spelled absolute, relative or through a tilde, and the
+// emission is a payload-cost beat carrying the payload's bytes.
+func TestEditHookBashWriteResolvedTargetServesAndCountsAsPayloadCost(t *testing.T) {
+	beatLog := isolateBashDoubt(t)
+	dir := t.TempDir()
+	gitInitTempRepo(t, dir)
+	t.Setenv("HOME", filepath.Dir(dir))
+	srv, calls := obligationsCountingDaemon(t, []any{
+		map[string]any{"rule": "internal/store stays pure Go.", "src": "ADR.md#L814-L814", "tier": "doc-claimed", "layer": "adr-rules"},
+	})
+	defer srv.Close()
+
+	var served []string
+	for _, cmd := range []string{
+		"cp /tmp/draft.go internal/store/backend.go",
+		fmt.Sprintf("cat > %s <<'EOF'\npackage store\nEOF", filepath.Join(dir, "internal", "store", "abs.go")),
+		fmt.Sprintf("printf x >> ~/%s/internal/store/tilde.go", filepath.Base(dir)),
+	} {
+		got := runBashWriteHook(t, srv.URL, "s1", dir, cmd)
+		if !strings.Contains(got, "internal/store stays pure Go.") {
+			t.Errorf("%q did not serve the governing rule: %q", cmd, got)
+		}
+		served = append(served, got)
+	}
+	if n := atomic.LoadInt32(calls); n != 3 {
+		t.Errorf("obligations calls = %d, want 3 (one per resolved write)", n)
+	}
+	var beats []map[string]string
+	for _, b := range readBeats(t, beatLog, "payload-cost") {
+		if b.Kind == "post-bash" {
+			beats = append(beats, b.Meta)
+		}
+	}
+	if len(beats) != len(served) {
+		t.Fatalf("payload-cost post-bash beats = %d, want %d", len(beats), len(served))
+	}
+	for i, b := range beats {
+		if b["bytes"] != fmt.Sprint(len(served[i])) || b["rules"] != "1" || b["phase"] != "post-bash" {
+			t.Errorf("beat %d = %v; want bytes=%d rules=1 phase=post-bash", i, b, len(served[i]))
+		}
 	}
 }

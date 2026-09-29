@@ -21,6 +21,14 @@ package main
 // that point on — a write after it still counts as write-shaped (doubt),
 // but names no target, rather than resolving against a wrong directory.
 //
+// Quoted text and heredoc bodies are data, never write shapes (EW-1, O122):
+// bashWriteTargets blanks every heredoc body up front (blankHeredocBodies)
+// and finds each write shape on a copy of the statement whose single- and
+// double-quoted spans are masked (maskQuotedSpans), so `echo "a -> b"`
+// has no redirect and `git commit -m 'cp x, mv y'` names no writer, while
+// a quoted redirect TARGET (`> "docs/a b.md"`) is still read from the real
+// text at the masked match's offsets.
+//
 // Deliberately not a shell parser: false negatives cost one fewer served
 // rule (the same cost extractPromptCandidates accepts), and every
 // confidently-extracted path is still just a CANDIDATE — it only ever
@@ -66,7 +74,7 @@ const maxBashWriteTargets = 5
 // three-way branch (silent / confident paths / doubt) is
 // `!writeShaped` / `len(paths)>0` / `writeShaped && len(paths)==0`.
 func bashWriteTargets(cmd string) (paths []string, writeShaped bool) {
-	cmd = strings.TrimSpace(cmd)
+	cmd = strings.TrimSpace(blankHeredocBodies(cmd))
 	if cmd == "" {
 		return nil, false
 	}
@@ -200,8 +208,8 @@ func applyBashCd(st *bwState, target string, ok bool) {
 // join semantics — a shell command's own paths, regardless of the host
 // OS fathom itself runs on.
 func joinBashPath(cwd, target string) string {
-	if path.IsAbs(target) {
-		return path.Clean(target)
+	if path.IsAbs(target) || target == "~" || strings.HasPrefix(target, "~") {
+		return path.Clean(target) // a tilde path is home-rooted, never relative to cwd: the caller expands or refuses it
 	}
 	return path.Join(cwd, target)
 }
@@ -223,15 +231,20 @@ func detectBashWritesInStatement(stmt string, st *bwState, c *bwCollector) {
 		return joinBashPath(st.cwd, p)
 	}
 
-	if gitApplyRe.MatchString(stmt) {
+	// Every write shape is FOUND on the masked copy (a quoted `>` or a
+	// quoted writer name is text) and READ from the real text at the same
+	// offsets (a quoted target, or a script with spaces, is still whole).
+	mask := maskQuotedSpans(stmt)
+
+	if gitApplyRe.MatchString(mask) {
 		c.writeShaped = true // the patch names its own targets; never guessable here
 		return
 	}
 
 	sawWrite := false
 
-	for _, m := range redirectRe.FindAllStringSubmatch(stmt, -1) {
-		target := m[2]
+	for _, m := range redirectRe.FindAllStringSubmatchIndex(mask, -1) {
+		target := stmt[m[4]:m[5]]
 		if bashWriteDevNull[target] {
 			continue // a stream sink, not a new file argument
 		}
@@ -239,7 +252,7 @@ func detectBashWritesInStatement(stmt string, st *bwState, c *bwCollector) {
 		c.add(resolve(target))
 	}
 
-	if loc := sedInPlaceRe.FindStringIndex(stmt); loc != nil {
+	if loc := sedInPlaceRe.FindStringIndex(mask); loc != nil {
 		sawWrite = true
 		fields := shellClauseFields(stmt[loc[1]:])
 		sawScript := false
@@ -255,7 +268,7 @@ func detectBashWritesInStatement(stmt string, st *bwState, c *bwCollector) {
 		}
 	}
 
-	if idx := wordEnd(stmt, "tee"); idx >= 0 {
+	if idx := wordEnd(mask, "tee"); idx >= 0 {
 		sawWrite = true
 		for _, f := range shellClauseFields(stmt[idx:]) {
 			if !strings.HasPrefix(f, "-") {
@@ -265,7 +278,7 @@ func detectBashWritesInStatement(stmt string, st *bwState, c *bwCollector) {
 	}
 
 	for _, verb := range []string{"cp", "mv"} {
-		if idx := wordEnd(stmt, verb); idx >= 0 {
+		if idx := wordEnd(mask, verb); idx >= 0 {
 			sawWrite = true
 			var nonFlags []string
 			for _, f := range shellClauseFields(stmt[idx:]) {
@@ -282,6 +295,185 @@ func detectBashWritesInStatement(stmt string, st *bwState, c *bwCollector) {
 	if sawWrite {
 		c.writeShaped = true
 	}
+}
+
+// maskQuotedSpans returns s with every byte inside a single- or double-
+// quoted span replaced by '_' (the quote characters themselves stay, so a
+// masked quoted argument is still one non-space token and an empty pair
+// of quotes is still empty). The result has s's length, so an offset
+// found in the mask indexes s directly. A backslash escapes the next byte
+// outside quotes and inside double quotes, never inside single quotes; an
+// unterminated quote masks to the end, as the shell itself would reject
+// the line.
+func maskQuotedSpans(s string) string {
+	if !strings.ContainsAny(s, `'"`) {
+		return s
+	}
+	b := []byte(s)
+	quote := byte(0)
+	for i := 0; i < len(b); i++ {
+		c := b[i]
+		switch {
+		case quote == '\'':
+			if c == '\'' {
+				quote = 0
+			} else {
+				b[i] = '_'
+			}
+		case quote == '"':
+			switch {
+			case c == '\\' && i+1 < len(b):
+				b[i], b[i+1] = '_', '_'
+				i++
+			case c == '"':
+				quote = 0
+			default:
+				b[i] = '_'
+			}
+		case c == '\\':
+			i++ // an escaped byte outside quotes is a literal, never a quote opener
+		case c == '\'' || c == '"':
+			quote = c
+		}
+	}
+	return string(b)
+}
+
+// blankHeredocBodies returns cmd with every heredoc body (the lines after
+// a `<<WORD`, `<<-WORD`, `<<'WORD'` or `<<"WORD"` line, through the line
+// that is exactly WORD) overwritten with spaces, newlines kept: a body is
+// data for the command reading it, so a `>` or a writer's name in it is
+// never a write shape, and an apostrophe in its prose never opens a quote
+// that swallows the next statement. `<<<` (a here-string) and a shift in
+// `$((1<<3))` are not heredocs; a heredoc with no terminator line is left
+// as written rather than blanking the rest of the command on a guess.
+func blankHeredocBodies(cmd string) string {
+	if !strings.Contains(cmd, "<<") {
+		return cmd
+	}
+	type pending struct {
+		word      string
+		stripTabs bool
+	}
+	var queue []pending
+	b := []byte(cmd)
+	quote := byte(0)
+	for i := 0; i < len(b); i++ {
+		c := b[i]
+		switch {
+		case quote == '\'':
+			if c == '\'' {
+				quote = 0
+			}
+		case quote == '"':
+			switch {
+			case c == '\\' && i+1 < len(b):
+				i++
+			case c == '"':
+				quote = 0
+			}
+		case c == '\\':
+			i++
+		case c == '\'' || c == '"':
+			quote = c
+		case c == '$' && i+2 < len(b) && b[i+1] == '(' && b[i+2] == '(':
+			i = matchParenEnd(cmd, i+1) // arithmetic: its `<<` is a shift
+		case c == '\n' && len(queue) > 0:
+			pos := i + 1
+			for _, q := range queue {
+				next, ok := blankHeredocBody(b, pos, q.word, q.stripTabs)
+				if !ok {
+					break
+				}
+				pos = next
+			}
+			queue = nil
+			i = pos - 1
+		case c == '<' && i+1 < len(b) && b[i+1] == '<' && (i+2 >= len(b) || b[i+2] != '<') && (i == 0 || b[i-1] != '<'):
+			if word, strip, end, ok := parseHeredocDelimiter(b, i+2); ok {
+				queue = append(queue, pending{word, strip})
+				i = end - 1
+			}
+		}
+	}
+	return string(b)
+}
+
+// parseHeredocDelimiter reads the delimiter after a `<<` at b[from:]: an
+// optional `-`, optional blanks, then a quoted or bare word that starts
+// with a letter or underscore (so `1<<3` is never one). end is the index
+// just past the word.
+func parseHeredocDelimiter(b []byte, from int) (word string, stripTabs bool, end int, ok bool) {
+	i := from
+	if i < len(b) && b[i] == '-' {
+		stripTabs = true
+		i++
+	}
+	for i < len(b) && (b[i] == ' ' || b[i] == '\t') {
+		i++
+	}
+	if i >= len(b) {
+		return "", false, 0, false
+	}
+	switch q := b[i]; {
+	case q == '\'' || q == '"':
+		j := i + 1
+		for j < len(b) && b[j] != q && b[j] != '\n' {
+			j++
+		}
+		if j >= len(b) || b[j] != q || j == i+1 {
+			return "", false, 0, false
+		}
+		return string(b[i+1 : j]), stripTabs, j + 1, true
+	case q == '\\' || q == '_' || (q >= 'a' && q <= 'z') || (q >= 'A' && q <= 'Z'):
+		if q == '\\' {
+			i++
+		}
+		j := i
+		for j < len(b) && !strings.ContainsRune(" \t\n;|&<>()", rune(b[j])) {
+			j++
+		}
+		if j == i {
+			return "", false, 0, false
+		}
+		return string(b[i:j]), stripTabs, j, true
+	}
+	return "", false, 0, false
+}
+
+// blankHeredocBody overwrites the body lines of one heredoc that starts at
+// b[from], through its terminator line, with spaces (newlines stay), and
+// returns the index just past the terminator line. ok is false — b
+// untouched — when no line is exactly word (with `<<-`, leading tabs on a
+// line are ignored).
+func blankHeredocBody(b []byte, from int, word string, stripTabs bool) (next int, ok bool) {
+	pos := from
+	for pos <= len(b) {
+		eol := pos
+		for eol < len(b) && b[eol] != '\n' {
+			eol++
+		}
+		line := strings.TrimRight(string(b[pos:eol]), "\r")
+		if stripTabs {
+			line = strings.TrimLeft(line, "\t")
+		}
+		if line == word {
+			for k := from; k < eol; k++ {
+				if b[k] != '\n' {
+					b[k] = ' '
+				}
+			}
+			if eol < len(b) {
+				eol++ // past the terminator's newline
+			}
+			return eol, true
+		}
+		if eol >= len(b) {
+			return from, false
+		}
+		pos = eol + 1
+	}
+	return from, false
 }
 
 // bwStatement is one top-level statement splitTopLevelStatements produced

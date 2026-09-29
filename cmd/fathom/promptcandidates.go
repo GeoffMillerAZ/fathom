@@ -6,9 +6,17 @@ package main
 // negative costs one fewer rule surfaced, a false positive wastes an RPC
 // on garbage — never a wrong governing rule, since every candidate still
 // has to resolve through the real index (fetchObligations / find_symbol)
-// before anything is served.
+// before anything is served. A path or package token must also name
+// something real in the working tree (EW-21, O126): obligations answers
+// ANY path with the root-scope rules, so a token that names nothing is
+// not garbage that resolves to nothing, it is six unrelated rules served.
 
-import "strings"
+import (
+	"os"
+	"path"
+	"path/filepath"
+	"strings"
+)
 
 // promptCandidateKind classifies one extracted token.
 type promptCandidateKind int
@@ -32,12 +40,69 @@ type promptCandidate struct {
 // `internal/mcp/tools.go`,") and none of it is part of the name.
 const promptTokenCutset = "`'\"“”‘’.,;:!?()[]{}<>"
 
+// promptNameCheck decides whether a path or package token names something
+// real: canonical is the token as the index knows it (repo-relative, slash
+// separated), ok is false when the token names nothing and must be dropped.
+type promptNameCheck func(kind promptCandidateKind, tok string) (canonical string, ok bool)
+
+// workingTreeNames is a promptNameCheck over the working tree under roots
+// (EW-21, O126): a path token is kept when it names a file, a package token
+// when it names a directory, under one of the roots. A `~` or `..` token, an
+// absolute path outside every root, and a token that exists only as the
+// wrong kind (`bin/fathom` is a build artifact: a file, never the package
+// `bin/fathom/__prompt__.go` it used to become) name nothing. An absolute
+// path inside a root is returned repo-relative. Symbols are not asked: they
+// resolve through the index (find_symbol) downstream, and that is the index
+// half of "names a file in the index or the working tree" — a path token is
+// judged against the tree the index mirrors, so the check adds no RPC.
+func workingTreeNames(roots []string) promptNameCheck {
+	return func(kind promptCandidateKind, tok string) (string, bool) {
+		for _, root := range roots {
+			rel, ok := treeRelative(root, tok)
+			if !ok {
+				continue
+			}
+			fi, err := os.Stat(filepath.Join(root, filepath.FromSlash(rel)))
+			if err != nil {
+				continue
+			}
+			if (kind == candidatePackage) == fi.IsDir() {
+				return rel, true
+			}
+		}
+		return "", false
+	}
+}
+
+// treeRelative is tok as a clean slash path relative to root, ok=false when
+// it cannot sit under root: a home-relative token, one that climbs out with
+// `..`, or an absolute path elsewhere.
+func treeRelative(root, tok string) (string, bool) {
+	if strings.HasPrefix(tok, "~") {
+		return "", false
+	}
+	if filepath.IsAbs(tok) {
+		rel, ok := relativeToRoot(root, tok)
+		if !ok || rel == "." {
+			return "", false
+		}
+		return filepath.ToSlash(rel), true
+	}
+	rel := path.Clean(strings.TrimPrefix(tok, "./"))
+	if rel == "." || rel == ".." || strings.HasPrefix(rel, "../") {
+		return "", false
+	}
+	return rel, true
+}
+
 // extractPromptCandidates scans prompt for path-, package- and symbol-
 // shaped tokens, in first-seen order, deduplicated, capped at
-// maxPromptCandidates. It never reads the index — classification is
-// purely lexical; resolution (and therefore the final word on whether a
-// token means anything) happens downstream.
-func extractPromptCandidates(prompt string) []promptCandidate {
+// maxPromptCandidates. Classification is lexical; names, when non-nil, is
+// then asked about every path and package token BEFORE it takes one of the
+// capped slots, so a token that names nothing (a scratch path, a build
+// artifact, a `~/.claude` file) neither reaches the index nor crowds out a
+// real one. A nil names keeps the purely lexical answer.
+func extractPromptCandidates(prompt string, names promptNameCheck) []promptCandidate {
 	seen := map[string]bool{}
 	var out []promptCandidate
 	for _, raw := range strings.Fields(prompt) {
@@ -65,17 +130,38 @@ func extractPromptCandidates(prompt string) []promptCandidate {
 			// No slash requirement here (unlike looksLikePackagePath
 			// below): a bare same-directory filename ("README.md" with no
 			// path prefix) is still a file, not a directory.
-			seen[tok] = true
-			out = append(out, promptCandidate{candidatePath, tok})
+			if text, ok := nameOf(names, candidatePath, tok, seen); ok {
+				out = append(out, promptCandidate{candidatePath, text})
+			}
 		case looksLikePackagePath(tok):
-			seen[tok] = true
-			out = append(out, promptCandidate{candidatePackage, tok})
+			if text, ok := nameOf(names, candidatePackage, tok, seen); ok {
+				out = append(out, promptCandidate{candidatePackage, text})
+			}
 		case looksLikeSymbol(tok, backticked, calledLike):
 			seen[tok] = true
 			out = append(out, promptCandidate{candidateSymbol, tok})
 		}
 	}
 	return out
+}
+
+// nameOf runs names over one path or package token and records it in seen
+// (so a token that names nothing is not asked about twice). It returns the
+// token's canonical text and true when the token should become a candidate;
+// false when it names nothing, or is a second spelling of a candidate
+// already taken (an absolute path and its repo-relative form). A nil names
+// keeps the token as written.
+func nameOf(names promptNameCheck, kind promptCandidateKind, tok string, seen map[string]bool) (string, bool) {
+	seen[tok] = true
+	if names == nil {
+		return tok, true
+	}
+	text, ok := names(kind, tok)
+	if !ok || (text != tok && seen[text]) {
+		return "", false
+	}
+	seen[text] = true
+	return text, true
 }
 
 // looksLikeFilePath reports whether tok's last path segment has a short,

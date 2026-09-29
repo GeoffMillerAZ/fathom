@@ -42,8 +42,9 @@ const (
 
 // gcTmpCacheDirs are the hooks' shared $TMPDIR caches whose entries gc
 // prunes after a day: FileChanged leases (one per root, file and mtime),
-// the per-cwd toplevel cache, the ident cache and guard stamps.
-var gcTmpCacheDirs = []string{"fathom-filechanged", "fathom-toplevel-cache", "fathom-ident-cache", "fathom-guard-stamps"}
+// the per-cwd toplevel cache, the ident cache, guard stamps and the
+// Bash-write hook's once-per-session doubt markers.
+var gcTmpCacheDirs = []string{"fathom-filechanged", "fathom-toplevel-cache", "fathom-ident-cache", "fathom-guard-stamps", "fathom-bash-doubt"}
 
 // gcOptions are runGC's inputs; every location and effect is injectable.
 type gcOptions struct {
