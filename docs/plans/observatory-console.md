@@ -18,7 +18,7 @@ wave is called done.
 - [x] Every page's JSON equals the `--json` output of each verb it names, on the fixture fleet {id: OC-8, symbol: registerPage, package: cmd/fathom, reachable_from: TestConsolePagesRenderTheirVerbs}
 - [x] A metric shown on several pages has one projection, and every page agrees on it {id: OC-9, symbol: registerPage, package: cmd/fathom, reachable_from: TestConsoleMetricsAgreeAcrossPages}
 - [x] Panels carry a copyable verb chip, a question, and a footer naming source, denominator and freshness {id: OC-10, symbol: renderPanel, package: cmd/fathom, reachable_from: TestConsolePanels_CarryVerbQuestionAndSource}
-- [x] `/search` returns grouped results (projects, plans and rows, symbols, rules and records, verbs, pages) as a page and as a fragment {id: OC-11, symbol: Search, package: internal/console, reachable_from: TestSearch_GroupsAndRanksResults}
+- [x] `/search` returns grouped results (projects, plans and rows, symbols, rules and records, verbs, pages) as a page and as a fragment {id: OC-11, symbol: SearchWith, package: internal/console, reachable_from: TestSearch_GroupsAndRanksResults}
 - [x] The ⌘K palette opens over any page, moves with the arrow keys, opens on Enter and returns focus on Esc {id: OC-12, oracle: lexical, path: cmd/fathom/console_palette.go, pattern: "palette"}
 - [x] `/events` streams ingest, compile, verify, session and daemon events with IDs, keepalives, replay and a subscriber bound {id: OC-13, symbol: EventBus, package: internal/console, reachable_from: TestEventBus_ReplayBoundAndKeepalive}
 - [x] A panel shows "updated" when an event names its source and never moves content {id: OC-14, oracle: lexical, path: cmd/fathom/console_live.go, pattern: "data-console-source"}

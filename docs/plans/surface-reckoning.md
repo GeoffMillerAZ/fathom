@@ -64,10 +64,10 @@ falsely.
 - [ ] (op) F-23: BP-46 is read; `pack_context` is kept with the reading cited, or folded into `query_symbols` and unregistered {id: SR-42, oracle: lexical, path: docs/bench/readings/bp-46-pack-context.md, pattern: "^Verdict: (keep|fold)"}
 - [x] F-24: `query_symbols` opens with a one-line `answer:` and a lower default top-N {id: SR-43, symbol: querySymbolsAnswerLine, package: internal/mcp, reachable_from: TestQuerySymbolsAnswerFirst}
 - [x] F-25: the prompt hook routes a stack trace, a failing test name or an error string to `localize` deterministically {id: SR-44, symbol: routeIssueShapedPrompt, package: cmd/fathom, reachable_from: TestPromptHookRoutesIssueShapesToLocalize}
-- [x] F-26, library: a checkable served rule compiles to an `enforce: true` guard (`guardFromCheckableRule`, `LayerRuleIsCheckable`); nothing calls either yet (SR-45w) {id: SR-45, symbol: guardFromCheckableRule, package: internal/guardspec, reachable_from: TestCheckableRuleCompilesToGuard}
+- [x] F-26, library: a checkable served rule compiles to an `enforce: true` guard (`guardFromCheckableRule`, `LayerRuleIsCheckable`); nothing calls either yet (SR-45w) {id: SR-45, symbol: guardFromCheckableRule, package: internal/guardspec, reachable_from: TestCheckableRuleCompilesToGuard, library: true, reason: "the library half of a split; SR-45w (open) is the row that wires it into the product"}
 - [ ] F-26: the `obligations` answer marks a served rule checkable, and a verb promotes it to an `enforce: true` guard {id: SR-45w, symbol: cmdObligations, package: cmd/fathom, reachable_from: TestObligationsMarksCheckableRule, needs: "SR-45"}
 - [x] F-28: `fathom init` wires the prompt hook by default {id: SR-46, symbol: cmdInit, package: cmd/fathom, reachable_from: TestInitWiresPromptHookByDefault}
-- [x] F-29, library: guard verdicts render as SARIF 2.1.0 (`guardsarif.GuardVerdictsSARIF`); no binary imports the package yet (SR-47w) {id: SR-47, symbol: guardVerdictsSARIF, package: internal/guardspec/guardsarif, reachable_from: TestGuardVerdictsSARIFGolden}
+- [x] F-29, library: guard verdicts render as SARIF 2.1.0 (`guardsarif.GuardVerdictsSARIF`); no binary imports the package yet (SR-47w) {id: SR-47, symbol: guardVerdictsSARIF, package: internal/guardspec/guardsarif, reachable_from: TestGuardVerdictsSARIFGolden, library: true, reason: "the library half of a split; SR-47w (open) is the row that wires it into the product"}
 - [ ] F-29: `fathom rules replay` emits its guard verdicts as SARIF 2.1.0 {id: SR-47w, symbol: cmdRulesReplay, package: cmd/fathom, reachable_from: TestCmdRulesReplayEmitsSARIF, needs: "SR-47"}
 - [x] F-31: when a served rule is violated, the next edit-hook turn asks for a one-key verdict (the answer is not read yet, SR-48w) {id: SR-48, symbol: askRuleVerdict, package: cmd/fathom, reachable_from: TestEditHookAsksVerdictOnIgnoredRule}
 - [ ] F-31: the one-key answer is read on the following turn and written as refute or corroborate, and the ask names the claim id (today the user runs `fathom claim corroborate|refute --claim <id>` by hand) {id: SR-48w, symbol: withRuleVerdictAskAt, package: cmd/fathom, reachable_from: TestEditHookRecordsVerdictAnswer, needs: "SR-48"}
@@ -92,8 +92,10 @@ falsely.
 - [ ] (op) Findings loop (F-33): Review Kit publishing is armed on one real repository and an import receipt shows findings > 0 {id: SR-64, oracle: lexical, path: docs/bench/readings/findings-armed.md, pattern: "^Imported: [1-9]"}
 - [ ] SCIP import (F-74): `fathom init` runs `scip-typescript` / `scip-python` when installed and imports the index {id: SR-65, symbol: initRunSCIP, package: cmd/fathom, reachable_from: TestInitRunsSCIPWhenInstalled}
 - [ ] (op) ui-appkit pack (F-67): compiled on app-kit and one consumer; UI rule violations measured {id: SR-66, oracle: lexical, path: docs/bench/readings/ui-appkit-pack.md, pattern: "^Compiled claims: [1-9]"}
-- [x] Call log and hook log: one reader over both logs feeds the U1–U5 views {id: SR-67, symbol: ReadActivityRecord, package: internal/metrics, reachable_from: TestActivityRecordJoinsCallAndHookLogs}
-- [x] Verify and session ledgers: the join by session id that N2 burn-up and N3 cost-per-proven-row read {id: SR-68, symbol: JoinLedgersBySession, package: internal/metrics, reachable_from: TestJoinVerifyAndSessionLedgers}
+- [ ] Call log and hook log: one reader over both logs feeds the U1–U5 views {id: SR-67, symbol: ReadActivityRecord, package: internal/metrics, reachable_from: TestActivityRecordJoinsCallAndHookLogs}
+  <!-- product wiring open (fathom verify --strict reads it library-only, 2026-09-28): ReadActivityRecord has no production caller: the U1-U5 views do not read through it. -->
+- [ ] Verify and session ledgers: the join by session id that N2 burn-up and N3 cost-per-proven-row read {id: SR-68, symbol: JoinLedgersBySession, package: internal/metrics, reachable_from: TestJoinVerifyAndSessionLedgers}
+  <!-- product wiring open (fathom verify --strict reads it library-only, 2026-09-28): JoinLedgersBySession has no production caller. -->
 
 ## Measurements
 

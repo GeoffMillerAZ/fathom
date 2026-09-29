@@ -9,7 +9,7 @@ a checkbox. No benchmark is run by this plan; FL-22 commits the corpus only.
 
 - [x] Producer catalog: `schema/semantic/producers.cue` (`#Producer{id, kind, origin, tier_cap, requires}`) with the shipped producers (`fathom.review`, `reviewkit.system-review`, `reviewkit.security-review`, `reviewkit.review-import` origin fathom, `human.review`), loaded and validated at start; an unknown producer, a cap above `verified`, or a `fathom`-origin producer named for import is a named refusal {id: FL-1, symbol: LoadProducers, package: internal/semantic}
 - [x] Served tier is `min(event tier, producer cap)`; tier never rises on import; pinned by a table test over every catalog kind {id: FL-2, symbol: CapTier, package: internal/semantic}
-- [x] `ClaimEvent` verdict `annotated` (status-preserving; note stored, never served as rule text) added additively beside `refuted|corroborated|contradicted|re-anchored|superseded`; `ResolutionKind` gains `external-closure` and `revoked` {id: FL-3, symbol: ValidVerdict, package: internal/core}
+- [x] `ClaimEvent` verdict `annotated` (status-preserving; note stored, never served as rule text) added additively beside `refuted|corroborated|contradicted|re-anchored|superseded`; `ResolutionKind` gains `external-closure` and `revoked` {id: FL-3, symbol: Importer.ApplyEvent, package: internal/findings/external}
 
 ## B. P2 — the governed import
 
@@ -22,7 +22,7 @@ a checkbox. No benchmark is run by this plan; FL-22 commits the corpus only.
 - [x] `fathom findings import --service --subject [--producer] --file [--dry-run] [--json]` emitting the receipt `{schema_version, delivered, duplicate, stale, rejected[], truncated, cursor}`; nothing written on a batch schema failure; `--dry-run` proves store-state equality {id: FL-10, symbol: cmdFindingsImport, package: cmd/fathom}
 - [x] `pkg/client.ImportFindings` returns the identical receipt for the identical input the CLI takes {id: FL-11, symbol: ImportFindings, package: pkg/client}
 - [x] Distinct reconciliation domains: native `StaleReviewClaims` never supersedes an `external-import/v1` claim and the importer never touches a `review-verb/v1` claim — one test with both populations in one store {id: FL-12, symbol: StaleReviewClaims, package: internal/analysis/review}
-- [x] Isolation: a claim imported for service A is invisible to `ObligationsFor`, `findings near`, and both hooks for service B {id: FL-13, symbol: ObligationsForLayer, package: internal/semantic}
+- [x] Isolation: a claim imported for service A is invisible to `ObligationsFor`, `findings near`, and both hooks for service B {id: FL-13, symbol: obligationsCore, package: internal/semantic}
 - [x] Conformance fixtures `testdata/contracts/findings-import/*.json` (happy path, duplicate, out-of-order, conflicting replay, moved anchor, revocation, disagreement, fathom-origin refusal, unknown schema, unknown field) run through CLI and client by one test {id: FL-14, symbol: TestFindingsImportConformance, package: cmd/fathom, skip_test: true, skip: "the row's symbol IS the test"}
 
 ## C. P0 / P1 — the review contract and the review key

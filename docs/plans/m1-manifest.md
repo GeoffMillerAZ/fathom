@@ -17,7 +17,7 @@ measurement window.
 
 ## Content-addressed prompt identity
 
-- [x] The obligations prompt lives as a prompttemplate.Template; PromptVersion derives from TextHash (obligations/hash8) so any prompt edit is automatically a new compile identity {id: M1-4, symbol: obligationsPromptVersion, package: internal/semantic, reachable_from: TestCompile_HappyPath}
+- [x] The obligations prompt lives as a prompttemplate.Template; PromptVersion derives from TextHash (obligations/hash8) so any prompt edit is automatically a new compile identity {id: M1-4, symbol: promptForLayer, package: internal/semantic, reachable_from: TestCompile_HappyPath}
 - [x] The digest gate keys on the derived identity; a template-text edit forces recompile of every section (the v1-to-v2 bug class dies) {id: M1-5, symbol: allDigestsMatch, package: internal/semantic, reachable_from: TestCompile_PromptBumpDefeatsDigestGate}
 
 ## Typed compile failures + enforced budgets

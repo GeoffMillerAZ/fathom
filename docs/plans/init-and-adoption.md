@@ -9,8 +9,9 @@ usage.md still documents the deleted set_profile.
 ## The command
 
 - [x] fathom init wires a repo end-to-end, idempotently: .fathomignore if absent, daemon ingest (fail-soft exit 2 with startup instructions when unreachable), project .claude/settings.json hooks (SessionStart session-hook, PostToolUse edit-hook, Stop stop-hook — JSON-merged, never duplicated, binary path from os.Executable), CLAUDE.md + AGENTS.md fathom stanzas between marker comments, printed manual steps (MCP registration one-liner, lefthook snippet) {id: IA-1, symbol: cmdInit, package: cmd/fathom}
-- [x] Settings merge is additive and idempotent: existing hooks preserved, re-running init changes nothing the second time {id: IA-2, symbol: mergeHookSettings, package: cmd/fathom}
-- [x] The stanza is one source: emitted into both CLAUDE.md and AGENTS.md (Codex reads the latter), replaceable in place via begin/end markers {id: IA-3, symbol: fathomStanza, package: cmd/fathom}
+- [x] Settings merge is additive and idempotent: existing hooks preserved, re-running init changes nothing the second time {id: IA-2, symbol: Key.place, package: internal/wiring}
+- [ ] The stanza is one source: emitted into both CLAUDE.md and AGENTS.md (Codex reads the latter), replaceable in place via begin/end markers {id: IA-3, symbol: fathomStanza, package: cmd/fathom}
+  <!-- product wiring open (fathom verify --strict reads it library-only, 2026-09-28): fathomStanza, which the tests exercise, has no production caller; the product writes the stanza through stanzaRegion/stanzaRegionFor, which no test reaches. -->
 
 ## The canonical doc
 

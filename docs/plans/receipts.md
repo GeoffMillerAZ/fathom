@@ -21,7 +21,8 @@ Verify: `fathom verify --service fathom --plan docs/plans/receipts.md`.
 - [x] The compile cost of a wired cell's obligations layer is on the cell and rolled into the row's cost {id: RC-10, symbol: readingsCompileCost, package: internal/scenariobench}
 - [x] The re-exploration overlap weighs `Read`, `read_source`, `Grep` results and shell reads (`cat`, `sed -n`, `head`, `tail`, `awk` with a path) — a worker discovering through grep is no longer invisible {id: RC-11, symbol: SessionReadBytes, package: internal/scenariobench}
 - [x] Guards cells carry `rule_served_before_edit` (the served rule's text appears in the transcript before the first edit of the governed file) and `violation` as row fields, so M1 is a rate and not prose {id: RC-12, symbol: RuleServedBeforeEdit, package: internal/scenariobench}
-- [x] `tokens_to_first_edit` is read for every session, and `facts_reused` counts hand-off pointers a session referenced before its first edit {id: RC-13, symbol: FactsReused, package: internal/scenariobench}
+- [ ] `tokens_to_first_edit` is read for every session, and `facts_reused` counts hand-off pointers a session referenced before its first edit {id: RC-13, symbol: FactsReused, package: internal/scenariobench}
+  <!-- product wiring open (fathom verify --strict reads it library-only, 2026-09-28): FactsReused has no production caller: no run computes facts_reused. -->
 - [x] Trial escalation: `scenariobench plan --escalate` reads the ledger and lists the cells whose treatment/control delta sits within the criterion's margin at n=2, so n≥3 is spent only where it decides {id: RC-14, symbol: EscalationPlan, package: internal/scenariobench}
 - [x] Turn budgets follow utilization and an unwinnable oracle is dropped with its reason: guards-i11 and guards-i31 to 80, the lookups to 20, `SB-cli__cli-10009` carries `disposition: dropped` (its fail_to_pass names a package that does not exist at base) and the driver skips it {id: RC-15, oracle: lexical, path: testdata/scenariobench/public-go.json, pattern: dropped}
 - [x] The treatment and control cells of one task run concurrently on their own worktrees and daemons {id: RC-16, symbol: RunArmsConcurrently, package: internal/scenariobench}
@@ -66,7 +67,8 @@ Verify: `fathom verify --service fathom --plan docs/plans/receipts.md`.
 ## Wave 4 — coverage as a code fact
 
 - [x] Go cover profiles parse into blocks {id: RC-37, symbol: ParseProfile, package: internal/analysis/coverage}
-- [x] Blocks join to indexed symbols: statements, covered, and the covering test names when the profile carries them {id: RC-38, symbol: JoinSymbols, package: internal/analysis/coverage}
+- [ ] Blocks join to indexed symbols: statements, covered, and the covering test names when the profile carries them {id: RC-38, symbol: JoinSymbols, package: internal/analysis/coverage}
+  <!-- product wiring open (fathom verify --strict reads it library-only, 2026-09-28): JoinSymbols has no production caller: no verb joins coverage blocks to indexed symbols. -->
 - [x] A repo-declared, open-vocabulary layer config classifies each test (default: `_test.go` is `unit`; build tags and directory names as declared) {id: RC-39, symbol: Classify, package: internal/testlayer}
 - [x] `fathom tests coverage --profile <file> [--diff]` prints per-symbol coverage by layer and the changed symbols with no covering test {id: RC-40, symbol: cmdTestsCoverage, package: cmd/fathom}
 - [x] `review_diff` and `fathom review --json` carry a coverage block for the changed symbols when a profile is supplied — the one surface the review kit consumes {id: RC-41, symbol: DimTestCoverage, package: internal/analysis/review}

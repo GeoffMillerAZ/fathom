@@ -38,12 +38,12 @@ Env contract (all read at construction, never mid-run):
 
 ## Tasks
 
-- [x] `openai` branch: construct the kit openai client from env; base-URL override honored {id: PM-1, symbol: buildOpenAIClient, package: cmd/fathom}
-- [x] `azure-openai` branch: endpoint/deployment/api-version wiring with typed missing-var errors {id: PM-2, symbol: buildAzureOpenAIClient, package: cmd/fathom}
-- [x] `bedrock` branch: kit chain-resolver construction; no static keys required; region resolution delegated to the kit {id: PM-3, symbol: buildBedrockClient, package: cmd/fathom}
-- [x] `codex-cli` branch: codexcli adapter with bin override, mirroring the claude-cli branch {id: PM-4, symbol: buildCodexCLIClient, package: cmd/fathom}
-- [x] Seam dispatch covers all six lanes; unknown-provider error text lists them; per-branch construction tests (API lanes construct-level with env fixtures, CLI lanes through fake shims) {id: PM-5, symbol: buildLLMClient, package: cmd/fathom}
-- [x] Docs: provider matrix table in docs/use-cases/coding-agents.md §5 (auth mode, env vars, marginal-cost story per lane); CHANGELOG entry; kit go.mod bump to the commit carrying all three kit slices {id: PM-6, symbol: buildLLMClient, package: cmd/fathom, skip_test: true, skip: "docs + dependency-pin deliverable anchored to the seam it documents; prose is not index-provable"}
+- [x] `openai` branch: construct the kit openai client from env; base-URL override honored {id: PM-1, symbol: buildOpenAIClientProfile, package: cmd/fathom}
+- [x] `azure-openai` branch: endpoint/deployment/api-version wiring with typed missing-var errors {id: PM-2, symbol: buildAzureOpenAIClientProfile, package: cmd/fathom}
+- [x] `bedrock` branch: kit chain-resolver construction; no static keys required; region resolution delegated to the kit {id: PM-3, symbol: buildBedrockClientProfile, package: cmd/fathom}
+- [x] `codex-cli` branch: codexcli adapter with bin override, mirroring the claude-cli branch {id: PM-4, symbol: buildCodexCLIClientProfile, package: cmd/fathom}
+- [x] Seam dispatch covers all six lanes; unknown-provider error text lists them; per-branch construction tests (API lanes construct-level with env fixtures, CLI lanes through fake shims) {id: PM-5, symbol: buildLLMClientForProfile, package: cmd/fathom}
+- [x] Docs: provider matrix table in docs/use-cases/coding-agents.md §5 (auth mode, env vars, marginal-cost story per lane); CHANGELOG entry; kit go.mod bump to the commit carrying all three kit slices {id: PM-6, symbol: buildLLMClientForProfile, package: cmd/fathom, skip_test: true, skip: "docs + dependency-pin deliverable anchored to the seam it documents; prose is not index-provable"}
 
 ## Deferred
 

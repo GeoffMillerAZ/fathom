@@ -8,7 +8,7 @@ Verify: `fathom verify --service fathom --plan docs/plans/bench-pyramid.md`.
 
 ## L2 — the corpus gate (free, first)
 
-- [x] `TestHomeCorpusTruthAtHead` also asserts every gold token is ABSENT from every file the harness auto-loads (root `CLAUDE.md`, `AGENTS.md`, `.claude/CLAUDE.md`, the user memory index when present) and refuses a prompt that names the file its own ground truth cites (`corpusBaselineFiles`) {id: BP-1, symbol: corpusBaselineFiles, package: internal/contextbench}
+- [x] `TestHomeCorpusTruthAtHead` also asserts every gold token is ABSENT from every file the harness auto-loads (root `CLAUDE.md`, `AGENTS.md`, `.claude/CLAUDE.md`, the user memory index when present) and refuses a prompt that names the file its own ground truth cites (`corpusBaselineFiles`) {id: BP-1, symbol: corpusBaselineFiles, package: internal/contextbench, library: true, reason: "gate harness: TestHomeCorpusTruthAtHead makes the assertion under go test; no binary is meant to call it"}
 - [x] H1-T02's truth and any other leaked task re-derived so the gate passes without weakening the task; the corpus revision bumped {id: BP-2, oracle: lexical, path: testdata/contextbench/tasks-home.json, pattern: "H1-T02: LEAKED", skip_test: true, skip: "corpus edit; evidence is TestHomeCorpusTruthAtHead green after BP-1"}
 
 ## Remembered cells and targeted runs
@@ -34,7 +34,7 @@ Verify: `fathom verify --service fathom --plan docs/plans/bench-pyramid.md`.
 
 ## L1 — payload replay (free)
 
-- [x] `internal/indexbench/replay`: a committed list of (tool, args) against the fixture store with golden `bytes`, `result_count` and a latency budget; `obligations` on fixture files first, then `find_callers`, `references`, `blast_radius`, `symbol_context`, `pack_context`, `repo_map` (`ReplayGolden`) {id: BP-15, symbol: ReplayGolden, package: internal/indexbench}
+- [x] `internal/indexbench/replay`: a committed list of (tool, args) against the fixture store with golden `bytes`, `result_count` and a latency budget; `obligations` on fixture files first, then `find_callers`, `references`, `blast_radius`, `symbol_context`, `pack_context`, `repo_map` (`ReplayGolden`) {id: BP-15, symbol: ReplayGolden, package: internal/indexbench, library: true, reason: "gate harness: task bench-l0-gate runs the replay as TestPayloadReplay; no binary is meant to call it"}
 - [x] `TestPayloadReplay` in `task validate` (VB-7 refactored `TestPayloadReplayMatchesGolden` onto it, 2026-09-14); a byte drift over 5% or a `displaced` count on any fixture file is a failing test naming the tool {id: BP-16, symbol: TestPayloadReplay, package: internal/indexbench, skip_test: true, skip: "the test is the anchor"}
 
 ## The fixes the bench found (D1, D2, D3, D5 of the design)
