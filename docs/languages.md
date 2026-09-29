@@ -137,7 +137,7 @@ Milestone M1 progress: languages at L1 excellent 11/20, at L2 9/12, at L3 0/8, a
 | Jupyter notebooks (.ipynb) | tool format | tags+doc | pure-go:encoding/json + python dialect (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-jupyter |
 | Luau (.luau) | language | tags | tree-sitter-grammars/tree-sitter-luau (MIT) | L2 | unsupported (disclosed) | — | — | — | LB-Q-luau |
 | Taskfile (go-task: Taskfile.yml) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | unsupported (disclosed) | — | — | — | LB-Q-taskfile |
-| Rego / OPA policy (.rego) | language | tags | FallenAngel97/tree-sitter-rego (MIT (verify at pin)) | L3 | unsupported (disclosed) | — | — | — | LB-Q-rego |
+| Rego / OPA policy (.rego) | language | tags | FallenAngel97/tree-sitter-rego (MIT (verify at pin)) | L3 | refused | — | — | — | re-plan (LB-Q-rego-rest refused) |
 | Git hook managers (lefthook.yml, .pre-commit-config.yaml) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L1 | unsupported (disclosed) | — | — | — | LB-Q-git-hooks-config |
 | Astro components (.astro) | language | tags | virchau13/tree-sitter-astro (MIT) | L2 | unsupported (disclosed) | — | — | — | LB-Q-astro |
 | Gradle builds (build.gradle, build.gradle.kts, settings.gradle*) | tool format | tags | murtaza64/tree-sitter-groovy + fwcd/tree-sitter-kotlin (verify at pin) | L3 | unsupported (disclosed) | — | — | — | LB-Q-gradle |

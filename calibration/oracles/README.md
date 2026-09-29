@@ -25,6 +25,7 @@ LB-F40).
 | powershell-ast/ | B | PowerShell |
 | php-parser/ | B | PHP |
 | luaparse/ | B | Lua (definitions) |
+| opa-parse/ | A (definitions, calls, imports) | Rego |
 | ts-tags/ | C | Bash, Lua and Ruby (calls) |
 | sqlglot/ | C | SQL (foreign-key calls) |
 | make/ | A (references), B (definitions) | Makefile |

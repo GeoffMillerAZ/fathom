@@ -1,0 +1,30 @@
+id: rego
+language: Rego
+# OPA is cloned sparse to its .rego files (the repository is far over 50 MB and 5,000 files; its policy
+# sources are a few hundred files spread through the tree); Regal to its bundle/, the linter's own
+# policies. OPA is pinned to v1.18.2, the release of the oracle's parser (opa 1.18.2).
+repos:
+  - name: open-policy-agent/opa
+    url: https://github.com/open-policy-agent/opa
+    ref: v1.18.2
+    sha: e695c9ef8edb0f8b9f13d014d7bc8a7fbcc57297
+    licence: Apache-2.0
+    sparse: ["**/*.rego"]
+    idioms:
+      - 'complete, partial set and partial object rules, default rules'
+      - 'functions with several bodies and else chains'
+      - 'builtin calls (count, sprintf, object.get) and calls through imported packages'
+      - 'import data.x.y [as z] and import rego.v1 / future.keywords'
+      - 'test_ rules and with keyword mocks'
+  - name: StyraInc/regal
+    url: https://github.com/StyraInc/regal
+    ref: v2.2.3
+    sha: ecf4652a41582c4aa75741c5643cfd19c9d3db23
+    licence: Apache-2.0
+    subpath: bundle
+    idioms:
+      - 'Rego v1 syntax throughout (if, contains, :=)'
+      - 'ref heads (report contains violation if), multi-value rules'
+      - 'helper functions in data.regal.util / data.regal.ast called through imports'
+      - 'one-line rule bodies with calls (x if count(y) > 0)'
+      - 'packages mirroring directories (regal.rules.style.*)'
