@@ -102,6 +102,14 @@ func cmdPromptHook(args []string, stdout, stderr io.Writer) int {
 	if isSystemNotification(prompt) {
 		return 0
 	}
+	// EW-21 (O126): a message another agent relayed into this session
+	// (a sub-agent, a teammate, a peer session, the workflow harness) is
+	// not a user asking a question either. It names scratch paths and build
+	// artifacts, and the hook answered one with six root rules and "178
+	// more eligible". Same silence, same place, and no daemon call.
+	if isAgentRelay(prompt) {
+		return 0
+	}
 
 	emitBeat("prompt-hook", "seen", firingMetaArm(map[string]string{}, sessionID, "", armOff))
 	if armOff {
@@ -156,6 +164,22 @@ func isSystemNotification(prompt string) bool {
 	return strings.Contains(prompt, "<task-notification>")
 }
 
+// agentRelayRE matches a line that opens with the wrapper Claude Code puts
+// around a message that another agent sent: `<cross-session-message
+// from="…">` (a peer session), `<teammate-message …>` (an agent team), or the
+// workflow harness's `[Workflow harness …]` framing of a computed task. The
+// tags are the ones the harness documents to the model as "not from your
+// user"; matching a line start (not the whole prompt's start) catches a
+// relay queued behind typed text, while a user's own sentence that merely
+// names a tag mid-line is not one.
+var agentRelayRE = regexp.MustCompile(`(?m)^\s*(<cross-session-message\b|<teammate-message\b|\[Workflow harness\b)`)
+
+// isAgentRelay reports whether prompt carries a cross-agent relay message
+// (EW-21, O126) rather than text the user typed.
+func isAgentRelay(prompt string) bool {
+	return agentRelayRE.MatchString(prompt)
+}
+
 // promptObligationsMeta is what renderPromptObligations learned, for the
 // answered beat.
 type promptObligationsMeta struct {
@@ -174,7 +198,7 @@ func renderPromptObligations(url, projDir, prompt, sessionID string, deadline ti
 	if capabilityOffForFile(projDir, "", "obligations") {
 		return "", promptObligationsMeta{}, false
 	}
-	candidates := extractPromptCandidates(prompt)
+	candidates := extractPromptCandidates(prompt, workingTreeNames(localCandidateRoots(projDir)))
 	if len(candidates) == 0 {
 		return "", promptObligationsMeta{}, false
 	}
@@ -256,8 +280,9 @@ type promptResolved struct {
 // resolvePromptCandidates resolves candidates against projDir's service —
 // the daemon-resolved identity when reachable, else the basename guess
 // (candidatesWithDaemon, the same fallback ladder edit-hook uses). Path
-// and package tokens resolve locally (a prompt names REPO-RELATIVE text,
-// not a filesystem path to relativize); symbol tokens cost one find_symbol
+// and package tokens resolve locally: extractPromptCandidates already kept
+// only those that name a file or directory in the working tree (EW-21), as
+// repo-relative text; symbol tokens cost one find_symbol
 // RPC each, capped at maxPromptSymbolLookups AND stopped early once
 // deadline arrives — every RPC here draws against the SAME shared budget
 // the caller's later per-file obligations calls also draw against.

@@ -122,7 +122,7 @@ func TestPromptHook_SlowDaemonReturnsWithinBudget(t *testing.T) {
 	promptHookDeadlineBudget = 300 * time.Millisecond
 	defer func() { promptHookDeadlineBudget = orig }()
 
-	dir := t.TempDir()
+	dir := touchTree(t, t.TempDir(), "internal/store/backend.go", "internal/mcp/tools.go") // EW-21: a prompt's path must exist to count
 	srv := fakeSlowPromptDaemon(t, map[string]any{
 		"internal/store/backend.go": map[string]any{
 			"service": strings.ToLower(filepath.Base(dir)),
@@ -179,7 +179,7 @@ func promptHookStdin(t *testing.T, cwd, prompt string) {
 // ADR-025's rule (internal/store stays pure Go — the DuckDB backend was
 // deleted outright) before any tool has touched the file.
 func TestPromptHook_PathNameServesGoverningRule(t *testing.T) {
-	dir := t.TempDir()
+	dir := touchTree(t, t.TempDir(), "internal/store/backend.go") // EW-21: a prompt's path must exist to count
 	srv := fakePromptDaemon(t, map[string]any{
 		"internal/store/backend.go": map[string]any{
 			"service": strings.ToLower(filepath.Base(dir)),

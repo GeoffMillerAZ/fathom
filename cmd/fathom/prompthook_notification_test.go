@@ -48,7 +48,7 @@ func TestIsSystemNotification(t *testing.T) {
 // hardened looksLikePackagePath no longer admits the scheme-less URL
 // segment — the "cursor.com/blog/…" half of the original defect.
 func TestExtractPromptCandidates_NotificationFixtureNeverMisclassified(t *testing.T) {
-	cands := extractPromptCandidates(systemNotificationFixture)
+	cands := extractPromptCandidates(systemNotificationFixture, nil)
 	for _, c := range cands {
 		if c.text == "cursor.com/blog/secure-codebase-indexing" {
 			t.Errorf("cursor.com/blog/secure-codebase-indexing was extracted as a candidate (kind=%v) — a bare URL mention must never be classified as a repo package path", c.kind)
