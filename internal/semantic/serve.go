@@ -565,7 +565,7 @@ func isRootLevelSource(subject string) bool {
 	if i := strings.IndexByte(subject, '#'); i >= 0 {
 		path = subject[:i]
 	}
-	if instructionFileBases[path] {
+	if isRootGuidePath(path) {
 		return true
 	}
 	return strings.HasPrefix(path, "docs/intent/")

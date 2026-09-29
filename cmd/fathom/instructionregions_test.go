@@ -112,7 +112,7 @@ func TestClaudeImportRegionGoesIntoTheFirstPresentClaudeFile(t *testing.T) {
 // the adopter wrote is the import; fathom adds none. A fenced one is prose.
 func TestClaudeImportRegionNoneWhenAnImportAlreadyExists(t *testing.T) {
 	root := t.TempDir()
-	prior := "# house rules\n\n@AGENTS.md\n"
+	prior := "# house rules\n\n" + "@AGENTS.md\n"
 	writeRepoFile(t, root, "CLAUDE.md", prior)
 	regions, _ := instructionRegions(root, harness.ClaudeCode, "svc", false)
 	if _, err := wiring.ApplyWiring(root, wiring.Spec{Regions: regions}, wiring.ApplyOptions{}); err != nil {
@@ -123,7 +123,7 @@ func TestClaudeImportRegionNoneWhenAnImportAlreadyExists(t *testing.T) {
 	}
 
 	fenced := t.TempDir()
-	writeRepoFile(t, fenced, "CLAUDE.md", "# rules\n\n```\n@AGENTS.md\n```\n\nSee `@AGENTS.md`.\n")
+	writeRepoFile(t, fenced, "CLAUDE.md", "# rules\n\n```\n"+"@AGENTS.md\n```\n\nSee `@AGENTS.md`.\n")
 	if r, _ := claudeImportRegion(fenced); r.Remove {
 		t.Error("a fenced or inline-code import counted as an import")
 	}
@@ -226,13 +226,13 @@ func TestRewireBlocksADriftedClaudeStanza(t *testing.T) {
 func TestRewireRemovesFathomsRegionWhenTheAdopterImportsAgentsMD(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	root := filepath.Join(t.TempDir(), "demo")
-	writeRepoFile(t, root, "CLAUDE.md", "# house rules\n\n@AGENTS.md\n\n"+fathomStanza("demo", false)+"\n")
+	writeRepoFile(t, root, "CLAUDE.md", "# house rules\n\n"+"@AGENTS.md\n\n"+fathomStanza("demo", false)+"\n")
 	writeRepoFile(t, root, "AGENTS.md", fathomStanza("demo", false)+"\n")
 	var out, errb strings.Builder
 	if code := cmdFleetReconcile([]string{"--url", "http://127.0.0.1:1", "--apply", "--repo", root}, &out, &errb); code != 0 {
 		t.Fatalf("apply exit %d:\n%s%s", code, out.String(), errb.String())
 	}
-	if got := readRepoFile(t, root, "CLAUDE.md"); got != "# house rules\n\n@AGENTS.md\n" {
+	if got := readRepoFile(t, root, "CLAUDE.md"); got != "# house rules\n\n"+"@AGENTS.md\n" {
 		t.Fatalf("CLAUDE.md = %q, want the adopter's import and no fathom region", got)
 	}
 }

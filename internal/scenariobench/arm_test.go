@@ -505,25 +505,50 @@ func TestRenderArm_InstructionsTextAppendsToExistingClaudeMD(t *testing.T) {
 	}
 }
 
-// TestRenderArm_InstructionsTextCreatesClaudeMDWhenAbsent covers the other
-// half of the fix: no pre-existing CLAUDE.md means "text" mode creates one
-// (never errors), holding just the marked stanza.
-func TestRenderArm_InstructionsTextCreatesClaudeMDWhenAbsent(t *testing.T) {
+// TestRenderArmWritesAgentsMDWithoutClaudeFile covers the other half of the
+// fix, under ADR-059 (AG-18): a subject with no root CLAUDE file gets "text"
+// mode's region in AGENTS.md (created when absent, never an error) — never a
+// created CLAUDE.md, which would switch the subject's AGENTS.md off under
+// Claude Code's default mode and change the arm; and "none" removes every
+// root instruction file, AGENTS.md included.
+func TestRenderArmWritesAgentsMDWithoutClaudeFile(t *testing.T) {
 	dir := t.TempDir()
 	arm := Arm{Instructions: "text", InstructionsText: "## routing stanza\n\nwhere: find_symbol\n"}
 	files, err := RenderArm(arm, dir)
 	if err != nil {
 		t.Fatalf("RenderArm: %v", err)
 	}
-	if !files.InstructionsAppended {
-		t.Error("expected InstructionsAppended = true")
+	if !files.InstructionsAppended || files.InstructionsPath != filepath.Join(dir, "AGENTS.md") {
+		t.Errorf("files = %+v, want the region appended to AGENTS.md", files)
 	}
-	raw, err := os.ReadFile(filepath.Join(dir, "CLAUDE.md"))
+	raw, err := os.ReadFile(filepath.Join(dir, "AGENTS.md"))
 	if err != nil {
-		t.Fatalf("reading CLAUDE.md: %v", err)
+		t.Fatalf("reading AGENTS.md: %v", err)
 	}
 	if !strings.Contains(string(raw), arm.InstructionsText) {
-		t.Errorf("CLAUDE.md = %q, want it to contain %q", raw, arm.InstructionsText)
+		t.Errorf("AGENTS.md = %q, want it to contain %q", raw, arm.InstructionsText)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "CLAUDE.md")); !os.IsNotExist(err) {
+		t.Errorf("RenderArm created CLAUDE.md (err=%v)", err)
+	}
+
+	// A subject WITH a root CLAUDE file keeps the region there.
+	withClaude := t.TempDir()
+	writeTestFile(t, filepath.Join(withClaude, "CLAUDE.md"), "# subject\n")
+	files, err = RenderArm(arm, withClaude)
+	if err != nil || files.InstructionsPath != filepath.Join(withClaude, "CLAUDE.md") {
+		t.Fatalf("with a CLAUDE.md: files=%+v err=%v", files, err)
+	}
+
+	// "none" leaves no root instruction file at all.
+	writeTestFile(t, filepath.Join(withClaude, "AGENTS.md"), "# agents\n")
+	if _, err := RenderArm(Arm{Instructions: "none"}, withClaude); err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range []string{"CLAUDE.md", "AGENTS.md"} {
+		if _, err := os.Stat(filepath.Join(withClaude, f)); !os.IsNotExist(err) {
+			t.Errorf("none left %s (err=%v)", f, err)
+		}
 	}
 }
 

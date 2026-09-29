@@ -18,7 +18,7 @@ import (
 // the removed text, and `fleet undo` restores the file exactly.
 func TestRegionRemoveDeletesOwnedRegionAndUndoRestoresIt(t *testing.T) {
 	root := t.TempDir()
-	prior := "# demo\n\n@AGENTS.md\n\n" + renderRegion(HTMLMarkers, "v3", stanzaBody, "\n") + "\n"
+	prior := "# demo\n\n" + "@AGENTS.md\n\n" + renderRegion(HTMLMarkers, "v3", stanzaBody, "\n") + "\n"
 	write(t, root, "CLAUDE.md", prior)
 	spec := Spec{Regions: []Region{{File: "CLAUDE.md", Syntax: HTMLMarkers, Version: "v3", Remove: true}}}
 
@@ -34,7 +34,7 @@ func TestRegionRemoveDeletesOwnedRegionAndUndoRestoresIt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, want := read(t, root, "CLAUDE.md"), "# demo\n\n@AGENTS.md\n"; got != want {
+	if got, want := read(t, root, "CLAUDE.md"), "# demo\n\n"+"@AGENTS.md\n"; got != want {
 		t.Fatalf("after removal CLAUDE.md = %q, want %q", got, want)
 	}
 	if res.Receipt == nil || len(res.Receipt.Files) != 1 || res.Receipt.Files[0].Before != prior {

@@ -194,7 +194,7 @@ func TestObligationsTool_LayerCoverage_RootScopeNeverGetsAFileNote(t *testing.T)
 		t.Fatalf("unexpected error: %v", resp["error"])
 	}
 	payload := extractPayload(t, resp)
-	wantRootNote := "Root-scope obligations only (repo-root/CLAUDE.md-level rules) — pass file for file-scoped rules."
+	wantRootNote := "Root-scope obligations only (repo-root AGENTS.md/CLAUDE.md-level rules) — pass file for file-scoped rules."
 	if payload["note"] != wantRootNote {
 		t.Errorf("payload[note] = %v, want the root-scope note %q unchanged", payload["note"], wantRootNote)
 	}

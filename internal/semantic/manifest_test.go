@@ -88,8 +88,9 @@ func TestLoadLayer_Obligations(t *testing.T) {
 	}
 	// BP-32 widened the corpus to every NESTED instruction file (O23: the
 	// rule governing internal/extractor/*.go lives in internal/CLAUDE.md and
-	// was never compiled), with the build/vendor trees excluded.
-	wantInclude := []string{"CLAUDE.md", "ADR.md", "docs/plans/README.md", "**/CLAUDE.md"}
+	// was never compiled), with the build/vendor trees excluded; ADR-059
+	// added AGENTS.md at the root, under .claude/ and nested.
+	wantInclude := []string{"AGENTS.md", "CLAUDE.md", ".claude/AGENTS.md", ".claude/CLAUDE.md", "ADR.md", "docs/plans/README.md", "**/AGENTS.md", "**/CLAUDE.md"}
 	if !reflect.DeepEqual(def.CorpusInclude, wantInclude) {
 		t.Errorf("CorpusInclude = %v, want %v", def.CorpusInclude, wantInclude)
 	}

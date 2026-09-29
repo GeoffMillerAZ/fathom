@@ -83,7 +83,7 @@ func TestCheckStanzaPresentAgentsMD(t *testing.T) {
 	t.Run("imported by CLAUDE.md passes", func(t *testing.T) {
 		withClaudeLoadEnv(t, t.TempDir(), "", "2.1.200")
 		_, root := agentsRepo(t)
-		writeRepoFile(t, root, "CLAUDE.md", "# house\n\n@AGENTS.md\n")
+		writeRepoFile(t, root, "CLAUDE.md", "# house\n\n"+"@AGENTS.md\n")
 		c := checkStanzaPresent(root)
 		if c.Status != doctorPass || !strings.Contains(c.Reason, "imported by CLAUDE.md") {
 			t.Fatalf("got %+v (an import loads AGENTS.md on any release)", c)
@@ -92,7 +92,7 @@ func TestCheckStanzaPresentAgentsMD(t *testing.T) {
 	t.Run("an import-only CLAUDE.md says it can go", func(t *testing.T) {
 		withClaudeLoadEnv(t, t.TempDir(), "", "2.1.284")
 		_, root := agentsRepo(t)
-		writeRepoFile(t, root, "CLAUDE.md", fathomStanzaBegin+"\n@AGENTS.md\n"+fathomStanzaEnd+"\n")
+		writeRepoFile(t, root, "CLAUDE.md", fathomStanzaBegin+"\n"+"@AGENTS.md\n"+fathomStanzaEnd+"\n")
 		c := checkStanzaPresent(root)
 		if c.Status != doctorPass || !strings.Contains(c.Reason, "deleting it lets Claude Code read AGENTS.md natively") {
 			t.Fatalf("got %+v", c)

@@ -1487,14 +1487,19 @@ func TestObligationsCorpusIncludesNestedInstructionFiles(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadLayer(obligations): %v", err)
 	}
-	var hasNested bool
+	includes := map[string]bool{}
 	for _, g := range def.CorpusInclude {
-		if g == "**/CLAUDE.md" {
-			hasNested = true
-		}
+		includes[g] = true
 	}
-	if !hasNested {
+	if !includes["**/CLAUDE.md"] {
 		t.Errorf("obligations corpus include = %v, want it to cover **/CLAUDE.md (O23: internal/CLAUDE.md's rules were never compiled)", def.CorpusInclude)
+	}
+	// ADR-059 (AG-13): AGENTS.md is the one instruction file — root,
+	// .claude/ and nested — so a converted repo keeps its governing corpus.
+	for _, want := range []string{"AGENTS.md", "**/AGENTS.md", ".claude/AGENTS.md", ".claude/CLAUDE.md"} {
+		if !includes[want] {
+			t.Errorf("obligations corpus include = %v, want it to carry %q (ADR-059)", def.CorpusInclude, want)
+		}
 	}
 	for _, want := range []string{"third_party/**", ".claude/worktrees/**", "workspace/**", "node_modules/**"} {
 		var found bool
@@ -1512,7 +1517,10 @@ func TestObligationsCorpusIncludesNestedInstructionFiles(t *testing.T) {
 	// it would let a nested file's rules compile repo-wide scopes.
 	files := []core.SourceFile{
 		{Path: "CLAUDE.md"},
+		{Path: "AGENTS.md"},
 		{Path: "internal/CLAUDE.md"},
+		{Path: "internal/AGENTS.md"},
+		{Path: "third_party/x/AGENTS.md"},
 		{Path: "cmd/fathom/CLAUDE.md"},
 		{Path: "third_party/x/CLAUDE.md"},
 		{Path: ".claude/worktrees/w/internal/CLAUDE.md"},
@@ -1525,7 +1533,7 @@ func TestObligationsCorpusIncludesNestedInstructionFiles(t *testing.T) {
 	for _, f := range SelectCorpus(files, def.CorpusInclude, def.CorpusExclude) {
 		got = append(got, f.Path)
 	}
-	want := "ADR.md,CLAUDE.md,cmd/fathom/CLAUDE.md,internal/CLAUDE.md"
+	want := "ADR.md,AGENTS.md,CLAUDE.md,cmd/fathom/CLAUDE.md,internal/AGENTS.md,internal/CLAUDE.md"
 	if strings.Join(got, ",") != want {
 		t.Errorf("SelectCorpus = %v, want %s", got, want)
 	}

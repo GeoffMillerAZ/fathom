@@ -20,7 +20,7 @@ func TestFleetReport(t *testing.T) {
 	repo := t.TempDir()
 	os.MkdirAll(filepath.Join(repo, ".claude"), 0o755)
 	os.WriteFile(filepath.Join(repo, ".claude", "settings.json"), []byte(`{"hooks":{"PostToolUse":[{"hooks":[{"command":"fathom edit-hook"}]}]}}`), 0o644)
-	os.WriteFile(filepath.Join(repo, "CLAUDE.md"), []byte("# x\nfathom stanza here\n"), 0o644)
+	os.WriteFile(filepath.Join(repo, "AGENTS.md"), []byte("# x\n"+fathomStanza("alpha", false)+"\n"), 0o644) // ADR-059: the stanza's one file
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {

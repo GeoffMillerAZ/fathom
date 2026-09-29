@@ -980,7 +980,7 @@ func wiringGrade(s obsServiceRow) (grade, raise string) {
 			score++
 		}
 	}
-	stanzaOK := s.StanzaNote == "present"
+	stanzaOK := stanzaNotePresent(s.StanzaNote)
 	visible++
 	if stanzaOK {
 		score++

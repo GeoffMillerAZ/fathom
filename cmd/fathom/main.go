@@ -69,8 +69,10 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		return cmdIngestDiff(args[1:], stdout, stderr)
 	case "watch":
 		return cmdWatch(args[1:], stdout, stderr)
+	case "gen-agents-md":
+		return cmdGenAgentsMd(args[1:], stdout, stderr)
 	case "gen-claude-md":
-		return cmdGenClaudeMd(args[1:], stdout, stderr)
+		return cmdGenClaudeMd(args[1:], stdout, stderr) // deprecated alias through 0.9.x (ADR-059)
 	case "gen-status-cue":
 		return cmdGenStatusCue(args[1:], stdout, stderr)
 	case "gen-platform-manifest":

@@ -1044,7 +1044,7 @@ const (
 	// digest on the begin line ("<!-- fathom:begin v3 sha256:… -->"), so
 	// anything LOOKING for a region must match fathomStanzaBeginPrefix, not
 	// the v1 spelling; fathomStanza still renders the v1 form for callers
-	// that want the bare template (doctor's fixtures, gen-claude-md).
+	// that want the bare template (doctor's fixtures, gen-agents-md).
 	fathomStanzaBegin       = "<!-- fathom:begin -->"
 	fathomStanzaBeginPrefix = "<!-- fathom:begin"
 	fathomStanzaEnd         = "<!-- fathom:end -->"
