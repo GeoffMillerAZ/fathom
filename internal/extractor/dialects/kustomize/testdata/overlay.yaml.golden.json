@@ -1,0 +1,16 @@
+{
+  "symbols": [
+    { "name": "kustomization.yaml", "kind": "Kustomization", "package": "kustomization", "line": 2, "end_line": 10,
+      "calls": ["../../base", "deployment.yaml", "ingress-patch.json", "monitoring"], "tier": "verified" },
+    { "name": "../../base", "kind": "KustomizeResource", "package": "kustomization", "line": 3, "end_line": 3, "tier": "verified" },
+    { "name": "monitoring", "kind": "KustomizeResource", "package": "kustomization", "line": 4, "end_line": 4, "tier": "verified" },
+    { "name": "deployment.yaml", "kind": "KustomizePatch", "package": "kustomization", "line": 7, "end_line": 7, "tier": "verified" },
+    { "name": "ingress-patch.json", "kind": "KustomizePatch", "package": "kustomization", "line": 8, "end_line": 10, "signature": "Ingress", "tier": "verified" }
+  ],
+  "cross_file": [
+    { "from": "", "edge": "resource", "raw": "../../base", "target": "k8s/base", "strategy": "repo-path", "line": 3 },
+    { "from": "", "edge": "resource", "raw": "monitoring", "target": "k8s/overlays/prod/monitoring", "strategy": "repo-path", "line": 4 },
+    { "from": "", "edge": "patch", "raw": "deployment.yaml", "target": "k8s/overlays/prod/deployment.yaml", "strategy": "repo-path", "line": 7 },
+    { "from": "", "edge": "patch", "raw": "ingress-patch.json", "target": "k8s/overlays/prod/ingress-patch.json", "strategy": "repo-path", "line": 8 }
+  ]
+}

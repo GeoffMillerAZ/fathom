@@ -1,0 +1,32 @@
+{
+  "id": "kustomize",
+  "display": "Kustomize (kustomization.yaml)",
+  "kind": "tooling",
+  "engine": "doc",
+  "lang_tag": "kustomize",
+  "match": {
+    "extensions": [],
+    "basenames": ["kustomization.yaml", "kustomization.yml"],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "variants": [],
+  "kinds": {
+    "kustomization": { "source_kind": "Kustomization",       "canonical": "package" },
+    "resource":      { "source_kind": "KustomizeResource",   "canonical": "resource" },
+    "patch":         { "source_kind": "KustomizePatch",      "canonical": "resource" },
+    "image":         { "source_kind": "KustomizeImage",      "canonical": "data_source" },
+    "configmap":     { "source_kind": "KustomizeConfigMap",  "canonical": "resource" },
+    "secret":        { "source_kind": "KustomizeSecret",     "canonical": "resource" }
+  },
+  "required_kinds": ["kustomization", "resource", "patch", "image"],
+  "oracle_kinds": {
+    "tool": { "package": "package", "resource": "resource", "data_source": "data_source" }
+  },
+  "name_match": "identity",
+  "package": { "strategy": "none" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L3",
+  "queue_id": "kustomize"
+}

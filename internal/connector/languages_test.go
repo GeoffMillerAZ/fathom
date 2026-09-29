@@ -85,6 +85,7 @@ var langRowHint = map[string]string{
 	"msbuild":          ".csproj",
 	"cargo":            "Cargo.toml",
 	"go-mod":           "go.mod, go.work,",
+	"kustomize":        "Kustomize",
 }
 
 // registryLangTags returns the sorted, deduplicated set of Lang tags

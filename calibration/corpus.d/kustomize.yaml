@@ -1,0 +1,43 @@
+id: kustomize
+language: Kustomize (kustomization.yaml)
+# The queue entry names kubernetes-sigs/kustomize (its examples subpath) and
+# argoproj/argocd-example-apps, both Apache-2.0 and both read only, never vendored.
+# kustomize/v5.8.1 is the release whose Kustomize the installed `kubectl kustomize`
+# (kubectl v1.36.1) embeds, so the oracle and the subject are one version; the tag is
+# annotated, and `sha` is the commit it points at. Both subjects are small (22
+# kustomization files between them, 1.5 MB and 0.5 MB): the examples directory is the
+# hand-written half of the tool's own documentation, argocd-example-apps the working
+# applications a GitOps controller is demonstrated with.
+repos:
+  - name: kubernetes-sigs/kustomize
+    url: https://github.com/kubernetes-sigs/kustomize.git
+    ref: kustomize/v5.8.1
+    sha: 9790a1c3efd2fd35f1b768d495112834176581c1
+    licence: Apache-2.0
+    subpath: examples
+    idioms:
+      - "overlays that name a base directory (`resources: - ../../base`), add a
+        namePrefix, patch by path and generate a ConfigMap (ldap, springboot)"
+      - "a root that lists overlay directories as its resources (multibases: dev,
+        staging, production), every overlay naming one shared base directory"
+      - "configMapGenerator with files, literals, envs and `behavior: merge`
+        (springboot staging), and the legacy vars, commonLabels and configurations"
+      - "a remote base, a release URL and a remote patch (loadHttp): references that
+        leave the repository and that no build offline can follow"
+      - "a kustomization that names a file the checkout does not hold
+        (transformerconfigs/images: kustomizeconfig/mykind.yaml is written by the
+        tool's documentation), which the tool rejects"
+  - name: argoproj/argocd-example-apps
+    url: https://github.com/argoproj/argocd-example-apps.git
+    ref: master
+    sha: 8088f4c0d970abb09e250248cc97e35623447cb5
+    licence: Apache-2.0
+    idioms:
+      - "`bases:` (the deprecated spelling) naming a sibling application directory
+        (pre-post-sync over kustomize-guestbook)"
+      - "a kustomization with no apiVersion or kind, only resources, 29 manifests
+        wide (sock-shop)"
+      - "resources written with and without a leading `./`, beside a patch path
+        (kustomized-helm)"
+      - "a kustomization over a file no checkout holds (plugins/kustomized-helm:
+        ./all.yaml is written by helm at render time), which the tool rejects"

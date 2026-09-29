@@ -1,0 +1,58 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: prod
+namePrefix: prod-
+
+resources:
+  - deployment.yaml
+  - ./service.yaml
+  - ../base
+  - github.com/example/app//deploy?ref=v1.2.0
+  - https://example.com/raw/config.yaml
+bases:
+  - ../../legacy-base
+components:
+  - ../components/monitoring
+
+patches:
+  - path: patches/add-label.yaml
+    target:
+      kind: Deployment
+      name: my-app
+  - patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 5
+    target:
+      kind: Deployment
+      name: my-app
+patchesStrategicMerge:
+  - patches/replica-count.yaml
+patchesJson6902:
+  - path: patches/json.yaml
+    target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: worker
+
+images:
+  - name: myapp
+    newName: registry.example.com/myapp
+    newTag: "1.2.3"
+  - name: sidecar
+    newTag: latest
+  - name: pinned
+    digest: sha256:abc123
+
+configMapGenerator:
+  - name: app-config
+    literals:
+      - LEVEL=debug
+  - name: app-env
+    envs:
+      - app.env
+secretGenerator:
+  - name: app-secret
+    files:
+      - token.txt
