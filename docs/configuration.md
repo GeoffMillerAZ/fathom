@@ -786,7 +786,11 @@ What it does, once on:
   A piped test run (`go test ./... | tail -30`) arrives on the first with
   no exit code; an unpiped run that exited non-zero on the second, with
   the exit code in its `error` text
-  (`docs/bench/readings/test-run-hook/hook-facts.md`).
+  (`docs/bench/readings/test-run-hook/hook-facts.md`). A repository needs
+  both: `fathom doctor` (hooks_installed) and `fathom fleet reconcile`
+  check each row by its own command, so one that wires the failure row
+  but not the `PostToolUse(Bash)` one, where `fathom edit-hook` shares the
+  matcher, is named, and `reconcile --apply` adds it (FA-7, O175).
 - It acts only on a Bash command that runs one of the repository's
   **declared** test commands: a Taskfile task, Makefile target or
   package.json script that is test-named or runs a test runner (directly,

@@ -878,7 +878,7 @@ func checkHooksInstalled(root, harness string) doctorCheck {
 		scopes = append(scopes, scopeFile{"user", filepath.Join(home, ".claude", "settings.json")})
 	}
 
-	wiredScopes := map[hookSpecKey][]string{} // spec key (event+matcher) -> scope labels that wire it
+	wiredScopes := map[hookSpecKey][]string{} // spec key (event+matcher+marker) -> scope labels that wire it
 	var scopeNotes []string
 	for _, sc := range scopes {
 		data, err := os.ReadFile(sc.path)
@@ -1020,16 +1020,18 @@ func checkGatePosture(harnessLabel string) doctorCheck {
 	return doctorCheck{Name: name, Status: doctorPass, Reason: reason}
 }
 
-// hookSpecKey identifies one hookSpec's (event, matcher) group — the same
-// granularity ensureHookEntry (init.go) and hookMarkerPresent scope their
-// own marker checks to. fathomHookSpecs has TWO entries sharing the same
-// sub/marker ("edit-hook --pre", one per PreToolUse matcher group), so
-// grouping by spec.sub alone would conflate them; grouping by (event,
-// matcher) keeps every matcher group independently trackable.
-type hookSpecKey struct{ event, matcher string }
+// hookSpecKey identifies one hookSpec: its (event, matcher) group plus its
+// own marker — the same identity ensureHookEntry (init.go) and
+// hookMarkerPresent check. fathomHookSpecs has TWO entries sharing one
+// marker ("edit-hook --pre", one per PreToolUse matcher group), so the
+// group is in the key; and TWO entries sharing one group (PostToolUse(Bash):
+// edit-hook and the test-run hook, TR-2), so the marker is too (FA-7,
+// O175: keyed by the group alone, edit-hook's entry stood for the test-run
+// row, and doctor, reconcile and init all read it wired).
+type hookSpecKey struct{ event, matcher, marker string }
 
 func hookSpecKeyOf(spec hookSpec) hookSpecKey {
-	return hookSpecKey{event: spec.event, matcher: spec.matcher}
+	return hookSpecKey{event: spec.event, matcher: spec.matcher, marker: spec.marker}
 }
 
 // specLabel names one hookSpec including its matcher group, so two specs
