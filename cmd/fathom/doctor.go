@@ -309,6 +309,9 @@ func runDoctorChecks(root, explicitSvc, harness, baseURL string) []doctorCheck {
 		// O69 (wave P1): does this repo have source in a language fathom has
 		// no extractor for — named and counted, never silent (doctor_languages.go)
 		func() doctorCheck { return checkUnsupportedLanguages(hc, baseURL, root, explicitSvc, daemonUp) },
+		// EW-20 (O127): a registered service whose root no longer exists,
+		// named with the ingest call that re-points it (doctor_serviceroots.go)
+		func() doctorCheck { return checkServiceRoots(hc, baseURL, root, explicitSvc, daemonUp) },
 		// Phase T (docs/design/capability-registry.md): the one row that
 		// answers "why isn't X happening here?" — last, because it reads
 		// every fact the rows above diagnose individually.

@@ -1498,6 +1498,10 @@ verdict and drift-flagged rules counted into the reason), `surface_traffic`
 `capabilities` (red only when something switched on is failing to deliver), `concerns`
 (the custodian — a load error or a violation is the only red), `user_scope_ignore`,
 `user_scope_guard`, `guard_file` / `guard_dead_scopes` / `guard_include_modules_unbound`,
+`service_roots` (EW-20, O127: `list_services`' recorded root for every registered service is stat'ed; a
+root that no longer exists is named with the `ingest` call that re-points it, `{"service":…,"path":…,"remap":true}`
+— FAIL when it is this repository's own service, WARN for another's; a root that exists but cannot be read, such as
+a wedged external volume, is named unreadable with no re-point offered; SKIP when the daemon names no roots),
 `binding_file` / `binding_modules_mounted` / `binding_module_readiness` (SKIP names the real
 reason: `list_modules` was removed by SR-17, so a current daemon never advertises it), `binary_on_path`,
 `channels_env`, `ident_cache_env`, `metrics_tier`, `session_ledger_tokens`,
