@@ -24,7 +24,7 @@ nobody starts wave 3 or wave 4 before it.
 ## Wave 1: is there waste to remove? (section 5)
 
 - [ ] (op) XM-V1: the SubagentStart input is checked for the sub-agent's prompt, and RC-28's 591-byte rows for boilerplate {id: XM-V1, oracle: lexical, path: docs/bench/readings/exploration-maps/handoff-facts.md, pattern: "^XM-V1 reading:"}
-- [ ] (op) XM-M1: a 14-day transcript scan: the share of sub-agent Read calls that hit files the parent read or edited before spawning, split into followed by an edit (legitimate) and not followed by an edit (re-derivation); below 15 percent of sub-agent reads kills handoff maps {id: XM-M1, oracle: lexical, path: docs/bench/readings/exploration-maps/rederivation.md, pattern: "^XM-M1 verdict: (BUILD|KILL)", needs: "XM-V1", weight: 3}
+- [x] (op) XM-M1: a 14-day transcript scan: the share of sub-agent Read calls that hit files the parent read or edited before spawning, split into followed by an edit (legitimate) and not followed by an edit (re-derivation); below 15 percent of sub-agent reads kills handoff maps {id: XM-M1, oracle: lexical, path: docs/bench/readings/exploration-maps/rederivation.md, pattern: "^XM-M1 verdict: (BUILD|KILL)", needs: "XM-V1", weight: 3}
 
 ## Wave 2: the smallest slice (sections 2 and 4), only if XM-M1 reads BUILD
 

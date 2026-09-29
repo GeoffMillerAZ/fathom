@@ -13,7 +13,7 @@ silence on compact (invariant I12 is amended in the same change). No row needs a
 ## Wave 1: verify, then read (sections 2 and 3)
 
 - [ ] (op) CA-V1: SessionStart(source=compact) fires in the current Claude Code and accepts additionalContext {id: CA-V1, oracle: lexical, path: docs/bench/readings/carry-across/hook-facts.md, pattern: "^CA-V1 reading:"}
-- [ ] (op) CA-M1: Reading 0 over 14 days of transcripts: for each compaction the files read or edited in the 40 turns before it, the re-reads in the 20 turns after (split into re-read then edited within 3 turns, and re-read only), and the tokens and turns to the next proof event; the stop rule fires if the median compaction has fewer than 2 re-reads of the pre set or re-reads are under 10 percent of post-compaction reads {id: CA-M1, oracle: lexical, path: docs/bench/readings/carry-across/reading0.md, pattern: "^CA-M1 verdict: (BUILD|STOP)", needs: "CA-V1", weight: 3}
+- [x] (op) CA-M1: Reading 0 over 14 days of transcripts: for each compaction the files read or edited in the 40 turns before it, the re-reads in the 20 turns after (split into re-read then edited within 3 turns, and re-read only), and the tokens and turns to the next proof event; the stop rule fires if the median compaction has fewer than 2 re-reads of the pre set or re-reads are under 10 percent of post-compaction reads {id: CA-M1, oracle: lexical, path: docs/bench/readings/carry-across/reading0.md, pattern: "^CA-M1 verdict: (BUILD|STOP)", needs: "CA-V1", weight: 3}
 
 ## Wave 2: the injection, only if CA-M1 reads BUILD (sections 4 and 5)
 
