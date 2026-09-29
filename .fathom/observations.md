@@ -2146,3 +2146,16 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** none yet. Bounded, so not urgent: the read cannot exceed the rotation cap. Options that keep the join exact: an offset-stamped fold of the session's beats like the transcript's (`transcript_offset.go`), or writing the artifact at SessionEnd/PreCompact and skipping it on a Stop. A tail read would shorten a long session's window, so it is not equivalent
 - **Status:** open
 - **Impact:** about 0.5-0.9 s of every Stop's wall time, more under load; below the deadline by a wide margin (8 s) once O140's fix is in
+
+### O145 — the first import_resolution runs: relative-path leaves ESM `./x.js` and directory specs unresolved, namespace-dir an aliased `using` of a type
+
+- **Symptom:** `indexbench lang-oracle -scip` with LB-F40's `import_resolution` reads zod 0 of 504 in-repo imports, express .34 (53 of 155), Polly 0 of 15 and Newtonsoft.Json 0 of 313, where axios reads 232 of 232 and nest 3,271 of 3,271
+- **Evidence:**
+  - **Tool:** `indexbench lang-oracle -scip` on the SCIP indexes and clones kept from round 2 (scip-typescript for zod, nest, axios, express; scip-dotnet for Polly and Newtonsoft.Json), into scratch readings (not committed)
+  - **Expected:** an import whose statement the index resolves to a file of the subject resolves to that file under the dialect's strategy
+  - **Actual:** zod: every spec is an ESM `./benchUtil.js` naming `benchUtil.ts`; express: `require('..')` and `require('../../')` naming the root `index.js`; C#: `using Assert = Newtonsoft.Json.Tests.XUnitAssert;` naming a type defined in `TestFixtureBase.cs`, and Polly's aliased `using Scenario = ...PolicyExtensionsAsync.ExceptionAndOrCancellationScenario;` (a nested type)
+  - **Repro:** `go run ./cmd/indexbench lang-oracle -dialect typescript -subject <zod clone> -scip <typescript-zod.scip> -ctags none -out <scratch>/ts.json` and read the `import_resolution:` note
+- **Root cause:** `resolveRelativePath` (internal/fusion/resolvestrategy.go) tries a spec as itself and with each suffix, so `x.js` is never tried as `x.ts`; `..` without a slash is a bare specifier (nil unless `relative`); `../../` cleans to `.`, whose index candidate `./index.js` is not a universe path (`index.js` is). namespace-dir resolves an aliased `using` only by path mirroring; the D7 declared-namespace lookup serves wildcards alone
+- **Fix:** none yet (a strategy change is a foundation row): map a `.js`/`.mjs`/`.cjs` spec to its `.ts`/`.mts`/`.cts` source as TypeScript's node16/bundler resolution does, treat `..`/`.` and a trailing-slash spec as a directory (its index file, then package.json `main`), and resolve an aliased `using A = N.T;` through the files declaring namespace `N` that define `T`
+- **Status:** open
+- **Impact:** TypeScript and JavaScript subjects written as ESM, or requiring a package root by directory, and C# code aliasing types cannot reach L3's `import_resolution` bar whatever their other metrics; the file-resolved call edges built on these imports are missing in ingest too
