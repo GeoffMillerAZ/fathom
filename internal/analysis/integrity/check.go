@@ -269,14 +269,15 @@ func findMarker(candidates []scannedTest, marker, excludeName string) (scannedTe
 
 // namesExplicitly reports whether reasons includes one that names a test
 // BY NAME in a durable place (a marker, a manifest entry, an invariant
-// enforcement cell, or compatibility-surface evidence) rather than merely
+// enforcement cell, compatibility-surface evidence, or a guard's `done
+// needs:`, ADR-057 decision 3) rather than merely
 // proving it reaches a changed symbol — Check's own signal for
 // Finding.StillNamedElsewhere (see that field's doc comment for the
 // disclosed `-run`-pattern gap).
 func namesExplicitly(reasons []GuardReason) bool {
 	for _, r := range reasons {
 		switch r {
-		case ReasonMarker, ReasonManifest, ReasonInvariant, ReasonSurface:
+		case ReasonMarker, ReasonManifest, ReasonInvariant, ReasonSurface, ReasonGuardDoneNeeds:
 			return true
 		}
 	}

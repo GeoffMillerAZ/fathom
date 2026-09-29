@@ -144,3 +144,91 @@ func keysOf(m map[string][]GuardReason) []string {
 	sort.Strings(out)
 	return out
 }
+
+// TestGuardedTestsIncludesGuardDoneNeeds is PR-2's anchor (ADR-057
+// decision 3): a test a guard's `done needs:` names is guarded under its
+// own reason, alone or beside another one, and a test no source names
+// stays unguarded. The caller flattens the field, so this package reads
+// no guard file.
+func TestGuardedTestsIncludesGuardDoneNeeds(t *testing.T) {
+	src := []byte(`package pkg
+
+import "testing"
+
+func TestDoneNeedsOnly(t *testing.T) {
+	t.Log("ok")
+}
+
+func TestDoneNeedsAndInvariant(t *testing.T) {
+	t.Log("ok")
+}
+
+func TestNamedByNobody(t *testing.T) {
+	t.Log("ok")
+}
+`)
+	got := GuardedTests(GuardedInput{
+		Sources:             []Source{{Path: "pkg/x_test.go", Content: src}},
+		InvariantTests:      []string{"TestDoneNeedsAndInvariant"},
+		GuardDoneNeedsTests: []string{"TestDoneNeedsOnly", "TestDoneNeedsAndInvariant", "TestNotInAnyFile"},
+	})
+	// Reasons are sorted by value: "guard_done_needs" < "invariant_enforcement".
+	want := map[string][]GuardReason{
+		"TestDoneNeedsOnly":         {ReasonGuardDoneNeeds},
+		"TestDoneNeedsAndInvariant": {ReasonGuardDoneNeeds, ReasonInvariant},
+	}
+	if len(got) != len(want) {
+		t.Fatalf("got %d guarded tests %v, want %d: %v", len(got), names(got), len(want), keysOf(want))
+	}
+	for _, g := range got {
+		wr, ok := want[g.Name]
+		if !ok {
+			t.Errorf("unexpected guarded test %q (reasons %v)", g.Name, g.Reasons)
+			continue
+		}
+		if !reflect.DeepEqual(g.Reasons, wr) {
+			t.Errorf("%s reasons = %v, want %v", g.Name, g.Reasons, wr)
+		}
+	}
+	if string(ReasonGuardDoneNeeds) != "guard_done_needs" {
+		t.Errorf("ReasonGuardDoneNeeds = %q, want the additive wire value guard_done_needs", ReasonGuardDoneNeeds)
+	}
+}
+
+// TestCheck_RenamedGuardDoneNeedsTestIsStillNamed: a guard's `done needs:`
+// names its test in a durable place, so renaming it is a loss exactly as
+// renaming an invariant-named test is (ADR-057 decision 3) — the new
+// reason counts as an explicit naming source for StillNamedElsewhere.
+// Deleting it is a deleted finding carrying the new reason.
+func TestCheck_RenamedGuardDoneNeedsTestIsStillNamed(t *testing.T) {
+	const path = "pkg/x_test.go"
+	baseSrc := "package pkg\n\nimport \"testing\"\n\nfunc TestDoneNeeded(t *testing.T) {\n\tif 1 != 2 {\n\t\tt.Fatalf(\"boom\")\n\t}\n}\n"
+	guard := GuardedInput{GuardDoneNeedsTests: []string{"TestDoneNeeded"}}
+
+	renamed := Check(Input{
+		ChangedFiles: []string{path},
+		BaseFile:     fileReader(map[string][]byte{path: []byte(baseSrc)}),
+		HeadFile: fileReader(map[string][]byte{path: []byte(
+			"package pkg\n\nimport \"testing\"\n\nfunc TestDoneNeededRenamed(t *testing.T) {\n\tif 1 != 2 {\n\t\tt.Fatalf(\"boom\")\n\t}\n}\n")}),
+		Guard: guard,
+	})
+	if len(renamed) != 1 || renamed[0].Kind != KindRenamed {
+		t.Fatalf("got %+v, want exactly one renamed finding", renamed)
+	}
+	if !renamed[0].StillNamedElsewhere {
+		t.Errorf("StillNamedElsewhere = false, want true: a guard done-needs names the old test")
+	}
+	if !reflect.DeepEqual(renamed[0].Reasons, []GuardReason{ReasonGuardDoneNeeds}) {
+		t.Errorf("Reasons = %v, want [guard_done_needs]", renamed[0].Reasons)
+	}
+
+	deleted := Check(Input{
+		ChangedFiles: []string{path},
+		BaseFile:     fileReader(map[string][]byte{path: []byte(baseSrc)}),
+		HeadFile:     fileReader(map[string][]byte{path: []byte("package pkg\n\nimport \"testing\"\n")}),
+		Guard:        guard,
+	})
+	if len(deleted) != 1 || deleted[0].Kind != KindDeleted || deleted[0].Key != "TestDoneNeeded" {
+		t.Fatalf("got %+v, want one deleted finding for TestDoneNeeded", deleted)
+	}
+}

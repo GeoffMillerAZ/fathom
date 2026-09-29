@@ -2263,3 +2263,16 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** none in PR-9 (built as accepted). The owner's call, per K4: whether the pre-push exemption should require a decision cite in the range (an ADR.md change would have exempted 2 of the 3; the plan files the agents also wrote would not count).
 - **Status:** open
 - **Impact:** on this evidence the pre-push block stops 2 of 5 i28 violations; the pin line (PR-3) still names all 5, adding "its source was edited in this commit" for the 3.
+
+### O162 — `tests select --safe` names 1119 tests for an additive one-field change to `integrity.GuardedInput`: the reach set widens through interface dispatch to every command test
+
+- **Symptom:** PR-2 (2026-09-29) adds one field to `GuardedInput` and one reason const; `fathom tests select --safe --since HEAD` selects 1119 tests, 22,472 characters of `go test ./cmd/fathom -run '^(...)'` alone, so the printed command is not one a person types (this worker ran it from the `--json` invocations through a script: `cmd/fathom` 86 s, `internal/mcp` 10 s, both ok)
+- **Evidence:**
+  - **Tool:** `fathom tests select --safe --since HEAD --service fathom --store workspace/db/fathom.sqlite` on a scratch ingest of the worker clone
+  - **Expected:** a selection near the packages that import the changed code (`internal/analysis/integrity` and `internal/conserve`, the only importer)
+  - **Actual:** 1119 tests across `cmd/fathom`, `internal/mcp`, `internal/indexbench` and `internal/mcp/costtest`; `verify --row PR-2` shows why: `1109 test(s) statically reach it ... (reached via interface dispatch, 12 implementer(s))`
+  - **Repro:** add a field to `integrity.GuardedInput`, ingest, run the command above
+- **Root cause:** not verified in this session; the verify line's `reached via interface dispatch, 12 implementer(s)` is the widening step it names
+- **Fix:** none yet; a `--safe` output that names its per-package counts first, or a cap with the tail named, would make it runnable
+- **Status:** open
+- **Impact:** the selection is a superset a worker cannot read; the row's `test_reaches` criterion passes on any of the 1109, so neither line says which test exercises the change (the one that does is `reachable_from`, `TestGuardedTestsIncludesGuardDoneNeeds`, and it is what `edge_wired` checks)
