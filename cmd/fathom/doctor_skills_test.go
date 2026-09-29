@@ -68,7 +68,7 @@ func TestCheckAgentsSkills(t *testing.T) {
 		}
 	})
 
-	t.Run("agents compares the spec-only rendering", func(t *testing.T) {
+	t.Run("agents compares the one real copy through the link", func(t *testing.T) {
 		root := t.TempDir()
 		if err := installSkills(root, "agents", &bytes.Buffer{}); err != nil {
 			t.Fatal(err)
@@ -78,8 +78,11 @@ func TestCheckAgentsSkills(t *testing.T) {
 		if err := os.WriteFile(p, append(raw, []byte("stale edit\n")...), 0o644); err != nil {
 			t.Fatal(err)
 		}
+		// ADR-059: .agents/skills is a link, so the edit landed in the one
+		// real copy, and the row names that file.
+		real := filepath.Join(root, ".claude", "skills", "fathom-verify", "SKILL.md")
 		c := checkAgentsSkills(root, "agents")
-		if c.Status != doctorFail || !strings.Contains(c.Reason, "stale") || !strings.Contains(c.Reason, p) {
+		if c.Status != doctorFail || !strings.Contains(c.Reason, "stale") || !strings.Contains(c.Reason, real) {
 			t.Fatalf("stale = %+v", c)
 		}
 	})

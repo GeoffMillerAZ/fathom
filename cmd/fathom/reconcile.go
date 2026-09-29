@@ -40,7 +40,7 @@ type wiringDiff struct {
 	Service       string   `json:"service,omitempty"`        // the registry's id, when known
 	Missing       []string `json:"missing,omitempty"`        // template entries absent at every readable scope
 	StaleCmds     []string `json:"stale_cmds,omitempty"`     // commands spelling an absolute fathom path
-	MissingSkills []string `json:"missing_skills,omitempty"` // shipped skill files absent (FR-3; RP-4: .claude/skills and .agents/skills)
+	MissingSkills []string `json:"missing_skills,omitempty"` // shipped skill files absent (FR-3; RP-4, ADR-059: .claude/skills; a stale .agents/skills copy is the link-to-be)
 	StaleSkills   []string `json:"stale_skills,omitempty"`   // marker-owned skill files behind the shipped source (RP-4)
 	// BlockedSkills names the skill files law 15 stops on — "FILE — why": a
 	// hand-authored file by a skill's name (no marker), or a hand edit
@@ -365,6 +365,7 @@ func reconcileSpec(root string, d wiringDiff) (wiring.Spec, []string) {
 	// hand-authored file by a skill's name is BLOCKED by name and a rewrite
 	// is undoable with everything else in the receipt.
 	spec.Files = skillOwnedFiles(root)
+	spec.Links = skillLinks(root)
 	return spec, notes
 }
 
@@ -538,7 +539,7 @@ func cmdFleetReconcile(args []string, stdout, stderr io.Writer) int {
 		for _, n := range notes {
 			fmt.Fprintln(stdout, n)
 		}
-		if len(spec.Regions) > 0 || len(spec.Keys) > 0 {
+		if len(spec.Regions) > 0 || len(spec.Keys) > 0 || len(spec.Files) > 0 || len(spec.Links) > 0 {
 			res, err := wiring.ApplyWiring(root, spec, wiring.ApplyOptions{Now: time.Now})
 			if err != nil {
 				fmt.Fprintf(stdout, "  apply failed: %v\n", err)
@@ -553,6 +554,8 @@ func cmdFleetReconcile(args []string, stdout, stderr io.Writer) int {
 			hooksApplied, skillsApplied := 0, 0
 			for _, it := range res.Applied {
 				switch {
+				case it.Kind == wiring.KindLink:
+					fmt.Fprintf(stdout, "  applied: %s is now a link to %s (ADR-059: one skills copy)\n", it.File, it.After)
 				case it.Kind == wiring.KindFile:
 					skillsApplied++
 				case it.Kind != wiring.KindRegion:
@@ -571,7 +574,7 @@ func cmdFleetReconcile(args []string, stdout, stderr io.Writer) int {
 				fmt.Fprintf(stdout, "  applied: %d hook entries written to .claude/settings.json (shim spelling; project scope, deferring to user scope)\n", hooksApplied)
 			}
 			if skillsApplied > 0 {
-				fmt.Fprintf(stdout, "  applied: %d shipped skill file(s) rendered under their marker (.claude/skills, .agents/skills)\n", skillsApplied)
+				fmt.Fprintf(stdout, "  applied: %d shipped skill file(s) rendered under their marker (.claude/skills)\n", skillsApplied)
 			}
 			if res.Receipt != nil {
 				fmt.Fprintf(stdout, "  receipt: %s (fathom fleet undo %s --repo %s reverses it)\n", res.Receipt.ID, res.Receipt.ID, root)

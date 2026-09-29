@@ -11,7 +11,8 @@ import (
 // missing shipped skills is a wiring finding — the Unknown-skill session
 // failures came from repos wired before a skill existed — and --apply
 // renders them through the wiring engine (RP-4, docs/plans/reach-parity.md):
-// both repo-scoped shapes, receipted, a hand-authored copy BLOCKED by name.
+// the one real copy in .claude/skills (ADR-059), receipted, a hand-authored
+// copy BLOCKED by name.
 func TestReconcileSkills(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
@@ -40,8 +41,11 @@ func TestReconcileSkills(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(root, ".claude", "skills", "fathom-impact", "SKILL.md")); err != nil {
 		t.Errorf("apply must install the shipped skills: %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(root, ".agents", "skills", "fathom-impact", "SKILL.md")); err != nil {
-		t.Errorf("apply must render the .agents/skills shape too: %v", err)
+	// ADR-059: reconcile never creates the .agents/skills link — which
+	// harnesses read it is init's --skills choice — and never writes a file
+	// there.
+	if _, err := os.Lstat(filepath.Join(root, ".agents")); !os.IsNotExist(err) {
+		t.Errorf("apply created .agents (err=%v); only init --skills chooses the link", err)
 	}
 	if !strings.Contains(stdout.String(), "receipt:") {
 		t.Errorf("skill writes must be receipted, got:\n%s", stdout.String())
@@ -53,7 +57,7 @@ func TestReconcileSkills(t *testing.T) {
 	// Law 15, both directions: a hand edit UNDER the marker of a file the
 	// engine recorded is drift, and a hand-authored copy by a skill's name
 	// (no marker) is unproven — both BLOCKED by name, left byte-identical.
-	editedPath := filepath.Join(root, ".agents", "skills", "fathom-plan", "SKILL.md")
+	editedPath := filepath.Join(root, ".claude", "skills", "fathom-plan", "SKILL.md")
 	raw, _ := os.ReadFile(editedPath)
 	edited := append(append([]byte(nil), raw...), []byte("my note under the marker\n")...)
 	if err := os.WriteFile(editedPath, edited, 0o644); err != nil {
@@ -66,7 +70,7 @@ func TestReconcileSkills(t *testing.T) {
 	}
 	d = analyzeWiring(root)
 	if len(d.StaleSkills) != 0 || len(d.BlockedSkills) != 2 ||
-		!strings.Contains(d.BlockedSkills[0], ".agents/skills/fathom-plan/SKILL.md was edited by hand") ||
+		!strings.Contains(d.BlockedSkills[0], ".claude/skills/fathom-plan/SKILL.md was edited by hand") ||
 		!strings.Contains(d.BlockedSkills[1], ".claude/skills/fathom-verify/SKILL.md exists without fathom's marker") {
 		t.Fatalf("drift buckets = %+v", d)
 	}
@@ -74,7 +78,7 @@ func TestReconcileSkills(t *testing.T) {
 	if code := cmdFleetReconcile([]string{"--apply", "--repo", root}, &stdout, &stderr); code != 1 {
 		t.Fatalf("apply with a blocked skill must exit 1, got %d: %s", code, stdout.String())
 	}
-	if !strings.Contains(stdout.String(), "BLOCKED: .claude/skills/fathom-verify/SKILL.md") || !strings.Contains(stdout.String(), "BLOCKED: .agents/skills/fathom-plan/SKILL.md") {
+	if !strings.Contains(stdout.String(), "BLOCKED: .claude/skills/fathom-verify/SKILL.md") || !strings.Contains(stdout.String(), "BLOCKED: .claude/skills/fathom-plan/SKILL.md") {
 		t.Errorf("both must be BLOCKED by name:\n%s", stdout.String())
 	}
 	if got, _ := os.ReadFile(minePath); string(got) != string(mine) {
@@ -90,12 +94,12 @@ func TestReconcileSkills(t *testing.T) {
 	if err := installSkills(root2, "agents", &stdout); err != nil {
 		t.Fatal(err)
 	}
-	stalePath := filepath.Join(root2, ".agents", "skills", "fathom-impact", "SKILL.md")
+	stalePath := filepath.Join(root2, ".claude", "skills", "fathom-impact", "SKILL.md")
 	current, _ := os.ReadFile(stalePath)
 	if err := os.WriteFile(stalePath, append([]byte("stale render\n"), current...), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if d := analyzeWiring(root2); len(d.StaleSkills) != 1 || d.StaleSkills[0] != ".agents/skills/fathom-impact/SKILL.md" {
+	if d := analyzeWiring(root2); len(d.StaleSkills) != 1 || d.StaleSkills[0] != ".claude/skills/fathom-impact/SKILL.md" {
 		t.Fatalf("stale bucket = %+v", d)
 	}
 	stdout.Reset()

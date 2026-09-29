@@ -137,7 +137,7 @@ func printHarnessManualSteps(stdout io.Writer, t initTargets, service, url strin
 		for _, f := range d.Instructions {
 			switch {
 			case f.Mode == "settings-key" && f.Setting != nil:
-				fmt.Fprintf(stdout, "ok %s reads %s through %s %s (written above)\n", d.Display, f.Path, f.Setting.File, strings.Join(f.Setting.Key, "."))
+				fmt.Fprintf(stdout, "note: %s reads %s through %s %s (written above, ADR-059)\n", d.Display, f.Path, f.Setting.File, strings.Join(f.Setting.Key, "."))
 			case f.Mode == "settings-key":
 				fmt.Fprintf(stdout, "MANUAL: %s reads %s only via a settings key — %s\n", d.Display, f.Path, f.Note)
 			}

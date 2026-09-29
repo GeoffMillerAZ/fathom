@@ -67,8 +67,9 @@ func mcpFilesFor(root, home string, ids []string) []wiring.MCPFile {
 }
 
 // ownedSkillFiles lists every shipped skill file that is present AND
-// carries the fathom:owned marker, in the three shapes installSkills
-// writes (.claude/skills, .agents/skills, ~/.codex/prompts). A present
+// carries the fathom:owned marker, in the shapes installSkills writes or
+// wrote (.claude/skills, an earlier real .agents/skills copy,
+// ~/.codex/prompts). A present
 // file without the marker is someone else's and is not fathom's to watch.
 // Each carries what this binary renders for its target (renderSkill), so a
 // file equal to fathom's own shipped skill never reads as drift.
@@ -88,9 +89,14 @@ func ownedSkillFiles(root, home string) []wiring.SkillFile {
 			out = append(out, wiring.SkillFile{Path: path, Label: label, Shipped: shipped})
 		}
 	}
+	// A `.agents/skills` that is a link (ADR-059) is one owned vehicle with
+	// `.claude/skills`: reading through it would count every file twice.
+	agentsIsLink, _ := wiring.LinkState(root, agentsSkillsDir)
 	for _, name := range skillsdist.Names {
 		consider(filepath.Join(root, ".claude", "skills", name, "SKILL.md"), ".claude/skills/"+name+"/SKILL.md", skillsTargetClaude, name)
-		consider(filepath.Join(root, ".agents", "skills", name, "SKILL.md"), ".agents/skills/"+name+"/SKILL.md", skillsTargetAgents, name)
+		if !agentsIsLink {
+			consider(filepath.Join(root, ".agents", "skills", name, "SKILL.md"), ".agents/skills/"+name+"/SKILL.md", skillsTargetAgents, name)
+		}
 		if home != "" {
 			consider(filepath.Join(home, ".codex", "prompts", name+".md"), "~/.codex/prompts/"+name+".md", skillsTargetCodexPrompts, name)
 		}

@@ -136,7 +136,7 @@ func TestInitJSONEnvelope(t *testing.T) {
 		if w.Path == "AGENTS.md" { // the stanza's one file (ADR-059)
 			sawStanza = true
 		}
-		if strings.HasSuffix(w.Path, filepath.Join(".agents", "skills", "fathom-plan", "SKILL.md")) && w.Action == "created" {
+		if strings.HasSuffix(w.Path, filepath.Join(".agents", "skills")) && w.Action == "linked" { // ADR-059: the link to .claude/skills
 			sawSkill = true
 		}
 	}

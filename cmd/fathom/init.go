@@ -77,7 +77,7 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL")
 	binOverride := fs.String("bin", "", "fathom binary path baked into hook commands (default: os.Executable, symlink-resolved)")
 	var skillsFlag optionalStringFlag
-	fs.Var(&skillsFlag, "skills", "install the ten shipped agent skills (fathom-activate/custodian/doctor/feedback/findings/impact/onboard/plan/rewire/verify): claude | codex | agents | all | codex-prompts (bare --skills = all = .agents/skills + .claude/skills; codex = .agents/skills; codex-prompts = the deprecated ~/.codex/prompts twin; omit to skip)")
+	fs.Var(&skillsFlag, "skills", "install the ten shipped agent skills (fathom-activate/custodian/doctor/feedback/findings/impact/onboard/plan/rewire/verify): claude | codex | agents | all | codex-prompts (every repo mode writes the one copy into .claude/skills; bare --skills = all, codex and agents also link .agents/skills to it; claude = .claude/skills only; codex-prompts = the deprecated ~/.codex/prompts twin; omit to skip)")
 	seedUserIgnoreFlag := fs.Bool("seed-user-ignore", false, "seed ~/.fathom/ignore with machine-junk defaults (docs/design/scoped-config.md); prints exactly what it writes, never silent, requires this flag")
 	harnessFlag := fs.String("harness", "", "harness to wire (ADR-029): claude-code (default) | codex | gemini-cli | agents | none — init writes only that descriptor's declared vehicles and prints its own `mcp add` line; hooks are wired for claude-code only in this build")
 	noSCIPFlag := fs.Bool("no-scip", false, "do not run scip-typescript / scip-python: by default init runs whichever is already on PATH for a TypeScript/JavaScript or Python repo (never installing one) and has the daemon import its index as typed edges (SR-65); a producer type-checks the whole repository and can take minutes")
@@ -228,8 +228,9 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 	}
 
 	// f. shipped agent skills (AK-2, docs/plans/pack-taxonomy-adoption.md):
-	// --skills[=claude|codex|all] only — omitted by default, so a caller who
-	// never asked for skills sees no new files.
+	// --skills[=claude|codex|agents|all] only — omitted by default, so a
+	// caller who never asked for skills sees no new files. One real copy in
+	// .claude/skills; .agents/skills is an owned link to it (ADR-059).
 	if err := installSkills(root, skillsMode, stdout); err != nil {
 		fmt.Fprintf(stderr, "error: installing skills: %v\n", err)
 		return 1
@@ -260,7 +261,7 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 		printHarnessManualSteps(stdout, targets, svc, *url)
 	}
 	if skillsMode == "" {
-		fmt.Fprintln(stdout, "MANUAL: install fathom's shipped agent skills (ten; .agents/skills is the Agent Skills standard path, .claude/skills the Claude Code one):")
+		fmt.Fprintln(stdout, "MANUAL: install fathom's shipped agent skills (ten, into .claude/skills; .agents/skills, the Agent Skills standard path, becomes a link to it):")
 		fmt.Fprintln(stdout, "MANUAL:   fathom init --skills[=claude|codex|agents|all|codex-prompts]")
 	}
 

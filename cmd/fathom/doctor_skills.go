@@ -3,10 +3,12 @@ package main
 // doctor_skills.go — the `skills_installed` row on the standard (RP-3,
 // docs/plans/reach-parity.md): Claude Code's skills live in
 // `.claude/skills`; every other registry harness (codex, gemini-cli,
-// agents, …) discovers the Agent Skills path `.agents/skills`, and the
-// on-disk bytes there are compared against the spec-only rendering
-// (agentsVariant) — the same bytes `fathom init --skills` writes. A missing
-// skill is NAMED in the reason, never folded into a count.
+// agents, …) discovers the Agent Skills path `.agents/skills`. Since
+// ADR-059 that path is fathom's link to `.claude/skills` (AG-8, AG-12): the
+// row resolves the link and compares the one real copy; an earlier real
+// `.agents/skills` copy is compared against the spec-only rendering
+// (agentsVariant) and named as the link-to-be; a link anywhere else fails.
+// A missing skill is NAMED in the reason, never folded into a count.
 
 import (
 	"fmt"
@@ -16,6 +18,7 @@ import (
 
 	skillsdist "github.com/geoffmilleraz/fathom/dist/agents/skills"
 	"github.com/geoffmilleraz/fathom/internal/harness"
+	"github.com/geoffmilleraz/fathom/internal/wiring"
 )
 
 // checkAgentsSkills is doctor's skills_installed row. harnessLabel is
@@ -28,6 +31,24 @@ func checkAgentsSkills(root, harnessLabel string) doctorCheck {
 	if harnessLabel == "claude" {
 		target = skillsTargetClaude
 		remedy = "fathom init --skills=claude --path " + root
+	}
+	var linkNote string
+	if target == skillsTargetAgents {
+		switch isLink, to := wiring.LinkState(root, agentsSkillsDir); {
+		case isLink && to == agentsSkillsLinkTarget:
+			// The link is the vehicle: the bytes a reader sees through it are
+			// the one real copy's, spec-conformant by test (AG-9).
+			target = skillsTargetClaude
+			linkNote = " (.agents/skills links to .claude/skills)"
+		case isLink:
+			return doctorCheck{Name: name, Status: doctorFail,
+				Reason: fmt.Sprintf("%s is a link to %s, not fathom's link to %s — the skills a reader finds there are not fathom's", filepath.Join(root, filepath.FromSlash(agentsSkillsDir)), to, agentsSkillsLinkTarget),
+				Remedy: "move the link aside, then " + remedy}
+		default:
+			if fi, err := os.Lstat(filepath.Join(root, filepath.FromSlash(agentsSkillsDir))); err == nil && fi.IsDir() {
+				linkNote = " (a real directory: `" + remedy + "` replaces it with a link to .claude/skills, ADR-059)"
+			}
+		}
 	}
 
 	var missing, stale, notOwned []string
@@ -52,7 +73,7 @@ func checkAgentsSkills(root, harnessLabel string) doctorCheck {
 	}
 
 	dir := filepath.Join(root, ".agents", "skills")
-	if target == skillsTargetClaude {
+	if target == skillsTargetClaude && linkNote == "" {
 		dir = filepath.Join(root, ".claude", "skills")
 	}
 	var c doctorCheck
@@ -72,6 +93,7 @@ func checkAgentsSkills(root, harnessLabel string) doctorCheck {
 	default:
 		c = doctorCheck{Name: name, Status: doctorPass, Reason: fmt.Sprintf("all %d shipped skills current in %s for %s", current, dir, harnessLabel)}
 	}
+	c.Reason += linkNote
 	if d, ok := harness.Lookup(doctorHarnessID(harnessLabel)); ok && !d.Skills.Verified {
 		c.Reason += " (discovery of .agents/skills by " + d.Display + " is unverified on this machine)"
 	}

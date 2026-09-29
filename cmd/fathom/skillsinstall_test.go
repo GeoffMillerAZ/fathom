@@ -103,8 +103,12 @@ func TestInstallSkills_Codex_Fresh(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(home, ".codex")); err == nil {
 		t.Error("~/.codex was written by --skills=codex — the prompts twin is --skills=codex-prompts only")
 	}
-	if _, err := os.Stat(filepath.Join(root, ".claude", "skills")); err == nil {
-		t.Error(".claude/skills directory created in codex-only mode")
+	// ADR-059: the path Codex reads is a link to the one real copy.
+	if fi, err := os.Lstat(filepath.Join(root, ".agents", "skills")); err != nil || fi.Mode()&os.ModeSymlink == 0 {
+		t.Errorf(".agents/skills is not a link in codex mode (err=%v)", err)
+	}
+	if fi, err := os.Lstat(filepath.Join(root, ".claude", "skills", "fathom-plan", "SKILL.md")); err != nil || !fi.Mode().IsRegular() {
+		t.Errorf(".claude/skills does not hold the real copy in codex mode (err=%v)", err)
 	}
 }
 
@@ -141,16 +145,17 @@ func TestInstallSkills_CodexPrompts_Fresh(t *testing.T) {
 	}
 }
 
-// TestSkillsTargetsFor pins the mode → target table (RP-1): bare/all is
-// the repo-scoped pair, codex is the documented .agents/skills path, and
-// the user-global prompts twin needs its own explicit mode.
+// TestSkillsTargetsFor pins the mode → target table (RP-1, ADR-059): every
+// repo-scoped mode writes the real copy into .claude/skills, all/codex/agents
+// add the .agents/skills link, and the user-global prompts twin needs its
+// own explicit mode.
 func TestSkillsTargetsFor(t *testing.T) {
 	cases := map[string][]string{
 		"":              nil,
-		"all":           {skillsTargetAgents, skillsTargetClaude},
+		"all":           {skillsTargetClaude, skillsTargetAgents},
 		"claude":        {skillsTargetClaude},
-		"codex":         {skillsTargetAgents},
-		"agents":        {skillsTargetAgents},
+		"codex":         {skillsTargetClaude, skillsTargetAgents},
+		"agents":        {skillsTargetClaude, skillsTargetAgents},
 		"codex-prompts": {skillsTargetCodexPrompts},
 	}
 	for mode, want := range cases {
