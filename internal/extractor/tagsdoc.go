@@ -66,30 +66,6 @@ func NewTagsDocExtractor(id string) (*TagsDocExtractor, error) {
 	return nil, fmt.Errorf("dialect %q not found (tags+doc engine)", id)
 }
 
-// NewDialectExtractor is the one constructor a harness needs for any
-// embedded dialect it measures through its own engine: tags, doc or tags+doc.
-func NewDialectExtractor(id string) (Extractor, error) {
-	ds, err := LoadDialects()
-	if err != nil {
-		return nil, err
-	}
-	for _, d := range ds {
-		if d.ID != id {
-			continue
-		}
-		switch d.Engine {
-		case "tags":
-			return NewTSExtractor(id)
-		case "doc":
-			return NewDocDialectExtractor(id)
-		case "tags+doc":
-			return NewTagsDocExtractor(id)
-		}
-		return nil, fmt.Errorf("dialect %q: engine %q has no extractor here", id, d.Engine)
-	}
-	return nil, fmt.Errorf("dialect %q not found", id)
-}
-
 // IsDocFile reports whether relPath is a document the doc engine reads: its
 // basename is one of the doc spec's detect.basenames or it matches one of
 // its detect.globs.
