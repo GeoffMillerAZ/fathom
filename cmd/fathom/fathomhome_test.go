@@ -5,8 +5,11 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/console"
 	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 	"github.com/geoffmilleraz/fathom/internal/intent"
 )
@@ -220,5 +223,37 @@ func TestLedgerFlagNamesOneLedger(t *testing.T) {
 		if _, err := os.Stat(p); !os.IsNotExist(err) {
 			t.Errorf("--ledger must win: %s was written (stat: %v)", p, err)
 		}
+	}
+}
+
+// TestScratchDaemonUnderFathomHomeLeavesRealLegacyRecord (PE-26): a scratch
+// serve-http under FATHOM_HOME writes its record there, and never prunes a
+// legacy ~/.fathom/daemons/<host>-<port>.json in the real home. The legacy
+// prune read the real home directly, so a worker's scratch daemon deleted a
+// file under the operator's ~/.fathom although FATHOM_HOME was set.
+func TestScratchDaemonUnderFathomHomeLeavesRealLegacyRecord(t *testing.T) {
+	realHome := scratchEnv(t)
+	resetServingCallLogForTest(t) // recordServingDaemonAs sets the process-wide serving call log
+	scratch := t.TempDir()
+	t.Setenv(fathomhome.Env, scratch)
+	now := time.Date(2026, 9, 29, 12, 0, 0, 0, time.UTC)
+
+	legacy, err := console.DaemonRecordPath(realHome, "127.0.0.1:7861")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := console.WriteDaemonRecord(legacy, console.DaemonRecord{SchemaVersion: 1, Addr: "127.0.0.1:7861", PID: 7, StartedAt: now.Format(time.RFC3339)}); err != nil {
+		t.Fatal(err)
+	}
+	_, path, err := recordServingDaemonAs(daemonMeta{PPID: 1}, "127.0.0.1:7861", "", "", "c0ffee", now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer removeDaemonRecord(path)
+	if rel, err := filepath.Rel(scratch, path); err != nil || strings.HasPrefix(rel, "..") {
+		t.Errorf("the scratch daemon's record is at %s, not under FATHOM_HOME %s", path, scratch)
+	}
+	if _, err := os.Stat(legacy); err != nil {
+		t.Errorf("a scratch daemon under FATHOM_HOME removed the real home's legacy record %s: %v", legacy, err)
 	}
 }

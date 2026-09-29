@@ -130,8 +130,13 @@ func recordServingDaemonAs(meta daemonMeta, addr, callLog, storePath, commit str
 	if err := console.WriteDaemonRecord(p, rec); err != nil {
 		return rec, p, err
 	}
-	if legacy, lerr := console.DaemonRecordPath(home, addr); lerr == nil {
-		_ = os.Remove(legacy)
+	// The legacy record lives under the real home's .fathom (RT-166). Under
+	// FATHOM_HOME this daemon's state is elsewhere, and the real home's
+	// files are not its to prune (PE-26).
+	if os.Getenv(fathomhome.Env) == "" {
+		if legacy, lerr := console.DaemonRecordPath(home, addr); lerr == nil {
+			_ = os.Remove(legacy)
+		}
 	}
 	pruneDeadScratchRecords(home, rec.ID, pidGone)
 	return rec, p, nil
