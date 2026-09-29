@@ -43,6 +43,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/dlog"
+	"github.com/geoffmilleraz/fathom/internal/docindex"
 	"github.com/geoffmilleraz/fathom/internal/extractor"
 	"github.com/geoffmilleraz/fathom/internal/gitro"
 	"github.com/geoffmilleraz/fathom/internal/llm"
@@ -245,6 +246,17 @@ type Report struct {
 	// that grows every ingest for the same content signals those files need
 	// a .fathomignore entry or a deeper engine fix.
 	TSEngineFaults int
+
+	// DocIndex is the knowledge-retrieval doc-unit pass (KR-8, KR-9;
+	// docindexpass.go): the Markdown the connector discovered, split into
+	// sections and written to the store's FTS index, hash-gated per file,
+	// with what the per-service byte budget cut named in DocIndex.Elided
+	// and any unreadable or over-bound document in DocIndex.Failures.
+	// DocIndexSkipped names why the pass did not run (no local corpus root,
+	// a store with no doc index) or could not finish; "" when it ran clean.
+	// The pass is additive: it never fails or unwinds the code ingest.
+	DocIndex        docindex.IngestDocUnitsResult
+	DocIndexSkipped string
 }
 
 // Pipeline is the source fusion pipeline.
@@ -1010,6 +1022,7 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	if len(refs) == 0 {
 		// Still a full-service ingest: every stored ref is now an orphan.
 		run.changed = 1 // every stored symbol goes: centrality must follow (TQ-2)
+		p.indexDocs(ctx, svc, refs, &report)
 		if err := p.purgeOrphans(ctx, svc.ID, refs); err != nil {
 			return report, err
 		}
@@ -1303,6 +1316,7 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 		p.mu.Lock()
 		p.queue[svc.ID] = append(p.queue[svc.ID], pending...)
 		p.mu.Unlock()
+		p.indexDocs(ctx, svc, refs, &report)
 		if err := writeRefs(); err != nil {
 			return finish(err)
 		}
@@ -1399,6 +1413,10 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	if docErr != nil {
 		return finish(fmt.Errorf("fusion: doc-xref edge pass %q: %w", svc.ID, docErr))
 	}
+
+	// Knowledge-retrieval doc units (KR-8/KR-9): additive, never blocks
+	// ingest. See docindexpass.go.
+	p.indexDocs(ctx, svc, refs, &report)
 
 	// ── Orphan purge, then the final commit ──────────────────────────────────
 	// refs still holds every discovered file, unreadable ones included, so an

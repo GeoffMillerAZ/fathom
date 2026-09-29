@@ -60,7 +60,13 @@ type DocBudgetResult struct {
 // against the budget: heading_path + body, the same two (and only two)
 // columns docs_fts indexes (internal/store/docindex.go's own column-order
 // comment) — not the whole DocUnit struct's in-memory footprint.
+//
+// A unit carried without its Body (the ingest's planning stubs) states its
+// size in SizeBytes, computed from the same two columns.
 func docUnitBudgetBytes(u store.DocUnit) int {
+	if u.SizeBytes > 0 {
+		return u.SizeBytes
+	}
 	return len(u.HeadingPath) + len(u.Body)
 }
 

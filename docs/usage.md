@@ -236,6 +236,17 @@ since the last successful pass` when their input files did not change (RT-104, R
 RT-108), and a `file_resolved` import-parse fault is a stderr warning naming the files.
 `--json` adds `stat_skipped` and `peak_inflight_bytes`.
 
+**Doc index (KR-8, KR-9).** An ingest also indexes the service's Markdown for `search kind: docs`:
+the corpus is the Markdown discovery returned (so `.fathomignore` and a purge's scoped exclusions
+apply), split into sections and written per file only when a file's units changed. The summary's
+`docs:` line counts files scanned, re-indexed, unchanged and removed; a per-service byte budget
+(64 MiB of heading and body text) keeps the live documents first, and what it cuts is named on a
+`docs: N unit(s) elided` line; a document over 2 MiB or unreadable is a `warning: docs:` line, and
+a pass that could not run (a store with no doc index, a service with no local root) says why. It
+never fails the ingest. `--json` carries the same as `docs: {files, changed, unchanged, deleted,
+units_written, units_elided?, elided?: [{path, heading, bytes}], failures?: [{path, err}],
+skipped?}`.
+
 **Typed-pass toolchain ceiling (RT-106).** The Go typed pass's toolchain children (`go list`
 and the compiles it forks) run at background priority (`nice -n 10`, plus `taskpolicy -b` on
 macOS) with `GOFLAGS` `-p` and `GOMAXPROCS` capped at 2 — a ceiling, never a raise: an

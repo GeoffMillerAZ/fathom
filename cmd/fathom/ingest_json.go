@@ -57,6 +57,33 @@ type ingestCUEEdgesJSON struct {
 	Unresolved     int `json:"unresolved"`
 }
 
+// ingestDocsJSON is the knowledge-retrieval doc-unit pass (KR-8/KR-9):
+// counts, what the per-service byte budget cut (named), what could not be
+// indexed (named) and, when the pass did not run or did not finish, why.
+type ingestDocsJSON struct {
+	Files        int                  `json:"files"`
+	Changed      int                  `json:"changed"`
+	Unchanged    int                  `json:"unchanged"`
+	Deleted      int                  `json:"deleted"`
+	UnitsWritten int                  `json:"units_written"`
+	UnitsElided  int                  `json:"units_elided,omitempty"`
+	ElidedBytes  int                  `json:"elided_bytes,omitempty"`
+	Elided       []ingestDocElidedRow `json:"elided,omitempty"`
+	Failures     []ingestDocFailure   `json:"failures,omitempty"`
+	Skipped      string               `json:"skipped,omitempty"`
+}
+
+type ingestDocElidedRow struct {
+	Path    string `json:"path"`
+	Heading string `json:"heading"`
+	Bytes   int    `json:"bytes"`
+}
+
+type ingestDocFailure struct {
+	Path string `json:"path"`
+	Err  string `json:"err"`
+}
+
 type ingestExcludedJSON struct {
 	Project int `json:"project"`
 	User    int `json:"user"`
@@ -124,8 +151,11 @@ type ingestJSON struct {
 	CUEEdges             *ingestCUEEdgesJSON   `json:"cue_edges,omitempty"`
 	// FileResolved is the per-file TypeScript/JavaScript/Python resolver's
 	// edge count (ADR-041 decision 5 / SU-11) — always heuristic tier.
-	FileResolved int                 `json:"file_resolved,omitempty"`
-	Excluded     *ingestExcludedJSON `json:"excluded,omitempty"`
+	FileResolved int `json:"file_resolved,omitempty"`
+	// Docs is the doc-unit pass (KR-8/KR-9); present whenever the pass ran
+	// over at least one document or was skipped (its reason in docs.skipped).
+	Docs     *ingestDocsJSON     `json:"docs,omitempty"`
+	Excluded *ingestExcludedJSON `json:"excluded,omitempty"`
 	// DefaultIgnoredDirs names each directory the default cache list pruned
 	// (RT-145); omitted when none.
 	DefaultIgnoredDirs []string `json:"default_ignored_dirs,omitempty"`
@@ -214,6 +244,20 @@ func renderIngestJSON(w io.Writer, service, svcPath string, report client.Report
 		}
 	}
 	out.FileResolved = report.FileResolvedEdges
+	if d := report.DocIndex; d.FilesScanned > 0 || d.FilesDeleted > 0 || report.DocIndexSkipped != "" {
+		docs := &ingestDocsJSON{
+			Files: d.FilesScanned, Changed: d.FilesChanged, Unchanged: d.FilesUnchanged, Deleted: d.FilesDeleted,
+			UnitsWritten: d.UnitsWritten, UnitsElided: d.UnitsElided, ElidedBytes: d.ElidedBytes,
+			Skipped: report.DocIndexSkipped,
+		}
+		for _, e := range d.Elided {
+			docs.Elided = append(docs.Elided, ingestDocElidedRow{Path: e.Path, Heading: e.HeadingPath, Bytes: e.Bytes})
+		}
+		for _, f := range d.Failures {
+			docs.Failures = append(docs.Failures, ingestDocFailure{Path: f.Path, Err: f.Err})
+		}
+		out.Docs = docs
+	}
 
 	if _, counts, err := connector.LoadIgnoreScopedFor(svcPath, service); err == nil && (counts.Project > 0 || counts.User > 0 || counts.Service > 0) {
 		out.Excluded = &ingestExcludedJSON{Project: counts.Project, User: counts.User, Service: counts.Service}
