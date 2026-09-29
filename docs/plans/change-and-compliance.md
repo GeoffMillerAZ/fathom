@@ -38,7 +38,8 @@ the computable subset of F9.
 - [x] Violation counts per rule recorded at each ingest; the trend and the commits that added violations {id: CX-20, symbol: recordViolationTrend, package: internal/fusion, reachable_from: TestViolationTrendAtIngest}
 - [x] Computable revisit and promote triggers (bet-block shape: an instrument and a threshold) evaluated by `fathom intent audit`, never by the daemon on its own; prose triggers listed as unevaluated (F9's subset) {id: CX-21, symbol: evalComputableTriggers, package: internal/intent, reachable_from: TestComputableTriggersEvaluatedOnDemand}
 - [x] The radar on the console: decisions due for review and architecture eroding here {id: CX-22, symbol: renderDriftRadar, package: cmd/fathom, reachable_from: TestConsoleDriftRadar, needs: "CX-20,CX-21"}
-- [x] The decision port proposes a rule from an ADR's prose only with `[decide]` configured; kept only if SI-style acceptance reads 8 of 10 {id: CX-23, symbol: proposeRuleFromADR, package: internal/review, reachable_from: TestProposeRuleFromADROnlyWithProvider, needs: "CX-19"}
+- [ ] The decision port proposes a rule from an ADR's prose only with `[decide]` configured; kept only if SI-style acceptance reads 8 of 10 {id: CX-23, symbol: proposeRuleFromADR, package: internal/review, reachable_from: TestProposeRuleFromADROnlyWithProvider, needs: "CX-19"}
+  <!-- product wiring open (fathom verify --strict reads it library-only, 2026-09-29): proposeRuleFromADR has no production caller: `fathom intent adr-rules` (CX-19) runs the lexical ProposeADRRules only and never asks the decision port. The library landed with the R4b wave; a `library: true` split added in the same range as its claim would be self-declared (ADR-018 note 2026-09-29), so the row is re-opened instead. -->
 
 ## Refused (recorded so they are not re-proposed)
 

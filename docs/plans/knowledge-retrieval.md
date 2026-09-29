@@ -31,7 +31,8 @@ and the API indexer (SG-37) the caller of `IngestDepDocs`. Both rows are proven 
 and tool seams against fixture caches laid out like the toolchains' own; until SG-36 and SG-37
 land nothing fills the index in a running daemon, and a scoped search answers `not_indexed` by name.
 
-- [x] Dependency doc units from the pinned version in the local cache (Go doc comments, `.d.ts` JSDoc, docstrings, Rust `///`, the package README), never fetched (I56) {id: KR-11, symbol: depDocUnits, package: internal/docindex, reachable_from: TestDepDocUnitsFromCache, needs: "system-graph.md#SG-37"}
+- [ ] Dependency doc units from the pinned version in the local cache (Go doc comments, `.d.ts` JSDoc, docstrings, Rust `///`, the package README), never fetched (I56) {id: KR-11, symbol: depDocUnits, package: internal/docindex, reachable_from: TestDepDocUnitsFromCache, needs: "system-graph.md#SG-37"}
+  <!-- product wiring open (fathom verify --strict reads it library-only, 2026-09-29): depDocUnits is reached only through docindex.IngestDepDocs, and no product path calls that until the dependency plane's indexer (system-graph.md SG-37) lands; KR-12's search answers from whatever that indexer writes. Re-opened, not waived, for the reason CX-23 gives. -->
 - [x] `search kind: docs` scoped to a `pkg:` key answers from that version's docs {id: KR-12, symbol: searchPkgDocs, package: internal/docindex, reachable_from: TestSearchPkgDocsVersionExact, needs: "KR-11"}
 
 ## Refused (recorded so they are not re-proposed)
