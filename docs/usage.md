@@ -1667,10 +1667,12 @@ legacy items are never hidden. The continuity-thread bet itself is
 ### `map` — exploration maps (ADR-056, experimental)
 
 ```sh
-fathom thread note  --map ID --anchor <symbol|path#Lx-Ly> --why "…" [--agent ID] [--completes-when …] [--store S]
+fathom map new      ID --purpose "the question it answers" [--when "…"] [--completes-when …] [--agent ID]
+fathom map append   ID --anchor <symbol|path#Lx-Ly> --why "…" [--agent ID] [--store S]   # = thread note --map ID …
 fathom map name     ID --purpose "the question it answers" [--as NAME] [--when "…"]
 fathom map include  ID BASE… [--drop BASE…]
-fathom map compose  ID… [--agent ID] [--json]    # the ONE id a handoff carries
+fathom map compose  ID… [--agent ID] [--id-only | --json]    # the ONE id a handoff carries
+fathom map show     ID [--budget 1200] [--json] [--store S]   # re-resolves every anchor now, within the budget
 fathom map list     [--all] [--json]
 ```
 
@@ -1679,16 +1681,61 @@ rows in the threads log (no new table; the thread verbs never serve them). An
 entry is its anchor, the span it resolves to, that span's content hash
 (`core.HashLines`, the layer claims' contract) and a one-line why; `--agent`
 records the appending sub-agent's id, and an append never edits an existing
-entry. The first entry creates the map with a `completes_when` (the one given,
-else the end of the current session). `include` refuses a cycle and a chain
-deeper than 4. `compose` mints a composite made only of references (one id
-comes back as itself), expands it once and prints its counts: every entry is
-re-resolved at read time, fresh, re-resolved by its symbol key, or stale with
-its diff size, and conflicting why lines are all kept with their provenance.
+entry. `new` creates a map with its purpose line (required, one line of at most
+200 bytes: the question the map answers) and refuses an id that exists; the first
+`append` to an unknown id creates the map without one. A new map ends with the
+`completes_when` given, else with the end of the current session. `include`
+refuses a cycle and a chain deeper than 4. `compose` mints a composite made only
+of references (one id comes back as itself), expands it once and prints its
+counts, or with `--id-only` prints just the id so a brief can carry it.
 `name` makes a map durable and refuses one without a purpose line. `list` shows
 each map's lifetime: pinned while an alive map includes it, permanent when
 named, else open with the time its idle clock started (a dropped include
-restarts it). CLI only: no MCP tool is added.
+restarts it).
+
+`show` is the read: it expands the map's include DAG once (a base reached by two
+routes is one set of entries), then re-resolves **every** entry against the code
+as it is now, at read time, never from a cache. An entry is `fresh` (its span
+still hashes to what was filed), `moved from <span>` (it drifted and its symbol
+key found the same text at a new span), or `STALE +A/-R lines since filing` (the
+text changed or is gone; served flagged with its diff size, never as if it were
+still true). When a drifted symbol entry needs the index and it cannot be reached
+(no daemon, no `--store`), the read says so beside the stale entry. Conflicting
+why lines for one entry are all kept, the nearest include's first, each with its
+map and agent. Output is deterministic, nearest entries first, and never exceeds
+`--budget` bytes (default 1200, the size of a handoff; `0` lifts the cap): the
+header and the counts over the whole map always lead, and what does not fit is
+named in one `cut N of M entries` line with the stale ones marked. `--json` gives
+the same facts as data (the budget still picks which entries are shown; the JSON
+itself is not capped).
+
+**Passing one map id to a sub-agent (the orchestrator's recipe).** The parent
+builds the map, hands the sub-agent one id, and the sub-agent reads it at the
+start and files what it finds:
+
+```sh
+# parent, once per run
+fathom map new  run-42 --purpose "Where does token validation happen?"
+fathom map append run-42 --anchor auth.Validate --why "the entry point"
+ID=$(fathom map compose run-42 prior-run --id-only)    # several maps become one id; one map is itself
+# … the brief carries: "Exploration map $ID: run `fathom map show $ID --budget 1200` before reading files."
+
+# sub-agent
+fathom map show $ID --budget 1200                      # what is already known, each entry re-checked now
+fathom map new  sub-7 --purpose "…" --agent "$AGENT_ID"
+fathom map append sub-7 --anchor path/x.go#L10-L40 --why "…" --agent "$AGENT_ID"
+CHILD=$(fathom map compose $ID sub-7 --agent "$AGENT_ID" --id-only)   # pass CHILD down; a composite refuses entries
+```
+
+The sub-agent never edits an entry of the parent's: it appends to its own map and
+composes. `--agent` is optional (provenance is then the session), but Claude Code
+does not pass the agent id to a sub-agent's shell: it is in the SubagentStart
+payload only, which is why the SubagentStart line (XM-8, below) names it to the
+sub-agent.
+
+**Surface.** The CLI and the hooks below, no MCP tool. The default MCP surface
+stays at its eight tools (`TestDefaultSurfaceUnchangedByMap`); a map tool, when
+one is built, lands on the extended surface and never on the default one.
 
 **How maps arrive (XM-8, XM-11 to XM-13).** Nothing here needs an agent to
 look: four hooks the harness already fires carry a map to whoever needs it, each

@@ -354,14 +354,8 @@ func appendMapEntry(req mapEntryRequest, syms mapSymbolResolver) (threadItem, er
 			return threadItem{}, fmt.Errorf("map %q is a composite: a composite carries references only", req.Map)
 		}
 	} else {
-		cond := req.Completes
-		if cond == nil {
-			if sid := currentSessionID(); sid != "" {
-				cond = &threadCondition{Kind: "session_ended", SessionID: sid}
-			}
-		}
 		m := explmap.Map{ID: req.Map, Kind: explmap.KindEphemeral, CreatedBy: mapCreator(req.AgentID), CreatedAt: now}
-		if err := writeMapHeader(set, m, thread, root, cond, now); err != nil {
+		if err := writeMapHeader(set, m, thread, root, defaultMapCondition(req.Completes), now); err != nil {
 			return threadItem{}, err
 		}
 	}
@@ -406,6 +400,19 @@ func appendMapEntry(req mapEntryRequest, syms mapSymbolResolver) (threadItem, er
 		return threadItem{}, err
 	}
 	return it, nil
+}
+
+// defaultMapCondition is the `completes_when` a new map gets: the one given,
+// else the end of the current session when a session is known (a map is a run's
+// working set, and it ends with the run), else none.
+func defaultMapCondition(cond *threadCondition) *threadCondition {
+	if cond != nil {
+		return cond
+	}
+	if sid := currentSessionID(); sid != "" {
+		return &threadCondition{Kind: "session_ended", SessionID: sid}
+	}
+	return nil
 }
 
 // repoRelative makes an anchor path repo-relative, refusing one outside root.

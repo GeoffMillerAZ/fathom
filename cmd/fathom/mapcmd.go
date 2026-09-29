@@ -1,12 +1,14 @@
 package main
 
 // mapcmd.go — the exploration-map verbs (docs/design/exploration-maps.md,
-// ADR-056): `thread note --map` files an entry, `map name|include|compose|list`
-// shape and inspect maps. CLI only: no MCP tool is added, and the default
-// surface stays at its eight tools (XM-10). Every command is deterministic and
-// needs no model (provider none).
+// ADR-056): `map new|append` create a map with its purpose line and file
+// entries (`thread note --map` is the same append), `map name|include|compose|
+// show|list` shape and read maps (show: mapshow.go). CLI only: no MCP tool is
+// added, and the default surface stays at its eight tools (XM-10). Every command
+// is deterministic and needs no model (provider none).
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -19,6 +21,10 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/explmap"
 )
+
+// mapGitTimeout bounds the one git call that recovers a stale entry's filed
+// text; past it the diff size is reported unknown, never waited for.
+const mapGitTimeout = 5 * time.Second
 
 // mapEntryFlags carries `thread note --map`'s flags.
 type mapEntryFlags struct {
@@ -127,12 +133,18 @@ func (s *repoMapSource) Symbol(key string) (string, int, int, bool) {
 	return s.syms.symbolSpan(key)
 }
 
+// indexDown reports that a symbol lookup was needed and the index could not be
+// opened: a symbol entry was then checked by its filed span only, and a reader
+// is told so rather than that the symbol "no longer resolves".
+func (s *repoMapSource) indexDown() bool { return s.opened && s.syms == nil }
+
 func (s *repoMapSource) Filed(path, commit string, start, end int) (string, bool) {
 	if commit == "" {
 		return "", false
 	}
-	//fathom:tenancy-allow exec-noctx one-shot CLI verb with no request context; the git/child call ends with the process
-	out, err := exec.Command("git", "-C", s.root, "show", commit+":"+path).Output()
+	ctx, cancel := context.WithTimeout(context.Background(), mapGitTimeout)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, "git", "-C", s.root, "show", commit+":"+path).Output()
 	if err != nil {
 		return "", false
 	}
@@ -143,22 +155,30 @@ func (s *repoMapSource) Filed(path, commit string, start, end int) (string, bool
 
 func cmdMap(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
-		fmt.Fprintln(stderr, "usage: fathom map name|include|compose|list … (entries: fathom thread note --map ID --anchor A --why W)")
+		fmt.Fprintln(stderr, mapUsage)
 		return 1
 	}
 	switch args[0] {
+	case "new":
+		return cmdMapNew(args[1:], stdout, stderr)
+	case "append":
+		return cmdMapAppend(args[1:], stdout, stderr)
 	case "name":
 		return cmdMapName(args[1:], stdout, stderr)
 	case "include":
 		return cmdMapInclude(args[1:], stdout, stderr)
 	case "compose":
 		return cmdMapCompose(args[1:], stdout, stderr)
+	case "show":
+		return cmdMapShow(args[1:], stdout, stderr)
 	case "list":
 		return cmdMapList(args[1:], stdout, stderr)
 	}
-	fmt.Fprintf(stderr, "unknown map verb %q (name|include|compose|list)\n", args[0])
+	fmt.Fprintf(stderr, "unknown map verb %q (new|append|name|include|compose|show|list)\n", args[0])
 	return 1
 }
+
+const mapUsage = "usage: fathom map new|append|name|include|compose|show|list … (an orchestrator: new ID --purpose \"…\", append ID --anchor A --why W, compose ID… --id-only, show ID --budget 1200)"
 
 // splitLeadIDs lifts the leading positional ids off args, so `map include A B
 // --drop C` parses (Go's flag package stops at the first positional).
@@ -170,6 +190,87 @@ func splitLeadIDs(args []string) (ids, rest []string) {
 		ids = append(ids, a)
 	}
 	return ids, nil
+}
+
+// cmdMapNew is `fathom map new ID --purpose "…" [--when "…"] [--completes-when
+// …] [--agent A]`: create a map with the line that says what it is for. The
+// purpose is the question the map answers, the one thing fathom cannot compute
+// (XM-7), and a reader of a brief or a pointer judges relevance by it, so `new`
+// requires it (the implicit creation by a first `append` files none). The map is
+// ephemeral: it lives until its condition holds (default: the end of this
+// session) and is kept while a live map includes it; `map name` makes one
+// durable.
+func cmdMapNew(args []string, stdout, stderr io.Writer) int {
+	ids, rest := splitLeadIDs(args)
+	fs := newFlagSet("map new", stderr)
+	purpose := fs.String("purpose", "", "the question the map answers (one line, required)")
+	when := fs.String("when", "", "when to use it (one line, optional)")
+	completes := fs.String("completes-when", "", `self-closing condition: "file_exists:<path>" or "plan_row_checked:<plan>#<ROW-ID>" (default: the end of this session)`)
+	agent := fs.String("agent", "", "the creating sub-agent's id (provenance)")
+	thread := fs.String("thread", "", "thread for the map (default: this repo's service)")
+	repo := fs.String("repo", ".", "repository")
+	if err := fs.Parse(rest); err != nil {
+		return 1
+	}
+	ids = append(ids, fs.Args()...)
+	if len(ids) != 1 {
+		fmt.Fprintln(stderr, `usage: fathom map new ID --purpose "the question it answers" [--when "…"] [--completes-when …] [--agent A]`)
+		return 1
+	}
+	if err := explmap.CheckPurpose(*purpose); err != nil {
+		fmt.Fprintf(stderr, "error: map new needs --purpose, the question the map answers, as one line of at most %d bytes: %v\n", explmap.PurposeMaxBytes, err)
+		return 1
+	}
+	cond, err := parseCondition(*completes, *repo)
+	if err != nil {
+		fmt.Fprintf(stderr, "error: %v\n", err)
+		return 1
+	}
+	root, _ := filepath.Abs(*repo)
+	now := time.Now()
+	set := loadMapSet(root, now)
+	if _, exists := set.maps[ids[0]]; exists {
+		fmt.Fprintf(stderr, "error: map %q already exists (`fathom map append %s …` files an entry; `fathom map name %s --purpose …` restates its purpose)\n", ids[0], ids[0], ids[0])
+		return 1
+	}
+	m := explmap.Map{
+		ID: ids[0], Kind: explmap.KindEphemeral, Purpose: strings.TrimSpace(*purpose), WhenToUse: strings.TrimSpace(*when),
+		CreatedBy: mapCreator(*agent), CreatedAt: now,
+	}
+	if err := writeMapHeader(set, m, *thread, root, defaultMapCondition(cond), now); err != nil {
+		fmt.Fprintf(stderr, "error: %v\n", err)
+		return 1
+	}
+	fmt.Fprintf(stdout, "map %q: %s\n", m.ID, m.Purpose)
+	return 0
+}
+
+// cmdMapAppend is `fathom map append ID --anchor A --why W [--agent A]`: the
+// entry verb, the same append as `thread note --map` (XM-1, XM-14), under the
+// noun an orchestrator's brief already uses.
+func cmdMapAppend(args []string, stdout, stderr io.Writer) int {
+	ids, rest := splitLeadIDs(args)
+	fs := newFlagSet("map append", stderr)
+	anchor := fs.String("anchor", "", "the entry's anchor, a symbol key or path#Lx-Ly (hashed now, re-resolved at every read)")
+	why := fs.String("why", "", "the one-line why this code matters for the map's purpose")
+	agent := fs.String("agent", "", "the appending sub-agent's id, recorded as the entry's provenance")
+	completes := fs.String("completes-when", "", "condition for a map this append creates (default: the end of this session)")
+	thread := fs.String("thread", "", "thread for a map this append creates")
+	repo := fs.String("repo", ".", "repository")
+	storePath := fs.String("store", "", "resolve a symbol anchor from this store (default: the daemon)")
+	url := fs.String("url", defaultFathomURL(), "fathom daemon URL for a symbol anchor")
+	if err := fs.Parse(rest); err != nil {
+		return 1
+	}
+	ids = append(ids, fs.Args()...)
+	if len(ids) != 1 || strings.TrimSpace(*anchor) == "" {
+		fmt.Fprintln(stderr, `usage: fathom map append ID --anchor <symbol|path#Lx-Ly> --why "…" [--agent A] [--completes-when …]`)
+		return 1
+	}
+	return cmdThreadNoteMap(mapEntryFlags{
+		mapID: ids[0], anchor: *anchor, why: *why, agent: *agent,
+		thread: *thread, completes: *completes, repo: *repo, store: *storePath, url: *url,
+	}, stdout, stderr)
 }
 
 // cmdMapName is `fathom map name ID --purpose "…" [--as NAME] [--when "…"]`:
@@ -281,12 +382,13 @@ func cmdMapCompose(args []string, stdout, stderr io.Writer) int {
 	storePath := fs.String("store", "", "resolve symbol anchors from this store (default: the daemon)")
 	url := fs.String("url", defaultFathomURL(), "fathom daemon URL")
 	jsonOut := fs.Bool("json", false, "emit the composite id and its expansion as JSON")
+	idOnly := fs.Bool("id-only", false, "print only the id (one line), for a brief or a script to capture")
 	if err := fs.Parse(rest); err != nil {
 		return 1
 	}
 	ids = append(ids, fs.Args()...)
 	if len(ids) == 0 {
-		fmt.Fprintln(stderr, "usage: fathom map compose ID… [--agent A]")
+		fmt.Fprintln(stderr, "usage: fathom map compose ID… [--agent A] [--id-only] [--json]")
 		return 1
 	}
 	root, _ := filepath.Abs(*repo)
@@ -306,8 +408,13 @@ func cmdMapCompose(args []string, stdout, stderr io.Writer) int {
 			set.maps[id] = *minted
 		}
 	}
+	if *idOnly {
+		// The id is all a brief carries; nothing is expanded, so no index is opened.
+		fmt.Fprintln(stdout, id)
+		return 0
+	}
 	x, err := explmap.Expand(id, set.maps, newRepoMapSource(root, func() mapSymbolResolver {
-		return mapSourceSymbols(root, *storePath, *url)
+		return openMapSymbols(root, *storePath, *url)
 	}))
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)

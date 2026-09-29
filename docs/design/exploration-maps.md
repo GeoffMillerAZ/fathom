@@ -64,6 +64,19 @@ read as pinned while an alive map includes it: a live stored-query map, or any m
 ended it, and a map pinned by an alive map is alive in turn. With no live maps before XM-D1 the narrower
 reading would never pin anything, and the reference rule is the same when live maps arrive.
 
+**As built (wave 2 edge, XM-9, XM-10).** `fathom map show ID --budget N` (`cmd/fathom/mapshow.go`) expands the
+includes once, re-resolves every entry at read time (the counts cover the whole map, shown or cut) and prints
+within `N` bytes, the unit RC-28's 1,200 names: the header and counts lead, the entries follow nearest first, and
+what does not fit is one `cut N of M entries` line naming it, stale ones marked; the output never exceeds the
+budget. With the index unreachable a drifted symbol entry is flagged stale and the read says the index was out of
+reach. An orchestrator passes one id with `map new ID --purpose`, `map append ID --anchor A --why W`,
+`map compose ID... --id-only` and `map show`; `usage.md` has the recipe. XM-10's "lives on the extended surface and
+the CLI only" is read as a ceiling: no tool is registered. The sketch says CLI first, the threads log is per-user
+state resolved from the caller's environment (`FATHOM_THREADS`, `FATHOM_HOME`) that a shared daemon does not see
+for an isolated worker, and the surface reckoning asks a measured case before a tool (SR-29 removed a pull-form
+tool the hook's push form covered). `TestDefaultSurfaceUnchangedByMap` pins the default at its eight and fails a
+map-shaped tool that is not on the extended surface.
+
 ## 3. Live maps and semantic layers are complementary (binding)
 
 They live on different axes. A semantic layer says what is TRUE or BINDING about code (governed claims:
