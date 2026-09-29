@@ -91,7 +91,7 @@
 @source "../../../appkit/ui/analytics/*.go";
 
 /* Token-driven utilities, built dynamically at render time — force-generated. */
-@source inline("{bg,text,border}-{accent,accent-hover,accent-ink,accent-soft,caution,caution-soft,danger,danger-soft,focus,info,info-soft,ink,ink-faint,ink-inverse,ink-muted,line,line-strong,positive,positive-soft,surface,surface-overlay,surface-raised,surface-sunken}");
+@source inline("{bg,text,border}-{accent,accent-hover,accent-ink,accent-soft,caution,caution-soft,danger,danger-soft,focus,info,info-soft,ink,ink-faint,ink-inverse,ink-muted,line,line-strong,positive,positive-soft,scrim,surface,surface-overlay,surface-raised,surface-sunken}");
 @source inline("ring-focus ring-2");
 @source inline("rounded-{sm,md,lg,xl,full}");
 @source inline("font-{sans,mono,display}");

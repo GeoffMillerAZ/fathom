@@ -139,8 +139,43 @@ func Load(src []byte) (Tokens, error) {
 	if err := unified.Decode(&t); err != nil {
 		return Tokens{}, fmt.Errorf("tokens: decode: %w", err)
 	}
+	defaultScrim(&t)
 	return t, nil
 }
+
+// defaultScrim fills an omitted scrim role (schema.cue marks it optional) so
+// every loaded set emits the utility appkit/ui/overlay paints its backdrop
+// with; a role that is missing is a class that is never generated (hazard H4).
+// Each branch takes the kit's scrim for its MEASURED polarity, never its name
+// (hazard H1): a dark-only set paints its "light" branch dark, and the lighter
+// scrim would wash that page out. An unmeasurable surface takes the darker
+// scrim, which dims any ground. An authored scrim is never replaced.
+func defaultScrim(t *Tokens) {
+	if _, ok := t.Colors["scrim"]; ok || t.Colors == nil {
+		return
+	}
+	pick := func(surface string) string {
+		if polarityFor(surface) == "light" {
+			return defaultScrimOnLight
+		}
+		return defaultScrimOnDark
+	}
+	t.Colors["scrim"] = ColorPair{
+		Light: pick(t.Colors["surface"].Light),
+		Dark:  pick(t.Colors["surface"].Dark),
+	}
+}
+
+// The scrim role's defaults: the veil a modal dialog or drawer draws over the
+// page (appkit/ui/overlay paints it at 50%). One is a tinted near-black for a
+// branch whose surface paints light, the other a deeper one for a branch whose
+// surface paints dark — each dims its ground about as much as the black/40
+// backdrop it replaced (TestScrimRoleDimsEveryShippedSurface). kit.cue authors
+// the same pair, so the default set and the fallback are one value.
+const (
+	defaultScrimOnLight = "oklch(0.30 0.015 260)"
+	defaultScrimOnDark  = "oklch(0.10 0.010 260)"
+)
 
 // colorNames returns the role names in deterministic (sorted) order.
 func colorNames(t Tokens) []string {

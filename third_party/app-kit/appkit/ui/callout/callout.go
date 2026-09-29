@@ -143,12 +143,15 @@ func Render(c Callout) string {
 	if expandable {
 		// The chevron sits last in the summary row and rotates on open. It is
 		// decorative — the label beside it carries the meaning — so it is
-		// aria-hidden and the label is real text.
+		// aria-hidden and the label is real text. The label is the only way
+		// to reveal the elaboration, so it is set in ink-muted, which clears
+		// the text floor on every kind's soft ground; ink-faint did not
+		// (FATHOM-F0-KIT-06, docs/theming-hazards.md H6).
 		label := c.DetailsLabel
 		if strings.TrimSpace(label) == "" {
 			label = "Details"
 		}
-		fmt.Fprintf(&b, `<span class="ml-auto flex shrink-0 items-center gap-1 text-xs text-ink-faint">`+
+		fmt.Fprintf(&b, `<span class="ml-auto flex shrink-0 items-center gap-1 text-xs text-ink-muted">`+
 			`<span>%s</span>`+
 			`<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" `+
 			`stroke-linecap="round" stroke-linejoin="round" width="16" height="16" aria-hidden="true" `+

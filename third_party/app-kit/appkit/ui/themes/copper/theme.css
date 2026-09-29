@@ -30,6 +30,7 @@
   --color-line-strong: var(--ak-color-line-strong);
   --color-positive: var(--ak-color-positive);
   --color-positive-soft: var(--ak-color-positive-soft);
+  --color-scrim: var(--ak-color-scrim);
   --color-surface: var(--ak-color-surface);
   --color-surface-overlay: var(--ak-color-surface-overlay);
   --color-surface-raised: var(--ak-color-surface-raised);
@@ -67,6 +68,7 @@
   --ak-color-line-strong: oklch(0.60 0.018 70);
   --ak-color-positive: oklch(0.47 0.120 150);
   --ak-color-positive-soft: oklch(0.93 0.045 150);
+  --ak-color-scrim: oklch(0.30 0.015 260);
   --ak-color-surface: oklch(0.985 0.006 70);
   --ak-color-surface-overlay: oklch(0.995 0.004 70);
   --ak-color-surface-raised: oklch(0.995 0.004 70);
@@ -95,6 +97,7 @@
   --ak-color-line-strong: oklch(0.56 0.025 70);
   --ak-color-positive: oklch(0.72 0.110 150);
   --ak-color-positive-soft: oklch(0.29 0.040 150);
+  --ak-color-scrim: oklch(0.10 0.010 260);
   --ak-color-surface: oklch(0.17 0.013 70);
   --ak-color-surface-overlay: oklch(0.23 0.016 70);
   --ak-color-surface-raised: oklch(0.21 0.015 70);
@@ -123,6 +126,7 @@
   --ak-color-line-strong: oklch(0.60 0.018 70);
   --ak-color-positive: oklch(0.47 0.120 150);
   --ak-color-positive-soft: oklch(0.93 0.045 150);
+  --ak-color-scrim: oklch(0.30 0.015 260);
   --ak-color-surface: oklch(0.985 0.006 70);
   --ak-color-surface-overlay: oklch(0.995 0.004 70);
   --ak-color-surface-raised: oklch(0.995 0.004 70);
@@ -152,6 +156,7 @@
     --ak-color-line-strong: oklch(0.56 0.025 70);
     --ak-color-positive: oklch(0.72 0.110 150);
     --ak-color-positive-soft: oklch(0.29 0.040 150);
+    --ak-color-scrim: oklch(0.10 0.010 260);
     --ak-color-surface: oklch(0.17 0.013 70);
     --ak-color-surface-overlay: oklch(0.23 0.016 70);
     --ak-color-surface-raised: oklch(0.21 0.015 70);

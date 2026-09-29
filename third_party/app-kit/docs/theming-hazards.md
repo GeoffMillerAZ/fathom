@@ -491,6 +491,11 @@ of rigour.
 
     grep -rn 'ink-faint' appkit/ui/vizframe    # must print nothing
 
+`appkit/ui/callout`'s Details affordance was the same defect in a control: the only
+label that reveals the elaboration, set in `ink-faint` (3.16:1 light and 2.88:1 dark
+on `danger-soft`). It is `ink-muted` now, and `TestDetailsLabelClearsTheTextFloorOnEveryKind`
+measures it over every kind's soft ground in both schemes (FATHOM-F0-KIT-06).
+
 ---
 
 ## Known open in this kit (keep honest)

@@ -216,12 +216,22 @@ func cssSetupGuide() string {
 func roleVocabularyTable() string {
 	// Group by the part before the first '-' (surface, ink, line, accent, …),
 	// preserving the kit's intent buckets without hardcoding the role list.
-	order := []string{"surface", "ink", "line", "accent", "positive", "caution", "danger", "info", "focus"}
+	order := []string{"surface", "ink", "line", "accent", "positive", "caution", "danger", "info", "focus", "scrim"}
 	groups := map[string][]string{}
+	known := map[string]bool{}
+	for _, base := range order {
+		known[base] = true
+	}
 	for _, r := range tokens.ColorNames {
 		base := r
 		if i := strings.IndexByte(r, '-'); i > 0 {
 			base = r[:i]
+		}
+		if !known[base] {
+			// A family the bucket list does not name still appears, last and
+			// in generated (sorted) order, rather than silently vanishing.
+			known[base] = true
+			order = append(order, base)
 		}
 		groups[base] = append(groups[base], r)
 	}

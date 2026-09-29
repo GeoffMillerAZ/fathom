@@ -31,6 +31,7 @@
   --color-neon-pink: var(--ak-color-neon-pink);
   --color-positive: var(--ak-color-positive);
   --color-positive-soft: var(--ak-color-positive-soft);
+  --color-scrim: var(--ak-color-scrim);
   --color-surface: var(--ak-color-surface);
   --color-surface-overlay: var(--ak-color-surface-overlay);
   --color-surface-raised: var(--ak-color-surface-raised);
@@ -69,6 +70,7 @@
   --ak-color-neon-pink: #ff5d8f;
   --ak-color-positive: #36e0a0;
   --ak-color-positive-soft: #103a30;
+  --ak-color-scrim: oklch(0.10 0.010 260);
   --ak-color-surface: #0e0b1a;
   --ak-color-surface-overlay: #221b52;
   --ak-color-surface-raised: #1b1640;
@@ -98,6 +100,7 @@
   --ak-color-neon-pink: #ff5d8f;
   --ak-color-positive: #36e0a0;
   --ak-color-positive-soft: #103a30;
+  --ak-color-scrim: oklch(0.10 0.010 260);
   --ak-color-surface: #0e0b1a;
   --ak-color-surface-overlay: #221b52;
   --ak-color-surface-raised: #1b1640;
@@ -127,6 +130,7 @@
   --ak-color-neon-pink: #ff5d8f;
   --ak-color-positive: #36e0a0;
   --ak-color-positive-soft: #103a30;
+  --ak-color-scrim: oklch(0.10 0.010 260);
   --ak-color-surface: #0e0b1a;
   --ak-color-surface-overlay: #221b52;
   --ak-color-surface-raised: #1b1640;
@@ -157,6 +161,7 @@
     --ak-color-neon-pink: #ff5d8f;
     --ak-color-positive: #36e0a0;
     --ak-color-positive-soft: #103a30;
+    --ak-color-scrim: oklch(0.10 0.010 260);
     --ak-color-surface: #0e0b1a;
     --ak-color-surface-overlay: #221b52;
     --ak-color-surface-raised: #1b1640;

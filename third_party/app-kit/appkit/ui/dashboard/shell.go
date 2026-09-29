@@ -15,7 +15,7 @@ import (
 // to a top "Menu" disclosure (native <details>, no JS) so the layout is usable
 // without a client framework.
 type Shell struct {
-	Title     string        // page title in the top bar
+	Title     string        // page title in the top bar (its h1 unless PageHeading)
 	Brand     template.HTML // brand/logo slot (sidebar top); falls back to Title
 	Nav       template.HTML // sidebar navigation (app-supplied links)
 	Actions   template.HTML // top-bar right slot (search, user menu, buttons)
@@ -47,6 +47,19 @@ type Shell struct {
 	// treatment that serves a screen-reader user and a sighted keyboard user
 	// without adding a control nobody else needs.
 	SkipLink bool
+
+	// PageHeading, when true, says Content writes the page's one h1 (for
+	// example chrome.RenderPageHeading). The top bar then writes Title as plain
+	// text rather than an h1 — or nothing when Title is empty — so the page
+	// keeps a single h1. Off, the top bar's Title is the h1, for pages with no
+	// heading of their own (FATHOM-S0-KIT-01).
+	PageHeading bool
+
+	// MobileBrand, when true, repeats Brand at the start of the top bar below
+	// the md breakpoint, where the sidebar that carries it is hidden. Brand is
+	// then written twice, so it must not carry an id, and a link in it brings
+	// its own 44px target and focus treatment.
+	MobileBrand bool
 }
 
 // RenderShell returns the full dashboard frame as an HTML string.
@@ -88,7 +101,25 @@ func RenderShell(s Shell) string {
 
 	// Top bar.
 	b.WriteString(`<header class="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-line bg-surface px-4">`)
-	fmt.Fprintf(&b, `<h1 class="truncate text-lg font-semibold text-ink">%s</h1>`, esc(s.Title))
+	title := fmt.Sprintf(`<h1 class="truncate text-lg font-semibold text-ink">%s</h1>`, esc(s.Title))
+	if s.PageHeading {
+		title = ""
+		if s.Title != "" {
+			title = fmt.Sprintf(`<p class="truncate text-lg font-semibold text-ink">%s</p>`, esc(s.Title))
+		}
+	}
+	if s.PageHeading || s.MobileBrand {
+		// The leading slot is always written in these modes, even empty, so
+		// justify-between keeps the actions at the end of the bar.
+		b.WriteString(`<div class="flex min-w-0 items-center gap-3">`)
+		if s.MobileBrand {
+			fmt.Fprintf(&b, `<div class="flex shrink-0 items-center md:hidden">%s</div>`, brand)
+		}
+		b.WriteString(title)
+		b.WriteString(`</div>`)
+	} else {
+		b.WriteString(title)
+	}
 	if s.Actions != "" {
 		fmt.Fprintf(&b, `<div class="flex items-center gap-3">%s</div>`, string(s.Actions))
 	}

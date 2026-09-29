@@ -56,5 +56,6 @@ tokens: {
 		"info-soft": {light: "oklch(0.94 0.04 230)", dark: "oklch(0.30 0.05 230)"}
 
 		focus: {light: "oklch(0.55 0.19 262)", dark: "oklch(0.72 0.15 262)"}
+		scrim: {light: "oklch(0.30 0.015 260)", dark: "oklch(0.10 0.010 260)"}
 	}
 }

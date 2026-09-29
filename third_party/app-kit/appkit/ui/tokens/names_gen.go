@@ -23,6 +23,7 @@ const (
 	ColorLineStrong     = "line-strong"
 	ColorPositive       = "positive"
 	ColorPositiveSoft   = "positive-soft"
+	ColorScrim          = "scrim"
 	ColorSurface        = "surface"
 	ColorSurfaceOverlay = "surface-overlay"
 	ColorSurfaceRaised  = "surface-raised"
@@ -50,6 +51,7 @@ var ColorNames = []string{
 	"line-strong",
 	"positive",
 	"positive-soft",
+	"scrim",
 	"surface",
 	"surface-overlay",
 	"surface-raised",

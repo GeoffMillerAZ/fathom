@@ -15,11 +15,11 @@ import (
 	"github.com/geoffmilleraz/app-kit/appkit/ui/tokens"
 )
 
-// TestPaletteCoversAllRoles asserts both schemes carry all 23 roles as
+// TestPaletteCoversAllRoles asserts both schemes carry all 24 roles as
 // parseable hex — the palette a terminal command actually gets, not just
 // what the generator claims to have emitted.
 func TestPaletteCoversAllRoles(t *testing.T) {
-	const wantRoles = 23
+	const wantRoles = 24
 	if len(theme.Roles) != wantRoles {
 		t.Fatalf("Roles: got %d roles, want %d", len(theme.Roles), wantRoles)
 	}

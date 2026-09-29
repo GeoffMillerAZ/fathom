@@ -49,6 +49,9 @@ func TestRequiredRolesAndDarkOnly(t *testing.T) {
 		"accent": "#f92aad", "accent-hover": "#ff7edb", "accent-ink": "#241b2f", "accent-soft": "#2f152f", "focus": "#72f1b8",
 		"positive": "#72f1b8", "positive-soft": "#222930", "caution": "#fede5d", "caution-soft": "#302727",
 		"danger": "#f92aad", "danger-soft": "#2f152f", "info": "#36f9f6", "info-soft": "#1c2a36",
+		// The site has no modal veil color; Load supplies the kit scrim for a
+		// dark-polarity branch (FATHOM-S0-KIT-02), identical in both schemes.
+		"scrim": "oklch(0.10 0.010 260)",
 	}
 	if len(tok.Colors) != len(want) {
 		t.Fatal("theme role inventory changed")

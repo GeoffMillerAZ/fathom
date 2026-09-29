@@ -396,7 +396,8 @@
         "go test ./appkit/ui/tokens"
       ],
       "gaps": [
-        "CUE generation requires the kit toolchain; consuming generated CSS does not."
+        "CUE generation requires the kit toolchain; consuming generated CSS does not.",
+        "The scrim role is optional: Load fills an omitted one with the kit value for each branch's measured surface polarity, so an app token set gains it by rerunning appkit gen, not by authoring it."
       ],
       "provenance": {
         "source": "first-party",
@@ -828,7 +829,7 @@
           "RenderShell"
         ]
       },
-      "usage": "Build dashboard.NavGroup and dashboard.NavItem values and pass dashboard.RenderNav the app's current path; dashboard.MatchPath supports app-owned compositions. Supply that navigation to dashboard.RenderShell with app-owned content. The shell includes a native mobile disclosure; enable its skip link for a full-page shell. Scan appkit/ui/dashboard/*.go and include theme CSS.",
+      "usage": "Build dashboard.NavGroup and dashboard.NavItem values and pass dashboard.RenderNav the app's current path; dashboard.MatchPath supports app-owned compositions. Supply that navigation to dashboard.RenderShell with app-owned content. The shell includes a native mobile disclosure; enable its skip link for a full-page shell. Set the PageHeading field when the content writes the page's own h1 (such as the chrome package's page heading) so the top bar writes Title as plain text, and MobileBrand to show the brand in the top bar below md. Scan appkit/ui/dashboard/*.go and include theme CSS.",
       "states": [
         "wide",
         "narrow",
@@ -837,7 +838,9 @@
         "current route",
         "exact or subtree matching",
         "unsafe destination disabled",
-        "mobile disclosure"
+        "mobile disclosure",
+        "page-owned heading",
+        "mobile brand"
       ],
       "app_owns": [
         "routes",
@@ -853,7 +856,8 @@
       "gaps": [
         "Typed navigation shares link rendering and route matching, not routing, permissions, account or settings backends. Appearance behavior is a separate capability.",
         "HTML slots and navigation icons require caller review. Consumer history does not prove fresh keyboard, narrow-screen or workflow adoption results.",
-        "Gallery /shell composes this primitive in a synthetic workflow; real account/settings backends and consumer/browser proof are not supplied."
+        "Gallery /shell composes this primitive in a synthetic workflow; real account/settings backends and consumer/browser proof are not supplied.",
+        "PageHeading and MobileBrand (FATHOM-S0-KIT-01) are proven by package tests; no Gallery specimen composes the shell with chrome.RenderPageHeading, and MobileBrand writes Brand twice, so Brand must carry no id."
       ],
       "provenance": {
         "source": "first-party",
@@ -1018,7 +1022,8 @@
         "go test ./appkit/ui/overlay"
       ],
       "gaps": [
-        "Consumer must verify initial focus, focus return and validation for its own content."
+        "Consumer must verify initial focus, focus return and validation for its own content.",
+        "The backdrop is the scrim token role at 50% (FATHOM-S0-KIT-02); it relies on ::backdrop inheriting custom properties from its dialog, so an engine without that inheritance shows a transparent backdrop. Verified in one Chromium build only."
       ],
       "provenance": {
         "source": "first-party",
@@ -1097,7 +1102,8 @@
         "go test ./appkit/ui/callout"
       ],
       "gaps": [
-        "Escaped Body is the default; BodyHTML is trusted application markup only."
+        "Escaped Body is the default; BodyHTML is trusted application markup only.",
+        "The Details affordance label clears 4.5:1 on every kind's soft ground in the kit token set (FATHOM-F0-KIT-06); an app token set must re-measure its own soft grounds."
       ],
       "provenance": {
         "source": "first-party",
@@ -1137,7 +1143,7 @@
           "Breadcrumbs"
         ]
       },
-      "usage": "Use plain-link chrome controls with app-owned URLs. Scan appkit/ui/chrome/*.go; preserve filter context in links. Breadcrumb links render 44px minimum targets with a focus-visible outline.",
+      "usage": "Use plain-link chrome controls with app-owned URLs. Scan appkit/ui/chrome/*.go; preserve filter context in links. Breadcrumb and pagination links render 44px minimum targets with a focus-visible outline; the pager row wraps.",
       "states": [
         "active",
         "empty",
@@ -1156,8 +1162,7 @@
       ],
       "gaps": [
         "A skeleton does not implement loading, retry or state preservation.",
-        "RenderPagination links are px-2 py-1 (about 28px high), below the kit's 44px target floor; Fathom's console enlarges them locally.",
-        "FATHOM-F0-KIT-03 (breadcrumb target size and focus) comes from Fathom's unpublished console wave F0, which still wraps the trail locally until it adopts this revision."
+        "Breadcrumb (FATHOM-F0-KIT-03) and pagination (FATHOM-F0-KIT-05) target sizes are package-tested and browser-measured in one Chromium build; touch accuracy, zoom and other engines are unverified."
       ],
       "provenance": {
         "source": "first-party",
@@ -1203,14 +1208,14 @@
       "profiles": ["go-web"],
       "dependencies": ["theme CSS", "appkit css source scanning of appkit/ui/chrome/*.go and appkit/ui/form/*.go"],
       "source": {"path": "appkit/ui/chrome/heading.go", "symbols": ["PageHeading", "RenderPageHeading"]},
-      "usage": "Build chrome.PageHeading with a plain-text Title and optional ID, Breadcrumbs (chrome.Crumb values rendered by chrome.Breadcrumbs; a destination that is not relative or HTTP(S) is refused), Eyebrow, up to eight Meta items and up to four Actions: Button values from the form package, rendered unchanged by its RenderButton (Href for links, Type button for script-owned actions). Call chrome.RenderPageHeading before writing the response and handle its error; it writes the page's one h1. Below the sm breakpoint the actions wrap under the title. Scan appkit/ui/chrome/*.go and appkit/ui/form/*.go and include theme CSS.",
+      "usage": "Build chrome.PageHeading with a plain-text Title and optional ID, Breadcrumbs (chrome.Crumb values rendered by chrome.Breadcrumbs; a destination that is not relative or HTTP(S) is refused), Eyebrow, up to eight Meta items and up to four Actions: Button values from the form package, rendered unchanged by its RenderButton (Href for links, Type button for script-owned actions). Call chrome.RenderPageHeading before writing the response and handle its error; it writes the page's one h1, so inside the dashboard package's shell set its PageHeading field. Below the sm breakpoint the actions wrap under the title. Scan appkit/ui/chrome/*.go and appkit/ui/form/*.go and include theme CSS.",
       "states": ["title only", "breadcrumbs, eyebrow, meta and actions", "narrow: actions below the title", "wide: actions at the row end", "long unbroken title and meta", "unsafe action link inert", "unsafe breadcrumb destination refused", "invalid input refusal", "light/dark"],
       "app_owns": ["page title and the heading hierarchy below the h1", "breadcrumb destinations", "action destinations, forms, scripts and authorization", "meta wording and freshness"],
       "maturity": "experimental",
       "proof": ["go test ./appkit/ui/chrome", "go test ./apps/gallery"],
       "gaps": [
         "Fathom (vision 35 observatory console, FATHOM-KIT-07) is the originating consumer; its integration is not yet performed or verified against this revision, and permanent promotion needs a second consumer.",
-        "Breadcrumb links keep the existing Breadcrumbs inline targets and hover-only styling; they are not raised to 44px.",
+        "Composed inside dashboard.RenderShell without Shell.PageHeading, the page has two h1s (the top bar's and this one); FATHOM-S0-KIT-01 added the option.",
         "Browser evidence is one local Chromium run of the Gallery specimen at wide/narrow and light/dark (docs/assessments/2026-09-25-live-freshness-and-page-heading.md); zoom, other engines and assistive technology are unverified.",
         "Meta items are plain text; links or rich meta need an app-owned composition."
       ],
