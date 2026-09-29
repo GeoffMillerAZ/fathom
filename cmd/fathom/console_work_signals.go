@@ -16,6 +16,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path"
 	"path/filepath"
@@ -34,6 +35,24 @@ import (
 
 // workCIMaxBytes bounds one CI summary file's read.
 const workCIMaxBytes = 8 << 20
+
+// readWorkBounded reads path under limit bytes, so a file that grew past its
+// size check is refused and named, never read whole (tenancy design §4.7).
+func readWorkBounded(path string, limit int64) ([]byte, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	data, err := io.ReadAll(io.LimitReader(f, limit+1))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(data)) > limit {
+		return nil, fmt.Errorf("over the %d MiB bound", limit>>20)
+	}
+	return data, nil
+}
 
 // workRepoConfig reads the repository's own .fathom/config.toml (its
 // `[zones]` and `[work]` tables). An absent file is an empty config.
@@ -91,7 +110,7 @@ func workCIRuns(root string, sums []config.CISummary, cfgErr error, changes []co
 			read = append(read, fmt.Sprintf("%s: not read: %d bytes, over the %d MiB bound", s.Path, fi.Size(), workCIMaxBytes>>20))
 			continue
 		}
-		data, err := os.ReadFile(path)
+		data, err := readWorkBounded(path, workCIMaxBytes)
 		if err != nil {
 			read = append(read, fmt.Sprintf("%s: not read: %v", s.Path, err))
 			continue
@@ -325,13 +344,18 @@ func workToolKind(tool string) string {
 	return ""
 }
 
-// workSourceExts are the extensions a discovery pointer names a file by
-// even when the file is gone from the tree (a reverted or deleted file).
-var workSourceExts = map[string]bool{
-	"go": true, "ts": true, "tsx": true, "js": true, "jsx": true, "mjs": true, "cjs": true, "py": true, "rs": true,
-	"java": true, "kt": true, "rb": true, "php": true, "cs": true, "c": true, "h": true, "cc": true, "cpp": true,
-	"hpp": true, "swift": true, "dart": true, "scala": true, "ex": true, "exs": true, "sh": true, "sql": true,
-	"proto": true, "cue": true, "md": true, "json": true, "yaml": true, "yml": true, "toml": true, "tf": true,
+// workSourceExt reports whether ext is an extension a discovery pointer
+// names a file by even when the file is gone from the tree (a reverted or
+// deleted file).
+func workSourceExt(ext string) bool {
+	switch ext {
+	case "go", "ts", "tsx", "js", "jsx", "mjs", "cjs", "py", "rs",
+		"java", "kt", "rb", "php", "cs", "c", "h", "cc", "cpp",
+		"hpp", "swift", "dart", "scala", "ex", "exs", "sh", "sql",
+		"proto", "cue", "md", "json", "yaml", "yml", "toml", "tf":
+		return true
+	}
+	return false
 }
 
 // workPointerIsFile tells a file pointer ("internal/pay/a.go") from a
@@ -345,7 +369,7 @@ func workPointerIsFile(root string) func(string) bool {
 			return v
 		}
 		isFile := false
-		if ext := strings.TrimPrefix(path.Ext(p), "."); workSourceExts[ext] {
+		if ext := strings.TrimPrefix(path.Ext(p), "."); workSourceExt(ext) {
 			isFile = true
 		} else if root != "" && !filepath.IsAbs(p) {
 			if fi, err := os.Stat(filepath.Join(root, filepath.FromSlash(p))); err == nil && fi.Mode().IsRegular() {
@@ -563,7 +587,7 @@ func workUnprovenAnchors(ctx context.Context, sr serviceRoot, h console.History,
 			pl.err = "over the size bound"
 			return pl
 		}
-		md, err := os.ReadFile(full)
+		md, err := readWorkBounded(full, workPlanMaxBytes)
 		if err != nil {
 			pl.err = err.Error()
 			return pl
