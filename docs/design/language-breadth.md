@@ -722,6 +722,36 @@ methods at the operator's range: no call is written, so a callable reference who
 callee's name leaves the L2 truth, counted as `scip_calls_unwritten`). `langbench.SCIPOptionsFor`
 selects the call-site rules per dialect; every other dialect keeps the zero options.
 
+**Import resolution (LB-F40, 2026-09-29).** `import_resolution` is computed for every language dialect
+whose manifest names an import strategy (§6). Fathom's side is `fusion.ResolveImportSpecs`: each file's
+import specs (`TSExtractor.ExtractImportSpans`: the specs `ExtractImports` returns, each with the line
+span of the statement binding it) resolved by the strategy over the dialect's measured files to the
+file(s) the file resolver binds (a named import: the file defining the name, else the
+`Module<sep>Name` submodule, else the module's files; a whole-module import: the module's files; a
+wildcard: the files declaring the namespace, else the module's). The unit is an *import*: the name one
+statement binds, its alternative readings merged (rust's `use a::b::c` is read both as a named import
+of `c` and as the whole module `a::b::c`: one import, resolved when either reading is). The oracle is
+either the SCIP index (tier A) — every reference in a document to a non-local symbol another document
+defines, a module or file symbol included (`mod x;`, a `use` path, a Dart import URI), paired with the
+import statement whose lines hold it — or a neutral oracle file's `imports` (`[{path, line, to_path,
+module}]`, `module` optional: a language-native import dump at the file's tier;
+`calibration/oracles/ruby-require` and `calibration/oracles/clang-includes` are tier B). An import is
+**in-repo** when the oracle resolves its statement to a measured file, and **agrees** when fathom's
+strategy resolved it to one of those files: `import_resolution` = agreeing ÷ in-repo imports, the §1.2
+bar (excellent ≥ .95, good ≥ .85). The reading's counts and its one `import_resolution:` note also give
+what is not gated: in-repo imports left unresolved or resolved only elsewhere; (file, statement,
+target) edge precision and recall; imports fathom resolved where the oracle names no file
+(`imports_unattested`: an external import resolved into the repository, or one the oracle cannot see —
+a namespace import under scip-dotnet, which defines no namespace anywhere); oracle imports on no
+statement fathom extracted (a dump entry, or a SCIP occurrence the producer gave the Import role);
+targets outside the measured files; and references left out because the index defines their symbol in
+more than one document (scip-typescript names every nest sample's `src/app.module.ts` alike: which file
+is meant would be the index's guess, never truth). One imports oracle per subject. The first runs, on
+the SCIP indexes kept from round 2 (scratch, not committed): axios 232 of 232, nest 3,271 of 3,271,
+express .34 (`require('../..')`, a directory spec, is unresolved), zod 0 of 504 (every spec is an ESM
+`./x.js` naming `x.ts`), Polly 0 of 15 and Newtonsoft.Json 0 of 313 (an aliased `using` of a type
+whose file is not named after it) — strategy gaps the metric exists to show (O145).
+
 ## 11. Retiring heuristics and bespoke walkers
 
 The nine CGO walkers and three regex extractors each have a queue item whose target is at
@@ -907,7 +937,7 @@ worktree and your scratch directory.
 |---|---|
 | L1 | goldens pass; every `required_kind` emitted with range and (callables) signature; reading `level_met ≥ L1` (the plan row proves the level at good or excellent; the grade is shown by the tracker and counted by the milestones, and excellent needs tier A or B) |
 | L2 | L1 done; call pairs measured against tier A (excellent/good) or tier C (good) |
-| L3 | L2 done; `imports.scm` + a strategy; `import_resolution` and file-edge metrics measured against SCIP |
+| L3 | L2 done; `imports.scm` + a strategy; `import_resolution` and file-edge metrics measured against SCIP (`import_resolution` also against a language-native import dump at its tier, §10, LB-F40) |
 | L4 | L3 done; a SCIP producer run on ≥ 1 subject, imported with `fathom ingest --scip` into a scratch store, `def_mapping` and `typed_recall` measured; the tracker names the producer and version |
 | any | tenancy numbers inside §1.2's floor; tracker regenerated; CHANGELOG line; no disk left behind |
 

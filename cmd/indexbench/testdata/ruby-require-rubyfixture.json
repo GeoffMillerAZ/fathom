@@ -1,0 +1,19 @@
+{
+  "tool": "ruby-require",
+  "version": "ruby 2.6.10",
+  "tier": "B",
+  "imports": [
+    {
+      "path": "lib/app.rb",
+      "line": 2,
+      "to_path": "lib/app/helper.rb",
+      "module": "app/helper"
+    },
+    {
+      "path": "lib/app.rb",
+      "line": 3,
+      "to_path": "lib/app/models/user.rb",
+      "module": "app/models/user"
+    }
+  ]
+}

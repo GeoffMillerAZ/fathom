@@ -31,6 +31,14 @@ type SCIPResult struct {
 	// miss (pairs on either side of the comparison), never part of a reading.
 	CallTruth map[CallPair]bool
 	Docs      map[string]bool
+	// ImportRefs are the index's cross-file references, one per (document,
+	// line, defining document), sorted — the oracle side of
+	// import_resolution (LB-F40, ScoreImports), which keeps those on a
+	// fathom import statement's lines. Unlike FileEdges any non-local
+	// definition is a target, a module or file symbol included (the one a
+	// `mod x;`, a `use` path or an import URI references); Explicit marks
+	// a reference the producer gave the Import role.
+	ImportRefs []OracleImport
 }
 
 // scipBareName returns a SCIP symbol's leaf descriptor name and whether it
@@ -260,6 +268,7 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 	}
 	docKinds := map[string]map[string]scippb.SymbolInformation_Kind{} // scip-dart: each document's symbol kinds
 	definedIn := map[string]string{}                                  // symbol -> defining document
+	defDoc := map[string]string{}                                     // every non-local symbol -> its defining document (ImportRefs); "" when more than one
 	defsByDoc := map[string][]*scipDef{}
 	docs := map[string]bool{}
 	for _, d := range idx.GetDocuments() {
@@ -281,6 +290,16 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 		for _, o := range d.GetOccurrences() {
 			if o.GetSymbolRoles()&int32(scippb.SymbolRole_Definition) == 0 {
 				continue
+			}
+			if sym := o.GetSymbol(); sym != "" && !strings.HasPrefix(sym, "local ") {
+				if prev, seen := defDoc[sym]; !seen {
+					defDoc[sym] = d.GetRelativePath()
+				} else if prev != d.GetRelativePath() {
+					// One symbol defined in two documents (scip-typescript names
+					// every sample app's src/app.module.ts alike): which file a
+					// reference means is the index's guess, never import truth.
+					defDoc[sym] = ""
+				}
 			}
 			if kinds[o.GetSymbol()] == scippb.SymbolInformation_Namespace {
 				continue
@@ -322,6 +341,7 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 	}
 
 	truth := map[CallPair]bool{}
+	importRefs := map[OracleImport]bool{} // (doc, line, to) -> any occurrence there has the Import role
 	for _, d := range idx.GetDocuments() {
 		doc := d.GetRelativePath()
 		var srcLines [][]byte
@@ -338,6 +358,10 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 			}
 			if to, ok := definedIn[o.GetSymbol()]; ok && to != doc {
 				res.FileEdges[[2]string{doc, to}] = true
+			}
+			if to, ok := defDoc[o.GetSymbol()]; ok && to != doc {
+				k := OracleImport{Path: doc, Line: int(r[0]) + 1, ToPath: to, Ambiguous: to == ""}
+				importRefs[k] = importRefs[k] || o.GetSymbolRoles()&int32(scippb.SymbolRole_Import) != 0
 			}
 			callee, callable := scipBareName(o.GetSymbol())
 			if opts.MacroCalls && strings.HasSuffix(o.GetSymbol(), "!") {
@@ -384,6 +408,23 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 	found := FathomCallPairs(nodes, docs)
 	ScorePairs(truth, found, res.Counts, CntCallTruth, CntCallTruthFound, CntCallFathom, CntCallFathomInTrue)
 	res.CallTruth, res.Docs = truth, docs
+	for k, explicit := range importRefs {
+		k.Explicit = explicit
+		res.ImportRefs = append(res.ImportRefs, k)
+	}
+	sort.Slice(res.ImportRefs, func(i, j int) bool {
+		a, b := res.ImportRefs[i], res.ImportRefs[j]
+		if a.Path != b.Path {
+			return a.Path < b.Path
+		}
+		if a.Line != b.Line {
+			return a.Line < b.Line
+		}
+		if a.ToPath != b.ToPath {
+			return a.ToPath < b.ToPath
+		}
+		return !a.Ambiguous && b.Ambiguous
+	})
 
 	imp, err := fscip.ImportIndex(service, raw, nodes)
 	if err != nil {

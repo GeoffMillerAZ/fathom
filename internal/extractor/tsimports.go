@@ -13,6 +13,7 @@ package extractor
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	"github.com/geoffmilleraz/fathom/internal/extractor/tsengine"
 )
@@ -85,6 +86,73 @@ func (e *TSExtractor) ExtractImports(relPath string, src []byte) ([]ImportSpec, 
 	return importSpecsFromCaptures(matches, src), nil
 }
 
+// ImportSpan is one ImportSpec with the line span (1-based, inclusive) of
+// the statement that binds it: the unit the language harness pairs an
+// oracle's import references with (LB-F40, design §1.2 import_resolution)
+// — a SCIP occurrence on a name inside a multi-line import, a dump's
+// statement line. StartLine is never after the spec's Line and EndLine
+// never before it.
+type ImportSpan struct {
+	ImportSpec
+	StartLine, EndLine int
+}
+
+// ExtractImportSpans is ExtractImports with each spec's statement span: the
+// same specs in the same order, each spanning the lines of the match that
+// bound it (its statement capture, else its module and name captures).
+func (e *TSExtractor) ExtractImportSpans(relPath string, src []byte) ([]ImportSpan, error) {
+	variant := e.variantFor(relPath)
+
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	l, q, err := e.leaseFor(context.Background(), variant)
+	if err != nil {
+		return nil, err
+	}
+	defer l.Release()
+	tree, err := l.Parser().Parse(src)
+	if err != nil {
+		e.noteFault(l)
+		return nil, fmt.Errorf("tsextract[%s] %s: parse: %v: %w", e.spec.name, relPath, err, ErrTSEngineFault)
+	}
+	defer tree.Close()
+	matches, err := q.Run(tree)
+	if err != nil {
+		e.noteFault(l)
+		return nil, fmt.Errorf("tsextract[%s] %s: query: %v: %w", e.spec.name, relPath, err, ErrTSEngineFault)
+	}
+	specs, spans := importSpecsWithSpans(matches, src, true)
+	out := make([]ImportSpan, len(specs))
+	for i, s := range specs {
+		lo := s.Line
+		if sp := spans[i][0]; sp > 0 && sp < lo {
+			lo = sp
+		}
+		out[i] = ImportSpan{ImportSpec: s, StartLine: lo, EndLine: max(spans[i][1], s.Line)}
+	}
+	return out, nil
+}
+
+// matchSpan is the first and last line (1-based) any of m's captures
+// covers; newlines holds src's newline offsets, ascending.
+func matchSpan(m tsengine.Match, newlines []int) [2]int {
+	lineOf := func(off int) int { return sort.SearchInts(newlines, off) + 1 }
+	span := [2]int{0, 0}
+	for i, c := range m.Captures {
+		lo := c.Node.Line()
+		hi := lo
+		if c.Node.EndByte > c.Node.StartByte {
+			hi = max(lo, lineOf(int(c.Node.EndByte)-1))
+		}
+		if i == 0 || lo < span[0] {
+			span[0] = lo
+		}
+		span[1] = max(span[1], hi)
+	}
+	return span
+}
+
 // capMap flattens one Match's captures into a name->Node lookup — every
 // pattern below captures each name at most once per match.
 func capMap(m tsengine.Match) map[string]tsengine.Node {
@@ -115,10 +183,29 @@ func capMap(m tsengine.Match) map[string]tsengine.Node {
 // always precedes the bare-statement pattern's match — claimed below only
 // needs to remember statement byte ranges already recorded.
 func importSpecsFromCaptures(matches []tsengine.Match, src []byte) []ImportSpec {
+	specs, _ := importSpecsWithSpans(matches, src, false)
+	return specs
+}
+
+// importSpecsWithSpans is importSpecsFromCaptures, and with withSpans each
+// spec's match span (matchSpan), index for index.
+func importSpecsWithSpans(matches []tsengine.Match, src []byte, withSpans bool) ([]ImportSpec, [][2]int) {
 	var specs []ImportSpec
+	var spans [][2]int
+	var newlines []int
+	if withSpans {
+		for i, b := range src {
+			if b == '\n' {
+				newlines = append(newlines, i)
+			}
+		}
+	}
 	claimed := map[[2]uint32]bool{}
 
 	for _, m := range matches {
+		// A case below that skips its match (`continue`) has appended
+		// nothing, so every spec before this match already has its span.
+		before := len(specs)
 		caps := capMap(m)
 		switch {
 		case has(caps, "import.default"):
@@ -221,8 +308,14 @@ func importSpecsFromCaptures(matches []tsengine.Match, src []byte) []ImportSpec 
 				specs = append(specs, spec)
 			}
 		}
+		if withSpans && len(specs) > before {
+			span := matchSpan(m, newlines)
+			for len(spans) < len(specs) {
+				spans = append(spans, span)
+			}
+		}
 	}
-	return specs
+	return specs, spans
 }
 
 // genericImportSpec is one match of the generic vocabulary (see

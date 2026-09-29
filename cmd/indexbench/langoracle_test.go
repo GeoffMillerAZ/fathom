@@ -97,6 +97,11 @@ func TestCmdLangOracle(t *testing.T) {
 	if r.Tenancy.PeakModulePages == 0 {
 		t.Error("peak_module_pages not recorded for a wasm grammar")
 	}
+	// LB-F40: both imports (`./greeter`, `./math`) resolve to the files the
+	// index's references on their lines name.
+	if v := r.Metrics[langbench.MImportResolution]; v == nil || *v != 1 || r.MetricTiers[langbench.MImportResolution] != "A" || r.Counts[langbench.CntImportsInRepo] != 2 {
+		t.Errorf("import_resolution %v tier %q counts %v", v, r.MetricTiers[langbench.MImportResolution], r.Counts)
+	}
 
 	// Re-measuring the same subject replaces it; a second subject merges.
 	if code := cmdLangOracle(args, &stdout, &stderr); code != 0 {

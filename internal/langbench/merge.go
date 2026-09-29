@@ -39,6 +39,7 @@ var familyMetrics = map[string][]string{
 	FamilyDefMap:    {MDefMapping},
 	FamilyTyped:     {MTypedRecall},
 	FamilyFileEdges: {MFileEdgePrecision, MFileEdgeRecall},
+	FamilyImports:   {MImportResolution},
 	FamilyRefs:      {MRefRecall, MRefPrecision},
 	FamilyXref:      {MXrefPrecision, MXrefRecall},
 }
@@ -162,6 +163,8 @@ func recompute(r *Reading) {
 	set(FamilyTyped, MTypedRecall, ratio(counts[CntScipEdgesTyped], counts[CntScipEdges]))
 	set(FamilyFileEdges, MFileEdgePrecision, ratio(counts[CntFileEdgesAgree], counts[CntFileEdgesFathom]))
 	set(FamilyFileEdges, MFileEdgeRecall, ratio(counts[CntFileEdgesAgree], counts[CntFileEdgesTruth]))
+	// LB-F40: L3 import resolution (imports.go).
+	set(FamilyImports, MImportResolution, ratio(counts[CntImportsAgree], counts[CntImportsInRepo]))
 	set(FamilyRefs, MRefRecall, ratio(counts[CntRefTruthFound], counts[CntRefTruth]))
 	set(FamilyRefs, MRefPrecision, ratio(counts[CntRefFathomInTrue], counts[CntRefFathom]))
 	// LB-F30: tool-format cross-file references (xref.go).
@@ -181,6 +184,13 @@ func recompute(r *Reading) {
 	if measured(FamilyL1) && r.Kind != "tooling" && counts[CntMatched] > 0 && counts[CntRangeEligible] == 0 {
 		r.NotMeasured = []string{MRangeAgreement}
 		r.Notes = append(r.Notes, NoteRangeNotMeasured)
+		sort.Strings(r.Notes)
+	}
+	r.Notes = slices.DeleteFunc(r.Notes, func(n string) bool {
+		return strings.HasPrefix(n, noteImportsPrefix) || (measured(FamilyImports) && n == noteImportsNotMeasured)
+	})
+	if measured(FamilyImports) && r.Kind != "tooling" {
+		r.Notes = append(r.Notes, importsNote(counts))
 		sort.Strings(r.Notes)
 	}
 	r.Notes = slices.DeleteFunc(r.Notes, func(n string) bool { return strings.HasPrefix(n, noteAdjudicatedPrefix) })

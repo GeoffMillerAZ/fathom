@@ -447,6 +447,12 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 	for _, f := range files {
 		inScope[f] = true
 	}
+	// LB-F40: a language's imports, resolved once and scored against the
+	// SCIP index or a neutral file's imports (langoracle_imports.go).
+	var imps *subjectImports
+	if spec.Manifest.Kind != "tooling" {
+		imps = &subjectImports{ctx: ctx, dialect: spec.Manifest.ID, root: root, name: name, files: srcFiles, nodes: nodes, inScope: inScope}
+	}
 
 	if opts.scip != "" {
 		raw, err := os.ReadFile(opts.scip)
@@ -505,7 +511,11 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 			}
 		}
 		res.oracles = append(res.oracles, langbench.OracleRun{Tier: "A", Tool: orDefault(sr.Tool, "scip"), Version: sr.Version})
-		res.notes = append(res.notes, "import_resolution not measured: in-repo spec counts arrive with the L3 strategies (LB-F11)")
+		if imps != nil {
+			if err := imps.score(sr.ImportRefs, "A", orDefault(sr.Tool, "scip"), &sub); err != nil {
+				return res, err
+			}
+		}
 	}
 
 	for _, toolOracle := range opts.tools {
@@ -520,6 +530,11 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 			res.notes = append(res.notes, fmt.Sprintf("%s: %d tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)", name, dropped))
 		}
 		res.oracles = append(res.oracles, run)
+		if imps != nil {
+			if err := scoreImportsOracle(toolOracle, imps, &sub); err != nil {
+				return res, err
+			}
+		}
 		// ── LB-F30: cross-file references (langoracle_xref.go) ──
 		if doc, ok := with.(extractor.DocResulter); ok {
 			n, err := scoreXrefOracle(toolOracle, doc, service, srcFiles, &sub, inScope)
@@ -531,6 +546,9 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 			}
 		}
 		// ── end LB-F30 ──
+	}
+	if imps != nil {
+		res.notes = append(res.notes, imps.notes...)
 	}
 	if opts.unmatched != "" && l1res != nil {
 		b, err := json.MarshalIndent(map[string][]langbench.OracleDef{"dialect_only": l1res.DialectOnly, "oracle_only": l1res.OracleOnly}, "", " ")
@@ -591,6 +609,9 @@ type toolOracleFile struct {
 	Calls []oraclePair `json:"calls"`
 	// CrossReferences are LB-F30's cross-file references (xrefOracle).
 	CrossReferences []xrefOracleEntry `json:"cross_references,omitempty"`
+	// Imports are a language's import statements resolved to files of the
+	// subject (LB-F40, scoreImportsOracle): a language-native import dump.
+	Imports []importOracleEntry `json:"imports,omitempty"`
 }
 
 // oraclePair is one (from, to) pair in a file.

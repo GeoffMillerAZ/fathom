@@ -5,8 +5,10 @@ commands and exact invocation. None of them is a product dependency; all
 run as separate processes against clean clones, and their outputs stay out
 of the repository. The neutral output shape is `indexbench lang-oracle
 -tool-oracle`'s: `{"tool","version","tier","definitions":[{path,name,line,
-end,kind}],"calls":[{path,from,to}]}` (repo-relative slash paths, 1-based
-lines, bare names).
+end,kind}],"calls":[{path,from,to}],"imports":[{path,line,to_path,module}]}`
+(repo-relative slash paths, 1-based lines, bare names; `imports` are import
+statements resolved to files of the subject, scored as `import_resolution`,
+LB-F40).
 
 | Directory | Tier | Languages |
 |---|---|---|
@@ -26,6 +28,8 @@ lines, bare names).
 | ts-tags/ | C | Bash, Lua and Ruby (calls) |
 | sqlglot/ | C | SQL (foreign-key calls) |
 | make/ | A (references), B (definitions) | Makefile |
+| ruby-require/ | B (imports) | Ruby |
+| clang-includes/ | B (imports) | C, C++ |
 
 ## Tool-format oracles (D4, LB-F30)
 
