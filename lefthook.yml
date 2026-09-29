@@ -198,7 +198,7 @@ pre-push:
         rc=$?
         if [ $rc -eq 1 ]; then
           echo "$out"
-          echo "fathom conserve: a silent pin loss blocks this push (ADR-057, PR-9)"
+          echo "fathom conserve: a silent pin loss or an uncited retirement blocks this push (ADR-057, PR-9, PR-12)"
           exit 1
         fi
         if [ $rc -ne 0 ]; then
