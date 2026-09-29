@@ -255,7 +255,7 @@ func TestPluginManifestLicenseIsTheRepositorys(t *testing.T) {
 	if !ok || len(fields) == 0 {
 		t.Fatal("LICENSE.md has no Abbreviation section")
 	}
-	plugin, _ := renderAgentPluginManifest("http://127.0.0.1:7575/mcp", "")
+	plugin, _ := renderAgentPluginManifest("http://127.0.0.1:1/mcp", "")
 	if got := plugin["license"]; got != fields[0] {
 		t.Errorf("plugin.json license = %v, want LICENSE.md's %q", got, fields[0])
 	}
