@@ -866,8 +866,19 @@ worktree and your scratch directory.
 11. Draft `tags.scm`: start from, in order, the grammar's own `queries/tags.scm`, aider's
     `aider/queries/**/<lang>-tags.scm`, then nvim-treesitter's `locals.scm` for shapes —
     each only if its licence is on the allowlist; never GitNexus. Put the provenance header
-    (§8.2) on the file. Add `@body` captures for signatures, `@scope.package` if the
-    language declares packages, and `@name` inside every `@reference.call`.
+    (§8.2) on the file. Fetch a `locals.scm` at a pinned commit and draft it with
+    `go run ./cmd/indexbench lang-draft -locals <locals.scm> -source "<repo> <path> @
+    <40-hex commit> (<SPDX>)" -out tags.scm [-imports-out imports.scm] [-dialect <id>]`
+    (LB-F47): each pattern with one `@local.definition[.kind]` becomes `@name` with
+    `@definition.<kind>` on its outer node; scopes, references, variables, parameters and
+    fields are dropped; imports go to the imports draft; a predicate the engine does not run
+    is flagged `; UNSUPPORTED predicate …` above its pattern, and a `#lua-match?` becomes
+    `#match?` only when its Lua pattern maps to RE2. MPL-2.0 is refused, because a draft
+    modifies the file. Tune the draft with `lang-probe` (step 12). It is a starting point,
+    never an oracle: the header it writes names nvim-treesitter, so `lang-oracle -tags-query`
+    refuses that file as the same dialect's oracle (LB-F52). Add `@body` captures for
+    signatures, `@scope.package` if the language declares packages, and `@name` inside every
+    `@reference.call`.
 12. Iterate with `go run ./cmd/indexbench lang-probe -dialect <id> <fixture>` until
     `TestDialectGoldens/<id>` passes. Keep queries structural; use only the supported
     predicates (§3.2). If `TestDialectQueriesCompile` names an unsupported predicate,
