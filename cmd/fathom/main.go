@@ -210,6 +210,8 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		return cmdRetro(args[1:], stdout, stderr)
 	case "thread":
 		return cmdThread(args[1:], stdout, stderr)
+	case "map":
+		return cmdMap(args[1:], stdout, stderr)
 	case "session-end-hook":
 		return cmdSessionEndHook(args[1:], stdout, stderr)
 	case "pre-compact-hook":

@@ -1637,6 +1637,8 @@ fathom thread brief   [--budget-bytes 2400] [--repo .] [--source startup|clear|r
                                                # --json: {kind:"brief", source, budget_bytes, bytes, text} — text is "" on resume/compact
 fathom thread note    "text" [--thread T] [--kind K] [--completes-when …] [--repo .]   # file a handoff BEFORE /clear
 fathom thread point   "what happened" [--session S] [--thread T] [--repo .]          # side-task pointer
+fathom thread note    --map ID --anchor <symbol|path#Lx-Ly> --why "…" [--agent ID] [--completes-when …]
+                                               # an exploration-map entry (ADR-056); see `map` below
 fathom thread list    [--all-repos] [--all] [--thread T] [--repo .] [--json]   # this repo's open items; --all-repos: every repo; --all: also closed + dormant, every repo
                                                # --json: {kind:"list", items:[{id,status,kind,thread,text,repo,session_id,filed_at,closed_at,closed_by,commit,pointers}], hidden_other_repos}
 fathom thread close   <id> [--why …]
@@ -1660,6 +1662,32 @@ daemon-resolved service id by default (`general` only when nothing resolves;
 line `N open item(s) in other repos — fathom thread list --all`; untagged
 legacy items are never hidden. The continuity-thread bet itself is
 **experimental** (4/20 units collected).
+
+### `map` — exploration maps (ADR-056, experimental)
+
+```sh
+fathom thread note  --map ID --anchor <symbol|path#Lx-Ly> --why "…" [--agent ID] [--completes-when …] [--store S]
+fathom map name     ID --purpose "the question it answers" [--as NAME] [--when "…"]
+fathom map include  ID BASE… [--drop BASE…]
+fathom map compose  ID… [--agent ID] [--json]    # the ONE id a handoff carries
+fathom map list     [--all] [--json]
+```
+
+A map is anchored entries plus `includes` references to other maps, stored as
+rows in the threads log (no new table; the thread verbs never serve them). An
+entry is its anchor, the span it resolves to, that span's content hash
+(`core.HashLines`, the layer claims' contract) and a one-line why; `--agent`
+records the appending sub-agent's id, and an append never edits an existing
+entry. The first entry creates the map with a `completes_when` (the one given,
+else the end of the current session). `include` refuses a cycle and a chain
+deeper than 4. `compose` mints a composite made only of references (one id
+comes back as itself), expands it once and prints its counts: every entry is
+re-resolved at read time, fresh, re-resolved by its symbol key, or stale with
+its diff size, and conflicting why lines are all kept with their provenance.
+`name` makes a map durable and refuses one without a purpose line. `list` shows
+each map's lifetime: pinned while an alive map includes it, permanent when
+named, else open with the time its idle clock started (a dropped include
+restarts it). CLI only: no MCP tool is added.
 
 ### `config audit` — the config custodian (vision 22, "instructed means true")
 
