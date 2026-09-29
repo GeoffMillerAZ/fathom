@@ -1565,14 +1565,17 @@ now), `scratch_daemons` (leaked unmanaged daemons — exactly the set `fathom da
 a `memory_limit` / `gc_hint` conflict; env overrides disclosed). Two more rows judge what
 the hooks and the disk cost (RT-135, §11.3, §12.1), also WARN, never FAIL: `hook_budget`
 (each channel's p99 wall time against its deadline over 24 h, from
-`~/.fathom/hook-latency.jsonl`, which every hook invocation appends to; minutes the
+`~/.fathom/hook-latency.jsonl`, which every hook invocation appends to, with its CPU time
+as `cpu_ms` where the platform reports it (EW-29) — a channel whose rows carry it also
+names `p50 wall … cpu …` beside n, `of N timed` when only some do, so a slow hook reads
+as work or as waiting; minutes the
 shared breaker held hooks off; edits served while it was open, whose guards were skipped;
 harness kills — an edit-hook `seen` beat never answered — read from the beats of the whole
 24 h across `hooks.jsonl` and `hooks.jsonl.1`; when the retained beats end sooner, the row
 names the span they cover) and `disk_retention` (`fathom
 gc`'s dry run: reclaimable bytes by class and the largest classes, what it only reports,
 and the home volume's free space; WARN above 512 MiB reclaimable). `fathom resources`'
-hooks line reads the same latency log.
+hooks line reads the same latency log, the CPU medians included.
 
 Exit `0` every check passed; `1` at least one check failed; `2` doctor itself could not
 run (bad flags, unresolvable `--path`) — an operational error, not a verdict on the
