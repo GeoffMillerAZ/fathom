@@ -2724,7 +2724,7 @@ Full walkthrough: [docs/use-cases/test-coverage.md](use-cases/test-coverage.md).
 fathom tests coverage --profile [layer=]<file> [--profile <more>...] \
   [--service <id>] [--store <path>] [--diff <ref>] [--mutation <report>] [--json]
 
-fathom tests select --since <ref> [--profile [layer=]<file>...] \
+fathom tests select --since <ref> [--safe] [--profile [layer=]<file>...] \
   [--service <id>] [--store <path>] [--json]
 ```
 
@@ -2735,7 +2735,15 @@ no covering test in any layer. `--mutation <report>` (VB-34) adds a
 `MUTATION` score column (0.0-1.0) from a joined mutation-testing report — see
 "Mutation" in the use-case doc for the two accepted report shapes.
 
-`tests select --since <ref>` (VB-33) ranks `Test*` functions for a diff by
+`tests select --since <ref>` leads with the certifying-first selection (T4: TQ-15w,
+TQ-16w, SR-50): the minimal set of tests that re-proves every LIVE certificate the diff
+touched (a greedy set cover, deterministic tie-break), what it skipped, the touched
+certificates no live test certifies, and its `go test` commands. `--safe` adds every test
+that statically reaches a changed symbol. It reports the CI time saved, from each selected
+and skipped test's last attested run duration, and appends it to
+`workspace/artifacts/tests-select/time-saved.jsonl` (one line a run; an estimate with no
+attested duration behind it prints `time saved: unknown` and records nothing). Selection is
+advice to CI and never makes a certificate live (I43). Below it, VB-33 ranks `Test*` functions for a diff by
 typed-edge reachability, corroborating statement coverage (when `--profile`
 is given), and test layer (unit before integration before e2e), then emits
 a `go test ./<pkg> -run '^(TestA|TestB)$'` invocation per package plus the
@@ -2758,6 +2766,7 @@ measured predicted catch-rate — never a fabricated one.
 | Flag (`tests select`) | Default | Description |
 |---|---|---|
 | `--since` | (required) | git ref: rank tests for the diff since this ref |
+| `--safe` | `false` | also select every test that statically reaches a changed symbol, beside the certifying-first set |
 | `--profile` | (none, repeatable) | Go cover profile(s); enables the coverage ranking tie-break |
 | `--service` | resolved from cwd | Service ID |
 | `--store` | `<repo>/workspace/db/fathom.sqlite` | store path |

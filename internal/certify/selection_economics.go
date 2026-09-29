@@ -56,3 +56,10 @@ func selectionTimeSaved(sel Selection, durations map[string]int64) TimeSaved {
 	out.Missing = missing
 	return out
 }
+
+// SelectionTimeSaved is selectionTimeSaved for a caller outside this package
+// (`fathom tests select`, TQ-16w): the estimated CI time a selection saves,
+// from the last attested run duration of each selected and skipped test.
+func SelectionTimeSaved(sel Selection, durations map[string]int64) TimeSaved {
+	return selectionTimeSaved(sel, durations)
+}

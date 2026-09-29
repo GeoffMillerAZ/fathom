@@ -2491,6 +2491,58 @@ func TestTestRuns_CommitRoundTrip(t *testing.T) {
 	}
 }
 
+// TestTestRuns_DurationRoundTrip is TQ-16w's read: a case's attested run
+// duration (test_cases.duration_ms, stored since TC-2) comes back on the
+// TestCaseRunsForSymbol read, newest run first, on both backends — the
+// input the certifying-first selection's CI time saved is computed from. A
+// case that stated no duration reads back 0, which the caller treats as
+// "no duration on record", never as a run that took no time.
+func TestTestRuns_DurationRoundTrip(t *testing.T) {
+	for _, backend := range []struct {
+		name string
+		new  func(t *testing.T) Store
+	}{
+		{"MemoryStore", func(t *testing.T) Store { return NewMemoryStore() }},
+		{"SQLiteStore", func(t *testing.T) Store {
+			s, err := NewSQLiteStore("")
+			if err != nil {
+				t.Fatalf("NewSQLiteStore in-memory: %v", err)
+			}
+			return s
+		}},
+	} {
+		t.Run(backend.name, func(t *testing.T) {
+			ctx := context.Background()
+			s := backend.new(t)
+			t.Cleanup(func() { _ = s.Close() })
+
+			svc := "svc-duration"
+			testKey := "svc-duration::pkg.TestTimed"
+			if err := s.PutTestRuns(ctx, svc, []TestRun{
+				{RunDigest: "run-new", Component: "pkg", Suite: "unit", StartedAt: "2026-09-24T00:00:00Z", Verdict: "pass",
+					Cases: []TestCase{{CaseID: "1", Name: "TestTimed", Status: "pass", Attempts: 1, DurationMS: 250, TestSymbolKey: testKey}}},
+				{RunDigest: "run-old", Component: "pkg", Suite: "unit", StartedAt: "2026-09-23T00:00:00Z", Verdict: "pass",
+					Cases: []TestCase{{CaseID: "1", Name: "TestTimed", Status: "pass", Attempts: 1, TestSymbolKey: testKey}}},
+			}); err != nil {
+				t.Fatalf("PutTestRuns: %v", err)
+			}
+			runs, err := s.TestCaseRunsForSymbol(ctx, svc, testKey, 5)
+			if err != nil {
+				t.Fatalf("TestCaseRunsForSymbol: %v", err)
+			}
+			if len(runs) != 2 || runs[0].RunDigest != "run-new" || runs[1].RunDigest != "run-old" {
+				t.Fatalf("runs = %+v, want run-new then run-old", runs)
+			}
+			if runs[0].DurationMS != 250 {
+				t.Errorf("runs[0].DurationMS = %d, want 250", runs[0].DurationMS)
+			}
+			if runs[1].DurationMS != 0 {
+				t.Errorf("runs[1].DurationMS = %d, want 0 (no duration stated)", runs[1].DurationMS)
+			}
+		})
+	}
+}
+
 // -------------------------------------------------------------------------
 // Helpers
 // -------------------------------------------------------------------------

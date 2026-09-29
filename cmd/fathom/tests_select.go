@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/coverage"
 	"github.com/geoffmilleraz/fathom/internal/analysis/impact"
@@ -57,7 +58,14 @@ import (
 // Store-direct, mirroring cmdReview's and cmdTestsCoverage's own
 // works-without-the-daemon discipline.
 //
-//	fathom tests select --since <ref> [--profile [layer=]path]... [--service S] [--store DB] [--json]
+// In front of that reach ranking sits the certifying-first selection (T4,
+// tests_select_certifying.go): the minimal set of tests that re-proves every
+// certificate the diff touched, what it skipped, what no live test certifies,
+// and the CI time it saves from attested run durations (recorded for
+// economics). --safe adds every test that statically reaches a changed
+// symbol to that selection.
+//
+//	fathom tests select --since <ref> [--safe] [--profile [layer=]path]... [--service S] [--store DB] [--json]
 func cmdTestsSelect(args []string, stdout, stderr io.Writer) int {
 	return runTestsSelect(args, defaultGitRunner, stdout, stderr)
 }
@@ -70,6 +78,7 @@ func runTestsSelect(args []string, gitRunner func(args ...string) ([]byte, error
 	service := fs.String("service", "", "service ID (default: resolved from the repo directory name, the same guess the Claude Code hooks use)")
 	storePath := fs.String("store", defaultStorePath(), "store path (.sqlite/.db)")
 	jsonOut := fs.Bool("json", false, "emit JSON instead of a table")
+	safe := fs.Bool("safe", false, "also select every test that statically reaches a changed symbol, beside the minimal certifying-first set")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
@@ -146,9 +155,27 @@ func runTestsSelect(args []string, gitRunner func(args ...string) ([]byte, error
 	invocations := groupTestInvocations(nodes, ranked)
 	replay := loadTestSelectReplay(workspacePath("artifacts/tests-select/replay.jsonl"))
 
-	if *jsonOut {
-		return renderTestsSelectJSON(stdout, *since, ranked, invocations, gap.Gap, replay, len(profiles) > 0)
+	// T4: the certifying-first selection, its time saved (TQ-16w), and the
+	// record of that time for economics — a known estimate only, never a
+	// fabricated zero.
+	sel := selectCertifyingFirst(nodes, typed, claims, changedFiles, *safe)
+	view := buildCertifyingSelectionView(ctx, st, svc, nodes, sel, *safe)
+	if view.SavedKnown {
+		row := timeSavedRow{
+			At: testsSelectNow().UTC().Format(time.RFC3339), Service: svc, Since: *since, Safe: *safe,
+			Selected: len(sel.Tests), Skipped: len(sel.Skipped),
+			SelectedMS: view.Saved.SelectedMs, SkippedMS: view.Saved.SkippedMs, TotalMS: view.Saved.TotalMs,
+			Percent: view.Saved.Percent, Missing: len(view.Saved.Missing),
+		}
+		if rerr := recordTimeSaved(testsSelectEconomicsPath(), row); rerr != nil {
+			fmt.Fprintf(stderr, "warning: tests select: could not record the time saved for economics: %v\n", rerr)
+		}
 	}
+
+	if *jsonOut {
+		return renderTestsSelectJSON(stdout, *since, ranked, invocations, gap.Gap, replay, len(profiles) > 0, view)
+	}
+	renderCertifyingSelectionText(stdout, *since, view)
 	renderTestsSelectTable(stdout, *since, ranked, invocations, gap.Gap, replay, len(profiles) > 0)
 	return 0
 }
@@ -458,7 +485,7 @@ func renderTestsSelectTable(w io.Writer, since string, ranked []rankedTest, invo
 	}
 }
 
-func renderTestsSelectJSON(w io.Writer, since string, ranked []rankedTest, invocations []testInvocation, gap []impact.SymbolGap, replay replayStats, haveCoverage bool) int {
+func renderTestsSelectJSON(w io.Writer, since string, ranked []rankedTest, invocations []testInvocation, gap []impact.SymbolGap, replay replayStats, haveCoverage bool, view certifyingSelectionView) int {
 	rankedItems := make([]any, len(ranked))
 	for i, rt := range ranked {
 		item := map[string]any{
@@ -493,6 +520,7 @@ func renderTestsSelectJSON(w io.Writer, since string, ranked []rankedTest, invoc
 	}
 	payload := map[string]any{
 		"since":        since,
+		"selection":    certifyingSelectionJSON(view),
 		"ranked_tests": rankedItems,
 		"invocations":  invItems,
 		"test_gap":     gapItems,

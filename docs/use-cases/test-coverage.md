@@ -113,6 +113,19 @@ which `Test*` functions to actually invoke, ranked, plus the changed
 symbols no test reaches at all (VB-33, `docs/vision/29-verbs-not-lookups.md`
 §3 wave J).
 
+**Certifying-first.** The output leads with the minimal set of tests that
+re-proves every LIVE certificate the diff touched (T4, TQ-15w; a greedy set
+cover, ties broken by name), the tests it skipped, the touched certificates no
+live test certifies, and the CI time the selection saves — summed from each
+selected and skipped test's last attested run duration, printed as
+`time saved: N%` and appended to
+`workspace/artifacts/tests-select/time-saved.jsonl` (TQ-16w; with no attested
+duration on record it says `unknown` and records nothing). `--safe` adds every
+test that statically reaches a changed symbol. In `--json` this is the
+`selection` object. Selection is advice to CI: it never makes a certificate
+live, only an attested passing run does. What follows is the reach ranking of
+every test that touches the diff, the set `--safe` selects.
+
 It reuses the SAME diff→changed-symbols composition `fathom review` and
 `review_diff`'s `test_impact` dimension already use
 (`internal/analysis/impact.TestGap`, built on the call graph's
@@ -226,4 +239,4 @@ criterion uses.
 
 ## Maintained
 
-This doc covers: `review_diff` (`coverage_profile`, `coverage_profiles` args), `fathom review` (`--coverage-profile`), `fathom tests coverage` (`--profile`, `--service`, `--diff`, `--json`, `--mutation`), `fathom tests select` (`--since`, `--profile`, `--json`), `fathom verify` (`--mutation`, `--strict-mutation`). Update it when these change.
+This doc covers: `review_diff` (`coverage_profile`, `coverage_profiles` args), `fathom review` (`--coverage-profile`), `fathom tests coverage` (`--profile`, `--service`, `--diff`, `--json`, `--mutation`), `fathom tests select` (`--since`, `--safe`, `--profile`, `--json`), `fathom verify` (`--mutation`, `--strict-mutation`). Update it when these change.

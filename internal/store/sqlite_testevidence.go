@@ -288,7 +288,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 // interface doc comment (vision 33 stage 1, TC-6/TC-8).
 func (s *SQLiteStore) TestCaseRunsForSymbol(ctx context.Context, serviceID, testSymbolKey string, limit int) ([]TestCaseRun, error) {
 	query := `
-SELECT tc.run_digest, tc.suite, tr.component, tr.started_at, tc.status, tc.attempts, tr.ingested_at, tr.commit_sha, tr.dirty, tr.race
+SELECT tc.run_digest, tc.suite, tr.component, tr.started_at, tc.status, tc.attempts, tr.ingested_at, tr.commit_sha, tr.dirty, tr.race, tc.duration_ms
 FROM test_cases tc
 JOIN test_runs tr ON tr.service_id = tc.service_id AND tr.run_digest = tc.run_digest AND tr.suite = tc.suite
 WHERE tc.service_id = ? AND tc.test_symbol_key = ?
@@ -307,7 +307,7 @@ ORDER BY tr.started_at DESC, tr.ingested_at DESC
 	var out []TestCaseRun
 	for rows.Next() {
 		var r TestCaseRun
-		if err := rows.Scan(&r.RunDigest, &r.Suite, &r.Component, &r.StartedAt, &r.Status, &r.Attempts, &r.IngestedAt, &r.Commit, &r.Dirty, &r.Race); err != nil {
+		if err := rows.Scan(&r.RunDigest, &r.Suite, &r.Component, &r.StartedAt, &r.Status, &r.Attempts, &r.IngestedAt, &r.Commit, &r.Dirty, &r.Race, &r.DurationMS); err != nil {
 			return nil, fmt.Errorf("TestCaseRunsForSymbol scan: %w", err)
 		}
 		out = append(out, r)

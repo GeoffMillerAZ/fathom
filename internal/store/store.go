@@ -219,6 +219,11 @@ type TestCaseRun struct {
 	Status     string
 	Attempts   int
 	IngestedAt int64
+	// DurationMS is the case's own run time from the attested envelope
+	// (test_cases.duration_ms); 0 when the envelope stated none — "no
+	// duration on record", never a run that took no time. The certifying-
+	// first selection's CI time saved (TQ-16w) sums it.
+	DurationMS int64
 
 	// Commit, Dirty and Race mirror the owning TestRun's own CV-2 facts
 	// — carried onto this per-symbol read because internal/certify's
