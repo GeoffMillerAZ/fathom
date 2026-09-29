@@ -1,0 +1,25 @@
+id: matlab
+language: MATLAB
+# `.m` is claimed only by a content sniff (a leading function/classdef or a % comment); a file the sniff
+# does not settle is left unclassified, so the subjects' scripts and ObjC-shaped files never count as MATLAB.
+repos:
+  - name: altmany/export_fig
+    url: https://github.com/altmany/export_fig
+    ref: v3.58
+    sha: b9c20a510840aa1cf9e309d667d4fcfbbf095bac
+    licence: BSD-3-Clause
+    idioms:
+      - "function files: one large main function (`export_fig`, over 1,700 lines) followed by local functions (`selectUtilityPath`), a `%` help block under the signature"
+      - "a multi-output signature with a lint pragma on the function line (`function [imageData, alpha] = export_fig(varargin) %#ok<*STRCL1>`)"
+      - "varargin/nargin option parsing"
+      - "platform branches (ispc, ismac, isunix) around system calls, in 6 of 18 files"
+  - name: chebfun/chebfun
+    url: https://github.com/chebfun/chebfun
+    ref: v5.7.0
+    sha: d762a8aa9dd9080534ffe7456126673996c43cbf
+    licence: BSD-3-Clause
+    idioms:
+      - "classdef files under @-folders (`@chebfun/chebfun.m`) with properties blocks and methods blocks"
+      - "old-style @class method files (one `function` per file in an `@chebfun` directory) beside classdef ones"
+      - "+package folders (`+cheb`) and static methods called as `cheb.gallery`"
+      - "test files (`test_*.m`) whose first line is a function, and long help blocks under the signature"

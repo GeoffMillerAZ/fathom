@@ -40,6 +40,19 @@ type ManifestMatch struct {
 	Extensions []string `json:"extensions"`
 	Basenames  []string `json:"basenames"`
 	Globs      []string `json:"globs"`
+	// Sniff is a dialect's claim on an extension another dialect shares
+	// (MATLAB's .m, design §5): a regex over the first 1 KiB, settled by
+	// connector.ClassifyDialect at ingest. The harness reads it only to know
+	// which extensions the dialect is a candidate for (Owns).
+	Sniff *ManifestSniff `json:"sniff,omitempty"`
+}
+
+// ManifestSniff is a manifest's match.sniff (extractor.DialectSniff's
+// harness-side twin).
+type ManifestSniff struct {
+	Extensions []string `json:"extensions"`
+	Pattern    string   `json:"pattern"`
+	Priority   int      `json:"priority"`
 }
 
 // KindSpec maps one of a dialect's kinds to a SourceKind and a canonical
@@ -135,9 +148,11 @@ func (m Manifest) CallPairs(nodes []core.SymbolNode, files map[string]bool) map[
 }
 
 // Owns reports whether relPath is one of this dialect's files by basename,
-// path glob or extension (the classification keys; sniffing is
-// connector.ClassifyDialect's job, LB-F9, and is not replicated here: a
-// bench subject's files are unambiguous by construction).
+// path glob or extension (the classification keys). A file whose extension
+// the dialect claims only through match.sniff is a candidate: the sniff
+// itself is connector.ClassifyDialect's job (LB-F9), run by ingest's own
+// dispatch, so a candidate no sniff settles is skipped as ambiguous and
+// disclosed in the reading's notes, never guessed here (LB-Q-matlab).
 //
 // Found and fixed alongside LB-Q-github-actions: this had checked only
 // Basenames and Extensions, silently ignoring Match.Globs (ManifestMatch
@@ -156,7 +171,18 @@ func (m Manifest) Owns(relPath string) bool {
 			return true
 		}
 	}
-	return slices.Contains(m.Match.Extensions, strings.ToLower(path.Ext(base)))
+	ext := strings.ToLower(path.Ext(base))
+	if slices.Contains(m.Match.Extensions, ext) {
+		return true
+	}
+	if sn := m.Match.Sniff; sn != nil {
+		for _, e := range sn.Extensions {
+			if strings.ToLower(e) == ext {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // globMatch matches a slash path against a manifest glob: path.Match per

@@ -1,0 +1,13 @@
+{
+  "symbols": [
+    {
+      "name": "plot_local",
+      "kind": "MatlabFunction",
+      "package": "script",
+      "line": 7,
+      "end_line": 9,
+      "signature": "function plot_local(a)",
+      "tier": "verified"
+    }
+  ]
+}

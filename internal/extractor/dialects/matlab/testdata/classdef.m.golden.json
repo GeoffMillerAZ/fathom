@@ -1,0 +1,107 @@
+{
+  "symbols": [
+    {
+      "name": "Account",
+      "kind": "MatlabClass",
+      "package": "classdef",
+      "line": 1,
+      "end_line": 44,
+      "tier": "verified"
+    },
+    {
+      "name": "Balance",
+      "kind": "MatlabProperty",
+      "package": "classdef",
+      "line": 4,
+      "end_line": 4,
+      "tier": "verified"
+    },
+    {
+      "name": "Owner",
+      "kind": "MatlabProperty",
+      "package": "classdef",
+      "line": 5,
+      "end_line": 5,
+      "tier": "verified"
+    },
+    {
+      "name": "RATE",
+      "kind": "MatlabProperty",
+      "package": "classdef",
+      "line": 8,
+      "end_line": 8,
+      "tier": "verified"
+    },
+    {
+      "name": "Secret",
+      "kind": "MatlabProperty",
+      "package": "classdef",
+      "line": 11,
+      "end_line": 11,
+      "tier": "verified"
+    },
+    {
+      "name": "Account.Account",
+      "kind": "MatlabMethod",
+      "package": "classdef",
+      "line": 14,
+      "end_line": 17,
+      "signature": "function obj = Account(owner, varargin)",
+      "tier": "verified"
+    },
+    {
+      "name": "Account.deposit",
+      "kind": "MatlabMethod",
+      "package": "classdef",
+      "line": 18,
+      "end_line": 21,
+      "signature": "function deposit(obj, amount)",
+      "tier": "verified"
+    },
+    {
+      "name": "Account.Secret",
+      "kind": "MatlabMethod",
+      "package": "classdef",
+      "line": 22,
+      "end_line": 24,
+      "signature": "function r = get.Secret(obj)",
+      "tier": "verified"
+    },
+    {
+      "name": "Account.Secret",
+      "kind": "MatlabMethod",
+      "package": "classdef",
+      "line": 25,
+      "end_line": 27,
+      "signature": "function set.Secret(obj, value)",
+      "tier": "verified"
+    },
+    {
+      "name": "Account.make",
+      "kind": "MatlabMethod",
+      "package": "classdef",
+      "line": 30,
+      "end_line": 32,
+      "signature": "function a = make(owner)",
+      "tier": "verified"
+    },
+    {
+      "name": "Account.audit",
+      "kind": "MatlabMethod",
+      "package": "classdef",
+      "line": 35,
+      "end_line": 36,
+      "signature": "function audit(obj)",
+      "tier": "verified"
+    },
+    {
+      "name": "log_account",
+      "kind": "MatlabFunction",
+      "package": "classdef",
+      "line": 46,
+      "end_line": 48,
+      "signature": "function log_account(a)",
+      "tier": "verified"
+    }
+  ]
+}

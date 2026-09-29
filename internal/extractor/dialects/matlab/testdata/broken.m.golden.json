@@ -1,0 +1,31 @@
+{
+  "symbols": [
+    {
+      "name": "ok1",
+      "kind": "MatlabFunction",
+      "package": "broken",
+      "line": 1,
+      "end_line": 3,
+      "signature": "function ok1()",
+      "tier": "verified"
+    },
+    {
+      "name": "bad",
+      "kind": "MatlabFunction",
+      "package": "broken",
+      "line": 5,
+      "end_line": 9,
+      "signature": "function bad(a, b)",
+      "tier": "verified"
+    },
+    {
+      "name": "ok2",
+      "kind": "MatlabFunction",
+      "package": "broken",
+      "line": 11,
+      "end_line": 13,
+      "signature": "function ok2()",
+      "tier": "verified"
+    }
+  ]
+}

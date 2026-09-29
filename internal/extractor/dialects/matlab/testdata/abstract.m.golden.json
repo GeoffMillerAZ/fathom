@@ -1,0 +1,81 @@
+{
+  "symbols": [
+    {
+      "name": "Shape",
+      "kind": "MatlabClass",
+      "package": "abstract",
+      "line": 1,
+      "end_line": 29,
+      "tier": "verified"
+    },
+    {
+      "name": "Area",
+      "kind": "MatlabProperty",
+      "package": "abstract",
+      "line": 3,
+      "end_line": 3,
+      "tier": "verified"
+    },
+    {
+      "name": "Name",
+      "kind": "MatlabProperty",
+      "package": "abstract",
+      "line": 6,
+      "end_line": 6,
+      "tier": "verified"
+    },
+    {
+      "name": "Sides",
+      "kind": "MatlabProperty",
+      "package": "abstract",
+      "line": 7,
+      "end_line": 7,
+      "tier": "verified"
+    },
+    {
+      "name": "Shape.draw",
+      "kind": "MatlabMethod",
+      "package": "abstract",
+      "line": 10,
+      "end_line": 10,
+      "signature": "r = draw(obj, ax)",
+      "tier": "verified"
+    },
+    {
+      "name": "Shape.resize",
+      "kind": "MatlabMethod",
+      "package": "abstract",
+      "line": 11,
+      "end_line": 11,
+      "signature": "resize(obj, factor)",
+      "tier": "verified"
+    },
+    {
+      "name": "Shape.Shape",
+      "kind": "MatlabMethod",
+      "package": "abstract",
+      "line": 14,
+      "end_line": 17,
+      "signature": "function obj = Shape(varargin)",
+      "tier": "verified"
+    },
+    {
+      "name": "Shape.delete",
+      "kind": "MatlabMethod",
+      "package": "abstract",
+      "line": 18,
+      "end_line": 20,
+      "signature": "function delete(obj)",
+      "tier": "verified"
+    },
+    {
+      "name": "Shape.helper",
+      "kind": "MatlabMethod",
+      "package": "abstract",
+      "line": 23,
+      "end_line": 27,
+      "signature": "function out = helper(x)",
+      "tier": "verified"
+    }
+  ]
+}
