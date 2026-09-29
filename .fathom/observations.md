@@ -2042,3 +2042,16 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** warm the product-reach memo after an ingest or daemon start (it is a pure function of the watermark), or let verify_plan wait for an in-flight walk up to its own deadline; efficiency-wave row EW-22.
 - **Status:** open
 - **Impact:** every first verify after a deploy or commit fails; agents read it as a verify failure or retry blind.
+
+### O135 — internal/ownership has no production caller, so the CODEOWNERS matcher fixed by IM-F1 is library-only and the design's "feeds reviewers.go today" is wrong on this base
+
+- **Symptom:** `fathom verify --strict` reads IM-F1 library-only: `matchPattern` is reached only through `Owners.For`, and nothing outside the package's own tests imports `internal/ownership`
+- **Evidence:**
+  - **Tool:** fathom verify --strict --plan docs/plans/incident-maps.md --row IM-F1 on a fresh scratch ingest of the committed fix
+  - **Expected:** a product entry point reaches the matcher (docs/design/incident-maps.md §7 says it "also feeds internal/review/reviewers.go today")
+  - **Actual:** wired criterion unknown, "no product entry point reaches it (library-only)"; `review.Input.CodeownersMatches` and `FrequentCommitterMatches` have no producer outside tests, so `suggestReviewers` always merges two empty lists in production
+  - **Repro:** grep -rn '"github.com/geoffmilleraz/fathom/internal/ownership"' --include='*.go' . finds only ownership_test.go
+- **Root cause:** CX-4 built the merge and the parser as libraries and no row wired a caller; the incident-maps design read the package's doc comment as a live feed.
+- **Fix:** the matcher is fixed (IM-F1 code); the row stays open until a caller lands: IM-10's owners facet, or a `review_diff` feed that reads CODEOWNERS for the changed files (which also gives CX-4's suggested reviewers real input).
+- **Status:** open
+- **Impact:** CODEOWNERS ownership is not served anywhere today, so the matcher defect misrouted nobody in production; the receipt's suggested reviewers section is always empty.

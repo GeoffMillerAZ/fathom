@@ -106,6 +106,6 @@ falsely.
 
 ## Measurements
 
-- [ ] SR-M1: `tools/list` schema bytes on `/rpc/agent` before (18,310, 25 tools) and after, and on bare `/rpc` before (34,246, 59 tools) and after; the default is at most 9,000 bytes {id: SR-M1, symbol: surfaceSchemaBytes, package: internal/mcp, reachable_from: TestDefaultSurfaceSchemaBytesBudget}
+- [x] SR-M1: `tools/list` schema bytes on `/rpc/agent` before (18,310, 25 tools) and after, and on bare `/rpc` before (34,246, 59 tools) and after; the default is at most 9,000 bytes {id: SR-M1, symbol: surfaceSchemaBytes, package: internal/mcp, reachable_from: TestDefaultSurfaceSchemaBytesBudget}
 - [ ] (op) SR-M2: agent tool choice on the next bench round — calls per tool, off-surface calls and turns to first answer, default surface vs the 25-tool agent surface {id: SR-M2, oracle: lexical, path: docs/bench/readings/surface-reckoning-tool-choice.md, pattern: "^Verdict: "}
 - [ ] (op) SR-M3: fourteen days of off-surface demand on the default surface read from the call log; a tool called off-surface by agents on at least 5% of sessions is a candidate to return {id: SR-M3, oracle: lexical, path: docs/bench/readings/surface-reckoning-off-surface.md, pattern: "^Sessions: [0-9]+"}
