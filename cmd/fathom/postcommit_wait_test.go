@@ -64,3 +64,37 @@ func TestPostCommitWaitRunsTheIngestTool(t *testing.T) {
 		t.Fatalf("--wait failure: stdout %q stderr %q; want the ingest's error reported", out.String(), errBuf.String())
 	}
 }
+
+// TestPostCommitWaitNamesAnIngestStillRunning (I38, EW-18): past its wait
+// budget the daemon's ingest tool answers with the refresh queue's state
+// ({completed:false, state, waited, note}) and the run goes on after the
+// answer. `post-commit-hook --wait` must not report that as "refreshed" —
+// the console's refresh remedy waits 2 m, the daemon's budget is 120 s — and
+// it is not a failure either: it says the ingest is still running and where
+// its freshness will show.
+func TestPostCommitWaitNamesAnIngestStillRunning(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/rpc", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		inner := `{"service":"svc","completed":false,"state":"running","waited":"2m0s","note":"the ingest is still running on the daemon's refresh queue and finishes after this answer; poll list_services or staleness_report for the service's freshness"}`
+		b, _ := json.Marshal(map[string]any{"jsonrpc": "2.0", "id": 1, "result": map[string]any{"content": []any{map[string]any{"type": "text", "text": inner}}}})
+		_, _ = w.Write(b)
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	var out, errBuf bytes.Buffer
+	code := cmdPostCommitHook([]string{"--dir", t.TempDir(), "--url", srv.URL, "--service", "svc", "--wait", "--timeout", "5s"}, &out, &errBuf)
+	if code != 0 {
+		t.Fatalf("exit %d, want 0 (a hook never fails the commit)", code)
+	}
+	if strings.Contains(out.String(), "refreshed") {
+		t.Fatalf("an ingest that has not finished was reported as refreshed: %q", out.String())
+	}
+	if strings.Contains(errBuf.String(), "nothing was ingested") {
+		t.Fatalf("a running ingest is not a failed one: %q", errBuf.String())
+	}
+	if !strings.Contains(out.String(), "still running") || !strings.Contains(out.String(), "list_services") {
+		t.Fatalf("the line must say the ingest is still running and where to watch it: stdout %q stderr %q", out.String(), errBuf.String())
+	}
+}

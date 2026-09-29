@@ -124,12 +124,21 @@ func cmdPostCommitHook(args []string, stdout, stderr io.Writer) int {
 	} else {
 		how, err = ingestViaDaemon(*url, svc, root, *timeout)
 	}
-	if err == nil {
+	var running *ingestStillRunning
+	switch {
+	case err == nil:
 		if !*quiet {
 			fmt.Fprintf(stdout, "post-commit: %s %q through the daemon\n", how, svc)
 		}
 		return 0
-	} else {
+	case errors.As(err, &running):
+		// EW-18 (I38): the ingest tool answered from the refresh queue's
+		// state before its run finished. Neither refreshed nor failed.
+		if !*quiet {
+			fmt.Fprintf(stdout, "post-commit: the ingest of %q is still running on the daemon's refresh queue (%s after %s) and finishes after this answer; list_services or staleness_report shows when it is fresh\n", svc, running.State, running.Waited)
+		}
+		return 0
+	default:
 		// The daemon is the only writer we trust with the shared store, and
 		// this hook runs no other path. Say exactly that (RT-170, design
 		// §12.3): the refresh failed, nothing was ingested, and how to
@@ -261,10 +270,35 @@ func ingestToolViaDaemon(baseURL, service, path string, timeout time.Duration) e
 	if err != nil {
 		return err
 	}
-	if _, err := unwrapRPCResult(raw); err != nil {
+	inner, err := unwrapRPCResult(raw)
+	if err != nil {
 		return err
 	}
+	// EW-18: past the daemon's ingest wait budget the tool answers with the
+	// refresh queue's state ({completed:false, state, waited, note}) while
+	// the run continues; that answer is not a finished refresh.
+	var st struct {
+		Completed *bool  `json:"completed"`
+		State     string `json:"state"`
+		Waited    string `json:"waited"`
+	}
+	if json.Unmarshal(inner, &st) == nil && st.Completed != nil && !*st.Completed {
+		return &ingestStillRunning{State: st.State, Waited: st.Waited}
+	}
 	return nil
+}
+
+// ingestStillRunning is ingestToolViaDaemon's answer when the daemon's
+// ingest tool returned before its run finished (EW-18, O128): the run goes
+// on under the daemon's refresh queue, so the caller reports neither
+// "refreshed" nor a failure.
+type ingestStillRunning struct {
+	State  string
+	Waited string
+}
+
+func (e *ingestStillRunning) Error() string {
+	return fmt.Sprintf("the ingest is still %s on the daemon's refresh queue after %s", e.State, e.Waited)
 }
 
 // absPath resolves p to an absolute path, defaulting to the working dir.
