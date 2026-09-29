@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites tests="6" failures="3" errors="1" time="0.412">
+	<testsuite tests="1" failures="0" errors="1" time="0.000" name="example.com/shop/broken">
+		<testcase classname="example.com/shop/broken" name="TestMain" time="0.000">
+			<error message="build failed" type="">broken/broken.go:3:23: undefined: undefinedThing</error>
+		</testcase>
+	</testsuite>
+	<testsuite tests="5" failures="3" errors="0" time="0.140" name="example.com/shop/money">
+		<testcase classname="example.com/shop/money" name="TestRound" time="0.000">
+			<failure message="Failed" type="">=== RUN   TestRound&#xA;    money_test.go:7: Round(15) = 10, want 20&#xA;--- FAIL: TestRound (0.00s)&#xA;</failure>
+		</testcase>
+		<testcase classname="example.com/shop/money" name="TestRoundZero" time="0.000"></testcase>
+		<testcase classname="example.com/shop/money" name="TestTable/half" time="0.000">
+			<failure message="Failed" type="">    money_test.go:20: half rounds up&#xA;</failure>
+		</testcase>
+		<testcase classname="example.com/shop/money" name="TestTable" time="0.000">
+			<failure message="Failed" type="">--- FAIL: TestTable (0.00s)&#xA;</failure>
+		</testcase>
+		<testcase classname="example.com/shop/money" name="TestSkipped" time="0.000">
+			<skipped message="not on this platform"></skipped>
+		</testcase>
+	</testsuite>
+</testsuites>

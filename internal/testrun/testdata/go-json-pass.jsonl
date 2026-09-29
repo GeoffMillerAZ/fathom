@@ -1,0 +1,31 @@
+{"Time":"2026-09-28T21:37:16.318403-07:00","Action":"start","Package":"example.com/shop/cart"}
+{"Time":"2026-09-28T21:37:16.318696-07:00","Action":"start","Package":"example.com/shop/empty"}
+{"Time":"2026-09-28T21:37:16.318863-07:00","Action":"output","Package":"example.com/shop/empty","Output":"?   \texample.com/shop/empty\t[no test files]\n"}
+{"Time":"2026-09-28T21:37:16.318975-07:00","Action":"skip","Package":"example.com/shop/empty","Elapsed":0}
+{"Time":"2026-09-28T21:37:16.324889-07:00","Action":"start","Package":"example.com/shop/money"}
+{"Time":"2026-09-28T21:37:16.396949-07:00","Action":"run","Package":"example.com/shop/cart","Test":"TestTotal"}
+{"Time":"2026-09-28T21:37:16.397015-07:00","Action":"output","Package":"example.com/shop/cart","Test":"TestTotal","Output":"=== RUN   TestTotal\n"}
+{"Time":"2026-09-28T21:37:16.397042-07:00","Action":"output","Package":"example.com/shop/cart","Test":"TestTotal","Output":"--- PASS: TestTotal (0.00s)\n"}
+{"Time":"2026-09-28T21:37:16.397048-07:00","Action":"pass","Package":"example.com/shop/cart","Test":"TestTotal","Elapsed":0}
+{"Time":"2026-09-28T21:37:16.397055-07:00","Action":"output","Package":"example.com/shop/cart","Output":"PASS\n"}
+{"Time":"2026-09-28T21:37:16.397121-07:00","Action":"output","Package":"example.com/shop/cart","Output":"ok  \texample.com/shop/cart\t0.078s\n"}
+{"Time":"2026-09-28T21:37:16.397145-07:00","Action":"pass","Package":"example.com/shop/cart","Elapsed":0.079}
+{"Time":"2026-09-28T21:37:16.400438-07:00","Action":"run","Package":"example.com/shop/money","Test":"TestRound"}
+{"Time":"2026-09-28T21:37:16.400521-07:00","Action":"output","Package":"example.com/shop/money","Test":"TestRound","Output":"=== RUN   TestRound\n"}
+{"Time":"2026-09-28T21:37:16.400577-07:00","Action":"output","Package":"example.com/shop/money","Test":"TestRound","Output":"--- PASS: TestRound (0.00s)\n"}
+{"Time":"2026-09-28T21:37:16.400589-07:00","Action":"pass","Package":"example.com/shop/money","Test":"TestRound","Elapsed":0}
+{"Time":"2026-09-28T21:37:16.400598-07:00","Action":"run","Package":"example.com/shop/money","Test":"TestRoundZero"}
+{"Time":"2026-09-28T21:37:16.400603-07:00","Action":"output","Package":"example.com/shop/money","Test":"TestRoundZero","Output":"=== RUN   TestRoundZero\n"}
+{"Time":"2026-09-28T21:37:16.40061-07:00","Action":"output","Package":"example.com/shop/money","Test":"TestRoundZero","Output":"--- PASS: TestRoundZero (0.00s)\n"}
+{"Time":"2026-09-28T21:37:16.400618-07:00","Action":"pass","Package":"example.com/shop/money","Test":"TestRoundZero","Elapsed":0}
+{"Time":"2026-09-28T21:37:16.400625-07:00","Action":"run","Package":"example.com/shop/money","Test":"TestTable"}
+{"Time":"2026-09-28T21:37:16.400629-07:00","Action":"output","Package":"example.com/shop/money","Test":"TestTable","Output":"=== RUN   TestTable\n"}
+{"Time":"2026-09-28T21:37:16.400634-07:00","Action":"run","Package":"example.com/shop/money","Test":"TestTable/half"}
+{"Time":"2026-09-28T21:37:16.400638-07:00","Action":"output","Package":"example.com/shop/money","Test":"TestTable/half","Output":"=== RUN   TestTable/half\n"}
+{"Time":"2026-09-28T21:37:16.400642-07:00","Action":"output","Package":"example.com/shop/money","Test":"TestTable/half","Output":"--- PASS: TestTable/half (0.00s)\n"}
+{"Time":"2026-09-28T21:37:16.400645-07:00","Action":"pass","Package":"example.com/shop/money","Test":"TestTable/half","Elapsed":0}
+{"Time":"2026-09-28T21:37:16.400649-07:00","Action":"output","Package":"example.com/shop/money","Test":"TestTable","Output":"--- PASS: TestTable (0.00s)\n"}
+{"Time":"2026-09-28T21:37:16.400654-07:00","Action":"pass","Package":"example.com/shop/money","Test":"TestTable","Elapsed":0}
+{"Time":"2026-09-28T21:37:16.400657-07:00","Action":"output","Package":"example.com/shop/money","Output":"PASS\n"}
+{"Time":"2026-09-28T21:37:16.402834-07:00","Action":"output","Package":"example.com/shop/money","Output":"ok  \texample.com/shop/money\t0.078s\n"}
+{"Time":"2026-09-28T21:37:16.402867-07:00","Action":"pass","Package":"example.com/shop/money","Elapsed":0.078}
