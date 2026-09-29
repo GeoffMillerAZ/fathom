@@ -9,6 +9,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/certify"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/corpus"
+	"github.com/geoffmilleraz/fathom/internal/memo"
 	"github.com/geoffmilleraz/fathom/internal/sdd"
 	"github.com/geoffmilleraz/fathom/internal/verify"
 )
@@ -105,6 +106,19 @@ func registerVerifyPlan(s *Server, backend QueryInterface) {
 		}
 		nodes, graph := ng.Nodes, ng.Both
 
+		// What the product entry points reach (the `wired` criterion,
+		// ADR-018 amendment 2026-09-28), walked once per watermark over
+		// the same graph: the both graph, or the syntax graph this call
+		// degraded to when the typed edges could not be read.
+		productKind := memo.GraphBoth
+		if ng.TypedErr != nil {
+			productKind = memo.GraphSyntax
+		}
+		product, perr := memo.ProductReachFor(ctx, ng.Snapshot, productKind, typedLoader(backend, p.Service))
+		if perr != nil {
+			return nil, &rpcError{Code: ErrCodeInternal, Message: "verify_plan: product reach: " + perr.Error()}
+		}
+
 		// Contradictions (best-effort; scoped by concern when provided).
 		var contras []core.Contradiction
 		if res, qErr := backend.QuerySymbols(ctx, core.Query{ServiceID: p.Service, ConcernID: p.Concern, TopN: 500}); qErr == nil {
@@ -178,6 +192,7 @@ func registerVerifyPlan(s *Server, backend QueryInterface) {
 		ev := &verifyEvidence{
 			ctx: ctx, backend: backend, service: p.Service,
 			graph: graph, contras: contras, matrix: matrix, haveMat: haveMat,
+			product: product,
 		}
 
 		out := verifyReportToMap(verify.VerifyPlan(plan, ev))
@@ -201,6 +216,15 @@ type verifyEvidence struct {
 	contras []core.Contradiction
 	matrix  sdd.Matrix
 	haveMat bool
+	product *callgraph.ProductReach
+}
+
+// ProductEntryCount implements verify.ProductEvidence.
+func (e *verifyEvidence) ProductEntryCount() int { return len(e.product.Entries()) }
+
+// ProductReachedBy implements verify.ProductEvidence.
+func (e *verifyEvidence) ProductReachedBy(symbol string) (string, bool) {
+	return e.product.ReachedBy(symbol)
 }
 
 func (e *verifyEvidence) FindSymbol(name string) []core.SymbolNode {
@@ -272,6 +296,7 @@ var _ verify.CertificationEvidence = (*verifyEvidence)(nil)
 var (
 	_ verify.Evidence         = (*verifyEvidence)(nil)
 	_ verify.DetailedEvidence = (*verifyEvidence)(nil)
+	_ verify.ProductEvidence  = (*verifyEvidence)(nil)
 )
 
 // buildSpecMatrix builds an sdd coverage matrix from a service's symbols and

@@ -3,10 +3,9 @@
 ## docs/plans/ — plan grammar v2 (full spec: `docs/plans/README.md`)
 
 Every top-level `docs/plans/*.md` except `README.md` is run through
-`fathom verify` at pre-push (`--quiet`, non-strict — `lefthook.yml`) and by
-the manual `scripts/ci.sh` (`--strict`: claimed+unknown rows fail; no CI
-runner exists yet) — never add a stray .md file there. `docs/plans/archive/`
-is out of gate scope. Essentials:
+`fathom verify --strict` at pre-push, against a scratch ingest of HEAD
+(`lefthook.yml`; claimed+unknown rows fail, exit 2 fails open) — never add a
+stray .md file there. `docs/plans/archive/` is out of gate scope. Essentials:
 
 - The `{…}` annotation sits **on the checkbox line itself** — the parser is
   line-based; an annotation on a wrapped continuation line is silently
@@ -18,6 +17,14 @@ is out of gate scope. Essentials:
 - Reachability: function values are edges (VS-6) and closure calls count
   for the enclosing test (VS-7) — the "call it at the test's top level"
   rule is retired; `skip_test` is only for rows with no test at all.
+- Done means proven AND wired (ADR-018 amendment 2026-09-28): a claimed
+  `symbol:` function that a test reaches but no product entry point does
+  (a `package main`'s `main`, or the `init`/variable initializers of a
+  package one links) is `library-only` — Unknown, so `--strict` refuses it.
+  Anchor the function the product runs, never a test-only wrapper of it.
+  `library: true` waives it only with a `reason:` saying why the API itself
+  is the deliverable (a split's library half naming its open wiring row, a
+  gate harness naming its gate), added before the row is claimed.
 - Non-code rows carry an `oracle:` instead of a `symbol:`. `lexical`
   (ADR-030) proves a file exists and matches a pattern. `ledger` (ADR-034
   decision 2, RC-34) proves a *published bench reading*:

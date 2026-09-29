@@ -22,6 +22,7 @@ func isolateGraphStore(t *testing.T) *Registry {
 		snapshotGroup.Reset(ReasonWatermark)
 		typedGroup.Reset(ReasonWatermark)
 		graphGroup.Reset(ReasonWatermark)
+		productGroup.Reset(ReasonWatermark)
 		reg.mu.Lock()
 		reg.marks = make(map[string]string)
 		reg.mu.Unlock()

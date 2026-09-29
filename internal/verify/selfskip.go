@@ -46,16 +46,46 @@ func AnnotateSelfSkip(current Plan, prior *Plan) Plan {
 	out.Tasks = make([]Task, len(current.Tasks))
 	for i, t := range current.Tasks {
 		t.SelfSkipped = false
+		t.SelfLibrary = false
+		pt, hadRow := priorByID[t.ID]
 		if t.Claimed && t.Expect.SkipTest {
-			pt, hadRow := priorByID[t.ID]
 			hadSkip := hadRow && pt.Expect.SkipTest
 			if !hadSkip {
 				t.SelfSkipped = true
 			}
 		}
+		// library: true is the same kind of waiver (ADR-018 amendment
+		// 2026-09-28) and takes the same check.
+		if t.Claimed && t.Expect.Library && !(hadRow && pt.Expect.Library) {
+			t.SelfLibrary = true
+		}
 		out.Tasks[i] = t
 	}
 	return out
+}
+
+// selfLibraryDetail is the wired criterion a self-declared library waiver
+// becomes (evalWired's own wording for the same case).
+const selfLibraryDetail = "no product entry point reaches it (no main, and no init of a package a main links); library: true was added in the same edit or commit that claims this row done — an agent may not grade its own row, so it waives nothing"
+
+// overlaySelfLibrary withdraws a library waiver a daemon granted without
+// git access (the `library` criterion evalWired emits for a waived row):
+// the criterion becomes an Unknown `wired`, and a row that read Pass on
+// the waiver alone becomes library-only. It reports whether it changed
+// anything; a row the daemon never waived is left byte for byte.
+func overlaySelfLibrary(tv *TaskVerdict, detail string) bool {
+	for i, c := range tv.Criteria {
+		if c.Name != "library" || c.Status != Pass {
+			continue
+		}
+		tv.Criteria[i] = Criterion{Name: "wired", Status: Unknown, Detail: detail}
+		if tv.Status == Pass {
+			tv.Status = Unknown
+			tv.Label = "library-only"
+		}
+		return true
+	}
+	return false
 }
 
 // OverlaySelfSkip is the HTTP-mode complement to AnnotateSelfSkip, exactly
@@ -75,6 +105,9 @@ func OverlaySelfSkip(rep *Report, plan Plan) {
 	touched := false
 	for i := range rep.Tasks {
 		t, ok := byID[rep.Tasks[i].TaskID]
+		if ok && t.SelfLibrary && t.Expect.Library && overlaySelfLibrary(&rep.Tasks[i], selfLibraryDetail) {
+			touched = true
+		}
 		if !ok || !t.SelfSkipped || !t.Expect.SkipTest {
 			continue
 		}

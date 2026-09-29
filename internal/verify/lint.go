@@ -37,6 +37,14 @@ func LintPlan(p Plan) []string {
 		if t.Expect.SkipTest && t.Expect.SkipReason == "" {
 			out = append(out, fmt.Sprintf("%s: skip_test without a skip: justification", t.ID))
 		}
+		if t.Expect.Library {
+			switch {
+			case t.Expect.Symbol == "":
+				out = append(out, fmt.Sprintf("%s: library: true applies only to a symbol: row (it waives the product-wiring check)", t.ID))
+			case t.Reason == "":
+				out = append(out, fmt.Sprintf("%s: library: true without a reason: justification — it waives nothing until the row says why the API itself is the deliverable", t.ID))
+			}
+		}
 		if msg := uncontractedClaim(t); msg != "" {
 			out = append(out, fmt.Sprintf("%s: %s", t.ID, msg))
 		}

@@ -115,6 +115,9 @@ func ParseMarkdownPlan(service string, md []byte) Plan {
 			t.Expect.SkipTest = truthy(ann["skip_test"])
 			t.Expect.SkipReason = ann["skip"]
 			t.Expect.AllowContradiction = truthy(ann["allow_contradiction"])
+			// ADR-018 amendment 2026-09-28: the API itself is the
+			// deliverable; the row's reason: says why (evalWired).
+			t.Expect.Library = truthy(ann["library"])
 			// certified_by (vision 33 / ADR-043 stage 1, TC-9, design doc
 			// §4): repeatable — same comma-separated-VALUE convention
 			// `needs` already uses, so more than one test is written
@@ -316,6 +319,8 @@ var annotationKeys = []string{
 	"id", "symbol", "package", "skip_test", "skip", "reachable_from",
 	"min_tier", "disposition", "reason", "trigger", "allow_contradiction",
 	"ctx", "needs",
+	// product wiring waiver (ADR-018 amendment 2026-09-28)
+	"library",
 	// certified_by (vision 33 / ADR-043 stage 1, TC-9)
 	"certified_by", "strength",
 	// intent-condition oracles (ADR-026)

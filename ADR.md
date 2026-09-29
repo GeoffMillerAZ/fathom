@@ -446,7 +446,7 @@ ingest time.
 
 ## ADR-018 — Plan grammar v2 + reconciler verbs: SDD state is derived, never driven
 
-**Status.** Accepted; pilot KEEP 2026-08-26.
+**Status.** Accepted; pilot KEEP 2026-08-26; amended 2026-09-28 (done means proven AND wired).
 
 **Context.** The 2026-07 excellence review (docs/vision/09) examined "should
 SDD be a deterministically driven state machine in CUE?" against the July-2026
@@ -508,6 +508,48 @@ values across the three consumer repos are all unique prose (the design panel of
 ADR-026 opens annotated conditions on a different corpus (intent docs and ADR
 trailers) on a different ground: the annotation itself is the demand signal, and
 its runtime is not built until ≥3 exist across ≥2 repos.
+
+**Amendment (2026-09-28): done means proven AND wired.** The verify gate is this record's
+"done means proven", and it failed: it accepted claimed rows whose anchored function a named
+test reached while no program ever ran it. A hand audit (`deadcode ./cmd/...`, commit
+`0bcb04ac`) re-opened a first batch; the gate below found 105 more across 41 plans.
+Decisions:
+1. `fathom verify` (store and daemon alike) computes, over the same syntax+typed call graph
+   `test_reaches` walks, whether a **product entry point** reaches a claimed row's function:
+   every `func main` of a Go `package main` outside `testdata/` (bench binaries are products),
+   and the `init` functions and package-level variable initializers of every package those
+   link. Registered MCP tool handlers, CLI verbs, console routes and hook entries need no rule
+   of their own: a handler registered by reference is a func-value edge (I23) from the binary
+   that registers it. The typed pass keys a non-test `init()` and a non-test file's variable
+   initializers to `<pkg>.init` (`TypedEdgeEpoch` 3), and `callgraph.AddTypedEdges` adds that
+   one vertex when no `init()` was indexed — the only vertex it ever invents.
+2. A function a test reaches and no entry point does is **`library-only`**: Unknown, so the
+   default gate reports it and `--strict` (the pre-push gate) refuses it.
+3. **`library: true`** waives it only with the row's `reason:` naming why the API itself is
+   the deliverable — a split's library half naming its open wiring row, a foundation row whose
+   open rows wire it, a gate harness whose consumer is a `go test` gate by design — and only
+   when it predates the claim: O56's self-skip comparison applies to it, and `--since` reports
+   it self-declared (I45).
+4. Wiring is **n/a, named**, for a type, a non-Go symbol, test code, and a service with no
+   binary at all (a library has no product to wire into). A row whose name resolves to several
+   functions (one method on two implementations) is wired when any of them is.
+5. The reach set is one O(V+E) walk per (store, service, watermark, graph kind), a memo group
+   (`product_reach`, I51) dropped with the graph it was walked over.
+**Rejected:** running `x/tools` deadcode (RTA) inside verify — it builds every binary, and it
+never reports a package no binary links, which is where most of the 105 lived; treating a
+signature (`http.ResponseWriter`, a cobra `RunE`) as an entry point — it wires a handler
+nobody registers; a Fail in the default gate — library-only is a missing fact about the
+product, the same strictness split `no-contract` already has. **Jev:** the decision port has
+no role — wiring is a deterministic graph fact, and a model judging "is the API the
+deliverable" would be the self-grading decision 3 refuses. **Consequences:** the 105 rows were
+re-anchored on the function the product runs when the anchor was a test-only wrapper of it
+(35), declared `library: true` (41: 11 split halves, 13 foundation rows with open wiring rows,
+17 gate harnesses), or re-opened with a note (29).
+**Revisit when.** (1) A claimed row reads `library-only` while the product demonstrably runs
+its function (reflection, a build tag, cgo, a plugin) — fix the extractor's edges, never widen
+the entry points. (2) `library: true` rows exceed a tenth of a plan's claimed symbol rows —
+the waiver is becoming the default; require a wiring row per library row. (3) A non-Go service
+with binaries adopts verify — its entry points need a rule of their own.
 
 ## Amendment to ADR-014 (2026-07-16, surfaces week-1)
 

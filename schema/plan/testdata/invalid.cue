@@ -22,3 +22,6 @@ package plan
 
 // 6. weight below 1 (ADR-049: a positive integer, default 1):
 // bad6: #Task & {id: "T-6", weight: 0}
+
+// 7. library is a boolean waiver (ADR-018 amendment 2026-09-28), not a reason:
+// bad7: #Task & {id: "T-7", expect: {symbol: "X", library: "the API is the deliverable"}}

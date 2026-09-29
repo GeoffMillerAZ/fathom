@@ -489,6 +489,7 @@ func verifyAllAgainstStore(plans []verify.Plan, service, storePath, concern stri
 		files:   files,
 		root:    verifyRepoRoot(),
 		byKey:   byKey,
+		product: callgraph.ProductEntryReach(graph),
 	}
 
 	var mutationScores []verify.MutationScore

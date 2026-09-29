@@ -39,6 +39,18 @@ plan: #Plan & {
 			}
 		},
 		{
+			// ADR-018 amendment 2026-09-28: the API itself is the
+			// deliverable, so no product entry point need reach it.
+			id:     "T-4a"
+			title:  "the harness API other tests drive"
+			state:  "claimed"
+			reason: "gate harness: TestHarness runs it under go test"
+			expect: {
+				symbol:  "RunHarness"
+				library: true
+			}
+		},
+		{
 			// ADR-030: a non-code row proven by a lexical oracle.
 			id:    "T-5"
 			title: "measurement recorded durably"

@@ -38,6 +38,14 @@ package plan
 	// conflicting evidence is detected for symbol. Default: false.
 	allow_contradiction?: bool | *false
 
+	// library, when true, declares that the row's deliverable is the API
+	// itself (ADR-018 amendment 2026-09-28): a symbol no product entry
+	// point reaches is then not library-only. Never free — the task's
+	// reason says why, and a waiver added by the edit or commit that
+	// claims the row waives nothing. Default: false (the symbol must be
+	// reached from a product entry point).
+	library?: bool | *false
+
 	// min_tier is the minimum evidence tier required for symbol. Default:
 	// "verified" (extracted directly from source code).
 	min_tier?: "verified" | "pre-scan" | "doc-claimed" | "sme-stated" | "assumed" | *"verified"
@@ -161,8 +169,8 @@ package plan
 // #Criterion is one checked clause of a task's contract.
 #Criterion: {
 	// name is the criterion identifier (e.g. "symbol_present", "tier",
-	// "test_reaches", "edge_wired", "no_contradiction", "spec_covered",
-	// "runtime_pass").
+	// "test_reaches", "edge_wired", "wired", "library", "no_contradiction",
+	// "spec_covered", "runtime_pass").
 	name: string
 
 	// status is the outcome of this criterion.
@@ -184,7 +192,7 @@ package plan
 	status: "pass" | "fail" | "unknown"
 
 	// label is a short verdict label (e.g. "verified", "claimed-but-absent",
-	// "present-but-untested", "edge-not-wired", "contradicted",
+	// "present-but-untested", "edge-not-wired", "library-only", "contradicted",
 	// "likely-unconfirmed", "below-required-tier", "spec-uncovered",
 	// "no-contract").
 	label: string

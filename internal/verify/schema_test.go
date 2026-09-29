@@ -46,6 +46,8 @@ bad: #Plan & {service: 42, tasks: []}`},
 bad: #Task & {id: "T-5", expect: {oracle: "vibes", path: "docs/x.md", pattern: "y"}}`},
 		{"weight below 1 (ADR-049)", `
 bad: #Task & {id: "T-6", weight: 0}`},
+		{"library as a string, not a boolean (ADR-018 amendment 2026-09-28)", `
+bad: #Task & {id: "T-7", expect: {symbol: "X", library: "the API is the deliverable"}}`},
 	}
 	cctx := cuecontext.New()
 

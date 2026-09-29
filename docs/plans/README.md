@@ -47,6 +47,7 @@ tasks block.
 | `min_tier` | Minimum evidence tier (`verified`, `pre-scan`, `doc-claimed`, `sme-stated`, `assumed`) | `verified` |
 | `skip_test` | `true` exempts the symbol from the test-reaches requirement. **Never free (O56): requires a `skip:` reason** — a bare `skip_test: true` is a grammar error, reported by `fathom verify` and `verify_plan` as `skip-without-reason`, and counted unproven exactly like an absent contract. See "Self-skip" below for the second half of the check. | `false` (a `Test*` must statically reach it) |
 | `allow_contradiction` | `true` lets contradictions on the symbol pass | `false` |
+| `library` | `true` declares that the row's deliverable is the API itself, so its `symbol` need not be reached from a product entry point (see "Product wiring" below). **Never free:** it needs the row's `reason:` naming why the API is the deliverable — a split's library half names its open wiring row, a gate harness names the gate that runs it — and a `library: true` added by the same edit or commit that claims the row waives nothing (the self-skip check, applied to this waiver too). Lint names a bare one and one on a row with no `symbol`. | `false` (a product entry point must reach the symbol) |
 | `id` | Author-owned stable task ID, overriding positional `md-NNN` (which renumbers when lines are inserted). Use in every gated plan that will be diffed across edits — the Stop hook matches tasks by ID. | positional |
 | `disposition` | `refused` \| `deferred` — types WHY a `[-]` line is skipped; requires `reason` | unset |
 | `reason` | Free-text justification for a disposition or skip. **Double-quote a value containing commas** (`reason: "kit-side done, donor NOT deleted"`); unquoted values must be comma-free. | unset |
@@ -140,6 +141,30 @@ validate`, over every top-level plan. An `(op)` measurement row closes with the 
 contract: `oracle: lexical` on the reading (a distinctive `pattern:` in the
 committed file — never the plan row itself), or `oracle: ledger` on the run.
 
+### Product wiring — done means proven AND wired (ADR-018 amendment 2026-09-28)
+
+A claimed `symbol:` row is proven only when a product entry point also
+reaches its function: verify walks the same syntax+typed call graph
+`test_reaches` walks, from every `func main` of a Go `package main` outside
+`testdata/` (bench binaries included) and from the `init` functions and
+package-level variable initializers of every package those link. MCP tool
+handlers, CLI verbs, console routes and hook entries are reached through
+the binary that registers them (a registered handler is a func-value edge,
+I23). The criterion is `wired`:
+
+| Outcome | Status | When |
+|---|---|---|
+| `product entry point <key> reaches it` | pass | the product runs it |
+| `library-only` (label) | unknown | a test reaches it and no entry point does; the default gate reports it, `--strict` (the pre-push gate) refuses it |
+| `library` criterion | pass | not reached, but the row declares `library: true` with a `reason:` that predates the claim |
+| n/a, named | — | a type, a non-Go symbol, test code, or a service with no binary at all (a library: nothing to wire into) |
+
+A row anchored on a test-only wrapper (`Search`, when the product calls
+`SearchWith`) is re-anchored on the function the product runs; a row whose
+feature the product does not run is re-opened, or split into a library row
+(`library: true`, reason naming the open wiring row) and a wiring row
+anchored on the product entry that must call it.
+
 ## Annotation placement (load-bearing)
 
 The annotation block must sit **on the checkbox line itself**. The parser is
@@ -157,11 +182,11 @@ always Unknown until CI/coverage evidence is ingested as its own tier.
 ## Gate commands
 
 ```sh
-# pre-push (fail-open on exit 2):
-bin/fathom verify --service <svc> --plan docs/plans/<slug>.md
+# pre-push (lefthook): a scratch ingest of HEAD, then strict per plan; fail-open on exit 2:
+bin/fathom verify --strict --store <scratch-store> --service <svc> --plan docs/plans/<slug>.md --quiet
 
-# CI (fail-closed, strict):
-bin/fathom verify --strict --store <tmpstore> --service <svc> --plan docs/plans/<slug>.md
+# against the daemon (default gate: claimed+Unknown rows, library-only included, are reported, not refused):
+bin/fathom verify --service <svc> --plan docs/plans/<slug>.md
 ```
 
 ## Computed progress and archival (E3/E4, docs/plans/new-use-cases.md)

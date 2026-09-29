@@ -144,6 +144,9 @@ func renderPlanCUE(p verify.Plan) string {
 			if e.MinTier != "" {
 				fmt.Fprintf(&b, "\t\t\tmin_tier: %q\n", string(e.MinTier))
 			}
+			if e.Library {
+				b.WriteString("\t\t\tlibrary: true\n")
+			}
 			// ADR-030: the lexical oracle keys live in #Expect beside the
 			// symbol contract they are the alternative to.
 			if t.Oracle != "" {
@@ -181,6 +184,7 @@ type cuePlanExpect struct {
 	SkipReason         string `json:"skip_reason"`
 	AllowContradiction bool   `json:"allow_contradiction"`
 	MinTier            string `json:"min_tier"`
+	Library            bool   `json:"library"`
 	Oracle             string `json:"oracle"`
 	Path               string `json:"path"`
 	Pattern            string `json:"pattern"`
@@ -242,6 +246,7 @@ func planFromCUE(src []byte) (verify.Plan, error) {
 				SkipReason:         ct.Expect.SkipReason,
 				AllowContradiction: ct.Expect.AllowContradiction,
 				MinTier:            core.EvidenceTier(ct.Expect.MinTier),
+				Library:            ct.Expect.Library,
 			}
 			t.Oracle = ct.Expect.Oracle
 			t.OraclePath = ct.Expect.Path

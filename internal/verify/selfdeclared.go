@@ -32,6 +32,7 @@ const (
 	declaredRetires       = "retires"
 	declaredSurfaceChange = "surface_change"
 	declaredMax           = "max"
+	declaredLibrary       = "library" // ADR-018 amendment 2026-09-28
 )
 
 // AnnotateSelfDeclared returns a copy of current with each row's
@@ -79,6 +80,7 @@ func AnnotateSelfDeclared(current Plan, atBase *Plan) Plan {
 		gainedRetires := len(t.Retires) > 0 && !(hadRow && len(bt.Retires) > 0)
 		gainedSurfaceChange := len(t.SurfaceChange) > 0 && !(hadRow && len(bt.SurfaceChange) > 0)
 		raisedMax := t.Max != nil && (!hadRow || bt.Max == nil || *t.Max > *bt.Max)
+		gainedLibrary := t.Expect.Library && !(hadRow && bt.Expect.Library)
 
 		var keys []string
 		if gainedSkip {
@@ -96,10 +98,16 @@ func AnnotateSelfDeclared(current Plan, atBase *Plan) Plan {
 		if raisedMax {
 			keys = append(keys, declaredMax)
 		}
+		if gainedLibrary {
+			keys = append(keys, declaredLibrary)
+		}
 		sort.Strings(keys)
 		t.SelfDeclared = keys
 		if gainedSkip && t.Claimed {
 			t.SelfSkipped = true
+		}
+		if gainedLibrary && t.Claimed {
+			t.SelfLibrary = true
 		}
 		out.Tasks[i] = t
 	}
@@ -153,6 +161,9 @@ func OverlaySelfDeclared(rep *Report, plan Plan) {
 			continue
 		}
 		detail := fmt.Sprintf("self-declared: %s", strings.Join(t.SelfDeclared, ", "))
+		if t.SelfLibrary && t.Expect.Library && overlaySelfLibrary(&rep.Tasks[i], selfLibraryDetail+" (declared inside the change range, I45)") {
+			touched = true
+		}
 		if t.SelfSkipped {
 			touched = true
 			failDetail := fmt.Sprintf(

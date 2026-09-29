@@ -13,7 +13,7 @@ Stop trusting "done!" — verify each task against actual code evidence before a
 
 | Name | Kind | What it gives you |
 |---|---|---|
-| `verify_plan` | MCP tool | Per-task verdict (`verified`, `claimed-but-absent`, `present-but-untested`, `edge-not-wired`, `contradicted`, `likely-unconfirmed`, `spec-uncovered`) with cited evidence; accepts `service`, optional `concern`, and `tasks[]` |
+| `verify_plan` | MCP tool | Per-task verdict (`verified`, `claimed-but-absent`, `present-but-untested`, `edge-not-wired`, `library-only`, `contradicted`, `likely-unconfirmed`, `spec-uncovered`) with cited evidence; accepts `service`, optional `concern`, and `tasks[]` |
 
 The standalone `spec_coverage` and `spec_refs` MCP tools were unregistered (SR-27, surface
 reckoning F-35): `review_diff`'s engine already ran `spec_coverage`'s identical check

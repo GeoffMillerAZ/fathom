@@ -174,6 +174,7 @@ func cmdGenStatusCue(args []string, stdout, stderr io.Writer) int {
 		matrix:  matrix,
 		haveMat: haveMat,
 		files:   verify.DirFiles(verifyRepoRoot()),
+		product: callgraph.ProductEntryReach(graph),
 	}
 
 	// 3. Evaluate the plan.
@@ -322,6 +323,10 @@ type cliEvidence struct {
 	// the same map cmd/fathom/refactor_plan.go's buildRefactorPlan builds
 	// from the identical nodes slice.
 	byKey map[string]core.SymbolNode
+	// product is what the service's product entry points reach, walked
+	// once over graph (verify's `wired` criterion, ADR-018 amendment
+	// 2026-09-28): one store, one watermark, one walk per process.
+	product *callgraph.ProductReach
 }
 
 // ReadRepoFile implements verify.FileEvidence over the repo's working tree.
@@ -375,6 +380,22 @@ func (e *cliEvidence) Reachable(from, to string) bool {
 	return callgraph.Reachable(e.graph, from, to)
 }
 
+// ProductEntryCount implements verify.ProductEvidence.
+func (e *cliEvidence) ProductEntryCount() int {
+	if e.product == nil {
+		e.product = callgraph.ProductEntryReach(e.graph)
+	}
+	return len(e.product.Entries())
+}
+
+// ProductReachedBy implements verify.ProductEvidence.
+func (e *cliEvidence) ProductReachedBy(symbol string) (string, bool) {
+	if e.product == nil {
+		e.product = callgraph.ProductEntryReach(e.graph)
+	}
+	return e.product.ReachedBy(symbol)
+}
+
 func (e *cliEvidence) Contradictions() []core.Contradiction { return e.contras }
 
 func (e *cliEvidence) SpecImplementors(specID string) []string {
@@ -404,6 +425,7 @@ var (
 	_ verify.FileEvidence          = (*cliEvidence)(nil)
 	_ verify.CertificationEvidence = (*cliEvidence)(nil)
 	_ verify.GoneEvidence          = (*cliEvidence)(nil)
+	_ verify.ProductEvidence       = (*cliEvidence)(nil)
 )
 
 // renderStatusCUE is exposed for tests that want to verify template output

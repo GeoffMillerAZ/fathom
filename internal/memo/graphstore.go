@@ -79,6 +79,10 @@ var (
 	snapshotGroup = NewGroup[snapKey, *Snapshot]("snapshot", Options{WatermarkScoped: true, Keep: true, ExpectedCost: snapshotCost})
 	typedGroup    = NewGroup[typedKey, []core.Edge]("typed_edges", Options{WatermarkScoped: true, Keep: true, ExpectedCost: typedCost})
 	graphGroup    = NewGroup[graphKey, *callgraph.Graph]("graphstore", Options{WatermarkScoped: true, Keep: true, ExpectedCost: graphCost})
+	// productGroup holds each graph's product-entry reach set (verify's
+	// `wired` criterion, ADR-018 amendment 2026-09-28): one O(V+E) walk
+	// per (store, service, watermark, kind), dropped with its graph.
+	productGroup = NewGroup[graphKey, *callgraph.ProductReach]("product_reach", Options{WatermarkScoped: true})
 )
 
 // Snapshot is one service's symbols at one watermark. Immutable: callers
@@ -343,6 +347,21 @@ func GraphFor(ctx context.Context, snap *Snapshot, kind GraphKind, typed TypedLo
 	})
 }
 
+// ProductReachFor returns what the product entry points of snap's graph
+// of kind reach (callgraph.ProductEntryReach) — computed once per (store,
+// service, watermark, kind) from the shared graph GraphFor serves, and
+// dropped whenever that graph is patched or dropped.
+func ProductReachFor(ctx context.Context, snap *Snapshot, kind GraphKind, typed TypedLoader) (*callgraph.ProductReach, error) {
+	return productGroup.Get(ctx, graphKey{snap.Scope, kind}, func(bctx context.Context) (*callgraph.ProductReach, int64, error) {
+		g, err := GraphFor(bctx, snap, kind, typed)
+		if err != nil {
+			return nil, 0, err
+		}
+		r := callgraph.ProductEntryReach(g)
+		return r, r.EstimatedBytes(), nil
+	})
+}
+
 // HasGraphs reports whether anything a refresh must patch is cached for
 // sc — the snapshot (the iterating tools read it) or any graph — so a
 // refresh asks before paying to list a package's nodes.
@@ -391,6 +410,9 @@ func PatchPackage(sc Scope, pkg string, nodes []core.SymbolNode, typed []core.Ed
 		})
 	}
 	graphGroup.Remove(graphKey{sc, GraphResolved}, ReasonWatermark)
+	for _, k := range []GraphKind{GraphSyntax, GraphBoth, GraphResolved} {
+		productGroup.Remove(graphKey{sc, k}, ReasonWatermark)
+	}
 	if typed != nil {
 		typedGroup.Remove(typedKey{sc}, ReasonWatermark)
 	}
@@ -414,6 +436,7 @@ func DropScope(sc Scope) {
 	typedGroup.Remove(typedKey{sc}, ReasonWatermark)
 	for _, k := range []GraphKind{GraphSyntax, GraphBoth, GraphResolved} {
 		graphGroup.Remove(graphKey{sc, k}, ReasonWatermark)
+		productGroup.Remove(graphKey{sc, k}, ReasonWatermark)
 	}
 }
 

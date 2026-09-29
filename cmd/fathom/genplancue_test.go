@@ -18,6 +18,7 @@ const genPlanFixture = `# Fixture
 - [ ] Open {id: W-4, symbol: GateRequireAll, skip_test: true, skip: "cmd oracle pending", weight: 3, accept: "WHEN asked, THE SYSTEM SHALL gate"}
 - [x] Measured {id: W-5, oracle: lexical, path: docs/measurements/m.md, pattern: "p95 ≈ 329"}
 - [x] Positional untyped line
+- [x] The harness API {id: W-6, symbol: RunHarness, library: true, reason: "gate harness: TestHarness runs it"}
 `
 
 func TestGenPlanCue_RoundTrip(t *testing.T) {

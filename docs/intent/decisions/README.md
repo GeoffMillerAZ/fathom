@@ -33,7 +33,7 @@ Status: proposed · accepted · rejected · deferred · superseded by <id> · de
 | ADR-015 | accepted | strategy | Rename to fathom; two strata | fleet migrated → remove back-compat shims |
 | ADR-016 | accepted, amended 2026-07-16, 2026-09-24 (Q21: 320-token ceiling) | architecture | Semantic layers: governed claims beside the index | first non-citable claim kind; deferred pieces' revival evidence; vectors need a SQLite re-check |
 | ADR-017 | accepted | data | Born-portable stores: repo-relative anchors, domain-neutral freshness | a non-engineering module needs tier profiles; manifest watermark cost |
-| ADR-018 | accepted; pilot KEEP 2026-08-26 | process | Plan grammar v2 + reconciler verbs: SDD state is derived, never driven | machine-evaluated conditions now v1 under ADR-026 (opt-in `{oracle: …}`) |
+| ADR-018 | accepted; pilot KEEP 2026-08-26; amended 2026-09-28 (done means proven AND wired) | process | Plan grammar v2 + reconciler verbs: SDD state is derived, never driven; a claimed row's function must be reached from a product entry point or declare `library: true` | machine-evaluated conditions now v1 under ADR-026 (opt-in `{oracle: …}`); a library-only row the product demonstrably runs (fix the edges); `library: true` over a tenth of a plan's claimed rows |
 | ADR-019 | accepted | dependency | In-tree mirror of agentic-kit for kit-free distribution | kit access becomes universal |
 | ADR-020 | accepted | data | Store backend: pure-Go SQLite (WAL) replaces DuckDB | none identified |
 | ADR-021 | accepted | architecture | Extraction v2: language truth, tool identity, typed edges, tree-sitter on wazero | none identified |

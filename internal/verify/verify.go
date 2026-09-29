@@ -145,6 +145,13 @@ type Task struct {
 	// comparison point) leaves this false and the row stands.
 	SelfSkipped bool
 
+	// SelfLibrary is SelfSkipped's twin for `library: true` (ADR-018
+	// amendment 2026-09-28), set by the same comparisons (AnnotateSelfSkip,
+	// AnnotateSelfDeclared) and never by ParseMarkdownPlan: a claimed row
+	// whose library waiver was added in the edit/commit (or range) that
+	// claims it gets no waiver — an agent may not grade its own row.
+	SelfLibrary bool
+
 	// SelfDeclared is set externally by AnnotateSelfDeclared — NEVER by
 	// ParseMarkdownPlan. The sorted list of declaration keys (I45:
 	// "skip", "disposition", "retires", "surface_change", "max") this row
@@ -245,6 +252,13 @@ type Expect struct {
 	// closed, ordered ladder). "" defaults to the ladder's own default
 	// (extractor.DefaultCertifyStrength, "asserts").
 	CertifyStrength string
+
+	// Library is `library: true` (ADR-018 amendment 2026-09-28): the row's
+	// deliverable is the API itself, so a symbol no product entry point
+	// reaches is not library-only. Never free: it needs the row's
+	// `reason:` naming why the API is the deliverable, and it may not be
+	// added by the edit or commit that claims the row (Task.SelfLibrary).
+	Library bool
 }
 
 // IsZero reports whether e carries no contract at all — the struct-
@@ -255,7 +269,7 @@ type Expect struct {
 func (e Expect) IsZero() bool {
 	return e.Symbol == "" && e.Package == "" && e.ReachableFrom == "" &&
 		!e.SkipTest && e.SkipReason == "" && !e.AllowContradiction && e.MinTier == "" &&
-		len(e.CertifiedBy) == 0 && e.CertifyStrength == ""
+		len(e.CertifiedBy) == 0 && e.CertifyStrength == "" && !e.Library
 }
 
 // CriterionStatus is the outcome of a single acceptance criterion.
@@ -270,7 +284,7 @@ const (
 
 // Criterion is one checked clause of a task's contract, with a citation.
 type Criterion struct {
-	Name   string // symbol_present | tier | test_reaches | edge_wired | no_contradiction | spec_covered | runtime_pass
+	Name   string // symbol_present | tier | test_reaches | edge_wired | wired | library | no_contradiction | spec_covered | runtime_pass
 	Status CriterionStatus
 	Detail string // evidence: file:line, tier, reaching test, etc.
 }
@@ -280,7 +294,7 @@ type TaskVerdict struct {
 	TaskID     string
 	Title      string
 	Status     CriterionStatus // Pass | Fail | Unknown (overall, static)
-	Label      string          // verified | claimed-but-absent | present-but-untested | edge-not-wired | contradicted | likely-unconfirmed | below-required-tier | spec-uncovered | no-contract
+	Label      string          // verified | claimed-but-absent | present-but-untested | edge-not-wired | library-only | contradicted | likely-unconfirmed | below-required-tier | spec-uncovered | no-contract
 	Criteria   []Criterion
 	Claimed    bool // propagated from Task.Claimed ([x])
 	Skipped    bool // propagated from Task.Skipped ([-])
@@ -571,6 +585,25 @@ type CertificationEvidence interface {
 	CertificationsByTest(tests []string) map[string][]Certification
 }
 
+// ProductEvidence is an optional capability (ADR-018 amendment
+// 2026-09-28, "done means proven AND wired"): an Evidence that can say
+// which symbols a PRODUCT entry point reaches — every Go `package main`'s
+// main outside testdata/, and the initialization (init functions and
+// package-level variable initializers) of the packages those link
+// (internal/analysis/callgraph.ProductEntryReach, over the same
+// syntax+typed graph test_reaches walks). VerifyPlan type-asserts for it;
+// an Evidence without it adds no `wired` criterion at all, so a row is
+// judged exactly as before rather than refused for an instrument it was
+// never given.
+type ProductEvidence interface {
+	// ProductEntryCount is the number of product entry points. 0 means
+	// the service has no binary (a library): wiring does not apply.
+	ProductEntryCount() int
+	// ProductReachedBy names the product entry point that statically
+	// reaches symbol (a canonical key or a name the call graph resolves).
+	ProductReachedBy(symbol string) (entry string, ok bool)
+}
+
 // FileEvidence is an optional capability: an Evidence that can read the
 // files of the repo the plan belongs to, for the lexical oracle (ADR-030).
 // ReadRepoFile takes a repo-relative path; a missing file is an error.
@@ -852,6 +885,20 @@ func verifyTask(t Task, ev Evidence, files FileEvidence, contraBySymbol map[stri
 		}
 	}
 
+	// --- product wiring (ADR-018 amendment 2026-09-28) ---
+	// Proven AND wired: a present Go symbol that a test reaches but no
+	// product entry point does is library-only — Unknown, so the default
+	// gate reports it and --strict (the pre-push gate) refuses it. It never
+	// overrides an earlier failure's label.
+	if pe, ok := ev.(ProductEvidence); ok && len(matches) > 0 {
+		c, label := evalWired(t, pe, querySym, matches)
+		v.Criteria = append(v.Criteria, c)
+		if c.Status == Unknown && v.Status == Pass {
+			v.Status = Unknown
+			v.Label = label
+		}
+	}
+
 	// --- spec coverage ---
 	if len(t.SpecIDs) > 0 {
 		checked = true
@@ -902,6 +949,69 @@ func verifyTask(t Task, ev Evidence, files FileEvidence, contraBySymbol map[stri
 		v.Label = "no-contract"
 	}
 	return v
+}
+
+// evalWired is the `wired` criterion (ADR-018 amendment 2026-09-28): does a
+// product entry point statically reach the row's symbol? matches are the
+// row's resolved nodes. Wiring applies only to Go product functions and
+// methods in a service that has a product: a type (call edges never reach
+// one), a non-Go symbol, a test file or testdata fixture, or a service
+// with no entry point at all reads n/a, named. An
+// unreached symbol is library-only (Unknown) unless the row declares
+// `library: true` with a `reason:`, and that declaration predates the
+// claim — then the waiver is the criterion (`library`, Pass).
+func evalWired(t Task, pe ProductEvidence, querySym string, matches []core.SymbolNode) (Criterion, string) {
+	const name = "wired"
+	// The functions and methods among the matches: a name like
+	// CachedCallGraph.Graph also finds the Graph type, which says nothing
+	// about whether the method is called.
+	var callable []core.SymbolNode
+	for _, m := range matches {
+		if m.Kind == core.KindGoFunc || m.Kind == core.KindGoMethod {
+			callable = append(callable, m)
+		}
+	}
+	sym := matches[0]
+	if len(callable) > 0 {
+		sym = callable[0]
+	}
+	file := sym.FilePath
+	switch {
+	case !strings.HasSuffix(file, ".go"):
+		return Criterion{Name: name, Status: NA, Detail: "wiring is computed for Go symbols only"}, ""
+	case len(callable) == 0:
+		return Criterion{Name: name, Status: NA, Detail: fmt.Sprintf("a %s, not a function: call edges never reach it, so wiring is computed for functions and methods only", sym.Kind)}, ""
+	case strings.HasSuffix(file, "_test.go") || strings.HasPrefix(file, "testdata/") || strings.Contains(file, "/testdata/"):
+		return Criterion{Name: name, Status: NA, Detail: fmt.Sprintf("test code (%s): wiring does not apply", file)}, ""
+	case pe.ProductEntryCount() == 0:
+		return Criterion{Name: name, Status: NA, Detail: "the service has no product entry point (no Go package main): a library, wiring does not apply"}, ""
+	}
+	if entry, ok := pe.ProductReachedBy(querySym); ok {
+		return Criterion{Name: name, Status: Pass, Detail: fmt.Sprintf("product entry point %s reaches it", entry)}, ""
+	}
+	// A row whose symbol (under its package: filter) names more than one
+	// function — the same method on two implementations of one interface —
+	// is resolved by the call graph to nothing, exactly as test_reaches
+	// is. Wiring is judged the way symbol_present is: the row is wired when
+	// any function it names is, and the verdict names which.
+	if keys := distinctKeys(callable); len(keys) > 1 {
+		sort.Strings(keys)
+		for _, k := range keys {
+			if entry, ok := pe.ProductReachedBy(k); ok {
+				return Criterion{Name: name, Status: Pass, Detail: fmt.Sprintf("product entry point %s reaches %s (one of %d functions this row names)", entry, k, len(keys))}, ""
+			}
+		}
+	}
+	const unreached = "no product entry point reaches it (no main, and no init of a package a main links)"
+	switch {
+	case t.Expect.Library && t.Reason != "" && !t.SelfLibrary:
+		return Criterion{Name: "library", Status: Pass, Detail: fmt.Sprintf("%s; waived by library: true — %s", unreached, t.Reason)}, ""
+	case t.Expect.Library && t.SelfLibrary:
+		return Criterion{Name: name, Status: Unknown, Detail: unreached + "; library: true was added in the same edit or commit that claims this row done — an agent may not grade its own row, so it waives nothing"}, "library-only"
+	case t.Expect.Library:
+		return Criterion{Name: name, Status: Unknown, Detail: unreached + "; library: true with no reason: waives nothing — name why the API itself is the deliverable"}, "library-only"
+	}
+	return Criterion{Name: name, Status: Unknown, Detail: unreached + " (library-only): call it from the product, or declare library: true with a reason: when the API itself is the deliverable"}, "library-only"
 }
 
 // testReachesDetail renders test_reaches's pass detail from a DetailedEvidence
