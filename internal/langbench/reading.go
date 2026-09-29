@@ -185,9 +185,11 @@ type Tenancy struct {
 	// wall-clock figure alongside a cpu-basis reading.
 	ThroughputBasis   string  `json:"throughput_basis,omitempty"`
 	WallThroughputMBs float64 `json:"wall_throughput_mb_s,omitempty"`
-	MaxFileMS         int64   `json:"max_file_ms"`
-	PeakModulePages   int     `json:"peak_module_pages"`
-	CompiledBytes     int64   `json:"compiled_bytes"`
+	// MaxFileMS is the slowest file's time on ThroughputBasis's clock: CPU
+	// time under "cpu", wall clock under "wall" (EW-3).
+	MaxFileMS       int64 `json:"max_file_ms"`
+	PeakModulePages int   `json:"peak_module_pages"`
+	CompiledBytes   int64 `json:"compiled_bytes"`
 }
 
 // Reading is one dialect's committed measurement (§10). Nobody types

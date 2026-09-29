@@ -221,6 +221,27 @@ func resolveBenchSpec(id, manifestPath string) (langbench.BenchSpec, string, err
 	return inc, "incumbent", nil
 }
 
+// fileClocks are the two clocks one file's extraction is timed with; tests
+// replace them (langoracle_cpu_test.go).
+var fileClocks = struct {
+	wall func() time.Time
+	cpu  func() time.Duration
+}{wall: time.Now, cpu: processCPU}
+
+// fileCostMS is what one file contributes to the tenancy floor's
+// max_file_ms: its CPU time, the basis the throughput floor reads (owner
+// decision D1, EW-3), so a machine busy with other work cannot fail a
+// reading by making one file wait. cpuOK is whether the platform has a CPU
+// reading at all (a running process has always used some, so a zero reading
+// before the file means none); without one the wall time stands in and the
+// reading's throughput_basis says "wall".
+func fileCostMS(wall, cpu time.Duration, cpuOK bool) int64 {
+	if cpuOK {
+		return cpu.Milliseconds()
+	}
+	return wall.Milliseconds()
+}
+
 type subjectMeasurement struct {
 	subject langbench.Subject
 	oracles []langbench.OracleRun
@@ -308,16 +329,16 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 			return res, err
 		}
 		inst := tsengine.Instantiations()
-		start, cpu0 := time.Now(), processCPU()
+		start, cpu0 := fileClocks.wall(), fileClocks.cpu()
 		ex, err := extract(pipe, service, refs, ref.Path, content)
-		elapsed, cpu := time.Since(start), processCPU()-cpu0
+		elapsed, cpu := fileClocks.wall().Sub(start), fileClocks.cpu()-cpu0
 		if tsengine.Instantiations() != inst && ex.Skipped == "" {
 			// This file instantiated a grammar module the warm-up did not
 			// (an injected language's, e.g. HTML's <script>): time it again,
 			// warm, so a one-time compile is never charged to throughput.
-			start, cpu0 = time.Now(), processCPU()
+			start, cpu0 = fileClocks.wall(), fileClocks.cpu()
 			ex, err = extract(pipe, service, refs, ref.Path, content)
-			elapsed, cpu = time.Since(start), processCPU()-cpu0
+			elapsed, cpu = fileClocks.wall().Sub(start), fileClocks.cpu()-cpu0
 			retimed++
 		}
 		if ex.Skipped != "" {
@@ -329,7 +350,7 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 		sub.Bytes += int64(len(content))
 		sub.Tenancy.ExtractMS += float64(elapsed.Microseconds()) / 1000
 		sub.Tenancy.ExtractCPUMS += float64(cpu.Microseconds()) / 1000
-		sub.Tenancy.MaxFileMS = max(sub.Tenancy.MaxFileMS, elapsed.Milliseconds())
+		sub.Tenancy.MaxFileMS = max(sub.Tenancy.MaxFileMS, fileCostMS(elapsed, cpu, cpu0 > 0))
 		if err != nil {
 			sub.Tenancy.Faults++
 			sub.Tenancy.FaultingFiles = append(sub.Tenancy.FaultingFiles, ref.Path)
