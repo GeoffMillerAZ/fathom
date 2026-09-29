@@ -9,12 +9,12 @@ import (
 	"cuelang.org/go/cue/cuecontext"
 )
 
-// dialectSchema returns schema/dialect's definitions and positive testdata
-// as one CUE source (package clauses and imports hoisted).
+// dialectSchema returns schema/dialect's definitions (#Dialect and #Doc) and
+// positive testdata as one CUE source (package clauses and imports hoisted).
 func dialectSchema(t *testing.T, withValid bool) string {
 	t.Helper()
 	var parts []string
-	files := []string{"../../schema/dialect/dialect.cue"}
+	files := []string{"../../schema/dialect/dialect.cue", "../../schema/dialect/doc.cue"}
 	if withValid {
 		files = append(files, "../../schema/dialect/testdata/valid.cue")
 	}
