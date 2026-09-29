@@ -97,6 +97,10 @@ falsely.
 - [ ] Verify and session ledgers: the join by session id that N2 burn-up and N3 cost-per-proven-row read {id: SR-68, symbol: JoinLedgersBySession, package: internal/metrics, reachable_from: TestJoinVerifyAndSessionLedgers}
   <!-- product wiring open (fathom verify --strict reads it library-only, 2026-09-28): JoinLedgersBySession has no production caller. -->
 
+## Deferred and refused (recorded so they are not re-proposed)
+
+- [-] An end-of-session summary that offers a four-field thread note, borrowed from the Claude OS comparison {id: SR-X1, disposition: deferred, reason: "the continuity-thread bet (SR-52) has not read its sample, and no prompt is added to a bet under measurement (ADR-049 amendment 2026-09-29)", trigger: "SR-52 reads keep"}
+
 ## Measurements
 
 - [ ] SR-M1: `tools/list` schema bytes on `/rpc/agent` before (18,310, 25 tools) and after, and on bare `/rpc` before (34,246, 59 tools) and after; the default is at most 9,000 bytes {id: SR-M1, symbol: surfaceSchemaBytes, package: internal/mcp, reachable_from: TestDefaultSurfaceSchemaBytesBudget}

@@ -24,6 +24,7 @@ fleet health).
 | [why-duckdb.md](why-duckdb.md) | Why DuckDB replaced SQLite originally, and why ADR-020 reversed that — DuckDB itself was then deleted outright in SS-8/ADR-025 (superseded and removed — historical rationale) |
 | [spec/](spec/) | The publishable Governed Store Format v0 + Expert Module v0 specs (product-vision.md §4 H2) — normative, falsifiability-indexed, separate from this directory's engineer-facing how-tos |
 | [intent/](intent/) | **Project intent** — the router ([intent/README.md](intent/README.md)): principles, invariants, domain, [scope](intent/scope.md) (goals, non-goals, compatibility surface), futures, decisions index, autonomy, incidents, open questions |
+| [assessments/](assessments/) | Dated research summaries (market, neighbouring tools, peer stacks, the feature scorecard, the language atlas, the Jev levels, the semantic-layers evidence), each opening with a plain-language verdict and citing the decisions it drove; data beside it in `assessments/data/` ([assessments/README.md](assessments/README.md) has the conventions) |
 | [plans/](plans/) | Gated work orders (grammar v2: [plans/README.md](plans/README.md)); `fathom verify` proves them, `fathom plans status` computes progress |
 | [guides/fleet-index.md](guides/fleet-index.md) | Fleet index, daemon ops, `task deploy`, dogfood discipline |
 

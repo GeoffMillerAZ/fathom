@@ -75,6 +75,7 @@ Would have caught it: test the source-availability flag against every derived pr
 Class: contract-broken (I38)
 Outcome: `TestObservatoryImpactCallLogUnavailableSuppressesDerivedCosts`, `TestObservatoryImpactCallLogUnavailableWithEmptyRowsUsesSourceReason` and readable-zero/positive canaries; response cost, ratio and tool rows retain exact escaped absence while independent schema measurements survive.
 
+- INC-25 2026-09-28 Wall-clock timing tests flipped under parallel worker load and killed three consecutive 40-minute pre-push gates (the RT-7 whole-hook bound, the CT-5 typed-load guard, the langbench throughput floor) → those three gates now judge CPU time, not wall clock (`07c634b8`, `e7f63140`, `008ac775`; owner decision D1) and agentic-kit's orchestration guidance names gates under load.
 - INC-18 2026-09-14 Fleet observation summaries collapsed missing coverage into zero or an exact subtotal; home also zero-filled unreadable call-log/catch evidence (contract-broken, I38). Render-level red tests caught it → shared app-owned coverage projection and `TestObservatoryObservationCoverage*` regressions; source semantics and wire model stay unchanged.
 
 - INC-16 2026-09-01 A third `package main` (`cmd/loctruth`) collapsed `fathom::main.run`, so

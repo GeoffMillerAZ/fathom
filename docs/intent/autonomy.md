@@ -36,8 +36,9 @@ Rationale: `agentic-kit/docs/project-intent/operating.md` §1.
   assess` (ADR-046; its `--dry-run` spends nothing and needs no ask), any compile of
   another service's layers (a dry run under-reported one compile 25× and $0.64).
 - Run a judgment-program bench that spends provider or agent budget (ADR-056): J0 and the I3 smoke test
-  (about $0.25 of provider spend), the level 10 cell ($90 to $360 of agent spend), and any later `ask` or
-  traversal bench. Enabling a new decision-port site in a repository's `[decide] sites` is the operator's call.
+  (about $0.25 of provider spend), the level 10 cell ($90 to $360 of agent spend), any later `ask` or
+  traversal bench, and the served-not-kept bench PR-M2 (ADR-057; about $76 of agent spend, 40 cells).
+  Enabling a new decision-port site in a repository's `[decide] sites` is the operator's call.
 - Add a dependency; bump the `agentic-kit` pin (then `task sync-kit`); change anything on
   the compatibility surface (`scope.md`).
 - Touch global agent configuration (`~/.claude`, `~/.codex`, `~/.agents`, `~/.fathom`)

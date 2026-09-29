@@ -12,9 +12,14 @@ provider. Beside `docs/plans/receipts.md` (RC-28, the handoff) and the continuit
 (`docs/design/continuity-threads.md`).
 
 Wave 3 (design section 3b, live maps as documentation for agents) is built only when live maps are promoted
-(XM-D1). Its rows name XM-D1 in `needs:` as the owner asked, and add XM-M2 and RT-M1, XM-D1's own trigger rows,
+(XM-D1). Its rows name XM-D1 in `needs:` as the owner asked, and add RT-M1, one of XM-D1's own trigger rows,
 because a deferred row satisfies a `needs:` edge by its disposition alone, so XM-D1 by itself would leave them
-eligible today.
+eligible today. They do not name XM-M2: XM-D1's trigger is RT-M1 PASS and either XM-M2 PASS or a named consumer
+of a non-handoff use case with its own bench metric (F50, amended 2026-09-29), because live maps' value (concern
+scopes, incident maps, structural claims, saved questions) does not depend on sub-agent re-derivation, so an
+XM-M1 KILL, after which XM-M2 never runs, must not close the route to them. Until G2-6 lands, a deferred XM-D1
+still satisfies the edge by disposition alone, so promoting XM-D1 (the F50 trigger), not the graph, is the gate:
+nobody starts wave 3 or wave 4 before it.
 
 ## Wave 1: is there waste to remove? (section 5)
 
@@ -44,9 +49,9 @@ eligible today.
 
 ## Wave 3: live maps as documentation for agents, only after live maps are promoted (section 3b)
 
-- [ ] Maps carry their reasons: each live map links the ADRs and rules governing its footprint, a deterministic join with obligations by scope, and a handoff delivers structure plus rationale {id: XM-17, symbol: mapRationale, package: internal/explmap, reachable_from: TestExpandMapCarriesGoverningADRsAndRules, needs: "XM-D1,XM-M2,responsible-tenant.md#RT-M1"}
-- [ ] Explainable membership: each live-map entry's why line is the query clause that selected it, computed and never authored {id: XM-18, symbol: entryWhyClause, package: internal/explmap, reachable_from: TestLiveMapEntryWhyIsSelectingClause, needs: "XM-D1,XM-M2,responsible-tenant.md#RT-M1"}
-- [ ] Structural claims become checkable: a sentence in a doc or an instruction file about structure is compiled into a live-map assertion as the config custodian's `structural_claim` concern kind, a changed map answer flags the sentence with `file:line` evidence, the compiled concern is proposed and never written by fathom, and a daemon that is down reads unable-to-check and never a violation {id: XM-19, symbol: checkStructuralClaim, package: internal/custodian, reachable_from: TestStructuralClaimFlagsSentenceWhenMapAnswerChanges, needs: "XM-D1,XM-M2,responsible-tenant.md#RT-M1"}
+- [ ] Maps carry their reasons: each live map links the ADRs and rules governing its footprint, a deterministic join with obligations by scope, and a handoff delivers structure plus rationale {id: XM-17, symbol: mapRationale, package: internal/explmap, reachable_from: TestExpandMapCarriesGoverningADRsAndRules, needs: "XM-D1,responsible-tenant.md#RT-M1"}
+- [ ] Explainable membership: each live-map entry's why line is the query clause that selected it, computed and never authored {id: XM-18, symbol: entryWhyClause, package: internal/explmap, reachable_from: TestLiveMapEntryWhyIsSelectingClause, needs: "XM-D1,responsible-tenant.md#RT-M1"}
+- [ ] Structural claims become checkable: a sentence in a doc or an instruction file about structure is compiled into a live-map assertion as the config custodian's `structural_claim` concern kind, a changed map answer flags the sentence with `file:line` evidence, the compiled concern is proposed and never written by fathom, and a daemon that is down reads unable-to-check and never a violation {id: XM-19, symbol: checkStructuralClaim, package: internal/custodian, reachable_from: TestStructuralClaimFlagsSentenceWhenMapAnswerChanges, needs: "XM-D1,responsible-tenant.md#RT-M1"}
 - [ ] Experiment: the custodian proposes replacing structural prose in CLAUDE.md and AGENTS.md with named map references, as a diff the owner accepts entry by entry, so instruction files shrink toward rules and reasons; fathom never applies it (vision 22 section 3b) {id: XM-20, symbol: proposeMapReferenceSwap, package: cmd/fathom, reachable_from: TestConfigProposeMapSwapOffersDiffNeverWrites, needs: "XM-19"}
 - [ ] (op) XM-M4: the instruction-file swap A/B on identical tasks, structural prose versus map references, with the bar fixed before the run: instruction-file bytes fall, structural questions are answered as accurately and tokens to proof are not worse, otherwise the prose stays {id: XM-M4, oracle: lexical, path: docs/bench/readings/exploration-maps/instruction-swap.md, pattern: "^XM-M4 verdict: (KEEP|DROP)", needs: "XM-20", weight: 3}
 - [ ] Experiment: a structural changelog per named live map, the entries that entered or left its membership since the last read, computed from the query re-run and the content-hash drift {id: XM-21, symbol: mapMembershipDiff, package: internal/explmap, reachable_from: TestMapMembershipDiffNamesEnteredAndLeft, needs: "XM-18"}
@@ -55,15 +60,16 @@ eligible today.
 
 ## Wave 4: concern scopes, only after live maps are promoted (section 3c); the incident rows moved (ADR-058)
 
-Built only when live maps are promoted (XM-D1). The root rows name XM-D1 in `needs:` and also XM-M2 and RT-M1, XM-D1's
-own trigger rows, for the same reason as wave 3: a deferred row satisfies a `needs:` edge by its disposition alone.
+Built only when live maps are promoted (XM-D1). The root rows name XM-D1 in `needs:` and also RT-M1, one of XM-D1's
+own trigger rows, for the same reason as wave 3 (and, like wave 3, not XM-M2: see above): a deferred row satisfies a
+`needs:` edge by its disposition alone until G2-6 lands, after which a deferred target blocks.
 The rows after them chain through the open rows above them, which stay unmet until proven.
 
 The incident rows (XM-26 to XM-30, XM-M6 and XM-M7) moved to `docs/plans/incident-maps.md` under ADR-058: an incident map
 is a committed declaration, not a live map, and its gate is IM-M0, IM-M2 and a named consumer rather than XM-D1. They
 are `[-]` here with their ids reserved; concern scopes (XM-23 to XM-25) are untouched.
 
-- [ ] Concern scope: the evidence contract gains an optional `scope` field, a live-map query a Review Kit concern pack declares, evaluated by fathom and served as a map whose entries carry the clause that selected them; a pack without the field is unchanged, and a daemon that is down reads unable-to-check, never an empty scope {id: XM-23, symbol: evaluateConcernScope, package: internal/explmap, reachable_from: TestEvaluateConcernScopeServesEntriesWithSelectingClause, needs: "XM-D1,XM-M2,responsible-tenant.md#RT-M1,XM-18"}
+- [ ] Concern scope: the evidence contract gains an optional `scope` field, a live-map query a Review Kit concern pack declares, evaluated by fathom and served as a map whose entries carry the clause that selected them; a pack without the field is unchanged, and a daemon that is down reads unable-to-check, never an empty scope {id: XM-23, symbol: evaluateConcernScope, package: internal/explmap, reachable_from: TestEvaluateConcernScopeServesEntriesWithSelectingClause, needs: "XM-D1,responsible-tenant.md#RT-M1,XM-18"}
 - [ ] Code that newly enters a concern's scope is named: the entries that entered since the last review come from the membership diff (XM-21), so a review covers current code, and a finding stays Review Kit's, never converted or judged by fathom (ADR-040) {id: XM-24, symbol: concernScopeEntered, package: internal/explmap, reachable_from: TestConcernScopeNamesEntriesSinceLastReview, needs: "XM-23,XM-21"}
 - [ ] A concern map plus a check is a standing property: a guard or an assertion evaluated when the map is served names the concern map as its scope and reports the entry and the clause that selected it, and a daemon that is down reads unable-to-check, never a violation {id: XM-25, symbol: checkConcernMap, package: internal/custodian, reachable_from: TestConcernMapCheckNamesEntryAndSelectingClause, needs: "XM-23,XM-19"}
 - [-] An incident map is a live map for a critical path that joins owners, the suspect list (commits in its footprint inside a window set on the map), the covering tests with their certificates and recent failures, the flags and configuration the footprint reads, linked findings and past incidents, and runbook and dashboard links held as data and never fetched {id: XM-26, disposition: refused, reason: "moved: incident maps are declarations, not a map kind (ADR-058); see incident-maps.md IM-8"}
@@ -76,7 +82,7 @@ are `[-]` here with their ids reserved; concern scopes (XM-23 to XM-25) are unto
 
 ## Deferred and refused (recorded so they are not re-proposed)
 
-- [-] Live maps (stored queries recomputed on read) that compose the same way (by reference, as a DAG, with the same lifetime rule: permanent only when named and used, idle unnamed maps decay) {id: XM-D1, disposition: deferred, reason: "the designed extension; storage stays in existing thread fields until RT-M1 reads PASS (R5)", trigger: "XM-M2 reads PASS and responsible-tenant.md#RT-M1 reads PASS"}
+- [-] Live maps (stored queries recomputed on read) that compose the same way (by reference, as a DAG, with the same lifetime rule: permanent only when named and used, idle unnamed maps decay) {id: XM-D1, disposition: deferred, reason: "the designed extension; storage stays in existing thread fields until RT-M1 reads PASS (R5)", trigger: "responsible-tenant.md#RT-M1 reads PASS and either XM-M2 reads PASS or a named consumer of a non-handoff use case has its own bench metric (F50, amended 2026-09-29: an XM-M1 KILL leaves live maps unaffected)"}
 - [-] Set algebra over maps (intersection, difference) {id: XM-D2, disposition: deferred, reason: "union covers the observed handoffs so far", trigger: "a real brief needs base minus what is already done (F44); dropped if union covers every observed handoff for 60 days"}
 - [-] `map show --for '<task>'`: one noul per entry on a map over budget {id: XM-D3, disposition: deferred, reason: "the SubagentStart input likely does not carry the sub-agent's prompt, and the planner already decided what matters", trigger: "XM-V1 finds the prompt in the hook input and a map exceeds its budget in practice"}
 - [-] Live maps query layers: a live map's selector may use layer claims and labels as predicates ("handlers where 'validates input' is no", "code governed by ADR-048 rules and touched by the language plan"), and an expensive judged column is computed only inside the maps that need it, not across the repository (design section 3, points 1 and 2) {id: XM-D4, disposition: deferred, reason: "needs live maps (XM-D1) and, for judged columns, a passed J0 and RT-M1 (R5)", trigger: "XM-D1's trigger fires; judged columns additionally need judged-predicates.md#JP-M1 to read PASS (F37)"}

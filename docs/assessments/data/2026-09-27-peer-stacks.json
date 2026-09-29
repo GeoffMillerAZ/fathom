@@ -1,0 +1,789 @@
+{
+  "tools": [
+    {
+      "name": "Graphify",
+      "category": "knowledge-graph-skill",
+      "language": "Python",
+      "runtime": "CPython 3.10+ (Claude Code skill, not a daemon)",
+      "storage": [
+        "none (in-memory NetworkX graph)",
+        "local files: graph.json, SHA256 file cache",
+        "optional: Neo4j via --neo4j cypher.txt export (not a live connection)"
+      ],
+      "parser": "tree-sitter (13 languages) for code; Claude vision/LLM used for docs/PDF/image concept extraction (not code)",
+      "embeddings": "graph embeddings only (graspologic/Leiden community detection, node2vec-style) -- no semantic text-embedding vector store; README states 'no vector store'",
+      "sidecars": [
+        "none (Claude Code itself is the LLM backend, invoked as a skill, not spawned)"
+      ],
+      "install": "pip install graphifyy (temp PyPI name) && graphify install; or manual curl of skill.md into ~/.claude/skills/",
+      "local": "yes -- fully local, 'no server'",
+      "licence": "Apache-2.0 (Graphify-Labs/graphify repo, 121,882 stars) vs MIT (pyproject.toml declares MIT) -- inconsistent between fork/mirror and origin",
+      "languages_claimed": "13 (py,ts,js,go,rs,java,c,cpp,rb,cs,kt,scala,php via tree-sitter grammar deps)",
+      "cross_service": "no -- general multimodal knowledge graph (code+docs+PDFs+images), not HTTP/service aware",
+      "deps_mapping": "yes for code (AST + call-graph pass) but not cross-service; primary value is cross-domain (code<->docs<->papers) linking",
+      "resource_complaints": "unverified -- no memory/RAM-titled issues found on origin repo in this pass",
+      "sources": [
+        "https://github.com/Graphify-Labs/graphify",
+        "https://github.com/safishamsi/graphify",
+        "https://raw.githubusercontent.com/Graphify-Labs/graphify/main/pyproject.toml",
+        "https://raw.githubusercontent.com/Graphify-Labs/graphify/main/README.md"
+      ]
+    },
+    {
+      "name": "CodeGraph",
+      "category": "code-graph-mcp",
+      "language": "TypeScript (npm package) + native Rust kernel (codegraph-kernel via napi-rs)",
+      "runtime": "Node.js, but ships a bundled self-contained runtime ('no Node.js required' via install.sh/install.ps1)",
+      "storage": [
+        "SQLite (better-sqlite3, src/db/schema.sql) with FTS5 full-text search"
+      ],
+      "parser": "tree-sitter: native Rust kernel compiled for 20 languages (one JS<->Rust boundary crossing per file), automatic per-file fallback to WASM (web-tree-sitter + tree-sitter-wasms) on unsupported platforms or syntax errors",
+      "embeddings": "no -- purely structural graph, no vector/semantic search found in deps",
+      "sidecars": [
+        "none -- self-contained binary; background native OS file-watcher (FSEvents/inotify/ReadDirectoryChangesW) for auto-sync, all in-process"
+      ],
+      "install": "curl install.sh / install.ps1 (bundled runtime) OR npm i -g @colbymchenry/codegraph; then `codegraph install` wires MCP into agents, `codegraph init` builds the graph per project",
+      "local": "yes -- '100% Local: No data leaves your machine. No API keys. No external services. SQLite database only'",
+      "licence": "MIT",
+      "languages_claimed": "20 native-Rust-kernel languages; 34 total shown in README language grid (adds ArkTS, VB.NET, CUDA, Objective-C, Metal, Svelte, Vue, Astro, Liquid, Pascal/Delphi, Nix, Erlang, CFML, COBOL, Solidity, Terraform/OpenTofu)",
+      "cross_service": "YES -- explicit 'Framework-aware Routes' feature: route nodes + handler edges across 17 web frameworks (Django/Flask/FastAPI/Express/NestJS/Laravel/Drupal/Rails/Spring/Play/Gin-chi-gorilla-mux/Axum-actix-Rocket/ASP.NET/Vapor/Astro) plus 'navigates' edges for router/screen flows, plus mixed iOS/React Native/Expo native<->JS bridge resolution",
+      "deps_mapping": "yes -- full symbol/call graph, blast-radius/impact analysis",
+      "resource_complaints": "GitHub issue #857 'memory leak[macOS M5]'",
+      "sources": [
+        "https://github.com/colbymchenry/codegraph",
+        "https://raw.githubusercontent.com/colbymchenry/codegraph/main/README.md",
+        "https://raw.githubusercontent.com/colbymchenry/codegraph/main/package.json",
+        "https://raw.githubusercontent.com/colbymchenry/codegraph/main/codegraph-kernel/Cargo.toml",
+        "https://github.com/colbymchenry/codegraph/issues/857"
+      ]
+    },
+    {
+      "name": "GitNexus",
+      "category": "code-graph-mcp",
+      "language": "TypeScript",
+      "runtime": "Node.js (CLI) / browser WASM (Web UI, client-side)",
+      "storage": [
+        "LadybugDB native (proprietary embedded graph DB, persistent) -- CLI mode",
+        "LadybugDB WASM (in-memory, per browser session) -- Web UI mode"
+      ],
+      "parser": "tree-sitter -- native bindings (CLI) or WASM (browser); several grammars (Dart, Proto, Swift, Kotlin) are vendored and cross-built as prebuilt native modules since upstream ships source only",
+      "embeddings": "opt-in local embeddings via @huggingface/transformers + onnxruntime-node, fetched on demand into ~/.gitnexus/embedding-runtime; optional CUDA GPU accel via NuGet onnxruntime-gpu; OFF by default",
+      "sidecars": [
+        "optional Node 'embedding-runtime' prefix (transformers.js + onnxruntime) when --embeddings used",
+        "optional `gitnexus serve` backend service (bridges CLI-indexed repos to the web UI, or hosted on Render)"
+      ],
+      "install": "npx gitnexus analyze && npx gitnexus setup; or npm install -g gitnexus; pnpm needs --allow-build for native addons (ladybugdb/core, tree-sitter)",
+      "local": "CLI: fully local ('Everything local, no network'); Web UI: browser-only client-side by default, OR proxies to a self-hosted/Render backend for larger repos",
+      "licence": "PolyForm Noncommercial 1.0.0 -- source-available, NOT OSI open source (restricts commercial use)",
+      "languages_claimed": "README roadmap checklist cites '14 Language Support' as a milestone; more grammars are vendored per install docs (Dart/Proto/Swift/Kotlin/etc.) -- exact current total unverified",
+      "cross_service": "YES -- dedicated `route_map` and `api_impact` MCP tools, Spring Actuator runtime-endpoint ingestion (beans/conditions/configprops), and AsyncAPI channel/broker modeling with explicit 2.x-vs-3.x direction-safety refusals -- one of the most extensive cross-service feature sets surveyed",
+      "deps_mapping": "yes -- dependency-aware knowledge graph, clustering, call chains, impact tool",
+      "resource_complaints": "issue #706 'Maximum call stack size exceeded when analyzing large Go codebase (~10K files)'; issue #1143 'gitnexus analyze always crashes at 60% progress'; issue #761 'Web UI hangs...server buffers entire response'; hosted-deploy docs state indexing is memory-bound (Render standard=2GB/pro=4GB RAM, OOMs on large repos)",
+      "sources": [
+        "https://github.com/abhigyanpatwari/GitNexus",
+        "https://raw.githubusercontent.com/abhigyanpatwari/GitNexus/main/README.md",
+        "https://github.com/abhigyanpatwari/GitNexus/issues/706",
+        "https://github.com/abhigyanpatwari/GitNexus/issues/1143",
+        "https://github.com/abhigyanpatwari/GitNexus/issues/761"
+      ]
+    },
+    {
+      "name": "codebase-memory-mcp",
+      "category": "code-graph-mcp",
+      "language": "Pure C ('no language runtime')",
+      "runtime": "native single static binary (macOS arm64/amd64, Linux arm64/amd64, Windows amd64)",
+      "storage": [
+        "SQLite (in-memory, RAM-first pipeline with LZ4 compression; memory released after indexing)"
+      ],
+      "parser": "tree-sitter, 162 vendored grammars compiled into the binary, plus a 'Hybrid LSP' semantic type-resolution layer for ~10-12 languages (Python, TS/JS/JSX/TSX, PHP, C#, Go, C, C++, Java, Kotlin, Rust, Perl)",
+      "embeddings": "no -- purely structural (tree-sitter + Hybrid LSP graph); arXiv preprint title is 'Tree-Sitter-Based Knowledge Graphs', no embeddings involved",
+      "sidecars": [
+        "per-language LSP servers spawned in-process/subprocess for the Hybrid-LSP-covered languages only"
+      ],
+      "install": "one-line curl install.sh / install.ps1 (downloads native binary + signed runtime assets); also Homebrew Formula and flake.nix",
+      "local": "yes -- '100% locally; your code never leaves your machine'",
+      "licence": "MIT",
+      "languages_claimed": "162 (tree-sitter parsing) / ~10-12 with Hybrid LSP semantic resolution",
+      "cross_service": "YES -- explicit 'cross-service HTTP linking' MCP tool, plus IaC graph nodes (Dockerfiles, Kubernetes manifests, Kustomize overlays) with cross-references",
+      "deps_mapping": "yes -- call chains, impact analysis, dead-code detection, ad hoc Cypher queries against the graph",
+      "resource_complaints": "unverified -- GitHub API rate limit was exhausted before a targeted issue search could be run; README itself only documents an antivirus false-positive concern, not a RAM complaint",
+      "sources": [
+        "https://github.com/DeusData/codebase-memory-mcp",
+        "https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/main/README.md",
+        "https://arxiv.org/abs/2603.27277"
+      ]
+    },
+    {
+      "name": "Serena",
+      "category": "lsp-mcp-toolkit",
+      "language": "Python",
+      "runtime": "CPython, typically invoked via uvx",
+      "storage": [
+        "none dedicated (stateless per session)",
+        "project 'memories' are plain markdown files with optional frontmatter, not a DB"
+      ],
+      "parser": "NONE -- no tree-sitter/compiler front-end; relies entirely on the Language Server Protocol via Serena's own 'SolidLSP' abstraction layer wrapping real language servers (pyright, gopls, rust-analyzer, jdtls, etc.) for 40+ languages",
+      "embeddings": "no -- an open feature request ('Semantic Memory Search', issue #994) is NOT implemented; retrieval is LSP symbol lookup",
+      "sidecars": [
+        "one LSP server subprocess PER configured language (pyright, gopls, rust-analyzer, etc.) -- one of the heaviest sidecar footprints surveyed"
+      ],
+      "install": "pip / uvx / pipx; alternative JetBrains-plugin backend instead of the LSP backend",
+      "local": "yes -- LSP servers run locally",
+      "licence": "MIT (SolidLSP component, per LICENSES/MIT.txt); overall repo license is per-component, GitHub API reports NOASSERTION at the repo level",
+      "languages_claimed": "40+ (via language-server backend)",
+      "cross_service": "no -- LSP-scoped to a single project/workspace; no HTTP-route or cross-service feature found",
+      "deps_mapping": "partial -- LSP gives symbol references/call hierarchy within a project, not an explicit persisted cross-repo dependency graph",
+      "resource_complaints": "issue #1937: find_referencing_symbols can silently return partial results while 'the project graph is still loading' (LSP indexing latency); no direct RAM/OOM issue surfaced in this pass",
+      "sources": [
+        "https://github.com/oraios/serena",
+        "https://raw.githubusercontent.com/oraios/serena/main/pyproject.toml",
+        "https://raw.githubusercontent.com/oraios/serena/main/README.md",
+        "https://github.com/oraios/serena/issues/1937"
+      ]
+    },
+    {
+      "name": "claude-mem",
+      "category": "agent-memory",
+      "language": "TypeScript/JavaScript",
+      "runtime": "Node >=20.12 or Bun >=1.1.31",
+      "storage": [
+        "SQLite (bundled: sessions, observations, summaries + FTS5 keyword search)",
+        "Chroma vector database (hybrid semantic search)"
+      ],
+      "parser": "none -- compresses Claude Code session transcripts with AI, not source-code ASTs",
+      "embeddings": "yes, via Chroma; specific backing embedding model not disclosed in files fetched (unverified)",
+      "sidecars": [
+        "Python process for Chroma vector search, auto-installed via `uv` (Python package manager) -- a Python sidecar spawned from a Node/TS-first tool"
+      ],
+      "install": "npm install -g claude-mem, or install via the Claude Code plugin marketplace",
+      "local": "yes -- local SQLite + local Chroma instance; no cloud dependency disclosed for storage (LLM compression calls go through Claude itself)",
+      "licence": "Apache-2.0",
+      "languages_claimed": "n/a (not a source-code parser)",
+      "cross_service": "no",
+      "deps_mapping": "no -- builds a session/memory graph, not a code dependency graph",
+      "resource_complaints": "unverified -- not searched in this pass",
+      "sources": [
+        "https://github.com/thedotmack/claude-mem",
+        "https://raw.githubusercontent.com/thedotmack/claude-mem/main/package.json",
+        "https://raw.githubusercontent.com/thedotmack/claude-mem/main/README.md"
+      ]
+    },
+    {
+      "name": "Claude OS (brobertsaz/claude-os)",
+      "category": "agent-memory",
+      "language": "Python 3.11/3.12",
+      "runtime": "Python backend + web frontend (specific web framework unverified)",
+      "storage": [
+        "SQLite with in-DB vector search ('Efficient vector search in SQLite' -- exact extension e.g. sqlite-vec unverified)"
+      ],
+      "parser": "none -- personal/team knowledge-base memory tool, not source-code AST parsing",
+      "embeddings": "yes -- Ollama local (default model nomic-embed-text) OR OpenAI cloud (text-embedding-3-small), user-selectable",
+      "sidecars": [
+        "Ollama server process (local daemon) when using the local embedding provider"
+      ],
+      "install": "pip / manual clone (exact packaged CLI install not confirmed this pass); also listed on the Smithery skill marketplace",
+      "local": "local-first, with an optional OpenAI cloud fallback",
+      "licence": "MIT",
+      "languages_claimed": "n/a",
+      "cross_service": "no",
+      "deps_mapping": "no",
+      "resource_complaints": "self-disclosed in README (not a GitHub issue): selective embedding (top 20% of files) vs full embedding is offered explicitly to trade off 'High Ollama load' against 'Minimal CPU/memory'",
+      "sources": [
+        "https://github.com/brobertsaz/claude-os",
+        "https://raw.githubusercontent.com/brobertsaz/claude-os/main/README.md"
+      ]
+    },
+    {
+      "name": "Context7",
+      "category": "docs-retrieval-mcp",
+      "language": "TypeScript (monorepo: MCP server, ctx7 CLI, SDK)",
+      "runtime": "Node.js >=18 client; backend is a closed, cloud-hosted service (mcp.context7.com)",
+      "storage": [
+        "unverified/undisclosed -- backend is a proprietary Upstash-hosted service; Upstash's own products are Redis/Vector-as-a-service so this is plausible but NOT confirmed in the public client repo"
+      ],
+      "parser": "n/a -- retrieves third-party library/package documentation, not the user's own codebase; no source parsing",
+      "embeddings": "yes (implied by 'up-to-date, version-specific documentation' semantic retrieval); backend embedding model undisclosed",
+      "sidecars": [
+        "none client-side -- all retrieval is a remote API call"
+      ],
+      "install": "npx ctx7 setup (installs an agent skill, or registers an MCP server pointing at https://mcp.context7.com/mcp)",
+      "local": "NO -- fundamentally a cloud service; only the client/CLI/SDK is open source",
+      "licence": "MIT (client/SDK/CLI only; backend proprietary)",
+      "languages_claimed": "n/a (documentation coverage spans many library ecosystems, not source languages)",
+      "cross_service": "no",
+      "deps_mapping": "no -- indexes third-party library docs, not the user's own repo's internal dependencies",
+      "resource_complaints": "not applicable -- thin client, no local indexing workload",
+      "sources": [
+        "https://github.com/upstash/context7",
+        "https://raw.githubusercontent.com/upstash/context7/master/package.json",
+        "https://raw.githubusercontent.com/upstash/context7/master/README.md"
+      ]
+    },
+    {
+      "name": "Aider (repo map)",
+      "category": "cli-agent",
+      "language": "Python",
+      "runtime": "CPython",
+      "storage": [
+        "diskcache (SQLite-backed local file cache, .aider.tags.cache.v4/) -- a memoized tags cache, not a queryable DB"
+      ],
+      "parser": "tree-sitter (via grep-ast's 'TSL pack') extracts per-file definition/reference tags; falls back to Pygments lexers when no tree-sitter grammar is available",
+      "embeddings": "no -- ranking uses a PageRank-style graph algorithm (networkx) over the tag graph, not semantic embeddings",
+      "sidecars": [
+        "none"
+      ],
+      "install": "pip install aider-chat / pipx / brew",
+      "local": "yes for repo-map construction; the LLM calls themselves may be cloud or local depending on configured model",
+      "licence": "Apache-2.0",
+      "languages_claimed": "broad tree-sitter grammar coverage via grep-ast's bundled tree-sitter-language-pack -- exact count unverified",
+      "cross_service": "no",
+      "deps_mapping": "yes but shallow -- a ranked map of definitions/references, recomputed/cached per session, not a persisted graph DB",
+      "resource_complaints": "issue #3899 'GitPython Memory Mapping Limitation Prevents Aider from Handling Large Git Repositories'",
+      "sources": [
+        "https://github.com/Aider-AI/aider",
+        "https://raw.githubusercontent.com/Aider-AI/aider/main/aider/repomap.py",
+        "https://github.com/Aider-AI/aider/issues/3899"
+      ]
+    },
+    {
+      "name": "OpenCode",
+      "category": "cli-agent",
+      "language": "TypeScript/Bun (core, server, cli, sdk packages); a separate Go-based TUI client is part of the project's historical design (not directly re-confirmed as still-current in this pass)",
+      "runtime": "Bun",
+      "storage": [
+        "SQLite via Drizzle ORM (effect-drizzle-sqlite, effect-sqlite-node packages) for local session/state persistence"
+      ],
+      "parser": "unverified in depth -- no dedicated tree-sitter/code-graph package found in the top-level packages listing; likely relies on per-language LSP servers for code intelligence rather than a custom graph",
+      "embeddings": "unverified -- not found in this pass",
+      "sidecars": [
+        "per-language LSP servers spawned on demand (typical of LSP-based agents, not directly confirmed)",
+        "'containers' package suggests optional sandboxed execution support"
+      ],
+      "install": "curl install script / npm / brew (per README badges, not re-verified line-by-line this pass)",
+      "local": "local-first CLI/TUI; ships an 'enterprise' package implying an optional hosted/team tier",
+      "licence": "MIT",
+      "languages_claimed": "n/a (LSP-based; breadth depends on configured language servers)",
+      "cross_service": "unverified",
+      "deps_mapping": "unverified",
+      "resource_complaints": "unverified -- search was too noisy to isolate a specific RAM complaint in this pass",
+      "sources": [
+        "https://github.com/anomalyco/opencode (formerly sst/opencode)"
+      ]
+    },
+    {
+      "name": "Cline",
+      "category": "ide-agent",
+      "language": "TypeScript",
+      "runtime": "VS Code extension host (Node.js); also distributed as an SDK/CLI per current repo description",
+      "storage": [
+        "unverified/not found in root package.json this pass -- no sqlite/lancedb dependency visible at the repo root"
+      ],
+      "parser": "reported in community write-ups (historical) to use tree-sitter for a 'list_code_definition_names' file-overview tool; NOT confirmed in the current root package.json in this pass -- mark unverified for the current release",
+      "embeddings": "not found in root dependencies",
+      "sidecars": [
+        "can spawn user-configured MCP servers; no default sidecar found"
+      ],
+      "install": "VS Code Marketplace (extension); npm (SDK/CLI)",
+      "local": "hybrid -- extension runs locally, LLM calls go to whichever provider is configured (cloud APIs or local Ollama)",
+      "licence": "Apache-2.0",
+      "languages_claimed": "n/a",
+      "cross_service": "unverified",
+      "deps_mapping": "unverified",
+      "resource_complaints": "unverified -- not searched in this pass",
+      "sources": [
+        "https://github.com/cline/cline",
+        "https://raw.githubusercontent.com/cline/cline/main/package.json"
+      ]
+    },
+    {
+      "name": "Continue",
+      "category": "ide-agent",
+      "language": "TypeScript",
+      "runtime": "Node.js (VS Code / JetBrains extension host)",
+      "storage": [
+        "SQLite (sqlite3, FTS full-text index / metadata)",
+        "LanceDB (LanceDbIndex.ts, embedded vector DB for @codebase semantic retrieval)"
+      ],
+      "parser": "tree-sitter via web-tree-sitter + tree-sitter-wasms (WASM) for code chunking (core/indexing/chunk)",
+      "embeddings": "yes -- local via @xenova/transformers + onnxruntime (in-process ONNX models), or configurable cloud providers (OpenAI, Voyage, etc.)",
+      "sidecars": [
+        "none required for local embeddings (ONNX runs in-process); optional external API calls if a cloud embedding provider is configured"
+      ],
+      "install": "VS Code / JetBrains marketplace extension; core also usable as an npm library",
+      "local": "hybrid/local-first -- indexing and embeddings can run fully locally, or point at cloud LLM/embedding providers",
+      "licence": "Apache-2.0",
+      "languages_claimed": "n/a (chunking works across common languages via tree-sitter-wasms grammars; exact count unverified)",
+      "cross_service": "unverified",
+      "deps_mapping": "partial -- codebase retrieval via embeddings + full-text/tree-sitter chunks, not an explicit call/dependency graph",
+      "resource_complaints": "issue #1318 'High CPU and Memory Accumulation Until Crash' (IntelliJ); issue #8452 'implement Gson singleton service to reduce memory allocation'",
+      "sources": [
+        "https://github.com/continuedev/continue",
+        "https://raw.githubusercontent.com/continuedev/continue/main/core/package.json",
+        "https://github.com/continuedev/continue/issues/1318",
+        "https://github.com/continuedev/continue/issues/8452"
+      ]
+    },
+    {
+      "name": "Spec Kit",
+      "category": "spec-driven-dev",
+      "language": "Python",
+      "runtime": "CPython 3.11+, uv",
+      "storage": [
+        "none (markdown/template files only)"
+      ],
+      "parser": "none -- template/process scaffolding (SDD, bug-fixing, idea-assessment) executed via slash-commands in an external coding agent",
+      "embeddings": "no",
+      "sidecars": [
+        "none -- delegates all reasoning to whichever coding agent (Claude Code, Copilot, Gemini CLI, etc.) is already running"
+      ],
+      "install": "uvx / pip",
+      "local": "yes -- fully local (just files + prompts)",
+      "licence": "MIT",
+      "languages_claimed": "n/a",
+      "cross_service": "no",
+      "deps_mapping": "no",
+      "resource_complaints": "not applicable -- no indexing workload",
+      "sources": [
+        "https://github.com/github/spec-kit",
+        "https://raw.githubusercontent.com/github/spec-kit/main/README.md"
+      ]
+    },
+    {
+      "name": "OpenSpec",
+      "category": "spec-driven-dev",
+      "language": "TypeScript",
+      "runtime": "Node.js",
+      "storage": [
+        "none (local markdown/JSON-schema spec files under an openspec/ directory)"
+      ],
+      "parser": "none -- spec-driven templates + CLI validation of spec structure, not source-code ASTs",
+      "embeddings": "no",
+      "sidecars": [
+        "none"
+      ],
+      "install": "npm (@fission-ai/openspec), pnpm",
+      "local": "yes -- fully local",
+      "licence": "MIT",
+      "languages_claimed": "n/a",
+      "cross_service": "no",
+      "deps_mapping": "no",
+      "resource_complaints": "not applicable",
+      "sources": [
+        "https://github.com/Fission-AI/OpenSpec",
+        "https://raw.githubusercontent.com/Fission-AI/OpenSpec/main/package.json"
+      ]
+    },
+    {
+      "name": "Task Master",
+      "category": "task-management",
+      "language": "JavaScript/TypeScript",
+      "runtime": "Node.js",
+      "storage": [
+        "local JSON/markdown task files (.taskmaster/) by default",
+        "optional Supabase (Postgres, cloud) for hosted/team mode"
+      ],
+      "parser": "none -- task/PRD management; reads code context via the configured LLM, not a static parser",
+      "embeddings": "not found in dependency list",
+      "sidecars": [
+        "none required locally; bundles an MCP server (fastmcp) and a local API server (express)"
+      ],
+      "install": "npm (task-master-ai), npx",
+      "local": "local-first, with optional Supabase cloud sync",
+      "licence": "MIT",
+      "languages_claimed": "n/a",
+      "cross_service": "no",
+      "deps_mapping": "no -- dependency graph is between *tasks*, not code",
+      "resource_complaints": "not found/applicable in this pass",
+      "sources": [
+        "https://github.com/eyaltoledano/claude-task-master",
+        "https://raw.githubusercontent.com/eyaltoledano/claude-task-master/main/package.json",
+        "https://raw.githubusercontent.com/eyaltoledano/claude-task-master/main/LICENSE"
+      ]
+    },
+    {
+      "name": "Beads",
+      "category": "issue-tracker-agent-memory",
+      "language": "Go",
+      "runtime": "native compiled binary",
+      "storage": [
+        "Dolt (versioned, git-like SQL database; speaks the MySQL wire protocol via go-sql-driver/mysql) -- primary, per README ('powered by Dolt')",
+        "mattn/go-sqlite3 dependency present too (a lighter local-only backend option is proposed in-repo: PROPOSAL-pluggable-storage-backends.md)"
+      ],
+      "parser": "none -- issue/task tracker, not a code parser",
+      "embeddings": "no",
+      "sidecars": [
+        "none required; calls anthropic-sdk-go in-process for AI-assisted features (e.g. `bd remember`), not a spawned sidecar"
+      ],
+      "install": "curl install script (system-wide binary), npm (@beads/bd), pip (beads-mcp)",
+      "local": "local-first with git-like federation (`bd dolt push/pull` to sync across machines/agents) -- not a hosted SaaS requirement",
+      "licence": "MIT",
+      "languages_claimed": "n/a",
+      "cross_service": "no",
+      "deps_mapping": "yes, but of *issues/tasks* (a dependency-aware issue graph), not source code",
+      "resource_complaints": "not found/applicable in this pass",
+      "sources": [
+        "https://github.com/gastownhall/beads (redirect target of github.com/steveyegge/beads)",
+        "https://raw.githubusercontent.com/gastownhall/beads/main/go.mod",
+        "https://raw.githubusercontent.com/gastownhall/beads/main/README.md"
+      ]
+    },
+    {
+      "name": "Mem0",
+      "category": "agent-memory",
+      "language": "Python",
+      "runtime": "CPython",
+      "storage": [
+        "Qdrant (default/required dependency, qdrant-client)",
+        "optional extras: Chroma, pgvector (vecs), Redis, Elasticsearch, Pinecone, Weaviate, Milvus, MongoDB, Cassandra, Azure AI Search, Faiss, and more",
+        "SQLAlchemy for history/metadata"
+      ],
+      "parser": "n/a -- general agent-memory layer, not code-specific",
+      "embeddings": "yes -- OpenAI by default, pluggable to many other providers",
+      "sidecars": [
+        "none required by the library itself; connects to whichever external vector-DB service is configured (which may be a local Docker container or a cloud service, user's choice)"
+      ],
+      "install": "pip install mem0ai; also ships an 'OpenMemory' packaged app/plugin",
+      "local": "hybrid -- fully local possible (local Qdrant + local embedding model), but defaults lean cloud (OpenAI embeddings)",
+      "licence": "Apache-2.0",
+      "languages_claimed": "n/a",
+      "cross_service": "no",
+      "deps_mapping": "no -- semantic memory, not a code dependency graph",
+      "resource_complaints": "not found/applicable in this pass (memory-titled issues found were feature requests, not RAM complaints)",
+      "sources": [
+        "https://github.com/mem0ai/mem0",
+        "https://raw.githubusercontent.com/mem0ai/mem0/main/pyproject.toml"
+      ]
+    },
+    {
+      "name": "Graphiti",
+      "category": "agent-memory-graph",
+      "language": "Python",
+      "runtime": "CPython",
+      "storage": [
+        "Neo4j (default/required dependency, neo4j>=5.26.0)",
+        "optional: FalkorDB, Kuzu (marked deprecated/unmaintained upstream in pyproject), Amazon Neptune"
+      ],
+      "parser": "n/a -- temporal knowledge-graph library for agent memory, not code-specific",
+      "embeddings": "yes -- OpenAI by default (openai is a core dependency), pluggable to Anthropic/Groq/Google Gemini/Voyage AI/sentence-transformers/GLiNER2",
+      "sidecars": [
+        "requires a running Neo4j (or FalkorDB/etc.) server process -- typically Docker"
+      ],
+      "install": "pip install graphiti-core",
+      "local": "hybrid -- can run fully local (local Neo4j + local sentence-transformers embeddings) but defaults assume OpenAI cloud + a Neo4j server",
+      "licence": "Apache-2.0",
+      "languages_claimed": "n/a",
+      "cross_service": "no",
+      "deps_mapping": "no -- entity/fact temporal graph, not code",
+      "resource_complaints": "issue #992 'OOM Crash: build_communities Executes N Separate Queries Causing Process Death on Large Graphs'",
+      "sources": [
+        "https://github.com/getzep/graphiti",
+        "https://raw.githubusercontent.com/getzep/graphiti/main/pyproject.toml",
+        "https://github.com/getzep/graphiti/issues/992"
+      ]
+    },
+    {
+      "name": "Zep",
+      "category": "agent-memory-graph-saas",
+      "language": "unverified (managed service; server not open-source, client SDKs are)",
+      "runtime": "cloud service",
+      "storage": [
+        "'Konig' -- Zep's own proprietary managed graph-database service (per Zep/Graphiti docs: 'Zep runs on Konig, its graph database service'), distinct from OSS Graphiti's Neo4j/FalkorDB/Neptune backends"
+      ],
+      "parser": "n/a",
+      "embeddings": "yes, pluggable (OpenAI, Azure OpenAI, Gemini, Anthropic per docs) -- no stated default",
+      "sidecars": [
+        "n/a -- fully managed SaaS; BYOC (bring-your-own-cloud) option exists for enterprise self-hosting"
+      ],
+      "install": "SaaS signup / API; BYOC deployment for enterprise",
+      "local": "NO -- cloud SaaS by design ('the unified context layer for enterprise data'); the underlying Graphiti library is separately self-hostable",
+      "licence": "proprietary/commercial managed service; the underlying open-source Graphiti library is Apache-2.0",
+      "languages_claimed": "n/a",
+      "cross_service": "no",
+      "deps_mapping": "no",
+      "resource_complaints": "not applicable -- opaque managed service, no public issue tracker for internals",
+      "sources": [
+        "https://help.getzep.com/graphiti/graphiti/overview",
+        "https://www.getzep.com"
+      ]
+    },
+    {
+      "name": "Letta",
+      "category": "stateful-agent-platform",
+      "language": "TypeScript (current letta-code); the retired V1 API server (archive branch) was Python",
+      "runtime": "Node.js (npm install -g @letta-ai/letta-code)",
+      "storage": [
+        "unverified for the current TypeScript codebase in this pass",
+        "historical V1 (Python, now archived) used Postgres for agent state + a pluggable vector store"
+      ],
+      "parser": "n/a -- stateful-agent memory platform, not code-specific",
+      "embeddings": "unverified for the current version (V1 used pluggable embedding providers)",
+      "sidecars": [
+        "none confirmed; can run `letta server` locally, or use hosted Letta Cloud for cross-device persistence"
+      ],
+      "install": "npm install -g @letta-ai/letta-code",
+      "local": "hybrid -- local terminal UI/server, or Letta Cloud for keeping memory/identity available across machines",
+      "licence": "Apache-2.0",
+      "languages_claimed": "n/a",
+      "cross_service": "no",
+      "deps_mapping": "no",
+      "resource_complaints": "issue #1813 'App: 100GB+ memory spike and crash on macOS with multiple conversations'; issue #259 'Memory leak'",
+      "sources": [
+        "https://github.com/letta-ai/letta",
+        "https://github.com/letta-ai/letta-code",
+        "https://github.com/letta-ai/letta-code/issues/1813",
+        "https://github.com/letta-ai/letta-code/issues/259"
+      ]
+    },
+    {
+      "name": "qmd",
+      "category": "unverified",
+      "language": "unverified",
+      "runtime": "unverified",
+      "storage": [
+        "unverified"
+      ],
+      "parser": "unverified",
+      "embeddings": "unverified",
+      "sidecars": [
+        "unverified"
+      ],
+      "install": "unverified",
+      "local": "unverified",
+      "licence": "unverified",
+      "languages_claimed": "unverified",
+      "cross_service": "unverified",
+      "deps_mapping": "unverified",
+      "resource_complaints": "unverified",
+      "resource_note": "Could not conclusively identify a standalone 'qmd' repository. It surfaced only as a companion CLI referenced by another project (martinj/sdi: 'search it with qmd') with no matching dedicated repo found via GitHub search in this pass. All fields unverified/ambiguous.",
+      "sources": [
+        "https://github.com/martinj/sdi (indirect mention only, not qmd's own repo)"
+      ]
+    },
+    {
+      "name": "codebase-memory (generic term) / see codebase-memory-mcp above",
+      "category": "see-above",
+      "language": "n/a",
+      "runtime": "n/a",
+      "storage": [],
+      "parser": "n/a",
+      "embeddings": "n/a",
+      "sidecars": [],
+      "install": "n/a",
+      "local": "n/a",
+      "licence": "n/a",
+      "languages_claimed": "n/a",
+      "cross_service": "n/a",
+      "deps_mapping": "n/a",
+      "resource_complaints": "n/a -- the task's 'codebase-memory (codebase-memory-mcp)' entry is filed above as 'codebase-memory-mcp' (DeusData/codebase-memory-mcp), the clear GitHub match for that name",
+      "sources": []
+    },
+    {
+      "name": "PR-Agent (Qodo)",
+      "category": "pr-review-agent",
+      "language": "Python",
+      "runtime": "CPython >=3.12",
+      "storage": [
+        "none -- stateless, reviews a diff per invocation; no DB found in dependencies"
+      ],
+      "parser": "none dedicated -- sends diffs/context directly to an LLM (via litellm, multi-provider) for review generation; no AST/tree-sitter parsing found",
+      "embeddings": "not found in current dependencies (no vector-store packages present)",
+      "sidecars": [
+        "none; runs as CLI, GitHub Action, or a FastAPI webhook server (self-hosted or Docker)"
+      ],
+      "install": "pip install pr-agent, Docker image, GitHub/GitLab/Bitbucket/Azure DevOps app marketplace listings",
+      "local": "hybrid -- the tool runs locally/self-hosted or in CI, but always calls a cloud LLM API unless pointed at a local model via litellm",
+      "licence": "MIT -- now a community-run fork (github.com/qodo-ai/pr-agent redirects to github.com/the-pr-agent/pr-agent; README explicitly states 'This project is not the Qodo free tier')",
+      "languages_claimed": "n/a (language-agnostic diff review)",
+      "cross_service": "no",
+      "deps_mapping": "no",
+      "resource_complaints": "not found/applicable -- stateless, low resource footprint by design",
+      "sources": [
+        "https://github.com/qodo-ai/pr-agent",
+        "https://raw.githubusercontent.com/qodo-ai/pr-agent/main/pyproject.toml"
+      ]
+    },
+    {
+      "name": "Sourcegraph (Cody/Amp/SCIP)",
+      "category": "code-search-platform",
+      "language": "Sourcegraph core: Go (per the frozen sourcegraph/sourcegraph-public-snapshot mirror); Cody: TypeScript (cody-public-snapshot mirror); Amp: unknown/closed-source; SCIP: Go (spun out to its own org)",
+      "runtime": "Sourcegraph: self-hosted Docker/Kubernetes or cloud SaaS; Cody: IDE extension + cloud API; Amp: closed-source CLI, cloud-backed",
+      "storage": [
+        "Sourcegraph (general product knowledge, not re-verified this pass due to GitHub API rate-limit): Postgres (metadata/config), Zoekt (Go, trigram-index code search), blobstore for large objects",
+        "precise code intel via SCIP indexes generated by per-language indexers that often shell out to the real compiler/typechecker (e.g. scip-typescript wraps tsc, scip-java wraps javac/Maven/Gradle)",
+        "Amp: unverified/closed-source",
+        "SCIP itself: a protocol/schema, not a storage engine -- storage is up to the consumer"
+      ],
+      "parser": "varies by SCIP indexer (compiler-based for typed languages, tree-sitter-based for some); Sourcegraph's own code-search (Zoekt) is trigram-based, not AST-based",
+      "embeddings": "Cody historically used embeddings for codebase context in some configurations; not re-verified in this pass",
+      "sidecars": [
+        "per-language SCIP indexer processes (scip-typescript, scip-java, etc.) run out-of-band to produce upload artifacts"
+      ],
+      "install": "Sourcegraph: Docker/Kubernetes self-host or SaaS; Cody: IDE extension; Amp: CLI binary download",
+      "local": "hybrid -- Sourcegraph can be self-hosted, but the actively developed product line is cloud-first; Amp is cloud-backed and closed-source",
+      "licence": "unverified/rate-limited this pass for the live product's current exact license; the public GitHub mirrors found are 'public-snapshot' repos (sourcegraph/sourcegraph-public-snapshot, 10,298 stars; sourcegraph/cody-public-snapshot, 3,805 stars), implying the actively developed source is no longer developed fully in the open; SCIP itself now lives independently at scip-code/scip (Go, 813 stars)",
+      "languages_claimed": "broad (dozens, via SCIP indexers per language) -- exact count unverified",
+      "cross_service": "cross-repo/cross-service code search and navigation is Sourcegraph's core value proposition, but no HTTP-route-specific feature (unlike CodeGraph/codebase-memory-mcp/GitNexus) was confirmed -- unverified in detail",
+      "deps_mapping": "yes -- cross-repo/cross-service code navigation is the core product",
+      "resource_complaints": "not searched this pass due to GitHub API rate-limit exhaustion; unverified",
+      "sources": [
+        "https://github.com/sourcegraph/sourcegraph-public-snapshot",
+        "https://github.com/sourcegraph/cody-public-snapshot",
+        "https://github.com/scip-code/scip",
+        "https://ampcode.com/how-to-build-an-agent"
+      ]
+    },
+    {
+      "name": "Augment Context Engine",
+      "category": "context-engine-saas",
+      "language": "unverified (proprietary, closed-source)",
+      "runtime": "cloud service (indexing described as running server-side; client is an IDE extension)",
+      "storage": [
+        "undisclosed"
+      ],
+      "parser": "undisclosed -- marketing describes 'semantic code indexing' and understanding 'relationships between hundreds of thousands of files', not a specific method",
+      "embeddings": "yes (implied by 'semantic indexing'), model undisclosed",
+      "sidecars": [
+        "undisclosed"
+      ],
+      "install": "IDE extension (VS Code, JetBrains) with account/API key; cloud-authenticated",
+      "local": "NO -- cloud-based context engine; codebase is indexed server-side per public description",
+      "licence": "proprietary/commercial, closed-source",
+      "languages_claimed": "undisclosed",
+      "cross_service": "claimed ('service dependencies and connections') but no technical detail published",
+      "deps_mapping": "claimed but mechanism undisclosed",
+      "resource_complaints": "not applicable -- no local indexing workload disclosed",
+      "sources": [
+        "https://www.augmentcode.com/product/context-engine"
+      ]
+    },
+    {
+      "name": "ast-grep",
+      "category": "structural-search-lint",
+      "language": "Rust",
+      "runtime": "native binary",
+      "storage": [
+        "none"
+      ],
+      "parser": "tree-sitter (structural AST search/lint/rewrite); ships its own LSP server crate (ast-grep-lsp) for editor integration",
+      "embeddings": "no",
+      "sidecars": [
+        "none -- the LSP crate is itself the tool acting as an LSP server, not an external spawned process"
+      ],
+      "install": "npm, cargo, pip, brew, or prebuilt binary download",
+      "local": "yes -- fully local",
+      "licence": "MIT",
+      "languages_claimed": "broad tree-sitter grammar coverage (dozens) -- exact count unverified this pass",
+      "cross_service": "no",
+      "deps_mapping": "no -- structural search/lint tool, not a persisted dependency graph",
+      "resource_complaints": "issue #2741 'Bound the outline file queue to prevent memory spikes under parallel walk'",
+      "sources": [
+        "https://github.com/ast-grep/ast-grep",
+        "https://raw.githubusercontent.com/ast-grep/ast-grep/main/Cargo.toml",
+        "https://github.com/ast-grep/ast-grep/issues/2741"
+      ]
+    },
+    {
+      "name": "ctags (universal-ctags)",
+      "category": "symbol-indexer",
+      "language": "C",
+      "runtime": "native binary",
+      "storage": [
+        "none -- writes a flat 'tags' file"
+      ],
+      "parser": "hand-written per-language regex/heuristic parsers (NOT tree-sitter, NOT a compiler front-end, NOT LSP) -- the classic approach predating all the above",
+      "embeddings": "no",
+      "sidecars": [
+        "none"
+      ],
+      "install": "brew, apt/dnf, source build",
+      "local": "yes",
+      "licence": "GPL-2.0",
+      "languages_claimed": "140+ languages via built-in parsers (long-standing public claim; exact current count unverified this pass)",
+      "cross_service": "no",
+      "deps_mapping": "no -- flat symbol index, not a call/dependency graph",
+      "resource_complaints": "none found/applicable -- lightweight by design",
+      "sources": [
+        "https://github.com/universal-ctags/ctags"
+      ]
+    },
+    {
+      "name": "Semgrep",
+      "category": "static-analysis",
+      "language": "OCaml (core pattern-matching engine) + Python (CLI wrapper)",
+      "runtime": "native OCaml binary invoked by the Python CLI",
+      "storage": [
+        "none (stateless per-scan)"
+      ],
+      "parser": "per-language parsers (many via tree-sitter, some custom) converted into Semgrep's own 'Generic AST' for pattern matching -- not a compiler/typechecker and not LLM-based",
+      "embeddings": "no",
+      "sidecars": [
+        "none for local scanning; optional Semgrep AppSec Platform (cloud) for rule management/PR comments, not required for OSS CLI use"
+      ],
+      "install": "pip install semgrep, brew, Docker image",
+      "local": "yes for OSS CLI scanning; the cloud AppSec Platform tier is separate/optional",
+      "licence": "LGPL-2.1",
+      "languages_claimed": "30+ languages (well-known public claim; exact current count unverified this pass)",
+      "cross_service": "no",
+      "deps_mapping": "no -- pattern-based static analysis, not a dependency/call graph",
+      "resource_complaints": "issue #5172 'Improve Semgrep memory consumption'; issue #10044 'LOG_LEVEL variable causing high memory usage / process killed'",
+      "sources": [
+        "https://github.com/semgrep/semgrep",
+        "https://github.com/semgrep/semgrep/issues/5172",
+        "https://github.com/semgrep/semgrep/issues/10044"
+      ]
+    },
+    {
+      "name": "CodeQL",
+      "category": "static-analysis-security",
+      "language": "the github/codeql repo itself is the query-library/docs repo (GitHub labels it language 'CodeQL', i.e. .ql/.qll files); the actual extraction/evaluation engine ships as a SEPARATE closed-source CLI, historically implemented in OCaml + C++",
+      "runtime": "native CodeQL CLI binary (closed-source) + per-language extractors that hook into each language's real build/compiler (javac, csc, a C/C++ compiler shim, etc.)",
+      "storage": [
+        "a 'CodeQL database' -- a compiled relational representation (TRAP files + relational store) produced by the extractor, queried via the QL Datalog-like language; not a general-purpose DB like Postgres/SQLite"
+      ],
+      "parser": "compiler-integrated extraction (NOT tree-sitter, NOT a generic AST, NOT an LSP) -- the key differentiator from every other tool in this survey",
+      "embeddings": "no",
+      "sidecars": [
+        "none beyond the extractor invoking the real language toolchain during a build"
+      ],
+      "install": "CodeQL CLI download (GitHub-distributed binary) + github/codeql query packs via the CLI's pack manager; VS Code extension for interactive query authoring",
+      "local": "yes, runs locally (CLI) or as part of GitHub's cloud code-scanning product",
+      "licence": "MIT for the github/codeql queries/libraries repo; the CLI extractor/evaluator engine itself is proprietary/closed-source, governed by a separate CodeQL Terms of Service",
+      "languages_claimed": "~10-12 (C/C++, C#, Go, Java/Kotlin, JS/TS, Python, Ruby, Rust, Swift per GitHub's supported-languages docs; exact current count unverified this pass)",
+      "cross_service": "no -- single-codebase security/quality analysis, not cross-service route mapping",
+      "deps_mapping": "yes, but for security dataflow (taint tracking through call/data paths), not general dependency/HTTP mapping",
+      "resource_complaints": "issue #16780 'Don't divide CODEQL_RAM in half'; issue #19374 '[JAVA][GRADLE] OOM Issue with GitHub Autobuilder for Kotlin'; issue #14138 'SIGSEGV (code 134) during Finalizing database step'",
+      "sources": [
+        "https://github.com/github/codeql",
+        "https://github.com/github/codeql/issues/16780",
+        "https://github.com/github/codeql/issues/19374",
+        "https://github.com/github/codeql/issues/14138"
+      ]
+    },
+    {
+      "name": "GitHub stack-graphs",
+      "category": "name-resolution-library",
+      "language": "Rust",
+      "runtime": "library (Rust crate), not a standalone end-user CLI/daemon -- consumed by other tools (e.g. GitHub's own precise-code-navigation product)",
+      "storage": [
+        "none built into the OSS crates themselves (in-memory graph construction); persistence is left to the consumer"
+      ],
+      "parser": "tree-sitter-stack-graphs bridges tree-sitter parse trees into stack-graph name-binding rules (per-language .tsg rule files in the languages/ dir); resolution itself uses the stack-graphs algorithm, a graph-based, LSP-independent name/scope-resolution technique",
+      "embeddings": "no",
+      "sidecars": [
+        "none -- pure library"
+      ],
+      "install": "Cargo (Rust crate dependency) -- not an end-user install",
+      "local": "yes -- runs wherever its host process runs",
+      "licence": "dual MIT/Apache-2.0",
+      "languages_claimed": "a handful of languages/ configs shipped in-repo (exact count unverified this pass); used most prominently for Python on github.com's own code navigation",
+      "cross_service": "no",
+      "deps_mapping": "yes, for cross-file/cross-module name resolution within a single language's semantics (the core stack-graphs use case), not HTTP/service mapping",
+      "resource_complaints": "none found/applicable -- library, not an end-user tool with its own issue reports of this kind",
+      "sources": [
+        "https://github.com/github/stack-graphs"
+      ]
+    }
+  ],
+  "rust_note": "Yes, Rust is a real and growing choice among code-intel peers, though not universal. Confirmed in this survey: ast-grep (core+LSP crate), CodeGraph's parsing kernel (codegraph-kernel, via napi-rs, with automatic WASM/JS fallback), GitHub's stack-graphs (+tree-sitter-stack-graphs), and stack-graphs powers parts of github.com's own precise code navigation. Zed editor (not in this survey's tool list but the standard reference point) is written in Rust for its GPUI/editor core. Published advantages cited by these projects are consistent rather than benchmarked head-to-head against Go: (1) native speed with no GC pauses for parse-heavy hot loops (ast-grep, codegraph-kernel's stated design goal of 'one JS boundary crossing per file' to avoid marshalling overhead), (2) memory-safety without a runtime/GC, letting a Rust core embed inside a JS/Node host as a napi addon (codegraph-kernel) or inside any host process as a library (stack-graphs) rather than needing its own process, and (3) LTO+single-codegen-unit release builds (both ast-grep's and codegraph-kernel's Cargo.toml set lto=true) as a common perf lever. None of the sources fetched in this pass published a direct Rust-vs-Go microbenchmark; the advantage claims found are architectural/qualitative, not measured comparisons. Fathom's own choice (pure Go + tree-sitter-via-wazero/WASM) sidesteps the CGO/native-toolchain distribution cost that both CodeGraph (ships a Rust napi addon with WASM fallback) and GitNexus (needs pnpm --allow-build / a C++ toolchain for some native grammars) explicitly have to solve for. Sources: https://github.com/ast-grep/ast-grep (Cargo.toml), https://github.com/colbymchenry/codegraph (codegraph-kernel/Cargo.toml, README 'Built for speed - the Rust kernel'), https://github.com/github/stack-graphs.",
+  "fetched": "2026-09-27"
+}

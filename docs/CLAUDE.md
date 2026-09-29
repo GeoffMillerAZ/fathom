@@ -78,5 +78,11 @@ stray .md file there. `docs/plans/archive/` is out of gate scope. Essentials:
   `instrument --adoption`). `docs/dogfood-observations.md` is frozen as the
   narrative record (O1–O29; no new entries; its ids stay historical). Close an
   observation via `CHANGELOG.md` when fixed (ADR-026 decision, 2026-08-26).
+- Every design, vision and ADR carries a "Jev, weighed" section: which typed questions the decision could answer,
+  the calibrated-band policy, how it behaves with provider none, and the measurement that would prove or kill it
+  (P24). A judgment never asserts a code fact (I62).
+- A research or assessment pass is finished only when its summary is in `docs/assessments/` and every decision it
+  drove is in the records (an ADR or dated amendment, futures, scope, plan rows). An artifact (a page, a
+  scratch file) is never the record.
 - Root `CLAUDE.md` is a router (≤120 lines) with resolving pointers —
   `fathom config audit` (`.fathom/concerns.cue`) polices both.

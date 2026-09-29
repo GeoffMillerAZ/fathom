@@ -126,6 +126,10 @@ outright, not tuned or hedged — the route-site lesson was that a hedge on a mi
 signal still misleads. Jev has no role in computing any evidence column or the health band
 itself; both stay deterministic, exactly as ADR-050 kept Jev out of link matching.
 
+The 86 labeled verdicts are committed: `docs/assessments/data/2026-09-27-feature-scorecard.json` (summarized in
+`docs/assessments/2026-09-27-feature-scorecard.md`) is the label set this calibration would run against, and the
+same file is FM-M1's hand-built oracle (section 12).
+
 ## 9. Overrides: the Standard versus the local fallback
 
 What counts as value, the health table's exact weights and thresholds, and any extra
@@ -144,7 +148,8 @@ exist or what they cite.
   filterable table, an underused list, a ditch list — the same shapes the Feature Scorecard
   artifact used by hand.
 - An artifact-style export reproducing the Feature Scorecard artifact's first reading, so the
-  hand-built baseline (FM-M1) has something to compare against.
+  hand-built baseline (FM-M1, committed as `docs/assessments/data/2026-09-27-feature-scorecard.json`) has something
+  to compare against.
 
 No new MCP tool (law 4): the feature map is a CLI verb and a console page, like the support
 matrix before it (ADR-054 decision 5).
@@ -163,7 +168,7 @@ means it cannot start before those do either.
 
 | Reading | Threshold |
 |---|---|
-| FM-M1 | fathom's own 86-feature scorecard re-derived; evidence columns match the hand-built one on at least 90% of cells |
+| FM-M1 | fathom's own 86-feature scorecard re-derived; evidence columns match the hand-built one (the committed oracle `docs/assessments/data/2026-09-27-feature-scorecard.json`) on at least 90% of cells |
 | FM-M2 (deferred, F51) | verdict-proposal agreement at least 0.8 at n at least 3 against the owner's 86 verdicts, or the proposal path is dropped; not read until J0 passes |
 
 ## 13. Refused, and not worth it now

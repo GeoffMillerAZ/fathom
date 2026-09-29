@@ -96,6 +96,23 @@ Five minutes excludes the one-time Go build when a prebuilt binary exists; RH-M1
 (with and without the build) and the threshold applies to the prebuilt path, which is what a
 plugin user meets.
 
+## 5.1 Two borrows from the Claude OS comparison (RH-11, RH-12)
+
+The Claude OS comparison (`docs/assessments/2026-09-27-fathom-and-claude-os.md`, ADR-049 amendment 2026-09-29)
+found that a friendlier first run is the cheapest way to lower fathom's biggest risk, being powerful but hard to
+start with. Two of its borrows are accepted here, both serving goal G16:
+
+- `fathom init --dry-run` prints every file init would write or change and writes nothing. A test holds its list
+  equal to the touched set of the real run, so the preview cannot drift from the act (law 15: init writes only
+  through `internal/wiring`, and every write leaves a receipt, so the set is the receipt's set).
+- `fathom init --demo` wires a throwaway copy of the fauxtown fixture fleet (a temp HOME and store, no download)
+  and reaches a first proven answer, so a newcomer sees value before touching a real repository.
+
+Instrument: RH-M1 (stranger time) also times the demo path beside the prebuilt path; the dry-run equality is a test.
+Not accepted now: "ready now, deeper later" (a fast first index usable at once while the typed pass runs behind it)
+is RH-X4, deferred, because it adds background work before tenancy closes (ADR-049 decision 2). README screenshots
+of the console and directory listings wait on F2.
+
 ## 6. The stack measurement (RH-M5)
 
 On one shared corpus (this repository plus two fauxtown services), measure peak RSS or
@@ -131,3 +148,4 @@ touching the shared daemon.
 - Deleting tools to shrink the surface (law 4 governs membership, not existence).
 - A hosted install or a remote daemon.
 - A stack claim without RH-M5.
+- "Ready now, deeper later" before tenancy closes and cold ingest is shown to dominate stranger time (RH-X4, deferred).
