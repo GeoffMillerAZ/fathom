@@ -56,6 +56,10 @@ func printDocIndex(stdout, stderr io.Writer, r client.Report) {
 	if d.FilesScanned > 0 || d.FilesDeleted > 0 {
 		fmt.Fprintf(stdout, "docs: %d file(s) scanned, %d re-indexed (%d unit(s) written), %d unchanged, %d removed\n",
 			d.FilesScanned, d.FilesChanged, d.UnitsWritten, d.FilesUnchanged, d.FilesDeleted)
+		if d.LinksWritten > 0 {
+			// KR-6: the doc-to-code links the re-indexed units hold.
+			fmt.Fprintf(stdout, "docs: %d doc-to-code link(s) held by the re-indexed units\n", d.LinksWritten)
+		}
 	}
 	if d.UnitsElided > 0 {
 		names := make([]string, 0, docElidedShown)

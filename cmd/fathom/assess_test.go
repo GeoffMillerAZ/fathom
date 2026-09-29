@@ -714,7 +714,7 @@ func TestAssessSpendNeverEntersArmOrBetUnits(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Setenv(assess.SpendLabelEnv, assess.LabelInterventions)
-	recordSessionLedgerEntry("s4", "", t.TempDir(), now, nil)
+	recordSessionLedgerEntry("claude-code", "s4", "", t.TempDir(), now, nil)
 	got := dedupedLedgerRows()
 	if len(got) != 1 || got[0].SpendLabel != assess.LabelInterventions {
 		t.Fatalf("stop-hook row = %+v, want spend_label %q", got, assess.LabelInterventions)

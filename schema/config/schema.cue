@@ -392,6 +392,7 @@ package config
 	connector?: #Connector
 	tenancy?:   #Tenancy
 	console?:   #Console
+	work?:      #Work
 
 	// zones (WI-1, docs/design/work-intelligence.md §2) names coarser
 	// work-intelligence zones by repo-relative path globs (internal/
@@ -399,6 +400,22 @@ package config
 	// Unset, a zone is a Go package's directory or, for other languages,
 	// the deepest directory holding indexed symbols.
 	zones?: [string]: [...string] & [_, ...]
+}
+
+// #Work configures the work-intelligence pages (WI-2w, docs/design/
+// work-intelligence.md §3 U1).
+#Work: {
+	// ci_summaries names each CI summary file /work reads CI minutes from:
+	// JUnit XML (its `time` totals) or a workflow-run JSON export, by a
+	// repo-relative or absolute path, with the commit it built. A
+	// workflow run's own head_sha wins; a JUnit file must name the commit.
+	ci_summaries?: [...#CISummary]
+}
+
+// #CISummary is one `[[work.ci_summaries]]` entry.
+#CISummary: {
+	path:    string & !=""
+	commit?: string & =~"^[0-9a-f]{7,64}$"
 }
 
 // #Console bounds the Observatory console's own work (RT-118,

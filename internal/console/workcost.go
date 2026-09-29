@@ -38,14 +38,28 @@ type SessionEffort struct {
 	USD         *float64
 }
 
-// CommitFacts is one commit's touched files and its rework: lines changed
-// again within ReworkWindow of it. ReworkKnown is false when the caller
-// could not read that (a commit git cannot resolve, a window still open).
+// CommitFacts is one commit's touched files, its rework (lines changed
+// again within ReworkWindow of it) and the later commits that revert it.
+// ReworkKnown is false when the caller could not read that (a commit git
+// cannot resolve, a window still open), and ReworkReason then says which;
+// RevertsKnown is false when the read did not cover the time after the
+// commit — never a zero standing in for an unread figure.
 type CommitFacts struct {
-	Commit      string
-	Files       []string
-	ReworkLines int
-	ReworkKnown bool
+	Commit       string
+	Files        []string
+	ReworkLines  int
+	ReworkKnown  bool
+	ReworkReason string
+	Reverts      []CommitRevert
+	RevertsKnown bool
+	RevertReason string
+}
+
+// CommitRevert is a later commit that reverts a proving commit (git
+// revert's "This reverts commit <sha>" line), with its commit time.
+type CommitRevert struct {
+	Commit string `json:"commit"`
+	At     string `json:"at"`
 }
 
 // ReworkWindow is U2's rework horizon: lines changed again within 7 days.
@@ -71,6 +85,8 @@ type ProvenChange struct {
 	Reverts     float64        `json:"reverts"`
 	USD         Value[float64] `json:"usd"`
 	Rework      Value[int]     `json:"rework_lines"`
+	// Reverted counts the later commits that revert this change's commit.
+	Reverted Value[int] `json:"reverted_by_commits"`
 	// Retries counts the claimed-unproven readings of its rows before
 	// they were proven (the history records a state change, so repeated
 	// unproven readings with no change in between count once).
@@ -147,10 +163,16 @@ func EffortPerProvenChange(join JoinResult, h History, sessions []SessionEffort,
 				if cf.ReworkKnown {
 					c.Rework = Measured(cf.ReworkLines, "git log over the 7 days after the commit")
 				} else {
-					c.Rework = Absent[int]("rework within 7 days not read for this commit")
+					c.Rework = Absent[int](orReason(cf.ReworkReason, "rework within 7 days not read for this commit"))
+				}
+				if cf.RevertsKnown {
+					c.Reverted = Measured(len(cf.Reverts), "git log: later commits reverting it")
+				} else {
+					c.Reverted = Absent[int](orReason(cf.RevertReason, "reverts not read for this commit"))
 				}
 			} else {
 				c.Rework = Absent[int]("the commit's files were not read")
+				c.Reverted = Absent[int]("the commit was not read")
 			}
 			out = append(out, *c)
 		}
@@ -162,6 +184,14 @@ func EffortPerProvenChange(join JoinResult, h History, sessions []SessionEffort,
 		return out[i].Commit < out[j].Commit
 	})
 	return out
+}
+
+// orReason is reason, else fallback.
+func orReason(reason, fallback string) string {
+	if reason != "" {
+		return reason
+	}
+	return fallback
 }
 
 // retriesBefore counts the row's claimed-unproven readings before at.

@@ -1,7 +1,8 @@
 package coverage
 
 // join_foreign.go — joinForeignBlocks (TQ-14, docs/design/test-intelligence.md
-// §3 T3): joins ForeignBlock (foreign.go) to indexed symbols. Unlike
+// §3 T3), exported as JoinForeignBlocks for `fathom tests coverage --foreign`
+// (TQ-14w): joins ForeignBlock (foreign.go) to indexed symbols. Unlike
 // joinBlocks (join.go), which always has Go's AST-derived EndLine to work
 // with and synthesizes one for the rare symbol that lacks it, a foreign
 // (non-Go) language's symbols may carry NO end-line ranges at all — LB-F3
@@ -50,6 +51,18 @@ type ForeignFileCoverage struct {
 type ForeignJoinResult struct {
 	BySymbol []SymbolCoverage
 	ByFile   []ForeignFileCoverage
+	// Unmatched names, sorted and distinct, every File a block carried that
+	// resolved to no indexed file: those blocks are omitted, never guessed
+	// at, and this is where a caller that must not drop them silently reads
+	// what was.
+	Unmatched []string
+}
+
+// JoinForeignBlocks is joinForeignBlocks' exported face — `fathom tests
+// coverage --foreign` hands it the blocks a coverage report parsed to and
+// the service's indexed symbols.
+func JoinForeignBlocks(blocks []ForeignBlock, symbols []core.SymbolNode) ForeignJoinResult {
+	return joinForeignBlocks(blocks, symbols)
 }
 
 // joinForeignBlocks joins foreign-format coverage blocks (ParseLcov,
@@ -145,10 +158,12 @@ func joinForeignBlocks(blocks []ForeignBlock, symbols []core.SymbolNode) Foreign
 	}
 	symAccums := make(map[string]*symAccum)
 	fileAccums := make(map[string]*fileAccum)
+	unmatched := make(map[string]bool)
 
 	for _, b := range blocks {
 		fp := resolve(b.File)
 		if fp == "" {
+			unmatched[b.File] = true
 			continue
 		}
 		if rangeEligible[fp] {
@@ -220,7 +235,7 @@ func joinForeignBlocks(blocks []ForeignBlock, symbols []core.SymbolNode) Foreign
 	}
 	sort.Slice(byFile, func(i, j int) bool { return byFile[i].File < byFile[j].File })
 
-	return ForeignJoinResult{BySymbol: bySymbol, ByFile: byFile}
+	return ForeignJoinResult{BySymbol: bySymbol, ByFile: byFile, Unmatched: sortedTestKeys(unmatched)}
 }
 
 func sortedTestKeys(m map[string]bool) []string {

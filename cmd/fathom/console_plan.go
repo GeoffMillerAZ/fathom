@@ -45,7 +45,55 @@ func init() {
 // planPageModel is /plans/{svc}/{plan}'s JSON model.
 type planPageModel struct {
 	console.PlanLedgerView
-	Root string `json:"root"`
+	Root    string      `json:"root"`
+	ToolMix planToolMix `json:"tool_mix"`
+}
+
+// planToolMix is the plan's tool-call mix and cache hit rate (PE-18w),
+// summed over the sessions the join attributes the plan's proven rows to.
+type planToolMix struct {
+	Mix console.ToolMixModel `json:"mix"`
+	// Sessions the join attributed at least one of the plan's proven rows
+	// to; Counted of them carried per-tool counts on their ledger row.
+	Sessions int `json:"sessions"`
+	Counted  int `json:"sessions_with_tool_counts"`
+	// Unjoined is the plan's proven transitions no session reached.
+	Unjoined int                `json:"unjoined"`
+	History  console.SourceRead `json:"history_read"`
+}
+
+// planToolMixFor joins the plan's proof history to the session ledger and
+// sums the attributed sessions' ledger rows.
+func planToolMixFor(cr *consoleRequest, service, rel string) planToolMix {
+	m := cr.model()
+	join, _, read := sessionProofJoin(cr.r.Context(), agentSessionsOf(m), console.HistoryFilter{Service: service, Plan: rel}, m.ledgerRoots())
+	rows := ledgerRowsOf(m, join)
+	mix, counted := ledgerToolMix(rows)
+	return planToolMix{Mix: mix, Sessions: len(rows), Counted: counted, Unjoined: len(join.Unjoined), History: read}
+}
+
+// renderPlanToolMix is the plan page's tool-mix panel.
+func renderPlanToolMix(t planToolMix, service string) string {
+	noMix := ""
+	switch {
+	case t.Sessions == 0:
+		noMix = "no recorded session is joined to this plan's proven rows yet"
+	case t.Counted == 0:
+		noMix = "none of the " + plural(t.Sessions, "joined session") + " carries per-tool counts (recorded from PE-18w on; a Codex rollout carries none)"
+	}
+	state, reason := console.StatePresent, ""
+	if t.History.State != console.StatePresent {
+		state, reason = t.History.State, t.History.Reason
+	}
+	return `<div class="mt-4">` + renderPanel(consolePanel{
+		ID: "plan-tool-mix", Title: "Tool-call mix and cache hit rate", SourceKey: "plans:" + service + " sessions",
+		Question:    "Across the sessions that proved this plan's rows, which tools did they call, and how much context came from cache?",
+		Source:      "the verify ledger's proof history joined to the session ledger (PE-15); each joined session's last ledger row",
+		Denominator: fmt.Sprintf("%s joined (%d with per-tool counts); %s unjoined", plural(t.Sessions, "session"), t.Counted, plural(t.Unjoined, "proven transition")),
+		Freshness:   "as of the model read",
+		State:       state, Reason: reason,
+		Body: renderToolMix("plan-tool-mix-table", t.Mix, noMix),
+	}) + `</div>`
 }
 
 // resolvePlanRequest finds the request's service root and plan.
@@ -128,7 +176,7 @@ func buildPlanPage(cr *consoleRequest) (consoleOut, error) {
 		}
 		sections[verbs[1]] = frontier
 	}
-	model := planPageModel{PlanLedgerView: view, Root: sr.Root}
+	model := planPageModel{PlanLedgerView: view, Root: sr.Root, ToolMix: planToolMixFor(cr, sr.Service, plan.Rel)}
 	meta := []string{plan.Rel, plural(len(plan.Rows), "row")}
 	switch {
 	case plan.Verified:
@@ -142,7 +190,9 @@ func buildPlanPage(cr *consoleRequest) (consoleOut, error) {
 		Title:  plan.Title,
 		Crumbs: []chrome.Crumb{{Label: "Plans", Href: "/plans"}, {Label: sr.Service, Href: "/plans?svc=" + url.QueryEscape(sr.Service)}},
 		Meta:   meta, Model: model, Sections: sections, Verbs: verbs,
-		Body: func() string { return renderPlanPage(view, sr.Service, verbs) },
+		Body: func() string {
+			return renderPlanPage(view, sr.Service, verbs) + renderPlanToolMix(model.ToolMix, sr.Service)
+		},
 	}, nil
 }
 

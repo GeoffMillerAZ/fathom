@@ -22,11 +22,13 @@
 package semantic
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
 // LearningDecision is one promotion or retirement applyLearning made,
@@ -144,6 +146,20 @@ func applyLearning(claims []core.SemanticClaim, events []RuleOutcomeEvent, thres
 
 	sort.Slice(decisions, func(i, j int) bool { return decisions[i].ClaimID < decisions[j].ClaimID })
 	return out, decisions
+}
+
+// ApplyLearning is applyLearning's exported face: `fathom claim learn`
+// (GL-13, cmd/fathom/claim_learn.go) is its product caller, and persists
+// and announces what it decides.
+func ApplyLearning(claims []core.SemanticClaim, events []RuleOutcomeEvent, thresholds LearningThresholds, now time.Time) ([]core.SemanticClaim, []LearningDecision) {
+	return applyLearning(claims, events, thresholds, now)
+}
+
+// CloseClaimValidity is closeClaimValidity's exported face (GL-15, the one
+// claim-ending path): `fathom claim learn --apply` closes a retired
+// claim's validity window through it, never deleting the row.
+func CloseClaimValidity(ctx context.Context, st store.Store, serviceID, claimID string, status core.ClaimStatus, at time.Time) error {
+	return closeClaimValidity(ctx, st, serviceID, claimID, status, at)
 }
 
 // windowedVerdictSignal folds rows within [cutoff, now] into promotion's

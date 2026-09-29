@@ -14,10 +14,12 @@ package main
 // sessions metric comes from (OC-9).
 
 import (
+	"context"
 	"fmt"
 	"html"
 	"html/template"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -27,6 +29,7 @@ import (
 	"github.com/geoffmilleraz/app-kit/appkit/ui/table"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/viz"
 	"github.com/geoffmilleraz/fathom/internal/console"
+	"github.com/geoffmilleraz/fathom/internal/ledgerroots"
 )
 
 func init() {
@@ -52,6 +55,9 @@ func init() {
 // sessionsPageModel is the table page's JSON projection.
 type sessionsPageModel struct {
 	Table console.SessionTableModel `json:"table"`
+	// Feed is the live session feed (PE-19w): no session id, no
+	// per-person figure (I58).
+	Feed []sessionFeedRow `json:"feed"`
 }
 
 // sessionFilterFrom reads the table's filter from the query; an unknown
@@ -91,13 +97,17 @@ func buildSessionsPage(cr *consoleRequest) (consoleOut, error) {
 	// the read the table above is built from too (OC-9, ADR-045 decision 3).
 	metrics := consoleModelMetrics(m)
 	sessions := metrics[console.MetricSessions]
+	feed, feedTotal := sessionFeedFrom(cr.r.Context(), m)
+	if feed == nil {
+		feed = []sessionFeedRow{}
+	}
 	meta := "sessions " + valuePlain(tbl.Sessions)
 	if tbl.Sessions.Known() {
 		meta = fmt.Sprintf("%s from %s", plural(tbl.Sessions.V, "session"), plural(tbl.LedgerRows.V, "ledger row"))
 	}
 	return consoleOut{
 		Meta:     []string{"generated " + m.GeneratedAt, meta},
-		Model:    sessionsPageModel{Table: tbl},
+		Model:    sessionsPageModel{Table: tbl, Feed: feed},
 		Metrics:  pageMetrics(cr.page, metrics),
 		Sections: map[string]any{verb: tbl},
 		Body: func() string {
@@ -117,7 +127,25 @@ func buildSessionsPage(cr *consoleRequest) (consoleOut, error) {
 			case !sessions.Known():
 				state, reason = sessions.State, sessions.Reason
 			}
-			return band + `<div class="mt-4">` + renderPanel(consolePanel{
+			// PE-19w: the live feed, read-only, following the sessions
+			// source over the SSE channel like every panel on this page.
+			// Without a ledger read the feed is not measured: no count and
+			// no empty state that would read as "no sessions".
+			feedDenominator, feedBody := "", ""
+			if state == console.StatePresent {
+				feedDenominator = fmt.Sprintf("the %s of %s", plural(len(feed), "newest session"), plural(feedTotal, "session"))
+				feedBody = renderSessionFeed(feed)
+			}
+			feedPanel := `<div class="mt-4">` + renderPanel(consolePanel{
+				ID: "live-feed", Title: "Live session feed", SourceKey: "sessions",
+				Question:    "Which sessions ran most recently, as which agent, and how many rows did each prove?",
+				Source:      "the session ledger (" + sessionLedgerPath() + "), each session's last row, joined to the verify ledger's proof history (PE-15)",
+				Denominator: feedDenominator,
+				Freshness:   "as of the model read at " + m.GeneratedAt,
+				State:       state, Reason: reason,
+				Body: feedBody,
+			}) + `</div>`
+			return band + feedPanel + `<div class="mt-4">` + renderPanel(consolePanel{
 				ID: "sessions-table", Title: "Sessions", SourceKey: "sessions",
 				Question: "Which sessions ran, under which arm, and how far did each get?",
 				Verb:     verb, Source: "the session ledger (" + sessionLedgerPath() + "), the last row per session id",
@@ -428,6 +456,174 @@ func renderSessionReplay(cr *consoleRequest, rp sessionReplay, verb string) stri
 		Verb:     verb, Source: "the session ledger (" + sessionLedgerPath() + "), the replay JSON's \"ledger\" object",
 		Freshness: "as of the model read", State: state, Reason: reason,
 		Body: card.String(),
+	}) + `</div>`)
+
+	// PE-18w: the same ledger row's tool-call mix and cache hit rate.
+	mixBody, mixDenom := "", ""
+	if e := rp.Ledger; e != nil {
+		mix, counted := ledgerToolMix([]sessionLedgerEntry{*e})
+		noMix := "no per-tool counts on this session's ledger row: the transcript fold records them from PE-18w on, and a Codex rollout carries none"
+		if counted > 0 {
+			noMix = ""
+		}
+		mixBody, mixDenom = renderToolMix("session-tool-mix", mix, noMix), plural(mix.TotalCalls, "tool call")
+	}
+	b.WriteString(`<div class="mt-4">` + renderPanel(consolePanel{
+		ID: "tool-mix", Title: "Tool-call mix and cache hit rate", SourceKey: "sessions",
+		Question:    "Which tools did this session call, and how much of its context came from cache?",
+		Source:      "the session ledger row's tool_calls_by_name and token fields (the Stop hook's transcript fold), the replay JSON's \"ledger\" object",
+		Denominator: mixDenom, Freshness: "as of the model read", State: state, Reason: reason,
+		Body: mixBody,
+	}) + `</div>`)
+	return b.String()
+}
+
+// sessionJoinMaxAuthorLooks bounds the commit author-time lookups one
+// page's session join makes (one read-only git process each); a commit past
+// it joins by window only, and its row is named unjoined, never guessed.
+const sessionJoinMaxAuthorLooks = 100
+
+// sessionProofJoin is PE-15's join for a console page: the verify
+// ledger's proof history (a bounded, cached tail read) under roots'
+// registered service roots (PE-24: the history and the read's reason name
+// the readings ignored) joined to sessions (agentSessionsOf's windows over
+// the model's ledger read), under f.
+func sessionProofJoin(ctx context.Context, sessions []console.AgentSession, f console.HistoryFilter, roots ledgerroots.Roots) (console.JoinResult, console.History, console.SourceRead) {
+	h, read := console.ProofHistory(ctx, verifyLedgerPath(), console.DefaultHistoryTail, roots)
+	looks := 0
+	authorAt := func(ctx context.Context, root, commit string) (string, bool) {
+		if looks >= sessionJoinMaxAuthorLooks {
+			return "", false
+		}
+		looks++
+		return console.CommitAuthorAt(ctx, root, commit)
+	}
+	return console.JoinSessionProof(ctx, h, sessions, f, authorAt), h, read
+}
+
+// sessionFeedLimit is how many sessions the live feed lists, newest first.
+const sessionFeedLimit = 25
+
+// sessionFeedFrom builds the live session feed (PE-19w): the newest
+// sessions the model's ledger read holds, each with its agent identity,
+// repository and window, and the proven rows the join attributed to it.
+// The join sees only these sessions and the days they span: a reading
+// before the oldest listed session cannot join any of them. total is every
+// session the read holds.
+func sessionFeedFrom(ctx context.Context, m observatoryModel) (rows []sessionFeedRow, total int) {
+	sessions := agentSessionsOf(m)
+	total = len(sessions)
+	sort.SliceStable(sessions, func(i, j int) bool { return sessions[i].End > sessions[j].End })
+	sessions = sessions[:min(len(sessions), sessionFeedLimit)]
+	if len(sessions) == 0 {
+		return nil, total
+	}
+	from := sessions[0].Start
+	for _, s := range sessions {
+		from = min(from, s.Start)
+	}
+	f := console.HistoryFilter{}
+	if len(from) >= len("2006-01-02") {
+		f.From = from[:len("2006-01-02")]
+	}
+	join, _, read := sessionProofJoin(ctx, sessions, f, m.ledgerRoots())
+	proven := make(map[string]int, len(join.Outcomes))
+	for _, o := range join.Outcomes {
+		proven[o.SessionID] = len(o.Rows)
+	}
+	rows = make([]sessionFeedRow, 0, len(sessions))
+	for _, s := range sessions {
+		r := sessionFeedRow{Harness: s.Harness, Model: s.Model, Repo: s.Repo, Start: s.Start, End: s.End}
+		n, joined := proven[s.ID]
+		switch {
+		case read.State != console.StatePresent:
+			r.Proven = console.Absent[int]("the proof history was not read: " + read.Reason)
+		case joined:
+			r.Proven = console.Measured(n, "the proof history joined to the session ledger")
+		default:
+			r.Proven = console.Absent[int]("no claimed-proven transition joined to this session yet")
+		}
+		rows = append(rows, r)
+	}
+	return rows, total
+}
+
+// ledgerRowsOf is the last ledger row of each session the join attributed
+// rows to, in the join's order; a session the ledger no longer holds is
+// skipped.
+func ledgerRowsOf(m observatoryModel, join console.JoinResult) []sessionLedgerEntry {
+	if m.ledgerErr != nil || m.ledger == nil {
+		return nil
+	}
+	out := make([]sessionLedgerEntry, 0, len(join.Outcomes))
+	for _, o := range join.Outcomes {
+		if e, ok := m.ledger.latest[o.SessionID]; ok {
+			out = append(out, e)
+		}
+	}
+	return out
+}
+
+// ledgerToolMix sums ledger rows' per-name tool calls and cache tokens
+// into console.ToolMix (PE-18w): cache-read tokens over cache-read plus
+// fresh input, where fresh input is the uncached input and the
+// cache-creation tokens (both were processed, not read from cache).
+// counted is how many rows carried per-name counts; a row without them
+// adds only its tokens.
+func ledgerToolMix(rows []sessionLedgerEntry) (console.ToolMixModel, int) {
+	calls := map[string]int{}
+	cacheRead, fresh, counted := 0, 0, 0
+	for _, e := range rows {
+		if len(e.ToolCallsByName) > 0 {
+			counted++
+			for name, n := range e.ToolCallsByName {
+				calls[name] += n
+			}
+		}
+		if e.TokensCacheRead != nil {
+			cacheRead += *e.TokensCacheRead
+		}
+		if e.TokensIn != nil {
+			fresh += *e.TokensIn
+		}
+		if e.TokensCacheCreate != nil {
+			fresh += *e.TokensCacheCreate
+		}
+	}
+	return console.ToolMix(calls, cacheRead, fresh), counted
+}
+
+// renderToolMix renders the cache hit rate and call count as a band and
+// the mix as a table. noMix, when set, replaces the table: an absent mix
+// is named, never drawn as 0% for every tool.
+func renderToolMix(tableID string, m console.ToolMixModel, noMix string) string {
+	hit := stat.Absent("cache hit rate", m.CacheHit.Reason)
+	hit.ValueRole = "ink-muted"
+	if m.CacheHit.Known() {
+		hit = stat.Stat{Label: "cache hit rate", Value: fmt.Sprintf("%.0f%%", m.CacheHit.V*100), Sub: m.CacheHit.Denominator}
+	}
+	calls := stat.Absent("tool calls", "no per-tool counts")
+	calls.ValueRole = "ink-muted"
+	if noMix == "" {
+		calls = stat.Stat{Label: "tool calls", Value: fmtThousands(m.TotalCalls)}
+	}
+	var b strings.Builder
+	b.WriteString(stat.RenderBand([]stat.Stat{hit, calls}, stat.BandOptions{AriaLabel: "cache hit rate and tool calls"}))
+	if noMix != "" || len(m.Mix) == 0 {
+		if noMix == "" {
+			noMix = "no tool call recorded"
+		}
+		b.WriteString(`<p class="mt-3 text-ink-muted" data-tool-mix-empty>` + html.EscapeString(noMix) + `</p>`)
+		return b.String()
+	}
+	rows := make([]table.Row, 0, len(m.Mix))
+	for i, e := range m.Mix {
+		rows = append(rows, table.Row{ID: tableID + "-" + strconv.Itoa(i), Cells: []string{e.Tool, fmtThousands(e.Calls), fmt.Sprintf("%.0f%%", e.Share*100)}})
+	}
+	b.WriteString(`<div class="mt-3">` + renderKitTable(table.TableParams{
+		TableID: tableID, Caption: "Tool calls by tool name, most called first; other sums the names past the ledger row's top 20",
+		Columns: []table.Column{{Key: "tool", Label: "Tool"}, {Key: "calls", Label: "Calls", Align: "right"}, {Key: "share", Label: "Share", Align: "right"}},
+		Rows:    rows,
 	}) + `</div>`)
 	return b.String()
 }

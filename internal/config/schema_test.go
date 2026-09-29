@@ -149,6 +149,14 @@ bad17: #Config & {
 bad18: #Config & {
 	hooks: test_run: "yes"
 }`},
+		{"[[work.ci_summaries]] without a path", `
+bad19: #Config & {
+	work: ci_summaries: [{commit: "0123abc"}]
+}`},
+		{"[[work.ci_summaries]] commit that is not a hex object name", `
+bad20: #Config & {
+	work: ci_summaries: [{path: "ci/junit.xml", commit: "main"}]
+}`},
 	}
 
 	cctx := cuecontext.New()
