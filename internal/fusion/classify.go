@@ -19,6 +19,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
@@ -46,6 +47,7 @@ const (
 	ToolHelmTemplateYAML ToolKind = "helm-template-yaml"
 	ToolKustomize        ToolKind = "kustomize"
 	ToolGHA              ToolKind = "gha"
+	ToolGitLabCI         ToolKind = "gitlab-ci"
 	ToolOpenAPI          ToolKind = "openapi"
 	ToolCUEModule        ToolKind = "cue-module"
 	ToolTimoni           ToolKind = "timoni"
@@ -126,6 +128,13 @@ func classifyYAML(relPath string, content []byte, idx *siblingIndex) ToolKind {
 	}
 	if apiVersionTopRe.Match(content) && kindTopRe.Match(content) {
 		return ToolK8sManifest
+	}
+	// GitLab CI (LB-Q-gitlab-ci): by path, through the dialect manifest's own
+	// basenames and globs (the root .gitlab-ci.yml, .gitlab/ci/**, *.gitlab-ci.yml).
+	// Before the Compose signal: a pipeline's deprecated global `services:` list
+	// is a bare top-level `services:` key too.
+	if connector.ClassifyDialect(dialectRules(), relPath, content).Dialect == "gitlab-ci" {
+		return ToolGitLabCI
 	}
 	if servicesTopRe.Match(content) {
 		return ToolCompose
