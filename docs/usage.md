@@ -2790,7 +2790,7 @@ silently reported as zero rows.
 ```
 
 `refactor status --migration "<kind> <from> -> <to>" [--store DB] [--services
-a,b,c] [--json]` (CX-13, `docs/design/change-and-compliance.md` §4) is a
+a,b,c] [--conserve-since <ref>] [--json]` (CX-13, `docs/design/change-and-compliance.md` §4) is a
 second, separate mode: the FLEET-WIDE migration view for a declaration in
 `ParseMigration`'s own five-kind form (`symbol|import|route|config|pkg`),
 across every service the store knows (or the ones `--services` names).
@@ -2818,13 +2818,30 @@ module, a symbol migration's the directory of each indexed declaration of that
 name; a route, config or pkg migration names none, so only generated code blocks
 it. A governed file that is also generated reports the rule.
 
+Each repository with a site or a `gone:` row also prints its **burn-down and
+completion verdict** (CX-12w, `review.MigrationBurnDown`). The rows are the
+repository's own `docs/plans/*.md` rows whose `gone:` contract names `from`
+(`callers` or `pattern` for a symbol, `import` or `pattern` for an import,
+`module` or `pattern` for a pkg, `pattern` otherwise), each proven when the
+verify ledger's newest reading of it says so and unproven when it says otherwise or
+never read it. The series is those rows' verdicts over time from the same ledger
+(`console.ProofHistory`): at each reading where one changed, how many are claimed
+and how many proven. A repository is complete only when every row is proven and
+conservation is established with no unexcused loss: `--conserve-since <ref>` runs
+`fathom conserve --since <ref>` in each such repository, and without it none is
+complete — the reason says conservation was not run, never that it passed.
+
 ```json
 {"schema":"fathom.refactor.status.migration/v1",
  "migration":{"kind":"symbol","from":"OldFunc","to":"NewFunc"},
+ "conserve_since":"origin/main",
  "repositories":[{"repository":"svc-a",
    "remaining":[{"file":"caller/user.go","line":5,"tier":"typed",
      "blocker":{"reason":"governed","rule":"caller-not-newpkg"}}],
-   "done":[]}]}
+   "done":[],
+   "burn_down":{"rows":[{"plan":"docs/plans/mig.md","id":"MG-1","verdict":"proven"}],
+     "series":[{"at":"2026-09-22T10:00:00Z","claimed":1,"proven":1,"remaining":0}],
+     "complete":false,"reason":"…","conservation":"not run"}}]}
 ```
 
 ---

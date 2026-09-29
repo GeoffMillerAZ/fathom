@@ -18,10 +18,13 @@ package main
 //     Sources — the SAME matcher the "references" MCP tool
 //     (internal/mcp/references_tool.go) scans with.
 //
-// CX-11w (design §4, U9) adds what the sites alone do not say: each
+// CX-11w and CX-12w (design §4, U9) add what the sites alone do not say. Each
 // remaining site's blocker — the layer rule that governs its file against the
 // change, or generated code — is named beside it (review.MigrationBlockers;
-// refactor_status_blockers.go).
+// refactor_status_blockers.go), and each repository's burn-down and completion
+// verdict is printed (review.MigrationBurnDown; refactor_status_burndown.go):
+// its gone: rows and their verdicts over time from the verify ledger, and
+// conservation run when --conserve-since names a base, never assumed.
 //
 // Typed confirmation is per FILE, not per call-expression line: CallersDetail
 // names the CALLING FUNCTION's own definition site, not the exact call
@@ -41,6 +44,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
 	"github.com/geoffmilleraz/fathom/internal/analysis/references"
 	"github.com/geoffmilleraz/fathom/internal/connector"
+	"github.com/geoffmilleraz/fathom/internal/console"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/review"
 	"github.com/geoffmilleraz/fathom/internal/store"
@@ -57,7 +61,9 @@ const migrationSiteScanMax = 2000
 // cmdRefactorStatusMigration is cmdRefactorStatus's --migration branch: it
 // takes over BEFORE the --plan/ratchet flow below (that flow stays
 // unchanged, CV-34/ADR-044 §4's own purely git+file contract untouched).
-func cmdRefactorStatusMigration(migrationText, storePath string, services []string, jsonOut bool, stdout, stderr io.Writer) int {
+// conserveSince, when set, is the base ref `fathom conserve` compares each
+// repository against for the completion verdict (CX-12w).
+func cmdRefactorStatusMigration(migrationText, storePath string, services []string, conserveSince string, jsonOut bool, stdout, stderr io.Writer) int {
 	m, perr := review.ParseMigration(migrationText)
 	if perr != nil {
 		fmt.Fprintf(stderr, "error: --migration: %v\n", perr)
@@ -74,17 +80,18 @@ func cmdRefactorStatusMigration(migrationText, storePath string, services []stri
 	defer c.Close()
 	ctx := context.Background()
 
-	view, berr := refactorStatusMigration(ctx, c, m, migrationStatusOpts{Services: services})
+	view, berr := refactorStatusMigration(ctx, c, m, migrationStatusOpts{Services: services, ConserveSince: conserveSince, Store: st})
 	if berr != nil {
 		fmt.Fprintf(stderr, "error: %v\n", berr)
 		return 2
 	}
 
 	rep := migrationStatusReport{
-		Schema:       "fathom.refactor.status.migration/v1",
-		Migration:    migrationWire{Kind: string(m.Kind), From: m.From, To: m.To},
-		Repositories: renderMigrationRepos(view),
-		Degraded:     view.Degraded,
+		Schema:        "fathom.refactor.status.migration/v1",
+		Migration:     migrationWire{Kind: string(m.Kind), From: m.From, To: m.To},
+		ConserveSince: conserveSince,
+		Repositories:  renderMigrationRepos(view),
+		Degraded:      view.Degraded,
 	}
 
 	if jsonOut {
@@ -123,6 +130,9 @@ func cmdRefactorStatusMigration(migrationText, storePath string, services []stri
 		for _, s := range r.Done {
 			fmt.Fprintf(stdout, "  - done      [%s] %s:%d\n", s.Tier, s.File, s.Line)
 		}
+		if r.BurnDown != nil {
+			printMigrationBurnDown(stdout, r.BurnDown)
+		}
 	}
 	for _, d := range rep.Degraded {
 		fmt.Fprintf(stdout, "degraded: %s\n", d)
@@ -136,15 +146,29 @@ type migrationStatusOpts struct {
 	// Services limits the view to these service ids (default: every service
 	// the store knows).
 	Services []string
+	// ConserveSince is the base ref conservation is run against per
+	// repository; empty means it is not run and no repository is complete.
+	ConserveSince string
+	// Store is the store conservation reads.
+	Store store.Store
+	// Ledger is the verify ledger the burn-down reads (default:
+	// verifyLedgerPath()).
+	Ledger string
 }
 
 // migrationFleetView is refactorStatusMigration's answer: the sites per
-// repository (CX-10), each remaining site's blocker (CX-11w), and what could
+// repository (CX-10), each remaining site's blocker (CX-11w), each
+// repository's burn-down and completion verdict (CX-12w), and what could
 // not be read.
 type migrationFleetView struct {
 	Repos    []review.RepoMigrationSites
 	Blockers []review.MigrationBlocker
-	Degraded []string
+	BurnDown []review.RepoMigrationBurnDown
+	// GoneRows are each repository's gone: rows with their ledger verdict.
+	GoneRows map[string][]migrationBurnRowWire
+	// Conservation is each repository's conservation state, in words.
+	Conservation map[string]string
+	Degraded     []string
 }
 
 // refactorStatusMigration builds the fleet-wide migration view for m: every
@@ -152,7 +176,8 @@ type migrationFleetView struct {
 // named) contributes its own remaining/done sites via
 // migrationSitesForService, and review.MigrationSites (CX-10) groups the
 // combined result per repository. Each remaining site's blocker comes from
-// review.MigrationBlockers (CX-11w). A service that
+// review.MigrationBlockers (CX-11w) and each repository's burn-down and
+// completion verdict from review.MigrationBurnDown (CX-12w). A service that
 // could not be read degrades into a named note (O36's execute-and-flag
 // doctrine) rather than aborting the whole fleet-wide call.
 func refactorStatusMigration(ctx context.Context, c *client.Client, m review.Migration, opts migrationStatusOpts) (migrationFleetView, error) {
@@ -171,6 +196,7 @@ func refactorStatusMigration(ctx context.Context, c *client.Client, m review.Mig
 	var sites []review.MigrationSite
 	var governed []review.GovernedSite
 	var generated []review.GeneratedFile
+	roots := map[string]string{}
 	for _, svc := range sorted {
 		read := migrationSitesForService(ctx, c, svc, m)
 		view.Degraded = append(view.Degraded, read.Notes...)
@@ -180,10 +206,94 @@ func refactorStatusMigration(ctx context.Context, c *client.Client, m review.Mig
 		sites = append(sites, read.Sites...)
 		governed = append(governed, read.Blockers.Governed...)
 		generated = append(generated, read.Blockers.Generated...)
+		roots[svc] = read.Root
 	}
 	view.Repos = review.MigrationSites(m, sites)
 	view.Blockers = review.MigrationBlockers(sites, governed, generated)
+	migrationBurnDownFor(ctx, &view, m, opts, sorted, roots)
 	return view, nil
+}
+
+// migrationBurnDownFor fills view's burn-down: for every read repository
+// with a site or a gone: row naming m.From, its rows' verdicts and series
+// from the verify ledger, and conservation when opts.ConserveSince is set,
+// folded by review.MigrationBurnDown.
+func migrationBurnDownFor(ctx context.Context, view *migrationFleetView, m review.Migration, opts migrationStatusOpts, sorted []string, roots map[string]string) {
+	// The ledger is read once, and only when a gone: row needs it.
+	var hist console.History
+	ledgerRead := false
+	history := func() console.History {
+		if !ledgerRead {
+			ledgerRead = true
+			ledger := opts.Ledger
+			if ledger == "" {
+				ledger = verifyLedgerPath()
+			}
+			h, read := console.ProofHistory(ctx, ledger, console.DefaultHistoryTail)
+			if read.State != console.StatePresent {
+				view.Degraded = append(view.Degraded, "verify ledger: "+read.Reason+" — every gone: row reads unproven")
+			}
+			hist = h
+		}
+		return hist
+	}
+
+	hasSites := map[string]bool{}
+	for _, r := range view.Repos {
+		hasSites[r.Repository] = true
+	}
+	view.GoneRows = map[string][]migrationBurnRowWire{}
+	view.Conservation = map[string]string{}
+	series := map[string][]review.MigrationBurnDownPoint{}
+	var rows []review.RepoRows
+	for _, svc := range sorted {
+		root, ok := roots[svc]
+		if !ok {
+			continue // unread: already a degraded note
+		}
+		var gone []migrationGoneRow
+		if root != "" {
+			gone = migrationGoneRows(root, m)
+		}
+		if !hasSites[svc] && len(gone) == 0 {
+			continue
+		}
+		var h console.History
+		if len(gone) > 0 {
+			h = history()
+		}
+		verdicts, points := migrationLedgerRows(h, svc, gone)
+		rr := review.RepoRows{Repository: svc, Rows: verdicts}
+		wire := make([]migrationBurnRowWire, len(gone))
+		for i, g := range gone {
+			wire[i] = migrationBurnRowWire{Plan: g.Plan, ID: g.ID, Verdict: verdicts[i].Verdict}
+		}
+		view.GoneRows[svc] = wire
+		series[svc] = points
+
+		switch {
+		case len(verdicts) == 0:
+			view.Conservation[svc] = "not run: no gone: row to complete"
+		case opts.ConserveSince == "":
+			rr.ConservationUnproven = "not run — pass --conserve-since <ref> to check that no loss is unexcused"
+			view.Conservation[svc] = "not run"
+		case root == "":
+			rr.ConservationUnproven = "the service records no corpus root to run conserve --since " + opts.ConserveSince + " in"
+			view.Conservation[svc] = "not run: no recorded root"
+		default:
+			rr.Unexcused, rr.Detail, rr.ConservationUnproven = migrationConservation(ctx, opts.Store, svc, root, opts.ConserveSince)
+			switch {
+			case rr.Unexcused:
+				view.Conservation[svc] = "losses"
+			case rr.ConservationUnproven != "":
+				view.Conservation[svc] = "unproven"
+			default:
+				view.Conservation[svc] = "conserved since " + opts.ConserveSince
+			}
+		}
+		rows = append(rows, rr)
+	}
+	view.BurnDown = review.MigrationBurnDown(m, series, rows)
 }
 
 // migrationServiceRead is what one service contributes to the fleet view.
@@ -192,6 +302,8 @@ type migrationServiceRead struct {
 	// Blockers are the generated and governed facts for the remaining
 	// sites (CX-11w).
 	Blockers migrationBlockerFacts
+	// Root is the service's recorded corpus root, "" when it records none.
+	Root string
 	// Notes are named degradations; Unread is set, and Sites nil, only when
 	// this service could not be read at all.
 	Notes  []string
@@ -251,7 +363,7 @@ func migrationSitesForService(ctx context.Context, c *client.Client, svc string,
 	}
 
 	root, _, _, _ := c.ServiceMeta(ctx, svc)
-	read := migrationServiceRead{Sites: sites}
+	read := migrationServiceRead{Sites: sites, Root: root}
 	read.Blockers = migrationBlockerFactsFor(svc, root, m, sites, sources, nodes)
 	read.Notes = read.Blockers.Notes
 	return read
@@ -350,10 +462,11 @@ func quotedLiteralPattern(s string) string {
 // ─── wire shapes ────────────────────────────────────────────────────────
 
 type migrationStatusReport struct {
-	Schema       string              `json:"schema"`
-	Migration    migrationWire       `json:"migration"`
-	Repositories []migrationRepoWire `json:"repositories"`
-	Degraded     []string            `json:"degraded,omitempty"`
+	Schema        string              `json:"schema"`
+	Migration     migrationWire       `json:"migration"`
+	ConserveSince string              `json:"conserve_since,omitempty"`
+	Repositories  []migrationRepoWire `json:"repositories"`
+	Degraded      []string            `json:"degraded,omitempty"`
 }
 
 type migrationWire struct {
@@ -366,6 +479,10 @@ type migrationRepoWire struct {
 	Repository string              `json:"repository"`
 	Remaining  []migrationSiteWire `json:"remaining"`
 	Done       []migrationSiteWire `json:"done"`
+	// BurnDown is the repository's burn-down and completion verdict
+	// (CX-12w); absent for a repository with no gone: row and no site to
+	// speak of.
+	BurnDown *migrationBurnDownWire `json:"burn_down,omitempty"`
 }
 
 type migrationSiteWire struct {
@@ -390,8 +507,55 @@ func (b migrationBlockerWire) String() string {
 	return b.Reason + " code"
 }
 
-// renderMigrationRepos builds the per-repository wire rows: every repository
-// with a site, sorted by name, each remaining site carrying its blocker.
+type migrationBurnRowWire struct {
+	Plan    string `json:"plan"`
+	ID      string `json:"id"`
+	Verdict string `json:"verdict"`
+}
+
+type migrationPointWire struct {
+	At        string `json:"at"`
+	Claimed   int    `json:"claimed"`
+	Proven    int    `json:"proven"`
+	Remaining int    `json:"remaining"`
+}
+
+// migrationBurnDownWire is one repository's burn-down: its gone: rows and
+// their verdicts, the series over time, whether the migration is complete
+// there and, when it is not, why; and the state of conservation.
+type migrationBurnDownWire struct {
+	Rows         []migrationBurnRowWire `json:"rows"`
+	Series       []migrationPointWire   `json:"series"`
+	Complete     bool                   `json:"complete"`
+	Reason       string                 `json:"reason,omitempty"`
+	Conservation string                 `json:"conservation"`
+}
+
+func printMigrationBurnDown(w io.Writer, b *migrationBurnDownWire) {
+	proven := 0
+	for _, r := range b.Rows {
+		if r.Verdict == review.RowProven {
+			proven++
+		}
+	}
+	fmt.Fprintf(w, "  burn-down: %d of %d gone: row(s) proven\n", proven, len(b.Rows))
+	for _, r := range b.Rows {
+		fmt.Fprintf(w, "    %s#%s  %s\n", r.Plan, r.ID, r.Verdict)
+	}
+	for _, p := range b.Series {
+		fmt.Fprintf(w, "    %s  %d of %d claimed proven (%d remaining)\n", p.At, p.Proven, p.Claimed, p.Remaining)
+	}
+	fmt.Fprintf(w, "  conservation: %s\n", b.Conservation)
+	if b.Complete {
+		fmt.Fprintln(w, "  complete: yes")
+		return
+	}
+	fmt.Fprintf(w, "  complete: no — %s\n", b.Reason)
+}
+
+// renderMigrationRepos builds the per-repository wire rows: every
+// repository with a site or a burn-down, sorted by name, each remaining site
+// carrying its blocker.
 func renderMigrationRepos(v migrationFleetView) []migrationRepoWire {
 	blockerOf := map[string]migrationBlockerWire{}
 	for _, b := range v.Blockers {
@@ -410,6 +574,18 @@ func renderMigrationRepos(v migrationFleetView) []migrationRepoWire {
 		w := get(r.Repository)
 		w.Remaining = renderMigrationSites(r.Remaining, blockerOf)
 		w.Done = renderMigrationSites(r.Done, nil)
+	}
+	for _, b := range v.BurnDown {
+		w := get(b.Repository)
+		rows := v.GoneRows[b.Repository]
+		if rows == nil {
+			rows = []migrationBurnRowWire{}
+		}
+		series := make([]migrationPointWire, len(b.Points))
+		for i, p := range b.Points {
+			series[i] = migrationPointWire{At: p.At, Claimed: p.Claimed, Proven: p.Proven, Remaining: p.Remaining()}
+		}
+		w.BurnDown = &migrationBurnDownWire{Rows: rows, Series: series, Complete: b.Complete, Reason: b.Reason, Conservation: v.Conservation[b.Repository]}
 	}
 	names := make([]string, 0, len(byRepo))
 	for n := range byRepo {
