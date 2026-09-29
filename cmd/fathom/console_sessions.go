@@ -14,6 +14,7 @@ package main
 // sessions metric comes from (OC-9).
 
 import (
+	"context"
 	"fmt"
 	"html"
 	"html/template"
@@ -428,6 +429,125 @@ func renderSessionReplay(cr *consoleRequest, rp sessionReplay, verb string) stri
 		Verb:     verb, Source: "the session ledger (" + sessionLedgerPath() + "), the replay JSON's \"ledger\" object",
 		Freshness: "as of the model read", State: state, Reason: reason,
 		Body: card.String(),
+	}) + `</div>`)
+
+	// PE-18w: the same ledger row's tool-call mix and cache hit rate.
+	mixBody, mixDenom := "", ""
+	if e := rp.Ledger; e != nil {
+		mix, counted := ledgerToolMix([]sessionLedgerEntry{*e})
+		noMix := "no per-tool counts on this session's ledger row: the transcript fold records them from PE-18w on, and a Codex rollout carries none"
+		if counted > 0 {
+			noMix = ""
+		}
+		mixBody, mixDenom = renderToolMix("session-tool-mix", mix, noMix), plural(mix.TotalCalls, "tool call")
+	}
+	b.WriteString(`<div class="mt-4">` + renderPanel(consolePanel{
+		ID: "tool-mix", Title: "Tool-call mix and cache hit rate", SourceKey: "sessions",
+		Question:    "Which tools did this session call, and how much of its context came from cache?",
+		Source:      "the session ledger row's tool_calls_by_name and token fields (the Stop hook's transcript fold), the replay JSON's \"ledger\" object",
+		Denominator: mixDenom, Freshness: "as of the model read", State: state, Reason: reason,
+		Body: mixBody,
+	}) + `</div>`)
+	return b.String()
+}
+
+// sessionJoinMaxAuthorLooks bounds the commit author-time lookups one
+// page's session join makes (one read-only git process each); a commit past
+// it joins by window only, and its row is named unjoined, never guessed.
+const sessionJoinMaxAuthorLooks = 100
+
+// sessionProofJoin is PE-15's join for a console page: the verify
+// ledger's proof history (a bounded, cached tail read) joined to the
+// session ledger's sessions as the model read them, under f.
+func sessionProofJoin(ctx context.Context, m observatoryModel, f console.HistoryFilter) (console.JoinResult, console.History, console.SourceRead) {
+	h, read := console.ProofHistory(ctx, verifyLedgerPath(), console.DefaultHistoryTail)
+	looks := 0
+	authorAt := func(ctx context.Context, root, commit string) (string, bool) {
+		if looks >= sessionJoinMaxAuthorLooks {
+			return "", false
+		}
+		looks++
+		return console.CommitAuthorAt(ctx, root, commit)
+	}
+	return console.JoinSessionProof(ctx, h, agentSessionsOf(m), f, authorAt), h, read
+}
+
+// ledgerRowsOf is the last ledger row of each session the join attributed
+// rows to, in the join's order; a session the ledger no longer holds is
+// skipped.
+func ledgerRowsOf(m observatoryModel, join console.JoinResult) []sessionLedgerEntry {
+	if m.ledgerErr != nil || m.ledger == nil {
+		return nil
+	}
+	out := make([]sessionLedgerEntry, 0, len(join.Outcomes))
+	for _, o := range join.Outcomes {
+		if e, ok := m.ledger.latest[o.SessionID]; ok {
+			out = append(out, e)
+		}
+	}
+	return out
+}
+
+// ledgerToolMix sums ledger rows' per-name tool calls and cache tokens
+// into console.ToolMix (PE-18w): cache-read tokens over cache-read plus
+// fresh input, where fresh input is the uncached input and the
+// cache-creation tokens (both were processed, not read from cache).
+// counted is how many rows carried per-name counts; a row without them
+// adds only its tokens.
+func ledgerToolMix(rows []sessionLedgerEntry) (console.ToolMixModel, int) {
+	calls := map[string]int{}
+	cacheRead, fresh, counted := 0, 0, 0
+	for _, e := range rows {
+		if len(e.ToolCallsByName) > 0 {
+			counted++
+			for name, n := range e.ToolCallsByName {
+				calls[name] += n
+			}
+		}
+		if e.TokensCacheRead != nil {
+			cacheRead += *e.TokensCacheRead
+		}
+		if e.TokensIn != nil {
+			fresh += *e.TokensIn
+		}
+		if e.TokensCacheCreate != nil {
+			fresh += *e.TokensCacheCreate
+		}
+	}
+	return console.ToolMix(calls, cacheRead, fresh), counted
+}
+
+// renderToolMix renders the cache hit rate and call count as a band and
+// the mix as a table. noMix, when set, replaces the table: an absent mix
+// is named, never drawn as 0% for every tool.
+func renderToolMix(tableID string, m console.ToolMixModel, noMix string) string {
+	hit := stat.Absent("cache hit rate", m.CacheHit.Reason)
+	hit.ValueRole = "ink-muted"
+	if m.CacheHit.Known() {
+		hit = stat.Stat{Label: "cache hit rate", Value: fmt.Sprintf("%.0f%%", m.CacheHit.V*100), Sub: m.CacheHit.Denominator}
+	}
+	calls := stat.Absent("tool calls", "no per-tool counts")
+	calls.ValueRole = "ink-muted"
+	if noMix == "" {
+		calls = stat.Stat{Label: "tool calls", Value: fmtThousands(m.TotalCalls)}
+	}
+	var b strings.Builder
+	b.WriteString(stat.RenderBand([]stat.Stat{hit, calls}, stat.BandOptions{AriaLabel: "cache hit rate and tool calls"}))
+	if noMix != "" || len(m.Mix) == 0 {
+		if noMix == "" {
+			noMix = "no tool call recorded"
+		}
+		b.WriteString(`<p class="mt-3 text-ink-muted" data-tool-mix-empty>` + html.EscapeString(noMix) + `</p>`)
+		return b.String()
+	}
+	rows := make([]table.Row, 0, len(m.Mix))
+	for i, e := range m.Mix {
+		rows = append(rows, table.Row{ID: tableID + "-" + strconv.Itoa(i), Cells: []string{e.Tool, fmtThousands(e.Calls), fmt.Sprintf("%.0f%%", e.Share*100)}})
+	}
+	b.WriteString(`<div class="mt-3">` + renderKitTable(table.TableParams{
+		TableID: tableID, Caption: "Tool calls by tool name, most called first; other sums the names past the ledger row's top 20",
+		Columns: []table.Column{{Key: "tool", Label: "Tool"}, {Key: "calls", Label: "Calls", Align: "right"}, {Key: "share", Label: "Share", Align: "right"}},
+		Rows:    rows,
 	}) + `</div>`)
 	return b.String()
 }

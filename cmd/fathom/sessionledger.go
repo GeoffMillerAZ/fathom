@@ -27,6 +27,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"syscall"
 	"time"
@@ -151,6 +152,11 @@ type sessionLedgerEntry struct {
 	// parsed, never a fabricated zero (law 12); a parsed transcript with no
 	// tool call records a real 0.
 	ToolCalls *int `json:"tool_calls,omitempty"`
+	// ToolCallsByName (PE-18w) splits ToolCalls by tool name: the
+	// toolNamesOnRow most-called names plus "other" for the rest. Omitted
+	// when the fold has no per-name count for the whole session (a Codex
+	// rollout, or a session whose fold predates the count).
+	ToolCallsByName map[string]int `json:"tool_calls_by_name,omitempty"`
 
 	// SessionSource / BriefInjected / BriefBytes label the row's COHORT
 	// for the vision-21 bet: fresh-with-brief (startup|clear + brief)
@@ -298,6 +304,7 @@ func buildSessionLedgerEntry(sessionID, repo string, ts transcriptSummary, beats
 	if ts.parsed() {
 		n := ts.ToolCallsTotal
 		e.ToolCalls = &n
+		e.ToolCallsByName = ts.ToolCallsByName
 		e.TranscriptSchemaNote = "figures above are parsed from Claude Code's own transcript JSONL " +
 			"(transcript_path) — schema-coupled and may silently degrade to \"unavailable\" (never a " +
 			"wrong number) if that format changes; docs/design/production-tokenomics.md §8"
@@ -400,6 +407,10 @@ type transcriptSummary struct {
 	// Model is the model of the last assistant message that names one
 	// (WI-9w), "" when none does.
 	Model string
+	// ToolCallsByName is ToolCallsTotal by tool name, the top
+	// toolNamesOnRow names plus toolNameOther (PE-18w); nil when the fold
+	// cannot split every call it counted.
+	ToolCallsByName map[string]int
 	// Parsed is set by a fold that read a transcript but fills none of the
 	// three headline fields (a Codex rollout, PE-14); SchemaNote replaces
 	// the Claude Code schema disclosure when that fold is not Claude's.
@@ -591,6 +602,74 @@ type transcriptFold struct {
 	// Model is the last assistant message's model (WI-9w). A stamp written
 	// before the field folds on without it until the next assistant line.
 	Model string `json:"model,omitempty"`
+	// ToolsByName counts tool_use blocks by name (PE-18w), bounded: once
+	// toolNamesFoldCap names are held, a call to a new name counts under
+	// toolNameOther, so the persisted stamp grows with distinct names up
+	// to the cap, never with calls.
+	ToolsByName map[string]int `json:"tools_by_name,omitempty"`
+}
+
+// The per-name tool-call bounds (PE-18w): the fold holds at most
+// toolNamesFoldCap names, the ledger row carries the toolNamesOnRow
+// most-called and sums the rest under toolNameOther.
+const (
+	toolNamesFoldCap = 64
+	toolNamesOnRow   = 20
+	toolNameOther    = "other"
+)
+
+// countTool adds one call to name.
+func (f *transcriptFold) countTool(name string) {
+	if f.ToolsByName == nil {
+		f.ToolsByName = map[string]int{}
+	}
+	if name == "" {
+		name = toolNameOther
+	}
+	if _, held := f.ToolsByName[name]; !held && len(f.ToolsByName) >= toolNamesFoldCap {
+		name = toolNameOther
+	}
+	f.ToolsByName[name]++
+}
+
+// toolCallsByName is the fold's per-name counts as the ledger row carries
+// them: the toolNamesOnRow most-called names (ties by name) and the rest
+// summed under toolNameOther. nil when the counts do not cover every call
+// the fold counted — a stamp from before the per-name count, whose earlier
+// calls cannot be named, is absent rather than a mix of only its tail.
+func (f *transcriptFold) toolCallsByName() map[string]int {
+	sum := 0
+	for _, n := range f.ToolsByName {
+		sum += n
+	}
+	if sum == 0 || sum != f.ToolCallsTotal {
+		return nil
+	}
+	names := make([]string, 0, len(f.ToolsByName))
+	for name := range f.ToolsByName {
+		if name != toolNameOther {
+			names = append(names, name)
+		}
+	}
+	sort.Slice(names, func(i, j int) bool {
+		if a, b := f.ToolsByName[names[i]], f.ToolsByName[names[j]]; a != b {
+			return a > b
+		}
+		return names[i] < names[j]
+	})
+	out := make(map[string]int, min(len(names), toolNamesOnRow)+1)
+	other := f.ToolsByName[toolNameOther]
+	for i, name := range names {
+		if i < toolNamesOnRow {
+			out[name] = f.ToolsByName[name]
+		} else {
+			other += f.ToolsByName[name]
+		}
+	}
+	if other > 0 {
+		out[toolNameOther] = other
+	}
+	return out
 }
 
 // foldUse is one tool_use awaiting (or past) its result.
@@ -614,6 +693,12 @@ func (f *transcriptFold) clone() *transcriptFold {
 	c.ResultsSeen = make(map[string]int, len(f.ResultsSeen))
 	for k, v := range f.ResultsSeen {
 		c.ResultsSeen[k] = v
+	}
+	if f.ToolsByName != nil {
+		c.ToolsByName = make(map[string]int, len(f.ToolsByName))
+		for k, v := range f.ToolsByName {
+			c.ToolsByName[k] = v
+		}
 	}
 	return &c
 }
@@ -648,6 +733,7 @@ func (f *transcriptFold) add(l []byte, since *time.Time) {
 					continue
 				}
 				f.ToolCallsTotal++
+				f.countTool(c.Name)
 				if f.FirstEditTurn == nil && isEditTool(c.Name) {
 					t := f.TurnCount
 					f.FirstEditTurn = &t
@@ -766,6 +852,7 @@ func (f *transcriptFold) summary() transcriptSummary {
 	out.ToolSearchTurns = f.ToolSearchCount
 	out.ToolCallsTotal = f.ToolCallsTotal
 	out.Model = f.Model
+	out.ToolCallsByName = f.toolCallsByName()
 	out.RepeatedReadFiles = f.RepeatFiles
 	out.SidechainToolResults = f.SidechainResults
 	if f.SawResult {
