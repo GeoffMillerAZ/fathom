@@ -162,17 +162,17 @@
     {
       "blob": "kotlin",
       "repo": "fwcd/tree-sitter-kotlin",
-      "tag": "0.3.8",
-      "commit": "e1a2d5ad1f61f5740677183cd4125bb071cd2f30",
-      "tarball_sha256": "7dd60975786bf9cb4be6a5176f5ccb5fed505f9929a012da30762505b1015669",
+      "tag": "1852ea17b7f60fb3f9d84e0b1555d56b46b39fb1",
+      "commit": "1852ea17b7f60fb3f9d84e0b1555d56b46b39fb1",
+      "tarball_sha256": "61282c8d3d231fab7d6086d4d0c9ff284824f78d4a7a8d3993d49023fbb739c5",
       "licence": "MIT",
       "entry_points": ["tree_sitter_kotlin"],
       "scanner": true,
       "generate": false,
       "abi": 14,
-      "blob_sha256": "750a499adfc0a1339abebe5da80154eb6680c5732a3a5fdceaaace5053def3c3",
-      "blob_bytes": 2488435,
-      "gz_bytes": 510036
+      "blob_sha256": "5e672dfa0997692cea7aa6b0f19be4a26a846d6130264604a9a42fa6184652f6",
+      "blob_bytes": 3054455,
+      "gz_bytes": 567216
     },
     {
       "blob": "makefile",

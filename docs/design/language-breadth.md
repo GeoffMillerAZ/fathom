@@ -139,6 +139,17 @@ owner's decisions, binding on the harness and every reading after them:
   instruments only (installed under the measurement scratch dir), never product
   dependencies. An instrument that cannot be installed is recorded with why, and the
   reading keeps ctags with the deficiency disclosed — L1 capped at good.
+- **D2, Kotlin (LB-Q-kotlin, 2026-09-28).** universal-ctags writes no end line for Kotlin and lists every
+  local `val`/`var`, primary-constructor parameter and lambda as a definition (60,761 definitions to the
+  dialect's 16,335 on okhttp and Exposed), so Kotlin is measured against a PSI dump of the Kotlin
+  compiler's own parser (`calibration/oracles/kotlin-psi`, tier B like JavaParser and Roslyn) — its
+  definitions, ranges and call pairs, a call belonging to the smallest enclosing function or
+  constructor as it does in the dialect. scip-java's Kotlin index was tried and cannot stand in: under
+  Kotlin 2.2.0 (its plugin refuses 2.3.20) it wrote 58,698 occurrences with no range at all, and
+  okhttp's build needs an Android SDK. The grammar pin moved from fwcd 0.3.8 to commit `1852ea17`
+  because 0.3.8 left 16.6% of the subject files with parse errors (over §14.2's 5% line) and 1852ea17
+  leaves 1.1%.
+
 - **D3 — oracle-deficiency disclosure.** A reading may carry an adjudicated set of
   dialect-only definitions the L1 oracle is verified to miss (`lang-oracle -adjudicate
   <file>`: classes, each with a `why`, an optional structural `pattern` where `{name}`

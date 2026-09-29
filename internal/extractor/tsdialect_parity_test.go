@@ -20,11 +20,16 @@ import (
 // reviewed as a diff, never accepted blind.
 var updateGoldens = flag.Bool("update", false, "rewrite dialect golden files from current output")
 
-// migratedTagsDialects are the five languages TSExtractor served before
-// dialect manifests (LB-F1). Their goldens were first written by the
-// pre-manifest engine at 56c18502; TestTagsDialectParity holds every later
-// engine change to them.
-var migratedTagsDialects = []string{"javascript", "kotlin", "python", "ruby", "typescript"}
+// migratedTagsDialects are the languages TSExtractor served before dialect
+// manifests (LB-F1) whose goldens are still the pre-manifest engine's, written
+// at 56c18502; TestTagsDialectParity holds every later engine change to them.
+// Kotlin left the list with LB-Q-kotlin (its package now comes from the package
+// clause, its grammar moved to fwcd's fun-interface-capable commit and it emits
+// member and constructor properties, enum entries, type aliases and secondary
+// constructors): its goldens are the full, hand-written ones TestDialectGoldens
+// checks, and TestKotlinDialectKeepsLegacySymbols holds every symbol the
+// pre-LB-Q-kotlin goldens listed.
+var migratedTagsDialects = []string{"javascript", "python", "ruby", "typescript"}
 
 // goldenSymbol is one SymbolNode as a golden file records it. Service and
 // FilePath are fixed by the harness ("svc", "src/<case>.<ext>").

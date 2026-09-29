@@ -16,6 +16,7 @@ lines, bare names).
 | rust-analyzer/ | A (definitions, calls, def_mapping, typed_recall, file edges) | Rust |
 | roslyn/ | B | C# |
 | javaparser/ | B | Java |
+| kotlin-psi/ | B | Kotlin |
 | powershell-ast/ | B | PowerShell |
 | php-parser/ | B | PHP |
 | ts-tags/ | C | Bash (calls) |
