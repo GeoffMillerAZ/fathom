@@ -3169,6 +3169,16 @@ unreadable store) render on the same shell with the reason and the remedy.
   Fleet, Plans, Layers, Packs and Certifications pages all read these, and
   the ids that once answered the same questions a second way
   (`plans.verified`, `claims.fresh`, `certificates.live`) are gone.
+- A call-log, verify-ledger or hooks-log row naming a service the daemon's
+  registry does not list (a test fixture's `svc`, a deregistered repo) is not
+  the fleet's (OC-H2): the catches timeline (`/impact`, `metrics catches`) and
+  every per-service call figure leave it out and name it instead —
+  `unregistered` (rows and service ids) on the timeline and in each lane's
+  denominator, `unregistered_calls` in `fleet report --json`, and a split in
+  `calls.total`'s denominator, which still counts every row. A project filter
+  naming only such rows is a 404 saying why. A row naming no service is
+  unattributed, never excluded; with the registry unreadable nothing is
+  excluded and `registry_note` says so.
 - The Proof pages verify plans in the background through the path `plans
   status` takes, keyed by each plan's content, the index watermark and HEAD: a
   page waits a bounded time, shows a plan still verifying as "not yet
