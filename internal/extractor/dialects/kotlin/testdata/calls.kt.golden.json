@@ -1,0 +1,78 @@
+{
+  "symbols": [
+    {
+      "name": "calls",
+      "kind": "KotlinFunction",
+      "package": "com.example.calls",
+      "line": 3,
+      "end_line": 18,
+      "signature": "fun calls(list: List<String>, maybe: Foo?, fn: () -> Unit)",
+      "calls": [
+        "Inner",
+        "bang",
+        "bar",
+        "build",
+        "call",
+        "deep",
+        "filter",
+        "fn",
+        "foo",
+        "gen",
+        "generic",
+        "keep",
+        "map",
+        "method",
+        "next",
+        "plain",
+        "safe",
+        "trim"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Multi",
+      "kind": "KotlinClass",
+      "package": "com.example.calls",
+      "line": 20,
+      "end_line": 33,
+      "tier": "verified"
+    },
+    {
+      "name": "Multi.chain",
+      "kind": "KotlinFunction",
+      "package": "com.example.calls",
+      "line": 21,
+      "end_line": 23,
+      "signature": "fun chain()",
+      "calls": [
+        "builder",
+        "first",
+        "second"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Multi.own",
+      "kind": "KotlinFunction",
+      "package": "com.example.calls",
+      "line": 25,
+      "end_line": 30,
+      "signature": "fun own()",
+      "calls": [
+        "f",
+        "inAnon",
+        "parent",
+        "self"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "handler",
+      "kind": "KotlinProperty",
+      "package": "com.example.calls",
+      "line": 32,
+      "end_line": 32,
+      "tier": "verified"
+    }
+  ]
+}

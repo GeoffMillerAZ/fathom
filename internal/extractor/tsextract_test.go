@@ -581,19 +581,23 @@ fun topLevelFunc(x: Int): Int {
 	}
 }
 
-// TestTSExtractor_Kotlin_TopLevelPropertyOnly is the property-scoping
-// regression (mirrors python.scm's module-var-only constraint): a member
-// property inside a class body must NOT surface as a KindKotlinProperty —
-// only the top-level (source_file-direct-child) property_declaration does.
-func TestTSExtractor_Kotlin_TopLevelPropertyOnly(t *testing.T) {
+// TestTSExtractor_Kotlin_PropertyScopes is the property-scoping regression
+// (LB-Q-kotlin widened it from top-level only): a module-level property, a
+// class member and a primary-constructor val/var parameter are KotlinProperty
+// definitions; a local variable inside a function body is not.
+func TestTSExtractor_Kotlin_PropertyScopes(t *testing.T) {
 	e, err := NewTSExtractor("kotlin")
 	if err != nil {
 		t.Fatalf("NewTSExtractor: %v", err)
 	}
 	src := []byte(`val topLevel = 1
 
-class Widget {
+class Widget(val ctorProp: Int, plain: Int) {
     val memberField = 2
+
+    fun work() {
+        val localVar = 3
+    }
 }
 `)
 	nodes, err := e.Extract("svc", "widget.kt", src)
@@ -601,10 +605,16 @@ class Widget {
 		t.Fatalf("Extract: %v", err)
 	}
 	got := symStrings(nodes)
-	mustContainAll(t, got, string(core.KindKotlinProperty)+":topLevel")
+	mustContainAll(t, got,
+		string(core.KindKotlinProperty)+":topLevel",
+		string(core.KindKotlinProperty)+":memberField",
+		string(core.KindKotlinProperty)+":ctorProp",
+	)
 	for _, g := range got {
-		if g == string(core.KindKotlinProperty)+":memberField" {
-			t.Errorf("class-member property leaked as a top-level property: %v", got)
+		for _, leaked := range []string{"localVar", "plain"} {
+			if g == string(core.KindKotlinProperty)+":"+leaked {
+				t.Errorf("%s leaked as a property: %v", leaked, got)
+			}
 		}
 	}
 }

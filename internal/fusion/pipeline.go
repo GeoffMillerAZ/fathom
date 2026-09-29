@@ -587,7 +587,13 @@ func parseGitLog(serviceID, raw string) []store.Commit {
 // registered" and was fingerprinted (never re-sniffed) by that dead-end path,
 // the same class epochs 7, 10 and 11 fixed for Kotlin, HTML and CSS; the salt
 // bump forces those files through the new extractor on the next ingest.
-const ExtractorEpoch = "18"
+// Epoch 19 (LB-Q-kotlin): the kotlin dialect now takes its Package from the
+// package clause (it was the directory), emits member and primary-constructor
+// properties, enum entries (KotlinEnumEntry), type aliases (KotlinTypeAlias) and
+// secondary constructors (KotlinConstructor), names a call by its callee's last
+// identifier, and parses on a newer grammar commit (`fun interface`, detached
+// getters and setters); every already-indexed .kt/.kts file lacks those.
+const ExtractorEpoch = "19"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares

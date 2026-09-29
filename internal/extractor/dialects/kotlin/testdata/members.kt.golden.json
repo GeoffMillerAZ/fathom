@@ -1,0 +1,360 @@
+{
+  "symbols": [
+    {
+      "name": "com.example.shapes.Shape",
+      "kind": "KotlinImport",
+      "package": "com.example.members",
+      "line": 3,
+      "end_line": 3,
+      "tier": "verified"
+    },
+    {
+      "name": "com.example.util",
+      "kind": "KotlinImport",
+      "package": "com.example.members",
+      "line": 4,
+      "end_line": 4,
+      "tier": "verified"
+    },
+    {
+      "name": "Handler",
+      "kind": "KotlinTypeAlias",
+      "package": "com.example.members",
+      "line": 6,
+      "end_line": 6,
+      "tier": "verified"
+    },
+    {
+      "name": "LIMIT",
+      "kind": "KotlinProperty",
+      "package": "com.example.members",
+      "line": 8,
+      "end_line": 8,
+      "tier": "verified"
+    },
+    {
+      "name": "late",
+      "kind": "KotlinProperty",
+      "package": "com.example.members",
+      "line": 9,
+      "end_line": 9,
+      "tier": "verified"
+    },
+    {
+      "name": "lazyOne",
+      "kind": "KotlinProperty",
+      "package": "com.example.members",
+      "line": 10,
+      "end_line": 10,
+      "tier": "verified"
+    },
+    {
+      "name": "lastChar",
+      "kind": "KotlinProperty",
+      "package": "com.example.members",
+      "line": 11,
+      "end_line": 11,
+      "tier": "verified"
+    },
+    {
+      "name": "Marker",
+      "kind": "KotlinClass",
+      "package": "com.example.members",
+      "line": 14,
+      "end_line": 14,
+      "tier": "verified"
+    },
+    {
+      "name": "value",
+      "kind": "KotlinProperty",
+      "package": "com.example.members",
+      "line": 14,
+      "end_line": 14,
+      "tier": "verified"
+    },
+    {
+      "name": "Visitor",
+      "kind": "KotlinInterface",
+      "package": "com.example.members",
+      "line": 16,
+      "end_line": 18,
+      "tier": "verified"
+    },
+    {
+      "name": "Visitor.visit",
+      "kind": "KotlinFunction",
+      "package": "com.example.members",
+      "line": 17,
+      "end_line": 17,
+      "signature": "fun visit(n: Int)",
+      "tier": "verified"
+    },
+    {
+      "name": "Node",
+      "kind": "KotlinInterface",
+      "package": "com.example.members",
+      "line": 20,
+      "end_line": 20,
+      "tier": "verified"
+    },
+    {
+      "name": "Id",
+      "kind": "KotlinClass",
+      "package": "com.example.members",
+      "line": 23,
+      "end_line": 23,
+      "tier": "verified"
+    },
+    {
+      "name": "raw",
+      "kind": "KotlinProperty",
+      "package": "com.example.members",
+      "line": 23,
+      "end_line": 23,
+      "tier": "verified"
+    },
+    {
+      "name": "Level",
+      "kind": "KotlinClass",
+      "package": "com.example.members",
+      "line": 25,
+      "end_line": 32,
+      "tier": "verified"
+    },
+    {
+      "name": "code",
+      "kind": "KotlinProperty",
+      "package": "com.example.members",
+      "line": 25,
+      "end_line": 25,
+      "tier": "verified"
+    },
+    {
+      "name": "Level.LOW",
+      "kind": "KotlinEnumEntry",
+      "package": "com.example.members",
+      "line": 26,
+      "end_line": 28,
+      "tier": "verified"
+    },
+    {
+      "name": "Level.LOW.label",
+      "kind": "KotlinFunction",
+      "package": "com.example.members",
+      "line": 27,
+      "end_line": 27,
+      "signature": "override fun label()",
+      "tier": "verified"
+    },
+    {
+      "name": "Level.HIGH",
+      "kind": "KotlinEnumEntry",
+      "package": "com.example.members",
+      "line": 29,
+      "end_line": 29,
+      "tier": "verified"
+    },
+    {
+      "name": "Level.label",
+      "kind": "KotlinFunction",
+      "package": "com.example.members",
+      "line": 31,
+      "end_line": 31,
+      "signature": "open fun label(): String",
+      "tier": "verified"
+    },
+    {
+      "name": "User",
+      "kind": "KotlinClass",
+      "package": "com.example.members",
+      "line": 34,
+      "end_line": 69,
+      "tier": "verified"
+    },
+    {
+      "name": "age",
+      "kind": "KotlinProperty",
+      "package": "com.example.members",
+      "line": 34,
+      "end_line": 34,
+      "tier": "verified"
+    },
+    {
+      "name": "name",
+      "kind": "KotlinProperty",
+      "package": "com.example.members",
+      "line": 34,
+      "end_line": 34,
+      "tier": "verified"
+    },
+    {
+      "name": "upper",
+      "kind": "KotlinProperty",
+      "package": "com.example.members",
+      "line": 35,
+      "end_line": 35,
+      "tier": "verified"
+    },
+    {
+      "name": "counter",
+      "kind": "KotlinProperty",
+      "package": "com.example.members",
+      "line": 36,
+      "end_line": 36,
+      "tier": "verified"
+    },
+    {
+      "name": "User.constructor",
+      "kind": "KotlinConstructor",
+      "package": "com.example.members",
+      "line": 39,
+      "end_line": 41,
+      "signature": "constructor(other: User) : this(other.name, other.age)",
+      "calls": [
+        "helper"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "User.constructor",
+      "kind": "KotlinConstructor",
+      "package": "com.example.members",
+      "line": 43,
+      "end_line": 46,
+      "signature": "constructor(",
+      "tier": "verified"
+    },
+    {
+      "name": "User.sorted",
+      "kind": "KotlinFunction",
+      "package": "com.example.members",
+      "line": 52,
+      "end_line": 59,
+      "signature": "fun <T : Comparable<T>> sorted( items: List<T>, cmp: Comparator<T>? = null, ): List<T> where T : Any",
+      "calls": [
+        "map",
+        "naturalOrder",
+        "sortedWith",
+        "toString"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "inner",
+      "kind": "KotlinFunction",
+      "package": "com.example.members",
+      "line": 57,
+      "end_line": 57,
+      "signature": "fun inner()",
+      "calls": [
+        "other"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "User.plus",
+      "kind": "KotlinFunction",
+      "package": "com.example.members",
+      "line": 61,
+      "end_line": 61,
+      "signature": "operator fun plus(o: User): User",
+      "calls": [
+        "User"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "User.does a thing",
+      "kind": "KotlinFunction",
+      "package": "com.example.members",
+      "line": 63,
+      "end_line": 63,
+      "signature": "fun `does a thing`()",
+      "tier": "verified"
+    },
+    {
+      "name": "TAG",
+      "kind": "KotlinProperty",
+      "package": "com.example.members",
+      "line": 66,
+      "end_line": 66,
+      "tier": "verified"
+    },
+    {
+      "name": "User.create",
+      "kind": "KotlinFunction",
+      "package": "com.example.members",
+      "line": 67,
+      "end_line": 67,
+      "signature": "fun create()",
+      "calls": [
+        "User"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Holder",
+      "kind": "KotlinObject",
+      "package": "com.example.members",
+      "line": 71,
+      "end_line": 74,
+      "tier": "verified"
+    },
+    {
+      "name": "instance",
+      "kind": "KotlinProperty",
+      "package": "com.example.members",
+      "line": 72,
+      "end_line": 72,
+      "tier": "verified"
+    },
+    {
+      "name": "Holder.area",
+      "kind": "KotlinFunction",
+      "package": "com.example.members",
+      "line": 73,
+      "end_line": 73,
+      "signature": "override fun area(): Double",
+      "tier": "verified"
+    },
+    {
+      "name": "Cfg",
+      "kind": "KotlinClass",
+      "package": "com.example.members",
+      "line": 76,
+      "end_line": 76,
+      "tier": "verified"
+    },
+    {
+      "name": "first",
+      "kind": "KotlinProperty",
+      "package": "com.example.members",
+      "line": 76,
+      "end_line": 76,
+      "tier": "verified"
+    },
+    {
+      "name": "second",
+      "kind": "KotlinProperty",
+      "package": "com.example.members",
+      "line": 76,
+      "end_line": 76,
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "Shape",
+      "exported": "Shape",
+      "module": "com.example.shapes.Shape",
+      "kind": "named",
+      "line": 3
+    },
+    {
+      "local": "*",
+      "module": "com.example.util",
+      "kind": "wildcard",
+      "line": 4
+    }
+  ]
+}

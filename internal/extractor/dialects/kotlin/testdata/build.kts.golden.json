@@ -24,9 +24,18 @@
       "end_line": 7,
       "signature": "fun configure(project: Project)",
       "calls": [
-        "project.apply"
+        "apply"
       ],
       "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "Project",
+      "exported": "Project",
+      "module": "org.gradle.api.Project",
+      "kind": "named",
+      "line": 1
     }
   ]
 }
