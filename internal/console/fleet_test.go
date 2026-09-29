@@ -199,18 +199,16 @@ func TestFleetTable_SortFilterAndUnknownNotGreen(t *testing.T) {
 	if v := WiredAndFresh(p); v.State != StatePartial || v.V != 4 || !strings.Contains(v.Reason, "1 of 6") {
 		t.Errorf("wired and fresh = %+v", v)
 	}
-	if v := PlanRowsVerified(p); v.State != StatePartial || v.V != 16 || !strings.Contains(v.Denominator, "19 claimed rows") || !strings.Contains(v.Reason, "unrun") {
-		t.Errorf("plan rows verified = %+v", v)
+	pm := ProjectMetrics(p)
+	if v := pm[MetricClaims]; v.State != StatePresent || v.V != 324 || !strings.Contains(v.Denominator, "318 fresh · 6 stale") {
+		t.Errorf("claims current = %+v", v)
 	}
-	if v := ClaimsFresh(p); v.State != StatePresent || v.V != 318 {
-		t.Errorf("claims fresh = %+v", v)
-	}
-	if v := CertificatesLive(p); v.State != StatePresent || v.V != 1 || !strings.Contains(v.Denominator, "4 declared targets in 1 repo") {
-		t.Errorf("certificates live = %+v", v)
+	if v := pm[MetricCertLive]; v.State != StatePresent || v.V != 1 || !strings.Contains(v.Denominator, "of 4 targets in 1 repo") {
+		t.Errorf("certify live = %+v", v)
 	}
 	q := p
 	q.Store = SourceRead{Name: SourceStore, State: StateAbsent, Reason: "no store recorded for this daemon"}
-	if v := ClaimsFresh(q); v.State != StateAbsent || v.Reason != "no store recorded for this daemon" {
+	if v := ProjectMetrics(q)[MetricClaims]; v.State != StateAbsent || v.Reason != "no store recorded for this daemon" {
 		t.Errorf("claims with no store = %+v", v)
 	}
 }
@@ -254,9 +252,6 @@ func TestFleetTable_StaleProofIsNeverFailedOrHealthy(t *testing.T) {
 	b := rowByName(m.Rows, "busy")
 	if b.Health != HealthUnknown || !strings.Contains(b.HealthWhy, "1 plan with no recorded verify run") || b.PlansVerified.State != StatePartial {
 		t.Errorf("a plan no run checked: health %s (%s), plans %+v", b.Health, b.HealthWhy, b.PlansVerified)
-	}
-	if v := PlanRowsVerified(p); v.State != StateStale || !strings.Contains(v.Reason, "before HEAD (failing)") || !strings.Contains(v.Reason, "unrun") {
-		t.Errorf("plans.verified over stale runs = %+v", v)
 	}
 	// The same run at HEAD fails.
 	p.Rows[2].Runs[0].StaleReason = ""

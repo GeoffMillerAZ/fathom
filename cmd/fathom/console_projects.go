@@ -44,7 +44,6 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/certify"
 	"github.com/geoffmilleraz/fathom/internal/console"
-	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
@@ -244,21 +243,7 @@ func storeFacts(ctx context.Context, src projectSources, row *console.ProjectFac
 	if claims, err := src.st.ClaimsForService(ctx, row.Service, ""); err != nil {
 		row.Claim = console.Errored[console.ClaimCounts]("claims unreadable: " + err.Error())
 	} else {
-		var c console.ClaimCounts
-		for _, cl := range claims {
-			c.Total++
-			switch cl.Status {
-			case core.ClaimFresh:
-				c.Fresh++
-			case core.ClaimStale:
-				c.Stale++
-			case core.ClaimSuperseded:
-				c.Superseded++
-			default:
-				c.Other++
-			}
-		}
-		row.Claim = console.Present(c, source)
+		row.Claim = console.Present(console.ClaimCountsOf(claims), source)
 	}
 	row.Certs = certCounts(ctx, src.st, row.Service, row.Path)
 	compileRuns, err := src.st.CompileRuns(ctx, row.Service, semantic.LayerObligations)
@@ -291,7 +276,9 @@ func certCounts(ctx context.Context, st store.Store, service, root string) conso
 	const source = "the daemon's store"
 	gaps, err := certify.Gaps(ctx, st, service, root, nil)
 	if err != nil {
-		return console.Errored[console.CertCounts]("certify status failed: " + err.Error())
+		v := console.Errored[console.CertCounts]("certify status failed: " + err.Error())
+		v.V.Err = err.Error() // the report's own failure, as the Certifications page names it
+		return v
 	}
 	c := console.CertCounts{Declared: gaps.Summary.Declared, Live: gaps.Summary.Live, Gaps: gaps.Summary.Gaps,
 		Cases: gaps.Summary.Cases, JoinedCases: gaps.Summary.JoinedCases, Unreadable: gaps.Unread}

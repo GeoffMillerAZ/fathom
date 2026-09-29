@@ -122,8 +122,11 @@ and the typed-edge failures by the store stamp. Budgets:
   goes to the smaller group, then that order), so an exact hit is never below a group
   of weaker ones. Every query word
   must match; a row or record ID matches exactly; the in-order fuzzy match counts only
-  inside a compact span. Each group shows its top 8 of an exact total and links to its
-  own page (`&group=`), paged 50 at a time. A query is bounded (8 words, 200
+  inside a compact span. A plan result opens its plan page and a row result its row
+  page, in the page, the palette and the JSON alike; rows are read with the parser the
+  row page resolves them with, so every result opens a page that exists (UX-M1 finding
+  1: both opened the project page). Each group shows its top 8 of an exact total and
+  links to its own page (`&group=`), paged 50 at a time. A query is bounded (8 words, 200
   characters; past that, a 400 on the shell). Arrow keys move, Enter opens, Esc closes
   and focus returns. Without JavaScript, `/search?q=` is a full page with the same
   results.
@@ -136,6 +139,26 @@ and the typed-edge failures by the store stamp. Budgets:
   moves under the reader.
 - **Drawers.** Row evidence opens `overlay.RenderDrawer` over the plan page. The same
   content is a real page at `/plans/{svc}/{plan}/rows/{id}`.
+- **Narrow screens and the three-click count.** Below `md` the sidebar sits behind the
+  kit shell's Menu disclosure, so every sidebar destination costs one more tap at 390 px
+  than at 1440. Now does not repeat the navigation for narrow screens. A block of
+  destinations high on Now would push the attention queue — the page's reason to exist —
+  below the fold. One low on Now would win the click count by hiding a scroll the count
+  does not measure. A second list of destinations beside the registry-driven nav is also
+  a second nav to keep true. What already works without the Menu at 390:
+  - the Search trigger in the top bar, at every width: any project, plan, row, symbol,
+    rule, verb or page in the same taps as at 1440;
+  - the fleet pulse's project links and each project's tabs (Plans, Proof, Intent…);
+  - the attention queue's evidence links.
+
+  Re-counted over HTTP on a copy of the real fleet (2026-09-26): 10 of 10 UX-M1 tasks
+  within three clicks at 1440 and 8 of 10 at 390. The two misses, the serving
+  explainer (T2) and sessions by arm (T10), are three clicks at 1440. At 390 each pays
+  the Menu tap on top of a form that itself costs two: a choice and a submit. The lever
+  is those forms (a project the explainer can default to, the arm as links), not Now.
+  Revisit when a narrow-width journey misses three clicks by the Menu tap alone, with no
+  form to shorten, or when UX-M4's page views show a destination opened mostly from
+  narrow screens.
 - **Accessibility.**
   - One `h1` per page and landmarks.
   - Tables use `th scope`.
@@ -166,7 +189,7 @@ the window on some page, "new" counted over all of them), and a fleet pulse. The
 pulse shows the realization ladder per project with one shared sparkline scale.
 
 **Fleet.** A sortable, filterable table of every project. Columns: symbols, languages,
-freshness, realization ladder, plans proven/open, claims fresh, certificates live, calls
+freshness, realization ladder, plans proven/open, claims current, certificates live, calls
 over 14 days, and open observations. Above it, `topology.Render` rolls projects up by
 health. Unknown is never green.
 
@@ -188,8 +211,12 @@ health. Unknown is never green.
 
 - *Portfolio.* Every plan across the fleet with a proof bar: proven, claimed-unproven, open,
   op measured, op waiting, deferred, refused.
-- *Plan page.* The proof bar, then a board (`kanban.Board`) of rows by state. Cards carry
-  the row ID, title and contract kind.
+- *Plan page.* The proof bar, then every remaining row — what `plans next` lists, in
+  document order, never capped and never behind a disclosure (UX-M1: which rows of plan P
+  remain, at the click that opens the plan) — then a board (`kanban.Board`) of rows by
+  state. Cards carry the row ID, title and contract kind. The board's lanes show 12
+  cards each; its table alternative lists the rows the Remaining table does not, so each
+  row sits in exactly one table and the page does not grow per row (250 KB budget).
 - *Burn-up.* Scope against proven over time, from the plan's git history, cross-checked with
   the verify ledger where its rows name the plan.
 - *Row evidence.* Contract fields; the verify result; the reach path from test to symbol

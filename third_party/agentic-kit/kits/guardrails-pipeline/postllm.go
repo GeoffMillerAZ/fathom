@@ -3,6 +3,8 @@ package guardrailspipeline
 import (
 	"context"
 	"fmt"
+	"maps"
+	"slices"
 
 	honestygate "github.com/geoffmilleraz/agentic-kit/foundations/quality/honesty-gate"
 	integrityevaluator "github.com/geoffmilleraz/agentic-kit/foundations/quality/integrity-evaluator"
@@ -19,13 +21,16 @@ const defaultDLPThreshold = 0.67
 // Create one with NewPostLLMChain; the zero value is not usable.
 // Safe for concurrent use after construction.
 type PostLLMChain struct {
-	cfg    PostLLMConfig
-	deps   PostLLMDeps
-	stages []string
+	cfg       PostLLMConfig
+	deps      PostLLMDeps
+	stages    []string
+	configErr error
 }
 
 // NewPostLLMChain returns a PostLLMChain configured with cfg and deps.
 // Defaults are applied for a zero DLPThreshold and an empty stage list.
+// Invalid configuration is refused by Run before any stage executes; callers
+// can use cfg.Validate to check it before construction.
 func NewPostLLMChain(cfg PostLLMConfig, deps PostLLMDeps) *PostLLMChain {
 	if cfg.DLPThreshold == 0 {
 		cfg.DLPThreshold = defaultDLPThreshold
@@ -34,19 +39,34 @@ func NewPostLLMChain(cfg PostLLMConfig, deps PostLLMDeps) *PostLLMChain {
 	if len(stages) == 0 {
 		stages = defaultPostLLMStages
 	}
-	return &PostLLMChain{cfg: cfg, deps: deps, stages: stages}
+	deps.IntegrityKnownRefs = maps.Clone(deps.IntegrityKnownRefs)
+	return &PostLLMChain{cfg: cfg, deps: deps, stages: slices.Clone(stages), configErr: cfg.Validate()}
 }
 
 // Run executes the post-LLM chain against text and returns a Decision.
 // Stages run in the configured order. The chain is fail-closed: any stage
 // error produces Decision{Allowed:false, Err:err} immediately.
 func (c *PostLLMChain) Run(ctx context.Context, text string) Decision {
+	if err := firstError(c.configErr, ctx.Err()); err != nil {
+		d := Decision{Err: err, Transformed: text, Stages: []StageResult{{Stage: "configuration", Action: "error"}}}
+		if c.deps.Sink != nil {
+			c.deps.Sink.Emit(ctx, "post-llm", d)
+		}
+		return d
+	}
 	transformed := text
 	var stageResults []StageResult
 
 	for _, stage := range c.stages {
 		var sr StageResult
 		var err error
+		if err = ctx.Err(); err != nil {
+			d := Decision{Err: err, Transformed: transformed, Stages: stageResults}
+			if c.deps.Sink != nil {
+				c.deps.Sink.Emit(ctx, "post-llm", d)
+			}
+			return d
+		}
 
 		switch stage {
 		case "integrity":

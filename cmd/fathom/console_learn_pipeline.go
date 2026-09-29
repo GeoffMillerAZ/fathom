@@ -830,17 +830,19 @@ func verifyLedgerRows(path string, info os.FileInfo) ([]verifyLedgerRow, error) 
 
 // resolveConsoleHref picks the first page a route list names that the
 // console serves — "/packs" until a wave registers it falls through to the
-// project workspace's tab, and that tab until the workspace declares it
-// (consolePage.Tabs) to the workspace itself — and returns it as a link.
+// project workspace's index tab, and that tab until its page is registered
+// to the workspace itself — and returns it as a link. A workspace tab is
+// its own route (/projects/{svc}/<tab>); no page serves a ?tab= query, so a
+// link naming one resolves to nothing rather than to a page that would
+// render its overview under the tab's label.
 func resolveConsoleHref(reg *consoleRegistry, pages []string) (href, title string, ok bool) {
 	for _, p := range pages {
 		path, query, _ := strings.Cut(p, "?")
-		tab := ""
-		if q, err := url.ParseQuery(query); err == nil {
-			tab = q.Get("tab")
+		if q, err := url.ParseQuery(query); err != nil || q.Has("tab") {
+			continue
 		}
 		for _, page := range reg.pages {
-			if routeMatches(page.Route, path) && (tab == "" || containsString(page.Tabs, tab)) {
+			if routeMatches(page.Route, path) {
 				return p, page.Title, true
 			}
 		}
@@ -875,11 +877,8 @@ func routeMatches(pattern, path string) bool {
 // stageLinkLabel names a stage's destination for its link: the page it
 // opens, and the tab only when the link is to one.
 func stageLinkLabel(href, title string, choice learnChoice) string {
-	path, query, _ := strings.Cut(href, "?")
+	path, _, _ := strings.Cut(href, "?")
 	if strings.HasPrefix(path, "/projects/") {
-		if q, err := url.ParseQuery(query); err == nil && q.Get("tab") != "" {
-			return "Open " + choice.Service + " — " + q.Get("tab") + " tab"
-		}
 		// A workspace tab is its own route (/projects/{svc}/<tab>).
 		if parts := strings.Split(strings.Trim(path, "/"), "/"); len(parts) == 3 {
 			return "Open " + choice.Service + " — " + parts[2] + " tab"

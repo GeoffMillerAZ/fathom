@@ -96,6 +96,10 @@ func dialogWidth(size string) string {
 
 // RenderDialog returns the dialog as an HTML string.
 //
+// The backdrop veils the page with the scrim token role at 50%
+// (`backdrop:bg-scrim/50`), so it follows the token set and scheme like every
+// other kit color; a token set that omits the role gets one from tokens.Load.
+//
 // Centering is done with inset+translate utilities rather than the native
 // margin:auto modal centering, so the dialog stays centered even when a host
 // app ships an unlayered `* { margin: 0 }` reset (which beats Tailwind's
@@ -103,7 +107,7 @@ func dialogWidth(size string) string {
 func RenderDialog(dlg Dialog) string {
 	var b strings.Builder
 	fmt.Fprintf(&b,
-		`<dialog id="%s" class="fixed inset-auto left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 max-h-[90dvh] w-full %s overflow-y-auto rounded-lg border border-line bg-surface-raised p-0 text-ink shadow-xl backdrop:bg-black/40"%s>`,
+		`<dialog id="%s" class="fixed inset-auto left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 max-h-[90dvh] w-full %s overflow-y-auto rounded-lg border border-line bg-surface-raised p-0 text-ink shadow-xl backdrop:bg-scrim/50"%s>`,
 		esc(dlg.ID), dialogWidth(dlg.Size), boolAttr("data-overlay-light-dismiss", dlg.LightDismiss))
 	b.WriteString(`<div data-overlay-panel class="flex flex-col">`)
 	b.WriteString(header(dlg.Title))
@@ -137,7 +141,7 @@ func RenderDrawer(dr Drawer) string {
 	}
 	var b strings.Builder
 	fmt.Fprintf(&b,
-		`<dialog id="%s" class="fixed inset-y-0 %s h-dvh max-h-dvh w-full max-w-md rounded-none border-0 bg-surface-raised p-0 text-ink shadow-xl backdrop:bg-black/40"%s>`,
+		`<dialog id="%s" class="fixed inset-y-0 %s h-dvh max-h-dvh w-full max-w-md rounded-none border-0 bg-surface-raised p-0 text-ink shadow-xl backdrop:bg-scrim/50"%s>`,
 		esc(dr.ID), anchor, boolAttr("data-overlay-light-dismiss", dr.LightDismiss))
 	b.WriteString(`<div data-overlay-panel class="flex h-full flex-col">`)
 	b.WriteString(header(dr.Title))

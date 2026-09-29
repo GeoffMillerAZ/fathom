@@ -16,7 +16,7 @@ injected automatically on every edit via the PostToolUse hook. Treat them
 as binding, not advisory.
 
 Continuity: run `fathom thread brief` at session start if your harness has
-no SessionStart hook (Codex does not) — it prints the open threads, or
+no active SessionStart hook — it prints the open threads, or
 nothing. File what the next session must know: `fathom thread note "…"`.
 
 Done means proven: a plan task is only "done" when the index proves it, not

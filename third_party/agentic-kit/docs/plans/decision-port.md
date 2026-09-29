@@ -94,6 +94,33 @@ fixed, not a first draft.
   synthesized from an integral `[Min, Max]`); neither is meaningful without
   the other.
 
+## Hexagonal hardening
+
+Owner-accepted 2026-09-29; every row below is open and none is started. Recorded in [decision 0017](../intent/decisions/0017-fast-judgment-is-optional-and-calibrated.md);
+guidance in [fast-judgment.md](../fast-judgment.md). The port is mostly hexagonal
+(`Decider{Name, Decide}`; adapters `None`, `LLM`, `TypeSafe`, `MockDecider`). These rows close the
+remaining vendor lock-in leaks so a better or different fast model plugs in without a redesign; the
+reference consumer's ADR-056 and its plan rows JF-13, JF-14 and JF-24 track the same work from its side and
+bump their vendored mirror after it lands. Sequenced after the reference consumer's in-flight push lands
+(owner's sequencing). DP-12 and DP-14 are breaking (external consumers code against the names listed in the
+mission, which this section is the one sanctioned exception to), so they land together with DP-24: `compat.md`,
+a migration note and a `### Breaking` line.
+
+- [ ] **1. Vendor vocabulary.** Rename `KindNoul` to a generic kind (for example `KindPredicate`), keep "noul" as a wire and config alias that decodes to it, and stop documenting a 1:1 TypeSafe mirror in the core's `doc.go` and `types.go` {id: DP-12, symbol: ParseKind, package: foundations/decision, reachable_from: TestParseKindNoulAliasDecodesToPredicate}
+- [ ] **2. Vendor limits out of domain validation.** `Validate` stops enforcing Score's 2..10 levels; each adapter declares its limits (DP-15) and the core adapts or refuses cleanly, so an out-of-limit question lands in `Response.Invalid` by question ID without reaching the wire {id: DP-13, symbol: Validate, package: foundations/decision, reachable_from: TestValidateHasNoVendorScoreLevelLimit, needs: "DP-15"}
+- [ ] **3. Adapters in subpackages.** `LLM` moves to `decision/llm` and `TypeSafe` to `decision/typesafe`; the core imports no vendor code, proven by an import-graph test {id: DP-14, symbol: NewLLM, package: foundations/decision/llm, reachable_from: TestCoreImportsNoAdapterPackage, needs: "DP-12"}
+- [ ] **4. `Capabilities()`.** Each Decider declares kinds, max options and levels, batching, latency and cost class, and confidence semantics (calibrated probability, logprob or self-reported); whether it is a method on `Decider` or an optional interface is settled in the change and recorded in `compat.md` {id: DP-15, symbol: CapabilitiesOf, package: foundations/decision, reachable_from: TestCapabilitiesOfDeclaresKindsLimitsBatchingCostAndConfidence}
+- [ ] **5. `decisiontest` conformance kit.** One suite every adapter must pass (Validate handling, per-question Invalid classification, abstain, Confidence computed by this package, no key in an error); `None`, `LLM`, `TypeSafe` and `MockDecider` all run it {id: DP-16, symbol: RunConformance, package: foundations/decision/decisiontest, reachable_from: TestLLMPassesConformance, needs: "DP-15"}
+- [ ] **6a. Decorator: cascade.** Cheap first, escalate on abstain or low confidence, as a `Decider` {id: DP-17, symbol: NewCascade, package: foundations/decision, reachable_from: TestCascadeEscalatesOnAbstainOrLowConfidence, needs: "DP-15"}
+- [ ] **6b. Decorator: fallback.** An offline or second provider when the first fails or is unavailable, as a `Decider` {id: DP-18, symbol: NewFallback, package: foundations/decision, reachable_from: TestFallbackUsesNextDeciderOnError, needs: "DP-15"}
+- [ ] **6c. Decorator: cache.** Keyed by (question template, content hash) and stamped with provider and model version, kept apart from any proof, so a better model re-grades cleanly {id: DP-19, symbol: NewCached, package: foundations/decision, reachable_from: TestCachedKeysByTemplateAndContentHashStampsModel, needs: "DP-15"}
+- [ ] **6d. Decorator: record and replay.** Deterministic tests and offline runs from a recorded transcript {id: DP-20, symbol: NewReplay, package: foundations/decision, reachable_from: TestReplayReproducesRecordedResponses, needs: "DP-15"}
+- [ ] **6e. Policy in configuration.** The decorators are assembled from configuration data, not call-site code, so a consumer changes cascade or fallback order without a rebuild {id: DP-21, symbol: ComposeFromConfig, package: foundations/decision, reachable_from: TestComposeFromConfigBuildsCascadeFallbackCache, needs: "DP-17,DP-18,DP-19,DP-20"}
+- [ ] **7. Calibration mapping in the core.** Raw provider confidence maps to a per-site calibrated band from that site's growing calibration set; `BandOf`'s 0.5 and 0.9 stay documented as uncalibrated starting bands {id: DP-22, symbol: CalibratedBand, package: foundations/decision, reachable_from: TestCalibratedBandFromSiteReading, needs: "DP-23"}
+- [ ] **7b. Readings library.** For each (site, template version, provider, resolved model): n, accuracy by confidence band, Wilson bounds, Brier score, AUROC, the label provenance mix (human, frontier, computed) and a recalibration-due flag when the model moves; free compute, no table {id: DP-23, symbol: NewReading, package: foundations/decision, reachable_from: TestReadingReportsWilsonBrierAucAndRecalibrationDue}
+- [ ] **Records for the breaking moves.** `compat.md` and a migration note under `docs/upgrades/` name the `KindNoul` rename, the wire alias and the adapter move, and `CHANGELOG.md` carries a `### Breaking` line {id: DP-24, oracle: lexical, path: docs/compat.md, pattern: "KindPredicate", needs: "DP-12,DP-14"}
+- [-] **Ensemble decorator.** Several providers vote or disagree-and-abstain {id: DP-D1, disposition: deferred, reason: "the owner said ensemble later; cascade and fallback come first", trigger: "two providers pass DP-16 and a consumer's calibration reading shows cascade or fallback leaves a site under its bar"}
+
 ## Acceptance = proof
 
 1. `task validate` green (fmt-check, vet, cue-vet, `constitution-lint`,

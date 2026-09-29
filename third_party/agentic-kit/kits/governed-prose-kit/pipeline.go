@@ -26,6 +26,7 @@ type Pipeline struct {
 	evalGate evalgate.Gate
 	regenLog traceableprose.RegenerationLog
 	ledger   *correctionledger.Ledger
+	now      func() time.Time
 }
 
 // NewPipeline constructs a Pipeline with the supplied dependencies.
@@ -41,6 +42,13 @@ func NewPipeline(
 	dlpPolicy prellmdlpgate.RedactPolicy,
 	gate evalgate.Gate,
 ) (*Pipeline, error) {
+	return NewPipelineWithClock(client, policy, dlpPolicy, gate, nil)
+}
+
+// NewPipelineWithClock constructs a Pipeline whose regeneration and correction
+// records use now, normalized to UTC. A nil clock defaults to time.Now.
+// NewPipeline retains its original signature and uses this documented default.
+func NewPipelineWithClock(client llmclient.LLMClient, policy prosepolicy.Policy, dlpPolicy prellmdlpgate.RedactPolicy, gate evalgate.Gate, now func() time.Time) (*Pipeline, error) {
 	if client == nil {
 		return nil, fmt.Errorf("governedprosekit: LLMClient must not be nil")
 	}
@@ -51,12 +59,17 @@ func NewPipeline(
 	if err != nil {
 		return nil, fmt.Errorf("governedprosekit: invalid DLP policy: %w", err)
 	}
+	if now == nil {
+		now = time.Now
+	}
+	clock := func() time.Time { return now().UTC() }
 	return &Pipeline{
 		client:   client,
 		policy:   policy,
 		dlpGate:  g,
 		evalGate: gate,
-		ledger:   correctionledger.New(),
+		ledger:   correctionledger.NewWithClock(clock),
+		now:      clock,
 	}, nil
 }
 
@@ -175,7 +188,7 @@ func (p *Pipeline) Regenerate(ctx context.Context, correction CorrectionInput, n
 	event := traceableprose.RegenerationEvent{
 		TriggeredBy:     correction.CorrectionID,
 		AffectedNodeIDs: correction.AffectedNodeIDs,
-		OccurredAt:      time.Now().UTC(),
+		OccurredAt:      p.now(),
 		Note:            fmt.Sprintf("correction %s applied", correction.CorrectionID),
 	}
 	if err := p.regenLog.Append(event); err != nil {
@@ -201,7 +214,7 @@ func (p *Pipeline) Regenerate(ctx context.Context, correction CorrectionInput, n
 		Original:    "(prior text not available at pipeline level)",
 		Corrected:   correction.NewText,
 		CorrectedBy: "pipeline",
-		CorrectedAt: time.Now().UTC(),
+		CorrectedAt: p.now(),
 		Reason:      "governed regeneration",
 		Confidence:  5,
 	}

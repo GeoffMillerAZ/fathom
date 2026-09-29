@@ -76,6 +76,12 @@ package tokens
 		"info-soft":     #ColorPair
 		// affordances
 		focus: #ColorPair
+		// scrim is the veil a modal dialog or drawer draws over the page
+		// (appkit/ui/overlay paints it at 50%). Optional: Load fills an omitted
+		// scrim from the kit's pair, chosen per branch by the branch's measured
+		// surface polarity, so sets written before the role existed still emit
+		// it. Author it opaque and darker than the branch's surface.
+		scrim?: #ColorPair
 
 		// open: apps may add more roles
 		[=~"^[a-z][a-z0-9-]*$"]: #ColorPair

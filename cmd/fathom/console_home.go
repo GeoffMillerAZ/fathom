@@ -3,8 +3,8 @@ package main
 // console_home.go — the Now page at / (vision 35 §3, plan OC-17, OC-18):
 // what needs my attention, and what changed since I last looked.
 //
-//   - A stat band: projects wired and fresh, plan rows verified, governed
-//     claims fresh, live certificates, gate refusals and agent sessions —
+//   - A stat band: projects wired and fresh, plan rows proven, governed
+//     claims current, live certificates, gate refusals and agent sessions —
 //     each a shared projection (the Fleet page shows the same four project
 //     metrics, TestConsoleMetricsAgreeAcrossPages holds them equal).
 //   - The attention queue (console.AttentionQueue): problems ordered by what
@@ -48,7 +48,7 @@ func init() {
 		ProjectVerbs: []string{verbPlansStatusFor, verbCertifyStatusFor},
 		Shows: []console.MetricID{
 			console.MetricServices, console.MetricAgentTools, console.MetricSessions,
-			console.MetricWiredFresh, console.MetricPlanRowsVerified, console.MetricClaimsFresh, console.MetricCertificatesLive,
+			console.MetricWiredFresh, console.MetricPlansProven, console.MetricClaims, console.MetricCertLive,
 		},
 		Build: buildHomePage,
 	})
@@ -120,13 +120,12 @@ type nowReport struct {
 
 // nowSummary is the stat band: every value with its truth state.
 type nowSummary struct {
-	Projects         console.Value[int] `json:"projects"`
-	WiredFresh       console.Value[int] `json:"wired_fresh"`
-	PlanRowsVerified console.Value[int] `json:"plan_rows_verified"`
-	ClaimsFresh      console.Value[int] `json:"claims_fresh"`
-	CertificatesLive console.Value[int] `json:"certificates_live"`
-	GateRefusals     console.Value[int] `json:"gate_refusals"`
-	Sessions         console.Value[int] `json:"sessions"`
+	Projects      console.Value[int] `json:"projects"`
+	WiredFresh    console.Value[int] `json:"wired_fresh"`
+	ClaimsCurrent console.Value[int] `json:"claims_current"`
+	CertifyLive   console.Value[int] `json:"certify_live"`
+	GateRefusals  console.Value[int] `json:"gate_refusals"`
+	Sessions      console.Value[int] `json:"sessions"`
 }
 
 // nowPulseRows is how many projects the pulse shows.
@@ -139,13 +138,12 @@ func buildNowReport(m observatoryModel, pr projectsRead, since console.Since, no
 	return nowReport{
 		Schema: nowReportSchema, GeneratedAt: now.UTC().Format(time.RFC3339),
 		Summary: nowSummary{
-			Projects:         metrics[console.MetricServices],
-			WiredFresh:       pm[console.MetricWiredFresh],
-			PlanRowsVerified: pm[console.MetricPlanRowsVerified],
-			ClaimsFresh:      pm[console.MetricClaimsFresh],
-			CertificatesLive: pm[console.MetricCertificatesLive],
-			GateRefusals:     pr.gateRefusals,
-			Sessions:         metrics[console.MetricSessions],
+			Projects:      metrics[console.MetricServices],
+			WiredFresh:    pm[console.MetricWiredFresh],
+			ClaimsCurrent: pm[console.MetricClaims],
+			CertifyLive:   pm[console.MetricCertLive],
+			GateRefusals:  pr.gateRefusals,
+			Sessions:      metrics[console.MetricSessions],
 		},
 		Attention: console.AttentionQueue(pr.projects),
 		Since:     since,
@@ -154,12 +152,13 @@ func buildNowReport(m observatoryModel, pr projectsRead, since console.Since, no
 }
 
 // consoleSharedMetrics is every shared metric a model-backed page with the
-// project set can show.
-func consoleSharedMetrics(m observatoryModel, pr projectsRead) console.Metrics {
+// project set can show, the Proof ledger's plans headline included.
+func consoleSharedMetrics(cr *consoleRequest, m observatoryModel, pr projectsRead) console.Metrics {
 	all := consoleModelMetrics(m)
 	for id, v := range console.ProjectMetrics(pr.projects) {
 		all[id] = v
 	}
+	all[console.MetricPlansUnproven], all[console.MetricPlansProven] = fleetPlanMetrics(cr, m)
 	return all
 }
 
@@ -171,12 +170,13 @@ func buildHomePage(cr *consoleRequest) (consoleOut, error) {
 		baseURL: cr.deps.selfURL, callLog: modelCallFacts(m).Log.Path, viewsLog: cr.deps.views.logPath, model: m, now: cr.now, page: sincePage,
 	})
 	rep := buildNowReport(m, pr, since, cr.now)
+	metrics := consoleSharedMetrics(cr, m, pr)
 	out := consoleOut{
 		Meta:    nowMeta(m, rep),
 		Actions: `<span class="flex flex-wrap gap-2 [&>a]:min-h-11">` + form.RenderButton(form.Button{Label: "Download brief", Href: "/brief?format=md", Variant: form.ButtonGhost}) + form.RenderButton(form.Button{Label: "Open the fleet", Href: "/fleet", Variant: form.ButtonGhost}) + `</span>`,
 		Model:   rep,
-		Metrics: pageMetrics(cr.page, consoleSharedMetrics(m, pr)),
-		Body:    func() string { return renderNow(rep, m, cr.now) },
+		Metrics: pageMetrics(cr.page, metrics),
+		Body:    func() string { return renderNow(rep, metrics[console.MetricPlansProven], m, cr.now) },
 	}
 	if wantsJSON(cr.r) {
 		out.Sections = nowProjectSections(pr.projects)
@@ -209,7 +209,9 @@ func valuePlainShort(v console.Value[int], noun string) string {
 }
 
 // renderNow is the page body.
-func renderNow(rep nowReport, m observatoryModel, now time.Time) string {
+// plansProven is the shared plans.proven metric (the brief's JSON carries
+// no plans figure: the gate's verdicts live in the daemon's plan cache).
+func renderNow(rep nowReport, plansProven console.Value[int], m observatoryModel, now time.Time) string {
 	var b strings.Builder
 	s := rep.Summary
 	// The kit band stacks one tile per row below md; the phone composition
@@ -217,9 +219,9 @@ func renderNow(rep nowReport, m observatoryModel, now time.Time) string {
 	b.WriteString(`<div class="max-md:[&_dl]:grid-cols-2" data-now-band>`)
 	b.WriteString(stat.RenderBand([]stat.Stat{
 		valueStat("Projects wired and fresh", s.WiredFresh),
-		valueStat("Plan rows verified", s.PlanRowsVerified),
-		valueStat("Governed claims fresh", s.ClaimsFresh),
-		valueStat("Live certificates", s.CertificatesLive),
+		valueStat("Plan rows proven", plansProven),
+		valueStat("Governed claims current", s.ClaimsCurrent),
+		valueStat("Live certificates", s.CertifyLive),
 		valueStat("Gate refusals", s.GateRefusals),
 		valueStat("Agent sessions", s.Sessions),
 	}, stat.BandOptions{AriaLabel: "where the fleet stands"}))
@@ -388,7 +390,7 @@ func renderSincePanel(s console.Since, now time.Time) string {
 		if s.Pages > 1 {
 			// Every change in the window is on some page: the list is paged,
 			// never cut (design §2).
-			body.WriteString(`<div class="mt-3 [&_a]:min-h-11 [&_span]:min-h-11" data-since-pages>` + chrome.RenderPagination(chrome.Pagination{
+			body.WriteString(`<div class="mt-3" data-since-pages>` + chrome.RenderPagination(chrome.Pagination{
 				Page: s.Page, TotalPages: s.Pages, AriaLabel: "changes pages",
 				HrefFor: func(n int) string {
 					if n <= 1 {

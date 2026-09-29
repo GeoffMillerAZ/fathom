@@ -1053,9 +1053,8 @@ func checkToolDefRawVerbatim(t *testing.T, h Harness) {
 }
 
 // checkEffortRejectedOrMapped proves that setting Request.Effort is either:
-//   - rejected with a typed *InvalidRequestError (current behaviour for both
-//     Anthropic and Bedrock adapters, which have no effort knob), OR
-//   - silently mapped to a provider field (a future adapter might do this).
+//   - rejected with a typed *InvalidRequestError (for example Bedrock), OR
+//   - mapped to a provider field (for example Anthropic and OpenAI).
 //
 // What is forbidden: Effort being silently dropped — if the call succeeds, the
 // adapter MUST have mapped the value to a wire field. The test detects silent

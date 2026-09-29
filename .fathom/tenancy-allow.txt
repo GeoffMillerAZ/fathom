@@ -163,7 +163,6 @@ whole-read	cmd/fathom/console_plansdata.go	reads one plan document the page rend
 whole-read	cmd/fathom/console_plansdata.go	reads one plan document the page renders; plan files are small, one per request, cached by stamp
 whole-read	cmd/fathom/console_projects.go	lists docs/plans entries (names only), no file content
 whole-read	cmd/fathom/console_projects.go	reads the verify ledger, a size-rotated operator file, not a repository tree
-whole-read	cmd/fathom/console_search.go	lists docs/plans entries (names only), no file content
 whole-read	cmd/fathom/console_since.go	reads a small operator file (page-view log, .git file or ref log) for the since view, never a repository tree
 whole-read	cmd/fathom/console_since.go	reads a small operator file (page-view log, .git file or ref log) for the since view, never a repository tree
 whole-read	cmd/fathom/console_since.go	reads a small operator file (page-view log, .git file or ref log) for the since view, never a repository tree

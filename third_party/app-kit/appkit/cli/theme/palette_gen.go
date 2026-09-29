@@ -26,6 +26,7 @@ const (
 	RoleLineStrong     Role = "line-strong"
 	RolePositive       Role = "positive"
 	RolePositiveSoft   Role = "positive-soft"
+	RoleScrim          Role = "scrim"
 	RoleSurface        Role = "surface"
 	RoleSurfaceOverlay Role = "surface-overlay"
 	RoleSurfaceRaised  Role = "surface-raised"
@@ -53,6 +54,7 @@ var Roles = []Role{
 	RoleLineStrong,
 	RolePositive,
 	RolePositiveSoft,
+	RoleScrim,
 	RoleSurface,
 	RoleSurfaceOverlay,
 	RoleSurfaceRaised,
@@ -81,6 +83,7 @@ var LightHex = map[Role]string{
 	RoleLineStrong:     "#b9bec6",
 	RolePositive:       "#007a44",
 	RolePositiveSoft:   "#d2f6dd",
+	RoleScrim:          "#292e36",
 	RoleSurface:        "#f8fafe",
 	RoleSurfaceOverlay: "#fcfdff",
 	RoleSurfaceRaised:  "#fcfdff",
@@ -107,6 +110,7 @@ var DarkHex = map[Role]string{
 	RoleLineStrong:     "#3d434c",
 	RolePositive:       "#51b67a",
 	RolePositiveSoft:   "#173523",
+	RoleScrim:          "#020306",
 	RoleSurface:        "#0a0d12",
 	RoleSurfaceOverlay: "#171b22",
 	RoleSurfaceRaised:  "#12161c",

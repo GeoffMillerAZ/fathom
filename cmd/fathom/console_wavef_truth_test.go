@@ -112,9 +112,15 @@ func TestConsoleWaveF_CatchFilterScopesEveryLane(t *testing.T) {
 			t.Errorf("checkout-service lane %s = %+v: no instrument recorded anything there — absent, never a zero", s.Kind, s.Count)
 		}
 	}
-	// A project the instruments name but the registry does not is shown.
-	if svc := catchLane(t, model("/impact?svc=svc").Catches, console.CatchVerifyRefusal); svc.V != 1 {
-		t.Errorf("a service the verify ledger names renders its lane: %+v", svc)
+	// A service the instruments name but the registry does not list is not
+	// the fleet's (OC-H2): its rows are left out and named on the timeline,
+	// and a filter naming it has nothing to show.
+	all := model("/impact").Catches
+	if v := catchLane(t, all, console.CatchVerifyRefusal); v.V != 1 || !strings.Contains(v.Denominator, "1 verify run naming a service the registry does not list (svc) excluded") {
+		t.Errorf("the verify lane counts svc's run: %+v", v)
+	}
+	if code, _, _ := f.get(t, "/impact?svc=svc", "Accept", "application/json"); code != http.StatusNotFound {
+		t.Errorf("/impact?svc=svc = %d, want 404: every row naming svc is excluded", code)
 	}
 	code, _, page := f.get(t, "/impact?svc=no-such-project")
 	if code != http.StatusNotFound || !strings.Contains(page, "Unknown project") || !strings.Contains(page, "no-such-project") || !strings.Contains(page, `href="/impact"`) {

@@ -21,6 +21,9 @@ var errSSETooLarge = fmt.Errorf("SSE line or event data exceeds the %d-byte cap"
 // pre-stream failures only; once a channel is returned, all outcomes travel on
 // the channel and the producer goroutine closes it exactly once.
 func (c *Client) Stream(ctx context.Context, req llmclient.Request) (<-chan llmclient.StreamChunk, error) {
+	if c.useResponses {
+		return c.streamResponses(ctx, req)
+	}
 	body, err := c.buildBody(req, true)
 	if err != nil {
 		return nil, err

@@ -2,6 +2,7 @@ package fitnessfunctionregistry
 
 import (
 	"fmt"
+	"math"
 	"sort"
 	"time"
 
@@ -41,12 +42,13 @@ func (r *Registry) Register(ff FitnessFunction) error {
 	if ff.Tier != "" && !ff.Tier.Valid() {
 		return fmt.Errorf("fitnessfunctionregistry: FitnessFunction %q has unrecognised Tier %q (want prototype|integration|apex)", ff.Name, ff.Tier)
 	}
-	if ff.Threshold < 0 || ff.Threshold > 1 {
+	if math.IsNaN(ff.Threshold) || ff.Threshold < 0 || ff.Threshold > 1 {
 		return fmt.Errorf("fitnessfunctionregistry: FitnessFunction %q Threshold %g is outside [0, 1]", ff.Name, ff.Threshold)
 	}
 	if _, exists := r.funcs[ff.Name]; exists {
 		return fmt.Errorf("fitnessfunctionregistry: FitnessFunction %q is already registered", ff.Name)
 	}
+	ff.Checks = cloneChecks(ff.Checks)
 	r.funcs[ff.Name] = ff
 	return nil
 }
@@ -58,6 +60,9 @@ func (r *Registry) Get(name string) (ff FitnessFunction, ok bool) {
 		return FitnessFunction{}, false
 	}
 	ff, ok = r.funcs[name]
+	if ok {
+		ff.Checks = cloneChecks(ff.Checks)
+	}
 	return ff, ok
 }
 
@@ -67,11 +72,23 @@ func (r *Registry) Get(name string) (ff FitnessFunction, ok bool) {
 func (r *Registry) List() []FitnessFunction {
 	out := make([]FitnessFunction, 0, len(r.funcs))
 	for _, ff := range r.funcs {
+		ff.Checks = cloneChecks(ff.Checks)
 		out = append(out, ff)
 	}
 	sort.Slice(out, func(i, j int) bool {
 		return out[i].Name < out[j].Name
 	})
+	return out
+}
+
+// cloneChecks returns an independent copy of checks while preserving nil and
+// non-nil empty slices. FitnessFunction has no other reference fields.
+func cloneChecks(checks []evalgate.Check) []evalgate.Check {
+	if checks == nil {
+		return nil
+	}
+	out := make([]evalgate.Check, len(checks))
+	copy(out, checks)
 	return out
 }
 
@@ -123,9 +140,24 @@ func Execute(ff FitnessFunction, runID string, at time.Time) ExecutionResult {
 // need fully reproducible output (e.g. golden tests); use ExecuteTimed when you
 // also want a cost signal for a scorecard.
 func ExecuteTimed(ff FitnessFunction, runID string, at time.Time) ExecutionResult {
-	start := time.Now()
+	return ExecuteTimedWithClock(ff, runID, at, time.Now)
+}
+
+// ExecuteTimedWithClock is Execute with duration measured from two calls to
+// now. A nil now defaults to time.Now. If the supplied clock moves backwards,
+// Duration is clamped to zero. Every field other than Duration remains equal to
+// Execute(ff, runID, at), so callers can inject time without changing scoring.
+func ExecuteTimedWithClock(ff FitnessFunction, runID string, at time.Time, now func() time.Time) ExecutionResult {
+	if now == nil {
+		now = time.Now
+	}
+	start := now()
 	out := Execute(ff, runID, at)
-	out.Duration = time.Since(start)
+	duration := now().Sub(start)
+	if duration < 0 {
+		duration = 0
+	}
+	out.Duration = duration
 	return out
 }
 

@@ -234,10 +234,12 @@ type catchSources struct {
 	// guardPartial is a hooks-log generation that could not be read while
 	// the other was (the guard count is then a lower bound).
 	guardPartial error
+	// registry decides which rows name a service it does not list (OC-H2).
+	registry console.Registry
 }
 
 func catchInputsFrom(s catchSources) console.CatchInputs {
-	in := console.CatchInputs{Reviews: s.reviews, GuardBeats: s.guard,
+	in := console.CatchInputs{Reviews: s.reviews, GuardBeats: s.guard, Registry: s.registry,
 		VerifySource: "verify ledger " + s.verifyPath, GuardSource: hooksLogSource(s.guardPath)}
 	in.VerifyReason, in.VerifyError = fileState("verify ledger", s.verifyPath, s.verifyErr)
 	for _, r := range s.verify {
@@ -315,16 +317,19 @@ func cmdMetricsCatches(args []string, stdout, stderr io.Writer) int {
 	resolved := resolveConsoleCallLogFor(callLogQuery{Flag: *callLogFlag, BaseURL: *url})
 	entries, facts := readCallLogFacts(resolved)
 	roots := map[string]string{}
-	if svcs, err := fetchServices(&http.Client{Timeout: 5 * time.Second}, *url); err == nil {
-		for name, info := range svcs {
-			roots[name] = info.path
-		}
+	svcs, svcErr := fetchServices(&http.Client{Timeout: 5 * time.Second}, *url)
+	for name, info := range svcs {
+		roots[name] = info.path
 	}
-	src := freshCatchSources(reviewRunsOf(entries), facts, sessionLabelKey(roots))
+	src := freshCatchSources(reviewRunsOf(entries), facts, sessionLabelKey(roots), registryOf(svcs, svcErr))
 	in := catchInputsFrom(src)
 	if *service != "" && !in.NamesService(*service) {
 		if _, registered := roots[*service]; !registered {
-			fmt.Fprintf(stderr, "warn: no instrument names a service %q and the daemon registers none — every lane is not instrumented for it\n", *service)
+			if in.ExcludesNamedService(*service) {
+				fmt.Fprintf(stderr, "warn: the daemon's registry does not list %q — its rows are excluded from every lane (named under unregistered without --service)\n", *service)
+			} else {
+				fmt.Fprintf(stderr, "warn: no instrument names a service %q and the daemon registers none — every lane is not instrumented for it\n", *service)
+			}
 		}
 	}
 	m := console.CatchTimeline(in, catchFilterFrom(kinds, *service, *days, now), *page, *perPage)
@@ -349,13 +354,13 @@ func cmdMetricsCatches(args []string, stdout, stderr io.Writer) int {
 // caller's one read of the log. A ledger that exists and fails to read is
 // an error (the external volume's EPERM wedge: stat succeeds, the read
 // does not), never an empty ledger.
-func freshCatchSources(reviews []console.ReviewRun, facts console.CallLogFacts, labelKey func(string) string) catchSources {
+func freshCatchSources(reviews []console.ReviewRun, facts console.CallLogFacts, labelKey func(string) string, registry console.Registry) catchSources {
 	vp := verifyLedgerPath()
 	verify, verr := readVerifyLedgerErr(vp)
 	gp := beatLogPath()
 	guard, partial, gerr := readGuardBeats(gp, labelKey)
 	return catchSources{verify: verify, verifyPath: vp, verifyErr: verr, reviews: reviews, callFacts: facts,
-		guard: guard, guardPath: gp, guardErr: gerr, guardPartial: partial}
+		guard: guard, guardPath: gp, guardErr: gerr, guardPartial: partial, registry: registry}
 }
 
 // ─── sessions ────────────────────────────────────────────────────────────

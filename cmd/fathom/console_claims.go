@@ -185,9 +185,9 @@ func renderClaimsList(l console.ClaimList, verb string) string {
 			Rows: rows,
 		}))
 		if l.Pages > 1 {
-			// The kit's pagination links are ~28 px (docs/app-kit.md); the
-			// wrapper raises them to 44 px, as /search does.
-			body.WriteString(`<div class="mt-3 [&_a]:inline-flex [&_a]:min-h-11 [&_a]:items-center [&_span]:inline-flex [&_span]:min-h-11 [&_span]:items-center">` + chrome.RenderPagination(chrome.Pagination{
+			// The kit's pager links are 44 px targets themselves
+			// (FATHOM-F0-KIT-05); the div only spaces it.
+			body.WriteString(`<div class="mt-3">` + chrome.RenderPagination(chrome.Pagination{
 				Page: l.Page, TotalPages: l.Pages, AriaLabel: "claim pages",
 				HrefFor: func(p int) string {
 					h := claimsHref(l.Filter.Layer, l.Filter.Service, l.Filter.Status)

@@ -242,6 +242,9 @@ type observatoryModel struct {
 	ledgerErr error
 	toolClass map[string]console.CallerClass
 	reviews   []console.ReviewRun
+	// registry is the service registry this build read (OC-H2): rows
+	// naming a service it does not list are named, never counted.
+	registry console.Registry
 }
 
 // sessionLedgerRead is the session ledger as this build folded it, nil
@@ -294,10 +297,12 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 	if err != nil {
 		m.DegradedNote = "service registry unreachable (" + err.Error() + ") — fleet tiles are not measured, never empty-as-healthy"
 		m.callFacts = console.CallLogFacts{Log: console.ResolvedCallLog{Rule: console.RuleNone, Note: "not read"}, AbsentReason: "call log not read: " + m.DegradedNote}
+		m.registry = console.RegistryUnread(m.DegradedNote)
 	} else {
 		// §3.4: a registry read refused while the daemon sheds answers
 		// the last good projection; the page names it stale.
 		m.RegistryStale = registryStaleNote(baseURL)
+		m.registry = registryOf(svcs, nil)
 		// OC-2: the one call-log resolution (console_calllog.go). Inside
 		// the daemon this is the daemon's own --call-log — the survey found
 		// the pages rendering from a different log than the daemon writes.
@@ -318,6 +323,9 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 		m.callFacts = fold.facts(resolvedLog, callLogErr)
 		if callLogRead {
 			m.callFacts.ConsoleReads = snap.consoleReads
+			// OC-H2 over the all-time fold, the window calls.total counts
+			// (the ring holds only 35 days).
+			m.callFacts.Unregistered = fold.unregistered(m.registry)
 		}
 		switch {
 		case callLogRead:

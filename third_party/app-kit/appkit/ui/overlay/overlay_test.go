@@ -17,7 +17,7 @@ func TestRenderDialog(t *testing.T) {
 	for _, want := range []string{
 		`<dialog id="confirm"`, "max-w-sm", "data-overlay-light-dismiss",
 		"data-overlay-panel", "Delete case?", "This cannot be undone.",
-		"data-overlay-dismiss", "backdrop:bg-black/40",
+		"data-overlay-dismiss", "backdrop:bg-scrim/50",
 		// Centered via inset+translate, not margin:auto (survives a host
 		// `* { margin: 0 }` reset that beats Tailwind's layered utilities).
 		"left-1/2", "top-1/2", "-translate-x-1/2", "-translate-y-1/2",
@@ -32,6 +32,28 @@ func TestRenderDialog(t *testing.T) {
 	// Default size when unset.
 	if !strings.Contains(RenderDialog(Dialog{ID: "x"}), "max-w-md") {
 		t.Error("dialog should default to max-w-md")
+	}
+}
+
+// FATHOM-S0-KIT-02: the backdrop was bg-black/40, the one palette color in a
+// kit component, so a consumer holding its markup to role utilities had to
+// exempt it. Both modal surfaces now veil the page with the scrim role at 50%
+// (appkit/ui/tokens scrim_test.go measures that opacity in every shipped set).
+func TestOverlayBackdropIsTheScrimRole(t *testing.T) {
+	for _, c := range []struct{ name, got string }{
+		{"dialog", RenderDialog(Dialog{ID: "d", Title: "T", Body: "b"})},
+		{"drawer", RenderDrawer(Drawer{ID: "r", Title: "T", Body: "b"})},
+	} {
+		name, got := c.name, c.got
+		if n := strings.Count(got, "backdrop:"); n != 1 {
+			t.Errorf("%s: %d backdrop utilities, want exactly one: %s", name, n, got)
+		}
+		if !strings.Contains(got, " backdrop:bg-scrim/50") {
+			t.Errorf("%s: backdrop is not the scrim role at 50%%: %s", name, got)
+		}
+		if strings.Contains(got, "bg-black") {
+			t.Errorf("%s: backdrop still paints a palette color: %s", name, got)
+		}
 	}
 }
 

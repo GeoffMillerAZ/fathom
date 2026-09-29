@@ -9,37 +9,52 @@ contract-broken · other. Record with `intent-incident`.
 
 ## Open
 
-### INC-6 2026-08-25 `[Unreleased]` carried 22 entries across a tag
-What: `v0.7.0` was tagged 2026-07-16 without rolling `[Unreleased]`; entries grew to
-500 words each because rationale and evidence had no other home.
-Evidence: `CHANGELOG.md` before 64db8a4; `git log -S` attribution per entry.
-Would have caught it: a release ritual that moves the block before the tag; a budget
-per line.
-Class: gate-bypassed
-Outcome: rolled retroactively (64db8a4); ritual in `project-intent/changes.md` §6;
-`intent-release` skill. Pending: the 12 remaining long entries stay by rule (§9) until
-the next tag, when `intent-prune` collapses them.
-
 ### INC-7 2026-09-02 an unanchored `.gitignore` pattern hid every file under `cmd/kit-new/`
-What: `.gitignore` line 17 read `kit-new` (added by c7af593 to stop a 4.1 MB Mach-O
-binary being committed). Unanchored, git applies the pattern at every level, so the
-DIRECTORY `cmd/kit-new/` matched too — every source file under it was ignored. Found
-while building `kit-new -package` (FB-21): new files simply did not appear in
-`git status`. Its sibling `/endpoint-guard` was anchored; this one was not.
-Evidence: `git check-ignore -v cmd/kit-new/package.go` named the pattern; fix in 86be7e6
-(`kit-new` → `/kit-new`).
-Would have caught it: a lint asserting that every `.gitignore` pattern which also names
-a tracked directory is anchored (`/name`) — or, more cheaply, that no tracked path is
-matched by a repo `.gitignore` pattern. Neither exists.
+What: unanchored `kit-new` ignored `cmd/kit-new/`, hiding new sources from git status.
+Evidence: `git check-ignore -v cmd/kit-new/package.go`; anchored fix in 86be7e6.
+Would have caught it: a tracked-path/ignore-rule collision check; none exists.
 Class: platform-fact
-Outcome: pattern anchored (86be7e6); the files were never lost because they had been
-added before the pattern landed. **Proposed invariant, not built:** "no `.gitignore`
-pattern shadows a tracked directory" as a `constitution-lint` check — recorded here
-rather than added, because a check the kit adds to its own constitution needs the
-owner's call (ask-first list) and one incident is thin evidence for a new gate.
+Outcome: pattern repaired; tracked files were retained. A generic constitution check
+remains proposed, not built: gate edits need the owner's call under autonomy policy.
 
 ## Closed
 
+### INC-17 2026-09-21 clean-worktree claim contradicted compiled VCS provenance
+What: RAC's study notes called an isolated-worktree executable clean; retained metadata said `vcs.modified=true`.
+Evidence: historical binary `177777b5…`; Go 1.26.2 Git trace inspected the outer repo, not the clean nested worktree. Independent checkout binary `344099e7…` records the intended revision and `vcs.modified=false`.
+Would have caught it: inspect the actual compiled VCS metadata before making the clean-source claim.
+Class: platform-fact
+Outcome: platform fact in `domain.md`; corrected historical study and required build-stamp check in the 0014 consumer follow-up protocol. Original bytes/metadata are preserved.
+
+- INC-16 (2026-09-16) README advertised hook bypass despite autonomy's prohibition → README now points to the binding autonomy policy; no gate was bypassed or weakened. Evidence: prior README Develop instructions versus `autonomy.md` Never. Class: contract-broken.
+
+### INC-15 2026-09-16 registered fitness checks were not snapshot copies
+What: mutating input/Get/List check slices changed a registry that documented independent copies and safe constructed reads.
+Evidence: `TestRegistry_ChecksAreSnapshotCopies` failed before repair: original check name became `caller-mutated`.
+Would have caught it: nested-slice mutation and concurrent returned-copy tests, not just top-level slice copying.
+Class: contract-broken
+Outcome: clone checks on registration/read; snapshot and race regressions now cover all three paths.
+
+### INC-14 2026-09-16 evaluator did not bind the complete supplied output set
+What: Run silently ignored extra outputs, overwrote duplicates, and accepted prompt/parameter hashes different from the configured producer.
+Evidence: review of `Runner.Run`; `TestRun_InvalidOutputBindingRefusedBeforeSideEffects` reproduces each path.
+Would have caught it: exact scenario coverage and complete producer-identity checks before probes, grading or journal writes.
+Class: contract-broken
+Outcome: exact output-set validation and the named regression table; all invalid cases require zero external calls and zero journal writes.
+
+- INC-13 (2026-09-14) JSON decoding replaced unpaired Unicode surrogates with U+FFFD, letting malformed model fact IDs match real evidence and altering CLI principals/lesson labels → private `jsonwire.ValidUnicode` before all three strict decoders; public-entry-point negatives fail when only this guard is bypassed, while valid pairs/backslashes remain accepted. Class: contract-broken.
+
+- INC-12 (2026-09-13) Strict prose checked text but JSON copying normalized malformed principal/provenance bytes before authorization; red tests reached provider, model and publication callbacks with a replacement identity → pre-copy/hash UTF-8 checks and `TestSourcedPrincipalCannotChangeBeforeAuthorization`, with nested metadata and valid-Unicode regressions. Class: contract-broken.
+
+- INC-6 (2026-08-25, closed 2026-09-13) Unreleased changes crossed a tag and expanded into narrative → retroactive roll (64db8a4), release ritual in `project-intent/changes.md`, and a ≤60-line delta; released history retained. Class: gate-bypassed.
+
+- INC-11 (2026-09-13) Native-host review found symlink/.. normalization bypass, writable guard executables and umask permission drift → raw-parent rejection, executable identity protection, explicit mode restoration and independent `TestHostGuardRejectsRawParentTraversal` / `TestHostGuardProtectsExecutableAndHardlinks` / `TestHostInstallPreservesModeUnderRestrictiveUmask` regressions. Class: contract-broken.
+
+- INC-10 (2026-09-13) Sourced prose's CUE schema rejected valid Go JSON (inactive author pointers, derived zero locator, fully redacted map); uninstantiated definitions had passed `cue vet` → canonical JSON projection plus `TestSourcedMarshaledValuesMatchCUE`, including derived facts and actual redacted exports. Class: contract-broken.
+
+- INC-9 (2026-09-13) Both token vaults authorized caller-supplied class rather than stored identity; key copying also raced shredding. Reproducer failed before repair → `TestVaultStoredIdentity`, stored metadata authorization, authenticated encrypted records, and key-copy-under-lock race tests. Class: contract-broken.
+
+- INC-8 (2026-09-12, closed 2026-09-13) A green gate missed prose clock and upward-import violations → `NewPipelineWithClock`, shared telemetry constants with compatible harness aliases, `TestRegenerateUsesInjectedClock`, and `TestFoundationsImportDownward`; I12/I13. Class: intent-violated.
 - INC-1 (pre-2026-07) A hook channel died silently for four days while its metric read
   zero → `heartbeat.CheckExistence`/`ExistenceExpectation`/`ExistenceAlarm`; the
   telemetry guard in `fathom-pack/guard-pack.cue` ("every measurement channel has an
@@ -56,4 +71,5 @@ owner's call (ask-first list) and one incident is thin evidence for a new gate.
   contract-broken.
 - INC-5 2026-07 H8 Stage-A security self-review found the docs overclaiming a
   `CallTool` pre-call pin check → docs corrected in the same change; TRACKING row H8-1
-  governs the gap (`questions.md` Q3). Class: wrong-done-claim.
+  closed by opt-in `CallToolVerified` with drift/refusal tests (GW-05); remote metadata
+  and call are still not atomic. Class: wrong-done-claim.

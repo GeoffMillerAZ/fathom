@@ -35,7 +35,7 @@ func init() {
 		Verbs:    []string{"fathom fleet report --json"},
 		Shows: []console.MetricID{
 			console.MetricServices, console.MetricSymbols, console.MetricCalls, console.MetricObservations,
-			console.MetricWiredFresh, console.MetricPlanRowsVerified, console.MetricClaimsFresh, console.MetricCertificatesLive,
+			console.MetricWiredFresh, console.MetricPlansProven, console.MetricClaims, console.MetricCertLive,
 		},
 		Build: buildFleetPage,
 	})
@@ -46,7 +46,7 @@ func buildFleetPage(cr *consoleRequest) (consoleOut, error) {
 	pr := cr.projects()
 	q := console.ParseFleetQuery(cr.r.URL.Query())
 	tbl := console.FleetTable(pr.projects, q)
-	metrics := consoleSharedMetrics(m, pr)
+	metrics := consoleSharedMetrics(cr, m, pr)
 	// SR-55 (F-57): the reconcile trigger runs ONLY on an explicit
 	// ?reconcile=1 — a person following the fleet page's own "Check wiring
 	// drift" button, never on every ordinary page load (which would make
@@ -93,9 +93,9 @@ func renderFleet(t console.FleetTableModel, metrics console.Metrics, m observato
 	b.WriteString(`<div class="mt-3">`)
 	b.WriteString(stat.RenderBand([]stat.Stat{
 		valueStat("projects wired and fresh", metrics[console.MetricWiredFresh]),
-		valueStat("plan rows verified", metrics[console.MetricPlanRowsVerified]),
-		valueStat("governed claims fresh", metrics[console.MetricClaimsFresh]),
-		valueStat("live certificates", metrics[console.MetricCertificatesLive]),
+		valueStat("plan rows proven", metrics[console.MetricPlansProven]),
+		valueStat("governed claims current", metrics[console.MetricClaims]),
+		valueStat("live certificates", metrics[console.MetricCertLive]),
 	}, stat.BandOptions{AriaLabel: "fleet proof"}))
 	b.WriteString(`</div>`)
 	b.WriteString(`<div class="mt-4">` + renderFleetHealth(t, m) + `</div>`)
@@ -312,7 +312,7 @@ func renderFleetTablePanel(t console.FleetTableModel, m observatoryModel) string
 	}
 	if t.Pages > 1 {
 		q := t.Query
-		body.WriteString(`<div class="mt-3 [&_a]:min-h-11 [&_span]:min-h-11">` + chrome.RenderPagination(chrome.Pagination{
+		body.WriteString(`<div class="mt-3">` + chrome.RenderPagination(chrome.Pagination{
 			Page: q.Page, TotalPages: t.Pages, AriaLabel: "fleet pages",
 			HrefFor: func(n int) string { p := q; p.Page = n; return fleetHref(p) },
 		}) + `</div>`)
@@ -338,12 +338,23 @@ func renderFleetTablePanel(t console.FleetTableModel, m observatoryModel) string
 		Question:    "How is each project doing — wired, fresh, proven, used — sorted and filtered your way?",
 		Verb:        "fathom fleet report --json",
 		Source:      "the fleet report's registry, freshness, wiring and observations; the realization ladder and calls per day from the observatory model's call-log fold; plans from the verify ledger; claims and certify status from the daemon's store",
-		Denominator: fleetShownRange(t),
+		Denominator: fleetTableDenominator(t, m),
 		Freshness:   "as of " + m.GeneratedAt,
 		State:       state, Reason: reason,
 		SourceKey: "index layers sessions plans",
 		Body:      body.String(),
 	})
+}
+
+// fleetTableDenominator is the table's range, and the call-log rows no
+// project's calls count because their service is not in the registry
+// (OC-H2), named.
+func fleetTableDenominator(t console.FleetTableModel, m observatoryModel) string {
+	d := fleetShownRange(t)
+	if p := modelCallFacts(m).Unregistered.Phrase("call-log row"); p != "" {
+		d += " · calls: " + p
+	}
+	return d
 }
 
 // fleetShownRange names the rows on this page against every match and the
@@ -452,7 +463,7 @@ func fleetRowCells(r console.FleetRow) fleetCells {
 			`<span class="text-xs text-ink-muted [overflow-wrap:anywhere] xl:sr-only">` + html.EscapeString(r.HealthWhy) + `</span></div></div>`,
 		symbols:      shortValue(r.Symbols, "not reported"),
 		realization:  rungPips(r.Ladder, r.LadderMet, r.LadderOf),
-		claims:       shortValue(r.ClaimsFresh, "none"),
+		claims:       shortValue(r.ClaimsCurrent, "none"),
 		certs:        shortValue(r.CertsLive, "none declared"),
 		observations: shortValue(r.Observations, "no file"),
 	}
@@ -476,7 +487,7 @@ func fleetRowCells(r console.FleetRow) fleetCells {
 	default:
 		c.index = `<span class="italic text-ink-muted" title="` + html.EscapeString(r.FreshnessNote) + `">unknown</span>`
 	}
-	if r.ClaimsTotal > 0 && r.ClaimsFresh.Known() {
+	if r.ClaimsTotal > 0 && r.ClaimsCurrent.Known() {
 		c.claims += ` <span class="text-xs text-ink-muted">of ` + fmtThousands(r.ClaimsTotal) + `</span>`
 	}
 	if r.CertsDeclared > 0 && r.CertsLive.Known() {
@@ -520,7 +531,7 @@ func fleetRowCells(r console.FleetRow) fleetCells {
 
 func fleetKitTable(t console.FleetTableModel) string {
 	keys := []string{"service", "symbols", "", "freshness", "realization", "plans", "claims", "certs", "calls", "observations"}
-	labels := []string{"Project", "Symbols", "Languages", "Index", "Realization", "Plans proven", "Claims fresh", "Certificates", "Calls, 14 days", "Observations"}
+	labels := []string{"Project", "Symbols", "Languages", "Index", "Realization", "Plans proven", "Claims current", "Certificates", "Calls, 14 days", "Observations"}
 	cols := make([]table.Column, len(keys))
 	for i, k := range keys {
 		cols[i] = table.Column{Key: nonEmptyKey(k, "languages"), Label: labels[i]}

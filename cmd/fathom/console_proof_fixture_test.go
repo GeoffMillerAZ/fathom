@@ -35,9 +35,15 @@ const proofServiceName = "proof-service"
 // the pages' wait budgets are raised so every test sees the gate's
 // verdicts, never a page still verifying (production waits a bounded time
 // and says what is still pending).
+// shippedConsolePlansHeadlineWait is the headline's wait as shipped, read
+// before init raises it for the fixture (package variables initialize
+// before any init runs).
+var shippedConsolePlansHeadlineWait = consolePlansHeadlineWait
+
 func init() {
 	consolePlansPortfolioWait = time.Minute
 	consolePlansPlanWait = time.Minute
+	consolePlansHeadlineWait = time.Minute
 }
 
 // consoleFixtureRepo is a fixture service built as a git repository rather

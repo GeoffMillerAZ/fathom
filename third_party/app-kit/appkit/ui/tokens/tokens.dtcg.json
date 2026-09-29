@@ -172,6 +172,15 @@
         }
       }
     },
+    "scrim": {
+      "$type": "color",
+      "$value": "oklch(0.30 0.015 260)",
+      "$extensions": {
+        "com.appkit.scheme": {
+          "dark": "oklch(0.10 0.010 260)"
+        }
+      }
+    },
     "surface": {
       "$type": "color",
       "$value": "oklch(0.985 0.005 260)",

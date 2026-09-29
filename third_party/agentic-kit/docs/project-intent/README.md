@@ -6,7 +6,7 @@ like responsible long-term owners of a project, without loading any of it into a
 that does not need it.
 
 It lives in `docs/intent/` with a router at `docs/intent/README.md`. The procedure is
-the `project-intent` skill (`.agents/skills/project-intent/`, templates beside it).
+the `intent-*` skill family (`.agents/skills/intent-*/`, templates in `intent-init/`).
 Tool wiring is in [integration.md](integration.md); worked examples, including what
 *not* to record, are in [examples.md](examples.md). Change records (commits, changelog,
 breaking changes, the release ritual) are the sibling layer in [changes.md](changes.md):
@@ -197,9 +197,9 @@ The router's routing table maps task classes to reading lists:
 
 The decisions index (`decisions/README.md`) is scanned by title and short trigger;
 records are opened only when their title or trigger touches the task. The design
-protocol (skill, `design` mode): classify, load only what is routed, extract what
+protocol (`intent-design`): classify, load only what is routed, extract what
 applies, **state conflicts and fired triggers before designing**, apply the two-horizon
-test, ask the owner questions, design, record what passes the threshold, report what
+test, resolve missing authority or material uncertainty, design, record what passes the threshold, report what
 was consulted.
 
 ## 8. Maintenance
@@ -207,10 +207,10 @@ was consulted.
 Agents update the system as part of ordinary work, in the same change, when the truth
 changed: a decision passed the threshold; a goal met its `Done when`; a future met
 `Promote when` or `Drop if`; an assumption, invariant, or non-goal changed; a trigger
-fired (say so, update after the human decides). Trivial work never touches
+fired (state it; reuse explicit owner authorization when already given). Trivial work never touches
 `docs/intent/`.
 
-Humans run `refresh` (skill mode) at a release or milestone: walk every condition,
+Run `intent-audit` and `intent-prune` at a release or milestone: walk every condition,
 delete met goals, promote or drop futures, check assumptions, check sizes and index
 consistency. Ten minutes, not a ceremony.
 
@@ -251,8 +251,8 @@ adds the **repository charter** (`docs/intent/repo.md`): why one repository, wha
 belongs, a component map whose evolution column carries `split when` / `merge into` /
 `retire when` / `inbound from` triggers, the dependency direction, and the ecosystem it
 sits in. A component gets its own `docs/intent/` only when it passes the own-intent test
-(its own audience, cadence, or roadmap); everything else is covered by root. Skills walk
-up to the nearest router and always read the root's invariants and charter. A component
+(its own audience, cadence, or roadmap); everything else is covered by root. Skills route
+by affected paths, not just cwd, and read applicable root constraints once. A component
 decision narrows a root decision, never contradicts it; references are path-qualified.
 Full guidance, examples, and the doctor checks: [monorepo.md](monorepo.md).
 
@@ -308,11 +308,11 @@ surface must produce before it is done. An incident of class `wrong-done-claim` 
 | under-considering the future | futures with keywords agents will match; `Preserves / forecloses` section on records |
 | stale roadmaps | `scope.md` holds current goals with exit tests; the roadmap stays a sequence and is pointed to, not copied |
 | duplicate sources of truth | point, never copy; existing docs stay canonical; one stanza text shared by both tools |
-| too many document types | seven living docs is the ceiling; empty ones are omitted |
+| too many document types | omit empty homes; inherit shared authority and incidents; split only by a routed question |
 | records for trivia | the threshold, and "would a reader rebuild this differently" as the litmus test |
 | conflicting decisions | supersession edits the old status; the index shows both |
 | multiple agents editing | small files, append-only records, git merges; the index is the only shared table and rows are independent |
-| humans forget | agents update in the same change; `refresh` is one skill call |
+| humans forget | agents update in the same change; audit and prune at a milestone |
 | instructions too broad to mean anything | every sentence in the system must help someone decide something; that is the writing rule |
 
 ## 13. Considered and rejected for the practice itself
@@ -326,16 +326,18 @@ surface must produce before it is done. An incident of class `wrong-done-claim` 
   prose; frontmatter adds a parser nobody runs.
 - **A generated trigger registry or index.** One grep and one hand-kept table with
   independent rows. Generators go stale in a different way and need a build step.
-- **A lint tool.** Structure checks would not catch the failure that matters
-  (staleness). `refresh` is a walk, not a program. Revisit when a second repo shows
-  index drift the walk did not catch.
+- **Treating structural lint as truth.** Budget, link, index, stanza and snapshot
+  checks are useful deterministic controls, not proof that a decision is still right
+  or an invariant executes. The scoped/distribution practice in decision 0007 admits
+  these checks; `intent-audit` still tests claims and fired triggers against evidence.
 - **Per-decision dependency graphs, confidence scores, reversibility ratings.** Fake
   precision. `Consequences` prose and the `Revisit when` list carry what matters.
 - **One umbrella skill with modes.** The first cut. Replaced by the `intent-*` family:
   eight descriptions cost a few hundred tokens at session start, and a named skill is
   discoverable in the `/` menu and in `$` completion where a mode argument is not.
-- **Colon-namespaced skills (`/intent:doctor`).** A Claude Code plugin feature with no
-  Codex equivalent, and a second install path. Hyphen prefix works identically in both.
+- **Host-specific plugin packaging as the required distribution.** Plain hyphen-
+  prefixed skills keep the practice portable; optional host packaging must not become
+  a second maintained source or imply identical execution semantics.
 - **Loading invariants via always-on rules.** Path-scoped rules (`.claude/rules/` with
   `paths:`) are a legitimate option when an invariant is silently violated often, but
   they duplicate `invariants.md`. Recommended only per-invariant, per-repo, with a

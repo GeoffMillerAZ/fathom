@@ -190,6 +190,13 @@ table alternative, an all-missing grid and the legacy comparison. X labels and
 | `Disclaimer` | the standard "information only / not advice" caution callout |
 | `Badge` | inline status pill tinted by role |
 
+A callout with `Details` renders a native `<details>` whose summary ends in the
+`DetailsLabel` affordance ("Details" by default) and a chevron. The label is
+`text-ink-muted`: it is the only way to reveal the elaboration, so it clears the
+4.5:1 text floor on every kind's soft ground in both schemes of the kit token set
+(lowest: caution-soft dark, 4.76:1). It was `text-ink-faint`, 2.62 to 3.41:1
+(FATHOM-F0-KIT-06).
+
 ## `appkit/ui/stat` — KPI tiles (HTML)
 
 `Stat` — a big value + label + optional colored delta + optional trend
@@ -217,6 +224,13 @@ open-by-id, light-dismiss, and client toasts.
 | `Toast` / `RenderToastRegion` | notifications — server-rendered flash *or* client `AppKitOverlay.toast()`; roles info/success/caution/danger |
 | `TriggerButton` / `OpenAttr` | open an overlay by id (`data-overlay-open`) |
 | `Script` / `Handler` | inline or serve `overlay.js` |
+
+The dialog and drawer veil the page with the `scrim` token role at 50%
+(`backdrop:bg-scrim/50`), so the backdrop follows the token set and scheme and no
+overlay class is a palette color. `tokens.Load` supplies `scrim` for a token set
+that omits it; rerun `appkit gen` and rebuild scanned CSS after upgrading. The veil
+relies on `::backdrop` inheriting custom properties from its dialog, which current
+engines do; where it does not, the backdrop is transparent (FATHOM-S0-KIT-02).
 
 ## `appkit/ui/palette` — command palette (experimental, HTML + tiny vanilla JS)
 
@@ -334,6 +348,14 @@ without adding that region to the normal tab order. These are L3b renderers: sca
 `appkit/ui/dashboard/*.go`, include the theme CSS, and verify keyboard focus, narrow
 layout, long labels and theme contrast in the composed application.
 
+A page that writes its own `h1` (for example `chrome.RenderPageHeading` in `Content`)
+sets `Shell.PageHeading`: the top bar then writes `Title` as plain text, or nothing
+when it is empty, so the page keeps one `h1`. Unset, the top bar's `Title` stays the
+`h1` and output is unchanged. `Shell.MobileBrand` repeats `Brand` at the start of the
+top bar below `md`, where the sidebar that carries it is hidden; the brand is then
+written twice, so it must carry no `id`, and a brand link brings its own 44px target
+and focus outline (FATHOM-S0-KIT-01).
+
 Navigation items and the mobile disclosure carry a 44px minimum height and explicit
 focus treatment. The current item uses the normal ink role on the soft accent surface;
 consumers still verify delivered contrast and target width in their composed shell.
@@ -356,7 +378,7 @@ save/recovery. These L3b helpers add no runtime or session backend. See the comp
 |---|---|
 | `EmptyState` | "nothing here yet" panel (icon + heading + body + CTA) |
 | `Breadcrumbs` | navigation trail; links are 44px targets with a focus-visible outline |
-| `Pagination` | windowed prev/next + page links (server-rendered) |
+| `Pagination` | windowed prev/next + page links (server-rendered); 44px targets, wrapping row |
 | `Tabs` | link-based view switcher (active underline) |
 | `Skeleton` / `SkeletonCard` | loading placeholders (Tailwind `animate-pulse`) |
 | `Disclosure` | collapsible "show more" section on native `<details>` (no JS) |
@@ -371,7 +393,9 @@ min-w-11`) and a 2px `focus-visible` outline in the focus role; the current page
 and the separators stay plain text. The trail row is therefore 44px tall: rebuild
 scanned CSS and review snapshots when upgrading (FATHOM-F0-KIT-03,
 [evidence](assessments/2026-09-25-fathom-f0-kit-returns.md)). `RenderPagination`
-links are still about 28px high, below that floor.
+meets the same floor: every page link, Prev and Next is an `inline-flex min-h-11
+min-w-11` target with the focus-role outline, the current page and disabled ends keep
+that height, and the row wraps on a narrow screen (FATHOM-F0-KIT-05).
 
 Experimental `RenderPageHeading(PageHeading{ID, Breadcrumbs, Eyebrow, Title, Meta, Actions})`
 composes the existing `Breadcrumbs` output and `form.RenderButton` actions unchanged
@@ -382,7 +406,9 @@ protocol-relative, padded). Every field is escaped plain text; a blank title, co
 characters, more than eight meta items or four actions, or an invalid `ID` fail before
 output. The title column
 shrinks and wraps long words; below `sm` the actions wrap onto their own row beneath
-the title, with 44px minimum targets. Scan `appkit/ui/chrome/*.go` and `appkit/ui/form/*.go`. Gallery `/page-heading`
+the title, with 44px minimum targets. Inside `dashboard.RenderShell`, set
+`Shell.PageHeading` so the shell's top bar does not write a second `h1`.
+Scan `appkit/ui/chrome/*.go` and `appkit/ui/form/*.go`. Gallery `/page-heading`
 shows full, title-only and long-content variants; Fathom (FATHOM-KIT-07) is the
 originating consumer, with integration and second-consumer promotion still open.
 
@@ -633,6 +659,13 @@ publication link is not evidence for made-up data.
 The CUE-authored token pipeline: color roles × light/dark, radius, fonts.
 `appkit gen` emits `theme.css` (`@theme` + runtime scheme vars), DTCG JSON, and
 Go role-name constants (`ColorNames`, `RadiusNames`, `FontNames`).
+
+`scrim` is the one optional core role: the opaque veil `overlay` draws at 50% behind a
+modal. Author it darker than the branch's surface; omitted, `Load` fills each branch
+with the kit's value for that branch's measured surface polarity (light-painting
+`oklch(0.30 0.015 260)`, dark-painting `oklch(0.10 0.010 260)`), never by the
+branch's name. `TestScrimRoleDimsEveryShippedSurface` measures the result in every
+shipped set.
 
 ---
 

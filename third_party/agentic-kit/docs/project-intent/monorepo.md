@@ -1,140 +1,133 @@
-# Project Intent — monorepos, nesting, and the repository charter
+# Project Intent — standalone projects and monorepos
 
-Sibling to [README.md](README.md). A single-product repository's intent is about the
-product. A repository that holds several products, or components with different
-evolution paths, also needs intent about the **container**: why these things live
-together, what belongs, how the parts relate, and which parts are expected to leave or
-arrive. None of the nine living docs owns that, so a monorepo gets a tenth, conditional
-one: the **repository charter**, `docs/intent/repo.md`.
+The same practice works at both sizes: each decision has one home and each task loads
+only the intent that governs it. A monorepo adds a repository charter, not a second
+product backlog. [The model](README.md) and [agent integration](integration.md) apply.
 
-## 1. Does this repo need a charter?
+## 1. Choose the boundary before creating documents
 
-Yes if any holds: more than one product or audience; components with their own release
-cadence, version, or consumers; nested modules; a documented expectation that some part
-will be extracted, merged in, or retired; more than one `docs/intent/` directory. A
-single product with many packages does not: `vision.md` and `scope.md` cover it. When in
-doubt, write the component map (§2 row 3) and see whether the evolution column has any
-value other than "stays". If not, no charter.
+Use a root intent directory for a standalone product. Add a charter when there are
+independent audiences, release cadences, nested products, or extraction/inbound plans.
+Many packages alone do not justify intent per package.
 
-## 2. The charter (`repo.md`, ≤ 120 lines, rarely changes)
+A component earns its own intent when it has its own audience, cadence, or roadmap.
+Create only its differences: a router, local scope and vocabulary, and pointers to
+existing vision and decisions. Add local principles, invariants, futures or incidents
+only when they carry useful local content. Omitted documents are explicitly inherited
+or routed elsewhere. Never create a second autonomy policy granting wider permissions.
 
-1. **Why one repository.** The reason the parts live together, stated as what would be
-   lost by splitting (one gate, one audit, one compatibility promise, atomic
-   cross-component change). Not "convenience".
-2. **What belongs here, what does not.** The membership rule and the exit rule. A
-   package belongs when it has a named consumer; it leaves when it has none.
-3. **Component map.** One row per component:
-   `component | kind | intent | consumers | evolution`.
-   *Kind*: product, kit, library, tooling, example, contract. *Intent*: `root` or the
-   path of its own `docs/intent/`. *Evolution* uses a fixed vocabulary:
-   `stays` · `split when: <trigger>` · `merge into <target> when: <trigger>` ·
-   `retire when: <trigger>` · `inbound from <repo> when: <trigger>`.
-4. **Dependency direction.** Which tiers may import which. The one sentence a new
-   package must not violate, plus what enforces it (a lint, a test, or nothing).
-5. **Adding, promoting, extracting, retiring.** The four procedures, each a short
-   checklist naming the artifacts that must change together (tracking row, compat row,
-   catalog, changelog, tag cadence).
-6. **Ecosystem.** Downstream consumers, upstream doctrine sources, and shared decisions
-   inherited from another repository (cite them as `<repo> D13`, never renumber them).
+## 2. Ownership by level
 
-The charter is the free-option principle applied to repository shape: a component kept
-extractable at zero cost (own module or self-contained directory, no upward imports,
-own tests and docs) preserves the split without building it. Separate CI, duplicated
-gates, or a premature repo split are the "prepare" move, and are refused.
+| Concern | Repository root | Component |
+|---|---|---|
+| Purpose | why the components belong together; integration outcomes | audience, product promise, experience |
+| Goals | shared contracts and cross-component integration | one canonical product backlog with exit tests |
+| Invariants | shared constraints with an explicit area of applicability | additional constraints; link inherited ones |
+| Decisions | anything changing a shared boundary or promise | choices whose consequences stay local |
+| Authority | contributor policy, release/commit rules, delegation boundaries | inherit; may name stricter local restrictions |
+| Compatibility | shared formats and integration promises | component API/config/artifact promises |
+| Incidents | failures of repository-wide mechanisms | local failure and durable outcome, or link its journal |
 
-## 3. Which components get their own `docs/intent/`
+A product-specific rule in a root ADR does not automatically apply to unrelated
+products. Cite the record's scope. A component cannot silently override a rule that
+does apply; an authorized change first updates the owning root decision.
 
-A component earns its own intent directory only when it passes the **own-intent test**:
-it has its own audience (consumers who do not consume the rest), its own release cadence
-or version, or its own roadmap. Everything else is covered by the root: a foundation
-package's intent is its package doc and `schema.cue`, not a directory of prose.
+## 3. The charter: repo.md, at most 120 lines
 
-A component with its own intent holds only what differs from root: usually `vision.md`
-(if it is a product), `scope.md`, `futures.md`, `decisions/`, a short `domain.md` for
-local vocabulary, and `incidents.md` when it has its own. It never holds `autonomy.md`
-(inherited) and rarely `principles.md`. Its router is the template router with a first
-line pointing up: "Root charter and shared invariants: `../../docs/intent/README.md`."
+Keep these facts here, linking mechanical inventories rather than copying counts:
 
-## 4. Routing across levels
+- Why one repository: what splitting would lose.
+- Membership and exit rules, with named consumers.
+- Component map: `component | kind | intent | consumers | evolution`.
+- Dependency direction and its actual enforcement.
+- Add/promote/extract/retire procedure and coordinated compatibility changes.
+- Ecosystem: upstream doctrine, downstream consumers, inherited decision identities.
 
-Both Claude Code and Codex load a nested `CLAUDE.md` / `AGENTS.md` when work touches
-its directory. That is the mechanism; the practice adds three rules:
+Kind: product, kit, library, tooling, example, contract. Intent is `root` or a
+repository-relative path. Evolution starts with `stays`, `split when:`,
+`merge into <target> when:`, `retire when:`, or `inbound from <repo> when:`.
+A map lists every owned intent scope. Vendored examples and upstream routers are
+dependencies, excluded from the owned component map.
 
-- The **root stanza** (integration.md §2) stays in the root files unchanged.
-- A component with its own intent adds the **nested stanza** (integration.md §2b,
-  three lines) to `<component>/CLAUDE.md` and `<component>/AGENTS.md`.
-- Skills **walk up** from the working directory to the nearest `docs/intent/README.md`,
-  then also read the root router's `invariants.md` and `repo.md`. Nearest router for
-  scope and decisions; root for invariants and the container. Never the siblings.
+## 4. Route from affected paths
 
-Load moments: the charter is read when adding, moving, extracting, or retiring a
-component, and on first entry into a component directory. Ordinary work inside a
-component never loads it.
+The working directory is a hint. An agent launched at root can edit a product several
+levels below it. First identify affected paths, then:
 
-## 5. Decision scoping
+1. Read the root router and applicable shared invariants once.
+2. For each target, find its nearest intent router and relevant intervening ancestors.
+3. Load that router's task-specific documents; load the charter on first entry or a
+   membership/dependency change. Do not load sibling intent for a local task.
+4. For a cross-component change, read both sides of the changed contract and root
+   ownership. Record the boundary decision once, with references from the consumers.
+5. After compaction, consult source versions if they changed; do not recite the tree.
 
-- A root decision binds every component. A component decision may **narrow** a root
-  decision or invariant; it may never contradict one. If it must, the change is a root
-  decision: reopen at root with `intent-decide`, then narrow below.
-- Numbering is per intent directory. Cross-references are path-qualified
-  (`kits/expertchat/docs/intent/decisions/0003`), never bare numbers.
-- Ecosystem decisions inherited from another repository keep that repository's id and
-  are cited with the repository name. Two repositories each having a "D13" is fine as
-  long as no citation is bare.
+Markdown links resolve relative to their file. Map paths and instruction paths marked
+repository-relative resolve from the checkout root. Validate both; do not count bare
+`ADR-0003` references as unambiguous across repositories.
 
-## 6. Evolution futures
+Native instruction discovery differs by harness and launch directory. Explicitly
+read the target's area instructions when not already present. A root launch must
+still reach the nested router. See [integration](integration.md#2b-the-nested-stanza-a-component-with-its-own-intent-monorepos-only).
 
-Split, merge, retire, and inbound expectations live in the charter's evolution column,
-not in `futures.md`, because they are properties of the map. `futures.md` carries one
-pointer entry when a split or merge is likely enough to deserve `Do not build` /
-`Preserve` lines. Triggers are observable, like every other condition in the practice:
-"a consumer outside the fleet pins this module independently", "release cadence has
-diverged for two tags", "zero consumers at the next wave end". `Drop if` for an
-extraction is usually "the trigger has not fired within N tags".
+## 5. Scope and decision maintenance
 
-## 7. The level above the repository
+Root scope carries integration outcomes and links to component goals; it does not
+repeat their task counts. Root vision describes the platform or portfolio; a kit's
+vision travels with the kit. Root futures keep only cross-component directions.
 
-An ecosystem of repositories (a kit, its consumers, a design system, a tool that
-indexes all of them) has intent too: shared decisions, shared invariants, the fleet's
-own map. The practice does not require a fleet repository, but it gives the pattern:
-one repository is designated the home of a shared decision series (a design kit's
-`docs/DECISIONS.md`, say), every other repository's charter names it under
-**Ecosystem**, and the user-level agent instructions stay a router only. The moment two
-repositories carry their own copy of a shared decision, one of them is wrong.
+Retain existing ADR homes and numbering. Local decisions may have their own index,
+or a component router can select root records by path. Do not create duplicate records
+to give every folder a numbered series. A root-scoped change is recorded at root;
+a purely local change stays local. Inherited external records retain their source IDs.
 
-## 8. Doctor checks for monorepos
+When scope is owner-directed, make the authorized decisions and label them accepted
+design. Keep implementation evidence separate: `implemented`, `partial`,
+`accepted design`, `deferred`, and `unverified` describe different states.
+A baseline assessment is dated evidence, not a second living backlog.
 
-`intent-doctor` adds three checks when `repo.md` exists or more than one
-`docs/intent/README.md` is present: (21) the charter exists and its component map lists
-every directory that has its own intent; (22) every component with its own intent
-carries the nested stanza in both agent files; (23) no component directory holds an
-`autonomy.md`, and each component's living docs are within budget.
+## 6. Proof and economics
 
-## 9. Examples
+A file's existence proves existence. A control needs separate evidence that it was
+configured, invoked on the relevant path, and refused the seeded violation. A skill
+can guide judgment; it cannot establish that a hook ran or an approval was enforced.
 
-- **A foundation package asks for its own intent.** No. It has no audience of its own;
-  its package doc, `schema.cue`, and the root invariants are its intent. Adding a
-  directory would be per-package ceremony for 190 packages.
-- **A format handler needs a dependency the kit forbids.** Make it a nested module with
-  its own `go.mod`, listed in `go.work`, tagged on its own cadence, with no imports from
-  sibling kits. The charter marks it `split when: a consumer outside the fleet pins it
-  independently`. It is extractable in an afternoon and nothing was built for the split.
-- **A component decision says "we may call the network in tests here".** Contradicts a
-  root invariant. Not a component decision; reopen at root, where the answer is no.
-- **A product's roadmap item depends on another product in the same repo.** Both
-  products' `futures.md` entries name the dependency by path; the charter's map does
-  not change. If the dependency is an import, the dependency-direction rule decides.
+Use deterministic checks for links, document budgets, index membership, stanza parity,
+and pinned dependency integrity. Their successful exit proves only those checks.
+Use an intent audit for assumptions, semantic contradictions and fired triggers.
+Never interpret a missing prerequisite or unexamined scope as a pass.
 
-## 10. Considered and rejected
+A trivial task loads no intent. Ordinary component work loads shared constraints plus
+local context. Measure bytes or tokens actually loaded and avoid duplicating global,
+root and component instructions. A short router is a budget control, not a summary of
+every document. Existing history over budget is named debt; do not mass-rewrite it.
 
-- **One root intent directory with per-component sections.** Every doc blows its
-  budget by the third product, and routing degrades to "read everything".
-- **Intent per package.** Ceremony with no reader; the own-intent test exists to
-  refuse this.
-- **A generated component map.** The mechanical part (package list, classification,
-  counts) is already lint-enforced where it matters (`compat-coverage`,
-  `catalog-fresh`); the evolution intent cannot be generated, and a generator would
-  overwrite it.
-- **Putting the charter in `vision.md`.** Vision is the product's; the charter is the
-  container's. A product that later moves to its own repository takes its vision with
-  it and leaves the charter behind. Keeping them apart makes that move free.
+## 7. Distribution and updates
+
+A sibling checkout or personal symlink is convenient but is not a reproducible team
+dependency. A consumer may vendor a bounded practice/skills snapshot with source URL,
+base commit and exact file digests. Label uncommitted source changes as a working-tree
+snapshot; never claim a release pin for them. Keep the license and source paths.
+
+Updates are explicit reviewed diffs. Check local integrity before replacement, preserve
+local authoring outside the snapshot, and refuse collisions. Offline verification must
+work without the upstream checkout. Do not auto-pull policy on session start or import
+upstream project intent as consumer policy. A snapshot carries the practice, not the
+upstream product's goals or autonomy. This is independent of runtime Go vendoring.
+
+Both agents use the same skill bodies. Prefer repository-local installation for team
+reproducibility; a machine-wide install remains a separate explicit choice. Host wiring
+must be tested at its actual entrypoint, not inferred from installed files.
+
+## 8. Doctor and audit
+
+Check the root, the requested component(s), and their owning map entries. A fleet-wide
+doctor additionally enumerates all owned routers. Check nested stanzas, parent links,
+budgets and declared inheritance. Do not fail a component for lacking inherited
+autonomy or a duplicated changelog. Accept the repository's documented ADR header
+style and external decision pointers; do not compare all index links with local files.
+
+Audit the two routing scenarios: launched at root touching one component, and touching
+a shared contract between two components. Reject duplicate goal ownership, omitted
+ancestor constraints, unresolved overrides, and a vendored router mistaken for a product.
+Report structural results separately from live host checks and content judgments.

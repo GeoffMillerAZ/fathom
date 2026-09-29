@@ -4,7 +4,7 @@
 
 A layered, org-agnostic platform for **governed agentic work** — developed
 almost entirely by AI agents. CUE owns the *shape* of data; Go owns
-*behavior* — drift between them is a bug. The tree is **194 Go packages, zero
+*behavior* — drift between them is a bug. The tree is **202 Go packages, zero
 external dependencies** (`go.mod` has no `require` block) — a generated count,
 not a hand-maintained one: see [`docs/catalog.md`](docs/catalog.md) (`task
 docs-index` regenerates it, `constitution-lint`'s `catalog-fresh` check
@@ -26,6 +26,7 @@ kits/          High-order workflows composed from foundations (agent-harness, mc
 runtimes/      Policy enforcement + credential-resolution substrates
 surfaces/      Human- and developer-facing interfaces (forms/cueform, editor)
 toolchains/    Canonical CUE schemas, generators, materialization
+internal/      Private implementation helpers shared by strict kit/command paths
 cmd/           Runnable binaries (endpoint-guard sidecar, kit-catalog generator)
 examples/      Small end-to-end programs (agent-cli, governance-wasm)
 scenarios/     Seeded end-to-end blueprints (governed-investigation)
@@ -60,6 +61,10 @@ TRACKING.md    Single source of truth for build/test status
   (`foundations/cost/cost-tracker`), drop-in client instrumentation
   (`foundations/llmclient/instrument`), metrics/events/sinks
   (`foundations/telemetry`).
+- **Evidence-linked assessments and prompt screening** — required criteria cannot
+  be outweighed by soft scores; optional small-model screening applies configurable
+  refusal standards before a protected continuation. [Offline example](examples/engineering-assessments/README.md),
+  [screening configuration](kits/guardrails-pipeline/README.md); live quality is unmeasured.
 
 ## Start here
 
@@ -68,6 +73,11 @@ TRACKING.md    Single source of truth for build/test status
 | [`docs/first-agent.md`](docs/first-agent.md) | **Start here:** zero to a governed agent in ~10 minutes, then one-line switch to the real Anthropic client |
 | [`VISION.md`](VISION.md) | Why the kit exists — beliefs, scope, the junk gate |
 | [`docs/practices.md`](docs/practices.md) | Agentic anti-patterns → the packages that prevent them |
+| [`docs/orchestrating-agents.md`](docs/orchestrating-agents.md) | Running many agents: triage before dispatch, shared exploration maps (and maps as documentation), a gate that survives loaded workers, durable snapshots, stop-edit-resume, done means wired, user-level ledgers, research that ends in records |
+| [`docs/serving-rules.md`](docs/serving-rules.md) | Serving rules to agents and knowing they were kept: where to put a deterministic check, facts with locations and no bypass, the pinned test as the bridge, what to refuse, replay before building |
+| [`docs/measuring-tools.md`](docs/measuring-tools.md) | Grading a tool against a reference: audit the oracle, tier it and cap the grade, disclose blind spots without inflating the score, record the instrument |
+| [`docs/incident-readiness.md`](docs/incident-readiness.md) | Preparing for incidents: pre-shaped declarations, "what changed" first, facets that say "not computed", links and typed parameters instead of connectors, nothing executed or mitigated, a replay before any build |
+| [`docs/fast-judgment.md`](docs/fast-judgment.md) | Using cheap typed-judgment models (Jev and its kind) safely: primitives, calibration-first method, cost, privacy, anti-patterns; [use-case catalog](docs/fast-judgment-catalog.md) |
 | [`docs/adopting.md`](docs/adopting.md) | Build a new project on the kit |
 | [`docs/roadmap.md`](docs/roadmap.md) | Pre-thought patterns awaiting a subscriber — check here when starting a workload |
 | [`docs/catalog.md`](docs/catalog.md) | Every package, one line (generated — `task docs-index`) |
@@ -91,13 +101,15 @@ lefthook install
 
 Two-layer git hooks (see `lefthook.yml`): pre-commit runs fast changed-file
 checks (gofmt, `cue vet`); pre-push runs the full `task validate`.
-Opt out with `LEFTHOOK=0` — never `--no-verify` unless the hook itself is broken.
+Never bypass the hooks or full gate (`LEFTHOOK=0` / `--no-verify`). If a hook fails,
+repair the cause within the [autonomy policy](docs/intent/autonomy.md); gate edits need approval.
 
 Also useful: `task smoke-live` (end-to-end live agent smoke; needs
 `ANTHROPIC_API_KEY`, skips cleanly without it) and `task downstream-check`
-(builds + tests all three real consumers — fathom (`../fathom`, or
+(builds + tests all four real consumers — fathom (`../fathom`, or
 pre-rename `../sextant` — either resolves automatically), `../throughline`,
-`../growing-gardens-bi` — against kit HEAD; each skips cleanly if that sibling
+`../growing-gardens-bi`, and `../resume_as_code`, which it re-pins and
+re-vendors to kit HEAD — against kit HEAD; each skips cleanly if that sibling
 isn't checked out). Run it before tagging or whenever an exported API
 changes.
 

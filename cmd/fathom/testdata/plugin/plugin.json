@@ -10,7 +10,7 @@
     "skills",
     "verify-gate"
   ],
-  "license": "MIT",
+  "license": "FSL-1.1-ALv2",
   "name": "fathom",
   "version": "0.3.5"
 }

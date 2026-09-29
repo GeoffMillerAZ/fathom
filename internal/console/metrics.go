@@ -30,6 +30,34 @@ const (
 	MetricAgentTools MetricID = "surface.agent_tools"
 )
 
+// MetricSpec is one shared metric and the one question it answers.
+type MetricSpec struct {
+	ID       MetricID
+	Question string
+}
+
+// MetricCatalog is every shared metric a page may show, each with the one
+// question it answers (OC-H3): two ids for one question is how the console
+// came to show two numbers for it, so the catalog holds one per question
+// and TestConsoleMetricsAgreeAcrossPages holds every page to the catalog.
+var MetricCatalog = []MetricSpec{
+	{MetricServices, "How many services does the registry list?"},
+	{MetricSymbols, "How many symbols are indexed across the fleet?"},
+	{MetricCalls, "How many tool calls are in the resolved call log?"},
+	{MetricSessions, "How many distinct agent sessions has the ledger recorded?"},
+	{MetricObservations, "How many observations are open across the repos?"},
+	{MetricAgentTools, "How many tools does the agent surface serve?"},
+	{MetricWiredFresh, "How many projects are wired and fresh?"},
+	{MetricPlansProven, "How many claimed plan rows does the gate prove?"},
+	{MetricPlansUnproven, "How many claimed plan rows does the gate not prove?"},
+	{MetricClaims, "How many governed claims can serving still use?"},
+	{MetricCertLive, "How many certification targets have a live certificate?"},
+	{MetricCertGaps, "How many certification targets have no live certificate?"},
+	{MetricProjectSymbols, "How many symbols does this project's index hold?"},
+	{MetricProjectCalls, "How many tool calls name this project?"},
+	{MetricProjectSessions, "How many distinct sessions ran in this project?"},
+}
+
 // Metrics is a page's shared-metric section, keyed by ID (JSON orders the
 // keys, so the section is deterministic).
 type Metrics map[MetricID]Value[int]
@@ -149,6 +177,9 @@ type CallLogFacts struct {
 	Log          ResolvedCallLog
 	Rows         int
 	Unattributed int // rows naming no service
+	// Unregistered are the rows naming a service the registry does not
+	// list (OC-H2): part of the total, split out of the attributed rows.
+	Unregistered Unregistered
 	// ReadErr is non-empty when the log exists and could not be read;
 	// Missing is true when there is no log at the path yet.
 	ReadErr string
@@ -182,6 +213,12 @@ func CallTotal(c CallLogFacts) Value[int] {
 		return Errored[int]("call log unreadable: " + c.ReadErr).WithSource(source)
 	}
 	denom := "every row in the log; " + thousands(c.Rows-c.Unattributed) + " attributed to a service, " + thousands(c.Unattributed) + " unattributed"
+	if u := c.Unregistered; u.Rows > 0 {
+		// OC-H2: rows naming a service the registry does not list are still
+		// rows in the log, but not any registered service's calls.
+		denom = "every row in the log; " + thousands(c.Rows-c.Unattributed-u.Rows) + " attributed to a registered service, " +
+			strings.TrimSuffix(u.Phrase("row"), " excluded") + ", " + thousands(c.Unattributed) + " unattributed"
+	}
 	if c.ConsoleReads > 0 {
 		denom += "; " + thousands(c.ConsoleReads) + " console page reads excluded (not usage)"
 	}

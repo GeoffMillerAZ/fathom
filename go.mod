@@ -6,7 +6,7 @@ require (
 	cuelang.org/go v0.16.1
 	github.com/a-h/templ v0.3.1020
 	github.com/emicklei/proto v1.14.3
-	github.com/geoffmilleraz/agentic-kit v0.7.1-0.20260922212050-beb53a4fb901
+	github.com/geoffmilleraz/agentic-kit v0.7.1-0.20260929054046-53024ffa6343
 	github.com/geoffmilleraz/app-kit v0.0.0
 	github.com/hashicorp/hcl/v2 v2.24.0
 	github.com/pelletier/go-toml/v2 v2.3.1

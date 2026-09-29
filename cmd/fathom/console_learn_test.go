@@ -227,7 +227,10 @@ func TestConsoleLearn_PipelineStagesCountsAndLinks(t *testing.T) {
 
 // A stage links to the most specific page the console has registered: the
 // design's page once a wave registers it, the project workspace's tab once
-// the workspace declares it, the workspace itself until then.
+// that tab's page is registered (a tab is its own route,
+// /projects/{svc}/<tab>), the workspace itself until then. No page serves a
+// ?tab= query: a link naming one resolves to nothing, because the page it
+// reaches would render its overview under the tab's label.
 func TestConsoleLearn_StageLinksFollowTheRegistry(t *testing.T) {
 	build := func(*consoleRequest) (consoleOut, error) { return consoleOut{}, nil }
 	reg := newConsoleRegistry()
@@ -239,22 +242,20 @@ func TestConsoleLearn_StageLinksFollowTheRegistry(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	// A tab resolves only when the page declares it: until the project
-	// workspace serves ?tab=index, the link falls through to the page
-	// itself — never a tab URL that renders the overview.
-	pages := []string{"/packs", "/projects/pay?tab=index", "/projects/pay"}
+	pages := []string{"/packs", "/projects/pay/index", "/projects/pay"}
 	if href, _, ok := resolveConsoleHref(reg, pages); !ok || href != "/projects/pay" {
 		t.Errorf("without /packs or the index tab = %q %v", href, ok)
 	}
-	if _, _, ok := resolveConsoleHref(reg, []string{"/projects/pay?tab=index"}); ok {
-		t.Error("an undeclared tab must not resolve")
+	for _, tabQuery := range []string{"/projects/pay?tab=index", "/projects/pay?svc=pay&tab=plans"} {
+		if href, _, ok := resolveConsoleHref(reg, []string{tabQuery}); ok {
+			t.Errorf("%s resolved to %q: no page serves ?tab=", tabQuery, href)
+		}
 	}
-	withTabs := newConsoleRegistry()
-	if err := registerPage(withTabs, consolePage{ID: "project", Route: "/projects/{svc}", Group: "Fleet", Title: "Project", Question: "?", Tabs: []string{"index", "plans"}, Build: build}); err != nil {
+	if err := registerPage(reg, consolePage{ID: "project-index", Route: "/projects/{svc}/index", Group: "Fleet", Title: "Index", Question: "?", Build: build}); err != nil {
 		t.Fatal(err)
 	}
-	if href, _, ok := resolveConsoleHref(withTabs, pages); !ok || href != "/projects/pay?tab=index" {
-		t.Errorf("with the index tab declared = %q %v", href, ok)
+	if href, _, ok := resolveConsoleHref(reg, pages); !ok || href != "/projects/pay/index" {
+		t.Errorf("with the index tab registered = %q %v", href, ok)
 	}
 	if err := registerPage(reg, consolePage{ID: "packs", Route: "/packs", Href: "/packs", Group: "Knowledge", Title: "Packs", Question: "?", Build: build}); err != nil {
 		t.Fatal(err)

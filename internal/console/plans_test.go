@@ -374,3 +374,69 @@ func TestCardDetail_UndecidableNamesTheRealCause(t *testing.T) {
 		t.Errorf("an unevaluated oracle's card detail = %q", d)
 	}
 }
+
+// TestPlanLedger_RemainingIsWhatPlansNextLists pins the plan page's answer
+// to "which rows of this plan remain" (UX-M1 T1): every row `fathom plans
+// next` lists — open, in progress, claimed but failing or undecidable,
+// claimed and measured stale, and (op) rows still waiting — in document
+// order with its row page, however many there are; its count is `plans
+// status`'s open + claimed_unproven + measured_stale. Before the verdicts
+// arrive the list is a named lower bound: the claimed rows are counted as
+// pending, never listed as remaining nor dropped as proven.
+func TestPlanLedger_RemainingIsWhatPlansNextLists(t *testing.T) {
+	plan := PlanFacts{Service: "proof", Path: "/r/docs/plans/settlement.md", Rel: "docs/plans/settlement.md", Title: "Settlement", Rows: fixtureRows(), Verified: true}
+	href := func(id string) string { return "/plans/proof/settlement/rows/" + id }
+	v := PlanLedger(PlanLedgerInput{Plan: plan, RowHref: href})
+	var ids []string
+	for _, r := range v.Remaining.Rows {
+		ids = append(ids, r.ID)
+		if r.Href != href(r.ID) {
+			t.Errorf("remaining %s href = %q", r.ID, r.Href)
+		}
+	}
+	if got := strings.Join(ids, ","); got != "S-3,S-4,S-5,S-6,S-M2" {
+		t.Errorf("remaining = %q, want every row plans next lists, in document order", got)
+	}
+	if r := v.Rollup; r == nil || len(v.Remaining.Rows) != r.Open+r.ClaimedUnproven+r.MeasuredStale {
+		t.Errorf("remaining %d != plans status open+claimed_unproven+measured_stale (%+v)", len(v.Remaining.Rows), v.Rollup)
+	}
+	if v.Remaining.State != StatePresent || v.Remaining.Pending != 0 || v.Remaining.Reason != "" {
+		t.Errorf("verified remaining = %+v", v.Remaining)
+	}
+
+	// More remaining rows than a board lane shows: every one is listed.
+	var many []PlanRowFact
+	for i := 0; i < 40; i++ {
+		many = append(many, PlanRowFact{ID: "R-" + strings.Repeat("x", i+1), Title: "open row", Verified: true})
+	}
+	if v := PlanLedger(PlanLedgerInput{Plan: PlanFacts{Rows: many, Verified: true}}); len(v.Remaining.Rows) != 40 {
+		t.Errorf("remaining lists %d of 40 open rows", len(v.Remaining.Rows))
+	}
+
+	// A stale daemon's unproven claims still remain (plans next lists them).
+	stale := PlanFacts{Rows: []PlanRowFact{{ID: "1", Claimed: true, Verified: true, Status: "fail"}, {ID: "2", Claimed: true, Verified: true, Status: "pass"}}, Verified: true, DaemonStale: true}
+	if v := PlanLedger(PlanLedgerInput{Plan: stale}); len(v.Remaining.Rows) != 1 || v.Remaining.Rows[0].ID != "1" || v.Remaining.Rows[0].State != RowMeasuredStale {
+		t.Errorf("stale remaining = %+v", v.Remaining.Rows)
+	}
+
+	// Nothing remains: zero, an empty list — never absent.
+	done := PlanFacts{Rows: []PlanRowFact{{ID: "1", Claimed: true, Verified: true, Status: "pass"}}, Verified: true}
+	if v := PlanLedger(PlanLedgerInput{Plan: done}); v.Remaining.State != StateZero || v.Remaining.Rows == nil || len(v.Remaining.Rows) != 0 {
+		t.Errorf("nothing remaining = %+v", v.Remaining)
+	}
+
+	// Still verifying: the unclaimed rows are listed; the 5 claimed rows
+	// wait for their verdicts, counted and named.
+	plan.Verified, plan.Pending = false, true
+	for i := range plan.Rows {
+		plan.Rows[i].Verified, plan.Rows[i].Status = false, ""
+	}
+	v = PlanLedger(PlanLedgerInput{Plan: plan, RowHref: href})
+	ids = ids[:0]
+	for _, r := range v.Remaining.Rows {
+		ids = append(ids, r.ID)
+	}
+	if got := strings.Join(ids, ","); got != "S-5,S-6,S-M2" || v.Remaining.State != StatePartial || v.Remaining.Pending != 5 || !strings.Contains(v.Remaining.Reason, "5 claimed rows") {
+		t.Errorf("pending remaining = %q %+v", got, v.Remaining)
+	}
+}

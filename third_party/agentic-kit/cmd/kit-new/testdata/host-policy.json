@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "deny_tools": ["forbidden_*"],
+  "deny_paths": ["private"],
+  "required_controls": ["startup", "resume", "tool", "edit", "shell"],
+  "instructions": "Respect the project instruction files and report unsupported controls."
+}

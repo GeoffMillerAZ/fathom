@@ -1,9 +1,8 @@
 # Adopting Project Intent — the prompt to paste into a repo's agent session
 
 Copy everything below the line into a Claude Code or Codex session opened at the root of
-the repo you want to adopt the practice. It assumes the `intent-*` skills are installed
-on the machine (`agentic-kit/.agents/skills/install-intent.sh`). If they are not, the
-prompt says so and the agent installs them first.
+the repo you want to adopt the practice. Prefer project-local pinned skills; a personal
+installation is optional and needs authorization to change global configuration.
 
 ---
 
@@ -12,9 +11,9 @@ Adopt the Project Intent practice in this repository.
 Reference: `<path-to-agentic-kit>/docs/project-intent/README.md` (the model),
 `changes.md` (commits, changelog, release), `operating.md` (autonomy, incidents,
 tripwires), `integration.md` (the exact stanza texts), `examples.md`. Skills: the
-`intent-*` family. Verify `~/.agents/skills/intent-init/SKILL.md` resolves; if not, run
-`<path-to-agentic-kit>/.agents/skills/install-intent.sh` and confirm both
-`~/.agents/skills/intent-*` and `~/.claude/skills/intent-*` resolve before continuing.
+`intent-*` family. Resolve the project-local skills first, then any personal install.
+If missing, use the reviewed snapshot procedure in `integration.md` §4. Do not change
+global configuration, overwrite competing skills or fetch mutable upstream implicitly.
 
 Then run `intent-init` for this repo, honoring these rules:
 
@@ -30,8 +29,9 @@ Then run `intent-init` for this repo, honoring these rules:
 4. **Futures are not requirements.** Only what the repo actually names goes in
    `futures.md`, each with confidence, horizon, `Do not build`, `Preserve`,
    `Promote when`, `Drop if`.
-5. **Existing decisions get a `## Revisit when` trailer** quoting any reconsider,
-   defer, or until condition already in their prose. Index them.
+5. **Preserve decision history.** Index existing records and their actual triggers.
+   Where local ADR rules are append-only, do not rewrite a historical body to fit the
+   template; keep a qualified pointer and record any reopened decision as a successor.
 6. **Wire the stanzas** from `integration.md` §2 into `CLAUDE.md` and `AGENTS.md`,
    identical text, six plus four plus three lines. Do not import the tree.
 7. **Autonomy.** Draft `autonomy.md` from how this repo is actually worked: which
@@ -48,11 +48,13 @@ Then run `intent-init` for this repo, honoring these rules:
     repository charter, `monorepo.md`): why one repository, what belongs, a component
     map with an evolution trigger per row, dependency direction, ecosystem. Give a
     component its own `docs/intent/` only if it has its own audience, cadence, or
-    roadmap, and add the nested stanza to its agent files.
+    roadmap, and add the nested stanza to its agent files. Route by affected paths,
+    including root-started sessions. Inherit autonomy and incident ownership rather
+    than creating competing local policies; parent grants are ceilings, not suggestions.
 11. Finish with `intent-doctor` and fix what it reports. Then give me: the five
     sharpest open questions, the invariants that nothing enforces, and any place the
     code contradicts a stated rule.
 
-Budgets: router ≤ 80 lines, each living doc ≤ 150, each record ≤ 80. Commit on the
-branch this repo uses for agent work, with a `Verified:` line naming the doctor result.
-Do not commit anything else you find along the way; report it.
+Budgets: router ≤ 80 lines, each living doc ≤ 150, each record ≤ 80. Report structural
+checks separately from live-host verification and judgment. Commit only when authorized
+by the user and local autonomy; include a `Verified:` line. Preserve unrelated work.

@@ -3,7 +3,9 @@ package guardrailspipeline
 import (
 	"context"
 	"fmt"
+	"slices"
 
+	injectiondetector "github.com/geoffmilleraz/agentic-kit/foundations/security/injection-detector"
 	rulecore "github.com/geoffmilleraz/agentic-kit/foundations/security/rule-core"
 )
 
@@ -23,15 +25,18 @@ var severityLevels = []string{"low", "medium", "high", "critical"}
 // Create one with NewPreLLMChain; the zero value is not usable.
 // Safe for concurrent use after construction.
 type PreLLMChain struct {
-	cfg      PreLLMConfig
-	deps     PreLLMDeps
-	sevOrd   rulecore.Ordinal
-	classOrd rulecore.Ordinal
-	stages   []string
+	cfg       PreLLMConfig
+	deps      PreLLMDeps
+	sevOrd    rulecore.Ordinal
+	classOrd  rulecore.Ordinal
+	stages    []string
+	configErr error
 }
 
 // NewPreLLMChain returns a PreLLMChain configured with cfg and deps.
 // Defaults are applied for empty threshold strings and empty stage lists.
+// Invalid configuration is retained as an error and refused by Run before any
+// stage executes. Use cfg.Validate to check configuration before constructing.
 func NewPreLLMChain(cfg PreLLMConfig, deps PreLLMDeps) *PreLLMChain {
 	if cfg.InjectDetectThreshold == "" {
 		cfg.InjectDetectThreshold = "high"
@@ -39,16 +44,20 @@ func NewPreLLMChain(cfg PreLLMConfig, deps PreLLMDeps) *PreLLMChain {
 	if cfg.ClassifyThreshold == "" {
 		cfg.ClassifyThreshold = "confidential"
 	}
+	if cfg.InjectDetectAction == "" {
+		cfg.InjectDetectAction = "block"
+	}
 	stages := cfg.Stages
 	if len(stages) == 0 {
 		stages = defaultPreLLMStages
 	}
 	return &PreLLMChain{
-		cfg:      cfg,
-		deps:     deps,
-		sevOrd:   rulecore.NewOrdinal(severityLevels),
-		classOrd: rulecore.NewOrdinal(sensitivityLevels),
-		stages:   stages,
+		cfg:       cfg,
+		deps:      deps,
+		sevOrd:    rulecore.NewOrdinal(severityLevels),
+		classOrd:  rulecore.NewOrdinal(sensitivityLevels),
+		stages:    slices.Clone(stages),
+		configErr: cfg.Validate(),
 	}
 }
 
@@ -56,12 +65,26 @@ func NewPreLLMChain(cfg PreLLMConfig, deps PreLLMDeps) *PreLLMChain {
 // Stages run in the configured order. The chain is fail-closed: any stage
 // error produces Decision{Allowed:false, Err:err} immediately.
 func (c *PreLLMChain) Run(ctx context.Context, text string) Decision {
+	if err := firstError(c.configErr, ctx.Err()); err != nil {
+		d := Decision{Err: err, Transformed: text, Stages: []StageResult{{Stage: "configuration", Action: "error"}}}
+		if c.deps.Sink != nil {
+			c.deps.Sink.Emit(ctx, "pre-llm", d)
+		}
+		return d
+	}
 	transformed := text
 	var stageResults []StageResult
 
 	for _, stage := range c.stages {
 		var sr StageResult
 		var err error
+		if err = ctx.Err(); err != nil {
+			d := Decision{Err: err, Transformed: transformed, Stages: stageResults}
+			if c.deps.Sink != nil {
+				c.deps.Sink.Emit(ctx, "pre-llm", d)
+			}
+			return d
+		}
 
 		switch stage {
 		case "wrap":
@@ -147,12 +170,13 @@ func (c *PreLLMChain) runInjectDetect(text string) (StageResult, error) {
 	}
 
 	maxSev := string(result.MaxSeverity)
-	if c.sevOrd.GTE(maxSev, c.cfg.InjectDetectThreshold) {
+	if c.cfg.InjectDetectAction == "block" && c.sevOrd.GTE(maxSev, c.cfg.InjectDetectThreshold) {
 		return StageResult{
 			Stage:    stageName,
 			Allowed:  false,
 			Action:   "denied",
 			Findings: findings,
+			Matches:  append([]injectiondetector.Match(nil), result.Matches...),
 			Severity: maxSev,
 		}, nil
 	}
@@ -163,6 +187,7 @@ func (c *PreLLMChain) runInjectDetect(text string) (StageResult, error) {
 		Allowed:  true,
 		Action:   "allowed",
 		Findings: findings,
+		Matches:  append([]injectiondetector.Match(nil), result.Matches...),
 		Severity: maxSev,
 	}, nil
 }

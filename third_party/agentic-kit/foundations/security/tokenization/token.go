@@ -117,6 +117,9 @@ func (t *Tokenizer) RandomToken(class TokenClass, namespace string) (Token, erro
 	if err != nil {
 		return Token{}, fmt.Errorf("tokenization: RandomToken: rand: %w", err)
 	}
+	if len(raw) != 32 {
+		return Token{}, fmt.Errorf("tokenization: RandomToken: rand must return 32 bytes")
+	}
 	value := "tok_" + string(class) + "_" + hex.EncodeToString(raw)
 	return Token{Value: value, Class: class, Namespace: namespace}, nil
 }

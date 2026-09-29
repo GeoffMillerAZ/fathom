@@ -1,0 +1,24 @@
+{
+  "action": "allow",
+  "policy_id": "default-v1",
+  "policy_fingerprint": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "input_digest": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "config_fingerprint": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "categories": [{"name":"authorization_bypass","classification":"clear","action":"allow"}],
+  "receipt": {
+    "model": "screening-model-v1",
+    "deployment_digest": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "request_digest": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "response_digest": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "response_observed": true,
+    "stop_reason": "end_turn",
+    "attempts": 1,
+    "attempts_known": true,
+    "called": true,
+    "usage": {"InputTokens":1,"OutputTokens":1,"CacheCreationInputTokens":0,"CacheReadInputTokens":0},
+    "usage_known": true
+  },
+  "started_at": "2026-09-16T12:00:00Z",
+  "finished_at": "2026-09-16T12:00:00Z",
+  "duration": 0
+}

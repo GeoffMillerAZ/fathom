@@ -253,29 +253,79 @@ func layerCount(k knowledge, n int) Value[int] {
 	return Measured(n, src).WithDenominator("layers in the pack catalogs or the store")
 }
 
-// MetricClaims is the fleet's current governed claims — shown on /layers
-// and /packs, computed once by currentClaims (OC-9's rule).
+// MetricClaims is the fleet's current governed claims — the claims serving
+// can still use (fresh, stale, contradicted). One projection (ClaimsCurrent)
+// feeds every page that shows it: Now and Fleet from the project set,
+// Layers and Packs from the knowledge fold (OC-9, OC-H3; claims.fresh, a
+// second id for the same question, is gone).
 const MetricClaims MetricID = "claims.current"
 
-// currentClaims counts the claims serving can still use (fresh, stale,
-// contradicted) across every project; an unreadable project makes it a
-// lower bound naming the project.
-func currentClaims(k knowledge) Value[int] {
+// ClaimStatusFact is one project's claims by status, or why they could not
+// be read.
+type ClaimStatusFact struct {
+	Service string
+	Counts  StatusCounts
+	Err     string
+}
+
+// ClaimsCurrent counts the claims serving can still use across projects;
+// an unreadable project makes it a lower bound naming the project.
+func ClaimsCurrent(facts []ClaimStatusFact) Value[int] {
 	var st StatusCounts
+	repos := 0
 	var unreadable []string
-	for _, s := range k.Services {
-		if s.Err != "" {
-			unreadable = append(unreadable, s.Service)
+	for _, f := range facts {
+		if f.Err != "" {
+			unreadable = append(unreadable, f.Service)
 			continue
 		}
-		for _, c := range s.Claims {
-			st.add(c.Status)
+		c := f.Counts
+		st.Fresh += c.Fresh
+		st.Stale += c.Stale
+		st.Contradicted += c.Contradicted
+		st.Superseded += c.Superseded
+		st.Refuted += c.Refuted
+		if c.Fresh+c.Stale+c.Contradicted+c.Superseded+c.Refuted > 0 {
+			repos++
 		}
 	}
+	total := st.Current() + st.Superseded + st.Refuted
+	denom := fmt.Sprintf("of %s in %s · %s fresh · %s stale · %s contradicted", thousandsNoun(total, "claim"), countNoun(repos, "repo"),
+		thousands(st.Fresh), thousands(st.Stale), thousands(st.Contradicted))
 	if len(unreadable) > 0 {
-		return Partial(st.Current(), fmt.Sprintf("lower bound; %s unreadable: %s", countNoun(len(unreadable), "project"), strings.Join(unreadable, ", "))).WithSource(storeSource)
+		sort.Strings(unreadable)
+		return Partial(st.Current(), fmt.Sprintf("lower bound; claims unreadable for %s: %s", countNoun(len(unreadable), "project"), shortList(unreadable, 3))).WithSource(storeClaimsSource).WithDenominator(denom)
 	}
-	return Measured(st.Current(), storeSource).WithDenominator("current claims (fresh, stale, contradicted) across " + countNoun(len(k.Services), "project"))
+	return Measured(st.Current(), storeClaimsSource).WithDenominator(denom)
+}
+
+// ClaimFactFromCounts is a project's claim counts (the project set's
+// per-project read) as ClaimsCurrent reads them; false when they were not
+// read at all.
+func ClaimFactFromCounts(service string, c Value[ClaimCounts]) (ClaimStatusFact, bool) {
+	switch {
+	case c.State == StateError:
+		return ClaimStatusFact{Service: service, Err: nonEmpty(c.Reason, "claims unreadable")}, true
+	case !c.State.HasValue():
+		return ClaimStatusFact{}, false
+	}
+	v := c.V
+	return ClaimStatusFact{Service: service, Counts: StatusCounts{Fresh: v.Fresh, Stale: v.Stale, Contradicted: v.Contradicted, Superseded: v.Superseded, Refuted: v.Refuted}}, true
+}
+
+// currentClaims is ClaimsCurrent over the knowledge fold.
+func currentClaims(k knowledge) Value[int] {
+	facts := make([]ClaimStatusFact, 0, len(k.Services))
+	for _, s := range k.Services {
+		f := ClaimStatusFact{Service: s.Service, Err: s.Err}
+		if s.Err == "" {
+			for _, c := range s.Claims {
+				f.Counts.add(c.Status)
+			}
+		}
+		facts = append(facts, f)
+	}
+	return ClaimsCurrent(facts)
 }
 
 // lifecycle counts the claim events by verdict.

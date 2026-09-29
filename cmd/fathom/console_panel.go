@@ -154,16 +154,16 @@ func renderVerbChip(cmd string) string {
 		`</span>`
 }
 
-// consolePager is the kit's pagination with 44 px targets (design §2
-// Accessibility): its links are about 30 px tall (FATHOM-C-KIT-05,
-// docs/app-kit.md), so every console pager wraps them. "" when there is one
-// page.
+// consolePager is the kit's pagination in the console's spacing. Its links
+// are the kit's own 44 px targets with a focus outline (design §2
+// Accessibility; FATHOM-F0-KIT-05, returned from FATHOM-C-KIT-05). "" when
+// there is one page.
 func consolePager(p chrome.Pagination) string {
 	nav := chrome.RenderPagination(p)
 	if nav == "" {
 		return ""
 	}
-	return `<div class="mt-2 [&_a]:inline-flex [&_a]:min-h-11 [&_a]:items-center [&_span]:inline-flex [&_span]:min-h-11 [&_span]:items-center" data-console-pager>` + nav + `</div>`
+	return `<div class="mt-2" data-console-pager>` + nav + `</div>`
 }
 
 // valueStat maps a projected value onto a kit stat tile without losing its

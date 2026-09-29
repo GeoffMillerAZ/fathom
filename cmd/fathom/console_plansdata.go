@@ -37,10 +37,13 @@ import (
 
 // The wait budgets: how long a request waits for background verification
 // before it renders what has arrived. The portfolio covers the fleet and
-// waits little; a plan page waits long enough for one large plan.
+// waits little; a plan page waits long enough for one large plan; the
+// plans headline the Now and Fleet pages share (fleetPlanMetrics) never
+// waits — those pages render what has arrived, pending named.
 var (
 	consolePlansPortfolioWait = 1500 * time.Millisecond
 	consolePlansPlanWait      = 12 * time.Second
+	consolePlansHeadlineWait  = time.Duration(0)
 )
 
 // planEntry is one plan's cached verification.

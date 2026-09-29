@@ -904,9 +904,9 @@ func renderLayerRuns(d console.LayerPage, page int) string {
 		Rows: rows,
 	})
 	if pages > 1 {
-		// The kit's pagination links are ~28 px (docs/app-kit.md); the
-		// wrapper raises them to 44 px, as /search does.
-		tbl += `<div class="mt-3 [&_a]:inline-flex [&_a]:min-h-11 [&_a]:items-center [&_span]:inline-flex [&_span]:min-h-11 [&_span]:items-center">` + chrome.RenderPagination(chrome.Pagination{
+		// The kit's pager links are 44 px targets themselves
+		// (FATHOM-F0-KIT-05); the div only spaces it.
+		tbl += `<div class="mt-3">` + chrome.RenderPagination(chrome.Pagination{
 			Page: page, TotalPages: pages, AriaLabel: "compile-run pages",
 			HrefFor: func(p int) string { return layerHref(d.Layer) + "?page=" + strconv.Itoa(p) + "#runs" },
 		}) + `</div>`

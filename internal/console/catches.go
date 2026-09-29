@@ -106,12 +106,30 @@ type CatchInputs struct {
 	// while another was: the guard count is then a lower bound.
 	GuardPartial string
 	GuardSource  string
+	// Registry is the daemon's service registry (OC-H2): a row naming a
+	// service it does not list is left out of every lane and named. The
+	// zero value (not read) excludes nothing.
+	Registry Registry
 }
 
 // NamesService reports whether any instrument's row names service
 // (case-insensitive), in any window: a service filter naming none of them
 // names nothing the timeline could ever show.
 func (in CatchInputs) NamesService(service string) bool {
+	if in.Registry.Excludes(service) {
+		return false // its rows are excluded: the timeline shows none of them
+	}
+	return in.anyRowNames(service)
+}
+
+// ExcludesNamedService reports whether some instrument's row names service
+// and the registry, which does not list it, excludes every such row
+// (OC-H2): a filter on it has rows, none of them the fleet's.
+func (in CatchInputs) ExcludesNamedService(service string) bool {
+	return in.Registry.Excludes(service) && in.anyRowNames(service)
+}
+
+func (in CatchInputs) anyRowNames(service string) bool {
 	for _, r := range in.VerifyRuns {
 		if strings.EqualFold(r.Service, service) {
 			return true
@@ -196,6 +214,9 @@ type CatchTimelineModel struct {
 	// Window is every filtered catch's time and kind (the timeline draws
 	// all of them; Catches is the page of rows the table lists).
 	Window []CatchPoint `json:"window"`
+	// Unregistered is every in-scope row left out because its service is
+	// not in the registry — counted nowhere above, named here (OC-H2).
+	Unregistered Unregistered `json:"unregistered"`
 }
 
 // CatchPoint is one catch on the timeline (the table's rows carry the rest).
@@ -252,12 +273,37 @@ func CatchTimeline(in CatchInputs, f CatchFilter, page, perPage int) CatchTimeli
 		}
 	}
 
+	// OC-H2: a row naming a service the registry does not list is left out
+	// of every lane and named — per lane, and on the model.
+	excluded := map[CatchKind]*Unregistered{}
+	exclude := func(service string, at time.Time, kinds ...CatchKind) bool {
+		if !in.Registry.Excludes(service) {
+			return false
+		}
+		if inScope(service, at) {
+			m.Unregistered.Add(service)
+			for _, k := range kinds {
+				if excluded[k] == nil {
+					excluded[k] = &Unregistered{}
+				}
+				excluded[k].Add(service)
+			}
+		}
+		return true
+	}
+	if !in.Registry.Read {
+		m.Unregistered.RegistryNote = in.Registry.Note
+	}
+
 	// Verify refusals: one ledger row whose verdict carried a failing row,
 	// counted over the scope's recorded runs.
 	verifyRuns := 0
 	for _, r := range in.VerifyRuns {
 		t, ok := parseAt(r.At)
 		if !ok {
+			continue
+		}
+		if exclude(r.Service, t, CatchVerifyRefusal) {
 			continue
 		}
 		if inScope(r.Service, t) {
@@ -280,6 +326,16 @@ func CatchTimeline(in CatchInputs, f CatchFilter, page, perPage int) CatchTimeli
 		if !ok {
 			continue
 		}
+		var lanes []CatchKind
+		if _, checked := r.Outcome["conservation"]; checked {
+			lanes = append(lanes, CatchConserveLoss)
+		}
+		if _, checked := r.Outcome["integrity"]; checked {
+			lanes = append(lanes, CatchIntegrity)
+		}
+		if exclude(r.Service, t, lanes...) {
+			continue
+		}
 		scoped := inScope(r.Service, t)
 		if n, checked := r.Outcome["conservation"]; checked {
 			reviewedConservation = reviewedConservation || scoped
@@ -299,6 +355,9 @@ func CatchTimeline(in CatchInputs, f CatchFilter, page, perPage int) CatchTimeli
 	// Guard refusals: the pre-hook's denied beat.
 	guardFired := false
 	for _, b := range in.GuardBeats {
+		if exclude(b.Service, b.At.UTC(), CatchGuardRefusal) {
+			continue
+		}
 		guardFired = guardFired || inScope(b.Service, b.At.UTC())
 		if b.Kind != "denied" {
 			continue
@@ -372,6 +431,10 @@ func CatchTimeline(in CatchInputs, f CatchFilter, page, perPage int) CatchTimeli
 			}
 			s.Count = s.Count.WithSource(in.GuardSource)
 		}
+		if x := excluded[k]; x != nil {
+			noun := map[CatchKind]string{CatchVerifyRefusal: "verify run", CatchConserveLoss: "review row", CatchIntegrity: "review row", CatchGuardRefusal: "guard-hook beat"}[k]
+			s.Count = withExclusion(s.Count, x.Phrase(noun))
+		}
 		m.Kinds = append(m.Kinds, s)
 	}
 
@@ -406,4 +469,17 @@ func CatchTimeline(in CatchInputs, f CatchFilter, page, perPage int) CatchTimeli
 		m.Window = append(m.Window, CatchPoint{At: c.At, Kind: c.Kind})
 	}
 	return m
+}
+
+// withExclusion names an exclusion on a lane's value: in the denominator
+// of a measured count, in the reason of one that is not.
+func withExclusion(v Value[int], phrase string) Value[int] {
+	if phrase == "" {
+		return v
+	}
+	if v.Known() {
+		return v.WithDenominator(strings.TrimPrefix(v.Denominator+"; "+phrase, "; "))
+	}
+	v.Reason = strings.TrimPrefix(v.Reason+"; "+phrase, "; ")
+	return v
 }

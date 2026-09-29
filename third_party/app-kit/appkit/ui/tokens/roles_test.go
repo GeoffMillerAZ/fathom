@@ -138,6 +138,34 @@ func TestNoThemeOnlyRoleUtilities(t *testing.T) {
 	}
 }
 
+// paletteUtilityRe matches a Tailwind palette-color utility (bg-black/40,
+// text-gray-500, ring-white): a fixed color that ignores the token set, so it
+// reads the same under every theme and in both schemes.
+var paletteUtilityRe = regexp.MustCompile(`(?:^|[\s"'` + "`" + `:])(?:bg|text|border|ring|divide|fill|stroke|outline|placeholder|from|via|to|shadow|decoration|caret)-` +
+	`(black|white|slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)(?:[^a-z0-9-]|-[0-9]|$)`)
+
+// TestComponentsUseRoleColorsOnly: every color a kit component paints comes
+// from a role, so a consumer that enforces role utilities over its rendered
+// markup never needs an exception for kit-owned classes. FATHOM-S0-KIT-02 found
+// the one breach: the overlay backdrop was bg-black/40 (now the scrim role).
+func TestComponentsUseRoleColorsOnly(t *testing.T) {
+	for _, f := range kitSourceFiles(t) {
+		if !strings.Contains(filepath.ToSlash(f), "/appkit/ui/") {
+			continue // apps may use their own token set; the kit may not
+		}
+		body, err := os.ReadFile(f)
+		if err != nil {
+			t.Fatalf("read %s: %v", f, err)
+		}
+		for i, line := range strings.Split(string(body), "\n") {
+			if m := paletteUtilityRe.FindStringSubmatch(line); m != nil {
+				t.Errorf("%s:%d paints with the palette color %q instead of a token role: %s",
+					rel(f), i+1, m[1], strings.TrimSpace(line))
+			}
+		}
+	}
+}
+
 // kitSourceFiles returns every hand-written and generated source file that can
 // carry a role name: Go, templ, and the kit's vanilla JS (Tailwind scans JS too).
 func kitSourceFiles(t *testing.T) []string {

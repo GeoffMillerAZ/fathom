@@ -15,6 +15,11 @@ Part of the `intent-*` family. `intent-doctor` checks shape; this checks truth. 
 the router first. Report before editing; edit only what `docs/intent/autonomy.md`
 allows without asking, and say what you changed.
 
+Resolve affected component paths first, including a task launched at root. Audit the
+root's applicable constraints and the component's own claims; cross-component work
+includes both contract owners. Inherited goals have one canonical owner. Preserve prior
+user authorization when proposing and making the scoped edits.
+
 ## Walk
 
 1. **Triggers.** `grep -rn -E "(Revisit when|Promote when|Drop if|Done when)" docs/intent/ <decisions dir>`.
@@ -25,7 +30,9 @@ allows without asking, and say what you changed.
 2. **Assumptions** (`domain.md`). Any now false? Name the records its `If false` line
    points at.
 3. **Invariants** (`invariants.md`). For each row marked `test` or `code`, confirm the
-   named test or code path still exists (`grep`). For rows marked `stated`, check
+   named test or code path still exists (the repo's code index, with grep fallback).
+   Existence alone is not enforcement: trace the entrypoint, missing-tool and bypass
+   behavior, authority, and the negative test. For rows marked `stated`, check
    whether a test now exists and the column should upgrade. Spot-check three `stated`
    rows against the code for silent violation.
 4. **Scope** (`scope.md`). Do the boundaries match the code (verbs, providers, surfaces)?
