@@ -631,7 +631,14 @@ func parseGitLog(serviceID, raw string) []store.Commit {
 // its calls named by callee, and `import` directives resolved through
 // pubspec.yaml's package name; every such file previously fell through to
 // "no extractor registered" (the epoch 18 class), so the salt bump re-reads them.
-const ExtractorEpoch = "25"
+// Epoch 26 (LB-Q-cargo, docs/design/language-breadth.md §13/§4): a Cargo.toml
+// now extracts through the doc-engine cargo dialect (the package, the
+// workspace, its features and explicit targets, dependency references, and the
+// workspace-member and dependency edges that resolve to another manifest of the
+// repository) instead of the generic TOMLExtractor's bare table/key dump
+// (KindTOMLTable/KindTOMLKey); every already-indexed Cargo.toml's stored
+// observations came from that generic path, so the salt bump re-reads them.
+const ExtractorEpoch = "26"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares
@@ -919,6 +926,17 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 		panic(fmt.Sprintf("fusion: doc-dialect maven: %v", err))
 	}
 	p.exts["pom.xml"] = maven
+
+	// Cargo manifest (LB-Q-cargo, language-breadth: new — a doc-engine tool
+	// format). The basename lookup (p.exts[base]) runs before the ".toml"
+	// extension fallback (the generic TOMLExtractor), so it governs every
+	// "Cargo.toml" file; every other TOML file (rust-toolchain.toml,
+	// .cargo/config.toml, rustfmt.toml) stays with the generic extractor.
+	cargo, err := extractor.NewDocDialectExtractor("cargo")
+	if err != nil {
+		panic(fmt.Sprintf("fusion: doc-dialect cargo: %v", err))
+	}
+	p.exts["Cargo.toml"] = cargo
 
 	// Scala
 	scala := extractor.NewScalaExtractor()

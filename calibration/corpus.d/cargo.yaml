@@ -1,0 +1,44 @@
+id: cargo
+language: Cargo manifests (Cargo.toml, workspaces)
+# The queue entry names rust-lang/cargo and tokio-rs/tokio: cargo is dual-licensed
+# MIT OR Apache-2.0 and tokio is MIT, both read only, never vendored. cargo is the
+# reference workspace (a root package that is also the workspace root, members by
+# glob and inheritance through [workspace.dependencies]); tokio is the virtual one
+# (a manifest with no package, members that depend on each other by version and are
+# redirected by [patch.crates-io], and a large feature graph). rust-lang/cargo holds
+# 641 Cargo.toml files that ingest reads, 27 of them in its workspace: the rest are
+# test-suite fixtures, so it is measured with a restriction (the root, benches/*,
+# crates/*, credential/*) that the reading names.
+repos:
+  - name: rust-lang/cargo
+    url: https://github.com/rust-lang/cargo.git
+    ref: 0.99.0
+    sha: 797e8a9bca276c1c9f9f738d2a20f484fa4eea9d
+    licence: MIT OR Apache-2.0
+    idioms:
+      - "a root package that is also the workspace root ([workspace] beside
+        [package]), members named by glob (crates/*, credential/*) plus two
+        explicit benches paths"
+      - "[workspace.package] and [workspace.dependencies] inheritance: members
+        write edition.workspace = true and dependencies as foo.workspace = true"
+      - "path dependencies that also carry a version, declared once in
+        [workspace.dependencies] (cargo-util = { version, path }) and inherited by
+        the root package and its crates/* members"
+      - "target-specific dependency tables in table form
+        ([target.'cfg(windows)'.dependencies.windows-sys]) and
+        [build-dependencies]"
+  - name: tokio-rs/tokio
+    url: https://github.com/tokio-rs/tokio.git
+    ref: tokio-1.53.1
+    sha: 75fef53d0a8590c2d1dbb63672aa7b7d1ef51155
+    licence: MIT
+    idioms:
+      - "a virtual workspace root ([workspace] with no [package]) listing its
+        members by name, and two fuzz crates that are each their own workspace"
+      - "members that depend on one another by version alone (tokio-util on
+        tokio), redirected to the local package by the root's [patch.crates-io]"
+      - "a wide [features] table: crate/feature entries, a few dep: entries and
+        implicit features from optional dependencies, plus 20 explicit [[example]]
+        and 17 explicit [[bench]] targets"
+      - "target-specific dependency tables with cfg expressions
+        ([target.'cfg(unix)'.dependencies], cfg(tokio_unstable))"

@@ -84,6 +84,13 @@ var typedEdgeProducers = map[string]string{
 	// not a file-resolver or SCIP producer, so "syntax" is the honest
 	// baseline claim, same as package.json and pyproject.toml above.
 	"maven": "syntax",
+
+	// Cargo.toml (LB-Q-cargo): its cross_file selectors (workspace members
+	// and a dependency on another package of the repository, design §4)
+	// become file-tier doc-xref edges at ingest (fusion.ResolveDocXrefs) but
+	// are not a file-resolver or SCIP producer, so "syntax" is the honest
+	// baseline claim, same as package.json, pyproject.toml and pom.xml above.
+	"cargo": "syntax",
 }
 
 // TypedEdgeProducer returns lang's typed-edge producer string — "native",

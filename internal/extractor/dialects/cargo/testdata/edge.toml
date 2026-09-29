@@ -1,0 +1,28 @@
+[package]
+name = "edge-shapes"
+version = "0.0.1"
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+path = "src/main.rs"
+
+[[bin]]
+name = "second"
+
+[features]
+"quoted-name" = ["a"]
+a = []
+b = { note = "not a feature list" }
+
+[dependencies]
+plain = "1"
+dotted.version = "2"
+aliased = { package = "real-name", version = "3" }
+
+[dependencies."odd.key"]
+version = "4"
+
+[workspace.metadata.tool]
+enabled = true

@@ -183,6 +183,13 @@ var extClassMap = map[string]classification{
 	// Ant and Android files) is not claimed.
 	"pom.xml": {core.KindMavenArtifact, "maven"},
 
+	// Cargo manifest (LB-Q-cargo, language-breadth: new — a doc-engine tool
+	// format). The basename check (kindForFile/classify) takes precedence
+	// over ".toml" (the generic TOML extractor), so this entry governs every
+	// "Cargo.toml" file at any depth; .cargo/config.toml, rust-toolchain.toml,
+	// clippy.toml, rustfmt.toml, deny.toml and Cargo.lock are not claimed.
+	"Cargo.toml": {core.KindCargoPackage, "cargo"},
+
 	// Python packaging (LB-Q-python-packaging, language-breadth: new — a
 	// doc-engine tool format, no incumbent). The basename check
 	// (kindForFile/classify) takes precedence over ".toml" (the generic
