@@ -183,3 +183,24 @@ func TestIngestDocIndexThroughASymlinkedRoot(t *testing.T) {
 		t.Fatalf("DocIndex = %+v: a symlinked root must still index its documents", rep.DocIndex)
 	}
 }
+
+// TestIngestDocIndexSkipNamedForAFixtureService pins the no-root case: a
+// service whose path is not a directory on this machine (the faux
+// connector's fixture names) has no documents to read, and the report says
+// so instead of failing a walk of a path that never existed.
+func TestIngestDocIndexSkipNamedForAFixtureService(t *testing.T) {
+	sq, err := store.NewSQLiteStore(filepath.Join(t.TempDir(), "faux.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = sq.Close() })
+	p := New(connector.NewFauxConnector(), sq, Config{})
+	t.Cleanup(p.Close)
+	rep, err := p.Ingest(context.Background(), core.ServiceRef{ID: "payment-service", Path: "payment-service"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(rep.DocIndexSkipped, "no local corpus root") {
+		t.Fatalf("DocIndexSkipped = %q, want it to name the missing local root", rep.DocIndexSkipped)
+	}
+}

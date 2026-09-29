@@ -15,6 +15,7 @@ package fusion
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -25,7 +26,7 @@ import (
 
 // Why the doc-unit pass did not run or did not finish (Report.DocIndexSkipped).
 const (
-	docIndexSkipNoRoot  = "no local corpus root (a remote or fixture service has no directory to read documents from)"
+	docIndexSkipNoRoot  = "no local corpus root (the service's path is not a directory on this machine, as for a remote or fixture service)"
 	docIndexSkipNoIndex = "the store has no doc index (docs_fts is SQLite-only)"
 )
 
@@ -46,6 +47,10 @@ func (p *Pipeline) indexDocs(ctx context.Context, svc core.ServiceRef, refs []co
 	// target (O39); the doc corpus walk does not follow one.
 	if resolved, err := filepath.EvalSymlinks(root); err == nil {
 		root = resolved
+	}
+	if fi, err := os.Stat(root); err != nil || !fi.IsDir() {
+		report.DocIndexSkipped = docIndexSkipNoRoot
+		return
 	}
 	discovered := make(map[string]struct{}, len(refs))
 	for _, r := range refs {
