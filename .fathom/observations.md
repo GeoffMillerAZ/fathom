@@ -1951,3 +1951,16 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** planned, not yet landed: check fathom's own cache pruning under I39 for the same race (make a prune wait for, or run only between, builds, or prune by age and never the whole cache); the interim fix is operational: gates and worker waves run with a private `FATHOM_CACHE_ROOT` (agentic-kit's orchestration guidance names it), and `scripts/build-cache_test.sh` should gain a concurrent-build case
 - **Status:** open
 - **Impact:** a failed gate costs a full run (about 40 minutes) and reads as a code failure until someone notices the cache error; the private-root workaround leaves the shared-root path unfixed for any operator who runs two builds at once
+
+### O124 - The intent living docs are over the project-intent size budget and the 2026-09-27..29 program grew them without the prune that should ride with new records: futures.md 692 lines, scope.md 375 and domain.md 198 against a budget of 150 each
+
+- **Symptom:** The program added goals G27 to G33, futures F34 to F55, questions Q31 to Q34 and principle P24 to `docs/intent/` without running `intent-prune`; the living docs that were already over budget on 2026-09-27 (futures.md 399 and scope.md 326 lines on origin main) grew further
+- **Evidence:**
+  - **Tool:** `docs/intent/` (ADR-026), the `intent-doctor` budget row and the `intent-prune` skill
+  - **Expected:** the router at most 80 lines and each living doc at most 150 (agentic-kit `docs/project-intent/` adoption budgets), with met goals, promoted or dropped futures and answered questions deleted in the change that adds new records (git keeps history)
+  - **Actual:** on branch durability-sweep `wc -l docs/intent/*.md` reads futures.md 692, scope.md 375, domain.md 198; the router (79), principles (134), questions (138), incidents (117), invariants (93) and autonomy (65) are within budget
+  - **Repro:** `wc -l docs/intent/*.md`; run `intent-doctor`
+- **Root cause:** suspected: the durability sweep's write plan scheduled the prune after G33 and it was not run; a prune on one unmerged branch also deletes text that other open branches still edit, so it is safer in the merge change
+- **Fix:** planned, not yet landed: run `intent-prune` then `intent-doctor` in the change that merges the program's branches to main, never before the merge, so no record is lost in flight; every deleted goal or future must already be met, promoted or dropped by its own condition, never trimmed for length alone
+- **Status:** open
+- **Impact:** an agent routed to futures.md or scope.md loads two and a half (scope.md) to four and a half (futures.md) times the budgeted context before designing, and a long futures file hides which options are live; until the prune lands the budget row of `intent-doctor` fails
