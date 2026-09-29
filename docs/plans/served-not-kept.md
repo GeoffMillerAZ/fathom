@@ -15,7 +15,7 @@ what was considered so it is not re-proposed.
 ## Wave 0: facts and the $0 replay
 
 - [ ] (op) PR-V1: whether Claude Code and Codex PostToolUse input for a shell command carries its stdout (git's `[branch sha]` summary line) and whether context added there reaches the model {id: PR-V1, oracle: lexical, path: docs/bench/readings/served-not-kept/hook-facts.md, pattern: "^PR-V1 reading:"}
-- [ ] (op) PR-M0: the $0 replay over guards-pilot 6 and 8 cell diffs flags every violating i28 cell and no oracle-clean cell, and publishes the fragment evaluators' would-have-fired and false-fire counts {id: PR-M0, oracle: lexical, path: docs/bench/readings/served-not-kept/pr-m0-replay.md, pattern: "^PR-M0 verdict: (PASS|FAIL)"}
+- [x] (op) PR-M0: the $0 replay over guards-pilot 6 and 8 cell diffs flags every violating i28 cell and no oracle-clean cell, and publishes the fragment evaluators' would-have-fired and false-fire counts {id: PR-M0, oracle: lexical, path: docs/bench/readings/served-not-kept/pr-m0-replay.md, pattern: "^PR-M0 verdict: (PASS|FAIL)"}
 
 ## Wave 1: the commit pin line
 
