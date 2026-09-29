@@ -2094,3 +2094,29 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** none yet, deliberately: whether to drop function words, or rank an OR of the words by bm25, is what KR-M1's doc-question slice measures (docs/plans/knowledge-retrieval.md); widening without that reading returns loosely related sections an agent would trust.
 - **Status:** open
 - **Impact:** An agent that asks a docs question in a sentence is told there is nothing, and falls back to grep or opens the document whole, which is the cost KR-8 was meant to remove.
+
+### O140 — doctor's hook_budget reads stop-hook p99 8.6 s against its 8.0 s deadline: the hook spawned a git process per plan file and asked the daemon before it knew a plan had a claim
+
+- **Symptom:** `fathom doctor` hook_budget WARN: stop-hook p99 over its deadline (8.6 s in `~/.fathom/hook-latency.jsonl` against 8.0 s; the brief's 8.9 s is the same reading a window earlier or later)
+- **Evidence:**
+  - **Tool:** `~/.fathom/hook-latency.jsonl` (read only, no per-stage field), then a scratch run of the stop hook: real `~/.fathom` beat log (62 MB), session ledger and this session's 98 MB transcript copied into a private FATHOM_HOME, a scratch daemon on a scratch ingest, a fake Stop payload, a build with stage marks
+  - **Expected:** a Stop that claims nothing is cheap and its cost does not grow with the repository
+  - **Actual:** 55 stop-hook rows in 24 h, p50 2.3 s, p90 4.5 s, max 8.6 s (n < 100, so the p99 is the maximum). Stages on the 89-plan repository, machine idle-ish: 89 `git show` spawns 630-820 ms (25 ms parsing), the retro 650-900 ms (whole beat-log read 440-500 ms, join 180-220 ms), the ledger row 32-125 ms, the daemon probes 1-35 ms; total 1.3-1.7 s. Load is the multiplier: the same work (app-kit, 4 plans, nothing claimed) took 677 ms at 12:17 and 3048 ms at 23:33 (4.5x), the 89-plan repository 2-4 s and 7.1 s at worst; the 8.6 s row is a codex Stop in a 4-plan repository at 09:08 (no per-plan cost to speak of): its identity probe waited the whole 5 s client timeout on a stalled daemon (ident-cache `miss` at :21.2, `miss-error` at :26.2), the indexed probe then waited until the hook guard cut it at the 8 s deadline, and 0.6 s of local ledger and retro work ran after that
+  - **Repro:** `fathom stop-hook` with a Stop payload in a repository with 80+ plan files and a daemon running, timed per stage; or `git show HEAD:<plan>` in a loop against one `git cat-file --batch`
+- **Root cause:** both. Work: the hook spawned one `git show` per plan file (O(plans) processes, 736 ms for 89 at load 10 against 16 ms for one `cat-file --batch`) and ran two daemon round trips (identity, indexed) before it knew any plan had gained a claim, which is almost never; and the retro ran after the deadline was spent. Load: identical work varies 4.5x with the machine's load, and a slow daemon costs the probe's full client timeout
+- **Fix:** `plansWithNewClaims` scans locally first (a plan with no `[x]` is not compared; the HEAD text of the rest comes from one `git cat-file --batch` through gitro, bound to the hook's deadline) and the daemon is asked only when a plan gained a claim; `runStopHookRetro` returns at once when the hook's deadline is spent (RT-7). Pinned by counts, not a clock, in `cmd/fathom/stophook_budget_test.go`: one git spawn for 42 plans, zero daemon requests when nothing was claimed, one verify_plan for one claimed plan, no retro past a spent deadline (each red against the old flow). Before/after on the scratch harness at machine load 7.5 (10 CPUs), 7 runs each: 1587-2138 ms (median 1690) to 993-1198 ms (median 1162)
+- **Status:** fixed for the two unbounded parts; the retro's whole-log read remains (O141). The session-hook channel is also over its budget in the same window (p99 4.4 s against 4.0 s, n=225): not this row
+- **Impact:** a Stop hook that outlives its deadline is killed by the harness; on a loaded machine (the wave's normal state) every Stop in a repository with many plans paid 0.6-3 s for git processes that could not have found anything.
+
+### O141 — the Stop hook's retro reads the whole beat log every turn: 440-500 ms of a ~1.1 s hook at the rotation cap
+
+- **Symptom:** after O140 the retro is about three quarters of the Stop hook's remaining cost; `fathom retro --project . --session <id>` takes 0.83-1.2 s at load 10
+- **Evidence:**
+  - **Tool:** the scratch stop-hook run of O140, per-stage marks; `fathom retro` timed alone
+  - **Expected:** a Stop's local work is bounded by what changed since the last Stop, as the transcript fold is (RT-132)
+  - **Actual:** `readRetroBeats` reads the whole live beat log (`beatLogRotateBytes` is 64 MB; the live file is 62 MB), splits it into strings and unmarshals every line, then `buildRetroModel` filters to the project and session (over 100 thousand of the rows are this repository's), runs two git processes (`log --since`, `status --porcelain`) and a custodian audit; the retro artifact is rewritten each turn although only the last write of a session is read
+  - **Repro:** as O140
+- **Root cause:** the retro was written as an on-demand verb (IR-2) and IT-13 called it from every Stop unchanged
+- **Fix:** none yet. Bounded, so not urgent: the read cannot exceed the rotation cap. Options that keep the join exact: an offset-stamped fold of the session's beats like the transcript's (`transcript_offset.go`), or writing the artifact at SessionEnd/PreCompact and skipping it on a Stop. A tail read would shorten a long session's window, so it is not equivalent
+- **Status:** open
+- **Impact:** about 0.5-0.9 s of every Stop's wall time, more under load; below the deadline by a wide margin (8 s) once O140's fix is in

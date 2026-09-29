@@ -930,6 +930,10 @@ can (RT-130..RT-133, RT-169, design §11.3):
   never waits on it.
 - The Stop hook folds only what the transcript gained since the session's last Stop (a
   per-session offset stamp beside the session stamps), not up to 16 MB every turn.
+- The Stop hook reads every plan's HEAD text through one `git cat-file --batch` (not a
+  `git show` per plan file) and asks the daemon nothing until a plan gained a claim, so a
+  Stop that claims nothing costs one git process and no RPC however many plans exist; it
+  skips its retro once its deadline is spent (O140).
 - Identity lookups ask the daemon's `GET /identity` through the cached resolver instead of
   listing every service, and `SubagentStart` reuses its parent's SessionStart resolution
   from the session stamp — zero RPCs.
