@@ -94,6 +94,16 @@ selector file where possible and Go only where the framework needs resolution.
 Every source records its extractor id and epoch on the row, so a changed extractor
 re-derives its keys without guessing.
 
+**What peers cover (a check on this list, not a source of it).** The survey of about 30 peer stacks
+(`docs/assessments/2026-09-27-peer-stacks-and-rust.md`, data in
+`docs/assessments/data/2026-09-27-peer-stacks.json`, read 2026-09-27) found cross-service linking in four of
+them: CodeGraph (route nodes and handler edges across 17 web frameworks, plus native-to-JS bridge resolution),
+GitNexus (`route_map` and `api_impact`, Spring Actuator runtime endpoints, AsyncAPI channel modeling with
+direction-safety refusals), codebase-memory-mcp (cross-service HTTP linking and IaC nodes for Dockerfiles,
+Kubernetes and Kustomize) and Sourcegraph (cross-repository search and navigation, no HTTP-route feature
+confirmed). The `route`, `topic`, `env` and `image` rows above already cover those shapes; a framework named
+there that this table lacks is a candidate row, judged by the same evidence tiers (I57).
+
 ## 6. Store tables (additive to store format v0)
 
 ```

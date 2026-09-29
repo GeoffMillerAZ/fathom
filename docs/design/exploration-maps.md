@@ -42,6 +42,9 @@ and `includes` references to other map ids. Entries are never copied.
 - **Lifetimes follow references.** An ephemeral map is pinned while a live map includes it; its idle clock
   restarts when the last reference drops. Sub-agents append entries with provenance (agent id). An entry
   becomes permanent only after measured reuse across at least 3 runs, then becomes a concern-pack entry.
+  The idle clock's duration is left open on purpose: no reuse data exists yet, so it is set when XM-D1 is
+  built, from XM-M3's reuse-gap reading (how long a handed-off map sat before its later mounts), and not
+  chosen now.
 - **Live maps** (stored queries) compose the same way.
 - **Why not a list of ids:** every sub-agent would re-implement merge, dedup and budgeting, and ids could
   not be handed down a level.
@@ -230,7 +233,10 @@ anchors are re-resolved at read time and stale entries flagged; then an A/B on i
 **Bar:** at least 25 percent fewer sub-agent tokens, no accuracy loss, under 5 percent stale entries (the
 owner's proof bar). **Kill:** re-derivation below 15 percent means no handoff maps (durable live maps, an
 owner concept outside this experiment, are unaffected); if the A/B misses its bar, remove the handoff
-channel.
+channel. The parenthesis is kept true by F50's trigger and XM-D1's: RT-M1 PASS and either XM-M2 PASS or a
+named consumer of a non-handoff use case with its own bench metric, so an XM-M1 kill, after which XM-M2 never
+runs, does not close the route to live maps (their value in concern scopes, incident maps, structural claims
+and saved questions does not depend on sub-agent re-derivation; P20 still demands the named consumer).
 
 **Open facts to verify (Q32):** whether the SubagentStart input carries the sub-agent's prompt (if not,
 choosing entries by relevance inside the hook is impossible), and whether RC-28's 591-byte rows are

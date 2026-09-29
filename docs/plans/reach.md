@@ -19,6 +19,8 @@ the stranger check (RP-23).
 - [x] A `--client cursor` render where Cursor's plugin shape differs {id: RH-8, symbol: renderCursorPlugin, package: cmd/fathom, reachable_from: TestPluginRenderCursor, needs: "RH-5"}
 - [x] The stranger check times a first proven answer: ingest a fauxtown service, verify a two-row fixture plan, stop the clock on exit 0; per-step timings written as a reading (§5) {id: RH-9, oracle: lexical, path: scripts/stranger-check.sh, pattern: "first proven answer"}
 - [ ] The README's Quickstart is executed as written by the stranger check; a step it does not state fails the check {id: RH-10, oracle: lexical, path: scripts/stranger-check.sh, pattern: "Quickstart", needs: "RH-9"}
+- [ ] `fathom init --dry-run` lists every file init would write or change and writes none, and a test holds that list equal to the real run's touched set (its receipt) {id: RH-11, symbol: cmdInit, package: cmd/fathom, reachable_from: TestInitDryRunListsExactlyTheRealRunsTouchedSet}
+- [ ] `fathom init --demo` wires a throwaway copy of the fauxtown fixture fleet under a temp HOME with no download and reaches a first proven answer; its time is one line of the RH-M1 reading {id: RH-12, symbol: initDemo, package: cmd/fathom, reachable_from: TestInitDemoWiresFauxtownAndReachesAFirstProvenAnswer, needs: "RH-9"}
 
 **RH-6/RH-7 (2026-09-28):** left open — both need a live install into an actual
 Claude Code / Cursor (or Copilot) session, which spends LLM budget on a nested
@@ -47,10 +49,11 @@ actually prove "executed as written".
 - [-] Publish to a marketplace, a brew tap or a registry {id: RH-X1, disposition: deferred, reason: "the owner's Q4 call (F2); licence questions Q29 and Q30 come first", trigger: "Q4 answered for a public release"}
 - [-] Delete tools to shrink the surface {id: RH-X2, disposition: refused, reason: "law 4 governs membership; the rest stay registered behind groups"}
 - [-] A hosted install or remote daemon {id: RH-X3, disposition: refused, reason: "scope non-goal: no hosted anything"}
+- [-] "Ready now, deeper later": a fast first index usable at once while the type-checked pass runs in the background {id: RH-X4, disposition: deferred, reason: "adds background work before tenancy closes (ADR-049 decision 2)", trigger: "responsible-tenant.md#RT-M1 reads PASS and RH-M1 shows cold ingest is at least half of stranger time"}
 
 ## Measurements (op)
 
-- [ ] (op) RH-M1: stranger time from install to first proven answer at most 5 minutes on the prebuilt path (with and without the build reported) {id: RH-M1, oracle: lexical, path: docs/bench/readings/reach/stranger.md, pattern: "^RH-M1 verdict: PASS", needs: "RH-9,RH-10"}
+- [ ] (op) RH-M1: stranger time from install to first proven answer at most 5 minutes on the prebuilt path (with and without the build reported), with the `init --demo` path timed beside it (RH-12) {id: RH-M1, oracle: lexical, path: docs/bench/readings/reach/stranger.md, pattern: "^RH-M1 verdict: PASS", needs: "RH-9,RH-10,RH-12"}
 - [ ] (op) RH-M2: the plugin installs and answers in Claude Code and one other client {id: RH-M2, oracle: lexical, path: docs/bench/readings/reach/install.md, pattern: "^RH-M2 verdict: PASS", needs: "RH-6,RH-7"}
 - [ ] (op) RH-M3: default agent surface at most 8 tools, with the call-log reading behind each default and each group {id: RH-M3, oracle: lexical, path: docs/bench/readings/reach/surface.md, pattern: "^RH-M3 verdict: PASS", needs: "RH-1"}
 - [ ] (op) RH-M4: tool-schema bytes per session before and after the default surface {id: RH-M4, oracle: lexical, path: docs/bench/readings/reach/surface.md, pattern: "^RH-M4 verdict: PASS", needs: "RH-1"}

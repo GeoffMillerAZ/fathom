@@ -40,6 +40,7 @@ of signal exist.
 - [ ] The rule-effectiveness page on the console (U4) {id: GL-18, symbol: renderRuleEffectiveness, package: cmd/fathom, reachable_from: TestConsoleRuleEffectivenessPage, needs: "GL-11"}
 - [x] Ignored rules proposed for a hook, never-triggered rules proposed for pruning, each with its evidence {id: GL-19, symbol: ruleRemedies, package: internal/semantic, reachable_from: TestRuleRemediesAreProposals, needs: "GL-11"}
 - [x] `review_diff` layers changed files by blast radius (leaf, shared callee, cross-service provider) without a model (§8) {id: GL-22, symbol: layerDiffByBlastRadius, package: internal/mcp, reachable_from: TestReviewDiffLayers}
+- [ ] A knowledge-health panel on the console: stale, superseded-but-fresh (via `valid_to`), never-served and contradicted claims, each count linked to its instrument; a view over existing or planned instruments, no new verb and no new store (§7.1) {id: GL-23, symbol: renderKnowledgeHealth, package: cmd/fathom, reachable_from: TestConsoleKnowledgeHealthPanelLinksEachCountToItsInstrument, needs: "GL-16,GL-17,GL-18"}
 
 ## Refused (recorded so they are not re-proposed)
 

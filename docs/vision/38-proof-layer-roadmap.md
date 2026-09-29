@@ -203,6 +203,10 @@ scale (RT-M7's GC CPU reading above 25% below the refuse rung). The cheap experi
 that fires is a Rust-compiled wasm grammar or query module run under wazero: no FFI, the
 same sandbox, the same module cap (futures F29).
 
+The peer-stack survey behind this section (about 30 peers, their resource complaints with issue numbers, the licence
+screen, and Rust in peers, where no source published a Rust-versus-Go benchmark) is summarized in
+`docs/assessments/2026-09-27-peer-stacks-and-rust.md`, with its data beside it.
+
 ## 9. Sequencing
 
 ### 9.1 Lanes (run throughout)
