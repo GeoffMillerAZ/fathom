@@ -3,8 +3,10 @@ package langbench
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"slices"
 	"sort"
+	"strings"
 )
 
 // Metric names (design §1.2). A reading's metrics map is keyed by these;
@@ -170,7 +172,16 @@ type OracleRun struct {
 	Tool    string `json:"tool"`
 	Version string `json:"version,omitempty"`
 	Status  string `json:"status,omitempty"` // "" (ran) or "unavailable: <why>"
+	// Source, Revision and Licence name a third-party definitions query
+	// run as a tier-C oracle (ADR-048's D5 extension, LB-F52): "<owner/repo>
+	// <path>", the 40-hex commit it was fetched at, and its SPDX licence.
+	Source   string `json:"source,omitempty"`
+	Revision string `json:"revision,omitempty"`
+	Licence  string `json:"licence,omitempty"`
 }
+
+// RevisionPattern is a pinned commit: 40 lowercase hex digits.
+var RevisionPattern = regexp.MustCompile(`^[0-9a-f]{40}$`)
 
 // Tenancy is §9's per-reading resource record.
 type Tenancy struct {
@@ -407,6 +418,11 @@ func (r Reading) Validate() error {
 	}
 	if len(r.Subjects) == 0 {
 		return fmt.Errorf("reading %s: no subjects", r.Dialect)
+	}
+	for _, o := range r.Oracles {
+		if o.Source != "" && (!RevisionPattern.MatchString(o.Revision) || strings.TrimSpace(o.Licence) == "" || o.Tier != "C") {
+			return fmt.Errorf("reading %s: oracle %s from %s needs a 40-hex revision (%q), a licence (%q) and tier C (%q) — ADR-048's D5 extension", r.Dialect, o.Tool, o.Source, o.Revision, o.Licence, o.Tier)
+		}
 	}
 	// The refusal guards a MEASURED L1: an L1 oracle that ran with a
 	// required kind outside the intersection would prove a level over a

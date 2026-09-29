@@ -2744,6 +2744,31 @@ base directory — the "parameterized copy" trigger is watched, not yet fired. A
 local-image strategy is designed and deferred (plan row LB-X-docker-image-ref): its
 evidence lives in three other formats.
 
+**Amended 2026-09-29 (owner decision, D5 extension; LB-F46, LB-F52, LB-F50, LB-F51).** A
+third-party definitions query is accepted as a tier-C L1 oracle when (a) it is not the source
+the dialect was drafted from; (b) the tier-C grade cap applies; (c) it is fetched at measurement
+time by pinned revision and never vendored into the repository; and (d) its licence is recorded
+in the reading. A licence declared consistently across a grammar's package manifests counts when
+there is no LICENSE file. AGPL grammars are refused. The instrument: `lang-oracle -tags-query
+<scm> -tags-query-rev <40-hex> -tags-query-source "<owner/repo> <path>" -tags-query-licence
+<SPDX>` runs a `tags.scm` (upstream, helix, aider, Sourcegraph), an nvim-treesitter `locals.scm`
+or a Zed `outline.scm` through fathom's own engine on the dialect's pinned grammar and scores its
+definitions as a neutral oracle file at tier C (L1 good at most). It refuses a query that a `;
+source:` header of the dialect's own queries names (a), a revision that is not a 40-hex commit or
+a query file inside the work tree outside `workspace/` (c), a missing licence (d), an AGPL
+licence, and a predicate the engine does not support (named, never stripped). The reading's
+oracle run records source, revision and licence, and `Reading.Validate` refuses a run that names
+a source without a 40-hex revision and a licence, or above tier C. Definitions only: D5's calls
+path, an independent runtime, is unchanged. Evidence, the 2026-09-30 reference-codebases
+evaluation: 34 of the 37 oracle-less open tags-engine items have a third-party definitions
+query; prolog's foxyseta grammar is AGPL-3.0, so Rukiza's ISC grammar is the alternative; abap's
+kennyhml grammar has no LICENSE file and declares MIT in `package.json`, `Cargo.toml` and
+`tree-sitter.json` alike, which the licence rule above admits. **Revisit when** a tags-query
+reading and a tier-A or tier-B reading of the same subject differ by more than .05 on
+`sym_recall` or `sym_precision` (the query is then no oracle for that dialect, and the tier-C
+admission needs a calibration bar), or a dialect is found drafted from its oracle query without
+a `; source:` header naming it (condition (a) then needs more than headers, e.g. PROVENANCE.md).
+
 ## ADR-049: The proof-layer roadmap: a kitchen-sink gate, pillars inside the tenancy lane, reach before depth, views never trackers, no Rust rewrite (2026-09-27)
 
 **Status.** Accepted 2026-09-27. Owner decision memo of 2026-09-27 over the agentic-coding landscape scan of the same date and the owner's notes N1 to N8. Vision: `docs/vision/38-proof-layer-roadmap.md`. Designs: `docs/design/reach.md`, `docs/design/spec-interop.md`, `docs/design/knowledge-retrieval.md`, `docs/design/governance-learning.md`, `docs/design/progress-and-economics.md`; the system graph is ADR-050. Plans: `docs/plans/reach.md` (RH-), `docs/plans/spec-interop.md` (SI-), `docs/plans/knowledge-retrieval.md` (KR-), `docs/plans/governance-learning.md` (GL-), `docs/plans/progress-and-economics.md` (PE-), `docs/plans/system-graph.md` (SG-). Goals G16 to G22; G15 names vision 37's M2 and M3 as its next bets. Promotes futures F20 and the plugin part of F2; promotes F14's output format only; F13 stays gated by vision 31. Invariants I56, I57. Amended twice on 2026-09-29: an efficiency wave goes first, then the Claude OS comparison (the two amendments below, in that order).

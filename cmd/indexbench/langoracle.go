@@ -62,6 +62,7 @@ func cmdLangOracle(args []string, stdout, stderr io.Writer) int {
 	queuePath := fs.String("queue", "docs/plans/language-breadth.queue.json", "the queue (for the dialect's target level)")
 	date := fs.String("date", time.Now().UTC().Format("2006-01-02"), "measured_at")
 	commit := fs.String("commit", "", "fathom commit measured (default: git rev-parse --short HEAD)")
+	tq := tagsQueryFlags(fs) // a third-party definitions query as a tier-C L1 oracle (LB-F46, langoracle_tagsquery.go)
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
@@ -160,7 +161,12 @@ func cmdLangOracle(args []string, stdout, stderr io.Writer) int {
 			onlyGlobs = append(onlyGlobs, g)
 		}
 	}
-	m, err := measureSubject(ctx, spec, *subject, name, oracleOpts{ctags: *ctagsPath, scip: *scipPath, scipDefs: *scipDefs, tools: toolOracles, only: onlyGlobs, adjudicate: *adjudicate, unmatched: *unmatched}, with)
+	tools, err := tagsQueryOracle(ctx, *tq, spec, *manifestPath, *subject, name, onlyGlobs, toolOracles, stderr)
+	if err != nil {
+		fmt.Fprintln(stderr, "lang-oracle:", err)
+		return tagsQueryExit(err)
+	}
+	m, err := measureSubject(ctx, spec, *subject, name, oracleOpts{ctags: *ctagsPath, scip: *scipPath, scipDefs: *scipDefs, tools: tools, only: onlyGlobs, adjudicate: *adjudicate, unmatched: *unmatched}, with)
 	if err != nil {
 		fmt.Fprintln(stderr, "lang-oracle:", err)
 		return 1
@@ -591,9 +597,14 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 // toolOracleFile is a tool-native oracle's output, converted by the worker
 // (design §13.4 step 19) into this neutral shape.
 type toolOracleFile struct {
-	Tool        string `json:"tool"`
-	Version     string `json:"version"`
-	Tier        string `json:"tier"`
+	Tool    string `json:"tool"`
+	Version string `json:"version"`
+	Tier    string `json:"tier"`
+	// Source, Revision and Licence are a third-party query's provenance
+	// (ADR-048's D5 extension, LB-F52), copied into the reading's oracle run.
+	Source      string `json:"source,omitempty"`
+	Revision    string `json:"revision,omitempty"`
+	Licence     string `json:"licence,omitempty"`
 	Definitions []struct {
 		Path string `json:"path"`
 		Name string `json:"name"`
@@ -703,7 +714,7 @@ func scoreToolOracle(path string, m langbench.Manifest, nodes []core.SymbolNode,
 		langbench.ScorePairs(truth, found, sub.Counts, langbench.CntRefTruth, langbench.CntRefTruthFound, langbench.CntRefFathom, langbench.CntRefFathomInTrue)
 		sub.Families[langbench.FamilyRefs] = tier
 	}
-	return langbench.OracleRun{Tier: tier, Tool: tf.Tool, Version: tf.Version}, dropped, l1res, nil
+	return langbench.OracleRun{Tier: tier, Tool: tf.Tool, Version: tf.Version, Source: tf.Source, Revision: tf.Revision, Licence: tf.Licence}, dropped, l1res, nil
 }
 
 var universalCtagsRE = regexp.MustCompile(`Universal Ctags ([0-9][^,( ]*)`)

@@ -622,7 +622,15 @@ type Query struct {
 	// patterns holds each pattern's host-side predicates and #set!
 	// settings, indexed like Match.PatternIndex (predicates.go, LB-F2).
 	patterns []patternMeta
+	// nodeTypes makes Run name each capture's node type (CaptureNodeTypes).
+	nodeTypes bool
 }
+
+// CaptureNodeTypes makes Run fill each Capture's Type with its node's
+// grammar type: one more guest call per capture, so extraction never asks
+// for it. The tags-query oracle does (LB-F46: a Zed outline.scm's @item
+// kind is its node's type). It needs the probe export ts_node_type.
+func (q *Query) CaptureNodeTypes() { q.nodeTypes = true }
 
 // PatternCount is the number of top-level patterns the host read from the
 // query source — every Match.PatternIndex is below it.
@@ -689,6 +697,9 @@ func (q *Query) Close() {
 type Capture struct {
 	Name string
 	Node Node
+	// Type is the node's grammar type, set only when the query was asked
+	// for it (CaptureNodeTypes).
+	Type string
 }
 
 // Match is one query match: which pattern fired, and every capture it made.
@@ -812,7 +823,15 @@ func (q *Query) collectMatches(cursorPtr, matchBuf uint32) ([]Match, error) {
 				if err != nil {
 					return nil, err
 				}
-				match.Captures = append(match.Captures, Capture{Name: name, Node: node})
+				c := Capture{Name: name, Node: node}
+				if q.nodeTypes {
+					// The capture's TSNode lives in the cursor's match until
+					// the next next_match; ts_node_type reads it in place.
+					if c.Type, err = p.cString("ts_node_type", uint64(capturesPtr+uint32(i)*queryCaptureSize)); err != nil {
+						return nil, err
+					}
+				}
+				match.Captures = append(match.Captures, c)
 			}
 		}
 		matches = append(matches, match)
