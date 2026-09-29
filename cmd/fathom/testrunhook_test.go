@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -376,4 +377,103 @@ func TestDaemonTestRunIndexQualifiesService(t *testing.T) {
 	if a := got[1]; a["failing_test"] != "TestRound" || a["budget"] != float64(4) || a["tool"] != "localize" {
 		t.Errorf("localize args = %v", a)
 	}
+}
+
+// countingReader counts the bytes a reader hands out.
+type countingReader struct {
+	r io.Reader
+	n int64
+}
+
+func (c *countingReader) Read(p []byte) (int, error) {
+	n, err := c.r.Read(p)
+	c.n += int64(n)
+	return n, err
+}
+
+// TestTestRunHookPipedFailingRunInjectsLine pins TR-13 (O175): a failing
+// `go test` piped through `tail` exits 0 (the filter's status), so it
+// arrives on PostToolUse(Bash) with no exit code and only the output's
+// tail: no `=== RUN`, sometimes not even the `--- FAIL:` line when a
+// panic's stack filled the tail. The run is read from its output whatever
+// the exit status and the hook injects exactly one line naming the
+// failing test; the envelope read stays inside testRunStdinCap however
+// large the piped output.
+func TestTestRunHookPipedFailingRunInjectsLine(t *testing.T) {
+	srv, _ := countingDaemon(t)
+	const cmd = "go test ./x 2>&1 | tail -30"
+	const tailFail = "--- FAIL: TestX (0.00s)\n" +
+		"    x_test.go:12: boom\n" +
+		"FAIL\n" +
+		"FAIL\tgithub.com/o/r/x\t0.2s\n"
+	const panicStack = "panic: boom [recovered]\n" +
+		"\tpanic: boom\n" +
+		"\n" +
+		"goroutine 7 [running]:\n" +
+		"testing.tRunner.func1.2({0x1029a4f60, 0x14000016108})\n" +
+		"\t/usr/local/go/src/testing/testing.go:1632 +0x1bc\n" +
+		"panic({0x1029a4f60?, 0x14000016108?})\n" +
+		"\t/usr/local/go/src/runtime/panic.go:785 +0x124\n" +
+		"github.com/o/r/x.TestX(0x14000003a00?)\n" +
+		"\t/src/r/x/x_test.go:12 +0x30\n" +
+		"testing.tRunner(0x14000003a00, 0x1029b7c38)\n" +
+		"\t/usr/local/go/src/testing/testing.go:1690 +0xe8\n" +
+		"created by testing.(*T).Run in goroutine 1\n" +
+		"\t/usr/local/go/src/testing/testing.go:1743 +0x314\n" +
+		"exit status 2\n" +
+		"FAIL\tgithub.com/o/r/x\t0.2s\n"
+	for _, tc := range []struct{ name, output string }{
+		{"a failing test's tail", tailFail},
+		{"a panic, the --- FAIL line inside the tail", "--- FAIL: TestX (0.00s)\n" + panicStack},
+		{"a panic whose stack pushed the --- FAIL line out of the tail", panicStack},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			repo := testRunRepo(t, true)
+			code, out := runTestRunHook(t, "test-run", repo, srv.URL, testRunPostPayload(repo, cmd, tc.output))
+			if code != 0 {
+				t.Fatalf("exit %d, want 0", code)
+			}
+			if strings.Count(out, "\n") != 1 {
+				t.Fatalf("output %q: want exactly one line", out)
+			}
+			var env struct {
+				HSO struct {
+					Context string `json:"additionalContext"`
+				} `json:"hookSpecificOutput"`
+			}
+			if err := json.Unmarshal([]byte(out), &env); err != nil {
+				t.Fatalf("output is not one envelope: %v (%q)", err, out)
+			}
+			line := env.HSO.Context
+			if !strings.Contains(line, "TestX") || strings.Contains(line, "\n") {
+				t.Errorf("line %q: want one line naming TestX", line)
+			}
+			rows := testRunBeats(t)
+			if len(rows) != 1 || rows[0]["result"] != "fail" || rows[0]["piped"] != "true" || rows[0]["emitted"] != "true" || rows[0]["exit_code"] != "" {
+				t.Errorf("rows = %v, want one piped fail row, emitted, no exit code", rows)
+			}
+		})
+	}
+
+	t.Run("the read stays inside the stdin cap", func(t *testing.T) {
+		repo := testRunRepo(t, true)
+		// A piped output well under the cap: its failing tail still speaks.
+		big := strings.Repeat("ok  \tgithub.com/o/r/pass\t0.1s\n", (testRunStdinCap/2)/32) + tailFail
+		code, out := runTestRunHook(t, "test-run", repo, srv.URL, testRunPostPayload(repo, cmd, big))
+		if code != 0 || !strings.Contains(out, "TestX") {
+			t.Errorf("a large piped output under the cap: exit %d output %q", code, out)
+		}
+		// An envelope far past the cap: the hook reads at most the cap and
+		// stays silent (a cut envelope decodes to nothing), never the stream.
+		huge := testRunPostPayload(repo, cmd, strings.Repeat("x", 4*testRunStdinCap)+tailFail)
+		cr := &countingReader{r: strings.NewReader(huge)}
+		var outb, errb bytes.Buffer
+		code = runWithStdin([]string{"session-hook", "--event", "test-run", "--url", srv.URL, "--dir", repo}, cr, &outb, &errb)
+		if code != 0 || outb.Len() != 0 {
+			t.Errorf("an envelope past the cap: exit %d output %q", code, outb.String())
+		}
+		if cr.n > testRunStdinCap {
+			t.Errorf("read %d bytes of a %d-byte envelope; the cap is %d", cr.n, len(huge), testRunStdinCap)
+		}
+	})
 }

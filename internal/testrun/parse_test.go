@@ -219,3 +219,47 @@ func joinLines(lines []string) string {
 	}
 	return out
 }
+
+// TestParseTestRunPanicTailNamesItsTest pins TR-13's parse half (O175): a
+// piped tail of a panicking `go test` run can lose the "--- FAIL:" line
+// above a long stack; the stack's own test frame still names the test,
+// and a test that panicked is a failing test, with the panic's project
+// frame.
+func TestParseTestRunPanicTailNamesItsTest(t *testing.T) {
+	tail := "panic: boom [recovered]\n" +
+		"\tpanic: boom\n" +
+		"\n" +
+		"goroutine 7 [running]:\n" +
+		"testing.tRunner.func1.2({0x1029a4f60, 0x14000016108})\n" +
+		"\t/usr/local/go/src/testing/testing.go:1632 +0x1bc\n" +
+		"panic({0x1029a4f60?, 0x14000016108?})\n" +
+		"\t/usr/local/go/src/runtime/panic.go:785 +0x124\n" +
+		"github.com/o/r/x.helper(...)\n" +
+		"\t/src/r/x/x_test.go:5\n" +
+		"github.com/o/r/x.TestX.func1(0x14000003a00?)\n" +
+		"\t/src/r/x/x_test.go:12 +0x30\n" +
+		"testing.tRunner(0x14000003a00, 0x1029b7c38)\n" +
+		"\t/usr/local/go/src/testing/testing.go:1690 +0xe8\n" +
+		"created by testing.(*T).Run in goroutine 1\n" +
+		"\t/usr/local/go/src/testing/testing.go:1743 +0x314\n" +
+		"exit status 2\n" +
+		"FAIL\tgithub.com/o/r/x\t0.2s\n"
+	r := ParseTestRun(tail)
+	if got := failureIDs(r); !reflect.DeepEqual(got, []string{"github.com/o/r/x.TestX"}) {
+		t.Fatalf("failures = %q, want the stack's test", got)
+	}
+	if got := frameOf(r, "github.com/o/r/x.TestX"); !reflect.DeepEqual(got, []Frame{{"/src/r/x/x_test.go", 5}, {"/src/r/x/x_test.go", 12}}) {
+		t.Errorf("frames = %+v", got)
+	}
+	if len(r.Panics) != 1 || r.Panics[0].Test != "TestX" || r.Panics[0].Package != "github.com/o/r/x" {
+		t.Errorf("panics = %+v", r.Panics)
+	}
+	if !r.Failed() || !r.Complete {
+		t.Errorf("failed %v complete %v", r.Failed(), r.Complete)
+	}
+	// A stack with no test frame names no test: the panic stays unnamed.
+	bare := ParseTestRun("panic: boom\n\ngoroutine 1 [running]:\nmain.main()\n\t/src/r/main.go:3 +0x1\nFAIL\tgithub.com/o/r\t0.1s\n")
+	if len(bare.Failures) != 0 || len(bare.Panics) != 1 || bare.Panics[0].Test != "" {
+		t.Errorf("a panic outside any test = %+v", bare)
+	}
+}

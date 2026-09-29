@@ -799,7 +799,11 @@ What it does, once on:
   three-way result: **pass** only when the runner's own summary covers
   every package the output shows and the output was neither piped through
   a filter nor cut by the harness; **fail** on any failure in the output or
-  a carried non-zero exit; **unknown** otherwise.
+  a carried non-zero exit; **unknown** otherwise. The output decides a
+  failure whatever the exit status, so a piped run (exit 0, a tail of the
+  output) fails from its `--- FAIL:`, `FAIL<tab>pkg` or `panic:` lines, and
+  a panic whose `--- FAIL:` line fell outside the tail is named by its
+  stack's test frame (TR-13).
 - On a fail, tier 1 names the changed symbols each failing test reaches:
   `test_impact` over the Go functions `git diff HEAD` touches, intersected
   with the failing tests, and `localize` from the panic's stack or the
