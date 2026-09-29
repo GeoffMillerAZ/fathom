@@ -1,0 +1,14 @@
+{
+  "symbols": [
+    { "name": "shop-parent", "kind": "MavenArtifact", "package": "aggregator", "line": 2, "end_line": 43, "signature": "org.acme.shop", "tier": "verified" }
+  ],
+  "cross_file": [
+    { "from": "", "edge": "module", "raw": "shop-core", "target": "shop-core", "strategy": "repo-path", "line": 10 },
+    { "from": "", "edge": "module", "raw": "shop-orders/", "target": "shop-orders", "strategy": "repo-path", "line": 11 },
+    { "from": "", "edge": "module", "raw": "services/billing", "target": "services/billing", "strategy": "repo-path", "line": 12 },
+    { "from": "", "edge": "module", "raw": "tools/pom-tools.xml", "target": "tools/pom-tools.xml", "strategy": "repo-path", "line": 13 },
+    { "from": "", "edge": "module", "raw": "../sibling", "target": "", "strategy": "repo-path", "line": 14 },
+    { "from": "", "edge": "module", "raw": "${extra.module}", "target": "${extra.module}", "strategy": "repo-path", "line": 15 },
+    { "from": "", "edge": "module", "raw": "extras", "target": "extras", "strategy": "repo-path", "line": 39 }
+  ]
+}

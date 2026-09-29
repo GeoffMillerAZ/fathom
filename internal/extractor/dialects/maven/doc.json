@@ -1,0 +1,22 @@
+{
+  "decode": "xml",
+  "detect": { "basenames": ["pom.xml"], "require_keys": ["artifactId"] },
+  "entities": [
+    { "select": "$", "where": { "is_map": true },
+      "kind": "package", "source_kind": "MavenArtifact",
+      "name": ".artifactId", "signature": ".groupId | .parent.groupId" },
+    { "select": "$.build.plugins.plugin[*]", "where": { "is_map": true },
+      "kind": "resource", "source_kind": "MavenPlugin",
+      "name": ".artifactId", "signature": ".version" }
+  ],
+  "references": [
+    { "from": "package", "select": "$.parent.artifactId", "value": "$", "to_kind": "package", "edge": "parent" },
+    { "from": "package", "select": "$.dependencies.dependency[*].artifactId", "value": "$", "to_kind": "package", "edge": "depends_on" }
+  ],
+  "cross_file": [
+    { "select": "$.modules.module[*]", "value": "$", "resolve": "repo-path", "edge": "module" },
+    { "select": "$.profiles.profile[*].modules.module[*]", "value": "$", "resolve": "repo-path", "edge": "module" },
+    { "select": "$.parent.artifactId", "value": "$", "resolve": "module-source", "edge": "parent" },
+    { "select": "$.dependencies.dependency[*].artifactId", "value": "$", "resolve": "module-source", "edge": "depends_on" }
+  ]
+}

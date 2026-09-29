@@ -76,6 +76,13 @@ var typedEdgeProducers = map[string]string{
 	// package.json above (ADR-027: a mechanism is claimed only once it
 	// exists in code).
 	"python-packaging": "syntax",
+
+	// pom.xml (LB-Q-maven): its cross_file selectors (modules, parent and
+	// dependency edges to another POM of the repository, design §4) become
+	// file-tier doc-xref edges at ingest (fusion.ResolveDocXrefs) but are
+	// not a file-resolver or SCIP producer, so "syntax" is the honest
+	// baseline claim, same as package.json and pyproject.toml above.
+	"maven": "syntax",
 }
 
 // TypedEdgeProducer returns lang's typed-edge producer string — "native",

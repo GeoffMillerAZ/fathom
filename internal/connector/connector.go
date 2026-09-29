@@ -169,6 +169,13 @@ var extClassMap = map[string]classification{
 	// entry — not the generic JSON one — governs every "package.json" file.
 	"package.json": {core.KindPackageJSONPackage, "package-json"},
 
+	// Maven POM (LB-Q-maven, language-breadth: new — a doc-engine tool
+	// format, no incumbent). The basename check (kindForFile/classify)
+	// takes precedence over any ".xml" classification, so this entry
+	// governs every "pom.xml" file; other XML (pom-shaded.xml, settings.xml,
+	// Ant and Android files) is not claimed.
+	"pom.xml": {core.KindMavenArtifact, "maven"},
+
 	// Python packaging (LB-Q-python-packaging, language-breadth: new — a
 	// doc-engine tool format, no incumbent). The basename check
 	// (kindForFile/classify) takes precedence over ".toml" (the generic

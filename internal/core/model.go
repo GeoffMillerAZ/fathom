@@ -196,6 +196,13 @@ const (
 	// keyframes/custom_property.
 	KindPackageJSONPackage SourceKind = "PackageJSONPackage"
 
+	// pom.xml (LB-Q-maven, language-breadth: new — a doc-engine tool format,
+	// no incumbent). KindMavenArtifact is the project's own entity (the
+	// connector-classification kind); the dialect's plugin kind has no
+	// connector-classification use and so gets no constant of its own, same
+	// precedent as package.json's script/bin/export.
+	KindMavenArtifact SourceKind = "MavenArtifact"
+
 	// pyproject.toml (LB-Q-python-packaging, language-breadth: new — a
 	// doc-engine tool format, no incumbent; requirements*.txt and
 	// setup.cfg from the same queue entry stay unclassified, §14.2: the
