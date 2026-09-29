@@ -3,12 +3,22 @@
 
 usage: hook-latency.py ~/.fathom/hook-latency.jsonl.1 ~/.fathom/hook-latency.jsonl
 
-Reads the log (wall time `ms`, deadline `budget_ms`, invocation `inv`; it holds
-no CPU time and no prompt content) and splits each session-hook and stop-hook
-invocation by a load gauge computed from the same log: the p90 wall time of the
-edit hook in the 120 seconds either side. The edit hook's work is a stat and a
-store read (p50 3 ms), so when it slows the machine is slow. Idle is the lowest
-third of the gauge, loaded the highest. Deterministic (fixed bootstrap seed).
+Reads the log (wall time `ms`, deadline `budget_ms`, invocation `inv`, and since
+EW-29 the invocation's CPU time `cpu_ms`, user+sys of the process and its reaped
+children, absent where it could not be read; no prompt content) and splits each
+session-hook and stop-hook invocation by a load gauge computed from the same log:
+the p90 wall time of the edit hook in the 120 seconds either side. The edit
+hook's work is a stat and a store read (p50 3 ms), so when it slows the machine
+is slow. Idle is the lowest third of the gauge, loaded the highest.
+Deterministic (fixed bootstrap seed).
+
+Where rows carry `cpu_ms` a second block per channel reads CPU against wall on
+those rows alone: CPU p50 / p90, wall p50 on the same rows, and the share of the
+wall time that was CPU (cpu_ms / ms; above 1 is possible, the runtime is
+multi-threaded), overall and in the idle and loaded thirds. A hook whose share
+is near 1 is working; one far below 1 is waiting (a daemon, a child, the run
+queue). Rows without `cpu_ms` (older binaries) are left out of that block and
+counted.
 """
 import bisect, datetime, json, math, random, sys
 
@@ -85,6 +95,28 @@ def main(paths):
         print("%s n=%d p50=%s p90=%s p99=%s | idle(gauge<=%s) n=%d p50=%s p90=%s | loaded(gauge>%s) n=%d p50=%s p90=%s | loaded-idle p50 %+d ms, 95%% CI [%d, %d], Mann-Whitney p=%.3f"
               % (ch, len(allms), q(allms, .5), q(allms, .9), q(allms, .99), lo, len(idle), q(idle, .5), q(idle, .9),
                  hi, len(loaded), q(loaded, .5), q(loaded, .9), q(loaded, .5) - q(idle, .5), boot[100], boot[3899], mann_whitney_p(idle, loaded)))
+        cpu_block(ch, [r for r in recs if r["channel"] == ch], lo, hi)
+
+
+def cpu_block(ch, rs, lo, hi):
+    """EW-29: CPU against wall, on the rows that carry cpu_ms."""
+    timed = [r for r in rs if r.get("cpu_ms") is not None]
+    if not timed:
+        print("%s cpu: none of %d rows carries cpu_ms" % (ch, len(rs)))
+        return
+
+    def line(label, sel):
+        if not sel:
+            return
+        wall, cpu = [r["ms"] for r in sel], [r["cpu_ms"] for r in sel]
+        share = [r["cpu_ms"] / r["ms"] for r in sel if r["ms"] > 0]
+        print("%s cpu %s n=%d: cpu p50=%s p90=%s | wall p50=%s p90=%s | cpu/wall p50=%.2f p90=%.2f"
+              % (ch, label, len(sel), q(cpu, .5), q(cpu, .9), q(wall, .5), q(wall, .9), q(share, .5), q(share, .9)))
+
+    line("all (%d of %d rows carry cpu_ms)" % (len(timed), len(rs)), timed)
+    scored = [r for r in timed if r.get("g") is not None]
+    line("idle (gauge<=%s)" % lo, [r for r in scored if r["g"] <= lo])
+    line("loaded (gauge>%s)" % hi, [r for r in scored if r["g"] > hi])
 
 
 if __name__ == "__main__":
