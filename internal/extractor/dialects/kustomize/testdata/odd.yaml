@@ -1,0 +1,7 @@
+resources:
+patches: patch.yaml
+images:
+  - just-a-string
+  - name: ""
+    newTag: x
+  - name: real

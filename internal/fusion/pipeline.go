@@ -673,7 +673,19 @@ func parseGitLog(serviceID, raw string) []store.Commit {
 // PackageReferences as Calls, and the ProjectReference edges that resolve to
 // another project of the repository) where each was fingerprinted as an
 // unclassified .NET build file; the salt bump re-reads them.
-const ExtractorEpoch = "30"
+// Epoch 31 (LB-Q-kustomize, docs/design/language-breadth.md §13/§4): a
+// kustomization.yaml or kustomization.yml now extracts through the doc-engine
+// kustomize dialect instead of kustomizeextract.go: the kustomization itself is
+// an entity (Kustomization, named by the file), components and the
+// configMapGenerator and secretGenerator entries are read (KustomizeResource,
+// KustomizeConfigMap, KustomizeSecret), the kustomization refers to each entry
+// it names, and a resource, base, component or patch that names another file of
+// the repository gets a file-tier edge to it; a patch is signed by its target's
+// name and an image by its newName, newTag or digest (the doc engine has no
+// concatenation) where the incumbent composed Kind/name and newName:newTag.
+// Every already-indexed kustomization file was extracted by the incumbent, so
+// the salt bump re-reads them.
+const ExtractorEpoch = "31"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares
@@ -887,8 +899,16 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	// Kustomize (full-basename keys take precedence over .yaml k8s extractor
 	// — ADR-021 §2 / TI-3: kustomization.yaml is valid k8s-shaped YAML but
 	// (almost) never has metadata.name, so the generic k8s extractor
-	// silently produced zero symbols for it)
-	kustomize := extractor.NewKustomizeExtractor()
+	// silently produced zero symbols for it). LB-Q-kustomize: the doc-engine
+	// kustomize dialect serves both basenames (the kustomization, its
+	// resources, patches, images and generators, and the resource, base,
+	// component and patch files that resolve to another file of the
+	// repository), retiring kustomizeextract.go; the ToolKind tag stays
+	// ToolKustomize (toolKindForBasename).
+	kustomize, err := extractor.NewDocDialectExtractor("kustomize")
+	if err != nil {
+		panic(fmt.Sprintf("fusion: doc-dialect kustomize: %v", err))
+	}
 	p.exts["kustomization.yaml"] = kustomize
 	p.exts["kustomization.yml"] = kustomize
 

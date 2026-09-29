@@ -295,6 +295,15 @@ const (
 	KindKustomizePatch    SourceKind = "KustomizePatch"
 	KindKustomizeImage    SourceKind = "KustomizeImage"
 
+	// KindKustomization is a kustomization file's own entity (LB-Q-kustomize,
+	// language-breadth: the doc-engine dialect that retires kustomizeextract.go):
+	// the connector-classification kind, named by the file, the entity the
+	// entries hang from and the one a base or overlay reference resolves to. The
+	// dialect's KustomizeConfigMap and KustomizeSecret (a generator entry) have no
+	// connector-classification use and so get no constant of their own, the
+	// MSBuildTarget precedent.
+	KindKustomization SourceKind = "Kustomization"
+
 	// OpenAPI (ADR-021 §2 / TI-3): detected by a top-level openapi:/swagger:
 	// key (see the fusion pass-3 classifier), distinct from the generic k8s
 	// manifest shape.

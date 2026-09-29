@@ -1,0 +1,167 @@
+{
+  "dialect": "kustomize",
+  "kind": "tooling",
+  "target_level": "L3",
+  "level_met": "L3",
+  "grade": {
+    "L1": "excellent",
+    "L2": "excellent",
+    "L3": "excellent",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-09-29",
+  "fathom_commit": "fa240083",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "argoproj/argocd-example-apps",
+      "sha": "8088f4c0d970abb09e250248cc97e35623447cb5",
+      "files": 3,
+      "bytes": 1070,
+      "counts": {
+        "fathom_defs": 37,
+        "kind_equal": 37,
+        "matched": 37,
+        "oracle_defs": 37,
+        "ref_fathom": 34,
+        "ref_fathom_in_truth": 34,
+        "ref_truth": 34,
+        "ref_truth_found": 34,
+        "xref_fathom": 1,
+        "xref_fathom_in_truth": 1,
+        "xref_truth": 1,
+        "xref_truth_found": 1
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A",
+        "xref": "A"
+      },
+      "kind_intersection": [
+        "data_source",
+        "package",
+        "resource"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 0.098,
+        "extract_cpu_ms": 0.099,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "kubernetes-sigs/kustomize",
+      "sha": "9790a1c3efd2fd35f1b768d495112834176581c1",
+      "files": 16,
+      "bytes": 1848,
+      "counts": {
+        "fathom_defs": 52,
+        "kind_equal": 52,
+        "matched": 52,
+        "oracle_defs": 52,
+        "ref_fathom": 36,
+        "ref_fathom_in_truth": 36,
+        "ref_truth": 36,
+        "ref_truth_found": 36,
+        "xref_fathom": 12,
+        "xref_fathom_in_truth": 12,
+        "xref_truth": 12,
+        "xref_truth_found": 12
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A",
+        "xref": "A"
+      },
+      "kind_intersection": [
+        "data_source",
+        "package",
+        "resource"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 0.21799999999999997,
+        "extract_cpu_ms": 0.238,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "kustomize (kubectl-embedded)",
+      "version": "v5.8.1"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 1,
+    "ref_recall": 1,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "xref_precision": 1,
+    "xref_recall": 1
+  },
+  "metric_tiers": {
+    "ref_precision": "A",
+    "ref_recall": "A",
+    "sym_precision": "A",
+    "sym_recall": "A",
+    "xref_precision": "A",
+    "xref_recall": "A"
+  },
+  "required_kinds": [
+    "data_source",
+    "package",
+    "resource"
+  ],
+  "kind_intersection": [
+    "data_source",
+    "package",
+    "resource"
+  ],
+  "counts": {
+    "fathom_defs": 89,
+    "kind_equal": 89,
+    "matched": 89,
+    "oracle_defs": 89,
+    "ref_fathom": 70,
+    "ref_fathom_in_truth": 70,
+    "ref_truth": 70,
+    "ref_truth_found": 70,
+    "xref_fathom": 13,
+    "xref_fathom_in_truth": 13,
+    "xref_truth": 13,
+    "xref_truth_found": 13
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 8.66,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 9.23,
+    "max_file_ms": 0,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    "argoproj/argocd-example-apps: 33 oracle cross-references on files fathom does not read were left out of scope (§1.4)",
+    "argoproj/argocd-example-apps: restricted to kustomize-guestbook/kustomization.yaml, pre-post-sync/kustomization.yaml, sock-shop/kustomization.yaml (-only; the files outside are a disclosed gap, not measured)",
+    "kubernetes-sigs/kustomize: 20 oracle cross-references on files fathom does not read were left out of scope (§1.4)",
+    "kubernetes-sigs/kustomize: restricted to examples/helloWorld/kustomization.yaml, examples/ldap/base/kustomization.yaml, examples/ldap/overlays/production/kustomization.yaml, examples/ldap/overlays/staging/kustomization.yaml, examples/multibases/base/kustomization.yaml, examples/multibases/dev/kustomization.yaml, examples/multibases/kustomization.yaml, examples/multibases/production/kustomization.yaml, examples/multibases/staging/kustomization.yaml, examples/springboot/base/kustomization.yaml, examples/springboot/overlays/production/kustomization.yaml, examples/springboot/overlays/staging/kustomization.yaml, examples/transformerconfigs/crd/kustomization.yaml, examples/wordpress/kustomization.yaml, examples/wordpress/mysql/kustomization.yaml, examples/wordpress/wordpress/kustomization.yaml (-only; the files outside are a disclosed gap, not measured)",
+    "oracle exclusions: 3 of the subjects' 22 kustomizations are left out of the measured files (-only) because the tool cannot build them: kubernetes-sigs/kustomize examples/loadHttp (a remote base and a remote patch, cross-repository and never fetched) and examples/transformerconfigs/images (kustomizeconfig/mykind.yaml is written by the tool's documentation, not in the checkout), and argoproj/argocd-example-apps plugins/kustomized-helm (all.yaml is written by helm at render time); a kind: Component is not a root the tool builds either (none in the subjects)",
+    "a small measure: 19 files, 70 entries (all 70 evidenced by the tool: removing each changes the build), 13 kustomization-to-kustomization edges (12 on the kustomize examples, 1 on argocd-example-apps; every one is a directory named by a resource or a base)",
+    "the 53 oracle edges from a resource, base or patch entry to a Kubernetes manifest are out of scope (§1.4, the count above): the dialect records them, the harness scores only edges between files the dialect owns, and an ingest resolves none of them until the kubernetes dialect is dispatched (a manifest has no root entity in the store before); a scratch ingest of both subjects on 2026-09-29 stored the same 13 edges the reading scores and no other",
+    "a directory reference resolves to the one doc file in it (design §4): a base holds one, its kustomization, while an ingest dispatches manifests to the incumbent Kubernetes extractor, so the 13 resolve at ingest as in the harness; when the kubernetes dialect is dispatched every base that holds a manifest stops resolving unless fusion.ResolveDocXrefs prefers the referring dialect's own file (LB-Q-kustomize-rest; internal/fusion/docxref.go was not this item's to edit)",
+    "lang-parity against kustomizeextract (copies of the subjects without the 3 excluded files): MERGE, sym_recall .7416 to 1 and sym_precision 1 to 1, kinds gained Kustomization and KustomizeConfigMap, none lost",
+    "a patch is signed by its target's name and an image by its newName (else newTag, else digest): the doc engine has no concatenation (§4), so the incumbent's Kind/name and newName:newTag are not reproduced",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+  ],
+  "disposition": null
+}

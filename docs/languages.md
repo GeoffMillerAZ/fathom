@@ -73,7 +73,7 @@ no reading yet; `unsupported (disclosed)` is queued, not registered, and named p
 by `list_services`; `refused` is refused by its plan row (design §14.2): it claims no level,
 is not dispatched and stays disclosed, whatever its reading measured.
 
-Milestone M1 progress: languages at L1 excellent 11/20, at L2 9/12, at L3 0/8, at L4 0/6; tool formats at target 10/15
+Milestone M1 progress: languages at L1 excellent 11/20, at L2 9/12, at L3 0/8, at L4 0/6; tool formats at target 11/15
 
 | Language or format | Kind | Engine | Grammar / parser | Target | Level met | Oracles | Typed edges | Reading | Next |
 |---|---|---|---|---|---|---|---|---|---|
@@ -113,7 +113,7 @@ Milestone M1 progress: languages at L1 excellent 11/20, at L2 9/12, at L3 0/8, a
 | SCSS / Sass (.scss .sass) | language | tags | tree-sitter-grammars/tree-sitter-scss (MIT (verify at pin)) | L3 | unsupported (disclosed) | — | — | — | LB-Q-scss |
 | Less (.less) | language | tags | jimliang/tree-sitter-less (verify at pin) | L3 | unsupported (disclosed) | — | — | — | LB-Q-less |
 | MSBuild projects (.csproj .fsproj .vbproj .props .targets, .sln) | tool format | doc | pure-go:encoding/xml (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A dotnet msbuild (-getItem, -getProperty and -preprocess) MSBuild 18.9.11.42413; .NET SDK 10.0.401 | syntax | 2026-09-29 | at target (LB-Q-msbuild) |
-| Kustomize (kustomization.yaml) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | tolerated | — | syntax | — | LB-Q-kustomize |
+| Kustomize (kustomization.yaml) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A kustomize (kubectl-embedded) v5.8.1 | syntax | 2026-09-29 | at target (LB-Q-kustomize) |
 | Assembly (.s .S .asm) | language | tags | RubixDev/tree-sitter-asm (MIT) | L1 | unsupported (disclosed) | — | — | — | LB-Q-assembly |
 | Argo CD Applications and Argo Workflows | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | unsupported (disclosed) | — | — | — | LB-Q-argo |
 | R (.R .r) | language | tags | r-lib/tree-sitter-r (MIT) | L2 | unsupported (disclosed) | — | — | — | LB-Q-r |

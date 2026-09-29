@@ -1,0 +1,43 @@
+{
+  "decode": "yaml",
+  "detect": { "basenames": ["kustomization.yaml", "kustomization.yml"] },
+  "entities": [
+    { "select": "$", "where": { "is_map": true },
+      "kind": "package", "source_kind": "Kustomization", "name": "$file", "signature": ".kind" },
+
+    { "select": "$.resources[*]", "where": { "is_scalar": true }, "kind": "resource", "source_kind": "KustomizeResource", "name": "$" },
+    { "select": "$.bases[*]", "where": { "is_scalar": true }, "kind": "resource", "source_kind": "KustomizeResource", "name": "$" },
+    { "select": "$.components[*]", "where": { "is_scalar": true }, "kind": "resource", "source_kind": "KustomizeResource", "name": "$" },
+
+    { "select": "$.patchesStrategicMerge[*]", "where": { "is_scalar": true }, "kind": "resource", "source_kind": "KustomizePatch", "name": "$" },
+    { "select": "$.patches[*]", "kind": "resource", "source_kind": "KustomizePatch",
+      "name": "$ | .path", "signature": ".target.name | .target.kind" },
+    { "select": "$.patchesJson6902[*]", "kind": "resource", "source_kind": "KustomizePatch",
+      "name": "$ | .path", "signature": ".target.name | .target.kind" },
+
+    { "select": "$.images[*]", "where": { "is_map": true }, "kind": "data_source", "source_kind": "KustomizeImage",
+      "name": ".name", "signature": ".newName | .newTag | .digest" },
+
+    { "select": "$.configMapGenerator[*]", "where": { "is_map": true }, "kind": "resource", "source_kind": "KustomizeConfigMap", "name": ".name" },
+    { "select": "$.secretGenerator[*]", "where": { "is_map": true }, "kind": "resource", "source_kind": "KustomizeSecret", "name": ".name" }
+  ],
+  "references": [
+    { "from": "Kustomization", "select": "$.resources[*]", "value": "$", "to_kind": "resource", "edge": "resource" },
+    { "from": "Kustomization", "select": "$.bases[*]", "value": "$", "to_kind": "resource", "edge": "base" },
+    { "from": "Kustomization", "select": "$.components[*]", "value": "$", "to_kind": "resource", "edge": "component" },
+    { "from": "Kustomization", "select": "$.patchesStrategicMerge[*]", "value": "$", "to_kind": "resource", "edge": "patch" },
+    { "from": "Kustomization", "select": "$.patches[*]", "value": "$ | .path", "to_kind": "resource", "edge": "patch" },
+    { "from": "Kustomization", "select": "$.patchesJson6902[*]", "value": "$ | .path", "to_kind": "resource", "edge": "patch" },
+    { "from": "Kustomization", "select": "$.images[*].name", "value": "$", "to_kind": "data_source", "edge": "image" },
+    { "from": "Kustomization", "select": "$.configMapGenerator[*].name", "value": "$", "to_kind": "resource", "edge": "config_map" },
+    { "from": "Kustomization", "select": "$.secretGenerator[*].name", "value": "$", "to_kind": "resource", "edge": "secret" }
+  ],
+  "cross_file": [
+    { "select": "$.resources[*]", "value": "$", "resolve": "repo-path", "edge": "resource" },
+    { "select": "$.bases[*]", "value": "$", "resolve": "repo-path", "edge": "base" },
+    { "select": "$.components[*]", "value": "$", "resolve": "repo-path", "edge": "component" },
+    { "select": "$.patchesStrategicMerge[*]", "value": "$", "resolve": "repo-path", "edge": "patch" },
+    { "select": "$.patches[*]", "value": "$ | .path", "resolve": "repo-path", "edge": "patch" },
+    { "select": "$.patchesJson6902[*]", "value": "$ | .path", "resolve": "repo-path", "edge": "patch" }
+  ]
+}

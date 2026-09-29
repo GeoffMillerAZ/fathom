@@ -1,0 +1,10 @@
+{
+  "symbols": [
+    { "name": "kustomization.yaml", "kind": "Kustomization", "package": "kustomization", "line": 1, "end_line": 7, "calls": ["patch.yaml", "real"], "tier": "verified" },
+    { "name": "patch.yaml", "kind": "KustomizePatch", "package": "kustomization", "line": 2, "end_line": 2, "tier": "verified" },
+    { "name": "real", "kind": "KustomizeImage", "package": "kustomization", "line": 7, "end_line": 7, "tier": "verified" }
+  ],
+  "cross_file": [
+    { "from": "", "edge": "patch", "raw": "patch.yaml", "target": "k8s/overlays/prod/patch.yaml", "strategy": "repo-path", "line": 2 }
+  ]
+}

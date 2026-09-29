@@ -149,10 +149,13 @@ var extClassMap = map[string]classification{
 	"values.yaml": {core.KindHelmValue, "yaml"},
 	".tpl":        {core.KindHelmTemplate, "yaml"},
 
-	// Kustomize (ADR-021 §2 / TI-3; YAML-family syntax, own basename keys —
-	// same precedent as Chart.yaml/values.yaml above)
-	"kustomization.yaml": {core.KindKustomizeResource, "yaml"},
-	"kustomization.yml":  {core.KindKustomizeResource, "yaml"},
+	// Kustomize (ADR-021 §2 / TI-3; own basename keys — same precedent as
+	// Chart.yaml/values.yaml above). LB-Q-kustomize: the doc-engine kustomize
+	// dialect owns both basenames (language "kustomize", not "yaml"), so the
+	// file's own entity is the kustomization; a bare `Kustomization` file (no
+	// extension) is not claimed.
+	"kustomization.yaml": {core.KindKustomization, "kustomize"},
+	"kustomization.yml":  {core.KindKustomization, "kustomize"},
 
 	// Docker
 	"Dockerfile":          {core.KindDockerStage, "dockerfile"},
