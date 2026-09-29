@@ -2042,3 +2042,16 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** warm the product-reach memo after an ingest or daemon start (it is a pure function of the watermark), or let verify_plan wait for an in-flight walk up to its own deadline; efficiency-wave row EW-22.
 - **Status:** open
 - **Impact:** every first verify after a deploy or commit fails; agents read it as a verify failure or retry blind.
+
+### O137 — `search kind: docs` answers a question-shaped query with no hits because FTS5 requires every word, function words included, to appear in one section
+
+- **Symptom:** `search kind: docs` answers a question-shaped query with no hits because FTS5 requires every word, function words included, to appear in one section
+- **Evidence:**
+  - **Tool:** search (kind: docs), docindex.RankDocs over the ingested index of this repository (KR-8 wired 2026-09-29)
+  - **Expected:** a question about a decision returns the sections that discuss it, as KR-M1's doc-question slice asks
+  - **Actual:** "embeddings" returns 3 units; "what did we decide about embeddings" returns 0 (implicit AND over every token); "decide embeddings" returns 3
+  - **Repro:** ingest this repository, then `search` with `kind: docs` and each query above
+- **Root cause:** QueryDocUnits passes the query to FTS5 as written, whose implicit conjunction requires "what", "did", "we" and "about" in the same section as the topic word; a plain-text query that FTS5 rejects as syntax is now re-run as its words (also a conjunction), so the rewrite does not widen it.
+- **Fix:** none yet, deliberately: whether to drop function words, or rank an OR of the words by bm25, is what KR-M1's doc-question slice measures (docs/plans/knowledge-retrieval.md); widening without that reading returns loosely related sections an agent would trust.
+- **Status:** open
+- **Impact:** An agent that asks a docs question in a sentence is told there is nothing, and falls back to grep or opens the document whole, which is the cost KR-8 was meant to remove.
