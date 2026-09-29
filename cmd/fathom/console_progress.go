@@ -260,9 +260,10 @@ func progressSorted(set map[string]bool) []string {
 }
 
 // agentSessionsOf windows each session from its last ledger row: the row's
-// time back over its recorded duration. The session ledger records neither
-// harness nor model today, so both read "not recorded" — named, never
-// guessed (I58: the identity is an agent's, never a person's).
+// time back over its recorded duration, with the harness and model the row
+// recorded (WI-9w). A row that recorded neither leaves them empty, which
+// every view names "not recorded" — never guessed (I58: the identity is an
+// agent's, never a person's).
 func agentSessionsOf(m observatoryModel) []console.AgentSession {
 	if m.ledgerErr != nil || m.ledger == nil {
 		return nil
@@ -278,7 +279,7 @@ func agentSessionsOf(m observatoryModel) []console.AgentSession {
 		if e.DurationMS != nil {
 			start = end.Add(-time.Duration(*e.DurationMS) * time.Millisecond)
 		}
-		out = append(out, console.AgentSession{ID: e.SessionID, Repo: e.Repo,
+		out = append(out, console.AgentSession{ID: e.SessionID, Harness: e.Harness, Model: e.Model, Repo: e.Repo,
 			Start: start.UTC().Format(time.RFC3339), End: end.UTC().Format(time.RFC3339)})
 	}
 	return out

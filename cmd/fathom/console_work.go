@@ -152,9 +152,10 @@ func computeWork(ctx context.Context, m observatoryModel, sr serviceRoot, now ti
 	return model
 }
 
-// sessionEffortsOf reads each session's effort from its last ledger row.
-// The ledger records neither harness nor model, so the agent identity is
-// "unknown" and no model is priced — named, never guessed.
+// sessionEffortsOf reads each session's effort from its last ledger row,
+// with the harness and model that row recorded (WI-9w). A row that
+// recorded neither (a pre-WI-9w binary) keeps them empty, which every view
+// names "unknown" — never guessed.
 func sessionEffortsOf(m observatoryModel) []console.SessionEffort {
 	if m.ledgerErr != nil || m.ledger == nil {
 		return nil
@@ -162,7 +163,7 @@ func sessionEffortsOf(m observatoryModel) []console.SessionEffort {
 	out := make([]console.SessionEffort, 0, len(m.ledger.order))
 	for _, k := range m.ledger.order {
 		e := m.ledger.latest[k]
-		se := console.SessionEffort{SessionID: e.SessionID}
+		se := console.SessionEffort{SessionID: e.SessionID, Harness: e.Harness, Model: e.Model}
 		if e.TokensIn != nil {
 			se.TokensIn = *e.TokensIn
 		}

@@ -376,7 +376,7 @@ func TestLedgerAttribution(t *testing.T) {
 	t.Setenv("FATHOM_ARM_STATE", filepath.Join(t.TempDir(), "arm.json"))
 
 	two := 2
-	recordSessionLedgerEntry("sess-1", "", t.TempDir(), time.Now(), &two)
+	recordSessionLedgerEntry("claude-code", "sess-1", "", t.TempDir(), time.Now(), &two)
 	data, err := os.ReadFile(ledger)
 	if err != nil {
 		t.Fatal(err)
@@ -398,7 +398,7 @@ func TestLedgerAttribution(t *testing.T) {
 	t.Run("nil_catches_is_absent_not_zero", func(t *testing.T) {
 		ledger2 := filepath.Join(t.TempDir(), "l2.jsonl")
 		t.Setenv("FATHOM_SESSION_LEDGER", ledger2)
-		recordSessionLedgerEntry("sess-2", "", t.TempDir(), time.Now(), nil)
+		recordSessionLedgerEntry("claude-code", "sess-2", "", t.TempDir(), time.Now(), nil)
 		data, _ := os.ReadFile(ledger2)
 		var row map[string]any
 		if err := json.Unmarshal(data, &row); err != nil {

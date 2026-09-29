@@ -59,6 +59,13 @@ type sessionLedgerEntry struct {
 	FathomVersion string `json:"fathom_version"`
 
 	SessionID string `json:"session_id"`
+	// Harness and Model (WI-9w) name the agent identity the session ran as:
+	// Harness is the Stop hook's codec id ("claude-code", "codex", ...),
+	// Model the last model the transcript names. Either is omitted when
+	// unrecorded, and a reader names it unknown, never guessed (I58: an
+	// agent's identity, never a person's).
+	Harness string `json:"harness,omitempty"`
+	Model   string `json:"model,omitempty"`
 	// Arm records which measurement arm this session ran under ("on" =
 	// channels live, "off" = the counterfactual OFF arm) — the field that
 	// makes paired comparison possible (vision 14 §2, IO-14/15).
@@ -247,6 +254,7 @@ func buildSessionLedgerEntry(sessionID, repo string, ts transcriptSummary, beats
 	}
 
 	e.ArmCoverage, e.ArmCoverageNote = armCoverage(ts.FirstTS, now)
+	e.Model = ts.Model
 
 	st := readSessionStamp(sessionID)
 	e.SessionSource, e.BriefInjected, e.BriefBytes = st.Source, st.BriefInjected, st.BriefBytes
@@ -386,6 +394,9 @@ type transcriptSummary struct {
 	// computation already sorts for it; keeping it is what lets the arm
 	// stamp be honest about coverage (see armCoverage).
 	FirstTS *time.Time
+	// Model is the model of the last assistant message that names one
+	// (WI-9w), "" when none does.
+	Model string
 }
 
 // parsed reports whether a transcript was actually read: any of its three
@@ -405,6 +416,7 @@ type transcriptLine struct {
 	Timestamp   string `json:"timestamp"`
 	IsSidechain bool   `json:"isSidechain"`
 	Message     *struct {
+		Model string `json:"model"`
 		Usage *struct {
 			InputTokens              int `json:"input_tokens"`
 			OutputTokens             int `json:"output_tokens"`
@@ -568,6 +580,9 @@ type transcriptFold struct {
 	// tracked classes (Read/Grep/Glob and mcp__fathom__*), this is the
 	// whole-session tool-call count outcome economics prices.
 	ToolCallsTotal int `json:"tool_calls_total"`
+	// Model is the last assistant message's model (WI-9w). A stamp written
+	// before the field folds on without it until the next assistant line.
+	Model string `json:"model,omitempty"`
 }
 
 // foldUse is one tool_use awaiting (or past) its result.
@@ -615,6 +630,9 @@ func (f *transcriptFold) add(l []byte, since *time.Time) {
 		f.TurnCount++
 		if toolSearchTurns(tl) > 0 {
 			f.ToolSearchCount++
+		}
+		if tl.Message != nil && tl.Message.Model != "" && tl.Message.Model != transcriptSyntheticModel {
+			f.Model = tl.Message.Model
 		}
 		if tl.Message != nil {
 			for _, c := range tl.Message.Content {
@@ -704,6 +722,11 @@ func (f *transcriptFold) add(l []byte, since *time.Time) {
 	}
 }
 
+// transcriptSyntheticModel is the model Claude Code writes on a message it made
+// itself (an API error, an interrupted turn) rather than one a model
+// produced; it never names the session's model.
+const transcriptSyntheticModel = "<synthetic>"
+
 // summary renders the fold as the whole-transcript summary.
 func (f *transcriptFold) summary() transcriptSummary {
 	out := transcriptSummary{}
@@ -734,6 +757,7 @@ func (f *transcriptFold) summary() transcriptSummary {
 	out.FathomCalls = f.FathomCalls
 	out.ToolSearchTurns = f.ToolSearchCount
 	out.ToolCallsTotal = f.ToolCallsTotal
+	out.Model = f.Model
 	out.RepeatedReadFiles = f.RepeatFiles
 	out.SidechainToolResults = f.SidechainResults
 	if f.SawResult {

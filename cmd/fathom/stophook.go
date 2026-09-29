@@ -100,7 +100,7 @@ func cmdStopHook(args []string, stdout, stderr io.Writer) int {
 	// verifyCatches stays nil: the gate did not run, so its result is
 	// unknown, never a fabricated zero (law 3).
 	if capabilityOffAt(projDir, "verify-gate") {
-		recordSessionLedgerEntry(hook.SessionID, hook.TranscriptPath, projDir, time.Now(), nil)
+		recordSessionLedgerEntry(codec.ID(), hook.SessionID, hook.TranscriptPath, projDir, time.Now(), nil)
 		runStopHookRetro(projDir, hook.SessionID)
 		return 0
 	}
@@ -116,7 +116,7 @@ func cmdStopHook(args []string, stdout, stderr io.Writer) int {
 		// verifyCatches is nil, not 0: verify did not run, so its result
 		// is UNKNOWN. A fabricated zero here would read as "the gate found
 		// nothing", which is a different and false claim (law 3).
-		recordSessionLedgerEntry(hook.SessionID, hook.TranscriptPath, projDir, time.Now(), nil)
+		recordSessionLedgerEntry(codec.ID(), hook.SessionID, hook.TranscriptPath, projDir, time.Now(), nil)
 		// IT-13: retro is counting/artifact work, not assistance — it
 		// writes a local file and injects nothing into the session, so
 		// the OFF arm (which silences assistance, never measurement) must
@@ -129,7 +129,7 @@ func cmdStopHook(args []string, stdout, stderr io.Writer) int {
 
 	hc := newStopHookClient()
 	exit, catches := runStopHookWith(codec, projDir, hc, *url, *block, stdout)
-	recordSessionLedgerEntry(hook.SessionID, hook.TranscriptPath, projDir, time.Now(), catches)
+	recordSessionLedgerEntry(codec.ID(), hook.SessionID, hook.TranscriptPath, projDir, time.Now(), catches)
 	runStopHookRetro(projDir, hook.SessionID)
 	return exit
 }
@@ -173,8 +173,9 @@ const sessionLedgerBeatTailBytes = 4 << 20
 
 // recordSessionLedgerEntry resolves a local (daemon-free) repo label,
 // summarizes the session transcript (best-effort), sums this session's
-// instrument A/B beats, and appends the resulting row.
-func recordSessionLedgerEntry(sessionID, transcriptPath, projDir string, now time.Time, verifyCatches *int) {
+// instrument A/B beats, and appends the resulting row. harnessID is the
+// hook codec's id (WI-9w): the row records which harness ran the session.
+func recordSessionLedgerEntry(harnessID, sessionID, transcriptPath, projDir string, now time.Time, verifyCatches *int) {
 	repo := ""
 	if cands := serviceCandidates(projDir); len(cands) > 0 {
 		repo = strings.ToLower(cands[0].name)
@@ -184,6 +185,7 @@ func recordSessionLedgerEntry(sessionID, transcriptPath, projDir string, now tim
 	ts := readTranscriptFromOffset(sessionID, transcriptPath)
 	beats, _ := readBeatLogTail(beatLogPath(), sessionLedgerBeatTailBytes)
 	e := buildSessionLedgerEntry(sessionID, repo, ts, beats, now)
+	e.Harness = harnessID
 	e.VerifyCatches = verifyCatches
 	// IR-4: a session running inside an assess judge inherits the spend
 	// label; stamping it is what keeps judging spend out of every unit.

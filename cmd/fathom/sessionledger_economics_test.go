@@ -1,12 +1,15 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/console"
 )
 
 // writeTranscript writes lines as a Claude Code transcript and returns its path.
@@ -81,7 +84,7 @@ func TestSessionLedgerEntryCarriesToolCalls(t *testing.T) {
 	ledger := withTempSessionLedger(t)
 	t.Setenv("FATHOM_ARM_STATE", filepath.Join(t.TempDir(), "arm.json"))
 	t.Setenv("FATHOM_SESSION_STAMPS", t.TempDir())
-	recordSessionLedgerEntry("sess-hook", path, t.TempDir(), now, nil)
+	recordSessionLedgerEntry("claude-code", "sess-hook", path, t.TempDir(), now, nil)
 	data, err := os.ReadFile(ledger)
 	if err != nil {
 		t.Fatal(err)
@@ -92,5 +95,77 @@ func TestSessionLedgerEntryCarriesToolCalls(t *testing.T) {
 	}
 	if got["tool_calls"] != float64(3) {
 		t.Errorf("the Stop hook's row tool_calls = %v, want 3", got["tool_calls"])
+	}
+}
+
+// WI-9w: the Stop hook records the harness (the codec's id) and the model
+// (the last assistant message's), sessionEffortsOf and agentSessionsOf carry
+// them, and two sessions with different (model, harness) land in two
+// ModelScorecard cells instead of one "unknown" cell. A row that recorded
+// neither stays "unknown", named, never guessed.
+func TestScorecardSplitsByRecordedModelAndHarness(t *testing.T) {
+	now := time.Date(2026, 9, 29, 12, 0, 0, 0, time.UTC)
+
+	// The product path records both fields.
+	ledger := withTempSessionLedger(t)
+	t.Setenv("FATHOM_ARM_STATE", filepath.Join(t.TempDir(), "arm.json"))
+	t.Setenv("FATHOM_SESSION_STAMPS", t.TempDir())
+	path := writeTranscript(t,
+		`{"type":"assistant","timestamp":"2026-09-29T11:00:05Z","message":{"model":"claude-sonnet-4-5","content":[{"type":"text"}]}}`,
+		`{"type":"assistant","timestamp":"2026-09-29T11:00:09Z","message":{"model":"<synthetic>","content":[{"type":"text"}]}}`,
+		`{"type":"assistant","timestamp":"2026-09-29T11:00:10Z","message":{"model":"claude-opus-4-5","content":[{"type":"text"}]}}`,
+		`{"type":"assistant","timestamp":"2026-09-29T11:00:11Z","message":{"model":"<synthetic>","content":[{"type":"text"}]}}`,
+	)
+	recordSessionLedgerEntry("claude-code", "sess-rec", path, t.TempDir(), now, nil)
+	data, err := os.ReadFile(ledger)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var rec map[string]any
+	if err := json.Unmarshal(data, &rec); err != nil {
+		t.Fatal(err)
+	}
+	if rec["harness"] != "claude-code" || rec["model"] != "claude-opus-4-5" {
+		t.Errorf("recorded harness %v model %v, want claude-code and the last real assistant model", rec["harness"], rec["model"])
+	}
+
+	// Two sessions, two identities, one repository.
+	rows := []string{
+		`{"session_id":"s-a","repo":"svc","at":"2026-09-10T11:00:00Z","duration_ms":3600000,"tokens_in":100,"tokens_out":10,"harness":"claude-code","model":"claude-opus-4-5"}`,
+		`{"session_id":"s-b","repo":"svc","at":"2026-09-11T11:00:00Z","duration_ms":3600000,"tokens_in":200,"tokens_out":20,"harness":"codex","model":"gpt-5-codex"}`,
+		`{"session_id":"s-c","repo":"svc","at":"2026-09-12T11:00:00Z","duration_ms":3600000,"tokens_in":300,"tokens_out":30}`,
+	}
+	m := observatoryModel{ledger: foldSessionLedger([]byte(strings.Join(rows, "\n") + "\n"))}
+	efforts := sessionEffortsOf(m)
+	if len(efforts) != 3 || efforts[0].Harness != "claude-code" || efforts[0].Model != "claude-opus-4-5" ||
+		efforts[1].Harness != "codex" || efforts[1].Model != "gpt-5-codex" || efforts[2].Harness != "" || efforts[2].Model != "" {
+		t.Fatalf("sessionEffortsOf = %+v", efforts)
+	}
+	h := console.History{}
+	prove := func(id, at string) {
+		h.Rows = append(h.Rows, console.RowHistory{Service: "svc", Plan: "p.md", ID: id, Readings: []console.RowReading{
+			{At: "2026-09-01T00:00:00Z", State: console.HistOpen}, {At: at, State: console.HistProven, Weight: 1}}})
+		h.Readings = append(h.Readings, console.PlanReading{At: at, Root: "/src/svc", Service: "svc", Plan: "p.md"})
+	}
+	prove("R-1", "2026-09-10T10:30:00Z")
+	prove("R-2", "2026-09-11T10:30:00Z")
+	prove("R-3", "2026-09-12T10:30:00Z")
+	join := console.JoinSessionProof(context.Background(), h, agentSessionsOf(m), console.HistoryFilter{Service: "svc"},
+		func(context.Context, string, string) (string, bool) { return "", false })
+	if len(join.Outcomes) != 3 {
+		t.Fatalf("join outcomes = %+v (unjoined %+v)", join.Outcomes, join.Unjoined)
+	}
+	sc := console.ModelScorecard(console.EffortPerProvenChange(join, h, efforts, nil, console.NewZones(nil, nil)))
+	cells := map[string]bool{}
+	for _, c := range sc.Cells {
+		cells[c.Harness+"/"+c.Model] = true
+	}
+	for _, want := range []string{"claude-code/claude-opus-4-5", "codex/gpt-5-codex", "unknown/unknown"} {
+		if !cells[want] {
+			t.Errorf("scorecard cells %v lack %s", cells, want)
+		}
+	}
+	if len(sc.Cells) != 3 {
+		t.Errorf("want three cells (two recorded identities and the unrecorded one), got %d", len(sc.Cells))
 	}
 }
