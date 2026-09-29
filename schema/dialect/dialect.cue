@@ -73,6 +73,13 @@ import "struct"
 		strategy: "dir" | "capture" | "none"
 	} | *{strategy: "dir"}
 
+	// preprocess names a pre-parse step (extractor.tsPreprocessors): a file
+	// whose tree has a syntax error is parsed as each text the step gives,
+	// and the first tree with none is read. "csharp-conditionals" blanks
+	// each #if group's directive lines, then also all but its first branch
+	// (O148).
+	preprocess?: "csharp-conditionals"
+
 	// imports.strategy is from §6's closed set; the parameters are the
 	// closed set extractor.ImportParams decodes (LB-F11) — each strategy
 	// reads the ones internal/fusion/resolvestrategy.go documents for it.

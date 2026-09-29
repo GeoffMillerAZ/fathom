@@ -33,6 +33,7 @@
   },
   "qualify": { "chain_containers": true, "container_sep": ".", "method_sep": "." },
   "package": { "strategy": "capture" },
+  "preprocess": "csharp-conditionals",
   "imports": { "strategy": "namespace-dir", "suffixes": [".cs"], "type_wildcard": "members" },
   "signature": { "max_chars": 200 },
   "target_level": "L4",
