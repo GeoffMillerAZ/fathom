@@ -58,6 +58,7 @@ registry: #Registry & [
 			"setup-doctor":          "absent"
 			"prompt-obligations":    "absent"
 			"obligations-post-shell": "absent"
+			"test-run-line":          "absent"
 		}
 		notes: {"claim-gate": "not built"}
 		fail_mode:    "fail-open"

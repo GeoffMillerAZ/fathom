@@ -24,16 +24,17 @@ type Evidence struct {
 	Truncated bool
 }
 
-// Result is a parsed run and its verdict.
+// Result is a parsed run, the evidence it was judged with, and its verdict.
 type Result struct {
-	Run     Run
-	Verdict Verdict
+	Run      Run
+	Evidence Evidence
+	Verdict  Verdict
 }
 
 // Analyze is tier 0 end to end: the parse and the three-way verdict.
 func Analyze(output string, ev Evidence) Result {
 	r := ParseTestRun(output)
-	return Result{Run: r, Verdict: testRunVerdict(r, ev)}
+	return Result{Run: r, Evidence: ev, Verdict: testRunVerdict(r, ev)}
 }
 
 // testRunVerdict is the three-way result (TR-4):

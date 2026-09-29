@@ -86,6 +86,10 @@ func cmdSessionHookEvent(event string, args []string, stdin io.Reader, stdout, s
 		return runAdvisoryEvent(codec, harness.EventCwdChanged, "cwd-hook", stdin, stdout, func(in harness.HookInput) string {
 			return cwdChangedPrimer(*url, root(in))
 		})
+	case "test-run": // TR-2: PostToolUse(Bash), a piped or passing test run (TR-V1)
+		return cmdTestRunHook(codec, harness.EventPostTool, event, *url, *dir, stdin, stdout)
+	case "failed-test-run": // TR-2: PostToolUseFailure(Bash), an unpiped run that exited non-zero
+		return cmdTestRunHook(codec, harness.EventToolFailure, event, *url, *dir, stdin, stdout)
 	default:
 		fmt.Fprintf(stderr, "fathom: session-hook --event %q: unknown event (known: %s) — exiting 0\n", event, strings.Join(sessionHookEvents, ", "))
 		return 0
@@ -93,7 +97,7 @@ func cmdSessionHookEvent(event string, args []string, stdin io.Reader, stdout, s
 }
 
 // sessionHookEvents is the --event vocabulary, in help order.
-var sessionHookEvents = []string{"instructions-loaded", "subagent-start", "tool-failure", "cwd-changed"}
+var sessionHookEvents = []string{"instructions-loaded", "subagent-start", "tool-failure", "cwd-changed", "test-run", "failed-test-run"}
 
 // recordInstructionsLoaded decodes the InstructionsLoaded envelope through
 // the codec and writes one beat {file_path, memory_type, load_reason} (+

@@ -40,7 +40,7 @@ import (
 // pluginVersion is the plugin's semver — bumped deliberately per template/
 // skill change that should propagate to installed fleets; the embedded
 // fathom build version rides in metadata for provenance.
-const pluginVersion = "0.3.4"
+const pluginVersion = "0.3.5"
 
 // pluginDescription is the one description both manifests carry.
 const pluginDescription = "Governed code intelligence: index-first discovery, obligations at edit time, done-means-proven gates — skills, hooks, and the MCP registration in one install."
@@ -118,14 +118,14 @@ func renderPluginSurface() (defaultTools []string, groups map[string][]string) {
 }
 
 // pluginTemplateDigestPin is TestPluginTemplateDigestPinned's golden value
-// for pluginVersion "0.3.4" (bumped by SR-17, surface reckoning F-68: the
-// fathom-doctor skill's SKILL.md content changed — binding_modules_mounted
-// skips on a current daemon because list_modules is gone). Regenerate with
+// for pluginVersion "0.3.5" (bumped by TR-2, docs/plans/test-run-hook.md:
+// the hook template gained the two test-run rows and the fathom-rewire
+// skill's template list names them). Regenerate with
 // pluginTemplateDigest() (see that test) and bump pluginVersion in the
 // SAME change whenever this pin moves — the digest is what makes a
 // template edit visible; the version bump is the deliberate human act it
 // demands (docs/design/reach.md §4).
-const pluginTemplateDigestPin = "a27c258dd59528f1"
+const pluginTemplateDigestPin = "0943e009e1257cbc"
 
 // pluginTemplateDigest is a stable sha256 (hex, first 16 chars) over every
 // deterministic input `plugin render` turns into the shipped tree: the

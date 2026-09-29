@@ -32,11 +32,11 @@ const maxLocalized = 3
 
 // ChangedSymbol is one Go function or method the working tree changed.
 type ChangedSymbol struct {
-	// Ref is the partial index key the index is asked about: the package
-	// directory and the package name for a function ("money/money.Round"),
-	// the directory and the receiver twice for a method
-	// ("money/Ledger.Ledger.Add") — the shapes the call graph's key
-	// resolution matches at a component boundary.
+	// Ref is the symbol's index key without its "<service>::" prefix: the
+	// package directory and the package name for a function
+	// ("money/money.Round"), the directory and the receiver twice for a
+	// method ("money/Ledger.Ledger.Add") — the key shapes the call graph
+	// stores. The Index implementation adds the service.
 	Ref string `json:"ref"`
 	// Name is the display name: "money.Round", "Ledger.Add".
 	Name string `json:"name"`

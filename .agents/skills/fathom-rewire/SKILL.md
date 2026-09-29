@@ -75,7 +75,12 @@ loopback-only).
    concerns.cue|config.toml)→`fathom config audit --hook --event
    file-changed` t10, WorktreeCreate→`fathom session-hook --event
    worktree-create` t5, CwdChanged and DirectoryAdded→`fathom session-hook
-   --event cwd-changed` t5, Setup→`fathom doctor --brief` t15. A repo wired
+   --event cwd-changed` t5, Setup→`fathom doctor --brief` t15; then
+   UserPromptSubmit→`fathom prompt-hook` t10 and PostToolUse(Bash)→`fathom
+   edit-hook` t5 (O57), and the test-run pair
+   PostToolUse(Bash)→`fathom session-hook --event test-run` t5 and
+   PostToolUseFailure(Bash)→`fathom session-hook --event failed-test-run`
+   t5 (inert until `[hooks] test_run = true`). A repo wired
    before those rows existed gains exactly them and loses nothing — they
    are appended, and everything above is byte-identical.
    Reconcile in place at whichever ONE scope

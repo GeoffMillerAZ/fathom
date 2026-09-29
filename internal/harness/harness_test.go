@@ -73,15 +73,66 @@ var promptHookClaudeHookAddition = []struct {
 	{"PostToolUse", "Bash", "fathom edit-hook", "edit-hook", 5},
 }
 
+// testRunClaudeHookAddition is TR-2's two rows, appended after the O57
+// pair (docs/plans/test-run-hook.md): the test-run hook on PostToolUse(Bash)
+// and PostToolUseFailure(Bash). DELIBERATE GOLDEN CHANGE (2026-09-29):
+// cmd/fathom/hookspecs_test.go's testRunHookSpecAddition is the twin.
+var testRunClaudeHookAddition = []struct {
+	event, matcher, marker, sub string
+	timeout                     int
+}{
+	{"PostToolUse", "Bash", "fathom session-hook --event test-run", "session-hook --event test-run", 5},
+	{"PostToolUseFailure", "Bash", "fathom session-hook --event failed-test-run", "session-hook --event failed-test-run", 5},
+}
+
+// TestClaudeHookTableTestRunAddition pins TR-2's rows: after the O57 pair,
+// both inject (Claude Code documents additionalContext on PostToolUse and
+// PostToolUseFailure), both the test-run capability, the failure row reads
+// the `error` key TR-V1 found (not `tool_error`), and neither marker is a
+// substring of the other or of any marker already in its matcher group.
+func TestClaudeHookTableTestRunAddition(t *testing.T) {
+	d, _ := Lookup(ClaudeCode)
+	base := len(preSeamClaudeHookTable) + len(postSeamClaudeHookAdditions) + len(waveThreeClaudeHookAdditions) + len(promptHookClaudeHookAddition)
+	for i, want := range testRunClaudeHookAddition {
+		got := d.Hooks[base+i]
+		if got.Harness != want.event || got.Matcher != want.matcher || got.Marker != want.marker || got.Verb != want.sub || got.TimeoutSec != want.timeout {
+			t.Errorf("addition %d = {%s %q %q %q %d}, want {%s %q %q %q %d}", i,
+				got.Harness, got.Matcher, got.Marker, got.Verb, got.TimeoutSec,
+				want.event, want.matcher, want.marker, want.sub, want.timeout)
+		}
+		if got.Vehicle != VehicleHookInject || got.Capability != CapTestRunLine {
+			t.Errorf("%s: vehicle %s capability %s, want hook-inject and %s", got.Harness, got.Vehicle, got.Capability, CapTestRunLine)
+		}
+		for _, other := range d.Hooks {
+			if other.Harness == got.Harness && other.Matcher == got.Matcher && other.Marker != got.Marker &&
+				(strings.Contains(other.Marker, got.Marker) || strings.Contains(got.Marker, other.Marker)) {
+				t.Errorf("marker %q and %q share a matcher group and one contains the other", got.Marker, other.Marker)
+			}
+		}
+	}
+	if got := d.Hooks[base+1]; got.Input["error"] != "error" || got.Event != EventToolFailure {
+		t.Errorf("failed-test-run row = %+v, want the tool-failure event reading `error`", got)
+	}
+	if got := d.Hooks[base]; got.Input["tool_response.stdout"] != "tool_response.stdout" || got.Event != EventPostTool {
+		t.Errorf("test-run row = %+v, want the post-tool event reading tool_response.stdout", got)
+	}
+	if b, ok := d.Binding(EventToolFailure); !ok || b.Capability != CapToolFailureAdvice || b.Input["error"] != "error" {
+		t.Errorf("HP-27's row must stay the event's first binding and read `error`: %+v", b)
+	}
+	if d.Vehicles[CapTestRunLine] != VehicleHookInject {
+		t.Errorf("claude-code test-run-line = %s", d.Vehicles[CapTestRunLine])
+	}
+}
+
 func TestLookupClaudeCodeReproducesHookTable(t *testing.T) {
 	d, ok := Lookup(ClaudeCode)
 	if !ok {
 		t.Fatal("claude-code missing from the registry")
 	}
-	want := len(preSeamClaudeHookTable) + len(postSeamClaudeHookAdditions) + len(waveThreeClaudeHookAdditions) + len(promptHookClaudeHookAddition)
+	want := len(preSeamClaudeHookTable) + len(postSeamClaudeHookAdditions) + len(waveThreeClaudeHookAdditions) + len(promptHookClaudeHookAddition) + len(testRunClaudeHookAddition)
 	if len(d.Hooks) != want {
-		t.Fatalf("claude-code bindings = %d, want %d (%d pre-seam + %d vision 26 §4 + %d wave 3 + %d O57)", len(d.Hooks), want,
-			len(preSeamClaudeHookTable), len(postSeamClaudeHookAdditions), len(waveThreeClaudeHookAdditions), len(promptHookClaudeHookAddition))
+		t.Fatalf("claude-code bindings = %d, want %d (%d pre-seam + %d vision 26 §4 + %d wave 3 + %d O57 + %d TR-2)", len(d.Hooks), want,
+			len(preSeamClaudeHookTable), len(postSeamClaudeHookAdditions), len(waveThreeClaudeHookAdditions), len(promptHookClaudeHookAddition), len(testRunClaudeHookAddition))
 	}
 	for i, want := range preSeamClaudeHookTable {
 		got := d.Hooks[i]
