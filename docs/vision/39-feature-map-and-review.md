@@ -49,9 +49,10 @@ shown with the reasons that produced it, never a number nobody can argue with. V
 different axis: it needs a usage signal or a human judgment, and where neither exists the
 feature is marked "not measured," not silently scored zero.
 
-**Who decides the verdict.** A human, writing a cited claim into `docs/features.md` — or the
-decision port, proposing one, calibrated against the owner's own 86 labeled verdicts from
-2026-09-27. The calibration bar is an agreement rate of at least 0.8 at three or more
+**Who decides the verdict.** A human, writing a cited claim into `docs/features.md`. A decision-port
+proposal, calibrated against the owner's own 86 labeled verdicts from 2026-09-27, is deferred by the
+owner's decision of 2026-09-29 (not refused): it returns only after J0 passes and that calibration
+reaches the bar (future F51). The calibration bar is an agreement rate of at least 0.8 at three or more
 samples; below that, the proposal path is simply dropped, the same discipline that killed
 the route-site calibration in ADR-042. Neither path auto-applies anything. A "ditch"
 proposal does not delete code; it flows into the same surface-reckoning pattern ADR-053 used
@@ -193,7 +194,8 @@ computed evidence row, calibrated on the owner's 86 labeled verdicts.
 deterministic, joins over existing facts, never a model's guess.
 **Cost:** one decision-port call per feature, on demand, never in a request path.
 **Measurement:** agreement at least 0.8 at n at least 3 (`FM-M2`); below that, the proposal
-path is dropped, not tuned.
+path is dropped, not tuned. Deferred 2026-09-29: FM-10, FM-11 and FM-M2 are `[-]` until J0 passes
+and the calibration against the 86 verdicts can be read (F51).
 
 ## 9. The owner's follow-up: where Review Kit eventually lives
 

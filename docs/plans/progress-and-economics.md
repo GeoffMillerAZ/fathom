@@ -6,7 +6,8 @@ Design: `docs/design/progress-and-economics.md` (section numbers below are its).
 (PE-M1..M4). Builds on what exists: the verify ledger (SD-1, schema 2, about 17,000
 readings), the session ledger (3,359 sessions), the Stop hook's incremental transcript fold,
 the console's SSE channel (ADR-045). Every view is read-only; no row here writes a plan or a
-status.
+status. Weights and cost per weight point are `docs/plans/work-signals.md` (WS-8 to WS-11); PE-22 is the page
+that shows them. Waves 4 and 5 were added 2026-09-29 (ADR-056 decision 10, observation O121).
 
 ## Wave 1: cost in every answer
 
@@ -43,12 +44,34 @@ status.
 - [x] The live session feed, library: `renderSessionFeed` renders the read-only feed table; no route serves it yet (PE-19w) {id: PE-19, symbol: renderSessionFeed, package: cmd/fathom, reachable_from: TestConsoleSessionFeed, needs: "PE-15", library: true, reason: "the library half of a split; PE-19w (open) is the row that wires it into the product"}
 - [ ] The live session feed is served on `/sessions`, read-only over the SSE channel {id: PE-19w, symbol: buildSessionsPage, package: cmd/fathom, reachable_from: TestSessionsPageServesLiveFeed, needs: "PE-19"}
 
+## Wave 4: cost per weight point on the pages (design section 10, ADR-056 decision 10)
+
+The estimator, the one-command acceptance and the computation are `docs/plans/work-signals.md` WS-8 to WS-11
+(not repeated here); this row is the page that shows them.
+
+- [ ] The Progress and Economics pages show cost per proven WEIGHT POINT beside cost per proven row, per model, harness and zone, keyed by agent identity (I58), with an estimated weight marked as an estimate and an authored weight as authored {id: PE-22, symbol: renderCostPerWeightPoint, package: cmd/fathom, reachable_from: TestConsoleCostPerWeightPointMarksEstimates, needs: "work-signals.md#WS-10"}
+
+## Wave 5: the ledgers stay honest (design section 11, observation O121)
+
+Scratch-clone runs appended rows keyed by scratch paths to the user-level ledgers (13,514 of 19,639 verify rows
+on 2026-09-28), which distorts proof history and economics. Readers filter to registered roots, scratch and test
+runs get a documented way to stay out, and an owner-run `fathom gc` class archives what is already there.
+
+- [ ] The registered service roots are one function: the roots the fleet index registered, canonical (symlinks resolved, no trailing slash), asked by every ledger reader {id: PE-23, symbol: RegisteredRoots, package: internal/ledgerroots, reachable_from: TestRegisteredRootsCanonicalAndSymlinkResolved}
+- [ ] Every reader of the verify ledger (the gate figure and catches, proof history and burn-up, the session join, plans trend, the research report, assess gate results) reads only rows whose `repo_root` is a registered service root, ignores unregistered and scratch roots and names the ignored count; the file itself is never rewritten by a reader {id: PE-24, symbol: verifyLedgerRegisteredRows, package: cmd/fathom, reachable_from: TestVerifyLedgerReadersIgnoreUnregisteredRoots, needs: "PE-23", weight: 3}
+- [ ] Every reader of the intent ledger (the audit's baseline and debt, clocks, learning announcements) does the same {id: PE-25, symbol: registeredLedgerRows, package: internal/intent, reachable_from: TestIntentLedgerReadersIgnoreUnregisteredRoots, needs: "PE-23"}
+- [ ] `FATHOM_HOME` relocates the whole `~/.fathom` (ledgers, logs, stamps, caches, daemon records) and `--ledger <path>` on `fathom verify` and `fathom intent audit` names one ledger file; the per-file variables (`FATHOM_VERIFY_LEDGER`, `FATHOM_INTENT_LEDGER`, `FATHOM_SESSION_LEDGER`, `FATHOM_HOOKS_LOG`) keep working and win over `FATHOM_HOME` {id: PE-26, symbol: FathomHome, package: internal/fathomhome, reachable_from: TestFathomHomeRelocatesLedgersAndPerFileVarsWin, weight: 3}
+- [ ] The overrides are documented: `docs/usage.md` names `FATHOM_HOME`, `--ledger` and the per-file variables, and says a scratch clone or a test run sets one {id: PE-27, oracle: lexical, path: docs/usage.md, pattern: "FATHOM_HOME", needs: "PE-26"}
+- [ ] Test and scratch runs use it: the gate's `Taskfile.yml` and the scratch-clone workflow set `FATHOM_HOME` to a temporary directory, and a scratch `fathom verify` or `fathom intent audit` under it appends nothing to the real `~/.fathom` ledgers {id: PE-28, symbol: appendVerifyLedgerFrom, package: cmd/fathom, reachable_from: TestScratchRunUnderFathomHomeLeavesRealLedgersUntouched, needs: "PE-26"}
+- [ ] `fathom gc` gains the class `ledger-unregistered`: the dry run counts rows and bytes per unregistered root in the verify and intent ledgers; `--apply`, run by the owner, archives them to a gzipped file beside the ledger, moving rows and never deleting them, and neither the daemon's daily pass nor doctor applies the class {id: PE-29, symbol: planLedgerUnregistered, package: cmd/fathom, reachable_from: TestGCLedgerUnregisteredArchivesNeverDeletes, needs: "PE-23", weight: 3}
+
 ## Refused (recorded so they are not re-proposed)
 
 - [-] Kanban write-back, status set by a drag or click, assignment or due dates {id: PE-X1, disposition: refused, reason: "the no-tracker non-goal; status is computed by verify (ADR-049 decision 4)"}
 - [-] A generic token-usage dashboard (tokens per day, quotas, spend alerts) {id: PE-X2, disposition: refused, reason: "scope non-goal; the clients own raw usage"}
 - [-] A second ledger file for proof history {id: PE-X3, disposition: refused, reason: "the verify ledger gains per-row verdicts additively (schema 3)"}
 - [-] Per-person figures {id: PE-X4, disposition: refused, reason: "I58"}
+- [-] Deleting or rewriting ledger rows to clean up unregistered roots, from a reader, the daemon or doctor {id: PE-X5, disposition: refused, reason: "evidence is archived, never deleted (ADR-047 decision 13); a root unregistered today may be registered tomorrow; the filter is on read and the archive is owner-run and reversible"}
 
 ## Measurements (op)
 
@@ -56,3 +79,4 @@ status.
 - [ ] (op) PE-M2: the ledger reconstructs burn-up and proof regressions for 30 consecutive days, matching `plans status` at each day's last reading {id: PE-M2, oracle: lexical, path: docs/bench/readings/progress/ledger-reconstruction.md, pattern: "^PE-M2 verdict: PASS", needs: "PE-6,PE-8"}
 - [ ] (op) PE-M3: tokens per proven row joined for Claude Code and Codex sessions, the unjoined share named {id: PE-M3, oracle: lexical, path: docs/bench/readings/progress/cost-per-row.md, pattern: "^PE-M3 verdict: PASS", needs: "PE-15,PE-14"}
 - [ ] (op) PE-M4: the pages measured like G13's UX-M1 {id: PE-M4, oracle: lexical, path: docs/bench/readings/progress/ux.md, pattern: "^PE-M4 verdict: PASS", needs: "PE-12"}
+- [ ] (op) PE-M5: the ledger-pollution reading on this machine: verify-ledger and intent-ledger rows under unregistered roots counted (13,514 of 19,639 and 91 of 180 on 2026-09-28), and burn-up, cost per proven row and claim honesty recomputed with and without them, the difference published {id: PE-M5, oracle: lexical, path: docs/bench/readings/progress/ledger-pollution.md, pattern: "^PE-M5 reading:", needs: "PE-24,PE-25"}

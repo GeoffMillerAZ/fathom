@@ -11,6 +11,10 @@ rows (`WI-2`, `WI-5`, the cost and debt-interest machinery the feature map re-zo
 instead of by package zone) — no row here starts before those land, and none of them is
 re-implemented here.
 
+Verdicts stay human. FM-10, FM-11 and FM-M2 (the model verdict proposal, its ditch routing and its
+calibration reading) are deferred by the owner's decision of 2026-09-29 (ADR-055 amendment, future F51):
+they return only after J0 passes and a calibration against the owner's 86 labeled verdicts reaches the bar.
+
 ## Wave 5: the feature map (§3 to §11)
 
 - [ ] `docs/features.md` grammar: plan-grammar-style rows (id, name, keys, owner, cited)
@@ -35,11 +39,8 @@ re-implemented here.
   inferred (§6) {id: FM-8, symbol: FeatureValue, package: internal/featuremap, reachable_from: TestFeatureValueNotMeasuredWithoutUsage, needs: "FM-5"}
 - [ ] Verdict authoring: a human's cited claim (keep/improve/merge/ditch) read from
   `docs/features.md` and served, never computed (§7) {id: FM-9, symbol: AuthoredFeatureVerdict, package: internal/featuremap, reachable_from: TestAuthoredFeatureVerdictCitedClaim, needs: "FM-1"}
-- [ ] The decision-port verdict proposal: a Choice over the computed evidence row, calibrated
-  against the owner's 86 labeled verdicts (2026-09-27); shown as a proposal only, dropped below
-  the agreement bar (§7, §8) {id: FM-10, symbol: ProposeFeatureVerdict, package: internal/featuremap, reachable_from: TestProposeFeatureVerdictCalibratedOrDropped, needs: "FM-7,FM-8"}
-- [ ] A ditch proposal never auto-applies; it routes into the surface-reckoning pattern
-  (callers proved, citing rows re-anchored or refused) (§7) {id: FM-11, symbol: ditchProposalRoutesToReckoning, package: internal/featuremap, reachable_from: TestDitchProposalRoutesToSurfaceReckoning, needs: "FM-10"}
+- [-] The decision-port verdict proposal: a Choice over the computed evidence row, calibrated against the owner's 86 labeled verdicts (2026-09-27); shown as a proposal only, dropped below the agreement bar (§7, §8) {id: FM-10, disposition: deferred, reason: "owner decision 2026-09-29: deferred, not refused; verdicts stay human (FM-9) and a model proposal is not built until it is earned; the critics estimate that 86 labels over four classes cannot support the 0.8 bar", trigger: "judged-predicates.md#JP-M1 reads PASS (J0) and a calibration against the owner's 86 labeled verdicts reaches agreement of at least 0.8 at n of at least 3 (F51)"}
+- [-] A ditch proposal never auto-applies; it routes into the surface-reckoning pattern (callers proved, citing rows re-anchored or refused) (§7) {id: FM-11, disposition: deferred, reason: "rides FM-10: with no model proposal there is no ditch proposal to route; a human-authored ditch verdict already reaches the surface-reckoning pattern by hand", trigger: "FM-10's trigger fires (F51)"}
 - [ ] `fathom features [--json]` verb (§10) {id: FM-12, symbol: cmdFeatures, package: cmd/fathom, reachable_from: TestCmdFeaturesJSON, needs: "FM-7,FM-8,FM-9"}
 - [ ] The console Features page: value x implementation scatter with verdict shapes, a
   filterable table, an underused list, a ditch list (§10) {id: FM-13, symbol: renderFeatureMap, package: cmd/fathom, reachable_from: TestConsoleFeatureMapPage, needs: "FM-12"}
@@ -56,5 +57,4 @@ re-implemented here.
 
 - [ ] (op) FM-M1: fathom's own 86-feature scorecard re-derived; evidence columns match the
   hand-built one on at least 90% of cells {id: FM-M1, oracle: lexical, path: docs/bench/readings/feature-map/scorecard.md, pattern: "^FM-M1 verdict: PASS", needs: "FM-4,FM-5,FM-6"}
-- [ ] (op) FM-M2: verdict-proposal agreement at least 0.8 at n at least 3 against the 86 owner
-  verdicts, or the proposal path is dropped {id: FM-M2, oracle: lexical, path: docs/bench/readings/feature-map/verdict-calibration.md, pattern: "^FM-M2 verdict: (PASS|DROPPED)", needs: "FM-10"}
+- [-] (op) FM-M2: verdict-proposal agreement at least 0.8 at n at least 3 against the 86 owner verdicts, or the proposal path is dropped {id: FM-M2, disposition: deferred, reason: "measures FM-10, which is deferred (owner decision 2026-09-29); the calibration against the 86 labeled verdicts is what would earn the proposal path", trigger: "FM-10's trigger fires (F51); the reading then lands at docs/bench/readings/feature-map/verdict-calibration.md with a line starting FM-M2 verdict: PASS or DROPPED"}

@@ -22,7 +22,8 @@ usage dashboards and trackers, and neither can say whether the work is really do
    assignment writes a plan or a status.
 2. Proof history is a projection of the existing verify ledger. Its rows gain per-row
    verdicts additively (schema 3); no new ledger file.
-3. Row `weight:` (spec interop §4) weights every rollup; default 1.
+3. Row `weight:` (spec interop §4) weights every rollup; default 1. Authored weights are never
+   overwritten; a deterministic estimate is proposed beside them (section 10).
 4. Economics joins the existing session ledger (3,359 sessions) and the Stop hook's
    incremental transcript fold to proof. Only cost per proven outcome is shown; raw usage is
    the clients' job.
@@ -106,6 +107,7 @@ store.
 | PE-M2 | the ledger reconstructs burn-up and proof regressions for 30 consecutive days on this repository, matching `plans status` at each day's last reading |
 | PE-M3 | tokens per proven row joined for Claude Code and Codex sessions, with the unjoined share named |
 | PE-M4 | the pages measured like G13's UX-M1 (task completion by a first-time reader), PASS |
+| PE-M5 | the ledger-pollution reading (section 11): rows under unregistered roots counted, and burn-up, cost per proven row and claim honesty recomputed with and without them |
 
 ## 9. Jev, weighed
 
@@ -114,3 +116,57 @@ store.
 - **Cost:** not applicable.
 - **The measurement:** none planned. Task preflight (U6) is the economics-adjacent Jev site,
   in work intelligence.
+
+## 10. Weights and cost per weight point (accepted 2026-09-29, ADR-056 decision 10)
+
+The rows live in `docs/plans/work-signals.md` (WS-8 to WS-11, WS-M3) with stall detection and the preflight
+baseline; this design owns how they land on these pages (PE-22). Everything here is deterministic and keyed by
+agent identity, never a person (I58).
+
+**What exists on main.** The grammar's `weight:` (a positive integer, default 1, never gating, SI-7), the
+`plans status --weighted` rollups by fleet, project, plan and section (PE-3), cost per proven row per plan
+and language (PE-16) and the session-to-proof join (PE-15).
+
+**The gap.** Almost every row is weight 1, so the weighted percentage equals the unweighted one and cost per
+row hides that a large row and a trivial row cost differently.
+
+**Proposed weights.** A deterministic estimator from row features: anchor type, planned files and the blast
+radius of the anchor's package, the rows it depends on, and the historical effort of similar proven rows
+from the U6 feature index (WI-15). It is shown as "estimated weight" beside any authored weight and never
+overwrites it; the author accepts it into the plan with one command (WS-9). The U6 difficulty Score (WI-18)
+may refine an estimate only after it passes calibration against a fitted baseline (WS-M4); with provider
+`none` the deterministic estimate stands, and a refinement is a proposal for the author, so progress computed
+by `fathom verify` stays model-free (ADR-049 decision 7).
+
+**Calibrated against actual effort.** Estimates are compared with the tokens, turns and wall time of each
+proven row (the join), and the error is published (WS-M3); an estimator that does not beat "every row
+weighs 1" on held-out rows is not shown as a progress figure.
+
+**Economics by weight.** Cost per proven WEIGHT POINT, not only per row, on the Progress and Economics
+pages, per model and harness (feeding U5's model scorecard) and per zone (U2's interest), estimated weights
+marked as estimates and authored ones as authored (PE-22). The same view is where a cheaper model that cost
+more per proven weight point than a stronger one becomes visible (WS-5).
+
+## 11. Ledger hygiene: registered roots only (2026-09-29, observation O121)
+
+**Found.** Scratch-clone runs of `fathom verify` and `fathom intent audit` append rows to the user-level
+ledgers keyed by the scratch path. On 2026-09-28 the verify ledger held 19,639 rows, 13,514 of them under
+`/private/tmp` style roots (7,729 from one scratch clone), and the intent ledger 91 of 180. Every view that
+reads a ledger without a root filter (proof history, burn-up, the session join's unjoined share, cost per
+proven row, the verify-gate figure, the research report) counts them, which distorts proof history and
+economics.
+
+**Rules.** (1) Readers ask one function for the registered service roots (PE-23) and read only rows under
+them, naming how many rows they ignored (PE-24, PE-25); the file itself is never rewritten by a reader.
+(2) A documented `FATHOM_HOME` relocates the whole `~/.fathom`, and `--ledger <path>` names one ledger file;
+the per-file variables already in the code (`FATHOM_VERIFY_LEDGER`, `FATHOM_INTENT_LEDGER`,
+`FATHOM_SESSION_LEDGER`, `FATHOM_HOOKS_LOG`) keep winning over it; test and scratch runs use them (PE-26 to
+PE-28). (3) `fathom gc` gains the class `ledger-unregistered`: the dry run counts rows and bytes per
+unregistered root, and `--apply`, run by the owner, archives them to a gzipped file beside the ledger. Rows
+are moved, never deleted, and neither the daemon's daily pass nor doctor applies the class (PE-29). This
+differs from the existing `ledgers` class, which keeps a ledger whole because its readers read only the live
+file: unregistered-root rows are not history of registered work.
+
+**Why not delete or rewrite.** The ledgers are evidence (ADR-047 decision 13: evidence is archived, never
+deleted), and a root that is unregistered today may be registered tomorrow; the filter is on read, the
+archive is reversible.

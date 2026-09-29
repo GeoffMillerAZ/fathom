@@ -23,6 +23,14 @@ Contract-bearing plan for ADR-018 / docs/design/sdd-reconciler.md. Gated by
 - [x] schema/plan #Task gains state/disposition/reason/trigger; #Expect gains package/skip_reason; valid/invalid testdata updated {id: S0-1, symbol: TestPlanSchema_Negatives, package: internal/verify, skip_test: true, skip: "the schema test IS the Test* anchor; nothing reaches a test"}
 - [x] Grammar reference updated (docs/plans/README.md v2 keys); CHANGELOG entry; design doc + ADR-018 committed {id: S0-2, symbol: LintPlan, skip_test: true, skip: "docs deliverable anchored to the feature symbol per plans-README rule"}
 
+## Grammar honesty defects (found 2026-09-29, fixed with the wiring wave)
+
+Two defects that let a plan read healthier or emptier than it is. Neither is in force as a fix yet.
+
+- [ ] A wrapped row keeps its contract: `ParseMarkdownPlan` reads the annotation block (the braces) on a continuation line of a checkbox row, or `LintPlan` refuses a wrapped annotation by name and never lets it downgrade silently to a positional `md-NNN` row with no contract; the README's "Annotation placement" rule is updated to match {id: G2-5, symbol: ParseMarkdownPlan, package: internal/verify, reachable_from: TestParseMarkdownPlanWrappedAnnotationKeepsContract}
+- [ ] Deferred is not done: `depSatisfied` and the cross-plan branch of `rowEligibility` keep a row blocked while a needs target is a deferred `[-]` row, name a dependent of a refused row as needing re-planning (a superseded disposition would behave the same, should the grammar gain one), and never treat either as silently eligible; the README's `needs` row says so {id: G2-6, symbol: depSatisfied, package: cmd/fathom, reachable_from: TestDepSatisfiedDeferredBlocksAndRefusedNamesReplan}
+- [ ] (op) G2-7: the plans hit by G2-5, feature-map FM-1..FM-9 here and DP-1..DP-11 in agentic-kit, are re-verified after the fix and their moves from no-contract to proven, disproven or still unproven are counted in the reading {id: G2-7, oracle: lexical, path: docs/bench/readings/plan-grammar/wrapped-rows.md, pattern: "^G2-7 reading:", needs: "G2-5"}
+
 ## Deferred (explicitly not v0 — see design §5/§6)
 
 - [-] `cmd` oracle (`runtime_pass`) {id: D0-1, disposition: deferred, reason: "O6 just landed; measure skip-share first", trigger: "skip_test share still >30% after 4 weeks of O6"}

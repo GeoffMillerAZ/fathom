@@ -1900,6 +1900,31 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Status:** fixed.
 - **Impact:** was a drift risk, not a wrong number today (all three sites happened to agree on 0.001/0.005). Had a maintainer later repriced `defaultCompileModel` by editing only `modelprice.go`'s constants — reasonably trusting the doc comment — a dry-run estimate would have silently diverged from what an actual `--dry-run=false` compile or an MCP `compile_layer` call of the identical model actually billed, with no test to catch it.
 
+### O120 - The rule-outcome events violated and complied do not measure compliance for a prose rule: violated means the same claim topped the file's served set on the file's previous resolved turn, and complied means the top claim changed, so every governance-learning reading built on them measures scope persistence and churn
+
+- **Symptom:** The rule-outcome events violated and complied do not measure compliance for a prose rule: violated means the same claim topped the file's served set on the file's previous resolved turn, and complied means the top claim changed, so every governance-learning reading built on them measures scope persistence and churn
+- **Evidence:**
+  - **Tool:** cmd/fathom/ruleoutcome_track.go (SR-61, GL-10)
+  - **Expected:** violated fires when the edit fails a rule's checkable condition and complied when it meets it, so GL-10's per-rule counts and GL-11's classes (ignored, effective) say something about compliance
+  - **Actual:** Rules are served by glob scope, so a prose rule with no checkable condition reads violated on every repeat edit of the same file whether or not the edit complied, and complied fires on a recompile or scope churn; found by code reading during the 2026-09-29 judgment research (ADR-056), not yet measured on a ledger
+  - **Repro:** Read trackRuleOutcomeAt in cmd/fathom/ruleoutcome_track.go and TestObligationsFor_ZeroOutputOnClean in internal/semantic/serve_test.go; edit the same file twice under a served prose rule and read the recorded events. Fix planned as JF-1 in docs/plans/judgment-foundations.md: rename to still_served and top_changed, keep violated only for a checkable condition
+- **Root cause:** the tracker keys both events on claim-id equality between consecutive resolved turns of one file, not on a check of the rule's own condition; rules are served by glob scope, so equality measures scope persistence and churn. No rule with a checkable condition exists to give `violated` a real meaning.
+- **Fix:** planned, not yet landed: `docs/plans/judgment-foundations.md` JF-1 renames the events `still_served` and `top_changed` and keeps `violated` only for a rule with a checkable condition, JF-2 makes every reader read the new names and map old ledger rows, and the GL-10 readings carry a correction note (`docs/design/governance-learning.md` section 5, done 2026-09-29). ADR-056 decision 8.
+- **Status:** open
+- **Impact:** every governance-learning reading built on these events (GL-10 counts, GL-11's ignored and effective classes) is mislabeled until the rename lands; whether GL-13 has already promoted or retired a rule from them was not checked. Not measured on a ledger: `~/.fathom/rule-outcomes.jsonl` did not exist on the reference machine at the time of the reading.
+
+### O121 - Scratch-clone runs of fathom verify and fathom intent audit append rows keyed by scratch paths to the user-level verify and intent ledgers, so 13,514 of 19,639 verify-ledger rows (and 91 of 180 intent-ledger rows) on 2026-09-28 describe throwaway clones and distort proof history and economics
+
+- **Symptom:** Scratch-clone runs of fathom verify and fathom intent audit append rows keyed by scratch paths to the user-level verify and intent ledgers, so 13,514 of 19,639 verify-ledger rows (and 91 of 180 intent-ledger rows) on 2026-09-28 describe throwaway clones and distort proof history and economics
+- **Evidence:**
+  - **Tool:** cmd/fathom/verifyledger.go (verifyLedgerPath, appendVerifyLedgerFrom), internal/intent/ledger.go (LedgerPath, AppendLedger), cmd/fathom/gc.go (the `ledgers` class only reports)
+  - **Expected:** the ledgers hold the fleet's registered repositories only, so burn-up, proof regressions, cost per proven row, the session join's unjoined share and the verify-gate figure describe real work
+  - **Actual:** every run appends a row under its own working root, registered or not; on the reference machine 7,729 verify rows came from one scratch clone and 241 distinct roots appear in the verify ledger; found by the 2026-09-29 judgment research agent and confirmed by counting `repo_root` values under `/private/tmp` in `~/.fathom/verify-ledger.jsonl` and `intent-ledger.jsonl` (read only)
+  - **Repro:** run `fathom verify --plan <plan>` or `fathom intent audit` inside a clone outside the registered service roots without setting FATHOM_VERIFY_LEDGER or FATHOM_INTENT_LEDGER, then count rows whose repo_root is the clone. The per-file variables already exist but are undocumented in docs/usage.md and nothing sets them for a scratch run
+  - **Fix:** planned, not yet landed: `docs/plans/progress-and-economics.md` PE-23 to PE-25 (readers filter to registered service roots and name the ignored count), PE-26 to PE-28 (a documented FATHOM_HOME and --ledger override that test and scratch runs use), PE-29 (a `fathom gc` class `ledger-unregistered` that archives, never deletes, on the owner's command) and the PE-M5 reading; design `docs/design/progress-and-economics.md` section 11
+- **Status:** open
+- **Impact:** every reading that joins or counts ledger rows without a root filter is inflated or skewed until PE-24 lands, among them proof history and burn-up (PE-2, PE-6), cost per proven row (PE-16), the unjoined share of the session join (PE-15), the verify-gate figure, and the corpus that decision E4 (WS-12) would fit on. Not measured: how far each figure moves once the scratch rows are excluded, which PE-M5 reads.
+
 ### O122 — the Bash-write hook treats a quoted `>` (echo "a -> b") or a quoted writer name as a file write and injects six unrelated root rules (__bash_write__.go nearest guide)
 
 - **Symptom:** the Bash-write hook treats a quoted `>` (echo "a -> b") or a quoted writer name as a file write and injects six unrelated root rules (__bash_write__.go nearest guide)

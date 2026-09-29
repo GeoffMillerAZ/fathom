@@ -180,6 +180,13 @@ and literals kept, so a pure rename leaves the hash unchanged.
 Everything is computed over base..head as a whole, so an edit in one commit and
 the code change in another are caught together.
 
+**Reach, stated exactly (2026-09-29, ADR-056).** This plane catches a guarded test that was deleted,
+skipped, had assertion calls removed, or had a named golden file changed. It does not catch an expected
+constant edited to match buggy output: that reads as `edited`, which is informational and never a loss on
+its own. A claim that conservation "catches a fix that weakens the test" is true only for those four
+kinds; the level 10 test-fix bench (`docs/design/test-run-hook.md`) therefore names correctness by hidden
+tests as well as by conservation.
+
 ### 1.4 Self-declaration (I45)
 
 `verify.AnnotateSelfDeclared(current, atBase)` compares a plan at head with the
