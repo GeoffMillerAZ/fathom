@@ -488,6 +488,19 @@ must settle, and their sniffs:
 | `.pp` | Puppet, Pascal | `\b(class\|define\|node)\s+[\w:]+\s*[({]` → puppet (not queued); `\bprogram\b\|\bunit\b` → pascal |
 | `.inc`, `.cls`, `.t` | several | not claimed by extension; basename/glob only |
 
+github-linguist (MIT) is where the drafts of these rules come from, not where they are
+decided. `indexbench lang-linguist -linguist <checkout> -rev <40-hex>` imports its
+extensions, filenames and interpreters for the queue's items, and its heuristic rules for
+the extensions they claim, as data at a pinned revision
+(`docs/plans/language-breadth.linguist.json`, LB-F48, LB-F49). A tooling item takes
+filenames only, never a language's extension list, and a linguist language two items share
+(Starlark: bazel and tiltfile; Ruby, Groovy, HCL) carries an explicit filenames allowlist.
+Every heuristic pattern is compiled as `ClassifyDialect` compiles a sniff, `(?m)` before the
+pattern under Go's RE2; one that does not compile is dropped and counted, never approximated.
+Linguist's rules are the candidate rules for the sniff table above: a worker compares them
+with the table, writes the sniff, and proves it on the fixtures. Nothing in the data
+changes what the connector classifies.
+
 The count of files classified by sniff, and of ambiguous files left unclassified, is
 reported per ingest and in `list_services` (disclosed, never silent — ADR-021 §1).
 
@@ -856,7 +869,11 @@ worktree and your scratch directory.
    kinds from the language's real vocabulary, `required_kinds` from your entry's
    `required_kinds` (or, if absent, every definition kind the language has), `oracle_kinds`
    for the oracle(s) in your entry, strategies from §6 (`imports.strategy` only when the
-   target is L3 or L4).
+   target is L3 or L4). Start the `match` block from
+   `go run ./cmd/indexbench lang-linguist -match <id>` (linguist's extensions, filenames as
+   basenames, interpreters as shebangs, and a sniff for an extension another queue item or
+   dialect claims); it warns about each claimed extension, and the sniff and its priority
+   stay yours to settle (§5).
 10. Write 3–6 fixtures in `testdata/`, each ≤ 200 lines, covering every required kind,
     nesting (a method in a class in a namespace), a callable with a multi-line signature,
     calls (plain, method, qualified), imports (when L3), and one syntax error the parser must
