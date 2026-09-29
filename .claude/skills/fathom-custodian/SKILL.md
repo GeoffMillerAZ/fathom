@@ -66,7 +66,7 @@ wholesale; `off: true` disables an inherited concern (still shown).
 
 **Packs.** Fathom ships curated concern sets as data — `packs:
 ["claude-code", "codex", "lefthook", "taskfile"]` in either file enables
-them (stanza present in both agent files, AGENTS.md within Codex's 32 KiB
+them (the stanza present in AGENTS.md and Claude Code reaching it, AGENTS.md within Codex's 32 KiB
 read budget, the pre-push hook runs `fathom verify` and the gate, every
 command the docs / hooks / Taskfile invoke exists). A same-id entry in your
 file replaces a pack's wholesale; `<id>: {off: true}` disables it, named.
@@ -110,6 +110,11 @@ GitLab, CircleCI, Azure, Bitbucket, Buildkite).
 - One named file: `max_lines` (router thinness), `max_bytes` (Codex stops
   reading AGENTS.md at `project_doc_max_bytes`), `stanza_present` (the
   fathom begin marker, then the end marker).
+- `agents_md_reaches_claude` — Claude Code will load AGENTS.md: no root
+  `CLAUDE.md` / `.claude/CLAUDE.md` / `CLAUDE.local.md` (2.1.277 and later
+  read AGENTS.md natively), or the first present one imports `@AGENTS.md`;
+  `allow_import: false` refuses every CLAUDE file outside `testdata/`
+  (ADR-059: AGENTS.md is the one instruction file).
 - `adr_references_resolve` — every `ADR-NNN` a design doc, intent doc,
   changelog or plan cites resolves to a record; `wiring_current` — the
   hooks, stanza regions, MCP entries and owned skills fathom trusts match

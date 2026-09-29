@@ -341,6 +341,13 @@ func parseCheck(id string, v cue.Value) (Check, []error) {
 				continue
 			}
 			ck.Days = int(n)
+		case "allow_import":
+			b, err := sub.Value().Bool()
+			if err != nil {
+				errs = append(errs, fmt.Errorf("concern %q: check.allow_import must be a boolean: %w", id, err))
+				continue
+			}
+			ck.AllowImport = &b
 		default:
 			errs = append(errs, fmt.Errorf("concern %q: check has unknown field %q", id, name))
 		}
@@ -415,6 +422,8 @@ func validateCheck(id string, ck *Check) []error {
 		// record set is whichever home the repo actually has
 	case KindWiringCurrent:
 		// no fields: the evaluator is injected by cmd/fathom (WithWiringDrift)
+	case KindAgentsMDReachesClaude:
+		// allow_import is optional (default: an importing CLAUDE file holds)
 	case KindHandoffCitesInstruments:
 		if ck.Days == 0 {
 			ck.Days = DefaultHandoffDays
@@ -453,13 +462,14 @@ func validateCheck(id string, ck *Check) []error {
 // set on any other kind is refused at load. `where` is bounded separately
 // (validateCheck, against the corpus registry).
 var checkFieldKinds = map[string][]CheckKind{
-	"pattern": {KindForbiddenPattern, KindRequiredPattern},
-	"under":   {KindRequiredPattern},
-	"command": {KindCommandDocumentedAndExists},
-	"file":    {KindMaxLines, KindMaxBytes, KindStanzaPresent},
-	"lines":   {KindMaxLines},
-	"bytes":   {KindMaxBytes},
-	"days":    {KindHandoffCitesInstruments},
+	"pattern":      {KindForbiddenPattern, KindRequiredPattern},
+	"under":        {KindRequiredPattern},
+	"command":      {KindCommandDocumentedAndExists},
+	"file":         {KindMaxLines, KindMaxBytes, KindStanzaPresent},
+	"lines":        {KindMaxLines},
+	"bytes":        {KindMaxBytes},
+	"days":         {KindHandoffCitesInstruments},
+	"allow_import": {KindAgentsMDReachesClaude},
 }
 
 func isKnownKind(k CheckKind) bool { return containsKind(KnownKinds, k) }

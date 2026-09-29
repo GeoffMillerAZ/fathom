@@ -118,6 +118,8 @@ func checkConcern(root string, cache *corpusCache, c Concern, env auditEnv) Find
 		return checkADRReferencesResolve(root, c)
 	case KindWiringCurrent:
 		return checkWiringCurrent(root, c, env)
+	case KindAgentsMDReachesClaude:
+		return checkAgentsMDReachesClaude(root, c)
 	default:
 		// The loader refuses unknown kinds; reaching here means a caller
 		// constructed a Check by hand. Same honesty either way.

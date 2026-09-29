@@ -1369,11 +1369,12 @@ func checkHooksFiring(hc *http.Client, baseURL string, daemonUp bool, root, harn
 	}
 }
 
-// ─── 7. CLAUDE.md / AGENTS.md stanza ────────────────────────────────────────
+// ─── 7. the AGENTS.md stanza ────────────────────────────────────────────────
 
-// checkStanzaPresent renders the claude-code and codex packs' stanza
-// entries (CC-13, doctor_packrows.go) — the three-case detection lives in
-// the concern engine (custodian's stanza_present kind).
+// checkStanzaPresent renders the codex and claude-code packs' entries
+// (CC-13, doctor_packrows.go) plus Claude Code's load path
+// (doctor_claudeload.go, ADR-059) — the three-case detection lives in the
+// concern engine (custodian's stanza_present kind).
 
 // ─── 8. skills installed ────────────────────────────────────────────────────
 
@@ -1482,9 +1483,10 @@ func checkConfigValid(root string) doctorCheck {
 
 // ─── 10. obligations served ─────────────────────────────────────────────────
 
-// doctorObligationsProbeFile is the CLAUDE.md fallback probe: `fathom init`
-// writes it into every wired repo, so it is meaningful without
-// repo-specific configuration. O23 (docs/dogfood-observations.md): a
+// doctorObligationsProbeFile is the AGENTS.md fallback probe: `fathom init`
+// writes it into every wired repo (ADR-059: the stanza's one file), so it
+// is meaningful without repo-specific configuration; CLAUDE.md follows it
+// for a repository still on the older layout. O23 (docs/dogfood-observations.md): a
 // service whose compiled obligations are code-scoped (e.g. "**/*.go") can
 // serve real rules while CLAUDE.md alone answers zero — live evidence: the
 // same daemon served 6 rules on cmd/conjure/main.go while probing CLAUDE.md
@@ -1492,14 +1494,14 @@ func checkConfigValid(root string) doctorCheck {
 // source file (obligationsProbeCandidates) ahead of this fallback, so a
 // code-scoped-only install reports the real PASS it deserves instead of a
 // false FAIL.
-const doctorObligationsProbeFile = "CLAUDE.md"
+const doctorObligationsProbeFile = "AGENTS.md"
 
 // obligationsProbeCandidates returns the ordered, deduplicated list of
 // repo-relative files checkObligationsServed probes obligations with: a
 // real indexed source file in the service's most common extension first
 // (dominantLanguageProbeFile — "" when undeterminable, e.g. list_sources
-// unavailable or the service is empty), then the CLAUDE.md/AGENTS.md
-// fallbacks every `fathom init`-wired repo carries. Each candidate is tried
+// unavailable or the service is empty), then the AGENTS.md/CLAUDE.md
+// fallbacks a `fathom init`-wired repo carries (AGENTS.md first, ADR-059). Each candidate is tried
 // in turn (checkObligationsServed) and the first that actually serves rules
 // answers the check — never just the first one, which is what let a
 // code-scoped-only install FAIL under CLAUDE.md alone (O23).
@@ -1514,7 +1516,7 @@ func obligationsProbeCandidates(hc *http.Client, baseURL, svc string) []string {
 	}
 	add(dominantLanguageProbeFile(hc, baseURL, svc))
 	add(doctorObligationsProbeFile)
-	add("AGENTS.md")
+	add("CLAUDE.md")
 	return out
 }
 
