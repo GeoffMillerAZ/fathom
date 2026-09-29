@@ -30,7 +30,7 @@ const oracleTimeout = 20 * time.Minute
 
 // fileResolveLang names the dialects today's file resolver serves
 // (fusion.ResolveFileEdges), so file-edge metrics are measured for them.
-var fileResolveLang = map[string]string{"typescript": "javascript", "javascript": "javascript", "python": "python", "cpp": "cpp", "php": "php", "rust": "rust", "ruby": "ruby"}
+var fileResolveLang = map[string]string{"typescript": "javascript", "javascript": "javascript", "python": "python", "cpp": "cpp", "php": "php", "rust": "rust", "ruby": "ruby", "dart": "dart"}
 
 // cmdLangOracle is `indexbench lang-oracle` (LB-F23, design §10): one
 // subject's measurement of one dialect, merged into the dialect's reading.
@@ -453,7 +453,11 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 			return res, err
 		}
 		if n := sr.Counts[langbench.CntScipCallsUnwritten]; n > 0 {
-			res.notes = append(res.notes, fmt.Sprintf("%s: %d callable references have no call written at their range (an operator rust-analyzer resolves to its trait method: ?, ==, !x, *x, a[i], a + b) and are left out of the call truth (L2 is call sites)", name, n))
+			why := "an operator rust-analyzer resolves to its trait method: ?, ==, !x, *x, a[i], a + b"
+			if spec.Manifest.ID == "dart" {
+				why = "a tear-off such as `onError: c.addError`, an operator, the super(...) of an initializer"
+			}
+			res.notes = append(res.notes, fmt.Sprintf("%s: %d callable references have no call written at their range (%s) and are left out of the call truth (L2 is call sites)", name, n, why))
 		}
 		if sr.EnclosingFallback > 0 {
 			res.notes = append(res.notes, fmt.Sprintf("%s: %d SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)", name, sr.EnclosingFallback))

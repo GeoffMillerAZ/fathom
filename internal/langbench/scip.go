@@ -40,6 +40,9 @@ func scipBareName(sym string) (string, bool) {
 		return "", false
 	}
 	callable := strings.HasSuffix(sym, ").")
+	if isSCIPDart(sym) && strings.HasSuffix(sym, "/") {
+		return "", false // scip-dart's file symbol (`lib/`a.dart`/`) is no definition
+	}
 	s := sym
 	// Drop the trailing descriptor suffix: "()." method, "." term, "#"
 	// type, "/" namespace, ":" meta, "!" macro, "[x]" type parameter,
@@ -54,13 +57,81 @@ func scipBareName(sym string) (string, bool) {
 	}
 	if strings.HasSuffix(s, "`") {
 		if i := strings.LastIndex(s[:len(s)-1], "`"); i >= 0 {
-			return leafName(s[i+1 : len(s)-1]), callable
+			name := leafName(s[i+1 : len(s)-1])
+			if isSCIPDart(sym) {
+				name = dartName(name, s[:i])
+			}
+			return name, callable
 		}
 	}
 	// "]" ends a descriptor too: rust-analyzer writes an impl block's members
 	// as `impl#[Type]name().`, where `[Type]` is a descriptor of its own.
 	i := strings.LastIndexAny(s, "/#.:] ")
 	return leafName(s[i+1:]), callable
+}
+
+// isSCIPDart reports whether sym is one scip-dart wrote.
+func isSCIPDart(sym string) bool { return strings.HasPrefix(sym, "scip-dart ") }
+
+// dartName is scip-dart's descriptor leaf in the name fathom's dialect gives
+// the same definition: an unnamed constructor (`Foo#`<constructor>`().`) is
+// its class, Foo, which is also how Foo(...) is written as a call, and an
+// accessor (`Foo#`<get>x`.`, `<set>x`) is x. owner is the descriptor text
+// before the leaf ("…/Foo#").
+func dartName(leaf, owner string) string {
+	switch {
+	case leaf == "<constructor>":
+		o := strings.TrimSuffix(owner, "#")
+		return o[strings.LastIndexAny(o, "/#.:] `")+1:]
+	case strings.HasPrefix(leaf, "<get>"), strings.HasPrefix(leaf, "<set>"):
+		return leaf[len("<get>"):]
+	}
+	return leaf
+}
+
+// dartCallAt reports whether the source at range r (0-based line, start and end
+// columns) is the callee's own name written as a call: followed, on its line, by
+// `(` or by type arguments and then `(`.
+func dartCallAt(lines [][]byte, r [4]int32, callee string) bool {
+	if r[0] != r[2] || int(r[0]) >= len(lines) || int(r[3]) > len(lines[r[0]]) || r[1] > r[3] {
+		return false
+	}
+	line := lines[r[0]]
+	if string(line[r[1]:r[3]]) != callee {
+		return false
+	}
+	rest := bytes.TrimLeft(line[r[3]:], " \t")
+	if len(rest) > 0 && rest[0] == '<' {
+		depth := 0
+		for i, c := range rest {
+			switch c {
+			case '<':
+				depth++
+			case '>':
+				depth--
+				if depth == 0 {
+					rest = bytes.TrimLeft(rest[i+1:], " \t")
+					return len(rest) > 0 && rest[0] == '('
+				}
+			}
+		}
+		return false
+	}
+	return len(rest) > 0 && rest[0] == '('
+}
+
+// dartPrivateKind reports whether a scip-dart local symbol of this kind is a
+// private member (one written with a leading `_`), not a variable or a
+// parameter of a function.
+func dartPrivateKind(k scippb.SymbolInformation_Kind) bool {
+	switch k {
+	case scippb.SymbolInformation_Method, scippb.SymbolInformation_Function, scippb.SymbolInformation_Constructor,
+		scippb.SymbolInformation_Field, scippb.SymbolInformation_Property, scippb.SymbolInformation_Variable,
+		scippb.SymbolInformation_Class, scippb.SymbolInformation_Mixin, scippb.SymbolInformation_Enum,
+		scippb.SymbolInformation_TypeAlias, scippb.SymbolInformation_Extension:
+		return true
+	}
+	return false
 }
 
 // leafName is a SCIP descriptor's own name in the form BareName gives fathom's:
@@ -132,12 +203,26 @@ type SCIPOptions struct {
 	// call is written there, so no extractor of call sites can find one. The
 	// occurrences left out are counted (CntScipCallsUnwritten) and disclosed.
 	WrittenCallsOnly bool
+	// PrivateMembers: a `local N` definition whose SymbolInformation.kind is a
+	// callable, field, accessor or variable is a definition too, named by the
+	// identifier written at its occurrence (needs Source). scip-dart writes every
+	// private member (a leading `_`) as a local symbol; without this, a call inside
+	// a private method is attributed to the class around it and a private
+	// definition is left out of def_mapping. It also holds a call to the
+	// Dart standard: a callable reference is a call site only when its name is
+	// written followed by `(` (or type arguments and `(`); a tear-off, an operator
+	// and the `super(...)` of an initializer are not written calls, and are counted
+	// (CntScipCallsUnwritten) and disclosed.
+	PrivateMembers bool
 }
 
 // SCIPOptionsFor is the option set for a dialect's SCIP producer.
 func SCIPOptionsFor(dialect string, src func(path string) []byte) SCIPOptions {
 	if dialect == "rust" {
 		return SCIPOptions{Source: src, MacroCalls: true, WrittenCallsOnly: src != nil}
+	}
+	if dialect == "dart" {
+		return SCIPOptions{Source: src, PrivateMembers: src != nil}
 	}
 	return SCIPOptions{}
 }
@@ -159,17 +244,39 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 		k := fk{n.FilePath, BareName(n.Name)}
 		fathomAt[k] = append(fathomAt[k], [2]int{n.Line, n.EndLine})
 	}
-	definedIn := map[string]string{} // symbol -> defining document
+	docKinds := map[string]map[string]scippb.SymbolInformation_Kind{} // scip-dart: each document's symbol kinds
+	definedIn := map[string]string{}                                  // symbol -> defining document
 	defsByDoc := map[string][]*scipDef{}
 	docs := map[string]bool{}
 	for _, d := range idx.GetDocuments() {
 		docs[d.GetRelativePath()] = true
+		// scip-dart defines an `import ... as p` prefix as a Namespace: no
+		// extractor has a symbol for it (nor for a file, scipBareName).
+		var kinds map[string]scippb.SymbolInformation_Kind
+		var lines [][]byte
+		if res.Tool == "scip-dart" {
+			kinds = map[string]scippb.SymbolInformation_Kind{}
+			for _, si := range d.GetSymbols() {
+				kinds[si.GetSymbol()] = si.GetKind()
+			}
+			docKinds[d.GetRelativePath()] = kinds
+			if opts.PrivateMembers && opts.Source != nil {
+				lines = bytes.Split(opts.Source(d.GetRelativePath()), []byte("\n"))
+			}
+		}
 		for _, o := range d.GetOccurrences() {
 			if o.GetSymbolRoles()&int32(scippb.SymbolRole_Definition) == 0 {
 				continue
 			}
+			if kinds[o.GetSymbol()] == scippb.SymbolInformation_Namespace {
+				continue
+			}
 			name, _ := scipBareName(o.GetSymbol())
 			r, ok := rangeOf(o.GetRange())
+			if name == "" && ok && lines != nil && strings.HasPrefix(o.GetSymbol(), "local ") && dartPrivateKind(kinds[o.GetSymbol()]) &&
+				r[0] == r[2] && int(r[0]) < len(lines) && int(r[3]) <= len(lines[r[0]]) {
+				name = string(lines[r[0]][r[1]:r[3]])
+			}
 			if name == "" || !ok {
 				continue
 			}
@@ -204,7 +311,7 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 	for _, d := range idx.GetDocuments() {
 		doc := d.GetRelativePath()
 		var srcLines [][]byte
-		if opts.WrittenCallsOnly && opts.Source != nil {
+		if (opts.WrittenCallsOnly || opts.PrivateMembers) && opts.Source != nil {
 			srcLines = bytes.Split(opts.Source(doc), []byte("\n"))
 		}
 		for _, o := range d.GetOccurrences() {
@@ -222,12 +329,31 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 			if opts.MacroCalls && strings.HasSuffix(o.GetSymbol(), "!") {
 				callable = true
 			}
+			if opts.PrivateMembers && srcLines != nil && !callable && strings.HasPrefix(o.GetSymbol(), "local ") {
+				// A private method, function or constructor is a local symbol: it
+				// is callable by its kind and named by what is written.
+				switch docKinds[doc][o.GetSymbol()] {
+				case scippb.SymbolInformation_Method, scippb.SymbolInformation_Function, scippb.SymbolInformation_Constructor:
+					if r[0] == r[2] && int(r[0]) < len(srcLines) && int(r[3]) <= len(srcLines[r[0]]) {
+						callee, callable = string(srcLines[r[0]][r[1]:r[3]]), true
+					}
+				}
+			}
 			if !callable || callee == "" {
 				continue
 			}
-			if srcLines != nil && !writtenAt(srcLines, r, callee) {
-				res.Counts[CntScipCallsUnwritten]++
-				continue
+			if srcLines != nil {
+				written := writtenAt(srcLines, r, callee)
+				if opts.PrivateMembers {
+					// Dart: a call is the name followed by its arguments; the
+					// producer also references a tear-off (`onError: c.addError`), an
+					// operator and the `super`/`this` of an initializer.
+					written = dartCallAt(srcLines, r, callee)
+				}
+				if !written {
+					res.Counts[CntScipCallsUnwritten]++
+					continue
+				}
 			}
 			var inner *scipDef
 			for _, def := range defsByDoc[doc] {
@@ -422,6 +548,11 @@ func SCIPDefs(raw []byte, src func(path string) []byte) (defs []OracleDef, tool,
 	// its definitions show two ways no source-level extractor can match; both
 	// are read from the subject's own source (see rustDeclSite, fileModules).
 	isRA := tool == "rust-analyzer"
+	// scip-dart's SymbolInformation.kind is authoritative (a `get`, `const` or
+	// `operator` written before a name is not a different kind), its private
+	// members are local symbols, and a constructor or accessor is named as the
+	// dialect names it (dartName).
+	isDart := tool == "scip-dart"
 	docLines := map[string][][]byte{}
 	linesOf := func(path string) [][]byte {
 		if src == nil {
@@ -486,7 +617,17 @@ func SCIPDefs(raw []byte, src func(path string) []byte) (defs []OracleDef, tool,
 			if strings.HasPrefix(sym, "local ") {
 				switch docKind {
 				case "", "var", "let", "const", "parameter", "property", "field":
-					continue
+					// scip-dart writes every private member (a leading `_`) as a
+					// local symbol whose kind still says what it is: a private field,
+					// accessor or variable is a definition, a local variable (kind
+					// unspecified) or a parameter is not.
+					if !(isDart && (docKind == "property" || docKind == "field")) {
+						continue
+					}
+				case "namespace", "typeparameter":
+					if isDart {
+						continue
+					}
 				}
 				if t := lineText(int(r[0])); r[0] == r[2] && int(r[1]) < int(r[3]) && int(r[3]) <= len(t) {
 					name, kind = t[r[1]:r[3]], "function"
@@ -500,7 +641,7 @@ func SCIPDefs(raw []byte, src func(path string) []byte) (defs []OracleDef, tool,
 			if docKind != "" {
 				kind = docKind
 			}
-			if src != nil {
+			if src != nil && !isDart {
 				if t := lineText(int(r[0])); int(r[1]) <= len(t) {
 					if k := keywordBefore(t[:r[1]]); k != "" {
 						kind = k

@@ -387,3 +387,268 @@ func TestSCIPDefsRustMacroAndFileModules(t *testing.T) {
 		t.Errorf("ScoreL1 counts %v excluded %v, want 3 matched of 3 oracle defs and one macro-generated exclusion", l1.Counts, l1.Excluded)
 	}
 }
+
+// TestScipBareNameDart (LB-Q-dart): scip-dart writes an unnamed constructor as
+// `Foo#`<constructor>`().` and an accessor as `Foo#`<get>x`.`; fathom names the
+// first after its class (`Foo.Foo`, called as Foo(...)) and the second by the
+// accessor's own name. A file is a `/` descriptor and no definition.
+func TestScipBareNameDart(t *testing.T) {
+	for in, want := range map[string]string{
+		"scip-dart pub app . lib/`m.dart`/Foo#`<constructor>`().": "Foo",
+		"scip-dart pub app . lib/`m.dart`/Foo#named().":           "named",
+		"scip-dart pub app . lib/`m.dart`/Foo#`<get>label`.":      "label",
+		"scip-dart pub app . lib/`m.dart`/Foo#`<set>label`.":      "label",
+		"scip-dart pub app . lib/`m.dart`/Foo#+().":               "+",
+		"scip-dart pub app . lib/`m.dart`/main().":                "main",
+		"scip-dart pub app . lib/`m.dart`/Foo#name.":              "name",
+		"scip-dart pub app . lib/`m.dart`/":                       "",
+		"local 4":                                                 "",
+		// another producer's spellings are untouched
+		"scip-typescript npm p 1 a/A#`<constructor>`().": "<constructor>",
+	} {
+		if got, _ := scipBareName(in); got != want {
+			t.Errorf("scipBareName(%q) = %q, want %q", in, got, want)
+		}
+	}
+	if _, callable := scipBareName("scip-dart pub app . lib/`m.dart`/Foo#`<constructor>`()."); !callable {
+		t.Error("a constructor reference is a call")
+	}
+	if _, callable := scipBareName("scip-dart pub app . lib/`m.dart`/Foo#`<get>label`."); callable {
+		t.Error("an accessor reference is not a call")
+	}
+}
+
+func dartFixtureIndex() *scippb.Index {
+	const pre = "scip-dart pub app . lib/`m.dart`/"
+	def := func(sym string, enc []int32, rng ...int32) *scippb.Occurrence {
+		return &scippb.Occurrence{Symbol: sym, Range: rng, SymbolRoles: int32(scippb.SymbolRole_Definition), EnclosingRange: enc}
+	}
+	ref := func(sym string, rng ...int32) *scippb.Occurrence {
+		return &scippb.Occurrence{Symbol: sym, Range: rng}
+	}
+	info := func(sym string, k scippb.SymbolInformation_Kind) *scippb.SymbolInformation {
+		return &scippb.SymbolInformation{Symbol: sym, Kind: k}
+	}
+	return &scippb.Index{Metadata: &scippb.Metadata{ToolInfo: &scippb.ToolInfo{Name: "scip-dart", Version: "1.7.0"}},
+		Documents: []*scippb.Document{{RelativePath: "lib/m.dart",
+			Occurrences: []*scippb.Occurrence{
+				def("scip-dart pub app . lib/`m.dart`/", nil, 0, 0, 0),
+				def(pre+"Foo#", []int32{0, 0, 9, 1}, 0, 6, 9),
+				def(pre+"Foo#`<constructor>`().", []int32{1, 2, 1, 10}, 1, 2, 5),
+				def(pre+"Foo#named().", []int32{2, 2, 2, 24}, 2, 6, 11),
+				def(pre+"Foo#`<get>label`.", []int32{3, 2, 3, 28}, 3, 13, 18),
+				def(pre+"Foo#max.", []int32{4, 2, 4, 30}, 4, 19, 22),
+				def("local 0", []int32{5, 2, 5, 16}, 5, 6, 12),
+				def("local 1", []int32{6, 2, 6, 19}, 6, 7, 14),
+				def("local 2", []int32{7, 4, 7, 12}, 7, 8, 9),
+				def(pre+"Foo#run().", []int32{8, 2, 8, 40}, 8, 7, 10),
+				def(pre+"p.", []int32{9, 0, 9, 20}, 9, 15, 16),
+				ref(pre+"Foo#`<constructor>`().", 8, 20, 23),
+				ref(pre+"Foo#named().", 8, 26, 31),
+				ref(pre+"Foo#`<get>label`.", 8, 34, 39),
+			},
+			Symbols: []*scippb.SymbolInformation{
+				info(pre+"Foo#", scippb.SymbolInformation_Class),
+				info(pre+"Foo#`<constructor>`().", scippb.SymbolInformation_Constructor),
+				info(pre+"Foo#named().", scippb.SymbolInformation_Constructor),
+				info(pre+"Foo#`<get>label`.", scippb.SymbolInformation_Property),
+				info(pre+"Foo#max.", scippb.SymbolInformation_Field),
+				info("local 0", scippb.SymbolInformation_Field),
+				info("local 1", scippb.SymbolInformation_Method),
+				info("local 2", scippb.SymbolInformation_UnspecifiedKind),
+				info(pre+"Foo#run().", scippb.SymbolInformation_Method),
+				info(pre+"p.", scippb.SymbolInformation_Namespace),
+			}}}}
+}
+
+const dartFixtureSource = "class Foo {\n" + // 0
+	"  Foo();\n" + // 1
+	"  Foo.named() : this();\n" + // 2
+	"  String get label => _n;\n" + // 3
+	"  static const int max = 3;\n" + // 4
+	"  int _count = 0;\n" + // 5
+	"  void _hidden() {}\n" + // 6
+	"    var x = 1;\n" + // 7
+	"  void run() { x = Foo(); Foo.named(); label; }\n" + // 8
+	"import 'a.dart' as p;\n" // 9
+
+// TestSCIPDefsDartShapes (LB-Q-dart): scip-dart reports a private member
+// (leading `_`) as a local symbol whose SymbolInformation still says what it
+// is, so a private field, method or variable is a definition read from its
+// occurrence; a local variable (kind unspecified) is not. Names follow fathom's:
+// a constructor is its class, an accessor its own name. The producer's kind is
+// authoritative: a `get`, `const` or `operator` written before the name does not
+// replace it.
+func TestSCIPDefsDartShapes(t *testing.T) {
+	raw, err := proto.Marshal(dartFixtureIndex())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defs, tool, _, err := SCIPDefs(raw, func(string) []byte { return []byte(dartFixtureSource) })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tool != "scip-dart" {
+		t.Errorf("tool %q", tool)
+	}
+	want := []OracleDef{
+		{Path: "lib/m.dart", Name: "Foo", Line: 1, End: 10, Kind: "class"},
+		{Path: "lib/m.dart", Name: "Foo", Line: 2, End: 2, Kind: "constructor", Scoped: true},
+		{Path: "lib/m.dart", Name: "named", Line: 3, End: 3, Kind: "constructor", Scoped: true},
+		{Path: "lib/m.dart", Name: "label", Line: 4, End: 4, Kind: "property", Scoped: true},
+		{Path: "lib/m.dart", Name: "max", Line: 5, End: 5, Kind: "field", Scoped: true},
+		{Path: "lib/m.dart", Name: "_count", Line: 6, End: 6, Kind: "field"},
+		{Path: "lib/m.dart", Name: "_hidden", Line: 7, End: 7, Kind: "method"},
+		{Path: "lib/m.dart", Name: "run", Line: 9, End: 9, Kind: "method", Scoped: true},
+		{Path: "lib/m.dart", Name: "p", Line: 10, End: 10, Kind: "namespace"},
+	}
+	if !reflect.DeepEqual(defs, want) {
+		t.Fatalf("SCIPDefs =\n%+v\nwant\n%+v", defs, want)
+	}
+}
+
+// TestScoreSCIPDart (LB-Q-dart): def_mapping counts the definitions fathom can
+// map — not a file, not an import prefix (`import ... as p` is a namespace) —
+// and a constructor call is a call to the class's name.
+func TestScoreSCIPDart(t *testing.T) {
+	raw, err := proto.Marshal(dartFixtureIndex())
+	if err != nil {
+		t.Fatal(err)
+	}
+	nodes := []core.SymbolNode{
+		{Service: "s", Name: "Foo", Kind: "DartClass", FilePath: "lib/m.dart", Line: 1, EndLine: 10},
+		{Service: "s", Name: "Foo.Foo", Kind: "DartConstructor", FilePath: "lib/m.dart", Line: 2, EndLine: 2},
+		{Service: "s", Name: "Foo.named", Kind: "DartConstructor", FilePath: "lib/m.dart", Line: 3, EndLine: 3},
+		{Service: "s", Name: "Foo.label", Kind: "DartAccessor", FilePath: "lib/m.dart", Line: 4, EndLine: 4},
+		{Service: "s", Name: "Foo.max", Kind: "DartField", FilePath: "lib/m.dart", Line: 5, EndLine: 5},
+		{Service: "s", Name: "Foo.run", Kind: "DartMethod", FilePath: "lib/m.dart", Line: 9, EndLine: 9, Calls: []string{"Foo", "named"}},
+	}
+	res, err := ScoreSCIP(raw, "s", nodes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Counts[CntScipDefs] != 6 || res.Counts[CntScipDefsMapped] != 6 {
+		t.Errorf("def mapping = %d of %d, want 6 of 6 (%v)", res.Counts[CntScipDefsMapped], res.Counts[CntScipDefs], res.Counts)
+	}
+	want := map[CallPair]bool{{"lib/m.dart", "run", "Foo"}: true, {"lib/m.dart", "run", "named"}: true}
+	if !reflect.DeepEqual(res.CallTruth, want) {
+		t.Errorf("call truth = %v, want %v", res.CallTruth, want)
+	}
+	if res.Counts[CntCallTruthFound] != 2 || res.Counts[CntCallFathomInTrue] != 2 {
+		t.Errorf("call counts %v", res.Counts)
+	}
+}
+
+// TestScoreSCIPDartPrivateMembers (LB-Q-dart): a call inside a private method
+// belongs to that method, not to the class around it — scip-dart writes the
+// private member as `local N`, so its definition is read from the source at its
+// occurrence, and counts in def_mapping like a public one.
+func TestScoreSCIPDartPrivateMembers(t *testing.T) {
+	const pre = "scip-dart pub app . lib/`m.dart`/"
+	src := "class Foo {\n" + // 0
+		"  void _helper() {\n" + // 1
+		"    Foo.named();\n" + // 2
+		"  }\n" + // 3
+		"}\n" // 4
+	def := func(sym string, enc []int32, rng ...int32) *scippb.Occurrence {
+		return &scippb.Occurrence{Symbol: sym, Range: rng, SymbolRoles: int32(scippb.SymbolRole_Definition), EnclosingRange: enc}
+	}
+	idx := &scippb.Index{Metadata: &scippb.Metadata{ToolInfo: &scippb.ToolInfo{Name: "scip-dart"}},
+		Documents: []*scippb.Document{{RelativePath: "lib/m.dart",
+			Occurrences: []*scippb.Occurrence{
+				def(pre+"Foo#", []int32{0, 0, 4, 1}, 0, 6, 9),
+				def("local 0", []int32{1, 2, 3, 3}, 1, 7, 14),
+				{Symbol: pre + "Foo#named().", Range: []int32{2, 8, 13}},
+			},
+			Symbols: []*scippb.SymbolInformation{
+				{Symbol: pre + "Foo#", Kind: scippb.SymbolInformation_Class},
+				{Symbol: "local 0", Kind: scippb.SymbolInformation_Method},
+			}}}}
+	raw, err := proto.Marshal(idx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	nodes := []core.SymbolNode{
+		{Service: "s", Name: "Foo", Kind: "DartClass", FilePath: "lib/m.dart", Line: 1, EndLine: 5},
+		{Service: "s", Name: "Foo._helper", Kind: "DartMethod", FilePath: "lib/m.dart", Line: 2, EndLine: 4, Calls: []string{"named"}},
+	}
+	plain, err := ScoreSCIP(raw, "s", nodes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !plain.CallTruth[CallPair{"lib/m.dart", "Foo", "named"}] || plain.Counts[CntScipDefs] != 1 {
+		t.Errorf("without the option the call belongs to the class: %v, defs %d", plain.CallTruth, plain.Counts[CntScipDefs])
+	}
+	res, err := ScoreSCIPWith(raw, "s", nodes, SCIPOptionsFor("dart", func(string) []byte { return []byte(src) }))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[CallPair]bool{{"lib/m.dart", "_helper", "named"}: true}
+	if !reflect.DeepEqual(res.CallTruth, want) {
+		t.Errorf("call truth = %v, want %v", res.CallTruth, want)
+	}
+	if res.Counts[CntScipDefs] != 2 || res.Counts[CntScipDefsMapped] != 2 {
+		t.Errorf("def mapping = %d of %d, want 2 of 2", res.Counts[CntScipDefsMapped], res.Counts[CntScipDefs])
+	}
+	if res.Counts[CntCallTruthFound] != 1 || res.Counts[CntCallFathomInTrue] != 1 {
+		t.Errorf("call counts %v", res.Counts)
+	}
+}
+
+// TestScoreSCIPDartWrittenCalls (LB-Q-dart): a callable reference is a call site
+// only where its name is written followed by arguments. A tear-off, the
+// `super(...)` of an initializer and an operator are references the producer
+// records but no one writes as a call; a call to a private method (a local
+// symbol) and a constructor call with type arguments are.
+func TestScoreSCIPDartWrittenCalls(t *testing.T) {
+	const pre = "scip-dart pub app . lib/`m.dart`/"
+	src := "class Foo {\n" + // 0
+		"  void _helper() {}\n" + // 1
+		"  void run() {\n" + // 2
+		"    _helper();\n" + // 3
+		"    Foo<int>(1);\n" + // 4
+		"    on(Foo.named);\n" + // 5
+		"    a + b;\n" + // 6
+		"    super();\n" + // 7
+		"  }\n" + // 8
+		"}\n" // 9
+	def := func(sym string, enc []int32, rng ...int32) *scippb.Occurrence {
+		return &scippb.Occurrence{Symbol: sym, Range: rng, SymbolRoles: int32(scippb.SymbolRole_Definition), EnclosingRange: enc}
+	}
+	ref := func(sym string, rng ...int32) *scippb.Occurrence { return &scippb.Occurrence{Symbol: sym, Range: rng} }
+	idx := &scippb.Index{Metadata: &scippb.Metadata{ToolInfo: &scippb.ToolInfo{Name: "scip-dart"}},
+		Documents: []*scippb.Document{{RelativePath: "lib/m.dart",
+			Occurrences: []*scippb.Occurrence{
+				def(pre+"Foo#", []int32{0, 0, 9, 1}, 0, 6, 9),
+				def("local 0", []int32{1, 2, 1, 19}, 1, 7, 14),
+				def(pre+"Foo#run().", []int32{2, 2, 8, 3}, 2, 7, 10),
+				ref("local 0", 3, 4, 11),
+				ref(pre+"Foo#`<constructor>`().", 4, 4, 7),
+				ref(pre+"Foo#named().", 5, 11, 16),
+				ref(pre+"Foo#+().", 6, 6, 7),
+				ref(pre+"Foo#`<constructor>`().", 7, 4, 9),
+			},
+			Symbols: []*scippb.SymbolInformation{
+				{Symbol: "local 0", Kind: scippb.SymbolInformation_Method},
+			}}}}
+	raw, err := proto.Marshal(idx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	nodes := []core.SymbolNode{
+		{Service: "s", Name: "Foo", Kind: "DartClass", FilePath: "lib/m.dart", Line: 1, EndLine: 10},
+		{Service: "s", Name: "Foo._helper", Kind: "DartMethod", FilePath: "lib/m.dart", Line: 2, EndLine: 2},
+		{Service: "s", Name: "Foo.run", Kind: "DartMethod", FilePath: "lib/m.dart", Line: 3, EndLine: 9, Calls: []string{"_helper", "Foo"}},
+	}
+	res, err := ScoreSCIPWith(raw, "s", nodes, SCIPOptionsFor("dart", func(string) []byte { return []byte(src) }))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[CallPair]bool{{"lib/m.dart", "run", "_helper"}: true, {"lib/m.dart", "run", "Foo"}: true}
+	if !reflect.DeepEqual(res.CallTruth, want) {
+		t.Errorf("call truth = %v, want %v", res.CallTruth, want)
+	}
+	if res.Counts[CntScipCallsUnwritten] != 3 {
+		t.Errorf("unwritten = %d, want 3 (the tear-off, the operator, super)", res.Counts[CntScipCallsUnwritten])
+	}
+}
