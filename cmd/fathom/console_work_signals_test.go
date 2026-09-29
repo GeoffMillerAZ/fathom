@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/console"
+	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
 // workRepo is a git repository whose history exercises /work's commit
@@ -398,5 +400,145 @@ func TestComputeWorkReadsFrictionSignals(t *testing.T) {
 		if !strings.Contains(bread, want) {
 			t.Errorf("the absences are named %q:\n%s", want, bread)
 		}
+	}
+}
+
+// WI-7w: /work passes the remedy table real inputs — rule texts, the
+// loop-end symbols' reference counts and doc-link drift — so every
+// pattern can fire, each a proposal with its evidence.
+func TestComputeWorkPassesRemedyInputs(t *testing.T) {
+	r := newWorkRepo(t)
+	m := workLedgers(t, r)
+	workActivity(t, r, &m)
+	ts := func(min int) string {
+		return r.base.Add(21*24*time.Hour + time.Duration(min)*time.Minute).Format(time.RFC3339)
+	}
+	ev := func(min int, rule, event, session, file string) string {
+		return fmt.Sprintf(`{"schema_version":1,"ts":%q,"rule_id":%q,"event":%q,"session":%q,"file":%q}`, ts(min), rule, event, session, file)
+	}
+	rules := strings.Join([]string{
+		ev(0, "R-money", "blocked", "sC", "internal/pay/a.go"),
+		ev(1, "R-money", "blocked", "sC", "internal/pay/a.go"),
+		ev(2, "R-web", "served", "sD", "web/b.go"),
+		ev(3, "R-web", "violated", "sD", "web/b.go"),
+	}, "\n") + "\n"
+	rl := filepath.Join(t.TempDir(), "rule-outcomes.jsonl")
+	if err := os.WriteFile(rl, []byte(rules), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("FATHOM_RULE_OUTCOME_LOG", rl)
+	idx := fakeWorkIndex{
+		files: map[string]string{"web.AddC": "web/c.go"},
+		rules: map[string]string{"R-money": "Money is integer cents."},
+		refs:  map[string]int{"web.AddC": 0},
+		stale: []console.StaleDocSpan{{Doc: "docs/web.md", Span: "Adding C", Near: "web/c.go"}},
+	}
+	model := computeWork(context.Background(), m, serviceRoot{Service: "svc", Root: r.root}, r.base.Add(28*24*time.Hour), idx)
+	fired := map[string]console.Remedy{}
+	for _, rem := range model.Friction.Remedies {
+		if rem.Status != console.RemedyProposed {
+			t.Fatalf("a remedy is a proposal: %+v", rem)
+		}
+		fired[rem.Pattern] = rem
+	}
+	for _, p := range []string{console.PatternRepeatedBlocks, console.PatternRediscovery, console.PatternServedIgnored, console.PatternStaleDoc, console.PatternLoopNoRefs} {
+		if _, ok := fired[p]; !ok {
+			t.Errorf("pattern %q did not fire: %+v", p, model.Friction.Remedies)
+		}
+	}
+	if ev := strings.Join(fired[console.PatternRepeatedBlocks].Evidence, " · "); !strings.Contains(ev, "Money is integer cents.") {
+		t.Errorf("the repeated-blocks remedy shows the rule's served text: %s", ev)
+	}
+	if rem := fired[console.PatternLoopNoRefs]; rem.Target != "web.AddC" {
+		t.Errorf("the no-references remedy targets the loop's end: %+v", rem)
+	}
+	read := strings.Join(model.FrictionRead, "\n")
+	for _, want := range []string{"rule texts: 1 of 2", "reference counts: 1 of 1", "doc-link drift: 1 span"} {
+		if !strings.Contains(read, want) {
+			t.Errorf("the remedy inputs are named %q:\n%s", want, read)
+		}
+	}
+
+	// Without an index no remedy input is read, and each says so; the
+	// rule-outcome patterns still fire from the log alone.
+	bare := computeWork(context.Background(), m, serviceRoot{Service: "svc", Root: r.root}, r.base.Add(28*24*time.Hour), nil)
+	bread := strings.Join(bare.FrictionRead, "\n")
+	for _, want := range []string{"rule texts: not read", "reference counts: not read", "doc-link drift: not read"} {
+		if !strings.Contains(bread, want) {
+			t.Errorf("an absent index is named %q:\n%s", want, bread)
+		}
+	}
+	for _, rem := range bare.Friction.Remedies {
+		if rem.Pattern == console.PatternLoopNoRefs || rem.Pattern == console.PatternStaleDoc {
+			t.Errorf("no reference count or drift was read, so %q cannot fire: %+v", rem.Pattern, rem)
+		}
+	}
+}
+
+// storeWorkIndex reads the index the remedy table needs: a function's
+// defining file and call sites (a type is not counted), the served text
+// of a claim, and names a store with no doc index.
+func TestStoreWorkIndexReadsTheIndex(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+	if err := st.PutObservations(ctx, []core.Observation{
+		{ServiceID: "svc", SourceRef: "web/c.go:3", SourceKind: core.KindGoFunc, Symbol: "AddC", Line: 3},
+		{ServiceID: "svc", SourceRef: "web/c.go:9", SourceKind: core.KindGoFunc, Symbol: "Unused", Line: 9},
+		{ServiceID: "svc", SourceRef: "web/t.go:1", SourceKind: core.KindGoType, Symbol: "Cart", Line: 1},
+		{ServiceID: "svc", SourceRef: "web/b.go:5", SourceKind: core.KindGoFunc, Symbol: "Checkout", Line: 5, Calls: []string{"web.AddC"}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.PutClaims(ctx, []core.SemanticClaim{{ServiceID: "svc", ClaimID: "R-web", Layer: "obligations", Subject: "AGENTS.md#web", Rule: "Carts are immutable."}}, nil); err != nil {
+		t.Fatal(err)
+	}
+	x := storeWorkIndex{st: st}
+	if f, ok := x.SymbolFile(ctx, "svc", "web.AddC"); !ok || f != "web/c.go" {
+		t.Errorf("web.AddC is defined in web/c.go: %q %v", f, ok)
+	}
+	if _, ok := x.SymbolFile(ctx, "svc", "internal/pay.AddC"); ok {
+		t.Error("a package the symbol is not defined under resolves to nothing")
+	}
+	if n, ok := x.RefCount(ctx, "svc", "web.AddC"); !ok || n != 1 {
+		t.Errorf("Checkout calls AddC once: %d %v", n, ok)
+	}
+	if n, ok := x.RefCount(ctx, "svc", "web.Unused"); !ok || n != 0 {
+		t.Errorf("Unused is a function nothing calls: %d %v", n, ok)
+	}
+	if _, ok := x.RefCount(ctx, "svc", "web.Cart"); ok {
+		t.Error("a type is not counted by call sites")
+	}
+	texts, err := x.RuleTexts(ctx, "svc", []string{"R-web", "R-gone"})
+	if err != nil || len(texts) != 1 || texts["R-web"] != "Carts are immutable." {
+		t.Errorf("the served claim text: %v %v", texts, err)
+	}
+	if spans, note := x.StaleDocs(ctx, "svc"); spans != nil || !strings.Contains(note, "not read") {
+		t.Errorf("a store with no doc index is named: %v %q", spans, note)
+	}
+}
+
+// StaleDocs on a SQLite store: no doc link stored is named as the link
+// pass not having run (KR-6); a link whose target moved is a span near
+// that target's file.
+func TestStoreWorkIndexStaleDocs(t *testing.T) {
+	ctx := context.Background()
+	sq, err := store.NewSQLiteStore(filepath.Join(t.TempDir(), "work.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer sq.Close()
+	x := storeWorkIndex{st: sq}
+	if spans, note := x.StaleDocs(ctx, "svc"); len(spans) != 0 || !strings.Contains(note, "KR-6") {
+		t.Fatalf("no doc link stored names the link pass: %v %q", spans, note)
+	}
+	if err := sq.PutDocUnits(ctx, "svc", "docs/web.md", []store.DocUnit{{UnitID: "u1", Path: "docs/web.md", HeadingPath: "Adding C", Kind: "section", Body: "see web/c.go"}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := sq.SyncDocLinksForUnit(ctx, "svc", "u1", []store.DocLink{{TargetKind: "path", Target: "web/c.go", Line: 3, LinkTier: "path", TargetHashAtLink: "was"}}, 1000); err != nil {
+		t.Fatal(err)
+	}
+	spans, note := x.StaleDocs(ctx, "svc")
+	if len(spans) != 1 || spans[0] != (console.StaleDocSpan{Doc: "docs/web.md", Span: "Adding C", Near: "web/c.go"}) || !strings.Contains(note, "1 span possibly stale of 1 open doc link") {
+		t.Fatalf("the moved target's span is placed near its file: %+v %q", spans, note)
 	}
 }

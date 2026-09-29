@@ -25,6 +25,8 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/console"
+	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/docindex"
 	"github.com/geoffmilleraz/fathom/internal/gitro"
 	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/internal/verify"
@@ -146,26 +148,31 @@ const (
 )
 
 // workIndex is what /work reads from the index: a symbol pointer's
-// defining file (claimed-unproven anchors). nil when the page has no
-// store: each read it would have answered is named absent.
+// defining file (claimed-unproven anchors), and the remedy table's inputs
+// (WI-7w) — the served text of the rules the rule-outcome log names, a
+// function's reference count, and the repository's doc-link drift with a
+// note saying what was read. nil when the page has no store: each read it
+// would have answered is named absent.
 type workIndex interface {
 	SymbolFile(ctx context.Context, service, symbol string) (string, bool)
+	RuleTexts(ctx context.Context, service string, ids []string) (map[string]string, error)
+	RefCount(ctx context.Context, service, symbol string) (int, bool)
+	StaleDocs(ctx context.Context, service string) ([]console.StaleDocSpan, string)
 }
 
 // storeWorkIndex answers workIndex from the daemon's store.
 type storeWorkIndex struct{ st store.Store }
 
-// SymbolFile resolves a "package.Symbol" pointer (splitPointer's grammar)
-// to the one file defining it: the name's observations, narrowed to the
-// package directory when one is given. Several candidate files are not
-// guessed between.
-func (x storeWorkIndex) SymbolFile(ctx context.Context, service, symbol string) (string, bool) {
+// definitions are the observations defining a "package.Symbol" pointer
+// (splitPointer's grammar): the name's observations, narrowed to the
+// package directory when one is given.
+func (x storeWorkIndex) definitions(ctx context.Context, service, symbol string) ([]core.Observation, string, bool) {
 	pkg, name := splitPointer(symbol)
 	obs, err := x.st.ObservationsForSymbol(ctx, service, name)
 	if err != nil {
-		return "", false
+		return nil, name, false
 	}
-	files := map[string]bool{}
+	var out []core.Observation
 	for _, o := range obs {
 		if o.Symbol != name && !strings.HasSuffix(o.Symbol, "."+name) {
 			continue
@@ -174,6 +181,21 @@ func (x storeWorkIndex) SymbolFile(ctx context.Context, service, symbol string) 
 		if f == "" || (pkg != "" && path.Dir(f) != strings.TrimSuffix(pkg, "/")) {
 			continue
 		}
+		out = append(out, o)
+	}
+	return out, name, true
+}
+
+// SymbolFile resolves a symbol pointer to the one file defining it;
+// several candidate files are not guessed between.
+func (x storeWorkIndex) SymbolFile(ctx context.Context, service, symbol string) (string, bool) {
+	defs, _, ok := x.definitions(ctx, service, symbol)
+	if !ok {
+		return "", false
+	}
+	files := map[string]bool{}
+	for _, o := range defs {
+		f, _, _ := strings.Cut(o.SourceRef, ":")
 		files[f] = true
 	}
 	if len(files) != 1 {
@@ -183,6 +205,101 @@ func (x storeWorkIndex) SymbolFile(ctx context.Context, service, symbol string) 
 		return f, true
 	}
 	return "", false
+}
+
+// RuleTexts is the served text (a claim's rule) of each rule id the
+// rule-outcome log named — the claim ids the edit hook served.
+func (x storeWorkIndex) RuleTexts(ctx context.Context, service string, ids []string) (map[string]string, error) {
+	want := map[string]bool{}
+	for _, id := range ids {
+		want[id] = true
+	}
+	claims, err := x.st.ClaimsForService(ctx, service, "")
+	if err != nil {
+		return nil, err
+	}
+	out := map[string]string{}
+	for _, c := range claims {
+		if want[c.ClaimID] && c.Rule != "" {
+			out[c.ClaimID] = c.Rule
+		}
+	}
+	return out, nil
+}
+
+// RefCount counts the call sites the index records for a function or
+// method pointer. A symbol the index does not define as a function or
+// method, or a service with no call index, is not counted (ok false):
+// the remedy table then infers nothing for it, rather than reading a type
+// with no call sites as a symbol with no references.
+func (x storeWorkIndex) RefCount(ctx context.Context, service, symbol string) (int, bool) {
+	defs, name, ok := x.definitions(ctx, service, symbol)
+	if !ok {
+		return 0, false
+	}
+	callable := false
+	for _, o := range defs {
+		k := strings.ToLower(string(o.SourceKind))
+		if strings.Contains(k, "func") || strings.Contains(k, "method") {
+			callable = true
+		}
+	}
+	if !callable {
+		return 0, false
+	}
+	callers, indexed, err := x.st.ObservationsCalling(ctx, service, name)
+	if err != nil || !indexed {
+		return 0, false
+	}
+	return len(callers), true
+}
+
+// StaleDocs is the repository's doc-link drift (KR-7's docDrift over the
+// open doc_links rows), each drifted span placed near its target's file;
+// a symbol target is placed through SymbolFile. The note names what was
+// read — including a store with no doc links at all, which is what every
+// store holds until the ingest's link pass (KR-6) lands.
+func (x storeWorkIndex) StaleDocs(ctx context.Context, service string) ([]console.StaleDocSpan, string) {
+	sq, ok := x.st.(*store.SQLiteStore)
+	if !ok {
+		return nil, "doc-link drift: not read (this store keeps no doc index)"
+	}
+	links, err := sq.OpenDocLinks(ctx, service)
+	if err != nil {
+		return nil, "doc-link drift: not read: " + err.Error()
+	}
+	if len(links) == 0 {
+		return nil, "doc-link drift: no doc link is stored for this repository — the ingest's link pass (KR-6) has not landed, so the stale-doc pattern cannot fire yet"
+	}
+	drifted, err := docindex.StalenessDocDrift(ctx, x.st, service)
+	if err != nil {
+		return nil, "doc-link drift: not read: " + err.Error()
+	}
+	var out []console.StaleDocSpan
+	unplaced := 0
+	for _, d := range drifted {
+		near := ""
+		switch d.TargetKind {
+		case "path":
+			near = d.Target
+		case "symbol":
+			near, _ = x.SymbolFile(ctx, service, d.Target)
+		}
+		if near == "" {
+			unplaced++
+			continue
+		}
+		span := d.HeadingPath
+		if span == "" {
+			span = fmt.Sprintf("line %d", d.Line)
+		}
+		out = append(out, console.StaleDocSpan{Doc: d.Path, Span: span, Near: near})
+	}
+	note := fmt.Sprintf("doc-link drift: %s possibly stale of %s stored", plural(len(drifted), "span"), plural(len(links), "open doc link"))
+	if unplaced > 0 {
+		note += fmt.Sprintf(" (%d with no single file to place near)", unplaced)
+	}
+	return out, note
 }
 
 // workAt renders a timestamp at a fixed width, so a call-log ts
@@ -520,4 +637,53 @@ func workFrictionInputs(ctx context.Context, callLog string, sr serviceRoot, h c
 	pointerNote := fmt.Sprintf("rediscovery pointers: %d from the call log's discovery pointers (each established when its session's last call landed) and %s; "+
 		"the session ledger's repeated-read figure is a per-session count that names no file, so it adds none", len(callPointers), filedNote)
 	return in, []string{callNote, pointerNote, unprovenNote, revertNote}
+}
+
+// ─── the remedy table's inputs (WI-7w) ──────────────────────────────────────
+
+// workRemedyInputs reads what frictionRemedies' pattern table needs
+// beyond the friction map: the served text of every rule id the rule
+// outcomes name, the reference count of every symbol a search loop ended
+// at, and the repository's doc-link drift. Without an index each is named
+// not read, and only the rule-outcome patterns can fire.
+func workRemedyInputs(ctx context.Context, service string, rules []console.RuleEvent, fm console.FrictionMap, idx workIndex) (console.RemedyInputs, []string) {
+	var rem console.RemedyInputs
+	ids := map[string]bool{}
+	for _, r := range rules {
+		ids[r.Rule] = true
+	}
+	ends := map[string]bool{}
+	for _, h := range fm.Symbols {
+		for _, s := range h.LoopEnds {
+			ends[s] = true
+		}
+	}
+	if idx == nil {
+		return rem, []string{
+			fmt.Sprintf("rule texts: not read for %s (no index on this page)", plural(len(ids), "rule id")),
+			fmt.Sprintf("reference counts: not read for %s (no index on this page)", plural(len(ends), "loop-end symbol")),
+			"doc-link drift: not read (no index on this page)",
+		}
+	}
+	idList := sortedKeys(ids)
+	ruleNote := fmt.Sprintf("rule texts: 0 of %d rule ids read from the index", len(idList))
+	if len(idList) > 0 {
+		texts, err := idx.RuleTexts(ctx, service, idList)
+		if err != nil {
+			ruleNote = fmt.Sprintf("rule texts: not read for %s: %v", plural(len(idList), "rule id"), err)
+		} else {
+			rem.RuleText = texts
+			ruleNote = fmt.Sprintf("rule texts: %d of %d rule ids read from the index's claims", len(texts), len(idList))
+		}
+	}
+	rem.RefCounts = map[string]int{}
+	for _, s := range sortedKeys(ends) {
+		if n, ok := idx.RefCount(ctx, service, s); ok {
+			rem.RefCounts[s] = n
+		}
+	}
+	refNote := fmt.Sprintf("reference counts: %d of %d loop-end symbols counted through the index's call edges (a symbol not counted gets no remedy)", len(rem.RefCounts), len(ends))
+	stale, staleNote := idx.StaleDocs(ctx, service)
+	rem.StaleDocs = stale
+	return rem, []string{ruleNote, refNote, staleNote}
 }

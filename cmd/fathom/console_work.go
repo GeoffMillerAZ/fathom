@@ -173,7 +173,9 @@ func computeWork(ctx context.Context, m observatoryModel, sr serviceRoot, now ti
 	rules, ruleNote := workRuleEvents(sr.Root)
 	in, frictionRead := workFrictionInputs(ctx, m.callFacts.Log.Path, sr, h, commits, rules, zones, idx)
 	model.FrictionRead = append([]string{ruleNote}, frictionRead...)
-	model.Friction = console.FrictionWithRemedies(in, console.RemedyInputs{})
+	rem, remRead := workRemedyInputs(ctx, sr.Service, rules, console.FrictionSignals(in), idx)
+	model.FrictionRead = append(model.FrictionRead, remRead...)
+	model.Friction = console.FrictionWithRemedies(in, rem)
 	return model
 }
 
