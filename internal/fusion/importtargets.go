@@ -45,9 +45,12 @@ type ResolvedImport struct {
 //     one of the module's files; else, where the strategy has a submodule
 //     form, the one file `Module<sep>Name` names (`from pkg import mod`);
 //     else the module's files;
-//   - a whole-module import: the module's files;
+//   - a whole-module import: the files declaring the type an alias names
+//     (namespace-dir: C#'s `using A = N.T;`), else the module's files, else
+//     the files declaring the namespace an alias names (`using A = N;`);
 //   - a wildcard: the files declaring the namespace (namespace-dir), else
-//     the module's files.
+//     the files declaring the type (C#'s `using static N.T;`), else the
+//     module's files.
 //
 // ctx is accepted for parity with ResolveFileEdges; nothing blocks on it.
 // Unlike ResolveFileEdges it runs whether or not the repository carries a
@@ -72,6 +75,7 @@ func ResolveImportSpecs(ctx context.Context, lang, repoPath string, files []core
 		fileSet[p] = true
 	}
 	topLevel, keyFile, declared := importScopes(symbols, fileSet)
+	types := r.declaredTypes(symbols, fileSet)
 
 	var report FileResolveReport
 	var faults []string
@@ -87,7 +91,7 @@ func ResolveImportSpecs(ctx context.Context, lang, repoPath string, files []core
 		for _, sp := range spans {
 			out = append(out, ResolvedImport{
 				File: f.Path, Spec: sp.ImportSpec, StartLine: sp.StartLine, EndLine: sp.EndLine,
-				Targets: r.specTargets(f.Path, sp.ImportSpec, topLevel, keyFile, declared),
+				Targets: r.specTargets(f.Path, sp.ImportSpec, topLevel, keyFile, declared, types),
 			})
 		}
 	}
@@ -125,7 +129,7 @@ func importScopes(symbols []core.SymbolNode, fileSet map[string]bool) (topLevel 
 
 // specTargets is the files spec binds in importer (ResolveImportSpecs'
 // rules), sorted, without the importer itself.
-func (r *importResolver) specTargets(importer string, spec extractor.ImportSpec, topLevel map[string]map[string]string, keyFile map[string]string, declared map[string][]string) []string {
+func (r *importResolver) specTargets(importer string, spec extractor.ImportSpec, topLevel map[string]map[string]string, keyFile map[string]string, declared, types map[string][]string) []string {
 	var targets []string
 	switch spec.Kind {
 	case extractor.ImportNamed:
@@ -141,10 +145,19 @@ func (r *importResolver) specTargets(importer string, spec extractor.ImportSpec,
 			targets = module
 		}
 	case extractor.ImportWhole:
-		targets = r.resolve(importer, spec.Module)
+		switch keys := r.aliasedType(types, spec); {
+		case r.wholeIsWildcard():
+			targets = r.resolve(importer, spec.Module)
+		case len(keys) > 0:
+			targets = filesOf(keys, keyFile)
+		default:
+			targets = r.wholeTargets(importer, spec.Module, declared)
+		}
 	case extractor.ImportWildcard:
 		if fs := r.declaredFiles(declared, spec.Module); len(fs) > 0 {
 			targets = fs
+		} else if keys := r.typeKeys(types, spec.Module); len(keys) > 0 {
+			targets = filesOf(keys, keyFile)
 		} else {
 			targets = r.resolve(importer, spec.Module)
 		}

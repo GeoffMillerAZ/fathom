@@ -81,10 +81,11 @@ import "struct"
 		source_roots?: [...string]
 		suffixes?: [...string]
 		index_files?: [...string]
-		separator?: string & !=""
-		relative?:  bool
-		case?:      "snake"
-		labels?:    "bazel"
+		separator?:     string & !=""
+		relative?:      bool
+		case?:          "snake"
+		labels?:        "bazel"
+		type_wildcard?: "members"
 	}
 
 	signature: {

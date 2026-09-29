@@ -75,6 +75,21 @@ var importTargetFixtures = []struct {
 		},
 	},
 	{
+		// O145: C#'s using alias binds its name to the namespace or type it
+		// names, and `using static` brings a type's members into scope; either
+		// resolves to the files declaring that type, wherever they sit — a type
+		// need not have a file of its own name (XUnitAssert is declared in
+		// TestFixtureBase.cs), and a nested type is declared in its container's.
+		lang: "csharp", dir: "csfixture",
+		rels: []string{"Tests/AliasTests.cs", "Testing/TestFixtureBase.cs", "Testing/Fixtures/Extensions.cs", "Lib/Hammer.cs"},
+		want: []string{
+			"Tests/AliasTests.cs:1-1:Assert<-MyApp.Testing.XUnitAssert=>Testing/TestFixtureBase.cs",
+			"Tests/AliasTests.cs:2-2:Scenario<-MyApp.Testing.Fixtures.PolicyExtensions.Scenario=>Testing/Fixtures/Extensions.cs",
+			"Tests/AliasTests.cs:3-3:*<-MyApp.Tools.Hammer=>Lib/Hammer.cs",
+			"Tests/AliasTests.cs:4-4:Fact<-Xunit.FactAttribute=>",
+		},
+	},
+	{
 		lang: "php", dir: "phpfixture",
 		rels: []string{"src/Consumer.php", "src/Util/functions.php", "src/Util/Helper.php"},
 		want: []string{

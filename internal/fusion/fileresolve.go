@@ -49,6 +49,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -266,8 +267,11 @@ func resolveImports(r *importResolver, paths []string, specs map[string][]extrac
 	// mirror directories (C#).
 	qualified := make(map[string]map[string]string, len(paths))
 	keyFile := make(map[string]string, len(symbols))
+	symName := make(map[string]string, len(symbols))
 	declared := map[string][]string{}
+	types := r.declaredTypes(symbols, fileSet)
 	for _, s := range symbols {
+		symName[s.Key()] = s.Name
 		q := qualified[s.FilePath]
 		if q == nil {
 			q = map[string]string{}
@@ -302,9 +306,11 @@ func resolveImports(r *importResolver, paths []string, specs map[string][]extrac
 		report.FilesScanned++
 		report.ImportsParsed += len(fileSpecs)
 
-		named := map[string]string{} // LocalName -> resolved target SymbolKey
-		whole := map[string]string{} // LocalName -> resolved target FILE path
-		var wildFiles []string       // files every top-level name of which is in scope
+		named := map[string]string{}       // LocalName -> resolved target SymbolKey
+		whole := map[string]string{}       // LocalName -> resolved target FILE path
+		typeAlias := map[string][]string{} // LocalName -> the keys of the type it aliases
+		var wildFiles []string             // files every top-level name of which is in scope
+		var staticTypes []string           // keys of the types whose members are in scope
 		for _, spec := range fileSpecs {
 			if spec.LocalName == "" {
 				continue // side-effect-only import: no bound name to attribute a call to
@@ -324,22 +330,27 @@ func resolveImports(r *importResolver, paths []string, specs map[string][]extrac
 					}
 				}
 			case extractor.ImportWhole:
-				targets := r.resolve(path, spec.Module)
 				if r.wholeIsWildcard() {
-					wildFiles = append(wildFiles, targets...)
-				} else if len(targets) == 1 {
+					wildFiles = append(wildFiles, r.resolve(path, spec.Module)...)
+				} else if keys := r.aliasedType(types, spec); len(keys) > 0 {
+					typeAlias[spec.LocalName] = keys
+				} else if targets := r.wholeTargets(path, spec.Module, declared); len(targets) == 1 {
 					whole[spec.LocalName] = targets[0]
 				}
 			case extractor.ImportWildcard:
 				if fs := r.declaredFiles(declared, spec.Module); len(fs) > 0 {
 					wildFiles = append(wildFiles, fs...)
+				} else if keys := r.typeKeys(types, spec.Module); len(keys) > 0 && r.params.TypeWildcard == "members" {
+					staticTypes = append(staticTypes, keys...) // C#'s using static N.T: T's members
+				} else if len(keys) > 0 {
+					wildFiles = append(wildFiles, filesOf(keys, keyFile)...)
 				} else {
 					wildFiles = append(wildFiles, r.resolve(path, spec.Module)...)
 				}
 			}
 		}
-		wild := wildcardNames(wildFiles, topLevel)
-		if len(named) == 0 && len(whole) == 0 && len(wild) == 0 && len(topLevel[path]) == 0 {
+		wild := withStaticMembers(wildcardNames(wildFiles, topLevel), staticTypes, qualified, keyFile, symName)
+		if len(named) == 0 && len(whole) == 0 && len(typeAlias) == 0 && len(wild) == 0 && len(topLevel[path]) == 0 {
 			continue
 		}
 
@@ -351,6 +362,9 @@ func resolveImports(r *importResolver, paths []string, specs map[string][]extrac
 			seen := map[string]bool{}
 			for _, call := range s.Calls {
 				toKey, ok := matchFileResolvedCall(call, named, whole, topLevel, topLevel[path], wild)
+				if !ok {
+					toKey, ok = matchTypeAlias(call, typeAlias, qualified, keyFile, symName)
+				}
 				if !ok {
 					toKey, ok = matchWildMember(call, wild, qualified, keyFile)
 				}
@@ -434,6 +448,127 @@ func matchWildMember(call string, wild map[string]string, qualified map[string]m
 		return mk, true
 	}
 	return key, true
+}
+
+// matchTypeAlias resolves a dotted call "A.M…" whose head A is a using
+// alias of a type (C#'s `using A = N.T;`, O145): to T's member M when a
+// file declaring T defines it, else to T itself.
+func matchTypeAlias(call string, typeAlias map[string][]string, qualified map[string]map[string]string, keyFile, symName map[string]string) (string, bool) {
+	head, rest, dotted := strings.Cut(call, ".")
+	keys, ok := typeAlias[head]
+	if !ok || !dotted {
+		return "", false
+	}
+	member, _, _ := strings.Cut(rest, ".")
+	for _, k := range keys {
+		if mk, ok := qualified[keyFile[k]][symName[k]+"."+member]; ok {
+			return mk, true
+		}
+	}
+	return keys[0], true
+}
+
+// withStaticMembers adds to wild the members of the types a static import
+// brought into scope (C#'s `using static N.T;`, O145), each bare member
+// name mapped to its symbol; a name two of them define, or one wild
+// already binds to another symbol, is ambiguous and left out.
+func withStaticMembers(wild map[string]string, typeKeys []string, qualified map[string]map[string]string, keyFile, symName map[string]string) map[string]string {
+	if len(typeKeys) == 0 {
+		return wild
+	}
+	members := map[string]string{}
+	ambiguous := map[string]bool{}
+	for _, k := range typeKeys {
+		prefix := symName[k] + "."
+		for name, mk := range qualified[keyFile[k]] {
+			m, ok := strings.CutPrefix(name, prefix)
+			if !ok || m == "" || strings.Contains(m, ".") {
+				continue
+			}
+			if prev, seen := members[m]; seen && prev != mk {
+				ambiguous[m] = true
+			}
+			members[m] = mk
+		}
+	}
+	if wild == nil {
+		wild = map[string]string{}
+	}
+	for m, mk := range members {
+		if prev, seen := wild[m]; ambiguous[m] || (seen && prev != mk) {
+			delete(wild, m)
+			continue
+		}
+		wild[m] = mk
+	}
+	return wild
+}
+
+// declaredTypes indexes, for namespace-dir only, every symbol of the
+// universe declared in a package or namespace by its qualified name
+// (package, separator, name: MyApp.Util.Helper, a nested type
+// MyApp.Util.Outer.Inner) to its keys, sorted — so a spec naming a type
+// resolves to the files declaring it, wherever they sit (a C# type need
+// not have a file of its own name). nil for any other strategy.
+func (r *importResolver) declaredTypes(symbols []core.SymbolNode, fileSet map[string]bool) map[string][]string {
+	if r.strategy != "namespace-dir" {
+		return nil
+	}
+	sep := r.submoduleSep()
+	out := map[string][]string{}
+	for _, s := range symbols {
+		if s.Package == "" || s.Name == "" || !fileSet[s.FilePath] {
+			continue
+		}
+		q := s.Package + sep + s.Name
+		out[q] = append(out[q], s.Key())
+	}
+	for _, ks := range out {
+		sort.Strings(ks)
+	}
+	return out
+}
+
+// typeKeys is the keys of the type module names (declaredTypes), a
+// leading global:: dropped.
+func (r *importResolver) typeKeys(types map[string][]string, module string) []string {
+	if types == nil {
+		return nil
+	}
+	module = strings.TrimPrefix(strings.TrimSpace(module), "global::")
+	return types[strings.Trim(module, r.submoduleSep())]
+}
+
+// aliasedType is the keys of the type an aliased whole import names (C#'s
+// `using A = N.T;`); nil when the import has no alias of its own or the
+// module is no declared type.
+func (r *importResolver) aliasedType(types map[string][]string, spec extractor.ImportSpec) []string {
+	if spec.LocalName == "" || spec.LocalName == spec.Module {
+		return nil
+	}
+	return r.typeKeys(types, spec.Module)
+}
+
+// wholeTargets is the files a whole-module import resolves to: the
+// strategy's, else (namespace-dir) the files declaring module as their
+// namespace, which need not mirror a directory (C#'s `using A = N;`).
+func (r *importResolver) wholeTargets(importer, module string, declared map[string][]string) []string {
+	if targets := r.resolve(importer, module); len(targets) > 0 {
+		return targets
+	}
+	return r.declaredFiles(declared, module)
+}
+
+// filesOf is the sorted, distinct files of keys.
+func filesOf(keys []string, keyFile map[string]string) []string {
+	var out []string
+	for _, k := range keys {
+		if f := keyFile[k]; f != "" {
+			out = append(out, f)
+		}
+	}
+	sort.Strings(out)
+	return slices.Compact(out)
 }
 
 // declaredFiles is, for namespace-dir only, the files whose symbols
