@@ -1,0 +1,106 @@
+{
+  "symbols": [
+    {
+      "name": "Animal",
+      "kind": "TclClass",
+      "package": "oo",
+      "line": 2,
+      "end_line": 25,
+      "tier": "verified"
+    },
+    {
+      "name": "Animal::speak",
+      "kind": "TclMethod",
+      "package": "oo",
+      "line": 10,
+      "end_line": 12,
+      "signature": "method speak {}",
+      "calls": [
+        "my",
+        "return"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Animal::describe",
+      "kind": "TclMethod",
+      "package": "oo",
+      "line": 15,
+      "end_line": 20,
+      "signature": "method describe { {prefix \"\"} {suffix \"\"} }",
+      "calls": [
+        "prefix",
+        "return",
+        "suffix"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Dog",
+      "kind": "TclClass",
+      "package": "oo",
+      "line": 27,
+      "end_line": 32,
+      "tier": "verified"
+    },
+    {
+      "name": "Dog::fetch",
+      "kind": "TclMethod",
+      "package": "oo",
+      "line": 29,
+      "end_line": 31,
+      "signature": "method fetch {}",
+      "calls": [
+        "my",
+        "return"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "zoo",
+      "kind": "TclNamespace",
+      "package": "oo",
+      "line": 34,
+      "end_line": 41,
+      "tier": "verified"
+    },
+    {
+      "name": "zoo::Keeper",
+      "kind": "TclClass",
+      "package": "oo",
+      "line": 35,
+      "end_line": 40,
+      "tier": "verified"
+    },
+    {
+      "name": "zoo::Keeper::feed",
+      "kind": "TclMethod",
+      "package": "oo",
+      "line": 37,
+      "end_line": 39,
+      "signature": "method feed {animal}",
+      "calls": [
+        "animal",
+        "feeder"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "zoo::Cage",
+      "kind": "TclClass",
+      "package": "oo",
+      "line": 43,
+      "end_line": 45,
+      "tier": "verified"
+    },
+    {
+      "name": "zoo::Cage::open",
+      "kind": "TclMethod",
+      "package": "oo",
+      "line": 44,
+      "end_line": 44,
+      "signature": "method open {}",
+      "tier": "verified"
+    }
+  ]
+}

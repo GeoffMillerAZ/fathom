@@ -2328,3 +2328,16 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** the dialect fixes the path length with `#match?` on the whole reference and walks to the last identifier with leading and sibling anchors, one pattern per length from one to eight (dialects/protobuf/tags.scm); a dialect that needs the last named child elsewhere should check lang-probe before trusting a trailing anchor
 - **Status:** open (worked around)
 - **Impact:** a query that relies on a trailing anchor silently over-captures (here every package segment became a callee: call precision, and file-resolved edges named by a package segment)
+
+### O202 — the L1 scorer reduces the dialect's names to their last segment (MatchName) but compares the oracle's names whole, so a ctags name that carries its path (Tcl namespace eval ::struct::list, oo::class create ::tcl::chan::core) never pairs with the dialect's last segment
+
+- **Symptom:** the L1 scorer reduces the dialect's names to their last segment (MatchName) but compares the oracle's names whole, so a ctags name that carries its path (Tcl namespace eval ::struct::list, oo::class create ::tcl::chan::core) never pairs with the dialect's last segment
+- **Evidence:**
+  - **Tool:** indexbench lang-oracle (internal/langbench/score.go ScoreL1)
+  - **Expected:** design 1.4 says qualified names are compared on the last segment, on both sides
+  - **Actual:** Tcl (tcllib 2.0 + Tk 9.0.4, 827 files): 759 oracle-only and 789 dialect-only namespaces/classes, all of them one disagreement; sym_recall .8047 and sym_precision .7453. A scratch run with name = m.MatchName(name) applied to the oracle side too (not committed) reads sym_recall .9292, sym_precision .8607, matched 8253 vs 7147. PHP's reading (ctags names a namespace by its full path) documents the same gap and went to a parser dump instead
+  - **Repro:** go run ./cmd/indexbench lang-oracle -dialect tcl -subject workspace/calibration/tcl/tcllib -out /tmp/x.json -unmatched /tmp/u.json (oracle_only lists ::-named namespaces)
+- **Root cause:** `ScoreL1` builds the oracle side from `d.Name` (only `operatorName` is applied) while the dialect side goes through `m.MatchName`; the two sides are symmetric only when the oracle already names by last segment
+- **Fix:** none committed (out of the worker's files); `name = m.MatchName(name)` after the operator rewrite for the oracle side is the one-line change measured above; existing readings would move on a re-run (php.json documents the same gap)
+- **Status:** open
+- **Impact:** any dialect whose ctags names carry their path (Tcl namespaces and classes, PHP namespaces) reads below its real recall and precision; Tcl is refused on parse errors anyway (LB-Q-tcl-rest), so this decides its re-measure, not its refusal

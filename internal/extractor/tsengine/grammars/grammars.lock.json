@@ -356,6 +356,21 @@
       "gz_bytes": 475154
     },
     {
+      "blob": "tcl",
+      "repo": "tree-sitter-grammars/tree-sitter-tcl",
+      "tag": "850a72ab6436e06645b33b11cfa60cbdb04b1f01",
+      "commit": "850a72ab6436e06645b33b11cfa60cbdb04b1f01",
+      "tarball_sha256": "4d3bbc7db5fd3398af714afc3dd4a0b4aba0b372bf30192bc4cff00d5acf54fa",
+      "licence": "MIT",
+      "entry_points": ["tree_sitter_tcl"],
+      "scanner": true,
+      "generate": false,
+      "abi": 15,
+      "blob_sha256": "546a4170f4042ad33928b7b8b5cf5f3a2f76578627f763991bdce5063bcda183",
+      "blob_bytes": 203872,
+      "gz_bytes": 74046
+    },
+    {
       "blob": "typescript",
       "repo": "tree-sitter/tree-sitter-typescript",
       "tag": "v0.23.2",

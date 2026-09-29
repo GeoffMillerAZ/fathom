@@ -1179,8 +1179,9 @@ func (p *Pipeline) sniffedExtractor(relPath string, content []byte) (extractor.E
 // generated table lists it; langbench.RefusedItems reads the same refusal from
 // the plan for the tracker). swift: LB-Q-swift-rest — 36 of its 642
 // calibration files (5.6%) parse with an error under the pinned grammar, over
-// the 5% line. Dispatching it later is an ExtractorEpoch bump.
-var refusedDialects = map[string]bool{"swift": true}
+// the 5% line. tcl: LB-Q-tcl-rest — 516 of its 827 calibration files (62.4%).
+// Dispatching one later is an ExtractorEpoch bump.
+var refusedDialects = map[string]bool{"swift": true, "tcl": true}
 
 // Close releases the pipeline's tree-sitter grammar modules (RT-107). The
 // pipeline stays usable: the next extraction instantiates afresh.
