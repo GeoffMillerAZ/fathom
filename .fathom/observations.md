@@ -2198,3 +2198,16 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** none yet. `clang -E -dI` prints every include directive it processes, a guard-skipped re-include too (verified on from_json.hpp, where it repeats a directive whose header was already entered); pairing each printed directive with the includer's directory and the `-I` roots would resolve the guarded ones. A conditional skipped under this run's macros needs the build's own flags (a `compile_commands.json` run, the tier-A evaluation the oracle's README names as not implemented)
 - **Status:** open
 - **Impact:** a tier-B cpp reading understates import edge precision and lists these includes as unattested; `import_resolution` is a rate over the includes the compiler entered under this run's flags, so an include the oracle cannot see is neither a hit nor a miss in it (218 of 218 is not a claim about the 79)
+
+### O163 — a blocked row cannot join the served rows of the rule it blocked: the enforce deny knows a guard note or an invariant id, and every other row in the ledger carries a claim id
+
+- **Symptom:** after PR-10 `~/.fathom/rule-outcomes.jsonl` holds `blocked` rows keyed `enforce:<check id>:<rule id>` while the served, complied and violated rows of the same rule are keyed by a claim id, so `RuleEffectiveness` and the console's rule view never put a rule's blocks beside its serves; the view counts each `enforce:` id under "rule ids in the signal log that are not claims", a note worded for a removed project or a compiled-away rule
+- **Evidence:**
+  - **Tool:** `go test -race -run TestEnforceDenyWritesBlockedOutcome ./cmd/fathom/`, and `internal/console/ruleeffect.go` (the `unknown` count and its note)
+  - **Expected:** a rule that denies an edit reads served N, blocked M in one row of the effectiveness view
+  - **Actual:** the block's key is `enforce:forbidden_path:<guard note>`, `enforce:org_token:I19`, `enforce:secret_literal:I28-secrets` or a layer rule id, and never equals a claim id (a claim id is 64 hex characters with no colon)
+  - **Repro:** run the test above (it writes the rows to a temp ledger), then read that ledger through `readRuleOutcomeSignal` into the console's rule view
+- **Root cause:** a claim id is content-addressed over (layer, kind, subject, repro key) when the corpus compiles (`core.ClaimID`) and needs the store; an `EnforceViolation`'s `RuleID` is a guard Note (a guard has no id field), an invariant id or a layer rule id, and the pre-hook enforcement path is daemon-free (I53), so it cannot look a claim up
+- **Fix:** none yet, and none needed while PR-D6 (the deferred GL-11 reclassification) is written to exclude enforce:true rules from effectiveness; the `enforce:` prefix is the key that exclusion reads. If a join is ever wanted: resolve `enforce:` keys to claim ids at read time in the effectiveness view (a store read, never a hook read), or give a guard an optional `claim:` id in guard.cue; and reword the unknown-ids note so it does not call an `enforce:` id a removed rule
+- **Status:** open
+- **Impact:** none on the deny (the row is a signal and never gates); blocked counts are absent from the rule view's classes until PR-D6 or a join lands
