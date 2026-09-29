@@ -117,3 +117,8 @@ package config
 // bad17: #Config & {
 // 	console: conserve_max_files: 0
 // }
+
+// [hooks] test_run is a bool (TR-9); a string is refused.
+// bad18: #Config & {
+// 	hooks: test_run: "yes"
+// }

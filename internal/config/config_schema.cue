@@ -249,6 +249,20 @@ package config
 	// matches — unset means artifact refs are recorded but never
 	// resolved to bytes.
 	artifacts_dir?: string
+
+	// commands (TR-1) lists the repository's own declared test commands
+	// ("go test", "bin/itest"), beside those read from its Taskfile,
+	// Makefile and package.json; the test-run hook acts only on a Bash
+	// command that invokes one of them.
+	commands?: [...string]
+}
+
+// #Hooks configures opt-in hook behaviours. test_run (TR-9, ADR-056
+// decision 6) turns on the test-run hook: one line after a declared test
+// command fails, naming the failing tests and the changed symbols they
+// reach. Unset means off (default off until the level 10 bench).
+#Hooks: {
+	test_run?: bool
 }
 
 // #SurfacePattern is one `[[surface.pattern]]` entry (ADR-044 §2.1): a
@@ -373,6 +387,7 @@ package config
 	findings?:  #Findings
 	decide?:    #Decide
 	tests?:     #Tests
+	hooks?:     #Hooks
 	surface?:   #Surface
 	connector?: #Connector
 	tenancy?:   #Tenancy

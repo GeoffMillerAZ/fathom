@@ -129,3 +129,14 @@ exampleZones: #Config & {
 		console: ["internal/console/**"]
 	}
 }
+
+// The test-run hook's opt-in and a repository's own declared test
+// commands (TR-1, TR-9; docs/plans/test-run-hook.md).
+exampleTestRunHook: #Config & {
+	tests: {
+		commands: ["go test", "bin/itest"]
+	}
+	hooks: {
+		test_run: true
+	}
+}
