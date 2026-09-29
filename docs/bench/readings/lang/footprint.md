@@ -156,3 +156,52 @@ is now 232,847 compressed bytes a grammar, so the cap admits about 180
 grammars at that mean.
 
 LB-M4 verdict: PASS (wave 2: 5,122,633 of 41,943,040 bytes)
+
+## LB-M7 answer payload with signatures and ranges, 2026-09-29 (wave w6)
+
+Measured on darwin/arm64 (10 cores), go 1.26.3, `GOWORK=off CGO_ENABLED=1 go build
+./cmd/fathom` (no `-ldflags`) at two commits: **head** = 9ea6da5f (signatures and end lines
+on) and **base** = 56c18502 (the LB-M1 baseline build, the cross-check). No extraction
+change and no `ExtractorEpoch` bump.
+
+**Method.** The fixture `internal/connector/testdata/fauxtown/polyglot-service` (9 files,
+1,465 bytes), copied to scratch, was ingested by each binary into its own private SQLite
+store; head stores 27 symbols, base 26. A scratch probe drove each binary's stdio MCP
+surface (`serve-mcp --store <scratch> --auto-refresh=false`, isolated `HOME`) with
+`find_symbol(name)` and `symbol_context(symbol)` for each of the 26 distinct names head
+defines (`Greeter` names the JavaScript and the Python class): 52 calls a build. The bytes
+are each response's text payload (`content[0].text`, the JSON the agent reads), summed; the
+whole JSON-RPC line, which carries the same object again as `structuredContent`, is shown
+beside it. The counterfactual is head's own responses with every `signature` and `end_line`
+key removed and re-encoded the way `encoding/json` encodes them (the re-encoder reproduces
+all 104 real responses byte for byte). symbol_context's snippet needs no counterfactual: the
+handler reads it from the definition's first line with no end line (`readSourceRange(...,
+Line, 0, 40, ...)`, `internal/mcp/nav_tools.go`) in both builds, so an `EndLine` never
+bounds it.
+
+| Payload bytes, 52 calls | head | head without `signature`, `end_line` | growth | base (56c18502) |
+|---|--:|--:|--:|--:|
+| `find_symbol`, text | 6,689 | 5,575 | +20.0% | 5,970 |
+| `symbol_context`, text | 14,950 | 14,169 | +5.5% | 13,943 |
+| **both, text** | **21,639** | **19,744** | **+9.6%** | 19,913 |
+| both, whole JSON-RPC line | 51,590 | 47,500 | +8.6% | 47,902 |
+
+The L1 fields are 1,895 text bytes: 37 signatures (1,109 bytes; JavaScript functions 255,
+Python 146, Terraform modules 136, JavaScript methods 104, doc chunks 102, Terraform
+resources 100) and 59 end lines (786 bytes). The verdict sums both tools, as the row names
+them together; per tool, `find_symbol` grows 20.0% because its rows are short (about 200
+bytes) and a 20–60-byte signature is a large share of one, while `symbol_context`'s snippet
+dilutes the same fields to 5.5%. The margin is 0.4 points: Java methods (7 rows here) are
+the callables that still carry no signature, and a signature of about 40 bytes on each would
+put the sum near 11% on this fixture (O209).
+
+**Cross-check against base.** With both builds' `signature` and `end_line` keys removed,
+head and base differ only by the `GoModule` symbol head extracts from `go.mod` (636 text
+bytes: its `find_symbol` hit, the `symbol_context` neighbourhood base answers with
+`def: null`, and the two `ModuleDep` rows' new caller); `index_commit` is identical. Base
+already carried 805 bytes of the two fields (28 end lines from Java, CUE, Terraform and doc
+chunks; 18 signatures from doc chunks, Kubernetes, `go.mod` requirements and Terraform).
+Head over base is +8.7% of text: 1,090 bytes of added L1 fields and the 636-byte
+`GoModule` symbol.
+
+LB-M7 verdict: PASS (+9.6%: 21,639 vs 19,744 text-payload bytes over 52 find_symbol and symbol_context calls; find_symbol alone +20.0%)

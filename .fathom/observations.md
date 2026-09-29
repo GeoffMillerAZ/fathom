@@ -2328,3 +2328,16 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** the dialect fixes the path length with `#match?` on the whole reference and walks to the last identifier with leading and sibling anchors, one pattern per length from one to eight (dialects/protobuf/tags.scm); a dialect that needs the last named child elsewhere should check lang-probe before trusting a trailing anchor
 - **Status:** open (worked around)
 - **Impact:** a query that relies on a trailing anchor silently over-captures (here every package segment became a callee: call precision, and file-resolved edges named by a package segment)
+
+### O209 — the LB-M7 payload guard passes only on the two-tool sum: find_symbol alone grows 20.0% with signature and end_line on the polyglot fixture, and the sum sits 0.4 points under the 10% bound
+
+- **Symptom:** the LB-M7 payload guard passes only on the two-tool sum: find_symbol alone grows 20.0% with signature and end_line on the polyglot fixture, and the sum sits 0.4 points under the 10% bound
+- **Evidence:**
+  - **Tool:** find_symbol / symbol_context (MCP)
+  - **Expected:** each of find_symbol and symbol_context within 10% of its payload without the L1 fields, with room for the languages that still lack signatures
+  - **Actual:** text payload over 52 calls at 9ea6da5f: find_symbol 6,689 vs 5,575 bytes (+20.0%), symbol_context 14,950 vs 14,169 (+5.5%), sum 21,639 vs 19,744 (+9.6%); Java methods (7 rows) still carry no signature, and about 40 bytes each would put the sum near 11%
+  - **Repro:** footprint.md 'LB-M7 answer payload' section: scratch-ingest internal/connector/testdata/fauxtown/polyglot-service, call find_symbol(name) and symbol_context(symbol) over serve-mcp for its 26 names, strip signature and end_line and re-encode
+- **Root cause:** a `find_symbol` row is short (about 200 bytes on this fixture), so a 20–60-byte `signature` plus an `end_line` is a large share of it; `symbol_context`'s snippet dilutes the same fields, and the row sums the two tools
+- **Fix:** none taken (the row as written passes); the next L1 wave that adds signatures to a new kind re-runs the probe, and a per-tool bound or a `find_symbol` that omits `signature` on multi-row answers is the lever if it crosses
+- **Status:** open
+- **Impact:** LB-M7 reads PASS at +9.6%; per-tool, `find_symbol` answers on small symbols cost a fifth more tokens than before L1
