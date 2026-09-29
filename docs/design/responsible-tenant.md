@@ -1165,7 +1165,7 @@ instead of "/24h".
 | verify / session / intent ledgers, `decisions.jsonl` | report at 32 MiB, keep all (I33 needs history); rotation waits until their readers read archived generations — rotating now would hide history from them (RT-125) | no; reported |
 | `session-stamps` | delete after 30 days | yes |
 | `~/.fathom/daemon/<id>/record.json` (and legacy `~/.fathom/daemons`) with a dead pid | delete | yes |
-| `$TMPDIR` `fathom-edit-set`, `fathom-*-test-*`, `fathom-stranger-check`; entries of the hook caches `fathom-filechanged`, `fathom-toplevel-cache`, `fathom-ident-cache`, `fathom-guard-stamps` | delete after 1 day | yes |
+| `$TMPDIR` `fathom-edit-set`, `fathom-*-test-*`, `fathom-stranger-check`; entries of the hook caches `fathom-filechanged`, `fathom-toplevel-cache`, `fathom-ident-cache`, `fathom-guard-stamps`, `fathom-bash-doubt` | delete after 1 day | yes |
 | `workspace/artifacts/scenariobench/worktrees` | keep last 5 runs or 14 days; `.pin` exempts | no; reported |
 | `workspace/tmp/fathom-bin-*` | keep last 3 | no; reported |
 | `~/.fathom/daemon/<id>/diag` | 10 captures / 200 MiB | yes |

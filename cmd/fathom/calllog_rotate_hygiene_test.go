@@ -235,14 +235,15 @@ func TestConsoleTailSharesRotatedGeneration(t *testing.T) {
 }
 
 // RT-125 hygiene: the hooks' $TMPDIR caches (FileChanged leases, the
-// per-cwd toplevel cache, the ident cache, guard stamps) have retention:
+// per-cwd toplevel cache, the ident cache, guard stamps, the Bash-write
+// doubt markers) have retention:
 // gc's tmp class removes their entries older than a day and keeps fresh
 // ones and the directories themselves.
 func TestGCPrunesHookCachesInTmp(t *testing.T) {
 	now := time.Date(2026, 9, 27, 12, 0, 0, 0, time.UTC)
 	tmp := t.TempDir()
 	var old, fresh []string
-	for _, d := range []string{"fathom-filechanged", "fathom-toplevel-cache", "fathom-ident-cache", "fathom-guard-stamps"} {
+	for _, d := range []string{"fathom-filechanged", "fathom-toplevel-cache", "fathom-ident-cache", "fathom-guard-stamps", "fathom-bash-doubt"} {
 		o := filepath.Join(tmp, d, "old.entry")
 		f := filepath.Join(tmp, d, "fresh.entry")
 		gcTouch(t, o, 10, now.Add(-48*time.Hour))

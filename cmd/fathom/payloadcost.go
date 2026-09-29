@@ -11,9 +11,11 @@ package main
 // names and every report line built from them say "estimate," never
 // "measured" — this is a COST ledger, not a savings ledger.
 //
-// Four channels (design §3): session brief (session-hook), post-edit
-// (edit-hook default path), pre-edit guard (edit-hook --pre), and module
-// rules (the module-tagged subset of either edit-hook payload).
+// Five channels (design §3 and EW-1): session brief (session-hook),
+// post-edit (edit-hook default path), pre-edit guard (edit-hook --pre),
+// module rules (the module-tagged subset of either edit-hook payload), and
+// post-bash (edit-hook's Bash-write branch, which served its payload
+// outside this instrument until EW-1 counted it).
 
 import (
 	"strconv"
