@@ -74,3 +74,7 @@ from its worker environments while it was in flight:
 - It does not close EW-S1. The row's `needs` name EW-0 (the integration reading, not yet landed) and EW-12 (which waits on EW-0), and a row whose needs are open is not eligible; the clause "the next wave used the guide" is read from a wave still in flight.
 - One landing is not EW-M2's sample: it needs at least 6 landings after stop 1.
 - The doctor's `providers` FAIL and the partial obligations layer are held by the spend hold, not by a defect this stop introduced; neither was read as caused or fixed by the wave.
+
+### Closing note (2026-09-29)
+
+EW-0 and EW-12 are proven at `e5f52811`: `fathom verify --strict` on a fresh scratch ingest of that commit exits 0 for `docs/plans/efficiency-wave.md`, with both rows verified, so the two `needs` targets this reading named open are met, and every other `needs` target reads `[x]` (EW-1 to EW-5, EW-7 to EW-11, sdd-reconciler-v0.md G2-5 and G2-6, surface-reckoning.md SR-M1). The wave dispatched after push 81 (the `wa-*` workers) landed as push 82 (`700174be`, 20 commits on `087fb5ab`, carrying the `wa-agc`, `wa-hk` and `wa-hook` lines) and push 82 was merged into the next wave at `7dc430bf`. The reading above is unchanged; whether every worker kept to every rule of the guide was not re-read.
