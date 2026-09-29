@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -153,4 +154,50 @@ func TestSessionPageShowsToolMixAndCacheHit(t *testing.T) {
 	}
 	mustContain(t, "plan page", plan, `id="plan-tool-mix"`, "mcp__fathom__search", "60%", "75%", "1 session")
 	assertRoleUtilitiesOnly(t, plan)
+}
+
+// PE-19w: /sessions serves the live session feed as a read-only panel fed
+// from the session ledger joined to the proof history, following the
+// `sessions` live source over the SSE channel; no feed cell is a session id
+// or any per-person figure (I58).
+func TestSessionsPageServesLiveFeed(t *testing.T) {
+	f := newConsoleFixture(t)
+	appendLedgerRows(t, f,
+		`{"schema_version":2,"session_id":"sess-feed-aaaa1111","arm":"on","repo":"proof-service","at":"2026-09-20T12:00:00Z","duration_ms":10800000,"tokens_note":"","harness":"claude-code","model":"claude-opus-4-5"}`,
+		`{"schema_version":2,"session_id":"sess-feed-bbbb2222","arm":"on","repo":"proof-service","at":"2026-09-22T12:00:00Z","duration_ms":600000,"tokens_note":"","harness":"codex","model":"gpt-5-codex"}`,
+	)
+	proofServiceVerifyLedger(t, "2026-09-20T11:00:00Z")
+	resetObsCache()
+
+	_, body := buildDirect(t, f, "sessions", "/sessions")
+	start := strings.Index(body, `id="live-feed"`)
+	end := strings.Index(body, `id="sessions-table"`)
+	if start < 0 || end < start {
+		t.Fatalf("/sessions lacks the live feed panel before the sessions table:\n%s", body)
+	}
+	feed := body[start:end]
+	mustContain(t, "live feed", feed, `data-live-source="sessions"`, `data-table="session-feed"`, "Live session feed",
+		"claude-code", "claude-opus-4-5", "codex", "gpt-5-codex", "proof-service", "2026-09-20T09:00:00Z – 2026-09-20T12:00:00Z")
+	// The session the join attributed S-1 to shows 1; the other names none.
+	if !strings.Contains(feed, "<td") || !regexp.MustCompile(`>\s*1\s*</td>`).MatchString(feed) {
+		t.Errorf("the attributed session shows its proven row count:\n%s", feed)
+	}
+	for _, id := range []string{"sess-feed", "aaaa1111", "bbbb2222", "sess-fee"} {
+		if strings.Contains(feed, id) {
+			t.Errorf("the feed must never show a session id (I58), found %q", id)
+		}
+	}
+	for _, bad := range []string{"<form", "<button", `method="post"`} {
+		if strings.Contains(feed, bad) {
+			t.Errorf("the feed is read-only, found %q", bad)
+		}
+	}
+
+	// Over HTTP the page starts the live stream the panel follows.
+	code, _, page := f.get(t, "/sessions")
+	if code != http.StatusOK {
+		t.Fatalf("GET /sessions = %d", code)
+	}
+	mustContain(t, "/sessions", page, `data-live-page data-live-url="/events"`, `id="live-feed"`)
+	assertRoleUtilitiesOnly(t, page)
 }

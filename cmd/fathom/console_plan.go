@@ -66,7 +66,7 @@ type planToolMix struct {
 // sums the attributed sessions' ledger rows.
 func planToolMixFor(cr *consoleRequest, service, rel string) planToolMix {
 	m := cr.model()
-	join, _, read := sessionProofJoin(cr.r.Context(), m, console.HistoryFilter{Service: service, Plan: rel})
+	join, _, read := sessionProofJoin(cr.r.Context(), agentSessionsOf(m), console.HistoryFilter{Service: service, Plan: rel})
 	rows := ledgerRowsOf(m, join)
 	mix, counted := ledgerToolMix(rows)
 	return planToolMix{Mix: mix, Sessions: len(rows), Counted: counted, Unjoined: len(join.Unjoined), History: read}

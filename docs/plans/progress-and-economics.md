@@ -43,7 +43,7 @@ that shows them. Waves 4 and 5 were added 2026-09-29 (ADR-056 decision 10, obser
 - [x] Tool-call mix and cache hit rate, library: `ToolMix` per session and plan; no page shows it yet (PE-18w) {id: PE-18, symbol: ToolMix, package: internal/console, reachable_from: TestToolMixAndCacheHit, needs: "PE-13", library: true, reason: "the library half of a split; PE-18w (open) is the row that wires it into the product"}
 - [x] The session page shows each session's tool-call mix and cache hit rate, and the plan page shows them per plan {id: PE-18w, symbol: buildSessionPage, package: cmd/fathom, reachable_from: TestSessionPageShowsToolMixAndCacheHit, needs: "PE-18"}
 - [x] The live session feed, library: `renderSessionFeed` renders the read-only feed table; no route serves it yet (PE-19w) {id: PE-19, symbol: renderSessionFeed, package: cmd/fathom, reachable_from: TestConsoleSessionFeed, needs: "PE-15", library: true, reason: "the library half of a split; PE-19w (open) is the row that wires it into the product"}
-- [ ] The live session feed is served on `/sessions`, read-only over the SSE channel {id: PE-19w, symbol: buildSessionsPage, package: cmd/fathom, reachable_from: TestSessionsPageServesLiveFeed, needs: "PE-19"}
+- [x] The live session feed is served on `/sessions`, read-only over the SSE channel {id: PE-19w, symbol: buildSessionsPage, package: cmd/fathom, reachable_from: TestSessionsPageServesLiveFeed, needs: "PE-19"}
 
 ## Wave 4: cost per weight point on the pages (design section 10, ADR-056 decision 10)
 

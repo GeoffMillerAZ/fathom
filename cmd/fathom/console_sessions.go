@@ -19,6 +19,7 @@ import (
 	"html"
 	"html/template"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -53,6 +54,9 @@ func init() {
 // sessionsPageModel is the table page's JSON projection.
 type sessionsPageModel struct {
 	Table console.SessionTableModel `json:"table"`
+	// Feed is the live session feed (PE-19w): no session id, no
+	// per-person figure (I58).
+	Feed []sessionFeedRow `json:"feed"`
 }
 
 // sessionFilterFrom reads the table's filter from the query; an unknown
@@ -92,13 +96,17 @@ func buildSessionsPage(cr *consoleRequest) (consoleOut, error) {
 	// the read the table above is built from too (OC-9, ADR-045 decision 3).
 	metrics := consoleModelMetrics(m)
 	sessions := metrics[console.MetricSessions]
+	feed, feedTotal := sessionFeedFrom(cr.r.Context(), m)
+	if feed == nil {
+		feed = []sessionFeedRow{}
+	}
 	meta := "sessions " + valuePlain(tbl.Sessions)
 	if tbl.Sessions.Known() {
 		meta = fmt.Sprintf("%s from %s", plural(tbl.Sessions.V, "session"), plural(tbl.LedgerRows.V, "ledger row"))
 	}
 	return consoleOut{
 		Meta:     []string{"generated " + m.GeneratedAt, meta},
-		Model:    sessionsPageModel{Table: tbl},
+		Model:    sessionsPageModel{Table: tbl, Feed: feed},
 		Metrics:  pageMetrics(cr.page, metrics),
 		Sections: map[string]any{verb: tbl},
 		Body: func() string {
@@ -118,7 +126,25 @@ func buildSessionsPage(cr *consoleRequest) (consoleOut, error) {
 			case !sessions.Known():
 				state, reason = sessions.State, sessions.Reason
 			}
-			return band + `<div class="mt-4">` + renderPanel(consolePanel{
+			// PE-19w: the live feed, read-only, following the sessions
+			// source over the SSE channel like every panel on this page.
+			// Without a ledger read the feed is not measured: no count and
+			// no empty state that would read as "no sessions".
+			feedDenominator, feedBody := "", ""
+			if state == console.StatePresent {
+				feedDenominator = fmt.Sprintf("the %s of %s", plural(len(feed), "newest session"), plural(feedTotal, "session"))
+				feedBody = renderSessionFeed(feed)
+			}
+			feedPanel := `<div class="mt-4">` + renderPanel(consolePanel{
+				ID: "live-feed", Title: "Live session feed", SourceKey: "sessions",
+				Question:    "Which sessions ran most recently, as which agent, and how many rows did each prove?",
+				Source:      "the session ledger (" + sessionLedgerPath() + "), each session's last row, joined to the verify ledger's proof history (PE-15)",
+				Denominator: feedDenominator,
+				Freshness:   "as of the model read at " + m.GeneratedAt,
+				State:       state, Reason: reason,
+				Body: feedBody,
+			}) + `</div>`
+			return band + feedPanel + `<div class="mt-4">` + renderPanel(consolePanel{
 				ID: "sessions-table", Title: "Sessions", SourceKey: "sessions",
 				Question: "Which sessions ran, under which arm, and how far did each get?",
 				Verb:     verb, Source: "the session ledger (" + sessionLedgerPath() + "), the last row per session id",
@@ -457,9 +483,9 @@ func renderSessionReplay(cr *consoleRequest, rp sessionReplay, verb string) stri
 const sessionJoinMaxAuthorLooks = 100
 
 // sessionProofJoin is PE-15's join for a console page: the verify
-// ledger's proof history (a bounded, cached tail read) joined to the
-// session ledger's sessions as the model read them, under f.
-func sessionProofJoin(ctx context.Context, m observatoryModel, f console.HistoryFilter) (console.JoinResult, console.History, console.SourceRead) {
+// ledger's proof history (a bounded, cached tail read) joined to sessions
+// (agentSessionsOf's windows over the model's ledger read), under f.
+func sessionProofJoin(ctx context.Context, sessions []console.AgentSession, f console.HistoryFilter) (console.JoinResult, console.History, console.SourceRead) {
 	h, read := console.ProofHistory(ctx, verifyLedgerPath(), console.DefaultHistoryTail)
 	looks := 0
 	authorAt := func(ctx context.Context, root, commit string) (string, bool) {
@@ -469,7 +495,54 @@ func sessionProofJoin(ctx context.Context, m observatoryModel, f console.History
 		looks++
 		return console.CommitAuthorAt(ctx, root, commit)
 	}
-	return console.JoinSessionProof(ctx, h, agentSessionsOf(m), f, authorAt), h, read
+	return console.JoinSessionProof(ctx, h, sessions, f, authorAt), h, read
+}
+
+// sessionFeedLimit is how many sessions the live feed lists, newest first.
+const sessionFeedLimit = 25
+
+// sessionFeedFrom builds the live session feed (PE-19w): the newest
+// sessions the model's ledger read holds, each with its agent identity,
+// repository and window, and the proven rows the join attributed to it.
+// The join sees only these sessions and the days they span: a reading
+// before the oldest listed session cannot join any of them. total is every
+// session the read holds.
+func sessionFeedFrom(ctx context.Context, m observatoryModel) (rows []sessionFeedRow, total int) {
+	sessions := agentSessionsOf(m)
+	total = len(sessions)
+	sort.SliceStable(sessions, func(i, j int) bool { return sessions[i].End > sessions[j].End })
+	sessions = sessions[:min(len(sessions), sessionFeedLimit)]
+	if len(sessions) == 0 {
+		return nil, total
+	}
+	from := sessions[0].Start
+	for _, s := range sessions {
+		from = min(from, s.Start)
+	}
+	f := console.HistoryFilter{}
+	if len(from) >= len("2006-01-02") {
+		f.From = from[:len("2006-01-02")]
+	}
+	join, _, read := sessionProofJoin(ctx, sessions, f)
+	proven := make(map[string]int, len(join.Outcomes))
+	for _, o := range join.Outcomes {
+		proven[o.SessionID] = len(o.Rows)
+	}
+	rows = make([]sessionFeedRow, 0, len(sessions))
+	for _, s := range sessions {
+		r := sessionFeedRow{Harness: s.Harness, Model: s.Model, Repo: s.Repo, Start: s.Start, End: s.End}
+		n, joined := proven[s.ID]
+		switch {
+		case read.State != console.StatePresent:
+			r.Proven = console.Absent[int]("the proof history was not read: " + read.Reason)
+		case joined:
+			r.Proven = console.Measured(n, "the proof history joined to the session ledger")
+		default:
+			r.Proven = console.Absent[int]("no claimed-proven transition joined to this session yet")
+		}
+		rows = append(rows, r)
+	}
+	return rows, total
 }
 
 // ledgerRowsOf is the last ledger row of each session the join attributed
