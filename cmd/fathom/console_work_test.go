@@ -39,7 +39,7 @@ func workChanges() []console.ProvenChange {
 // WI-11: the scorecard, interest-rate and cost-per-zone pages.
 func TestConsoleWorkIntelligencePages(t *testing.T) {
 	w := console.WorkIntelligence(workChanges(), nil)
-	out := renderWorkIntelligence(w, console.SourceRead{Name: console.SourceVerifyLedger, Path: "/l", State: console.StatePresent}, 0, "files read")
+	out := renderWorkIntelligence(w, console.SourceRead{Name: console.SourceVerifyLedger, Path: "/l", State: console.StatePresent}, 0, "files read", nil)
 	for _, want := range []string{`id="scorecard"`, `id="interest"`, `id="cost-per-zone"`, "data-scorecard-descriptive", "Descriptive only.",
 		"claude-code", "internal/pay", "Interest rate", "CI minutes", "not measured — no CI summary file named", "Confounders:"} {
 		if !strings.Contains(out, want) {
@@ -55,7 +55,7 @@ func TestConsoleWorkIntelligencePages(t *testing.T) {
 	if regexp.MustCompile(`\b(bg|text|border)-(red|green|blue|gray|slate|zinc)-\d`).MatchString(out) || strings.Contains(out, "dark:") {
 		t.Error("role utilities only (cmd/fathom/AGENTS.md)")
 	}
-	empty := renderWorkIntelligence(console.WorkIntelligence(nil, nil), console.SourceRead{State: console.StatePresent}, 3, "")
+	empty := renderWorkIntelligence(console.WorkIntelligence(nil, nil), console.SourceRead{State: console.StatePresent}, 3, "", nil)
 	if !strings.Contains(empty, "data-scorecard-empty") || !strings.Contains(empty, "3 proven rows unjoined") {
 		t.Errorf("no joined change: every panel is absent with its reason")
 	}

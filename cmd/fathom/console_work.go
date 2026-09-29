@@ -30,7 +30,6 @@ import (
 	"github.com/geoffmilleraz/app-kit/appkit/ui/chrome"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/table"
 	"github.com/geoffmilleraz/fathom/internal/certify"
-	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/console"
 	"github.com/geoffmilleraz/fathom/internal/gitro"
 )
@@ -60,6 +59,7 @@ type workPageModel struct {
 	History      console.SourceRead     `json:"history_read"`
 	Unjoined     int                    `json:"unjoined_proven_rows"`
 	Commits      string                 `json:"commits_read"`
+	CIRead       []string               `json:"ci_sources"`
 	Work         console.WorkModel      `json:"work"`
 	Friction     console.FrictionView   `json:"friction"`
 	FrictionRead []string               `json:"friction_sources"`
@@ -112,8 +112,10 @@ func buildWorkPage(cr *consoleRequest) (consoleOut, error) {
 // reads the same memo, so a row's profile and the /work page cannot
 // disagree about the proven changes they are computed over.
 func memoWork(ctx context.Context, cr *consoleRequest, m observatoryModel, sr serviceRoot) workPageModel {
+	cfg, _ := workRepoConfig(sr.Root)
 	key := strings.Join([]string{sr.Service, sr.Root, fileWatermark(verifyLedgerPath()), fileWatermark(sessionLedgerPath()),
-		fileWatermark(ruleOutcomeLogPath()), repoHeadNoFork(sr.Root)}, "\x00")
+		fileWatermark(ruleOutcomeLogPath()), repoHeadNoFork(sr.Root),
+		fileWatermark(workConfigPath(sr.Root)), workCIWatermarks(sr.Root, cfg)}, "\x00")
 	model, _, _ := workMemo.doCtx(ctx, key, cr.now, func() (workPageModel, time.Duration) {
 		return computeWork(ctx, m, sr, cr.now), 2 * time.Minute
 	})
@@ -138,7 +140,8 @@ func computeWork(ctx context.Context, m observatoryModel, sr serviceRoot, now ti
 	join := console.JoinSessionProof(ctx, h, agentSessionsOf(m), f, authorAt)
 	model.Unjoined = len(join.Unjoined)
 	commits, note := workCommitFacts(ctx, sr.Root, join, now)
-	zones := console.NewZones(workZonesConfig(sr.Root), nil)
+	cfg, cfgErr := workRepoConfig(sr.Root)
+	zones := console.NewZones(cfg.Zones, nil)
 	changes := console.EffortPerProvenChange(join, h, sessionEffortsOf(m), commits, zones)
 	retries := 0
 	for _, c := range changes {
@@ -150,7 +153,9 @@ func computeWork(ctx context.Context, m observatoryModel, sr serviceRoot, now ti
 	}
 	model.Commits = note + fmt.Sprintf("; %d claimed-unproven %s before %s (the verify ledger's history)",
 		retries, retryWord, plural(len(changes), "proven change"))
-	model.Work = console.WorkIntelligence(changes, nil)
+	ci, ciRead := workCIRuns(sr.Root, cfg.Work.CISummaries, cfgErr, changes)
+	model.CIRead = ciRead
+	model.Work = console.WorkIntelligence(changes, ci)
 	model.changes, model.history, model.zones = changes, h, zones
 
 	rules, ruleNote := workRuleEvents(sr.Root)
@@ -412,18 +417,6 @@ func workReworkAndReverts(ctx context.Context, root string, facts map[string]con
 	return note + fmt.Sprintf(", %s of a proving commit", plural(reverted, "revert"))
 }
 
-// workZonesConfig reads the repository's own `[zones]` table.
-func workZonesConfig(root string) map[string][]string {
-	if root == "" {
-		return nil
-	}
-	loaded, err := config.Load("", filepath.Join(root, ".fathom", "config.toml"))
-	if err != nil {
-		return nil
-	}
-	return loaded.Config.Zones
-}
-
 // workRuleEvents reads the rule-outcome log's newest workRuleTailBytes and
 // keeps this repository's blocked, violated and served events, file paths
 // made repository-relative.
@@ -530,7 +523,7 @@ func renderWorkPage(m workPageModel) string {
 		}))
 		return b.String()
 	}
-	b.WriteString(renderWorkIntelligence(m.Work, m.History, m.Unjoined, m.Commits))
+	b.WriteString(renderWorkIntelligence(m.Work, m.History, m.Unjoined, m.Commits, m.CIRead))
 	b.WriteString(`<div class="mt-4">` + renderPanel(consolePanel{ID: "friction", Title: "Friction map", SourceKey: "sessions",
 		Question: "Where do agents struggle — blocked edits, rediscovery, search loops, reverts, unproven claims — and what might help?",
 		Source:   strings.Join(m.FrictionRead, "; "), Denominator: fmt.Sprintf("%s, %s", plural(m.Friction.Map.RuleEvents, "rule event"), plural(m.Friction.Map.Events, "activity event")),
@@ -551,7 +544,7 @@ func renderWorkPage(m workPageModel) string {
 }
 
 // renderWorkIntelligence renders U5, U2 and U1 as three panels.
-func renderWorkIntelligence(w console.WorkModel, hist console.SourceRead, unjoined int, commits string) string {
+func renderWorkIntelligence(w console.WorkModel, hist console.SourceRead, unjoined int, commits string, ci []string) string {
 	var b strings.Builder
 	src := "the verify ledger's proof history joined to the session ledger (" + hist.Path + ")"
 	state, reason := hist.State, hist.Reason
@@ -574,7 +567,7 @@ func renderWorkIntelligence(w console.WorkModel, hist console.SourceRead, unjoin
 
 	panel(consolePanel{ID: "cost-per-zone", Title: "Cost per zone", SourceKey: "plans sessions",
 		Question: "Where do tokens, cost and CI minutes go by zone, and how much of it followed a claimed-unproven retry?",
-		Source:   src + "; " + commits, Denominator: plural(len(w.CostPerZone), "zone"),
+		Source:   src + "; " + commits + "; " + strings.Join(ci, "; "), Denominator: plural(len(w.CostPerZone), "zone"),
 		State: state, Reason: reason, Body: renderCostPerZone(w.CostPerZone, w.FirstAttempt)})
 	return b.String()
 }

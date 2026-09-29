@@ -24,7 +24,7 @@ and are not repeated here. WI-16 to WI-19 stay open and are what WS-8 and WS-12 
 
 - [x] Zones: package or deepest symbol directory by default, `[zones]` globs override; a change splits evenly across its zones (§2) {id: WI-1, symbol: ZoneOf, package: internal/console, reachable_from: TestZoneOfDefaultsAndOverrides}
 - [x] U1 per zone; the CI-minutes join from a CI summary file is library only (`ParseCISummary` is never read by the page) {id: WI-2, symbol: costPerZone, package: internal/console, reachable_from: TestCostPerZoneAndCIMinutes, needs: "WI-1,progress-and-economics.md#PE-15"}
-- [ ] CI minutes from a CI summary file the user names, bound to a commit, are read by `/work` {id: WI-2w, symbol: computeWork, package: cmd/fathom, reachable_from: TestComputeWorkReadsNamedCISummary, needs: "WI-2"}
+- [x] CI minutes from a CI summary file the user names, bound to a commit, are read by `/work` {id: WI-2w, symbol: computeWork, package: cmd/fathom, reachable_from: TestComputeWorkReadsNamedCISummary, needs: "WI-2"}
 - [x] U1 split between first-attempt proofs and proofs after claimed-unproven retries {id: WI-3, symbol: firstAttemptSplit, package: internal/console, reachable_from: TestFirstAttemptSplit, needs: "WI-2"}
 - [x] Effort per proven change: tokens, turns and wall time from the session ledger; rework, reverted edits and claimed-unproven retries are library only (WI-4w) {id: WI-4, symbol: EffortPerProvenChange, package: internal/console, reachable_from: TestEffortPerProvenChange, needs: "progress-and-economics.md#PE-15"}
 - [x] `/work` reads rework within 7 days, reverted edits and claimed-unproven retries per proven change {id: WI-4w, symbol: workCommitFacts, package: cmd/fathom, reachable_from: TestWorkReadsReworkAndReverts, needs: "WI-4"}

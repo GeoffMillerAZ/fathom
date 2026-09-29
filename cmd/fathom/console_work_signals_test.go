@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -148,5 +149,105 @@ func TestWorkReadsReworkAndReverts(t *testing.T) {
 	bad, badNote := workCommitFacts(context.Background(), t.TempDir(), join, now)
 	if len(bad) != 0 || !strings.Contains(badNote, "could not be read") {
 		t.Fatalf("an unreadable repository is named: %v %q", bad, badNote)
+	}
+}
+
+// workLedgers writes the verify ledger newWorkRepo's rows were proven in
+// (FATHOM_VERIFY_LEDGER) and returns the model /work joins it to: one
+// session in the repository covering the whole history.
+func workLedgers(t *testing.T, r workRepo) observatoryModel {
+	t.Helper()
+	at := func(h int) string { return r.base.Add(time.Duration(h) * time.Hour).Format(time.RFC3339) }
+	n := 0
+	line := func(h int, commit string, states map[string]string) string {
+		n++
+		var rows []string
+		for _, id := range []string{"A-1", "A-2", "A-3", "A-4"} {
+			rows = append(rows, fmt.Sprintf(`{"id":%q,"state":%q,"weight":1}`, id, states[id]))
+		}
+		return fmt.Sprintf(`{"schema_version":3,"at":%q,"repo_root":%q,"service":"svc","plan":"docs/plans/p.md","commit":%q,"origin":"cli","total":4,"claimed":1,"verified":1,"digest":"d%d","rows":[%s]}`,
+			at(h), r.root, commit, n, strings.Join(rows, ","))
+	}
+	st := map[string]string{"A-1": "open", "A-2": "open", "A-3": "open", "A-4": "open"}
+	step := func(h int, commit, id, state string) string {
+		st[id] = state
+		cp := map[string]string{}
+		for k, v := range st {
+			cp[k] = v
+		}
+		return line(h, commit, cp)
+	}
+	ledger := strings.Join([]string{
+		line(-1, r.c1[:12], st),
+		step(1, r.c1[:12], "A-1", "claimed-proven"),
+		step(40, r.c2[:12], "A-2", "claimed-unproven"),
+		step(49, r.c3[:12], "A-2", "claimed-proven"),
+		step(26*24+1, r.c6[:12], "A-3", "claimed-proven"),
+		step(26*24+2, "ddddddddddddd", "A-4", "claimed-proven"),
+	}, "\n") + "\n"
+	lp := filepath.Join(t.TempDir(), "verify-ledger.jsonl")
+	if err := os.WriteFile(lp, []byte(ledger), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("FATHOM_VERIFY_LEDGER", lp)
+	sess := fmt.Sprintf(`{"schema_version":2,"session_id":"s1","repo":%q,"at":%q,"duration_ms":%d,"turn_count":40,"tokens_in":50000,"tokens_out":5000}`,
+		r.root, at(27*24), int64(28*24*time.Hour/time.Millisecond))
+	return observatoryModel{ledger: foldSessionLedger([]byte(sess + "\n"))}
+}
+
+// WI-2w: /work reads the CI summary files `[work] ci_summaries` names,
+// binds each run to its proving commit and passes the runs to U1; a
+// missing or unparseable file is named on the page.
+func TestComputeWorkReadsNamedCISummary(t *testing.T) {
+	r := newWorkRepo(t)
+	m := workLedgers(t, r)
+	files := map[string]string{
+		"ci/junit.xml": `<?xml version="1.0"?><testsuites time="120"><testsuite name="a" time="120"></testsuite></testsuites>`,
+		"ci/runs.json": fmt.Sprintf(`{"workflow_runs":[{"head_sha":%q,"run_started_at":"2026-09-03T10:00:00Z","updated_at":"2026-09-03T10:06:00Z"}]}`, r.c3),
+		"ci/bad.xml":   `<testsuites time=`,
+		".fathom/config.toml": fmt.Sprintf("[[work.ci_summaries]]\npath = \"ci/junit.xml\"\ncommit = %q\n\n[[work.ci_summaries]]\npath = \"ci/runs.json\"\n\n"+
+			"[[work.ci_summaries]]\npath = \"ci/missing.xml\"\ncommit = %q\n\n[[work.ci_summaries]]\npath = \"ci/bad.xml\"\ncommit = %q\n", r.c1, r.c3, r.c3),
+	}
+	for name, body := range files {
+		p := filepath.Join(r.root, name)
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	model := computeWork(context.Background(), m, serviceRoot{Service: "svc", Root: r.root}, r.base.Add(28*24*time.Hour))
+	if model.Work.Changes != 4 {
+		t.Fatalf("four proven changes joined to the session: %+v (unjoined %d)", model.Work, model.Unjoined)
+	}
+	read := strings.Join(model.CIRead, "\n")
+	for _, want := range []string{"ci/junit.xml: 1 run, 2.0 CI minutes", "ci/runs.json: 1 run, 6.0 CI minutes", "ci/missing.xml: not read", "ci/bad.xml: not parsed"} {
+		if !strings.Contains(read, want) {
+			t.Errorf("the CI read names %q:\n%s", want, read)
+		}
+	}
+	zones := map[string]console.ZoneCost{}
+	for _, z := range model.Work.CostPerZone {
+		zones[z.Zone] = z
+	}
+	if z := zones["internal/pay"]; !z.CIMinutes.Known() || z.CIMinutes.V != 1 || z.CIMinutes.State != console.StatePresent {
+		t.Fatalf("c1's 2 minutes split across its two zones, bound through the abbreviated spelling: %+v", z.CIMinutes)
+	}
+	if z := zones["web"]; z.CIMinutes.State != console.StatePartial || z.CIMinutes.V != 7 {
+		t.Fatalf("web: c1's half plus c3's 6 minutes, c6 has no run (a lower bound): %+v", z.CIMinutes)
+	}
+	out := renderWorkIntelligence(model.Work, model.History, model.Unjoined, model.Commits, model.CIRead)
+	if !strings.Contains(out, "ci/missing.xml: not read") {
+		t.Error("the cost-per-zone panel names the file it could not read")
+	}
+
+	// No [work] table: the absence is named, never a zero.
+	if err := os.Remove(filepath.Join(r.root, ".fathom", "config.toml")); err != nil {
+		t.Fatal(err)
+	}
+	none := computeWork(context.Background(), m, serviceRoot{Service: "svc", Root: r.root}, r.base.Add(28*24*time.Hour))
+	if len(none.CIRead) != 1 || !strings.Contains(none.CIRead[0], "no CI summary file named") {
+		t.Fatalf("no named file is said: %q", none.CIRead)
 	}
 }
