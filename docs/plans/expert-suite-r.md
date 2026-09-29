@@ -262,8 +262,7 @@ precedent item 2's vocabulary mirrors), `docs/design/product-vision.md` §3
 
 ### E — eval gate + promotion rule (docs/design/findings-as-evidence.md §6 item 5)
 
-- [ ] `PromoteTier` applies the promotion rule, gated structurally behind the layer's eval status — recomputed and reversible, never sticky {id: R-12, symbol: PromoteTier, package: internal/analysis/findings}
-  <!-- product wiring open (fathom verify --strict reads it library-only, 2026-09-28): PromoteTier has no production caller: the findings layer never promotes a tier. -->
+- [-] `PromoteTier` applies the promotion rule, gated structurally behind the layer's eval status — recomputed and reversible, never sticky {id: R-12, symbol: PromoteTier, package: internal/analysis/findings, disposition: refused, reason: "PromoteTier has no production caller: blast_radius kind delete at 9ea6da5f reads 0 typed referents and only its six TestPromoteTier_* tests in internal/analysis/findings/tier_test.go reach it, so the findings layer never promotes a tier and the rule is unbuilt in any product path"}
   - `internal/analysis/findings/tier.go`: `PromoteTier(base
     core.EvidenceTier, p Pattern, layerEvaled bool) (tier
     core.EvidenceTier, note string)` — refuses whenever `!layerEvaled`
@@ -367,8 +366,7 @@ precedent item 2's vocabulary mirrors), `docs/design/product-vision.md` §3
 
 - [x] `docs/use-cases/incident-investigation.md` gains the neighborhood query (tool table row, a worked-example step 9, the `investigation` profile note, the Maintained line) {id: R-20, symbol: registerFindingsNear, package: internal/mcp, skip_test: true, skip: "documentation-only row; the tool it documents is proven by R-17's own tests"}
 
-- [ ] `docs/layers.md` records the findings layer's new (still not-gated) eval status and the class/pattern/promotion mechanics {id: R-21, symbol: PromoteTier, package: internal/analysis/findings, skip_test: true, skip: "documentation-only row; the mechanics it documents are proven by R-4/R-12/R-13's own tests"}
-  <!-- product wiring open (fathom verify --strict reads it library-only, 2026-09-28): the mechanics this documents are not wired: PromoteTier has no production caller. -->
+- [-] `docs/layers.md` records the findings layer's new (still not-gated) eval status and the class/pattern/promotion mechanics {id: R-21, symbol: PromoteTier, package: internal/analysis/findings, skip_test: true, skip: "documentation-only row; the mechanics it documents are proven by R-4/R-12/R-13's own tests", disposition: refused, reason: "documents mechanics that are not wired: PromoteTier (R-12) has no production caller (blast_radius kind delete at 9ea6da5f reads 0 typed referents, only its six tests reach it), so docs/layers.md would describe a promotion no product path performs; retired with R-12"}
 
 - [x] `docs/mcp-tools.md` gains the `findings_near` catalog row (full arg/return/purpose reference, CLI mirror noted) {id: R-22, symbol: registerFindingsNear, package: internal/mcp, skip_test: true, skip: "documentation-only row; verified by direct read of docs/mcp-tools.md's existing investigation-tools table convention at authoring time"}
 

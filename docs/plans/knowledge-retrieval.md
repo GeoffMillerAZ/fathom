@@ -8,7 +8,8 @@ v1.52.0, SQLite 3.53.2; probed 2026-09-27). No embeddings (vision 31 stands).
 
 ## Wave 2: the index, ranking, links and drift
 
-- [x] `docs_fts` (FTS5, `porter unicode61`), `doc_units` and `doc_links`, additive to store format v0; the store stays pure Go under `CGO_ENABLED=0` (§4) {id: KR-1, symbol: PutDocUnits, package: internal/store, reachable_from: TestDocUnitsFTS5RoundTrip, needs: "responsible-tenant.md#RT-M1"}
+- [x] `docs_fts` (FTS5, `porter unicode61`), `doc_units` and `doc_links`, additive to store format v0; the store stays pure Go under `CGO_ENABLED=0` (§4) {id: KR-1, symbol: PutDocUnits, package: internal/store, reachable_from: TestDocUnitsFTS5RoundTrip}
+  <!-- need on responsible-tenant.md#RT-M1 dropped (w1 retire, 2026-09-29): KR-1 was built in 211bce4d and claimed in 0a042dd5 on 2026-09-28 while RT-M1 was still open, so the need was never honored at build time. ADR-049 amendment of 2026-09-29, decision 4 (ADR.md), records the owner accepting it: "docs search in the FTS5 index KR-1 created". The row stays claimed: KR-4, KR-5, KR-8 and EW-10 rest on the index and it is live. -->
 - [x] The section splitter: heading path, line range and kind per unit; ADR sections split at bold labels; plan rows as their own units (§3) {id: KR-2, symbol: SplitDocUnits, package: internal/docindex, reachable_from: TestSplitDocUnitsHeadingPaths}
 - [x] The corpus: docs, ADRs, intent, plans, design and vision, other Markdown, memories and symbol doc comments; archive and tmp flagged `stale_by_location` (§3) {id: KR-3, symbol: docCorpusFiles, package: internal/docindex, reachable_from: TestDocCorpusIncludesAndFlags, needs: "KR-2"}
 - [x] Hash-gated doc ingest: only changed files re-index; deleted files' units removed in the same transaction {id: KR-8, symbol: IngestDocUnits, package: internal/docindex, reachable_from: TestIngestDocUnitsHashGated, needs: "KR-1,KR-3"}
