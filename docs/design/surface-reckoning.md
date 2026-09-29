@@ -173,8 +173,8 @@ already is, instead of waiting to be asked.
 | SR-64 | findings loop (F-33) | Review Kit publishing armed on one real repository; the import receipt shows > 0 findings |
 | SR-65 | SCIP import (F-74) | `fathom init` runs `scip-typescript`/`scip-python` when installed and imports the index. **Owner decision (2026-09-28):** the `ingest` MCP tool gains an additive optional `indexers` parameter (a closed set: `scip-typescript`, `scip-python`); init passes a name only when that toolchain is already on PATH and never installs anything; the daemon imports the produced `.fathom/scip/<name>.scip` under the admission budget (the ingest slot, and a size ceiling from the gate) |
 | SR-66 | ui-appkit pack (F-67) | compiled on app-kit and one consumer; UI rule violations measured |
-| SR-67 | call log + hook log | the U1–U5 views read them (built in the work-intelligence plan); this row lands the shared reader over both logs |
-| SR-68 | verify + session ledgers | the N2 burn-up and N3 cost-per-proven-row views read them first (progress plan); this row lands the join by session id |
+| SR-67 | call log + hook log | refused 2026-09-29: the U1–U5 views read the call log through `callLogFold`, and the shared reader (`ReadActivityRecord`) has no production caller |
+| SR-68 | verify + session ledgers | refused 2026-09-29 as a duplicate of `progress-and-economics.md#PE-15`, whose `JoinSessionProof` is the live join by session id |
 
 ## 7. KEEP — listed with their optional "better" line
 

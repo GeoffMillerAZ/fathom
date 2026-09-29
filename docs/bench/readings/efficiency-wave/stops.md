@@ -24,7 +24,9 @@ EW-0 reading: the four lines are each an ancestor of main at `9ea6da5f` (`git me
 ### What this reading does not say
 
 - It does not say the 28 rows are wired. They are open, each waiting on its own plan's wiring or disposition.
-- Rows can leave the open set after `9ea6da5f`: the commit that lands this reading also retires SR-67 and SR-68 as refused (`docs/plans/surface-reckoning.md`), so the tip after it reads 26 open and 3 `[-]`.
+- Rows can leave the open set after `9ea6da5f`: the commit that lands this reading also retires SR-67 and SR-68 as refused (`docs/plans/surface-reckoning.md`), so the tip after it reads 26 open and 3 `[-]`. The rest of wave w1 moves more of them: it claims RG-4 and RT-161 on
+  re-anchored product paths and refuses DF-6, DF-7, P1-6, CV-5, R-12 and R-21, so the wave's tip reads 18 open, 2 `[x]`
+  and 9 `[-]` (RC-13 counted in `docs/plans/receipts.md`, the file the audit edited).
 
 ## Stop 1: push, deploy, adopt (EW-S1)
 

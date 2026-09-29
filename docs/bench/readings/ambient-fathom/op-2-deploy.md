@@ -12,8 +12,8 @@ OP-2 reading: the managed daemon serves main's HEAD after a deliberate deploy, r
   equal to HEAD. `fathom doctor --service fathom` on the main checkout then read `binary_fresh` and
   `daemon_fresh` PASS, local and daemon binary both at 087fb5abb033.
 - **Today, read-only (2026-09-29T22:27Z).** `git ls-remote origin refs/heads/main` names 9ea6da5f. The daemon
-  ledger (`~/.fathom/daemon/com.geoffmilleraz.fathom-http/lifecycle.jsonl`) ends with a `deploy` row written by
-  `task deploy` at 21:27:30Z (binary hash e8e7c035671b, replacing pid 2642), that pid's `exit` row (reason
+  ledger (`~/.fathom/daemon/<label>/lifecycle.jsonl`, the managed job's launchd label) ends with a `deploy`
+  row written by `task deploy` at 21:27:30Z (binary hash e8e7c035671b, replacing pid 2642), that pid's `exit` row (reason
   `drain`, not counted by the breaker), and a `start` row at 21:28:31Z for pid 57698, managed, `binary_commit`
   9ea6da5fec78. `pgrep` shows pid 57698 is the running `serve-http --managed` on 127.0.0.1:7575.
 - **Doctor at main's tip.** `fathom doctor --service fathom` from a detached checkout of 9ea6da5f, with the
