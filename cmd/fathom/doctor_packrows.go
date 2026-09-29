@@ -111,7 +111,15 @@ func checkLefthookGates(root string) doctorCheck {
 // claudeLoadPath's machine half (an ancestor CLAUDE file, the agents-md
 // setting, a Claude Code release before 2.1.277). PASS names the path
 // AGENTS.md takes into a session.
-func checkStanzaPresent(root string) doctorCheck {
+func checkStanzaPresent(root string) doctorCheck { return checkStanzaPresentProbe(root, true) }
+
+// checkStanzaPresentRepoOnly is the row `doctor --repo-only` renders: the
+// same verdict without asking the claude binary for its version.
+func checkStanzaPresentRepoOnly(root string) doctorCheck { return checkStanzaPresentProbe(root, false) }
+
+// checkStanzaPresentProbe is checkStanzaPresent with the version probe
+// switchable (claudeLoadPath).
+func checkStanzaPresentProbe(root string, probeVersion bool) doctorCheck {
 	const name = "stanza_present"
 	remedy := "fathom init --path " + root
 
@@ -127,7 +135,7 @@ func checkStanzaPresent(root string) doctorCheck {
 		return doctorCheck{Name: name, Status: doctorFail, Reason: agents.Detail, Remedy: remedy}
 	}
 
-	load := claudeLoadPath(root)
+	load := claudeLoadPath(root, probeVersion)
 	var warns, remedies []string
 	if len(load.Corrupted) > 0 {
 		warns = append(warns, fmt.Sprintf("%s: corrupted fathom marker pair — fleet reconcile will not rewrite it", strings.Join(load.Corrupted, ", ")))

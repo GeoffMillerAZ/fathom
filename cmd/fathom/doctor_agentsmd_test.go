@@ -153,6 +153,18 @@ func TestCheckStanzaPresentAgentsMD(t *testing.T) {
 			t.Fatalf("got %+v", c)
 		}
 	})
+	t.Run("repo-only never spawns claude", func(t *testing.T) {
+		withClaudeLoadEnv(t, t.TempDir(), "", "")
+		claudeLoadEnv.version = func(context.Context) (string, error) {
+			t.Error("doctor --repo-only asked the claude binary for its version")
+			return "", errors.New("unexpected")
+		}
+		_, root := agentsRepo(t)
+		c := checkStanzaPresentRepoOnly(root)
+		if c.Status != doctorPass || !strings.Contains(c.Reason, "not probed") {
+			t.Fatalf("got %+v", c)
+		}
+	})
 	t.Run("a Claude Code before 2.1.277 warns", func(t *testing.T) {
 		withClaudeLoadEnv(t, t.TempDir(), "", "2.1.270")
 		_, root := agentsRepo(t)

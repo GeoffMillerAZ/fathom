@@ -140,9 +140,10 @@ func versionBefore(a, b string) bool {
 }
 
 // claudeLoadPath reads the load path for root. The binary is asked for its
-// version only when nothing imports AGENTS.md: an import loads it on every
-// release, so the version cannot change the answer.
-func claudeLoadPath(root string) claudeLoad {
+// version only when probeVersion is set and nothing imports AGENTS.md: an
+// import loads it on every release, so the version cannot change the
+// answer. `doctor --repo-only` passes false — it spawns no harness process.
+func claudeLoadPath(root string, probeVersion bool) claudeLoad {
 	var l claudeLoad
 	if f := rootClaudeFile(root); f != "" {
 		l.ClaudeFile = f
@@ -177,7 +178,11 @@ func claudeLoadPath(root string) claudeLoad {
 	l.Ancestors = ancestorClaudeFiles(root, home)
 	l.Mode, l.ModeSource = effectiveInstructionFilesMode(home)
 
-	if !l.Imports {
+	switch {
+	case l.Imports:
+	case !probeVersion:
+		l.VersionNote = "claude version not probed (--repo-only spawns no harness process)"
+	default:
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
 		if v, err := claudeLoadEnv.version(ctx); err == nil {
