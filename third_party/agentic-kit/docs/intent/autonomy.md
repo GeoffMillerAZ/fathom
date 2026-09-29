@@ -2,9 +2,11 @@
 
 What an agent may do unasked, must ask first, and never does in this repo. A three-line
 summary lives in `CLAUDE.md` / `AGENTS.md`; this is the full source. Rationale:
-`docs/project-intent/operating.md` §1. Set 2026-08-25. This repo has three named
-downstream consumers (`Taskfile.yml` `downstream-check`: fathom, throughline,
-growing-gardens-bi), so `main` is a published surface, not a scratch branch.
+`docs/project-intent/operating.md` §1. Policy set 2026-08-25. The known consumers
+are listed in [scope.md](scope.md) (`Taskfile.yml` `downstream-check`: fathom,
+throughline, growing-gardens-bi, racli); `main` is a published surface, not a scratch
+branch. Report which consumers the configured downstream checks actually exercised;
+a skipped or unconfigured consumer is not a compatibility pass.
 
 ## Branch model
 

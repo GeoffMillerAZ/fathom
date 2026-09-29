@@ -49,9 +49,10 @@ type Signal struct {
 	Reason string
 }
 
-// Ladder is an ordered sequence of model tiers. It starts at rung 0 (cheapest /
-// fastest) and advances toward higher-quality rungs only when the caller emits
-// an escalation Signal.
+// Ladder is a caller-ordered escalation sequence for a particular task and role.
+// It starts at rung 0 and advances only when the caller emits an escalation Signal.
+// The order is policy, not a universal model ranking: the caller must establish
+// deployment eligibility and measured suitability before constructing the rungs.
 //
 // A Response with StopReason == StopToolUse is a successful completion — it is
 // never an escalation signal. Escalate on measured quality, not on the model
@@ -63,8 +64,8 @@ type Ladder struct {
 	current int
 }
 
-// NewLadder constructs a Ladder from the provided rungs, ordered from cheapest
-// (index 0) to highest-quality (last index). At least one rung is required.
+// NewLadder constructs a Ladder from rungs in the caller's preferred escalation
+// order. At least one rung is required. It does not check availability or quality.
 func NewLadder(rungs ...Rung) (*Ladder, error) {
 	if len(rungs) == 0 {
 		return nil, fmt.Errorf("llmclient: NewLadder requires at least one rung")

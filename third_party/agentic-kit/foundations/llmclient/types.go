@@ -302,10 +302,11 @@ type Request struct {
 	// silently dropping the field.
 	//
 	// Provider mapping:
-	//   - Anthropic: not yet a first-class API field; sending a non-empty
-	//     Effort returns an InvalidRequestError (use ProviderParams to pass
-	//     experimental effort fields until they are stable).
-	//   - Bedrock: same as Anthropic — no knob, returns InvalidRequestError.
+	//   - Anthropic: output_config.effort; low, medium, high, xhigh, max.
+	//     Model-specific availability belongs in Config.CapabilityCheck.
+	//   - OpenAI: reasoning_effort, or reasoning.effort in the Responses lane.
+	//   - Bedrock: not mapped; returns InvalidRequestError.
+	//   - MockClient: records the hint without simulating model behavior.
 	Effort string
 
 	// ProviderParams is a JSON object merged VERBATIM into the outbound
@@ -323,10 +324,9 @@ type Request struct {
 	// dropping), so existing cassettes are unaffected when the field is not
 	// used.
 	//
-	// Precedence with OutputSchema: ProviderParams is merged AFTER the adapter
-	// maps OutputSchema to output_config.format. A ProviderParams key of
-	// "output_config" will OVERRIDE the adapter-set value — that is intentional
-	// and the documented escape hatch for callers who need fine-grained control.
+	// Adapter constraints still apply: Anthropic rejects raw output_config
+	// when typed Effort or OutputSchema is also set, rather than silently
+	// overriding either. Use typed fields together or raw output_config alone.
 	ProviderParams json.RawMessage
 
 	// OutputSchema is a JSON Schema object (draft 2020-12 or compatible) that

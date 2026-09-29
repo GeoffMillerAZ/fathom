@@ -1,23 +1,26 @@
 # VISION
 
-**agentic-kit is the opinionated, deterministic foundation for governed agentic
-systems** — the library Geoff's future agentic workloads and harnesses are built
-on, so that engineering excellence is inherited, not re-derived, and the known
-anti-patterns of agentic systems are structurally hard to commit.
+**agentic-kit makes reliable, evidence-backed agentic work easier to build,
+verify, and improve across workloads and providers.** It turns recurring engineering
+lessons into reusable contracts, deterministic controls, composed workflows, and
+regression tests. A lesson learned by one workload should improve the next.
 
 This file states what the kit believes, what it protects you from, what it
 refuses to be, and how it stays current. If a change to the kit contradicts this
-file, either the change is wrong or this file must be amended first —
-deliberately, in its own commit.
+file, either the change is wrong or the intent must be amended deliberately with a
+decision record. The target below is an ambition; current coverage and its limits
+live in [docs/practices.md](docs/practices.md) and the package contracts.
 
 ## The one-sentence test
 
-> Could a competent engineer start a brand-new agentic workload tomorrow,
-> import this kit, and be **compliant with current agentic best practice by
-> default** — with determinism, evidence discipline, cost governance, and
-> observability inherited rather than rebuilt?
+> Can an engineer choose a workflow and a supported provider or coding harness,
+> inherit appropriate safeguards, demonstrate that they work, trace the result
+> to its evidence, and contribute a lesson that another workload can reuse?
 
-Every addition, refactor, and doc is judged against that sentence.
+Every addition is judged against that sentence. The product is the working path from
+setup to verified outcome: library compositions, CLI/MCP adapters, native Claude Code
+and Codex integrations, and executable examples. Importable foundations serve that path.
+Success criteria: [workflow assurance](docs/intent/assurance.md).
 
 ## Core beliefs (the opinions baked in)
 
@@ -30,27 +33,36 @@ Every addition, refactor, and doc is judged against that sentence.
 
 2. **Determinism is the default; nondeterminism is injected.** Clocks,
    randomness, network, subprocesses, and model calls live behind seams
-   (`now func() time.Time`, injected rand, `LLMClient`, `Embedder`). Anything
-   that ran once must be replayable: cassettes for model calls, hash-chained
+    (`now func() time.Time`, injected rand, `LLMClient`, `Embedder`). Record the
+    inputs needed to replay decisions: cassettes for model calls, hash-chained
    event stores and append-only journals for state, golden tests for outputs
    (the hash chain lives in the event store; journals delegate tamper-evidence
    to it). A harness you
-   cannot replay is a harness you cannot debug, regress, or trust.
+    cannot inspect or replay is difficult to debug and regress. Replay does not
+    reproduce a live model's internal reasoning or authorize repeating an external effect.
 
 3. **Evidence before assertion; summaries are projections, never replacements.**
-   Claims carry grades, spans, sources, and provenance — any output must trace
-   back to what justified it. Context compaction and progressive summarization
+    Factual prose maps each claim to specific, versioned source evidence; inferences
+    retain their derivation and uncertainty. Valid references, semantic support, and
+    source truth are separate properties. Context compaction and progressive summarization
    are *projections over* ground truth (which stays in journals, event stores,
    and evidence spans), never substitutes for it. Severing the evidence link to
    save tokens is the canonical agentic anti-pattern this kit exists to prevent.
 
-4. **Fail closed, spend bounded.** Gates err toward refusal. Every paid call is
-   budgeted before it is made. Every cache, queue, seen-set, buffer, and loop
-   has an explicit bound and an explicit behavior at the bound. Cost and blast
-   radius are *governed properties*, not hopes.
+4. **Explicit authority, bounded work.** Required controls refuse before the effect
+    when they cannot establish permission. Every paid attempt, including retries and
+    delegated work, belongs to a budget; estimates and measured spend stay distinct.
+    Request-path structures and loops have bounds and behavior at the bound. Durable
+    evidence stores have an explicit retention policy; retaining evidence is not a
+    license for unlimited sensitive-data accumulation.
 
-5. **Escalation is structured, never improvised.** Cheap-to-capable model
-   escalation happens on declared signals (the ladder). Refinement loops are
+5. **Selection is evidence-based; escalation is structured.** Workload-specific
+   choices across agentic engineering use applicable criteria and versioned outcome
+   evidence, not a universal excellence score. Model, retrieval, architecture and
+   red-team assessments share an evidence lifecycle, not one rubric; hard requirements
+   precede soft optimization. Models must be eligible deployments. Capability escalation happens on
+   declared signals (the ladder); missing evidence, outages and missing authorization
+   need different responses. Refinement loops are
    bounded and escalate to a human through a typed channel
    (operator-elicitation), not by giving up silently or looping forever.
    Stop causes are values, not exceptions.
@@ -61,16 +73,17 @@ Every addition, refactor, and doc is judged against that sentence.
    stores have no deletion story. Overclaiming is treated as a defect class
    equal to a failing test — it is how trust in a foundation dies.
 
-7. **Stdlib-only durability.** Zero Go dependencies means zero dependency
-   conflicts in any consumer, forever, and WASM portability for free. The kit
-   must be safe to embed in *everything*, which means it may depend on
-   *nothing*.
+7. **A durable, portable core.** The root Go module has no external dependencies.
+    Dependency-bearing format handlers remain nested modules. Keep provider and host
+    specifics behind explicit adapters; verify portability rather than inferring it
+    from dependency count. Consumers retain control of their process and storage.
 
 8. **The gate is the contract.** `task validate` (gofmt, vet, `cue vet`
    including fixtures, `go test -race` across every package) plus a green
-   downstream consumer (`task fathom-check`) is what "done" means. TRACKING.md
-   records what is built and tested; CHANGELOG.md records what broke and why;
-   tags are cut only at green gates.
+    downstream check for affected consumers is the implementation gate. A workflow's
+    claim additionally needs a test of its actual enforcement path, including failure
+    and missing prerequisites. TRACKING.md records implementation; assurance records
+    integration and adoption. Skipped checks and unmeasured outcomes cannot become passes.
 
 ## What the kit protects you from
 
@@ -84,15 +97,15 @@ honest about what is shipped versus partial versus roadmap.
 
 ## What the kit is NOT
 
-- **Not a framework.** It never owns `main()`, your loop, or your process
-  model. Kits compose foundations; you compose kits. Everything is importable
-  piecemeal.
+- **Not a mandatory framework.** It never requires ownership of `main()` or your
+  process model. The optional agent harness supplies a loop; foundations remain
+  importable without it. Kits compose foundations; you compose kits.
 - **Not provider lock-in.** `LLMClient`/`Embedder` are the contracts; Anthropic
   is the first battery, not the architecture.
-- **Not a research playground.** Capabilities land when a real workload pulls
-  for them. Speculative abstractions are junk even when they sound visionary;
-  deferred ideas are recorded in TRACKING.md with rationale so they are
-  sequenced, not lost.
+- **Bounded research with an engineering exit.** A named consumer or a sponsored
+   incubation can justify work. Incubation needs an executable hypothesis, adversarial
+   scenarios, maintenance owner, and dated promote/revise/retire decision; it stays
+   experimental until proven. See [decision 0004](docs/intent/decisions/0004-bounded-incubation.md).
 - **Not a compliance checkbox.** The practices are enforced by *running code
   with tests*, not by documentation that asserts compliance.
 
@@ -101,25 +114,27 @@ honest about what is shipped versus partial versus roadmap.
 Best practice for agentic systems moves fast. The kit keeps up by process, not
 by hope:
 
-1. **Absorb, don't annotate.** When the field's best practice moves (a protocol
-   revision, a new failure mode, a new cost lever), the kit absorbs it as an
-   opinionated primitive plus a practices.md entry — not as a footnote telling
-   consumers to handle it themselves.
+1. **Turn lessons into executable improvements.** A field pattern or consumer incident
+   becomes a scoped failure hypothesis, then a regression case and a remedy in an
+   existing workflow where possible. Share versioned, reviewed lessons with provenance
+   and applicability; private transcripts and recalled claims do not become authority.
 2. **Periodic adversarial audit.** The cycle that produced v0.2.0 — full-repo
    survey → adversarial plan review → scoped implementation waves with the gate
    green between waves → multi-lens adversarial code review → fix wave → tag —
    is the recurring maintenance discipline, not a one-off. Every audit hunts
    specifically for: overclaims, unbounded anything, evidence-link breaks, and
    drift between docs and code.
-3. **Downstream is the oracle.** Real consumers (fathom today, every future
-   workload tomorrow) drive extraction: when a project hand-builds something
-   twice, the kit owns it. `task fathom-check` keeps the promise mechanical.
+3. **Downstream measures value.** Consumer adoption, deleted duplicate glue, prevented
+   failures, setup time, and cost per accepted outcome decide whether an abstraction
+   pays for itself. Package counts and repeated replay of a scripted answer do not.
+   Record inspected revisions and skipped consumers with every compatibility result.
 
 ## The junk gate (definition of done for any addition)
 
 A change may land only with: a contract (`schema.cue` where the shape is data),
 deterministic `-race`-clean tests that pin its central claim, docs that state
-its non-guarantees as plainly as its guarantees, either a consumer or a named
-future workload that pulls for it, and the full gate green. "Looks done" is the
+its non-guarantees as plainly as its guarantees, either a consumer or an incubation
+meeting decision 0004, and the full gate green. A composed entry point must prove its
+own wiring and failure behavior. "Looks done" is the
 enemy; the most dangerous artifact in a foundation is a half-baked capability
 that demos well.

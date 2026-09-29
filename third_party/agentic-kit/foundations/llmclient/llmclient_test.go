@@ -950,30 +950,39 @@ func TestMockClient_ProviderParamsValidation(t *testing.T) {
 	}
 }
 
-// TestMockClient_EffortRejected proves MockClient rejects Effort as a
-// typed InvalidRequestError (mock has no effort knob).
-func TestMockClient_EffortRejected(t *testing.T) {
-	mc := llmclient.NewMockClient(llmclient.MockEntryOK("ok"))
-	_, err := mc.Complete(context.Background(), llmclient.Request{
-		Prompt: "p",
-		Effort: "high",
-	})
-	var ire *llmclient.InvalidRequestError
-	if !errors.As(err, &ire) {
-		t.Fatalf("err = %T %v, want *InvalidRequestError for Effort on mock", err, err)
-	}
-	if !strings.Contains(ire.Error(), "Effort") {
-		t.Errorf("error should mention Effort: %q", ire.Error())
-	}
-	// Must not consume any entry.
-	if mc.CallCount() != 0 {
-		t.Errorf("CallCount = %d, want 0 after Effort rejection", mc.CallCount())
+// MockClient records provider-neutral effort without simulating its semantics.
+func TestMockClient_EffortRecorded(t *testing.T) {
+	for _, effort := range []string{"", "low", "medium", "high", "xhigh", "max", "provider-specific-future"} {
+		t.Run(effort, func(t *testing.T) {
+			mc := llmclient.NewMockClient(llmclient.MockEntryOK("ok"), llmclient.MockEntryOK("stream"))
+			req := llmclient.Request{Prompt: "p", Effort: effort}
+			if _, err := mc.Complete(context.Background(), req); err != nil {
+				t.Fatal(err)
+			}
+			ch, err := mc.Stream(context.Background(), req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for chunk := range ch {
+				if chunk.Err != nil {
+					t.Fatal(chunk.Err)
+				}
+			}
+			if mc.CallCount() != 2 {
+				t.Fatalf("CallCount = %d", mc.CallCount())
+			}
+			for _, call := range mc.Calls() {
+				if call.Request.Effort != effort {
+					t.Fatalf("effort lost: %+v", call.Request)
+				}
+			}
+		})
 	}
 }
 
 // TestMockClient_ThinkingPassesThrough proves that a Thinking field does NOT
 // cause MockClient to reject the request — mock passes it through (it only
-// validates ProviderParams shape and Effort).
+// validates ProviderParams shape).
 func TestMockClient_ThinkingPassesThrough(t *testing.T) {
 	mc := llmclient.NewMockClient(llmclient.MockEntryOK("ok"))
 	resp, err := mc.Complete(context.Background(), llmclient.Request{

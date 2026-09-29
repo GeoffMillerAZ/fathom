@@ -5,6 +5,17 @@
 // data representation.
 package anthropic
 
+// #OutputConfig mirrors the adapter's outbound wire object. Empty typed
+// fields omit the corresponding wire property. Model support is checked by
+// the caller's CapabilityCheck, not a hardcoded model catalog.
+#OutputConfig: {
+	effort?: "low" | "medium" | "high" | "xhigh" | "max"
+	format?: {
+		type: "json_schema"
+		schema: {...}
+	}
+}
+
 // #Config is the data shape of anthropic.Config. Defaults match New.
 #Config: {
 	// APIKey is the literal API key. Optional: when omitted or empty, the key

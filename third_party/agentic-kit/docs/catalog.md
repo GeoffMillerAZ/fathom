@@ -2,7 +2,7 @@
 
 # Package catalog
 
-194 Go packages. One line each: module-relative import path, package name, doc synopsis.
+202 Go packages. One line each: module-relative import path, package name, doc synopsis.
 Counted from source, so build-tagged packages the host `go list ./...` cannot see (e.g. the js/wasm-only `examples/governance-wasm`) are included — this total can run one higher than TRACKING.md's go-list count.
 
 ## foundations/agent (5)
@@ -170,21 +170,23 @@ Counted from source, so build-tagged packages the host `go list ./...` cannot se
 - `foundations/provenance/anchor` (`anchor`) — Package anchor provides cryptographic proof-of-existence for batches of evidence content-hashes.
 - `foundations/provenance/event-store` (`eventstore`) — Package eventstore provides an append-only, hash-chained event store.
 
-## foundations/quality (13)
+## foundations/quality (15)
 
 - `foundations/quality/agentic-practices-evaluator` (`agenticpracticesevaluator`) — Package agenticpracticesevaluator scores an agent run against a configurable best-practice checklist.
+- `foundations/quality/check-catalog` (`checkcatalog`) — Package checkcatalog makes a gate's checks enumerable: every check is a catalog row with an id, a severity and — the field that matters most — a declared means, deterministic or model, so "how much of this gate needs no model" is a printed number rather than a claim.
 - `foundations/quality/correction-estimator` (`correctionestimator`) — Package correctionestimator estimates the effort and likelihood of correction required for a set of findings using deterministic scoring rules.
 - `foundations/quality/determinism-gate` (`determinismgate`) — Package determinismgate provides structural and variance-based determinism checking for LLM judge outputs in the eval loop.
 - `foundations/quality/diff-reporter` (`diffreporter`) — Package diffreporter provides one primitive with two roles:
 - `foundations/quality/dlp-evaluator` (`dlpevaluator`) — Package dlpevaluator evaluates text against configurable DLP (Data Loss Prevention) rules and produces a leakage-risk Report.
 - `foundations/quality/eval-gate` (`evalgate`) — Package evalgate provides a deterministic pass/fail gate over a set of weighted checks.
 - `foundations/quality/eval-journal` (`evaljournal`) — Package evaljournal provides the append-only truth record of every judge call in an eval loop.
-- `foundations/quality/fitness-function-registry` (`fitnessfunctionregistry`) — Package fitnessfunctionregistry provides the "provable-excellence" backbone (E2) as a reusable primitive: a registry of named FitnessFunctions, each a declared Invariant backed by a set of weighted eval-gate Checks, plus a deterministic Execute that scores a function and produces an auditable ExecutionResult.
+- `foundations/quality/fitness-function-registry` (`fitnessfunctionregistry`) — Package fitnessfunctionregistry provides named fitness checks and versioned, evidence-linked assessment profiles, separating required outcomes from optional weighted scoring delegated to eval-gate.
 - `foundations/quality/honesty-gate` (`honestygate`) — Package honestygate flags overclaiming in model outputs using deterministic rules.
 - `foundations/quality/integrity-evaluator` (`integrityevaluator`) — Package integrityevaluator checks output integrity against a set of invariants.
 - `foundations/quality/qa-harness` (`qaharness`) — Package qaharness provides the QA judge interface and deterministic rubric scoring for agentic outputs.
 - `foundations/quality/reliability-stats` (`reliabilitystats`) — Package reliabilitystats is the small statistics kit a bench needs to say "A beats B" or "this scenario is reliable" without lying about how much evidence it has: the unbiased pass@k estimator, pass^k, a task-clustered paired bootstrap confidence interval, the Wilcoxon signed-rank test, and the Vargha–Delaney A12 effect size.
 - `foundations/quality/scenario-bank` (`scenariobank`) — Package scenariobank provides versioned eval scenarios as CUE data with provenance discipline.
+- `foundations/quality/structural-refusal` (`structuralrefusal`) — Package structuralrefusal refuses an affirmative verdict that cites no evidence by rewriting the verdict itself — a "meets" with nothing behind it becomes "unknown" IN THE VALUE — so the refusal survives every renderer, store and loader downstream.
 
 ## foundations/reasoning (1)
 
@@ -199,8 +201,9 @@ Counted from source, so build-tagged packages the host `go list ./...` cannot se
 - `foundations/retrieval/thread-resolver` (`threadresolver`) — Package threadresolver groups messages by a thread key and returns ordered threads.
 - `foundations/retrieval/truth-bridge` (`truthbridge`) — Package truthbridge is the span↔chunk link layer: it joins the evidence spine (evidence-span, evidence-grade, evidence-anchor) to vector retrieval (vectorstore.Entry, vectorstore.Scored).
 
-## foundations/review (10)
+## foundations/review (11)
 
+- `foundations/review/capped-confidence` (`cappedconfidence`) — Package cappedconfidence bounds a score by the ceiling its evidence permits, from a table the caller loads out of CUE, and renders a capped score as a band with its reason — never as the point value.
 - `foundations/review/claim-lifecycle` (`claimlifecycle`) — Package claimlifecycle provides an event-sourced lifecycle FSM for claims under review.
 - `foundations/review/concern-flags` (`concernflags`) — Package concernflags provides types and a registry for raising, listing, and querying concern flags surfaced during review.
 - `foundations/review/confidence-scoring` (`confidencescoring`) — Package confidencescoring provides a ConfidenceScore type (1..5) with a deterministic derivation from evidence count and agreement.
@@ -247,7 +250,7 @@ Counted from source, so build-tagged packages the host `go list ./...` cannot se
 - `foundations/topology/live-graph` (`livegraph`) — Package livegraph provides a deployment/dependency graph with cycle detection, critical-path analysis, and wave-based rollout planning.
 - `foundations/topology/workspace-materialization` (`workspacematerialization`) — Package workspacematerialization computes the minimal transitive dependency set required to materialize a target node from a live-graph topology.
 
-## kits (14)
+## kits (15)
 
 - `kits/agent-harness` (`agentharness`) — Package agentharness is the governed tool-calling agent loop — the kit that composes the platform's foundations into one Run(ctx, input) call: model turn → tool dispatch → governance screens → repeat, until a stop condition.
 - `kits/command-center` (`commandcenter`) — Package commandcenter composes workflow-engine, review-queue, and telemetry foundations into a cross-workflow command surface.
@@ -262,6 +265,7 @@ Counted from source, so build-tagged packages the host `go list ./...` cannot se
 - `kits/guardrails-pipeline` (`guardrailspipeline`) — Package guardrailspipeline provides a declarative gate-chain that composes existing security and quality foundations into ordered pre-LLM and post-LLM decision pipelines.
 - `kits/hitl` (`hitl`) — Package hitl is a generic human-in-the-loop engine for agents that CHANGE data.
 - `kits/investigation` (`investigation`) — Package investigation composes evidence, investigation, and review foundations into a governed investigation workflow.
+- `kits/lesson-transfer` (`lessontransfer`) — Package lessontransfer validates bounded public-synthetic lesson bundles and runs receiver-owned adoption checks.
 - `kits/mcp-server` (`mcpserver`) — Package mcpserver is an MCP (Model Context Protocol) server kit: it exposes the tools of a foundations/agent/tool-registry Registry to any MCP client (Claude Code, Claude Desktop, ...) over two transports sharing one dispatch core — newline-delimited JSON-RPC 2.0 on a byte stream (stdio, Serve) and MCP Streamable HTTP (NewHTTPHandler, a single stateless POST endpoint).
 
 ## runtimes (2)
@@ -281,7 +285,7 @@ Counted from source, so build-tagged packages the host `go list ./...` cannot se
 - `toolchains/materialization/workspace-query-builder` (`workspacequerybuilder`) — Package workspacequerybuilder provides a fluent Go DSL for constructing workspace queries that compile to deterministic DuckDB-compatible SQL.
 - `toolchains/schemas` (`schemas`) — Package schemas is the canonical CUE schema root for agentic-kit.
 
-## cmd (8)
+## cmd (9)
 
 - `cmd/constitution-lint` (`main`) — Command constitution-lint mechanically enforces agentic-kit's constitutional promises.
 - `cmd/endpoint-guard` (`main`) — Command endpoint-guard is a self-contained, in-pod HTTP server that puts the endpoint-guard kit in front of an LLM-answer backend.
@@ -290,16 +294,23 @@ Counted from source, so build-tagged packages the host `go list ./...` cannot se
 - `cmd/jsonschema-gen` (`main`) — Command jsonschema-gen derives a JSON Schema (draft 2020-12) document from a CUE package directory and writes it to an output file (or stdout).
 - `cmd/kit-catalog` (`main`) — Command kit-catalog generates docs/catalog.md — a one-line-per-package index of every Go package in the module, grouped by area (foundations by category, then kits, runtimes, surfaces, toolchains, cmd, examples, scenarios), from package doc comments.
 - `cmd/kit-new` (`main`) — Command kit-new scaffolds a new consumer module from the agent-cli blueprint with governance ON by default, or — with -package — a new kit package in this repository's six-file shape together with the ledger lines it owes.
+- `cmd/kit-workflow` (`main`) — Command kit-workflow provides a bounded JSON front door for local governed workflow checks.
 - `cmd/release-notes` (`main`) — Command release-notes prints one version's section of CHANGELOG.md verbatim, for pasting into a GitHub Release body or a release announcement.
 
-## examples (4)
+## examples (5)
 
 - `examples/agent-cli` (`main`) — Command agent-cli is the hello-world agent for agentic-kit: a small, runnable CLI that proves the whole stack end-to-end and is meant to be COPIED as the starting point for new projects (see README.md and docs/adopting.md).
 - `examples/catalog-demo` (`main`) — Command catalog-demo is a worked example for foundations/knowledge/catalog: it scans a small directory tree into a Catalog, loads a previously "published" catalog from a fixture, and gates the two with Verify — design deliverable #8 ("a worked example building a small catalog from a directory scan and gating it").
+- `examples/engineering-assessments` (`main`) — Command engineering-assessments demonstrates two domain collectors sharing an evidence-linked assessment contract.
 - `examples/expertchat-service` (`main`) — Command expertchat-service is a thin, runnable example wiring kits/expertchat to a fathom module host.
 - `examples/governance-wasm` (`main`) — Package main is a thin WASM shim that registers governance primitives as JS-callable functions.
 
-## scenarios (2)
+## scenarios (3)
 
 - `scenarios/governed-docextract-hitl` (`governeddocextracthitl`) — Package governeddocextracthitl is an end-to-end scenario blueprint proving that docextract + agent-harness + hitl compose into a governed document-analysis workflow where the agent proposes a change, a human approves it, and the state mutates ONLY through the hitl engine.
 - `scenarios/governed-investigation` (`governedinvestigation`) — Package governedinvestigation is an end-to-end scenario blueprint that wires evidence-span, evidence-graph, investigation-journal, hypothesis-ranker, and dad-investigator into a seeded, deterministic governed investigation, then proposes the one irreversible remediation the finding implies through agent-harness under the strict effect gate — a human approval (seeded) sits between the model's tool call and its dispatch.
+- `scenarios/sourced-prose` (`sourcedprose`) — Package sourcedprose is a synthetic, offline composition of strict sourced prose and durable HITL approval.
+
+## internal (1)
+
+- `internal/jsonwire` (`jsonwire`) — Package jsonwire supplies private wire checks shared by strict kit decoders.

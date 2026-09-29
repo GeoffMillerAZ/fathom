@@ -1,0 +1,148 @@
+package redteam
+
+// Overlay-only integration example for the real consumer package. Scripted
+// critics and synthetic text prove receipt plumbing, never model quality.
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"os"
+	"path/filepath"
+	"runtime"
+	"testing"
+	"time"
+
+	recordfingerprint "github.com/geoffmilleraz/agentic-kit/foundations/evidence/record-fingerprint"
+	evalrunner "github.com/geoffmilleraz/agentic-kit/kits/eval-runner"
+)
+
+func TestKitBenchmarkReceiptPilot(t *testing.T) {
+	const draft = "Led a platform team."
+	const evidence = "CITABLE EVIDENCE\n- [example-b01] Example: Led a platform team."
+	artifacts := map[string]string{}
+	retain := func(value any) string {
+		wire, err := json.Marshal(value)
+		if err != nil {
+			t.Fatal(err)
+		}
+		digest := recordfingerprint.HashContent(wire)
+		artifacts[digest] = string(wire)
+		return digest
+	}
+	cases := []struct {
+		ID    string
+		Label ClaimLabel
+		Fail  bool
+	}{
+		{"supported", LabelSupported, false},
+		{"unsupported", LabelUnsupportedExtrinsic, false},
+		{"unavailable", LabelUnknown, true},
+	}
+	manifest := evalrunner.BenchmarkManifest{
+		Version: evalrunner.BenchmarkManifestVersion, Workload: "redteam-faithfulness-offline",
+		Solution: map[string]string{
+			"code": benchPilotCode(t), "prompt": benchPilotDigest(faithfulnessSystem),
+			"model":      benchPilotDigest(lanes()),
+			"parameters": benchPilotDigest([]any{RubricVersion, faithfulnessMaxTokens, CritiqueSchema}),
+			"tools":      evalrunner.NotApplicableDigest(), "retrieval": evalrunner.NotApplicableDigest(),
+			"workflow": benchPilotDigest("Faithfulness -> Ladder; two scripted lanes; no revision"),
+			"context":  benchPilotDigest(evidence),
+		},
+		Evaluation: map[string]string{
+			"dataset": benchPilotDigest(cases), "acceptance": benchPilotDigest(Tolerance{Inferable: 3, Rephrase: "unbounded"}),
+			"grader":      benchPilotDigest("actual consumer Ladder over scripted critique"),
+			"protocol":    benchPilotDigest("one synthetic trial per case; zero injected duration; unknown cost"),
+			"environment": benchPilotDigest(runtime.Version()), "pricing": evalrunner.NotApplicableDigest(),
+			"useful_result": benchPilotDigest("no visible/useful result measured in offline proof"),
+		},
+	}
+	observed := time.Date(2026, 9, 16, 0, 0, 0, 0, time.UTC)
+	bundle := evalrunner.BenchmarkEvidence{
+		Manifest: manifest, Mode: evalrunner.BenchmarkModeSynthetic,
+		ObservedAt: observed, ValidUntil: observed.Add(24 * time.Hour),
+	}
+	for _, tc := range cases {
+		v := claimVerdict{Claim: draft, Span: draft, Label: string(tc.Label), Evidence: []string{"example-b01"}, Rationale: "synthetic fixture"}
+		a := &fakeCritic{family: "anthropic", replies: []string{critique(v)}}
+		b := &fakeCritic{family: "google", replies: []string{critique(v)}}
+		if tc.Fail {
+			a.errs = []error{errors.New("synthetic unavailable")}
+			b.errs = []error{errors.New("synthetic unavailable")}
+		}
+		panel := panelWith(t, a, b)
+		crit, err := Faithfulness(context.Background(), panel, draft, Ground{Evidence: evidence})
+		trial := evalrunner.BenchmarkTrial{
+			TaskID: tc.ID, ReplicateID: "one", AttemptCount: 1,
+			TrialSpecDigest: retain([]any{tc, draft, evidence, "one", lanes()}),
+			Outcome:         evalrunner.BenchmarkOutcomeRejected,
+			CostBasis:       evalrunner.BenchmarkCostUnknown,
+		}
+		if err != nil {
+			trial.Outcome = evalrunner.BenchmarkOutcomeError
+		} else if !crit.Partial && Ladder(crit.Findings, Tolerance{Inferable: 3, Rephrase: "unbounded"}).Passed {
+			trial.Outcome = evalrunner.BenchmarkOutcomeAccepted
+			digest, accepted := retain(draft), 0.0
+			trial.OutputDigest, trial.AcceptedMS = &digest, &accepted
+		}
+		if err == nil {
+			digest := retain([]any{crit, Ladder(crit.Findings, Tolerance{Inferable: 3, Rephrase: "unbounded"})})
+			trial.AcceptanceDigest = &digest
+		}
+		if a.calls != 1 || b.calls != 1 || len(crit.Lanes) != 2 {
+			t.Fatalf("%s: consumer did not account for both scripted lanes", tc.ID)
+		}
+		bundle.Trials = append(bundle.Trials, trial)
+	}
+	summary, err := evalrunner.SummarizeBenchmark(bundle)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if summary.Trials != 3 || summary.EventualAccepted != 1 || summary.Outcomes[evalrunner.BenchmarkOutcomeError] != 1 {
+		t.Fatalf("consumer outcome binding: %+v", summary)
+	}
+	if summary.CostCoverageComplete || summary.CostPerAcceptedUSD != nil || summary.MissingCostTrials != 3 {
+		t.Fatalf("unmeasured cost became cheap success: %+v", summary)
+	}
+	candidate := bundle
+	candidate.Manifest.Solution = map[string]string{}
+	for key, value := range bundle.Manifest.Solution {
+		candidate.Manifest.Solution[key] = value
+	}
+	candidate.Manifest.Solution["workflow"] = benchPilotDigest("alternative synthetic bundle")
+	if _, err := evalrunner.CompareBenchmarks(bundle, candidate, observed, 17, 200, .95); !errors.Is(err, evalrunner.ErrBenchmarkComparisonRefused) {
+		t.Fatalf("synthetic consumer fixture became quality evidence: %v", err)
+	}
+	wire, err := json.Marshal(summary)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("offline consumer receipt: %s", wire)
+	for label, value := range map[string]any{"bundle": bundle, "artifacts": artifacts} {
+		wire, err := json.Marshal(value)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Logf("offline consumer %s: %s", label, wire)
+	}
+}
+
+func benchPilotDigest(value any) string {
+	b, err := json.Marshal(value)
+	if err != nil {
+		panic(err)
+	}
+	return recordfingerprint.HashContent(b)
+}
+
+func benchPilotCode(t *testing.T) string {
+	t.Helper()
+	sources := map[string]string{}
+	for _, name := range []string{"redteam.go", "faithfulness.go", "panel.go", "redteam_test.go"} {
+		data, err := os.ReadFile(filepath.Join(repoRoot(t), "cmd", "redteam", name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		sources[name] = string(data)
+	}
+	return benchPilotDigest(sources)
+}

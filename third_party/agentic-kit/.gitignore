@@ -8,6 +8,9 @@ coverage.*
 # Local scratch (scanned source reconstructions live here)
 /tmp/
 
+# Runtime/state artifacts (session logs, retros, local SQLite stores) — never tracked
+/workspace/
+
 # OS
 .DS_Store
 

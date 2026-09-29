@@ -116,6 +116,10 @@ contract and treat `types.go` as a faithful mirror, rather than maintaining two
 independent definitions that silently drift. One source of truth, many
 projections — the platform's data model is described once.
 
+A consumer may keep a projection *value* in Go where a Go test pins it; that
+is a recorded divergence from this rule, not an exception to it — see
+[`docs/intent/decisions/0015`](intent/decisions/0015-projections-in-go-recorded-divergence.md).
+
 ### 3.3 Configuration is data — and data is validated
 
 This is the feature that let agentic-kit be **general-purpose / org-agnostic**.

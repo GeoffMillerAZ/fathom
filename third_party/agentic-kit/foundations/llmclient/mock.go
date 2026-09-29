@@ -149,9 +149,8 @@ func validateRequest(req Request) error {
 	if err := ValidateOutputSchema(req.OutputSchema, "mock"); err != nil {
 		return err
 	}
-	if req.Effort != "" {
-		return &InvalidRequestError{Message: fmt.Sprintf("mock: Request.Effort %q set but mock has no effort knob; use ProviderParams for raw provider fields", req.Effort)}
-	}
+	// Effort is recorded verbatim: a provider-neutral scripted mock does not
+	// choose a provider's effort vocabulary or simulate reasoning quality.
 	return nil
 }
 

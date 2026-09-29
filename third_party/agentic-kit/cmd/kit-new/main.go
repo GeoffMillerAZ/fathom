@@ -113,6 +113,9 @@ type scaffold struct {
 
 // run is the testable entry point: flags in, exit code out.
 func run(args []string, stdout, stderr io.Writer) int {
+	if len(args) > 0 && args[0] == "host" {
+		return runHost(args[1:], os.Stdin, stdout, stderr, hostDeps{})
+	}
 	fs := flag.NewFlagSet("kit-new", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 

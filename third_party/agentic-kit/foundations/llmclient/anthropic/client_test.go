@@ -1078,9 +1078,7 @@ func TestThinkingNilOmitted(t *testing.T) {
 	}
 }
 
-// TestEffortRejected proves the adapter returns a typed InvalidRequestError for
-// a non-empty Effort string (Anthropic has no stable effort knob) and that
-// this failure is pre-HTTP (no HTTP call is made).
+// TestEffortRejected proves unsupported values fail before any HTTP call.
 func TestEffortRejected(t *testing.T) {
 	httpCalled := false
 	c := newTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1090,7 +1088,7 @@ func TestEffortRejected(t *testing.T) {
 
 	_, err := c.Complete(context.Background(), llmclient.Request{
 		Prompt: "p",
-		Effort: "high",
+		Effort: "unsupported",
 	})
 	var ire *llmclient.InvalidRequestError
 	if !errors.As(err, &ire) {
@@ -1436,35 +1434,18 @@ func TestOutputSchemaGoldenWireBody(t *testing.T) {
 	}
 }
 
-// TestOutputSchemaProviderParamsOverride proves the documented precedence:
-// ProviderParams is merged AFTER the adapter sets output_config, so a
-// ProviderParams key "output_config" OVERRIDES the adapter-set value.
-func TestOutputSchemaProviderParamsOverride(t *testing.T) {
+// A raw output_config must not silently remove a typed schema.
+func TestOutputSchemaProviderParamsConflict(t *testing.T) {
 	c, body := captureBody(t, Config{})
 	req := llmclient.Request{
 		Prompt:         "p",
 		OutputSchema:   json.RawMessage(`{"type":"object"}`),
 		ProviderParams: json.RawMessage(`{"output_config":{"format":{"type":"text"}}}`),
 	}
-	if _, err := c.Complete(context.Background(), req); err != nil {
-		t.Fatalf("Complete: %v", err)
-	}
-
-	var m map[string]any
-	if err := json.Unmarshal(*body, &m); err != nil {
-		t.Fatalf("unmarshal body: %v", err)
-	}
-	oc, ok := m["output_config"].(map[string]any)
-	if !ok {
-		t.Fatalf("output_config missing or not object; body: %s", *body)
-	}
-	format, ok := oc["format"].(map[string]any)
-	if !ok {
-		t.Fatalf("output_config.format missing; body: %s", *body)
-	}
-	// ProviderParams overrode the adapter's json_schema with "text".
-	if format["type"] != "text" {
-		t.Errorf("format.type = %v, want text (ProviderParams must override output_config)", format["type"])
+	_, err := c.Complete(context.Background(), req)
+	var invalid *llmclient.InvalidRequestError
+	if !errors.As(err, &invalid) || len(*body) != 0 {
+		t.Fatalf("conflict must fail before HTTP: body=%s error=%v", *body, err)
 	}
 }
 

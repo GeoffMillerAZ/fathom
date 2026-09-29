@@ -40,6 +40,12 @@ type BridgeOptions struct {
 	// operator's word at configuration time; hash-pinning detects a later
 	// description or annotation change that might invalidate it.
 	EffectMap map[string]toolregistry.Effect
+
+	// VerifyPinBeforeCall makes each registered handler refresh and verify the
+	// selected tool's metadata before sending tools/call. The zero value leaves
+	// the legacy CallTool behavior unchanged. Verification is scoped to the
+	// dispatched tool and cannot make a newly listed tool trusted by itself.
+	VerifyPinBeforeCall bool
 }
 
 // maxResultBytes is the maximum byte length of a tools/call result accepted
@@ -75,6 +81,11 @@ const maxResultBytes = 1 << 20 // 1 MiB
 //     model sees a bounded message rather than a truncated or silently huge result.
 //   - RPCError → wrapped and returned; Dispatch surfaces it as is_error.
 //   - Malformed response → error.
+//
+// When BridgeOptions.VerifyPinBeforeCall is set, each handler performs a fresh
+// tools/list before tools/call and refuses missing, unpinned, or drifted tool
+// metadata. This is not a remote transaction: server behavior can still change
+// after verification and before tools/call.
 //
 // Concurrency contract: RegisterAll is intended to be called once at startup.
 // After it returns, the registered handlers are called concurrently by the
@@ -137,7 +148,13 @@ func registerOne(reg *toolregistry.Registry, c *Client, tool ToolInfo, opts Brid
 		Capabilities: caps,
 		Effect:       eff,
 		Handler: func(ctx context.Context, input json.RawMessage) (string, error) {
-			result, err := c.CallTool(ctx, name, input)
+			var result string
+			var err error
+			if opts.VerifyPinBeforeCall {
+				result, err = c.CallToolVerified(ctx, name, input)
+			} else {
+				result, err = c.CallTool(ctx, name, input)
+			}
 			if err != nil {
 				var tcErr *ToolCallError
 				if errors.As(err, &tcErr) {

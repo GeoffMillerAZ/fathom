@@ -33,6 +33,10 @@ L1's `Verified:` line and to L0. The user-visible effect goes to L2. Migration s
 to L3. A changelog line that explains *why* is a decision record leaking; a commit body
 that explains *what a user sees* is a changelog line leaking.
 
+Research and assessments are not a layer of their own. Their summaries go to
+`docs/assessments/`, their decisions to L4, their accepted work to plan rows and their
+deferrals to futures (section 10).
+
 ## 3. Commits (L1)
 
 ```
@@ -136,7 +140,48 @@ touched, move their rationale into decision records and their evidence into the 
 that already holds it. A verbose changelog is usually a repo without decision records;
 fix the cause.
 
-## 10. Considered and rejected
+## 10. Research and assessment records
+
+Most decisions come out of research, and most is lost there. An assessment, benchmark,
+landscape review, design exploration or bet review is not finished when its artifact
+reads well. It is finished when its summary and its decisions are in the repository, on a
+branch that will merge.
+
+- **The artifact is never the record.** A rendered page, a chat, a notebook and a scratch
+  directory are readable forms. They do not survive a restart, a cleanup or a lost link.
+  The record is a dated file, `docs/assessments/YYYY-MM-DD-<slug>.md` (or the repo's own
+  home for research), which links to the artifact as its readable form.
+- **Open with a plain-language verdict.** How useful the thing assessed is, better or
+  worse than which named alternatives, what it pairs with, keep or not. Before any table.
+- **Grade every claim.** One vocabulary: accepted, measured, estimate, claimed,
+  hypothesis, unmeasured, refused. Then list what would be fantasy to say today, so an
+  unmeasured saving is never narrated as a result. Cite the reading behind every
+  "measured".
+- **Every idea gets a disposition, in both directions.** Accepted (to do, anchored in a
+  plan row or a goal). Deferred (a future with a promote-when trigger). Refused (with
+  the reason and what would reopen it; the reason is the part most often lost and most
+  often needed, because someone will propose the idea again). Answered (already true;
+  cite where). A decision that passes the recording threshold goes to a decision record;
+  the rest go in the assessment's disposition table. An idea with no disposition is an
+  L0 note and dies with the session.
+- **Summarize third-party material in your own words, with links.** No long quotes. If
+  code, prompts or thresholds are copied, keep the licence notice; do not reuse branding,
+  images or marketing.
+- **Close with a sweep.** The last stage of a research workflow enumerates every idea,
+  assessment and decision from the transcripts and artifacts (never from a previous
+  index), maps each to its record by searching the tree, and classifies it: recorded,
+  recorded only on an unmerged branch, partial (the reason, verdict, trigger or finding
+  is missing) or missing. It is done at zero missing. Read the records against each
+  other too: two that contradict (a kill said to leave a feature unaffected while that
+  feature's trigger needs the killed experiment) get one resolving sentence.
+
+**Evidence.** One consuming project's three-day research and decision program tracked 526
+items. The closing sweep found 60 in no repository record, 35 recorded without their
+reason, verdict or trigger, and 170 only on unmerged branches; the newest work existed
+only under a temporary directory. The workflow side is in
+[orchestrating-agents.md](../orchestrating-agents.md#9-research-and-assessment-waves-end-in-records-field).
+
+## 11. Considered and rejected
 
 - **A micro changelog file.** Git is the micro log. A second one drifts.
 - **A changelog line per commit.** Below the threshold it is noise; above it, the line
@@ -147,3 +192,6 @@ fix the cause.
   line in the same change, so generation solves a problem this workflow does not have.
   Adopt when lines are being missed, not when volume feels high.
 - **A "what agents did" digest file.** Section 7. The commit subjects are the digest.
+- **An ideas backlog file.** It collects unadjudicated items and nobody acts on them.
+  Give every idea a disposition in the assessment that produced it, and a deferred one a
+  future with a promote-when trigger (section 10).
