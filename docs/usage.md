@@ -333,7 +333,8 @@ and contributed no edge (O115)` — never silently folded into `direct` or `unre
 extractor into one count, unnamed — a lockfile, an image, and a real Zig source file
 all count the same way. When an unrecognized extension is also a KNOWN programming
 language (`internal/connector.UnsupportedLanguageForPath` — currently:
-Elixir, Clojure, Haskell, OCaml, F#, Erlang, Zig, Nim, Julia, Elm, Crystal, Groovy),
+Elixir, Clojure, Haskell, OCaml, F#, Erlang, Zig, Nim, Julia, Elm, Crystal, Groovy, and Swift,
+whose dialect is built but refused: LB-Q-swift-rest),
 ingest names it and counts its files separately, so a repo whose primary language has no
 extractor reads as "zig: 412 files, no extractor" instead of a suspiciously low symbol
 count with no explanation. The same breakdown is in `list_services`' per-service

@@ -254,8 +254,9 @@ var extClassMap = map[string]classification{
 	// Dart (LB-Q-dart: a new tree-sitter dialect, no incumbent).
 	".dart": {core.KindDartClass, "dart"},
 
-	// Swift (LB-Q-swift: a new tree-sitter dialect, no incumbent).
-	".swift": {core.KindSwiftClass, "swift"},
+	// Swift (LB-Q-swift) is not classified: its dialect is built and measured
+	// but refused (design §14.2, parse errors over the 5% line), so .swift
+	// stays disclosed as unsupported (unsupported_language_gen.go).
 }
 
 // classify looks up base (full basename, e.g. "go.mod", "Dockerfile") first —

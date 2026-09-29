@@ -654,15 +654,10 @@ func parseGitLog(serviceID, raw string) []store.Commit {
 // repository) instead of the generic TOMLExtractor's bare table/key dump
 // (KindTOMLTable/KindTOMLKey); every already-indexed Cargo.toml's stored
 // observations came from that generic path, so the salt bump re-reads them.
-// Epoch 28 (LB-Q-swift): .swift files now extract via
-// internal/extractor.NewTSExtractor("swift") — tree-sitter via wazero/WASM, a
-// fleet gap with no incumbent: classes, structs, enums and their cases, actors,
-// protocols, extensions (named by the extended type), type aliases, functions,
-// methods, initialisers, deinitialisers, subscripts, properties and file-level
-// variables, each callable with a Signature and EndLine and its calls named by
-// callee, and `import` resolved through Package.swift's targets; every such file
-// previously fell through to "no extractor registered" (the epoch 19 class), so
-// the salt bump re-reads them.
+// Epoch 28 (LB-Q-swift) changes no extraction: the wave's swift dialect was
+// refused at integration (design §14.2, parse errors on 5.6% of its calibration
+// files, refusedDialects), so .swift stays "no extractor registered" and
+// disclosed; the number is kept so the wave's history reads in order.
 // Epoch 29 (LB-Q-go-mod, docs/design/language-breadth.md §13/§4): a go.mod now
 // extracts through the native go-mod dialect (the module directive, a ModuleDep
 // per require, a replace per replace directive, and the edges from a require or
@@ -1045,7 +1040,7 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	// TestDialectManifests already fails the build on a bad manifest.
 	if ds, dErr := extractor.LoadDialects(); dErr == nil {
 		for _, d := range ds {
-			if d.Engine != "tags" {
+			if d.Engine != "tags" || refusedDialects[d.ID] {
 				continue
 			}
 			keys := append([]string(nil), d.Match.Extensions...)
@@ -1072,6 +1067,15 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 
 	return p
 }
+
+// refusedDialects are tags-engine dialects built and measured but refused by
+// their plan row (docs/design/language-breadth.md §14.2): no file is routed to
+// them, so their language stays disclosed as unsupported (the connector's
+// generated table lists it; langbench.RefusedItems reads the same refusal from
+// the plan for the tracker). swift: LB-Q-swift-rest — 36 of its 642
+// calibration files (5.6%) parse with an error under the pinned grammar, over
+// the 5% line. Dispatching it later is an ExtractorEpoch bump.
+var refusedDialects = map[string]bool{"swift": true}
 
 // Close releases the pipeline's tree-sitter grammar modules (RT-107). The
 // pipeline stays usable: the next extraction instantiates afresh.

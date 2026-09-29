@@ -39,13 +39,11 @@ var typedEdgeProducers = map[string]string{
 
 	// file: fusion.ResolveFileEdges' relative-path strategy resolves this
 	// dialect's src/href/@import specs to in-repo files (tier pre-scan,
-	// LB-F11) — no SCIP producer and no native pass. Swift's swift-module
-	// strategy resolves `import M` to the SwiftPM target named M the same way
-	// (LB-Q-swift); no SCIP producer exists for Swift (SourceKit-LSP writes an
-	// index store, not SCIP).
-	"html":  "file",
-	"css":   "file",
-	"swift": "file",
+	// LB-F11) — no SCIP producer and no native pass. (Swift's swift-module
+	// strategy would too, but LB-Q-swift is refused and .swift is not
+	// classified: design §14.2.)
+	"html": "file",
+	"css":  "file",
 
 	// syntax: call names by syntax only — every other registered
 	// language, CUE included (see the doc comment above).

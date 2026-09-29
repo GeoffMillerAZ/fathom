@@ -13,7 +13,7 @@ import (
 // cmdLangDisclosure is `indexbench lang-disclosure >
 // internal/connector/unsupported_language_gen.go` (LB-F25, design §2.1):
 // the unsupported-language table rendered from the queue and the
-// registered dialects.
+// dispatched dialects (a refused one, design §14.2, stays disclosed).
 func cmdLangDisclosure(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("lang-disclosure", flag.ContinueOnError)
 	fs.SetOutput(stderr)
@@ -26,7 +26,7 @@ func cmdLangDisclosure(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "lang-disclosure:", err)
 		return 1
 	}
-	src, err := langbench.RenderDisclosure(in.Queue, in.Registered, func(ext string) bool {
+	src, err := langbench.RenderDisclosure(in.Queue, in.Dispatched(), func(ext string) bool {
 		return connector.LanguageForPath("x"+ext) != core.LangUnclassified
 	})
 	if err != nil {

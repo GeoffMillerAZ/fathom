@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/connector"
+	"github.com/geoffmilleraz/fathom/internal/verify"
 )
 
 // TrackerMarker is where the generated section goes in the template.
@@ -36,7 +37,45 @@ type TrackerInput struct {
 	Queue      []QueueEntry
 	Readings   map[string]Reading
 	Registered map[string]Registration
+	// Refused are the queue items whose plan row, or its -rest sibling, is
+	// [-] refused (design §14.2): queue id -> "<row>: <reason>". A refused
+	// item claims no level whatever its reading measured, and its dialect,
+	// even when built, is not dispatched: the language stays disclosed.
+	Refused    map[string]string
 	TypedEdges func(langTag string) string
+}
+
+// Dispatched is Registered without the refused items: the extractors and
+// dialects ingest actually routes files to, which is what the
+// unsupported-language table (LB-F25) is rendered against.
+func (in TrackerInput) Dispatched() map[string]Registration {
+	out := make(map[string]Registration, len(in.Registered))
+	for id, r := range in.Registered {
+		if _, refused := in.Refused[id]; !refused {
+			out[id] = r
+		}
+	}
+	return out
+}
+
+// RefusedItems reads the refused queue items from the plan (design §14.2):
+// an item is refused when its own row or its LB-Q-<id>-rest sibling is [-]
+// with disposition refused. The value names the row and its reason.
+func RefusedItems(q []QueueEntry, plan verify.Plan) map[string]string {
+	rows := map[string]verify.Task{}
+	for _, t := range plan.Tasks {
+		rows[t.ID] = t
+	}
+	out := map[string]string{}
+	for _, e := range q {
+		for _, id := range []string{e.PlanRow, e.PlanRow + "-rest"} {
+			if t, ok := rows[id]; ok && t.Skipped && t.Disposition == "refused" {
+				out[e.ID] = id + ": " + t.Reason
+				break
+			}
+		}
+	}
+	return out
 }
 
 // registeredFormats are the tool formats and languages registered today
@@ -65,8 +104,15 @@ func TrackerInputFromRepo(root string) (TrackerInput, error) {
 	if err != nil {
 		return TrackerInput{}, err
 	}
+	// The plan carries the refusals (§14.2); a checkout without it (a
+	// fixture) has none to report.
+	md, err := os.ReadFile(filepath.Join(root, "docs", "plans", "language-breadth.md"))
+	if err != nil && !os.IsNotExist(err) {
+		return TrackerInput{}, err
+	}
 	in := TrackerInput{Template: trackerTemplate, Queue: q, Readings: map[string]Reading{},
-		Registered: map[string]Registration{}, TypedEdges: connector.TypedEdgeProducer}
+		Registered: map[string]Registration{}, Refused: RefusedItems(q, verify.ParseMarkdownPlan("", md)),
+		TypedEdges: connector.TypedEdgeProducer}
 	for id, reg := range registeredFormats {
 		in.Registered[id] = reg
 	}
@@ -151,7 +197,8 @@ func RenderTracker(in TrackerInput) string {
 	b.WriteString("the registered dialects and the committed readings; never hand-edit it. A level is the\n")
 	b.WriteString("reading's computed `level_met` with each met level's grade; `tolerated` is registered with\n")
 	b.WriteString("no reading yet; `unsupported (disclosed)` is queued, not registered, and named per service\n")
-	b.WriteString("by `list_services`.\n\n")
+	b.WriteString("by `list_services`; `refused` is refused by its plan row (design §14.2): it claims no level,\n")
+	b.WriteString("is not dispatched and stays disclosed, whatever its reading measured.\n\n")
 	b.WriteString(MilestoneLine(CountMilestones(in)) + "\n\n")
 	b.WriteString("| Language or format | Kind | Engine | Grammar / parser | Target | Level met | Oracles | Typed edges | Reading | Next |\n")
 	b.WriteString("|---|---|---|---|---|---|---|---|---|---|\n")
@@ -165,8 +212,12 @@ func RenderTracker(in TrackerInput) string {
 		if registered {
 			level = "tolerated"
 		}
+		why, refused := in.Refused[e.ID]
 		if r, ok := in.Readings[e.ID]; ok {
 			level = levelCell(r)
+			if refused {
+				level = "refused; measured " + level
+			}
 			var os []string
 			for _, o := range r.Oracles {
 				if o.Status == "" {
@@ -175,12 +226,18 @@ func RenderTracker(in TrackerInput) string {
 			}
 			oracles = strings.Join(os, "; ")
 			reading = r.MeasuredAt
-			if levelIndex(r.LevelMet) >= levelIndex(e.TargetLevel) {
+			if levelIndex(r.LevelMet) >= levelIndex(e.TargetLevel) && !refused {
 				next = "at target (" + e.PlanRow + ")"
 			}
+		} else if refused {
+			level = "refused"
+		}
+		if refused {
+			row, _, _ := strings.Cut(why, ":")
+			next = "re-plan (" + row + " refused)"
 		}
 		typed := ""
-		if registered && reg.LangTag != "" && in.TypedEdges != nil {
+		if registered && !refused && reg.LangTag != "" && in.TypedEdges != nil {
 			typed = in.TypedEdges(reg.LangTag)
 		}
 		grammar := e.GrammarSource
@@ -204,8 +261,8 @@ func CountMilestones(in TrackerInput) MilestoneCounts {
 	var c MilestoneCounts
 	for _, e := range in.Queue {
 		r, ok := in.Readings[e.ID]
-		if !ok {
-			continue
+		if _, refused := in.Refused[e.ID]; !ok || refused {
+			continue // no reading, or refused: no level claimed (§14.2)
 		}
 		lvl := levelIndex(r.LevelMet)
 		if e.Kind == "tooling" {

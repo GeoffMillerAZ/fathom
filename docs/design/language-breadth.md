@@ -170,6 +170,11 @@ owner's decisions, binding on the harness and every reading after them:
   files with a parse error against 6.4% on the commit, and the commit fixes the 32-bit `OP_SYMBOL_SUPPRESSOR` shift the
   tag has on wasm32. Both subjects together still read 5.6% (36 of 642 files), Swift 6 syntax the grammar lacks, which
   is over §14.2's refusal line and is recorded, not refused: the dialect finds 21,939 of 21,997 definitions.
+  *Amended 2026-09-29 (integration review): "recorded, not refused" was the worker's call, and §14.2
+  does not allow it — a parse error rate over 5% of files is a refusal and the language stays disclosed.
+  Swift is refused (`LB-Q-swift-rest`): the dialect stays built, tested and measured, fusion does not
+  dispatch it (`refusedDialects`), and the tracker, milestones and support matrix claim no level for it
+  until a tree-sitter-swift commit parses both subjects under the line.*
 
 - **D3 — oracle-deficiency disclosure.** A reading may carry an adjudicated set of
   dialect-only definitions the L1 oracle is verified to miss (`lang-oracle -adjudicate

@@ -286,14 +286,6 @@ const (
 	// as PowerShell's class and enum and Makefile's variable.
 	KindDartClass SourceKind = "DartClass"
 
-	// Swift (LB-Q-swift, language-breadth: new, no incumbent). KindSwiftClass is
-	// the manifest's primary connector-classification kind; the dialect's other
-	// kinds (struct, enum, actor, extension, protocol, typealias, function,
-	// method, init, deinit, subscript, property, variable, macro) have no
-	// connector classification use and get no constant of their own, the same
-	// precedent as Dart's.
-	KindSwiftClass SourceKind = "SwiftClass"
-
 	// Kustomize (ADR-021 §2 / TI-3): entries under a kustomization.yaml's
 	// resources/patches/images lists, emitted as reference observations —
 	// previously parsed-then-discarded because the generic k8s extractor

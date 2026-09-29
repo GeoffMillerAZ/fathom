@@ -4,6 +4,8 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/geoffmilleraz/fathom/internal/verify"
 )
 
 func trackerFixture() TrackerInput {
@@ -92,5 +94,65 @@ func TestLanguagesTrackerIsGenerated(t *testing.T) {
 	}
 	if errs := CheckTrackerAgainstReadings(string(got), in.Readings); len(errs) > 0 {
 		t.Fatalf("tracker vs readings: %v", errs)
+	}
+}
+
+// TestRenderTrackerRefusedItem (design §14.2, integration review
+// 2026-09-29): a queue item whose row or -rest sibling is refused claims no
+// level, whatever its reading measured — the tracker names the refusal and
+// the measured level, gives no typed-edge level (nothing is dispatched), and
+// the milestones do not count it; its dialect is not dispatched, so the
+// unsupported table still discloses its extensions.
+func TestRenderTrackerRefusedItem(t *testing.T) {
+	in := trackerFixture()
+	r := in.Readings["python"]
+	in.Readings = map[string]Reading{"python": r}
+	in.Refused = map[string]string{"python": "LB-Q-python-rest: parse errors over §14.2's 5% line"}
+	doc := RenderTracker(in)
+	for _, want := range []string{
+		"| Python | language | tags | tree-sitter/tree-sitter-python (MIT) | L4 | refused; measured L1 (L1 excellent) | B universal-ctags 6.2.1 | — | 2026-10-01 | re-plan (LB-Q-python-rest refused) |",
+		"\nMilestone M1 progress: languages at L1 excellent 0/20, at L2 0/12, at L3 0/8, at L4 0/6; tool formats at target 0/15\n",
+	} {
+		if !strings.Contains(doc, want) {
+			t.Errorf("tracker lacks %q:\n%s", want, doc)
+		}
+	}
+	if errs := CheckTrackerAgainstReadings(doc, in.Readings); len(errs) != 0 {
+		t.Errorf("rendered tracker fails its own check: %v", errs)
+	}
+	if _, ok := in.Dispatched()["python"]; ok {
+		t.Error("a refused dialect counts as dispatched")
+	}
+	if _, ok := in.Dispatched()["go"]; !ok {
+		t.Error("a registered, unrefused extractor is not dispatched")
+	}
+	q, _ := ParseQueue([]byte(`[{"id":"swift","name":"Swift (.swift)","kind":"language","target_level":"L3","engine":"tags","plan_row":"LB-Q-swift"}]`))
+	reg := map[string]Registration{"swift": {Extractor: "dialects/swift", LangTag: "swift"}}
+	if got := DisclosureTable(q, reg, nil); got[".swift"] != "" {
+		t.Errorf("a registered dialect is disclosed: %v", got)
+	}
+	in2 := TrackerInput{Queue: q, Registered: reg, Refused: map[string]string{"swift": "refused"}}
+	if got := DisclosureTable(q, in2.Dispatched(), nil); got[".swift"] != "swift" {
+		t.Errorf("a refused dialect is not disclosed: %v", got)
+	}
+}
+
+// TestRefusedItems: a queue item is refused when its own row or its -rest
+// sibling is [-] with disposition refused; a deferred sibling is not.
+func TestRefusedItems(t *testing.T) {
+	q, _ := ParseQueue([]byte(`[
+	 {"id":"a","name":"A","kind":"language","target_level":"L3","engine":"tags","plan_row":"LB-Q-a"},
+	 {"id":"b","name":"B","kind":"language","target_level":"L3","engine":"tags","plan_row":"LB-Q-b"},
+	 {"id":"c","name":"C","kind":"language","target_level":"L3","engine":"tags","plan_row":"LB-Q-c"}]`))
+	plan := verify.ParseMarkdownPlan("s", []byte(`- [ ] a {id: LB-Q-a, oracle: lexical, path: x, pattern: y}
+- [-] a rest {id: LB-Q-a-rest, disposition: refused, reason: "parse errors 5.6%"}
+- [ ] b {id: LB-Q-b, oracle: lexical, path: x, pattern: y}
+- [-] b rest {id: LB-Q-b-rest, disposition: deferred, reason: "later", trigger: "t"}
+- [-] c {id: LB-Q-c, disposition: refused, reason: "licence GPL-3.0"}
+`))
+	got := RefusedItems(q, plan)
+	want := map[string]string{"a": "LB-Q-a-rest: parse errors 5.6%", "c": "LB-Q-c: licence GPL-3.0"}
+	if len(got) != len(want) || got["a"] != want["a"] || got["c"] != want["c"] {
+		t.Fatalf("RefusedItems = %v, want %v", got, want)
 	}
 }

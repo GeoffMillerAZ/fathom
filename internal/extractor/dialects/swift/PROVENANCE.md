@@ -64,5 +64,6 @@
   Swift parser and SourceKit-LSP's index store cannot be read as SCIP, so the compiler's parser is the L1 oracle (definitions with the compiler's own ranges: tier
   B, so L1 can be excellent) and the L2 oracle (call pairs, tier B, so L2 is at most good). `level_met` is L2, L1 excellent and L2 good. L3 and L4 are not reached
   (`LB-Q-swift-rest` in `docs/plans/language-breadth.md`).
-- Dispatch: Swift has no incumbent, so `fusion.New` registers `.swift` from the manifest like every dialect (no merge gate); every already-indexed `.swift` file was
-  disclosed as unsupported ("no extractor registered"), so `ExtractorEpoch` is 30.
+- Dispatch: none. The dialect was refused at integration (2026-09-29, design §14.2, `LB-Q-swift-rest`): 36 of the 642 calibration files (5.6%) parse with an
+  error under this grammar, over the 5% line, so `fusion.New` skips it (`refusedDialects`), the connector does not classify `.swift`, and Swift stays disclosed as
+  unsupported. Dispatching it once a grammar parses the subjects under the line is an `ExtractorEpoch` bump.
