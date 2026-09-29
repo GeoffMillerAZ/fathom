@@ -405,3 +405,119 @@ func TestMapShowSaysWhenTheIndexIsUnreachable(t *testing.T) {
 		t.Errorf("an unreachable index must be named beside the stale entry:\n%s", out)
 	}
 }
+
+// TestMapShowFocusListsTheFocusFirst pins XM-35 (O177): `map show --focus
+// <path|package>[,...]` orders the entries whose resolved file sits under a
+// focus path (the file itself, or a directory and everything below it) first,
+// in the map's own order, and marks every other entry "outside focus": none is
+// hidden, the counts stay the whole map's, the budget cuts from the tail, and
+// the same map, tree and focus print the same bytes.
+func TestMapShowFocusListsTheFocusFirst(t *testing.T) {
+	repo := mapRepo(t)
+	for p, src := range map[string]string{
+		"cmd/x/x.go":        "package x\n\nfunc X() {}\n",
+		"internal/y/y.go":   "package y\n\nfunc Y() {}\n",
+		"internal/yy/yy.go": "package yy\n\nfunc YY() {}\n",
+	} {
+		if err := os.MkdirAll(filepath.Join(repo, filepath.Dir(p)), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(repo, p), []byte(src), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		gitIn(t, repo, "add", p)
+	}
+	gitIn(t, repo, "commit", "-q", "-m", "packages")
+	for _, e := range [][2]string{
+		{"a.go#L3-L5", "the root handler"},
+		{"cmd/x/x.go#L3-L3", "the command"},
+		{"internal/yy/yy.go#L3-L3", "the neighbour package"},
+		{"internal/y/y.go#L3-L3", "the package in question"},
+	} {
+		if _, err := appendMapEntry(mapEntryRequest{Map: "wave", Anchor: e[0], Why: e[1], Root: repo, Now: time.Now()}, nil); err != nil {
+			t.Fatalf("append %s: %v", e[0], err)
+		}
+	}
+	withMapSymbols(t, fakeSyms{})
+	show := func(args ...string) string {
+		t.Helper()
+		code, out, errs := runCLI(t, mapCLI, append([]string{"show", "wave", "--repo", repo}, args...)...)
+		if code != 0 {
+			t.Fatalf("show %v: exit %d: %s", args, code, errs)
+		}
+		return out
+	}
+	entryLines := func(out string) []string {
+		var ls []string
+		for _, l := range strings.Split(out, "\n") {
+			if strings.Contains(l, ".go#L") {
+				ls = append(ls, l)
+			}
+		}
+		return ls
+	}
+
+	plain := show()
+	if strings.Contains(plain, "focus") {
+		t.Errorf("no --focus, no focus marks:\n%s", plain)
+	}
+
+	out := show("--focus", "./internal/y/,"+filepath.Join(repo, "cmd", "x"))
+	lines := entryLines(out)
+	if len(lines) != 4 {
+		t.Fatalf("an entry was hidden: %d entry lines\n%s", len(lines), out)
+	}
+	for i, want := range []string{"cmd/x/x.go#L3-L3", "internal/y/y.go#L3-L3", "a.go#L3-L5", "internal/yy/yy.go#L3-L3"} {
+		if !strings.HasPrefix(lines[i], want) {
+			t.Errorf("entry %d = %q, want %s first (focus first, then the rest, each in the map's order)\n%s", i, lines[i], want, out)
+		}
+		outside := strings.Contains(lines[i], "outside focus")
+		if outside != (i >= 2) {
+			t.Errorf("entry %q: outside-focus mark %v, want %v", lines[i], outside, i >= 2)
+		}
+	}
+	if !strings.Contains(out, "focus cmd/x, internal/y: 2 of 4 entries inside, listed first") {
+		t.Errorf("the header names the focus and how many entries sit in it:\n%s", out)
+	}
+	if !strings.Contains(out, "4 entries from 1 map: 4 fresh") {
+		t.Errorf("the counts stay the whole map's:\n%s", out)
+	}
+	if again := show("--focus", "./internal/y/,"+filepath.Join(repo, "cmd", "x")); again != out {
+		t.Errorf("not deterministic:\n%s\n---\n%s", out, again)
+	}
+
+	// A file is a focus too; a focus that names nothing says so and hides nothing.
+	if l := entryLines(show("--focus", "a.go")); !strings.HasPrefix(l[0], "a.go#L3-L5") || strings.Contains(l[0], "outside focus") {
+		t.Errorf("a file focus: %q", l)
+	}
+	none := show("--focus", "docs")
+	if len(entryLines(none)) != 4 || !strings.Contains(none, "0 of 4 entries inside") {
+		t.Errorf("a focus matching nothing:\n%s", none)
+	}
+
+	// The budget cuts from the tail, so the focus survives a tight budget.
+	tight := show("--focus", "internal/y", "--budget", "420")
+	if tl := entryLines(tight); len(tl) == 0 || !strings.HasPrefix(tl[0], "internal/y/y.go#L3-L3") || len(tight) > 420 {
+		t.Errorf("a tight budget (%d bytes) lost the focus:\n%s", len(tight), tight)
+	}
+
+	// The JSON says it too.
+	code, js, errs := runCLI(t, mapCLI, "show", "wave", "--repo", repo, "--focus", "internal/y", "--json")
+	if code != 0 {
+		t.Fatalf("show --json: %s", errs)
+	}
+	var v struct {
+		Focus   []string `json:"focus"`
+		InFocus int      `json:"in_focus"`
+		Items   []struct {
+			Anchor  string `json:"anchor"`
+			Outside bool   `json:"outside_focus"`
+		} `json:"items"`
+	}
+	if err := json.Unmarshal([]byte(js), &v); err != nil {
+		t.Fatal(err)
+	}
+	if len(v.Focus) != 1 || v.Focus[0] != "internal/y" || v.InFocus != 1 || len(v.Items) != 4 || v.Items[0].Anchor != "internal/y/y.go#L3-L3" || v.Items[0].Outside || !v.Items[1].Outside {
+		t.Errorf("json = %+v", v)
+	}
+}

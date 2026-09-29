@@ -890,7 +890,7 @@ func resolveHooksScope(flagValue string) (string, error) {
 // userScopeHookKeys reads Claude Code's USER-scope settings
 // (~/.claude/settings.json — doctor's checkHooksInstalled checks this same
 // file and no other user-scope variant, so init mirrors that scope list
-// exactly) and returns the (event, matcher) keys of every fathomHookSpecs
+// exactly) and returns the (event, matcher, marker) keys of every fathomHookSpecs
 // entry already wired there. ok is false when the file is absent or
 // unreadable/unparsable — normal, not a finding; the caller then wires
 // everything at project scope exactly as before this function existed.

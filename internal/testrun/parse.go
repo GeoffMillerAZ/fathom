@@ -259,6 +259,11 @@ var (
 	goPlainSignRe = regexp.MustCompile(`(?m)^(?:(?:ok|FAIL|\?)\s+\S+|\s*--- (?:FAIL|PASS|SKIP): |=== RUN\s|PASS$|FAIL$|panic: )`)
 )
 
+// goStackTestRe is a stack frame's function line inside a test function (its
+// body or a closure in it): "github.com/o/r/x.TestX(0x1400…)" or
+// "….TestX.func1()". The receiver-less top-level Test name is the test.
+var goStackTestRe = regexp.MustCompile(`^[^\s(]+\.(Test[^.(\s]*)(?:\.func\d+(?:\.\d+)*)?\(`)
+
 func looksGoPlain(s string) bool { return goPlainSignRe.MatchString(s) }
 
 // goLineScanner holds the plain parser's state; the -json parser reuses it
@@ -380,6 +385,11 @@ func (sc *goLineScanner) panicLine(line string) bool {
 		return true
 	case strings.HasPrefix(line, "created by ") || (!strings.HasPrefix(line, " ") && !strings.HasPrefix(line, "\t") && strings.HasSuffix(line, ")")):
 		sc.lastFunc = line
+		// A piped tail (`| tail -30`) can lose the "--- FAIL:" line above a
+		// long stack (O175): the stack's own test frame still names the test.
+		if m := goStackTestRe.FindStringSubmatch(line); m != nil && p.Test == "" && projectFrame(line) {
+			p.Test = m[1]
+		}
 		return true
 	}
 	sc.inPanic, sc.running = nil, false
@@ -414,8 +424,26 @@ func (sc *goLineScanner) packageLine(verb, pkg, rest string) {
 	sc.flush(pkg)
 }
 
-// flush assigns the pending failures and panics to pkg.
+// flush assigns the pending failures and panics to pkg. A panic that names
+// a test no "--- FAIL:" line named (the line fell outside a piped tail, or a
+// timeout's "running tests:" block named it) is that test's failure too: a
+// test that panicked failed.
 func (sc *goLineScanner) flush(pkg string) {
+	for _, p := range sc.pendPanic {
+		if p.Test == "" {
+			continue
+		}
+		named := false
+		for _, f := range sc.pendFail {
+			if f.Test == p.Test {
+				named = true
+				break
+			}
+		}
+		if !named {
+			sc.pendFail = append(sc.pendFail, Failure{Test: p.Test})
+		}
+	}
 	for _, f := range sc.pendFail {
 		f.Package = pkg
 		for _, p := range sc.pendPanic {

@@ -37,6 +37,15 @@ license, compile lane) existed only as free-text prose inside
 `Criterion.Evidence`; (c) no compile-run history verb — only the
 just-triggered run was visible.
 
+## Bug 4 (HIGH, 2026-09-29) — a row sharing a matcher group read as wired (O175)
+
+TR-2 put a second fathom row in the PostToolUse(Bash) group beside edit-hook.
+Hook presence was keyed by (event, matcher) alone, so edit-hook's entry stood
+for the test-run row: doctor's hooks_installed read PASS, reconcile's dry-run
+named nothing missing and its apply left the row out with a "not fathom's
+template spelling" note, and a piped failing test run (exit 0) reached no
+test-run hook in this repository.
+
 ## Tasks
 
 Note (house convention, verify's markdown parser is line-based): each task's
@@ -61,6 +70,9 @@ sub-bullet beneath each row names the test that proves it, matching
 
 - [x] `cmd/fathom/module_runs.go` (new): `fathom module runs --manifest --store [--service] [--limit N] [--json]` — compile-run history for the module's layer (id/started_at/model/lane/watermark/claims_emitted/cost_usd, plus dry_run/refused/budget_stopped when true), newest-first, deterministic, reusing `Store.CompileRuns` exactly as `module_doctor.go`'s `loadStoreState` already does (already newest-first by `ran_at DESC, run_id` — no new store method), wired into `cmdModule`'s dispatch and `printModuleUsage` {id: FA-6, symbol: cmdModuleRuns, package: cmd/fathom}
   - Proven by `TestModuleRuns_ListsCompileHistory` (empty-before-compile, one run after a `--mock` compile with the expected lane/model/watermark/claims, and `--limit 0` returning it unbounded).
+
+- [x] `cmd/fathom/doctor.go`: hook presence is keyed per template row, the (event, matcher) group plus the row's own marker (`hookSpecKeyOf`), so an entry wired in a shared group stands only for its own row: the PostToolUse(Bash) group carries edit-hook (O57) and the test-run hook (TR-2), and edit-hook's entry no longer reads as the test-run row wired — doctor's hooks_installed fails naming it, `fleet reconcile`'s dry-run names it missing and `--apply` adds it to that group, and `fathom init` plans it (O175) {id: FA-7, symbol: hookSpecKeyOf, package: cmd/fathom, reachable_from: TestHookRowSharingAMatcherGroupIsCheckedByItsOwnMarker}
+  - Proven by `TestHookRowSharingAMatcherGroupIsCheckedByItsOwnMarker`: a temp HOME and a repo whose settings wire every row but the test-run one (edit-hook alone under PostToolUse(Bash)), at project scope and with edit-hook served from user scope.
 
 ## Deferred (none)
 

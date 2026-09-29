@@ -786,7 +786,11 @@ What it does, once on:
   A piped test run (`go test ./... | tail -30`) arrives on the first with
   no exit code; an unpiped run that exited non-zero on the second, with
   the exit code in its `error` text
-  (`docs/bench/readings/test-run-hook/hook-facts.md`).
+  (`docs/bench/readings/test-run-hook/hook-facts.md`). A repository needs
+  both: `fathom doctor` (hooks_installed) and `fathom fleet reconcile`
+  check each row by its own command, so one that wires the failure row
+  but not the `PostToolUse(Bash)` one, where `fathom edit-hook` shares the
+  matcher, is named, and `reconcile --apply` adds it (FA-7, O175).
 - It acts only on a Bash command that runs one of the repository's
   **declared** test commands: a Taskfile task, Makefile target or
   package.json script that is test-named or runs a test runner (directly,
@@ -799,7 +803,11 @@ What it does, once on:
   three-way result: **pass** only when the runner's own summary covers
   every package the output shows and the output was neither piped through
   a filter nor cut by the harness; **fail** on any failure in the output or
-  a carried non-zero exit; **unknown** otherwise.
+  a carried non-zero exit; **unknown** otherwise. The output decides a
+  failure whatever the exit status, so a piped run (exit 0, a tail of the
+  output) fails from its `--- FAIL:`, `FAIL<tab>pkg` or `panic:` lines, and
+  a panic whose `--- FAIL:` line fell outside the tail is named by its
+  stack's test frame (TR-13).
 - On a fail, tier 1 names the changed symbols each failing test reaches:
   `test_impact` over the Go functions `git diff HEAD` touches, intersected
   with the failing tests, and `localize` from the panic's stack or the

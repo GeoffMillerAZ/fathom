@@ -2329,6 +2329,45 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Status:** open (worked around)
 - **Impact:** a query that relies on a trailing anchor silently over-captures (here every package segment became a callee: call precision, and file-resolved edges named by a package segment)
 
+### O175 — a piped failing test run gets no test-run line: the PostToolUse(Bash) test-run row was never wired here, and doctor and reconcile read it as wired
+
+- **Symptom:** a failing `go test ./x 2>&1 | tail -30` (exit 0, the filter's status) injected nothing in this repository with `[hooks] test_run = true`; the same run unpiped (PostToolUseFailure) injected the line
+- **Evidence:**
+  - **Tool:** the test-run hook (TR-2), `fathom doctor` hooks_installed, `fathom fleet reconcile` (dry-run and `--apply`, commit ab5518f0)
+  - **Expected:** both TR-2 rows wired (PostToolUse(Bash) `session-hook --event test-run`, PostToolUseFailure(Bash) `--event failed-test-run`); doctor failing and reconcile naming the row while one is missing
+  - **Actual:** `.claude/settings.json` PostToolUse(Bash) carried only `fathom edit-hook`, and `~/.claude/settings.json` wires no PostToolUse(Bash) row at all (only Edit|Write|MultiEdit). hooks_installed read PASS ("all 20 fathom hooks wired"); reconcile's dry-run named only the failed-test-run row, and its apply printed `note: PostToolUse[Bash] spells "fathom edit-hook" — not fathom's template spelling, left alone`, which ab5518f0 read as "its PostToolUse[Bash] test-run twin already reaches a session from user scope"
+  - **Repro:** a temp HOME and a repository whose settings wire every template row but the test-run one, then `fathom doctor` and `fathom fleet reconcile --repo <it>` (TestHookRowSharingAMatcherGroupIsCheckedByItsOwnMarker)
+- **Root cause:** hook presence was keyed by (event, matcher) (`hookSpecKey`), the granularity chosen when one marker sat in two PreToolUse groups (FA-2). TR-2 added the inverse, two rows in one group, so edit-hook's entry stood for the test-run row in doctor's hooks_installed, in reconcile's `analyzeWiring` (its own `event|matcher` key) and `shimHookKeys`, and in init's `initWiringSpecFor`. The parse was not the gap the triage suspected: `testRunVerdict` fails a run from its output before any exit code, and a tail-only `--- FAIL:` / `FAIL<tab>pkg` fragment parsed. One parse gap did exist: a panic whose stack pushed the `--- FAIL:` line out of the tail named no test (the line said only `panic: boom`)
+- **Fix:** FA-7: presence is keyed by (event, matcher, marker). TR-13: a panic's stack frame names its test, and a test a panic names with no `--- FAIL:` line of its own is a failing test. The row is wired in `.claude/settings.json` by `fleet reconcile --apply` run with the fixed binary and HOME set to a scratch directory holding a copy of the user settings
+- **Status:** fixed by TR-13 (5dcaba55) and FA-7 (25987f58), wired by 569a363d (2026-09-29)
+- **Impact:** the test-run hook never saw a piped run here, the common agent shape (`| tail`), so level 10 ran on half its input; every repository wired by reconcile or init after TR-2 had the same hole, and doctor told each of them it was fully wired
+
+### O176 — a read closes a shared map: any reader whose read found an unnamed map's condition holding wrote the closure row for everyone
+
+- **Symptom:** an unnamed map filed with `--completes-when` (a plan row, a file) ends for every reader as soon as any one reader's `map show`, `map list`, hook or append finds the condition holding
+- **Evidence:**
+  - **Tool:** every `loadMapSet` caller (`map show`, `map list`, `map new`, `map append`, `map compose`, the map hooks, `thread note --map-ref`)
+  - **Expected:** a read reports what it sees; a shared map ends on its creator's judgment (or with its creator's session)
+  - **Actual:** `loadMapSet` ran `evaluateMapConditions` on every read, which appended a durable closure row (`closed_by: condition`) for any unnamed header whose condition held, whoever read it; the row lives in the shared threads log (`FATHOM_THREADS`), so the map read as ended for all. Named maps were already immune (XM-32)
+  - **Repro:** session A `fathom map new m --purpose … --completes-when plan_row_checked:docs/plans/p.md#R-1`, flip R-1, session B `fathom map show m`: a closure row lands and A's `map list` no longer lists m (TestMapReadNeverClosesAnotherSessionsMap)
+- **Root cause:** the read-time closure had no notion of who reads. As verified: any reader's read writes the row. How far a worker's own tree decides is narrower than the triage said: `parseCondition` makes the condition's repository the creator's `--repo`, absolute, so a worker's clone decides only when the map was filed from that clone or its condition carries no repository; any reader still wrote the closure for everyone
+- **Fix:** XM-34: a read closes a map on a tree condition only when the reader filed the map's first header row: the same session; a read that names an agent id (an append's `--agent`) by that id against `created_by`, since sub-agents share their parent's session id; a header filed with no session only by a read with no session (decided: a harness session never closes a sessionless map; a shell or script read does). Any other reader sees the map open and writes nothing. The creator is read from the first header row, so a restatement by another session does not transfer it. The session-end default stays closable by any reader: it reads only the shared log and names the creator's own session, which cannot read again after its end, so a creator-only rule would leave every ended session's scratch maps served to every later session
+- **Status:** fixed by XM-34 (b1f8af74, 2026-09-29). Limit: `map show` and `map list` carry no agent id, so a sub-agent sharing its parent's session still reads as the creator there; only an append with `--agent` is told apart
+- **Impact:** one worker's read could end the map every sibling had been handed, mid-wave, with nothing in the output to say why
+
+### O177 — `map show` has no relevance to the reader's task: every reader gets the same order and reads every range to find its own
+
+- **Symptom:** a worker handed a wave map (`fathom map show wh --budget 1200`) read every entry to find the ones under its own files; under the 1,200-byte budget, entries under its paths could be the ones cut
+- **Evidence:**
+  - **Tool:** `fathom map show ID --budget 1200` (2026-09-29, wave wh)
+  - **Expected:** a way to say which paths the task touches, and the entries under them first, the rest still visible
+  - **Actual:** one order for every reader (nearest include first, then filing order); no flag took the reader's task. XM-D3 (`map show --for '<task>'`) is deferred on the prompt not reaching the hook
+  - **Repro:** a map with entries under `cmd/x`, `internal/y` and the root, `fathom map show m --budget 420` from a task in `internal/y`
+- **Root cause:** relevance by location existed only on the push side (XM-11: the pointer when an edit or a prompt touches a map's footprint); the read had none
+- **Fix:** XM-35: `fathom map show ID --focus <path|package>[,...]` stable-reorders the expansion already read: entries whose resolved file is a focus path or sits under one (whole segments) lead in the map's order, every other entry is marked `outside focus`, none hidden; the header names the focus and the in-focus count, the counts stay the whole map's and the budget cuts from the tail. Deterministic, no new store read
+- **Status:** fixed by XM-35 (45ee70ff, 2026-09-29)
+- **Impact:** every worker spent its map read on its siblings' ranges; the orchestration half (one seed map per work item, composed into the wave map) is item kit's, in `docs/guides/agent-waves.md`
+
 ### O180 — PR-9's silent-loss rule would block 2 of the last 50 guarded commits of main, each on one assertion call fewer in a pinned test
 
 - **Symptom:** PR-12's false-block check (ADR-057 revisit clause 2) ran `fathom conserve --since C^ --strict-plane integrity` over the last 50 commits touching a guarded test file or a pin's naming source; it found no retirement, but two commits exit 1 on `weakened` silent losses, a rule PR-9 already had

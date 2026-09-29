@@ -24,6 +24,7 @@ bench. Tier 2 (a failure-kind judgment) is deferred behind the sensor's data and
 - [x] `[hooks] test_run` is the opt-in switch, default off until the bench {id: TR-9, symbol: Load, package: internal/config, reachable_from: TestConfig_HooksTestRunDefaultsOff, needs: "TR-2"}
 - [x] The hook stays inside its descriptor's deadline (I53) and skips silently on a missed one {id: TR-10, symbol: runTestRunWithDeadline, package: cmd/fathom, reachable_from: TestTestRunSkipsSilentlyOnMissedDeadline, needs: "TR-6"}
 - [x] `docs/configuration.md` documents `[hooks] test_run` and what the hook does and does not do {id: TR-11, oracle: lexical, path: docs/configuration.md, pattern: "test_run", needs: "TR-9"}
+- [x] A piped failing Go test run (exit 0, a tail of the output) injects the test-run line: the PostToolUse(Bash) row is wired wherever its PostToolUseFailure twin is (fleet-adoption-fixes.md#FA-7), and a failing run is read from its output (--- FAIL, FAIL<tab>pkg, panic:, a panic's stack naming its test when the --- FAIL line fell outside the tail) whatever the exit status, within the stdin cap (O175) {id: TR-13, symbol: cmdTestRunHook, package: cmd/fathom, reachable_from: TestTestRunHookPipedFailingRunInjectsLine, needs: "TR-2"}
 
 ## Wave 2: the level 10 bench cell (section 6)
 

@@ -91,11 +91,12 @@ func analyzeWiringFor(root, service string) wiringDiff {
 		scopes = append(scopes, [2]string{"user", filepath.Join(home, ".claude", "settings.json")})
 	}
 
+	// Keyed per spec (group plus marker, FA-7): two rows share the
+	// PostToolUse(Bash) group, and each is present only by its own marker.
 	type installed struct{ present bool }
-	have := map[string]*installed{}
+	have := map[hookSpecKey]*installed{}
 	for i := range fathomHookSpecs {
-		s := fathomHookSpecs[i]
-		have[s.event+"|"+s.matcher] = &installed{}
+		have[hookSpecKeyOf(fathomHookSpecs[i])] = &installed{}
 	}
 	readable := false
 	for _, sc := range scopes {
@@ -111,7 +112,7 @@ func analyzeWiringFor(root, service string) wiringDiff {
 		}
 		hooksObj, _ := rootObj["hooks"].(map[string]any)
 		for _, spec := range fathomHookSpecs {
-			key := spec.event + "|" + spec.matcher
+			key := hookSpecKeyOf(spec)
 			arr, _ := hooksObj[spec.event].([]any)
 			for _, g := range arr {
 				gm, ok := g.(map[string]any)
@@ -143,7 +144,7 @@ func analyzeWiringFor(root, service string) wiringDiff {
 		d.SettingsNote = "no readable settings.json at project or user scope"
 	}
 	for _, spec := range fathomHookSpecs {
-		if !have[spec.event+"|"+spec.matcher].present {
+		if !have[hookSpecKeyOf(spec)].present {
 			d.Missing = append(d.Missing, spec.event+"["+spec.matcher+"] → fathom "+spec.sub)
 		}
 	}

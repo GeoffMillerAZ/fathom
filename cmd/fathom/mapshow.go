@@ -13,7 +13,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"path"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -65,6 +67,9 @@ type mapShowItem struct {
 	Note        string              `json:"note,omitempty"`
 	Maps        []string            `json:"maps"`
 	Annotations []mapShowAnnotation `json:"annotations"`
+	// OutsideFocus marks an entry whose file sits under no --focus path
+	// (XM-35); never set without a focus.
+	OutsideFocus bool `json:"outside_focus,omitempty"`
 }
 
 // mapShowCut is an entry the budget left out.
@@ -100,6 +105,11 @@ type mapShowView struct {
 	Items     []mapShowItem `json:"items"`
 	Cut       []mapShowCut  `json:"cut"`
 	Text      string        `json:"-"`
+
+	// Focus is the --focus paths, repo-relative and sorted (XM-35), and
+	// InFocus how many of the map's entries sit under one of them.
+	Focus   []string `json:"focus,omitempty"`
+	InFocus int      `json:"in_focus,omitempty"`
 }
 
 // cmdMapShow is `fathom map show ID [--budget N] [--json]`.
@@ -112,12 +122,13 @@ func cmdMapShow(args []string, stdout, stderr io.Writer) int {
 	url := fs.String("url", defaultFathomURL(), "fathom daemon URL")
 	service := fs.String("service", "", "the service symbol anchors resolve in (default: the one the daemon names for this repository; needed with --store when it names none)")
 	jsonOut := fs.Bool("json", false, "emit JSON: the entries shown, the entries cut, the counts (the budget picks the entries; the JSON itself is not capped)")
+	focus := fs.String("focus", "", "comma-separated paths or package directories your task touches: the entries under them print first and every other entry is marked outside focus, none hidden")
 	if err := fs.Parse(rest); err != nil {
 		return 1
 	}
 	ids = append(ids, fs.Args()...)
 	if len(ids) != 1 {
-		fmt.Fprintln(stderr, "usage: fathom map show ID [--budget 1200] [--json] [--repo .] [--store S --service X]")
+		fmt.Fprintln(stderr, "usage: fathom map show ID [--budget 1200] [--focus path,pkg/dir] [--json] [--repo .] [--store S --service X]")
 		return 1
 	}
 	if *budget < 0 {
@@ -125,6 +136,7 @@ func cmdMapShow(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	root, _ := filepath.Abs(*repo)
+	focusPaths := mapFocusPaths(root, *focus)
 	set := loadMapSet(root, time.Now())
 	m, ok := set.maps[ids[0]]
 	if !ok {
@@ -143,7 +155,7 @@ func cmdMapShow(args []string, stdout, stderr io.Writer) int {
 	if src.indexDown() {
 		notes = append(notes, mapShowIndexDownNote)
 	}
-	v := buildMapShow(m, x, notes, *budget)
+	v := buildMapShow(m, x, notes, *budget, focusPaths)
 	if *jsonOut {
 		enc := json.NewEncoder(stdout)
 		enc.SetIndent("", "  ")
@@ -156,18 +168,35 @@ func cmdMapShow(args []string, stdout, stderr io.Writer) int {
 // buildMapShow renders m's expansion within budget bytes (0: no cap): the
 // header, the counts over the whole map, the entries nearest first, and, when
 // some do not fit, one footer naming them. The output never exceeds the budget.
-func buildMapShow(m explmap.Map, x explmap.Expansion, notes []string, budget int) mapShowView {
+// With focus paths (XM-35), the entries under one of them lead, in the same
+// order, and the rest follow marked outside focus: a stable reorder of the
+// entries already expanded, so the focus reads nothing new.
+func buildMapShow(m explmap.Map, x explmap.Expansion, notes []string, budget int, focus []string) mapShowView {
 	v := mapShowView{
 		ID: m.ID, Kind: string(m.Kind), Name: m.Name, Purpose: strings.TrimSpace(m.Purpose),
 		WhenToUse: strings.TrimSpace(m.WhenToUse), Includes: m.Includes, Budget: budget, Missing: x.Missing, Notes: notes,
 		Counts: mapShowCounts{
 			Entries: len(x.Items), Maps: x.Maps, Fresh: x.Fresh, ReResolved: x.ReResolved, Stale: x.Stale, Conflicts: x.Conflicts,
 		},
+		Focus: focus,
 	}
-	all := make([]mapShowItem, len(x.Items))
-	blocks := make([]string, len(x.Items))
-	for i, it := range x.Items {
-		all[i] = showItem(it)
+	all := make([]mapShowItem, 0, len(x.Items))
+	var outside []mapShowItem
+	for _, it := range x.Items {
+		si := showItem(it)
+		if len(focus) > 0 && !underMapFocus(si.Anchor, focus) {
+			si.OutsideFocus = true
+			outside = append(outside, si)
+			continue
+		}
+		all = append(all, si)
+	}
+	if len(focus) > 0 {
+		v.InFocus = len(all)
+	}
+	all = append(all, outside...)
+	blocks := make([]string, len(all))
+	for i := range all {
 		blocks[i] = showBlock(all[i])
 	}
 
@@ -262,6 +291,9 @@ func showHeader(v mapShowView) string {
 		fmt.Fprintf(&b, "; missing includes: %s%s", strings.Join(names, " "), more)
 	}
 	b.WriteString("\n")
+	if len(v.Focus) > 0 {
+		fmt.Fprintf(&b, "focus %s: %d of %d %s inside, listed first\n", strings.Join(v.Focus, ", "), v.InFocus, c.Entries, mapPlural(c.Entries, "entry", "entries"))
+	}
 	for _, n := range v.Notes {
 		fmt.Fprintf(&b, "note: %s\n", n)
 	}
@@ -280,7 +312,11 @@ func showBlock(it mapShowItem) string {
 	if it.AgentID != "" {
 		fmt.Fprintf(&b, " (%s)", it.AgentID)
 	}
-	fmt.Fprintf(&b, " [%s]\n", showState(it))
+	state := showState(it)
+	if it.OutsideFocus {
+		state += ", outside focus"
+	}
+	fmt.Fprintf(&b, " [%s]\n", state)
 	for _, a := range it.Annotations[1:] {
 		fmt.Fprintf(&b, "  also: %s (map %s", clipRunes(a.Why, mapShowWhyMax), a.Map)
 		if a.AgentID != "" {
@@ -289,6 +325,51 @@ func showBlock(it mapShowItem) string {
 		b.WriteString(")\n")
 	}
 	return b.String()
+}
+
+// mapFocusPaths parses --focus: comma-separated paths or package directories,
+// absolute ones made relative to root, cleaned, deduplicated and sorted, so the
+// same focus spelled two ways prints the same bytes. A path outside root, or
+// one naming the root itself, focuses nothing and is dropped.
+func mapFocusPaths(root, spec string) []string {
+	seen := map[string]bool{}
+	var out []string
+	for _, f := range strings.Split(spec, ",") {
+		f = strings.TrimSpace(f)
+		if f == "" {
+			continue
+		}
+		if filepath.IsAbs(f) {
+			rel, err := filepath.Rel(root, f)
+			if err != nil {
+				continue
+			}
+			f = rel
+		}
+		f = path.Clean(filepath.ToSlash(f))
+		if f == "." || f == ".." || strings.HasPrefix(f, "../") || seen[f] {
+			continue
+		}
+		seen[f] = true
+		out = append(out, f)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// underMapFocus reports whether an anchor's file is a focus path or sits in a
+// focus directory (whole path segments: internal/y is not internal/yy).
+func underMapFocus(anchor string, focus []string) bool {
+	p, _, _, _, ok := explmap.ParseAnchor(anchor)
+	if !ok || p == "" {
+		return false
+	}
+	for _, f := range focus {
+		if p == f || strings.HasPrefix(p, f+"/") {
+			return true
+		}
+	}
+	return false
 }
 
 // showState is the bracketed freshness: what re-resolving found.
