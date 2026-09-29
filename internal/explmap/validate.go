@@ -46,19 +46,33 @@ func Validate(m Map) error {
 // purpose is the question the map answers, the one thing about a map fathom
 // cannot compute, so a name without it would advertise a map nobody can judge
 // the relevance of. It must be one non-blank line of at most PurposeMaxBytes.
-// An unnamed map is a run's scratch and needs none.
+// An unnamed map is a run's scratch and needs none, but a purpose it does carry
+// is held to the same one-line rule, so what a brief or a pointer line quotes is
+// always a line.
 func validateMapPurpose(m Map) error {
-	if !m.Named() {
+	if !m.Named() && strings.TrimSpace(m.Purpose) == "" {
 		return nil
 	}
-	p := strings.TrimSpace(m.Purpose)
+	if err := CheckPurpose(m.Purpose); err != nil {
+		if m.Named() {
+			return fmt.Errorf("map %q (named %q): %w", m.ID, m.Name, err)
+		}
+		return fmt.Errorf("map %q: %w", m.ID, err)
+	}
+	return nil
+}
+
+// CheckPurpose is the one-line rule for a purpose line: non-blank, one line, at
+// most PurposeMaxBytes. The error wraps ErrNoPurpose and says which part failed.
+func CheckPurpose(purpose string) error {
+	p := strings.TrimSpace(purpose)
 	switch {
 	case p == "":
-		return fmt.Errorf("map %q (named %q): %w", m.ID, m.Name, ErrNoPurpose)
+		return ErrNoPurpose
 	case strings.ContainsAny(p, "\r\n"):
-		return fmt.Errorf("map %q (named %q): the purpose is one line: %w", m.ID, m.Name, ErrNoPurpose)
+		return fmt.Errorf("the purpose is one line: %w", ErrNoPurpose)
 	case len(p) > PurposeMaxBytes:
-		return fmt.Errorf("map %q (named %q): the purpose is %d bytes, over the %d-byte line: %w", m.ID, m.Name, len(p), PurposeMaxBytes, ErrNoPurpose)
+		return fmt.Errorf("the purpose is %d bytes, over the %d-byte line: %w", len(p), PurposeMaxBytes, ErrNoPurpose)
 	}
 	return nil
 }

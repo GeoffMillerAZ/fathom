@@ -88,7 +88,7 @@ var verbTable = []verb{
 	{Name: "assess", Summary: "Priced, explicit, off by default: a model judges a unit's on-disk work (typed questions, never the transcript): [--session S] [--interventions] [--dry-run] [--json] | spend", Hidden: true}, // SR-18: frozen (ADR-046/ADR-053)
 	{Name: "retro", Summary: "Did the firings help? Join a session's interventions to outcomes: [--session S | latest stamped] [--write] [--json]", Hidden: true},                                                           // SR-31: fathom metrics retro covers this; stays fully dispatched
 	{Name: "thread", Summary: "Continuity threads: brief | note | point | list | close | promote | handoff — the work, not the session (vision 21)"},
-	{Name: "map", Summary: "Exploration maps (ADR-056): name | include | compose | list — anchored entries filed with `thread note --map`, composed by reference, one id per handoff"},
+	{Name: "map", Summary: "Exploration maps (ADR-056): new | append | name | include | compose | show | list — anchored entries, composed by reference, one id per handoff, re-resolved at every read (show ID --budget 1200)"},
 	{Name: "fleet", Summary: "Fleet operations: report | reconcile [--apply] | realization --service S | receipts | undo <receipt> (every write receipted, every receipt reversible) | remedy: time-to-remedy per repository from the report snapshots"},
 	{Name: "research", Summary: "The research flywheel: report (aggregate local evidence) | bundle (sanitized, shareable summary)", Hidden: true}, // SR-16: frozen (ADR-046 decision 6), not deleted
 	{Name: "module", Summary: "Expert-module lifecycle: init | sources | map | compile | eval | doctor | pack | runs"},
