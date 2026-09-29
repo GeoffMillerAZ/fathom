@@ -84,6 +84,21 @@
       "gz_bytes": 74133
     },
     {
+      "blob": "dart",
+      "repo": "UserNobody14/tree-sitter-dart",
+      "tag": "be07cf7118d3dba06236a3f19541685a68209934",
+      "commit": "be07cf7118d3dba06236a3f19541685a68209934",
+      "tarball_sha256": "b126efb8dfeeba8b71f0c6ae1f0cd09cf8b205560786b31d44cc16b283e782f2",
+      "licence": "MIT",
+      "entry_points": ["tree_sitter_dart"],
+      "scanner": true,
+      "generate": false,
+      "abi": 15,
+      "blob_sha256": "50a95508f349684542905dae851d05c6833f7ff517b2db2ecd34bf91219ca4e8",
+      "blob_bytes": 914734,
+      "gz_bytes": 205433
+    },
+    {
       "blob": "dockerfile",
       "repo": "camdencheek/tree-sitter-dockerfile",
       "tag": "v0.2.0",

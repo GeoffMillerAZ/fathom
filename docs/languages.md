@@ -46,13 +46,14 @@ language-native SCIP indexer), **file** (per-file resolver, tier pre-scan, label
 | Lua | tree-sitter (wasm) | yes | Kong, telescope.nvim | **syntax** — call names by syntax only (a name, a field or a method callee); no SCIP producer exists for Lua | the `require` graph (L3, a file-symbol strategy); a function in a computed slot has no name |
 | Bash | heuristic (`bashextract.go`) | no | (corpus.yaml) | **syntax** | — |
 | PowerShell | tree-sitter (wasm) | yes | PSScriptAnalyzer, Pester | **syntax** — call names by syntax only (a command name or a member invocation); no SCIP producer exists for PowerShell | class properties and script/global variables (a `$`-sigilled token the tags engine cannot strip to the bare name) |
+| Dart | tree-sitter (wasm) | yes | bloc, http (eight pure-Dart packages) | **scip** via scip-dart, which indexes one package at a time (LB-Q-dart: def_mapping .9995, typed_recall .4331, since a reference to a parameter or a local variable maps to no symbol); meanwhile **file**: `import` resolves through `pubspec.yaml`'s package name and relative paths (namespace-dir) | file edges through a barrel file (`export` is not followed) and from type references (L3); attributing an edge from a local variable to its enclosing definition (L4) |
 | Makefile | tree-sitter (wasm) | yes | prometheus, cosmopolitan, valkey | **syntax** — a rule's literal prerequisite words by syntax only; no SCIP producer exists for make, and a prerequisite spelled with a variable is a value the dialect does not evaluate | `include` edges (L3), tab-indented assignments inside conditionals and unspaced `VAR?=x` (tree-sitter-make limits) |
 | SQL | heuristic (`sqlextract.go`) | no | — | **syntax** | — |
 | Terraform/HCL | pure Go (`hclextract.go`) | n/a | (corpus.yaml) | **syntax** (resource references) | — |
 | Kubernetes YAML, Helm, Kustomize, docker-compose | pure Go | n/a | (corpus.yaml) | **syntax** (`service_ref` cross-repo edges) | — |
 | Dockerfile, CMake, GitHub Actions, proto, GraphQL, OpenAPI, JSON, TOML, templ, Markdown, go.mod, package.json, pyproject.toml, pom.xml | pure Go | n/a | (corpus.yaml where listed) | **syntax** | — |
 
-Disclosed as unsupported (named per service in `list_services`, never silently skipped; `internal/connector/unsupported_language.go`): Clojure, Crystal, Dart, Elixir, Elm, Erlang, F#, Groovy, Haskell, Julia, Nim, OCaml, Swift, Zig.
+Disclosed as unsupported (named per service in `list_services`, never silently skipped; `internal/connector/unsupported_language.go`): Clojure, Crystal, Elixir, Elm, Erlang, F#, Groovy, Haskell, Julia, Nim, OCaml, Swift, Zig.
 
 Bench coverage today: every scenario corpus has a Go subject; the Long Code Arena corpus
 covers Python, Java and Kotlin bug localization. SU-23 (done) adds TypeScript
@@ -71,7 +72,7 @@ reading's computed `level_met` with each met level's grade; `tolerated` is regis
 no reading yet; `unsupported (disclosed)` is queued, not registered, and named per service
 by `list_services`.
 
-Milestone M1 progress: languages at L1 excellent 10/20, at L2 8/12, at L3 0/8, at L4 0/6; tool formats at target 7/15
+Milestone M1 progress: languages at L1 excellent 11/20, at L2 9/12, at L3 0/8, at L4 0/6; tool formats at target 7/15
 
 | Language or format | Kind | Engine | Grammar / parser | Target | Level met | Oracles | Typed edges | Reading | Next |
 |---|---|---|---|---|---|---|---|---|---|
@@ -104,7 +105,7 @@ Milestone M1 progress: languages at L1 excellent 10/20, at L2 8/12, at L3 0/8, a
 | GitLab CI (.gitlab-ci.yml, included files) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 good, L3 good) | A gitlab-ci-local --list-json gitlab-ci-local 4.75.1; C gitlab-ci-refs-oracle (independent yaml.v3 walk of needs, dependencies and extends, over the pipelines gitlab-ci-local accepts) gopkg.in/yaml.v3 v3.0.1 | — | 2026-09-29 | at target (LB-Q-gitlab-ci) |
 | Ruby (.rb, Rakefile, Gemfile by basename) | language | tags | tree-sitter/tree-sitter-ruby (MIT) | L3 | L2 (L1 excellent, L2 good) | C tree-sitter-tags:ruby-tags.scm py-tree-sitter 0.25.2, tree-sitter-ruby 0.23.1; B universal-ctags 6.2.1 | scip:scip-ruby | 2026-09-29 | LB-Q-ruby |
 | Maven POMs (pom.xml) | tool format | doc | pure-go:encoding/xml (n/a) | L3 | L3 (L1 excellent, L2 good, L3 good) | C maven-pom-walk (independent encoding/xml decode of each POM's own parent and dependencies, checked against mvn help:effective-pom) go1.26.3 encoding/xml; Maven 3.9.11; maven-help-plugin 3.5.2; -P release; A mvn help:effective-pom Maven 3.9.11; maven-help-plugin 3.5.2; -P release | syntax | 2026-09-29 | at target (LB-Q-maven) |
-| Dart (.dart) | language | tags | UserNobody14/tree-sitter-dart (MIT) | L4 | unsupported (disclosed) | — | — | — | LB-Q-dart |
+| Dart (.dart) | language | tags | UserNobody14/tree-sitter-dart (MIT) | L4 | L2 (L1 excellent, L2 excellent) | A scip-dart 1.7.0 | scip:scip-dart | 2026-09-29 | LB-Q-dart |
 | Cargo manifests (Cargo.toml, workspaces) | tool format | doc | pure-go:github.com/pelletier/go-toml/v2 (n/a) | L3 | unsupported (disclosed) | — | — | — | LB-Q-cargo |
 | Swift (.swift) | language | tags | alex-pinkus/tree-sitter-swift (MIT) | L3 | unsupported (disclosed) | — | — | — | LB-Q-swift |
 | Go modules (go.mod, go.work) | tool format | native | native:golang.org/x/mod (BSD-3-Clause) | L3 | tolerated | — | — | — | LB-Q-go-mod |

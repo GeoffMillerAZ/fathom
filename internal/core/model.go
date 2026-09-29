@@ -250,6 +250,14 @@ const (
 	// Lua
 	KindLuaFunction SourceKind = "LuaFunction"
 
+	// Dart (LB-Q-dart, language-breadth: new — a fleet gap, no incumbent).
+	// KindDartClass is the manifest's primary connector-classification kind;
+	// the dialect's other kinds (mixin, extension, enum, typedef, function,
+	// method, accessor, constructor, field, variable) have no connector
+	// classification use and so get no constant of their own, same precedent
+	// as PowerShell's class and enum and Makefile's variable.
+	KindDartClass SourceKind = "DartClass"
+
 	// Kustomize (ADR-021 §2 / TI-3): entries under a kustomization.yaml's
 	// resources/patches/images lists, emitted as reference observations —
 	// previously parsed-then-discarded because the generic k8s extractor

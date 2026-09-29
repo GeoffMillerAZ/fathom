@@ -623,7 +623,15 @@ func parseGitLog(serviceID, raw string) []store.Commit {
 // build plugins, parent and dependency references, and the modules, parent and
 // dependency edges that resolve to another POM of the repository) where each
 // was fingerprinted as an unclassified .xml file; the salt bump re-reads them.
-const ExtractorEpoch = "24"
+// Epoch 25 (LB-Q-dart): .dart files now extract via
+// internal/extractor.NewTSExtractor("dart") — tree-sitter via wazero/WASM, a
+// fleet gap with no incumbent: classes, mixins, extensions, enums and their
+// constants, typedefs, functions, methods, getters and setters, constructors,
+// fields and top-level variables, each callable with a Signature and EndLine and
+// its calls named by callee, and `import` directives resolved through
+// pubspec.yaml's package name; every such file previously fell through to
+// "no extractor registered" (the epoch 18 class), so the salt bump re-reads them.
+const ExtractorEpoch = "25"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares

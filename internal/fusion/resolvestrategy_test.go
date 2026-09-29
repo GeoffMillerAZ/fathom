@@ -211,7 +211,7 @@ func dialectImports(t *testing.T, lang string) extractor.FileResolveLang {
 // TestFileResolveLangsFromManifests: the resolver's languages are exactly
 // the tags dialects whose manifest names an imports query and a strategy —
 // today JavaScript/TypeScript (one extractor group), Python, HTML, CSS, C,
-// Java, Kotlin, C#, C++, PHP, Rust and Ruby.
+// Java, Kotlin, C#, C++, PHP, Rust, Ruby and Dart.
 func TestFileResolveLangsFromManifests(t *testing.T) {
 	langs, err := extractor.FileResolveLangs()
 	if err != nil {
@@ -221,11 +221,11 @@ func TestFileResolveLangsFromManifests(t *testing.T) {
 	for _, l := range langs {
 		got[l.Lang] = l.Strategy
 	}
-	want := map[string]string{"javascript": "relative-path", "python": "dotted-module", "html": "relative-path", "css": "relative-path", "c": "include-path", "cpp": "include-path", "java": "namespace-dir", "csharp": "namespace-dir", "php": "namespace-dir", "rust": "crate-mod", "kotlin": "namespace-dir", "ruby": "file-symbol"}
+	want := map[string]string{"javascript": "relative-path", "python": "dotted-module", "html": "relative-path", "css": "relative-path", "c": "include-path", "cpp": "include-path", "java": "namespace-dir", "csharp": "namespace-dir", "php": "namespace-dir", "rust": "crate-mod", "kotlin": "namespace-dir", "ruby": "file-symbol", "dart": "namespace-dir"}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("FileResolveLangs = %v, want %v", got, want)
 	}
-	for path, lang := range map[string]string{"a.ts": "javascript", "a.tsx": "javascript", "a.mjs": "javascript", "a.cts": "javascript", "a.py": "python", "a.rb": "ruby", "a.rake": "ruby", "a.ru": "ruby", "a.kt": "kotlin", "a.go": "", "a.html": "html", "a.htm": "html", "a.css": "css", "a.c": "c", "a.cpp": "cpp", "a.hpp": "cpp", "a.java": "java", "a.cs": "csharp", "a.php": "php", "a.rs": "rust"} {
+	for path, lang := range map[string]string{"a.ts": "javascript", "a.tsx": "javascript", "a.mjs": "javascript", "a.cts": "javascript", "a.py": "python", "a.rb": "ruby", "a.rake": "ruby", "a.ru": "ruby", "a.kt": "kotlin", "a.go": "", "a.html": "html", "a.htm": "html", "a.css": "css", "a.c": "c", "a.cpp": "cpp", "a.hpp": "cpp", "a.java": "java", "a.cs": "csharp", "a.php": "php", "a.rs": "rust", "a.dart": "dart"} {
 		if g := fileResolveLangFor(path); g != lang {
 			t.Errorf("fileResolveLangFor(%s) = %q, want %q", path, g, lang)
 		}

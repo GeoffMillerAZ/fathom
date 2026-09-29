@@ -280,7 +280,7 @@ and contributed no edge (O115)` — never silently folded into `direct` or `unre
 **Unsupported languages (O69).** `unclassified` lumps every file with no registered
 extractor into one count, unnamed — a lockfile, an image, and a real Swift source file
 all count the same way. When an unrecognized extension is also a KNOWN programming
-language (`internal/connector.UnsupportedLanguageForPath` — currently: Swift, Dart,
+language (`internal/connector.UnsupportedLanguageForPath` — currently: Swift,
 Elixir, Clojure, Haskell, OCaml, F#, Erlang, Zig, Nim, Julia, Elm, Crystal, Groovy),
 ingest names it and counts its files separately, so a repo whose primary language has no
 extractor reads as "swift: 412 files, no extractor" instead of a suspiciously low symbol

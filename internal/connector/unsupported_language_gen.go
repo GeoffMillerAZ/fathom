@@ -27,7 +27,6 @@ var unsupportedLangExtMap = map[string]string{
 	".cu":      "cuda",
 	".cuh":     "cuda",
 	".d":       "d",
-	".dart":    "dart",
 	".dpr":     "pascal",
 	".edn":     "clojure",
 	".el":      "emacs-lisp",

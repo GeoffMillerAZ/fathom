@@ -1,0 +1,49 @@
+{
+  "id": "dart",
+  "display": "Dart",
+  "kind": "language",
+  "engine": "tags",
+  "lang_tag": "dart",
+  "match": {
+    "extensions": [".dart"],
+    "basenames": [],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "grammar": { "blob": "dart", "entry_point": "tree_sitter_dart" },
+  "variants": [],
+  "queries": { "tags": "tags.scm", "imports": "imports.scm" },
+  "kinds": {
+    "class":          { "source_kind": "DartClass",         "canonical": "class",       "container": true },
+    "mixin":          { "source_kind": "DartMixin",         "canonical": "trait",       "container": true },
+    "extension":      { "source_kind": "DartExtension",     "canonical": "class",       "container": true },
+    "extension_type": { "source_kind": "DartExtensionType", "canonical": "class",       "container": true },
+    "enum":           { "source_kind": "DartEnum",          "canonical": "enum",        "container": true },
+    "enum_constant":  { "source_kind": "DartEnumConstant",  "canonical": "field",       "callable": true },
+    "typedef":        { "source_kind": "DartTypedef",       "canonical": "type_alias" },
+    "function":       { "source_kind": "DartFunction",      "canonical": "function",    "callable": true },
+    "method":         { "source_kind": "DartMethod",        "canonical": "method",      "callable": true },
+    "accessor":       { "source_kind": "DartAccessor",      "canonical": "property",    "callable": true },
+    "constructor":    { "source_kind": "DartConstructor",   "canonical": "constructor", "callable": true },
+    "field":          { "source_kind": "DartField",         "canonical": "field",       "callable": true },
+    "variable":       { "source_kind": "DartVariable",      "canonical": "variable",    "callable": true }
+  },
+  "required_kinds": ["class", "mixin", "extension", "enum", "enum_constant", "typedef", "function", "method", "accessor", "constructor", "field", "variable"],
+  "oracle_kinds": {
+    "scip": { "class": "class", "mixin": "trait", "extension": "class", "type": "class", "enum": "enum",
+              "typealias": "type_alias", "function": "function", "method": "method",
+              "constructor": "constructor", "property": "property", "field": "field",
+              "variable": "variable" },
+    "tool": { "class": "class", "mixin": "trait", "extension": "class", "extension_type": "class",
+              "enum": "enum", "enum_constant": "field", "typedef": "type_alias", "function": "function",
+              "method": "method", "accessor": "property", "constructor": "constructor",
+              "field": "field", "variable": "variable" }
+  },
+  "qualify": { "chain_containers": true, "container_sep": ".", "method_sep": "." },
+  "package": { "strategy": "dir" },
+  "imports": { "strategy": "namespace-dir", "suffixes": [".dart"] },
+  "signature": { "max_chars": 200 },
+  "target_level": "L4",
+  "queue_id": "dart"
+}

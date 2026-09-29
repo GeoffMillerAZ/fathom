@@ -1,0 +1,86 @@
+{
+  "symbols": [
+    {
+      "name": "fetchIt",
+      "kind": "DartFunction",
+      "package": "edge",
+      "line": 4,
+      "end_line": 4,
+      "signature": "JSPromise<Object> fetchIt(String input)",
+      "tier": "verified"
+    },
+    {
+      "name": "note",
+      "kind": "DartFunction",
+      "package": "edge",
+      "line": 6,
+      "end_line": 6,
+      "signature": "void note()",
+      "tier": "verified"
+    },
+    {
+      "name": "plain",
+      "kind": "DartFunction",
+      "package": "edge",
+      "line": 8,
+      "end_line": 8,
+      "signature": "void plain()",
+      "tier": "verified"
+    },
+    {
+      "name": "Base",
+      "kind": "DartClass",
+      "package": "edge",
+      "line": 10,
+      "end_line": 17,
+      "tier": "verified"
+    },
+    {
+      "name": "Base.url",
+      "kind": "DartField",
+      "package": "edge",
+      "line": 11,
+      "end_line": 11,
+      "signature": "abstract final Uri url",
+      "tier": "verified"
+    },
+    {
+      "name": "Base.count",
+      "kind": "DartField",
+      "package": "edge",
+      "line": 12,
+      "end_line": 12,
+      "signature": "abstract int count",
+      "tier": "verified"
+    },
+    {
+      "name": "Base.sign",
+      "kind": "DartMethod",
+      "package": "edge",
+      "line": 14,
+      "end_line": 14,
+      "signature": "static String sign(String key)",
+      "calls": [
+        "trim"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Base.quiet",
+      "kind": "DartMethod",
+      "package": "edge",
+      "line": 16,
+      "end_line": 16,
+      "signature": "void quiet()",
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "*",
+      "module": "dart:js_interop",
+      "kind": "wildcard",
+      "line": 1
+    }
+  ]
+}

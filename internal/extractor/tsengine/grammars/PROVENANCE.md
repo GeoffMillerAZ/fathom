@@ -32,6 +32,7 @@ lock does not describe (I55). The tables below are rendered from the lock by
 | `cpp` | tree-sitter/tree-sitter-cpp | v0.23.4 | `f41e1a044c8a84ea9fa8577fdd2eab92ec96de02` | MIT | `tree_sitter_cpp` | `7a2c55afe3028f4105f25762ea58cc16537d1f5a1dcd9cca90410b3cd5d46051` |
 | `csharp` | tree-sitter/tree-sitter-c-sharp | v0.23.5 | `cac6d5fb595f5811a076336682d5d595ac1c9e85` | MIT | `tree_sitter_c_sharp` | `9628b164369071019368618bdefa446f0aab8acaac47b75d5dfb209e93b8903b` |
 | `css` | tree-sitter/tree-sitter-css | v0.25.0 | `dda5cfc5722c429eaba1c910ca32c2c0c5bb1a3f` | MIT | `tree_sitter_css` | `03965344d8c0435dc54fb45b281578420bb7db8b99df4d34e7e74105a274cb79` |
+| `dart` | UserNobody14/tree-sitter-dart | be07cf7118d3dba06236a3f19541685a68209934 | `be07cf7118d3dba06236a3f19541685a68209934` | MIT | `tree_sitter_dart` | `b126efb8dfeeba8b71f0c6ae1f0cd09cf8b205560786b31d44cc16b283e782f2` |
 | `dockerfile` | camdencheek/tree-sitter-dockerfile | v0.2.0 | `868e44ce378deb68aac902a9db68ff82d2299dd0` | MIT | `tree_sitter_dockerfile` | `8cbdf50838cc55e841aa9585a1a09e5b8c41454ae30ce0a93a7bd71adb140818` |
 | `gotemplate` | ngalaiko/tree-sitter-go-template | aa71f63de226c5592dfbfc1f29949522d7c95fac | `aa71f63de226c5592dfbfc1f29949522d7c95fac` | MIT | `tree_sitter_helm` | `86bcd2cd462a2fdd94a60bb44b6f15e99b3d02177c5d631cbf45761bae482458` |
 | `html` | tree-sitter/tree-sitter-html | v0.23.2 | `5a5ca8551a179998360b4a4ca2c0f366a35acc03` | MIT | `tree_sitter_html` | `21fa4f2d4dcb890ef12d09f4979a0007814f67f1c7294a9b17b0108a09e45ef7` |
@@ -57,6 +58,7 @@ lock does not describe (I55). The tables below are rendered from the lock by
 | `cpp` | (root) | yes | 14 | 1,935,648 | 420,154 | `b5ca4b0cd346bc1cd1060fdc2151125a11ad7695da595157667a5e8b30b03e34` |
 | `csharp` | (root) | yes | 15 | 3,056,786 | 603,861 | `b0700502f93f8e6fa577c47faa1dfcd53ae8b7467d16c621102238e75de8159f` |
 | `css` | (root) | yes | 15 | 250,838 | 74,133 | `e99413feca59f90b54899d5257f0068ea82fea71e30aeb55f6342a104c23fd2f` |
+| `dart` | (root) | yes | 15 | 914,734 | 205,433 | `50a95508f349684542905dae851d05c6833f7ff517b2db2ecd34bf91219ca4e8` |
 | `dockerfile` | (root) | yes | 14 | 171,375 | 69,325 | `81274400989b6ac9f9d9d0cc9618b0ca5045214742468279fdf089d214e5b6ac` |
 | `gotemplate` | dialects/helm | no | 15 | 189,463 | 68,230 | `b1a9b7c210be48df96ad4f0a0bec88f4aca1f30fe9cb4bb2e05c6e845181d61f` |
 | `html` | (root) | yes | 14 | 146,253 | 61,224 | `da122f8345c4c4a052cd71c55b7b34b5f4bde63cedfd6de3ad8aeb11c8099289` |
@@ -72,7 +74,7 @@ lock does not describe (I55). The tables below are rendered from the lock by
 | `rust` | (root) | yes | 15 | 841,090 | 204,421 | `cf86df357ff237e6c95d24a5f5609e4f4cd45f1700d065ddae5d22099a99ee1c` |
 | `sql` | (root) | yes | 15 | 2,102,436 | 380,125 | `71d65822fb9af6262dcd4c3f9b54fd24d1b834609ecafd4d75e19ef8be71d4fc` |
 | `typescript` | typescript, tsx | yes | 14 | 2,037,040 | 422,906 | `30080208c90581bf3b29b412e9ee2e9a11c89b36153b6a94cc07da7b5000afcb` |
-| **total** | | | | 20,915,167 | 4,442,046 | |
+| **total** | | | | 21,829,901 | 4,647,479 | |
 
 Toolchain that produced the committed blobs: zig 0.16.0, wasm-opt 129, tree-sitter-cli 0.26.11.
 

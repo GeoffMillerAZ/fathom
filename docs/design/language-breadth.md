@@ -149,6 +149,17 @@ owner's decisions, binding on the harness and every reading after them:
   okhttp's build needs an Android SDK. The grammar pin moved from fwcd 0.3.8 to commit `1852ea17`
   because 0.3.8 left 16.6% of the subject files with parse errors (over §14.2's 5% line) and 1852ea17
   leaves 1.1%.
+- **D2, Dart (LB-Q-dart, 2026-09-28).** universal-ctags has no Dart parser, so Dart is measured against
+  scip-dart (tier A, `calibration/oracles/scip-dart`) for definitions (`-scip-defs`), calls, definition mapping
+  and file edges, one index per pure-Dart package. The instrument reads its shapes as they are written
+  (`internal/langbench`, scoped to `scip-dart` symbols and to `SCIPOptionsFor("dart")`): a private member (a
+  leading `_`) is a `local N` symbol whose kind still says what it is, so it is a definition and the owner of
+  the calls inside it; an unnamed constructor (`Foo#<constructor>().`) is named as its class and an accessor
+  (`<get>x`) by x; a file and an `import ... as p` prefix are no definitions; the producer's kind outranks a
+  `get`/`const`/`operator` written before the name; and a callable reference is a call site only where its name
+  is written followed by `(` or by type arguments and `(` (a tear-off, an operator and an initializer's
+  `super(...)` are counted as `scip_calls_unwritten` and disclosed). The tags engine gained an `@end` capture
+  (§3.3) because tree-sitter-dart puts a callable's body in a sibling of its signature.
 
 - **D3 — oracle-deficiency disclosure.** A reading may carry an adjudicated set of
   dialect-only definitions the L1 oracle is verified to miss (`lang-oracle -adjudicate

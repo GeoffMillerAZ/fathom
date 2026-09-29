@@ -46,13 +46,14 @@ language-native SCIP indexer), **file** (per-file resolver, tier pre-scan, label
 | Lua | tree-sitter (wasm) | yes | Kong, telescope.nvim | **syntax** — call names by syntax only (a name, a field or a method callee); no SCIP producer exists for Lua | the `require` graph (L3, a file-symbol strategy); a function in a computed slot has no name |
 | Bash | heuristic (`bashextract.go`) | no | (corpus.yaml) | **syntax** | — |
 | PowerShell | tree-sitter (wasm) | yes | PSScriptAnalyzer, Pester | **syntax** — call names by syntax only (a command name or a member invocation); no SCIP producer exists for PowerShell | class properties and script/global variables (a `$`-sigilled token the tags engine cannot strip to the bare name) |
+| Dart | tree-sitter (wasm) | yes | bloc, http (eight pure-Dart packages) | **scip** via scip-dart, which indexes one package at a time (LB-Q-dart: def_mapping .9995, typed_recall .4331, since a reference to a parameter or a local variable maps to no symbol); meanwhile **file**: `import` resolves through `pubspec.yaml`'s package name and relative paths (namespace-dir) | file edges through a barrel file (`export` is not followed) and from type references (L3); attributing an edge from a local variable to its enclosing definition (L4) |
 | Makefile | tree-sitter (wasm) | yes | prometheus, cosmopolitan, valkey | **syntax** — a rule's literal prerequisite words by syntax only; no SCIP producer exists for make, and a prerequisite spelled with a variable is a value the dialect does not evaluate | `include` edges (L3), tab-indented assignments inside conditionals and unspaced `VAR?=x` (tree-sitter-make limits) |
 | SQL | heuristic (`sqlextract.go`) | no | — | **syntax** | — |
 | Terraform/HCL | pure Go (`hclextract.go`) | n/a | (corpus.yaml) | **syntax** (resource references) | — |
 | Kubernetes YAML, Helm, Kustomize, docker-compose | pure Go | n/a | (corpus.yaml) | **syntax** (`service_ref` cross-repo edges) | — |
 | Dockerfile, CMake, GitHub Actions, proto, GraphQL, OpenAPI, JSON, TOML, templ, Markdown, go.mod, package.json, pyproject.toml, pom.xml | pure Go | n/a | (corpus.yaml where listed) | **syntax** | — |
 
-Disclosed as unsupported (named per service in `list_services`, never silently skipped; `internal/connector/unsupported_language.go`): Clojure, Crystal, Dart, Elixir, Elm, Erlang, F#, Groovy, Haskell, Julia, Nim, OCaml, Swift, Zig.
+Disclosed as unsupported (named per service in `list_services`, never silently skipped; `internal/connector/unsupported_language.go`): Clojure, Crystal, Elixir, Elm, Erlang, F#, Groovy, Haskell, Julia, Nim, OCaml, Swift, Zig.
 
 Bench coverage today: every scenario corpus has a Go subject; the Long Code Arena corpus
 covers Python, Java and Kotlin bug localization. SU-23 (done) adds TypeScript

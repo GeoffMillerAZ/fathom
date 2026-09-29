@@ -14,6 +14,7 @@ lines, bare names).
 | scip-dotnet/ | A (def_mapping, typed_recall) | C# |
 | scip-php/ | A (calls, def_mapping, file edges) | PHP |
 | scip-ruby/ | A (diagnostic: typed receivers only) | Ruby |
+| scip-dart/ | A (definitions, calls, def_mapping, file edges; typed_recall diagnostic) | Dart |
 | rust-analyzer/ | A (definitions, calls, def_mapping, typed_recall, file edges) | Rust |
 | roslyn/ | B | C# |
 | javaparser/ | B | Java |

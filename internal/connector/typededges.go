@@ -34,6 +34,7 @@ var typedEdgeProducers = map[string]string{
 	"c":      "scip:scip-clang",
 	"cpp":    "scip:scip-clang",
 	"ruby":   "scip:scip-ruby",
+	"dart":   "scip:scip-dart",
 	"cs":     "scip:scip-dotnet",
 
 	// file: fusion.ResolveFileEdges' relative-path strategy resolves this

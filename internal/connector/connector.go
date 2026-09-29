@@ -223,6 +223,9 @@ var extClassMap = map[string]classification{
 
 	// Lua
 	".lua": {core.KindLuaFunction, "lua"},
+
+	// Dart (LB-Q-dart: a new tree-sitter dialect, no incumbent).
+	".dart": {core.KindDartClass, "dart"},
 }
 
 // classify looks up base (full basename, e.g. "go.mod", "Dockerfile") first —
