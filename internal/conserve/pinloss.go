@@ -6,7 +6,8 @@ package conserve
 //
 // A pin is a test a governing source names: an invariant's enforcement
 // column, a `tests/*.cue` manifest entry, a compatibility-surface evidence
-// line, or a `// certifies:` marker. PinLosses runs integrity.Check from base
+// line, a `// certifies:` marker, or a guard note's `done needs:` segment
+// (PR-2, ADR-057 decision 3). PinLosses runs integrity.Check from base
 // to head over the changed files with that CV-7 guarded set and reach off (a
 // hook opens no store, and a pin is never inferred from reach: PR-X11), then
 // keeps only the loss kinds: deleted, renamed, weakened, skipped,
@@ -18,8 +19,8 @@ package conserve
 // `git cat-file --batch` process; the only other I/O is the base-side
 // manifest listing manifestCertifiesAt already does (`git ls-tree`, skipped
 // when Root is ""). The guarded set comes from this package's own base-side
-// helpers (scopeEvidenceAt, manifestCertifiesAt, invariantTestsAt), the same
-// ones the integrity plane uses, so the two can never disagree about what is
+// helpers (scopeEvidenceAt, manifestCertifiesAt, invariantTestsAt,
+// guardDoneNeedsAt), the same ones the integrity plane uses, so the two can never disagree about what is
 // pinned. Output is sorted and deterministic.
 
 import (
@@ -71,7 +72,7 @@ type PinLossInput struct {
 // PinSource is one governing source that names a pinned test at base.
 type PinSource struct {
 	// Reason is the integrity.GuardReason: certifies_marker, manifest_entry,
-	// invariant_enforcement or compatibility_surface.
+	// invariant_enforcement, compatibility_surface or guard_done_needs.
 	Reason string `json:"reason"`
 	Path   string `json:"path"`
 	Line   int    `json:"line,omitempty"`
@@ -143,6 +144,7 @@ func PinLosses(ctx context.Context, in PinLossInput) ([]PinLoss, error) {
 		ManifestCertifies:    manifestCertifiesAt(ctx, base),
 		InvariantTests:       invariantTestsAt(baseFile),
 		SurfaceEvidenceTests: scopeEvidenceAt(baseFile),
+		GuardDoneNeedsTests:  guardDoneNeedsAt(baseFile),
 	}
 	findings := integrity.Check(integrity.Input{
 		ChangedFiles: in.ChangedFiles,
@@ -260,6 +262,8 @@ func (n *pinNaming) source(r integrity.GuardReason, f integrity.Finding) (src Pi
 		return n.docSource(r, pinInvariantsPath, f.Key, intent.ExtractInvariantEnforcementTests)
 	case integrity.ReasonSurface:
 		return n.docSource(r, pinScopePath, f.Key, integrity.ExtractScopeEvidenceTests)
+	case integrity.ReasonGuardDoneNeeds:
+		return n.docSource(r, guardFilePath, f.Key, guardDoneNeedsIn)
 	case integrity.ReasonManifest:
 		return n.manifestSource(f.Key)
 	case integrity.ReasonMarker:

@@ -159,3 +159,52 @@ func TestPinLossesReadErrorIsReturned(t *testing.T) {
 		t.Fatalf("PinLosses = %v, %v; want nil and the read error", got, err)
 	}
 }
+
+// TestPinLossesGuardDoneNeedsIsAPin: a test a guard note's `done needs:`
+// names is a pin like an invariant-named one (ADR-057 decision 3; design
+// section 3: "PR-2 adds a guard's `done needs:` tests"), so PinLosses and the
+// integrity plane agree on the guarded set. Renaming it while the guard
+// still names it is a silent loss cited to .fathom/guard.cue; rewriting the
+// note to name the new test in the same range retires the pin.
+func TestPinLossesGuardDoneNeedsIsAPin(t *testing.T) {
+	const testFile = "internal/store/format_test.go"
+	body := "(t *testing.T) {\n\tif got := 1 + 1; got != 2 {\n\t\tt.Fatalf(\"got %d\", got)\n\t}\n}\n"
+	baseSrc := "package store\n\nimport \"testing\"\n\nfunc TestStoreFormat" + body
+	headSrc := "package store\n\nimport \"testing\"\n\nfunc TestStoreFormatV2" + body
+	in := PinLossInput{
+		Base: "base", Head: "head",
+		ChangedFiles: []string{testFile},
+		Read: pinRevs{
+			"base": {testFile: baseSrc, guardFilePath: guardCueWithDoneNeeds},
+			"head": {testFile: headSrc, guardFilePath: guardCueWithDoneNeeds},
+		}.read,
+	}
+	got, err := PinLosses(context.Background(), in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || got[0].Test != "TestStoreFormat" || got[0].Kind != "renamed" || got[0].RenamedTo != "TestStoreFormatV2" {
+		t.Fatalf("PinLosses = %+v, want renamed TestStoreFormat -> TestStoreFormatV2", got)
+	}
+	wantSrc := []PinSource{{Reason: "guard_done_needs", Path: guardFilePath, Line: 4}}
+	if !reflect.DeepEqual(got[0].Sources, wantSrc) {
+		t.Errorf("sources = %+v, want %+v", got[0].Sources, wantSrc)
+	}
+	if !got[0].Silent() || got[0].SourceEdited {
+		t.Errorf("silent = %v, source edited = %v; want a silent loss (the guard still names the test)", got[0].Silent(), got[0].SourceEdited)
+	}
+
+	// The note rewritten in the same range to name the new test: retired.
+	in.ChangedFiles = append(in.ChangedFiles, guardFilePath)
+	in.Read = pinRevs{
+		"base": {testFile: baseSrc, guardFilePath: guardCueWithDoneNeeds},
+		"head": {testFile: headSrc, guardFilePath: strings.Replace(guardCueWithDoneNeeds, "TestStoreFormat,", "TestStoreFormatV2,", 1)},
+	}.read
+	got, err = PinLosses(context.Background(), in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || got[0].Silent() || !got[0].SourceEdited {
+		t.Fatalf("with the note rewritten: %+v, want one retired loss (not silent, source edited)", got)
+	}
+}

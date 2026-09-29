@@ -174,9 +174,9 @@ pre-push:
     # accepted by the owner 2026-09-29) exits 1 on a SILENT pin loss — a
     # test a governing source names (an invariant's enforcement column, a
     # tests/*.cue manifest entry, a scope evidence line, a certifies
-    # marker), lost in the pushed range while that source still names it at
-    # head. A retired pin (its source was edited in the range to drop the
-    # name) is printed for review and passes. Exit 1 passes through and
+    # marker, a guard note's done needs), lost in the pushed range while
+    # that source still names it at head. A retired pin (its source was
+    # edited in the range to drop the name) is printed for review and passes. Exit 1 passes through and
     # blocks the push; everything else stays warning-only. --since prefers
     # the branch's own upstream (`@{u}`) so a feature branch conserves
     # against what it will actually merge into, falling back to

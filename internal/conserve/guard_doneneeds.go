@@ -53,6 +53,14 @@ func guardDoneNeedsAt(baseFile func(string) ([]byte, bool, error)) []string {
 	if err != nil || !ok {
 		return nil
 	}
+	return guardDoneNeedsIn(b)
+}
+
+// guardDoneNeedsIn is guardDoneNeedsAt over the guard file's bytes: the
+// sorted, deduplicated `done needs:` test names, nil for a file guardspec
+// refuses. PinLosses also reads it at head, to tell a silent loss from a
+// retired pin.
+func guardDoneNeedsIn(b []byte) []string {
 	set, err := guardspec.ParseGuards(guardFilePath, b)
 	if err != nil {
 		return nil

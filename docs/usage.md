@@ -2589,7 +2589,8 @@ one `lefthook.yml`'s pre-push `refactor-conserve` step runs: it checks the
 range's **pins**, the tests a governing source names (an invariant's
 enforcement column in `docs/intent/invariants.md`, a `tests/*.cue` manifest
 entry, a compatibility-surface evidence line in `docs/intent/scope.md`, a
-`// certifies:` marker), with reach off, and prints one line per lost pin
+`// certifies:` marker, a `done needs:` segment of a guard note in
+`.fathom/guard.cue`), with reach off, and prints one line per lost pin
 after the report (on stderr under `--json`, so stdout stays the
 `fathom.conserve/v1` document). The loss kinds are `deleted`, `renamed`,
 `weakened`, `skipped`, `golden_changed` and `marker_moved`; `edited` is
