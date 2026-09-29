@@ -599,7 +599,13 @@ func parseGitLog(serviceID, raw string) []store.Commit {
 // secondary constructors (KotlinConstructor), names a call by its callee's last
 // identifier, and parses on a newer grammar commit (`fun interface`, detached
 // getters and setters); every already-indexed .kt/.kts file lacks those.
-const ExtractorEpoch = "20"
+// Epoch 21 (LB-Q-gitlab-ci, docs/design/language-breadth.md §13/§4): a
+// .gitlab-ci.yml, a file under .gitlab/ci/ and any *.gitlab-ci.yml now extract
+// through the doc-engine gitlab-ci dialect (jobs, hidden templates, their
+// needs/dependencies/extends references and the cross-file ones that resolve)
+// where each was fingerprinted as unclassified YAML (or, with a global
+// `services:` list, read as Compose); the salt bump re-reads them.
+const ExtractorEpoch = "21"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares
@@ -820,6 +826,18 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	p.toolExts[ToolCompose] = compose
 	p.toolExts[ToolHelmTemplateYAML] = extractor.NewHelmTemplateYAMLExtractor()
 	p.toolExts[ToolOpenAPI] = extractor.NewOpenAPIExtractor()
+
+	// GitLab CI (LB-Q-gitlab-ci, language-breadth: new — a doc-engine tool
+	// format, no incumbent). Every pipeline file — the root .gitlab-ci.yml,
+	// .gitlab/ci/**, *.gitlab-ci.yml — reaches it through classifyYAML's path
+	// signal (the dialect manifest's own basenames and globs) and toolExts, the
+	// way Helm templates and OpenAPI documents do; ReingestFile makes the same
+	// path decision.
+	gitlabCI, err := extractor.NewDocDialectExtractor("gitlab-ci")
+	if err != nil {
+		panic(fmt.Sprintf("fusion: doc-dialect gitlab-ci: %v", err))
+	}
+	p.toolExts[ToolGitLabCI] = gitlabCI
 
 	// Protocol Buffers
 	p.exts[".proto"] = extractor.NewProtoExtractor()

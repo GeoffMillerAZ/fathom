@@ -1,0 +1,7 @@
+{
+  "symbols": [
+    { "name": "lint-$[[ inputs.go_version ]]", "kind": "GitLabCIJob", "package": "component", "line": 8, "end_line": 11, "signature": "$[[ inputs.stage ]]", "tier": "verified" },
+    { "name": "pages", "kind": "GitLabCIJob", "package": "component", "line": 13, "end_line": 19, "signature": "deploy", "tier": "verified" }
+  ],
+  "cross_file": []
+}

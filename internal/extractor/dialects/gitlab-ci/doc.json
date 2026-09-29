@@ -1,0 +1,40 @@
+{
+  "decode": "yaml",
+  "multi_document": true,
+  "detect": {
+    "basenames": [".gitlab-ci.yml", ".gitlab-ci.yaml"],
+    "globs": [
+      ".gitlab/ci/**/*.yml", ".gitlab/ci/**/*.yaml",
+      "**/*.gitlab-ci.yml", "**/*.gitlab-ci.yaml"
+    ]
+  },
+  "entities": [
+    { "select": "$.*",
+      "where": { "is_map": true, "key_not_prefix": ".",
+                 "not_key_in": ["default", "include", "stages", "variables", "workflow", "spec",
+                                "image", "services", "cache", "before_script", "after_script", "types"] },
+      "kind": "job", "source_kind": "GitLabCIJob", "name": "$key",
+      "signature": ".stage | .trigger.project | .trigger | .trigger.include[*] | .trigger.include[*].local | .extends[*]" },
+    { "select": "$.*", "where": { "is_map": true, "key_prefix": "." },
+      "kind": "mixin", "source_kind": "GitLabCITemplate", "name": "$key",
+      "signature": ".stage | .extends[*] | .image | .image.name" }
+  ],
+  "references": [
+    { "from": "job", "select": "$.needs[*]", "value": "$ | .job", "to_kind": "job", "edge": "needs" },
+    { "from": "job", "select": "$.dependencies[*]", "value": "$", "to_kind": "job", "edge": "dependencies" },
+    { "from": "job", "select": "$.extends[*]", "value": "$", "to_kind": "mixin", "edge": "extends" },
+    { "from": "mixin", "select": "$.needs[*]", "value": "$ | .job", "to_kind": "job", "edge": "needs" },
+    { "from": "mixin", "select": "$.dependencies[*]", "value": "$", "to_kind": "job", "edge": "dependencies" },
+    { "from": "mixin", "select": "$.extends[*]", "value": "$", "to_kind": "mixin", "edge": "extends" }
+  ],
+  "cross_file": [
+    { "select": "$.include[*]", "value": "$.local | $", "resolve": "repo-path", "edge": "includes" },
+    { "from": "job", "select": "$.trigger.include[*]", "value": "$.local | $", "resolve": "repo-path", "edge": "triggers" },
+    { "from": "job", "select": "$.needs[*]", "value": "$ | .job", "resolve": "service-name", "edge": "needs" },
+    { "from": "job", "select": "$.dependencies[*]", "value": "$", "resolve": "service-name", "edge": "dependencies" },
+    { "from": "job", "select": "$.extends[*]", "value": "$", "resolve": "service-name", "edge": "extends" },
+    { "from": "mixin", "select": "$.needs[*]", "value": "$ | .job", "resolve": "service-name", "edge": "needs" },
+    { "from": "mixin", "select": "$.dependencies[*]", "value": "$", "resolve": "service-name", "edge": "dependencies" },
+    { "from": "mixin", "select": "$.extends[*]", "value": "$", "resolve": "service-name", "edge": "extends" }
+  ]
+}

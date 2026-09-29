@@ -1,0 +1,31 @@
+{
+  "id": "gitlab-ci",
+  "display": "GitLab CI pipelines (.gitlab-ci.yml and included files)",
+  "kind": "tooling",
+  "engine": "doc",
+  "lang_tag": "gitlab-ci",
+  "match": {
+    "extensions": [],
+    "basenames": [".gitlab-ci.yml", ".gitlab-ci.yaml"],
+    "globs": [
+      ".gitlab/ci/**/*.yml", ".gitlab/ci/**/*.yaml",
+      "**/*.gitlab-ci.yml", "**/*.gitlab-ci.yaml"
+    ],
+    "shebangs": [],
+    "sniff": null
+  },
+  "variants": [],
+  "kinds": {
+    "job":      { "source_kind": "GitLabCIJob",      "canonical": "job" },
+    "template": { "source_kind": "GitLabCITemplate", "canonical": "mixin" }
+  },
+  "required_kinds": ["job"],
+  "oracle_kinds": {
+    "tool": { "job": "job" }
+  },
+  "name_match": "identity",
+  "package": { "strategy": "none" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L3",
+  "queue_id": "gitlab-ci"
+}

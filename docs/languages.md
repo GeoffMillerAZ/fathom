@@ -71,7 +71,7 @@ reading's computed `level_met` with each met level's grade; `tolerated` is regis
 no reading yet; `unsupported (disclosed)` is queued, not registered, and named per service
 by `list_services`.
 
-Milestone M1 progress: languages at L1 excellent 8/20, at L2 6/12, at L3 0/8, at L4 0/6; tool formats at target 5/15
+Milestone M1 progress: languages at L1 excellent 8/20, at L2 6/12, at L3 0/8, at L4 0/6; tool formats at target 6/15
 
 | Language or format | Kind | Engine | Grammar / parser | Target | Level met | Oracles | Typed edges | Reading | Next |
 |---|---|---|---|---|---|---|---|---|---|
@@ -101,7 +101,7 @@ Milestone M1 progress: languages at L1 excellent 8/20, at L2 6/12, at L3 0/8, at
 | Makefile / GNU make (Makefile, *.mk, GNUmakefile) | tool format | tags | tree-sitter-grammars/tree-sitter-make (MIT) | L2 | L2 (L1 excellent, L2 excellent) | A make -pn 4.4.1; B universal-ctags 6.2.1 | syntax | 2026-09-29 | at target (LB-Q-makefile) |
 | Kotlin (.kt .kts) | language | tags | fwcd/tree-sitter-kotlin (MIT) | L4 | L2 (L1 excellent, L2 good) | B kotlin-psi 2.3.20 | scip:scip-java | 2026-09-29 | LB-Q-kotlin |
 | Lua (.lua) | language | tags | tree-sitter-grammars/tree-sitter-lua (MIT) | L2 | tolerated | — | syntax | — | LB-Q-lua |
-| GitLab CI (.gitlab-ci.yml, included files) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | unsupported (disclosed) | — | — | — | LB-Q-gitlab-ci |
+| GitLab CI (.gitlab-ci.yml, included files) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 good, L3 good) | A gitlab-ci-local --list-json gitlab-ci-local 4.75.1; C gitlab-ci-refs-oracle (independent yaml.v3 walk of needs, dependencies and extends, over the pipelines gitlab-ci-local accepts) gopkg.in/yaml.v3 v3.0.1 | — | 2026-09-29 | at target (LB-Q-gitlab-ci) |
 | Ruby (.rb, Rakefile, Gemfile by basename) | language | tags | tree-sitter/tree-sitter-ruby (MIT) | L3 | tolerated | — | scip:scip-ruby | — | LB-Q-ruby |
 | Maven POMs (pom.xml) | tool format | doc | pure-go:encoding/xml (n/a) | L3 | unsupported (disclosed) | — | — | — | LB-Q-maven |
 | Dart (.dart) | language | tags | UserNobody14/tree-sitter-dart (MIT) | L4 | unsupported (disclosed) | — | — | — | LB-Q-dart |

@@ -1,0 +1,197 @@
+{
+  "dialect": "gitlab-ci",
+  "kind": "tooling",
+  "target_level": "L3",
+  "level_met": "L3",
+  "grade": {
+    "L1": "excellent",
+    "L2": "good",
+    "L3": "good",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-09-29",
+  "fathom_commit": "f4bed50a",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "gitlab-org/gitaly",
+      "sha": "7985a4e45c9bfd065b04c031ae0b9ad80c4e4416",
+      "files": 1,
+      "bytes": 35592,
+      "counts": {
+        "fathom_defs": 33,
+        "kind_equal": 33,
+        "matched": 33,
+        "oracle_defs": 33,
+        "ref_fathom": 5,
+        "ref_fathom_in_truth": 5,
+        "ref_truth": 5,
+        "ref_truth_found": 5
+      },
+      "families": {
+        "l1": "A",
+        "refs": "C"
+      },
+      "kind_intersection": [
+        "job"
+      ],
+      "excluded_by_kind": {
+        "fathom:GitLabCITemplate": 7
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 1.832,
+        "extract_cpu_ms": 1.83,
+        "max_file_ms": 1,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "gitlab-org/gitlab-development-kit",
+      "sha": "e7693825a4f622427b6c88746ccb683f6e6aa8fe",
+      "files": 16,
+      "bytes": 38610,
+      "counts": {
+        "fathom_defs": 51,
+        "kind_equal": 51,
+        "matched": 51,
+        "oracle_defs": 51,
+        "ref_fathom": 112,
+        "ref_fathom_in_truth": 112,
+        "ref_truth": 112,
+        "ref_truth_found": 112,
+        "xref_fathom": 55,
+        "xref_fathom_in_truth": 55,
+        "xref_truth": 55,
+        "xref_truth_found": 55
+      },
+      "families": {
+        "l1": "A",
+        "refs": "C",
+        "xref": "C"
+      },
+      "kind_intersection": [
+        "job"
+      ],
+      "excluded_by_kind": {
+        "fathom:GitLabCITemplate": 49
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 3.361,
+        "extract_cpu_ms": 5.976999999999999,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "gitlab-org/gitlab-pages",
+      "sha": "ddf88a1750ea87def401f210f17b7c63e03cf409",
+      "files": 3,
+      "bytes": 7199,
+      "counts": {
+        "fathom_defs": 15,
+        "kind_equal": 15,
+        "matched": 15,
+        "oracle_defs": 15,
+        "ref_fathom": 14,
+        "ref_fathom_in_truth": 14,
+        "ref_truth": 14,
+        "ref_truth_found": 14,
+        "xref_fathom": 4,
+        "xref_fathom_in_truth": 4,
+        "xref_truth": 4,
+        "xref_truth_found": 4
+      },
+      "families": {
+        "l1": "A",
+        "refs": "C",
+        "xref": "C"
+      },
+      "kind_intersection": [
+        "job"
+      ],
+      "excluded_by_kind": {
+        "fathom:GitLabCITemplate": 5
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 0.5569999999999999,
+        "extract_cpu_ms": 0.556,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "gitlab-ci-local --list-json",
+      "version": "gitlab-ci-local 4.75.1"
+    },
+    {
+      "tier": "C",
+      "tool": "gitlab-ci-refs-oracle (independent yaml.v3 walk of needs, dependencies and extends, over the pipelines gitlab-ci-local accepts)",
+      "version": "gopkg.in/yaml.v3 v3.0.1"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 1,
+    "ref_recall": 1,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "xref_precision": 1,
+    "xref_recall": 1
+  },
+  "metric_tiers": {
+    "ref_precision": "C",
+    "ref_recall": "C",
+    "sym_precision": "A",
+    "sym_recall": "A",
+    "xref_precision": "C",
+    "xref_recall": "C"
+  },
+  "required_kinds": [
+    "job"
+  ],
+  "kind_intersection": [
+    "job"
+  ],
+  "counts": {
+    "fathom_defs": 99,
+    "kind_equal": 99,
+    "matched": 99,
+    "oracle_defs": 99,
+    "ref_fathom": 131,
+    "ref_fathom_in_truth": 131,
+    "ref_truth": 131,
+    "ref_truth_found": 131,
+    "xref_fathom": 59,
+    "xref_fathom_in_truth": 59,
+    "xref_truth": 59,
+    "xref_truth_found": 59
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 9.73,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 14.16,
+    "max_file_ms": 1,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "fathom:GitLabCITemplate": 61
+  },
+  "notes": [
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+  ],
+  "disposition": null
+}

@@ -1,0 +1,33 @@
+include:
+  - local: /.gitlab/ci/build.gitlab-ci.yml
+  - local: .gitlab/ci/test.gitlab-ci.yml
+    rules:
+      - if: $CI_COMMIT_BRANCH
+  - project: group/shared-ci
+    ref: v3
+    file: /templates/go.yml
+  - template: Jobs/SAST.gitlab-ci.yml
+  - remote: https://ci.example.com/lint.yml
+  - component: $CI_SERVER_FQDN/group/components/lint@1.0
+  - .gitlab/ci/release.gitlab-ci.yml
+
+stages: [build, test, release]
+
+child pipeline:
+  stage: build
+  trigger:
+    include:
+      - local: .gitlab/ci/child.yml
+      - artifact: generated.yml
+        job: generate
+    strategy: depend
+
+downstream:
+  stage: release
+  trigger:
+    project: group/other
+    branch: main
+
+shortcut:
+  trigger: group/third
+  needs: [child pipeline]
