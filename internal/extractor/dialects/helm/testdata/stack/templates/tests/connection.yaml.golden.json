@@ -1,0 +1,30 @@
+{
+  "engine": "tags",
+  "symbols": [
+    {
+      "name": "stack.fullname",
+      "kind": "HelmTemplateRef",
+      "package": "connection",
+      "line": 4,
+      "end_line": 4,
+      "tier": "verified"
+    },
+    {
+      "name": "service.ports.http.port",
+      "kind": "HelmValueRef",
+      "package": "connection",
+      "line": 11,
+      "end_line": 11,
+      "tier": "verified"
+    },
+    {
+      "name": "stack.fullname",
+      "kind": "HelmTemplateRef",
+      "package": "connection",
+      "line": 11,
+      "end_line": 11,
+      "tier": "verified"
+    }
+  ],
+  "cross_file": []
+}

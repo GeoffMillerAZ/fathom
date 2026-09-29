@@ -88,3 +88,32 @@ goNative: #Dialect & {
 	target_level: "L4"
 	queue_id:     "go"
 }
+
+// A tags+doc tool format (LB-Q-helm): documents on the doc engine, templates
+// on the tags engine over a go-template grammar, and the manifest's `names`
+// rules turning a quoted template name and a `.Values.` accessor into the
+// symbol they name.
+helm: #Dialect & {
+	id:       "helm"
+	display:  "Helm charts"
+	kind:     "tooling"
+	engine:   "tags+doc"
+	lang_tag: "helm"
+	match: {
+		extensions: [".tpl"]
+		basenames: ["Chart.yaml", "values.yaml"]
+		globs: ["**/templates/*.yaml"]
+	}
+	grammar: {blob: "gotemplate", entry_point: "tree_sitter_helm"}
+	queries: {tags: "tags.scm"}
+	kinds: {
+		chart: {source_kind: "HelmChart", canonical: "package"}
+		template: {source_kind: "HelmTemplate", canonical: "macro", callable: true}
+		value_ref: {source_kind: "HelmValueRef", canonical: "key"}
+	}
+	required_kinds: ["chart", "template"]
+	name_match: "identity"
+	names: {trim_quotes: true, strip_prefix: [".Values.", "$.Values."]}
+	target_level: "L3"
+	queue_id:     "helm"
+}

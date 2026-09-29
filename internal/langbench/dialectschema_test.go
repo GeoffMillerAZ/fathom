@@ -66,6 +66,8 @@ func TestDialectManifestSchema(t *testing.T) {
 		"extension no dot":     `{match: {extensions: ["go"]}}`,
 		"level past L4":        `{target_level: "L5"}`,
 		"name_match off list":  `{name_match: "exact"}`,
+		"names unknown rule":   `{names: {trim: true}}`,
+		"names empty prefix":   `{names: {strip_prefix: [""]}}`,
 	}
 	for name, patch := range cases {
 		src := schema + "\nbad: #Dialect & " + base + " & " + patch

@@ -57,9 +57,11 @@ type tsDialectRules struct {
 	// immediate container's bare name is used (Python, JS/TS) — matching
 	// the incumbent CGO extractors' single-level scope tracking exactly.
 	chainContainers bool
-	containerSep    string // separator when chainContainers is true
-	methodSep       string // separator between a container's qualified name and a callable's own name
-	scopeSep        string // manifest qualify.scope_sep: the language's own scope operator ("::"), "" when none
+	containerSep    string   // separator when chainContainers is true
+	methodSep       string   // separator between a container's qualified name and a callable's own name
+	scopeSep        string   // manifest qualify.scope_sep: the language's own scope operator ("::"), "" when none
+	trimQuotes      bool     // manifest names.trim_quotes
+	stripPrefix     []string // manifest names.strip_prefix
 
 	importStrategy  string // manifest imports.strategy ("" when the dialect has none)
 	packageStrategy string // manifest package.strategy
@@ -182,6 +184,9 @@ func compileDialectRules(d Dialect) (*tsDialectRules, error) {
 	}
 	if d.Imports != nil {
 		r.importStrategy = d.Imports.Strategy
+	}
+	if d.Names != nil {
+		r.trimQuotes, r.stripPrefix = d.Names.TrimQuotes, d.Names.StripPrefix
 	}
 	if d.Queries.Injections != "" {
 		b, err := fs.ReadFile(dialectFS, path.Join("dialects", d.ID, d.Queries.Injections))

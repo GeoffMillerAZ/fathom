@@ -61,6 +61,14 @@ import "struct"
 		scope_sep?: string & !=""
 	} | *{chain_containers: true, container_sep: ".", method_sep: "."}
 
+	// names rewrites every captured @name before qualification: a quoted
+	// string literal is the symbol without its quotes, an accessor prefix
+	// (`.Values.`) is not part of the key it reads.
+	names?: {
+		trim_quotes?: bool
+		strip_prefix?: [...(string & !="")]
+	}
+
 	package: {
 		strategy: "dir" | "capture" | "none"
 	} | *{strategy: "dir"}

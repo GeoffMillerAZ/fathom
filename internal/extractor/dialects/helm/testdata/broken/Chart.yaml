@@ -1,0 +1,6 @@
+apiVersion: v2
+name: broken
+version: 0.1.0
+dependencies:
+  - name: [unterminated
+    version: 1

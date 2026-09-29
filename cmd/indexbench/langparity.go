@@ -222,8 +222,10 @@ func dialectExtractor(m langbench.Manifest) (extractor.Extractor, error) {
 		return extractor.NewTSExtractor(m.ID)
 	case "doc":
 		return extractor.NewDocDialectExtractor(m.ID)
+	case "tags+doc":
+		return extractor.NewTagsDocExtractor(m.ID)
 	}
-	return nil, fmt.Errorf("dialect %s: engine %q has no stand-alone extractor for a parity run (tags and doc do)", m.ID, m.Engine)
+	return nil, fmt.Errorf("dialect %s: engine %q has no stand-alone extractor for a parity run (tags, doc and tags+doc do)", m.ID, m.Engine)
 }
 
 func splitNamed(v string) (name, path string) {

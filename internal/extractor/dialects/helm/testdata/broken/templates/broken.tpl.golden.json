@@ -1,0 +1,60 @@
+{
+  "engine": "tags",
+  "symbols": [
+    {
+      "name": "broken.before",
+      "kind": "HelmTemplate",
+      "package": "broken",
+      "line": 1,
+      "end_line": 3,
+      "signature": "{{- define \"broken.before\" -}}",
+      "tier": "verified"
+    },
+    {
+      "name": "before.error",
+      "kind": "HelmValueRef",
+      "package": "broken",
+      "line": 2,
+      "end_line": 2,
+      "tier": "verified"
+    },
+    {
+      "name": "broken.open",
+      "kind": "HelmTemplate",
+      "package": "broken",
+      "line": 5,
+      "end_line": 11,
+      "signature": "{{- define \"broken.open\" -}}",
+      "calls": [
+        "broken.before"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "broken.before",
+      "kind": "HelmTemplateRef",
+      "package": "broken",
+      "line": 7,
+      "end_line": 7,
+      "tier": "verified"
+    },
+    {
+      "name": "broken.after",
+      "kind": "HelmTemplate",
+      "package": "broken",
+      "line": 9,
+      "end_line": 11,
+      "signature": "{{- define \"broken.after\" -}}",
+      "tier": "verified"
+    },
+    {
+      "name": "after",
+      "kind": "HelmValueRef",
+      "package": "broken",
+      "line": 10,
+      "end_line": 10,
+      "tier": "verified"
+    }
+  ],
+  "cross_file": []
+}

@@ -1,0 +1,43 @@
+# Default values for stack.
+replicaCount: 1
+
+image:
+  repository: nginx
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: ""
+
+imagePullSecrets: []
+nameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+
+service:
+  type: ClusterIP
+  ports:
+    http:
+      port: 80
+      targetPort: http
+
+ingress:
+  enabled: false
+  hosts:
+    - host: chart-example.local
+      paths:
+        - path: /
+
+resources: {}
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  targetCPUUtilizationPercentage: 80
+
+extraEnv:
+  LOG_LEVEL: info
+
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate:

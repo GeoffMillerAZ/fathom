@@ -57,3 +57,35 @@ func TestNormalizeScopedNameInactive(t *testing.T) {
 		t.Fatalf("scope_sep :: must normalize A::b to A.b")
 	}
 }
+
+// TestNameRules: names.strip_prefix drops the first prefix the captured text
+// starts with and names.trim_quotes one matching pair of quotes, in that
+// order, before scope_sep; a quoted string is never prefix-stripped, and a
+// manifest with neither rule has no normalizer (LB-Q-helm).
+func TestNameRules(t *testing.T) {
+	r := &tsDialectRules{trimQuotes: true, stripPrefix: []string{"$.Values.", ".Values."}}
+	f := r.nameNormalizer()
+	if f == nil {
+		t.Fatal("name rules must give a normalizer")
+	}
+	for in, want := range map[string]string{
+		`"demo.name"`:       "demo.name",
+		"`raw.name`":        "raw.name",
+		`'single'`:          "single",
+		".Values.image.tag": "image.tag",
+		"$.Values.a":        "a",
+		".Values.":          "",
+		`"unbalanced`:       `"unbalanced`,
+		`"`:                 `"`,
+		".Chart.Name":       ".Chart.Name",
+		`".Values.quoted"`:  ".Values.quoted",
+		".Values..Values.x": ".Values.x",
+	} {
+		if got := f(in); got != want {
+			t.Errorf("name rules(%q) = %q, want %q", in, got, want)
+		}
+	}
+	if f := (&tsDialectRules{}).nameNormalizer(); f != nil {
+		t.Fatal("no name rules and no scope_sep must have no normalizer")
+	}
+}

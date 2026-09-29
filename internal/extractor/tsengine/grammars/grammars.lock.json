@@ -99,6 +99,22 @@
       "gz_bytes": 69325
     },
     {
+      "blob": "gotemplate",
+      "repo": "ngalaiko/tree-sitter-go-template",
+      "tag": "aa71f63de226c5592dfbfc1f29949522d7c95fac",
+      "commit": "aa71f63de226c5592dfbfc1f29949522d7c95fac",
+      "tarball_sha256": "86bcd2cd462a2fdd94a60bb44b6f15e99b3d02177c5d631cbf45761bae482458",
+      "licence": "MIT",
+      "entry_points": ["tree_sitter_helm"],
+      "subdirs": ["dialects/helm"],
+      "scanner": false,
+      "generate": false,
+      "abi": 15,
+      "blob_sha256": "b1a9b7c210be48df96ad4f0a0bec88f4aca1f30fe9cb4bb2e05c6e845181d61f",
+      "blob_bytes": 189463,
+      "gz_bytes": 68230
+    },
+    {
       "blob": "html",
       "repo": "tree-sitter/tree-sitter-html",
       "tag": "v0.23.2",

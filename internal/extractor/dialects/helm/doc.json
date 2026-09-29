@@ -1,0 +1,31 @@
+{
+  "decode": "yaml",
+  "detect": { "basenames": ["Chart.yaml", "values.yaml"] },
+  "entities": [
+    { "files": ["Chart.yaml"], "select": "$", "where": { "is_map": true, "has_key": ["name"] },
+      "kind": "package", "source_kind": "HelmChart", "name": ".name", "signature": ".version" },
+    { "files": ["Chart.yaml"], "select": "$.dependencies[*]", "where": { "is_map": true, "has_key": ["name"] },
+      "kind": "data_source", "source_kind": "HelmDependency", "name": ".name", "signature": ".version" },
+
+    { "files": ["values.yaml"], "include_null": true, "select": "$.*",
+      "kind": "key", "source_kind": "HelmValue", "name": "$path" },
+    { "files": ["values.yaml"], "include_null": true, "select": "$.*.*",
+      "kind": "key", "source_kind": "HelmValue", "name": "$path" },
+    { "files": ["values.yaml"], "include_null": true, "select": "$.*.*.*",
+      "kind": "key", "source_kind": "HelmValue", "name": "$path" },
+    { "files": ["values.yaml"], "include_null": true, "select": "$.*.*.*.*",
+      "kind": "key", "source_kind": "HelmValue", "name": "$path" },
+    { "files": ["values.yaml"], "include_null": true, "select": "$.*.*.*.*.*",
+      "kind": "key", "source_kind": "HelmValue", "name": "$path" },
+    { "files": ["values.yaml"], "include_null": true, "select": "$.*.*.*.*.*.*",
+      "kind": "key", "source_kind": "HelmValue", "name": "$path" },
+    { "files": ["values.yaml"], "include_null": true, "select": "$.*.*.*.*.*.*.*",
+      "kind": "key", "source_kind": "HelmValue", "name": "$path" },
+    { "files": ["values.yaml"], "include_null": true, "select": "$.*.*.*.*.*.*.*.*",
+      "kind": "key", "source_kind": "HelmValue", "name": "$path" }
+  ],
+  "cross_file": [
+    { "files": ["Chart.yaml"], "select": "$.dependencies[*]", "value": ".name",
+      "resolve": "module-source", "edge": "depends_on" }
+  ]
+}

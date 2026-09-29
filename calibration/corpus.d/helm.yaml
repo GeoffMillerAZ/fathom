@@ -1,0 +1,45 @@
+id: helm
+language: Helm charts
+# Both subjects are the two large public chart monorepos the queue entry names.
+# Neither publishes a release tag that pins the tree measured (bitnami/charts
+# tags one commit per chart release, prometheus-community/helm-charts one per
+# chart): ref names the branch, sha pins the commit actually measured (the
+# dockerfile and docker-compose shards' convention). Both are Apache-2.0 (the
+# repositories' LICENSE / LICENSE.md, checked at the pinned commits) and are
+# only read, never vendored. subpath keeps the clone to the charts.
+repos:
+  - name: bitnami/charts
+    url: https://github.com/bitnami/charts
+    ref: main
+    sha: 17930f75cdbc1b6c2c8578efa5732a4eab8cd0c2
+    licence: Apache-2.0
+    subpath: bitnami
+    idioms:
+      - "about 130 application charts in one tree, each with Chart.yaml, a large
+        documented values.yaml and a templates/ directory of one manifest per file
+        (nested per component: master/, replicas/, metrics/)"
+      - "a shared library chart (bitnami/common) whose _names.tpl, _labels.tpl,
+        _capabilities.tpl and _tplvalues.tpl define the named templates every chart
+        include's, and dependencies on it (and on sibling charts) by name"
+      - "each chart's own _helpers.tpl of named templates that call the common ones
+        (include \"common.names.fullname\" .) and each other, and a 3,000-line
+        values.yaml nested to four and five levels"
+      - "control flow around whole manifests ({{- if .Values.x.enabled }} … {{- end }}),
+        range/with over values, tpl of user-supplied strings, and NOTES.txt"
+  - name: prometheus-community/helm-charts
+    url: https://github.com/prometheus-community/helm-charts
+    ref: main
+    sha: c7187606c560945ef07a065848a78bc424912def
+    licence: Apache-2.0
+    subpath: charts
+    idioms:
+      - "about 50 charts written in the helm create house style: _helpers.tpl with
+        define \"chart.name\" / fullname / labels / serviceAccountName, manifests that
+        include them with | nindent, and .Values accessors on nearly every line"
+      - "umbrella charts (kube-prometheus-stack, prometheus) with dependencies on
+        sibling charts by name from the repository's own published index, and a
+        crds subchart with no repository at all"
+      - "unpacked subcharts under charts/<name>/ carrying their own Chart.yaml,
+        values.yaml and templates"
+      - "values.yaml files documented with comments and holding anchors, empty maps
+        and lists, and null defaults"

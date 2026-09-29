@@ -1,0 +1,68 @@
+{
+  "engine": "tags",
+  "symbols": [
+    {
+      "name": "common.names.chart",
+      "kind": "HelmTemplate",
+      "package": "_names",
+      "line": 2,
+      "end_line": 4,
+      "signature": "{{- define \"common.names.chart\" -}}",
+      "tier": "verified"
+    },
+    {
+      "name": "common.names.fullname",
+      "kind": "HelmTemplate",
+      "package": "_names",
+      "line": 6,
+      "end_line": 13,
+      "signature": "{{- define \"common.names.fullname\" -}}",
+      "calls": [
+        "common.names.name"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "fullnameOverride",
+      "kind": "HelmValueRef",
+      "package": "_names",
+      "line": 7,
+      "end_line": 7,
+      "tier": "verified"
+    },
+    {
+      "name": "fullnameOverride",
+      "kind": "HelmValueRef",
+      "package": "_names",
+      "line": 8,
+      "end_line": 8,
+      "tier": "verified"
+    },
+    {
+      "name": "common.names.name",
+      "kind": "HelmTemplateRef",
+      "package": "_names",
+      "line": 10,
+      "end_line": 10,
+      "tier": "verified"
+    },
+    {
+      "name": "common.names.name",
+      "kind": "HelmTemplate",
+      "package": "_names",
+      "line": 15,
+      "end_line": 17,
+      "signature": "{{- define \"common.names.name\" -}}",
+      "tier": "verified"
+    },
+    {
+      "name": "nameOverride",
+      "kind": "HelmValueRef",
+      "package": "_names",
+      "line": 16,
+      "end_line": 16,
+      "tier": "verified"
+    }
+  ],
+  "cross_file": []
+}

@@ -285,6 +285,12 @@ Rules the schema and `TestDialectManifests` enforce:
   language's own scope operator is rewritten to `container_sep` and its template argument lists
   are dropped, so an out-of-class `Widget::render` and an inline `Widget.render` are one key
   (LB-Q-cpp; `normalizeScopedName`). A dialect without it takes `@name` as captured.
+- `names` (optional; `strip_prefix`, `trim_quotes`): rewrites every captured `@name`, a
+  definition's and a callee's, before qualification. `strip_prefix` drops the first listed prefix
+  the captured text starts with (`.Values.` leaves the values key an accessor reads; a quoted
+  string that starts the same way is untouched), then `trim_quotes` drops one matching pair of
+  surrounding quotes (a Go-template `define "chart.name"` is the symbol `chart.name`), then
+  `scope_sep` applies. A dialect without it takes `@name` as captured (LB-Q-helm).
 
 ### 2.3 Canonical kinds (closed)
 
@@ -368,9 +374,15 @@ walk into data (LB-F8, P20: generalized from six).
 }
 ```
 
-Selectors are a deliberately small JSONPath subset (`$`, `.key`, `.*`, `[*]`, `$key`,
+Selectors are a deliberately small JSONPath subset (`$`, `.key`, `.*`, `[*]`, `$key`, `$path`,
 alternation `|`), implemented in Go over the decoded tree — no expression language, no
-templating. Formats whose meaning needs evaluation (Helm templates, Jsonnet, Starlark,
+templating. `$path` is the dotted keys from the selection's start down to the node (one entity per
+depth names a nested map's keys as a template reads them, `image.repository`); an entity or a
+cross-file reference may carry `files` (the basenames it reads, so one spec serves a format's
+several documents: Helm's Chart.yaml and values.yaml), and an entity `include_null` (keep a key
+written with no value, which selectors otherwise drop). A `tags+doc` dialect (Helm) splits its
+files across the two engines by this spec's `detect`: a basename or glob it names is a document,
+every other file the manifest owns goes to the tags engine (`extractor.TagsDocExtractor`). Formats whose meaning needs evaluation (Helm templates, Jsonnet, Starlark,
 Nix, CUE) are not doc-engine formats: they are syntax dialects on the tags engine, and
 where a tool can evaluate them it is the tier-A oracle. A doc-engine tool format reaches
 L3 through `cross_file` selectors resolved by strategy (`repo-path`, `repo-root`,

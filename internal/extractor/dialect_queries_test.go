@@ -45,7 +45,9 @@ func TestDialectQueriesCompile(t *testing.T) {
 					return
 				}
 				for _, fx := range dialectFixtures(t, id) {
-					if spec.variantForExt[extOf(fx)].key() != key {
+					// A tags+doc dialect's document fixtures (Chart.yaml,
+					// values.yaml) belong to its doc engine: no variant.
+					if sv, ok := spec.variantForExt[extOf(fx)]; !ok || sv.key() != key {
 						continue
 					}
 					src, _ := os.ReadFile(fx)

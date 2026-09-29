@@ -114,7 +114,17 @@ func cmdLangOracle(args []string, stdout, stderr io.Writer) int {
 	var with extractor.Extractor
 	if source == "dialect" {
 		switch spec.Manifest.Engine {
-		case "tags", "tags+doc":
+		case "tags+doc":
+			// One manifest, two engines (LB-Q-helm): documents go to the doc
+			// engine, every other file the manifest owns to the tags engine.
+			td, tderr := extractor.NewTagsDocExtractor(*dialect)
+			if tderr != nil {
+				fmt.Fprintln(stderr, "lang-oracle:", tderr)
+				return 1
+			}
+			defer td.Close()
+			with = td
+		case "tags":
 			ts, tserr := extractor.NewTSExtractor(*dialect)
 			if tserr != nil {
 				fmt.Fprintln(stderr, "lang-oracle:", tserr)
@@ -472,7 +482,7 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 		}
 		res.oracles = append(res.oracles, run)
 		// ── LB-F30: cross-file references (langoracle_xref.go) ──
-		if doc, ok := with.(*extractor.DocExtractor); ok {
+		if doc, ok := with.(extractor.DocResulter); ok {
 			n, err := scoreXrefOracle(toolOracle, doc, service, srcFiles, &sub, inScope)
 			if err != nil {
 				return res, err

@@ -2,20 +2,49 @@ package extractor
 
 import "strings"
 
-// nameNormalizer is the manifest's qualify.scope_sep rule as a function
-// (nil when the dialect declares no scope operator, which is every dialect
-// but C++): applied to a definition's @name text and to a call's callee text
-// so a scope path spelled with the language's own operator lands on the
-// graph's one separator (containerSep).
+// nameNormalizer is the manifest's name rules as a function: names.strip_prefix
+// first, on the text as captured, then names.trim_quotes, then qualify.scope_sep
+// (a scope path spelled with the language's own operator lands on the graph's
+// one separator, containerSep). The prefix goes first so it only ever takes an
+// accessor off (`.Values.a.b`): a quoted string that happens to start the same
+// way (a template named ".Values.x") keeps its text. It is applied to a
+// definition's @name text and to a call's callee text. nil when the manifest
+// declares none of them.
 func (r *tsDialectRules) nameNormalizer() func(string) string {
-	if r.scopeSep == "" {
+	if r.scopeSep == "" && !r.trimQuotes && len(r.stripPrefix) == 0 {
 		return nil
 	}
 	sep, to := r.scopeSep, r.containerSep
 	if to == "" {
 		to = "."
 	}
-	return func(s string) string { return normalizeScopedName(s, sep, to) }
+	trim, prefixes := r.trimQuotes, r.stripPrefix
+	return func(s string) string {
+		for _, p := range prefixes {
+			if strings.HasPrefix(s, p) {
+				s = strings.TrimPrefix(s, p)
+				break
+			}
+		}
+		if trim {
+			s = trimNameQuotes(s)
+		}
+		if sep != "" {
+			s = normalizeScopedName(s, sep, to)
+		}
+		return s
+	}
+}
+
+// trimNameQuotes drops one pair of matching surrounding quotes ("x", 'x',
+// `x`); anything else is returned as written.
+func trimNameQuotes(s string) string {
+	if len(s) >= 2 {
+		if q := s[0]; (q == '"' || q == '\'' || q == '`') && s[len(s)-1] == q {
+			return s[1 : len(s)-1]
+		}
+	}
+	return s
 }
 
 // normalizeScopedName rewrites a scope-qualified name (C++'s

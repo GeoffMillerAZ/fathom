@@ -262,7 +262,7 @@ func (p *Pipeline) enrichDocXrefEdges(ctx context.Context, svc core.ServiceRef, 
 			continue
 		}
 		e, _, ok, _ := p.resolveExtractor(r.Path, content, idx)
-		doc, isDoc := e.(*extractor.DocExtractor)
+		doc, isDoc := e.(extractor.DocResulter)
 		if !ok || !isDoc {
 			continue
 		}

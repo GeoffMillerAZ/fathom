@@ -27,7 +27,8 @@ package dialect
 // #DocSelector: `$` or `.`, then `.key`, `.*` and `[*]` steps.
 #DocSelector: =~"^(\\$|\\.)"
 
-// #DocValue: selectors and `$key`, alternated with `|`.
+// #DocValue: selectors, `$key` and `$path` (the dotted keys down to the
+// node), alternated with `|`.
 #DocValue: string & !=""
 
 #DocWhere: {
@@ -49,6 +50,12 @@ package dialect
 	source_kind: =~"^[A-Z][A-Za-z0-9]*$"
 	name:        #DocValue
 	signature?:  #DocValue
+	// files: only for files whose basename is listed (a spec shared by
+	// several document types, Helm's Chart.yaml and values.yaml).
+	files?: [...(string & !="")]
+	// include_null: keep a node written with no value (`key:`); selectors
+	// drop those by default.
+	include_null?: bool
 	// qualify: values prefixed to the name, "/"-joined, empty ones skipped.
 	qualify?: [...#DocValue]
 }
@@ -62,6 +69,7 @@ package dialect
 }
 
 #DocCrossRef: {
+	files?: [...(string & !="")]
 	from?:   string & !=""
 	where?:  #DocWhere
 	select:  #DocSelector

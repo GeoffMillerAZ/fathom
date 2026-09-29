@@ -33,6 +33,11 @@ func TestPolyglotIngestHoldsModulePool(t *testing.T) {
 			if strings.HasSuffix(f, ".golden.json") {
 				continue
 			}
+			// A tags+doc dialect's testdata holds whole small charts in
+			// subdirectories (LB-Q-helm); its flat files are the tags fixtures.
+			if fi, err := os.Stat(f); err != nil || fi.IsDir() {
+				continue
+			}
 			b, err := os.ReadFile(f)
 			if err != nil {
 				t.Fatal(err)

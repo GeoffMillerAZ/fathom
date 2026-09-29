@@ -385,3 +385,90 @@ func TestDocExtractorParity(t *testing.T) {
 		}
 	}
 }
+
+// TestDocEnginePathValue: `$path` is the dotted keys from the selection's
+// start down to the node, so one entity per depth names a nested map's keys
+// the way a template reads them ("image.repository"); a sequence item adds
+// no key and a key the selection did not descend through is never named.
+func TestDocEnginePathValue(t *testing.T) {
+	x := mustDoc(t, `{"decode":"yaml","detect":{},"entities":[
+  {"select":"$.*","kind":"key","source_kind":"V","name":"$path"},
+  {"select":"$.*.*","kind":"key","source_kind":"V","name":"$path"},
+  {"select":"$.*.*.*","kind":"key","source_kind":"V","name":"$path"}]}`)
+	src := `image:
+  repository: nginx
+  pullSecrets:
+    - name: a
+resources: {}
+service:
+  ports:
+    http: 80
+`
+	r, err := x.ExtractDoc("s", "values.yaml", []byte(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"V image@1-4", "V image.pullSecrets@3-4", "V image.repository@2-2", "V resources@5-5", "V service@6-8", "V service.ports@7-8", "V service.ports.http@8-8"}
+	got := brief(r.Nodes)
+	sort.Strings(got)
+	sort.Strings(want)
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("got %q want %q", got, want)
+	}
+}
+
+// TestDocEngineFilesFilter: an entity or a cross-file reference with `files`
+// reads only the files whose basename is listed, so one spec serves a
+// format's several document types (Chart.yaml and values.yaml) without the
+// chart selector reading a values file that happens to have a `name` key.
+func TestDocEngineFilesFilter(t *testing.T) {
+	x := mustDoc(t, `{"decode":"yaml","detect":{"basenames":["Chart.yaml","values.yaml"]},"entities":[
+  {"files":["Chart.yaml"],"select":"$","kind":"package","source_kind":"C","name":".name"},
+  {"files":["values.yaml"],"select":"$.*","kind":"key","source_kind":"V","name":"$key"}],
+ "cross_file":[{"files":["Chart.yaml"],"select":"$.dependencies[*]","value":".name","resolve":"module-source","edge":"depends_on"}]}`)
+	src := "name: demo\nreplicas: 1\ndependencies:\n  - name: common\n"
+	r, err := x.ExtractDoc("s", "Chart.yaml", []byte(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := brief(r.Nodes), []string{"C demo@1-4"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("Chart.yaml: got %q want %q", got, want)
+	}
+	if len(r.CrossFile) != 1 || r.CrossFile[0].Raw != "common" {
+		t.Fatalf("Chart.yaml cross = %+v", r.CrossFile)
+	}
+	r, _ = x.ExtractDoc("s", "sub/values.yaml", []byte(src))
+	got := brief(r.Nodes)
+	sort.Strings(got)
+	if want := []string{"V dependencies@3-4", "V name@1-1", "V replicas@2-2"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("values.yaml: got %q want %q", got, want)
+	}
+	if len(r.CrossFile) != 0 {
+		t.Fatalf("values.yaml must not read Chart.yaml's dependencies: %+v", r.CrossFile)
+	}
+}
+
+// TestDocEngineIncludeNull: selectors drop a node written with no value, an
+// entity with include_null keeps it (a values.yaml key documented as
+// `rollingUpdate:` is still a key), and never descends through a null.
+func TestDocEngineIncludeNull(t *testing.T) {
+	src := "a: 1\nb:\nc: null\nd:\n  e:\n  f: 2\n"
+	drop := mustDoc(t, `{"decode":"yaml","detect":{},"entities":[
+  {"select":"$.*","kind":"key","source_kind":"V","name":"$path"},
+  {"select":"$.*.*","kind":"key","source_kind":"V","name":"$path"}]}`)
+	r, _ := drop.ExtractDoc("s", "v.yaml", []byte(src))
+	got := brief(r.Nodes)
+	sort.Strings(got)
+	if want := []string{"V a@1-1", "V d.f@6-6", "V d@4-6"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("default: got %q want %q", got, want)
+	}
+	keep := mustDoc(t, `{"decode":"yaml","detect":{},"entities":[
+  {"select":"$.*","include_null":true,"kind":"key","source_kind":"V","name":"$path"},
+  {"select":"$.*.*","include_null":true,"kind":"key","source_kind":"V","name":"$path"}]}`)
+	r, _ = keep.ExtractDoc("s", "v.yaml", []byte(src))
+	got = brief(r.Nodes)
+	sort.Strings(got)
+	if want := []string{"V a@1-1", "V b@2-2", "V c@3-3", "V d.e@5-5", "V d.f@6-6", "V d@4-6"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("include_null: got %q want %q", got, want)
+	}
+}

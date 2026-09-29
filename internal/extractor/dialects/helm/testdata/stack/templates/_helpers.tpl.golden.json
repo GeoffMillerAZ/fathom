@@ -1,0 +1,149 @@
+{
+  "engine": "tags",
+  "symbols": [
+    {
+      "name": "stack.name",
+      "kind": "HelmTemplate",
+      "package": "_helpers",
+      "line": 4,
+      "end_line": 6,
+      "signature": "{{- define \"stack.name\" -}}",
+      "tier": "verified"
+    },
+    {
+      "name": "nameOverride",
+      "kind": "HelmValueRef",
+      "package": "_helpers",
+      "line": 5,
+      "end_line": 5,
+      "tier": "verified"
+    },
+    {
+      "name": "stack.fullname",
+      "kind": "HelmTemplate",
+      "package": "_helpers",
+      "line": 11,
+      "end_line": 18,
+      "signature": "{{- define \"stack.fullname\" -}}",
+      "tier": "verified"
+    },
+    {
+      "name": "nameOverride",
+      "kind": "HelmValueRef",
+      "package": "_helpers",
+      "line": 12,
+      "end_line": 12,
+      "tier": "verified"
+    },
+    {
+      "name": "stack.selectorLabels",
+      "kind": "HelmTemplate",
+      "package": "_helpers",
+      "line": 20,
+      "end_line": 23,
+      "signature": "{{- define \"stack.selectorLabels\" -}}",
+      "calls": [
+        "stack.name"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "stack.name",
+      "kind": "HelmTemplateRef",
+      "package": "_helpers",
+      "line": 21,
+      "end_line": 21,
+      "tier": "verified"
+    },
+    {
+      "name": "stack.labels",
+      "kind": "HelmTemplate",
+      "package": "_helpers",
+      "line": 26,
+      "end_line": 32,
+      "signature": "{{- define \"stack.labels\" -}}",
+      "calls": [
+        "common.names.chart",
+        "stack.selectorLabels"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "common.names.chart",
+      "kind": "HelmTemplateRef",
+      "package": "_helpers",
+      "line": 27,
+      "end_line": 27,
+      "tier": "verified"
+    },
+    {
+      "name": "stack.selectorLabels",
+      "kind": "HelmTemplateRef",
+      "package": "_helpers",
+      "line": 28,
+      "end_line": 28,
+      "tier": "verified"
+    },
+    {
+      "name": "image.tag",
+      "kind": "HelmValueRef",
+      "package": "_helpers",
+      "line": 29,
+      "end_line": 29,
+      "tier": "verified"
+    },
+    {
+      "name": "image.tag",
+      "kind": "HelmValueRef",
+      "package": "_helpers",
+      "line": 30,
+      "end_line": 30,
+      "tier": "verified"
+    },
+    {
+      "name": "stack.serviceAccountName",
+      "kind": "HelmTemplate",
+      "package": "_helpers",
+      "line": 34,
+      "end_line": 40,
+      "signature": "{{- define `stack.serviceAccountName` -}}",
+      "calls": [
+        "stack.fullname"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "serviceAccount.create",
+      "kind": "HelmValueRef",
+      "package": "_helpers",
+      "line": 35,
+      "end_line": 35,
+      "tier": "verified"
+    },
+    {
+      "name": "serviceAccount.name",
+      "kind": "HelmValueRef",
+      "package": "_helpers",
+      "line": 36,
+      "end_line": 36,
+      "tier": "verified"
+    },
+    {
+      "name": "stack.fullname",
+      "kind": "HelmTemplateRef",
+      "package": "_helpers",
+      "line": 36,
+      "end_line": 36,
+      "tier": "verified"
+    },
+    {
+      "name": "serviceAccount.name",
+      "kind": "HelmValueRef",
+      "package": "_helpers",
+      "line": 38,
+      "end_line": 38,
+      "tier": "verified"
+    }
+  ],
+  "cross_file": []
+}

@@ -1,0 +1,54 @@
+{
+  "engine": "tags",
+  "symbols": [
+    {
+      "name": "stack.fullname",
+      "kind": "HelmTemplateRef",
+      "package": "service",
+      "line": 4,
+      "end_line": 4,
+      "tier": "verified"
+    },
+    {
+      "name": "service.type",
+      "kind": "HelmValueRef",
+      "package": "service",
+      "line": 6,
+      "end_line": 6,
+      "tier": "verified"
+    },
+    {
+      "name": "service.ports",
+      "kind": "HelmValueRef",
+      "package": "service",
+      "line": 8,
+      "end_line": 8,
+      "tier": "verified"
+    },
+    {
+      "name": "stack.selectorLabels",
+      "kind": "HelmTemplateRef",
+      "package": "service",
+      "line": 13,
+      "end_line": 13,
+      "tier": "verified"
+    },
+    {
+      "name": "ingress.enabled",
+      "kind": "HelmValueRef",
+      "package": "service",
+      "line": 14,
+      "end_line": 14,
+      "tier": "verified"
+    },
+    {
+      "name": "stack.ingress",
+      "kind": "HelmTemplateRef",
+      "package": "service",
+      "line": 15,
+      "end_line": 15,
+      "tier": "verified"
+    }
+  ],
+  "cross_file": []
+}
