@@ -28,7 +28,6 @@ var incumbentExtractors = map[string]func() extractor.Extractor{
 	"csharpextract":     func() extractor.Extractor { return extractor.NewCSharpExtractor() },
 	"cueextract":        func() extractor.Extractor { return extractor.NewCUEExtractor() },
 	"ghaextract":        func() extractor.Extractor { return extractor.NewGHAExtractor() },
-	"gomodextract":      func() extractor.Extractor { return extractor.NewGoModExtractor() },
 	"graphqlextract":    func() extractor.Extractor { return extractor.NewGraphQLExtractor() },
 	"helmchartextract":  func() extractor.Extractor { return extractor.NewHelmChartExtractor() },
 	"helmtemplateyaml":  func() extractor.Extractor { return extractor.NewHelmTemplateYAMLExtractor() },

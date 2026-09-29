@@ -83,6 +83,7 @@ var langRowHint = map[string]string{
 	"python-packaging": "pyproject.toml",
 	"maven":            "pom.xml",
 	"cargo":            "Cargo.toml",
+	"go-mod":           "go.mod, go.work,",
 }
 
 // registryLangTags returns the sorted, deduplicated set of Lang tags

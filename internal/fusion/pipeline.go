@@ -638,7 +638,16 @@ func parseGitLog(serviceID, raw string) []store.Commit {
 // repository) instead of the generic TOMLExtractor's bare table/key dump
 // (KindTOMLTable/KindTOMLKey); every already-indexed Cargo.toml's stored
 // observations came from that generic path, so the salt bump re-reads them.
-const ExtractorEpoch = "26"
+// Epoch 27 (LB-Q-go-mod, docs/design/language-breadth.md §13/§4): a go.mod now
+// extracts through the native go-mod dialect (the module directive, a ModuleDep
+// per require, a replace per replace directive, and the edges from a require or
+// a local replace to another go.mod of the repository) instead of the
+// incumbent's require-only line scanner, and a go.work (a workspace, its uses
+// and replaces, and the edge from each use to that directory's go.mod), which
+// no extractor read before, is indexed; every already-indexed go.mod was
+// extracted by the scanner and every go.work fingerprinted as unclassified, so
+// the salt bump re-reads them.
+const ExtractorEpoch = "27"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares
@@ -818,8 +827,14 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	// Templates
 	p.exts[".templ"] = extractor.NewTemplExtractor()
 
-	// go.mod (matched by full basename via Ext-fallback in extractAndStore)
-	p.exts["go.mod"] = extractor.NewGoModExtractor()
+	// go.mod and go.work (LB-Q-go-mod, language-breadth: the native go-mod
+	// dialect, x/mod's parser; it retired gomodextract.go's require-only line
+	// scanner). Matched by full basename (p.exts[base] runs before the
+	// extension fallback); one extractor serves both, and it gives the
+	// cross-file pass its DocResult (enrichDocXrefEdges).
+	goModules := extractor.NewGoModulesExtractor()
+	p.exts["go.mod"] = goModules
+	p.exts["go.work"] = goModules
 
 	// Helm (full-basename keys take precedence over .yaml k8s extractor)
 	p.exts["Chart.yaml"] = extractor.NewHelmChartExtractor()

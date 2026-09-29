@@ -49,7 +49,6 @@ var registeredFormats = map[string]Registration{
 	"helm":           {Extractor: "helmextract.go", LangTag: "yaml"},
 	"kustomize":      {Extractor: "kustomizeextract.go", LangTag: "yaml"},
 	"openapi":        {Extractor: "openapiextract.go", LangTag: "yaml"},
-	"go-mod":         {Extractor: "gomodextract.go"},
 	"cue":            {Extractor: "cueextract.go", LangTag: "cue"},
 	"markdown":       {Extractor: "mdextract.go", LangTag: "md"},
 	"templ":          {Extractor: "templextract.go", LangTag: "templ"},

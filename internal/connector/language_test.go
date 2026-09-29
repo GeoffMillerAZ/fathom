@@ -17,7 +17,8 @@ import (
 func TestLanguageForPath_KnownExtensions(t *testing.T) {
 	cases := map[string]string{
 		"main.go":   "go",
-		"go.mod":    "go",
+		"go.mod":    "go-mod",
+		"go.work":   "go-mod",
 		"script.py": "py",
 		"app.js":    "js",
 		// J1 (app-kit O18/O32/O33): the four Node/TS module-system

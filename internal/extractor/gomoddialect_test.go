@@ -139,9 +139,11 @@ func TestGoModDialectGoldens(t *testing.T) {
 	}
 }
 
-// goModIncumbentFixture is gomodextract_test.go's fixture: the incumbent's
-// contract (a ModuleDep per require, the version as Signature, tier
-// pre-scan, deterministic) holds for the dialect too (§13.2 step 15).
+// goModIncumbentFixture is the fixture the retired incumbent (gomodextract.go's
+// require-only line scanner) was tested with; its contract (a ModuleDep per
+// require, the version as Signature, tier pre-scan, deterministic) holds for
+// the dialect too (§13.2 step 15). The dialect was run against the scanner's
+// own test before the scanner was retired.
 const goModIncumbentFixture = `module github.com/example/myapp
 
 go 1.21
@@ -156,17 +158,13 @@ require github.com/stretchr/testify v1.8.4
 
 // TestGoModDialectKeepsIncumbentContracts: every SourceKind string the
 // incumbent emitted survives (ModuleDep, name = module path, signature =
-// version, tier pre-scan); the dialect adds symbols beside them and loses
-// none.
+// version, tier pre-scan, at the require's line); the dialect adds the
+// module's own symbol beside them and loses none.
 func TestGoModDialectKeepsIncumbentContracts(t *testing.T) {
 	x := NewGoModulesExtractor()
 	nodes, err := x.Extract("svc", "go.mod", []byte(goModIncumbentFixture))
 	if err != nil {
 		t.Fatalf("Extract: %v", err)
-	}
-	old, err := NewGoModExtractor().Extract("svc", "go.mod", []byte(goModIncumbentFixture))
-	if err != nil {
-		t.Fatalf("incumbent Extract: %v", err)
 	}
 	byName := map[string]core.SymbolNode{}
 	for _, n := range nodes {
@@ -174,21 +172,29 @@ func TestGoModDialectKeepsIncumbentContracts(t *testing.T) {
 			byName[n.Name] = n
 		}
 	}
-	if len(byName) != len(old) {
-		t.Errorf("ModuleDep symbols: got %d, incumbent %d", len(byName), len(old))
-	}
-	for _, o := range old {
-		n, ok := byName[o.Name]
+	for _, dep := range []struct {
+		name, version string
+		line          int
+	}{
+		{"github.com/pkg/errors", "v0.9.1", 6},
+		{"golang.org/x/sync", "v0.5.0", 7},
+		{"github.com/stretchr/testify", "v1.8.4", 10},
+	} {
+		n, ok := byName[dep.name]
 		if !ok {
-			t.Errorf("incumbent's %q is missing", o.Name)
+			t.Errorf("expected module dep %q", dep.name)
 			continue
 		}
-		if n.Signature != o.Signature || n.Tier != o.Tier || n.Line != o.Line || n.Package != o.Package || n.FilePath != o.FilePath || n.Service != o.Service {
-			t.Errorf("%q: got %+v, incumbent %+v", o.Name, n, o)
+		if n.Tier != core.TierPreScan || n.Signature != dep.version || n.Line != dep.line ||
+			n.Package != "go" || n.FilePath != "go.mod" || n.Service != "svc" {
+			t.Errorf("%q: got %+v", dep.name, n)
 		}
 	}
-	if len(nodes) != len(old)+1 {
-		t.Errorf("want the incumbent's %d ModuleDep symbols plus the module's own, got %d", len(old), len(nodes))
+	if len(byName) != 3 {
+		t.Errorf("want the incumbent's 3 ModuleDep symbols, got %d", len(byName))
+	}
+	if len(nodes) != 4 {
+		t.Errorf("want the 3 ModuleDep symbols plus the module's own, got %d", len(nodes))
 	}
 	again, err := x.Extract("svc", "go.mod", []byte(goModIncumbentFixture))
 	if err != nil {
