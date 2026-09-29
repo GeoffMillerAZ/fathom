@@ -204,3 +204,118 @@ func TestIngestDocIndexSkipNamedForAFixtureService(t *testing.T) {
 		t.Fatalf("DocIndexSkipped = %q, want it to name the missing local root", rep.DocIndexSkipped)
 	}
 }
+
+// TestIngestLinksDocSpans is KR-6's production wiring: an ordinary ingest
+// writes doc_links for every unit it (re)indexes — a backticked symbol
+// that resolves to exactly one indexed symbol and a backticked repo path,
+// each with its target's hash at link time — and nothing for a span that
+// resolves to no target. An unchanged re-ingest re-links nothing (the
+// link-time hashes KR-7 compares against stay as they were), an edit
+// closes the link the doc no longer makes, a deleted doc's links close
+// (closed, never deleted: SyncDocLinksForUnit), and a store indexed before
+// the link pass is backfilled once.
+func TestIngestLinksDocSpans(t *testing.T) {
+	dir := t.TempDir()
+	writeCorpus(t, dir, map[string]string{
+		"go.mod":            "module example.com/links\n\ngo 1.22\n",
+		"main.go":           "package main\n\nfunc main() { _ = Frobnicate() }\n\n// Frobnicate returns one.\nfunc Frobnicate() int { return 1 }\n",
+		"docs/design.md":    "# Design\n\n## Frobbing\n\n`Frobnicate` turns the crank; see `main.go`.\nNot linked: `NoSuchSymbol`, `--json`, `docs/missing.md`.\n",
+		"docs/unrelated.md": "# Other\n\n## Notes\n\nno spans here\n",
+	})
+	sq, err := store.NewSQLiteStore(filepath.Join(t.TempDir(), "links.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = sq.Close() })
+	p := New(connector.NewLocalConnector(), sq, Config{})
+	t.Cleanup(p.Close)
+	ctx := context.Background()
+	svc := core.ServiceRef{ID: "links", Path: dir}
+
+	rep, err := p.Ingest(ctx, svc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rep.DocIndexSkipped != "" {
+		t.Fatalf("DocIndexSkipped = %q", rep.DocIndexSkipped)
+	}
+	if rep.DocIndex.LinksWritten != 2 {
+		t.Fatalf("DocIndex.LinksWritten = %d, want 2 (Frobnicate and main.go)", rep.DocIndex.LinksWritten)
+	}
+	open, err := sq.OpenDocLinks(ctx, "links")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]store.DocLinkView{}
+	for _, l := range open {
+		got[l.TargetKind+":"+l.Target] = l
+	}
+	sym, okSym := got["symbol:Frobnicate"]
+	path, okPath := got["path:main.go"]
+	if len(open) != 2 || !okSym || !okPath {
+		t.Fatalf("open doc_links = %+v, want exactly symbol:Frobnicate and path:main.go", open)
+	}
+	if sym.TargetHashAtLink == "" || path.TargetHashAtLink == "" || sym.Path != "docs/design.md" || sym.HeadingPath != "Design > Frobbing" || sym.Line < 3 {
+		t.Errorf("links carry no link-time hash or the wrong span: %+v %+v", sym, path)
+	}
+
+	// Unchanged: nothing re-indexed, nothing re-linked, rows untouched.
+	rep2, err := p.Ingest(ctx, svc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rep2.DocIndex.FilesChanged != 0 || rep2.DocIndex.LinksWritten != 0 {
+		t.Fatalf("unchanged re-ingest DocIndex = %+v, want nothing re-indexed or re-linked", rep2.DocIndex)
+	}
+	again, _ := sq.OpenDocLinks(ctx, "links")
+	if len(again) != 2 || again[0].ValidFrom != open[0].ValidFrom || again[1].ValidFrom != open[1].ValidFrom {
+		t.Errorf("an unchanged re-ingest moved the links: %+v", again)
+	}
+
+	// An edit drops the path span: that link closes, the symbol link stays.
+	writeCorpus(t, dir, map[string]string{"docs/design.md": "# Design\n\n## Frobbing\n\n`Frobnicate` turns the crank.\n"})
+	rep3, err := p.Ingest(ctx, svc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rep3.DocIndex.FilesChanged != 1 || rep3.DocIndex.LinksWritten != 1 {
+		t.Fatalf("edit re-ingest DocIndex = %+v, want one file re-indexed holding one link", rep3.DocIndex)
+	}
+	if open, _ := sq.OpenDocLinks(ctx, "links"); len(open) != 1 || open[0].Target != "Frobnicate" {
+		t.Errorf("after the edit open links = %+v, want only Frobnicate", open)
+	}
+
+	// Backfill: a store whose units predate the link pass (content hashes
+	// without its version, no doc_links) is re-indexed and linked once.
+	units, err := sq.DocUnitsForPath(ctx, "links", "docs/unrelated.md")
+	if err != nil || len(units) == 0 {
+		t.Fatalf("units: %v %v", units, err)
+	}
+	for i := range units {
+		units[i].ContentHash = "legacy-" + units[i].ContentHash
+	}
+	if err := sq.PutDocUnits(ctx, "links", "docs/unrelated.md", units); err != nil {
+		t.Fatal(err)
+	}
+	rep4, err := p.Ingest(ctx, svc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rep4.DocIndex.FilesChanged != 1 {
+		t.Fatalf("backfill DocIndex = %+v, want the pre-link-pass file re-indexed once", rep4.DocIndex)
+	}
+	if rep5, _ := p.Ingest(ctx, svc); rep5.DocIndex.FilesChanged != 0 {
+		t.Fatalf("after the backfill DocIndex = %+v, want nothing re-indexed", rep5.DocIndex)
+	}
+
+	// A deleted doc's links close.
+	if err := os.Remove(filepath.Join(dir, "docs", "design.md")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.Ingest(ctx, svc); err != nil {
+		t.Fatal(err)
+	}
+	if open, _ := sq.OpenDocLinks(ctx, "links"); len(open) != 0 {
+		t.Errorf("after deleting the doc open links = %+v, want none", open)
+	}
+}

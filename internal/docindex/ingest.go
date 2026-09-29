@@ -52,6 +52,7 @@ type IngestOption func(*ingestConfig)
 type ingestConfig struct {
 	budgetBytes int
 	keep        func(path string) bool
+	onWrite     func(ctx context.Context, path string, written []store.DocUnit, removed []string) error
 }
 
 // WithBudgetBytes sets the per-service byte budget (KR-9); n <= 0 keeps
@@ -101,6 +102,11 @@ type IngestDocUnitsResult struct {
 	// Failures names every corpus file that could not be read, sorted by
 	// path. Its stored units stand; the rest of the corpus was indexed.
 	Failures []DocFileFailure
+
+	// LinksWritten (KR-6) is how many doc-to-code links the units this
+	// call (re)indexed hold after the link pass (WithOnWrite, LinkUnits);
+	// the pass's caller sets it. 0 when no pass ran.
+	LinksWritten int
 }
 
 func sha256Hex(b []byte) string {
@@ -141,7 +147,7 @@ func buildDocUnits(cf CorpusFile, raw []byte, now time.Time) []store.DocUnit {
 			LineEnd:         u.LineEnd,
 			HeadingPath:     u.HeadingPath,
 			Kind:            u.Kind,
-			ContentHash:     sha256Hex([]byte(u.Body)),
+			ContentHash:     unitContentHash(u.Body),
 			IndexedAt:       now.UnixNano(),
 			StaleByLocation: cf.StaleByLocation,
 			Body:            u.Body,
@@ -310,6 +316,11 @@ func IngestDocUnits(ctx context.Context, st *store.SQLiteStore, serviceID, root 
 		if err := st.PutDocUnits(ctx, serviceID, p.cf.Path, write); err != nil {
 			return res, fmt.Errorf("IngestDocUnits: PutDocUnits %s: %w", p.cf.Path, err)
 		}
+		if cfg.onWrite != nil {
+			if err := cfg.onWrite(ctx, p.cf.Path, write, removedUnitIDs(stored, write)); err != nil {
+				return res, fmt.Errorf("IngestDocUnits: %s: %w", p.cf.Path, err)
+			}
+		}
 		res.FilesChanged++
 		res.UnitsWritten += len(write)
 	}
@@ -322,8 +333,19 @@ func IngestDocUnits(ctx context.Context, st *store.SQLiteStore, serviceID, root 
 		if present[path] {
 			continue // in the corpus: read, or named in Failures with its units kept
 		}
+		var gone []store.DocUnit
+		if cfg.onWrite != nil {
+			if gone, err = st.DocUnitsForPath(ctx, serviceID, path); err != nil {
+				return res, fmt.Errorf("IngestDocUnits: stored units %s: %w", path, err)
+			}
+		}
 		if err := st.DeleteDocUnitsForPath(ctx, serviceID, path); err != nil {
 			return res, fmt.Errorf("IngestDocUnits: DeleteDocUnitsForPath %s: %w", path, err)
+		}
+		if cfg.onWrite != nil {
+			if err := cfg.onWrite(ctx, path, nil, removedUnitIDs(gone, nil)); err != nil {
+				return res, fmt.Errorf("IngestDocUnits: %s: %w", path, err)
+			}
 		}
 		res.FilesDeleted++
 	}

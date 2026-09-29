@@ -285,8 +285,18 @@ apply), split into sections and written per file only when a file's units change
 `docs: N unit(s) elided` line; a document over 2 MiB or unreadable is a `warning: docs:` line, and
 a pass that could not run (a store with no doc index, a service with no local root) says why. It
 never fails the ingest. `--json` carries the same as `docs: {files, changed, unchanged, deleted,
-units_written, units_elided?, elided?: [{path, heading, bytes}], failures?: [{path, err}],
+units_written, links_written, units_elided?, elided?: [{path, heading, bytes}], failures?: [{path, err}],
 skipped?}`.
+
+**Doc-to-code links (KR-6).** Each unit the ingest (re)indexes is linked in the same pass: a
+backticked span (or a lone token on a fenced-code line) that names exactly one indexed symbol, or a
+repository path the index holds, becomes a `doc_links` row carrying the target's content hash at
+link time (a contract key links once SG-2 registers keys). A span that resolves to nothing, or to
+more than one symbol, is not linked. A unit the gate leaves unchanged is not re-linked, so its
+link-time hashes stay what `staleness_report`'s `doc_link_drift` (KR-7) compares the live index
+against; a link the doc no longer makes, or a removed section's, is closed, never deleted. The
+summary adds `docs: N doc-to-code link(s) held by the re-indexed units`. The first ingest by a
+binary with the link pass re-indexes every document once, to link units written before it existed.
 
 **Typed-pass toolchain ceiling (RT-106).** The Go typed pass's toolchain children (`go list`
 and the compiles it forks) run at background priority (`nice -n 10`, plus `taskpolicy -b` on
