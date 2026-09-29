@@ -170,6 +170,12 @@ func (p *Pipeline) ReingestFile(ctx context.Context, st store.Store, serviceID, 
 		extExtractor, ok = p.exts[ext]
 	}
 	if !ok {
+		// A dialect that owns the extension only through match.sniff
+		// (MATLAB's .m): ingest's dispatch, resolveExtractor, asks the
+		// same classifier.
+		extExtractor, ok = p.sniffedExtractor(relFile, content)
+	}
+	if !ok {
 		if err := st.SetFingerprint(ctx, serviceID, relFile, hash); err != nil {
 			return ReingestReport{}, fmt.Errorf("fusion: ReingestFile set fingerprint %q: %w", relFile, err)
 		}

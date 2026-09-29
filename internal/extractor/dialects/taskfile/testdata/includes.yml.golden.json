@@ -1,0 +1,13 @@
+{
+  "symbols": [
+    { "name": "Taskfile.yml", "kind": "Taskfile", "package": "Taskfile", "line": 1, "end_line": 16, "signature": "3", "tier": "verified" }
+  ],
+  "cross_file": [
+    { "from": "", "edge": "includes", "raw": "./a", "target": "ops/a", "strategy": "repo-path", "line": 4 },
+    { "from": "", "edge": "includes", "raw": "./b/Taskfile.dist.yml", "target": "ops/b/Taskfile.dist.yml", "strategy": "repo-path", "line": 5 },
+    { "from": "", "edge": "includes", "raw": "../shared/tasks.yml", "target": "shared/tasks.yml", "strategy": "repo-path", "line": 6 },
+    { "from": "", "edge": "includes", "raw": "https://raw.githubusercontent.com/example/tasks/main/Taskfile.yml", "target": "ops/https:/raw.githubusercontent.com/example/tasks/main/Taskfile.yml", "strategy": "repo-path", "line": 9 },
+    { "from": "", "edge": "includes", "raw": "./{{.ENV}}/Taskfile.yml", "target": "ops/{{.ENV}}/Taskfile.yml", "strategy": "repo-path", "line": 11 },
+    { "from": "", "edge": "includes", "raw": "./Taskfile.yml", "target": "ops/Taskfile.yml", "strategy": "repo-path", "line": 15 }
+  ]
+}

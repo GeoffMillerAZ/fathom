@@ -1,0 +1,26 @@
+{
+  "decode": "yaml",
+  "detect": {
+    "basenames": [
+      "Taskfile.yml", "Taskfile.yaml", "taskfile.yml", "taskfile.yaml",
+      "Taskfile.dist.yml", "Taskfile.dist.yaml", "taskfile.dist.yml", "taskfile.dist.yaml"
+    ]
+  },
+  "entities": [
+    { "select": "$", "where": { "is_map": true },
+      "kind": "package", "source_kind": "Taskfile", "name": "$file", "signature": ".version" },
+
+    { "select": "$.tasks.*", "include_null": true,
+      "kind": "task", "source_kind": "TaskfileTask", "name": "$key", "signature": ".desc | .summary" }
+  ],
+  "references": [
+    { "from": "TaskfileTask", "select": "$.deps[*]", "value": "$ | .task", "to_kind": "task", "edge": "deps" },
+    { "from": "TaskfileTask", "select": "$.cmds[*].task", "value": "$", "to_kind": "task", "edge": "calls" },
+    { "from": "TaskfileTask", "select": "$.cmds[*].defer.task", "value": "$", "to_kind": "task", "edge": "defers" },
+    { "from": "TaskfileTask", "select": "$[*].task", "value": "$", "to_kind": "task", "edge": "calls" },
+    { "from": "TaskfileTask", "select": "$[*].defer.task", "value": "$", "to_kind": "task", "edge": "defers" }
+  ],
+  "cross_file": [
+    { "select": "$.includes.*", "value": "$ | .taskfile", "resolve": "repo-path", "edge": "includes" }
+  ]
+}

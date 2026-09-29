@@ -1,0 +1,22 @@
+{
+  "symbols": [
+    {
+      "name": "first",
+      "kind": "MatlabFunction",
+      "package": "noend",
+      "line": 1,
+      "end_line": 3,
+      "signature": "function y = first(x)",
+      "tier": "verified"
+    },
+    {
+      "name": "second",
+      "kind": "MatlabFunction",
+      "package": "noend",
+      "line": 4,
+      "end_line": 5,
+      "signature": "function z = second(w)",
+      "tier": "verified"
+    }
+  ]
+}

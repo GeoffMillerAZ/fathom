@@ -1,0 +1,19 @@
+{
+  "symbols": [
+    { "name": "Taskfile.yml", "kind": "Taskfile", "package": "Taskfile", "line": 2, "end_line": 66, "signature": "3", "tier": "verified" },
+    { "name": "default", "kind": "TaskfileTask", "package": "Taskfile", "line": 15, "end_line": 20, "signature": "Build and test", "calls": ["build", "docs:build", "test"], "tier": "verified" },
+    { "name": "build", "kind": "TaskfileTask", "package": "Taskfile", "line": 22, "end_line": 29, "signature": "Build the binary", "calls": ["generate", "lint"], "tier": "verified" },
+    { "name": "generate", "kind": "TaskfileTask", "package": "Taskfile", "line": 31, "end_line": 34, "tier": "verified" },
+    { "name": "lint", "kind": "TaskfileTask", "package": "Taskfile", "line": 36, "end_line": 43, "calls": ["check", "generate"], "tier": "verified" },
+    { "name": "check", "kind": "TaskfileTask", "package": "Taskfile", "line": 45, "end_line": 47, "tier": "verified" },
+    { "name": "test", "kind": "TaskfileTask", "package": "Taskfile", "line": 49, "end_line": 55, "signature": "Run the tests", "calls": ["build", "clean"], "tier": "verified" },
+    { "name": "clean", "kind": "TaskfileTask", "package": "Taskfile", "line": 57, "end_line": 57, "tier": "verified" },
+    { "name": "ci", "kind": "TaskfileTask", "package": "Taskfile", "line": 59, "end_line": 59, "tier": "verified" },
+    { "name": "release:*", "kind": "TaskfileTask", "package": "Taskfile", "line": 61, "end_line": 64, "signature": "Cut a release", "calls": ["build"], "tier": "verified" },
+    { "name": "todo", "kind": "TaskfileTask", "package": "Taskfile", "line": 66, "end_line": 66, "tier": "verified" }
+  ],
+  "cross_file": [
+    { "from": "", "edge": "includes", "raw": "./docs", "target": "ops/docs", "strategy": "repo-path", "line": 5 },
+    { "from": "", "edge": "includes", "raw": "./api/Taskfile.yml", "target": "ops/api/Taskfile.yml", "strategy": "repo-path", "line": 6 }
+  ]
+}

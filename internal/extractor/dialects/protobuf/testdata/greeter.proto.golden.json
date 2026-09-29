@@ -1,0 +1,67 @@
+{
+  "symbols": [
+    {
+      "name": "Status",
+      "kind": "ProtoEnum",
+      "package": "greeter",
+      "line": 5,
+      "end_line": 8,
+      "tier": "verified"
+    },
+    {
+      "name": "HelloRequest",
+      "kind": "ProtoMessage",
+      "package": "greeter",
+      "line": 10,
+      "end_line": 12,
+      "signature": "message HelloRequest",
+      "tier": "verified"
+    },
+    {
+      "name": "HelloResponse",
+      "kind": "ProtoMessage",
+      "package": "greeter",
+      "line": 14,
+      "end_line": 17,
+      "signature": "message HelloResponse",
+      "calls": [
+        "Status"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Greeter",
+      "kind": "ProtoService",
+      "package": "greeter",
+      "line": 19,
+      "end_line": 22,
+      "tier": "verified"
+    },
+    {
+      "name": "Greeter.SayHello",
+      "kind": "ProtoRPC",
+      "package": "greeter",
+      "line": 20,
+      "end_line": 20,
+      "signature": "rpc SayHello (HelloRequest) returns (HelloResponse)",
+      "calls": [
+        "HelloRequest",
+        "HelloResponse"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Greeter.SayGoodbye",
+      "kind": "ProtoRPC",
+      "package": "greeter",
+      "line": 21,
+      "end_line": 21,
+      "signature": "rpc SayGoodbye (HelloRequest) returns (HelloResponse)",
+      "calls": [
+        "HelloRequest",
+        "HelloResponse"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

@@ -2367,3 +2367,42 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** none yet, and none needed while PR-D6 (the deferred GL-11 reclassification) is written to exclude enforce:true rules from effectiveness; the `enforce:` prefix is the key that exclusion reads. If a join is ever wanted: resolve `enforce:` keys to claim ids at read time in the effectiveness view (a store read, never a hook read), or give a guard an optional `claim:` id in guard.cue; and reword the unknown-ids note so it does not call an `enforce:` id a removed rule
 - **Status:** open
 - **Impact:** none on the deny (the row is a signal and never gates); blocked counts are absent from the rule view's classes until PR-D6 or a join lands
+
+### O165 — a directory include or base resolves in the bench and can drop at ingest: the resolver's one-doc-file rule counts every doc-engine file, the harness only the dialect's own
+
+- **Symptom:** go-task/task's `includes: website: taskfile: ./website` is 1 of 1 in the LB-Q-taskfile reading (`xref_recall` 1) and 0 of 1 in a scratch ingest of the same clone, while Runtime-Radar/runtime-radar's 13 file-path includes are 13 of 13 both ways; the kustomize bases (13 of 13 both ways today) stop resolving the day the kubernetes dialect is dispatched.
+- **Evidence:**
+  - **Tool:** `indexbench lang-oracle -dialect taskfile` on the three subjects (readings) against `fathom ingest --store <scratch> --service tf --path workspace/calibration/taskfile/task`, then `select count(*) from typed_edges where pkg_path='doc-xref'`
+  - **Expected:** the edges the bench scores are the edges an ingest stores (design §4: one resolver, so the bench never scores an edge ingest drops)
+  - **Actual:** go-task/task 0 of 1, runtime-radar 13 of 13, kustomize examples 12 of 12 and argocd-example-apps 1 of 1; `website/` holds a Taskfile.yml beside a package.json, so `byDir["website"]` has two doc files
+  - **Repro:** `fathom ingest --store <scratch>.sqlite --service tf --path <go-task/task clone>` and query the store for `doc-xref` edges; `go test ./internal/fusion -run 'TestTaskfileDirectoryNeedsTheOneFileRule|TestKustomizeBaseDirectoryNeedsTheOneFileRule'`
+- **Root cause:** `fusion.ResolveDocXrefs` resolves a directory (`fileTargets`) only when `byDir[dir]` holds exactly one DocFile. Ingest (`enrichDocXrefEdges`) feeds it every file whose dispatched extractor is a doc-engine one (a package.json, a pom.xml, a Cargo.toml, and after its dispatch a Kubernetes manifest), the harness (`scoreXrefOracle`) only the files the dialect owns (`ownedSourceRefs`), so a directory with a sibling doc file scores in the bench and names no file at ingest.
+- **Fix:** none yet (internal/fusion/docxref.go was not the items' to edit): prefer, in a directory that holds several doc files, the one the referring dialect owns (its manifest's basenames), or feed the harness the same set ingest feeds the resolver; then re-measure the two readings and flip the assertions in `TestTaskfileDirectoryNeedsTheOneFileRule` and `TestKustomizeBaseDirectoryNeedsTheOneFileRule`.
+- **Status:** open
+- **Impact:** any tool format whose main edge is a directory (kustomize bases and overlays, a Taskfile include of a directory, a Maven or Cargo module named by its directory) reads L3 on edges an ingest may not store; kustomize must have it before the kubernetes dialect is dispatched. LB-Q-kustomize-rest and LB-Q-taskfile-rest carry the trigger.
+
+### O167 — a tags-engine tool format cannot reach L3 in lang-oracle: xref is scored only for a doc-engine extractor, import_resolution only for languages
+
+- **Symptom:** LB-Q-protobuf's reading stops at L2 (L3 `not-attempted`) although the oracle file carries protoc's in-repo `imports` and `cross_references` and the dialect names an import strategy
+- **Evidence:**
+  - **Tool:** `indexbench lang-oracle -dialect protobuf -tool-oracle <protoc-descriptors json>` on grpc/grpc-go v1.84.0 and bufbuild/protovalidate v1.2.2
+  - **Expected:** a tool format's L3 (`xref_precision`, `xref_recall`, design §1.2) measured from the oracle's `cross_references`, or its imports scored, whatever engine the dialect runs on
+  - **Actual:** `measureSubject` builds the imports scorer only when `spec.Manifest.Kind != "tooling"` (cmd/indexbench/langoracle.go, LB-F40) and calls `scoreXrefOracle` only when the extractor is an `extractor.DocResulter` (the doc engine, `fusion.ResolveDocXrefs`); a tags-engine tool format gets neither, so no reading can meet L3
+  - **Repro:** `go run ./cmd/indexbench lang-oracle -dialect protobuf -subject <grpc-go clone> -tool-oracle protobuf-grpc-go.json -out <scratch>/protobuf.json` and read `grade.L3`
+- **Root cause:** the harness's two L3 paths were built for their first users: import_resolution for languages (LB-F40) and cross-file references for doc-engine tool formats (LB-F30); protobuf is the first tags-engine tool format with an L3 target (CMake and GraphQL are queued behind it)
+- **Fix:** none yet (a harness change, not a worker's): score a tags-engine tool format's file-resolved edges (fusion.ResolveFileEdges) against the oracle's `cross_references` at file granularity, or its import specs against `imports`, then re-measure LB-Q-protobuf
+- **Status:** open
+- **Impact:** every tags-engine tool format queued at L3 (protobuf, cmake, graphql) stops at L2 whatever its extraction, and its row stays open behind a `-rest` deferral
+
+### O168 — a trailing `.` anchor does not select the last identifier of tree-sitter-proto's `message_or_enum_type`
+
+- **Symptom:** `(message_or_enum_type (identifier) @name .)` captures every identifier of `acme.v1.Other` (acme, v1, Other), so one reference became three calls
+- **Evidence:**
+  - **Tool:** `indexbench lang-probe -dialect protobuf <file>` (coder3101/tree-sitter-proto 0.6.0, core v0.26.11)
+  - **Expected:** the trailing anchor constrains the child pattern to the last named child, as the query syntax documents
+  - **Actual:** three matches with @name acme, v1 and Other; the leading anchor (`. (identifier) @name`) and sibling anchors work
+  - **Repro:** a query file holding `(field (type (message_or_enum_type (identifier) @name .) @reference.call))`, then `go run ./cmd/indexbench lang-probe -dialect protobuf <a .proto with a field typed acme.v1.Other>`
+- **Root cause:** not isolated (the node's anonymous `.` children, the grammar's hidden rules or the core's anchor handling); lang-probe shows the matches, not why
+- **Fix:** the dialect fixes the path length with `#match?` on the whole reference and walks to the last identifier with leading and sibling anchors, one pattern per length from one to eight (dialects/protobuf/tags.scm); a dialect that needs the last named child elsewhere should check lang-probe before trusting a trailing anchor
+- **Status:** open (worked around)
+- **Impact:** a query that relies on a trailing anchor silently over-captures (here every package segment became a callee: call precision, and file-resolved edges named by a package segment)

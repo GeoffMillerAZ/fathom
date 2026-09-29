@@ -1,0 +1,10 @@
+# Production overlay: no apiVersion or kind, as most kustomizations are written.
+resources:
+- ../../base
+- "monitoring"
+namePrefix: production-
+patches:
+- path: deployment.yaml
+- path: "ingress-patch.json"
+  target:
+    kind: Ingress

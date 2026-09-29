@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package greeter;
+
+enum Status {
+  UNKNOWN = 0;
+  OK = 1;
+}
+
+message HelloRequest {
+  string name = 1;
+}
+
+message HelloResponse {
+  string message = 1;
+  Status status = 2;
+}
+
+service Greeter {
+  rpc SayHello (HelloRequest) returns (HelloResponse);
+  rpc SayGoodbye (HelloRequest) returns (HelloResponse);
+}

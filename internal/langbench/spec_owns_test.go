@@ -50,3 +50,29 @@ func TestManifestOwnsGlobAgreesWithNoGlobs(t *testing.T) {
 		t.Error("Owns(main.py): want false")
 	}
 }
+
+// TestManifestOwnsSniffExtension: a dialect that claims an extension only
+// through match.sniff (MATLAB's .m, which ObjC shares, LB-Q-matlab) owns the
+// files with that extension as candidates — the harness must read them to
+// measure the dialect at all — and the pipeline's own classification then
+// settles each one (a file no sniff settles is skipped as ambiguous and
+// disclosed in the reading's notes). Without this a sniff-only manifest
+// measured zero files.
+func TestManifestOwnsSniffExtension(t *testing.T) {
+	m := Manifest{Match: ManifestMatch{
+		Sniff: &ManifestSniff{Extensions: []string{".m"}, Pattern: `^\s*function\b`, Priority: 50},
+	}}
+	for path, want := range map[string]bool{
+		"lab/solve.m":    true,
+		"lab/Solve.M":    true,
+		"@Account/a.m":   true,
+		"lab/solve.py":   false,
+		"lab/solve.mlx":  false,
+		"lab/m":          false,
+		"objc/Foo.m.txt": false,
+	} {
+		if got := m.Owns(path); got != want {
+			t.Errorf("Owns(%q) = %v, want %v", path, got, want)
+		}
+	}
+}

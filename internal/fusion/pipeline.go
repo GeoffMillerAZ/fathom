@@ -265,6 +265,8 @@ type Pipeline struct {
 	st         store.Store
 	exts       map[string]extractor.Extractor
 	toolExts   map[ToolKind]extractor.Extractor // ADR-021 §2: yaml-family extractors keyed by classifier verdict
+	sniffExts  map[string]extractor.Extractor   // dialect id -> extractor, for a dialect that claims an extension only through match.sniff (LB-Q-matlab)
+	sniffExt   map[string]bool                  // the lowercased extensions those sniffs settle (sniffedExtractor reads only these files)
 	cfg        Config
 	enricher   *llm.Enricher // nil → enrichment disabled
 	mu         sync.Mutex
@@ -684,7 +686,38 @@ func parseGitLog(serviceID, raw string) []store.Commit {
 // (its members bound to A. and, for using static, in scope unqualified). The
 // file-resolved pass reuses stored imports for an unchanged fingerprint, so
 // the salt bump re-reads every file.
-const ExtractorEpoch = "31"
+// Epoch 32 (LB-Q-matlab): a `.m` file whose first KiB opens with a function,
+// a classdef or a % comment is classified MATLAB by the dialect's match.sniff
+// and read by internal/extractor.NewTSExtractor("matlab") — tree-sitter via
+// wazero/WASM: classes, their properties and methods, functions (local and
+// nested) each with a Signature and an EndLine. Every such file, and every
+// other `.m`, was fingerprinted by the no-extractor path (`.m` is never
+// claimed by extension: Objective-C shares it), so the salt bump re-reads
+// them; a `.m` no sniff settles is now fingerprinted as
+// ambiguous_unclassified, as design section 5 says.
+// Epoch 33 (LB-Q-kustomize, docs/design/language-breadth.md §13/§4): a
+// kustomization.yaml or kustomization.yml now extracts through the doc-engine
+// kustomize dialect instead of kustomizeextract.go: the kustomization itself is
+// an entity (Kustomization, named by the file), components and the
+// configMapGenerator and secretGenerator entries are read (KustomizeResource,
+// KustomizeConfigMap, KustomizeSecret), the kustomization refers to each entry
+// it names, and a resource, base, component or patch that names another doc-
+// engine file of the repository (today another kustomization, by its
+// directory; a Kubernetes manifest is not one yet) gets a file-tier edge to
+// it; a patch is signed by its target's name and an image by its newName,
+// newTag or digest (the doc engine has no concatenation) where the incumbent
+// composed Kind/name and newName:newTag.
+// Every already-indexed kustomization file was extracted by the incumbent, so
+// the salt bump re-reads them.
+// Epoch 34 (LB-Q-taskfile, docs/design/language-breadth.md §13/§4): a
+// Taskfile.yml, Taskfile.yaml, taskfile.yml, taskfile.yaml, Taskfile.dist.yml,
+// Taskfile.dist.yaml, taskfile.dist.yml or taskfile.dist.yaml now extracts
+// through the doc-engine taskfile dialect (the file's Taskfile entity named by
+// the file, each task named by its key as written, the tasks it names in deps,
+// cmds and defer as Calls, and the includes that resolve to another Taskfile of
+// the repository) where each was fingerprinted as unclassified YAML; the salt
+// bump re-reads them.
+const ExtractorEpoch = "34"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares
@@ -711,6 +744,8 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 		cfg:            cfg,
 		exts:           map[string]extractor.Extractor{},
 		toolExts:       map[ToolKind]extractor.Extractor{},
+		sniffExts:      map[string]extractor.Extractor{},
+		sniffExt:       map[string]bool{},
 		queue:          map[string][]pendingFile{},
 		siblingIdx:     map[string]*siblingIndex{},
 		classifiedZero: map[string]int64{},
@@ -898,8 +933,16 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	// Kustomize (full-basename keys take precedence over .yaml k8s extractor
 	// — ADR-021 §2 / TI-3: kustomization.yaml is valid k8s-shaped YAML but
 	// (almost) never has metadata.name, so the generic k8s extractor
-	// silently produced zero symbols for it)
-	kustomize := extractor.NewKustomizeExtractor()
+	// silently produced zero symbols for it). LB-Q-kustomize: the doc-engine
+	// kustomize dialect serves both basenames (the kustomization, its
+	// resources, patches, images and generators, and the resource, base,
+	// component and patch files that resolve to another file of the
+	// repository), retiring kustomizeextract.go; the ToolKind tag stays
+	// ToolKustomize (toolKindForBasename).
+	kustomize, err := extractor.NewDocDialectExtractor("kustomize")
+	if err != nil {
+		panic(fmt.Sprintf("fusion: doc-dialect kustomize: %v", err))
+	}
 	p.exts["kustomization.yaml"] = kustomize
 	p.exts["kustomization.yml"] = kustomize
 
@@ -1003,6 +1046,22 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 		p.exts[ext] = msbuild
 	}
 
+	// Taskfile (LB-Q-taskfile, language-breadth: new, a doc-engine tool format,
+	// no incumbent). A .yml or .yaml file with one of go-task's eight basenames
+	// is unambiguous by name (resolveExtractor's basename lookup, before the
+	// classifier that left these unclassified); an included Taskfile under
+	// another name stays unclassified, as the manifest's match says.
+	taskfile, err := extractor.NewDocDialectExtractor("taskfile")
+	if err != nil {
+		panic(fmt.Sprintf("fusion: doc-dialect taskfile: %v", err))
+	}
+	for _, name := range []string{
+		"Taskfile.yml", "Taskfile.yaml", "taskfile.yml", "taskfile.yaml",
+		"Taskfile.dist.yml", "Taskfile.dist.yaml", "taskfile.dist.yml", "taskfile.dist.yaml",
+	} {
+		p.exts[name] = taskfile
+	}
+
 	// Scala
 	scala := extractor.NewScalaExtractor()
 	p.exts[".scala"] = scala
@@ -1073,10 +1132,45 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 				}
 				p.exts[k] = e
 			}
+			// A dialect that claims an extension only through match.sniff
+			// (MATLAB's .m, shared with Objective-C, LB-Q-matlab) has no
+			// p.exts key: registering the extension would claim every file
+			// with it. Ingest's classifier decides per file
+			// (connector.ClassifyDialect, sniffedExtractor).
+			if d.Match.Sniff != nil {
+				if e == nil {
+					var nerr error
+					e, nerr = extractor.NewTSExtractor(d.ID)
+					if nerr != nil {
+						panic(fmt.Sprintf("fusion: tsextract %s: %v", d.ID, nerr))
+					}
+				}
+				p.sniffExts[d.ID] = e
+				for _, x := range d.Match.Sniff.Extensions {
+					p.sniffExt[strings.ToLower(x)] = true
+				}
+			}
 		}
 	}
 
 	return p
+}
+
+// sniffedExtractor is the extractor of the dialect a content sniff
+// classified relPath to (design §5, LB-F9), for a file no p.exts key claims:
+// a dialect that owns an extension only through match.sniff (MATLAB's .m).
+// ok is false when no sniff settles the file — an ambiguous file never
+// reaches an extractor (the ingest gate counts it before dispatch).
+func (p *Pipeline) sniffedExtractor(relPath string, content []byte) (extractor.Extractor, bool) {
+	if !p.sniffExt[strings.ToLower(filepath.Ext(relPath))] {
+		return nil, false
+	}
+	v := connector.ClassifyDialect(dialectRules(), relPath, content)
+	if v.By != connector.ClassifiedBySniff {
+		return nil, false
+	}
+	e, ok := p.sniffExts[v.Dialect]
+	return e, ok
 }
 
 // refusedDialects are tags-engine dialects built and measured but refused by
@@ -1093,6 +1187,12 @@ var refusedDialects = map[string]bool{"swift": true}
 func (p *Pipeline) Close() {
 	seen := map[*extractor.TSExtractor]bool{}
 	for _, e := range p.exts {
+		if ts, ok := e.(*extractor.TSExtractor); ok && !seen[ts] {
+			seen[ts] = true
+			ts.Close()
+		}
+	}
+	for _, e := range p.sniffExts {
 		if ts, ok := e.(*extractor.TSExtractor); ok && !seen[ts] {
 			seen[ts] = true
 			ts.Close()
@@ -2270,6 +2370,9 @@ func (p *Pipeline) resolveExtractor(relPath string, content []byte, idx *sibling
 		e, ok = p.exts[base]
 		if !ok {
 			e, ok = p.exts[ext]
+		}
+		if !ok {
+			e, ok = p.sniffedExtractor(relPath, content)
 		}
 	}
 	return e, toolKind, ok, false

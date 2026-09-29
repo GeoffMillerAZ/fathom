@@ -1,0 +1,17 @@
+// One field is malformed; the definitions around it are still found.
+syntax = "proto3";
+
+package broken;
+
+message Before {
+  string a = 1;
+}
+
+message Middle {
+  string b = = 2;
+  Before before = 3;
+}
+
+message After {
+  Before before = 1;
+}

@@ -231,6 +231,14 @@ const (
 	// own, the package.json and Cargo.toml precedent.
 	KindMSBuildProject SourceKind = "MSBuildProject"
 
+	// Taskfile (LB-Q-taskfile, language-breadth: new, a doc-engine tool format,
+	// no incumbent). KindTaskfile is a file's own entity (the connector-
+	// classification kind, named by the file: a Taskfile.yml, Taskfile.yaml or
+	// Taskfile.dist.yml in any of go-task's spellings); the dialect's task kind
+	// (TaskfileTask) has no connector-classification use and so gets no constant
+	// of its own, the MSBuildTarget precedent.
+	KindTaskfile SourceKind = "Taskfile"
+
 	// pyproject.toml (LB-Q-python-packaging, language-breadth: new — a
 	// doc-engine tool format, no incumbent; requirements*.txt and
 	// setup.cfg from the same queue entry stay unclassified, §14.2: the
@@ -294,6 +302,15 @@ const (
 	KindKustomizeResource SourceKind = "KustomizeResource"
 	KindKustomizePatch    SourceKind = "KustomizePatch"
 	KindKustomizeImage    SourceKind = "KustomizeImage"
+
+	// KindKustomization is a kustomization file's own entity (LB-Q-kustomize,
+	// language-breadth: the doc-engine dialect that retires kustomizeextract.go):
+	// the connector-classification kind, named by the file, the entity the
+	// entries hang from and the one a base or overlay reference resolves to. The
+	// dialect's KustomizeConfigMap and KustomizeSecret (a generator entry) have no
+	// connector-classification use and so get no constant of their own, the
+	// MSBuildTarget precedent.
+	KindKustomization SourceKind = "Kustomization"
 
 	// OpenAPI (ADR-021 §2 / TI-3): detected by a top-level openapi:/swagger:
 	// key (see the fusion pass-3 classifier), distinct from the generic k8s

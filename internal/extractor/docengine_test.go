@@ -320,11 +320,12 @@ func TestDocExtractorSpecRefusals(t *testing.T) {
 // TestDocExtractorParity is P20's proof that the engine generalizes the
 // bespoke config extractors: a doc.json reproduces the Compose extractor's
 // services (name, line, depends_on), the GitHub Actions extractor's jobs
-// (name, line, runs-on, needs) and actions (uses, line), and the Kustomize
-// extractor's resources, patches and images (name, line) on their
-// fixtures. Signatures the bespoke extractors compose from several fields
-// (Compose's "build: <ctx>", Kustomize's "newName:newTag") are outside the
-// selector subset by design (§4: no templating) and not compared.
+// (name, line, runs-on, needs) and actions (uses, line) on their fixtures.
+// (A third pair, the Kustomize extractor's resources, patches and images,
+// went with that extractor when the kustomize dialect retired it,
+// LB-Q-kustomize.) Signatures the bespoke extractors compose from several
+// fields (Compose's "build: <ctx>") are outside the selector subset by design
+// (§4: no templating) and not compared.
 func TestDocExtractorParity(t *testing.T) {
 	type pair struct {
 		spec, fixtureGlob string
@@ -335,8 +336,6 @@ func TestDocExtractorParity(t *testing.T) {
 	pairs := []pair{
 		{"testdata/doc/compose.doc.json", "testdata/doc/compose/*.yml", NewComposeExtractor(), []core.SourceKind{core.KindComposeService}, false},
 		{"testdata/doc/gha.doc.json", "testdata/doc/gha/*.yml", NewGHAExtractor(), []core.SourceKind{core.KindGHAJob, core.KindGHAAction}, true},
-		{"testdata/doc/kustomize.doc.json", "testdata/doc/kustomize/*.yaml", NewKustomizeExtractor(),
-			[]core.SourceKind{core.KindKustomizeResource, core.KindKustomizePatch, core.KindKustomizeImage}, false},
 	}
 	for _, p := range pairs {
 		b, err := os.ReadFile(p.spec)

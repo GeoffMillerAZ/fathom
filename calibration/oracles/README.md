@@ -25,6 +25,8 @@ LB-F40).
 | powershell-ast/ | B | PowerShell |
 | php-parser/ | B | PHP |
 | luaparse/ | B | Lua (definitions) |
+| protoc-descriptors/ | A (definitions, references, imports) | Protocol Buffers |
+| opa-parse/ | A (definitions, calls, imports) | Rego |
 | ts-tags/ | C | Bash, Lua and Ruby (calls) |
 | sqlglot/ | C | SQL (foreign-key calls) |
 | make/ | A (references), B (definitions) | Makefile |
@@ -49,6 +51,8 @@ imported by fathom, never a product dependency — and is run from its own direc
 | `cargo` | A | `cargo metadata --no-deps --format-version 1` and `cargo metadata --all-features --format-version 1` (cargo 1.98.1, rustc 1.98.1), run at each workspace root; `go-toml/v2` for the raw cross-check | definitions (one `package` per workspace member, at line 1: the package entity is the manifest itself), `references` (every dependency of each package as the tool lists it, whatever its kind or target table, by real package name), `cross_references` (a resolved dependency edge between two packages of the subject, `[patch]` applied, and the `workspace` entity to each member the tool lists, entity granularity) | `cd calibration/oracles/cargo && PATH=<rustc bin>:$PATH go run . -subject <checkout> -cargo <cargo> -home <scratch CARGO_HOME outside the subject> [-root <manifest>]... [-offline] [-files-out <file>] > workspace/tmp/oracle/cargo-<subject>.json`; pass it to `lang-oracle -tool-oracle` |
 | `go-mod` | A | `go mod edit -json`, `go work edit -json` and `go list -e -m -json all` (go1.26.3), run at each go.mod and go.work of the subject; standard library only | definitions (a `module` per go.mod, at its module directive; a `package` per require; a `key` per replace of a go.mod or go.work, `replace/<old>[@<version>]`; per go.work a `namespace`, `workspace`, at its first directive, and a `key` per use, `use/<directory as written>`), `references` (a module to each module it requires), `cross_references` (a require the tool resolves to a directory of the subject holding a go.mod, module to module; a replace to a local directory the tool evaluated as the module's replacement, replace entity to that module; a go.work use the tool lists as a workspace module, use entity to that module; entity granularity) | `cd calibration/oracles/go-mod && go run . -subject <checkout> -modcache <scratch GOMODCACHE outside the subject> > workspace/tmp/oracle/go-mod-<subject>.json`; pass it to `lang-oracle -tool-oracle` |
 | `msbuild` | A | `dotnet msbuild` (MSBuild 18.9.11 in .NET SDK 10.0.401): `-getItem:PackageReference,ProjectReference -getProperty:TargetFramework,TargetFrameworks` per project, framework and configuration, and `-preprocess` for the files an evaluation imported; `encoding/xml` for each file's `<Project>` line and the cross-check decode | definitions (a `package` per evaluated project file and per file of the subject an evaluation imported, at its `<Project>` start tag), `references` (a `PackageReference` item, from the file that defined it), `cross_references` (a `ProjectReference` item, from the file that defined it to the project MSBuild resolves it to, when that is a file of the subject; entity granularity) | `cd calibration/oracles/msbuild && go build -o <scratch>/msbuild-oracle . && DOTNET_ROOT=<sdk> <scratch>/msbuild-oracle -subject <checkout> [-under <dir>] -dotnet <sdk>/dotnet -scratch <scratch dir outside the subject> > workspace/tmp/oracle/msbuild-<subject>.json` |
+| `kustomize` | A | `kubectl kustomize` (kubectl v1.36.1, Kustomize v5.8.1) run once per `kustomization.yaml` / `kustomization.yml` of a scratch copy of the subject, with `buildMetadata: [originAnnotations]` and a dead proxy, and again with each entry removed; `yq` v4 (an independent YAML reader with source lines) proposes the entries | definitions (a `package` per kustomization the tool built, at its first key, named by the file; a `resource` per resource, base, component, patch and generator and a `data_source` per image, at its line, each one the tool evidences: the build fails without it or its output differs), `references` (the kustomization to each evidenced entry), `cross_references` (a resource, base, component or patch entry that names a file of the subject, a directory naming the kustomization it holds; file granularity) | `cd calibration/oracles/kustomize && go build -o <scratch>/kustomize-oracle . && <scratch>/kustomize-oracle -subject <checkout> -scratch <dir outside the subject> -files-out <file> > workspace/tmp/oracle/kustomize-<subject>.json`; pass it to `lang-oracle -tool-oracle` with `-only "$(paste -sd, <file>)"` |
+| `taskfile` | A (`definitions`, `cross_references`); C (`-refs-out`) | `task --list-all --json --taskfile <file>` (go-task 3.52.0) run on every Taskfile of a scratch copy of the subject as the root of its own run, again with each `internal: true` line blanked; `yq` v4 (an independent YAML reader) for the `-refs-out` decode | definitions (a `package` per Taskfile the tool accepted, at its first key, named by the file; a `task` per task the tool lists whose location is that file, at the tool's line, named by the key written there), `cross_references` (an `includes:` entry whose file, or whose directory's Taskfile, contributes a task to the tool's listing; file granularity); with `-refs-out`, `references` (a task to each task its `deps`, `cmds` `task:` calls and `defer` name, tier C) | `cd calibration/oracles/taskfile && go build -o <scratch>/taskfile-oracle . && <scratch>/taskfile-oracle -subject <checkout> -scratch <dir outside the subject> -files-out <file> -refs-out workspace/tmp/oracle/taskfile-<subject>-refs.json > workspace/tmp/oracle/taskfile-<subject>.json`; pass both to `lang-oracle -tool-oracle` (either order) with `-only "$(paste -sd, <file>)"` |
 
 `cargo` is tier A throughout: the tool itself evaluates each workspace (which manifests are members, each
 package's name, each package's dependencies with `workspace = true` inheritance, renames and target
@@ -116,6 +120,38 @@ imports) and measures `src/Http` with `lang-oracle -only 'src/Http/**'`. Its Arc
 items into ProjectReferences in `eng/targets/ResolveReferences.targets`, so those edges are that file's,
 outside the measured tree. Imports are read but not scored (the dialect draws no Import edge); `.sln` files
 are not decoded, so `dotnet sln list` is not an oracle here.
+
+`kustomize` is tier A because the tool itself is the judge of every entry. Kustomize lists nothing of what a
+kustomization declares, and its `originAnnotations` name the file a resource came from but not the kustomization
+that named it (an overlay of an overlay of a base reads as the base's resources), so the oracle asks the tool one
+question of each entry: does the build change when this entry is removed? The entries are proposed by a decode
+(`yq`, a reader of its own with line numbers; the dialect's walk over the doc engine is not reused) and each is
+removed in turn from a copy of the kustomization (`yq 'del(.resources[3])'`) and the build run again with
+`buildMetadata: [originAnnotations]` on. An entry is in the truth when the build fails without it or its output
+differs. One that changes nothing (an image that matches no container, a patch whose target matches nothing) is
+withheld from the truth and counted on stderr as `unevidenced`, so the dialect that emits it pays in precision; on
+both subjects every one of 70 entries was evidenced. A kustomization the tool cannot build contributes nothing and
+is left out of `-files-out` with its reason on stderr: a remote base or patch (the run sets a dead proxy and treats
+a reference that leaves the subject as cross-repository, never fetched), an entry that names a file the checkout
+does not hold (`examples/transformerconfigs/images`, `plugins/kustomized-helm`), an undecodable file, and a
+`kind: Component` (not a root the tool builds; none in the subjects). Measure with `lang-oracle -only "$(paste -sd,
+<files-out>)"`, and run `lang-parity` on a copy of the subject without the excluded files (it has no `-only`). The
+harness scores only edges between files the dialect owns, so a resource that names a manifest is dropped, and
+counted, as out of scope: the reading's notes carry the number.
+
+`taskfile` is tier A for what the tool lists: go-task evaluates each Taskfile (its version, its includes, its tasks) and reports every
+task with the file, line and column of its key, so a definition is the tool's word and its name is the key written at that position (the tool
+lists a task under its `label:` and an included task under its namespace). `--list-all` leaves an `internal: true` task out; the oracle
+lists it by running the tool again on a copy with that line blanked, every other line where it was, so the tool's lines are the file's. An
+`includes:` entry is in the truth when the tool's listing has a task from the file it names (or from the Taskfile its directory holds, by
+the tool's search order), which is the tool attesting that it loaded that file; a file with no tasks and a templated one are counted on stderr and left out, and a Taskfile
+with a remote include (`https://`) is rejected by the tool as a whole (remote Taskfiles are an experiment, off by default) and excluded. Its `-refs-out` file is tier
+C: the tool lists nothing of what a task depends on, and `--summary` renders (so evaluates) a task, dynamic `sh:` variables included, so the
+`deps`, `cmds` `task:` and `defer` entries are decoded (`yq`, anchors and merge keys expanded) and each name is checked against the tool's
+(a listed task, an alias, a namespaced task, a wildcard match; the ones it does not know are counted on stderr). A Taskfile the tool rejects is
+excluded from `-files-out` and counted; the walk skips `testdata`, `vendor`, `node_modules`, `generated`, `.git` and the editor directories, as
+the connector does. A Taskfile's global `sh:` variable may be evaluated by the listing (the subjects' are `pwd` and `git describe`): read a
+subject's Taskfiles before pointing the oracle at it.
 
 `gitlab-ci` is tier A for definitions because the tool itself evaluates each pipeline (includes,
 remote templates, `extends`, matrix expansion) and rejects one it cannot; the tool is not offline

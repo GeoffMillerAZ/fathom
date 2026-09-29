@@ -1,0 +1,16 @@
+version: "3"
+
+includes:
+  a: ./a
+  b: ./b/Taskfile.dist.yml
+  c:
+    taskfile: ../shared/tasks.yml
+    flatten: true
+  d:
+    taskfile: https://raw.githubusercontent.com/example/tasks/main/Taskfile.yml
+  e:
+    taskfile: "./{{.ENV}}/Taskfile.yml"
+  f:
+    dir: ./f-only
+  g:
+    taskfile: ./Taskfile.yml

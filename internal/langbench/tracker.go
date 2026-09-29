@@ -86,7 +86,6 @@ var registeredFormats = map[string]Registration{
 	"kubernetes":     {Extractor: "k8sextract.go", LangTag: "yaml"},
 	"docker-compose": {Extractor: "composeextract.go", LangTag: "yaml"},
 	"helm":           {Extractor: "helmextract.go", LangTag: "yaml"},
-	"kustomize":      {Extractor: "kustomizeextract.go", LangTag: "yaml"},
 	"openapi":        {Extractor: "openapiextract.go", LangTag: "yaml"},
 	"cue":            {Extractor: "cueextract.go", LangTag: "cue"},
 	"markdown":       {Extractor: "mdextract.go", LangTag: "md"},

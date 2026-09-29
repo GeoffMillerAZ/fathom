@@ -149,10 +149,13 @@ var extClassMap = map[string]classification{
 	"values.yaml": {core.KindHelmValue, "yaml"},
 	".tpl":        {core.KindHelmTemplate, "yaml"},
 
-	// Kustomize (ADR-021 §2 / TI-3; YAML-family syntax, own basename keys —
-	// same precedent as Chart.yaml/values.yaml above)
-	"kustomization.yaml": {core.KindKustomizeResource, "yaml"},
-	"kustomization.yml":  {core.KindKustomizeResource, "yaml"},
+	// Kustomize (ADR-021 §2 / TI-3; own basename keys — same precedent as
+	// Chart.yaml/values.yaml above). LB-Q-kustomize: the doc-engine kustomize
+	// dialect owns both basenames (language "kustomize", not "yaml"), so the
+	// file's own entity is the kustomization; a bare `Kustomization` file (no
+	// extension) is not claimed.
+	"kustomization.yaml": {core.KindKustomization, "kustomize"},
+	"kustomization.yml":  {core.KindKustomization, "kustomize"},
 
 	// Docker
 	"Dockerfile":          {core.KindDockerStage, "dockerfile"},
@@ -209,6 +212,21 @@ var extClassMap = map[string]classification{
 	".vbproj":  {core.KindMSBuildProject, "msbuild"},
 	".props":   {core.KindMSBuildProject, "msbuild"},
 	".targets": {core.KindMSBuildProject, "msbuild"},
+
+	// Taskfile (LB-Q-taskfile, language-breadth: new, a doc-engine tool format,
+	// no incumbent). The eight basenames go-task looks for, in either case and
+	// with the .dist marker; the basename check (kindForFile/classify) takes
+	// precedence over the generic YAML handling, which never claimed them. An
+	// included file under another name (Taskfile.docker.yml, tasks/build.yml) is
+	// not claimed: the file's name is what says it is a Taskfile.
+	"Taskfile.yml":       {core.KindTaskfile, "taskfile"},
+	"Taskfile.yaml":      {core.KindTaskfile, "taskfile"},
+	"taskfile.yml":       {core.KindTaskfile, "taskfile"},
+	"taskfile.yaml":      {core.KindTaskfile, "taskfile"},
+	"Taskfile.dist.yml":  {core.KindTaskfile, "taskfile"},
+	"Taskfile.dist.yaml": {core.KindTaskfile, "taskfile"},
+	"taskfile.dist.yml":  {core.KindTaskfile, "taskfile"},
+	"taskfile.dist.yaml": {core.KindTaskfile, "taskfile"},
 
 	// Python packaging (LB-Q-python-packaging, language-breadth: new — a
 	// doc-engine tool format, no incumbent). The basename check
