@@ -190,6 +190,7 @@ tasks:
         bash scripts/build-cache_test.sh
         bash scripts/gate-lease_test.sh
         bash scripts/tenancy-stress_test.sh
+        bash scripts/pipefail-grep_test.sh
         bash calibration/clone_test.sh
         bash third_party/agentic-kit/fathom-pack/scripts/push-check_test.sh
         bash third_party/agentic-kit/fathom-pack/scripts/push-http_test.sh

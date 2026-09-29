@@ -16,6 +16,8 @@ fail() {
 
 out="$(bash "${SCRIPT_DIR}/tenancy-stress.sh" --self-check 2>&1)" || fail "--self-check failed:
 $out"
+# Here-strings, not `printf | grep -q`: under pipefail grep exiting on its first
+# match SIGPIPEs the writer of a multi-chunk value (scripts/pipefail-grep_test.sh).
 for want in \
   "refused the managed port" \
   "refused the managed store" \
@@ -29,10 +31,10 @@ for want in \
   "verdict: no stop reads FAIL" \
   "verdict: no diag capture reads FAIL" \
   "ledger: a breaker row is attributed to the start it decides (safe 4, stop 6)"; do
-  printf '%s\n' "$out" | grep -qF "$want" || fail "self-check output lacks \"$want\":
+  grep -qF "$want" <<<"$out" || fail "self-check output lacks \"$want\":
 $out"
 done
-if printf '%s\n' "$out" | grep -q "FAILED"; then
+if grep -q "FAILED" <<<"$out"; then
   fail "self-check reported a failure:
 $out"
 fi

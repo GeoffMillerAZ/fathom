@@ -96,7 +96,10 @@ starts an unmanaged daemon (its own child, `--lifecycle-id tenancy-stress-<run>`
 samples `/metrics` every second and writes a reading with the verdict first. It refuses
 the managed daemon's port, store and call log and a fixture on the internal disk;
 `--self-check` exercises those refusals and is run by `tenancy-stress_test.sh` in
-`task scripts-check`.
+`task scripts-check`. `pipefail-grep_test.sh` (also in `scripts-check`) fails a
+`scripts/*_test.sh` that pipes a `printf`/`echo` into `grep -q` under `pipefail`: grep
+exiting on its first match SIGPIPEs a multi-chunk writer, which flaked the gate at nice 10
+under load; use `grep -q ... <<<"$value"`.
 
 ```bash
 bash scripts/tenancy-stress.sh --self-check
