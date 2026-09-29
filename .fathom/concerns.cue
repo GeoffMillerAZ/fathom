@@ -32,14 +32,15 @@ concerns: {
 		want:  "every relative markdown pointer in agent config resolves"
 		check: {kind: "pointers_resolve"}
 	}
-	// The claude-code pack's stanza entry names CLAUDE.md, which this repo no
-	// longer carries (ADR-059: AGENTS.md is the one instruction file, and
-	// Claude Code reads it natively since 2.1.277). Law 13: the same id
-	// replaces the pack entry, here pointed at the file that holds the stanza.
-	claude_code_stanza_present: {
-		want:  "AGENTS.md carries a well-formed fathom stanza region (the begin marker, then the end marker)"
-		why:   "doctor stanza_present (DI-1): an AGENTS.md whose end marker a hand-edit deleted never tells a session to route through the index — and fleet reconcile refuses to repair a corrupted pair"
-		check: {kind: "stanza_present", file: "AGENTS.md"}
+	// ADR-059: AGENTS.md is this repo's one instruction file. The claude-code
+	// pack's claude_code_stanza_present (agents_md_reaches_claude) holds when
+	// Claude Code reaches it; this repo holds itself to the stricter form: no
+	// CLAUDE file anywhere in the agent-config corpus, not even an import
+	// (test fixtures under testdata/ are input, not instruction files).
+	one_instruction_file: {
+		want:  "AGENTS.md is this repo's only instruction file: no CLAUDE.md, .claude/CLAUDE.md, CLAUDE.local.md or nested CLAUDE.md, so Claude Code (2.1.277 and later, default mode) loads AGENTS.md natively and Codex reads the same nested guides"
+		why:   "ADR-059 decision 7 (the owner's \"do not maintain CLAUDE.md\"): under Claude Code's default agents-md mode any root CLAUDE file switches AGENTS.md off, `/init` still writes one, and the FileChanged config-audit hook names it the moment it lands"
+		check: {kind: "agents_md_reaches_claude", allow_import: false}
 	}
 	// The claude-code/codex packs ship this same check; pointers_hold above
 	// predates them and is what I34 cites, so the pack's copy is disabled
