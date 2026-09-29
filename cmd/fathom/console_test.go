@@ -207,9 +207,9 @@ func TestConsoleShell_GroupsBreadcrumbsThemeSkipLink(t *testing.T) {
 	if !regexp.MustCompile(`<a href="/fleet"[^>]*aria-current="page"`).MatchString(got) {
 		t.Error("the current page must be marked in the sidebar")
 	}
-	// Breadcrumbs, question, meta, verb chip, actions.
+	// Breadcrumbs, question, meta (the kit heading's list), verb chip, actions.
 	for _, want := range []string{`aria-label="Breadcrumb"`, `<a href="/" class="inline-flex min-h-11 min-w-11 items-center justify-center rounded-sm hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">Observatory</a>`, `aria-current="page">Fleet</li>`,
-		"How is every project doing?", "3 projects · generated now", `data-verb-chip`, `fathom fleet report --json`,
+		"How is every project doing?", `<li class="min-w-0 [overflow-wrap:anywhere]">3 projects</li><li class="min-w-0 [overflow-wrap:anywhere]">generated now</li>`, `data-verb-chip`, `fathom fleet report --json`,
 		`data-console-copy="fathom fleet report --json"`, `<a href="/brief">Brief</a>`, `data-console-heading`} {
 		if !strings.Contains(got, want) {
 			t.Errorf("shell missing %q", want)
@@ -236,26 +236,33 @@ func TestConsoleShell_GroupsBreadcrumbsThemeSkipLink(t *testing.T) {
 	assertRoleUtilitiesOnly(t, got)
 }
 
-// kitOwnedPaletteColors are palette-color utilities inside kit markup that
-// fathom composes but does not author: the overlay dialog's scrim. Doctrine
-// rule 2 binds fathom's own markup; a kit exception is returned upstream
-// (docs/app-kit.md, FATHOM-S0-KIT-02) rather than patched here.
-var kitOwnedPaletteColors = []string{"backdrop:bg-black/40"}
-
 // assertRoleUtilitiesOnly fails on literal palette colors or dark: color
 // variants in rendered classes (UI doctrine rule 2).
 func assertRoleUtilitiesOnly(t *testing.T, doc string) {
 	t.Helper()
-	palette := regexp.MustCompile(`\b(?:bg|text|border|ring|fill|stroke)-(?:red|blue|green|yellow|gray|slate|zinc|neutral|stone|orange|amber|lime|emerald|teal|cyan|sky|indigo|violet|purple|fuchsia|pink|rose|white|black)(?:-\d+)?\b`)
-	for _, m := range regexp.MustCompile(`class="([^"]*)"`).FindAllStringSubmatch(doc, -1) {
+	for _, class := range paletteColorClasses(doc) {
+		t.Errorf("class uses a palette color or dark: variant: %q", class)
+	}
+}
+
+var (
+	paletteColorRe = regexp.MustCompile(`\b(?:bg|text|border|ring|fill|stroke)-(?:red|blue|green|yellow|gray|slate|zinc|neutral|stone|orange|amber|lime|emerald|teal|cyan|sky|indigo|violet|purple|fuchsia|pink|rose|white|black)(?:-\d+)?\b`)
+	classAttrRe    = regexp.MustCompile(`class="([^"]*)"`)
+)
+
+// paletteColorClasses returns every rendered class attribute that uses a
+// literal palette color or a dark: variant.
+func paletteColorClasses(doc string) []string {
+	var out []string
+	for _, m := range classAttrRe.FindAllStringSubmatch(doc, -1) {
+		// No kit exception: the overlay backdrop is the scrim role since
+		// mirror 9fa58e6 (FATHOM-S0-KIT-02).
 		class := m[1]
-		for _, k := range kitOwnedPaletteColors {
-			class = strings.ReplaceAll(class, k, "")
-		}
-		if palette.MatchString(class) || strings.Contains(class, "dark:") {
-			t.Errorf("class uses a palette color or dark: variant: %q", m[1])
+		if paletteColorRe.MatchString(class) || strings.Contains(class, "dark:") {
+			out = append(out, m[1])
 		}
 	}
+	return out
 }
 
 // TestConsoleErrors_RenderOnShellWithRemedy pins OC-5: 404, 400, an

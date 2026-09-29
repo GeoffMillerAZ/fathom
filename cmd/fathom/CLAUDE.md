@@ -10,7 +10,8 @@ registers in `init()` (`declarePage` → `registerPage`, `console_registry.go`):
 the one table drives routing, the grouped sidebar, search and the JSON parity
 test.** Page projections that a CLI verb also shows live in `internal/console`
 (no UI imports; values carry a truth state). Kit parts: `appkit/ui/dashboard`
-for the shell and grouped nav, `chrome` for breadcrumbs/description lists,
+for the shell and grouped nav, `chrome` for the page heading (each page's one
+`h1`; the shell sets `PageHeading`), breadcrumbs and description lists,
 `appearance` for the theme (key `fathom-theme`), `palette` for the ⌘K palette
 over `/search` (`console_palette.go`), `live` for "updated — refresh this panel" over
 `/events` (`console_live.go`: every panel names its sources), `table` for tables, `topology` for the fleet's health rollup, `stat` for

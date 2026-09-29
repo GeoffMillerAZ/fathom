@@ -369,10 +369,10 @@ func TestConsolePlanBoard_LanesAreBounded(t *testing.T) {
 	}
 }
 
-// Every console pager lifts the kit's ~30 px page links to 44 px targets.
+// Every console pager shows the kit's own 44 px page targets (FATHOM-F0-KIT-05).
 func TestConsolePager_FortyFourPixelTargets(t *testing.T) {
 	out := consolePager(chrome.Pagination{Page: 2, TotalPages: 3, AriaLabel: "Plans pages", HrefFor: func(n int) string { return fmt.Sprintf("/plans?page=%d", n) }})
-	mustContain(t, "pager", out, "data-console-pager", "[&_a]:min-h-11", "[&_span]:min-h-11", `href="/plans?page=3"`)
+	mustContain(t, "pager", out, "data-console-pager", "min-h-11 min-w-11", `href="/plans?page=3"`)
 	if consolePager(chrome.Pagination{Page: 1, TotalPages: 1}) != "" {
 		t.Error("one page needs no pager")
 	}

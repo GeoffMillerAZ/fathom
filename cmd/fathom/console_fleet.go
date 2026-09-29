@@ -312,7 +312,7 @@ func renderFleetTablePanel(t console.FleetTableModel, m observatoryModel) string
 	}
 	if t.Pages > 1 {
 		q := t.Query
-		body.WriteString(`<div class="mt-3 [&_a]:min-h-11 [&_span]:min-h-11">` + chrome.RenderPagination(chrome.Pagination{
+		body.WriteString(`<div class="mt-3">` + chrome.RenderPagination(chrome.Pagination{
 			Page: q.Page, TotalPages: t.Pages, AriaLabel: "fleet pages",
 			HrefFor: func(n int) string { p := q; p.Page = n; return fleetHref(p) },
 		}) + `</div>`)

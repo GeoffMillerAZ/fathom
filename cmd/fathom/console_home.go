@@ -390,7 +390,7 @@ func renderSincePanel(s console.Since, now time.Time) string {
 		if s.Pages > 1 {
 			// Every change in the window is on some page: the list is paged,
 			// never cut (design §2).
-			body.WriteString(`<div class="mt-3 [&_a]:min-h-11 [&_span]:min-h-11" data-since-pages>` + chrome.RenderPagination(chrome.Pagination{
+			body.WriteString(`<div class="mt-3" data-since-pages>` + chrome.RenderPagination(chrome.Pagination{
 				Page: s.Page, TotalPages: s.Pages, AriaLabel: "changes pages",
 				HrefFor: func(n int) string {
 					if n <= 1 {

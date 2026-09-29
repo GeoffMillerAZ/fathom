@@ -32,14 +32,15 @@ func TestConsoleCosmetics_F0ProofMinorItems(t *testing.T) {
 	}
 
 	f := newConsoleFixture(t)
-	brandRe := regexp.MustCompile(`<a href="/" class="[^"]*md:hidden" data-console-mobile-brand>fathom</a><a href="/search" data-palette-open`)
+	brandRe := regexp.MustCompile(`<div class="flex shrink-0 items-center md:hidden">` + regexp.QuoteMeta(consoleBrand) + `</div></div><div class="flex items-center gap-3"><a href="/search" data-palette-open`)
 	for _, pg := range defaultConsoleRegistry().pages {
 		path := samplePath(pg)
 		_, _, body := f.get(t, path)
 		if strings.Contains(body, "break-all") {
 			t.Errorf("%s: a value still breaks mid-word by rule", path)
 		}
-		// Item 8: the top bar keeps a brand below md, beside the palette.
+		// Item 8: the top bar keeps a brand below md, beside the palette —
+		// the kit shell's MobileBrand slot since FATHOM-S0-KIT-01.
 		if !brandRe.MatchString(body) {
 			t.Errorf("%s: no mobile brand in the top bar", path)
 		}

@@ -1471,14 +1471,6 @@
       color: var(--ak-color-ink-muted);
     }
   }
-  .backdrop\:bg-black\/40 {
-    &::backdrop {
-      background-color: color-mix(in srgb, #000 40%, transparent);
-      @supports (color: color-mix(in lab, red, red)) {
-        background-color: color-mix(in oklab, var(--color-black) 40%, transparent);
-      }
-    }
-  }
   .backdrop\:bg-scrim\/50 {
     &::backdrop {
       background-color: var(--ak-color-scrim);
@@ -2453,21 +2445,6 @@
   .\[\&_select\]\:min-h-11 {
     & select {
       min-height: calc(var(--spacing) * 11);
-    }
-  }
-  .\[\&_span\]\:inline-flex {
-    & span {
-      display: inline-flex;
-    }
-  }
-  .\[\&_span\]\:min-h-11 {
-    & span {
-      min-height: calc(var(--spacing) * 11);
-    }
-  }
-  .\[\&_span\]\:items-center {
-    & span {
-      align-items: center;
     }
   }
   .\[\&_summary\]\:min-h-11 {

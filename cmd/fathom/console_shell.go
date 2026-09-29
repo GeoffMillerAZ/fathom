@@ -6,11 +6,13 @@ package main
 // grouped sidebar (dashboard.RenderNav over the registry's groups), the
 // trail (chrome.Breadcrumbs) and the theme (appearance: a bootstrap script
 // before the stylesheet plus the native control, storage key fathom-theme).
-// The page heading's meta-and-actions block is composed here from role
-// utilities (FATHOM-KIT-07: the kit's chrome.RenderPageHeading writes its
-// own h1, and the kit shell's top bar already writes one — see
-// docs/app-kit.md, FATHOM-S0-KIT-01). The top bar carries the ⌘K palette
-// trigger and every page carries its dialog (console_palette.go, OC-12).
+// The page heading is the kit's chrome.RenderPageHeading (FATHOM-KIT-07):
+// the trail, the page's one h1 and its meta list. The shell's top bar writes
+// no heading (Shell.PageHeading) and shows the brand below md
+// (Shell.MobileBrand), both returned as FATHOM-S0-KIT-01. The question, verb
+// chips and actions sit beside the kit heading. The top bar carries the ⌘K
+// palette trigger and every page carries its dialog (console_palette.go,
+// OC-12).
 
 import (
 	_ "embed"
@@ -18,6 +20,7 @@ import (
 	"html/template"
 	"net/http"
 	"strings"
+	"unicode"
 
 	"github.com/geoffmilleraz/app-kit/appkit/ui/appearance"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/chrome"
@@ -36,7 +39,7 @@ var consoleJS []byte
 // consoleShell is one page's frame.
 type consoleShell struct {
 	PageID   string         // the registered page (nav highlight); "" for none
-	Title    string         // the h1
+	Title    string         // the h1 (the kit page heading's)
 	DocTitle string         // <title>; defaults to Title · fathom observatory
 	Crumbs   []chrome.Crumb // the full trail, Observatory first; current page last
 	Question string         // what the page answers
@@ -68,15 +71,18 @@ func renderConsoleShell(reg *consoleRegistry, s consoleShell) string {
 		footer = `<p class="mx-auto max-w-7xl text-xs text-ink-muted">loopback-only; sharing is a human verb (law 13) — <code class="font-mono">fathom brief</code> writes the shareable file · JSON: add <code class="font-mono">?format=json</code> to any page</p>`
 	}
 
+	// The page heading in Content writes the page's one h1, so the top bar
+	// writes none and, with no Title, leads with the brand below md only.
 	shell := dashboard.RenderShell(dashboard.Shell{
-		Title:     s.Title,
-		Brand:     template.HTML(`<a href="/" class="text-base font-semibold text-ink hover:text-accent">fathom observatory</a>`),
-		Nav:       template.HTML(consoleNav(reg, reg.navCurrentPath(s.PageID))),
-		Actions:   template.HTML(consoleMobileBrand + consolePaletteTrigger()),
-		Content:   template.HTML(content.String()),
-		Footer:    template.HTML(footer),
-		ContentID: consoleContentID,
-		SkipLink:  true,
+		Brand:       template.HTML(consoleBrand),
+		Nav:         template.HTML(consoleNav(reg, reg.navCurrentPath(s.PageID))),
+		Actions:     template.HTML(consolePaletteTrigger()),
+		Content:     template.HTML(content.String()),
+		Footer:      template.HTML(footer),
+		ContentID:   consoleContentID,
+		SkipLink:    true,
+		PageHeading: true,
+		MobileBrand: true,
 	})
 	var b strings.Builder
 	b.WriteString(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">`)
@@ -112,10 +118,11 @@ func renderConsoleShell(reg *consoleRegistry, s consoleShell) string {
 // container on a page marked data-console-sticky (FATHOM-G-KIT-04).
 const consoleStickyMainClasses = `[&:has([data-console-sticky])_#observatory-main]:overflow-x-clip [&:has([data-console-sticky])_#observatory-main]:overflow-y-visible`
 
-// consoleMobileBrand is the brand in the top bar below md, where the kit
-// shell hides the sidebar that carries it (F0 proof, item 8; returned as
-// FATHOM-S0-KIT-01 — the shell has no mobile brand slot).
-const consoleMobileBrand = `<a href="/" class="inline-flex min-h-11 items-center rounded-sm text-base font-semibold text-ink hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus md:hidden" data-console-mobile-brand>fathom</a>`
+// consoleBrand is the app's brand link: the sidebar's first row and, through
+// the kit shell's MobileBrand, the top bar's first item below md (F0 proof,
+// item 8). It is a 44 px target with the focus outline and carries no id,
+// because the shell writes it twice.
+const consoleBrand = `<a href="/" class="inline-flex min-h-11 items-center rounded-sm text-base font-semibold text-ink hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">fathom observatory</a>`
 
 // consoleNav is the grouped sidebar plus the theme control beneath it.
 func consoleNav(reg *consoleRegistry, currentPath string) string {
@@ -123,20 +130,17 @@ func consoleNav(reg *consoleRegistry, currentPath string) string {
 		`<div class="mt-4 border-t border-line px-3 pt-4">` + appearance.RenderControl(appearance.Options{StorageKey: consoleThemeKey}) + `</div>`
 }
 
-// renderConsoleHeading is the page heading block under the top bar's h1:
-// the trail, the question, the meta line, and the verb chips and actions.
+// renderConsoleHeading is the page heading block: the kit's page heading
+// (the trail, the page's one h1, the meta list) with the question under it,
+// and the verb chips and actions beside it (the kit heading's own actions are
+// form buttons only).
 func renderConsoleHeading(s consoleShell) string {
 	var b strings.Builder
 	b.WriteString(`<div class="mb-4 flex flex-wrap items-start justify-between gap-3 border-b border-line pb-3" data-console-heading>`)
 	b.WriteString(`<div class="min-w-0 max-w-3xl">`)
-	// The kit's trail links carry their own 44 px target and focus-visible
-	// outline since mirror d9dd789 (FATHOM-F0-KIT-03, returned from F0).
-	b.WriteString(chrome.Breadcrumbs(s.Crumbs))
+	b.WriteString(consolePageHeading(s))
 	if s.Question != "" {
-		b.WriteString(`<p class="mt-1 text-ink-muted">` + html.EscapeString(s.Question) + `</p>`)
-	}
-	if len(s.Meta) > 0 {
-		b.WriteString(`<p class="mt-1 text-xs text-ink-muted [overflow-wrap:anywhere]">` + html.EscapeString(strings.Join(s.Meta, " · ")) + `</p>`)
+		b.WriteString(`<p class="mt-2 text-ink-muted">` + html.EscapeString(s.Question) + `</p>`)
 	}
 	b.WriteString(`</div>`)
 	if len(s.Verbs) > 0 || s.Actions != "" {
@@ -149,6 +153,65 @@ func renderConsoleHeading(s consoleShell) string {
 	}
 	b.WriteString(`</div>`)
 	return b.String()
+}
+
+// consolePageHeading renders the kit page heading from a page's fields,
+// shaped to the kit's bounds so a refusal can never cost a page its h1:
+// control characters become spaces, a field past the kit's length bound is
+// shortened, blank meta items and blank crumbs are dropped, meta past
+// chrome.MaxHeadingMeta folds into the last item, and a crumb whose
+// destination the kit refuses is written as plain text. The kit escapes
+// every value.
+func consolePageHeading(s consoleShell) string {
+	h := chrome.PageHeading{Title: headingText(s.Title)}
+	if h.Title == "" {
+		h.Title = "Untitled page"
+	}
+	for _, c := range s.Crumbs {
+		if c.Label = headingText(c.Label); c.Label == "" {
+			continue
+		}
+		if c.Href != "" && (chrome.PageHeading{Title: h.Title, Breadcrumbs: []chrome.Crumb{c}}).Validate() != nil {
+			c.Href = ""
+		}
+		h.Breadcrumbs = append(h.Breadcrumbs, c)
+	}
+	for _, m := range s.Meta {
+		if m = headingText(m); m != "" {
+			h.Meta = append(h.Meta, m)
+		}
+	}
+	if len(h.Meta) > chrome.MaxHeadingMeta {
+		rest := headingText(strings.Join(h.Meta[chrome.MaxHeadingMeta-1:], " · "))
+		h.Meta = append(h.Meta[:chrome.MaxHeadingMeta-1], rest)
+	}
+	out, err := chrome.RenderPageHeading(h)
+	if err != nil {
+		// Unreachable once shaped; the title alone always validates.
+		out, _ = chrome.RenderPageHeading(chrome.PageHeading{Title: h.Title})
+	}
+	return out
+}
+
+// headingMaxRunes is the kit heading's per-field bound (chrome's unexported
+// maxHeadingRunes); a longer field is refused, so it is shortened here.
+const headingMaxRunes = 300
+
+// headingText makes s a valid kit heading field: invalid UTF-8 is replaced,
+// control characters become spaces, surrounding space is trimmed, and text
+// past the bound ends in "…".
+func headingText(s string) string {
+	s = strings.Map(func(r rune) rune {
+		if unicode.IsControl(r) {
+			return ' '
+		}
+		return r
+	}, strings.ToValidUTF8(s, "\uFFFD"))
+	s = strings.TrimSpace(s)
+	if r := []rune(s); len(r) > headingMaxRunes {
+		s = strings.TrimSpace(string(r[:headingMaxRunes-1])) + "…"
+	}
+	return s
 }
 
 // consoleCrumbs builds the trail for a page: Observatory, the navigable

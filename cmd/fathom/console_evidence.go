@@ -130,15 +130,16 @@ func evHref(path string, q url.Values, key, value string) string {
 	return path
 }
 
-// evPagination renders the kit's pagination over query-preserving links at
-// a 44 px target, or nothing for one page.
+// evPagination renders the kit's pagination over query-preserving links
+// (the kit's own 44 px targets since FATHOM-F0-KIT-05), or nothing for one
+// page.
 func evPagination(path string, q url.Values, page, pages int, label string) string {
 	nav := chrome.RenderPagination(chrome.Pagination{Page: page, TotalPages: pages, AriaLabel: label,
 		HrefFor: func(n int) string { return evHref(path, q, "page", strconv.Itoa(n)) }})
 	if nav == "" {
 		return ""
 	}
-	return `<div class="mt-3 flex flex-wrap items-center gap-3 [&_a]:inline-flex [&_a]:min-h-11 [&_a]:items-center [&_span]:inline-flex [&_span]:min-h-11 [&_span]:items-center">` + nav +
+	return `<div class="mt-3 flex flex-wrap items-center gap-3">` + nav +
 		`<span class="text-xs text-ink-muted">page ` + strconv.Itoa(page) + ` of ` + strconv.Itoa(pages) + `</span></div>`
 }
 

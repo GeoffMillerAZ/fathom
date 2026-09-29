@@ -73,6 +73,42 @@ committed `app.css` of GitHub main `1056b588` byte for byte except `.blur`, the 
 source drift named above. Changing the pin is the kit's decision; until then the
 generated files cannot be re-checked with `scripts/ui-css.sh --check` on macOS 27.
 
+**Console adoption (same day).** All four are adopted; nothing from this set is left out.
+
+- FATHOM-S0-KIT-01: every page's heading is `chrome.RenderPageHeading` (the trail, the
+  page's one `h1`, the meta as the kit's wrapping list) inside `main`, and the shell sets
+  `PageHeading` and `MobileBrand`. The top bar has no title: from `md` up it holds only the
+  palette trigger, and below `md` it leads with the brand (`consoleBrand`, a 44 px link with
+  the focus outline and no id, also the sidebar's brand). `consoleMobileBrand` is gone. The
+  page's question stays fathom's own paragraph under the kit heading, and the verb chips and
+  actions stay beside it (the kit heading's actions are form buttons only).
+  `consolePageHeading` (`console_shell.go`) shapes each page's fields to the kit's bounds so
+  a refusal can never cost a page its `h1`: control characters become spaces, a field past
+  300 characters ends in "…", blank meta items and crumbs are dropped, meta past eight
+  items folds into the eighth, and a crumb whose destination the kit refuses is written as
+  plain text. `appkit.adoption.json` now selects `interaction.page-heading` (pin
+  `daeca07e…`, experimental, L3b).
+- FATHOM-F0-KIT-05: the seven local pager wrappers (`[&_a]`/`[&_span]:min-h-11` on
+  `consolePager` and the claims, evidence, explain, fleet, home and layers pagers) are gone.
+- FATHOM-S0-KIT-02: `assertRoleUtilitiesOnly` has no kit exception list; the ⌘K dialog and
+  the plan drawer render `backdrop:bg-scrim/50`.
+- FATHOM-F0-KIT-06: no fathom change; the wiring preview's "Show both versions" label is
+  the kit callout's `text-ink-muted`.
+
+Tests: `cmd/fathom/console_kit_s0_test.go`. `TestConsoleKitS0_PageHeadingOwnsTheOneH1`
+(every registered page and two error pages: one `h1`, the kit heading's, inside `main`; one
+trail, inside the heading; a top bar with no heading that leads with the kit's mobile-brand
+slot), `TestConsoleKitS0_HeadingNeverRefusesAPage`, `TestConsoleKitS0_PagersAreTheKitsOwnTargets`
+(no console file wraps a pager) and `TestConsoleKitS0_NoKitPaletteColorException` failed
+on the 9fa58e6 mirror before this adoption; `TestConsoleKitS0_DetailsLabelIsInkMuted`
+passed there already, because the fix is kit markup, and pins it. Browser check (headless
+Chromium over fixture pages exported from the console fixture, 2026-09-29): one `h1` in
+`main` and none in the top bar; at 390 px light the brand is visible in the top bar at
+44 px and the document does not scroll sideways; a 20-page pager at 390 px dark wraps to
+two rows of 44 × 44 px (or wider) targets with a 2 px focus outline; the dialog's
+`::backdrop` computes to the scrim at 50% in both themes. This is not a full
+accessibility pass.
+
 ## Mirror d9dd789: the console's kit contributions land (2026-09-25)
 
 The mirror moves from `dc77e66` to app-kit main `d9dd78919099fccc3e3b70b06eeefff8bff5b72e`
@@ -100,12 +136,14 @@ the table and breadcrumb changes are additive markup.
   that native width) and 320 px below it, one displayed at a time; the 900 px session
   timeline is Fluid from `md` up and keeps its native width in its own scroll region below.
   `chrome.RenderPagination`'s ~28 px links and `hitl.DiffView`'s ink-faint toggle were not
-  changed by the kit, so `/search`'s pagination wrapper stays.
+  changed by the kit, so `/search`'s pagination wrapper stays (both returned and adopted
+  at mirror `9fa58e6` as FATHOM-F0-KIT-05/06, above).
 
 **Not adopted, with the reason:** `chrome.RenderPageHeading` (FATHOM-KIT-07) writes the
 page's `h1`, and `dashboard.RenderShell`'s top bar already writes one, so composing both
 would give every page two `h1`s. `renderConsoleHeading` stays app-local until the shell
-can omit its top-bar title (returned as FATHOM-S0-KIT-01 below). `analytics.graph`,
+can omit its top-bar title (returned as FATHOM-S0-KIT-01 below; adopted at mirror
+`9fa58e6`, above). `analytics.graph`,
 `viz.heatmap` truth states, `content.code-excerpt` and `work.unified-diff` wait for the
 pages that need them (waves C–E); none is imported yet, so none is scanned.
 
@@ -245,7 +283,8 @@ existing dashboard/stat/viz/vizframe/callout/form/hitl set:
   (measured 17 px). Workaround: `renderConsoleHeading` wraps the trail in
   `[&_a]:inline-flex [&_a]:min-h-11` with a `focus-visible` outline.
 - `chrome.RenderPagination` links are `px-2 py-1` (about 28 px). Workaround: `/search`'s
-  group pages wrap it in `[&_a]:min-h-11 [&_span]:min-h-11`.
+  group pages wrap it in `[&_a]:min-h-11 [&_span]:min-h-11`. Returned as FATHOM-F0-KIT-05;
+  the wrappers are gone since mirror `9fa58e6`.
 - `viz.Sparkline`/`viz.Bars`/`viz.Timeline` take a fixed pixel width. Scaling the SVG
   down (`[&>svg]:max-w-full`) keeps `main` from scrolling but shrinks text: the 560 px
   tool-load bars drew 11 px labels at ~6 px on a 390 px screen. The traffic sparkline
@@ -255,7 +294,9 @@ existing dashboard/stat/viz/vizframe/callout/form/hitl set:
   width-responsive chart or a built-in scroll region plus table alternative.
 - `hitl.DiffView`'s "Show both versions" toggle is `text-ink-faint` (measured 3.15:1
   light, 2.88:1 dark; `docs/theming-hazards.md` H6 puts ink-faint below the text floor).
-  No local workaround — the toggle is kit markup; return it as `text-ink-muted`.
+  No local workaround — the toggle is kit markup; return it as `text-ink-muted`. The
+  markup is `callout.Render`'s `DetailsLabel` affordance (the DiffView sits inside a
+  danger callout); returned as FATHOM-F0-KIT-06, `text-ink-muted` since mirror `9fa58e6`.
 - Fathom's own absence notes had the same H6 defect (`metricCell`, session and timeline
   notes, the not-recorded column): they now use `text-ink-muted`, as `stat.Absent`
   does for its reason; only a bare decorative "—" stays ink-faint.
@@ -347,7 +388,8 @@ swimlanes and its `ViewDensity` strip past 150 catches, `viz.Heatmap` with truth
   button; a server-rendered table needs a link, and `aria-sort` belongs on the `<th>`,
   which `HeaderHTML` cannot reach. Fathom writes the direction as `sr-only` text.
 - `chrome.RenderPagination` links are still about 28 px (F0's open item): wave F wraps
-  them in `[&_a]:inline-flex [&_a]:min-h-11 [&_a]:items-center`.
+  them in `[&_a]:inline-flex [&_a]:min-h-11 [&_a]:items-center` (gone since mirror
+  `9fa58e6`, FATHOM-F0-KIT-05).
 - **FATHOM-F-KIT-03 (candidate, from the wave F fix round):** `table.Table` has no
   phone layout. At 390 px its scroll wrapper keeps the page from overflowing, but the
   columns that carry a table's answer (an outcome, p95, a ruling's choice) sit off-screen
@@ -641,7 +683,7 @@ inside mirror `d9dd789`:
 | FATHOM-KIT-04 | `content.code-excerpt` (`code.RenderExcerpt`) | `94e6815`, fix `5bf90cd`, merge `fd47ef0` | the refactor page and a row's oracle match (OC-26, OC-23, wave C); the `/claims/{id}` citation (OC-30, `cmd/fathom/console_claim.go`, wave D) |
 | FATHOM-KIT-05 | `work.unified-diff` (`hitl.RenderUnifiedDiff`) | `94e6815`, fix `5bf90cd`, merge `fd47ef0` | pending: review surfaces |
 | FATHOM-KIT-06 | `interaction.live-freshness` (`appkit/ui/live`) | `e7d66c9`, fix `f965851`, merge `54f5fac` | OC-14, `cmd/fathom/console_live.go` |
-| FATHOM-KIT-07 | `interaction.page-heading` (`chrome.RenderPageHeading`) | `e7d66c9`, fix `f965851`, merge `54f5fac` | not adopted: the shell's top bar already writes the `h1` (FATHOM-S0-KIT-01) |
+| FATHOM-KIT-07 | `interaction.page-heading` (`chrome.RenderPageHeading`) | `e7d66c9`, fix `f965851`, merge `54f5fac` | every console page's heading (`consolePageHeading`, `console_shell.go`) with `Shell.PageHeading`, since mirror `9fa58e6` (FATHOM-S0-KIT-01) |
 | FATHOM-KIT-08 | catalog records for shipped, uncatalogued packages | `a80d967`, merge `b861d49` | none needed (catalog metadata) |
 
 - **Evidence:** the kit's receipts `docs/assessments/2026-09-25-command-palette.md`,
@@ -664,18 +706,39 @@ inside mirror `d9dd789`:
 - **Delivery / verification:** adopted at mirror `d9dd789`; the local stopgaps are
   removed and `TestConsoleA11y_ScopeTargetsChartsAndOverflow` refuses their return.
 
-**FATHOM-S0-KIT-01 — the shell and the page heading cannot compose (candidate)**
+**FATHOM-F0-KIT-05/06 — wave F0's two defects the first kit fix left open**
+
+- **Origin / task:** console wave F0 (the "Kit defects observed" list above): `/search`'s
+  group pages at 390 px and the wiring preview's blocked-change card.
+- **Observed / expected:** 05 `chrome.RenderPagination` links about 28 px high with the
+  browser's focus ring only (also the pager half of FATHOM-C-KIT-05); 06 the "Show both
+  versions" affordance `text-ink-faint`, 3.15:1 light and 2.88:1 dark (filed against
+  `hitl.DiffView`; the markup is `callout.Render`'s `DetailsLabel`).
+- **Disposition:** `returned`: on app-kit main at `c2dd183` (05: 44 px targets,
+  focus outline, a wrapping row) and `9fa58e6` (06: `text-ink-muted`), each with a test
+  that failed first (`TestPagination_ControlsHaveTargetSizeAndVisibleFocus`,
+  `TestDetailsLabelClearsTheTextFloorOnEveryKind`).
+- **Delivery / verification:** adopted at mirror `9fa58e6`; the seven pager wrappers are
+  gone and `TestConsoleKitS0_PagersAreTheKitsOwnTargets` refuses their return;
+  `TestConsoleKitS0_DetailsLabelIsInkMuted` pins the label.
+
+**FATHOM-S0-KIT-01 — the shell and the page heading cannot compose (returned)**
 
 - **Origin / task:** console stage 0 adopting FATHOM-KIT-07.
 - **Observed / expected:** `dashboard.RenderShell` always writes its `Title` as the top
   bar's `h1`, and `chrome.RenderPageHeading` writes the page's `h1`; a page using both has
   two. Below `md` the top bar also shows no brand (the brand lives in the hidden sidebar),
   so Fathom adds a `md:hidden` brand link to its `Actions` slot.
-- **Disposition:** `candidate` — a shell option to render the title as non-heading text
-  (or omit it) and to show the brand in the mobile top bar. Next action: app-kit
-  maintainer; revisit when a second consumer composes the page heading inside the shell.
+- **Disposition:** `returned`: on app-kit main at `3a4f185`,
+  `Shell.PageHeading` (the top bar writes `Title` as plain text, or nothing) and
+  `Shell.MobileBrand` (the brand at the top bar's start below `md`), both off by default
+  with the old bytes pinned (`TestShell_DefaultTopBarIsUnchanged`).
+- **Delivery / verification:** adopted at mirror `9fa58e6` with `chrome.RenderPageHeading`
+  on every page (`TestConsoleKitS0_PageHeadingOwnsTheOneH1`); the local mobile brand is
+  gone. Promotion still needs a second consumer composing the heading in the shell (the
+  kit's catalog gap says no Gallery specimen does yet).
 
-**FATHOM-S0-KIT-02 — the overlay dialog's scrim is a palette color (candidate)**
+**FATHOM-S0-KIT-02 — the overlay dialog's scrim is a palette color (returned)**
 
 - **Origin / task:** console stage 0 composing `palette.RenderDialog` (over
   `overlay.RenderDialog`) on every page.
@@ -684,8 +747,15 @@ inside mirror `d9dd789`:
   `assertRoleUtilitiesOnly` check expect role utilities only. Expected: a scrim role
   token (or a documented exception in the kit's theming hazards). The dialog's close
   button is also a 24 px target (already listed in the kit's palette record).
-- **Disposition:** `candidate`, not patched locally; the check names the kit-owned
-  utility as its one exception. Next action: app-kit maintainer.
+- **Disposition:** `returned`: on app-kit main at `1dc9d08`, an optional `scrim`
+  role (`oklch(0.30 0.015 260)` light, `oklch(0.10 0.010 260)` dark in `kit.cue`;
+  `tokens.Load` fills an omitted one by measured surface polarity) and
+  `backdrop:bg-scrim/50`, which dims every shipped set's surface at least as much as
+  black/40 did; the kit's `TestComponentsUseRoleColorsOnly` now holds every `appkit/ui`
+  package to roles.
+- **Delivery / verification:** adopted at mirror `9fa58e6`; the exception list is gone
+  (`TestConsoleKitS0_NoKitPaletteColorException`). The dialog close button's 24 px target
+  is still open (the kit's palette record).
 
 **FATHOM-S0-KIT-03 — `table.Table`'s "Open →" action wraps its arrow (candidate)**
 
@@ -803,8 +873,9 @@ inside mirror `d9dd789`:
   size option) on the pager, the form controls and the card link, and a lane layout
   that fits the container (lanes that share the row, or wrap).
 - **Disposition:** `candidate`; local workarounds, each pinned by a test:
-  `consolePager` wraps every console pager with `[&_a]:min-h-11`
-  (`TestConsolePager_FortyFourPixelTargets`), the refactor form lifts its controls with
+  `consolePager` wrapped every console pager with `[&_a]:min-h-11` (the pager part was
+  delivered as FATHOM-F0-KIT-05 and the wrapper removed at mirror `9fa58e6`;
+  `TestConsolePager_FortyFourPixelTargets` now pins the kit's own targets), the refactor form lifts its controls with
   `[&_select|input|button]:min-h-11`, and `readOnlyBoard` makes the card link a 44 px
   target with a focus ring and, from `md` up, turns the board into a grid of lanes at
   least 12rem wide that wraps instead of scrolling (`TestConsolePlanBoard_LanesAreBounded`

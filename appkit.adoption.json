@@ -11,6 +11,7 @@
   "capabilities": [
     "interaction.command-palette",
     "interaction.live-freshness",
+    "interaction.page-heading",
     "recipe.styleguide.local",
     "shell.layout"
   ],
@@ -22,6 +23,10 @@
     {
       "id": "interaction.live-freshness",
       "sha256": "8ed5e6a1881d074b395678f9b33a43eb5367544d70146a0feae979a88ab0411c"
+    },
+    {
+      "id": "interaction.page-heading",
+      "sha256": "daeca07e733e2550ef216de0d7836481423d329bc4dee8cb997c64190b89fa65"
     },
     {
       "id": "recipe.styleguide.local",
@@ -41,7 +46,7 @@
   "artifacts": [
     {
       "path": "cmd/fathom/ui/app.css",
-      "sha256": "e7eff6288a9a4cc32f531de2bb8f41170035407f144cd7daaa9da71ca23e9570"
+      "sha256": "4e454297036703f99a50fc1b10b8e2d5f0733a7b609b960db20ace4274c58c12"
     },
     {
       "path": "cmd/fathom/ui/input.css",
