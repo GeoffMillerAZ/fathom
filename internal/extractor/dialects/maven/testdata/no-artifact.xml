@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<!-- Not a POM: a settings-shaped file that a repository may keep under any name. -->
+<project>
+  <groupId>org.acme</groupId>
+  <dependencies>
+    <dependency>
+      <artifactId>orphan</artifactId>
+    </dependency>
+  </dependencies>
+</project>

@@ -80,6 +80,7 @@ var langRowHint = map[string]string{
 	"package-json":     "package.json",
 	"templ":            "templ",
 	"python-packaging": "pyproject.toml",
+	"maven":            "pom.xml",
 }
 
 // registryLangTags returns the sorted, deduplicated set of Lang tags

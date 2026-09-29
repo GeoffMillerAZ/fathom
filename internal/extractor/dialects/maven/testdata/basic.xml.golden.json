@@ -1,0 +1,14 @@
+{
+  "symbols": [
+    { "name": "shop-orders", "kind": "MavenArtifact", "package": "basic", "line": 3, "end_line": 106, "signature": "org.acme.shop", "calls": ["jackson-databind", "junit", "shop-core", "shop-parent"], "tier": "verified" },
+    { "name": "maven-compiler-plugin", "kind": "MavenPlugin", "package": "basic", "line": 74, "end_line": 81, "signature": "3.13.0", "tier": "verified" },
+    { "name": "maven-surefire-plugin", "kind": "MavenPlugin", "package": "basic", "line": 82, "end_line": 90, "tier": "verified" }
+  ],
+  "cross_file": [
+    { "from": "", "edge": "parent", "raw": "shop-parent", "target": "shop-parent", "strategy": "module-source", "line": 10 },
+    { "from": "", "edge": "depends_on", "raw": "shop-core", "target": "shop-core", "strategy": "module-source", "line": 26 },
+    { "from": "", "edge": "depends_on", "raw": "jackson-databind", "target": "jackson-databind", "strategy": "module-source", "line": 31 },
+    { "from": "", "edge": "depends_on", "raw": "shop-core", "target": "shop-core", "strategy": "module-source", "line": 42 },
+    { "from": "", "edge": "depends_on", "raw": "junit", "target": "junit", "strategy": "module-source", "line": 49 }
+  ]
+}

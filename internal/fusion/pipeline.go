@@ -618,7 +618,12 @@ func parseGitLog(serviceID, raw string) []store.Commit {
 // call target (`Registry.instance.register` calls Registry, instance and register),
 // leaves out `def obj.x` on a local, and .rake, .ru and Rakefile now extract as Ruby;
 // every already-indexed .rb file lacks those, so the salt bump re-extracts it.
-const ExtractorEpoch = "23"
+// Epoch 24 (LB-Q-maven, docs/design/language-breadth.md §13/§4): a pom.xml now
+// extracts through the doc-engine maven dialect (the project's artifact, its
+// build plugins, parent and dependency references, and the modules, parent and
+// dependency edges that resolve to another POM of the repository) where each
+// was fingerprinted as an unclassified .xml file; the salt bump re-reads them.
+const ExtractorEpoch = "24"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares
@@ -895,6 +900,17 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 		panic(fmt.Sprintf("fusion: doc-dialect python-packaging: %v", err))
 	}
 	p.exts["pyproject.toml"] = pyProject
+
+	// Maven POM (LB-Q-maven, language-breadth: new — a doc-engine tool
+	// format, no incumbent). No ".xml" extractor exists, so the basename
+	// lookup (p.exts[base]) claims "pom.xml" alone: pom-shaded.xml,
+	// settings.xml and every other XML file stay unclassified, as the
+	// manifest's match says.
+	maven, err := extractor.NewDocDialectExtractor("maven")
+	if err != nil {
+		panic(fmt.Sprintf("fusion: doc-dialect maven: %v", err))
+	}
+	p.exts["pom.xml"] = maven
 
 	// Scala
 	scala := extractor.NewScalaExtractor()

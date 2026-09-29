@@ -1,0 +1,7 @@
+{
+  "symbols": [
+    { "name": "edge-shapes", "kind": "MavenArtifact", "package": "edge-shapes", "line": 1, "end_line": 20, "signature": "org.acme", "tier": "verified" },
+    { "name": "maven-antrun-plugin", "kind": "MavenPlugin", "package": "edge-shapes", "line": 14, "end_line": 17, "tier": "verified" }
+  ],
+  "cross_file": []
+}

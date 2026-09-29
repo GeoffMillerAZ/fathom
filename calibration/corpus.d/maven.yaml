@@ -1,0 +1,36 @@
+id: maven
+language: Maven POMs (pom.xml)
+# The queue entry names apache/maven and apache/dubbo, both Apache-2.0 and both
+# read only, never vendored. apache/maven is the reference reactor (a root
+# aggregator over the core, resolver and plugin-tooling modules, every module a
+# child of it, a parent published outside the repository); apache/dubbo is the
+# wide one (hundreds of modules under a BOM, a parent chain three levels deep,
+# `${revision}` versions and dependencies between sibling modules).
+repos:
+  - name: apache/maven
+    url: https://github.com/apache/maven.git
+    ref: maven-3.9.16
+    sha: 2bdd9fddda4b155ebf8000e807eb73fd829a51d5
+    licence: Apache-2.0
+    idioms:
+      - "a root aggregator POM (packaging pom) whose <modules> name each module
+        directory, every module inheriting from it through <parent>"
+      - "an external parent (org.apache.maven:maven-parent) reached through a
+        Central-resolved <parent> that no file of the repository declares"
+      - "<dependencyManagement> in the root pinning sibling modules, and modules
+        depending on one another by artifactId"
+      - "build/pluginManagement plus build/plugins re-declaring the same plugin,
+        and <profiles> adding plugins and dependencies"
+  - name: apache/dubbo
+    url: https://github.com/apache/dubbo.git
+    ref: dubbo-3.3.6
+    sha: f1585880bee4ca7776f44380c47c994217721ffe
+    licence: Apache-2.0
+    idioms:
+      - "a deep aggregator tree: the root lists dubbo-* group POMs whose own
+        <modules> list the leaves, several levels under one parent chain"
+      - "BOM POMs (dubbo-bom, dubbo-dependencies-bom) imported by dependency
+        scope import, and <dependencyManagement> pinning sibling modules"
+      - "${revision} versions (CI-friendly) shared by parent and child, and
+        sibling modules depending on each other with <version>${project.version}"
+      - "profiles that add modules and dependencies, and optional dependencies"
