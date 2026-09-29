@@ -13,13 +13,13 @@ provider. Beside `docs/plans/receipts.md` (RC-28, the handoff) and the continuit
 
 Wave 3 (design section 3b, live maps as documentation for agents) is built only when live maps are promoted
 (XM-D1). Its rows name XM-D1 in `needs:` as the owner asked, and add RT-M1, one of XM-D1's own trigger rows,
-because a deferred row satisfies a `needs:` edge by its disposition alone, so XM-D1 by itself would leave them
-eligible today. They do not name XM-M2: XM-D1's trigger is RT-M1 PASS and either XM-M2 PASS or a named consumer
+added while a deferred row satisfied a `needs:` edge by its disposition alone (before G2-6, when XM-D1 by itself
+left them eligible). They do not name XM-M2: XM-D1's trigger is RT-M1 PASS and either XM-M2 PASS or a named consumer
 of a non-handoff use case with its own bench metric (F50, amended 2026-09-29), because live maps' value (concern
 scopes, incident maps, structural claims, saved questions) does not depend on sub-agent re-derivation, so an
-XM-M1 KILL, after which XM-M2 never runs, must not close the route to them. Until G2-6 lands, a deferred XM-D1
-still satisfies the edge by disposition alone, so promoting XM-D1 (the F50 trigger), not the graph, is the gate:
-nobody starts wave 3 or wave 4 before it.
+XM-M1 KILL, after which XM-M2 never runs, must not close the route to them. Since G2-6 a deferred XM-D1 keeps
+the edge unmet, so the graph and the gate agree: promoting XM-D1 (the F50 trigger) comes first, and nobody starts
+wave 3 or wave 4 before it.
 
 ## Wave 1: is there waste to remove? (section 5)
 
@@ -61,8 +61,8 @@ nobody starts wave 3 or wave 4 before it.
 ## Wave 4: concern scopes, only after live maps are promoted (section 3c); the incident rows moved (ADR-058)
 
 Built only when live maps are promoted (XM-D1). The root rows name XM-D1 in `needs:` and also RT-M1, one of XM-D1's
-own trigger rows, for the same reason as wave 3 (and, like wave 3, not XM-M2: see above): a deferred row satisfies a
-`needs:` edge by its disposition alone until G2-6 lands, after which a deferred target blocks.
+own trigger rows, for the same reason as wave 3 (and, like wave 3, not XM-M2: see above): before G2-6 a deferred row
+satisfied a `needs:` edge by its disposition alone; since G2-6 a deferred target blocks.
 The rows after them chain through the open rows above them, which stay unmet until proven.
 
 The incident rows (XM-26 to XM-30, XM-M6 and XM-M7) moved to `docs/plans/incident-maps.md` under ADR-058: an incident map
