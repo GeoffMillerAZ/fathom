@@ -272,6 +272,11 @@ var extClassMap = map[string]classification{
 	// Dart (LB-Q-dart: a new tree-sitter dialect, no incumbent).
 	".dart": {core.KindDartClass, "dart"},
 
+	// Ada (LB-Q-ada: a new tree-sitter dialect, no incumbent).
+	// .ads (specification) and .adb (body) are GNAT's conventional Ada suffixes.
+	".adb": {core.KindAdaPackage, "ada"},
+	".ads": {core.KindAdaPackage, "ada"},
+
 	// Swift (LB-Q-swift) is not classified: its dialect is built and measured
 	// but refused (design §14.2, parse errors over the 5% line), so .swift
 	// stays disclosed as unsupported (unsupported_language_gen.go).

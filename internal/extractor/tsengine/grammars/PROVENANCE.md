@@ -27,6 +27,7 @@ lock does not describe (I55). The tables below are rendered from the lock by
 | Blob | Repository | Tag | Commit | Licence | Entry points | Tarball sha256 |
 |---|---|---|---|---|---|---|
 | core | tree-sitter/tree-sitter | v0.26.11 | `64402de2857cc197ecc4ca3bc144ea91fda7e72e` | MIT | — | `1bab01ed21464f3272665b9c60e39ee79f68da1333e80b23f2c9356569d06971` |
+| `ada` | briot/tree-sitter-ada | dd5fa4cdb3aba91abc687aa68fb1431396fce6a6 | `dd5fa4cdb3aba91abc687aa68fb1431396fce6a6` | MIT | `tree_sitter_ada` | `f106303c124e64fd758606d08ed1a1f567d110e96f6a24462d41fb4010e46484` |
 | `bash` | tree-sitter/tree-sitter-bash | v0.25.1 | `a06c2e4415e9bc0346c6b86d401879ffb44058f7` | MIT | `tree_sitter_bash` | `2e785a761225b6c433410ef9c7b63cfb0a4e83a35a19e0f2aec140b42c06b52d` |
 | `c` | tree-sitter/tree-sitter-c | v0.24.2 | `b780e47fc780ddc8da13afa35a3f4ed5c157823d` | MIT | `tree_sitter_c` | `2eeb4db31f8fa0865e45488503d13403923bcb485a1bdb637abff8c42dd97364` |
 | `cpp` | tree-sitter/tree-sitter-cpp | v0.23.4 | `f41e1a044c8a84ea9fa8577fdd2eab92ec96de02` | MIT | `tree_sitter_cpp` | `7a2c55afe3028f4105f25762ea58cc16537d1f5a1dcd9cca90410b3cd5d46051` |
@@ -56,6 +57,7 @@ lock does not describe (I55). The tables below are rendered from the lock by
 
 | Blob | Grammar dirs | Scanner | ABI | Module bytes | `.wasm.gz` bytes | Module sha256 |
 |---|---|---|--:|--:|--:|---|
+| `ada` | (root) | no | 14 | 374,900 | 107,979 | `e5d4df79895a32b1849e6053207e259e674c46310b7f9f593726fe66117855b0` |
 | `bash` | (root) | yes | 15 | 1,364,058 | 262,984 | `f46602976271d9a23e93ca93d927df2ed50f57026de6f13558fd9c97c4dbb28d` |
 | `c` | (root) | no | 15 | 564,097 | 136,140 | `22362d4cc55c6ccc6bada0775a97fb86d3dc801de439b54d06a8c870604eca33` |
 | `cpp` | (root) | yes | 14 | 1,935,648 | 420,154 | `b5ca4b0cd346bc1cd1060fdc2151125a11ad7695da595157667a5e8b30b03e34` |
@@ -80,7 +82,7 @@ lock does not describe (I55). The tables below are rendered from the lock by
 | `sql` | (root) | yes | 15 | 2,102,436 | 380,125 | `71d65822fb9af6262dcd4c3f9b54fd24d1b834609ecafd4d75e19ef8be71d4fc` |
 | `swift` | (root) | yes | 15 | 2,435,516 | 475,154 | `4e464eadd1f93f6a619ea2d5e1c26573a777cc7a37e7aa146495a82d3c3b04b4` |
 | `typescript` | typescript, tsx | yes | 14 | 2,037,040 | 422,906 | `30080208c90581bf3b29b412e9ee2e9a11c89b36153b6a94cc07da7b5000afcb` |
-| **total** | | | | 24,953,077 | 5,312,608 | |
+| **total** | | | | 25,327,977 | 5,420,587 | |
 
 Toolchain that produced the committed blobs: zig 0.16.0, wasm-opt 129, tree-sitter-cli 0.26.11.
 

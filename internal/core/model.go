@@ -294,6 +294,13 @@ const (
 	// as PowerShell's class and enum and Makefile's variable.
 	KindDartClass SourceKind = "DartClass"
 
+	// Ada (LB-Q-ada, language-breadth: new — a fleet gap, no incumbent).
+	// KindAdaPackage is the manifest's primary connector-classification kind;
+	// the dialect's other kinds (specs, subprograms, tasks, entries, types)
+	// have no connector classification use and so get no constant of their
+	// own, same precedent as Dart's.
+	KindAdaPackage SourceKind = "AdaPackage"
+
 	// Kustomize (ADR-021 §2 / TI-3): entries under a kustomization.yaml's
 	// resources/patches/images lists, emitted as reference observations —
 	// previously parsed-then-discarded because the generic k8s extractor

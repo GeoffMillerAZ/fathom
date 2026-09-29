@@ -11,8 +11,6 @@ var unsupportedLangExtMap = map[string]string{
 	".R":       "r",
 	".S":       "assembly",
 	".abap":    "abap",
-	".adb":     "ada",
-	".ads":     "ada",
 	".asd":     "commonlisp",
 	".asm":     "assembly",
 	".astro":   "astro",

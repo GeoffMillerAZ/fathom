@@ -717,7 +717,16 @@ func parseGitLog(serviceID, raw string) []store.Commit {
 // cmds and defer as Calls, and the includes that resolve to another Taskfile of
 // the repository) where each was fingerprinted as unclassified YAML; the salt
 // bump re-reads them.
-const ExtractorEpoch = "34"
+// Epoch 35 (LB-Q-ada, docs/design/language-breadth.md §13): .ads and .adb files
+// now extract via internal/extractor.NewTSExtractor("ada") — tree-sitter via
+// wazero/WASM, a fleet gap with no incumbent: package specifications and
+// bodies, subprograms (bodies, declarations, instantiations, renamings,
+// expression functions), tasks, protected objects, entries, types, subtypes,
+// exceptions and constants, each callable with a Signature and an EndLine and
+// its calls named by callee. Every such file was fingerprinted by the
+// no-extractor path ("no extractor registered", the epoch 18 class), so the
+// salt bump re-reads them.
+const ExtractorEpoch = "35"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares

@@ -1,0 +1,28 @@
+id: ada
+language: Ada
+# universal-ctags is the only Ada oracle and it loses sync in real bodies (design D2, Ada): 896 of the two subjects'
+# 1,064 dialect-only definitions come after the last structure tag it writes in their file (typically after a
+# `declare` block, a `private package` header or an `is abstract` function); the reading names the counts.
+repos:
+  - name: AdaCore/gnatcoll-core
+    url: https://github.com/AdaCore/gnatcoll-core
+    ref: v26.0.0
+    sha: 8e270f83719d4284782a965edd80246be15b949b
+    licence: GPL-3.0-or-later WITH GCC-exception-3.1
+    idioms:
+      - "child units named by their whole path (`package GNATCOLL.Arg_Lists is`, `procedure GNATCOLL.Format_Columns_Vertical is new ...`), one spec and one body per file (484 .ads/.adb files)"
+      - "generic packages and instantiations (`is new`, 159 files) and renamings (`renames`, 205 files)"
+      - "subunits: `is separate` stubs (55 files) with the body in another file"
+      - "aspect specifications (`with Inline`, `Pre`, `Post`, 33 files), tagged types with `overriding` subprograms (48 files) and abstract subprograms (`is abstract`, 18 files)"
+      - "a few tasks, protected objects and entries (16 files) and 128 files with pragmas"
+  - name: alire-project/alire
+    url: https://github.com/alire-project/alire
+    ref: v2.1.1
+    sha: fa9a1a9971d159f8cb2b8007dbb73e9e029fc109
+    licence: GPL-3.0
+    idioms:
+      - "`overriding` subprograms (179 files) and abstract subprograms across a large tagged-type hierarchy (`Alire.*` child units)"
+      - "container instantiations (`package X is new Ada.Containers.Indefinite_Holders`, `is new` in 151 files) and renamings (87 files)"
+      - "aspect specifications (`with Inline`, `Pre`, `Post`, 96 files) and expression functions (`is (Expr)`)"
+      - "private child packages and generic formal parts (17 files with `generic`)"
+      - "test-suite fixtures (`testsuite/tests/**/crate.adb`) that are one-line or deliberately malformed (5 of 914 files parse with an error)"

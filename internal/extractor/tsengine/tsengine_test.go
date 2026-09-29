@@ -378,7 +378,7 @@ func TestParser_Determinism(t *testing.T) {
 
 func TestGrammars(t *testing.T) {
 	names := Grammars()
-	want := map[string]bool{"javascript": true, "typescript": true, "python": true, "ruby": true, "kotlin": true, "html": true, "css": true, "c": true, "csharp": true, "dockerfile": true, "sql": true, "bash": true, "java": true, "cpp": true, "powershell": true, "php": true, "gotemplate": true, "rust": true, "makefile": true, "lua": true, "dart": true, "swift": true, "matlab": true, "protobuf": true}
+	want := map[string]bool{"javascript": true, "typescript": true, "python": true, "ruby": true, "kotlin": true, "html": true, "css": true, "c": true, "csharp": true, "dockerfile": true, "sql": true, "bash": true, "java": true, "cpp": true, "powershell": true, "php": true, "gotemplate": true, "rust": true, "makefile": true, "lua": true, "dart": true, "swift": true, "matlab": true, "protobuf": true, "ada": true}
 	if len(names) != len(want) {
 		t.Fatalf("Grammars() = %v, want %d entries", names, len(want))
 	}

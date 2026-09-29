@@ -9,6 +9,21 @@
   "toolchain": { "zig": "0.16.0", "wasm_opt": "129", "tree_sitter_cli": "0.26.11" },
   "grammars": [
     {
+      "blob": "ada",
+      "repo": "briot/tree-sitter-ada",
+      "tag": "dd5fa4cdb3aba91abc687aa68fb1431396fce6a6",
+      "commit": "dd5fa4cdb3aba91abc687aa68fb1431396fce6a6",
+      "tarball_sha256": "f106303c124e64fd758606d08ed1a1f567d110e96f6a24462d41fb4010e46484",
+      "licence": "MIT",
+      "entry_points": ["tree_sitter_ada"],
+      "scanner": false,
+      "generate": false,
+      "abi": 14,
+      "blob_sha256": "e5d4df79895a32b1849e6053207e259e674c46310b7f9f593726fe66117855b0",
+      "blob_bytes": 374900,
+      "gz_bytes": 107979
+    },
+    {
       "blob": "bash",
       "repo": "tree-sitter/tree-sitter-bash",
       "tag": "v0.25.1",
