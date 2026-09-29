@@ -652,3 +652,54 @@ func TestScoreSCIPDartWrittenCalls(t *testing.T) {
 		t.Errorf("unwritten = %d, want 3 (the tear-off, the operator, super)", res.Counts[CntScipCallsUnwritten])
 	}
 }
+
+// TestSCIPRustRulesScopedToTheirProducers (LB-Q-rust, integration review
+// 2026-09-29): the descriptor rules rust-analyzer needs — "]" closing a
+// descriptor (`impl#[Type]name().`) and a multi-line definition range read as a
+// whole-file module, not a definition — apply to rust-analyzer's symbols (and
+// scip-dart's, whose reading was taken under them), never to another
+// producer's, so every reading measured before them still reproduces.
+func TestSCIPRustRulesScopedToTheirProducers(t *testing.T) {
+	for in, want := range map[string]string{
+		// Another producer: "]" is no separator, as before LB-Q-rust.
+		"scip-typescript npm p 1 m/Foo#[T]bar().": "[T]bar",
+		"cxx . . $ n/Foo#[T]bar(1).":              "[T]bar",
+		// rust-analyzer: an impl block's member is its leaf.
+		"rust-analyzer cargo app 0.1.0 impl#[Foo]bar().": "bar",
+	} {
+		if got, _ := scipBareName(in); got != want {
+			t.Errorf("scipBareName(%q) = %q, want %q", in, got, want)
+		}
+	}
+	for in, want := range map[string]bool{
+		"scip-typescript npm p 1 m/Foo#[T]x.":        true, // parent Foo# is a type, as before
+		"rust-analyzer cargo app 0.1.0 impl#[Foo]x.": true,
+		"rust-analyzer cargo app 0.1.0 m/x.":         false,
+	} {
+		if _, got := scipDescriptorKind(in); got != want {
+			t.Errorf("scipDescriptorKind(%q) scoped = %v, want %v", in, got, want)
+		}
+	}
+
+	// A definition whose range spans lines is still a definition for any
+	// producer but rust-analyzer (and scip-dart).
+	const pre = "scip-typescript npm p 1 m/"
+	idx := &scippb.Index{Metadata: &scippb.Metadata{ToolInfo: &scippb.ToolInfo{Name: "scip-typescript"}},
+		Documents: []*scippb.Document{{RelativePath: "m.ts",
+			Occurrences: []*scippb.Occurrence{
+				{Symbol: pre + "wide().", Range: []int32{2, 9, 3, 4}, SymbolRoles: int32(scippb.SymbolRole_Definition), EnclosingRange: []int32{2, 0, 6, 1}},
+			},
+			Symbols: []*scippb.SymbolInformation{{Symbol: pre + "wide().", Kind: scippb.SymbolInformation_Function}}}}}
+	raw, err := proto.Marshal(idx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defs, _, _, err := SCIPDefs(raw, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []OracleDef{{Path: "m.ts", Name: "wide", Line: 3, End: 7, Kind: "function"}}
+	if !reflect.DeepEqual(defs, want) {
+		t.Fatalf("SCIPDefs (scip-typescript, multi-line range) =\n%+v\nwant\n%+v", defs, want)
+	}
+}

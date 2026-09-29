@@ -64,14 +64,28 @@ func scipBareName(sym string) (string, bool) {
 			return name, callable
 		}
 	}
-	// "]" ends a descriptor too: rust-analyzer writes an impl block's members
-	// as `impl#[Type]name().`, where `[Type]` is a descriptor of its own.
-	i := strings.LastIndexAny(s, "/#.:] ")
+	i := strings.LastIndexAny(s, descriptorSeps(sym))
 	return leafName(s[i+1:]), callable
 }
 
 // isSCIPDart reports whether sym is one scip-dart wrote.
 func isSCIPDart(sym string) bool { return strings.HasPrefix(sym, "scip-dart ") }
+
+// isRustAnalyzer reports whether sym is one rust-analyzer wrote.
+func isRustAnalyzer(sym string) bool { return strings.HasPrefix(sym, "rust-analyzer ") }
+
+// descriptorSeps is the set of characters that end a descriptor before a
+// symbol's leaf. "]" ends one too for rust-analyzer, which writes an impl
+// block's members as `impl#[Type]name().` (`[Type]` a descriptor of its own),
+// and for scip-dart, whose reading was taken under that rule; for every other
+// producer the set is the one their readings were measured with (integration
+// review, 2026-09-29).
+func descriptorSeps(sym string) string {
+	if isRustAnalyzer(sym) || isSCIPDart(sym) {
+		return "/#.:] "
+	}
+	return "/#.: "
+}
 
 // dartName is scip-dart's descriptor leaf in the name fathom's dialect gives
 // the same definition: an unnamed constructor (`Foo#`<constructor>`().`) is
@@ -497,12 +511,12 @@ func scipDescriptorKind(sym string) (kind string, scoped bool) {
 		if i := strings.LastIndex(s[:len(s)-1], "`"); i >= 0 {
 			s = s[:i]
 		}
-	} else if i := strings.LastIndexAny(s, "/#.:] "); i >= 0 {
+	} else if i := strings.LastIndexAny(s, descriptorSeps(sym)); i >= 0 {
 		s = s[:i+1]
 	}
 	// An impl block has no name of its own: rust-analyzer's members of one sit
 	// under `impl#[Type]` or `impl#[Type][Trait]`, a type member like any other.
-	return kind, strings.HasSuffix(s, "#") || (strings.HasSuffix(s, "]") && strings.Contains(s, "impl#["))
+	return kind, strings.HasSuffix(s, "#") || (isRustAnalyzer(sym) && strings.HasSuffix(s, "]") && strings.Contains(s, "impl#["))
 }
 
 // SCIPDefs reads a SCIP index as a tier-A L1 oracle (owner decision D2):
@@ -587,12 +601,14 @@ func SCIPDefs(raw []byte, src func(path string) []byte) (defs []OracleDef, tool,
 			if !ok {
 				continue
 			}
-			if r[0] != r[2] {
+			if r[0] != r[2] && (isRA || isDart) {
 				// A name is written on one line. A multi-line range is a
 				// whole-file module occurrence (rust-analyzer's, for the
 				// `crate/` root and for every file module `mod x;` names),
 				// not a definition anyone wrote: none is emitted here. A file
 				// module's declaration is recovered below from its reference.
+				// Scoped to rust-analyzer and scip-dart (whose reading was taken
+				// under it): every other producer's readings predate the rule.
 				if isRA && strings.HasSuffix(sym, "/") {
 					fileModules[sym] = true
 				}
