@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -324,5 +326,48 @@ func TestHTTPAnchorIndexAsksFindSymbol(t *testing.T) {
 	_, err = down.resolveAnchor("ResolveImportSpecs")
 	if err == nil || errors.Is(err, explmap.ErrAnchorNotFound) || !strings.Contains(err.Error(), "find_symbol") {
 		t.Errorf("a 503 from the daemon = %v, want an index error naming find_symbol, never ErrAnchorNotFound", err)
+	}
+}
+
+// TestMapShowAndComposeTakeTheServiceToo pins that the read side names its
+// service the way an append does (O147): a worker's `map show --store S
+// --service X` re-resolves a drifted symbol entry through that service without
+// asking the daemon which one it is, and with no service and none from the
+// daemon the read says the index was out of reach instead of guessing.
+func TestMapShowAndComposeTakeTheServiceToo(t *testing.T) {
+	repo := mapRepo(t)
+	h := &mapIndexHarness{service: "", open: func(_ int, service, _, _ string) (ctxIndex, error) {
+		if service != "svc" {
+			return nil, fmt.Errorf("asked for service %q", service)
+		}
+		return anchorTable{nodes: []core.SymbolNode{tableNode("a", "Handle", "a.go", 4, 6)}}, nil
+	}}
+	withMapIndex(t, h)
+	// Filed while Handle sat at lines 3-5 (a fixture index for the append).
+	if _, err := appendMapEntry(mapEntryRequest{Map: "sym", Anchor: "a.Handle", Why: "the handler", Root: repo, Now: time.Now()},
+		fakeSyms{"a.Handle": {"a.go", 3, 5}}); err != nil {
+		t.Fatal(err)
+	}
+	// A line is added above it: same text, new span, so the read needs the index.
+	if err := os.WriteFile(filepath.Join(repo, "a.go"), []byte("// moved\n"+mapFixtureGo), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	code, out, errs := runCLI(t, mapCLI, "show", "sym", "--repo", repo, "--store", "x.sqlite", "--service", "svc")
+	if code != 0 || !strings.Contains(out, "moved from a.go#L3-L5") || strings.Contains(out, "unreachable") {
+		t.Errorf("show with --service: exit %d, %q %q; want the entry found again at its new span through service svc", code, out, errs)
+	}
+	if h.lookups != 0 {
+		t.Errorf("show asked the daemon for the service %d times although --service named it", h.lookups)
+	}
+
+	code, out, errs = runCLI(t, mapCLI, "show", "sym", "--repo", repo, "--store", "x.sqlite")
+	if code != 0 || !strings.Contains(out, "unreachable") {
+		t.Errorf("show with no service and none from the daemon: exit %d, %q %q; want the index named as out of reach", code, out, errs)
+	}
+
+	code, out, errs = runCLI(t, mapCLI, "compose", "sym", "--repo", repo, "--store", "x.sqlite", "--service", "svc")
+	if code != 0 || !strings.Contains(out, "1 re-resolved") {
+		t.Errorf("compose with --service: exit %d, %q %q; want the entry re-resolved", code, out, errs)
 	}
 }

@@ -1677,7 +1677,7 @@ fathom map append   ID --anchor <symbol|path#Lx-Ly> --why "…" [--agent ID] [--
 fathom map name     ID --purpose "the question it answers" [--as NAME] [--when "…"]
 fathom map include  ID BASE… [--drop BASE…]
 fathom map compose  ID… [--agent ID] [--id-only | --json]    # the ONE id a handoff carries
-fathom map show     ID [--budget 1200] [--json] [--store S]   # re-resolves every anchor now, within the budget
+fathom map show     ID [--budget 1200] [--json] [--store S] [--service X]   # re-resolves every anchor now, within the budget
 fathom map list     [--all] [--json]
 ```
 
@@ -1704,7 +1704,8 @@ nothing, not even the map; a name no tier matches says so. The service is
 not answer is waited for up to 8 s (a deploy leaves it warming) and then named as
 unreachable, with the retry and the two ways round it: `--store` a scratch ingest
 with `--service`, or a `path#Lx-Ly` anchor, which needs no index. A store is
-tried once.
+tried once. `map show` and `map compose` take the same `--service` for the
+read-time re-resolution.
 An anchor the map already carries (the same symbol or span in the same content
 state) files no second entry (XM-33): the same why files nothing and says so, and
 another why is filed as a note on the first entry, with its agent id, which `show`

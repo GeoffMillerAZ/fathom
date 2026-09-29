@@ -97,7 +97,8 @@ last dot. Ambiguity is an error that lists candidates, never first-match-wins; a
 retry, never "does not resolve". The store path lists the service's symbols; the daemon path asks `find_symbol`
 for the query and its bare name and applies the same tiers to the answer, which carries no package name, so its
 `package.Name` tier reads the directory's tail. Read-time re-resolution of a key filed before this change works
-through the same tiers.
+through the same tiers, and `map show` and `map compose` take `--service` as an append does, so a worker in an
+isolated clone reads its map through its own scratch store.
 
 **As built (dedupe on append, XM-33, 2026-09-29).** Resolution already merged entries with one dedup key at read
 time; the append now checks the map's own entries by that key (a symbol key without its `svc::` prefix, or a

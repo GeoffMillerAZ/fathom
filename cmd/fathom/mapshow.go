@@ -37,7 +37,8 @@ const mapShowNameMax = 64
 const mapShowIndexDownNote = "the index is unreachable, so symbol entries were checked by their filed span only"
 
 // openMapSymbols opens the symbol lookup a drifted symbol entry is re-resolved
-// by; a variable so a test can supply a table instead of the index.
+// by, for the service named (empty: the one the daemon names for root); a
+// variable so a test can supply a table instead of the index.
 var openMapSymbols = mapSourceSymbols
 
 // mapShowAnnotation is one why line with its provenance.
@@ -109,13 +110,14 @@ func cmdMapShow(args []string, stdout, stderr io.Writer) int {
 	repo := fs.String("repo", ".", "repository the anchors resolve in")
 	storePath := fs.String("store", "", "resolve symbol anchors from this store (default: the daemon)")
 	url := fs.String("url", defaultFathomURL(), "fathom daemon URL")
+	service := fs.String("service", "", "the service symbol anchors resolve in (default: the one the daemon names for this repository; needed with --store when it names none)")
 	jsonOut := fs.Bool("json", false, "emit JSON: the entries shown, the entries cut, the counts (the budget picks the entries; the JSON itself is not capped)")
 	if err := fs.Parse(rest); err != nil {
 		return 1
 	}
 	ids = append(ids, fs.Args()...)
 	if len(ids) != 1 {
-		fmt.Fprintln(stderr, "usage: fathom map show ID [--budget 1200] [--json] [--repo .]")
+		fmt.Fprintln(stderr, "usage: fathom map show ID [--budget 1200] [--json] [--repo .] [--store S --service X]")
 		return 1
 	}
 	if *budget < 0 {
@@ -130,7 +132,7 @@ func cmdMapShow(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	src := newRepoMapSource(root, func() mapSymbolResolver {
-		return openMapSymbols(root, *storePath, *url)
+		return openMapSymbols(root, *storePath, *url, *service)
 	})
 	x, err := explmap.Expand(m.ID, set.maps, src)
 	if err != nil {

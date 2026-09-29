@@ -28,7 +28,7 @@ func gitIn(t *testing.T, repo string, args ...string) {
 func withMapSymbols(t *testing.T, syms fakeSyms) {
 	t.Helper()
 	prev := openMapSymbols
-	openMapSymbols = func(root, storePath, url string) mapSymbolResolver { return syms }
+	openMapSymbols = func(root, storePath, url, service string) mapSymbolResolver { return syms }
 	t.Cleanup(func() { openMapSymbols = prev })
 }
 

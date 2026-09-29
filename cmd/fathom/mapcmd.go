@@ -412,6 +412,7 @@ func cmdMapCompose(args []string, stdout, stderr io.Writer) int {
 	repo := fs.String("repo", ".", "repository")
 	storePath := fs.String("store", "", "resolve symbol anchors from this store (default: the daemon)")
 	url := fs.String("url", defaultFathomURL(), "fathom daemon URL")
+	service := fs.String("service", "", "the service symbol anchors resolve in (default: the one the daemon names for this repository)")
 	jsonOut := fs.Bool("json", false, "emit the composite id and its expansion as JSON")
 	idOnly := fs.Bool("id-only", false, "print only the id (one line), for a brief or a script to capture")
 	if err := fs.Parse(rest); err != nil {
@@ -419,7 +420,7 @@ func cmdMapCompose(args []string, stdout, stderr io.Writer) int {
 	}
 	ids = append(ids, fs.Args()...)
 	if len(ids) == 0 {
-		fmt.Fprintln(stderr, "usage: fathom map compose ID… [--agent A] [--id-only] [--json]")
+		fmt.Fprintln(stderr, "usage: fathom map compose ID… [--agent A] [--id-only] [--json] [--store S --service X]")
 		return 1
 	}
 	root, _ := filepath.Abs(*repo)
@@ -445,7 +446,7 @@ func cmdMapCompose(args []string, stdout, stderr io.Writer) int {
 		return 0
 	}
 	x, err := explmap.Expand(id, set.maps, newRepoMapSource(root, func() mapSymbolResolver {
-		return openMapSymbols(root, *storePath, *url)
+		return openMapSymbols(root, *storePath, *url, *service)
 	}))
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
@@ -543,8 +544,11 @@ func cmdMapList(args []string, stdout, stderr io.Writer) int {
 
 // mapSourceSymbols opens the index for symbol re-resolution; nil (symbol
 // entries then re-resolve only by their filed span) when it is unreachable.
-func mapSourceSymbols(root, storePath, url string) mapSymbolResolver {
-	idx, err := mapOpenIndex(mapServiceOf(root), storePath, url)
+func mapSourceSymbols(root, storePath, url, service string) mapSymbolResolver {
+	if service == "" {
+		service = mapServiceOf(root)
+	}
+	idx, err := mapOpenIndex(service, storePath, url)
 	if err != nil {
 		return nil
 	}
