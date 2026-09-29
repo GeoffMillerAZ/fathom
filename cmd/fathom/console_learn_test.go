@@ -186,11 +186,11 @@ func TestConsoleLearn_PipelineStagesCountsAndLinks(t *testing.T) {
 `)
 	planRoot := t.TempDir()
 	mustWrite(t, filepath.Join(planRoot, "docs", "plans", "a.md"), "- [x] a {id: A-1, symbol: X}\n")
-	g := readVerifyLedgerFor(os.Getenv("FATHOM_VERIFY_LEDGER"), "payment-service", planRoot)
+	g := readVerifyLedgerFor(os.Getenv("FATHOM_VERIFY_LEDGER"), "payment-service", planRoot, unreadRoots)
 	if g.runs.V != 2 || g.plans.V != 1 || g.verified.V != 3 || g.claimed.V != 3 {
 		t.Errorf("gate from the ledger = %+v", g)
 	}
-	if g := readVerifyLedgerFor(os.Getenv("FATHOM_VERIFY_LEDGER"), "checkout-service", planRoot); g.runs.State != console.StateZero || g.verified.State != console.StateAbsent {
+	if g := readVerifyLedgerFor(os.Getenv("FATHOM_VERIFY_LEDGER"), "checkout-service", planRoot, unreadRoots); g.runs.State != console.StateZero || g.verified.State != console.StateAbsent {
 		t.Errorf("a readable ledger with no row for the project is a measured zero of runs: %+v", g)
 	}
 
@@ -581,7 +581,7 @@ func TestReadVerifyLedgerFor_CountsTheProjectsCurrentPlansOnce(t *testing.T) {
 			row("2026-09-24T10:00:00Z", filepath.Join(root, ".claude/worktrees/w"), "docs/plans/a.md", 9, 0)+ // a worktree's copy
 			`{"schema_version":2,"at":"2026-09-24T10:00:00Z","service":"other","plan":"docs/plans/a.md","claimed":1,"verified":0}`+"\n")
 
-	g := readVerifyLedgerFor(ledger, "pay", root)
+	g := readVerifyLedgerFor(ledger, "pay", root, unreadRoots)
 	if g.runs.V != 4 || g.plans.V != 2 || g.verified.V != 1 || g.claimed.V != 11 {
 		t.Errorf("gate = runs %+v plans %+v verified %+v claimed %+v; want 4 runs over 2 plans, 1 of 11 claimed rows verified (a's latest run is the worktree's)", g.runs, g.plans, g.verified, g.claimed)
 	}
@@ -598,7 +598,7 @@ func TestReadVerifyLedgerFor_CountsTheProjectsCurrentPlansOnce(t *testing.T) {
 	}
 	// No recorded root: the ledger cannot be matched to the project's
 	// plans, so nothing is counted — absent with the reason.
-	if g := readVerifyLedgerFor(ledger, "pay", ""); g.runs.State != console.StateAbsent || !strings.Contains(g.runs.Reason, "no corpus root") {
+	if g := readVerifyLedgerFor(ledger, "pay", "", unreadRoots); g.runs.State != console.StateAbsent || !strings.Contains(g.runs.Reason, "no corpus root") {
 		t.Errorf("no root = %+v", g.runs)
 	}
 	// A project whose plans directory cannot be read is an error, never
@@ -608,7 +608,7 @@ func TestReadVerifyLedgerFor_CountsTheProjectsCurrentPlansOnce(t *testing.T) {
 		if err := os.Chmod(plans, 0o000); err != nil {
 			t.Fatal(err)
 		}
-		g := readVerifyLedgerFor(ledger, "pay", root)
+		g := readVerifyLedgerFor(ledger, "pay", root, unreadRoots)
 		_ = os.Chmod(plans, 0o755)
 		if g.runs.State != console.StateError || !strings.Contains(g.runs.Reason, "permission denied") {
 			t.Errorf("an unreadable plans directory = %+v", g.runs)
@@ -616,12 +616,12 @@ func TestReadVerifyLedgerFor_CountsTheProjectsCurrentPlansOnce(t *testing.T) {
 		// A cached count is not an answer for a source unreadable now.
 		resetLearnCache()
 		t.Cleanup(resetLearnCache)
-		if g := cachedVerifyLedgerFor(ledger, "pay", root); g.runs.V != 4 {
+		if g := cachedVerifyLedgerFor(ledger, "pay", root, unreadRoots); g.runs.V != 4 {
 			t.Fatalf("cached gate = %+v", g.runs)
 		}
 		for _, locked := range []string{ledger, plans} {
 			_ = os.Chmod(locked, 0o000)
-			g := cachedVerifyLedgerFor(ledger, "pay", root)
+			g := cachedVerifyLedgerFor(ledger, "pay", root, unreadRoots)
 			_ = os.Chmod(locked, 0o755)
 			if g.runs.State != console.StateError {
 				t.Errorf("%s unreadable after a cached read = %+v, want an error", locked, g.runs)
@@ -772,14 +772,14 @@ func TestSamplePlanRow_UnreadablePlansAreAnErrorNotNone(t *testing.T) {
 	choice := learnChoice{Service: "pay", Row: obsServiceRow{}}
 	choice.Row.Path = root
 
-	if row, note, err := samplePlanRow(choice); row != "- [x] charge {symbol: validateCharge}" || err != nil || !strings.Contains(note, "docs/plans/a.md") {
+	if row, note, err := samplePlanRow(choice, unreadRoots); row != "- [x] charge {symbol: validateCharge}" || err != nil || !strings.Contains(note, "docs/plans/a.md") {
 		t.Fatalf("readable plans = %q %q %v", row, note, err)
 	}
 	for _, locked := range []string{filepath.Dir(plan), plan} {
 		if err := os.Chmod(locked, 0o000); err != nil {
 			t.Fatal(err)
 		}
-		row, note, err := samplePlanRow(choice)
+		row, note, err := samplePlanRow(choice, unreadRoots)
 		_ = os.Chmod(locked, 0o755)
 		if row != "" || err == nil || !strings.Contains(note, "could not be read") || strings.Contains(note, "no claimed plan row") {
 			t.Errorf("%s unreadable = %q %q %v; want an error, never none found", locked, row, note, err)
@@ -788,7 +788,7 @@ func TestSamplePlanRow_UnreadablePlansAreAnErrorNotNone(t *testing.T) {
 	// A project with no plans at all is the honest none.
 	empty := learnChoice{Service: "pay"}
 	empty.Row.Path = t.TempDir()
-	if row, note, err := samplePlanRow(empty); row != "" || err != nil || !strings.Contains(note, "no claimed plan row") {
+	if row, note, err := samplePlanRow(empty, unreadRoots); row != "" || err != nil || !strings.Contains(note, "no claimed plan row") {
 		t.Errorf("no plans = %q %q %v", row, note, err)
 	}
 

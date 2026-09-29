@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -128,7 +129,9 @@ func TestConsoleProofHeatmap(t *testing.T) {
 // The page serves every view, filters included, over a real ledger.
 func TestConsoleProgressPage(t *testing.T) {
 	f := newConsoleFixture(t)
-	if err := os.WriteFile(os.Getenv("FATHOM_VERIFY_LEDGER"), progressHistoryFixture(), 0o644); err != nil {
+	// PE-24: the page reads only the registered root's readings.
+	ledger := strings.ReplaceAll(string(progressHistoryFixture()), `"/r/payment-service"`, strconv.Quote(fixtureServiceRoot(t, f, "payment-service")))
+	if err := os.WriteFile(os.Getenv("FATHOM_VERIFY_LEDGER"), []byte(ledger), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	code, _, body := f.get(t, "/progress?svc=payment-service&from=2026-09-01")

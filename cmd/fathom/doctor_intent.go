@@ -7,6 +7,7 @@ import (
 
 	readmanifest "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/read-manifest"
 	"github.com/geoffmilleraz/fathom/internal/intent"
+	"github.com/geoffmilleraz/fathom/internal/ledgerroots"
 	"github.com/geoffmilleraz/fathom/internal/readcoverage"
 )
 
@@ -165,8 +166,10 @@ func checkIntent(root string) doctorCheck {
 
 // checkUnprovenClaims reports the honest ledger. It reads the newest
 // verify-ledger row per plan — never a fresh verify, which costs ~70
-// seconds here and would make doctor unusable.
-func checkUnprovenClaims(root, baseURL, service string) doctorCheck {
+// seconds here and would make doctor unusable — under roots' registered
+// service roots (PE-24; doctorLedgerRoots decides, and asks nothing inside
+// a hook).
+func checkUnprovenClaims(root, baseURL, service string, roots ledgerroots.Roots) doctorCheck {
 	const name = "unproven_claims"
 
 	if capabilityOffAt(root, "intent-corpus") {
@@ -210,7 +213,7 @@ func checkUnprovenClaims(root, baseURL, service string) doctorCheck {
 	// count as a total. U12 and U13 need no index, so they are wired in;
 	// only U4's index probe is skipped, and that is NAMED below rather than
 	// dropped.
-	rows, note := planRowStates(root)
+	rows, note := planRowStates(root, roots)
 	contracts, contractNote, contractCoverage := planRowContracts(root)
 	guardNotes, guardScopes, guardWhy := repoGuardNotes(root)
 	a := intent.RunAudit(intent.AuditInput{

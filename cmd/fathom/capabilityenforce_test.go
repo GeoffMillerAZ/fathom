@@ -301,7 +301,7 @@ func TestSwitchOffSilencesIntentRowsNotTheVerb(t *testing.T) {
 	if strings.Contains(off.Reason, "condition(s)") {
 		t.Errorf("a switched-off capability must stop narrating: %q", off.Reason)
 	}
-	if offClaims := checkUnprovenClaims(root, "http://127.0.0.1:1", "svc"); !strings.Contains(offClaims.Reason, "switched off") {
+	if offClaims := checkUnprovenClaims(root, "http://127.0.0.1:1", "svc", unreadRoots); !strings.Contains(offClaims.Reason, "switched off") {
 		t.Errorf("unproven_claims must honour the same switch: %q", offClaims.Reason)
 	}
 	offDoctrine := checkDoctrine(root)

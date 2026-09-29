@@ -34,12 +34,14 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	heartbeat "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/heartbeat"
 	skillsdist "github.com/geoffmilleraz/fathom/dist/agents/skills"
 	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/harness"
+	"github.com/geoffmilleraz/fathom/internal/ledgerroots"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
 	toml "github.com/pelletier/go-toml/v2"
 )
@@ -239,6 +241,7 @@ func runDoctorChecks(root, explicitSvc, harness, baseURL string) []doctorCheck {
 		tenancyRep    resourcesReport
 		daemonMetrics map[string]float64
 	)
+	ledgerRoots := sync.OnceValue(func() ledgerroots.Roots { return doctorLedgerRoots(hc, baseURL) }) // PE-24/PE-25
 	steps := []func() doctorCheck{
 		func() doctorCheck { return checkMCPRegistration(root, harness, baseURL) },
 		func() doctorCheck {
@@ -320,7 +323,7 @@ func runDoctorChecks(root, explicitSvc, harness, baseURL string) []doctorCheck {
 		// repo's registered config contracts still true?
 		func() doctorCheck { return checkConcerns(root) },
 		func() doctorCheck { return checkIntent(root) },
-		func() doctorCheck { return checkUnprovenClaims(root, baseURL, explicitSvc) },
+		func() doctorCheck { return checkUnprovenClaims(root, baseURL, explicitSvc, ledgerRoots()) },
 		// DP-3/DP-4 (docs/plans/custodian.md): the doctrine plane — the
 		// vision promotion pipeline and goals as pre-registered bets
 		// (intentdoctrine.go). Warns, never fails.

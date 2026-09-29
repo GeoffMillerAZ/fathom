@@ -37,6 +37,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/assess"
 	"github.com/geoffmilleraz/fathom/internal/custodian"
+	"github.com/geoffmilleraz/fathom/internal/ledgerroots"
 	"github.com/geoffmilleraz/fathom/internal/metrics"
 )
 
@@ -138,19 +139,21 @@ func runFlywheelChecks(baseURL, service string, now time.Time) []flywheelCheck {
 	// is precisely the class of error this verb exists to catch. Every
 	// check must read the same source the surface it mirrors reads.
 	entries, callLogErr := flywheelCallLog(baseURL, service)
-	return flywheelChecksFrom(buildImpactModel(now), entries, callLogErr, now)
+	return flywheelChecksFrom(buildImpactModel(now), entries, callLogErr, now, cliLedgerRoots(baseURL))
 }
 
 // flywheelChecksFrom is runFlywheelChecks over an impact model and call-log
 // entries already read — the console's Operate page passes the observatory
 // model's impact fold and its own read of the log instead of re-reading
 // both (the impact fold alone reads the whole hooks log).
-func flywheelChecksFrom(imp obsImpact, entries []adoptionCallEntry, callLogErr error, now time.Time) []flywheelCheck {
-	return flywheelChecksFold(imp, foldCallLog(entries), callLogErr, now)
+// roots are the registered service roots the verify-gate loop reads the
+// ledger under (PE-24).
+func flywheelChecksFrom(imp obsImpact, entries []adoptionCallEntry, callLogErr error, now time.Time, roots ledgerroots.Roots) []flywheelCheck {
+	return flywheelChecksFold(imp, foldCallLog(entries), callLogErr, now, roots)
 }
 
 // flywheelChecksFold is flywheelChecksFrom over the call log's fold.
-func flywheelChecksFold(imp obsImpact, fold *callLogFold, callLogErr error, now time.Time) []flywheelCheck {
+func flywheelChecksFold(imp obsImpact, fold *callLogFold, callLogErr error, now time.Time, roots ledgerroots.Roots) []flywheelCheck {
 	ledger := readLedgerRows(sessionLedgerPath())
 	obligationCalls := fold.obligations
 	return []flywheelCheck{
@@ -158,7 +161,7 @@ func flywheelChecksFold(imp obsImpact, fold *callLogFold, callLogErr error, now 
 		checkLoopArm(ledger, imp, now),
 		checkLoopCallLog(fold, callLogErr, now),
 		checkLoopObligations(obligationCalls),
-		checkLoopVerifyGate(imp),
+		checkLoopVerifyGate(imp, roots),
 		checkLoopExploration(imp),
 		checkLoopObservations(),
 		checkLoopContinuity(),
@@ -474,8 +477,8 @@ func checkLoopObligations(obligationCalls int) flywheelCheck {
 	return c
 }
 
-func checkLoopVerifyGate(imp obsImpact) flywheelCheck {
-	c := flywheelCheck{
+func checkLoopVerifyGate(imp obsImpact, roots ledgerroots.Roots) (c flywheelCheck) {
+	c = flywheelCheck{
 		Loop:    "verify-gate",
 		Purpose: "plan claims re-checked against code — the clearest single number for what fathom stopped",
 	}
@@ -484,7 +487,9 @@ func checkLoopVerifyGate(imp obsImpact) flywheelCheck {
 	// instrumentation this loop originally read, so a repo gating on
 	// every push still read "never ran". The verify ledger (SD-1) is the
 	// recorded-run signal that sees them.
-	ledgered := readVerifyLedger()
+	// PE-24: only the registered roots' runs, the ignored ones named.
+	ledgered, ignored := readRegisteredVerifyLedger(roots)
+	defer func() { c.Evidence = withIgnored(c.Evidence, ignored, verifyLedgerNoun) }()
 	switch {
 	case (imp.VerifyCatchesTotal == nil || ran <= 0) && len(ledgered) > 0:
 		last := ledgered[len(ledgered)-1]

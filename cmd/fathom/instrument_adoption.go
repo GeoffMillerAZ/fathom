@@ -294,7 +294,10 @@ func instrumentAdoption(q adoptionQuery, stderr io.Writer) (AdoptionReport, cons
 	// IT-11: the verify-gate figure sources from the verify ledger, never
 	// the call log — readVerifyLedger() already honors FATHOM_VERIFY_LEDGER
 	// (verifyledger.go), the "path injectable" this row asks for.
-	report := buildAdoptionReportFold(callLogPath, read, callLogReadError, fold, skippedMalformed, toolNames, toolNote, openObs, observationsPath(q.Root), readVerifyLedger())
+	// PE-24: over the registered roots' rows only, the ignored ones named.
+	ledgerRows, ledgerIgnored := readRegisteredVerifyLedger(cliLedgerRoots(q.BaseURL))
+	report := buildAdoptionReportFold(callLogPath, read, callLogReadError, fold, skippedMalformed, toolNames, toolNote, openObs, observationsPath(q.Root), ledgerRows)
+	report.VerifyGateNote = withIgnored(report.VerifyGateNote, ledgerIgnored, verifyLedgerNoun)
 	report.ServiceFilter = q.Service
 	report.UnattributedExcluded = unattributedExcluded
 	// O17: same fabrication risk as buildAdoptionReport's zeroCall — the

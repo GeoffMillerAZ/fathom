@@ -56,7 +56,7 @@ func TestU2RemedyMatchesCounter(t *testing.T) {
 	t.Setenv("FATHOM_VERIFY_LEDGER", ledger)
 	cwd, _ := os.Getwd()
 	appendVerifyLedger([]string{planPath}, "svc", []verify.Report{rep}, verifyProvenance{})
-	rows, _ := planRowStates(cwd)
+	rows, _ := planRowStates(cwd, unreadRoots)
 	var u2 []intent.PlanRowState
 	for _, r := range rows {
 		if r.Unknown {

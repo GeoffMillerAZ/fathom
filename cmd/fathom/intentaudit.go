@@ -17,6 +17,7 @@ import (
 	readmanifest "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/read-manifest"
 	"github.com/geoffmilleraz/fathom/internal/guardspec"
 	"github.com/geoffmilleraz/fathom/internal/intent"
+	"github.com/geoffmilleraz/fathom/internal/ledgerroots"
 	"github.com/geoffmilleraz/fathom/internal/readcoverage"
 	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/internal/verify"
@@ -170,7 +171,14 @@ func runIntentAudit(o intentAuditOptions) (intentAuditRun, error) {
 		}
 	}
 
-	rows, note := planRowStates(abs)
+	// PE-24: the ledgers are read under the registered service roots,
+	// asked once for the whole run (in process inside the daemon).
+	rootsClient := o.HTTP
+	if rootsClient == nil {
+		rootsClient = &http.Client{Timeout: 5 * time.Second}
+	}
+	roots := registeredLedgerRoots(rootsClient, o.URL)
+	rows, note := planRowStates(abs, roots)
 	guardNotes, guardScopes, guardNote2 := repoGuardNotes(abs)
 	contracts, contractNote, contractCoverage := planRowContracts(abs)
 	ledger := intent.ReadLedger()
@@ -479,9 +487,16 @@ func intentAuditPayload(c intent.Corpus, a intent.Audit, ledger []intent.LedgerR
 
 // planRowStates reads the newest verify-ledger row per plan at HEAD. It
 // never runs a verify: 45 plans is ~70 seconds, which no audit, doctor row
-// or fleet column may spend.
-func planRowStates(root string) ([]intent.PlanRowState, string) {
-	rows := readVerifyLedger()
+// or fleet column may spend. Only rows under roots' registered service
+// roots count (PE-24); the note names the rows ignored.
+func planRowStates(root string, roots ledgerroots.Roots) ([]intent.PlanRowState, string) {
+	rows, ignored := readRegisteredVerifyLedger(roots)
+	states, note := planRowStatesOf(root, rows)
+	return states, withIgnored(note, ignored, verifyLedgerNoun)
+}
+
+// planRowStatesOf folds the (registered) rows for root.
+func planRowStatesOf(root string, rows []verifyLedgerRow) ([]intent.PlanRowState, string) {
 	if len(rows) == 0 {
 		return nil, "no verify-gate run recorded (~/.fathom/verify-ledger.jsonl is empty or unreadable)"
 	}
