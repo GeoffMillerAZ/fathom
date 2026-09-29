@@ -3,7 +3,7 @@ package main
 // conserve.go — cmdConserve (CV-19, ADR-044 §0/§6): the CLI surface for
 // internal/conserve's report —
 //
-//	fathom conserve --since <ref> [--json] [--strict] [--service S] [--store DB]
+//	fathom conserve --since <ref> [--json] [--strict] [--strict-plane integrity] [--service S] [--store DB]
 //
 // Store-direct (mirrors cmd/fathom/review.go and cmd/fathom/verify.go):
 // opens --store directly, resolves the repo root the same way `fathom
@@ -15,8 +15,12 @@ package main
 // lands.
 //
 // Exit codes: 0 pass (including --strict with no losses); 1 (--strict
-// only) any plane's Verdict is "losses"; 2 an operational failure
-// (bad flags, unreadable store, an unresolvable --since ref).
+// only) any plane's Verdict is "losses", or (--strict-plane integrity,
+// PR-9) a silent pin loss: a test a governing source names, lost in the
+// range while that source still names it at head (a retired pin, whose
+// source dropped the name in the range, is printed for review and never
+// fails); 2 an operational failure (bad flags, unreadable store, an
+// unresolvable --since ref, a pin check that could not read its input).
 import (
 	"context"
 	"encoding/json"
@@ -37,6 +41,7 @@ func cmdConserve(args []string, stdout, stderr io.Writer) int {
 	storePath := fs.String("store", defaultStorePath(), "store path (.sqlite/.db)")
 	jsonOut := fs.Bool("json", false, "emit the fathom.conserve/v1 JSON report instead of a text table")
 	strict := fs.Bool("strict", false, "exit 1 when any plane's verdict is \"losses\"")
+	strictPlane := fs.String("strict-plane", "", "exit 1 on one plane's blocking losses only; \"integrity\": a lost pin whose naming source still names it at head (a retired pin is printed for review and passes)")
 	residueMax := fs.Int("residue-max", conserve.DefaultResidueMax, "cap on the reading set's item list (design §3.4); the report says how many were cut")
 	coverageMeta := fs.String("coverage-meta", "", "path to a coverage.meta.json binding a Go coverage profile for the reading set's execution evidence (design §3.5); default: [tests] results_dir/coverage.meta.json when configured")
 	var plans planFlags
@@ -55,6 +60,10 @@ func cmdConserve(args []string, stdout, stderr io.Writer) int {
 		fs.Usage()
 		return 2
 	}
+	if *strictPlane != "" && *strictPlane != "integrity" {
+		fmt.Fprintf(stderr, "error: --strict-plane %q: only \"integrity\" has a per-plane gate (--strict covers every plane)\n", *strictPlane)
+		return 2
+	}
 
 	root := verifyRepoRoot()
 	planPaths := []string(plans)
@@ -70,12 +79,19 @@ func cmdConserve(args []string, stdout, stderr io.Writer) int {
 	defer st.Close()
 
 	ctx := context.Background()
-	rep, err := conserveReportFor(ctx, st, root, *since, *service, planPaths, *coverageMeta, *residueMax)
+	in, rep, err := conserveInputReport(ctx, st, root, *since, *service, planPaths, *coverageMeta, *residueMax, 0)
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 2
 	}
 	residue := *rep.Residue
+	var pins []conserve.PinLoss
+	if *strictPlane == "integrity" {
+		if pins, err = conserve.PinLossesOf(ctx, in); err != nil {
+			fmt.Fprintf(stderr, "error: %v\n", err)
+			return 2
+		}
+	}
 
 	if *jsonOut {
 		b, jerr := json.MarshalIndent(rep, "", "  ")
@@ -89,42 +105,90 @@ func cmdConserve(args []string, stdout, stderr io.Writer) int {
 		printConserveResidue(stdout, residue)
 	}
 
+	code := 0
+	if *strictPlane == "integrity" {
+		// Under --json stdout stays the fathom.conserve/v1 document.
+		w := stdout
+		if *jsonOut {
+			w = stderr
+		}
+		if printPinLosses(w, pins) > 0 {
+			code = 1
+		}
+	}
 	if *strict {
 		for _, pr := range rep.Planes {
 			if pr.Verdict == conserve.Losses {
-				return 1
+				code = 1
 			}
 		}
 	}
-	return 0
+	return code
 }
 
-// conserveReportFor is `fathom conserve --since --json`'s whole report:
-// every registered plane over base..worktree, the per-language tiers and
-// the reading set. The console's refactor page (OC-26) calls it with the
-// service's registered root, so the page and the verb cannot disagree.
-func conserveReportFor(ctx context.Context, st store.Store, root, since, service string, planPaths []string, coverageMeta string, residueMax int) (conserve.Report, error) {
-	return conserveReportCapped(ctx, st, root, since, service, planPaths, coverageMeta, residueMax, 0)
+// printPinLosses renders --strict-plane integrity's verdict: one line per
+// lost pin, a silent loss (it blocks) or a retired pin (printed for review),
+// then a summary line. It returns the silent-loss count.
+func printPinLosses(w io.Writer, pins []conserve.PinLoss) int {
+	silent, retired := 0, 0
+	for _, p := range pins {
+		cites := make([]string, len(p.Sources))
+		for i, s := range p.Sources {
+			cites[i] = s.Cite()
+		}
+		where := ""
+		switch {
+		case p.RenamedTo != "":
+			where = fmt.Sprintf(", now %s (%s:%d)", p.RenamedTo, p.HeadFile, p.HeadLine)
+		case p.ReplacedBy != "":
+			where = fmt.Sprintf(", %s is new in its place (%s:%d)", p.ReplacedBy, p.HeadFile, p.HeadLine)
+		case p.HeadFile != "" && p.HeadLine > 0:
+			where = fmt.Sprintf(" (%s:%d)", p.HeadFile, p.HeadLine)
+		}
+		if p.Silent() {
+			silent++
+			fmt.Fprintf(w, "pin lost (silent, blocks): %s %s, named by %s and still named there at head%s\n",
+				p.Kind, p.Test, strings.Join(cites, "; "), where)
+			continue
+		}
+		retired++
+		fmt.Fprintf(w, "pin retired (review): %s %s, named at base by %s; the source was edited and no longer names it%s\n",
+			p.Kind, p.Test, strings.Join(cites, "; "), where)
+	}
+	fmt.Fprintf(w, "integrity pins: %d silent loss(es), %d retired pin(s)\n", silent, retired)
+	return silent
 }
 
-// conserveReportCapped is conserveReportFor refusing, by name, a range
-// that changes more than maxFiles files (0: no cap) — the console's
-// `[console] conserve_max_files` (RT-118): the refusal names the count,
-// the cap and the verb that still computes it, never a partial report.
+// conserveReportCapped is `fathom conserve --since`'s whole report — every
+// registered plane over base..worktree, the per-language tiers and the
+// reading set — refusing, by name, a range that changes more than maxFiles
+// files (0: no cap) — the console's `[console] conserve_max_files`
+// (RT-118): the refusal names the count, the cap and the verb that still
+// computes it, never a partial report. The console's refactor page (OC-26)
+// calls it with the service's registered root, so the page and the verb
+// cannot disagree.
 func conserveReportCapped(ctx context.Context, st store.Store, root, since, service string, planPaths []string, coverageMeta string, residueMax, maxFiles int) (conserve.Report, error) {
+	_, rep, err := conserveInputReport(ctx, st, root, since, service, planPaths, coverageMeta, residueMax, maxFiles)
+	return rep, err
+}
+
+// conserveInputReport is conserveReportCapped that also returns the Input it
+// built: the verb itself calls it, so `--strict-plane integrity` checks pins
+// over the identical range (one NewInput, one set of git reads).
+func conserveInputReport(ctx context.Context, st store.Store, root, since, service string, planPaths []string, coverageMeta string, residueMax, maxFiles int) (conserve.Input, conserve.Report, error) {
 	in, err := conserve.NewInput(ctx, root, since, st, service, planPaths)
 	if err != nil {
-		return conserve.Report{}, err
+		return conserve.Input{}, conserve.Report{}, err
 	}
 	if maxFiles > 0 && len(in.ChangedFiles) > maxFiles {
-		return conserve.Report{}, fmt.Errorf("not computed here: the range since %s has %d changed files, over [console] conserve_max_files = %d; run fathom conserve --since %s --service %s", since, len(in.ChangedFiles), maxFiles, since, service)
+		return conserve.Input{}, conserve.Report{}, fmt.Errorf("not computed here: the range since %s has %d changed files, over [console] conserve_max_files = %d; run fathom conserve --since %s --service %s", since, len(in.ChangedFiles), maxFiles, since, service)
 	}
 	loadConserveCoverage(&in, root, coverageMeta)
 	rep := conserve.Run(ctx, in, conserve.Planes())
 	rep.Tiers = conserve.TiersByLanguage(ctx, in)
 	residue := conserve.Residue(ctx, in, residueMax)
 	rep.Residue = &residue
-	return rep, nil
+	return in, rep, nil
 }
 
 // loadConserveCoverage resolves and loads the coverage.meta.json (CV-67,

@@ -15,11 +15,11 @@ what was considered so it is not re-proposed.
 ## Wave 0: facts and the $0 replay
 
 - [ ] (op) PR-V1: whether Claude Code and Codex PostToolUse input for a shell command carries its stdout (git's `[branch sha]` summary line) and whether context added there reaches the model {id: PR-V1, oracle: lexical, path: docs/bench/readings/served-not-kept/hook-facts.md, pattern: "^PR-V1 reading:"}
-- [ ] (op) PR-M0: the $0 replay over guards-pilot 6 and 8 cell diffs flags every violating i28 cell and no oracle-clean cell, and publishes the fragment evaluators' would-have-fired and false-fire counts {id: PR-M0, oracle: lexical, path: docs/bench/readings/served-not-kept/pr-m0-replay.md, pattern: "^PR-M0 verdict: (PASS|FAIL)"}
+- [x] (op) PR-M0: the $0 replay over guards-pilot 6 and 8 cell diffs flags every violating i28 cell and no oracle-clean cell, and publishes the fragment evaluators' would-have-fired and false-fire counts {id: PR-M0, oracle: lexical, path: docs/bench/readings/served-not-kept/pr-m0-replay.md, pattern: "^PR-M0 verdict: (PASS|FAIL)"}
 
 ## Wave 1: the commit pin line
 
-- [ ] A storeless pin-loss check over base to head: the CV-7 guarded set without reach, returning only loss kinds and never `edited`; a test moved unchanged to another changed file is not a loss {id: PR-1, symbol: PinLosses, package: internal/conserve, reachable_from: TestPinLossesI28RenameIsLossAndMoveIsNot, needs: "PR-M0"}
+- [x] A storeless pin-loss check over base to head: the CV-7 guarded set without reach, returning only loss kinds and never `edited`; a test moved unchanged to another changed file is not a loss {id: PR-1, symbol: PinLosses, package: internal/conserve, reachable_from: TestPinLossesI28RenameIsLossAndMoveIsNot, needs: "PR-M0"}
 - [ ] A guard's `done needs:` tests join the guarded set under their own reason {id: PR-2, symbol: GuardedTests, package: internal/analysis/integrity, reachable_from: TestGuardedTestsIncludesGuardDoneNeeds}
 - [ ] On a `git commit` seen by PostToolUse(Bash), the hook reads the sha from git's summary line, checks parent to commit, and adds one line per lost pin naming the test, its naming source, the loss kind and a head location; silent when nothing is lost; no waiver text {id: PR-3, symbol: commitPinLine, package: cmd/fathom, reachable_from: TestCommitPinLineNamesSourceAndIsSilentOnKeep, needs: "PR-1,PR-2,PR-V1"}
 - [ ] The stage reads blobs through one `git cat-file --batch` process, stays inside a 250 ms sub-budget and its descriptor deadline (I53), and on a miss skips silently with a `skipped` beat, never a kept one {id: PR-4, symbol: runCommitPinWithDeadline, package: cmd/fathom, reachable_from: TestCommitPinSkipsSilentlyOverBudget, needs: "PR-3"}
@@ -30,7 +30,7 @@ what was considered so it is not re-proposed.
 ## Wave 2: the pre-push gate (owner decision)
 
 - [x] (op) PR-8: the owner accepts or rejects blocking a silent pin loss at pre-push, recorded on the `PR-8 decision.` line of ADR-057 (Q34) {id: PR-8, oracle: lexical, path: ADR.md, pattern: "^\*\*PR-8 decision\.\*\* (accepted|rejected)"}
-- [ ] `fathom conserve --strict-plane integrity` exits 1 only on a loss whose naming source still names the test at head, prints a retired pin for review without failing, and lefthook's refactor-conserve uses it {id: PR-9, symbol: cmdConserve, package: cmd/fathom, reachable_from: TestConserveStrictIntegrityBlocksOnlySilentPinLoss, needs: "PR-1,PR-8"}
+- [x] `fathom conserve --strict-plane integrity` exits 1 only on a loss whose naming source still names the test at head, prints a retired pin for review without failing, and lefthook's refactor-conserve uses it {id: PR-9, symbol: cmdConserve, package: cmd/fathom, reachable_from: TestConserveStrictIntegrityBlocksOnlySilentPinLoss, needs: "PR-1,PR-8"}
 
 ## Wave 3: ledger rows that ride SR-61
 
