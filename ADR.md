@@ -563,7 +563,10 @@ anywhere in the pushed range is self-declared and refused (I45), with or without
 between it and the claim; with no merge-base the step verifies without `--since` and says so, and
 exit 2 still fails open. It is not retroactive: the 41 are on main, so they predate every later
 range. Plan rows: `docs/plans/efficiency-wave.md` EW-14 (this gate) and EW-15 (wired-check
-hardening from the same audit). Proof: `TestLefthook_PrePushVerifyReadsTheChangeRange` runs the
+hardening from the same audit). Amended by EW-16: `<base>` is the remote sha lefthook passes
+on stdin (`use_stdin: true`), the ref the push replaces, so a stale local `origin/main` neither
+blocks a legitimate push nor widens the range; a new branch or a sha this clone lacks falls back to
+the merge-base and says so. Proof: `TestLefthook_PrePushVerifyReadsTheChangeRange` runs the
 step's own body against a stub binary; `TestCmdVerify_StrictSince_LibraryWaiverInsideTheRangeFails`
 shows a waiver committed before its claim, inside one range, passing without `--since` and failing
 with it.

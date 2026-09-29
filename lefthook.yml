@@ -51,16 +51,25 @@ pre-push:
     # (scripts/gate-lease.sh), so concurrent pushes queue rather than
     # ingest side by side.
     # Push 79 (ADR-018 note 2026-09-29, I45): verify reads the change range,
-    # `--since $(git merge-base HEAD origin/main)`, so a `library: true` or
-    # `skip_test` waiver added in the same range as the claim it excuses is
-    # self-declared and refused. Not retroactive: a waiver already on
-    # origin/main predates every later range. No merge-base (no origin/main
-    # ref, a shallow clone) runs verify without --since and says so; exit 2
-    # stays fail-open. A stale origin/main (a push clone whose origin is a
-    # local checkout that has not fetched) widens the range, so a waiver
-    # already on the remote reads self-declared: a block names the base it
-    # read so the fix (fetch main, retry) is visible, never a silent pass.
+    # `--since <base>`, so a `library: true` or `skip_test` waiver added in
+    # the same range as the claim it excuses is self-declared and refused.
+    # Not retroactive: a waiver already on the remote predates every later
+    # range. Exit 2 stays fail-open.
+    # EW-16: <base> is the remote sha git hands the hook on stdin (lefthook
+    # `use_stdin: true`: "<local ref> <local sha> <remote ref> <remote sha>"
+    # per pushed ref), the ref this push replaces, so a stale local
+    # origin/main (a push clone whose origin is a local checkout that has not
+    # fetched) neither blocks a legitimate push nor widens the range. The
+    # ref pushing HEAD names the base; `git merge-base <remote sha> HEAD`
+    # makes a force push read from its fork point. No usable remote sha (a
+    # new branch's all-zero sha, a sha this clone does not hold, a
+    # delete-only push, stdin from a terminal or absent) falls back to
+    # `git merge-base HEAD origin/main` and says why; no merge-base either
+    # (no origin/main ref, a shallow clone) runs verify without --since and
+    # says so. A block names the base it read. The body runs under macOS's
+    # bash 3.2 (no ${x,,}, no mapfile, no empty-array expansion under set -u).
     verify:
+      use_stdin: true
       run: |
         [ -x bin/fathom ] || exit 0
         lease="bash scripts/gate-lease.sh"
@@ -79,11 +88,39 @@ pre-push:
           exit 0
         fi
         since=()
-        if base=$(git merge-base HEAD origin/main 2>/dev/null) && [ -n "$base" ]; then
-          since=(--since "$base")
-        else
-          echo "fathom verify: no merge-base with origin/main — verifying without --since (a waiver added in this push is not checked for self-declaration)"
+        base=""
+        range_from=""
+        remote_sha=""
+        new_branch=""
+        if [ ! -t 0 ]; then
+          head_sha=$(git rev-parse HEAD 2>/dev/null)
+          while read -r _lref lsha _rref rsha; do
+            [ -n "$lsha" ] || continue
+            [ -n "${lsha//0/}" ] || continue # an all-zero local sha deletes a ref: nothing to verify
+            if [ "$lsha" = "$head_sha" ] || [ -z "$remote_sha$new_branch" ]; then
+              if [ -z "${rsha//0/}" ]; then remote_sha=""; new_branch=1; else remote_sha="$rsha"; new_branch=""; fi
+            fi
+          done
         fi
+        if [ -n "$remote_sha" ]; then
+          if git cat-file -e "$remote_sha^{commit}" 2>/dev/null && base=$(git merge-base "$remote_sha" HEAD 2>/dev/null) && [ -n "$base" ]; then
+            range_from="the remote sha this push replaces"
+          else
+            base=""
+            echo "fathom verify: the remote sha $remote_sha is not a commit in this clone (fetch first) — falling back to the merge-base with origin/main"
+          fi
+        elif [ -n "$new_branch" ]; then
+          echo "fathom verify: a new branch has no remote sha — reading the range from the merge-base with origin/main"
+        fi
+        if [ -z "$base" ]; then
+          if base=$(git merge-base HEAD origin/main 2>/dev/null) && [ -n "$base" ]; then
+            range_from="merge-base with origin/main"
+          else
+            base=""
+            echo "fathom verify: no merge-base with origin/main — verifying without --since (a waiver added in this push is not checked for self-declaration)"
+          fi
+        fi
+        [ -z "$base" ] || since=(--since "$base")
         rc=0
         for f in "${plans[@]}"; do
           $lease bin/fathom verify --strict "${since[@]}" --store "$store" --service fathom --plan "$f" --quiet
@@ -94,7 +131,11 @@ pre-push:
           fi
         done
         if [ $rc -eq 1 ] && [ ${#since[@]} -gt 0 ]; then
-          echo "fathom verify: the range was read from $base (merge-base with origin/main); if origin/main is stale, a waiver already on the remote reads self-declared — fetch main into origin/main and retry"
+          if [ "$range_from" = "merge-base with origin/main" ]; then
+            echo "fathom verify: the range was read from $base ($range_from); if origin/main is stale, a waiver already on the remote reads self-declared — fetch main into origin/main and retry"
+          else
+            echo "fathom verify: the range was read from $base ($range_from); a waiver added in $base..HEAD reads self-declared"
+          fi
         fi
         exit $rc
     # fathom review — C3-1, the forced channel (docs/plans/review-verb.md):
