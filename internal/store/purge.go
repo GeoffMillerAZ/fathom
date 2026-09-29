@@ -85,6 +85,12 @@ const (
 	// symbol_centrality.file (TQ-2): both name indexed paths.
 	LocFileChurn        PurgeLocation = "file_churn"
 	LocSymbolCentrality PurgeLocation = "symbol_centrality"
+	// LocDocUnits is doc_units.path, LocDocsFTS docs_fts.path (the text and
+	// its index terms) and LocDocLinks doc_links, keyed by the purged units'
+	// ids (KR-8: the doc index holds document text once an ingest fills it).
+	LocDocUnits PurgeLocation = "doc_units"
+	LocDocsFTS  PurgeLocation = "docs_fts"
+	LocDocLinks PurgeLocation = "doc_links"
 )
 
 // The non-SQL locations, reported separately because they have no row
@@ -104,6 +110,7 @@ func PurgeLocations() []PurgeLocation {
 		LocTypedEdges, LocTypedEdgeFingerprints, LocSemanticClaims,
 		LocClaimLinks, LocClaimEvents, LocFileStats, LocFileImports,
 		LocFileChurn, LocSymbolCentrality,
+		LocDocUnits, LocDocsFTS, LocDocLinks,
 	}
 }
 
@@ -450,6 +457,7 @@ type purgeTargets struct {
 	claimIDs   []string
 	packages   []string
 	symbolIDs  []string
+	docUnitIDs []string // doc_units ids of the purged paths: doc_links has no path column
 }
 
 func (p *purgeTargets) countsList() []LocationCount {
@@ -532,6 +540,11 @@ func resolvePurgeTargets(ctx context.Context, db *sql.DB, serviceID string, m Pa
 		{LocFileImports, `SELECT path FROM file_imports WHERE service_id = ?`},
 		{LocFileChurn, `SELECT path FROM file_churn WHERE service_id = ?`},
 		{LocSymbolCentrality, `SELECT DISTINCT file FROM symbol_centrality WHERE service_id = ? AND file <> ''`},
+		// KR-8: the doc index, read from doc_units' own path column and,
+		// independently, from docs_fts's (the text and its index terms), so
+		// a survivor in either is found by its own column.
+		{LocDocUnits, `SELECT path FROM doc_units WHERE service_id = ?`},
+		{LocDocsFTS, `SELECT path FROM docs_fts WHERE service_id = ?`},
 	} {
 		vals, err := queryStrings(ctx, db, q.query, serviceID)
 		if err != nil {
@@ -594,7 +607,31 @@ func resolvePurgeTargets(ctx context.Context, db *sql.DB, serviceID string, m Pa
 		return nil, err
 	}
 
+	// doc_links has no path column: its rows belong to the units of the
+	// purged documents, resolved through doc_units' path.
+	docUnitSet := map[string]bool{}
+	rows, err = db.QueryContext(ctx, `SELECT unit_id, path FROM doc_units WHERE service_id = ?`, serviceID)
+	if err != nil {
+		return nil, fmt.Errorf("store.resolvePurgeTargets doc_units: %w", err)
+	}
+	for rows.Next() {
+		var id, path string
+		if err := rows.Scan(&id, &path); err != nil {
+			rows.Close()
+			return nil, fmt.Errorf("store.resolvePurgeTargets doc_units scan: %w", err)
+		}
+		if m.Match(scope.NormalizeRef(path)) {
+			docUnitSet[id] = true
+		}
+	}
+	if err := closeRows(rows, "doc_units"); err != nil {
+		return nil, err
+	}
+
 	if seed != nil {
+		for _, id := range seed.docUnitIDs {
+			docUnitSet[id] = true
+		}
 		for _, id := range seed.claimIDs {
 			claimSet[id] = true
 		}
@@ -603,6 +640,7 @@ func resolvePurgeTargets(ctx context.Context, db *sql.DB, serviceID string, m Pa
 		}
 	}
 
+	t.docUnitIDs = sortedSetKeys(docUnitSet)
 	t.claimIDs = sortedSetKeys(claimSet)
 	t.packages = sortedSetKeys(pkgSet)
 	t.symbolIDs = sortedSetKeys(symbolSet)
@@ -632,6 +670,13 @@ func resolvePurgeTargets(ctx context.Context, db *sql.DB, serviceID string, m Pa
 			return nil, err
 		}
 		t.counts[LocClaimEvents] = n
+	}
+	if len(t.docUnitIDs) > 0 {
+		n, err := countIn(ctx, db, `SELECT count(*) FROM doc_links WHERE service_id = ? AND unit_id IN (%s)`, serviceID, t.docUnitIDs)
+		if err != nil {
+			return nil, err
+		}
+		t.counts[LocDocLinks] = n
 	}
 	if len(t.packages) > 0 {
 		n, err := countIn(ctx, db, `SELECT count(*) FROM typed_edge_fingerprints WHERE service_id = ? AND pkg_path IN (%s)`, serviceID, t.packages)
@@ -749,6 +794,25 @@ func (s *SQLiteStore) executePurge(ctx context.Context, serviceID string, plan *
 	// the package as already loaded and the purged edges never rebuild.
 	if err := del(`DELETE FROM typed_edge_fingerprints WHERE service_id = ? AND pkg_path IN (%s)`, plan.packages, true); err != nil {
 		return out, err
+	}
+	// KR-8: the doc index. doc_links first (its rows are found through the
+	// units), then the units and the FTS rows by their own path columns.
+	if err := del(`DELETE FROM doc_links WHERE service_id = ? AND unit_id IN (%s)`, plan.docUnitIDs, true); err != nil {
+		return out, err
+	}
+	if err := del(`DELETE FROM doc_units WHERE service_id = ? AND path IN (%s)`, plan.byLocation[LocDocUnits], true); err != nil {
+		return out, err
+	}
+	if err := del(`DELETE FROM docs_fts WHERE service_id = ? AND path IN (%s)`, plan.byLocation[LocDocsFTS], true); err != nil {
+		return out, err
+	}
+	if len(plan.byLocation[LocDocsFTS]) > 0 {
+		// Deleting an FTS5 row leaves its terms in the index segments until a
+		// merge; optimize rewrites the index without them, so the erased
+		// text's words do not survive in docs_fts_data.
+		if _, err := tx.ExecContext(ctx, `INSERT INTO docs_fts(docs_fts) VALUES('optimize')`); err != nil {
+			return out, fmt.Errorf("store.PurgePaths docs_fts optimize: %w", err)
+		}
 	}
 	if opts.IncludeHistory {
 		// Deleted FIRST, while the claims still resolve membership — the
@@ -1048,9 +1112,10 @@ SELECT EXISTS(SELECT 1 FROM observations   WHERE source_ref = ?)
     OR EXISTS(SELECT 1 FROM fingerprints   WHERE source_ref = ?)
     OR EXISTS(SELECT 1 FROM doc_summaries  WHERE source_ref = ?)
     OR EXISTS(SELECT 1 FROM knowledge_cards WHERE file = ?)
-    OR EXISTS(SELECT 1 FROM typed_edges    WHERE from_file = ?)`
+    OR EXISTS(SELECT 1 FROM typed_edges    WHERE from_file = ?)
+    OR EXISTS(SELECT 1 FROM doc_units      WHERE path = ?)`
 	var live bool
-	if err := s.db.QueryRowContext(ctx, q, path, path, path, path, path).Scan(&live); err != nil {
+	if err := s.db.QueryRowContext(ctx, q, path, path, path, path, path, path).Scan(&live); err != nil {
 		return false, err
 	}
 	return live, nil

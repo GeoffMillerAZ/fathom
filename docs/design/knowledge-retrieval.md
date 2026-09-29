@@ -59,6 +59,23 @@ Units are written at ingest when a doc file's content hash changes (hash-gated, 
 deleted file's units are removed in the same transaction. `doc_links.valid_to` is set when a
 link stops holding (the governance-learning validity-window rule), not deleted.
 
+Built (KR-8, KR-9; `internal/fusion/docindexpass.go` calls `docindex.IngestDocUnits` at every
+ingest's final commit). The corpus is the Markdown the connector discovered, so `.fathomignore`
+and a purge's scoped exclusions govern the doc index exactly as they govern the code index. The
+gate is `doc_units` itself: a file is unchanged when the units its split would store equal the
+units stored for its path (ids, content hashes, line ranges, heading paths, kinds), so nothing
+records "what I saw last time" outside the index it guards. A per-file fingerprint in the shared
+`fingerprints` table was tried first and is wrong: `ListSourceRefs` unions that table with
+observations and the orphan purge deletes every stored ref discovery did not return. Two sections
+with the same heading path and kind get an ordinal in their unit id (a changelog's repeated
+`### Added`). The byte budget (§8) is planned over the whole service from body-less stubs, so an
+unchanged file that stops fitting loses its units and one that fits again gets them back; what
+was cut is `Report.DocIndex.Elided`, named by path and heading. A file over 2 MiB is named and not
+indexed; an unreadable one is named and keeps its stored units. Nothing about the pass can fail
+the code ingest: `Report.DocIndexSkipped` says why it did not run or finish. `docs_fts`,
+`doc_units` and `doc_links` are covered by `RemoveService`, `RenameService` and `fathom purge`
+(`docs/design/scope-and-purge.md` §3.2).
+
 ## 5. Ranking
 
 A query runs `docs_fts MATCH ?` bounded to the service set, `ORDER BY bm25(docs_fts, 3.0,

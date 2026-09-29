@@ -40,6 +40,43 @@ var newIngestClient = func(m client.Mode, storePath string) (*client.Client, err
 	return client.NewConstantClient(m, storePath)
 }
 
+// docElidedShown caps how many budget-elided doc units the summary names
+// inline (the full list is on the Report and, counted, in --json).
+const docElidedShown = 5
+
+// printDocIndex is the ingest summary's doc-unit block (KR-8/KR-9,
+// internal/fusion's docindexpass.go): what the pass did, what the byte budget
+// cut — named, never a silent trim — what could not be indexed, and why the
+// pass did not run (I38).
+func printDocIndex(stdout, stderr io.Writer, r client.Report) {
+	if r.DocIndexSkipped != "" {
+		fmt.Fprintf(stdout, "docs: skipped — %s\n", r.DocIndexSkipped)
+	}
+	d := r.DocIndex
+	if d.FilesScanned > 0 || d.FilesDeleted > 0 {
+		fmt.Fprintf(stdout, "docs: %d file(s) scanned, %d re-indexed (%d unit(s) written), %d unchanged, %d removed\n",
+			d.FilesScanned, d.FilesChanged, d.UnitsWritten, d.FilesUnchanged, d.FilesDeleted)
+	}
+	if d.UnitsElided > 0 {
+		names := make([]string, 0, docElidedShown)
+		for i, e := range d.Elided {
+			if i == docElidedShown {
+				break
+			}
+			names = append(names, e.Path+" > "+e.HeadingPath)
+		}
+		more := ""
+		if d.UnitsElided > len(names) {
+			more = fmt.Sprintf("; ... and %d more", d.UnitsElided-len(names))
+		}
+		fmt.Fprintf(stdout, "docs: %d unit(s) (%d bytes) elided — past the per-service index byte budget, so not searchable: %s%s\n",
+			d.UnitsElided, d.ElidedBytes, strings.Join(names, "; "), more)
+	}
+	for _, f := range d.Failures {
+		fmt.Fprintf(stderr, "warning: docs: %s not indexed: %s\n", f.Path, f.Err)
+	}
+}
+
 // readFailuresShown caps how many unreadable files the summary names inline;
 // the count is always exact and the first entry always carries its errno.
 const readFailuresShown = 5
@@ -320,6 +357,7 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 	if report.FileResolveSkipped != "" {
 		fmt.Fprintf(stdout, "file_resolved: skipped — %s (stored edges kept)\n", report.FileResolveSkipped)
 	}
+	printDocIndex(stdout, stderr, report)
 	// Scoped config (docs/design/scoped-config.md §4 disclosure): report the
 	// project/user pattern-count split that governed this ingest. Ingest has
 	// already succeeded above (Discover already ran LoadIgnoreScoped as its

@@ -277,6 +277,17 @@ since the last successful pass` when their input files did not change (RT-104, R
 RT-108), and a `file_resolved` import-parse fault is a stderr warning naming the files.
 `--json` adds `stat_skipped` and `peak_inflight_bytes`.
 
+**Doc index (KR-8, KR-9).** An ingest also indexes the service's Markdown for `search kind: docs`:
+the corpus is the Markdown discovery returned (so `.fathomignore` and a purge's scoped exclusions
+apply), split into sections and written per file only when a file's units changed. The summary's
+`docs:` line counts files scanned, re-indexed, unchanged and removed; a per-service byte budget
+(64 MiB of heading and body text) keeps the live documents first, and what it cuts is named on a
+`docs: N unit(s) elided` line; a document over 2 MiB or unreadable is a `warning: docs:` line, and
+a pass that could not run (a store with no doc index, a service with no local root) says why. It
+never fails the ingest. `--json` carries the same as `docs: {files, changed, unchanged, deleted,
+units_written, units_elided?, elided?: [{path, heading, bytes}], failures?: [{path, err}],
+skipped?}`.
+
 **Typed-pass toolchain ceiling (RT-106).** The Go typed pass's toolchain children (`go list`
 and the compiles it forks) run at background priority (`nice -n 10`, plus `taskpolicy -b` on
 macOS) with `GOFLAGS` `-p` and `GOMAXPROCS` capped at 2 — a ceiling, never a raise: an
@@ -2762,7 +2773,7 @@ Full walkthrough: [docs/use-cases/test-coverage.md](use-cases/test-coverage.md).
 fathom tests coverage --profile [layer=]<file> [--profile <more>...] \
   [--service <id>] [--store <path>] [--diff <ref>] [--mutation <report>] [--json]
 
-fathom tests select --since <ref> [--profile [layer=]<file>...] \
+fathom tests select --since <ref> [--safe] [--profile [layer=]<file>...] \
   [--service <id>] [--store <path>] [--json]
 ```
 
@@ -2773,7 +2784,15 @@ no covering test in any layer. `--mutation <report>` (VB-34) adds a
 `MUTATION` score column (0.0-1.0) from a joined mutation-testing report — see
 "Mutation" in the use-case doc for the two accepted report shapes.
 
-`tests select --since <ref>` (VB-33) ranks `Test*` functions for a diff by
+`tests select --since <ref>` leads with the certifying-first selection (T4: TQ-15w,
+TQ-16w, SR-50): the minimal set of tests that re-proves every LIVE certificate the diff
+touched (a greedy set cover, deterministic tie-break), what it skipped, the touched
+certificates no live test certifies, and its `go test` commands. `--safe` adds every test
+that statically reaches a changed symbol. It reports the CI time saved, from each selected
+and skipped test's last attested run duration, and appends it to
+`workspace/artifacts/tests-select/time-saved.jsonl` (one line a run; an estimate with no
+attested duration behind it prints `time saved: unknown` and records nothing). Selection is
+advice to CI and never makes a certificate live (I43). Below it, VB-33 ranks `Test*` functions for a diff by
 typed-edge reachability, corroborating statement coverage (when `--profile`
 is given), and test layer (unit before integration before e2e), then emits
 a `go test ./<pkg> -run '^(TestA|TestB)$'` invocation per package plus the
@@ -2796,6 +2815,7 @@ measured predicted catch-rate — never a fabricated one.
 | Flag (`tests select`) | Default | Description |
 |---|---|---|
 | `--since` | (required) | git ref: rank tests for the diff since this ref |
+| `--safe` | `false` | also select every test that statically reaches a changed symbol, beside the certifying-first set |
 | `--profile` | (none, repeatable) | Go cover profile(s); enables the coverage ranking tie-break |
 | `--service` | resolved from cwd | Service ID |
 | `--store` | `<repo>/workspace/db/fathom.sqlite` | store path |

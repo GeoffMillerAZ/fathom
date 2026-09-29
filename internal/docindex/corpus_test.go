@@ -46,6 +46,7 @@ func TestDocCorpusIncludesAndFlags(t *testing.T) {
 	}
 	excluded := []string{
 		"vendor/thirdparty/README.md",
+		"third_party/agentic-kit/docs/catalog.md", // a vendored copy: 622 of this repository's 998 documents
 		"node_modules/pkg/README.md",
 		".git/COMMIT_EDITMSG.md",
 		"workspace/db/notes.md",

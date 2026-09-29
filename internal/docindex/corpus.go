@@ -36,12 +36,16 @@ type CorpusFile struct {
 // top of connector.IsSkippedDir's ingest-time set: "workspace" is this
 // repo's own gitignored build-artifact convention (docs/usage.md) and is
 // never part of the indexed corpus, the same stance search_tool.go's own
-// searchExtraSkipDirs takes for the same reason. Unlike search's list, this
-// one does NOT add "tmp" or "archive" — §3 requires those to be indexed
-// with the stale_by_location flag, not excluded.
+// searchExtraSkipDirs takes for the same reason. "third_party" is §3's
+// "vendored paths" in its conventional spelling (the connector's own
+// "vendor" covers Go's): 622 of this repository's 998 documents are a
+// vendored kit's, and indexed they outnumber and outrank the service's own
+// words. Unlike search's list, this one does NOT add "tmp" or "archive" —
+// §3 requires those to be indexed with the stale_by_location flag, not
+// excluded.
 //
 //fathom:tenancy-allow pkg-map read-only lookup table of constants, never written after init: not a cache
-var corpusExtraSkipDirs = map[string]bool{"workspace": true}
+var corpusExtraSkipDirs = map[string]bool{"workspace": true, "third_party": true}
 
 func corpusSkipDir(name string) bool {
 	return connector.IsSkippedDir(name) || corpusExtraSkipDirs[name]

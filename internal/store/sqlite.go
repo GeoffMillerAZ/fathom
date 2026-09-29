@@ -856,6 +856,11 @@ var serviceIDTables = []string{
 	"file_churn",
 	"symbol_centrality",
 	"arch_violation_trend",
+	// KR-1/KR-8: the doc index. docs_fts is an FTS5 virtual table with the
+	// same service_id column; doc_links is keyed by (service_id, unit_id).
+	"doc_units",
+	"doc_links",
+	"docs_fts",
 }
 
 // RemoveService deletes every row for serviceID in one transaction — see the
