@@ -2,7 +2,7 @@
 
 Vision: `docs/vision/35-observatory-console.md` (ADR-045). Plan: `docs/plans/observatory-console.md`.
 Mockups drawn from the fleet's real data: the "Fathom Observatory Console" design canvas
-(owner artifact, 2026-09-25). Doctrine that binds every line below: `cmd/fathom/CLAUDE.md`
+(owner artifact, 2026-09-25). Doctrine that binds every line below: `cmd/fathom/AGENTS.md`
 (app-kit only, role utilities, `task ui:css`, a 200 is not a rendering, absent is never 0,
 mutations stay local) and `PRODUCT.md`.
 

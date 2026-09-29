@@ -105,6 +105,7 @@ func TestHarnessSchema_Negatives(t *testing.T) {
 		{"event catalogue row with no wired verdict", `bad: #EventCatalogEntry & close({event: "SessionStart", reason: "maybe?"})`},
 		{"canonical event outside the vocabulary", `bad: #EventBinding & {capability: "prime", event: "telepathy", harness_event: "X", verb: "v", marker: "m", timeout_sec: 1, vehicle: "hook-inject"}`},
 		{"capability outside the vocabulary", `bad: #EventBinding & {capability: "subagent-primer", event: "subagent-start", harness_event: "SubagentStart", verb: "v", marker: "m", timeout_sec: 1, vehicle: "hook-inject"}`},
+		{"the retired mirror instruction mode", `bad: #InstructionFile & {path: "AGENTS.md", mode: "mirror"}`},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

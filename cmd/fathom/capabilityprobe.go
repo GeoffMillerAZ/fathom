@@ -66,7 +66,7 @@ func buildCapabilityProbe(baseURL, root, svc string, now time.Time) capability.P
 		}
 		p.HooksNote = row.HooksNote
 		p.HooksReferenced = strings.Contains(row.HooksNote, "hook reference")
-		p.StanzaPresent = row.StanzaNote == "present"
+		p.StanzaPresent = stanzaNotePresent(row.StanzaNote)
 		p.ObligationsCompiled = strings.Contains(row.CompileNote, "obligations")
 		if row.Config != nil {
 			for _, l := range row.Config.Layers {

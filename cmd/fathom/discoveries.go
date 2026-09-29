@@ -205,7 +205,7 @@ func readCallLogPointerRows(logPath, service string, since time.Time) []callLogP
 // filed thread items (a "discoveries" pointer set an agent explicitly
 // filed, vision 28 §4's "no model distills anything" write path) into a
 // ranked, deduped pointer list: most recent first, then most frequent,
-// then lexical (determinism, internal/CLAUDE.md).
+// then lexical (determinism, internal/AGENTS.md).
 func gatherDiscoveryPointers(logPath, service string, since time.Time, scope threadScope, root string) []discoveryPointerAgg {
 	agg := map[string]*discoveryPointerAgg{}
 	bump := func(ptr string, ts time.Time, fromIndex bool, observedVerb string) {

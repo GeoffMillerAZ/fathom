@@ -5,7 +5,7 @@ package console
 // burn-up and what's next, each computed from already-loaded inputs — the
 // `fathom support --json` matrix, the grammar lock, the readings ledger and
 // the plan rows' checkboxes. No file is read and no clock is consulted here
-// (internal/CLAUDE.md's determinism contract); cmd/fathom's console_support
+// (internal/AGENTS.md's determinism contract); cmd/fathom's console_support
 // .go loads the inputs and renders the result.
 
 import (

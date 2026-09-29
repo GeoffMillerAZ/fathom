@@ -152,7 +152,7 @@ func TestDepDocUnitsFromCache(t *testing.T) {
 			t.Fatalf("README unit = %+v", readme)
 		}
 
-		// Determinism (internal/CLAUDE.md): the same cache reads to the same
+		// Determinism (internal/AGENTS.md): the same cache reads to the same
 		// units, ids and order every time.
 		again, _, err := depDocUnits(ctx, cacheLocator(map[string]string{ref.Key(): dir}), ref)
 		if err != nil {

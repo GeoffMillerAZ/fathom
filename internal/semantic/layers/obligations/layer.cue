@@ -13,7 +13,7 @@
 name:    "obligations"
 version: "v1"
 kind:    "obligation"
-corpus: include: ["CLAUDE.md", "ADR.md", "docs/plans/README.md", "**/CLAUDE.md"]
+corpus: include: ["AGENTS.md", "CLAUDE.md", ".claude/AGENTS.md", ".claude/CLAUDE.md", "ADR.md", "docs/plans/README.md", "**/AGENTS.md", "**/CLAUDE.md"]
 // **/CLAUDE.md (BP-32, O23's root cause): a repo's NESTED instruction files
 // are binding rules a human wrote about one subtree — internal/CLAUDE.md's
 // "adding an extractor: register it in fusion.New and add a golden test" is
@@ -23,11 +23,15 @@ corpus: include: ["CLAUDE.md", "ADR.md", "docs/plans/README.md", "**/CLAUDE.md"]
 // absent. The compile-time directory scope floor (internal/semantic/
 // compile.go, scopeFloor) keeps the new claims honest: a claim compiled from
 // <dir>/CLAUDE.md may only scope inside <dir>/.
-// AGENTS.md is deliberately NOT included: fathom writes the same stanza into
-// both files (cmd/fathom stanza injector), so `**/AGENTS.md` compiles a
-// byte-duplicate of text CLAUDE.md already contributes — double spend, two
-// claim sets, one rule. A repo whose AGENTS.md carries rules its CLAUDE.md
-// does not is a project-local pack override, not a default.
+// AGENTS.md (root, .claude/ and nested) is included beside CLAUDE.md
+// (ADR-059: AGENTS.md is the one instruction file, and Claude Code reads it
+// natively since 2.1.277 — ADR-049's "widen only to files a client actually
+// loads"). fathom's own stanza region is never compiled (SplitMarkdownSections
+// blanks it), and a CLAUDE.md section byte-identical to its AGENTS.md twin
+// compiles once (dedupeTwinGuideSections), so a repo still on the two-copy
+// layout pays for one claim set. `.claude/AGENTS.md` and `.claude/CLAUDE.md`
+// are root guides the connector never indexes (it prunes .claude/); they are
+// read by one bounded stat each (RootGuideExtras).
 corpus: exclude: ["third_party/**", ".claude/worktrees/**", "workspace/**", "node_modules/**", "**/testdata/**"]
 // **/testdata/** (O54 addendum, .fathom/observations.md): a fixture
 // CLAUDE.md/ADR.md staged under a package's testdata/ to exercise THAT

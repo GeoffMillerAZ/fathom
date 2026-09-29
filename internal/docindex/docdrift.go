@@ -6,7 +6,7 @@ package docindex
 // gains a `doc_drift` section: span, target, the commit that changed it,
 // and how long ago. It never says a doc is wrong; it says the thing it
 // describes moved" — §11 restates the same refusal). Pure and
-// deterministic (internal/CLAUDE.md): the actual re-resolution and commit
+// deterministic (internal/AGENTS.md): the actual re-resolution and commit
 // lookup are the caller's functions, matching link.go's (KR-6) own
 // Resolver-injection shape — docDrift itself does no I/O; store.OpenDocLinks
 // (KR-6) is what actually reads doc_links.

@@ -622,6 +622,13 @@ func (c *Client) compileLayer(ctx context.Context, service, layerName string, dr
 	// service root at compile — the same compile path, the same I27 checks.
 	if layer.Name == semantic.LayerObligations {
 		corpus = semantic.WithRulesSources(corpus, root, layer.CorpusExclude, nil)
+		// ADR-059: .claude/AGENTS.md and .claude/CLAUDE.md are root guides
+		// the connector never indexes (it prunes .claude/).
+		have := make(map[string]bool, len(corpus))
+		for _, f := range corpus {
+			have[f.Path] = true
+		}
+		corpus = append(corpus, semantic.RootGuideExtras(root, layer.CorpusInclude, layer.CorpusExclude, have)...)
 	}
 
 	// Collect distinct sorted SourceRefs from the live index for scope verification.

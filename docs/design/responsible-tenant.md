@@ -31,7 +31,7 @@ Budgets are machine contracts (P13, law 13: user scope sets defaults, a cloned r
 must not raise a laptop's ceiling). They are read from `~/.fathom/config.toml` and env
 only; a `[tenancy]` table in a repository's `.fathom/config.toml` is ignored and doctor
 names it (`tenancy_scope`). CUE: `#Tenancy` in `schema/config/schema.cue` with valid and
-invalid testdata pairs (`schema/CLAUDE.md`).
+invalid testdata pairs (`schema/AGENTS.md`).
 
 ```toml
 # ~/.fathom/config.toml
@@ -94,7 +94,7 @@ Other additive keys: `[connector] respect_gitignore = true`, `extra_ignore = []`
 ## 2. `internal/tenancy`: budget, sampler, ladder, breaker
 
 Pure Go, no store import, deterministic (injected clock and sampler; sorted outputs;
-`internal/CLAUDE.md`). It holds the policy; `cmd/fathom` wires the OS readers in.
+`internal/AGENTS.md`). It holds the policy; `cmd/fathom` wires the OS readers in.
 
 ```go
 type Budget struct {
@@ -1320,7 +1320,7 @@ unreachable under load.
   compile runs newer than a cursor.
 - **Operate → Tenancy panel:** renders `fathom resources --json` (ADR-045: every panel renders
   a verb; JSON parity test), app-kit role utilities only, CSS via `task ui:css`
-  (`cmd/fathom/CLAUDE.md`): a 24 h footprint sparkline with budget, refuse and exit marks;
+  (`cmd/fathom/AGENTS.md`): a 24 h footprint sparkline with budget, refuse and exit marks;
   the ladder timeline; lifecycle events; in-flight by class; the scratch census; disk
   classes; per-tool per-hour p95 (the resources report carries no call-log latency, so
   this one is the adjoining panel over its own verb, `fathom metrics traffic --by

@@ -223,7 +223,7 @@ func TestRenderGitHubReview_ComposesTheFixedSections(t *testing.T) {
 		t.Errorf("a resolved index commit/diff range fell back to 'unknown': %s", out)
 	}
 
-	// Determinism (internal/CLAUDE.md): identical input renders byte-identical
+	// Determinism (internal/AGENTS.md): identical input renders byte-identical
 	// Markdown, and every finding line's claim id is stable across renders.
 	again := review.RenderGitHubReview(ghIn)
 	if out != again {

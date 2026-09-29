@@ -11,7 +11,7 @@
 // This file mirrors schema/module/schema.cue's conventions deliberately —
 // same regex-shaped name field, same `| *default` pattern, same closedness
 // discipline (an authoring gate, not a reader-conformance instrument, per
-// schema/CLAUDE.md). internal/bindspec is the Go-side dual-mode
+// schema/AGENTS.md). internal/bindspec is the Go-side dual-mode
 // loader (LoadBindings the lenient reader, ValidateStrict the closed-schema
 // authoring gate) — mirroring internal/modspec exactly.
 //

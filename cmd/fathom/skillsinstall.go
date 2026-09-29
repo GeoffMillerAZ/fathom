@@ -8,8 +8,10 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	skillsdist "github.com/geoffmilleraz/fathom/dist/agents/skills"
+	"github.com/geoffmilleraz/fathom/internal/wiring"
 )
 
 // skillMarker identifies a file `fathom init --skills` owns: a re-run
@@ -82,10 +84,12 @@ const (
 	// skillsTargetClaude is `.claude/skills/<name>/SKILL.md` — the Claude
 	// Code superset frontmatter, verbatim from the embedded source.
 	skillsTargetClaude = "claude"
-	// skillsTargetAgents is `.agents/skills/<name>/SKILL.md` — the Agent
-	// Skills standard path (agentskills.io), the one Codex, Gemini CLI,
-	// Cursor, Copilot and the rest read; spec-only frontmatter
-	// (agentsVariant).
+	// skillsTargetAgents is `.agents/skills` — the Agent Skills standard
+	// path (agentskills.io), the one Codex, Gemini CLI, Cursor, Copilot and
+	// the rest read. Since ADR-059 init writes it as a link to
+	// `.claude/skills` (agentsSkillsLink); renderSkill's spec-only rendering
+	// (agentsVariant) for it still serves `fathom plugin render` and
+	// recognizes an earlier fathom's real copy there.
 	skillsTargetAgents = "agents"
 	// skillsTargetCodexPrompts is `~/.codex/prompts/<name>.md` — Codex's
 	// DEPRECATED custom-prompts twin. The only user-global write, and only
@@ -95,30 +99,58 @@ const (
 
 // skillsTargetsFor maps a --skills mode (already normalized by
 // resolveSkillsMode) to the render targets it writes, in a fixed order.
+// `.claude/skills` holds the ONE real copy for every repo-scoped mode
+// (ADR-059); skillsTargetAgents is `.agents/skills` as a relative link to
+// it (agentsSkillsLink), planned only for a harness that reads
+// `.agents/skills` and not `.claude/skills`:
 //
-//   - bare --skills / "all": `.agents/skills` AND `.claude/skills` — the
-//     pair covers 14 of the 15 surveyed harnesses (vision 25 §1), and both
-//     are repo-scoped.
-//   - "codex": `.agents/skills` — the path Codex documents for skills. The
-//     legacy `~/.codex/prompts` twin is NOT written here any more (0.8.0
-//     Breaking: docs/upgrades/0.8.0-skills-on-the-standard.md).
-//   - "agents": `.agents/skills`.
-//   - "claude": `.claude/skills`.
+//   - bare --skills / "all": `.claude/skills` and the `.agents/skills`
+//     link — the pair covers 14 of the 15 surveyed harnesses (vision 25 §1),
+//     and both are repo-scoped.
+//   - "codex": `.claude/skills` and the link — `.agents/skills` is the path
+//     Codex documents for skills. The legacy `~/.codex/prompts` twin is NOT
+//     written here any more (0.8.0 Breaking:
+//     docs/upgrades/0.8.0-skills-on-the-standard.md).
+//   - "agents": `.claude/skills` and the link.
+//   - "claude": `.claude/skills` only — Claude Code discovers nothing else.
 //   - "codex-prompts": the deprecated `~/.codex/prompts` twin, explicit only.
 //   - "": nothing.
 func skillsTargetsFor(mode string) []string {
 	switch mode {
-	case "all":
-		return []string{skillsTargetAgents, skillsTargetClaude}
+	case "all", "codex", "agents":
+		return []string{skillsTargetClaude, skillsTargetAgents}
 	case "claude":
 		return []string{skillsTargetClaude}
-	case "codex", "agents":
-		return []string{skillsTargetAgents}
 	case "codex-prompts":
 		return []string{skillsTargetCodexPrompts}
 	default:
 		return nil
 	}
+}
+
+// agentsSkillsDir is where the Agent Skills standard path lives, and
+// agentsSkillsLinkTarget what fathom's link there points at: relative, so
+// a clone or a moved checkout keeps it.
+const (
+	agentsSkillsDir        = ".agents/skills"
+	agentsSkillsLinkTarget = "../.claude/skills"
+)
+
+// agentsSkillsLink is the owned link `.agents/skills -> ../.claude/skills`
+// (ADR-059, AG-8). Owned lists what an earlier fathom rendered there — the
+// spec-only copy of every shipped skill under its marker — so a real
+// directory holding only those files, none edited, is replaced by the link
+// and anything else blocks it by name.
+func agentsSkillsLink() wiring.Link {
+	l := wiring.Link{Path: agentsSkillsDir, Target: agentsSkillsLinkTarget}
+	for _, name := range skillsdist.Names {
+		body, err := renderSkill(skillsTargetAgents, name)
+		if err != nil {
+			continue // embedded source; cannot fail at runtime
+		}
+		l.Owned = append(l.Owned, wiring.OwnedFile{File: skillRelPath(skillsTargetAgents, name), Marker: skillMarker, Body: string(body)})
+	}
+	return l
 }
 
 // skillDest is the on-disk path of one skill for one target. root is the
@@ -250,13 +282,24 @@ func installSkills(root, mode string, stdout io.Writer) error {
 type skillWrite struct {
 	Target string `json:"target"`
 	Path   string `json:"path"`
-	Action string `json:"action"` // created | updated | current
+	Action string `json:"action"` // created | updated | current | linked
 }
 
 // installSkillsReport is installSkills returning every write as data.
+// The `.agents/skills` target is the owned link, planned through the wiring
+// engine (receipted, `fleet undo` removes it) after the real copy exists;
+// nothing is ever written through it.
 func installSkillsReport(root, mode string, stdout io.Writer) ([]skillWrite, error) {
 	var writes []skillWrite
 	for _, target := range skillsTargetsFor(mode) {
+		if target == skillsTargetAgents {
+			w, err := installAgentsSkillsLink(root, stdout)
+			if err != nil {
+				return writes, err
+			}
+			writes = append(writes, w)
+			continue
+		}
 		home := ""
 		if target == skillsTargetCodexPrompts {
 			h, err := skillsHomeDir()
@@ -279,6 +322,27 @@ func installSkillsReport(root, mode string, stdout io.Writer) ([]skillWrite, err
 		}
 	}
 	return writes, nil
+}
+
+// installAgentsSkillsLink plans and applies the `.agents/skills` link. A
+// BLOCKED link (a real directory with entries fathom did not write, a link
+// to elsewhere, a regular file) is refused loudly, exactly as a colliding
+// skill file is.
+func installAgentsSkillsLink(root string, stdout io.Writer) (skillWrite, error) {
+	dest := filepath.Join(root, filepath.FromSlash(agentsSkillsDir))
+	res, err := wiring.ApplyWiring(root, wiring.Spec{Links: []wiring.Link{agentsSkillsLink()}}, wiring.ApplyOptions{Now: time.Now})
+	if err != nil {
+		return skillWrite{}, fmt.Errorf("linking %s: %w", dest, err)
+	}
+	if len(res.Blocked) > 0 {
+		return skillWrite{}, fmt.Errorf("refusing to link %s -> %s: %s", dest, agentsSkillsLinkTarget, res.Blocked[0].Reason)
+	}
+	if len(res.Applied) > 0 {
+		fmt.Fprintf(stdout, "linked %s (-> %s)\n", dest, agentsSkillsLinkTarget)
+		return skillWrite{Target: skillsTargetAgents, Path: dest, Action: "linked"}, nil
+	}
+	fmt.Fprintf(stdout, "ok %s (already a link to %s)\n", dest, agentsSkillsLinkTarget)
+	return skillWrite{Target: skillsTargetAgents, Path: dest, Action: "current"}, nil
 }
 
 // installSkillFile writes content to destPath, honoring the fathom-owned

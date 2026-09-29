@@ -45,7 +45,8 @@ type ArmFiles struct {
 	// silent gap between what was wired and what was permitted).
 	AllowedTools    []string `json:"allowed_tools,omitempty"`
 	DisallowedTools []string `json:"disallowed_tools,omitempty"`
-	// InstructionsPath is the worktree's CLAUDE.md path; empty when
+	// InstructionsPath is the worktree's instruction file (its root CLAUDE
+	// file, else AGENTS.md — ADR-059); empty when
 	// Instructions == "none" removed it.
 	InstructionsPath string `json:"instructions_path,omitempty"`
 	// InstructionsAppended is true when Instructions == "text" appended
@@ -77,13 +78,15 @@ const notesInstructionText = "Keep a running log of your plan and progress in NO
 //   - an MCP config file holding arm.MCP's mcpServers block, written even
 //     when it is empty;
 //   - sorted copies of the allowed/disallowed tool lists;
-//   - the instruction-file variant selected by arm.Instructions: "plain"
-//     leaves the subject's own CLAUDE.md untouched, "none" removes it,
-//     "stanza" requires arm.Wired (only a wired arm's `fathom init`
-//     run puts a real stanza there — RenderArm just asserts the
-//     precondition and reports the path), and "text" APPENDS
-//     arm.InstructionsText under a marker comment (creating CLAUDE.md
-//     only when absent), exactly parallel to how `fathom init` appends
+//   - the instruction-file variant selected by arm.Instructions, on the
+//     subject's root CLAUDE file when it has one and AGENTS.md otherwise
+//     (ADR-059, armInstructionsFile): "plain" leaves it untouched, "none"
+//     removes every root instruction file (AGENTS.md too), "stanza"
+//     requires arm.Wired (only a wired arm's `fathom init` run puts a real
+//     stanza in AGENTS.md — RenderArm just asserts the precondition and
+//     reports the path), and "text" APPENDS arm.InstructionsText under a
+//     marker comment (creating AGENTS.md only when absent — never a
+//     CLAUDE.md), exactly parallel to how `fathom init` appends
 //     fathom's own stanza for "stanza" mode — a competitor arm's own
 //     routing stanza, RC-8, must never cost that arm the subject's real
 //     CLAUDE.md, the way REPLACING it once did;
@@ -145,11 +148,20 @@ func RenderArm(arm Arm, worktree string) (ArmFiles, error) {
 	}
 	out.DisallowedTools = sortedCopy(arm.DisallowedTools)
 
-	claudeMD := filepath.Join(worktree, "CLAUDE.md")
+	// ADR-059: the file an arm's instructions live in is the subject's
+	// root CLAUDE file when it has one (Claude Code loads that, and it
+	// switches AGENTS.md off), else AGENTS.md — never a created CLAUDE.md,
+	// which would silently suppress the subject's AGENTS.md under Claude
+	// Code's default mode and change the arm. `fathom init` writes a wired
+	// arm's stanza into AGENTS.md.
+	claudeMD := armInstructionsFile(worktree)
 	switch arm.Instructions {
 	case "none":
-		if err := os.Remove(claudeMD); err != nil && !os.IsNotExist(err) {
-			return ArmFiles{}, fmt.Errorf("rendering arm: removing %s: %w", claudeMD, err)
+		for _, rel := range armInstructionFiles {
+			p := filepath.Join(worktree, filepath.FromSlash(rel))
+			if err := os.Remove(p); err != nil && !os.IsNotExist(err) {
+				return ArmFiles{}, fmt.Errorf("rendering arm: removing %s: %w", p, err)
+			}
 		}
 	case "plain":
 		if _, err := os.Stat(claudeMD); err == nil {
@@ -161,7 +173,7 @@ func RenderArm(arm Arm, worktree string) (ArmFiles, error) {
 		if !arm.Wired {
 			return ArmFiles{}, fmt.Errorf("rendering arm: instructions %q requires a wired arm (only `fathom init` writes a real stanza)", arm.Instructions)
 		}
-		out.InstructionsPath = claudeMD
+		out.InstructionsPath = filepath.Join(worktree, "AGENTS.md") // the stanza's one file (ADR-059)
 	case "text":
 		// A competitor arm's own routing stanza (RC-8): arm.InstructionsText
 		// appended under a marker, so its tool is never measured as unused
@@ -644,6 +656,22 @@ func findInstructionsRegion(content string) (instructionsRegion, error) {
 // re-run of the same cell — recognizes its own region (findInstructionsRegion)
 // and either short-circuits (the digest already matches text) or replaces
 // just that region's body in place, never appending a second region.
+// armInstructionFiles are the root instruction files an arm may carry:
+// Claude Code's CLAUDE files in its precedence order, then AGENTS.md.
+var armInstructionFiles = []string{"CLAUDE.md", ".claude/CLAUDE.md", "CLAUDE.local.md", "AGENTS.md"}
+
+// armInstructionsFile is the file an arm's instructions live in: the first
+// present root CLAUDE file, else AGENTS.md (present or not).
+func armInstructionsFile(worktree string) string {
+	for _, rel := range armInstructionFiles[:3] {
+		p := filepath.Join(worktree, filepath.FromSlash(rel))
+		if fi, err := os.Stat(p); err == nil && !fi.IsDir() {
+			return p
+		}
+	}
+	return filepath.Join(worktree, "AGENTS.md")
+}
+
 func appendInstructionsText(path, text string) error {
 	body := text
 	if !strings.HasSuffix(body, "\n") {

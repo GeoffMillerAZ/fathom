@@ -30,7 +30,7 @@ hooks, gates, CLAUDE.md/AGENTS.md — lives in [coding-agents.md](coding-agents.
 | `entrypoints` | MCP tool | Likely program entry points: `main` functions, HTTP handlers, CLI root commands |
 | `search` (`kind: docs`) | MCP tool | Ranked full-text search over the indexed doc corpus (ADRs, `docs/intent/`, `docs/plans/`, design, vision) — BM25 fused with concern ranking (KR-4/KR-5, `docs/design/knowledge-retrieval.md`); requires `service`. With `pkg: pkg:<ecosystem>/<name>@<version>` it answers from that exact dependency version's README and doc comments, read from the local toolchain cache and never fetched (KR-12); no `service` needed |
 | `fathom prime` | CLI | Pull-tier session primer for harnesses without a SessionStart hook (Codex): prints the index/wiring status and the fathom-first discipline. Not yet listed by `fathom help` — `fathom prime -h` (`-dir`, `-url`) |
-| `gen-claude-md` | CLI | Generate a `CLAUDE.md` from stored symbols for static context injection |
+| `gen-agents-md` | CLI | Generate an `AGENTS.md` from stored symbols for static context injection (`gen-claude-md` is its deprecated alias through 0.9.x) |
 
 ---
 
@@ -122,7 +122,7 @@ each call separately.)
 
 **Priming a session without hooks**: `fathom prime` (Codex, or any harness with no SessionStart hook) prints the same "this repo is service X — resolve via fathom before grep" brief the `session-hook` injects.
 
-**Static context injection**: for sessions where the MCP server is not available, run `fathom gen-claude-md --service auth-service` to write a `CLAUDE.md` to `workspace/artifacts/CLAUDE.md`. This gives the agent a static symbol index to reason from, though it does not support concern scoping or staleness detection.
+**Static context injection**: for sessions where the MCP server is not available, run `fathom gen-agents-md --service auth-service` to write an `AGENTS.md` to `workspace/artifacts/AGENTS.md`. This gives the agent a static symbol index to reason from, though it does not support concern scoping or staleness detection.
 
 ---
 
@@ -149,4 +149,4 @@ Returns `{service, file, rules?, compiled_at_watermark?, index_stale?}`. An empt
 
 ## Maintained
 
-This doc covers: `query_symbols`, `find_symbol`, `outline`, `repo_map`, `pack_context`, `symbol_context`, `read_source`, `references`, `entrypoints`, `search` (`kind: docs`, `pkg`), `staleness_report`, `gen-claude-md`, `obligations`, `edit-hook`, `fathom prime` (listed by `fathom help`; `fathom prime -h`), the `budgets` block in `capabilities.cue`, and the `/rpc/agent` surface facts. Update it when these change.
+This doc covers: `query_symbols`, `find_symbol`, `outline`, `repo_map`, `pack_context`, `symbol_context`, `read_source`, `references`, `entrypoints`, `search` (`kind: docs`, `pkg`), `staleness_report`, `gen-agents-md` (and its deprecated `gen-claude-md` alias), `obligations`, `edit-hook`, `fathom prime` (listed by `fathom help`; `fathom prime -h`), the `budgets` block in `capabilities.cue`, and the `/rpc/agent` surface facts. Update it when these change.

@@ -294,8 +294,11 @@ func DriftFromPlan(p Plan) DriftReport {
 			continue
 		}
 		kind := DriftKindHook
-		if it.Kind == KindRegion {
+		switch it.Kind {
+		case KindRegion:
 			kind = DriftKindStanza
+		case KindFile, KindLink:
+			kind = DriftKindSkill // owned skill files and the .agents/skills link (ADR-059)
 		}
 		switch it.Cause {
 		case CauseDrift:

@@ -256,6 +256,11 @@ func remedyFor(root string, f Finding) string {
 		return fmt.Sprintf("trim %s: move sections into path-scoped files and leave a pointer row (the thin-router shape, vision 22 §2)", c.File)
 	case KindStanzaPresent:
 		return "fathom init --path " + root + " — the stanza region is fathom's own, written only through its markers (law 15)"
+	case KindAgentsMDReachesClaude:
+		if c.AllowImport != nil && !*c.AllowImport {
+			return "move each CLAUDE file's content into the AGENTS.md beside it (git mv a nested one), then delete it — fathom never deletes an adopter's CLAUDE file (ADR-059)"
+		}
+		return "fathom init --path " + root + " — adds a marked @AGENTS.md import region to the root CLAUDE file (ADR-059), or delete that file if AGENTS.md already says everything"
 	case KindStanzaToolsServed:
 		return "fathom fleet reconcile --repo " + root + " --apply — the stanza region is fathom's own (law 15); deploy the daemon if it is the one behind"
 	case KindWiringCurrent:

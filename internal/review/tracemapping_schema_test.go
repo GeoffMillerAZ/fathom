@@ -1,6 +1,6 @@
 // tracemapping_schema_test.go asserts the schema/trace CUE positives and
 // the negatives documented, commented out, in
-// schema/trace/testdata/invalid.cue (repo convention, schema/CLAUDE.md).
+// schema/trace/testdata/invalid.cue (repo convention, schema/AGENTS.md).
 package review
 
 import (

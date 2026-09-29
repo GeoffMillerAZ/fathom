@@ -81,7 +81,7 @@ type CertCounts struct {
 }
 
 // GuideCoverage is the obligations layer's latest compile as it bears on
-// the project's governing guides (CLAUDE.md, AGENTS.md, nested or root).
+// the project's governing guides (AGENTS.md, CLAUDE.md, nested, root or under .claude/).
 // It carries no "sections compiled" count: a run's own count is the
 // sections that missed the digest gate, not the corpus it covers.
 type GuideCoverage struct {
@@ -135,7 +135,7 @@ type ProjectFacts struct {
 	Certs Value[CertCounts]    `json:"certificates"`
 	Guide Value[GuideCoverage] `json:"guides"`
 	// HasGuide: the root carries a governing guide the obligations layer
-	// compiles (a CLAUDE.md or AGENTS.md).
+	// compiles (an AGENTS.md or CLAUDE.md, ADR-059).
 	HasGuide   bool   `json:"has_guide"`
 	CertRemedy string `json:"cert_remedy,omitempty"`
 	// Traffic is calls per window day, aligned with Projects.Days; nil

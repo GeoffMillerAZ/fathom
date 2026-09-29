@@ -82,8 +82,8 @@ func TestStanzaNamesOnlyRegisteredSurfaceTools(t *testing.T) {
 	}
 	off := offDefaultSurfaceTools()
 
-	// 1. The rendered plan: the regions stanzaPlan would write into a repo
-	// with neither file, CLAUDE.md and AGENTS.md alike.
+	// 1. The rendered plan: the region stanzaPlan would write into a repo
+	// with no instruction file — AGENTS.md alone (ADR-059).
 	plan, err := stanzaPlan(t.TempDir(), "svc")
 	if err != nil {
 		t.Fatal(err)
@@ -92,10 +92,8 @@ func TestStanzaNamesOnlyRegisteredSurfaceTools(t *testing.T) {
 	for _, it := range plan.Items {
 		rendered[it.File] = it.After
 	}
-	for _, f := range stanzaFiles {
-		if strings.TrimSpace(rendered[f]) == "" {
-			t.Fatalf("stanzaPlan rendered nothing for %s (items: %+v)", f, plan.Items)
-		}
+	if strings.TrimSpace(rendered["AGENTS.md"]) == "" {
+		t.Fatalf("stanzaPlan rendered nothing for AGENTS.md (items: %+v)", plan.Items)
 	}
 
 	// 2. Plus every registered harness's body, with and without the intent
@@ -137,8 +135,8 @@ func TestStanzaNamesOnlyRegisteredSurfaceTools(t *testing.T) {
 			t.Errorf("%s: the refresh line %q must say the index refreshes itself and there is nothing to call", name, flat)
 		}
 	}
-	if len(rendered["CLAUDE.md"]) == 0 || rendered["CLAUDE.md"] != rendered["AGENTS.md"] {
-		t.Error("CLAUDE.md and AGENTS.md must render one identical stanza")
+	if _, ok := rendered["CLAUDE.md"]; ok || len(rendered) != 1 {
+		t.Errorf("a repo with no CLAUDE file must get the stanza in AGENTS.md only, and no CLAUDE.md (items: %+v)", plan.Items)
 	}
 
 	// 3. What this repository actually checks in beside the stanza.
@@ -146,16 +144,20 @@ func TestStanzaNamesOnlyRegisteredSurfaceTools(t *testing.T) {
 }
 
 // checkRepoAgentFilesNameOnlyServedTools holds this repository's own
-// CLAUDE.md and AGENTS.md — the whole files, not only the marked stanza — to
-// the same rule: a line that names a tool served beyond the default eight
-// must also name the surface that serves it, or it teaches a call that fails
-// (the hand-written routing rows told sessions to refresh via `ingest` and
-// to resolve via `references`, neither on /rpc/agent).
+// AGENTS.md — the one instruction file (ADR-059) — and any root CLAUDE file,
+// the whole files, not only the marked stanza, to the same rule: a line that
+// names a tool served beyond the default eight must also name the surface
+// that serves it, or it teaches a call that fails (the hand-written routing
+// rows told sessions to refresh via `ingest` and to resolve via `references`,
+// neither on /rpc/agent).
 func checkRepoAgentFilesNameOnlyServedTools(t *testing.T) {
 	root := repoRootForDocs(t)
 	off := offDefaultSurfaceTools()
-	for _, f := range stanzaFiles {
-		raw, err := os.ReadFile(filepath.Join(root, f))
+	for _, f := range append([]string{agentsMDFile}, claudeFiles()...) {
+		raw, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(f)))
+		if os.IsNotExist(err) && f != agentsMDFile {
+			continue // ADR-059: a CLAUDE file is optional
+		}
 		if err != nil {
 			t.Fatalf("%s: %v", f, err)
 		}

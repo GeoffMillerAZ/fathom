@@ -58,7 +58,7 @@ func TestConsoleTestPortfolio(t *testing.T) {
 		}
 	}
 	// Role utilities only: no palette colours, no dark: variants (app-kit
-	// doctrine, cmd/fathom/CLAUDE.md).
+	// doctrine, cmd/fathom/AGENTS.md).
 	page := renderTestPortfolio(m)
 	for _, bad := range []string{"dark:", "text-red-", "bg-gray-", "style="} {
 		if strings.Contains(page, bad) {

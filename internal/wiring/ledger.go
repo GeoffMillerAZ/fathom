@@ -98,6 +98,24 @@ func (l *Ledger) Record(file string, k OwnedKey) {
 	l.Files[file] = keys
 }
 
+// Forget drops one key: the entry it named is gone (a file fathom removed
+// when it replaced its earlier rendering with a link, AG-8). A file left
+// with no keys leaves the ledger.
+func (l *Ledger) Forget(file, id string) {
+	keys := l.Files[file]
+	for i := range keys {
+		if keys[i].ID == id {
+			keys = append(keys[:i], keys[i+1:]...)
+			break
+		}
+	}
+	if len(keys) == 0 {
+		delete(l.Files, file)
+		return
+	}
+	l.Files[file] = keys
+}
+
 // LoadLedger reads <root>/.fathom/owned.json. An absent file is normal and
 // yields an empty ledger with no error. An UNREADABLE or unparsable one
 // yields an empty ledger AND an error: the caller must name the reason

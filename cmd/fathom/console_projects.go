@@ -304,22 +304,28 @@ func boundedList(items []string, max int) string {
 	return strings.Join(items[:max], "; ") + fmt.Sprintf("; and %d more", len(items)-max)
 }
 
-// isGoverningGuide: an instruction file the obligations layer compiles.
+// isGoverningGuide: an instruction file the obligations layer compiles —
+// AGENTS.md first (ADR-059), CLAUDE.md for the older layout, at any depth
+// and under .claude/.
 func isGoverningGuide(doc string) bool {
 	switch path.Base(doc) {
-	case "CLAUDE.md", "AGENTS.md":
+	case "AGENTS.md", "CLAUDE.md":
 		return true
 	}
 	return false
 }
+
+// repoGuideFiles are the root instruction files a project may carry, AGENTS.md
+// first (ADR-059).
+var repoGuideFiles = []string{"AGENTS.md", "CLAUDE.md", ".claude/AGENTS.md", ".claude/CLAUDE.md"}
 
 // repoHasGuide reports whether a project root carries a governing guide.
 func repoHasGuide(root string) bool {
 	if root == "" {
 		return false
 	}
-	for _, f := range []string{"CLAUDE.md", "AGENTS.md"} {
-		if _, err := os.Stat(filepath.Join(root, f)); err == nil {
+	for _, f := range repoGuideFiles {
+		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(f))); err == nil {
 			return true
 		}
 	}

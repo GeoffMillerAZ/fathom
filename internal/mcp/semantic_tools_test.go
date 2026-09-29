@@ -34,7 +34,7 @@ type semanticFakeBackend struct {
 	// carried — used to prove rootObligations() preferred RootObligations
 	// (this fake implements rootObligationsBackend) over degrading to the
 	// literal-probe fallback, which would have called Obligations with
-	// rootObligationsProbe ("CLAUDE.md").
+	// rootObligationsProbe ("AGENTS.md").
 	gotObligationsFile string
 
 	// ClaimFeedback (D2, docs/plans/expert-depth.md): records the call and
@@ -439,7 +439,7 @@ func TestObligationsTool_NoFile_ReturnsRootScope(t *testing.T) {
 // wiring for the MAJOR finding: when the backend implements
 // rootObligationsBackend (every real one does), rootObligations() must use
 // it directly rather than degrading to the literal-probe fallback — the
-// fallback would call Obligations with rootObligationsProbe ("CLAUDE.md"),
+// fallback would call Obligations with rootObligationsProbe ("AGENTS.md"),
 // which this test asserts never happens.
 func TestObligationsTool_NoFile_PrefersRootObligationsBackend(t *testing.T) {
 	fake := &semanticFakeBackend{
@@ -489,7 +489,7 @@ func (p *probeOnlyBackend) ObligationsIndexStale(_ context.Context, _, _ string)
 // proves the fallback branch itself: a backend lacking rootObligationsBackend
 // still gets a root-scope answer, via the literal probe path.
 func TestObligationsTool_NoFile_DegradesToProbeWithoutRootObligationsBackend(t *testing.T) {
-	const wantProbe = "CLAUDE.md" // mcp.rootObligationsProbe's documented value
+	const wantProbe = "AGENTS.md" // mcp.rootObligationsProbe's documented value (ADR-059)
 	fake := &probeOnlyBackend{obligations: semantic.Obligations{Service: "svc", File: wantProbe}}
 	srv := mcp.NewServer(fake)
 	resp := roundtrip(t, srv, request{

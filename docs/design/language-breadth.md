@@ -745,7 +745,7 @@ least their current output. The protocol (LB-F18, and each port item):
    kind the incumbent emitted and the dialect does not is a regression unless the row's
    reason names why).
 4. When the last CGO walker is gone: `go.mod` loses `github.com/tree-sitter/go-tree-sitter`
-   and the per-language CGO modules (LB-F19, a `gone: module` row), `internal/CLAUDE.md`'s
+   and the per-language CGO modules (LB-F19, a `gone: module` row), `internal/AGENTS.md`'s
    CGO sentence is corrected, and ADR-013's status line says so. Whether `CGO_ENABLED=0`
    builds are then possible is measured, not assumed (F1).
 
@@ -985,4 +985,4 @@ A disposition is a result. A fake claim is an incident.
 - Invariants I54 (no language is claimed above its reading) and I55 (a grammar or pack
   loads only when the lock or the user-scope trust list describes its bytes and its licence
   is allowed), both `stated` until LB-F17 and LB-F12/LB-F14 land.
-- `internal/CLAUDE.md` "Adding things → Extractor" points here.
+- `internal/AGENTS.md` "Adding things → Extractor" points here.

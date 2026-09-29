@@ -247,7 +247,8 @@ on it.
   served by one always-on loopback daemon (`serve-http`, `127.0.0.1:7575`) under launchd.
   Evidence: ADR-020, ADR-025, `Taskfile.yml` deploy.
 - Harnesses: Claude Code (SessionStart, PreToolUse, PostToolUse, Stop, SessionEnd,
-  PreCompact hooks) and Codex (AGENTS.md stanza, `fathom prime`, MCP) both verified live.
+  PreCompact hooks) and Codex (AGENTS.md stanza, `fathom prime`, MCP) both verified live;
+  Claude Code reads the AGENTS.md stanza natively (≥2.1.277, ADR-059).
   Under ADR-029 the harness is data in `internal/harness`: Gemini CLI ships `unverified`
   until a real session's beats verify it; Cursor and Copilot are data rows; tiers C/D are
   documented rows. Evidence: `docs/adoption/claude-code.md`, `docs/adoption/codex.md`,
@@ -310,8 +311,10 @@ migration note (`docs/rename-migration.md` is the precedent; new ones go to
 - The spec-interop plan keys (ADR-049): `weight:` (a positive integer, default 1) and
   `accept:` (quoted acceptance text, never gating by itself). Evidence:
   `docs/design/spec-interop.md` §4, `schema/plan/schema.cue`.
-- The `<!-- fathom:begin -->`…`<!-- fathom:end -->` stanza region in `CLAUDE.md` and
-  `AGENTS.md` (fleet reconcile compares content, law 15). Evidence: `CHANGELOG.md` 2026-08-13.
+- The `<!-- fathom:begin -->`…`<!-- fathom:end -->` stanza region in `AGENTS.md`, and the
+  fathom-marked `@AGENTS.md` import region in a root `CLAUDE.md`, `.claude/CLAUDE.md` or
+  `CLAUDE.local.md` that fathom did not create (fleet reconcile compares content, law 15).
+  Evidence: ADR-059.
 - The default agent surface (8 tools, named in ADR-053: `find_symbol`, `search`,
   `read_source`, `symbol_context`, `obligations`, `verify_plan`, `blast_radius`,
   `review_diff`) at `POST /rpc/agent`; the `extended` opt-in surface (21 tools) at

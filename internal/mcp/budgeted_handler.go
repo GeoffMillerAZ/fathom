@@ -353,7 +353,7 @@ func firstJSONByte(b []byte) byte {
 // largestArrayField finds the top-level field of obj whose value is a JSON
 // array with the most bytes, returning its name and decoded elements.
 // Deterministic: obj's keys are walked in sorted order so a byte-size tie
-// always resolves to the same field (CLAUDE.md's "map iteration order must
+// always resolves to the same field (internal/AGENTS.md's "map iteration order must
 // never reach a result").
 func largestArrayField(obj map[string]json.RawMessage) (field string, items []json.RawMessage, ok bool) {
 	keys := make([]string, 0, len(obj))

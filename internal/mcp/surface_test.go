@@ -108,8 +108,8 @@ func toolNames(t *testing.T, resp map[string]any) []string {
 // defaultWantCount and extendedWantCount pin the two surfaces' tool counts
 // (V-review MINOR: prose docs drifted to "17-tool"/"18-tool" after RC-27
 // added discoveries without this assertion catching it) — the ONE place
-// each number lives as a checked fact; docs/mcp-tools.md, docs/CLAUDE.md,
-// internal/CLAUDE.md and every other prose mention are asserted equal to
+// each number lives as a checked fact; docs/mcp-tools.md, docs/AGENTS.md,
+// internal/AGENTS.md and every other prose mention are asserted equal to
 // the two lists' own lengths here, never independently counted by hand.
 const (
 	defaultWantCount  = 8
@@ -122,7 +122,7 @@ const (
 // carry (TestExtendedSurfaceToolsList below).
 func TestDefaultSurfaceToolsList(t *testing.T) {
 	if len(defaultWant) != defaultWantCount {
-		t.Fatalf("defaultWant has %d entries, want %d — update defaultWantCount, docs/mcp-tools.md, docs/CLAUDE.md and internal/CLAUDE.md together", len(defaultWant), defaultWantCount)
+		t.Fatalf("defaultWant has %d entries, want %d — update defaultWantCount, docs/mcp-tools.md, docs/AGENTS.md and internal/AGENTS.md together", len(defaultWant), defaultWantCount)
 	}
 	srv := mcp.NewServer(&fakeBackend{})
 	want := append([]string(nil), defaultWant...)
@@ -149,7 +149,7 @@ func TestDefaultSurfaceToolsList(t *testing.T) {
 // names.
 func TestExtendedSurfaceToolsList(t *testing.T) {
 	if len(extendedWant) != extendedWantCount {
-		t.Fatalf("extendedWant has %d entries, want %d — update extendedWantCount, docs/mcp-tools.md, docs/CLAUDE.md and internal/CLAUDE.md together", len(extendedWant), extendedWantCount)
+		t.Fatalf("extendedWant has %d entries, want %d — update extendedWantCount, docs/mcp-tools.md, docs/AGENTS.md and internal/AGENTS.md together", len(extendedWant), extendedWantCount)
 	}
 	srv := mcp.NewServer(&fakeBackend{})
 	want := append([]string(nil), extendedWant...)

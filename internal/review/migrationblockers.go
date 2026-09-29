@@ -51,7 +51,7 @@ type repoFile struct{ repository, file string }
 // Done site is already on To and can never block anything) whose
 // (Repository, File) appears in governed or generated, sorted by
 // Repository, then File, then Line (determinism contract,
-// internal/CLAUDE.md). A site named in both reports ONE row with the more
+// internal/AGENTS.md). A site named in both reports ONE row with the more
 // specific, cited BlockedGoverned reason — never two rows for one site.
 func migrationBlockers(sites []MigrationSite, governed []GovernedSite, generated []GeneratedFile) []MigrationBlocker {
 	governedRule := make(map[repoFile]string, len(governed))

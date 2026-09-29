@@ -336,15 +336,15 @@ func (c *Compiler) Compile(ctx context.Context, in CompileInput) (core.CompileRu
 	// in currentSubjects, or it would wrongly retire a doc that simply
 	// hasn't been reached yet, instead of leaving it untouched for the next
 	// (digest-gated) run to resume.
-	all := make([]docSections, 0, len(docs))
+	// corpusSections also drops a CLAUDE.md section its AGENTS.md twin
+	// already carries (ADR-059): the rule compiles once.
+	all := corpusSections(docs)
 	currentSubjects := map[string]bool{}
-	for _, doc := range docs {
-		sections := SplitMarkdownSections(doc.Path, doc.Content)
-		run.SectionsTotal += len(sections)
-		for _, sec := range sections {
+	for _, ds := range all {
+		run.SectionsTotal += len(ds.sections)
+		for _, sec := range ds.sections {
 			currentSubjects[sec.Subject] = true
 		}
-		all = append(all, docSections{doc: doc, sections: sections})
 	}
 
 	// O54 deliverable 1: a FLAT, nearest-scope-first compile order —
@@ -966,6 +966,9 @@ var instructionFileBases = map[string]bool{"CLAUDE.md": true, "AGENTS.md": true,
 // every other governing doc keep whatever scope the model proposed (verified
 // by the match/breadth checks as before).
 func scopeFloorDir(docPath string) string {
+	if isRootGuidePath(docPath) {
+		return "" // a root guide, .claude/{AGENTS,CLAUDE}.md included (ADR-059)
+	}
 	dir, base := path.Split(path.Clean(docPath))
 	if !instructionFileBases[base] {
 		return ""

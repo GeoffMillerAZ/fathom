@@ -125,8 +125,8 @@
     }
   },
   "truth_at_head_revision": {
-    "rederived_at": "2026-09-12",
-    "rederived_at_commit": "1b8765d",
+    "rederived_at": "2026-09-29",
+    "rederived_at_commit": "76446a07",
     "method": "PB-1 (docs/plans/bench-public.md; design docs/vision/26-proof-credibility.md §2.1, ADR-031). Every ground-truth token re-derived by direct grep/read of the working tree at the named commit (never the daemon alone), and each token now carries a `truth_at_head` anchor (kind file|path|line|form) that internal/contextbench's TestHomeCorpusTruthAtHead re-checks on every `task validate`, so corpus drift is a gate failure. Premises that rest on what the LLM-compiled obligations layer serves declare `requires: [compiled-layer]` (PB-12); the live daemon's obligations tool was queried read-only for those five to record its current serving state. machine_criterion (H2-1) untouched, per the rule the post_recompile_rederivation block set. RE-SWEPT 2026-09-12 under BP-1/BP-2 (docs/plans/bench-pyramid.md, ADR-032 §1): TestHomeCorpusTruthAtHead now also asserts that no ground-truth token appears in any file the harness auto-loads (corpusBaselineFiles: root CLAUDE.md, AGENTS.md, .claude/CLAUDE.md, and the user memory index when $CONTEXT_BENCH_MEMORY_INDEX names it) and refuses a prompt that names the file its own ground truth is derived from (citations of the form `file#L12-L13` are stripped first: a staleness task must be allowed to quote the citation under test). Both checks are free and run in `task validate`.",
     "findings": [
       "H1-T08: FALSE at HEAD — the workspace/ rule moved from CLAUDE.md:29-30 to the Non-negotiables table row at line 15; the bare-number token '29' (a substring of any answer containing 29) replaced by the citation form 'CLAUDE.md#L15', which the prompt now prescribes.",
@@ -142,7 +142,8 @@
       "H1-T11: LEAKED — 'never a shell' is in CLAUDE.md and AGENTS.md, and any-of made it sufficient. Dropped; the surviving tokens live only in docs/guides/fleet-index.md.",
       "H1-T12: LEAKED — 'keystone' is in CLAUDE.md. Part (b) now asks for the line the rule's text occupies at HEAD ('CLAUDE.md#L48').",
       "H1-T01/H1-T03/H1-T13: PROMPT NAMED THE ANSWER'S FILE (internal/CLAUDE.md, cmd/fathom/verify_test.go, ADR.md) — the E1/O23 shape. The pointers are removed; ground truth unchanged.",
-      "Maintenance note: three tasks (H1-T07, H1-T08, H1-T12) now pin a line citation, so an edit above the cited line in ADR.md or CLAUDE.md fails this test. That is the intended trade: a line number is the one fact about an auto-loaded file that the auto-load does not hand the agent."
+      "Maintenance note: three tasks (H1-T07, H1-T08, H1-T12) now pin a line citation, so an edit above the cited line in ADR.md or CLAUDE.md fails this test. That is the intended trade: a line number is the one fact about an auto-loaded file that the auto-load does not hand the agent.",
+      "RE-POINTED 2026-09-29 (ADR-059, plan AG-23): the repo carries AGENTS.md as its one instruction file; CLAUDE.md, internal/CLAUDE.md and the other nested guides moved (git mv) to AGENTS.md with their line layout unchanged. H1-T08 ('AGENTS.md#L10', the workspace/ row), H1-T12 ('AGENTS.md#L40', the domain-model row; the prompt's stale citation is now 'AGENTS.md#L83-L84', still the stanza) and H1-T01 (internal/AGENTS.md) re-anchored and re-derived at this tree; H1-T11's prompt names AGENTS.md. Findings above describe the tree they were written at and stay as written; a citation of CLAUDE.md there names the file as it was then."
     ]
   },
   "tasks": [
@@ -169,12 +170,12 @@
         {
           "token": "fusion.New",
           "kind": "file",
-          "file": "internal/CLAUDE.md"
+          "file": "internal/AGENTS.md"
         },
         {
           "token": "golden-test",
           "kind": "file",
-          "file": "internal/CLAUDE.md"
+          "file": "internal/AGENTS.md"
         }
       ]
     },
@@ -455,7 +456,7 @@
       "category": "what_governs",
       "prompt": "In the fathom repo, which repository-root convention governs where code and commands that emit files must place their output by default? Cite the line on which that rule's row begins, in the citation form `<file>#L<n>` (e.g. `docs/example.md#L7`).",
       "ground_truth": [
-        "CLAUDE.md#L10"
+        "AGENTS.md#L10"
       ],
       "scoring_rule": "exact-match",
       "exercises": [
@@ -467,9 +468,9 @@
       "notes": "Reworked in the critic round (D3): the original asked which rule the compiler scoped UNIQUELY to engine.go vs goextract.go — a compile-time LLM scope decision not derivable from any on-disk text (rigged for the fathom arm), and its ground truth used fathom's native citation format ('CLAUDE.md#L29') that a correct grep answer ('CLAUDE.md line 29') would fail. The rework anchors the question and both ground truths to on-disk text reachable by either arm, which also removes the task's recompile exposure.",
       "truth_at_head": [
         {
-          "token": "CLAUDE.md#L10",
+          "token": "AGENTS.md#L10",
           "kind": "line",
-          "file": "CLAUDE.md",
+          "file": "AGENTS.md",
           "needle": "**workspace/** — ALL build artifacts"
         }
       ]
@@ -530,7 +531,7 @@
       "id": "H1-T11",
       "class": "contradiction",
       "category": "synthetic_diff",
-      "prompt": "A teammate proposes adding this line to fathom's CLAUDE.md: \"fathom ingest is always safe to run directly against the shared store, even while the daemon is running.\" Does this proposed addition contradict any EXISTING statement already in fathom's CLAUDE.md (or in the guide its Index-first rule row points to for the full text)? If so, quote the key conflicting phrase from the existing text.",
+      "prompt": "A teammate proposes adding this line to fathom's AGENTS.md: \"fathom ingest is always safe to run directly against the shared store, even while the daemon is running.\" Does this proposed addition contradict any EXISTING statement already in fathom's AGENTS.md (or in the guide its Index-first rule row points to for the full text)? If so, quote the key conflicting phrase from the existing text.",
       "ground_truth": [
         "lock error",
         "busy_timeout"
@@ -560,10 +561,10 @@
       "id": "H1-T12",
       "class": "staleness",
       "category": "citation_drift",
-      "prompt": "A rule governing internal/core/model.go reads 'Maintain shared types in `internal/core` and extend them additively.', cited to CLAUDE.md#L83-L84. (a) Check whether CLAUDE.md#L83-L84 still contains this rule's text at the current HEAD; answer in exactly the form 'verdict: stale' or 'verdict: fresh'. (b) If it moved, cite the line on which the rule's text actually appears today, in the citation form `<file>#L<n>` (e.g. `docs/example.md#L7`).",
+      "prompt": "A rule governing internal/core/model.go reads 'Maintain shared types in `internal/core` and extend them additively.', cited to AGENTS.md#L83-L84. (a) Check whether AGENTS.md#L83-L84 still contains this rule's text at the current HEAD; answer in exactly the form 'verdict: stale' or 'verdict: fresh'. (b) If it moved, cite the line on which the rule's text actually appears today, in the citation form `<file>#L<n>` (e.g. `docs/example.md#L7`).",
       "ground_truth": [
         "verdict: stale",
-        "CLAUDE.md#L40"
+        "AGENTS.md#L40"
       ],
       "scoring_rule": "all-of",
       "exercises": [
@@ -580,14 +581,14 @@
         {
           "token": "verdict: stale",
           "kind": "form",
-          "why": "the answer form the prompt prescribes; the fact it encodes is that CLAUDE.md#L83-L84 no longer carries the rule's text (it is the index-first stanza at HEAD)"
+          "why": "the answer form the prompt prescribes; the fact it encodes is that AGENTS.md#L83-L84 no longer carries the rule's text (it is the index-first stanza at HEAD)"
         },
         {
-          "token": "CLAUDE.md#L40",
+          "token": "AGENTS.md#L40",
           "kind": "line",
-          "file": "CLAUDE.md",
+          "file": "AGENTS.md",
           "needle": "**Domain model**: shared types in `internal/core`",
-          "why": "where the rule's text lives at HEAD, now that CLAUDE.md#L83-L84 no longer carries it"
+          "why": "where the rule's text lives at HEAD, now that AGENTS.md#L83-L84 no longer carries it"
         }
       ]
     },

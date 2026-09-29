@@ -82,7 +82,7 @@ func cmdMetricsTraffic(args []string, stdout, stderr io.Writer) int {
 // trafficResult is `metrics traffic`'s answer: the report over a read log,
 // or — when the log is absent or could not be read — the report's window
 // and grouping with the read's truth state in place of every count. An
-// unread log is never an idle daemon (cmd/fathom/CLAUDE.md rule 6: absent
+// unread log is never an idle daemon (cmd/fathom/AGENTS.md rule 6: absent
 // is never 0, and JSON carries no zero for it).
 type trafficResult struct {
 	Report metrics.TrafficReport

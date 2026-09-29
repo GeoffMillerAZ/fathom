@@ -30,6 +30,8 @@ package main
 // log through the live daemon (INC-23). The package's own temp-dir caches
 // are redirected under the isolated root by the setup callback.
 import (
+	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -56,6 +58,13 @@ func TestMain(m *testing.M) {
 		hookcache.FileChangedDir = filepath.Join(cacheRoot, "filechanged")
 		editSetDir = filepath.Join(cacheRoot, "edit-set")
 		guardStampDir = filepath.Join(cacheRoot, "guard-stamps")
+		// ADR-059: doctor's Claude Code load path never reads this
+		// machine's managed settings or spawns the real claude binary in a
+		// test; a test that needs a reading sets its own.
+		claudeLoadEnv.managedSettings = func() []string { return nil }
+		claudeLoadEnv.version = func(context.Context) (string, error) {
+			return "", errors.New("not probed in tests")
+		}
 		return nil
 	})
 }

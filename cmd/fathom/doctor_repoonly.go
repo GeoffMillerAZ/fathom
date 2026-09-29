@@ -15,7 +15,7 @@ func doctorRepoChecks(root, harness string) []doctorCheck {
 		checkHooksInstalled(root, harness),
 		checkLefthookGates(root),
 		checkHarnessHookFiles(root, harness),
-		checkStanzaPresent(root),
+		checkStanzaPresentRepoOnly(root), // no `claude --version` spawn (ADR-059's version half)
 		checkAgentsSkills(root, harness),
 		checkWiringDrift(root, harness),
 		checkConfigValid(root),

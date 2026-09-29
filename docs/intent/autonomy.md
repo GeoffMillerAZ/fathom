@@ -1,7 +1,7 @@
 # Autonomy
 
 What an agent may do unasked, must ask first, and never does, in this repo. A three-line
-summary lives in `CLAUDE.md` / `AGENTS.md`; this file is the full source.
+summary lives in `AGENTS.md`; this file is the full source.
 Rationale: `agentic-kit/docs/project-intent/operating.md` §1.
 
 ## Branch model
@@ -63,11 +63,11 @@ Rationale: `agentic-kit/docs/project-intent/operating.md` §1.
   copy it into the tree). Read credential stores. `sudo`.
 - Deploy the daemon with a raw `cp` (`.fathom/concerns.cue` deploy_safety; O25).
 - Run a shell `fathom ingest` against the shared fleet store while the daemon serves it
-  (`CLAUDE.md` Index-first; O16's failure path).
+  (`AGENTS.md` question-shape routing; O16's failure path).
 - Skip a gate to get green: `LEFTHOOK=0` only after the gate ran green and the failure is
   the transport wedge, and the thread note says so; `--no-verify` never.
 - Check a `docs/plans/*.md` box the index cannot prove; claim done without `Verified:`.
-- Hand-write observatory markup; edit generated CSS (`cmd/fathom/CLAUDE.md`).
+- Hand-write observatory markup; edit generated CSS (`cmd/fathom/AGENTS.md`).
 
 ## When unsure
 

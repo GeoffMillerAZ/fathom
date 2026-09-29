@@ -78,6 +78,16 @@
           }
         ],
         "matcher": "mcp__fathom__.*|mcp__plugin_[^_]*_fathom__.*"
+      },
+      {
+        "hooks": [
+          {
+            "command": "fathom session-hook --event failed-test-run",
+            "timeout": 5,
+            "type": "command"
+          }
+        ],
+        "matcher": "Bash"
       }
     ],
     "PreToolUse": [

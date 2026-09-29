@@ -10,8 +10,9 @@ package main
 //	                  concern (C3-1: optional, so no pack ships it as a
 //	                  want — a pack entry most repos violate would teach
 //	                  people to ignore the custodian)
-//	stanza_present  ← pack claude-code: claude_code_stanza_present,
-//	                  pack codex: codex_stanza_present
+//	stanza_present  ← pack codex: codex_stanza_present (FAIL),
+//	                  pack claude-code: claude_code_stanza_present (WARN),
+//	                  plus claudeLoadPath (doctor_claudeload.go, ADR-059)
 //
 // The entries are evaluated as SHIPPED: a repo's same-id override governs
 // its own `fathom config audit`, not these wiring rows, which stay the same
@@ -33,6 +34,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -100,29 +102,80 @@ func checkLefthookGates(root string) doctorCheck {
 	}
 }
 
-// checkStanzaPresent is harness-independent: `fathom init` always writes
-// the identical stanza to both files, so both are always expected. The
-// engine's stanza_present details are file-prefixed sentences; the row is
-// their join, exactly as the bespoke check joined its own.
-func checkStanzaPresent(root string) doctorCheck {
+// checkStanzaPresent is harness-independent (ADR-059, AG-11): the stanza
+// lives in AGENTS.md for every harness, so the codex pack's
+// codex_stanza_present entry decides FAIL (absent file, no region, a
+// corrupted marker pair). Whether Claude Code will load AGENTS.md is a WARN,
+// never a FAIL, with the remedy: the claude-code pack's
+// claude_code_stanza_present (agents_md_reaches_claude — a root CLAUDE file
+// without the import), a CLAUDE file still carrying the old stanza, and
+// claudeLoadPath's machine half (an ancestor CLAUDE file, the agents-md
+// setting, a Claude Code release before 2.1.277). PASS names the path
+// AGENTS.md takes into a session.
+func checkStanzaPresent(root string) doctorCheck { return checkStanzaPresentProbe(root, true) }
+
+// checkStanzaPresentRepoOnly is the row `doctor --repo-only` renders: the
+// same verdict without asking the claude binary for its version.
+func checkStanzaPresentRepoOnly(root string) doctorCheck { return checkStanzaPresentProbe(root, false) }
+
+// checkStanzaPresentProbe is checkStanzaPresent with the version probe
+// switchable (claudeLoadPath).
+func checkStanzaPresentProbe(root string, probeVersion bool) doctorCheck {
 	const name = "stanza_present"
 	remedy := "fathom init --path " + root
 
 	fs, err := doctorPackFindings(root, []packRef{
-		{"claude-code", "claude_code_stanza_present"},
 		{"codex", "codex_stanza_present"},
+		{"claude-code", "claude_code_stanza_present"},
 	})
 	if err != nil {
 		return doctorCheck{Name: name, Status: doctorSkipped, Reason: fmt.Sprintf("a shipped stanza pack entry did not load (%v) — a fathom defect, so this row cannot be evaluated", err)}
 	}
-	var problems []string
-	for _, f := range fs {
-		if f.Status != custodian.StatusHolds {
-			problems = append(problems, f.Detail)
+	agents, reach := fs[0], fs[1]
+	if agents.Status != custodian.StatusHolds {
+		return doctorCheck{Name: name, Status: doctorFail, Reason: agents.Detail, Remedy: remedy}
+	}
+	// A well-formed pair is not a stanza: a region whose body is the
+	// one-line import (a CLAUDE-file region written into AGENTS.md through
+	// a link) tells a session nothing about the index.
+	if data, err := os.ReadFile(filepath.Join(root, agentsMDFile)); err == nil && isImportBody(ownedBodyIn(string(data))) {
+		return doctorCheck{Name: name, Status: doctorFail, Reason: "AGENTS.md: fathom's region is well-formed but holds no stanza, only " + strings.TrimSpace(ownedBodyIn(string(data))), Remedy: remedy + " (rewrites the region to the stanza)"}
+	}
+
+	load := claudeLoadPath(root, probeVersion)
+	var warns, remedies []string
+	if len(load.Corrupted) > 0 {
+		warns = append(warns, fmt.Sprintf("%s: corrupted fathom marker pair — fleet reconcile will not rewrite it", strings.Join(load.Corrupted, ", ")))
+		remedies = append(remedies, "repair or remove the stray fathom marker in "+strings.Join(load.Corrupted, ", ")+" by hand, then "+remedy)
+	}
+	if len(load.LegacyStanza) > 0 {
+		warns = append(warns, fmt.Sprintf("%s still carries the fathom stanza (the two-copy layout ADR-059 retired)", strings.Join(load.LegacyStanza, ", ")))
+		remedies = append(remedies, remedy+" (rewrites that region to an @AGENTS.md import)")
+	}
+	if reach.Status != custodian.StatusHolds && load.Mode != claudeModeBoth {
+		warns = append(warns, reach.Detail)
+		remedies = append(remedies, remedy+" (adds a marked @AGENTS.md import region)")
+	}
+	machine, machineRemedies := load.warnings()
+	warns = append(warns, machine...)
+	remedies = append(remedies, machineRemedies...)
+	if len(warns) > 0 {
+		return doctorCheck{Name: name, Status: doctorWarn,
+			Reason: "AGENTS.md: fathom stanza well-formed, but Claude Code may not load it: " + strings.Join(warns, "; "),
+			Remedy: strings.Join(dedupeStrings(remedies), "; ")}
+	}
+	return doctorCheck{Name: name, Status: doctorPass, Reason: "AGENTS.md: fathom stanza well-formed; Claude Code loads it: " + load.passReason()}
+}
+
+// dedupeStrings keeps the first of each string, in order.
+func dedupeStrings(in []string) []string {
+	seen := map[string]bool{}
+	var out []string
+	for _, s := range in {
+		if !seen[s] {
+			seen[s] = true
+			out = append(out, s)
 		}
 	}
-	if len(problems) > 0 {
-		return doctorCheck{Name: name, Status: doctorFail, Reason: strings.Join(problems, "; "), Remedy: remedy}
-	}
-	return doctorCheck{Name: name, Status: doctorPass, Reason: "fathom stanza well-formed in both CLAUDE.md and AGENTS.md"}
+	return out
 }

@@ -7,7 +7,8 @@ plans, design docs, intent, usage docs — not in code. Every gold answer below
 is a short, verifiable quote or fact, each with the doc and section it lives
 in, re-derivable by hand at the commit this file was written against
 (`b59bcff3`, 2026-09-28) the same way the home corpus's `truth_at_head`
-anchors are (`docs/bench/README.md`).
+anchors are (`docs/bench/README.md`). DQ-24 to DQ-27 name `AGENTS.md`, this repo's
+one instruction file since ADR-059 (the same file, then named `CLAUDE.md`, at `b59bcff3`).
 
 This file is the scenario only: questions, gold answers, sources. `KR-M1` (op,
 gated on this row) is the run itself — two arms (fathom, grep) answer these
@@ -66,10 +67,10 @@ named), written to `docs/bench/readings/knowledge/doc-questions.md` — the
 | DQ-21 | In the plan grammar, what does a `[-]` checkbox mean? | Skipped or abandoned | `docs/plans/README.md` Checkbox semantics |
 | DQ-22 | In the plan grammar, which flag makes `fathom verify` the wave gate? | --require-all | `docs/plans/README.md` |
 | DQ-23 | Where do all build artifacts, logs, temp files and local DBs belong, per the workspace convention? | workspace/ | `docs/usage.md` §workspace/ convention |
-| DQ-24 | Per CLAUDE.md's non-negotiables, what command must stay green as the gate? | task validate | `CLAUDE.md` Non-negotiables table |
-| DQ-25 | Per CLAUDE.md, what is the correct way to deploy, never a raw `cp`? | task deploy | `CLAUDE.md` Non-negotiables table |
-| DQ-26 | Per CLAUDE.md, a `docs/plans/*.md` box flips to `[x]` only when what proves it? | fathom verify | `CLAUDE.md` Non-negotiables table |
-| DQ-27 | Per CLAUDE.md's UI doctrine line, what governs the observatory's markup? | app-kit doctrine | `CLAUDE.md` Non-negotiables table |
+| DQ-24 | Per AGENTS.md's non-negotiables, what command must stay green as the gate? | task validate | `AGENTS.md` Non-negotiables table |
+| DQ-25 | Per AGENTS.md, what is the correct way to deploy, never a raw `cp`? | task deploy | `AGENTS.md` Non-negotiables table |
+| DQ-26 | Per AGENTS.md, a `docs/plans/*.md` box flips to `[x]` only when what proves it? | fathom verify | `AGENTS.md` Non-negotiables table |
+| DQ-27 | Per AGENTS.md's UI doctrine line, what governs the observatory's markup? | app-kit doctrine | `AGENTS.md` Non-negotiables table |
 | DQ-28 | Per ADR-049 decision 8, what fuses BM25 with in doc ranking? | concern ranking | `ADR.md` ADR-049 decision 8 |
 | DQ-29 | Per ADR-049's revisit triggers, what happens if the FTS5 slice misses grep's pass rate after one tuning round? | Re-weigh vision 31's bench before any other retrieval work | `ADR.md` ADR-049 Revisit when |
 | DQ-30 | Per §7 of the knowledge-retrieval design, are dependency docs ever fetched from the network? | Never (I56) | `docs/design/knowledge-retrieval.md` §7 |

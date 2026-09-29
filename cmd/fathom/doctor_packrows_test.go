@@ -47,7 +47,9 @@ func legacyCheckStanzaPresent(root string) doctorCheck {
 	remedy := "fathom init --path " + root
 
 	var problems []string
-	for _, fname := range []string{"CLAUDE.md", "AGENTS.md"} {
+	// ADR-059: the stanza's one file is AGENTS.md; the retired check's
+	// three-case detection is now the FAIL half of the row, on AGENTS.md.
+	for _, fname := range []string{"AGENTS.md"} {
 		p := filepath.Join(root, fname)
 		data, err := os.ReadFile(p)
 		if err != nil {
@@ -101,12 +103,14 @@ func TestDoctorConvergence_RowsUnchanged(t *testing.T) {
 		"both_good":        {"CLAUDE.md": good, "AGENTS.md": good},
 		"agents_missing":   {"CLAUDE.md": good},
 		"never_wired":      {"CLAUDE.md": "# hand-written\n", "AGENTS.md": good},
-		"begin_only":       {"CLAUDE.md": fathomStanzaBegin + "\nno end\n", "AGENTS.md": good},
+		"agents_unwired":   {"AGENTS.md": "# hand-written\n"},
+		"begin_only":       {"AGENTS.md": fathomStanzaBegin + "\nno end\n"},
 		"end_only":         {"CLAUDE.md": good, "AGENTS.md": "text\n" + fathomStanzaEnd + "\n"},
-		"end_before_begin": {"CLAUDE.md": fathomStanzaEnd + "\n" + fathomStanzaBegin + "\n", "AGENTS.md": "# none\n"},
-		"v3_markers":       {"CLAUDE.md": "<!-- fathom:begin v3 sha256:abc -->\nx\n" + fathomStanzaEnd + "\n", "AGENTS.md": good},
+		"end_before_begin": {"AGENTS.md": fathomStanzaEnd + "\n" + fathomStanzaBegin + "\n"},
+		"v3_markers":       {"AGENTS.md": "<!-- fathom:begin v3 sha256:abc -->\nx\n" + fathomStanzaEnd + "\n"},
+		"agents_only":      {"AGENTS.md": good},
 	}
-	run := func(kind string, cases map[string]map[string]string, now, legacy func(string) doctorCheck) {
+	run := func(kind string, cases map[string]map[string]string, now, legacy func(string) doctorCheck, failsOnly bool) {
 		for name, files := range cases {
 			root := t.TempDir()
 			for f, body := range files {
@@ -115,13 +119,22 @@ func TestDoctorConvergence_RowsUnchanged(t *testing.T) {
 				}
 			}
 			got, want := now(root), legacy(root)
+			if failsOnly && want.Status != doctorFail {
+				// ADR-059: where the retired check passed, the row now also
+				// reads whether Claude Code reaches AGENTS.md — PASS or a
+				// WARN with the remedy, never a FAIL.
+				if got.Status == doctorFail {
+					t.Errorf("%s/%s: FAIL where AGENTS.md is well-formed: %+v", kind, name, got)
+				}
+				continue
+			}
 			if !reflect.DeepEqual(got, want) {
 				t.Errorf("%s/%s: converged row differs from the retired check\n got  %+v\n want %+v", kind, name, got, want)
 			}
 		}
 	}
-	run("lefthook_gates", lefthookCases, checkLefthookGates, legacyCheckLefthookGates)
-	run("stanza_present", stanzaCases, checkStanzaPresent, legacyCheckStanzaPresent)
+	run("lefthook_gates", lefthookCases, checkLefthookGates, legacyCheckLefthookGates, false)
+	run("stanza_present", stanzaCases, checkStanzaPresent, legacyCheckStanzaPresent, true)
 }
 
 // TestLefthookPackPatternMatchesDoctor: the lefthook pack ships, as data,

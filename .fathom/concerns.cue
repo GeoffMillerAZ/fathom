@@ -4,8 +4,9 @@
 // Run `fathom config audit` for evidence. Fathom reports; you decide.
 //
 // The shipped packs (CC-12, internal/custodian/packs) this repo holds itself
-// to: the stanza in both agent files, AGENTS.md within Codex's read budget,
-// and the gate chain — docs → lefthook → Taskfile → scripts — unbroken.
+// to: the stanza in AGENTS.md (the one instruction file, ADR-059) within
+// Codex's read budget, and the gate chain — docs → lefthook → Taskfile →
+// scripts — unbroken.
 packs: ["claude-code", "codex", "lefthook", "taskfile"]
 
 concerns: {
@@ -19,8 +20,8 @@ concerns: {
 		check: {kind: "command_documented_and_exists", command: "task validate"}
 	}
 	router_thin: {
-		want:  "the root CLAUDE.md stays a router (the 2026-08-13 compositional restructure holds)"
-		check: {kind: "max_lines", file: "CLAUDE.md", lines: 120}
+		want:  "the root AGENTS.md stays a router (the 2026-08-13 compositional restructure holds)"
+		check: {kind: "max_lines", file: "AGENTS.md", lines: 120}
 	}
 	adr_citations_resolve: {
 		want:  "every ADR-NNN cited in a design doc, an intent doc, the changelog or a plan resolves to a record that exists"
@@ -31,12 +32,22 @@ concerns: {
 		want:  "every relative markdown pointer in agent config resolves"
 		check: {kind: "pointers_resolve"}
 	}
+	// ADR-059: AGENTS.md is this repo's one instruction file. The claude-code
+	// pack's claude_code_stanza_present (agents_md_reaches_claude) holds when
+	// Claude Code reaches it; this repo holds itself to the stricter form: no
+	// CLAUDE file anywhere in the agent-config corpus, not even an import
+	// (test fixtures under testdata/ are input, not instruction files).
+	one_instruction_file: {
+		want:  "AGENTS.md is this repo's only instruction file: no CLAUDE.md, .claude/CLAUDE.md, CLAUDE.local.md or nested CLAUDE.md, so Claude Code (2.1.277 and later, default mode) loads AGENTS.md natively and Codex reads the same nested guides"
+		why:   "ADR-059 decision 7 (the owner's \"do not maintain CLAUDE.md\"): under Claude Code's default agents-md mode any root CLAUDE file switches AGENTS.md off, `/init` still writes one, and the FileChanged config-audit hook names it the moment it lands"
+		check: {kind: "agents_md_reaches_claude", allow_import: false}
+	}
 	// The claude-code/codex packs ship this same check; pointers_hold above
 	// predates them and is what I34 cites, so the pack's copy is disabled
 	// here (law 13: an entry disabled by id, named off in the audit).
 	agent_config_pointers_resolve: {off: true}
 	stanza_current: {
-		want:  "every tool the fathom stanza in CLAUDE.md/AGENTS.md names — backticked, or bare with an underscore (find_callers, pack_context) — is served by the running daemon's agent surface; a stanza pointing at a pruned or undeployed tool sends every session at a call that fails"
+		want:  "every tool the fathom stanza in AGENTS.md names — backticked, or bare with an underscore (find_callers, pack_context) — is served by the running daemon's agent surface; a stanza pointing at a pruned or undeployed tool sends every session at a call that fails"
 		why:   "CC-14: the operator contract's \"instructed means true\" applied to fathom's own instructions. Daemon down, or a 200 with no tools in it, is unable-to-check, never a violation. Bare single words (obligations, references, outline, ingest) are policed only when backticked — bare they are prose, and a false violation teaches people to ignore the custodian"
 		check: {kind: "stanza_tools_served"}
 	}

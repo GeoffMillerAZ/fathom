@@ -2,7 +2,7 @@ package testlayer
 
 // INVALID examples — kept commented so `cue vet ./...` stays green; the Go
 // test (internal/testlayer/schema_test.go) asserts each fails when
-// uncommented into a unification (repo convention, schema/CLAUDE.md).
+// uncommented into a unification (repo convention, schema/AGENTS.md).
 //
 // 1. Empty name:
 // bad1: #Layers & {

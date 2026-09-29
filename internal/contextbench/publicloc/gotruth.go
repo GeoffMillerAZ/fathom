@@ -244,7 +244,7 @@ func addTo(m map[string]map[string]bool, k, v string) {
 }
 
 // flatten turns the set-of-sets into sorted slices — the determinism
-// contract (internal/CLAUDE.md) applied to every map this file returns.
+// contract (internal/AGENTS.md) applied to every map this file returns.
 func flatten(m map[string]map[string]bool) map[string][]string {
 	out := make(map[string][]string, len(m))
 	for k, set := range m {

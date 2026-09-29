@@ -10,7 +10,7 @@
 // inventory from `git show <base>:<path>` bytes and head's from worktree
 // bytes, with nothing re-ingested at base (docs/design/
 // refactor-conservation.md §0, §2.1 — P19). It is pure and deterministic:
-// no I/O, no clock, sorted output (internal/CLAUDE.md's determinism
+// no I/O, no clock, sorted output (internal/AGENTS.md's determinism
 // contract).
 //
 // Where an existing analyzer already does the job over raw source text,

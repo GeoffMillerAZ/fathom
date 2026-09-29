@@ -28,7 +28,7 @@ cannot reach its target keeps its contract and gains a `[-]` sibling
 - [x] `indexbench lang-probe`: the S-expression of a small file and every capture a dialect's queries make on it, output capped at 200 lines — the worker's query-writing tool (§10, §13 step 12) {id: LB-F20, symbol: cmdLangProbe, package: cmd/indexbench, reachable_from: TestCmdLangProbe}
 - [x] Calibration shards: `calibration/corpus.d/<id>.yaml` read by `clone.sh` alongside `corpus.yaml`, a `subpath` field, and `task calibrate-clean -- <id>` (§13.3) {id: LB-F21, oracle: lexical, path: calibration/clone.sh, pattern: "corpus\.d"}
 - [x] `docs/languages.md` is generated from manifests, readings and the queue (`indexbench lang-tracker`), a registered dialect without a reading shows `tolerated`, the milestone line is computed, and the tracker test refuses a level above its reading (§12, I54) {id: LB-F17, symbol: RenderTracker, package: internal/langbench, reachable_from: TestLanguagesTrackerIsGenerated, needs: "LB-F16,LB-F22"}
-- [x] The dialect manifest schema in CUE with valid/invalid testdata pairs (`schema/CLAUDE.md` conventions) (§2.2) {id: LB-F29, oracle: lexical, path: schema/dialect/dialect.cue, pattern: "^#Dialect:"}
+- [x] The dialect manifest schema in CUE with valid/invalid testdata pairs (`schema/AGENTS.md` conventions) (§2.2) {id: LB-F29, oracle: lexical, path: schema/dialect/dialect.cue, pattern: "^#Dialect:"}
 - [x] Tool-format L3 scoring: `xref_precision`/`xref_recall` from a tool oracle's `cross_references` (`[{path, from, to_path, to}]`; `to` empty compares at file granularity) against the doc engine's resolved `cross_file` references — `fusion.ResolveDocXrefs`, the resolver whose edges ingest now stores (file-tier typed edges under the `doc-xref` key, design §4; owner decision D4, 2026-09-28) {id: LB-F30, symbol: ScoreXrefs, package: internal/langbench, reachable_from: TestScoreXrefs, needs: "LB-F23,LB-F8"}
 
 ### F.2 The tags-query engine (§3)
@@ -67,7 +67,7 @@ cannot reach its target keeps its contract and gains a `[-]` sibling
 ### F.6 Retirement (§11)
 
 - [x] `indexbench lang-parity`: incumbent against dialect on the same subjects and oracle, per-metric delta, `SourceKind` diff; the merge rule of §11 step 2 as its exit code {id: LB-F18, symbol: cmdLangParity, package: cmd/indexbench, reachable_from: TestCmdLangParity, needs: "LB-F23"}
-- [ ] The CGO tree-sitter bindings leave `go.mod` once the last walker is retired; `internal/CLAUDE.md` and ADR-013's status corrected (§11 step 4, F1) {id: LB-F19, gone: module github.com/tree-sitter/go-tree-sitter, needs: "LB-Q-java,LB-Q-csharp,LB-Q-bash,LB-Q-c,LB-Q-cpp,LB-Q-php,LB-Q-rust,LB-Q-lua,LB-Q-scala"}
+- [ ] The CGO tree-sitter bindings leave `go.mod` once the last walker is retired; `internal/AGENTS.md` and ADR-013's status corrected (§11 step 4, F1) {id: LB-F19, gone: module github.com/tree-sitter/go-tree-sitter, needs: "LB-Q-java,LB-Q-csharp,LB-Q-bash,LB-Q-c,LB-Q-cpp,LB-Q-php,LB-Q-rust,LB-Q-lua,LB-Q-scala"}
 
 ### F.7 Refused and deferred (recorded so they are not re-proposed)
 

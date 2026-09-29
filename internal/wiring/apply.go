@@ -89,6 +89,10 @@ func ApplyWiring(root string, spec Spec, opt ApplyOptions) (res Result, err erro
 	for _, f := range spec.Files {
 		files[f.File] = f
 	}
+	links := map[string]Link{}
+	for _, l := range spec.Links {
+		links[l.Path] = l
+	}
 
 	byFile := map[string][]Item{}
 	var fileOrder []string
@@ -147,6 +151,12 @@ func ApplyWiring(root string, spec Spec, opt ApplyOptions) (res Result, err erro
 		res.Receipt = &written
 	}()
 	for _, file := range fileOrder {
+		// A link is a path, not a file's bytes: it writes its own receipt
+		// entries (the files it replaced, then the link) and is applied
+		// after every file, so nothing is ever written through it.
+		if _, isLink := links[file]; isLink {
+			continue
+		}
 		path := filepath.Join(root, filepath.FromSlash(file))
 		before, existed, rerr := readFileIfPresent(path)
 		if rerr != nil {
@@ -224,6 +234,21 @@ func ApplyWiring(root string, spec Spec, opt ApplyOptions) (res Result, err erro
 		receipt.Files = append(receipt.Files, rf)
 	}
 
+	for _, file := range fileOrder {
+		l, isLink := links[file]
+		if !isLink {
+			continue
+		}
+		for _, it := range byFile[file] {
+			changed, lerr := applyLink(root, l, it, &ledger, &receipt)
+			keysRecorded = keysRecorded || changed
+			if lerr != nil {
+				return res, fmt.Errorf("writing the link %s: %w", file, lerr)
+			}
+			res.Applied = append(res.Applied, it)
+		}
+	}
+
 	return res, nil
 }
 
@@ -266,6 +291,9 @@ func flushLedger(root string, ledger Ledger, receipt *Receipt) error {
 // block leaving every existing byte where it is.
 func placeRegion(content string, existed bool, r Region) (string, error) {
 	ending := lineEnding(content)
+	if r.Remove {
+		return removeRegion(content, existed, r)
+	}
 	if !existed {
 		return renderRegion(r.Syntax, r.Version, r.Body, ending) + ending, nil
 	}
@@ -291,4 +319,34 @@ func placeRegion(content string, existed bool, r Region) (string, error) {
 		sep = ending
 	}
 	return content + sep + renderRegion(r.Syntax, r.Version, r.Body, ending) + ending, nil
+}
+
+// removeRegion is placeRegion for Region.Remove: the marker pair, the body
+// and the region's own line terminator go; a blank separator line that
+// only set the region apart goes with it; every other byte stays.
+func removeRegion(content string, existed bool, r Region) (string, error) {
+	if !existed {
+		return content, nil
+	}
+	reg, err := parseOwnedRegion(content, r.Syntax)
+	if err != nil {
+		return "", err
+	}
+	if !reg.Present {
+		return content, nil
+	}
+	before, after := content[:reg.Start], content[reg.End:]
+	after = strings.TrimPrefix(after, reg.Ending)
+	double := reg.Ending + reg.Ending
+	switch {
+	case after == "" && strings.HasSuffix(before, double):
+		// appended at the end with a blank line before it
+		before = strings.TrimSuffix(before, reg.Ending)
+	case strings.HasSuffix(before, double) && strings.HasPrefix(after, reg.Ending):
+		// set apart by blank lines on both sides: keep one
+		after = strings.TrimPrefix(after, reg.Ending)
+	case before == "" && strings.HasPrefix(after, reg.Ending):
+		after = strings.TrimPrefix(after, reg.Ending)
+	}
+	return before + after, nil
 }

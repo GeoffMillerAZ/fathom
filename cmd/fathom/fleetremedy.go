@@ -87,7 +87,7 @@ type remedyRepo struct {
 
 // remedyReport is `fathom fleet remedy --json`. The gap counts are nil —
 // omitted, never 0 — when no snapshot was read: with nothing to count from
-// they are not measured (cmd/fathom/CLAUDE.md rule 6). MedianLowerBound is
+// they are not measured (cmd/fathom/AGENTS.md rule 6). MedianLowerBound is
 // set when a closed gap opened on or before the first snapshot: its
 // interval is a lower bound, so the median over them is one too.
 type remedyReport struct {

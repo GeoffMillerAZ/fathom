@@ -257,14 +257,16 @@ func requireLocalMutation(reg wiringRegistry, next http.Handler) http.Handler {
 // ─── preview → apply (SH-7) ──────────────────────────────────────────────
 
 // serviceWiringSpec is what the observatory's Apply wires into one
-// repository: the stanza regions (created or appended when absent, adopted
-// and upgraded when pre-v3, BLOCKED when tracked and hand-edited) and the
+// repository: the instruction regions (instructionRegions, ADR-059: the
+// AGENTS.md stanza created or appended when absent, adopted and upgraded
+// when pre-v3, BLOCKED when tracked and hand-edited, plus the root CLAUDE
+// file's @AGENTS.md import) and the
 // hook entries with the shim spelling — reconcile's safe subset plus the
 // initial wiring, since the button exists precisely for repositories the
 // remedy line has been nagging about.
 func serviceWiringSpec(root, service string) (wiring.Spec, []string) {
 	spec := wiring.Spec{}
-	regions, stanzaNotes := stanzaRegionsFit(root, stanzaFiles, harness.ClaudeCode, service, intentChannelWired(root))
+	regions, stanzaNotes := instructionRegions(root, harness.ClaudeCode, service, intentChannelWired(root))
 	spec.Regions = append(spec.Regions, regions...)
 	keys, notes := shimHookKeys(root)
 	spec.Keys = keys

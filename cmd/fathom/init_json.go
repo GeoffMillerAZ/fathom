@@ -55,7 +55,7 @@ type initJSON struct {
 
 var (
 	initHeaderLine  = regexp.MustCompile(`^fathom init — service "([^"]*)", root (.+)$`)
-	initWriteLine   = regexp.MustCompile(`^(created|updated|ok) (\S+)(?: \((.*)\))?$`)
+	initWriteLine   = regexp.MustCompile(`^(created|updated|linked|ok) (\S+)(?: \((.*)\))?$`)
 	initBlockedLine = regexp.MustCompile(`^BLOCKED (\S+) — (.*)$`)
 	initManualLine  = regexp.MustCompile(`^MANUAL:\s?(.*)$`)
 	initShimLine    = regexp.MustCompile(`^shim: (.*)$`)

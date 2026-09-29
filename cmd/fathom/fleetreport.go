@@ -36,7 +36,7 @@ type fleetServiceRow struct {
 	Freshness     string `json:"freshness"` // fresh | stale | unknown: <reason>
 
 	HooksNote        string `json:"hooks_note"`  // counted fathom hook registrations per scope, or the honest absence
-	StanzaNote       string `json:"stanza_note"` // CLAUDE.md fathom stanza present?
+	StanzaNote       string `json:"stanza_note"` // AGENTS.md fathom stanza present? (fleetStanzaNote, ADR-059)
 	OpenObservations *int   `json:"open_observations,omitempty"`
 	// ObservationsError is set when .fathom/observations.md exists and
 	// could not be read: the count is then unknown, never "no file".
@@ -407,19 +407,38 @@ func fleetWiringNotes(path string) (hooks, stanza string) {
 	default:
 		hooks = "settings.json unreadable: " + err.Error()
 	}
-	cm, err := os.ReadFile(filepath.Join(path, "CLAUDE.md"))
-	switch {
-	case err == nil && strings.Contains(string(cm), "fathom"):
-		stanza = "present"
-	case err == nil:
-		stanza = "CLAUDE.md present, no fathom stanza"
-	case os.IsNotExist(err):
-		stanza = "no CLAUDE.md"
-	default:
-		stanza = "unreadable: " + err.Error()
-	}
-	return hooks, stanza
+	return hooks, fleetStanzaNote(path)
 }
+
+// fleetStanzaNote says where the fathom stanza is (ADR-059): "present" when
+// AGENTS.md carries fathom's region; "present in <CLAUDE file> …" for the
+// older layout that kept it in a root CLAUDE file only (still wired — the
+// file Claude Code reads carries it — and moved by the next rewire); else
+// the honest absence.
+func fleetStanzaNote(path string) string {
+	am, err := os.ReadFile(filepath.Join(path, agentsMDFile))
+	switch {
+	case err == nil && strings.Contains(string(am), fathomStanzaBeginPrefix):
+		return "present"
+	case err != nil && !os.IsNotExist(err):
+		return "unreadable: " + err.Error()
+	}
+	agentsExists := err == nil
+	for _, f := range claudeFiles() {
+		cm, cerr := os.ReadFile(filepath.Join(path, filepath.FromSlash(f)))
+		if cerr == nil && isStanzaBody(ownedBodyIn(string(cm))) {
+			return "present in " + f + " only (the layout ADR-059 retired; fathom fleet reconcile --apply moves it to AGENTS.md)"
+		}
+	}
+	if agentsExists {
+		return "AGENTS.md present, no fathom stanza"
+	}
+	return "no AGENTS.md"
+}
+
+// stanzaNotePresent reads a fleetStanzaNote: the stanza reaches sessions,
+// in AGENTS.md or in the older CLAUDE-file layout.
+func stanzaNotePresent(note string) bool { return strings.HasPrefix(note, "present") }
 
 // userScopeFathomHookCount counts "fathom" occurrences in the current
 // user's ~/.claude/settings.json — the same file `fathom init`'s

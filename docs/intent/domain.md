@@ -142,7 +142,7 @@ shaped decisions, and the assumptions the design rests on.
   prints only for startup and clear. Codex has no SessionStart hook, so `fathom thread
   brief` is instructed instead. Source: `CHANGELOG.md` 2026-08-13 (TH), `AGENTS.md`.
 - Go map iteration is randomized. Consequence: candidates are sorted before matching;
-  determinism is a tested contract. Source: `.fathom/observations.md` O1, `internal/CLAUDE.md`.
+  determinism is a tested contract. Source: `.fathom/observations.md` O1, `internal/AGENTS.md`.
 - SQLite WAL gives many cross-process readers beside one writer; DuckDB's single writer
   forced daemon-stop rituals and made daemon wedges total outages. Source: ADR-020.
 - The Go linker writes to `TMPDIR`, not `GOTMPDIR`; scratch inside the module makes
@@ -177,9 +177,11 @@ shaped decisions, and the assumptions the design rests on.
 - Serving the whole fleet's source unauthenticated on loopback to any local process is
   acceptable on a single-user workstation. Never accepted in writing. If false: law 9
   (auth + read-only) must land before any second adopter. Source: `docs/vision/20` §7 Q2.
-- The obligations corpus stays tiny and binding (`CLAUDE.md`, `ADR.md`,
-  `docs/plans/README.md`). If it grows aspirational content, precision falls below the
-  0.90 gate and injection becomes noise. Source: `docs/vision/01-thesis.md` §2, ADR-016.
+- The obligations corpus stays tiny and binding (the instruction files, `AGENTS.md` first
+  and any `CLAUDE.md`, plus `ADR.md` and `docs/plans/README.md`). If it grows aspirational
+  content, precision falls below the 0.90 gate and injection becomes noise. Source:
+  `docs/vision/01-thesis.md` §2, ADR-016. **Restated 2026-09-29 (ADR-059)**: the file list
+  named `CLAUDE.md` alone; AGENTS.md is the one instruction file now.
 - Claude Code's hook envelope is the interchange format the other harnesses shim to
   (Codex ≥0.152 carries eleven Claude-shaped events; Copilot, VS Code, Gemini CLI,
   Cursor and Amp accept or export the same shapes). If false: the codecs in

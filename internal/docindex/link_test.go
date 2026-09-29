@@ -3,7 +3,7 @@ package docindex
 import "testing"
 
 // fakeResolver is a fixed-fixture Resolver for LinkDocSpans tests — no
-// store, no I/O, matching internal/CLAUDE.md's "pure, deterministic"
+// store, no I/O, matching internal/AGENTS.md's "pure, deterministic"
 // discipline for this package's analyzers.
 type fakeResolver struct {
 	symbols map[string]string // name -> hash, present only when exactly one indexed symbol matches

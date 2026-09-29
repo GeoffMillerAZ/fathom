@@ -84,7 +84,7 @@ func TestParseMigrationRejectsMalformed(t *testing.T) {
 }
 
 // TestParseMigrationDeterministic proves the determinism contract
-// (internal/CLAUDE.md): identical input always parses to an identical
+// (internal/AGENTS.md): identical input always parses to an identical
 // result, whatever order or how many times it runs.
 func TestParseMigrationDeterministic(t *testing.T) {
 	raw := `import "internal/old/pkg" -> "internal/new/pkg"`

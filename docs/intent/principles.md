@@ -14,7 +14,7 @@ LLM only at the semantic margin, always eval-gated. Source: law 2; ADR-012.
 
 **P3. Never silent.** Cited refusals beat confident fabrication; "empty config reads as
 clean" is a lie; an uninstrumented metric renders as absent, never as zero. Source: law 3;
-`cmd/fathom/CLAUDE.md` (`stat.Absent`).
+`cmd/fathom/AGENTS.md` (`stat.Absent`).
 
 **P4. Consolidate, don't grow.** No net tool growth; every addition rides a forced
 channel. Source: law 4; `docs/vision/05-surfaces.md`.
@@ -77,7 +77,7 @@ exists and is enforced; never to create one. Source: `docs/handoff/repo-strategy
 
 **P22. Measured, not argued.** Every repo-facing number cites an instrument; completion
 claims cite `fathom verify` or test output. Source: `docs/vision/README.md` "How this
-review was grounded", `CLAUDE.md`.
+review was grounded", `AGENTS.md`.
 
 **P23. A guest on the operator's machine.** Fathom declares what it takes in the unit the
 host measures (`phys_footprint`), measures itself and stops itself (shed, refuse, leave,

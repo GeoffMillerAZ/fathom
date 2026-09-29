@@ -44,8 +44,8 @@ func AdoptionRows(url string, now time.Time) []AdoptionRow {
 		for _, f := range d.Instructions {
 			label := f.Path
 			switch f.Mode {
-			case "mirror":
-				label += " (mirror)"
+			case "import":
+				label += " (@AGENTS.md import)"
 			case "settings-key":
 				label += " (settings key)"
 			}

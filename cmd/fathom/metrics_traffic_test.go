@@ -72,7 +72,7 @@ func TestCmdMetricsTraffic_ServiceFilter(t *testing.T) {
 func TestCmdMetricsTraffic_MissingCallLog_AbsentNotZero(t *testing.T) {
 	// No call log is not an idle daemon: the report keeps its window and
 	// grouping, says the log is absent and why, and carries no count at
-	// all (cmd/fathom/CLAUDE.md rule 6 — JSON carries no zero for it).
+	// all (cmd/fathom/AGENTS.md rule 6 — JSON carries no zero for it).
 	logPath := filepath.Join(t.TempDir(), "does-not-exist.jsonl")
 	var out, errBuf bytes.Buffer
 	code := cmdMetricsTraffic([]string{"--call-log", logPath, "--json"}, &out, &errBuf)

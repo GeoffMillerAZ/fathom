@@ -21,7 +21,7 @@ import (
 
 // Importer holds everything Import needs beyond the projection itself —
 // every field injected (no package-level state, no time.Now(), per repo
-// convention: internal/CLAUDE.md's determinism contract).
+// convention: internal/AGENTS.md's determinism contract).
 type Importer struct {
 	Store store.Store
 	// Now supplies ImportedAt / event timestamps — an injected clock.

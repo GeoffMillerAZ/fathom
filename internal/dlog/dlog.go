@@ -9,7 +9,7 @@
 // mcp-calls.jsonl (diagnostics sweep DG-1).
 //
 // Logger wraps log/slog with a text handler over an injected io.Writer and
-// an injected clock (internal/CLAUDE.md's determinism contract: never call
+// an injected clock (internal/AGENTS.md's determinism contract: never call
 // time.Now() directly in logging/analysis logic — inject it). Operational
 // logs are not part of fathom's deterministic-OUTPUT contract (two runs may
 // legitimately log at different wall-clock times), but tests still inject

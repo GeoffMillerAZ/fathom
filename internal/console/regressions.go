@@ -222,7 +222,7 @@ func AllProofRegressions(h History, f HistoryFilter, certs []CertHistory, planes
 // sortRegressions is every merge point's own newest-change-first order
 // (PE-8's ProofRegressions sorts the same way): ChangedAt descending, then
 // a stable identity tiebreak so two regressions changed at the same
-// instant order deterministically (internal/CLAUDE.md: "sort every output
+// instant order deterministically (internal/AGENTS.md: "sort every output
 // slice").
 func sortRegressions(regs []Regression) {
 	sort.SliceStable(regs, func(i, j int) bool {

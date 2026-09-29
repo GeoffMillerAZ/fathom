@@ -448,6 +448,11 @@ func (c *Client) probeAncestorGuides(ctx context.Context, service string, def se
 		}
 		dir = filepath.ToSlash(filepath.Dir(filepath.FromSlash(dir)))
 	}
+	// ADR-059: the root guides under .claude/ the connector never indexes.
+	for _, f := range semantic.RootGuideExtras(root, def.CorpusInclude, def.CorpusExclude, have) {
+		have[f.Path] = true
+		corpus = append(corpus, f)
+	}
 	sort.Slice(corpus, func(i, j int) bool { return corpus[i].Path < corpus[j].Path })
 	return corpus
 }

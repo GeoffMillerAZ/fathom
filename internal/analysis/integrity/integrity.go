@@ -6,7 +6,7 @@
 // regenerated (§1.5, CV-11).
 //
 // Every exported function here is a pure function of its Input: no global
-// state, no clock, no I/O of its own (internal/CLAUDE.md's "inject clocks…
+// state, no clock, no I/O of its own (internal/AGENTS.md's "inject clocks…
 // never call time.Now() in query/analysis logic" and the repo's leaf-
 // analyzer convention — internal/analysis/review's own package doc comment
 // is the model this package follows). A caller that has git access, an
@@ -18,7 +18,7 @@
 // (docs/design/refactor-conservation.md §0's "Run itself makes no git
 // calls" carried down one more layer).
 //
-// Determinism (internal/CLAUDE.md): every returned slice is sorted before
+// Determinism (internal/AGENTS.md): every returned slice is sorted before
 // it leaves this package; two calls with byte-identical inputs always
 // produce byte-identical output.
 package integrity

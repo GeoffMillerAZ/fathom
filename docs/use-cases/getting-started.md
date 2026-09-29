@@ -42,7 +42,7 @@ claude mcp add --scope user fathom -- \
 
 | Name | Kind | What it gives you |
 |---|---|---|
-| `init` | CLI | One-command repo wiring: `.fathomignore`, ingest, hooks, CLAUDE.md/AGENTS.md stanza, config scaffold; `--harness <id>` picks the descriptor; `--skills[=claude\|codex\|agents\|all\|codex-prompts]` installs the shipped agent skills (bare = `.agents/skills` + `.claude/skills`); `--json` reports every write, the receipt id and the manual steps as data |
+| `init` | CLI | One-command repo wiring: `.fathomignore`, ingest, hooks, the AGENTS.md stanza (a root CLAUDE file gets an `@AGENTS.md` import), config scaffold; `--harness <id>` picks the descriptor; `--skills[=claude\|codex\|agents\|all\|codex-prompts]` installs the shipped agent skills (bare = `.agents/skills` + `.claude/skills`); `--json` reports every write, the receipt id and the manual steps as data |
 | `doctor` | CLI | Deterministic wiring diagnosis (`--harness claude\|codex\|auto` or a registry id, `--json`): registration, daemon, hooks, gate posture, stanza, skills (`.agents/skills` for every non-Claude harness), config, obligations, traffic, concerns |
 | `prime` | CLI | Pull-tier session primer for harnesses without a SessionStart hook (Codex); `fathom prime -h` (`-dir`, `-url`) |
 | `ingest` | CLI | Index one service into the SQLite store (sha256 hash-gated; re-ingest is near-free); names every file it could not read (`read-failed: N file(s)`) and exits 1 rather than claiming a clean run |
@@ -50,7 +50,7 @@ claude mcp add --scope user fathom -- \
 | `watch` | CLI | Poll and re-ingest on file changes automatically |
 | `serve-mcp` | CLI | Stdio MCP server — one client (editor/agent session) |
 | `serve-http` | CLI | HTTP MCP server — multi-client, CI, platform use; endpoints `POST /rpc`, `POST /rpc/{surface}`, `GET /healthz`, `GET /events`, `GET /metrics`; `--call-log` flag for JSONL tool-call logging; `--module <path>` (repeatable) mounts a conforming expert-module store read-only onto `/rpc/modules`; `--modules-token-env <NAME>` gates that surface behind a bearer token for hosted deployments |
-| `gen-claude-md` | CLI | Generate a static `CLAUDE.md` symbol guide from the store |
+| `gen-agents-md` | CLI | Generate a static `AGENTS.md` symbol guide from the store (`gen-claude-md` is its deprecated alias through 0.9.x) |
 | `version` | CLI | Print binary version (use to detect staleness vs git HEAD) |
 | `capabilities` | MCP tool | List all currently visible tools and the active surface/profile (see Step 5) |
 | `ingest` | MCP tool | Re-index a service from inside a live session (bypasses the single-writer CLI lock) |
@@ -280,7 +280,7 @@ Returns ranked `SymbolNode` objects:
 
 ## The one-command path: `fathom init`, then `fathom doctor`
 
-Everything below Step 2 is what `fathom init` (run from the repo root) does in one idempotent pass: `.fathomignore`, ingest into the daemon, the hook stack in `.claude/settings.json`, the CLAUDE.md/AGENTS.md stanza, a `.fathom/` config scaffold. Add `--skills` to install the shipped skills (activate, custodian, doctor, feedback, impact, onboard, plan, rewire, verify): bare `--skills` (= `all`) writes `.agents/skills/` (the Agent Skills standard path — Codex, Gemini CLI, Cursor, Copilot read it; spec-only frontmatter) **and** `.claude/skills/` (Claude Code); `--skills=codex` or `=agents` writes `.agents/skills/` only, `=claude` writes `.claude/skills/` only, and the deprecated user-global `~/.codex/prompts/` twin is `--skills=codex-prompts` only (`docs/upgrades/0.8.0-skills-on-the-standard.md`). Every file it writes goes through one plan → apply → receipt (`.fathom/receipts.jsonl`, reversible with `fathom fleet undo`); a stanza region a human hand-edited is blocked and named, the other steps still run. Then `fathom doctor` proves the wiring (registration, daemon, hooks installed *and* firing, stanza, skills, config, obligations, traffic), and on a harness without a SessionStart hook `fathom prime` prints the session brief by hand.
+Everything below Step 2 is what `fathom init` (run from the repo root) does in one idempotent pass: `.fathomignore`, ingest into the daemon, the hook stack in `.claude/settings.json`, the AGENTS.md stanza (and a root CLAUDE file's `@AGENTS.md` import), a `.fathom/` config scaffold. Add `--skills` to install the shipped skills (activate, custodian, doctor, feedback, impact, onboard, plan, rewire, verify): every repo mode writes the one real copy into `.claude/skills/` (Claude Code's only skills path; spec-only frontmatter); bare `--skills` (= `all`), `--skills=codex` and `=agents` also make `.agents/skills` (the Agent Skills standard path — Codex, Gemini CLI, Cursor, Copilot read it) a link to it (ADR-059), `=claude` writes `.claude/skills/` only, and the deprecated user-global `~/.codex/prompts/` twin is `--skills=codex-prompts` only (`docs/upgrades/0.8.0-skills-on-the-standard.md`). Every file it writes goes through one plan → apply → receipt (`.fathom/receipts.jsonl`, reversible with `fathom fleet undo`); a stanza region a human hand-edited is blocked and named, the other steps still run. Then `fathom doctor` proves the wiring (registration, daemon, hooks installed *and* firing, stanza, skills, config, obligations, traffic), and on a harness without a SessionStart hook `fathom prime` prints the session brief by hand.
 
 ## Wiring Claude Code hooks
 
@@ -387,15 +387,15 @@ For always-current indexes in long-lived sessions, consider `fathom watch` in a 
 
 ---
 
-## Generate a static CLAUDE.md symbol guide
+## Generate a static AGENTS.md symbol guide
 
-For AI agents that work better with a pre-loaded symbol reference rather than live MCP queries, generate a `CLAUDE.md`:
+For AI agents that work better with a pre-loaded symbol reference rather than live MCP queries, generate an `AGENTS.md` (ADR-059: the one instruction file):
 
 ```sh
-./bin/fathom gen-claude-md \
+./bin/fathom gen-agents-md \
   --service my-service \
   --store workspace/db/fleet.sqlite \
-  --output workspace/artifacts/CLAUDE.md
+  --output workspace/artifacts/AGENTS.md
 ```
 
 Output is deterministic (symbols sorted by kind then name). The file includes a kind/count breakdown and a full symbol listing. Drop it into your repo or feed it to an agent's context manually.
@@ -429,4 +429,4 @@ Once fathom is wired in and returning results, see the per-use-case guides for h
 
 ## Maintained
 
-This doc covers: `init` (`--skills`, `--harness`, `--json`), `doctor`, `prime`, `ingest` (incl. `read-failed`, `--json`), `ingest-diff`, `watch`, `serve-mcp`, `serve-http` (incl. `--module`, `/statusz`, `/observatory`), `gen-claude-md`, `platform-ingest`, `version`, the `/rpc`/`/rpc/agent`/`/rpc/extended` (`/rpc/companion`) path-scoped surfaces, `capabilities`, `ingest` (MCP tool), `staleness_report`, `query_symbols`, `session-hook`, `edit-hook`, `fathom verify` (incl. the one-line provenance notice when the daemon's build is not this binary's), `fathom doctor`'s daemon_fresh and wiring_drift rows, `fathom fleet reconcile` (`--rebaseline`), `/statusz`'s build stamp (binary_commit, binary_dirty, built_at). Every verb here is listed by `fathom help` (the table renders from the dispatch table since 0.6.0); `fathom <verb> -h` shows flags. Update it when these change.
+This doc covers: `init` (`--skills`, `--harness`, `--json`), `doctor`, `prime`, `ingest` (incl. `read-failed`, `--json`), `ingest-diff`, `watch`, `serve-mcp`, `serve-http` (incl. `--module`, `/statusz`, `/observatory`), `gen-agents-md` (and its deprecated `gen-claude-md` alias), `platform-ingest`, `version`, the `/rpc`/`/rpc/agent`/`/rpc/extended` (`/rpc/companion`) path-scoped surfaces, `capabilities`, `ingest` (MCP tool), `staleness_report`, `query_symbols`, `session-hook`, `edit-hook`, `fathom verify` (incl. the one-line provenance notice when the daemon's build is not this binary's), `fathom doctor`'s daemon_fresh and wiring_drift rows, `fathom fleet reconcile` (`--rebaseline`), `/statusz`'s build stamp (binary_commit, binary_dirty, built_at). Every verb here is listed by `fathom help` (the table renders from the dispatch table since 0.6.0); `fathom <verb> -h` shows flags. Update it when these change.

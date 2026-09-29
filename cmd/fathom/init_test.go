@@ -177,8 +177,11 @@ func TestCmdInit_WiresRepoEndToEnd(t *testing.T) {
 		}
 	}
 
-	// CLAUDE.md + AGENTS.md carry the same stanza.
-	for _, name := range []string{"CLAUDE.md", "AGENTS.md"} {
+	// AGENTS.md carries the stanza; no CLAUDE.md is created (ADR-059).
+	if _, err := os.Stat(filepath.Join(dir, "CLAUDE.md")); err == nil {
+		t.Error("init created CLAUDE.md; fathom never creates a CLAUDE file")
+	}
+	for _, name := range []string{"AGENTS.md"} {
 		raw, err := os.ReadFile(filepath.Join(dir, name))
 		if err != nil {
 			t.Fatalf("reading %s: %v", name, err)
@@ -196,7 +199,6 @@ func TestCmdInit_WiresRepoEndToEnd(t *testing.T) {
 	for _, want := range []string{
 		"created .fathomignore",
 		"created .claude/settings.json",
-		"created CLAUDE.md",
 		"created AGENTS.md",
 		"ok ingest",
 		"MANUAL:",
@@ -220,6 +222,14 @@ func TestCmdInit_Idempotent(t *testing.T) {
 		t.Fatalf("first run exit = %d; stdout=%s stderr=%s", code, out1.String(), err1.String())
 	}
 
+	// A root CLAUDE.md the adopter wrote gets the import region, idempotently.
+	if err := os.WriteFile(filepath.Join(dir, "CLAUDE.md"), []byte("# house rules\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var out0, err0 bytes.Buffer
+	if code := cmdInit([]string{"--path", dir, "--url", srv.URL, "--bin", testBinPath}, &out0, &err0); code != 0 {
+		t.Fatalf("import run exit = %d; stdout=%s stderr=%s", code, out0.String(), err0.String())
+	}
 	files := []string{".fathomignore", filepath.Join(".claude", "settings.json"), "CLAUDE.md", "AGENTS.md", filepath.Join(".fathom", "guard.cue"), filepath.Join(".fathom", "modules.cue"), filepath.Join(".fathom", "config.toml")}
 	before := map[string][]byte{}
 	for _, f := range files {
@@ -775,7 +785,7 @@ func TestCmdInit_DaemonDown(t *testing.T) {
 	}
 
 	// Wiring must still be written even though the daemon is unreachable.
-	for _, f := range []string{".fathomignore", filepath.Join(".claude", "settings.json"), "CLAUDE.md", "AGENTS.md"} {
+	for _, f := range []string{".fathomignore", filepath.Join(".claude", "settings.json"), "AGENTS.md"} {
 		if _, err := os.Stat(filepath.Join(dir, f)); err != nil {
 			t.Errorf("%s not written despite daemon-down: %v", f, err)
 		}

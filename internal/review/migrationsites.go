@@ -39,7 +39,7 @@ type MigrationSite struct {
 
 // RepoMigrationSites is one repository's site tally for a Migration:
 // Remaining sites still on From and Done sites already on To, each sorted
-// by File then Line (determinism contract, internal/CLAUDE.md).
+// by File then Line (determinism contract, internal/AGENTS.md).
 type RepoMigrationSites struct {
 	Repository string
 	Remaining  []MigrationSite

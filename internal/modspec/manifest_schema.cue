@@ -16,7 +16,7 @@
 // never renamed/retyped/removed). No runtime loader for #Module ships in
 // this repo yet (docs/spec/expert-module-v0.md §7's honest gap) — this
 // schema validates the SHAPE; internal/modspec/schema_test.go asserts the
-// negatives per repo convention (schema/CLAUDE.md).
+// negatives per repo convention (schema/AGENTS.md).
 package modspec
 
 // #Module is one expert-module manifest.

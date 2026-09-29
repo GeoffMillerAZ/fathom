@@ -198,7 +198,7 @@ func TestConsoleKitS0_NoKitPaletteColorException(t *testing.T) {
 
 func TestConsoleKitS0_DetailsLabelIsInkMuted(t *testing.T) {
 	out := renderWiringPreview(wiringPreview{Service: "svc", Root: "/r", Plan: wiring.Plan{Root: "/r", Items: []wiring.Item{{
-		File: "CLAUDE.md", Target: "stanza", Kind: wiring.KindRegion, Verdict: wiring.VerdictBlocked,
+		File: "AGENTS.md", Target: "stanza", Kind: wiring.KindRegion, Verdict: wiring.VerdictBlocked,
 		Cause: wiring.CauseDrift, Reason: "hand-edited", Present: true, Before: "mine", After: "fathom's",
 	}}}})
 	label := between(out, `<span class="ml-auto flex shrink-0 items-center gap-1 text-xs`, `</span>`)

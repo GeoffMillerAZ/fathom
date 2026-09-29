@@ -12,7 +12,7 @@
 name:    "ui-appkit"
 version: "v1"
 kind:    "adr-rule"
-corpus: include: ["README.md", "CLAUDE.md", "docs/**"]
+corpus: include: ["README.md", "AGENTS.md", "docs/**"]
 prompt_version: "ui-appkit/content-addressed"
 prompt_file:    "fathom-pack/layers/ui-appkit/prompt.md"
 tier:           "doc-claimed"

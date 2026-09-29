@@ -1273,9 +1273,10 @@ func trackedPaths(ctx context.Context, root string, candidates []string) ([]stri
 
 // instrumentRegionFiles are the only files internal/wiring ever places a
 // MARKED REGION into, always with wiring.HTMLMarkers (region.go's own
-// doc comment: "HTMLMarkers delimits regions in Markdown files (CLAUDE.md,
-// AGENTS.md)").
-var instrumentRegionFiles = []string{"CLAUDE.md", "AGENTS.md"}
+// doc comment: "HTMLMarkers delimits regions in Markdown files"): the
+// AGENTS.md stanza and, since ADR-059, the @AGENTS.md import region `fathom
+// init` adds to a subject's existing root CLAUDE file.
+var instrumentRegionFiles = []string{"CLAUDE.md", "AGENTS.md", ".claude/CLAUDE.md", "CLAUDE.local.md"}
 
 // InstrumentRegionRanges returns, for each of instrumentRegionFiles that
 // currently carries fathom's own marked region on either side of the

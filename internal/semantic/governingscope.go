@@ -112,8 +112,8 @@ func rankByGoverningScope(scope []string, path string) governingScope {
 // heading or prose mentions its own root directory constantly in passing)
 // is not evidence that "the nearer rule names the file" — it is evidence
 // the nearer rule names the whole subtree the file merely lives in. H1-T02
-// (internal/core/model.go vs. internal/CLAUDE.md) was exactly this: every
-// one of internal/CLAUDE.md's OTHER same-tier sections carried a weak,
+// (internal/core/model.go vs. internal/AGENTS.md) was exactly this: every
+// one of internal/AGENTS.md's OTHER same-tier sections carried a weak,
 // ancestor-only hit on the bare token "internal", which under the old
 // relevance==0 test blocked ADR-021 (strong on core.Edge) from ever being
 // promoted past them, even though none of them names model.go's own

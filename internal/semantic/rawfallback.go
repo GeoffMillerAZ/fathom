@@ -92,10 +92,8 @@ func RawFallbackRules(claims []core.SemanticClaim, layerDef LayerDef, corpus []c
 		strong bool
 	}
 	var cands []candidate
-	docs := append([]core.SourceFile(nil), corpus...)
-	sort.Slice(docs, func(i, j int) bool { return docs[i].Path < docs[j].Path })
-	for _, doc := range docs {
-		for _, sec := range SplitMarkdownSections(doc.Path, doc.Content) {
+	for _, ds := range corpusSections(corpus) {
+		for _, sec := range ds.sections {
 			if prior, seen := bySubject[sec.Subject]; seen && allDigestsMatch(prior, sec.Digest, promptVersion) {
 				continue // a fresh compiled claim already answers this exact section
 			}

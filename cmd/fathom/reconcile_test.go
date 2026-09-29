@@ -171,7 +171,7 @@ func TestReconcileUpgradesUntrackedRegion(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	root := t.TempDir()
 	svc := strings.ToLower(filepath.Base(root))
-	claudePath := filepath.Join(root, "CLAUDE.md")
+	claudePath := filepath.Join(root, "AGENTS.md") // the stanza's one file (ADR-059)
 	prefix, suffix := "# repo\n\nhouse prose\n\n", "\n\ntrailing notes\n"
 	if err := os.WriteFile(claudePath, []byte(prefix+fathomStanzaBegin+"\nold wording nobody shipped\n"+fathomStanzaEnd+suffix), 0o644); err != nil {
 		t.Fatal(err)
@@ -181,7 +181,7 @@ func TestReconcileUpgradesUntrackedRegion(t *testing.T) {
 	if code := cmdFleetReconcile([]string{"--repo", root}, &stdout, &stderr); code != 0 {
 		t.Fatalf("dry-run exit = %d:\n%s%s", code, stdout.String(), stderr.String())
 	}
-	if !strings.Contains(stdout.String(), "CLAUDE.md behind the current template") {
+	if !strings.Contains(stdout.String(), "AGENTS.md behind the current template") {
 		t.Errorf("dry-run does not report the v1 region as stale:\n%s", stdout.String())
 	}
 	if strings.Contains(stdout.String(), "BLOCKED") {
@@ -218,7 +218,7 @@ func TestReconcileUpgradesUntrackedRegion(t *testing.T) {
 		t.Fatal(err)
 	}
 	d = analyzeWiring(root)
-	if len(d.DriftedStanzas) != 1 || !strings.HasPrefix(d.DriftedStanzas[0], "CLAUDE.md — ") {
+	if len(d.DriftedStanzas) != 1 || !strings.HasPrefix(d.DriftedStanzas[0], "AGENTS.md — ") {
 		t.Errorf("a hand edit inside the tracked region was not reported as drift: %v", d.DriftedStanzas)
 	}
 }
@@ -362,22 +362,24 @@ func TestReconcileRemarkIsNotStale(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	root := t.TempDir()
 	svc := strings.ToLower(filepath.Base(root))
-	claudePath := filepath.Join(root, "CLAUDE.md")
+	// ADR-059: the stanza's file is AGENTS.md (up to date, v1 marker); the
+	// CLAUDE.md region is behind (it becomes the @AGENTS.md import).
+	claudePath := filepath.Join(root, "AGENTS.md")
 	prefix, suffix := "# repo\n\nhouse prose\n\n", "\n\ntrailing notes\n"
 	if err := os.WriteFile(claudePath, []byte(prefix+fathomStanza(svc, false)+suffix), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	agentsPath := filepath.Join(root, "AGENTS.md")
+	agentsPath := filepath.Join(root, "CLAUDE.md")
 	if err := os.WriteFile(agentsPath, []byte("# agents\n\n"+fathomStanzaBegin+"\nold wording\n"+fathomStanzaEnd+"\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
 	d := analyzeWiring(root)
-	if len(d.RemarkStanzas) != 1 || d.RemarkStanzas[0] != "CLAUDE.md" {
-		t.Errorf("remark = %v, want [CLAUDE.md] (prose equals the template; only the marker changes)", d.RemarkStanzas)
+	if len(d.RemarkStanzas) != 1 || d.RemarkStanzas[0] != "AGENTS.md" {
+		t.Errorf("remark = %v, want [AGENTS.md] (prose equals the template; only the marker changes)", d.RemarkStanzas)
 	}
-	if len(d.StaleStanzas) != 1 || d.StaleStanzas[0] != "AGENTS.md" {
-		t.Errorf("stale = %v, want [AGENTS.md] (truly behind the template)", d.StaleStanzas)
+	if len(d.StaleStanzas) != 1 || d.StaleStanzas[0] != "CLAUDE.md" {
+		t.Errorf("stale = %v, want [CLAUDE.md] (truly behind: it becomes the import)", d.StaleStanzas)
 	}
 	if len(d.DriftedStanzas) != 0 {
 		t.Errorf("drifted = %v, want none", d.DriftedStanzas)
@@ -387,13 +389,13 @@ func TestReconcileRemarkIsNotStale(t *testing.T) {
 	if code := cmdFleetReconcile([]string{"--repo", root}, &stdout, &stderr); code != 0 {
 		t.Fatalf("dry-run exit = %d:\n%s%s", code, stdout.String(), stderr.String())
 	}
-	if !strings.Contains(stdout.String(), "CLAUDE.md up to date (will be re-marked with a digest on apply") {
+	if !strings.Contains(stdout.String(), "AGENTS.md up to date (will be re-marked with a digest on apply") {
 		t.Errorf("dry-run does not report the up-to-date v1 region as a re-mark:\n%s", stdout.String())
 	}
-	if strings.Contains(stdout.String(), "CLAUDE.md behind the current template") {
+	if strings.Contains(stdout.String(), "AGENTS.md behind the current template") {
 		t.Errorf("an up-to-date region was reported as stale:\n%s", stdout.String())
 	}
-	if !strings.Contains(stdout.String(), "AGENTS.md behind the current template") {
+	if !strings.Contains(stdout.String(), "CLAUDE.md behind the current template") {
 		t.Errorf("the truly stale region was not reported:\n%s", stdout.String())
 	}
 
@@ -402,11 +404,11 @@ func TestReconcileRemarkIsNotStale(t *testing.T) {
 	if code := cmdFleetReconcile([]string{"--apply", "--repo", root}, &stdout, &stderr); code != 0 {
 		t.Fatalf("apply exit = %d:\n%s%s", code, stdout.String(), stderr.String())
 	}
-	if !strings.Contains(stdout.String(), "CLAUDE.md stanza re-marked with a digest (prose unchanged)") {
+	if !strings.Contains(stdout.String(), "AGENTS.md stanza re-marked with a digest (prose unchanged)") {
 		t.Errorf("apply does not name the re-mark as such:\n%s", stdout.String())
 	}
-	if !strings.Contains(stdout.String(), "AGENTS.md stanza refreshed to the current template") {
-		t.Errorf("apply does not name the refresh:\n%s", stdout.String())
+	if !strings.Contains(stdout.String(), "CLAUDE.md — @AGENTS.md import") {
+		t.Errorf("apply does not name the CLAUDE.md region's rewrite to the import:\n%s", stdout.String())
 	}
 	got, _ := os.ReadFile(claudePath)
 	s := string(got)

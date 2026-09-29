@@ -141,7 +141,7 @@ repo root. This directory is gitignored. Never write generated files elsewhere i
 |---|---|
 | `workspace/db/` | store files (default: `workspace/db/fathom.sqlite`) |
 | `workspace/logs/` | Run and MCP call logs (`mcp-calls.jsonl`) |
-| `workspace/artifacts/` | Generated artifacts (`CLAUDE.md`, manifests, exports) |
+| `workspace/artifacts/` | Generated artifacts (`AGENTS.md`, manifests, exports) |
 | `workspace/tmp/` | Ephemeral scratch files |
 
 `store.Open` auto-creates the parent directory when it does not exist.
@@ -714,27 +714,29 @@ Cross-repo edges require the index to carry call edges; re-ingest with a current
 
 ---
 
-### `gen-claude-md`
+### `gen-agents-md`
 
-Generate a `CLAUDE.md` from stored symbols. The output is a Markdown file suitable for
-dropping into an AI coding assistant's context.
+Generate an `AGENTS.md` knowledge index from stored symbols. The output is a Markdown file
+suitable for dropping into an AI coding assistant's context (ADR-059: AGENTS.md is the one
+instruction file). `gen-claude-md` is its deprecated alias through 0.9.x: it keeps its old
+default output (`workspace/artifacts/CLAUDE.md`) and prints a deprecation line on stderr.
 
 ```sh
-fathom gen-claude-md --service <id> [--store <path>] [--output <path>]
+fathom gen-agents-md --service <id> [--store <path>] [--output <path>]
 ```
 
 | Flag | Default | Description |
 |---|---|---|
 | `--service` | (required) | Service ID |
 | `--store` | `<repo>/workspace/db/fathom.sqlite` (see §CLI subcommands) | store path (.sqlite/.db) |
-| `--output` | `workspace/artifacts/CLAUDE.md` | Output file path |
+| `--output` | `workspace/artifacts/AGENTS.md` | Output file path |
 
 Output is deterministic: symbols are sorted by kind then name. The file includes a
 kind/count breakdown table and a full symbol listing.
 
 ```sh
-fathom gen-claude-md --service my-service
-# wrote workspace/artifacts/CLAUDE.md (891 symbols)
+fathom gen-agents-md --service my-service
+# wrote workspace/artifacts/AGENTS.md (891 symbols)
 ```
 
 ---
@@ -1391,8 +1393,10 @@ One-command, idempotent, additive-only repo wiring (§5.5 of
 [coding-agent-excellence.md](design/coding-agent-excellence.md)): writes
 `.fathomignore` if absent, ingests the repo via the daemon and confirms it indexed,
 wires the SessionStart/PostToolUse/Stop hooks into `.claude/settings.json`, stamps the
-fathom operating-contract stanza into both `CLAUDE.md` and `AGENTS.md`, and
-write-if-absent scaffolds `~/.fathom/config.toml`.
+fathom operating-contract stanza into `AGENTS.md` (ADR-059: the one instruction file, read
+natively by Claude Code 2.1.277+ and Codex; a root `CLAUDE.md`, `.claude/CLAUDE.md` or
+`CLAUDE.local.md` that already exists gets one marked region holding `@AGENTS.md`, and
+init never creates one), and write-if-absent scaffolds `~/.fathom/config.toml`.
 
 ```sh
 fathom init [--path <dir>] [--service <id>] [--url http://localhost:7575] [--bin <path>] \
@@ -1407,10 +1411,10 @@ fathom init [--path <dir>] [--service <id>] [--url http://localhost:7575] [--bin
 | `--url` | `http://localhost:7575` | fathom `serve-http` base URL |
 | `--bin` | `os.Executable()`, symlink-resolved | fathom binary path baked into the hook commands |
 | `--harness` | `claude-code` | Which registry descriptor's vehicles to write (ADR-029); `none` = stanza + `.fathom/` only. Prints the descriptor's own `mcp add` line, never runs it |
-| `--skills` | omit = skip | Install the nine shipped agent skills. Bare `--skills` (= `all`) writes `.agents/skills/` (the Agent Skills standard path, spec-only frontmatter) **and** `.claude/skills/`; `codex` and `agents` write `.agents/skills/`; `claude` writes `.claude/skills/`; `codex-prompts` writes the deprecated user-global `~/.codex/prompts/` twin — the only user-global write, explicit only |
+| `--skills` | omit = skip | Install the ten shipped agent skills into `.claude/skills/`, the one real copy (spec-only frontmatter, held by test). Bare `--skills` (= `all`), `codex` and `agents` also make `.agents/skills` (the Agent Skills standard path) a relative link to it, through the wiring engine (receipted; an earlier real copy of fathom's own files is replaced, a foreign entry blocks); `claude` writes `.claude/skills/` only; `codex-prompts` writes the deprecated user-global `~/.codex/prompts/` twin — the only user-global write, explicit only |
 | `--seed-user-ignore` | off | Seed `~/.fathom/ignore` with machine-junk defaults; prints exactly what it writes |
 | `--no-scip` | off | Skip the SCIP step below: by default init runs `scip-typescript` / `scip-python` when already installed for a repo of that language |
-| `--harness` | `claude-code` | Which registry descriptor's vehicles to write (ADR-029): `claude-code` (hooks into `.claude/settings.json`), `codex` (hooks into the repo's `.codex/hooks.json`, run after `/hooks` trust), `gemini-cli` (hooks into the repo's `.gemini/settings.json`, ms timeouts), `cursor` / `copilot` (data rows: stanza + skills, no hook file), `agents` (AGENTS.md + MCP), `none` (stanza + `.fathom/` only). Non-Claude descriptors are *unverified on this machine*; every one prints its own `mcp add` line and never writes a user-global file; a descriptor 60 days unverified after its codec landed is refused |
+| `--harness` | `claude-code` | Which registry descriptor's vehicles to write (ADR-029): `claude-code` (hooks into `.claude/settings.json`), `codex` (hooks into the repo's `.codex/hooks.json`, run after `/hooks` trust), `gemini-cli` (hooks into the repo's `.gemini/settings.json`, ms timeouts, and its `context.fileName` set to `["AGENTS.md", "GEMINI.md"]` so Gemini CLI reads the stanza — no `GEMINI.md` stanza), `cursor` / `copilot` (data rows: stanza + skills, no hook file), `agents` (AGENTS.md + MCP), `none` (stanza + `.fathom/` only). Every harness gets the stanza in `AGENTS.md`. Non-Claude descriptors are *unverified on this machine*; every one prints its own `mcp add` line and never writes a user-global file; a descriptor 60 days unverified after its codec landed is refused |
 | `--json` | off | Emit the run as JSON (below) instead of the narration |
 
 **SCIP typed edges (SR-65, F-74).** After the wiring, once the ingest confirmed the
@@ -1430,7 +1434,7 @@ import that is declined is a printed warning, never a non-zero exit. `--no-scip`
 step (a producer type-checks the whole repository and can take minutes).
 
 **`--json` envelope.** `{service, root, exit_code, writes: [{path, action:
-created|updated|ok|shim, detail}], blocked: [{path, action: "blocked",
+created|updated|linked|ok|shim, detail}], blocked: [{path, action: "blocked",
 detail}], receipt: {id, time, files} | null, manual_steps: [{text,
 command?}], narration: [...], stderr: [...]}` — every write init narrates,
 the receipt the wiring engine appended during the run (`fathom fleet undo
@@ -1443,7 +1447,7 @@ is complete but the daemon is unreachable or the service still shows zero symbol
 does not do for you: interactive MCP registration and the lefthook pre-push snippet. See
 [docs/adoption/claude-code.md](adoption/claude-code.md) for the full walkthrough.
 
-**Law 15 (SH-7/SH-8).** The CLAUDE.md/AGENTS.md stanza regions and `.claude/settings.json`
+**Law 15 (SH-7/SH-8).** The AGENTS.md stanza region, a CLAUDE file's import region and `.claude/settings.json`
 hooks are written only through `internal/wiring`: one plan → apply → one receipt per repo
 (`.fathom/receipts.jsonl`, gitignored; `fathom fleet undo` reverses it). A tracked region
 (`<!-- fathom:begin v3 sha256:… -->`) that a human edited is **blocked** (exit 1, file
@@ -1451,15 +1455,14 @@ byte-identical, the other files still applied, one line per file distinguishing
 "drifted (hand-edited) region" from "could not be read/parsed"); a v1 region
 (`<!-- fathom:begin -->`, no digest) is adopted and upgraded to v3 on the first write —
 not drift. `init` continues its other steps around a blocked file and lists the blocked
-files at the end.
+files at the end. A `CLAUDE.md` region that still holds the stanza (the two-copy layout
+ADR-059 retired) is rewritten in place to the `@AGENTS.md` import, with the stanza written
+into `AGENTS.md` in the same receipt (`docs/upgrades/0.9.0-agents-md-one-instruction-file.md`).
 
 **Stanza line budget.** When `.fathom/concerns.cue`'s `max_lines` concern governs a stanza
-file, `init`/`reconcile --apply` trim the stanza body — dropping the opening-moves worked
-example first, then the continuity paragraph — to the smallest cut that fits every budgeted
-file, applied identically to CLAUDE.md and AGENTS.md so the two never diverge; a trim
-prints the note naming which tier it dropped. **This repo's own `CLAUDE.md` sits at exactly
-its 120-line budget right now** — the next line of growth here drops the opening-moves
-table first, before anything else in the stanza gives way.
+file (`AGENTS.md` since ADR-059), `init`/`reconcile --apply` trim the stanza body —
+dropping the opening-moves worked example first, then the continuity paragraph — to the
+smallest cut that fits the budget; a trim prints the note naming which tier it dropped.
 
 ---
 
@@ -1498,10 +1501,17 @@ unstamped binary; never compared to the repo's HEAD), `hooks_installed` (any set
 them but the call log shows them firing, the verdict names that contradiction instead
 of a duplicate-installing remedy) / `hooks_firing` (both Claude Code only — Codex
 reports `skipped`, honestly, since it has no hook mechanism), `lefthook_gates`
-(harness-agnostic), `stanza_present`, `stanza_loaded` (the harness-side twin
-of `stanza_present`, PC-25: PASS when an `InstructionsLoaded` beat names this
-repo's `CLAUDE.md`/`AGENTS.md`, SKIP naming the wiring date when none does —
-never FAIL), `skills_installed`, `wiring_drift` (PC-29: hooks,
+(harness-agnostic), `stanza_present` (ADR-059: FAIL when `AGENTS.md` lacks a
+well-formed fathom region; WARN, with the remedy, when Claude Code will not load
+it — a root CLAUDE file without an `@AGENTS.md` import or still carrying the old
+stanza, a CLAUDE file in a parent directory, the `agents-md@builtin`
+`instructionFiles` setting at `claude-md` or `managed-only` in managed or user
+settings, or `claude --version` before 2.1.277; PASS names the load path),
+`stanza_loaded` (the harness-side twin of `stanza_present`, PC-25: PASS when an
+`InstructionsLoaded` beat names this repo's `AGENTS.md` or a root CLAUDE file,
+SKIP naming the wiring date when none does, and SKIP by name in a repository with
+no root CLAUDE file, where Claude Code loads `AGENTS.md` without the event — never
+FAIL), `skills_installed` (resolving the `.agents/skills` link), `wiring_drift` (PC-29: hooks,
 stanza regions, each harness's MCP server entry — argv and env/header NAMES, never values —
 and `fathom:owned` skill files against the digests in `.fathom/owned.json`; PASS at zero
 drift naming any entry without a baseline yet, FAIL naming each drift by kind and path,
@@ -2182,7 +2192,8 @@ snapshot opened on or before it (its interval is a lower bound); a snapshot that
 could not read the call log grades that repository unknown, never unused. The
 2026-08-08 baseline (9 of 17 below A, unbounded) is recorded beside the median.
 
-`reconcile --apply` writes stanza regions and hooks only through
+`reconcile --apply` writes stanza regions (the `AGENTS.md` stanza and a root CLAUDE
+file's `@AGENTS.md` import, moving an old `CLAUDE.md` stanza — ADR-059) and hooks only through
 `internal/wiring` — the same plan → apply → receipt path as `init`, with the
 same law-15 refusal for a hand-edited tracked region (blocked and named;
 other files still applied). The same ledger (`.fathom/owned.json`) baselines
