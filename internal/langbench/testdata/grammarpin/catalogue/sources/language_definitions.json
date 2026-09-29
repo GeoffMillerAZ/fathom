@@ -1,0 +1,68 @@
+{
+  "alpha": {
+    "extensions": ["al"],
+    "repo": "https://github.com/acme/tree-sitter-alpha",
+    "rev": "1111111111111111111111111111111111111111"
+  },
+  "beta": {
+    "abi_version": 15,
+    "branch": "main",
+    "c_symbol": "beta_lang",
+    "directory": "grammars/beta",
+    "extensions": ["be"],
+    "generate": true,
+    "repo": "https://github.com/acme2/tree-sitter-beta",
+    "rev": "2222222222222222222222222222222222222222"
+  },
+  "delta": {
+    "extensions": ["de"],
+    "repo": "https://github.com/acme/tree-sitter-delta",
+    "rev": "4444444444444444444444444444444444444444"
+  },
+  "epsilon": {
+    "abi_version": 16,
+    "extensions": ["ep"],
+    "generate": true,
+    "repo": "https://github.com/acme/tree-sitter-epsilon",
+    "rev": "5555555555555555555555555555555555555555"
+  },
+  "eta": {
+    "extensions": ["et"],
+    "license": "BSD-3-Clause",
+    "repo": "https://github.com/acme/tree-sitter-eta.git",
+    "rev": "6666666666666666666666666666666666666666"
+  },
+  "gamma": {
+    "extensions": ["ga"],
+    "repo": "https://github.com/acme/tree-sitter-gamma",
+    "rev": "3333333333333333333333333333333333333333"
+  },
+  "iota": {
+    "abi_version": 12,
+    "extensions": ["io"],
+    "generate": true,
+    "repo": "https://github.com/acme/tree-sitter-iota",
+    "rev": "7777777777777777777777777777777777777777"
+  },
+  "objc": {
+    "extensions": ["m"],
+    "repo": "https://github.com/acme/tree-sitter-objc",
+    "rev": "8888888888888888888888888888888888888888"
+  },
+  "pl": {
+    "extensions": ["pl"],
+    "repo": "https://github.com/other/tree-sitter-pl",
+    "rev": "9999999999999999999999999999999999999999"
+  },
+  "theta": {
+    "extensions": ["th"],
+    "repo": "https://github.com/acme/tree-sitter-theta",
+    "rev": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "zeta": {
+    "extensions": ["ze"],
+    "generate": true,
+    "license": "MIT",
+    "local": "grammars/zeta"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "acme/tree-sitter-alpha": "MIT",
+  "acme/tree-sitter-eta": "MIT",
+  "acme/tree-sitter-epsilon": "MIT",
+  "acme/tree-sitter-gamma": "AGPL-3.0",
+  "acme/tree-sitter-iota": "Apache-2.0",
+  "acme/tree-sitter-objc": "MIT",
+  "acme/tree-sitter-theta": "MIT-0",
+  "acme2/tree-sitter-beta": "Apache-2.0",
+  "other/tree-sitter-pl": "ISC"
+}
