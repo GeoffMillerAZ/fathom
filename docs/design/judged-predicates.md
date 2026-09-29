@@ -173,7 +173,7 @@ passes R3's pruning-and-gating bar becomes a CUE-declared judged layer whose row
 
 Rows, units, context assembly, options, computable operators, cache keys, invalidation, thresholds, bands,
 redaction, budgets, and every computed row. A model supplies only a band on a residue property, and the
-band is labeled with its tier and calibration state (I59).
+band is labeled with its tier and calibration state (I62).
 
 ## 7. Readings
 

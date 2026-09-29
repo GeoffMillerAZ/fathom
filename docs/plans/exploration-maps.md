@@ -2,7 +2,7 @@
 
 Grammar v2 (`docs/plans/README.md`). A row flips to `[x]` only when
 `fathom verify --service fathom --plan docs/plans/exploration-maps.md` proves it. Design:
-`docs/design/exploration-maps.md` (section numbers below are its). Goal G30. Futures F44 (set algebra over maps), F50 (durable live maps) and F52 (concern scopes as live-map queries); the incident rows moved to `docs/plans/incident-maps.md` (ADR-058, F55).
+`docs/design/exploration-maps.md` (section numbers below are its). Goal G30. Futures F44 (set algebra over maps), F50 (durable live maps) and F52 (concern scopes as live-map queries); the incident rows moved to `docs/plans/incident-maps.md` (ADR-058, F56).
 
 Measurement first. Wave 1 is a transcript-scan reading over 14 days; the wave 2 build rows all carry
 `needs: XM-M1` and start only if re-derivation is at least 15 percent of sub-agent reads. The design is

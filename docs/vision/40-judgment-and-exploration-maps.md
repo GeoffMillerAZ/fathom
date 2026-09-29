@@ -215,9 +215,9 @@ team and reviewed like code, served through `localize`, one prompt-hook line and
 computed at request time from a bounded git read and nothing stored. The two kinds link only by reference: a
 declaration may later name a live map as its scope (IM-D4). Outward connection is a rendered link and a typed
 parameter such as the deployed SHA, never a fetch by fathom; probes (command templates) and MCP next queries are
-deferred behind an instrument and a consumer (F56), and fathom-side connectors, attach and any command center are
+deferred behind an instrument and a consumer (F57), and fathom-side connectors, attach and any command center are
 refused. Its gate is a zero-build replay (IM-M0), pointer use (IM-M2) and a named consumer, not the handoff A/B.
-Design `docs/design/incident-maps.md`; plan `docs/plans/incident-maps.md` (IM-); future F55.
+Design `docs/design/incident-maps.md`; plan `docs/plans/incident-maps.md` (IM-); future F56.
 
 **Where a typed model helps.** Mostly nowhere: the planner already decided what matters. Optional roles are a
 drafted purpose line, an expensive judged column inside a map's footprint (after J0), and a planner's traversal

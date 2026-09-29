@@ -3087,7 +3087,7 @@ reads ADR-046, ADR-049 (decisions 2 and 7), ADR-053 and ADR-055 as constraints. 
 `docs/design/exploration-maps.md`, `docs/design/carry-across.md`, `docs/design/work-signals.md`. Plans:
 `docs/plans/judgment-foundations.md` (JF-), `docs/plans/test-run-hook.md` (TR-), `docs/plans/judged-predicates.md`
 (JP-), `docs/plans/judged-telemetry.md` (JT-), `docs/plans/exploration-maps.md` (XM-), `docs/plans/carry-across.md`
-(CA-), `docs/plans/work-signals.md` (WS-). Goals G27 to G32. Principle P24, invariants I59 to I61, futures F34 to
+(CA-), `docs/plans/work-signals.md` (WS-). Goals G27 to G32. Principle P24, invariants I60 to I62, futures F34 to
 F51, questions Q31 to Q33. Amended the same day by the owner's decision on feature-map verdict proposals
 (decision 13 no longer refuses them: deferred, futures F51; ADR-055 decision 4 carries the dated amendment).
 
@@ -3231,7 +3231,7 @@ rule-outcome events governance learning reads measure scope persistence, not com
   per feature.
 
 **Consequences.**
-- Seven plans, seven design documents, vision 40, goals G27 to G32, principle P24, invariants I59 to I61 (I14
+- Seven plans, seven design documents, vision 40, goals G27 to G32, principle P24, invariants I60 to I62 (I14
   amended), questions Q31 to Q33, futures F34 to F51, a dated amendment line on ADR-042 and another on ADR-055
   (verdict proposals deferred, not refused).
 - Code follows through JF, TR, JP, JT, XM, CA and WS rows, each gated by `fathom verify`; nothing here is built
@@ -3261,8 +3261,8 @@ below (links and typed parameters accepted for the design, probes deferred, atta
 analysis's recommendation, recorded with reopen triggers and open to the owner's revision. Amends section 3c of
 `docs/design/exploration-maps.md` and wave 4 of `docs/plans/exploration-maps.md` (XM-26 to XM-30, XM-M6 and XM-M7
 move, their ids stay reserved) and reads ADR-056 as a constraint. Design: `docs/design/incident-maps.md`. Plan:
-`docs/plans/incident-maps.md` (IM-). Futures F55 and F56. Numbered 058 because 057 is reserved by another design in
-flight.
+`docs/plans/incident-maps.md` (IM-). Futures F56 and F57. Numbered 058 because ADR-057 (served is not kept) and futures F53 to F55 were
+recorded first.
 
 **Context.** Section 3c made incident maps a kind of live map, gated on live maps (XM-D1, whose trigger is XM-M2 and
 RT-M1). Two reviews of the first draft (an invariants critic and an SRE and security critic) found: the map model's
@@ -3299,7 +3299,7 @@ and cited in the design: change is the first suspect, correlation is not cause, 
    key placeholders only on configured link hosts. A `--deployed <sha>` (and `--previous`) parameter, filled by the
    agent or human from their own deploy tool, turns the time window into the deployed range; `since_tag` covers
    release trains. No credential, no fetch, no egress path is added by fathom.
-5. *Probes (command templates) and MCP next queries are deferred (IM-D1, IM-D2; F56), not refused.* They are a
+5. *Probes (command templates) and MCP next queries are deferred (IM-D1, IM-D2; F57), not refused.* They are a
    command runner in effect while bypass-permissions mode exists, they have no meter, and they duplicate runbooks.
    Promotion needs all of: an inject-only PostToolUse(Bash) sensor that can match a run to a rendered probe (after Q32
    answers how exit codes arrive), a consumer whose runbooks lack the commands, and, for next queries, a portable
@@ -3334,11 +3334,11 @@ and cited in the design: change is the first suspect, correlation is not cause, 
    pointer. Stage 2 (the declaration) needs IM-M2 KEEP and a named consumer. IM-M3 (the cause was in the list), IM-M4
    (a readiness gap mattered) and IM-M5 (cold p95 under 3 s, warm under 1 s) read after that. Fathom's own INC
    records cannot feed the replay or count as the consumer.
-10. *Futures.* F4 is split: incident maps become F55 and probes and next queries F56, and F4 returns to precedent over
+10. *Futures.* F4 is split: incident maps become F56 and probes and next queries F57, and F4 returns to precedent over
     a non-git corpus. The non-goals in `docs/intent/scope.md` (no domain connectors, no chat or incident command
     center) are unchanged and each carries a dated note that incident maps respect it. XM-D9 (a typed model orders
     the suspect list) stays deferred with its trigger re-pointed to IM-M3 and a calibration whose Wilson 95 percent
-    lower bound reaches 0.90 (R3, I59, I60).
+    lower bound reaches 0.90 (R3, I60, I62).
 11. *A proposed invariant, not in force until stage 2 is built:* no incident path executes a command other than
     read-only git, fetches a link, or calls another MCP server; the answer uses only point and index work and names
     every facet it could not compute; the change facet always names its horizon and blind spots.
@@ -3358,7 +3358,7 @@ and cited in the design: change is the first suspect, correlation is not cause, 
 - *A usage kill clock on declarations.* Rare use is the success state; readiness measures liveness instead.
 
 **Consequences.**
-- One design (`docs/design/incident-maps.md`), one plan (`docs/plans/incident-maps.md`), futures F55 and F56, the
+- One design (`docs/design/incident-maps.md`), one plan (`docs/plans/incident-maps.md`), futures F56 and F57, the
   incident rows of the exploration-maps plan moved, dated notes on F4 and on two non-goals, a pointer in vision 40
   and in the exploration-maps design; nothing here is built by this record.
 - The two shipped defects (IM-F1, IM-F2) are independent bugs and may be fixed at any time.
@@ -3367,11 +3367,11 @@ and cited in the design: change is the first suspect, correlation is not cause, 
 - Reusable, project-agnostic guidance is written in the design (section 18) for agentic-kit.
 
 **Revisit when.**
-- IM-M0 or IM-M1 reads KILL or DROP (drop F55 and mark its waves refused).
+- IM-M0 or IM-M1 reads KILL or DROP (drop F56 and mark its waves refused).
 - IM-M1 shows git-invisible causes at 20 percent or more of change-caused incidents that tag windows and deployed
   SHAs do not cover (reopen attach, through a new ADR with the contract recorded in the design section 6.5).
 - Q32 is answered and an inject-only sensor can match a run to a rendered probe while a consumer asks for templates
-  (reconsider probes, F56).
+  (reconsider probes, F57).
 - XM-D1 ships (add the `scope` field, IM-D4).
 - The domain-connectors trigger fires (an external party ships a conforming module with zero connectors from us):
   reconsider fathom-side connectors through an ADR and an I14 amendment.

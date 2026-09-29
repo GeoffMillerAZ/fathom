@@ -68,9 +68,9 @@ futures may justify a free option today. The repo's own sequence is
   findings import` lands, FL-10) counts toward the same ≥15–20 threshold this future is
   watching — the findings loop widens the funnel, it does not promote anything by itself.
 - Note (2026-09-29, incident maps, revised the same day): incident maps are not the form this future takes. They
-  became committed declarations, not live maps, and moved to F55 (ADR-058, `docs/design/incident-maps.md`); an
+  became committed declarations, not live maps, and moved to F56 (ADR-058, `docs/design/incident-maps.md`); an
   earlier note here that gated them on live maps and on rows XM-26 to XM-30 is withdrawn. This future stays
-  precedent compiled from a non-git corpus, gated on the resolved-finding count above. Related: F52, F55.
+  precedent compiled from a non-git corpus, gated on the resolved-finding count above. Related: F52, F56.
 
 ## F5. Provider pack type (TX-3)
 
@@ -630,14 +630,14 @@ nothing may depend on it (P24). The entry's own drop-if stands.
 - Promote when: live maps land (F50 promoted, XM-D1) and the evidence contract has a scope field.
 - Drop if: Review Kit declines to carry a scope field on its concern packs.
 
-## F55. Incident maps: pre-shaped incident declarations and the suspect list
+## F56. Incident maps: pre-shaped incident declarations and the suspect list
 
 - Confidence: plausible. Horizon: later. Evidence: ADR-058, `docs/design/incident-maps.md`,
   `docs/plans/incident-maps.md`.
 - Motivation: in the first five minutes an on-call engineer or agent needs owners, what changed, prior incidents,
   knobs, reach and the runbook. A team commits a declaration ahead of time (symptoms, footprint, window, runbook
   path, links, blind spots); a pasted trace or alert finds it; every facet reads a value, none, or not computed.
-- Do not build: a map kind or the `map` verb for it; probes or MCP next queries (F56); attach or any connector
+- Do not build: a map kind or the `map` verb for it; probes or MCP next queries (F57); attach or any connector
   (ADR-058 refuses them); drills, drill state, a timeline or an incident-tool export (the command-center non-goal);
   committers as owners; a stored commit table before RT-M1.
 - Preserve: the unprepared view as the floor; "git-visible changes to this repo only, not cause"; links never
@@ -646,7 +646,7 @@ nothing may depend on it (P24). The entry's own drop-if stands.
 - Drop if: IM-M0 reads KILL on both arms; IM-M1 recall@20 falls under 0.5 or its median list exceeds 25 rows; or the
   pointer's expansion stays under 10 percent over 30 days of pointers shown.
 
-## F56. Incident probes and MCP next queries: command templates rendered, never run
+## F57. Incident probes and MCP next queries: command templates rendered, never run
 
 - Confidence: speculative. Horizon: later. Evidence: ADR-058, `docs/design/incident-maps.md` section 6.4.
 - Motivation: the owner wants incident maps to reach CLI commands and other data sources; a declaration could carry
@@ -655,7 +655,7 @@ nothing may depend on it (P24). The entry's own drop-if stands.
   credential flag, or a secret-reading verb; operator-local MCP aliases in a committed file; a probe with no
   sensitivity or no pinned target.
 - Preserve: the section 6.4 rendering contract (rendering is the gate because bypass modes exist).
-- Promote when: F55 is promoted, Q32 is answered and an inject-only sensor can match a run argv to a rendered probe
+- Promote when: F56 is promoted, Q32 is answered and an inject-only sensor can match a run argv to a rendered probe
   id, and a consumer whose runbooks lack the commands asks for templates.
-- Drop if: F55 is dropped, or no consumer asks within 180 days of F55's stage 2 shipping, or the sensor's first
+- Drop if: F56 is dropped, or no consumer asks within 180 days of F56's stage 2 shipping, or the sensor's first
   30-day reading shows under 10 percent of rendered probes run.

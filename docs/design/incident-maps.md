@@ -1,7 +1,7 @@
 # Incident maps: committed declarations that pre-shape the first five minutes, reaching outside systems by link and parameter, never by fathom
 
 Status: accepted as a direction 2026-09-29 (ADR-058); the build is deferred behind the stages in section 13. Plan:
-`docs/plans/incident-maps.md` (IM-). Futures F55 (incident maps) and F56 (probes and next queries). Amends section
+`docs/plans/incident-maps.md` (IM-). Futures F56 (incident maps) and F57 (probes and next queries). Amends section
 3c of `docs/design/exploration-maps.md` on two points, the kind and the gate, and moves its incident rows XM-26 to
 XM-30, XM-M6 and XM-M7 here. Vision: `docs/vision/40-judgment-and-exploration-maps.md` section 13.
 
@@ -74,7 +74,7 @@ external connection starts with the forms that are safe, portable and meterable.
   calibration (XM-D9); there is no command center (XM-X4) and fathom never mitigates (XM-X3). This decision keeps
   all of that and replaces only the incident rows XM-26 to XM-30, XM-M6 and XM-M7 (section 17).
 - The 2026-09-29 note on F4 (`docs/intent/futures.md`) had made incident maps the form F4 takes. This decision
-  splits them into F55 and returns F4 to precedent over a non-git corpus.
+  splits them into F56 and returns F4 to precedent over a non-git corpus.
 - `docs/intent/incidents.md` carries the planned extension (an incident yields the affected path's map). It stays
   planned and re-points to IM-16.
 
@@ -89,7 +89,7 @@ external connection starts with the forms that are safe, portable and meterable.
 | I9, I53, I35 (hooks fail open, stay inside their timeout, inject at most 320 tokens and 6 rules) | The pointer is one line, silent on failure, and the stanza says silence is not evidence. |
 | I38, I44 (no conclusion the inputs could not earn; a missing input is a named lower bound) | Every facet reads value, "checked, none", or "not computed: reason". The change facet always names its horizon and its blind spots. |
 | I48, I49, I50 (bounded reads; admission by cost class; a read never ingests inline) | The suspect list comes from a bounded git read with a timeout. The git subprocess's cost class is decided at build. The answer names the index commit and never ingests. |
-| I57, I58, I59, I60 | Tiers shown, heuristics never gate; no human ranked (no committers as owners, no author field); a typed model advisory and opt-in. |
+| I57, I58, I60, I62 | Tiers shown, heuristics never gate; no human ranked (no committers as owners, no author field); a typed model advisory and opt-in. |
 | P8, P13, P15 (law 15), P16, P17, P18, P20, P23 | No usage kill clock on a declaration; sharing is a human verb; fathom never edits the declaration; delivery by configuration; authored text in CUE, state computed; fail open; a named consumer; a guest on the operator's machine. |
 | ADR-056 decision 13 ("output rewriting and command execution by fathom" refused), R1, R3, R5, R6, R7; the no-grep-blocking non-goal (hooks inject, gates block, P16) | Fathom renders nothing executable in v1. No blocking. No durable table before RT-M1. |
 | Precision on "never runs commands" | Fathom already execs read-only `git` through `internal/gitro` on request paths (`internal/mcp/meta.go`, `internal/console/join.go`). The rule refuses operator-supplied or arbitrary commands. The deleted `shell_out` was a code analyzer with 0 lifetime calls (SR-19), not a command runner, so it is not the precedent. |
@@ -478,12 +478,12 @@ product verb.
 ## 12. What a typed model may do
 
 - **Deferred (XM-D9 stands, trigger re-pointed to IM-M3): ordering the suspect list.** Opt-in (I60), only after a
-  calibration whose Wilson 95 percent lower bound is at least 0.90 for reordering a default list (R3, I59), never
+  calibration whose Wilson 95 percent lower bound is at least 0.90 for reordering a default list (R3, I62), never
   membership, every row still shown. One consumer's incident count (tens a year) may never reach the n needed, so
   the deterministic order is the product.
 - **Dropped from the register: drafting a declaration from a postmortem.** Its input, a machine-readable cause in
   the repo, does not exist. It may be proposed again if IM-D7's trigger fires.
-- **Refused (IM-X9):** naming a root cause or "likely cause" (I59); choosing the match (R1); judging runtime data;
+- **Refused (IM-X9):** naming a root cause or "likely cause" (I62); choosing the match (R1); judging runtime data;
   severity; mitigation; anything touching a security property (R7, X6).
 - Provider `none` works everywhere in this design.
 
@@ -559,7 +559,7 @@ and can be fixed whenever the owner chooses.
 | 12 | One CLI verb with `--offline` | Accepted direction, deferred | The human and daemon-down paths (INC-23) | Stage 2 |
 | 13 | Readiness facts as a doctor row and a flag | Accepted direction, deferred | Rot is the main failure; facts, never grades | IM-M4 |
 | 14 | No `os/exec` reachable from incident code except gitro; nothing fetched | Accepted direction, deferred | The testable form of "renders, never runs" | Stage 2 |
-| 15 | Gate: IM-M0, IM-M2 and a consumer replace XM-M2 and XM-D1; F4 split into F55 | Accepted direction | XM-M2 measures an unrelated benefit (13.1) | ADR-058 |
+| 15 | Gate: IM-M0, IM-M2 and a consumer replace XM-M2 and XM-D1; F4 split into F56 | Accepted direction | XM-M2 measures an unrelated benefit (13.1) | ADR-058 |
 | 16 | Suspect rows with no author field | Accepted direction | I58, blameless practice | none |
 | 17 | IM-M0 revert-corpus two-arm replay | Experiment | The cheapest way to test the core facet and the pre-shaping gain (13.2) | Its own bars |
 | 18 | IM-M1 consumer replay | Experiment | The only reading that can keep the feature | Needs IM-V1 |
@@ -585,7 +585,7 @@ and can be fixed whenever the owner chooses.
 | 38 | Remote or fetched declarations; values bound from env, keychain or outside files; a static `bind` copying indexed facts | Refused | I56, Q5; copies rot | never |
 | 39 | Hook auto-run of anything; the change facet presented as complete; no pointer presented as no map | Refused | I9, I44 | never |
 | 40 | Credentials or secret-bearing strings in declarations or config | Refused | Q5, I61 | never |
-| 41 | A typed model names a cause, picks the match, judges runtime data, sets severity or proposes mitigation | Refused | I59, R1, R7 | never |
+| 41 | A typed model names a cause, picks the match, judges runtime data, sets severity or proposes mitigation | Refused | I62, R1, R7 | never |
 | 42 | The unqualified claim "no egress" | Refused | Answers reach the model provider | never |
 | 43 | Mutating anything and an incident command center | Refused (XM-X3, XM-X4 stand) | Fathom never mitigates; the non-goal | As recorded there |
 
@@ -656,9 +656,9 @@ The decision is durable in these records; nothing here is built by them.
 - **Plan** `docs/plans/incident-maps.md` (IM-): readings first (IM-V1, IM-M0, IM-M1), two independent defect fixes
   (IM-F1, IM-F2), stage 1 (IM-1 to IM-5, IM-M2), stage 2 (IM-6 to IM-16, IM-M3 to IM-M5), and the deferred and
   refused rows (IM-D1 to IM-D9, IM-X1 to IM-X10).
-- **Futures** F55 (incident maps) and F56 (probes and next queries) in `docs/intent/futures.md`; F4 carries a dated
-  note returning it to precedent over a non-git corpus. The numbers F53 and F54 were left free on purpose because
-  another design in flight names F53.
+- **Futures** F56 (incident maps) and F57 (probes and next queries) in `docs/intent/futures.md`; F4 carries a dated
+  note returning it to precedent over a non-git corpus. The numbers F53 to F55 belong to the served-is-not-kept
+  record (ADR-057) and the agent-memory future, which were recorded first.
 - **Exploration maps**: `docs/plans/exploration-maps.md` rows XM-26 to XM-30, XM-M6 and XM-M7 are `[-]` with ids
   reserved and a pointer here; XM-D9's trigger is re-pointed to IM-M3; XM-X3 and XM-X4 stand; concern scopes
   (XM-23 to XM-25) are untouched. Section 3c of the exploration-maps design carries a pointer to this document.

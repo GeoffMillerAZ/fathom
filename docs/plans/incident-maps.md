@@ -2,8 +2,8 @@
 
 Grammar v2 (`docs/plans/README.md`). A row flips to `[x]` only when
 `fathom verify --service fathom --plan docs/plans/incident-maps.md` proves it. Design:
-`docs/design/incident-maps.md` (section numbers below are its). Decision: ADR-058. Futures: F55 (incident maps) and
-F56 (probes and MCP next queries). Moves the incident rows of `docs/plans/exploration-maps.md` here (XM-26 to XM-30,
+`docs/design/incident-maps.md` (section numbers below are its). Decision: ADR-058. Futures: F56 (incident maps) and
+F57 (probes and MCP next queries). Moves the incident rows of `docs/plans/exploration-maps.md` here (XM-26 to XM-30,
 XM-M6, XM-M7), whose ids stay reserved there.
 
 The build is deferred by the owner. Nothing below starts until its own gate reads: wave 0 builds nothing in the
@@ -53,7 +53,7 @@ refused disposition. The deferred and refused rows at the end are recorded so th
 
 ## Deferred and refused (recorded so they are not re-proposed)
 
-- [-] Probes: read-only command templates rendered as argv under the design's section 6.4 contract {id: IM-D1, disposition: deferred, reason: "a command runner in effect under bypass permissions, no meter, duplicates runbooks", trigger: "F55 promoted, Q32 answered and a sensor matches a run argv to a rendered probe id, and a consumer asks (F56)"}
+- [-] Probes: read-only command templates rendered as argv under the design's section 6.4 contract {id: IM-D1, disposition: deferred, reason: "a command runner in effect under bypass permissions, no meter, duplicates runbooks", trigger: "F56 promoted, Q32 answered and a sensor matches a run argv to a rendered probe id, and a consumer asks (F57)"}
 - [-] MCP next queries addressed to the agent's own servers {id: IM-D2, disposition: deferred, reason: "operator-local aliases and vendor schemas in a committed file are not portable and readiness cannot check them", trigger: "IM-D1 promoted and a portable server identity exists"}
 - [-] Footprint pre-resolution stored at ingest {id: IM-D3, disposition: deferred, reason: "a durable memo (R5)", trigger: "responsible-tenant.md#RT-M1 reads PASS and IM-M5 reads over target"}
 - [-] A declaration's optional scope naming a live map {id: IM-D4, disposition: deferred, reason: "needs live maps", trigger: "exploration-maps.md#XM-D1 promoted"}
@@ -70,5 +70,5 @@ refused disposition. The deferred and refused rows at the end are recorded so th
 - [-] Frequent committers listed as owners {id: IM-X6, disposition: refused, reason: "selects humans by commit count (I58) for little value"}
 - [-] Remote or fetched declarations, values bound from env, keychain or outside files, and a static bind copying indexed facts {id: IM-X7, disposition: refused, reason: "I56, Q5; copies rot"}
 - [-] The hook auto-runs anything, presents the change facet as complete, or presents no pointer as no map {id: IM-X8, disposition: refused, reason: "I9, I44"}
-- [-] A typed model names a cause, picks the match, judges runtime data, sets severity or proposes mitigation {id: IM-X9, disposition: refused, reason: "I59, R1, R7"}
+- [-] A typed model names a cause, picks the match, judges runtime data, sets severity or proposes mitigation {id: IM-X9, disposition: refused, reason: "I62, R1, R7"}
 - [-] The unqualified claim that the incident path has no egress {id: IM-X10, disposition: refused, reason: "the answer and anything the agent does with it reach the model provider"}
