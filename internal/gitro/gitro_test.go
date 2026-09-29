@@ -171,3 +171,81 @@ func TestOutput_RacilyCleanEntryIsStillSeen(t *testing.T) {
 		t.Errorf("status = %q, want w.go modified", out)
 	}
 }
+
+// envValue is the value cmd will hand its child for key: exec keeps the last
+// of several entries, so the last one is the one that counts.
+func envValue(env []string, key string) (string, bool) {
+	val, found := "", false
+	for _, kv := range env {
+		if v, ok := strings.CutPrefix(kv, key+"="); ok {
+			val, found = v, true
+		}
+	}
+	return val, found
+}
+
+// TestCommandSetsNoLazyFetchAndNoPrompt pins IM-F2: every command gitro
+// builds carries GIT_NO_LAZY_FETCH=1 and GIT_TERMINAL_PROMPT=0 beside
+// GIT_OPTIONAL_LOCKS=0, whatever the caller's own environment says, on the
+// plain path and on the private-index path (status, diff) alike.
+func TestCommandSetsNoLazyFetchAndNoPrompt(t *testing.T) {
+	dir := t.TempDir()
+	git(t, dir, "init", "-q")
+	// A caller (or a login shell) that asks for the opposite must not win.
+	t.Setenv("GIT_NO_LAZY_FETCH", "0")
+	t.Setenv("GIT_TERMINAL_PROMPT", "1")
+	for _, args := range [][]string{
+		{"log", "--oneline"},
+		{"rev-parse", "HEAD"},
+		{"status", "--porcelain"},
+		{"diff", "--name-only", "HEAD"},
+	} {
+		cmd, cleanup, err := Command(context.Background(), dir, args...)
+		if err != nil {
+			t.Fatalf("%v: %v", args, err)
+		}
+		for key, want := range map[string]string{
+			"GIT_OPTIONAL_LOCKS":  "0",
+			"GIT_NO_LAZY_FETCH":   "1",
+			"GIT_TERMINAL_PROMPT": "0",
+		} {
+			if got, ok := envValue(cmd.Env, key); !ok || got != want {
+				t.Errorf("%v: %s = %q (set %v), want %q", args, key, got, ok, want)
+			}
+		}
+		cleanup()
+	}
+}
+
+// TestCommandPartialCloneNeverFetches is the behavior behind IM-F2: in a
+// blobless partial clone a read of a blob it does not hold fails, where a
+// bare git would lazily fetch it from the promisor remote.
+func TestCommandPartialCloneNeverFetches(t *testing.T) {
+	origin := t.TempDir()
+	git(t, origin, "init", "-q", "-b", "main")
+	git(t, origin, "config", "uploadpack.allowFilter", "true")
+	git(t, origin, "config", "uploadpack.allowAnySHA1InWant", "true")
+	if err := os.WriteFile(filepath.Join(origin, "f.go"), []byte("package f\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	git(t, origin, "add", "-A")
+	git(t, origin, "commit", "-q", "-m", "one")
+	clone := filepath.Join(t.TempDir(), "clone")
+	git(t, filepath.Dir(clone), "clone", "-q", "--no-checkout", "--filter=blob:none", "file://"+origin, clone)
+	// Control: plain git fetches the missing blob on demand.
+	control := exec.Command("git", "-C", clone, "cat-file", "-p", "HEAD:f.go")
+	if out, err := control.CombinedOutput(); err != nil {
+		t.Skipf("this git did not lazily fetch in the control (%v: %s); the fixture cannot prove the guard", err, out)
+	}
+	// A second partial clone the control has not touched.
+	clone2 := filepath.Join(t.TempDir(), "clone2")
+	git(t, filepath.Dir(clone2), "clone", "-q", "--no-checkout", "--filter=blob:none", "file://"+origin, clone2)
+	out, err := Output(context.Background(), clone2, "cat-file", "-p", "HEAD:f.go")
+	if err == nil {
+		t.Fatalf("a gitro read fetched a missing blob from the promisor remote: %q", out)
+	}
+	// The read never fetched, so the blob is still missing afterwards.
+	if _, err := Output(context.Background(), clone2, "cat-file", "-p", "HEAD:f.go"); err == nil {
+		t.Fatal("the blob appeared after a refused read")
+	}
+}

@@ -61,7 +61,7 @@ var fallbackDeadline = 2 * time.Second
 // headFallback runs `git rev-parse HEAD` in root under ctx (a var for tests).
 var headFallback = func(ctx context.Context, root string) (string, error) {
 	cmd := exec.CommandContext(ctx, "git", "-C", root, "rev-parse", "HEAD")
-	cmd.Env = append(os.Environ(), "GIT_OPTIONAL_LOCKS=0")
+	cmd.Env = Env()
 	out, err := cmd.Output()
 	if err != nil {
 		return "", err
