@@ -127,12 +127,10 @@ would otherwise rebuild assess's consent capability, spend isolation and judge p
 refused; assess itself is frozen by ADR-053. Blocks: the sampler, queue and judgments table (F40), needed only
 after RT-M1 reads PASS. Answerable by: owner.
 
-**Q34. Block a silent pin loss at pre-push (PR-8)?** ADR-057 accepts the commit pin line, which tells the
-agent in the same turn when a commit loses a test that a governing source names. It leaves one step to the
-owner: `fathom conserve --strict-plane integrity` would exit 1 at pre-push only on a silent loss (the lost test
-is still named by its source at head; a pin retired on purpose, with its naming source edited in the same
-range, is printed and does not fail). Today `refactor-conserve` computes the integrity plane on every push and
-always exits 0. Evidence: CV-M1 flagged both i28 trials as `deleted`; CV-M2 found 0 false losses in 50 commits.
-It changes the advisory-only pre-push doctrine (`docs/design/coding-agent-excellence.md` section 5.3) for one
-plane, which is why it is not decided by the record that proposes it. Blocks: PR-9 (`docs/plans/served-not-kept.md`).
-Answerable by: owner.
+**Q34. Block a silent pin loss at pre-push (PR-8)?** Answered 2026-09-29 by the owner-architect under the
+owner's standing delegation, owner veto open, and recorded on ADR-057's `PR-8 decision.` line: yes, for the
+integrity plane only. `fathom conserve --strict-plane integrity` exits 1 at pre-push only on a silent loss (the
+lost test is still named by its source at head; a pin retired on purpose, with its naming source edited in the
+same range, is printed and does not fail), and `refactor-conserve` uses it once PR-9 lands. Evidence: CV-M1
+flagged both i28 trials as `deleted`; CV-M2 found 0 false losses in 50 commits. Delete this entry when PR-9 is
+proven or the owner vetoes (then record the rejection on the same line).

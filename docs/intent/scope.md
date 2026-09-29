@@ -194,7 +194,7 @@ FAIL (a FAIL means the check is fixed before PR-3 is built, K1), PR-M1 (30 days 
 every fire adjudicated by the owner) reads PASS or FAIL, and PR-M2 (the bench, about $76, the owner's approval
 first) reads PASS (with the pin line on, at most half the line-off oracle violations on the pin tasks, the
 interval excluding 0, tokens per clean success and tool calls at most 1.10 of the line-off arm) or FAIL with
-the line left record-only. PR-8 (block a silent loss at pre-push) is the owner's call and is not part of this bet.
+the line left record-only. PR-8 (block a silent loss at pre-push, accepted 2026-09-29, built by PR-9) is not part of this bet.
 {bet: served-not-kept, instrument: "fathom plans status", threshold: "PR-M2 part B: pin line on at most half the line-off oracle violations on the pin tasks with the interval excluding 0 and tokens per clean success and tool calls at most 1.10 of line-off (K5), else the line stays record-only; PR-M0 and PR-M1 read either way", review: 2027-01-31}
 
 **G11. A reading, a hand-off and an answer carry their evidence (ADR-034).** The first

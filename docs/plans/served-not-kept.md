@@ -3,10 +3,11 @@
 Grammar v2 (`docs/plans/README.md`). A row flips to `[x]` only when
 `fathom verify --service fathom --plan docs/plans/served-not-kept.md` proves it. Design:
 `docs/design/served-not-kept.md` (section numbers below are its). Goal G33. Futures F53 (`propose_check`) and F54
-(orchestrator constraints on a sub-agent). Every row is open: nothing here is built, and nothing is claimed.
+(orchestrator constraints on a sub-agent). Nothing here is built; the one claimed row is PR-8, the decision.
 
 The accepted core is the commit pin line (PR-1 to PR-7) with two ledger fixes that ride SR-61 (PR-10, PR-11) and
-JF-1 landing alone. PR-8 and PR-9 (a silent pin loss blocks at pre-push) are the owner's decision (Q34). PR-M0 is
+JF-1 landing alone. PR-8 (a silent pin loss blocks at pre-push) was accepted on 2026-09-29 by the owner-architect, owner veto open (Q34
+answered); PR-9 builds it. PR-M0 is
 a $0 replay that must pass before PR-3 is built (kill K1); PR-M1 is 30 days of record mode; PR-M2 is a bench that
 needs the owner's approval of about $76 (`docs/intent/autonomy.md`). The rows after "Deferred and refused" record
 what was considered so it is not re-proposed.
@@ -28,7 +29,7 @@ what was considered so it is not re-proposed.
 
 ## Wave 2: the pre-push gate (owner decision)
 
-- [ ] (op) PR-8: the owner accepts or rejects blocking a silent pin loss at pre-push, recorded on the `PR-8 decision.` line of ADR-057 (Q34) {id: PR-8, oracle: lexical, path: ADR.md, pattern: "^\*\*PR-8 decision\.\*\* (accepted|rejected)"}
+- [x] (op) PR-8: the owner accepts or rejects blocking a silent pin loss at pre-push, recorded on the `PR-8 decision.` line of ADR-057 (Q34) {id: PR-8, oracle: lexical, path: ADR.md, pattern: "^\*\*PR-8 decision\.\*\* (accepted|rejected)"}
 - [ ] `fathom conserve --strict-plane integrity` exits 1 only on a loss whose naming source still names the test at head, prints a retired pin for review without failing, and lefthook's refactor-conserve uses it {id: PR-9, symbol: cmdConserve, package: cmd/fathom, reachable_from: TestConserveStrictIntegrityBlocksOnlySilentPinLoss, needs: "PR-1,PR-8"}
 
 ## Wave 3: ledger rows that ride SR-61
