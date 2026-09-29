@@ -31,8 +31,8 @@ of signal exist.
 - [x] Published thresholds: `.fathom/learning.cue` schema with valid/invalid testdata, defaults in the binary (§6) {id: GL-12, oracle: lexical, path: schema/learning/schema.cue, pattern: "^#Learning:"}
 - [x] Promotion and retirement under the thresholds; retirement closes the validity window, never deletes {id: GL-13, symbol: applyLearning, package: internal/semantic, reachable_from: TestLearningPromotesAndRetires, needs: "GL-11,GL-12"}
   <!-- library landed 53143690; wired by `fathom claim learn [--service S] [--store DB] [--apply]` (cmd/fathom/claim_learn.go): it reads the GL-10 outcome log, .fathom/learning.cue over the defaults and the service's governing claims, calls semantic.ApplyLearning, and on --apply persists the lifecycle and closes a retirement's window through semantic.CloseClaimValidity. Run by hand, never by the daemon. A never-triggered retirement is held while the log does not reach back over its window. -->
-- [ ] Every promotion or retirement announced in the attention line and `fathom intent audit` with its signals; none silent {id: GL-14, symbol: learningAnnouncements, package: cmd/fathom, reachable_from: TestLearningNeverSilent, needs: "GL-13"}
-  <!-- library landed 0a333ae5; product wiring open: the attention line and `fathom intent audit` read intent.KindLearning ledger rows, but learningAnnouncements, their only writer, is never called (waits on GL-13). -->
+- [x] Every promotion or retirement announced in the attention line and `fathom intent audit` with its signals; none silent {id: GL-14, symbol: learningAnnouncements, package: cmd/fathom, reachable_from: TestLearningNeverSilent, needs: "GL-13"}
+  <!-- library landed 0a333ae5; wired: `fathom claim learn --apply` calls learningAnnouncements for every decision it persists (claim_learn.go), so each lands as an intent.KindLearning ledger row the attention line counts and `fathom intent audit` lists; a dry run writes none. -->
 
 ## Wave 3: validity windows everywhere, the rule-effectiveness view, layered diffs
 

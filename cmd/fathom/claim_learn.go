@@ -9,8 +9,10 @@ package main
 // (candidate → active) and retirement (active → retired) with the signals
 // that moved it. The default is a dry run; `--apply` persists the lifecycle
 // and closes a retired claim's validity window through the one
-// claim-ending path (semantic.CloseClaimValidity, GL-15). Nothing is ever
-// deleted.
+// claim-ending path (semantic.CloseClaimValidity, GL-15), then announces
+// every decision with its signals (learningAnnouncements, GL-14) in the
+// intent ledger the attention line and `fathom intent audit` read. Nothing
+// is ever deleted.
 //
 // The owner runs it by hand: no daemon pass, no background job (TABLE
 // FREEZE). A retirement for never being triggered is held, and named,
@@ -57,7 +59,8 @@ type learnDecision struct {
 	Served           int    `json:"served"`
 }
 
-// learnServiceResult is one service's learning pass.
+// learnServiceResult is one service's learning pass. On an --apply every
+// decision in Decisions is also in Announced (GL-14): none is silent.
 type learnServiceResult struct {
 	Service        string                      `json:"service"`
 	Root           string                      `json:"root,omitempty"`
@@ -227,6 +230,10 @@ func learnService(ctx context.Context, st store.Store, svc string, log ruleOutco
 		}
 	}
 	res.Applied = true
+	// GL-14 (GL-X1: no silent learning): every persisted decision is
+	// announced, with its signals, in the intent ledger the session
+	// attention line and `fathom intent audit` read.
+	res.Announced = learningAnnouncements(res.Root, kept, now)
 	return res, nil
 }
 
