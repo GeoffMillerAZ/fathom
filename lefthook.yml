@@ -56,7 +56,10 @@ pre-push:
     # self-declared and refused. Not retroactive: a waiver already on
     # origin/main predates every later range. No merge-base (no origin/main
     # ref, a shallow clone) runs verify without --since and says so; exit 2
-    # stays fail-open.
+    # stays fail-open. A stale origin/main (a push clone whose origin is a
+    # local checkout that has not fetched) widens the range, so a waiver
+    # already on the remote reads self-declared: a block names the base it
+    # read so the fix (fetch main, retry) is visible, never a silent pass.
     verify:
       run: |
         [ -x bin/fathom ] || exit 0
@@ -90,6 +93,9 @@ pre-push:
             echo "fathom verify: operational error — allowing push (fail-open, see docs/design/coding-agent-excellence.md §5.3)"
           fi
         done
+        if [ $rc -eq 1 ] && [ ${#since[@]} -gt 0 ]; then
+          echo "fathom verify: the range was read from $base (merge-base with origin/main); if origin/main is stale, a waiver already on the remote reads self-declared — fetch main into origin/main and retry"
+        fi
         exit $rc
     # fathom review — C3-1, the forced channel (docs/plans/review-verb.md):
     # a NON-BLOCKING `fathom review --since origin/main` SUMMARY printed on

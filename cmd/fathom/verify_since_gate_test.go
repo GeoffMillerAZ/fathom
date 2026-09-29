@@ -198,6 +198,8 @@ func TestLefthook_PrePushVerifyReadsTheChangeRange(t *testing.T) {
 
 	if code, out, _ := g.run(t, body, "1"); code != 1 {
 		t.Errorf("verify exit 1 (a refused row, a self-declared waiver among them) must block the push, got %d\n%s", code, out)
+	} else if !strings.Contains(out, "the range was read from "+base) {
+		t.Errorf("a block under --since must name the base it read, so a stale origin/main is diagnosable, got:\n%s", out)
 	}
 	code, out, _ = g.run(t, body, "2")
 	if code != 0 || !strings.Contains(out, "fail-open") {
@@ -221,5 +223,8 @@ func TestLefthook_PrePushVerifyWithoutOriginMainSaysSo(t *testing.T) {
 	}
 	if strings.Contains(calls, "--since") || !strings.Contains(calls, "verify --strict --store ") {
 		t.Errorf("want verify --strict without --since, got %q", calls)
+	}
+	if code, out, _ := g.run(t, body, "1"); code != 1 || strings.Contains(out, "the range was read from") {
+		t.Errorf("without a merge-base a block still blocks and names no range base, got %d\n%s", code, out)
 	}
 }
