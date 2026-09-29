@@ -270,7 +270,8 @@ mirror `d9dd789`; no mirror file changed. Packages it adds to the console:
   lines on `/refactors` (`LineNotExecuted`, labelled "Changed, never ran").
 - `viz.Heatmap` truth states (FATHOM-KIT-03) for the certifications matrix: a zero count
   is `CellZero`, drawn as a zero, with the matrix as a `table.Table` behind
-  `chrome.RenderDisclosure`. The coverage matrix (OC-28) is still to come.
+  `chrome.RenderDisclosure`. The same truth states draw the `/layers` coverage matrix
+  (OC-28), which wave D built (`cmd/fathom/console_layers.go`; FATHOM-D-KIT-01 below).
 - `viz.StackBar` (fluid) for proof bars and, one per row on a shared scale, for the
   burn-up and the ledger trends — the chart is its own table (FATHOM-C-KIT-02).
 - `stat.Absent` for the trend until the verify ledger holds 14 days of rows (SD-3),
