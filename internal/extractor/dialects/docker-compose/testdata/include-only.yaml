@@ -1,0 +1,6 @@
+name: stack
+include:
+  - compose.base.yaml
+networks:
+  edge:
+    driver: bridge

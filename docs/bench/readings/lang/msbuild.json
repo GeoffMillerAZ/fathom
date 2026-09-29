@@ -1,0 +1,157 @@
+{
+  "dialect": "msbuild",
+  "kind": "tooling",
+  "target_level": "L3",
+  "level_met": "L3",
+  "grade": {
+    "L1": "excellent",
+    "L2": "excellent",
+    "L3": "excellent",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-09-29",
+  "fathom_commit": "bf1f0fea",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "App-vNext/Polly",
+      "sha": "9ad5ae9b4ff9beb4321b0762249ce173b984f817",
+      "files": 34,
+      "bytes": 42336,
+      "counts": {
+        "fathom_defs": 34,
+        "kind_equal": 34,
+        "matched": 34,
+        "oracle_defs": 34,
+        "ref_fathom": 58,
+        "ref_fathom_in_truth": 56,
+        "ref_truth": 56,
+        "ref_truth_found": 56,
+        "xref_fathom": 31,
+        "xref_fathom_in_truth": 31,
+        "xref_truth": 31,
+        "xref_truth_found": 31
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A",
+        "xref": "A"
+      },
+      "kind_intersection": [
+        "package"
+      ],
+      "excluded_by_kind": {
+        "fathom:MSBuildTarget": 4
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 1.2010000000000003,
+        "extract_cpu_ms": 1.2110000000000003,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "dotnet/aspnetcore",
+      "sha": "cb21a42eafcd44cc35fad48d99dc82ff7512ce2f",
+      "files": 41,
+      "bytes": 45596,
+      "counts": {
+        "fathom_defs": 41,
+        "kind_equal": 41,
+        "matched": 41,
+        "oracle_defs": 41,
+        "ref_fathom": 6,
+        "ref_fathom_in_truth": 6,
+        "ref_truth": 6,
+        "ref_truth_found": 6,
+        "xref_fathom": 5,
+        "xref_fathom_in_truth": 5,
+        "xref_truth": 7,
+        "xref_truth_found": 5
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A",
+        "xref": "A"
+      },
+      "kind_intersection": [
+        "package"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 2.179,
+        "extract_cpu_ms": 3.2359999999999993,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "dotnet msbuild (-getItem, -getProperty and -preprocess)",
+      "version": "MSBuild 18.9.11.42413; .NET SDK 10.0.401"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 0.9688,
+    "ref_recall": 1,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "xref_precision": 1,
+    "xref_recall": 0.9474
+  },
+  "metric_tiers": {
+    "ref_precision": "A",
+    "ref_recall": "A",
+    "sym_precision": "A",
+    "sym_recall": "A",
+    "xref_precision": "A",
+    "xref_recall": "A"
+  },
+  "required_kinds": [
+    "package"
+  ],
+  "kind_intersection": [
+    "package"
+  ],
+  "counts": {
+    "fathom_defs": 75,
+    "kind_equal": 75,
+    "matched": 75,
+    "oracle_defs": 75,
+    "ref_fathom": 64,
+    "ref_fathom_in_truth": 62,
+    "ref_truth": 62,
+    "ref_truth_found": 62,
+    "xref_fathom": 36,
+    "xref_fathom_in_truth": 36,
+    "xref_truth": 38,
+    "xref_truth_found": 36
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 19.77,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 26.02,
+    "max_file_ms": 0,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "fathom:MSBuildTarget": 4
+  },
+  "notes": [
+    "dotnet/aspnetcore: 12 oracle cross-references on files fathom does not read were left out of scope (§1.4)",
+    "dotnet/aspnetcore: 31 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
+    "dotnet/aspnetcore: restricted to src/Http/** (-only; the files outside are a disclosed gap, not measured)",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+  ],
+  "disposition": null
+}

@@ -1,0 +1,238 @@
+{
+  "engine": "doc",
+  "symbols": [
+    {
+      "name": "replicaCount",
+      "kind": "HelmValue",
+      "package": "values",
+      "line": 2,
+      "end_line": 2,
+      "tier": "verified"
+    },
+    {
+      "name": "image",
+      "kind": "HelmValue",
+      "package": "values",
+      "line": 4,
+      "end_line": 8,
+      "tier": "verified"
+    },
+    {
+      "name": "image.repository",
+      "kind": "HelmValue",
+      "package": "values",
+      "line": 5,
+      "end_line": 5,
+      "tier": "verified"
+    },
+    {
+      "name": "image.pullPolicy",
+      "kind": "HelmValue",
+      "package": "values",
+      "line": 6,
+      "end_line": 6,
+      "tier": "verified"
+    },
+    {
+      "name": "image.tag",
+      "kind": "HelmValue",
+      "package": "values",
+      "line": 8,
+      "end_line": 8,
+      "tier": "verified"
+    },
+    {
+      "name": "imagePullSecrets",
+      "kind": "HelmValue",
+      "package": "values",
+      "line": 10,
+      "end_line": 10,
+      "tier": "verified"
+    },
+    {
+      "name": "nameOverride",
+      "kind": "HelmValue",
+      "package": "values",
+      "line": 11,
+      "end_line": 11,
+      "tier": "verified"
+    },
+    {
+      "name": "serviceAccount",
+      "kind": "HelmValue",
+      "package": "values",
+      "line": 13,
+      "end_line": 15,
+      "tier": "verified"
+    },
+    {
+      "name": "serviceAccount.create",
+      "kind": "HelmValue",
+      "package": "values",
+      "line": 14,
+      "end_line": 14,
+      "tier": "verified"
+    },
+    {
+      "name": "serviceAccount.annotations",
+      "kind": "HelmValue",
+      "package": "values",
+      "line": 15,
+      "end_line": 15,
+      "tier": "verified"
+    },
+    {
+      "name": "service",
+      "kind": "HelmValue",
+      "package": "values",
+      "line": 17,
+      "end_line": 22,
+      "tier": "verified"
+    },
+    {
+      "name": "service.type",
+      "kind": "HelmValue",
+      "package": "values",
+      "line": 18,
+      "end_line": 18,
+      "tier": "verified"
+    },
+    {
+      "name": "service.ports",
+      "kind": "HelmValue",
+      "package": "values",
+      "line": 19,
+      "end_line": 22,
+      "tier": "verified"
+    },
+    {
+      "name": "service.ports.http",
+      "kind": "HelmValue",
+      "package": "values",
+      "line": 20,
+      "end_line": 22,
+      "tier": "verified"
+    },
+    {
+      "name": "service.ports.http.port",
+      "kind": "HelmValue",
+      "package": "values",
+      "line": 21,
+      "end_line": 21,
+      "tier": "verified"
+    },
+    {
+      "name": "service.ports.http.targetPort",
+      "kind": "HelmValue",
+      "package": "values",
+      "line": 22,
+      "end_line": 22,
+      "tier": "verified"
+    },
+    {
+      "name": "ingress",
+      "kind": "HelmValue",
+      "package": "values",
+      "line": 24,
+      "end_line": 29,
+      "tier": "verified"
+    },
+    {
+      "name": "ingress.enabled",
+      "kind": "HelmValue",
+      "package": "values",
+      "line": 25,
+      "end_line": 25,
+      "tier": "verified"
+    },
+    {
+      "name": "ingress.hosts",
+      "kind": "HelmValue",
+      "package": "values",
+      "line": 26,
+      "end_line": 29,
+      "tier": "verified"
+    },
+    {
+      "name": "resources",
+      "kind": "HelmValue",
+      "package": "values",
+      "line": 31,
+      "end_line": 31,
+      "tier": "verified"
+    },
+    {
+      "name": "autoscaling",
+      "kind": "HelmValue",
+      "package": "values",
+      "line": 33,
+      "end_line": 36,
+      "tier": "verified"
+    },
+    {
+      "name": "autoscaling.enabled",
+      "kind": "HelmValue",
+      "package": "values",
+      "line": 34,
+      "end_line": 34,
+      "tier": "verified"
+    },
+    {
+      "name": "autoscaling.minReplicas",
+      "kind": "HelmValue",
+      "package": "values",
+      "line": 35,
+      "end_line": 35,
+      "tier": "verified"
+    },
+    {
+      "name": "autoscaling.targetCPUUtilizationPercentage",
+      "kind": "HelmValue",
+      "package": "values",
+      "line": 36,
+      "end_line": 36,
+      "tier": "verified"
+    },
+    {
+      "name": "extraEnv",
+      "kind": "HelmValue",
+      "package": "values",
+      "line": 38,
+      "end_line": 39,
+      "tier": "verified"
+    },
+    {
+      "name": "extraEnv.LOG_LEVEL",
+      "kind": "HelmValue",
+      "package": "values",
+      "line": 39,
+      "end_line": 39,
+      "tier": "verified"
+    },
+    {
+      "name": "updateStrategy",
+      "kind": "HelmValue",
+      "package": "values",
+      "line": 41,
+      "end_line": 43,
+      "tier": "verified"
+    },
+    {
+      "name": "updateStrategy.type",
+      "kind": "HelmValue",
+      "package": "values",
+      "line": 42,
+      "end_line": 42,
+      "tier": "verified"
+    },
+    {
+      "name": "updateStrategy.rollingUpdate",
+      "kind": "HelmValue",
+      "package": "values",
+      "line": 43,
+      "end_line": 43,
+      "tier": "verified"
+    }
+  ],
+  "cross_file": []
+}

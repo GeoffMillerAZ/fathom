@@ -1,0 +1,15 @@
+{
+  "engine": "doc",
+  "symbols": [
+    {
+      "name": "common",
+      "kind": "HelmChart",
+      "package": "Chart",
+      "line": 1,
+      "end_line": 5,
+      "signature": "2.31.0",
+      "tier": "verified"
+    }
+  ],
+  "cross_file": []
+}

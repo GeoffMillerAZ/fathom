@@ -1,0 +1,194 @@
+{
+  "dialect": "kotlin",
+  "kind": "language",
+  "target_level": "L4",
+  "level_met": "L2",
+  "grade": {
+    "L1": "excellent",
+    "L2": "good",
+    "L3": "not-attempted",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-09-29",
+  "fathom_commit": "6674b551",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "exposed",
+      "sha": "a68a26884952875722c1802ef42b382876d7d056",
+      "files": 794,
+      "bytes": 5287603,
+      "counts": {
+        "call_fathom": 32571,
+        "call_fathom_in_truth": 32544,
+        "call_truth": 32548,
+        "call_truth_found": 32544,
+        "callables": 6855,
+        "callables_signed": 6855,
+        "fathom_defs": 14758,
+        "kind_equal": 14754,
+        "matched": 14754,
+        "oracle_defs": 14756,
+        "range_eligible": 14754,
+        "range_ok": 14679
+      },
+      "families": {
+        "calls": "B",
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "class",
+        "constructor",
+        "enum_member",
+        "function",
+        "interface",
+        "property",
+        "type_alias"
+      ],
+      "excluded_by_kind": {
+        "fathom:KotlinImport": 8205
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 2091.092,
+        "extract_cpu_ms": 2090.6960000000004,
+        "max_file_ms": 32,
+        "peak_module_pages": 538,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "okhttp",
+      "sha": "61423f472da24e0ccc42b6a2c0863fb27932fea5",
+      "files": 569,
+      "bytes": 4160050,
+      "counts": {
+        "call_fathom": 34911,
+        "call_fathom_in_truth": 34910,
+        "call_truth": 34911,
+        "call_truth_found": 34910,
+        "callables": 7027,
+        "callables_signed": 7027,
+        "fathom_defs": 10908,
+        "kind_equal": 10908,
+        "matched": 10908,
+        "oracle_defs": 10908,
+        "range_eligible": 10908,
+        "range_ok": 10846
+      },
+      "families": {
+        "calls": "B",
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "class",
+        "constructor",
+        "enum_member",
+        "function",
+        "interface",
+        "property",
+        "type_alias"
+      ],
+      "excluded_by_kind": {
+        "fathom:KotlinImport": 6158
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 1626.836,
+        "extract_cpu_ms": 1622.266000000002,
+        "max_file_ms": 73,
+        "peak_module_pages": 633,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "B",
+      "tool": "kotlin-psi",
+      "version": "2.3.20"
+    }
+  ],
+  "metrics": {
+    "call_precision": 0.9996,
+    "call_recall": 0.9999,
+    "def_mapping": null,
+    "file_edge_precision": null,
+    "file_edge_recall": null,
+    "import_resolution": null,
+    "kind_agreement": 1,
+    "range_agreement": 0.9947,
+    "signature_coverage": 1,
+    "sym_precision": 0.9998,
+    "sym_recall": 0.9999,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "call_precision": "B",
+    "call_recall": "B",
+    "kind_agreement": "B",
+    "range_agreement": "B",
+    "signature_coverage": "B",
+    "sym_precision": "B",
+    "sym_recall": "B"
+  },
+  "required_kinds": [
+    "class",
+    "constructor",
+    "enum_member",
+    "function",
+    "interface",
+    "property",
+    "type_alias"
+  ],
+  "kind_intersection": [
+    "class",
+    "constructor",
+    "enum_member",
+    "function",
+    "interface",
+    "property",
+    "type_alias"
+  ],
+  "counts": {
+    "call_fathom": 67482,
+    "call_fathom_in_truth": 67454,
+    "call_truth": 67459,
+    "call_truth_found": 67454,
+    "callables": 13882,
+    "callables_signed": 13882,
+    "fathom_defs": 25666,
+    "kind_equal": 25662,
+    "matched": 25662,
+    "oracle_defs": 25664,
+    "range_eligible": 25662,
+    "range_ok": 25525
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 2.54,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 2.54,
+    "max_file_ms": 73,
+    "peak_module_pages": 633,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "fathom:KotlinImport": 14363
+  },
+  "notes": [
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "oracle: KotlinPsiDump (calibration/oracles/kotlin-psi), kotlin-compiler-embeddable 2.3.20's own PSI parser run as a separate JVM process, tier B on the D2 precedent (JavaParser for Java, Roslyn for C#): an independent syntactic parser reporting the dialect's declared kinds with a range each, and call pairs. The tier is a claim for Opus review, not a harness fact",
+    "universal-ctags 6.2.1 (tier B) is not the L1 oracle and is unscored: it writes no end line for Kotlin (range_agreement unmeasurable, L1 capped at good) and lists every local val/var, primary-constructor parameter and lambda as a definition and each unnamed companion object as Companion; against the previous dialect on the same 1,363 files it listed 60,761 definitions to the dialect's 16,335 (sym_recall .2617, sym_precision .9733, kind_agreement .9999)",
+    "grammar: fwcd/tree-sitter-kotlin commit 1852ea17 (untagged main, MIT), kotlin.wasm.gz 567,216 bytes (3,054,455 raw), 633 peak module pages. The 0.3.8 tag it replaced left 226 of the 1,363 subject files with ERROR nodes (16.6%, over design section 14.2's 5% refusal line) and did not parse `fun interface`; 1852ea17 leaves 15 (1.1%: 14 in Exposed, one okhttp build script). One misparse costs definitions: an object expression with two supertypes loses its body (Exposed JdbcTransaction.kt:171 and R2dbcTransaction.kt:194, the 2 oracle-only properties)",
+    "L1 misses: okhttp 0 both ways; Exposed 2 oracle-only properties (the two above) and 4 dialect-only functions whose backticked test names end in `)` (ArithmeticTests.kt:17 and :19, UpdateTests.kt:213 and :230), which have an empty last segment under the harness's BareName rule and can match nothing. The dump emits a backticked name with spaces or dots on its last segment, the form the harness compares the dialect's names in (design section 1.4)",
+    "L2 model: a call belongs to the smallest enclosing function or secondary constructor (KotlinConstructor, named `constructor`); a property initialiser or accessor, an init block and a supertype initialiser have no callable owner, in the dialect and in the dump alike, and a callee that is not a name (f()(x), (g)(x)) is not a call. A constructor call Foo(x) is a call by the class name. call_recall and call_precision are near 1 because both sides read the same syntax; tier B caps L2 at good however high they are",
+    "changes to the previous kotlin dialect (same SourceKinds kept, every symbol it listed still emitted, TestKotlinDialectKeepsLegacySymbols): Package comes from the package clause (was the directory); member and primary-constructor val/var are KotlinProperty; enum entries are KotlinEnumEntry, type aliases KotlinTypeAlias, secondary constructors KotlinConstructor; a call is named by its callee's last identifier (was the whole callee text); an unnamed companion object is still no symbol, so its members qualify by the enclosing class; ExtractorEpoch 30",
+    "L3: imports.scm with namespace-dir is written and tested (TestResolveFileEdges_KotlinImports: a named import of a class file and a wildcard of a package resolve); a named import of a top-level function or property (`import a.b.helper`) looks for a/b/helper.kt and resolves nowhere, which needs a package/member split namespace-dir does not make (needs-strategy, an Opus row). The harness computes no import_resolution, so L3 is not gradeable for any dialect yet",
+    "L4/L3 oracle attempt: scip-java v0.13.1 (sha256 a694cae143c32c5b6226362fb4bd268a8d13d3cd9b482819b3b0029a9a97b8fe) run as `scip-java index -- --no-daemon :exposed-core:compileKotlin :exposed-dao:compileKotlin :exposed-jdbc:compileKotlin` under a Temurin 21 JDK with a Temurin 17 Gradle toolchain. Its Kotlin plugin refuses Exposed's Kotlin 2.3.20 (`Plugin AnalyzerRegistrar is incompatible with the current version of the compiler`); with the version catalog set to 2.2.0 (the plugin's own) and four Uuid.generateV4/V7 calls shimmed it indexed 166 of Exposed's 794 files, but every one of the index's 58,698 occurrences (13,480 definitions, 45,218 references) carries an empty range and no symbol has a kind, so no position-based metric (def_mapping, typed_recall, call sites, file edges) can be computed; under the K1 frontend (-language-version 1.9) Exposed does not compile. square/okhttp's Kotlin Multiplatform build applies the Android Gradle plugin, which needs an Android SDK not installed here. The build tweaks were reverted before the measured subjects were read"
+  ],
+  "disposition": "partial: target L4, met L2 (L1 excellent, L2 good) against a Kotlin PSI dump (kotlin-compiler-embeddable 2.3.20's own parser, tier B, calibration/oracles/kotlin-psi) on square/okhttp parent-5.4.0 and JetBrains/Exposed 1.3.0, 1,363 files: sym_recall .9999, sym_precision .9998, kind_agreement 1, range_agreement .9947, signature_coverage 1 (13,882 callables), call_recall .9999, call_precision .9996 (good: tier B caps L2), 2.54 MB/CPU-s, 0 faults, 633 peak module pages, kotlin.wasm.gz 567,216 bytes. universal-ctags cannot be the L1 oracle (no end lines; locals, constructor parameters and lambdas listed as definitions: recall .2617 against the previous dialect). L3 and L4 not attempted: no usable SCIP index — scip-java 0.13.1 indexed Exposed's three main modules only under Kotlin 2.2.0 and wrote every occurrence without a range, and okhttp's build needs an Android SDK — and the harness computes no import_resolution. Trigger: a scip-java whose Kotlin plugin writes occurrence ranges under K2 (or another Kotlin producer) on a subject that builds here, the harness computing import_resolution, and a namespace-dir package/member split for named imports of top-level functions."
+}

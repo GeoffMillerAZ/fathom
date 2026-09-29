@@ -1,0 +1,110 @@
+{
+  "engine": "tags",
+  "symbols": [
+    {
+      "name": "stack.fullname",
+      "kind": "HelmTemplateRef",
+      "package": "deployment",
+      "line": 4,
+      "end_line": 4,
+      "tier": "verified"
+    },
+    {
+      "name": "stack.labels",
+      "kind": "HelmTemplateRef",
+      "package": "deployment",
+      "line": 6,
+      "end_line": 6,
+      "tier": "verified"
+    },
+    {
+      "name": "autoscaling.enabled",
+      "kind": "HelmValueRef",
+      "package": "deployment",
+      "line": 8,
+      "end_line": 8,
+      "tier": "verified"
+    },
+    {
+      "name": "replicaCount",
+      "kind": "HelmValueRef",
+      "package": "deployment",
+      "line": 9,
+      "end_line": 9,
+      "tier": "verified"
+    },
+    {
+      "name": "stack.selectorLabels",
+      "kind": "HelmTemplateRef",
+      "package": "deployment",
+      "line": 13,
+      "end_line": 13,
+      "tier": "verified"
+    },
+    {
+      "name": "stack.serviceAccountName",
+      "kind": "HelmTemplateRef",
+      "package": "deployment",
+      "line": 16,
+      "end_line": 16,
+      "tier": "verified"
+    },
+    {
+      "name": "image.repository",
+      "kind": "HelmValueRef",
+      "package": "deployment",
+      "line": 19,
+      "end_line": 19,
+      "tier": "verified"
+    },
+    {
+      "name": "image.tag",
+      "kind": "HelmValueRef",
+      "package": "deployment",
+      "line": 19,
+      "end_line": 19,
+      "tier": "verified"
+    },
+    {
+      "name": "resources",
+      "kind": "HelmValueRef",
+      "package": "deployment",
+      "line": 20,
+      "end_line": 20,
+      "tier": "verified"
+    },
+    {
+      "name": "extraEnv",
+      "kind": "HelmValueRef",
+      "package": "deployment",
+      "line": 25,
+      "end_line": 25,
+      "tier": "verified"
+    },
+    {
+      "name": "a.b.c.d",
+      "kind": "HelmValueRef",
+      "package": "deployment",
+      "line": 31,
+      "end_line": 31,
+      "tier": "verified"
+    },
+    {
+      "name": "extraArgs",
+      "kind": "HelmValueRef",
+      "package": "deployment",
+      "line": 31,
+      "end_line": 31,
+      "tier": "verified"
+    },
+    {
+      "name": "global.region",
+      "kind": "HelmValueRef",
+      "package": "deployment",
+      "line": 31,
+      "end_line": 31,
+      "tier": "verified"
+    }
+  ],
+  "cross_file": []
+}

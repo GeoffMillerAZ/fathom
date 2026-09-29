@@ -1,0 +1,25 @@
+{
+  "symbols": [
+    {
+      "name": "Use-Arguments",
+      "kind": "PowerShellFunction",
+      "package": "calls",
+      "line": 4,
+      "end_line": 24,
+      "signature": "function Use-Arguments {",
+      "calls": [
+        "Format-Type",
+        "Get-ChildItem",
+        "GetType",
+        "Import-Helper",
+        "Out-Null",
+        "Sort-Object",
+        "Start-Work",
+        "ToArray",
+        "Write-Error",
+        "Write-Host"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

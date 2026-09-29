@@ -81,6 +81,15 @@ type DocEntity struct {
 	SourceKind string   `json:"source_kind"`
 	Name       string   `json:"name"`
 	Signature  string   `json:"signature,omitempty"`
+	// Files, when set, limits the entity to files whose basename is listed:
+	// a spec shared by several document types (Helm's Chart.yaml and
+	// values.yaml) says which selector reads which.
+	Files []string `json:"files,omitempty"`
+	// IncludeNull keeps a node written with no value (`key:`, `key: null`):
+	// selectors drop those by default, since a null is usually an absent
+	// field, but a key a document declares is an entity whatever it holds
+	// (a Helm values.yaml's `rollingUpdate: null`).
+	IncludeNull bool `json:"include_null,omitempty"`
 	// Qualify prefixes the name with each non-empty value (evaluated on
 	// the entity's node), "/"-joined: a Kubernetes object is
 	// "<kind>/<namespace>/<name>", so a Service and a Deployment sharing a
@@ -118,7 +127,10 @@ type DocRef struct {
 // resolved by the named strategy (repo-path, image-ref, module-source,
 // service-name).
 type DocCrossRef struct {
-	From string `json:"from,omitempty"`
+	// Files limits the reference to files whose basename is listed
+	// (DocEntity.Files).
+	Files []string `json:"files,omitempty"`
+	From  string   `json:"from,omitempty"`
 	// Where filters the origin (the entity, or the document root).
 	Where   *DocWhere `json:"where,omitempty"`
 	Select  string    `json:"select"`
@@ -416,6 +428,7 @@ func (x *DocExtractor) ExtractDoc(service, relPath string, src []byte) (DocResul
 		return DocResult{}, nil
 	}
 	pkg := pkgFromPath(relPath)
+	base := path.Base(relPath)
 	var res DocResult
 	for _, root := range docs {
 		if !hasKeys(root, x.spec.Detect.RequireKeys) {
@@ -424,7 +437,11 @@ func (x *DocExtractor) ExtractDoc(service, relPath string, src []byte) (DocResul
 		var hits []entityHit
 		for i := range x.entities {
 			ce := &x.entities[i]
-			for _, m := range ce.sel.eval(root, "") {
+			if len(ce.Files) > 0 && !containsStr(ce.Files, base) {
+				continue
+			}
+			for _, m := range ce.sel.evalKeep(root, "", ce.IncludeNull) {
+				m.file = base
 				if !ce.matches(m) {
 					continue
 				}
@@ -455,6 +472,7 @@ func (x *DocExtractor) ExtractDoc(service, relPath string, src []byte) (DocResul
 					continue
 				}
 				for _, m := range cr.sel.eval(h.node, "") {
+					m.file = base
 					if v := cr.val.eval(m); v != "" {
 						calls[v] = true
 					}
@@ -475,6 +493,9 @@ func (x *DocExtractor) ExtractDoc(service, relPath string, src []byte) (DocResul
 		}
 		for i := range x.cross {
 			cc := &x.cross[i]
+			if len(cc.Files) > 0 && !containsStr(cc.Files, base) {
+				continue
+			}
 			type origin struct {
 				from string
 				node *docNode
@@ -493,6 +514,7 @@ func (x *DocExtractor) ExtractDoc(service, relPath string, src []byte) (DocResul
 					continue
 				}
 				for _, m := range cc.sel.eval(o.node, "") {
+					m.file = base
 					if cc.Resolve == "label-selector" {
 						labels, canon, ok := labelMap(m.node)
 						if !ok {
@@ -628,11 +650,12 @@ func containsStr(list []string, s string) bool {
 }
 
 // resolveDocRef applies a cross-file strategy (§4, §6). repo-path: a
-// leading "/" is the repository root, anything else is relative to the
-// referring file's directory; a path that climbs out of the repository
-// does not resolve. module-source: a "./" or "../" source resolves like a
-// relative repo-path, any other (a registry or VCS address) is kept as
-// written. image-ref and service-name are names, kept as written.
+// leading "/" (or a backslash) is the repository root, anything else is
+// relative to the referring file's directory, and either separator is one; a
+// path that climbs out of the repository does not resolve. module-source: a
+// "./" or "../" source resolves like a relative repo-path, any other (a
+// registry or VCS address) is kept as written. image-ref and service-name
+// are names, kept as written.
 func resolveDocRef(strategy, relPath, raw string) string {
 	switch strategy {
 	case "repo-path":
@@ -658,6 +681,10 @@ func resolveDocRef(strategy, relPath, raw string) string {
 }
 
 func repoPath(relPath, raw string) string {
+	// A `\` is the separator of a Windows-authored path (an MSBuild
+	// ProjectReference, `..\lib\lib.csproj`); no repository file is named
+	// with one, so it reads as `/`.
+	raw = strings.ReplaceAll(raw, `\`, "/")
 	var p string
 	if strings.HasPrefix(raw, "/") {
 		p = path.Clean(strings.TrimPrefix(raw, "/"))
@@ -768,6 +795,20 @@ type docPath struct{ steps []docStep }
 type docMatch struct {
 	node *docNode
 	key  string // the map key the node was reached by ("" for an item)
+	// path is the dotted keys from the selection's start to this node
+	// ("image.repository"); a sequence item adds none. `$path` reads it.
+	path string
+	// file is the base name of the file being read, extension included
+	// (`$file`); ExtractDoc sets it on every match before a value is read.
+	file string
+}
+
+// joinDocPath appends key to a dotted path.
+func joinDocPath(path, key string) string {
+	if path == "" {
+		return key
+	}
+	return path + "." + key
 }
 
 var docKeyRe = regexp.MustCompile(`^[^.\[\]|*\s$]+`)
@@ -810,7 +851,13 @@ func parseDocPath(s string) (docPath, error) {
 func (p docPath) isRoot() bool { return len(p.steps) == 0 }
 
 func (p docPath) eval(ctx *docNode, ctxKey string) []docMatch {
-	cur := []docMatch{{ctx, ctxKey}}
+	return p.evalKeep(ctx, ctxKey, false)
+}
+
+// evalKeep is eval that, with keepNull, also returns the null nodes the
+// selector reaches (DocEntity.IncludeNull).
+func (p docPath) evalKeep(ctx *docNode, ctxKey string, keepNull bool) []docMatch {
+	cur := []docMatch{{node: ctx, key: ctxKey}}
 	for _, st := range p.steps {
 		var next []docMatch
 		for _, m := range cur {
@@ -818,12 +865,12 @@ func (p docPath) eval(ctx *docNode, ctxKey string) []docMatch {
 			switch st.kind {
 			case stepKey:
 				if v := n.get(st.key); v != nil {
-					next = append(next, docMatch{v, st.key})
+					next = append(next, docMatch{node: v, key: st.key, path: joinDocPath(m.path, st.key)})
 				}
 			case stepAllValues:
 				if n != nil && n.kind == docMap {
 					for i, k := range n.keys {
-						next = append(next, docMatch{n.vals[i], k})
+						next = append(next, docMatch{node: n.vals[i], key: k, path: joinDocPath(m.path, k)})
 					}
 				}
 			case stepAllItems:
@@ -831,10 +878,10 @@ func (p docPath) eval(ctx *docNode, ctxKey string) []docMatch {
 				case n == nil || n.kind == docNull:
 				case n.kind == docSeq:
 					for _, it := range n.items {
-						next = append(next, docMatch{it, ""})
+						next = append(next, docMatch{node: it, path: m.path})
 					}
 				default:
-					next = append(next, docMatch{n, m.key})
+					next = append(next, docMatch{node: n, key: m.key, path: m.path})
 				}
 			}
 		}
@@ -842,7 +889,7 @@ func (p docPath) eval(ctx *docNode, ctxKey string) []docMatch {
 	}
 	var out []docMatch
 	for _, m := range cur {
-		if m.node != nil && m.node.kind != docNull {
+		if m.node != nil && (keepNull || m.node.kind != docNull) {
 			out = append(out, m)
 		}
 	}
@@ -850,14 +897,19 @@ func (p docPath) eval(ctx *docNode, ctxKey string) []docMatch {
 }
 
 // docValue is a value expression: alternatives separated by `|`, each a
-// selector relative to the match (`$` is the matched node) or `$key` (the
-// key it was reached by). The first alternative that reaches a non-empty
-// scalar is the value.
+// selector relative to the match (`$` is the matched node), `$key` (the
+// key it was reached by), `$path` (every key from the selection's start
+// down to the node, dot-joined — a nested map's "image.repository") or
+// `$file` (the base name of the file being read, extension included: the
+// name of a document that carries none, an MSBuild project). The first
+// alternative that reaches a non-empty scalar is the value.
 type docValue struct{ alts []docAlt }
 
 type docAlt struct {
-	key bool
-	p   docPath
+	key  bool
+	path bool
+	file bool
+	p    docPath
 }
 
 func parseDocValue(s string) (docValue, error) {
@@ -866,6 +918,14 @@ func parseDocValue(s string) (docValue, error) {
 		a = strings.TrimSpace(a)
 		if a == "$key" {
 			v.alts = append(v.alts, docAlt{key: true})
+			continue
+		}
+		if a == "$path" {
+			v.alts = append(v.alts, docAlt{path: true})
+			continue
+		}
+		if a == "$file" {
+			v.alts = append(v.alts, docAlt{file: true})
 			continue
 		}
 		p, err := parseDocPath(a)
@@ -882,6 +942,18 @@ func (v docValue) eval(m docMatch) string {
 		if a.key {
 			if m.key != "" {
 				return m.key
+			}
+			continue
+		}
+		if a.path {
+			if m.path != "" {
+				return m.path
+			}
+			continue
+		}
+		if a.file {
+			if m.file != "" {
+				return m.file
 			}
 			continue
 		}

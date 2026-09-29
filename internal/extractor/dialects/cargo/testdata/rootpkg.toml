@@ -1,0 +1,19 @@
+[package]
+name = "acme"
+version = "3.0.0"
+edition = "2021"
+
+[workspace]
+members = ["crates/acme-macros", "crates/acme-sys"]
+
+[workspace.dependencies]
+acme-macros = { path = "crates/acme-macros" }
+
+[dependencies]
+acme-macros = { workspace = true }
+acme-sys.workspace = true
+tokio = { version = "1", features = ["rt"] }
+
+[features]
+default = []
+full = ["tokio/full"]

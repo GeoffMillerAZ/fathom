@@ -1,0 +1,21 @@
+{
+  "symbols": [
+    { "name": ".go-cache", "kind": "GitLabCITemplate", "package": "basic", "line": 18, "end_line": 22, "tier": "verified" },
+    { "name": ".rules-default", "kind": "GitLabCITemplate", "package": "basic", "line": 24, "end_line": 27, "signature": ".go-cache", "calls": [".go-cache"], "tier": "verified" },
+    { "name": "compile", "kind": "GitLabCIJob", "package": "basic", "line": 29, "end_line": 35, "signature": "build", "calls": [".go-cache", ".rules-default"], "tier": "verified" },
+    { "name": "unit tests", "kind": "GitLabCIJob", "package": "basic", "line": 37, "end_line": 42, "signature": "test", "calls": [".go-cache", "compile"], "tier": "verified" },
+    { "name": "lint", "kind": "GitLabCIJob", "package": "basic", "line": 44, "end_line": 51, "signature": "test", "calls": ["compile"], "tier": "verified" },
+    { "name": "deploy", "kind": "GitLabCIJob", "package": "basic", "line": 53, "end_line": 63, "signature": "deploy", "calls": ["compile", "unit tests"], "tier": "verified" }
+  ],
+  "cross_file": [
+    { "from": ".rules-default", "edge": "extends", "raw": ".go-cache", "target": ".go-cache", "strategy": "service-name", "line": 25 },
+    { "from": "compile", "edge": "extends", "raw": ".go-cache", "target": ".go-cache", "strategy": "service-name", "line": 31 },
+    { "from": "compile", "edge": "extends", "raw": ".rules-default", "target": ".rules-default", "strategy": "service-name", "line": 32 },
+    { "from": "unit tests", "edge": "extends", "raw": ".go-cache", "target": ".go-cache", "strategy": "service-name", "line": 38 },
+    { "from": "unit tests", "edge": "needs", "raw": "compile", "target": "compile", "strategy": "service-name", "line": 40 },
+    { "from": "lint", "edge": "needs", "raw": "compile", "target": "compile", "strategy": "service-name", "line": 47 },
+    { "from": "deploy", "edge": "needs", "raw": "compile", "target": "compile", "strategy": "service-name", "line": 56 },
+    { "from": "deploy", "edge": "needs", "raw": "unit tests", "target": "unit tests", "strategy": "service-name", "line": 57 },
+    { "from": "deploy", "edge": "dependencies", "raw": "compile", "target": "compile", "strategy": "service-name", "line": 60 }
+  ]
+}

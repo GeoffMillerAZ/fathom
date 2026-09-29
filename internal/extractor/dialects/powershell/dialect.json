@@ -1,0 +1,37 @@
+{
+  "id": "powershell",
+  "display": "PowerShell",
+  "kind": "language",
+  "engine": "tags",
+  "lang_tag": "powershell",
+  "match": {
+    "extensions": [".ps1", ".psm1", ".psd1"],
+    "basenames": [],
+    "globs": [],
+    "shebangs": ["pwsh", "powershell"],
+    "sniff": null
+  },
+  "grammar": { "blob": "powershell", "entry_point": "tree_sitter_powershell" },
+  "variants": [],
+  "queries": { "tags": "tags.scm" },
+  "kinds": {
+    "function":    { "source_kind": "PowerShellFunction",   "canonical": "function",    "callable": true },
+    "class":       { "source_kind": "PowerShellClass",      "canonical": "class",       "container": true },
+    "enum":        { "source_kind": "PowerShellEnum",       "canonical": "enum",        "container": true },
+    "enum_member": { "source_kind": "PowerShellEnumMember", "canonical": "enum_member" },
+    "method":      { "source_kind": "PowerShellMethod",     "canonical": "method",      "callable": true }
+  },
+  "required_kinds": ["function", "class", "enum", "enum_member", "method"],
+  "oracle_kinds": {
+    "ctags": { "function": "function", "filter": "function", "class": "class", "enum": "enum",
+               "enumlabel": "enum_member" },
+    "tool":  { "function": "function", "class": "class", "enum": "enum", "enumMember": "enum_member",
+               "method": "method", "constructor": "method", "property": "property" }
+  },
+  "ctags": { "languages": ["PowerShell"] },
+  "qualify": { "chain_containers": true, "container_sep": ".", "method_sep": "." },
+  "package": { "strategy": "dir" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L2",
+  "queue_id": "powershell"
+}

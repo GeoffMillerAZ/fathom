@@ -82,9 +82,13 @@ check_licence() {
 }
 
 # fetch <repo> <tag> <tarball_sha256> <commit> <destdir>
+# A grammar repository that publishes no release tags (ngalaiko/tree-sitter-
+# go-template) is pinned by its 40-hex commit id, which the lock's "tag" field
+# then carries; the tarball is that commit's archive.
 fetch() {
-  local tgz="$WORK/$(basename "$1").tar.gz" got commit
-  curl -sL --fail "https://github.com/$1/archive/refs/tags/$2.tar.gz" -o "$tgz"
+  local tgz="$WORK/$(basename "$1").tar.gz" got commit ref="refs/tags/$2"
+  if [[ "$2" =~ ^[0-9a-f]{40}$ ]]; then ref="$2"; fi
+  curl -sL --fail "https://github.com/$1/archive/$ref.tar.gz" -o "$tgz"
   got="$(shasum -a 256 "$tgz" | cut -c1-64)"
   [ "$got" = "$3" ] || { echo "build.sh: $1 $2 tarball sha256 $got, lock $3; refused" >&2; exit 1; }
   commit="$(gzip -dc "$tgz" | git get-tar-commit-id || true)"

@@ -1,0 +1,38 @@
+{
+  "engine": "tags",
+  "symbols": [
+    {
+      "name": "ingress.enabled",
+      "kind": "HelmValueRef",
+      "package": "NOTES",
+      "line": 2,
+      "end_line": 2,
+      "tier": "verified"
+    },
+    {
+      "name": "ingress.hosts",
+      "kind": "HelmValueRef",
+      "package": "NOTES",
+      "line": 3,
+      "end_line": 3,
+      "tier": "verified"
+    },
+    {
+      "name": "service.ports.http.port",
+      "kind": "HelmValueRef",
+      "package": "NOTES",
+      "line": 5,
+      "end_line": 5,
+      "tier": "verified"
+    },
+    {
+      "name": "stack.fullname",
+      "kind": "HelmTemplateRef",
+      "package": "NOTES",
+      "line": 5,
+      "end_line": 5,
+      "tier": "verified"
+    }
+  ],
+  "cross_file": []
+}

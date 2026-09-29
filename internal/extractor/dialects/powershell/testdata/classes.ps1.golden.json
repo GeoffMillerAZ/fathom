@@ -1,0 +1,109 @@
+{
+  "symbols": [
+    {
+      "name": "Color",
+      "kind": "PowerShellEnum",
+      "package": "classes",
+      "line": 3,
+      "end_line": 7,
+      "tier": "verified"
+    },
+    {
+      "name": "Red",
+      "kind": "PowerShellEnumMember",
+      "package": "classes",
+      "line": 4,
+      "end_line": 4,
+      "tier": "verified"
+    },
+    {
+      "name": "Green",
+      "kind": "PowerShellEnumMember",
+      "package": "classes",
+      "line": 5,
+      "end_line": 5,
+      "tier": "verified"
+    },
+    {
+      "name": "Blue",
+      "kind": "PowerShellEnumMember",
+      "package": "classes",
+      "line": 6,
+      "end_line": 6,
+      "tier": "verified"
+    },
+    {
+      "name": "Animal",
+      "kind": "PowerShellClass",
+      "package": "classes",
+      "line": 9,
+      "end_line": 26,
+      "tier": "verified"
+    },
+    {
+      "name": "Animal.Animal",
+      "kind": "PowerShellMethod",
+      "package": "classes",
+      "line": 14,
+      "end_line": 17,
+      "signature": "Animal([string]$name) {",
+      "calls": [
+        "Register-Animal"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Animal.Speak",
+      "kind": "PowerShellMethod",
+      "package": "classes",
+      "line": 19,
+      "end_line": 21,
+      "signature": "[string] Speak([int]$times) {",
+      "tier": "verified"
+    },
+    {
+      "name": "Animal.Create",
+      "kind": "PowerShellMethod",
+      "package": "classes",
+      "line": 23,
+      "end_line": 25,
+      "signature": "static [Animal] Create([string]$n) {",
+      "calls": [
+        "new"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Dog",
+      "kind": "PowerShellClass",
+      "package": "classes",
+      "line": 28,
+      "end_line": 37,
+      "tier": "verified"
+    },
+    {
+      "name": "Dog.Speak",
+      "kind": "PowerShellMethod",
+      "package": "classes",
+      "line": 29,
+      "end_line": 34,
+      "signature": "[string] Speak( [int]$times ) {",
+      "calls": [
+        "Bark"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Dog.Bark",
+      "kind": "PowerShellMethod",
+      "package": "classes",
+      "line": 36,
+      "end_line": 36,
+      "signature": "[void] Bark() {",
+      "calls": [
+        "Write-Host"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

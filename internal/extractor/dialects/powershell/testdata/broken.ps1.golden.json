@@ -1,0 +1,37 @@
+{
+  "symbols": [
+    {
+      "name": "Before-Break",
+      "kind": "PowerShellFunction",
+      "package": "broken",
+      "line": 2,
+      "end_line": 4,
+      "signature": "function Before-Break {",
+      "calls": [
+        "Write-Host"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Broken-One",
+      "kind": "PowerShellFunction",
+      "package": "broken",
+      "line": 6,
+      "end_line": 9,
+      "signature": "function Broken-One {",
+      "tier": "verified"
+    },
+    {
+      "name": "After-Break",
+      "kind": "PowerShellFunction",
+      "package": "broken",
+      "line": 11,
+      "end_line": 13,
+      "signature": "function After-Break {",
+      "calls": [
+        "Get-Item"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

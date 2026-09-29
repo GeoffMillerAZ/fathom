@@ -46,6 +46,11 @@ var cppSignalWords = []string{
 	"public:", "private:", "protected:", "constexpr",
 }
 
+// LooksLikeCppHeader is the header router's verdict (looksLikeCpp), exported
+// for the measurement harness: indexbench lang-oracle measures the C++
+// dialect on the .h files this sniff sends to C++ (no dialect claims .h).
+func LooksLikeCppHeader(src []byte) bool { return looksLikeCpp(src) }
+
 // looksLikeCpp reports whether src contains a C++-only signal: a signal
 // keyword at a word boundary, or the scope operator "::".
 func looksLikeCpp(src []byte) bool {

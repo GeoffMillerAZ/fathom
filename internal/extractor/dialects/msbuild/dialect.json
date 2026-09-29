@@ -1,0 +1,28 @@
+{
+  "id": "msbuild",
+  "display": "MSBuild projects (.csproj .fsproj .vbproj .props .targets)",
+  "kind": "tooling",
+  "engine": "doc",
+  "lang_tag": "msbuild",
+  "match": {
+    "extensions": [".csproj", ".fsproj", ".vbproj", ".props", ".targets"],
+    "basenames": [],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "variants": [],
+  "kinds": {
+    "project": { "source_kind": "MSBuildProject", "canonical": "package" },
+    "target":  { "source_kind": "MSBuildTarget",  "canonical": "target" }
+  },
+  "required_kinds": ["project"],
+  "oracle_kinds": {
+    "tool": { "package": "package" }
+  },
+  "name_match": "identity",
+  "package": { "strategy": "none" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L3",
+  "queue_id": "msbuild"
+}

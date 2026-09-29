@@ -1,0 +1,33 @@
+id: swift
+language: Swift
+# Measurement conventions (docs/bench/readings/lang/swift.json): both repositories are Swift Package
+# Manager packages; the oracle is the Swift compiler's own parser (`swiftc -frontend -dump-parse`,
+# calibration/oracles/swift-parse, tier B: no build, no dependencies), run over every .swift file, so
+# swift-nio is cloned whole (a shallow clone; its Package.swift needs the network only for a build,
+# which no measurement runs) and measured as cloned. The pins are corpus.yaml's own Swift entries
+# for the same two repositories, and both tags are lightweight, so `sha` is the commit itself.
+repos:
+  - name: Alamofire/Alamofire
+    url: https://github.com/Alamofire/Alamofire
+    ref: 5.9.1
+    sha: f455c2975872ccd2d9c81594c658af65716e9b9a
+    licence: MIT
+    idioms:
+      - 'protocols with associated types and default behaviour in extensions (RequestInterceptor, URLRequestConvertible, DataResponseSerializerProtocol)'
+      - 'Session and Request classes with generic response serializers and trailing-closure APIs taking @escaping @Sendable completion handlers'
+      - '@propertyWrapper and @dynamicMemberLookup types (Protected, DataStreamRequest) over locks'
+      - 'enums with associated values and nested error types (AFError and its reason enums) read through switch-based accessors'
+      - '#if canImport(Combine) / #if os(...) conditional compilation wrapping whole extensions and files'
+      - 'operator overloads and extension-only files that add members to Foundation types'
+  - name: apple/swift-nio
+    url: https://github.com/apple/swift-nio
+    ref: 2.99.0
+    sha: f71c8d2a5e74a2c6d11a0fbe324774b5d6084237
+    licence: Apache-2.0
+    idioms:
+      - 'a multi-target Swift package (NIOCore, NIOPosix, NIOHTTP1, NIOEmbedded, ...) whose targets `import` one another'
+      - 'generic structs and final classes with @inlinable / @usableFromInline members (ByteBuffer, CircularBuffer, EventLoopFuture)'
+      - 'protocol extensions with default implementations, existential and opaque types (any / some), and typealiases in protocols'
+      - 'async/await and AsyncSequence wrappers (NIOAsyncChannel), actors and @unchecked Sendable conformances'
+      - 'platform #if os(Linux) / #if canImport(...) blocks around declarations, and C-interop unsafe pointers'
+      - 'subscripts, operators and nested private types inside large extension-heavy files'

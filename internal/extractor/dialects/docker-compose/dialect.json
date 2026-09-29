@@ -1,0 +1,32 @@
+{
+  "id": "docker-compose",
+  "display": "Docker Compose files",
+  "kind": "tooling",
+  "engine": "doc",
+  "lang_tag": "docker-compose",
+  "match": {
+    "extensions": [],
+    "basenames": ["docker-compose.yml", "docker-compose.yaml", "compose.yml", "compose.yaml"],
+    "globs": [
+      "**/docker-compose.*.yml", "**/docker-compose.*.yaml",
+      "**/docker-compose-*.yml", "**/docker-compose-*.yaml",
+      "**/compose.*.yml", "**/compose.*.yaml",
+      "**/compose-*.yml", "**/compose-*.yaml"
+    ],
+    "shebangs": [],
+    "sniff": null
+  },
+  "variants": [],
+  "kinds": {
+    "service": { "source_kind": "ComposeService", "canonical": "service" }
+  },
+  "required_kinds": ["service"],
+  "oracle_kinds": {
+    "tool": { "service": "service" }
+  },
+  "name_match": "identity",
+  "package": { "strategy": "none" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L3",
+  "queue_id": "docker-compose"
+}

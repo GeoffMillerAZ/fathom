@@ -1,0 +1,39 @@
+id: powershell
+language: PowerShell
+repos:
+  - name: PSScriptAnalyzer
+    url: https://github.com/PowerShell/PSScriptAnalyzer
+    ref: 1.25.0
+    sha: f05704df81b2aca17dc027ee39b3fce106d418fc
+    licence: MIT
+    subpath: Tests
+    idioms:
+      - "a mostly-C# project's PowerShell surface: hundreds of Pester test
+        files (Tests/Rules, Tests/Engine) with inline helper functions and
+        rule-violation fixtures that call the code under test"
+      - "advanced functions: [CmdletBinding()] and a multi-line param() block
+        with [Parameter(Mandatory)] attributes before any statement"
+      - "long pipelines and script-block arguments (Where-Object, ForEach-Object)
+        whose calls belong to the enclosing function"
+    notes: >
+      subpath Tests: the rest of the repository is C# plus 425 MB of
+      PSCompatibilityCollector profile JSON (441 MB checked out), and every
+      PowerShell file outside Tests/ is a handful of tool scripts and
+      Engine/Settings data files. 15 of the 244 PowerShell files in the checkout
+      are UTF-16, which fathom's ingest reads as binary and skips (a disclosed
+      product gap, not measured).
+  - name: Pester
+    url: https://github.com/pester/Pester
+    ref: 6.2.0
+    sha: 98e56d65da1642a7158992b50ded240c42a3ac18
+    licence: Apache-2.0
+    idioms:
+      - "a large pure-PowerShell module: src/*.ps1 files of internal and
+        exported functions, a mix of one-line and multi-line signatures"
+      - "PowerShell 5+ types: `class ShouldAssertion` (constructor and eight
+        methods) in src/, plus class and enum definitions inside script blocks
+        and here-strings in the tests"
+      - "heavy static and instance .NET member calls ([System.IO.Path]::Combine,
+        $list.Add(...)) next to cmdlet calls"
+      - "self-tests written in Pester itself (Describe/Context/It blocks with
+        nested script blocks and inline helper functions)"

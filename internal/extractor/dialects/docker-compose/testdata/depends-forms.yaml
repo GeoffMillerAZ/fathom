@@ -1,0 +1,23 @@
+x-deps: &deps
+  - db
+  - queue
+services:
+  db:
+    image: postgres:16-alpine
+  queue:
+    image: rabbitmq:3
+  api:
+    image: api:1
+    depends_on: *deps
+  batch:
+    build:
+      dockerfile: Dockerfile.batch
+    depends_on:
+      db: {condition: service_completed_successfully}
+      api:
+        condition: service_healthy
+  ghost:
+  profiled:
+    image: tools:1
+    profiles: [debug]
+    depends_on: [api, api]

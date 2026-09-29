@@ -1,0 +1,12 @@
+{
+  "symbols": [
+    { "name": "library.csproj", "kind": "MSBuildProject", "package": "library", "line": 1, "end_line": 41, "signature": "net8.0;netstandard2.0", "calls": ["Microsoft.Extensions.Logging.Abstractions", "Newtonsoft.Json", "System.Memory"], "tier": "verified" },
+    { "name": "StampVersion", "kind": "MSBuildTarget", "package": "library", "line": 31, "end_line": 33, "tier": "verified" },
+    { "name": "ResolveVersion", "kind": "MSBuildTarget", "package": "library", "line": 35, "end_line": 39, "tier": "verified" }
+  ],
+  "cross_file": [
+    { "from": "", "edge": "project_reference", "raw": "..\\Acme.Core\\Acme.Core.csproj", "target": "src/Acme.Core/Acme.Core.csproj", "strategy": "repo-path", "line": 26 },
+    { "from": "", "edge": "project_reference", "raw": "../Acme.Data/Acme.Data.csproj", "target": "src/Acme.Data/Acme.Data.csproj", "strategy": "repo-path", "line": 27 },
+    { "from": "", "edge": "project_reference", "raw": "$(RepoRoot)tools\\Gen\\Gen.csproj", "target": "src/App/$(RepoRoot)tools/Gen/Gen.csproj", "strategy": "repo-path", "line": 28 }
+  ]
+}

@@ -73,14 +73,14 @@ func (c *countingConnector) discoverCalls(service string) int {
 	return c.discover[service]
 }
 
-// addSwiftFile registers one unsupported-language (".swift", per
+// addZigFile registers one unsupported-language (".zig", per
 // internal/connector.unsupportedLangExtMap) source file for service so a
 // successful Discover/Fetch round trip has something to classify.
-func (c *countingConnector) addSwiftFile(service, path string) {
+func (c *countingConnector) addZigFile(service, path string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.refs[service] = append(c.refs[service], core.SourceRef{Service: service, Path: path, Kind: core.SourceKind("unclassified")})
-	c.content[path] = []byte("import Foundation\n")
+	c.content[path] = []byte("const std = @import(\"std\");\n")
 }
 
 func newTestFleetAdapter(conn *countingConnector, st store.Store) *fleetAdapter {
@@ -202,14 +202,14 @@ func TestFleetAdapter_UnsupportedLanguagesFor_NeverReadsFileContents(t *testing.
 	if err := st.SetServiceMeta(ctx, store.ServiceMeta{ServiceID: "demo", Path: t.TempDir(), IndexedCommit: "c1", IndexedAt: 1}); err != nil {
 		t.Fatal(err)
 	}
-	for _, p := range []string{"demo/a.swift", "demo/b.swift", "demo/c.go"} {
+	for _, p := range []string{"demo/a.zig", "demo/b.zig", "demo/c.go"} {
 		_ = st.SetFingerprint(ctx, "demo", p, "h")
 	}
-	conn.addSwiftFile("demo", "demo/a.swift")
+	conn.addZigFile("demo", "demo/a.zig")
 	fa := newTestFleetAdapter(conn, st)
 	for range 5 {
-		if got := fa.UnsupportedLanguagesFor("demo"); got["swift"] != 2 || len(got) != 1 {
-			t.Fatalf("UnsupportedLanguagesFor = %v, want {swift:2}", got)
+		if got := fa.UnsupportedLanguagesFor("demo"); got["zig"] != 2 || len(got) != 1 {
+			t.Fatalf("UnsupportedLanguagesFor = %v, want {zig:2}", got)
 		}
 	}
 	conn.mu.Lock()

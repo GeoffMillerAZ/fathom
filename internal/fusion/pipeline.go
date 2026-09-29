@@ -596,7 +596,89 @@ func parseGitLog(serviceID, raw string) []store.Commit {
 // build compiles (a //go:build ignore generator) core.ToolKindGoBuildExcluded,
 // and a bare reference assigned to the blank identifier (`_ = f`) is no
 // longer recorded as a call — every already-indexed .go file predates both.
-const ExtractorEpoch = "18"
+// Epoch 19 (LB-Q-powershell, docs/design/language-breadth.md §13): PowerShell
+// (.ps1 .psm1 .psd1) now extracts via internal/extractor.NewTSExtractor
+// ("powershell") — tree-sitter via wazero/WASM, a fleet gap with no incumbent
+// — where every such file previously fell through to "no extractor
+// registered" and was fingerprinted (never re-sniffed) by that dead-end path,
+// the same class epochs 7, 10 and 11 fixed for Kotlin, HTML and CSS; the salt
+// bump forces those files through the new extractor on the next ingest.
+// Epoch 20 (LB-Q-makefile, docs/design/language-breadth.md §13): Makefile,
+// makefile, GNUmakefile, *.mk and *.make now extract via
+// internal/extractor.NewTSExtractor("makefile") — tree-sitter via wazero/WASM,
+// a fleet gap with no incumbent — where every such file previously fell
+// through to "no extractor registered" and was fingerprinted by that
+// dead-end path (the epoch 19 class); the salt bump re-reads them.
+// Epoch 21 (LB-Q-kotlin): the kotlin dialect now takes its Package from the
+// package clause (it was the directory), emits member and primary-constructor
+// properties, enum entries (KotlinEnumEntry), type aliases (KotlinTypeAlias) and
+// secondary constructors (KotlinConstructor), names a call by its callee's last
+// identifier, and parses on a newer grammar commit (`fun interface`, detached
+// getters and setters); every already-indexed .kt/.kts file lacks those.
+// Epoch 22 (LB-Q-lua): .lua files now extract via
+// internal/extractor.NewTSExtractor("lua") — tree-sitter via wazero/WASM —
+// retiring the CGO walker: nested declarations, functions assigned to a name, a
+// table field or a string key are symbols, every function carries a Signature,
+// and a call is named by its callee's last identifier (foo, not M.foo); every
+// already-indexed .lua file lacks those, so the salt bump re-extracts it.
+// Epoch 23 (LB-Q-gitlab-ci, docs/design/language-breadth.md §13/§4): a
+// .gitlab-ci.yml, a file under .gitlab/ci/ and any *.gitlab-ci.yml now extract
+// through the doc-engine gitlab-ci dialect (jobs, hidden templates, their
+// needs/dependencies/extends references and the cross-file ones that resolve)
+// where each was fingerprinted as unclassified YAML (or, with a global
+// `services:` list, read as Compose); the salt bump re-reads them.
+// Epoch 24 (LB-Q-ruby): the ruby dialect emits constants (RubyConstant, a container
+// so `Outer::CONST` reads as Ruby writes it), attr_accessor/attr_reader/attr_writer
+// names (RubyProperty, `Owner.name`), aliases (RubyAlias), define_method with a
+// literal name and Name = Class.new / Module.new, names a constant reference as a
+// call target (`Registry.instance.register` calls Registry, instance and register),
+// leaves out `def obj.x` on a local, and .rake, .ru and Rakefile now extract as Ruby;
+// every already-indexed .rb file lacks those, so the salt bump re-extracts it.
+// Epoch 25 (LB-Q-maven, docs/design/language-breadth.md §13/§4): a pom.xml now
+// extracts through the doc-engine maven dialect (the project's artifact, its
+// build plugins, parent and dependency references, and the modules, parent and
+// dependency edges that resolve to another POM of the repository) where each
+// was fingerprinted as an unclassified .xml file; the salt bump re-reads them.
+// Epoch 26 (LB-Q-dart): .dart files now extract via
+// internal/extractor.NewTSExtractor("dart") — tree-sitter via wazero/WASM, a
+// fleet gap with no incumbent: classes, mixins, extensions, enums and their
+// constants, typedefs, functions, methods, getters and setters, constructors,
+// fields and top-level variables, each callable with a Signature and EndLine and
+// its calls named by callee, and `import` directives resolved through
+// pubspec.yaml's package name; every such file previously fell through to
+// "no extractor registered" (the epoch 19 class), so the salt bump re-reads them.
+// Epoch 27 (LB-Q-cargo, docs/design/language-breadth.md §13/§4): a Cargo.toml
+// now extracts through the doc-engine cargo dialect (the package, the
+// workspace, its features and explicit targets, dependency references, and the
+// workspace-member and dependency edges that resolve to another manifest of the
+// repository) instead of the generic TOMLExtractor's bare table/key dump
+// (KindTOMLTable/KindTOMLKey); every already-indexed Cargo.toml's stored
+// observations came from that generic path, so the salt bump re-reads them.
+// Epoch 28 (LB-Q-swift): .swift files now extract via
+// internal/extractor.NewTSExtractor("swift") — tree-sitter via wazero/WASM, a
+// fleet gap with no incumbent: classes, structs, enums and their cases, actors,
+// protocols, extensions (named by the extended type), type aliases, functions,
+// methods, initialisers, deinitialisers, subscripts, properties and file-level
+// variables, each callable with a Signature and EndLine and its calls named by
+// callee, and `import` resolved through Package.swift's targets; every such file
+// previously fell through to "no extractor registered" (the epoch 19 class), so
+// the salt bump re-reads them.
+// Epoch 29 (LB-Q-go-mod, docs/design/language-breadth.md §13/§4): a go.mod now
+// extracts through the native go-mod dialect (the module directive, a ModuleDep
+// per require, a replace per replace directive, and the edges from a require or
+// a local replace to another go.mod of the repository) instead of the
+// incumbent's require-only line scanner, and a go.work (a workspace, its uses
+// and replaces, and the edge from each use to that directory's go.mod), which
+// no extractor read before, is indexed; every already-indexed go.mod was
+// extracted by the scanner and every go.work fingerprinted as unclassified, so
+// the salt bump re-reads them.
+// Epoch 30 (LB-Q-msbuild, docs/design/language-breadth.md §13/§4): a .csproj,
+// .fsproj, .vbproj, .props or .targets file now extracts through the doc-engine
+// msbuild dialect (the file's project entity named by the file, its targets, its
+// PackageReferences as Calls, and the ProjectReference edges that resolve to
+// another project of the repository) where each was fingerprinted as an
+// unclassified .NET build file; the salt bump re-reads them.
+const ExtractorEpoch = "30"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares
@@ -670,7 +752,14 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	// internal/extractor/dialects/java/PROVENANCE.md for the measured detail.
 	p.exts[".java"] = extractor.NewJavaExtractor()
 
-	// Rust
+	// Rust. LB-Q-rust built and measured a tree-sitter dialect
+	// (internal/extractor/dialects/rust/) — see docs/bench/readings/lang/rust.json
+	// — that reads L2 excellent but not its target (L4): §11 step 2's merge
+	// gate requires the dialect to meet its target level, so the CGO incumbent
+	// stays the live dispatch here. A switch must bump ExtractorEpoch: the
+	// dialect names an impl by its head type instead of the type field's
+	// source text and adds trait methods, unions, aliases, consts, statics and
+	// macros (dialects/rust/PROVENANCE.md).
 	p.exts[".rs"] = extractor.NewRustExtractor()
 
 	// C (.h is polyglot: the header router sniffs C++ signals and picks the
@@ -685,7 +774,13 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	p.exts[".c"] = c
 	p.exts[".h"] = extractor.NewCHeaderExtractor()
 
-	// C++
+	// C++. LB-Q-cpp built and measured a tree-sitter dialect
+	// (internal/extractor/dialects/cpp/) — see docs/bench/readings/lang/cpp.json
+	// — that reads L1 excellent but not its target (L4): §11 step 2's merge
+	// gate requires the dialect to meet its target level, so the CGO incumbent
+	// stays the live dispatch here (and behind cheaderextract.go's C++ branch).
+	// A switch must bump ExtractorEpoch: the dialect makes a namespace a
+	// container, so every namespaced symbol is renamed (dialects/cpp/PROVENANCE.md).
 	cpp := extractor.NewCppExtractor()
 	p.exts[".cc"] = cpp
 	p.exts[".cpp"] = cpp
@@ -709,6 +804,9 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 		panic(fmt.Sprintf("fusion: tsextract ruby: %v", err))
 	}
 	p.exts[".rb"] = rb
+	p.exts[".rake"] = rb // LB-Q-ruby: one extractor (one grammar module) for every Ruby spelling
+	p.exts[".ru"] = rb
+	p.exts["Rakefile"] = rb
 
 	// Kotlin — tree-sitter via wazero/WASM (ADR-021 §4 new-language
 	// breadth, wave P2 / O69 / O79): no CGO incumbent, so no calibration
@@ -760,8 +858,14 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	// Templates
 	p.exts[".templ"] = extractor.NewTemplExtractor()
 
-	// go.mod (matched by full basename via Ext-fallback in extractAndStore)
-	p.exts["go.mod"] = extractor.NewGoModExtractor()
+	// go.mod and go.work (LB-Q-go-mod, language-breadth: the native go-mod
+	// dialect, x/mod's parser; it retired gomodextract.go's require-only line
+	// scanner). Matched by full basename (p.exts[base] runs before the
+	// extension fallback); one extractor serves both, and it gives the
+	// cross-file pass its DocResult (enrichDocXrefEdges).
+	goModules := extractor.NewGoModulesExtractor()
+	p.exts["go.mod"] = goModules
+	p.exts["go.work"] = goModules
 
 	// Helm (full-basename keys take precedence over .yaml k8s extractor)
 	p.exts["Chart.yaml"] = extractor.NewHelmChartExtractor()
@@ -805,6 +909,18 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	p.toolExts[ToolHelmTemplateYAML] = extractor.NewHelmTemplateYAMLExtractor()
 	p.toolExts[ToolOpenAPI] = extractor.NewOpenAPIExtractor()
 
+	// GitLab CI (LB-Q-gitlab-ci, language-breadth: new — a doc-engine tool
+	// format, no incumbent). Every pipeline file — the root .gitlab-ci.yml,
+	// .gitlab/ci/**, *.gitlab-ci.yml — reaches it through classifyYAML's path
+	// signal (the dialect manifest's own basenames and globs) and toolExts, the
+	// way Helm templates and OpenAPI documents do; ReingestFile makes the same
+	// path decision.
+	gitlabCI, err := extractor.NewDocDialectExtractor("gitlab-ci")
+	if err != nil {
+		panic(fmt.Sprintf("fusion: doc-dialect gitlab-ci: %v", err))
+	}
+	p.toolExts[ToolGitLabCI] = gitlabCI
+
 	// Protocol Buffers
 	p.exts[".proto"] = extractor.NewProtoExtractor()
 
@@ -846,12 +962,53 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	}
 	p.exts["pyproject.toml"] = pyProject
 
+	// Maven POM (LB-Q-maven, language-breadth: new — a doc-engine tool
+	// format, no incumbent). No ".xml" extractor exists, so the basename
+	// lookup (p.exts[base]) claims "pom.xml" alone: pom-shaded.xml,
+	// settings.xml and every other XML file stay unclassified, as the
+	// manifest's match says.
+	maven, err := extractor.NewDocDialectExtractor("maven")
+	if err != nil {
+		panic(fmt.Sprintf("fusion: doc-dialect maven: %v", err))
+	}
+	p.exts["pom.xml"] = maven
+
+	// Cargo manifest (LB-Q-cargo, language-breadth: new — a doc-engine tool
+	// format). The basename lookup (p.exts[base]) runs before the ".toml"
+	// extension fallback (the generic TOMLExtractor), so it governs every
+	// "Cargo.toml" file; every other TOML file (rust-toolchain.toml,
+	// .cargo/config.toml, rustfmt.toml) stays with the generic extractor.
+	cargo, err := extractor.NewDocDialectExtractor("cargo")
+	if err != nil {
+		panic(fmt.Sprintf("fusion: doc-dialect cargo: %v", err))
+	}
+	p.exts["Cargo.toml"] = cargo
+
+	// MSBuild (LB-Q-msbuild, language-breadth: new — a doc-engine tool format,
+	// no incumbent). No extractor claims these extensions, so the extension
+	// lookup (p.exts[ext]) governs every project, props and targets file;
+	// .user sidecars, solutions and other XML stay unclassified, as the
+	// manifest's match says.
+	msbuild, err := extractor.NewDocDialectExtractor("msbuild")
+	if err != nil {
+		panic(fmt.Sprintf("fusion: doc-dialect msbuild: %v", err))
+	}
+	for _, ext := range []string{".csproj", ".fsproj", ".vbproj", ".props", ".targets"} {
+		p.exts[ext] = msbuild
+	}
+
 	// Scala
 	scala := extractor.NewScalaExtractor()
 	p.exts[".scala"] = scala
 	p.exts[".sc"] = scala
 
-	// PHP
+	// PHP. LB-Q-php built and measured a tree-sitter dialect
+	// (internal/extractor/dialects/php/) — see docs/bench/readings/lang/php.json
+	// — that reads L1 excellent but not its target (L4): §11 step 2's merge
+	// gate requires the dialect to meet its target level, so the CGO incumbent
+	// stays the live dispatch here. A switch must bump ExtractorEpoch: the
+	// dialect adds a PhpNamespace symbol per namespaced file and sets Package
+	// from the declared namespace (dialects/php/PROVENANCE.md).
 	p.exts[".php"] = extractor.NewPhpExtractor()
 
 	// Bash (.sh .bash, shebangs). LB-Q-bash built and measured a
@@ -867,8 +1024,10 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	p.exts[".sh"] = bash
 	p.exts[".bash"] = bash
 
-	// Lua
-	p.exts[".lua"] = extractor.NewLuaExtractor()
+	// Lua (.lua) is not wired here: LB-Q-lua's tree-sitter dialect
+	// (internal/extractor/dialects/lua/) met its target (L2, docs/bench/readings/
+	// lang/lua.json) and retired the CGO walker, so the manifest loop below
+	// claims ".lua" like any other tags-engine dialect.
 
 	// Every other embedded tags-engine dialect (design §2.1: "fusion.New
 	// registers every manifest's extensions and basenames"). The five

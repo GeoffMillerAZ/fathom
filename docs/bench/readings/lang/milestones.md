@@ -91,3 +91,31 @@ formats at target 4/15`.
 LB-M2-1 (the wave 1 re-measure: every reading regenerated at HEAD, no `level_met` or grade regressed, the
 wave's token spend per item recorded) is not met, because the D3 audit moved two readings down (TypeScript and
 JavaScript); `waves.md` is therefore not written and LB-M2-1 stays open in `docs/plans/language-breadth.md`.
+
+## Wave 2, 2026-09-29 (88fe67a5)
+
+Highest `level_met` per committed reading.
+
+| Level | Languages | Tool formats |
+|---|---|---|
+| L1 | 8 — Python (excellent), C++ (excellent), C# (excellent), PHP (excellent), Go (good), HTML (good), C (good), TypeScript (good) | 2 — Terraform (excellent), package.json (excellent) |
+| L2 | 10 — Dart (excellent, excellent), Rust (excellent, excellent), Java (excellent, good), Kotlin (excellent, good), Lua (excellent, good), PowerShell (excellent, good), Ruby (excellent, good), Swift (excellent, good), Bash (good, good), SQL (good, good) | 4 — Dockerfile (excellent, excellent), Docker Compose (excellent, excellent), Makefile (excellent, excellent), Python packaging (good, good) |
+| L3 | 0 | 8 — Cargo (excellent ×3), Go modules (excellent ×3), MSBuild (excellent ×3), GitLab CI (excellent, good, good), Maven (excellent, good, good), GitHub Actions (good ×3), Helm (good ×3), Kubernetes (good ×3) |
+| L4 | 0 | 0 |
+
+At or above each level: languages 18 at L1 (12 excellent), 10 at L2,
+none at L3 or L4; tool formats 14 at L1, 12 at L2, 8 at L3. Tool formats
+at their target: 10 (the eight at L3, Makefile and Python packaging at L2).
+
+Measured below L1 (readings committed): CSS, JavaScript.
+
+Not all of the movement since wave 1b is wave 2's. Round 2's instruments
+(D1 CPU-time throughput, D2 oracles, D3 adjudication; readings committed
+before the wave's base, eb96fcbc) moved C, C# and TypeScript to L1, Java
+and SQL to L2, Bash from L1 to L2, and GitHub Actions and Kubernetes from
+L2 to L3. Wave 2's seventeen items added C++ and PHP at L1; Dart, Rust,
+Kotlin, Lua, PowerShell, Ruby and Swift at L2; Docker Compose and Makefile
+at L2; and Cargo, Go modules, MSBuild, GitLab CI, Maven and Helm at L3.
+
+Tracker line: `Milestone M1 progress: languages at L1 excellent 12/20, at L2
+10/12, at L3 0/8, at L4 0/6; tool formats at target 10/15`.

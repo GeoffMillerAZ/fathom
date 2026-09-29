@@ -1,0 +1,42 @@
+id: docker-compose
+language: Docker Compose files
+# The queue entry names docker/awesome-compose and getsentry/self-hosted.
+# getsentry/self-hosted is substituted out: its licence is the Functional
+# Source License (GitHub reports NOASSERTION; FSL is on §8.2's refused list),
+# so it fails §13.3's licence gate. docker/compose replaces it (Apache-2.0,
+# already pinned by corpus.yaml's Dockerfile entry at the same tag): its
+# pkg/e2e/fixtures tree is the reference suite for Compose's own multi-file
+# features (extends, include, profiles, anchors), which awesome-compose's
+# one-file-per-sample layout never exercises. Only the fixtures are read
+# (subpath) — the rest of the repository is Go source.
+repos:
+  - name: docker/awesome-compose
+    url: https://github.com/docker/awesome-compose
+    ref: master
+    sha: 30f4b7f6a6c3b0c0ecf4d4efb0de203c48d11562
+    licence: CC0-1.0
+    # A rolling samples repo with no release tags (git ls-remote's HEAD only):
+    # ref names the branch, sha pins the commit actually measured (the
+    # dockerfile shard's convention). CC0-1.0 is on §8.2's allowlist.
+    idioms:
+      - "one self-contained sample per directory, each a single compose.yaml
+        (or docker-compose.yaml) with a handful of services"
+      - "depends_on in both forms: a bare list of service names and a map
+        carrying condition: service_healthy"
+      - "build: ./dir alongside image:, a named top-level volume shared by a
+        database service, and a user-defined network"
+      - "long-form and short-form ports/volumes/secrets, healthcheck blocks"
+  - name: docker/compose
+    url: https://github.com/docker/compose
+    ref: v2.39.4
+    sha: a32dc3da722e6b2e4fbfc72e40b1a697c4686460
+    licence: Apache-2.0
+    subpath: pkg/e2e/fixtures
+    idioms:
+      - "extends: {file, service} chains across sibling files, and extends
+        of a service declared in the same file"
+      - "top-level include: of other compose files, by path and by
+        {path, project_directory, env_file}"
+      - "profiles, YAML anchors and <<: merge keys, and x- extension fields"
+      - "override files (compose.override.yaml, docker-compose.<env>.yml)
+        next to their base file"

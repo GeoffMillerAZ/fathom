@@ -1,0 +1,89 @@
+{
+  "symbols": [
+    {
+      "name": "legacy_helper",
+      "kind": "PhpFunction",
+      "package": "legacy",
+      "line": 6,
+      "end_line": 9,
+      "signature": "function legacy_helper(array &$items, ...$rest)",
+      "calls": [
+        "count"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "ref_returning",
+      "kind": "PhpFunction",
+      "package": "legacy",
+      "line": 12,
+      "end_line": 16,
+      "signature": "function &ref_returning()",
+      "tier": "verified"
+    },
+    {
+      "name": "gen",
+      "kind": "PhpFunction",
+      "package": "legacy",
+      "line": 18,
+      "end_line": 21,
+      "signature": "function gen(): Generator",
+      "tier": "verified"
+    },
+    {
+      "name": "Marker",
+      "kind": "PhpClass",
+      "package": "legacy",
+      "line": 26,
+      "end_line": 28,
+      "tier": "verified"
+    },
+    {
+      "name": "attributed",
+      "kind": "PhpFunction",
+      "package": "legacy",
+      "line": 31,
+      "end_line": 33,
+      "signature": "#[Route('/x'), Deprecated] function attributed(): void",
+      "tier": "verified"
+    },
+    {
+      "name": "Model",
+      "kind": "PhpClass",
+      "package": "legacy",
+      "line": 35,
+      "end_line": 51,
+      "tier": "verified"
+    },
+    {
+      "name": "Model.id",
+      "kind": "PhpMethod",
+      "package": "legacy",
+      "line": 38,
+      "end_line": 41,
+      "signature": "#[Pure] public function id(): int",
+      "tier": "verified"
+    },
+    {
+      "name": "Model.__call",
+      "kind": "PhpMethod",
+      "package": "legacy",
+      "line": 43,
+      "end_line": 46,
+      "signature": "public function __call($name, $args)",
+      "calls": [
+        "call_user_func_array"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Model.__callStatic",
+      "kind": "PhpMethod",
+      "package": "legacy",
+      "line": 48,
+      "end_line": 50,
+      "signature": "public static function __callStatic($name, $args)",
+      "tier": "verified"
+    }
+  ]
+}

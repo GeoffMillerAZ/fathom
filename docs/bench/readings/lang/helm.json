@@ -1,0 +1,176 @@
+{
+  "dialect": "helm",
+  "kind": "tooling",
+  "target_level": "L3",
+  "level_met": "L3",
+  "grade": {
+    "L1": "good",
+    "L2": "good",
+    "L3": "good",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-09-28",
+  "fathom_commit": "12f61706",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "bitnami/charts",
+      "sha": "17930f75cdbc1b6c2c8578efa5732a4eab8cd0c2",
+      "files": 3450,
+      "bytes": 23604700,
+      "counts": {
+        "callables": 2794,
+        "callables_signed": 2794,
+        "fathom_defs": 187605,
+        "kind_equal": 187605,
+        "matched": 187605,
+        "oracle_defs": 187607,
+        "ref_fathom": 2835,
+        "ref_fathom_in_truth": 2835,
+        "ref_truth": 2835,
+        "ref_truth_found": 2835,
+        "xref_fathom": 174,
+        "xref_fathom_in_truth": 174,
+        "xref_truth": 174,
+        "xref_truth_found": 174
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C",
+        "xref": "C"
+      },
+      "kind_intersection": [
+        "data_source",
+        "key",
+        "macro",
+        "package"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 3802.6790000000037,
+        "extract_cpu_ms": 3822.805000000006,
+        "max_file_ms": 21,
+        "peak_module_pages": 336,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "prometheus-community/helm-charts",
+      "sha": "c7187606c560945ef07a065848a78bc424912def",
+      "files": 745,
+      "bytes": 7260898,
+      "counts": {
+        "callables": 391,
+        "callables_signed": 391,
+        "fathom_defs": 21106,
+        "kind_equal": 21106,
+        "matched": 21106,
+        "oracle_defs": 21106,
+        "ref_fathom": 217,
+        "ref_fathom_in_truth": 217,
+        "ref_truth": 217,
+        "ref_truth_found": 217,
+        "xref_fathom": 7,
+        "xref_fathom_in_truth": 7,
+        "xref_truth": 7,
+        "xref_truth_found": 7
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C",
+        "xref": "C"
+      },
+      "kind_intersection": [
+        "data_source",
+        "key",
+        "macro",
+        "package"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 561.4510000000001,
+        "extract_cpu_ms": 561.4210000000005,
+        "max_file_ms": 19,
+        "peak_module_pages": 319,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "C",
+      "tool": "helm-oracle (Go text/template/parse for templates, gopkg.in/yaml.v3 for Chart.yaml and values.yaml)",
+      "version": "text/template/parse (go1.26); gopkg.in/yaml.v3 v3.0.1"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 1,
+    "ref_recall": 1,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "xref_precision": 1,
+    "xref_recall": 1
+  },
+  "metric_tiers": {
+    "ref_precision": "C",
+    "ref_recall": "C",
+    "sym_precision": "C",
+    "sym_recall": "C",
+    "xref_precision": "C",
+    "xref_recall": "C"
+  },
+  "required_kinds": [
+    "data_source",
+    "key",
+    "macro",
+    "package"
+  ],
+  "kind_intersection": [
+    "data_source",
+    "key",
+    "macro",
+    "package"
+  ],
+  "counts": {
+    "callables": 3185,
+    "callables_signed": 3185,
+    "fathom_defs": 208711,
+    "kind_equal": 208711,
+    "matched": 208711,
+    "oracle_defs": 208713,
+    "ref_fathom": 3052,
+    "ref_fathom_in_truth": 3052,
+    "ref_truth": 3052,
+    "ref_truth_found": 3052,
+    "xref_fathom": 181,
+    "xref_fathom_in_truth": 181,
+    "xref_truth": 181,
+    "xref_truth_found": 181
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 7.04,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 7.07,
+    "max_file_ms": 21,
+    "peak_module_pages": 336,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    "L2 (ref_recall, ref_precision) is scored on include/template calls made inside a named template: 3,511 literal-name calls, 3,052 distinct (template, callee) pairs; 44,852 more (92.7% of the 48,363 in the two subjects) sit in manifest bodies outside any define, belong to no symbol and are not call edges: they are HelmTemplateRef symbols, scored at L1",
+    "L3 edges: 181 (bitnami/charts 174, prometheus-community/helm-charts 7), by the dependency's repository: 1 file:// path and 180 oci:// registry addresses, no URLs; only the file:// edge is a local path helm itself resolves, the rest join a dependency's name to the one in-repo chart of that name (the monorepo convention the package.json dialect also uses) and would be false where an unrelated chart shares the name",
+    "a file whose extraction instantiated a grammar module after the warm-up (an injected language) is timed on a second, warm extraction",
+    "helm v3.19.0 `helm show chart` loaded all 161 charts (115 in bitnami/charts, 46 in prometheus-community/helm-charts) with the same name and dependency names as the oracle's walk; `helm template` (tier A) was not run: the charts' dependencies are remote (oci:// or https), so a render needs `helm dependency build` over the network for every chart",
+    "kinds: the K8sWorkload and K8sContainer symbols fusion's helmtemplateyaml.go recovers from templated manifests are not emitted by this dialect (the go-template grammar leaves a manifest's YAML as opaque text); lang-parity against fusion's dispatch reads MERGE (sym_recall .5475 to 1.0, sym_precision .9963 to 1.0) with those two kinds lost, so dispatch stays on the incumbents until that loss has an owner",
+    "oracle tier C throughout, so every grade is capped at good (section 1.3): Chart.yaml and values.yaml keys come from gopkg.in/yaml.v3 (the doc engine's own library; aliases followed, merge keys applied), templates from Go's text/template/parse (independent of the tree-sitter grammar), and the L3 join from a re-implementation of the unique-chart-name rule (calibration/oracles/helm) that attests the implementation, not the rule",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "prometheus-community/helm-charts: 277 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
+    "prometheus-community/helm-charts: 6 files skipped by ingest's gates (generated)",
+    "sym_recall 0.99999 (208,711 of 208,713), sym_precision 1.0 (no dialect-only definition): the two misses are one bitnami/charts line, seaweedfs webadv/ingress.yaml:42, where `(\"https\" \"http\" .Values.webdav.tls.enabled)` is a command starting with a string, which Go's parser accepts and the go-template grammar does not, so its error recovery loses the include and the .Values accessor on that line"
+  ],
+  "disposition": null
+}

@@ -1,0 +1,164 @@
+{
+  "dialect": "go-mod",
+  "kind": "tooling",
+  "target_level": "L3",
+  "level_met": "L3",
+  "grade": {
+    "L1": "excellent",
+    "L2": "excellent",
+    "L3": "excellent",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-09-29",
+  "fathom_commit": "765a6502",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "cli/cli",
+      "sha": "d528f20f2ee02f6703773e9f56c90e3c3f5d46b0",
+      "files": 2,
+      "bytes": 9132,
+      "counts": {
+        "fathom_defs": 183,
+        "kind_equal": 183,
+        "matched": 183,
+        "oracle_defs": 183,
+        "ref_fathom": 181,
+        "ref_fathom_in_truth": 181,
+        "ref_truth": 181,
+        "ref_truth_found": 181,
+        "xref_fathom": 0,
+        "xref_truth": 0
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A",
+        "xref": "A"
+      },
+      "kind_intersection": [
+        "key",
+        "module",
+        "namespace",
+        "package"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 0.388,
+        "extract_cpu_ms": 0.41500000000000004,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "kubernetes/kubernetes",
+      "sha": "f78e722310e50bcaca9276be22276d9e91d91308",
+      "files": 45,
+      "bytes": 135683,
+      "counts": {
+        "fathom_defs": 2682,
+        "kind_equal": 2682,
+        "matched": 2682,
+        "oracle_defs": 2682,
+        "ref_fathom": 2401,
+        "ref_fathom_in_truth": 2401,
+        "ref_truth": 2401,
+        "ref_truth_found": 2401,
+        "xref_fathom": 394,
+        "xref_fathom_in_truth": 392,
+        "xref_truth": 392,
+        "xref_truth_found": 392
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A",
+        "xref": "A"
+      },
+      "kind_intersection": [
+        "key",
+        "module",
+        "namespace",
+        "package"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 7.221,
+        "extract_cpu_ms": 10.405999999999999,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "go mod edit -json, go work edit -json, go list -e -m -json all",
+      "version": "go1.26.3 darwin/arm64"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 1,
+    "ref_recall": 1,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "xref_precision": 0.9949,
+    "xref_recall": 1
+  },
+  "metric_tiers": {
+    "ref_precision": "A",
+    "ref_recall": "A",
+    "sym_precision": "A",
+    "sym_recall": "A",
+    "xref_precision": "A",
+    "xref_recall": "A"
+  },
+  "required_kinds": [
+    "key",
+    "module",
+    "namespace",
+    "package"
+  ],
+  "kind_intersection": [
+    "key",
+    "module",
+    "namespace",
+    "package"
+  ],
+  "counts": {
+    "fathom_defs": 2865,
+    "kind_equal": 2865,
+    "matched": 2865,
+    "oracle_defs": 2865,
+    "ref_fathom": 2582,
+    "ref_fathom_in_truth": 2582,
+    "ref_truth": 2582,
+    "ref_truth_found": 2582,
+    "xref_fathom": 394,
+    "xref_fathom_in_truth": 392,
+    "xref_truth": 392,
+    "xref_truth_found": 392
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 13.38,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 19.03,
+    "max_file_ms": 0,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    "oracle: the go command itself, tier A (calibration/oracles/go-mod, go1.26.3): `go mod edit -json` and `go work edit -json`, its own parse of each file, for the definitions and the module-to-requirement references; `go list -e -m -json all`, its own evaluation of the module graph (module mode with GOWORK=off and -mod=mod, and workspace mode where a go.work reaches the module), for what a declaration resolves to: 159 require, 194 replace and 39 use edges to a directory of the subject that holds a go.mod. The parse is golang.org/x/mod/modfile, the package the dialect reads with, so it attests what the dialect models (every directive and block form) and not the parser; positions, which the tool does not print, come from an independent line scan (no modfile) aligned entry for entry with the tool's list, 0 scan mismatches.",
+    "subjects are sparse checkouts of every go.mod, go.sum, go.work and go.work.sum (kubernetes/kubernetes v1.37.1: 45 files read, 39 go.mod and 6 go.work, 7.6 MB on disk; cli/cli v2.99.0: 2 go.mod, 0.5 MB). L3 rests on kubernetes alone (cli/cli is one application module with no replace and no workspace): 392 edges the tool resolved, all found, 2 more drawn.",
+    "xref_precision .9949 (392 of 394): the two edges the dialect draws and the tool does not are hack/tools/golangci-lint/go.mod's require of the published k8s.io/apimachinery, which the dialect resolves by module path to staging/src/k8s.io/apimachinery/go.mod (its own go.work `use .` keeps the go command from climbing to the repository's workspace, so the tool resolves it in the registry: a require means a module by path alone, the doc engine's module-source rule), and hack/tools/instrumentation/go.mod's `replace k8s.io/kubernetes => ../../..`, which nothing requires, so the tool lists no replacement and the dialect records the local pointer.",
+    "the tool cannot resolve 3 modules of the build lists (hack/tools/instrumentation's k8s.io/client-go and k8s.io/streaming at v0.0.0, code-generator/examples' k8s.io/streaming: no replace redirects them); `go list -e` reports them with an error and evaluates the rest, so those go.mod and go.work files are attested for what they do resolve.",
+    "not modelled, with reasons in dialects/go-mod/PROVENANCE.md: the // indirect flag (a ModuleDep keeps the incumbent's name, version signature and tier), exclude, retract, toolchain, godebug, tool and ignore directives, go.sum, vendor/modules.txt; a require whose module path two go.mod files of the repository declare resolves to nothing (the doc engine's unique-root rule; cli/cli's .github/codeql test module declares the root's own path).",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+  ],
+  "disposition": null
+}

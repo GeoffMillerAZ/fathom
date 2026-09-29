@@ -1,0 +1,20 @@
+<project>
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>org.acme</groupId>
+  <artifactId>edge-shapes</artifactId>
+  <version>1</version>
+  <name>Fish &amp; chips &nbsp; deluxe</name>
+  <modules/>
+  <dependencies/>
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.acme</groupId>
+      </plugin>
+      <plugin>
+        <artifactId>maven-antrun-plugin</artifactId>
+        <configuration><![CDATA[<target><echo>if a < b</echo></target>]]></configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>

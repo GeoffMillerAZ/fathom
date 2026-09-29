@@ -30,7 +30,7 @@ type xrefOracleEntry struct {
 // the field, into sub (family xref, at the oracle's tier) and returns how
 // many entries were dropped as out of scope. An oracle without the field
 // leaves L3 unmeasured.
-func scoreXrefOracle(path string, doc *extractor.DocExtractor, service string, files []core.SourceFile, sub *langbench.Subject, inScope map[string]bool) (int, error) {
+func scoreXrefOracle(path string, doc extractor.DocResulter, service string, files []core.SourceFile, sub *langbench.Subject, inScope map[string]bool) (int, error) {
 	b, err := os.ReadFile(path)
 	if err != nil {
 		return 0, err

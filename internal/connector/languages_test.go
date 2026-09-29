@@ -64,7 +64,11 @@ var langRowHint = map[string]string{
 	"cs":               "| C# ",
 	"php":              "| PHP ",
 	"sh":               "Bash",
+	"powershell":       "PowerShell",
+	"makefile":         "| Makefile ",
 	"lua":              "| Lua ",
+	"dart":             "| Dart ",
+	"swift":            "| Swift ",
 	"sql":              "| SQL ",
 	"terraform":        "Terraform",
 	"yaml":             "Kubernetes YAML",
@@ -78,6 +82,10 @@ var langRowHint = map[string]string{
 	"package-json":     "package.json",
 	"templ":            "templ",
 	"python-packaging": "pyproject.toml",
+	"maven":            "pom.xml",
+	"msbuild":          ".csproj",
+	"cargo":            "Cargo.toml",
+	"go-mod":           "go.mod, go.work,",
 }
 
 // registryLangTags returns the sorted, deduplicated set of Lang tags

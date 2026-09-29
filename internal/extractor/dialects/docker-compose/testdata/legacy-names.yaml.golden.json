@@ -1,0 +1,10 @@
+{
+  "symbols": [
+    { "name": "my_service", "kind": "ComposeService", "package": "legacy-names", "line": 3, "end_line": 8,
+      "signature": "repo/app@sha256:0123abcd", "calls": ["web-1"], "tier": "verified" },
+    { "name": "web-1", "kind": "ComposeService", "package": "legacy-names", "line": 9, "end_line": 11, "signature": "nginx", "tier": "verified" },
+    { "name": "app.v2", "kind": "ComposeService", "package": "legacy-names", "line": 12, "end_line": 15, "signature": ".",
+      "calls": ["my_service"], "tier": "verified" }
+  ],
+  "cross_file": []
+}

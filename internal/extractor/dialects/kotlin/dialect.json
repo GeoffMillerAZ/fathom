@@ -13,23 +13,31 @@
   },
   "grammar": { "blob": "kotlin", "entry_point": "tree_sitter_kotlin" },
   "variants": [],
-  "queries": { "tags": "tags.scm" },
+  "queries": { "tags": "tags.scm", "imports": "imports.scm" },
   "kinds": {
-    "class":     { "source_kind": "KotlinClass",     "canonical": "class",     "container": true },
-    "interface": { "source_kind": "KotlinInterface", "canonical": "interface", "container": true },
-    "object":    { "source_kind": "KotlinObject",    "canonical": "class",     "container": true },
-    "function":  { "source_kind": "KotlinFunction",  "canonical": "function",  "callable": true },
-    "property":  { "source_kind": "KotlinProperty",  "canonical": "property" },
-    "import":    { "source_kind": "KotlinImport",    "canonical": "import" }
+    "class":      { "source_kind": "KotlinClass",      "canonical": "class",       "container": true },
+    "interface":  { "source_kind": "KotlinInterface",  "canonical": "interface",   "container": true },
+    "object":     { "source_kind": "KotlinObject",     "canonical": "class",       "container": true },
+    "enum_entry": { "source_kind": "KotlinEnumEntry",  "canonical": "enum_member", "container": true },
+    "function":   { "source_kind": "KotlinFunction",   "canonical": "function",    "callable": true },
+    "constructor": { "source_kind": "KotlinConstructor", "canonical": "constructor", "callable": true },
+    "property":   { "source_kind": "KotlinProperty",   "canonical": "property" },
+    "typealias":  { "source_kind": "KotlinTypeAlias",  "canonical": "type_alias" },
+    "import":     { "source_kind": "KotlinImport",     "canonical": "import" }
   },
-  "required_kinds": ["class", "interface", "function"],
+  "required_kinds": ["class", "interface", "object", "enum_entry", "function", "constructor", "property", "typealias"],
   "oracle_kinds": {
     "ctags": { "class": "class", "interface": "interface", "object": "class", "method": "function",
                "variable": "property", "constant": "property", "typealias": "type_alias",
-               "package": "package" }
+               "package": "package" },
+    "tool":  { "class": "class", "interface": "interface", "object": "class", "enumEntry": "enum_member",
+               "function": "function", "constructor": "constructor", "property": "property",
+               "typealias": "type_alias" }
   },
+  "names": { "trim_quotes": true },
   "qualify": { "chain_containers": true, "container_sep": ".", "method_sep": "." },
-  "package": { "strategy": "dir" },
+  "package": { "strategy": "capture" },
+  "imports": { "strategy": "namespace-dir", "suffixes": [".kt"] },
   "signature": { "max_chars": 200 },
   "target_level": "L4",
   "queue_id": "kotlin"

@@ -1,0 +1,41 @@
+id: go-mod
+language: Go modules (go.mod, go.work)
+# The queue entry names kubernetes/kubernetes and cli/cli, Apache-2.0 and MIT, both read
+# only, never vendored. Neither is cloned whole: a Go module manifest is a handful of
+# files in a large tree, so both are cloned blob-less and checked out with `sparse`
+# patterns (every go.mod, go.sum, go.work and go.work.sum), 7.6 MB and 0.5 MB on disk.
+# kubernetes is the reference multi-module repository (a root workspace of 33 modules,
+# each staged module redirected by a local replace); cli/cli is the wide single module
+# (a require block of a few hundred entries).
+repos:
+  - name: kubernetes/kubernetes
+    url: https://github.com/kubernetes/kubernetes.git
+    ref: v1.37.1
+    sha: f78e722310e50bcaca9276be22276d9e91d91308
+    licence: Apache-2.0
+    sparse: ["**/go.mod", "**/go.sum", "**/go.work", "**/go.work.sum"]
+    idioms:
+      - "a root go.work whose use block lists the root and 32 staging modules, and a
+        root go.mod that requires every staging module at v0.0.0 and redirects each
+        with `replace k8s.io/x => ./staging/src/k8s.io/x`"
+      - "staging modules that replace their siblings with `=> ../x` and require them at
+        v0.0.0, so one module's requirement is another module of the repository"
+      - "nested go.work files (hack/tools/*, code-generator/examples) whose `use .`
+        only keeps the go command from climbing to the repository's workspace"
+      - "modules the tool cannot evaluate alone: hack/tools/instrumentation requires
+        k8s.io/client-go v0.0.0 with no replace"
+      - "a require block of several hundred direct and // indirect entries, a
+        godebug directive, and pseudo-versions"
+  - name: cli/cli
+    url: https://github.com/cli/cli.git
+    ref: v2.99.0
+    sha: d528f20f2ee02f6703773e9f56c90e3c3f5d46b0
+    licence: MIT
+    sparse: ["**/go.mod", "**/go.sum", "**/go.work", "**/go.work.sum"]
+    idioms:
+      - "one application module (github.com/cli/cli/v2) with a require block of a few
+        hundred direct and // indirect entries and no replace"
+      - "a toolchain directive beside go"
+      - "pseudo-versions and /v2 major-version paths in requires"
+      - "a second go.mod under .github/codeql/tests that declares the same module
+        path as the root, a fixture module the root does not use"

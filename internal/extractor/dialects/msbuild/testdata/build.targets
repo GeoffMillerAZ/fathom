@@ -1,0 +1,13 @@
+<Project>
+  <UsingTask TaskName="Gen" AssemblyFile="$(MSBuildThisFileDirectory)Gen.dll" />
+  <Target Name="Prepare" />
+  <Target Name="Compile" DependsOnTargets="Prepare;Resolve" AfterTargets="CoreCompile" Condition="'$(Skip)' != 'true'">
+    <Exec Command="echo compile" />
+  </Target>
+  <Target Name="Resolve"
+          Inputs="@(Compile)"
+          Outputs="$(Out)">
+    <Message Text="resolve" />
+  </Target>
+  <Target Condition="true" />
+</Project>

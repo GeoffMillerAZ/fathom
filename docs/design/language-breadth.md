@@ -139,6 +139,38 @@ owner's decisions, binding on the harness and every reading after them:
   instruments only (installed under the measurement scratch dir), never product
   dependencies. An instrument that cannot be installed is recorded with why, and the
   reading keeps ctags with the deficiency disclosed — L1 capped at good.
+- **D2, Kotlin (LB-Q-kotlin, 2026-09-28).** universal-ctags writes no end line for Kotlin and lists every
+  local `val`/`var`, primary-constructor parameter and lambda as a definition (60,761 definitions to the
+  dialect's 16,335 on okhttp and Exposed), so Kotlin is measured against a PSI dump of the Kotlin
+  compiler's own parser (`calibration/oracles/kotlin-psi`, tier B like JavaParser and Roslyn) — its
+  definitions, ranges and call pairs, a call belonging to the smallest enclosing function or
+  constructor as it does in the dialect. scip-java's Kotlin index was tried and cannot stand in: under
+  Kotlin 2.2.0 (its plugin refuses 2.3.20) it wrote 58,698 occurrences with no range at all, and
+  okhttp's build needs an Android SDK. The grammar pin moved from fwcd 0.3.8 to commit `1852ea17`
+  because 0.3.8 left 16.6% of the subject files with parse errors (over §14.2's 5% line) and 1852ea17
+  leaves 1.1%.
+- **D2, Dart (LB-Q-dart, 2026-09-28).** universal-ctags has no Dart parser, so Dart is measured against
+  scip-dart (tier A, `calibration/oracles/scip-dart`) for definitions (`-scip-defs`), calls, definition mapping
+  and file edges, one index per pure-Dart package. The instrument reads its shapes as they are written
+  (`internal/langbench`, scoped to `scip-dart` symbols and to `SCIPOptionsFor("dart")`): a private member (a
+  leading `_`) is a `local N` symbol whose kind still says what it is, so it is a definition and the owner of
+  the calls inside it; an unnamed constructor (`Foo#<constructor>().`) is named as its class and an accessor
+  (`<get>x`) by x; a file and an `import ... as p` prefix are no definitions; the producer's kind outranks a
+  `get`/`const`/`operator` written before the name; and a callable reference is a call site only where its name
+  is written followed by `(` or by type arguments and `(` (a tear-off, an operator and an initializer's
+  `super(...)` are counted as `scip_calls_unwritten` and disclosed). The tags engine gained an `@end` capture
+  (§3.3) because tree-sitter-dart puts a callable's body in a sibling of its signature.
+- **D2, Swift (LB-Q-swift, 2026-09-29).** universal-ctags has no Swift parser and SourceKit-LSP's index store is not
+  SCIP, so Swift is measured against the compiler's own parser (`swiftc -frontend -parse-as-library -dump-parse`, Apple
+  Swift 6.4, tier B like JavaParser, Roslyn and the Kotlin PSI dump; `calibration/oracles/swift-parse`) for definitions
+  and call pairs. `-dump-parse` prints nothing of an `#if` block, so the oracle blanks the directive lines and parses every
+  branch, as the grammar does; it rebuilds the tree from the dump's indentation because the compiler leaves a
+  parenthesis open after a function type; and a `case` pattern the parser writes as a call is not a call. The grammar
+  pin moved from the 0.7.3 tag to alex-pinkus commit 35245fb (built with `generate: true`): 0.7.3 left 12.2% of swift-nio's
+  files with a parse error against 6.4% on the commit, and the commit fixes the 32-bit `OP_SYMBOL_SUPPRESSOR` shift the
+  tag has on wasm32. Both subjects together still read 5.6% (36 of 642 files), Swift 6 syntax the grammar lacks, which
+  is over §14.2's refusal line and is recorded, not refused: the dialect finds 21,939 of 21,997 definitions.
+
 - **D3 — oracle-deficiency disclosure.** A reading may carry an adjudicated set of
   dialect-only definitions the L1 oracle is verified to miss (`lang-oracle -adjudicate
   <file>`: classes, each with a `why`, an optional structural `pattern` where `{name}`
@@ -281,6 +313,16 @@ Rules the schema and `TestDialectManifests` enforce:
 - Every extension and basename is claimed by exactly one dialect, except where `match.sniff`
   splits an ambiguous extension (§5).
 - `target_level` matches the queue; the manifest never carries a claimed level.
+- `qualify.scope_sep` (optional; C++'s `"::"`): a definition name or callee spelled with the
+  language's own scope operator is rewritten to `container_sep` and its template argument lists
+  are dropped, so an out-of-class `Widget::render` and an inline `Widget.render` are one key
+  (LB-Q-cpp; `normalizeScopedName`). A dialect without it takes `@name` as captured.
+- `names` (optional; `strip_prefix`, `trim_quotes`): rewrites every captured `@name`, a
+  definition's and a callee's, before qualification. `strip_prefix` drops the first listed prefix
+  the captured text starts with (`.Values.` leaves the values key an accessor reads; a quoted
+  string that starts the same way is untouched), then `trim_quotes` drops one matching pair of
+  surrounding quotes (a Go-template `define "chart.name"` is the symbol `chart.name`), then
+  `scope_sep` applies. A dialect without it takes `@name` as captured (LB-Q-helm).
 
 ### 2.3 Canonical kinds (closed)
 
@@ -312,6 +354,11 @@ registry; no store change.
    `Signature` from the definition node's start to the start of its `@body` capture (a
    fathom extension to the convention; a query without `@body` gets the definition's first
    line), whitespace collapsed, truncated to `signature.max_chars` with a trailing `…`.
+   A grammar that puts a callable's body in a *sibling* of its signature (tree-sitter-dart's
+   `function_signature` + `function_body`) has no node spanning both; the match captures the
+   sibling as `@end` (usually also as `@body`) and the definition then reaches its end, so its
+   `EndLine`, the calls its body makes and the definitions nested in it follow (LB-Q-dart).
+   `@end` never shortens a definition.
 4. **Name-captured references** (LB-F4). The standard convention puts `@name` inside
    `@reference.call`; the engine takes the callee from `@name` when present and falls back
    to the whole expression's text (today's behaviour, kept for the five existing queries).
@@ -364,9 +411,19 @@ walk into data (LB-F8, P20: generalized from six).
 }
 ```
 
-Selectors are a deliberately small JSONPath subset (`$`, `.key`, `.*`, `[*]`, `$key`,
-alternation `|`), implemented in Go over the decoded tree — no expression language, no
-templating. Formats whose meaning needs evaluation (Helm templates, Jsonnet, Starlark,
+Selectors are a deliberately small JSONPath subset (`$`, `.key`, `.*`, `[*]`, `$key`, `$path`,
+`$file`, alternation `|`), implemented in Go over the decoded tree — no expression language, no
+templating. `$path` is the dotted keys from the selection's start down to the node (one entity per
+depth names a nested map's keys as a template reads them, `image.repository`); `$file` is the base
+name of the file being read, extension included, the name of a document that carries none (an
+MSBuild project is named by its file, LB-Q-msbuild; the extension keeps `Directory.Build.props` and
+`Directory.Build.targets` two symbols); a `repo-path` reference reads `\` as the separator it is in
+a Windows-authored file (`..\lib\lib.csproj`, MSBuild's ProjectReference); an entity or a
+cross-file reference may carry `files` (the basenames it reads, so one spec serves a format's
+several documents: Helm's Chart.yaml and values.yaml), and an entity `include_null` (keep a key
+written with no value, which selectors otherwise drop). A `tags+doc` dialect (Helm) splits its
+files across the two engines by this spec's `detect`: a basename or glob it names is a document,
+every other file the manifest owns goes to the tags engine (`extractor.TagsDocExtractor`). Formats whose meaning needs evaluation (Helm templates, Jsonnet, Starlark,
 Nix, CUE) are not doc-engine formats: they are syntax dialects on the tags engine, and
 where a tool can evaluate them it is the tier-A oracle. A doc-engine tool format reaches
 L3 through `cross_file` selectors resolved by strategy (`repo-path`, `repo-root`,
@@ -586,8 +643,9 @@ go run ./cmd/indexbench lang-oracle \
   -out docs/bench/readings/lang/swift.json   # merges subjects: one reading per dialect
 ```
 
-It lists the subject's files through the connector's own discovery (so exclusions match),
-runs the dialect's extractor on each, runs the oracle(s) on the same file list, matches per
+It lists the subject's files through the connector's own discovery (so exclusions match) —
+for C++ also the `.h` headers the header router's sniff sends to C++, since no dialect claims
+`.h` (§5) — runs the dialect's extractor on each, runs the oracle(s) on the same file list, matches per
 §1.4, and writes the reading. `indexbench lang-probe -dialect <id> <file>` prints the
 S-expression of a small file (capped at 200 lines of output) and every capture the
 dialect's queries make on it — the tool a worker writes queries against, instead of reading
@@ -633,6 +691,17 @@ oracle output stays under `workspace/`.
 `TestLanguagesTrackerMatchesRegistry` gains a third assertion (LB-F17): a tracker row's
 level is never higher than its reading's `level_met`, and a registered dialect without a
 reading is listed as `tolerated`.
+
+**Producer-specific rules (LB-Q-rust, 2026-09-28).** A SCIP producer's own vocabulary is read
+by the harness where it would otherwise score a definition or a call no source text spells:
+rust-analyzer's `impl#[Type]name().` members (`]` closes a descriptor), its macro-expanded
+definitions (a definition with no declaration keyword before it at its reported position is
+`Generated`, left out of L1 and counted as `<oracle>:macro-generated`), its file-module definition
+(a multi-line whole-file range, recovered at the `mod x;` reference), its macro references (a call
+by the macro's name) and its operator references (`?`, `==`, `!x`, `*x`, `a[i]` resolve to trait
+methods at the operator's range: no call is written, so a callable reference whose range is not the
+callee's name leaves the L2 truth, counted as `scip_calls_unwritten`). `langbench.SCIPOptionsFor`
+selects the call-site rules per dialect; every other dialect keeps the zero options.
 
 ## 11. Retiring heuristics and bespoke walkers
 

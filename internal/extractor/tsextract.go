@@ -57,8 +57,11 @@ type tsDialectRules struct {
 	// immediate container's bare name is used (Python, JS/TS) — matching
 	// the incumbent CGO extractors' single-level scope tracking exactly.
 	chainContainers bool
-	containerSep    string // separator when chainContainers is true
-	methodSep       string // separator between a container's qualified name and a callable's own name
+	containerSep    string   // separator when chainContainers is true
+	methodSep       string   // separator between a container's qualified name and a callable's own name
+	scopeSep        string   // manifest qualify.scope_sep: the language's own scope operator ("::"), "" when none
+	trimQuotes      bool     // manifest names.trim_quotes
+	stripPrefix     []string // manifest names.strip_prefix
 
 	importStrategy  string // manifest imports.strategy ("" when the dialect has none)
 	packageStrategy string // manifest package.strategy
@@ -173,6 +176,7 @@ func compileDialectRules(d Dialect) (*tsDialectRules, error) {
 		chainContainers: *d.Qualify.ChainContainers,
 		containerSep:    d.Qualify.ContainerSep,
 		methodSep:       d.Qualify.MethodSep,
+		scopeSep:        d.Qualify.ScopeSep,
 		packageStrategy: d.Package.Strategy,
 		sigMax:          d.Signature.MaxChars,
 		queryFile:       "dialects/" + d.ID + "/" + d.Queries.Tags,
@@ -180,6 +184,9 @@ func compileDialectRules(d Dialect) (*tsDialectRules, error) {
 	}
 	if d.Imports != nil {
 		r.importStrategy = d.Imports.Strategy
+	}
+	if d.Names != nil {
+		r.trimQuotes, r.stripPrefix = d.Names.TrimQuotes, d.Names.StripPrefix
 	}
 	if d.Queries.Injections != "" {
 		b, err := fs.ReadFile(dialectFS, path.Join("dialects", d.ID, d.Queries.Injections))
@@ -429,7 +436,7 @@ func (e *TSExtractor) extractLocked(variant tsVariant, service, relPath string, 
 		}
 	}
 
-	defs, calls, typeRefs := splitTSMatches(matches, rules.kinds, src)
+	defs, calls, typeRefs := splitTSMatches(matches, rules.kinds, src, rules.nameNormalizer())
 	e.typeRefs.Add(int64(typeRefs))
 	resolveTSParents(defs)
 	qualifyTSDefs(defs, rules)
@@ -603,18 +610,21 @@ func tsCalleeName(m tsengine.Match, src []byte) (callee string, site tsengine.No
 // "name" + "definition.<kind>" capture pair) and call sites (a
 // "reference.call" capture, its callee per tsCalleeName) using src to
 // resolve capture text, and counts type references (typeRefCaptures).
-func splitTSMatches(matches []tsengine.Match, kinds map[string]tsDefKind, src []byte) ([]*tsDef, []tsCallSite, int) {
+func splitTSMatches(matches []tsengine.Match, kinds map[string]tsDefKind, src []byte, norm func(string) string) ([]*tsDef, []tsCallSite, int) {
 	var defs []*tsDef
 	var calls []tsCallSite
 	typeRefs := 0
 	for _, m := range matches {
 		if callee, site, ok := tsCalleeName(m, src); ok {
+			if norm != nil {
+				callee = norm(callee)
+			}
 			if callee != "" {
 				calls = append(calls, tsCallSite{text: callee, start: site.StartByte, end: site.EndByte})
 			}
 			continue
 		}
-		var nameNode, defNode, bodyNode *tsengine.Node
+		var nameNode, defNode, bodyNode, endNode *tsengine.Node
 		var defSuffix string
 		for i := range m.Captures {
 			c := &m.Captures[i]
@@ -627,6 +637,9 @@ func splitTSMatches(matches []tsengine.Match, kinds map[string]tsDefKind, src []
 			case c.Name == "body":
 				n := c.Node
 				bodyNode = &n
+			case c.Name == "end":
+				n := c.Node
+				endNode = &n
 			case strings.HasPrefix(c.Name, "definition."):
 				n := c.Node
 				defNode = &n
@@ -641,6 +654,9 @@ func splitTSMatches(matches []tsengine.Match, kinds map[string]tsDefKind, src []
 			continue
 		}
 		name := nameNode.Text(src)
+		if norm != nil {
+			name = norm(name)
+		}
 		if name == "" {
 			continue
 		}
@@ -668,6 +684,12 @@ func splitTSMatches(matches []tsengine.Match, kinds map[string]tsDefKind, src []
 			line:    nameNode.Line(),
 			defLine: defNode.Line(),
 			parent:  -1,
+		}
+		// @end: a grammar that puts a callable's body in a sibling of its
+		// signature (tree-sitter-dart) has no node spanning both, so the match
+		// captures the sibling and the definition reaches its end. Never shorter.
+		if endNode != nil && endNode.StartByte >= d.start && endNode.EndByte > d.end {
+			d.end = endNode.EndByte
 		}
 		if bodyNode != nil && bodyNode.StartByte >= d.start && bodyNode.StartByte <= d.end {
 			d.bodyStart, d.hasBody = bodyNode.StartByte, true

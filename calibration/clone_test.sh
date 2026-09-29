@@ -46,6 +46,36 @@ bash "$HERE/clone.sh" toy >"$tmp/out" 2>&1 || { echo "FAIL: clone.sh"; cat "$tmp
 bash "$HERE/clone.sh" toy >"$tmp/out2" 2>&1
 grep -q "^skip" "$tmp/out2" || { echo "FAIL: rerun did not skip"; cat "$tmp/out2"; exit 1; }
 
+# A shard with `sparse` patterns (a tool format's manifests, at any depth in a
+# large tree): only the matching files land on disk.
+src2="$tmp/src2"; mkdir -p "$src2/a/b" "$src2/big"
+echo 'module root' >"$src2/go.mod"; echo 'module nested' >"$src2/a/b/go.mod"
+echo 'x' >"$src2/a/b/code.go"; echo 'y' >"$src2/big/blob.bin"; echo 's' >"$src2/go.sum"
+git -C "$src2" init -q
+git -C "$src2" -c user.email=t@example.invalid -c user.name=t add -A
+git -C "$src2" -c user.email=t@example.invalid -c user.name=t commit -qm init
+git -C "$src2" tag v1
+sha2=$(git -C "$src2" rev-parse HEAD)
+cat >"$tmp/shards/mods.yaml" <<YAML
+id: mods
+language: Mods
+repos:
+  - name: example/src2
+    url: file://$src2
+    ref: v1
+    sha: $sha2
+    licence: MIT
+    sparse: ["**/go.mod", "**/go.sum"]
+    idioms: [one]
+YAML
+bash "$HERE/clone.sh" mods >"$tmp/out" 2>&1 || { echo "FAIL: clone.sh with sparse"; cat "$tmp/out"; exit 1; }
+[ -f "$tmp/dest/mods/src2/go.mod" ] && [ -f "$tmp/dest/mods/src2/a/b/go.mod" ] && [ -f "$tmp/dest/mods/src2/go.sum" ] \
+  || { echo "FAIL: a sparse pattern's files missing"; cat "$tmp/out"; exit 1; }
+[ ! -e "$tmp/dest/mods/src2/a/b/code.go" ] && [ ! -e "$tmp/dest/mods/src2/big/blob.bin" ] \
+  || { echo "FAIL: sparse checkout kept a file outside its patterns"; exit 1; }
+bash "$HERE/clean.sh" mods >/dev/null
+rm "$tmp/shards/mods.yaml"
+
 # A filter that names neither the shard id nor its language clones nothing.
 rm -rf "$tmp/dest"
 bash "$HERE/clone.sh" other >/dev/null

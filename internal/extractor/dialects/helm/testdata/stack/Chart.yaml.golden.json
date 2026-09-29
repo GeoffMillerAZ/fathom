@@ -1,0 +1,67 @@
+{
+  "engine": "doc",
+  "symbols": [
+    {
+      "name": "stack",
+      "kind": "HelmChart",
+      "package": "Chart",
+      "line": 1,
+      "end_line": 18,
+      "signature": "1.4.0",
+      "tier": "verified"
+    },
+    {
+      "name": "common",
+      "kind": "HelmDependency",
+      "package": "Chart",
+      "line": 8,
+      "end_line": 10,
+      "signature": "2.x.x",
+      "tier": "verified"
+    },
+    {
+      "name": "redis",
+      "kind": "HelmDependency",
+      "package": "Chart",
+      "line": 11,
+      "end_line": 14,
+      "signature": "19.6.4",
+      "tier": "verified"
+    },
+    {
+      "name": "postgresql",
+      "kind": "HelmDependency",
+      "package": "Chart",
+      "line": 15,
+      "end_line": 18,
+      "signature": "15.5.0",
+      "tier": "verified"
+    }
+  ],
+  "cross_file": [
+    {
+      "from": "",
+      "edge": "depends_on",
+      "raw": "common",
+      "target": "common",
+      "strategy": "module-source",
+      "line": 8
+    },
+    {
+      "from": "",
+      "edge": "depends_on",
+      "raw": "redis",
+      "target": "redis",
+      "strategy": "module-source",
+      "line": 11
+    },
+    {
+      "from": "",
+      "edge": "depends_on",
+      "raw": "postgresql",
+      "target": "postgresql",
+      "strategy": "module-source",
+      "line": 15
+    }
+  ]
+}

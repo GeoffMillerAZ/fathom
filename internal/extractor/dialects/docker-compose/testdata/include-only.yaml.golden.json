@@ -1,0 +1,6 @@
+{
+  "symbols": [],
+  "cross_file": [
+    { "from": "", "edge": "includes", "raw": "compose.base.yaml", "target": "compose.base.yaml", "strategy": "repo-path", "line": 3 }
+  ]
+}

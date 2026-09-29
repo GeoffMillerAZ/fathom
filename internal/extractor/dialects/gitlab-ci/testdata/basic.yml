@@ -1,0 +1,63 @@
+stages:
+  - build
+  - test
+  - deploy
+
+variables:
+  GO_VERSION: "1.25"
+
+default:
+  image: golang:1.25
+  interruptible: true
+
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH
+
+.go-cache:
+  cache:
+    key: go-mod
+    paths:
+      - .cache/go
+
+.rules-default:
+  extends: .go-cache
+  rules:
+    - if: $CI_COMMIT_BRANCH
+
+compile:
+  extends:
+    - .go-cache
+    - .rules-default
+  stage: build
+  script:
+    - go build ./...
+
+unit tests:
+  extends: .go-cache
+  stage: test
+  needs: [compile]
+  script:
+    - go test ./...
+
+lint:
+  stage: test
+  needs:
+    - job: compile
+      artifacts: false
+  dependencies: []
+  script:
+    - golangci-lint run
+
+deploy:
+  stage: deploy
+  needs:
+    - compile
+    - job: unit tests
+      optional: true
+  dependencies:
+    - compile
+  script:
+    - ./deploy.sh
+  environment: production

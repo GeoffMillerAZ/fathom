@@ -1,0 +1,30 @@
+{
+  "id": "lua",
+  "display": "Lua",
+  "kind": "language",
+  "engine": "tags",
+  "lang_tag": "lua",
+  "match": {
+    "extensions": [".lua"],
+    "basenames": [],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "grammar": { "blob": "lua", "entry_point": "tree_sitter_lua" },
+  "variants": [],
+  "queries": { "tags": "tags.scm" },
+  "kinds": {
+    "function": { "source_kind": "LuaFunction", "canonical": "function", "callable": true }
+  },
+  "required_kinds": ["function"],
+  "oracle_kinds": {
+    "ctags": { "function": "function" },
+    "tool":  { "function": "function" }
+  },
+  "qualify": { "chain_containers": false, "container_sep": ".", "method_sep": "." },
+  "package": { "strategy": "dir" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L2",
+  "queue_id": "lua"
+}

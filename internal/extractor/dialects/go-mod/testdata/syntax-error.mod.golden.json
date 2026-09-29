@@ -1,0 +1,15 @@
+{
+  "path": "go.mod",
+  "roots": ["example.com/broken"],
+  "symbols": [
+    { "name": "example.com/broken", "kind": "GoModule", "package": "go", "line": 1, "end_line": 1, "signature": "go 1.20", "calls": ["github.com/ok/one", "github.com/ok/three", "github.com/ok/two"], "tier": "pre-scan" },
+    { "name": "github.com/ok/one", "kind": "ModuleDep", "package": "go", "line": 6, "end_line": 6, "signature": "v1.0.0", "tier": "pre-scan" },
+    { "name": "github.com/ok/two", "kind": "ModuleDep", "package": "go", "line": 8, "end_line": 8, "signature": "v1.2.0", "tier": "pre-scan" },
+    { "name": "github.com/ok/three", "kind": "ModuleDep", "package": "go", "line": 13, "end_line": 13, "signature": "v0.3.0", "tier": "pre-scan" }
+  ],
+  "cross_file": [
+    { "from": "example.com/broken", "edge": "depends_on", "raw": "github.com/ok/one", "target": "github.com/ok/one", "strategy": "module-source", "line": 6 },
+    { "from": "example.com/broken", "edge": "depends_on", "raw": "github.com/ok/two", "target": "github.com/ok/two", "strategy": "module-source", "line": 8 },
+    { "from": "example.com/broken", "edge": "depends_on", "raw": "github.com/ok/three", "target": "github.com/ok/three", "strategy": "module-source", "line": 13 }
+  ]
+}

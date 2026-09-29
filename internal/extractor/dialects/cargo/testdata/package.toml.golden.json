@@ -1,0 +1,29 @@
+{
+  "symbols": [
+    { "name": "acme-core", "kind": "CargoPackage", "package": "package", "line": 1, "end_line": 68, "signature": "1.4.2", "calls": ["acme-log", "acme-testkit", "bytes", "cc", "clap", "criterion", "libc", "log", "rand_core_next", "serde", "winapi"], "tier": "verified" },
+    { "name": "lib/acme_core", "kind": "CargoLib", "package": "package", "line": 8, "end_line": 11, "signature": "src/core.rs", "tier": "verified" },
+    { "name": "bin/acme", "kind": "CargoBin", "package": "package", "line": 13, "end_line": 16, "signature": "src/bin/acme.rs", "tier": "verified" },
+    { "name": "bin/acme-admin", "kind": "CargoBin", "package": "package", "line": 18, "end_line": 20, "signature": "src/bin/admin.rs", "tier": "verified" },
+    { "name": "example/hello", "kind": "CargoExample", "package": "package", "line": 22, "end_line": 24, "signature": "examples/hello.rs", "tier": "verified" },
+    { "name": "test/integration", "kind": "CargoTest", "package": "package", "line": 26, "end_line": 28, "tier": "verified" },
+    { "name": "bench/throughput", "kind": "CargoBench", "package": "package", "line": 30, "end_line": 32, "tier": "verified" },
+    { "name": "default", "kind": "CargoFeature", "package": "package", "line": 35, "end_line": 35, "tier": "verified" },
+    { "name": "std", "kind": "CargoFeature", "package": "package", "line": 36, "end_line": 36, "tier": "verified" },
+    { "name": "alloc", "kind": "CargoFeature", "package": "package", "line": 37, "end_line": 37, "tier": "verified" },
+    { "name": "cli", "kind": "CargoFeature", "package": "package", "line": 38, "end_line": 38, "tier": "verified" },
+    { "name": "serde", "kind": "CargoFeature", "package": "package", "line": 39, "end_line": 39, "tier": "verified" }
+  ],
+  "cross_file": [
+    { "from": "", "edge": "depends_on", "raw": "acme-log", "target": "acme-log", "strategy": "module-source", "line": 42 },
+    { "from": "", "edge": "depends_on", "raw": "clap", "target": "clap", "strategy": "module-source", "line": 43 },
+    { "from": "", "edge": "depends_on", "raw": "serde", "target": "serde", "strategy": "module-source", "line": 44 },
+    { "from": "", "edge": "depends_on", "raw": "log", "target": "log", "strategy": "module-source", "line": 45 },
+    { "from": "", "edge": "depends_on", "raw": "rand_core_next", "target": "rand_core_next", "strategy": "module-source", "line": 46 },
+    { "from": "", "edge": "depends_on", "raw": "bytes", "target": "bytes", "strategy": "module-source", "line": 48 },
+    { "from": "", "edge": "dev_depends_on", "raw": "acme-testkit", "target": "acme-testkit", "strategy": "module-source", "line": 52 },
+    { "from": "", "edge": "dev_depends_on", "raw": "criterion", "target": "criterion", "strategy": "module-source", "line": 53 },
+    { "from": "", "edge": "build_depends_on", "raw": "cc", "target": "cc", "strategy": "module-source", "line": 56 },
+    { "from": "", "edge": "depends_on", "raw": "libc", "target": "libc", "strategy": "module-source", "line": 59 },
+    { "from": "", "edge": "dev_depends_on", "raw": "winapi", "target": "winapi", "strategy": "module-source", "line": 62 }
+  ]
+}

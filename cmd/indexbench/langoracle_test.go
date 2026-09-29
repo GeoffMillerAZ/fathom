@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/langbench"
 )
 
@@ -148,5 +149,44 @@ func TestCmdLangOracle(t *testing.T) {
 	empty := t.TempDir()
 	if code := cmdLangOracle([]string{"-dialect", "typescript", "-subject", empty, "-ctags", ctags, "-out", out2}, &stdout, &stderr); code != 1 {
 		t.Errorf("subject without dialect files exit %d, want 1", code)
+	}
+}
+
+// TestOwnedSourceRefsRoutesCppHeaders (LB-Q-cpp): a C++ subject's .h headers
+// are measured when the header router (the C++ sniff) sends them to C++ —
+// no dialect claims .h — and only then; every other dialect owns exactly what
+// its manifest claims.
+func TestOwnedSourceRefsRoutesCppHeaders(t *testing.T) {
+	root := t.TempDir()
+	write := func(rel, body string) core.SourceRef {
+		if err := os.WriteFile(filepath.Join(root, rel), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		return core.SourceRef{Path: rel}
+	}
+	refs := []core.SourceRef{
+		write("cxx.h", "namespace n { class C {}; }\n"),
+		write("plain.h", "int f(int a);\n"),
+		write("impl.cc", "int g() { return 0; }\n"),
+		write("notes.md", "# x\n"),
+	}
+	cpp := langbench.Manifest{ID: "cpp", Match: langbench.ManifestMatch{Extensions: []string{".cc"}}}
+	var got []string
+	for _, r := range ownedSourceRefs(cpp, root, refs, nil) {
+		got = append(got, r.Path)
+	}
+	if strings.Join(got, ",") != "cxx.h,impl.cc" {
+		t.Errorf("cpp owns %v, want [cxx.h impl.cc]", got)
+	}
+	got = nil
+	for _, r := range ownedSourceRefs(cpp, root, refs, []string{"*.cc"}) {
+		got = append(got, r.Path)
+	}
+	if strings.Join(got, ",") != "impl.cc" {
+		t.Errorf("cpp owns %v under -only *.cc, want [impl.cc]", got)
+	}
+	c := langbench.Manifest{ID: "c", Match: langbench.ManifestMatch{Extensions: []string{".c"}}}
+	if n := len(ownedSourceRefs(c, root, refs, nil)); n != 0 {
+		t.Errorf("c owns %d of these files, want 0 (only its own extensions)", n)
 	}
 }

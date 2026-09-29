@@ -1,0 +1,173 @@
+{
+  "dialect": "cargo",
+  "kind": "tooling",
+  "target_level": "L3",
+  "level_met": "L3",
+  "grade": {
+    "L1": "excellent",
+    "L2": "excellent",
+    "L3": "excellent",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-09-29",
+  "fathom_commit": "3420672d",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "rust-lang/cargo",
+      "sha": "797e8a9bca276c1c9f9f738d2a20f484fa4eea9d",
+      "files": 27,
+      "bytes": 22166,
+      "counts": {
+        "fathom_defs": 27,
+        "kind_equal": 27,
+        "matched": 27,
+        "oracle_defs": 27,
+        "ref_fathom": 229,
+        "ref_fathom_in_truth": 229,
+        "ref_truth": 229,
+        "ref_truth_found": 229,
+        "xref_fathom": 57,
+        "xref_fathom_in_truth": 56,
+        "xref_truth": 57,
+        "xref_truth_found": 56
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A",
+        "xref": "A"
+      },
+      "kind_intersection": [
+        "package"
+      ],
+      "excluded_by_kind": {
+        "fathom:CargoBench": 3,
+        "fathom:CargoBin": 1,
+        "fathom:CargoFeature": 9,
+        "fathom:CargoLib": 2,
+        "fathom:CargoWorkspace": 1
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 4.459000000000001,
+        "extract_cpu_ms": 4.354999999999999,
+        "max_file_ms": 3,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "tokio-rs/tokio",
+      "sha": "75fef53d0a8590c2d1dbb63672aa7b7d1ef51155",
+      "files": 13,
+      "bytes": 18929,
+      "counts": {
+        "fathom_defs": 12,
+        "kind_equal": 12,
+        "matched": 12,
+        "oracle_defs": 12,
+        "ref_fathom": 101,
+        "ref_fathom_in_truth": 101,
+        "ref_truth": 101,
+        "ref_truth_found": 101,
+        "xref_fathom": 38,
+        "xref_fathom_in_truth": 38,
+        "xref_truth": 38,
+        "xref_truth_found": 38
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A",
+        "xref": "A"
+      },
+      "kind_intersection": [
+        "package"
+      ],
+      "excluded_by_kind": {
+        "fathom:CargoBench": 17,
+        "fathom:CargoBin": 5,
+        "fathom:CargoExample": 20,
+        "fathom:CargoFeature": 49,
+        "fathom:CargoTest": 4,
+        "fathom:CargoWorkspace": 3
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 2.418,
+        "extract_cpu_ms": 4.386,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "cargo metadata (--no-deps, and --all-features for the resolved graph)",
+      "version": "cargo 1.98.1 (797e8a9bc 2026-08-05)"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 1,
+    "ref_recall": 1,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "xref_precision": 0.9895,
+    "xref_recall": 0.9895
+  },
+  "metric_tiers": {
+    "ref_precision": "A",
+    "ref_recall": "A",
+    "sym_precision": "A",
+    "sym_recall": "A",
+    "xref_precision": "A",
+    "xref_recall": "A"
+  },
+  "required_kinds": [
+    "package"
+  ],
+  "kind_intersection": [
+    "package"
+  ],
+  "counts": {
+    "fathom_defs": 39,
+    "kind_equal": 39,
+    "matched": 39,
+    "oracle_defs": 39,
+    "ref_fathom": 330,
+    "ref_fathom_in_truth": 330,
+    "ref_truth": 330,
+    "ref_truth_found": 330,
+    "xref_fathom": 95,
+    "xref_fathom_in_truth": 94,
+    "xref_truth": 95,
+    "xref_truth_found": 94
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 4.7,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 5.98,
+    "max_file_ms": 3,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "fathom:CargoBench": 20,
+    "fathom:CargoBin": 6,
+    "fathom:CargoExample": 20,
+    "fathom:CargoFeature": 58,
+    "fathom:CargoLib": 2,
+    "fathom:CargoTest": 4,
+    "fathom:CargoWorkspace": 4
+  },
+  "notes": [
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "rust-lang/cargo: restricted to Cargo.toml, benches/*/Cargo.toml, crates/*/Cargo.toml, credential/*/Cargo.toml (-only; the files outside are a disclosed gap, not measured)"
+  ],
+  "disposition": null
+}

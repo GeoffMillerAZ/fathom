@@ -1,0 +1,15 @@
+{
+  "symbols": [
+    { "name": "acme", "kind": "CargoPackage", "package": "rootpkg", "line": 1, "end_line": 19, "signature": "3.0.0", "calls": ["acme-macros", "acme-sys", "tokio"], "tier": "verified" },
+    { "name": "workspace", "kind": "CargoWorkspace", "package": "rootpkg", "line": 6, "end_line": 10, "tier": "verified" },
+    { "name": "default", "kind": "CargoFeature", "package": "rootpkg", "line": 18, "end_line": 18, "tier": "verified" },
+    { "name": "full", "kind": "CargoFeature", "package": "rootpkg", "line": 19, "end_line": 19, "tier": "verified" }
+  ],
+  "cross_file": [
+    { "from": "workspace", "edge": "workspace_member", "raw": "crates/acme-macros", "target": "crates/acme-macros", "strategy": "repo-path", "line": 7 },
+    { "from": "workspace", "edge": "workspace_member", "raw": "crates/acme-sys", "target": "crates/acme-sys", "strategy": "repo-path", "line": 7 },
+    { "from": "", "edge": "depends_on", "raw": "acme-macros", "target": "acme-macros", "strategy": "module-source", "line": 13 },
+    { "from": "", "edge": "depends_on", "raw": "acme-sys", "target": "acme-sys", "strategy": "module-source", "line": 14 },
+    { "from": "", "edge": "depends_on", "raw": "tokio", "target": "tokio", "strategy": "module-source", "line": 15 }
+  ]
+}

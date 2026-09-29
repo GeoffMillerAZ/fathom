@@ -1,0 +1,297 @@
+{
+  "symbols": [
+    {
+      "name": "MAX_ITEMS",
+      "kind": "CppMacro",
+      "package": "shapes",
+      "line": 5,
+      "end_line": 5,
+      "tier": "verified"
+    },
+    {
+      "name": "SQUARE",
+      "kind": "CppMacro",
+      "package": "shapes",
+      "line": 7,
+      "end_line": 7,
+      "tier": "verified"
+    },
+    {
+      "name": "geo",
+      "kind": "CppNamespace",
+      "package": "shapes",
+      "line": 9,
+      "end_line": 68,
+      "tier": "verified"
+    },
+    {
+      "name": "geo.detail",
+      "kind": "CppNamespace",
+      "package": "shapes",
+      "line": 11,
+      "end_line": 13,
+      "tier": "verified"
+    },
+    {
+      "name": "geo.detail.scale",
+      "kind": "CppFunc",
+      "package": "shapes",
+      "line": 12,
+      "end_line": 12,
+      "signature": "int scale(int v)",
+      "tier": "verified"
+    },
+    {
+      "name": "geo.Point",
+      "kind": "CppStruct",
+      "package": "shapes",
+      "line": 15,
+      "end_line": 18,
+      "tier": "verified"
+    },
+    {
+      "name": "geo.Cell",
+      "kind": "CppUnion",
+      "package": "shapes",
+      "line": 20,
+      "end_line": 23,
+      "tier": "verified"
+    },
+    {
+      "name": "geo.Mode",
+      "kind": "CppEnum",
+      "package": "shapes",
+      "line": 25,
+      "end_line": 25,
+      "tier": "verified"
+    },
+    {
+      "name": "geo.Color",
+      "kind": "CppEnum",
+      "package": "shapes",
+      "line": 27,
+      "end_line": 27,
+      "tier": "verified"
+    },
+    {
+      "name": "geo.Id",
+      "kind": "CppTypedef",
+      "package": "shapes",
+      "line": 29,
+      "end_line": 29,
+      "tier": "verified"
+    },
+    {
+      "name": "geo.Callback",
+      "kind": "CppTypedef",
+      "package": "shapes",
+      "line": 30,
+      "end_line": 30,
+      "tier": "verified"
+    },
+    {
+      "name": "geo.PointList",
+      "kind": "CppTypedef",
+      "package": "shapes",
+      "line": 31,
+      "end_line": 31,
+      "tier": "verified"
+    },
+    {
+      "name": "geo.Shape",
+      "kind": "CppClass",
+      "package": "shapes",
+      "line": 33,
+      "end_line": 53,
+      "tier": "verified"
+    },
+    {
+      "name": "geo.Shape.Shape",
+      "kind": "CppFunc",
+      "package": "shapes",
+      "line": 36,
+      "end_line": 36,
+      "signature": "explicit Shape(int sides) : sides_(sides)",
+      "tier": "verified"
+    },
+    {
+      "name": "geo.Shape.~Shape",
+      "kind": "CppFunc",
+      "package": "shapes",
+      "line": 37,
+      "end_line": 37,
+      "signature": "virtual ~Shape()",
+      "tier": "verified"
+    },
+    {
+      "name": "geo.Shape.sides",
+      "kind": "CppFunc",
+      "package": "shapes",
+      "line": 38,
+      "end_line": 38,
+      "signature": "int sides() const",
+      "tier": "verified"
+    },
+    {
+      "name": "geo.Shape.operator=",
+      "kind": "CppFunc",
+      "package": "shapes",
+      "line": 39,
+      "end_line": 39,
+      "signature": "Shape &operator=(const Shape &other)",
+      "tier": "verified"
+    },
+    {
+      "name": "geo.Shape.operator==",
+      "kind": "CppFunc",
+      "package": "shapes",
+      "line": 40,
+      "end_line": 40,
+      "signature": "bool operator==(const Shape &other) const",
+      "tier": "verified"
+    },
+    {
+      "name": "geo.Shape.Edge",
+      "kind": "CppStruct",
+      "package": "shapes",
+      "line": 44,
+      "end_line": 47,
+      "tier": "verified"
+    },
+    {
+      "name": "geo.Shape.Edge.measure",
+      "kind": "CppFunc",
+      "package": "shapes",
+      "line": 46,
+      "end_line": 46,
+      "signature": "int measure()",
+      "tier": "verified"
+    },
+    {
+      "name": "geo.Shape.Kind",
+      "kind": "CppEnum",
+      "package": "shapes",
+      "line": 49,
+      "end_line": 49,
+      "tier": "verified"
+    },
+    {
+      "name": "geo.Box",
+      "kind": "CppClass",
+      "package": "shapes",
+      "line": 56,
+      "end_line": 63,
+      "tier": "verified"
+    },
+    {
+      "name": "geo.Box.put",
+      "kind": "CppFunc",
+      "package": "shapes",
+      "line": 59,
+      "end_line": 59,
+      "signature": "void put(U u)",
+      "tier": "verified"
+    },
+    {
+      "name": "geo.largest",
+      "kind": "CppFunc",
+      "package": "shapes",
+      "line": 66,
+      "end_line": 66,
+      "signature": "T largest(T a, T b)",
+      "tier": "verified"
+    },
+    {
+      "name": "outer.inner",
+      "kind": "CppNamespace",
+      "package": "shapes",
+      "line": 70,
+      "end_line": 72,
+      "tier": "verified"
+    },
+    {
+      "name": "outer.inner.deep",
+      "kind": "CppFunc",
+      "package": "shapes",
+      "line": 71,
+      "end_line": 71,
+      "signature": "int deep()",
+      "tier": "verified"
+    },
+    {
+      "name": "hidden",
+      "kind": "CppFunc",
+      "package": "shapes",
+      "line": 75,
+      "end_line": 75,
+      "signature": "int hidden()",
+      "tier": "verified"
+    },
+    {
+      "name": "geo.Shape.area",
+      "kind": "CppFunc",
+      "package": "shapes",
+      "line": 78,
+      "end_line": 78,
+      "signature": "double geo::Shape::area() const",
+      "tier": "verified"
+    },
+    {
+      "name": "geo.Shape.unit",
+      "kind": "CppFunc",
+      "package": "shapes",
+      "line": 80,
+      "end_line": 80,
+      "signature": "geo::Shape geo::Shape::unit()",
+      "calls": [
+        "Shape"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "geo.Box.get",
+      "kind": "CppFunc",
+      "package": "shapes",
+      "line": 83,
+      "end_line": 83,
+      "signature": "T &geo::Box<T>::get()",
+      "tier": "verified"
+    },
+    {
+      "name": "make_ptr",
+      "kind": "CppFunc",
+      "package": "shapes",
+      "line": 85,
+      "end_line": 85,
+      "signature": "int *make_ptr(int n)",
+      "tier": "verified"
+    },
+    {
+      "name": "pick",
+      "kind": "CppFunc",
+      "package": "shapes",
+      "line": 87,
+      "end_line": 91,
+      "signature": "int &pick(int &a, int &b, bool first)",
+      "tier": "verified"
+    },
+    {
+      "name": "c_entry",
+      "kind": "CppFunc",
+      "package": "shapes",
+      "line": 94,
+      "end_line": 94,
+      "signature": "void c_entry(void)",
+      "tier": "verified"
+    },
+    {
+      "name": "geo.largest",
+      "kind": "CppFunc",
+      "package": "shapes",
+      "line": 98,
+      "end_line": 98,
+      "signature": "int geo::largest<int>(int a, int b)",
+      "tier": "verified"
+    }
+  ]
+}

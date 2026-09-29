@@ -1,0 +1,3 @@
+<Project>
+  <!-- Intentionally empty: stops the parent directory's targets from being imported here. -->
+</Project>

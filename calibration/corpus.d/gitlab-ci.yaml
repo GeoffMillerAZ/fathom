@@ -1,0 +1,58 @@
+id: gitlab-ci
+language: GitLab CI (.gitlab-ci.yml, included files)
+# The queue entry names gitlab-org/gitlab-runner and gitlab-org/gitaly.
+# gitlab-runner is substituted out: the tier-A oracle (gitlab-ci-local
+# --list-json) rejects its pipeline (its `needs:` names a parallel:matrix
+# expansion, "helper images: [alpine alpine-pwsh ...]", that the tool cannot
+# find), so it would measure as a subject with no oracle. gitlab-org/gitlab-
+# development-kit and gitlab-org/gitlab-pages replace it: both are MIT and both
+# split their pipeline across local includes that extend each other's hidden
+# templates, the multi-file shape the L3 cross-file references need and
+# gitaly's single file does not have. (omnibus-gitlab, Apache-2.0, has the
+# same shape and was tried first; the tool rejects it too, on a rules:
+# expression it cannot evaluate.) Only .gitlab/ and the root files are read
+# for the two multi-file subjects.
+repos:
+  - name: gitlab-org/gitaly
+    url: https://gitlab.com/gitlab-org/gitaly.git
+    ref: v19.4.1
+    sha: 7985a4e45c9bfd065b04c031ae0b9ad80c4e4416
+    licence: MIT
+    idioms:
+      - "one large root .gitlab-ci.yml: stages, hidden templates (.test_template,
+        .rules_run_on_merge) carried by YAML anchors and <<: merge keys, a
+        needs: DAG"
+      - "parallel: matrix over Go versions (jobs the tool expands into one job
+        per combination)"
+      - "trigger: jobs that start multi-project pipelines, and remote
+        template:/component: includes whose jobs no local file declares"
+      - "job names with colons (build:binaries, test:pgbouncer, qa:benchmark:performance)"
+  - name: gitlab-org/gitlab-development-kit
+    url: https://gitlab.com/gitlab-org/gitlab-development-kit.git
+    ref: main
+    sha: e7693825a4f622427b6c88746ccb683f6e6aa8fe
+    licence: MIT
+    subpath: .gitlab
+    # A rolling repository: its release tags stop at v0.2.9, years before its
+    # current pipeline, so ref names the branch and sha pins the commit
+    # measured (the dockerfile and docker-compose shards' convention).
+    idioms:
+      - "a root .gitlab-ci.yml that includes fifteen local files under
+        .gitlab/ci/ (some with rules: on the include)"
+      - "_rules, _docker and _interruptible fragments of hidden templates that
+        jobs in other files extend"
+      - "needs: and dependencies: naming jobs declared in a different included
+        file"
+      - "a component include with inputs:, and matrix jobs per architecture"
+  - name: gitlab-org/gitlab-pages
+    url: https://gitlab.com/gitlab-org/gitlab-pages.git
+    ref: v19.4.1
+    sha: ddf88a1750ea87def401f210f17b7c63e03cf409
+    licence: MIT
+    subpath: .gitlab
+    idioms:
+      - "a root .gitlab-ci.yml that includes .gitlab/ci/prepare.yml and
+        .gitlab/ci/test.yml by local path, plus a component include"
+      - "a hidden .common template in the root file that jobs of both included
+        files extend, and needs: on a job declared in another file"
+      - "parallel: matrix over Go versions, and default: image and tags"

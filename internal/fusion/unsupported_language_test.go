@@ -8,7 +8,7 @@ package fusion_test
 // originally pinned Kotlin as the disclosure fixture. Wave P2 (O81) closed
 // the Kotlin gap itself (extractor.NewTSExtractor("kotlin"),
 // internal/extractor/tsengine/grammars/kotlin.wasm.gz), so this file now uses
-// Swift — a language that still has no extractor — to keep proving the
+// Zig — a language that still has no extractor — to keep proving the
 // DISCLOSURE mechanism in general: Report.UnsupportedLanguages must name the
 // language and count the files fusion silently skips, rather than leaving
 // that fact recoverable only by noticing a suspiciously low symbol count.
@@ -20,17 +20,17 @@ import "testing"
 
 func TestIngest_UnsupportedLanguageDisclosed(t *testing.T) {
 	dir := t.TempDir()
-	writeFile(t, dir, "Sources/Example/Main.swift", "import Foundation\n\nfunc main() {}\n")
-	writeFile(t, dir, "Sources/Example/Widget.swift", "class Widget {}\n")
+	writeFile(t, dir, "src/Main.zig", "const std = @import(\"std\");\n\npub fn main() void {}\n")
+	writeFile(t, dir, "src/Widget.zig", "pub const Widget = struct {};\n")
 	writeFile(t, dir, "README.md", "# Example\n")
 
-	_, report := ingestDir(t, dir, "swift-fixture")
+	_, report := ingestDir(t, dir, "zig-fixture")
 
 	if report.UnsupportedLanguages == nil {
-		t.Fatalf("Report.UnsupportedLanguages is nil, want a swift entry")
+		t.Fatalf("Report.UnsupportedLanguages is nil, want a zig entry")
 	}
-	if got, want := report.UnsupportedLanguages["swift"], 2; got != want {
-		t.Errorf("UnsupportedLanguages[swift] = %d, want %d", got, want)
+	if got, want := report.UnsupportedLanguages["zig"], 2; got != want {
+		t.Errorf("UnsupportedLanguages[zig] = %d, want %d", got, want)
 	}
 	if _, ok := report.UnsupportedLanguages["md"]; ok {
 		t.Errorf("UnsupportedLanguages should not list \"md\" — .md has a registered extractor")

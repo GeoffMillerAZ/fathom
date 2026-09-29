@@ -1,0 +1,84 @@
+{
+  "symbols": [
+    {
+      "name": "Pipeline",
+      "kind": "RubyClass",
+      "package": "calls",
+      "line": 3,
+      "end_line": 29,
+      "tier": "verified"
+    },
+    {
+      "name": "Pipeline::STAGES",
+      "kind": "RubyConstant",
+      "package": "calls",
+      "line": 4,
+      "end_line": 4,
+      "tier": "verified"
+    },
+    {
+      "name": "Pipeline.run",
+      "kind": "RubyMethod",
+      "package": "calls",
+      "line": 6,
+      "end_line": 16,
+      "signature": "def run(input, *rest, verbose: false, &block)",
+      "calls": [
+        "Core",
+        "Kernel",
+        "Lexer",
+        "Parser",
+        "Registry",
+        "STAGES",
+        "build",
+        "dispatch",
+        "each",
+        "exit",
+        "instance",
+        "puts",
+        "register",
+        "scan",
+        "visit",
+        "walk"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Pipeline.dispatch",
+      "kind": "RubyMethod",
+      "package": "calls",
+      "line": 18,
+      "end_line": 22,
+      "signature": "def dispatch(stage)",
+      "calls": [
+        "ArgumentError",
+        "call",
+        "fetch",
+        "nil?",
+        "raise"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Pipeline.handlers",
+      "kind": "RubyMethod",
+      "package": "calls",
+      "line": 26,
+      "end_line": 28,
+      "signature": "def handlers",
+      "calls": [
+        "Hash",
+        "new"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "set",
+      "module": "set",
+      "kind": "whole",
+      "line": 1
+    }
+  ]
+}

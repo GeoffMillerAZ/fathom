@@ -125,3 +125,34 @@ grammars × concurrency, and the count may not grow with the file count). The st
 check's wall belongs to the cold-cache Go typed pass under host load — a tenancy-lane
 question (warm the typed pass's build cache, or measure that step on CPU like D1), not a
 language one.
+
+## LB-M4 wave 2, 2026-09-29
+
+Measured at 88fe67a5 (lq-integ, wave 2 merged) on darwin/arm64, go 1.26.3,
+`CGO_ENABLED=1`, `go build ./cmd/fathom` (no `-ldflags`), twenty-two
+embedded grammars. Wave 2 added `cpp`, `dart`, `gotemplate` (Helm's
+templates), `lua`, `makefile`, `php`, `powershell`, `rust`, `swift`, and
+re-pinned `kotlin` (fwcd/tree-sitter-kotlin 0.3.8 to commit 1852ea17).
+Docker Compose, GitLab CI, Maven, Cargo, Go modules and MSBuild are
+doc-engine or native formats and embed nothing. The wave's base, eb96fcbc,
+was built from a `git archive` (no VCS stamp, a few hundred bytes).
+
+| Build | `cmd/fathom` bytes | Embedded `.wasm.gz` bytes |
+|---|--:|--:|
+| 20304d19 (wave 1b, thirteen grammars) | 93,609,890 | 3,184,249 |
+| eb96fcbc (wave 2 base, round-2 harness work, thirteen grammars) | 94,639,090 | 3,184,249 |
+| 88fe67a5 (wave 2, twenty-two grammars) | 96,980,578 | 5,122,633 |
+
+Per grammar added (`.wasm.gz`): cpp 420,154; dart 205,433; gotemplate
+68,230; lua 64,669; makefile 86,559; php 191,343; powershell 165,241;
+rust 204,421; swift 475,154 (1,881,204 together). Kotlin's re-pin grew its
+blob 57,180 bytes (510,036 to 567,216).
+
+The wave grew the binary 2,341,488 bytes over its base (1,938,384 of it
+grammar bytes, the rest the new dialects' Go code) and the embedded
+grammars 1,938,384. The embedded total is 12.2% of the 40 MiB
+(41,943,040-byte) cap and far below LB-F14's 36 MiB pack trigger; the mean
+is now 232,847 compressed bytes a grammar, so the cap admits about 180
+grammars at that mean.
+
+LB-M4 verdict: PASS (wave 2: 5,122,633 of 41,943,040 bytes)

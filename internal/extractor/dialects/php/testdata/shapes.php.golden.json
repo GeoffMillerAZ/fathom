@@ -1,0 +1,203 @@
+{
+  "symbols": [
+    {
+      "name": "App\\Models",
+      "kind": "PhpNamespace",
+      "package": "App\\Models",
+      "line": 4,
+      "end_line": 4,
+      "tier": "verified"
+    },
+    {
+      "name": "Shape",
+      "kind": "PhpInterface",
+      "package": "App\\Models",
+      "line": 8,
+      "end_line": 15,
+      "tier": "verified"
+    },
+    {
+      "name": "Shape.area",
+      "kind": "PhpMethod",
+      "package": "App\\Models",
+      "line": 12,
+      "end_line": 12,
+      "signature": "public function area(): float",
+      "tier": "verified"
+    },
+    {
+      "name": "Shape.unit",
+      "kind": "PhpMethod",
+      "package": "App\\Models",
+      "line": 14,
+      "end_line": 14,
+      "signature": "public static function unit(): static",
+      "tier": "verified"
+    },
+    {
+      "name": "Loggable",
+      "kind": "PhpTrait",
+      "package": "App\\Models",
+      "line": 17,
+      "end_line": 25,
+      "tier": "verified"
+    },
+    {
+      "name": "Loggable.log",
+      "kind": "PhpMethod",
+      "package": "App\\Models",
+      "line": 21,
+      "end_line": 24,
+      "signature": "public function log(string $message): void",
+      "calls": [
+        "info"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Base",
+      "kind": "PhpClass",
+      "package": "App\\Models",
+      "line": 27,
+      "end_line": 53,
+      "tier": "verified"
+    },
+    {
+      "name": "Base.__construct",
+      "kind": "PhpMethod",
+      "package": "App\\Models",
+      "line": 33,
+      "end_line": 37,
+      "signature": "public function __construct( protected readonly string $name, private int $weight = 0, )",
+      "tier": "verified"
+    },
+    {
+      "name": "Base.scale",
+      "kind": "PhpMethod",
+      "package": "App\\Models",
+      "line": 39,
+      "end_line": 39,
+      "signature": "abstract protected function scale(float $factor): static",
+      "tier": "verified"
+    },
+    {
+      "name": "Base.make",
+      "kind": "PhpMethod",
+      "package": "App\\Models",
+      "line": 41,
+      "end_line": 44,
+      "signature": "public static function make(string $name): static",
+      "tier": "verified"
+    },
+    {
+      "name": "Base.describe",
+      "kind": "PhpMethod",
+      "package": "App\\Models",
+      "line": 46,
+      "end_line": 52,
+      "signature": "public function describe( string $prefix, int $width = 10, ?array $options = null ): string",
+      "tier": "verified"
+    },
+    {
+      "name": "Circle",
+      "kind": "PhpClass",
+      "package": "App\\Models",
+      "line": 55,
+      "end_line": 66,
+      "tier": "verified"
+    },
+    {
+      "name": "Circle.area",
+      "kind": "PhpMethod",
+      "package": "App\\Models",
+      "line": 57,
+      "end_line": 60,
+      "signature": "public function area(): float",
+      "tier": "verified"
+    },
+    {
+      "name": "Circle.count",
+      "kind": "PhpMethod",
+      "package": "App\\Models",
+      "line": 62,
+      "end_line": 65,
+      "signature": "public function count(): int",
+      "tier": "verified"
+    },
+    {
+      "name": "Suit",
+      "kind": "PhpEnum",
+      "package": "App\\Models",
+      "line": 68,
+      "end_line": 84,
+      "tier": "verified"
+    },
+    {
+      "name": "Suit.label",
+      "kind": "PhpMethod",
+      "package": "App\\Models",
+      "line": 75,
+      "end_line": 78,
+      "signature": "public function label(): string",
+      "calls": [
+        "ucfirst"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Suit.fromChar",
+      "kind": "PhpMethod",
+      "package": "App\\Models",
+      "line": 80,
+      "end_line": 83,
+      "signature": "public static function fromChar(string $c): self",
+      "calls": [
+        "from"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Plain",
+      "kind": "PhpEnum",
+      "package": "App\\Models",
+      "line": 86,
+      "end_line": 90,
+      "tier": "verified"
+    },
+    {
+      "name": "helper",
+      "kind": "PhpFunction",
+      "package": "App\\Models",
+      "line": 92,
+      "end_line": 95,
+      "signature": "function helper(int $a, int $b = 2): int",
+      "tier": "verified"
+    },
+    {
+      "name": "guarded",
+      "kind": "PhpFunction",
+      "package": "App\\Models",
+      "line": 98,
+      "end_line": 101,
+      "signature": "function guarded(): bool",
+      "tier": "verified"
+    },
+    {
+      "name": "inner",
+      "kind": "PhpMethod",
+      "package": "App\\Models",
+      "line": 109,
+      "end_line": 111,
+      "signature": "public function inner(): void",
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "*",
+      "module": "Countable",
+      "kind": "wildcard",
+      "line": 6
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+1. Get the application URL by running these commands:
+{{- if .Values.ingress.enabled }}
+  http://{{ (index .Values.ingress.hosts 0).host }}
+{{- else }}
+  kubectl port-forward svc/{{ include "stack.fullname" . }} 8080:{{ .Values.service.ports.http.port }}
+{{- end }}

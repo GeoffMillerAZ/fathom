@@ -1,0 +1,39 @@
+{
+  "id": "helm",
+  "display": "Helm charts (Chart.yaml, values.yaml, templates)",
+  "kind": "tooling",
+  "engine": "tags+doc",
+  "lang_tag": "helm",
+  "match": {
+    "extensions": [".tpl"],
+    "basenames": ["Chart.yaml", "values.yaml"],
+    "globs": [
+      "**/templates/*.yaml", "**/templates/*.yml", "**/templates/**/*.yaml", "**/templates/**/*.yml",
+      "**/templates/NOTES.txt"
+    ],
+    "shebangs": [],
+    "sniff": null
+  },
+  "grammar": { "blob": "gotemplate", "entry_point": "tree_sitter_helm" },
+  "variants": [],
+  "queries": { "tags": "tags.scm" },
+  "kinds": {
+    "chart":        { "source_kind": "HelmChart",       "canonical": "package" },
+    "dependency":   { "source_kind": "HelmDependency",  "canonical": "data_source" },
+    "value":        { "source_kind": "HelmValue",       "canonical": "key" },
+    "template":     { "source_kind": "HelmTemplate",    "canonical": "macro", "callable": true },
+    "value_ref":    { "source_kind": "HelmValueRef",    "canonical": "key" },
+    "template_ref": { "source_kind": "HelmTemplateRef", "canonical": "macro" }
+  },
+  "required_kinds": ["chart", "dependency", "value", "template"],
+  "oracle_kinds": {
+    "tool": { "package": "package", "data_source": "data_source", "key": "key", "macro": "macro", "macro_ref": "macro" }
+  },
+  "name_match": "identity",
+  "names": { "trim_quotes": true, "strip_prefix": [".Values.", "$.Values."] },
+  "qualify": { "chain_containers": false, "container_sep": ".", "method_sep": "." },
+  "package": { "strategy": "dir" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L3",
+  "queue_id": "helm"
+}

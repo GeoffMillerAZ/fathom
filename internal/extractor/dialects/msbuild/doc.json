@@ -1,0 +1,19 @@
+{
+  "decode": "xml",
+  "detect": {},
+  "entities": [
+    { "select": "$",
+      "kind": "package", "source_kind": "MSBuildProject",
+      "name": "$file",
+      "signature": ".PropertyGroup[*].TargetFramework | .PropertyGroup[*].TargetFrameworks | .PropertyGroup[*].TargetFrameworkVersion | .@Sdk" },
+    { "select": "$.Target[*]", "where": { "is_map": true },
+      "kind": "target", "source_kind": "MSBuildTarget",
+      "name": ".@Name" }
+  ],
+  "references": [
+    { "from": "package", "select": "$.ItemGroup[*].PackageReference[*]", "value": ".@Include", "to_kind": "package", "edge": "depends_on" }
+  ],
+  "cross_file": [
+    { "select": "$.ItemGroup[*].ProjectReference[*]", "value": ".@Include", "resolve": "repo-path", "edge": "project_reference" }
+  ]
+}
