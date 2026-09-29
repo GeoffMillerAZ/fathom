@@ -912,6 +912,12 @@ func registerSemanticTools(s *Server, backend QueryInterface, modules moduleBack
 		if run.SectionsPrefiltered > 0 {
 			result["sections_prefiltered"] = run.SectionsPrefiltered
 		}
+		// AG-26: sections that kept a moved section's claims with no model
+		// call. Omitted when nothing carried.
+		if run.SectionsCarried > 0 {
+			result["sections_carried"] = run.SectionsCarried
+			result["claims_carried"] = run.ClaimsCarried
+		}
 		if len(run.PrefilteredSections) > 0 {
 			result["prefiltered_sections"] = run.PrefilteredSections
 		}

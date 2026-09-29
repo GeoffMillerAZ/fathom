@@ -2094,3 +2094,16 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** none yet, deliberately: whether to drop function words, or rank an OR of the words by bm25, is what KR-M1's doc-question slice measures (docs/plans/knowledge-retrieval.md); widening without that reading returns loosely related sections an agent would trust.
 - **Status:** open
 - **Impact:** An agent that asks a docs question in a sentence is told there is nothing, and falls back to grep or opens the document whole, which is the cost KR-8 was meant to remove.
+
+### O138 — a section whose last compile kept no claim goes to the model on every compile, because the digest gate remembers a compile only through its claims
+
+- **Symptom:** the AG-26 dry runs still send unchanged sections to the model: on fathom, 6 sections (about 2,975 estimated input tokens) whose subjects hold only superseded claims; on agentic-kit, 3 sections (about 1,217) that have never held a claim
+- **Evidence:**
+  - **Tool:** fathom compile --dry-run --layer obligations, on a fresh scratch ingest of HEAD plus a read-only copy of the shared store's obligations claims and links (fathom at 0f350063; agentic-kit at 53024ff)
+  - **Expected:** an unchanged section whose compile accepted no claim is gated like one whose compile accepted some
+  - **Actual:** the gate sends it on every run. Examples: `ADR.md#adr-001-three-layer-architecture` (6 superseded, 0 live), `ADR.md#architecture-decision-records-fathom` (never a claim), and the kit's `CLAUDE.md#fathom-fleet-index-code-intelligence-use-it-first`, a stanza section whose drafts were rejected as over-broad (`**/*`)
+  - **Repro:** compile a section whose model answer yields no accepted claim, then compile again with no change: `sections_compiled` counts it both times
+- **Root cause:** the gate's only record that a subject was compiled from a digest under a prompt is the claims. A compile that accepts none (the section states no rule, or every draft is rejected) supersedes the old claims and leaves nothing to gate on, so the next run pays again. AG-26's carry has the same blind spot, because a zero-claim section has nothing to carry.
+- **Fix:** record (subject, digest, prompt identity) for every compiled section, including one with no accepted claim, and gate on that record. Layer coverage should name the sections whose drafts were all rejected, so they do not read as silently uncompiled. Not done in AG-26, because it changes the store schema.
+- **Status:** open
+- **Impact:** at the dry run's haiku rates, about $0.03-0.12 per compile on fathom (under 4% of its $0.90-3.35 estimate) and $0.01-0.05 on the kit, the kit's whole remaining estimate, paid on every compile
