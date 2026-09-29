@@ -519,7 +519,7 @@ func splitTopLevelStatements(s string) []bwStatement {
 			i++
 		case c == '$' && i+1 < len(s) && s[i+1] == '(':
 			j := matchParenEnd(s, i+1)
-			cur.WriteString(s[i : j+1])
+			cur.WriteString(s[i:min(j+1, len(s))]) // j is len(s) for an unmatched `$(`
 			i = j + 1
 		case c == '(' && strings.TrimSpace(cur.String()) == "":
 			j := matchParenEnd(s, i)
@@ -549,7 +549,10 @@ func splitTopLevelStatements(s string) []bwStatement {
 
 // matchParenEnd returns the index of the ')' matching the '(' at s[open],
 // respecting nesting and quotes. An unmatched open (malformed input)
-// consumes to the end of the string rather than looping or panicking.
+// consumes to the end of the string rather than looping or panicking: it
+// returns len(s), one past the last byte, so s[open+1:end] is the whole
+// rest and a `(` that ends the command is an empty group, never a slice
+// past its own end.
 func matchParenEnd(s string, open int) int {
 	depth := 0
 	quote := byte(0)
@@ -571,7 +574,7 @@ func matchParenEnd(s string, open int) int {
 			}
 		}
 	}
-	return len(s) - 1
+	return len(s)
 }
 
 // wordEnd returns the index just past the first standalone occurrence of

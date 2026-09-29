@@ -283,3 +283,38 @@ func TestBashWriteTargets(t *testing.T) {
 		})
 	}
 }
+
+// TestBashWriteTargetsUnmatchedParenNeverPanics: an unmatched `(` or `$(`
+// (a malformed or truncated command) consumes to the end of the command, as
+// matchParenEnd documents, and never panics. A command ending in `(` used to
+// slice past its own end, so the PostToolUse edit-hook exited 2 with a Go
+// panic trace for Claude Code to show; an unmatched subshell also lost the
+// last byte of its text, so `(cat > a.go` named `a.g`.
+func TestBashWriteTargetsUnmatchedParenNeverPanics(t *testing.T) {
+	cases := []struct {
+		cmd         string
+		wantPaths   []string
+		wantWritten bool
+	}{
+		{"(", nil, false},
+		{"echo a; (", nil, false},
+		{"( (", nil, false},
+		{"x=$(", nil, false},
+		{"echo a && $(", nil, false},
+		{"(cat > a.go", []string{"a.go"}, true},
+		{"echo $(date) > b.txt; (cd internal && cat > c.go", []string{"b.txt", "internal/c.go"}, true},
+	}
+	for _, tc := range cases {
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					t.Errorf("bashWriteTargets(%q) panicked: %v", tc.cmd, r)
+				}
+			}()
+			gotPaths, gotWritten := bashWriteTargets(tc.cmd)
+			if !reflect.DeepEqual(gotPaths, tc.wantPaths) || gotWritten != tc.wantWritten {
+				t.Errorf("bashWriteTargets(%q) = %v, %v; want %v, %v", tc.cmd, gotPaths, gotWritten, tc.wantPaths, tc.wantWritten)
+			}
+		}()
+	}
+}
