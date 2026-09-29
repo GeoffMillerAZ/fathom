@@ -112,10 +112,24 @@ evidence (JP-M1), then owner.
 PostToolUse(Bash) input carries an exit code and whether a failing test command arrives as PostToolUse or
 PostToolUseFailure (TR-V1); whether SessionStart with source `compact` fires and accepts additional context
 (CA-V1); whether the SubagentStart input carries the sub-agent's prompt, and whether RC-28's 591-byte rows are
-boilerplate (XM-V1). Blocks: the test-run hook's registration and exit-code use, carry-across, and relevance
-selected map entries. Answerable by: evidence (the three verification readings).
+boilerplate (XM-V1); whether the shell PostToolUse input carries the command's stdout (git's `[branch sha]`
+summary line) and whether context added there reaches the model, in Claude Code and in Codex (PR-V1); what a
+Stop block does in Claude Code (PR-V2); whether hooks fired inside a sub-agent carry `agent_id` (PR-V3).
+Blocks: the test-run hook's registration and exit-code use, carry-across, relevance selected map entries, the
+commit pin line for any harness but Claude Code (PR-3 needs PR-V1), turn-end feedback (PR-D2) and orchestrator
+constraints (F54). Answerable by: evidence (the verification readings).
 
 **Q33. Unfreeze the assess lanes (ADR-046) as the judged-telemetry host, or supersede them?** Judged telemetry
 would otherwise rebuild assess's consent capability, spend isolation and judge process, and a parallel lane is
 refused; assess itself is frozen by ADR-053. Blocks: the sampler, queue and judgments table (F40), needed only
 after RT-M1 reads PASS. Answerable by: owner.
+
+**Q34. Block a silent pin loss at pre-push (PR-8)?** ADR-057 accepts the commit pin line, which tells the
+agent in the same turn when a commit loses a test that a governing source names. It leaves one step to the
+owner: `fathom conserve --strict-plane integrity` would exit 1 at pre-push only on a silent loss (the lost test
+is still named by its source at head; a pin retired on purpose, with its naming source edited in the same
+range, is printed and does not fail). Today `refactor-conserve` computes the integrity plane on every push and
+always exits 0. Evidence: CV-M1 flagged both i28 trials as `deleted`; CV-M2 found 0 false losses in 50 commits.
+It changes the advisory-only pre-push doctrine (`docs/design/coding-agent-excellence.md` section 5.3) for one
+plane, which is why it is not decided by the record that proposes it. Blocks: PR-9 (`docs/plans/served-not-kept.md`).
+Answerable by: owner.

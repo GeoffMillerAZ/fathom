@@ -188,6 +188,15 @@ green runs), WS-M2 (the nudge A/B, keep or drop), WS-M3 (the estimated-weight er
 preflight model against a fitted baseline, keep or drop) are read.
 {bet: work-signals, instrument: "fathom plans status", threshold: "WS-M1 episodes checked against abandoned sessions and green runs; WS-M2 nudge keep or drop recorded; WS-M3 estimated-weight error published; WS-M4 preflight model keep or drop recorded", review: 2027-02-28}
 
+**G33. A lost pin is caught in the turn that lost it, or the line stays a record (ADR-057).**
+Done when: `docs/plans/served-not-kept.md` PR-M0 (the $0 replay over the guards-pilot 6 and 8 diffs) reads PASS or
+FAIL (a FAIL means the check is fixed before PR-3 is built, K1), PR-M1 (30 days of record mode on owner traffic,
+every fire adjudicated by the owner) reads PASS or FAIL, and PR-M2 (the bench, about $76, the owner's approval
+first) reads PASS (with the pin line on, at most half the line-off oracle violations on the pin tasks, the
+interval excluding 0, tokens per clean success and tool calls at most 1.10 of the line-off arm) or FAIL with
+the line left record-only. PR-8 (block a silent loss at pre-push) is the owner's call and is not part of this bet.
+{bet: served-not-kept, instrument: "fathom plans status", threshold: "PR-M2 part B: pin line on at most half the line-off oracle violations on the pin tasks with the interval excluding 0 and tokens per clean success and tool calls at most 1.10 of line-off (K5), else the line stays record-only; PR-M0 and PR-M1 read either way", review: 2027-01-31}
+
 **G11. A reading, a hand-off and an answer carry their evidence (ADR-034).** The first
 round's 74 rows were voided by an instrument defect (the wired arm never had the tools; O41
 voided G10, ADR-033's ledger goal, on 2026-09-13 and it folds in here);

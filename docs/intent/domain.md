@@ -54,6 +54,12 @@ shaped decisions, and the assumptions the design rests on.
 - **exploration map**: an anchored record (symbol key plus content hash plus a why line) of which code matters for
   a purpose, composable by reference and delivered at handoff rather than looked up; a live map is a saved query
   beside the semantic layers' claims. Source: ADR-056, `docs/design/exploration-maps.md`.
+- **pin / pin loss / pin line**: a *pin* is a test that a governing source names (an invariant's test column, a
+  `// certifies:` marker, a `tests/*.cue` manifest entry, a scope evidence line, a guard's `done needs:`); a
+  *pin loss* is a commit that deletes, renames, weakens or skips it, changes its golden file or moves its marker
+  (*silent* when its source still names it at head, *retired* when the same range edits the naming source); the
+  *pin line* is the one factual line the hook adds when a commit loses a pin. Source: ADR-057,
+  `docs/design/served-not-kept.md`.
 - **law N** — doctrine laws 1–15. Source: `docs/vision/11` §2 (1–8), `12` (9), `13`
   (10–12), `14` (13–14), `20` §6 (15); summarized in `principles.md`.
 

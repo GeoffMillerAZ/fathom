@@ -27,8 +27,11 @@ futures may justify a free option today. The repo's own sequence is
 - Preserve: `fathom init` works on a cold clone; the in-tree kit mirror (ADR-019) keeps a
   kit-less build possible; no org-specific content (ADR-011); the kit mirrors
   (`third_party/agentic-kit`, the app-kit adoption) carry licences compatible with
-  distribution inside an FSL-1.1-ALv2 work (ADR-052; satisfied 2026-09-27, both kits are FSL,
-  re-checked on any pin bump); Q29 and Q30 are answered before any public release.
+  distribution inside an FSL-1.1-ALv2 work (ADR-052, corrected 2026-09-29: the check holds, because
+  agentic-kit main is still MIT at the pinned mirror, which is permissive and fine inside an FSL work
+  with its notice kept, and app-kit is FSL; the kit's own relicense commit sits on its local branch
+  `license-fsl`, blocked by the kit's gate; re-check when it lands and on any pin bump); Q29 and Q30 are
+  answered before any public release.
 - Promote when: the H1 exit criteria are green (instrument valid ≥4 weeks; injection ≥90%;
   verify gate live in ≥2 repos ≥4 weeks; surface pruned; portability passing; context-bench win).
 - Drop if: the owner decides fathom stays a personal force-multiplier (`docs/vision/07` Q4).
@@ -37,6 +40,8 @@ futures may justify a free option today. The repo's own sequence is
   Code and one other client) is scope goal G16, `docs/plans/reach.md`. Publishing it (a
   marketplace listing, the brew tap, the MCP registry) stays here, under the Promote-when
   above and the owner's Q4 call.
+- **Note 2026-09-29** (the Claude OS comparison, ADR-049 amendment): screenshots of the console up front in
+  the README, and listings in MCP directories, wait here under the same Promote-when and Q4.
 
 ## F3. Federation over portable stores (H3)
 
@@ -93,6 +98,8 @@ futures may justify a free option today. The repo's own sequence is
 - Preserve: the admission case names a real corpus, eval fixtures, and a kill criterion.
 - Promote when: per pack, a real consumer with a real corpus and eval fixtures.
 - Drop if: a pack sits at 0 production claims 30 days after its compile (`docs/vision/11` A4).
+- **Note 2026-09-29** (the Claude OS comparison, ADR-049 amendment): a browsable shared skills and packs
+  library waits here; it needs adopters first.
 
 ## F7. The `ai-derived` evidence tier
 
@@ -590,12 +597,18 @@ nothing may depend on it (P24). The entry's own drop-if stands.
   hot zone, everything that reads a flag, an active program's footprint, dead-code candidates, the product's
   core loop. It queries layers, scopes an expensive judged column to the maps that need it, and graduates to a
   named concern when many agents reuse it.
-- Do not build: a live map before the handoff A/B (XM-M2) and RT-M1 both read PASS (R5: storage stays in
-  existing thread fields), a second freshness mechanism, an idle unnamed map that never decays, or a layer
+- Do not build: a live map before RT-M1 reads PASS and either the handoff A/B (XM-M2) reads PASS or a named
+  consumer of a non-handoff use case with its own bench metric exists (R5: storage stays in existing thread
+  fields), a second freshness mechanism, an idle unnamed map that never decays, or a layer
   owned by a map (a layer keeps its own freshness and lifecycle: candidate, active, retired).
 - Preserve: maps compose by reference (a DAG, depth capped at 4), a named map needs a purpose line, one
   freshness machine shared with layers, permanent only when named and used.
-- Promote when: XM-M2 reads PASS and RT-M1 reads PASS (XM-D1's trigger).
+- Promote when: RT-M1 reads PASS and either XM-M2 reads PASS or a named consumer of a non-handoff use case
+  (a concern scope, an incident map, a structural claim, a saved question) has its own bench metric (XM-D1's
+  trigger, the same). Amended 2026-09-29: a kill of the handoff maps (XM-M1 reads KILL, so XM-M2 never runs)
+  leaves durable live maps unaffected, because their value is independent of sub-agent re-derivation; P20 still
+  demands the named consumer. The root rows of `docs/plans/exploration-maps.md` wave 3 and wave 4 therefore
+  need XM-D1 and RT-M1, not XM-M2, relying on G2-6 so that a deferred target blocks.
 - Drop if: no live map is mounted in at least 3 runs within 180 days of the first one shipping.
 
 ## F51. Model proposals for feature-map verdicts
@@ -609,7 +622,8 @@ nothing may depend on it (P24). The entry's own drop-if stands.
   the owner's 86 labeled verdicts reaches the bar; a ditch proposal never auto-applies (it routes into the
   surface-reckoning pattern) and a model never anchors the one decision ADR-053 requires to be evidence-driven.
 - Preserve: verdicts as human-authored cited claims in `docs/features.md` (FM-9), the computed evidence row as
-  the proposal's input, and the 86 labeled verdicts as calibration data. The critics' estimate is that 86 labels
+  the proposal's input, and the 86 labeled verdicts as calibration data (committed as
+  `docs/assessments/data/2026-09-27-feature-scorecard.json`, also FM-M1's hand-built oracle). The critics' estimate is that 86 labels
   over four classes cannot support the 0.8 bar, which is why this waits rather than runs.
 - Promote when: J0 (`docs/plans/judged-predicates.md` JP-M1) reads PASS and a calibration against the owner's 86
   labeled verdicts reaches agreement of at least 0.8 at n of at least 3 (FM-M2's bar).
@@ -632,3 +646,47 @@ nothing may depend on it (P24). The entry's own drop-if stands.
   The Review Kit side is a future on its own plan; the fathom side is the evidence-contract row XM-23.
 - Promote when: live maps land (F50 promoted, XM-D1) and the evidence contract has a scope field.
 - Drop if: Review Kit declines to carry a scope field on its concern packs.
+
+## F53. `propose_check`: a typed choice over the closed check kinds for a prose rule
+
+- Confidence: speculative. Horizon: someday. Evidence: ADR-057, `docs/design/served-not-kept.md` section 8,
+  `docs/plans/served-not-kept.md` PR-D7.
+- Motivation: a prose rule that names no test has no check, so its keeping cannot be recorded. A decision-port
+  site could choose, for a prose rule, which of the closed check kinds fits (the pinned test, a forbidden path,
+  an import boundary and the other guard checks), and a human accepts the proposal. It chooses only the kind:
+  the arguments (globs, test names) still have to be generated, and generation is the port's weak side (ADR-056).
+- Do not build: it before J0 passes and the labeled set reaches 50 (about 21 rules have a check today); any
+  auto-accept; a model that sets kept or broken (R7, I59); a check kind outside the closed set.
+- Preserve: the closed set of guard check kinds; rules labeled by whether a check already exists; human
+  acceptance of every proposal.
+- Promote when: J0 (`docs/plans/judged-predicates.md` JP-M1) reads PASS, the labeled set reaches 50, and prose
+  rules are at least half of served firings.
+- Drop if: J0 kills the site, or the labeled set stays under 50 for a year.
+
+## F54. Orchestrator constraints on a sub-agent
+
+- Confidence: speculative. Horizon: someday. Evidence: ADR-057, `docs/design/served-not-kept.md` section 6,
+  `docs/plans/served-not-kept.md` PR-D8, `docs/design/exploration-maps.md`.
+- Motivation: a handoff map id could carry `constraints: [{check}]` so the orchestrator's requirements ("the
+  store stays pure Go") reach the checks that run in the sub-agent's hooks.
+- Do not build: it before handoff maps exist and it is known whether hooks fired inside a sub-agent carry
+  `agent_id` (PR-V3); a constraint the sub-agent may waive; a second store for constraints.
+- Preserve: map entries anchored to symbol and content hash; checks drawn only from the closed check kinds.
+- Promote when: the handoff maps exist (XM-M1 reads BUILD with re-derivation at least 15 percent of sub-agent
+  reads, and XM-M2 reads PASS) and PR-V3 shows sub-agent hooks carry `agent_id`.
+- Drop if: the maps handoff channel is removed (XM-M1 KILL or a missed XM-M2).
+
+## F55. Fathom as the code engine under an agent-memory tool
+
+- Confidence: speculative. Horizon: someday. Evidence: `docs/assessments/2026-09-27-fathom-and-claude-os.md`,
+  ADR-049 amendment 2026-09-29, ADR-028.
+- Motivation: an agent-memory tool with a weak code index (Claude OS indexes three languages and links files by
+  shared names) could ask fathom for callers, impact and rules through an adapter that answers its
+  structural-index calls with fathom's JSON; the pattern could then be offered to other memory tools.
+- Do not build: an adapter, a demo or a pull request against another project before the trigger; anything that
+  makes an agent-memory tool a dependency of fathom (ADR-028: a peer process, never a dependency); a pairing that
+  hides fathom's name and its rules and proof features.
+- Preserve: the JSON CLI output, the HTTP API and the Go client as the integration surface; a kit-less build.
+- Promote when: a project with a licence file and a release in the last 90 days asks for fathom answers, or a
+  user asks for the pairing.
+- Drop if: Claude OS stays inactive past 2027-03-31 and no second tool asks.
