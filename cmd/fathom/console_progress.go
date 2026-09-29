@@ -11,6 +11,7 @@ package main
 // plan, wave, goal, agent identity, date range) live in the URL.
 
 import (
+	"context"
 	"fmt"
 	"html"
 	"math"
@@ -28,7 +29,10 @@ import (
 	"github.com/geoffmilleraz/app-kit/appkit/ui/stat"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/table"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/viz"
+	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/console"
+	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/cost"
 	"github.com/geoffmilleraz/fathom/internal/intent"
 )
 
@@ -59,6 +63,259 @@ type progressPageModel struct {
 	Waves       []string                  `json:"waves"`
 	Rows        int                       `json:"history_rows"`
 	Readings    int                       `json:"history_readings"`
+	Economics   progressEconomics         `json:"economics"`
+}
+
+// progressEconomics is /progress's outcome economics (PE-16w): each
+// session the join attributes proven rows to, priced by its recorded model
+// through the user's price table, its tokens and USD split evenly across
+// its proven rows, then summed per plan and per language.
+type progressEconomics struct {
+	PriceTable  string             `json:"price_table"`
+	PriceNote   string             `json:"price_note,omitempty"`
+	JoinedRows  int                `json:"joined_proven_rows"`
+	Unjoined    int                `json:"unjoined_proven_rows"`
+	PerPlan     []progressCostRow  `json:"per_plan"`
+	PerLanguage []progressCostRow  `json:"per_language"`
+	Unpriced    []string           `json:"unpriced"`
+	Caveat      string             `json:"caveat"`
+	History     console.SourceRead `json:"history_read"`
+}
+
+// progressCostRow is one plan's or one language's cost per proven row.
+// Tokens are the sessions' input plus output (the spend-shaped figure;
+// cache reads are priced, not counted here).
+type progressCostRow struct {
+	Service      string                 `json:"service,omitempty"`
+	Plan         string                 `json:"plan,omitempty"`
+	Language     string                 `json:"language,omitempty"`
+	Rows         int                    `json:"proven_rows"`
+	Priced       int                    `json:"priced_rows"`
+	TokensPerRow console.Value[float64] `json:"tokens_per_proven_row"`
+	USDPerRow    console.Value[float64] `json:"usd_per_proven_row"`
+
+	tokSum, usdSum float64
+	tokRows        int
+	why            map[string]bool
+}
+
+// progressLedgerCaveat names what PE-24 has not yet fixed.
+const progressLedgerCaveat = "PE-24 is open: these figures include verify-ledger rows recorded under unregistered and scratch repository roots, which no reader filters out yet"
+
+// anchorKey keys a plan row's anchor file by service, plan base name and id.
+func anchorKey(service, plan, id string) string {
+	return strings.ToLower(service) + "\x00" + filepath.Base(plan) + "\x00" + id
+}
+
+// rowAnchor is a plan row's anchor: its symbol contract, and the file the
+// gate resolved it to when the verdict carries one.
+type rowAnchor struct {
+	Service, Symbol, Package, File string
+}
+
+// anchorLanguageLookups bounds the index lookups one /progress request
+// makes to name the language of its priced rows' anchors.
+const anchorLanguageLookups = 400
+
+// anchorLanguages returns a language lookup for rows keyed by anchorKey:
+// the language of the row's anchor file, the file the index resolves the
+// row's symbol to (outside docs, under its package when it names one).
+// "unknown" when the row has no symbol, the index names no file or files
+// in different languages, the lookup budget is spent, or the file's
+// language is not classified. Each key is resolved at most once.
+func anchorLanguages(cr *consoleRequest, anchors map[string]rowAnchor) func(key string) string {
+	memo := map[string]string{}
+	lookups := 0
+	return func(key string) string {
+		if l, ok := memo[key]; ok {
+			return l
+		}
+		a := anchors[key]
+		files := map[string]bool{}
+		switch {
+		case a.File != "":
+			files[a.File] = true
+		case a.Symbol != "" && cr.deps != nil && cr.deps.c != nil && lookups < anchorLanguageLookups:
+			lookups++
+			if nodes, err := cr.deps.c.FindSymbol(cr.r.Context(), a.Service, a.Symbol); err == nil {
+				for _, n := range nodes {
+					if n.Kind == core.KindDocChunk || n.FilePath == "" {
+						continue
+					}
+					if a.Package != "" && !strings.HasPrefix(n.FilePath, strings.TrimSuffix(a.Package, "/")+"/") {
+						continue
+					}
+					files[n.FilePath] = true
+				}
+			}
+		}
+		lang := ""
+		for file := range files {
+			l := connector.LanguageForPath(file)
+			if l == "" || l == core.LangUnclassified || (lang != "" && l != lang) {
+				lang = "unknown"
+				break
+			}
+			lang = l
+		}
+		if lang == "" {
+			lang = "unknown"
+		}
+		memo[key] = lang
+		return lang
+	}
+}
+
+// progressEconomicsFor prices the sessions joined under f (PE-16w).
+func progressEconomicsFor(ctx context.Context, m observatoryModel, f console.HistoryFilter, languageOf func(key string) string) progressEconomics {
+	e := progressEconomics{PriceTable: cost.PriceTablePath(), Caveat: progressLedgerCaveat, PerPlan: []progressCostRow{}, PerLanguage: []progressCostRow{}, Unpriced: []string{}}
+	pt, err := cost.LoadPriceTable(e.PriceTable)
+	if err != nil {
+		e.PriceNote = "price table unreadable: " + err.Error()
+	}
+	join, _, read := sessionProofJoin(ctx, agentSessionsOf(m), f)
+	e.History, e.Unjoined = read, len(join.Unjoined)
+	plans, langs := map[string]*progressCostRow{}, map[string]*progressCostRow{}
+	unpriced := map[string]int{}
+	for _, o := range join.Outcomes {
+		if len(o.Rows) == 0 {
+			continue
+		}
+		var row sessionLedgerEntry
+		held := false
+		if m.ledgerErr == nil && m.ledger != nil {
+			row, held = m.ledger.latest[o.SessionID]
+		}
+		tokens, tokKnown := 0.0, false
+		usd, priced, why := 0.0, false, ""
+		switch {
+		case !held:
+			why = "the session's ledger row is no longer in the read"
+		case row.TokensIn == nil || row.TokensOut == nil:
+			why = "the session recorded no token split"
+		case row.Model == "":
+			why = "the session recorded no model"
+		case e.PriceNote != "":
+			why = e.PriceNote
+		}
+		if held && row.TokensIn != nil && row.TokensOut != nil {
+			tokens, tokKnown = float64(*row.TokensIn+*row.TokensOut), true
+			if why == "" {
+				cr, cc := 0, 0
+				if row.TokensCacheRead != nil {
+					cr = *row.TokensCacheRead
+				}
+				if row.TokensCacheCreate != nil {
+					cc = *row.TokensCacheCreate
+				}
+				if usd, priced = pt.USD(row.Model, *row.TokensIn, *row.TokensOut, cr, cc); !priced {
+					why = fmt.Sprintf("model %q is not in the price table", row.Model)
+				}
+			}
+		}
+		if !priced {
+			unpriced[why]++
+		}
+		n := float64(len(o.Rows))
+		for _, pr := range o.Rows {
+			e.JoinedRows++
+			pk := strings.ToLower(pr.Service) + "\x00" + pr.Plan
+			if plans[pk] == nil {
+				plans[pk] = &progressCostRow{Service: pr.Service, Plan: pr.Plan, why: map[string]bool{}}
+			}
+			lang := languageOf(anchorKey(pr.Service, pr.Plan, pr.ID))
+			if langs[lang] == nil {
+				langs[lang] = &progressCostRow{Language: lang, why: map[string]bool{}}
+			}
+			for _, acc := range []*progressCostRow{plans[pk], langs[lang]} {
+				acc.Rows++
+				if tokKnown {
+					acc.tokSum += tokens / n
+					acc.tokRows++
+				}
+				if priced {
+					acc.usdSum += usd / n
+					acc.Priced++
+				} else {
+					acc.why[why] = true
+				}
+			}
+		}
+	}
+	for why, n := range unpriced {
+		e.Unpriced = append(e.Unpriced, fmt.Sprintf("%s (%s)", why, plural(n, "session")))
+	}
+	sort.Strings(e.Unpriced)
+	finish := func(acc *progressCostRow) progressCostRow {
+		r := *acc
+		if r.tokRows == 0 {
+			r.TokensPerRow = console.Absent[float64]("no joined session recorded its input and output tokens")
+		} else {
+			r.TokensPerRow = console.Measured(r.tokSum/float64(r.tokRows), "the session ledger's transcript fold").
+				WithDenominator(fmt.Sprintf("over %d of %s", r.tokRows, plural(r.Rows, "proven row")))
+		}
+		whys := make([]string, 0, len(r.why))
+		for w := range r.why {
+			whys = append(whys, w)
+		}
+		sort.Strings(whys)
+		if r.Priced == 0 {
+			r.USDPerRow = console.Absent[float64]("unpriced: " + strings.Join(whys, "; "))
+		} else {
+			r.USDPerRow = console.Measured(r.usdSum/float64(r.Priced), "the price table ("+e.PriceTable+")").
+				WithDenominator(fmt.Sprintf("over %d of %s priced", r.Priced, plural(r.Rows, "proven row")))
+		}
+		return r
+	}
+	for _, acc := range plans {
+		e.PerPlan = append(e.PerPlan, finish(acc))
+	}
+	sort.Slice(e.PerPlan, func(i, j int) bool {
+		if e.PerPlan[i].Service != e.PerPlan[j].Service {
+			return e.PerPlan[i].Service < e.PerPlan[j].Service
+		}
+		return e.PerPlan[i].Plan < e.PerPlan[j].Plan
+	})
+	for _, acc := range langs {
+		e.PerLanguage = append(e.PerLanguage, finish(acc))
+	}
+	sort.Slice(e.PerLanguage, func(i, j int) bool { return e.PerLanguage[i].Language < e.PerLanguage[j].Language })
+	return e
+}
+
+// renderProgressEconomics renders the cost-per-row tables: per plan and
+// per language, the unpriced sessions named, the PE-24 caveat stated.
+func renderProgressEconomics(e progressEconomics) string {
+	var b strings.Builder
+	b.WriteString(`<p class="mb-3 text-xs text-ink-muted" data-ledger-caveat>` + html.EscapeString(e.Caveat+".") + `</p>`)
+	if e.PriceNote != "" {
+		b.WriteString(`<p class="mb-3 text-danger" data-price-note>` + html.EscapeString(e.PriceNote) + `</p>`)
+	}
+	if e.JoinedRows == 0 {
+		b.WriteString(`<p class="text-ink-muted" data-cost-empty>No proven row in this selection is joined to a recorded session yet.</p>`)
+		return b.String()
+	}
+	costTable := func(id, caption, keyLabel string, rows []progressCostRow, key func(progressCostRow) string) string {
+		trs := make([]table.Row, 0, len(rows))
+		for i, r := range rows {
+			tok := "not measured — " + r.TokensPerRow.Reason
+			if r.TokensPerRow.Known() {
+				tok = fmtThousands(int(math.Round(r.TokensPerRow.V)))
+			}
+			trs = append(trs, table.Row{ID: id + "-" + fmt.Sprint(i), Cells: []string{key(r), fmtThousands(r.Rows), fmtThousands(r.Priced), tok},
+				HTMLCells: []templComponent{nil, nil, nil, nil, templ.Raw(dollarText(r.USDPerRow))}})
+		}
+		return renderKitTable(table.TableParams{TableID: id, Caption: caption,
+			Columns: []table.Column{{Key: "key", Label: keyLabel}, {Key: "rows", Label: "Proven rows", Align: "right"}, {Key: "priced", Label: "Priced", Align: "right"},
+				{Key: "tokens", Label: "Tokens per row (in + out)", Align: "right"}, {Key: "usd", Label: "USD per priced row", Align: "right"}},
+			Rows: trs})
+	}
+	b.WriteString(costTable("progress-cost-plan", "Cost per proven row, per plan", "Plan", e.PerPlan, func(r progressCostRow) string { return r.Service + " " + r.Plan }))
+	b.WriteString(`<div class="mt-3">` + costTable("progress-cost-language", "Cost per proven row, per language of the row's anchor file", "Language", e.PerLanguage, func(r progressCostRow) string { return r.Language }) + `</div>`)
+	if len(e.Unpriced) > 0 {
+		b.WriteString(`<p class="mt-2 text-xs text-ink-muted" data-unpriced>unpriced, never $0: ` + html.EscapeString(strings.Join(e.Unpriced, "; ")) + `. Add a model's rates to ` + html.EscapeString(e.PriceTable) + ` to price it.</p>`)
+	}
+	return b.String()
 }
 
 // progressFrontierRow is a frontier row with its repository.
@@ -143,6 +400,7 @@ func buildProgressPage(cr *consoleRequest) (consoleOut, error) {
 	var projects []weightedScope
 	waveRows := map[string]bool{}
 	waves := map[string]bool{}
+	anchors := map[string]rowAnchor{} // each row's anchor, resolved to a file through the index when priced (PE-16w)
 	leasesByRoot := map[string][]leaseRow{}
 	for i, sp := range sps {
 		var files []string
@@ -160,6 +418,9 @@ func buildProgressPage(cr *consoleRequest) (consoleOut, error) {
 				continue
 			}
 			for _, r := range rows {
+				if r.Task.Expect.Symbol != "" || r.Verdict.EvidenceFile != "" {
+					anchors[anchorKey(sp.Service, plan.Rel, r.Task.ID)] = rowAnchor{Service: sp.Service, Symbol: r.Task.Expect.Symbol, Package: r.Task.Expect.Package, File: r.Verdict.EvidenceFile}
+				}
 				label := r.Section
 				if label == "" {
 					label = noSection
@@ -212,6 +473,7 @@ func buildProgressPage(cr *consoleRequest) (consoleOut, error) {
 	if f.Goal != "" {
 		model.Goals = filterGoals(model.Goals, f.Goal)
 	}
+	model.Economics = progressEconomicsFor(cr.r.Context(), m, f, anchorLanguages(cr, anchors))
 	model.Filter = f
 
 	meta := []string{fmt.Sprintf("%s of proof history", plural(len(h.Rows), "row")), "generated " + m.GeneratedAt}
@@ -260,9 +522,10 @@ func progressSorted(set map[string]bool) []string {
 }
 
 // agentSessionsOf windows each session from its last ledger row: the row's
-// time back over its recorded duration. The session ledger records neither
-// harness nor model today, so both read "not recorded" — named, never
-// guessed (I58: the identity is an agent's, never a person's).
+// time back over its recorded duration, with the harness and model the row
+// recorded (WI-9w). A row that recorded neither leaves them empty, which
+// every view names "not recorded" — never guessed (I58: the identity is an
+// agent's, never a person's).
 func agentSessionsOf(m observatoryModel) []console.AgentSession {
 	if m.ledgerErr != nil || m.ledger == nil {
 		return nil
@@ -278,7 +541,7 @@ func agentSessionsOf(m observatoryModel) []console.AgentSession {
 		if e.DurationMS != nil {
 			start = end.Add(-time.Duration(*e.DurationMS) * time.Millisecond)
 		}
-		out = append(out, console.AgentSession{ID: e.SessionID, Repo: e.Repo,
+		out = append(out, console.AgentSession{ID: e.SessionID, Harness: e.Harness, Model: e.Model, Repo: e.Repo,
 			Start: start.UTC().Format(time.RFC3339), End: end.UTC().Format(time.RFC3339)})
 	}
 	return out
@@ -337,6 +600,13 @@ func renderProgressPage(m progressPageModel) string {
 		Question: "Of the rows each agent identity claimed, how many did the gate not prove? Per harness and model, never per person.",
 		Source:   src + " joined to the session ledger's session windows", Denominator: plural(m.Honesty.Readings, "reading"), State: histState, Reason: histReason,
 		Body: renderClaimHonesty(m.Honesty)})
+	econState, econReason := m.Economics.History.State, m.Economics.History.Reason
+	panel(consolePanel{ID: "cost-per-row", Title: "Cost per proven row", SourceKey: progressLive + " sessions",
+		Question:    "What did each proven row cost in tokens and dollars, per plan and per language, priced by each session's own model?",
+		Source:      "the verify ledger's proof history joined to the session ledger (PE-15); the price table " + m.Economics.PriceTable + "; each row's anchor file as the gate resolved it",
+		Denominator: fmt.Sprintf("%s joined, %s unjoined", plural(m.Economics.JoinedRows, "proven row"), plural(m.Economics.Unjoined, "proven transition")),
+		State:       econState, Reason: econReason,
+		Body: renderProgressEconomics(m.Economics)})
 	panel(consolePanel{ID: "heatmap", Title: "Proof heatmap", SourceKey: progressLive,
 		Question: "Where did proof land — newly proven weight by plan and week — and is there a streak?",
 		Source:   src, Denominator: plural(len(m.Heatmap.Cells), "plan-week"), State: histState, Reason: histReason,
