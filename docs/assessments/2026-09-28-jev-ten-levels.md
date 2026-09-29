@@ -6,8 +6,6 @@ Status: a reading of a public video series and two public repositories, read aga
 `71d101db` (memo) and `177fd297` (traces). Every saving named below is a hypothesis until its bench
 runs. The decisions it drove are ADR-056 (judgment at the port, proof first), `docs/vision/40-judgment-and-
 exploration-maps.md`, goals G27 to G32, futures F34 to F49 and the plans TR-, JP-, JF-, JT-, XM-, CA-, WS-.
-Readable forms: artifacts 6Z6EdpiYXq4cRf92Ywx8n4 (Jev Ideas for Fathom) and F3oEGQ7jPuARmyhVZewJva (Ask Jev
-with Fathom).
 
 ## Verdict
 

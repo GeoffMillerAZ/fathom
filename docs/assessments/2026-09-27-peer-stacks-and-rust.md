@@ -5,7 +5,6 @@ Status: a reading of public repositories, package manifests and issue trackers o
 re-run. The full survey is `data/2026-09-27-peer-stacks.json` (30 entries, each with its sources).
 Decisions it drove: ADR-049 decision 11 (no Rust rewrite), `docs/vision/38-proof-layer-roadmap.md`
 section 8, future F29, plan row RH-M5, and the extractor list of `docs/design/system-graph.md`.
-Readable form: a summary sits inside the Roadmap artifact (5gBHQTMd39qLZvq3hT1FtZ).
 
 ## Verdict
 

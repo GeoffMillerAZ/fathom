@@ -3,7 +3,6 @@
 Created: 2026-09-27 (summarized into the repository 2026-09-28).
 Status: a reading of vendor and project documentation on 2026-09-27; not re-run. Decisions it
 drove are in ADR-049, ADR-050 and ADR-051 and in `docs/vision/38-proof-layer-roadmap.md`.
-Readable form: artifact LwjYnxTFUTqTmDYnErbYYD (The Agentic Coding Landscape).
 
 ## Verdict
 

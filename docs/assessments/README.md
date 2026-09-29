@@ -41,8 +41,6 @@ and `graphify-comparison.html`); they may move in later with link updates.
   marketing material (the MIT notices of the sources are kept where code or thresholds are reused).
 - **Public product names only.** I19's denylist is about private hosts, emails and accounts;
   `TestNoOrgSpecificNames` runs over this directory like every other.
-- **Readable form**: name the artifact by id (the last path element of its claude.ai artifact
-  address), never by URL. Ids do not prove anything; they only help a reader find the page.
 
 ## Index
 
@@ -56,22 +54,7 @@ and `graphify-comparison.html`); they may move in later with link updates.
 | 2026-09-28 | [semantic-layers-evidence](2026-09-28-semantic-layers-evidence.md) | Keep the layers and improve them: cheap, checked and self-healing, but served is not obeyed and nothing learns yet | ADR-016, ADR-038, ADR-057, GL-10 to GL-18, F53, F7 |
 | 2026-09-29 | [language-atlas](2026-09-29-language-atlas.md) | A 142-item queue and a four-level ladder make "supports language X" a reading; the bottleneck moved from dialects to the measuring instruments | ADR-048, ADR-054, G15, vision 37 |
 
-## Readable forms (artifact ids)
+## Companion pages
 
-| Assessment | Artifact | Id |
-|---|---|---|
-| Roadmap (the whole program) | Fathom Roadmap | 5gBHQTMd39qLZvq3hT1FtZ |
-| Feature scorecard | Fathom Feature Scorecard | L6rb59VErh4wU5BYNf4bEo |
-| Language atlas | Fathom Language Atlas | PG4yPsFFsXHaKaSr3LmmVJ |
-| Landscape | The Agentic Coding Landscape | LwjYnxTFUTqTmDYnErbYYD |
-| Fathom and Claude OS | Fathom and Claude OS | AjYd1WGj3u44Hy1m2hbVPr |
-| Jev ten levels | Jev Ideas for Fathom | 6Z6EdpiYXq4cRf92Ywx8n4 |
-| Ask Jev traces (inside the jev-ten-levels file) | Ask Jev with Fathom | F3oEGQ7jPuARmyhVZewJva |
-| Exploration maps (recorded in ADR-056 and `docs/design/exploration-maps.md`) | Exploration Maps | AoWr2rn2GMQJidnpBVUC92 |
-| Semantic layers | Fathom Semantic Layers | 9yZ92wUDDTeH3zDWUNcvQ5 |
-| Features and Review (ADR-055) | Features and Review | LGfbjoDJ6PGBPKkUFUv6LQ |
-
-Artifacts were built from a copy of the repository and the logs on the dates in the file names;
-figures in them are as of those dates. The durable copy of the data and builders the artifacts were
-made from was kept outside the repository (the owner's `workspace/` refresh of 2026-09-28); what
-the records need is committed here.
+The owner keeps private companion pages for several of these readings; they are not linked here
+because readers cannot open them, and the files above are the record.

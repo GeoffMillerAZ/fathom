@@ -5,7 +5,6 @@ added 2026-09-29).
 Status: a reading of one public project's repository and README on 2026-09-27; not re-run. The
 decisions it drove are the dated amendment of ADR-049 "The Claude OS comparison (2026-09-27)", futures
 F55, F2 and F6 notes, and plan rows RH-11, RH-12, RH-X4, GL-23 and SR-X1.
-Readable form: artifact AjYd1WGj3u44Hy1m2hbVPr (Fathom and Claude OS).
 
 ## Verdict
 

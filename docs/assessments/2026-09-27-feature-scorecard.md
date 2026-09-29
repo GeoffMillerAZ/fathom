@@ -6,7 +6,6 @@ ledgers, benches and plans; not re-run. It is the oracle for the feature map's f
 and the calibration label set for a model verdict proposal (F51, FM-M2, deferred). The machine-readable
 form is [`data/2026-09-27-feature-scorecard.json`](data/2026-09-27-feature-scorecard.json) (86 rows).
 Decisions it drove: ADR-053 (the surface reckoning), ADR-054 (the support matrix), ADR-055 decision 6.
-Readable form: artifact L6rb59VErh4wU5BYNf4bEo (Fathom Feature Scorecard).
 
 ## Verdict
 

@@ -13,8 +13,8 @@ closes), ADR-049 decision 12 (no model deciding done).
 
 ## 1. Problem
 
-The owner's Feature Scorecard (86 features, owner verdicts, artifact L6rb59VErh4wU5BYNf4bEo,
-2026-09-27) is valuable for its evidence, not its verdict column, and fathom already holds
+The owner's Feature Scorecard (86 features, owner verdicts, 2026-09-27;
+summarized in `docs/assessments/2026-09-27-feature-scorecard.md`) is valuable for its evidence, not its verdict column, and fathom already holds
 every fact that evidence is built from — usage, cost, proof, tests, bench readings — scattered
 across separate verbs. Nothing joins them by feature. Building that join, and nothing past it,
 is this design.

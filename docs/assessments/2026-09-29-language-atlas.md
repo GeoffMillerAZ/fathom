@@ -8,7 +8,6 @@ keeps no level table of its own (ADR-054, I54): what a language is claimed at is
 `docs/bench/readings/lang/milestones.md`.
 Decisions it informs: ADR-048 (language breadth and depth) with its dated amendments, goal G15,
 `docs/vision/37-language-breadth.md`, `docs/vision/38-proof-layer-roadmap.md` section 9.3.
-Readable form: artifact PG4yPsFFsXHaKaSr3LmmVJ (Fathom Language Atlas).
 
 ## Verdict
 

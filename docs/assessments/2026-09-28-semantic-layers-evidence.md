@@ -5,7 +5,6 @@ Status: an audit of fathom's own layers from the scorecard (2026-09-27) and a co
 store taken 2026-09-28; where the two differ the scorecard figure is quoted and the live figure is
 named. Not re-run. Decisions it informs: ADR-016 (claims and layers), ADR-037, ADR-038, ADR-049 decision
 9, ADR-053, ADR-056 (O120, F37) and ADR-057 (served is not kept).
-Readable form: artifact 9yZ92wUDDTeH3zDWUNcvQ5 (Fathom Semantic Layers).
 
 ## Verdict: keep, then improve
 

@@ -3041,8 +3041,8 @@ surface; `package_deps` still listed a month after deletion).
 **Status.** Accepted 2026-09-28. Owner decision memo of 2026-09-28 (the owner delegated the
 call). Inputs: the owner's questions (the feature scorecard as a fathom feature, overrides,
 specs as the source, what maps to what, and whether fathom should become the code review tool
-and absorb Review Kit); the published Feature Scorecard (artifact L6rb59VErh4wU5BYNf4bEo, 86
-features with owner verdicts, 2026-09-27); Review Kit (`platform-engineering/kits/review-kit`,
+and absorb Review Kit); the owner's Feature Scorecard (86
+features with owner verdicts, 2026-09-27; summarized in `docs/assessments/2026-09-27-feature-scorecard.md`); Review Kit (`platform-engineering/kits/review-kit`,
 `leadsman`) and its fathom uplift brief (`docs/design/fathom-uplifts.md`). Vision:
 `docs/vision/39-feature-map-and-review.md`. Design: `docs/design/feature-map.md`. Plan:
 `docs/plans/feature-map.md` (FM-, wave 5). Goal G26. Extends ADR-040 (findings loop authority

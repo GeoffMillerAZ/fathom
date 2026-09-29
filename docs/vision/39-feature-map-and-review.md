@@ -8,8 +8,8 @@ delegated the call. Design: `docs/design/feature-map.md`. Plan: `docs/plans/feat
 ## 1. The question
 
 The owner published a Feature Scorecard: 86 of fathom's own features, each with a verdict
-(keep, improve, merge, ditch) and the evidence behind it (artifact L6rb59VErh4wU5BYNf4bEo,
-2026-09-27). Four questions followed: should the scorecard itself become a fathom feature;
+(keep, improve, merge, ditch) and the evidence behind it (2026-09-27;
+summarized in `docs/assessments/2026-09-27-feature-scorecard.md`). Four questions followed: should the scorecard itself become a fathom feature;
 who or what overrides its criteria; is the authored spec (ADRs, `docs/features.md`) the
 source of truth; what maps to what, and is each mapping worth building. A fifth, bigger
 question sat under all of them: should fathom become the code review tool and absorb Review
