@@ -86,7 +86,7 @@
     },
     {
       "path": "scripts/lib/build-cache.sh",
-      "sha256": "03c033457bdc79cb0f678ab39fdc22e00286c0d503d84f02fc1558a75fe19342"
+      "sha256": "85c125a0426f381c769e593dcfa744629bce920ce666ee6c696bf4ee9e370691"
     },
     {
       "path": "cmd/fathom/appkit_styleguide.go",

@@ -109,6 +109,16 @@ two rows of 44 × 44 px (or wider) targets with a 2 px focus outline; the dialog
 `::backdrop` computes to the scrim at 50% in both themes. This is not a full
 accessibility pass.
 
+**Adoption check (2026-09-29, after the merge).** `appkit adoption check` read two FAIL rows.
+`artifact:7` was drift already on main: EW-4 (`6de8c2f7`, O124) rewrote
+`scripts/lib/build-cache.sh` to trim by entry age and left its pin at the old bytes. The pin now
+names the EW-4 bytes; the helper is still the CSS fixture's execution dependency and nothing
+else. `router:CLAUDE.md` is a recorded divergence: ADR-059 makes AGENTS.md this repository's one
+instruction file, and the kit's checker still requires a matching `CLAUDE.md` router whenever
+`agents` is selected. The `AGENTS.md` router passes. The row stays FAIL until app-kit accepts an
+AGENTS.md-only router under its own record (plan row AG-OP3); fathom does not re-add a CLAUDE.md
+to satisfy it.
+
 ## Mirror d9dd789: the console's kit contributions land (2026-09-25)
 
 The mirror moves from `dc77e66` to app-kit main `d9dd78919099fccc3e3b70b06eeefff8bff5b72e`
