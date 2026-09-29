@@ -98,6 +98,26 @@ func TestCheckStanzaPresentAgentsMD(t *testing.T) {
 			t.Fatalf("got %+v", c)
 		}
 	})
+	t.Run("a CLAUDE.md linked to AGENTS.md passes and names the link", func(t *testing.T) {
+		withClaudeLoadEnv(t, t.TempDir(), "", "2.1.200")
+		_, root := agentsRepo(t)
+		if err := os.Symlink("AGENTS.md", filepath.Join(root, "CLAUDE.md")); err != nil {
+			t.Fatal(err)
+		}
+		c := checkStanzaPresent(root)
+		if c.Status != doctorPass || !strings.Contains(c.Reason, "CLAUDE.md is AGENTS.md itself") {
+			t.Fatalf("got %+v (a linked CLAUDE.md carries the stanza on any release; it is not a legacy copy)", c)
+		}
+	})
+	t.Run("an AGENTS.md region holding an import, not the stanza, fails", func(t *testing.T) {
+		withClaudeLoadEnv(t, t.TempDir(), "", "2.1.284")
+		root := t.TempDir()
+		writeRepoFile(t, root, "AGENTS.md", "# rules\n\n"+fathomStanzaBegin+"\n"+"@AGENTS.md\n"+fathomStanzaEnd+"\n")
+		c := checkStanzaPresent(root)
+		if c.Status != doctorFail || !strings.Contains(c.Reason, "no stanza") {
+			t.Fatalf("got %+v, want FAIL: the region is well-formed but carries no stanza", c)
+		}
+	})
 	t.Run("a CLAUDE.md without the import warns", func(t *testing.T) {
 		withClaudeLoadEnv(t, t.TempDir(), "", "2.1.284")
 		_, root := agentsRepo(t)

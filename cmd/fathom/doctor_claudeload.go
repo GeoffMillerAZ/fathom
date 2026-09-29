@@ -56,6 +56,10 @@ type claudeLoad struct {
 	ClaudeFile string
 	Imports    bool
 	ImportOnly bool
+	// Linked is whether that CLAUDE file IS the root AGENTS.md (a symlink
+	// either way): Claude Code reads the stanza through it on any release,
+	// and its region is AGENTS.md's own, never a legacy copy.
+	Linked bool
 	// LegacyStanza names the root CLAUDE files whose fathom region still
 	// holds the stanza — the pre-ADR-059 two-copy layout — and Corrupted
 	// those whose marker pair is broken (fleet reconcile will not touch it).
@@ -147,6 +151,7 @@ func claudeLoadPath(root string, probeVersion bool) claudeLoad {
 	var l claudeLoad
 	if f := rootClaudeFile(root); f != "" {
 		l.ClaudeFile = f
+		l.Linked = custodian.LinksToRootAgentsMD(root, f)
 		if data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(f))); err == nil {
 			content := string(data)
 			l.Imports = custodian.ImportsRootAgentsMD(content, f) > 0
@@ -160,6 +165,9 @@ func claudeLoadPath(root string, probeVersion bool) claudeLoad {
 		}
 	}
 	for _, f := range claudeFiles() {
+		if custodian.LinksToRootAgentsMD(root, f) {
+			continue // AGENTS.md's own region, read as AGENTS.md
+		}
 		data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(f)))
 		if err != nil {
 			continue
@@ -179,7 +187,7 @@ func claudeLoadPath(root string, probeVersion bool) claudeLoad {
 	l.Mode, l.ModeSource = effectiveInstructionFilesMode(home)
 
 	switch {
-	case l.Imports:
+	case l.Imports, l.Linked:
 	case !probeVersion:
 		l.VersionNote = "claude version not probed (--repo-only spawns no harness process)"
 	default:
@@ -266,7 +274,7 @@ func effectiveInstructionFilesMode(home string) (mode, source string) {
 // claudeLoadWarnings are the machine-side reasons Claude Code will not load
 // AGENTS.md, each with its remedy — only when nothing imports it.
 func (l claudeLoad) warnings() (reasons, remedies []string) {
-	if l.Imports || l.Mode == claudeModeBoth {
+	if l.Imports || l.Linked || l.Mode == claudeModeBoth {
 		if l.Mode == claudeModeBoth && len(l.LegacyStanza) > 0 {
 			reasons = append(reasons, fmt.Sprintf("mode %s loads both files, so the stanza still in %s loads twice", claudeModeBoth, strings.Join(l.LegacyStanza, ", ")))
 		}
@@ -293,6 +301,8 @@ func (l claudeLoad) passReason() string {
 	switch {
 	case l.Mode == claudeModeBoth:
 		r = "mode " + claudeModeBoth
+	case l.Linked:
+		r = l.ClaudeFile + " is AGENTS.md itself (a link)"
 	case l.Imports:
 		r = "imported by " + l.ClaudeFile
 		if l.ImportOnly {

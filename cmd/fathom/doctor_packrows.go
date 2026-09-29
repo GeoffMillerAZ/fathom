@@ -34,6 +34,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -133,6 +134,12 @@ func checkStanzaPresentProbe(root string, probeVersion bool) doctorCheck {
 	agents, reach := fs[0], fs[1]
 	if agents.Status != custodian.StatusHolds {
 		return doctorCheck{Name: name, Status: doctorFail, Reason: agents.Detail, Remedy: remedy}
+	}
+	// A well-formed pair is not a stanza: a region whose body is the
+	// one-line import (a CLAUDE-file region written into AGENTS.md through
+	// a link) tells a session nothing about the index.
+	if data, err := os.ReadFile(filepath.Join(root, agentsMDFile)); err == nil && isImportBody(ownedBodyIn(string(data))) {
+		return doctorCheck{Name: name, Status: doctorFail, Reason: "AGENTS.md: fathom's region is well-formed but holds no stanza, only " + strings.TrimSpace(ownedBodyIn(string(data))), Remedy: remedy + " (rewrites the region to the stanza)"}
 	}
 
 	load := claudeLoadPath(root, probeVersion)

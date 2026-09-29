@@ -262,3 +262,78 @@ func TestInitGeminiWritesContextFileNameNotAGeminiStanza(t *testing.T) {
 		t.Errorf("init wrote GEMINI.md (err=%v)", err)
 	}
 }
+
+// TestInitKeepsTheStanzaWhenClaudeAndAgentsAreOneFile: a repository whose
+// CLAUDE file and AGENTS.md are one file (a symlink either way, the common
+// way to serve both harnesses) keeps the stanza. Claude Code reads the
+// stanza through the CLAUDE file already; an import region planned there
+// would be written into AGENTS.md itself, replacing the stanza with a
+// self-import (found by the ADR-059 critic on a scratch adopter).
+func TestInitKeepsTheStanzaWhenClaudeAndAgentsAreOneFile(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	cases := []struct {
+		name       string
+		real, link string // link is a symlink to real, relative to link's directory
+		target     string
+	}{
+		{"AGENTS.md links to CLAUDE.md", "CLAUDE.md", "AGENTS.md", "CLAUDE.md"},
+		{"CLAUDE.md links to AGENTS.md", "AGENTS.md", "CLAUDE.md", "AGENTS.md"},
+		{".claude/CLAUDE.md links to AGENTS.md", "AGENTS.md", ".claude/CLAUDE.md", "../AGENTS.md"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			root := t.TempDir()
+			writeRepoFile(t, root, c.real, "# house rules\n")
+			if err := os.MkdirAll(filepath.Dir(filepath.Join(root, c.link)), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Symlink(c.target, filepath.Join(root, filepath.FromSlash(c.link))); err != nil {
+				t.Fatal(err)
+			}
+			targets, err := initTargetsFor(harness.ClaudeCode, time.Now())
+			if err != nil {
+				t.Fatal(err)
+			}
+			for pass := 1; pass <= 2; pass++ {
+				spec, _ := initWiringSpecFor(root, "svc", testBinPath, targets, hooksScopeAuto)
+				if _, err := wiring.ApplyWiring(root, spec, wiring.ApplyOptions{}); err != nil {
+					t.Fatalf("pass %d: %v", pass, err)
+				}
+				got := readRepoFile(t, root, c.real)
+				if n := strings.Count(got, fathomStanzaBeginPrefix); n != 1 {
+					t.Fatalf("pass %d: %d fathom regions in the one file:\n%s", pass, n, got)
+				}
+				if body := ownedRegionBody(got); !isStanzaBody(body) || isImportBody(body) {
+					t.Fatalf("pass %d: the one file's region is %q, want the stanza (never a self-import)", pass, body)
+				}
+			}
+			if fi, err := os.Lstat(filepath.Join(root, filepath.FromSlash(c.link))); err != nil || fi.Mode()&os.ModeSymlink == 0 {
+				t.Fatalf("%s is no longer the adopter's link (err=%v)", c.link, err)
+			}
+		})
+	}
+}
+
+// TestRewireKeepsTheStanzaOfALinkedPair: an adopter an older fathom wired
+// through a CLAUDE.md -> AGENTS.md link carries one stanza region, which is
+// AGENTS.md's own; rewire must not "move" it into an import and delete the
+// stanza from the one file both harnesses read.
+func TestRewireKeepsTheStanzaOfALinkedPair(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	root := filepath.Join(t.TempDir(), "demo")
+	writeRepoFile(t, root, "AGENTS.md", "# house rules\n\n"+fathomStanza("demo", false)+"\n")
+	if err := os.Symlink("AGENTS.md", filepath.Join(root, "CLAUDE.md")); err != nil {
+		t.Fatal(err)
+	}
+	var out, errb strings.Builder
+	if code := cmdFleetReconcile([]string{"--url", "http://127.0.0.1:1", "--apply", "--repo", root}, &out, &errb); code != 0 {
+		t.Fatalf("apply exit %d:\n%s%s", code, out.String(), errb.String())
+	}
+	got := readRepoFile(t, root, "AGENTS.md")
+	if body := ownedRegionBody(got); !isStanzaBody(body) {
+		t.Fatalf("rewire replaced the linked pair's stanza with %q:\n%s", body, out.String())
+	}
+	if strings.Contains(out.String(), "still carries the stanza") {
+		t.Fatalf("rewire called AGENTS.md's own region a legacy CLAUDE.md copy:\n%s", out.String())
+	}
+}

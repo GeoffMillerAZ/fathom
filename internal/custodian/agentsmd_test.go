@@ -95,3 +95,35 @@ func TestAgentsMDReachesClaudeLoadsAndThePackUsesIt(t *testing.T) {
 		t.Errorf("claude-code pack's stanza entry = %s, want %s (ADR-059)", pc.Check.Kind, KindAgentsMDReachesClaude)
 	}
 }
+
+// TestAgentsMDReachesClaudeThroughALink: a root CLAUDE file that IS the
+// root AGENTS.md (a symlink either way) reaches Claude Code with no import
+// — the file Claude Code reads carries AGENTS.md's text. allow_import:
+// false still counts it: it is a CLAUDE file.
+func TestAgentsMDReachesClaudeThroughALink(t *testing.T) {
+	cases := []struct{ real, link, target string }{
+		{"AGENTS.md", "CLAUDE.md", "AGENTS.md"},
+		{"CLAUDE.md", "AGENTS.md", "CLAUDE.md"},
+		{"AGENTS.md", ".claude/CLAUDE.md", "../AGENTS.md"},
+	}
+	for _, c := range cases {
+		t.Run(c.link+" -> "+c.target, func(t *testing.T) {
+			root := t.TempDir()
+			writeTree(t, root, map[string]string{c.real: "# rules\n"})
+			if err := os.MkdirAll(filepath.Dir(filepath.Join(root, filepath.FromSlash(c.link))), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Symlink(c.target, filepath.Join(root, filepath.FromSlash(c.link))); err != nil {
+				t.Fatal(err)
+			}
+			f := checkAgentsMDReachesClaude(root, agentsMDConcern(nil))
+			if f.Status != StatusHolds || !strings.Contains(f.Detail, "is AGENTS.md itself") {
+				t.Fatalf("got %s %q, want holds naming the link", f.Status, f.Detail)
+			}
+			no := false
+			if f := checkAgentsMDReachesClaude(root, agentsMDConcern(&no)); f.Status != StatusViolated {
+				t.Fatalf("allow_import: false got %s %q, want violated (a linked CLAUDE file is still a CLAUDE file)", f.Status, f.Detail)
+			}
+		})
+	}
+}

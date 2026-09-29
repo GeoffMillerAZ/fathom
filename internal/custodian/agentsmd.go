@@ -7,7 +7,8 @@ package custodian
 // .claude/CLAUDE.md or CLAUDE.local.md exists; otherwise the first present
 // one must import it. The kind holds when AGENTS.md exists and either no
 // root CLAUDE file exists, or the first present one carries an import that
-// resolves to the root AGENTS.md outside a code fence. With
+// resolves to the root AGENTS.md outside a code fence, or is that AGENTS.md
+// itself (a link, so it carries AGENTS.md's text). With
 // `allow_import: false` any CLAUDE file in the agent-config corpus (and a
 // root CLAUDE.local.md, which git usually ignores) is a violation: one
 // instruction file, no import. Test fixtures under a testdata/ directory
@@ -34,6 +35,22 @@ const KindAgentsMDReachesClaude CheckKind = "agents_md_reaches_claude"
 // rootClaudeFiles are Claude Code's CLAUDE files at a repository root, in
 // the precedence the first-present rule reads them.
 var rootClaudeFiles = []string{"CLAUDE.md", ".claude/CLAUDE.md", "CLAUDE.local.md"}
+
+// LinksToRootAgentsMD reports whether the file at rel (repo-relative) and
+// the root AGENTS.md are one file — a symlink either way, or a hard link —
+// so Claude Code reading rel reads AGENTS.md's own text with no import.
+// Either side absent or unstat-able: false.
+func LinksToRootAgentsMD(root, rel string) bool {
+	a, err := os.Stat(filepath.Join(root, "AGENTS.md"))
+	if err != nil {
+		return false
+	}
+	c, err := os.Stat(filepath.Join(root, filepath.FromSlash(rel)))
+	if err != nil {
+		return false
+	}
+	return os.SameFile(a, c)
+}
 
 // ImportsRootAgentsMD reports the 1-based line of the first import in
 // content (the file at rel, repo-relative) that resolves to the root
@@ -106,6 +123,12 @@ func checkAgentsMDReachesClaude(root string, c Concern) Finding {
 			continue
 		}
 		f.Files = []string{rel}
+		if err == nil && LinksToRootAgentsMD(root, rel) {
+			f.Status = StatusHolds
+			f.Detail = fmt.Sprintf("%s is AGENTS.md itself (a link): Claude Code reads AGENTS.md through it", rel)
+			f.Evidence = []string{rel}
+			return f
+		}
 		if err != nil {
 			f.Status, f.Detail = StatusUnable, fmt.Sprintf("%s: %v — whether it imports AGENTS.md cannot be read", rel, err)
 			return f

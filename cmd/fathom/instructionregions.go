@@ -19,6 +19,8 @@ package main
 //   - When an import line the adopter wrote already sits outside fathom's
 //     region, fathom plans the REMOVAL of its own region (Region.Remove) —
 //     one import, never two — and writes none where it has none.
+//   - A root CLAUDE file that IS AGENTS.md (a symlink either way) gets no
+//     region: it already carries the stanza.
 
 import (
 	"os"
@@ -26,6 +28,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/geoffmilleraz/fathom/internal/custodian"
 	"github.com/geoffmilleraz/fathom/internal/harness"
 	"github.com/geoffmilleraz/fathom/internal/wiring"
 )
@@ -107,6 +110,13 @@ func hasUnfencedImport(content, file string) bool {
 func claudeImportRegion(root string) (wiring.Region, bool) {
 	file := rootClaudeFile(root)
 	if file == "" {
+		return wiring.Region{}, false
+	}
+	if custodian.LinksToRootAgentsMD(root, file) {
+		// The CLAUDE file IS AGENTS.md (a link either way): Claude Code
+		// already reads the stanza through it, and an import region planned
+		// here would be written into AGENTS.md itself, replacing the stanza
+		// with a self-import.
 		return wiring.Region{}, false
 	}
 	r := wiring.Region{
