@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"os"
@@ -167,5 +168,102 @@ func TestScorecardSplitsByRecordedModelAndHarness(t *testing.T) {
 	}
 	if len(sc.Cells) != 3 {
 		t.Errorf("want three cells (two recorded identities and the unrecorded one), got %d", len(sc.Cells))
+	}
+}
+
+// PE-14: under `stop-hook --harness codex` the ledger row is folded from
+// the Codex rollout (transcript_path) by the harness port's CodexSessionCost,
+// into the same token, cache, tool_calls and model fields a Claude Code row
+// carries; the fold's state rides the session's one offset stamp, so a
+// second Stop reads only what the rollout gained.
+func TestStopHookLedgerFoldsCodexRollout(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join("..", "..", "internal", "harness", "testdata", "rollouts", "codex", "modern.sanitized.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	repo := t.TempDir()
+	rollout := filepath.Join(t.TempDir(), "rollout-2026-09-29T11-00-00-sess.jsonl")
+	// The first Stop sees only the first half of the rollout's lines.
+	lines := strings.SplitAfter(string(raw), "\n")
+	half := strings.Join(lines[:len(lines)/2], "")
+	if err := os.WriteFile(rollout, []byte(half), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	ledger := withTempSessionLedger(t)
+	stamps := t.TempDir()
+	t.Setenv("FATHOM_SESSION_STAMPS", stamps)
+	t.Setenv("FATHOM_ARM_STATE", filepath.Join(t.TempDir(), "arm.json"))
+	t.Setenv("FATHOM_NARRATE_STATE", filepath.Join(t.TempDir(), "narrate.json"))
+	t.Setenv("FATHOM_HOOKS_LOG", filepath.Join(t.TempDir(), "hooks.jsonl"))
+	t.Setenv("FATHOM_CHANNELS", "")
+	resetObsCache()
+
+	stop := func() map[string]any {
+		t.Helper()
+		body, _ := json.Marshal(map[string]any{"session_id": "codex-sess", "cwd": repo, "transcript_path": rollout, "stop_hook_active": false})
+		restore := pipeStdin(t, string(body))
+		var out, errb bytes.Buffer
+		code := cmdStopHook([]string{"--harness", "codex", "--url", "http://127.0.0.1:1"}, &out, &errb)
+		restore()
+		if code != 0 {
+			t.Fatalf("stop-hook --harness codex exit %d: %s", code, errb.String())
+		}
+		data, err := os.ReadFile(ledger)
+		if err != nil {
+			t.Fatal(err)
+		}
+		rows := strings.Split(strings.TrimSpace(string(data)), "\n")
+		var row map[string]any
+		if err := json.Unmarshal([]byte(rows[len(rows)-1]), &row); err != nil {
+			t.Fatal(err)
+		}
+		return row
+	}
+
+	first := stop()
+	if first["harness"] != "codex" {
+		t.Errorf("harness = %v, want codex", first["harness"])
+	}
+	stampFiles, _ := filepath.Glob(filepath.Join(stamps, "transcript-*.json"))
+	if len(stampFiles) != 1 {
+		t.Fatalf("the Codex fold keeps its state in the session's one offset stamp, got %v", stampFiles)
+	}
+	var st transcriptOffsetStamp
+	if b, err := os.ReadFile(stampFiles[0]); err != nil || json.Unmarshal(b, &st) != nil || st.Codex == nil || st.Codex.Offset == 0 {
+		t.Fatalf("the stamp carries the CodexCostFold: %+v %v", st, err)
+	}
+
+	// The rest of the rollout arrives; the next Stop folds on from the stamp.
+	if err := os.WriteFile(rollout, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	row := stop()
+	for k, want := range map[string]any{
+		"harness": "codex", "model": "gpt-5.6-sol",
+		"tokens_in": float64(67196), "tokens_out": float64(3049), "tokens_cache_read": float64(635136), "tokens_cache_create": float64(0),
+		"tokens_total": float64(67196 + 3049 + 635136), "tool_calls": float64(14),
+	} {
+		if row[k] != want {
+			t.Errorf("codex row %s = %v, want %v", k, row[k], want)
+		}
+	}
+	if row["tokens_note"] != "" {
+		t.Errorf("tokens_note = %q, want empty beside real token fields", row["tokens_note"])
+	}
+	if n, _ := row["transcript_schema_note"].(string); !strings.Contains(n, "Codex rollout") {
+		t.Errorf("the schema note names the Codex rollout, got %q", n)
+	}
+
+	// An unreadable rollout records no figure, never a zero.
+	t.Setenv("FATHOM_SESSION_STAMPS", t.TempDir())
+	rollout = filepath.Join(t.TempDir(), "missing.jsonl")
+	gone := stop()
+	for _, k := range []string{"tokens_in", "tool_calls", "model"} {
+		if _, present := gone[k]; present {
+			t.Errorf("an unreadable rollout must leave %s absent: %v", k, gone)
+		}
+	}
+	if gone["tokens_note"] == "" {
+		t.Error("an unreadable rollout names why tokens are absent")
 	}
 }

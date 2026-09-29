@@ -301,6 +301,9 @@ func buildSessionLedgerEntry(sessionID, repo string, ts transcriptSummary, beats
 		e.TranscriptSchemaNote = "figures above are parsed from Claude Code's own transcript JSONL " +
 			"(transcript_path) — schema-coupled and may silently degrade to \"unavailable\" (never a " +
 			"wrong number) if that format changes; docs/design/production-tokenomics.md §8"
+		if ts.SchemaNote != "" {
+			e.TranscriptSchemaNote = ts.SchemaNote
+		}
 	}
 	e.TranscriptTruncated = ts.Truncated
 
@@ -397,13 +400,18 @@ type transcriptSummary struct {
 	// Model is the model of the last assistant message that names one
 	// (WI-9w), "" when none does.
 	Model string
+	// Parsed is set by a fold that read a transcript but fills none of the
+	// three headline fields (a Codex rollout, PE-14); SchemaNote replaces
+	// the Claude Code schema disclosure when that fold is not Claude's.
+	Parsed     bool
+	SchemaNote string
 }
 
 // parsed reports whether a transcript was actually read: any of its three
 // headline fields resolved to a real value. An absent or unreadable
 // transcript leaves all three nil with notes.
 func (ts transcriptSummary) parsed() bool {
-	return ts.DurationMS != nil || ts.TurnCount != nil || ts.TokensTotal != nil
+	return ts.Parsed || ts.DurationMS != nil || ts.TurnCount != nil || ts.TokensTotal != nil
 }
 
 // transcriptLine is the subset of Claude Code's session-transcript JSONL

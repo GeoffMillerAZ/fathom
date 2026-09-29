@@ -181,8 +181,14 @@ func recordSessionLedgerEntry(harnessID, sessionID, transcriptPath, projDir stri
 		repo = strings.ToLower(cands[0].name)
 	}
 	// RT-132 (§11.3): only what the transcript gained since this session's
-	// last Stop is read; the stamp carries the fold.
-	ts := readTranscriptFromOffset(sessionID, transcriptPath)
+	// last Stop is read; the stamp carries the fold. A Codex session's
+	// transcript_path is its rollout, folded on the harness port (PE-14).
+	var ts transcriptSummary
+	if harnessID == harness.Codex {
+		ts = readCodexRolloutFromOffset(sessionID, transcriptPath)
+	} else {
+		ts = readTranscriptFromOffset(sessionID, transcriptPath)
+	}
 	beats, _ := readBeatLogTail(beatLogPath(), sessionLedgerBeatTailBytes)
 	e := buildSessionLedgerEntry(sessionID, repo, ts, beats, now)
 	e.Harness = harnessID
