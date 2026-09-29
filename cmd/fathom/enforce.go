@@ -21,9 +21,23 @@ import (
 // found: Denied=false means no enforce:true rule governing this target was
 // violated (or none govern it at all, or enforcement is switched off) —
 // the caller proceeds to the ordinary advisory path unchanged.
+//
+// RuleID/CheckID/File name the FIRST violation (the one Reason renders) so
+// the deny path can write its `blocked` outcome (recordBlockedOutcome,
+// PR-10); they are zero whenever Denied is false. File is the repo-relative
+// path the violation fired on, "" for a command guard.
 type enforceDecision struct {
-	Denied bool
-	Reason string
+	Denied  bool
+	Reason  string
+	RuleID  string
+	CheckID string
+	File    string
+}
+
+// newEnforceDecision is the one place a violation becomes a denial, so a
+// decision can never carry a Reason without the identity behind it.
+func newEnforceDecision(v guardspec.EnforceViolation, file string) enforceDecision {
+	return enforceDecision{Denied: true, Reason: formatDenyReason(v), RuleID: v.RuleID, CheckID: v.CheckID, File: file}
 }
 
 // loadLayerRuleSet reads <root>/.fathom/guard.cue's layer_rules —
@@ -92,7 +106,7 @@ func evaluateEnforcedFile(root, repoRelPath, newContent, oldContent string) enfo
 	if len(violations) == 0 {
 		return enforceDecision{}
 	}
-	return enforceDecision{Denied: true, Reason: formatDenyReason(violations[0])}
+	return newEnforceDecision(violations[0], repoRelPath)
 }
 
 // evaluateEnforcedCommand is evaluateEnforcedFile's command-guard sibling:
@@ -113,7 +127,7 @@ func evaluateEnforcedCommand(root, command string) enforceDecision {
 		return enforceDecision{}
 	}
 	if v := guardspec.EvaluateCommandEnforcement(g); v != nil {
-		return enforceDecision{Denied: true, Reason: formatDenyReason(*v)}
+		return newEnforceDecision(*v, "")
 	}
 	return enforceDecision{}
 }
