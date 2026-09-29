@@ -80,22 +80,73 @@ func parseRFC3339(s string) time.Time {
 	return t.UTC()
 }
 
-// loadMapSet folds the log into maps. A header whose `completes_when` now
-// holds is closed by the thread machinery's own read-time closure (a durable,
-// attributed row, never a sweep), and that closure is the map's EndedAt.
+// mapReader is who reads the map set: the harness session, and the agent id
+// when the reading verb names one (an append's --agent).
+type mapReader struct {
+	Session string
+	Agent   string
+}
+
+// currentMapReader is this process's reader: its session, no agent id.
+func currentMapReader() mapReader { return mapReader{Session: currentSessionID()} }
+
+// mapCreatorRow is what a header's first row says about who filed the map:
+// the filing session ("" when none) and the created_by pointer.
+type mapCreatorRow struct {
+	Session   string
+	CreatedBy string
+}
+
+// createdIt reports whether r filed the map whose first header row is c
+// (XM-34, O176). A read that names an agent id is judged by it against
+// created_by when both are set: sub-agents share their parent's session id,
+// so the session alone cannot tell them apart. Otherwise the sessions decide.
+// A header filed with no session (a shell, a script) was created by no
+// session: only a read with no session is its creator's.
+func (r mapReader) createdIt(c mapCreatorRow) bool {
+	if r.Agent != "" && c.CreatedBy != "" {
+		return r.Agent == c.CreatedBy
+	}
+	if c.Session == "" {
+		return r.Session == ""
+	}
+	return r.Session == c.Session
+}
+
+// loadMapSet folds the log into maps, read by this process's session. A
+// header whose `completes_when` now holds is closed by the thread machinery's
+// own read-time closure (a durable, attributed row, never a sweep) when the
+// reader created the map (XM-34), and that closure is the map's EndedAt.
 func loadMapSet(root string, now time.Time) mapSet {
+	return loadMapSetAs(root, now, currentMapReader())
+}
+
+// loadMapSetAs is loadMapSet for a named reader.
+func loadMapSetAs(root string, now time.Time, reader mapReader) mapSet {
 	path := threadsPath()
 	folded := loadAllThreadRows(path)
+	raw := loadThreadRowsRaw(path)
 	var headers []threadItem
 	for _, it := range folded {
 		if it.Kind == mapHeaderKind {
 			headers = append(headers, it)
 		}
 	}
+	// The creator is read from each header's FIRST row: a restatement (a
+	// name, an include, a compose) carries the restating session's id.
+	creators := map[string]mapCreatorRow{}
+	for _, r := range raw {
+		if r.Kind != mapHeaderKind || r.Pointers == nil {
+			continue
+		}
+		if _, seen := creators[r.ID]; !seen {
+			creators[r.ID] = mapCreatorRow{Session: r.Pointers["session_id"], CreatedBy: r.Pointers["created_by"]}
+		}
+	}
 	// Close any header whose own condition now holds, against every row
 	// (a session_ended condition reads the session-end notes).
 	closed := map[string]threadItem{}
-	for _, h := range evaluateMapConditions(headers, folded, root, now) {
+	for _, h := range evaluateMapConditions(headers, folded, creators, reader, root, now) {
 		closed[h.ID] = h
 	}
 
@@ -126,7 +177,6 @@ func loadMapSet(root string, now time.Time) mapSet {
 
 	// The header history: an include a later restatement no longer carries
 	// was dropped at that restatement.
-	raw := loadThreadRowsRaw(path)
 	prevIncludes := map[string][]string{}
 	for _, r := range raw {
 		if r.Kind != mapHeaderKind || r.Pointers == nil {
@@ -211,11 +261,21 @@ func loadMapSet(root string, now time.Time) mapSet {
 // thread verbs use; the rows are checked against every folded row. A named
 // map's header is never closed (XM-32, O143): naming makes a map durable, so
 // the condition it was filed under no longer applies to it.
-func evaluateMapConditions(headers, all []threadItem, root string, now time.Time) []threadItem {
+//
+// A read closes only a map its reader created (XM-34, O176): a condition read
+// from a tree (a plan row, a file, a clean checkout) is the creator's to
+// judge, and another reader's clone or checkout must not end a shared map for
+// everyone, so any other reader sees the map open and writes nothing. The
+// one exception is the session-end default: `session_ended` reads nothing
+// but the shared log and names the creator's own session, which can never
+// read again once it has ended, so any reader closes it (an unnamed map
+// still ends with its session).
+func evaluateMapConditions(headers, all []threadItem, creators map[string]mapCreatorRow, reader mapReader, root string, now time.Time) []threadItem {
 	out := make([]threadItem, 0, len(headers))
 	for _, h := range headers {
 		named := strings.TrimSpace(h.Pointers["name"]) != ""
-		if !named && h.ClosedAt == "" && h.CompletesWhen != nil && threadConditionHolds(*h.CompletesWhen, root, all) {
+		judge := h.CompletesWhen != nil && (h.CompletesWhen.Kind == "session_ended" || reader.createdIt(creators[h.ID]))
+		if !named && h.ClosedAt == "" && judge && threadConditionHolds(*h.CompletesWhen, root, all) {
 			h.ClosedAt = now.UTC().Format(time.RFC3339)
 			h.ClosedBy = "condition"
 			h.ClosedWhy = describeCondition(*h.CompletesWhen) + " now holds"
@@ -410,7 +470,7 @@ func appendMapEntry(req mapEntryRequest, syms mapSymbolResolver) (mapAppendResul
 		return mapAppendResult{}, fmt.Errorf("anchor %q: %s has no lines %d-%d", req.Anchor, rel, start, end)
 	}
 
-	set := loadMapSet(root, now)
+	set := loadMapSetAs(root, now, mapReader{Session: currentSessionID(), Agent: req.AgentID})
 	thread := req.Thread
 	if thread == "" {
 		thread = threadScopeFor(root).defaultThread()
