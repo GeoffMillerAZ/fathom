@@ -426,7 +426,7 @@
       "category": "which_sources_feed_claim",
       "prompt": "internal/store/duckdb.go was deleted outright by SS-8/ADR-025 (the DuckDB backend removal); its closest living successor for store-backend governance is internal/store/backend.go. Which repository convention governs internal/store/backend.go, fed by exactly ONE governing document in this repo? Cite the line of that document on which the rule requiring a single shared, extension-based backend-selection helper begins, in the citation form `<file>#L<n>` (e.g. `docs/example.md#L7`).",
       "ground_truth": [
-        "ADR.md#L661"
+        "ADR.md#L703"
       ],
       "scoring_rule": "exact-match",
       "exercises": [
@@ -440,7 +440,7 @@
       ],
       "truth_at_head": [
         {
-          "token": "ADR.md#L661",
+          "token": "ADR.md#L703",
           "kind": "line",
           "file": "ADR.md",
           "needle": "Backend selection",
