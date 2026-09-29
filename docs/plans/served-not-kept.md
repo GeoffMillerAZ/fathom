@@ -14,7 +14,7 @@ what was considered so it is not re-proposed.
 
 ## Wave 0: facts and the $0 replay
 
-- [ ] (op) PR-V1: whether Claude Code and Codex PostToolUse input for a shell command carries its stdout (git's `[branch sha]` summary line) and whether context added there reaches the model {id: PR-V1, oracle: lexical, path: docs/bench/readings/served-not-kept/hook-facts.md, pattern: "^PR-V1 reading:"}
+- [x] (op) PR-V1: whether Claude Code and Codex PostToolUse input for a shell command carries its stdout (git's `[branch sha]` summary line) and whether context added there reaches the model {id: PR-V1, oracle: lexical, path: docs/bench/readings/served-not-kept/hook-facts.md, pattern: "^PR-V1 reading:"}
 - [ ] (op) PR-M0: the $0 replay over guards-pilot 6 and 8 cell diffs flags every violating i28 cell and no oracle-clean cell, and publishes the fragment evaluators' would-have-fired and false-fire counts {id: PR-M0, oracle: lexical, path: docs/bench/readings/served-not-kept/pr-m0-replay.md, pattern: "^PR-M0 verdict: (PASS|FAIL)"}
 
 ## Wave 1: the commit pin line
@@ -34,7 +34,7 @@ what was considered so it is not re-proposed.
 
 ## Wave 3: ledger rows that ride SR-61
 
-- [ ] The enforce deny path writes `blocked` to the rule-outcome ledger {id: PR-10, symbol: recordBlockedOutcome, package: cmd/fathom, reachable_from: TestEnforceDenyWritesBlockedOutcome, needs: "surface-reckoning.md#SR-61"}
+- [x] The enforce deny path writes `blocked` to the rule-outcome ledger {id: PR-10, symbol: recordBlockedOutcome, package: cmd/fathom, reachable_from: TestEnforceDenyWritesBlockedOutcome, needs: "surface-reckoning.md#SR-61"}
 - [ ] A rule served by the pre hook still writes its `served` row on the paired post call; the guard stamp keeps suppressing only the SR-48 ask {id: PR-11, symbol: trackRuleOutcomeAt, package: cmd/fathom, reachable_from: TestPreServedRuleStillRecordsServed, needs: "judgment-foundations.md#JF-1"}
 
 ## Wave 4: readings
