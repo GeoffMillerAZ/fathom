@@ -1,0 +1,68 @@
+{
+  "symbols": [
+    {
+      "name": "App",
+      "kind": "RubyModule",
+      "package": "imports",
+      "line": 10,
+      "end_line": 14,
+      "tier": "verified"
+    },
+    {
+      "name": "App.boot",
+      "kind": "RubyMethod",
+      "package": "imports",
+      "line": 11,
+      "end_line": 13,
+      "signature": "def self.boot",
+      "calls": [
+        "require"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "json",
+      "module": "json",
+      "kind": "whole",
+      "line": 1
+    },
+    {
+      "local": "net/http",
+      "module": "net/http",
+      "kind": "whole",
+      "line": 2
+    },
+    {
+      "local": "support/util",
+      "module": "support/util",
+      "kind": "whole",
+      "line": 3
+    },
+    {
+      "local": "../lib/other.rb",
+      "module": "../lib/other.rb",
+      "kind": "whole",
+      "line": 4
+    },
+    {
+      "local": "tasks/setup.rb",
+      "module": "tasks/setup.rb",
+      "kind": "whole",
+      "line": 5
+    },
+    {
+      "local": "app/lazy",
+      "module": "app/lazy",
+      "kind": "whole",
+      "line": 6
+    },
+    {
+      "local": "set",
+      "module": "set",
+      "kind": "whole",
+      "line": 12
+    }
+  ]
+}

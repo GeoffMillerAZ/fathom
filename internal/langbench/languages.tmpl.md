@@ -37,7 +37,7 @@ language-native SCIP indexer), **file** (per-file resolver, tier pre-scan, label
 | Rust | heuristic (`rustextract.go`) | no | (corpus.yaml) | **scip** via rust-analyzer | grammar; oracle |
 | C | heuristic (`cextract.go`, `cheaderextract.go`) | no | curl, libuv, sqlite | **scip** via scip-clang | grammar |
 | C++ | heuristic (`cppextract.go`) | no | (corpus.yaml) | **scip** via scip-clang | grammar |
-| Ruby | tree-sitter (wasm) | yes | sinatra, jekyll, fastlane | **scip** via scip-ruby | oracle |
+| Ruby | tree-sitter (wasm) | yes | sinatra, jekyll | **scip** via scip-ruby, which needs a Sorbet-typed subject (on untyped code it sees only typed receivers); meanwhile **file**: `require`, `require_relative`, `load` and `autoload` resolve via the file-symbol strategy (LB-Q-ruby; a top-level class, module, constant or method resolves, a nested one does not: Ruby names a constant lexically) | `import_resolution` in the harness; a lexical-scope resolver |
 | HTML | tree-sitter (wasm) | yes | html5-boilerplate, bootstrap (visual tests) | **file** — `src`/`href` resolve via the relative-path strategy (LB-F11); no SCIP producer exists for HTML, so this is the ceiling until one does | — |
 | CSS | tree-sitter (wasm) | yes | normalize.css, pico | **file** — `@import` resolves via the relative-path strategy (LB-F11); no SCIP producer exists for CSS, so this is the ceiling until one does | BareName's separator set mismatches CSS's own `.`/`#`/`:` selector-marker punctuation (internal/langbench/score.go, Opus); tree-sitter-css > v0.25.0 for `:not(A, B)` |
 | C# | heuristic (`csharpextract.go`) | no | (corpus.yaml) | **scip** via scip-dotnet | grammar |

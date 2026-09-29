@@ -13,6 +13,7 @@ lines, bare names).
 | scip-typescript/ | A | TypeScript, JavaScript |
 | scip-dotnet/ | A (def_mapping, typed_recall) | C# |
 | scip-php/ | A (calls, def_mapping, file edges) | PHP |
+| scip-ruby/ | A (diagnostic: typed receivers only) | Ruby |
 | rust-analyzer/ | A (definitions, calls, def_mapping, typed_recall, file edges) | Rust |
 | roslyn/ | B | C# |
 | javaparser/ | B | Java |
@@ -20,7 +21,7 @@ lines, bare names).
 | powershell-ast/ | B | PowerShell |
 | php-parser/ | B | PHP |
 | luaparse/ | B | Lua (definitions) |
-| ts-tags/ | C | Bash and Lua (calls) |
+| ts-tags/ | C | Bash, Lua and Ruby (calls) |
 | sqlglot/ | C | SQL (foreign-key calls) |
 | make/ | A (references), B (definitions) | Makefile |
 

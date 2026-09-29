@@ -611,7 +611,14 @@ func parseGitLog(serviceID, raw string) []store.Commit {
 // needs/dependencies/extends references and the cross-file ones that resolve)
 // where each was fingerprinted as unclassified YAML (or, with a global
 // `services:` list, read as Compose); the salt bump re-reads them.
-const ExtractorEpoch = "22"
+// Epoch 23 (LB-Q-ruby): the ruby dialect emits constants (RubyConstant, a container
+// so `Outer::CONST` reads as Ruby writes it), attr_accessor/attr_reader/attr_writer
+// names (RubyProperty, `Owner.name`), aliases (RubyAlias), define_method with a
+// literal name and Name = Class.new / Module.new, names a constant reference as a
+// call target (`Registry.instance.register` calls Registry, instance and register),
+// leaves out `def obj.x` on a local, and .rake, .ru and Rakefile now extract as Ruby;
+// every already-indexed .rb file lacks those, so the salt bump re-extracts it.
+const ExtractorEpoch = "23"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares
@@ -737,6 +744,9 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 		panic(fmt.Sprintf("fusion: tsextract ruby: %v", err))
 	}
 	p.exts[".rb"] = rb
+	p.exts[".rake"] = rb // LB-Q-ruby: one extractor (one grammar module) for every Ruby spelling
+	p.exts[".ru"] = rb
+	p.exts["Rakefile"] = rb
 
 	// Kotlin — tree-sitter via wazero/WASM (ADR-021 §4 new-language
 	// breadth, wave P2 / O69 / O79): no CGO incumbent, so no calibration

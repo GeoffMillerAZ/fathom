@@ -30,7 +30,7 @@ const oracleTimeout = 20 * time.Minute
 
 // fileResolveLang names the dialects today's file resolver serves
 // (fusion.ResolveFileEdges), so file-edge metrics are measured for them.
-var fileResolveLang = map[string]string{"typescript": "javascript", "javascript": "javascript", "python": "python", "cpp": "cpp", "php": "php", "rust": "rust"}
+var fileResolveLang = map[string]string{"typescript": "javascript", "javascript": "javascript", "python": "python", "cpp": "cpp", "php": "php", "rust": "rust", "ruby": "ruby"}
 
 // cmdLangOracle is `indexbench lang-oracle` (LB-F23, design §10): one
 // subject's measurement of one dialect, merged into the dialect's reading.

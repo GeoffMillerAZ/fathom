@@ -95,6 +95,13 @@ var extClassMap = map[string]classification{
 	".rs":  {core.KindRustFn, "rust"},
 	".cs":  {core.KindCSharpClass, "cs"},
 
+	// LB-Q-ruby: Ruby's other source spellings — Rake task files, Rack config
+	// (config.ru) and the Rakefile basename. Gemfile, *.gemspec, Podfile and
+	// *.podspec are the Ruby DSL manifests' (LB-Q-gemfile-podfile), not claimed here.
+	".rake":    {core.KindRubyMethod, "ruby"},
+	".ru":      {core.KindRubyMethod, "ruby"},
+	"Rakefile": {core.KindRubyMethod, "ruby"},
+
 	// Kotlin (wave P2, ADR-021 §4 new-language breadth — closes the O69
 	// gap: a real Kotlin repo previously indexed near-empty with no
 	// disclosure). .kts (Kotlin script, e.g. build.gradle.kts) shares the

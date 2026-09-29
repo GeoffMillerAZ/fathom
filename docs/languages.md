@@ -37,7 +37,7 @@ language-native SCIP indexer), **file** (per-file resolver, tier pre-scan, label
 | Rust | heuristic (`rustextract.go`) | no | (corpus.yaml) | **scip** via rust-analyzer | grammar; oracle |
 | C | heuristic (`cextract.go`, `cheaderextract.go`) | no | curl, libuv, sqlite | **scip** via scip-clang | grammar |
 | C++ | heuristic (`cppextract.go`) | no | (corpus.yaml) | **scip** via scip-clang | grammar |
-| Ruby | tree-sitter (wasm) | yes | sinatra, jekyll, fastlane | **scip** via scip-ruby | oracle |
+| Ruby | tree-sitter (wasm) | yes | sinatra, jekyll | **scip** via scip-ruby, which needs a Sorbet-typed subject (on untyped code it sees only typed receivers); meanwhile **file**: `require`, `require_relative`, `load` and `autoload` resolve via the file-symbol strategy (LB-Q-ruby; a top-level class, module, constant or method resolves, a nested one does not: Ruby names a constant lexically) | `import_resolution` in the harness; a lexical-scope resolver |
 | HTML | tree-sitter (wasm) | yes | html5-boilerplate, bootstrap (visual tests) | **file** — `src`/`href` resolve via the relative-path strategy (LB-F11); no SCIP producer exists for HTML, so this is the ceiling until one does | — |
 | CSS | tree-sitter (wasm) | yes | normalize.css, pico | **file** — `@import` resolves via the relative-path strategy (LB-F11); no SCIP producer exists for CSS, so this is the ceiling until one does | BareName's separator set mismatches CSS's own `.`/`#`/`:` selector-marker punctuation (internal/langbench/score.go, Opus); tree-sitter-css > v0.25.0 for `:not(A, B)` |
 | C# | heuristic (`csharpextract.go`) | no | (corpus.yaml) | **scip** via scip-dotnet | grammar |
@@ -71,7 +71,7 @@ reading's computed `level_met` with each met level's grade; `tolerated` is regis
 no reading yet; `unsupported (disclosed)` is queued, not registered, and named per service
 by `list_services`.
 
-Milestone M1 progress: languages at L1 excellent 9/20, at L2 7/12, at L3 0/8, at L4 0/6; tool formats at target 6/15
+Milestone M1 progress: languages at L1 excellent 10/20, at L2 8/12, at L3 0/8, at L4 0/6; tool formats at target 6/15
 
 | Language or format | Kind | Engine | Grammar / parser | Target | Level met | Oracles | Typed edges | Reading | Next |
 |---|---|---|---|---|---|---|---|---|---|
@@ -102,7 +102,7 @@ Milestone M1 progress: languages at L1 excellent 9/20, at L2 7/12, at L3 0/8, at
 | Kotlin (.kt .kts) | language | tags | fwcd/tree-sitter-kotlin (MIT) | L4 | L2 (L1 excellent, L2 good) | B kotlin-psi 2.3.20 | scip:scip-java | 2026-09-29 | LB-Q-kotlin |
 | Lua (.lua) | language | tags | tree-sitter-grammars/tree-sitter-lua (MIT) | L2 | L2 (L1 excellent, L2 good) | B luaparse 0.3.1 (luaVersion LuaJIT); C tree-sitter-tags:lua-tags.scm py-tree-sitter 0.25.2, tree-sitter-lua 0.5.0 | syntax | 2026-09-29 | at target (LB-Q-lua) |
 | GitLab CI (.gitlab-ci.yml, included files) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 good, L3 good) | A gitlab-ci-local --list-json gitlab-ci-local 4.75.1; C gitlab-ci-refs-oracle (independent yaml.v3 walk of needs, dependencies and extends, over the pipelines gitlab-ci-local accepts) gopkg.in/yaml.v3 v3.0.1 | — | 2026-09-29 | at target (LB-Q-gitlab-ci) |
-| Ruby (.rb, Rakefile, Gemfile by basename) | language | tags | tree-sitter/tree-sitter-ruby (MIT) | L3 | tolerated | — | scip:scip-ruby | — | LB-Q-ruby |
+| Ruby (.rb, Rakefile, Gemfile by basename) | language | tags | tree-sitter/tree-sitter-ruby (MIT) | L3 | L2 (L1 excellent, L2 good) | C tree-sitter-tags:ruby-tags.scm py-tree-sitter 0.25.2, tree-sitter-ruby 0.23.1; B universal-ctags 6.2.1 | scip:scip-ruby | 2026-09-29 | LB-Q-ruby |
 | Maven POMs (pom.xml) | tool format | doc | pure-go:encoding/xml (n/a) | L3 | unsupported (disclosed) | — | — | — | LB-Q-maven |
 | Dart (.dart) | language | tags | UserNobody14/tree-sitter-dart (MIT) | L4 | unsupported (disclosed) | — | — | — | LB-Q-dart |
 | Cargo manifests (Cargo.toml, workspaces) | tool format | doc | pure-go:github.com/pelletier/go-toml/v2 (n/a) | L3 | unsupported (disclosed) | — | — | — | LB-Q-cargo |

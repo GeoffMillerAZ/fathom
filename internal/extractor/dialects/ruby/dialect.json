@@ -5,28 +5,34 @@
   "engine": "tags",
   "lang_tag": "ruby",
   "match": {
-    "extensions": [".rb"],
-    "basenames": [],
+    "extensions": [".rb", ".rake", ".ru"],
+    "basenames": ["Rakefile"],
     "globs": [],
     "shebangs": [],
     "sniff": null
   },
   "grammar": { "blob": "ruby", "entry_point": "tree_sitter_ruby" },
   "variants": [],
-  "queries": { "tags": "tags.scm" },
+  "queries": { "tags": "tags.scm", "imports": "imports.scm" },
   "kinds": {
-    "module": { "source_kind": "RubyModule", "canonical": "module", "container": true },
-    "class":  { "source_kind": "RubyClass",  "canonical": "class",  "container": true },
-    "method": { "source_kind": "RubyMethod", "canonical": "method", "callable": true }
+    "module":   { "source_kind": "RubyModule",   "canonical": "module",   "container": true },
+    "class":    { "source_kind": "RubyClass",    "canonical": "class",    "container": true },
+    "method":   { "source_kind": "RubyMethod",   "canonical": "method",   "callable": true },
+    "alias":    { "source_kind": "RubyAlias",    "canonical": "method",   "callable": true },
+    "constant": { "source_kind": "RubyConstant", "canonical": "constant", "container": true },
+    "property": { "source_kind": "RubyProperty", "canonical": "property", "callable": true }
   },
-  "required_kinds": ["class", "module", "method"],
+  "required_kinds": ["class", "module", "method", "alias", "constant", "property"],
   "oracle_kinds": {
     "ctags": { "class": "class", "module": "module", "method": "method", "singletonMethod": "method",
                "accessor": "property", "constant": "constant", "alias": "method" }
   },
+  "names": { "trim_quotes": true, "strip_prefix": [":"] },
   "qualify": { "chain_containers": true, "container_sep": "::", "method_sep": "." },
   "package": { "strategy": "dir" },
+  "imports": { "strategy": "file-symbol", "relative": true, "suffixes": [".rb"], "source_roots": ["lib", ""] },
   "signature": { "max_chars": 200 },
+  "ctags": { "languages": ["Ruby"], "args": ["--map-Ruby=+.rake", "--map-Ruby=+.ru", "--map-Ruby=+(Rakefile)"] },
   "target_level": "L3",
   "queue_id": "ruby"
 }
