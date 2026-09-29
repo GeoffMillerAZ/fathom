@@ -109,11 +109,12 @@ var typedEdgeProducers = map[string]string{
 	"msbuild": "syntax",
 
 	// Kustomize (LB-Q-kustomize): a resource, base, component or patch that
-	// names another file of the repository becomes a file-tier doc-xref edge at
-	// ingest (fusion.ResolveDocXrefs) but is not a file-resolver or SCIP
-	// producer, so "syntax" is the honest baseline claim, same as pom.xml and
-	// Cargo.toml above. (A kustomization file was language "yaml" before: it
-	// shared that tag's producer.)
+	// names another doc-engine file of the repository (today another
+	// kustomization, by its directory: LB-Q-kustomize-rest) becomes a
+	// file-tier doc-xref edge at ingest (fusion.ResolveDocXrefs) but is not a
+	// file-resolver or SCIP producer, so "syntax" is the honest baseline
+	// claim, same as pom.xml and Cargo.toml above. (A kustomization file was
+	// language "yaml" before: it shared that tag's producer.)
 	"kustomize": "syntax",
 
 	// Taskfile (LB-Q-taskfile): an `includes:` entry that names another

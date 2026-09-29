@@ -701,10 +701,12 @@ func parseGitLog(serviceID, raw string) []store.Commit {
 // an entity (Kustomization, named by the file), components and the
 // configMapGenerator and secretGenerator entries are read (KustomizeResource,
 // KustomizeConfigMap, KustomizeSecret), the kustomization refers to each entry
-// it names, and a resource, base, component or patch that names another file of
-// the repository gets a file-tier edge to it; a patch is signed by its target's
-// name and an image by its newName, newTag or digest (the doc engine has no
-// concatenation) where the incumbent composed Kind/name and newName:newTag.
+// it names, and a resource, base, component or patch that names another doc-
+// engine file of the repository (today another kustomization, by its
+// directory; a Kubernetes manifest is not one yet) gets a file-tier edge to
+// it; a patch is signed by its target's name and an image by its newName,
+// newTag or digest (the doc engine has no concatenation) where the incumbent
+// composed Kind/name and newName:newTag.
 // Every already-indexed kustomization file was extracted by the incumbent, so
 // the salt bump re-reads them.
 // Epoch 34 (LB-Q-taskfile, docs/design/language-breadth.md §13/§4): a
