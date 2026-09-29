@@ -12,6 +12,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // SourceRead is one input a projection read and how the read went: present
@@ -48,6 +50,20 @@ type ClaimCounts struct {
 	Contradicted int `json:"contradicted"`
 	Refuted      int `json:"refuted"`
 	Other        int `json:"other"` // contradicted, refuted, and any other status
+}
+
+// ClaimCountsOf is one project's claims by status, bucketed by the
+// knowledge fold's own rule (StatusCounts.add), so claims.current is one
+// computation whether Now and Fleet read it from the project set or Layers
+// and Packs from the knowledge fold (OC-H3).
+func ClaimCountsOf(claims []core.SemanticClaim) ClaimCounts {
+	var s StatusCounts
+	for _, c := range claims {
+		s.add(c.Status)
+	}
+	c := ClaimCounts{Total: len(claims), Fresh: s.Fresh, Stale: s.Stale, Superseded: s.Superseded, Contradicted: s.Contradicted, Refuted: s.Refuted}
+	c.Other = c.Total - c.Fresh - c.Stale - c.Superseded
+	return c
 }
 
 // CertCounts are one project's certification targets (certify status):

@@ -58,13 +58,23 @@ func TestClaimsCurrent_ProjectsAndKnowledgeAgree(t *testing.T) {
 		}
 		return out
 	}
+	aClaims := claims(core.ClaimFresh, core.ClaimFresh, core.ClaimStale, core.ClaimContradicted, core.ClaimSuperseded, core.ClaimRefuted)
 	k := knowledge{Services: []serviceKnowledge{
-		{Service: "a", Claims: claims(core.ClaimFresh, core.ClaimFresh, core.ClaimStale, core.ClaimContradicted, core.ClaimSuperseded, core.ClaimRefuted)},
+		{Service: "a", Claims: aClaims},
 		{Service: "b", Err: "boom"},
 		{Service: "c"},
 	}}
+	// The project set buckets the store's claims with ClaimCountsOf (the
+	// gather's own call), never with counts written out by hand here.
+	aCounts := ClaimCountsOf(aClaims)
+	if want := (ClaimCounts{Total: 6, Fresh: 2, Stale: 1, Contradicted: 1, Superseded: 1, Refuted: 1, Other: 2}); aCounts != want {
+		t.Errorf("ClaimCountsOf = %+v, want %+v", aCounts, want)
+	}
+	if c := ClaimCountsOf(claims(core.ClaimStatus("unknown"))); c.Total != 1 || c.Other != 1 {
+		t.Errorf("an unknown status = %+v, want counted in Total and Other", c)
+	}
 	p := Projects{Store: SourceRead{State: StatePresent}, Rows: []ProjectFacts{
-		{Service: "a", Claim: Present(ClaimCounts{Total: 6, Fresh: 2, Stale: 1, Contradicted: 1, Superseded: 1, Refuted: 1, Other: 2}, "s")},
+		{Service: "a", Claim: Present(aCounts, "s")},
 		{Service: "b", Claim: Errored[ClaimCounts]("boom")},
 		{Service: "c", Claim: Present(ClaimCounts{}, "s")},
 	}}
