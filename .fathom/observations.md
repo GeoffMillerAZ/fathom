@@ -2328,3 +2328,16 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** the dialect fixes the path length with `#match?` on the whole reference and walks to the last identifier with leading and sibling anchors, one pattern per length from one to eight (dialects/protobuf/tags.scm); a dialect that needs the last named child elsewhere should check lang-probe before trusting a trailing anchor
 - **Status:** open (worked around)
 - **Impact:** a query that relies on a trailing anchor silently over-captures (here every package segment became a callee: call precision, and file-resolved edges named by a package segment)
+
+### O180 — PR-9's silent-loss rule would block 2 of the last 50 guarded commits of main, each on one assertion call fewer in a pinned test
+
+- **Symptom:** PR-12's false-block check (ADR-057 revisit clause 2) ran `fathom conserve --since C^ --strict-plane integrity` over the last 50 commits touching a guarded test file or a pin's naming source; it found no retirement, but two commits exit 1 on `weakened` silent losses, a rule PR-9 already had
+- **Evidence:**
+  - **Tool:** `fathom conserve --strict-plane integrity` (PR-9's rule; PR-12 does not change it), `docs/bench/readings/served-not-kept/pr-m0-method/false-block-pr12.sh`
+  - **Expected:** CV-M2's 0 false losses in 50 commits (2026-09-24) to hold, or every block to be a real weakening
+  - **Actual:** `5b6e96cb` (EW-7, the wall-bound sweep): `TestDisabledFileCheckedBeforeStoreOpen` 7 to 6 assertion calls (I-row at invariants.md:82) and `TestGroup_StampedeOneBuildCtxAwareWaiters` 12 to 11 (invariants.md:80); `b3b8b1bc` (EW-16): `TestLefthook_PrePushVerifyReadsTheChangeRange` 6 to 5 (invariants.md:59). Both predate PR-9 (2026-09-28); the first-parent set of 50 shows no pin line at all
+  - **Repro:** `git worktree add --detach wt 5b6e96cbc7 && cd wt && fathom conserve --since 5b6e96cbc7^ --service fb --store <empty> --json`, then read the integrity plane's `weakened` findings
+- **Root cause:** not adjudicated. EW-7 replaced wall-clock bounds with CPU-time or progress bounds, so one assertion call fewer may be the change itself and not a weakening; `weakened` counts assertion calls and cannot tell
+- **Fix:** none. ADR-057's revisit clause 2: the owner adjudicates each block (name the loss kind). An explanation in the commit message does not unblock the pre-push step
+- **Status:** open (owner adjudication)
+- **Impact:** if both are false, PR-9's pre-push block misfires on 2 of 50 guarded commits (4 percent), all `weakened`; that is the K2-style signal for narrowing `weakened` at pre-push

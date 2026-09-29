@@ -77,8 +77,10 @@ protecting that test. No model is needed.
   edit fails `workspace_output` on 45 of 366 non-test `cmd/fathom/*.go` files, including `servehttp.go`.
 - **A per-edit pin check misreads moves** (*measured*). `integrity.Check` looks for a renamed test only among
   `ChangedFiles`; with one file in view, a test moved to another file reads as deleted.
-- **The whole-change pin check works** (*measured*). CV-M1 flagged both pilot-8 i28 trials as `deleted` (the name
-  changed and so did the body). CV-M2 found 0 false losses in 50 finished commits. The CV-7 guarded set already
+- **The whole-change pin check works** (*measured*). CV-M1 flagged both i28 full-arm trials of `guards-fathom-r2`
+  as `deleted` (the name changed and so did the body). *Corrected 2026-09-29 (O160):* CV-M1 labeled those cells
+  pilot 8; they are the 2026-09-21 round's `guards-fathom-r2` (the ledger's run id, and the transcripts' harness
+  version and date), and CV-M1's measurement of them stands. Pilot 8's own i28 grades are its reading's. CV-M2 found 0 false losses in 50 finished commits. The CV-7 guarded set already
   includes invariant tests, and invariant I28 names the i28 pin.
 - **`test_ran` has no headroom and has a false-kept hole** (*measured*). In 404 transcript and guard pairs the
   served-or-not base rate was 93.6 percent lenient and 85.2 percent strict on code scopes. On `[no tests to
@@ -150,12 +152,18 @@ commit)": a deliberate retirement stays visible without being called a violation
   the owner-architect and confirmed by the owner the same day; Q34 is answered.
 - **Revisit when.** Any false block happens (name the loss kind), or an agent retires a pin by editing its
   source with no decision record in the range (then the exemption requires a decision cite).
+- **K4 fired (2026-09-29, O161).** On PR-M0's replay 3 of the 5 violating i28 cells rewrote I28's row to name
+  their new test, so PR-9 blocked 2 of 5. PR-12 requires the cite: a retired pin passes only when a line added in
+  the range names the lost test in a decision record (`ADR.md`, `docs/adr/**`, `docs/intent/decisions/**`) or on
+  a dated decision line (an ISO date and decision, decided, retire, retired or retires); a `docs/plans/**` line
+  never counts. On the same replay it blocks 5 of 5 and passes the clean cell (INC-26).
 
 ## 5. Experiments and kill criteria
 
 **PR-M0: $0, before building PR-3.** CV-M1's method (`fathom conserve --json`, integrity plane) over every
 guards-pilot 6 and 8 cell diff, and the fragment evaluators with `Enforce` forced on a copy over the transcripts'
-edit fragments. Bar: every violating i28 cell is flagged and no oracle-clean cell is flagged; the
+edit fragments. (Run 2026-09-29 over every guards cell on disk instead, the 2026-09-21 round's `guards-fathom-r1`
+and `-r2`: neither pilot's cells are on disk, O160.) Bar: every violating i28 cell is flagged and no oracle-clean cell is flagged; the
 would-have-fired and false-fire counts for the fragment evaluators are published (the only prior for arm W).
 
 **PR-M1: 30 days of record mode on owner traffic, $0.** The owner adjudicates every fire (the expected volume is

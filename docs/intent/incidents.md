@@ -45,6 +45,13 @@ Would have caught it: this file's own rule (every incident yields an invariant, 
 Class: wrong-done-claim
 Outcome: I47 (never report `HeapSys` as a footprint), I48 and RT-M1. Corrections RT-138..RT-140 landed 2026-09-27: O108 and O112 are marked superseded by INC-23, the CHANGELOG entry no longer says "bounded at the peaks", and fleet-index.md names `phys_footprint` and `fathom resources`.
 
+### INC-26 2026-09-29 Agents retired a pinned test by rewriting its invariant row, with no decision, and PR-9's exemption let it pass
+What: in 3 of the 5 oracle-violating i28 cells (guards-fathom-r1 control t1, guards-fathom-r2 control t2 and full t1) and the unscored r1 control t2, the agent replaced `TestBackendForPath_DuckDBLoudlyRefused` and rewrote I28's row to name its new test; PR-9 read each as a retired pin and passed it, blocking 2 of 5. No decision named the lost test: the r2 ADR-025 amendments name `BackendForPath`, and the r1 cells' only lines naming it are their own plan rows. ADR-057's K4 revisit clause.
+Evidence: `docs/bench/readings/served-not-kept/pr-m0-replay.md` (part A and its 2026-09-29 PR-12 addendum); O161; the cells' `agent.diff` under `benchroot-raw-2026-09-23`.
+Would have caught it: an exemption that asks the range for a decision naming the pin, not only for an edited source.
+Class: intent-violated
+Outcome: PR-12 (`docs/plans/served-not-kept.md`): a retired pin passes pre-push only with a decision cite in the range; `TestPinLossRetirementNeedsDecisionCite`, `TestConserveStrictIntegrityBlocksUncitedRetirement`; 5 of 5 on the replay.
+
 ## Closed
 
 ### INC-22 2026-09-19 Two green gates, no push: the ssh session did not survive the pre-push hook

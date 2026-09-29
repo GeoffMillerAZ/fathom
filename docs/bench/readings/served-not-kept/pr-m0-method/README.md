@@ -36,3 +36,26 @@ git clone <fathom> "$PRM0_DIR/base" && git -C "$PRM0_DIR/base" checkout f67f06a
 git clone <fathom> "$PRM0_DIR/eval" && git -C "$PRM0_DIR/eval" checkout fa240083
 ./replay.sh && ./fragments.sh && ./summarize.py
 ```
+
+## PR-12 addendum (2026-09-29): the pre-push verdict per i28 cell
+
+- `replay-pr12.sh`: every i28 `attempt-1/agent.diff` of both directories through the pre-push step's
+  own command, `fathom conserve --since f67f06a --strict-plane integrity`, keeping each cell's exit
+  code and pin lines under `$PRM0_DIR/pr12/`. The pin check is storeless, so each cell gets a fresh
+  empty store (the reading's run used empty stores); `PRM0_INGEST=1` ingests the cell first, as
+  `replay.sh` does, for the other planes' advisory report.
+- `false-block-pr12.sh`: the same rule over single commits of this repository's own history, CV-M2's
+  method: the last 50 commits touching a guarded test file or a pin's naming source, and the last 50
+  first-parent commits (a merge's first-parent range is a wave's pushed range), `C^..C` each.
+
+```sh
+cd docs/bench/readings/served-not-kept/pr-m0-method
+export PRM0_DIR=<scratch> PRM0_RAW=<benchroot-raw-2026-09-23> PRM0_FATHOM=<fathom with PR-12>
+export PRM0_PRE_CELL='tccutil reset SystemPolicyRemovableVolumes com.mitchellh.ghostty'  # the reading's host only
+git clone <fathom> "$PRM0_DIR/base" && git -C "$PRM0_DIR/base" checkout f67f06a
+./replay-pr12.sh                      # 7 cells, about 20 seconds; one TSV line per cell on stdout
+PRM0_FATHOM=<fathom at PR-9> PRM0_DIR=<another scratch, same base/> ./replay-pr12.sh  # the PR-9 column
+
+export FB_REPO=<a fathom clone> FB_REF=origin/main FB_DIR=<scratch> FB_FATHOM=<fathom with PR-12>
+./false-block-pr12.sh                 # $FB_DIR/{guarded,firstparent}.{tsv,pins}
+```
