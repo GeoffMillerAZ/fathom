@@ -25,6 +25,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -77,6 +78,11 @@ type ReceiptFile struct {
 	AfterExists  bool            `json:"after_exists"`
 	AfterDigest  string          `json:"after_digest,omitempty"`
 	Touched      []TouchedRegion `json:"touched,omitempty"`
+	// Link is the target when the path AFTER this write is a symbolic link
+	// fathom wrote (link.go); BeforeLink is the target when the path was a
+	// link BEFORE it (an undo that removed one). Both empty for a file.
+	Link       string `json:"link,omitempty"`
+	BeforeLink string `json:"before_link,omitempty"`
 }
 
 // Receipt is one apply (or one undo — see UndoOf), append-only.
@@ -263,17 +269,63 @@ func Undo(root, id string, opt ApplyOptions) (UndoResult, error) {
 		path    string
 		current string
 		exists  bool
+		link    string // the path is a link to this target right now
 	}
 	plan := make([]restore, 0, len(r.Files))
 
+	// Links this receipt wrote (link.go). A file the same apply removed from
+	// under one reads THROUGH the link today — the link's target has a file
+	// by that name — but the link is removed first, so for the check the
+	// path is absent.
+	var wroteLinks []string
+	for _, f := range r.Files {
+		if f.Link != "" {
+			wroteLinks = append(wroteLinks, f.Path)
+		}
+	}
+	underWrittenLink := func(rel string) bool {
+		for _, lp := range wroteLinks {
+			if strings.HasPrefix(rel, lp+"/") {
+				if isLink, _ := LinkState(root, lp); isLink {
+					return true
+				}
+			}
+		}
+		return false
+	}
+
 	for _, f := range r.Files {
 		path := filepath.Join(root, filepath.FromSlash(f.Path))
-		current, exists, rerr := readFileIfPresent(path)
-		if rerr != nil {
-			out.Refused = append(out.Refused, Refusal{Path: f.Path, Reason: "cannot be read: " + rerr.Error()})
-			continue
+		isLink, target := LinkState(root, f.Path)
+		var current string
+		var exists bool
+		switch {
+		case isLink:
+			exists = true
+		case underWrittenLink(f.Path):
+			// absent once the link is gone (see above)
+		case f.BeforeLink != "" && isDir(path):
+			// Undoing an undo that restored a directory in the link's place:
+			// the directory must hold nothing but files this receipt removes.
+			if stray := strayUnder(root, f.Path, r.Files); len(stray) > 0 {
+				out.Refused = append(out.Refused, Refusal{Path: f.Path, Reason: "holds entries the receipt does not describe (" + strings.Join(stray, ", ") + ") — undo would destroy them"})
+				continue
+			}
+		default:
+			var rerr error
+			current, exists, rerr = readFileIfPresent(path)
+			if rerr != nil {
+				out.Refused = append(out.Refused, Refusal{Path: f.Path, Reason: "cannot be read: " + rerr.Error()})
+				continue
+			}
 		}
 		switch {
+		case f.Link != "" && (!isLink || target != f.Link):
+			out.Refused = append(out.Refused, Refusal{Path: f.Path, Reason: "no longer the link fathom wrote (to " + f.Link + ") — undo would remove something else"})
+		case f.Link == "" && isLink:
+			out.Refused = append(out.Refused, Refusal{Path: f.Path, Reason: "is a link now (to " + target + "); the receipt describes a file"})
+		case f.Link != "":
+			plan = append(plan, restore{file: f, path: path, exists: true, link: target})
 		case f.AfterExists && !exists:
 			out.Refused = append(out.Refused, Refusal{Path: f.Path, Reason: "the file no longer exists; the receipt describes a file fathom wrote"})
 		case !f.AfterExists && exists:
@@ -299,14 +351,21 @@ func Undo(root, id string, opt ApplyOptions) (UndoResult, error) {
 		UndoOf: r.ID,
 	}
 	for _, p := range plan {
-		back.Files = append(back.Files, ReceiptFile{
+		bf := ReceiptFile{
 			Path:         p.file.Path,
 			Existed:      p.exists,
 			Before:       p.current,
 			BeforeDigest: digest(p.current),
-			AfterExists:  p.file.Existed,
+			AfterExists:  p.file.Existed || p.file.BeforeLink != "",
 			AfterDigest:  ternary(p.file.Existed, digest(p.file.Before), ""),
-		})
+		}
+		if p.link != "" {
+			bf.BeforeLink, bf.BeforeDigest = p.link, linkDigest(p.link)
+		}
+		if p.file.BeforeLink != "" {
+			bf.Link, bf.AfterDigest = p.file.BeforeLink, linkDigest(p.file.BeforeLink)
+		}
+		back.Files = append(back.Files, bf)
 	}
 	written, err := AppendReceipt(root, back, opt.MaxReceipts)
 	if err != nil {
@@ -314,23 +373,84 @@ func Undo(root, id string, opt ApplyOptions) (UndoResult, error) {
 	}
 	out.Receipted = &written
 
+	// Order is load-bearing: a link fathom wrote goes first, so restoring
+	// the files it replaced writes real files and never through the link;
+	// a link the undo restores goes last, once the files that stood in its
+	// place are gone.
 	for _, p := range plan {
-		if !p.file.Existed {
+		if p.file.Link == "" {
+			continue
+		}
+		if err := os.Remove(p.path); err != nil && !os.IsNotExist(err) {
+			return out, fmt.Errorf("removing the link %s: %w", p.file.Path, err)
+		}
+		out.Removed = append(out.Removed, p.file.Path)
+	}
+	for _, p := range plan {
+		switch {
+		case p.file.Link != "" || p.file.BeforeLink != "":
+			continue
+		case !p.file.Existed:
 			if err := os.Remove(p.path); err != nil && !os.IsNotExist(err) {
 				return out, fmt.Errorf("removing %s: %w", p.file.Path, err)
 			}
 			out.Removed = append(out.Removed, p.file.Path)
+		default:
+			if err := os.MkdirAll(filepath.Dir(p.path), 0o755); err != nil {
+				return out, err
+			}
+			if err := os.WriteFile(p.path, []byte(p.file.Before), 0o644); err != nil {
+				return out, fmt.Errorf("restoring %s: %w", p.file.Path, err)
+			}
+			out.Restored = append(out.Restored, p.file.Path)
+		}
+	}
+	for _, p := range plan {
+		if p.file.BeforeLink == "" {
 			continue
+		}
+		if fi, err := os.Lstat(p.path); err == nil && fi.IsDir() {
+			if err := removeEmptyTree(p.path); err != nil {
+				return out, fmt.Errorf("restoring the link %s: %w", p.file.Path, err)
+			}
 		}
 		if err := os.MkdirAll(filepath.Dir(p.path), 0o755); err != nil {
 			return out, err
 		}
-		if err := os.WriteFile(p.path, []byte(p.file.Before), 0o644); err != nil {
-			return out, fmt.Errorf("restoring %s: %w", p.file.Path, err)
+		if err := os.Symlink(filepath.FromSlash(p.file.BeforeLink), p.path); err != nil {
+			return out, fmt.Errorf("restoring the link %s: %w", p.file.Path, err)
 		}
 		out.Restored = append(out.Restored, p.file.Path)
 	}
 	return out, nil
+}
+
+func isDir(path string) bool {
+	fi, err := os.Lstat(path)
+	return err == nil && fi.IsDir()
+}
+
+// strayUnder lists the files under the directory rel that files does not
+// remove (an entry with Existed false is one the undo removes).
+func strayUnder(root, rel string, files []ReceiptFile) []string {
+	removes := map[string]bool{}
+	for _, f := range files {
+		if !f.Existed && f.Link == "" {
+			removes[f.Path] = true
+		}
+	}
+	var stray []string
+	_ = filepath.WalkDir(filepath.Join(root, filepath.FromSlash(rel)), func(p string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return nil
+		}
+		r, rerr := filepath.Rel(root, p)
+		if rerr == nil && !removes[filepath.ToSlash(r)] {
+			stray = append(stray, filepath.ToSlash(r))
+		}
+		return nil
+	})
+	return stray
 }
 
 func ternary(cond bool, a, b string) string {
