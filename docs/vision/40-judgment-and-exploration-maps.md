@@ -193,6 +193,19 @@ active map ids, resuming re-mounts them). A named map needs a required purpose l
 fathom computes scope, freshness, creator and last use. No new default tool. Measure pointer precision (expanded
 over shown) and reuse rate; a pointer expanded under 10 percent of the time is cut.
 
+**Live maps as documentation for agents.** Structure is computed, reasons are written, and each points to the
+other: live maps replace the structural half of documentation (what exists, what connects, where to look, the
+half that rots) while ADRs, intent, semantic layers and procedures keep the reasons and the how-to. Built when
+live maps are promoted (XM-D1), three items are accepted: maps carry the ADRs and rules governing their footprint
+(structure plus rationale in one handoff), each entry's why line is the query clause that selected it (computed,
+never authored), and a doc or instruction-file sentence about structure compiles into a live-map assertion
+through the config custodian's concerns so a changed answer flags the sentence (`structural_claim`, design
+`docs/design/config-custodian.md` section 7). Two are experiments with kill paths: the custodian proposes
+replacing structural prose in CLAUDE.md and AGENTS.md with named map references (the owner accepts each, fathom
+never applies it; reading XM-M4), and map membership diffs become a per-map structural changelog and a line on
+the change risk receipt (reading XM-M5). Two are deferred until live maps exist: human docs rendered from maps
+and undocumented-territory coverage. Design section 3b; rows XM-17 to XM-22, XM-D7, XM-D8.
+
 **Where a typed model helps.** Mostly nowhere: the planner already decided what matters. Optional roles are a
 drafted purpose line, an expensive judged column inside a map's footprint (after J0), and a planner's traversal
 becoming a map. With provider `none` every map feature works.

@@ -80,6 +80,54 @@ dead-code candidates; the product's core loop for onboarding.
 **Lifetime.** A live map is permanent only when named and used; idle unnamed maps decay. Layers keep their
 own freshness and lifecycle (candidate, active, retired). Live maps are the designed extension (future F50; rows XM-D1, XM-D4, XM-D5); they are
 built after the handoff A/B passes, and their storage stays in existing thread fields until RT-M1 reads PASS.
+Their use as documentation for agents is section 3b.
+
+## 3b. Live maps as documentation for agents (binding frame; built when live maps are promoted, XM-D1)
+
+Owner question 2026-09-29, architect decision. Can live maps replace documentation for agents? The structural
+half, yes; the rest, no.
+
+**Frame.** Structure is computed, reasons are written, and each points to the other. Live maps replace the
+structural half of documentation (what exists, what connects, where to look), which is the half that rots
+because a saved query is recomputed on read. ADRs, intent records, semantic layers and procedures keep the
+reasons and the how-to, which no query can derive. A map without its reasons is a list, and a document without
+its structure is a claim nobody can check.
+
+**Accepted into the live-map design** (rows XM-17 to XM-19; each needs XM-D1, so none is built before live
+maps are promoted):
+
+1. **Maps carry their reasons.** Each live map links the ADRs and rules governing its footprint, a
+   deterministic join with obligations by scope, so a handoff delivers structure plus rationale in one id.
+2. **Explainable membership.** Each live-map entry's why line is the query clause that selected it: computed,
+   never authored. A reader can always see why a file is in the map.
+3. **Structural claims become checkable.** A sentence in a doc or an instruction file about structure ("all
+   handlers pass through the auth middleware") is compiled into a live-map assertion, reusing the config
+   custodian's falsifiable concerns as a new check kind, `structural_claim`
+   (`docs/design/config-custodian.md` section 7). When the map's answer changes, the sentence is flagged with
+   its `file:line`. The compiled concern is proposed and never written by fathom (vision 22 section 3b), and
+   a daemon that is down reads unable-to-check, never a violation.
+
+**Experiments** (rows XM-20 to XM-22, readings XM-M4 and XM-M5; each has a kill path):
+
+4. **Instruction files point to maps.** The custodian proposes replacing structural prose in CLAUDE.md and
+   AGENTS.md with named map references, as a diff the owner accepts entry by entry, shrinking instruction files
+   toward rules and reasons. Fathom never applies it. Reading XM-M4 is an A/B on identical tasks with the bar
+   fixed before the run: instruction-file bytes fall, structural questions are answered as accurately, tokens to
+   proof are not worse; otherwise the prose stays.
+5. **Map membership diffs as signals.** A structural changelog per named map (the entries that entered or left
+   since the last read), and a change that alters a named map's membership shows on the change risk receipt as
+   a listed line. Reading XM-M5 counts real structure moves against query noise and asks whether a receipt line
+   changed a review or an agent action; the receipt line is dropped when it never did and the changelog stays.
+
+**Deferred** (after live maps exist; trigger "live maps promoted (XM-D1)"):
+
+6. **Human docs rendered from maps** (XM-D7): a deterministic console view first, model narration later, and
+   only through a calibrated text-shaped site (R2, R3).
+7. **Undocumented-territory coverage** (XM-D8): code covered by no map and no doc, as a computed complement.
+
+**What does not change.** No new default tool (P4, ADR-053), fathom writes only what it owns (law 15), the
+dispatch boundary, and R5 (storage stays in existing thread fields until RT-M1 reads PASS). With provider
+`none` items 1 to 5 work as written: every one is a deterministic join, clause or comparison. $0 egress.
 
 ## 4. Discoverability: maps arrive, agents do not have to look (binding)
 
@@ -144,3 +192,5 @@ why lines, never source text beyond spans a reader could already read.
 | XM-M1 | re-derivation share of sub-agent reads over 14 days; below 15 percent kills handoff maps |
 | XM-M2 | the A/B on identical briefs: at least 25 percent fewer sub-agent tokens, no accuracy loss, under 5 percent stale entries |
 | XM-M3 | pointer precision at least 10 percent (expanded over shown) and the reuse rate reported |
+| XM-M4 | the instruction-file swap A/B (section 3b, item 4): bytes fall, structural answers as accurate, tokens to proof not worse, bar fixed before the run; otherwise the prose stays |
+| XM-M5 | membership signals (section 3b, item 5): structure moves against query noise, and whether a receipt line changed an action; the receipt line is dropped when it never did |

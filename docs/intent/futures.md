@@ -575,8 +575,8 @@ nothing may depend on it (P24). The entry's own drop-if stands.
 
 ## F50. Durable live maps: saved queries in the layers' vocabulary
 
-- Confidence: plausible. Horizon: later. Evidence: ADR-056, `docs/design/exploration-maps.md` section 3,
-  `docs/plans/exploration-maps.md` XM-D1, XM-D4, XM-D5.
+- Confidence: plausible. Horizon: later. Evidence: ADR-056, `docs/design/exploration-maps.md` sections 3 and 3b,
+  `docs/plans/exploration-maps.md` XM-D1, XM-D4, XM-D5, and for documentation use XM-17 to XM-22, XM-D7, XM-D8.
 - Motivation: a live map is a saved, re-run query (a working set) that stays correct as code changes, unlike a
   wiki diagram or a document list: the auth surface for a security review, the payment path from entry point to
   data store, release blockers, the public API without a live certificate, a migration's remaining sites, the

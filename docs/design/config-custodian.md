@@ -251,3 +251,22 @@ The flywheel loop (CC-8); stanza *content* drift as a check kind
 the tools a stanza names are served — a different question); ADR
 assertions and the doctrine catalog (vision 23, its own plan phase); any
 LLM lane.
+
+## 7. Forward reference: structural claims and the instruction-file swap (not built)
+
+Exploration maps (`docs/design/exploration-maps.md` section 3b, rows XM-19 and XM-20 in
+`docs/plans/exploration-maps.md`) reuse this engine once live maps are promoted (XM-D1). Nothing here changes
+until then, and the loader keeps refusing an unknown kind by name.
+
+- **`structural_claim` kind (XM-19).** A concern whose `want` is a sentence in a doc or an instruction file about
+  structure, and whose check names a live map and the assertion over its answer. It holds when the map's answer
+  still satisfies the assertion and is violated, with the sentence's `file:line` as evidence, when the answer
+  changed. It reads the live-map answer, so it becomes the second kind that asks the daemon, beside
+  `stanza_tools_served`: a daemon that is down or a map that cannot be resolved is `unable to check` naming the
+  cause, never a violation (law 3), and the section 2 heading's "one daemon exception" is amended when it
+  ships. The concern is proposed through `fathom config propose` and never written by fathom (vision 22 section
+  3b).
+- **Instruction-file swap experiment (XM-20, reading XM-M4).** `fathom config propose` offers a diff replacing
+  structural prose in CLAUDE.md and AGENTS.md with named map references, one entry at a time for the owner to
+  accept. The custodian stays the instrument and the session the hand; the swap is kept only if reading XM-M4
+  says KEEP, and otherwise the prose stays.
