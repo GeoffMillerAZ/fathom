@@ -446,7 +446,7 @@ ingest time.
 
 ## ADR-018 — Plan grammar v2 + reconciler verbs: SDD state is derived, never driven
 
-**Status.** Accepted; pilot KEEP 2026-08-26; amended 2026-09-28 (done means proven AND wired).
+**Status.** Accepted; pilot KEEP 2026-08-26; amended 2026-09-28 (done means proven AND wired); note 2026-09-29 (the 41 waivers re-audited; the pre-push gate reads the pushed range).
 
 **Context.** The 2026-07 excellence review (docs/vision/09) examined "should
 SDD be a deterministically driven state machine in CUE?" against the July-2026
@@ -550,6 +550,23 @@ its function (reflection, a build tag, cgo, a plugin) — fix the extractor's ed
 the entry points. (2) `library: true` rows exceed a tenth of a plan's claimed symbol rows —
 the waiver is becoming the default; require a wiring row per library row. (3) A non-Go service
 with binaries adopts verify — its entry points need a rule of their own.
+
+**Note (2026-09-29): the 41 waivers, re-audited; the pre-push gate reads the pushed range.** An
+independent re-audit reviewed the 41 `library: true` waivers this amendment declared. Its check was
+tip-only (does each waiver name why the API is the deliverable?), and it holds: they are gate-harness
+test deliverables whose consumer is a `go test` gate by design, and split library halves, each naming
+its open wiring row. The same audit showed the gap: `fathom verify --since 8a165059` reads all 41 as
+self-declared, because each entered in the range that claimed its row, and the pre-push gate did not
+read ranges, only O56's one-commit comparison. From push 79 the pre-push verify step runs
+`--strict --since $(git merge-base HEAD origin/main)` (`lefthook.yml`, I17), so a waiver added
+anywhere in the pushed range is self-declared and refused (I45), with or without a later commit
+between it and the claim; with no merge-base the step verifies without `--since` and says so, and
+exit 2 still fails open. It is not retroactive: the 41 are on main, so they predate every later
+range. Plan rows: `docs/plans/efficiency-wave.md` EW-14 (this gate) and EW-15 (wired-check
+hardening from the same audit). Proof: `TestLefthook_PrePushVerifyReadsTheChangeRange` runs the
+step's own body against a stub binary; `TestCmdVerify_StrictSince_LibraryWaiverInsideTheRangeFails`
+shows a waiver committed before its claim, inside one range, passing without `--since` and failing
+with it.
 
 ## Amendment to ADR-014 (2026-07-16, surfaces week-1)
 

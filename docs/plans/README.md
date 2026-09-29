@@ -182,8 +182,9 @@ always Unknown until CI/coverage evidence is ingested as its own tier.
 ## Gate commands
 
 ```sh
-# pre-push (lefthook): a scratch ingest of HEAD, then strict per plan; fail-open on exit 2:
-bin/fathom verify --strict --store <scratch-store> --service <svc> --plan docs/plans/<slug>.md --quiet
+# pre-push (lefthook): a scratch ingest of HEAD, then strict per plan over the pushed range
+# (a waiver added in the range is self-declared and fails, I45); fail-open on exit 2:
+bin/fathom verify --strict --since "$(git merge-base HEAD origin/main)" --store <scratch-store> --service <svc> --plan docs/plans/<slug>.md --quiet
 
 # against the daemon (default gate: claimed+Unknown rows, library-only included, are reported, not refused):
 bin/fathom verify --service <svc> --plan docs/plans/<slug>.md

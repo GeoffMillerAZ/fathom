@@ -50,6 +50,13 @@ pre-push:
     # machine-wide gate lease and background priority as `task validate`
     # (scripts/gate-lease.sh), so concurrent pushes queue rather than
     # ingest side by side.
+    # Push 79 (ADR-018 note 2026-09-29, I45): verify reads the change range,
+    # `--since $(git merge-base HEAD origin/main)`, so a `library: true` or
+    # `skip_test` waiver added in the same range as the claim it excuses is
+    # self-declared and refused. Not retroactive: a waiver already on
+    # origin/main predates every later range. No merge-base (no origin/main
+    # ref, a shallow clone) runs verify without --since and says so; exit 2
+    # stays fail-open.
     verify:
       run: |
         [ -x bin/fathom ] || exit 0
@@ -68,9 +75,15 @@ pre-push:
           echo "fathom verify: scratch ingest of HEAD failed — allowing push (fail-open, see workspace/tmp/gate-verify-ingest.log)"
           exit 0
         fi
+        since=()
+        if base=$(git merge-base HEAD origin/main 2>/dev/null) && [ -n "$base" ]; then
+          since=(--since "$base")
+        else
+          echo "fathom verify: no merge-base with origin/main — verifying without --since (a waiver added in this push is not checked for self-declaration)"
+        fi
         rc=0
         for f in "${plans[@]}"; do
-          $lease bin/fathom verify --strict --store "$store" --service fathom --plan "$f" --quiet
+          $lease bin/fathom verify --strict "${since[@]}" --store "$store" --service fathom --plan "$f" --quiet
           code=$?
           if [ $code -eq 1 ]; then rc=1; fi
           if [ $code -eq 2 ]; then

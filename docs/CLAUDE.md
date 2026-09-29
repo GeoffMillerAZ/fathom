@@ -3,8 +3,9 @@
 ## docs/plans/ — plan grammar v2 (full spec: `docs/plans/README.md`)
 
 Every top-level `docs/plans/*.md` except `README.md` is run through
-`fathom verify --strict` at pre-push, against a scratch ingest of HEAD
-(`lefthook.yml`; claimed+unknown rows fail, exit 2 fails open) — never add a
+`fathom verify --strict --since <merge-base with origin/main>` at pre-push, against a scratch
+ingest of HEAD (`lefthook.yml`; claimed+unknown rows fail, a waiver added in the pushed range
+fails, exit 2 fails open) — never add a
 stray .md file there. `docs/plans/archive/` is out of gate scope. Essentials:
 
 - The `{…}` annotation sits **on the checkbox line itself** — the parser is
