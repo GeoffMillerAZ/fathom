@@ -1,0 +1,41 @@
+id: cloudformation
+language: "AWS CloudFormation / SAM templates"
+# The queue entry's two subjects (both Apache-2.0, read only, never vendored).
+# aws-cloudformation/aws-cloudformation-templates carries no release tag past 0.0.1
+# (2016), so it is pinned at main's commit; it is small (3.5 MB) and cloned whole.
+# aws/serverless-application-model is over 50 MB (design §13.3), so only its
+# integration test templates are checked out (integration/resources/templates: 192 SAM
+# templates, a real deployable set); tests/translator holds another 735 inputs, most of
+# them written to fail the transform. Neither subject carries a nested stack or a
+# serverless application whose TemplateURL or Location is a relative local path (every
+# one is an S3 URL, a SAR application or a ${templateurl} placeholder), so L3 is not
+# measured on them (LB-Q-cloudformation-rest).
+repos:
+  - name: aws-cloudformation/aws-cloudformation-templates
+    url: https://github.com/aws-cloudformation/aws-cloudformation-templates.git
+    ref: main
+    sha: a0f43bc6d20813052892546f445037cf84c75b54
+    licence: Apache-2.0
+    idioms:
+      - "YAML templates in the short form (!Ref, !Sub, !GetAtt A.B, !If, !Join,
+        !Select, !FindInMap) and JSON templates in the long form (Ref, Fn::GetAtt
+        [A, B], Fn::Sub)"
+      - "Parameters, Mappings, Conditions, Resources and Outputs, with DependsOn
+        written as a string and as a list, and resource Condition attributes"
+      - "nested stacks (AWS::CloudFormation::Stack) whose TemplateURL is an S3
+        URL built with !Sub"
+      - "files that are not templates beside the templates (workflows, Rain
+        modules, test configs), which the content sniff leaves alone"
+  - name: aws/serverless-application-model
+    url: https://github.com/aws/serverless-application-model.git
+    ref: v1.99.0
+    sha: e0f7eba2cfeb53242daa1f3f626a85d1db20c7a4
+    licence: Apache-2.0
+    subpath: integration/resources/templates
+    idioms:
+      - "SAM templates: Transform: AWS::Serverless-2016-10-31, Globals, and
+        AWS::Serverless::Function, Api, HttpApi, StateMachine resources"
+      - "!GetAtt A.B on the resources SAM generates, and !Ref on parameters and
+        conditions"
+      - "AWS::Serverless::Application whose Location is a SAR application or a
+        ${templateurl} placeholder, never a local path"

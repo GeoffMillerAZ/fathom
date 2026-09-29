@@ -1,0 +1,25 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Resources:
+  Network:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: ./network/vpc.yaml
+  Storage:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: Network
+    Properties:
+      TemplateURL: storage.yaml
+      Parameters:
+        VpcId: !GetAtt Network.Outputs.VpcId
+  Remote:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub "https://${AWS::Region}.example.com/t.yaml"
+  Hosted:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://s3.amazonaws.com/bucket/t.yaml
+  NotAStack:
+    Type: AWS::S3::Bucket
+    Properties:
+      TemplateURL: ./ignored.yaml

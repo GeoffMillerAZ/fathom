@@ -1,0 +1,7 @@
+# A config file that is not a template: no top-level Resources.
+Parameters:
+  Env:
+    Type: String
+Outputs:
+  X:
+    Value: y

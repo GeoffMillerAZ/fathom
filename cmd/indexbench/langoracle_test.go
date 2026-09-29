@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/langbench"
 )
 
@@ -177,21 +178,64 @@ func TestOwnedSourceRefsRoutesCppHeaders(t *testing.T) {
 	}
 	cpp := langbench.Manifest{ID: "cpp", Match: langbench.ManifestMatch{Extensions: []string{".cc"}}}
 	var got []string
-	for _, r := range ownedSourceRefs(cpp, root, refs, nil) {
+	for _, r := range ownedSourceRefs(cpp, root, refs, nil, nil) {
 		got = append(got, r.Path)
 	}
 	if strings.Join(got, ",") != "cxx.h,impl.cc" {
 		t.Errorf("cpp owns %v, want [cxx.h impl.cc]", got)
 	}
 	got = nil
-	for _, r := range ownedSourceRefs(cpp, root, refs, []string{"*.cc"}) {
+	for _, r := range ownedSourceRefs(cpp, root, refs, []string{"*.cc"}, nil) {
 		got = append(got, r.Path)
 	}
 	if strings.Join(got, ",") != "impl.cc" {
 		t.Errorf("cpp owns %v under -only *.cc, want [impl.cc]", got)
 	}
 	c := langbench.Manifest{ID: "c", Match: langbench.ManifestMatch{Extensions: []string{".c"}}}
-	if n := len(ownedSourceRefs(c, root, refs, nil)); n != 0 {
+	if n := len(ownedSourceRefs(c, root, refs, nil, nil)); n != 0 {
 		t.Errorf("c owns %d of these files, want 0 (only its own extensions)", n)
+	}
+}
+
+// TestOwnedSourceRefsByContent (LB-Q-cloudformation): a doc-engine dialect
+// that claims no name is measured on exactly the files ingest's dispatch
+// reads with it by their content (fusion.Pipeline.ContentDialect): the YAML
+// and JSON CloudFormation templates, not a Kubernetes manifest, a compose
+// file, package.json or other JSON beside them.
+func TestOwnedSourceRefsByContent(t *testing.T) {
+	root := t.TempDir()
+	write := func(rel, body string) core.SourceRef {
+		if err := os.MkdirAll(filepath.Dir(filepath.Join(root, rel)), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(root, rel), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		return core.SourceRef{Path: rel}
+	}
+	refs := []core.SourceRef{
+		write("stack.yaml", "AWSTemplateFormatVersion: '2010-09-09'\nResources:\n  B:\n    Type: AWS::S3::Bucket\n"),
+		write("sam/template.yml", "Transform: AWS::Serverless-2016-10-31\nResources:\n  F:\n    Type: AWS::Serverless::Function\n"),
+		write("stack.json", "{\"AWSTemplateFormatVersion\": \"2010-09-09\", \"Resources\": {}}\n"),
+		write("k8s.yaml", "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: x\n"),
+		write("docker-compose.yml", "services:\n  web:\n    image: nginx\n"),
+		write("package.json", "{\"name\": \"x\", \"AWSTemplateFormatVersion\": \"no\"}\n"),
+		write("data.json", "{\"a\": 1}\n"),
+		write("notes.md", "AWSTemplateFormatVersion: not yaml\n"),
+	}
+	pipe := fusion.New(nil, nil, fusion.Config{})
+	defer pipe.Close()
+	content := func(rel string, b []byte) string { return pipe.ContentDialect(rel, b, refs) }
+	cfn := langbench.Manifest{ID: "cloudformation", Engine: "doc"}
+	var got []string
+	for _, r := range ownedSourceRefs(cfn, root, refs, nil, content) {
+		got = append(got, r.Path)
+	}
+	if strings.Join(got, ",") != "stack.yaml,sam/template.yml,stack.json" {
+		t.Errorf("cloudformation owns %v, want [stack.yaml sam/template.yml stack.json]", got)
+	}
+	gitlab := langbench.Manifest{ID: "gitlab-ci", Engine: "doc", Match: langbench.ManifestMatch{Basenames: []string{".gitlab-ci.yml"}}}
+	if n := len(ownedSourceRefs(gitlab, root, refs, nil, content)); n != 0 {
+		t.Errorf("a dialect that claims names owns %d of these files by content, want 0", n)
 	}
 }

@@ -1,0 +1,14 @@
+{
+  "symbols": [
+    { "name": "sam.yaml", "kind": "CFNTemplate", "package": "sam", "line": 1, "end_line": 43, "signature": "AWS::Serverless-2016-10-31", "tier": "verified" },
+    { "name": "Stage", "kind": "CFNParameter", "package": "sam", "line": 10, "end_line": 11, "signature": "String", "tier": "verified" },
+    { "name": "Table", "kind": "CFNResource", "package": "sam", "line": 13, "end_line": 14, "signature": "AWS::Serverless::SimpleTable", "tier": "verified" },
+    { "name": "Api", "kind": "CFNResource", "package": "sam", "line": 15, "end_line": 28, "signature": "AWS::Serverless::Function", "calls": ["Table"], "tier": "verified" },
+    { "name": "Child", "kind": "CFNResource", "package": "sam", "line": 29, "end_line": 34, "signature": "AWS::Serverless::Application", "calls": ["Stage"], "tier": "verified" },
+    { "name": "FromRepo", "kind": "CFNResource", "package": "sam", "line": 35, "end_line": 40, "signature": "AWS::Serverless::Application", "tier": "verified" },
+    { "name": "ApiArn", "kind": "CFNOutput", "package": "sam", "line": 42, "end_line": 43, "tier": "verified" }
+  ],
+  "cross_file": [
+    { "from": "Child", "edge": "nested_application", "raw": "./nested/child.yaml", "target": "infra/nested/child.yaml", "strategy": "repo-path", "line": 32 }
+  ]
+}
