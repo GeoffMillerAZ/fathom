@@ -85,11 +85,15 @@ const orgIdentityFile = ".mailmap"
 var mailmapIdentityRe = regexp.MustCompile(`^[^<>#@:/]*<[^<>\s]+>(?:[^<>#@:/]*<[^<>\s]+>)?\s*$`)
 
 // orgLineHits scans one line of the tracked file rel: the shared rule set
-// (orgHits), except that a well-formed identity line of the root .mailmap is
-// not scanned. A comment, a stray line and the same line in any other file are.
+// (orgHits), except that on a well-formed identity line of the root .mailmap
+// the email-shape rule is lifted. The denylist, the internal-host rule and
+// every other rule still scan it. A comment, a stray line and the same line
+// in any other file are scanned in full.
 func orgLineHits(rel, line string, denylist []string) []string {
 	if rel == orgIdentityFile && mailmapIdentityRe.MatchString(line) {
-		return nil
+		// The email-shape rule is the only one that needs an '@'; masking
+		// it lifts that rule alone and leaves every domain for the others.
+		return orgHits(strings.ReplaceAll(line, "@", " "), denylist)
 	}
 	return orgHits(line, denylist)
 }
@@ -205,6 +209,18 @@ func TestOrgLineHitsExemptsOnlyMailmapIdentityLines(t *testing.T) {
 		if got != tc.wantHit {
 			t.Errorf("%s: orgLineHits(%q, %q) hit = %v, want %v", tc.name, tc.rel, tc.line, got, tc.wantHit)
 		}
+	}
+
+	// The exemption lifts the email-shape rule alone. An organization named
+	// by the configured denylist, or an internal hostname, is still a hit on
+	// a .mailmap identity line: a third party's work address is no
+	// maintainer's identity.
+	if hits := orgLineHits(".mailmap", realShape, []string{"acme-widgets"}); len(hits) == 0 {
+		t.Errorf("a denylisted organization on a .mailmap identity line must hit: orgLineHits(%q) = none", realShape)
+	}
+	internalHost := "Jane Roe <jane@build." + "corp>"
+	if hits := orgLineHits(".mailmap", internalHost, nil); len(hits) == 0 {
+		t.Errorf("an internal hostname on a .mailmap identity line must hit: orgLineHits(%q) = none", internalHost)
 	}
 }
 
