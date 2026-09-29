@@ -27,7 +27,8 @@
         "callables": 1698,
         "callables_signed": 1698,
         "fathom_defs": 3311,
-        "file_edges_fathom": 0,
+        "file_edges_agree": 67,
+        "file_edges_fathom": 67,
         "file_edges_truth": 592,
         "import_edges_agree": 407,
         "import_edges_fathom": 407,
@@ -406,7 +407,7 @@
     "call_recall": 0.8449,
     "def_mapping": 0.2334,
     "file_edge_precision": 1,
-    "file_edge_recall": 0.0224,
+    "file_edge_recall": 0.037,
     "import_resolution": 1,
     "kind_agreement": 1,
     "range_agreement": 1,
@@ -453,8 +454,8 @@
     "callables": 5896,
     "callables_signed": 5896,
     "fathom_defs": 9658,
-    "file_edges_agree": 103,
-    "file_edges_fathom": 103,
+    "file_edges_agree": 170,
+    "file_edges_fathom": 170,
     "file_edges_truth": 4600,
     "import_edges_agree": 3062,
     "import_edges_fathom": 3318,
@@ -505,7 +506,7 @@
     "nestjs/nest: 195 adjudication claims refused by the deterministic check (e.g. integration/cors/e2e/express.spec.ts:36 configDelegation (arrow-const): not at module scope: its line is indented)",
     "nestjs/nest: 326 SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
-    "L3 re-grade 2026-09-29 (O145 fixes at 928ec49a and 9de28530, LB-F43 and LB-F44): import_resolution 1 (3,775 of 3,775 in-repo imports: zod 504, nest 3,271) against scip-typescript 0.4.0's references on the import lines (tier A, round 2's indexes) on the pinned subjects (zod 1fb56a5c, nest 9ff83d54). Before the fixes zod read 0 of 504 (every spec an ESM `./x.js` naming x.ts, which relative-path tried only as written) and nest 3,271 of 3,271. The import counts come from a lang-oracle run at 9de28530 and are spliced into each recorded subject beside the families measured at cdae696c; regrading changes no other metric. L3 stays unmet: file_edge_recall .0224 misses .25 whatever import_resolution reads. Disclosed, not gated: import edge precision .9228 and recall .8687; 256 of 9,471 imports resolve where the oracle names no file; 271 oracle references on import lines name a symbol defined in more than one file and are left out"
+    "L3 re-grade 2026-09-29 (O145 fixes at 928ec49a and 9de28530, LB-F43 and LB-F44): import_resolution 1 (3,775 of 3,775 in-repo imports: zod 504, nest 3,271) against scip-typescript 0.4.0's references on the import lines (tier A, round 2's indexes) on the pinned subjects (zod 1fb56a5c, nest 9ff83d54). Before the fixes zod read 0 of 504 (every spec an ESM `./x.js` naming x.ts, which relative-path tried only as written) and nest 3,271 of 3,271. The import counts come from a lang-oracle run at 9de28530 and are spliced into each recorded subject beside the families measured at cdae696c, and so are zod's file-edge counts from the same run, because file_edge_precision and file_edge_recall score the file-resolved edges these imports bind: zod's go from 0 to 67 of 592 SCIP file edges, all 67 agreeing (nest unchanged at 103 of 4,008), so file_edge_recall moves from .0224 to .037 (170 of 4,600) and file_edge_precision stays 1 (170 of 170); regrading changes no other metric (the wave-D audit re-ran all six subjects on the audited tree and read the same counts). L3 stays unmet: file_edge_recall .037 misses .25 whatever import_resolution reads. Disclosed, not gated: import edge precision .9228 and recall .8687; 256 of 9,471 imports resolve where the oracle names no file; 271 oracle references on import lines name a symbol defined in more than one file and are left out"
   ],
-  "disposition": "partial: target L4, met L1 good against scip-typescript 0.4.0 (tier A, lang-oracle -scip-defs, owner decision D2 — universal-ctags loses class scope on real TypeScript) on nest + zod: sym_recall 0.9937, sym_precision 0.9381 with 234 adjudicated module-scope definitions (D3, class arrow-const only; the D3 audit withdrew object-literal-method and refused locals — calibration/adjudications/typescript.classes.json, docs/bench/readings/lang/d3-audit.md), range_agreement 1. L1 excellent unmet: sym_precision vs .95 — 583 dialect-only definitions remain, mostly arrow-function locals in function bodies and test callbacks and object-literal methods, which scip-typescript excludes on purpose. L2 unmet: call_recall 0.8449 (good) but call_precision 0.4725 vs .85 — 4702 of fathom's 8914 pairs have no SCIP truth pair (a truth pair needs a callable '().' target symbol; not root-caused further this round). L3 unmet: import_resolution 1 (3,775 of 3,775, 2026-09-29, after O145's fixes) but file_edge_recall 0.0224 vs .25. L4: def_mapping 0.2334, typed_recall 0.1105 (O115 position mapping). Trigger: the dialect stops emitting function-local arrow consts and object-literal keys as definitions (sym_precision to .95), and an L2 pass classifies the unmatched call pairs into dialect fixes or a verified oracle deficiency."
+  "disposition": "partial: target L4, met L1 good against scip-typescript 0.4.0 (tier A, lang-oracle -scip-defs, owner decision D2 — universal-ctags loses class scope on real TypeScript) on nest + zod: sym_recall 0.9937, sym_precision 0.9381 with 234 adjudicated module-scope definitions (D3, class arrow-const only; the D3 audit withdrew object-literal-method and refused locals — calibration/adjudications/typescript.classes.json, docs/bench/readings/lang/d3-audit.md), range_agreement 1. L1 excellent unmet: sym_precision vs .95 — 583 dialect-only definitions remain, mostly arrow-function locals in function bodies and test callbacks and object-literal methods, which scip-typescript excludes on purpose. L2 unmet: call_recall 0.8449 (good) but call_precision 0.4725 vs .85 — 4702 of fathom's 8914 pairs have no SCIP truth pair (a truth pair needs a callable '().' target symbol; not root-caused further this round). L3 unmet: import_resolution 1 (3,775 of 3,775, 2026-09-29, after O145's fixes) but file_edge_recall 0.037 vs .25 (0.0224 before them; zod's file edges 0 to 67). L4: def_mapping 0.2334, typed_recall 0.1105 (O115 position mapping). Trigger: the dialect stops emitting function-local arrow consts and object-literal keys as definitions (sym_precision to .95), and an L2 pass classifies the unmatched call pairs into dialect fixes or a verified oracle deficiency."
 }
