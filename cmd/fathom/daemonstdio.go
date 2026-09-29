@@ -37,6 +37,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/dlog"
+	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 )
 
 // scavengeTick is the periodic housekeeping runMemoryScavenger's ticker
@@ -95,11 +96,8 @@ var daemonStdioRotateBytes int64 = 64 << 20
 // plist's StandardOutPath/StandardErrorPath) — factored out so the two
 // call sites can never drift apart.
 func daemonLogDir() (string, bool) {
-	home, err := os.UserHomeDir()
-	if err != nil || home == "" {
-		return "", false
-	}
-	return filepath.Join(home, ".fathom", "logs"), true
+	dir := fathomhome.Path("logs")
+	return dir, dir != ""
 }
 
 // rotateDaemonStdio bounds this process's own os.Stdout/os.Stderr when

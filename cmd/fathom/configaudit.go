@@ -19,6 +19,7 @@ import (
 	readmanifest "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/read-manifest"
 
 	"github.com/geoffmilleraz/fathom/internal/custodian"
+	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 	"github.com/geoffmilleraz/fathom/internal/readcoverage"
 	"github.com/geoffmilleraz/fathom/internal/verify"
 )
@@ -236,8 +237,8 @@ func configAuditJSON(root string, findings []custodian.Finding) configAuditModel
 func loadConcernsBoth(root string) ([]custodian.Concern, []error) {
 	var errs []error
 	var user, project custodian.ScopeFile
-	if home, err := os.UserHomeDir(); err == nil {
-		s, lerr := custodian.LoadScopeFile(filepath.Join(home, ".fathom", custodian.UserFileName), custodian.ScopeUser)
+	if userPath := fathomhome.Path(custodian.UserFileName); userPath != "" {
+		s, lerr := custodian.LoadScopeFile(userPath, custodian.ScopeUser)
 		if lerr != nil {
 			errs = append(errs, lerr)
 		} else {

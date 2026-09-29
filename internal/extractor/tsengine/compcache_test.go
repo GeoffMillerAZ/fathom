@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 )
 
 // TestCompilationCacheUserScopeOnly is LB-F26 (design §8.3): wazero's
@@ -14,6 +16,7 @@ import (
 // <wazero version>/, is off unless the managed daemon turns it on, and
 // accepts no other location — no repository or relative path reaches it.
 func TestCompilationCacheUserScopeOnly(t *testing.T) {
+	t.Setenv(fathomhome.Env, "") // this test names its own home
 	home := t.TempDir()
 	dir, err := compilationCacheDir(home)
 	if err != nil {
@@ -108,6 +111,7 @@ func TestEnableCompilationCacheBeforeRuntimeOnly(t *testing.T) {
 }
 
 func TestPruneCompilationCache(t *testing.T) {
+	t.Setenv(fathomhome.Env, "") // this test names its own home
 	home := t.TempDir()
 	now := time.Date(2026, 9, 27, 12, 0, 0, 0, time.UTC)
 	root := filepath.Join(home, ".fathom", "cache", "wazero")
@@ -148,4 +152,18 @@ func dirBytes(t *testing.T, dir string) int64 {
 		return nil
 	})
 	return n
+}
+
+// TestCompilationCacheFollowsFathomHome (PE-26): FATHOM_HOME moves the
+// compilation cache with the rest of ~/.fathom.
+func TestCompilationCacheFollowsFathomHome(t *testing.T) {
+	home, scratch := t.TempDir(), t.TempDir()
+	t.Setenv(fathomhome.Env, scratch)
+	dir, err := compilationCacheDir(home)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := filepath.Join(scratch, "cache", "wazero", WazeroVersion()); dir != want {
+		t.Fatalf("cache dir %q, want %q", dir, want)
+	}
 }

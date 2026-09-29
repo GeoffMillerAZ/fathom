@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/console"
+	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
 
@@ -53,7 +54,7 @@ func daemonID(meta daemonMeta, addr string, pid int) string {
 
 // daemonRecordsDir is ~/.fathom/daemon.
 func daemonRecordsDir(home string) string {
-	return filepath.Join(home, ".fathom", "daemon")
+	return filepath.Join(fathomhome.Under(home), "daemon")
 }
 
 // daemonRecordPath is ~/.fathom/daemon/<id>/record.json; an id that could
@@ -217,9 +218,18 @@ func listDaemonRecords(home string) (recs []storedRecord, errs []error) {
 }
 
 // listDaemonRecordsWhere is listDaemonRecords reading only the record
-// directories keep accepts by name (nil keeps all).
+// directories keep accepts by name (nil keeps all). It reads this process's
+// fathom directory: home/.fathom, or FATHOM_HOME when that is set.
 func listDaemonRecordsWhere(home string, keep func(id string) bool) (recs []storedRecord, errs []error) {
-	newDir := daemonRecordsDir(home)
+	return listDaemonRecordsAt(fathomhome.Under(home), keep)
+}
+
+// listDaemonRecordsAt is listDaemonRecordsWhere over an explicit fathom
+// directory fh (the one holding daemon/ and the legacy daemons/), which the
+// environment never redirects: the operator-state guard reads the
+// operator's own records with it.
+func listDaemonRecordsAt(fh string, keep func(id string) bool) (recs []storedRecord, errs []error) {
+	newDir := filepath.Join(fh, "daemon")
 	if ents, err := os.ReadDir(newDir); err == nil {
 		for _, e := range ents {
 			if !e.IsDir() || (keep != nil && !keep(e.Name())) {
@@ -238,7 +248,7 @@ func listDaemonRecordsWhere(home string, keep func(id string) bool) (recs []stor
 	} else if !os.IsNotExist(err) {
 		errs = append(errs, err)
 	}
-	legacyDir := filepath.Join(home, ".fathom", "daemons")
+	legacyDir := filepath.Join(fh, "daemons")
 	if ents, err := os.ReadDir(legacyDir); err == nil {
 		for _, e := range ents {
 			if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {

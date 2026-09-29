@@ -30,6 +30,9 @@ func TestMain(m *testing.M) {
 	if err == nil {
 		os.Setenv("HOME", home)
 	}
+	// PE-26: FATHOM_HOME would win over the hermetic HOME above (the gate
+	// runs `go test` under one); a test that wants it sets it itself.
+	os.Unsetenv("FATHOM_HOME")
 	code := m.Run() // os.Exit below would skip a deferred cleanup, so run it inline first
 	if home != "" {
 		os.RemoveAll(home)

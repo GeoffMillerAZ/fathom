@@ -2,9 +2,9 @@ package custodian
 
 import (
 	"os"
-	"path/filepath"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 	"github.com/geoffmilleraz/fathom/internal/testisolate"
 )
 
@@ -79,12 +79,5 @@ func DefaultDaemonURL() string {
 // else ~/.fathom/threads.jsonl; "" when no home directory resolves (the
 // handoff check then reports unable-to-check, not a silent pass).
 func DefaultThreadsPath() string {
-	if p := os.Getenv("FATHOM_THREADS"); p != "" {
-		return p
-	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return ""
-	}
-	return filepath.Join(home, ".fathom", "threads.jsonl")
+	return fathomhome.PerFile("FATHOM_THREADS", "threads.jsonl")
 }

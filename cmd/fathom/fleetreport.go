@@ -14,6 +14,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/buildinfo"
 	"github.com/geoffmilleraz/fathom/internal/console"
+	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 	"github.com/geoffmilleraz/fathom/internal/gitro"
 	"github.com/geoffmilleraz/fathom/internal/intent"
 )
@@ -125,12 +126,11 @@ func cmdFleetReport(args []string, stdout, stderr io.Writer) int {
 
 	dir := *outDir
 	if dir == "" {
-		home, herr := os.UserHomeDir()
-		if herr != nil {
-			fmt.Fprintf(stderr, "error: %v\n", herr)
+		dir = fleetSnapshotDir()
+		if dir == "" {
+			fmt.Fprintf(stderr, "error: cannot resolve the fathom home directory (no $HOME, no %s)\n", fathomhome.Env)
 			return 1
 		}
-		dir = filepath.Join(home, ".fathom", "fleet")
 	}
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)

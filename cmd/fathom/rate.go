@@ -30,6 +30,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 )
 
 // ratingSchemaVersion tracks this row's shape independently of the ledger's.
@@ -51,14 +53,7 @@ type sessionRating struct {
 }
 
 func ratingsPath() string {
-	if p := os.Getenv("FATHOM_SESSION_RATINGS"); p != "" {
-		return p
-	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return ""
-	}
-	return filepath.Join(home, ".fathom", "session-ratings.jsonl")
+	return fathomhome.PerFile("FATHOM_SESSION_RATINGS", "session-ratings.jsonl")
 }
 
 // currentSessionID resolves the harness's session id from the registry's

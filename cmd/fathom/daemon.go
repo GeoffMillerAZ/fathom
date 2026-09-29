@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/console"
+	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
@@ -340,14 +341,14 @@ func cmdDaemonInstall(args []string, stdout, stderr io.Writer) int {
 
 	storePath := *store
 	if storePath == "" {
-		storePath = filepath.Join(home, ".fathom", "db", "fathom.sqlite")
+		storePath = filepath.Join(fathomhome.Under(home), "db", "fathom.sqlite")
 	}
 	if err := os.MkdirAll(filepath.Dir(storePath), 0o700); err != nil {
 		fmt.Fprintf(stderr, "error: cannot create store directory: %v\n", err)
 		return 1
 	}
-	logDir := filepath.Join(home, ".fathom", "logs")
-	callLog := filepath.Join(home, ".fathom", "logs", "mcp-calls.jsonl")
+	logDir := filepath.Join(fathomhome.Under(home), "logs")
+	callLog := filepath.Join(logDir, "mcp-calls.jsonl")
 	if err := os.MkdirAll(logDir, 0o700); err != nil {
 		fmt.Fprintf(stderr, "error: cannot create log directory: %v\n", err)
 		return 1

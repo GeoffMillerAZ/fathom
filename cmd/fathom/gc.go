@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/extractor/tsengine"
+	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
 
@@ -47,7 +48,7 @@ var gcTmpCacheDirs = []string{"fathom-filechanged", "fathom-toplevel-cache", "fa
 
 // gcOptions are runGC's inputs; every location and effect is injectable.
 type gcOptions struct {
-	Home      string // the user's home (~/.fathom lives under it)
+	Home      string // the user's home (~/.fathom lives under it; FATHOM_HOME moves it, internal/fathomhome)
 	TmpDir    string // $TMPDIR
 	Workspace string // a repository's workspace/ ("" skips the workspace classes)
 	CallLog   string // the resolved call log ("" skips it)
@@ -111,7 +112,7 @@ func runGC(o gcOptions) gcReport {
 
 	// Ledgers: reported at 32 MiB, never rotated here (see the file comment).
 	if o.Home != "" {
-		fh := filepath.Join(o.Home, ".fathom")
+		fh := fathomhome.Under(o.Home)
 		ledgers := []string{filepath.Join(fh, "verify-ledger.jsonl"), filepath.Join(fh, "session-ledger.jsonl"), filepath.Join(fh, "intent-ledger.jsonl")}
 		if o.CallLog != "" {
 			ledgers = append(ledgers, filepath.Join(filepath.Dir(o.CallLog), "decisions.jsonl"))

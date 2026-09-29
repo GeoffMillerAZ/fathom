@@ -21,6 +21,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 )
 
 const threadSchemaVersion = 1
@@ -72,14 +74,7 @@ var threadKinds = []string{
 }
 
 func threadsPath() string {
-	if p := os.Getenv("FATHOM_THREADS"); p != "" {
-		return p
-	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return ""
-	}
-	return filepath.Join(home, ".fathom", "threads.jsonl")
+	return fathomhome.PerFile("FATHOM_THREADS", "threads.jsonl")
 }
 
 func appendThreadItem(it threadItem) error {

@@ -9,6 +9,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 )
 
 // ledger.go — EP-6/EP-12, the intent ledger.
@@ -84,14 +86,7 @@ const LedgerSchemaVersion = 1
 // LedgerPath is the intent ledger's location. FATHOM_INTENT_LEDGER
 // overrides it, which is how tests stay off a developer's real ledger.
 func LedgerPath() string {
-	if p := os.Getenv("FATHOM_INTENT_LEDGER"); p != "" {
-		return p
-	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return ""
-	}
-	return filepath.Join(home, ".fathom", "intent-ledger.jsonl")
+	return fathomhome.PerFile("FATHOM_INTENT_LEDGER", "intent-ledger.jsonl")
 }
 
 // AppendLedger writes one row. Failure is silent by design: this is

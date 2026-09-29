@@ -89,6 +89,44 @@ invocation, a build cache larger than `FATHOM_CACHE_MAX_MIB` is cleared with
 Raw `go` commands bypass repository policy. Use `task test`, `task build`, or the
 corresponding repository script when cache placement matters.
 
+### Scratch and test runs: `FATHOM_HOME`, `--ledger` and the per-file variables
+
+Fathom keeps per-user state in one directory, `~/.fathom`: the verify, intent, session
+and assess ledgers, the hooks beat log, rule-outcome and preflight logs, session stamps
+and ratings, the daemon records, lifecycle ledgers and logs, the fleet snapshots and the
+wazero compilation cache. A scratch clone, a worker or a test run that runs `fathom
+verify` or `fathom intent audit` there appends rows keyed by its scratch path to the
+operator's real ledgers (observation O121: 13,514 of 19,639 verify rows on 2026-09-28).
+**A scratch clone or a test run sets one of these overrides:**
+
+| Override | Names | Wins over |
+|---|---|---|
+| `FATHOM_HOME=<dir>` | the whole per-user directory: every path above resolves under `<dir>` instead of `~/.fathom` (a relative value is made absolute against the working directory) | `~/.fathom` |
+| `--ledger <path>` on `fathom verify` and `fathom intent audit` | the one ledger file that run appends to and reads: the verify ledger for `verify`, the intent ledger for `intent audit` | the per-file variable and `FATHOM_HOME` |
+| `FATHOM_VERIFY_LEDGER`, `FATHOM_INTENT_LEDGER`, `FATHOM_SESSION_LEDGER`, `FATHOM_HOOKS_LOG` (and the other per-file variables: `FATHOM_ASSESS_LEDGER`, `FATHOM_PREFLIGHT_LEDGER`, `FATHOM_PURGES`, `FATHOM_RULE_OUTCOME_LOG`, `FATHOM_SESSION_RATINGS`, `FATHOM_SESSION_STAMPS`, `FATHOM_THREADS`, `FATHOM_CONSOLE_VIEWS`, `FATHOM_ARM_STATE`, `FATHOM_PRICE_TABLE`, `FATHOM_IGNORE_D`) | that one file or directory | `FATHOM_HOME` |
+
+Precedence for one file: `--ledger`, then its per-file variable, then `FATHOM_HOME`, then
+`~/.fathom`. Nothing is created under `FATHOM_HOME` until a run writes there, and a run
+under it creates nothing under the real `~/.fathom`
+(`TestScratchRunUnderFathomHomeLeavesRealLedgersUntouched`).
+
+```sh
+# a scratch verify that leaves the operator's ledgers alone
+FATHOM_HOME="$(mktemp -d)" fathom verify --strict --store scratch.sqlite --service fathom --plan docs/plans/x.md
+# or name just the ledger
+fathom verify --ledger /tmp/scratch-verify.jsonl --store scratch.sqlite --service fathom --plan docs/plans/x.md
+```
+
+Two things deliberately do not move. The gate lease's lock (`scripts/gate-lease.sh`,
+`~/.fathom/locks/gate.lock`, `FATHOM_GATE_LOCK`) stays one machine-wide file, or
+concurrent gates stop queueing. And the operator-state guard on `serve-http --store` /
+`--call-log` reads the operator's own daemon records under the real home, never
+`FATHOM_HOME`'s, so a scratch environment cannot blind it. Under `FATHOM_HOME` a verb finds
+no daemon record for the managed daemon and falls back to `--url` / `FATHOM_HTTP` / the
+default address; a scratch run names its store with `--store`. Go tests are isolated by
+`internal/testisolate`, which unsets `FATHOM_HOME` beside its private `HOME`; `task test`
+also runs under a `FATHOM_HOME` inside `workspace/tmp/`.
+
 ---
 
 ## workspace/ convention
@@ -929,7 +967,7 @@ fathom verify --service <id> --plan docs/plans/<slug>.md [--plan <more>...] \
   [--store <path> | --url http://localhost:7575] [--strict] [--require-all] \
   [--concern <id>] [--json | --format text|json|sarif] [--quiet] [--quiet-pass] \
   [--mutation <report>] [--strict-mutation] [--since <ref>] [--dialect <id>] \
-  [--converge [--base <ref>] [--write-fixups]]
+  [--ledger <path>] [--converge [--base <ref>] [--write-fixups]]
 ```
 
 | Flag | Default | Description |
@@ -952,6 +990,7 @@ fathom verify --service <id> --plan docs/plans/<slug>.md [--plan <more>...] \
 | `--mutation` | `""` (falls back to `$FATHOM_MUTATION_REPORT`) | VB-34: a mutation-testing report (go-mutesting log output, or fathom's own JSON shape — see `docs/use-cases/test-coverage.md`); a claimed row whose symbol is `test_reaches`-covered but has mutation score 0 gets a `covered-not-asserted` note. `--store`/direct mode only — HTTP mode errors (exit 2) if given |
 | `--strict-mutation` | `false` | Gate-fail a `covered-not-asserted` finding instead of noting it as advisory |
 | `--row` | `""` | Narrow the report and the gate to one row id (the console's row evidence renders `verify … --row ID --json`); every plan is still verified and ledgered in full, and an id no plan holds is exit 2 |
+| `--ledger` | `$FATHOM_VERIFY_LEDGER`, else `verify-ledger.jsonl` under `$FATHOM_HOME` or `~/.fathom` | The one verify ledger this run appends to (PE-26): a scratch or test run names its own file so the operator's ledger is never touched; see *Scratch and test runs* |
 | `--since` | `""` | ADR-044 §1.4/CV-14 (I45): compare each `--plan` file against its version at this git ref. A claimed row whose `skip_test`/`skip`, `disposition`, `retires:`, `surface_change:`, or a raised `max:` was gained ANYWHERE inside `<ref>`..head (not merely the last edit/commit — the narrower thing no `--since` does) is reported `self-declared` and, for a gained skip, fails the gate exactly as the plain self-skip check does. Text output prints `self-declared: <keys>` under each affected row and, after the summary, `deleted since <ref> (<plan>): <ids>` for rows present at `<ref>` and missing now. Applies only inside a git work tree; a `<ref>` the plan file did not exist at yet counts as every current declaration being self-declared |
 
 A plan row's `certified_by: <Test>` annotation (vision 33 / ADR-043 stage 1,
@@ -1886,7 +1925,7 @@ minutes, at most hourly (`journal_size_limit` is 64 MiB).
 ### `intent` — the intent corpus, audited (ADR-026, **experimental**)
 
 ```sh
-fathom intent audit    [--root .] [--json] [--kind conditions|triggers|invariants|unproven] [--fresh] [--top N] [--read-only] [--store DB]
+fathom intent audit    [--root .] [--json] [--kind conditions|triggers|invariants|unproven] [--fresh] [--top N] [--read-only] [--ledger PATH] [--store DB]
 fathom intent doctrine [--root .] [--json] [--kind visions|bets] [--top N]
 fathom intent adr-rules [--root .] [--json]
 fathom intent export --guard [--root .]
@@ -1901,7 +1940,10 @@ repository.
 
 `--read-only` renders the same audit and writes nothing: no clock, baseline or
 debt row and no enforcement-probe cache row in `~/.fathom/intent-ledger.jsonl`,
-and no beat. The Observatory's intent tab runs it this way.
+and no beat. The Observatory's intent tab runs it this way. `--ledger PATH` names the
+intent ledger a run appends to instead (`$FATHOM_INTENT_LEDGER`, else
+`intent-ledger.jsonl` under `$FATHOM_HOME` or `~/.fathom`), so a scratch clone's audit
+never writes the operator's ledger (*Scratch and test runs*).
 
 Three tiers, all normal: a router-bearing repo gets the full audit; a repo
 with decision records and no router gets the conditions from their

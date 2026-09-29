@@ -45,6 +45,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/cost"
 	"github.com/geoffmilleraz/fathom/internal/decide"
+	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 	"github.com/geoffmilleraz/fathom/internal/llmsec"
 	"github.com/geoffmilleraz/fathom/internal/metrics"
 )
@@ -72,14 +73,7 @@ var (
 // ~/.fathom/assess-ledger.jsonl — per-user central like the session and
 // verify ledgers it sits beside, and never the session ledger (IR-4).
 func assessLedgerPath() string {
-	if p := os.Getenv("FATHOM_ASSESS_LEDGER"); p != "" {
-		return p
-	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return ""
-	}
-	return filepath.Join(home, ".fathom", "assess-ledger.jsonl")
+	return fathomhome.PerFile("FATHOM_ASSESS_LEDGER", "assess-ledger.jsonl")
 }
 
 // countAssessRuns is the capability probe's evidence: assess runs the

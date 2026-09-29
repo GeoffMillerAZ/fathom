@@ -14,6 +14,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 	"github.com/geoffmilleraz/fathom/internal/filter"
 	"github.com/geoffmilleraz/fathom/internal/guardspec"
 )
@@ -42,11 +43,10 @@ func loadGuardSet(root string) (guardspec.GuardSet, bool) {
 // same fail-open discipline loadGuardSet uses; `fathom doctor`'s
 // user_scope_guard check is the loud surface for a malformed file.
 func loadUserGuardSet() (guardspec.GuardSet, bool) {
-	home, err := os.UserHomeDir()
-	if err != nil || home == "" {
+	path := fathomhome.Path("guard.cue")
+	if path == "" {
 		return guardspec.GuardSet{}, false
 	}
-	path := filepath.Join(home, ".fathom", "guard.cue")
 	if _, err := os.Stat(path); err != nil {
 		return guardspec.GuardSet{}, false
 	}

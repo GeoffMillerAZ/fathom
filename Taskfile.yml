@@ -87,15 +87,19 @@ tasks:
     desc: Run all tests (race + CGO/tree-sitter)
     # RT-129 (§12.3): -p 4 bounds how many package test binaries run at
     # once on a machine other gates and agents share.
-    cmds: ["{{.GO}} test -race -p 4 ./..."]
+    # PE-28 (O121): every test run below goes through scripts/scratch-home.sh,
+    # which gives it a FATHOM_HOME under workspace/tmp/ (removed afterwards; a
+    # caller's own wins), so a test that reaches a per-user ledger or record
+    # never writes the operator's ~/.fathom.
+    cmds: ["bash scripts/scratch-home.sh {{.GO}} test -race -p 4 ./..."]
 
   test-unit:
     desc: Fast unit tests only (-short)
-    cmds: ["{{.GO}} test -short ./..."]
+    cmds: ["bash scripts/scratch-home.sh {{.GO}} test -short ./..."]
 
   test-integration:
     desc: Integration tests (Faux-backed end-to-end)
-    cmds: ["{{.GO}} test -race -run Integration ./..."]
+    cmds: ["bash scripts/scratch-home.sh {{.GO}} test -race -run Integration ./..."]
 
   tests:attest:
     desc: >-
@@ -189,6 +193,7 @@ tasks:
         [ "$rc" -eq 0 ] || exit "$rc"
         bash scripts/build-cache_test.sh
         bash scripts/gate-lease_test.sh
+        bash scripts/scratch-home_test.sh
         bash scripts/tenancy-stress_test.sh
         bash scripts/pipefail-grep_test.sh
         bash calibration/clone_test.sh

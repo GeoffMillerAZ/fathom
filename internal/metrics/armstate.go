@@ -19,9 +19,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strconv"
 	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 )
 
 // ArmState is the subset of the on-disk arm ledger (~/.fathom/arm.json)
@@ -37,14 +38,7 @@ type ArmState struct {
 // injection seam tests use), else ~/.fathom/arm.json. "" when $HOME can't
 // be resolved.
 func DefaultArmStatePath() string {
-	if p := os.Getenv("FATHOM_ARM_STATE"); p != "" {
-		return p
-	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return ""
-	}
-	return filepath.Join(home, ".fathom", "arm.json")
+	return fathomhome.PerFile("FATHOM_ARM_STATE", "arm.json")
 }
 
 // ArmStateForWindow reads the arm ledger at path (DefaultArmStatePath()

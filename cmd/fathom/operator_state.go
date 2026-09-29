@@ -175,7 +175,10 @@ func managedDaemonAddrIn(home, configured string) string {
 func checkOperatorState(storePath, callLog string, homes []string, managedAddr string) (warnings []string, err error) {
 	var stores, logs []string
 	for _, home := range homes {
-		recs, errs := listDaemonRecords(home)
+		// The operator's own records, literally under home/.fathom and never
+		// FATHOM_HOME: this guard exists to keep a scratch run off the
+		// operator's daemon, so a scratch environment must not blind it.
+		recs, errs := listDaemonRecordsAt(filepath.Join(home, ".fathom"), nil)
 		for _, e := range errs {
 			var re *recordReadError
 			if !errors.As(e, &re) {

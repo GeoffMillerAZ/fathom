@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 	"github.com/geoffmilleraz/fathom/internal/statedir"
 )
 
@@ -35,8 +36,8 @@ func workspacePath(rel string) string {
 			return filepath.Join(top, "workspace", rel)
 		}
 	}
-	if home, err := os.UserHomeDir(); err == nil && home != "" {
-		return filepath.Join(home, ".fathom", rel)
+	if fh := fathomhome.FathomHome(); fh != "" {
+		return filepath.Join(fh, rel)
 	}
 	return rel
 }
@@ -53,8 +54,8 @@ func stateLogPath(rel string) string {
 			return filepath.Join(statedir.Resolve(top), rel)
 		}
 	}
-	if home, err := os.UserHomeDir(); err == nil && home != "" {
-		return filepath.Join(home, ".fathom", rel)
+	if fh := fathomhome.FathomHome(); fh != "" {
+		return filepath.Join(fh, rel)
 	}
 	return rel
 }
