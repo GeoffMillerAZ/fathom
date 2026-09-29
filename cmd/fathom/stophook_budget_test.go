@@ -97,12 +97,13 @@ func plansRepo(t *testing.T, n int) (dir string, rels []string) {
 // TestHeadFileVersionsIsOneSpawn pins the plan scan's git cost: every plan
 // file's HEAD version comes from one process, however many plans there
 // are, and each answer is the bytes `git show HEAD:<rel>` gives (nil when
-// HEAD has no such file).
+// HEAD has no such file). The missing file is asked first, so its bodiless
+// "missing" answer must not end the read for the files after it.
 func TestHeadFileVersionsIsOneSpawn(t *testing.T) {
 	dir, rels := plansRepo(t, 40)
 	log := gitSpawnLog(t)
 
-	asked := append(append([]string{}, rels...), filepath.Join("docs", "plans", "never-committed.md"))
+	asked := append([]string{filepath.Join("docs", "plans", "never-committed.md")}, rels...)
 	got := headFileVersions(dir, asked)
 	if n := len(gitSpawns(t, log)); n != 1 {
 		t.Fatalf("headFileVersions over %d files spawned git %d times, want exactly 1", len(asked), n)
@@ -133,6 +134,28 @@ func TestHeadFileVersionsOutsideGitIsNil(t *testing.T) {
 		if v != nil {
 			t.Errorf("%s outside a repository = %q, want nil", rel, v)
 		}
+	}
+}
+
+// TestPlansWithNewClaimsReadsAnUppercaseClaim: the scan's cheap "[x]" gate
+// must not skip a plan whose only claim is written "[X]", which the plan
+// grammar reads as claimed too.
+func TestPlansWithNewClaimsReadsAnUppercaseClaim(t *testing.T) {
+	dir, _ := plansRepo(t, 1)
+	p := filepath.Join(dir, "docs", "plans", "upper.md")
+	if err := os.WriteFile(p, []byte("- [X] Done {id: U-1, symbol: Real}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := os.ReadDir(filepath.Join(dir, "docs", "plans"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, c := range plansWithNewClaims(dir, entries) {
+		got = append(got, c.rel+":"+strings.Join(c.newly, ","))
+	}
+	if want := filepath.Join("docs", "plans", "upper.md") + ":U-1"; strings.Join(got, " ") != want {
+		t.Errorf("plansWithNewClaims = %v, want [%s]", got, want)
 	}
 }
 
