@@ -1,0 +1,77 @@
+# Assessments
+
+Dated, plain-language readings of things fathom does not run itself: the market, a neighbouring
+tool, a survey of peer stacks, an owner-verdicted scorecard, a language queue, a video series, an
+audit of the semantic layers. One file per assessment, named `YYYY-MM-DD-<slug>.md`; the data an
+assessment rests on sits beside it in `data/`. This is the family convention (agentic-kit and
+Review Kit keep `docs/assessments/` the same way, ADR-055: one family, one contract).
+
+An assessment is finished only when its summary is here **and** every decision it drove is in the
+records (an ADR or a dated amendment, futures, scope, plan rows). The artifact that first showed
+the reading is a readable copy, never the record: artifacts move, expire and are edited by their
+readers, and nothing in a page can be verified against this repository.
+
+## What lives here, and what does not
+
+| Place | Holds | Why not here |
+|---|---|---|
+| `docs/assessments/` | A reading of other people's work or of an owner's judgment, and the evidence behind a decision: market maps, vendor documentation, a hand-verdicted scorecard, notes on a video | (this directory) |
+| `docs/bench/` and `docs/bench/readings/` | Measurements fathom runs and can re-run: pre-registered bars, derived third-party truth, ledgers (ADR-031 to ADR-034) | An assessment is not re-runnable; filing it as a reading would dilute "a reading is re-runnable". Measurements that come out of a program (the test_ran base rate, language readings, PR-M0 to PR-M2) do go to `docs/bench/readings/` |
+| `docs/research/` (not used) | nothing | The name collides with fathom's own vocabulary (the frozen `fathom research` verb, the research bundle of ADR-046 decision 6, `research-flywheel.md`); a directory of that name would be served and searched as if it were that feature |
+| `docs/design/`, `docs/vision/`, `ADR.md` | Decisions and their designs | An assessment informs a decision and never makes one; it cites the record that did |
+
+Two older documents of this kind sit at the top of `docs/` (`assessment-claude-code-integration.md`
+and `graphify-comparison.html`); they may move in later with link updates.
+
+## Conventions
+
+- **Open with a plain-language verdict**: what the reading says in a few sentences, in words a
+  newcomer follows, before any table.
+- **Grade every claim.** Use these five words and no others: *measured* (fathom or the author read
+  it from a log, a file or an API on a stated date), *estimate* (arithmetic over measured inputs),
+  *claimed by a vendor* (their page, their benchmark, their funding figure), *hypothesis* (a
+  saving or effect nobody has measured), *unmeasured* (a question with no reading yet). Say what the
+  document does **not** claim.
+- **Cite every decision it drove by id** (ADR, futures F, scope G, question Q, plan row) and never
+  re-decide: the decision lives in the record, the assessment holds the evidence.
+- **Never hold a status the product computes** (ADR-054, I54): a language note cites readings and
+  `fathom support`; it keeps no level table. The same goes for plan progress (`fathom plans status`).
+- **Third-party material is summarized in our own words**, with the source, the commit or read date
+  and the licence. Short factual figures are fine; no long quotes, no branding, no course or
+  marketing material (the MIT notices of the sources are kept where code or thresholds are reused).
+- **Public product names only.** I19's denylist is about private hosts, emails and accounts;
+  `TestNoOrgSpecificNames` runs over this directory like every other.
+- **Readable form**: name the artifact by id (the last path element of its claude.ai artifact
+  address), never by URL. Ids do not prove anything; they only help a reader find the page.
+
+## Index
+
+| Date | File | The verdict in one line | Decisions it drove |
+|---|---|---|---|
+| 2026-09-27 | [agentic-coding-landscape](2026-09-27-agentic-coding-landscape.md) | The market has many ways to find code and describe work and almost none to prove things about code; keep building and point at that gap, with reach before new engines | ADR-049, ADR-050, ADR-051, vision 38 sections 5 to 7 |
+| 2026-09-27 | [fathom-and-claude-os](2026-09-27-fathom-and-claude-os.md) | Neighbours, not competitors (about 25 percent overlap at session-start context); keep building with a sharper focus; one embedded file, many indexes, no extra servers | ADR-049 amendment 2026-09-29, F55, RH-11, RH-12, GL-23, SR-X1, RH-X4 |
+| 2026-09-27 | [peer-stacks-and-rust](2026-09-27-peer-stacks-and-rust.md), [data](data/2026-09-27-peer-stacks.json) | Fathom's stack is among the leanest in the field and Go is not the bottleneck; do not rewrite in Rust | ADR-049 decision 11, vision 38 section 8, F29, RH-M5 |
+| 2026-09-27 | [feature-scorecard](2026-09-27-feature-scorecard.md), [data](data/2026-09-27-feature-scorecard.json) | Eighty-six features, each scored and verdicted by the owner (30 keep, 24 improve, 12 merge, 10 ditch, 10 new); the strongest is done-means-proven, the weakest is governance that does not bite | ADR-053, ADR-054, FM-M1, F51 |
+| 2026-09-28 | [jev-ten-levels](2026-09-28-jev-ten-levels.md) | Level 10 works in fathom if the test run does the asking: compute first, judge only what is left, keep Jev optional per feature | ADR-056, vision 40, F34 to F49, G27 to G32 |
+| 2026-09-28 | [semantic-layers-evidence](2026-09-28-semantic-layers-evidence.md) | Keep the layers and improve them: cheap, checked and self-healing, but served is not obeyed and nothing learns yet | ADR-016, ADR-038, ADR-057, GL-10 to GL-18, F53, F7 |
+| 2026-09-29 | [language-atlas](2026-09-29-language-atlas.md) | A 142-item queue and a four-level ladder make "supports language X" a reading; the bottleneck moved from dialects to the measuring instruments | ADR-048, ADR-054, G15, vision 37 |
+
+## Readable forms (artifact ids)
+
+| Assessment | Artifact | Id |
+|---|---|---|
+| Roadmap (the whole program) | Fathom Roadmap | 5gBHQTMd39qLZvq3hT1FtZ |
+| Feature scorecard | Fathom Feature Scorecard | L6rb59VErh4wU5BYNf4bEo |
+| Language atlas | Fathom Language Atlas | PG4yPsFFsXHaKaSr3LmmVJ |
+| Landscape | The Agentic Coding Landscape | LwjYnxTFUTqTmDYnErbYYD |
+| Fathom and Claude OS | Fathom and Claude OS | AjYd1WGj3u44Hy1m2hbVPr |
+| Jev ten levels | Jev Ideas for Fathom | 6Z6EdpiYXq4cRf92Ywx8n4 |
+| Ask Jev traces (inside the jev-ten-levels file) | Ask Jev with Fathom | F3oEGQ7jPuARmyhVZewJva |
+| Exploration maps (recorded in ADR-056 and `docs/design/exploration-maps.md`) | Exploration Maps | AoWr2rn2GMQJidnpBVUC92 |
+| Semantic layers | Fathom Semantic Layers | 9yZ92wUDDTeH3zDWUNcvQ5 |
+| Features and Review (ADR-055) | Features and Review | LGfbjoDJ6PGBPKkUFUv6LQ |
+
+Artifacts were built from a copy of the repository and the logs on the dates in the file names;
+figures in them are as of those dates. The durable copy of the data and builders the artifacts were
+made from was kept outside the repository (the owner's `workspace/` refresh of 2026-09-28); what
+the records need is committed here.
