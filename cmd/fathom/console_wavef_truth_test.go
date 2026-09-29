@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -90,9 +91,13 @@ func TestConsoleWaveF_CatchFilterScopesEveryLane(t *testing.T) {
 	f := newConsoleFixture(t)
 	resetImpactReads()
 	t.Cleanup(resetImpactReads)
-	mustWrite(t, os.Getenv("FATHOM_VERIFY_LEDGER"), `{"schema_version":2,"at":"2026-09-24T10:00:00Z","service":"payment-service","plan":"docs/plans/p.md","claimed":3,"failing":1,"origin":"cli"}
-{"schema_version":2,"at":"2026-09-24T11:00:00Z","service":"payment-service","plan":"docs/plans/p.md","claimed":3,"failing":0,"origin":"cli"}
-{"schema_version":2,"at":"2026-09-24T12:00:00Z","service":"svc","plan":"docs/plans/t.md","claimed":1,"failing":1,"origin":"cli"}
+	// PE-24: every row sits at payment-service's registered root (svc's too:
+	// a stale service id run in the same checkout), so the registry rule
+	// below, not the root rule, is what leaves svc's run out.
+	payRoot := strconv.Quote(fixtureServiceRoot(t, f, "payment-service"))
+	mustWrite(t, os.Getenv("FATHOM_VERIFY_LEDGER"), `{"schema_version":2,"at":"2026-09-24T10:00:00Z","repo_root":`+payRoot+`,"service":"payment-service","plan":"docs/plans/p.md","claimed":3,"failing":1,"origin":"cli"}
+{"schema_version":2,"at":"2026-09-24T11:00:00Z","repo_root":`+payRoot+`,"service":"payment-service","plan":"docs/plans/p.md","claimed":3,"failing":0,"origin":"cli"}
+{"schema_version":2,"at":"2026-09-24T12:00:00Z","repo_root":`+payRoot+`,"service":"svc","plan":"docs/plans/t.md","claimed":1,"failing":1,"origin":"cli"}
 `)
 	mustWrite(t, os.Getenv("FATHOM_HOOKS_LOG"), guardBeatLine("seen", "2026-09-24T10:00:00Z", "s-1")+"\n")
 	model := func(path string) impactPageModel {

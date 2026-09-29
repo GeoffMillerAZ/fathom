@@ -102,7 +102,7 @@ func TestDoctorUnprovenReconcilesWithVerb(t *testing.T) {
 	root := repoRootForDocs(t)
 	t.Setenv("HOME", t.TempDir()) // isolate the ledger
 
-	row := checkUnprovenClaims(root, "http://127.0.0.1:1", "")
+	row := checkUnprovenClaims(root, "http://127.0.0.1:1", "", unreadRoots)
 	if row.Status == doctorPass && !strings.Contains(row.Reason, "no unproven") {
 		t.Skip("this tree reports no unproven claims; nothing to reconcile")
 	}
@@ -115,7 +115,7 @@ func TestDoctorUnprovenReconcilesWithVerb(t *testing.T) {
 	if err != nil {
 		t.Fatalf("intent.Load: %v", err)
 	}
-	rows, note := planRowStates(root)
+	rows, note := planRowStates(root, unreadRoots)
 	contracts, contractNote, _ := planRowContracts(root)
 	guardNotes, guardScopes, guardWhy := repoGuardNotes(root)
 	a := intent.RunAudit(intent.AuditInput{

@@ -122,7 +122,7 @@ func memoWork(ctx context.Context, cr *consoleRequest, m observatoryModel, sr se
 // repository and projects U1, U2, U5 and U3.
 func computeWork(ctx context.Context, m observatoryModel, sr serviceRoot, now time.Time) workPageModel {
 	var model workPageModel
-	h, read := console.ProofHistory(ctx, verifyLedgerPath(), console.DefaultHistoryTail)
+	h, read := console.ProofHistory(ctx, verifyLedgerPath(), console.DefaultHistoryTail, m.ledgerRoots())
 	model.History = read
 	f := console.HistoryFilter{Service: sr.Service}
 	looks := 0

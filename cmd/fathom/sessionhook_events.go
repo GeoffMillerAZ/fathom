@@ -171,7 +171,7 @@ func worktreeAdvice(baseURL, worktreePath string) string {
 
 // cwdChangedPrimer renders the identity line for a root the session just
 // moved to or added (HP-30) — the SAME line SessionStart composes
-// (buildSessionContext), because the honest answer to "where am I now" is
+// (sessionContext), because the honest answer to "where am I now" is
 // exactly the answer to "where did I start": indexed service and its
 // freshness, or the honest not-indexed / daemon-down line. No thread
 // brief and no attention line: those belong to a session, not a directory.
@@ -179,7 +179,8 @@ func cwdChangedPrimer(baseURL, newRoot string) string {
 	if newRoot == "" {
 		return ""
 	}
-	return buildSessionContext(baseURL, newRoot)
+	line, _ := sessionContext(baseURL, newRoot)
+	return line
 }
 
 // daemonAnswering is the healthz probe the advisory events share.

@@ -150,11 +150,13 @@ func plansPortfolio(cr *consoleRequest, m observatoryModel, roots []serviceRoot,
 	pc := plansFor(cr.deps)
 	sps := snapshotPlans(cr.r.Context(), pc, roots, "", wait)
 	ledger := pc.ledgerRead()
-	return console.PlanPortfolio(console.PortfolioInput{
+	pf := console.PlanPortfolio(console.PortfolioInput{
 		Services: sps, Registered: len(m.Services),
 		Ledger: ledger.Runs, LedgerPath: ledger.Path, LedgerErr: ledger.Err,
 		PlanHref: planHref, MinTrendDays: console.DefaultTrendDays,
-	}), sps
+	})
+	pf.Trend.Source = withIgnored(pf.Trend.Source, ledger.Ignored, verifyLedgerNoun) // PE-24
+	return pf, sps
 }
 
 // fleetPlanMetrics is the fleet's plans headline — plans.claimed_unproven

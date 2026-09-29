@@ -278,7 +278,7 @@ func TestSwitchOffSilencesIntentRowsNotTheVerb(t *testing.T) {
 	t.Setenv("FATHOM_HOOKS_LOG", filepath.Join(root, "hooks.jsonl"))
 
 	// On (the default when a router exists): the rows narrate the corpus.
-	on := checkIntent(root)
+	on := checkIntent(root, unreadRoots)
 	if !strings.Contains(on.Reason, "condition(s)") {
 		t.Fatalf("with the capability on, the row must narrate the corpus: %q", on.Reason)
 	}
@@ -294,14 +294,14 @@ func TestSwitchOffSilencesIntentRowsNotTheVerb(t *testing.T) {
 		[]byte("capabilities: {\n\t\"intent-corpus\": on: false\n}\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	off := checkIntent(root)
+	off := checkIntent(root, unreadRoots)
 	if !strings.Contains(off.Reason, "switched off") {
 		t.Errorf("with the capability off, the row must say so: %q", off.Reason)
 	}
 	if strings.Contains(off.Reason, "condition(s)") {
 		t.Errorf("a switched-off capability must stop narrating: %q", off.Reason)
 	}
-	if offClaims := checkUnprovenClaims(root, "http://127.0.0.1:1", "svc"); !strings.Contains(offClaims.Reason, "switched off") {
+	if offClaims := checkUnprovenClaims(root, "http://127.0.0.1:1", "svc", unreadRoots); !strings.Contains(offClaims.Reason, "switched off") {
 		t.Errorf("unproven_claims must honour the same switch: %q", offClaims.Reason)
 	}
 	offDoctrine := checkDoctrine(root)

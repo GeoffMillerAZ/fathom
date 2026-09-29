@@ -20,6 +20,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/custodian"
 	"github.com/geoffmilleraz/fathom/internal/fathomhome"
+	"github.com/geoffmilleraz/fathom/internal/ledgerroots"
 	"github.com/geoffmilleraz/fathom/internal/readcoverage"
 	"github.com/geoffmilleraz/fathom/internal/verify"
 )
@@ -282,8 +283,11 @@ func violatedConcernCount(projDir string) int {
 // concernAttentionLine is the session-brief surface (CC-7), now the composed
 // attention line (EP-19): the custodian's count and the intent corpus's
 // unproven claims share ONE line. It reports; it never edits (vision 22 §3b).
+//
+// No session identity is resolved here, so the intent half reads under an
+// unread registry (PE-25): nothing is excluded, never guessed.
 func concernAttentionLine(projDir string) string {
-	return attentionLine(projDir, time.Now())
+	return attentionLine(projDir, time.Now(), ledgerroots.Unread("the config audit resolves no service identity"))
 }
 
 // cmdConfigAuditCodeFacts is `fathom config audit --code-facts` (VB-28):

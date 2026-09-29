@@ -22,6 +22,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/geoffmilleraz/fathom/internal/ledgerroots"
 	"github.com/geoffmilleraz/fathom/internal/memo"
 )
 
@@ -123,6 +124,10 @@ type History struct {
 	Truncated bool   `json:"truncated,omitempty"`
 	From      string `json:"from,omitempty"`
 	To        string `json:"to,omitempty"`
+	// Ignored is the readings left out because their repo_root is not a
+	// registered service root (PE-24, O121): a scratch clone's or a
+	// worktree's runs are not the fleet's proof history.
+	Ignored ledgerroots.Ignored `json:"ignored_unregistered"`
 }
 
 type historyLine struct {
@@ -145,8 +150,22 @@ type historyLine struct {
 }
 
 // ParseProofHistory folds ledger bytes into the history. truncated is the
-// caller's word that data is a tail, not the whole ledger.
+// caller's word that data is a tail, not the whole ledger. Every reading is
+// kept: a reader of the live ledger goes through ParseProofHistoryUnder.
 func ParseProofHistory(data []byte, truncated bool) History {
+	return parseProofHistory(data, truncated, nil)
+}
+
+// ParseProofHistoryUnder is ParseProofHistory kept to the registered roots:
+// a reading whose repo_root roots does not register is left out of every
+// projection and counted in History.Ignored (PE-24).
+func ParseProofHistoryUnder(data []byte, truncated bool, roots ledgerroots.Roots) History {
+	return parseProofHistory(data, truncated, roots.NewFilter())
+}
+
+// parseProofHistory folds data, keeping the readings keep keeps (all when
+// keep is nil).
+func parseProofHistory(data []byte, truncated bool, keep *ledgerroots.Filter) History {
 	h := History{Truncated: truncated}
 	var lines []historyLine
 	for _, raw := range bytes.Split(data, []byte{'\n'}) {
@@ -158,7 +177,13 @@ func ParseProofHistory(data []byte, truncated bool) History {
 			h.Malformed++
 			continue
 		}
+		if keep != nil && !keep.Keep(l.RepoRoot) {
+			continue
+		}
 		lines = append(lines, l)
+	}
+	if keep != nil {
+		h.Ignored = keep.Ignored()
 	}
 	sort.SliceStable(lines, func(i, j int) bool { return lines[i].At < lines[j].At })
 
@@ -246,6 +271,9 @@ type historyKey struct {
 	size  int64
 	mtime int64
 	tail  int64
+	// roots is the registered roots' key (ledgerroots.Roots.Key): the
+	// projection kept only their readings.
+	roots string
 }
 
 // historyGroup caches projections keyed by the ledger's size and mtime: an
@@ -253,10 +281,11 @@ type historyKey struct {
 var historyGroup = memo.NewGroup[historyKey, History]("console.proof-history", memo.Options{MaxEntries: 4})
 
 // ProofHistory reads the newest tail bytes of the verify ledger at path
-// and projects them, naming how the read went. An absent ledger is absent
-// (no gate has run here), an unreadable one an error — never an empty
-// history.
-func ProofHistory(ctx context.Context, path string, tail int64) (History, SourceRead) {
+// and projects the readings under roots' registered service roots, naming
+// how the read went and how many readings it ignored (PE-24). An absent
+// ledger is absent (no gate has run here), an unreadable one an error —
+// never an empty history. An unread registry ignores nothing and says why.
+func ProofHistory(ctx context.Context, path string, tail int64, roots ledgerroots.Roots) (History, SourceRead) {
 	read := SourceRead{Name: SourceVerifyLedger, Path: path}
 	if path == "" {
 		read.State, read.Reason = StateAbsent, "no home directory to find the verify ledger in"
@@ -274,13 +303,13 @@ func ProofHistory(ctx context.Context, path string, tail int64) (History, Source
 	if tail <= 0 {
 		tail = DefaultHistoryTail
 	}
-	key := historyKey{path: filepath.Clean(path), size: fi.Size(), mtime: fi.ModTime().UnixNano(), tail: tail}
+	key := historyKey{path: filepath.Clean(path), size: fi.Size(), mtime: fi.ModTime().UnixNano(), tail: tail, roots: roots.Key()}
 	h, err := historyGroup.Get(ctx, key, func(context.Context) (History, int64, error) {
 		data, truncated, err := readTail(path, fi.Size(), tail)
 		if err != nil {
 			return History{}, 0, err
 		}
-		return ParseProofHistory(data, truncated), int64(len(data)), nil
+		return ParseProofHistoryUnder(data, truncated, roots), int64(len(data)), nil
 	})
 	if err != nil {
 		read.State, read.Reason = StateError, err.Error()
@@ -293,6 +322,9 @@ func ProofHistory(ctx context.Context, path string, tail int64) (History, Source
 	}
 	if h.Malformed > 0 {
 		notes = append(notes, fmt.Sprintf("%d malformed lines skipped", h.Malformed))
+	}
+	if p := h.Ignored.Phrase("verify-ledger reading"); p != "" {
+		notes = append(notes, p)
 	}
 	read.Reason = strings.Join(notes, "; ")
 	return h, read

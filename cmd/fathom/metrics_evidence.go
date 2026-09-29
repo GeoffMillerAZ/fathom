@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/console"
+	"github.com/geoffmilleraz/fathom/internal/ledgerroots"
 )
 
 // consoleVerbNow is the clock of the verbs the console renders — the fleet
@@ -87,7 +88,10 @@ type impactSources struct {
 	callFacts  console.CallLogFacts
 	ledgerPath string
 	ledgerErr  error
-	verify     []verifyLedgerRow
+	// verify is the registered roots' verify-ledger rows (PE-24);
+	// verifyIgnored is what the filter left out, named in GateNote.
+	verify        []verifyLedgerRow
+	verifyIgnored ledgerroots.Ignored
 }
 
 // impactInputsFrom adapts the sources to ImpactView's inputs.
@@ -107,6 +111,7 @@ func impactInputsFrom(s impactSources) console.ImpactInputs {
 	in.LedgerReason, in.LedgerError = fileState("session ledger", s.ledgerPath, s.ledgerErr)
 	in.CallLogReason, in.CallLogError, in.CallLogSource = callLogState(s.callFacts)
 	in.GateRefusals, in.GateRuns, in.GateNote = gateCatchStatsFromLedger(s.verify)
+	in.GateNote = withIgnored(in.GateNote, s.verifyIgnored, verifyLedgerNoun)
 	for _, r := range s.misses {
 		in.Tools = append(in.Tools, console.ToolOutcomeInput{Tool: r.Tool, Class: s.classes[r.Tool], Calls: r.Calls,
 			Hits: r.Hits, Misses: r.Misses, DidYouMean: r.DidYouMean, NotRecorded: r.NotRecorded})
@@ -128,8 +133,9 @@ func readCallLogFacts(resolved console.ResolvedCallLog) ([]adoptionCallEntry, co
 	return entries, f
 }
 
-// freshImpactSources is the verb's read of every impact source.
-func freshImpactSources(resolved console.ResolvedCallLog, now time.Time) impactSources {
+// freshImpactSources is the verb's read of every impact source; the
+// verify ledger is read under roots' registered service roots (PE-24).
+func freshImpactSources(resolved console.ResolvedCallLog, now time.Time, roots ledgerroots.Roots) impactSources {
 	entries, facts := readCallLogFacts(resolved)
 	imp := buildImpactModel(now)
 	for _, e := range entries {
@@ -139,8 +145,9 @@ func freshImpactSources(resolved console.ResolvedCallLog, now time.Time) impactS
 	}
 	path := sessionLedgerPath()
 	_, ledgerErr := os.Stat(path)
+	verify, ignored := readRegisteredVerifyLedger(roots)
 	return impactSources{imp: imp, misses: buildMissModel(entries), classes: toolClassesOf(entries), callFacts: facts,
-		ledgerPath: path, ledgerErr: ledgerErr, verify: readVerifyLedger()}
+		ledgerPath: path, ledgerErr: ledgerErr, verify: verify, verifyIgnored: ignored}
 }
 
 func cmdMetricsImpact(args []string, stdout, stderr io.Writer) int {
@@ -152,7 +159,7 @@ func cmdMetricsImpact(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	resolved := resolveConsoleCallLogFor(callLogQuery{Flag: *callLogFlag, BaseURL: *url})
-	m := console.ImpactView(impactInputsFrom(freshImpactSources(resolved, consoleVerbNow())))
+	m := console.ImpactView(impactInputsFrom(freshImpactSources(resolved, consoleVerbNow(), cliLedgerRoots(*url))))
 	if *jsonOut {
 		jsonPrint(stdout, withCallLog(m, resolved))
 		return 0
@@ -223,14 +230,17 @@ func cmdMetricsLoad(args []string, stdout, stderr io.Writer) int {
 
 // catchSources is what CatchTimeline is built from.
 type catchSources struct {
-	verify     []verifyLedgerRow
-	verifyPath string
-	verifyErr  error
-	reviews    []console.ReviewRun
-	callFacts  console.CallLogFacts
-	guard      []console.GuardBeat
-	guardPath  string
-	guardErr   error
+	// verify is the registered roots' verify-ledger rows (PE-24);
+	// verifyIgnored is what the filter left out, named in the source.
+	verify        []verifyLedgerRow
+	verifyIgnored ledgerroots.Ignored
+	verifyPath    string
+	verifyErr     error
+	reviews       []console.ReviewRun
+	callFacts     console.CallLogFacts
+	guard         []console.GuardBeat
+	guardPath     string
+	guardErr      error
 	// guardPartial is a hooks-log generation that could not be read while
 	// the other was (the guard count is then a lower bound).
 	guardPartial error
@@ -240,7 +250,7 @@ type catchSources struct {
 
 func catchInputsFrom(s catchSources) console.CatchInputs {
 	in := console.CatchInputs{Reviews: s.reviews, GuardBeats: s.guard, Registry: s.registry,
-		VerifySource: "verify ledger " + s.verifyPath, GuardSource: hooksLogSource(s.guardPath)}
+		VerifySource: withIgnored("verify ledger "+s.verifyPath, s.verifyIgnored, verifyLedgerNoun), GuardSource: hooksLogSource(s.guardPath)}
 	in.VerifyReason, in.VerifyError = fileState("verify ledger", s.verifyPath, s.verifyErr)
 	for _, r := range s.verify {
 		in.VerifyRuns = append(in.VerifyRuns, console.VerifyRun{At: r.At, Service: r.Service, Plan: r.Plan, Origin: r.Origin, Failing: r.Failing, Claimed: r.Claimed})
@@ -321,7 +331,7 @@ func cmdMetricsCatches(args []string, stdout, stderr io.Writer) int {
 	for name, info := range svcs {
 		roots[name] = info.path
 	}
-	src := freshCatchSources(reviewRunsOf(entries), facts, sessionLabelKey(roots), registryOf(svcs, svcErr))
+	src := freshCatchSources(reviewRunsOf(entries), facts, sessionLabelKey(roots), registryOf(svcs, svcErr), ledgerRootsOf(svcs, svcErr))
 	in := catchInputsFrom(src)
 	if *service != "" && !in.NamesService(*service) {
 		if _, registered := roots[*service]; !registered {
@@ -354,12 +364,14 @@ func cmdMetricsCatches(args []string, stdout, stderr io.Writer) int {
 // caller's one read of the log. A ledger that exists and fails to read is
 // an error (the external volume's EPERM wedge: stat succeeds, the read
 // does not), never an empty ledger.
-func freshCatchSources(reviews []console.ReviewRun, facts console.CallLogFacts, labelKey func(string) string, registry console.Registry) catchSources {
+//
+// The verify rows are the registered roots' (PE-24): roots decides.
+func freshCatchSources(reviews []console.ReviewRun, facts console.CallLogFacts, labelKey func(string) string, registry console.Registry, roots ledgerroots.Roots) catchSources {
 	vp := verifyLedgerPath()
-	verify, verr := readVerifyLedgerErr(vp)
+	verify, ignored, verr := readRegisteredVerifyLedgerErr(vp, roots)
 	gp := beatLogPath()
 	guard, partial, gerr := readGuardBeats(gp, labelKey)
-	return catchSources{verify: verify, verifyPath: vp, verifyErr: verr, reviews: reviews, callFacts: facts,
+	return catchSources{verify: verify, verifyIgnored: ignored, verifyPath: vp, verifyErr: verr, reviews: reviews, callFacts: facts,
 		guard: guard, guardPath: gp, guardErr: gerr, guardPartial: partial, registry: registry}
 }
 

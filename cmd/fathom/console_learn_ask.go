@@ -44,6 +44,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/console"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/harness"
+	"github.com/geoffmilleraz/fathom/internal/ledgerroots"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
 )
 
@@ -269,7 +270,7 @@ func readAskSamples(cr *consoleRequest, choice learnChoice) map[string]console.A
 			}
 		}
 	}
-	row, note, err := samplePlanRow(choice)
+	row, note, err := samplePlanRow(choice, cr.model().ledgerRoots())
 	out["row"] = console.AskSample{Value: row, Note: note}
 	if err != nil {
 		out["row"] = console.AskSample{Note: note, Err: err.Error()}
@@ -331,13 +332,16 @@ var claimedRowRE = regexp.MustCompile(`^\s*- \[x\] .+\{.*\b(symbol|oracle):.*\}\
 
 // samplePlanRow finds a claimed plan row with a contract in the project's
 // current plans (docs/plans under the recorded root, read-only): the plan
-// the gate ran on most recently for the project first, whichever checkout
-// ran it, then the rest by name — never a scratch or deleted plan the
+// the gate ran on most recently for the project first (at its registered
+// root, PE-24), then the rest by name — never a scratch or deleted plan the
 // ledger names. A source that could not be read (the verify ledger, the
 // plans directory, a plan) is returned as the error when no row was found,
 // and the note says the plans could not be read — never that none was
 // found.
-func samplePlanRow(choice learnChoice) (row, note string, err error) {
+//
+// The ledger's order is its registered roots' runs (PE-24); a note names
+// the rows that left out.
+func samplePlanRow(choice learnChoice, roots ledgerroots.Roots) (row, note string, err error) {
 	root := choice.Row.Path
 	if root == "" {
 		return "", "no corpus root is recorded for " + choice.Service, nil
@@ -351,8 +355,10 @@ func samplePlanRow(choice learnChoice) (row, note string, err error) {
 	var plans []string
 	seen := map[string]bool{}
 	rows, lerr := verifyLedgerRowsAt(verifyLedgerPath())
+	var ignored ledgerroots.Ignored
 	switch {
 	case lerr == nil:
+		rows, ignored = verifyLedgerRegisteredRows(rows, roots)
 		sort.SliceStable(rows, func(i, j int) bool { return rows[i].At > rows[j].At })
 		for _, r := range rows {
 			if r.Service != choice.Service {
@@ -386,7 +392,7 @@ func samplePlanRow(choice learnChoice) (row, note string, err error) {
 			continue
 		}
 		if found != "" {
-			return found, "the first claimed row with a contract in " + rel, nil
+			return found, withIgnored("the first claimed row with a contract in "+rel, ignored, verifyLedgerNoun), nil
 		}
 	}
 	if len(failures) > 0 {

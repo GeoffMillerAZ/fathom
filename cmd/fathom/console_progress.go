@@ -197,7 +197,7 @@ func buildProgressPage(cr *consoleRequest) (consoleOut, error) {
 	}
 
 	// The proof history and its projections.
-	h, read := console.ProofHistory(cr.r.Context(), verifyLedgerPath(), console.DefaultHistoryTail)
+	h, read := console.ProofHistory(cr.r.Context(), verifyLedgerPath(), console.DefaultHistoryTail, m.ledgerRoots())
 	model.History, model.Rows, model.Readings = read, len(h.Rows), len(h.Readings)
 	model.Board = console.DerivedBoard(h, f)
 	model.BurnUp = console.BurnUp(h, f, cr.now)
