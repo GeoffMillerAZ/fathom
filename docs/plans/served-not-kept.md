@@ -6,7 +6,7 @@ Grammar v2 (`docs/plans/README.md`). A row flips to `[x]` only when
 (orchestrator constraints on a sub-agent). Nothing here is built; the one claimed row is PR-8, the decision.
 
 The accepted core is the commit pin line (PR-1 to PR-7) with two ledger fixes that ride SR-61 (PR-10, PR-11) and
-JF-1 landing alone. PR-8 (a silent pin loss blocks at pre-push) was accepted on 2026-09-29 by the owner-architect, owner veto open (Q34
+JF-1 landing alone. PR-8 (a silent pin loss blocks at pre-push) was accepted on 2026-09-29 by the owner-architect and confirmed by the owner the same day (Q34
 answered); PR-9 builds it. PR-M0 is
 a $0 replay that must pass before PR-3 is built (kill K1); PR-M1 is 30 days of record mode; PR-M2 is a bench that
 needs the owner's approval of about $76 (`docs/intent/autonomy.md`). The rows after "Deferred and refused" record

@@ -19,7 +19,7 @@ that gap.
 | Class | What |
 |---|---|
 | **Accepted now** | **The commit pin line** (PR-1 to PR-7). When a commit loses a test that a governing source names, the agent gets one factual line in the same turn. The sources are an invariant, a certification, a scope evidence line or a guard's `done needs`. The check is deterministic, keeps no state and runs whether or not the rule was served. **Two ledger fixes** (PR-10, PR-11) ride on SR-61 so they write to a ledger that receives rows. **JF-1 lands on its own** as the O120 fix |
-| **Accepted 2026-09-29 (PR-8)** | A silent pin loss blocks at pre-push once PR-9 lands (owner-architect under the owner's standing delegation, owner veto open). Today `conserve` computes it on every push, but only as advice (Q34, answered) |
+| **Accepted 2026-09-29 (PR-8)** | A silent pin loss blocks at pre-push once PR-9 lands (owner-architect, confirmed by the owner the same day). Today `conserve` computes it on every push, but only as advice (Q34, answered) |
 | **Experiments** | PR-M0 is a $0 replay over the guards-pilot 6 and 8 diffs. PR-M1 is 30 days of record mode on owner traffic, also $0. PR-M2 is the bench: the enforced-arm rerun ADR-038 still owes, plus the pin line in feedback mode; about $76, needs the owner's OK |
 | **Deferred, with triggers** | `test_ran`, turn deadlines and a Stop block, `enforce: "warn"`, waivers with a receipt, the open set, ledger schema 2 and a check registry, the GL-11 reclassification, `propose_check` (Jev), orchestrator constraints, unserved scanning, per-agent keeping tables (section 6) |
 | **Refused** | Model-judged compliance, a bypass in the line, turn-end lines on the next prompt, whole-file evaluation of fragment checks after each edit, per-edit single-file pin checks, `denied_retry`, `doc_touched` and `verify_row` rows, automatic suppression by waiver rate, the thread-registry refactor, promises parsed from prose, a new tool or verb, a pin inferred rather than named (section 7) |
@@ -147,7 +147,7 @@ commit)": a deliberate retirement stays visible without being called a violation
   for humans, for sessions that never commit through a hooked harness and for harnesses that stay record-only.
 - **Why it is the owner's call.** It changes the advisory-only pre-push doctrine
   (`coding-agent-excellence.md` section 5.3) for one plane. Accepted 2026-09-29 on ADR-057's `PR-8 decision.` line by
-  the owner-architect under the owner's standing delegation, owner veto open; Q34 is answered.
+  the owner-architect and confirmed by the owner the same day; Q34 is answered.
 - **Revisit when.** Any false block happens (name the loss kind), or an agent retires a pin by editing its
   source with no decision record in the range (then the exemption requires a decision cite).
 
@@ -246,7 +246,7 @@ refused rows PR-D1 to PR-D10 and PR-X1 to PR-X11), grammar v2, all open, nothing
 ## 10. Records this design creates or changes
 
 - **ADR-057**, "Served is not kept: a lost pin is a fact about the change" (2026-09-29): the three placement
-  questions, the corrected ladder, the commit line, the deferrals and refusals, and PR-8 (accepted 2026-09-29 by the owner-architect, owner veto open).
+  questions, the corrected ladder, the commit line, the deferrals and refusals, and PR-8 (accepted 2026-09-29 by the owner-architect, confirmed by the owner the same day).
 - **JF-1** lands on its own as the O120 fix and drops its clause that keeps `violated` "for a rule with a
   checkable condition": the tracker evaluates no check, checkable rules deny and record `blocked` (PR-10), and
   pin losses have their own beat, so the name would have no writer and would invite O120 back. O120 carries the
