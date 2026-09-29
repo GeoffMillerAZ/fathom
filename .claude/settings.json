@@ -63,11 +63,6 @@
             "command": "fathom edit-hook",
             "timeout": 5,
             "type": "command"
-          },
-          {
-            "command": "fathom session-hook --event test-run",
-            "timeout": 5,
-            "type": "command"
           }
         ],
         "matcher": "Bash"
