@@ -337,3 +337,34 @@ func TestRewireKeepsTheStanzaOfALinkedPair(t *testing.T) {
 		t.Fatalf("rewire called AGENTS.md's own region a legacy CLAUDE.md copy:\n%s", out.String())
 	}
 }
+
+// TestGeminiNoteReadsTheSettingItClaims: init says Gemini CLI reads AGENTS.md
+// only when .gemini/settings.json's context.fileName actually names it. An
+// adopter's own value is someone else's (fathom skips it, law 15), so the
+// stanza stays unread by Gemini and init must say so and name the fix,
+// never "written above".
+func TestGeminiNoteReadsTheSettingItClaims(t *testing.T) {
+	targets, err := initTargetsFor(harness.GeminiCLI, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Run("fathom's value", func(t *testing.T) {
+		root := t.TempDir()
+		writeRepoFile(t, root, ".gemini/settings.json", `{"context": {"fileName": ["AGENTS.md", "GEMINI.md"]}}`)
+		var out strings.Builder
+		printHarnessManualSteps(&out, root, targets, "svc", "http://127.0.0.1:1")
+		if !strings.Contains(out.String(), "reads AGENTS.md through .gemini/settings.json context.fileName") {
+			t.Fatalf("no note:\n%s", out.String())
+		}
+	})
+	t.Run("the adopter's own value", func(t *testing.T) {
+		root := t.TempDir()
+		writeRepoFile(t, root, ".gemini/settings.json", `{"context": {"fileName": ["CONTEXT.md"]}}`)
+		var out strings.Builder
+		printHarnessManualSteps(&out, root, targets, "svc", "http://127.0.0.1:1")
+		got := out.String()
+		if strings.Contains(got, "written above") || !strings.Contains(got, "MANUAL:") || !strings.Contains(got, `"AGENTS.md"`) || !strings.Contains(got, "CONTEXT.md") {
+			t.Fatalf("want a MANUAL line naming the adopter's value and the file to add:\n%s", got)
+		}
+	})
+}

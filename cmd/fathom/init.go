@@ -258,7 +258,7 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 	if targets.ID == harness.ClaudeCode {
 		printManualSteps(stdout, svc, *url)
 	} else {
-		printHarnessManualSteps(stdout, targets, svc, *url)
+		printHarnessManualSteps(stdout, root, targets, svc, *url)
 	}
 	if skillsMode == "" {
 		fmt.Fprintln(stdout, "MANUAL: install fathom's shipped agent skills (ten, into .claude/skills; .agents/skills, the Agent Skills standard path, becomes a link to it):")

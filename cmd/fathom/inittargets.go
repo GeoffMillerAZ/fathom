@@ -7,8 +7,11 @@ package main
 // descriptor past its demotion clock is refused with the reason.
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -119,8 +122,9 @@ func initTargetsForDescriptor(d harness.Descriptor, now time.Time) (initTargets,
 // printHarnessManualSteps is printManualSteps for a non-Claude-Code
 // harness: the descriptor's own `mcp add` line (printed, never run), the
 // honest hooks line, the settings-key note where the harness needs one,
-// and the harness-neutral gate/config steps.
-func printHarnessManualSteps(stdout io.Writer, t initTargets, service, url string) {
+// and the harness-neutral gate/config steps. root is the wired repository:
+// the settings-key note reads the key it names there, never assumes it.
+func printHarnessManualSteps(stdout io.Writer, root string, t initTargets, service, url string) {
 	fmt.Fprintln(stdout)
 	if t.MCPAddLine != "" {
 		fmt.Fprintf(stdout, "MANUAL: register fathom as an MCP server for %s (printed, never written by init):\n", t.Display)
@@ -137,7 +141,14 @@ func printHarnessManualSteps(stdout io.Writer, t initTargets, service, url strin
 		for _, f := range d.Instructions {
 			switch {
 			case f.Mode == "settings-key" && f.Setting != nil:
-				fmt.Fprintf(stdout, "note: %s reads %s through %s %s (written above, ADR-059)\n", d.Display, f.Path, f.Setting.File, strings.Join(f.Setting.Key, "."))
+				key := strings.Join(f.Setting.Key, ".")
+				if names, ok := settingNamesFile(root, *f.Setting, f.Path); ok {
+					fmt.Fprintf(stdout, "note: %s reads %s through %s %s (ADR-059)\n", d.Display, f.Path, f.Setting.File, key)
+				} else {
+					// Someone else's value (law 15: fathom skipped it) or an
+					// unreadable file: the stanza in AGENTS.md is unread.
+					fmt.Fprintf(stdout, "MANUAL: %s reads %s only through %s %s, which names %s — fathom left that value alone; add %q to it\n", d.Display, f.Path, f.Setting.File, key, names, f.Path)
+				}
 			case f.Mode == "settings-key":
 				fmt.Fprintf(stdout, "MANUAL: %s reads %s only via a settings key — %s\n", d.Display, f.Path, f.Note)
 			}
@@ -145,4 +156,41 @@ func printHarnessManualSteps(stdout io.Writer, t initTargets, service, url strin
 	}
 	fmt.Fprintf(stdout, "MANUAL: capability table for this harness: fathom harness capabilities --harness %s\n", t.StanzaID)
 	printGateAndConfigManualSteps(stdout, service)
+}
+
+// settingNamesFile reports whether the JSON settings file at root carries,
+// at the setting's key, a list naming file; names is what the key holds
+// instead ("nothing" when absent, the read error when unreadable).
+func settingNamesFile(root string, st harness.InstructionSetting, file string) (names string, ok bool) {
+	data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(st.File)))
+	if err != nil {
+		return "nothing readable (" + err.Error() + ")", false
+	}
+	var v any
+	if err := json.Unmarshal(data, &v); err != nil {
+		return "nothing parseable (" + err.Error() + ")", false
+	}
+	for _, k := range st.Key {
+		m, isMap := v.(map[string]any)
+		if !isMap {
+			return "nothing", false
+		}
+		v = m[k]
+	}
+	switch val := v.(type) {
+	case string:
+		return fmt.Sprintf("%q", val), val == file
+	case []any:
+		var got []string
+		for _, e := range val {
+			if s, isStr := e.(string); isStr {
+				if s == file {
+					return "", true
+				}
+				got = append(got, fmt.Sprintf("%q", s))
+			}
+		}
+		return "[" + strings.Join(got, ", ") + "]", false
+	}
+	return "nothing", false
 }
