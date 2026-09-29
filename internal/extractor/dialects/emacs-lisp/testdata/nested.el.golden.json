@@ -1,0 +1,92 @@
+{
+  "symbols": [
+    {
+      "name": "nested-when-compiling",
+      "kind": "EmacsLispMacro",
+      "package": "nested",
+      "line": 7,
+      "end_line": 9,
+      "signature": "(defmacro nested-when-compiling (&rest body)",
+      "tier": "verified"
+    },
+    {
+      "name": "nested-helper",
+      "kind": "EmacsLispFunction",
+      "package": "nested",
+      "line": 11,
+      "end_line": 13,
+      "signature": "(defun nested-helper (x)",
+      "tier": "verified"
+    },
+    {
+      "name": "nested-dep-map",
+      "kind": "EmacsLispVariable",
+      "package": "nested",
+      "line": 16,
+      "end_line": 17,
+      "tier": "verified"
+    },
+    {
+      "name": "nested-dep-command",
+      "kind": "EmacsLispFunction",
+      "package": "nested",
+      "line": 19,
+      "end_line": 22,
+      "signature": "(defun nested-dep-command ()",
+      "tier": "verified"
+    },
+    {
+      "name": "nested-compat",
+      "kind": "EmacsLispFunction",
+      "package": "nested",
+      "line": 26,
+      "end_line": 28,
+      "signature": "(defun nested-compat (x)",
+      "tier": "verified"
+    },
+    {
+      "name": "nested-next",
+      "kind": "EmacsLispFunction",
+      "package": "nested",
+      "line": 31,
+      "end_line": 33,
+      "signature": "(defun nested-next ()",
+      "tier": "verified"
+    },
+    {
+      "name": "nested-outer",
+      "kind": "EmacsLispFunction",
+      "package": "nested",
+      "line": 35,
+      "end_line": 39,
+      "signature": "(defun nested-outer (x)",
+      "tier": "verified"
+    },
+    {
+      "name": "nested-inner",
+      "kind": "EmacsLispFunction",
+      "package": "nested",
+      "line": 37,
+      "end_line": 38,
+      "signature": "(defun nested-inner (y)",
+      "tier": "verified"
+    },
+    {
+      "name": "nested-option",
+      "kind": "EmacsLispCustom",
+      "package": "nested",
+      "line": 42,
+      "end_line": 44,
+      "tier": "verified"
+    },
+    {
+      "name": "nested-last",
+      "kind": "EmacsLispFunction",
+      "package": "nested",
+      "line": 46,
+      "end_line": 46,
+      "signature": "(defun nested-last ()",
+      "tier": "verified"
+    }
+  ]
+}

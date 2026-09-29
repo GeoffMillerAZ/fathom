@@ -29,7 +29,6 @@ var unsupportedLangExtMap = map[string]string{
 	".d":       "d",
 	".dpr":     "pascal",
 	".edn":     "clojure",
-	".el":      "emacs-lisp",
 	".elm":     "elm",
 	".erl":     "erlang",
 	".ex":      "elixir",

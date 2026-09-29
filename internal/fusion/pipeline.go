@@ -717,7 +717,15 @@ func parseGitLog(serviceID, raw string) []store.Commit {
 // cmds and defer as Calls, and the includes that resolve to another Taskfile of
 // the repository) where each was fingerprinted as unclassified YAML; the salt
 // bump re-reads them.
-const ExtractorEpoch = "34"
+// Epoch 35 (LB-Q-emacs-lisp): .el files now extract through
+// internal/extractor.NewTSExtractor("emacs-lisp") — tree-sitter via wazero/WASM,
+// a fleet gap with no incumbent: defun, defmacro, defsubst, cl-defun, cl-defmacro
+// and cl-defsubst (each with a Signature and an EndLine), defvar and defvar-local
+// (a bare `(defvar x)` too), defcustom, defconst, defface, defgroup, define-inline,
+// defalias, the derived and minor modes, cl-defgeneric and cl-defmethod, cl-defstruct
+// and eieio's defclass, at the top level or below it. Every such file was
+// fingerprinted by the no-extractor path, so the salt bump re-reads them.
+const ExtractorEpoch = "35"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares

@@ -1,0 +1,47 @@
+{
+  "symbols": [
+    {
+      "name": "broken-before",
+      "kind": "EmacsLispFunction",
+      "package": "broken",
+      "line": 3,
+      "end_line": 5,
+      "signature": "(defun broken-before (a)",
+      "tier": "verified"
+    },
+    {
+      "name": "broken-stray",
+      "kind": "EmacsLispFunction",
+      "package": "broken",
+      "line": 7,
+      "end_line": 8,
+      "signature": "(defun broken-stray (a)",
+      "tier": "verified"
+    },
+    {
+      "name": "broken-after-stray",
+      "kind": "EmacsLispVariable",
+      "package": "broken",
+      "line": 10,
+      "end_line": 11,
+      "tier": "verified"
+    },
+    {
+      "name": "broken-holes",
+      "kind": "EmacsLispFunction",
+      "package": "broken",
+      "line": 13,
+      "end_line": 16,
+      "signature": "(defun broken-holes (a)",
+      "tier": "verified"
+    },
+    {
+      "name": "broken-custom",
+      "kind": "EmacsLispCustom",
+      "package": "broken",
+      "line": 18,
+      "end_line": 18,
+      "tier": "verified"
+    }
+  ]
+}

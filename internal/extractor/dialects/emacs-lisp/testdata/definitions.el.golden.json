@@ -1,0 +1,183 @@
+{
+  "symbols": [
+    {
+      "name": "demo",
+      "kind": "EmacsLispGroup",
+      "package": "definitions",
+      "line": 5,
+      "end_line": 8,
+      "tier": "verified"
+    },
+    {
+      "name": "demo-name",
+      "kind": "EmacsLispCustom",
+      "package": "definitions",
+      "line": 10,
+      "end_line": 13,
+      "tier": "verified"
+    },
+    {
+      "name": "demo-count",
+      "kind": "EmacsLispCustom",
+      "package": "definitions",
+      "line": 15,
+      "end_line": 15,
+      "tier": "verified"
+    },
+    {
+      "name": "demo-cache",
+      "kind": "EmacsLispVariable",
+      "package": "definitions",
+      "line": 17,
+      "end_line": 18,
+      "tier": "verified"
+    },
+    {
+      "name": "demo-declared",
+      "kind": "EmacsLispVariable",
+      "package": "definitions",
+      "line": 20,
+      "end_line": 20,
+      "tier": "verified"
+    },
+    {
+      "name": "demo-buffer-state",
+      "kind": "EmacsLispVariable",
+      "package": "definitions",
+      "line": 22,
+      "end_line": 23,
+      "tier": "verified"
+    },
+    {
+      "name": "demo-version",
+      "kind": "EmacsLispConst",
+      "package": "definitions",
+      "line": 25,
+      "end_line": 26,
+      "tier": "verified"
+    },
+    {
+      "name": "demo-highlight",
+      "kind": "EmacsLispFace",
+      "package": "definitions",
+      "line": 28,
+      "end_line": 31,
+      "tier": "verified"
+    },
+    {
+      "name": "demo-greet",
+      "kind": "EmacsLispFunction",
+      "package": "definitions",
+      "line": 33,
+      "end_line": 36,
+      "signature": "(defun demo-greet (&optional name)",
+      "tier": "verified"
+    },
+    {
+      "name": "demo-sum",
+      "kind": "EmacsLispFunction",
+      "package": "definitions",
+      "line": 38,
+      "end_line": 42,
+      "signature": "(defun demo-sum (numbers &optional initial)",
+      "tier": "verified"
+    },
+    {
+      "name": "demo-nil-args",
+      "kind": "EmacsLispFunction",
+      "package": "definitions",
+      "line": 44,
+      "end_line": 46,
+      "signature": "(defun demo-nil-args nil",
+      "tier": "verified"
+    },
+    {
+      "name": "demo-empty-args",
+      "kind": "EmacsLispFunction",
+      "package": "definitions",
+      "line": 48,
+      "end_line": 49,
+      "signature": "(defun demo-empty-args ()",
+      "tier": "verified"
+    },
+    {
+      "name": "demo-no-body",
+      "kind": "EmacsLispFunction",
+      "package": "definitions",
+      "line": 51,
+      "end_line": 51,
+      "signature": "(defun demo-no-body (x))",
+      "tier": "verified"
+    },
+    {
+      "name": "demo-with-cache",
+      "kind": "EmacsLispMacro",
+      "package": "definitions",
+      "line": 53,
+      "end_line": 56,
+      "signature": "(defmacro demo-with-cache (&rest body)",
+      "tier": "verified"
+    },
+    {
+      "name": "demo-double",
+      "kind": "EmacsLispSubst",
+      "package": "definitions",
+      "line": 58,
+      "end_line": 60,
+      "signature": "(defsubst demo-double (x)",
+      "tier": "verified"
+    },
+    {
+      "name": "demo-inc",
+      "kind": "EmacsLispInline",
+      "package": "definitions",
+      "line": 62,
+      "end_line": 64,
+      "signature": "(define-inline demo-inc (x)",
+      "tier": "verified"
+    },
+    {
+      "name": "demo-say",
+      "kind": "EmacsLispAlias",
+      "package": "definitions",
+      "line": 66,
+      "end_line": 67,
+      "tier": "verified"
+    },
+    {
+      "name": "demo-hello",
+      "kind": "EmacsLispAlias",
+      "package": "definitions",
+      "line": 69,
+      "end_line": 69,
+      "tier": "verified"
+    },
+    {
+      "name": "demo-mode",
+      "kind": "EmacsLispDerivedMode",
+      "package": "definitions",
+      "line": 71,
+      "end_line": 73,
+      "signature": "(define-derived-mode demo-mode text-mode \"Demo\"",
+      "tier": "verified"
+    },
+    {
+      "name": "demo-minor-mode",
+      "kind": "EmacsLispMinorMode",
+      "package": "definitions",
+      "line": 75,
+      "end_line": 78,
+      "signature": "(define-minor-mode demo-minor-mode",
+      "tier": "verified"
+    },
+    {
+      "name": "global-demo-minor-mode",
+      "kind": "EmacsLispMinorMode",
+      "package": "definitions",
+      "line": 80,
+      "end_line": 81,
+      "signature": "(define-globalized-minor-mode global-demo-minor-mode demo-minor-mode",
+      "tier": "verified"
+    }
+  ]
+}

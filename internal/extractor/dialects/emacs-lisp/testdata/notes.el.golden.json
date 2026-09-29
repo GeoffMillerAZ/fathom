@@ -1,0 +1,114 @@
+{
+  "symbols": [
+    {
+      "name": "notes",
+      "kind": "EmacsLispGroup",
+      "package": "notes",
+      "line": 15,
+      "end_line": 17,
+      "tier": "verified"
+    },
+    {
+      "name": "notes-directory",
+      "kind": "EmacsLispCustom",
+      "package": "notes",
+      "line": 19,
+      "end_line": 22,
+      "tier": "verified"
+    },
+    {
+      "name": "notes-hook",
+      "kind": "EmacsLispCustom",
+      "package": "notes",
+      "line": 24,
+      "end_line": 27,
+      "tier": "verified"
+    },
+    {
+      "name": "notes-title",
+      "kind": "EmacsLispFace",
+      "package": "notes",
+      "line": 29,
+      "end_line": 32,
+      "tier": "verified"
+    },
+    {
+      "name": "notes-mode-map",
+      "kind": "EmacsLispVariable",
+      "package": "notes",
+      "line": 34,
+      "end_line": 39,
+      "tier": "verified"
+    },
+    {
+      "name": "notes--dirty",
+      "kind": "EmacsLispVariable",
+      "package": "notes",
+      "line": 41,
+      "end_line": 42,
+      "tier": "verified"
+    },
+    {
+      "name": "notes--extension",
+      "kind": "EmacsLispConst",
+      "package": "notes",
+      "line": 44,
+      "end_line": 45,
+      "tier": "verified"
+    },
+    {
+      "name": "notes--file",
+      "kind": "EmacsLispFunction",
+      "package": "notes",
+      "line": 47,
+      "end_line": 49,
+      "signature": "(defun notes--file (title)",
+      "tier": "verified"
+    },
+    {
+      "name": "notes-new",
+      "kind": "EmacsLispFunction",
+      "package": "notes",
+      "line": 51,
+      "end_line": 55,
+      "signature": "(defun notes-new (title)",
+      "tier": "verified"
+    },
+    {
+      "name": "notes-save",
+      "kind": "EmacsLispFunction",
+      "package": "notes",
+      "line": 57,
+      "end_line": 62,
+      "signature": "(defun notes-save ()",
+      "tier": "verified"
+    },
+    {
+      "name": "notes-with-dir",
+      "kind": "EmacsLispMacro",
+      "package": "notes",
+      "line": 64,
+      "end_line": 68,
+      "signature": "(defmacro notes-with-dir (&rest body)",
+      "tier": "verified"
+    },
+    {
+      "name": "notes-mode",
+      "kind": "EmacsLispDerivedMode",
+      "package": "notes",
+      "line": 70,
+      "end_line": 73,
+      "signature": "(define-derived-mode notes-mode text-mode \"Notes\"",
+      "tier": "verified"
+    },
+    {
+      "name": "notes--mark-dirty",
+      "kind": "EmacsLispFunction",
+      "package": "notes",
+      "line": 75,
+      "end_line": 77,
+      "signature": "(defun notes--mark-dirty (&rest _)",
+      "tier": "verified"
+    }
+  ]
+}

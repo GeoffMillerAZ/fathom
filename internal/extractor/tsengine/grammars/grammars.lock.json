@@ -114,6 +114,21 @@
       "gz_bytes": 69325
     },
     {
+      "blob": "elisp",
+      "repo": "Wilfred/tree-sitter-elisp",
+      "tag": "1.7.2",
+      "commit": "c0417c751a3dcc8724d1f2f6d1437a99dee1e090",
+      "tarball_sha256": "6a5c3df34b5bb1b4fbc1386fc0f24a205ddfff0720801899c3d1b3e3593fa670",
+      "licence": "MIT",
+      "entry_points": ["tree_sitter_elisp"],
+      "scanner": false,
+      "generate": true,
+      "abi": 15,
+      "blob_sha256": "f207321d3e54d07838a585601113055624294da210c90c9de637cf31a2a6b397",
+      "blob_bytes": 176723,
+      "gz_bytes": 62982
+    },
+    {
       "blob": "gotemplate",
       "repo": "ngalaiko/tree-sitter-go-template",
       "tag": "aa71f63de226c5592dfbfc1f29949522d7c95fac",
