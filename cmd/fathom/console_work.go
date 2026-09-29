@@ -115,16 +115,28 @@ func memoWork(ctx context.Context, cr *consoleRequest, m observatoryModel, sr se
 	cfg, _ := workRepoConfig(sr.Root)
 	key := strings.Join([]string{sr.Service, sr.Root, fileWatermark(verifyLedgerPath()), fileWatermark(sessionLedgerPath()),
 		fileWatermark(ruleOutcomeLogPath()), repoHeadNoFork(sr.Root),
-		fileWatermark(workConfigPath(sr.Root)), workCIWatermarks(sr.Root, cfg)}, "\x00")
+		fileWatermark(workConfigPath(sr.Root)), workCIWatermarks(sr.Root, cfg),
+		m.callFacts.Log.Path, fileWatermark(m.callFacts.Log.Path), fileWatermark(threadsPath())}, "\x00")
+	var idx workIndex
+	if cr.deps != nil && cr.deps.c != nil {
+		idx = storeWorkIndex{st: cr.deps.c.Store()}
+	}
 	model, _, _ := workMemo.doCtx(ctx, key, cr.now, func() (workPageModel, time.Duration) {
-		return computeWork(ctx, m, sr, cr.now), 2 * time.Minute
+		return computeWork(ctx, m, sr, cr.now, idx), 2 * time.Minute
 	})
 	return model
 }
 
 // computeWork joins the proof history to the session ledger for one
-// repository and projects U1, U2, U5 and U3.
-func computeWork(ctx context.Context, m observatoryModel, sr serviceRoot, now time.Time) workPageModel {
+// repository and projects U1, U2, U5 and U3. idx, when given and non-nil
+// (the console's store), answers the index reads the friction map makes;
+// without it (the CLI preflight, which reads U2 only) each is named
+// absent.
+func computeWork(ctx context.Context, m observatoryModel, sr serviceRoot, now time.Time, idxOpt ...workIndex) workPageModel {
+	var idx workIndex
+	if len(idxOpt) > 0 {
+		idx = idxOpt[0]
+	}
 	var model workPageModel
 	h, read := console.ProofHistory(ctx, verifyLedgerPath(), console.DefaultHistoryTail)
 	model.History = read
@@ -159,12 +171,9 @@ func computeWork(ctx context.Context, m observatoryModel, sr serviceRoot, now ti
 	model.changes, model.history, model.zones = changes, h, zones
 
 	rules, ruleNote := workRuleEvents(sr.Root)
-	model.FrictionRead = []string{
-		ruleNote,
-		"search, lookup and revert events: not read by this page (the hook log's replay carries no symbol per call)",
-		"claimed-unproven anchors: not read by this page",
-	}
-	model.Friction = console.FrictionWithRemedies(console.FrictionInputs{Rules: rules, Zones: zones}, console.RemedyInputs{})
+	in, frictionRead := workFrictionInputs(ctx, m.callFacts.Log.Path, sr, h, commits, rules, zones, idx)
+	model.FrictionRead = append([]string{ruleNote}, frictionRead...)
+	model.Friction = console.FrictionWithRemedies(in, console.RemedyInputs{})
 	return model
 }
 

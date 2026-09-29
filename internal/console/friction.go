@@ -28,13 +28,16 @@ const (
 const SearchLoopMin = 5
 
 // ActivityEvent is one counted tool event. Session is an opaque join key
-// and never leaves this package in an output (I58).
+// and never leaves this package in an output (I58). Note, when set, is
+// the evidence line in place of the kind's default (a revert read from
+// git names the commits, not a session).
 type ActivityEvent struct {
 	Session string
 	At      string
 	Kind    string
 	File    string
 	Symbol  string
+	Note    string
 }
 
 // RuleEvent is one GL-10 rule-outcome row (served, complied, violated,
@@ -176,8 +179,11 @@ func FrictionSignals(in FrictionInputs) FrictionMap {
 					func(a *frictionAcc) { a.h.Counts.Rediscovery++ })
 			}
 		case ActRevert:
-			hit(e.File, e.Symbol, fmt.Sprintf("%s: an edit undone in the same session", e.At),
-				func(a *frictionAcc) { a.h.Counts.Reverts++ })
+			note := fmt.Sprintf("%s: an edit undone in the same session", e.At)
+			if e.Note != "" {
+				note = e.Note
+			}
+			hit(e.File, e.Symbol, note, func(a *frictionAcc) { a.h.Counts.Reverts++ })
 		}
 	}
 	for _, s := range sortedKeysOf(bySession) {

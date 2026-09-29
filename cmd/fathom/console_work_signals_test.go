@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -217,7 +218,7 @@ func TestComputeWorkReadsNamedCISummary(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	model := computeWork(context.Background(), m, serviceRoot{Service: "svc", Root: r.root}, r.base.Add(28*24*time.Hour))
+	model := computeWork(context.Background(), m, serviceRoot{Service: "svc", Root: r.root}, r.base.Add(28*24*time.Hour), nil)
 	if model.Work.Changes != 4 {
 		t.Fatalf("four proven changes joined to the session: %+v (unjoined %d)", model.Work, model.Unjoined)
 	}
@@ -246,8 +247,156 @@ func TestComputeWorkReadsNamedCISummary(t *testing.T) {
 	if err := os.Remove(filepath.Join(r.root, ".fathom", "config.toml")); err != nil {
 		t.Fatal(err)
 	}
-	none := computeWork(context.Background(), m, serviceRoot{Service: "svc", Root: r.root}, r.base.Add(28*24*time.Hour))
+	none := computeWork(context.Background(), m, serviceRoot{Service: "svc", Root: r.root}, r.base.Add(28*24*time.Hour), nil)
 	if len(none.CIRead) != 1 || !strings.Contains(none.CIRead[0], "no CI summary file named") {
 		t.Fatalf("no named file is said: %q", none.CIRead)
+	}
+}
+
+// fakeWorkIndex answers /work's index reads from maps (the store-backed
+// workIndex is storeWorkIndex).
+type fakeWorkIndex struct {
+	files map[string]string
+	rules map[string]string
+	refs  map[string]int
+	stale []console.StaleDocSpan
+}
+
+func (f fakeWorkIndex) SymbolFile(_ context.Context, _, symbol string) (string, bool) {
+	p, ok := f.files[symbol]
+	return p, ok
+}
+
+func (f fakeWorkIndex) RuleTexts(_ context.Context, _ string, ids []string) (map[string]string, error) {
+	out := map[string]string{}
+	for _, id := range ids {
+		if t, ok := f.rules[id]; ok {
+			out[id] = t
+		}
+	}
+	return out, nil
+}
+
+func (f fakeWorkIndex) RefCount(_ context.Context, _, symbol string) (int, bool) {
+	n, ok := f.refs[symbol]
+	return n, ok
+}
+
+func (f fakeWorkIndex) StaleDocs(_ context.Context, _ string) ([]console.StaleDocSpan, string) {
+	return f.stale, fmt.Sprintf("doc-link drift: %d span(s)", len(f.stale))
+}
+
+// workActivity writes the call log and rule-outcome log a friction map
+// reads for newWorkRepo, and a plan whose A-2 contract anchors web.AddC:
+// session sA finds pay.Settle; session sB, after sA ended, re-finds it,
+// then runs five searches and lookups ending at web.AddC before its first
+// edit; one row carries no session.
+func workActivity(t *testing.T, r workRepo, m *observatoryModel, extra ...string) {
+	t.Helper()
+	ts := func(min int) string {
+		return r.base.Add(20*24*time.Hour + time.Duration(min)*time.Minute).Format(time.RFC3339Nano)
+	}
+	row := func(min int, tool, session string, pointers ...string) string {
+		caller := ""
+		if session != "" {
+			caller = fmt.Sprintf(`,"caller":{"pid":7,"session":%q,"test":false}`, session)
+		}
+		ps, _ := json.Marshal(pointers)
+		return fmt.Sprintf(`{"schema_version":3,"ts":%q,"tool":%q,"service":"svc","latency_ms":1%s,"pointers":%s}`, ts(min), tool, caller, ps)
+	}
+	lines := []string{
+		row(0, "find_symbol", "sA", "internal/pay.Settle", "internal/pay/a.go"),
+		row(1, "outline", "sA", "internal/pay/a.go"),
+		row(10, "find_symbol", "sB", "internal/pay.Settle", "internal/pay/a.go"),
+		row(11, "search", "sB"),
+		row(12, "references", "sB", "Charge", "web/b.go"),
+		row(13, "search", "sB"),
+		row(14, "symbol_context", "sB", "web.AddC", "web/c.go"),
+		row(16, "find_symbol", "sB", "web.AddC"),
+		row(17, "find_symbol", "", "internal/pay.Settle"),
+		`{"schema_version":3,"ts":"` + ts(18) + `","tool":"search","service":"other","latency_ms":1,"caller":{"session":"sB"}}`,
+		`{"schema_version":3,"ts":"` + ts(19) + `","tool":"search","service":"svc","origin":"console","latency_ms":1,"caller":{"session":"sB"}}`,
+		`not json`,
+	}
+	lines = append(lines, extra...)
+	cl := filepath.Join(t.TempDir(), "mcp-calls.jsonl")
+	if err := os.WriteFile(cl, []byte(strings.Join(lines, "\n")+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	m.callFacts = console.CallLogFacts{Log: console.ResolvedCallLog{Path: cl}}
+	edit := fmt.Sprintf(`{"schema_version":1,"ts":%q,"rule_id":"R-web","event":"served","session":"sB","file":%q}`, ts(15), filepath.Join(r.root, "web", "c.go"))
+	rl := filepath.Join(t.TempDir(), "rule-outcomes.jsonl")
+	if err := os.WriteFile(rl, []byte(edit+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("FATHOM_RULE_OUTCOME_LOG", rl)
+	plan := "# p\n\n- [x] A {id: A-1, symbol: Settle, package: internal/pay, reachable_from: TestA}\n" +
+		"- [x] B {id: A-2, symbol: AddC, package: web, reachable_from: TestB}\n" +
+		"- [x] C {id: A-3, symbol: AddD, package: web, reachable_from: TestC}\n" +
+		"- [x] D {id: A-4, symbol: Gone, package: web, reachable_from: TestD}\n"
+	if err := os.MkdirAll(filepath.Join(r.root, "docs", "plans"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(r.root, "docs", "plans", "p.md"), []byte(plan), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// WI-6w: /work reads search loops and lookups from the call log, the
+// edits that end a run from the rule-outcome log, rediscovery against the
+// discovery pointers earlier sessions established, claimed-unproven
+// anchors from the verify ledger and the plans' contracts, and the
+// reverts WI-4w read — and names each source it read.
+func TestComputeWorkReadsFrictionSignals(t *testing.T) {
+	r := newWorkRepo(t)
+	m := workLedgers(t, r)
+	workActivity(t, r, &m)
+	idx := fakeWorkIndex{files: map[string]string{"web.AddC": "web/c.go"}}
+	model := computeWork(context.Background(), m, serviceRoot{Service: "svc", Root: r.root}, r.base.Add(28*24*time.Hour), idx)
+	fm := model.Friction.Map
+	find := func(list []console.FrictionHotspot, key string) console.FrictionHotspot {
+		for _, h := range list {
+			if h.Key == key {
+				return h
+			}
+		}
+		t.Fatalf("no hotspot %q in %+v", key, list)
+		return console.FrictionHotspot{}
+	}
+	settle := find(fm.Symbols, "internal/pay.Settle")
+	if settle.Counts.Rediscovery != 2 {
+		t.Errorf("pay.Settle re-found by sB and by an unsequenced row after sA established it (sA's own second call does not count): %+v", settle.Counts)
+	}
+	addC := find(fm.Symbols, "web.AddC")
+	if addC.Counts.SearchLoops != 1 || addC.Counts.ClaimedUnproven != 1 || len(addC.LoopEnds) != 1 {
+		t.Errorf("sB's five lookups end at web.AddC before its edit; A-2's claimed-unproven reading anchors there: %+v", addC)
+	}
+	c := find(fm.Files, "web/c.go")
+	if c.Counts.Reverts != 1 || c.Counts.ClaimedUnproven != 1 || c.Counts.SearchLoops != 1 {
+		t.Errorf("web/c.go: c4's revert of c3, A-2's anchor file and the loop's end: %+v", c.Counts)
+	}
+	if fm.Events == 0 {
+		t.Fatal("activity events counted")
+	}
+	read := strings.Join(model.FrictionRead, "\n")
+	for _, want := range []string{"rule outcomes: 1 event", "search and lookup events: 9 from the call log", "8 sequenced by session", "1 row names no session",
+		"rediscovery pointers", "claimed-unproven anchors: 1 reading", "1 resolved to a file", "reverts: 1 revert", "repeated-read"} {
+		if !strings.Contains(read, want) {
+			t.Errorf("the friction sources name %q:\n%s", want, read)
+		}
+	}
+	if strings.Contains(read, "not read by this page") {
+		t.Errorf("no signal is left unread:\n%s", read)
+	}
+
+	// Without an index the anchor is counted by symbol only, and says so;
+	// without a call log the events are named absent.
+	m.callFacts = console.CallLogFacts{}
+	bare := computeWork(context.Background(), m, serviceRoot{Service: "svc", Root: r.root}, r.base.Add(28*24*time.Hour), nil)
+	bread := strings.Join(bare.FrictionRead, "\n")
+	for _, want := range []string{"no call log resolved", "no index to resolve"} {
+		if !strings.Contains(bread, want) {
+			t.Errorf("the absences are named %q:\n%s", want, bread)
+		}
 	}
 }
