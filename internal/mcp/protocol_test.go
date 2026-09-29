@@ -172,8 +172,8 @@ func TestToolsListOrderPinnedAndAnnotated(t *testing.T) {
 	}
 	// Byte-stable across calls (the per-session schema budget is a number,
 	// not a range).
-	if a, b := srv.toolsListBytes(ctx), srv.toolsListBytes(ctx); a != b || a == 0 {
-		t.Errorf("toolsListBytes not stable: %d vs %d", a, b)
+	if a, b := srv.surfaceSchemaBytes(ctx), srv.surfaceSchemaBytes(ctx); a != b || a == 0 {
+		t.Errorf("surfaceSchemaBytes not stable: %d vs %d", a, b)
 	}
 	contractsCtx := WithContracts(ctx, true)
 	for _, e := range srv.toolsListEntries(contractsCtx) {
@@ -185,7 +185,7 @@ func TestToolsListOrderPinnedAndAnnotated(t *testing.T) {
 	// The schema budget, honestly: what the surface costs by default (diet,
 	// annotations only) versus with outputSchema requested (go test -v
 	// prints it).
-	t.Logf("agent-surface tools/list: %d bytes (default, contracts=false), %d bytes (contracts=true)", srv.toolsListBytes(ctx), srv.toolsListBytes(contractsCtx))
+	t.Logf("agent-surface tools/list: %d bytes (default, contracts=false), %d bytes (contracts=true)", srv.surfaceSchemaBytes(ctx), srv.surfaceSchemaBytes(contractsCtx))
 }
 
 // ─── RP-11: outputSchema is generated and every live result conforms ─────────

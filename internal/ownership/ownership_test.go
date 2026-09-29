@@ -360,3 +360,79 @@ func TestFor_ConcurrentReads(t *testing.T) {
 		<-done
 	}
 }
+
+// ─── Unsupported syntax is named with its line, not approximated ─────────────
+
+// GitHub does not honor negation, character ranges or backslash escapes, and
+// GitLab section headers are another dialect. Each such line is reported
+// with its 1-based line number and matches nothing; the supported rules
+// around it keep working.
+func TestParse_UnsupportedSyntaxNamedWithLine(t *testing.T) {
+	content := []byte("# owners\n" + // 1
+		"*.go @alice\n" + // 2
+		"!vendor/ @nobody\n" + // 3
+		"\n" + // 4
+		"[Docs] @writers\n" + // 5
+		"docs/[ab].md @writers\n" + // 6
+		"\\#notes @writers\n" + // 7
+		"^[Optional] @maybe\n" + // 8
+		"/api/ @backend\n") // 9
+	o, err := ownership.Parse(content)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := o.Unsupported()
+	wantLines := []int{3, 5, 6, 7, 8}
+	if len(got) != len(wantLines) {
+		t.Fatalf("Unsupported() = %+v, want lines %v", got, wantLines)
+	}
+	for i, u := range got {
+		if u.Line != wantLines[i] || u.Reason == "" || u.Text == "" {
+			t.Errorf("Unsupported()[%d] = %+v, want line %d with text and reason", i, u, wantLines[i])
+		}
+	}
+	// Approximating would have owned these; skipping leaves them to the
+	// supported rules only.
+	if got := o.For("vendor/x.go"); !reflect.DeepEqual(got, []string{"@alice"}) {
+		t.Errorf("For(vendor/x.go) = %v, want [@alice]: a negation must not match or unmatch", got)
+	}
+	if got := o.For("docs/a.md"); len(got) != 0 {
+		t.Errorf("For(docs/a.md) = %v, want none: a section header and a range match nothing", got)
+	}
+	if got := o.For("api/x.go"); !reflect.DeepEqual(got, []string{"@backend"}) {
+		t.Errorf("For(api/x.go) = %v, want [@backend]", got)
+	}
+	if c := o.Rollup()["@writers"]; c != 0 {
+		t.Errorf("Rollup counts an unsupported rule's owner: %d", c)
+	}
+}
+
+// A file with nothing unsupported reports nothing.
+func TestParse_NoUnsupportedSyntax(t *testing.T) {
+	o, err := ownership.Parse([]byte("*.go @a\n/docs/ @b\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := o.Unsupported(); len(got) != 0 {
+		t.Errorf("Unsupported() = %+v, want none", got)
+	}
+}
+
+// A leading-slash rule owns the root path and not a same-named nested one,
+// end to end through Parse and For (IM-F1).
+func TestFor_LeadingSlashAndAnyDepthEndToEnd(t *testing.T) {
+	o, err := ownership.Parse([]byte("/services/checkout/ @pay\ndocs/ @writers\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for path, want := range map[string][]string{
+		"services/checkout/main.go":   {"@pay"},
+		"x/services/checkout/main.go": {},
+		"docs/a.md":                   {"@writers"},
+		"pkg/docs/a.md":               {"@writers"},
+	} {
+		if got := o.For(path); !reflect.DeepEqual(got, want) {
+			t.Errorf("For(%s) = %v, want %v", path, got, want)
+		}
+	}
+}

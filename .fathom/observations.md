@@ -2068,3 +2068,16 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** give every package-level func-typed variable a vertex, attribute its initializer's func literal to it, and resolve a call through the variable to it; the product walk then reaches the literal only when reached code calls the variable. EW-15 left this case open; a row (EW-25 is reserved) should carry it.
 - **Status:** open
 - **Impact:** one of the six rows the re-audit corpus's base reading got wrong still reads wired after EW-15 (the other five read library-only): a helper kept in a package variable "so tests can swap it" reads wired whether or not the product calls the variable.
+
+### O135 — internal/ownership has no production caller, so the CODEOWNERS matcher fixed by IM-F1 is library-only and the design's "feeds reviewers.go today" is wrong on this base
+
+- **Symptom:** `fathom verify --strict` reads IM-F1 library-only: `matchPattern` is reached only through `Owners.For`, and nothing outside the package's own tests imports `internal/ownership`
+- **Evidence:**
+  - **Tool:** fathom verify --strict --plan docs/plans/incident-maps.md --row IM-F1 on a fresh scratch ingest of the committed fix
+  - **Expected:** a product entry point reaches the matcher (docs/design/incident-maps.md §7 says it "also feeds internal/review/reviewers.go today")
+  - **Actual:** wired criterion unknown, "no product entry point reaches it (library-only)"; `review.Input.CodeownersMatches` and `FrequentCommitterMatches` have no producer outside tests, so `suggestReviewers` always merges two empty lists in production
+  - **Repro:** grep -rn '"github.com/geoffmilleraz/fathom/internal/ownership"' --include='*.go' . finds only ownership_test.go
+- **Root cause:** CX-4 built the merge and the parser as libraries and no row wired a caller; the incident-maps design read the package's doc comment as a live feed.
+- **Fix:** the matcher is fixed (IM-F1 code); the row stays open until a caller lands: IM-10's owners facet, or a `review_diff` feed that reads CODEOWNERS for the changed files (which also gives CX-4's suggested reviewers real input).
+- **Status:** open
+- **Impact:** CODEOWNERS ownership is not served anywhere today, so the matcher defect misrouted nobody in production; the receipt's suggested reviewers section is always empty.

@@ -17,6 +17,14 @@
 // read sees one complete version) and keeps the index's modification time
 // (git's racy-entry check compares against it), and core.splitIndex is off
 // for the command, so no shared-index file is written into .git either.
+//
+// A read also never reaches the network or a person. In a partial clone git
+// fetches a missing object from the promisor remote on demand, so a log or a
+// diff over a blobless clone turned into a hidden fetch (a write to the
+// object store, and a stall on a remote that is not reachable), and a fetch
+// that needs a credential prompts on the terminal. GIT_NO_LAZY_FETCH=1 makes
+// the read fail on a missing object instead, and GIT_TERMINAL_PROMPT=0 makes
+// any prompt fail instead of waiting (incident-maps IM-F2).
 package gitro
 
 import (
@@ -30,10 +38,23 @@ import (
 	"time"
 )
 
+// Env returns the environment a read-only git command runs in: the caller's
+// own with the three settings that keep a read from writing, fetching or
+// prompting appended last, so they win over whatever the caller exported.
+// Code that must build its own git command (not through Command) starts from
+// this rather than from os.Environ.
+func Env() []string {
+	return append(os.Environ(),
+		"GIT_OPTIONAL_LOCKS=0",
+		"GIT_NO_LAZY_FETCH=1",
+		"GIT_TERMINAL_PROMPT=0",
+	)
+}
+
 // Command returns the git command for args run in dir, and a cleanup to
 // call once it has finished (it removes the private index copy, if any).
 func Command(ctx context.Context, dir string, args ...string) (*exec.Cmd, func(), error) {
-	env := append(os.Environ(), "GIT_OPTIONAL_LOCKS=0")
+	env := Env()
 	cleanup := func() {}
 	if refreshesIndex(args) {
 		idx, done, err := privateIndex(ctx, dir)
@@ -101,7 +122,7 @@ func privateIndex(ctx context.Context, dir string) (string, func(), error) {
 	if src == "" {
 		cmd := exec.CommandContext(ctx, "git", "rev-parse", "--git-path", "index")
 		cmd.Dir = dir
-		cmd.Env = append(os.Environ(), "GIT_OPTIONAL_LOCKS=0")
+		cmd.Env = Env()
 		out, err := cmd.Output()
 		if err != nil {
 			return "", func() {}, err

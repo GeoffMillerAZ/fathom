@@ -23,8 +23,9 @@ refused disposition. The deferred and refused rows at the end are recorded so th
 
 ## Wave F: defects in shipped code found by this analysis (independent of the deferral)
 
-- [ ] CODEOWNERS matching follows GitHub semantics: a leading slash anchors at the root, a pattern without one matches at any depth, and unsupported syntax is named with its line rather than approximated {id: IM-F1, symbol: matchPattern, package: internal/ownership, reachable_from: TestMatchPatternGitHubLeadingSlashAndAnyDepth}
-- [ ] Every gitro command runs with GIT_NO_LAZY_FETCH=1 and GIT_TERMINAL_PROMPT=0 besides GIT_OPTIONAL_LOCKS=0, so a partial clone never fetches and git never prompts {id: IM-F2, symbol: Command, package: internal/gitro, reachable_from: TestCommandSetsNoLazyFetchAndNoPrompt}
+- [ ] CODEOWNERS matching follows GitHub semantics: a leading slash anchors at the root, a pattern with no slash (or only a trailing one) matches at any depth, a slash inside a pattern anchors it, and unsupported syntax is named with its line rather than approximated {id: IM-F1, symbol: matchPattern, package: internal/ownership, reachable_from: TestMatchPatternGitHubLeadingSlashAndAnyDepth}
+  <!-- product wiring open (fathom verify --strict reads it library-only, 2026-09-29): the matcher and Owners.Unsupported are built and tested, but no production code calls ownership.Parse or Owners.For; the design's claim that it feeds review's reviewers is wrong on this base (review.Input.CodeownersMatches has no producer). IM-10's ownersFacet or a review_diff feed is the first caller; flip when one lands. O135. -->
+- [x] Every gitro command runs with GIT_NO_LAZY_FETCH=1 and GIT_TERMINAL_PROMPT=0 besides GIT_OPTIONAL_LOCKS=0, so a partial clone never fetches and git never prompts {id: IM-F2, symbol: Command, package: internal/gitro, reachable_from: TestCommandSetsNoLazyFetchAndNoPrompt}
 
 ## Wave 1: the suspect list with no declaration, only if IM-M0 reads BUILD
 
