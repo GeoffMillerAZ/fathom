@@ -89,12 +89,12 @@ wave is called done.
 
 ## J. Honesty (after integration)
 
-- [ ] A row naming a service the registry does not list is left out of the catches timeline and every per-service call figure, and named — its count and service ids — on the timeline, in each lane, in the fleet report and in calls.total's denominator {id: OC-H2, symbol: unregisteredCalls, package: cmd/fathom, reachable_from: TestCatches_ExcludeServicesTheRegistryDoesNotList}
-- [ ] One metric per question: plans.proven, claims.current and certify.live are each one id and one computation every page reads (the Now and Fleet pages included), the ids that answered the same questions a second way are gone, and a catalog of every metric's question holds each page to it {id: OC-H3, symbol: ProjectMetrics, package: internal/console, reachable_from: TestMetricCatalog_OneMetricPerQuestion}
-- [ ] The retired metric ids plans.verified, claims.fresh and certificates.live are defined nowhere {id: OC-H3g, gone: pattern "MetricID = .(plans[.]verified|claims[.]fresh|certificates[.]live)", paths: "internal/console/"}
-- [ ] No page serves a ?tab= query: a workspace tab is its own route, and a stage link naming ?tab= resolves to nothing {id: OC-H4, symbol: resolveConsoleHref, package: cmd/fathom, reachable_from: TestConsoleLearn_StageLinksFollowTheRegistry}
-- [ ] The ?tab= mechanism (consolePage.Tabs and the resolver's tab match) is gone {id: OC-H4g, gone: pattern "Tabs +\[\]string|page[.]Tabs|Get[(].tab.[)]", paths: "cmd/fathom/"}
-- [ ] docs/app-kit.md's wave C section no longer says the coverage matrix is still to come {id: OC-H4d, gone: pattern "coverage matrix [(]OC-28[)] is still to come", paths: "docs/app-kit.md"}
+- [x] A row naming a service the registry does not list is left out of the catches timeline and every per-service call figure, and named — its count and service ids — on the timeline, in each lane, in the fleet report and in calls.total's denominator {id: OC-H2, symbol: unregisteredCalls, package: cmd/fathom, reachable_from: TestCatches_ExcludeServicesTheRegistryDoesNotList}
+- [x] One metric per question: plans.proven, claims.current and certify.live are each one id and one computation every page reads (the Now and Fleet pages included), the ids that answered the same questions a second way are gone, and a catalog of every metric's question holds each page to it {id: OC-H3, symbol: ProjectMetrics, package: internal/console, reachable_from: TestMetricCatalog_OneMetricPerQuestion}
+- [x] The retired metric ids plans.verified, claims.fresh and certificates.live are defined nowhere {id: OC-H3g, gone: pattern "MetricID = .(plans[.]verified|claims[.]fresh|certificates[.]live)", paths: "internal/console/"}
+- [x] No page serves a ?tab= query: a workspace tab is its own route, and a stage link naming ?tab= resolves to nothing {id: OC-H4, symbol: resolveConsoleHref, package: cmd/fathom, reachable_from: TestConsoleLearn_StageLinksFollowTheRegistry}
+- [x] The ?tab= mechanism (consolePage.Tabs and the resolver's tab match) is gone {id: OC-H4g, gone: pattern "Tabs +\[\]string|page[.]Tabs|Get[(].tab.[)]", paths: "cmd/fathom/"}
+- [x] docs/app-kit.md's wave C section no longer says the coverage matrix is still to come {id: OC-H4d, gone: pattern "coverage matrix [(]OC-28[)] is still to come", paths: "docs/app-kit.md"}
 
 ## I. Measurements
 
