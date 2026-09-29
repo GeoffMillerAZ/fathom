@@ -207,19 +207,22 @@ func TestSupportBurnUpAbsentNeverZero(t *testing.T) {
 }
 
 // TestSupportNextEligibleByWave pins SM-24 (§5 panel 4): the next eligible
-// target rows — own plan row still open, every need claimed or
-// dispositioned — grouped by wave, the language queue's rule
-// (docs/design/language-breadth.md §13.0 step 2).
+// target rows — own plan row still open, every need claimed — grouped by
+// wave, the language queue's rule (docs/design/language-breadth.md §13.0 step
+// 2, G2-6 since 2026-09-29): a deferred need blocks like an open one, and a
+// refused need puts the item under "needs re-planning" instead of waiting.
 func TestSupportNextEligibleByWave(t *testing.T) {
 	rows := map[string]SupportRowState{
-		"LB-F1": SupportRowClaimed, "LB-F2": SupportRowDispositioned, "LB-F3": SupportRowOpen,
+		"LB-F1": SupportRowClaimed, "LB-F2": SupportRowDispositioned, "LB-F3": SupportRowOpen, "LB-F4": SupportRowRefused,
 		"LB-Q-go": SupportRowOpen, "LB-Q-ruby": SupportRowOpen, "LB-Q-php": SupportRowClaimed, "LB-Q-astro": SupportRowOpen,
-		"SM-13": SupportRowOpen,
+		"LB-Q-lua": SupportRowOpen, "LB-Q-zig": SupportRowRefused, "SM-13": SupportRowOpen,
 	}
 	items := []SupportNextItem{
 		{Kind: support.KindLanguage, ID: "ruby", Name: "Ruby", Wave: 2, PlanRow: "LB-Q-ruby", Needs: []string{"LB-F1", "LB-F2"}},
+		{Kind: support.KindLanguage, ID: "lua", Name: "Lua", Wave: 2, PlanRow: "LB-Q-lua", Needs: []string{"LB-F1", "LB-F4"}},
 		{Kind: support.KindLanguage, ID: "go", Name: "Go", Wave: 1, PlanRow: "LB-Q-go", Needs: []string{"language-breadth.md#LB-F1"}},
 		{Kind: support.KindLanguage, ID: "php", Name: "PHP", Wave: 1, PlanRow: "LB-Q-php", Needs: []string{"LB-F1"}},
+		{Kind: support.KindLanguage, ID: "zig", Name: "Zig", Wave: 1, PlanRow: "LB-Q-zig", Needs: []string{"LB-F1"}},
 		{Kind: support.KindLanguage, ID: "astro", Name: "Astro", Wave: 1, PlanRow: "LB-Q-astro", Needs: []string{"LB-F1", "LB-F3"}},
 		{Kind: support.KindClient, ID: "cursor", Name: "Cursor", Wave: 1, PlanRow: "support-matrix.md#SM-13", Needs: []string{"LB-F9"}},
 	}
@@ -228,15 +231,18 @@ func TestSupportNextEligibleByWave(t *testing.T) {
 		t.Fatalf("waves = %+v", v.Waves)
 	}
 	if len(v.Waves[0].Items) != 1 || v.Waves[0].Items[0].ID != "go" {
-		t.Errorf("wave 1 eligible = %+v, want only go (php done, astro needs open LB-F3, cursor needs an unknown row)", v.Waves[0].Items)
+		t.Errorf("wave 1 eligible = %+v, want only go (php and zig done, astro needs open LB-F3, cursor needs an unknown row)", v.Waves[0].Items)
 	}
-	if len(v.Waves[1].Items) != 1 || v.Waves[1].Items[0].ID != "ruby" {
-		t.Errorf("wave 2 eligible = %+v", v.Waves[1].Items)
+	if len(v.Waves[1].Items) != 0 {
+		t.Errorf("wave 2 eligible = %+v, want none: ruby's LB-F2 is deferred (G2-6)", v.Waves[1].Items)
 	}
-	if v.Eligible != 2 || v.Blocked != 2 || v.Done != 1 {
-		t.Errorf("eligible/blocked/done = %d/%d/%d, want 2/2/1", v.Eligible, v.Blocked, v.Done)
+	if len(v.Waves[1].Replan) != 1 || v.Waves[1].Replan[0].ID != "lua" {
+		t.Errorf("wave 2 re-planning = %+v, want lua (LB-F4 is refused)", v.Waves[1].Replan)
 	}
-	if v.Waves[0].Blocked != 2 {
-		t.Errorf("wave 1 blocked = %d, want 2", v.Waves[0].Blocked)
+	if v.Eligible != 1 || v.Blocked != 3 || v.Replan != 1 || v.Done != 2 {
+		t.Errorf("eligible/blocked/replan/done = %d/%d/%d/%d, want 1/3/1/2", v.Eligible, v.Blocked, v.Replan, v.Done)
+	}
+	if v.Waves[0].Blocked != 2 || v.Waves[1].Blocked != 1 {
+		t.Errorf("blocked per wave = %d/%d, want 2/1", v.Waves[0].Blocked, v.Waves[1].Blocked)
 	}
 }

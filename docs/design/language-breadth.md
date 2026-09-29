@@ -208,7 +208,9 @@ owner's decisions, binding on the harness and every reading after them:
   item (cpp on c; scss and less on css) is eligible once the parent has a committed reading
   at L1 or better, not only once the parent's row is `[x]` (its row may stay open for L4
   for months). Foundation rows still need `[x]`/`[-]`. `langbench.QueueEligibility` and
-  `indexbench lang-next` compute it (§13.0 step 2).
+  `indexbench lang-next` compute it (§13.0 step 2). *Amended 2026-09-29 (G2-6): a `[-]`
+  row no longer satisfies a dependency — a foundation row needs `[x]`, and a refused
+  dependency (a queue item's too, whatever its reading) means re-planning; see §13.0 step 2.*
 
 **Round-2 re-measurement (2026-09-28), with the instruments above** — the readings in
 `docs/bench/readings/lang/` carry the numbers and the dispositions:
@@ -757,6 +759,15 @@ worktree and your scratch directory.
    better, even while its own row stays open for a higher target (D6, §1.5).
    `go run ./cmd/indexbench lang-next -all` prints exactly this. If blocked, stop and
    report `blocked: <ids>`.
+   *Amended 2026-09-29 (G2-6, `docs/plans/sdd-reconciler-v0.md`): deferred is not done.
+   A `depends_on` row is met only when it is `[x]`; a `[-]` row no longer is. A deferred
+   one (or one with no disposition) keeps the item blocked until it revives; a refused
+   one (any disposition but deferred) will not be built, so the item needs re-planning,
+   not a wait: `lang-next -all` prints `needs re-planning: <ids>` and the console's What's
+   next lists it apart. D6 still holds for a queue-item dependency whose own row is open
+   or deferred (its committed reading at L1 or better satisfies it), never for a refused
+   one. `langbench.QueueEligibility`, `lang-next` and What's next share this rule with
+   `fathom plans next`. If a dependency is refused, stop and report `replan: <ids>`.*
 3. Work in a fresh worktree on branch `lang/<id>` from the integration branch, with
    `GOWORK=off`, your own scratch dir `/Volumes/m2ext/tmp/lang-<id>/` (never shared), and
    `GOFLAGS=-p=2`. Never start a daemon, never touch `127.0.0.1:7575` or `~/.fathom`.

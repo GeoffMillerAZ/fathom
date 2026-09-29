@@ -467,7 +467,8 @@ type SupportRowState string
 const (
 	SupportRowOpen          SupportRowState = "open"
 	SupportRowClaimed       SupportRowState = "claimed"
-	SupportRowDispositioned SupportRowState = "dispositioned"
+	SupportRowDispositioned SupportRowState = "dispositioned" // [-] deferred (or no disposition)
+	SupportRowRefused       SupportRowState = "refused"       // [-] refused: will not be built (G2-6)
 )
 
 // SupportNextItem is one target row that could be next: its entry, wave,
@@ -490,10 +491,12 @@ type SupportNextRow struct {
 	Needs   int          `json:"needs"`
 }
 
-// SupportNextWave is one wave's eligible items and how many more wait.
+// SupportNextWave is one wave's eligible items, the items a refused need
+// leaves needing re-planning, and how many more wait.
 type SupportNextWave struct {
 	Wave    int              `json:"wave"`
 	Items   []SupportNextRow `json:"items"`
+	Replan  []SupportNextRow `json:"replan"`
 	Blocked int              `json:"blocked"`
 }
 
@@ -502,6 +505,7 @@ type SupportNextView struct {
 	Waves    []SupportNextWave `json:"waves"`
 	Eligible int               `json:"eligible"`
 	Blocked  int               `json:"blocked"`
+	Replan   int               `json:"replan"`
 	Done     int               `json:"done"`
 }
 
@@ -514,12 +518,14 @@ func bareRowID(ref string) string {
 }
 
 // SupportNext is the language queue's dependency rule
-// (docs/design/language-breadth.md §13.0 step 2) over the target rows: an
-// item whose own plan row is claimed or dispositioned is done; one whose
-// every need is claimed or dispositioned is eligible; anything else (an open
-// need, or a need or row the plans do not carry) is blocked. Grouped by
-// wave, ascending; items by kind then id. It is not `plans next`'s rule: since
-// G2-6 a dispositioned `needs:` target no longer satisfies there.
+// (docs/design/language-breadth.md §13.0 step 2) over the target rows, which
+// since G2-6 is `plans next`'s rule too: an item whose own plan row is claimed
+// or [-] is done; one whose every need is claimed is eligible; one with a
+// refused need needs re-planning (the need will not be built, so waiting is
+// wrong); anything else — an open or deferred need, or a need or row the plans
+// do not carry — is blocked. Grouped by wave, ascending; items by kind then
+// id. D6's reading-at-L1 satisfaction of a queue-item need is lang-next's
+// (langbench.QueueEligibility): this panel reads checkboxes only.
 func SupportNext(items []SupportNextItem, rows map[string]SupportRowState) SupportNextView {
 	sorted := append([]SupportNextItem(nil), items...)
 	sort.Slice(sorted, func(i, j int) bool {
@@ -537,31 +543,38 @@ func SupportNext(items []SupportNextItem, rows map[string]SupportRowState) Suppo
 		if n := len(v.Waves); n > 0 && v.Waves[n-1].Wave == w {
 			return &v.Waves[n-1]
 		}
-		v.Waves = append(v.Waves, SupportNextWave{Wave: w, Items: []SupportNextRow{}})
+		v.Waves = append(v.Waves, SupportNextWave{Wave: w, Items: []SupportNextRow{}, Replan: []SupportNextRow{}})
 		return &v.Waves[len(v.Waves)-1]
 	}
-	satisfied := func(s SupportRowState) bool { return s == SupportRowClaimed || s == SupportRowDispositioned }
 	for _, it := range sorted {
 		own, known := rows[bareRowID(it.PlanRow)]
-		if known && satisfied(own) {
+		if known && own != SupportRowOpen {
 			v.Done++
 			continue
 		}
 		w := wave(it.Wave)
-		eligible := known
+		row := SupportNextRow{Kind: it.Kind, ID: it.ID, Name: it.Name, PlanRow: it.PlanRow, Needs: len(it.Needs)}
+		eligible, replan := known, false
 		for _, n := range it.Needs {
-			if !satisfied(rows[bareRowID(n)]) {
+			switch rows[bareRowID(n)] {
+			case SupportRowClaimed:
+			case SupportRowRefused:
+				replan = true
+			default:
 				eligible = false
-				break
 			}
 		}
-		if !eligible {
+		switch {
+		case replan:
+			w.Replan = append(w.Replan, row)
+			v.Replan++
+		case !eligible:
 			w.Blocked++
 			v.Blocked++
-			continue
+		default:
+			w.Items = append(w.Items, row)
+			v.Eligible++
 		}
-		w.Items = append(w.Items, SupportNextRow{Kind: it.Kind, ID: it.ID, Name: it.Name, PlanRow: it.PlanRow, Needs: len(it.Needs)})
-		v.Eligible++
 	}
 	return v
 }
