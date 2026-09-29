@@ -51,14 +51,14 @@ func TestMapLifetimeFollowsReferences(t *testing.T) {
 	// it; e stays pinned. When the second drops it at hour 5, the clock
 	// restarts at hour 5, the LAST drop.
 	c1 := used(eph("c1"), 1)
-	c1.Drops = []Drop{{ID: "e", At: at(2)}}
+	c1.Drops = []IncludeDrop{{ID: "e", At: at(2)}}
 	c2 := used(eph("c2", "e"), 1)
 	all = Maps{"e": e, "c1": c1, "c2": c2}
 	if got := Lifetimes(all)["e"]; got.State != Pinned || !reflect.DeepEqual(got.PinnedBy, []string{"c2"}) {
 		t.Errorf("one referrer left: e = %+v, want pinned by [c2]", got)
 	}
 	c2.Includes = nil
-	c2.Drops = []Drop{{ID: "e", At: at(5)}}
+	c2.Drops = []IncludeDrop{{ID: "e", At: at(5)}}
 	all["c2"] = c2
 	if got := Lifetimes(all)["e"]; got.State != Open || !got.IdleSince.Equal(at(5)) {
 		t.Errorf("both dropped: e = %+v, want open, idle since hour 5", got)

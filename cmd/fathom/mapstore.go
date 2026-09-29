@@ -139,7 +139,7 @@ func loadMapSet(root string, now time.Time) mapSet {
 		cur := strings.Fields(r.Pointers["includes"])
 		for _, old := range prevIncludes[id] {
 			if !sliceContains(cur, old) {
-				m.Drops = append(m.Drops, explmap.Drop{ID: old, At: parseRFC3339(r.FiledAt)})
+				m.Drops = append(m.Drops, explmap.IncludeDrop{ID: old, At: parseRFC3339(r.FiledAt)})
 			}
 		}
 		prevIncludes[id] = cur

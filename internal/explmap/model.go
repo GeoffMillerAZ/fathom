@@ -99,9 +99,9 @@ func (e Entry) Key() string {
 	return "span:" + e.SpanRef() + "@" + e.Hash
 }
 
-// Drop records an include a map stopped carrying, and when: the event that
+// IncludeDrop records an include a map stopped carrying, and when: the event that
 // restarts the dropped map's idle clock (XM-6).
-type Drop struct {
+type IncludeDrop struct {
 	ID string
 	At time.Time
 }
@@ -130,7 +130,7 @@ type Map struct {
 	// zero while it has not ended.
 	EndedAt time.Time
 	// Drops are the includes this map stopped carrying.
-	Drops []Drop
+	Drops []IncludeDrop
 }
 
 // Named reports whether the map carries a name.
