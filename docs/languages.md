@@ -51,7 +51,7 @@ language-native SCIP indexer), **file** (per-file resolver, tier pre-scan, label
 | SQL | heuristic (`sqlextract.go`) | no | — | **syntax** | — |
 | Terraform/HCL | pure Go (`hclextract.go`) | n/a | (corpus.yaml) | **syntax** (resource references) | — |
 | Kubernetes YAML, Helm, Kustomize, docker-compose | pure Go | n/a | (corpus.yaml) | **syntax** (`service_ref` cross-repo edges) | — |
-| Dockerfile, CMake, GitHub Actions, proto, GraphQL, OpenAPI, JSON, TOML, templ, Markdown, go.mod, go.work, package.json, pyproject.toml, pom.xml, Cargo.toml, .csproj, .fsproj, .vbproj, .props, .targets, Taskfile.yml | pure Go | n/a | (corpus.yaml where listed) | **syntax** | — |
+| Dockerfile, CMake, GitHub Actions, proto, GraphQL, OpenAPI, JSON, TOML, templ, Markdown, go.mod, go.work, package.json, pyproject.toml, pom.xml, Cargo.toml, .csproj, .fsproj, .vbproj, .props, .targets, Taskfile.yml, lefthook.yml, .pre-commit-config.yaml | pure Go | n/a | (corpus.yaml where listed) | **syntax** | — |
 
 Disclosed as unsupported (named per service in `list_services`, never silently skipped; `internal/connector/unsupported_language.go`): Clojure, Crystal, Elixir, Elm, Erlang, F#, Groovy, Haskell, Julia, Nim, OCaml, Swift (refused, LB-Q-swift-rest), Zig.
 
@@ -73,7 +73,7 @@ no reading yet; `unsupported (disclosed)` is queued, not registered, and named p
 by `list_services`; `refused` is refused by its plan row (design §14.2): it claims no level,
 is not dispatched and stays disclosed, whatever its reading measured.
 
-Milestone M1 progress: languages at L1 excellent 11/20, at L2 9/12, at L3 0/8, at L4 0/6; tool formats at target 12/15
+Milestone M1 progress: languages at L1 excellent 11/20, at L2 9/12, at L3 0/8, at L4 0/6; tool formats at target 13/15
 
 | Language or format | Kind | Engine | Grammar / parser | Target | Level met | Oracles | Typed edges | Reading | Next |
 |---|---|---|---|---|---|---|---|---|---|
@@ -138,7 +138,7 @@ Milestone M1 progress: languages at L1 excellent 11/20, at L2 9/12, at L3 0/8, a
 | Luau (.luau) | language | tags | tree-sitter-grammars/tree-sitter-luau (MIT) | L2 | unsupported (disclosed) | — | — | — | LB-Q-luau |
 | Taskfile (go-task: Taskfile.yml) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 good, L3 excellent) | A task --list-all --json go-task 3.52.0; C task --list-all --json (names) with a decode of deps, cmds and defer go-task 3.52.0 | syntax | 2026-09-29 | at target (LB-Q-taskfile) |
 | Rego / OPA policy (.rego) | language | tags | FallenAngel97/tree-sitter-rego (MIT (verify at pin)) | L3 | refused | — | — | — | re-plan (LB-Q-rego-rest refused) |
-| Git hook managers (lefthook.yml, .pre-commit-config.yaml) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L1 | unsupported (disclosed) | — | — | — | LB-Q-git-hooks-config |
+| Git hook managers (lefthook.yml, .pre-commit-config.yaml) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L1 | L1 (L1 good) | A lefthook dump 1.13.6; C ruby psych 3.1.0 (ruby 2.6.10) | syntax | 2026-09-29 | at target (LB-Q-git-hooks-config) |
 | Astro components (.astro) | language | tags | virchau13/tree-sitter-astro (MIT) | L2 | unsupported (disclosed) | — | — | — | LB-Q-astro |
 | Gradle builds (build.gradle, build.gradle.kts, settings.gradle*) | tool format | tags | murtaza64/tree-sitter-groovy + fwcd/tree-sitter-kotlin (verify at pin) | L3 | unsupported (disclosed) | — | — | — | LB-Q-gradle |
 | Vue single-file components (.vue) | language | tags | tree-sitter-grammars/tree-sitter-vue (MIT) | L3 | unsupported (disclosed) | — | — | — | LB-Q-vue |

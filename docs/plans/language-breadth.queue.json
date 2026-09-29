@@ -2150,7 +2150,8 @@
     "engine": "doc",
     "plan_row": "LB-Q-git-hooks-config",
     "worker_model": "sonnet",
-    "notes": "new; fleet demand; hooks and their commands as entities"
+    "notes": "new; fleet demand; hooks and their commands as entities",
+    "retargeted": "pre-commit validate-config absent on the measuring machine (w6 triage 2026-09-29, no installs): the pre-commit half is measured at tier C; lefthook stays tier A"
   },
   {
     "id": "astro",

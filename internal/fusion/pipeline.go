@@ -717,7 +717,14 @@ func parseGitLog(serviceID, raw string) []store.Commit {
 // cmds and defer as Calls, and the includes that resolve to another Taskfile of
 // the repository) where each was fingerprinted as unclassified YAML; the salt
 // bump re-reads them.
-const ExtractorEpoch = "34"
+// Epoch 35 (LB-Q-git-hooks-config, docs/design/language-breadth.md §13/§4): a
+// lefthook config (lefthook.yml, .lefthook.yml, lefthook.yaml, .lefthook.yaml and
+// the four -local spellings), a .pre-commit-config.yaml and a .pre-commit-hooks.yaml
+// now extract through the doc-engine git-hooks-config dialect (lefthook's hooks and
+// their commands, scripts and named jobs; pre-commit's configured hooks and a hook
+// repository's hook definitions, by id) where each was fingerprinted as unclassified
+// YAML; the salt bump re-reads them.
+const ExtractorEpoch = "35"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares
@@ -1060,6 +1067,22 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 		"Taskfile.dist.yml", "Taskfile.dist.yaml", "taskfile.dist.yml", "taskfile.dist.yaml",
 	} {
 		p.exts[name] = taskfile
+	}
+
+	// Git hook managers (LB-Q-git-hooks-config, language-breadth: new, a
+	// doc-engine tool format, no incumbent). Each basename is unambiguous by
+	// name (resolveExtractor's basename lookup, before the classifier that left
+	// these unclassified); the doc spec reads each format by its basename.
+	gitHooks, err := extractor.NewDocDialectExtractor("git-hooks-config")
+	if err != nil {
+		panic(fmt.Sprintf("fusion: doc-dialect git-hooks-config: %v", err))
+	}
+	for _, name := range []string{
+		"lefthook.yml", "lefthook.yaml", ".lefthook.yml", ".lefthook.yaml",
+		"lefthook-local.yml", "lefthook-local.yaml", ".lefthook-local.yml", ".lefthook-local.yaml",
+		".pre-commit-config.yaml", ".pre-commit-hooks.yaml",
+	} {
+		p.exts[name] = gitHooks
 	}
 
 	// Scala

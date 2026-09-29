@@ -1,0 +1,9 @@
+# A developer's local overrides: skip one command, add one of their own.
+pre-commit:
+  commands:
+    lint:
+      skip: true
+    spell:
+      run: cspell {staged_files}
+pre-push:
+  skip: true
