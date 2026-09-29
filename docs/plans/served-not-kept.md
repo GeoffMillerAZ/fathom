@@ -63,3 +63,4 @@ what was considered so it is not re-proposed.
 - [-] Moving the thread evaluators into a shared check registry {id: PR-X8, disposition: refused, reason: "a refactor with no consumer"}
 - [-] Promises parsed from agent prose {id: PR-X9, disposition: refused, reason: "GL-X4 and ADR-041 decision 8: counts and tool events only, never inference over prose"}
 - [-] A new MCP tool or top-level verb for promises {id: PR-X10, disposition: refused, reason: "none is needed: a line, a beat and a conserve flag cover it (ADR-053 holds the surface)"}
+- [-] A pin inferred rather than named: a test chosen from `test_impact` reach, a blast-radius trailer or the tests near an edited file {id: PR-X11, disposition: refused, reason: "precision over coverage: a pin is only a test that a governing source already names (decision 3); an inferred pin fires on tests no rule depends on, and a false fire teaches the agent to skip the line (K2)"}

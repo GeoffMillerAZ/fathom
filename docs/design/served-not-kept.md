@@ -22,7 +22,7 @@ that gap.
 | **Owner decision** | Make a silent pin loss block at pre-push (PR-8, PR-9). Today `conserve` computes it on every push, but only as advice (Q34) |
 | **Experiments** | PR-M0 is a $0 replay over the guards-pilot 6 and 8 diffs. PR-M1 is 30 days of record mode on owner traffic, also $0. PR-M2 is the bench: the enforced-arm rerun ADR-038 still owes, plus the pin line in feedback mode; about $76, needs the owner's OK |
 | **Deferred, with triggers** | `test_ran`, turn deadlines and a Stop block, `enforce: "warn"`, waivers with a receipt, the open set, ledger schema 2 and a check registry, the GL-11 reclassification, `propose_check` (Jev), orchestrator constraints, unserved scanning, per-agent keeping tables (section 6) |
-| **Refused** | Model-judged compliance, a bypass in the line, turn-end lines on the next prompt, whole-file evaluation of fragment checks after each edit, per-edit single-file pin checks, `denied_retry`, `doc_touched` and `verify_row` rows, automatic suppression by waiver rate, the thread-registry refactor, promises parsed from prose, a new tool or verb (section 7) |
+| **Refused** | Model-judged compliance, a bypass in the line, turn-end lines on the next prompt, whole-file evaluation of fragment checks after each edit, per-edit single-file pin checks, `denied_retry`, `doc_touched` and `verify_row` rows, automatic suppression by waiver rate, the thread-registry refactor, promises parsed from prose, a new tool or verb, a pin inferred rather than named (section 7) |
 
 ## 1. The framing that survives
 
@@ -220,6 +220,7 @@ and **PR-V3** (whether hooks fired inside a sub-agent carry `agent_id`). PR-V1 g
 | Moving thread evaluators into a shared registry (PR-X8) | a refactor with no consumer |
 | Promises parsed from agent prose (PR-X9) | GL-X4, ADR-041 decision 8 |
 | A new MCP tool or top-level verb (PR-X10) | none is needed; a line, a beat and a conserve flag cover it |
+| A pin inferred rather than named: a test from `test_impact` reach, a blast-radius trailer or the tests near an edited file (PR-X11) | precision over coverage: only a test a governing source already names is a pin; an inferred pin fires on tests no rule depends on, and a false fire teaches the agent to skip the line |
 
 ## 8. Jev, weighed
 
@@ -239,7 +240,7 @@ and **PR-V3** (whether hooks fired inside a sub-agent carry `agent_id`). PR-V1 g
 ## 9. Plan rows
 
 `docs/plans/served-not-kept.md` holds the rows (PR-V1, PR-M0, PR-1 to PR-11, PR-M1, PR-M2 and the deferred and
-refused rows PR-D1 to PR-D10 and PR-X1 to PR-X10), grammar v2, all open, nothing claimed.
+refused rows PR-D1 to PR-D10 and PR-X1 to PR-X11), grammar v2, all open, nothing claimed.
 
 ## 10. Records this design creates or changes
 
