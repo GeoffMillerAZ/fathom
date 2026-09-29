@@ -27,10 +27,9 @@ futures may justify a free option today. The repo's own sequence is
 - Preserve: `fathom init` works on a cold clone; the in-tree kit mirror (ADR-019) keeps a
   kit-less build possible; no org-specific content (ADR-011); the kit mirrors
   (`third_party/agentic-kit`, the app-kit adoption) carry licences compatible with
-  distribution inside an FSL-1.1-ALv2 work (ADR-052, corrected 2026-09-29: the check holds, because
-  agentic-kit main is still MIT at the pinned mirror, which is permissive and fine inside an FSL work
-  with its notice kept, and app-kit is FSL; the kit's own relicense commit sits on its local branch
-  `license-fsl`, blocked by the kit's gate; re-check when it lands and on any pin bump); Q29 and Q30 are
+  distribution inside an FSL-1.1-ALv2 work (ADR-052, amended 2026-09-29: the check holds, because
+  both mirrors carry FSL-1.1-ALv2, agentic-kit from `53024ff` and app-kit from `d4512ca`, mirrored at
+  `9fa58e6`; re-check on any pin bump that changes either licence); Q29 and Q30 are
   answered before any public release.
 - Promote when: the H1 exit criteria are green (instrument valid ≥4 weeks; injection ≥90%;
   verify gate live in ≥2 repos ≥4 weeks; surface pruned; portability passing; context-bench win).
