@@ -2804,11 +2804,26 @@ into a named `degraded` entry rather than aborting the whole call. Purely
 read-only: it computes and reports, it never rewrites a site (the Moderne
 non-goal, refused as CX-X4).
 
+Each remaining site names its **blocker** beside it (CX-11w,
+`review.MigrationBlockers`): `generated` when its file has a
+`// Code generated ... DO NOT EDIT.` header (or another language's marker) or the
+repository's root `.gitattributes` marks it `linguist-generated` (nested
+`.gitattributes` are not read), and `governed` — citing the rule id, with a warn
+rule shown as `<id> (warn)` — when a layer rule in the repository's
+`.fathom/guard.cue` forbids the file's package the migration's `to`: an
+`import_direction` rule with the file in `from` and the `to` in its `to`, or a
+`boundary` rule with the file off its `allow` list and the `to` in `guarded`. The
+`to` is a directory: an import migration's as written or relative to the go.mod
+module, a symbol migration's the directory of each indexed declaration of that
+name; a route, config or pkg migration names none, so only generated code blocks
+it. A governed file that is also generated reports the rule.
+
 ```json
 {"schema":"fathom.refactor.status.migration/v1",
  "migration":{"kind":"symbol","from":"OldFunc","to":"NewFunc"},
  "repositories":[{"repository":"svc-a",
-   "remaining":[{"file":"caller/user.go","line":5,"tier":"typed"}],
+   "remaining":[{"file":"caller/user.go","line":5,"tier":"typed",
+     "blocker":{"reason":"governed","rule":"caller-not-newpkg"}}],
    "done":[]}]}
 ```
 

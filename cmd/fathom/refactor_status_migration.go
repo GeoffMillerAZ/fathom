@@ -18,6 +18,11 @@ package main
 //     Sources — the SAME matcher the "references" MCP tool
 //     (internal/mcp/references_tool.go) scans with.
 //
+// CX-11w (design §4, U9) adds what the sites alone do not say: each
+// remaining site's blocker — the layer rule that governs its file against the
+// change, or generated code — is named beside it (review.MigrationBlockers;
+// refactor_status_blockers.go).
+//
 // Typed confirmation is per FILE, not per call-expression line: CallersDetail
 // names the CALLING FUNCTION's own definition site, not the exact call
 // line, so "this file has a resolved typed caller of the target" is the
@@ -69,7 +74,7 @@ func cmdRefactorStatusMigration(migrationText, storePath string, services []stri
 	defer c.Close()
 	ctx := context.Background()
 
-	repos, degraded, berr := refactorStatusMigration(ctx, c, services, m)
+	view, berr := refactorStatusMigration(ctx, c, m, migrationStatusOpts{Services: services})
 	if berr != nil {
 		fmt.Fprintf(stderr, "error: %v\n", berr)
 		return 2
@@ -78,8 +83,8 @@ func cmdRefactorStatusMigration(migrationText, storePath string, services []stri
 	rep := migrationStatusReport{
 		Schema:       "fathom.refactor.status.migration/v1",
 		Migration:    migrationWire{Kind: string(m.Kind), From: m.From, To: m.To},
-		Repositories: renderMigrationRepos(repos),
-		Degraded:     degraded,
+		Repositories: renderMigrationRepos(view),
+		Degraded:     view.Degraded,
 	}
 
 	if jsonOut {
@@ -97,9 +102,23 @@ func cmdRefactorStatusMigration(migrationText, storePath string, services []stri
 		fmt.Fprintln(stdout, "  no sites found in any service")
 	}
 	for _, r := range rep.Repositories {
-		fmt.Fprintf(stdout, "%s: %d remaining, %d done\n", r.Repository, len(r.Remaining), len(r.Done))
+		blocked := 0
 		for _, s := range r.Remaining {
-			fmt.Fprintf(stdout, "  - remaining [%s] %s:%d\n", s.Tier, s.File, s.Line)
+			if s.Blocker != nil {
+				blocked++
+			}
+		}
+		head := fmt.Sprintf("%s: %d remaining, %d done", r.Repository, len(r.Remaining), len(r.Done))
+		if blocked > 0 {
+			head = fmt.Sprintf("%s: %d remaining (%d blocked), %d done", r.Repository, len(r.Remaining), blocked, len(r.Done))
+		}
+		fmt.Fprintln(stdout, head)
+		for _, s := range r.Remaining {
+			line := fmt.Sprintf("  - remaining [%s] %s:%d", s.Tier, s.File, s.Line)
+			if s.Blocker != nil {
+				line += " — blocked: " + s.Blocker.String()
+			}
+			fmt.Fprintln(stdout, line)
 		}
 		for _, s := range r.Done {
 			fmt.Fprintf(stdout, "  - done      [%s] %s:%d\n", s.Tier, s.File, s.Line)
@@ -111,67 +130,111 @@ func cmdRefactorStatusMigration(migrationText, storePath string, services []stri
 	return 0
 }
 
+// migrationStatusOpts are refactorStatusMigration's inputs beyond the client
+// and the migration.
+type migrationStatusOpts struct {
+	// Services limits the view to these service ids (default: every service
+	// the store knows).
+	Services []string
+}
+
+// migrationFleetView is refactorStatusMigration's answer: the sites per
+// repository (CX-10), each remaining site's blocker (CX-11w), and what could
+// not be read.
+type migrationFleetView struct {
+	Repos    []review.RepoMigrationSites
+	Blockers []review.MigrationBlocker
+	Degraded []string
+}
+
 // refactorStatusMigration builds the fleet-wide migration view for m: every
-// service in services (or every service the store knows, when services is
-// empty) contributes its own remaining/done sites via
+// service in opts.Services (or every service the store knows, when none is
+// named) contributes its own remaining/done sites via
 // migrationSitesForService, and review.MigrationSites (CX-10) groups the
-// combined result per repository. A service that could not be read
-// degrades into a named note (O36's execute-and-flag doctrine) rather than
-// aborting the whole fleet-wide call.
-func refactorStatusMigration(ctx context.Context, c *client.Client, services []string, m review.Migration) (repos []review.RepoMigrationSites, degraded []string, err error) {
-	svcs := services
+// combined result per repository. Each remaining site's blocker comes from
+// review.MigrationBlockers (CX-11w). A service that
+// could not be read degrades into a named note (O36's execute-and-flag
+// doctrine) rather than aborting the whole fleet-wide call.
+func refactorStatusMigration(ctx context.Context, c *client.Client, m review.Migration, opts migrationStatusOpts) (migrationFleetView, error) {
+	svcs := opts.Services
 	if len(svcs) == 0 {
+		var err error
 		svcs, err = c.Services(ctx)
 		if err != nil {
-			return nil, nil, fmt.Errorf("list services: %w", err)
+			return migrationFleetView{}, fmt.Errorf("list services: %w", err)
 		}
 	}
 	sorted := append([]string(nil), svcs...)
 	sort.Strings(sorted)
 
+	var view migrationFleetView
 	var sites []review.MigrationSite
+	var governed []review.GovernedSite
+	var generated []review.GeneratedFile
 	for _, svc := range sorted {
-		s, note := migrationSitesForService(ctx, c, svc, m)
-		if note != "" {
-			degraded = append(degraded, note)
+		read := migrationSitesForService(ctx, c, svc, m)
+		view.Degraded = append(view.Degraded, read.Notes...)
+		if read.Unread {
 			continue
 		}
-		sites = append(sites, s...)
+		sites = append(sites, read.Sites...)
+		governed = append(governed, read.Blockers.Governed...)
+		generated = append(generated, read.Blockers.Generated...)
 	}
-	return review.MigrationSites(m, sites), degraded, nil
+	view.Repos = review.MigrationSites(m, sites)
+	view.Blockers = review.MigrationBlockers(sites, governed, generated)
+	return view, nil
+}
+
+// migrationServiceRead is what one service contributes to the fleet view.
+type migrationServiceRead struct {
+	Sites []review.MigrationSite
+	// Blockers are the generated and governed facts for the remaining
+	// sites (CX-11w).
+	Blockers migrationBlockerFacts
+	// Notes are named degradations; Unread is set, and Sites nil, only when
+	// this service could not be read at all.
+	Notes  []string
+	Unread bool
 }
 
 // migrationSitesForService reads ONE service's own sources (never another
 // service's, never the whole fleet at once) and returns every occurrence
 // of m's From (OnTarget:false, "remaining") and To (OnTarget:true, "done")
-// value, tiered typed/lexical. note is non-empty, and sites nil, only when
-// this service could not be read at all.
-func migrationSitesForService(ctx context.Context, c *client.Client, svc string, m review.Migration) (sites []review.MigrationSite, note string) {
+// value, tiered typed/lexical, with the facts that block its remaining
+// sites.
+func migrationSitesForService(ctx context.Context, c *client.Client, svc string, m review.Migration) migrationServiceRead {
+	unread := func(format string, a ...any) migrationServiceRead {
+		return migrationServiceRead{Unread: true, Notes: []string{svc + ": " + fmt.Sprintf(format, a...)}}
+	}
 	sources, err := c.Sources(ctx, svc)
 	if err != nil {
-		return nil, fmt.Sprintf("%s: read corpus sources: %v", svc, err)
+		return unread("read corpus sources: %v", err)
 	}
 
 	fromPat, toPat, perr := migrationScanPatterns(m)
 	if perr != nil {
-		return nil, fmt.Sprintf("%s: %v", svc, perr)
+		return unread("%v", perr)
 	}
 
 	opts := references.Options{Regex: true, Max: migrationSiteScanMax}
 	fromOccs, ferr := references.Find(fromPat, sources, opts)
 	if ferr != nil {
-		return nil, fmt.Sprintf("%s: scan for %q: %v", svc, m.From, ferr)
+		return unread("scan for %q: %v", m.From, ferr)
 	}
 	toOccs, terr := references.Find(toPat, sources, opts)
 	if terr != nil {
-		return nil, fmt.Sprintf("%s: scan for %q: %v", svc, m.To, terr)
+		return unread("scan for %q: %v", m.To, terr)
 	}
 
+	var nodes []core.SymbolNode
 	var typedFromFiles, typedToFiles map[string]bool
 	if m.Kind == review.MigrationSymbol {
-		typedFromFiles, typedToFiles = typedMigrationCallerFiles(ctx, c, svc, m)
+		nodes, _ = c.ListAllSymbols(ctx, svc)
+		typedFromFiles, typedToFiles = typedMigrationCallerFiles(ctx, c, svc, m, nodes)
 	}
 
+	var sites []review.MigrationSite
 	for _, o := range fromOccs {
 		tier := review.SiteTierLexical
 		if typedFromFiles[o.File] {
@@ -186,18 +249,22 @@ func migrationSitesForService(ctx context.Context, c *client.Client, svc string,
 		}
 		sites = append(sites, review.MigrationSite{Repository: svc, File: o.File, Line: o.Line, Tier: tier, OnTarget: true})
 	}
-	return sites, ""
+
+	root, _, _, _ := c.ServiceMeta(ctx, svc)
+	read := migrationServiceRead{Sites: sites}
+	read.Blockers = migrationBlockerFactsFor(svc, root, m, sites, sources, nodes)
+	read.Notes = read.Blockers.Notes
+	return read
 }
 
 // typedMigrationCallerFiles resolves m's bare From/To symbol names against
-// svc's own call graph (ListAllSymbols + TypedEdges, best-effort: a
+// svc's own call graph (its symbols already listed + TypedEdges, best-effort: a
 // service with no typed pass yet simply contributes no typed upgrade) and
 // returns the files holding a RESOLVED caller of each — the same
 // isResolvedKind filter refactor_plan.go's renderSymbolRefactorPlan
 // already applies.
-func typedMigrationCallerFiles(ctx context.Context, c *client.Client, svc string, m review.Migration) (fromFiles, toFiles map[string]bool) {
-	nodes, err := c.ListAllSymbols(ctx, svc)
-	if err != nil || len(nodes) == 0 {
+func typedMigrationCallerFiles(ctx context.Context, c *client.Client, svc string, m review.Migration, nodes []core.SymbolNode) (fromFiles, toFiles map[string]bool) {
+	if len(nodes) == 0 {
 		return nil, nil
 	}
 	typed, _ := c.TypedEdges(ctx, svc) // best effort: empty for a service with no typed pass yet
@@ -305,24 +372,70 @@ type migrationSiteWire struct {
 	File string `json:"file"`
 	Line int    `json:"line"`
 	Tier string `json:"tier"`
+	// Blocker is set on a remaining site that is blocked (CX-11w).
+	Blocker *migrationBlockerWire `json:"blocker,omitempty"`
 }
 
-func renderMigrationRepos(repos []review.RepoMigrationSites) []migrationRepoWire {
-	out := make([]migrationRepoWire, 0, len(repos))
-	for _, r := range repos {
-		out = append(out, migrationRepoWire{
-			Repository: r.Repository,
-			Remaining:  renderMigrationSites(r.Remaining),
-			Done:       renderMigrationSites(r.Done),
-		})
+// migrationBlockerWire is why a remaining site is blocked: "governed" cites
+// the layer rule's id, "generated" has none.
+type migrationBlockerWire struct {
+	Reason string `json:"reason"`
+	Rule   string `json:"rule,omitempty"`
+}
+
+func (b migrationBlockerWire) String() string {
+	if b.Reason == string(review.BlockedGoverned) {
+		return "governed by rule " + b.Rule
+	}
+	return b.Reason + " code"
+}
+
+// renderMigrationRepos builds the per-repository wire rows: every repository
+// with a site, sorted by name, each remaining site carrying its blocker.
+func renderMigrationRepos(v migrationFleetView) []migrationRepoWire {
+	blockerOf := map[string]migrationBlockerWire{}
+	for _, b := range v.Blockers {
+		blockerOf[siteKey(b.Site)] = migrationBlockerWire{Reason: string(b.Reason), Rule: b.Rule}
+	}
+	byRepo := map[string]*migrationRepoWire{}
+	get := func(name string) *migrationRepoWire {
+		if r, ok := byRepo[name]; ok {
+			return r
+		}
+		r := &migrationRepoWire{Repository: name, Remaining: []migrationSiteWire{}, Done: []migrationSiteWire{}}
+		byRepo[name] = r
+		return r
+	}
+	for _, r := range v.Repos {
+		w := get(r.Repository)
+		w.Remaining = renderMigrationSites(r.Remaining, blockerOf)
+		w.Done = renderMigrationSites(r.Done, nil)
+	}
+	names := make([]string, 0, len(byRepo))
+	for n := range byRepo {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+	out := make([]migrationRepoWire, 0, len(names))
+	for _, n := range names {
+		out = append(out, *byRepo[n])
 	}
 	return out
 }
 
-func renderMigrationSites(sites []review.MigrationSite) []migrationSiteWire {
+func siteKey(s review.MigrationSite) string {
+	return fmt.Sprintf("%s\x00%s\x00%d", s.Repository, s.File, s.Line)
+}
+
+func renderMigrationSites(sites []review.MigrationSite, blockers map[string]migrationBlockerWire) []migrationSiteWire {
 	out := make([]migrationSiteWire, 0, len(sites))
 	for _, s := range sites {
-		out = append(out, migrationSiteWire{File: s.File, Line: s.Line, Tier: string(s.Tier)})
+		w := migrationSiteWire{File: s.File, Line: s.Line, Tier: string(s.Tier)}
+		if b, ok := blockers[siteKey(s)]; ok {
+			b := b
+			w.Blocker = &b
+		}
+		out = append(out, w)
 	}
 	return out
 }

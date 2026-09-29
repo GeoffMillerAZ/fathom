@@ -47,6 +47,13 @@ type MigrationBlocker struct {
 
 type repoFile struct{ repository, file string }
 
+// MigrationBlockers is migrationBlockers' exported face — `fathom refactor
+// status --migration` hands it the sites it found and the governed and
+// generated facts it resolved per repository (CX-11w).
+func MigrationBlockers(sites []MigrationSite, governed []GovernedSite, generated []GeneratedFile) []MigrationBlocker {
+	return migrationBlockers(sites, governed, generated)
+}
+
 // migrationBlockers reports every REMAINING site (OnTarget == false; a
 // Done site is already on To and can never block anything) whose
 // (Repository, File) appears in governed or generated, sorted by
