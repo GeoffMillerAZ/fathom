@@ -25,3 +25,4 @@ package dialect
 // 13. An import parameter no strategy reads: imports: {strategy: "file-symbol", roots: ["lib"]}
 // 14. An import case off the list:    imports: {strategy: "dotted-module", case: "kebab"}
 // 15. A type_wildcard off the list:   imports: {strategy: "namespace-dir", type_wildcard: "fields"}
+// 16. A preprocess step off the list: preprocess: "c-conditionals"
