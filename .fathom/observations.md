@@ -2198,3 +2198,16 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** none yet. `clang -E -dI` prints every include directive it processes, a guard-skipped re-include too (verified on from_json.hpp, where it repeats a directive whose header was already entered); pairing each printed directive with the includer's directory and the `-I` roots would resolve the guarded ones. A conditional skipped under this run's macros needs the build's own flags (a `compile_commands.json` run, the tier-A evaluation the oracle's README names as not implemented)
 - **Status:** open
 - **Impact:** a tier-B cpp reading understates import edge precision and lists these includes as unattested; `import_resolution` is a rate over the includes the compiler entered under this run's flags, so an include the oracle cannot see is neither a hit nor a miss in it (218 of 218 is not a claim about the 79)
+
+### O162 — `tests select --safe` names 1119 tests for an additive one-field change to `integrity.GuardedInput`: the reach set widens through interface dispatch to every command test
+
+- **Symptom:** PR-2 (2026-09-29) adds one field to `GuardedInput` and one reason const; `fathom tests select --safe --since HEAD` selects 1119 tests, 22,472 characters of `go test ./cmd/fathom -run '^(...)'` alone, so the printed command is not one a person types (this worker ran it from the `--json` invocations through a script: `cmd/fathom` 86 s, `internal/mcp` 10 s, both ok)
+- **Evidence:**
+  - **Tool:** `fathom tests select --safe --since HEAD --service fathom --store workspace/db/fathom.sqlite` on a scratch ingest of the worker clone
+  - **Expected:** a selection near the packages that import the changed code (`internal/analysis/integrity` and `internal/conserve`, the only importer)
+  - **Actual:** 1119 tests across `cmd/fathom`, `internal/mcp`, `internal/indexbench` and `internal/mcp/costtest`; `verify --row PR-2` shows why: `1109 test(s) statically reach it ... (reached via interface dispatch, 12 implementer(s))`
+  - **Repro:** add a field to `integrity.GuardedInput`, ingest, run the command above
+- **Root cause:** not verified in this session; the verify line's `reached via interface dispatch, 12 implementer(s)` is the widening step it names
+- **Fix:** none yet; a `--safe` output that names its per-package counts first, or a cap with the tail named, would make it runnable
+- **Status:** open
+- **Impact:** the selection is a superset a worker cannot read; the row's `test_reaches` criterion passes on any of the 1109, so neither line says which test exercises the change (the one that does is `reachable_from`, `TestGuardedTestsIncludesGuardDoneNeeds`, and it is what `edge_wired` checks)
