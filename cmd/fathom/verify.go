@@ -538,6 +538,10 @@ type httpVerifyResult struct {
 		Count int `json:"count"`
 		Of    int `json:"of"`
 	} `json:"elided,omitempty"`
+	// Partial names why the daemon answered short of every row: its call
+	// graph for this index state was still building when the call's
+	// deadline neared (EW-22, O130), or its spec scan was a lower bound.
+	Partial string `json:"partial,omitempty"`
 }
 
 type httpVerifyTask struct {
@@ -600,7 +604,7 @@ func verifyWithCaller(call func(planMD []byte) (httpVerifyResult, error), planMD
 				added++
 			}
 		}
-		hvr.Elided = next.Elided
+		hvr.Elided, hvr.Partial = next.Elided, next.Partial
 		if added == 0 {
 			break
 		}
@@ -646,10 +650,14 @@ func verifyWithCaller(call func(planMD []byte) (httpVerifyResult, error), planMD
 			continue
 		}
 		got[t.ID] = true
+		detail := "the daemon's verify_plan answer was cut by its response budget and this row's verdict never arrived — verify with --store, or narrow the plan"
+		if hvr.Partial != "" && len(tasks) == 0 {
+			detail = "the daemon answered before any row could be verified (" + hvr.Partial + ") — re-run verify"
+		}
 		verdicts = append(verdicts, verify.TaskVerdict{
 			TaskID: t.ID, Title: t.Title, Status: verify.Unknown, Label: "verdict-elided",
 			Criteria: []verify.Criterion{{Name: "verdict", Status: verify.Unknown,
-				Detail: "the daemon's verify_plan answer was cut by its response budget and this row's verdict never arrived — verify with --store, or narrow the plan"}},
+				Detail: detail}},
 			Claimed: t.Claimed, Skipped: t.Skipped, InProgress: t.InProgress, Weight: t.Weight,
 		})
 	}

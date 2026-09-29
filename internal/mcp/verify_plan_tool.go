@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
 	"github.com/geoffmilleraz/fathom/internal/certify"
@@ -85,44 +87,13 @@ func registerVerifyPlan(s *Server, backend QueryInterface) {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "verify_plan: service required"}
 		}
 
-		// Build the call graph once (reused for all reachability / test
-		// checks), memoized under the store's watermark in the SAME cache
-		// the nav tools use (I21/BP-28, resolved_nav.go's loadNavGraphs).
-		//
-		// O33: before this, verify_plan rebuilt its graph from scratch on
-		// EVERY call via callgraph.Build — on this repository's ~11.5k
-		// symbols that alone costs 13-25s (profiled 2026-09-13; every other
-		// stage combined is under 200ms), which is why the daemon's
-		// verify_plan latency doubled to 10-15s/call and why repeated calls
-		// at one watermark cost the same: the watermark-keyed memo existed
-		// (BP-28) but nothing on this path ever called into it. A second
-		// call at an unchanged watermark now costs microseconds instead of
-		// paying the build again.
-		// RT-74: the graph store's syntax+typed graph for this watermark,
-		// the one every nav tool and the console read.
-		ng, lerr := loadNavGraphsErr(ctx, backend, p.Service)
-		if lerr != nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: lerr.Error()}
-		}
-		nodes, graph := ng.Nodes, ng.Both
-
-		// What the product entry points reach (the `wired` criterion,
-		// ADR-018 amendment 2026-09-28), walked once per watermark over
-		// the same graph: the both graph, or the syntax graph this call
-		// degraded to when the typed edges could not be read.
-		productKind := memo.GraphBoth
-		if ng.TypedErr != nil {
-			productKind = memo.GraphSyntax
-		}
-		product, perr := memo.ProductReachFor(ctx, ng.Snapshot, productKind, typedLoader(backend, p.Service))
-		if perr != nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "verify_plan: product reach: " + perr.Error()}
-		}
-
-		// Contradictions (best-effort; scoped by concern when provided).
-		var contras []core.Contradiction
-		if res, qErr := backend.QuerySymbols(ctx, core.Query{ServiceID: p.Service, ConcernID: p.Concern, TopN: 500}); qErr == nil {
-			contras = res.Contradictions
+		// The evidence stage — the service's symbols, the graph every
+		// reachability check walks and what its product entry points reach
+		// — from the graph store's watermark-keyed memo (O33, RT-74), waited
+		// for no longer than this call's deadline allows (EW-22, O130).
+		stage, serr := verifyPlanWithDeadline(ctx, backend, p.Service)
+		if serr != nil && !errors.Is(serr, errVerifyStageBuilding) {
+			return nil, &rpcError{Code: ErrCodeInternal, Message: "verify_plan: " + serr.Error()}
 		}
 
 		// Build the plan: from a Markdown checklist when provided, else from the
@@ -166,6 +137,27 @@ func registerVerifyPlan(s *Server, backend QueryInterface) {
 			}
 		}
 
+		if errors.Is(serr, errVerifyStageBuilding) {
+			// The graph this index state needs is still building: answer
+			// within the deadline, every row elided and the build named —
+			// the flights it runs in are kept, so the next call is served
+			// from them rather than starting over (O130).
+			return map[string]any{
+				"service": p.Service,
+				"summary": map[string]any{"total": len(plan.Tasks), "pass": 0, "fail": 0, "unknown": 0},
+				"tasks":   []any{},
+				"elided":  elisionFor(0, len(plan.Tasks), "plan order", "call verify_plan again: the next call is served from the build this one left running"),
+				"partial": "the call graph for this index state is still building (the first call after an ingest or a daemon start pays for it); no row was verified — the build keeps running for the next call",
+			}, nil
+		}
+		nodes, graph, product := stage.nodes, stage.graph, stage.product
+
+		// Contradictions (best-effort; scoped by concern when provided).
+		var contras []core.Contradiction
+		if res, qErr := backend.QuerySymbols(ctx, core.Query{ServiceID: p.Service, ConcernID: p.Concern, TopN: 500}); qErr == nil {
+			contras = res.Contradictions
+		}
+
 		// Spec matrix (built only if some task declares spec IDs).
 		var (
 			matrix  sdd.Matrix
@@ -203,6 +195,82 @@ func registerVerifyPlan(s *Server, backend QueryInterface) {
 		}
 		return out, nil
 	})
+}
+
+// verifyStage is what verify_plan's per-row evaluation reads: the service's
+// symbols, the graph the reachability checks walk (syntax plus typed
+// edges, or the syntax edges alone when the typed edges could not be read)
+// and what that graph's product entry points reach.
+type verifyStage struct {
+	nodes   []core.SymbolNode
+	graph   *callgraph.Graph
+	product *callgraph.ProductReach
+}
+
+// errVerifyStageBuilding is verifyPlanWithDeadline's "not ready within the
+// deadline": the stage's builds are still running and the caller answers
+// with a named partial rather than letting the deadline abandon the call.
+var errVerifyStageBuilding = errors.New("the evidence stage is still building")
+
+// verifyStageReserve is the share of a call's remaining time held back for
+// the per-row evaluation and the answer: the stage is waited for until the
+// deadline less this reserve, between verifyStageReserveMin and
+// verifyStageReserveMax.
+const (
+	verifyStageReserveShare = 6
+	verifyStageReserveMin   = 100 * time.Millisecond
+	verifyStageReserveMax   = 5 * time.Second
+)
+
+// verifyPlanWithDeadline loads verify_plan's evidence stage (EW-22, O130).
+// Each part is a memo flight in the graph store (the snapshot, the typed
+// edges, the graph, the product-reach walk), shared with every other
+// caller and kept once it has run half its expected cost, so a call that
+// gives up waiting leaves it running for the next one. It waits no longer
+// than ctx's deadline less a reserve for the rows themselves: when the
+// stage is not ready by then it returns errVerifyStageBuilding and the
+// caller answers within its deadline, instead of the deadline abandoning
+// the call with nothing (the first verify after an ingest or a daemon
+// start). Only the one graph verify reads is built — not the nav tools'
+// syntax-only and resolved-only graphs.
+func verifyPlanWithDeadline(ctx context.Context, backend QueryInterface, service string) (*verifyStage, error) {
+	wctx := ctx
+	if dl, ok := ctx.Deadline(); ok {
+		reserve := min(max(time.Until(dl)/verifyStageReserveShare, verifyStageReserveMin), verifyStageReserveMax)
+		var cancel context.CancelFunc
+		wctx, cancel = context.WithDeadline(ctx, dl.Add(-reserve))
+		defer cancel()
+	}
+	st, err := loadVerifyStage(wctx, backend, service)
+	if err != nil && wctx.Err() != nil && ctx.Err() == nil {
+		return nil, errVerifyStageBuilding
+	}
+	return st, err
+}
+
+// loadVerifyStage builds (or reads from the graph store) the stage at the
+// service's current watermark. A typed-edge read failure degrades the call
+// to the syntax graph and is never cached: the next call reads the typed
+// edges again (I38).
+func loadVerifyStage(ctx context.Context, backend QueryInterface, service string) (*verifyStage, error) {
+	snap, err := serviceSnapshot(ctx, backend, service)
+	if err != nil {
+		return nil, err
+	}
+	typed := typedLoader(backend, service)
+	kind := memo.GraphBoth
+	graph, _, typedErr, err := memo.GraphForTyped(ctx, snap, kind, typed)
+	if err != nil {
+		return nil, err
+	}
+	if typedErr != nil {
+		kind, typed = memo.GraphSyntax, nil // graph is the syntax graph
+	}
+	product, err := memo.ProductReachFor(ctx, snap, kind, typed)
+	if err != nil {
+		return nil, fmt.Errorf("product reach: %w", err)
+	}
+	return &verifyStage{nodes: snap.Nodes, graph: graph, product: product}, nil
 }
 
 // verifyEvidence adapts the live MCP backend to the verify.Evidence interface.
