@@ -92,8 +92,10 @@ units are the package's own README and doc comments at the pinned version, read 
 cache directory. Go doc comments, `.d.ts` JSDoc, Python docstrings in `.pyi` or the module,
 Rust `///` comments. Never fetched (I56). Wave 4.
 
-Built (KR-11, KR-12): `depDocUnits` reads a directory a `DepCacheLocator` names (the dependency
-plane's cache locator is the production implementation), public surface only, within the 8 MiB
+Built (KR-12 wired; KR-11 a library until the dependency plane's indexer, SG-37, calls
+`IngestDepDocs`, so nothing fills the index in a running daemon yet): `depDocUnits` reads a
+directory a `DepCacheLocator` names (the dependency plane's cache locator is to be the production
+implementation), public surface only, within the 8 MiB
 per package and 2 MiB per file bounds; `IngestDepDocs` stores the units under the package's own
 `pkg:<ecosystem>/<name>@<version>` key as the service id in the existing tables, so a version's
 docs are a separate scope by construction; `search kind: docs pkg: K` answers from that scope
