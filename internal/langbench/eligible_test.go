@@ -64,7 +64,9 @@ func blockedOf(m map[string]QueueBlock) map[string][]string {
 // revives; a refused one will not be built, so the item is reported as needing
 // re-planning instead of waiting. D6 still holds: a queue item whose own row is
 // open or deferred satisfies its dependents with a committed reading at L1 or
-// better, but a refused one never does.
+// better, but a refused one never does. A refused item itself (its row, or its
+// -rest sibling while its row stays open) needs re-planning: it is never
+// offered as eligible.
 func TestQueueEligibilityDeferredIsNotDone(t *testing.T) {
 	q, err := ParseQueue([]byte(`[
 	 {"id":"a","plan_row":"LB-Q-a","kind":"language","target_level":"L2","engine":"tags","depends_on":["LB-F1","LB-F3"]},
@@ -101,11 +103,11 @@ func TestQueueEligibilityDeferredIsNotDone(t *testing.T) {
 		"b": {Replan: []string{"LB-F4"}},                              // refused: re-plan, do not wait
 		"c": {Blocked: []string{"LB-F5"}},                             // [-] with no disposition: still unmet
 		"p": {},                                                       // its own row is not its dependency
-		"r": {},                                                       //
+		"r": {Replan: []string{"LB-Q-r"}},                             // refused itself: re-plan, never offered
 		"d": {},                                                       // D6: p's reading is at L1
 		"e": {Blocked: []string{"LB-F3"}, Replan: []string{"LB-Q-r"}}, // a refused item's reading satisfies nothing
-		"s": {},
-		"f": {Replan: []string{"LB-Q-s"}}, // s's row is open but its -rest sibling is refused (§14.2)
+		"s": {Replan: []string{"LB-Q-s-rest"}},                        // its row is open, its -rest sibling refused: not eligible (§14.2)
+		"f": {Replan: []string{"LB-Q-s"}},                             // s's row is open but its -rest sibling is refused (§14.2)
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("QueueEligibility =\n%+v\nwant\n%+v", got, want)

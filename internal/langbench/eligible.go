@@ -29,9 +29,12 @@ func (b QueueBlock) Eligible() bool { return len(b.Blocked) == 0 && len(b.Replan
 // satisfied when that item has a committed reading at L1 or better, even while
 // its own row stays open for a higher target or is deferred — unless it is
 // refused (its row or its -rest sibling, RefusedItems), which also means
-// re-planning. level returns an item's committed level_met and whether a reading
-// exists. The same rule as `fathom plans next` (depSatisfied, needsReplan),
-// read from the authored checkboxes: this function recomputes no verdict.
+// re-planning. A refused item itself — its own row, or its -rest sibling while
+// its row stays open with the contract (Swift, §14.2) — is never eligible: its
+// refusing row is its Replan. level returns an item's committed level_met and
+// whether a reading exists. The same rule as `fathom plans next` (depSatisfied,
+// needsReplan), read from the authored checkboxes: this function recomputes no
+// verdict.
 func QueueEligibility(q []QueueEntry, plan verify.Plan, level func(id string) (string, bool)) map[string]QueueBlock {
 	rows := map[string]verify.Task{}
 	for _, t := range plan.Tasks {
@@ -45,6 +48,10 @@ func QueueEligibility(q []QueueEntry, plan verify.Plan, level func(id string) (s
 	out := map[string]QueueBlock{}
 	for _, e := range q {
 		var b QueueBlock
+		if why, no := refusedItem[e.ID]; no {
+			row, _, _ := strings.Cut(why, ":")
+			b.Replan = append(b.Replan, row)
+		}
 		for _, d := range e.DependsOn {
 			t, ok := rows[d]
 			if ok && t.Claimed && !t.Skipped {

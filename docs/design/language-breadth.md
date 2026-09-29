@@ -771,8 +771,11 @@ worktree and your scratch directory.
    not a wait: `lang-next -all` prints `needs re-planning: <ids>` and the console's What's
    next lists it apart. D6 still holds for a queue-item dependency whose own row is open
    or deferred (its committed reading at L1 or better satisfies it), never for a refused
-   one. `langbench.QueueEligibility`, `lang-next` and What's next share this rule with
-   `fathom plans next`. If a dependency is refused, stop and report `replan: <ids>`.*
+   one. An item refused itself — its row, or its `-rest` sibling while the row stays open
+   with the contract, as Swift's — is never offered either: `lang-next -all` prints
+   `needs re-planning: <refusing row>` for it and What's next lists it apart, as the tracker's
+   Next column says `re-plan`. `langbench.QueueEligibility`, `lang-next` and What's next share
+   this rule with `fathom plans next`. If a dependency is refused, stop and report `replan: <ids>`.*
 3. Work in a fresh worktree on branch `lang/<id>` from the integration branch, with
    `GOWORK=off`, your own scratch dir `/Volumes/m2ext/tmp/lang-<id>/` (never shared), and
    `GOFLAGS=-p=2`. Never start a daemon, never touch `127.0.0.1:7575` or `~/.fathom`.

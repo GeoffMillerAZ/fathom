@@ -303,7 +303,8 @@ func supportNextItems(src supportSources) []console.SupportNextItem {
 		if q.Kind == "tooling" {
 			kind = support.KindTool
 		}
-		out = append(out, console.SupportNextItem{Kind: kind, ID: q.ID, Name: q.Name, Wave: q.Wave, PlanRow: q.PlanRow, Needs: q.DependsOn})
+		_, refused := src.Refused[q.ID] // §14.2: its row or its -rest sibling
+		out = append(out, console.SupportNextItem{Kind: kind, ID: q.ID, Name: q.Name, Wave: q.Wave, PlanRow: q.PlanRow, Needs: q.DependsOn, Refused: refused})
 	}
 	for _, t := range src.Targets {
 		out = append(out, console.SupportNextItem{Kind: t.Kind, ID: t.ID, Name: t.Name, Wave: t.Wave, PlanRow: t.PlanRow})

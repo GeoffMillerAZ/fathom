@@ -25,6 +25,20 @@ func TestCmdLangNext(t *testing.T) {
 			t.Fatalf("line %q is neither eligible, blocked nor needing re-planning", l)
 		}
 	}
+	// A refused item (§14.2: its row, or its -rest sibling while its row stays
+	// open, as Swift's) is never offered: the tracker says re-plan, so must this.
+	in, err := langbench.TrackerInputFromRepo("../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for id, why := range in.Refused {
+		row, _, _ := strings.Cut(why, ":")
+		for _, l := range lines {
+			if strings.HasPrefix(l, id+"\t") && l != id+"\tneeds re-planning: "+row {
+				t.Errorf("refused %s prints %q, want %q", id, l, id+"\tneeds re-planning: "+row)
+			}
+		}
+	}
 }
 
 // TestLangNextLinesDeferredIsNotDone is G2-6 in lang-next's output: an item

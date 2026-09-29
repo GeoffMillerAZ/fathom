@@ -472,7 +472,9 @@ const (
 )
 
 // SupportNextItem is one target row that could be next: its entry, wave,
-// owning plan row and that row's needs.
+// owning plan row and that row's needs. Refused is a queue item the plan
+// refuses (design §14.2) while its own row stays open — its -rest sibling is
+// [-] refused, as langbench.RefusedItems reads it: it needs re-planning.
 type SupportNextItem struct {
 	Kind    support.Kind
 	ID      string
@@ -480,6 +482,7 @@ type SupportNextItem struct {
 	Wave    int
 	PlanRow string
 	Needs   []string
+	Refused bool
 }
 
 // SupportNextRow is one eligible item.
@@ -522,10 +525,11 @@ func bareRowID(ref string) string {
 // since G2-6 is `plans next`'s rule too: an item whose own plan row is claimed
 // or [-] is done; one whose every need is claimed is eligible; one with a
 // refused need needs re-planning (the need will not be built, so waiting is
-// wrong); anything else — an open or deferred need, or a need or row the plans
-// do not carry — is blocked. Grouped by wave, ascending; items by kind then
-// id. D6's reading-at-L1 satisfaction of a queue-item need is lang-next's
-// (langbench.QueueEligibility): this panel reads checkboxes only.
+// wrong), as does an item refused itself (Refused); anything else — an open or
+// deferred need, or a need or row the plans do not carry — is blocked. Grouped
+// by wave, ascending; items by kind then id. D6's reading-at-L1 satisfaction of
+// a queue-item need is lang-next's (langbench.QueueEligibility): this panel
+// reads checkboxes only.
 func SupportNext(items []SupportNextItem, rows map[string]SupportRowState) SupportNextView {
 	sorted := append([]SupportNextItem(nil), items...)
 	sort.Slice(sorted, func(i, j int) bool {
@@ -554,7 +558,7 @@ func SupportNext(items []SupportNextItem, rows map[string]SupportRowState) Suppo
 		}
 		w := wave(it.Wave)
 		row := SupportNextRow{Kind: it.Kind, ID: it.ID, Name: it.Name, PlanRow: it.PlanRow, Needs: len(it.Needs)}
-		eligible, replan := known, false
+		eligible, replan := known, it.Refused
 		for _, n := range it.Needs {
 			switch rows[bareRowID(n)] {
 			case SupportRowClaimed:
