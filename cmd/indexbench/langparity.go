@@ -38,7 +38,6 @@ var incumbentExtractors = map[string]func() extractor.Extractor{
 	"jsonextract":       func() extractor.Extractor { return extractor.NewJSONExtractor() },
 	"k8sextract":        func() extractor.Extractor { return extractor.NewK8sExtractor() },
 	"kustomizeextract":  func() extractor.Extractor { return extractor.NewKustomizeExtractor() },
-	"luaextract":        func() extractor.Extractor { return extractor.NewLuaExtractor() },
 	"mdextract":         func() extractor.Extractor { return extractor.NewMarkdownExtractor() },
 	"openapiextract":    func() extractor.Extractor { return extractor.NewOpenAPIExtractor() },
 	"phpextract":        func() extractor.Extractor { return extractor.NewPhpExtractor() },

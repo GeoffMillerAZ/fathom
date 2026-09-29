@@ -1,9 +1,10 @@
 package extractor
 
 // luadialect_test.go — LB-Q-lua (design §13.2 steps 10, 12 and 15). The per-fixture goldens run in the
-// generic TestDialectGoldens (dialects/lua/testdata); this file holds a port's extra obligation: the
-// contracts luaextract_test.go pinned for the CGO walker must hold for the dialect too, and what the
-// dialect adds beyond the walker is pinned by name.
+// generic TestDialectGoldens (dialects/lua/testdata); this file pins the contracts luaextract_test.go held
+// for the CGO walker the dialect retired (the names, the one kind, tier, order, determinism and call edges;
+// they were run against both extractors before the walker was removed), and what the dialect adds beyond
+// the walker by name.
 
 import (
 	"strings"
@@ -12,8 +13,8 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
-// luaContractFixture and luaContractCalls are the walker's own fixtures (luaextract_test.go), kept
-// here so the contract survives the walker's removal.
+// luaContractFixture and luaContractCalls are the walker's own fixtures, kept so its contract survives
+// its removal.
 const luaContractFixture = `-- global function
 function hello(name)
   print(name)
@@ -51,7 +52,7 @@ func luaContractExtractors(t *testing.T) map[string]Extractor {
 		t.Fatalf("NewTSExtractor(lua): %v", err)
 	}
 	t.Cleanup(d.Close)
-	return map[string]Extractor{"incumbent": NewLuaExtractor(), "dialect": d}
+	return map[string]Extractor{"dialect": d}
 }
 
 func luaExtract(t *testing.T, e Extractor, path, src string) (map[string]core.SymbolNode, []core.SymbolNode) {

@@ -347,7 +347,8 @@ type Observation struct {
 	// by: the Markdown extractor (KindDocChunk, line before the next
 	// heading or EOF for the last one); the Go extractor (func/method/type/
 	// const/var, from the declaration's own ast.Node.End()); the CGO
-	// tree-sitter extractors — C, C++, C#, Java, Lua, PHP, Rust, Scala —
+	// tree-sitter extractors — C, C++, C#, Java, PHP, Rust, Scala — the
+	// tags-engine dialects (Lua onward, from the definition node itself),
 	// and the CUE, HCL/Terraform, and CMake extractors (from the parsed
 	// node's own end position, or — CMake only — the scanned invocation's
 	// closing paren); the Templ extractor (KindTemplComponent, via the same

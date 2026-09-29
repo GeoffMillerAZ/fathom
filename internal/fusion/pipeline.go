@@ -599,7 +599,13 @@ func parseGitLog(serviceID, raw string) []store.Commit {
 // secondary constructors (KotlinConstructor), names a call by its callee's last
 // identifier, and parses on a newer grammar commit (`fun interface`, detached
 // getters and setters); every already-indexed .kt/.kts file lacks those.
-const ExtractorEpoch = "20"
+// Epoch 21 (LB-Q-lua): .lua files now extract via
+// internal/extractor.NewTSExtractor("lua") — tree-sitter via wazero/WASM —
+// retiring the CGO walker: nested declarations, functions assigned to a name, a
+// table field or a string key are symbols, every function carries a Signature,
+// and a call is named by its callee's last identifier (foo, not M.foo); every
+// already-indexed .lua file lacks those, so the salt bump re-extracts it.
+const ExtractorEpoch = "21"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares
@@ -889,8 +895,10 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	p.exts[".sh"] = bash
 	p.exts[".bash"] = bash
 
-	// Lua
-	p.exts[".lua"] = extractor.NewLuaExtractor()
+	// Lua (.lua) is not wired here: LB-Q-lua's tree-sitter dialect
+	// (internal/extractor/dialects/lua/) met its target (L2, docs/bench/readings/
+	// lang/lua.json) and retired the CGO walker, so the manifest loop below
+	// claims ".lua" like any other tags-engine dialect.
 
 	// Every other embedded tags-engine dialect (design §2.1: "fusion.New
 	// registers every manifest's extensions and basenames"). The five
