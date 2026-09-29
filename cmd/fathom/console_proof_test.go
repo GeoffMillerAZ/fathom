@@ -150,8 +150,11 @@ func TestConsolePlansPortfolio_PendingIsNeverProven(t *testing.T) {
 func TestConsoleNow_PlansHeadlineNeverWaitsOnVerification(t *testing.T) {
 	gate := make(chan struct{})
 	setConsolePlansGate(gate)
+	if shippedConsolePlansHeadlineWait != 0 {
+		t.Fatalf("consolePlansHeadlineWait ships as %s: the Now and Fleet headline must never wait on verification", shippedConsolePlansHeadlineWait)
+	}
 	prev := consolePlansHeadlineWait
-	consolePlansHeadlineWait = 0
+	consolePlansHeadlineWait = shippedConsolePlansHeadlineWait
 	t.Cleanup(func() { close(gate); setConsolePlansGate(nil); consolePlansHeadlineWait = prev })
 
 	f := newConsoleFixture(t)

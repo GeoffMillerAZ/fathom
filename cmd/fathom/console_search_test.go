@@ -192,6 +192,27 @@ func TestProjectSearchDocs_PlansAndRowsLinkToTheirPages(t *testing.T) {
 	}
 }
 
+// A plan past searchPlanMaxBytes is refused and named, never indexed as if
+// it were shorter (I38); the plans beside it are still indexed.
+func TestProjectSearchDocs_RefusesAPlanPastTheCap(t *testing.T) {
+	root := t.TempDir()
+	mustWrite(t, filepath.Join(root, "docs", "plans", "a.md"), "# A\n\n- [ ] Row {id: A-1}\n")
+	big := "# Big\n\n- [ ] First row {id: BIG-1}\n" + strings.Repeat("x", searchPlanMaxBytes)
+	mustWrite(t, filepath.Join(root, "docs", "plans", "big.md"), big)
+	docs, err := projectSearchDocs("svc", root)
+	if err == nil || !strings.Contains(err.Error(), "big.md exceeds the 4 MiB plan cap") {
+		t.Errorf("err = %v, want big.md named past the cap", err)
+	}
+	var a, bigRow bool
+	for _, d := range docs {
+		a = a || d.ID == "A-1"
+		bigRow = bigRow || d.ID == "BIG-1"
+	}
+	if !a || bigRow {
+		t.Errorf("indexed A-1 %v, BIG-1 %v: want the plan under the cap indexed and the one past it not", a, bigRow)
+	}
+}
+
 // resultHrefRe reads a search page's result links, in order; paletteHrefRe
 // the palette fragment's options.
 var (

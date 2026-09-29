@@ -100,6 +100,11 @@ func TestCatches_ExcludeServicesTheRegistryDoesNotList(t *testing.T) {
 		t.Errorf("calls.total = %+v, want every row (%d) naming svc's 2", calls, f.callRows+3)
 	}
 
+	// The fleet table's denominator names them: no project's calls count them.
+	if code, _, body := f.get(t, "/fleet"); code != 200 || !strings.Contains(body, "calls: 2 call-log rows naming a service the registry does not list (svc) excluded") {
+		t.Errorf("/fleet = %d: the table's denominator must name svc's 2 call-log rows", code)
+	}
+
 	// The fleet report's per-service calls never count svc, and name it.
 	rep, err := buildFleetReport(consoleRPCClient(5e9), f.ts.URL, f.now)
 	if err != nil {
