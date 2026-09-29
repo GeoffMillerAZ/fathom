@@ -19,6 +19,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -325,14 +326,28 @@ func appendMapEntry(req mapEntryRequest, syms mapSymbolResolver) (threadItem, er
 		return threadItem{}, fmt.Errorf("anchor %q: want a symbol key or path#Lx-Ly", req.Anchor)
 	}
 	if symbol != "" {
-		if syms == nil {
+		switch r := syms.(type) {
+		case nil:
 			return threadItem{}, fmt.Errorf("anchor %q names a symbol, and no index is reachable to resolve it (pass a path#Lx-Ly anchor, or --store/--url)", req.Anchor)
+		case anchorResolver:
+			// The way find_symbol resolves (XM-31): the entry stores the canonical
+			// spelling, so one symbol has one key however it was typed.
+			m, err := r.resolveAnchor(symbol)
+			if err != nil {
+				var amb *explmap.AmbiguousAnchorError
+				if errors.As(err, &amb) {
+					return threadItem{}, fmt.Errorf("anchor %q %w — nothing was filed", req.Anchor, err)
+				}
+				return threadItem{}, fmt.Errorf("anchor %q: %w", req.Anchor, err)
+			}
+			path, start, end, symbol = m.Node.FilePath, m.Node.Line, anchorEnd(m.Node), m.Key
+		default:
+			p, s, e, found := syms.symbolSpan(symbol)
+			if !found {
+				return threadItem{}, fmt.Errorf("anchor %q does not resolve in the index", req.Anchor)
+			}
+			path, start, end = p, s, e
 		}
-		p, s, e, found := syms.symbolSpan(symbol)
-		if !found {
-			return threadItem{}, fmt.Errorf("anchor %q does not resolve in the index", req.Anchor)
-		}
-		path, start, end = p, s, e
 	}
 	rel, err := repoRelative(root, path)
 	if err != nil {

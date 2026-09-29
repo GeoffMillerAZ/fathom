@@ -49,6 +49,7 @@ wave 3 or wave 4 before it.
 
 ## Wave 2b: what the first use of maps by a wave found (2026-09-29, O143, O147, O149)
 
+- [ ] `map append` resolves a symbol anchor the way `find_symbol` does (exact, a bare method name, package.Name, then case-insensitive), stores one canonical key per symbol, lists the candidates of an ambiguous name and files nothing, and names an index it could not reach (no service, a warming or down daemon, an unusable store) with the retry instead of blaming the anchor {id: XM-31, symbol: ResolveAnchorSymbol, package: internal/explmap, reachable_from: TestMapAnchorResolvesLikeFindSymbol, needs: "XM-1"}
 - [ ] Naming makes a map durable: a map named before or after the condition it was filed under (the session-end default, a `--completes-when`) held stays listed, served by the brief, the pre-compact resume and the location pointer, and keeps what it includes alive; an unnamed map still ends {id: XM-32, symbol: Map.Ended, package: internal/explmap, reachable_from: TestMapNamedByThePlannerOutlivesTheSessionThatFiledIt, needs: "XM-6,XM-7"}
 
 ## Wave 3: live maps as documentation for agents, only after live maps are promoted (section 3b)

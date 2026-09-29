@@ -1673,7 +1673,7 @@ legacy items are never hidden. The continuity-thread bet itself is
 
 ```sh
 fathom map new      ID --purpose "the question it answers" [--when "…"] [--completes-when …] [--agent ID]
-fathom map append   ID --anchor <symbol|path#Lx-Ly> --why "…" [--agent ID] [--store S]   # = thread note --map ID …
+fathom map append   ID --anchor <symbol|path#Lx-Ly> --why "…" [--agent ID] [--service S] [--store DB]   # = thread note --map ID …
 fathom map name     ID --purpose "the question it answers" [--as NAME] [--when "…"]
 fathom map include  ID BASE… [--drop BASE…]
 fathom map compose  ID… [--agent ID] [--id-only | --json]    # the ONE id a handoff carries
@@ -1693,6 +1693,18 @@ entry. `new` creates a map with its purpose line (required, one line of at most
 refuses a cycle and a chain deeper than 4. `compose` mints a composite made only
 of references (one id comes back as itself), expands it once and prints its
 counts, or with `--id-only` prints just the id so a brief can carry it.
+A symbol anchor resolves the way `find_symbol` does (XM-31): the first tier that
+matches decides, exact (`Name`, `dir.Name`, the full key), a bare method name,
+`package.Name`, then case-insensitive, so `ResolveImportSpecs`,
+`fusion.ResolveImportSpecs` and `internal/fusion.ResolveImportSpecs` reach the same
+symbol and the entry stores the one canonical `dir.Name` key. A name that means
+several symbols at its tier lists them (`dir.Name (file:line)`, up to 8) and files
+nothing, not even the map; a name no tier matches says so. The service is
+`--service`, else the one the daemon names for this repository; a daemon that does
+not answer is waited for up to 8 s (a deploy leaves it warming) and then named as
+unreachable, with the retry and the two ways round it: `--store` a scratch ingest
+with `--service`, or a `path#Lx-Ly` anchor, which needs no index. A store is
+tried once.
 `name` names a map and refuses one without a purpose line. A named map is
 durable whatever condition it was filed under (XM-32, O143): the session-end
 default or a `--completes-when` no longer ends it, whether the name comes before

@@ -28,7 +28,7 @@ const mapGitTimeout = 5 * time.Second
 
 // mapEntryFlags carries `thread note --map`'s flags.
 type mapEntryFlags struct {
-	mapID, anchor, why, lead, agent, thread, completes, repo, store, url string
+	mapID, anchor, why, lead, agent, thread, completes, repo, store, url, service string
 }
 
 // cmdThreadNoteMap is `fathom thread note --map ID --anchor A --why W`.
@@ -49,9 +49,11 @@ func cmdThreadNoteMap(f mapEntryFlags, stdout, stderr io.Writer) int {
 	root, _ := filepath.Abs(f.repo)
 	var syms mapSymbolResolver
 	if _, _, _, symbol, ok := explmap.ParseAnchor(f.anchor); ok && symbol != "" {
-		idx, idxErr := openCtxIndex(threadScopeFor(root).service, f.store, f.url)
-		if idxErr == nil {
-			syms = ctxSymbolResolver{idx: idx}
+		idx, idxErr := openMapAnchorIndex(root, f.service, f.store, f.url)
+		if idxErr != nil {
+			syms = downIndex{err: idxErr}
+		} else {
+			syms = idx
 		}
 	}
 	it, err := appendMapEntry(mapEntryRequest{
@@ -78,16 +80,30 @@ func (r ctxSymbolResolver) symbolSpan(key string) (string, int, int, bool) {
 	if r.idx == nil {
 		return "", 0, 0, false
 	}
+	// The read side resolves a stored key the way an append does (XM-31), so a
+	// key filed in any spelling, a Type.Method one included, finds its span.
+	if _, ok := r.idx.(anchorIndex); ok {
+		m, err := r.resolveAnchor(key)
+		if err != nil {
+			return "", 0, 0, false
+		}
+		return m.Node.FilePath, m.Node.Line, anchorEnd(m.Node), true
+	}
 	pkg, name := splitPointer(key)
 	sctx, ok := r.idx.resolveSymbol(pkg, name)
 	if !ok || sctx.Def.FilePath == "" || sctx.Def.Line < 1 {
 		return "", 0, 0, false
 	}
-	end := sctx.Def.EndLine
-	if end < sctx.Def.Line {
-		end = sctx.Def.Line // an extractor that computes no end line: the declaration line
+	return sctx.Def.FilePath, sctx.Def.Line, anchorEnd(sctx.Def), true
+}
+
+// anchorEnd is the last line of a symbol's span: its end line, or its
+// declaration line for an extractor that computes none.
+func anchorEnd(n core.SymbolNode) int {
+	if n.EndLine < n.Line {
+		return n.Line
 	}
-	return sctx.Def.FilePath, sctx.Def.Line, end, true
+	return n.EndLine
 }
 
 // repoMapSource is explmap.Source over a repository: its files now, the index
@@ -259,6 +275,7 @@ func cmdMapAppend(args []string, stdout, stderr io.Writer) int {
 	repo := fs.String("repo", ".", "repository")
 	storePath := fs.String("store", "", "resolve a symbol anchor from this store (default: the daemon)")
 	url := fs.String("url", defaultFathomURL(), "fathom daemon URL for a symbol anchor")
+	service := fs.String("service", "", "the service a symbol anchor resolves in (default: the one the daemon names for this repository; required with --store when it names none)")
 	if err := fs.Parse(rest); err != nil {
 		return 1
 	}
@@ -269,7 +286,7 @@ func cmdMapAppend(args []string, stdout, stderr io.Writer) int {
 	}
 	return cmdThreadNoteMap(mapEntryFlags{
 		mapID: ids[0], anchor: *anchor, why: *why, agent: *agent,
-		thread: *thread, completes: *completes, repo: *repo, store: *storePath, url: *url,
+		thread: *thread, completes: *completes, repo: *repo, store: *storePath, url: *url, service: *service,
 	}, stdout, stderr)
 }
 
@@ -520,7 +537,7 @@ func cmdMapList(args []string, stdout, stderr io.Writer) int {
 // mapSourceSymbols opens the index for symbol re-resolution; nil (symbol
 // entries then re-resolve only by their filed span) when it is unreachable.
 func mapSourceSymbols(root, storePath, url string) mapSymbolResolver {
-	idx, err := openCtxIndex(threadScopeFor(root).service, storePath, url)
+	idx, err := mapOpenIndex(mapServiceOf(root), storePath, url)
 	if err != nil {
 		return nil
 	}

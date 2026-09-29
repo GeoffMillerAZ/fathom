@@ -87,6 +87,18 @@ the condition (the threads fold carries a restated header's missing `completes_w
 row, so dropping it would not stick); the header keeps it as a record, the closure row is not written for a named
 map, and a map named after its session ended comes back. Unnamed maps end as before.
 
+**As built (anchors, XM-31, 2026-09-29).** A symbol anchor is resolved by `explmap.ResolveAnchorSymbol`, one
+function over an index's symbols with `find_symbol`'s ladder (exact, a bare method name, `package.Name`,
+case-insensitive; the first tier that matches anything decides), used by the append and by the read-time
+re-resolution alike. The entry stores the canonical `dir.Name` key whatever spelling was typed (the typed one stays
+as its `anchor`), so one symbol has one key and a Type.Method symbol is no longer cut through its method at the
+last dot. Ambiguity is an error that lists candidates, never first-match-wins; an index that could not be reached
+(the service unnamed, the daemon warming or down, the store unusable) is its own error with the cause and the
+retry, never "does not resolve". The store path lists the service's symbols; the daemon path asks `find_symbol`
+for the query and its bare name and applies the same tiers to the answer, which carries no package name, so its
+`package.Name` tier reads the directory's tail. Read-time re-resolution of a key filed before this change works
+through the same tiers.
+
 ## 3. Live maps and semantic layers are complementary (binding)
 
 They live on different axes. A semantic layer says what is TRUE or BINDING about code (governed claims:
