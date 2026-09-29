@@ -2923,6 +2923,7 @@ Full walkthrough: [docs/use-cases/test-coverage.md](use-cases/test-coverage.md).
 
 ```sh
 fathom tests coverage --profile [layer=]<file> [--profile <more>...] \
+  [--foreign <format>=<file>...] \
   [--service <id>] [--store <path>] [--diff <ref>] [--mutation <report>] [--json]
 
 fathom tests select --since <ref> [--safe] [--profile [layer=]<file>...] \
@@ -2935,6 +2936,17 @@ per layer, plus `ANY`), or `--diff <ref>` to narrow to changed symbols with
 no covering test in any layer. `--mutation <report>` (VB-34) adds a
 `MUTATION` score column (0.0-1.0) from a joined mutation-testing report — see
 "Mutation" in the use-case doc for the two accepted report shapes.
+
+`--foreign <format>=<file>` (repeatable; TQ-14w) joins a non-Go coverage report to the same
+indexed symbols, in the formats `fathom coverage ingest --format` accepts (`lcov`, `cobertura`,
+`jacoco`, `coverage-py`, `istanbul`, `llvm-cov`), read under the same 256 MiB cap. A file whose
+function symbols all carry line ranges is joined per symbol; a file whose symbols do not (or has
+none) is joined per file and printed under `FILE-LEVEL`, never guessed at symbol granularity; a
+report file no indexed file matches is named under `UNMATCHED`. `--profile` is optional when
+`--foreign` is given. `--json` carries both views under `foreign` (`by_symbol` and `by_file`, each
+row's `level` naming its granularity, plus `inputs` and `unmatched_files`) beside the Go view.
+`--diff` and `--mutation` narrow and score the Go `--profile` view only, so `--diff` is refused
+with `--foreign`.
 
 `tests select --since <ref>` leads with the certifying-first selection (T4: TQ-15w,
 TQ-16w, SR-50): the minimal set of tests that re-proves every LIVE certificate the diff
@@ -2957,7 +2969,8 @@ measured predicted catch-rate — never a fabricated one.
 
 | Flag (`tests coverage`) | Default | Description |
 |---|---|---|
-| `--profile` | (required, repeatable) | Go cover profile, as `[layer=]path`; a bare path defaults to layer `unit` |
+| `--profile` | (required unless `--foreign`; repeatable) | Go cover profile, as `[layer=]path`; a bare path defaults to layer `unit` |
+| `--foreign` | (none, repeatable) | non-Go coverage report as `<format>=<file>`, joined to symbols by line range where the language has them, else per file |
 | `--service` | resolved from cwd | Service ID |
 | `--store` | `<repo>/workspace/db/fathom.sqlite` | store path |
 | `--diff` | `""` | git ref: narrow to changed symbols with no covering test in any layer |

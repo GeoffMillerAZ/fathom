@@ -45,7 +45,13 @@ import (
 // Store-direct, mirroring cmdReview's own "works without the daemon"
 // discipline (cmd/fathom/review.go).
 //
-//	fathom tests coverage --profile [layer=]<file> [--profile ...] [--service S] [--store DB] [--diff <base>] [--json]
+// TQ-14w: --foreign <format>=<file> (repeatable) joins a non-Go coverage report
+// (the formats `fathom coverage ingest --format` accepts) to the same indexed
+// symbols — per symbol where a file's symbols carry line ranges, per file,
+// named as file-level, where they do not — through
+// coverage.JoinForeignBlocks. --profile is optional when --foreign is given.
+//
+//	fathom tests coverage --profile [layer=]<file> [--profile ...] [--foreign <format>=<file> ...] [--service S] [--store DB] [--diff <base>] [--json]
 func cmdTestsCoverage(args []string, stdout, stderr io.Writer) int {
 	return runTestsCoverage(args, defaultGitRunner, stdout, stderr)
 }
@@ -82,6 +88,138 @@ func (p *profileFlagValues) String() string { return strings.Join(*p, ",") }
 func (p *profileFlagValues) Set(v string) error {
 	*p = append(*p, v)
 	return nil
+}
+
+// foreignFlagValues collects a repeatable --foreign flag (flag.Value).
+type foreignFlagValues []string
+
+func (f *foreignFlagValues) String() string { return strings.Join(*f, ",") }
+func (f *foreignFlagValues) Set(v string) error {
+	*f = append(*f, v)
+	return nil
+}
+
+// foreignInput is one --foreign report, parsed to the shared block model.
+type foreignInput struct {
+	Format string
+	File   string
+	Blocks []coverage.ForeignBlock
+}
+
+// parseForeignArg splits one --foreign argument at its first "=" into
+// (format, path); both halves are required.
+func parseForeignArg(raw string) (format, path string, err error) {
+	format, path, ok := strings.Cut(raw, "=")
+	if !ok || format == "" || path == "" {
+		return "", "", fmt.Errorf("--foreign %q: want <format>=<file> (format: lcov, cobertura, jacoco, coverage-py, istanbul or llvm-cov)", raw)
+	}
+	return format, path, nil
+}
+
+// loadForeignInputs reads and parses every raw --foreign argument the way
+// `fathom coverage ingest` reads its one file: the same parser switch
+// (parseForeignCoverage), under the same size cap (coverageIngestMaxBytes)
+// enforced by the same boundedReader. The first unreadable, oversize or
+// malformed report is a hard error — a report the caller named is never
+// silently skipped.
+func loadForeignInputs(raw []string) ([]foreignInput, error) {
+	out := make([]foreignInput, 0, len(raw))
+	for _, r := range raw {
+		format, path, err := parseForeignArg(r)
+		if err != nil {
+			return nil, err
+		}
+		info, err := os.Stat(path)
+		if err != nil {
+			return nil, fmt.Errorf("--foreign %q: %w", r, err)
+		}
+		if info.Size() > coverageIngestMaxBytes {
+			return nil, fmt.Errorf("--foreign %q: %s is %d bytes, over the %d MiB coverage cap", r, path, info.Size(), coverageIngestMaxBytes/(1<<20))
+		}
+		f, err := os.Open(path) //nolint:gosec — an operator-supplied CLI flag
+		if err != nil {
+			return nil, fmt.Errorf("--foreign %q: %w", r, err)
+		}
+		blocks, perr := parseForeignCoverage(format, &boundedReader{r: f, max: coverageIngestMaxBytes})
+		f.Close()
+		if perr != nil {
+			return nil, fmt.Errorf("--foreign %q: %w", r, perr)
+		}
+		out = append(out, foreignInput{Format: format, File: path, Blocks: blocks})
+	}
+	return out, nil
+}
+
+// foreignView is the --foreign reports and what they joined to: per symbol
+// where the file's symbols carry line ranges, per file where they do not.
+type foreignView struct {
+	Inputs []foreignInput
+	Join   coverage.ForeignJoinResult
+}
+
+// joinForeignInputs joins every report's blocks, in flag order, to nodes.
+func joinForeignInputs(inputs []foreignInput, nodes []core.SymbolNode) *foreignView {
+	if len(inputs) == 0 {
+		return nil
+	}
+	var blocks []coverage.ForeignBlock
+	for _, in := range inputs {
+		blocks = append(blocks, in.Blocks...)
+	}
+	return &foreignView{Inputs: inputs, Join: coverage.JoinForeignBlocks(blocks, nodes)}
+}
+
+// renderForeignTable prints the foreign view under the Go table: one section
+// per granularity, each named, and the report files no indexed file matched.
+func renderForeignTable(w io.Writer, v *foreignView) {
+	parts := make([]string, len(v.Inputs))
+	for i, in := range v.Inputs {
+		parts[i] = fmt.Sprintf("%s=%s (%d block(s))", in.Format, in.File, len(in.Blocks))
+	}
+	fmt.Fprintf(w, "\nFOREIGN COVERAGE — %s\n", strings.Join(parts, ", "))
+	if len(v.Join.BySymbol) == 0 && len(v.Join.ByFile) == 0 {
+		fmt.Fprintln(w, "  no block joined to an indexed file")
+	}
+	if len(v.Join.BySymbol) > 0 {
+		fmt.Fprintf(w, "%-60s %10s %10s %10s\n", "SYMBOL (by line range)", "STATEMENTS", "COVERED", "PERCENT")
+		for _, s := range v.Join.BySymbol {
+			fmt.Fprintf(w, "%-60s %10d %10d %9.1f%%\n", fmt.Sprintf("%s (%s:%d)", s.Symbol, s.File, s.Line), s.Statements, s.Covered, s.Percent)
+		}
+	}
+	if len(v.Join.ByFile) > 0 {
+		fmt.Fprintln(w, "FILE-LEVEL — these files' symbols carry no line ranges, so coverage is named by file, never guessed per symbol")
+		fmt.Fprintf(w, "%-60s %10s %10s %10s\n", "FILE", "STATEMENTS", "COVERED", "PERCENT")
+		for _, f := range v.Join.ByFile {
+			fmt.Fprintf(w, "%-60s %10d %10d %9.1f%%\n", f.File, f.Statements, f.Covered, f.Percent)
+		}
+	}
+	if len(v.Join.Unmatched) > 0 {
+		fmt.Fprintf(w, "UNMATCHED — in a report, in no indexed file (omitted, not guessed): %s\n", strings.Join(v.Join.Unmatched, ", "))
+	}
+}
+
+// foreignJSON is the foreign view's --json shape: the reports, both
+// granularities (each row's "level" names it) and the unmatched files.
+func foreignJSON(v *foreignView) map[string]any {
+	inputs := make([]any, len(v.Inputs))
+	for i, in := range v.Inputs {
+		inputs[i] = map[string]any{"format": in.Format, "file": in.File, "blocks": len(in.Blocks)}
+	}
+	bySymbol := make([]any, len(v.Join.BySymbol))
+	for i, s := range v.Join.BySymbol {
+		bySymbol[i] = map[string]any{
+			"symbol": s.Symbol, "file": s.File, "line": s.Line, "end_line": s.EndLine, "level": "symbol",
+			"statements": s.Statements, "covered": s.Covered, "percent": s.Percent, "tests": nonNilStrList(s.Tests),
+		}
+	}
+	byFile := make([]any, len(v.Join.ByFile))
+	for i, f := range v.Join.ByFile {
+		byFile[i] = map[string]any{
+			"file": f.File, "level": "file",
+			"statements": f.Statements, "covered": f.Covered, "percent": f.Percent, "tests": nonNilStrList(f.Tests),
+		}
+	}
+	return map[string]any{"inputs": inputs, "by_symbol": bySymbol, "by_file": byFile, "unmatched_files": nonNilStrList(v.Join.Unmatched)}
 }
 
 // loadLabeledProfiles opens and parses every raw --profile argument
@@ -128,6 +266,8 @@ func runTestsCoverage(args []string, gitRunner func(args ...string) ([]byte, err
 	fs := newFlagSet("tests coverage", stderr)
 	var profileFlags profileFlagValues
 	fs.Var(&profileFlags, "profile", "Go cover profile from `go test -coverprofile`, as `[layer=]path` (repeatable — one per test layer, e.g. --profile unit=workspace/cov/unit.out --profile integration=workspace/cov/integration.out); a bare path defaults to layer \"unit\" (required, at least one)")
+	var foreignFlags foreignFlagValues
+	fs.Var(&foreignFlags, "foreign", "TQ-14w: a non-Go coverage report as `<format>=<file>` (repeatable; format: lcov, cobertura, jacoco, coverage-py, istanbul or llvm-cov — what `fathom coverage ingest --format` accepts), joined to the service's symbols by line range where its symbols carry them, else per file, named as file-level; makes --profile optional")
 	service := fs.String("service", "", "service ID (default: resolved from the repo directory name, the same guess the Claude Code hooks use)")
 	storePath := fs.String("store", defaultStorePath(), "store path (.sqlite/.db)")
 	diffBase := fs.String("diff", "", "git ref: narrow the report to changed symbols (vs this ref) with no covering test in any layer")
@@ -136,9 +276,17 @@ func runTestsCoverage(args []string, gitRunner func(args ...string) ([]byte, err
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
-	if len(profileFlags) == 0 {
-		fmt.Fprintln(stderr, "error: tests coverage requires at least one --profile")
+	if len(profileFlags) == 0 && len(foreignFlags) == 0 {
+		fmt.Fprintln(stderr, "error: tests coverage requires at least one --profile or --foreign")
 		fs.Usage()
+		return 1
+	}
+	if len(profileFlags) == 0 && (*diffBase != "" || *mutationPath != "") {
+		fmt.Fprintln(stderr, "error: --diff and --mutation read the Go --profile view; give a --profile (the foreign join is neither narrowed by --diff nor scored by --mutation)")
+		return 1
+	}
+	if len(foreignFlags) > 0 && *diffBase != "" {
+		fmt.Fprintln(stderr, "error: --diff narrows the Go --profile view only; drop --foreign to use it")
 		return 1
 	}
 
@@ -160,6 +308,11 @@ func runTestsCoverage(args []string, gitRunner func(args ...string) ([]byte, err
 	}
 
 	profiles, err := loadLabeledProfiles(profileFlags)
+	if err != nil {
+		fmt.Fprintf(stderr, "error: %v\n", err)
+		return 1
+	}
+	foreignInputs, err := loadForeignInputs(foreignFlags)
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
@@ -191,6 +344,7 @@ func runTestsCoverage(args []string, gitRunner func(args ...string) ([]byte, err
 	}
 
 	symbols := review.ResolveCoverage(profiles, nodes)
+	foreign := joinForeignInputs(foreignInputs, nodes)
 
 	var mutationsBySymbol map[string]coverage.SymbolMutation
 	if haveMutation {
@@ -217,9 +371,14 @@ func runTestsCoverage(args []string, gitRunner func(args ...string) ([]byte, err
 	}
 
 	if *jsonOut {
-		return renderTestsCoverageJSON(stdout, profiles, symbols, nodes, changedFiles, *diffBase, mutationsBySymbol, mutationReport)
+		return renderTestsCoverageJSON(stdout, profiles, symbols, nodes, changedFiles, *diffBase, mutationsBySymbol, mutationReport, foreign)
 	}
-	renderTestsCoverageTable(stdout, profiles, symbols, nodes, changedFiles, *diffBase, mutationsBySymbol, mutationReport)
+	if len(profiles) > 0 {
+		renderTestsCoverageTable(stdout, profiles, symbols, nodes, changedFiles, *diffBase, mutationsBySymbol, mutationReport)
+	}
+	if foreign != nil {
+		renderForeignTable(stdout, foreign)
+	}
 	return 0
 }
 
@@ -363,7 +522,7 @@ func nonNilStrList(ss []string) []string {
 	return ss
 }
 
-func renderTestsCoverageJSON(w io.Writer, profiles []coverage.LabeledProfile, symbols []coverage.SymbolLayerCoverage, nodes []core.SymbolNode, changedFiles []string, diffBase string, mutations map[string]coverage.SymbolMutation, mutationReport coverage.MutationReport) int {
+func renderTestsCoverageJSON(w io.Writer, profiles []coverage.LabeledProfile, symbols []coverage.SymbolLayerCoverage, nodes []core.SymbolNode, changedFiles []string, diffBase string, mutations map[string]coverage.SymbolMutation, mutationReport coverage.MutationReport, foreign *foreignView) int {
 	symItems := make([]any, len(symbols))
 	for i, s := range symbols {
 		byLayer := make(map[string]any, len(s.ByLayer))
@@ -385,8 +544,11 @@ func renderTestsCoverageJSON(w io.Writer, profiles []coverage.LabeledProfile, sy
 		symItems[i] = item
 	}
 	payload := map[string]any{
-		"modes":   profileModes(profiles),
+		"modes":   nonNilStrList(profileModes(profiles)),
 		"symbols": symItems,
+	}
+	if foreign != nil {
+		payload["foreign"] = foreignJSON(foreign)
 	}
 	if diffBase != "" {
 		gaps := changedCoverageGap(nodes, changedFiles, symbols)
