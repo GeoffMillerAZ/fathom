@@ -27,8 +27,8 @@ package dialect
 // #DocSelector: `$` or `.`, then `.key`, `.*` and `[*]` steps.
 #DocSelector: =~"^(\\$|\\.)"
 
-// #DocValue: selectors, `$key` and `$path` (the dotted keys down to the
-// node), alternated with `|`.
+// #DocValue: selectors, `$key`, `$path` (the dotted keys down to the node)
+// and `$file` (the file's base name, extension included), alternated with `|`.
 #DocValue: string & !=""
 
 #DocWhere: {

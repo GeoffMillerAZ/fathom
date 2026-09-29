@@ -412,9 +412,13 @@ walk into data (LB-F8, P20: generalized from six).
 ```
 
 Selectors are a deliberately small JSONPath subset (`$`, `.key`, `.*`, `[*]`, `$key`, `$path`,
-alternation `|`), implemented in Go over the decoded tree — no expression language, no
+`$file`, alternation `|`), implemented in Go over the decoded tree — no expression language, no
 templating. `$path` is the dotted keys from the selection's start down to the node (one entity per
-depth names a nested map's keys as a template reads them, `image.repository`); an entity or a
+depth names a nested map's keys as a template reads them, `image.repository`); `$file` is the base
+name of the file being read, extension included, the name of a document that carries none (an
+MSBuild project is named by its file, LB-Q-msbuild; the extension keeps `Directory.Build.props` and
+`Directory.Build.targets` two symbols); a `repo-path` reference reads `\` as the separator it is in
+a Windows-authored file (`..\lib\lib.csproj`, MSBuild's ProjectReference); an entity or a
 cross-file reference may carry `files` (the basenames it reads, so one spec serves a format's
 several documents: Helm's Chart.yaml and values.yaml), and an entity `include_null` (keep a key
 written with no value, which selectors otherwise drop). A `tags+doc` dialect (Helm) splits its

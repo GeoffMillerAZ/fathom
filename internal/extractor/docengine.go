@@ -441,6 +441,7 @@ func (x *DocExtractor) ExtractDoc(service, relPath string, src []byte) (DocResul
 				continue
 			}
 			for _, m := range ce.sel.evalKeep(root, "", ce.IncludeNull) {
+				m.file = base
 				if !ce.matches(m) {
 					continue
 				}
@@ -471,6 +472,7 @@ func (x *DocExtractor) ExtractDoc(service, relPath string, src []byte) (DocResul
 					continue
 				}
 				for _, m := range cr.sel.eval(h.node, "") {
+					m.file = base
 					if v := cr.val.eval(m); v != "" {
 						calls[v] = true
 					}
@@ -512,6 +514,7 @@ func (x *DocExtractor) ExtractDoc(service, relPath string, src []byte) (DocResul
 					continue
 				}
 				for _, m := range cc.sel.eval(o.node, "") {
+					m.file = base
 					if cc.Resolve == "label-selector" {
 						labels, canon, ok := labelMap(m.node)
 						if !ok {
@@ -647,11 +650,12 @@ func containsStr(list []string, s string) bool {
 }
 
 // resolveDocRef applies a cross-file strategy (§4, §6). repo-path: a
-// leading "/" is the repository root, anything else is relative to the
-// referring file's directory; a path that climbs out of the repository
-// does not resolve. module-source: a "./" or "../" source resolves like a
-// relative repo-path, any other (a registry or VCS address) is kept as
-// written. image-ref and service-name are names, kept as written.
+// leading "/" (or a backslash) is the repository root, anything else is
+// relative to the referring file's directory, and either separator is one; a
+// path that climbs out of the repository does not resolve. module-source: a
+// "./" or "../" source resolves like a relative repo-path, any other (a
+// registry or VCS address) is kept as written. image-ref and service-name
+// are names, kept as written.
 func resolveDocRef(strategy, relPath, raw string) string {
 	switch strategy {
 	case "repo-path":
@@ -677,6 +681,10 @@ func resolveDocRef(strategy, relPath, raw string) string {
 }
 
 func repoPath(relPath, raw string) string {
+	// A `\` is the separator of a Windows-authored path (an MSBuild
+	// ProjectReference, `..\lib\lib.csproj`); no repository file is named
+	// with one, so it reads as `/`.
+	raw = strings.ReplaceAll(raw, `\`, "/")
 	var p string
 	if strings.HasPrefix(raw, "/") {
 		p = path.Clean(strings.TrimPrefix(raw, "/"))
@@ -790,6 +798,9 @@ type docMatch struct {
 	// path is the dotted keys from the selection's start to this node
 	// ("image.repository"); a sequence item adds none. `$path` reads it.
 	path string
+	// file is the base name of the file being read, extension included
+	// (`$file`); ExtractDoc sets it on every match before a value is read.
+	file string
 }
 
 // joinDocPath appends key to a dotted path.
@@ -887,14 +898,17 @@ func (p docPath) evalKeep(ctx *docNode, ctxKey string, keepNull bool) []docMatch
 
 // docValue is a value expression: alternatives separated by `|`, each a
 // selector relative to the match (`$` is the matched node), `$key` (the
-// key it was reached by) or `$path` (every key from the selection's start
-// down to the node, dot-joined — a nested map's "image.repository"). The
-// first alternative that reaches a non-empty scalar is the value.
+// key it was reached by), `$path` (every key from the selection's start
+// down to the node, dot-joined — a nested map's "image.repository") or
+// `$file` (the base name of the file being read, extension included: the
+// name of a document that carries none, an MSBuild project). The first
+// alternative that reaches a non-empty scalar is the value.
 type docValue struct{ alts []docAlt }
 
 type docAlt struct {
 	key  bool
 	path bool
+	file bool
 	p    docPath
 }
 
@@ -908,6 +922,10 @@ func parseDocValue(s string) (docValue, error) {
 		}
 		if a == "$path" {
 			v.alts = append(v.alts, docAlt{path: true})
+			continue
+		}
+		if a == "$file" {
+			v.alts = append(v.alts, docAlt{file: true})
 			continue
 		}
 		p, err := parseDocPath(a)
@@ -930,6 +948,12 @@ func (v docValue) eval(m docMatch) string {
 		if a.path {
 			if m.path != "" {
 				return m.path
+			}
+			continue
+		}
+		if a.file {
+			if m.file != "" {
+				return m.file
 			}
 			continue
 		}
