@@ -175,8 +175,12 @@ pre-push:
     # test a governing source names (an invariant's enforcement column, a
     # tests/*.cue manifest entry, a scope evidence line, a certifies
     # marker, a guard note's done needs), lost in the pushed range while
-    # that source still names it at head. A retired pin (its source was
-    # edited in the range to drop the name) is printed for review and passes. Exit 1 passes through and
+    # that source still names it at head — and (PR-12, ADR-057's K4 clause,
+    # O161) on a retired pin (its source was edited in the range to drop
+    # the name) that no decision in the range names: a line added in
+    # ADR.md, docs/adr/** or docs/intent/decisions/**, or a dated decision
+    # line, naming the test; a docs/plans row never counts. Only a cited
+    # retirement is printed for review and passes. Exit 1 passes through and
     # blocks the push; everything else stays warning-only. --since prefers
     # the branch's own upstream (`@{u}`) so a feature branch conserves
     # against what it will actually merge into, falling back to

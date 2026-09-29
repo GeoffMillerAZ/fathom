@@ -17,10 +17,12 @@ package main
 // Exit codes: 0 pass (including --strict with no losses); 1 (--strict
 // only) any plane's Verdict is "losses", or (--strict-plane integrity,
 // PR-9) a silent pin loss: a test a governing source names, lost in the
-// range while that source still names it at head (a retired pin, whose
-// source dropped the name in the range, is printed for review and never
-// fails); 2 an operational failure (bad flags, unreadable store, an
-// unresolvable --since ref, a pin check that could not read its input).
+// range while that source still names it at head, or (PR-12) a retired pin,
+// whose source dropped the name in the range, with no decision cite in the
+// range (a line added in a decision record, or a dated decision line, naming
+// the test; never a docs/plans line); a cited retirement is printed for
+// review and never fails; 2 an operational failure (bad flags, unreadable
+// store, an unresolvable --since ref, a pin check that could not read its input).
 import (
 	"context"
 	"encoding/json"
@@ -41,7 +43,7 @@ func cmdConserve(args []string, stdout, stderr io.Writer) int {
 	storePath := fs.String("store", defaultStorePath(), "store path (.sqlite/.db)")
 	jsonOut := fs.Bool("json", false, "emit the fathom.conserve/v1 JSON report instead of a text table")
 	strict := fs.Bool("strict", false, "exit 1 when any plane's verdict is \"losses\"")
-	strictPlane := fs.String("strict-plane", "", "exit 1 on one plane's blocking losses only; \"integrity\": a lost pin whose naming source still names it at head (a retired pin is printed for review and passes)")
+	strictPlane := fs.String("strict-plane", "", "exit 1 on one plane's blocking losses only; \"integrity\": a lost pin whose naming source still names it at head, or a retired pin with no decision cite in the range (a cited retirement is printed for review and passes)")
 	residueMax := fs.Int("residue-max", conserve.DefaultResidueMax, "cap on the reading set's item list (design §3.4); the report says how many were cut")
 	coverageMeta := fs.String("coverage-meta", "", "path to a coverage.meta.json binding a Go coverage profile for the reading set's execution evidence (design §3.5); default: [tests] results_dir/coverage.meta.json when configured")
 	var plans planFlags
@@ -127,10 +129,12 @@ func cmdConserve(args []string, stdout, stderr io.Writer) int {
 }
 
 // printPinLosses renders --strict-plane integrity's verdict: one line per
-// lost pin, a silent loss (it blocks) or a retired pin (printed for review),
-// then a summary line. It returns the silent-loss count.
+// lost pin, of three kinds: a silent loss (it blocks), a retirement with no
+// decision cite in the range (it blocks, PR-12), or a cited retirement
+// (printed for review, naming the cite), then a summary line counting all
+// three. It returns the blocking count.
 func printPinLosses(w io.Writer, pins []conserve.PinLoss) int {
-	silent, retired := 0, 0
+	silent, uncited, cited := 0, 0, 0
 	for _, p := range pins {
 		cites := make([]string, len(p.Sources))
 		for i, s := range p.Sources {
@@ -145,18 +149,23 @@ func printPinLosses(w io.Writer, pins []conserve.PinLoss) int {
 		case p.HeadFile != "" && p.HeadLine > 0:
 			where = fmt.Sprintf(" (%s:%d)", p.HeadFile, p.HeadLine)
 		}
-		if p.Silent() {
+		switch {
+		case p.Silent():
 			silent++
 			fmt.Fprintf(w, "pin lost (silent, blocks): %s %s, named by %s and still named there at head%s\n",
 				p.Kind, p.Test, strings.Join(cites, "; "), where)
-			continue
+		case p.Blocks():
+			uncited++
+			fmt.Fprintf(w, "pin retired without a decision cite (blocks): %s %s, named at base by %s; the source was edited and no longer names it, but no decision record or dated decision line added in the range names it%s\n",
+				p.Kind, p.Test, strings.Join(cites, "; "), where)
+		default:
+			cited++
+			fmt.Fprintf(w, "pin retired (review): %s %s, named at base by %s; the source was edited and no longer names it; decision cite %s%s\n",
+				p.Kind, p.Test, strings.Join(cites, "; "), p.DecisionCite, where)
 		}
-		retired++
-		fmt.Fprintf(w, "pin retired (review): %s %s, named at base by %s; the source was edited and no longer names it%s\n",
-			p.Kind, p.Test, strings.Join(cites, "; "), where)
 	}
-	fmt.Fprintf(w, "integrity pins: %d silent loss(es), %d retired pin(s)\n", silent, retired)
-	return silent
+	fmt.Fprintf(w, "integrity pins: %d silent loss(es), %d uncited retirement(s), %d cited retirement(s)\n", silent, uncited, cited)
+	return silent + uncited
 }
 
 // conserveReportCapped is `fathom conserve --since`'s whole report — every
