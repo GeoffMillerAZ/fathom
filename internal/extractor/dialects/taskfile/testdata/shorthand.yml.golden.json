@@ -1,0 +1,11 @@
+{
+  "symbols": [
+    { "name": "Taskfile.yml", "kind": "Taskfile", "package": "Taskfile", "line": 1, "end_line": 12, "signature": "3", "tier": "verified" },
+    { "name": "a", "kind": "TaskfileTask", "package": "Taskfile", "line": 3, "end_line": 3, "tier": "verified" },
+    { "name": "b", "kind": "TaskfileTask", "package": "Taskfile", "line": 4, "end_line": 4, "tier": "verified" },
+    { "name": "c", "kind": "TaskfileTask", "package": "Taskfile", "line": 5, "end_line": 5, "tier": "verified" },
+    { "name": "d", "kind": "TaskfileTask", "package": "Taskfile", "line": 6, "end_line": 9, "calls": ["a", "b"], "tier": "verified" },
+    { "name": "e", "kind": "TaskfileTask", "package": "Taskfile", "line": 10, "end_line": 12, "calls": ["a", "b"], "tier": "verified" }
+  ],
+  "cross_file": []
+}

@@ -1,0 +1,12 @@
+version: '3'
+tasks:
+  a: echo a
+  b: [echo b, echo c]
+  c:
+  d:
+    - task: a
+    - cmd: echo d
+    - defer: { task: b }
+  e:
+    deps: [a, {task: b}]
+    cmds: []

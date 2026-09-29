@@ -210,6 +210,21 @@ var extClassMap = map[string]classification{
 	".props":   {core.KindMSBuildProject, "msbuild"},
 	".targets": {core.KindMSBuildProject, "msbuild"},
 
+	// Taskfile (LB-Q-taskfile, language-breadth: new, a doc-engine tool format,
+	// no incumbent). The eight basenames go-task looks for, in either case and
+	// with the .dist marker; the basename check (kindForFile/classify) takes
+	// precedence over the generic YAML handling, which never claimed them. An
+	// included file under another name (Taskfile.docker.yml, tasks/build.yml) is
+	// not claimed: the file's name is what says it is a Taskfile.
+	"Taskfile.yml":       {core.KindTaskfile, "taskfile"},
+	"Taskfile.yaml":      {core.KindTaskfile, "taskfile"},
+	"taskfile.yml":       {core.KindTaskfile, "taskfile"},
+	"taskfile.yaml":      {core.KindTaskfile, "taskfile"},
+	"Taskfile.dist.yml":  {core.KindTaskfile, "taskfile"},
+	"Taskfile.dist.yaml": {core.KindTaskfile, "taskfile"},
+	"taskfile.dist.yml":  {core.KindTaskfile, "taskfile"},
+	"taskfile.dist.yaml": {core.KindTaskfile, "taskfile"},
+
 	// Python packaging (LB-Q-python-packaging, language-breadth: new — a
 	// doc-engine tool format, no incumbent). The basename check
 	// (kindForFile/classify) takes precedence over ".toml" (the generic
