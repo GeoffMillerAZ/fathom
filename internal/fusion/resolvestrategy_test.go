@@ -56,7 +56,7 @@ func TestResolveStrategies(t *testing.T) {
 
 		// Node's CommonJS directory resolution: `.` and `..` are relative, a
 		// trailing slash names only a directory, the repository root is one,
-		// and a directory's package.json main (TypeScript: types, typings,
+		// and a directory's package.json main (TypeScript: typings, types,
 		// then main) precedes its index file.
 		{"rel/dir-dotdot", "relative-path", extractor.ImportParams{}, []string{"index.js", "test/app.js"}, nil, "test/app.js", "..", []string{"index.js"}},
 		{"rel/dir-dot", "relative-path", extractor.ImportParams{}, []string{"lib/index.js", "lib/a.js"}, nil, "lib/a.js", ".", []string{"lib/index.js"}},
@@ -77,6 +77,17 @@ func TestResolveStrategies(t *testing.T) {
 		{"rel/dir-package-main-for-js", "relative-path", extractor.ImportParams{}, []string{"pkg/src/index.ts", "pkg/lib/main.js", "app.ts", "app2.js"},
 			map[string]string{"pkg/package.json": `{"types":"src/index.d.ts","main":"lib/main.js"}`}, "app2.js", "./pkg", []string{"pkg/lib/main.js"}},
 		{"rel/dir-above-root", "relative-path", extractor.ImportParams{}, []string{"index.js"}, nil, "index.js", "..", nil},
+		// No over-resolution: a .js spec whose only file is that .js resolves to
+		// it from a TypeScript importer too; a directory with neither a
+		// package.json entry that exists nor an index file stays unresolved;
+		// TypeScript reads typings before types (readPackageJsonTypesFields).
+		{"rel/ts-esm-js-names-real-js", "relative-path", extractor.ImportParams{}, []string{"src/a.ts", "src/b.js"}, nil, "src/a.ts", "./b.js", []string{"src/b.js"}},
+		{"rel/dir-no-index-stays-unresolved", "relative-path", extractor.ImportParams{}, []string{"lib/util.js", "app.js"}, nil, "app.js", "./lib/", nil},
+		{"rel/dir-root-no-index-stays-unresolved", "relative-path", extractor.ImportParams{}, []string{"lib/x.js", "test/app.js"}, nil, "test/app.js", "..", nil},
+		{"rel/dir-package-main-missing-no-index", "relative-path", extractor.ImportParams{}, []string{"pkg/src/x.js", "app.js"},
+			map[string]string{"pkg/package.json": `{"main":"dist/index.js"}`}, "app.js", "./pkg", nil},
+		{"rel/dir-package-typings-before-types", "relative-path", extractor.ImportParams{}, []string{"pkg/a.d.ts", "pkg/b.d.ts", "app.ts"},
+			map[string]string{"pkg/package.json": `{"types":"b.d.ts","typings":"a.d.ts"}`}, "app.ts", "./pkg", []string{"pkg/a.d.ts"}},
 		// A manifest that sets relative (HTML, CSS) keeps the literal rule: a
 		// browser fetches what src names.
 		{"rel/html-js-stays-literal", "relative-path", extractor.ImportParams{Relative: true}, []string{"site/index.html", "site/app.ts"}, nil, "site/index.html", "app.js", nil},

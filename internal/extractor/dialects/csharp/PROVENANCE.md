@@ -78,7 +78,10 @@
   `using A = N.T;` or a `using static N.T;` resolves to the files declaring
   the type (namespace-dir's declared-type lookup: the symbol whose package
   and name spell N.T, a nested N.Outer.Inner included), wherever they sit, so
-  `A.M()` binds T's member M.
+  `A.M()` binds T's member M. A `using static` member binds a bare `M()` only
+  when no type enclosing the caller declares M (C#'s simple-name lookup searches
+  the enclosing types before any using directive) and no other `using static`
+  type declares it too.
   `internal/fusion/csharpfileresolve_test.go` proves the wiring end to end
   for the one call shape namespace-dir's `whole` binding actually reaches
   (an aliased, receiver-qualified call) — **not** the ordinary

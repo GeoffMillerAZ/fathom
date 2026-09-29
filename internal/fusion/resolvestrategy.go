@@ -317,7 +317,7 @@ func isTSSource(p string) bool {
 // it), a JavaScript importer takes the file as written first (Node runs it)
 // and maps the extension only when it is absent (a bundler, ts-node); then
 // nodeExts are appended. A directory: its package.json fields (a TypeScript
-// importer reads types, typings, then main; Node reads main), each a file
+// importer reads typings, types, then main; Node reads main), each a file
 // or a directory's index, then the directory's own index file.
 func resolveNodeModule(env *resolveEnv, importer, spec string) []string {
 	if spec != "." && spec != ".." && !strings.HasPrefix(spec, "./") && !strings.HasPrefix(spec, "../") {
@@ -379,7 +379,7 @@ func nodeFile(env *resolveEnv, cand string, ts bool) (string, bool) {
 func nodeDir(env *resolveEnv, dir string, ts bool) (string, bool) {
 	fields := []string{"main"}
 	if ts {
-		fields = []string{"types", "typings", "main"}
+		fields = []string{"typings", "types", "main"} // readPackageJsonTypesFields: typings first
 	}
 	if pkg := packageJSONFields(env.manifest(joinRel(dir, "package.json"))); pkg != nil {
 		for _, field := range fields {

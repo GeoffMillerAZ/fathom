@@ -114,6 +114,11 @@ func TestResolveFileEdges_CSharpAliasAndStaticUsing(t *testing.T) {
 	want := []string{
 		"fixture::Tests/MyApp.Tests.AliasTests.Check -> fixture::Testing/MyApp.Testing.XUnitAssert.Equal",
 		"fixture::Tests/MyApp.Tests.AliasTests.Check -> fixture::Lib/MyApp.Tools.Hammer.Hit",
+		// `using Tools = MyApp.Tools;` names a namespace no directory mirrors
+		// (Hammer.cs sits in Lib/): the files declaring it bind the alias.
+		"fixture::Tests/MyApp.Tests.AliasTests.Check -> fixture::Lib/MyApp.Tools.Hammer",
+		// `using Nail = Vendor.Tools.Hammer;` names a type outside the
+		// repository that shares Hammer's short name: `Nail.Hit()` binds nothing.
 	}
 	for _, w := range want {
 		if !got[w] {
@@ -122,6 +127,28 @@ func TestResolveFileEdges_CSharpAliasAndStaticUsing(t *testing.T) {
 	}
 	if len(got) != len(want) {
 		t.Errorf("got %d edges %v, want %d", len(got), got, len(want))
+	}
+}
+
+// TestResolveFileEdges_CSharpUsingStaticScope pins C#'s simple-name lookup
+// for `using static` (O145 audit): a member of the caller's own type is found
+// before any using directive, so `Tune()` in a class declaring Tune binds no
+// imported member; a name two `using static` types both declare is ambiguous
+// and binds nothing; a name one of them declares binds to it.
+func TestResolveFileEdges_CSharpUsingStaticScope(t *testing.T) {
+	dir, err := filepath.Abs(filepath.Join("testdata", "csfixture"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	files, symbols := loadFileResolveFixture(t, dir, "csharp", []string{"Tests/StaticTests.cs", filepath.Join("Lib", "Hammer.cs"), filepath.Join("Lib", "Mallet.cs")})
+	edges, report := fusion.ResolveFileEdges(context.Background(), "csharp", dir, files, symbols)
+	if report.Skipped {
+		t.Fatalf("skipped: %s", report.SkipReason)
+	}
+	got := fileResolveEdgeSetAll(edges)
+	want := "fixture::Tests/MyApp.Tests.StaticTests.Swing -> fixture::Lib/MyApp.Tools.Mallet.Tap"
+	if !got[want] || len(got) != 1 {
+		t.Errorf("got %v, want only %s (Hit is ambiguous, Tune is the class's own)", got, want)
 	}
 }
 

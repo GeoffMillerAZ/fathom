@@ -349,7 +349,7 @@ func resolveImports(r *importResolver, paths []string, specs map[string][]extrac
 				}
 			}
 		}
-		wild := withStaticMembers(wildcardNames(wildFiles, topLevel), staticTypes, qualified, keyFile, symName)
+		wild, staticNames := withStaticMembers(wildcardNames(wildFiles, topLevel), staticTypes, qualified, keyFile, symName)
 		if len(named) == 0 && len(whole) == 0 && len(typeAlias) == 0 && len(wild) == 0 && len(topLevel[path]) == 0 {
 			continue
 		}
@@ -361,6 +361,9 @@ func resolveImports(r *importResolver, paths []string, specs map[string][]extrac
 			fromKey := s.Key()
 			seen := map[string]bool{}
 			for _, call := range s.Calls {
+				if staticNames[call] && enclosingTypeDeclares(s.Name, call, qualified[path]) {
+					continue // C#: the caller's own type is searched before any using static
+				}
 				toKey, ok := matchFileResolvedCall(call, named, whole, topLevel, topLevel[path], wild)
 				if !ok {
 					toKey, ok = matchTypeAlias(call, typeAlias, qualified, keyFile, symName)
@@ -470,11 +473,12 @@ func matchTypeAlias(call string, typeAlias map[string][]string, qualified map[st
 
 // withStaticMembers adds to wild the members of the types a static import
 // brought into scope (C#'s `using static N.T;`, O145), each bare member
-// name mapped to its symbol; a name two of them define, or one wild
-// already binds to another symbol, is ambiguous and left out.
-func withStaticMembers(wild map[string]string, typeKeys []string, qualified map[string]map[string]string, keyFile, symName map[string]string) map[string]string {
+// name mapped to its symbol, and returns the names it added; a name two of
+// them define, or one wild already binds to another symbol, is ambiguous
+// and left out.
+func withStaticMembers(wild map[string]string, typeKeys []string, qualified map[string]map[string]string, keyFile, symName map[string]string) (map[string]string, map[string]bool) {
 	if len(typeKeys) == 0 {
-		return wild
+		return wild, nil
 	}
 	members := map[string]string{}
 	ambiguous := map[string]bool{}
@@ -494,14 +498,33 @@ func withStaticMembers(wild map[string]string, typeKeys []string, qualified map[
 	if wild == nil {
 		wild = map[string]string{}
 	}
+	added := map[string]bool{}
 	for m, mk := range members {
 		if prev, seen := wild[m]; ambiguous[m] || (seen && prev != mk) {
 			delete(wild, m)
 			continue
 		}
 		wild[m] = mk
+		added[m] = true
 	}
-	return wild
+	return wild, added
+}
+
+// enclosingTypeDeclares reports whether a type enclosing caller (a member
+// name "T.M", "Outer.Inner.M") declares member in the caller's file: C#'s
+// simple-name lookup searches the enclosing types before any using directive,
+// so a `using static` member of that name is not what the call means.
+func enclosingTypeDeclares(caller, member string, qualified map[string]string) bool {
+	for c := caller; ; {
+		i := strings.LastIndex(c, ".")
+		if i < 0 {
+			return false
+		}
+		c = c[:i]
+		if _, ok := qualified[c+"."+member]; ok {
+			return true
+		}
+	}
 }
 
 // declaredTypes indexes, for namespace-dir only, every symbol of the

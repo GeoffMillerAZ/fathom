@@ -2,6 +2,8 @@ using Assert = MyApp.Testing.XUnitAssert;
 using Scenario = MyApp.Testing.Fixtures.PolicyExtensions.Scenario;
 using static MyApp.Tools.Hammer;
 using Fact = Xunit.FactAttribute;
+using Tools = MyApp.Tools;
+using Nail = Vendor.Tools.Hammer;
 
 namespace MyApp.Tests
 {
@@ -11,6 +13,8 @@ namespace MyApp.Tests
         {
             Assert.Equal();
             Hit();
+            Tools.Hammer.Hit();
+            Nail.Hit();
         }
     }
 }

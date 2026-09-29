@@ -678,7 +678,7 @@ func parseGitLog(serviceID, raw string) []store.Commit {
 // spec `./x.js` (`.mjs`, `.cjs`) now resolves to its source x.ts/.tsx/.d.ts
 // (.mts, .cts) as TypeScript's node16/bundler resolution maps it; `.`, `..`
 // and a trailing-slash spec are directories (the repository root among them)
-// resolved through package.json's main (TypeScript: types, typings, main)
+// resolved through package.json's main (TypeScript: typings, types, main)
 // before the index file, as Node's CommonJS resolution does; and a C# `using
 // A = N.T;` or `using static N.T;` resolves to the files declaring type N.T
 // (its members bound to A. and, for using static, in scope unqualified). The

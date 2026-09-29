@@ -520,11 +520,13 @@ relative to the importer first), `case: "snake"`, `labels: "bazel"` and `type_wi
 omitted one takes the strategy's default, which for `dotted-module` is the pre-LB-F11 Python
 rule and for `relative-path` the TS/JS rule: Node's resolution of a relative spec (`.` and
 `..` and a trailing `/` name a directory, whose package.json `main` — for a TypeScript
-importer `types`, `typings`, then `main` — precedes its index file) with TypeScript's
+importer `typings`, `types`, then `main` — precedes its index file) with TypeScript's
 node16/bundler extension mapping (`./x.js` names `x.ts`/`x.tsx`/`x.d.ts`, `.mjs` names `.mts`,
 `.cjs` names `.cts`; LB-F43, LB-F44). Under `namespace-dir` a spec naming a type the
 universe's symbols declare (package, separator, name: a C# `using A = N.T;`, `using static
-N.T;`, a nested `N.Outer.Inner`) resolves to the files declaring it, wherever they sit (LB-F45;
+N.T;`, a nested `N.Outer.Inner`) resolves to the files declaring it, wherever they sit; a
+`using static` member binds a bare call only when no type enclosing the caller declares that name
+and no second `using static` type does, as C#'s simple-name lookup reads it (LB-F45;
 `internal/fusion/resolvestrategy.go` and `fileresolve.go` document each strategy's reads).
 Under `include-path`, `file-symbol` and `swift-module` a whole-module import brings every
 top-level name of its target into scope, as does any `@import.wildcard` (C#'s unaliased

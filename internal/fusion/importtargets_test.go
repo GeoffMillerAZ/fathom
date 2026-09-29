@@ -87,6 +87,8 @@ var importTargetFixtures = []struct {
 			"Tests/AliasTests.cs:2-2:Scenario<-MyApp.Testing.Fixtures.PolicyExtensions.Scenario=>Testing/Fixtures/Extensions.cs",
 			"Tests/AliasTests.cs:3-3:*<-MyApp.Tools.Hammer=>Lib/Hammer.cs",
 			"Tests/AliasTests.cs:4-4:Fact<-Xunit.FactAttribute=>",
+			"Tests/AliasTests.cs:5-5:Tools<-MyApp.Tools=>Lib/Hammer.cs",
+			"Tests/AliasTests.cs:6-6:Nail<-Vendor.Tools.Hammer=>",
 		},
 	},
 	{
