@@ -2001,7 +2001,7 @@ tests being added) is what catches that, not a second reading of the prose.
   - **Repro:** from a clone of a registered repository, call the ingest tool with path=<clone> and remap=true against the owner's daemon, then delete the clone
 - **Root cause:** A worker called the `ingest` tool with its clone path and `remap: true` against the owner's daemon; nothing isolates workers from the shared daemon, and remap accepts any path.
 - **Fix:** EW-8 worker isolation (FATHOM_HOME, no shared-daemon ingest from a worker); EW-19 remap guard; EW-20 doctor names a missing root. Repaired 2026-09-29: owner checkout fast-forwarded, then ingest {service: fathom, path: <owner checkout>, remap: true}: 27,589 symbols, 78,554 typed edges, 259 packages re-resolved (TypedEdgeEpoch 3), daemon RSS peak 1.25 GB against the 3 GiB shed mark.
-- **Status:** open
+- **Status:** fixed — EW-19 (`TestIngestRemapRefusesScratchCloneOfLiveRoot`: `remap:true` alone is refused while the recorded root is a live checkout of the same repository; `remap_from` names the root being replaced), EW-20 (`TestDoctorNamesServiceWithMissingRoot`: the `service_roots` doctor row names a deleted root with the re-point call) and PE-26 (`TestFathomHomeRelocatesLedgersAndPerFileVarsWin`: a worker's scratch run relocates `~/.fathom`). The worker-brief half (no shared-daemon ingest from a worker) is EW-8.
 - **Impact:** Every fathom answer in the orchestrating session resolved against a deleted tree until repaired.
 
 ### O128 — a long ingest over /rpc answers with an empty body although the ingest succeeds
@@ -2014,7 +2014,7 @@ tests being added) is what catches that, not a second reading of the prose.
   - **Repro:** curl -m 900 -X POST <daemon>/rpc with tools/call ingest {service, path, remap: true} on a cold typed pass
 - **Root cause:** Probably a server write timeout shorter than a cold ingest: the answer is dropped after the work completes.
 - **Fix:** EW-18: past the write budget answer with the refresh queue's state, as /refresh-request does.
-- **Status:** open
+- **Status:** fixed — EW-18 (`TestIngestLongRunAnswersQueueState`): past `mcp.DefaultIngestWaitBudget` (120 s, under the 150 s route write deadline; `TestIngestWaitBudgetLeavesRoomUnderTheRPCWriteTimeout`) the ingest tool answers `{service, completed:false, state, waited, note}` and the run finishes on the queue.
 - **Impact:** The caller cannot tell success from failure; a retry repeats a multi-minute ingest.
 
 ### O129 — task deploy exits 201 at its healthz wait while the deploy succeeds
