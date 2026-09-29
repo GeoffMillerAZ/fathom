@@ -667,6 +667,7 @@ func printCompileRunCore(w io.Writer, run core.CompileRun) {
 	fmt.Fprintf(w, "dry_run:           %v%s\n", run.DryRun, dryMarker)
 	fmt.Fprintf(w, "sections_total:    %d\n", run.SectionsTotal)
 	fmt.Fprintf(w, "sections_compiled: %d\n", run.SectionsCompiled)
+	printSectionsCarried(w, run.SectionsCarried, run.ClaimsCarried)
 	if run.SectionsFailed > 0 {
 		fmt.Fprintf(w, "sections_failed:   %d (malformed/truncated model responses — re-run compiles just these)\n", run.SectionsFailed)
 	}
@@ -747,6 +748,16 @@ func printCompileRunCore(w io.Writer, run core.CompileRun) {
 	}
 }
 
+// printSectionsCarried prints AG-26's carry line: sections that kept the
+// claims of a section compiled at another path, with no model call. Nothing
+// when none carried, so a run without a move prints as before.
+func printSectionsCarried(w io.Writer, sections, claims int) {
+	if sections <= 0 {
+		return
+	}
+	fmt.Fprintf(w, "sections_carried:  %d (%d claims kept from sections compiled at another path, re-cited, no model call)\n", sections, claims)
+}
+
 func printCompileRunMap(w io.Writer, m map[string]any) {
 	dryRun, _ := m["dry_run"].(bool)
 	drMarker := ""
@@ -758,6 +769,10 @@ func printCompileRunMap(w io.Writer, m map[string]any) {
 	fmt.Fprintf(w, "dry_run:           %v%s\n", dryRun, drMarker)
 	fmt.Fprintf(w, "sections_total:    %v\n", m["sections_total"])
 	fmt.Fprintf(w, "sections_compiled: %v\n", m["sections_compiled"])
+	if sc, ok := m["sections_carried"].(float64); ok {
+		cc, _ := m["claims_carried"].(float64)
+		printSectionsCarried(w, int(sc), int(cc))
+	}
 	if v, ok := m["sections_failed"]; ok && fmt.Sprint(v) != "0" && v != nil {
 		fmt.Fprintf(w, "sections_failed:   %v\n", v)
 	}

@@ -794,6 +794,41 @@ func TestCompileLayerDryRunDefault(t *testing.T) {
 	}
 }
 
+// TestCompileLayer_SectionsCarriedOnWire (AG-26): the compile_layer
+// handler hand-copies named fields off core.CompileRun, so the carry counts
+// are copied explicitly, and omitted when nothing carried.
+func TestCompileLayer_SectionsCarriedOnWire(t *testing.T) {
+	for _, tc := range []struct {
+		carried, claims int
+		present         bool
+	}{{4, 9, true}, {0, 0, false}} {
+		fake := &semanticFakeBackend{compileRun: core.CompileRun{
+			ServiceID: "svc", Layer: "obligations", SectionsTotal: 5,
+			SectionsCarried: tc.carried, ClaimsCarried: tc.claims,
+		}}
+		resp := roundtrip(t, mcp.NewServer(fake), request{
+			JSONRPC: "2.0", ID: 7, Method: "tools/call",
+			Params: map[string]any{"name": "compile_layer", "arguments": map[string]any{"service": "svc"}},
+		})
+		if resp["error"] != nil {
+			t.Fatalf("unexpected error: %v", resp["error"])
+		}
+		payload := extractPayload(t, resp)
+		sc, present := payload["sections_carried"]
+		if present != tc.present {
+			t.Errorf("carried=%d: sections_carried present = %v, want %v", tc.carried, present, tc.present)
+		}
+		if tc.present {
+			if f, _ := sc.(float64); int(f) != tc.carried {
+				t.Errorf("sections_carried = %v, want %d", sc, tc.carried)
+			}
+			if f, _ := payload["claims_carried"].(float64); int(f) != tc.claims {
+				t.Errorf("claims_carried = %v, want %d", payload["claims_carried"], tc.claims)
+			}
+		}
+	}
+}
+
 // TestCompileLayer_SectionsPrefilteredOnWire is O109/DP-6's wire pin: the
 // compile_layer handler hand-copies named fields off core.CompileRun and
 // had never copied SectionsPrefiltered/PrefilteredSections — a live

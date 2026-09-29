@@ -400,10 +400,42 @@ func (c *Compiler) Compile(ctx context.Context, in CompileInput) (core.CompileRu
 		ordered = kept
 	}
 
-	needsCompile := func(sec Section) bool {
-		prior := bySubject[sec.Subject]
-		return len(prior) == 0 || !allDigestsMatch(prior, sec.Digest, promptVersion)
+	// SU-21 (ADR-041 decision 7): resolves a cites span to its enclosing
+	// symbol, when one exists — a governing PROSE document resolves to
+	// zero symbols on every call (anchorSymbolResolver never pays for the
+	// index load in that overwhelmingly common case); a layer whose corpus
+	// cites real code gets a live "anchors" link on every claim it mints.
+	anchorSymbol := anchorSymbolResolver(ctx, c.St, in.ServiceID)
+
+	// AG-26 (carry.go): a section moved from another path, byte-identical
+	// and compiled under this prompt, keeps that section's claims re-cited
+	// to its new path — before the pre-flight estimate and the section
+	// loop, so a carried section costs nothing and is never budget-stopped
+	// out of its claims. The one-to-one rule is carry.go's header.
+	carried, err := planCarries(ctx, c.St, all, bySubject, currentSubjects, carryParams{
+		serviceID:     in.ServiceID,
+		promptVersion: promptVersion,
+		watermark:     in.Watermark,
+		runID:         run.RunID,
+		at:            started,
+		anchorSymbol:  anchorSymbol,
+	})
+	if err != nil {
+		return run, err
 	}
+	carriedSubjects := make([]string, 0, len(carried))
+	for subj := range carried {
+		carriedSubjects = append(carriedSubjects, subj)
+	}
+	sort.Strings(carriedSubjects)
+	var carriedClaims []core.SemanticClaim
+	var carriedLinks []core.ClaimLink
+	for _, subj := range carriedSubjects {
+		carriedClaims = append(carriedClaims, carried[subj].claims...)
+		carriedLinks = append(carriedLinks, carried[subj].links...)
+	}
+	run.SectionsCarried = len(carried)
+	run.ClaimsCarried = len(carriedClaims)
 
 	// O54 deliverable 3 (`--continue`): name the first not-yet-compiled
 	// section in the resume order — proof this call picked up where a
@@ -411,7 +443,7 @@ func (c *Compiler) Compile(ctx context.Context, in CompileInput) (core.CompileRu
 	// up front so it is recorded even on a DryRun estimate.
 	if in.Resume {
 		for _, item := range ordered {
-			if needsCompile(item.sec) {
+			if needsCompile(bySubject, carried, item.sec, promptVersion) {
 				run.ResumedFrom = item.sec.Subject
 				break
 			}
@@ -437,7 +469,7 @@ func (c *Compiler) Compile(ctx context.Context, in CompileInput) (core.CompileRu
 	if !in.DryRun && c.Layer.Name != "" && !in.Resume && !in.NoPriorRun {
 		estTokensIn := 0
 		for _, item := range ordered {
-			if needsCompile(item.sec) {
+			if needsCompile(bySubject, carried, item.sec, promptVersion) {
 				estTokensIn += cost.Estimate(item.sec.Text) + promptOverheadTokens
 			}
 		}
@@ -472,19 +504,12 @@ func (c *Compiler) Compile(ctx context.Context, in CompileInput) (core.CompileRu
 	// exactly which tail, if any, this run never reached).
 	stoppedAt := -1
 
-	// SU-21 (ADR-041 decision 7): resolves a cites span to its enclosing
-	// symbol, when one exists — a governing PROSE document resolves to
-	// zero symbols on every call (anchorSymbolResolver never pays for the
-	// index load in that overwhelmingly common case); a layer whose corpus
-	// cites real code gets a live "anchors" link on every claim it mints.
-	anchorSymbol := anchorSymbolResolver(ctx, c.St, in.ServiceID)
-
 sectionLoop:
 	for i, item := range ordered {
 		doc, sec := item.doc, item.sec
 		// Digest gate: an unchanged section (same content AND prompt
 		// identity) keeps its claims untouched.
-		if !needsCompile(sec) {
+		if !needsCompile(bySubject, carried, sec, promptVersion) {
 			continue
 		}
 		if in.DryRun {
@@ -573,7 +598,12 @@ sectionLoop:
 	// mid-run budget stop, gains the tail of the deterministic order this
 	// run never reached — exactly what layer_coverage.uncompiled_scopes
 	// discloses at serve time.
-	uncompiledTail := append([]orderedSection(nil), prefilteredOrdered...)
+	var uncompiledTail []orderedSection
+	for _, item := range prefilteredOrdered {
+		if _, ok := carried[item.sec.Subject]; !ok {
+			uncompiledTail = append(uncompiledTail, item)
+		}
+	}
 	if stoppedAt >= 0 {
 		// O54 deliverable 2, second review round: the tail alone is not
 		// enough — a RESUMED run can stop again before reaching a section
@@ -585,7 +615,7 @@ sectionLoop:
 		// ACTUALLY still need compiling — never reached this run AND no
 		// matching prior claim — count.
 		for _, item := range ordered[stoppedAt+1:] {
-			if needsCompile(item.sec) {
+			if needsCompile(bySubject, carried, item.sec, promptVersion) {
 				uncompiledTail = append(uncompiledTail, item)
 			}
 		}
@@ -612,9 +642,13 @@ sectionLoop:
 		return run, nil
 	}
 
-	if err := c.St.PutClaims(ctx, newClaims, newLinks); err != nil {
+	// AG-26: the carried claims are stored with the model's, and each
+	// carried subject is retired like a recompiled one (its own claims from
+	// an older digest, if any, are superseded below).
+	if err := c.St.PutClaims(ctx, append(newClaims, carriedClaims...), append(newLinks, carriedLinks...)); err != nil {
 		return run, fmt.Errorf("semantic: store claims: %w", err)
 	}
+	recompiledSubjects = append(recompiledSubjects, carriedSubjects...)
 
 	// Supersede: prior claims of recompiled subjects that were not re-emitted,
 	// AND claims whose subject is no longer in the corpus at all — a compile
@@ -625,6 +659,9 @@ sectionLoop:
 	// stop) is correctly treated as still-current, not retired.
 	emitted := map[string]bool{}
 	for _, cl := range newClaims {
+		emitted[cl.ClaimID] = true
+	}
+	for _, cl := range carriedClaims {
 		emitted[cl.ClaimID] = true
 	}
 	retire := map[string]bool{}

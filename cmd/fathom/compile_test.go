@@ -417,3 +417,23 @@ func TestPrintCompileRunCore_RejectionReasons_Rendered(t *testing.T) {
 		}
 	}
 }
+
+// TestPrintCompileRunCore_SectionsCarried (AG-26): a run that carried a
+// moved section's claims says so, and a run that carried nothing prints no
+// carry line.
+func TestPrintCompileRunCore_SectionsCarried(t *testing.T) {
+	var buf bytes.Buffer
+	printCompileRunCore(&buf, core.CompileRun{
+		ServiceID: "svc", Layer: "obligations", DryRun: true,
+		SectionsTotal: 5, SectionsCompiled: 1, SectionsCarried: 4, ClaimsCarried: 9,
+		TokensIn: 300, EstTokensOutLow: 600, EstTokensOutHigh: 2400,
+	})
+	if want := "sections_carried:  4 (9 claims kept from sections compiled at another path, re-cited, no model call)"; !strings.Contains(buf.String(), want) {
+		t.Errorf("output missing %q; got:\n%s", want, buf.String())
+	}
+	buf.Reset()
+	printCompileRunCore(&buf, core.CompileRun{ServiceID: "svc", Layer: "obligations", SectionsTotal: 1, SectionsCompiled: 1})
+	if strings.Contains(buf.String(), "sections_carried") {
+		t.Errorf("a run that carried nothing printed a carry line:\n%s", buf.String())
+	}
+}

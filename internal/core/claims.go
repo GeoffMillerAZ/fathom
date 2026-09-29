@@ -420,6 +420,14 @@ type CompileRun struct {
 	SectionsTotal    int // sections in the corpus
 	SectionsCompiled int // sections that missed the digest gate (spent tokens)
 	SectionsFailed   int // sections skipped because the model's answer never arrived usable (after one retry)
+	// SectionsCarried and ClaimsCarried (AG-26, docs/plans/agents-md.md)
+	// count sections that kept the claims of a section compiled at another
+	// path (same content digest and prompt identity, a one-to-one move),
+	// re-cited to the new path with no model call, and the claims they
+	// kept. Neither is in SectionsCompiled or ClaimsEmitted. Not persisted
+	// (compile_runs has no columns for them, like the Est* fields).
+	SectionsCarried int `json:"sections_carried,omitempty"`
+	ClaimsCarried   int `json:"claims_carried,omitempty"`
 	// SectionErrors names the first failed sections ("subject: error"),
 	// capped, so a partial compile says what it left out.
 	SectionErrors  []string `json:"section_errors,omitempty"`
