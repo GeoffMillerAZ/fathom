@@ -3,8 +3,8 @@
 An orchestrator that dispatches parallel coding agents ("workers") against this repository puts
 these rules in every worker brief, and follows the orchestrator rules itself. Each rule names the
 row that built what it relies on. Written at stop 1 of the efficiency wave
-(`docs/plans/efficiency-wave.md`, ADR-049's amendment of 2026-09-29); a rule is here only when its
-feature landed, and the last section says what has not.
+(`docs/plans/efficiency-wave.md`, ADR-049's amendment of 2026-09-29); a rule that relies on a
+feature is here only when that feature landed, and the last section says what has not.
 
 ## Isolation: one environment per worker (EW-8)
 
@@ -87,6 +87,44 @@ reaches a changed symbol. The whole-package run is the gate's, once, at the end.
 - The orchestrator never messages a running workflow agent. A correction goes into a later brief or
   a follow-up worker.
 
+## Consolidation: harvest, land, then remove
+
+A practice, not a feature: no command enforces it, and the orchestrator runs it by hand. Waves
+leave branches, worktrees, stashes and scratch clones behind, and nothing removes them because each
+might hold work. The fear costs disk and hides the work that is real; a check makes removal safe.
+
+- After every landed wave the orchestrator removes the wave's own worker clones, worktrees and
+  merged branches. It made them and knows they integrated.
+- At least weekly, and before any machine restart, a harvest checks every branch, linked worktree,
+  stash, archive ref and scratch clone for work not on main, by patch equivalence: ancestry
+  (`git merge-base --is-ancestor`), then `git cherry origin/main <ref>` with no `+` line. A stash is
+  measured by the share of its added lines already on main, and the rest is explained as superseded
+  (renumbered, rewritten, moved), not waved through on the percentage. It lands what is valuable
+  through the normal gate and removes the rest.
+- Every removal is preceded by a verified backup under `workspace/durable-*/`, never the temp
+  directory: `git bundle create --all` (give each detached worktree HEAD a ref first; a bundle
+  carries no unreferenced HEAD), a patch per dirty file and per stash, `git bundle verify` on each,
+  and a checksummed archive of the gitignored files a worktree holds that no bundle carries (bench
+  cells, logs, local databases). What regenerates (build output, downloaded datasets) is skipped.
+- A dirty worktree is removable only when every dirty file is byte-identical to the formatter's
+  output of its HEAD version. Anything else is work: land it or keep the worktree.
+- Work not on main and not plainly superseded is kept, clean, and named to the owner. The harvest
+  does not decide it.
+- `git gc` runs with its default grace, never `--prune=now`: the grace is the last undo. Then
+  `git fsck --connectivity-only`.
+- Never touched: an owner's working tree and its uncommitted edits, an in-flight lane (the
+  orchestrator lists the paths to skip), any remote branch. A harvest deletes nothing on a remote
+  and never force-pushes.
+
+Found the first time (2026-09-29): 46 linked worktrees, 5.0 GB. 42 were removed: all on main by
+ancestry except one patch-equivalent, 7 of them dirty with formatter-only changes. 4 were kept:
+detached worktrees whose commits are not on main (their features were later rebuilt or removed,
+which the patch check cannot prove), 97.8 MB, for the owner's decision. 53 local branches (52
+ancestors, 1 patch-equivalent). 2 stashes, 98% and 89% of their added lines on main and the rest
+renumbered or rewritten. 2 archive refs (fixture noise, and a rewrite ref cherry-equivalent to
+main). After: 96 MB of worktrees, and `.git` from 61 MB to 41 MB. The same practice ran in the
+agentic-kit repository (7 worktrees, 32 branches, 1 stash).
+
 ## Not yet in the contract
 
 - A wave map in every brief (EW-13): the maps slice is stage 3 and not built.
@@ -95,3 +133,6 @@ reaches a changed symbol. The whole-package run is the gate's, once, at the end.
 - The test-run hook is on in `.fathom/config.toml` (EW-9), but a session sees its line only once
   `.claude/settings.json` carries the two test-run hook rows `fathom init` writes and the deployed
   binary knows `--event test-run`.
+- The harvest itself: no command lists the branches, worktrees or stashes whose commits are not on
+  main. The orchestrator writes the check each time, so the classification above is a discipline
+  and not a gate.
