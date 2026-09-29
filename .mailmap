@@ -1,0 +1,7 @@
+# Canonical identity for the maintainer. History carries three forms of it, none rewritten:
+# an address git derived where user.email was unset ("Geoff.E.Miller@gmail", no ".com"), and a
+# <user>@<hostname> address from a worker run under a private HOME (docs/guides/agent-waves.md).
+# Matching is by address alone, so any display name on these addresses maps too. Real third-party
+# identities get no line here.
+Geoff Miller <geoff.e.miller@gmail.com> <Geoff.E.Miller@gmail>
+Geoff Miller <geoff.e.miller@gmail.com> <geoff@macmini2.miller>
