@@ -1,0 +1,97 @@
+{
+  "symbols": [
+    {
+      "name": "Order",
+      "kind": "ProtoMessage",
+      "package": "shapes",
+      "line": 10,
+      "end_line": 28,
+      "signature": "message Order",
+      "calls": [
+        "Line",
+        "Money",
+        "Timestamp"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Order.Line",
+      "kind": "ProtoMessage",
+      "package": "shapes",
+      "line": 11,
+      "end_line": 19,
+      "signature": "message Line",
+      "calls": [
+        "Money",
+        "Unit"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Order.Line.Unit",
+      "kind": "ProtoEnum",
+      "package": "shapes",
+      "line": 14,
+      "end_line": 17,
+      "tier": "verified"
+    },
+    {
+      "name": "Money",
+      "kind": "ProtoMessage",
+      "package": "shapes",
+      "line": 30,
+      "end_line": 33,
+      "signature": "message Money",
+      "tier": "verified"
+    },
+    {
+      "name": "State",
+      "kind": "ProtoEnum",
+      "package": "shapes",
+      "line": 35,
+      "end_line": 38,
+      "tier": "verified"
+    },
+    {
+      "name": "OrderService",
+      "kind": "ProtoService",
+      "package": "shapes",
+      "line": 40,
+      "end_line": 49,
+      "tier": "verified"
+    },
+    {
+      "name": "OrderService.Get",
+      "kind": "ProtoRPC",
+      "package": "shapes",
+      "line": 43,
+      "end_line": 43,
+      "signature": "rpc Get(Order) returns (Order)",
+      "calls": [
+        "Order"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "OrderService.Watch",
+      "kind": "ProtoRPC",
+      "package": "shapes",
+      "line": 44,
+      "end_line": 48,
+      "signature": "rpc Watch( stream Order) returns (stream Order.Line)",
+      "calls": [
+        "Line",
+        "Order"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "google/protobuf/timestamp.proto",
+      "module": "google/protobuf/timestamp.proto",
+      "kind": "whole",
+      "line": 6
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "symbols": [
+    {
+      "name": "Before",
+      "kind": "ProtoMessage",
+      "package": "broken",
+      "line": 6,
+      "end_line": 8,
+      "signature": "message Before",
+      "tier": "verified"
+    },
+    {
+      "name": "Middle",
+      "kind": "ProtoMessage",
+      "package": "broken",
+      "line": 10,
+      "end_line": 13,
+      "signature": "message Middle",
+      "calls": [
+        "Before"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "After",
+      "kind": "ProtoMessage",
+      "package": "broken",
+      "line": 15,
+      "end_line": 17,
+      "signature": "message After",
+      "calls": [
+        "Before"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

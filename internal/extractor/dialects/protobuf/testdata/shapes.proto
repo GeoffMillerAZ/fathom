@@ -1,0 +1,49 @@
+// Nesting, every field shape that names a type, and rpcs on one and several lines.
+syntax = "proto3";
+
+package acme.shapes.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "example.com/acme/shapes/v1;shapesv1";
+
+message Order {
+  message Line {
+    string sku = 1;
+    Money price = 2;
+    enum Unit {
+      UNIT_UNSPECIFIED = 0;
+      UNIT_EACH = 1;
+    }
+    Unit unit = 3;
+  }
+  repeated Line lines = 1;
+  map<string, Money> totals = 2;
+  oneof when {
+    google.protobuf.Timestamp placed_at = 3;
+    .acme.shapes.v1.Order.Line first = 4;
+  }
+  int64 id = 5 [deprecated = true];
+  reserved 6, 7;
+}
+
+message Money {
+  string currency = 1;
+  int64 units = 2;
+}
+
+enum State {
+  STATE_UNSPECIFIED = 0;
+  STATE_OPEN = 1;
+}
+
+service OrderService {
+  option deprecated = false;
+
+  rpc Get(Order) returns (Order);
+  rpc Watch(
+      stream Order)
+    returns (stream Order.Line) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+}

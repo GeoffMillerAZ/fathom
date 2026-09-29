@@ -251,6 +251,21 @@
       "gz_bytes": 165241
     },
     {
+      "blob": "protobuf",
+      "repo": "coder3101/tree-sitter-proto",
+      "tag": "0.6.0",
+      "commit": "6c878d18628ebbff3474479d2fdd6d8ba1954c3e",
+      "tarball_sha256": "5a6931ce9b0a40470ba642efd775a832f2edf5b1f4d274d3b68f3182c1c920ca",
+      "licence": "MIT",
+      "entry_points": ["tree_sitter_proto"],
+      "scanner": false,
+      "generate": false,
+      "abi": 15,
+      "blob_sha256": "4211503d39d2cf30cbace8441e7bcced6421eb98617db0be18cbf992c3f92999",
+      "blob_bytes": 204748,
+      "gz_bytes": 68444
+    },
+    {
       "blob": "python",
       "repo": "tree-sitter/tree-sitter-python",
       "tag": "v0.25.0",
