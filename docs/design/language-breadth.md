@@ -750,7 +750,7 @@ is meant would be the index's guess, never truth). One imports oracle per subjec
 the SCIP indexes kept from round 2 (scratch, not committed): axios 232 of 232, nest 3,271 of 3,271,
 express .34 (`require('../..')`, a directory spec, is unresolved), zod 0 of 504 (every spec is an ESM
 `./x.js` naming `x.ts`), Polly 0 of 15 and Newtonsoft.Json 0 of 313 (an aliased `using` of a type
-whose file is not named after it) — strategy gaps the metric exists to show (O145).
+whose file is not named after it) — strategy gaps the metric exists to show (O145). The first tier-B dump runs (2026-09-29, ruby 2.6.10 and Apple clang 21.0.0, the pinned calibration subjects): Ruby 144 of 144 (sinatra, jekyll; `ruby-require` over the load path `lib`) and C++ 218 of 218 (fmt, nlohmann/json; `clang-includes`), each with a large unattested count that is the oracle's blind spot, not fathom's error (a `lib`-only load path; an include the compiler does not enter, O146). Neither language reaches L3: the grade also needs `file_edge_precision` and `file_edge_recall`, which only a SCIP index gives (§14.1): C++ reads .5309 and .1114 against .90 and .25, and Ruby's scip-ruby index sees typed receivers only (.8 and .0124, disclosed, not graded; the binary is absent on the measuring machine).
 
 ## 11. Retiring heuristics and bespoke walkers
 

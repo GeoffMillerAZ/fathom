@@ -25,3 +25,10 @@ System Ruby 2.6.10 on macOS runs it (no gems). `cmd/indexbench/testdata/ruby-req
 is its output on `internal/fusion/testdata/rubyfixture` (`files 4 require_in_subject 1
 require_outside 1 require_relative_in_subject 1`: `require 'json'` resolves to the standard library,
 outside the subject). Bench-only; never a product dependency.
+
+Measured 2026-09-29 (`docs/bench/readings/lang/ruby.json`, the L3 re-grade): sinatra v4.2.1 (599a007a) and jekyll v4.4.1
+(1f319fb2), cloned with `calibration/clone.sh`, default load path `lib`. Sinatra: `files 147 ... require_in_subject 31
+require_relative_in_subject 43`; jekyll: `files 159 ... autoload_in_subject 49 require_in_subject 14
+require_relative_in_subject 7`. `import_resolution` 144 of 144 in-repo imports; 76 of 462 imports resolve where the oracle
+names no file (requires the load path `lib` does not reach: sinatra-contrib and rack-protection, jekyll's test/ and rake/). The
+same run with `-I lib -I test -I features/support -I .` names 194 of 194 and leaves 26 unattested.

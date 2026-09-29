@@ -133,3 +133,29 @@ review, with PowerShell's and PHP's parser dumps (ctags is verified deficient fo
 
 Tracker line: `Milestone M1 progress: languages at L1 excellent 11/20, at L2 9/12, at L3 0/8, at L4
 0/6; tool formats at target 10/15`.
+
+## L3 re-grade, 2026-09-29 (regrade wave; harness 3929c383, LB-F40)
+
+The harness computes `import_resolution` (LB-F40); each of the six languages whose L3 waited on it was re-run
+with the oracle tools that exist on the measuring machine, on the pinned calibration subjects. No level and no
+L3 row moved: the L3 grade also needs the two SCIP-derived file-edge metrics, and every one of the six fails or
+lacks them.
+
+| Language | `import_resolution` | Oracle and tier | L3 grade | Why L3 is not met |
+|---|---|---|---|---|
+| Ruby | 1 (144 of 144) | ruby-require, ruby 2.6.10, B (good at most) | unmet (was not attempted) | file edges: scip-ruby is absent here; its disclosed reading is .8 and .0124 against .90 and .25 |
+| C++ | 1 (218 of 218) | clang-includes, Apple clang 21.0.0, B (good at most) | unmet | file_edge_precision .5309 and file_edge_recall .1114 against .90 and .25 |
+| Rust | not measurable | rust-analyzer and cargo absent | unmet | file_edge_recall .0134 against .25 |
+| PHP | not measurable | php, composer and scip-php absent | unmet | file edge precision and recall read 0 |
+| Dart | not measurable | dart and scip-dart absent | unmet | file_edge_recall .108 against .25 |
+| Kotlin | not measurable | kotlinc and scip-java absent; the PSI dump writes no imports | not attempted | no SCIP index with occurrence ranges, so no file-edge metric |
+
+Swift stays refused (no import oracle, and its grammar is over §14.2's 5% line). The two measured numbers are
+tier B, so each is "good at most" whatever it reads, and each carries a large unattested count that is the
+oracle's blind spot (a `lib`-only load path for Ruby; an include the compiler does not enter for C++, O146). The
+import counts were spliced into each recorded subject beside the families measured earlier (Ruby at 303b2bdb, C++
+at eb96fcbc), because a fresh `lang-oracle` run without scip-clang or the tree-sitter-ruby wheel would have replaced
+those families; regrading changed no other metric, and both readings' L1 numbers re-measure identically.
+
+Tracker line, unchanged: `Milestone M1 progress: languages at L1 excellent 11/20, at L2 9/12, at L3 0/8, at L4
+0/6; tool formats at target 10/15`.

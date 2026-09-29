@@ -29,6 +29,15 @@
         "file_edges_agree": 16,
         "file_edges_fathom": 54,
         "file_edges_truth": 98,
+        "import_edges_agree": 124,
+        "import_edges_fathom": 139,
+        "import_edges_truth": 124,
+        "import_oracle_out_of_scope": 20,
+        "import_oracle_unpaired": 0,
+        "imports": 422,
+        "imports_in_repo": 124,
+        "imports_resolved_agree": 124,
+        "imports_unattested": 15,
         "kind_equal": 3563,
         "matched": 3563,
         "oracle_defs": 3716,
@@ -43,6 +52,7 @@
         "calls": "A",
         "defmap": "A",
         "file_edges": "A",
+        "imports": "B",
         "l1": "B",
         "typed": "A"
       },
@@ -88,6 +98,15 @@
         "file_edges_agree": 27,
         "file_edges_fathom": 27,
         "file_edges_truth": 288,
+        "import_edges_agree": 94,
+        "import_edges_fathom": 158,
+        "import_edges_truth": 94,
+        "import_oracle_out_of_scope": 0,
+        "import_oracle_unpaired": 0,
+        "imports": 355,
+        "imports_in_repo": 94,
+        "imports_resolved_agree": 94,
+        "imports_unattested": 64,
         "kind_equal": 1688,
         "matched": 1688,
         "oracle_defs": 1798,
@@ -102,6 +121,7 @@
         "calls": "A",
         "defmap": "A",
         "file_edges": "A",
+        "imports": "B",
         "l1": "B",
         "typed": "A"
       },
@@ -133,6 +153,11 @@
   ],
   "oracles": [
     {
+      "tier": "B",
+      "tool": "clang-includes",
+      "version": "Apple clang version 21.0.0 (clang-2100.3.34.2)"
+    },
+    {
       "tier": "A",
       "tool": "scip-clang",
       "version": "0.4.0"
@@ -149,7 +174,7 @@
     "def_mapping": 0.5786,
     "file_edge_precision": 0.5309,
     "file_edge_recall": 0.1114,
-    "import_resolution": null,
+    "import_resolution": 1,
     "kind_agreement": 1,
     "range_agreement": 0.9939,
     "signature_coverage": 1,
@@ -163,6 +188,7 @@
     "def_mapping": "A",
     "file_edge_precision": "A",
     "file_edge_recall": "A",
+    "import_resolution": "B",
     "kind_agreement": "B",
     "range_agreement": "B",
     "signature_coverage": "B",
@@ -201,6 +227,15 @@
     "file_edges_agree": 43,
     "file_edges_fathom": 81,
     "file_edges_truth": 386,
+    "import_edges_agree": 218,
+    "import_edges_fathom": 297,
+    "import_edges_truth": 218,
+    "import_oracle_out_of_scope": 20,
+    "import_oracle_unpaired": 0,
+    "imports": 777,
+    "imports_in_repo": 218,
+    "imports_resolved_agree": 218,
+    "imports_unattested": 79,
     "kind_equal": 5251,
     "matched": 5251,
     "oracle_defs": 5514,
@@ -228,12 +263,13 @@
     "ctags:variable": 34
   },
   "notes": [
-    "integration review 2026-09-29 (kept): namespaces as containers (ns.Name) and qualify.scope_sep are in the dialect's goldens (shapes.cpp: geo.detail.scale, outer.inner.deep) and its CHANGELOG line; the dialect is not dispatched, so no indexed output changes and no ExtractorEpoch bump is due until the dispatch switch, which LB-Q-cpp-rest's trigger names. qualify.scope_sep applies only to a manifest that declares it (cpp and rust, neither dispatched)",
     "fmtlib/fmt: 1865 SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)",
     "fmtlib/fmt: restricted to include/**, src/**, test/*.cc, test/*.h, test/fuzzing/** (-only; the files outside are a disclosed gap, not measured)",
-    "import_resolution not measured: in-repo spec counts arrive with the L3 strategies (LB-F11)",
+    "import_resolution: 218 of 218 in-repo imports resolve to a file the oracle names (0 unresolved, 0 only to other files; L3 bar: excellent \u003e= 0.95, good \u003e= 0.85); import edges precision 0.734 (218 of 297) and recall 1 (218 of 218); 79 of 777 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 20 oracle import targets outside the files measured",
+    "integration review 2026-09-29 (kept): namespaces as containers (ns.Name) and qualify.scope_sep are in the dialect's goldens (shapes.cpp: geo.detail.scale, outer.inner.deep) and its CHANGELOG line; the dialect is not dispatched, so no indexed output changes and no ExtractorEpoch bump is due until the dispatch switch, which LB-Q-cpp-rest's trigger names. qualify.scope_sep applies only to a manifest that declares it (cpp and rust, neither dispatched)",
     "nlohmann/json: 1186 SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)",
-    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "L3 re-grade 2026-09-29 (LB-F40 harness at 3929c383): import_resolution 1 (218 of 218 in-repo imports: fmt 124, nlohmann/json 94) against clang-includes (Apple clang 21.0.0's preprocessor line markers, calibration/oracles/clang-includes, include roots include and test/gtest for fmt, include for json, tier B, so L3 is good at most) on the pinned subjects (fmt 1be298e1 under the -only restriction above, json 55f93686). The import counts come from a lang-oracle run without scip-clang (absent from this machine) and are spliced into each recorded subject beside the families measured at eb96fcbc; regrading changes no other metric, and the L1 numbers re-measure identically. L3 stays unmet: file_edge_precision .5309 and file_edge_recall .1114 miss .90 and .25 whatever import_resolution reads. Disclosed, not gated: 79 of 777 imports resolve where the oracle names no file (an include the compiler does not enter under this run's macros, such as fmt's #ifdef FMT_DEPRECATED_HEAVY_CORE, or a guarded header the translation unit already entered, which is most of nlohmann/json's 64 of 355; O146); import edge precision .734 and recall 1; 20 oracle targets lie outside the files measured (fmt's vendored test/gtest); the oracle's preprocessor stopped on 2 fmt files, whose later includes it does not see"
   ],
-  "disposition": "partial: target L4, met L1 excellent (sym_recall 0.9523, sym_precision 0.9674, kind_agreement 1, range_agreement 0.9939, signature_coverage 1; universal-ctags 6.2.1, tier B; fmt's vendored test/gtest is excluded and its .h headers are measured through the header router). L2 unmet: call_recall 0.8055 clears good, call_precision 0.6771 vs .85 \u2014 scip-clang 0.4.0 (tier A, D5 enclosing fallback) resolves no call whose callee depends on a template parameter (most of fmt and nlohmann/json) and records a constructor call (throw format_error(...), string_view(x)) as a type reference, not a callable one, while the structural extractor reports both; casts and all-capitals macro invocations are already excluded. L3 unmet: import_resolution has no in-repo spec count yet (LB-F11); file_edge_precision 0.5309 and file_edge_recall 0.1114 vs .90 and .25. L4 unmet: typed_recall 0.0441 because internal/scip.ImportIndex attributes a reference by enclosing_range, which scip-clang never sets (the same gap as LB-Q-c-rest); def_mapping 0.5786 (the index's fields, parameters and members count in its denominator). Trigger: ImportIndex gains the mapped-definition line-span fallback, an L2 pass classifies the unmatched pairs, and a lexical pre-pass neutralizes macro-only lines (scratch copy of both subjects: sym_recall 0.9692, sym_precision 0.9857)."
+  "disposition": "partial: target L4, met L1 excellent (sym_recall 0.9523, sym_precision 0.9674, kind_agreement 1, range_agreement 0.9939, signature_coverage 1; universal-ctags 6.2.1, tier B; fmt's vendored test/gtest is excluded and its .h headers are measured through the header router). L2 unmet: call_recall 0.8055 clears good, call_precision 0.6771 vs .85 — scip-clang 0.4.0 (tier A, D5 enclosing fallback) resolves no call whose callee depends on a template parameter (most of fmt and nlohmann/json) and records a constructor call (throw format_error(...), string_view(x)) as a type reference, not a callable one, while the structural extractor reports both; casts and all-capitals macro invocations are already excluded. L3 unmet: import_resolution reads 1 (218 of 218 in-repo imports against clang-includes, tier B: good at most) but file_edge_precision 0.5309 and file_edge_recall 0.1114 vs .90 and .25. L4 unmet: typed_recall 0.0441 because internal/scip.ImportIndex attributes a reference by enclosing_range, which scip-clang never sets (the same gap as LB-Q-c-rest); def_mapping 0.5786 (the index's fields, parameters and members count in its denominator). Trigger: ImportIndex gains the mapped-definition line-span fallback, an L2 pass classifies the unmatched pairs, and a lexical pre-pass neutralizes macro-only lines (scratch copy of both subjects: sym_recall 0.9692, sym_precision 0.9857)."
 }
