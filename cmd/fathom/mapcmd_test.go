@@ -284,3 +284,24 @@ func TestMapVerbsReachTheModel(t *testing.T) {
 		t.Errorf("base after the drop = %+v, want open with its clock restarted", lt)
 	}
 }
+
+// TestMapNameRestatementKeepsWhatItDoesNotRestate: a header is restated whole on
+// every change, so `map name` given only a new purpose must carry the map's
+// name and when-to-use line forward, not reset the name to the id and drop the
+// when line.
+func TestMapNameRestatementKeepsWhatItDoesNotRestate(t *testing.T) {
+	repo := mapRepo(t)
+	if code, _, errs := runCLI(t, mapCLI, "new", "auth", "--purpose", "Where is the token checked?", "--when", "before touching auth", "--repo", repo); code != 0 {
+		t.Fatalf("new: %s", errs)
+	}
+	if code, _, errs := runCLI(t, mapCLI, "name", "auth", "--as", "Auth surface", "--purpose", "Where is the token checked?", "--repo", repo); code != 0 {
+		t.Fatalf("name: %s", errs)
+	}
+	if code, _, errs := runCLI(t, mapCLI, "name", "auth", "--purpose", "Where is the token checked and refreshed?", "--repo", repo); code != 0 {
+		t.Fatalf("rename purpose: %s", errs)
+	}
+	m := loadMapSet(repo, time.Now()).maps["auth"]
+	if m.Name != "Auth surface" || m.WhenToUse != "before touching auth" || m.Purpose != "Where is the token checked and refreshed?" {
+		t.Errorf("after a purpose-only restatement: name %q, when %q, purpose %q; want the name and when line kept", m.Name, m.WhenToUse, m.Purpose)
+	}
+}

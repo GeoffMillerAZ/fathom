@@ -198,8 +198,8 @@ func splitLeadIDs(args []string) (ids, rest []string) {
 // (XM-7), and a reader of a brief or a pointer judges relevance by it, so `new`
 // requires it (the implicit creation by a first `append` files none). The map is
 // ephemeral: it lives until its condition holds (default: the end of this
-// session) and is kept while a live map includes it; `map name` makes one
-// durable.
+// session) and is kept while a live map includes it; `map name` names it, but
+// does not yet lift that condition (O143).
 func cmdMapNew(args []string, stdout, stderr io.Writer) int {
 	ids, rest := splitLeadIDs(args)
 	fs := newFlagSet("map new", stderr)
@@ -274,14 +274,15 @@ func cmdMapAppend(args []string, stdout, stderr io.Writer) int {
 }
 
 // cmdMapName is `fathom map name ID --purpose "…" [--as NAME] [--when "…"]`:
-// naming a map makes it durable, and a named map without its purpose line is
+// a named map is durable when it carries no condition (O143: naming does not yet
+// lift one), and a named map without its purpose line is
 // refused (XM-7, explmap.Validate).
 func cmdMapName(args []string, stdout, stderr io.Writer) int {
 	ids, rest := splitLeadIDs(args)
 	fs := newFlagSet("map name", stderr)
 	purpose := fs.String("purpose", "", "the question the map answers (one line, required)")
-	as := fs.String("as", "", "the name (default: the map id)")
-	when := fs.String("when", "", "when to use it (one line, optional)")
+	as := fs.String("as", "", "the name (default: the name it has, else the map id)")
+	when := fs.String("when", "", "when to use it (one line, optional; default: the line it has)")
 	repo := fs.String("repo", ".", "repository")
 	thread := fs.String("thread", "", "thread for a map created here (default: this repo's service)")
 	if err := fs.Parse(rest); err != nil {
@@ -299,11 +300,17 @@ func cmdMapName(args []string, stdout, stderr io.Writer) int {
 	if !exists {
 		m = explmap.Map{ID: ids[0], Kind: explmap.KindEphemeral, CreatedBy: mapCreator(""), CreatedAt: now}
 	}
-	m.Name = strings.TrimSpace(*as)
-	if m.Name == "" {
+	// The header is restated whole: a flag left out keeps what the map already
+	// carries (a name set with --as, a when-to-use line).
+	if name := strings.TrimSpace(*as); name != "" {
+		m.Name = name
+	} else if !m.Named() {
 		m.Name = ids[0]
 	}
-	m.Purpose, m.WhenToUse = *purpose, *when
+	m.Purpose = *purpose
+	if strings.TrimSpace(*when) != "" {
+		m.WhenToUse = *when
+	}
 	if err := writeMapHeader(set, m, *thread, root, nil, now); err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
