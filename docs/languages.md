@@ -204,7 +204,7 @@ Milestone M1 progress: languages at L1 excellent 11/20, at L2 9/12, at L3 0/8, a
 | Avro schemas (.avsc) and IDL (.avdl) | tool format | doc | pure-go:encoding/json (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-avro |
 | Emacs Lisp (.el) | language | tags | Wilfred/tree-sitter-elisp (MIT) | L1 | unsupported (disclosed) | — | — | — | LB-Q-emacs-lisp |
 | AsyncAPI documents | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | unsupported (disclosed) | — | — | — | LB-Q-asyncapi |
-| Vim script (.vim, vimrc) | language | tags | tree-sitter-grammars/tree-sitter-vim (MIT) | L1 | unsupported (disclosed) | — | — | — | LB-Q-vimscript |
+| Vim script (.vim, vimrc) | language | tags | tree-sitter-grammars/tree-sitter-vim (MIT) | L1 | refused; measured L1 (L1 excellent) | B universal-ctags 6.2.1 | — | 2026-09-29 | re-plan (LB-Q-vimscript-rest refused) |
 | Prisma schema (schema.prisma) | tool format | tags | victorhqc/tree-sitter-prisma (MIT (verify at pin)) | L3 | unsupported (disclosed) | — | — | — | LB-Q-prisma |
 | Tcl (.tcl) | language | tags | tree-sitter-grammars/tree-sitter-tcl (MIT) | L1 | refused; measured none (measured) | B universal-ctags 6.2.1 | — | 2026-09-29 | re-plan (LB-Q-tcl-rest refused) |
 | dbt projects (dbt_project.yml, models/*.sql with ref(), schema.yml) | tool format | tags+doc | DerekStride/tree-sitter-sql + pure-go:gopkg.in/yaml.v3 (MIT) | L3 | unsupported (disclosed) | — | — | — | LB-Q-dbt |

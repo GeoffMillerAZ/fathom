@@ -1,0 +1,31 @@
+id: vimscript
+language: Vim script
+# Both subjects are plugins written in legacy Vim script. Tags 0.14.0 and v3.7: vim-plug's is lightweight
+# (`sha` is the commit), vim-fugitive's is annotated (`sha` is the commit it peels to, from
+# `git ls-remote ... refs/tags/v3.7^{}`). vim-fugitive ships no LICENSE file: its README says it is
+# "distributed under the same terms as Vim itself" (the Vim licence, which is not OSI-approved); the
+# subject is read and never vendored, and the licence is flagged for review in the row's report. The
+# oracle is universal-ctags 6.2.1 (tier B), which writes an end line for functions.
+repos:
+  - name: junegunn/vim-plug
+    url: https://github.com/junegunn/vim-plug
+    ref: 0.14.0
+    sha: d80f495fabff8446972b8695ba251ca636a047b0
+    licence: MIT
+    idioms:
+      - 'one 2,863-line autoload file: 132 script-local functions (`function! s:git_dir(dir) abort`) and a few autoload names (`plug#begin`)'
+      - 'user commands with attributes and completion (`command! -nargs=* -bar -bang -complete=customlist,s:names PlugInstall`; 11 command lines)'
+      - 'feature detection (`has(''nvim'')`, `exists(''*jobwait'')`, 28 has() calls) choosing between Vim and Neovim code paths'
+      - 'an embedded Python heredoc (`execute py_exe "<< EOF"` inside `s:update_python`) the grammar cannot parse'
+      - 'mappings that call `<SID>` functions (12 references) and dictionary functions (`function! s:lod.x() dict`)'
+  - name: tpope/vim-fugitive
+    url: https://github.com/tpope/vim-fugitive
+    ref: v3.7
+    sha: 96c1009fcf8ce60161cc938d149dd5a66d570756
+    licence: Vim (the same terms as Vim itself; not OSI-approved)
+    idioms:
+      - 'six files under plugin/, autoload/, ftplugin/, syntax/ and ftdetect/ (8,978 lines): 273 script-local and 108 autoload-named functions (`fugitive#Complete`), 29 plain global ones, 410 `abort` functions'
+      - 'dictionary functions (24) and `<SID>` references (107) wired through mappings and commands'
+      - 'user commands with completion behind `if exists('':G'') != 2` guards (`command! -bang -nargs=? -range=-1 -complete=customlist,fugitive#Complete G ...`)'
+      - 'lambdas (`{i, v -> ...}`, 6) and `has()` / `exists()` feature checks (41 and 28 lines)'
+      - 'a bare `-` ex command and a unary-plus string (`+"<range>"`), constructs the grammar cannot parse'

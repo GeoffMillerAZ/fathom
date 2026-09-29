@@ -52,6 +52,7 @@ lock does not describe (I55). The tables below are rendered from the lock by
 | `swift` | alex-pinkus/tree-sitter-swift | 35245fbfee2fccf16273c6f4299438fb76875970 | `35245fbfee2fccf16273c6f4299438fb76875970` | MIT | `tree_sitter_swift` | `aa4f76cd4c8287ede397993ee369c51c75d419c51fb785d84fbee9d4ddfc3aa8` |
 | `tcl` | tree-sitter-grammars/tree-sitter-tcl | 850a72ab6436e06645b33b11cfa60cbdb04b1f01 | `850a72ab6436e06645b33b11cfa60cbdb04b1f01` | MIT | `tree_sitter_tcl` | `4d3bbc7db5fd3398af714afc3dd4a0b4aba0b372bf30192bc4cff00d5acf54fa` |
 | `typescript` | tree-sitter/tree-sitter-typescript | v0.23.2 | `f975a621f4e7f532fe322e13c4f79495e0a7b2e7` | MIT | `tree_sitter_typescript`, `tree_sitter_tsx` | `2c4ce711ae8d1218a3b2f899189298159d672870b5b34dff5d937bed2f3e8983` |
+| `vim` | tree-sitter-grammars/tree-sitter-vim | v0.8.1 | `3092fcd99eb87bbd0fc434aa03650ba58bd5b43b` | MIT | `tree_sitter_vim` | `93cafb9a0269420362454ace725a118ff1c3e08dcdfdc228aa86334b54d53c2a` |
 
 ### Committed blobs
 
@@ -82,7 +83,8 @@ lock does not describe (I55). The tables below are rendered from the lock by
 | `swift` | (root) | yes | 15 | 2,435,516 | 475,154 | `4e464eadd1f93f6a619ea2d5e1c26573a777cc7a37e7aa146495a82d3c3b04b4` |
 | `tcl` | (root) | yes | 15 | 203,872 | 74,046 | `546a4170f4042ad33928b7b8b5cf5f3a2f76578627f763991bdce5063bcda183` |
 | `typescript` | typescript, tsx | yes | 14 | 2,037,040 | 422,906 | `30080208c90581bf3b29b412e9ee2e9a11c89b36153b6a94cc07da7b5000afcb` |
-| **total** | | | | 25,156,949 | 5,386,654 | |
+| `vim` | (root) | yes | 15 | 1,177,166 | 212,656 | `fa067ead3ba63fb2610653385665a94ace0a5d56b4cdafcdb8fa68080a7bf3b2` |
+| **total** | | | | 26,334,115 | 5,599,310 | |
 
 Toolchain that produced the committed blobs: zig 0.16.0, wasm-opt 129, tree-sitter-cli 0.26.11.
 

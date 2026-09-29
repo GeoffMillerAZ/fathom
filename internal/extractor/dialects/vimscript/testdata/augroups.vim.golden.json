@@ -1,0 +1,53 @@
+{
+  "symbols": [
+    {
+      "name": "Formatting",
+      "kind": "VimAugroup",
+      "package": "augroups",
+      "line": 3,
+      "end_line": 3,
+      "tier": "verified"
+    },
+    {
+      "name": "Cursor",
+      "kind": "VimAugroup",
+      "package": "augroups",
+      "line": 9,
+      "end_line": 9,
+      "tier": "verified"
+    },
+    {
+      "name": "lowercase_end",
+      "kind": "VimAugroup",
+      "package": "augroups",
+      "line": 11,
+      "end_line": 11,
+      "tier": "verified"
+    },
+    {
+      "name": "Conditional",
+      "kind": "VimAugroup",
+      "package": "augroups",
+      "line": 19,
+      "end_line": 19,
+      "tier": "verified"
+    },
+    {
+      "name": "s:Format",
+      "kind": "VimFunction",
+      "package": "augroups",
+      "line": 24,
+      "end_line": 28,
+      "signature": "function! s:Format() abort",
+      "tier": "verified"
+    },
+    {
+      "name": "Inside",
+      "kind": "VimAugroup",
+      "package": "augroups",
+      "line": 25,
+      "end_line": 25,
+      "tier": "verified"
+    }
+  ]
+}

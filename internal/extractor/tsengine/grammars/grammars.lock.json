@@ -385,6 +385,21 @@
       "blob_sha256": "30080208c90581bf3b29b412e9ee2e9a11c89b36153b6a94cc07da7b5000afcb",
       "blob_bytes": 2037040,
       "gz_bytes": 422906
+    },
+    {
+      "blob": "vim",
+      "repo": "tree-sitter-grammars/tree-sitter-vim",
+      "tag": "v0.8.1",
+      "commit": "3092fcd99eb87bbd0fc434aa03650ba58bd5b43b",
+      "tarball_sha256": "93cafb9a0269420362454ace725a118ff1c3e08dcdfdc228aa86334b54d53c2a",
+      "licence": "MIT",
+      "entry_points": ["tree_sitter_vim"],
+      "scanner": true,
+      "generate": false,
+      "abi": 15,
+      "blob_sha256": "fa067ead3ba63fb2610653385665a94ace0a5d56b4cdafcdb8fa68080a7bf3b2",
+      "blob_bytes": 1177166,
+      "gz_bytes": 212656
     }
   ]
 }

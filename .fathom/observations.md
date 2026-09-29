@@ -2341,3 +2341,16 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** none committed (out of the worker's files); `name = m.MatchName(name)` after the operator rewrite for the oracle side is the one-line change measured above; existing readings would move on a re-run (php.json documents the same gap)
 - **Status:** open
 - **Impact:** any dialect whose ctags names carry their path (Tcl namespaces and classes, PHP namespaces) reads below its real recall and precision; Tcl is refused on parse errors anyway (LB-Q-tcl-rest), so this decides its re-measure, not its refusal
+
+### O203 — the 5% parse-error line that refuses a language has no instrument: lang-oracle and lang-probe report no count of files with an ERROR node, so every worker writes a scratch tree-walker to obtain the number the refusal rests on
+
+- **Symptom:** the 5% parse-error line that refuses a language has no instrument: lang-oracle and lang-probe report no count of files with an ERROR node, so every worker writes a scratch tree-walker to obtain the number the refusal rests on
+- **Evidence:**
+  - **Tool:** indexbench lang-oracle / design 14.2 refusal
+  - **Expected:** the reading carries files_with_error (the connector's file set, tree-sitter has_error) next to faults, so the refusal is read off the reading and re-checked by the tracker
+  - **Actual:** Tcl and Vim script both needed a scratch program (cmd/zzscratch, walking connector.Discover and counting ERROR/MISSING in tsengine SExpr) to get 516 of 827 files (62.4%) and 3 of 7 (42.9%); Vim script reads L1 excellent (sym_recall .9947, sym_precision 1) and is refused on 3 files (an embedded Python heredoc, a bare - ex command, a unary-plus string), with a 7-file calibration set where one file is 14%
+  - **Repro:** go run ./cmd/indexbench lang-oracle -dialect vimscript -subject workspace/calibration/vimscript/vim-fugitive -out /tmp/x.json (no field for files with a parse error)
+- **Root cause:** the harness computes faults (a parser trap or timeout) but not has_error; the 5% line is a worker's ad hoc count, and the Swift refusal was first recorded and then overturned at integration for the same reason
+- **Fix:** none committed; a `files_with_error` count per subject in the reading (Subject.Tenancy or its own field), computed from the same connector file set the extraction reads, would put the refusal number in the reading and the tracker
+- **Status:** open
+- **Impact:** a refusal rests on a number no reading carries; Vim script's L1 excellent reading and its refusal are both true and only the notes say why

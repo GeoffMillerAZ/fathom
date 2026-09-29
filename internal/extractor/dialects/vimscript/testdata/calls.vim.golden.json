@@ -1,0 +1,97 @@
+{
+  "symbols": [
+    {
+      "name": "s:Helper",
+      "kind": "VimFunction",
+      "package": "calls",
+      "line": 3,
+      "end_line": 5,
+      "signature": "function! s:Helper(x) abort",
+      "tier": "verified"
+    },
+    {
+      "name": "s:Plain",
+      "kind": "VimFunction",
+      "package": "calls",
+      "line": 7,
+      "end_line": 11,
+      "signature": "function! s:Plain() abort",
+      "calls": [
+        "Global",
+        "s:Helper"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "s:Expressions",
+      "kind": "VimFunction",
+      "package": "calls",
+      "line": 13,
+      "end_line": 19,
+      "signature": "function! s:Expressions(x) abort",
+      "calls": [
+        "Other",
+        "copy",
+        "len",
+        "map",
+        "s:Check",
+        "s:Helper"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "s:Autoload",
+      "kind": "VimFunction",
+      "package": "calls",
+      "line": 21,
+      "end_line": 24,
+      "signature": "function! s:Autoload() abort",
+      "calls": [
+        "myplugin#core#Value",
+        "myplugin#util#Trim"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "s:Dict",
+      "kind": "VimFunction",
+      "package": "calls",
+      "line": 26,
+      "end_line": 34,
+      "signature": "function! s:Dict(obj) abort",
+      "calls": [
+        "Global",
+        "Method",
+        "Registry.lookup",
+        "a:obj.child.stop",
+        "a:obj.run",
+        "call"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "s:Outer",
+      "kind": "VimFunction",
+      "package": "calls",
+      "line": 37,
+      "end_line": 42,
+      "signature": "function! s:Outer() abort",
+      "calls": [
+        "shallow"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "s:Inner",
+      "kind": "VimFunction",
+      "package": "calls",
+      "line": 38,
+      "end_line": 40,
+      "signature": "function! s:Inner() abort",
+      "calls": [
+        "deep"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

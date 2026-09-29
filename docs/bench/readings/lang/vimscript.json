@@ -1,0 +1,164 @@
+{
+  "dialect": "vimscript",
+  "kind": "language",
+  "target_level": "L1",
+  "level_met": "L1",
+  "grade": {
+    "L1": "excellent",
+    "L2": "not-attempted",
+    "L3": "not-attempted",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-09-29",
+  "fathom_commit": "9ea6da5f",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "junegunn/vim-plug",
+      "sha": "d80f495fabff8446972b8695ba251ca636a047b0",
+      "files": 1,
+      "bytes": 84223,
+      "counts": {
+        "callables": 137,
+        "callables_signed": 137,
+        "fathom_defs": 148,
+        "kind_equal": 148,
+        "matched": 148,
+        "oracle_defs": 149,
+        "range_eligible": 136,
+        "range_ok": 136
+      },
+      "families": {
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "function",
+        "macro",
+        "namespace"
+      ],
+      "excluded_by_kind": {
+        "ctags:map": 18,
+        "ctags:variable": 23
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 42.804,
+        "extract_cpu_ms": 39.863,
+        "max_file_ms": 39,
+        "peak_module_pages": 362,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "tpope/vim-fugitive",
+      "sha": "96c1009fcf8ce60161cc938d149dd5a66d570756",
+      "files": 6,
+      "bytes": 314763,
+      "counts": {
+        "callables": 410,
+        "callables_signed": 410,
+        "fathom_defs": 417,
+        "kind_equal": 417,
+        "matched": 417,
+        "oracle_defs": 419,
+        "range_eligible": 410,
+        "range_ok": 410
+      },
+      "families": {
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "function",
+        "macro",
+        "namespace"
+      ],
+      "excluded_by_kind": {
+        "ctags:map": 3,
+        "ctags:variable": 70
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 145.58499999999998,
+        "extract_cpu_ms": 130.85699999999997,
+        "max_file_ms": 123,
+        "peak_module_pages": 487,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "B",
+      "tool": "universal-ctags",
+      "version": "6.2.1"
+    }
+  ],
+  "metrics": {
+    "call_precision": null,
+    "call_recall": null,
+    "def_mapping": null,
+    "file_edge_precision": null,
+    "file_edge_recall": null,
+    "import_resolution": null,
+    "kind_agreement": 1,
+    "range_agreement": 1,
+    "signature_coverage": 1,
+    "sym_precision": 1,
+    "sym_recall": 0.9947,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "kind_agreement": "B",
+    "range_agreement": "B",
+    "signature_coverage": "B",
+    "sym_precision": "B",
+    "sym_recall": "B"
+  },
+  "required_kinds": [
+    "function",
+    "macro",
+    "namespace"
+  ],
+  "kind_intersection": [
+    "function",
+    "macro",
+    "namespace"
+  ],
+  "counts": {
+    "callables": 547,
+    "callables_signed": 547,
+    "fathom_defs": 565,
+    "kind_equal": 565,
+    "matched": 565,
+    "oracle_defs": 568,
+    "range_eligible": 546,
+    "range_ok": 546
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 2.34,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 2.12,
+    "max_file_ms": 123,
+    "peak_module_pages": 487,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "ctags:map": 21,
+    "ctags:variable": 93
+  },
+  "notes": [
+    "refused (design section 14.2, LB-Q-vimscript-rest): 3 of these 7 files (42.9%) parse with an ERROR node under tree-sitter-grammars/tree-sitter-vim v0.8.1, over the 5% line, so the dialect stays built and tested but is not dispatched (fusion's refusedDialects), .vim is disclosed as unsupported, and the tracker, milestones and support matrix claim no level for Vim script. The level_met above is what the harness measured, kept as the record",
+    "parse errors: plug.vim (the whole file reads as one ERROR: s:update_python embeds a Python heredoc, execute py_exe \"<< EOF\"), autoload/fugitive.vim (a bare - ex command, line 4674) and plugin/fugitive.vim (the unary-plus string +\"<range>\", line 564); the 4 files with no error are fugitive's ftdetect, ftplugin and two syntax files; upstream master (039c8d0a, two commits past v0.8.1: a regenerated parser and a CI change) reads the same 1 of 1 and 2 of 6",
+    "grammar: tree-sitter-grammars/tree-sitter-vim v0.8.1 at commit 3092fcd99eb87bbd0fc434aa03650ba58bd5b43b (MIT), vim.wasm.gz 212,656 bytes gzip (1,177,166 raw), 487 peak module pages",
+    "L1 oracle: universal-ctags 6.2.1 Vim (tier B) on junegunn/vim-plug 0.14.0 (1 file, 148 of 149 matched) and tpope/vim-fugitive v3.7 (6 files, 417 of 419); ctags's variable (93) and map (21) tags are outside the kind intersection, excluded from both sides and counted above; the 3 oracle-only definitions are the ones inside the parse-error regions (s:update_python, and the commands G and Git); no dialect-only definition",
+    "names: name_match identity, because ctags writes a script-local function as s:Foo and the harness compares the oracle's name whole; names.strip_prefix drops g: and <SID> as ctags does; neither subject writes such a function",
+    "L2 to L4 not attempted: the entry names ctags as its only oracle, which gives no call pairs, and Vim script has no SCIP producer; Vim9 def functions are not parsed by this grammar release and are not extracted (ctags tags them; neither subject uses def)",
+    "licence flag: vim-fugitive ships no LICENSE file and is distributed under the same terms as Vim itself, which is not OSI-approved; the subject is read, never vendored",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+  ],
+  "disposition": "refused (design section 14.2): 3 of the 7 calibration files (42.9%: junegunn/vim-plug plug.vim, tpope/vim-fugitive autoload/fugitive.vim and plugin/fugitive.vim) parse with an error under tree-sitter-grammars/tree-sitter-vim v0.8.1 (upstream master's head reads the same), over the 5% line (an embedded Python heredoc, a bare - ex command, a unary-plus string); the dialect is built, tested and measured (L1 excellent, tier B) but not dispatched, and Vim script stays disclosed as unsupported. Re-plan when a tree-sitter-vim commit parses both subjects with at most 5% of files in error. Measured before the refusal: target L1, met L1 (excellent) on junegunn/vim-plug 0.14.0 and tpope/vim-fugitive v3.7, 7 files, universal-ctags 6.2.1 Vim (tier B): 568 oracle and 565 dialect definitions in the kind intersection (function, command, augroup), 565 matched: sym_recall .9947, sym_precision 1, kind_agreement 1, range_agreement 1 over 546 with an oracle end, signature_coverage 1 (547 callables); 2.34 MB/CPU-s, 0 faults, 487 peak module pages, vim.wasm.gz 212,656 bytes. Trigger: a tree-sitter-vim commit that parses those three files"
+}
