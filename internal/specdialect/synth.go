@@ -61,6 +61,7 @@ func synthPairs(t verify.Task) []string {
 	addBool("skip_test", e.SkipTest)
 	add("skip", e.SkipReason)
 	addBool("allow_contradiction", e.AllowContradiction)
+	addBool("library", e.Library)
 	add("certified_by", strings.Join(e.CertifiedBy, ","))
 	add("strength", e.CertifyStrength)
 	add("disposition", t.Disposition)
