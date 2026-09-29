@@ -26,6 +26,7 @@ LB-F40).
 | php-parser/ | B | PHP |
 | luaparse/ | B | Lua (definitions) |
 | protoc-descriptors/ | A (definitions, references, imports) | Protocol Buffers |
+| opa-parse/ | A (definitions, calls, imports) | Rego |
 | ts-tags/ | C | Bash, Lua and Ruby (calls) |
 | sqlglot/ | C | SQL (foreign-key calls) |
 | make/ | A (references), B (definitions) | Makefile |
