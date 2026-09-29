@@ -333,6 +333,11 @@ registry; no store change.
    `Signature` from the definition node's start to the start of its `@body` capture (a
    fathom extension to the convention; a query without `@body` gets the definition's first
    line), whitespace collapsed, truncated to `signature.max_chars` with a trailing `…`.
+   A grammar that puts a callable's body in a *sibling* of its signature (tree-sitter-dart's
+   `function_signature` + `function_body`) has no node spanning both; the match captures the
+   sibling as `@end` (usually also as `@body`) and the definition then reaches its end, so its
+   `EndLine`, the calls its body makes and the definitions nested in it follow (LB-Q-dart).
+   `@end` never shortens a definition.
 4. **Name-captured references** (LB-F4). The standard convention puts `@name` inside
    `@reference.call`; the engine takes the callee from `@name` when present and falls back
    to the whole expression's text (today's behaviour, kept for the five existing queries).

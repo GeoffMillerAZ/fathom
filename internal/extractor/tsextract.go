@@ -624,7 +624,7 @@ func splitTSMatches(matches []tsengine.Match, kinds map[string]tsDefKind, src []
 			}
 			continue
 		}
-		var nameNode, defNode, bodyNode *tsengine.Node
+		var nameNode, defNode, bodyNode, endNode *tsengine.Node
 		var defSuffix string
 		for i := range m.Captures {
 			c := &m.Captures[i]
@@ -637,6 +637,9 @@ func splitTSMatches(matches []tsengine.Match, kinds map[string]tsDefKind, src []
 			case c.Name == "body":
 				n := c.Node
 				bodyNode = &n
+			case c.Name == "end":
+				n := c.Node
+				endNode = &n
 			case strings.HasPrefix(c.Name, "definition."):
 				n := c.Node
 				defNode = &n
@@ -681,6 +684,12 @@ func splitTSMatches(matches []tsengine.Match, kinds map[string]tsDefKind, src []
 			line:    nameNode.Line(),
 			defLine: defNode.Line(),
 			parent:  -1,
+		}
+		// @end: a grammar that puts a callable's body in a sibling of its
+		// signature (tree-sitter-dart) has no node spanning both, so the match
+		// captures the sibling and the definition reaches its end. Never shorter.
+		if endNode != nil && endNode.StartByte >= d.start && endNode.EndByte > d.end {
+			d.end = endNode.EndByte
 		}
 		if bodyNode != nil && bodyNode.StartByte >= d.start && bodyNode.StartByte <= d.end {
 			d.bodyStart, d.hasBody = bodyNode.StartByte, true
