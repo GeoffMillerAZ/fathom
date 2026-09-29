@@ -251,6 +251,155 @@ func TestCompileCarriesClaimsAcrossAMovedSection(t *testing.T) {
 			t.Errorf("older prompt: calls=%d carried=%d, want 1/0", mock.CallCount(), run.SectionsCarried)
 		}
 	})
+
+	// Rule 1: a section whose own subject already holds claims from its
+	// digest keeps them; a departed copy with the same digest hands it
+	// nothing (its claims simply retire with their subject). docs/old.md,
+	// not CLAUDE.md: a CLAUDE.md twin of AGENTS.md never enters the corpus.
+	t.Run("a section that holds its own claims takes none from a departed copy", func(t *testing.T) {
+		st := store.NewMemoryStore()
+		compileWith(t, st, carryInput(false,
+			core.SourceFile{Path: "AGENTS.md", Content: []byte(govDoc)},
+			core.SourceFile{Path: "docs/old.md", Content: []byte(govDoc)}), twoClaimResponse, twoClaimResponse)
+		by := claimsBySubject(t, st)
+		own := map[string]bool{}
+		for _, cl := range by["AGENTS.md#conventions"] {
+			own[cl.ClaimID] = true
+		}
+		if len(own) != 2 || len(by["docs/old.md#conventions"]) != 2 {
+			t.Fatalf("setup: %d claims under AGENTS.md, %d under docs/old.md, want 2 and 2", len(own), len(by["docs/old.md#conventions"]))
+		}
+		run, mock := compileWith(t, st, carryInput(false, core.SourceFile{Path: "AGENTS.md", Content: []byte(govDoc)}))
+		if mock.CallCount() != 0 || run.SectionsCarried != 0 || run.SectionsCompiled != 0 {
+			t.Errorf("copy removed: calls=%d carried=%d compiled=%d, want 0/0/0", mock.CallCount(), run.SectionsCarried, run.SectionsCompiled)
+		}
+		for _, cl := range claimsBySubject(t, st)["AGENTS.md#conventions"] {
+			if !own[cl.ClaimID] || cl.Status != core.ClaimFresh {
+				t.Errorf("AGENTS.md claim %q (id %s, status %s): want only its own fresh claims", cl.Rule, cl.ClaimID, cl.Status)
+			}
+		}
+	})
+
+	// A carried claim whose id the subject already held (a subject left
+	// with a mix of digests, so rule 1 lets it carry) is re-emitted, not
+	// retired by the supersede sweep that retires the mix's stale claim.
+	t.Run("a carried claim the subject already held stays fresh", func(t *testing.T) {
+		st := store.NewMemoryStore()
+		compileWith(t, st, carryInput(false,
+			core.SourceFile{Path: "AGENTS.md", Content: []byte(govDoc)},
+			core.SourceFile{Path: "docs/old.md", Content: []byte(govDoc)}), twoClaimResponse, twoClaimResponse)
+		own := claimsBySubject(t, st)["AGENTS.md#conventions"]
+		if len(own) != 2 {
+			t.Fatalf("setup: %d claims under AGENTS.md, want 2", len(own))
+		}
+		stale := own[0]
+		stale.Rule = "A rule from an older digest."
+		stale.InputDigest = "older-digest"
+		stale.ReproKey += "-older"
+		stale.ClaimID = core.ClaimID(stale.Layer, stale.Kind, stale.Subject, stale.ReproKey)
+		if err := st.PutClaims(ctx, []core.SemanticClaim{stale}, nil); err != nil {
+			t.Fatalf("PutClaims: %v", err)
+		}
+		run, mock := compileWith(t, st, carryInput(false, core.SourceFile{Path: "AGENTS.md", Content: []byte(govDoc)}))
+		if mock.CallCount() != 0 || run.SectionsCarried != 1 {
+			t.Fatalf("setup: calls=%d carried=%d, want 0/1", mock.CallCount(), run.SectionsCarried)
+		}
+		fresh := map[string]bool{}
+		for _, cl := range claimsBySubject(t, st)["AGENTS.md#conventions"] {
+			if cl.Status == core.ClaimFresh {
+				fresh[cl.ClaimID] = true
+			}
+		}
+		if fresh[stale.ClaimID] || !fresh[own[0].ClaimID] || !fresh[own[1].ClaimID] || len(fresh) != 2 {
+			t.Errorf("fresh claims %v: want exactly the two carried ids %s and %s, the older-digest claim retired", fresh, own[0].ClaimID, own[1].ClaimID)
+		}
+	})
+
+	// A carried subject is retired like a recompiled one: its own claims
+	// from an older digest do not stay live beside the carried set.
+	t.Run("a carried subject's claims from an older digest retire", func(t *testing.T) {
+		st := store.NewMemoryStore()
+		oldDoc := "# Conventions\n\n- Use tabs for indentation.\n"
+		oldResponse := `{"claims":[{"rule":"Use tabs for indentation.","scope":["internal/query/**"],"cite_start":3,"cite_end":3}]}`
+		compileWith(t, st, carryInput(false,
+			core.SourceFile{Path: "AGENTS.md", Content: []byte(oldDoc)},
+			core.SourceFile{Path: "CLAUDE.md", Content: []byte(govDoc)}), oldResponse, twoClaimResponse)
+		run, mock := compileWith(t, st, carryInput(false, core.SourceFile{Path: "AGENTS.md", Content: []byte(movedGovDoc)}))
+		if mock.CallCount() != 0 || run.SectionsCarried != 1 {
+			t.Fatalf("setup: calls=%d carried=%d, want 0/1", mock.CallCount(), run.SectionsCarried)
+		}
+		fresh := 0
+		for _, cl := range claimsBySubject(t, st)["AGENTS.md#conventions"] {
+			if cl.Rule == "Use tabs for indentation." && cl.Status == core.ClaimFresh {
+				t.Errorf("the older-digest claim %q is still fresh after the carry", cl.Rule)
+			}
+			if cl.Status == core.ClaimFresh {
+				fresh++
+			}
+		}
+		if fresh != 2 {
+			t.Errorf("%d fresh claims under AGENTS.md#conventions, want the 2 carried", fresh)
+		}
+	})
+
+	// Rule 4, scope side: a rules file that declares its own scope (a Cursor
+	// .mdc rule, whatever its frontmatter) recorded claims under that
+	// declaration, so neither a move out of one nor into one carries.
+	t.Run("a move out of or into a rules file that declares its scope compiles", func(t *testing.T) {
+		for _, tc := range []struct{ from, to string }{
+			{".cursor/rules/conventions.mdc", "AGENTS.md"},
+			{"CLAUDE.md", ".cursor/rules/conventions.mdc"},
+		} {
+			st := store.NewMemoryStore()
+			compileWith(t, st, carryInput(false, core.SourceFile{Path: tc.from, Content: []byte(govDoc)}), twoClaimResponse)
+			if n := len(claimsBySubject(t, st)[tc.from+"#conventions"]); n != 2 {
+				t.Fatalf("%s setup: %d claims, want 2", tc.from, n)
+			}
+			run, mock := compileWith(t, st, carryInput(false, core.SourceFile{Path: tc.to, Content: []byte(movedGovDoc)}), movedResponse)
+			if mock.CallCount() != 1 || run.SectionsCarried != 0 {
+				t.Errorf("%s -> %s: calls=%d carried=%d, want 1/0", tc.from, tc.to, mock.CallCount(), run.SectionsCarried)
+			}
+		}
+	})
+
+	// Rule 5, ambiguity: the cited line appears twice in the section, so
+	// two shifts re-anchor it and the cites cannot say which. It compiles.
+	t.Run("a cite that lands on a repeated line compiles", func(t *testing.T) {
+		st := store.NewMemoryStore()
+		repeated := "# Conventions\n\n- All outputs must be sorted.\n- All outputs must be sorted.\n"
+		compileWith(t, st, carryInput(false, core.SourceFile{Path: "CLAUDE.md", Content: []byte(repeated)}),
+			`{"claims":[{"rule":"Sort all outputs.","scope":["internal/mcp/**"],"cite_start":3,"cite_end":3}]}`)
+		if n := len(claimsBySubject(t, st)["CLAUDE.md#conventions"]); n != 1 {
+			t.Fatalf("setup: %d claims, want 1", n)
+		}
+		run, mock := compileWith(t, st, carryInput(false, core.SourceFile{Path: "AGENTS.md", Content: []byte("\n\n" + repeated)}),
+			`{"claims":[{"rule":"Sort all outputs.","scope":["internal/mcp/**"],"cite_start":5,"cite_end":5}]}`)
+		if mock.CallCount() != 1 || run.SectionsCarried != 0 {
+			t.Errorf("ambiguous shift: calls=%d carried=%d, want 1/0", mock.CallCount(), run.SectionsCarried)
+		}
+	})
+
+	// Rule 5, coverage: a departed claim with no citation has nothing to
+	// re-cite, so the section compiles rather than carry it uncited.
+	t.Run("a departed claim with no citation compiles", func(t *testing.T) {
+		st := store.NewMemoryStore()
+		compileWith(t, st, carryInput(false, core.SourceFile{Path: "CLAUDE.md", Content: []byte(govDoc)}), twoClaimResponse)
+		before := claimsBySubject(t, st)["CLAUDE.md#conventions"]
+		if len(before) != 2 {
+			t.Fatalf("setup: %d claims, want 2", len(before))
+		}
+		uncited := before[0]
+		uncited.Rule = "An uncited rule."
+		uncited.ReproKey += "-uncited"
+		uncited.ClaimID = core.ClaimID(uncited.Layer, uncited.Kind, uncited.Subject, uncited.ReproKey)
+		if err := st.PutClaims(ctx, []core.SemanticClaim{uncited}, nil); err != nil {
+			t.Fatalf("PutClaims: %v", err)
+		}
+		run, mock := compileWith(t, st, carryInput(false, core.SourceFile{Path: "AGENTS.md", Content: []byte(movedGovDoc)}), movedResponse)
+		if mock.CallCount() != 1 || run.SectionsCarried != 0 {
+			t.Errorf("uncited departed claim: calls=%d carried=%d, want 1/0", mock.CallCount(), run.SectionsCarried)
+		}
+	})
 }
 
 // TestNeedsCompileHonorsCarry pins the lifted digest gate: a section needs
