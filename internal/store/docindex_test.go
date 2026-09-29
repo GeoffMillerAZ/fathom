@@ -322,3 +322,52 @@ func TestDocIndexedServiceIDsByPrefix(t *testing.T) {
 		t.Fatal("an empty prefix must be refused, not answered with a scan of every service")
 	}
 }
+
+// TestQueryDocUnitsPlainTextNeverSyntaxError pins what the production doc
+// ingest exposed (KR-8): once the index holds real documents, the queries
+// people type carry hyphens (ADR-049, hash-gated), apostrophes, slashes,
+// equals signs, parentheses and bare AND/OR, and each of those is an FTS5
+// syntax error ("no such column: 049") that reached `search kind: docs` as
+// a failure. A query FTS5 rejects is re-run as its literal words, each
+// punctuation-joined word an adjacent-token phrase; explicit FTS5 syntax
+// that parses (a quoted phrase, a prefix, OR) keeps its meaning.
+func TestQueryDocUnitsPlainTextNeverSyntaxError(t *testing.T) {
+	ctx := context.Background()
+	sq, err := NewSQLiteStore(filepath.Join(t.TempDir(), "docindex.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = sq.Close() })
+	unit := func(id, heading, body string) DocUnit {
+		return DocUnit{UnitID: id, Path: id + ".md", LineStart: 1, LineEnd: 2, HeadingPath: heading, Kind: "section", Body: body}
+	}
+	for _, u := range []DocUnit{
+		unit("a", "Decisions", "ADR-049 chose a hash-gated ingest and fathom's store uses CGO_ENABLED=0 in cmd/fathom/main.go"),
+		unit("b", "Other", "nothing relevant here at all"),
+	} {
+		if err := sq.PutDocUnits(ctx, "svc", u.Path, []DocUnit{u}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, q := range []string{
+		"ADR-049", "hash-gated", "fathom's", "CGO_ENABLED=0", "cmd/fathom/main.go", "AND ingest", "hash-gated (ingest)", `"hash-gated ingest`,
+	} {
+		hits, err := sq.QueryDocUnits(ctx, "svc", q, 10)
+		if err != nil {
+			t.Errorf("QueryDocUnits(%q) = error %v, want the literal words searched", q, err)
+			continue
+		}
+		if len(hits) != 1 || hits[0].UnitID != "a" {
+			t.Errorf("QueryDocUnits(%q) = %+v, want exactly unit a", q, hits)
+		}
+	}
+	// A query with no word in it cannot be searched: an error, not a
+	// healthy zero (I38).
+	if _, err := sq.QueryDocUnits(ctx, "svc", "-- () ''", 10); err == nil {
+		t.Error("a query with no searchable word must be an error, not an empty result")
+	}
+	// Explicit FTS5 syntax that parses keeps its meaning.
+	if hits, err := sq.QueryDocUnits(ctx, "svc", "hash OR nothing", 10); err != nil || len(hits) != 2 {
+		t.Errorf("QueryDocUnits(hash OR nothing) = %+v, %v; want both units", hits, err)
+	}
+}

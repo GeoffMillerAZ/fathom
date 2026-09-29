@@ -38,6 +38,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"unicode"
 )
 
 // DocUnit is one row of doc_units plus the body text that only ever lives in
@@ -56,6 +57,12 @@ type DocUnit struct {
 	IndexedAt       int64
 	StaleByLocation bool // archive/ and tmp/ paths (§3), ranks below live docs, never dropped
 	Body            string
+	// SizeBytes is the unit's accounting size (heading path plus body) when
+	// the caller carries a unit without its Body — the hash-gated ingest
+	// (KR-8) plans the per-service byte budget (KR-9) over body-less stubs
+	// so it never holds the whole corpus's text at once. Zero means "count
+	// Body". PutDocUnits ignores it: nothing stores it.
+	SizeBytes int
 }
 
 // DocSearchHit is one docs_fts MATCH result: doc_units' metadata joined back
@@ -142,11 +149,19 @@ func (s *SQLiteStore) PutDocUnits(ctx context.Context, serviceID, path string, u
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	if _, err := tx.ExecContext(ctx, `DELETE FROM doc_units WHERE service_id = ? AND path = ?`, serviceID, path); err != nil {
+	gone, err := tx.ExecContext(ctx, `DELETE FROM doc_units WHERE service_id = ? AND path = ?`, serviceID, path)
+	if err != nil {
 		return fmt.Errorf("PutDocUnits delete doc_units: %w", err)
 	}
-	if _, err := tx.ExecContext(ctx, `DELETE FROM docs_fts WHERE service_id = ? AND path = ?`, serviceID, path); err != nil {
-		return fmt.Errorf("PutDocUnits delete docs_fts: %w", err)
+	// docs_fts carries service_id and path UNINDEXED, so deleting by them
+	// scans every service's index. Both tables are only ever written in
+	// this transaction, so a path with no doc_units rows has no docs_fts
+	// rows: a first ingest (every path new) then never pays the scan, which
+	// made indexing this repository's 998 documents quadratic.
+	if n, nerr := gone.RowsAffected(); nerr != nil || n > 0 {
+		if _, err := tx.ExecContext(ctx, `DELETE FROM docs_fts WHERE service_id = ? AND path = ?`, serviceID, path); err != nil {
+			return fmt.Errorf("PutDocUnits delete docs_fts: %w", err)
+		}
 	}
 
 	if len(units) > 0 {
@@ -520,15 +535,72 @@ ORDER BY du.path, dl.line, dl.target`, serviceID, at, at)
 // QueryDocUnits runs `docs_fts MATCH query` bounded to serviceID, ordered by
 // bm25 (best match first — SQLite's bm25() is a cost, lower is better,
 // hence the plain ascending ORDER BY), LIMIT limit (§5: 50 is the caller's
-// convention, not enforced here so tests can ask for fewer). A malformed
-// FTS5 query string (unbalanced quotes, a bare operator) is returned as an
-// error, never a silent empty result — I38's "unreadable is never a healthy
+// convention, not enforced here so tests can ask for fewer).
+//
+// query is FTS5 syntax when it parses (a quoted phrase, a prefix*, OR). A
+// query FTS5 rejects — the plain text people type is full of it: ADR-049,
+// hash-gated, fathom's, a/b.go, a bare AND — is re-run as its literal
+// words (ftsLiteralQuery), never returned as a failure the asker cannot
+// act on. A query with no word in it at all cannot be searched and is an
+// error, never a silent empty result: I38's "unreadable is never a healthy
 // zero" applies to a query the engine could not run, not only to a file it
 // could not read.
 func (s *SQLiteStore) QueryDocUnits(ctx context.Context, serviceID, query string, limit int) ([]DocSearchHit, error) {
 	if limit <= 0 {
 		limit = 50
 	}
+	out, err := s.queryDocUnitsMatch(ctx, serviceID, query, limit)
+	if err != nil && isFTSQuerySyntaxError(err) {
+		if literal := ftsLiteralQuery(query); literal != "" && literal != query {
+			return s.queryDocUnitsMatch(ctx, serviceID, literal, limit)
+		}
+	}
+	return out, err
+}
+
+// isFTSQuerySyntaxError reports whether err is FTS5 refusing to parse a
+// MATCH expression (as opposed to a store failure a retry cannot fix).
+func isFTSQuerySyntaxError(err error) bool {
+	msg := err.Error()
+	return strings.Contains(msg, "fts5: syntax error") ||
+		strings.Contains(msg, "no such column") ||
+		strings.Contains(msg, "unterminated string")
+}
+
+// ftsLiteralQuery rewrites query as an FTS5 expression that cannot fail to
+// parse: each whitespace-separated word keeps only its letters and digits
+// (the unicode61 tokenizer's own token characters) and is quoted as a
+// phrase, so ADR-049 is the adjacent tokens adr 049, a bare AND is the word
+// "and", and the phrases are joined by FTS5's implicit AND. "" when the
+// query has no letter or digit in it.
+func ftsLiteralQuery(query string) string {
+	var phrases []string
+	for _, word := range strings.Fields(query) {
+		var tokens []string
+		var cur []rune
+		flush := func() {
+			if len(cur) > 0 {
+				tokens = append(tokens, string(cur))
+				cur = cur[:0]
+			}
+		}
+		for _, r := range word {
+			if unicode.IsLetter(r) || unicode.IsDigit(r) {
+				cur = append(cur, r)
+			} else {
+				flush()
+			}
+		}
+		flush()
+		if len(tokens) > 0 {
+			phrases = append(phrases, `"`+strings.Join(tokens, " ")+`"`)
+		}
+	}
+	return strings.Join(phrases, " ")
+}
+
+// queryDocUnitsMatch is QueryDocUnits' one MATCH run.
+func (s *SQLiteStore) queryDocUnitsMatch(ctx context.Context, serviceID, match string, limit int) ([]DocSearchHit, error) {
 	rows, err := s.db.QueryContext(ctx, `
 SELECT du.unit_id, du.path, du.line_start, du.line_end, du.heading_path, du.kind, du.stale_by_location,
        bm25(docs_fts, 3.0, 1.0) AS score,
@@ -537,7 +609,7 @@ FROM docs_fts
 JOIN doc_units du ON du.service_id = docs_fts.service_id AND du.unit_id = docs_fts.unit_id
 WHERE docs_fts.service_id = ? AND docs_fts MATCH ?
 ORDER BY score
-LIMIT ?`, serviceID, query, limit)
+LIMIT ?`, serviceID, match, limit)
 	if err != nil {
 		return nil, fmt.Errorf("QueryDocUnits: %w", err)
 	}

@@ -156,6 +156,9 @@ commit that creates the table:
 | `file_stats` (RT-76) | one row per discovered file: path, size, language, exclusion — an oversize or unreadable file has a row and no fingerprint | delete by `(service_id, path)`, resolved from its own `path` column |
 | `service_summary` (RT-76) | per-service counts and languages | delete the service's row; derived again at first use |
 | `observation_calls` (RT-77) | callee keys of each observation's calls | cascades with `observations` (delete trigger); cleared wholly after a VACUUM and re-derived |
+| `doc_units` (KR-1, KR-8) | one row per indexed document section: path, heading path, line range | delete by `(service_id, path)`, resolved from its own `path` column |
+| `docs_fts` (KR-1, KR-8) | the section text and its FTS5 index terms | delete by `(service_id, path)`, resolved from its own `path` column (independently of `doc_units`), then `optimize`: deleting an FTS5 row leaves its terms in the index segments until a merge, and a raw-bytes probe finds them |
+| `doc_links` (KR-6) | doc span to code target links | delete by the purged units' ids: it has no path column of its own |
 | result cache (`internal/resultcache`) | recent tool answers | **invalidate wholly** — it is keyed by query, not by ref, so selective removal is not possible and a full flush is the only sound option |
 | call log | tool name, service, outcome | retain — query text is never logged, so no content is present |
 | session ledger | counts only | retain — no content |
