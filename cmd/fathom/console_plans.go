@@ -146,9 +146,9 @@ func verifiedRollups(sp console.ServicePlans) ([]planRollup, bool) {
 // snapshotted from the background verification (waiting the portfolio's
 // budget), with the verify ledger's trend. The Plans page renders it, and
 // its fleet headline is the plans metrics every page shows (fleetPlanMetrics).
-func plansPortfolio(cr *consoleRequest, m observatoryModel, roots []serviceRoot) (console.Portfolio, []console.ServicePlans) {
+func plansPortfolio(cr *consoleRequest, m observatoryModel, roots []serviceRoot, wait time.Duration) (console.Portfolio, []console.ServicePlans) {
 	pc := plansFor(cr.deps)
-	sps := snapshotPlans(cr.r.Context(), pc, roots, "", consolePlansPortfolioWait)
+	sps := snapshotPlans(cr.r.Context(), pc, roots, "", wait)
 	ledger := pc.ledgerRead()
 	return console.PlanPortfolio(console.PortfolioInput{
 		Services: sps, Registered: len(m.Services),
@@ -162,13 +162,16 @@ func plansPortfolio(cr *consoleRequest, m observatoryModel, roots []serviceRoot)
 // one projection the Now, Fleet and Plans pages show (OC-9, OC-H3; the
 // ledger-summed plans.verified that answered the same question is gone).
 // With the registry unread no repository can be listed, so neither is
-// measured.
+// measured. The Now and Fleet pages never wait on verification for it
+// (consolePlansHeadlineWait): they show the verdicts that have arrived,
+// with the portfolio's own pending state, while the Plans page waits its
+// budget.
 func fleetPlanMetrics(cr *consoleRequest, m observatoryModel) (unproven, proven console.Value[int]) {
 	if m.DegradedNote != "" {
 		a := console.Absent[int]("no repository can be listed: " + m.DegradedNote)
 		return a, a
 	}
-	pf, _ := plansPortfolio(cr, m, modelServiceRoots(m))
+	pf, _ := plansPortfolio(cr, m, modelServiceRoots(m), consolePlansHeadlineWait)
 	return pf.Unproven, pf.Proven
 }
 
@@ -178,7 +181,7 @@ func buildPlansPortfolioPage(cr *consoleRequest) (consoleOut, error) {
 	if err != nil {
 		return consoleOut{}, err
 	}
-	pf, sps := plansPortfolio(cr, m, roots)
+	pf, sps := plansPortfolio(cr, m, roots, consolePlansPortfolioWait)
 	model := plansPortfolioModel{Scope: scope, Portfolio: pf}
 	verbs := []string{}
 	sections := map[string]any{}

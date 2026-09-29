@@ -144,6 +144,35 @@ func TestConsolePlansPortfolio_PendingIsNeverProven(t *testing.T) {
 	}
 }
 
+// The Now page's plans headline (plans.proven, OC-H3) is the portfolio's,
+// but Now never waits on verification for it: with the verdicts held back
+// it answers at once, the headline not measured (pending), never proven.
+func TestConsoleNow_PlansHeadlineNeverWaitsOnVerification(t *testing.T) {
+	gate := make(chan struct{})
+	setConsolePlansGate(gate)
+	prev := consolePlansHeadlineWait
+	consolePlansHeadlineWait = 0
+	t.Cleanup(func() { close(gate); setConsolePlansGate(nil); consolePlansHeadlineWait = prev })
+
+	f := newConsoleFixture(t)
+	start := time.Now()
+	env := f.pageJSON(t, "/")
+	if took := time.Since(start); took > 10*time.Second {
+		t.Fatalf("/ took %s with verification held back: it must not wait", took)
+	}
+	raw, ok := env.Metrics[string(console.MetricPlansProven)]
+	if !ok {
+		t.Fatalf("/ must show %s; metrics = %v", console.MetricPlansProven, env.Metrics)
+	}
+	var v console.Value[int]
+	if err := json.Unmarshal(raw, &v); err != nil {
+		t.Fatal(err)
+	}
+	if v.State == console.StatePresent {
+		t.Errorf("plans.proven before any verdict = %+v: pending is never proven", v)
+	}
+}
+
 func TestConsolePlanPage_BoardDrawerAndBurnup(t *testing.T) {
 	f := newConsoleFixture(t)
 	code, _, page := f.get(t, "/plans/proof-service/settlement")

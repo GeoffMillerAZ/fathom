@@ -38,6 +38,7 @@ const proofServiceName = "proof-service"
 func init() {
 	consolePlansPortfolioWait = time.Minute
 	consolePlansPlanWait = time.Minute
+	consolePlansHeadlineWait = time.Minute
 }
 
 // consoleFixtureRepo is a fixture service built as a git repository rather
