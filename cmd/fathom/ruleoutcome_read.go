@@ -43,11 +43,18 @@ type ruleOutcomeLog struct {
 // log; a row that does not decode is counted in Read.Skipped and left out.
 // "" (no resolvable log path) reads as no log.
 func readRuleOutcomeLog(path string, now time.Time) ruleOutcomeLog {
+	return readRuleOutcomeLogFrom(path, now.AddDate(0, 0, -ruleOutcomeKeepDays))
+}
+
+// readRuleOutcomeLogFrom is readRuleOutcomeLog keeping every row at or
+// after keepFrom (the zero time keeps the whole log): `fathom claim learn`
+// (GL-13) reads never-triggered retirement's 180-day window, wider than
+// the 90 days the console holds.
+func readRuleOutcomeLogFrom(path string, keepFrom time.Time) ruleOutcomeLog {
 	var out ruleOutcomeLog
 	if path == "" {
 		return out
 	}
-	keepFrom := now.AddDate(0, 0, -ruleOutcomeKeepDays)
 	for _, p := range []string{path + ".1", path} {
 		f, err := os.Open(p)
 		if err != nil {

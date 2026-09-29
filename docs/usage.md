@@ -1049,9 +1049,12 @@ fathom claim corroborate  --store <path> --service <id> --claim <claim-id> --not
 fathom claim show         <claim-id> [--service <id>] [--json] [--store <path> | --url <daemon>]
 fathom claim list         [--layer <name>] [--service <id>] [--status current|fresh|stale|contradicted|superseded|refuted|all] [--page N] [--json] [--store <path> | --url <daemon>]
 fathom claim effectiveness [--service <id>] [--class ignored|contested|never_triggered|unclassified|effective|all] [--page N] [--json] [--store <path> | --url <daemon>]
+fathom claim learn        [--service <id>] [--store <path>] [--apply] [--json]
 ```
 
 `effectiveness` (GL-18, U4) prints, per governing rule (a current claim in a governing layer, not retired), the counts the edit hook's rule-outcome log (`~/.fathom/rule-outcomes.jsonl`, GL-10) holds over the last 30 days (served over 90), each with its n, and the class each falls in (design `governance-learning.md` §5) with the change the evidence proposes — move an ignored rule to a hook or rewrite it, prune or re-scope a never-triggered one. Every proposal is a proposal: nothing is applied. No log, or one that cannot be read, classifies nothing and says why; a rate needs 20 serves, below which the row shows its n; and never triggered is not judged until the log reaches back 90 days. `--json` is exactly `/rules`' section.
+
+`learn` (GL-13, design `governance-learning.md` §6) promotes a candidate claim to active and retires an active one under the thresholds in the service's `.fathom/learning.cue` (the binary's defaults for any field it omits, GL-12): promotion at 3 corroborations from 2 distinct sessions with no refute over 30 days; retirement at 3 refutes outnumbering corroborations, or no serve for 180 days. It reads the rule-outcome log the hooks and verdicts write (GL-10) and the service's governing claims (current, in a governing layer), and prints each decision with the signals behind it. The default is a dry run; `--apply` persists the lifecycle, and a retirement closes the claim's validity window at that instant (its status is unchanged, and no row is ever deleted). A never-triggered retirement is held, and named, while the log does not reach back over its whole window. The store defaults to the one the daemon records, and every project with claims is read unless `--service` names one. The owner runs it: no daemon pass or background job runs it.
 
 `show` (OC-30) prints one claim whole — statement, citation, scope, tier, status,
 provenance and every verdict recorded against it — and `--json` is exactly the
