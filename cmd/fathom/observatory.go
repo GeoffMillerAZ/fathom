@@ -502,6 +502,36 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 	return m
 }
 
+// onOff is G2's admissibility test over the two arms' units (PE-17w):
+// every view of fathom-on versus off reads it before comparing them.
+func (imp obsImpact) onOff() console.AdmissibleComparison {
+	return console.AdmissibleArms(imp.TokensOnSessions, imp.TokensOffSessions)
+}
+
+// finishArmComparison sets the registered criterion's reading and the
+// pilot's state from the arms' units and token totals: the on-versus-off
+// verdict is read only when G2's admissibility test passes, and otherwise
+// the note names why it is withheld (PE-17w).
+func finishArmComparison(imp *obsImpact, offSessions, onTokenUnits, offTokenUnits int) {
+	imp.CriterionNote = evaluateABCriterion(*imp)
+	adm := imp.onOff()
+	switch {
+	case offSessions == 0:
+		imp.PilotState = "idle"
+		imp.PilotDetail = "no OFF-arm sessions recorded — a savings figure would violate law 12; start with fathom arm off --sessions N after pre-registering criteria"
+	case onTokenUnits == 0 || offTokenUnits == 0:
+		imp.PilotState = "collecting"
+		imp.PilotDetail = "arms exist but token totals are missing on one side — the range publishes only when both arms carry real tokens"
+	case !adm.Admissible:
+		imp.PilotState = "collecting"
+		imp.PilotDetail = "fathom-on versus off withheld — " + adm.Withheld + "; each arm is shown as its own range with its unit count, never compared"
+	default:
+		imp.PilotState = "collecting"
+		imp.PilotDetail = fmt.Sprintf("G2 admits the comparison (%d ON and %d OFF units, at least %d each): the registered criterion reads fathom-on versus off; publish a RANGE with denominators",
+			adm.OnUnits, adm.OffUnits, console.ArmAdmissibleMinUnits)
+	}
+}
+
 // buildImpactModel folds the session ledger into the wins model. Nil-aware
 // throughout: a count sums only rows where the instrument ran, and its note
 // always states the denominator (OB-6, law 3/12).
@@ -758,7 +788,7 @@ func buildImpactModel(now time.Time) obsImpact {
 
 	// LAST: the criterion reads the session counts and both medians, so it
 	// must run after every one of them is assigned.
-	imp.CriterionNote = evaluateABCriterion(imp)
+	finishArmComparison(&imp, offSessions, len(onTokens), len(offTokens))
 	if preSplitRows > 0 {
 		imp.TokensPreSplitRows = &preSplitRows
 	}
@@ -768,17 +798,6 @@ func buildImpactModel(now time.Time) obsImpact {
 	}
 	if cacheReadTruncatedExcluded > 0 {
 		imp.CacheReadFrozenExcluded = &cacheReadTruncatedExcluded
-	}
-	switch {
-	case offSessions == 0:
-		imp.PilotState = "idle"
-		imp.PilotDetail = "no OFF-arm sessions recorded — a savings figure would violate law 12; start with fathom arm off --sessions N after pre-registering criteria"
-	case len(onTokens) == 0 || len(offTokens) == 0:
-		imp.PilotState = "collecting"
-		imp.PilotDetail = "arms exist but token totals are missing on one side — the range publishes only when both arms carry real tokens"
-	default:
-		imp.PilotState = "collecting"
-		imp.PilotDetail = "medians shown per arm with session counts; publish a RANGE with denominators once the pre-registered N per arm is met"
 	}
 	if v, ok := medianInt(expRatios); ok {
 		imp.ExpRatioMedianX10 = &v
