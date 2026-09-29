@@ -96,7 +96,7 @@ type RankWeights struct {
 // DefaultWeights is the EXAMPLE default weight set. It is not normative;
 // callers should tune weights to their corpus.
 //
-// Documented as EXAMPLE per CLAUDE.md: these are starting values, not spec.
+// Documented as EXAMPLE: these are starting values, not spec.
 //
 // CUE mirror: #DefaultWeights in schema.cue.
 var DefaultWeights = RankWeights{

@@ -73,7 +73,7 @@ TRACKING.md    Single source of truth for build/test status
 | [`docs/first-agent.md`](docs/first-agent.md) | **Start here:** zero to a governed agent in ~10 minutes, then one-line switch to the real Anthropic client |
 | [`VISION.md`](VISION.md) | Why the kit exists — beliefs, scope, the junk gate |
 | [`docs/practices.md`](docs/practices.md) | Agentic anti-patterns → the packages that prevent them |
-| [`docs/orchestrating-agents.md`](docs/orchestrating-agents.md) | Running many agents: triage before dispatch, shared exploration maps (and maps as documentation), a gate that survives loaded workers, durable snapshots, stop-edit-resume, done means wired, user-level ledgers, research that ends in records |
+| [`docs/orchestrating-agents.md`](docs/orchestrating-agents.md) | Running many agents: triage before dispatch, shared exploration maps (and maps as documentation), a gate that survives loaded workers, durable snapshots, stop-edit-resume, done means wired, user-level ledgers, research that ends in records, periodic consolidation of branches and worktrees |
 | [`docs/serving-rules.md`](docs/serving-rules.md) | Serving rules to agents and knowing they were kept: where to put a deterministic check, facts with locations and no bypass, the pinned test as the bridge, what to refuse, replay before building |
 | [`docs/measuring-tools.md`](docs/measuring-tools.md) | Grading a tool against a reference: audit the oracle, tier it and cap the grade, disclose blind spots without inflating the score, record the instrument |
 | [`docs/incident-readiness.md`](docs/incident-readiness.md) | Preparing for incidents: pre-shaped declarations, "what changed" first, facets that say "not computed", links and typed parameters instead of connectors, nothing executed or mitigated, a replay before any build |
@@ -86,7 +86,7 @@ TRACKING.md    Single source of truth for build/test status
 | [`docs/governance.md`](docs/governance.md) | Governing a public LLM endpoint |
 | [`docs/compat.md`](docs/compat.md) | API stability classification + the compatibility promise (pre-1.0 and at 1.0) |
 | [`docs/threat-model.md`](docs/threat-model.md) | Honest threat model for kit-as-dependency: what's mitigated, what's explicitly not guaranteed |
-| [`CLAUDE.md`](CLAUDE.md) | Contributor + agent guide (hard rules, package shape, the gate) |
+| [`AGENTS.md`](AGENTS.md) | Contributor + agent guide (hard rules, package shape, the gate); the one instruction file |
 | [`TRACKING.md`](TRACKING.md) | Exhaustive build/test/validation checklist |
 
 ## Develop

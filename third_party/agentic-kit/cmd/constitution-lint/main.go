@@ -1393,7 +1393,7 @@ func checkReadmeCount(root string) []Finding {
 
 // sweepSkipDirs are directory base names always excluded from the
 // repo-wide sweeps: .git/ (VCS internals), workspace/ and tmp/ (generated,
-// gitignored scratch — see CLAUDE.md's workspace/ convention), and .claude/
+// gitignored scratch — see AGENTS.md's workspace/ entry), and .claude/
 // (Claude Code session state — it can hold full stale agent-worktree copies
 // of the repo, whose waivers, keyed to real paths, can never match; never
 // shipped, never swept).

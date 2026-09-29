@@ -28,7 +28,7 @@ type HTTPRetriever struct {
 
 	// HTTPClient performs the request. Nil means http.DefaultClient — the
 	// one documented bare-default this kit allows, matching the same
-	// "kits do this routinely" seam CLAUDE.md's determinism rule permits.
+	// "kits do this routinely" seam AGENTS.md's determinism rule permits.
 	HTTPClient *http.Client
 }
 

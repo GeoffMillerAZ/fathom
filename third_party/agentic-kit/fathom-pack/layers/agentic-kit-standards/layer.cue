@@ -13,7 +13,7 @@
 name:    "agentic-kit-standards"
 version: "v1"
 kind:    "adr-rule"
-corpus: include: ["CLAUDE.md", "VISION.md", "docs/*.md", "specs/**"]
+corpus: include: ["AGENTS.md", "VISION.md", "docs/*.md", "specs/**"]
 prompt_version: "agentic-kit-standards/content-addressed"
 prompt_file:    "fathom-pack/layers/agentic-kit-standards/prompt.md"
 tier:           "doc-claimed"

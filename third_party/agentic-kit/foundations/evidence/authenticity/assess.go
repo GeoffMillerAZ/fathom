@@ -27,7 +27,7 @@ import (
 //     even if many authentic signals are present. A zero-Score adverse signal is
 //     not credible and does not trigger the conservative rule — but it is still
 //     preserved in Assessment.Signals so it is never silently discarded
-//     (no-silent-truncation, CLAUDE.md §7).
+//     (no silent truncation, docs/practices.md §11).
 //  3. Multiple independent authentic signals raise Confidence via the
 //     complementary-product rule: combined = 1 − ∏(1 − Scoreᵢ), applied
 //     across authentic/likely_authentic signals. This models the probability

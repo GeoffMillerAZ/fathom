@@ -3,7 +3,8 @@
 Always-loaded instructions are a router and a policy. The knowledge lives in
 `docs/intent/`. The procedures live in the `intent-*` skill family, loaded on demand
 by both Claude Code and Codex from one install. This file holds the canonical text of
-every always-loaded stanza so no tool's file drifts from another's.
+every always-loaded stanza. Each project stanza lives in one file, `AGENTS.md`, so there
+is nothing to drift; §5 says how each harness reaches it.
 
 ## 1. The global routing stanza (user level, every project)
 
@@ -31,9 +32,9 @@ long-lived work. Procedure: `/intent-design` before design work; the `intent-*` 
 
 ## 2. The project stanzas (repo level)
 
-Identical text in the repo's `CLAUDE.md` and `AGENTS.md`. Three short paragraphs:
-routing (six lines), change records (four lines), autonomy summary (three lines). They
-name real locations, because those vary.
+One copy, in the repo's `AGENTS.md`. Three short paragraphs: routing (six lines),
+change records (four lines), autonomy summary (three lines). They name real locations,
+because those vary.
 
 ```markdown
 ## Project intent
@@ -57,10 +58,12 @@ done without `Verified:`.
 
 ### 2b. The nested stanza (a component with its own intent, monorepos only)
 
-Identical text in `<component>/CLAUDE.md` and `<component>/AGENTS.md`. Their native
-loading behavior differs; neither is a substitute for the root router explicitly
-routing affected paths. A session started at root must read the relevant nested
-instructions/router even if its host has not loaded them automatically.
+One copy, in `<component>/AGENTS.md`. Claude Code loads a nested `AGENTS.md` on demand
+when it reads a file under that directory and the directory has no `CLAUDE.md` of its
+own; Codex concatenates the chain from the root down to the working directory. Neither
+is a substitute for the root router explicitly routing affected paths. A session started
+at root must read the relevant nested instructions/router even if its host has not
+loaded them automatically.
 
 ```markdown
 ## Project intent (this component)
@@ -72,11 +75,16 @@ intent inherits autonomy and narrows applicable constraints; reopen shared decis
 at their owner rather than silently contradicting them.
 ```
 
-Why the stanza appears in both files: Claude Code reads `CLAUDE.md` and not
-`AGENTS.md`; Codex reads `AGENTS.md` and not `CLAUDE.md`. For a new repo prefer one
-canonical `AGENTS.md` with `CLAUDE.md` containing `@AGENTS.md` plus Claude-only lines.
-For an existing repo where both already carry different content, duplicate only these
-paragraphs. `intent-doctor` check 15 proves they are identical.
+Why one file. Codex reads `AGENTS.md` and not `CLAUDE.md`. Claude Code reads `AGENTS.md`
+natively since 2.1.277, but only for a project with no `CLAUDE.md`, `.claude/CLAUDE.md`
+or `CLAUDE.local.md` in the working directory or any parent (the default mode); a
+`CLAUDE.md` switches that off. So a repo carries `AGENTS.md` and no `CLAUDE.md`. Where a
+repo must keep one (an older Claude Code, a parent directory's file, a tool such as
+`/init` that writes it), it holds only `@AGENTS.md` (`@../AGENTS.md` in
+`.claude/CLAUDE.md`, because imports resolve relative to the importing file), never a
+second copy of the stanza. An existing repo with two divergent files merges them into
+`AGENTS.md`; content that is Claude-only stays in the `CLAUDE.md` beside the import.
+`intent-doctor` check 15 proves the one-file layout.
 
 ## 3. The skill family
 
@@ -136,9 +144,21 @@ the single source; there are no copies to drift.
 - Skills: project `.claude/skills/intent-*` or personal installation. Only frontmatter
   descriptions load at session start; bodies on `/intent-<name>` or on description
   match; templates only when read.
-- Project: the stanzas in §2 in `CLAUDE.md`. Never `@import` `docs/intent/`; imports
-  load eagerly. Nested instructions load on demand when the host accesses that tree;
-  still explicitly route affected paths for cross-component tasks.
+- Project: the stanzas in §2 in `AGENTS.md`, read natively (2.1.277 or later) when no
+  `CLAUDE.md`, `.claude/CLAUDE.md` or `CLAUDE.local.md` exists in the working directory
+  or a parent; `~/.claude/CLAUDE.md` and `.claude/rules/` do not count. With one, that
+  file holds `@AGENTS.md` and Claude Code loads `AGENTS.md` through it. The user or
+  managed setting `pluginConfigs["agents-md@builtin"].options.instructionFiles`
+  (project settings ignore it) picks the mode: `claude-md-or-agents-md` (default),
+  `claude-md-and-agents-md` (both; a file `CLAUDE.md` imports loads once), `claude-md`
+  and `managed-only` (AGENTS.md not read); check it when `AGENTS.md` seems unloaded.
+  Not read: `AGENTS.local.md`, `AGENTS.override.md`, anything under `.agents/`.
+  `InstructionsLoaded` hooks do not fire for an `AGENTS.md` read natively (they do when
+  a `CLAUDE.md` imports it), and `/init` still writes a `CLAUDE.md`: reduce it to the
+  import or delete it. There is no user-level `AGENTS.md`; the global stanza stays in
+  `~/.claude/CLAUDE.md`. Never `@import` `docs/intent/`; imports load eagerly. Nested
+  instructions load on demand when the host accesses that tree; still explicitly route
+  affected paths for cross-component tasks.
 - Path-scoped rules (`.claude/rules/*.md` with `paths:`) are optional and per-invariant
   only, as a pointer plus one invariant. Repos with an obligations engine (fathom
   `edit-hook`) already have that channel; do not add rules there.
@@ -164,6 +184,9 @@ Host behavior references (consulted 2026-09-13): [Codex instructions](https://de
 [Claude Code skills](https://code.claude.com/docs/en/skills). Documentation review is
 not a live-host conformance result. Historical live receipt: Claude Code 2.1.245 /
 Codex CLI 0.146.0, 2026-08-25. Re-probe after host upgrades; never just bump the receipt.
+The native `AGENTS.md` loading above is from the Claude Code memory documentation and
+the installed 2.1.284 binary, read 2026-09-29; no live receipt was taken, so the router's
+`Verified against` line is unchanged.
 
 ## 7. Any other `AGENTS.md`-aware agent
 

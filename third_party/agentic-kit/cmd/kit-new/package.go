@@ -38,7 +38,7 @@ var packageRoots = map[string]bool{
 
 var (
 	// kebabRe is the directory-name grammar: lower-case kebab, digits allowed
-	// after the first character (CLAUDE.md: dirs are kebab-case).
+	// after the first character (AGENTS.md: dirs are kebab-case).
 	kebabRe = regexp.MustCompile(`^[a-z][a-z0-9]*(-[a-z0-9]+)*$`)
 	// exportedIdentRe is the grammar for -interface.
 	exportedIdentRe = regexp.MustCompile(`^[A-Z][A-Za-z0-9]*$`)
@@ -164,7 +164,7 @@ func parsePackagePath(p string) (packageData, error) {
 	}
 	for _, seg := range parts[1:] {
 		if !kebabRe.MatchString(seg) {
-			return packageData{}, fmt.Errorf("-package segment %q must be lower-case kebab-case (CLAUDE.md: dirs are kebab-case)", seg)
+			return packageData{}, fmt.Errorf("-package segment %q must be lower-case kebab-case (AGENTS.md: dirs are kebab-case)", seg)
 		}
 	}
 	name := parts[len(parts)-1]

@@ -181,7 +181,8 @@ Promotion is a physical move: the entry leaves `futures.md`, a goal appears in
 
 ## 7. Consumption: routing, not loading
 
-Always-loaded instructions (global and project `CLAUDE.md` / `AGENTS.md`) are a
+Always-loaded instructions (global `~/.claude/CLAUDE.md` / `~/.codex/AGENTS.md`, project
+`AGENTS.md`) are a
 **knowledge router**: they say the system exists, where the router is, when to consult
 it, and that only the routed sections get loaded. They never contain the knowledge.
 
@@ -236,8 +237,8 @@ numbering (`docs/adr/ADR-011` after `ADR-010` is fine; the router says "ADR here
 any decision record"). Populate from evidence, quote sharp phrasing, mark inferences
 `(inferred)`, omit what has no evidence, put the rest in `questions.md`. Add a
 `## Revisit when` trailer to existing ADRs that already contain a reconsider or defer
-condition in prose, so the grep finds them. Add the project stanza to `CLAUDE.md` and
-`AGENTS.md`. Deliver five sharp open questions, not thirty.
+condition in prose, so the grep finds them. Add the project stanza to `AGENTS.md`
+only (a `CLAUDE.md`, if the repo must keep one, holds just `@AGENTS.md`). Deliver five sharp open questions, not thirty.
 
 **New repo.** Same templates. `vision.md` and `scope.md` come from the brief;
 `futures.md` holds only what the brief names; `decisions/` starts with the two or three
@@ -307,7 +308,7 @@ surface must produce before it is done. An incident of class `wrong-done-claim` 
 | over-future-proofing | the three-part free-option test; speculative futures are inert by rule |
 | under-considering the future | futures with keywords agents will match; `Preserves / forecloses` section on records |
 | stale roadmaps | `scope.md` holds current goals with exit tests; the roadmap stays a sequence and is pointed to, not copied |
-| duplicate sources of truth | point, never copy; existing docs stay canonical; one stanza text shared by both tools |
+| duplicate sources of truth | point, never copy; existing docs stay canonical; one stanza, in the one `AGENTS.md` |
 | too many document types | omit empty homes; inherit shared authority and incidents; split only by a routed question |
 | records for trivia | the threshold, and "would a reader rebuild this differently" as the litmus test |
 | conflicting decisions | supersession edits the old status; the index shows both |

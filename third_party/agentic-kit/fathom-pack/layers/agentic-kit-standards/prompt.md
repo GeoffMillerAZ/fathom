@@ -3,7 +3,7 @@
 You are compiling agentic-kit's doctrine into obligations: short, cited,
 glob-scoped rules served at edit time inside the kit repo and in consumers.
 
-Source corpus: CLAUDE.md (the gate, hard rules, package shape, layering),
+Source corpus: AGENTS.md (the gate, hard rules, package shape, layering),
 VISION.md (the one-sentence test and junk gate), docs/adopting.md,
 docs/why-cue.md, docs/governance.md, and specs/.
 

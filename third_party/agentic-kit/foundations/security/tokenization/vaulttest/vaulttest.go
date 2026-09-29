@@ -23,7 +23,7 @@
 //
 //   - No schema.cue: this package carries no data contract, only a test
 //     helper function and a factory function type — the documented
-//     behavioral-only exemption (CLAUDE.md: "Skip schema.cue only for
+//     behavioral-only exemption (AGENTS.md: "Skip schema.cue only for
 //     behavioral-only packages with no data contract").
 //   - Imports "testing" in a non-test file — the documented exception that
 //     makes the suite importable at all (see above).

@@ -23,7 +23,7 @@ type ClaimView struct {
 	// Grade is the computed epistemic grade derived from linked evidence spans.
 	// It stores a *ClaimGrade (not a bare *Grade) so that FloorTier, Promoted,
 	// PromotionReason, DroppedSpanIDs, and AIContributedConfidence are preserved
-	// for legal audit purposes (CLAUDE.md invariant §4, §6).
+	// for legal audit purposes (docs/practices.md §2).
 	// Nil if no evidence has been linked yet.
 	Grade *evidencegrade.ClaimGrade
 

@@ -2,7 +2,7 @@
 // taxonomy and claim-grading rules. Go types in types.go and grade.go mirror
 // these definitions; any drift is a bug.
 //
-// Invariant (from CLAUDE.md §4): a claim's grade tier ≤ the lowest (weakest)
+// Invariant (weakest-link grading, docs/practices.md §2): a claim's grade tier ≤ the lowest (weakest)
 // tier among its necessary spans. AI-inferred evidence alone can never lift a
 // claim above "inferred".
 package evidencegrade

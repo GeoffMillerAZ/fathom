@@ -51,7 +51,7 @@ import eg "github.com/geoffmilleraz/agentic-kit/foundations/evidence/evidence-gr
 	// Grade is the computed epistemic grade derived from linked evidence spans.
 	// Null when no evidence has been linked. Stores the full #ClaimGrade so
 	// FloorTier, Promoted, and PromotionReason are preserved for legal audit
-	// (CLAUDE.md invariant §4 and §6).
+	// (docs/practices.md §2).
 	Grade?: eg.#ClaimGrade | null
 
 	// LinkedAssertions contains the IDs of all assertions linked to the claim.

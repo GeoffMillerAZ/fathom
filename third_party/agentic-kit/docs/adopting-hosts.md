@@ -36,6 +36,31 @@ reinstall around an upgrade. Config changes invalidate prior evidence even when 
 installer-owned entries still match. Existing foreign settings and hook entries are
 preserved; conflicts stop without adopting or deleting unowned files.
 
+## The instruction file
+
+Both hosts get their managed stanza in `AGENTS.md`, the one instruction file
+(`docs/project-intent/integration.md` section 2). The installer never creates a
+`CLAUDE.md`: Claude Code reads `AGENTS.md` natively only while no `CLAUDE.md` exists, so
+a generated one would hide the project's own `AGENTS.md`. What the Claude install does
+depends on what the project already has:
+
+| Project has | Claude install |
+| --- | --- |
+| no `CLAUDE.md` | writes the stanza to `AGENTS.md`; nothing else |
+| a `CLAUDE.md` with a line `@AGENTS.md` | writes the stanza to `AGENTS.md`; leaves `CLAUDE.md` alone |
+| a `CLAUDE.md` without that line | writes the stanza to `AGENTS.md` and appends a marked import block (`@AGENTS.md`, never a copy of the stanza) to `CLAUDE.md` |
+
+The plan lists every file it changes, so review it before installing. Uninstall
+removes exactly the appended block, and only the block, from `CLAUDE.md`. `doctor` fails
+with the reason when a `CLAUDE.md` exists that does not import `AGENTS.md`, including one
+written after the install. Only the root `CLAUDE.md` is managed: if the project keeps its
+Claude file at `.claude/CLAUDE.md` (import `@../AGENTS.md`) or `CLAUDE.local.md`, add the
+import there yourself.
+
+An install made before this change put its Claude stanza in `CLAUDE.md`. It keeps
+validating and uninstalls cleanly from where it is recorded. To move it, uninstall
+and reinstall; the configuration digest changes, so collect supplied live evidence again.
+
 Doctor/probe print a versioned JSON receipt. Exit 0 means every declared required
 control passed; exit 1 means incomplete/failed coverage; exit 2 denotes invalid CLI
 usage. Expect exit 1 before live tests: local file and version checks do not prove

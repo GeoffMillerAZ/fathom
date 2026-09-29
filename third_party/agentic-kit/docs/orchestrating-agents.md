@@ -1,4 +1,4 @@
-# Orchestrating many agents: shared maps, triage, gates under load, durable state, done means wired
+# Orchestrating many agents: shared maps, triage, gates under load, durable state, done means wired, consolidation
 
 Practice for a lead agent (or a script) that fans work out to sub-agents and worker
 waves, and for the gate those workers' output must pass. It extends the
@@ -9,7 +9,7 @@ with what a consuming project learned running large waves in September 2026. Wri
 2026-09-29; the ledger entries are [practices §26](practices.md#26-blind-waves-and-fragile-gates)
 and, for sections 7 to 9, [§28](practices.md#28-served-is-not-kept),
 [§30](practices.md#30-done-without-a-caller) and
-[§29](practices.md#29-research-left-in-artifacts).
+[§29](practices.md#29-research-left-in-artifacts). Section 10 has no ledger entry yet.
 
 **Evidence tags.** [field] each rule was paid for by an incident in a real orchestrated
 run; the incident is stated. [design] a designed practice with a measurement plan and no
@@ -27,6 +27,7 @@ what it was verified against.
 | 7 | Serve, then check what you served: put a deterministic check where it sees the whole rule | [design] |
 | 8 | Done means wired: a row is done when a product entry point reaches it | [field] |
 | 9 | Research and assessment waves end in records | [field] |
+| 10 | Consolidate from time to time: harvest what is not on the main branch, land the valuable, back up, then remove | [field] |
 
 The kit ships no package for these. They are practices for orchestrators; the closest
 shipped pieces are `kits/agent-harness`'s stop receipt ([practices §22](practices.md#22-handoff-less-stops)),
@@ -425,6 +426,60 @@ What a record contains, where it lives and how claims are graded is in
 wave boundaries too, as a habit; a sweep that waits for the end finds what a restart
 already took.
 
+## 10. Consolidate from time to time: harvest, land, then remove [field]
+
+**Incident.** Waves leave branches, worktrees, stashes and scratch clones behind, and
+nothing removes them, because each one might hold work. One project's first
+consolidation found 46 linked worktrees (5.0 GB beside a 61 MB repository), 53 local
+branches, 2 stashes and 2 archive refs. Forty-two worktrees and every branch were already
+on the main branch, by ancestry or by patch equivalence; the stashes were 98% and 89%
+landed, the rest renumbered or rewritten; the archive refs were fixture noise and a
+rewrite equivalent to main. Four detached worktrees held commits not on main. A second
+repository held 7 worktrees, 32 branches and 1 stash, all landed or identical to a
+remote branch. The fear of losing work had kept 5 GB; a check made removing it safe, and
+it also surfaced the four that were not landed.
+
+**Cadence.** After every landed wave the orchestrator removes what the wave made: its
+worker clones, worktrees and merged branches. At least weekly, and before any planned
+stop (section 4), a harvest sweeps everything, including what earlier waves and other
+sessions left.
+
+**The harvest.**
+
+1. **Enumerate every place work hides:** local branches, linked worktrees (detached
+   ones too), stashes, archive and backup refs, scratch clones outside the repository,
+   remote-tracking refs.
+2. **Classify by evidence, never by name or age.** On the main branch by ancestry
+   (`git merge-base --is-ancestor`); by patch equivalence (`git cherry <main> <ref>`
+   prints no `+` line); a branch whose tip equals a remote branch loses nothing
+   locally; a stash by the share of its added lines already on main, with the rest
+   explained as superseded (renumbered, rewritten, moved), never waved through on the
+   percentage. A dirty worktree is removable only when every dirty file is
+   byte-identical to the formatter's output of its committed version; anything else is
+   work.
+3. **Land what is valuable.** Work not on main and still wanted goes to main through the
+   normal gate, in its own commit. Work that is not landed and not provably superseded
+   is kept, clean, and named to its owner; the harvest does not decide it.
+4. **Back up before every removal** (section 4): `git bundle create --all` after giving
+   each detached worktree HEAD a ref, because a bundle carries no unreferenced HEAD; a
+   patch per dirty file and per stash; `git bundle verify` on each; all under the
+   durable directory, never the temporary one. A bundle holds no ignored files, so a
+   worktree's bench cells, logs and local databases go into a checksummed archive too;
+   skip only what regenerates (build output, downloaded datasets, third-party clones).
+5. **Remove, then check.** `git worktree remove` on the classified set, `git branch -d`
+   for ancestors (it refuses an unmerged one), `-D` only after `git cherry` shows none
+   left, `git worktree prune`, and `git gc` with its default grace, never
+   `--prune=now`: the grace is the last undo. Finish with `git fsck --connectivity-only`.
+6. **Report counts:** found, removed, kept and why, sizes before and after.
+
+**Never touch:** an owner's working tree and its uncommitted edits; an in-flight lane
+(the brief lists the paths to skip); anything on a remote. A harvest deletes no remote
+branch and never force-pushes. Run it from a separate clone or worktree, so the owner's
+checkout is not the place it works.
+
+**Status.** Guidance only: the kit ships no command that classifies unlanded work, so
+the check is written each time and the classification is a discipline, not a gate.
+
 ## Checklist
 
 **Before a wave:** dependencies satisfied, one item proven through the harness, held items
@@ -444,5 +499,9 @@ unmeasured. Word any failure as a fact with a location and no bypass.
 
 **Before any stop:** every branch snapshotted, every working copy bundled and verified,
 scripts copied, RESUME file written, memory pointed at it.
+
+**After each wave, weekly, and before a planned stop:** the harvest ran (section 10):
+everything classified by patch equivalence, the valuable landed, a verified backup
+before every removal, and the unlanded and undecided kept and named to their owner.
 
 **Before closing a research wave:** the records sweep ran and reports zero missing.
