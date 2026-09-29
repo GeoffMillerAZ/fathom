@@ -2237,3 +2237,29 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** XM-33: the append reads the map's own entries by dedup key (`Map.OwnEntry`, the key ignoring a `svc::` prefix); the same why files nothing, another is a row with an `annotates` pointer that the read folds into the first entry's `Notes`, served as another annotation; the first entry's row is never touched. XM-31's canonical `dir.Name` key makes one symbol one key whatever spelling was typed
 - **Status:** fixed by XM-33 (2026-09-29). Rows filed before it are not rewritten: two rows of one symbol read as one item, but `Entries` still counts both
 - **Impact:** a wave map grew by every worker's re-append, the entry counts in the brief, the pointer line and the sub-agent primer overstated the map, and `map show` spent its 1,200 bytes on one range twice
+
+### O152 — `/work` read no proving commit: the verify ledger records HEAD abbreviated and `workCommitFacts` accepted only full object names
+
+- **Symptom:** `/work`'s cost per zone, interest rate and rework read "the commit's files were not read" for every proven change of a repository whose proofs came from `fathom verify` runs, though each ledger row names its commit
+- **Evidence:**
+  - **Tool:** `computeWork` → `workCommitFacts` (cmd/fathom/console_work.go), reading the ledger `appendVerifyLedgerFrom` writes (cmd/fathom/verifyledger.go)
+  - **Expected:** each proving commit's files read with one `git show`, whichever spelling the ledger used
+  - **Actual:** `appendVerifyLedgerFrom` stamps `commit` with `gitHeadShort` (`git rev-parse --short HEAD`), and `workCommitFacts` kept only commits passing `gitro.IsObjectName` (40 or 64 hex characters), so it handed `git show` nothing; the code below it that keyed an abbreviated spelling was unreachable. One commit the clone lacked would also have failed the whole `git show`
+  - **Repro:** a verify ledger whose rows carry a 9-character commit, then `/work?svc=<svc>`: every change has no zones
+- **Root cause:** the full-name check guarded the git argument list against option injection but was stricter than the ledger's own spelling, and no test fed it a ledger-shaped commit
+- **Fix:** WI-4w: `workCommitName` accepts 7 to 64 lowercase hex characters, and `git show --ignore-missing` skips (and the note counts) a commit this clone lacks
+- **Status:** fixed by WI-4w (2026-09-29)
+- **Impact:** every `/work` figure keyed by zone was empty for real ledgers; the scorecard's rework column and U2's zones had nothing to read
+
+### O153 — the MCP call log records no caller session for any call, so `/work` cannot sequence search loops
+
+- **Symptom:** `/work`'s friction sources read "0 sequenced by session … N rows name no session and are not sequenced": search loops (five searches or lookups without an edit) are never counted on real data
+- **Evidence:**
+  - **Tool:** `workCallEvents` (cmd/fathom/console_work_signals.go) over the call log `internal/mcp/calllog.go` writes
+  - **Expected:** each call carries the harness session it served, the same id the edit hook stamps on rule-outcome rows, so a session's calls can be sequenced and its edits end a run
+  - **Actual:** `caller` is set only from `X-Fathom-Caller`, and `CallerTransport` always sends `session=` empty (pkg/client/caller_transport.go); an agent's HTTP MCP call sends no caller header at all, and `serve-mcp` stamps only its pid and ppid
+  - **Repro:** `jq -c 'select(.caller.session != null and .caller.session != "")' <call log> | wc -l` reads 0
+- **Root cause:** RT-164 added the caller identity for admission and tenancy, where a process is enough; nothing ever needed the harness session there
+- **Fix:** none yet. Options: the session hook exports the harness session id and `serve-mcp` stamps it on every call; or the MCP HTTP registration passes it as a header the harness expands. A pid-keyed run would not do: the rule-outcome log's edits carry the harness session, so no edit would ever end it
+- **Status:** open
+- **Impact:** `/work`'s search-loop signal and the "search loops ending in a symbol with no references" remedy cannot fire on real traffic; rediscovery still counts, but with no session to tell calls apart a later call re-finding any earlier call's pointer counts, the same session's included, so it reads high until calls carry their session

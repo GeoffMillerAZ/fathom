@@ -27,6 +27,14 @@ type AdmissibleComparison struct {
 	Withheld   string
 }
 
+// AdmissibleArms is G2's admissibility test for every caller that shows
+// fathom-on versus off (PE-17w): `fathom rate`'s registered criterion, the
+// observatory's pilot note and its readers (the brief, the impact view)
+// read the verdict only when it passes, and name Withheld otherwise.
+func AdmissibleArms(onUnits, offUnits int) AdmissibleComparison {
+	return admissibleComparison(onUnits, offUnits)
+}
+
 // admissibleComparison applies G2's admissibility test to onUnits and
 // offUnits — the arm-homogeneous unit counts a caller (ArmInputs.On/Off
 // today; a cost-per-proven-row arm once PE-15/PE-16 feed one) already

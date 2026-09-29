@@ -304,16 +304,22 @@ func renderBriefMD(m observatoryModel) string {
 	b.WriteString("\n## 3 — Did it save tokens? (the honest answer)\n\n")
 	b.WriteString("A saving is a difference between two worlds: the same work done with fathom, and done without it. One number on its own cannot be a saving, so this brief refuses to print one until both worlds have been recorded (law 12).\n\n")
 	b.WriteString("A unit is a session fully inside one arm, or the arm-covered window of a longer one (§5 amendment, 2026-08-12) — so working in long resumed sessions still produces control data.\n\n")
+	// PE-17w: the two arms' medians side by side are fathom-on versus off,
+	// printed only when G2's admissibility test passes for their units.
+	adm := imp.onOff()
 	fmt.Fprintf(&b, "- **Units with fathom on: %s**", fmtThousands(imp.TokensOnSessions))
-	if imp.TokensOnMedian != nil {
+	if imp.TokensOnMedian != nil && adm.Admissible {
 		fmt.Fprintf(&b, " — median %s real tokens per turn (input + output; cache reads excluded, because counting them inflates the figure)", fmtThousands(*imp.TokensOnMedian))
 	}
 	b.WriteString("\n")
 	fmt.Fprintf(&b, "- **Units with fathom off: %s**", fmtThousands(imp.TokensOffSessions))
-	if imp.TokensOffMedian != nil {
+	if imp.TokensOffMedian != nil && adm.Admissible {
 		fmt.Fprintf(&b, " — median %s real tokens per turn", fmtThousands(*imp.TokensOffMedian))
 	}
 	b.WriteString("\n")
+	if !adm.Admissible && (imp.TokensOnMedian != nil || imp.TokensOffMedian != nil) {
+		fmt.Fprintf(&b, "- **Per-arm medians withheld:** %s. Until both arms clear it, this brief does not print the two medians side by side.\n", adm.Withheld)
+	}
 	fmt.Fprintf(&b, "- **Experiment state: %s** — %s\n", imp.PilotState, imp.PilotDetail)
 
 	if imp.ExpSessions > 0 {
@@ -368,6 +374,8 @@ func renderBriefMD(m observatoryModel) string {
 		// promising a comparison that is not on the page is the small lie
 		// that makes a reader distrust the honest figures beside it.
 		b.WriteString("\n**Reading:** still unknown. Both arms now have sessions, but at least one side has no usable token total yet, so there is no difference to state.\n")
+	case !adm.Admissible:
+		b.WriteString("\n**Reading:** withheld. " + adm.Withheld + ", so a difference between the arms would not be a measurement.\n")
 	default:
 		b.WriteString("\n**Reading:** compare the two medians above; the difference is the only savings figure this brief will stand behind.\n")
 	}
