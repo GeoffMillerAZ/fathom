@@ -15,6 +15,9 @@ import (
 // claim later superseded still answers "what governed this file at asOf"
 // when asOf falls INSIDE its [ValidFrom, ValidTo) window, even though its
 // CURRENT status (superseded) would exclude it from live serving entirely.
+// It reads through ObligationsAsOfOpts, the function the product runs
+// (pkg/client's ObligationsAsOf, behind the obligations tool's as_of), and
+// pins ObligationsAsOf to the same payload.
 func TestObligationsAsOf_ServesWhatWasValidThen(t *testing.T) {
 	ctx := context.Background()
 	st := store.NewMemoryStore()
@@ -55,33 +58,42 @@ func TestObligationsAsOf_ServesWhatWasValidThen(t *testing.T) {
 	}
 
 	inWindow := mintedAt.Add(30 * 24 * time.Hour)
-	asOfGot, err := ObligationsAsOf(ctx, st, "svc", "any/file.go", 0, inWindow)
+	asOfGot, err := ObligationsAsOfOpts(ctx, st, "svc", "any/file.go", 0, inWindow, ObligationsOptions{})
 	if err != nil {
-		t.Fatalf("ObligationsAsOf: %v", err)
+		t.Fatalf("ObligationsAsOfOpts: %v", err)
 	}
 	if len(asOfGot.Rules) != 1 || asOfGot.Rules[0].Rule != "Old rule." {
-		t.Fatalf("ObligationsAsOf(in-window) = %+v, want the superseded-now claim served", asOfGot.Rules)
+		t.Fatalf("ObligationsAsOfOpts(in-window) = %+v, want the superseded-now claim served", asOfGot.Rules)
 	}
 	if asOfGot.AsOf != inWindow.UTC().Format(time.RFC3339) {
 		t.Errorf("AsOf = %q, want %q", asOfGot.AsOf, inWindow.UTC().Format(time.RFC3339))
 	}
-
-	afterWindow := supersededAt.Add(time.Hour)
-	asOfAfter, err := ObligationsAsOf(ctx, st, "svc", "any/file.go", 0, afterWindow)
+	plain, err := ObligationsAsOf(ctx, st, "svc", "any/file.go", 0, inWindow)
 	if err != nil {
 		t.Fatalf("ObligationsAsOf: %v", err)
 	}
+	optsJSON, _ := json.Marshal(asOfGot)
+	plainJSON, _ := json.Marshal(plain)
+	if string(optsJSON) != string(plainJSON) {
+		t.Errorf("ObligationsAsOfOpts with zero options = %s, ObligationsAsOf = %s; want byte-identical", optsJSON, plainJSON)
+	}
+
+	afterWindow := supersededAt.Add(time.Hour)
+	asOfAfter, err := ObligationsAsOfOpts(ctx, st, "svc", "any/file.go", 0, afterWindow, ObligationsOptions{})
+	if err != nil {
+		t.Fatalf("ObligationsAsOfOpts: %v", err)
+	}
 	if len(asOfAfter.Rules) != 0 {
-		t.Fatalf("ObligationsAsOf(after supersede) = %+v, want empty", asOfAfter.Rules)
+		t.Fatalf("ObligationsAsOfOpts(after supersede) = %+v, want empty", asOfAfter.Rules)
 	}
 
 	beforeMint := mintedAt.Add(-time.Hour)
-	asOfBefore, err := ObligationsAsOf(ctx, st, "svc", "any/file.go", 0, beforeMint)
+	asOfBefore, err := ObligationsAsOfOpts(ctx, st, "svc", "any/file.go", 0, beforeMint, ObligationsOptions{})
 	if err != nil {
-		t.Fatalf("ObligationsAsOf: %v", err)
+		t.Fatalf("ObligationsAsOfOpts: %v", err)
 	}
 	if len(asOfBefore.Rules) != 0 {
-		t.Fatalf("ObligationsAsOf(before mint) = %+v, want empty", asOfBefore.Rules)
+		t.Fatalf("ObligationsAsOfOpts(before mint) = %+v, want empty", asOfBefore.Rules)
 	}
 }
 

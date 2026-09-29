@@ -142,20 +142,29 @@ func TestGraphStore_OneGraphPerServiceWatermark(t *testing.T) {
 // snapshot per (store, service, watermark) serves every reader — a
 // case-insensitive name index and a callee index answer point questions
 // without a scan, lowered fields are stored once, and readers that sort
-// get a copy, never the shared slice.
+// get a copy, never the shared slice. It reads through SnapshotForExtra, the
+// loader the product's readers call (the MCP navigation memo and the
+// console's graph store), and pins that the loader's extra value rides on
+// the one shared snapshot.
 func TestSnapshot_NameIndexSharedByReaders(t *testing.T) {
 	isolateGraphStore(t)
 	ctx := context.Background()
 	var loads atomic.Int32
-	load := func(context.Context) ([]core.SymbolNode, error) { loads.Add(1); return fixtureNodes(), nil }
+	load := func(context.Context) ([]core.SymbolNode, any, error) {
+		loads.Add(1)
+		return fixtureNodes(), "disclosure", nil
+	}
 	sc := Scope{Store: "snap-test", Service: "svc", Watermark: "w1"}
-	a, err := SnapshotFor(ctx, sc, load)
+	a, err := SnapshotForExtra(ctx, sc, load)
 	if err != nil {
 		t.Fatal(err)
 	}
-	b, _ := SnapshotFor(ctx, sc, load)
+	b, _ := SnapshotForExtra(ctx, sc, load)
 	if a != b || loads.Load() != 1 {
 		t.Fatalf("readers got different snapshots (loads %d)", loads.Load())
+	}
+	if a.Extra != "disclosure" {
+		t.Fatalf("Extra = %v, want the loader's value kept on the snapshot", a.Extra)
 	}
 	if got := a.Named("LOG"); len(got) != 2 || got[0].Package != "c" || got[1].Package != "d" {
 		t.Fatalf("Named(LOG) = %+v", got)

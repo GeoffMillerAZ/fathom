@@ -214,10 +214,11 @@ func TestObligations_ExternalFinding_UnanchoredNeverGetsAnchorCurrent(t *testing
 }
 
 // TestObligations_ExternalFinding_ServiceIsolation is plan FL-13 (vision 30
-// §3.3 item 5): a claim imported for service A is invisible to
-// ObligationsForLayer for service B — the claims store's existing
-// service_id scoping, exercised end-to-end through the exact layer:"all"
-// call the findings-loop hooks use.
+// §3.3 item 5): a claim imported for service A is invisible to service B —
+// the claims store's existing service_id scoping, exercised through the
+// function the product runs for the exact layer:"all" call the findings-loop
+// hooks make (ObligationsForLayerOpts, behind pkg/client's ObligationsLayer),
+// and through the as_of read (ObligationsAsOfOpts).
 func TestObligations_ExternalFinding_ServiceIsolation(t *testing.T) {
 	root := t.TempDir()
 	path := "internal/foo/bar.go"
@@ -249,20 +250,36 @@ func TestObligations_ExternalFinding_ServiceIsolation(t *testing.T) {
 		t.Fatalf("PutExternalFinding: %v", err)
 	}
 
-	gotA, err := ObligationsForLayer(context.Background(), st, "svc-A", path, 0, ObligationLayerAll)
+	gotA, err := ObligationsForLayerOpts(context.Background(), st, "svc-A", path, 0, ObligationLayerAll, ObligationsOptions{})
 	if err != nil {
-		t.Fatalf("ObligationsForLayer(svc-A): %v", err)
+		t.Fatalf("ObligationsForLayerOpts(svc-A): %v", err)
 	}
 	if len(gotA.Rules) != 1 {
 		t.Fatalf("svc-A Rules = %+v, want exactly one (its own claim)", gotA.Rules)
 	}
 
-	gotB, err := ObligationsForLayer(context.Background(), st, "svc-B", path, 0, ObligationLayerAll)
+	gotB, err := ObligationsForLayerOpts(context.Background(), st, "svc-B", path, 0, ObligationLayerAll, ObligationsOptions{})
 	if err != nil {
-		t.Fatalf("ObligationsForLayer(svc-B): %v", err)
+		t.Fatalf("ObligationsForLayerOpts(svc-B): %v", err)
 	}
 	if len(gotB.Rules) != 0 {
 		t.Fatalf("svc-B Rules = %+v, want none — a claim imported for svc-A must be invisible to svc-B", gotB.Rules)
+	}
+
+	asOf := time.Date(2026, 9, 15, 0, 0, 0, 0, time.UTC)
+	thenA, err := ObligationsAsOfOpts(context.Background(), st, "svc-A", path, 0, asOf, ObligationsOptions{})
+	if err != nil {
+		t.Fatalf("ObligationsAsOfOpts(svc-A): %v", err)
+	}
+	if len(thenA.Rules) != 1 {
+		t.Fatalf("svc-A as_of Rules = %+v, want exactly one (its own claim)", thenA.Rules)
+	}
+	thenB, err := ObligationsAsOfOpts(context.Background(), st, "svc-B", path, 0, asOf, ObligationsOptions{})
+	if err != nil {
+		t.Fatalf("ObligationsAsOfOpts(svc-B): %v", err)
+	}
+	if len(thenB.Rules) != 0 {
+		t.Fatalf("svc-B as_of Rules = %+v, want none", thenB.Rules)
 	}
 }
 

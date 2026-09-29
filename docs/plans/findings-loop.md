@@ -22,7 +22,7 @@ a checkbox. No benchmark is run by this plan; FL-22 commits the corpus only.
 - [x] `fathom findings import --service --subject [--producer] --file [--dry-run] [--json]` emitting the receipt `{schema_version, delivered, duplicate, stale, rejected[], truncated, cursor}`; nothing written on a batch schema failure; `--dry-run` proves store-state equality {id: FL-10, symbol: cmdFindingsImport, package: cmd/fathom}
 - [x] `pkg/client.ImportFindings` returns the identical receipt for the identical input the CLI takes {id: FL-11, symbol: ImportFindings, package: pkg/client}
 - [x] Distinct reconciliation domains: native `StaleReviewClaims` never supersedes an `external-import/v1` claim and the importer never touches a `review-verb/v1` claim — one test with both populations in one store {id: FL-12, symbol: StaleReviewClaims, package: internal/analysis/review}
-- [x] Isolation: a claim imported for service A is invisible to `ObligationsFor`, `findings near`, and both hooks for service B {id: FL-13, symbol: obligationsCore, package: internal/semantic}
+- [x] Isolation: a claim imported for service A is invisible to `ObligationsFor`, `findings near`, and both hooks for service B {id: FL-13, symbol: ObligationsForLayerOpts, package: internal/semantic, reachable_from: TestObligations_ExternalFinding_ServiceIsolation}
 - [x] Conformance fixtures `testdata/contracts/findings-import/*.json` (happy path, duplicate, out-of-order, conflicting replay, moved anchor, revocation, disagreement, fathom-origin refusal, unknown schema, unknown field) run through CLI and client by one test {id: FL-14, symbol: TestFindingsImportConformance, package: cmd/fathom, skip_test: true, skip: "the row's symbol IS the test"}
 
 ## C. P0 / P1 — the review contract and the review key
