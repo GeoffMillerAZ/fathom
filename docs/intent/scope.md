@@ -331,6 +331,9 @@ Pre-1.0: breaking changes bump minor. The line still gets written.
   costs and "the unwinnable Glean game" (`docs/design/product-vision.md` §3). Revisit
   when: an external party ships a conforming module on the published spec with zero
   connectors from us.
+  - Note (2026-09-29, ADR-058): incident maps respect this non-goal. Their outward reach is a rendered link and a
+    typed parameter only (a deployed SHA, a tag window); fathom never fetches, polls or stores an ops system's data,
+    and the attach and connector forms are refused (`docs/design/incident-maps.md` section 6).
 - **No web-scale code search, IDE language services, or embeddings-first chat.** Why:
   lanes owned by others; the harness supplies chat better and free
   (`docs/vision/01-thesis.md` §2–3). Revisit when: never.
@@ -341,6 +344,9 @@ Pre-1.0: breaking changes bump minor. The line still gets written.
 - **No first-party chat or incident command center.** Why: competes with the best
   distribution channel (`07` R2). Revisit when: ≥15–20 resolved findings exist and a
   consumer asks.
+  - Note (2026-09-29, ADR-058): incident maps respect this non-goal. An incident map is a committed declaration served
+    read-only; drills, drill receipts, a timeline, incident status and an incident-tool export are refused
+    (`docs/plans/incident-maps.md` IM-X4), and fathom never mitigates.
 - **No dispatch loop.** Fathom never watches, schedules, retries, spawns, or kicks off;
   no task tracker, no workflow engine (`docs/vision/24` dispatch boundary, `09`). Progress
   views (weighted tables, a derived kanban, burn-up) are not a tracker: they read verify's

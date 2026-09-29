@@ -3250,3 +3250,129 @@ rule-outcome events governance learning reads measure scope persistence, not com
 - Hook or CLI use reaches 5 percent of sessions (MCP exposure).
 - The provider situation changes: Jev signups were paused on 2026-09-22 and its OpenRouter access is alpha; the
   design assumes nothing depends on it, and a withdrawal only removes an optional provider.
+
+## ADR-058: Incident maps are committed declarations, not a map kind; the suspect list comes first; outside systems are reached by link and typed parameter, never by fathom (2026-09-29)
+
+**Status.** Accepted 2026-09-29 as a direction, with the build deferred behind measured stages. Owner request of
+2026-09-29: capture the incident-map idea durably, in particular pre-shaping incident knowledge before an incident and
+a kind separate from live maps, and analyze connections to other data sources and CLI commands, with the
+implementation deferred. The owner endorsed pre-shaping and the separate kind. The dispositions on outward connection
+below (links and typed parameters accepted for the design, probes deferred, attach and connectors refused) are the
+analysis's recommendation, recorded with reopen triggers and open to the owner's revision. Amends section 3c of
+`docs/design/exploration-maps.md` and wave 4 of `docs/plans/exploration-maps.md` (XM-26 to XM-30, XM-M6 and XM-M7
+move, their ids stay reserved) and reads ADR-056 as a constraint. Design: `docs/design/incident-maps.md`. Plan:
+`docs/plans/incident-maps.md` (IM-). Futures F55 and F56. Numbered 058 because 057 is reserved by another design in
+flight.
+
+**Context.** Section 3c made incident maps a kind of live map, gated on live maps (XM-D1, whose trigger is XM-M2 and
+RT-M1). Two reviews of the first draft (an invariants critic and an SRE and security critic) found: the map model's
+machinery is unused by a static footprint, so calling it a map only escaped F50's gate; XM-M2 (sub-agent handoff
+tokens) gated incident maps only to work around plan-grammar defect G2-6; probes, MCP next queries and attach were a
+command runner and a connector in effect, with no meter that could ever kill them; and the stored commit table is
+the wrong source for a suspect list (500 commits of HEAD, author dates, no merge files, no renames). Call-log
+evidence says pull-shaped features die here (`localize` 40 of about 98k calls, discoveries 13, anchored memory 0, the
+`history` tool removed at 0 calls), while hooks and forced channels survive. Rare use is an incident map's success
+state, so a usage kill clock is wrong for it and readiness is the liveness measure. The practice evidence is modest
+and cited in the design: change is the first suspect, correlation is not cause, and prepared playbooks rot.
+
+**Decision.**
+1. *The kind.* An incident map is a declaration in the file .fathom/incidents.cue (not yet created), committed beside
+   `.fathom/guard.cue`, reviewed in a PR and readable when fathom is down: symptoms (alert names, error literals), a
+   footprint (symbols, paths, contract keys), a window (a duration or `since_tag`), an in-repository runbook path,
+   links, and authored `blind_spots`. It is not a member of the map family and has no `map` verb; it may later name
+   a live map as its `scope` (IM-D4). Users still call it an incident map.
+2. *The core facet is the suspect list, computed and never stored.* At request time, from a bounded read-only git
+   read through `internal/gitro` (committer dates, first-parent landing order, merge files, renames, a scan cap with
+   the remainder counted, a timeout, reverts and bulk commits marked, a shallow clone named as a lower bound), with no
+   new table (this resolves the RT-M1 collision: R5 holds). Rows carry no author field (I58). The stored 500-commit
+   horizon is not used. Two defects in shipped code found on the way are fixed independently (IM-F1: the CODEOWNERS
+   matcher misroutes leading-slash and any-depth patterns; IM-F2: gitro must set `GIT_NO_LAZY_FETCH=1` and
+   `GIT_TERMINAL_PROMPT=0`).
+3. *The answer never claims more than its inputs.* Every facet reads a value, "checked, none", or "not computed:
+   reason" (I38, I44). The change facet is always titled "git-visible changes to this repo only, not cause" and
+   prints the declaration's blind spots. With no matching declaration, the unprepared view over the seed files is
+   the floor and works with no pre-shaping. Contributor-controlled text (commit subjects, finding quotes, pasted
+   errors) is stripped, capped, labeled untrusted and never enters the hook line. Facets use only `point` and
+   `index` work, are admitted separately (I49), and the latency target is cold, not warm (IM-M5).
+4. *Outward connection in v1 is by link and by typed parameter.* Links are rendered, show their host, and are never
+   fetched (I56): `https` only, no userinfo, no token-named query keys, window placeholders on any host, commit and
+   key placeholders only on configured link hosts. A `--deployed <sha>` (and `--previous`) parameter, filled by the
+   agent or human from their own deploy tool, turns the time window into the deployed range; `since_tag` covers
+   release trains. No credential, no fetch, no egress path is added by fathom.
+5. *Probes (command templates) and MCP next queries are deferred (IM-D1, IM-D2; F56), not refused.* They are a
+   command runner in effect while bypass-permissions mode exists, they have no meter, and they duplicate runbooks.
+   Promotion needs all of: an inject-only PostToolUse(Bash) sensor that can match a run to a rendered probe (after Q32
+   answers how exit codes arrive), a consumer whose runbooks lack the commands, and, for next queries, a portable
+   server identity. The rendering contract a promoted probe must meet (argv only, a verb-and-flag allowlist, always
+   refused shells and credential or endpoint redirection, bound-value character limits, pinned targets, `empty_means`
+   only on exit 0) is recorded in the design so the analysis is not lost.
+6. *Refused.* Fathom-side connectors that call ops systems (IM-X1); attach, meaning external tools push deploy, flag
+   or alert events into fathom, because it is a connector with the call moved out (IM-X2, with a reopen trigger
+   below); fathom executing a probe, fetching a link or calling another MCP server (IM-X3); a command center's
+   accretion: drills and drill receipts as product state, a last-drill time, a deploy, flag and alert timeline, an
+   incident-tool export (IM-X4); a map-family kind (IM-X5); committers as owners (IM-X6); remote or fetched
+   declarations, environment- or keychain-bound values, and a static `bind` copying indexed facts (IM-X7); hook
+   auto-run, a change facet presented as complete, or a missing pointer presented as no map (IM-X8); a typed model
+   naming a cause, picking the match, judging runtime data, setting severity or proposing mitigation (IM-X9); and the
+   unqualified claim that the incident path has no egress, because the answer reaches the model provider through
+   the agent (IM-X10).
+7. *Delivery is by configuration (P16), with no new tool.* `localize` gains an incident section and optional
+   `deployed` and `previous` arguments; a prompt-hook line names the window's commit count (stage 1) and the matched
+   declaration (stage 2), once per session, inside I35, silent on failure, with the stanza saying silence is not
+   evidence; one CLI verb (`fathom incident`, name open) serves the human path and, with `--offline`, the
+   daemon-down path; a doctor row summarizes readiness. The default surface stays at eight tools (ADR-053).
+8. *Readiness is facts, never grades.* Anchors resolve; a non-wildcard owner exists for the footprint and for the
+   declaration file; the runbook's age against the footprint's churn (the computable proxy for rot); URL-only runbooks
+   and unchecked symptoms read unverifiable; symptom collisions are listed. A degrading declaration is flagged, never
+   deleted, and fathom never edits the file (P15).
+9. *The gate changes.* XM-M2 and XM-D1 no longer gate incident maps. Stage 0 builds nothing in the product: IM-M0, a
+   two-arm replay over at least 50 fast reverts in at least 3 public repositories (seed files only versus a
+   mechanical or blind footprint, equal list length, the production git flags, bars fixed before the run), and
+   IM-M1, the same replay over at least 10 change-caused incidents at a named consumer (IM-V1, P20). Stage 1 (the
+   bounded read, the `localize` recency hop, the untrusted-text handling, the hook line) starts only when the owner
+   ends the deferral and IM-M0 reads BUILD, and IM-M2 (pointer expansion at least 10 percent) keeps or cuts the
+   pointer. Stage 2 (the declaration) needs IM-M2 KEEP and a named consumer. IM-M3 (the cause was in the list), IM-M4
+   (a readiness gap mattered) and IM-M5 (cold p95 under 3 s, warm under 1 s) read after that. Fathom's own INC
+   records cannot feed the replay or count as the consumer.
+10. *Futures.* F4 is split: incident maps become F55 and probes and next queries F56, and F4 returns to precedent over
+    a non-git corpus. The non-goals in `docs/intent/scope.md` (no domain connectors, no chat or incident command
+    center) are unchanged and each carries a dated note that incident maps respect it. XM-D9 (a typed model orders
+    the suspect list) stays deferred with its trigger re-pointed to IM-M3 and a calibration whose Wilson 95 percent
+    lower bound reaches 0.90 (R3, I59, I60).
+11. *A proposed invariant, not in force until stage 2 is built:* no incident path executes a command other than
+    read-only git, fetches a link, or calls another MCP server; the answer uses only point and index work and names
+    every facet it could not compute; the change facet always names its horizon and blind spots.
+
+**Alternatives rejected.**
+- *Incident maps as a kind of live map (the section 3c decision).* The static footprint uses none of the map
+  machinery, and membership would inherit F50's gate or escape it while claiming the family.
+- *Fathom-side connectors that pull deploys, flags and alerts.* Egress, credentials and vendor liability, and the
+  domain-connectors, dispatch and no-hosted-backend non-goals; there is no consumer.
+- *Attach (events pushed into fathom).* Fathom would still own the schema, storage, TTL, dedup and reconciliation, and
+  the optional drop-file import is polling by proxy.
+- *Probes and next queries now.* A command runner in effect under bypass permissions, no meter, so it could never be
+  killed; the runbook already carries the commands.
+- *Store a larger commit table for the suspect list.* It collides with RT-M1 and R5; a bounded request-time read
+  needs no table.
+- *Frequent committers as owners.* It selects humans by commit count (I58) for little value.
+- *A usage kill clock on declarations.* Rare use is the success state; readiness measures liveness instead.
+
+**Consequences.**
+- One design (`docs/design/incident-maps.md`), one plan (`docs/plans/incident-maps.md`), futures F55 and F56, the
+  incident rows of the exploration-maps plan moved, dated notes on F4 and on two non-goals, a pointer in vision 40
+  and in the exploration-maps design; nothing here is built by this record.
+- The two shipped defects (IM-F1, IM-F2) are independent bugs and may be fixed at any time.
+- Code follows only through IM rows, each gated by `fathom verify`, after the readings in decision 9.
+- The tool count is unchanged (ADR-053), and no new table exists before RT-M1 reads PASS.
+- Reusable, project-agnostic guidance is written in the design (section 18) for agentic-kit.
+
+**Revisit when.**
+- IM-M0 or IM-M1 reads KILL or DROP (drop F55 and mark its waves refused).
+- IM-M1 shows git-invisible causes at 20 percent or more of change-caused incidents that tag windows and deployed
+  SHAs do not cover (reopen attach, through a new ADR with the contract recorded in the design section 6.5).
+- Q32 is answered and an inject-only sensor can match a run to a rendered probe while a consumer asks for templates
+  (reconsider probes, F56).
+- XM-D1 ships (add the `scope` field, IM-D4).
+- The domain-connectors trigger fires (an external party ships a conforming module with zero connectors from us):
+  reconsider fathom-side connectors through an ADR and an I14 amendment.
+- The owner ends the deferral, or a named production consumer is recorded (IM-V1).

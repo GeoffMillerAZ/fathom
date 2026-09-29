@@ -1,8 +1,8 @@
 # Incidents
 
 Every incident yields an invariant, a test, or a decision and, once incident maps exist, the
-affected path's map (*planned extension, not in force*: `docs/plans/exploration-maps.md` XM-26
-and XM-29, gated on live maps XM-D1; the map id then goes in the Outcome). Open records are
+affected path's incident declaration (*planned extension, not in force*: `docs/plans/incident-maps.md`
+IM-16, gated on IM-M2 and a named consumer, ADR-058; the declaration id then goes in the Outcome). Open records are
 ≤10 lines; closed ones compress to one line. The full friction catalogs stay where they are and are
 not copied here: `docs/dogfood-observations.md` (O1–O29, root-cause narratives) and
 `.fathom/observations.md` (O1–O19, `fathom observe` intake). Only incidents with a
