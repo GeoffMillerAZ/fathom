@@ -1,0 +1,33 @@
+{
+  "id": "matlab",
+  "display": "MATLAB",
+  "kind": "language",
+  "engine": "tags",
+  "lang_tag": "matlab",
+  "match": {
+    "extensions": [],
+    "basenames": [],
+    "globs": [],
+    "shebangs": [],
+    "sniff": { "extensions": [".m"], "pattern": "^\\s*(function|classdef)\\b|^\\s*%", "priority": 50 }
+  },
+  "grammar": { "blob": "matlab", "entry_point": "tree_sitter_matlab" },
+  "variants": [],
+  "queries": { "tags": "tags.scm" },
+  "kinds": {
+    "class":    { "source_kind": "MatlabClass", "canonical": "class", "container": true },
+    "function": { "source_kind": "MatlabFunction", "canonical": "function", "callable": true },
+    "method":   { "source_kind": "MatlabMethod", "canonical": "method", "callable": true },
+    "property": { "source_kind": "MatlabProperty", "canonical": "property" }
+  },
+  "required_kinds": ["class", "function", "method", "property"],
+  "oracle_kinds": {
+    "ctags": { "class": "class", "function": "function" }
+  },
+  "ctags": { "languages": ["MatLab"] },
+  "qualify": { "chain_containers": true, "container_sep": ".", "method_sep": "." },
+  "package": { "strategy": "dir" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L1",
+  "queue_id": "matlab"
+}

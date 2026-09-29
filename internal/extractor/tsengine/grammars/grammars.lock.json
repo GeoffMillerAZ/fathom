@@ -220,6 +220,21 @@
       "gz_bytes": 86559
     },
     {
+      "blob": "matlab",
+      "repo": "acristoffers/tree-sitter-matlab",
+      "tag": "v1.3.1",
+      "commit": "f03d0347acd8bb05d4edd8c845ac1718729e1fad",
+      "tarball_sha256": "7d8e0f1131a17e21f576839a4f7a9a16c864d89cbc1536a774445d590e6be470",
+      "licence": "MIT",
+      "entry_points": ["tree_sitter_matlab"],
+      "scanner": true,
+      "generate": false,
+      "abi": 15,
+      "blob_sha256": "64f6964fff221ee76611150b791dcaf04b8f7d8a5d77b5c4158646b9423a3c34",
+      "blob_bytes": 482912,
+      "gz_bytes": 121531
+    },
+    {
       "blob": "php",
       "repo": "tree-sitter/tree-sitter-php",
       "tag": "v0.24.2",
