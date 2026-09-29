@@ -1160,7 +1160,8 @@ What governs a file, as the obligations tool serves it to an agent — and, with
 `--explain`, why (OC-32).
 
 ```sh
-fathom obligations --service <id> [--file <path>] [--layer rules|claims|all] [--explain] [--json] [--store <path> | --url <daemon>]
+fathom obligations --service <id> [--file <path>] [--layer rules|claims|all] [--root <dir>] [--explain] [--json] [--store <path> | --url <daemon>]
+fathom obligations promote <layer-rule-id> [--root <dir>] [--write]
 ```
 
 Without `--explain` it prints the served list: the raw-fallback rows the tool prepends
@@ -1194,6 +1195,28 @@ rule. `class` is GL-11's proposal (`ignored`, `effective`, `contested`,
 on. The rule's `claim_id` (what `fathom claim refute|corroborate --claim` takes) is in
 this output; the MCP `obligations` payload an agent reads carries neither the id nor the
 record — the id rides only on the edit hook's own request (origin `edit-hook`).
+
+After the compiled rules the verb lists the `.fathom/guard.cue` layer rules that govern
+the path (SR-45w, F-26), each marked **checkable** or **not checkable**: checkable means
+its kind has a deterministic pre-write check (`import_direction`, `boundary`), so it can
+become an `enforce: true` guard the PreToolUse hook denies on; `no_cycles` and
+`cross_service_direction` need the whole import or fleet graph and stay advisory, with
+that reason shown. A rule governs a file when the file's directory is its `from`
+(`import_direction`), outside its `allow` list (`boundary`), inside its `scope`
+(`no_cycles`), or the service is its `from_service`; the root-scope question lists every
+rule. `--root` names the checkout whose guard file is read (default: the service's
+recorded root, when it is a directory on this machine; otherwise the answer says it did
+not read one). `--json` carries it as `layer_rules` (`{source, rules: [{id, kind,
+sentence, severity, enforce, checkable, why?}], note?}`). `--explain --json` is unchanged
+(the console's `/explain` section).
+
+`fathom obligations promote <id>` compiles a checkable layer rule to an `enforce: true`
+guard (`guardspec.GuardFromCheckableRule`). The default is a dry run that prints the
+stanza as it would read; `--write` adds the one `enforce: true` line to that rule in
+`<root>/.fathom/guard.cue` and changes no other byte, and the result must load back with
+only that rule changed or nothing is written. A not-checkable rule is refused with its
+reason, and a rule already enforced is a named no-op. `FATHOM_ENFORCE=off` or `[guards]
+enforce = false` still turns every enforced rule back to advisory.
 
 ---
 
