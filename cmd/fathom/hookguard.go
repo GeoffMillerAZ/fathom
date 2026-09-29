@@ -32,6 +32,11 @@ var activeHookGuardPtr atomic.Pointer[hookguard.Guard]
 
 func activeHookGuard() *hookguard.Guard { return activeHookGuardPtr.Load() }
 
+// hookCPUTime reads the process's CPU time for the hook-latency row's cpu_ms
+// (EW-29). A variable so a test can inject a reader; always processCPUTime
+// in the binary.
+var hookCPUTime = processCPUTime
+
 // hookBudgetScale shrinks every hook deadline in tests
 // (TestNoHookRPCOutlivesItsDescriptorBudget drives every descriptor
 // through a hanging daemon at a tenth of real time). Always 1 in the
@@ -112,6 +117,9 @@ func hookTimeoutSec(harnessID, marker string) int {
 // record breaker_open and busy).
 func beginHookGuard(channel, marker, harnessID, baseURL string) (end func(), silent bool) {
 	start := time.Now()
+	// EW-29: the invocation's CPU time is this reading at the end minus this
+	// one — two getrusage pairs per invocation, no read of any file.
+	cpu0, cpu0ok := hookCPUTime()
 	g := &hookguard.Guard{Deadline: hookguard.HookDeadline(start, hookTimeoutSec(harnessID, marker)).Scale(hookBudgetScale)}
 	d := hookguard.BreakerAllows(g, baseURL)
 	if d.Verdict == hookguard.Disabled || d.Verdict == hookguard.Paused {
@@ -130,8 +138,10 @@ func beginHookGuard(channel, marker, harnessID, baseURL string) (end func(), sil
 		custodian.SetWalkPolicy(prevWalk)
 		restore()
 		// RT-135 (§11.3): every invocation's wall time against its
-		// deadline, for doctor's hook_budget.
-		recordHookLatency(channel, inv, time.Since(start), g.Deadline.Budget(), time.Now())
+		// deadline, for doctor's hook_budget; EW-29: beside it the CPU the
+		// invocation spent, unknown (field absent) unless read at both ends.
+		cpu1, cpu1ok := hookCPUTime()
+		recordHookLatency(channel, inv, time.Since(start), g.Deadline.Budget(), time.Now(), cpu1-cpu0, cpu0ok && cpu1ok)
 		hookInvocation.Store(prevInv)
 		skips := g.Skips()
 		if len(skips) == 0 {
