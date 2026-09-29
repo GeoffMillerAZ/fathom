@@ -2099,7 +2099,7 @@ enum grows rather than each repo hand-rolling its own.
 
 ## ADR-039: Build-cache placement is explicit, portable, and bounded (2026-09-16)
 
-**Status.** Accepted.
+**Status.** Accepted; amended 2026-09-29 (EW-4: the guard trims by age).
 
 **Context.** The repository hardcoded one workstation's removable volume for Go scratch,
 while an agent independently accumulated 15 GiB under another machine-specific
