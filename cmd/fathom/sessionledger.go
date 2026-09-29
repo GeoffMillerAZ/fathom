@@ -138,6 +138,13 @@ type sessionLedgerEntry struct {
 	TokensCacheRead   *int `json:"tokens_cache_read,omitempty"`
 	TokensCacheCreate *int `json:"tokens_cache_create,omitempty"`
 
+	// ToolCalls (PE-13w) is every tool call the session made, any tool
+	// name, from the same fold as the token and cache fields: the count
+	// outcome economics prices. nil (omitted) when no transcript was
+	// parsed, never a fabricated zero (law 12); a parsed transcript with no
+	// tool call records a real 0.
+	ToolCalls *int `json:"tool_calls,omitempty"`
+
 	// SessionSource / BriefInjected / BriefBytes label the row's COHORT
 	// for the vision-21 bet: fresh-with-brief (startup|clear + brief)
 	// versus resumed. Joined from the SessionStart stamp at write time; a
@@ -280,7 +287,9 @@ func buildSessionLedgerEntry(sessionID, repo string, ts transcriptSummary, beats
 	// whenever ANY of the three fields resolved to a real value — the
 	// schema-coupling disclosure applies the moment parsing happened at
 	// all, regardless of which individual fields it could fill in.
-	if ts.DurationMS != nil || ts.TurnCount != nil || ts.TokensTotal != nil {
+	if ts.parsed() {
+		n := ts.ToolCallsTotal
+		e.ToolCalls = &n
 		e.TranscriptSchemaNote = "figures above are parsed from Claude Code's own transcript JSONL " +
 			"(transcript_path) — schema-coupled and may silently degrade to \"unavailable\" (never a " +
 			"wrong number) if that format changes; docs/design/production-tokenomics.md §8"
@@ -377,6 +386,13 @@ type transcriptSummary struct {
 	// computation already sorts for it; keeping it is what lets the arm
 	// stamp be honest about coverage (see armCoverage).
 	FirstTS *time.Time
+}
+
+// parsed reports whether a transcript was actually read: any of its three
+// headline fields resolved to a real value. An absent or unreadable
+// transcript leaves all three nil with notes.
+func (ts transcriptSummary) parsed() bool {
+	return ts.DurationMS != nil || ts.TurnCount != nil || ts.TokensTotal != nil
 }
 
 // transcriptLine is the subset of Claude Code's session-transcript JSONL
