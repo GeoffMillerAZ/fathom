@@ -2094,3 +2094,16 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** none yet, deliberately: whether to drop function words, or rank an OR of the words by bm25, is what KR-M1's doc-question slice measures (docs/plans/knowledge-retrieval.md); widening without that reading returns loosely related sections an agent would trust.
 - **Status:** open
 - **Impact:** An agent that asks a docs question in a sentence is told there is nothing, and falls back to grep or opens the document whole, which is the cost KR-8 was meant to remove.
+
+### O144 — `TestIntentTab_RefreshAfterAnUpdateReaudits` races the fixture's handler on `f.now`, so `go test -race ./cmd/fathom` fails on about one run in six
+
+- **Symptom:** `TestIntentTab_RefreshAfterAnUpdateReaudits` races the fixture's handler on `f.now`, so `go test -race ./cmd/fathom` fails on about one run in six
+- **Evidence:**
+  - **Tool:** go test -race (the gate's `task test`), cmd/fathom console tests
+  - **Expected:** a test that passes on every run, as the gate's `-race` run assumes
+  - **Actual:** `go test -race -count=6 -run TestIntentTab_RefreshAfterAnUpdateReaudits ./cmd/fathom/` printed one `WARNING: DATA RACE` and `--- FAIL ... race detected during execution of test`, on `wb-core` and on `wb-cli` alike (2026-09-29); the selected 579-test run failed on it twice out of two and passed when the test was run alone
+  - **Repro:** the `-count=6` command above, on any checkout of this base
+- **Root cause:** the test writes `f.now = f.now.Add(time.Minute)` (console_project_tabs_test.go:572) while the served handler reads `f.now` through `f.deps.now` (console_fixture_test.go:218) on a request goroutine, with no synchronisation.
+- **Fix:** none yet: many console tests assign `f.now` directly, so the change is an atomic or locked clock on the fixture with a setter those tests call.
+- **Status:** open
+- **Impact:** the pre-push gate runs `go test -race`, so an unrelated push can fail on this test at random and be retried until it does not.
