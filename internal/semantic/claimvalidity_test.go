@@ -129,7 +129,7 @@ func TestNoClaimEndingPathDeletes(t *testing.T) {
 		want := []string{
 			// The paths the pre-push audit named: each must be seen by
 			// this scan, so a rename that hides one from it fails loudly.
-			"cmd/fathom/claim.go:cmdClaimVerdict",
+			"cmd/fathom/claim.go:recordClaimVerdict", // cmdClaimVerdict and the edit hook's one-key answer (SR-48w) share it
 			"cmd/fathom/review.go:runReviewBody",
 			"internal/mcp/review_tool.go:applyAndPersistFindings",
 			"internal/findings/external/importer.go:ApplyEvent",

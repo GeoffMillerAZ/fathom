@@ -887,6 +887,17 @@ of kind `no_cycles`/`cross_service_direction`) is refused, naming it. `FATHOM_EN
 `[guards] enforce = false` in `.fathom/config.toml` / `~/.fathom/config.toml`, turns every
 enforced rule in this repo back to advisory.
 
+**The one-key verdict (SR-48, SR-48w, F-31).** When the same served rule tops a file's
+obligations two resolved turns running, the next turn asks for a verdict and names the rule's
+claim id. The user answers with their next prompt: exactly `c` (corroborate) or `r` (refute),
+optionally followed by a note (`r: superseded by ADR-060`). The `prompt-hook` records only that
+exact shape, and only while the session has an ask pending (4 h); a word that starts with c or
+r, or any other prose, is an ordinary prompt. The following edit-hook turn writes the answer
+through the same core as `fathom claim corroborate|refute` into the store the daemon records
+(`--url`), attributed to the session: the claim event, the rule-outcome row, and for a refute
+the status flip and the closed validity window. It says so in one line, once; if the store
+cannot be written it names the `fathom claim` command that records it by hand.
+
 The anchored-memory block (AM-6) is gone: SR-13 (surface reckoning F-45, ADR-053)
 removed anchored memory — 0 memories in any repository.
 
