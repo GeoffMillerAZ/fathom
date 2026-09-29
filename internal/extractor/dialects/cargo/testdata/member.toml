@@ -1,0 +1,20 @@
+[package]
+name = "acme-sys"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[lints]
+workspace = true
+
+[dependencies]
+libc.workspace = true
+acme-macros = { workspace = true, optional = true }
+memchr = "2"
+
+[dev-dependencies]
+tempfile = "3"
+
+[features]
+"unstable-api" = []
+macros = ["dep:acme-macros"]

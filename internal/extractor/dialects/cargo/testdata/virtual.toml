@@ -1,0 +1,23 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/*",
+    "tools/cli",
+    "./xtask",
+    "../outside",
+]
+exclude = ["crates/experimental"]
+
+[workspace.package]
+version = "0.9.0"
+edition = "2021"
+
+[workspace.dependencies]
+acme-core = { version = "0.9", path = "crates/acme-core" }
+serde = "1"
+
+[patch.crates-io]
+serde = { path = "vendor/serde" }
+
+[profile.release]
+codegen-units = 1

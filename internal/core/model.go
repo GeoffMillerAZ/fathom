@@ -203,6 +203,15 @@ const (
 	// precedent as package.json's script/bin/export.
 	KindMavenArtifact SourceKind = "MavenArtifact"
 
+	// Cargo.toml (LB-Q-cargo, language-breadth: new — a doc-engine tool
+	// format; the incumbent was the generic TOMLExtractor's table/key dump).
+	// KindCargoPackage is the manifest's own entity (the connector-
+	// classification kind); the dialect's other kinds (workspace, feature,
+	// lib, bin, example, test, bench) have no connector-classification use
+	// and so get no constant of their own, same precedent as package.json's
+	// script/bin/export.
+	KindCargoPackage SourceKind = "CargoPackage"
+
 	// pyproject.toml (LB-Q-python-packaging, language-breadth: new — a
 	// doc-engine tool format, no incumbent; requirements*.txt and
 	// setup.cfg from the same queue entry stay unclassified, §14.2: the

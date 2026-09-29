@@ -1,0 +1,34 @@
+{
+  "id": "cargo",
+  "display": "Cargo manifests (Cargo.toml, workspaces)",
+  "kind": "tooling",
+  "engine": "doc",
+  "lang_tag": "cargo",
+  "match": {
+    "extensions": [],
+    "basenames": ["Cargo.toml"],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "variants": [],
+  "kinds": {
+    "package":   { "source_kind": "CargoPackage",   "canonical": "package" },
+    "workspace": { "source_kind": "CargoWorkspace", "canonical": "namespace" },
+    "feature":   { "source_kind": "CargoFeature",   "canonical": "key" },
+    "lib":       { "source_kind": "CargoLib",       "canonical": "module" },
+    "bin":       { "source_kind": "CargoBin",       "canonical": "route" },
+    "example":   { "source_kind": "CargoExample",   "canonical": "target" },
+    "test":      { "source_kind": "CargoTest",      "canonical": "target" },
+    "bench":     { "source_kind": "CargoBench",     "canonical": "target" }
+  },
+  "required_kinds": ["package"],
+  "oracle_kinds": {
+    "tool": { "package": "package" }
+  },
+  "name_match": "identity",
+  "package": { "strategy": "none" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L3",
+  "queue_id": "cargo"
+}
