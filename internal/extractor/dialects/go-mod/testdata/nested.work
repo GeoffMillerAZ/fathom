@@ -1,0 +1,6 @@
+// A one-module workspace: the shape a nested go.work takes to keep go from
+// climbing to the repository's own workspace.
+
+go 1.26.0
+
+use .

@@ -1,0 +1,31 @@
+{
+  "id": "go-mod",
+  "display": "Go modules (go.mod, go.work)",
+  "kind": "tooling",
+  "engine": "native",
+  "lang_tag": "go-mod",
+  "match": {
+    "extensions": [],
+    "basenames": ["go.mod", "go.work"],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "variants": [],
+  "kinds": {
+    "module":     { "source_kind": "GoModule",     "canonical": "module" },
+    "dependency": { "source_kind": "ModuleDep",    "canonical": "package" },
+    "replace":    { "source_kind": "GoModReplace", "canonical": "key" },
+    "workspace":  { "source_kind": "GoWorkspace",  "canonical": "namespace" },
+    "use":        { "source_kind": "GoWorkUse",    "canonical": "key" }
+  },
+  "required_kinds": ["module", "dependency", "replace", "workspace", "use"],
+  "oracle_kinds": {
+    "tool": { "module": "module", "package": "package", "key": "key", "namespace": "namespace" }
+  },
+  "name_match": "identity",
+  "package": { "strategy": "none" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L3",
+  "queue_id": "go-mod"
+}

@@ -1,0 +1,24 @@
+{
+  "path": "svc/api/go.mod",
+  "roots": ["example.com/acme/app"],
+  "symbols": [
+    { "name": "example.com/acme/app", "kind": "GoModule", "package": "go", "line": 2, "end_line": 2, "signature": "go 1.21", "calls": ["example.com/acme/lib", "github.com/pkg/errors", "github.com/stretchr/testify", "golang.org/x/sync"], "tier": "pre-scan" },
+    { "name": "github.com/pkg/errors", "kind": "ModuleDep", "package": "go", "line": 9, "end_line": 9, "signature": "v0.9.1", "tier": "pre-scan" },
+    { "name": "golang.org/x/sync", "kind": "ModuleDep", "package": "go", "line": 10, "end_line": 10, "signature": "v0.5.0", "tier": "pre-scan" },
+    { "name": "example.com/acme/lib", "kind": "ModuleDep", "package": "go", "line": 11, "end_line": 11, "signature": "v0.0.0", "tier": "pre-scan" },
+    { "name": "github.com/stretchr/testify", "kind": "ModuleDep", "package": "go", "line": 14, "end_line": 14, "signature": "v1.8.4", "tier": "pre-scan" },
+    { "name": "replace/example.com/acme/lib", "kind": "GoModReplace", "package": "go", "line": 16, "end_line": 16, "signature": "../lib", "tier": "pre-scan" },
+    { "name": "replace/github.com/pkg/errors@v0.9.1", "kind": "GoModReplace", "package": "go", "line": 19, "end_line": 19, "signature": "github.com/acme/errors v0.9.2", "tier": "pre-scan" },
+    { "name": "replace/golang.org/x/sync", "kind": "GoModReplace", "package": "go", "line": 20, "end_line": 20, "signature": "./third_party/sync", "tier": "pre-scan" },
+    { "name": "replace/example.com/acme/climb", "kind": "GoModReplace", "package": "go", "line": 21, "end_line": 21, "signature": "../../../elsewhere", "tier": "pre-scan" }
+  ],
+  "cross_file": [
+    { "from": "example.com/acme/app", "edge": "depends_on", "raw": "github.com/pkg/errors", "target": "github.com/pkg/errors", "strategy": "module-source", "line": 9 },
+    { "from": "example.com/acme/app", "edge": "depends_on", "raw": "golang.org/x/sync", "target": "golang.org/x/sync", "strategy": "module-source", "line": 10 },
+    { "from": "example.com/acme/app", "edge": "depends_on", "raw": "example.com/acme/lib", "target": "example.com/acme/lib", "strategy": "module-source", "line": 11 },
+    { "from": "example.com/acme/app", "edge": "depends_on", "raw": "github.com/stretchr/testify", "target": "github.com/stretchr/testify", "strategy": "module-source", "line": 14 },
+    { "from": "replace/example.com/acme/lib", "edge": "replaced_by", "raw": "../lib", "target": "svc/lib/go.mod", "strategy": "repo-path", "line": 16 },
+    { "from": "replace/golang.org/x/sync", "edge": "replaced_by", "raw": "./third_party/sync", "target": "svc/api/third_party/sync/go.mod", "strategy": "repo-path", "line": 20 },
+    { "from": "replace/example.com/acme/climb", "edge": "replaced_by", "raw": "../../../elsewhere", "target": "", "strategy": "repo-path", "line": 21 }
+  ]
+}

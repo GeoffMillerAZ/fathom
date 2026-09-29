@@ -1,0 +1,11 @@
+{
+  "path": "hack/tools/go.work",
+  "roots": ["workspace"],
+  "symbols": [
+    { "name": "workspace", "kind": "GoWorkspace", "package": "go", "line": 4, "end_line": 6, "signature": "go 1.26.0", "tier": "pre-scan" },
+    { "name": "use/.", "kind": "GoWorkUse", "package": "go", "line": 6, "end_line": 6, "tier": "pre-scan" }
+  ],
+  "cross_file": [
+    { "from": "use/.", "edge": "workspace_member", "raw": ".", "target": "hack/tools/go.mod", "strategy": "repo-path", "line": 6 }
+  ]
+}
