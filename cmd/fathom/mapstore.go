@@ -160,6 +160,28 @@ func loadMapSet(root string, now time.Time) mapSet {
 		if !ok {
 			continue // an entry whose header is gone is not served
 		}
+		if target := it.Pointers["annotates"]; target != "" {
+			// A later why for an entry already on the map (XM-33): a note on
+			// that entry, never an entry of its own. A row whose target is not
+			// on the map (it cannot be, by construction) reads as an entry.
+			attached := false
+			for i := range m.Entries {
+				if m.Entries[i].ID == target {
+					m.Entries[i].Notes = append(m.Entries[i].Notes, explmap.Note{
+						Why: it.Text, AgentID: it.Pointers["agent_id"], Session: it.Pointers["session_id"], FiledAt: parseRFC3339(it.FiledAt),
+					})
+					attached = true
+					break
+				}
+			}
+			if attached {
+				if at := parseRFC3339(it.FiledAt); at.After(m.LastUsed) {
+					m.LastUsed = at
+				}
+				set.maps[id] = m
+				continue
+			}
+		}
 		path, start, end, _, _ := explmap.ParseAnchor(it.Pointers["span"])
 		e := explmap.Entry{
 			ID:      it.ID,
@@ -296,6 +318,29 @@ type mapEntryRequest struct {
 	Now       time.Time
 }
 
+// mapAppendOutcome is what an append did.
+type mapAppendOutcome string
+
+const (
+	// mapFiled: a new entry was filed.
+	mapFiled mapAppendOutcome = "filed"
+	// mapAnnotated: the anchor was already on the map with another why, so the
+	// why was filed as a note on that entry (XM-33).
+	mapAnnotated mapAppendOutcome = "annotated"
+	// mapAlready: the map already carries the anchor with that why; nothing was
+	// filed.
+	mapAlready mapAppendOutcome = "already"
+)
+
+// mapAppendResult is an append's outcome and the row it filed (none for
+// mapAlready); Entry is the entry the anchor already had for mapAnnotated and
+// mapAlready.
+type mapAppendResult struct {
+	Outcome mapAppendOutcome
+	Item    threadItem
+	Entry   explmap.Entry
+}
+
 // appendMapEntry files one anchored entry on a map (XM-1): the anchor (a
 // symbol key or `path#Lx-Ly`), the span it resolves to, that span's content
 // hash (core.HashLines, the layer claims' contract), a why line, and the
@@ -303,17 +348,20 @@ type mapEntryRequest struct {
 // is created as an ephemeral map on the thread, with a `completes_when`: the
 // one given, else the end of the current session. The entry row always gets a
 // fresh id, so an append never edits an existing entry, anyone's; a composite
-// is made only of references and refuses entries.
-func appendMapEntry(req mapEntryRequest, syms mapSymbolResolver) (threadItem, error) {
+// is made only of references and refuses entries. An anchor the map already
+// carries (the same dedup key: the same symbol or span in the same content
+// state) files no second entry (XM-33): the same why files nothing, another why
+// is a row that annotates the first entry, with its own provenance.
+func appendMapEntry(req mapEntryRequest, syms mapSymbolResolver) (mapAppendResult, error) {
 	if !explmap.ValidID(req.Map) {
-		return threadItem{}, fmt.Errorf("map id %q: want a letter or digit, then up to 63 letters, digits, '.', '_' or '-'", req.Map)
+		return mapAppendResult{}, fmt.Errorf("map id %q: want a letter or digit, then up to 63 letters, digits, '.', '_' or '-'", req.Map)
 	}
 	if strings.HasPrefix(req.Map, explmap.CompositePrefix) {
-		return threadItem{}, fmt.Errorf("map %q is a composite: a composite carries references only — append to one of its maps, or to your own map and compose it (`fathom map compose`)", req.Map)
+		return mapAppendResult{}, fmt.Errorf("map %q is a composite: a composite carries references only — append to one of its maps, or to your own map and compose it (`fathom map compose`)", req.Map)
 	}
 	why := strings.TrimSpace(req.Why)
 	if why == "" || strings.ContainsAny(why, "\r\n") {
-		return threadItem{}, fmt.Errorf("a map entry needs a one-line --why: why this code matters for the map's purpose")
+		return mapAppendResult{}, fmt.Errorf("a map entry needs a one-line --why: why this code matters for the map's purpose")
 	}
 	now := req.Now
 	if now.IsZero() {
@@ -323,12 +371,12 @@ func appendMapEntry(req mapEntryRequest, syms mapSymbolResolver) (threadItem, er
 
 	path, start, end, symbol, ok := explmap.ParseAnchor(req.Anchor)
 	if !ok {
-		return threadItem{}, fmt.Errorf("anchor %q: want a symbol key or path#Lx-Ly", req.Anchor)
+		return mapAppendResult{}, fmt.Errorf("anchor %q: want a symbol key or path#Lx-Ly", req.Anchor)
 	}
 	if symbol != "" {
 		switch r := syms.(type) {
 		case nil:
-			return threadItem{}, fmt.Errorf("anchor %q names a symbol, and no index is reachable to resolve it (pass a path#Lx-Ly anchor, or --store/--url)", req.Anchor)
+			return mapAppendResult{}, fmt.Errorf("anchor %q names a symbol, and no index is reachable to resolve it (pass a path#Lx-Ly anchor, or --store/--url)", req.Anchor)
 		case anchorResolver:
 			// The way find_symbol resolves (XM-31): the entry stores the canonical
 			// spelling, so one symbol has one key however it was typed.
@@ -336,30 +384,30 @@ func appendMapEntry(req mapEntryRequest, syms mapSymbolResolver) (threadItem, er
 			if err != nil {
 				var amb *explmap.AmbiguousAnchorError
 				if errors.As(err, &amb) {
-					return threadItem{}, fmt.Errorf("anchor %q %w — nothing was filed", req.Anchor, err)
+					return mapAppendResult{}, fmt.Errorf("anchor %q %w — nothing was filed", req.Anchor, err)
 				}
-				return threadItem{}, fmt.Errorf("anchor %q: %w", req.Anchor, err)
+				return mapAppendResult{}, fmt.Errorf("anchor %q: %w", req.Anchor, err)
 			}
 			path, start, end, symbol = m.Node.FilePath, m.Node.Line, anchorEnd(m.Node), m.Key
 		default:
 			p, s, e, found := syms.symbolSpan(symbol)
 			if !found {
-				return threadItem{}, fmt.Errorf("anchor %q does not resolve in the index", req.Anchor)
+				return mapAppendResult{}, fmt.Errorf("anchor %q does not resolve in the index", req.Anchor)
 			}
 			path, start, end = p, s, e
 		}
 	}
 	rel, err := repoRelative(root, path)
 	if err != nil {
-		return threadItem{}, fmt.Errorf("anchor %q: %v", req.Anchor, err)
+		return mapAppendResult{}, fmt.Errorf("anchor %q: %v", req.Anchor, err)
 	}
 	content, err := os.ReadFile(filepath.Join(root, rel))
 	if err != nil {
-		return threadItem{}, fmt.Errorf("anchor %q: %v", req.Anchor, err)
+		return mapAppendResult{}, fmt.Errorf("anchor %q: %v", req.Anchor, err)
 	}
 	hash, ok := core.HashLines(content, start, end)
 	if !ok {
-		return threadItem{}, fmt.Errorf("anchor %q: %s has no lines %d-%d", req.Anchor, rel, start, end)
+		return mapAppendResult{}, fmt.Errorf("anchor %q: %s has no lines %d-%d", req.Anchor, rel, start, end)
 	}
 
 	set := loadMapSet(root, now)
@@ -367,14 +415,27 @@ func appendMapEntry(req mapEntryRequest, syms mapSymbolResolver) (threadItem, er
 	if thread == "" {
 		thread = threadScopeFor(root).defaultThread()
 	}
+	annotates := ""
+	var own explmap.Entry
 	if m, exists := set.maps[req.Map]; exists {
 		if m.Kind == explmap.KindComposite {
-			return threadItem{}, fmt.Errorf("map %q is a composite: a composite carries references only", req.Map)
+			return mapAppendResult{}, fmt.Errorf("map %q is a composite: a composite carries references only", req.Map)
+		}
+		// The dedup key of resolution (XM-4) decides whether the map already
+		// carries this anchor (XM-33): the same why adds nothing, another is a
+		// note on the first entry, which is kept as filed.
+		cand := explmap.Entry{Symbol: symbol, Path: rel, Start: start, End: end, Hash: hash}
+		var dup bool
+		if own, dup = m.OwnEntry(cand.Key()); dup {
+			if own.CarriesWhy(why) {
+				return mapAppendResult{Outcome: mapAlready, Entry: own}, nil
+			}
+			annotates = own.ID
 		}
 	} else {
 		m := explmap.Map{ID: req.Map, Kind: explmap.KindEphemeral, CreatedBy: mapCreator(req.AgentID), CreatedAt: now}
 		if err := writeMapHeader(set, m, thread, root, defaultMapCondition(req.Completes), now); err != nil {
-			return threadItem{}, err
+			return mapAppendResult{}, err
 		}
 	}
 
@@ -388,6 +449,9 @@ func appendMapEntry(req mapEntryRequest, syms mapSymbolResolver) (threadItem, er
 	}
 	if symbol != "" {
 		ptr["symbol"] = symbol
+	}
+	if annotates != "" {
+		ptr["annotates"] = annotates
 	}
 	if req.AgentID != "" {
 		ptr["agent_id"] = req.AgentID
@@ -415,9 +479,12 @@ func appendMapEntry(req mapEntryRequest, syms mapSymbolResolver) (threadItem, er
 		Commit:        gitHeadShort(root),
 	}
 	if err := appendThreadItem(it); err != nil {
-		return threadItem{}, err
+		return mapAppendResult{}, err
 	}
-	return it, nil
+	if annotates != "" {
+		return mapAppendResult{Outcome: mapAnnotated, Item: it, Entry: own}, nil
+	}
+	return mapAppendResult{Outcome: mapFiled, Item: it}, nil
 }
 
 // defaultMapCondition is the `completes_when` a new map gets: the one given,

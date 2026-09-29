@@ -1705,6 +1705,10 @@ not answer is waited for up to 8 s (a deploy leaves it warming) and then named a
 unreachable, with the retry and the two ways round it: `--store` a scratch ingest
 with `--service`, or a `path#Lx-Ly` anchor, which needs no index. A store is
 tried once.
+An anchor the map already carries (the same symbol or span in the same content
+state) files no second entry (XM-33): the same why files nothing and says so, and
+another why is filed as a note on the first entry, with its agent id, which `show`
+serves as another annotation; the first entry is never edited.
 `name` names a map and refuses one without a purpose line. A named map is
 durable whatever condition it was filed under (XM-32, O143): the session-end
 default or a `--completes-when` no longer ends it, whether the name comes before

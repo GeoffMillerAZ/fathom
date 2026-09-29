@@ -99,6 +99,15 @@ for the query and its bare name and applies the same tiers to the answer, which 
 `package.Name` tier reads the directory's tail. Read-time re-resolution of a key filed before this change works
 through the same tiers.
 
+**As built (dedupe on append, XM-33, 2026-09-29).** Resolution already merged entries with one dedup key at read
+time; the append now checks the map's own entries by that key (a symbol key without its `svc::` prefix, or a
+span, plus the content hash) before it files. A repeated why files nothing. A different why is still a row in
+the log, since an append adds and never edits, but a row that names the entry it annotates (`annotates`), and the
+read folds it into that entry's `Notes` (why, agent id, session, time), so the map holds one entry per anchor and
+every hook that quotes an entry count counts it once. Notes serve as annotations after the entry's own why, the
+same rule as a farther map's. Included maps are not consulted at append: a base's entry and a top map's entry of
+one anchor stay two rows that resolution merges, as XM-4 says. Rows filed before this are not rewritten.
+
 ## 3. Live maps and semantic layers are complementary (binding)
 
 They live on different axes. A semantic layer says what is TRUE or BINDING about code (governed claims:

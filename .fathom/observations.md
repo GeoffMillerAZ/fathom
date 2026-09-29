@@ -2211,3 +2211,16 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** XM-31: `--service`, a bounded wait for a warming daemon, one resolver with `find_symbol`'s tiers (`explmap.ResolveAnchorSymbol`) that stores the canonical `dir.Name` key, an ambiguity error that lists candidates and files nothing, and an unreachable-index error that names the cause and the retry
 - **Status:** fixed by XM-31 (2026-09-29): `map append` and `thread note --map` take `--service`, wait up to 8 s for a daemon that does not answer, resolve through `explmap.ResolveAnchorSymbol` (find_symbol's tiers, canonical `dir.Name` key, candidates listed on ambiguity, nothing filed) and name an unreachable index with the cause and the retry. Not covered: `map show` and `map compose` still take their service from the daemon lookup alone (no `--service` there)
 - **Impact:** an orchestrator's or a worker's first appends to a wave map fail or file the wrong spelling, and the error sends the caller to check an anchor that is fine
+
+### O149 — `fathom map append` of an anchor the map already carries files a duplicate entry, and one symbol under two spellings lands as two entries
+
+- **Symptom:** `fathom map show wave-d --budget 1200` printed the same range twice: `internal/fusion.ResolveImportSpecs` and `fathom::internal/fusion.ResolveImportSpecs`, one span, one why, two lines
+- **Evidence:**
+  - **Tool:** `fathom map show wave-d --budget 1200` (2026-09-29, the wave-D map: 4 entries from 3 anchors); `fathom map append` twice with the same anchor on a scratch map
+  - **Expected:** one entry per anchor; a second why for it an annotation with its provenance (XM-4), and a repeated why nothing at all
+  - **Actual:** every append filed a new entry row. Resolution merged only entries whose dedup keys were equal (a span, or the symbol string as typed, plus the content hash), so one symbol under two spellings stayed two items and two lines; `Map.Entries`, and the "N entries" every hook quotes, counted every row
+  - **Repro:** `fathom map append m --anchor internal/fusion.ResolveImportSpecs --why w` and again with `--anchor fathom::internal/fusion.ResolveImportSpecs`, then `fathom map show m`
+- **Root cause:** `appendMapEntry` never looked at what the map already carried, and `Entry.Key` used the symbol string as typed
+- **Fix:** XM-33: the append reads the map's own entries by dedup key (`Map.OwnEntry`, the key ignoring a `svc::` prefix); the same why files nothing, another is a row with an `annotates` pointer that the read folds into the first entry's `Notes`, served as another annotation; the first entry's row is never touched. XM-31's canonical `dir.Name` key makes one symbol one key whatever spelling was typed
+- **Status:** fixed by XM-33 (2026-09-29). Rows filed before it are not rewritten: two rows of one symbol read as one item, but `Entries` still counts both
+- **Impact:** a wave map grew by every worker's re-append, the entry counts in the brief, the pointer line and the sub-agent primer overstated the map, and `map show` spent its 1,200 bytes on one range twice

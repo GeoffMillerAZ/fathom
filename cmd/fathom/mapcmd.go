@@ -56,7 +56,7 @@ func cmdThreadNoteMap(f mapEntryFlags, stdout, stderr io.Writer) int {
 			syms = idx
 		}
 	}
-	it, err := appendMapEntry(mapEntryRequest{
+	res, err := appendMapEntry(mapEntryRequest{
 		Map: f.mapID, Anchor: f.anchor, Why: why, AgentID: f.agent,
 		Thread: f.thread, Root: root, Completes: cond, Now: time.Now(),
 	}, syms)
@@ -68,7 +68,14 @@ func cmdThreadNoteMap(f mapEntryFlags, stdout, stderr io.Writer) int {
 	if f.agent != "" {
 		by = " by " + f.agent
 	}
-	fmt.Fprintf(stdout, "filed %s on map %q: %s (hash %s)%s\n", it.ID, f.mapID, it.Pointers["span"], it.Pointers["hash"][:12], by)
+	switch it := res.Item; res.Outcome {
+	case mapAlready:
+		fmt.Fprintf(stdout, "map %q already carries %s (entry %s) with that why: nothing filed\n", f.mapID, res.Entry.SpanRef(), res.Entry.ID)
+	case mapAnnotated:
+		fmt.Fprintf(stdout, "annotated entry %s on map %q: %s, a second why (row %s)%s\n", res.Entry.ID, f.mapID, it.Pointers["span"], it.ID, by)
+	default:
+		fmt.Fprintf(stdout, "filed %s on map %q: %s (hash %s)%s\n", it.ID, f.mapID, it.Pointers["span"], it.Pointers["hash"][:12], by)
+	}
 	return 0
 }
 

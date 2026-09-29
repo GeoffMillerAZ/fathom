@@ -76,31 +76,16 @@ func expandMap(res Resolution, maps Lookup, check func(Entry) Freshness) Expansi
 			i, seen := index[k]
 			if !seen {
 				index[k] = len(x.Items)
-				x.Items = append(x.Items, Item{
-					Key:         k,
-					Entry:       e,
-					Annotations: []Annotation{{Why: e.Why, MapID: n.ID, AgentID: e.AgentID, Depth: n.Depth}},
-					Maps:        []string{n.ID},
-				})
-				continue
+				x.Items = append(x.Items, Item{Key: k, Entry: e, Maps: []string{n.ID}})
+				i = index[k]
 			}
 			it := &x.Items[i]
 			if !containsString(it.Maps, n.ID) {
 				it.Maps = append(it.Maps, n.ID)
 			}
-			merged := false
-			for a := range it.Annotations {
-				ann := &it.Annotations[a]
-				if ann.Why == e.Why {
-					if ann.MapID != n.ID && !containsString(ann.Also, n.ID) {
-						ann.Also = append(ann.Also, n.ID)
-					}
-					merged = true
-					break
-				}
-			}
-			if !merged {
-				it.Annotations = append(it.Annotations, Annotation{Why: e.Why, MapID: n.ID, AgentID: e.AgentID, Depth: n.Depth})
+			it.addAnnotation(Annotation{Why: e.Why, MapID: n.ID, AgentID: e.AgentID, Depth: n.Depth})
+			for _, note := range e.Notes {
+				it.addAnnotation(Annotation{Why: note.Why, MapID: n.ID, AgentID: note.AgentID, Depth: n.Depth})
 			}
 		}
 	}
@@ -120,6 +105,22 @@ func expandMap(res Resolution, maps Lookup, check func(Entry) Freshness) Expansi
 		}
 	}
 	return x
+}
+
+// addAnnotation records a why line for the item: the same why line from a
+// farther map only adds that map to the annotation's provenance, a different one
+// is kept beside it (never dropped, never merged into one line).
+func (it *Item) addAnnotation(a Annotation) {
+	for i := range it.Annotations {
+		ann := &it.Annotations[i]
+		if ann.Why == a.Why {
+			if ann.MapID != a.MapID && !containsString(ann.Also, a.MapID) {
+				ann.Also = append(ann.Also, a.MapID)
+			}
+			return
+		}
+	}
+	it.Annotations = append(it.Annotations, a)
 }
 
 func containsString(s []string, v string) bool {
