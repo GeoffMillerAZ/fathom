@@ -32,7 +32,8 @@ var verbTable = []verb{
 	{Name: "ingest", Summary: "Ingest a service into the knowledge store"},
 	{Name: "ingest-diff", Summary: "Ingest only files changed since a git ref"},
 	{Name: "watch", Summary: "Poll for file changes and re-ingest automatically"},
-	{Name: "gen-claude-md", Summary: "Generate a CLAUDE.md from stored symbols"},
+	{Name: "gen-agents-md", Summary: "Generate an AGENTS.md knowledge index from stored symbols"},
+	{Name: "gen-claude-md", Summary: "Deprecated alias of gen-agents-md (through 0.9.x)", Hidden: true},  // ADR-059: renamed; stays dispatched for scripts
 	{Name: "gen-status-cue", Summary: "Generate a CUE status file from a plan + evidence", Hidden: true}, // SR-30: internal dev/round-trip tooling (ADR-018 decision 3), not agent-facing
 	{Name: "gen-platform-manifest", Summary: "Generate a platform manifest from *.sqlite/*.db store files"},
 	{Name: "inspect", Summary: "List stored symbols for a service"},
@@ -75,7 +76,7 @@ var verbTable = []verb{
 	{Name: "gen-plan-cue", Summary: "Emit the generated CUE shadow of a Markdown plan (round-trip verified)", Hidden: true},                            // SR-30: internal dev/round-trip tooling (ADR-018 decision 3), not agent-facing
 	{Name: "instrument", Summary: "Channel-health report: injection coverage, rollup, liveness alarms (--adoption: the flywheel gauge)", Hidden: true}, // SR-31: fathom metrics instrument covers this; stays fully dispatched
 	{Name: "observe", Summary: "File a structured friction observation into .fathom/observations.md"},
-	{Name: "init", Summary: "One-command repo wiring: .fathomignore, ingest, Claude Code hooks, CLAUDE.md/AGENTS.md stanza"},
+	{Name: "init", Summary: "One-command repo wiring: .fathomignore, ingest, Claude Code hooks, the AGENTS.md stanza (a CLAUDE file gets an @AGENTS.md import)"},
 	{Name: "config", Summary: "Print the effective configuration (--explain for per-key provenance) | audit (custodian concerns) | propose (a diff for each mechanically mendable violation; writes nothing)"},
 	{Name: "providers", Summary: "Auth-health probe across configured LLM profiles (zero/near-zero tokens)", Hidden: true}, // SR-32: fathom doctor's providers row covers this; stays fully dispatched
 	{Name: "smoke", Summary: "One tiny real completion per profile: model, latency, tokens, cost", Hidden: true},           // SR-32: opt-in real spend, never run from doctor; stays fully dispatched

@@ -2,14 +2,17 @@ package main
 
 // doctor_stanza_loaded.go — PC-25 (docs/vision/26-proof-credibility.md
 // §4): the `stanza_loaded` row. stanza_present reads the FILE (I37: the
-// stanza is well-formed in CLAUDE.md/AGENTS.md); this row reads the
-// HARNESS: did a session actually load one of those files? The evidence is
-// the InstructionsLoaded beat `fathom session-hook --event
-// instructions-loaded` writes (sessionhook_instructions.go). PASS when a
-// beat names this repo's CLAUDE.md or AGENTS.md; SKIP — never FAIL — when
-// no such beat exists, because absence of a beat is absence of evidence:
-// the hook may be freshly wired, the harness may predate the event, or
-// the beat log may have rotated.
+// stanza is well-formed in AGENTS.md); this row reads the HARNESS: did a
+// session actually load it? The evidence is the InstructionsLoaded beat
+// `fathom session-hook --event instructions-loaded` writes
+// (sessionhook_instructions.go). PASS when a beat names this repo's
+// AGENTS.md (arriving through a CLAUDE file's import) or a root CLAUDE
+// file; SKIP — never FAIL — when no such beat exists, because absence of a
+// beat is absence of evidence: the hook may be freshly wired, the harness
+// may predate the event, or the beat log may have rotated. In a repository
+// with no root CLAUDE file the SKIP is named (ADR-059, AG-12): Claude Code
+// loads AGENTS.md natively there and writes no InstructionsLoaded event,
+// so no harness-side evidence can exist; the row never synthesizes a PASS.
 
 import (
 	"fmt"
@@ -22,9 +25,16 @@ import (
 	heartbeat "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/heartbeat"
 )
 
-// stanzaLoadedFiles are the instruction files whose load counts as "the
-// stanza reached a session" — the same pair init writes the stanza into.
-var stanzaLoadedFiles = []string{"CLAUDE.md", "AGENTS.md"}
+// stanzaLoadedFiles are the instruction files, repo-relative, whose load
+// counts as "the stanza reached a session": AGENTS.md (the stanza's one
+// file, ADR-059 — its beat arrives when a CLAUDE file imports it) and the
+// root CLAUDE files an older layout carried it in.
+var stanzaLoadedFiles = []string{"AGENTS.md", "CLAUDE.md", ".claude/CLAUDE.md", "CLAUDE.local.md"}
+
+// stanzaLoadedNoClaudeReason is the named SKIP for a repository with no
+// root CLAUDE file (AG-12): Claude Code loads its AGENTS.md through the
+// agents-md setting, and that load writes no InstructionsLoaded event.
+const stanzaLoadedNoClaudeReason = "Claude Code (≥2.1.277) loads AGENTS.md through the agents-md setting without an InstructionsLoaded event; no harness-side evidence exists here; stanza_present covers the file side"
 
 // checkStanzaLoaded reads the InstructionsLoaded beats for root.
 func checkStanzaLoaded(root string) doctorCheck {
@@ -40,24 +50,28 @@ func checkStanzaLoaded(root string) doctorCheck {
 		if fp == "" {
 			continue
 		}
-		base := filepath.Base(fp)
 		known := false
 		for _, f := range stanzaLoadedFiles {
-			if base == f {
+			rel := filepath.FromSlash(f)
+			dir := strings.TrimSuffix(strings.TrimSuffix(filepath.Clean(fp), rel), string(filepath.Separator))
+			if strings.HasSuffix(filepath.Clean(fp), string(filepath.Separator)+rel) && resolveSymlinks(dir) == want {
 				known = true
 				break
 			}
 		}
-		if !known || resolveSymlinks(filepath.Dir(fp)) != want {
+		if !known {
 			continue
 		}
 		hits = append(hits, b)
+	}
+	if len(hits) == 0 && rootClaudeFile(root) == "" {
+		return doctorCheck{Name: name, Status: doctorSkipped, Reason: stanzaLoadedNoClaudeReason}
 	}
 	if len(hits) == 0 {
 		return doctorCheck{
 			Name:   name,
 			Status: doctorSkipped,
-			Reason: fmt.Sprintf("no InstructionsLoaded beat for %s/{CLAUDE.md,AGENTS.md} yet (%s) — the harness has not reported loading the stanza; stanza_present still covers the file side", root, stanzaLoadedWiringHint(root)),
+			Reason: fmt.Sprintf("no InstructionsLoaded beat for %s/{AGENTS.md,CLAUDE.md} yet (%s) — the harness has not reported loading the stanza; stanza_present still covers the file side", root, stanzaLoadedWiringHint(root)),
 			Remedy: "fathom init --path " + root + " (adds the InstructionsLoaded hook row), then start one session in this repo",
 		}
 	}

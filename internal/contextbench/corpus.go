@@ -38,12 +38,14 @@ const memoryIndexEnv = "CONTEXT_BENCH_MEMORY_INDEX"
 // corpusBaselineFiles returns absolute paths to the files a headless
 // `claude -p` session rooted at root loads into context BEFORE the prompt:
 // the repo's root CLAUDE.md and AGENTS.md, the project-scoped
-// .claude/CLAUDE.md, and — when $CONTEXT_BENCH_MEMORY_INDEX names it — the
-// user's memory index. Files that do not exist are omitted, so the list is
-// what this tree actually auto-loads, not what a template says it should.
+// .claude/CLAUDE.md and .claude/AGENTS.md, CLAUDE.local.md (ADR-059: Claude
+// Code 2.1.277+ loads AGENTS.md natively), and — when
+// $CONTEXT_BENCH_MEMORY_INDEX names it — the user's memory index. Files that
+// do not exist are omitted, so the list is what this tree actually
+// auto-loads, not what a template says it should.
 func corpusBaselineFiles(root string) []string {
 	var out []string
-	for _, rel := range []string{"CLAUDE.md", "AGENTS.md", filepath.Join(".claude", "CLAUDE.md")} {
+	for _, rel := range []string{"CLAUDE.md", "AGENTS.md", filepath.Join(".claude", "CLAUDE.md"), filepath.Join(".claude", "AGENTS.md"), "CLAUDE.local.md"} {
 		p := filepath.Join(root, rel)
 		if st, err := os.Stat(p); err == nil && !st.IsDir() {
 			out = append(out, p)

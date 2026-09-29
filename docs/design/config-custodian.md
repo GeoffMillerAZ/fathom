@@ -64,6 +64,7 @@ violation — when the daemon is down or the registry is empty/malformed.
 | `required_pattern` (CC-12) | `pattern`, `where`, `under` | ≥1 line of the corpus matches — over a YAML corpus never a comment line or a trailing comment (a commented-out step runs nothing), and with `under` only the lines under that top-level key (a lefthook hook) | "no line matches" naming the files searched; "no `pre-push` key in lefthook.yml"; an EMPTY corpus is a violation (nothing there does the required thing); matching lines are the evidence when it holds |
 | `stanza_present` (CC-12) | `file` | the file has the fathom begin marker, then the end marker | `<file>: never wired (no fathom markers)` or `<file>: corrupted marker pair (begin=… end=…)` at the marker's line; absent → violated, unreadable → unable (I38) |
 | `max_bytes` (CC-12) | `file`, `bytes` | the file exists and is ≤ `bytes` | `<file> is N bytes (max M)`; absence is a violation |
+| `agents_md_reaches_claude` (ADR-059) | `allow_import` | AGENTS.md exists and either no root `CLAUDE.md` / `.claude/CLAUDE.md` / `CLAUDE.local.md` exists (Claude Code ≥2.1.277 loads AGENTS.md natively) or the first present one imports the root AGENTS.md outside a code fence; `allow_import: false`: no CLAUDE file anywhere in the agent-config corpus (or a root `CLAUDE.local.md`), `testdata/` excepted | `no AGENTS.md`; `<file> exists without an @AGENTS.md import`; `N CLAUDE file(s) … (allow_import: false)` naming them; an unreadable CLAUDE file → unable (I38). The ancestor, settings and version half is doctor's (`stanza_present`) |
 | `commands_resolve` (CC-12) | `where` | every in-repo command the corpus invokes resolves, from the directory it runs in: a `task X` target in the Taskfile Task would find there, or in a local include (namespaced, aliased, flattened); a Taskfile's own `task:` / `deps:` call in its include's namespace (`:x` is the root's); a local include itself; a repo script path | `file:line → task X (no such target)` / `file:line → scripts/x.sh (no such file in web/)`, naming the file's own directory when the path resolves only from there; an empty corpus is unable-to-check naming it; a script that exists and cannot be stat'd is unable-to-check (I38); refs behind a flag, a template, a remote include, outside the repo or in a directory the audit cannot model are counted as not checkable, never guessed |
 | `handoff_cites_instruments` (CC-15) | `days` | every handoff thread note filed for this repo in the window that claims shipped/landed/done/fixed work carries a citation — a commit sha (letters + digits), an active `docs/plans` row id, `fathom verify`, or a `workspace/artifacts/retros/` path | the uncited item ids; rows with unparseable timestamps are counted and named; no threads file → holds |
 
@@ -138,7 +139,7 @@ would make fathom's releases the bottleneck for what is plainly content.
 
 | pack | entries | the failure each catches |
 |---|---|---|
-| `claude-code` | `claude_code_stanza_present`, `agent_config_commands_resolve`, `agent_config_pointers_resolve` | a CLAUDE.md never wired or with a deleted marker; a documented target or script that is gone (O25); a dead pointer |
+| `claude-code` | `claude_code_stanza_present` (kind `agents_md_reaches_claude` since ADR-059), `agent_config_commands_resolve`, `agent_config_pointers_resolve` | a root CLAUDE file that switches AGENTS.md off because it does not import it; a documented target or script that is gone (O25); a dead pointer |
 | `codex` | `codex_stanza_present`, `codex_agents_md_fits` (≤ 32 KiB, `project_doc_max_bytes`), the two `agent_config_*` entries | the same for AGENTS.md; instructions past Codex's read budget silently absent |
 | `lefthook` | `lefthook_pre_push_verify` (`under: "pre-push"`), `lefthook_runs_gate` (`task validate`), `lefthook_commands_resolve` | a pre-push hook that no longer runs verify (I17 — a commented-out or pre-commit verify gates nothing) or the gate the docs promise; a hook naming a renamed target or moved script |
 | `taskfile` | `taskfile_commands_resolve` | a task calling a missing task, include or script — found at push time otherwise |
@@ -202,8 +203,10 @@ surfaces; `cmd/fathom/doctor_packrows.go`):
   `lefthookInvokes`', held equal by a test), plus the optional review step
   as a doctor-side informational `required_pattern` — optional (C3-1), so
   no pack ships it as a want;
-- `stanza_present` ← claude-code `claude_code_stanza_present` + codex
-  `codex_stanza_present`, the row joining their file-prefixed details.
+- `stanza_present` ← codex `codex_stanza_present` (the AGENTS.md region:
+  FAIL) + claude-code `claude_code_stanza_present` (whether Claude Code
+  reaches it: WARN), plus doctor's own ancestor, settings and version reads
+  (`claudeLoadPath`, ADR-059).
 
 The entries are evaluated as shipped (a repo's same-id override governs
 its own audit, not these wiring rows). Output is unchanged for users —

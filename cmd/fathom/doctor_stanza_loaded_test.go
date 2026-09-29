@@ -17,6 +17,11 @@ func TestCheckStanzaLoaded(t *testing.T) {
 	beatsPath := filepath.Join(t.TempDir(), "hooks.jsonl")
 	t.Setenv("FATHOM_HOOKS_LOG", beatsPath)
 	root := t.TempDir()
+	// A root CLAUDE file, so the row reads beats (ADR-059: without one it
+	// SKIPs by name — TestStanzaLoadedSkipsByNameWithNoClaudeFile).
+	if err := os.WriteFile(filepath.Join(root, "CLAUDE.md"), []byte("@AGENTS.md\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	// No log at all.
 	c := checkStanzaLoaded(root)

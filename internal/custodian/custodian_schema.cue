@@ -38,7 +38,7 @@
 }
 
 #Check: {
-	kind:     "forbidden_pattern" | "required_pattern" | "command_documented_and_exists" | "commands_resolve" | "max_lines" | "max_bytes" | "pointers_resolve" | "stanza_present" | "stanza_tools_served" | "handoff_cites_instruments" | "adr_references_resolve" | "wiring_current"
+	kind:     "forbidden_pattern" | "required_pattern" | "command_documented_and_exists" | "commands_resolve" | "max_lines" | "max_bytes" | "pointers_resolve" | "stanza_present" | "stanza_tools_served" | "handoff_cites_instruments" | "adr_references_resolve" | "wiring_current" | "agents_md_reaches_claude"
 	pattern?: string
 	// where names a corpus in the registry (corpus.go, CC-11); the Go
 	// loader also refuses a corpus the kind cannot read.
@@ -54,4 +54,8 @@
 	// days is the handoff_cites_instruments window (default 7); the Go
 	// loader refuses it on any other kind.
 	days?: int & >0
+	// allow_import is agents_md_reaches_claude's switch (ADR-059): false
+	// makes any CLAUDE file a violation; the Go loader refuses it on any
+	// other kind.
+	allow_import?: bool
 }

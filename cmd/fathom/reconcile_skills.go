@@ -10,7 +10,9 @@ package main
 // as drift, and every write is receipted and undoable.
 
 import (
+	"os"
 	"path"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -18,14 +20,15 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/wiring"
 )
 
-// skillOwnedFiles renders every shipped skill for both repo-scoped
-// targets as owned files, in target then name order. root is unused for
-// the rendering (the content is embedded) and kept for symmetry with the
-// other spec builders.
+// skillOwnedFiles renders every shipped skill into its one real copy,
+// `.claude/skills` (ADR-059), as owned files in name order. `.agents/skills`
+// is never written file by file: it is the owned link (skillLinks). root is
+// unused for the rendering (the content is embedded) and kept for symmetry
+// with the other spec builders.
 func skillOwnedFiles(root string) []wiring.OwnedFile {
 	_ = root
 	var out []wiring.OwnedFile
-	for _, target := range []string{skillsTargetClaude, skillsTargetAgents} {
+	for _, target := range []string{skillsTargetClaude} {
 		for _, name := range skillsdist.Names {
 			body, err := renderSkill(target, name)
 			if err != nil {
@@ -41,6 +44,18 @@ func skillOwnedFiles(root string) []wiring.OwnedFile {
 	return out
 }
 
+// skillLinks is the `.agents/skills` link reconcile plans: only where
+// `.agents/skills` already exists — an earlier fathom's real copy becomes
+// the link, a current link is skipped, anything else is named BLOCKED.
+// Reconcile never creates it: which harnesses read `.agents/skills` is the
+// choice `fathom init --skills` made.
+func skillLinks(root string) []wiring.Link {
+	if _, err := os.Lstat(filepath.Join(root, filepath.FromSlash(agentsSkillsDir))); err != nil {
+		return nil
+	}
+	return []wiring.Link{agentsSkillsLink()}
+}
+
 // skillRelPath is the repo-relative, slash-separated path of one skill for
 // one repo-scoped target.
 func skillRelPath(target, name string) string {
@@ -54,7 +69,7 @@ func skillRelPath(target, name string) string {
 // will be created), stale (marker-owned, behind the source, will be
 // rewritten), blocked ("FILE — why", never written). Sorted.
 func skillDriftFiles(root string) (missing, stale, blocked []string) {
-	plan, err := wiring.PlanWiring(root, wiring.Spec{Files: skillOwnedFiles(root)})
+	plan, err := wiring.PlanWiring(root, wiring.Spec{Files: skillOwnedFiles(root), Links: skillLinks(root)})
 	if err != nil {
 		return nil, nil, nil
 	}
@@ -77,12 +92,16 @@ func skillDriftFiles(root string) (missing, stale, blocked []string) {
 }
 
 // skillDirsSummary names the skill directories a list of skill files spans
-// (".agents/skills, .claude/skills"), for one-line dry-run reporting.
+// (".agents/skills, .claude/skills"), for one-line dry-run reporting. The
+// `.agents/skills` link itself is its own directory.
 func skillDirsSummary(files []string) string {
 	seen := map[string]bool{}
 	var dirs []string
 	for _, f := range files {
 		d := path.Dir(path.Dir(f))
+		if f == agentsSkillsDir {
+			d = f
+		}
 		if !seen[d] {
 			seen[d] = true
 			dirs = append(dirs, d)

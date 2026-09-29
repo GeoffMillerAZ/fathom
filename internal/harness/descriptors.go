@@ -52,8 +52,10 @@ var claudeCode = Descriptor{
 	// background (RT-169).
 	AsyncHooks: true,
 	Instructions: []InstructionFile{
-		{Path: "CLAUDE.md", Mode: "native"},
-		{Path: "AGENTS.md", Mode: "mirror", Note: "the same stanza body, so every harness that reads AGENTS.md sees one contract"},
+		{Path: "AGENTS.md", Mode: "native", Note: "since Claude Code 2.1.277 (agents-md@builtin, default mode claude-md-or-agents-md): loaded where CLAUDE.md would load when no CLAUDE.md, .claude/CLAUDE.md or CLAUDE.local.md exists in the working directory or any parent; the setting is honored only in user and managed settings, and fathom never writes it"},
+		{Path: "CLAUDE.md", Mode: "import", Note: "read natively, and its presence switches AGENTS.md off under the default mode, so fathom writes into the first present CLAUDE file one marked region holding @AGENTS.md; fathom never creates one"},
+		{Path: ".claude/CLAUDE.md", Mode: "import", Note: "the import is @../AGENTS.md: imports resolve relative to the importing file"},
+		{Path: "CLAUDE.local.md", Mode: "import", Note: "a CLAUDE file for the default-mode check like the other two"},
 	},
 	HookFiles: []HookFile{
 		{Path: ".claude/settings.json", Scope: "project", Kind: "json-hook", Shape: "claude-settings"},
@@ -235,10 +237,10 @@ var claudeCode = Descriptor{
 		CapStopVerify:           "advisory; `--block` turns a proven-failing claim into hook-block",
 		CapDepositSessionEnd:    "writes one thread item; injects nothing",
 		CapDepositPreCompact:    "writes one thread pointer; injects nothing",
-		CapSkills:               "`.claude/skills/<name>/SKILL.md` (+ `.agents/skills`)",
+		CapSkills:               "`.claude/skills/<name>/SKILL.md` only: Claude Code does not discover `.agents/skills`",
 		CapClaimGate:            "the PostToolUse edit hook verifies a depth-1 docs/plans/*.md the moment an edit adds a [x] and injects the refusal; silent on a clean claim (vision 26 §4)",
 		CapSessionLedger:        "the Stop hook reads the Claude transcript; measurement only",
-		CapStanzaLoaded:         "InstructionsLoaded writes one silent beat {file_path, memory_type, load_reason}; doctor stanza_loaded reads it",
+		CapStanzaLoaded:         "InstructionsLoaded writes one silent beat {file_path, memory_type, load_reason}; doctor stanza_loaded reads it. It fires for CLAUDE files and their imports, not for an AGENTS.md loaded natively through the agents-md setting, so a repo with no CLAUDE file has no harness-side evidence",
 		CapConfigAudit:          "ConfigChange and FileChanged both run `fathom config audit --hook`: one beat, an attention line next session, never a block",
 		CapSubagentPrime:        "SubagentStart injects a ≤600 B index-first primer (identity line + the opening moves), silent when the root is not indexed",
 		CapToolFailureAdvice:    "PostToolUseFailure injects one remedy line after a FATHOM tool call fails (plain and plugin-scoped names); silent for anyone else's failure",
@@ -253,7 +255,7 @@ var claudeCode = Descriptor{
 	GatePosture: "advisory, fail-open (§5.3)",
 	ScopeMerge:  "project, project-local and user settings all apply — a hook wired at user scope fires in every repo, so init skips it at project scope",
 	Skills: SkillsShape{
-		RepoDirs: []string{".claude/skills/{{name}}/SKILL.md", ".agents/skills/{{name}}/SKILL.md"},
+		RepoDirs: []string{".claude/skills/{{name}}/SKILL.md"},
 		UserDirs: []string{"~/.claude/skills/{{name}}/SKILL.md"},
 		Variant:  "SKILL.md",
 		Verified: true,
@@ -276,7 +278,7 @@ var claudeCode = Descriptor{
 	Transcript:      "claude-jsonl",
 	Codec:           "claude",
 	CodecLanded:     "2026-09-02",
-	VerifiedAgainst: "https://code.claude.com/docs/en/hooks (2026-09-12, 33 events, against Claude Code 2.1.270); local claude 2.1.258; doctor hooks_firing on this machine",
+	VerifiedAgainst: "https://code.claude.com/docs/en/hooks (2026-09-12, 33 events, against Claude Code 2.1.270); https://code.claude.com/docs/en/memory (2026-09-29, AGENTS.md and skills discovery, against Claude Code 2.1.284); doctor hooks_firing on this machine",
 }
 
 // codex is Codex CLI's descriptor with its codec (HP-17). Contract:
@@ -476,7 +478,11 @@ var geminiCLI = Descriptor{
 	Detect:  []string{".gemini/settings.json", "~/.gemini/settings.json"},
 	Instructions: []InstructionFile{
 		{Path: "GEMINI.md", Mode: "native", Note: "global ~/.gemini/GEMINI.md, then workspace and parent directories, then just-in-time per accessed directory; all concatenated"},
-		{Path: "AGENTS.md", Mode: "settings-key", Note: "read only when settings.json context.fileName lists it — the key REPLACES the default list, so include GEMINI.md explicitly"},
+		{
+			Path: "AGENTS.md", Mode: "settings-key",
+			Note:    "read only when settings.json context.fileName lists it — the key REPLACES the default list, so it names GEMINI.md too; `init --harness=gemini-cli` writes it through the wiring engine (ADR-059)",
+			Setting: &InstructionSetting{File: ".gemini/settings.json", Key: []string{"context", "fileName"}, Value: []string{"AGENTS.md", "GEMINI.md"}},
+		},
 	},
 	HookFiles: []HookFile{
 		{

@@ -72,9 +72,13 @@ command:
 4. scaffolds `.fathom/guard.cue`, `.fathom/concerns.cue`,
    `.fathom/modules.cue` and `.fathom/capabilities.cue`, all **commented
    out** — nothing guarded, audited, bound or switched by default (§7),
-5. stamps a marker-delimited fathom operating-contract stanza into **both**
-   `CLAUDE.md` and `AGENTS.md` (one canonical source — Codex reads
-   `AGENTS.md` automatically, zero drift between the two). The stanza
+5. stamps a marker-delimited fathom operating-contract stanza into
+   `AGENTS.md`, the one instruction file (ADR-059: Claude Code 2.1.277+ and
+   Codex both read it natively). A root `CLAUDE.md`, `.claude/CLAUDE.md` or
+   `CLAUDE.local.md` that already exists gets one marked region holding
+   `@AGENTS.md` (a CLAUDE file switches `AGENTS.md` off otherwise); init
+   never creates one, and an old `CLAUDE.md` stanza is rewritten in place to
+   the import. The stanza
    routes by **question shape** (SB-7, docs/vision/27-strengths-bench.md
    §8): where / who-calls / what-breaks resolve via the fathom MCP tools;
    what-governs this repository is `obligations` with no path (the root
@@ -91,12 +95,13 @@ command:
    region is adopted and upgraded, not drift,
 6. installs the shipped skill set (`fathom-plan`, `fathom-verify`,
    `fathom-onboard`, `fathom-feedback`, `fathom-doctor`, `fathom-impact`,
-   `fathom-rewire`, `fathom-activate`, `fathom-custodian`) — bare
-   `--skills` writes `.agents/skills/` (the Agent Skills standard path:
-   Codex, Gemini CLI, Cursor, Copilot read it; spec-only frontmatter) AND
-   `.claude/skills/` (Claude Code); `--skills=claude`, `=codex`/`=agents`
-   select one path; `--skills=codex-prompts` is the deprecated user-global
-   `~/.codex/prompts` twin, explicit only,
+   `fathom-rewire`, `fathom-activate`, `fathom-custodian`) — every repo
+   mode writes the one real copy into `.claude/skills/` (Claude Code's only
+   skills path; spec-only frontmatter); bare `--skills`, `=codex` and
+   `=agents` also link `.agents/skills` (the Agent Skills standard path:
+   Codex, Gemini CLI, Cursor, Copilot read it) to it; `--skills=claude`
+   writes `.claude/skills/` only; `--skills=codex-prompts` is the deprecated
+   user-global `~/.codex/prompts` twin, explicit only,
 7. write-if-absent scaffolds `~/.fathom/config.toml` (§8), and
 8. prints the steps it deliberately does **not** do for you (MCP
    registration, the lefthook pre-push snippet — see §4 and §6).
@@ -121,8 +126,9 @@ printed as written).
 
 `fathom init --skills` marks every file it writes with an internal ownership
 marker so a re-run safely re-renders it. If a file already exists at a
-skill's target path (`.agents/skills/<name>/SKILL.md`,
-`.claude/skills/<name>/SKILL.md` or `~/.codex/prompts/<name>.md`)
+skill's target path (`.claude/skills/<name>/SKILL.md` or
+`~/.codex/prompts/<name>.md`; a real `.agents/skills` holding a skill fathom
+did not write blocks the link the same way)
 **without** that marker — i.e. you already have your own skill/prompt with
 that exact name — init refuses loudly (exit 1, naming the path) instead of
 clobbering it, and `fathom fleet reconcile` BLOCKS it by name. Rename your
@@ -393,7 +399,7 @@ claude mcp get fathom                  # → Type: http · Status: ✔ Connected
       failure).
 - [ ] `fathom doctor` is all-pass (the `fathom-doctor` skill reads it);
       under Codex, `fathom prime` prints the primer and `fathom doctor
-      --harness codex` reports `skills_installed` from `.agents/skills`.
+      --harness codex` reports `skills_installed` through the `.agents/skills` link.
 - [ ] `fathom plugin render --out fathom-plugin` writes both manifests and
       `claude plugin validate --strict fathom-plugin` passes (fleet install path).
 - [ ] If you did §8, `fathom findings status --store PATH --service S`

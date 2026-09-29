@@ -8,14 +8,16 @@
 pack: {
 	name:    "claude-code"
 	version: 1
-	about:   "Claude Code's instruction surface: CLAUDE.md carries the fathom stanza, and every command and pointer the agent config cites still exists"
+	about:   "Claude Code's instruction surface: Claude Code reaches AGENTS.md (natively, or through a root CLAUDE file's @AGENTS.md import), and every command and pointer the agent config cites still exists"
 }
 
 concerns: {
+	// The id is kept from the CLAUDE.md-stanza check it replaces (ADR-059),
+	// so a repo's same-id override keeps working (law 13).
 	claude_code_stanza_present: {
-		want:  "CLAUDE.md carries a well-formed fathom stanza region (the begin marker, then the end marker)"
-		why:   "doctor stanza_present (DI-1): a CLAUDE.md that was never wired, or whose end marker a hand-edit deleted, never tells a Claude Code session to route through the index — and fleet reconcile refuses to repair a corrupted pair"
-		check: {kind: "stanza_present", file: "CLAUDE.md"}
+		want:  "Claude Code reaches AGENTS.md: no root CLAUDE file (CLAUDE.md, .claude/CLAUDE.md, CLAUDE.local.md), or the first present one imports @AGENTS.md"
+		why:   "ADR-059: under Claude Code's default agents-md mode (2.1.277 and later) a root CLAUDE file switches AGENTS.md off, so the fathom stanza there never tells a session to route through the index unless that file imports it"
+		check: {kind: "agents_md_reaches_claude"}
 	}
 	agent_config_commands_resolve: {
 		want:  "every `task X` target and every script the agent config invokes in code exists"

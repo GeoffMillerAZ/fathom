@@ -34,11 +34,12 @@ bin/fathom version
 
 If someone ran `bin/fathom init` in this repo (the fast path, harness-
 agnostic), it already: wrote `.fathomignore`, ingested the repo, stamped the
-fathom operating-contract stanza into **both** `CLAUDE.md` and `AGENTS.md`
-from one source (**Codex reads `AGENTS.md` automatically** — nothing further
-needed for standing doctrine), and can install this skill set with
-`--skills=codex` (writes `.agents/skills/*/SKILL.md`, the documented Codex
-path) or a bare `--skills` (that plus `.claude/skills`); `--skills=codex-prompts`
+fathom operating-contract stanza into `AGENTS.md`, the one instruction file
+(ADR-059; **Codex reads `AGENTS.md` automatically**, and so does Claude Code
+2.1.277+ — nothing further needed for standing doctrine), and can install
+this skill set with `--skills=codex` (the one copy in `.claude/skills`, and
+`.agents/skills` — the documented Codex path — a link to it) or a bare
+`--skills` (the same); `--skills=codex-prompts`
 renders this deprecated `~/.codex/prompts/*.md` twin. `fathom init
 --harness=codex` writes `AGENTS.md` + `.fathom/` only and prints the
 `codex mcp add` line.
@@ -113,7 +114,7 @@ skill for the day-to-day verbs.
 | PostToolUse obligations injection | Yes, after every edit | **No equivalent** — call the `obligations` MCP tool explicitly instead |
 | PreToolUse guarded-edit injection (phase O) | Yes — `.fathom/guard.cue` scopes/commands get rules injected BEFORE the edit/command | **No equivalent** — a bound platform module's rules still reach you via `obligations`/`pack_context`, just not pre-edit |
 | Stop-hook done-means-proven check | Yes | **No equivalent** — the pre-push gate is the backstop |
-| Standing operating-contract doc | `CLAUDE.md` | `AGENTS.md` — same stanza, same source |
+| Standing operating-contract doc | `AGENTS.md` (read natively since 2.1.277; a root `CLAUDE.md` imports it) | `AGENTS.md` — the same file |
 | Pre-push `fathom verify` gate | Yes | Yes — identical |
 | Subscription compile lane | `claude-cli`, near-$0 | `codex-cli`, real token cost |
 | Findings-loop pre-edit block | Yes — served automatically | **No equivalent** — call `findings status`/`findings near` explicitly |

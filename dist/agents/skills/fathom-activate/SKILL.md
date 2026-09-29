@@ -37,9 +37,10 @@ description: >
    <id> on|off` writes only that block. An optional `budgets: {list,
    composite, map}` block (tokens) sizes list/composite/map answers —
    honoured by `serve-http`, not stdio (**experimental**, BA-9).
-6. **Skills**: the nine fathom skills installed (`fathom init
-   --skills` — bare writes `.agents/skills`, the Agent Skills standard
-   path every harness reads, AND `.claude/skills`; `fathom plugin render`
+6. **Skills**: the fathom skills installed (`fathom init
+   --skills` — the one real copy in `.claude/skills`, and bare `--skills`
+   links `.agents/skills`, the Agent Skills standard path every other
+   harness reads, to it; `fathom plugin render`
    packages them with the hook template and the MCP registration as one
    plugin tree carrying both Claude Code's and the Agent Plugins 1.0
    manifests); on a non-Claude harness `fathom harness capabilities

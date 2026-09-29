@@ -158,11 +158,12 @@ type rawFallbackBackend interface {
 // matched against this one literal string, so a narrow "CLAUDE.md"-shaped
 // glob matches, but a broad, genuinely repo-wide glob like "**/*.go" does
 // NOT (the string "CLAUDE.md" is not a "*.go" file), even when it was
-// proposed by the root CLAUDE.md itself — the MAJOR finding
+// proposed by the root instruction file itself — the MAJOR finding
 // semantic.RootObligationsFor exists to fix. Kept only as a degrade for a
 // backend with no better answer; every real backend should implement
-// rootObligationsBackend instead.
-const rootObligationsProbe = "CLAUDE.md"
+// rootObligationsBackend instead. AGENTS.md since ADR-059: the one
+// instruction file every wired repository carries.
+const rootObligationsProbe = "AGENTS.md"
 
 // rootObligations answers "what governs this repository" for an obligations
 // call with no file argument (RC-22, docs/vision/28-receipts.md §3.5): the
@@ -292,7 +293,7 @@ func renderObligationReceipt(ctx context.Context, backend QueryInterface, servic
 	}
 	if rootScope {
 		result["root"] = true
-		result["note"] = "Root-scope obligations only (repo-root/CLAUDE.md-level rules) — pass file for file-scoped rules."
+		result["note"] = "Root-scope obligations only (repo-root AGENTS.md/CLAUDE.md-level rules) — pass file for file-scoped rules."
 	}
 	if servedLayer != "" {
 		result["layer"] = servedLayer

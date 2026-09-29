@@ -54,4 +54,8 @@ concerns: {
 		want:  "every task and script the Taskfile calls exists"
 		check: {kind: "commands_resolve", where: "taskfile"}
 	}
+	one_instruction_file: {
+		want:  "AGENTS.md is the one instruction file: no CLAUDE file, not even an importing one (ADR-059)"
+		check: {kind: "agents_md_reaches_claude", allow_import: false}
+	}
 }

@@ -111,6 +111,7 @@ const (
 // messages that teach.
 var KnownKinds = []CheckKind{
 	KindADRReferencesResolve,
+	KindAgentsMDReachesClaude,
 	KindCommandDocumentedAndExists,
 	KindCommandsResolve,
 	KindForbiddenPattern,
@@ -148,6 +149,10 @@ type Check struct {
 	Lines   int       `json:"lines,omitempty"`   // max_lines budget
 	Bytes   int       `json:"bytes,omitempty"`   // max_bytes budget
 	Days    int       `json:"days,omitempty"`    // handoff_cites_instruments window (default 7)
+	// AllowImport is agents_md_reaches_claude's switch: nil or true, a root
+	// CLAUDE file that imports AGENTS.md holds; false, any CLAUDE file is a
+	// violation (AGENTS.md is the one instruction file, ADR-059).
+	AllowImport *bool `json:"allow_import,omitempty"`
 }
 
 // Concern is a falsifiable want with provenance.

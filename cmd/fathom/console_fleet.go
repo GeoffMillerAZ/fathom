@@ -140,7 +140,7 @@ func renderFleetReconcile(triggered bool, diffs []wiringDiff) string {
 			ID: "reconcile", Title: "Wiring drift",
 			Question: "Is every project's hook/stanza/skill wiring still current with the template fathom ships?",
 			Verb:     "fathom fleet reconcile",
-			Source:   "a read-only walk of each project's .claude/settings.json, CLAUDE.md/AGENTS.md stanzas and shipped skill files",
+			Source:   "a read-only walk of each project's .claude/settings.json, AGENTS.md stanza and CLAUDE-file import, and shipped skill files",
 			State:    console.StatePresent, SourceKey: reconcileSourceKey,
 			Body: `<p class="text-sm text-ink-muted mb-2">Not checked this page load — reconcile runs only when asked (never on a schedule).</p>` +
 				form.RenderButton(form.Button{Label: "Check wiring drift", Href: "/fleet?reconcile=1", Variant: form.ButtonGhost}),
@@ -173,7 +173,7 @@ func renderFleetReconcile(triggered bool, diffs []wiringDiff) string {
 		ID: "reconcile", Title: "Wiring drift",
 		Question: "Is every project's hook/stanza/skill wiring still current with the template fathom ships?",
 		Verb:     "fathom fleet reconcile",
-		Source:   "a read-only walk of each project's .claude/settings.json, CLAUDE.md/AGENTS.md stanzas and shipped skill files",
+		Source:   "a read-only walk of each project's .claude/settings.json, AGENTS.md stanza and CLAUDE-file import, and shipped skill files",
 		State:    state, SourceKey: reconcileSourceKey,
 		Body: body,
 	})

@@ -54,7 +54,7 @@ design work, then `intent-decide`, `intent-doctor`, `intent-audit`, `intent-prun
 | `go.mod` (kit pin), `third_party/agentic-kit/**` | mirror drift (I15) | `task sync-kit` then `task vendor-check`; `TestPackFilesMatchSource` |
 | `.fathom/*.cue`, `internal/custodian/**` | governs this repo's own agent config | `fathom config audit` exit 0; `fathom doctor`; `TestADRReferencesResolveConcern` |
 | `internal/metrics/**`, `cmd/fathom/research_report.go` | the numbers the program steers by (law 12) | pre-registered criterion unchanged after data; `TestAbsenceNotesAreArmAware`; `TestAggregateChannels_NeverMeasurable_NotesVerbatim`; `TestBuildResearchReport_DiscoveryShare_ZeroBeats_NeverFabricates100Percent` |
-| `CLAUDE.md`, `AGENTS.md` | the always-loaded router and the fleet stanza | `fathom config audit` (`task config-audit`, in `task validate`); `TestStanzaCarriesOpeningMovesAndPrime`; `TestCheckStanzaPresent`; stanza paragraphs identical in both files (`intent-doctor` 15) |
+| `AGENTS.md` (and any root `CLAUDE.md`) | the always-loaded router and the fleet stanza | `fathom config audit` (`task config-audit`, in `task validate`); `TestStanzaCarriesOpeningMovesAndPrime`; `TestCheckStanzaPresent`; the stanza only in AGENTS.md, a CLAUDE file absent or importing it (ADR-059) |
 | `internal/readcoverage/**` (the rendering; the accounting is agentic-kit's `foundations/telemetry/read-manifest`) | the honesty floor (I38): every reporting-layer read routes through the kit's read manifest and every count over it through this adapter, so a bug here makes blindness invisible everywhere | `TestReadSetRecordsAbsentUnreadableAndSkipped`; `TestRenderCountIsALowerBoundWhenBlind`; `TestUnreadableInputNeverLooksHealthier` |
 | `docs/intent/**`, `ADR.md`, `.fathom/guard.cue` | the intent corpus itself (ADR-026): a wrong condition, rung, or guard note misleads every session | `intent-doctor` pass; `fathom config audit` 0 violated; `fathom intent audit` with 0 unparsed and COMPLETE coverage (ADR-027); `TestUnreadableInputNeverLooksHealthier` |
 
@@ -76,4 +76,4 @@ fired. Build for now. Foreclose nothing documented when keeping it open is free.
 
 List every condition: `grep -rn -E "(Revisit when|Promote when|Drop if|Done when)" docs/intent/ ADR.md`
 
-Verified against: Claude Code 2.1.245, Codex CLI 0.146.0 (2026-08-25).
+Verified against: Claude Code 2.1.284 (2026-09-29, ADR-059), Codex CLI 0.146.0 (2026-08-25).

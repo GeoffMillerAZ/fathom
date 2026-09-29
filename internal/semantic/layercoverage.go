@@ -25,7 +25,6 @@ package semantic
 //     (a stale digest: still counted as not-compiled, but not "growth").
 import (
 	"context"
-	"sort"
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -135,13 +134,11 @@ func LiveLayerCoverage(ctx context.Context, st store.Store, serviceID string, la
 		bySubject[cl.Subject] = append(bySubject[cl.Subject], cl)
 	}
 
-	docs := append([]core.SourceFile(nil), corpus...)
-	sort.Slice(docs, func(i, j int) bool { return docs[i].Path < docs[j].Path })
-
 	live := LayerCoverage{BudgetStopped: base.BudgetStopped, PrefilterSkipped: base.PrefilterSkipped}
 	var uncompiled []orderedSection
-	for _, doc := range docs {
-		for _, sec := range SplitMarkdownSections(doc.Path, doc.Content) {
+	for _, ds := range corpusSections(corpus) {
+		doc := ds.doc
+		for _, sec := range ds.sections {
 			live.SectionsTotal++
 			prior, seen := bySubject[sec.Subject]
 			switch {

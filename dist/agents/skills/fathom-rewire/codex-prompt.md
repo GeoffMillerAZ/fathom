@@ -17,7 +17,7 @@ argument-hint: [DIR=<repo-root>]
 
 Run `fathom fleet reconcile --repo .` (dry-run), read the diff, then
 `--apply` for the safe subset. Then: `.fathomignore` before first ingest;
-`fathom gen-claude-md`; ingest with `{"service":"<name>","path":"<canonical
+`fathom gen-agents-md`; ingest with `{"service":"<name>","path":"<canonical
 root>"}` (the daemon refuses path-like ids, duplicate and nested roots —
 `rename_service`/`remove_service` fix history); prove with `list_services`
 plus one edit landing a beat in `~/.fathom/hooks.jsonl`. Known false

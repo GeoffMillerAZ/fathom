@@ -30,3 +30,7 @@ package harness
 // 8. a capability outside the vocabulary (wave 3 added five; a typo in one
 // of them must fail rather than render as a blank table row):
 // bad8: #EventBinding & {capability: "subagent-primer", event: "subagent-start", harness_event: "SubagentStart", verb: "v", marker: "m", timeout_sec: 1, vehicle: "hook-inject"}
+
+// 9. the retired "mirror" instruction-file mode (ADR-059: the stanza goes
+// into AGENTS.md alone; a CLAUDE file carries at most an import):
+// bad9: #InstructionFile & {path: "AGENTS.md", mode: "mirror"}

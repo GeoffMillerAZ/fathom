@@ -11,19 +11,20 @@ import (
 // TestGenClaudeMdMissingService verifies that --service is required.
 func TestGenClaudeMdMissingService(t *testing.T) {
 	var out, errBuf bytes.Buffer
-	code := run([]string{"gen-claude-md"}, &out, &errBuf)
+	code := run([]string{"gen-agents-md"}, &out, &errBuf)
 	if code == 0 {
 		t.Fatal("expected nonzero exit when --service is missing")
 	}
 }
 
-// TestGenClaudeMd_EndToEnd ingests the faux fixture then generates CLAUDE.md,
-// verifying that the output file exists and contains expected sections.
+// TestGenClaudeMd_EndToEnd ingests the faux fixture then generates the
+// knowledge index with gen-agents-md, verifying that the output file exists
+// and contains expected sections.
 func TestGenClaudeMd_EndToEnd(t *testing.T) {
 	storeDir := t.TempDir()
 	store := filepath.Join(storeDir, "test.sqlite")
 	outputDir := t.TempDir()
-	outputPath := filepath.Join(outputDir, "CLAUDE.md")
+	outputPath := filepath.Join(outputDir, "AGENTS.md")
 	paymentPath := fauxPaymentPathForTest(t)
 
 	// First ingest so the store has symbols.
@@ -39,16 +40,16 @@ func TestGenClaudeMd_EndToEnd(t *testing.T) {
 		t.Fatalf("ingest exited %d; stderr=%s", code, ingestErr.String())
 	}
 
-	// Now generate CLAUDE.md.
+	// Now generate AGENTS.md.
 	var genOut, genErr bytes.Buffer
 	code = run([]string{
-		"gen-claude-md",
+		"gen-agents-md",
 		"--service", "payment-service",
 		"--store", store,
 		"--output", outputPath,
 	}, &genOut, &genErr)
 	if code != 0 {
-		t.Fatalf("gen-claude-md exited %d\nstdout=%s\nstderr=%s",
+		t.Fatalf("gen-agents-md exited %d\nstdout=%s\nstderr=%s",
 			code, genOut.String(), genErr.String())
 	}
 
@@ -66,7 +67,7 @@ func TestGenClaudeMd_EndToEnd(t *testing.T) {
 		"Symbols",
 	} {
 		if !strings.Contains(content, want) {
-			t.Errorf("CLAUDE.md missing %q; content:\n%s", want, content)
+			t.Errorf("AGENTS.md missing %q; content:\n%s", want, content)
 		}
 	}
 }
@@ -101,5 +102,32 @@ func TestGenClaudeMd_DefaultOutput(t *testing.T) {
 
 	if _, err := os.Stat(outputPath); err != nil {
 		t.Fatalf("output file not created: %v", err)
+	}
+}
+
+// TestGenAgentsMdDefaultsToAgentsMD pins AG-19 (ADR-059): gen-agents-md
+// defaults to workspace/artifacts/AGENTS.md, and gen-claude-md still runs
+// through 0.9.x with a deprecation line naming the new verb.
+func TestGenAgentsMdDefaultsToAgentsMD(t *testing.T) {
+	if genAgentsMdDefaultOutput != "workspace/artifacts/AGENTS.md" {
+		t.Fatalf("default output = %q", genAgentsMdDefaultOutput)
+	}
+	store := filepath.Join(t.TempDir(), "empty.sqlite")
+	dir := t.TempDir()
+	t.Chdir(dir)
+	var out, errBuf bytes.Buffer
+	if code := cmdGenAgentsMd([]string{"--service", "none", "--store", store}, &out, &errBuf); code != 0 {
+		t.Fatalf("gen-agents-md exited %d: %s%s", code, out.String(), errBuf.String())
+	}
+	if _, err := os.Stat(filepath.Join(dir, "workspace", "artifacts", "AGENTS.md")); err != nil {
+		t.Fatalf("default output not written: %v", err)
+	}
+	out.Reset()
+	errBuf.Reset()
+	if code := run([]string{"gen-claude-md", "--service", "none", "--store", store, "--output", filepath.Join(dir, "old.md")}, &out, &errBuf); code != 0 {
+		t.Fatalf("the deprecated alias exited %d: %s", code, errBuf.String())
+	}
+	if !strings.Contains(errBuf.String(), "deprecated") || !strings.Contains(errBuf.String(), "gen-agents-md") {
+		t.Errorf("the alias says nothing about the rename: %q", errBuf.String())
 	}
 }

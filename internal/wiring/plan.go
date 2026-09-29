@@ -133,6 +133,14 @@ type Region struct {
 	// differs from its recorded digest is drift; an untracked one is never
 	// reported as drift. The engine default (false) stays strict.
 	AdoptUntracked bool
+	// Remove plans the region's DELETION instead of a write (ADR-059,
+	// AG-5): the markers and the body go, every other byte stays. It obeys
+	// the same ownership rules as a write — a tracked region edited by hand
+	// is BLOCKED (drift), an untracked one is fathom's only by Known or
+	// AdoptUntracked — and the receipt carries the removed text, so `fleet
+	// undo` puts it back. Body is ignored. A file with no region, or no
+	// file at all, is already what Remove wants.
+	Remove bool
 }
 
 // Spec is what fathom wants a repository to carry.
@@ -141,6 +149,8 @@ type Spec struct {
 	Keys    []Key
 	// Files are whole files fathom owns by marker (ownedfile.go).
 	Files []OwnedFile
+	// Links are symbolic links fathom owns (link.go).
+	Links []Link
 }
 
 func (s Spec) validate() error {
@@ -163,6 +173,20 @@ func (s Spec) validate() error {
 			return fmt.Errorf("two items target the whole of %s", f.File)
 		}
 		seenFile[f.File] = true
+	}
+	for _, l := range s.Links {
+		if l.Path == "" || l.Target == "" {
+			return fmt.Errorf("link with no path or no target")
+		}
+		if seenRegion[l.Path] || seenFile[l.Path] {
+			return fmt.Errorf("two items target the whole of %s", l.Path)
+		}
+		for _, f := range s.Files {
+			if strings.HasPrefix(f.File, l.Path+"/") {
+				return fmt.Errorf("owned file %s would be written through the link %s — no writer writes through a link", f.File, l.Path)
+			}
+		}
+		seenFile[l.Path] = true
 	}
 	seenKey := map[string]bool{}
 	for _, k := range s.Keys {
@@ -207,6 +231,9 @@ func PlanWiring(root string, spec Spec) (Plan, error) {
 	}
 	for _, f := range spec.Files {
 		p.Items = append(p.Items, planOwnedFile(root, f, ledger))
+	}
+	for _, l := range spec.Links {
+		p.Items = append(p.Items, planLink(root, l, ledger))
 	}
 
 	sort.SliceStable(p.Items, func(i, j int) bool {
@@ -258,6 +285,9 @@ func readFileIfPresent(path string) (string, bool, error) {
 }
 
 func planRegion(root string, r Region) Item {
+	if r.Remove {
+		return planRegionRemoval(root, r)
+	}
 	it := Item{File: r.File, Target: "fathom:region", Kind: KindRegion, After: r.Body}
 	path := filepath.Join(root, filepath.FromSlash(r.File))
 
@@ -318,6 +348,47 @@ func planRegion(root string, r Region) Item {
 		}
 		it.Verdict = VerdictApply
 		it.Reason = "fathom's own region is out of date — upgrading from template " + from + " to " + r.Version
+	}
+	return it
+}
+
+// planRegionRemoval is planRegion for Region.Remove: the same ownership
+// verdicts, with deletion as the write. After is empty — the region's
+// whole text leaves the file — and Before is the body the receipt keeps.
+func planRegionRemoval(root string, r Region) Item {
+	it := Item{File: r.File, Target: "fathom:region", Kind: KindRegion}
+	path := filepath.Join(root, filepath.FromSlash(r.File))
+	content, existed, err := readFileIfPresent(path)
+	if err != nil {
+		it.Verdict, it.Cause, it.Reason = VerdictBlocked, CauseUnreadable, "cannot be read: "+err.Error()
+		return it
+	}
+	if !existed {
+		it.Verdict, it.Reason = VerdictSkip, r.File+" does not exist — no fathom region to remove"
+		return it
+	}
+	reg, perr := parseOwnedRegion(content, r.Syntax)
+	if perr != nil {
+		it.Verdict, it.Cause = VerdictBlocked, CauseUnreadable
+		it.Reason = "the fathom marker pair is corrupted (" + perr.Error() + ") — fathom will not guess at a broken pair"
+		return it
+	}
+	if !reg.Present {
+		it.Verdict, it.Reason = VerdictSkip, "no fathom region in "+r.File+" — nothing to remove"
+		return it
+	}
+	it.Present, it.Before = true, reg.Body
+	switch {
+	case reg.Drifted():
+		it.Verdict, it.Cause = VerdictBlocked, CauseDrift
+		it.Reason = "the region was edited by hand since fathom wrote it (recorded " + short(reg.Digest) +
+			", body now hashes to " + short(reg.BodyDigest) + ") — fathom will not remove it; delete it yourself or restore fathom's text"
+	case !reg.Tracked() && !knownBody(r, reg.Body, lineEnding(content)) && !r.AdoptUntracked:
+		it.Verdict, it.Cause = VerdictBlocked, CauseUnproven
+		it.Reason = "the region predates marker format v3 and its body matches no template fathom shipped — fathom cannot prove it wrote this and will not remove it"
+	default:
+		it.Verdict = VerdictApply
+		it.Reason = "fathom will remove its own region from " + r.File + ", leaving every other byte in place"
 	}
 	return it
 }

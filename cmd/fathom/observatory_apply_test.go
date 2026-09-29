@@ -218,8 +218,11 @@ func TestWiringApplyRequiresFreshPlan(t *testing.T) {
 		t.Fatalf("apply reports nothing applied: %v", body)
 	}
 	got, _ := os.ReadFile(claudePath)
-	if !strings.HasPrefix(string(got), prior) || !strings.Contains(string(got), fathomStanzaBody("demo", false)) {
-		t.Errorf("CLAUDE.md after apply is not prior bytes + fathom's region:\n%s", got)
+	if !strings.HasPrefix(string(got), prior) || ownedRegionBody(string(got)) != "@AGENTS.md" {
+		t.Errorf("CLAUDE.md after apply is not prior bytes + fathom's @AGENTS.md import region (ADR-059):\n%s", got)
+	}
+	if agents, _ := os.ReadFile(filepath.Join(root, "AGENTS.md")); !strings.Contains(string(agents), fathomStanzaBody("demo", false)) {
+		t.Errorf("AGENTS.md after apply does not carry the stanza:\n%s", agents)
 	}
 	if _, err := os.Stat(filepath.Join(root, ".claude", "settings.json")); err != nil {
 		t.Errorf("hooks were previewed but not written: %v", err)

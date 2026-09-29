@@ -34,6 +34,10 @@ const (
 	// KindJSONHook addresses one hook entry in a Claude Code settings file:
 	// Path is {event, matcher} and Marker identifies fathom's own command.
 	KindJSONHook KeyKind = "json-hook"
+	// KindJSONValue addresses one value in a JSON settings file by its
+	// object-key path ({"context","fileName"}): Body is the value as JSON.
+	// Gemini CLI's context.fileName is the case (ADR-059, AG-6).
+	KindJSONValue KeyKind = "json-value"
 )
 
 // Key is one entry fathom owns inside a structured file owned by someone
@@ -103,6 +107,19 @@ func (k Key) desired() (string, error) {
 			return "", err
 		}
 		return string(b), nil
+	case KindJSONValue:
+		if len(k.Path) == 0 {
+			return "", fmt.Errorf("json value key wants a key path")
+		}
+		var v any
+		if err := json.Unmarshal([]byte(k.Body), &v); err != nil {
+			return "", fmt.Errorf("json value key body is not JSON: %w", err)
+		}
+		b, err := json.Marshal(v)
+		if err != nil {
+			return "", err
+		}
+		return string(b), nil
 	default:
 		return "", fmt.Errorf("unknown key kind %q", k.Kind)
 	}
@@ -127,6 +144,8 @@ func (k Key) current(content string) (string, bool, error) {
 		return k.yamlCurrent(content)
 	case KindJSONHook:
 		return k.jsonCurrent(content)
+	case KindJSONValue:
+		return k.jsonValueCurrent(content)
 	default:
 		return "", false, fmt.Errorf("unknown key kind %q", k.Kind)
 	}
@@ -140,6 +159,8 @@ func (k Key) place(content string) (string, error) {
 		return k.yamlPlace(content)
 	case KindJSONHook:
 		return k.jsonPlace(content)
+	case KindJSONValue:
+		return k.jsonValuePlace(content)
 	default:
 		return "", fmt.Errorf("unknown key kind %q", k.Kind)
 	}
@@ -525,4 +546,63 @@ func sortedKeys(m map[string]any) []string {
 	}
 	sort.Strings(out)
 	return out
+}
+
+// ─── JSON, one value by key path ─────────────────────────────────────────
+
+func (k Key) jsonValueCurrent(content string) (string, bool, error) {
+	root, err := parseJSONObject(content)
+	if err != nil {
+		return "", false, err
+	}
+	var cur any = root
+	for _, seg := range k.Path {
+		m, ok := cur.(map[string]any)
+		if !ok {
+			return "", false, nil
+		}
+		if cur, ok = m[seg]; !ok {
+			return "", false, nil
+		}
+	}
+	b, err := json.Marshal(cur)
+	if err != nil {
+		return "", false, err
+	}
+	return string(b), true, nil
+}
+
+func (k Key) jsonValuePlace(content string) (string, error) {
+	want, err := k.desired()
+	if err != nil {
+		return "", err
+	}
+	var v any
+	if err := json.Unmarshal([]byte(want), &v); err != nil {
+		return "", err
+	}
+	root, err := parseJSONObject(content)
+	if err != nil {
+		return "", err
+	}
+	m := root
+	for i, seg := range k.Path {
+		if i == len(k.Path)-1 {
+			m[seg] = v
+			break
+		}
+		next, present := m[seg]
+		if !present {
+			child := map[string]any{}
+			m[seg] = child
+			m = child
+			continue
+		}
+		child, ok := next.(map[string]any)
+		if !ok {
+			return "", fmt.Errorf("%s is not an object — fathom will not replace it", strings.Join(k.Path[:i+1], "."))
+		}
+		m = child
+	}
+	return marshalJSONFile(root)
 }

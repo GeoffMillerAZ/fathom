@@ -1103,7 +1103,13 @@ unable-to-check) and `handoff_cites_instruments` (`days`) — plus (CC-12)
 the lines under one top-level key, such as a lefthook hook; a comment never
 matches), `stanza_present` (`file`),
 `max_bytes` (`file`, `bytes`) and `commands_resolve` (`where`: every
-`task` target, local include and repo script the corpus invokes exists).
+`task` target, local include and repo script the corpus invokes exists) —
+plus (ADR-059) `agents_md_reaches_claude` (optional `allow_import`): AGENTS.md
+exists and either no root `CLAUDE.md`, `.claude/CLAUDE.md` or `CLAUDE.local.md`
+exists (Claude Code 2.1.277 and later loads AGENTS.md natively) or the first
+present one imports `@AGENTS.md`; `allow_import: false` refuses every CLAUDE
+file outside `testdata/`. The claude-code pack's `claude_code_stanza_present`
+is this kind.
 `where` names a corpus (CC-11): `agent-config` (default), `lefthook`,
 `taskfile`, `ci`.
 

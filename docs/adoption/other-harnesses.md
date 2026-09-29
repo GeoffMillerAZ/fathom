@@ -17,14 +17,20 @@ edit the registry, re-run the verb, paste. Never hand-edit the rows.
 ## The four standards, and which path is which
 
 - **Instruction file.** `AGENTS.md` is native or opt-in on 13 of the 15
-  harnesses surveyed; `fathom init` writes one stanza body into `CLAUDE.md`
-  and `AGENTS.md`. Gemini CLI reads `GEMINI.md` by default and `AGENTS.md`
-  only through a settings key (`context.fileName`) — the row says so.
+  harnesses surveyed, Claude Code included since 2.1.277; `fathom init` writes
+  its one stanza into `AGENTS.md` for every harness (ADR-059). A root
+  `CLAUDE.md`, `.claude/CLAUDE.md` or `CLAUDE.local.md` that exists gets one
+  marked region holding `@AGENTS.md` (the row's *import* mode); fathom never
+  creates one. Gemini CLI reads `GEMINI.md` by default and `AGENTS.md` only
+  through a settings key: `init --harness=gemini-cli` sets
+  `.gemini/settings.json` `context.fileName` to `["AGENTS.md", "GEMINI.md"]`.
 - **Skills path.** `.agents/skills/<name>/SKILL.md` is the Agent Skills
   standard path (agentskills.io) — Codex, Gemini CLI, Cursor, Copilot and
-  the rest read it; `.claude/skills` is Claude Code's. `fathom init --skills`
-  (bare) writes both; `--skills=codex` writes `.agents/skills`; the
-  deprecated `~/.codex/prompts` twin is `--skills=codex-prompts` only
+  the rest read it; `.claude/skills` is Claude Code's, and the only one it
+  discovers. `fathom init --skills` writes the one real copy into
+  `.claude/skills` and, for bare `--skills`, `--skills=codex` and
+  `--skills=agents`, links `.agents/skills` to it (ADR-059); the deprecated
+  `~/.codex/prompts` twin is `--skills=codex-prompts` only
   (`docs/upgrades/0.8.0-skills-on-the-standard.md`).
 - **MCP.** Every harness reaches the same 19-tool `/rpc/agent` surface over
   streamable HTTP; the config file and the `mcp add` spelling differ per
@@ -49,7 +55,7 @@ the git-native verify gate as the backstop. `fathom harness capabilities
 <!-- fathom:harness-matrix begin -->
 | Harness | Tier | Instruction file | Skills path | MCP config + `mcp add` | Verified against |
 |---|---|---|---|---|---|
-| `claude-code` (Claude Code) | A | `CLAUDE.md`, `AGENTS.md (mirror)` | `.claude/skills`, `.agents/skills` | `~/.claude.json`, `.mcp.json`<br>`claude mcp add --transport http --scope user fathom http://127.0.0.1:7575/rpc/agent` | https://code.claude.com/docs/en/hooks (2026-09-12, 33 events, against Claude Code 2.1.270); local claude 2.1.258; doctor hooks_firing on this machine |
+| `claude-code` (Claude Code) | A | `AGENTS.md`, `CLAUDE.md (@AGENTS.md import)`, `.claude/CLAUDE.md (@AGENTS.md import)`, `CLAUDE.local.md (@AGENTS.md import)` | `.claude/skills` | `~/.claude.json`, `.mcp.json`<br>`claude mcp add --transport http --scope user fathom http://127.0.0.1:7575/rpc/agent` | https://code.claude.com/docs/en/hooks (2026-09-12, 33 events, against Claude Code 2.1.270); https://code.claude.com/docs/en/memory (2026-09-29, AGENTS.md and skills discovery, against Claude Code 2.1.284); doctor hooks_firing on this machine |
 | `codex` (Codex CLI) | A | `AGENTS.md` | `.agents/skills` | `~/.codex/config.toml`, `.codex/config.toml`<br>`codex mcp add fathom --url http://127.0.0.1:7575/rpc/agent` | codex-cli 0.153.1 (2026-09-12, headless exec): hooks fired from CODEX_HOME/hooks.json, five live stdin captures replay through CodexCodec, and the MCP surface answered list_services over /rpc/agent |
 | `gemini-cli` (Gemini CLI) | A | `GEMINI.md`, `AGENTS.md (settings key)` | `.agents/skills`, `.gemini/skills` | `.gemini/settings.json`, `~/.gemini/settings.json`<br>`add to .gemini/settings.json (or ~/.gemini/settings.json): {"mcpServers":{"fathom":{"httpUrl":"http://127.0.0.1:7575/rpc/agent"}}}` | **unverified** — no session on this build has run here |
 | `cursor` (Cursor) | A | `AGENTS.md`, `.cursor/rules/*.mdc (settings key)` | `.agents/skills`, `.cursor/skills`, `.claude/skills` | `.cursor/mcp.json`, `~/.cursor/mcp.json`<br>`add to .cursor/mcp.json (or ~/.cursor/mcp.json): {"mcpServers":{"fathom":{"url":"http://127.0.0.1:7575/rpc/agent"}}}` | **unverified** — no session on this build has run here |

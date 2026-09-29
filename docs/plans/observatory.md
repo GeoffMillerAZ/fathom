@@ -26,7 +26,7 @@
 ## C2 — Owner asks landed mid-flight (2026-08-08)
 
 - [x] GET / is a landing page: every browsable and machine surface linked from the root; unknown paths still 404 {id: OB-11, symbol: mountConsole, package: cmd/fathom, reachable_from: TestLandingPage}
-- [x] the observatory is an app-kit app end to end: dashboard/stat/viz components, kit tokens via task ui:css (pinned binary, no Node), the UI doctrine in CLAUDE.md and AGENTS.md, UI guards in .fathom/guard.cue, the ui-appkit dialect pack installed, and the honest-absence tile promoted UP into the kit as stat.Absent {id: OB-12, symbol: TestObservatoryServicePage, package: cmd/fathom, skip_test: true, skip: "wiring row - the committed input.css/@source chain, the guard file, the installed layer dir, and app-kit commit af47262; the anchored render test exercises the kit components (a Test* is not reached by a test)"}
+- [x] the observatory is an app-kit app end to end: dashboard/stat/viz components, kit tokens via task ui:css (pinned binary, no Node), the UI doctrine in the repo's instruction files (AGENTS.md, ADR-059), UI guards in .fathom/guard.cue, the ui-appkit dialect pack installed, and the honest-absence tile promoted UP into the kit as stat.Absent {id: OB-12, symbol: TestObservatoryServicePage, package: cmd/fathom, skip_test: true, skip: "wiring row - the committed input.css/@source chain, the guard file, the installed layer dir, and app-kit commit af47262; the anchored render test exercises the kit components (a Test* is not reached by a test)"}
 
 ## C3 — The brief reads as a story (owner ask, 2026-08-08)
 

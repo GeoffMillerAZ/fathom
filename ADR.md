@@ -3515,3 +3515,44 @@ and cited in the design: change is the first suspect, correlation is not cause, 
 - The domain-connectors trigger fires (an external party ships a conforming module with zero connectors from us):
   reconsider fathom-side connectors through an ADR and an I14 amendment.
 - The owner ends the deferral, or a named production consumer is recorded (IM-V1).
+
+## ADR-059: AGENTS.md is the one instruction file; a CLAUDE.md fathom meets carries only an import (2026-09-29)
+
+**Status.** Accepted 2026-09-29 on the owner's decision of the same date ("AGENTS.md is the single instruction file in our repos; do not maintain CLAUDE.md"). **Type.** Product / architecture. This record corrects ADR-029's Claude Code descriptor data (instruction files, skills directories, `verified_against`) with no change to ADR-029's decisions; executes ADR-049's consequence "the obligations corpus widens only to files a client actually loads"; and supersedes the obligations layer's corpus note excluding AGENTS.md. Design: `docs/design/agents-md.md`. Plan: `docs/plans/agents-md.md` (AG-).
+
+**Context.**
+- *Claude Code.* Since 2.1.277 it reads AGENTS.md natively through `agents-md@builtin`. In the default `claude-md-or-agents-md` mode, a project with no `CLAUDE.md`, `.claude/CLAUDE.md` or `CLAUDE.local.md` in the working directory or any parent loads its AGENTS.md files where CLAUDE.md would load; `~/.claude/CLAUDE.md` does not count. InstructionsLoaded does not fire for an AGENTS.md loaded that way. Only `.claude/skills` is discovered. The setting is honored only in user and managed settings.
+- *Codex.* It reads AGENTS.md from the root down and skills from `.agents/skills`.
+- *fathom before this record.* It wrote one stanza into two files and rendered skills twice, and the in-repo copies had already drifted (`fathom-plan` differs between `.claude/skills` and `.agents/skills`). Its obligations layer compiled CLAUDE.md and excluded AGENTS.md, so converting a repository would have emptied its governing corpus silently.
+
+**Decision.**
+1. *One stanza, in AGENTS.md.* Every write path puts the stanza region in AGENTS.md only: `init` (every `--harness`, `none` included), `fleet reconcile --apply` and the console apply. For Gemini CLI, init also sets `.gemini/settings.json` `context.fileName` to AGENTS.md and GEMINI.md through the wiring engine. No path creates a CLAUDE.md.
+2. *CLAUDE.md is at most an import.* The first present of `CLAUDE.md`, `.claude/CLAUDE.md` and `CLAUDE.local.md` gets one fathom-marked region whose body is the import line (`@AGENTS.md`, or `@../AGENTS.md` from `.claude/`). It gets none when an unfenced import already exists, and then fathom removes its own region there (`Region.Remove`).
+3. *Migration rewrites the region, never the file.* An existing CLAUDE.md stanza region is rewritten in place to the import body, with the stanza written into AGENTS.md in the same apply. It carries a receipt, and `fleet undo` restores it. A drifted region blocks (law 15). fathom never deletes an adopter's CLAUDE.md.
+4. *Doctor proves the path.* `stanza_present` FAILs when AGENTS.md lacks a well-formed region. It WARNs, with the remedy, when Claude Code will not load AGENTS.md: the root CLAUDE file has no import; a legacy stanza copy remains; an ancestor CLAUDE file exists; the effective setting is `claude-md` or `managed-only`; the Claude Code version is older than 2.1.277. fathom never writes the setting. `stanza_loaded` SKIPs with a named reason where no CLAUDE file exists.
+5. *Instruction files are first-class wherever fathom reads them.* The obligations corpus includes AGENTS.md at the root, under `.claude/` and nested, beside CLAUDE.md; fathom-owned regions are not compiled; byte-identical twin sections compile once; probes, console guide predicates, fleet notes and benches name AGENTS.md first.
+6. *One skills copy.* `.claude/skills` holds the files, and its frontmatter is held to the Agent Skills fields by test. `.agents/skills` is a wiring-owned relative link to it, written only for a harness that reads `.agents/skills` and not `.claude/skills` (Codex, Gemini CLI, the generic AGENTS.md tier, bare `--skills`). No writer writes through the link. A real `.agents/skills` with foreign entries blocks.
+7. *Our repos carry AGENTS.md only:* fathom, agentic-kit and app-kit. Living citations are re-pointed; history is left as written.
+
+**Alternatives rejected.**
+- *Keep both stanzas.* Two copies to keep identical, and under the default mode the CLAUDE.md copy also suppresses AGENTS.md. The owner refused this.
+- *Create an import-only CLAUDE.md in every adopter.* It restores the InstructionsLoaded evidence, but it re-adds the retired file and switches off native AGENTS.md loading.
+- *Write the agents-md setting.* User-global configuration (ask-first), and project settings ignore it.
+- *Keep rendering two skill copies.* They drift, and the `fathom-plan` copies here already differ.
+- *Delete a CLAUDE.md that carries only fathom's import.* fathom did not create it (law 15).
+- *Follow `@` imports in the obligations compile.* No measured need; not built.
+
+**Consequences.**
+- Breaking: what init and reconcile write (compatibility surface: the stanza region); `gen-claude-md` becomes `gen-agents-md` (the old name runs with a deprecation line through 0.9.x). Migration note: `docs/upgrades/0.9.0-agents-md-one-instruction-file.md`.
+- Changed: the harness descriptors and the `schema/harness` mode `import` (`mirror` retired); the skills layout; the obligations corpus; doctor `stanza_present`; the claude-code pack's check kind (`agents_md_reaches_claude`).
+- Restated: invariant I37 (and I34 when this repository converts); the router's sensitive-surface row; the obligations-corpus assumption in `domain.md`; the router footer (Claude Code 2.1.284); the compatibility surface in `scope.md`.
+- Evidence and history: `stanza_loaded` loses harness evidence in AGENTS.md-only repos; a converted bench subject is a new corpus revision, and historical cells are unchanged.
+- Kits: agentic-kit's and app-kit's own products change in their own records, and fathom mirrors them by `task sync-kit`.
+- Plan row IA-3 retires as refused under this record.
+
+**Revisit when.**
+- Claude Code changes the agents-md contract: its default mode, discovery of `.agents/skills`, or InstructionsLoaded for AGENTS.md.
+- Codex reads `.claude/skills`, or is shown not to follow the link (AG-OP2).
+- A supported harness reads CLAUDE.md but not AGENTS.md.
+- An adopter asks in writing for a CLAUDE.md-only layout.
+- `stanza_loaded` SKIPs on every row of our fleet for 30 days: retire or replace the row.

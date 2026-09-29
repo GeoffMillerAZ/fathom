@@ -71,7 +71,7 @@ func docCompileTier(docPath string) int {
 	if scopeFloorDir(docPath) != "" {
 		return docTierNestedGuide
 	}
-	if instructionFileBases[docPath] {
+	if isRootGuidePath(docPath) {
 		return docTierRootGuide
 	}
 	return docTierRootOther

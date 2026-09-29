@@ -10,7 +10,7 @@ usage.md still documents the deleted set_profile.
 
 - [x] fathom init wires a repo end-to-end, idempotently: .fathomignore if absent, daemon ingest (fail-soft exit 2 with startup instructions when unreachable), project .claude/settings.json hooks (SessionStart session-hook, PostToolUse edit-hook, Stop stop-hook — JSON-merged, never duplicated, binary path from os.Executable), CLAUDE.md + AGENTS.md fathom stanzas between marker comments, printed manual steps (MCP registration one-liner, lefthook snippet) {id: IA-1, symbol: cmdInit, package: cmd/fathom}
 - [x] Settings merge is additive and idempotent: existing hooks preserved, re-running init changes nothing the second time {id: IA-2, symbol: Key.place, package: internal/wiring}
-- [ ] The stanza is one source: emitted into both CLAUDE.md and AGENTS.md (Codex reads the latter), replaceable in place via begin/end markers {id: IA-3, symbol: fathomStanza, package: cmd/fathom}
+- [-] The stanza is one source: emitted into both CLAUDE.md and AGENTS.md (Codex reads the latter), replaceable in place via begin/end markers — refused by ADR-059: one stanza, in AGENTS.md alone {id: IA-3, disposition: refused, reason: "ADR-059: the stanza goes into AGENTS.md only and a root CLAUDE file carries at most an @AGENTS.md import region; built as docs/plans/agents-md.md AG-2 and AG-3"}
   <!-- product wiring open (fathom verify --strict reads it library-only, 2026-09-28): fathomStanza, which the tests exercise, has no production caller; the product writes the stanza through stanzaRegionsFit (stanzaRegion/stanzaRegionFor are dead too); re-anchor there with a test that pins both files and the markers, then flip. -->
 
 ## The canonical doc

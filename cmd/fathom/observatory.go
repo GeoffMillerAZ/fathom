@@ -968,7 +968,7 @@ func buildMissModel(entries []adoptionCallEntry) []obsMissRow {
 
 // wiringGrade folds a service row's doctor-class signals to one letter and
 // the ONE command that raises it — the continuous form of the rewire audit.
-// Signals: hooks referenced in project settings, a CLAUDE.md stanza, a
+// Signals: hooks referenced in project settings, the AGENTS.md stanza, a
 // fresh index, and any recorded traffic.
 func wiringGrade(s obsServiceRow) (grade, raise string) {
 	score, visible := 0, 0
@@ -980,7 +980,7 @@ func wiringGrade(s obsServiceRow) (grade, raise string) {
 			score++
 		}
 	}
-	stanzaOK := s.StanzaNote == "present"
+	stanzaOK := stanzaNotePresent(s.StanzaNote)
 	visible++
 	if stanzaOK {
 		score++

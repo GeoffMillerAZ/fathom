@@ -38,4 +38,7 @@ func TestInvalidFixtureRefused(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "feels_right") {
 		t.Fatalf("uncommented negative fixture must be refused naming the kind, got %v", err)
 	}
+	if !strings.Contains(err.Error(), "check.allow_import applies to agents_md_reaches_claude only") {
+		t.Fatalf("allow_import on another kind must be refused by name, got %v", err)
+	}
 }

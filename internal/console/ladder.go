@@ -34,8 +34,9 @@ const (
 // freshness notes and its traffic over the window. Pure: no clock, no I/O.
 type LadderFacts struct {
 	Service string
-	// StanzaNote is "present" when the fathom stanza is in CLAUDE.md;
-	// HooksNote is the wiring check's note (fleetWiringNotes).
+	// StanzaNote is "present" when the fathom stanza is in AGENTS.md, and
+	// "present in <CLAUDE file> …" for the layout ADR-059 retired (still
+	// wired); HooksNote is the wiring check's note (fleetWiringNotes).
 	StanzaNote string
 	HooksNote  string
 	// Freshness is "fresh", "stale: …", or "unknown…"/"" when undeterminable.
@@ -115,10 +116,13 @@ func RealizationLadder(f LadderFacts) Ladder {
 	hooksVisible := f.HooksNote != "" &&
 		!strings.Contains(f.HooksNote, "user-scope or plugin wiring not visible") &&
 		!strings.Contains(f.HooksNote, "not checkable")
-	wired := f.StanzaNote == "present"
-	wiredEvidence := "CLAUDE.md stanza present"
-	if !wired {
-		wiredEvidence = "no fathom stanza in CLAUDE.md"
+	wired := strings.HasPrefix(f.StanzaNote, "present")
+	wiredEvidence := "AGENTS.md stanza present"
+	switch {
+	case !wired:
+		wiredEvidence = "no fathom stanza in AGENTS.md"
+	case f.StanzaNote != "present":
+		wiredEvidence = "fathom stanza " + f.StanzaNote
 	}
 	if hooksVisible {
 		hooksOK := strings.Contains(f.HooksNote, "hook reference")

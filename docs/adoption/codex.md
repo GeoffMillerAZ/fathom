@@ -36,16 +36,18 @@ If you ran `fathom init` in the repo (per the Claude Code guide), it already:
 
 - wrote `.fathomignore`,
 - ingested the repo into the daemon,
-- stamped the fathom operating-contract stanza into **both** `CLAUDE.md` and
-  `AGENTS.md` from one canonical source (`cmd/fathom/init.go`'s
-  `fathomStanza`) — **Codex reads `AGENTS.md` automatically**, so there is
-  nothing further to do for the standing-doctrine piece (markers, re-run
-  semantics, and the corruption-refusal case are documented once, in
-  [docs/adoption/claude-code.md §3.1](claude-code.md#31-the-claudemd--agentsmd-stanza--markers-re-run-semantics-corruption-refusal),
-  since the mechanism and the stanza text are identical for both files), and
+- stamped the fathom operating-contract stanza into `AGENTS.md`, the one
+  instruction file (ADR-059; `cmd/fathom/init.go`'s `fathomStanza`) —
+  **Codex reads `AGENTS.md` automatically**, and so does Claude Code
+  2.1.277 and later, so there is nothing further to do for the
+  standing-doctrine piece (markers, re-run semantics, the `@AGENTS.md`
+  import a root CLAUDE file gets, and the corruption-refusal case are
+  documented once, in
+  [docs/adoption/claude-code.md §3.1](claude-code.md#31-the-agentsmd-stanza-and-the-agentsmd-import--markers-re-run-semantics-corruption-refusal)), and
 - if you passed `--skills=codex` (or a bare `--skills`), rendered the ten
   shipped `fathom-{plan,verify,onboard,feedback,doctor,impact,rewire,activate,custodian,findings}`
-  skills into `<repo>/.agents/skills/` — the path Codex documents — §1.1 below.
+  skills into `<repo>/.claude/skills/` and linked `<repo>/.agents/skills` —
+  the path Codex documents — to it, §1.1 below.
 
 The stanza and hook writes go through one wiring engine (law 15): a
 receipt lands in `.fathom/receipts.jsonl`, `fathom fleet undo --last`
@@ -61,21 +63,29 @@ step instead — §4).
 ### 1.1 Installing the skills: `--skills=codex` (`.agents/skills`)
 
 ```sh
-bin/fathom init --skills=codex          # <repo>/.agents/skills/<name>/SKILL.md
-bin/fathom init --skills                # bare = all: .agents/skills + .claude/skills
+bin/fathom init --skills=codex          # <repo>/.claude/skills/<name>/SKILL.md + .agents/skills -> ../.claude/skills
+bin/fathom init --skills                # bare = all: the same
 bin/fathom init --skills=codex-prompts  # the deprecated ~/.codex/prompts twin, explicit only
 ```
 
-Renders the same ten shipped skill sources
+Renders the ten shipped skill sources
 (`dist/agents/skills/fathom-{plan,verify,onboard,feedback,doctor,impact,rewire,activate,custodian,findings}/`)
-that the Claude Code guide installs under `.claude/skills`
-([docs/adoption/claude-code.md §11](claude-code.md#11-agent-skills--the-ten-shipped-with-the-binary))
-into the path Codex's skills documentation lists — `$REPO_ROOT/.agents/skills`
-(also every directory from cwd up to the repo root, and `$HOME/.agents/skills`
-for personal skills) — as Agent Skills `SKILL.md` files: frontmatter reduced
-to the spec's six fields, `name` equal to the directory, vetted against
-`schema/skills/schema.cue`. Invoke one with `$fathom-<name>` or `/skills`;
+once, into `.claude/skills`
+([docs/adoption/claude-code.md §11](claude-code.md#11-agent-skills--the-ten-shipped-with-the-binary)),
+and makes the path Codex's skills documentation lists —
+`$REPO_ROOT/.agents/skills` (also every directory from cwd up to the repo
+root, and `$HOME/.agents/skills` for personal skills) — a relative link to it
+(ADR-059: one copy cannot drift the way two rendered copies did). Every
+shipped `SKILL.md` carries only the Agent Skills spec's six frontmatter
+fields with `name` equal to the directory (held by test, vetted against
+`schema/skills/schema.cue`), so the bytes Codex reads through the link are
+spec-valid. The link is written through the wiring engine (receipted,
+`fleet undo` removes it); an earlier real `.agents/skills` holding only
+fathom's unedited copies is replaced by it, and one file fathom did not write
+there blocks it by name. Invoke a skill with `$fathom-<name>` or `/skills`;
 Codex also invokes a skill implicitly when its description matches.
+Whether Codex follows a directory link is unverified on this machine (plan
+row AG-OP2): if it does not, file an observation.
 
 **Since 0.8.0** (`docs/upgrades/0.8.0-skills-on-the-standard.md`):
 `--skills=codex` no longer writes `~/.codex/prompts/`. Codex marks custom
@@ -239,8 +249,8 @@ the test's top level" rule is retired
 
 ## 5. What `AGENTS.md` carries (and what it can't)
 
-`fathom init` writes the identical stanza fathom puts in `CLAUDE.md` into
-`AGENTS.md` — index-first tool discipline, the refresh contract, the
+`fathom init` writes its one stanza into `AGENTS.md` (ADR-059) —
+index-first tool discipline, the refresh contract, the
 `fathom verify` command. This is a **pull** channel: it's advisory text a
 capable agent reads and (hopefully) follows, not an injected or enforced
 one. It is the *only* fathom-adoption channel available to Codex beyond raw
@@ -485,7 +495,7 @@ curl -s http://127.0.0.1:7575/healthz   # → ok
       repo and confirm it resolves.
 - [ ] `AGENTS.md` in the repo root contains the
       `<!-- fathom:begin v3 sha256:… -->…<!-- fathom:end -->` stanza (from
-      `fathom init` — identical to the one in `CLAUDE.md`; a region written
+      `fathom init` — the stanza's one file, ADR-059; a region written
       before v3 reads `<!-- fathom:begin -->` until the next write).
 - [ ] `fathom prime` prints the primer (service identity, a live example,
       the thread brief) from the repo root.
@@ -495,7 +505,8 @@ curl -s http://127.0.0.1:7575/healthz   # → ok
       `fathom-verify` command exits with the expected code (0 pass, 1 a
       real unproven claim, 2 only when the daemon/store is genuinely down).
 - [ ] `bin/fathom init --skills=codex` (or a bare `--skills`) populates
-      `.agents/skills/fathom-{plan,verify,onboard,feedback,doctor,impact,rewire,activate,custodian}/SKILL.md`
+      `.claude/skills/fathom-{plan,verify,onboard,feedback,doctor,impact,rewire,activate,custodian}/SKILL.md`
+      and links `.agents/skills` to it
       (§1.1; `--skills=codex-prompts` for the deprecated `~/.codex/prompts` twin),
       and `bin/fathom observe --symptom "…"` / `bin/fathom instrument
       --adoption` (§5.1) both run cleanly from a Codex-driven shell — neither

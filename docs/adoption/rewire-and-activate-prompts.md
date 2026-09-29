@@ -56,14 +56,18 @@ http://localhost:7575.
 3. Ensure .fathomignore exists and covers secrets, user data, vendored
    trees, and build output — BEFORE any ingest if this repo has never
    been indexed.
-4. Confirm the CLAUDE.md/AGENTS.md stanza reconcile refreshed (step 2):
-   the begin marker reads `<!-- fathom:begin v3 sha256:… -->`, the body
+4. Confirm the AGENTS.md stanza reconcile refreshed (step 2; ADR-059:
+   AGENTS.md is the one instruction file, and a root CLAUDE file carries
+   only a marked `@AGENTS.md` import region — an old CLAUDE.md stanza is
+   rewritten to that import in the same receipt): the begin marker reads
+   `<!-- fathom:begin v3 sha256:… -->`, the body
    says fathom, names the correct service id, instructs `fathom prime`
    for hook-less harnesses, and gives the verify command in shim form
    (`fathom verify ...`, no absolute paths). A v1 marker without a digest
-   is a migration, not drift — the first apply upgrades it.
-   (`fathom gen-claude-md` is a different tool: it drafts a whole
-   CLAUDE.md from stored symbols, it does not maintain the stanza.)
+   is a migration, not drift — the first apply upgrades it. `fathom
+   doctor`'s stanza_present row says whether Claude Code loads it.
+   (`fathom gen-agents-md` is a different tool: it drafts a whole
+   AGENTS.md from stored symbols, it does not maintain the stanza.)
 5. Index or refresh via the MCP ingest tool with BOTH fields:
    {"service":"<plain-repo-name>","path":"<canonical /Volumes/... path>"}
    — the service id is a logical name, NEVER a path or ../ form; the path

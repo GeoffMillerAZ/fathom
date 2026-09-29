@@ -1133,9 +1133,6 @@ func TestCheckStanzaPresent(t *testing.T) {
 	t.Run("well-formed passes", func(t *testing.T) {
 		dir := t.TempDir()
 		stanza := fathomStanza("svc", false) + "\n"
-		if err := os.WriteFile(filepath.Join(dir, "CLAUDE.md"), []byte(stanza), 0o644); err != nil {
-			t.Fatal(err)
-		}
 		if err := os.WriteFile(filepath.Join(dir, "AGENTS.md"), []byte(stanza), 0o644); err != nil {
 			t.Fatal(err)
 		}
@@ -1143,21 +1140,35 @@ func TestCheckStanzaPresent(t *testing.T) {
 		if got.Status != doctorPass {
 			t.Fatalf("got %+v, want pass", got)
 		}
+		// ADR-059: the old two-copy layout is a WARN naming the CLAUDE.md copy.
+		if err := os.WriteFile(filepath.Join(dir, "CLAUDE.md"), []byte(stanza), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if got := checkStanzaPresent(dir); got.Status != doctorWarn || !strings.Contains(got.Reason, "CLAUDE.md still carries the fathom stanza") {
+			t.Fatalf("got %+v, want warn naming the legacy copy", got)
+		}
 	})
 
 	t.Run("corrupted marker pair fails, naming the file", func(t *testing.T) {
 		dir := t.TempDir()
 		// Only the BEGIN marker present — a hand-edit that deleted END.
 		corrupted := fathomStanzaBegin + "\nsome content, no end marker\n"
-		if err := os.WriteFile(filepath.Join(dir, "CLAUDE.md"), []byte(corrupted), 0o644); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(filepath.Join(dir, "AGENTS.md"), []byte(fathomStanza("svc", false)+"\n"), 0o644); err != nil {
+		if err := os.WriteFile(filepath.Join(dir, "AGENTS.md"), []byte(corrupted), 0o644); err != nil {
 			t.Fatal(err)
 		}
 		got := checkStanzaPresent(dir)
-		if got.Status != doctorFail || !strings.Contains(got.Reason, "corrupted") || !strings.Contains(got.Reason, "CLAUDE.md") {
-			t.Fatalf("got %+v, want fail naming CLAUDE.md as corrupted", got)
+		if got.Status != doctorFail || !strings.Contains(got.Reason, "corrupted") || !strings.Contains(got.Reason, "AGENTS.md") {
+			t.Fatalf("got %+v, want fail naming AGENTS.md as corrupted", got)
+		}
+		// A corrupted pair in a CLAUDE file beside a good AGENTS.md is named.
+		if err := os.WriteFile(filepath.Join(dir, "AGENTS.md"), []byte(fathomStanza("svc", false)+"\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "CLAUDE.md"), []byte(corrupted), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if got := checkStanzaPresent(dir); got.Status != doctorWarn || !strings.Contains(got.Reason, "CLAUDE.md: corrupted") {
+			t.Fatalf("got %+v, want warn naming CLAUDE.md as corrupted", got)
 		}
 	})
 }

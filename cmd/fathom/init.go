@@ -28,8 +28,9 @@ import (
 
 // cmdInit implements the "init" subcommand: one-command, idempotent,
 // additive-only wiring of a repo into fathom's coding-agent story —
-// .fathomignore, a daemon ingest, Claude Code project hooks, the
-// CLAUDE.md/AGENTS.md operating-contract stanza, and (opt-in,
+// .fathomignore, a daemon ingest, Claude Code project hooks, the AGENTS.md
+// operating-contract stanza (plus an @AGENTS.md import region in a root
+// CLAUDE file that already exists, ADR-059), and (opt-in,
 // --skills[=claude|codex|all]) the shipped fathom-plan/verify/onboard/
 // feedback agent skills (AK-1/AK-2, docs/plans/pack-taxonomy-adoption.md).
 // See docs/plans/init-and-adoption.md IA-1/IA-2/IA-3 and
@@ -76,7 +77,7 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL")
 	binOverride := fs.String("bin", "", "fathom binary path baked into hook commands (default: os.Executable, symlink-resolved)")
 	var skillsFlag optionalStringFlag
-	fs.Var(&skillsFlag, "skills", "install the ten shipped agent skills (fathom-activate/custodian/doctor/feedback/findings/impact/onboard/plan/rewire/verify): claude | codex | agents | all | codex-prompts (bare --skills = all = .agents/skills + .claude/skills; codex = .agents/skills; codex-prompts = the deprecated ~/.codex/prompts twin; omit to skip)")
+	fs.Var(&skillsFlag, "skills", "install the ten shipped agent skills (fathom-activate/custodian/doctor/feedback/findings/impact/onboard/plan/rewire/verify): claude | codex | agents | all | codex-prompts (every repo mode writes the one copy into .claude/skills; bare --skills = all, codex and agents also link .agents/skills to it; claude = .claude/skills only; codex-prompts = the deprecated ~/.codex/prompts twin; omit to skip)")
 	seedUserIgnoreFlag := fs.Bool("seed-user-ignore", false, "seed ~/.fathom/ignore with machine-junk defaults (docs/design/scoped-config.md); prints exactly what it writes, never silent, requires this flag")
 	harnessFlag := fs.String("harness", "", "harness to wire (ADR-029): claude-code (default) | codex | gemini-cli | agents | none — init writes only that descriptor's declared vehicles and prints its own `mcp add` line; hooks are wired for claude-code only in this build")
 	noSCIPFlag := fs.Bool("no-scip", false, "do not run scip-typescript / scip-python: by default init runs whichever is already on PATH for a TypeScript/JavaScript or Python repo (never installing one) and has the daemon import its index as typed edges (SR-65); a producer type-checks the whole repository and can take minutes")
@@ -186,8 +187,9 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
-	// c + d. Project-level Claude Code hooks and the CLAUDE.md/AGENTS.md
-	// stanza (one canonical source, two files) — ONE plan → apply through
+	// c + d. Project-level Claude Code hooks, the AGENTS.md stanza and the
+	// root CLAUDE file's @AGENTS.md import region (ADR-059: one stanza, one
+	// file; a CLAUDE file is never created) — ONE plan → apply through
 	// internal/wiring (INC-12, law 15): a region fathom is tracking that a
 	// human edited is reported BLOCKED and never merged, every write lands
 	// in .fathom/receipts.jsonl so `fathom fleet undo --last` reverses it,
@@ -226,8 +228,9 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 	}
 
 	// f. shipped agent skills (AK-2, docs/plans/pack-taxonomy-adoption.md):
-	// --skills[=claude|codex|all] only — omitted by default, so a caller who
-	// never asked for skills sees no new files.
+	// --skills[=claude|codex|agents|all] only — omitted by default, so a
+	// caller who never asked for skills sees no new files. One real copy in
+	// .claude/skills; .agents/skills is an owned link to it (ADR-059).
 	if err := installSkills(root, skillsMode, stdout); err != nil {
 		fmt.Fprintf(stderr, "error: installing skills: %v\n", err)
 		return 1
@@ -258,7 +261,7 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 		printHarnessManualSteps(stdout, targets, svc, *url)
 	}
 	if skillsMode == "" {
-		fmt.Fprintln(stdout, "MANUAL: install fathom's shipped agent skills (ten; .agents/skills is the Agent Skills standard path, .claude/skills the Claude Code one):")
+		fmt.Fprintln(stdout, "MANUAL: install fathom's shipped agent skills (ten, into .claude/skills; .agents/skills, the Agent Skills standard path, becomes a link to it):")
 		fmt.Fprintln(stdout, "MANUAL:   fathom init --skills[=claude|codex|agents|all|codex-prompts]")
 	}
 
@@ -766,7 +769,8 @@ func projectHookEntries(root string) map[hookSpecKey]projectHookEntry {
 }
 
 // initWiringSpec is everything `fathom init` wants a repository to carry,
-// as ONE wiring spec: the CLAUDE.md and AGENTS.md regions, and the hook
+// as ONE wiring spec: the instruction regions (instructionRegions: the
+// AGENTS.md stanza and a root CLAUDE file's import), and the hook
 // entries to ADD. Init is add-only for hooks, exactly as ensureHookEntry
 // was: an entry already present in its matcher group is left alone (it may
 // spell the shim, or a path a human chose), and an entry already wired at
@@ -796,8 +800,9 @@ func initWiringSpec(root, service, binPath string) (wiring.Spec, []string) {
 func initWiringSpecFor(root, service, binPath string, targets initTargets, hooksScope string) (wiring.Spec, []string) {
 	intentOn := intentChannelWired(root)
 	spec := wiring.Spec{}
-	regions, notes := stanzaRegionsFit(root, targets.StanzaFiles, targets.StanzaID, service, intentOn)
+	regions, notes := instructionRegions(root, targets.StanzaID, service, intentOn)
 	spec.Regions = append(spec.Regions, regions...)
+	spec.Keys = append(spec.Keys, settingKeys(targets.Settings)...)
 	if !targets.Hooks {
 		return spec, notes
 	}
@@ -832,6 +837,21 @@ func initWiringSpecFor(root, service, binPath string, targets initTargets, hooks
 		}
 	}
 	return spec, notes
+}
+
+// settingKeys renders a harness's instruction settings (Gemini CLI's
+// context.fileName) as json-value wiring keys: receipted, recorded in the
+// ledger, and a hand edit after fathom wrote one is drift (AG-6).
+func settingKeys(settings []harness.InstructionSetting) []wiring.Key {
+	var keys []wiring.Key
+	for _, st := range settings {
+		body, err := json.Marshal(st.Value)
+		if err != nil {
+			continue // a []string always marshals
+		}
+		keys = append(keys, wiring.Key{File: st.File, Kind: wiring.KindJSONValue, Path: st.Key, Body: string(body)})
+	}
+	return keys
 }
 
 // Claude Code hook scopes --hooks-scope (and FATHOM_HOOKS_SCOPE) select
@@ -1013,7 +1033,7 @@ func ensureHookEntry(hooksObj map[string]any, spec hookSpec, command string) boo
 	return true
 }
 
-// ─── d. CLAUDE.md / AGENTS.md stanza ──────────────────────────────────────
+// ─── d. the AGENTS.md stanza (and the CLAUDE file's import, instructionregions.go) ─
 
 const (
 	// fathomStanzaBegin / fathomStanzaEnd are the marker pair as `fathom
@@ -1024,7 +1044,7 @@ const (
 	// digest on the begin line ("<!-- fathom:begin v3 sha256:… -->"), so
 	// anything LOOKING for a region must match fathomStanzaBeginPrefix, not
 	// the v1 spelling; fathomStanza still renders the v1 form for callers
-	// that want the bare template (doctor's fixtures, gen-claude-md).
+	// that want the bare template (doctor's fixtures, gen-agents-md).
 	fathomStanzaBegin       = "<!-- fathom:begin -->"
 	fathomStanzaBeginPrefix = "<!-- fathom:begin"
 	fathomStanzaEnd         = "<!-- fathom:end -->"
@@ -1035,9 +1055,9 @@ const (
 )
 
 // fathomStanza returns the canonical fathom operating-contract block for
-// service, wrapped in begin/end markers. It is the ONE source emitted
-// verbatim into both CLAUDE.md and AGENTS.md (Codex reads the latter
-// automatically) — one stanza, two files, no drift between them.
+// service, wrapped in begin/end markers. It is the ONE source, emitted
+// into AGENTS.md alone (ADR-059): Codex and Claude Code (≥2.1.277) read
+// it natively, and a root CLAUDE file carries only an @AGENTS.md import.
 // openingMovesTable is the first-2-3-calls table, named once: the stanza
 // embeds it (below) and the subagent primer re-renders it (HP-26,
 // sessionhook_events.go). A subagent that never read the stanza gets the
@@ -1335,13 +1355,12 @@ func stanzaLineBudget(root, file string) (lines int, ok bool) {
 	return lines, ok
 }
 
-// fitStanzaBody computes the ONE body every file in files gets. Multiple
-// stanza-carrying files must always carry the identical body (doctor's
-// stanza-identical check, HP-11) — so the fit decision is made ONCE, by
-// previewing each successively-more-trimmed candidate against every file
-// in files that carries its own max_lines budget, and applied uniformly;
-// it is never decided independently per file, or CLAUDE.md and AGENTS.md
-// could pick different trim levels and drift apart. A file with no budget
+// fitStanzaBody computes the ONE body every file in files gets (since
+// ADR-059, files is AGENTS.md alone; the fit stays per-list so a caller
+// that names several files still gets one body) — the fit decision is made
+// ONCE, by previewing each successively-more-trimmed candidate against
+// every file in files that carries its own max_lines budget, and applied
+// uniformly, never decided independently per file. A file with no budget
 // concern imposes no constraint; a file that cannot be read imposes none
 // either (fail-open — the write to that file, if any, surfaces its own
 // error downstream). dropped names what the winning candidate removed,
@@ -1473,16 +1492,32 @@ func applyWiringSpec(root string, spec wiring.Spec, stdout io.Writer) (wiring.Re
 		case len(o.applied) > 0 && created[f]:
 			fmt.Fprintf(stdout, "created %s\n", f)
 		case len(o.applied) > 0:
-			what := "fathom hooks added"
-			if o.applied[0].Kind == wiring.KindRegion {
-				what = "fathom stanza"
-			}
-			fmt.Fprintf(stdout, "updated %s (%s)\n", f, what)
+			fmt.Fprintf(stdout, "updated %s (%s)\n", f, appliedLabel(o.applied))
 		case len(o.blocked) == 0:
 			fmt.Fprintf(stdout, "ok %s (already present)\n", f)
 		}
 	}
 	return res, nil
+}
+
+// appliedLabel names what an apply wrote into one file, in init's words.
+func appliedLabel(items []wiring.Item) string {
+	it := items[0]
+	switch {
+	case it.Kind == wiring.KindRegion && it.After == "":
+		return "fathom region removed — an @AGENTS.md import is already there"
+	case it.Kind == wiring.KindRegion && strings.HasPrefix(it.After, "@") && !isStanzaBody(it.After):
+		if it.Present && isStanzaBody(it.Before) {
+			return "the fathom stanza moved to AGENTS.md; this file keeps an @AGENTS.md import"
+		}
+		return "@AGENTS.md import"
+	case it.Kind == wiring.KindRegion:
+		return "fathom stanza"
+	case !strings.Contains(it.Target, "|"):
+		return "fathom setting " + it.Target
+	default:
+		return "fathom hooks added"
+	}
 }
 
 // applyStanza writes ONE stanza into path through the wiring engine — the
@@ -1608,7 +1643,9 @@ func printManualSteps(stdout io.Writer, service, url string) {
 	fmt.Fprintln(stdout)
 	fmt.Fprintln(stdout, "MANUAL: register the fathom MCP server with Claude Code (one-time, user scope):")
 	fmt.Fprintf(stdout, "MANUAL:   claude mcp add --transport http --scope user fathom %s/rpc/agent\n", url)
-	fmt.Fprintln(stdout, "MANUAL: Codex reads AGENTS.md automatically for the operating contract (already written above);")
+	fmt.Fprintln(stdout, "MANUAL: Claude Code (2.1.277 and later) and Codex read AGENTS.md for the operating contract (written above);")
+	fmt.Fprintln(stdout, "MANUAL: a root CLAUDE.md, .claude/CLAUDE.md or CLAUDE.local.md carries only an @AGENTS.md import region —")
+	fmt.Fprintln(stdout, "MANUAL: fathom never creates one; `fathom doctor` stanza_present says whether Claude Code will load AGENTS.md.")
 	fmt.Fprintln(stdout, "MANUAL: register fathom as an MCP server for Codex too (docs/adoption/codex.md §2):")
 	fmt.Fprintln(stdout, "MANUAL:   HTTP (the shared daemon above — test with `codex mcp list`, unverified negotiation per-version):")
 	fmt.Fprintf(stdout, "MANUAL:     codex mcp add fathom --url %s/rpc/agent\n", url)

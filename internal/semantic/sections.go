@@ -31,9 +31,11 @@ var atxHeading = regexp.MustCompile(`^#{1,6}\s+(.+?)\s*#*\s*$`)
 // SplitMarkdownSections splits a markdown document into sections at ATX
 // headings. Content before the first heading becomes the "preamble" section.
 // Deterministic: same bytes, same sections. Empty/whitespace-only sections
-// are dropped (nothing to compile from them).
+// are dropped (nothing to compile from them). fathom's own stanza region is
+// blanked first (ADR-059, blankFathomRegions): it is fathom's text, never a
+// rule a human wrote, and line numbers stay document coordinates.
 func SplitMarkdownSections(path string, content []byte) []Section {
-	lines := strings.Split(strings.ReplaceAll(string(content), "\r\n", "\n"), "\n")
+	lines := blankFathomRegions(strings.Split(strings.ReplaceAll(string(content), "\r\n", "\n"), "\n"))
 
 	type mark struct {
 		line    int // 1-based heading line
