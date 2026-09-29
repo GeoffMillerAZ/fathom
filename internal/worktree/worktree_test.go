@@ -1,6 +1,7 @@
 package worktree
 
 import (
+	"context"
 	"errors"
 	"os"
 	"os/exec"
@@ -129,4 +130,44 @@ func TestCheckReroot(t *testing.T) {
 			t.Errorf("reason should name the marker: %q", re.Reason)
 		}
 	})
+}
+
+// TestRepositoryIdentityIsSharedByCloneAndWorktree (EW-19): a clone, a linked
+// worktree and the original name one repository; another repository, a
+// plain directory and a path that does not exist do not.
+func TestRepositoryIdentityIsSharedByCloneAndWorktree(t *testing.T) {
+	repo, wt := gitRepoWithWorktree(t)
+	ctx := context.Background()
+	id, ok := RepositoryIdentity(ctx, repo)
+	if !ok || id == "" {
+		t.Fatalf("RepositoryIdentity(repo) = %q, %v", id, ok)
+	}
+	if got, ok := RepositoryIdentity(ctx, wt); !ok || got != id {
+		t.Errorf("a linked worktree's identity = %q, %v; want %q", got, ok, id)
+	}
+	clone := filepath.Join(t.TempDir(), "clone")
+	if out, err := exec.Command("git", "clone", "-q", repo, clone).CombinedOutput(); err != nil {
+		t.Fatalf("git clone: %v\n%s", err, out)
+	}
+	if got, ok := RepositoryIdentity(ctx, clone); !ok || got != id {
+		t.Errorf("a clone's identity = %q, %v; want %q", got, ok, id)
+	}
+	other := filepath.Join(t.TempDir(), "other")
+	if err := os.MkdirAll(other, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, args := range [][]string{{"init", "-q"}, {"commit", "-q", "--allow-empty", "-m", "another root"}} {
+		if out, err := exec.Command("git", append([]string{"-C", other, "-c", "user.name=t", "-c", "user.email=t@example.invalid"}, args...)...).CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
+		}
+	}
+	if got, ok := RepositoryIdentity(ctx, other); !ok || got == id {
+		t.Errorf("another repository's identity = %q, %v; must differ from %q", got, ok, id)
+	}
+	if _, ok := RepositoryIdentity(ctx, t.TempDir()); ok {
+		t.Error("a plain directory has no repository identity")
+	}
+	if _, ok := RepositoryIdentity(ctx, filepath.Join(t.TempDir(), "absent")); ok {
+		t.Error("a path that does not exist has no repository identity")
+	}
 }

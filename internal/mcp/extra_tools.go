@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 	"unicode"
 
@@ -448,9 +449,10 @@ func registerIngest(s *Server, backend QueryInterface) {
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
-				"service": map[string]any{"type": "string", "description": "Service / repo identifier"},
-				"path":    map[string]any{"type": "string", "description": "Absolute corpus root — only for onboarding a new service"},
-				"remap":   map[string]any{"type": "boolean", "description": "Authorize re-pointing an existing service's root"},
+				"service":    map[string]any{"type": "string", "description": "Service / repo identifier"},
+				"path":       map[string]any{"type": "string", "description": "Absolute corpus root — only for onboarding a new service"},
+				"remap":      map[string]any{"type": "boolean", "description": "Authorize re-pointing an existing service's root"},
+				"remap_from": map[string]any{"type": "string", "description": "The root being replaced; remap:true needs it while that root is a live checkout of the same repository."},
 				"indexers": map[string]any{
 					"type":        "array",
 					"items":       map[string]any{"type": "string", "enum": SCIPIndexers()},
@@ -474,6 +476,10 @@ func registerIngest(s *Server, backend QueryInterface) {
 			// recorded root is refused outright — see the re-root refusal
 			// below.
 			Remap bool `json:"remap"`
+			// RemapFrom names the root remap replaces (EW-19, O127): with
+			// remap:true it is required while the recorded root is a live
+			// checkout of the same repository as path.
+			RemapFrom string `json:"remap_from"`
 			// Indexers (SR-65, F-74) names the SCIP producers whose index
 			// `fathom init` left under the root's .fathom/scip/; the daemon
 			// imports each after the syntax pass (scip_import.go).
@@ -566,6 +572,13 @@ func registerIngest(s *Server, backend QueryInterface) {
 						svc, recCanon, canonical,
 					)}
 				}
+				// Live-root guard (EW-19, O127): remap:true alone re-pointed
+				// the owner's service at a worker's scratch clone.
+				if recCanon != canonical {
+					if err := checkRemapOfLiveRoot(ctx, svc, recCanon, canonical, p.RemapFrom); err != nil {
+						return nil, &rpcError{Code: ErrCodeInvalid, Message: "ingest: " + err.Error()}
+					}
+				}
 			}
 			p.Path = canonical
 		}
@@ -609,9 +622,28 @@ func registerIngest(s *Server, backend QueryInterface) {
 			// service's ingest was already running); the job runs under
 			// the queue's context, so a disconnect never cancels it. The
 			// queue's job holds tenancy's ingest slot (RT-160).
-			st := q.RequestRefresh(ctx, refresh.Request{Service: svc, Path: p.Path, Reason: refresh.ReasonIngestTool}, true)
+			//
+			// O128 / EW-18: the wait is bounded by the server's ingest wait
+			// budget, under the daemon's write deadline. A run that outlasts
+			// it is answered from the queue's state, as POST /refresh-request
+			// answers, and goes on under the queue's context; the answer is
+			// never a connection dropped at the write deadline.
+			late := &lateQuarantineLift{lift: func(err error) {
+				var re *fusion.ReadFailuresError
+				if wasQuarantined && (err == nil || (errors.As(err, &re) && !re.WroteNothing())) {
+					tenancy.ClearQuarantine(svc, "ingest tool")
+				}
+			}}
+			waitCtx, stopWait := context.WithTimeout(ctx, s.ingestWaitBudget())
+			st := q.RequestRefresh(waitCtx, refresh.Request{Service: svc, Path: p.Path, Reason: refresh.ReasonIngestTool, Done: late.runDone}, true)
+			budgetSpent := waitCtx.Err() != nil && ctx.Err() == nil
+			stopWait()
 			if st.State == refresh.StateRefused {
 				return nil, &rpcError{Code: ErrCodeInvalid, Message: "ingest: " + st.Refused}
+			}
+			if !st.Done && budgetSpent {
+				late.answerEarly()
+				return ingestQueueState(q, svc, st, s.ingestWaitBudget(), len(indexers) > 0), nil
 			}
 			ingestErr = st.Err
 			queued = &st
@@ -741,6 +773,72 @@ func registerIngest(s *Server, backend QueryInterface) {
 		}
 		return result, nil
 	})
+}
+
+// lateQuarantineLift lifts a quarantine when the run an ingest call waited
+// on finishes AFTER the call answered from the queue's state (RT-155: only a
+// completed explicit ingest lifts one). The call that waited to the end lifts
+// it itself; this covers the one that stopped waiting. lift is idempotent
+// (tenancy.ClearQuarantine of a service not quarantined is a no-op), so the
+// two orders of "the run finished" and "the call answered early" each lift
+// once at least, whichever comes second.
+type lateQuarantineLift struct {
+	mu    sync.Mutex
+	early bool // the call answered from the queue's state
+	done  bool // the run finished
+	err   error
+	lift  func(err error)
+}
+
+// runDone is the queue's Done callback for the call's request.
+func (l *lateQuarantineLift) runDone(err error) {
+	l.mu.Lock()
+	l.done, l.err = true, err
+	early := l.early
+	l.mu.Unlock()
+	if early {
+		l.lift(err)
+	}
+}
+
+// answerEarly records that the call answered before its run finished.
+func (l *lateQuarantineLift) answerEarly() {
+	l.mu.Lock()
+	l.early = true
+	done, err := l.done, l.err
+	l.mu.Unlock()
+	if done {
+		l.lift(err)
+	}
+}
+
+// ingestQueueState is the ingest tool's answer when its wait budget ran out
+// before the queued run finished: the service's place in the refresh queue,
+// as POST /refresh-request reports it, never a claim that the ingest
+// completed (no ok field) and never an error (the run is healthy and
+// continues under the queue's context).
+func ingestQueueState(q *refresh.Queue, svc string, st refresh.Status, waited time.Duration, indexers bool) map[string]any {
+	note := "the ingest is still " + string(q.StateOf(svc)) + " on the daemon's refresh queue and finishes after this answer; poll list_services or staleness_report for the service's freshness"
+	if indexers {
+		note += "; the requested SCIP indexers were not imported — call ingest again with them once the run has finished"
+	}
+	out := map[string]any{
+		"service":   svc,
+		"completed": false,
+		"state":     string(q.StateOf(svc)),
+		"waited":    waited.String(),
+		"note":      note,
+	}
+	if st.Coalesced {
+		out["coalesced"] = true
+	}
+	if st.FollowUp {
+		out["follow_up"] = true
+	}
+	if st.Paused != "" {
+		out["paused"] = st.Paused
+	}
+	return out
 }
 
 // ─── context: repo_map ────────────────────────────────────────────────────────

@@ -114,6 +114,10 @@
         "description": "Authorize re-pointing an EXISTING service's recorded root at a different path (O82). Without it, a differing path is refused \u2014 a hook must never re-point a service.",
         "type": "boolean"
       },
+      "remap_from": {
+        "description": "The root being replaced; remap:true needs it while that root is a live checkout of the same repository.",
+        "type": "string"
+      },
       "service": {
         "description": "Service / repo identifier",
         "type": "string"
