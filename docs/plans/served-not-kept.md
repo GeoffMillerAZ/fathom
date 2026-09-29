@@ -40,7 +40,7 @@ what was considered so it is not re-proposed.
 ## Wave 4: readings
 
 - [ ] (op) PR-M1: 30 days of record mode on owner traffic, every fire adjudicated by the owner, K2 not tripped, stage p95 at most 250 ms, zero new I53 misses, skip rate named {id: PR-M1, oracle: lexical, path: docs/bench/readings/served-not-kept/pr-m1-owner-traffic.md, pattern: "^PR-M1 verdict: (PASS|FAIL)", needs: "PR-6"}
-- [ ] (op) PR-M2: the bench, spend approved by the owner (about $76): part A is the enforced-arm rerun ADR-038 owes, part B is the pin line in feedback mode against the same config with the line off, oracle-graded, 5 trials per task per arm {id: PR-M2, oracle: lexical, path: docs/bench/readings/served-not-kept/pr-m2-bench.md, pattern: "^PR-M2 verdict: (PASS|FAIL)", needs: "PR-3,PR-M0"}
+- [ ] (op) PR-M2: the bench, about $76 of agent spend, held with all bench spend since 2026-09-29 (the owner's earlier approval is suspended, `docs/intent/autonomy.md`): part A is the enforced-arm rerun ADR-038 owes, part B is the pin line in feedback mode against the same config with the line off, oracle-graded, 5 trials per task per arm {id: PR-M2, oracle: lexical, path: docs/bench/readings/served-not-kept/pr-m2-bench.md, pattern: "^PR-M2 verdict: (PASS|FAIL)", needs: "PR-3,PR-M0"}
 
 ## Deferred and refused (recorded so they are not re-proposed)
 

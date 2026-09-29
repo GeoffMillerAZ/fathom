@@ -50,11 +50,12 @@ Rationale: `agentic-kit/docs/project-intent/operating.md` §1.
 - **Bench and model spend: declined for now (owner, 2026-09-29).** No bench and no
   reading that spends provider or agent budget runs until the owner lifts this hold, and
   none is asked for meanwhile; an approval given before this date (PR-M2's $76) is
-  suspended. Held: XM-M2 (`docs/plans/exploration-maps.md`), PR-M2 (`served-not-kept.md`,
-  ADR-057), TR-M1 (`test-run-hook.md`), CA-M2 (`carry-across.md`), WS-M2
-  (`work-signals.md`) and OP-1 (`ambient-fathom.md`), with J0 and the level 10 cell above.
-  $0 replays, fixtures and scratch stores are not spend and go on. Lift: the owner says so;
-  record the date and delete this entry.
+  suspended. The rows waiting on a spend decision: XM-M2 (`docs/plans/exploration-maps.md`),
+  PR-M2 (`served-not-kept.md`, ADR-057), TR-M1 (`test-run-hook.md`), CA-M2
+  (`carry-across.md`), WS-M2 (`work-signals.md`) and OP-1 (`ambient-fathom.md`), with J0
+  and the level 10 cell above; any other row that spends (the `operator spend` rows among
+  them) is held by the same rule. $0 replays, fixtures and scratch stores are not spend and
+  go on. Lift: the owner says so; record the date and delete this entry.
 
 ## Never
 
