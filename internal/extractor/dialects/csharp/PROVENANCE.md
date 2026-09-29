@@ -73,6 +73,12 @@
   `suffixes: [".cs"]`; no `source_roots` (C# does not enforce a
   namespace-mirrors-directory convention the way Java does, so the
   strategy's own directory-tree fallback is the only lever available).
+  `type_wildcard: "members"` (O145, LB-F45): a wildcard naming a type is
+  `using static N.T;`, which brings T's members into scope. An aliased
+  `using A = N.T;` or a `using static N.T;` resolves to the files declaring
+  the type (namespace-dir's declared-type lookup: the symbol whose package
+  and name spell N.T, a nested N.Outer.Inner included), wherever they sit, so
+  `A.M()` binds T's member M.
   `internal/fusion/csharpfileresolve_test.go` proves the wiring end to end
   for the one call shape namespace-dir's `whole` binding actually reaches
   (an aliased, receiver-qualified call) — **not** the ordinary

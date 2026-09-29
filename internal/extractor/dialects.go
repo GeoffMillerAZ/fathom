@@ -177,6 +177,10 @@ type ImportParams struct {
 	Case string `json:"case,omitempty"`
 	// Labels "bazel" reads //pkg:file and :file labels (Starlark load).
 	Labels string `json:"labels,omitempty"`
+	// TypeWildcard "members": a wildcard import whose module names a type
+	// brings that type's members into scope, not the names of its file
+	// (C#'s `using static N.T;`, namespace-dir).
+	TypeWildcard string `json:"type_wildcard,omitempty"`
 }
 
 // importStrategies is design §6's closed set; go-package names Go's native
@@ -405,6 +409,9 @@ func checkDialect(fsys fs.FS, dir string, d Dialect) error {
 		}
 		if l := im.Params.Labels; l != "" && l != "bazel" {
 			return fmt.Errorf("imports.labels %q: only \"bazel\"", l)
+		}
+		if w := im.Params.TypeWildcard; w != "" && w != "members" {
+			return fmt.Errorf("imports.type_wildcard %q: only \"members\"", w)
 		}
 	}
 	if s := d.Match.Sniff; s != nil {

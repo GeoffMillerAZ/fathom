@@ -673,7 +673,18 @@ func parseGitLog(serviceID, raw string) []store.Commit {
 // PackageReferences as Calls, and the ProjectReference edges that resolve to
 // another project of the repository) where each was fingerprinted as an
 // unclassified .NET build file; the salt bump re-reads them.
-const ExtractorEpoch = "30"
+// Epoch 31 (O145, LB-F43..LB-F45): the file resolver resolves more imports,
+// so more file-resolved edges come out of unchanged files: a TypeScript ESM
+// spec `./x.js` (`.mjs`, `.cjs`) now resolves to its source x.ts/.tsx/.d.ts
+// (.mts, .cts) as TypeScript's node16/bundler resolution maps it; `.`, `..`
+// and a trailing-slash spec are directories (the repository root among them)
+// resolved through package.json's main (TypeScript: types, typings, main)
+// before the index file, as Node's CommonJS resolution does; and a C# `using
+// A = N.T;` or `using static N.T;` resolves to the files declaring type N.T
+// (its members bound to A. and, for using static, in scope unqualified). The
+// file-resolved pass reuses stored imports for an unchanged fingerprint, so
+// the salt bump re-reads every file.
+const ExtractorEpoch = "31"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares

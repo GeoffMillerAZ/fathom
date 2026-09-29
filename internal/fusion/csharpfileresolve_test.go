@@ -96,6 +96,35 @@ func TestResolveFileEdges_CSharpUsingWildcard(t *testing.T) {
 	}
 }
 
+// TestResolveFileEdges_CSharpAliasAndStaticUsing (O145): `using A = N.T;`
+// binds A to type T, so `A.M()` resolves to T's member M in the file that
+// declares T (XUnitAssert lives in TestFixtureBase.cs), and `using static
+// N.T;` brings T's members into scope, so a bare `M()` resolves to T.M.
+func TestResolveFileEdges_CSharpAliasAndStaticUsing(t *testing.T) {
+	dir, err := filepath.Abs(filepath.Join("testdata", "csfixture"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	files, symbols := loadFileResolveFixture(t, dir, "csharp", []string{"Tests/AliasTests.cs", "Testing/TestFixtureBase.cs", "Testing/Fixtures/Extensions.cs", filepath.Join("Lib", "Hammer.cs")})
+	edges, report := fusion.ResolveFileEdges(context.Background(), "csharp", dir, files, symbols)
+	if report.Skipped {
+		t.Fatalf("skipped: %s", report.SkipReason)
+	}
+	got := fileResolveEdgeSetAll(edges)
+	want := []string{
+		"fixture::Tests/MyApp.Tests.AliasTests.Check -> fixture::Testing/MyApp.Testing.XUnitAssert.Equal",
+		"fixture::Tests/MyApp.Tests.AliasTests.Check -> fixture::Lib/MyApp.Tools.Hammer.Hit",
+	}
+	for _, w := range want {
+		if !got[w] {
+			t.Errorf("missing edge %s; got %v", w, got)
+		}
+	}
+	if len(got) != len(want) {
+		t.Errorf("got %d edges %v, want %d", len(got), got, len(want))
+	}
+}
+
 func fileResolveEdgeSetAll(edges []core.Edge) map[string]bool {
 	out := map[string]bool{}
 	for _, e := range edges {
