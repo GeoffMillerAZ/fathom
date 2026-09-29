@@ -335,7 +335,7 @@ dialect matrix and the attention queue.
   links resolve to registered routes.
 - `TestConsolePagesRenderTheirVerbs` (JSON parity).
 - `TestConsoleMetricsAgreeAcrossPages` (consistency).
-- `TestConsoleBudgets` (render time and HTML size on the fixture fleet).
+- `TestConsoleBudgets` (render CPU time and HTML size on the fixture fleet; CPU, not wall, since EW-7).
 - `task ui:css`, and both themes screenshotted in a browser at 1440 and 390 px (doctrine
   rule 4).
 - UX-M1: the ten task journeys scripted with Playwright against a scratch daemon. Clicks
