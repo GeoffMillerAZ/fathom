@@ -1,0 +1,239 @@
+{
+  "dialect": "cpp",
+  "kind": "language",
+  "target_level": "L4",
+  "level_met": "L1",
+  "grade": {
+    "L1": "excellent",
+    "L2": "unmet",
+    "L3": "unmet",
+    "L4": "unmet"
+  },
+  "measured_at": "2026-09-28",
+  "fathom_commit": "eb96fcbc",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "fmtlib/fmt",
+      "sha": "1be298e1bd68957e4cd352e1f676f00e07dcfb57",
+      "files": 61,
+      "bytes": 1032799,
+      "counts": {
+        "call_fathom": 2263,
+        "call_fathom_in_truth": 1585,
+        "call_truth": 1980,
+        "call_truth_found": 1585,
+        "callables": 2366,
+        "callables_signed": 2366,
+        "fathom_defs": 3618,
+        "file_edges_agree": 16,
+        "file_edges_fathom": 54,
+        "file_edges_truth": 98,
+        "kind_equal": 3563,
+        "matched": 3563,
+        "oracle_defs": 3716,
+        "range_eligible": 3223,
+        "range_ok": 3205,
+        "scip_defs": 2983,
+        "scip_defs_mapped": 1865,
+        "scip_edges": 263,
+        "scip_edges_typed": 36
+      },
+      "families": {
+        "calls": "A",
+        "defmap": "A",
+        "file_edges": "A",
+        "l1": "B",
+        "typed": "A"
+      },
+      "kind_intersection": [
+        "class",
+        "enum",
+        "function",
+        "macro",
+        "namespace",
+        "struct",
+        "type_alias",
+        "union"
+      ],
+      "excluded_by_kind": {
+        "ctags:enumerator": 324,
+        "ctags:member": 447,
+        "ctags:module": 2,
+        "ctags:variable": 30
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 460.789,
+        "extract_cpu_ms": 454.654,
+        "max_file_ms": 69,
+        "peak_module_pages": 530,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "nlohmann/json",
+      "sha": "55f93686c01528224f448c19128836e7df245f72",
+      "files": 46,
+      "bytes": 953214,
+      "counts": {
+        "call_fathom": 1522,
+        "call_fathom_in_truth": 978,
+        "call_truth": 1202,
+        "call_truth_found": 978,
+        "callables": 780,
+        "callables_signed": 780,
+        "fathom_defs": 1810,
+        "file_edges_agree": 27,
+        "file_edges_fathom": 27,
+        "file_edges_truth": 288,
+        "kind_equal": 1688,
+        "matched": 1688,
+        "oracle_defs": 1798,
+        "range_eligible": 1398,
+        "range_ok": 1388,
+        "scip_defs": 2290,
+        "scip_defs_mapped": 1186,
+        "scip_edges": 872,
+        "scip_edges_typed": 14
+      },
+      "families": {
+        "calls": "A",
+        "defmap": "A",
+        "file_edges": "A",
+        "l1": "B",
+        "typed": "A"
+      },
+      "kind_intersection": [
+        "class",
+        "enum",
+        "function",
+        "macro",
+        "namespace",
+        "struct",
+        "type_alias",
+        "union"
+      ],
+      "excluded_by_kind": {
+        "ctags:enumerator": 56,
+        "ctags:member": 143,
+        "ctags:variable": 4
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 283.035,
+        "extract_cpu_ms": 283.82099999999997,
+        "max_file_ms": 70,
+        "peak_module_pages": 513,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "scip-clang",
+      "version": "0.4.0"
+    },
+    {
+      "tier": "B",
+      "tool": "universal-ctags",
+      "version": "6.2.1"
+    }
+  ],
+  "metrics": {
+    "call_precision": 0.6771,
+    "call_recall": 0.8055,
+    "def_mapping": 0.5786,
+    "file_edge_precision": 0.5309,
+    "file_edge_recall": 0.1114,
+    "import_resolution": null,
+    "kind_agreement": 1,
+    "range_agreement": 0.9939,
+    "signature_coverage": 1,
+    "sym_precision": 0.9674,
+    "sym_recall": 0.9523,
+    "typed_recall": 0.0441
+  },
+  "metric_tiers": {
+    "call_precision": "A",
+    "call_recall": "A",
+    "def_mapping": "A",
+    "file_edge_precision": "A",
+    "file_edge_recall": "A",
+    "kind_agreement": "B",
+    "range_agreement": "B",
+    "signature_coverage": "B",
+    "sym_precision": "B",
+    "sym_recall": "B",
+    "typed_recall": "A"
+  },
+  "required_kinds": [
+    "class",
+    "enum",
+    "function",
+    "macro",
+    "namespace",
+    "struct",
+    "type_alias",
+    "union"
+  ],
+  "kind_intersection": [
+    "class",
+    "enum",
+    "function",
+    "macro",
+    "namespace",
+    "struct",
+    "type_alias",
+    "union"
+  ],
+  "counts": {
+    "call_fathom": 3785,
+    "call_fathom_in_truth": 2563,
+    "call_truth": 3182,
+    "call_truth_found": 2563,
+    "callables": 3146,
+    "callables_signed": 3146,
+    "fathom_defs": 5428,
+    "file_edges_agree": 43,
+    "file_edges_fathom": 81,
+    "file_edges_truth": 386,
+    "kind_equal": 5251,
+    "matched": 5251,
+    "oracle_defs": 5514,
+    "range_eligible": 4621,
+    "range_ok": 4593,
+    "scip_defs": 5273,
+    "scip_defs_mapped": 3051,
+    "scip_edges": 1135,
+    "scip_edges_typed": 50
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 2.69,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 2.67,
+    "max_file_ms": 70,
+    "peak_module_pages": 530,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "ctags:enumerator": 380,
+    "ctags:member": 590,
+    "ctags:module": 2,
+    "ctags:variable": 34
+  },
+  "notes": [
+    "integration review 2026-09-29 (kept): namespaces as containers (ns.Name) and qualify.scope_sep are in the dialect's goldens (shapes.cpp: geo.detail.scale, outer.inner.deep) and its CHANGELOG line; the dialect is not dispatched, so no indexed output changes and no ExtractorEpoch bump is due until the dispatch switch, which LB-Q-cpp-rest's trigger names. qualify.scope_sep applies only to a manifest that declares it (cpp and rust, neither dispatched)",
+    "fmtlib/fmt: 1865 SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)",
+    "fmtlib/fmt: restricted to include/**, src/**, test/*.cc, test/*.h, test/fuzzing/** (-only; the files outside are a disclosed gap, not measured)",
+    "import_resolution not measured: in-repo spec counts arrive with the L3 strategies (LB-F11)",
+    "nlohmann/json: 1186 SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+  ],
+  "disposition": "partial: target L4, met L1 excellent (sym_recall 0.9523, sym_precision 0.9674, kind_agreement 1, range_agreement 0.9939, signature_coverage 1; universal-ctags 6.2.1, tier B; fmt's vendored test/gtest is excluded and its .h headers are measured through the header router). L2 unmet: call_recall 0.8055 clears good, call_precision 0.6771 vs .85 \u2014 scip-clang 0.4.0 (tier A, D5 enclosing fallback) resolves no call whose callee depends on a template parameter (most of fmt and nlohmann/json) and records a constructor call (throw format_error(...), string_view(x)) as a type reference, not a callable one, while the structural extractor reports both; casts and all-capitals macro invocations are already excluded. L3 unmet: import_resolution has no in-repo spec count yet (LB-F11); file_edge_precision 0.5309 and file_edge_recall 0.1114 vs .90 and .25. L4 unmet: typed_recall 0.0441 because internal/scip.ImportIndex attributes a reference by enclosing_range, which scip-clang never sets (the same gap as LB-Q-c-rest); def_mapping 0.5786 (the index's fields, parameters and members count in its denominator). Trigger: ImportIndex gains the mapped-definition line-span fallback, an L2 pass classifies the unmatched pairs, and a lexical pre-pass neutralizes macro-only lines (scratch copy of both subjects: sym_recall 0.9692, sym_precision 0.9857)."
+}

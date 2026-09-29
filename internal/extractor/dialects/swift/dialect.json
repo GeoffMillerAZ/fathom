@@ -1,0 +1,52 @@
+{
+  "id": "swift",
+  "display": "Swift",
+  "kind": "language",
+  "engine": "tags",
+  "lang_tag": "swift",
+  "match": {
+    "extensions": [".swift"],
+    "basenames": [],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "grammar": { "blob": "swift", "entry_point": "tree_sitter_swift" },
+  "variants": [],
+  "queries": { "tags": "tags.scm", "imports": "imports.scm" },
+  "kinds": {
+    "class":          { "source_kind": "SwiftClass",          "canonical": "class",       "container": true },
+    "struct":         { "source_kind": "SwiftStruct",         "canonical": "struct",      "container": true },
+    "enum":           { "source_kind": "SwiftEnum",           "canonical": "enum",        "container": true },
+    "actor":          { "source_kind": "SwiftActor",          "canonical": "class",       "container": true },
+    "extension":      { "source_kind": "SwiftExtension",      "canonical": "class",       "container": true, "qualify_as_target": true },
+    "protocol":       { "source_kind": "SwiftProtocol",       "canonical": "interface",   "container": true },
+    "typealias":      { "source_kind": "SwiftTypeAlias",      "canonical": "type_alias",  "callable": true },
+    "associatedtype": { "source_kind": "SwiftAssociatedType", "canonical": "type_alias",  "callable": true },
+    "enum_case":      { "source_kind": "SwiftEnumCase",       "canonical": "enum_member", "callable": true },
+    "function":       { "source_kind": "SwiftFunc",           "canonical": "function",    "callable": true },
+    "method":         { "source_kind": "SwiftMethod",         "canonical": "method",      "callable": true },
+    "init":           { "source_kind": "SwiftInit",           "canonical": "constructor", "callable": true },
+    "deinit":         { "source_kind": "SwiftDeinit",         "canonical": "method",      "callable": true },
+    "subscript":      { "source_kind": "SwiftSubscript",      "canonical": "method",      "callable": true },
+    "property":       { "source_kind": "SwiftProperty",       "canonical": "property",    "callable": true },
+    "variable":       { "source_kind": "SwiftVariable",       "canonical": "variable",    "callable": true },
+    "macro":          { "source_kind": "SwiftMacro",          "canonical": "macro" }
+  },
+  "required_kinds": ["class", "struct", "enum", "actor", "extension", "protocol", "typealias", "associatedtype", "enum_case", "function", "method", "init", "deinit", "subscript", "property", "variable", "macro"],
+  "oracle_kinds": {
+    "tool": {
+      "class": "class", "struct": "struct", "enum": "enum", "actor": "class", "extension": "class",
+      "protocol": "interface", "typealias": "type_alias", "associatedtype": "type_alias",
+      "enum_case": "enum_member", "function": "function", "method": "method", "init": "constructor",
+      "deinit": "method", "subscript": "method", "property": "property", "variable": "variable", "macro": "macro"
+    }
+  },
+  "names": { "trim_quotes": true },
+  "qualify": { "chain_containers": true, "container_sep": ".", "method_sep": "." },
+  "package": { "strategy": "dir" },
+  "imports": { "strategy": "swift-module", "suffixes": [".swift"] },
+  "signature": { "max_chars": 200 },
+  "target_level": "L3",
+  "queue_id": "swift"
+}

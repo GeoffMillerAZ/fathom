@@ -1,0 +1,201 @@
+{
+  "dialect": "makefile",
+  "kind": "tooling",
+  "target_level": "L2",
+  "level_met": "L2",
+  "grade": {
+    "L1": "excellent",
+    "L2": "excellent",
+    "L3": "not-attempted",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-09-29",
+  "fathom_commit": "6674b551",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "jart/cosmopolitan",
+      "sha": "5907304049f37c9ed77593974d13202829443bea",
+      "files": 157,
+      "bytes": 918241,
+      "counts": {
+        "callables": 2435,
+        "callables_signed": 2435,
+        "fathom_defs": 4697,
+        "kind_equal": 4690,
+        "matched": 4690,
+        "oracle_defs": 4692,
+        "range_eligible": 2431,
+        "range_ok": 1690,
+        "ref_fathom": 983,
+        "ref_fathom_in_truth": 981,
+        "ref_truth": 985,
+        "ref_truth_found": 981
+      },
+      "families": {
+        "l1": "B",
+        "refs": "A"
+      },
+      "kind_intersection": [
+        "target",
+        "variable_decl"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 375.997,
+        "extract_cpu_ms": 294.364,
+        "max_file_ms": 79,
+        "peak_module_pages": 319,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "prometheus/prometheus",
+      "sha": "9ec59baffb547e24f1468a53eb82901e58feabd8",
+      "files": 4,
+      "bytes": 9782,
+      "counts": {
+        "callables": 43,
+        "callables_signed": 43,
+        "fathom_defs": 56,
+        "kind_equal": 56,
+        "matched": 56,
+        "oracle_defs": 56,
+        "range_eligible": 43,
+        "range_ok": 42,
+        "ref_fathom": 41,
+        "ref_fathom_in_truth": 40,
+        "ref_truth": 40,
+        "ref_truth_found": 40
+      },
+      "families": {
+        "l1": "B",
+        "refs": "A"
+      },
+      "kind_intersection": [
+        "target",
+        "variable_decl"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 3.724,
+        "extract_cpu_ms": 3.779,
+        "max_file_ms": 2,
+        "peak_module_pages": 284,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "valkey-io/valkey",
+      "sha": "7f1dffedff6de73058b2c2a389422b6ecd56c8fb",
+      "files": 16,
+      "bytes": 73727,
+      "counts": {
+        "callables": 251,
+        "callables_signed": 251,
+        "fathom_defs": 588,
+        "kind_equal": 587,
+        "matched": 587,
+        "oracle_defs": 688,
+        "range_eligible": 256,
+        "range_ok": 246,
+        "ref_fathom": 464,
+        "ref_fathom_in_truth": 444,
+        "ref_truth": 444,
+        "ref_truth_found": 444
+      },
+      "families": {
+        "l1": "B",
+        "refs": "A"
+      },
+      "kind_intersection": [
+        "target",
+        "variable_decl"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 21.833000000000006,
+        "extract_cpu_ms": 22.092000000000002,
+        "max_file_ms": 6,
+        "peak_module_pages": 291,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "make -pn",
+      "version": "4.4.1"
+    },
+    {
+      "tier": "B",
+      "tool": "universal-ctags",
+      "version": "6.2.1"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 0.9845,
+    "ref_recall": 0.9973,
+    "sym_precision": 0.9985,
+    "sym_recall": 0.9811,
+    "xref_precision": null,
+    "xref_recall": null
+  },
+  "metric_tiers": {
+    "ref_precision": "A",
+    "ref_recall": "A",
+    "sym_precision": "B",
+    "sym_recall": "B"
+  },
+  "required_kinds": [
+    "target",
+    "variable_decl"
+  ],
+  "kind_intersection": [
+    "target",
+    "variable_decl"
+  ],
+  "counts": {
+    "callables": 2729,
+    "callables_signed": 2729,
+    "fathom_defs": 5341,
+    "kind_equal": 5333,
+    "matched": 5333,
+    "oracle_defs": 5436,
+    "range_eligible": 2730,
+    "range_ok": 1978,
+    "ref_fathom": 1488,
+    "ref_fathom_in_truth": 1465,
+    "ref_truth": 1469,
+    "ref_truth_found": 1465
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 3.13,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 2.49,
+    "max_file_ms": 79,
+    "peak_module_pages": 319,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    "integration review 2026-09-29 (kept, L1 excellent): the two ctags_oracle.py corrections are oracle-bug fixes, not disagreements. A probe of universal-ctags 6.2.1 on a four-line continued rule reports every target at the statement's last physical line with that line's text as its pattern (a name that is not on the line it reports), and tags `private FOO := 1` as a variable named private (losing FOO); each correction is a deterministic check against the source, counted, and disclosed beside the uncorrected run. The post-release grammar pin (main@70613f3d, locked by commit and tarball sha256) follows section 13.1's 'prefer a release tag' with its measured reason: v1.1.1 reads valkey at sym_recall .956",
+    "L1 oracle: universal-ctags 6.2.1 (tier B) through calibration/oracles/make/ctags_oracle.py, which corrects two verified defects of ctags' Make parser and counts them: 404 targets of backslash-continued statements moved from the statement's last physical line (where ctags reports every name) to the line that spells them, and 74 macros named private (a make modifier keyword, never a variable) dropped, all on jart/cosmopolitan. The harness's own uncorrected tier-B run of the same dialect reads sym_recall .9164 and sym_precision .9438 (L1 unmet; 292 of the 299 dialect-only definitions are those mis-lined names, 65 of the 359 oracle-only are the private macros)",
+    "L2 oracle: GNU Make 4.4.1 (tier A, built from the release tarball; macOS make 3.81 is refused by cosmopolitan's own Makefile) evaluating each Makefile-like file as an entry point under sandbox-exec, its prerequisite edges put back in the spelling the source uses (calibration/oracles/make/README.md). The truth is the literal-spelled pairs make confirmed: ref_recall is near 1 by construction, ref_precision is the informative number (23 of 1,488 pairs sit on lines make never evaluated in any configuration: 20 in valkey, 17 of them in src/unit/Makefile, 2 in cosmopolitan, 1 in prometheus). jart/cosmopolitan is also evaluated with MODE=x86_64, because its aarch64 branch is dead on the arm64 host",
+    "L2 scope: make's database holds 238,335 edges on cosmopolitan (default configuration), of which 51,820 sit under a spelled literal and 186,515 (78%) have a variable- or function-produced prerequisite that no static extractor sees; valkey 12,275 / 577 / 11,698, prometheus 128 / 40 / 88. The dialect emits only literal prerequisite words as references and claims none of the expanded edges; references spelled with a variable (a value, not a name) are not emitted",
+    "grammar: tree-sitter-make pinned at main commit 70613f3d (2026-02-26, MIT, ABI 15, no scanner), makefile.wasm.gz 86,559 bytes gzip (265,371 raw), 319 peak module pages, 0 faults; the release tag v1.1.1 was measured first on the same subjects, queries and oracle and reads valkey at 467 definitions against 588 (sym_recall .956, L1 good), which is why the pin is a post-release commit (dialects/makefile/PROVENANCE.md)",
+    "jart/cosmopolitan: 221 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
+    "jart/cosmopolitan: 38 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
+    "known extraction limits (LB-Q-makefile-rest): in a multi-target rule (a b: dep) the prerequisites are calls of the first target only (the engine attaches a call to the smallest callable that contains it and the targets share one range); the private and override modifiers of a target-specific assignment are read by the grammar as prerequisites, so their words are skipped and the targets are emitted; Makefile.common and docker.Makefile are not claimed (the manifest owns Makefile, makefile, GNUmakefile, *.mk and *.make, as the queue entry names)",
+    "per subject: jart/cosmopolitan sym 4,690 of 4,692 oracle definitions matched (157 files), prometheus/prometheus 56 of 56 (4 files), valkey-io/valkey 587 of 688 (.853; 16 files): its 101 misses are 73 tab-indented assignments inside conditionals (tree-sitter-make reads the line as a recipe of raw text, so no name node exists) and 28 unspaced VAR?=x forms (the grammar reads the ? into the name; VAR+=x is likewise read as the name VAR+ and skipped as the append it is)",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "range_agreement .7245 (1,978 of 2,730) is measured and not a tool-format gate: tree-sitter-make's nodes absorb the blank lines after them (and a conditional block that directly follows a rule), while ctags ends a rule at the line before the next definition, comments included; kind_agreement 1, signature_coverage 1 (2,729 of 2,729 callables)"
+  ],
+  "disposition": null
+}

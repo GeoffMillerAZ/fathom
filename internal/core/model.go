@@ -196,6 +196,41 @@ const (
 	// keyframes/custom_property.
 	KindPackageJSONPackage SourceKind = "PackageJSONPackage"
 
+	// pom.xml (LB-Q-maven, language-breadth: new — a doc-engine tool format,
+	// no incumbent). KindMavenArtifact is the project's own entity (the
+	// connector-classification kind); the dialect's plugin kind has no
+	// connector-classification use and so gets no constant of its own, same
+	// precedent as package.json's script/bin/export.
+	KindMavenArtifact SourceKind = "MavenArtifact"
+
+	// Cargo.toml (LB-Q-cargo, language-breadth: new — a doc-engine tool
+	// format; the incumbent was the generic TOMLExtractor's table/key dump).
+	// KindCargoPackage is the manifest's own entity (the connector-
+	// classification kind); the dialect's other kinds (workspace, feature,
+	// lib, bin, example, test, bench) have no connector-classification use
+	// and so get no constant of their own, same precedent as package.json's
+	// script/bin/export.
+	KindCargoPackage SourceKind = "CargoPackage"
+
+	// go.mod and go.work (LB-Q-go-mod, language-breadth: a native tool-format
+	// dialect that upgrades the incumbent's require-only line scanner).
+	// KindGoModule is a go.mod's own entity (its module directive) and
+	// KindGoWorkspace a go.work's, the connector-classification kinds; a
+	// require stays KindModuleDep, and the replace and use entities have no
+	// connector-classification use and so no constant of their own (they are
+	// local to internal/extractor/gomoddialect.go), the package.json and
+	// Cargo.toml precedent.
+	KindGoModule    SourceKind = "GoModule"
+	KindGoWorkspace SourceKind = "GoWorkspace"
+
+	// MSBuild projects, props and targets (LB-Q-msbuild, language-breadth:
+	// new — a doc-engine tool format, no incumbent). KindMSBuildProject is a
+	// file's own entity (the connector-classification kind, named by the file:
+	// a .csproj, .fsproj, .vbproj, .props or .targets); the dialect's target
+	// kind has no connector-classification use and so gets no constant of its
+	// own, the package.json and Cargo.toml precedent.
+	KindMSBuildProject SourceKind = "MSBuildProject"
+
 	// pyproject.toml (LB-Q-python-packaging, language-breadth: new — a
 	// doc-engine tool format, no incumbent; requirements*.txt and
 	// setup.cfg from the same queue entry stay unclassified, §14.2: the
@@ -224,8 +259,32 @@ const (
 	// Bash
 	KindBashFunction SourceKind = "BashFunction"
 
+	// PowerShell (LB-Q-powershell, language-breadth: new — a fleet gap, no
+	// incumbent). KindPowerShellFunction is the manifest's primary
+	// connector-classification kind (a function, filter or workflow); the
+	// dialect's other kinds (class, enum, enum member, method) have no
+	// connector classification use and so get no constant of their own, same
+	// precedent as CSS's keyframes and HTML's form/field.
+	KindPowerShellFunction SourceKind = "PowerShellFunction"
+
+	// Makefile (LB-Q-makefile, language-breadth: new — a fleet gap, no
+	// incumbent). KindMakeTarget is the manifest's primary connector-
+	// classification kind (a rule's target); the dialect's other kinds
+	// (pattern rule, variable, define) have no connector classification use
+	// and so get no constant of their own, same precedent as PowerShell's
+	// class and enum and CSS's keyframes.
+	KindMakeTarget SourceKind = "MakeTarget"
+
 	// Lua
 	KindLuaFunction SourceKind = "LuaFunction"
+
+	// Dart (LB-Q-dart, language-breadth: new — a fleet gap, no incumbent).
+	// KindDartClass is the manifest's primary connector-classification kind;
+	// the dialect's other kinds (mixin, extension, enum, typedef, function,
+	// method, accessor, constructor, field, variable) have no connector
+	// classification use and so get no constant of their own, same precedent
+	// as PowerShell's class and enum and Makefile's variable.
+	KindDartClass SourceKind = "DartClass"
 
 	// Kustomize (ADR-021 §2 / TI-3): entries under a kustomization.yaml's
 	// resources/patches/images lists, emitted as reference observations —
@@ -331,7 +390,8 @@ type Observation struct {
 	// by: the Markdown extractor (KindDocChunk, line before the next
 	// heading or EOF for the last one); the Go extractor (func/method/type/
 	// const/var, from the declaration's own ast.Node.End()); the CGO
-	// tree-sitter extractors — C, C++, C#, Java, Lua, PHP, Rust, Scala —
+	// tree-sitter extractors — C, C++, C#, Java, PHP, Rust, Scala — the
+	// tags-engine dialects (Lua onward, from the definition node itself),
 	// and the CUE, HCL/Terraform, and CMake extractors (from the parsed
 	// node's own end position, or — CMake only — the scanned invocation's
 	// closing paren); the Templ extractor (KindTemplComponent, via the same

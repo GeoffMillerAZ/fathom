@@ -1,0 +1,15 @@
+{
+  "symbols": [
+    { "name": "edge-shapes", "kind": "CargoPackage", "package": "edge", "line": 1, "end_line": 28, "signature": "0.0.1", "calls": ["dotted", "odd.key", "plain", "real-name"], "tier": "verified" },
+    { "name": "bin/second", "kind": "CargoBin", "package": "edge", "line": 11, "end_line": 12, "tier": "verified" },
+    { "name": "quoted-name", "kind": "CargoFeature", "package": "edge", "line": 15, "end_line": 15, "tier": "verified" },
+    { "name": "a", "kind": "CargoFeature", "package": "edge", "line": 16, "end_line": 16, "tier": "verified" },
+    { "name": "workspace", "kind": "CargoWorkspace", "package": "edge", "line": 27, "end_line": 28, "tier": "verified" }
+  ],
+  "cross_file": [
+    { "from": "", "edge": "depends_on", "raw": "plain", "target": "plain", "strategy": "module-source", "line": 20 },
+    { "from": "", "edge": "depends_on", "raw": "dotted", "target": "dotted", "strategy": "module-source", "line": 21 },
+    { "from": "", "edge": "depends_on", "raw": "real-name", "target": "real-name", "strategy": "module-source", "line": 22 },
+    { "from": "", "edge": "depends_on", "raw": "odd.key", "target": "odd.key", "strategy": "module-source", "line": 24 }
+  ]
+}

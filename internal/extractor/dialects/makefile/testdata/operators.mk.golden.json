@@ -1,0 +1,28 @@
+{
+  "symbols": [
+    {
+      "name": "A",
+      "kind": "MakeVariable",
+      "package": "operators",
+      "line": 2,
+      "end_line": 2,
+      "tier": "verified"
+    },
+    {
+      "name": "B",
+      "kind": "MakeVariable",
+      "package": "operators",
+      "line": 3,
+      "end_line": 3,
+      "tier": "verified"
+    },
+    {
+      "name": "E",
+      "kind": "MakeVariable",
+      "package": "operators",
+      "line": 6,
+      "end_line": 6,
+      "tier": "verified"
+    }
+  ]
+}

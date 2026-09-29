@@ -1,0 +1,6 @@
+{
+  "symbols": [
+    { "name": "empty.targets", "kind": "MSBuildProject", "package": "empty", "line": 1, "end_line": 3, "tier": "verified" }
+  ],
+  "cross_file": []
+}

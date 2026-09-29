@@ -1,0 +1,255 @@
+{
+  "symbols": [
+    {
+      "name": "Config",
+      "kind": "RubyModule",
+      "package": "members",
+      "line": 2,
+      "end_line": 51,
+      "tier": "verified"
+    },
+    {
+      "name": "Config::VERSION",
+      "kind": "RubyConstant",
+      "package": "members",
+      "line": 3,
+      "end_line": 3,
+      "tier": "verified"
+    },
+    {
+      "name": "Config::LIMITS",
+      "kind": "RubyConstant",
+      "package": "members",
+      "line": 4,
+      "end_line": 4,
+      "tier": "verified"
+    },
+    {
+      "name": "Config::Point",
+      "kind": "RubyConstant",
+      "package": "members",
+      "line": 8,
+      "end_line": 8,
+      "tier": "verified"
+    },
+    {
+      "name": "Config::Pair",
+      "kind": "RubyConstant",
+      "package": "members",
+      "line": 9,
+      "end_line": 9,
+      "tier": "verified"
+    },
+    {
+      "name": "Config::Failure",
+      "kind": "RubyClass",
+      "package": "members",
+      "line": 10,
+      "end_line": 10,
+      "tier": "verified"
+    },
+    {
+      "name": "Config::Mixin",
+      "kind": "RubyModule",
+      "package": "members",
+      "line": 11,
+      "end_line": 13,
+      "tier": "verified"
+    },
+    {
+      "name": "Config::Mixin.shared",
+      "kind": "RubyMethod",
+      "package": "members",
+      "line": 12,
+      "end_line": 12,
+      "signature": "def shared; end",
+      "tier": "verified"
+    },
+    {
+      "name": "Config::Record",
+      "kind": "RubyClass",
+      "package": "members",
+      "line": 15,
+      "end_line": 50,
+      "tier": "verified"
+    },
+    {
+      "name": "Config::Record.email",
+      "kind": "RubyProperty",
+      "package": "members",
+      "line": 16,
+      "end_line": 16,
+      "signature": ":email",
+      "tier": "verified"
+    },
+    {
+      "name": "Config::Record.name",
+      "kind": "RubyProperty",
+      "package": "members",
+      "line": 16,
+      "end_line": 16,
+      "signature": ":name",
+      "tier": "verified"
+    },
+    {
+      "name": "Config::Record.id",
+      "kind": "RubyProperty",
+      "package": "members",
+      "line": 17,
+      "end_line": 17,
+      "signature": ":id",
+      "tier": "verified"
+    },
+    {
+      "name": "Config::Record.note",
+      "kind": "RubyProperty",
+      "package": "members",
+      "line": 18,
+      "end_line": 18,
+      "signature": ":note",
+      "tier": "verified"
+    },
+    {
+      "name": "Config::Record.<=>",
+      "kind": "RubyMethod",
+      "package": "members",
+      "line": 21,
+      "end_line": 23,
+      "signature": "def <=>(other)",
+      "calls": [
+        "id"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Config::Record.name=",
+      "kind": "RubyMethod",
+      "package": "members",
+      "line": 25,
+      "end_line": 27,
+      "signature": "def name=(value)",
+      "tier": "verified"
+    },
+    {
+      "name": "Config::Record.valid?",
+      "kind": "RubyMethod",
+      "package": "members",
+      "line": 29,
+      "end_line": 29,
+      "signature": "def valid?;",
+      "tier": "verified"
+    },
+    {
+      "name": "Config::Record.sq",
+      "kind": "RubyMethod",
+      "package": "members",
+      "line": 31,
+      "end_line": 31,
+      "signature": "def sq(x) =",
+      "tier": "verified"
+    },
+    {
+      "name": "Config::Record.label",
+      "kind": "RubyAlias",
+      "package": "members",
+      "line": 33,
+      "end_line": 33,
+      "signature": "alias label name",
+      "tier": "verified"
+    },
+    {
+      "name": "Config::Record.title",
+      "kind": "RubyAlias",
+      "package": "members",
+      "line": 34,
+      "end_line": 34,
+      "signature": "alias_method :title, :name",
+      "tier": "verified"
+    },
+    {
+      "name": "Config::Record.legacy_id",
+      "kind": "RubyAlias",
+      "package": "members",
+      "line": 35,
+      "end_line": 35,
+      "signature": "alias_method :legacy_id, :id",
+      "tier": "verified"
+    },
+    {
+      "name": "Config::Record.dyn",
+      "kind": "RubyMethod",
+      "package": "members",
+      "line": 36,
+      "end_line": 36,
+      "signature": "define_method(:dyn)",
+      "calls": [
+        "helper"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Config::Record.quoted",
+      "kind": "RubyMethod",
+      "package": "members",
+      "line": 37,
+      "end_line": 37,
+      "signature": "define_method('quoted')",
+      "tier": "verified"
+    },
+    {
+      "name": "Config::Record.registry",
+      "kind": "RubyProperty",
+      "package": "members",
+      "line": 40,
+      "end_line": 40,
+      "signature": ":registry",
+      "tier": "verified"
+    },
+    {
+      "name": "Config::Record.build",
+      "kind": "RubyMethod",
+      "package": "members",
+      "line": 42,
+      "end_line": 44,
+      "signature": "def build(**opts)",
+      "calls": [
+        "new"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Config::Record.secret",
+      "kind": "RubyMethod",
+      "package": "members",
+      "line": 47,
+      "end_line": 49,
+      "signature": "def secret",
+      "tier": "verified"
+    },
+    {
+      "name": "anon",
+      "kind": "RubyClass",
+      "package": "members",
+      "line": 53,
+      "end_line": 55,
+      "tier": "verified"
+    },
+    {
+      "name": "anon.hook",
+      "kind": "RubyMethod",
+      "package": "members",
+      "line": 54,
+      "end_line": 54,
+      "signature": "def hook; end",
+      "tier": "verified"
+    },
+    {
+      "name": "plug",
+      "kind": "RubyModule",
+      "package": "members",
+      "line": 56,
+      "end_line": 56,
+      "tier": "verified"
+    }
+  ]
+}

@@ -28,7 +28,6 @@ var incumbentExtractors = map[string]func() extractor.Extractor{
 	"csharpextract":     func() extractor.Extractor { return extractor.NewCSharpExtractor() },
 	"cueextract":        func() extractor.Extractor { return extractor.NewCUEExtractor() },
 	"ghaextract":        func() extractor.Extractor { return extractor.NewGHAExtractor() },
-	"gomodextract":      func() extractor.Extractor { return extractor.NewGoModExtractor() },
 	"graphqlextract":    func() extractor.Extractor { return extractor.NewGraphQLExtractor() },
 	"helmchartextract":  func() extractor.Extractor { return extractor.NewHelmChartExtractor() },
 	"helmtemplateyaml":  func() extractor.Extractor { return extractor.NewHelmTemplateYAMLExtractor() },
@@ -38,7 +37,6 @@ var incumbentExtractors = map[string]func() extractor.Extractor{
 	"jsonextract":       func() extractor.Extractor { return extractor.NewJSONExtractor() },
 	"k8sextract":        func() extractor.Extractor { return extractor.NewK8sExtractor() },
 	"kustomizeextract":  func() extractor.Extractor { return extractor.NewKustomizeExtractor() },
-	"luaextract":        func() extractor.Extractor { return extractor.NewLuaExtractor() },
 	"mdextract":         func() extractor.Extractor { return extractor.NewMarkdownExtractor() },
 	"openapiextract":    func() extractor.Extractor { return extractor.NewOpenAPIExtractor() },
 	"phpextract":        func() extractor.Extractor { return extractor.NewPhpExtractor() },
@@ -71,7 +69,7 @@ func cmdLangParity(args []string, stdout, stderr io.Writer) int {
 	var subjects, scips, toolOracles multiFlag
 	fs.Var(&subjects, "subject", "subject checkout, `[name=]dir` (repeatable; required)")
 	fs.Var(&scips, "scip", "SCIP index for a subject, `[name=]path` (repeatable)")
-	fs.Var(&toolOracles, "tool-oracle", "tool-native oracle JSON for a subject, `[name=]path` (repeatable)")
+	fs.Var(&toolOracles, "tool-oracle", "tool-native oracle JSON for a subject, `[name=]path` (repeatable, also more than once per subject: definitions and calls may come from different tools)")
 	ctagsPath := fs.String("ctags", "", "universal-ctags binary (as lang-oracle)")
 	queuePath := fs.String("queue", "docs/plans/language-breadth.queue.json", "the queue (for the dialect's target level)")
 	target := fs.String("target", "", "target level (default: the queue entry's)")
@@ -123,7 +121,10 @@ func cmdLangParity(args []string, stdout, stderr io.Writer) int {
 		tgt = "L1"
 	}
 
-	type subj struct{ name, dir, scip, tool string }
+	type subj struct {
+		name, dir, scip string
+		tools           []string // every -tool-oracle for the subject, as lang-oracle takes them
+	}
 	var subs []subj
 	byName := map[string]int{}
 	for _, s := range subjects {
@@ -159,7 +160,7 @@ func cmdLangParity(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "lang-parity:", err)
 		return 2
 	}
-	if err := attach(toolOracles, func(s *subj, p string) { s.tool = p }); err != nil {
+	if err := attach(toolOracles, func(s *subj, p string) { s.tools = append(s.tools, p) }); err != nil {
 		fmt.Fprintln(stderr, "lang-parity:", err)
 		return 2
 	}
@@ -182,7 +183,7 @@ func cmdLangParity(args []string, stdout, stderr io.Writer) int {
 			r     *langbench.Reading
 			kinds map[string]int
 		}{{incSpec, incX, &incR, incKinds}, {spec, dialX, &dialR, dialKinds}} {
-			m, err := measureSubject(ctx, side.spec, s.dir, s.name, oracleOpts{ctags: *ctagsPath, scip: s.scip, tools: nonEmpty(s.tool)}, side.x)
+			m, err := measureSubject(ctx, side.spec, s.dir, s.name, oracleOpts{ctags: *ctagsPath, scip: s.scip, tools: s.tools}, side.x)
 			if err != nil {
 				fmt.Fprintln(stderr, "lang-parity:", err)
 				return 2
@@ -222,8 +223,14 @@ func dialectExtractor(m langbench.Manifest) (extractor.Extractor, error) {
 		return extractor.NewTSExtractor(m.ID)
 	case "doc":
 		return extractor.NewDocDialectExtractor(m.ID)
+	case "tags+doc":
+		return extractor.NewTagsDocExtractor(m.ID)
+	case "native":
+		if x, ok := extractor.NativeDialectExtractor(m.ID); ok {
+			return x, nil
+		}
 	}
-	return nil, fmt.Errorf("dialect %s: engine %q has no stand-alone extractor for a parity run (tags and doc do)", m.ID, m.Engine)
+	return nil, fmt.Errorf("dialect %s: engine %q has no stand-alone extractor for a parity run (tags, doc, tags+doc and a native dialect with one do)", m.ID, m.Engine)
 }
 
 func splitNamed(v string) (name, path string) {
@@ -268,15 +275,4 @@ func writeParity(w io.Writer, p langbench.Parity) {
 	reasons := append([]string(nil), p.Reasons...)
 	sort.Strings(reasons)
 	fmt.Fprintf(w, "verdict: REFUSED — %s\n", strings.Join(reasons, "; "))
-}
-
-// nonEmpty is xs without its empty strings.
-func nonEmpty(xs ...string) []string {
-	var out []string
-	for _, x := range xs {
-		if x != "" {
-			out = append(out, x)
-		}
-	}
-	return out
 }

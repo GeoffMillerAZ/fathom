@@ -265,7 +265,7 @@ fathom ingest --service <id> --path <dir> --dry-run [--stats] [--json]
 | `--stats` | off | With `--dry-run`: the discovery statistics (what `--dry-run` prints) |
 | `--respect-gitignore` | off | With `--dry-run`: discover a git work tree through `git ls-files -co --exclude-standard`, as `[connector] respect_gitignore = true` would (RT-68); `--json` adds `git` and `gitignored`. Run with and without it to measure the delta (RT-M11) |
 | `--rehash` | off | Read and hash every file (RT-102). Without it an ingest reads only files whose size, mtime or inode moved since the last ingest the same process (the daemon) ran, or the store's recorded stats once `file_stats` exists; a one-shot CLI ingest reads everything today |
-| `--json` | off | Emit the run as JSON: `{service, outcome: ok|degraded|refused, exit_code, discovered, extracted, skipped, symbols, read_failed, read_failures: [{path, err, errno?}], unclassified, oversize, classified_zero, unsupported_languages?, typed_edges?, scip_imports?, excluded?, default_ignored_dirs?, error?, hint?}` — `errno` is the class (`EPERM`, `EACCES`, `ENOENT`, `EIO`, `EISDIR`) derived from the connector's text, so CI can assert `read_failed == 0`. `unsupported_languages` (O69, present only when non-empty) is `{language: file_count}` — e.g. `{"swift": 412}` — for source in a KNOWN programming language fathom has no registered extractor for; see "Unsupported languages" below. `scip_imports` (present only when at least one SCIP index was imported) is `[{path, producer, language?, documents, edges, direct, unresolved, unmapped}]` — see "Typed edges by import" below |
+| `--json` | off | Emit the run as JSON: `{service, outcome: ok|degraded|refused, exit_code, discovered, extracted, skipped, symbols, read_failed, read_failures: [{path, err, errno?}], unclassified, oversize, classified_zero, unsupported_languages?, typed_edges?, scip_imports?, excluded?, default_ignored_dirs?, error?, hint?}` — `errno` is the class (`EPERM`, `EACCES`, `ENOENT`, `EIO`, `EISDIR`) derived from the connector's text, so CI can assert `read_failed == 0`. `unsupported_languages` (O69, present only when non-empty) is `{language: file_count}` — e.g. `{"zig": 412}` — for source in a KNOWN programming language fathom has no registered extractor for; see "Unsupported languages" below. `scip_imports` (present only when at least one SCIP index was imported) is `[{path, producer, language?, documents, edges, direct, unresolved, unmapped}]` — see "Typed edges by import" below |
 
 Output: `discovered`, `extracted`, `skipped`, `symbols` counts, plus non-zero-only rows
 (`unclassified`, `oversize`, `classified-but-zero-symbols`, `unsupported languages (no extractor)`,
@@ -330,12 +330,13 @@ place contributes NO edge, in either direction, and is counted in the summary's
 and contributed no edge (O115)` — never silently folded into `direct` or `unresolved`.
 
 **Unsupported languages (O69).** `unclassified` lumps every file with no registered
-extractor into one count, unnamed — a lockfile, an image, and a real Swift source file
+extractor into one count, unnamed — a lockfile, an image, and a real Zig source file
 all count the same way. When an unrecognized extension is also a KNOWN programming
-language (`internal/connector.UnsupportedLanguageForPath` — currently: Swift, Dart,
-Elixir, Clojure, Haskell, OCaml, F#, Erlang, Zig, Nim, Julia, Elm, Crystal, Groovy),
+language (`internal/connector.UnsupportedLanguageForPath` — currently:
+Elixir, Clojure, Haskell, OCaml, F#, Erlang, Zig, Nim, Julia, Elm, Crystal, Groovy, and Swift,
+whose dialect is built but refused: LB-Q-swift-rest),
 ingest names it and counts its files separately, so a repo whose primary language has no
-extractor reads as "swift: 412 files, no extractor" instead of a suspiciously low symbol
+extractor reads as "zig: 412 files, no extractor" instead of a suspiciously low symbol
 count with no explanation. The same breakdown is in `list_services`' per-service
 `unsupported_languages` and the `unsupported_languages` doctor row (WARN, not FAIL — a
 capability gap, not a misconfiguration). None of the languages above have a tree-sitter

@@ -7,8 +7,11 @@
 #   corpus.yaml entries  -> workspace/calibration/<language slug>/<repo>
 #   corpus.d/<id>.yaml   -> workspace/calibration/<id>/<repo>
 # Clones are --depth 1 single-branch. A repo with a `subpath` is cloned
-# blob-less and sparse, so only that subtree lands on disk. Re-running skips
-# repos already present (idempotent).
+# blob-less and sparse, so only that subtree lands on disk. A repo with `sparse`
+# (a list of gitignore-style patterns, e.g. "**/go.mod") is cloned blob-less and
+# checked out non-cone, so only the files those patterns match land on disk, at
+# any depth (a tool format whose files are a handful of manifests in a large
+# tree). Re-running skips repos already present (idempotent).
 #
 # A shard is one queue item's subjects:
 #   id: swift                      # the queue id; [a-z0-9-]+; equals the file name
@@ -20,6 +23,7 @@
 #       sha: <commit from git ls-remote>
 #       licence: MIT               # OSI-approved; read, never vendored
 #       subpath: Source            # optional: large repos
+#       sparse: ["**/go.mod"]      # optional: only files matching these patterns
 #       idioms: [...]              # 3-6 idioms the subject exercises
 #
 # Usage:
@@ -53,9 +57,9 @@ matches_filter() {
 
 total_ok=0; total_fail=0; total_skip=0; shard_errors=0
 
-# clone_repo <slug> <index> <name> <url> <ref> <sha> <subpath>
+# clone_repo <slug> <index> <name> <url> <ref> <sha> <subpath> <sparse patterns, one per line>
 clone_repo() {
-  local slug="$1" j="$2" name="$3" url="$4" ref="$5" sha="$6" subpath="$7"
+  local slug="$1" j="$2" name="$3" url="$4" ref="$5" sha="$6" subpath="$7" sparse="${8:-}"
   # Sanitize the repo name into a safe dir: drop any "org/" prefix and " (note)"
   # suffix, lowercase, keep only [a-z0-9._-].
   local base="${name##*/}"; base="${base%% (*}"
@@ -65,10 +69,16 @@ clone_repo() {
   if [ -d "$target/.git" ]; then
     echo "skip   $slug/$name (already cloned)"; total_skip=$((total_skip+1)); return 0
   fi
-  echo "clone  $slug/$name  <-  $url @ $ref${subpath:+ (subpath $subpath)}"
+  echo "clone  $slug/$name  <-  $url @ $ref${subpath:+ (subpath $subpath)}${sparse:+ (sparse: $(printf '%s' "$sparse" | tr '\n' ' '))}"
   rm -rf "$target"; mkdir -p "$target"
   local ok=1
-  if [ -n "$subpath" ]; then
+  if [ -n "$sparse" ]; then
+    local patterns=() p
+    while IFS= read -r p; do [ -n "$p" ] && patterns+=("$p"); done <<<"$sparse"
+    git clone --quiet --depth 1 --branch "$ref" --single-branch --filter=blob:none --no-checkout "$url" "$target" 2>/dev/null \
+      && git -C "$target" sparse-checkout set --no-cone -- "${patterns[@]}" 2>/dev/null \
+      && git -C "$target" checkout --quiet 2>/dev/null || ok=0
+  elif [ -n "$subpath" ]; then
     git clone --quiet --depth 1 --branch "$ref" --single-branch --filter=blob:none --sparse "$url" "$target" 2>/dev/null \
       && git -C "$target" sparse-checkout set -- "$subpath" 2>/dev/null || ok=0
   else
@@ -95,7 +105,8 @@ clone_list() {
       "$(yq -r "$at.repos[$j].url" "$file")" \
       "$(yq -r "$at.repos[$j].ref" "$file")" \
       "$(yq -r "$at.repos[$j].sha" "$file")" \
-      "$(yq -r "$at.repos[$j].subpath // \"\"" "$file")"
+      "$(yq -r "$at.repos[$j].subpath // \"\"" "$file")" \
+      "$(yq -r "$at.repos[$j].sparse // [] | join(\"\\n\")" "$file")"
   done
 }
 

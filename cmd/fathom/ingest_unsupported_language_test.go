@@ -7,7 +7,7 @@ package main
 // exact gap the Long Code Arena bench run found in bumble-tech/appyx (a real
 // Kotlin repo indexed with ~165 symbols and no clue anywhere that Kotlin
 // itself was unindexed). Wave P2 (O81) closed the Kotlin gap itself
-// (extractor.NewTSExtractor("kotlin")), so these fixtures now use Swift — a
+// (extractor.NewTSExtractor("kotlin")), so these fixtures now use Zig — a
 // language that still has no extractor — to keep proving the disclosure
 // mechanism in general; see TestIngestReportShowsKotlinSymbols below for the
 // Kotlin closure proof.
@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	swiftSrcFixture  = "import Foundation\n\nfunc main() {}\n"
+	zigSrcFixture    = "const std = @import(\"std\");\n\npub fn main() void {}\n"
 	kotlinSrcFixture = "package com.example\n\nfun main() {}\n"
 )
 
@@ -31,13 +31,13 @@ func TestIngestReportNamesUnsupportedLanguages(t *testing.T) {
 	conn := &wedgedConnector{
 		refs: []core.SourceRef{
 			{Path: "main.go"},
-			{Path: "App.swift"},
-			{Path: "Widget.swift"},
+			{Path: "App.zig"},
+			{Path: "Widget.zig"},
 		},
 		content: map[string][]byte{
-			"main.go":      []byte(honestyGoSrc),
-			"App.swift":    []byte(swiftSrcFixture),
-			"Widget.swift": []byte(swiftSrcFixture),
+			"main.go":    []byte(honestyGoSrc),
+			"App.zig":    []byte(zigSrcFixture),
+			"Widget.zig": []byte(zigSrcFixture),
 		},
 	}
 	useConnectorForIngest(t, conn)
@@ -52,8 +52,8 @@ func TestIngestReportNamesUnsupportedLanguages(t *testing.T) {
 	if !strings.Contains(stdout, "unsupported languages (no extractor)") {
 		t.Fatalf("stdout must disclose unsupported languages:\n%s", stdout)
 	}
-	if !strings.Contains(stdout, "swift: 2 file(s)") {
-		t.Errorf("stdout must name swift with its file count:\n%s", stdout)
+	if !strings.Contains(stdout, "zig: 2 file(s)") {
+		t.Errorf("stdout must name zig with its file count:\n%s", stdout)
 	}
 }
 
@@ -61,11 +61,11 @@ func TestIngestJSONNamesUnsupportedLanguages(t *testing.T) {
 	conn := &wedgedConnector{
 		refs: []core.SourceRef{
 			{Path: "main.go"},
-			{Path: "App.swift"},
+			{Path: "App.zig"},
 		},
 		content: map[string][]byte{
-			"main.go":   []byte(honestyGoSrc),
-			"App.swift": []byte(swiftSrcFixture),
+			"main.go": []byte(honestyGoSrc),
+			"App.zig": []byte(zigSrcFixture),
 		},
 	}
 	useConnectorForIngest(t, conn)
@@ -82,8 +82,8 @@ func TestIngestJSONNamesUnsupportedLanguages(t *testing.T) {
 	if err := json.Unmarshal(out.Bytes(), &payload); err != nil {
 		t.Fatalf("json.Unmarshal: %v\n%s", err, out.String())
 	}
-	if got, want := payload.UnsupportedLanguages["swift"], 1; got != want {
-		t.Errorf("unsupported_languages[swift] = %d, want %d\n%s", got, want, out.String())
+	if got, want := payload.UnsupportedLanguages["zig"], 1; got != want {
+		t.Errorf("unsupported_languages[zig] = %d, want %d\n%s", got, want, out.String())
 	}
 }
 

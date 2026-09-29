@@ -285,6 +285,8 @@ func loadSupportRowStates(root string) (map[string]console.SupportRowState, erro
 			st = console.SupportRowClaimed
 		case support.RowMarkDispositioned:
 			st = console.SupportRowDispositioned
+		case support.RowMarkRefused:
+			st = console.SupportRowRefused
 		}
 		rows[id] = st
 	}
@@ -301,7 +303,8 @@ func supportNextItems(src supportSources) []console.SupportNextItem {
 		if q.Kind == "tooling" {
 			kind = support.KindTool
 		}
-		out = append(out, console.SupportNextItem{Kind: kind, ID: q.ID, Name: q.Name, Wave: q.Wave, PlanRow: q.PlanRow, Needs: q.DependsOn})
+		_, refused := src.Refused[q.ID] // §14.2: its row or its -rest sibling
+		out = append(out, console.SupportNextItem{Kind: kind, ID: q.ID, Name: q.Name, Wave: q.Wave, PlanRow: q.PlanRow, Needs: q.DependsOn, Refused: refused})
 	}
 	for _, t := range src.Targets {
 		out = append(out, console.SupportNextItem{Kind: t.Kind, ID: t.ID, Name: t.Name, Wave: t.Wave, PlanRow: t.PlanRow})
@@ -777,16 +780,32 @@ func renderSupportNext(v console.SupportNextView) string {
 	}
 	var b strings.Builder
 	for _, w := range v.Waves {
-		b.WriteString(`<div class="mt-3 min-w-0" data-support-wave="` + strconv.Itoa(w.Wave) + `"><h3 class="text-sm font-semibold text-ink">` + html.EscapeString(fmt.Sprintf("Wave %d", w.Wave)) + ` <span class="font-normal text-ink-muted">` + html.EscapeString(fmt.Sprintf("%d eligible, %d blocked", len(w.Items), w.Blocked)) + `</span></h3>`)
-		if len(w.Items) == 0 {
-			b.WriteString(`<p class="text-sm italic text-ink-muted">Nothing eligible: every open row here waits on an open need.</p></div>`)
+		counts := fmt.Sprintf("%d eligible, %d blocked", len(w.Items), w.Blocked)
+		if len(w.Replan) > 0 {
+			counts += fmt.Sprintf(", %d needs re-planning", len(w.Replan))
+		}
+		b.WriteString(`<div class="mt-3 min-w-0" data-support-wave="` + strconv.Itoa(w.Wave) + `"><h3 class="text-sm font-semibold text-ink">` + html.EscapeString(fmt.Sprintf("Wave %d", w.Wave)) + ` <span class="font-normal text-ink-muted">` + html.EscapeString(counts) + `</span></h3>`)
+		if len(w.Items) == 0 && len(w.Replan) == 0 {
+			b.WriteString(`<p class="text-sm italic text-ink-muted">Nothing eligible: every open row here waits on an open or deferred need.</p></div>`)
 			continue
 		}
-		b.WriteString(`<ul class="mt-1 flex flex-col gap-1 text-sm">`)
-		for _, it := range w.Items {
-			b.WriteString(`<li class="min-w-0 [overflow-wrap:anywhere]"><span class="font-medium text-ink">` + html.EscapeString(it.Name) + `</span> <span class="text-ink-muted">` + html.EscapeString(fmt.Sprintf("%s · %s · %d needs met", it.Kind, it.PlanRow, it.Needs)) + `</span></li>`)
+		if len(w.Items) > 0 {
+			b.WriteString(`<ul class="mt-1 flex flex-col gap-1 text-sm">`)
+			for _, it := range w.Items {
+				b.WriteString(`<li class="min-w-0 [overflow-wrap:anywhere]"><span class="font-medium text-ink">` + html.EscapeString(it.Name) + `</span> <span class="text-ink-muted">` + html.EscapeString(fmt.Sprintf("%s · %s · %d needs met", it.Kind, it.PlanRow, it.Needs)) + `</span></li>`)
+			}
+			b.WriteString(`</ul>`)
 		}
-		b.WriteString(`</ul></div>`)
+		if len(w.Replan) > 0 {
+			// G2-6: a refused need will not be built; the item needs a new plan,
+			// not a wait.
+			b.WriteString(`<p class="text-sm italic text-ink-muted">Needs re-planning: a need was refused.</p><ul class="mt-1 flex flex-col gap-1 text-sm">`)
+			for _, it := range w.Replan {
+				b.WriteString(`<li class="min-w-0 [overflow-wrap:anywhere]"><span class="font-medium text-ink">` + html.EscapeString(it.Name) + `</span> <span class="text-ink-muted">` + html.EscapeString(fmt.Sprintf("%s · %s", it.Kind, it.PlanRow)) + `</span></li>`)
+			}
+			b.WriteString(`</ul>`)
+		}
+		b.WriteString(`</div>`)
 	}
 	return b.String()
 }

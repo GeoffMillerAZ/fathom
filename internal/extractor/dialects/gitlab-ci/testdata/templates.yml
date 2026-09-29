@@ -1,0 +1,41 @@
+# Templates and job shapes an included file carries.
+.base:
+  image: alpine:3.20
+  before_script:
+    - echo base
+
+.with-needs:
+  extends: .base
+  needs:
+    - prepare
+
+.anchored: &anchored
+  stage: test
+  script:
+    - echo anchored
+
+prepare:
+  stage: build
+  script:
+    - echo prepare
+
+"test:unit":
+  extends:
+    - .with-needs
+    - .anchored
+  parallel:
+    matrix:
+      - GO: ["1.25", "1.26"]
+  script:
+    - !reference [.base, before_script]
+    - go test ./...
+
+"build images":
+  <<: *anchored
+  needs:
+    - job: prepare
+      artifacts: true
+    - job: "test:unit"
+      optional: true
+  script:
+    - make images

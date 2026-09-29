@@ -1,0 +1,11 @@
+{
+  "symbols": [
+    { "name": "shop-web", "kind": "MavenArtifact", "package": "inherited", "line": 1, "end_line": 32, "signature": "org.acme.shop", "calls": ["shop-orders", "shop-parent"], "tier": "verified" },
+    { "name": "jetty-maven-plugin", "kind": "MavenPlugin", "package": "inherited", "line": 19, "end_line": 29, "signature": "${jetty.version}", "tier": "verified" }
+  ],
+  "cross_file": [
+    { "from": "", "edge": "parent", "raw": "shop-parent", "target": "shop-parent", "strategy": "module-source", "line": 5 },
+    { "from": "", "edge": "module", "raw": "static", "target": "static", "strategy": "repo-path", "line": 10 },
+    { "from": "", "edge": "depends_on", "raw": "shop-orders", "target": "shop-orders", "strategy": "module-source", "line": 14 }
+  ]
+}

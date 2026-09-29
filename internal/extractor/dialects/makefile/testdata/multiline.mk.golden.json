@@ -1,0 +1,55 @@
+{
+  "symbols": [
+    {
+      "name": "SRCS",
+      "kind": "MakeVariable",
+      "package": "multiline",
+      "line": 2,
+      "end_line": 4,
+      "tier": "verified"
+    },
+    {
+      "name": "bundle",
+      "kind": "MakeTarget",
+      "package": "multiline",
+      "line": 5,
+      "end_line": 9,
+      "signature": "bundle: main.o \\ util.o \\ | outdir",
+      "calls": [
+        "main.o",
+        "outdir",
+        "util.o"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "inline",
+      "kind": "MakeTarget",
+      "package": "multiline",
+      "line": 10,
+      "end_line": 11,
+      "signature": "inline: dep",
+      "calls": [
+        "dep"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "recurse",
+      "kind": "MakeTarget",
+      "package": "multiline",
+      "line": 12,
+      "end_line": 14,
+      "signature": "recurse:",
+      "tier": "verified"
+    },
+    {
+      "name": "compile_rule",
+      "kind": "MakeDefine",
+      "package": "multiline",
+      "line": 15,
+      "end_line": 19,
+      "tier": "verified"
+    }
+  ]
+}

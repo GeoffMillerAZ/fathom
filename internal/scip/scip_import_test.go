@@ -741,6 +741,13 @@ func TestDescriptorLeafName(t *testing.T) {
 		// zod: a backtick-quoted file-name namespace segment must not be
 		// split on the '.' inside it.
 		{"scip-typescript npm zod 4.4.3 src/v4/core/`registries.ts`/$output#", "$output", true},
+		// rust-analyzer writes an impl block's members as impl#[Type]name().
+		{"rust-analyzer cargo grep-pcre2 0.1.8 matcher/impl#[RegexMatcherBuilder]build().", "build", true},
+		{"rust-analyzer cargo grep-pcre2 0.1.8 matcher/impl#[RegexMatcher][Matcher]Error#", "Error", true},
+		// ...and only rust-analyzer: another producer keeps the separator set
+		// its typed-edge readings were measured with (integration review
+		// 2026-09-29), so a type parameter followed by a descriptor is not split.
+		{"scip-typescript npm p 1 m/Foo#[T]bar().", "[T]bar", true},
 		// A "local" symbol carries no package/descriptor path at all —
 		// there is no name to recover.
 		{"local 3", "", false},

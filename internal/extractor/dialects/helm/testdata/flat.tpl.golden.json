@@ -1,0 +1,93 @@
+{
+  "engine": "tags",
+  "symbols": [
+    {
+      "name": "flat.name",
+      "kind": "HelmTemplate",
+      "package": "flat",
+      "line": 2,
+      "end_line": 4,
+      "signature": "{{- define \"flat.name\" -}}",
+      "calls": [
+        "flat.suffix"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "flat.suffix",
+      "kind": "HelmTemplateRef",
+      "package": "flat",
+      "line": 3,
+      "end_line": 3,
+      "tier": "verified"
+    },
+    {
+      "name": "name",
+      "kind": "HelmValueRef",
+      "package": "flat",
+      "line": 3,
+      "end_line": 3,
+      "tier": "verified"
+    },
+    {
+      "name": "flat.suffix",
+      "kind": "HelmTemplate",
+      "package": "flat",
+      "line": 5,
+      "end_line": 7,
+      "signature": "{{- define \"flat.suffix\" -}}",
+      "tier": "verified"
+    },
+    {
+      "name": "suffix",
+      "kind": "HelmValueRef",
+      "package": "flat",
+      "line": 6,
+      "end_line": 6,
+      "tier": "verified"
+    },
+    {
+      "name": "flat.name",
+      "kind": "HelmTemplateRef",
+      "package": "flat",
+      "line": 8,
+      "end_line": 8,
+      "tier": "verified"
+    },
+    {
+      "name": "flat.empty",
+      "kind": "HelmTemplate",
+      "package": "flat",
+      "line": 9,
+      "end_line": 9,
+      "signature": "{{- define \"flat.empty\" }}{{ end }}",
+      "tier": "verified"
+    },
+    {
+      "name": "blockDefault",
+      "kind": "HelmValueRef",
+      "package": "flat",
+      "line": 10,
+      "end_line": 10,
+      "tier": "verified"
+    },
+    {
+      "name": "flat.block",
+      "kind": "HelmTemplate",
+      "package": "flat",
+      "line": 10,
+      "end_line": 10,
+      "signature": "{{ block \"flat.block\" . }}{{ .Values.blockDefault }}{{ end }}",
+      "tier": "verified"
+    },
+    {
+      "name": ".Values.literalName",
+      "kind": "HelmTemplateRef",
+      "package": "flat",
+      "line": 11,
+      "end_line": 11,
+      "tier": "verified"
+    }
+  ],
+  "cross_file": []
+}

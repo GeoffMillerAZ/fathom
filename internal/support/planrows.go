@@ -2,9 +2,10 @@ package support
 
 // planrows.go — the checkbox of every row in the plans the target rows
 // belong to, for the console's What's next panel (SM-24, design §5 panel 4:
-// the `plans next --eligible-only` rule — a need is met when its row is
-// claimed or dispositioned). A lexical read of committed plan files: the
-// claim, not its proof, which `fathom verify` owns.
+// the `plans next --eligible-only` rule since G2-6 — a need is met only when
+// its row is claimed; a deferred [-] row blocks and a refused one means
+// re-planning). A lexical read of committed plan files: the claim, not its
+// proof, which `fathom verify` owns.
 
 import (
 	"os"
@@ -19,7 +20,8 @@ type RowMark string
 const (
 	RowMarkOpen          RowMark = "open"
 	RowMarkClaimed       RowMark = "claimed"
-	RowMarkDispositioned RowMark = "dispositioned"
+	RowMarkDispositioned RowMark = "dispositioned" // [-] deferred, or with no disposition
+	RowMarkRefused       RowMark = "refused"       // [-] with any disposition but deferred (G2-6)
 )
 
 // PlanRowMarks reads docs/plans/<name> under root for each name and returns
@@ -40,6 +42,8 @@ func PlanRowMarks(root string, names ...string) (map[string]RowMark, error) {
 			switch {
 			case t.Claimed:
 				m = RowMarkClaimed
+			case t.Skipped && t.Disposition != "" && t.Disposition != "deferred":
+				m = RowMarkRefused
 			case t.Skipped:
 				m = RowMarkDispositioned
 			}

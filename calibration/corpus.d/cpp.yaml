@@ -1,0 +1,42 @@
+id: cpp
+language: C++
+# Measurement conventions (docs/bench/readings/lang/cpp.json): fmt is measured with
+#   -only 'include/**,src/**,test/*.cc,test/*.h,test/fuzzing/**'
+# (its bundled test/gtest is vendored code); both subjects' .h/.hpp headers are measured
+# (lang-oracle routes .h through the header router's C++ sniff). scip-clang needs a
+# compile_commands.json neither library ships: fmt's is src/format.cc, src/os.cc and a
+# synthetic translation unit including every public header; json's is one translation
+# unit using json.hpp's API.
+repos:
+  - name: fmtlib/fmt
+    url: https://github.com/fmtlib/fmt
+    ref: 12.2.0
+    sha: 1be298e1bd68957e4cd352e1f676f00e07dcfb57
+    licence: MIT
+    idioms:
+      - header-only-style class and function templates in a namespace whose name is a
+        macro (FMT_BEGIN_NAMESPACE) around an inline versioned namespace
+      - constexpr/noexcept function definitions behind FMT_CONSTEXPR-style macro
+        decorators
+      - SFINAE-constrained overloads (enable_if_t defaulted template parameters) and
+        conversion operators
+      - out-of-class member definitions of class templates (basic_memory_buffer) and
+        friend functions defined in the class body
+      - a `detail` sub-namespace of helper functions and a src/ tree of ordinary
+        translation units
+  - name: nlohmann/json
+    url: https://github.com/nlohmann/json
+    ref: v3.12.0
+    sha: 55f93686c01528224f448c19128836e7df245f72
+    licence: MIT
+    subpath: include
+    idioms:
+      - one very large class template (basic_json) with dozens of nested class
+        templates, iterators and serializers
+      - macro-wrapped namespaces (NLOHMANN_JSON_NAMESPACE_BEGIN) with nested `detail`
+        namespaces
+      - operator overloads (operator==, operator<<, operator[], operator<=>) as members
+        and as friends
+      - function templates constrained by defaulted enable_if_t parameters and tag
+        dispatch overloads
+      - macro families generating definitions (NLOHMANN_DEFINE_TYPE_INTRUSIVE)

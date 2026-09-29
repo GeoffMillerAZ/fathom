@@ -1,0 +1,44 @@
+{
+  "symbols": [
+    {
+      "name": "GOOD",
+      "kind": "MakeVariable",
+      "package": "broken",
+      "line": 2,
+      "end_line": 3,
+      "tier": "verified"
+    },
+    {
+      "name": "before",
+      "kind": "MakeTarget",
+      "package": "broken",
+      "line": 4,
+      "end_line": 6,
+      "signature": "before: dep",
+      "calls": [
+        "dep"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "after",
+      "kind": "MakeTarget",
+      "package": "broken",
+      "line": 9,
+      "end_line": 11,
+      "signature": "after: dep2",
+      "calls": [
+        "dep2"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "LATE",
+      "kind": "MakeVariable",
+      "package": "broken",
+      "line": 12,
+      "end_line": 12,
+      "tier": "verified"
+    }
+  ]
+}

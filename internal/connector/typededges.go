@@ -34,11 +34,14 @@ var typedEdgeProducers = map[string]string{
 	"c":      "scip:scip-clang",
 	"cpp":    "scip:scip-clang",
 	"ruby":   "scip:scip-ruby",
+	"dart":   "scip:scip-dart",
 	"cs":     "scip:scip-dotnet",
 
 	// file: fusion.ResolveFileEdges' relative-path strategy resolves this
 	// dialect's src/href/@import specs to in-repo files (tier pre-scan,
-	// LB-F11) — no SCIP producer and no native pass.
+	// LB-F11) — no SCIP producer and no native pass. (Swift's swift-module
+	// strategy would too, but LB-Q-swift is refused and .swift is not
+	// classified: design §14.2.)
 	"html": "file",
 	"css":  "file",
 
@@ -47,6 +50,8 @@ var typedEdgeProducers = map[string]string{
 	"cue":        "syntax",
 	"php":        "syntax",
 	"sh":         "syntax",
+	"powershell": "syntax",
+	"makefile":   "syntax",
 	"lua":        "syntax",
 	"sql":        "syntax",
 	"terraform":  "syntax",
@@ -74,6 +79,34 @@ var typedEdgeProducers = map[string]string{
 	// package.json above (ADR-027: a mechanism is claimed only once it
 	// exists in code).
 	"python-packaging": "syntax",
+
+	// pom.xml (LB-Q-maven): its cross_file selectors (modules, parent and
+	// dependency edges to another POM of the repository, design §4) become
+	// file-tier doc-xref edges at ingest (fusion.ResolveDocXrefs) but are
+	// not a file-resolver or SCIP producer, so "syntax" is the honest
+	// baseline claim, same as package.json and pyproject.toml above.
+	"maven": "syntax",
+
+	// Cargo.toml (LB-Q-cargo): its cross_file selectors (workspace members
+	// and a dependency on another package of the repository, design §4)
+	// become file-tier doc-xref edges at ingest (fusion.ResolveDocXrefs) but
+	// are not a file-resolver or SCIP producer, so "syntax" is the honest
+	// baseline claim, same as package.json, pyproject.toml and pom.xml above.
+	"cargo": "syntax",
+
+	// go.mod and go.work (LB-Q-go-mod): a require to another module of the
+	// repository, a replace to a local directory and a go.work use become
+	// file-tier doc-xref edges at ingest (fusion.ResolveDocXrefs) but are not a
+	// file-resolver or SCIP producer, so "syntax" is the honest baseline claim,
+	// same as Cargo.toml above. (The Go language itself stays "native".)
+	"go-mod": "syntax",
+
+	// MSBuild (LB-Q-msbuild): a ProjectReference to another project of the
+	// repository becomes a file-tier doc-xref edge at ingest
+	// (fusion.ResolveDocXrefs) but is not a file-resolver or SCIP producer,
+	// so "syntax" is the honest baseline claim, same as pom.xml and
+	// Cargo.toml above.
+	"msbuild": "syntax",
 }
 
 // TypedEdgeProducer returns lang's typed-edge producer string — "native",

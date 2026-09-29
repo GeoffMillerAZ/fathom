@@ -32,7 +32,7 @@ func TestQueueEligibility(t *testing.T) {
 - [x] done {id: LB-Q-done, oracle: lexical, path: x, pattern: y}
 `))
 	levels := map[string]string{"c": "L1", "css": LevelNone}
-	got := QueueEligibility(q, plan, func(id string) (string, bool) { l, ok := levels[id]; return l, ok })
+	got := blockedOf(QueueEligibility(q, plan, func(id string) (string, bool) { l, ok := levels[id]; return l, ok }))
 	want := map[string][]string{
 		"c":    nil,
 		"done": nil,
@@ -45,7 +45,76 @@ func TestQueueEligibility(t *testing.T) {
 		t.Fatalf("QueueEligibility =\n%v\nwant\n%v", got, want)
 	}
 	delete(levels, "c") // no committed reading at all: blocked on the open row
-	if got := QueueEligibility(q, plan, func(id string) (string, bool) { l, ok := levels[id]; return l, ok }); !reflect.DeepEqual(got["cpp"], []string{"LB-Q-c"}) {
+	if got := blockedOf(QueueEligibility(q, plan, func(id string) (string, bool) { l, ok := levels[id]; return l, ok })); !reflect.DeepEqual(got["cpp"], []string{"LB-Q-c"}) {
 		t.Fatalf("cpp without c's reading: %v", got["cpp"])
+	}
+}
+
+func blockedOf(m map[string]QueueBlock) map[string][]string {
+	out := map[string][]string{}
+	for id, b := range m {
+		out[id] = b.Blocked
+	}
+	return out
+}
+
+// TestQueueEligibilityDeferredIsNotDone is G2-6 in the language queue (§13.0
+// step 2, amended 2026-09-29): a [-] depends_on row no longer satisfies it. A
+// deferred one (or one with no disposition) keeps the item blocked until it
+// revives; a refused one will not be built, so the item is reported as needing
+// re-planning instead of waiting. D6 still holds: a queue item whose own row is
+// open or deferred satisfies its dependents with a committed reading at L1 or
+// better, but a refused one never does. A refused item itself (its row, or its
+// -rest sibling while its row stays open) needs re-planning: it is never
+// offered as eligible.
+func TestQueueEligibilityDeferredIsNotDone(t *testing.T) {
+	q, err := ParseQueue([]byte(`[
+	 {"id":"a","plan_row":"LB-Q-a","kind":"language","target_level":"L2","engine":"tags","depends_on":["LB-F1","LB-F3"]},
+	 {"id":"b","plan_row":"LB-Q-b","kind":"language","target_level":"L2","engine":"tags","depends_on":["LB-F1","LB-F4"]},
+	 {"id":"c","plan_row":"LB-Q-c","kind":"language","target_level":"L2","engine":"tags","depends_on":["LB-F5"]},
+	 {"id":"p","plan_row":"LB-Q-p","kind":"language","target_level":"L4","engine":"tags","depends_on":["LB-F1"]},
+	 {"id":"r","plan_row":"LB-Q-r","kind":"language","target_level":"L4","engine":"tags","depends_on":["LB-F1"]},
+	 {"id":"d","plan_row":"LB-Q-d","kind":"language","target_level":"L2","engine":"tags","depends_on":["LB-Q-p"]},
+	 {"id":"e","plan_row":"LB-Q-e","kind":"language","target_level":"L2","engine":"tags","depends_on":["LB-Q-r","LB-F3"]},
+	 {"id":"s","plan_row":"LB-Q-s","kind":"language","target_level":"L3","engine":"tags","depends_on":["LB-F1"]},
+	 {"id":"f","plan_row":"LB-Q-f","kind":"language","target_level":"L2","engine":"tags","depends_on":["LB-Q-s"]}]`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan := verify.ParseMarkdownPlan("s", []byte(`- [x] F1 {id: LB-F1, symbol: X, package: p}
+- [-] F3 {id: LB-F3, disposition: deferred, reason: "later", trigger: "t"}
+- [-] F4 {id: LB-F4, disposition: refused, reason: "never"}
+- [-] F5 {id: LB-F5}
+- [ ] a {id: LB-Q-a, oracle: lexical, path: x, pattern: y}
+- [ ] b {id: LB-Q-b, oracle: lexical, path: x, pattern: y}
+- [ ] c {id: LB-Q-c, oracle: lexical, path: x, pattern: y}
+- [-] p {id: LB-Q-p, disposition: deferred, reason: "partial", trigger: "t"}
+- [-] r {id: LB-Q-r, disposition: refused, reason: "licence"}
+- [ ] d {id: LB-Q-d, oracle: lexical, path: x, pattern: y}
+- [ ] e {id: LB-Q-e, oracle: lexical, path: x, pattern: y}
+- [ ] s {id: LB-Q-s, oracle: lexical, path: x, pattern: y}
+- [-] s rest {id: LB-Q-s-rest, disposition: refused, reason: "parse errors"}
+- [ ] f {id: LB-Q-f, oracle: lexical, path: x, pattern: y}
+`))
+	levels := map[string]string{"p": "L1", "r": "L2", "s": "L2"}
+	got := QueueEligibility(q, plan, func(id string) (string, bool) { l, ok := levels[id]; return l, ok })
+	want := map[string]QueueBlock{
+		"a": {Blocked: []string{"LB-F3"}},                             // deferred is not done
+		"b": {Replan: []string{"LB-F4"}},                              // refused: re-plan, do not wait
+		"c": {Blocked: []string{"LB-F5"}},                             // [-] with no disposition: still unmet
+		"p": {},                                                       // its own row is not its dependency
+		"r": {Replan: []string{"LB-Q-r"}},                             // refused itself: re-plan, never offered
+		"d": {},                                                       // D6: p's reading is at L1
+		"e": {Blocked: []string{"LB-F3"}, Replan: []string{"LB-Q-r"}}, // a refused item's reading satisfies nothing
+		"s": {Replan: []string{"LB-Q-s-rest"}},                        // its row is open, its -rest sibling refused: not eligible (§14.2)
+		"f": {Replan: []string{"LB-Q-s"}},                             // s's row is open but its -rest sibling is refused (§14.2)
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("QueueEligibility =\n%+v\nwant\n%+v", got, want)
+	}
+	for id, b := range want {
+		if b.Eligible() != (len(b.Blocked) == 0 && len(b.Replan) == 0) {
+			t.Errorf("%s: Eligible() = %v", id, b.Eligible())
+		}
 	}
 }

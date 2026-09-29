@@ -1,0 +1,94 @@
+{
+  "symbols": [
+    {
+      "name": "CFLAGS",
+      "kind": "MakeVariable",
+      "package": "targetvars",
+      "line": 2,
+      "end_line": 3,
+      "tier": "verified"
+    },
+    {
+      "name": "CFLAGS",
+      "kind": "MakeVariable",
+      "package": "targetvars",
+      "line": 4,
+      "end_line": 4,
+      "tier": "verified"
+    },
+    {
+      "name": "test",
+      "kind": "MakeTarget",
+      "package": "targetvars",
+      "line": 4,
+      "end_line": 4,
+      "signature": "test: CFLAGS = -g",
+      "tier": "verified"
+    },
+    {
+      "name": "%.o",
+      "kind": "MakePatternRule",
+      "package": "targetvars",
+      "line": 5,
+      "end_line": 6,
+      "signature": "%.o: WARN := 1",
+      "tier": "verified"
+    },
+    {
+      "name": "WARN",
+      "kind": "MakeVariable",
+      "package": "targetvars",
+      "line": 5,
+      "end_line": 6,
+      "tier": "verified"
+    },
+    {
+      "name": "$(OBJS)",
+      "kind": "MakeTarget",
+      "package": "targetvars",
+      "line": 7,
+      "end_line": 8,
+      "signature": "$(OBJS): private CFLAGS += -Wall",
+      "tier": "verified"
+    },
+    {
+      "name": "a.o",
+      "kind": "MakeTarget",
+      "package": "targetvars",
+      "line": 9,
+      "end_line": 11,
+      "signature": "a.o b.o \\",
+      "tier": "verified"
+    },
+    {
+      "name": "b.o",
+      "kind": "MakeTarget",
+      "package": "targetvars",
+      "line": 9,
+      "end_line": 11,
+      "signature": "a.o b.o \\",
+      "tier": "verified"
+    },
+    {
+      "name": "c.o",
+      "kind": "MakeTarget",
+      "package": "targetvars",
+      "line": 10,
+      "end_line": 11,
+      "signature": "a.o b.o \\",
+      "tier": "verified"
+    },
+    {
+      "name": "real",
+      "kind": "MakeTarget",
+      "package": "targetvars",
+      "line": 12,
+      "end_line": 13,
+      "signature": "real: dep",
+      "calls": [
+        "dep"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

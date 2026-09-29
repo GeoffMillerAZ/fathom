@@ -1,0 +1,18 @@
+{
+  "symbols": [
+    { "name": ".base", "kind": "GitLabCITemplate", "package": "templates", "line": 2, "end_line": 5, "signature": "alpine:3.20", "tier": "verified" },
+    { "name": ".with-needs", "kind": "GitLabCITemplate", "package": "templates", "line": 7, "end_line": 10, "signature": ".base", "calls": [".base", "prepare"], "tier": "verified" },
+    { "name": ".anchored", "kind": "GitLabCITemplate", "package": "templates", "line": 12, "end_line": 15, "signature": "test", "tier": "verified" },
+    { "name": "prepare", "kind": "GitLabCIJob", "package": "templates", "line": 17, "end_line": 20, "signature": "build", "tier": "verified" },
+    { "name": "test:unit", "kind": "GitLabCIJob", "package": "templates", "line": 22, "end_line": 31, "signature": ".with-needs", "calls": [".anchored", ".with-needs"], "tier": "verified" },
+    { "name": "build images", "kind": "GitLabCIJob", "package": "templates", "line": 33, "end_line": 41, "calls": ["prepare", "test:unit"], "tier": "verified" }
+  ],
+  "cross_file": [
+    { "from": ".with-needs", "edge": "extends", "raw": ".base", "target": ".base", "strategy": "service-name", "line": 8 },
+    { "from": ".with-needs", "edge": "needs", "raw": "prepare", "target": "prepare", "strategy": "service-name", "line": 10 },
+    { "from": "test:unit", "edge": "extends", "raw": ".with-needs", "target": ".with-needs", "strategy": "service-name", "line": 24 },
+    { "from": "test:unit", "edge": "extends", "raw": ".anchored", "target": ".anchored", "strategy": "service-name", "line": 25 },
+    { "from": "build images", "edge": "needs", "raw": "prepare", "target": "prepare", "strategy": "service-name", "line": 36 },
+    { "from": "build images", "edge": "needs", "raw": "test:unit", "target": "test:unit", "strategy": "service-name", "line": 38 }
+  ]
+}

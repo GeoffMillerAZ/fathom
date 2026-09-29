@@ -1,0 +1,98 @@
+{
+  "symbols": [
+    {
+      "name": "Get-Greeting",
+      "kind": "PowerShellFunction",
+      "package": "functions",
+      "line": 3,
+      "end_line": 14,
+      "signature": "function Get-Greeting { [CmdletBinding()] param( [Parameter(Mandatory)] [string]$Name, [int]$Count = 1 )",
+      "calls": [
+        "Get-Other",
+        "ToUpper",
+        "Write-Output",
+        "WriteLine"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Get-Other",
+      "kind": "PowerShellFunction",
+      "package": "functions",
+      "line": 16,
+      "end_line": 16,
+      "signature": "function Get-Other([string]$Name) {",
+      "calls": [
+        "Write-Host"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Select-Big",
+      "kind": "PowerShellFunction",
+      "package": "functions",
+      "line": 18,
+      "end_line": 18,
+      "signature": "filter Select-Big {",
+      "tier": "verified"
+    },
+    {
+      "name": "Invoke-Flow",
+      "kind": "PowerShellFunction",
+      "package": "functions",
+      "line": 20,
+      "end_line": 20,
+      "signature": "workflow Invoke-Flow {",
+      "calls": [
+        "Get-Greeting"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Empty",
+      "kind": "PowerShellFunction",
+      "package": "functions",
+      "line": 22,
+      "end_line": 22,
+      "signature": "function Empty {}",
+      "tier": "verified"
+    },
+    {
+      "name": "Outer",
+      "kind": "PowerShellFunction",
+      "package": "functions",
+      "line": 24,
+      "end_line": 27,
+      "signature": "function Outer {",
+      "calls": [
+        "Inner"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Inner",
+      "kind": "PowerShellFunction",
+      "package": "functions",
+      "line": 25,
+      "end_line": 25,
+      "signature": "function Inner {",
+      "calls": [
+        "Write-Verbose"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Global:Scoped-Name",
+      "kind": "PowerShellFunction",
+      "package": "functions",
+      "line": 29,
+      "end_line": 33,
+      "signature": "function Global:Scoped-Name { param($x)",
+      "calls": [
+        "ForEach-Object",
+        "Get-Other"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

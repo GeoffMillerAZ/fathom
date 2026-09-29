@@ -16,14 +16,15 @@ func connectorClaims(ext string) bool {
 
 // TestUnsupportedTableMatchesQueue pins LB-F25: the connector's
 // unsupported-language table is exactly the one rendered from the queue —
-// every queued, unregistered language's unambiguous extensions — so a
-// language discloses until its dialect registers and never after.
+// every queued language not dispatched (unregistered, or refused by its
+// plan row, §14.2) by its unambiguous extensions — so a language discloses
+// until its dialect is dispatched and never after.
 func TestUnsupportedTableMatchesQueue(t *testing.T) {
 	in, err := TrackerInputFromRepo("../..")
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := RenderDisclosure(in.Queue, in.Registered, connectorClaims)
+	got, err := RenderDisclosure(in.Queue, in.Dispatched(), connectorClaims)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -34,12 +35,12 @@ func TestUnsupportedTableMatchesQueue(t *testing.T) {
 	if string(got) != string(want) {
 		t.Fatalf("%s differs from the queue; regenerate it: go run ./cmd/indexbench lang-disclosure > %s", DisclosurePath, DisclosurePath)
 	}
-	table := DisclosureTable(in.Queue, in.Registered, connectorClaims)
+	table := DisclosureTable(in.Queue, in.Dispatched(), connectorClaims)
 	for _, e := range in.Queue {
 		if e.Kind != "language" {
 			continue
 		}
-		_, registered := in.Registered[e.ID]
+		_, registered := in.Dispatched()[e.ID]
 		plain, _ := nameExtensions(e.Name)
 		for _, x := range plain {
 			lang, ok := connector.UnsupportedLanguageForPath("f" + x)

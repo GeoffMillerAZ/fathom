@@ -52,6 +52,47 @@ func TestBareName(t *testing.T) {
 	}
 }
 
+// TestBareNameOperators (LB-Q-cpp): an operator is one name however a tool
+// spells it — source "operator+", universal-ctags "operator +" — and the ")"
+// that ends "operator()" is part of it, not a separator.
+func TestBareNameOperators(t *testing.T) {
+	for in, want := range map[string]string{
+		"operator+": "operator+", "operator +": "operator+", "Foo.operator+": "operator+",
+		"Foo::operator +=": "operator+=", "operator ()": "operator()", "operator()": "operator()",
+		"ns.Foo.operator()": "operator()", "operator []": "operator[]", "Foo.operator->": "operator->",
+		"operator <=>": "operator<=>", "Foo.operator<<": "operator<<", "operator ,": "operator,",
+		// named operators and conversions keep the last-segment rule
+		"operator new": "new", "Foo.operator bool": "bool",
+		// not operators
+		"my_operator": "my_operator", "operators.x": "x", "operator": "operator", "a.operator": "operator",
+		"operator.itemgetter": "itemgetter",
+	} {
+		if got := BareName(in); got != want {
+			t.Errorf("BareName(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+// TestScoreL1OperatorSpellings: an operator's spelling is canonical on both
+// sides of the L1 match ("operator+" from source, "operator +" from ctags).
+func TestScoreL1OperatorSpellings(t *testing.T) {
+	m := Manifest{ID: "cpp", RequiredKinds: []string{"function"},
+		Kinds:       map[string]KindSpec{"function": {SourceKind: "CppFunc", Canonical: "function", Callable: true}},
+		OracleKinds: map[string]map[string]string{"ctags": {"function": "function"}}}
+	nodes := []core.SymbolNode{
+		{FilePath: "a.hpp", Name: "Box.operator+", Kind: "CppFunc", Line: 3, EndLine: 4},
+		{FilePath: "a.hpp", Name: "Box.operator()", Kind: "CppFunc", Line: 6, EndLine: 7},
+	}
+	defs := []OracleDef{
+		{Path: "a.hpp", Name: "operator +", Line: 3, End: 4, Kind: "function"},
+		{Path: "a.hpp", Name: "operator ()", Line: 6, End: 7, Kind: "function"},
+	}
+	res := ScoreL1(m, "ctags", nodes, defs)
+	if res.Counts[CntMatched] != 2 {
+		t.Fatalf("matched = %d, want 2 (dialect-only %v, oracle-only %v)", res.Counts[CntMatched], res.DialectOnly, res.OracleOnly)
+	}
+}
+
 // TestNameMatchIdentity (§1.4): a dialect whose identifiers carry
 // punctuation (CSS selectors, npm names, script names, export paths)
 // declares name_match "identity"; its names are compared whole. The

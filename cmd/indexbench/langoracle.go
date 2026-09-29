@@ -30,7 +30,7 @@ const oracleTimeout = 20 * time.Minute
 
 // fileResolveLang names the dialects today's file resolver serves
 // (fusion.ResolveFileEdges), so file-edge metrics are measured for them.
-var fileResolveLang = map[string]string{"typescript": "javascript", "javascript": "javascript", "python": "python"}
+var fileResolveLang = map[string]string{"typescript": "javascript", "javascript": "javascript", "python": "python", "cpp": "cpp", "php": "php", "rust": "rust", "ruby": "ruby", "dart": "dart"}
 
 // cmdLangOracle is `indexbench lang-oracle` (LB-F23, design §10): one
 // subject's measurement of one dialect, merged into the dialect's reading.
@@ -114,7 +114,17 @@ func cmdLangOracle(args []string, stdout, stderr io.Writer) int {
 	var with extractor.Extractor
 	if source == "dialect" {
 		switch spec.Manifest.Engine {
-		case "tags", "tags+doc":
+		case "tags+doc":
+			// One manifest, two engines (LB-Q-helm): documents go to the doc
+			// engine, every other file the manifest owns to the tags engine.
+			td, tderr := extractor.NewTagsDocExtractor(*dialect)
+			if tderr != nil {
+				fmt.Fprintln(stderr, "lang-oracle:", tderr)
+				return 1
+			}
+			defer td.Close()
+			with = td
+		case "tags":
 			ts, tserr := extractor.NewTSExtractor(*dialect)
 			if tserr != nil {
 				fmt.Fprintln(stderr, "lang-oracle:", tserr)
@@ -129,6 +139,14 @@ func cmdLangOracle(args []string, stdout, stderr io.Writer) int {
 				return 1
 			}
 			with = doc
+		case "native":
+			// A native dialect with a stand-alone extractor (go-mod, LB-Q-go-mod)
+			// is measured through it, so its DocResult reaches the cross-file
+			// scoring; one served by a bespoke walker (terraform) is measured
+			// through fusion's dispatch, as before.
+			if nat, ok := extractor.NativeDialectExtractor(*dialect); ok {
+				with = nat
+			}
 		}
 	}
 
@@ -275,6 +293,31 @@ func onlyMatch(globs []string, rel string) bool {
 	return false
 }
 
+// ownedSourceRefs are the subject's files the dialect is measured on: those
+// its manifest owns by basename, glob or extension (inside -only), plus, for
+// C++, the polyglot .h headers fusion's header router sends to the C++
+// extractor. No dialect claims .h (design §5 leaves it to that router, which
+// sniffs the source), so without this a C++ library's headers — most of fmt —
+// would be measured as nothing.
+func ownedSourceRefs(m langbench.Manifest, root string, refs []core.SourceRef, only []string) []core.SourceRef {
+	var out []core.SourceRef
+	for _, ref := range refs {
+		if !onlyMatch(only, ref.Path) {
+			continue
+		}
+		if m.Owns(ref.Path) {
+			out = append(out, ref)
+			continue
+		}
+		if m.ID == "cpp" && strings.EqualFold(filepath.Ext(ref.Path), ".h") {
+			if b, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(ref.Path))); err == nil && extractor.LooksLikeCppHeader(b) {
+				out = append(out, ref)
+			}
+		}
+	}
+	return out
+}
+
 // measureSubject measures one subject. with, when non-nil, extracts every
 // file the dialect owns instead of fusion's dispatch (lang-parity's dialect
 // side, §11); nil measures what ingest would run.
@@ -305,14 +348,11 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 	// Warm-up: one untimed extraction compiles the dialect's grammar, so
 	// per-file times measure extraction, not the one-time lazy compile
 	// (design §9 charges that to the module pool, LB-F15).
-	owned := func(p string) bool { return spec.Manifest.Owns(p) && onlyMatch(opts.only, p) }
+	ownedRefs := ownedSourceRefs(spec.Manifest, root, refs, opts.only)
 	if len(opts.only) > 0 {
 		res.notes = append(res.notes, fmt.Sprintf("%s: restricted to %s (-only; the files outside are a disclosed gap, not measured)", name, strings.Join(opts.only, ", ")))
 	}
-	for _, ref := range refs {
-		if !owned(ref.Path) {
-			continue
-		}
+	for _, ref := range ownedRefs {
 		if content, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(ref.Path))); err == nil {
 			if ex, _ := extract(pipe, service, refs, ref.Path, content); ex.Skipped == "" {
 				res.notes = append(res.notes, "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)")
@@ -320,10 +360,7 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 			}
 		}
 	}
-	for _, ref := range refs {
-		if !owned(ref.Path) {
-			continue
-		}
+	for _, ref := range ownedRefs {
 		content, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(ref.Path)))
 		if err != nil {
 			return res, err
@@ -437,9 +474,19 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 			sub.KindIntersection = l1.Intersection
 			sub.Families[langbench.FamilyL1] = "A"
 		}
-		sr, err := langbench.ScoreSCIP(raw, service, nodes)
+		sr, err := langbench.ScoreSCIPWith(raw, service, nodes, langbench.SCIPOptionsFor(spec.Manifest.ID, func(p string) []byte {
+			b, _ := os.ReadFile(filepath.Join(root, filepath.FromSlash(p)))
+			return b
+		}))
 		if err != nil {
 			return res, err
+		}
+		if n := sr.Counts[langbench.CntScipCallsUnwritten]; n > 0 {
+			why := "an operator rust-analyzer resolves to its trait method: ?, ==, !x, *x, a[i], a + b"
+			if spec.Manifest.ID == "dart" {
+				why = "a tear-off such as `onError: c.addError`, an operator, the super(...) of an initializer"
+			}
+			res.notes = append(res.notes, fmt.Sprintf("%s: %d callable references have no call written at their range (%s) and are left out of the call truth (L2 is call sites)", name, n, why))
 		}
 		if sr.EnclosingFallback > 0 {
 			res.notes = append(res.notes, fmt.Sprintf("%s: %d SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)", name, sr.EnclosingFallback))
@@ -474,7 +521,7 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 		}
 		res.oracles = append(res.oracles, run)
 		// ── LB-F30: cross-file references (langoracle_xref.go) ──
-		if doc, ok := with.(*extractor.DocExtractor); ok {
+		if doc, ok := with.(extractor.DocResulter); ok {
 			n, err := scoreXrefOracle(toolOracle, doc, service, srcFiles, &sub, inScope)
 			if err != nil {
 				return res, err

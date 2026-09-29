@@ -1,0 +1,212 @@
+{
+  "symbols": [
+    {
+      "name": "helper",
+      "kind": "RustFn",
+      "package": "calls",
+      "line": 3,
+      "end_line": 5,
+      "signature": "fn helper(x: u32) -> u32",
+      "tier": "verified"
+    },
+    {
+      "name": "plain",
+      "kind": "RustFn",
+      "package": "calls",
+      "line": 7,
+      "end_line": 9,
+      "signature": "fn plain() -> u32",
+      "calls": [
+        "helper"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "qualified",
+      "kind": "RustFn",
+      "package": "calls",
+      "line": 11,
+      "end_line": 18,
+      "signature": "fn qualified()",
+      "calls": [
+        "Widget.default",
+        "crate.util.build",
+        "drop",
+        "self.local",
+        "std.mem.drop",
+        "super.parent.lift"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "methods",
+      "kind": "RustFn",
+      "package": "calls",
+      "line": 20,
+      "end_line": 23,
+      "signature": "fn methods(v: Vec<u32>) -> usize",
+      "calls": [
+        "count",
+        "helper",
+        "iter",
+        "len",
+        "map"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "turbofish",
+      "kind": "RustFn",
+      "package": "calls",
+      "line": 25,
+      "end_line": 31,
+      "signature": "fn turbofish()",
+      "calls": [
+        "collect",
+        "drop",
+        "from",
+        "parse",
+        "unwrap",
+        "with_capacity"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "constructors",
+      "kind": "RustFn",
+      "package": "calls",
+      "line": 33,
+      "end_line": 39,
+      "signature": "fn constructors() -> Option<Wrapper>",
+      "tier": "verified"
+    },
+    {
+      "name": "closures",
+      "kind": "RustFn",
+      "package": "calls",
+      "line": 41,
+      "end_line": 45,
+      "signature": "fn closures()",
+      "calls": [
+        "f",
+        "g",
+        "helper",
+        "other"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Counter",
+      "kind": "RustStruct",
+      "package": "calls",
+      "line": 47,
+      "end_line": 47,
+      "tier": "verified"
+    },
+    {
+      "name": "Counter",
+      "kind": "RustImpl",
+      "package": "calls",
+      "line": 49,
+      "end_line": 65,
+      "tier": "verified"
+    },
+    {
+      "name": "Counter.new",
+      "kind": "RustFn",
+      "package": "calls",
+      "line": 50,
+      "end_line": 52,
+      "signature": "fn new() -> Self",
+      "calls": [
+        "Self.init"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Counter.init",
+      "kind": "RustFn",
+      "package": "calls",
+      "line": 54,
+      "end_line": 56,
+      "signature": "fn init() -> Self",
+      "tier": "verified"
+    },
+    {
+      "name": "Counter.bump",
+      "kind": "RustFn",
+      "package": "calls",
+      "line": 58,
+      "end_line": 62,
+      "signature": "fn bump(&self)",
+      "calls": [
+        "Counter.init",
+        "Self.init",
+        "step"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Counter.step",
+      "kind": "RustFn",
+      "package": "calls",
+      "line": 64,
+      "end_line": 64,
+      "signature": "fn step(&self)",
+      "tier": "verified"
+    },
+    {
+      "name": "awaits",
+      "kind": "RustFn",
+      "package": "calls",
+      "line": 67,
+      "end_line": 70,
+      "signature": "async fn awaits()",
+      "calls": [
+        "client",
+        "fetch",
+        "get",
+        "send"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "macros",
+      "kind": "RustFn",
+      "package": "calls",
+      "line": 72,
+      "end_line": 82,
+      "signature": "fn macros(items: &[u32])",
+      "calls": [
+        "alpha",
+        "assert_eq",
+        "first",
+        "format",
+        "gamma",
+        "helper",
+        "info",
+        "is_empty",
+        "label",
+        "len",
+        "make",
+        "my_macro",
+        "println",
+        "unreachable",
+        "vec"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "unsafe_call",
+      "kind": "RustFn",
+      "package": "calls",
+      "line": 84,
+      "end_line": 88,
+      "signature": "fn unsafe_call()",
+      "calls": [
+        "ffi_entry"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

@@ -62,8 +62,16 @@ type classification struct {
 // silently omitting them.
 var extClassMap = map[string]classification{
 	// Go
-	".go":    {core.KindGoFunc, "go"},
-	"go.mod": {core.KindModuleDep, "go"},
+	".go": {core.KindGoFunc, "go"},
+
+	// Go modules (LB-Q-go-mod, language-breadth: a native tool-format dialect
+	// that upgraded the require-only line scanner). go.mod and go.work are
+	// their own language tag, "go-mod", not Go's: a manifest is a tool format
+	// (typed-edge level "syntax"), and the Go tag's "native" claim is about
+	// type-checked source. The basename check takes precedence over any
+	// extension; go.sum, go.work.sum and a backup are not claimed.
+	"go.mod":  {core.KindGoModule, "go-mod"},
+	"go.work": {core.KindGoWorkspace, "go-mod"},
 
 	// Infrastructure / config
 	".tf":     {core.KindTerraformResource, "terraform"},
@@ -94,6 +102,13 @@ var extClassMap = map[string]classification{
 	".cts": {core.KindJSFunc, "ts"},
 	".rs":  {core.KindRustFn, "rust"},
 	".cs":  {core.KindCSharpClass, "cs"},
+
+	// LB-Q-ruby: Ruby's other source spellings — Rake task files, Rack config
+	// (config.ru) and the Rakefile basename. Gemfile, *.gemspec, Podfile and
+	// *.podspec are the Ruby DSL manifests' (LB-Q-gemfile-podfile), not claimed here.
+	".rake":    {core.KindRubyMethod, "ruby"},
+	".ru":      {core.KindRubyMethod, "ruby"},
+	"Rakefile": {core.KindRubyMethod, "ruby"},
 
 	// Kotlin (wave P2, ADR-021 §4 new-language breadth — closes the O69
 	// gap: a real Kotlin repo previously indexed near-empty with no
@@ -169,6 +184,32 @@ var extClassMap = map[string]classification{
 	// entry — not the generic JSON one — governs every "package.json" file.
 	"package.json": {core.KindPackageJSONPackage, "package-json"},
 
+	// Maven POM (LB-Q-maven, language-breadth: new — a doc-engine tool
+	// format, no incumbent). The basename check (kindForFile/classify)
+	// takes precedence over any ".xml" classification, so this entry
+	// governs every "pom.xml" file; other XML (pom-shaded.xml, settings.xml,
+	// Ant and Android files) is not claimed.
+	"pom.xml": {core.KindMavenArtifact, "maven"},
+
+	// Cargo manifest (LB-Q-cargo, language-breadth: new — a doc-engine tool
+	// format). The basename check (kindForFile/classify) takes precedence
+	// over ".toml" (the generic TOML extractor), so this entry governs every
+	// "Cargo.toml" file at any depth; .cargo/config.toml, rust-toolchain.toml,
+	// clippy.toml, rustfmt.toml, deny.toml and Cargo.lock are not claimed.
+	"Cargo.toml": {core.KindCargoPackage, "cargo"},
+
+	// MSBuild (LB-Q-msbuild, language-breadth: new — a doc-engine tool
+	// format, no incumbent). The projects of the three .NET languages and the
+	// props and targets files they import: every one an MSBuild <Project>
+	// document. A project's sidecar (App.csproj.user), the solution files
+	// (.sln, and .slnx, whose root is a <Solution>) and other XML
+	// (packages.config, app.config) are not claimed.
+	".csproj":  {core.KindMSBuildProject, "msbuild"},
+	".fsproj":  {core.KindMSBuildProject, "msbuild"},
+	".vbproj":  {core.KindMSBuildProject, "msbuild"},
+	".props":   {core.KindMSBuildProject, "msbuild"},
+	".targets": {core.KindMSBuildProject, "msbuild"},
+
 	// Python packaging (LB-Q-python-packaging, language-breadth: new — a
 	// doc-engine tool format, no incumbent). The basename check
 	// (kindForFile/classify) takes precedence over ".toml" (the generic
@@ -190,8 +231,32 @@ var extClassMap = map[string]classification{
 	".sh":   {core.KindBashFunction, "sh"},
 	".bash": {core.KindBashFunction, "sh"},
 
+	// PowerShell (LB-Q-powershell, language-breadth: new — a fleet gap, no
+	// incumbent). .psd1 is a module manifest (a hashtable data file): it is
+	// classified as PowerShell like the other two, and simply defines nothing.
+	".ps1":  {core.KindPowerShellFunction, "powershell"},
+	".psm1": {core.KindPowerShellFunction, "powershell"},
+	".psd1": {core.KindPowerShellFunction, "powershell"},
+
+	// Makefile (LB-Q-makefile, language-breadth: new — a fleet gap, no
+	// incumbent). The three basenames GNU make reads by default and the two
+	// extensions for included fragments; Makefile.common and <name>.Makefile
+	// are not claimed (the queue entry names Makefile, *.mk and GNUmakefile).
+	"Makefile":    {core.KindMakeTarget, "makefile"},
+	"makefile":    {core.KindMakeTarget, "makefile"},
+	"GNUmakefile": {core.KindMakeTarget, "makefile"},
+	".mk":         {core.KindMakeTarget, "makefile"},
+	".make":       {core.KindMakeTarget, "makefile"},
+
 	// Lua
 	".lua": {core.KindLuaFunction, "lua"},
+
+	// Dart (LB-Q-dart: a new tree-sitter dialect, no incumbent).
+	".dart": {core.KindDartClass, "dart"},
+
+	// Swift (LB-Q-swift) is not classified: its dialect is built and measured
+	// but refused (design §14.2, parse errors over the 5% line), so .swift
+	// stays disclosed as unsupported (unsupported_language_gen.go).
 }
 
 // classify looks up base (full basename, e.g. "go.mod", "Dockerfile") first —

@@ -12,7 +12,7 @@ import (
 // TestDialectManifests (§2.2) loads every embedded manifest and holds the
 // cross-dialect rules: ids match directories and the queue, target levels
 // match the queue, and the registry TSExtractor is built from covers every
-// tags dialect.
+// tags dialect (a tags+doc dialect's tags half included).
 func TestDialectManifests(t *testing.T) {
 	ds, err := LoadDialects()
 	if err != nil {
@@ -50,7 +50,7 @@ func TestDialectManifests(t *testing.T) {
 		if queue[i].Engine != d.Engine {
 			t.Errorf("dialect %s: engine %s, queue says %s", d.ID, d.Engine, queue[i].Engine)
 		}
-		if d.Engine == "tags" {
+		if d.Engine == "tags" || d.Engine == "tags+doc" {
 			tags[d.ID] = true
 		}
 	}

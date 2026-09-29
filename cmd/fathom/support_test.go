@@ -178,3 +178,22 @@ func findSupportCell(t *testing.T, e support.Entry, capability string) support.C
 	t.Fatalf("entry %s/%s has no cell %q", e.Kind, e.ID, capability)
 	return support.Cell{}
 }
+
+// TestSupportMatrixRefusedLanguage (design §14.2, integration review
+// 2026-09-29): a queue item its plan refused shows `refused` in every level
+// cell, never the level its reading measured.
+func TestSupportMatrixRefusedLanguage(t *testing.T) {
+	src := supportSources{
+		Queue:      []langbench.QueueEntry{{ID: "swift", Name: "Swift (.swift)", Kind: "language", TargetLevel: "L3", Wave: 4, Engine: "tags", PlanRow: "LB-Q-swift"}},
+		Registered: map[string]langbench.Registration{"swift": {Extractor: "dialects/swift", LangTag: "swift"}},
+		Readings: map[string]langbench.Reading{"swift": {Dialect: "swift", Kind: "language", TargetLevel: "L3", LevelMet: "L2",
+			Grade: langbench.Grade{L1: langbench.GradeExcellent, L2: langbench.GradeGood}}},
+		Refused: map[string]string{"swift": "LB-Q-swift-rest: parse errors over the 5% line"},
+	}
+	swift := findSupportEntry(t, buildSupportMatrix(src, fixedSupportNow), support.KindLanguage, "swift")
+	for _, lvl := range []string{"L1", "L2", "L3"} {
+		if c := findSupportCell(t, swift, lvl); c.State != support.StateRefused || c.LevelMet != "" {
+			t.Errorf("swift %s = %s (level_met %q), want refused with no level", lvl, c.State, c.LevelMet)
+		}
+	}
+}

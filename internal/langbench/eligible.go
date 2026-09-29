@@ -8,14 +8,34 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/verify"
 )
 
-// QueueEligibility is §13.0 step 2 under owner decision D6 (2026-09-28):
-// for every queue entry, the depends_on rows still blocking it (nil when
-// eligible). A row is satisfied when it is [x] or [-]; a dependency on
+// QueueBlock is what keeps one queue entry from being eligible: Blocked are
+// depends_on rows still open or deferred (G2-6: deferred is not done), Replan
+// are rows refused — they will not be built, so the entry needs re-planning
+// rather than waiting. Both empty: eligible.
+type QueueBlock struct {
+	Blocked []string
+	Replan  []string
+}
+
+// Eligible reports whether nothing blocks the entry.
+func (b QueueBlock) Eligible() bool { return len(b.Blocked) == 0 && len(b.Replan) == 0 }
+
+// QueueEligibility is §13.0 step 2 under owner decision D6 (2026-09-28) and
+// G2-6 (2026-09-29): for every queue entry, the depends_on rows still
+// blocking it. A row is satisfied only when it is [x]. A [-] row is not: a
+// refused one (any disposition but deferred) puts the entry in Replan, a
+// deferred one (or one with no disposition) keeps it Blocked. A dependency on
 // another queue item (LB-Q-<id>: cpp on c, scss/less on css) is also
-// satisfied when that item has a committed reading at L1 or better, even
-// while its own row stays open for a higher target. level returns an
-// item's committed level_met and whether a reading exists.
-func QueueEligibility(q []QueueEntry, plan verify.Plan, level func(id string) (string, bool)) map[string][]string {
+// satisfied when that item has a committed reading at L1 or better, even while
+// its own row stays open for a higher target or is deferred — unless it is
+// refused (its row or its -rest sibling, RefusedItems), which also means
+// re-planning. A refused item itself — its own row, or its -rest sibling while
+// its row stays open with the contract (Swift, §14.2) — is never eligible: its
+// refusing row is its Replan. level returns an item's committed level_met and
+// whether a reading exists. The same rule as `fathom plans next` (depSatisfied,
+// needsReplan), read from the authored checkboxes: this function recomputes no
+// verdict.
+func QueueEligibility(q []QueueEntry, plan verify.Plan, level func(id string) (string, bool)) map[string]QueueBlock {
 	rows := map[string]verify.Task{}
 	for _, t := range plan.Tasks {
 		rows[t.ID] = t
@@ -24,24 +44,45 @@ func QueueEligibility(q []QueueEntry, plan verify.Plan, level func(id string) (s
 	for _, e := range q {
 		queued[e.ID] = true
 	}
-	out := map[string][]string{}
+	refusedItem := RefusedItems(q, plan) // row or -rest sibling refused (§14.2)
+	out := map[string]QueueBlock{}
 	for _, e := range q {
-		var blocked []string
+		var b QueueBlock
+		if why, no := refusedItem[e.ID]; no {
+			row, _, _ := strings.Cut(why, ":")
+			b.Replan = append(b.Replan, row)
+		}
 		for _, d := range e.DependsOn {
-			if t, ok := rows[d]; ok && (t.Claimed || t.Skipped) {
+			t, ok := rows[d]
+			if ok && t.Claimed && !t.Skipped {
 				continue
 			}
-			if id, ok := strings.CutPrefix(d, "LB-Q-"); ok && queued[id] {
+			if ok && refused(t) {
+				b.Replan = append(b.Replan, d)
+				continue
+			}
+			if id, isQ := strings.CutPrefix(d, "LB-Q-"); isQ && queued[id] {
+				if _, no := refusedItem[id]; no {
+					b.Replan = append(b.Replan, d)
+					continue
+				}
 				if l, ok := level(id); ok && slices.Contains(Levels, l) {
 					continue
 				}
 			}
-			blocked = append(blocked, d)
+			b.Blocked = append(b.Blocked, d)
 		}
-		slices.Sort(blocked)
-		out[e.ID] = blocked
+		slices.Sort(b.Blocked)
+		slices.Sort(b.Replan)
+		out[e.ID] = b
 	}
 	return out
+}
+
+// refused reports whether a [-] row will not be built: any disposition but
+// deferred (G2-6; cmd/fathom's needsReplan reads the same).
+func refused(t verify.Task) bool {
+	return t.Skipped && t.Disposition != "" && t.Disposition != "deferred"
 }
 
 // ReadingLevels returns a level function over the committed readings in

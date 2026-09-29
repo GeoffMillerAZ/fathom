@@ -1,0 +1,206 @@
+{
+  "dialect": "swift",
+  "kind": "language",
+  "target_level": "L3",
+  "level_met": "L2",
+  "grade": {
+    "L1": "excellent",
+    "L2": "good",
+    "L3": "not-attempted",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-09-29",
+  "fathom_commit": "765a6502",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "Alamofire/Alamofire",
+      "sha": "f455c2975872ccd2d9c81594c658af65716e9b9a",
+      "files": 92,
+      "bytes": 1646045,
+      "counts": {
+        "call_fathom": 7993,
+        "call_fathom_in_truth": 7993,
+        "call_truth": 7993,
+        "call_truth_found": 7993,
+        "callables": 3145,
+        "callables_signed": 3145,
+        "fathom_defs": 3716,
+        "kind_equal": 3716,
+        "matched": 3716,
+        "oracle_defs": 3716,
+        "range_eligible": 3716,
+        "range_ok": 3716
+      },
+      "families": {
+        "calls": "B",
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "class",
+        "constructor",
+        "enum",
+        "enum_member",
+        "function",
+        "interface",
+        "macro",
+        "method",
+        "property",
+        "struct",
+        "type_alias",
+        "variable"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 834.827,
+        "extract_cpu_ms": 782.6199999999998,
+        "max_file_ms": 44,
+        "peak_module_pages": 496,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "apple/swift-nio",
+      "sha": "f71c8d2a5e74a2c6d11a0fbe324774b5d6084237",
+      "files": 550,
+      "bytes": 7850080,
+      "counts": {
+        "call_fathom": 38736,
+        "call_fathom_in_truth": 38709,
+        "call_truth": 38823,
+        "call_truth_found": 38709,
+        "callables": 15393,
+        "callables_signed": 15393,
+        "fathom_defs": 18223,
+        "kind_equal": 18124,
+        "matched": 18223,
+        "oracle_defs": 18281,
+        "range_eligible": 18223,
+        "range_ok": 18156
+      },
+      "families": {
+        "calls": "B",
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "class",
+        "constructor",
+        "enum",
+        "enum_member",
+        "function",
+        "interface",
+        "macro",
+        "method",
+        "property",
+        "struct",
+        "type_alias",
+        "variable"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 4361.968999999998,
+        "extract_cpu_ms": 4230.489000000001,
+        "max_file_ms": 124,
+        "peak_module_pages": 598,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "B",
+      "tool": "swiftc -frontend -dump-parse",
+      "version": "6.4"
+    }
+  ],
+  "metrics": {
+    "call_precision": 0.9994,
+    "call_recall": 0.9976,
+    "def_mapping": null,
+    "file_edge_precision": null,
+    "file_edge_recall": null,
+    "import_resolution": null,
+    "kind_agreement": 0.9955,
+    "range_agreement": 0.9969,
+    "signature_coverage": 1,
+    "sym_precision": 1,
+    "sym_recall": 0.9974,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "call_precision": "B",
+    "call_recall": "B",
+    "kind_agreement": "B",
+    "range_agreement": "B",
+    "signature_coverage": "B",
+    "sym_precision": "B",
+    "sym_recall": "B"
+  },
+  "required_kinds": [
+    "class",
+    "constructor",
+    "enum",
+    "enum_member",
+    "function",
+    "interface",
+    "macro",
+    "method",
+    "property",
+    "struct",
+    "type_alias",
+    "variable"
+  ],
+  "kind_intersection": [
+    "class",
+    "constructor",
+    "enum",
+    "enum_member",
+    "function",
+    "interface",
+    "macro",
+    "method",
+    "property",
+    "struct",
+    "type_alias",
+    "variable"
+  ],
+  "counts": {
+    "call_fathom": 46729,
+    "call_fathom_in_truth": 46702,
+    "call_truth": 46816,
+    "call_truth_found": 46702,
+    "callables": 18538,
+    "callables_signed": 18538,
+    "fathom_defs": 21939,
+    "kind_equal": 21840,
+    "matched": 21939,
+    "oracle_defs": 21997,
+    "range_eligible": 21939,
+    "range_ok": 21872
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 1.89,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 1.83,
+    "max_file_ms": 124,
+    "peak_module_pages": 598,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    "integration review 2026-09-29 (downgraded, refused): design section 14.2 refuses a language with no grammar that parses real code, a parse error rate over 5% of files, and says it stays disclosed as unsupported; 36 of these 642 files (5.6%) parse with an error under 35245fb, upstream main's head on 2026-09-29. The dialect stays built and tested but is not dispatched (fusion's refusedDialects), .swift is disclosed again, and the tracker, milestones and support matrix claim no level for Swift (LB-Q-swift-rest). The level_met below is what the harness measured, kept as the record",
+    "import_resolution not measured: the harness computes none, and Swift has no SCIP producer for file edges (L3 stays unmet)",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "grammar: alex-pinkus/tree-sitter-swift at commit 35245fb (MIT, 24 commits past 0.7.3 and untagged; generate true with tree-sitter-cli 0.26.11), swift.wasm.gz 475,154 bytes gzip (2,435,516 raw), 598 peak module pages; 36 of the 642 files (5.6%: swift-nio 35 of 550, Alamofire 1 of 92) parse with an ERROR node, over design section 14.2's 5% line, all of them Swift 5.10 to 6.x syntax the grammar lacks (sending parameters and results, isolated (any Actor)? and #isolation, generic value parameters, a where clause on a generic typealias, #elseif with a compound compiler condition, #error, case .min..0), and the tag 0.7.3 left 67 of swift-nio's 550 (12.2%)",
+    "L1 and L2 oracle: the Swift compiler's own parser, swiftc -frontend -parse-as-library -dump-parse (Apple Swift 6.4, tier B, calibration/oracles/swift-parse) on Alamofire/Alamofire 5.9.1 and apple/swift-nio 2.99.0, every .swift file as cloned; universal-ctags 6.2.1 has no Swift parser and SourceKit-LSP's index store is not SCIP, so no tier A oracle was run (oracle A unavailable: it needs each subject built and a libIndexStore reader) and tier B caps L2 at good. The dump omits every #if block, so the oracle blanks the directive lines and parses every branch, as the grammar does",
+    "L1: 21,997 oracle definitions and 21,939 fathom definitions in the kind intersection, 21,939 matched (sym_recall .9974, sym_precision 1, kind_agreement .9955, range_agreement .9969 over 21,939, every one of 18,538 callables signed); Alamofire has no miss either way. The 58 oracle-only definitions are whole types, extensions and members that tree-sitter's error recovery swallowed in 8 swift-nio files (FileSystemProtocol.swift, FileSystemProtocol.swift, FileSystem.swift, FileSystem.swift, MarkedCircularBuffer.swift, HeaptrackParser.swift), and the 99 kind disagreements are members recovered as free functions (88 methods read as functions, 11 properties as variables) in files with an error. A dictionary-type extension is not extracted",
+    "L2: 46,816 call pairs in the truth, 46,702 found (call_recall .9976), 46,729 fathom pairs, 46,702 in the truth (call_precision .9994). Alamofire's 7,993 pairs agree exactly. The 114 misses are calls inside the same recovered regions (110 of them in files with a parse error) and 4 in files without one (generic initialisers with several or nested type arguments followed by a closure, which the grammar reads as comparisons, and a yield()); the 27 extra pairs are grammar readings the compiler does not share, chiefly a case pattern such as case UInt8(ascii: 97), which the compiler's parser writes as a pattern and the grammar as a call (5 pairs)",
+    "L3 and L4 (LB-Q-swift-rest): import_resolution is not computed by the harness and Swift has no SCIP producer, so file_edge_precision, file_edge_recall, def_mapping and typed_recall are not measured. A spot count outside the harness: 40 of the 40 imports of an in-repo SwiftPM target resolve to files on Alamofire and 734 of the 874 on swift-nio, the 140 unresolved naming C targets (CNIOLinux, CNIODarwin and the like) that have no Swift file; a call between two files of one module needs no import and resolves through nothing",
+    "extension symbols share their name with the type they extend (an extension Box is a SwiftExtension named Box beside the SwiftClass Box); both are stored, and the second and later names of a declaration such as var x, y: Double or a tuple pattern are emitted unqualified because the engine takes a definition that shares its range with another as that one's child"
+  ],
+  "disposition": "refused (design section 14.2, integration review 2026-09-29): 36 of the 642 calibration files (5.6%: swift-nio 35 of 550, Alamofire 1 of 92) parse with an error under alex-pinkus/tree-sitter-swift 35245fb, upstream main's head, over the 5% line (Swift 6 syntax the grammar lacks); the dialect is built, tested and measured (L1 excellent, L2 good, tier B) but not dispatched, and Swift stays disclosed as unsupported. Re-plan when a tree-sitter-swift commit parses both subjects with at most 5% of files in error. Measured before the refusal: target L3, met L2 (L1 excellent, L2 good, tier B) on Alamofire/Alamofire 5.9.1 and apple/swift-nio 2.99.0, 642 files: sym_recall .9974, sym_precision 1, kind_agreement .9955, range_agreement .9969, signature_coverage 1 (18,538 callables), call_recall .9976, call_precision .9994 (the Swift compiler's own parser, swiftc -frontend -dump-parse 6.4), 1.89 MB/CPU-s, 0 faults, 598 peak module pages, swift.wasm.gz 475,154 bytes. L2 is capped at good by tier B. L3 is not met: the harness computes no import_resolution, no SCIP producer exists for Swift so file edges cannot be graded, and a call between two files of a module needs no import; 36 of 642 files (5.6%) parse with an error under the grammar (Swift 6 syntax), over section 14.2's 5% line. Trigger: the harness computing import_resolution from the manifests' own strategy, a Swift typed oracle (an index-store reader that writes SCIP or the neutral file at tier A), an intra-module resolution strategy for SwiftPM targets, and a tree-sitter-swift release that parses Swift 6 syntax"
+}

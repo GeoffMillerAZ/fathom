@@ -1,0 +1,14 @@
+{
+  "symbols": [
+    { "name": "child pipeline", "kind": "GitLabCIJob", "package": "pipeline", "line": 16, "end_line": 23, "signature": "build", "tier": "verified" },
+    { "name": "downstream", "kind": "GitLabCIJob", "package": "pipeline", "line": 25, "end_line": 29, "signature": "release", "tier": "verified" },
+    { "name": "shortcut", "kind": "GitLabCIJob", "package": "pipeline", "line": 31, "end_line": 33, "signature": "group/third", "calls": ["child pipeline"], "tier": "verified" }
+  ],
+  "cross_file": [
+    { "from": "", "edge": "includes", "raw": "/.gitlab/ci/build.gitlab-ci.yml", "target": ".gitlab/ci/build.gitlab-ci.yml", "strategy": "repo-path", "line": 2 },
+    { "from": "", "edge": "includes", "raw": ".gitlab/ci/test.gitlab-ci.yml", "target": ".gitlab/ci/test.gitlab-ci.yml", "strategy": "repo-path", "line": 3 },
+    { "from": "", "edge": "includes", "raw": ".gitlab/ci/release.gitlab-ci.yml", "target": ".gitlab/ci/release.gitlab-ci.yml", "strategy": "repo-path", "line": 12 },
+    { "from": "child pipeline", "edge": "triggers", "raw": ".gitlab/ci/child.yml", "target": ".gitlab/ci/child.yml", "strategy": "repo-path", "line": 20 },
+    { "from": "shortcut", "edge": "needs", "raw": "child pipeline", "target": "child pipeline", "strategy": "service-name", "line": 33 }
+  ]
+}

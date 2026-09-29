@@ -1,0 +1,20 @@
+{
+  "path": "go.work",
+  "roots": ["workspace"],
+  "symbols": [
+    { "name": "workspace", "kind": "GoWorkspace", "package": "go", "line": 1, "end_line": 16, "signature": "go 1.22", "tier": "pre-scan" },
+    { "name": "use/./app", "kind": "GoWorkUse", "package": "go", "line": 8, "end_line": 8, "tier": "pre-scan" },
+    { "name": "use/./lib", "kind": "GoWorkUse", "package": "go", "line": 9, "end_line": 9, "tier": "pre-scan" },
+    { "name": "use/../outside", "kind": "GoWorkUse", "package": "go", "line": 10, "end_line": 10, "tier": "pre-scan" },
+    { "name": "use/./tools", "kind": "GoWorkUse", "package": "go", "line": 13, "end_line": 13, "tier": "pre-scan" },
+    { "name": "replace/example.com/acme/lib", "kind": "GoModReplace", "package": "go", "line": 15, "end_line": 15, "signature": "./lib", "tier": "pre-scan" },
+    { "name": "replace/golang.org/x/sync@v0.5.0", "kind": "GoModReplace", "package": "go", "line": 16, "end_line": 16, "signature": "golang.org/x/sync v0.6.0", "tier": "pre-scan" }
+  ],
+  "cross_file": [
+    { "from": "use/./app", "edge": "workspace_member", "raw": "./app", "target": "app/go.mod", "strategy": "repo-path", "line": 8 },
+    { "from": "use/./lib", "edge": "workspace_member", "raw": "./lib", "target": "lib/go.mod", "strategy": "repo-path", "line": 9 },
+    { "from": "use/../outside", "edge": "workspace_member", "raw": "../outside", "target": "", "strategy": "repo-path", "line": 10 },
+    { "from": "use/./tools", "edge": "workspace_member", "raw": "./tools", "target": "tools/go.mod", "strategy": "repo-path", "line": 13 },
+    { "from": "replace/example.com/acme/lib", "edge": "replaced_by", "raw": "./lib", "target": "lib/go.mod", "strategy": "repo-path", "line": 15 }
+  ]
+}

@@ -1,0 +1,193 @@
+{
+  "symbols": [
+    {
+      "name": "Client",
+      "kind": "SwiftClass",
+      "package": "calls",
+      "line": 3,
+      "end_line": 43,
+      "tier": "verified"
+    },
+    {
+      "name": "Client.session",
+      "kind": "SwiftProperty",
+      "package": "calls",
+      "line": 4,
+      "end_line": 4,
+      "signature": "var session = URLSession(configuration: .default)",
+      "calls": [
+        "URLSession"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Client.handler",
+      "kind": "SwiftProperty",
+      "package": "calls",
+      "line": 5,
+      "end_line": 5,
+      "signature": "lazy var handler: () -> Void = { self.retry() }",
+      "calls": [
+        "retry"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Client.shared",
+      "kind": "SwiftProperty",
+      "package": "calls",
+      "line": 6,
+      "end_line": 6,
+      "signature": "static let shared = Client.Builder<String>()",
+      "calls": [
+        "Builder"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Client.init",
+      "kind": "SwiftInit",
+      "package": "calls",
+      "line": 8,
+      "end_line": 11,
+      "signature": "init(base: URL)",
+      "calls": [
+        "init"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Client.request",
+      "kind": "SwiftMethod",
+      "package": "calls",
+      "line": 13,
+      "end_line": 29,
+      "signature": "func request(_ path: String) async throws -> Data",
+      "calls": [
+        "Bar",
+        "Data",
+        "Task",
+        "async",
+        "build",
+        "callback",
+        "data",
+        "decode",
+        "factory",
+        "filter",
+        "finish",
+        "format",
+        "make",
+        "map",
+        "parse",
+        "print",
+        "retry",
+        "sorted"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Client.computed",
+      "kind": "SwiftProperty",
+      "package": "calls",
+      "line": 31,
+      "end_line": 31,
+      "signature": "var computed: Int",
+      "calls": [
+        "compute"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Client.watched",
+      "kind": "SwiftProperty",
+      "package": "calls",
+      "line": 32,
+      "end_line": 32,
+      "signature": "var watched: Int = 0",
+      "calls": [
+        "prepare"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Client.chain",
+      "kind": "SwiftMethod",
+      "package": "calls",
+      "line": 34,
+      "end_line": 36,
+      "signature": "func chain()",
+      "calls": [
+        "c",
+        "d",
+        "f"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Client.nested",
+      "kind": "SwiftMethod",
+      "package": "calls",
+      "line": 38,
+      "end_line": 42,
+      "signature": "func nested()",
+      "calls": [
+        "closure",
+        "helper"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "inner",
+      "kind": "SwiftFunc",
+      "package": "calls",
+      "line": 39,
+      "end_line": 39,
+      "signature": "func inner()",
+      "calls": [
+        "deep"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "free",
+      "kind": "SwiftFunc",
+      "package": "calls",
+      "line": 45,
+      "end_line": 48,
+      "signature": "func free()",
+      "calls": [
+        "request",
+        "run"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "operands",
+      "kind": "SwiftFunc",
+      "package": "calls",
+      "line": 52,
+      "end_line": 62,
+      "signature": "func operands()",
+      "calls": [
+        "Box",
+        "Int",
+        "Option",
+        "contains",
+        "factor",
+        "flatMap",
+        "hours",
+        "now",
+        "register"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "Foundation",
+      "module": "Foundation",
+      "kind": "whole",
+      "line": 1
+    }
+  ]
+}

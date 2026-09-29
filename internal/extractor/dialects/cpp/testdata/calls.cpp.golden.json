@@ -1,0 +1,94 @@
+{
+  "symbols": [
+    {
+      "name": "util",
+      "kind": "CppNamespace",
+      "package": "calls",
+      "line": 7,
+      "end_line": 10,
+      "tier": "verified"
+    },
+    {
+      "name": "util.twice",
+      "kind": "CppFunc",
+      "package": "calls",
+      "line": 8,
+      "end_line": 8,
+      "signature": "int twice(int v)",
+      "tier": "verified"
+    },
+    {
+      "name": "util.ident",
+      "kind": "CppFunc",
+      "package": "calls",
+      "line": 9,
+      "end_line": 9,
+      "signature": "T ident(T v)",
+      "tier": "verified"
+    },
+    {
+      "name": "Counter",
+      "kind": "CppStruct",
+      "package": "calls",
+      "line": 12,
+      "end_line": 16,
+      "tier": "verified"
+    },
+    {
+      "name": "Counter.bump",
+      "kind": "CppFunc",
+      "package": "calls",
+      "line": 14,
+      "end_line": 14,
+      "signature": "void bump()",
+      "calls": [
+        "util.twice"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Counter.read",
+      "kind": "CppFunc",
+      "package": "calls",
+      "line": 15,
+      "end_line": 15,
+      "signature": "int read() const",
+      "tier": "verified"
+    },
+    {
+      "name": "helper",
+      "kind": "CppFunc",
+      "package": "calls",
+      "line": 18,
+      "end_line": 18,
+      "signature": "int helper(int a)",
+      "tier": "verified"
+    },
+    {
+      "name": "drive",
+      "kind": "CppFunc",
+      "package": "calls",
+      "line": 20,
+      "end_line": 31,
+      "signature": "int drive(Counter &c, Counter *p)",
+      "calls": [
+        "bump",
+        "f",
+        "helper",
+        "read",
+        "std.printf",
+        "util.ident",
+        "util.twice"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "<cstdio>",
+      "module": "<cstdio>",
+      "kind": "whole",
+      "line": 5
+    }
+  ]
+}

@@ -1,0 +1,164 @@
+{
+  "dialect": "maven",
+  "kind": "tooling",
+  "target_level": "L3",
+  "level_met": "L3",
+  "grade": {
+    "L1": "excellent",
+    "L2": "good",
+    "L3": "good",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-09-29",
+  "fathom_commit": "303b2bdb",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "dubbo",
+      "sha": "f1585880bee4ca7776f44380c47c994217721ffe",
+      "files": 116,
+      "bytes": 623997,
+      "counts": {
+        "fathom_defs": 116,
+        "kind_equal": 116,
+        "matched": 116,
+        "oracle_defs": 116,
+        "ref_fathom": 1061,
+        "ref_fathom_in_truth": 1061,
+        "ref_truth": 1061,
+        "ref_truth_found": 1061,
+        "xref_fathom": 776,
+        "xref_fathom_in_truth": 776,
+        "xref_truth": 776,
+        "xref_truth_found": 776
+      },
+      "families": {
+        "l1": "A",
+        "refs": "C",
+        "xref": "C"
+      },
+      "kind_intersection": [
+        "package"
+      ],
+      "excluded_by_kind": {
+        "fathom:MavenPlugin": 49
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 13.507999999999996,
+        "extract_cpu_ms": 17.863000000000003,
+        "max_file_ms": 1,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "maven",
+      "sha": "2bdd9fddda4b155ebf8000e807eb73fd829a51d5",
+      "files": 15,
+      "bytes": 85789,
+      "counts": {
+        "fathom_defs": 15,
+        "kind_equal": 15,
+        "matched": 15,
+        "oracle_defs": 15,
+        "ref_fathom": 174,
+        "ref_fathom_in_truth": 174,
+        "ref_truth": 174,
+        "ref_truth_found": 174,
+        "xref_fathom": 66,
+        "xref_fathom_in_truth": 66,
+        "xref_truth": 66,
+        "xref_truth_found": 66
+      },
+      "families": {
+        "l1": "A",
+        "refs": "C",
+        "xref": "C"
+      },
+      "kind_intersection": [
+        "package"
+      ],
+      "excluded_by_kind": {
+        "fathom:MavenPlugin": 28
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 3.2650000000000006,
+        "extract_cpu_ms": 5.1579999999999995,
+        "max_file_ms": 1,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "C",
+      "tool": "maven-pom-walk (independent encoding/xml decode of each POM's own parent and dependencies, checked against mvn help:effective-pom)",
+      "version": "go1.26.3 encoding/xml; Maven 3.9.11; maven-help-plugin 3.5.2; -P release"
+    },
+    {
+      "tier": "A",
+      "tool": "mvn help:effective-pom",
+      "version": "Maven 3.9.11; maven-help-plugin 3.5.2; -P release"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 1,
+    "ref_recall": 1,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "xref_precision": 1,
+    "xref_recall": 1
+  },
+  "metric_tiers": {
+    "ref_precision": "C",
+    "ref_recall": "C",
+    "sym_precision": "A",
+    "sym_recall": "A",
+    "xref_precision": "C",
+    "xref_recall": "C"
+  },
+  "required_kinds": [
+    "package"
+  ],
+  "kind_intersection": [
+    "package"
+  ],
+  "counts": {
+    "fathom_defs": 131,
+    "kind_equal": 131,
+    "matched": 131,
+    "oracle_defs": 131,
+    "ref_fathom": 1235,
+    "ref_fathom_in_truth": 1235,
+    "ref_truth": 1235,
+    "ref_truth_found": 1235,
+    "xref_fathom": 842,
+    "xref_fathom_in_truth": 842,
+    "xref_truth": 842,
+    "xref_truth_found": 842
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 30.83,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 42.32,
+    "max_file_ms": 1,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "fathom:MavenPlugin": 77
+  },
+  "notes": [
+    "integration review 2026-09-29: the level holds for apache/maven's 15 reactor POMs only (-only 'pom.xml,*/pom.xml'), not for the repository. With its other 366 pom.xml (test and integration-test fixtures the tool does not build) in scope the same run reads sym_precision .0397, xref_precision .4343, xref_recall .6515 and level_met none: a fixture POM is indexed but not attested (LB-Q-maven-rest). apache/dubbo is measured whole",
+    "maven: restricted to pom.xml, */pom.xml (-only; the files outside are a disclosed gap, not measured)",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+  ],
+  "disposition": null
+}

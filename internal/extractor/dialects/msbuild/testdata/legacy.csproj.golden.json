@@ -1,0 +1,10 @@
+{
+  "symbols": [
+    { "name": "legacy.csproj", "kind": "MSBuildProject", "package": "legacy", "line": 2, "end_line": 34, "signature": "v4.7.2", "calls": ["Serilog", "Serilog.Sinks.Console"], "tier": "verified" },
+    { "name": "BeforeBuild", "kind": "MSBuildTarget", "package": "legacy", "line": 30, "end_line": 32, "tier": "verified" },
+    { "name": "AfterBuild", "kind": "MSBuildTarget", "package": "legacy", "line": 33, "end_line": 33, "tier": "verified" }
+  ],
+  "cross_file": [
+    { "from": "", "edge": "project_reference", "raw": "..\\Legacy.Core\\Legacy.Core.csproj", "target": "src/Legacy.Core/Legacy.Core.csproj", "strategy": "repo-path", "line": 24 }
+  ]
+}

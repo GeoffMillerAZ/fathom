@@ -1,0 +1,13 @@
+{
+  "symbols": [
+    { "name": "acme-sys", "kind": "CargoPackage", "package": "member", "line": 1, "end_line": 20, "calls": ["acme-macros", "libc", "memchr", "tempfile"], "tier": "verified" },
+    { "name": "unstable-api", "kind": "CargoFeature", "package": "member", "line": 19, "end_line": 19, "tier": "verified" },
+    { "name": "macros", "kind": "CargoFeature", "package": "member", "line": 20, "end_line": 20, "tier": "verified" }
+  ],
+  "cross_file": [
+    { "from": "", "edge": "depends_on", "raw": "libc", "target": "libc", "strategy": "module-source", "line": 11 },
+    { "from": "", "edge": "depends_on", "raw": "acme-macros", "target": "acme-macros", "strategy": "module-source", "line": 12 },
+    { "from": "", "edge": "depends_on", "raw": "memchr", "target": "memchr", "strategy": "module-source", "line": 13 },
+    { "from": "", "edge": "dev_depends_on", "raw": "tempfile", "target": "tempfile", "strategy": "module-source", "line": 16 }
+  ]
+}

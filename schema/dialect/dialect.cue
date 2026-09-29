@@ -55,7 +55,19 @@ import "struct"
 		chain_containers: bool | *true
 		container_sep:    string | *"."
 		method_sep:       string | *"."
+		// scope_sep: the language's own scope operator ("::" for C++); a
+		// definition name or callee spelled with it is normalized to
+		// container_sep (template arguments dropped).
+		scope_sep?: string & !=""
 	} | *{chain_containers: true, container_sep: ".", method_sep: "."}
+
+	// names rewrites every captured @name before qualification: a quoted
+	// string literal is the symbol without its quotes, an accessor prefix
+	// (`.Values.`) is not part of the key it reads.
+	names?: {
+		trim_quotes?: bool
+		strip_prefix?: [...(string & !="")]
+	}
 
 	package: {
 		strategy: "dir" | "capture" | "none"

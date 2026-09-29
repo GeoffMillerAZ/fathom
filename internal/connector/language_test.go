@@ -17,7 +17,8 @@ import (
 func TestLanguageForPath_KnownExtensions(t *testing.T) {
 	cases := map[string]string{
 		"main.go":   "go",
-		"go.mod":    "go",
+		"go.mod":    "go-mod",
+		"go.work":   "go-mod",
 		"script.py": "py",
 		"app.js":    "js",
 		// J1 (app-kit O18/O32/O33): the four Node/TS module-system
@@ -48,7 +49,8 @@ func TestLanguageForPath_KnownExtensions(t *testing.T) {
 		"service.proto":              "proto",
 		"schema.graphql":             "graphql",
 		"schema.gql":                 "graphql",
-		"Cargo.toml":                 "toml",
+		"Cargo.toml":                 "cargo",
+		"rust-toolchain.toml":        "toml",
 		"schema.sql":                 "sql",
 		"data.json":                  "json",
 		"Main.scala":                 "scala",

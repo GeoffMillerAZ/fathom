@@ -1,0 +1,194 @@
+{
+  "symbols": [
+    {
+      "name": "Client",
+      "kind": "DartClass",
+      "package": "calls",
+      "line": 3,
+      "end_line": 47,
+      "tier": "verified"
+    },
+    {
+      "name": "Client.Client",
+      "kind": "DartConstructor",
+      "package": "calls",
+      "line": 4,
+      "end_line": 4,
+      "signature": "Client(this.base)",
+      "tier": "verified"
+    },
+    {
+      "name": "Client.base",
+      "kind": "DartField",
+      "package": "calls",
+      "line": 6,
+      "end_line": 6,
+      "signature": "base",
+      "tier": "verified"
+    },
+    {
+      "name": "Client.local",
+      "kind": "DartConstructor",
+      "package": "calls",
+      "line": 8,
+      "end_line": 10,
+      "signature": "Client.local() : base = Uri.parse('http://localhost')",
+      "calls": [
+        "init",
+        "parse"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Client.create",
+      "kind": "DartConstructor",
+      "package": "calls",
+      "line": 12,
+      "end_line": 14,
+      "signature": "factory Client.create()",
+      "calls": [
+        "Client",
+        "parse"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Client.run",
+      "kind": "DartMethod",
+      "package": "calls",
+      "line": 16,
+      "end_line": 39,
+      "signature": "Future<void> run(List<String> xs)",
+      "calls": [
+        "Client",
+        "Duration",
+        "Point",
+        "add",
+        "bang",
+        "chain",
+        "close",
+        "convert",
+        "create",
+        "curry",
+        "delayed",
+        "first",
+        "generic",
+        "inner",
+        "local",
+        "map",
+        "method",
+        "origin",
+        "plain",
+        "remove",
+        "safe",
+        "send",
+        "sum",
+        "toList"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Client.send",
+      "kind": "DartMethod",
+      "package": "calls",
+      "line": 41,
+      "end_line": 46,
+      "signature": "void send()",
+      "calls": [
+        "nested"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "nested",
+      "kind": "DartFunction",
+      "package": "calls",
+      "line": 42,
+      "end_line": 44,
+      "signature": "void nested()",
+      "calls": [
+        "deep"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "top",
+      "kind": "DartFunction",
+      "package": "calls",
+      "line": 49,
+      "end_line": 49,
+      "signature": "int top()",
+      "calls": [
+        "Client",
+        "Uri",
+        "other"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "registry",
+      "kind": "DartVariable",
+      "package": "calls",
+      "line": 51,
+      "end_line": 51,
+      "signature": "registry = Registry.build(seed())",
+      "calls": [
+        "build",
+        "seed"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Stream1",
+      "kind": "DartClass",
+      "package": "calls",
+      "line": 53,
+      "end_line": 59,
+      "tier": "verified"
+    },
+    {
+      "name": "Stream1.ctrl",
+      "kind": "DartField",
+      "package": "calls",
+      "line": 54,
+      "end_line": 54,
+      "signature": "ctrl = StreamController<int>.broadcast(sync: true)",
+      "calls": [
+        "broadcast"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Stream1.wait",
+      "kind": "DartMethod",
+      "package": "calls",
+      "line": 55,
+      "end_line": 55,
+      "signature": "Future<void> wait()",
+      "calls": [
+        "delayed"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Stream1.listen",
+      "kind": "DartMethod",
+      "package": "calls",
+      "line": 56,
+      "end_line": 58,
+      "signature": "void listen(Stream s)",
+      "calls": [
+        "listen"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "*",
+      "module": "dart:async",
+      "kind": "wildcard",
+      "line": 1
+    }
+  ]
+}

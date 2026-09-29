@@ -1,0 +1,28 @@
+{
+  "id": "maven",
+  "display": "Maven POMs (pom.xml)",
+  "kind": "tooling",
+  "engine": "doc",
+  "lang_tag": "maven",
+  "match": {
+    "extensions": [],
+    "basenames": ["pom.xml"],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "variants": [],
+  "kinds": {
+    "artifact": { "source_kind": "MavenArtifact", "canonical": "package" },
+    "plugin":   { "source_kind": "MavenPlugin",   "canonical": "resource" }
+  },
+  "required_kinds": ["artifact"],
+  "oracle_kinds": {
+    "tool": { "package": "package" }
+  },
+  "name_match": "identity",
+  "package": { "strategy": "none" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L3",
+  "queue_id": "maven"
+}

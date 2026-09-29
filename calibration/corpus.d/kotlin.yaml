@@ -1,0 +1,28 @@
+id: kotlin
+language: Kotlin
+# `sha` is the peeled commit of the release tag (okhttp's parent-5.4.0 is an annotated tag; its tag
+# object, 95c1c03d, is what calibration/corpus.yaml records).
+repos:
+  - name: square/okhttp
+    url: https://github.com/square/okhttp
+    ref: parent-5.4.0
+    sha: 61423f472da24e0ccc42b6a2c0863fb27932fea5
+    licence: Apache-2.0
+    idioms:
+      - 'companion objects with @JvmStatic and @JvmField members'
+      - 'extension functions and extension properties (internal helpers named for their receiver)'
+      - 'data classes, sealed classes and enum classes with members'
+      - 'DSL builders taking lambdas, operator and infix functions'
+      - 'fun interfaces (Interceptor) and object declarations'
+      - 'expect/actual declarations in a Kotlin Multiplatform layout'
+  - name: JetBrains/Exposed
+    url: https://github.com/JetBrains/Exposed
+    ref: 1.3.0
+    sha: a68a26884952875722c1802ef42b382876d7d056
+    licence: Apache-2.0
+    idioms:
+      - 'object declarations as singleton tables (object Users : Table())'
+      - 'operator overloading (get, invoke, compareTo, plus) and infix query DSL functions'
+      - 'extension functions and properties over generic column types'
+      - 'generic-heavy signatures with where clauses and bounded type parameters'
+      - 'type aliases, value classes and inline/reified functions'

@@ -33,7 +33,7 @@ func TestServiceSummary_WrittenAtIngestCommit(t *testing.T) {
 	}
 	write("a/a.go", []byte("package a\n\nfunc A() { B() }\n"))
 	write("a/b.go", []byte("package a\n\nfunc B() {}\n"))
-	write("app/Main.swift", []byte("print(1)\n"))
+	write("app/main.zig", []byte("pub fn main() void {}\n"))
 	write("huge.go", append([]byte("package a\n// "), bytes.Repeat([]byte("x"), 3<<20)...))
 
 	st, err := store.NewSQLiteStore(filepath.Join(t.TempDir(), "s.sqlite"))
@@ -60,7 +60,7 @@ func TestServiceSummary_WrittenAtIngestCommit(t *testing.T) {
 	if sum.Watermark != store.WatermarkOf(meta) || sum.Source != store.SummaryFromIngest || sum.SymbolCount != len(obs) || sum.SymbolCount == 0 {
 		t.Fatalf("summary = %+v (observations %d, watermark %s)", sum, len(obs), store.WatermarkOf(meta))
 	}
-	if sum.FileCount != 4 || sum.UnsupportedLangs["swift"] != 1 || sum.ExcludedCounts["oversize"] != 1 || sum.Bytes < 3<<20 || !sum.HasFileStats {
+	if sum.FileCount != 4 || sum.UnsupportedLangs["zig"] != 1 || sum.ExcludedCounts["oversize"] != 1 || sum.Bytes < 3<<20 || !sum.HasFileStats {
 		t.Fatalf("summary facts = %+v", sum)
 	}
 	files, ok, _ := st.FileStats(ctx, "svc")
@@ -78,8 +78,8 @@ func TestServiceSummary_WrittenAtIngestCommit(t *testing.T) {
 	if h := byPath["huge.go"]; h.Excluded != "oversize" || h.Size < 3<<20 || h.ContentHash != "" {
 		t.Fatalf("huge.go row = %+v", h)
 	}
-	if sw := byPath["app/Main.swift"]; sw.Lang != store.UnsupportedLangPrefix+"swift" {
-		t.Fatalf("swift row = %+v", sw)
+	if sw := byPath["app/main.zig"]; sw.Lang != store.UnsupportedLangPrefix+"zig" {
+		t.Fatalf("zig row = %+v", sw)
 	}
 	ds, _ := st.DerivedState(ctx, "svc")
 	if !ds.SummaryCurrent || !ds.CallsIndexed || !ds.HasFileStats {

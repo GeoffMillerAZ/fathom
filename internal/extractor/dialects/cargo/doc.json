@@ -1,0 +1,31 @@
+{
+  "decode": "toml",
+  "detect": { "basenames": ["Cargo.toml"] },
+  "entities": [
+    { "select": "$", "where": { "is_map": true, "has_key": ["package"] }, "kind": "package", "source_kind": "CargoPackage", "name": ".package.name", "signature": ".package.version" },
+    { "select": "$.workspace", "where": { "is_map": true }, "kind": "namespace", "source_kind": "CargoWorkspace", "name": "$key" },
+    { "select": "$.features.*", "where": { "is_seq": true }, "kind": "key", "source_kind": "CargoFeature", "name": "$key" },
+    { "select": "$.lib", "where": { "is_map": true }, "kind": "module", "source_kind": "CargoLib", "name": ".name", "signature": ".path", "qualify": ["$path"] },
+    { "select": "$.bin[*]", "where": { "is_map": true }, "kind": "route", "source_kind": "CargoBin", "name": ".name", "signature": ".path", "qualify": ["$path"] },
+    { "select": "$.example[*]", "where": { "is_map": true }, "kind": "target", "source_kind": "CargoExample", "name": ".name", "signature": ".path", "qualify": ["$path"] },
+    { "select": "$.test[*]", "where": { "is_map": true }, "kind": "target", "source_kind": "CargoTest", "name": ".name", "signature": ".path", "qualify": ["$path"] },
+    { "select": "$.bench[*]", "where": { "is_map": true }, "kind": "target", "source_kind": "CargoBench", "name": ".name", "signature": ".path", "qualify": ["$path"] }
+  ],
+  "references": [
+    { "from": "package", "select": "$.dependencies.*", "value": ".package | $key", "to_kind": "package", "edge": "depends_on" },
+    { "from": "package", "select": "$.dev-dependencies.*", "value": ".package | $key", "to_kind": "package", "edge": "depends_on" },
+    { "from": "package", "select": "$.build-dependencies.*", "value": ".package | $key", "to_kind": "package", "edge": "depends_on" },
+    { "from": "package", "select": "$.target.*.dependencies.*", "value": ".package | $key", "to_kind": "package", "edge": "depends_on" },
+    { "from": "package", "select": "$.target.*.dev-dependencies.*", "value": ".package | $key", "to_kind": "package", "edge": "depends_on" },
+    { "from": "package", "select": "$.target.*.build-dependencies.*", "value": ".package | $key", "to_kind": "package", "edge": "depends_on" }
+  ],
+  "cross_file": [
+    { "from": "CargoWorkspace", "select": "$.members[*]", "value": "$", "resolve": "repo-path", "edge": "workspace_member" },
+    { "select": "$.dependencies.*", "value": ".package | $key", "resolve": "module-source", "edge": "depends_on" },
+    { "select": "$.dev-dependencies.*", "value": ".package | $key", "resolve": "module-source", "edge": "dev_depends_on" },
+    { "select": "$.build-dependencies.*", "value": ".package | $key", "resolve": "module-source", "edge": "build_depends_on" },
+    { "select": "$.target.*.dependencies.*", "value": ".package | $key", "resolve": "module-source", "edge": "depends_on" },
+    { "select": "$.target.*.dev-dependencies.*", "value": ".package | $key", "resolve": "module-source", "edge": "dev_depends_on" },
+    { "select": "$.target.*.build-dependencies.*", "value": ".package | $key", "resolve": "module-source", "edge": "build_depends_on" }
+  ]
+}

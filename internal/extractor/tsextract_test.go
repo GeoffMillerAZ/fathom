@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -339,8 +340,11 @@ end
 	)
 	for _, n := range nodes {
 		if n.Name == "Person.greet" {
-			if len(n.Calls) != 1 || n.Calls[0] != "hello" {
-				t.Errorf("Person.greet calls = %v, want [hello]", n.Calls)
+			// LB-Q-ruby: a constant reference is a call target too (design
+			// §1.1, tier-C oracle: the grammar's own tags query), so the receiver
+			// Greeter is listed with the method it calls.
+			if len(n.Calls) != 2 || n.Calls[0] != "Greeter" || n.Calls[1] != "hello" {
+				t.Errorf("Person.greet calls = %v, want [Greeter hello]", n.Calls)
 			}
 		}
 	}
@@ -427,6 +431,18 @@ end
 `,
 	}
 
+	wantConstants := map[string]string{
+		"singleton_methods":     "",
+		"heredoc_scanner_state": "RubyConstant:Mailer::TEMPLATE",
+		"struct_new":            "RubyConstant:Point RubyConstant:Sized",
+	}
+	// A method defined in a Struct.new block belongs to the constant the struct is
+	// assigned to (LB-Q-ruby: a constant is a container), so the dialect names the
+	// incumbent's bare `area` Sized.area.
+	renamed := map[string]map[string]string{
+		"struct_new": {"RubyMethod:Sized.area": "RubyMethod:area"},
+	}
+
 	tsE, err := NewTSExtractor("ruby")
 	if err != nil {
 		t.Fatalf("NewTSExtractor: %v", err)
@@ -443,7 +459,24 @@ end
 			if err != nil {
 				t.Fatalf("incumbent Extract: %v", err)
 			}
-			g, w := symStrings(got), symStrings(want)
+			// The incumbent emits modules, classes and methods only; the dialect
+			// (LB-Q-ruby) also emits constants (Struct.new assignments included),
+			// so parity is over the incumbent's three kinds and the extra symbols
+			// must be exactly the constants the fixture assigns.
+			var g []string
+			var extra []string
+			for _, s := range symStrings(got) {
+				if strings.HasPrefix(s, "RubyConstant:") {
+					extra = append(extra, s)
+					continue
+				}
+				if r, ok := renamed[name][s]; ok {
+					s = r
+				}
+				g = append(g, s)
+			}
+			sort.Strings(g)
+			w := symStrings(want)
 			if len(g) != len(w) {
 				t.Fatalf("symbol set diverges from incumbent:\n wazero    %v\n incumbent %v", g, w)
 			}
@@ -451,6 +484,9 @@ end
 				if g[i] != w[i] {
 					t.Fatalf("symbol set diverges from incumbent at %d:\n wazero    %v\n incumbent %v", i, g, w)
 				}
+			}
+			if got, want := strings.Join(extra, " "), wantConstants[name]; got != want {
+				t.Fatalf("constants = %q, want %q", got, want)
 			}
 		})
 	}
@@ -581,19 +617,23 @@ fun topLevelFunc(x: Int): Int {
 	}
 }
 
-// TestTSExtractor_Kotlin_TopLevelPropertyOnly is the property-scoping
-// regression (mirrors python.scm's module-var-only constraint): a member
-// property inside a class body must NOT surface as a KindKotlinProperty —
-// only the top-level (source_file-direct-child) property_declaration does.
-func TestTSExtractor_Kotlin_TopLevelPropertyOnly(t *testing.T) {
+// TestTSExtractor_Kotlin_PropertyScopes is the property-scoping regression
+// (LB-Q-kotlin widened it from top-level only): a module-level property, a
+// class member and a primary-constructor val/var parameter are KotlinProperty
+// definitions; a local variable inside a function body is not.
+func TestTSExtractor_Kotlin_PropertyScopes(t *testing.T) {
 	e, err := NewTSExtractor("kotlin")
 	if err != nil {
 		t.Fatalf("NewTSExtractor: %v", err)
 	}
 	src := []byte(`val topLevel = 1
 
-class Widget {
+class Widget(val ctorProp: Int, plain: Int) {
     val memberField = 2
+
+    fun work() {
+        val localVar = 3
+    }
 }
 `)
 	nodes, err := e.Extract("svc", "widget.kt", src)
@@ -601,10 +641,16 @@ class Widget {
 		t.Fatalf("Extract: %v", err)
 	}
 	got := symStrings(nodes)
-	mustContainAll(t, got, string(core.KindKotlinProperty)+":topLevel")
+	mustContainAll(t, got,
+		string(core.KindKotlinProperty)+":topLevel",
+		string(core.KindKotlinProperty)+":memberField",
+		string(core.KindKotlinProperty)+":ctorProp",
+	)
 	for _, g := range got {
-		if g == string(core.KindKotlinProperty)+":memberField" {
-			t.Errorf("class-member property leaked as a top-level property: %v", got)
+		for _, leaked := range []string{"localVar", "plain"} {
+			if g == string(core.KindKotlinProperty)+":"+leaked {
+				t.Errorf("%s leaked as a property: %v", leaked, got)
+			}
 		}
 	}
 }
@@ -904,13 +950,14 @@ end
 		t.Fatalf("Extract: %v", err)
 	}
 	// Exactly these — NOT require/attr_reader/helper (call sites, not
-	// definitions; attr_accessor-derived methods are a known incumbent-parity
-	// gap tracked in the plan, not silently claimed here).
+	// definitions). The attr_reader's name is a property (LB-Q-ruby closed the
+	// old incumbent-parity gap: attr_accessor-derived names are definitions now).
 	assertExactSymbols(
 		t, nodes,
 		string(core.KindRubyModule)+":M",
 		string(core.KindRubyClass)+":M::C",
 		string(core.KindRubyMethod)+":M::C.m",
+		"RubyProperty:M::C.name",
 	)
 }
 

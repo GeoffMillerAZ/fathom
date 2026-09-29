@@ -1,0 +1,260 @@
+{
+  "symbols": [
+    {
+      "name": "Shape",
+      "kind": "SwiftProtocol",
+      "package": "types",
+      "line": 3,
+      "end_line": 10,
+      "tier": "verified"
+    },
+    {
+      "name": "Shape.Unit",
+      "kind": "SwiftAssociatedType",
+      "package": "types",
+      "line": 4,
+      "end_line": 4,
+      "signature": "associatedtype Unit",
+      "tier": "verified"
+    },
+    {
+      "name": "Shape.area",
+      "kind": "SwiftProperty",
+      "package": "types",
+      "line": 5,
+      "end_line": 5,
+      "signature": "var area: Double",
+      "tier": "verified"
+    },
+    {
+      "name": "Shape.draw",
+      "kind": "SwiftMethod",
+      "package": "types",
+      "line": 6,
+      "end_line": 6,
+      "signature": "func draw(in context: Context) throws",
+      "tier": "verified"
+    },
+    {
+      "name": "Shape.init",
+      "kind": "SwiftInit",
+      "package": "types",
+      "line": 7,
+      "end_line": 7,
+      "signature": "init(side: Int)",
+      "tier": "verified"
+    },
+    {
+      "name": "Shape.subscript",
+      "kind": "SwiftSubscript",
+      "package": "types",
+      "line": 8,
+      "end_line": 8,
+      "signature": "subscript(index: Int) -> Int",
+      "tier": "verified"
+    },
+    {
+      "name": "Shape.unit",
+      "kind": "SwiftMethod",
+      "package": "types",
+      "line": 9,
+      "end_line": 9,
+      "signature": "static func unit() -> Self",
+      "tier": "verified"
+    },
+    {
+      "name": "Box",
+      "kind": "SwiftClass",
+      "package": "types",
+      "line": 12,
+      "end_line": 22,
+      "tier": "verified"
+    },
+    {
+      "name": "Box.Item",
+      "kind": "SwiftTypeAlias",
+      "package": "types",
+      "line": 13,
+      "end_line": 13,
+      "signature": "typealias Item = T",
+      "tier": "verified"
+    },
+    {
+      "name": "Box.Inner",
+      "kind": "SwiftStruct",
+      "package": "types",
+      "line": 14,
+      "end_line": 16,
+      "tier": "verified"
+    },
+    {
+      "name": "Box.Inner.raw",
+      "kind": "SwiftProperty",
+      "package": "types",
+      "line": 15,
+      "end_line": 15,
+      "signature": "let raw: Int",
+      "tier": "verified"
+    },
+    {
+      "name": "Box.Mode",
+      "kind": "SwiftEnum",
+      "package": "types",
+      "line": 17,
+      "end_line": 21,
+      "tier": "verified"
+    },
+    {
+      "name": "Box.Mode.fast",
+      "kind": "SwiftEnumCase",
+      "package": "types",
+      "line": 18,
+      "end_line": 18,
+      "signature": "fast",
+      "tier": "verified"
+    },
+    {
+      "name": "Box.Mode.slow",
+      "kind": "SwiftEnumCase",
+      "package": "types",
+      "line": 18,
+      "end_line": 18,
+      "signature": "slow",
+      "tier": "verified"
+    },
+    {
+      "name": "Box.Mode.custom",
+      "kind": "SwiftEnumCase",
+      "package": "types",
+      "line": 19,
+      "end_line": 19,
+      "signature": "custom",
+      "tier": "verified"
+    },
+    {
+      "name": "Box.Mode.chain",
+      "kind": "SwiftEnumCase",
+      "package": "types",
+      "line": 20,
+      "end_line": 20,
+      "signature": "chain",
+      "tier": "verified"
+    },
+    {
+      "name": "Counter",
+      "kind": "SwiftActor",
+      "package": "types",
+      "line": 24,
+      "end_line": 27,
+      "tier": "verified"
+    },
+    {
+      "name": "Counter.value",
+      "kind": "SwiftProperty",
+      "package": "types",
+      "line": 25,
+      "end_line": 25,
+      "signature": "var value = 0",
+      "tier": "verified"
+    },
+    {
+      "name": "Counter.bump",
+      "kind": "SwiftMethod",
+      "package": "types",
+      "line": 26,
+      "end_line": 26,
+      "signature": "func bump()",
+      "tier": "verified"
+    },
+    {
+      "name": "Point",
+      "kind": "SwiftStruct",
+      "package": "types",
+      "line": 29,
+      "end_line": 31,
+      "tier": "verified"
+    },
+    {
+      "name": "Point.x",
+      "kind": "SwiftProperty",
+      "package": "types",
+      "line": 30,
+      "end_line": 30,
+      "signature": "var x: Int",
+      "tier": "verified"
+    },
+    {
+      "name": "Box.Inner",
+      "kind": "SwiftExtension",
+      "package": "types",
+      "line": 33,
+      "end_line": 35,
+      "tier": "verified"
+    },
+    {
+      "name": "Box.Inner.encoded",
+      "kind": "SwiftMethod",
+      "package": "types",
+      "line": 34,
+      "end_line": 34,
+      "signature": "func encoded() -> Data",
+      "calls": [
+        "Data"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Array",
+      "kind": "SwiftExtension",
+      "package": "types",
+      "line": 37,
+      "end_line": 39,
+      "tier": "verified"
+    },
+    {
+      "name": "Array.total",
+      "kind": "SwiftProperty",
+      "package": "types",
+      "line": 38,
+      "end_line": 38,
+      "signature": "var total: Int",
+      "calls": [
+        "reduce"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Platform",
+      "kind": "SwiftClass",
+      "package": "types",
+      "line": 42,
+      "end_line": 42,
+      "tier": "verified"
+    },
+    {
+      "name": "Platform",
+      "kind": "SwiftClass",
+      "package": "types",
+      "line": 44,
+      "end_line": 44,
+      "tier": "verified"
+    },
+    {
+      "name": "Handler",
+      "kind": "SwiftTypeAlias",
+      "package": "types",
+      "line": 47,
+      "end_line": 47,
+      "signature": "typealias Handler = (Int) -> Void",
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "Foundation",
+      "module": "Foundation",
+      "kind": "whole",
+      "line": 1
+    }
+  ]
+}

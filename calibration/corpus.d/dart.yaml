@@ -1,0 +1,37 @@
+id: dart
+language: Dart
+# Measurement conventions (docs/bench/readings/lang/dart.json): both repositories are monorepos of
+# packages, and scip-dart indexes one package at a time, so each pure-Dart package is one subject,
+# named <repo>/<path> (bloc/packages/bloc, http/pkgs/http, ...); `dart pub get` runs inside each
+# package of the clone only, to resolve dependencies for the analyzer, and the clone is deleted
+# after measuring. The packages that need the Flutter SDK are not measured (flutter_bloc,
+# angular_bloc, cupertino_http, cronet_http, ok_http, flutter_http_example), nor are hydrated_bloc
+# and replay_bloc, whose workspace example depends on it; the packages measured and their
+# scip-dart invocation are in calibration/oracles/scip-dart/README.md. Both tags are lightweight,
+# so `sha` is the commit itself.
+repos:
+  - name: felangel/bloc
+    url: https://github.com/felangel/bloc
+    ref: bloc-v9.2.1
+    sha: 60892540c1faec3fd01cc8c8fea378a59cf42e3d
+    licence: MIT
+    subpath: packages
+    idioms:
+      - 'Bloc<Event, State> subclasses whose constructors register on<Event>((event, emit) {...}) closures'
+      - 'abstract interfaces and mixins over Streams (StateStreamable, BlocBase) with generic type parameters'
+      - 'private members (a leading underscore) throughout: _emitters, _handlers, _onEmit'
+      - 'typedefs for function types (EventTransformer, EventMapper) and static fields holding closures'
+      - 'barrel files (lib/bloc.dart) that export the files under lib/src'
+      - 'test classes with named and const constructors extending Bloc and Cubit'
+  - name: dart-lang/http
+    url: https://github.com/dart-lang/http
+    ref: http-v1.5.0
+    sha: b661894a6c7c2750f8dd865cb3ce517a851190f6
+    licence: BSD-3-Clause
+    idioms:
+      - 'abstract mixin classes (BaseClient, Abortable) implementing interfaces'
+      - 'factory constructors that pick an implementation (Client() => zoneClient ?? createClient())'
+      - 'async* generators and Streams of bytes, Future-returning methods'
+      - 'conditional imports (import ... if (dart.library.io)) and a browser client using js_interop external functions and an extension type'
+      - 'enums with members and library-private classes across lib/src'
+      - 'relative imports between the files of lib/src and package: imports in tests'

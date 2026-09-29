@@ -1,0 +1,6 @@
+{
+  "symbols": [
+    { "name": "Directory.Build.props", "kind": "MSBuildProject", "package": "Directory.Build", "line": 1, "end_line": 12, "calls": ["Microsoft.SourceLink.GitHub", "StyleCop.Analyzers"], "tier": "verified" }
+  ],
+  "cross_file": []
+}

@@ -1,0 +1,27 @@
+id: ruby
+language: Ruby
+# `sha` is the peeled commit of the release tag (both tags are annotated; their tag objects,
+# 518c22e9 and 29e9da20, are what calibration/corpus.yaml records).
+repos:
+  - name: sinatra/sinatra
+    url: https://github.com/sinatra/sinatra
+    ref: v4.2.1
+    sha: 599a007a779dc9940e49f34e9077220f4c209f4b
+    licence: MIT
+    idioms:
+      - 'DSL methods (get/post/before/after) defined on the class body through singleton methods'
+      - 'modules and mixins (include, extend, prepend) and nested Sinatra::Base subclasses'
+      - 'singleton classes (class << self) holding the framework''s settings and helpers'
+      - 'constants (VERSION, CONTENT_TYPES) and attr_reader/attr_accessor declarations'
+      - 'require and require_relative of sibling files, and method_missing/define_method metaprogramming'
+  - name: jekyll/jekyll
+    url: https://github.com/jekyll/jekyll
+    ref: v4.4.1
+    sha: 1f319fb273b6cdf876bc6edd38d7477935cdda8c
+    licence: MIT
+    idioms:
+      - 'deep module and class nesting under Jekyll:: with reopened classes'
+      - 'attr_accessor/attr_reader/attr_writer, private and protected sections'
+      - 'class methods via def self.x and class << self'
+      - 'constants and frozen string literals, Comparable and Enumerable mixins'
+      - 'plugin registration DSL (Liquid tags, hooks) and require_all of lib/jekyll/*.rb'

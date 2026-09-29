@@ -1,0 +1,85 @@
+{
+  "symbols": [
+    {
+      "name": "App",
+      "kind": "DartClass",
+      "package": "imports",
+      "line": 15,
+      "end_line": 21,
+      "tier": "verified"
+    },
+    {
+      "name": "App.run",
+      "kind": "DartMethod",
+      "package": "imports",
+      "line": 16,
+      "end_line": 20,
+      "signature": "void run()",
+      "calls": [
+        "Helper",
+        "assist",
+        "go",
+        "load"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "*",
+      "module": "dart:async",
+      "kind": "wildcard",
+      "line": 3
+    },
+    {
+      "local": "*",
+      "module": "package:acme/util.dart",
+      "kind": "wildcard",
+      "line": 4
+    },
+    {
+      "local": "model",
+      "module": "package:acme/src/model.dart",
+      "kind": "whole",
+      "line": 5
+    },
+    {
+      "local": "Helper",
+      "exported": "Helper",
+      "module": "src/helper.dart",
+      "kind": "named",
+      "line": 6
+    },
+    {
+      "local": "assist",
+      "exported": "assist",
+      "module": "src/helper.dart",
+      "kind": "named",
+      "line": 6
+    },
+    {
+      "local": "*",
+      "module": "../shared/strings.dart",
+      "kind": "wildcard",
+      "line": 7
+    },
+    {
+      "local": "card",
+      "module": "widgets/card.dart",
+      "kind": "whole",
+      "line": 8
+    },
+    {
+      "local": "*",
+      "module": "store.dart",
+      "kind": "wildcard",
+      "line": 9
+    },
+    {
+      "local": "a",
+      "module": "a.dart",
+      "kind": "whole",
+      "line": 10
+    }
+  ]
+}

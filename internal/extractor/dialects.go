@@ -41,8 +41,13 @@ type Dialect struct {
 	OracleKinds   map[string]map[string]string `json:"oracle_kinds"`
 	// NameMatch is the harness's name comparison (§1.4): "bare" (default)
 	// or "identity". Extraction never reads it.
-	NameMatch   string           `json:"name_match,omitempty"`
-	Qualify     DialectQualify   `json:"qualify"`
+	NameMatch string         `json:"name_match,omitempty"`
+	Qualify   DialectQualify `json:"qualify"`
+	// Names rewrites every captured @name (a definition's, a callee's)
+	// before qualification — the grammar's own spelling of a name (a
+	// quoted string literal, a `.Values.` accessor prefix) is not the
+	// symbol's key. Omitted: names are taken as captured.
+	Names       *DialectNames    `json:"names,omitempty"`
 	Package     DialectPackage   `json:"package"`
 	Imports     *DialectImports  `json:"imports,omitempty"`
 	Signature   DialectSignature `json:"signature"`
@@ -116,6 +121,23 @@ type DialectQualify struct {
 	ChainContainers *bool  `json:"chain_containers,omitempty"`
 	ContainerSep    string `json:"container_sep,omitempty"`
 	MethodSep       string `json:"method_sep,omitempty"`
+	// ScopeSep is the language's own scope-resolution operator ("::" for
+	// C++). When set, a definition name or callee that spells a scope path
+	// with it is normalized to ContainerSep (template arguments dropped), so
+	// an out-of-class definition "Widget::render" and an inline method share
+	// one key (normalizeScopedName). Empty: names are taken as captured.
+	ScopeSep string `json:"scope_sep,omitempty"`
+}
+
+// DialectNames is the manifest's names block (LB-Q-helm): StripPrefix drops
+// the first listed prefix the captured text starts with (`.Values.` leaves the
+// values key the accessor reads; a quoted string starting the same way is not
+// touched), then TrimQuotes drops one matching pair of surrounding double
+// quotes, single quotes or backticks (a Go-template `define "chart.name"` is
+// the symbol chart.name). Both run before scope_sep.
+type DialectNames struct {
+	TrimQuotes  bool     `json:"trim_quotes,omitempty"`
+	StripPrefix []string `json:"strip_prefix,omitempty"`
 }
 
 // DialectPackage selects how SymbolNode.Package is set: "dir" (the

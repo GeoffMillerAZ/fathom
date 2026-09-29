@@ -1,0 +1,42 @@
+id: makefile
+language: Makefile
+# Measurement conventions (docs/bench/readings/lang/makefile.json): each subject is measured as
+# cloned by `task calibrate-clone -- makefile` (shallow, whole tree: GNU make's $(wildcard) lists
+# and its `include`s need the sources and fragments to exist), and deleted after measuring
+# (`task calibrate-clean -- makefile`). The L1 oracle is universal-ctags with two disclosed
+# corrections and the L2 oracle is GNU make 4.4.1's own database; both are
+# calibration/oracles/make/ (README there). Two subjects were proposed by the queue entry
+# (jart/cosmopolitan, prometheus/prometheus); valkey-io/valkey (BSD-3-Clause) is added as a
+# classic recursive C-project makefile set (sixteen Makefiles, no .mk fragments).
+repos:
+  - name: jart/cosmopolitan
+    url: https://github.com/jart/cosmopolitan
+    ref: 4.0.2
+    sha: 5907304049f37c9ed77593974d13202829443bea
+    licence: ISC
+    idioms:
+      - 'one BUILD.mk fragment per directory, pulled into a single make run by the root Makefile'
+      - 'targets and prerequisites spelled with variables (o/$(MODE)/libc/str/str.a: $(LIBC_STR_A_OBJS))'
+      - 'per-package variable families built with += and $(wildcard)/$(filter) over a directory listing'
+      - 'multi-line target lists ending in a target-specific `: private CFLAGS += ...` assignment'
+      - 'pattern rules and static pattern rules (o/$(MODE)/%.o: %.c) in build/rules.mk'
+  - name: prometheus/prometheus
+    url: https://github.com/prometheus/prometheus
+    ref: v3.9.1
+    sha: 9ec59baffb547e24f1468a53eb82901e58feabd8
+    licence: Apache-2.0
+    idioms:
+      - 'a small Makefile that includes a shared Makefile.common'
+      - '.PHONY declarations beside plain command targets'
+      - 'variables assigned with := and ?= from $(shell ...) and $(GO) invocations'
+      - 'tab-indented recipes with line continuations and @-silenced commands'
+  - name: valkey-io/valkey
+    url: https://github.com/valkey-io/valkey
+    ref: 9.1.2
+    sha: 7f1dffedff6de73058b2c2a389422b6ecd56c8fb
+    licence: BSD-3-Clause
+    idioms:
+      - 'recursive make: a root Makefile that runs make in src/ and deps/*'
+      - 'ifeq/ifneq blocks keyed on uname_S with tab-indented assignments inside them'
+      - 'unspaced assignments (CC?=gcc, CFLAGS+=-O2) and $(shell sh -c ...) probes'
+      - 'explicit pattern rules (%.o: %.c .make-prerequisites) and a dependency include (-include Makefile.dep)'

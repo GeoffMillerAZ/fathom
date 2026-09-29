@@ -113,7 +113,8 @@ type supportSources struct {
 	Queue      []langbench.QueueEntry
 	Readings   map[string]langbench.Reading
 	Registered map[string]langbench.Registration
-	Targets    []support.Target // the six shared kinds, docs/plans/support.targets.json
+	Refused    map[string]string // queue items their plan row refused (design §14.2)
+	Targets    []support.Target  // the six shared kinds, docs/plans/support.targets.json
 	Clients    []support.RegistryEntry
 	Ledger     []support.LedgerRow
 	Commit     string
@@ -140,6 +141,7 @@ func loadSupportSources(ctx context.Context, root string) (supportSources, error
 		Queue:      tin.Queue,
 		Readings:   tin.Readings,
 		Registered: tin.Registered,
+		Refused:    tin.Refused,
 		Targets:    targets,
 		Clients:    support.ClientRegistry(),
 		Ledger:     ledger,
@@ -202,7 +204,14 @@ func languageToolEntries(src supportSources) []support.EntryInput {
 		}
 		_, registered := src.Registered[q.ID]
 		reading, hasReading := src.Readings[q.ID]
-		entries = append(entries, languageToolEntry(kind, q.ID, q.Name, q.Wave, q.Engine, q.PlanRow, q.TargetLevel, registered, reading, hasReading))
+		e := languageToolEntry(kind, q.ID, q.Name, q.Wave, q.Engine, q.PlanRow, q.TargetLevel, registered, reading, hasReading)
+		if _, refused := src.Refused[q.ID]; refused {
+			// §14.2: a refused item claims no level, whatever its reading measured.
+			for i := range e.Cells {
+				e.Cells[i].Disposition = "refused"
+			}
+		}
+		entries = append(entries, e)
 	}
 	// A registered dialect absent from the queue (should not happen once
 	// LB-F22 governs the queue) is still surfaced rather than dropped.

@@ -91,3 +91,45 @@ formats at target 4/15`.
 LB-M2-1 (the wave 1 re-measure: every reading regenerated at HEAD, no `level_met` or grade regressed, the
 wave's token spend per item recorded) is not met, because the D3 audit moved two readings down (TypeScript and
 JavaScript); `waves.md` is therefore not written and LB-M2-1 stays open in `docs/plans/language-breadth.md`.
+
+## Wave 2, 2026-09-29 (lq-integ 88fe67a5, after the integration review)
+
+Highest `level_met` per committed reading; the grades are the per-level grades up to the level met. A
+refused item (design §14.2) counts at no level whatever its reading measured.
+
+| Level | Languages | Tool formats |
+|---|---|---|
+| L1 | 8: C++ (excellent), C# (excellent), PHP (excellent), Python (excellent), C (good), Go (good), HTML (good), TypeScript (good) | 2: package.json (excellent), Terraform (excellent) |
+| L2 | 9: Dart (excellent, excellent), Rust (excellent, excellent), Java (excellent, good), Kotlin (excellent, good), Lua (excellent, good), PowerShell (excellent, good), Ruby (excellent, good), Bash (good, good), SQL (good, good) | 4: Docker Compose (excellent, excellent), Dockerfile (excellent, excellent), Makefile (excellent, excellent), Python packaging (good, good) |
+| L3 | 0 | 8: Cargo (excellent ×3), Go modules (excellent ×3), MSBuild (excellent ×3), GitLab CI (excellent, good, good), Maven (excellent, good, good), GitHub Actions (good ×3), Helm (good ×3), Kubernetes (good ×3) |
+| L4 | 0 | 0 |
+
+At or above each level: languages 17 at L1 (11 excellent), 9 at L2, none at L3 or L4; tool formats 14
+at L1, 12 at L2, 8 at L3. Tool formats at their target: 10 (the eight at L3, Makefile and Python
+packaging at L2).
+
+Measured below L1 (readings committed): CSS, JavaScript. Refused: Swift (its reading measures L2, L1
+excellent and L2 good, but 5.6% of its calibration files parse with an error, over §14.2's 5% line;
+`LB-Q-swift-rest`), so the worker's count of 18 languages at L1 (12 excellent) and 10 at L2 is 17 (11)
+and 9.
+
+Not all of the movement since wave 1b is wave 2's. Round 2's instruments (D1 CPU-time throughput, D2
+oracles, D3 adjudication; readings committed before the wave's base, eb96fcbc) moved C, C# and
+TypeScript to L1, Java and SQL to L2, Bash from L1 to L2, and GitHub Actions and Kubernetes from L2 to
+L3. Wave 2's seventeen items added C++ and PHP at L1; Dart, Rust, Kotlin, Lua, PowerShell and Ruby at
+L2; Docker Compose and Makefile at L2; and Cargo, Go modules, MSBuild, GitLab CI, Maven and Helm at L3.
+C++, PHP and Rust are measured dialects not yet dispatched (their CGO incumbents stay live), and Helm's
+and Docker Compose's dispatch stays on their incumbents (`LB-Q-helm-rest`, `LB-Q-docker-compose-rest`);
+Maven's L3 holds for apache/maven's reactor POMs only, and Cargo's for rust-lang/cargo's workspace
+manifests only.
+
+The integration review's other adjudications left every level as the worker recorded it: Makefile's
+two ctags corrections are oracle-bug fixes (L1 excellent kept), Kotlin's PSI dump is tier B by D2's
+Roslyn precedent, Rust's shared SCIP rules are now scoped to rust-analyzer (no earlier reading moves),
+and Dart's engine and scip-dart changes move no other golden (each reading carries its one-line
+disposition). The critic pass kept Lua's luaparse dump at tier B, the one tier its reading flagged for
+review, with PowerShell's and PHP's parser dumps (ctags is verified deficient for all three; design
+§1.5 D2), so their L1 excellent grades stand.
+
+Tracker line: `Milestone M1 progress: languages at L1 excellent 11/20, at L2 9/12, at L3 0/8, at L4
+0/6; tool formats at target 10/15`.

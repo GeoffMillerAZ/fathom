@@ -1,0 +1,166 @@
+{
+  "dialect": "lua",
+  "kind": "language",
+  "target_level": "L2",
+  "level_met": "L2",
+  "grade": {
+    "L1": "excellent",
+    "L2": "good",
+    "L3": "not-attempted",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-09-29",
+  "fathom_commit": "f4bed50a",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "Kong/kong",
+      "sha": "3666d50bdf2b8d0da66c414464d3055219e7c0c6",
+      "files": 587,
+      "bytes": 3203247,
+      "counts": {
+        "call_fathom": 11173,
+        "call_fathom_in_truth": 10863,
+        "call_truth": 10996,
+        "call_truth_found": 10863,
+        "callables": 3324,
+        "callables_signed": 3324,
+        "fathom_defs": 3324,
+        "kind_equal": 3324,
+        "matched": 3324,
+        "oracle_defs": 3324,
+        "range_eligible": 3324,
+        "range_ok": 3324
+      },
+      "families": {
+        "calls": "C",
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "function"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 877.5899999999995,
+        "extract_cpu_ms": 875.4360000000011,
+        "max_file_ms": 21,
+        "peak_module_pages": 311,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "nvim-telescope/telescope.nvim",
+      "sha": "5255aa27c422de944791318024167ad5d40aad20",
+      "files": 75,
+      "bytes": 703625,
+      "counts": {
+        "call_fathom": 3054,
+        "call_fathom_in_truth": 2907,
+        "call_truth": 2991,
+        "call_truth_found": 2907,
+        "callables": 941,
+        "callables_signed": 941,
+        "fathom_defs": 941,
+        "kind_equal": 941,
+        "matched": 941,
+        "oracle_defs": 941,
+        "range_eligible": 941,
+        "range_ok": 941
+      },
+      "families": {
+        "calls": "C",
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "function"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 217.438,
+        "extract_cpu_ms": 215.83900000000003,
+        "max_file_ms": 19,
+        "peak_module_pages": 301,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "B",
+      "tool": "luaparse",
+      "version": "0.3.1 (luaVersion LuaJIT)"
+    },
+    {
+      "tier": "C",
+      "tool": "tree-sitter-tags:lua-tags.scm",
+      "version": "py-tree-sitter 0.25.2, tree-sitter-lua 0.5.0"
+    }
+  ],
+  "metrics": {
+    "call_precision": 0.9679,
+    "call_recall": 0.9845,
+    "def_mapping": null,
+    "file_edge_precision": null,
+    "file_edge_recall": null,
+    "import_resolution": null,
+    "kind_agreement": 1,
+    "range_agreement": 1,
+    "signature_coverage": 1,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "call_precision": "C",
+    "call_recall": "C",
+    "kind_agreement": "B",
+    "range_agreement": "B",
+    "signature_coverage": "B",
+    "sym_precision": "B",
+    "sym_recall": "B"
+  },
+  "required_kinds": [
+    "function"
+  ],
+  "kind_intersection": [
+    "function"
+  ],
+  "counts": {
+    "call_fathom": 14227,
+    "call_fathom_in_truth": 13770,
+    "call_truth": 13987,
+    "call_truth_found": 13770,
+    "callables": 4265,
+    "callables_signed": 4265,
+    "fathom_defs": 4265,
+    "kind_equal": 4265,
+    "matched": 4265,
+    "oracle_defs": 4265,
+    "range_eligible": 4265,
+    "range_ok": 4265
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 3.58,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 3.57,
+    "max_file_ms": 21,
+    "peak_module_pages": 311,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    "integration critic 2026-09-29 (kept, tier B): the claim flagged for review holds. universal-ctags is verified deficient for Lua (no end line for any tag, and 228 pieces of text tagged as functions by pattern), which is D2's condition, and D2 already puts an independent parser library's syntax dump at tier B (JavaParser); luaparse shares no code with tree-sitter. The definition scope (a function stored in a statically named slot) is the dialect author's rule, but ctags, reading by pattern, agrees on 4,191 of the dialect's 4,265 definitions, so the rule is not the dialect's alone. L1 excellent stands (design section 1.5, D2, PowerShell, PHP and Lua)",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "L1 oracle: luaparse 0.3.1 (MIT), a Lua parser library independent of tree-sitter, run as calibration/oracles/luaparse/luaparse_dump.js (luaVersion LuaJIT, Node as a bench instrument only): every definition with a range, 4,265 on 662 files, 0 parse errors. Tier B on the D2 precedent (JavaParser, Roslyn, PSI, php-parser): an independent syntactic parser, so L1 can be excellent and L2 at most good. The tier is a claim for Opus review, not a harness fact. The parser is independent; the scope (a definition is a function stored in a statically named slot) is the dialect author's rule, written in the oracle's README, so sym_recall 1 and sym_precision 1 show the queries implement that rule over 4,265 real definitions, not that no other rule is reasonable.",
+    "L2 oracle: the grammar's own queries/tags.scm (tree-sitter-grammars/tree-sitter-lua v0.5.0, MIT) run by py-tree-sitter 0.25.2 with tree-sitter-lua 0.5.0, tier C (D5, calibration/oracles/ts-tags), so L2 is capped at good. Its call pairs and the dialect's differ in attribution: upstream marks the whole table_constructor as the definition of its function-valued fields (a call written in a sibling field of a callback table such as pickers.new(opts, { prompt_title = .., attach_mappings = function .. end }) is paired with the first function field, 40 pairs on telescope's attach_mappings alone), and it has no definition for a string-keyed function or a t[\"k\"] = function; the dialect pairs a call with the innermost function around it. call_recall .9845 (13,770 of 13,987 pairs), call_precision .9679 (13,770 of 14,227).",
+    "universal-ctags 6.2.1 (tier B) is an unscored cross-check, not the L1 oracle: it writes no end line for Lua (range_agreement unmeasurable, L1 capped at good) and reads by pattern, not by parse. Over the same 662 files it reads sym_recall .9197, sym_precision .9826, kind_agreement 1, signature_coverage 1 (4,191 of 4,557 definitions matched; the incumbent walker read .2625 on telescope.nvim in the wave-0 baseline, docs/bench/readings/lang/baseline/lua.json). Its 366 unmatched definitions: 228 are text tagged as a function (a variable assigned the result of a call whose argument is a function, `local ok, err = pcall(function() ... end)`; an immediately invoked function expression; a string or table value on a line containing the word function; `type(v) ~= \"function\"` tagged as `~`), 122 are bracketed slots ctags spells by their key expression (`decoder[TAG.INTEGER] = function` is `INTEGER]`, `[\"k\"] = function` is `[\"k\"]`), and 16 sit inside block comments.",
+    "grammar: tree-sitter-lua v0.5.0 (the tag the incumbent luaextract.go's binding pins, MIT, ABI 15, external scanner), lua.wasm.gz 64,669 bytes gzip (173,721 raw), 311 peak module pages, 0 faults, 3.58 MB/CPU-s. Kong/kong is measured as 3.9.2's kong/ tree (sparse checkout; its spec/ suite and fixtures are not read), telescope.nvim as v0.2.2; both subjects parse without an ERROR node.",
+    "lang-parity against luaextract (same subjects, luaparse for L1 and the tags oracle for calls): sym_recall .6642 -> 1, sym_precision 1 -> 1, kind_agreement 1 -> 1, range_agreement 1 -> 1, signature_coverage 0 -> 1, call_recall .7338 -> .9845, call_precision .9449 -> .9679, level none -> L2, no SourceKind lost (LuaFunction is the one kind); verdict MERGE (design section 11 step 2). The incumbent stopped at the first function_declaration (no nested function, no `x = function`, no table field) and recorded a callee's whole text (M.foo, self:bar); the dialect records the last identifier.",
+    "not extracted, on purpose: module tables and variables (`local M = {}`), table fields that do not hold a function, a function in a computed slot (`t[TAG.X] = function`, `{ [KEY] = function }`: 46 on Kong, 19 on telescope.nvim: no static name), the second and later variables of `local a, b = function.., function..` (the anchored pattern reads the first pair; none in the subjects), and the require graph (L3, a file-symbol strategy, not attempted)."
+  ],
+  "disposition": null
+}

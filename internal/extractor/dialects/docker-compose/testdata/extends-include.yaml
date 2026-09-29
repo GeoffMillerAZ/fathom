@@ -1,0 +1,20 @@
+include:
+  - ./infra/compose.yaml
+  - path: ./shared/monitoring.yaml
+    project_directory: ./shared
+  - path:
+      - ./a.yaml
+      - ./b.yaml
+services:
+  base:
+    image: alpine:3
+  web:
+    extends:
+      file: ./common/base.yaml
+      service: webapp
+    depends_on: [base]
+  local:
+    extends:
+      service: base
+  legacy:
+    extends: base

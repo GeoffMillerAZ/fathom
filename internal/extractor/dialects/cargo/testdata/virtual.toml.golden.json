@@ -1,0 +1,11 @@
+{
+  "symbols": [
+    { "name": "workspace", "kind": "CargoWorkspace", "package": "virtual", "line": 1, "end_line": 17, "tier": "verified" }
+  ],
+  "cross_file": [
+    { "from": "workspace", "edge": "workspace_member", "raw": "../outside", "target": "", "strategy": "repo-path", "line": 3 },
+    { "from": "workspace", "edge": "workspace_member", "raw": "./xtask", "target": "xtask", "strategy": "repo-path", "line": 3 },
+    { "from": "workspace", "edge": "workspace_member", "raw": "crates/*", "target": "crates/*", "strategy": "repo-path", "line": 3 },
+    { "from": "workspace", "edge": "workspace_member", "raw": "tools/cli", "target": "tools/cli", "strategy": "repo-path", "line": 3 }
+  ]
+}

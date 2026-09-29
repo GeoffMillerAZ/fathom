@@ -1,0 +1,32 @@
+name: shop
+services:
+  web:
+    image: nginx:1.27
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+      - cache
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile.dev
+    depends_on:
+      db:
+        condition: service_healthy
+      cache:
+        condition: service_started
+        required: false
+  db:
+    image: postgres:16
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+  cache:
+    build: ./cache
+  worker:
+    image: registry.example.com/shop/worker:${TAG:-latest}
+volumes:
+  dbdata:
+networks:
+  default:
+    name: shop-net

@@ -1,0 +1,111 @@
+{
+  "symbols": [
+    {
+      "name": "Animal.new",
+      "kind": "LuaFunction",
+      "package": "classes",
+      "line": 5,
+      "end_line": 10,
+      "signature": "function Animal.new(name, ...)",
+      "calls": [
+        "init",
+        "setmetatable"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Animal:init",
+      "kind": "LuaFunction",
+      "package": "classes",
+      "line": 12,
+      "end_line": 12,
+      "signature": "function Animal:init()",
+      "tier": "verified"
+    },
+    {
+      "name": "Animal:speak",
+      "kind": "LuaFunction",
+      "package": "classes",
+      "line": 14,
+      "end_line": 16,
+      "signature": "function Animal:speak()",
+      "calls": [
+        "sound"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Animal:sound",
+      "kind": "LuaFunction",
+      "package": "classes",
+      "line": 18,
+      "end_line": 20,
+      "signature": "function Animal:sound()",
+      "tier": "verified"
+    },
+    {
+      "name": "Dog.new",
+      "kind": "LuaFunction",
+      "package": "classes",
+      "line": 25,
+      "end_line": 28,
+      "signature": "function Dog.new(name)",
+      "calls": [
+        "new",
+        "setmetatable"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Dog:sound",
+      "kind": "LuaFunction",
+      "package": "classes",
+      "line": 30,
+      "end_line": 32,
+      "signature": "function Dog:sound()",
+      "tier": "verified"
+    },
+    {
+      "name": "__call",
+      "kind": "LuaFunction",
+      "package": "classes",
+      "line": 36,
+      "end_line": 38,
+      "signature": "__call = function(cls, start)",
+      "calls": [
+        "new"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "__tostring",
+      "kind": "LuaFunction",
+      "package": "classes",
+      "line": 39,
+      "end_line": 41,
+      "signature": "__tostring = function(self)",
+      "tier": "verified"
+    },
+    {
+      "name": "Counter.new",
+      "kind": "LuaFunction",
+      "package": "classes",
+      "line": 44,
+      "end_line": 46,
+      "signature": "function Counter.new(start)",
+      "calls": [
+        "setmetatable"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Counter:bump",
+      "kind": "LuaFunction",
+      "package": "classes",
+      "line": 48,
+      "end_line": 51,
+      "signature": "function Counter:bump(by)",
+      "tier": "verified"
+    }
+  ]
+}

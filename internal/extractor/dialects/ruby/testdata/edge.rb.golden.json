@@ -1,0 +1,77 @@
+{
+  "symbols": [
+    {
+      "name": "Outer::Reopened",
+      "kind": "RubyClass",
+      "package": "edge",
+      "line": 1,
+      "end_line": 5,
+      "tier": "verified"
+    },
+    {
+      "name": "Outer::Reopened.method_missing",
+      "kind": "RubyMethod",
+      "package": "edge",
+      "line": 2,
+      "end_line": 4,
+      "signature": "def method_missing(name, *args, &blk)",
+      "tier": "verified"
+    },
+    {
+      "name": "Deep::Nested::Mod",
+      "kind": "RubyModule",
+      "package": "edge",
+      "line": 7,
+      "end_line": 11,
+      "tier": "verified"
+    },
+    {
+      "name": "Deep::Nested::Mod.helper",
+      "kind": "RubyMethod",
+      "package": "edge",
+      "line": 8,
+      "end_line": 10,
+      "signature": "def self.helper",
+      "calls": [
+        "Deep",
+        "Nested",
+        "sibling"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Tiny",
+      "kind": "RubyClass",
+      "package": "edge",
+      "line": 15,
+      "end_line": 15,
+      "tier": "verified"
+    },
+    {
+      "name": "Util",
+      "kind": "RubyModule",
+      "package": "edge",
+      "line": 16,
+      "end_line": 16,
+      "tier": "verified"
+    },
+    {
+      "name": "Util.a",
+      "kind": "RubyMethod",
+      "package": "edge",
+      "line": 16,
+      "end_line": 16,
+      "signature": "def self.a; end",
+      "tier": "verified"
+    },
+    {
+      "name": "Util.b",
+      "kind": "RubyMethod",
+      "package": "edge",
+      "line": 16,
+      "end_line": 16,
+      "signature": "def self.b; end",
+      "tier": "verified"
+    }
+  ]
+}

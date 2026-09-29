@@ -9,6 +9,14 @@
       "tier": "verified"
     },
     {
+      "name": "Outer::VERSION",
+      "kind": "RubyConstant",
+      "package": "shapes",
+      "line": 5,
+      "end_line": 5,
+      "tier": "verified"
+    },
+    {
       "name": "Outer::Inner",
       "kind": "RubyModule",
       "package": "shapes",
@@ -32,6 +40,7 @@
       "end_line": 12,
       "signature": "def call(arg)",
       "calls": [
+        "JSON",
         "helper",
         "parse"
       ],
@@ -43,6 +52,15 @@
       "package": "shapes",
       "line": 16,
       "end_line": 48,
+      "tier": "verified"
+    },
+    {
+      "name": "Outer::Service.name",
+      "kind": "RubyProperty",
+      "package": "shapes",
+      "line": 18,
+      "end_line": 18,
+      "signature": ":name",
       "tier": "verified"
     },
     {
@@ -138,6 +156,20 @@
         "puts"
       ],
       "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "json",
+      "module": "json",
+      "kind": "whole",
+      "line": 1
+    },
+    {
+      "local": "lib/helper",
+      "module": "lib/helper",
+      "kind": "whole",
+      "line": 2
     }
   ]
 }
