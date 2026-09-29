@@ -111,8 +111,23 @@ func appendThreadItem(it threadItem) error {
 }
 
 // loadThreadItems folds the log, latest row per id winning, sorted by
-// FiledAt then ID (house determinism).
+// FiledAt then ID (house determinism). Exploration maps' own rows
+// (mapstore.go) share the log but are not thread items: no brief, list or
+// handoff ever serves them.
 func loadThreadItems(path string) []threadItem {
+	all := loadAllThreadRows(path)
+	out := all[:0:0]
+	for _, it := range all {
+		if !isMapItem(it) {
+			out = append(out, it)
+		}
+	}
+	return out
+}
+
+// loadAllThreadRows is loadThreadItems' fold over every row, the maps' own
+// included.
+func loadAllThreadRows(path string) []threadItem {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil
@@ -409,14 +424,29 @@ func cmdThreadNote(args []string, stdout, stderr io.Writer) int {
 	kind := fs.String("kind", "handoff-note", "item kind: "+strings.Join(threadKinds, "|"))
 	completes := fs.String("completes-when", "", `self-closing condition: "file_exists:<path>" or "plan_row_checked:<plan>#<ROW-ID>"`)
 	repo := fs.String("repo", ".", "repository this item belongs to")
+	// Exploration maps (XM-1, XM-14): with --map the note is an anchored map
+	// entry, its text the why line.
+	mapID := fs.String("map", "", "file an exploration-map entry on this map (created on first use) instead of a note; needs --anchor")
+	anchor := fs.String("anchor", "", "with --map: the entry's anchor, a symbol key or path#Lx-Ly (hashed now, re-resolved at every read)")
+	why := fs.String("why", "", "with --map: the one-line why (default: the note text)")
+	agent := fs.String("agent", "", "with --map: the appending sub-agent's id, recorded as the entry's provenance")
+	storePath := fs.String("store", "", "with --map: resolve a symbol anchor from this store (default: the daemon)")
+	url := fs.String("url", defaultFathomURL(), "with --map: fathom daemon URL for a symbol anchor")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
 	if lead == "" && fs.NArg() == 1 {
 		lead = fs.Arg(0)
 	}
+	if *mapID != "" {
+		return cmdThreadNoteMap(mapEntryFlags{
+			mapID: *mapID, anchor: *anchor, why: *why, lead: lead, agent: *agent,
+			thread: *thread, completes: *completes, repo: *repo, store: *storePath, url: *url,
+		}, stdout, stderr)
+	}
 	if strings.TrimSpace(lead) == "" {
 		fmt.Fprintln(stderr, "usage: fathom thread note \"text\" [--thread T] [--kind K] [--completes-when …]")
+		fmt.Fprintln(stderr, "       fathom thread note --map ID --anchor <symbol|path#Lx-Ly> --why \"…\" [--agent ID] [--completes-when …]")
 		return 1
 	}
 	if !sliceContains(threadKinds, *kind) {
