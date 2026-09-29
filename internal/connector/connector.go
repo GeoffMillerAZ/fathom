@@ -233,6 +233,9 @@ var extClassMap = map[string]classification{
 
 	// Dart (LB-Q-dart: a new tree-sitter dialect, no incumbent).
 	".dart": {core.KindDartClass, "dart"},
+
+	// Swift (LB-Q-swift: a new tree-sitter dialect, no incumbent).
+	".swift": {core.KindSwiftClass, "swift"},
 }
 
 // classify looks up base (full basename, e.g. "go.mod", "Dockerfile") first —

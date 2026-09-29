@@ -1,0 +1,216 @@
+{
+  "symbols": [
+    {
+      "name": "App",
+      "kind": "SwiftStruct",
+      "package": "edge",
+      "line": 2,
+      "end_line": 6,
+      "tier": "verified"
+    },
+    {
+      "name": "App.count",
+      "kind": "SwiftProperty",
+      "package": "edge",
+      "line": 3,
+      "end_line": 3,
+      "signature": "@State private var count = 0",
+      "tier": "verified"
+    },
+    {
+      "name": "App.name",
+      "kind": "SwiftProperty",
+      "package": "edge",
+      "line": 4,
+      "end_line": 4,
+      "signature": "@Published var name = \"\"",
+      "tier": "verified"
+    },
+    {
+      "name": "App.main",
+      "kind": "SwiftMethod",
+      "package": "edge",
+      "line": 5,
+      "end_line": 5,
+      "signature": "static func main()",
+      "calls": [
+        "run"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Loader",
+      "kind": "SwiftProtocol",
+      "package": "edge",
+      "line": 8,
+      "end_line": 10,
+      "tier": "verified"
+    },
+    {
+      "name": "Loader.load",
+      "kind": "SwiftMethod",
+      "package": "edge",
+      "line": 9,
+      "end_line": 9,
+      "signature": "func load() async throws",
+      "tier": "verified"
+    },
+    {
+      "name": "Loader",
+      "kind": "SwiftExtension",
+      "package": "edge",
+      "line": 12,
+      "end_line": 14,
+      "tier": "verified"
+    },
+    {
+      "name": "Loader.reload",
+      "kind": "SwiftMethod",
+      "package": "edge",
+      "line": 13,
+      "end_line": 13,
+      "signature": "func reload() async throws",
+      "calls": [
+        "load"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Base",
+      "kind": "SwiftClass",
+      "package": "edge",
+      "line": 16,
+      "end_line": 20,
+      "tier": "verified"
+    },
+    {
+      "name": "Base.init",
+      "kind": "SwiftInit",
+      "package": "edge",
+      "line": 17,
+      "end_line": 17,
+      "signature": "public required init()",
+      "tier": "verified"
+    },
+    {
+      "name": "Base.work",
+      "kind": "SwiftMethod",
+      "package": "edge",
+      "line": 18,
+      "end_line": 18,
+      "signature": "open func work()",
+      "tier": "verified"
+    },
+    {
+      "name": "Base.make",
+      "kind": "SwiftMethod",
+      "package": "edge",
+      "line": 19,
+      "end_line": 19,
+      "signature": "class func make() -> Base",
+      "calls": [
+        "Base"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "generic",
+      "kind": "SwiftFunc",
+      "package": "edge",
+      "line": 22,
+      "end_line": 22,
+      "signature": "func generic<T, U>(_ a: T, _ b: U) -> (T, U) where T: Equatable",
+      "tier": "verified"
+    },
+    {
+      "name": "名前",
+      "kind": "SwiftVariable",
+      "package": "edge",
+      "line": 23,
+      "end_line": 23,
+      "signature": "let 名前 = \"n\"",
+      "tier": "verified"
+    },
+    {
+      "name": "挨拶",
+      "kind": "SwiftFunc",
+      "package": "edge",
+      "line": 24,
+      "end_line": 24,
+      "signature": "func 挨拶()",
+      "tier": "verified"
+    },
+    {
+      "name": "UnsafeMutablePointer",
+      "kind": "SwiftExtension",
+      "package": "edge",
+      "line": 26,
+      "end_line": 28,
+      "tier": "verified"
+    },
+    {
+      "name": "UnsafeMutablePointer.path",
+      "kind": "SwiftProperty",
+      "package": "edge",
+      "line": 27,
+      "end_line": 27,
+      "signature": "var path: Int",
+      "calls": [
+        "count"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "[Header]",
+      "kind": "SwiftExtension",
+      "package": "edge",
+      "line": 29,
+      "end_line": 31,
+      "tier": "verified"
+    },
+    {
+      "name": "[Header].headers",
+      "kind": "SwiftMethod",
+      "package": "edge",
+      "line": 30,
+      "end_line": 30,
+      "signature": "func headers()",
+      "tier": "verified"
+    },
+    {
+      "name": "Bar",
+      "kind": "SwiftExtension",
+      "package": "edge",
+      "line": 32,
+      "end_line": 34,
+      "tier": "verified"
+    },
+    {
+      "name": "Bar.make",
+      "kind": "SwiftMethod",
+      "package": "edge",
+      "line": 33,
+      "end_line": 33,
+      "signature": "static func make()",
+      "tier": "verified"
+    },
+    {
+      "name": "==",
+      "kind": "SwiftFunc",
+      "package": "edge",
+      "line": 36,
+      "end_line": 36,
+      "signature": "func == (lhs: Bar, rhs: Bar) -> Bool",
+      "tier": "verified"
+    },
+    {
+      "name": "!",
+      "kind": "SwiftFunc",
+      "package": "edge",
+      "line": 37,
+      "end_line": 37,
+      "signature": "prefix func ! (value: Bar) -> Bar",
+      "tier": "verified"
+    }
+  ]
+}

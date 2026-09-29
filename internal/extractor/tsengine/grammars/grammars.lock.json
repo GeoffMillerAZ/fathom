@@ -311,6 +311,21 @@
       "gz_bytes": 380125
     },
     {
+      "blob": "swift",
+      "repo": "alex-pinkus/tree-sitter-swift",
+      "tag": "35245fbfee2fccf16273c6f4299438fb76875970",
+      "commit": "35245fbfee2fccf16273c6f4299438fb76875970",
+      "tarball_sha256": "aa4f76cd4c8287ede397993ee369c51c75d419c51fb785d84fbee9d4ddfc3aa8",
+      "licence": "MIT",
+      "entry_points": ["tree_sitter_swift"],
+      "scanner": true,
+      "generate": true,
+      "abi": 15,
+      "blob_sha256": "4e464eadd1f93f6a619ea2d5e1c26573a777cc7a37e7aa146495a82d3c3b04b4",
+      "blob_bytes": 2435516,
+      "gz_bytes": 475154
+    },
+    {
       "blob": "typescript",
       "repo": "tree-sitter/tree-sitter-typescript",
       "tag": "v0.23.2",

@@ -160,6 +160,16 @@ owner's decisions, binding on the harness and every reading after them:
   is written followed by `(` or by type arguments and `(` (a tear-off, an operator and an initializer's
   `super(...)` are counted as `scip_calls_unwritten` and disclosed). The tags engine gained an `@end` capture
   (§3.3) because tree-sitter-dart puts a callable's body in a sibling of its signature.
+- **D2, Swift (LB-Q-swift, 2026-09-29).** universal-ctags has no Swift parser and SourceKit-LSP's index store is not
+  SCIP, so Swift is measured against the compiler's own parser (`swiftc -frontend -parse-as-library -dump-parse`, Apple
+  Swift 6.4, tier B like JavaParser, Roslyn and the Kotlin PSI dump; `calibration/oracles/swift-parse`) for definitions
+  and call pairs. `-dump-parse` prints nothing of an `#if` block, so the oracle blanks the directive lines and parses every
+  branch, as the grammar does; it rebuilds the tree from the dump's indentation because the compiler leaves a
+  parenthesis open after a function type; and a `case` pattern the parser writes as a call is not a call. The grammar
+  pin moved from the 0.7.3 tag to alex-pinkus commit 35245fb (built with `generate: true`): 0.7.3 left 12.2% of swift-nio's
+  files with a parse error against 6.4% on the commit, and the commit fixes the 32-bit `OP_SYMBOL_SUPPRESSOR` shift the
+  tag has on wasm32. Both subjects together still read 5.6% (36 of 642 files), Swift 6 syntax the grammar lacks, which
+  is over §14.2's refusal line and is recorded, not refused: the dialect finds 21,939 of 21,997 definitions.
 
 - **D3 — oracle-deficiency disclosure.** A reading may carry an adjudicated set of
   dialect-only definitions the L1 oracle is verified to miss (`lang-oracle -adjudicate

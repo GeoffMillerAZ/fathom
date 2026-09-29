@@ -26,7 +26,6 @@ import (
 
 func TestUnsupportedLanguageForPath_KnownLanguages(t *testing.T) {
 	cases := map[string]string{
-		"Foo.swift":    "swift",
 		"lib.ex":       "elixir",
 		"lib_test.exs": "elixir",
 		"core.clj":     "clojure",

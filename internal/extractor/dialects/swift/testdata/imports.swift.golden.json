@@ -1,0 +1,72 @@
+{
+  "symbols": [
+    {
+      "name": "use",
+      "kind": "SwiftFunc",
+      "package": "imports",
+      "line": 13,
+      "end_line": 13,
+      "signature": "func use()",
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "Foundation",
+      "module": "Foundation",
+      "kind": "whole",
+      "line": 1
+    },
+    {
+      "local": "Alamofire",
+      "module": "Alamofire",
+      "kind": "whole",
+      "line": 2
+    },
+    {
+      "local": "Core",
+      "module": "Core",
+      "kind": "whole",
+      "line": 3
+    },
+    {
+      "local": "Common",
+      "module": "Common",
+      "kind": "whole",
+      "line": 4
+    },
+    {
+      "local": "User",
+      "exported": "User",
+      "module": "Models.User",
+      "kind": "named",
+      "line": 5
+    },
+    {
+      "local": "Session",
+      "exported": "Session",
+      "module": "Models.Session",
+      "kind": "named",
+      "line": 6
+    },
+    {
+      "local": "sqrt",
+      "exported": "sqrt",
+      "module": "Darwin.sqrt",
+      "kind": "named",
+      "line": 7
+    },
+    {
+      "local": "Core.Sub",
+      "module": "Core.Sub",
+      "kind": "whole",
+      "line": 8
+    },
+    {
+      "local": "UIKit",
+      "module": "UIKit",
+      "kind": "whole",
+      "line": 10
+    }
+  ]
+}

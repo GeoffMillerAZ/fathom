@@ -1,0 +1,317 @@
+{
+  "symbols": [
+    {
+      "name": "defaultTimeout",
+      "kind": "SwiftVariable",
+      "package": "members",
+      "line": 3,
+      "end_line": 3,
+      "signature": "let defaultTimeout = 30",
+      "tier": "verified"
+    },
+    {
+      "name": "maxValue",
+      "kind": "SwiftVariable",
+      "package": "members",
+      "line": 4,
+      "end_line": 4,
+      "signature": "var (minValue, maxValue) = (0, 100)",
+      "tier": "verified"
+    },
+    {
+      "name": "minValue",
+      "kind": "SwiftVariable",
+      "package": "members",
+      "line": 4,
+      "end_line": 4,
+      "signature": "var (minValue, maxValue) = (0, 100)",
+      "tier": "verified"
+    },
+    {
+      "name": "topLevel",
+      "kind": "SwiftFunc",
+      "package": "members",
+      "line": 6,
+      "end_line": 6,
+      "signature": "public func topLevel(_ x: Int) -> Int",
+      "tier": "verified"
+    },
+    {
+      "name": "stringify",
+      "kind": "SwiftMacro",
+      "package": "members",
+      "line": 8,
+      "end_line": 8,
+      "tier": "verified"
+    },
+    {
+      "name": "configure",
+      "kind": "SwiftFunc",
+      "package": "members",
+      "line": 11,
+      "end_line": 18,
+      "signature": "@discardableResult public func configure<T: Hashable>(_ items: [T], using key: String = \"id\", completion: @escaping (T) -> Void) async throws -> [T] where T: Codable",
+      "tier": "verified"
+    },
+    {
+      "name": "local",
+      "kind": "SwiftFunc",
+      "package": "members",
+      "line": 15,
+      "end_line": 15,
+      "signature": "func local()",
+      "tier": "verified"
+    },
+    {
+      "name": "Vector",
+      "kind": "SwiftStruct",
+      "package": "members",
+      "line": 20,
+      "end_line": 51,
+      "tier": "verified"
+    },
+    {
+      "name": "Vector.x",
+      "kind": "SwiftProperty",
+      "package": "members",
+      "line": 21,
+      "end_line": 21,
+      "signature": "var x: Double, y: Double",
+      "tier": "verified"
+    },
+    {
+      "name": "y",
+      "kind": "SwiftProperty",
+      "package": "members",
+      "line": 21,
+      "end_line": 21,
+      "signature": "var x: Double, y: Double",
+      "tier": "verified"
+    },
+    {
+      "name": "Vector.count",
+      "kind": "SwiftProperty",
+      "package": "members",
+      "line": 22,
+      "end_line": 22,
+      "signature": "private(set) var count = 0",
+      "tier": "verified"
+    },
+    {
+      "name": "Vector.p",
+      "kind": "SwiftProperty",
+      "package": "members",
+      "line": 23,
+      "end_line": 23,
+      "signature": "let (p, q) = (1, 2)",
+      "tier": "verified"
+    },
+    {
+      "name": "q",
+      "kind": "SwiftProperty",
+      "package": "members",
+      "line": 23,
+      "end_line": 23,
+      "signature": "let (p, q) = (1, 2)",
+      "tier": "verified"
+    },
+    {
+      "name": "Vector.zero",
+      "kind": "SwiftProperty",
+      "package": "members",
+      "line": 24,
+      "end_line": 24,
+      "signature": "static let zero = Vector(x: 0, y: 0)",
+      "calls": [
+        "Vector"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Vector.cache",
+      "kind": "SwiftProperty",
+      "package": "members",
+      "line": 25,
+      "end_line": 25,
+      "signature": "lazy var cache: [String: Int] = [:]",
+      "tier": "verified"
+    },
+    {
+      "name": "Vector.length",
+      "kind": "SwiftProperty",
+      "package": "members",
+      "line": 27,
+      "end_line": 30,
+      "signature": "var length: Double",
+      "calls": [
+        "sqrt"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Vector.observed",
+      "kind": "SwiftProperty",
+      "package": "members",
+      "line": 32,
+      "end_line": 34,
+      "signature": "var observed: Int = 0",
+      "calls": [
+        "notify"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Vector.init",
+      "kind": "SwiftInit",
+      "package": "members",
+      "line": 36,
+      "end_line": 39,
+      "signature": "init(x: Double, y: Double)",
+      "tier": "verified"
+    },
+    {
+      "name": "Vector.init",
+      "kind": "SwiftInit",
+      "package": "members",
+      "line": 41,
+      "end_line": 41,
+      "signature": "init?(raw: String)",
+      "tier": "verified"
+    },
+    {
+      "name": "Vector.subscript",
+      "kind": "SwiftSubscript",
+      "package": "members",
+      "line": 43,
+      "end_line": 45,
+      "signature": "subscript(i: Int) -> Double",
+      "tier": "verified"
+    },
+    {
+      "name": "Vector.==",
+      "kind": "SwiftMethod",
+      "package": "members",
+      "line": 47,
+      "end_line": 47,
+      "signature": "static func == (lhs: Vector, rhs: Vector) -> Bool",
+      "tier": "verified"
+    },
+    {
+      "name": "Vector.-",
+      "kind": "SwiftMethod",
+      "package": "members",
+      "line": 48,
+      "end_line": 48,
+      "signature": "static prefix func - (v: Vector) -> Vector",
+      "tier": "verified"
+    },
+    {
+      "name": "Vector.default",
+      "kind": "SwiftMethod",
+      "package": "members",
+      "line": 49,
+      "end_line": 49,
+      "signature": "func `default`()",
+      "tier": "verified"
+    },
+    {
+      "name": "Vector.scale",
+      "kind": "SwiftMethod",
+      "package": "members",
+      "line": 50,
+      "end_line": 50,
+      "signature": "mutating func scale(by factor: Double) -> Vector",
+      "tier": "verified"
+    },
+    {
+      "name": "Node",
+      "kind": "SwiftClass",
+      "package": "members",
+      "line": 53,
+      "end_line": 56,
+      "tier": "verified"
+    },
+    {
+      "name": "Node.deinit",
+      "kind": "SwiftDeinit",
+      "package": "members",
+      "line": 54,
+      "end_line": 54,
+      "signature": "deinit",
+      "calls": [
+        "release"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Node.hook",
+      "kind": "SwiftMethod",
+      "package": "members",
+      "line": 55,
+      "end_line": 55,
+      "signature": "@objc func hook()",
+      "tier": "verified"
+    },
+    {
+      "name": "Level",
+      "kind": "SwiftEnum",
+      "package": "members",
+      "line": 58,
+      "end_line": 63,
+      "tier": "verified"
+    },
+    {
+      "name": "Level.high",
+      "kind": "SwiftEnumCase",
+      "package": "members",
+      "line": 59,
+      "end_line": 59,
+      "signature": "high",
+      "tier": "verified"
+    },
+    {
+      "name": "Level.low",
+      "kind": "SwiftEnumCase",
+      "package": "members",
+      "line": 59,
+      "end_line": 59,
+      "signature": "low",
+      "tier": "verified"
+    },
+    {
+      "name": "Level.label",
+      "kind": "SwiftProperty",
+      "package": "members",
+      "line": 60,
+      "end_line": 60,
+      "signature": "var label: String",
+      "tier": "verified"
+    },
+    {
+      "name": "Level.next",
+      "kind": "SwiftMethod",
+      "package": "members",
+      "line": 61,
+      "end_line": 61,
+      "signature": "func next() -> Level",
+      "tier": "verified"
+    },
+    {
+      "name": "Level.all",
+      "kind": "SwiftProperty",
+      "package": "members",
+      "line": 62,
+      "end_line": 62,
+      "signature": "static var all: [Level]",
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "Foundation",
+      "module": "Foundation",
+      "kind": "whole",
+      "line": 1
+    }
+  ]
+}

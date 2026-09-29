@@ -42,7 +42,7 @@ language-native SCIP indexer), **file** (per-file resolver, tier pre-scan, label
 | CSS | tree-sitter (wasm) | yes | normalize.css, pico | **file** — `@import` resolves via the relative-path strategy (LB-F11); no SCIP producer exists for CSS, so this is the ceiling until one does | BareName's separator set mismatches CSS's own `.`/`#`/`:` selector-marker punctuation (internal/langbench/score.go, Opus); tree-sitter-css > v0.25.0 for `:not(A, B)` |
 | C# | heuristic (`csharpextract.go`) | no | (corpus.yaml) | **scip** via scip-dotnet | grammar |
 | PHP | heuristic (`phpextract.go`) | no | laravel, guzzle, monolog | **syntax** (no mature exporter) | grammar; file resolver |
-| Swift | **none** — disclosed as unsupported, reported per service by `list_services` | no | (corpus.yaml) | **none** | extractor (fleet demand: app-kit) |
+| Swift | tree-sitter (wasm) | yes | Alamofire, swift-nio | **file** — `import M` resolves to the SwiftPM target named M (`Package.swift`'s targets, else `Sources/M`) through the swift-module strategy (LB-Q-swift), a whole-module import bringing every top-level name of the target into scope; no SCIP producer exists for Swift (SourceKit-LSP writes an index store, not SCIP), so this is the ceiling until one does | `import_resolution` in the harness (a spot count: 40 of 40 in-repo target imports resolve on Alamofire, 734 of 874 on swift-nio, the rest naming C targets); a call between two files of one module needs no import and does not resolve; a scip-grade L2 oracle (an index-store reader) |
 | Lua | tree-sitter (wasm) | yes | Kong, telescope.nvim | **syntax** — call names by syntax only (a name, a field or a method callee); no SCIP producer exists for Lua | the `require` graph (L3, a file-symbol strategy); a function in a computed slot has no name |
 | Bash | heuristic (`bashextract.go`) | no | (corpus.yaml) | **syntax** | — |
 | PowerShell | tree-sitter (wasm) | yes | PSScriptAnalyzer, Pester | **syntax** — call names by syntax only (a command name or a member invocation); no SCIP producer exists for PowerShell | class properties and script/global variables (a `$`-sigilled token the tags engine cannot strip to the bare name) |
@@ -53,7 +53,7 @@ language-native SCIP indexer), **file** (per-file resolver, tier pre-scan, label
 | Kubernetes YAML, Helm, Kustomize, docker-compose | pure Go | n/a | (corpus.yaml) | **syntax** (`service_ref` cross-repo edges) | — |
 | Dockerfile, CMake, GitHub Actions, proto, GraphQL, OpenAPI, JSON, TOML, templ, Markdown, go.mod, package.json, pyproject.toml, pom.xml, Cargo.toml | pure Go | n/a | (corpus.yaml where listed) | **syntax** | — |
 
-Disclosed as unsupported (named per service in `list_services`, never silently skipped; `internal/connector/unsupported_language.go`): Clojure, Crystal, Elixir, Elm, Erlang, F#, Groovy, Haskell, Julia, Nim, OCaml, Swift, Zig.
+Disclosed as unsupported (named per service in `list_services`, never silently skipped; `internal/connector/unsupported_language.go`): Clojure, Crystal, Elixir, Elm, Erlang, F#, Groovy, Haskell, Julia, Nim, OCaml, Zig.
 
 Bench coverage today: every scenario corpus has a Go subject; the Long Code Arena corpus
 covers Python, Java and Kotlin bug localization. SU-23 (done) adds TypeScript

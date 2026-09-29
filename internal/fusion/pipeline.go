@@ -638,7 +638,16 @@ func parseGitLog(serviceID, raw string) []store.Commit {
 // repository) instead of the generic TOMLExtractor's bare table/key dump
 // (KindTOMLTable/KindTOMLKey); every already-indexed Cargo.toml's stored
 // observations came from that generic path, so the salt bump re-reads them.
-const ExtractorEpoch = "26"
+// Epoch 27 (LB-Q-swift): .swift files now extract via
+// internal/extractor.NewTSExtractor("swift") — tree-sitter via wazero/WASM, a
+// fleet gap with no incumbent: classes, structs, enums and their cases, actors,
+// protocols, extensions (named by the extended type), type aliases, functions,
+// methods, initialisers, deinitialisers, subscripts, properties and file-level
+// variables, each callable with a Signature and EndLine and its calls named by
+// callee, and `import` resolved through Package.swift's targets; every such file
+// previously fell through to "no extractor registered" (the epoch 18 class), so
+// the salt bump re-reads them.
+const ExtractorEpoch = "27"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares

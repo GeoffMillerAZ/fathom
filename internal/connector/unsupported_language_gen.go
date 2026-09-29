@@ -80,7 +80,6 @@ var unsupportedLangExtMap = map[string]string{
 	".sv":      "verilog",
 	".svelte":  "svelte",
 	".svh":     "verilog",
-	".swift":   "swift",
 	".tcl":     "tcl",
 	".trigger": "apex",
 	".typ":     "typst",
