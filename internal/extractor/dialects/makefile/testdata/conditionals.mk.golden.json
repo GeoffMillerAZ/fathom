@@ -1,0 +1,98 @@
+{
+  "symbols": [
+    {
+      "name": "EXE",
+      "kind": "MakeVariable",
+      "package": "conditionals",
+      "line": 3,
+      "end_line": 3,
+      "tier": "verified"
+    },
+    {
+      "name": "EXE",
+      "kind": "MakeVariable",
+      "package": "conditionals",
+      "line": 5,
+      "end_line": 5,
+      "tier": "verified"
+    },
+    {
+      "name": "Q",
+      "kind": "MakeVariable",
+      "package": "conditionals",
+      "line": 9,
+      "end_line": 9,
+      "tier": "verified"
+    },
+    {
+      "name": "Q",
+      "kind": "MakeVariable",
+      "package": "conditionals",
+      "line": 11,
+      "end_line": 11,
+      "tier": "verified"
+    },
+    {
+      "name": "build",
+      "kind": "MakeTarget",
+      "package": "conditionals",
+      "line": 14,
+      "end_line": 21,
+      "signature": "build: deps",
+      "calls": [
+        "deps"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "ci-report",
+      "kind": "MakeTarget",
+      "package": "conditionals",
+      "line": 18,
+      "end_line": 19,
+      "signature": "ci-report: build",
+      "calls": [
+        "build"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "CFLAGS",
+      "kind": "MakeVariable",
+      "package": "conditionals",
+      "line": 22,
+      "end_line": 22,
+      "tier": "verified"
+    },
+    {
+      "name": "test",
+      "kind": "MakeTarget",
+      "package": "conditionals",
+      "line": 22,
+      "end_line": 22,
+      "signature": "test: CFLAGS = -g",
+      "tier": "verified"
+    },
+    {
+      "name": "test",
+      "kind": "MakeTarget",
+      "package": "conditionals",
+      "line": 23,
+      "end_line": 25,
+      "signature": "test: build",
+      "calls": [
+        "build"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "deps",
+      "kind": "MakeTarget",
+      "package": "conditionals",
+      "line": 26,
+      "end_line": 27,
+      "signature": "deps:",
+      "tier": "verified"
+    }
+  ]
+}

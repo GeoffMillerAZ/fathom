@@ -20,6 +20,7 @@ lines, bare names).
 | php-parser/ | B | PHP |
 | ts-tags/ | C | Bash (calls) |
 | sqlglot/ | C | SQL (foreign-key calls) |
+| make/ | A (references), B (definitions) | Makefile |
 
 ## Tool-format oracles (D4, LB-F30)
 

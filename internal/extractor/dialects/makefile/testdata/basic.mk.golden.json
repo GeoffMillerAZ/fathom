@@ -1,0 +1,180 @@
+{
+  "symbols": [
+    {
+      "name": "CC",
+      "kind": "MakeVariable",
+      "package": "basic",
+      "line": 2,
+      "end_line": 2,
+      "tier": "verified"
+    },
+    {
+      "name": "CFLAGS",
+      "kind": "MakeVariable",
+      "package": "basic",
+      "line": 3,
+      "end_line": 3,
+      "tier": "verified"
+    },
+    {
+      "name": "DEBUG",
+      "kind": "MakeVariable",
+      "package": "basic",
+      "line": 5,
+      "end_line": 5,
+      "tier": "verified"
+    },
+    {
+      "name": "STAMP",
+      "kind": "MakeVariable",
+      "package": "basic",
+      "line": 6,
+      "end_line": 6,
+      "tier": "verified"
+    },
+    {
+      "name": "VERSION",
+      "kind": "MakeVariable",
+      "package": "basic",
+      "line": 7,
+      "end_line": 7,
+      "tier": "verified"
+    },
+    {
+      "name": "V",
+      "kind": "MakeVariable",
+      "package": "basic",
+      "line": 8,
+      "end_line": 8,
+      "tier": "verified"
+    },
+    {
+      "name": "PATH_X",
+      "kind": "MakeVariable",
+      "package": "basic",
+      "line": 9,
+      "end_line": 9,
+      "tier": "verified"
+    },
+    {
+      "name": ".DEFAULT_GOAL",
+      "kind": "MakeVariable",
+      "package": "basic",
+      "line": 11,
+      "end_line": 12,
+      "tier": "verified"
+    },
+    {
+      "name": "all",
+      "kind": "MakeTarget",
+      "package": "basic",
+      "line": 15,
+      "end_line": 16,
+      "signature": "all: prog docs",
+      "calls": [
+        "docs",
+        "prog"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "prog",
+      "kind": "MakeTarget",
+      "package": "basic",
+      "line": 17,
+      "end_line": 19,
+      "signature": "prog: main.o util.o | outdir",
+      "calls": [
+        "main.o",
+        "outdir",
+        "util.o"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "main.o",
+      "kind": "MakeTarget",
+      "package": "basic",
+      "line": 20,
+      "end_line": 22,
+      "signature": "main.o: main.c util.h",
+      "calls": [
+        "main.c",
+        "util.h"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "util.o",
+      "kind": "MakeTarget",
+      "package": "basic",
+      "line": 23,
+      "end_line": 25,
+      "signature": "util.o: util.c util.h",
+      "calls": [
+        "util.c",
+        "util.h"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "docs",
+      "kind": "MakeTarget",
+      "package": "basic",
+      "line": 26,
+      "end_line": 27,
+      "signature": "docs: readme.txt",
+      "calls": [
+        "readme.txt"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "outdir",
+      "kind": "MakeTarget",
+      "package": "basic",
+      "line": 28,
+      "end_line": 30,
+      "signature": "outdir:",
+      "tier": "verified"
+    },
+    {
+      "name": "clean",
+      "kind": "MakeTarget",
+      "package": "basic",
+      "line": 31,
+      "end_line": 33,
+      "signature": "clean:",
+      "tier": "verified"
+    },
+    {
+      "name": "a",
+      "kind": "MakeTarget",
+      "package": "basic",
+      "line": 34,
+      "end_line": 36,
+      "signature": "a b: shared",
+      "calls": [
+        "shared"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "b",
+      "kind": "MakeTarget",
+      "package": "basic",
+      "line": 34,
+      "end_line": 36,
+      "signature": "a b: shared",
+      "tier": "verified"
+    },
+    {
+      "name": "greet",
+      "kind": "MakeDefine",
+      "package": "basic",
+      "line": 37,
+      "end_line": 39,
+      "tier": "verified"
+    }
+  ]
+}

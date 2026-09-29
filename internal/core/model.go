@@ -232,6 +232,14 @@ const (
 	// precedent as CSS's keyframes and HTML's form/field.
 	KindPowerShellFunction SourceKind = "PowerShellFunction"
 
+	// Makefile (LB-Q-makefile, language-breadth: new — a fleet gap, no
+	// incumbent). KindMakeTarget is the manifest's primary connector-
+	// classification kind (a rule's target); the dialect's other kinds
+	// (pattern rule, variable, define) have no connector classification use
+	// and so get no constant of their own, same precedent as PowerShell's
+	// class and enum and CSS's keyframes.
+	KindMakeTarget SourceKind = "MakeTarget"
+
 	// Lua
 	KindLuaFunction SourceKind = "LuaFunction"
 

@@ -587,7 +587,13 @@ func parseGitLog(serviceID, raw string) []store.Commit {
 // registered" and was fingerprinted (never re-sniffed) by that dead-end path,
 // the same class epochs 7, 10 and 11 fixed for Kotlin, HTML and CSS; the salt
 // bump forces those files through the new extractor on the next ingest.
-const ExtractorEpoch = "18"
+// Epoch 19 (LB-Q-makefile, docs/design/language-breadth.md §13): Makefile,
+// makefile, GNUmakefile, *.mk and *.make now extract via
+// internal/extractor.NewTSExtractor("makefile") — tree-sitter via wazero/WASM,
+// a fleet gap with no incumbent — where every such file previously fell
+// through to "no extractor registered" and was fingerprinted by that
+// dead-end path (the epoch 18 class); the salt bump re-reads them.
+const ExtractorEpoch = "19"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares

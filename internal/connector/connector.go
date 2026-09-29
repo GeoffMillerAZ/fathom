@@ -197,6 +197,16 @@ var extClassMap = map[string]classification{
 	".psm1": {core.KindPowerShellFunction, "powershell"},
 	".psd1": {core.KindPowerShellFunction, "powershell"},
 
+	// Makefile (LB-Q-makefile, language-breadth: new — a fleet gap, no
+	// incumbent). The three basenames GNU make reads by default and the two
+	// extensions for included fragments; Makefile.common and <name>.Makefile
+	// are not claimed (the queue entry names Makefile, *.mk and GNUmakefile).
+	"Makefile":    {core.KindMakeTarget, "makefile"},
+	"makefile":    {core.KindMakeTarget, "makefile"},
+	"GNUmakefile": {core.KindMakeTarget, "makefile"},
+	".mk":         {core.KindMakeTarget, "makefile"},
+	".make":       {core.KindMakeTarget, "makefile"},
+
 	// Lua
 	".lua": {core.KindLuaFunction, "lua"},
 }

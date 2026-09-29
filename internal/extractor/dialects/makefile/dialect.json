@@ -1,0 +1,35 @@
+{
+  "id": "makefile",
+  "display": "Makefile / GNU make",
+  "kind": "tooling",
+  "engine": "tags",
+  "lang_tag": "makefile",
+  "match": {
+    "extensions": [".mk", ".make"],
+    "basenames": ["Makefile", "makefile", "GNUmakefile"],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "grammar": { "blob": "makefile", "entry_point": "tree_sitter_make" },
+  "variants": [],
+  "queries": { "tags": "tags.scm" },
+  "kinds": {
+    "target":   { "source_kind": "MakeTarget",      "canonical": "target",        "callable": true },
+    "pattern":  { "source_kind": "MakePatternRule", "canonical": "target",        "callable": true },
+    "variable": { "source_kind": "MakeVariable",    "canonical": "variable_decl" },
+    "define":   { "source_kind": "MakeDefine",      "canonical": "variable_decl" }
+  },
+  "required_kinds": ["target", "pattern", "variable", "define"],
+  "oracle_kinds": {
+    "ctags": { "target": "target", "macro": "variable_decl" },
+    "tool":  { "target": "target", "variable": "variable_decl" }
+  },
+  "ctags": { "languages": ["Make"] },
+  "name_match": "identity",
+  "qualify": { "chain_containers": false, "container_sep": ".", "method_sep": "." },
+  "package": { "strategy": "dir" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L2",
+  "queue_id": "makefile"
+}

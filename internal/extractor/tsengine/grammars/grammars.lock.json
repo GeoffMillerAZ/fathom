@@ -175,6 +175,21 @@
       "gz_bytes": 510036
     },
     {
+      "blob": "makefile",
+      "repo": "tree-sitter-grammars/tree-sitter-make",
+      "tag": "70613f3d812cbabbd7f38d104d60a409c4008b43",
+      "commit": "70613f3d812cbabbd7f38d104d60a409c4008b43",
+      "tarball_sha256": "bd60f6d2950086ba5d1d81e0890fc3e4e71e4d276b58b8cc1e1e95c9609ce331",
+      "licence": "MIT",
+      "entry_points": ["tree_sitter_make"],
+      "scanner": false,
+      "generate": false,
+      "abi": 15,
+      "blob_sha256": "7d6266397d5544d992ad80a03f4333c0680162ed4a37877f84fca8aa11c6dbce",
+      "blob_bytes": 265371,
+      "gz_bytes": 86559
+    },
+    {
       "blob": "php",
       "repo": "tree-sitter/tree-sitter-php",
       "tag": "v0.24.2",

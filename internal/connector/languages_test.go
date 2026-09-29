@@ -65,6 +65,7 @@ var langRowHint = map[string]string{
 	"php":              "| PHP ",
 	"sh":               "Bash",
 	"powershell":       "PowerShell",
+	"makefile":         "| Makefile ",
 	"lua":              "| Lua ",
 	"sql":              "| SQL ",
 	"terraform":        "Terraform",

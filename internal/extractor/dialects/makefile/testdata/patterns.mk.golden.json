@@ -1,0 +1,126 @@
+{
+  "symbols": [
+    {
+      "name": "BUILD",
+      "kind": "MakeVariable",
+      "package": "patterns",
+      "line": 2,
+      "end_line": 2,
+      "tier": "verified"
+    },
+    {
+      "name": "OBJS",
+      "kind": "MakeVariable",
+      "package": "patterns",
+      "line": 3,
+      "end_line": 3,
+      "tier": "verified"
+    },
+    {
+      "name": "HDRS",
+      "kind": "MakeVariable",
+      "package": "patterns",
+      "line": 4,
+      "end_line": 4,
+      "tier": "verified"
+    },
+    {
+      "name": "NAME",
+      "kind": "MakeVariable",
+      "package": "patterns",
+      "line": 5,
+      "end_line": 6,
+      "tier": "verified"
+    },
+    {
+      "name": "$(BUILD)/main.o",
+      "kind": "MakeTarget",
+      "package": "patterns",
+      "line": 7,
+      "end_line": 9,
+      "signature": "$(BUILD)/main.o: src/main.c $(HDRS) lib/$(NAME).h",
+      "calls": [
+        "src/main.c"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "%.o",
+      "kind": "MakePatternRule",
+      "package": "patterns",
+      "line": 10,
+      "end_line": 12,
+      "signature": "%.o: %.c",
+      "calls": [
+        "%.c"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": ".c.o",
+      "kind": "MakeTarget",
+      "package": "patterns",
+      "line": 13,
+      "end_line": 15,
+      "signature": ".c.o:",
+      "tier": "verified"
+    },
+    {
+      "name": "$(OBJS)",
+      "kind": "MakeTarget",
+      "package": "patterns",
+      "line": 16,
+      "end_line": 18,
+      "signature": "$(OBJS): %.o: %.c",
+      "tier": "verified"
+    },
+    {
+      "name": "lib.a",
+      "kind": "MakeTarget",
+      "package": "patterns",
+      "line": 19,
+      "end_line": 21,
+      "signature": "lib.a:: a.o",
+      "calls": [
+        "a.o"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "lib.a",
+      "kind": "MakeTarget",
+      "package": "patterns",
+      "line": 22,
+      "end_line": 24,
+      "signature": "lib.a:: b.o",
+      "calls": [
+        "b.o"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "gen-%.h",
+      "kind": "MakePatternRule",
+      "package": "patterns",
+      "line": 25,
+      "end_line": 27,
+      "signature": "gen-%.h: gen.sh",
+      "calls": [
+        "gen.sh"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "all",
+      "kind": "MakeTarget",
+      "package": "patterns",
+      "line": 28,
+      "end_line": 28,
+      "signature": "all: $(addprefix $(BUILD)/,main.o) lib.a",
+      "calls": [
+        "lib.a"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

@@ -48,6 +48,7 @@ var typedEdgeProducers = map[string]string{
 	"php":        "syntax",
 	"sh":         "syntax",
 	"powershell": "syntax",
+	"makefile":   "syntax",
 	"lua":        "syntax",
 	"sql":        "syntax",
 	"terraform":  "syntax",
