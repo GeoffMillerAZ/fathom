@@ -16,7 +16,7 @@ import (
 )
 
 // initHarnessNone is the `--harness=none` pseudo-id: stanza + .fathom/
-// only, with the pull-tier hook sentences, into both instruction files.
+// only, with the pull-tier hook sentences, into AGENTS.md (ADR-059).
 const initHarnessNone = "none"
 
 // initTargets is what init writes for one harness.
@@ -27,8 +27,13 @@ type initTargets struct {
 	// StanzaID is the registry id whose hook sentences the stanza carries
 	// (the generic pull tier for `none`).
 	StanzaID string
-	// StanzaFiles are the instruction files the stanza region goes into.
+	// StanzaFiles are the instruction files the stanza region goes into:
+	// AGENTS.md, for every harness (ADR-059). A root CLAUDE file gets the
+	// import region besides (instructionRegions), whatever the harness.
 	StanzaFiles []string
+	// Settings are the repo-scoped settings keys that make the harness read
+	// AGENTS.md (Gemini CLI's context.fileName), written as wiring keys.
+	Settings []harness.InstructionSetting
 	// Hooks says whether the hook table is planned (Claude Code only in
 	// this build: the one descriptor whose codec is wired).
 	Hooks bool
@@ -52,7 +57,7 @@ func initTargetsFor(id string, now time.Time) (initTargets, error) {
 			ID:          initHarnessNone,
 			Display:     "no harness",
 			StanzaID:    harness.Agents,
-			StanzaFiles: []string{"CLAUDE.md", "AGENTS.md"},
+			StanzaFiles: []string{harness.AgentsMD},
 		}, nil
 	}
 	d, ok := harness.Lookup(id)
@@ -77,6 +82,14 @@ func initTargetsForDescriptor(d harness.Descriptor, now time.Time) (initTargets,
 		StanzaFiles: d.StanzaFiles(),
 		Hooks:       d.HooksWired(),
 		MCPAddLine:  d.MCP.AddCommand,
+	}
+	// AG-6: a harness that reads AGENTS.md only through a settings key gets
+	// that key written (a wiring key, receipted) instead of a stanza in its
+	// own instruction file.
+	for _, f := range d.Instructions {
+		if f.Mode == "settings-key" && f.Setting != nil {
+			t.Settings = append(t.Settings, *f.Setting)
+		}
 	}
 	switch {
 	case d.HooksWired() && !hasInitHookFile(d):
@@ -122,7 +135,10 @@ func printHarnessManualSteps(stdout io.Writer, t initTargets, service, url strin
 	}
 	if d, ok := harness.Lookup(t.ID); ok {
 		for _, f := range d.Instructions {
-			if f.Mode == "settings-key" {
+			switch {
+			case f.Mode == "settings-key" && f.Setting != nil:
+				fmt.Fprintf(stdout, "ok %s reads %s through %s %s (written above)\n", d.Display, f.Path, f.Setting.File, strings.Join(f.Setting.Key, "."))
+			case f.Mode == "settings-key":
 				fmt.Fprintf(stdout, "MANUAL: %s reads %s only via a settings key — %s\n", d.Display, f.Path, f.Note)
 			}
 		}

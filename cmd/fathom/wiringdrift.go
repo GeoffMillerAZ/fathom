@@ -106,8 +106,7 @@ func wiringDriftFor(root, service string, harnessIDs []string, home string) wiri
 	var rep wiring.DriftReport
 	spec := wiring.Spec{}
 	svc := stanzaServiceID(root, service)
-	intentOn := intentChannelWired(root)
-	regions, _ := stanzaRegionsFit(root, stanzaFiles, harness.ClaudeCode, svc, intentOn)
+	regions, _ := instructionRegions(root, harness.ClaudeCode, svc, intentChannelWired(root))
 	spec.Regions = append(spec.Regions, regions...)
 	keys, _ := shimHookKeys(root)
 	spec.Keys = keys

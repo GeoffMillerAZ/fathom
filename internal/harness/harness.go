@@ -188,12 +188,33 @@ const (
 // InstructionFile is one standing-instruction file the harness reads.
 type InstructionFile struct {
 	Path string `json:"path"`
-	// Mode: "native" (the harness reads it by default), "mirror" (fathom
-	// writes the same stanza there for harnesses that read that file),
-	// "settings-key" (read only when a settings key names it; not written).
+	// Mode: "native" (the harness reads it by default), "import" (the
+	// harness reads it natively, and fathom writes into it only a marked
+	// region importing AGENTS.md — never creating it; ADR-059),
+	// "settings-key" (read only when a settings key names it), or "mirror"
+	// (retired by ADR-059: no descriptor carries it). fathom's stanza goes
+	// into AGENTS.md alone (StanzaFiles).
 	Mode string `json:"mode"`
 	Note string `json:"note,omitempty"`
+	// Setting is the repo-scoped settings key that makes a "settings-key"
+	// file load, when `fathom init --harness=<id>` may write it (Gemini
+	// CLI's .gemini/settings.json context.fileName). Nil where the key is
+	// the operator's to set.
+	Setting *InstructionSetting `json:"setting,omitempty"`
 }
+
+// InstructionSetting is one settings-file key naming the instruction files
+// a harness loads. The value replaces the harness's default list, so it
+// names every file the harness should keep reading.
+type InstructionSetting struct {
+	File  string   `json:"file"`
+	Key   []string `json:"key"`
+	Value []string `json:"value"`
+}
+
+// AgentsMD is the one instruction file fathom writes its stanza into, for
+// every harness (ADR-059).
+const AgentsMD = "AGENTS.md"
 
 // HookFile is one place the harness discovers hooks.
 type HookFile struct {
@@ -385,11 +406,25 @@ func (d Descriptor) HasHooks() bool { return len(d.Hooks) > 0 }
 func (d Descriptor) HooksWired() bool { return d.Codec != "" && len(d.Hooks) > 0 }
 
 // StanzaFiles returns the instruction files fathom writes its stanza
-// into: every native or mirror file, in descriptor order.
+// into: AGENTS.md, whatever mode the harness reads it in (ADR-059). A
+// harness that reads AGENTS.md only through a settings key gets that key
+// written instead of a stanza in its own file (Instructions[].Setting).
 func (d Descriptor) StanzaFiles() []string {
+	for _, f := range d.Instructions {
+		if f.Path == AgentsMD {
+			return []string{AgentsMD}
+		}
+	}
+	return nil
+}
+
+// ImportFiles returns the instruction files that carry, at most, a
+// fathom-marked region importing AGENTS.md, in the harness's precedence
+// order: fathom writes into the first one present and never creates one.
+func (d Descriptor) ImportFiles() []string {
 	var out []string
 	for _, f := range d.Instructions {
-		if f.Mode == "native" || f.Mode == "mirror" {
+		if f.Mode == "import" {
 			out = append(out, f.Path)
 		}
 	}

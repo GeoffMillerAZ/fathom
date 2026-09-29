@@ -20,7 +20,7 @@ func TestInitTargetsFor(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if def.ID != harness.ClaudeCode || !def.Hooks || !reflect.DeepEqual(def.StanzaFiles, []string{"CLAUDE.md", "AGENTS.md"}) || def.HooksNote != "" {
+	if def.ID != harness.ClaudeCode || !def.Hooks || !reflect.DeepEqual(def.StanzaFiles, []string{"AGENTS.md"}) || def.HooksNote != "" {
 		t.Errorf("default targets = %+v", def)
 	}
 
@@ -46,7 +46,7 @@ func TestInitTargetsFor(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !gemini.Hooks || !reflect.DeepEqual(gemini.StanzaFiles, []string{"GEMINI.md"}) || !strings.Contains(gemini.HooksNote, ".gemini/settings.json") {
+	if !gemini.Hooks || !reflect.DeepEqual(gemini.StanzaFiles, []string{"AGENTS.md"}) || len(gemini.Settings) != 1 || !strings.Contains(gemini.HooksNote, ".gemini/settings.json") {
 		t.Errorf("gemini targets = %+v", gemini)
 	}
 	cursor, err := initTargetsFor("cursor", now)
@@ -69,7 +69,7 @@ func TestInitTargetsFor(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if none.Hooks || none.StanzaID != harness.Agents || !reflect.DeepEqual(none.StanzaFiles, []string{"CLAUDE.md", "AGENTS.md"}) || none.MCPAddLine != "" {
+	if none.Hooks || none.StanzaID != harness.Agents || !reflect.DeepEqual(none.StanzaFiles, []string{"AGENTS.md"}) || none.MCPAddLine != "" {
 		t.Errorf("none targets = %+v", none)
 	}
 
@@ -176,10 +176,13 @@ func TestCmdInitHarnessNoneAndUnknown(t *testing.T) {
 	if code := cmdInit([]string{"--harness", "none", "--path", dir, "--url", srv.URL, "--bin", testBinPath}, &out, &errb); code != 0 {
 		t.Fatalf("exit = %d; stdout=%s stderr=%s", code, out.String(), errb.String())
 	}
-	for _, present := range []string{"CLAUDE.md", "AGENTS.md", filepath.Join(".fathom", "guard.cue")} {
+	for _, present := range []string{"AGENTS.md", filepath.Join(".fathom", "guard.cue")} {
 		if _, err := os.Stat(filepath.Join(dir, present)); err != nil {
 			t.Errorf("--harness=none must write %s: %v", present, err)
 		}
+	}
+	if _, err := os.Stat(filepath.Join(dir, "CLAUDE.md")); err == nil {
+		t.Error("--harness=none must not create CLAUDE.md (ADR-059)")
 	}
 	if _, err := os.Stat(filepath.Join(dir, ".claude", "settings.json")); err == nil {
 		t.Error("--harness=none must not write .claude/settings.json")

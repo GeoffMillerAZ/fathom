@@ -11,6 +11,8 @@ registry: #Registry & [
 		detect: [".example/settings.json", "~/.example.json"]
 		instruction_files: [
 			{path: "AGENTS.md", mode: "native"},
+			{path: "EXAMPLE.md", mode: "import", note: "carries at most a marked @AGENTS.md import"},
+			{path: "OTHER.md", mode: "settings-key", setting: {file: ".example/settings.json", key: ["context", "fileName"], value: ["AGENTS.md", "OTHER.md"]}},
 		]
 		hook_files: [
 			{path: ".example/settings.json", scope: "project", kind: "json-hook", shape: "claude-settings"},

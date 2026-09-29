@@ -75,7 +75,7 @@ var verbTable = []verb{
 	{Name: "gen-plan-cue", Summary: "Emit the generated CUE shadow of a Markdown plan (round-trip verified)", Hidden: true},                            // SR-30: internal dev/round-trip tooling (ADR-018 decision 3), not agent-facing
 	{Name: "instrument", Summary: "Channel-health report: injection coverage, rollup, liveness alarms (--adoption: the flywheel gauge)", Hidden: true}, // SR-31: fathom metrics instrument covers this; stays fully dispatched
 	{Name: "observe", Summary: "File a structured friction observation into .fathom/observations.md"},
-	{Name: "init", Summary: "One-command repo wiring: .fathomignore, ingest, Claude Code hooks, CLAUDE.md/AGENTS.md stanza"},
+	{Name: "init", Summary: "One-command repo wiring: .fathomignore, ingest, Claude Code hooks, the AGENTS.md stanza (a CLAUDE file gets an @AGENTS.md import)"},
 	{Name: "config", Summary: "Print the effective configuration (--explain for per-key provenance) | audit (custodian concerns) | propose (a diff for each mechanically mendable violation; writes nothing)"},
 	{Name: "providers", Summary: "Auth-health probe across configured LLM profiles (zero/near-zero tokens)", Hidden: true}, // SR-32: fathom doctor's providers row covers this; stays fully dispatched
 	{Name: "smoke", Summary: "One tiny real completion per profile: model, latency, tokens, cost", Hidden: true},           // SR-32: opt-in real spend, never run from doctor; stays fully dispatched

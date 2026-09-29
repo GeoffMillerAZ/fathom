@@ -215,10 +215,15 @@ func TestCmdInitHarnessGemini(t *testing.T) {
 	if _, ok := hooksObj["AfterTool"]; !ok {
 		t.Errorf("AfterTool group missing:\n%s", raw)
 	}
-	if _, err := os.Stat(filepath.Join(dir, "GEMINI.md")); err != nil {
-		t.Errorf("GEMINI.md must be written: %v", err)
+	// ADR-059 (AG-6): the stanza goes into AGENTS.md, and Gemini CLI reads
+	// it through context.fileName — no stanza in GEMINI.md.
+	if _, err := os.Stat(filepath.Join(dir, "AGENTS.md")); err != nil {
+		t.Errorf("AGENTS.md must be written: %v", err)
 	}
-	for _, absent := range []string{"CLAUDE.md", filepath.Join(".claude", "settings.json"), filepath.Join(".codex", "hooks.json")} {
+	if ctx, _ := settings["context"].(map[string]any); ctx == nil || fmt.Sprint(ctx["fileName"]) != "[AGENTS.md GEMINI.md]" {
+		t.Errorf("context.fileName = %v, want [AGENTS.md GEMINI.md]:\n%s", settings["context"], raw)
+	}
+	for _, absent := range []string{"GEMINI.md", "CLAUDE.md", filepath.Join(".claude", "settings.json"), filepath.Join(".codex", "hooks.json")} {
 		if _, err := os.Stat(filepath.Join(dir, absent)); err == nil {
 			t.Errorf("%s must not be written for --harness=gemini-cli", absent)
 		}

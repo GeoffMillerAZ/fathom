@@ -40,8 +40,15 @@ package harness
 
 #InstructionFile: {
 	path: string
-	mode: "native" | "mirror" | "settings-key"
+	// import: read natively; fathom writes only a marked @AGENTS.md import
+	// region into it and never creates it (ADR-059).
+	mode: "native" | "import" | "settings-key"
 	note?: string
+	setting?: {
+		file: string
+		key: [...string]
+		value: [...string]
+	}
 }
 
 #HookFile: {

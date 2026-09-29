@@ -59,7 +59,11 @@ type wiringDiff struct {
 	// tracked region edited by hand, or a corrupted marker pair. --apply
 	// reports them and writes nothing to those files.
 	DriftedStanzas []string `json:"drifted_stanzas,omitempty"`
-	SettingsNote   string   `json:"settings_note,omitempty"` // unreadable / absent
+	// StanzaMoves names the CLAUDE files whose fathom region still holds the
+	// stanza (the pre-ADR-059 two-copy layout): --apply rewrites that region
+	// to the @AGENTS.md import and writes the stanza into AGENTS.md.
+	StanzaMoves  []string `json:"stanza_moves,omitempty"`
+	SettingsNote string   `json:"settings_note,omitempty"` // unreadable / absent
 	// PC-28: drift across MCP server entries and fathom-owned skill files
 	// ("kind path [target] — why"), files that could not be read, and
 	// entries with no baseline yet (recorded on --apply, never merged).
@@ -155,10 +159,15 @@ func analyzeWiringFor(root, service string) wiringDiff {
 	// user-global prompts twin is not a per-repo drift signal.
 	d.MissingSkills, d.StaleSkills, d.BlockedSkills = skillDriftFiles(root)
 
-	if cm, err := os.ReadFile(filepath.Join(root, "CLAUDE.md")); err == nil {
+	for _, f := range append([]string{agentsMDFile}, claudeFiles()...) {
+		cm, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(f)))
+		if err != nil {
+			continue
+		}
 		low := strings.ToLower(string(cm))
 		if strings.Contains(low, ".sextantignore") || strings.Contains(low, "sextant mcp") {
-			d.StanzaNote = "CLAUDE.md carries pre-rename branding (sextant) — regenerate with fathom gen-claude-md"
+			d.StanzaNote = f + " carries pre-rename branding (sextant) — regenerate the stanza with fathom gen-agents-md"
+			break
 		}
 	}
 
@@ -166,11 +175,13 @@ func analyzeWiringFor(root, service string) wiringDiff {
 	// continuity/Codex line and reconcile reported "wiring current" for
 	// every repo — it checked stanza PRESENCE, never content against the
 	// current template. A template change that no reconcile can deliver is
-	// a template change that never ships. Compared per-file (CLAUDE.md and
-	// AGENTS.md independently), rendered with the REGISTRY's service id
-	// (dirname only as a daemon-unreachable fallback) so a repo that chose
-	// a different id is neither falsely flagged nor rewritten wrongly.
+	// a template change that never ships. Compared per-file (the AGENTS.md
+	// stanza and the root CLAUDE file's import region independently,
+	// ADR-059), rendered with the REGISTRY's service id (dirname only as a
+	// daemon-unreachable fallback) so a repo that chose a different id is
+	// neither falsely flagged nor rewritten wrongly.
 	d.StaleStanzas, d.RemarkStanzas, d.DriftedStanzas = staleStanzaFiles(root, d.Service)
+	d.StanzaMoves = stanzaMoves(root, d.Service)
 
 	// PC-28: MCP entries and owned skills against their recorded baselines,
 	// plus hook entries recorded in the ledger. Stanza REGIONS are still
@@ -196,9 +207,6 @@ func analyzeWiringFor(root, service string) wiringDiff {
 	return d
 }
 
-// stanzaFiles are the files that carry the operating-contract stanza.
-var stanzaFiles = []string{"CLAUDE.md", "AGENTS.md"}
-
 // stanzaServiceID resolves the service id the stanza is rendered with: the
 // registry's, else the directory basename as a daemon-unreachable fallback.
 func stanzaServiceID(root, service string) string {
@@ -220,8 +228,10 @@ var stanzaServiceRe = regexp.MustCompile(`indexed by fathom as service "([^"\s]+
 // --apply rewrote a checkout at …/sextant, registered as "fathom", to name
 // a service that does not exist.
 func stanzaNamedService(root string) string {
-	for _, f := range stanzaFiles {
-		data, err := os.ReadFile(filepath.Join(root, f))
+	// AGENTS.md first (ADR-059); a CLAUDE file still carrying the pre-059
+	// stanza names it too, and an import region names no service.
+	for _, f := range append([]string{agentsMDFile}, claudeFiles()...) {
+		data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(f)))
 		if err != nil {
 			continue
 		}
@@ -236,15 +246,29 @@ func stanzaNamedService(root string) string {
 	return ""
 }
 
-// stanzaPlan is the wiring plan for the stanza regions of one repository —
+// stanzaPlan is the wiring plan for the instruction regions of one
+// repository (the AGENTS.md stanza and the root CLAUDE file's import) —
 // the same plan --apply executes, computed without touching anything.
 func stanzaPlan(root, service string) (wiring.Plan, error) {
 	svc := stanzaServiceID(root, service)
-	intentOn := intentChannelWired(root)
-	spec := wiring.Spec{}
-	regions, _ := stanzaRegionsFit(root, stanzaFiles, harness.ClaudeCode, svc, intentOn)
-	spec.Regions = append(spec.Regions, regions...)
-	return wiring.PlanWiring(root, spec)
+	regions, _ := instructionRegions(root, harness.ClaudeCode, svc, intentChannelWired(root))
+	return wiring.PlanWiring(root, wiring.Spec{Regions: regions})
+}
+
+// stanzaMoves names the root CLAUDE files whose fathom region still holds
+// the stanza and will be rewritten to the import (ADR-059's migration).
+func stanzaMoves(root, service string) []string {
+	plan, err := stanzaPlan(root, service)
+	if err != nil {
+		return nil
+	}
+	var out []string
+	for _, it := range plan.Items {
+		if it.File != agentsMDFile && it.Verdict == wiring.VerdictApply && it.Present && !isImportBody(it.Before) {
+			out = append(out, it.File)
+		}
+	}
+	return out
 }
 
 // staleStanzaFiles reports which of the repo's stanza-carrying files hold a
@@ -321,8 +345,14 @@ func reconcileSpec(root string, d wiringDiff) (wiring.Spec, []string) {
 			want[f[:i]] = true
 		}
 	}
+	// ADR-059's migration: a CLAUDE file whose region becomes the import
+	// takes the stanza with it into AGENTS.md, created when absent — never
+	// an import of a file that does not carry the stanza.
+	if len(d.StanzaMoves) > 0 {
+		want[agentsMDFile] = true
+	}
 	intentOn := intentChannelWired(root)
-	regions, _ := stanzaRegionsFit(root, stanzaFiles, harness.ClaudeCode, svc, intentOn)
+	regions, _ := instructionRegions(root, harness.ClaudeCode, svc, intentOn)
 	for _, r := range regions {
 		if want[r.File] {
 			spec.Regions = append(spec.Regions, r)
@@ -468,6 +498,9 @@ func cmdFleetReconcile(args []string, stdout, stderr io.Writer) int {
 		if len(d.RemarkStanzas) > 0 {
 			fmt.Fprintf(stdout, "  stanza:  %s up to date (will be re-marked with a digest on apply; no prose changes)\n", strings.Join(d.RemarkStanzas, ", "))
 		}
+		for _, f := range d.StanzaMoves {
+			fmt.Fprintf(stdout, "  stanza:  %s still carries the stanza — --apply moves it into AGENTS.md and leaves %s one @AGENTS.md import region (ADR-059)\n", f, f)
+		}
 		if !*apply {
 			for _, f := range d.DriftedStanzas {
 				fmt.Fprintf(stdout, "  BLOCKED: %s (fathom will not merge; --apply leaves this file untouched)\n", f)
@@ -526,6 +559,8 @@ func cmdFleetReconcile(args []string, stdout, stderr io.Writer) int {
 					hooksApplied++
 				case it.Present && it.Before == it.After:
 					fmt.Fprintf(stdout, "  applied: %s stanza re-marked with a digest (prose unchanged)\n", it.File)
+				case it.File != agentsMDFile:
+					fmt.Fprintf(stdout, "  applied: %s — %s\n", it.File, appliedLabel([]wiring.Item{it}))
 				default:
 					fmt.Fprintf(stdout, "  applied: %s stanza refreshed to the current template\n", it.File)
 				}

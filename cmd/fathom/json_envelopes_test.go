@@ -133,7 +133,7 @@ func TestInitJSONEnvelope(t *testing.T) {
 	}
 	var sawStanza, sawSkill bool
 	for _, w := range env.Writes {
-		if w.Path == "CLAUDE.md" {
+		if w.Path == "AGENTS.md" { // the stanza's one file (ADR-059)
 			sawStanza = true
 		}
 		if strings.HasSuffix(w.Path, filepath.Join(".agents", "skills", "fathom-plan", "SKILL.md")) && w.Action == "created" {
