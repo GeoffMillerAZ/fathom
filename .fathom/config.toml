@@ -19,6 +19,16 @@ state_dir = "workspace"
 [tests]
 results_dir = "workspace/artifacts/test-results"
 
+# EW-9 (docs/plans/efficiency-wave.md, stop 1): this repository turns on the
+# test-run hook (ADR-056 decision 6, docs/configuration.md "The test-run
+# hook"): tiers 0 and 1, provider none. A failing run of a declared test
+# command (Taskfile test tasks and the `go test` they invoke) gets one line
+# naming the failing tests and the changed symbols they reach. It fires only
+# once .claude/settings.json carries the two test-run hook rows `fathom init`
+# writes, from a deployed binary that knows `--event test-run`.
+[hooks]
+test_run = true
+
 # [[surface.pattern]] (ADR-044 §2.1, CV-26): this repository's own
 # capability-inventory sources that no built-in kind (api/json/route/env/
 # rpc/cli) derives — fathom dispatches its CLI through a plain switch
