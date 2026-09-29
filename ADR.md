@@ -3087,7 +3087,7 @@ reads ADR-046, ADR-049 (decisions 2 and 7), ADR-053 and ADR-055 as constraints. 
 `docs/design/exploration-maps.md`, `docs/design/carry-across.md`, `docs/design/work-signals.md`. Plans:
 `docs/plans/judgment-foundations.md` (JF-), `docs/plans/test-run-hook.md` (TR-), `docs/plans/judged-predicates.md`
 (JP-), `docs/plans/judged-telemetry.md` (JT-), `docs/plans/exploration-maps.md` (XM-), `docs/plans/carry-across.md`
-(CA-), `docs/plans/work-signals.md` (WS-). Goals G27 to G32. Principle P24, invariants I59 to I61, futures F34 to
+(CA-), `docs/plans/work-signals.md` (WS-). Goals G27 to G32. Principle P24, invariants I60 to I62, futures F34 to
 F51, questions Q31 to Q33. Amended the same day by the owner's decision on feature-map verdict proposals
 (decision 13 no longer refuses them: deferred, futures F51; ADR-055 decision 4 carries the dated amendment).
 
@@ -3231,7 +3231,7 @@ rule-outcome events governance learning reads measure scope persistence, not com
   per feature.
 
 **Consequences.**
-- Seven plans, seven design documents, vision 40, goals G27 to G32, principle P24, invariants I59 to I61 (I14
+- Seven plans, seven design documents, vision 40, goals G27 to G32, principle P24, invariants I60 to I62 (I14
   amended), questions Q31 to Q33, futures F34 to F51, a dated amendment line on ADR-042 and another on ADR-055
   (verdict proposals deferred, not refused).
 - Code follows through JF, TR, JP, JT, XM, CA and WS rows, each gated by `fathom verify`; nothing here is built

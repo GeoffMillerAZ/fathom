@@ -50,7 +50,7 @@ shaped decisions, and the assumptions the design rests on.
   after ADR-056 is opt-in. Source: ADR-042, ADR-056.
 - **judged**: the tier label on any decision-port answer shown to a reader: a model's judgment, uncalibrated
   until its (site, template, provider, resolved model) reading clears the bar, never a code fact or proof.
-  Source: ADR-056, I59.
+  Source: ADR-056, I62.
 - **exploration map**: an anchored record (symbol key plus content hash plus a why line) of which code matters for
   a purpose, composable by reference and delivered at handoff rather than looked up; a live map is a saved query
   beside the semantic layers' claims. Source: ADR-056, `docs/design/exploration-maps.md`.
