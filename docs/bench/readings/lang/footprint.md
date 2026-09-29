@@ -157,6 +157,74 @@ grammars at that mean.
 
 LB-M4 verdict: PASS (wave 2: 5,122,633 of 41,943,040 bytes)
 
+## LB-M5 ingest cost per byte on the polyglot set, 2026-09-29 (wave w6)
+
+Measured on darwin/arm64 (10 cores), go 1.26.3, `GOWORK=off CGO_ENABLED=1 go build
+./cmd/fathom` (no `-ldflags`) at two commits: **base** = 56c18502 (the build LB-M1's
+baseline readings were taken with, from a `git worktree`) and **head** = 9ea6da5f. No
+extraction change and no `ExtractorEpoch` bump.
+
+**Input.** The polyglot set is LB-M1's 18 dialect subjects at the SHAs its readings record
+(17 repositories; fmtlib/fmt serves CMake and C++), shallow-fetched by SHA and written with
+`git archive` into one tree, one directory per subject, deleted afterwards: 6,548 files;
+both builds' `ingest --dry-run` discover the same 6,524 files and 75,971,918 bytes, the
+per-byte denominator.
+
+**Method** (the wave-1b in-process method above). `fathom ingest --json --store <fresh
+sqlite> --service poly --path <tree>`, niced, under `/Volumes/m2ext/tmp/lang-measure.lock`,
+timed by `/usr/bin/time -l` (user + sys includes any child); each run a fresh store and a
+fresh compilation cache (a CLI ingest compiles grammars in memory; only the managed daemon
+enables the on-disk cache). Two runs a build, interleaved base, head, base, head; the second
+of each is the reading. The Go typed-edge pass does not run in either build: the tree's root
+has no `go.mod` (`hasGoModule` checks the service root), so its share is zero and the Go
+build cache does not enter. No LLM enrichment runs: nothing outside the pipeline wires
+`WithEnricher`. Load average (1 min) 20.3 to 30.8 on 10 cores across the four runs (20.3 to
+23.4 around the two readings), sibling workers' gates. An earlier set overlapped this
+worker's own verify ingest and is discarded (it read 2.21× CPU).
+
+| Build | bytes | wall | user + sys CPU | CPU ns/byte | wall ns/byte | instructions retired |
+|---|--:|--:|--:|--:|--:|--:|
+| base 56c18502 | 75,971,918 | 20.81 s | 17.29 s | 227.6 | 273.9 | 236.5 G |
+| head 9ea6da5f | 75,971,918 | 36.95 s | 32.04 s | 421.7 | 486.4 | 523.3 G |
+| head ÷ base | | 1.78× | 1.85× | **1.85×** | 1.78× | 2.21× |
+
+The verdict uses D1's CPU basis (§1.5): 1.85×, over the 1.5× bound. Wall (1.78×) and the
+load-independent instruction count (2.21×; first runs 2.23×) agree; the first runs read
+2.24× CPU and 2.10× wall. `TestIngestCostGuard` (`internal/fusion/ingestcost_test.go`) pins
+the six-module pool's invariant, grammar instantiations bounded by grammars × concurrency
+and flat in the file count; the cost here is not per-file instantiation.
+
+**Where it goes.** Head does more work on the same bytes: 81,676 symbols against 68,288,
+5,742 file-resolved files against 973, and a doc index (3,226 units) base does not have.
+Ingested one subject at a time (nested one level, so no subject's `go.mod` is a service
+root; one run each; 2.04× CPU and 2.20× instructions in sum), the growth is +300.6 G
+instructions:
+
+| Subject | base G instr | head G instr | × | what head adds |
+|---|--:|--:|--:|---|
+| square/retrofit | 25.8 | 151.2 | 5.86 | its 3.6 MB of javadoc HTML and 0.4 MB of CSS, unsupported at base: 8,160 CSS and HTML symbols |
+| App-vNext/Polly (C#) | 26.2 | 64.0 | 2.44 | a second, wasm parse of every `.cs` file for the file-resolved pass (it resolves none); 502 doc units |
+| square/okhttp (Kotlin) | 51.5 | 87.2 | 1.69 | 1,422 file-resolved files; 3,495 more symbols |
+| BurntSushi/ripgrep (Rust) | 11.2 | 32.3 | 2.89 | 674 file-resolved files |
+| libuv/libuv (C) | 14.7 | 32.7 | 2.22 | 1,511 file-resolved files |
+| fmtlib/fmt (C++, CMake) | 14.1 | 28.5 | 2.02 | 604 file-resolved files |
+| the other eleven | 107.5 | 155.7 | 1.45 | |
+
+Two causes carry it. **New coverage**: retrofit alone is 42% of the growth (the set without
+it reads 1.78× on instructions, still over). **The file-resolved import pass** (L3): at base
+it covered Python and JavaScript/TypeScript; at head it covers sixteen tags dialects, and
+for C, C++, C#, Java, PHP, Protocol Buffers and Rust, whose live extractors are still the
+incumbents, it parses every file a second time in the wasm tags engine. In an in-process
+profile (`cmdIngest` under `pprof`, one run a build) code outside Go's symbol table (the
+grammars' wasm under wazero and the CGO parsers, which pprof cannot split) is 11.7 s of
+head's 33.7 s of samples against 2.9 s of base's 14.3 s; the scheduler's wakeups
+(`pthread_cond_signal`) 5.8 s against 2.0 s; SQLite's `PutObservations` 4.8 s against 4.2 s;
+wazero `CompileModule` 1.25 s against 0.27 s (each grammar the set uses compiled once in the
+process; base embeds five); the file-resolved pass's Go side 1.6 s against 0.1 s;
+`recordCentrality` 1.1 s.
+
+LB-M5 verdict: FAIL (1.85× CPU per byte: 421.7 vs 227.6 ns over 75,971,918 bytes; wall 1.78×, instructions 2.21×; O208)
+
 ## LB-M7 answer payload with signatures and ranges, 2026-09-29 (wave w6)
 
 Measured on darwin/arm64 (10 cores), go 1.26.3, `GOWORK=off CGO_ENABLED=1 go build

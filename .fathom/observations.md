@@ -2329,6 +2329,19 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Status:** open (worked around)
 - **Impact:** a query that relies on a trailing anchor silently over-captures (here every package segment became a callee: call precision, and file-resolved edges named by a package segment)
 
+### O208 — LB-M5 misses: ingest cost per byte on the LB-M1 polyglot set is 1.85x the 56c18502 baseline on CPU (bound 1.5x)
+
+- **Symptom:** LB-M5 misses: ingest cost per byte on the LB-M1 polyglot set is 1.85x the 56c18502 baseline on CPU (bound 1.5x)
+- **Evidence:**
+  - **Tool:** fathom ingest (in-process, polyglot set)
+  - **Expected:** head 9ea6da5f within 1.5x of base 56c18502 per byte, CPU basis (D1)
+  - **Actual:** second of two runs, 75,971,918 bytes: base 17.29 s CPU / 20.81 s wall / 236.5 G instructions, head 32.04 s / 36.95 s / 523.3 G: 1.85x CPU, 1.78x wall, 2.21x instructions; per subject, retrofit's javadoc HTML/CSS (new coverage) is 42% of the growth, and the file-resolved import pass re-parses C/C++/C#/Java/PHP/Protobuf/Rust files in wasm beside their incumbent extractors
+  - **Repro:** footprint.md 'LB-M5 ingest cost per byte' section: git archive LB-M1's subjects at their recorded SHAs into one tree, then /usr/bin/time -l fathom ingest --json --store <fresh> --service poly --path <tree> with a 56c18502 and a 9ea6da5f build
+- **Root cause:** head does more on the same bytes: new dialects extract what base skipped (retrofit's 3.6 MB of javadoc HTML and 0.4 MB of CSS: 8,160 symbols), and the file-resolved import pass, which covered Python and JavaScript/TypeScript at base, covers sixteen tags dialects, so a C, C++, C#, Java, PHP, Protocol Buffers or Rust file is parsed twice (the incumbent extractor, then the wasm tags engine for its imports); plus a doc index and wazero compiling each grammar the set uses once per process
+- **Fix:** none in this wave (a measurement item). Levers the numbers point at: take a dialect's imports from the incumbent's own parse, or skip the wasm re-parse where the incumbent already has the import specs; and weigh new coverage apart from per-byte cost in the row's contract (the set without retrofit still reads 1.78x on instructions, so coverage alone does not explain the miss)
+- **Status:** open
+- **Impact:** LB-M5 stays open (FAIL recorded); a full ingest of a polyglot repository costs about twice the CPU it did at the LB-M1 baseline
+
 ### O209 — the LB-M7 payload guard passes only on the two-tool sum: find_symbol alone grows 20.0% with signature and end_line on the polyglot fixture, and the sum sits 0.4 points under the 10% bound
 
 - **Symptom:** the LB-M7 payload guard passes only on the two-tool sum: find_symbol alone grows 20.0% with signature and end_line on the polyglot fixture, and the sum sits 0.4 points under the 10% bound
