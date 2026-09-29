@@ -151,8 +151,8 @@ func TestKustomizeDialectGoldens(t *testing.T) {
 	}
 }
 
-// kustomizeIncumbentFixture is kustomizeextract_test.go's own fixture: the
-// incumbent's cases run against the dialect (design §13.2 step 15).
+// kustomizeIncumbentFixture is the retired kustomizeextract_test.go's own
+// fixture: the incumbent's cases, run against the dialect (design §13.2 step 15).
 const kustomizeIncumbentFixture = `apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
@@ -187,8 +187,9 @@ func kustomizeByKind(nodes []core.SymbolNode, kind core.SourceKind) map[string]c
 	return m
 }
 
-// TestKustomizeDialectKeepsIncumbentContracts: each case of
-// kustomizeextract_test.go, run against the dialect. Every SourceKind the
+// TestKustomizeDialectKeepsIncumbentContracts: each case of the retired
+// kustomizeextract_test.go (resources, patches, images, a file with no
+// metadata.name, empty input, determinism), run against the dialect. Every SourceKind the
 // incumbent emitted is kept (KustomizeResource, KustomizePatch,
 // KustomizeImage) with the incumbent's names, tier and count, and a file with
 // no metadata.name still yields symbols (the ADR-021 §2 defect).
@@ -261,57 +262,5 @@ func TestKustomizeDialectKeepsIncumbentContracts(t *testing.T) {
 	b, _ := x.Extract("svc", "kustomization.yaml", []byte(kustomizeIncumbentFixture))
 	if !reflect.DeepEqual(a, b) {
 		t.Error("Extract is not deterministic")
-	}
-}
-
-// TestKustomizeDialectIncumbentParity: on the incumbent's fixture and on the
-// fixtures of the dialect that the incumbent also reads, every symbol the
-// incumbent emitted is emitted by the dialect with the same kind, name and line
-// (the dialect adds the Kustomization root and the components and generators
-// the incumbent never read). Removed with the incumbent.
-func TestKustomizeDialectIncumbentParity(t *testing.T) {
-	x := loadKustomizeExtractor(t)
-	inc := NewKustomizeExtractor()
-	srcs := map[string]string{"incumbent": kustomizeIncumbentFixture}
-	for _, fx := range kustomizeFixtures(t) {
-		b, err := os.ReadFile(fx)
-		if err != nil {
-			t.Fatal(err)
-		}
-		srcs[filepath.Base(fx)] = string(b)
-	}
-	for name, src := range srcs {
-		t.Run(name, func(t *testing.T) {
-			old, err := inc.Extract("svc", "kustomization.yaml", []byte(src))
-			if err != nil {
-				t.Fatal(err)
-			}
-			neu, err := x.Extract("svc", "kustomization.yaml", []byte(src))
-			if err != nil {
-				t.Fatal(err)
-			}
-			type key struct {
-				kind core.SourceKind
-				name string
-				line int
-			}
-			have := map[key]core.SymbolNode{}
-			for _, n := range neu {
-				have[key{n.Kind, n.Name, n.Line}] = n
-			}
-			for _, o := range old {
-				n, ok := have[key{o.Kind, o.Name, o.Line}]
-				if !ok {
-					t.Errorf("dialect missed %s %q at line %d (the incumbent emitted it)", o.Kind, o.Name, o.Line)
-					continue
-				}
-				if n.Tier != o.Tier {
-					t.Errorf("%s %q: tier dialect %q, incumbent %q", o.Kind, o.Name, n.Tier, o.Tier)
-				}
-				if o.Signature != "" && !strings.Contains(o.Signature, n.Signature) {
-					t.Errorf("%s %q: signature dialect %q is not part of the incumbent's %q", o.Kind, o.Name, n.Signature, o.Signature)
-				}
-			}
-		})
 	}
 }

@@ -14,12 +14,12 @@ The incumbent's three `SourceKind`s are kept verbatim (§2.2, §13.2 step 15): `
 (an entry of `resources:` or the legacy `bases:`), `KustomizePatch` (`patchesStrategicMerge:`,
 `patches:` and `patchesJson6902:`, named by the patch's path) and `KustomizeImage` (`images:`,
 named by the original image). Names, lines, tier and count are the incumbent's on its own
-fixture (`TestKustomizeDialectKeepsIncumbentContracts`) and on every dialect fixture the
-incumbent also reads (`TestKustomizeDialectIncumbentParity`, run against both extractors before
-the retirement commit); `lang-parity` against `kustomizeextract` on the calibration subjects is
+fixture (`TestKustomizeDialectKeepsIncumbentContracts`), and on every dialect fixture the
+incumbent also read (a parity test ran both extractors side by side before the retirement commit
+and went with the incumbent); `lang-parity` against `kustomizeextract` on the calibration subjects was
 MERGE: `sym_recall` .7416 to 1, `sym_precision` 1 to 1, kinds gained `Kustomization` and
 `KustomizeConfigMap`, none lost. Malformed YAML yields no symbols, as before, and an empty file
-yields none. Dispatch is the dialect's: `fusion.New` maps both basenames to it, the connector
+yields none. `kustomizeextract.go` is retired: dispatch is the dialect's: `fusion.New` maps both basenames to it, the connector
 classifies them language `kustomize` (they were `yaml`) and the ToolKind tag stays `kustomize`.
 
 What the dialect adds to what the incumbent read:
