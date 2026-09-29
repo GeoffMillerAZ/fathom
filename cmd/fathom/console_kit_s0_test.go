@@ -16,6 +16,7 @@ package main
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -122,6 +123,17 @@ func TestConsoleKitS0_HeadingNeverRefusesAPage(t *testing.T) {
 	if empty := consolePageHeading(consoleShell{}); !strings.Contains(empty, ">Untitled page</h1>") {
 		t.Errorf("an empty title still renders an h1:\n%s", empty)
 	}
+	// A blank item in a short meta list is dropped, not passed on: the kit
+	// would refuse it, and the title-only fallback would cost the page its
+	// other meta and its trail.
+	short := consolePageHeading(consoleShell{
+		Title:  "Here",
+		Crumbs: []chrome.Crumb{{Label: "Observatory", Href: "/"}, {Label: "Here"}},
+		Meta:   []string{"kept", " \t "},
+	})
+	if !strings.Contains(short, `>kept</li>`) || !strings.Contains(short, `aria-label="Breadcrumb"`) {
+		t.Errorf("a blank meta item must be dropped, keeping the rest of the heading:\n%s", short)
+	}
 }
 
 // pagerWrapperRe matches the local wrappers that lifted the kit's old
@@ -155,6 +167,12 @@ func TestConsoleKitS0_PagersAreTheKitsOwnTargets(t *testing.T) {
 	out := consolePager(chrome.Pagination{Page: 2, TotalPages: 3, AriaLabel: "Plans pages", HrefFor: func(n int) string { return fmt.Sprintf("/plans?page=%d", n) }})
 	if pagerWrapperRe.MatchString(out) || !strings.Contains(out, `<a href="/plans?page=3" class="inline-flex min-h-11 min-w-11`) || !strings.Contains(out, "focus-visible:outline-focus") {
 		t.Errorf("the pager must be the kit's own 44 px targets with a focus outline:\n%s", out)
+	}
+	// The evidence pager's wrapper sits on a line of its own, away from the
+	// call the source scan keys on, so its rendering is checked too.
+	ev := evPagination("/evidence", url.Values{}, 2, 3, "evidence pages")
+	if pagerWrapperRe.MatchString(ev) || !strings.Contains(ev, `class="inline-flex min-h-11 min-w-11`) {
+		t.Errorf("the evidence pager must be the kit's own 44 px targets, unwrapped:\n%s", ev)
 	}
 }
 
