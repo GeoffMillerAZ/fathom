@@ -55,7 +55,7 @@
 ## G — The skills pack (vision 16)
 
 - [x] fathom-rewire and fathom-activate join the embedded pack in both renderings, bodies sourced from docs/adoption/rewire-and-activate-prompts.md {id: IO-23, symbol: installSkills, package: cmd/fathom, reachable_from: TestSkillsAgentsRendering}
-- [x] --skills=agents renders the pack spec-conformant to the shared .agents/skills path (Codex + Gemini discovery) {id: IO-24, symbol: resolveSkillsMode, package: cmd/fathom, reachable_from: TestResolveSkillsModeAgents}
+- [x] --skills=agents renders the pack spec-conformant and reaches the shared .agents/skills path (Codex + Gemini discovery; since ADR-059 a link to .claude/skills) {id: IO-24, symbol: resolveSkillsMode, package: cmd/fathom, reachable_from: TestResolveSkillsModeAgents}
 - [x] fathom plugin render generates the Claude Code plugin dir (skills + hooks.json + .mcp.json) and marketplace.json from the embedded sources; never hand-maintained {id: IO-25, symbol: cmdPluginRender, package: cmd/fathom, reachable_from: TestPluginRender}
 - [x] kit packs verified end-to-end: fathom layers install run against app-kit and agentic-kit fathom-pack dirs, guards demonstrated firing {id: IO-26, oracle: lexical, path: CHANGELOG.md, pattern: "IO-26 integration proof run live"}
 

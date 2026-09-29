@@ -14,9 +14,9 @@ Verify: `fathom verify --service fathom --plan docs/plans/reach-parity.md`.
 
 ## Skills on the standard
 
-- [x] `skillsTargetsFor(mode)`: bare `--skills` writes `.agents/skills` (spec-only frontmatter) and `.claude/skills`; `--skills=codex` writes `.agents/skills` (the path Codex documents); the legacy `~/.codex/prompts` twin moves behind `--skills=codex-prompts`; the marker guard is unchanged {id: RP-1, symbol: skillsTargetsFor, package: cmd/fathom}
+- [x] `skillsTargetsFor(mode)`: every repo-scoped mode writes `.claude/skills` (spec-only frontmatter, held by test); bare `--skills`, `--skills=codex` and `--skills=agents` add `.agents/skills` (the path Codex documents) as a link to it (ADR-059); the legacy `~/.codex/prompts` twin moves behind `--skills=codex-prompts`; the marker guard is unchanged {id: RP-1, symbol: skillsTargetsFor, package: cmd/fathom}
 - [x] `agentsVariant(skill)` strips harness-specific frontmatter to the Agent Skills spec fields and keeps `name` equal to the directory name; the Agent Skills frontmatter schema is vendored as `schema/skills/schema.cue` and `cue vet` runs over every shipped `SKILL.md` frontmatter in `task cue-vet` {id: RP-2, symbol: agentsVariant, package: cmd/fathom}
-- [x] Doctor `skills_installed` checks `.agents/skills` for `codex|gemini-cli|agents` and `.claude/skills` for `claude-code`; a missing skill is named, never summarised {id: RP-3, symbol: checkAgentsSkills, package: cmd/fathom}
+- [x] Doctor `skills_installed` checks `.agents/skills` (resolving its link to `.claude/skills`, ADR-059) for `codex|gemini-cli|agents` and `.claude/skills` for `claude-code`; a missing skill is named, never summarised {id: RP-3, symbol: checkAgentsSkills, package: cmd/fathom}
 - [x] `fleet reconcile` plans fathom-owned skill drift through the wiring engine (`planOwnedFile`: rewrite only under the `fathom:owned` marker, BLOCK a hand-edited copy by name, receipt + undo) {id: RP-4, symbol: planOwnedFile, package: internal/wiring}
 - [x] `docs/upgrades/0.8.0-skills-on-the-standard.md` and the `### Breaking` line: `--skills=codex` no longer writes `~/.codex/prompts` {id: RP-5, oracle: lexical, path: docs/upgrades/0.8.0-skills-on-the-standard.md, pattern: "no longer writes"}
 
