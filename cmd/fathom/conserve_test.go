@@ -406,3 +406,106 @@ func headSHAOf(t *testing.T, root string) string {
 	}
 	return string(bytes.TrimSpace(out.Bytes()))
 }
+
+// TestConserveStrictIntegrityBlocksOnlySilentPinLoss pins PR-9 (ADR-057's
+// PR-8 decision): `fathom conserve --strict-plane integrity` exits 1 only on
+// a silent pin loss (the lost test is still named by its source at head),
+// prints a retired pin (its naming source dropped the name in the range) for
+// review and exits 0, and keeps exit 2 for an operational error.
+func TestConserveStrictIntegrityBlocksOnlySilentPinLoss(t *testing.T) {
+	const pinned = "func TestPinned(t *testing.T) {\n\tif got := 1 + 1; got != 2 {\n\t\tt.Fatalf(\"got %d\", got)\n\t}\n}\n"
+	const replaced = "func TestReplaced(t *testing.T) {\n\tif got := 2 + 2; got == 5 {\n\t\tt.Fatalf(\"got %d\", got)\n\t}\n}\n"
+	invariants := func(test string) string {
+		return "# Invariants\n\n| # | Invariant | Enforced by | Source |\n|---|---|---|---|\n| I1 | sums hold | test `" + test + "` | ADR-1 |\n"
+	}
+	setup := func(t *testing.T) (*selfSkipGitRepo, string) {
+		repo := newSelfSkipGitRepo(t)
+		repo.writePlan("docs/intent/invariants.md", invariants("TestPinned"))
+		repo.writePlan("pkg/p_test.go", "package pkg\n\nimport \"testing\"\n\n"+pinned)
+		repo.commitAll("base commit")
+		base := headSHAOf(t, repo.root)
+		// The pinned test is replaced by a new name with a new body: deleted.
+		repo.writePlan("pkg/p_test.go", "package pkg\n\nimport \"testing\"\n\n"+replaced)
+		return repo, base
+	}
+	run := func(t *testing.T, repo *selfSkipGitRepo, base string, extra ...string) (int, string, string) {
+		storePath := filepath.Join(t.TempDir(), "conserve.sqlite")
+		args := append([]string{"conserve", "--since", base, "--service", "svc", "--store", storePath}, extra...)
+		return runInDir(t, repo.root, args)
+	}
+
+	t.Run("silent loss blocks", func(t *testing.T) {
+		repo, base := setup(t)
+		code, stdout, stderr := run(t, repo, base, "--strict-plane", "integrity")
+		if code != 1 {
+			t.Fatalf("exit = %d, want 1 (I1 still names TestPinned at head); stdout=%s stderr=%s", code, stdout, stderr)
+		}
+		for _, want := range []string{"silent", "deleted", "TestPinned", "docs/intent/invariants.md:5", "TestReplaced"} {
+			if !strings.Contains(stdout, want) {
+				t.Errorf("stdout lacks %q:\n%s", want, stdout)
+			}
+		}
+		// Without the flag the same range stays advisory.
+		if code, _, stderr := run(t, repo, base); code != 0 {
+			t.Errorf("no flag: exit = %d, want 0; stderr=%s", code, stderr)
+		}
+	})
+
+	t.Run("retired pin is printed and passes", func(t *testing.T) {
+		repo, base := setup(t)
+		repo.writePlan("docs/intent/invariants.md", invariants("TestReplaced"))
+		code, stdout, stderr := run(t, repo, base, "--strict-plane", "integrity")
+		if code != 0 {
+			t.Fatalf("exit = %d, want 0 (I1 was edited to drop the name: retired); stdout=%s stderr=%s", code, stdout, stderr)
+		}
+		if !strings.Contains(stdout, "retired") || !strings.Contains(stdout, "TestPinned") {
+			t.Errorf("stdout does not print the retired pin for review:\n%s", stdout)
+		}
+	})
+
+	t.Run("json keeps stdout a report", func(t *testing.T) {
+		repo, base := setup(t)
+		code, stdout, stderr := run(t, repo, base, "--strict-plane", "integrity", "--json")
+		if code != 1 {
+			t.Fatalf("exit = %d, want 1; stderr=%s", code, stderr)
+		}
+		var rep map[string]any
+		if err := json.Unmarshal([]byte(stdout), &rep); err != nil {
+			t.Fatalf("stdout is not the JSON report: %v\n%s", err, stdout)
+		}
+		if !strings.Contains(stderr, "TestPinned") {
+			t.Errorf("the pin lines belong on stderr under --json:\n%s", stderr)
+		}
+	})
+
+	t.Run("unknown plane and bad ref are operational", func(t *testing.T) {
+		repo, base := setup(t)
+		if code, _, _ := run(t, repo, base, "--strict-plane", "surface"); code != 2 {
+			t.Errorf("--strict-plane surface: exit = %d, want 2 (only integrity has a per-plane gate)", code)
+		}
+		if code, _, _ := run(t, repo, "no-such-ref", "--strict-plane", "integrity"); code != 2 {
+			t.Errorf("bad --since: exit = %d, want 2", code)
+		}
+	})
+
+	t.Run("pre-push runs it and passes exit 1 through", func(t *testing.T) {
+		run := lefthookStepRun(t, "pre-push", "refactor-conserve")
+		for _, want := range []string{"--strict-plane integrity", "exit 1"} {
+			if !strings.Contains(run, want) {
+				t.Errorf("lefthook.yml pre-push refactor-conserve lacks %q:\n%s", want, run)
+			}
+		}
+	})
+
+	t.Run("no loss passes", func(t *testing.T) {
+		repo := newSelfSkipGitRepo(t)
+		repo.writePlan("docs/intent/invariants.md", invariants("TestPinned"))
+		repo.writePlan("pkg/p_test.go", "package pkg\n\nimport \"testing\"\n\n"+pinned)
+		repo.commitAll("base commit")
+		base := headSHAOf(t, repo.root)
+		repo.writePlan("pkg/extra_test.go", "package pkg\n\nimport \"testing\"\n\n"+replaced)
+		if code, stdout, stderr := run(t, repo, base, "--strict-plane", "integrity"); code != 0 {
+			t.Errorf("exit = %d, want 0; stdout=%s stderr=%s", code, stdout, stderr)
+		}
+	})
+}

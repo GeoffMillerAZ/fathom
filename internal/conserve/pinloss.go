@@ -217,6 +217,30 @@ func PinLosses(ctx context.Context, in PinLossInput) ([]PinLoss, error) {
 	return out, nil
 }
 
+// PinLossesOf runs PinLosses over a conserve Input's own range (NewInput's
+// base sha to its worktree head), reading through in.BaseFile/in.HeadFile —
+// `fathom conserve --strict-plane integrity` (PR-9).
+func PinLossesOf(ctx context.Context, in Input) ([]PinLoss, error) {
+	if in.BaseFile == nil || in.HeadFile == nil {
+		return nil, fmt.Errorf("pin loss: the conserve input has no base or head reader")
+	}
+	return PinLosses(ctx, PinLossInput{
+		Root:         in.Root,
+		Base:         in.Base,
+		Head:         in.Head,
+		ChangedFiles: in.ChangedFiles,
+		Read: func(rev, p string) ([]byte, bool, error) {
+			switch rev {
+			case in.Base:
+				return in.BaseFile(p)
+			case in.Head:
+				return in.HeadFile(p)
+			}
+			return nil, false, fmt.Errorf("revision %q is neither base %q nor head %q", rev, in.Base, in.Head)
+		},
+	})
+}
+
 // pinNaming answers, per guard reason, where a source names a test at base,
 // whether it still names it at head, and whether it was edited in the range.
 type pinNaming struct {
