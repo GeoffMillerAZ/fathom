@@ -2198,3 +2198,29 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** none yet. `clang -E -dI` prints every include directive it processes, a guard-skipped re-include too (verified on from_json.hpp, where it repeats a directive whose header was already entered); pairing each printed directive with the includer's directory and the `-I` roots would resolve the guarded ones. A conditional skipped under this run's macros needs the build's own flags (a `compile_commands.json` run, the tier-A evaluation the oracle's README names as not implemented)
 - **Status:** open
 - **Impact:** a tier-B cpp reading understates import edge precision and lists these includes as unattested; `import_resolution` is a rate over the includes the compiler entered under this run's flags, so an include the oracle cannot see is neither a hit nor a miss in it (218 of 218 is not a claim about the 79)
+
+### O167 — a tags-engine tool format cannot reach L3 in lang-oracle: xref is scored only for a doc-engine extractor, import_resolution only for languages
+
+- **Symptom:** LB-Q-protobuf's reading stops at L2 (L3 `not-attempted`) although the oracle file carries protoc's in-repo `imports` and `cross_references` and the dialect names an import strategy
+- **Evidence:**
+  - **Tool:** `indexbench lang-oracle -dialect protobuf -tool-oracle <protoc-descriptors json>` on grpc/grpc-go v1.84.0 and bufbuild/protovalidate v1.2.2
+  - **Expected:** a tool format's L3 (`xref_precision`, `xref_recall`, design §1.2) measured from the oracle's `cross_references`, or its imports scored, whatever engine the dialect runs on
+  - **Actual:** `measureSubject` builds the imports scorer only when `spec.Manifest.Kind != "tooling"` (cmd/indexbench/langoracle.go, LB-F40) and calls `scoreXrefOracle` only when the extractor is an `extractor.DocResulter` (the doc engine, `fusion.ResolveDocXrefs`); a tags-engine tool format gets neither, so no reading can meet L3
+  - **Repro:** `go run ./cmd/indexbench lang-oracle -dialect protobuf -subject <grpc-go clone> -tool-oracle protobuf-grpc-go.json -out <scratch>/protobuf.json` and read `grade.L3`
+- **Root cause:** the harness's two L3 paths were built for their first users: import_resolution for languages (LB-F40) and cross-file references for doc-engine tool formats (LB-F30); protobuf is the first tags-engine tool format with an L3 target (CMake and GraphQL are queued behind it)
+- **Fix:** none yet (a harness change, not a worker's): score a tags-engine tool format's file-resolved edges (fusion.ResolveFileEdges) against the oracle's `cross_references` at file granularity, or its import specs against `imports`, then re-measure LB-Q-protobuf
+- **Status:** open
+- **Impact:** every tags-engine tool format queued at L3 (protobuf, cmake, graphql) stops at L2 whatever its extraction, and its row stays open behind a `-rest` deferral
+
+### O168 — a trailing `.` anchor does not select the last identifier of tree-sitter-proto's `message_or_enum_type`
+
+- **Symptom:** `(message_or_enum_type (identifier) @name .)` captures every identifier of `acme.v1.Other` (acme, v1, Other), so one reference became three calls
+- **Evidence:**
+  - **Tool:** `indexbench lang-probe -dialect protobuf <file>` (coder3101/tree-sitter-proto 0.6.0, core v0.26.11)
+  - **Expected:** the trailing anchor constrains the child pattern to the last named child, as the query syntax documents
+  - **Actual:** three matches with @name acme, v1 and Other; the leading anchor (`. (identifier) @name`) and sibling anchors work
+  - **Repro:** a query file holding `(field (type (message_or_enum_type (identifier) @name .) @reference.call))`, then `go run ./cmd/indexbench lang-probe -dialect protobuf <a .proto with a field typed acme.v1.Other>`
+- **Root cause:** not isolated (the node's anonymous `.` children, the grammar's hidden rules or the core's anchor handling); lang-probe shows the matches, not why
+- **Fix:** the dialect fixes the path length with `#match?` on the whole reference and walks to the last identifier with leading and sibling anchors, one pattern per length from one to eight (dialects/protobuf/tags.scm); a dialect that needs the last named child elsewhere should check lang-probe before trusting a trailing anchor
+- **Status:** open (worked around)
+- **Impact:** a query that relies on a trailing anchor silently over-captures (here every package segment became a callee: call precision, and file-resolved edges named by a package segment)
