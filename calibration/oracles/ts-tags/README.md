@@ -16,6 +16,18 @@ independent in runtime, not in query shape.
     <tools>/pyts/bin/python tags_oracle.py --lang bash --query bash-tags.scm --ext .sh --ext .bash --shebang bash --shebang sh <clone>/bats-core > out/bash-bats-core.json
     ... --defs ...   # definitions instead of calls (a secondary L1 check)
 
+Lua (LB-Q-lua) runs the grammar's own upstream tags query, `lua-tags.scm` (tree-sitter-grammars/tree-sitter-lua
+v0.5.0 `queries/tags.scm`, MIT, verbatim under a header), with py-tree-sitter 0.25.2 and tree-sitter-lua 0.5.0:
+
+    <tools>/pyts/bin/pip install tree-sitter==0.25.2 tree-sitter-lua==0.5.0
+    <tools>/pyts/bin/python tags_oracle.py --lang lua --query lua-tags.scm --ext .lua <clone>/kong > out/lua-kong-calls.json
+    # Kong/kong 3.9.2 (kong/): 587 files / 10,996 pairs, nvim-telescope/telescope.nvim v0.2.2: 75 / 2,991; 0 parse errors
+
+That query's `@definition.function` and `@definition.method` both enclose calls, and its captures are a plain
+`@name` (aider's are `@name.definition.function`); the script reads either. Upstream marks the whole
+`table_constructor` as the definition of its function-valued fields, so a call written in a sibling field of a
+callback table is paired with the first function field's name: the oracle and the dialect disagree there by design.
+
 Call pairs: each `@reference.call` command name with the innermost
 enclosing `@definition.function` (top-level calls skipped; a variable
 assignment is not a callable and never encloses). 2026-09-28: bats-core

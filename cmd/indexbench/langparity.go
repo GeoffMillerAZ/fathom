@@ -71,7 +71,7 @@ func cmdLangParity(args []string, stdout, stderr io.Writer) int {
 	var subjects, scips, toolOracles multiFlag
 	fs.Var(&subjects, "subject", "subject checkout, `[name=]dir` (repeatable; required)")
 	fs.Var(&scips, "scip", "SCIP index for a subject, `[name=]path` (repeatable)")
-	fs.Var(&toolOracles, "tool-oracle", "tool-native oracle JSON for a subject, `[name=]path` (repeatable)")
+	fs.Var(&toolOracles, "tool-oracle", "tool-native oracle JSON for a subject, `[name=]path` (repeatable, also more than once per subject: definitions and calls may come from different tools)")
 	ctagsPath := fs.String("ctags", "", "universal-ctags binary (as lang-oracle)")
 	queuePath := fs.String("queue", "docs/plans/language-breadth.queue.json", "the queue (for the dialect's target level)")
 	target := fs.String("target", "", "target level (default: the queue entry's)")
@@ -123,7 +123,10 @@ func cmdLangParity(args []string, stdout, stderr io.Writer) int {
 		tgt = "L1"
 	}
 
-	type subj struct{ name, dir, scip, tool string }
+	type subj struct {
+		name, dir, scip string
+		tools           []string // every -tool-oracle for the subject, as lang-oracle takes them
+	}
 	var subs []subj
 	byName := map[string]int{}
 	for _, s := range subjects {
@@ -159,7 +162,7 @@ func cmdLangParity(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "lang-parity:", err)
 		return 2
 	}
-	if err := attach(toolOracles, func(s *subj, p string) { s.tool = p }); err != nil {
+	if err := attach(toolOracles, func(s *subj, p string) { s.tools = append(s.tools, p) }); err != nil {
 		fmt.Fprintln(stderr, "lang-parity:", err)
 		return 2
 	}
@@ -182,7 +185,7 @@ func cmdLangParity(args []string, stdout, stderr io.Writer) int {
 			r     *langbench.Reading
 			kinds map[string]int
 		}{{incSpec, incX, &incR, incKinds}, {spec, dialX, &dialR, dialKinds}} {
-			m, err := measureSubject(ctx, side.spec, s.dir, s.name, oracleOpts{ctags: *ctagsPath, scip: s.scip, tools: nonEmpty(s.tool)}, side.x)
+			m, err := measureSubject(ctx, side.spec, s.dir, s.name, oracleOpts{ctags: *ctagsPath, scip: s.scip, tools: s.tools}, side.x)
 			if err != nil {
 				fmt.Fprintln(stderr, "lang-parity:", err)
 				return 2
@@ -270,15 +273,4 @@ func writeParity(w io.Writer, p langbench.Parity) {
 	reasons := append([]string(nil), p.Reasons...)
 	sort.Strings(reasons)
 	fmt.Fprintf(w, "verdict: REFUSED — %s\n", strings.Join(reasons, "; "))
-}
-
-// nonEmpty is xs without its empty strings.
-func nonEmpty(xs ...string) []string {
-	var out []string
-	for _, x := range xs {
-		if x != "" {
-			out = append(out, x)
-		}
-	}
-	return out
 }

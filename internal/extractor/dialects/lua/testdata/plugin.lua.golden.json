@@ -1,0 +1,65 @@
+{
+  "symbols": [
+    {
+      "name": "build_key",
+      "kind": "LuaFunction",
+      "package": "plugin",
+      "line": 12,
+      "end_line": 14,
+      "signature": "local function build_key(conf, consumer)",
+      "tier": "verified"
+    },
+    {
+      "name": "_M.check",
+      "kind": "LuaFunction",
+      "package": "plugin",
+      "line": 16,
+      "end_line": 21,
+      "signature": "function _M.check(key, limit)",
+      "calls": [
+        "get",
+        "pcall"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "PluginHandler:access",
+      "kind": "LuaFunction",
+      "package": "plugin",
+      "line": 23,
+      "end_line": 28,
+      "signature": "function PluginHandler:access(conf)",
+      "calls": [
+        "build_key",
+        "check",
+        "exit",
+        "get_consumer"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "PluginHandler.header_filter",
+      "kind": "LuaFunction",
+      "package": "plugin",
+      "line": 30,
+      "end_line": 32,
+      "signature": "PluginHandler.header_filter = function(self, conf)",
+      "calls": [
+        "set_header"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "PluginHandler:log",
+      "kind": "LuaFunction",
+      "package": "plugin",
+      "line": 34,
+      "end_line": 36,
+      "signature": "function PluginHandler:log(conf)",
+      "calls": [
+        "log"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

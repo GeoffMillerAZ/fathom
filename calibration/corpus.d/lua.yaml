@@ -1,0 +1,28 @@
+id: lua
+language: Lua
+# `subpath: kong` keeps Kong's clone to its Lua sources (the repository is about 96 MB with its spec
+# suite, Nginx fixtures and a bundled build tree; the Lua the gateway ships is under kong/).
+repos:
+  - name: Kong/kong
+    url: https://github.com/Kong/kong
+    ref: 3.9.2
+    sha: 3666d50bdf2b8d0da66c414464d3055219e7c0c6
+    licence: Apache-2.0
+    subpath: kong
+    idioms:
+      - 'module tables (local _M = {}; return _M) with dotted function definitions'
+      - 'metatable classes (setmetatable + __index) and obj:method() definitions'
+      - 'plugin handler tables assigned function values (PluginHandler.access = function)'
+      - 'OpenResty ngx.* / kong.* calls, pcall/error and closures capturing upvalues'
+      - 'varargs and table-of-functions dispatch'
+  - name: nvim-telescope/telescope.nvim
+    url: https://github.com/nvim-telescope/telescope.nvim
+    ref: v0.2.2
+    sha: 5255aa27c422de944791318024167ad5d40aad20
+    licence: MIT
+    idioms:
+      - 'module pattern (local M = {}; M.fn = function) and local function helpers'
+      - 'metatable classes (setmetatable + __index) with obj:method() definitions'
+      - 'closures capturing upvalues and nested anonymous functions'
+      - 'table constructors whose fields are functions (pickers, sorters, actions)'
+      - 'require graph across lua/telescope/**'

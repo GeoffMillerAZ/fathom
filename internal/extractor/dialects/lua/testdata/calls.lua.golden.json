@@ -1,0 +1,169 @@
+{
+  "symbols": [
+    {
+      "name": "helper",
+      "kind": "LuaFunction",
+      "package": "calls",
+      "line": 5,
+      "end_line": 5,
+      "signature": "local function helper()",
+      "tier": "verified"
+    },
+    {
+      "name": "plain",
+      "kind": "LuaFunction",
+      "package": "calls",
+      "line": 7,
+      "end_line": 10,
+      "signature": "local function plain()",
+      "calls": [
+        "helper"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "qualified",
+      "kind": "LuaFunction",
+      "package": "calls",
+      "line": 12,
+      "end_line": 16,
+      "signature": "local function qualified()",
+      "calls": [
+        "format",
+        "nvim_buf_set_lines",
+        "trim"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "methods",
+      "kind": "LuaFunction",
+      "package": "calls",
+      "line": 18,
+      "end_line": 22,
+      "signature": "local function methods(obj)",
+      "calls": [
+        "run",
+        "step",
+        "stop"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "sugar",
+      "kind": "LuaFunction",
+      "package": "calls",
+      "line": 24,
+      "end_line": 28,
+      "signature": "local function sugar()",
+      "calls": [
+        "configure",
+        "log",
+        "say"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "chained",
+      "kind": "LuaFunction",
+      "package": "calls",
+      "line": 30,
+      "end_line": 34,
+      "signature": "local function chained()",
+      "calls": [
+        "build",
+        "builder",
+        "name",
+        "rep"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "unnamed",
+      "kind": "LuaFunction",
+      "package": "calls",
+      "line": 37,
+      "end_line": 40,
+      "signature": "local function unnamed(t, f)",
+      "calls": [
+        "f"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "closures",
+      "kind": "LuaFunction",
+      "package": "calls",
+      "line": 43,
+      "end_line": 50,
+      "signature": "local function closures(items)",
+      "calls": [
+        "ipairs",
+        "pcall",
+        "risky",
+        "visit"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "outer",
+      "kind": "LuaFunction",
+      "package": "calls",
+      "line": 53,
+      "end_line": 59,
+      "signature": "local function outer()",
+      "calls": [
+        "outer_call"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "inner",
+      "kind": "LuaFunction",
+      "package": "calls",
+      "line": 54,
+      "end_line": 56,
+      "signature": "local function inner()",
+      "calls": [
+        "deep_call"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "open",
+      "kind": "LuaFunction",
+      "package": "calls",
+      "line": 63,
+      "end_line": 65,
+      "signature": "open = function(path)",
+      "calls": [
+        "open"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "close",
+      "kind": "LuaFunction",
+      "package": "calls",
+      "line": 66,
+      "end_line": 68,
+      "signature": "close = function(handle)",
+      "calls": [
+        "close"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "repeated",
+      "kind": "LuaFunction",
+      "package": "calls",
+      "line": 72,
+      "end_line": 76,
+      "signature": "local function repeated(a)",
+      "calls": [
+        "go"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

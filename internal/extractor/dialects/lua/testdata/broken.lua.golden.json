@@ -1,0 +1,25 @@
+{
+  "symbols": [
+    {
+      "name": "before",
+      "kind": "LuaFunction",
+      "package": "broken",
+      "line": 2,
+      "end_line": 4,
+      "signature": "local function before(a)",
+      "tier": "verified"
+    },
+    {
+      "name": "after",
+      "kind": "LuaFunction",
+      "package": "broken",
+      "line": 8,
+      "end_line": 10,
+      "signature": "function after(b)",
+      "calls": [
+        "before"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

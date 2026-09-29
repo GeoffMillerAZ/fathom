@@ -1,0 +1,160 @@
+{
+  "symbols": [
+    {
+      "name": "hello",
+      "kind": "LuaFunction",
+      "package": "shapes",
+      "line": 5,
+      "end_line": 7,
+      "signature": "function hello(name)",
+      "calls": [
+        "print"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "helper",
+      "kind": "LuaFunction",
+      "package": "shapes",
+      "line": 10,
+      "end_line": 12,
+      "signature": "local function helper(a, b)",
+      "tier": "verified"
+    },
+    {
+      "name": "M.add",
+      "kind": "LuaFunction",
+      "package": "shapes",
+      "line": 15,
+      "end_line": 19,
+      "signature": "function M.add(a, b, c)",
+      "calls": [
+        "helper"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "M.sub.deep",
+      "kind": "LuaFunction",
+      "package": "shapes",
+      "line": 22,
+      "end_line": 23,
+      "signature": "function M.sub.deep()",
+      "tier": "verified"
+    },
+    {
+      "name": "M:method",
+      "kind": "LuaFunction",
+      "package": "shapes",
+      "line": 26,
+      "end_line": 28,
+      "signature": "function M:method(x)",
+      "tier": "verified"
+    },
+    {
+      "name": "M.assigned",
+      "kind": "LuaFunction",
+      "package": "shapes",
+      "line": 31,
+      "end_line": 33,
+      "signature": "M.assigned = function(a)",
+      "tier": "verified"
+    },
+    {
+      "name": "anon",
+      "kind": "LuaFunction",
+      "package": "shapes",
+      "line": 35,
+      "end_line": 35,
+      "signature": "local anon = function()",
+      "tier": "verified"
+    },
+    {
+      "name": "someglobal",
+      "kind": "LuaFunction",
+      "package": "shapes",
+      "line": 36,
+      "end_line": 36,
+      "signature": "someglobal = function()",
+      "tier": "verified"
+    },
+    {
+      "name": "M.wide",
+      "kind": "LuaFunction",
+      "package": "shapes",
+      "line": 38,
+      "end_line": 41,
+      "signature": "M.wide = function(left, right)",
+      "tier": "verified"
+    },
+    {
+      "name": "on_open",
+      "kind": "LuaFunction",
+      "package": "shapes",
+      "line": 45,
+      "end_line": 45,
+      "signature": "on_open = function(ev)",
+      "tier": "verified"
+    },
+    {
+      "name": "on_close",
+      "kind": "LuaFunction",
+      "package": "shapes",
+      "line": 46,
+      "end_line": 48,
+      "signature": "on_close = function(ev)",
+      "tier": "verified"
+    },
+    {
+      "name": "deeper",
+      "kind": "LuaFunction",
+      "package": "shapes",
+      "line": 50,
+      "end_line": 50,
+      "signature": "deeper = function()",
+      "tier": "verified"
+    },
+    {
+      "name": "quoted",
+      "kind": "LuaFunction",
+      "package": "shapes",
+      "line": 51,
+      "end_line": 51,
+      "signature": "[\"quoted\"] = function()",
+      "tier": "verified"
+    },
+    {
+      "name": "M:outer",
+      "kind": "LuaFunction",
+      "package": "shapes",
+      "line": 55,
+      "end_line": 61,
+      "signature": "function M:outer()",
+      "calls": [
+        "inner"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "inner",
+      "kind": "LuaFunction",
+      "package": "shapes",
+      "line": 56,
+      "end_line": 59,
+      "signature": "local function inner(z)",
+      "calls": [
+        "deepest"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "deepest",
+      "kind": "LuaFunction",
+      "package": "shapes",
+      "line": 57,
+      "end_line": 57,
+      "signature": "local deepest = function()",
+      "tier": "verified"
+    }
+  ]
+}

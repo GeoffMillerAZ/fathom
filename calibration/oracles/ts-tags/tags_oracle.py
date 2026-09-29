@@ -17,6 +17,7 @@ reads, tier "C":
 Usage:
   tags_oracle.py --lang bash --query bash-tags.scm [--defs] \
       --ext .sh --ext .bash --shebang bash --shebang sh <root> > out.json
+  tags_oracle.py --lang lua --query lua-tags.scm --ext .lua <root> > out.json
 """
 import argparse
 import json
@@ -26,7 +27,7 @@ import sys
 
 import tree_sitter
 
-LANGS = {"bash": ("tree_sitter_bash", "language")}
+LANGS = {"bash": ("tree_sitter_bash", "language"), "lua": ("tree_sitter_lua", "language")}
 
 
 def load_language(name):
@@ -84,12 +85,18 @@ def main():
             errors += 1
         funcs, calls = [], []
         for _, caps in cursor.matches(tree.root_node):
-            if "definition.function" in caps:
-                node = caps["definition.function"][0]
-                name = caps["name.definition.function"][0].text.decode("utf-8", "replace")
-                funcs.append((node, name))
-            elif "reference.call" in caps:
-                calls.append(caps["name.reference.call"][0])
+            # aider's tags.scm names its captures @name.definition.function; a
+            # grammar's own tags.scm (tree-sitter-lua) writes a plain @name and
+            # tags a colon method as @definition.method, which encloses calls too.
+            for kind in ("definition.function", "definition.method"):
+                if kind in caps:
+                    node = caps[kind][0]
+                    nm = caps.get("name." + kind) or caps["name"]
+                    funcs.append((node, nm[0].text.decode("utf-8", "replace")))
+                    break
+            else:
+                if "reference.call" in caps:
+                    calls.append((caps.get("name.reference.call") or caps["name"])[0])
         for node, name in funcs:
             defs_out.append({"path": rel, "name": name, "line": node.start_point[0] + 1,
                              "end": node.end_point[0] + 1, "kind": "function"})

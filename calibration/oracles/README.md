@@ -19,7 +19,8 @@ lines, bare names).
 | kotlin-psi/ | B | Kotlin |
 | powershell-ast/ | B | PowerShell |
 | php-parser/ | B | PHP |
-| ts-tags/ | C | Bash (calls) |
+| luaparse/ | B | Lua (definitions) |
+| ts-tags/ | C | Bash and Lua (calls) |
 | sqlglot/ | C | SQL (foreign-key calls) |
 | make/ | A (references), B (definitions) | Makefile |
 

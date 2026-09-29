@@ -1,0 +1,67 @@
+{
+  "symbols": [
+    {
+      "name": "M.commented",
+      "kind": "LuaFunction",
+      "package": "bodies",
+      "line": 4,
+      "end_line": 7,
+      "signature": "function M.commented(a)",
+      "tier": "verified"
+    },
+    {
+      "name": "M.trailing",
+      "kind": "LuaFunction",
+      "package": "bodies",
+      "line": 9,
+      "end_line": 11,
+      "signature": "function M.trailing(b)",
+      "tier": "verified"
+    },
+    {
+      "name": "M.only_comment",
+      "kind": "LuaFunction",
+      "package": "bodies",
+      "line": 13,
+      "end_line": 14,
+      "signature": "function M.only_comment()",
+      "tier": "verified"
+    },
+    {
+      "name": "M.assigned",
+      "kind": "LuaFunction",
+      "package": "bodies",
+      "line": 16,
+      "end_line": 16,
+      "signature": "M.assigned = function(c)",
+      "tier": "verified"
+    },
+    {
+      "name": "first",
+      "kind": "LuaFunction",
+      "package": "bodies",
+      "line": 19,
+      "end_line": 22,
+      "signature": "first = function(x)",
+      "tier": "verified"
+    },
+    {
+      "name": "literal",
+      "kind": "LuaFunction",
+      "package": "bodies",
+      "line": 24,
+      "end_line": 24,
+      "signature": "[\"literal\"] = function()",
+      "tier": "verified"
+    },
+    {
+      "name": "indexed",
+      "kind": "LuaFunction",
+      "package": "bodies",
+      "line": 28,
+      "end_line": 28,
+      "signature": "M[\"indexed\"] = function(v)",
+      "tier": "verified"
+    }
+  ]
+}
