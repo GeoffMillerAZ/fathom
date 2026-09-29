@@ -742,7 +742,9 @@ func (m *MemoryStore) SetCommits(_ context.Context, serviceID string, commits []
 	defer m.mu.Unlock()
 	cp := make([]Commit, len(commits))
 	copy(cp, commits)
-	sort.Slice(cp, func(i, j int) bool { return cp[i].Date > cp[j].Date })
+	// Stable: commits sharing a date keep the given (git log) order, as
+	// SQLiteStore.ListCommits does.
+	sort.SliceStable(cp, func(i, j int) bool { return cp[i].Date > cp[j].Date })
 	m.commits[serviceID] = cp
 	return nil
 }

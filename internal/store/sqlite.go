@@ -1360,10 +1360,14 @@ VALUES (?, ?, ?, ?, ?, ?, ?)`)
 }
 
 // ListCommits returns commits for serviceID newest-first (by date desc).
+// Commits sharing a date (git dates are whole seconds) keep the order
+// SetCommits was given — git log's, a child before its parent: SetCommits
+// inserts in that order after deleting the service's rows, so rowid breaks
+// the tie. Without it the tie fell to the primary key's hash order.
 func (s *SQLiteStore) ListCommits(ctx context.Context, serviceID string) ([]Commit, error) {
 	rows, err := s.db.QueryContext(ctx,
 		`SELECT service_id, hash, author, date, message, files, spec_ids
-		 FROM commits WHERE service_id = ? ORDER BY date DESC`, serviceID)
+		 FROM commits WHERE service_id = ? ORDER BY date DESC, rowid ASC`, serviceID)
 	if err != nil {
 		return nil, fmt.Errorf("ListCommits query: %w", err)
 	}

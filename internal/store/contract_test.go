@@ -1055,6 +1055,34 @@ func storeContract(t *testing.T, s Store) {
 		}
 	})
 
+	// Commits that share a date (git dates are whole seconds, so a scripted
+	// or rebased run lands several in one) keep the order SetCommits was
+	// given — git log's, a child before its parent — so "the most recent
+	// commit touching X" (KR-7's doc_link_drift attribution) names the
+	// child, deterministically, whatever the hashes sort as.
+	t.Run("commits_same_date_keep_given_order", func(t *testing.T) {
+		svc := "svc-commits-same-date"
+		commits := []Commit{
+			{ServiceID: svc, Hash: "fff-child", Date: 500, Message: "crank twice", Files: []string{"crank.go"}},
+			{ServiceID: svc, Hash: "000-parent", Date: 500, Message: "initial", Files: []string{"crank.go"}},
+			{ServiceID: svc, Hash: "888-older", Date: 100, Message: "older"},
+		}
+		if err := s.SetCommits(ctx, svc, commits); err != nil {
+			t.Fatalf("SetCommits: %v", err)
+		}
+		got, err := s.ListCommits(ctx, svc)
+		if err != nil {
+			t.Fatalf("ListCommits: %v", err)
+		}
+		if len(got) != 3 || got[0].Hash != "fff-child" || got[1].Hash != "000-parent" || got[2].Hash != "888-older" {
+			hashes := make([]string, 0, len(got))
+			for _, c := range got {
+				hashes = append(hashes, c.Hash)
+			}
+			t.Errorf("same-date order = %v, want [fff-child 000-parent 888-older] (given order within a date)", hashes)
+		}
+	})
+
 	t.Run("commits_empty_service", func(t *testing.T) {
 		got, err := s.ListCommits(ctx, "svc-no-such-commits-xyz")
 		if err != nil {

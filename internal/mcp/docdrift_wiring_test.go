@@ -35,10 +35,14 @@ func TestStalenessReportDocLinkDrift(t *testing.T) {
 		t.Skip("git not available")
 	}
 	root := t.TempDir()
+	// Both commits land in one second, as a fast ingest-commit-ingest does:
+	// the changing commit must still be named over its same-dated parent.
+	const sameSecond = "2026-09-29T12:00:00Z"
 	git := func(args ...string) string {
 		t.Helper()
 		cmd := exec.Command("git", args...)
 		cmd.Dir = root
+		cmd.Env = append(os.Environ(), "GIT_AUTHOR_DATE="+sameSecond, "GIT_COMMITTER_DATE="+sameSecond)
 		var out bytes.Buffer
 		cmd.Stdout, cmd.Stderr = &out, &out
 		if err := cmd.Run(); err != nil {
