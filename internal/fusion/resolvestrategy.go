@@ -3,9 +3,10 @@
 // its parameters (extractor.ImportParams); each strategy is a pure function
 // over (importer path, module spec, repo file set) → target files. Repo
 // manifests a strategy consults (composer.json, pubspec.yaml, Cargo.toml,
-// Package.swift, compile_commands.json) are read through the env's reader,
-// bounded and memoized. Nothing here is typed evidence: the edges the file
-// resolver emits through these stay core.EdgeFileResolved, tier pre-scan.
+// Package.swift, compile_commands.json, package.json) are read through the
+// env's reader, bounded and memoized. Nothing here is typed evidence: the
+// edges the file resolver emits through these stay core.EdgeFileResolved,
+// tier pre-scan.
 //
 // A new strategy is a foundation change (an Opus row), never a worker's.
 package fusion
@@ -225,10 +226,14 @@ var tsResolveExts = []string{".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"}
 // the importer's directory, tried as itself, with each suffix, then each
 // index file. With params.Relative a bare spec is relative too and a
 // leading / is the repo root (CSS @import, HTML src/href, Markdown links);
-// a query or fragment is dropped. Defaults are the pre-LB-F11 TS/JS rule.
+// a query or fragment is dropped. A manifest that sets none of suffixes,
+// index_files and relative selects the TS/JS rule, resolveNodeModule.
 func resolveRelativePath(p extractor.ImportParams, env *resolveEnv, importer, spec string) []string {
 	if hasScheme(spec) || strings.HasPrefix(spec, "#") {
 		return nil
+	}
+	if !p.Relative && len(p.Suffixes) == 0 && len(p.IndexFiles) == 0 {
+		return resolveNodeModule(env, importer, spec)
 	}
 	suffixes, index := p.Suffixes, p.IndexFiles
 	if len(suffixes) == 0 {
@@ -259,6 +264,172 @@ func resolveRelativePath(p extractor.ImportParams, env *resolveEnv, importer, sp
 		}
 	}
 	return firstFile(env, []string{cand}, suffixes, index)
+}
+
+// nodeExts is the TS/JS rule's extension search order for a spec with no
+// JS or TS extension of its own (TypeScript's .ts, .tsx, .d.ts, .js, .jsx,
+// then the module-format extensions).
+var nodeExts = []string{".ts", ".tsx", ".d.ts", ".js", ".jsx", ".mjs", ".cjs"}
+
+// tsExtensionMap is TypeScript's rule for a relative spec written with a
+// JS or TS extension (moduleResolution node16, nodenext and bundler; the
+// compiler's tryAddingExtensions): the extension is replaced by each of
+// these in order, so the ESM spec `./x.js` names the source `x.ts` it is
+// emitted from, `.mjs` names `.mts` and `.cjs` names `.cts`.
+var tsExtensionMap = map[string][]string{
+	".js": {".ts", ".tsx", ".d.ts", ".js", ".jsx"}, ".ts": {".ts", ".tsx", ".d.ts", ".js", ".jsx"}, ".d.ts": {".ts", ".tsx", ".d.ts", ".js", ".jsx"},
+	".jsx": {".tsx", ".ts", ".d.ts", ".jsx", ".js"}, ".tsx": {".tsx", ".ts", ".d.ts", ".jsx", ".js"},
+	".mjs": {".mts", ".d.mts", ".mjs"}, ".mts": {".mts", ".d.mts", ".mjs"}, ".d.mts": {".mts", ".d.mts", ".mjs"},
+	".cjs": {".cts", ".d.cts", ".cjs"}, ".cts": {".cts", ".d.cts", ".cjs"}, ".d.cts": {".cts", ".d.cts", ".cjs"},
+}
+
+// scriptExt is p's JS or TS extension as TypeScript reads it (a
+// declaration file's .d.ts, .d.mts or .d.cts whole), "" for any other.
+func scriptExt(p string) string {
+	for _, e := range []string{".d.ts", ".d.mts", ".d.cts"} {
+		if strings.HasSuffix(p, e) {
+			return e
+		}
+	}
+	if e := path.Ext(p); tsExtensionMap[e] != nil {
+		return e
+	}
+	return ""
+}
+
+// isTSSource reports a TypeScript importer, whose specs the compiler
+// resolves (a JavaScript one is resolved by Node or a bundler).
+func isTSSource(p string) bool {
+	switch scriptExt(p) {
+	case ".ts", ".tsx", ".mts", ".cts", ".d.ts", ".d.mts", ".d.cts":
+		return true
+	}
+	return false
+}
+
+// resolveNodeModule is relative-path's TS/JS rule: Node's resolution of a
+// relative spec (./, ../, . or ..; a bare one is a package, outside the
+// corpus) with TypeScript's mapping of an emitted extension to its source.
+// The spec is tried as a file, then as a directory; `.`, `..` and a spec
+// ending in / (or /. or /..) name only a directory, the repository root
+// among them. A file: a TypeScript importer maps a JS or TS extension first
+// (tsExtensionMap: `./x.js` is x.ts when that exists, as the compiler reads
+// it), a JavaScript importer takes the file as written first (Node runs it)
+// and maps the extension only when it is absent (a bundler, ts-node); then
+// nodeExts are appended. A directory: its package.json fields (a TypeScript
+// importer reads types, typings, then main; Node reads main), each a file
+// or a directory's index, then the directory's own index file.
+func resolveNodeModule(env *resolveEnv, importer, spec string) []string {
+	if spec != "." && spec != ".." && !strings.HasPrefix(spec, "./") && !strings.HasPrefix(spec, "../") {
+		return nil
+	}
+	cand := path.Clean(path.Join(path.Dir(importer), spec))
+	if cand == ".." || strings.HasPrefix(cand, "../") {
+		return nil
+	}
+	cand = cleanRel(cand)
+	ts := isTSSource(importer)
+	dirOnly := spec == "." || spec == ".." || strings.HasSuffix(spec, "/") || strings.HasSuffix(spec, "/.") || strings.HasSuffix(spec, "/..")
+	if !dirOnly && cand != "" {
+		if f, ok := nodeFile(env, cand, ts); ok {
+			return []string{f}
+		}
+	}
+	if f, ok := nodeDir(env, cand, ts); ok {
+		return []string{f}
+	}
+	return nil
+}
+
+// nodeFile is cand resolved as a file (resolveNodeModule's file rule).
+func nodeFile(env *resolveEnv, cand string, ts bool) (string, bool) {
+	ext := scriptExt(cand)
+	mapped := func() (string, bool) {
+		stem := strings.TrimSuffix(cand, ext)
+		for _, s := range tsExtensionMap[ext] {
+			if env.set[stem+s] {
+				return stem + s, true
+			}
+		}
+		return "", false
+	}
+	if ts && ext != "" {
+		if f, ok := mapped(); ok {
+			return f, true
+		}
+	}
+	if env.set[cand] {
+		return cand, true
+	}
+	if !ts && ext != "" {
+		if f, ok := mapped(); ok {
+			return f, true
+		}
+	}
+	for _, s := range nodeExts {
+		if env.set[cand+s] {
+			return cand + s, true
+		}
+	}
+	return "", false
+}
+
+// nodeDir is dir resolved as a directory (resolveNodeModule's directory
+// rule); dir "" is the repository root.
+func nodeDir(env *resolveEnv, dir string, ts bool) (string, bool) {
+	fields := []string{"main"}
+	if ts {
+		fields = []string{"types", "typings", "main"}
+	}
+	if pkg := packageJSONFields(env.manifest(joinRel(dir, "package.json"))); pkg != nil {
+		for _, field := range fields {
+			v := strings.TrimSpace(pkg[field])
+			if v == "" || path.IsAbs(v) {
+				continue
+			}
+			m := cleanRel(path.Join(dir, v))
+			if m == "" || m == ".." || strings.HasPrefix(m, "../") || m == dir {
+				continue
+			}
+			if f, ok := nodeFile(env, m, ts); ok {
+				return f, true
+			}
+			if f, ok := nodeIndex(env, m); ok {
+				return f, true
+			}
+		}
+	}
+	return nodeIndex(env, dir)
+}
+
+// nodeIndex is dir's index file, index plus each of nodeExts.
+func nodeIndex(env *resolveEnv, dir string) (string, bool) {
+	for _, s := range nodeExts {
+		if p := joinRel(dir, "index"+s); env.set[p] {
+			return p, true
+		}
+	}
+	return "", false
+}
+
+// packageJSONFields is a package.json's top-level string fields; nil when
+// b is absent or not a JSON object.
+func packageJSONFields(b []byte) map[string]string {
+	if b == nil {
+		return nil
+	}
+	var raw map[string]json.RawMessage
+	if json.Unmarshal(b, &raw) != nil {
+		return nil
+	}
+	out := make(map[string]string, len(raw))
+	for k, v := range raw {
+		var s string
+		if json.Unmarshal(v, &s) == nil {
+			out[k] = s
+		}
+	}
+	return out
 }
 
 // resolveDottedModule is dotted-module: a dotted name maps to a path under

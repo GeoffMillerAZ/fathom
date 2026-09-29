@@ -39,6 +39,47 @@ func TestResolveStrategies(t *testing.T) {
 		{"rel/ts-ext", "relative-path", extractor.ImportParams{}, []string{"src/a.ts", "src/b.ts"}, nil, "src/a.ts", "./b", []string{"src/b.ts"}},
 		{"rel/ts-index", "relative-path", extractor.ImportParams{}, []string{"src/a.ts", "lib/index.js"}, nil, "src/a.ts", "../lib", []string{"lib/index.js"}},
 		{"rel/ts-bare", "relative-path", extractor.ImportParams{}, []string{"src/a.ts", "react.ts"}, nil, "src/a.ts", "react", nil},
+
+		// relative-path's TS/JS rule follows TypeScript's node16/bundler
+		// resolution (O145): an ESM spec names the emitted .js/.mjs/.cjs, and
+		// the compiler finds the .ts/.tsx/.d.ts, .mts or .cts source it came from.
+		{"rel/ts-esm-js-names-ts", "relative-path", extractor.ImportParams{}, []string{"src/a.ts", "src/b.ts"}, nil, "src/a.ts", "./b.js", []string{"src/b.ts"}},
+		{"rel/ts-esm-js-names-tsx", "relative-path", extractor.ImportParams{}, []string{"src/a.ts", "src/c.tsx"}, nil, "src/a.ts", "./c.js", []string{"src/c.tsx"}},
+		{"rel/ts-esm-js-names-dts", "relative-path", extractor.ImportParams{}, []string{"src/a.ts", "src/types.d.ts"}, nil, "src/a.ts", "./types.js", []string{"src/types.d.ts"}},
+		{"rel/ts-esm-jsx-names-tsx", "relative-path", extractor.ImportParams{}, []string{"src/a.tsx", "src/view.tsx", "src/view.ts"}, nil, "src/a.tsx", "./view.jsx", []string{"src/view.tsx"}},
+		{"rel/ts-esm-mjs-names-mts", "relative-path", extractor.ImportParams{}, []string{"src/a.mts", "src/b.mts"}, nil, "src/a.mts", "./b.mjs", []string{"src/b.mts"}},
+		{"rel/ts-esm-cjs-names-cts", "relative-path", extractor.ImportParams{}, []string{"src/a.cts", "src/b.cts"}, nil, "src/a.cts", "../src/b.cjs", []string{"src/b.cts"}},
+		{"rel/ts-prefers-source-over-emitted-js", "relative-path", extractor.ImportParams{}, []string{"src/a.ts", "src/b.ts", "src/b.js"}, nil, "src/a.ts", "./b.js", []string{"src/b.ts"}},
+		{"rel/js-keeps-its-own-js", "relative-path", extractor.ImportParams{}, []string{"src/a.js", "src/b.ts", "src/b.js"}, nil, "src/a.js", "./b.js", []string{"src/b.js"}},
+		{"rel/js-esm-js-names-ts", "relative-path", extractor.ImportParams{}, []string{"src/a.js", "src/b.ts"}, nil, "src/a.js", "./b.js", []string{"src/b.ts"}},
+		{"rel/ts-dotted-basename-keeps-suffixes", "relative-path", extractor.ImportParams{}, []string{"src/a.ts", "src/app.service.ts"}, nil, "src/a.ts", "./app.service", []string{"src/app.service.ts"}},
+
+		// Node's CommonJS directory resolution: `.` and `..` are relative, a
+		// trailing slash names only a directory, the repository root is one,
+		// and a directory's package.json main (TypeScript: types, typings,
+		// then main) precedes its index file.
+		{"rel/dir-dotdot", "relative-path", extractor.ImportParams{}, []string{"index.js", "test/app.js"}, nil, "test/app.js", "..", []string{"index.js"}},
+		{"rel/dir-dot", "relative-path", extractor.ImportParams{}, []string{"lib/index.js", "lib/a.js"}, nil, "lib/a.js", ".", []string{"lib/index.js"}},
+		{"rel/dir-root-trailing-slash", "relative-path", extractor.ImportParams{}, []string{"index.js", "test/acceptance/x.js"}, nil, "test/acceptance/x.js", "../../", []string{"index.js"}},
+		{"rel/dir-root-no-slash", "relative-path", extractor.ImportParams{}, []string{"index.js", "test/acceptance/x.js"}, nil, "test/acceptance/x.js", "../..", []string{"index.js"}},
+		{"rel/dir-trailing-slash-skips-file", "relative-path", extractor.ImportParams{}, []string{"lib.js", "lib/index.js", "app.js"}, nil, "app.js", "./lib/", []string{"lib/index.js"}},
+		{"rel/dir-no-slash-file-first", "relative-path", extractor.ImportParams{}, []string{"lib.js", "lib/index.js", "app.js"}, nil, "app.js", "./lib", []string{"lib.js"}},
+		{"rel/dir-package-main", "relative-path", extractor.ImportParams{}, []string{"pkg/src/main.js", "pkg/index.js", "app.js"},
+			map[string]string{"pkg/package.json": `{"name":"pkg","main":"src/main.js"}`}, "app.js", "./pkg", []string{"pkg/src/main.js"}},
+		{"rel/dir-package-main-extensionless", "relative-path", extractor.ImportParams{}, []string{"lib/express.js", "index.js", "test/app.js"},
+			map[string]string{"package.json": `{"main":"./lib/express"}`}, "test/app.js", "..", []string{"lib/express.js"}},
+		{"rel/dir-package-main-directory", "relative-path", extractor.ImportParams{}, []string{"lib/index.js", "index.js", "test/app.js"},
+			map[string]string{"package.json": `{"main":"lib"}`}, "test/app.js", "../", []string{"lib/index.js"}},
+		{"rel/dir-package-main-absent-falls-to-index", "relative-path", extractor.ImportParams{}, []string{"pkg/index.ts", "app.ts"},
+			map[string]string{"pkg/package.json": `{"main":"dist/index.js"}`}, "app.ts", "./pkg", []string{"pkg/index.ts"}},
+		{"rel/dir-package-types-for-ts", "relative-path", extractor.ImportParams{}, []string{"pkg/src/index.ts", "pkg/lib/main.js", "app.ts", "app2.js"},
+			map[string]string{"pkg/package.json": `{"types":"src/index.d.ts","main":"lib/main.js"}`}, "app.ts", "./pkg", []string{"pkg/src/index.ts"}},
+		{"rel/dir-package-main-for-js", "relative-path", extractor.ImportParams{}, []string{"pkg/src/index.ts", "pkg/lib/main.js", "app.ts", "app2.js"},
+			map[string]string{"pkg/package.json": `{"types":"src/index.d.ts","main":"lib/main.js"}`}, "app2.js", "./pkg", []string{"pkg/lib/main.js"}},
+		{"rel/dir-above-root", "relative-path", extractor.ImportParams{}, []string{"index.js"}, nil, "index.js", "..", nil},
+		// A manifest that sets relative (HTML, CSS) keeps the literal rule: a
+		// browser fetches what src names.
+		{"rel/html-js-stays-literal", "relative-path", extractor.ImportParams{Relative: true}, []string{"site/index.html", "site/app.ts"}, nil, "site/index.html", "app.js", nil},
 		{"rel/css-bare-relative", "relative-path", extractor.ImportParams{Relative: true, Suffixes: []string{".scss", ".css"}},
 			[]string{"styles/main.scss", "styles/_vars.scss", "styles/base.css"}, nil, "styles/main.scss", "base", []string{"styles/base.css"}},
 		{"rel/html-root-and-query", "relative-path", extractor.ImportParams{Relative: true},
