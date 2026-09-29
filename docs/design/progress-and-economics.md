@@ -162,8 +162,11 @@ them, naming how many rows they ignored (PE-24, PE-25); the file itself is never
 the per-file variables already in the code (`FATHOM_VERIFY_LEDGER`, `FATHOM_INTENT_LEDGER`,
 `FATHOM_SESSION_LEDGER`, `FATHOM_HOOKS_LOG`) keep winning over it; test and scratch runs use them (PE-26 to
 PE-28). (3) `fathom gc` gains the class `ledger-unregistered`: the dry run counts rows and bytes per
-unregistered root, and `--apply`, run by the owner, archives them to a gzipped file beside the ledger. Rows
-are moved, never deleted, and neither the daemon's daily pass nor doctor applies the class (PE-29). This
+unregistered root, and `--apply`, run by the owner, archives them under `~/.fathom/archive/` in the owner's
+2026-09-29 layout: `<ledger>-unregistered-<date>.jsonl`, plain JSONL with rows byte-identical to the originals
+(appended when the day's file exists), `SHA256SUMS` updated and one row added to the `README.md` table; restore
+is `cat <archive> >> <ledger>`. Rows are moved, never deleted, the live file is swapped atomically carrying any
+row appended meanwhile, and neither the daemon's daily pass nor doctor plans or applies the class (PE-29). This
 differs from the existing `ledgers` class, which keeps a ledger whole because its readers read only the live
 file: unregistered-root rows are not history of registered work.
 
