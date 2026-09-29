@@ -111,8 +111,23 @@ func appendThreadItem(it threadItem) error {
 }
 
 // loadThreadItems folds the log, latest row per id winning, sorted by
-// FiledAt then ID (house determinism).
+// FiledAt then ID (house determinism). Exploration maps' own rows
+// (mapstore.go) share the log but are not thread items: no brief, list or
+// handoff ever serves them.
 func loadThreadItems(path string) []threadItem {
+	all := loadAllThreadRows(path)
+	out := all[:0:0]
+	for _, it := range all {
+		if !isMapItem(it) {
+			out = append(out, it)
+		}
+	}
+	return out
+}
+
+// loadAllThreadRows is loadThreadItems' fold over every row, the maps' own
+// included.
+func loadAllThreadRows(path string) []threadItem {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil
@@ -409,14 +424,34 @@ func cmdThreadNote(args []string, stdout, stderr io.Writer) int {
 	kind := fs.String("kind", "handoff-note", "item kind: "+strings.Join(threadKinds, "|"))
 	completes := fs.String("completes-when", "", `self-closing condition: "file_exists:<path>" or "plan_row_checked:<plan>#<ROW-ID>"`)
 	repo := fs.String("repo", ".", "repository this item belongs to")
+	// Exploration maps (XM-1, XM-14): with --map the note is an anchored map
+	// entry, its text the why line.
+	mapID := fs.String("map", "", "file an exploration-map entry on this map (created on first use) instead of a note; needs --anchor")
+	anchor := fs.String("anchor", "", "with --map: the entry's anchor, a symbol key or path#Lx-Ly (hashed now, re-resolved at every read)")
+	why := fs.String("why", "", "with --map: the one-line why (default: the note text)")
+	agent := fs.String("agent", "", "with --map: the appending sub-agent's id, recorded as the entry's provenance")
+	storePath := fs.String("store", "", "with --map: resolve a symbol anchor from this store (default: the daemon)")
+	url := fs.String("url", defaultFathomURL(), "with --map: fathom daemon URL for a symbol anchor")
+	mapRefs := fs.String("map-ref", "", "reference these exploration maps (space- or comma-separated ids) from the note: the session brief re-surfaces them when work on the thread resumes (XM-13)")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
 	if lead == "" && fs.NArg() == 1 {
 		lead = fs.Arg(0)
 	}
+	if *mapID != "" && *mapRefs != "" {
+		fmt.Fprintln(stderr, "error: --map files an entry on a map and --map-ref references maps from a note; use one")
+		return 1
+	}
+	if *mapID != "" {
+		return cmdThreadNoteMap(mapEntryFlags{
+			mapID: *mapID, anchor: *anchor, why: *why, lead: lead, agent: *agent,
+			thread: *thread, completes: *completes, repo: *repo, store: *storePath, url: *url,
+		}, stdout, stderr)
+	}
 	if strings.TrimSpace(lead) == "" {
-		fmt.Fprintln(stderr, "usage: fathom thread note \"text\" [--thread T] [--kind K] [--completes-when …]")
+		fmt.Fprintln(stderr, "usage: fathom thread note \"text\" [--thread T] [--kind K] [--completes-when …] [--map-ref IDS]")
+		fmt.Fprintln(stderr, "       fathom thread note --map ID --anchor <symbol|path#Lx-Ly> --why \"…\" [--agent ID] [--completes-when …]")
 		return 1
 	}
 	if !sliceContains(threadKinds, *kind) {
@@ -447,6 +482,20 @@ func cmdThreadNote(args []string, stdout, stderr io.Writer) int {
 	}
 	if sid := currentSessionID(); sid != "" {
 		it.Pointers["session_id"] = sid
+	}
+	if refs := strings.FieldsFunc(*mapRefs, func(r rune) bool { return r == ',' || r == ' ' }); len(refs) > 0 {
+		set := loadMapSet(root, now)
+		var uniq []string
+		for _, id := range refs {
+			if _, known := set.maps[id]; !known {
+				fmt.Fprintf(stderr, "error: --map-ref %q: no such map (`fathom map list` names them)\n", id)
+				return 1
+			}
+			if !sliceContains(uniq, id) {
+				uniq = append(uniq, id)
+			}
+		}
+		it.Pointers[mapsPointerKey] = strings.Join(uniq, " ")
 	}
 	if err := appendThreadItem(it); err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
@@ -718,7 +767,15 @@ func cmdThreadBrief(args []string, stdout, stderr io.Writer) int {
 		return 0 // context survives; say nothing
 	}
 	root, _ := filepath.Abs(*repo)
-	out := renderThreadBriefScoped(loadThreadItems(threadsPath()), threadScopeFor(root), root, *budget, time.Now(), *allRepos)
+	now := time.Now()
+	items := loadThreadItems(threadsPath())
+	scope := threadScopeFor(root)
+	var mapLines []string
+	if threadsHoldMaps() {
+		items = evaluateThreadConditions(items, root, now)
+		mapLines = briefMapLines(items, root, now)
+	}
+	out := renderThreadBriefScoped(items, scope, root, *budget, now, *allRepos, mapLines...)
 	if *jsonOut {
 		return jsonExit(renderThreadJSON(stdout, threadBriefJSON{Kind: "brief", Source: *source, BudgetBytes: *budget, Bytes: len(out), Text: out}), stderr)
 	}
@@ -743,14 +800,18 @@ func cmdThreadBrief(args []string, stdout, stderr io.Writer) int {
 // other repos' substantive items are COUNTED on one line, not listed —
 // renderThreadBriefScoped takes a daemon-resolved scope and can ride them
 // along on request.
-func renderThreadBrief(items []threadItem, repoRoot string, budgetBytes int, now time.Time) string {
+func renderThreadBrief(items []threadItem, repoRoot string, budgetBytes int, now time.Time, mapLines ...string) string {
 	scope := threadScope{identity: repoIdentity(repoRoot), repo: strings.ToLower(filepath.Base(repoRoot))}
-	return renderThreadBriefScoped(items, scope, repoRoot, budgetBytes, now, false)
+	return renderThreadBriefScoped(items, scope, repoRoot, budgetBytes, now, false, mapLines...)
 }
 
 // renderThreadBriefScoped is renderThreadBrief with an explicit scope and
 // the --all-repos switch. Pure: no daemon, no clock but the one passed.
-func renderThreadBriefScoped(items []threadItem, scope threadScope, repoRoot string, budgetBytes int, now time.Time, allRepos bool) string {
+//
+// mapLines (XM-12) are the exploration-map bullets the caller chose
+// (briefMapLines): they follow this repo's deposited items and, like every
+// bullet, are cut from the bottom when the budget is spent.
+func renderThreadBriefScoped(items []threadItem, scope threadScope, repoRoot string, budgetBytes int, now time.Time, allRepos bool, mapLines ...string) string {
 	items = evaluateThreadConditions(items, repoRoot, now)
 
 	kindRank := map[string]int{
@@ -794,6 +855,7 @@ func renderThreadBriefScoped(items []threadItem, scope threadScope, repoRoot str
 		if sid := it.Pointers["session_id"]; sid != "" {
 			ptr = " [session " + sid[:min(8, len(sid))] + "]"
 		}
+		ptr += mapRefsSuffix(it) // XM-13: the maps this note references
 		lines = append(lines, fmt.Sprintf("  • (%s/%s) %s%s", it.Thread, it.Kind, it.Text, ptr))
 		// RC-29 (docs/vision/28-receipts.md §4): a session-end note's own
 		// pointers, resolved FRESH at brief-render time — never the text
@@ -821,6 +883,8 @@ func renderThreadBriefScoped(items []threadItem, scope threadScope, repoRoot str
 		}
 		add(it)
 	}
+	// 2b) XM-12: at most three exploration maps, never a full list.
+	lines = append(lines, mapLines...)
 	// 3) Other repos' substantive items are a COUNT by default (TH-6: they
 	//    were burying this repo's continuity in every brief) — never a
 	//    silent cut — and ride along only on --all-repos.

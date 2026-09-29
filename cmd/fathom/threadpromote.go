@@ -335,7 +335,7 @@ func cmdThreadHandoff(args []string, stdout, stderr io.Writer) int {
 			if threadDormant(it, time.Now()) {
 				dormant = " (dormant)"
 			}
-			fmt.Fprintf(&b, "- **%s**%s: %s%s\n", it.Kind, dormant, it.Text, ptr)
+			fmt.Fprintf(&b, "- **%s**%s: %s%s%s\n", it.Kind, dormant, it.Text, ptr, mapRefsSuffix(it))
 		}
 		b.WriteString("\n")
 	}

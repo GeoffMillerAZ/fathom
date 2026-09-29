@@ -80,6 +80,15 @@ speculatively: the home-bench H3-1 row found the surface had no raw-text read, c
 16 turns / 601k tokens on a single task that a plain `sed -n` would have answered in one
 (docs/plans/home-bench.md).
 
+**Exploration maps (ADR-056, `fathom map`; `docs/usage.md`, "`map`") are on the CLI
+and on no MCP surface yet, by design.** The default eight stays eight:
+`TestDefaultSurfaceUnchangedByMap` pins the list and fails any map-shaped tool on
+it. A map tool, when one is built (a read of `map show`), belongs on this extended
+surface (and its `companion` alias): it is added to `extendedTools`, the tool
+tables below and the cost classes in the same change, and never to the default.
+Until then a sub-agent reaches a map through its shell:
+`fathom map show <id> --budget 1200`, which re-resolves every entry at read time.
+
 **Gate semantics: execute-and-flag, not hard-gate** (ADR-014 amendment, 2026-07-16,
 surfaces week-1). An off-surface `tools/call` — or `batch` sub-call — still **executes**;
 a rejection only teaches an agent to abandon the surface, which looks identical to

@@ -87,6 +87,32 @@ reaches a changed symbol. The whole-package run is the gate's, once, at the end.
 - The orchestrator never messages a running workflow agent. A correction goes into a later brief or
   a follow-up worker.
 
+## Wave maps (XM-7, XM-9, XM-14)
+
+Before dispatch the orchestrator mints one wave map with a purpose line, the question the wave
+answers (a map without one is refused), and files what it already knows:
+
+```sh
+export FATHOM_THREADS=<wave scratch>/threads.jsonl    # the orchestrator's, and every worker's
+fathom map new wave-b --purpose "the question this wave answers"
+fathom map append wave-b --anchor <symbol|path#Lx-Ly> --why "why it matters"   # once per finding
+ID=$(fathom map compose wave-b --id-only)             # one map comes back as itself
+```
+
+- Every brief carries that id in one line (`Wave map $ID: run fathom map show $ID --budget 1200
+  before reading files.`) and exports the same `FATHOM_THREADS`. A worker's private `FATHOM_HOME`
+  would otherwise give it a threads log of its own, with no map in it.
+- `map show` re-resolves every entry against the worker's own clone at read time: fresh, moved
+  (found again by its symbol key), or stale with its diff size, never served as still true, and
+  never over the budget.
+- A worker appends what it finds with provenance: `fathom map append $ID --anchor … --why "…"
+  --agent <worker label>`. An append never edits an existing entry. A composite id refuses entries,
+  so a worker handed one appends to a map of its own (`map new … --agent`) and composes.
+- A symbol anchor needs the index (a daemon or `--store`); a `path#Lx-Ly` anchor needs neither.
+- The map ends with the orchestrator's session unless `map new` names another `--completes-when`
+  (for example `plan_row_checked:<plan>#<ROW-ID>`); `map name` does not yet carry it past that
+  session (O143).
+
 ## Consolidation: harvest, land, then remove
 
 A practice, not a feature: no command enforces it, and the orchestrator runs it by hand. Waves
@@ -127,7 +153,10 @@ agentic-kit repository (7 worktrees, 32 branches, 1 stash).
 
 ## Not yet in the contract
 
-- A wave map in every brief (EW-13): the maps slice is stage 3 and not built.
+- The wave map as the contract (EW-13): the maps slice has landed (XM-8, XM-9, XM-14) and "Wave
+  maps" above is the practice, but the row stays open until EW-M3, XM-M1's scan re-run over the 14
+  days after stop 1, names the map shape to adopt: one shared wave map, or per-child handoff when the
+  since-compaction interval sits above 15 percent (EW-D2).
 - Hook CPU time (EW-29): the hook-latency log holds wall time only, so a slow hook cannot yet be read
   as work or load from the log alone.
 - The test-run hook is on in `.fathom/config.toml` (EW-9), but a session sees its line only once

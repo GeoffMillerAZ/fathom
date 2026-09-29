@@ -612,7 +612,7 @@ func TestWaveThreeClaudeHookAdditions(t *testing.T) {
 func TestWaveThreeClaudeCodecDecodes(t *testing.T) {
 	c := ClaudeCodec()
 	in, err := c.DecodeInput(EventSubagentStart, []byte(`{"session_id":"s1","cwd":"/r","agent_id":"a1","agent_type":"explorer"}`))
-	if err != nil || in.AgentType != "explorer" || in.Source != "a1" {
+	if err != nil || in.AgentType != "explorer" || in.Source != "a1" || in.AgentID != "a1" {
 		t.Errorf("SubagentStart = %+v, %v", in, err)
 	}
 	in, err = c.DecodeInput(EventToolFailure, []byte(`{"tool_name":"mcp__fathom__find_symbol","tool_error":"daemon refused","tool_use_id":"t1"}`))

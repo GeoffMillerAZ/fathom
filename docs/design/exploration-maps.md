@@ -23,7 +23,7 @@ agents file at explicit moments (452 handoff notes, 550 automatic pre-compact po
 agent had to choose to use died (discoveries 13 calls; anchored memory 0 memories and deleted).
 
 **Why it might still fail.** If RC-28's pointer injection already stops re-derivation, the extra lines add
-little (and 283 of 510 emitted RC-28 rows are exactly 591 bytes, inferred to be boilerplate, to verify), and
+little (and 283 of 510 emitted RC-28 rows are exactly 591 bytes: boilerplate, verified by XM-V1), and
 many sub-agent reads are reads in order to edit, which are not waste. So measure first (section 5).
 
 ## 2. The map model (binding)
@@ -54,6 +54,28 @@ and `includes` references to other map ids. Entries are never copied.
 **Storage.** Thread fields in the existing threads store plus the memo registry; no new table (R5). Commands
 (sketch, CLI first and on the extended surface only): `fathom thread note --map <run> --anchor <symbol|path#Lx-Ly>
 --why '...'` appends entries; `fathom map show <id> --budget 1200` re-resolves every anchor at read time.
+
+**As built (wave 2 core, 2026-09-29).** The model is `internal/explmap` (no I/O, no clock, no model); storage is
+two row kinds in the threads log and nothing else (the memo registry is not used): a map header (`map:<id>`,
+restated on every change, carrying `completes_when`) and entries (a fresh row id per append, so no append edits
+another's entry). `thread note --map` files entries; `map name|include|compose|list` names (purpose required),
+includes (DAG checked), composes (the one id) and lists lifetimes. "Pinned while a live map includes it" is
+read as pinned while an alive map includes it: a live stored-query map, or any map whose own condition has not
+ended it, and a map pinned by an alive map is alive in turn. With no live maps before XM-D1 the narrower
+reading would never pin anything, and the reference rule is the same when live maps arrive.
+
+**As built (wave 2 edge, XM-9, XM-10).** `fathom map show ID --budget N` (`cmd/fathom/mapshow.go`) expands the
+includes once, re-resolves every entry at read time (the counts cover the whole map, shown or cut) and prints
+within `N` bytes, the unit RC-28's 1,200 names: the header and counts lead, the entries follow nearest first, and
+what does not fit is one `cut N of M entries` line naming it, stale ones marked; the output never exceeds the
+budget. With the index unreachable a drifted symbol entry is flagged stale and the read says the index was out of
+reach. An orchestrator passes one id with `map new ID --purpose`, `map append ID --anchor A --why W`,
+`map compose ID... --id-only` and `map show`; `usage.md` has the recipe. XM-10's "lives on the extended surface and
+the CLI only" is read as a ceiling: no tool is registered. The sketch says CLI first, the threads log is per-user
+state resolved from the caller's environment (`FATHOM_THREADS`, `FATHOM_HOME`) that a shared daemon does not see
+for an isolated worker, and the surface reckoning asks a measured case before a tool (SR-29 removed a pull-form
+tool the hook's push form covered). `TestDefaultSurfaceUnchangedByMap` pins the default at its eight and fails a
+map-shaped tool that is not on the extended surface.
 
 ## 3. Live maps and semantic layers are complementary (binding)
 
@@ -228,6 +250,34 @@ draft it, optional). **Surface:** no new default tool; `map` on the extended sur
 are injected context. **Measure:** pointer precision (expanded over shown) and reuse rate (mounted after
 handoff); pointers expanded under 10 percent are cut.
 
+**As built (hooks, 2026-09-29; XM-8, XM-11 to XM-13).** `cmd/fathom/maphooks.go`; all four channels are deterministic
+with provider none, need no daemon, and cost one file read in a repository whose threads log holds no map row.
+
+- *Handoff.* The SubagentStart input carries no prompt (XM-V1), so the id is chosen from the parent session's state: its
+  alive, non-composite maps whose header or any entry carries the parent's session id, minus any map another of them
+  includes. One map is handed as it is; several become a minted composite over at most six of them (most recently used
+  first, then taken in id order so the composite's id does not move when a different map was used last), stored once
+  with `completes_when` the parent session's end so it does not pin them past it. The map line leads the discoveries chunk
+  and carries the read command, the sub-agent's own id for `--agent` (the payload is the only place fathom sees it, so the
+  codec now exposes `HookInput.AgentID`) and the purpose, which yields bytes first; the brief is rendered to whole pointer
+  lines inside what the base primer leaves, and only a base too long to leave the id its room is trimmed. The id survives
+  RC-28's 1,200-byte cap by construction; the reading measured 28 of 325 briefed payloads cut at the cap.
+- *Relevance by location.* A footprint is the map's own entries: a touched file, a file under a touched directory, or a
+  touched symbol (the prompt's paths, packages and bare symbols come from the same extraction the obligations half of the
+  prompt hook uses; the edit hook's is the edited file). At most two lines a firing, once per session per map, kept as a
+  per-(session, map) marker under `$TMPDIR/fathom-map-pointer`, the mechanism the Bash-write hook's doubt marker uses and
+  `fathom gc` prunes; this is bookkeeping about what was said, not map storage. Freshness in the line is a file re-hash of
+  the map's own entries (capped at 60), with no index and no git, so a moved symbol reads as changed and `map show`
+  is what re-resolves and sizes it. No session id, no line: a line that cannot be once-only is not sent.
+- *Session brief.* At most three bullets ranked by being named by an open note of the thread, then by overlap with the
+  thread's recent files (the working tree's changed files and the file pointers its open notes carry), then by recent
+  use; the rest are counted. Composites are never named, and a map that has ended is not alive.
+- *Threads.* `thread note --map-ref` names maps a note references (each must exist); the pre-compact pointer carries the
+  alive maps the session filed or added to; the brief and the handoff show them as `[maps …]`. "Re-mounts" is read as
+  re-surfaced: a fresh session's brief (startup and clear, as ever) names them; nothing is injected at compact.
+- *Not built.* The pointer's "shown" count is not recorded anywhere, so XM-M3's precision has no denominator yet; the
+  reading adds the beat when it runs. The hint each channel gives names `fathom map show <id> --budget 1200` (XM-9).
+
 ## 5. The experiment (E2): measurement first
 
 **Step 1, a bench script over 14 days of transcripts (zero product build).** Measure the share of sub-agent
@@ -247,9 +297,10 @@ named consumer of a non-handoff use case with its own bench metric, so an XM-M1 
 runs, does not close the route to live maps (their value in concern scopes, incident maps, structural claims
 and saved questions does not depend on sub-agent re-derivation; P20 still demands the named consumer).
 
-**Open facts to verify (Q32):** whether the SubagentStart input carries the sub-agent's prompt (if not,
-choosing entries by relevance inside the hook is impossible), and whether RC-28's 591-byte rows are
-boilerplate.
+**Open facts, verified (Q32, XM-V1, `docs/bench/readings/exploration-maps/handoff-facts.md`):** the
+SubagentStart input does not carry the sub-agent's prompt, so choosing entries by relevance inside the hook is
+impossible and the handoff carries the id the parent filed; RC-28's 591-byte rows are the constant base primer
+with no discoveries brief (549 of 874 emitted rows over 15 days carried none).
 
 ## 6. What a typed judgment model does here (optional, and mostly nothing)
 

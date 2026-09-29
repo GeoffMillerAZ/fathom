@@ -230,6 +230,7 @@ func (idx *httpCtxIndex) resolveSymbol(_ string, name string) (symbolnav.Context
 			Name      string `json:"name"`
 			FilePath  string `json:"file_path"`
 			Line      int    `json:"line"`
+			EndLine   int    `json:"end_line"`
 			Signature string `json:"signature"`
 		} `json:"def"`
 		Callers []string `json:"callers"`
@@ -240,7 +241,7 @@ func (idx *httpCtxIndex) resolveSymbol(_ string, name string) (symbolnav.Context
 	return symbolnav.Context{
 		Def: core.SymbolNode{
 			Name: payload.Def.Name, FilePath: payload.Def.FilePath,
-			Line: payload.Def.Line, Signature: payload.Def.Signature,
+			Line: payload.Def.Line, EndLine: payload.Def.EndLine, Signature: payload.Def.Signature,
 		},
 		Callers: payload.Callers,
 	}, true

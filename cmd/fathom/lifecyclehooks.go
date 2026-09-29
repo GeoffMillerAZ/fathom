@@ -196,11 +196,19 @@ func cmdPreCompactHook(args []string, stdout, stderr io.Writer) int {
 	}
 	repo := strings.ToLower(filepath.Base(root))
 	now := time.Now()
+	text := fmt.Sprintf("compaction (%s) at %s — the full pre-summary detail stays in this session's transcript", orUnknown(in.Trigger), now.UTC().Format("15:04Z"))
+	pointers := map[string]string{"session_id": in.SessionID, "repo": repo, "repo_identity": repoIdentity(root)}
+	// XM-13: the exploration maps this session filed or added to, by id, so
+	// resuming the thread finds them (the session brief re-surfaces them).
+	if ids := activeMapIDs(hookMapRoot(root), in.SessionID, now); len(ids) > 0 {
+		pointers[mapsPointerKey] = strings.Join(ids, " ")
+		text += "; active maps: " + strings.Join(ids, " ")
+	}
 	_ = threadAutoNote(
 		"pc-"+repo, // latest compaction pointer per repo supersedes
 		repo, "pre-compact",
-		fmt.Sprintf("compaction (%s) at %s — the full pre-summary detail stays in this session's transcript", orUnknown(in.Trigger), now.UTC().Format("15:04Z")),
-		map[string]string{"session_id": in.SessionID, "repo": repo, "repo_identity": repoIdentity(root)},
+		text,
+		pointers,
 		// IT-9: closes once a session-end note for this SAME session
 		// exists — the pointer's own session having ended is what makes
 		// the pre-summary detail it names no longer in-flight context.

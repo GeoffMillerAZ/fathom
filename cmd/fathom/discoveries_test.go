@@ -388,7 +388,7 @@ func TestSubagentDiscoveries_EmptyWhenNothingEstablished(t *testing.T) {
 	threadEnv(t)
 	root := t.TempDir()
 	t.Setenv("FATHOM_SESSIONS_LOG", filepath.Join(root, "sessions.jsonl"))
-	if got := subagentDiscoveries("http://127.0.0.1:1", root, "fathom", "parent-1", time.Now()); got != "" {
+	if got := subagentDiscoveries("http://127.0.0.1:1", root, "fathom", "parent-1", "", 0, time.Now()); got != "" {
 		t.Errorf("subagentDiscoveries with no call log = %q, want \"\"", got)
 	}
 }
@@ -406,7 +406,7 @@ func TestSubagentDiscoveries_UsesParentSessionStart(t *testing.T) {
 		// after the parent's start: must be included.
 		`{"ts":"` + now.Add(-time.Minute).Format(time.RFC3339Nano) + `","service":"fathom","pointers":["after.Start"]}`,
 	})
-	got := subagentDiscoveries("http://127.0.0.1:1", root, "fathom", "parent-1", now)
+	got := subagentDiscoveries("http://127.0.0.1:1", root, "fathom", "parent-1", "", 0, now)
 	if !strings.Contains(got, "after.Start") {
 		t.Errorf("subagentDiscoveries = %q, want it to include after.Start", got)
 	}
@@ -470,7 +470,7 @@ func TestSubagentDiscoveries_ReturnsWithinDeadlineWhenIndexIsSlow(t *testing.T) 
 
 	var got string
 	returnsUnaided(t, "subagentDiscoveries against an index that never answers", func() {
-		got = subagentDiscoveries(srv.URL, root, "fathom", "parent-1", now)
+		got = subagentDiscoveries(srv.URL, root, "fathom", "parent-1", "", 0, now)
 	})
 	if got != "" {
 		t.Errorf("subagentDiscoveries past its deadline = %q, want \"\" so the constant primer ships alone", got)
@@ -501,7 +501,7 @@ func TestSubagentPrimer_ShipsAloneWithIdentityIntactWhenDiscoveriesIndexIsSlow(t
 
 	var primer string
 	returnsUnaided(t, "subagentPrimer against a discoveries index that never answers", func() {
-		primer = subagentPrimer(srv.URL, root, "parent-1")
+		primer = subagentPrimer(srv.URL, root, "parent-1", "")
 	})
 	if !strings.Contains(primer, `indexed service "fathom"`) {
 		t.Errorf("subagentPrimer with a slow discoveries index = %q, want the identity line intact", primer)

@@ -114,12 +114,14 @@ evidence (JP-M1), then owner.
 **Q32. What do the harness hooks carry at the moments the judgment program needs?** Answered for Claude
 Code 2.1.284 by TR-V1 (`docs/bench/readings/test-run-hook/hook-facts.md`): PostToolUse(Bash) carries no exit
 code; an unpiped failing command arrives as PostToolUseFailure with `Exit code N` leading `error`, a piped one
-(536 of 541 failing runs scanned) as PostToolUse. Unverified: whether SessionStart with source `compact` fires and accepts additional context
-(CA-V1); whether the SubagentStart input carries the sub-agent's prompt, and whether RC-28's 591-byte rows are
-boilerplate (XM-V1); whether the shell PostToolUse input carries the command's stdout (git's `[branch sha]`
+(536 of 541 failing runs scanned) as PostToolUse. XM-V1 (`docs/bench/readings/exploration-maps/handoff-facts.md`):
+the SubagentStart input carries no prompt (the common fields plus `agent_id` and `agent_type`), and RC-28's
+591-byte rows are the constant base primer with no discoveries brief (549 of 874 emitted rows are base-only).
+Unverified: whether SessionStart with source `compact` fires and accepts additional context
+(CA-V1); whether the shell PostToolUse input carries the command's stdout (git's `[branch sha]`
 summary line) and whether context added there reaches the model, in Claude Code and in Codex (PR-V1); what a
 Stop block does in Claude Code (PR-V2); whether hooks fired inside a sub-agent carry `agent_id` (PR-V3).
-Blocks: the test-run hook's registration and exit-code use, carry-across, relevance selected map entries, the
+Blocks: the test-run hook's registration and exit-code use, carry-across, the
 commit pin line for any harness but Claude Code (PR-3 needs PR-V1), turn-end feedback (PR-D2) and orchestrator
 constraints (F54). Answerable by: evidence (the verification readings).
 

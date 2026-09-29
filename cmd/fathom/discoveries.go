@@ -506,19 +506,63 @@ const subagentDiscoveriesMaxPointers = 12
 // primer (the base primer WITH it).
 const subagentDiscoveriesDeadline = 2 * time.Second
 
-// subagentDiscoveries renders "last session established: …" for a
-// subagent starting under root, resolved fresh against service's live
-// index — the parent session's discoveries since its own recorded start
-// (sessionStartFor), falling back to now-2h when this repo never recorded
-// that session (an older harness build, or a rotated log). "" when
-// nothing was established (silence costs nothing — subagentPrimer.go's own
-// doctrine for every advisory line here), OR when resolution did not
-// finish within subagentDiscoveriesDeadline (CRITICAL fix: the base
-// primer must still ship on time).
-func subagentDiscoveries(baseURL, root, service, parentSessionID string, now time.Time) string {
+// subagentDiscoveries renders what a SubagentStart hands the new sub-agent from
+// the parent's state: the one map id the parent filed, when it filed any
+// (XM-8, subagentMapLine), then "last session established: …" for a subagent
+// starting under root, resolved fresh against service's live index — the
+// parent session's discoveries since its own recorded start (sessionStartFor),
+// falling back to now-2h when this repo never recorded that session (an older
+// harness build, or a rotated log). The map line LEADS: the primer's cap
+// (subagentDiscoveriesPrimerBudget, 1,200 bytes total) cuts the tail, so the
+// brief yields bytes before the id ever does. room is how many bytes of that
+// cap the chunk may fill (the base primer already spent the rest); with a map
+// line the brief is rendered to what is left after it, and with none the
+// brief's own budget applies as it always did. room <= 0 means the caller sets
+// no total. "" when nothing was established (silence costs nothing —
+// subagentPrimer.go's own doctrine for every advisory line here), OR when the
+// brief's resolution did not finish within subagentDiscoveriesDeadline
+// (CRITICAL fix: the base primer must still ship on time) and no map was filed.
+func subagentDiscoveries(baseURL, root, service, parentSessionID, agentID string, room int, now time.Time) string {
 	if service == "" {
 		return ""
 	}
+	mapLine := subagentMapLine(hookMapRoot(root), parentSessionID, agentID, now)
+	budget := subagentDiscoveriesBudget
+	if mapLine != "" && room > 0 {
+		left := room - len(mapLine) - 1 - len(subagentBriefLead) - 1 - subagentBriefFooterReserve
+		if left < budget {
+			budget = left
+		}
+	}
+	var brief string
+	if budget >= subagentBriefMinBudget {
+		brief = subagentBrief(baseURL, root, service, parentSessionID, budget, now)
+	}
+	switch {
+	case mapLine == "":
+		return brief
+	case brief == "":
+		return mapLine
+	}
+	return mapLine + "\n" + brief
+}
+
+// subagentBriefLead heads the discoveries brief.
+const subagentBriefLead = "last session established:"
+
+// subagentBriefFooterReserve is what renderDiscoveryLines' closing "…N more"
+// line can add past its budget, held back so a brief that shares the cap with a
+// map line ends on a whole line and not on the primer's byte cut.
+const subagentBriefFooterReserve = 56
+
+// subagentBriefMinBudget is the least room worth rendering a brief into: under
+// it not even one pointer line fits whole, so the map line ships alone rather
+// than a brief the cap would clip mid-line.
+const subagentBriefMinBudget = 60
+
+// subagentBrief is the RC-28 discoveries brief itself, rendered within budget
+// bytes of pointer lines.
+func subagentBrief(baseURL, root, service, parentSessionID string, budget int, now time.Time) string {
 	since := now.Add(-2 * time.Hour)
 	if t, ok := sessionStartFor(root, parentSessionID); ok {
 		since = t
@@ -544,7 +588,7 @@ func subagentDiscoveries(baseURL, root, service, parentSessionID string, now tim
 		// subagentPrimer somewhere else (a scratch daemon, a non-default
 		// FATHOM_HTTP) and make every pointer read back "stale" for no reason.
 		idx, idxErr := openCtxIndex(service, "", baseURL)
-		ch <- renderDiscoveryLines(idx, idxErr, ptrs, subagentDiscoveriesBudget)
+		ch <- renderDiscoveryLines(idx, idxErr, ptrs, budget)
 	}()
 	var rendered string
 	select {
@@ -559,7 +603,7 @@ func subagentDiscoveries(baseURL, root, service, parentSessionID string, now tim
 	if rendered == "" {
 		return ""
 	}
-	return "last session established:\n" + strings.TrimRight(rendered, "\n")
+	return subagentBriefLead + "\n" + strings.TrimRight(rendered, "\n")
 }
 
 // ─── the session-end pointer set (RC-29) ─────────────────────────────────

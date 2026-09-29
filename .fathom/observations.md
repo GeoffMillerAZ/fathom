@@ -2147,6 +2147,32 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Status:** open
 - **Impact:** about 0.5-0.9 s of every Stop's wall time, more under load; below the deadline by a wide margin (8 s) once O140's fix is in
 
+### O143 — a named exploration map still ends with the session that filed it, so naming does not make it durable and the next session never hears of it
+
+- **Symptom:** `fathom map name ID --purpose "…"` on a map filed with the default session-end condition leaves it `ended` once that session's end note exists: `map list` hides it, and the hooks that deliver maps (XM-8, XM-11 to XM-13) do not name it
+- **Evidence:**
+  - **Tool:** a probe over `loadMapSet` and `explmap.Lifetimes` at the hooks branch (594cb173): `thread note --map auth …`, `map name auth --purpose …`, then a session-end note for the filing session
+  - **Expected:** docs/usage.md says `name` makes a map durable, and `mapLifetime` says an unreferenced named map is permanent
+  - **Actual:** the lifetime is `ended`, `completes_when` is still `session_ended` for the filing session, and `Named()` is true
+  - **Repro:** file an entry with the session's id set, name the map, add a `session-end` thread row for that session, then read `loadMapSet` and `Lifetimes`
+- **Root cause:** `map name` restates the header through `writeMapHeader`, which copies the first header's `completes_when` forward (`mapHeaderRow` takes `base.CompletesWhen`), and `mapLifetime` tests `Ended` before it tests `Named`
+- **Fix:** none in the hooks slice, which only reads the lifetime: XM-6 and XM-7 own it. Either `map name` drops the condition (a named map is durable), or the lifetime rule tests `Named` first; design section 2 has to say which
+- **Status:** open
+- **Impact:** a map the planner names at the end of a session is gone from the next session's brief, from the pre-compact resume and from the location pointer; only a map still inside its own session is served, which is the handoff case and not the resume case
+
+### O144 — `TestIntentTab_RefreshAfterAnUpdateReaudits` races the fixture's handler on `f.now`, so `go test -race ./cmd/fathom` fails on about one run in six
+
+- **Symptom:** `TestIntentTab_RefreshAfterAnUpdateReaudits` races the fixture's handler on `f.now`, so `go test -race ./cmd/fathom` fails on about one run in six
+- **Evidence:**
+  - **Tool:** go test -race (the gate's `task test`), cmd/fathom console tests
+  - **Expected:** a test that passes on every run, as the gate's `-race` run assumes
+  - **Actual:** `go test -race -count=6 -run TestIntentTab_RefreshAfterAnUpdateReaudits ./cmd/fathom/` printed one `WARNING: DATA RACE` and `--- FAIL ... race detected during execution of test`, on `wb-core` and on `wb-cli` alike (2026-09-29); the selected 579-test run failed on it twice out of two and passed when the test was run alone
+  - **Repro:** the `-count=6` command above, on any checkout of this base
+- **Root cause:** the test writes `f.now = f.now.Add(time.Minute)` (console_project_tabs_test.go:572) while the served handler reads `f.now` through `f.deps.now` (console_fixture_test.go:218) on a request goroutine, with no synchronisation.
+- **Fix:** none yet: many console tests assign `f.now` directly, so the change is an atomic or locked clock on the fixture with a setter those tests call.
+- **Status:** open
+- **Impact:** the pre-push gate runs `go test -race`, so an unrelated push can fail on this test at random and be retried until it does not.
+
 ### O145 — the first import_resolution runs: relative-path leaves ESM `./x.js` and directory specs unresolved, namespace-dir an aliased `using` of a type
 
 - **Symptom:** `indexbench lang-oracle -scip` with LB-F40's `import_resolution` reads zod 0 of 504 in-repo imports, express .34 (53 of 155), Polly 0 of 15 and Newtonsoft.Json 0 of 313, where axios reads 232 of 232 and nest 3,271 of 3,271
