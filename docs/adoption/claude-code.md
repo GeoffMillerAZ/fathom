@@ -114,14 +114,18 @@ correct. It:
 2. ingests the repo into the daemon (if reachable) and confirms it indexed,
 3. wires the three hooks (§7) into `.claude/settings.json`,
 4. stamps a marker-delimited fathom operating-contract stanza into
-   **both** `CLAUDE.md` and `AGENTS.md` (one canonical source, so Codex —
-   which reads `AGENTS.md` automatically — gets the same doctrine with zero
-   drift; §3.1 below),
+   **`AGENTS.md`**, the one instruction file (ADR-059): Claude Code
+   (2.1.277 and later) and Codex both read it natively. A root `CLAUDE.md`,
+   `.claude/CLAUDE.md` or `CLAUDE.local.md` that already exists gets one
+   marked region holding the import `@AGENTS.md` (`@../AGENTS.md` from
+   `.claude/`), because under Claude Code's default mode a CLAUDE file
+   switches `AGENTS.md` off; `init` never creates a CLAUDE file (§3.1 below),
 5. write-if-absent scaffolds `~/.fathom/config.toml` (§9),
-6. installs the shipped agent skills (§11) into `.claude/skills/` and/or
-   `~/.codex/prompts/` — **only** when `--skills[=claude|codex|all]` is
-   passed; omitted entirely by default, so a caller who never asked for
-   skills sees no new files, and
+6. installs the shipped agent skills (§11) into `.claude/skills/` (and a
+   `.agents/skills` link to it for Codex and the other Agent Skills readers)
+   — **only** when `--skills[=claude|codex|agents|all]` is passed; omitted
+   entirely by default, so a caller who never asked for skills sees no new
+   files, and
 7. prints the steps it deliberately does **not** do for you: MCP
    registration (§6, requires an interactive `claude mcp add`) and the
    lefthook pre-push snippet (§7.4, `lefthook.yml` is hand-curated —
@@ -145,10 +149,10 @@ The rest of this guide is the manual/reference version of what `init`
 automates, plus everything it doesn't (the daemon install, provider setup,
 the tool surface, troubleshooting).
 
-### 3.1 The `CLAUDE.md` / `AGENTS.md` stanza — markers, re-run semantics, corruption refusal
+### 3.1 The `AGENTS.md` stanza and the `@AGENTS.md` import — markers, re-run semantics, corruption refusal
 
-One canonical stanza (`cmd/fathom/init.go`'s `fathomStanza`) is written
-verbatim into both files, wrapped in a marker pair:
+One canonical stanza (`cmd/fathom/init.go`'s `fathomStanza`) is written into
+`AGENTS.md`, wrapped in a marker pair (ADR-059: one stanza, one file):
 
 ```
 <!-- fathom:begin v3 sha256:… -->
@@ -157,25 +161,52 @@ verbatim into both files, wrapped in a marker pair:
 <!-- fathom:end -->
 ```
 
+**CLAUDE files.** Claude Code 2.1.277 and later read `AGENTS.md` natively
+(`agents-md@builtin`, default mode `claude-md-or-agents-md`) — but only when
+no `CLAUDE.md`, `.claude/CLAUDE.md` or `CLAUDE.local.md` exists in the
+working directory or any parent. So when the repo already has one, `init`
+writes into the **first present** of the three one marked region whose body
+is a single import line:
+
+```
+<!-- fathom:begin v3 sha256:… -->
+@AGENTS.md
+<!-- fathom:end -->
+```
+
+(`@../AGENTS.md` in `.claude/CLAUDE.md`: imports resolve relative to the
+importing file.) If you already import `@AGENTS.md` yourself, outside
+fathom's markers, `init` adds nothing — and removes a fathom region it had
+written there, receipted. fathom never creates a CLAUDE file and never
+deletes one.
+
+**Migrating from the two-copy layout.** A repository wired before ADR-059
+carries the same stanza in `CLAUDE.md` and `AGENTS.md`. The next `fathom
+init` or `fathom fleet reconcile --apply` rewrites the `CLAUDE.md` region in
+place to the import and keeps (or writes) the stanza in `AGENTS.md`, in one
+receipt; `fathom fleet undo --last` restores the old layout
+(`docs/upgrades/0.9.0-agents-md-one-instruction-file.md`).
+
 After the first write the begin line carries the marker version and a
 digest of the body (`v3 sha256:…`); a region written before v3 reads
 `<!-- fathom:begin -->` with no digest. The wiring engine (`internal/wiring`,
 shared with `fathom fleet reconcile --apply`) has these outcomes, chosen by
 what it finds at the target path:
 
-- **File absent** → created with the stanza as its entire content.
-- **File exists, never wired** (neither marker present) → the stanza is
+- **`AGENTS.md` absent** → created with the stanza as its entire content.
+  (A CLAUDE file is never created: no CLAUDE file, no import region.)
+- **File exists, never wired** (neither marker present) → the region is
   **appended** to the end of the file — every byte already there is
-  preserved; your own `CLAUDE.md`/`AGENTS.md` content is never touched,
+  preserved; your own `AGENTS.md`/`CLAUDE.md` content is never touched,
   let alone overwritten.
 - **File exists, v1 region** (`<!-- fathom:begin -->`, no digest) → adopted
   as fathom's and upgraded to a v3 marker on the first write. That is a
   migration, not drift.
 - **File exists, tracked v3 region, body matches its digest** → only the
-  content *between* the markers is **replaced** with the current stanza;
+  content *between* the markers is **replaced** with the current body;
   everything outside the markers (your own sections, above or below) is
   untouched. A re-run with an unchanged stanza changes no bytes and prints
-  `ok CLAUDE.md (already present)` instead of `updated`.
+  `ok AGENTS.md (already present)` instead of `updated`.
 - **Tracked region a human edited** (body no longer matches its digest) →
   **BLOCKED** and named: exit `1`, the file stays byte-identical, the other
   files in the same run are still applied, and the final list says
@@ -189,7 +220,14 @@ what it finds at the target path:
 
 Re-running `init` after editing your own content elsewhere in either file
 is always safe — only the bytes between the markers are ever replaced.
-`fathom doctor`'s `stanza_present` check accepts both marker spellings.
+`fathom doctor`'s `stanza_present` row FAILs when `AGENTS.md` lacks a
+well-formed region, and WARNs, with the fix, when Claude Code will not load
+it: a CLAUDE file without the import (or still carrying the old stanza), a
+CLAUDE file in a parent directory, `pluginConfigs["agents-md@builtin"]
+.options.instructionFiles` set to `claude-md` or `managed-only` in your user
+or managed settings (fathom never writes that setting), or a `claude
+--version` before 2.1.277. Its PASS names the path: `native (no CLAUDE file,
+default mode)`, `imported by CLAUDE.md`, or `mode claude-md-and-agents-md`.
 
 ---
 
@@ -986,7 +1024,7 @@ ten shipped, versioned skill sources (`dist/agents/skills/`, embedded in
 the binary — no fathom source checkout needed at install time):
 
 ```sh
-bin/fathom init --skills          # bare = all: .agents/skills + .claude/skills
+bin/fathom init --skills          # bare = all: .claude/skills, and .agents/skills as a link to it
 bin/fathom init --skills=claude   # .claude/skills only
 ```
 
@@ -1045,22 +1083,25 @@ the `--skills` value:
 
 | Value | Writes | Shape |
 |---|---|---|
-| `claude` | `.claude/skills/<name>/SKILL.md` | the embedded `SKILL.md` verbatim (Claude Code's frontmatter superset) |
-| `codex`, `agents` | `.agents/skills/<name>/SKILL.md` | the Agent Skills standard path every other harness reads (Codex, Gemini CLI, Cursor, Copilot, …); frontmatter reduced to the six spec fields, `name` = the directory (`schema/skills/schema.cue` vets it under `task cue-vet`) |
+| `claude` | `.claude/skills/<name>/SKILL.md` | the one real copy: the embedded `SKILL.md` verbatim, which a test holds to the six Agent Skills fields with `name` = the directory (`schema/skills/schema.cue` vets it under `task cue-vet`) — the only skills directory Claude Code discovers |
+| `codex`, `agents` | `.claude/skills/<name>/SKILL.md` plus `.agents/skills` → `../.claude/skills` | the Agent Skills standard path every other harness reads (Codex, Gemini CLI, Cursor, Copilot, …) as a relative link to the one real copy (ADR-059): written through the wiring engine (receipted, `fleet undo` removes it); an earlier real `.agents/skills` holding only fathom's unedited files is replaced by it, and one file fathom did not write there blocks it by name |
 | `all` (bare `--skills`) | both of the above | the pair covers 14 of the 15 surveyed harnesses; both repo-scoped |
 | `codex-prompts` | `~/.codex/prompts/<name>.md` | the deprecated Codex custom-prompts twin (`codex-prompt.md`) — the only user-global write, explicit only (`docs/upgrades/0.8.0-skills-on-the-standard.md`) |
 
 `fathom doctor`'s `skills_installed` row reads `.claude/skills` for Claude
-Code and `.agents/skills` for every other `--harness`, naming each missing
-skill; `fathom fleet reconcile` plans both repo-scoped shapes through the
-wiring engine (a stale marker-owned copy is rewritten and receipted, a
-hand-authored file by a skill's name is BLOCKED by name — §11.1).
+Code and `.agents/skills` (resolving fathom's link) for every other
+`--harness`, naming each missing skill; `fathom fleet reconcile` plans the
+`.claude/skills` files through the wiring engine (a stale marker-owned copy
+is rewritten and receipted, a hand-authored file by a skill's name is
+BLOCKED by name — §11.1), replaces an earlier real `.agents/skills` copy with
+the link, and never writes through the link or creates it where `init
+--skills` did not.
 
 ### 11.1 Re-running / conflicts
 
 Every installed file carries a `<!-- fathom:owned -->` marker line
 (`cmd/fathom/skillsinstall.go`'s `skillMarker`) — the same ownership
-convention as the `CLAUDE.md`/`AGENTS.md` stanza's markers (§3.1), one
+convention as the `AGENTS.md` stanza's markers (§3.1), one
 level down: a whole skill file is fathom's or it isn't, so there's no
 partial section to replace. A re-run overwrites **only** a file that
 already carries the marker (or is byte-identical to what would be
@@ -1135,7 +1176,7 @@ needed) — until then no savings claim is admissible (law 12).
 **Start here: `fathom doctor`.** Before working through the entries below by
 hand, run the deterministic wiring checklist — it covers MCP registration,
 daemon reachability, binary freshness, the hook stack (installed AND
-firing), the `CLAUDE.md`/`AGENTS.md` stanza, shipped skills, `.fathom/`
+firing), the `AGENTS.md` stanza and whether Claude Code loads it, shipped skills, `.fathom/`
 config validity, obligations serving, and surface traffic in one command:
 
 ```sh
@@ -1265,8 +1306,9 @@ gate — is live.
 
 ## Maintained
 
-This doc covers: `fathom init` (incl. `--skills[=claude|codex|all]` and the
-`CLAUDE.md`/`AGENTS.md` marker-delimited stanza, v3 digest markers, law-15
+This doc covers: `fathom init` (incl. `--skills[=claude|codex|agents|all]`, the
+`.agents/skills` link, the `AGENTS.md` marker-delimited stanza and a CLAUDE
+file's `@AGENTS.md` import region, v3 digest markers, law-15
 blocking, receipts + `fleet undo`/`receipts`), `ingest` (read-failed /
 degraded / refused), `scope`, `purge`, `serve-mcp`, `serve-http`,
 `compile`, `layers` (`list`/`show`/`install`), `verify`

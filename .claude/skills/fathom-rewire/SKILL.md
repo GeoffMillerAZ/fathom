@@ -29,9 +29,10 @@ document-versus-document contradiction is grep's — never a blanket
 "index before any grep"),
 merges missing template entries at exactly one scope (project, deferring
 to user scope),
-and plans the nine shipped skills in BOTH repo-scoped shapes
-(`.claude/skills` and `.agents/skills`, the Agent Skills standard path)
-through the same engine: `missing` is created, `stale` (marker-owned,
+and plans the shipped skills' one real copy in `.claude/skills` (ADR-059;
+`.agents/skills`, the Agent Skills standard path, is fathom's link to it —
+reconcile replaces an older real `.agents/skills` copy of fathom's own files
+with the link and never writes through it) through the same engine: `missing` is created, `stale` (marker-owned,
 behind the shipped source) is rewritten under its marker, and a
 hand-authored file by a skill's name — or a hand edit under the marker —
 is **BLOCKED** by name and left alone. Structural changes (scope moves,
@@ -87,17 +88,20 @@ loopback-only).
    already has fathom hooks; rewrite absolute `/…/fathom` commands to
    plain `fathom`. (`fathom plugin render` emits the same template as
    `hooks/hooks.json` for the plugin install path.)
-2b. Skills: `.claude/skills/<name>/SKILL.md` and
-   `.agents/skills/<name>/SKILL.md` for all nine, each carrying the
-   `fathom:owned` marker; `fathom doctor`'s `skills_installed` names the
+2b. Skills: `.claude/skills/<name>/SKILL.md` for all of them, each
+   carrying the `fathom:owned` marker, and `.agents/skills` a link to
+   `../.claude/skills` where a non-Claude harness reads it; `fathom doctor`'s `skills_installed` names the
    missing ones per harness, and `fathom init --skills` re-renders them
    (refusing, by name, a file it does not own).
 3. `.fathomignore` covers secrets/data/vendored/build — BEFORE any first
    ingest.
 4. The stanza is regenerated only through `fathom init` / `fleet
-   reconcile --apply` (the marker region, never your prose) — it must say
-   fathom (never a pre-rename name) and spell commands via plain `fathom`.
-   (`fathom gen-claude-md` is a different verb: a symbol-derived CLAUDE.md
+   reconcile --apply` (the marker region, never your prose) — it lives in
+   `AGENTS.md` (ADR-059); a root CLAUDE file carries only a marked
+   `@AGENTS.md` import region, and reconcile rewrites an old `CLAUDE.md`
+   stanza region to that import in the same receipt. It must say fathom
+   (never a pre-rename name) and spell commands via plain `fathom`.
+   (`fathom gen-agents-md` is a different verb: a symbol-derived AGENTS.md
    written to `workspace/artifacts/`.)
 5. Ingest with BOTH fields — `{"service":"<plain-name>","path":"<canonical
    absolute root>"}`. The daemon now refuses path-like ids, duplicate
