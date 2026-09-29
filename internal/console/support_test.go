@@ -208,7 +208,8 @@ func TestSupportBurnUpAbsentNeverZero(t *testing.T) {
 
 // TestSupportNextEligibleByWave pins SM-24 (§5 panel 4): the next eligible
 // target rows — own plan row still open, every need claimed or
-// dispositioned — grouped by wave, the `plans next --eligible-only` rule.
+// dispositioned — grouped by wave, the language queue's rule
+// (docs/design/language-breadth.md §13.0 step 2).
 func TestSupportNextEligibleByWave(t *testing.T) {
 	rows := map[string]SupportRowState{
 		"LB-F1": SupportRowClaimed, "LB-F2": SupportRowDispositioned, "LB-F3": SupportRowOpen,

@@ -513,11 +513,13 @@ func bareRowID(ref string) string {
 	return ref
 }
 
-// SupportNext is the `plans next --eligible-only` rule over the target
-// rows: an item whose own plan row is claimed or dispositioned is done; one
-// whose every need is claimed or dispositioned is eligible; anything else
-// (an open need, or a need or row the plans do not carry) is blocked.
-// Grouped by wave, ascending; items by kind then id.
+// SupportNext is the language queue's dependency rule
+// (docs/design/language-breadth.md §13.0 step 2) over the target rows: an
+// item whose own plan row is claimed or dispositioned is done; one whose
+// every need is claimed or dispositioned is eligible; anything else (an open
+// need, or a need or row the plans do not carry) is blocked. Grouped by
+// wave, ascending; items by kind then id. It is not `plans next`'s rule: since
+// G2-6 a dispositioned `needs:` target no longer satisfies there.
 func SupportNext(items []SupportNextItem, rows map[string]SupportRowState) SupportNextView {
 	sorted := append([]SupportNextItem(nil), items...)
 	sort.Slice(sorted, func(i, j int) bool {

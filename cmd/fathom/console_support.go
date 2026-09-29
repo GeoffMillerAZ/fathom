@@ -534,7 +534,7 @@ func renderSupportPage(m supportPageModel, verb, sourceKey string, now time.Time
 		ID: "support-next", SourceKey: sourceKey, Title: "What's next",
 		Question:    "Which target rows can be worked now — every need claimed or dispositioned — by wave?",
 		Verb:        verb,
-		Source:      "the language queue's depends_on, docs/plans/support.targets.json and the checkboxes of docs/plans/language-breadth.md and support-matrix.md (the plans next --eligible-only rule)",
+		Source:      "the language queue's depends_on, docs/plans/support.targets.json and the checkboxes of docs/plans/language-breadth.md and support-matrix.md (the language queue's rule, docs/design/language-breadth.md §13.0 step 2: a claimed or dispositioned row meets a need)",
 		Denominator: fmt.Sprintf("%d eligible, %d blocked, %d done", m.Next.Eligible, m.Next.Blocked, m.Next.Done),
 		Freshness:   freshness,
 		Body:        renderSupportNext(m.Next),
