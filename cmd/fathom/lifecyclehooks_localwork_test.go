@@ -10,10 +10,8 @@ package main
 // because the reads do not depend on each other.
 
 import (
-	"sync"
 	"sync/atomic"
 	"testing"
-	"time"
 )
 
 // stubSessionFactsGit swaps the git seam for fn and restores it.
@@ -53,41 +51,29 @@ func TestSessionEndFactsStopAtTheHookDeadline(t *testing.T) {
 	}
 }
 
-// TestSessionEndFactsReadGitConcurrently: the four reads (status, stash
-// list, HEAD's branch, the claimed-unproven plan diff) are independent, so
-// they are all in flight at once. Every stubbed read blocks until all of
-// them have been started; a sequential chain never gets the second one
-// started and the barrier times out.
-func TestSessionEndFactsReadGitConcurrently(t *testing.T) {
+// TestSessionEndFactsBarrierCountsProgress (EW-2): the four reads (status,
+// stash list, HEAD's branch, the claimed-unproven plan diff) are independent,
+// so they are all in flight at once. Every stubbed read waits at a barrier
+// that counts arrivals and releases when the fourth has started; a
+// sequential chain never gets the second one started, so the count stalls at
+// one. The barrier waits on that count with a large safety bound (a hang
+// guard, barrierSafety), never a two-second timer a loaded machine can miss
+// while its goroutines are merely slow to start.
+func TestSessionEndFactsBarrierCountsProgress(t *testing.T) {
 	repo := hookRepo(t)
 	const reads = 4
 
-	var started, inflight, peak atomic.Int32
-	var release sync.Once
-	all := make(chan struct{})
-	var timedOut atomic.Bool
+	barrier := newProgressBarrier(reads, barrierSafety)
 	stubSessionFactsGit(t, func(prev func(string, ...string) string, root string, args ...string) string {
-		n := inflight.Add(1)
-		defer inflight.Add(-1)
-		for p := peak.Load(); n > p && !peak.CompareAndSwap(p, n); p = peak.Load() {
-		}
-		if started.Add(1) == reads {
-			release.Do(func() { close(all) })
-		}
-		select {
-		case <-all:
-		case <-time.After(2 * time.Second):
-			timedOut.Store(true)
-			release.Do(func() { close(all) }) // let the rest through, fail once
-		}
+		barrier.Arrive()
 		return prev(root, args...)
 	})
 
 	facts := mechanicalSessionFacts(repo)
-	if timedOut.Load() {
-		t.Fatalf("at most %d of %d git reads were in flight together: the chain is sequential", peak.Load(), reads)
+	if barrier.Stalled() {
+		t.Fatalf("the git reads did not start together (%s): the chain is sequential", barrier.Describe())
 	}
-	if got := started.Load(); got != reads {
+	if got := barrier.Arrived(); got != reads {
 		t.Fatalf("mechanicalSessionFacts made %d git reads, want %d", got, reads)
 	}
 	if facts != "1 uncommitted file(s)" {
