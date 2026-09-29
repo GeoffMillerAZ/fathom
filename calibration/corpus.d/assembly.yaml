@@ -1,0 +1,36 @@
+id: assembly
+language: Assembly
+# BLAKE3's hand-written x86-64 kernels live under c/ (GAS `.S` for unix and mingw, MASM `.asm` for MSVC);
+# `subpath: c` keeps the clone to them. os-tutorial is the NASM side: boot sectors and a kernel written
+# lesson by lesson, so all three syntaxes are measured (universal-ctags reads any of them with one parser).
+# Refused (LB-Q-assembly-rest, docs/plans/language-breadth.md): neither pinned grammar parses these
+# subjects under design section 14.2's 5% line, so no dialect was built and .s/.S/.asm stay disclosed as
+# unsupported. The subjects stay so a re-plan measures the same files (69 of 83 in error on 2026-09-29).
+repos:
+  - name: cfenollosa/os-tutorial
+    url: https://github.com/cfenollosa/os-tutorial
+    ref: master
+    sha: 8002382ee56f876119f77217220b8a5034e9bac1
+    licence: BSD-3-Clause
+    idioms:
+      - "NASM boot sectors: `[org 0x7c00]`, `%include \"boot/print.asm\"`, BIOS `int` calls"
+      - "routines written as plain global labels (`print_string`, `disk_load`, `switch_to_pm`), called by name"
+      - "data labels with `db`/`dw` and the boot-sector padding `times 510-($-$$) db 0`"
+      - "`equ` constants (`CODE_SEG equ gdt_code - gdt_start`) and a hand-built GDT"
+    notes: >
+      71 `.asm` files, all NASM; RubixDev/tree-sitter-asm leaves 57 of them (80.3%) with an ERROR node,
+      on `[org 0x7c00]`, `%include`, `$`/`$$` and quoted data (`db 'hi', 0`).
+  - name: BLAKE3-team/BLAKE3
+    url: https://github.com/BLAKE3-team/BLAKE3
+    ref: 1.8.7
+    sha: f3149ec5bb5449af877ba20377a11008ff499fa2
+    licence: Apache-2.0
+    subpath: c
+    idioms:
+      - "GAS syntax (`.S`): `.intel_syntax noprefix`, `.global` / `.p2align` / `.section` directives under C preprocessor `#if` / `#ifdef`"
+      - "exported functions as labels in two spellings (`blake3_hash_many_avx2` and the Mach-O `_blake3_hash_many_avx2`)"
+      - "numeric local labels (`2:` with `jne 2b`) for loop bodies, no `.L` names"
+      - "MASM syntax (`.asm`): `public`, `_TEXT SEGMENT ALIGN(16) 'CODE'`, `blake3_hash_many_avx2 PROC`"
+    notes: >
+      8 GAS `.S` and 4 MASM `.asm` files; RubixDev/tree-sitter-asm leaves all 12 with an ERROR node
+      (`.p2align  6`, `.section .note.GNU-stack,"",%progbits`, `'CODE'` segment classes).
