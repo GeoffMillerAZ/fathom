@@ -19,7 +19,7 @@ and is asked for first. Adoption rows are proven by the artifact they change: `.
 Also in this stage: XM-V1, then the XM-M1 (BUILD) and CA-M1 (STOP) scans of 2026-09-28 land at their rows'
 oracle paths as statistics only.
 
-- [ ] (op) EW-0: the integration reading: the four unmerged lines (the push line carrying the wired audit, the judgment plans, the roadmap wave and the language wave) merged onto one line that keeps the push line's state for every row the wired audit reopened, `plans status` naming each of them open {id: EW-0, oracle: lexical, path: docs/bench/readings/efficiency-wave/stops.md, pattern: "^EW-0 reading:"}
+- [x] (op) EW-0: the integration reading: the four unmerged lines (the push line carrying the wired audit, the judgment plans, the roadmap wave and the language wave) merged onto one line that keeps the push line's state for every row the wired audit reopened, `plans status` naming each of them open {id: EW-0, oracle: lexical, path: docs/bench/readings/efficiency-wave/stops.md, pattern: "^EW-0 reading:"}
 
 ## Stage 1: per-call waste (small, deterministic, parallel)
 
@@ -45,7 +45,7 @@ surface-reckoning.md SR-M1, which pins the default surface's schema bytes.
 
 ## Stop 1: push, deploy, adopt
 
-- [ ] Every wave's gate runs `fathom verify --strict` with the integrated binary, whose wired check refuses a library-only claim, then one push per wave {id: EW-12, oracle: lexical, path: docs/guides/agent-waves.md, pattern: "verify --strict", needs: "EW-0"}
+- [x] Every wave's gate runs `fathom verify --strict` with the integrated binary, whose wired check refuses a library-only claim, then one push per wave {id: EW-12, oracle: lexical, path: docs/guides/agent-waves.md, pattern: "verify --strict", needs: "EW-0"}
 - [x] The pre-push verify step runs `--strict --since $(git merge-base HEAD origin/main)`, so a `library: true` or `skip_test` waiver added in the pushed range is self-declared and refused (I45); with no merge-base it verifies without `--since` and says so, exit 2 still fails open, and waivers already on main are untouched (ADR-018 note 2026-09-29) {id: EW-14, oracle: lexical, path: lefthook.yml, pattern: "merge-base HEAD origin/main"}
 - [x] Wired-check hardening from the 2026-09-29 re-audit (an adversarial corpus of fixture binaries): a blank-identifier reference (`var _ = f`) is no product reach, an entry-point `main` under a build constraint the default build excludes is not an entry, a method matches only its own receiver type, and interface dispatch is cross-checked against an RTA reachable set {id: EW-15, symbol: ProductEntryReach, package: internal/analysis/callgraph, reachable_from: TestProductReach_HardeningCorpus}
 - [x] The pre-push verify reads its `--since` base from the remote sha lefthook passes on stdin (the ref the push replaces), so a stale local `origin/main` neither blocks a legitimate push nor widens the range; a new branch with no remote sha falls back to the merge-base and says so {id: EW-16, oracle: lexical, path: lefthook.yml, pattern: "use_stdin: true"}
