@@ -55,6 +55,15 @@ and `includes` references to other map ids. Entries are never copied.
 (sketch, CLI first and on the extended surface only): `fathom thread note --map <run> --anchor <symbol|path#Lx-Ly>
 --why '...'` appends entries; `fathom map show <id> --budget 1200` re-resolves every anchor at read time.
 
+**As built (wave 2 core, 2026-09-29).** The model is `internal/explmap` (no I/O, no clock, no model); storage is
+two row kinds in the threads log and nothing else (the memo registry is not used): a map header (`map:<id>`,
+restated on every change, carrying `completes_when`) and entries (a fresh row id per append, so no append edits
+another's entry). `thread note --map` files entries; `map name|include|compose|list` names (purpose required),
+includes (DAG checked), composes (the one id) and lists lifetimes. "Pinned while a live map includes it" is
+read as pinned while an alive map includes it: a live stored-query map, or any map whose own condition has not
+ended it, and a map pinned by an alive map is alive in turn. With no live maps before XM-D1 the narrower
+reading would never pin anything, and the reference rule is the same when live maps arrive.
+
 ## 3. Live maps and semantic layers are complementary (binding)
 
 They live on different axes. A semantic layer says what is TRUE or BINDING about code (governed claims:
