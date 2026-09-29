@@ -212,6 +212,17 @@ const (
 	// script/bin/export.
 	KindCargoPackage SourceKind = "CargoPackage"
 
+	// go.mod and go.work (LB-Q-go-mod, language-breadth: a native tool-format
+	// dialect that upgrades the incumbent's require-only line scanner).
+	// KindGoModule is a go.mod's own entity (its module directive) and
+	// KindGoWorkspace a go.work's, the connector-classification kinds; a
+	// require stays KindModuleDep, and the replace and use entities have no
+	// connector-classification use and so no constant of their own (they are
+	// local to internal/extractor/gomoddialect.go), the package.json and
+	// Cargo.toml precedent.
+	KindGoModule    SourceKind = "GoModule"
+	KindGoWorkspace SourceKind = "GoWorkspace"
+
 	// pyproject.toml (LB-Q-python-packaging, language-breadth: new — a
 	// doc-engine tool format, no incumbent; requirements*.txt and
 	// setup.cfg from the same queue entry stay unclassified, §14.2: the

@@ -95,6 +95,13 @@ var typedEdgeProducers = map[string]string{
 	// are not a file-resolver or SCIP producer, so "syntax" is the honest
 	// baseline claim, same as package.json, pyproject.toml and pom.xml above.
 	"cargo": "syntax",
+
+	// go.mod and go.work (LB-Q-go-mod): a require to another module of the
+	// repository, a replace to a local directory and a go.work use become
+	// file-tier doc-xref edges at ingest (fusion.ResolveDocXrefs) but are not a
+	// file-resolver or SCIP producer, so "syntax" is the honest baseline claim,
+	// same as Cargo.toml above. (The Go language itself stays "native".)
+	"go-mod": "syntax",
 }
 
 // TypedEdgeProducer returns lang's typed-edge producer string — "native",

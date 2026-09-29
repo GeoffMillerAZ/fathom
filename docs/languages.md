@@ -51,7 +51,7 @@ language-native SCIP indexer), **file** (per-file resolver, tier pre-scan, label
 | SQL | heuristic (`sqlextract.go`) | no | — | **syntax** | — |
 | Terraform/HCL | pure Go (`hclextract.go`) | n/a | (corpus.yaml) | **syntax** (resource references) | — |
 | Kubernetes YAML, Helm, Kustomize, docker-compose | pure Go | n/a | (corpus.yaml) | **syntax** (`service_ref` cross-repo edges) | — |
-| Dockerfile, CMake, GitHub Actions, proto, GraphQL, OpenAPI, JSON, TOML, templ, Markdown, go.mod, package.json, pyproject.toml, pom.xml, Cargo.toml | pure Go | n/a | (corpus.yaml where listed) | **syntax** | — |
+| Dockerfile, CMake, GitHub Actions, proto, GraphQL, OpenAPI, JSON, TOML, templ, Markdown, go.mod, go.work, package.json, pyproject.toml, pom.xml, Cargo.toml | pure Go | n/a | (corpus.yaml where listed) | **syntax** | — |
 
 Disclosed as unsupported (named per service in `list_services`, never silently skipped; `internal/connector/unsupported_language.go`): Clojure, Crystal, Elixir, Elm, Erlang, F#, Groovy, Haskell, Julia, Nim, OCaml, Zig.
 
@@ -72,7 +72,7 @@ reading's computed `level_met` with each met level's grade; `tolerated` is regis
 no reading yet; `unsupported (disclosed)` is queued, not registered, and named per service
 by `list_services`.
 
-Milestone M1 progress: languages at L1 excellent 12/20, at L2 10/12, at L3 0/8, at L4 0/6; tool formats at target 8/15
+Milestone M1 progress: languages at L1 excellent 12/20, at L2 10/12, at L3 0/8, at L4 0/6; tool formats at target 9/15
 
 | Language or format | Kind | Engine | Grammar / parser | Target | Level met | Oracles | Typed edges | Reading | Next |
 |---|---|---|---|---|---|---|---|---|---|
@@ -108,7 +108,7 @@ Milestone M1 progress: languages at L1 excellent 12/20, at L2 10/12, at L3 0/8, 
 | Dart (.dart) | language | tags | UserNobody14/tree-sitter-dart (MIT) | L4 | L2 (L1 excellent, L2 excellent) | A scip-dart 1.7.0 | scip:scip-dart | 2026-09-29 | LB-Q-dart |
 | Cargo manifests (Cargo.toml, workspaces) | tool format | doc | pure-go:github.com/pelletier/go-toml/v2 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A cargo metadata (--no-deps, and --all-features for the resolved graph) cargo 1.98.1 (797e8a9bc 2026-08-05) | syntax | 2026-09-29 | at target (LB-Q-cargo) |
 | Swift (.swift) | language | tags | alex-pinkus/tree-sitter-swift (MIT) | L3 | L2 (L1 excellent, L2 good) | B swiftc -frontend -dump-parse 6.4 | file | 2026-09-29 | LB-Q-swift |
-| Go modules (go.mod, go.work) | tool format | native | native:golang.org/x/mod (BSD-3-Clause) | L3 | tolerated | — | — | — | LB-Q-go-mod |
+| Go modules (go.mod, go.work) | tool format | native | native:golang.org/x/mod (BSD-3-Clause) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A go mod edit -json, go work edit -json, go list -e -m -json all go1.26.3 darwin/arm64 | syntax | 2026-09-29 | at target (LB-Q-go-mod) |
 | SCSS / Sass (.scss .sass) | language | tags | tree-sitter-grammars/tree-sitter-scss (MIT (verify at pin)) | L3 | unsupported (disclosed) | — | — | — | LB-Q-scss |
 | Less (.less) | language | tags | jimliang/tree-sitter-less (verify at pin) | L3 | unsupported (disclosed) | — | — | — | LB-Q-less |
 | MSBuild projects (.csproj .fsproj .vbproj .props .targets, .sln) | tool format | doc | pure-go:encoding/xml (n/a) | L3 | unsupported (disclosed) | — | — | — | LB-Q-msbuild |

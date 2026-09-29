@@ -223,8 +223,13 @@ func DocXrefEdges(xs []DocXref) []core.Edge {
 }
 
 // isDocCandidate: a path a doc-engine dialect may read (its decode's
-// extensions). Classification decides; this only gates the pass.
+// extensions), or a native dialect's manifest by basename (go.mod, go.work).
+// Classification decides; this only gates the pass.
 func isDocCandidate(p string) bool {
+	switch path.Base(p) {
+	case "go.mod", "go.work": // the native go-mod dialect (LB-Q-go-mod)
+		return true
+	}
 	switch strings.ToLower(path.Ext(p)) {
 	case ".yaml", ".yml", ".json", ".jsonc", ".toml", ".xml":
 		return true

@@ -62,8 +62,16 @@ type classification struct {
 // silently omitting them.
 var extClassMap = map[string]classification{
 	// Go
-	".go":    {core.KindGoFunc, "go"},
-	"go.mod": {core.KindModuleDep, "go"},
+	".go": {core.KindGoFunc, "go"},
+
+	// Go modules (LB-Q-go-mod, language-breadth: a native tool-format dialect
+	// that upgraded the require-only line scanner). go.mod and go.work are
+	// their own language tag, "go-mod", not Go's: a manifest is a tool format
+	// (typed-edge level "syntax"), and the Go tag's "native" claim is about
+	// type-checked source. The basename check takes precedence over any
+	// extension; go.sum, go.work.sum and a backup are not claimed.
+	"go.mod":  {core.KindGoModule, "go-mod"},
+	"go.work": {core.KindGoWorkspace, "go-mod"},
 
 	// Infrastructure / config
 	".tf":     {core.KindTerraformResource, "terraform"},
