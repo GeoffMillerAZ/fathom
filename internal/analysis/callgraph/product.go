@@ -21,13 +21,20 @@ package callgraph
 // func-value edge from the registering function (VS-6, I23), and a call
 // inside a closure counts for its enclosing function (VS-7), so they are
 // reached through the binary that registers them. A table built in a
-// package-level var initializer has no enclosing function and so no edge;
-// a row anchored behind one reads library-only until the extractor
-// attributes those references (a known gap, named in the verdict).
+// package-level var initializer is attributed to "<pkg>.init" by the
+// typed pass (TypedEdgeEpoch 3), so it is reached with its package.
+//
+// Over-approximations (a reached node is not proof the product runs it):
+// every func value a linked package references counts as called — `var _
+// = f` included; an interface call reaches every implementation the typed
+// pass knows, whether or not the product ever constructs that type; and a
+// `package main` excluded by a build constraint (`//go:build ignore`)
+// still counts as an entry point.
 //
 // Deterministic: entries are sorted, the walk is a multi-source BFS over
-// sorted adjacency, and each reached node records the FIRST entry (in
-// sorted order) whose walk reached it.
+// sorted adjacency, and each reached node records the entry whose walk
+// reached it first in BFS order (the nearest; ties go to the entry that
+// sorts first) — not necessarily the only entry that reaches it.
 
 import (
 	"sort"
