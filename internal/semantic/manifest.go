@@ -60,10 +60,9 @@ type LayerDef struct {
 	CorpusExclude []string
 
 	// PromptVersion is the manifest's ADVISORY prompt-version label — NOT
-	// the compile-time identity. The obligations layer's real identity is
-	// content-addressed from its Go prompttemplate.Template
-	// (obligationsPromptVersion, prompts.go); see #Layer.prompt_version's
-	// doc comment in schema.cue.
+	// the compile-time identity. A layer's real identity is content-addressed
+	// from its resolved prompt text (promptForLayer, prompts.go); see
+	// #Layer.prompt_version's doc comment in schema.cue.
 	PromptVersion string
 
 	// PromptFile is the repo-relative path to this layer's compile system

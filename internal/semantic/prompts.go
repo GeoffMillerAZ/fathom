@@ -69,12 +69,11 @@ func PromptIdentity(def LayerDef) (string, error) {
 }
 
 // obligationsPromptVersion returns the built-in obligations layer's
-// content-addressed compile identity. Kept as a named helper (tests and
-// compile.go's no-Layer-configured default path both want the obligations
-// identity without re-deriving it inline); production code otherwise always
-// resolves a layer's prompt via LoadLayer + promptForLayer like every other
-// layer — this is not a second code path, just a named shortcut through the
-// same one.
+// content-addressed compile identity, for tests that seed claims under it.
+// No production code calls it: Compile, the layer-coverage check and the raw
+// fallback all resolve a layer's prompt, obligations included, through
+// LoadLayer + promptForLayer. It is a named shortcut through that same path,
+// not a second one.
 func obligationsPromptVersion() string {
 	v, err := layerPromptVersion(LayerObligations)
 	if err != nil {

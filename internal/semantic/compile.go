@@ -674,8 +674,8 @@ const promptOverheadTokens = 260
 // exact section content AND under the given prompt version — a prompt
 // version change must recompile every section, or stale-prompt claims
 // survive the gate (observed on the v1→v2 hand-bumped-const bug: 27/32
-// sections kept v1 claims). promptVersion is the content-addressed identity
-// from obligationsPromptVersion (M1-4/M1-5) — no more package-level const.
+// sections kept v1 claims). promptVersion is the layer's content-addressed
+// identity from promptForLayer (M1-4/M1-5, LC-1) — no more package-level const.
 func allDigestsMatch(claims []core.SemanticClaim, digest, promptVersion string) bool {
 	for _, cl := range claims {
 		if cl.InputDigest != digest || cl.PromptVersion != promptVersion {
