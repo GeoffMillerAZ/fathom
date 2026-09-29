@@ -467,7 +467,7 @@ queries by service ID, and supports atomic `Reload()` — used by the HTTP serve
 
 Above the symbol index sits `internal/semantic`: a **layer pack** (`docs/layers.md`;
 `schema/semantic/schema.cue` `#Layer`, with a `stratum` field per ADR-024) compiles a
-governing corpus (CLAUDE.md, ADR.md, plans, findings) into **governed claims** —
+governing corpus (AGENTS.md and CLAUDE.md, ADR.md, plans, findings) into **governed claims** —
 citation-grounded, evidence-tiered, content-addressed by prompt version — stored in
 `semantic_claims` / `claim_links` / `claim_events` / `compile_runs`. `fathom compile`
 (dry-run by default; eval-gated) and the `compile_layer` tool write them; the daemon's
@@ -490,7 +490,7 @@ Each is a small package with one verb and one design doc; none edits the user's 
 | Subsystem | Package | Surface | Design |
 |---|---|---|---|
 | Capability registry — one list of what is on and why anything is off; `capabilities.cue` user/project (law 13) with the `budgets` block (BA-9, experimental) | `internal/capability` | `fathom capabilities`, doctor row, observatory | `docs/design/capability-registry.md`, `docs/design/budgeted-answers.md` |
-| Config custodian — falsifiable concerns over CLAUDE.md/AGENTS.md; six check kinds, one of which (`stanza_tools_served`) asks the daemon and degrades honestly | `internal/custodian` | `fathom config audit`, doctor `concerns`, session-brief line | `docs/design/config-custodian.md` |
+| Config custodian — falsifiable concerns over AGENTS.md/CLAUDE.md; six check kinds, one of which (`stanza_tools_served`) asks the daemon and degrades honestly | `internal/custodian` | `fathom config audit`, doctor `concerns`, session-brief line | `docs/design/config-custodian.md` |
 | Continuity threads — the work, not the session; repo-scoped, byte-budgeted brief (bet: experimental, 4/20) | `cmd/fathom/thread.go` (`~/.fathom/threads.jsonl`) | `fathom thread …`, SessionEnd/PreCompact hooks, `fathom prime` | `docs/design/continuity-threads.md` |
 | Wiring + receipts (law 15) — plan → apply → receipt for every file fathom writes in a repo; hand-edited tracked regions blocked, `undo` reverses | `internal/wiring` | `fathom init`, `fleet reconcile --apply`, `fleet receipts|undo`, `/observatory/wiring/` | `docs/design/self-healing-fleet.md` |
 | Scope + purge — reversible suppression disclosed in every envelope; irreversible purge with a byte probe | `internal/scope` | `fathom scope …`, `fathom purge …` | `docs/design/scope-and-purge.md` |

@@ -52,8 +52,8 @@ Each guide is self-contained end-to-end; `docs/use-cases/` (below) then
 covers what to *do* with fathom once it's wired in, one how-to per concern.
 
 The fast path in either guide is `fathom init --skills[=claude|codex|all]`:
-one command wires the repo (ingest, hooks, the `CLAUDE.md`/`AGENTS.md`
-operating-contract stanza) **and** installs the nine shipped agent skills
+one command wires the repo (ingest, hooks, the `AGENTS.md`
+operating-contract stanza — a root `CLAUDE.md` gets an `@AGENTS.md` import, ADR-059) **and** installs the nine shipped agent skills
 (`fathom-activate`/`custodian`/`doctor`/`feedback`/`impact`/`onboard`/`plan`/
 `rewire`/`verify`, `dist/agents/skills/`) for your harness. If anything about the wiring
 looks off afterward, `fathom doctor` (not the Taskfile's `task doctor`
