@@ -2328,3 +2328,29 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** the dialect fixes the path length with `#match?` on the whole reference and walks to the last identifier with leading and sibling anchors, one pattern per length from one to eight (dialects/protobuf/tags.scm); a dialect that needs the last named child elsewhere should check lang-probe before trusting a trailing anchor
 - **Status:** open (worked around)
 - **Impact:** a query that relies on a trailing anchor silently over-captures (here every package segment became a callee: call precision, and file-resolved edges named by a package segment)
+
+### O200 — lang-probe prints named nodes only, so the anonymous keyword tokens a special_form is written with (tree-sitter-elisp's "defvar", "defconst", "defun" vs "defsubst") are invisible in the tree; a query author learns they exist by guessing (special_form "defvar" ...) and seeing whether it captures. Its capture list is also cut at 96 lines
+
+- **Symptom:** lang-probe prints named nodes only, so the anonymous keyword tokens a special_form is written with (tree-sitter-elisp's "defvar", "defconst", "defun" vs "defsubst") are invisible in the tree; a query author learns they exist by guessing (special_form "defvar" ...) and seeing whether it captures. Its capture list is also cut at 96 lines
+- **Evidence:**
+  - **Tool:** indexbench lang-probe -dialect emacs-lisp <file>
+  - **Expected:** a flag (or default) that prints anonymous tokens beside the named nodes, and one that lifts the capture cap, so the query is written from what the tree contains
+  - **Actual:** the tree of (defvar x 1) is (special_form (symbol) (integer)) with no trace of "defvar"; a fixture with more than about 30 definitions shows only the first 96 capture lines and part of the tree, so the rest must be probed in slices
+  - **Repro:** printf '(defvar x 1)\n' > a.el; go run ./cmd/indexbench lang-probe -dialect emacs-lisp a.el
+- **Root cause:** `tree.SExpr` (internal/extractor/tsengine/sexpr.go) renders named nodes only (`ts_node_is_named` skips the rest), and `probeLines` (cmd/indexbench/langprobe.go) cuts the capture list at `probeMaxCaptureLines` (96) and the whole output at `probeMaxLines` (200)
+- **Fix:** none yet; worked around by trying `(special_form "defvar" ...)` in a stub query and by probing a fixture in slices
+- **Status:** open
+- **Impact:** a dialect for a Lisp-family grammar (whose keywords are anonymous tokens inside one node type) costs a guess per keyword; it did not change a result here
+
+### O201 — the wave brief says Wilfred/tree-sitter-elisp ships src/parser.c (215 KB); the 1.7.2 tarball has none (src/parser.c is in the repository's .gitignore), so the lock row has to be generate: true and build.sh downloads tree-sitter-cli 0.26.11 through npx at build time
+
+- **Symptom:** the wave brief says Wilfred/tree-sitter-elisp ships src/parser.c (215 KB); the 1.7.2 tarball has none (src/parser.c is in the repository's .gitignore), so the lock row has to be generate: true and build.sh downloads tree-sitter-cli 0.26.11 through npx at build time
+- **Evidence:**
+  - **Tool:** grammars.lock.json / build.sh (generate: true)
+  - **Expected:** a pinned grammar that builds from its tarball alone, or the brief naming the tag whose tarball carries parser.c
+  - **Actual:** grammar.json and node-types.json but no parser.c at tag 1.7.2; build.sh generates it, which needs network and npm at build time
+  - **Repro:** curl -sL https://github.com/Wilfred/tree-sitter-elisp/archive/refs/tags/1.7.2.tar.gz | tar tz | grep 'src/'
+- **Root cause:** tree-sitter-elisp lists /src/parser.c under "Grammar volatiles" in its .gitignore and generates it on `npm install`
+- **Fix:** the lock row says "generate": true (the swift and sql rows already do) and build.sh runs the lock's pinned tree-sitter CLI; the committed blob is what ships, so the network is a build-time need only
+- **Status:** worked around
+- **Impact:** the elisp blob's rebuild depends on the npm registry and the CLI's postinstall download; the digests in the lock still bind the committed bytes
