@@ -51,6 +51,9 @@ func LintPlan(p Plan) []string {
 		if t.AnnotationSuspect != "" {
 			out = append(out, fmt.Sprintf("%s: annotation block could not be parsed (%q) — the row's contract and author-owned id are VOID; check braces and quoting (O4)", t.ID, t.AnnotationSuspect))
 		}
+		if t.UnreadAnnotation != "" {
+			out = append(out, fmt.Sprintf("%s: annotation %s sits on an unindented line under the row and is NOT read — the row has no contract; indent that continuation line under the checkbox, or join it to the checkbox line (G2-5)", t.ID, t.UnreadAnnotation))
+		}
 		if t.CtxMalformed {
 			out = append(out, fmt.Sprintf("%s: empty ctx: value (want space-separated pointers)", t.ID))
 		}

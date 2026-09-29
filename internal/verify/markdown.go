@@ -58,15 +58,23 @@ func parseProofHeader(line string) (string, bool) {
 //     line with no annotation and no spec IDs verifies as "no-contract"
 //     (honestly Unknown) rather than a false pass.
 //
-// The annotation must sit on the checkbox line itself: this parser is
-// line-based, so an annotation on a continuation line is silently ignored.
+// A row may wrap (G2-5): when the checkbox line carries no annotation
+// block, the indented continuation lines under it (continuationLines) are
+// part of the row — title text, spec IDs and the annotation block, which
+// may itself span lines. A row whose checkbox line carries its block reads
+// that line alone, so a note indented under it is never title text. An
+// annotation on an UNINDENTED line under a row is not read (a lazy
+// paragraph line is usually the next paragraph) but is recorded as
+// UnreadAnnotation, which LintPlan names.
 //
 // Task IDs are assigned deterministically as "md-001", "md-002", … in document
 // order (zero-padded so they sort correctly).
 func ParseMarkdownPlan(service string, md []byte) Plan {
 	plan := Plan{Service: service}
 	n := 0
-	for i, line := range strings.Split(string(md), "\n") {
+	lines := strings.Split(string(md), "\n")
+	for i := 0; i < len(lines); i++ {
+		line := lines[i]
 		if plan.Baseline == "" {
 			if bm := baselineLineRe.FindStringSubmatch(line); bm != nil {
 				plan.Baseline = bm[1]
@@ -86,6 +94,18 @@ func ParseMarkdownPlan(service string, md []byte) Plan {
 		check := m[1] // ' ', 'x', 'X', '~', or '-'
 		raw := m[2]
 		ann, title, suspect := parseAnnotation(raw)
+		start := i
+		var unread string
+		if ann == nil && suspect == "" {
+			if cont := continuationLines(lines, i+1); len(cont) > 0 {
+				parts := append([]string{raw}, cont...)
+				raw = strings.Join(parts, " ")
+				ann, title, suspect = parseAnnotation(raw)
+				i += len(cont)
+			} else if i+1 < len(lines) {
+				unread = unindentedAnnotation(lines[i+1])
+			}
+		}
 		n++
 		t := Task{
 			ID:         fmt.Sprintf("md-%03d", n),
@@ -94,10 +114,12 @@ func ParseMarkdownPlan(service string, md []byte) Plan {
 			Claimed:    check == "x" || check == "X",
 			Skipped:    check == "-",
 			InProgress: check == "~",
-			Line:       i + 1,
+			Line:       start + 1,
+			EndLine:    i + 1,
 			Weight:     1,
 
 			AnnotationSuspect: suspect,
+			UnreadAnnotation:  unread,
 		}
 		if ann != nil {
 			if id := ann["id"]; id != "" {
@@ -208,6 +230,51 @@ func ParseMarkdownPlan(service string, md []byte) Plan {
 		plan.Tasks = append(plan.Tasks, t)
 	}
 	return plan
+}
+
+// listItemRe matches a line that opens a list item of its own (a bullet or
+// an ordered item): never a continuation of the row above it.
+var listItemRe = regexp.MustCompile(`^\s*([-*+]|\d+[.)])(\s|$)`)
+
+// continuationLines returns the trimmed text of the indented continuation
+// lines starting at lines[from] (G2-5): each is non-blank, starts with a
+// space or tab, and is not a list item, an HTML comment, a code fence, or a
+// Baseline:/Proof: header. The first line that is none of those ends the
+// row.
+func continuationLines(lines []string, from int) []string {
+	var out []string
+	for j := from; j < len(lines); j++ {
+		l := strings.TrimRight(lines[j], "\r")
+		text := strings.TrimSpace(l)
+		if text == "" || (l[0] != ' ' && l[0] != '\t') {
+			break
+		}
+		if listItemRe.MatchString(l) || strings.HasPrefix(text, "<!--") ||
+			strings.HasPrefix(text, "```") || strings.HasPrefix(text, "~~~") ||
+			baselineLineRe.MatchString(l) || proofLineRe.MatchString(l) {
+			break
+		}
+		out = append(out, text)
+	}
+	return out
+}
+
+// unindentedAnnotation returns the block of an annotation that sits on an
+// unindented, non-list line (next) directly under a row: a block that parses
+// to at least one known contract key. "" otherwise.
+func unindentedAnnotation(next string) string {
+	text := strings.TrimSpace(next)
+	if text == "" || next[0] == ' ' || next[0] == '\t' || listItemRe.MatchString(next) || strings.HasPrefix(text, "#") {
+		return ""
+	}
+	ann, _, _ := parseAnnotation(text)
+	for _, k := range annotationKeys {
+		if _, ok := ann[k]; ok {
+			i, j, _ := trailingBraceBlock(text)
+			return text[i : j+1]
+		}
+	}
+	return ""
 }
 
 // trailingBraceBlock locates s's trailing "{...}" block — the annotation

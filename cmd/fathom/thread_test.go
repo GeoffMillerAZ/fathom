@@ -145,6 +145,28 @@ func TestConditionClosesItem(t *testing.T) {
 	}
 }
 
+// TestConditionClosesItem_WrappedRow: a plan_row_checked condition finds a
+// wrapped row (its id on a continuation line, G2-5) by id, as the plan
+// parser reads it.
+func TestConditionClosesItem_WrappedRow(t *testing.T) {
+	threadEnv(t)
+	repo := t.TempDir()
+	plan := filepath.Join(repo, "docs", "plans", "p.md")
+	if err := os.MkdirAll(filepath.Dir(plan), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(plan, []byte("- [x] build the thing\n  across two lines {id: TT-2, symbol: x, package: y}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	seedItem(t, "th-wrap", "spec-unbuilt", "the wrapped thing", func(it *threadItem) {
+		it.CompletesWhen = &threadCondition{Kind: "plan_row_checked", Repo: repo, Path: "docs/plans/p.md", Row: "TT-2"}
+	})
+	items := evaluateThreadConditions(loadThreadItems(threadsPath()), repo, time.Date(2026, 9, 29, 3, 0, 0, 0, time.UTC))
+	if items[0].ClosedAt == "" {
+		t.Fatal("the wrapped row is checked; the item must close itself")
+	}
+}
+
 // TestSessionEndDepositsOnClear pins TH-2: a /clear with work in flight
 // deposits ONE mechanical item; a clean empty session deposits NOTHING.
 func TestSessionEndDepositsOnClear(t *testing.T) {

@@ -50,10 +50,12 @@ any convention beyond what's below.
   (exempt — needs `disposition:`). Never hand-write a `[x]` for something
   you have not actually grounded against the index.
 - **Title**: human description of the work — keep it, spec IDs, and the
-  `{…}` annotation ALL on one line. The parser is line-based: an annotation
-  on a wrapped/continuation line is silently ignored and the task verifies as
-  `no-contract` instead of carrying its intended contract. However long the
-  line gets, keep it one line.
+  `{…}` annotation on one line where you can. A wrapped row is read only when
+  its continuation lines are INDENTED under the checkbox and the checkbox
+  line itself carries no `{…}` block; an annotation on an unindented line is
+  not read (lint names it) and the task verifies as `no-contract`. A fathom
+  older than G2-5 reads the checkbox line alone, so one line is the portable
+  form.
 - **Spec IDs**: bracketed references tying the task to its governing spec,
   e.g. `[US-042]`. Omit only for genuinely spec-less housekeeping tasks.
 

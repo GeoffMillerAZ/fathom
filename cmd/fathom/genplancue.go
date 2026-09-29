@@ -46,17 +46,14 @@ func cmdGenPlanCue(args []string, stdout, stderr io.Writer) int {
 
 	doc := renderPlanCUE(plan)
 
-	// Round-trip: the emitted CUE must rebuild the identical Plan. Line is
-	// the row's Markdown position (a SARIF location, never a contract), so
-	// the typed shadow does not carry it and the comparison ignores it.
+	// Round-trip: the emitted CUE must rebuild the identical Plan, less
+	// what stripMarkdownPosition names.
 	back, err := planFromCUE([]byte(doc))
 	if err != nil {
 		fmt.Fprintf(stderr, "error: round-trip parse of emitted CUE failed: %v\n", err)
 		return 2
 	}
-	for i := range plan.Tasks {
-		plan.Tasks[i].Line = 0
-	}
+	stripMarkdownPosition(&plan)
 	if !reflect.DeepEqual(plan, back) {
 		fmt.Fprintf(stderr, "error: round-trip loss — emitted CUE does not rebuild the parsed plan\n")
 		for i := range plan.Tasks {
@@ -255,4 +252,15 @@ func planFromCUE(src []byte) (verify.Plan, error) {
 		plan.Tasks = append(plan.Tasks, t)
 	}
 	return plan, nil
+}
+
+// stripMarkdownPosition zeroes what the CUE shadow does not carry: a row's
+// Line and EndLine are its Markdown position (a SARIF location, never a
+// contract), and UnreadAnnotation is a lint finding printed before the
+// round trip.
+func stripMarkdownPosition(plan *verify.Plan) {
+	for i := range plan.Tasks {
+		plan.Tasks[i].Line, plan.Tasks[i].EndLine = 0, 0
+		plan.Tasks[i].UnreadAnnotation = ""
+	}
 }

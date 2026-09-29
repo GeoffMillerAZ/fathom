@@ -11,11 +11,11 @@ import (
 )
 
 // roundTrip parses Synthesize(p) back and zeroes what synthesis does not
-// carry (Line: the synthesized file's lines are not the source's).
+// carry (Line/EndLine: the synthesized file's lines are not the source's).
 func roundTrip(p verify.Plan) verify.Plan {
 	back := verify.ParseMarkdownPlan(p.Service, Synthesize(p))
 	for i := range back.Tasks {
-		back.Tasks[i].Line = 0
+		back.Tasks[i].Line, back.Tasks[i].EndLine = 0, 0
 	}
 	return back
 }
@@ -24,7 +24,7 @@ func stripLines(p verify.Plan) verify.Plan {
 	out := p
 	out.Tasks = append([]verify.Task(nil), p.Tasks...)
 	for i := range out.Tasks {
-		out.Tasks[i].Line = 0
+		out.Tasks[i].Line, out.Tasks[i].EndLine = 0, 0
 	}
 	out.Baseline = ""
 	return out

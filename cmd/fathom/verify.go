@@ -760,7 +760,13 @@ func verifyFollowUpPlan(planMD []byte, plan verify.Plan, got map[string]bool) ([
 	var b strings.Builder
 	for i, t := range plan.Tasks {
 		if keep[t.Line] && t.Line >= 1 && t.Line <= len(lines) {
-			b.WriteString(lines[t.Line-1])
+			// A wrapped row (G2-5) keeps every line the parser read for it,
+			// or the follow-up would verify it without its annotation.
+			end := t.EndLine
+			if end < t.Line || end > len(lines) {
+				end = t.Line
+			}
+			b.WriteString(strings.Join(lines[t.Line-1:end], "\n"))
 		} else {
 			fmt.Fprintf(&b, "- [-] . {id: ~%d}", i+1)
 		}

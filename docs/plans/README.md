@@ -167,11 +167,17 @@ anchored on the product entry that must call it.
 
 ## Annotation placement (load-bearing)
 
-The annotation block must sit **on the checkbox line itself**. The parser is
-line-based: an annotation on a continuation (wrapped) line is silently
-ignored, and the task verifies as `no-contract` instead of carrying its
-intended contract. Keep the checkbox, title, spec IDs, and `{…}` block on one
-line, however long.
+The annotation block sits **on the checkbox line**, or on the row's
+**indented continuation lines** (G2-5). When the checkbox line carries no
+`{…}` block, the parser reads every indented line under it, up to a blank
+line, a list item, an HTML comment or a code fence, as part of the row: title
+text, spec IDs and the block, which may itself span lines. A row whose
+checkbox line carries its block reads that line alone, so a note indented
+under it is never part of it. An annotation on an **unindented** line under a
+row is not read (Markdown's lazy continuation is usually the next paragraph);
+`LintPlan` names it, and the row verifies as `no-contract` until it is
+indented or joined. One line stays the simplest form, and the only one a
+fathom older than G2-5 reads.
 
 ## Honesty boundary
 

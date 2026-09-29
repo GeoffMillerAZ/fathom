@@ -41,9 +41,10 @@ source tree present.
 - **Checkbox**: `[ ]` open, `[x]` claimed-done (gated), `[~]` in progress
   (never gated), `[-]` skipped (exempt — needs `disposition:`). Never
   hand-write `[x]` for something not actually grounded against the index.
-- Keep the title, spec IDs, and the `{…}` annotation ALL on one line — the
-  parser is line-based; an annotation on a continuation line is silently
-  ignored and the task verifies as `no-contract`.
+- Keep the title, spec IDs, and the `{…}` annotation on one line where you
+  can — a wrapped row is read only when its continuation lines are indented
+  under a checkbox line that carries no `{…}` block; an annotation on an
+  unindented line is not read and the task verifies as `no-contract`.
 
 ## Annotation keys (one `{…}` block per gated line)
 
