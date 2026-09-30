@@ -8,6 +8,10 @@ package main
 // (transcriptFold), so each Stop reads only what the transcript gained and
 // the summary equals a whole-file read's. A stamp whose file changed
 // identity or shrank is discarded and the transcript is folded from 0.
+//
+// A Codex session (PE-14) keeps its rollout fold (harness.CodexCostFold)
+// in the same stamp: the harness port's fold resumes itself from its own
+// offset, so the stamp only carries it between Stops.
 
 import (
 	"crypto/sha256"
@@ -19,6 +23,8 @@ import (
 	"path/filepath"
 	"syscall"
 	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/harness"
 )
 
 // transcriptOffsetStamp is the per-session stamp.
@@ -29,6 +35,9 @@ type transcriptOffsetStamp struct {
 	Ino           uint64          `json:"ino"`
 	Offset        int64           `json:"offset"` // bytes folded, always at a line boundary
 	Fold          *transcriptFold `json:"fold"`
+	// Codex is a Codex session's rollout fold (PE-14); nil for a Claude
+	// Code session, whose fold is Fold.
+	Codex *harness.CodexCostFold `json:"codex,omitempty"`
 }
 
 // transcriptStampPath is where sessionID's offset stamp lives ("" when no
@@ -118,6 +127,80 @@ func readTranscriptFromOffset(sessionID, path string) transcriptSummary {
 		// never a wrong summary.
 		_ = err
 	}
+	return out
+}
+
+// codexSchemaNote is a Codex row's transcript_schema_note.
+const codexSchemaNote = "figures above are folded from the Codex rollout (transcript_path) by the harness port " +
+	"(internal/harness CodexSessionCost) — schema-coupled and may silently degrade to \"unavailable\" (never a " +
+	"wrong number) if that format changes; turns, duration and the exploration ledger are not read from a rollout"
+
+// readCodexRolloutFromOffset summarizes a Codex session's rollout at path
+// for the Stop hook (PE-14): harness.CodexSessionCost folds what the
+// rollout gained since the fold kept in the session's offset stamp, and
+// the returned fold replaces it there. Tokens, cache, tool calls and the
+// model fill the same summary fields a Claude Code transcript fills; what
+// a rollout fold does not read is a fixed-string note, never a zero.
+func readCodexRolloutFromOffset(sessionID, path string) transcriptSummary {
+	const unavailableNoPath = "unavailable: no transcript_path on this Stop hook invocation"
+	const unavailableUnreadable = "unavailable: transcript_path unreadable or not a regular file"
+	if path == "" {
+		return transcriptSummary{DurationNote: unavailableNoPath, TurnNote: unavailableNoPath, TokensNote: unavailableNoPath}
+	}
+	// The same refusal the fold makes (no symlink, only a regular file),
+	// asked first so an unreadable rollout is named rather than read as a
+	// rollout with nothing in it.
+	if fi, err := os.Lstat(path); err != nil || !fi.Mode().IsRegular() {
+		return transcriptSummary{DurationNote: unavailableUnreadable, TurnNote: unavailableUnreadable, TokensNote: unavailableUnreadable}
+	}
+	stampPath := transcriptStampPath(sessionID)
+	var prev *harness.CodexCostFold
+	if stampPath != "" {
+		if b, err := os.ReadFile(stampPath); err == nil {
+			var st transcriptOffsetStamp
+			if json.Unmarshal(b, &st) == nil && st.SchemaVersion == 1 && st.Path == path && st.Codex != nil {
+				prev = st.Codex
+			}
+		}
+	}
+	c, fold := harness.CodexSessionCost(path, prev)
+	if stampPath != "" {
+		// A stamp that cannot be written costs the next Stop a fold from
+		// the start, never a wrong summary.
+		_ = writeTranscriptStamp(stampPath, transcriptOffsetStamp{SchemaVersion: 1, Path: path, Dev: fold.Dev, Ino: fold.Ino, Offset: fold.Offset, Codex: &fold})
+	}
+	return codexSummary(c)
+}
+
+// codexSummary maps a rollout's SessionCost onto the summary fields a
+// Claude Code transcript fills.
+func codexSummary(c harness.SessionCost) transcriptSummary {
+	const notFolded = "unavailable: a Codex rollout's turns and duration are not folded"
+	out := transcriptSummary{
+		Parsed:          true,
+		DurationNote:    notFolded,
+		TurnNote:        notFolded,
+		FirstEditNote:   "unavailable: a Codex rollout's edits are not folded",
+		ExplorationNote: "not measured: the exploration ledger reads Claude Code transcripts only",
+		ToolCallsTotal:  c.ToolCalls,
+		Model:           c.Model,
+		Truncated:       c.Truncated,
+		SchemaNote:      codexSchemaNote,
+	}
+	if c.Note != "" && c.Available {
+		out.SchemaNote += "; " + c.Note
+	}
+	if !c.Available {
+		out.TokensNote = c.Note
+		if out.TokensNote == "" {
+			out.TokensNote = "unavailable: no usage in the Codex rollout"
+		}
+		return out
+	}
+	in, o, cr, cc := c.TokensIn, c.TokensOut, c.TokensCacheRead, c.TokensCacheCreate
+	total := in + o + cr + cc
+	out.TokensTotal = &total
+	out.TokensIn, out.TokensOut, out.TokensCacheRead, out.TokensCacheCreate = &in, &o, &cr, &cc
 	return out
 }
 

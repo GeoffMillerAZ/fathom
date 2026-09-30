@@ -111,6 +111,26 @@ func mergeLayer(cfg *Config, prov Provenance, raw map[string]any, source Source,
 		}
 	}
 
+	// [work] ci_summaries (WI-2w): an array of tables, so the layer that
+	// sets it wins outright, like every other slice-valued field.
+	if wm, ok := raw["work"].(map[string]any); ok {
+		if list, ok := wm["ci_summaries"].([]any); ok {
+			sums := make([]CISummary, 0, len(list))
+			for _, entry := range list {
+				m, ok := entry.(map[string]any)
+				if !ok {
+					continue
+				}
+				var c CISummary
+				c.Path, _ = stringField(m, "path")
+				c.Commit, _ = stringField(m, "commit")
+				sums = append(sums, c)
+			}
+			cfg.Work.CISummaries = sums
+			prov["work.ci_summaries"] = SourceInfo{source, path}
+		}
+	}
+
 	// [zones] (WI-1): like every other slice-valued field, the layer that
 	// sets the table wins outright — a zone map has no per-entry merge
 	// that would not silently mix two layers' partitions.

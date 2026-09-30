@@ -110,6 +110,16 @@ func cmdPromptHook(args []string, stdout, stderr io.Writer) int {
 	if isAgentRelay(prompt) {
 		return 0
 	}
+	// SR-48w (F-31): an exact one-key reply (`c` or `r`, optionally with a
+	// note) to the edit hook's pending verdict ask is recorded on the ask
+	// for the next edit-hook turn to write — only when the session has
+	// one pending; otherwise the prompt is an ordinary prompt.
+	if ask, ok := recordVerdictReply(sessionID, prompt, verdictReplyNow()); ok {
+		if out, err := codec.EncodeOutput(harness.EventUserPromptSubmit, harness.HookOutput{Context: verdictReplyLine(ask)}); err == nil {
+			fmt.Fprintln(stdout, string(out))
+		}
+		return 0
+	}
 
 	emitBeat("prompt-hook", "seen", firingMetaArm(map[string]string{}, sessionID, "", armOff))
 	if armOff {

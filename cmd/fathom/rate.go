@@ -225,28 +225,21 @@ func listRatings(stdout, stderr io.Writer) int {
 	return 0
 }
 
-// abMinSessionsPerArm is the pre-registered floor
-// (docs/design/production-tokenomics.md §5): "across ≥20 sessions per
-// arm". It is a constant here so that changing it is a visible, reviewable
-// act rather than a quiet drift in a comparison.
-const abMinSessionsPerArm = 20
-
 // evaluateABCriterion states in words whether the registered criterion can
 // be evaluated YET, and if not, exactly what is missing.
 //
 // The criterion is conjunctive — lower median tokens AND equal-or-better
-// median rating, across ≥20 sessions per arm — so every unmet part is
-// named. A criterion that quietly reports "not yet" without saying which
-// part is missing is how a measurement program stalls without anyone
-// noticing.
+// median rating, across the pre-registered floor of units per arm — so
+// every unmet part is named. A criterion that quietly reports "not yet"
+// without saying which part is missing is how a measurement program
+// stalls without anyone noticing. The floor is G2's admissibility test
+// (console.AdmissibleArms, PE-17w; docs/design/production-tokenomics.md
+// §5's "≥20 sessions per arm"): no on-versus-off verdict is read until
+// both arms pass it.
 func evaluateABCriterion(imp obsImpact) string {
 	var missing []string
-	if imp.TokensOffSessions < abMinSessionsPerArm {
-		missing = append(missing, fmt.Sprintf("the OFF arm has %d of the %d units registered as the minimum (a unit is a fully-covered session, or the arm-covered window of a resumed one — §5 amendment 2026-08-12)",
-			imp.TokensOffSessions, abMinSessionsPerArm))
-	}
-	if imp.TokensOnSessions < abMinSessionsPerArm {
-		missing = append(missing, fmt.Sprintf("the ON arm has %d of %d units", imp.TokensOnSessions, abMinSessionsPerArm))
+	if adm := imp.onOff(); !adm.Admissible {
+		missing = append(missing, adm.Withheld+" (a unit is a fully-covered session, or the arm-covered window of a resumed one — §5 amendment 2026-08-12)")
 	}
 	if imp.TokensOnMedian == nil || imp.TokensOffMedian == nil {
 		missing = append(missing, "at least one arm has no usable token median")
