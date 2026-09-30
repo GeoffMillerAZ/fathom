@@ -120,10 +120,14 @@ func (w *sexprWriter) walk(nodePtr uint32, field string, depth int) error {
 	return nil
 }
 
+func (w *sexprWriter) cString(fn string, args ...uint64) (string, error) {
+	return w.t.p.cString(fn, args...)
+}
+
 // cString calls a guest function returning a const char* and reads the
 // NUL-terminated string ("" for NULL).
-func (w *sexprWriter) cString(fn string, args ...uint64) (string, error) {
-	res, err := w.t.p.call(fn, args...)
+func (p *Parser) cString(fn string, args ...uint64) (string, error) {
+	res, err := p.call(fn, args...)
 	if err != nil {
 		return "", err
 	}
@@ -131,7 +135,7 @@ func (w *sexprWriter) cString(fn string, args ...uint64) (string, error) {
 	if ptr == 0 {
 		return "", nil
 	}
-	mem := w.t.p.mod.Memory()
+	mem := p.mod.Memory()
 	var out []byte
 	for i := uint32(0); i < 256; i++ {
 		c, ok := mem.ReadByte(ptr + i)

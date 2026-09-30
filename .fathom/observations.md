@@ -2406,3 +2406,16 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** the dialect fixes the path length with `#match?` on the whole reference and walks to the last identifier with leading and sibling anchors, one pattern per length from one to eight (dialects/protobuf/tags.scm); a dialect that needs the last named child elsewhere should check lang-probe before trusting a trailing anchor
 - **Status:** open (worked around)
 - **Impact:** a query that relies on a trailing anchor silently over-captures (here every package segment became a callee: call precision, and file-resolved edges named by a package segment)
+
+### O210 — condition (a) of ADR-048's D5 extension reads only `; source:` headers, and three dialects name their drafting source in PROVENANCE.md alone
+
+- **Symptom:** `lang-oracle -tags-query` refuses a third-party query that a `; source:` header of the dialect's own `.scm` files names (LB-F52), but javascript, python and typescript carry no such header: their PROVENANCE.md says the definition shapes "follow the grammar's own upstream `queries/tags.scm` (MIT)", so that upstream file would be admitted as their tier-C L1 oracle although they were drafted from it
+- **Evidence:**
+  - **Tool:** `indexbench lang-oracle -dialect typescript -tags-query <tree-sitter-typescript queries/tags.scm> -tags-query-source "tree-sitter/tree-sitter-typescript queries/tags.scm" …`
+  - **Expected:** refused under condition (a), as it is for c, cpp, csharp, java, lua, php, rust, swift, matlab and bash, whose headers name their source
+  - **Actual:** admitted; `grep -L '^; source:' internal/extractor/dialects/*/tags.scm` lists css, dart, dockerfile, javascript, kotlin, python, ruby and typescript, and the PROVENANCE.md of javascript, python, typescript (and dockerfile) names an upstream `tags.scm`
+  - **Repro:** `for d in internal/extractor/dialects/*/; do grep -q '^; source:' $d*.scm || grep -H 'upstream' $d/PROVENANCE.md; done`
+- **Root cause:** the pre-manifest dialects (LB-F1 moved them unchanged) predate design §8.2's borrowed-`.scm` header; their provenance is prose, and the refusal was specified on headers (the brief's rule)
+- **Fix:** none yet: give those `tags.scm` files the §8.2 header (a docs-and-query-comment change that does not move a golden), or let the refusal also read the dialect's PROVENANCE.md for `<repo>` plus `<path>`
+- **Status:** open
+- **Impact:** low today (the three have tier-A SCIP and tier-B ctags oracles, so no worker needs a tier-C query for them); it is the ADR-048 amendment's own revisit trigger ("a dialect drafted from its oracle query without a `; source:` header naming it")

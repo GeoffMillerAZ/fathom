@@ -80,7 +80,7 @@ recall and precision ≥ .95 (good ≥ .90); L3 precision ≥ .95, recall ≥ .8
 |---|---|---|
 | A | SCIP index from the language's maintained indexer; a native type checker; the tool's own evaluation (`make -pn`, `bazel query`, `terraform graph -type=plan`, `helm template`, `kustomize build`, `docker compose config`, `gitlab-ci-local --list`, the format's reference parser) | any level, excellent |
 | B | universal-ctags (`--output-format=json --fields=+nKzSe --extras=-{anonymous}`) run as a subprocess | L1 excellent |
-| C | the grammar's upstream `queries/tags.scm` run by the tree-sitter CLI; an independent parser library | at most good, any level it covers |
+| C | the grammar's upstream `queries/tags.scm` run by the tree-sitter CLI; an independent parser library; a third-party definitions query run by fathom's engine at a pinned revision (`lang-oracle -tags-query`, D5 extension, §1.5) | at most good, any level it covers |
 | D | grep proxy (`baseline.sh`); a sample labelled by the extractor's own author | "tolerated" only |
 
 A reading records the tier per metric. The harness computes `level_met` from the metrics
@@ -212,6 +212,25 @@ owner's decisions, binding on the harness and every reading after them:
   tier A; a producer that sets no `enclosing_range` (scip-clang 0.4.0) no longer zeroes the
   calls: a definition mapped to a fathom definition takes that definition's line span, and
   the reading counts how many did.
+- **D5 extension (2026-09-29) — a third-party definitions query is a tier-C L1 oracle**
+  (ADR-048's amendment of that date; LB-F46, LB-F52). Accepted when (a) it is not the source
+  the dialect was drafted from; (b) the tier-C cap applies; (c) it is fetched at measurement
+  time by pinned revision and never vendored; (d) its licence is recorded in the reading. A
+  licence declared consistently across a grammar's package manifests counts when there is no
+  LICENSE file; AGPL grammars are refused. `lang-oracle -tags-query <scm> -tags-query-rev
+  <40-hex> -tags-query-source "<owner/repo> <path>" -tags-query-licence <SPDX>` (§10) runs the
+  query through fathom's engine on the dialect's pinned grammar over the files the manifest
+  owns and scores its definitions as the neutral oracle file at tier C, kinds mapped through
+  `oracle_kinds.tool`. Capture conventions, detected or set with `-tags-query-format`: `tags`
+  (upstream, helix, aider, Sourcegraph: `@definition.<kind>` on the definition node plus
+  `@name`; the end line is the definition node's), `locals` (nvim-treesitter:
+  `@local.definition[.<kind>]`, or legacy `@definition.<kind>`, on the name node; no end line,
+  so `range_agreement` is not measured) and `outline` (Zed: `@item` plus `@name`; the kind is
+  the `@item` node's type). Refused: a query a `; source:` header of the dialect's own queries
+  names (repository compared case-insensitively), a revision that is not 40 lowercase hex, a
+  query file inside the work tree outside `workspace/`, an empty or AGPL licence, and a
+  predicate the engine does not support (named, never stripped). The reading's oracle run
+  records `source`, `revision` and `licence`. Definitions only; D5's calls path is unchanged.
 - **D7 — C#'s `using X; Y.Z();` resolves.** An unaliased `using X;` is a wildcard import
   (the C# idiom: every type of namespace X in scope unqualified); an aliased
   `using A = X;` keeps its prefix binding. Under namespace-dir a wildcard's namespace is
@@ -667,6 +686,9 @@ go run ./cmd/indexbench lang-oracle \
   [-scip workspace/tmp/scip/swift-alamofire.scip] \
   [-scip-defs]                                 # L1 from the SCIP index, tier A (D2)
   [-tool-oracle workspace/tmp/oracle/<id>-<subject>.json]...   # repeatable (D2, D5)
+  [-tags-query workspace/tmp/oracle/<id>-tags.scm \    # third-party definitions query: L1, tier C (D5 extension)
+   -tags-query-rev <40-hex> -tags-query-source "<owner/repo> <path>" -tags-query-licence <SPDX> \
+   [-tags-query-format tags|locals|outline] [-tags-query-out <json>]]   # out: workspace/tmp/oracle/<id>-<subject>-tagsq.json
   [-only 'dir/**/*.sql,other.sql']               # restrict the subject (D2)
   [-adjudicate calibration/adjudications/<id>.json] \  # verified oracle misses (D3)
   -out docs/bench/readings/lang/swift.json   # merges subjects: one reading per dialect
@@ -896,8 +918,12 @@ worktree and your scratch directory.
 18. Oracle B: universal-ctags from `workspace/tools/ctags` (a pinned release; if absent,
     install the pinned build there per `calibration/README.md` — never a global install
     without asking). Check `ctags --list-languages` for your language. If ctags does not
-    know it, your L1 oracle is tier C (the upstream `tags.scm` through
-    `npx --yes tree-sitter-cli@<pinned> tags`), and L1 can only be `good`.
+    know it, your L1 oracle is tier C, and L1 can only be `good`: a third-party definitions
+    query (the grammar's upstream `tags.scm`, a helix, aider or Sourcegraph `tags.scm`, an
+    nvim-treesitter `locals.scm` or a Zed `outline.scm`) that your dialect was not drafted
+    from, fetched by commit into `workspace/tmp/oracle/` (for example `curl` of
+    `raw.githubusercontent.com/<repo>/<commit>/<path>`) and run with `lang-oracle -tags-query`
+    (§10; D5 extension, §1.5). Record its licence; an AGPL grammar's query is refused.
 19. Oracle A (L2–L4 targets, when your entry names a SCIP producer): install the pinned
     indexer inside your scratch dir (npm `--prefix`, `cargo install --root`, a release
     binary; JVM `-Xmx2g`; `nice -n 10`), run it on the subject with a 20-minute timeout,
