@@ -46,6 +46,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/cost"
 	"github.com/geoffmilleraz/fathom/internal/decide"
 	"github.com/geoffmilleraz/fathom/internal/fathomhome"
+	"github.com/geoffmilleraz/fathom/internal/ledgerroots"
 	"github.com/geoffmilleraz/fathom/internal/llmsec"
 	"github.com/geoffmilleraz/fathom/internal/metrics"
 )
@@ -173,7 +174,10 @@ func assessWindow(projBeats []retroBeat, sid string) (time.Time, time.Time, bool
 // ---- DO-3: the unit lane --------------------------------------------------
 
 func assessUnit(root, sid string, start, end time.Time, opts assessOpts, stdout, stderr io.Writer) int {
-	ev := gatherUnitEvidence(root, sid, start, end)
+	ev, ignored := gatherUnitEvidence(root, sid, start, end, cliLedgerRoots(defaultFathomURL()))
+	if p := ignored.Phrase(verifyLedgerNoun); p != "" {
+		fmt.Fprintf(stderr, "gate results: %s\n", p) // PE-24
+	}
 	if len(ev.Commits) == 0 {
 		fmt.Fprintf(stdout, "nothing on disk to judge: session %s landed no commit in %s between %s and %s — no call made, nothing spent.\n",
 			sid, root, ev.WindowStart, ev.WindowEnd)
@@ -189,8 +193,10 @@ func assessUnit(root, sid string, start, end time.Time, opts assessOpts, stdout,
 // gatherUnitEvidence reads a unit's work products from git and the local
 // ledgers — commits whose commit time falls in the window (committed work
 // only: the working tree is not what shipped), the plan rows those commits
-// changed, and the gate results recorded in the window.
-func gatherUnitEvidence(root, sid string, start, end time.Time) assess.UnitEvidence {
+// changed, and the gate results recorded in the window. Gate results are
+// the rows under roots' registered service roots (PE-24); ignored is what
+// that left out, for the caller to name.
+func gatherUnitEvidence(root, sid string, start, end time.Time, roots ledgerroots.Roots) (assess.UnitEvidence, ledgerroots.Ignored) {
 	ev := assess.UnitEvidence{
 		WindowStart: start.UTC().Format(time.RFC3339),
 		WindowEnd:   end.UTC().Format(time.RFC3339),
@@ -212,6 +218,7 @@ func gatherUnitEvidence(root, sid string, start, end time.Time) assess.UnitEvide
 			ev.PlanDeltas = append(ev.PlanDeltas, parsePlanDeltas(string(plan))...)
 		}
 	}
+	keep := roots.NewFilter()
 	if data, rerr := readFileMaybe(verifyLedgerPath()); rerr == nil {
 		for _, ln := range strings.Split(string(data), "\n") {
 			var r verifyLedgerRow
@@ -219,7 +226,7 @@ func gatherUnitEvidence(root, sid string, start, end time.Time) assess.UnitEvide
 				continue
 			}
 			at, perr := time.Parse(time.RFC3339, r.At)
-			if perr != nil || at.Before(start) || at.After(end) || !sameRepoPath(r.RepoRoot, root) {
+			if perr != nil || at.Before(start) || at.After(end) || !sameRepoPath(r.RepoRoot, root) || !keep.Keep(r.RepoRoot) {
 				continue
 			}
 			ev.Gates = append(ev.Gates, assess.GateResult{Plan: r.Plan, Origin: r.Origin, Claimed: r.Claimed, Verified: r.Verified, Failing: r.Failing})
@@ -230,7 +237,7 @@ func gatherUnitEvidence(root, sid string, start, end time.Time) assess.UnitEvide
 			ev.VerifyCatches = e.VerifyCatches
 		}
 	}
-	return ev
+	return ev, keep.Ignored()
 }
 
 var planCheckboxLine = regexp.MustCompile(`^([+-])\s*- \[([ xX-])\]\s+(.*)$`)

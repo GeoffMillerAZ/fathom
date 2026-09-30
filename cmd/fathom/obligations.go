@@ -20,15 +20,28 @@ package main
 // ruleoutcome_read.go reads the hook's signal log). That record and the
 // rule's claim id are read here, by a person; the MCP payload an agent
 // reads carries neither (the id rides only to the edit hook itself).
+//
+// Beside the compiled rules it shows the `.fathom/guard.cue` layer rules
+// that govern the path, each marked checkable or not (SR-45w, F-26:
+// guardspec.LayerRuleIsCheckable — a deterministic pre-write check exists
+// for its kind), and `fathom obligations promote <rule>` compiles a
+// checkable one to an enforce:true guard (guardspec.GuardFromCheckableRule):
+// a dry run by default, `--write` to apply, a not-checkable rule refused
+// with its reason. CLI only, like the rest of this verb's additions.
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/console"
+	"github.com/geoffmilleraz/fathom/internal/guardspec"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
+	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/internal/verify"
 )
 
@@ -49,19 +62,187 @@ type servedObligationsJSON struct {
 	// Outcomes is the edit hook's record of each served rule, keyed by
 	// claim id (SR-61); absent, never zero, when no hook has recorded yet.
 	Outcomes console.Value[console.RuleOutcomeSet] `json:"outcomes"`
+	// LayerRules are the `.fathom/guard.cue` layer rules governing the
+	// path, each marked checkable (SR-45w).
+	LayerRules servedLayerRules `json:"layer_rules"`
 }
 
-func servedJSON(se console.ServingExplanation) servedObligationsJSON {
+func servedJSON(se console.ServingExplanation, lr servedLayerRules) servedObligationsJSON {
 	return servedObligationsJSON{
 		Service: se.Service, File: se.File, Layer: se.Layer, Rules: se.AgentSees, RawWhy: se.RawWhy,
 		Displaced: se.Served.Displaced, DisplacedByTier: se.Served.DisplacedByTier, Deduped: se.Deduped,
 		RankedBy: se.Served.RankedBy, Watermark: se.Served.Watermark, Coverage: se.Coverage, Note: se.CoverageNote,
-		Outcomes: se.Outcomes,
+		Outcomes: se.Outcomes, LayerRules: lr,
+	}
+}
+
+// servedLayerRule is one guard.cue layer rule as the answer marks it.
+// Why is the reason a not-checkable rule stays advisory, or, for a
+// checkable one not yet enforced, the command that promotes it.
+type servedLayerRule struct {
+	ID        string `json:"id"`
+	Kind      string `json:"kind"`
+	Sentence  string `json:"sentence"`
+	Severity  string `json:"severity"`
+	Enforce   bool   `json:"enforce"`
+	Checkable bool   `json:"checkable"`
+	Why       string `json:"why,omitempty"`
+}
+
+// servedLayerRules is the answer's layer-rule section: the file read and
+// the rules governing the path, or Note naming why none were read (never
+// an empty list standing in for "no rule governs this path").
+type servedLayerRules struct {
+	Source string            `json:"source,omitempty"`
+	Rules  []servedLayerRule `json:"rules"`
+	Note   string            `json:"note,omitempty"`
+}
+
+// layerRulesServed reads <root>/.fathom/guard.cue's layer rules and keeps
+// those governing file of service (guardspec.LayerRuleGoverns), marking
+// each with guardspec.LayerRuleIsCheckable.
+func layerRulesServed(root, service, file string) servedLayerRules {
+	out := servedLayerRules{Rules: []servedLayerRule{}}
+	if root == "" {
+		out.Note = "not read: " + service + " has no local root on this machine; pass --root"
+		return out
+	}
+	path := filepath.Join(root, ".fathom", "guard.cue")
+	if _, err := os.Stat(path); err != nil {
+		out.Note = "no layer rules: " + path + " does not exist"
+		return out
+	}
+	out.Source = path
+	set, err := guardspec.LoadLayerRules(path)
+	if err != nil {
+		out.Note = "not read: " + err.Error()
+		return out
+	}
+	for _, r := range set.Rules {
+		if !guardspec.LayerRuleGoverns(r, service, file) {
+			continue
+		}
+		sr := servedLayerRule{
+			ID: r.ID, Kind: string(r.Kind), Sentence: r.Sentence, Severity: string(r.Severity),
+			Enforce: r.Enforce, Checkable: guardspec.LayerRuleIsCheckable(r),
+		}
+		switch {
+		case !sr.Checkable:
+			sr.Why = guardspec.NotCheckableReason(r)
+		case !r.Enforce:
+			sr.Why = "fathom obligations promote " + r.ID + " --root " + root + " --write"
+		}
+		out.Rules = append(out.Rules, sr)
+	}
+	return out
+}
+
+// obligationsRoot is the directory whose guard.cue the answer reads: the
+// --root flag, else the service's recorded ingest root when it is a
+// directory on this machine, else "" (the answer then says so).
+func obligationsRoot(ctx context.Context, flagRoot string, st store.Store, service string) string {
+	if flagRoot != "" {
+		return flagRoot
+	}
+	meta, found, err := st.GetServiceMeta(ctx, service)
+	if err != nil || !found || meta.Path == "" {
+		return ""
+	}
+	if fi, err := os.Stat(meta.Path); err != nil || !fi.IsDir() {
+		return ""
+	}
+	return meta.Path
+}
+
+// cmdObligationsPromote implements `fathom obligations promote <rule>`
+// (SR-45w): compile the layer rule to an enforce:true guard and print the
+// stanza (dry run), or write it into <root>/.fathom/guard.cue (--write).
+func cmdObligationsPromote(args []string, stdout, stderr io.Writer) int {
+	fs := newFlagSet("obligations promote", stderr)
+	root := fs.String("root", ".", "repository root whose .fathom/guard.cue holds the rule")
+	write := fs.Bool("write", false, "write the promoted rule into .fathom/guard.cue (default: a dry run that prints it)")
+	if err := fs.Parse(reorderFlagsFirst(fs, args)); err != nil {
+		return 1
+	}
+	if fs.NArg() != 1 {
+		fmt.Fprintln(stderr, "usage: fathom obligations promote <layer-rule-id> [--root DIR] [--write]")
+		return 1
+	}
+	id := fs.Arg(0)
+	path := filepath.Join(*root, ".fathom", "guard.cue")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		fmt.Fprintf(stderr, "error: %v%s\n", err, tccWedgeHint(path))
+		return 1
+	}
+	p, err := guardspec.PromoteLayerRuleSource(path, data, id)
+	if err != nil {
+		var nc *guardspec.NotCheckableError
+		if errors.As(err, &nc) {
+			fmt.Fprintf(stderr, "refused: %v\n", err)
+		} else {
+			fmt.Fprintf(stderr, "error: %v\n", err)
+		}
+		return 1
+	}
+	const effect = "the PreToolUse guard hook then denies an edit that breaks it (FATHOM_ENFORCE=off or [guards] enforce = false keeps it advisory)"
+	switch {
+	case !p.Changed:
+		fmt.Fprintf(stdout, "%s is already enforce: true in %s; nothing to write\n\n%s\n", id, path, p.Stanza)
+	case !*write:
+		fmt.Fprintf(stdout, "would promote %s to enforce: true in %s (dry run; --write applies it):\n\n%s\n\n%s\n", id, path, p.Stanza, effect)
+	default:
+		fi, serr := os.Stat(path)
+		mode := os.FileMode(0o644)
+		if serr == nil {
+			mode = fi.Mode().Perm()
+		}
+		if err := os.WriteFile(path, p.Source, mode); err != nil {
+			fmt.Fprintf(stderr, "error: write %s: %v\n", path, err)
+			return 1
+		}
+		fmt.Fprintf(stdout, "promoted %s to enforce: true in %s:\n\n%s\n\n%s\n", id, path, p.Stanza, effect)
+	}
+	return 0
+}
+
+// printLayerRules is the text answer's layer-rule section.
+func printLayerRules(w io.Writer, lr servedLayerRules) {
+	if lr.Note != "" && len(lr.Rules) == 0 {
+		fmt.Fprintf(w, "\nlayer rules: %s\n", lr.Note)
+		return
+	}
+	if len(lr.Rules) == 0 {
+		fmt.Fprintf(w, "\nlayer rules (%s): none governs this path\n", lr.Source)
+		return
+	}
+	fmt.Fprintf(w, "\nlayer rules (%s):\n", lr.Source)
+	for _, r := range lr.Rules {
+		state := "advisory"
+		if r.Enforce {
+			state = "enforced"
+		}
+		mark := "checkable"
+		if !r.Checkable {
+			mark = "not checkable"
+		}
+		fmt.Fprintf(w, "  %s [%s] %s · %s\n      %s\n", r.ID, r.Kind, state, mark, r.Sentence)
+		if r.Why != "" {
+			if r.Checkable {
+				fmt.Fprintf(w, "      promote: %s\n", r.Why)
+			} else {
+				fmt.Fprintf(w, "      %s\n", r.Why)
+			}
+		}
 	}
 }
 
 func cmdObligations(args []string, stdout, stderr io.Writer) int {
+	if len(args) > 0 && args[0] == "promote" {
+		return cmdObligationsPromote(args[1:], stdout, stderr)
+	}
 	fs := newFlagSet("obligations", stderr)
+	rootFlag := fs.String("root", "", "repository root whose .fathom/guard.cue layer rules the answer marks checkable (default: the service's recorded root)")
 	service := fs.String("service", "", "service ID (required)")
 	file := fs.String("file", "", "repo-relative file being edited; omit for the root-scope question")
 	layer := fs.String("layer", "rules", `which claims to serve: "rules" (the obligations tool's default), "claims" (plan-row bindings) or "all"`)
@@ -101,6 +282,7 @@ func cmdObligations(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	se = withRuleOutcomes(se, ruleOutcomeNow())
+	layerRules := layerRulesServed(obligationsRoot(context.Background(), *rootFlag, c.Store(), *service), *service, *file)
 	switch {
 	case *format == "sarif":
 		_, _ = stdout.Write(verify.RenderSARIF("fathom obligations", obligationsSARIF(se.AgentSees)))
@@ -108,7 +290,7 @@ func cmdObligations(args []string, stdout, stderr io.Writer) int {
 	case *kf.json && *explain:
 		return jsonExit(writeKnowledgeJSON(stdout, se), stderr)
 	case *kf.json:
-		return jsonExit(writeKnowledgeJSON(stdout, servedJSON(se)), stderr)
+		return jsonExit(writeKnowledgeJSON(stdout, servedJSON(se, layerRules)), stderr)
 	}
 	subject := "governs " + se.File
 	if se.File == "" {
@@ -137,6 +319,7 @@ func cmdObligations(args []string, stdout, stderr io.Writer) int {
 	if se.CoverageNote != "" {
 		fmt.Fprintf(stdout, "\nnote: %s\n", se.CoverageNote)
 	}
+	printLayerRules(stdout, layerRules)
 	if !*explain {
 		if se.Served.Displaced > 0 {
 			fmt.Fprintf(stdout, "\n%d eligible rule(s) displaced by the cap — add --explain to see which and why\n", se.Served.Displaced)

@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/console"
+	"github.com/geoffmilleraz/fathom/internal/ledgerroots"
 )
 
 // realizationDim is one rung.
@@ -95,6 +96,9 @@ type realizationWindow struct {
 	CallLogNote      string
 	VerifyLedgerNote string
 	SessionsNote     string
+	// VerifyIgnored are the service's runs in the window under a root that
+	// is not registered (PE-24): not counted, named on the gating rung.
+	VerifyIgnored int
 	// PlansNote, when set, is why docs/plans was not read: gating is then
 	// unknown, never not applicable.
 	PlansNote string
@@ -108,7 +112,7 @@ func realizationLadderFacts(s obsServiceRow, w realizationWindow) console.Ladder
 		Service: s.Service, StanzaNote: s.StanzaNote, HooksNote: s.HooksNote,
 		Freshness: s.Freshness, FreshRemedy: daemonRefreshRemedy(s.Path, s.Service),
 		WindowDays: w.WindowDays, Calls: w.Calls, ObligationServes: w.ObligationServes, CallLogNote: w.CallLogNote,
-		Sessions: w.Sessions, SessionsNote: w.SessionsNote, VerifyRuns: w.VerifyRuns, VerifyLedgerNote: w.VerifyLedgerNote,
+		Sessions: w.Sessions, SessionsNote: w.SessionsNote, VerifyRuns: w.VerifyRuns, VerifyLedgerNote: w.VerifyLedgerNote, VerifyIgnored: w.VerifyIgnored,
 		HasPlans: w.HasPlans, PlansNote: w.PlansNote,
 	}
 }
@@ -214,19 +218,34 @@ func inRealizationWindow(ts, fromDay, toDay string) bool {
 // could not be read or does not exist: the gating rung is then unknown,
 // never a measured "no runs" (law 3) — a daemon that reads another HOME's
 // ledger would otherwise tell every gating repository to add the gate.
-func windowVerifyRuns(from, to time.Time) (map[string]int, string) {
+// Only runs under roots' registered service roots count (PE-24); ignored
+// is each service's runs in the window the filter left out, which its
+// gating rung names.
+func windowVerifyRuns(from, to time.Time, roots ledgerroots.Roots) (runs, ignored map[string]int, note string) {
 	path := verifyLedgerPath()
 	if path == "" {
-		return nil, "no verify ledger is configured (no home directory, no FATHOM_VERIFY_LEDGER)"
+		return nil, nil, "no verify ledger is configured (no home directory, no FATHOM_VERIFY_LEDGER)"
 	}
 	if _, err := os.Stat(path); errors.Is(err, fs.ErrNotExist) {
-		return nil, "no verify ledger at " + path + " — no `fathom verify` run is recorded on this machine"
+		return nil, nil, "no verify ledger at " + path + " — no `fathom verify` run is recorded on this machine"
 	}
-	runs, _, readErr := ledgerRuns()
+	rows, readErr := readVerifyLedgerNamed()
 	if readErr != "" {
-		return nil, "the verify ledger could not be read (" + readErr + ")"
+		return nil, nil, "the verify ledger could not be read (" + readErr + ")"
 	}
-	return console.VerifyRunsIn(runs, strings.ToLower, from, to), ""
+	f := roots.NewFilter()
+	var kept, dropped []console.LedgerRun
+	for _, r := range rows {
+		run, ok := ledgerRunOf(r)
+		switch {
+		case !ok:
+		case f.Keep(r.RepoRoot):
+			kept = append(kept, run)
+		default:
+			dropped = append(dropped, run)
+		}
+	}
+	return console.VerifyRunsIn(kept, strings.ToLower, from, to), console.VerifyRunsIn(dropped, strings.ToLower, from, to), ""
 }
 
 // sumInts totals a per-day traffic slice — the window's call count.

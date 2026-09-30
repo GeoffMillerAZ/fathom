@@ -20,7 +20,9 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -28,7 +30,6 @@ import (
 	"github.com/geoffmilleraz/app-kit/appkit/ui/chrome"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/table"
 	"github.com/geoffmilleraz/fathom/internal/certify"
-	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/console"
 	"github.com/geoffmilleraz/fathom/internal/gitro"
 )
@@ -58,6 +59,7 @@ type workPageModel struct {
 	History      console.SourceRead     `json:"history_read"`
 	Unjoined     int                    `json:"unjoined_proven_rows"`
 	Commits      string                 `json:"commits_read"`
+	CIRead       []string               `json:"ci_sources"`
 	Work         console.WorkModel      `json:"work"`
 	Friction     console.FrictionView   `json:"friction"`
 	FrictionRead []string               `json:"friction_sources"`
@@ -110,19 +112,33 @@ func buildWorkPage(cr *consoleRequest) (consoleOut, error) {
 // reads the same memo, so a row's profile and the /work page cannot
 // disagree about the proven changes they are computed over.
 func memoWork(ctx context.Context, cr *consoleRequest, m observatoryModel, sr serviceRoot) workPageModel {
+	cfg, _ := workRepoConfig(sr.Root)
 	key := strings.Join([]string{sr.Service, sr.Root, fileWatermark(verifyLedgerPath()), fileWatermark(sessionLedgerPath()),
-		fileWatermark(ruleOutcomeLogPath()), repoHeadNoFork(sr.Root)}, "\x00")
+		fileWatermark(ruleOutcomeLogPath()), repoHeadNoFork(sr.Root),
+		fileWatermark(workConfigPath(sr.Root)), workCIWatermarks(sr.Root, cfg),
+		m.callFacts.Log.Path, fileWatermark(m.callFacts.Log.Path), fileWatermark(threadsPath())}, "\x00")
+	var idx workIndex
+	if cr.deps != nil && cr.deps.c != nil {
+		idx = storeWorkIndex{st: cr.deps.c.Store()}
+	}
 	model, _, _ := workMemo.doCtx(ctx, key, cr.now, func() (workPageModel, time.Duration) {
-		return computeWork(ctx, m, sr, cr.now), 2 * time.Minute
+		return computeWork(ctx, m, sr, cr.now, idx), 2 * time.Minute
 	})
 	return model
 }
 
 // computeWork joins the proof history to the session ledger for one
-// repository and projects U1, U2, U5 and U3.
-func computeWork(ctx context.Context, m observatoryModel, sr serviceRoot, now time.Time) workPageModel {
+// repository and projects U1, U2, U5 and U3. idx, when given and non-nil
+// (the console's store), answers the index reads the friction map makes;
+// without it (the CLI preflight, which reads U2 only) each is named
+// absent.
+func computeWork(ctx context.Context, m observatoryModel, sr serviceRoot, now time.Time, idxOpt ...workIndex) workPageModel {
+	var idx workIndex
+	if len(idxOpt) > 0 {
+		idx = idxOpt[0]
+	}
 	var model workPageModel
-	h, read := console.ProofHistory(ctx, verifyLedgerPath(), console.DefaultHistoryTail)
+	h, read := console.ProofHistory(ctx, verifyLedgerPath(), console.DefaultHistoryTail, m.ledgerRoots())
 	model.History = read
 	f := console.HistoryFilter{Service: sr.Service}
 	looks := 0
@@ -135,26 +151,38 @@ func computeWork(ctx context.Context, m observatoryModel, sr serviceRoot, now ti
 	}
 	join := console.JoinSessionProof(ctx, h, agentSessionsOf(m), f, authorAt)
 	model.Unjoined = len(join.Unjoined)
-	commits, note := workCommitFacts(ctx, sr.Root, join)
-	model.Commits = note
-	zones := console.NewZones(workZonesConfig(sr.Root), nil)
+	commits, note := workCommitFacts(ctx, sr.Root, join, now)
+	cfg, cfgErr := workRepoConfig(sr.Root)
+	zones := console.NewZones(cfg.Zones, nil)
 	changes := console.EffortPerProvenChange(join, h, sessionEffortsOf(m), commits, zones)
-	model.Work = console.WorkIntelligence(changes, nil)
+	retries := 0
+	for _, c := range changes {
+		retries += c.Retries
+	}
+	retryWord := "retries"
+	if retries == 1 {
+		retryWord = "retry"
+	}
+	model.Commits = note + fmt.Sprintf("; %d claimed-unproven %s before %s (the verify ledger's history)",
+		retries, retryWord, plural(len(changes), "proven change"))
+	ci, ciRead := workCIRuns(sr.Root, cfg.Work.CISummaries, cfgErr, changes)
+	model.CIRead = ciRead
+	model.Work = console.WorkIntelligence(changes, ci)
 	model.changes, model.history, model.zones = changes, h, zones
 
 	rules, ruleNote := workRuleEvents(sr.Root)
-	model.FrictionRead = []string{
-		ruleNote,
-		"search, lookup and revert events: not read by this page (the hook log's replay carries no symbol per call)",
-		"claimed-unproven anchors: not read by this page",
-	}
-	model.Friction = console.FrictionWithRemedies(console.FrictionInputs{Rules: rules, Zones: zones}, console.RemedyInputs{})
+	in, frictionRead := workFrictionInputs(ctx, m.callFacts.Log.Path, sr, h, commits, rules, zones, idx)
+	model.FrictionRead = append([]string{ruleNote}, frictionRead...)
+	rem, remRead := workRemedyInputs(ctx, sr.Service, rules, console.FrictionSignals(in), idx)
+	model.FrictionRead = append(model.FrictionRead, remRead...)
+	model.Friction = console.FrictionWithRemedies(in, rem)
 	return model
 }
 
-// sessionEffortsOf reads each session's effort from its last ledger row.
-// The ledger records neither harness nor model, so the agent identity is
-// "unknown" and no model is priced — named, never guessed.
+// sessionEffortsOf reads each session's effort from its last ledger row,
+// with the harness and model that row recorded (WI-9w). A row that
+// recorded neither (a pre-WI-9w binary) keeps them empty, which every view
+// names "unknown" — never guessed.
 func sessionEffortsOf(m observatoryModel) []console.SessionEffort {
 	if m.ledgerErr != nil || m.ledger == nil {
 		return nil
@@ -162,7 +190,7 @@ func sessionEffortsOf(m observatoryModel) []console.SessionEffort {
 	out := make([]console.SessionEffort, 0, len(m.ledger.order))
 	for _, k := range m.ledger.order {
 		e := m.ledger.latest[k]
-		se := console.SessionEffort{SessionID: e.SessionID}
+		se := console.SessionEffort{SessionID: e.SessionID, Harness: e.Harness, Model: e.Model}
 		if e.TokensIn != nil {
 			se.TokensIn = *e.TokensIn
 		}
@@ -180,15 +208,21 @@ func sessionEffortsOf(m observatoryModel) []console.SessionEffort {
 	return out
 }
 
-// workCommitFacts reads the files of the newest workMaxCommits proving
-// commits in one read-only `git show`. Rework is not read here (it needs
-// a log per commit): it stays absent, named.
-func workCommitFacts(ctx context.Context, root string, join console.JoinResult) (map[string]console.CommitFacts, string) {
+// workCommitFacts reads, for the newest workMaxCommits proving commits,
+// their files (one read-only `git show`, a commit this clone lacks
+// skipped and counted) and then, from one bounded `git log` over the time
+// since the oldest of them, each one's rework — lines changed again in
+// its files within console.ReworkWindow — and the later commits that
+// revert it. A window still open, or a stretch the bounded log did not
+// reach, leaves that part unknown with its reason, never a zero. The
+// claimed-unproven retries per change are the proof history's own
+// (console.EffortPerProvenChange reads them from the same verify ledger).
+func workCommitFacts(ctx context.Context, root string, join console.JoinResult, now time.Time) (map[string]console.CommitFacts, string) {
 	type at struct{ commit, at string }
 	seen := map[string]string{}
 	for _, o := range join.Outcomes {
 		for _, r := range o.Rows {
-			if r.Commit != "" && gitro.IsObjectName(r.Commit) && r.At > seen[r.Commit] {
+			if workCommitName(r.Commit) && r.At > seen[r.Commit] {
 				seen[r.Commit] = r.At
 			}
 		}
@@ -206,12 +240,12 @@ func workCommitFacts(ctx context.Context, root string, join console.JoinResult) 
 		}
 		return list[i].commit < list[j].commit
 	})
-	note := fmt.Sprintf("files of %s read with one git show", plural(len(list), "proving commit"))
+	of := plural(len(list), "proving commit")
 	if len(list) > workMaxCommits {
-		note = fmt.Sprintf("files of the newest %d of %d proving commits read with one git show", workMaxCommits, len(list))
+		of = fmt.Sprintf("the newest %d of %d proving commits", workMaxCommits, len(list))
 		list = list[:workMaxCommits]
 	}
-	args := []string{"show", "--no-renames", "--name-only", "--format=@%H"}
+	args := []string{"show", "--ignore-missing", "--no-renames", "--name-only", "--format=@%H %ct"}
 	for _, c := range list {
 		args = append(args, c.commit)
 	}
@@ -220,20 +254,31 @@ func workCommitFacts(ctx context.Context, root string, join console.JoinResult) 
 		return nil, "the proving commits' files could not be read: " + err.Error()
 	}
 	facts := map[string]console.CommitFacts{}
+	times := map[string]int64{}
 	var cur string
 	for _, line := range strings.Split(string(out), "\n") {
 		line = strings.TrimSpace(line)
 		switch {
 		case line == "":
 		case strings.HasPrefix(line, "@"):
-			cur = line[1:]
+			sha, ct, _ := strings.Cut(line[1:], " ")
+			cur = sha
 			facts[cur] = console.CommitFacts{Commit: cur}
+			if t, err := strconv.ParseInt(ct, 10, 64); err == nil {
+				times[cur] = t
+			}
 		case cur != "":
 			cf := facts[cur]
 			cf.Files = append(cf.Files, line)
 			facts[cur] = cf
 		}
 	}
+	read := len(facts)
+	note := fmt.Sprintf("files of %s read with one git show", of)
+	if read < len(list) {
+		note = fmt.Sprintf("files of %d of %s read with one git show (%d not in this clone)", read, of, len(list)-read)
+	}
+	note += "; " + workReworkAndReverts(ctx, root, facts, times, now)
 	// The join may name an abbreviated commit; key both spellings.
 	for _, c := range list {
 		if _, ok := facts[c.commit]; ok {
@@ -249,16 +294,139 @@ func workCommitFacts(ctx context.Context, root string, join console.JoinResult) 
 	return facts, note
 }
 
-// workZonesConfig reads the repository's own `[zones]` table.
-func workZonesConfig(root string) map[string][]string {
-	if root == "" {
-		return nil
+// workCommitName reports whether s may be handed to git as a commit: a
+// full or abbreviated object name (7 to 64 lowercase hex characters). The
+// verify ledger records HEAD abbreviated (gitHeadShort), so a full-name
+// test alone would read no proving commit at all.
+func workCommitName(s string) bool {
+	if len(s) < 7 || len(s) > 64 {
+		return false
 	}
-	loaded, err := config.Load("", filepath.Join(root, ".fathom", "config.toml"))
+	for i := 0; i < len(s); i++ {
+		if c := s[i]; !(c >= '0' && c <= '9' || c >= 'a' && c <= 'f') {
+			return false
+		}
+	}
+	return true
+}
+
+// workMaxLogCommits bounds the one `git log` rework and reverts are read
+// from: a stretch it does not reach leaves those figures unknown, named.
+const workMaxLogCommits = 5000
+
+// workLogCommit is one commit of the rework log: its time, the lines it
+// changed per file, and the commits its message says it reverts.
+type workLogCommit struct {
+	sha     string
+	at      int64
+	lines   map[string]int
+	reverts []string
+}
+
+// revertLine is git revert's own message line.
+var revertLine = regexp.MustCompile(`This reverts commit ([0-9a-f]{7,64})`)
+
+// workReworkAndReverts fills each proving commit's rework and reverts
+// from one read-only `git log --numstat` over HEAD's history since the
+// oldest proving commit, bounded by workMaxLogCommits, and returns the
+// note naming what it read.
+func workReworkAndReverts(ctx context.Context, root string, facts map[string]console.CommitFacts, times map[string]int64, now time.Time) string {
+	if len(times) == 0 {
+		return "rework and reverts: no proving commit time was read"
+	}
+	oldest := int64(0)
+	for _, t := range times {
+		if oldest == 0 || t < oldest {
+			oldest = t
+		}
+	}
+	since := time.Unix(oldest, 0).UTC().Format(time.RFC3339)
+	out, err := gitro.Output(ctx, root, "log", "--no-renames", "--numstat", "--format=%x1e%H %ct%n%B%x1f",
+		"--since="+since, fmt.Sprintf("--max-count=%d", workMaxLogCommits), "HEAD")
 	if err != nil {
-		return nil
+		reason := "the rework log could not be read: " + err.Error()
+		for sha, cf := range facts {
+			cf.ReworkReason, cf.RevertReason = reason, reason
+			facts[sha] = cf
+		}
+		return "rework and reverts: " + reason
 	}
-	return loaded.Config.Zones
+	var log []workLogCommit
+	for _, rec := range strings.Split(string(out), "\x1e") {
+		head, stat, ok := strings.Cut(rec, "\x1f")
+		if !ok {
+			continue
+		}
+		first, body, _ := strings.Cut(head, "\n")
+		sha, ct, _ := strings.Cut(strings.TrimSpace(first), " ")
+		t, err := strconv.ParseInt(ct, 10, 64)
+		if err != nil || sha == "" {
+			continue
+		}
+		lc := workLogCommit{sha: sha, at: t, lines: map[string]int{}}
+		for _, m := range revertLine.FindAllStringSubmatch(body, -1) {
+			lc.reverts = append(lc.reverts, m[1])
+		}
+		for _, line := range strings.Split(stat, "\n") {
+			f := strings.SplitN(strings.TrimSpace(line), "\t", 3)
+			if len(f) != 3 {
+				continue
+			}
+			add, _ := strconv.Atoi(f[0]) // "-" for a binary file: 0 lines
+			del, _ := strconv.Atoi(f[1])
+			lc.lines[f[2]] += add + del
+		}
+		log = append(log, lc)
+	}
+	// The log covers every commit since the oldest it read, unless it hit
+	// its bound — then only the stretch from its oldest commit on.
+	covered := int64(0)
+	if len(log) >= workMaxLogCommits {
+		covered = log[len(log)-1].at
+	}
+	window := int64(console.ReworkWindow / time.Second)
+	open, reverted := 0, 0
+	for sha, cf := range facts {
+		t, ok := times[sha]
+		switch {
+		case !ok:
+			cf.ReworkReason, cf.RevertReason = "its commit time was not read", "its commit time was not read"
+		case t < covered:
+			reason := fmt.Sprintf("the bounded log (%d commits) did not reach back to it", workMaxLogCommits)
+			cf.ReworkReason, cf.RevertReason = reason, reason
+		default:
+			cf.RevertsKnown = true
+			for _, lc := range log {
+				for _, r := range lc.reverts {
+					if strings.HasPrefix(sha, r) || strings.HasPrefix(r, sha) {
+						cf.Reverts = append(cf.Reverts, console.CommitRevert{Commit: lc.sha, At: time.Unix(lc.at, 0).UTC().Format(time.RFC3339)})
+					}
+				}
+			}
+			reverted += len(cf.Reverts)
+			if closes := time.Unix(t+window, 0).UTC(); closes.After(now) {
+				open++
+				cf.ReworkReason = "its 7-day rework window is still open (closes " + closes.Format("2006-01-02") + ")"
+				break
+			}
+			cf.ReworkKnown = true
+			for _, lc := range log {
+				if lc.sha == sha || lc.at <= t || lc.at > t+window {
+					continue
+				}
+				for _, f := range cf.Files {
+					cf.ReworkLines += lc.lines[f]
+				}
+			}
+		}
+		sort.Slice(cf.Reverts, func(i, j int) bool { return cf.Reverts[i].At < cf.Reverts[j].At })
+		facts[sha] = cf
+	}
+	note := fmt.Sprintf("rework and reverts from one git log over %s since %s", plural(len(log), "commit"), since[:10])
+	if open > 0 {
+		note += fmt.Sprintf(" (%s still inside the 7-day window)", plural(open, "proving commit"))
+	}
+	return note + fmt.Sprintf(", %s of a proving commit", plural(reverted, "revert"))
 }
 
 // workRuleEvents reads the rule-outcome log's newest workRuleTailBytes and
@@ -367,7 +535,7 @@ func renderWorkPage(m workPageModel) string {
 		}))
 		return b.String()
 	}
-	b.WriteString(renderWorkIntelligence(m.Work, m.History, m.Unjoined, m.Commits))
+	b.WriteString(renderWorkIntelligence(m.Work, m.History, m.Unjoined, m.Commits, m.CIRead))
 	b.WriteString(`<div class="mt-4">` + renderPanel(consolePanel{ID: "friction", Title: "Friction map", SourceKey: "sessions",
 		Question: "Where do agents struggle — blocked edits, rediscovery, search loops, reverts, unproven claims — and what might help?",
 		Source:   strings.Join(m.FrictionRead, "; "), Denominator: fmt.Sprintf("%s, %s", plural(m.Friction.Map.RuleEvents, "rule event"), plural(m.Friction.Map.Events, "activity event")),
@@ -388,7 +556,7 @@ func renderWorkPage(m workPageModel) string {
 }
 
 // renderWorkIntelligence renders U5, U2 and U1 as three panels.
-func renderWorkIntelligence(w console.WorkModel, hist console.SourceRead, unjoined int, commits string) string {
+func renderWorkIntelligence(w console.WorkModel, hist console.SourceRead, unjoined int, commits string, ci []string) string {
 	var b strings.Builder
 	src := "the verify ledger's proof history joined to the session ledger (" + hist.Path + ")"
 	state, reason := hist.State, hist.Reason
@@ -411,7 +579,7 @@ func renderWorkIntelligence(w console.WorkModel, hist console.SourceRead, unjoin
 
 	panel(consolePanel{ID: "cost-per-zone", Title: "Cost per zone", SourceKey: "plans sessions",
 		Question: "Where do tokens, cost and CI minutes go by zone, and how much of it followed a claimed-unproven retry?",
-		Source:   src + "; " + commits, Denominator: plural(len(w.CostPerZone), "zone"),
+		Source:   src + "; " + commits + "; " + strings.Join(ci, "; "), Denominator: plural(len(w.CostPerZone), "zone"),
 		State: state, Reason: reason, Body: renderCostPerZone(w.CostPerZone, w.FirstAttempt)})
 	return b.String()
 }

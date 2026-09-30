@@ -58,6 +58,19 @@ func TestMain(m *testing.M) {
 		hookcache.FileChangedDir = filepath.Join(cacheRoot, "filechanged")
 		editSetDir = filepath.Join(cacheRoot, "edit-set")
 		guardStampDir = filepath.Join(cacheRoot, "guard-stamps")
+		// PE-23/PE-24: a root under the OS temp dir is a scratch clone, and a
+		// ledger reader ignores it even when the registry lists it. The
+		// isolated root itself sits in the OS temp dir, so the fixture fleet's
+		// registered roots under HOME would all read as scratch. The OS temp
+		// dir becomes a dedicated subdirectory of the isolated root: still
+		// hermetic, and the fixtures' roots are not in it.
+		tmp := filepath.Join(root, "tmp")
+		if err := os.MkdirAll(tmp, 0o755); err != nil {
+			return err
+		}
+		if err := os.Setenv("TMPDIR", tmp); err != nil {
+			return err
+		}
 		// ADR-059: doctor's Claude Code load path never reads this
 		// machine's managed settings or spawns the real claude binary in a
 		// test; a test that needs a reading sets its own.

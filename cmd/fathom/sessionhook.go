@@ -18,6 +18,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/harness"
 	"github.com/geoffmilleraz/fathom/internal/hookguard"
+	"github.com/geoffmilleraz/fathom/internal/ledgerroots"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
 	"github.com/geoffmilleraz/fathom/internal/testisolate"
 )
@@ -96,7 +97,7 @@ func cmdSessionHook(args []string, stdin io.Reader, stdout, stderr io.Writer) in
 		projDir, _ = os.Getwd()
 	}
 
-	ctx := buildSessionContext(*url, projDir)
+	ctx, primerIdentity := sessionContext(*url, projDir)
 	// RT-7 (§11.1): a hung daemon spends the whole deadline in the line
 	// above. Past it, the outbox sync and the stamp's identity lookup (each
 	// only feeds an RPC the guard now refuses) and the continuity brief are
@@ -161,7 +162,12 @@ func cmdSessionHook(args []string, stdin io.Reader, stdout, stderr io.Writer) in
 			ctx += "\n" + primerDeadlineNote
 		} else {
 			var line string
-			ctx, briefBytes, line = composeContinuityAndCustodian(ctx, projDir, time.Now())
+			// PE-25: the attention line's rows under the registered roots,
+			// decided from the identity this hook already resolved.
+			if primerIdentity == nil {
+				primerIdentity = stampIdentity
+			}
+			ctx, briefBytes, line = composePrimer(ctx, projDir, time.Now(), attentionLedgerRoots(projDir, primerIdentity))
 			attentionBytes = len(line)
 			intentLine = line != ""
 			if intentLine {
@@ -228,7 +234,10 @@ const primerOverflowNote = " …[session primer truncated at its byte cap]"
 // highest-signal part. Returns the brief's byte count as it was ACTUALLY
 // injected (post-cut — the session stamp must not record bytes that never
 // reached the model) and whether the attention line fired.
-func composeContinuityAndCustodian(identity, projDir string, now time.Time) (primer string, briefBytes int, attention string) {
+//
+// roots are the registered service roots the attention line reads the
+// intent ledger under (PE-25; attentionLedgerRoots).
+func composePrimer(identity, projDir string, now time.Time, roots ledgerroots.Roots) (primer string, briefBytes int, attention string) {
 	items := loadThreadItems(threadsPath())
 	var mapLines []string
 	if threadsHoldMaps() {
@@ -238,7 +247,7 @@ func composeContinuityAndCustodian(identity, projDir string, now time.Time) (pri
 		mapLines = briefMapLines(items, projDir, now)
 	}
 	brief := renderThreadBrief(items, projDir, threadBriefBudgetBytes, now, mapLines...)
-	line := attentionLine(projDir, now)
+	line := attentionLine(projDir, now, roots)
 	// RT-51: the tenancy line, only when the daemon is not normal (≤160 B).
 	tenancyLine := primerTenancyLine(now)
 
@@ -325,7 +334,8 @@ func cmdPrime(args []string, stdout, stderr io.Writer) int {
 		projDir, _ = os.Getwd()
 	}
 
-	ctx, _, _ := composeContinuityAndCustodian(buildSessionContext(*url, projDir), projDir, time.Now())
+	primerLine, id := sessionContext(*url, projDir)
+	ctx, _, _ := composePrimer(primerLine, projDir, time.Now(), attentionLedgerRoots(projDir, id))
 	fmt.Fprintln(stdout, ctx)
 	return 0
 }
@@ -346,10 +356,12 @@ type svcInfo struct {
 	path     string // recorded corpus root; "" when the daemon has none
 }
 
-// buildSessionContext returns the additionalContext line for the project at
-// projDir. Service identity tries the dir basename first, then the enclosing
+// sessionContext returns the additionalContext line for the project at
+// projDir, and the service identity it resolved (nil when none was: the
+// daemon did not answer, or an OFF arm is active) — the attention line
+// decides from it whether projDir is a registered root (PE-25). Service identity tries the dir basename first, then the enclosing
 // git repo's basename (projects rooted in a subdirectory like <repo>/deploy).
-func buildSessionContext(baseURL, projDir string) string {
+func sessionContext(baseURL, projDir string) (string, *identityResult) {
 	hc := &http.Client{Timeout: 2 * time.Second}
 
 	resp, err := hc.Get(baseURL + "/healthz")
@@ -368,14 +380,14 @@ func buildSessionContext(baseURL, projDir string) string {
 			// it" line told every new session to restart a daemon the
 			// breaker was giving room to recover. The skip is recorded as
 			// a breaker_open beat.
-			return ""
+			return "", nil
 		}
 		if errors.As(err, &skip) && skip.Verdict == hookguard.Busy {
-			return fmt.Sprintf("fathom daemon (%s) is busy right now (hooks back off until %s) — its MCP tools may refuse briefly with a Retry-After; retry them before falling back to Grep/Read.", baseURL, skip.Until.Local().Format("15:04:05"))
+			return fmt.Sprintf("fathom daemon (%s) is busy right now (hooks back off until %s) — its MCP tools may refuse briefly with a Retry-After; retry them before falling back to Grep/Read.", baseURL, skip.Until.Local().Format("15:04:05")), nil
 		}
 		// This line reaches EVERY session of EVERY adopter, which is why it
 		// may not name a label that exists on one machine.
-		return fmt.Sprintf("⚠️ fathom code-intelligence daemon (%s) is not responding — its MCP tools are unavailable this session, so Grep/Read discovery is expected. Restart it with: %s", baseURL, daemonRestartHint(""))
+		return fmt.Sprintf("⚠️ fathom code-intelligence daemon (%s) is not responding — its MCP tools are unavailable this session, so Grep/Read discovery is expected. Restart it with: %s", baseURL, daemonRestartHint("")), nil
 	}
 	resp.Body.Close()
 
@@ -387,7 +399,7 @@ func buildSessionContext(baseURL, projDir string) string {
 			bound += fmt.Sprintf(" / %d session(s) left", *st.SessionsRemaining)
 		}
 		defer decrementArmSessions()
-		return fmt.Sprintf("🔬 fathom OFF arm active (measurement, vision 14 §2): channels are silent this session — no obligations, no guards, no verify gate. Bound: %s. This is deliberate counterfactual data collection; end it early with `fathom arm on`.", bound)
+		return fmt.Sprintf("🔬 fathom OFF arm active (measurement, vision 14 §2): channels are silent this session — no obligations, no guards, no verify gate. Bound: %s. This is deliberate counterfactual data collection; end it early with `fathom arm on`.", bound), nil
 	}
 
 	// RT-133 (§11.3): the cached identity answers (SessionStart's stamp
@@ -396,10 +408,10 @@ func buildSessionContext(baseURL, projDir string) string {
 	// predates GET /identity.
 	id, idErr := lookupIdentityCached(hc, baseURL, projDir)
 	if idErr == nil && id.Service != "" {
-		return sessionPrimerLine(hc, baseURL, projDir, id.Service, id.info())
+		return sessionPrimerLine(hc, baseURL, projDir, id.Service, id.info()), &id
 	}
 	if idErr != nil && !errors.Is(idErr, errIdentityRouteMissing) {
-		return fmt.Sprintf("⚠️ fathom daemon is healthy but service enumeration failed (%v) — index state is unknown this session; the MCP tools may still work, so try them before falling back to Grep/Read. If this repeats, check GET %s/statusz.", idErr, baseURL)
+		return fmt.Sprintf("⚠️ fathom daemon is healthy but service enumeration failed (%v) — index state is unknown this session; the MCP tools may still work, so try them before falling back to Grep/Read. If this repeats, check GET %s/statusz.", idErr, baseURL), nil
 	}
 	svcs, svcErr := fetchServices(hc, baseURL)
 	if svcErr != nil {
@@ -407,7 +419,7 @@ func buildSessionContext(baseURL, projDir string) string {
 		// (healthz just passed) but list_services failed — saying "this repo
 		// is not an indexed service" here would be a confident false
 		// instruction the agent has no reason to disprove. Degrade honestly.
-		return fmt.Sprintf("⚠️ fathom daemon is healthy but service enumeration failed (%v) — index state is unknown this session; the MCP tools may still work, so try them before falling back to Grep/Read. If this repeats, check GET %s/statusz.", svcErr, baseURL)
+		return fmt.Sprintf("⚠️ fathom daemon is healthy but service enumeration failed (%v) — index state is unknown this session; the MCP tools may still work, so try them before falling back to Grep/Read. If this repeats, check GET %s/statusz.", svcErr, baseURL), nil
 	}
 	cands := serviceCandidates(projDir)
 	if resolved, ok := resolveFromServices(svcs, projDir); ok {
@@ -419,7 +431,7 @@ func buildSessionContext(baseURL, projDir string) string {
 		if !ok {
 			continue
 		}
-		return sessionPrimerLine(hc, baseURL, projDir, lookup, info)
+		return sessionPrimerLine(hc, baseURL, projDir, lookup, info), &identityResult{Schema: 1, Service: lookup, Path: info.path}
 	}
 
 	repo := filepath.Base(strings.TrimRight(projDir, "/"))
@@ -432,7 +444,7 @@ func buildSessionContext(baseURL, projDir string) string {
 	if len(known) == 0 {
 		indexed = "none yet"
 	}
-	return fmt.Sprintf("ℹ️ fathom code-intelligence is live, but this repo (%q) is not an indexed service — its symbols aren't in the index, so Grep/Read discovery is expected here. Indexed services: %s. (Add this repo with the ingest tool: {\"service\":\"<name>\",\"path\":\"<absolute repo root>\"}.)", repo, indexed)
+	return fmt.Sprintf("ℹ️ fathom code-intelligence is live, but this repo (%q) is not an indexed service — its symbols aren't in the index, so Grep/Read discovery is expected here. Indexed services: %s. (Add this repo with the ingest tool: {\"service\":\"<name>\",\"path\":\"<absolute repo root>\"}.)", repo, indexed), &identityResult{Schema: 1}
 }
 
 // sessionPrimerLine is the live line for projDir, the indexed service

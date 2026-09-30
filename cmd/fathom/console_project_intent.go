@@ -156,7 +156,7 @@ func buildProjectIntentPage(cr *consoleRequest) (consoleOut, error) {
 	radar := buildDriftRadar(run.Audit.Triggers, trend, terr)
 	model.Radar = &radar
 	out.Model = model
-	out.Sections = map[string]any{verb: intentAuditPayload(run.Corpus, run.Audit, run.Ledger, at)}
+	out.Sections = map[string]any{verb: withLedgerIgnored(intentAuditPayload(run.Corpus, run.Audit, run.Ledger, at), run.LedgerIgnored)}
 	out.Body = func() string {
 		return renderProjectTabs(pc.svc, "intent") + projectBody(renderProjectIntent(pc, view, verb, at, &radar))
 	}

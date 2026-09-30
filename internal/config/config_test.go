@@ -400,6 +400,32 @@ func TestLoad_ZonesTable(t *testing.T) {
 	}
 }
 
+// TestLoad_WorkCISummaries pins `[[work.ci_summaries]]` (WI-2w): each
+// entry decodes with its path and commit, the project layer replaces the
+// user's list outright, and a non-hex commit is a schema error.
+func TestLoad_WorkCISummaries(t *testing.T) {
+	dir := t.TempDir()
+	userPath := filepath.Join(dir, "user.toml")
+	projectPath := filepath.Join(dir, "project.toml")
+	writeTOML(t, userPath, "[[work.ci_summaries]]\npath = \"old.xml\"\ncommit = \"abcdef0\"\n")
+	writeTOML(t, projectPath, "[[work.ci_summaries]]\npath = \"ci/junit.xml\"\ncommit = \"0123abc\"\n\n[[work.ci_summaries]]\npath = \"ci/runs.json\"\n")
+	loaded, err := Load(userPath, projectPath)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	got := loaded.Config.Work.CISummaries
+	if len(got) != 2 || got[0] != (CISummary{Path: "ci/junit.xml", Commit: "0123abc"}) || got[1] != (CISummary{Path: "ci/runs.json"}) {
+		t.Fatalf("ci_summaries = %+v, want the project list only", got)
+	}
+	if loaded.Provenance["work.ci_summaries"].Path != projectPath {
+		t.Errorf("provenance = %+v", loaded.Provenance["work.ci_summaries"])
+	}
+	writeTOML(t, projectPath, "[[work.ci_summaries]]\npath = \"ci/junit.xml\"\ncommit = \"main\"\n")
+	if _, err := Load("", projectPath); err == nil {
+		t.Error("a commit that is not a hex object name must be rejected by the schema")
+	}
+}
+
 // TestLoad_GuardsTable pins ADR-038's escape hatch config field: `[guards]
 // enforce = false` decodes to an explicit *bool, provenance is recorded,
 // and project overrides user like every other field.

@@ -1922,8 +1922,8 @@ tests being added) is what catches that, not a second reading of the prose.
   - **Expected:** the ledgers hold the fleet's registered repositories only, so burn-up, proof regressions, cost per proven row, the session join's unjoined share and the verify-gate figure describe real work
   - **Actual:** every run appends a row under its own working root, registered or not; on the reference machine 7,729 verify rows came from one scratch clone and 241 distinct roots appear in the verify ledger; found by the 2026-09-29 judgment research agent and confirmed by counting `repo_root` values under `/private/tmp` in `~/.fathom/verify-ledger.jsonl` and `intent-ledger.jsonl` (read only)
   - **Repro:** run `fathom verify --plan <plan>` or `fathom intent audit` inside a clone outside the registered service roots without setting FATHOM_VERIFY_LEDGER or FATHOM_INTENT_LEDGER, then count rows whose repo_root is the clone. The per-file variables already exist but are undocumented in docs/usage.md and nothing sets them for a scratch run
-  - **Fix:** planned, not yet landed: `docs/plans/progress-and-economics.md` PE-23 to PE-25 (readers filter to registered service roots and name the ignored count), PE-26 to PE-28 (a documented FATHOM_HOME and --ledger override that test and scratch runs use), PE-29 (a `fathom gc` class `ledger-unregistered` that archives, never deletes, on the owner's command) and the PE-M5 reading; design `docs/design/progress-and-economics.md` section 11
-- **Status:** open
+  - **Fix:** landed (see Status): `docs/plans/progress-and-economics.md` PE-23 to PE-25 (readers filter to registered service roots and name the ignored count), PE-26 to PE-28 (a documented FATHOM_HOME and --ledger override that test and scratch runs use), PE-29 (a `fathom gc` class `ledger-unregistered` that archives, never deletes, on the owner's command) and the PE-M5 reading; design `docs/design/progress-and-economics.md` section 11
+- **Status:** fixed (2026-09-29): PE-23 (`internal/ledgerroots`, 2a1d2865), PE-24 (every verify-ledger reader, 24dbd509) and PE-25 (every intent-ledger reader, 016caff6) keep only registered roots' rows and name the rows they ignored; PE-26 to PE-28 landed earlier; PE-29 (`fathom gc`'s owner-run class `ledger-unregistered`, 54afb51c) moves the rows already there to `~/.fathom/archive/`, never deleting one; each proven by `verify --strict`. The rows stay in the live ledgers until the owner runs `fathom gc --apply`. The PE-M5 reading (`docs/bench/readings/progress/ledger-pollution.md`) measured the population and found two follow-ups, still open: O195 and O196
 - **Impact:** every reading that joins or counts ledger rows without a root filter is inflated or skewed until PE-24 lands, among them proof history and burn-up (PE-2, PE-6), cost per proven row (PE-16), the unjoined share of the session join (PE-15), the verify-gate figure, and the corpus that decision E4 (WS-12) would fit on. Not measured: how far each figure moves once the scratch rows are excluded, which PE-M5 reads.
 
 ### O122 — the Bash-write hook treats a quoted `>` (echo "a -> b") or a quoted writer name as a file write and injects six unrelated root rules (__bash_write__.go nearest guide)
@@ -2238,6 +2238,84 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Status:** fixed by XM-33 (2026-09-29). Rows filed before it are not rewritten: two rows of one symbol read as one item, but `Entries` still counts both
 - **Impact:** a wave map grew by every worker's re-append, the entry counts in the brief, the pointer line and the sub-agent primer overstated the map, and `map show` spent its 1,200 bytes on one range twice
 
+### O152 — `/work` read no proving commit: the verify ledger records HEAD abbreviated and `workCommitFacts` accepted only full object names
+
+- **Symptom:** `/work`'s cost per zone, interest rate and rework read "the commit's files were not read" for every proven change of a repository whose proofs came from `fathom verify` runs, though each ledger row names its commit
+- **Evidence:**
+  - **Tool:** `computeWork` → `workCommitFacts` (cmd/fathom/console_work.go), reading the ledger `appendVerifyLedgerFrom` writes (cmd/fathom/verifyledger.go)
+  - **Expected:** each proving commit's files read with one `git show`, whichever spelling the ledger used
+  - **Actual:** `appendVerifyLedgerFrom` stamps `commit` with `gitHeadShort` (`git rev-parse --short HEAD`), and `workCommitFacts` kept only commits passing `gitro.IsObjectName` (40 or 64 hex characters), so it handed `git show` nothing; the code below it that keyed an abbreviated spelling was unreachable. One commit the clone lacked would also have failed the whole `git show`
+  - **Repro:** a verify ledger whose rows carry a 9-character commit, then `/work?svc=<svc>`: every change has no zones
+- **Root cause:** the full-name check guarded the git argument list against option injection but was stricter than the ledger's own spelling, and no test fed it a ledger-shaped commit
+- **Fix:** WI-4w: `workCommitName` accepts 7 to 64 lowercase hex characters, and `git show --ignore-missing` skips (and the note counts) a commit this clone lacks
+- **Status:** fixed by WI-4w (2026-09-29)
+- **Impact:** every `/work` figure keyed by zone was empty for real ledgers; the scorecard's rework column and U2's zones had nothing to read
+
+### O153 — the MCP call log records no caller session for any call, so `/work` cannot sequence search loops
+
+- **Symptom:** `/work`'s friction sources read "0 sequenced by session … N rows name no session and are not sequenced": search loops (five searches or lookups without an edit) are never counted on real data
+- **Evidence:**
+  - **Tool:** `workCallEvents` (cmd/fathom/console_work_signals.go) over the call log `internal/mcp/calllog.go` writes
+  - **Expected:** each call carries the harness session it served, the same id the edit hook stamps on rule-outcome rows, so a session's calls can be sequenced and its edits end a run
+  - **Actual:** `caller` is set only from `X-Fathom-Caller`, and `CallerTransport` always sends `session=` empty (pkg/client/caller_transport.go); an agent's HTTP MCP call sends no caller header at all, and `serve-mcp` stamps only its pid and ppid
+  - **Repro:** `jq -c 'select(.caller.session != null and .caller.session != "")' <call log> | wc -l` reads 0
+- **Root cause:** RT-164 added the caller identity for admission and tenancy, where a process is enough; nothing ever needed the harness session there
+- **Fix:** none yet. Options: the session hook exports the harness session id and `serve-mcp` stamps it on every call; or the MCP HTTP registration passes it as a header the harness expands. A pid-keyed run would not do: the rule-outcome log's edits carry the harness session, so no edit would ever end it
+- **Status:** open
+- **Impact:** `/work`'s search-loop signal and the "search loops ending in a symbol with no references" remedy cannot fire on real traffic; rediscovery counts only against pointers an agent filed or a session-stamped call established: a row naming no session establishes no pointer (the wave E audit's fix; before it, any later call re-finding an earlier call's pointer counted, the same session's included, so it read high), and the sources name how many pointers were left unestablished
+
+### O154 — `fathom claim learn` would retire every rule the edit hook serves below the top once the log covers 180 days: only the top rule records `served`
+
+- **Symptom:** GL-13's never-triggered retirement reads "no `served` event for 180 days", but the edit hook records `served` only for the file's top governing rule (ruleoutcome_track.go's deliberate scope), and the MCP `obligations` tool an agent calls records none
+- **Evidence:**
+  - **Tool:** `fathom claim learn` (GL-13, cmd/fathom/claim_learn.go) over the rule-outcome log; `trackRuleOutcome` (cmd/fathom/ruleoutcome_track.go) writes `served` for `meta.topClaimID` only
+  - **Expected:** a rule served second to sixth on every edit reads as triggered
+  - **Actual:** it has no `served` row at all, so applyLearning retires it as never triggered once the claim is 180 days old
+  - **Repro:** a governing claim that never tops a file's served set, a log reaching back 181 days, `fathom claim learn --service S` names it `active → retired (never triggered for 180d)`
+- **Root cause:** the signal source (GL-10/SR-61) was scoped to the top rule for its complied/violated comparison; retirement reads the same `served` count as if it covered the whole served set
+- **Fix:** none yet. The verb holds a never-triggered retirement, named, while the log does not reach back over the whole window (today every one: the log began in September 2026), so nothing is retired from it before the owner decides. Options: record `served` for every rule the hook serves (complied/violated stay top-only), or read never-triggered from GL-11's classification over a full served set
+- **Status:** open (held by the coverage gate until about 2027-03)
+- **Impact:** without a fix, the first `claim learn --apply` after the log covers 180 days retires most governing rules, announced but wrong
+
+### O155 — a doc link's line is its section's heading line, and a section that moves re-keys its links, clearing drift the move did not address
+
+- **Symptom:** KR-6's links carry `line` = the unit's LineStart plus the span's offset in the body, so a span on a section's first body line reads as the heading's line (TestStalenessReportDocLinkDrift: the span is on line 5, doc_link_drift says 3); and doc_links identity is (kind, target, line), so an edit above a section shifts every link in it to a new key
+- **Evidence:**
+  - **Tool:** `staleness_report` `doc_link_drift` after a real ingest (internal/mcp/docdrift_wiring_test.go); `store.SyncDocLinksForUnit`'s key; `docindex.LinkDocSpans`' own "best-effort" line note
+  - **Expected:** the span's own line; a link that survives an unrelated edit above it keeps its link-time hash
+  - **Actual:** the heading's line; the moved link closes and reopens with the target's current hash, so a drift it carried disappears without the doc being corrected
+  - **Repro:** link a symbol from a section, change the symbol (drift reported), insert a line above the section, re-ingest: the drift is gone
+- **Root cause:** the splitters' Body does not start at LineStart, and the link key includes the line
+- **Fix:** none yet. Options: compute the span's line from the body's own first line, and key a link by (unit, kind, target) with the line as data
+- **Status:** open
+- **Impact:** drift lines point at the heading, and drift can clear by accident when a doc is edited above the stale span
+
+### O156 — a scratch re-ingest after a failed typed pass keeps its partial typed edges, so a wedge during the first ingest cannot be repaired by running it again
+
+- **Symptom:** the first scratch ingest of a wave worker's clone failed 123 of 389 packages' typed loading on an "Operation not permitted" wedge; the same command run again after `tccutil reset` said the pass was skipped and its partial edges stand, so only deleting the store and ingesting from scratch (6.5 min) gave a whole one
+- **Evidence:**
+  - **Tool:** `fathom ingest --store "$FATHOM_CACHE_ROOT/verify.sqlite" --service fathom --path .` in a `genv-wave.sh` shell (2026-09-29, wave `we`, worker `we-verbs`), twice
+  - **Expected:** the second run redoes the packages whose loading failed, or says which flag does
+  - **Actual:** first run: `error: ingest degraded: typed-edge pass failed: 123/389 package(s) failed typed loading (... mkdir $GOTMPDIR/go-build3461279143/b748/: operation not permitted; ...)`; second run: `typed-edges: skipped — no input changed since the last pass, which completed with package(s) that failed typed loading — its partial typed edges stand (stored typed edges kept)`
+  - **Repro:** ingest a Go repository into a fresh scratch store while reads under the external volume fail with EPERM, reset the TCC grant, and ingest the same path again
+- **Root cause:** not established here; the second run's own message names the rule it applied, that a Go input unchanged since the last pass skips the pass whatever that pass's failed packages were (RT-104)
+- **Fix:** none yet. Options: a pass that had failed packages is never a reason to skip the next one, or the skip line names the flag that forces the typed pass
+- **Status:** open
+- **Impact:** a worker that retries after the wedge verifies its rows against an index missing a third of the typed edges (the `wired` and `gone:` criteria read them), and the only way out is a full re-ingest it has to know to do by hand
+
+### O157 — `fathom tests select --safe` lists a doc heading as a changed symbol no test reaches, under a name with its backticked word cut out
+
+- **Symptom:** after editing docs/usage.md, the selection's "no test reaches it" list carried about 35 lines like `fathom::docs/usage.— disk retention by class (docs/usage.md#L2049-L2049): no test reaches it`, ahead of the handful of real symbols, and the name is not the heading's (`### `gc` — disk retention by class`)
+- **Evidence:**
+  - **Tool:** `fathom tests select --since c77683d4 --safe --store "$FATHOM_CACHE_ROOT/verify.sqlite" --service fathom` (2026-09-29, wave `we`, worker `we-verbs`, after a scratch ingest of a branch that touched docs/usage.md)
+  - **Expected:** the list names code symbols a test does not reach; a prose heading is no test's business, and any name it carries is the heading's
+  - **Actual:** every heading of the changed file is listed as a symbol with a `docs/usage.` prefix and its heading text with each backticked word removed, e.g. `docs/usage.— layer rules as tests, and as history (VB-14, VB-16, SR-47w)` for `### `rules` — layer rules as tests, and as history (VB-14, VB-16, SR-47w)`
+  - **Repro:** change any line of docs/usage.md in a scratch clone, ingest it, run `fathom tests select --since <base> --safe`
+- **Root cause:** not established here; the doc index's heading units reach the selection's changed-symbol set with a key cut at the first backtick
+- **Fix:** none yet. Options: leave doc units out of the changed-symbol set, or key them by their heading path as `search kind: docs` prints it
+- **Status:** open
+- **Impact:** the list a worker reads to see what is untested is mostly prose headings, and the garbled names cannot be looked up in the file they came from
+
 ### O160 — CV-M1's "pilot 8" cells are the 2026-09-21 round's guards-fathom-r2; pilots 6 and 8 have no cells on disk
 
 - **Symptom:** CV-M1 names the raw directory guards-fathom-r2 as guards-pilot 8's cells, but the cells on disk are the 2026-09-21 round's guards-fathom-r1/r2; ADR-057, the served-not-kept design and PR-M0's brief all cite 'pilot 8' for them
@@ -2393,3 +2471,29 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** none yet. Either switch `.cs` to the dialect (LB-Q-csharp; renames every C# symbol key, an ExtractorEpoch bump) or give the incumbent the dialect's package rule (the same key change); both need an owner decision on the merge gate
 - **Status:** open
 - **Impact:** C#'s L3 readings (import_resolution 1 after O148's fix) describe the dialect, not ingest: in the product an aliased `using`, a `using static` and an unaliased `using` resolve only where the namespace mirrors the directory path, and `Package`-keyed queries see file stems for C#
+
+### O195 — under the registered-roots rule the per-row proof history is nearly empty: the fleet's gate runs are recorded outside the registered roots
+
+- **Symptom:** with PE-24's filter the proof history keeps 61 row histories of 2,951, and fathom's burn-up draws 36 weight on one day instead of 2,202 over two
+- **Evidence:**
+  - **Tool:** `console.ProofHistory` with the registered roots (PE-24), `console.BurnUp`, `/work`'s session join, over copies of the verify ledger and the 2026-09-29 archive
+  - **Expected:** the registered checkout's own readings carry each plan's per-row verdicts, so burn-up, regressions and time to proof read the fleet's history
+  - **Actual:** the pre-push gate verifies in a push worktree and most `fathom verify` runs happen in clones, so their `repo_root` is not a registered root; the registered fathom checkout recorded no per-row reading before 2026-09-29 (EW-M1's window reads 0 proven rows filtered, 1,486 unfiltered)
+  - **Repro:** the PE-M5 reading, `docs/bench/readings/progress/ledger-pollution.md` (method section)
+- **Root cause:** the writer records the root the run happened in (`appendVerifyLedgerFrom`), and the owner's rule of 2026-09-29 counts a worktree under a registered root as unregistered, so a push worktree's run is nobody's
+- **Fix:** none yet: the gate's pre-push step could record the registered root its push worktree belongs to (a `--ledger-root` or the worktree's main checkout), or the rule could admit a run whose commit is on the registered root's history; either is a design decision, not a reader change
+- **Status:** open
+- **Impact:** until then burn-up, regressions, time to proof, claim honesty and the session join read a thin slice of the fleet's proof (5,353 of 22,376 readings, 61 row histories)
+
+### O196 — scratch and build clones still append to the real verify ledger after the 2026-09-29 cleanup
+
+- **Symptom:** 1,357 verify-ledger rows under 24 unregistered roots were appended within about 13 hours of the cleanup
+- **Evidence:**
+  - **Tool:** `fathom verify` (every row `origin: cli`), read through `ledgerroots.Roots.Class` over a copy of the live ledger
+  - **Expected:** scratch and test runs set `FATHOM_HOME` or `--ledger` (PE-26 to PE-28, `docs/guides/agent-waves.md`), so the real ledger gains only registered roots' rows
+  - **Actual:** 660 rows under OS temp dirs (10 roots) from 11:52 UTC and 697 under external-volume build clones (14 roots) from 16:10 UTC on 2026-09-29
+  - **Repro:** count the live ledger's rows by root class, as the PE-M5 reading does
+- **Root cause:** not isolated: some run paths (an integrator's gate, a pre-push step in a clone, a worker environment without the wave's `FATHOM_HOME`) still write the operator's ledger
+- **Fix:** none yet; the readers ignore these rows (PE-24) and PE-29's gc class can archive them on the owner's command
+- **Status:** open
+- **Impact:** the ledgers keep growing with rows no reader counts; any tool that reads the file without the rule is skewed again

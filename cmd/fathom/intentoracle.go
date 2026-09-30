@@ -184,6 +184,9 @@ func (o *indexOracle) cached(names []string) (map[string]bool, bool) {
 	if o.commit == "" {
 		return nil, false
 	}
+	// Writer-side, read raw (PE-25): a miss re-probes and store appends a
+	// row, so a filtered read would append one per run for an unregistered
+	// root. The rows it matches are o.root's own, never another root's.
 	for _, row := range intent.ReadLedger() {
 		if row.Kind != intent.KindOracle || row.ID != enforcementCacheID || row.Commit != o.commit || row.RepoRoot != o.root {
 			continue

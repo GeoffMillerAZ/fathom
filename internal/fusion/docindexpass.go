@@ -12,6 +12,11 @@ package fusion
 // search either. The pass is additive like the typed-edge and doc-xref
 // passes: whatever goes wrong is named in Report.DocIndexSkipped and never
 // fails or unwinds the code ingest.
+//
+// The link pass (KR-6) rides the same call: each (re)indexed unit's spans
+// are linked to the code this ingest indexed (docindex.LinkUnits with a
+// store-backed resolver) and synced into doc_links, and Report.DocIndex.
+// LinksWritten counts the links those units hold.
 
 import (
 	"context"
@@ -56,11 +61,26 @@ func (p *Pipeline) indexDocs(ctx context.Context, svc core.ServiceRef, refs []co
 	for _, r := range refs {
 		discovered[r.Path] = struct{}{}
 	}
-	res, err := docindex.IngestDocUnits(ctx, sq, svc.ID, root, time.Now(),
+	// KR-6: every unit this ingest (re)indexes is linked right after it is
+	// written — its backticked symbols, paths and contract keys resolved
+	// exactly against the index this ingest just wrote, with the target's
+	// hash at link time — and a removed unit's links close. An unchanged
+	// unit is not re-linked, so its link-time hashes stay what KR-7's
+	// drift compares against.
+	now := time.Now()
+	resolver := docindex.NewStoreResolver(ctx, sq, svc.ID)
+	links := 0
+	res, err := docindex.IngestDocUnits(ctx, sq, svc.ID, root, now,
 		docindex.WithCorpusFilter(func(path string) bool {
 			_, ok := discovered[path]
 			return ok
+		}),
+		docindex.WithOnWrite(func(ctx context.Context, _ string, written []store.DocUnit, removed []string) error {
+			n, lerr := docindex.LinkUnits(ctx, sq, svc.ID, written, removed, resolver, now.UnixNano())
+			links += n
+			return lerr
 		}))
+	res.LinksWritten = links
 	report.DocIndex = res
 	if err != nil {
 		report.DocIndexSkipped = "doc index not finished: " + err.Error()

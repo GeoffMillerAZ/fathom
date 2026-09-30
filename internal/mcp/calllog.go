@@ -10,10 +10,8 @@
 package mcp
 
 import (
-	"bufio"
 	"encoding/json"
 	"io"
-	"sort"
 	"sync"
 	"time"
 
@@ -78,7 +76,7 @@ type callLogEntry struct {
 	// envelope is never empty JSON, so <=0 is unambiguous: a row logged by a
 	// binary built before this field existed (the key absent entirely) reads
 	// back as the Go zero value, exactly like an explicit 0 would — either
-	// way recordResponseCost treats it as "not accounted", never as a
+	// way callLogFold (cmd/fathom) treats it as "not accounted", never as a
 	// genuine zero-byte call.
 	ResponseBytes int `json:"response_bytes,omitempty"`
 	// ResponseTokens (PE-20, docs/design/progress-and-economics.md §5) is
@@ -495,66 +493,4 @@ func outcomeFrom(result any) (*int, string) {
 // never presented as a measured token count.
 func receiptTokens(response []byte) int {
 	return cost.Estimate(string(response))
-}
-
-// ToolCost is one tool's response-size totals over a window (BA-6): what
-// fathom put into agent contexts on that tool's behalf.
-type ToolCost struct {
-	Tool       string `json:"tool"`
-	Calls      int64  `json:"calls"`
-	TotalBytes int64  `json:"total_bytes"`
-	// ElidedCalls counts calls whose result carried an elided block
-	// (elided.count > 0) — the numerator for BA-8's elision rate.
-	// TruncatingCalls is the denominator: calls whose result carried an
-	// "elided" object AT ALL (present, whether or not it disclosed a cut).
-	// A call log row that never mentions elision (an exempt tool, or a
-	// binary predating BA-1) counts toward neither.
-	ElidedCalls     int64 `json:"elided_calls"`
-	TruncatingCalls int64 `json:"truncating_calls"`
-}
-
-// recordResponseCost is BA-6's aggregation seam: it reads already-logged
-// JSONL call-log rows (the per-call accounting BA-6 adds to callLogEntry
-// above) and totals response bytes and elision counts per tool across
-// whatever window r's rows span — no new log, just the fold. A malformed or
-// blank line is skipped rather than aborting the whole read, matching how
-// every other JSONL reader in this program tolerates a partial file.
-func recordResponseCost(r io.Reader) []ToolCost {
-	totals := map[string]*ToolCost{}
-	sc := bufio.NewScanner(r)
-	sc.Buffer(make([]byte, 0, 64*1024), 1<<20)
-	for sc.Scan() {
-		line := sc.Bytes()
-		if len(line) == 0 {
-			continue
-		}
-		var e callLogEntry
-		if err := json.Unmarshal(line, &e); err != nil {
-			continue
-		}
-		if e.Tool == "" {
-			continue
-		}
-		tc, ok := totals[e.Tool]
-		if !ok {
-			tc = &ToolCost{Tool: e.Tool}
-			totals[e.Tool] = tc
-		}
-		tc.Calls++
-		if e.ResponseBytes > 0 {
-			tc.TotalBytes += int64(e.ResponseBytes)
-		}
-		if e.ElidedCount != nil {
-			tc.TruncatingCalls++
-			if *e.ElidedCount > 0 {
-				tc.ElidedCalls++
-			}
-		}
-	}
-	out := make([]ToolCost, 0, len(totals))
-	for _, tc := range totals {
-		out = append(out, *tc)
-	}
-	sort.Slice(out, func(i, j int) bool { return out[i].Tool < out[j].Tool })
-	return out
 }

@@ -25,15 +25,15 @@ import (
 // there is nothing of that kind for a render bug to ever leak; the DOM
 // row id renderSessionFeed assigns is purely positional.
 type sessionFeedRow struct {
-	Harness string
-	Model   string
-	Repo    string
-	Start   string // RFC 3339
-	End     string // RFC 3339, or "" while the session is still running
+	Harness string `json:"harness"`
+	Model   string `json:"model"`
+	Repo    string `json:"repo"`
+	Start   string `json:"start"` // RFC 3339
+	End     string `json:"end"`   // RFC 3339, or "" while the session is still running
 	// Proven is the count of rows JoinSessionProof attributed to this
 	// session; absent (not zero) when the join has not run or found
 	// nothing to attribute yet.
-	Proven console.Value[int]
+	Proven console.Value[int] `json:"proven"`
 }
 
 // renderSessionFeed renders rows as the feed table, newest first as the

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/intent"
+	"github.com/geoffmilleraz/fathom/internal/ledgerroots"
 )
 
 // ledgerLine is one schema-3 verify-ledger line for the fixtures.
@@ -82,18 +83,18 @@ func TestProofHistoryProjection(t *testing.T) {
 
 	// The file reader: absent is absent, a present ledger is read and memoized.
 	path := filepath.Join(t.TempDir(), "verify-ledger.jsonl")
-	if _, read := ProofHistory(context.Background(), path, 1<<20); read.State != StateAbsent {
+	if _, read := ProofHistory(context.Background(), path, 1<<20, ledgerroots.Unread("")); read.State != StateAbsent {
 		t.Fatalf("no ledger must read absent, got %+v", read)
 	}
 	if err := os.WriteFile(path, fixtureHistory(), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	got, read := ProofHistory(context.Background(), path, 1<<20)
+	got, read := ProofHistory(context.Background(), path, 1<<20, ledgerroots.Unread(""))
 	if read.State != StatePresent || len(got.Rows) != 4 {
 		t.Fatalf("present ledger not read: %+v %+v", read, got)
 	}
 	// A tail shorter than the file is named as truncated.
-	short, _ := ProofHistory(context.Background(), path, 600)
+	short, _ := ProofHistory(context.Background(), path, 600, ledgerroots.Unread(""))
 	if !short.Truncated {
 		t.Fatalf("a bounded tail that misses the start must say so")
 	}
@@ -263,5 +264,51 @@ func TestGoalGaugesFromBets(t *testing.T) {
 	}
 	if regs := ProofRegressions(h, HistoryFilter{GoalPlans: []string{"docs/plans/q.md"}}); len(regs) != 0 {
 		t.Fatalf("the goal filter narrows to the goal's plans: %+v", regs)
+	}
+}
+
+// PE-24: the proof history and the Projects runs read only readings whose
+// repo_root is a registered service root; a scratch clone's and a
+// worktree's readings are ignored and counted, the memo keys on the roots,
+// and an unread registry ignores nothing and says why.
+func TestProofHistoryIgnoresUnregisteredRoots(t *testing.T) {
+	scratch := strings.ReplaceAll(ledgerLine("2026-09-07T09:00:00Z", "c9", "cli", "A-1:claimed-proven", "A-2:claimed-proven:2", "A-3:claimed-proven", "A-4:claimed-proven"), `"/r/svc"`, `"/tmp/fathom-scratch/clone"`)
+	worktree := strings.ReplaceAll(ledgerLine("2026-09-08T09:00:00Z", "c9", "cli", "A-1:claimed-proven", "A-2:claimed-proven:2", "A-3:claimed-proven", "A-4:claimed-proven"), `"/r/svc"`, `"/r/svc/.claude/worktrees/w1"`)
+	data := append(fixtureHistory(), []byte(scratch+"\n"+worktree+"\n")...)
+	roots := ledgerroots.RegisteredRootsWith([]string{"/r/svc"}, []string{"/tmp/fathom-scratch"})
+
+	all := ParseProofHistory(data, false)
+	kept := ParseProofHistoryUnder(data, false, roots)
+	if len(all.Readings) != 7 || len(kept.Readings) != 5 {
+		t.Fatalf("readings: unfiltered %d, kept %d; want 7 and 5", len(all.Readings), len(kept.Readings))
+	}
+	if kept.Ignored.Rows != 2 || len(kept.Ignored.Roots) != 2 || kept.Ignored.ScratchRows != 1 {
+		t.Fatalf("Ignored = %+v, want 2 readings under 2 roots, 1 scratch", kept.Ignored)
+	}
+	for _, rh := range kept.Rows {
+		if last := rh.Latest(); last.Commit == "c9" {
+			t.Fatalf("row %s kept a reading from an unregistered root: %+v", rh.ID, last)
+		}
+	}
+
+	path := filepath.Join(t.TempDir(), "verify-ledger.jsonl")
+	if err := os.WriteFile(path, data, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	h, read := ProofHistory(context.Background(), path, 1<<20, roots)
+	if len(h.Readings) != 5 || !strings.Contains(read.Reason, "2 verify-ledger readings under 2 unregistered roots") {
+		t.Fatalf("ProofHistory kept %d readings, reason %q", len(h.Readings), read.Reason)
+	}
+	// The same file under an unread registry is a different memo entry:
+	// nothing ignored, and the reason says why.
+	u, uread := ProofHistory(context.Background(), path, 1<<20, ledgerroots.Unread("the daemon did not answer"))
+	if len(u.Readings) != 7 || !strings.Contains(uread.Reason, "the daemon did not answer") {
+		t.Fatalf("unread registry: %d readings, reason %q; want 7 and the note", len(u.Readings), uread.Reason)
+	}
+
+	runs, _ := ParseVerifyLedger(data)
+	keptRuns, ign := RegisteredRuns(runs, roots)
+	if len(runs) != 7 || len(keptRuns) != 5 || ign.Rows != 2 {
+		t.Fatalf("RegisteredRuns kept %d of %d, ignored %+v", len(keptRuns), len(runs), ign)
 	}
 }

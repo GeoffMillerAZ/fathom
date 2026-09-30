@@ -113,6 +113,7 @@ type consolePlans struct {
 		size  int64
 		mtime time.Time
 		read  ledgerRead
+		roots string // the registered roots' key the read was kept to (PE-24)
 	}
 }
 
@@ -547,21 +548,22 @@ func (p *consolePlans) daemonStale(service, root string) bool {
 	return stale
 }
 
-// ledger is the verify ledger, re-read only when its size or mtime moved.
+// ledger is the verify ledger under the registered roots (PE-24), re-read
+// only when its size or mtime or the registered roots moved.
 func (p *consolePlans) ledgerRead() ledgerRead {
 	path := verifyLedgerPath()
+	roots := registeredLedgerRoots(consoleRPCClient(5*time.Second), p.deps.selfURL)
 	st, err := os.Stat(path)
 	p.mu.Lock()
 	cached := p.ledger
 	p.mu.Unlock()
-	if err == nil && cached.read.Path == path && st.Size() == cached.size && st.ModTime().Equal(cached.mtime) {
+	if err == nil && cached.read.Path == path && st.Size() == cached.size && st.ModTime().Equal(cached.mtime) && cached.roots == roots.Key() {
 		return cached.read
 	}
-	runs, lpath, lerr := ledgerRuns()
-	read := ledgerRead{Runs: runs, Path: lpath, Err: lerr}
+	read := readLedgerRuns(roots)
 	if err == nil {
 		p.mu.Lock()
-		p.ledger.size, p.ledger.mtime, p.ledger.read = st.Size(), st.ModTime(), read
+		p.ledger.size, p.ledger.mtime, p.ledger.read, p.ledger.roots = st.Size(), st.ModTime(), read, roots.Key()
 		p.mu.Unlock()
 	}
 	return read

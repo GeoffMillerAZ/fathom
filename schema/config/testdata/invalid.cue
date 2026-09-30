@@ -122,3 +122,12 @@ package config
 // bad18: #Config & {
 // 	hooks: test_run: "yes"
 // }
+
+// [[work.ci_summaries]] needs a path, and a commit is a hex object name
+// (WI-2w):
+// bad19: #Config & {
+// 	work: ci_summaries: [{commit: "0123abc"}]
+// }
+// bad20: #Config & {
+// 	work: ci_summaries: [{path: "ci/junit.xml", commit: "main"}]
+// }
