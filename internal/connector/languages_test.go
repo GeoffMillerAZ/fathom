@@ -68,6 +68,8 @@ var langRowHint = map[string]string{
 	"makefile":         "| Makefile ",
 	"lua":              "| Lua ",
 	"dart":             "| Dart ",
+	"emacs-lisp":       "| Emacs Lisp ",
+	"commonlisp":       "| Common Lisp ",
 	"sql":              "| SQL ",
 	"terraform":        "Terraform",
 	"yaml":             "Kubernetes YAML",

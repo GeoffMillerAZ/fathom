@@ -39,6 +39,21 @@
       "gz_bytes": 136140
     },
     {
+      "blob": "commonlisp",
+      "repo": "tree-sitter-grammars/tree-sitter-commonlisp",
+      "tag": "v0.4.1",
+      "commit": "9db594efb43574c5fe4a1f880568b1f0d0ee6057",
+      "tarball_sha256": "f9767782bf94e82b847094f632f2db95b342e0ab54b1b8c8234cc1d6ac6c69a5",
+      "licence": "MIT",
+      "entry_points": ["tree_sitter_commonlisp"],
+      "scanner": false,
+      "generate": false,
+      "abi": 14,
+      "blob_sha256": "f9cbfce7bf5a6723d457925aa258cd9e224ebeab8988f369b710fe7a11581c12",
+      "blob_bytes": 839432,
+      "gz_bytes": 158920
+    },
+    {
       "blob": "cpp",
       "repo": "tree-sitter/tree-sitter-cpp",
       "tag": "v0.23.4",
@@ -112,6 +127,21 @@
       "blob_sha256": "81274400989b6ac9f9d9d0cc9618b0ca5045214742468279fdf089d214e5b6ac",
       "blob_bytes": 171375,
       "gz_bytes": 69325
+    },
+    {
+      "blob": "elisp",
+      "repo": "Wilfred/tree-sitter-elisp",
+      "tag": "1.7.2",
+      "commit": "c0417c751a3dcc8724d1f2f6d1437a99dee1e090",
+      "tarball_sha256": "6a5c3df34b5bb1b4fbc1386fc0f24a205ddfff0720801899c3d1b3e3593fa670",
+      "licence": "MIT",
+      "entry_points": ["tree_sitter_elisp"],
+      "scanner": false,
+      "generate": true,
+      "abi": 15,
+      "blob_sha256": "f207321d3e54d07838a585601113055624294da210c90c9de637cf31a2a6b397",
+      "blob_bytes": 176723,
+      "gz_bytes": 62982
     },
     {
       "blob": "gotemplate",

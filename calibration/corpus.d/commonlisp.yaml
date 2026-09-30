@@ -1,0 +1,29 @@
+id: commonlisp
+language: Common Lisp
+# fukamachi/woo (the queue's second subject) publishes no release tag at all, and the corpus schema pins a
+# release tag (design §13.3), so its neighbour fukamachi/clack (MIT, tagged, same author and idioms) stands in.
+# `subpath: src` keeps Lem's clone to the editor core (the repository is about 100 MB with frontends and assets).
+repos:
+  - name: lem-project/lem
+    url: https://github.com/lem-project/lem
+    ref: v2.3.0
+    sha: 38bae05a03bd6e6394819873fe5414b38da4753d
+    licence: MIT
+    subpath: src
+    idioms:
+      - 'defun / defmacro / defgeneric / defmethod with type-specialised lambda lists'
+      - 'defclass with slots and :initarg / :accessor options, defstruct'
+      - 'defvar / defparameter / defconstant and define-command style macros'
+      - 'defpackage / in-package forms and ASDF system definitions (.asd)'
+      - '#+sbcl / #-sbcl reader conditionals around definitions'
+  - name: fukamachi/clack
+    url: https://github.com/fukamachi/clack
+    ref: 12.06.0
+    sha: 9b053f271228c936572194a37cd014bc5d1402a6
+    licence: MIT
+    idioms:
+      - 'defclass with :initarg / :accessor slots and defmethod specialised on them'
+      - 'defun / defmacro / declaim inline with docstrings'
+      - 'defgeneric with :documentation and (:method ...) clauses'
+      - 'defpackage with :export lists, defsystem in .asd files'
+      - 'lambda-based middleware chains (funcall / apply)'
