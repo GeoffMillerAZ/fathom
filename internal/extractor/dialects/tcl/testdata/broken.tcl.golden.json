@@ -1,0 +1,60 @@
+{
+  "symbols": [
+    {
+      "name": "before",
+      "kind": "TclProc",
+      "package": "broken",
+      "line": 2,
+      "end_line": 4,
+      "signature": "proc before {}",
+      "calls": [
+        "return"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "ok",
+      "kind": "TclNamespace",
+      "package": "broken",
+      "line": 6,
+      "end_line": 8,
+      "tier": "verified"
+    },
+    {
+      "name": "ok::inside",
+      "kind": "TclProc",
+      "package": "broken",
+      "line": 7,
+      "end_line": 7,
+      "signature": "proc inside {}",
+      "calls": [
+        "return"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "broken",
+      "kind": "TclProc",
+      "package": "broken",
+      "line": 10,
+      "end_line": 12,
+      "signature": "proc broken {x}",
+      "calls": [
+        "return"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "after",
+      "kind": "TclProc",
+      "package": "broken",
+      "line": 14,
+      "end_line": 16,
+      "signature": "proc after {}",
+      "calls": [
+        "return"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

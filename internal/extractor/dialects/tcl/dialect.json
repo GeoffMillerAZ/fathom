@@ -1,0 +1,33 @@
+{
+  "id": "tcl",
+  "display": "Tcl",
+  "kind": "language",
+  "engine": "tags",
+  "lang_tag": "tcl",
+  "match": {
+    "extensions": [".tcl", ".tk", ".tm"],
+    "basenames": [],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "grammar": { "blob": "tcl", "entry_point": "tree_sitter_tcl" },
+  "variants": [],
+  "queries": { "tags": "tags.scm" },
+  "kinds": {
+    "namespace": { "source_kind": "TclNamespace", "canonical": "namespace", "container": true },
+    "procedure": { "source_kind": "TclProc", "canonical": "function", "callable": true },
+    "class":     { "source_kind": "TclClass", "canonical": "class", "container": true },
+    "method":    { "source_kind": "TclMethod", "canonical": "method", "callable": true }
+  },
+  "required_kinds": ["namespace", "procedure", "class", "method"],
+  "oracle_kinds": {
+    "ctags": { "namespace": "namespace", "procedure": "function", "class": "class", "method": "method" }
+  },
+  "ctags": { "languages": ["Tcl", "TclOO"], "args": ["--map-Tcl=+.tm"] },
+  "qualify": { "chain_containers": true, "container_sep": "::", "method_sep": "::", "scope_sep": "::" },
+  "package": { "strategy": "dir" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L1",
+  "queue_id": "tcl"
+}

@@ -1,0 +1,34 @@
+{
+  "id": "vimscript",
+  "display": "Vim script",
+  "kind": "language",
+  "engine": "tags",
+  "lang_tag": "vim",
+  "match": {
+    "extensions": [".vim"],
+    "basenames": ["vimrc", ".vimrc", "_vimrc", "gvimrc", ".gvimrc"],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "grammar": { "blob": "vim", "entry_point": "tree_sitter_vim" },
+  "variants": [],
+  "queries": { "tags": "tags.scm" },
+  "kinds": {
+    "function": { "source_kind": "VimFunction", "canonical": "function", "callable": true },
+    "command":  { "source_kind": "VimCommand", "canonical": "macro" },
+    "augroup":  { "source_kind": "VimAugroup", "canonical": "namespace" }
+  },
+  "required_kinds": ["function", "command", "augroup"],
+  "oracle_kinds": {
+    "ctags": { "function": "function", "command": "macro", "augroup": "namespace" }
+  },
+  "name_match": "identity",
+  "names": { "strip_prefix": ["g:", "<SID>"] },
+  "ctags": { "languages": ["Vim"] },
+  "qualify": { "chain_containers": false, "container_sep": ".", "method_sep": "." },
+  "package": { "strategy": "dir" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L1",
+  "queue_id": "vimscript"
+}

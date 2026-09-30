@@ -1,0 +1,47 @@
+{
+  "symbols": [
+    {
+      "name": "Before",
+      "kind": "VimFunction",
+      "package": "broken",
+      "line": 2,
+      "end_line": 4,
+      "signature": "function! Before()",
+      "tier": "verified"
+    },
+    {
+      "name": "Between",
+      "kind": "VimCommand",
+      "package": "broken",
+      "line": 6,
+      "end_line": 6,
+      "tier": "verified"
+    },
+    {
+      "name": "Broken",
+      "kind": "VimFunction",
+      "package": "broken",
+      "line": 8,
+      "end_line": 11,
+      "signature": "function! Broken(x)",
+      "tier": "verified"
+    },
+    {
+      "name": "After",
+      "kind": "VimAugroup",
+      "package": "broken",
+      "line": 13,
+      "end_line": 13,
+      "tier": "verified"
+    },
+    {
+      "name": "Later",
+      "kind": "VimFunction",
+      "package": "broken",
+      "line": 16,
+      "end_line": 18,
+      "signature": "function! Later()",
+      "tier": "verified"
+    }
+  ]
+}

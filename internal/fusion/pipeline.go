@@ -729,7 +729,13 @@ func parseGitLog(serviceID, raw string) []store.Commit {
 // EndLine), defvar, defparameter, defconstant, deftype, defstruct and defclass, at
 // the top level or below it; an .asd file is claimed and defines nothing. Every such
 // file was fingerprinted by the no-extractor path, so the salt bump re-reads them.
-const ExtractorEpoch = "35"
+// Epoch 36 (LB-Q-tcl, LB-Q-vimscript) changes no extraction: the wave's tcl and
+// vimscript dialects were refused (design §14.2, parse errors on 62.4% of the
+// Tcl calibration files and 3 of the 7 Vim ones, refusedDialects), so .tcl,
+// .tk, .tm, .vim and the vimrc basenames stay "no extractor registered" and
+// .tcl and .vim stay disclosed; the number is kept so the wave's history reads
+// in order, as epoch 28 did for swift.
+const ExtractorEpoch = "36"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares
@@ -1191,8 +1197,10 @@ func (p *Pipeline) sniffedExtractor(relPath string, content []byte) (extractor.E
 // generated table lists it; langbench.RefusedItems reads the same refusal from
 // the plan for the tracker). swift: LB-Q-swift-rest — 36 of its 642
 // calibration files (5.6%) parse with an error under the pinned grammar, over
-// the 5% line. Dispatching it later is an ExtractorEpoch bump.
-var refusedDialects = map[string]bool{"swift": true}
+// the 5% line. tcl: LB-Q-tcl-rest — 516 of its 827 calibration files (62.4%).
+// vimscript: LB-Q-vimscript-rest — 3 of its 7 (42.9%). Dispatching one later is
+// an ExtractorEpoch bump.
+var refusedDialects = map[string]bool{"swift": true, "tcl": true, "vimscript": true}
 
 // Close releases the pipeline's tree-sitter grammar modules (RT-107). The
 // pipeline stays usable: the next extraction instantiates afresh.

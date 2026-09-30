@@ -1,0 +1,77 @@
+{
+  "symbols": [
+    {
+      "name": "Hello",
+      "kind": "VimCommand",
+      "package": "commands",
+      "line": 3,
+      "end_line": 3,
+      "tier": "verified"
+    },
+    {
+      "name": "Run",
+      "kind": "VimCommand",
+      "package": "commands",
+      "line": 4,
+      "end_line": 4,
+      "tier": "verified"
+    },
+    {
+      "name": "Open",
+      "kind": "VimCommand",
+      "package": "commands",
+      "line": 5,
+      "end_line": 5,
+      "tier": "verified"
+    },
+    {
+      "name": "Format",
+      "kind": "VimCommand",
+      "package": "commands",
+      "line": 6,
+      "end_line": 6,
+      "tier": "verified"
+    },
+    {
+      "name": "Local",
+      "kind": "VimCommand",
+      "package": "commands",
+      "line": 7,
+      "end_line": 7,
+      "tier": "verified"
+    },
+    {
+      "name": "ShortName",
+      "kind": "VimCommand",
+      "package": "commands",
+      "line": 8,
+      "end_line": 8,
+      "tier": "verified"
+    },
+    {
+      "name": "s:Run",
+      "kind": "VimFunction",
+      "package": "commands",
+      "line": 10,
+      "end_line": 12,
+      "signature": "function! s:Run(...) abort",
+      "tier": "verified"
+    },
+    {
+      "name": "Inside",
+      "kind": "VimCommand",
+      "package": "commands",
+      "line": 11,
+      "end_line": 11,
+      "tier": "verified"
+    },
+    {
+      "name": "NvimOnly",
+      "kind": "VimCommand",
+      "package": "commands",
+      "line": 15,
+      "end_line": 15,
+      "tier": "verified"
+    }
+  ]
+}

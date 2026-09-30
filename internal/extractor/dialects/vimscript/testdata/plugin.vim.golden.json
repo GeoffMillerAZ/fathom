@@ -1,0 +1,56 @@
+{
+  "symbols": [
+    {
+      "name": "MyPluginToggle",
+      "kind": "VimCommand",
+      "package": "plugin",
+      "line": 13,
+      "end_line": 13,
+      "tier": "verified"
+    },
+    {
+      "name": "MyPluginReset",
+      "kind": "VimCommand",
+      "package": "plugin",
+      "line": 14,
+      "end_line": 14,
+      "tier": "verified"
+    },
+    {
+      "name": "MyPlugin",
+      "kind": "VimAugroup",
+      "package": "plugin",
+      "line": 21,
+      "end_line": 21,
+      "tier": "verified"
+    },
+    {
+      "name": "s:Toggle",
+      "kind": "VimFunction",
+      "package": "plugin",
+      "line": 27,
+      "end_line": 31,
+      "signature": "function! s:Toggle(...) abort",
+      "calls": [
+        "get",
+        "s:Refresh"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "s:Refresh",
+      "kind": "VimFunction",
+      "package": "plugin",
+      "line": 33,
+      "end_line": 37,
+      "signature": "function! s:Refresh() abort",
+      "calls": [
+        "get",
+        "line",
+        "repeat",
+        "setline"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

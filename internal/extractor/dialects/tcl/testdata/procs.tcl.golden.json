@@ -1,0 +1,136 @@
+{
+  "symbols": [
+    {
+      "name": "greet",
+      "kind": "TclProc",
+      "package": "procs",
+      "line": 3,
+      "end_line": 5,
+      "signature": "proc greet {name}",
+      "calls": [
+        "puts"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "add",
+      "kind": "TclProc",
+      "package": "procs",
+      "line": 7,
+      "end_line": 9,
+      "signature": "proc add {a b}",
+      "calls": [
+        "return"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "connect",
+      "kind": "TclProc",
+      "package": "procs",
+      "line": 12,
+      "end_line": 14,
+      "signature": "proc connect {host {port 8080} {timeout 30} args}",
+      "calls": [
+        "list",
+        "return"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "render",
+      "kind": "TclProc",
+      "package": "procs",
+      "line": 17,
+      "end_line": 24,
+      "signature": "proc render { template {vars {}} {escape 1} }",
+      "calls": [
+        "return"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "noop",
+      "kind": "TclProc",
+      "package": "procs",
+      "line": 27,
+      "end_line": 27,
+      "signature": "proc noop {}",
+      "tier": "verified"
+    },
+    {
+      "name": "twice",
+      "kind": "TclProc",
+      "package": "procs",
+      "line": 28,
+      "end_line": 28,
+      "signature": "proc twice {x}",
+      "calls": [
+        "return"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "util::pad",
+      "kind": "TclProc",
+      "package": "procs",
+      "line": 31,
+      "end_line": 33,
+      "signature": "proc ::util::pad {s n}",
+      "calls": [
+        "return",
+        "string"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "util::trim",
+      "kind": "TclProc",
+      "package": "procs",
+      "line": 34,
+      "end_line": 36,
+      "signature": "proc util::trim {s}",
+      "calls": [
+        "return",
+        "string"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "legacy",
+      "kind": "TclProc",
+      "package": "procs",
+      "line": 40,
+      "end_line": 42,
+      "signature": "proc legacy {}",
+      "calls": [
+        "return"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "installer",
+      "kind": "TclProc",
+      "package": "procs",
+      "line": 45,
+      "end_line": 50,
+      "signature": "proc installer {}",
+      "calls": [
+        "helper"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "helper",
+      "kind": "TclProc",
+      "package": "procs",
+      "line": 46,
+      "end_line": 48,
+      "signature": "proc helper {}",
+      "calls": [
+        "return"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

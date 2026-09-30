@@ -2354,3 +2354,29 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** the lock row says "generate": true (the swift and sql rows already do) and build.sh runs the lock's pinned tree-sitter CLI; the committed blob is what ships, so the network is a build-time need only
 - **Status:** worked around
 - **Impact:** the elisp blob's rebuild depends on the npm registry and the CLI's postinstall download; the digests in the lock still bind the committed bytes
+
+### O202 — the L1 scorer reduces the dialect's names to their last segment (MatchName) but compares the oracle's names whole, so a ctags name that carries its path (Tcl namespace eval ::struct::list, oo::class create ::tcl::chan::core) never pairs with the dialect's last segment
+
+- **Symptom:** the L1 scorer reduces the dialect's names to their last segment (MatchName) but compares the oracle's names whole, so a ctags name that carries its path (Tcl namespace eval ::struct::list, oo::class create ::tcl::chan::core) never pairs with the dialect's last segment
+- **Evidence:**
+  - **Tool:** indexbench lang-oracle (internal/langbench/score.go ScoreL1)
+  - **Expected:** design 1.4 says qualified names are compared on the last segment, on both sides
+  - **Actual:** Tcl (tcllib 2.0 + Tk 9.0.4, 827 files): 759 oracle-only and 789 dialect-only namespaces/classes, all of them one disagreement; sym_recall .8047 and sym_precision .7453. A scratch run with name = m.MatchName(name) applied to the oracle side too (not committed) reads sym_recall .9292, sym_precision .8607, matched 8253 vs 7147. PHP's reading (ctags names a namespace by its full path) documents the same gap and went to a parser dump instead
+  - **Repro:** go run ./cmd/indexbench lang-oracle -dialect tcl -subject workspace/calibration/tcl/tcllib -out /tmp/x.json -unmatched /tmp/u.json (oracle_only lists ::-named namespaces)
+- **Root cause:** `ScoreL1` builds the oracle side from `d.Name` (only `operatorName` is applied) while the dialect side goes through `m.MatchName`; the two sides are symmetric only when the oracle already names by last segment
+- **Fix:** none committed (out of the worker's files); `name = m.MatchName(name)` after the operator rewrite for the oracle side is the one-line change measured above; existing readings would move on a re-run (php.json documents the same gap)
+- **Status:** open
+- **Impact:** any dialect whose ctags names carry their path (Tcl namespaces and classes, PHP namespaces) reads below its real recall and precision; Tcl is refused on parse errors anyway (LB-Q-tcl-rest), so this decides its re-measure, not its refusal
+
+### O203 — the 5% parse-error line that refuses a language has no instrument: lang-oracle and lang-probe report no count of files with an ERROR node, so every worker writes a scratch tree-walker to obtain the number the refusal rests on
+
+- **Symptom:** the 5% parse-error line that refuses a language has no instrument: lang-oracle and lang-probe report no count of files with an ERROR node, so every worker writes a scratch tree-walker to obtain the number the refusal rests on
+- **Evidence:**
+  - **Tool:** indexbench lang-oracle / design 14.2 refusal
+  - **Expected:** the reading carries files_with_error (the connector's file set, tree-sitter has_error) next to faults, so the refusal is read off the reading and re-checked by the tracker
+  - **Actual:** Tcl and Vim script both needed a scratch program (cmd/zzscratch, walking connector.Discover and counting ERROR/MISSING in tsengine SExpr) to get 516 of 827 files (62.4%) and 3 of 7 (42.9%); Vim script reads L1 excellent (sym_recall .9947, sym_precision 1) and is refused on 3 files (an embedded Python heredoc, a bare - ex command, a unary-plus string), with a 7-file calibration set where one file is 14%
+  - **Repro:** go run ./cmd/indexbench lang-oracle -dialect vimscript -subject workspace/calibration/vimscript/vim-fugitive -out /tmp/x.json (no field for files with a parse error)
+- **Root cause:** the harness computes faults (a parser trap or timeout) but not has_error; the 5% line is a worker's ad hoc count, and the Swift refusal was first recorded and then overturned at integration for the same reason
+- **Fix:** none committed; a `files_with_error` count per subject in the reading (Subject.Tenancy or its own field), computed from the same connector file set the extraction reads, would put the refusal number in the reading and the tracker
+- **Status:** open
+- **Impact:** a refusal rests on a number no reading carries; Vim script's L1 excellent reading and its refusal are both true and only the notes say why

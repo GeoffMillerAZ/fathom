@@ -1,0 +1,124 @@
+{
+  "symbols": [
+    {
+      "name": "Plain",
+      "kind": "VimFunction",
+      "package": "functions",
+      "line": 3,
+      "end_line": 5,
+      "signature": "function! Plain()",
+      "tier": "verified"
+    },
+    {
+      "name": "Simple",
+      "kind": "VimFunction",
+      "package": "functions",
+      "line": 7,
+      "end_line": 9,
+      "signature": "function Simple(a, b)",
+      "tier": "verified"
+    },
+    {
+      "name": "ShortForm",
+      "kind": "VimFunction",
+      "package": "functions",
+      "line": 11,
+      "end_line": 13,
+      "signature": "func! ShortForm(x)",
+      "tier": "verified"
+    },
+    {
+      "name": "s:ScriptLocal",
+      "kind": "VimFunction",
+      "package": "functions",
+      "line": 15,
+      "end_line": 17,
+      "signature": "function! s:ScriptLocal(items) abort",
+      "calls": [
+        "len"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "GlobalScope",
+      "kind": "VimFunction",
+      "package": "functions",
+      "line": 19,
+      "end_line": 21,
+      "signature": "function! g:GlobalScope() abort",
+      "tier": "verified"
+    },
+    {
+      "name": "myplugin#util#Trim",
+      "kind": "VimFunction",
+      "package": "functions",
+      "line": 23,
+      "end_line": 25,
+      "signature": "function! myplugin#util#Trim(text) abort",
+      "calls": [
+        "substitute"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "s:Layout",
+      "kind": "VimFunction",
+      "package": "functions",
+      "line": 28,
+      "end_line": 33,
+      "signature": "function! s:Layout( \\ width, \\ height = 24, \\ ...) abort range",
+      "tier": "verified"
+    },
+    {
+      "name": "Registry.lookup",
+      "kind": "VimFunction",
+      "package": "functions",
+      "line": 36,
+      "end_line": 38,
+      "signature": "function! Registry.lookup(name) dict",
+      "calls": [
+        "get"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "s:Outer",
+      "kind": "VimFunction",
+      "package": "functions",
+      "line": 41,
+      "end_line": 46,
+      "signature": "function! s:Outer()",
+      "calls": [
+        "s:Inner"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "s:Inner",
+      "kind": "VimFunction",
+      "package": "functions",
+      "line": 42,
+      "end_line": 44,
+      "signature": "function! s:Inner()",
+      "tier": "verified"
+    },
+    {
+      "name": "Fallback",
+      "kind": "VimFunction",
+      "package": "functions",
+      "line": 49,
+      "end_line": 51,
+      "signature": "function! Fallback()",
+      "tier": "verified"
+    },
+    {
+      "name": "Empty",
+      "kind": "VimFunction",
+      "package": "functions",
+      "line": 54,
+      "end_line": 55,
+      "signature": "function! Empty()",
+      "tier": "verified"
+    }
+  ]
+}
