@@ -1,0 +1,91 @@
+# A small stand-in for github-linguist's lib/linguist/languages.yml (MIT,
+# Copyright (c) 2017 GitHub, Inc.), written for internal/langbench's tests:
+# the same shape and the real spellings of a few entries, nothing more.
+---
+Dotenv:
+  type: data
+  filenames:
+  - ".env"
+  - ".env.example"
+  language_id: 111
+Groovy:
+  type: programming
+  extensions:
+  - ".groovy"
+  - ".gvy"
+  interpreters:
+  - groovy
+  filenames:
+  - Jenkinsfile
+  language_id: 222
+JSON:
+  type: data
+  extensions:
+  - ".json"
+  - ".geojson"
+  filenames:
+  - ".arcconfig"
+  - composer.lock
+  language_id: 333
+MATLAB:
+  type: programming
+  extensions:
+  - ".matlab"
+  - ".m"
+  language_id: 444
+Objective-C:
+  type: programming
+  extensions:
+  - ".m"
+  - ".h"
+  aliases:
+  - obj-c
+  language_id: 555
+Perl:
+  type: programming
+  extensions:
+  - ".pl"
+  - ".pm"
+  - ".t"
+  filenames:
+  - Makefile.PL
+  - cpanfile
+  interpreters:
+  - perl
+  - cperl
+  language_id: 666
+Prolog:
+  type: programming
+  extensions:
+  - ".pl"
+  - ".pro"
+  interpreters:
+  - swipl
+  language_id: 777
+Ruby:
+  type: programming
+  extensions:
+  - ".rb"
+  filenames:
+  - Gemfile
+  - Podfile
+  - Rakefile
+  interpreters:
+  - ruby
+  language_id: 888
+Starlark:
+  type: programming
+  extensions:
+  - ".bzl"
+  - ".star"
+  filenames:
+  - BUCK
+  - BUILD
+  - BUILD.bazel
+  - Tiltfile
+  language_id: 999
+Zed:
+  type: programming
+  extensions:
+  - ".zz"
+  language_id: 1010
