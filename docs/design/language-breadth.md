@@ -80,7 +80,7 @@ recall and precision ≥ .95 (good ≥ .90); L3 precision ≥ .95, recall ≥ .8
 |---|---|---|
 | A | SCIP index from the language's maintained indexer; a native type checker; the tool's own evaluation (`make -pn`, `bazel query`, `terraform graph -type=plan`, `helm template`, `kustomize build`, `docker compose config`, `gitlab-ci-local --list`, the format's reference parser) | any level, excellent |
 | B | universal-ctags (`--output-format=json --fields=+nKzSe --extras=-{anonymous}`) run as a subprocess | L1 excellent |
-| C | the grammar's upstream `queries/tags.scm` run by the tree-sitter CLI; an independent parser library | at most good, any level it covers |
+| C | the grammar's upstream `queries/tags.scm` run by the tree-sitter CLI; an independent parser library; a third-party definitions query run by fathom's engine at a pinned revision (`lang-oracle -tags-query`, D5 extension, §1.5) | at most good, any level it covers |
 | D | grep proxy (`baseline.sh`); a sample labelled by the extractor's own author | "tolerated" only |
 
 A reading records the tier per metric. The harness computes `level_met` from the metrics
@@ -224,6 +224,25 @@ owner's decisions, binding on the harness and every reading after them:
   tier A; a producer that sets no `enclosing_range` (scip-clang 0.4.0) no longer zeroes the
   calls: a definition mapped to a fathom definition takes that definition's line span, and
   the reading counts how many did.
+- **D5 extension (2026-09-29) — a third-party definitions query is a tier-C L1 oracle**
+  (ADR-048's amendment of that date; LB-F46, LB-F52). Accepted when (a) it is not the source
+  the dialect was drafted from; (b) the tier-C cap applies; (c) it is fetched at measurement
+  time by pinned revision and never vendored; (d) its licence is recorded in the reading. A
+  licence declared consistently across a grammar's package manifests counts when there is no
+  LICENSE file; AGPL grammars are refused. `lang-oracle -tags-query <scm> -tags-query-rev
+  <40-hex> -tags-query-source "<owner/repo> <path>" -tags-query-licence <SPDX>` (§10) runs the
+  query through fathom's engine on the dialect's pinned grammar over the files the manifest
+  owns and scores its definitions as the neutral oracle file at tier C, kinds mapped through
+  `oracle_kinds.tool`. Capture conventions, detected or set with `-tags-query-format`: `tags`
+  (upstream, helix, aider, Sourcegraph: `@definition.<kind>` on the definition node plus
+  `@name`; the end line is the definition node's), `locals` (nvim-treesitter:
+  `@local.definition[.<kind>]`, or legacy `@definition.<kind>`, on the name node; no end line,
+  so `range_agreement` is not measured) and `outline` (Zed: `@item` plus `@name`; the kind is
+  the `@item` node's type). Refused: a query a `; source:` header of the dialect's own queries
+  names (repository compared case-insensitively), a revision that is not 40 lowercase hex, a
+  query file inside the work tree outside `workspace/`, an empty or AGPL licence, and a
+  predicate the engine does not support (named, never stripped). The reading's oracle run
+  records `source`, `revision` and `licence`. Definitions only; D5's calls path is unchanged.
 - **D7 — C#'s `using X; Y.Z();` resolves.** An unaliased `using X;` is a wildcard import
   (the C# idiom: every type of namespace X in scope unqualified); an aliased
   `using A = X;` keeps its prefix binding. Under namespace-dir a wildcard's namespace is
@@ -500,6 +519,19 @@ must settle, and their sniffs:
 | `.pp` | Puppet, Pascal | `\b(class\|define\|node)\s+[\w:]+\s*[({]` → puppet (not queued); `\bprogram\b\|\bunit\b` → pascal |
 | `.inc`, `.cls`, `.t` | several | not claimed by extension; basename/glob only |
 
+github-linguist (MIT) is where the drafts of these rules come from, not where they are
+decided. `indexbench lang-linguist -linguist <checkout> -rev <40-hex>` imports its
+extensions, filenames and interpreters for the queue's items, and its heuristic rules for
+the extensions they claim, as data at a pinned revision
+(`docs/plans/language-breadth.linguist.json`, LB-F48, LB-F49). A tooling item takes
+filenames only, never a language's extension list, and a linguist language two items share
+(Starlark: bazel and tiltfile; Ruby, Groovy, HCL) carries an explicit filenames allowlist.
+Every heuristic pattern is compiled as `ClassifyDialect` compiles a sniff, `(?m)` before the
+pattern under Go's RE2; one that does not compile is dropped and counted, never approximated.
+Linguist's rules are the candidate rules for the sniff table above: a worker compares them
+with the table, writes the sniff, and proves it on the fixtures. Nothing in the data
+changes what the connector classifies.
+
 The count of files classified by sniff, and of ambiguous files left unclassified, is
 reported per ingest and in `list_services` (disclosed, never silent — ADR-021 §1).
 
@@ -612,8 +644,20 @@ query source (LB-F2) and a rebuild of them from the lock is then byte-identical 
 Allowed for grammars, queries and fixtures: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause,
 ISC, Unlicense, CC0-1.0, Zlib, 0BSD; MPL-2.0 only for files taken unmodified. Refused: GPL
 (any), LGPL, AGPL, SSPL, EUPL, PolyForm (any), BUSL, FSL, Commons Clause, "no licence" and
-"licence unclear". The check reads the grammar repository's top-level `LICENSE` at the
-pinned commit **and** any licence file under `queries/` and `src/`; a mismatch refuses.
+"licence unclear". The check reads the grammar repository's top-level `LICENSE`, `LICENCE`
+or `COPYING` at the pinned commit **and** any licence file under `queries/` and `src/`; a
+mismatch refuses. A top-level licence file decides, identified by its text. Where there is
+none, a licence **declared** by the package manifests counts when they agree: `package.json`
+`license`, `Cargo.toml` `package.license` and `tree-sitter.json` `metadata.license`, every
+one present naming the same allowlisted SPDX id, recorded with basis `declared`
+(`kennyhml/tree-sitter-abap` has no LICENSE file and declares MIT in all three). Manifests
+that disagree, or none, leave the grammar unlicensed and refused. **AGPL is refused by name**,
+wherever it is read (the ADR-048 amendment of 2026-09-29, written with item tagsq): a queue
+grammar under AGPL is not pinned whatever the catalogue offers instead
+(`foxyseta/tree-sitter-prolog` is AGPL-3.0; the catalogue's `Rukiza/tree-sitter-prolog` is ISC,
+and re-pinning to it is a queue decision). `indexbench lang-pin -tree <checkout|tarball>`
+runs the check (`GrammarLicenceVerdict`, LB-F51) and exits 1 when refused. The verdicts
+for the two queue grammars above are recorded in `docs/plans/language-breadth.grammars.json`.
 `TestGrammarLock` fails when a blob's sha256 or size differs from the lock, when a blob
 exists without a lock row or a lock row without a blob, and when a licence is not on the
 allowlist. Every borrowed `.scm` file starts with a header:
@@ -679,6 +723,9 @@ go run ./cmd/indexbench lang-oracle \
   [-scip workspace/tmp/scip/swift-alamofire.scip] \
   [-scip-defs]                                 # L1 from the SCIP index, tier A (D2)
   [-tool-oracle workspace/tmp/oracle/<id>-<subject>.json]...   # repeatable (D2, D5)
+  [-tags-query workspace/tmp/oracle/<id>-tags.scm \    # third-party definitions query: L1, tier C (D5 extension)
+   -tags-query-rev <40-hex> -tags-query-source "<owner/repo> <path>" -tags-query-licence <SPDX> \
+   [-tags-query-format tags|locals|outline] [-tags-query-out <json>]]   # out: workspace/tmp/oracle/<id>-<subject>-tagsq.json
   [-only 'dir/**/*.sql,other.sql']               # restrict the subject (D2)
   [-adjudicate calibration/adjudications/<id>.json] \  # verified oracle misses (D3)
   -out docs/bench/readings/lang/swift.json   # merges subjects: one reading per dialect
@@ -851,12 +898,25 @@ worktree and your scratch directory.
 
 ### 13.1 Pin the grammar (tags-engine items only; skip for doc-engine items)
 
-5. Confirm the licence at the pinned commit: fetch the repository's `LICENSE` (and any
-   licence under `queries/` and `src/`) at the tag you will pin. If it is not on the
-   allowlist (§8.2), stop: disposition `refused`, reason `licence <SPDX>`.
-6. Resolve the tag to a commit (`git ls-remote`), download the tarball, compute its sha256,
-   and add a lock row (§8.1). Prefer a release tag that ships `src/parser.c`; if the grammar
-   only ships `grammar.js`, set `"generate": true` and pin the CLI version.
+5. Confirm the licence at the pinned commit: fetch the repository at the tag you will pin
+   (a checkout or the GitHub tarball) and run `indexbench lang-pin -tree <checkout|tarball>`
+   (§8.2): a top-level `LICENSE` decides; with none, a licence declared consistently in
+   `package.json`, `Cargo.toml` and `tree-sitter.json` counts (basis `declared`); a licence
+   file under `queries/` or `src/` that disagrees refuses. If it exits 1 (off the allowlist,
+   AGPL, unlicensed), stop: disposition `refused`, reason `licence <SPDX>`.
+6. Start the row from the catalogue: `indexbench lang-pin -id <id>` prints the draft lock row
+   (repo, commit as the tag, ABI, `generate`, licence, entry point, subdirs) from
+   `docs/plans/language-breadth.grammars.json`, which pre-fills the queue's unlocked tags items
+   from tree-sitter-language-pack's catalogue (MIT) at a pinned revision. Its flags tell you
+   what to check: `grammar-differs:<queue source>` (the catalogue names another repository than
+   the queue), `abi-outside:<n>`, `not-in-catalogue`; `refused:<SPDX>` and `unlicensed` exit 1.
+   The ABI is the catalogue's number, 14 unless it says otherwise; a grammar that ships a
+   `src/parser.c` has its own, so read `LANGUAGE_VERSION` there. Set `scanner` from
+   `src/scanner.c`. An item that names two grammars (gradle, scheme-racket) is pre-filled with
+   its first; pin the second by hand. Then resolve the tag to a commit (`git ls-remote`),
+   download the tarball, compute its sha256, and add the lock row (§8.1). Prefer a release tag
+   that ships `src/parser.c`; if the grammar only ships `grammar.js`, set `"generate": true`
+   and pin the CLI version.
 7. Build: `internal/extractor/tsengine/grammars/build.sh <blob>`. Paste `blob_sha256`,
    `blob_bytes`, `gz_bytes` into the lock. If the gzip size exceeds 3 MiB, note it in your
    report (it spends the embedded budget).
@@ -868,7 +928,11 @@ worktree and your scratch directory.
    kinds from the language's real vocabulary, `required_kinds` from your entry's
    `required_kinds` (or, if absent, every definition kind the language has), `oracle_kinds`
    for the oracle(s) in your entry, strategies from §6 (`imports.strategy` only when the
-   target is L3 or L4).
+   target is L3 or L4). Start the `match` block from
+   `go run ./cmd/indexbench lang-linguist -match <id>` (linguist's extensions, filenames as
+   basenames, interpreters as shebangs, and a sniff for an extension another queue item or
+   dialect claims); it warns about each claimed extension, and the sniff and its priority
+   stay yours to settle (§5).
 10. Write 3–6 fixtures in `testdata/`, each ≤ 200 lines, covering every required kind,
     nesting (a method in a class in a namespace), a callable with a multi-line signature,
     calls (plain, method, qualified), imports (when L3), and one syntax error the parser must
@@ -878,8 +942,19 @@ worktree and your scratch directory.
 11. Draft `tags.scm`: start from, in order, the grammar's own `queries/tags.scm`, aider's
     `aider/queries/**/<lang>-tags.scm`, then nvim-treesitter's `locals.scm` for shapes —
     each only if its licence is on the allowlist; never GitNexus. Put the provenance header
-    (§8.2) on the file. Add `@body` captures for signatures, `@scope.package` if the
-    language declares packages, and `@name` inside every `@reference.call`.
+    (§8.2) on the file. Fetch a `locals.scm` at a pinned commit and draft it with
+    `go run ./cmd/indexbench lang-draft -locals <locals.scm> -source "<repo> <path> @
+    <40-hex commit> (<SPDX>)" -out tags.scm [-imports-out imports.scm] [-dialect <id>]`
+    (LB-F47): each pattern with one `@local.definition[.kind]` becomes `@name` with
+    `@definition.<kind>` on its outer node; scopes, references, variables, parameters and
+    fields are dropped; imports go to the imports draft; a predicate the engine does not run
+    is flagged `; UNSUPPORTED predicate …` above its pattern, and a `#lua-match?` becomes
+    `#match?` only when its Lua pattern maps to RE2. MPL-2.0 is refused, because a draft
+    modifies the file. Tune the draft with `lang-probe` (step 12). It is a starting point,
+    never an oracle: the header it writes names nvim-treesitter, so `lang-oracle -tags-query`
+    refuses that file as the same dialect's oracle (LB-F52). Add `@body` captures for
+    signatures, `@scope.package` if the language declares packages, and `@name` inside every
+    `@reference.call`.
 12. Iterate with `go run ./cmd/indexbench lang-probe -dialect <id> <fixture>` until
     `TestDialectGoldens/<id>` passes. Keep queries structural; use only the supported
     predicates (§3.2). If `TestDialectQueriesCompile` names an unsupported predicate,
@@ -908,8 +983,12 @@ worktree and your scratch directory.
 18. Oracle B: universal-ctags from `workspace/tools/ctags` (a pinned release; if absent,
     install the pinned build there per `calibration/README.md` — never a global install
     without asking). Check `ctags --list-languages` for your language. If ctags does not
-    know it, your L1 oracle is tier C (the upstream `tags.scm` through
-    `npx --yes tree-sitter-cli@<pinned> tags`), and L1 can only be `good`.
+    know it, your L1 oracle is tier C, and L1 can only be `good`: a third-party definitions
+    query (the grammar's upstream `tags.scm`, a helix, aider or Sourcegraph `tags.scm`, an
+    nvim-treesitter `locals.scm` or a Zed `outline.scm`) that your dialect was not drafted
+    from, fetched by commit into `workspace/tmp/oracle/` (for example `curl` of
+    `raw.githubusercontent.com/<repo>/<commit>/<path>`) and run with `lang-oracle -tags-query`
+    (§10; D5 extension, §1.5). Record its licence; an AGPL grammar's query is refused.
 19. Oracle A (L2–L4 targets, when your entry names a SCIP producer): install the pinned
     indexer inside your scratch dir (npm `--prefix`, `cargo install --root`, a release
     binary; JVM `-Xmx2g`; `nice -n 10`), run it on the subject with a 20-minute timeout,

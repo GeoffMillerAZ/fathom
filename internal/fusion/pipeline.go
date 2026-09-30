@@ -747,7 +747,7 @@ func parseGitLog(serviceID, raw string) []store.Commit {
 // declarations), types, subtypes, record elements and components. Every such
 // file was fingerprinted by the no-extractor path ("no extractor registered",
 // the epoch 18 class), so the salt bump re-reads them.
-// Epoch 38 (O148, LB-F46): a .cs file whose tree has a syntax error is parsed
+// Epoch 38 (O148, LB-F53): a .cs file whose tree has a syntax error is parsed
 // again with each #if group's directive lines blanked, then with each group
 // read as its first branch, and the first tree with no error is read
 // (csharpConditionalTexts, withCSharpTree): such a file now yields its

@@ -67,6 +67,9 @@ func mainRun(args []string, stdout, stderr io.Writer) int {
 	if len(args) > 0 && args[0] == "lang-probe" {
 		return cmdLangProbe(args[1:], stdout, stderr)
 	}
+	if len(args) > 0 && args[0] == "lang-draft" {
+		return cmdLangDraft(args[1:], stdout, stderr)
+	}
 	if len(args) > 0 && args[0] == "lang-oracle" {
 		return cmdLangOracle(args[1:], stdout, stderr)
 	}
@@ -79,8 +82,14 @@ func mainRun(args []string, stdout, stderr io.Writer) int {
 	if len(args) > 0 && args[0] == "lang-tracker" {
 		return cmdLangTracker(args[1:], stdout, stderr)
 	}
+	if len(args) > 0 && args[0] == "lang-linguist" {
+		return cmdLangLinguist(args[1:], stdout, stderr)
+	}
 	if len(args) > 0 && args[0] == "lang-next" {
 		return cmdLangNext(args[1:], stdout, stderr)
+	}
+	if len(args) > 0 && args[0] == "lang-pin" {
+		return cmdLangPin(args[1:], stdout, stderr)
 	}
 	if len(args) > 0 && args[0] == "lang-disclosure" {
 		return cmdLangDisclosure(args[1:], stdout, stderr)

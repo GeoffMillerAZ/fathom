@@ -68,7 +68,7 @@ func csharpBothExtractors(t *testing.T, path string, src []byte) map[string]map[
 // namespace_declaration for the file. OnlyElse is declared only in an #else
 // branch.
 
-// TestCSharpDialect_IfElseHeadersKeepNamespace (O148, LB-F46): the csharp
+// TestCSharpDialect_IfElseHeadersKeepNamespace (O148, LB-F53): the csharp
 // dialect reads a file that parses neither as written nor with its #if
 // directives blanked as each group's first branch, so the namespace parses
 // and every type declared in it carries it as its package; a member

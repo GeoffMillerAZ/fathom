@@ -1,0 +1,3039 @@
+{
+  "source": "github-linguist/linguist",
+  "revision": "5fbdfcb8133be2bed88bf3ce62b2335f50474525",
+  "licence": "MIT",
+  "stats": {
+    "patterns": 236,
+    "dropped_patterns": 0,
+    "dropped_rules": 0
+  },
+  "items": {
+    "abap": {
+      "linguist": [
+        "ABAP"
+      ],
+      "extensions": [
+        ".abap"
+      ],
+      "filenames": [],
+      "interpreters": []
+    },
+    "ada": {
+      "linguist": [
+        "Ada"
+      ],
+      "extensions": [
+        ".ada",
+        ".adb",
+        ".ads"
+      ],
+      "filenames": [],
+      "interpreters": []
+    },
+    "apex": {
+      "linguist": [
+        "Apex"
+      ],
+      "extensions": [
+        ".apex",
+        ".cls",
+        ".trigger"
+      ],
+      "filenames": [],
+      "interpreters": [],
+      "heuristics": [
+        {
+          "extensions": [
+            ".cls"
+          ],
+          "rules": [
+            {
+              "language": [
+                "Visual Basic 6.0"
+              ],
+              "and": [
+                {
+                  "pattern": [
+                    "^[ ]*VERSION [0-9]\\.[0-9] CLASS"
+                  ]
+                },
+                {
+                  "pattern": [
+                    "^\\s*BEGIN(?:\\r?\\n|\\r)\\s*MultiUse\\s*=.*(?:\\r?\\n|\\r)\\s*Persistable\\s*="
+                  ]
+                }
+              ]
+            },
+            {
+              "language": [
+                "vba"
+              ],
+              "pattern": [
+                "^[ ]*VERSION [0-9]\\.[0-9] CLASS"
+              ]
+            },
+            {
+              "language": [
+                "latex"
+              ],
+              "pattern": [
+                "^\\s*\\\\(?:NeedsTeXFormat|ProvidesClass)\\{"
+              ]
+            },
+            {
+              "language": [
+                "ObjectScript"
+              ],
+              "pattern": [
+                "^Class\\s"
+              ]
+            },
+            {
+              "language": [
+                "OpenEdge ABL"
+              ],
+              "pattern": [
+                "(?i)^\\s*(?:end\\s+(?:class|interface)\\.|(?:class|interface)\\s+[a-z_][a-z0-9_#$%&-]*:)"
+              ]
+            }
+          ]
+        },
+        {
+          "extensions": [
+            ".trigger"
+          ],
+          "rules": [
+            {
+              "language": [
+                "apex"
+              ],
+              "pattern": [
+                "(?i)^[ \\t]*trigger\\s+[a-z_][a-z0-9_]*\\s+on\\s+[a-z_][a-z0-9_]*\\s*\\(\\s*(?:before|after)\\s+(?:insert|update|delete|undelete)\\b",
+                "(?i)^[ \\t]*(?:public|global)\\s+(?:with|without|inherited)\\s+sharing\\s+class\\s+[a-z_][a-z0-9_]*\\b"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "assembly": {
+      "linguist": [
+        "Assembly"
+      ],
+      "extensions": [
+        ".a51",
+        ".asm",
+        ".i",
+        ".inc",
+        ".nas",
+        ".nasm",
+        ".s"
+      ],
+      "filenames": [],
+      "interpreters": [],
+      "heuristics": [
+        {
+          "extensions": [
+            ".asm"
+          ],
+          "rules": [
+            {
+              "language": [
+                "assembly"
+              ],
+              "pattern": [
+                "(?i)mov\\s+[^\\s]{2,},"
+              ]
+            },
+            {
+              "language": [
+                "Motorola 68K Assembly"
+              ],
+              "pattern": [
+                "(?im)\\bmoveq(?:\\.l)?\\s+#(?:\\$-?[0-9a-f]{1,3}|%[0-1]{1,8}|-?[0-9]{1,3}),\\s*d[0-7]\\b",
+                "(?im)^\\s*move(?:\\.[bwl])?\\s+(?:sr|usp),\\s*[^\\s]+",
+                "(?im)^\\s*move\\.[bwl]\\s+.*\\b[ad]\\d",
+                "(?im)^\\s*movem\\.[bwl]\\b",
+                "(?im)^\\s*move[mp](?:\\.[wl])?\\b",
+                "(?im)^\\s*btst\\b",
+                "(?im)^\\s*dbra\\b"
+              ]
+            }
+          ]
+        },
+        {
+          "extensions": [
+            ".i"
+          ],
+          "rules": [
+            {
+              "language": [
+                "Motorola 68K Assembly"
+              ],
+              "pattern": [
+                "(?im)\\bmoveq(?:\\.l)?\\s+#(?:\\$-?[0-9a-f]{1,3}|%[0-1]{1,8}|-?[0-9]{1,3}),\\s*d[0-7]\\b",
+                "(?im)^\\s*move(?:\\.[bwl])?\\s+(?:sr|usp),\\s*[^\\s]+",
+                "(?im)^\\s*move\\.[bwl]\\s+.*\\b[ad]\\d",
+                "(?im)^\\s*movem\\.[bwl]\\b",
+                "(?im)^\\s*move[mp](?:\\.[wl])?\\b",
+                "(?im)^\\s*btst\\b",
+                "(?im)^\\s*dbra\\b"
+              ]
+            },
+            {
+              "language": [
+                "SWIG"
+              ],
+              "pattern": [
+                "^[ \\t]*%[a-z_]+\\b|^%[{}]$"
+              ]
+            },
+            {
+              "language": [
+                "assembly"
+              ],
+              "pattern": [
+                "(?i)mov\\s+[^\\s]+,",
+                "^\\s+(i?)db\\s+[a-z\\d]"
+              ]
+            }
+          ]
+        },
+        {
+          "extensions": [
+            ".inc"
+          ],
+          "rules": [
+            {
+              "language": [
+                "Motorola 68K Assembly"
+              ],
+              "pattern": [
+                "(?im)\\bmoveq(?:\\.l)?\\s+#(?:\\$-?[0-9a-f]{1,3}|%[0-1]{1,8}|-?[0-9]{1,3}),\\s*d[0-7]\\b",
+                "(?im)^\\s*move(?:\\.[bwl])?\\s+(?:sr|usp),\\s*[^\\s]+",
+                "(?im)^\\s*move\\.[bwl]\\s+.*\\b[ad]\\d",
+                "(?im)^\\s*movem\\.[bwl]\\b",
+                "(?im)^\\s*move[mp](?:\\.[wl])?\\b",
+                "(?im)^\\s*btst\\b",
+                "(?im)^\\s*dbra\\b"
+              ]
+            },
+            {
+              "language": [
+                "PHP"
+              ],
+              "pattern": [
+                "^<\\?(?:php)?"
+              ]
+            },
+            {
+              "language": [
+                "SourcePawn"
+              ],
+              "pattern": [
+                "^public\\s+(?:SharedPlugin(?:\\s+|:)__pl_\\w+\\s*=(?:\\s*\\{)?|(?:void\\s+)?__pl_\\w+_SetNTVOptional\\(\\)(?:\\s*\\{)?)",
+                "^methodmap\\s+\\w+\\s+<\\s+\\w+",
+                "^\\s*MarkNativeAsOptional\\s*\\("
+              ]
+            },
+            {
+              "language": [
+                "NASL"
+              ],
+              "pattern": [
+                "^\\s*include\\s*\\(\\s*(?:\"|')[\\\\/\\w\\-\\.:\\s]+\\.(?:nasl|inc)\\s*(?:\"|')\\s*\\)\\s*;",
+                "^\\s*(?:global|local)_var\\s+(?:\\w+(?:\\s*=\\s*[\\w\\-\"']+)?\\s*)(?:,\\s*\\w+(?:\\s*=\\s*[\\w\\-\"']+)?\\s*)*\\s*;",
+                "^\\s*namespace\\s+\\w+\\s*\\{",
+                "^\\s*object\\s+\\w+\\s*(?:extends\\s+\\w+(?:::\\w+)?)?\\s*\\{",
+                "^\\s*(?:public\\s+|private\\s+|\\s*)function\\s+\\w+\\s*\\([\\w\\s,]*\\)\\s*\\{"
+              ]
+            },
+            {
+              "language": [
+                "POV-Ray SDL"
+              ],
+              "pattern": [
+                "^\\s*#(declare|local|macro|while)\\s"
+              ]
+            },
+            {
+              "language": [
+                "pascal"
+              ],
+              "pattern": [
+                "(?i:^\\s*\\{\\$(?:mode|ifdef|undef|define)[ ]+[a-z0-9_]+\\})",
+                "^\\s*end[.;]\\s*$"
+              ]
+            },
+            {
+              "language": [
+                "BitBake"
+              ],
+              "pattern": [
+                "^inherit(\\s+[\\w.-]+)+\\s*$"
+              ]
+            },
+            {
+              "language": [
+                "assembly"
+              ],
+              "pattern": [
+                "^(?i)[^\"m]*mov\\s+[^\\s]+,",
+                "^\\s+(?i)db\\s+[a-z\\d]"
+              ]
+            }
+          ]
+        },
+        {
+          "extensions": [
+            ".s"
+          ],
+          "rules": [
+            {
+              "language": [
+                "Unix Assembly"
+              ],
+              "pattern": [
+                "(?i:mov[lq]?)\\s+[%\\$]"
+              ]
+            },
+            {
+              "language": [
+                "assembly"
+              ],
+              "pattern": [
+                "(?i:mov)\\s+[^\\s%]{2,},"
+              ]
+            },
+            {
+              "language": [
+                "Motorola 68K Assembly"
+              ],
+              "pattern": [
+                "(?im)\\bmoveq(?:\\.l)?\\s+#(?:\\$-?[0-9a-f]{1,3}|%[0-1]{1,8}|-?[0-9]{1,3}),\\s*d[0-7]\\b",
+                "(?im)^\\s*move(?:\\.[bwl])?\\s+(?:sr|usp),\\s*[^\\s]+",
+                "(?im)^\\s*move\\.[bwl]\\s+.*\\b[ad]\\d",
+                "(?im)^\\s*movem\\.[bwl]\\b",
+                "(?im)^\\s*move[mp](?:\\.[wl])?\\b",
+                "(?im)^\\s*btst\\b",
+                "(?im)^\\s*dbra\\b"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "astro": {
+      "linguist": [
+        "Astro"
+      ],
+      "extensions": [
+        ".astro"
+      ],
+      "filenames": [],
+      "interpreters": []
+    },
+    "avro": {
+      "linguist": [
+        "Avro IDL"
+      ],
+      "extensions": [],
+      "filenames": [],
+      "interpreters": []
+    },
+    "bazel": {
+      "linguist": [
+        "Starlark"
+      ],
+      "allow_filenames": [
+        "BUILD",
+        "BUILD.bazel",
+        "MODULE.bazel",
+        "WORKSPACE",
+        "WORKSPACE.bazel",
+        "WORKSPACE.bzlmod"
+      ],
+      "extensions": [],
+      "filenames": [
+        "BUILD",
+        "BUILD.bazel",
+        "MODULE.bazel",
+        "WORKSPACE",
+        "WORKSPACE.bazel",
+        "WORKSPACE.bzlmod"
+      ],
+      "interpreters": []
+    },
+    "blade": {
+      "linguist": [
+        "Blade"
+      ],
+      "extensions": [
+        ".blade",
+        ".blade.php"
+      ],
+      "filenames": [],
+      "interpreters": []
+    },
+    "clojure": {
+      "linguist": [
+        "Clojure"
+      ],
+      "extensions": [
+        ".bb",
+        ".boot",
+        ".cl2",
+        ".clj",
+        ".cljc",
+        ".cljs",
+        ".cljs.hl",
+        ".cljscm",
+        ".cljx",
+        ".hic"
+      ],
+      "filenames": [
+        "riemann.config"
+      ],
+      "interpreters": [
+        "bb"
+      ],
+      "heuristics": [
+        {
+          "extensions": [
+            ".bb"
+          ],
+          "rules": [
+            {
+              "language": [
+                "BlitzBasic"
+              ],
+              "pattern": [
+                "(<^\\s*; |End Function)"
+              ]
+            },
+            {
+              "language": [
+                "BitBake"
+              ],
+              "pattern": [
+                "^(# |include|require|inherit)\\b"
+              ]
+            },
+            {
+              "language": [
+                "clojure"
+              ],
+              "pattern": [
+                "\\((def|defn|defmacro|let)\\s"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "cmake": {
+      "linguist": [
+        "CMake"
+      ],
+      "extensions": [],
+      "filenames": [
+        "CMakeLists.txt"
+      ],
+      "interpreters": []
+    },
+    "cobol": {
+      "linguist": [
+        "COBOL"
+      ],
+      "extensions": [
+        ".cbl",
+        ".ccp",
+        ".cob",
+        ".cobol",
+        ".cpy"
+      ],
+      "filenames": [],
+      "interpreters": []
+    },
+    "codeowners": {
+      "linguist": [
+        "CODEOWNERS"
+      ],
+      "extensions": [],
+      "filenames": [
+        "CODEOWNERS"
+      ],
+      "interpreters": []
+    },
+    "commonlisp": {
+      "linguist": [
+        "Common Lisp"
+      ],
+      "extensions": [
+        ".asd",
+        ".cl",
+        ".l",
+        ".lisp",
+        ".lsp",
+        ".ny",
+        ".podsl",
+        ".sexp"
+      ],
+      "filenames": [],
+      "interpreters": [
+        "ccl",
+        "clisp",
+        "ecl",
+        "lisp",
+        "sbcl"
+      ],
+      "heuristics": [
+        {
+          "extensions": [
+            ".cl"
+          ],
+          "rules": [
+            {
+              "language": [
+                "commonlisp"
+              ],
+              "pattern": [
+                "^\\s*\\((?i:defun|in-package|defpackage) "
+              ]
+            },
+            {
+              "language": [
+                "Cool"
+              ],
+              "pattern": [
+                "^class"
+              ]
+            },
+            {
+              "language": [
+                "OpenCL"
+              ],
+              "pattern": [
+                "\\/\\* |\\/\\/ |^\\}"
+              ]
+            }
+          ]
+        },
+        {
+          "extensions": [
+            ".l"
+          ],
+          "rules": [
+            {
+              "language": [
+                "commonlisp"
+              ],
+              "pattern": [
+                "\\(def(un|macro)\\s"
+              ]
+            },
+            {
+              "language": [
+                "Lex"
+              ],
+              "pattern": [
+                "^(%[%{}]xs|<.*>)"
+              ]
+            },
+            {
+              "language": [
+                "Roff"
+              ],
+              "pattern": [
+                "^\\.[A-Za-z]{2}(\\s|$)"
+              ]
+            },
+            {
+              "language": [
+                "PicoLisp"
+              ],
+              "pattern": [
+                "^\\((de|class|rel|code|data|must)\\s"
+              ]
+            }
+          ]
+        },
+        {
+          "extensions": [
+            ".lisp",
+            ".lsp"
+          ],
+          "rules": [
+            {
+              "language": [
+                "commonlisp"
+              ],
+              "pattern": [
+                "^\\s*\\((?i:defun|in-package|defpackage) "
+              ]
+            },
+            {
+              "language": [
+                "NewLisp"
+              ],
+              "pattern": [
+                "^\\s*\\(define "
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "crystal": {
+      "linguist": [
+        "Crystal"
+      ],
+      "extensions": [
+        ".cr"
+      ],
+      "filenames": [],
+      "interpreters": [
+        "crystal"
+      ]
+    },
+    "cuda": {
+      "linguist": [
+        "Cuda"
+      ],
+      "extensions": [
+        ".cu",
+        ".cuh"
+      ],
+      "filenames": [],
+      "interpreters": []
+    },
+    "cue": {
+      "linguist": [
+        "CUE"
+      ],
+      "extensions": [
+        ".cue"
+      ],
+      "filenames": [],
+      "interpreters": []
+    },
+    "d": {
+      "linguist": [
+        "D"
+      ],
+      "extensions": [
+        ".d",
+        ".di"
+      ],
+      "filenames": [],
+      "interpreters": [],
+      "heuristics": [
+        {
+          "extensions": [
+            ".d"
+          ],
+          "rules": [
+            {
+              "language": [
+                "d"
+              ],
+              "pattern": [
+                "^module\\s+[\\w.]*\\s*;|import\\s+[\\w\\s,.:]*;|\\w+\\s+\\w+\\s*\\(.*\\)(?:\\(.*\\))?\\s*\\{[^}]*\\}|unittest\\s*(?:\\(.*\\))?\\s*\\{[^}]*\\}"
+              ]
+            },
+            {
+              "language": [
+                "DTrace"
+              ],
+              "pattern": [
+                "^(\\w+:\\w*:\\w*:\\w*|BEGIN|END|provider\\s+|(tick|profile)-\\w+\\s+\\{[^}]*\\}|#pragma\\s+D\\s+(option|attributes|depends_on)\\s|#pragma\\s+ident\\s)"
+              ]
+            },
+            {
+              "language": [
+                "Makefile"
+              ],
+              "pattern": [
+                "([\\/\\\\].*:\\s+.*\\s\\\\$|: \\\\$|^[ %]:|^[\\w\\s\\/\\\\.]+\\w+\\.\\w+\\s*:\\s+[\\w\\s\\/\\\\.]+\\w+\\.\\w+)"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "dbt": {
+      "linguist": [
+        "SQL"
+      ],
+      "extensions": [],
+      "filenames": [],
+      "interpreters": []
+    },
+    "dhall": {
+      "linguist": [
+        "Dhall"
+      ],
+      "extensions": [],
+      "filenames": [],
+      "interpreters": []
+    },
+    "dotenv": {
+      "linguist": [
+        "Dotenv"
+      ],
+      "extensions": [],
+      "filenames": [
+        ".env",
+        ".env.ci",
+        ".env.dev",
+        ".env.development",
+        ".env.development.local",
+        ".env.example",
+        ".env.local",
+        ".env.prod",
+        ".env.production",
+        ".env.sample",
+        ".env.staging",
+        ".env.template",
+        ".env.test",
+        ".env.testing"
+      ],
+      "interpreters": []
+    },
+    "earthfile": {
+      "linguist": [
+        "Earthly"
+      ],
+      "extensions": [],
+      "filenames": [
+        "Earthfile"
+      ],
+      "interpreters": []
+    },
+    "elixir": {
+      "linguist": [
+        "Elixir"
+      ],
+      "extensions": [
+        ".ex",
+        ".exs"
+      ],
+      "filenames": [
+        "mix.lock"
+      ],
+      "interpreters": [
+        "elixir"
+      ],
+      "heuristics": [
+        {
+          "extensions": [
+            ".ex"
+          ],
+          "rules": [
+            {
+              "language": [
+                "elixir"
+              ],
+              "pattern": [
+                "^\\s*@moduledoc\\s",
+                "^\\s*(?:cond|import|quote|unless)\\s",
+                "^\\s*def(?:exception|impl|macro|module|protocol)[(\\s]"
+              ]
+            },
+            {
+              "language": [
+                "Euphoria"
+              ],
+              "pattern": [
+                "^\\s*namespace\\s",
+                "^\\s*(?:public\\s+)?include\\s",
+                "^\\s*(?:(?:public|export|global)\\s+)?(?:atom|constant|enum|function|integer|object|procedure|sequence|type)\\s"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "elm": {
+      "linguist": [
+        "Elm"
+      ],
+      "extensions": [
+        ".elm"
+      ],
+      "filenames": [],
+      "interpreters": []
+    },
+    "emacs-lisp": {
+      "linguist": [
+        "Emacs Lisp"
+      ],
+      "extensions": [
+        ".el",
+        ".emacs",
+        ".emacs.desktop"
+      ],
+      "filenames": [
+        ".abbrev_defs",
+        ".emacs",
+        ".emacs.desktop",
+        ".gnus",
+        ".spacemacs",
+        ".viper",
+        "Cask",
+        "Eask",
+        "Project.ede",
+        "_emacs",
+        "abbrev_defs"
+      ],
+      "interpreters": []
+    },
+    "erlang": {
+      "linguist": [
+        "Erlang"
+      ],
+      "extensions": [
+        ".app",
+        ".app.src",
+        ".erl",
+        ".es",
+        ".escript",
+        ".hrl",
+        ".xrl",
+        ".yrl"
+      ],
+      "filenames": [
+        "Emakefile",
+        "rebar.config",
+        "rebar.config.lock",
+        "rebar.lock"
+      ],
+      "interpreters": [
+        "escript"
+      ],
+      "heuristics": [
+        {
+          "extensions": [
+            ".app"
+          ],
+          "rules": [
+            {
+              "language": [
+                "erlang"
+              ],
+              "pattern": [
+                "^\\{\\s*(?:application|'application')\\s*,\\s*(?:[a-z]+[\\w@]*|'[^']+')\\s*,\\s*\\[(?:.|[\\r\\n])*\\]\\s*\\}\\.[ \\t]*$"
+              ]
+            }
+          ]
+        },
+        {
+          "extensions": [
+            ".es"
+          ],
+          "rules": [
+            {
+              "language": [
+                "erlang"
+              ],
+              "pattern": [
+                "^\\s*(?:%%|main\\s*\\(.*?\\)\\s*->)"
+              ]
+            },
+            {
+              "language": [
+                "JavaScript"
+              ],
+              "pattern": [
+                "\\/\\/|[\"']use strict[\"']|export\\s+default\\s|\\/\\*(?:.|[\\r\\n])*?\\*\\/"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "fortran": {
+      "linguist": [
+        "Fortran"
+      ],
+      "extensions": [
+        ".f",
+        ".f77",
+        ".for",
+        ".fpp"
+      ],
+      "filenames": [],
+      "interpreters": [],
+      "heuristics": [
+        {
+          "extensions": [
+            ".f"
+          ],
+          "rules": [
+            {
+              "language": [
+                "Forth"
+              ],
+              "pattern": [
+                "^: "
+              ]
+            },
+            {
+              "language": [
+                "Filebench WML"
+              ],
+              "pattern": [
+                "flowop"
+              ]
+            },
+            {
+              "language": [
+                "fortran"
+              ],
+              "pattern": [
+                "^(?i:[c*][^abd-z]|      (subroutine|program|end|data)\\s|\\s*!)"
+              ]
+            }
+          ]
+        },
+        {
+          "extensions": [
+            ".for"
+          ],
+          "rules": [
+            {
+              "language": [
+                "Forth"
+              ],
+              "pattern": [
+                "^: "
+              ]
+            },
+            {
+              "language": [
+                "fortran"
+              ],
+              "pattern": [
+                "^(?i:[c*][^abd-z]|      (subroutine|program|end|data)\\s|\\s*!)"
+              ]
+            }
+          ]
+        },
+        {
+          "extensions": [
+            ".fpp"
+          ],
+          "rules": [
+            {
+              "language": [
+                "FPP"
+              ],
+              "pattern": [
+                "^\\s*(active|passive|queued)\\s+component\\s",
+                "^\\s*(module|topology|struct|enum|port|interface)\\s+[A-Za-z_$][A-Za-z0-9_]*\\s*\\{",
+                "^\\s*instance\\s+[A-Za-z_$][A-Za-z0-9_]*\\s*:"
+              ]
+            },
+            {
+              "language": [
+                "fortran"
+              ],
+              "pattern": [
+                "^(?i:[c*][^abd-z]|      (subroutine|program|end|data)\\s|\\s*!)"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "fsharp": {
+      "linguist": [
+        "F#"
+      ],
+      "extensions": [
+        ".fs",
+        ".fsi",
+        ".fsx"
+      ],
+      "filenames": [],
+      "interpreters": [],
+      "heuristics": [
+        {
+          "extensions": [
+            ".fs"
+          ],
+          "rules": [
+            {
+              "language": [
+                "Forth"
+              ],
+              "pattern": [
+                "^(: |new-device)"
+              ]
+            },
+            {
+              "language": [
+                "fsharp"
+              ],
+              "pattern": [
+                "^\\s*(#light|import|let|module|namespace|open|type)"
+              ]
+            },
+            {
+              "language": [
+                "glsl"
+              ],
+              "pattern": [
+                "^\\s*(#version|precision|uniform|varying|vec[234])"
+              ]
+            },
+            {
+              "language": [
+                "Filterscript"
+              ],
+              "pattern": [
+                "#include|#pragma\\s+(rs|version)|__attribute__"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "gdscript": {
+      "linguist": [
+        "GDScript"
+      ],
+      "extensions": [
+        ".gd"
+      ],
+      "filenames": [],
+      "interpreters": [],
+      "heuristics": [
+        {
+          "extensions": [
+            ".gd"
+          ],
+          "rules": [
+            {
+              "language": [
+                "GAP"
+              ],
+              "pattern": [
+                "\\s*(Declare|BindGlobal|KeyDependentOperation)"
+              ]
+            },
+            {
+              "language": [
+                "gdscript"
+              ],
+              "pattern": [
+                "\\s*(extends|var|const|enum|func|class|signal|tool|yield|assert|onready)"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "gemfile-podfile": {
+      "linguist": [
+        "Ruby"
+      ],
+      "allow_filenames": [
+        "Gemfile",
+        "Podfile"
+      ],
+      "extensions": [],
+      "filenames": [
+        "Gemfile",
+        "Podfile"
+      ],
+      "interpreters": []
+    },
+    "gleam": {
+      "linguist": [
+        "Gleam"
+      ],
+      "extensions": [
+        ".gleam"
+      ],
+      "filenames": [],
+      "interpreters": []
+    },
+    "glsl": {
+      "linguist": [
+        "GLSL"
+      ],
+      "extensions": [
+        ".fp",
+        ".frag",
+        ".frg",
+        ".fs",
+        ".fsh",
+        ".fshader",
+        ".geo",
+        ".geom",
+        ".glsl",
+        ".glslf",
+        ".glslv",
+        ".gs",
+        ".gshader",
+        ".rchit",
+        ".rmiss",
+        ".shader",
+        ".tesc",
+        ".tese",
+        ".vert",
+        ".vrx",
+        ".vs",
+        ".vsh",
+        ".vshader"
+      ],
+      "filenames": [],
+      "interpreters": [],
+      "heuristics": [
+        {
+          "extensions": [
+            ".frag"
+          ],
+          "rules": [
+            {
+              "language": [
+                "glsl"
+              ],
+              "pattern": [
+                "\\A[ \\t\\r\\n]*#[ \\t]*version[ \\t]+[0-9]{3}(?:[ \\t]+(?:core|compatibility|es))?[ \\t]*(?://[^\\r\\n]*)?(?:\\r?\\n|\\z)"
+              ]
+            },
+            {
+              "language": [
+                "glsl"
+              ],
+              "and": [
+                {
+                  "pattern": [
+                    "^[ \\t]*(?:uniform|varying)[ \\t]+(?:(?:lowp|mediump|highp)[ \\t]+)?(?:[biud]?vec[234]|d?mat[234](?:x[234])?|float|double|int|uint|bool|[iu]?sampler[A-Za-z0-9_]*)[ \\t]+[A-Za-z_][A-Za-z0-9_]*(?:[ \\t]*\\[[^\\]\\r\\n]*\\])?[ \\t]*;"
+                  ]
+                },
+                {
+                  "pattern": [
+                    "^[ \\t]*gl_FragColor[ \\t]*="
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "extensions": [
+            ".fs"
+          ],
+          "rules": [
+            {
+              "language": [
+                "Forth"
+              ],
+              "pattern": [
+                "^(: |new-device)"
+              ]
+            },
+            {
+              "language": [
+                "fsharp"
+              ],
+              "pattern": [
+                "^\\s*(#light|import|let|module|namespace|open|type)"
+              ]
+            },
+            {
+              "language": [
+                "glsl"
+              ],
+              "pattern": [
+                "^\\s*(#version|precision|uniform|varying|vec[234])"
+              ]
+            },
+            {
+              "language": [
+                "Filterscript"
+              ],
+              "pattern": [
+                "#include|#pragma\\s+(rs|version)|__attribute__"
+              ]
+            }
+          ]
+        },
+        {
+          "extensions": [
+            ".gs"
+          ],
+          "rules": [
+            {
+              "language": [
+                "glsl"
+              ],
+              "pattern": [
+                "^#version\\s+[0-9]+\\b"
+              ]
+            },
+            {
+              "language": [
+                "Gosu"
+              ],
+              "pattern": [
+                "^uses (java|gw)\\."
+              ]
+            },
+            {
+              "language": [
+                "Genie"
+              ],
+              "pattern": [
+                "^\\[indent=[0-9]+\\]"
+              ]
+            }
+          ]
+        },
+        {
+          "extensions": [
+            ".shader"
+          ],
+          "rules": [
+            {
+              "language": [
+                "ShaderLab"
+              ],
+              "pattern": [
+                "(?i)^[ \\t]*(?:Shader[ \\t]+\"[^\"\\r\\n]+\"|SubShader)[ \\t\\r\\n]*\\{"
+              ]
+            },
+            {
+              "language": [
+                "glsl"
+              ],
+              "pattern": [
+                "\\A[ \\t\\r\\n]*#[ \\t]*version[ \\t]+[0-9]{3}(?:[ \\t]+(?:core|compatibility|es))?[ \\t]*(?://[^\\r\\n]*)?(?:\\r?\\n|\\z)"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "go": {
+      "linguist": [
+        "Go"
+      ],
+      "extensions": [
+        ".go"
+      ],
+      "filenames": [],
+      "interpreters": []
+    },
+    "gradle": {
+      "linguist": [
+        "Gradle"
+      ],
+      "extensions": [],
+      "filenames": [],
+      "interpreters": []
+    },
+    "graphql": {
+      "linguist": [
+        "GraphQL"
+      ],
+      "extensions": [],
+      "filenames": [],
+      "interpreters": []
+    },
+    "groovy": {
+      "linguist": [
+        "Groovy"
+      ],
+      "extensions": [
+        ".groovy",
+        ".grt",
+        ".gtpl",
+        ".gvy"
+      ],
+      "filenames": [
+        "Jenkinsfile"
+      ],
+      "interpreters": [
+        "groovy"
+      ]
+    },
+    "haskell": {
+      "linguist": [
+        "Haskell"
+      ],
+      "extensions": [
+        ".hs",
+        ".hs-boot",
+        ".hsc"
+      ],
+      "filenames": [],
+      "interpreters": [
+        "runghc",
+        "runhaskell",
+        "runhugs"
+      ]
+    },
+    "hcl-tools": {
+      "linguist": [
+        "HCL"
+      ],
+      "allow_filenames": [],
+      "extensions": [],
+      "filenames": [],
+      "interpreters": []
+    },
+    "hlsl": {
+      "linguist": [
+        "HLSL"
+      ],
+      "extensions": [
+        ".cginc",
+        ".fx",
+        ".fxh",
+        ".hlsl",
+        ".hlsli"
+      ],
+      "filenames": [],
+      "interpreters": [],
+      "heuristics": [
+        {
+          "extensions": [
+            ".fx"
+          ],
+          "rules": [
+            {
+              "language": [
+                "hlsl"
+              ],
+              "pattern": [
+                "^[ \\t]*technique(?:10|11)?[ \\t]+\\w+[ \\t\\r\\n]*\\{",
+                "^[ \\t]*(?:float|half|int|uint|bool)(?:[1-4](?:x[1-4])?)?[ \\t]+\\w+[ \\t]*:[ \\t]*(?i:POSITION|NORMAL|TEXCOORD|COLOR|SV_[a-z_]+)[0-9]*\\b"
+              ]
+            },
+            {
+              "language": [
+                "FLUX"
+              ],
+              "pattern": [
+                "^[ \\t]*source[ \\t]+[A-Za-z_*][A-Za-z0-9_*]*[ \\t]*=>[ \\t]*[A-Za-z_*][A-Za-z0-9_*]*[ \\t]*;"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "jenkinsfile": {
+      "linguist": [
+        "Groovy"
+      ],
+      "allow_filenames": [
+        "Jenkinsfile"
+      ],
+      "extensions": [],
+      "filenames": [
+        "Jenkinsfile"
+      ],
+      "interpreters": []
+    },
+    "json-schema": {
+      "linguist": [
+        "JSON"
+      ],
+      "allow_filenames": [],
+      "extensions": [],
+      "filenames": [],
+      "interpreters": []
+    },
+    "jsonnet": {
+      "linguist": [
+        "Jsonnet"
+      ],
+      "extensions": [],
+      "filenames": [],
+      "interpreters": []
+    },
+    "julia": {
+      "linguist": [
+        "Julia"
+      ],
+      "extensions": [
+        ".jl"
+      ],
+      "filenames": [],
+      "interpreters": [
+        "julia"
+      ]
+    },
+    "jupyter": {
+      "linguist": [
+        "Jupyter Notebook"
+      ],
+      "allow_filenames": [],
+      "extensions": [],
+      "filenames": [],
+      "interpreters": []
+    },
+    "justfile": {
+      "linguist": [
+        "Just"
+      ],
+      "extensions": [],
+      "filenames": [
+        ".JUSTFILE",
+        ".Justfile",
+        ".justfile",
+        "JUSTFILE",
+        "Justfile",
+        "justfile"
+      ],
+      "interpreters": []
+    },
+    "kcl": {
+      "linguist": [
+        "KCL"
+      ],
+      "extensions": [],
+      "filenames": [
+        "kcl.mod",
+        "kcl.mod.lock"
+      ],
+      "interpreters": []
+    },
+    "latex": {
+      "linguist": [
+        "TeX"
+      ],
+      "extensions": [
+        ".aux",
+        ".bbx",
+        ".cbx",
+        ".cls",
+        ".dtx",
+        ".ins",
+        ".lbx",
+        ".ltx",
+        ".mkii",
+        ".mkiv",
+        ".mkvi",
+        ".sty",
+        ".tex",
+        ".toc"
+      ],
+      "filenames": [],
+      "interpreters": [],
+      "heuristics": [
+        {
+          "extensions": [
+            ".cls"
+          ],
+          "rules": [
+            {
+              "language": [
+                "Visual Basic 6.0"
+              ],
+              "and": [
+                {
+                  "pattern": [
+                    "^[ ]*VERSION [0-9]\\.[0-9] CLASS"
+                  ]
+                },
+                {
+                  "pattern": [
+                    "^\\s*BEGIN(?:\\r?\\n|\\r)\\s*MultiUse\\s*=.*(?:\\r?\\n|\\r)\\s*Persistable\\s*="
+                  ]
+                }
+              ]
+            },
+            {
+              "language": [
+                "vba"
+              ],
+              "pattern": [
+                "^[ ]*VERSION [0-9]\\.[0-9] CLASS"
+              ]
+            },
+            {
+              "language": [
+                "latex"
+              ],
+              "pattern": [
+                "^\\s*\\\\(?:NeedsTeXFormat|ProvidesClass)\\{"
+              ]
+            },
+            {
+              "language": [
+                "ObjectScript"
+              ],
+              "pattern": [
+                "^Class\\s"
+              ]
+            },
+            {
+              "language": [
+                "OpenEdge ABL"
+              ],
+              "pattern": [
+                "(?i)^\\s*(?:end\\s+(?:class|interface)\\.|(?:class|interface)\\s+[a-z_][a-z0-9_#$%&-]*:)"
+              ]
+            }
+          ]
+        },
+        {
+          "extensions": [
+            ".toc"
+          ],
+          "rules": [
+            {
+              "language": [
+                "World of Warcraft Addon Data"
+              ],
+              "pattern": [
+                "^## |@no-lib-strip@"
+              ]
+            },
+            {
+              "language": [
+                "latex"
+              ],
+              "pattern": [
+                "^\\\\(contentsline|defcounter|beamer|boolfalse)"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "less": {
+      "linguist": [
+        "Less"
+      ],
+      "extensions": [
+        ".less"
+      ],
+      "filenames": [],
+      "interpreters": []
+    },
+    "luau": {
+      "linguist": [
+        "Luau"
+      ],
+      "extensions": [
+        ".luau"
+      ],
+      "filenames": [],
+      "interpreters": [
+        "luau"
+      ]
+    },
+    "markdown": {
+      "linguist": [
+        "Markdown"
+      ],
+      "allow_filenames": [],
+      "extensions": [],
+      "filenames": [],
+      "interpreters": []
+    },
+    "mojo": {
+      "linguist": [
+        "Mojo"
+      ],
+      "extensions": [
+        ".mojo"
+      ],
+      "filenames": [],
+      "interpreters": [],
+      "heuristics": [
+        {
+          "extensions": [
+            ".mojo"
+          ],
+          "rules": [
+            {
+              "language": [
+                "mojo"
+              ],
+              "pattern": [
+                "^\\s*(alias|def|from|fn|import|struct|trait)\\s"
+              ]
+            },
+            {
+              "language": [
+                "XML"
+              ],
+              "pattern": [
+                "^\\s*<\\?xml"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "nginx": {
+      "linguist": [
+        "Nginx"
+      ],
+      "extensions": [],
+      "filenames": [
+        "nginx.conf"
+      ],
+      "interpreters": []
+    },
+    "nim": {
+      "linguist": [
+        "Nim"
+      ],
+      "extensions": [
+        ".nim",
+        ".nim.cfg",
+        ".nimble",
+        ".nimrod",
+        ".nims"
+      ],
+      "filenames": [
+        "nim.cfg"
+      ],
+      "interpreters": []
+    },
+    "nix": {
+      "linguist": [
+        "Nix"
+      ],
+      "extensions": [],
+      "filenames": [],
+      "interpreters": []
+    },
+    "nushell": {
+      "linguist": [
+        "Nushell"
+      ],
+      "extensions": [
+        ".nu"
+      ],
+      "filenames": [],
+      "interpreters": [
+        "nu"
+      ],
+      "heuristics": [
+        {
+          "extensions": [
+            ".nu"
+          ],
+          "rules": [
+            {
+              "language": [
+                "nushell"
+              ],
+              "pattern": [
+                "^\\s*(import|export|module|def|let|let-env) "
+              ]
+            },
+            {
+              "language": [
+                "Nu"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "objective-c": {
+      "linguist": [
+        "Objective-C"
+      ],
+      "extensions": [
+        ".h",
+        ".m"
+      ],
+      "filenames": [],
+      "interpreters": [],
+      "heuristics": [
+        {
+          "extensions": [
+            ".h"
+          ],
+          "rules": [
+            {
+              "language": [
+                "objective-c"
+              ],
+              "pattern": [
+                "^\\s*(@(interface|class|protocol|property|end|synchronised|selector|implementation)\\b|#import\\s+.+\\.h[\">])"
+              ]
+            },
+            {
+              "language": [
+                "C++"
+              ],
+              "pattern": [
+                "^\\s*#\\s*include <(cstdint|string|vector|map|list|array|bitset|queue|stack|forward_list|unordered_map|unordered_set|(i|o|io)stream)>",
+                "^\\s*template\\s*<",
+                "^[ \\t]*(try|constexpr)",
+                "^[ \\t]*catch\\s*\\(",
+                "^[ \\t]*(class|(using[ \\t]+)?namespace)\\s+\\w+",
+                "^[ \\t]*(private|public|protected):$",
+                "__has_cpp_attribute|__cplusplus >",
+                "std::\\w+"
+              ]
+            },
+            {
+              "language": [
+                "C"
+              ]
+            }
+          ]
+        },
+        {
+          "extensions": [
+            ".m"
+          ],
+          "rules": [
+            {
+              "language": [
+                "objective-c"
+              ],
+              "pattern": [
+                "^\\s*(@(interface|class|protocol|property|end|synchronised|selector|implementation)\\b|#import\\s+.+\\.h[\">])"
+              ]
+            },
+            {
+              "language": [
+                "Mercury"
+              ],
+              "pattern": [
+                ":- module"
+              ]
+            },
+            {
+              "language": [
+                "MUF"
+              ],
+              "pattern": [
+                "^: "
+              ]
+            },
+            {
+              "language": [
+                "M"
+              ],
+              "pattern": [
+                "^\\s*;",
+                "(?i)^[ \\t]+(?:\\.[ \\t]+)+(?:d(?:o)?|f(?:or)?|i(?:f)?|n(?:ew)?|q(?:uit)?|s(?:et)?|w(?:rite)?)[ \\t:]",
+                "(?i)^[ \\t]+s(?:et)?[ \\t]+\\^[%a-z][a-z0-9]*(?:\\(|=)",
+                "(?i)^[ \\t]+w(?:rite)?[ \\t]+(?:!|[^;\\r\\n]*,!)(?:[,!#?]|[ \\t]*(?:;|\\r?$))"
+              ]
+            },
+            {
+              "language": [
+                "Wolfram Language"
+              ],
+              "and": [
+                {
+                  "pattern": [
+                    "\\(\\*"
+                  ]
+                },
+                {
+                  "pattern": [
+                    "\\*\\)$"
+                  ]
+                }
+              ]
+            },
+            {
+              "language": [
+                "MATLAB"
+              ],
+              "pattern": [
+                "^\\s*%"
+              ]
+            },
+            {
+              "language": [
+                "MATLAB"
+              ],
+              "pattern": [
+                "^[ \\t]*function[ \\t]+(?:\\[[^\\]\\r\\n]*\\][ \\t]*=[ \\t]*|[A-Za-z]\\w*[ \\t]*=[ \\t]*)?[A-Za-z]\\w*[ \\t]*\\(",
+                "^[ \\t]*classdef[ \\t]+(?:\\([^\\r\\n)]*\\)[ \\t]*)?[A-Za-z]\\w*"
+              ]
+            },
+            {
+              "language": [
+                "Limbo"
+              ],
+              "pattern": [
+                "^\\w+\\s*:\\s*module\\s*\\{"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ocaml": {
+      "linguist": [
+        "OCaml"
+      ],
+      "extensions": [
+        ".eliom",
+        ".eliomi",
+        ".ml",
+        ".ml4",
+        ".mli",
+        ".mll",
+        ".mly"
+      ],
+      "filenames": [],
+      "interpreters": [
+        "ocaml",
+        "ocamlrun",
+        "ocamlscript"
+      ],
+      "heuristics": [
+        {
+          "extensions": [
+            ".ml"
+          ],
+          "rules": [
+            {
+              "language": [
+                "ocaml"
+              ],
+              "pattern": [
+                "(^\\s*module)|let rec |match\\s+(\\S+\\s)+with"
+              ]
+            },
+            {
+              "language": [
+                "Standard ML"
+              ],
+              "pattern": [
+                "=> |case\\s+(\\S+\\s)+of"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "odin": {
+      "linguist": [
+        "Odin"
+      ],
+      "extensions": [
+        ".odin"
+      ],
+      "filenames": [],
+      "interpreters": [],
+      "heuristics": [
+        {
+          "extensions": [
+            ".odin"
+          ],
+          "rules": [
+            {
+              "language": [
+                "Object Data Instance Notation"
+              ],
+              "pattern": [
+                "(?:^|<)\\s*[A-Za-z0-9_]+\\s*=\\s*<"
+              ]
+            },
+            {
+              "language": [
+                "odin"
+              ],
+              "pattern": [
+                "package\\s+\\w+|\\b(?:im|ex)port\\s*\"[\\w:./]+\"|\\w+\\s*::\\s*(?:proc|struct)\\s*\\(|^\\s*//\\s"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "pascal": {
+      "linguist": [
+        "Pascal"
+      ],
+      "extensions": [
+        ".dfm",
+        ".dpr",
+        ".inc",
+        ".lpr",
+        ".pas",
+        ".pascal",
+        ".pp"
+      ],
+      "filenames": [],
+      "interpreters": [
+        "instantfpc"
+      ],
+      "heuristics": [
+        {
+          "extensions": [
+            ".inc"
+          ],
+          "rules": [
+            {
+              "language": [
+                "Motorola 68K Assembly"
+              ],
+              "pattern": [
+                "(?im)\\bmoveq(?:\\.l)?\\s+#(?:\\$-?[0-9a-f]{1,3}|%[0-1]{1,8}|-?[0-9]{1,3}),\\s*d[0-7]\\b",
+                "(?im)^\\s*move(?:\\.[bwl])?\\s+(?:sr|usp),\\s*[^\\s]+",
+                "(?im)^\\s*move\\.[bwl]\\s+.*\\b[ad]\\d",
+                "(?im)^\\s*movem\\.[bwl]\\b",
+                "(?im)^\\s*move[mp](?:\\.[wl])?\\b",
+                "(?im)^\\s*btst\\b",
+                "(?im)^\\s*dbra\\b"
+              ]
+            },
+            {
+              "language": [
+                "PHP"
+              ],
+              "pattern": [
+                "^<\\?(?:php)?"
+              ]
+            },
+            {
+              "language": [
+                "SourcePawn"
+              ],
+              "pattern": [
+                "^public\\s+(?:SharedPlugin(?:\\s+|:)__pl_\\w+\\s*=(?:\\s*\\{)?|(?:void\\s+)?__pl_\\w+_SetNTVOptional\\(\\)(?:\\s*\\{)?)",
+                "^methodmap\\s+\\w+\\s+<\\s+\\w+",
+                "^\\s*MarkNativeAsOptional\\s*\\("
+              ]
+            },
+            {
+              "language": [
+                "NASL"
+              ],
+              "pattern": [
+                "^\\s*include\\s*\\(\\s*(?:\"|')[\\\\/\\w\\-\\.:\\s]+\\.(?:nasl|inc)\\s*(?:\"|')\\s*\\)\\s*;",
+                "^\\s*(?:global|local)_var\\s+(?:\\w+(?:\\s*=\\s*[\\w\\-\"']+)?\\s*)(?:,\\s*\\w+(?:\\s*=\\s*[\\w\\-\"']+)?\\s*)*\\s*;",
+                "^\\s*namespace\\s+\\w+\\s*\\{",
+                "^\\s*object\\s+\\w+\\s*(?:extends\\s+\\w+(?:::\\w+)?)?\\s*\\{",
+                "^\\s*(?:public\\s+|private\\s+|\\s*)function\\s+\\w+\\s*\\([\\w\\s,]*\\)\\s*\\{"
+              ]
+            },
+            {
+              "language": [
+                "POV-Ray SDL"
+              ],
+              "pattern": [
+                "^\\s*#(declare|local|macro|while)\\s"
+              ]
+            },
+            {
+              "language": [
+                "pascal"
+              ],
+              "pattern": [
+                "(?i:^\\s*\\{\\$(?:mode|ifdef|undef|define)[ ]+[a-z0-9_]+\\})",
+                "^\\s*end[.;]\\s*$"
+              ]
+            },
+            {
+              "language": [
+                "BitBake"
+              ],
+              "pattern": [
+                "^inherit(\\s+[\\w.-]+)+\\s*$"
+              ]
+            },
+            {
+              "language": [
+                "assembly"
+              ],
+              "pattern": [
+                "^(?i)[^\"m]*mov\\s+[^\\s]+,",
+                "^\\s+(?i)db\\s+[a-z\\d]"
+              ]
+            }
+          ]
+        },
+        {
+          "extensions": [
+            ".pp"
+          ],
+          "rules": [
+            {
+              "language": [
+                "pascal"
+              ],
+              "pattern": [
+                "^\\s*end[.;]"
+              ]
+            },
+            {
+              "language": [
+                "Puppet"
+              ],
+              "pattern": [
+                "^\\s+\\w+\\s+=>\\s"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "perl": {
+      "linguist": [
+        "Perl"
+      ],
+      "extensions": [
+        ".al",
+        ".cgi",
+        ".fcgi",
+        ".perl",
+        ".ph",
+        ".pl",
+        ".plx",
+        ".pm",
+        ".psgi",
+        ".t"
+      ],
+      "filenames": [
+        ".latexmkrc",
+        "Makefile.PL",
+        "Rexfile",
+        "ack",
+        "cpanfile",
+        "latexmkrc"
+      ],
+      "interpreters": [
+        "cperl",
+        "perl"
+      ],
+      "heuristics": [
+        {
+          "extensions": [
+            ".al"
+          ],
+          "rules": [
+            {
+              "language": [
+                "AL"
+              ],
+              "pattern": [
+                "(?:\\A\\W{0,3}|^)\\s*(?i:(CODEUNIT|PAGE|PAGEEXTENSION|PAGECUSTOMIZATION|ENUM|ENUMEXTENSION|QUERY|REPORT|REPORTEXTENSION|TABLE|TABLEEXTENSION|XMLPORT|PROFILE|PROFILEEXTENSION|CONTROLADDIN|INTERFACE|PERMISSIONSET|PERMISSIONSETEXTENSION|ENTITLEMENT))\\b\\s+(?:\\d|\"|[A-Z])",
+                "(?:\\A\\W{0,3}|^)\\s*(?i:DOTNET)\\s*$",
+                "(?:\\A\\W{0,3}|^)\\s*(?i:(NAMESPACE|USING))\\s+[\\w.]+\\s*;"
+              ]
+            },
+            {
+              "language": [
+                "perl"
+              ]
+            }
+          ]
+        },
+        {
+          "extensions": [
+            ".pl"
+          ],
+          "rules": [
+            {
+              "language": [
+                "prolog"
+              ],
+              "pattern": [
+                "^[^#]*:-"
+              ]
+            },
+            {
+              "language": [
+                "perl"
+              ],
+              "and": [
+                {
+                  "negative_pattern": [
+                    "^\\s*use\\s+v6\\b"
+                  ]
+                },
+                {
+                  "pattern": [
+                    "\\buse\\s+(?:strict\\b|v?5\\b)",
+                    "^\\s*use\\s+(?:constant|overload)\\b",
+                    "^\\s*(?:\\*|(?:our\\s*)?@)EXPORT\\s*=",
+                    "^\\s*package\\s+[^\\W\\d]\\w*(?:::\\w+)*\\s*(?:[;{]|\\sv?\\d)",
+                    "[\\s$][^\\W\\d]\\w*(?::\\w+)*->[a-zA-Z_\\[({]"
+                  ]
+                }
+              ]
+            },
+            {
+              "language": [
+                "Raku"
+              ],
+              "pattern": [
+                "^\\s*(?:use\\s+v6\\b|\\bmodule\\b|\\b(?:my\\s+)?class\\b)"
+              ]
+            }
+          ]
+        },
+        {
+          "extensions": [
+            ".pm"
+          ],
+          "rules": [
+            {
+              "language": [
+                "perl"
+              ],
+              "and": [
+                {
+                  "negative_pattern": [
+                    "^\\s*use\\s+v6\\b"
+                  ]
+                },
+                {
+                  "pattern": [
+                    "\\buse\\s+(?:strict\\b|v?5\\b)",
+                    "^\\s*use\\s+(?:constant|overload)\\b",
+                    "^\\s*(?:\\*|(?:our\\s*)?@)EXPORT\\s*=",
+                    "^\\s*package\\s+[^\\W\\d]\\w*(?:::\\w+)*\\s*(?:[;{]|\\sv?\\d)",
+                    "[\\s$][^\\W\\d]\\w*(?::\\w+)*->[a-zA-Z_\\[({]"
+                  ]
+                }
+              ]
+            },
+            {
+              "language": [
+                "Raku"
+              ],
+              "pattern": [
+                "^\\s*(?:use\\s+v6\\b|\\bmodule\\b|\\b(?:my\\s+)?class\\b)"
+              ]
+            },
+            {
+              "language": [
+                "X PixMap"
+              ],
+              "pattern": [
+                "^\\s*\\/\\* XPM \\*\\/"
+              ]
+            }
+          ]
+        },
+        {
+          "extensions": [
+            ".t"
+          ],
+          "rules": [
+            {
+              "language": [
+                "perl"
+              ],
+              "and": [
+                {
+                  "negative_pattern": [
+                    "^\\s*use\\s+v6\\b"
+                  ]
+                },
+                {
+                  "pattern": [
+                    "\\buse\\s+(?:strict\\b|v?5\\b)",
+                    "^\\s*use\\s+(?:constant|overload)\\b",
+                    "^\\s*(?:\\*|(?:our\\s*)?@)EXPORT\\s*=",
+                    "^\\s*package\\s+[^\\W\\d]\\w*(?:::\\w+)*\\s*(?:[;{]|\\sv?\\d)",
+                    "[\\s$][^\\W\\d]\\w*(?::\\w+)*->[a-zA-Z_\\[({]"
+                  ]
+                }
+              ]
+            },
+            {
+              "language": [
+                "Raku"
+              ],
+              "pattern": [
+                "^\\s*(?:use\\s+v6\\b|\\bmodule\\b|\\bmy\\s+class\\b)"
+              ]
+            },
+            {
+              "language": [
+                "Turing"
+              ],
+              "pattern": [
+                "^\\s*%[ \\t]+|^\\s*var\\s+\\w+(\\s*:\\s*\\w+)?\\s*:=\\s*\\w+"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "pkl": {
+      "linguist": [
+        "Pkl"
+      ],
+      "extensions": [],
+      "filenames": [],
+      "interpreters": []
+    },
+    "prisma": {
+      "linguist": [
+        "Prisma"
+      ],
+      "extensions": [],
+      "filenames": [],
+      "interpreters": []
+    },
+    "prolog": {
+      "linguist": [
+        "Prolog"
+      ],
+      "extensions": [
+        ".pl",
+        ".plt",
+        ".pro",
+        ".prolog",
+        ".yap"
+      ],
+      "filenames": [],
+      "interpreters": [
+        "swipl",
+        "yap"
+      ],
+      "heuristics": [
+        {
+          "extensions": [
+            ".pl"
+          ],
+          "rules": [
+            {
+              "language": [
+                "prolog"
+              ],
+              "pattern": [
+                "^[^#]*:-"
+              ]
+            },
+            {
+              "language": [
+                "perl"
+              ],
+              "and": [
+                {
+                  "negative_pattern": [
+                    "^\\s*use\\s+v6\\b"
+                  ]
+                },
+                {
+                  "pattern": [
+                    "\\buse\\s+(?:strict\\b|v?5\\b)",
+                    "^\\s*use\\s+(?:constant|overload)\\b",
+                    "^\\s*(?:\\*|(?:our\\s*)?@)EXPORT\\s*=",
+                    "^\\s*package\\s+[^\\W\\d]\\w*(?:::\\w+)*\\s*(?:[;{]|\\sv?\\d)",
+                    "[\\s$][^\\W\\d]\\w*(?::\\w+)*->[a-zA-Z_\\[({]"
+                  ]
+                }
+              ]
+            },
+            {
+              "language": [
+                "Raku"
+              ],
+              "pattern": [
+                "^\\s*(?:use\\s+v6\\b|\\bmodule\\b|\\b(?:my\\s+)?class\\b)"
+              ]
+            }
+          ]
+        },
+        {
+          "extensions": [
+            ".plt"
+          ],
+          "rules": [
+            {
+              "language": [
+                "prolog"
+              ],
+              "pattern": [
+                "^\\s*:-"
+              ]
+            }
+          ]
+        },
+        {
+          "extensions": [
+            ".pro"
+          ],
+          "rules": [
+            {
+              "language": [
+                "Proguard"
+              ],
+              "pattern": [
+                "^-(include\\b.*\\.pro$|keep\\b|keepclassmembers\\b|keepattributes\\b)"
+              ]
+            },
+            {
+              "language": [
+                "prolog"
+              ],
+              "pattern": [
+                "^[^\\[#]+:-"
+              ]
+            },
+            {
+              "language": [
+                "INI"
+              ],
+              "pattern": [
+                "last_client="
+              ]
+            },
+            {
+              "language": [
+                "QMake"
+              ],
+              "and": [
+                {
+                  "pattern": [
+                    "HEADERS"
+                  ]
+                },
+                {
+                  "pattern": [
+                    "SOURCES"
+                  ]
+                }
+              ]
+            },
+            {
+              "language": [
+                "IDL"
+              ],
+              "pattern": [
+                "^\\s*(?i:function|pro|compile_opt) \\w[ \\w,:]*$"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "purescript": {
+      "linguist": [
+        "PureScript"
+      ],
+      "extensions": [
+        ".purs"
+      ],
+      "filenames": [],
+      "interpreters": []
+    },
+    "r": {
+      "linguist": [
+        "R"
+      ],
+      "extensions": [
+        ".r",
+        ".rd",
+        ".rhistory",
+        ".rsx"
+      ],
+      "filenames": [
+        ".Rapp.history",
+        ".Rhistory",
+        ".Rprofile",
+        "expr-dist"
+      ],
+      "interpreters": [
+        "Rscript"
+      ],
+      "heuristics": [
+        {
+          "extensions": [
+            ".r"
+          ],
+          "rules": [
+            {
+              "language": [
+                "Rebol"
+              ],
+              "pattern": [
+                "(?i:\\bRebol\\b)"
+              ]
+            },
+            {
+              "language": [
+                "Rez"
+              ],
+              "pattern": [
+                "(?:\\A|[\\r\\n])[ \\t]*(?:resource|data|type)[ \\t]+'[^'\\r\\n]{4}'[ \\t\\r\\n]*(?:\\([^\\r\\n]*\\)[ \\t\\r\\n]*)?\\{",
+                "(?:\\A|[\\r\\n])[ \\t]*#[ \\t]*include[ \\t]+[\"<](?:Types\\.r|Carbon/Carbon\\.r)[\">]"
+              ]
+            },
+            {
+              "language": [
+                "r"
+              ],
+              "pattern": [
+                "<-|^\\s*#"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "rego": {
+      "linguist": [
+        "Open Policy Agent"
+      ],
+      "extensions": [
+        ".rego"
+      ],
+      "filenames": [],
+      "interpreters": []
+    },
+    "scala": {
+      "linguist": [
+        "Scala"
+      ],
+      "extensions": [
+        ".kojo",
+        ".sbt",
+        ".sc",
+        ".scala"
+      ],
+      "filenames": [],
+      "interpreters": [
+        "scala"
+      ],
+      "heuristics": [
+        {
+          "extensions": [
+            ".sc"
+          ],
+          "rules": [
+            {
+              "language": [
+                "SuperCollider"
+              ],
+              "pattern": [
+                "(?i:\\^(this|super)\\.|^\\s*~\\w+\\s*=\\.)"
+              ]
+            },
+            {
+              "language": [
+                "scala"
+              ],
+              "pattern": [
+                "(^\\s*import (scala|java)\\.|^\\s*class\\b)"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "scheme-racket": {
+      "linguist": [
+        "Scheme"
+      ],
+      "extensions": [
+        ".sch",
+        ".scm",
+        ".sld",
+        ".sls",
+        ".sps",
+        ".ss"
+      ],
+      "filenames": [],
+      "interpreters": [
+        "bigloo",
+        "chicken",
+        "csi",
+        "gosh",
+        "guile",
+        "r6rs",
+        "scheme"
+      ],
+      "heuristics": [
+        {
+          "extensions": [
+            ".sch"
+          ],
+          "rules": [
+            {
+              "language": [
+                "KiCad Schematic"
+              ],
+              "pattern": [
+                "\\AEESchema Schematic File Version[ \\t]+[0-9]+[ \\t]*(?:\\r?\\n|\\r|\\z)",
+                "\\Av[ \\t]+[0-9]{8}[ \\t]+[0-9]+[ \\t]*(?:\\r?\\n|\\r|\\z)"
+              ]
+            }
+          ]
+        },
+        {
+          "extensions": [
+            ".scm"
+          ],
+          "rules": [
+            {
+              "language": [
+                "Tree-sitter Query"
+              ],
+              "pattern": [
+                "\\(#[\\w-]+[!\\?]",
+                "(?:[\\)\\]]\\s*[\\*\\+\\?](?:\\s|$))",
+                "(?:^\\s*\\w+:\\s*[\\(\\[\\\"])",
+                "\\(#(?:set!|(?:not-)?(?:any-of|match)\\?)",
+                "@[\\w.-]+(?:\\)\\s|$)"
+              ],
+              "negative_pattern": [
+                "\\([+\\-:<>\\/=~\\)]"
+              ]
+            },
+            {
+              "language": [
+                "scheme-racket"
+              ],
+              "pattern": [
+                "(?:'[\\(\\*#]|\\w->\\w|\\.\\.\\.[\\s\\)]|\\([+\\-:<>\\/=~\\)]|~>|[#`]\\(|#:\\w)",
+                "^\\s*\\((?:define\\*?|import|library|lambda)"
+              ],
+              "negative_pattern": [
+                "\\(#[\\w-]+[!\\?]",
+                "(?:[\\)\\]]\\s*[\\*\\+\\?](?:\\s|$))",
+                "@[\\w.-]+(?:\\)\\s|$)"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "scss": {
+      "linguist": [
+        "SCSS"
+      ],
+      "extensions": [
+        ".scss"
+      ],
+      "filenames": [],
+      "interpreters": []
+    },
+    "solidity": {
+      "linguist": [
+        "Solidity"
+      ],
+      "extensions": [
+        ".sol"
+      ],
+      "filenames": [],
+      "interpreters": [],
+      "heuristics": [
+        {
+          "extensions": [
+            ".sol"
+          ],
+          "rules": [
+            {
+              "language": [
+                "solidity"
+              ],
+              "pattern": [
+                "\\bpragma\\s+solidity\\b|\\b(?:abstract\\s+)?contract\\s+[a-zA-Z$_][a-zA-Z0-9$_]*(?:\\s+is\\s+(?:[a-zA-Z0-9$_][^\\{]*?)?)?\\s*\\{"
+              ]
+            },
+            {
+              "language": [
+                "Gerber Image"
+              ],
+              "pattern": [
+                "^[DGMT][0-9]{2}\\*(?:\\r?\\n|\\r)"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "svelte": {
+      "linguist": [
+        "Svelte"
+      ],
+      "extensions": [
+        ".svelte"
+      ],
+      "filenames": [],
+      "interpreters": []
+    },
+    "tcl": {
+      "linguist": [
+        "Tcl"
+      ],
+      "extensions": [
+        ".adp",
+        ".sdc",
+        ".tcl",
+        ".tcl.in",
+        ".tm",
+        ".xdc"
+      ],
+      "filenames": [
+        "owh",
+        "starfield"
+      ],
+      "interpreters": [
+        "tclsh",
+        "wish"
+      ]
+    },
+    "templ": {
+      "linguist": [
+        "templ"
+      ],
+      "extensions": [],
+      "filenames": [],
+      "interpreters": []
+    },
+    "terragrunt": {
+      "linguist": [
+        "HCL"
+      ],
+      "allow_filenames": [],
+      "extensions": [],
+      "filenames": [],
+      "interpreters": []
+    },
+    "thrift": {
+      "linguist": [
+        "Thrift"
+      ],
+      "extensions": [],
+      "filenames": [],
+      "interpreters": []
+    },
+    "tiltfile": {
+      "linguist": [
+        "Starlark"
+      ],
+      "allow_filenames": [
+        "Tiltfile"
+      ],
+      "extensions": [],
+      "filenames": [
+        "Tiltfile"
+      ],
+      "interpreters": []
+    },
+    "typst": {
+      "linguist": [
+        "Typst"
+      ],
+      "extensions": [
+        ".typ"
+      ],
+      "filenames": [],
+      "interpreters": [],
+      "heuristics": [
+        {
+          "extensions": [
+            ".typ"
+          ],
+          "rules": [
+            {
+              "language": [
+                "typst"
+              ],
+              "pattern": [
+                "^#(import|show|let|set)"
+              ]
+            },
+            {
+              "language": [
+                "XML"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "vba": {
+      "linguist": [
+        "VBA"
+      ],
+      "extensions": [
+        ".bas",
+        ".cls",
+        ".frm",
+        ".vba"
+      ],
+      "filenames": [],
+      "interpreters": [],
+      "heuristics": [
+        {
+          "extensions": [
+            ".bas"
+          ],
+          "rules": [
+            {
+              "language": [
+                "B4X"
+              ],
+              "pattern": [
+                "\\A\\W{0,3}(?:.*(?:\\r?\\n|\\r)){0,9}B4(?:J|A|R|i)=true"
+              ]
+            },
+            {
+              "language": [
+                "FreeBASIC"
+              ],
+              "pattern": [
+                "(?i)^[ \\t]*#(?:define|endif|endmacro|ifn?def|include|lang|macro|pragma)(?:$|\\s)",
+                "(?i)^[ \\t]*dim( shared)? [a-z_][a-z0-9_]* as [a-z_][a-z0-9_]* ptr"
+              ]
+            },
+            {
+              "language": [
+                "FreeBASIC"
+              ],
+              "and": [
+                {
+                  "pattern": [
+                    "(?i)^[ \\t]*return "
+                  ]
+                },
+                {
+                  "negative_pattern": [
+                    "(?i)[ \\t]*gosub "
+                  ]
+                }
+              ]
+            },
+            {
+              "language": [
+                "BASIC"
+              ],
+              "pattern": [
+                "\\A\\s*\\d"
+              ]
+            },
+            {
+              "language": [
+                "QuickBASIC"
+              ],
+              "pattern": [
+                "^[ ]*(CONST|DIM|REDIM|DEFINT|PRINT|DECLARE (SUB|FUNCTION)|FUNCTION|SUB) ",
+                "(#|$)lang:?\\s*\"?qb\"?",
+                "(?i)'\\$INCLUDE:",
+                "(?i)^[ ]*CLS[ ]*('|:|\\r|\\n)",
+                "(?i)^[ ]*OPTION _EXPLICIT",
+                "(?i)^[ ]*DIM SHARED ",
+                "(?i)^[ ]*PRINT \"",
+                "(?i) As _(Byte|Offset|MEM)",
+                "(?i)^[ ]*_(DISPLAY|DEST|CONSOLE|SOURCE|FREEIMAGE|PALETTECOLOR|PRINTSTRING|LOADFONT|PUTIMAGE)",
+                "(?i)^[ ]*_(TITLE|PLAYMOD) \"",
+                "(?i)^[ ]*_(LIMIT|SCREEN|DELAY) \\.?\\d+",
+                "(?i)\\b_(MOUSEBUTTON|NEWIMAGE|KEYDOWN|WIDTH|HEIGHT)\\(",
+                "(?i)^[ ]*\\$(CONSOLE|CHECKING):",
+                "(?i)^[ ]*\\$(FULLSCREEN|RESIZE|STATIC|DYNAMIC|NOPREFIX|SCREENSHOW|SCREENHIDE|EXEICON)\\b"
+              ]
+            },
+            {
+              "language": [
+                "vba"
+              ],
+              "pattern": [
+                "\\b(?:VBA|[vV]ba)(?:\\b|[0-9A-Z_])",
+                "^[ ]*(?:Public|Private)? Declare PtrSafe (?:Sub|Function)\\b",
+                "^[ ]*#If Win64\\b",
+                "^[ ]*(?:Dim|Const) [0-9a-zA-Z_]*[ ]*As Long(?:Ptr|Long)\\b",
+                "^[ ]*Option (?:Private Module|Compare Database)\\b",
+                "(?: |\\()(?:Access|Excel|Outlook|PowerPoint|Visio|Word|VBIDE)\\.\\w",
+                "\\b(?:(?:Active)?VBProjects?|VBComponents?|Application\\.(?:VBE|ScreenUpdating))\\b",
+                "\\b(?:ThisDrawing|AcadObject|Active(?:Explorer|Inspector|Window\\.Presentation|Presentation|Document)|Selection\\.(?:Document|Find|Paragraphs|Range))\\b",
+                "\\b(?:(?:This|Active)?Workbooks?|Worksheets?|Active(?:Sheet|Chart|Cell)|WorksheetFunction)\\b",
+                "\\b(?:Range\\(\".*|Cells\\([0-9a-zA-Z_]*, (?:[0-9a-zA-Z_]*|\"[a-zA-Z]{1,3}\"))\\)"
+              ]
+            },
+            {
+              "language": [
+                "Visual Basic 6.0"
+              ],
+              "pattern": [
+                "^[ ]*Attribute VB_Name = "
+              ]
+            }
+          ]
+        },
+        {
+          "extensions": [
+            ".cls"
+          ],
+          "rules": [
+            {
+              "language": [
+                "Visual Basic 6.0"
+              ],
+              "and": [
+                {
+                  "pattern": [
+                    "^[ ]*VERSION [0-9]\\.[0-9] CLASS"
+                  ]
+                },
+                {
+                  "pattern": [
+                    "^\\s*BEGIN(?:\\r?\\n|\\r)\\s*MultiUse\\s*=.*(?:\\r?\\n|\\r)\\s*Persistable\\s*="
+                  ]
+                }
+              ]
+            },
+            {
+              "language": [
+                "vba"
+              ],
+              "pattern": [
+                "^[ ]*VERSION [0-9]\\.[0-9] CLASS"
+              ]
+            },
+            {
+              "language": [
+                "latex"
+              ],
+              "pattern": [
+                "^\\s*\\\\(?:NeedsTeXFormat|ProvidesClass)\\{"
+              ]
+            },
+            {
+              "language": [
+                "ObjectScript"
+              ],
+              "pattern": [
+                "^Class\\s"
+              ]
+            },
+            {
+              "language": [
+                "OpenEdge ABL"
+              ],
+              "pattern": [
+                "(?i)^\\s*(?:end\\s+(?:class|interface)\\.|(?:class|interface)\\s+[a-z_][a-z0-9_#$%&-]*:)"
+              ]
+            }
+          ]
+        },
+        {
+          "extensions": [
+            ".frm"
+          ],
+          "rules": [
+            {
+              "language": [
+                "vba"
+              ],
+              "and": [
+                {
+                  "pattern": [
+                    "^[ ]*VERSION [0-9]\\.[0-9]{2}"
+                  ]
+                },
+                {
+                  "pattern": [
+                    "^\\s*Begin\\s+\\{[0-9A-Z\\-]*\\}\\s?"
+                  ]
+                }
+              ]
+            },
+            {
+              "language": [
+                "Visual Basic 6.0"
+              ],
+              "and": [
+                {
+                  "pattern": [
+                    "^[ ]*VERSION [0-9]\\.[0-9]{2}"
+                  ]
+                },
+                {
+                  "pattern": [
+                    "^\\s*Begin\\s+VB\\.Form\\s+"
+                  ]
+                }
+              ]
+            },
+            {
+              "language": [
+                "INI"
+              ],
+              "pattern": [
+                "\\ATYPE=VIEW"
+              ]
+            }
+          ]
+        },
+        {
+          "extensions": [
+            ".vba"
+          ],
+          "rules": [
+            {
+              "language": [
+                "vimscript"
+              ],
+              "pattern": [
+                "^UseVimball"
+              ]
+            },
+            {
+              "language": [
+                "vba"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "vbnet": {
+      "linguist": [
+        "Visual Basic .NET"
+      ],
+      "extensions": [
+        ".vb",
+        ".vbhtml"
+      ],
+      "filenames": [],
+      "interpreters": []
+    },
+    "verilog": {
+      "linguist": [
+        "Verilog"
+      ],
+      "extensions": [
+        ".v",
+        ".veo"
+      ],
+      "filenames": [],
+      "interpreters": [],
+      "heuristics": [
+        {
+          "extensions": [
+            ".v"
+          ],
+          "rules": [
+            {
+              "language": [
+                "Rocq Prover"
+              ],
+              "pattern": [
+                "(?:^|\\s)(?:Proof|Qed)\\.(?:$|\\s)|(?:^|\\s)Require[ \\t]+(Import|Export)\\s"
+              ]
+            },
+            {
+              "language": [
+                "verilog"
+              ],
+              "pattern": [
+                "^[ \\t]*module\\s+[^\\s()]+\\s*\\#?\\(|^[ \\t]*`(?:define|ifdef|ifndef|include|timescale|pragma)|^[ \\t]*always[ \\t]*@|^[ \\t]*initial[ \\t]*(begin|@)"
+              ]
+            },
+            {
+              "language": [
+                "V"
+              ],
+              "pattern": [
+                "\\$(?:if|else)[ \\t]|^[ \\t]*fn\\s+[^\\s()]+\\(.*?\\).*?\\{|^[ \\t]*for\\s*\\{"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "vhdl": {
+      "linguist": [
+        "VHDL"
+      ],
+      "extensions": [
+        ".vhd",
+        ".vhdl",
+        ".vhf",
+        ".vhi",
+        ".vho",
+        ".vhs",
+        ".vht",
+        ".vhw"
+      ],
+      "filenames": [],
+      "interpreters": []
+    },
+    "vimscript": {
+      "linguist": [
+        "Vim script"
+      ],
+      "extensions": [
+        ".vba",
+        ".vim",
+        ".vimrc",
+        ".vmb"
+      ],
+      "filenames": [
+        ".exrc",
+        ".gvimrc",
+        ".nvimrc",
+        ".vimrc",
+        "_vimrc",
+        "gvimrc",
+        "nvimrc",
+        "vimrc"
+      ],
+      "interpreters": [],
+      "heuristics": [
+        {
+          "extensions": [
+            ".vba"
+          ],
+          "rules": [
+            {
+              "language": [
+                "vimscript"
+              ],
+              "pattern": [
+                "^UseVimball"
+              ]
+            },
+            {
+              "language": [
+                "vba"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "vue": {
+      "linguist": [
+        "Vue"
+      ],
+      "extensions": [
+        ".vue"
+      ],
+      "filenames": [],
+      "interpreters": []
+    },
+    "wgsl": {
+      "linguist": [
+        "WGSL"
+      ],
+      "extensions": [
+        ".wgsl"
+      ],
+      "filenames": [],
+      "interpreters": []
+    },
+    "zig": {
+      "linguist": [
+        "Zig"
+      ],
+      "extensions": [
+        ".zig",
+        ".zig.zon"
+      ],
+      "filenames": [],
+      "interpreters": []
+    }
+  }
+}

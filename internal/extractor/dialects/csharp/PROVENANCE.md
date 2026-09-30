@@ -104,7 +104,7 @@
   constructs the dialect's own `TSExtractor` and measures it directly
   whenever `resolveBenchSpec` found a `dialect.json`. This affects every
   other not-yet-merged port's own future re-measurement, not just this one.
-- `preprocess: "csharp-conditionals"` (O148, LB-F46): this grammar parses an
+- `preprocess: "csharp-conditionals"` (O148, LB-F53): this grammar parses an
   `#if` group as a node whose branches must each hold whole declarations, so a
   group whose branches are two headers of one body (Newtonsoft.Json's
   `TestFixtureBase.cs` L279-L284: `#if DNXCORE50 / protected TestFixtureBase()

@@ -1,0 +1,847 @@
+{
+  "source": "kreuzberg-dev/tree-sitter-language-pack",
+  "revision": "b7fc9ae9f7149697fb2ca320bad0156c18ee6519",
+  "licence": "MIT",
+  "overrides": {
+    "assembly": "asm",
+    "bazel": "starlark",
+    "emacs-lisp": "elisp",
+    "gradle": "groovy",
+    "hcl-tools": "hcl",
+    "jenkinsfile": "groovy",
+    "justfile": "just",
+    "objective-c": "objc",
+    "scheme-racket": "scheme",
+    "terragrunt": "hcl",
+    "tiltfile": "starlark",
+    "vbnet": "vb",
+    "vimscript": "vim"
+  },
+  "verdicts": {
+    "abap": {
+      "repo": "kennyhml/tree-sitter-abap",
+      "commit": "360e0c13383c4ea4c3f624cb7f4f6d8af58de8ed",
+      "licence": "MIT",
+      "licence_basis": "declared",
+      "refused": false,
+      "reason": "declared in package.json, Cargo.toml, tree-sitter.json"
+    },
+    "prolog": {
+      "repo": "foxyseta/tree-sitter-prolog",
+      "commit": "c9362273bdec6d3c247ba8628d5a4168ea575051",
+      "licence": "AGPL-3.0",
+      "licence_basis": "LICENSE",
+      "refused": true,
+      "reason": "AGPL is refused (ADR-048 amendment, 2026-09-29): LICENSE reads as AGPL-3.0"
+    }
+  },
+  "grammars": {
+    "abap": {
+      "catalogue": "",
+      "repo": "kennyhml/tree-sitter-abap",
+      "commit": "",
+      "abi": 0,
+      "generate": false,
+      "licence": "MIT",
+      "licence_basis": "declared",
+      "flags": [
+        "not-in-catalogue"
+      ]
+    },
+    "ada": {
+      "catalogue": "ada",
+      "repo": "briot/tree-sitter-ada",
+      "commit": "dd5fa4cdb3aba91abc687aa68fb1431396fce6a6",
+      "abi": 14,
+      "generate": false,
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": []
+    },
+    "apex": {
+      "catalogue": "apex",
+      "repo": "aheber/tree-sitter-sfapex",
+      "commit": "da568eee10ce4724a40f368b2b7e795dacb4f1ba",
+      "abi": 14,
+      "generate": true,
+      "directory": "apex",
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": []
+    },
+    "assembly": {
+      "catalogue": "asm",
+      "repo": "rush-rs/tree-sitter-asm",
+      "commit": "839741fef4dab5128952334624905c82b40c7133",
+      "abi": 14,
+      "generate": false,
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": [
+        "grammar-differs:RubixDev/tree-sitter-asm"
+      ]
+    },
+    "astro": {
+      "catalogue": "astro",
+      "repo": "virchau13/tree-sitter-astro",
+      "commit": "213f6e6973d9b456c6e50e86f19f66877e7ef0ee",
+      "abi": 14,
+      "generate": false,
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": []
+    },
+    "bazel": {
+      "catalogue": "starlark",
+      "repo": "tree-sitter-grammars/tree-sitter-starlark",
+      "commit": "a453dbf3ba433db0e5ec621a38a7e59d72e4dc69",
+      "abi": 14,
+      "generate": false,
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": []
+    },
+    "blade": {
+      "catalogue": "blade",
+      "repo": "EmranMR/tree-sitter-blade",
+      "commit": "b5291d1ba207a8ebb8383b2ecb8a8a6535210a50",
+      "abi": 14,
+      "generate": true,
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": []
+    },
+    "clojure": {
+      "catalogue": "clojure",
+      "repo": "sogaiu/tree-sitter-clojure",
+      "commit": "e43eff80d17cf34852dcd92ca5e6986d23a7040f",
+      "abi": 14,
+      "generate": false,
+      "licence": "CC0-1.0",
+      "licence_basis": "catalogue",
+      "flags": []
+    },
+    "cmake": {
+      "catalogue": "cmake",
+      "repo": "uyha/tree-sitter-cmake",
+      "commit": "ca627bb5828616b6246aafdc3c3222789e728e37",
+      "abi": 14,
+      "generate": false,
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": []
+    },
+    "cobol": {
+      "catalogue": "cobol",
+      "repo": "nolanlwin/tree-sitter-cobol",
+      "commit": "6f1a60ad52b52ccb5e794985454c6743531f17d7",
+      "abi": 14,
+      "generate": false,
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": [
+        "grammar-differs:yutaro-sakamoto/tree-sitter-cobol"
+      ]
+    },
+    "commonlisp": {
+      "catalogue": "commonlisp",
+      "repo": "theHamsta/tree-sitter-commonlisp",
+      "commit": "32323509b3d9fe96607d151c2da2c9009eb13a2f",
+      "abi": 14,
+      "generate": false,
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": [
+        "grammar-differs:tree-sitter-grammars/tree-sitter-commonlisp"
+      ]
+    },
+    "crystal": {
+      "catalogue": "crystal",
+      "repo": "keidax/tree-sitter-crystal",
+      "commit": "51ad1411de9414b4600227553bb70953c352a627",
+      "abi": 14,
+      "generate": false,
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": [
+        "grammar-differs:crystal-lang-tools/tree-sitter-crystal"
+      ]
+    },
+    "cuda": {
+      "catalogue": "cuda",
+      "repo": "tree-sitter-grammars/tree-sitter-cuda",
+      "commit": "48b066f334f4cf2174e05a50218ce2ed98b6fd01",
+      "abi": 14,
+      "generate": true,
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": []
+    },
+    "d": {
+      "catalogue": "d",
+      "repo": "gdamore/tree-sitter-d",
+      "commit": "64f27931b4e6fdd75af1102c79bacbca68a8dacc",
+      "abi": 14,
+      "generate": false,
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": []
+    },
+    "dhall": {
+      "catalogue": "dhall",
+      "repo": "jbellerb/tree-sitter-dhall",
+      "commit": "62013259b26ac210d5de1abf64cf1b047ef88000",
+      "abi": 14,
+      "generate": true,
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": []
+    },
+    "earthfile": {
+      "catalogue": "earthfile",
+      "repo": "glehmann/tree-sitter-earthfile",
+      "commit": "5baef88717ad0156fd29a8b12d0d8245bb1096a8",
+      "abi": 14,
+      "generate": true,
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": []
+    },
+    "elixir": {
+      "catalogue": "elixir",
+      "repo": "elixir-lang/tree-sitter-elixir",
+      "commit": "4b0c7118760af58a2e7081bbc8396e136f820b37",
+      "abi": 14,
+      "generate": false,
+      "licence": "Apache-2.0",
+      "licence_basis": "catalogue",
+      "flags": []
+    },
+    "elm": {
+      "catalogue": "elm",
+      "repo": "razzeee/tree-sitter-elm",
+      "commit": "e1e8fea161a1e66f3997855d316be2a43e4e956f",
+      "abi": 14,
+      "generate": true,
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": [
+        "grammar-differs:elm-tooling/tree-sitter-elm"
+      ]
+    },
+    "emacs-lisp": {
+      "catalogue": "elisp",
+      "repo": "Wilfred/tree-sitter-elisp",
+      "commit": "0cbf0906d9ee707c8c109422fba9cdd17ae13dcf",
+      "abi": 14,
+      "generate": true,
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": []
+    },
+    "erlang": {
+      "catalogue": "erlang",
+      "repo": "WhatsApp/tree-sitter-erlang",
+      "commit": "6ba4c762eb3065495e3db85697ffeecdf364ce35",
+      "abi": 14,
+      "generate": false,
+      "licence": "Apache-2.0",
+      "licence_basis": "catalogue",
+      "flags": []
+    },
+    "fortran": {
+      "catalogue": "fortran",
+      "repo": "stadelmanma/tree-sitter-fortran",
+      "commit": "7edacd2b21aa80057d9725384a1304a1c758e0f8",
+      "abi": 14,
+      "generate": true,
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": []
+    },
+    "fsharp": {
+      "catalogue": "fsharp",
+      "repo": "ionide/tree-sitter-fsharp",
+      "commit": "0d3ccbb0573e29364cf91f7e68ed1fb2ae8a2b6f",
+      "abi": 14,
+      "generate": true,
+      "directory": "fsharp",
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": []
+    },
+    "gdscript": {
+      "catalogue": "gdscript",
+      "repo": "PrestonKnopp/tree-sitter-gdscript",
+      "commit": "c5c8fa4861b5a4f04a7e60d97587fc3b6cc5639e",
+      "abi": 14,
+      "generate": false,
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": []
+    },
+    "gleam": {
+      "catalogue": "gleam",
+      "repo": "gleam-lang/tree-sitter-gleam",
+      "commit": "cefbd6863983b4df3214b7934bde5e9ca63d5b7f",
+      "abi": 14,
+      "generate": true,
+      "licence": "Apache-2.0",
+      "licence_basis": "catalogue",
+      "flags": []
+    },
+    "glsl": {
+      "catalogue": "glsl",
+      "repo": "theHamsta/tree-sitter-glsl",
+      "commit": "24a6c8ef698e4480fecf8340d771fbcb5de8fbb4",
+      "abi": 14,
+      "generate": false,
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": [
+        "grammar-differs:tree-sitter-grammars/tree-sitter-glsl"
+      ]
+    },
+    "gradle": {
+      "catalogue": "groovy",
+      "repo": "Decodetalkers/tree-sitter-groovy",
+      "commit": "a6cf8f80dd3d5246398ad4011c2e2caf995ee17f",
+      "abi": 14,
+      "generate": false,
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": [
+        "grammar-differs:murtaza64/tree-sitter-groovy"
+      ]
+    },
+    "graphql": {
+      "catalogue": "",
+      "repo": "bkegley/tree-sitter-graphql",
+      "commit": "",
+      "abi": 0,
+      "generate": false,
+      "licence": "",
+      "licence_basis": "",
+      "flags": [
+        "not-in-catalogue",
+        "unlicensed"
+      ]
+    },
+    "groovy": {
+      "catalogue": "groovy",
+      "repo": "Decodetalkers/tree-sitter-groovy",
+      "commit": "a6cf8f80dd3d5246398ad4011c2e2caf995ee17f",
+      "abi": 14,
+      "generate": false,
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": [
+        "grammar-differs:murtaza64/tree-sitter-groovy"
+      ]
+    },
+    "haskell": {
+      "catalogue": "haskell",
+      "repo": "tree-sitter/tree-sitter-haskell",
+      "commit": "0975ef72fc3c47b530309ca93937d7d143523628",
+      "abi": 14,
+      "generate": false,
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": [
+        "grammar-differs:tree-sitter-grammars/tree-sitter-haskell"
+      ]
+    },
+    "hcl-tools": {
+      "catalogue": "hcl",
+      "repo": "MichaHoffmann/tree-sitter-hcl",
+      "commit": "64ad62785d442eb4d45df3a1764962dafd5bc98b",
+      "abi": 14,
+      "generate": true,
+      "licence": "Apache-2.0",
+      "licence_basis": "catalogue",
+      "flags": [
+        "grammar-differs:tree-sitter-grammars/tree-sitter-hcl"
+      ]
+    },
+    "hlsl": {
+      "catalogue": "hlsl",
+      "repo": "theHamsta/tree-sitter-hlsl",
+      "commit": "bab9111922d53d43668fabb61869bec51bbcb915",
+      "abi": 14,
+      "generate": false,
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": [
+        "grammar-differs:tree-sitter-grammars/tree-sitter-hlsl"
+      ]
+    },
+    "jenkinsfile": {
+      "catalogue": "groovy",
+      "repo": "Decodetalkers/tree-sitter-groovy",
+      "commit": "a6cf8f80dd3d5246398ad4011c2e2caf995ee17f",
+      "abi": 14,
+      "generate": false,
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": [
+        "grammar-differs:murtaza64/tree-sitter-groovy"
+      ]
+    },
+    "jsonnet": {
+      "catalogue": "jsonnet",
+      "repo": "sourcegraph/tree-sitter-jsonnet",
+      "commit": "ddd075f1939aed8147b7aa67f042eda3fce22790",
+      "abi": 14,
+      "generate": false,
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": []
+    },
+    "julia": {
+      "catalogue": "julia",
+      "repo": "tree-sitter/tree-sitter-julia",
+      "commit": "e0f9dcd180fdcfcfa8d79a3531e11d99e79321d3",
+      "abi": 14,
+      "generate": true,
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": [
+        "grammar-differs:tree-sitter-grammars/tree-sitter-julia"
+      ]
+    },
+    "justfile": {
+      "catalogue": "just",
+      "repo": "casey/tree-sitter-just",
+      "commit": "5685543a6e64f66335e25518c9ae8ffa1dae3d01",
+      "abi": 14,
+      "generate": true,
+      "licence": "Apache-2.0",
+      "licence_basis": "catalogue",
+      "flags": [
+        "grammar-differs:IndianBoy42/tree-sitter-just"
+      ]
+    },
+    "kcl": {
+      "catalogue": "kcl",
+      "repo": "kcl-lang/tree-sitter-kcl",
+      "commit": "6a5cc921928660cd6756cd6e0d636d9e24ea348e",
+      "abi": 14,
+      "generate": true,
+      "licence": "Apache-2.0",
+      "licence_basis": "catalogue",
+      "flags": []
+    },
+    "latex": {
+      "catalogue": "latex",
+      "repo": "latex-lsp/tree-sitter-latex",
+      "commit": "fa8df448fc2c0192a8c2f8cfc97de53cb2b4ecb9",
+      "abi": 14,
+      "generate": true,
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": []
+    },
+    "less": {
+      "catalogue": "less",
+      "repo": "rhino1998/tree-sitter-less",
+      "commit": "2bd739e106a3485bca210cf7b6d25ba09fd10dff",
+      "abi": 14,
+      "generate": true,
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": [
+        "grammar-differs:jimliang/tree-sitter-less"
+      ]
+    },
+    "luau": {
+      "catalogue": "luau",
+      "repo": "tree-sitter-grammars/tree-sitter-luau",
+      "commit": "a8914d6c1fc5131f8e1c13f769fa704c9f5eb02f",
+      "abi": 14,
+      "generate": false,
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": []
+    },
+    "mojo": {
+      "catalogue": "mojo",
+      "repo": "HerringtonDarkholme/tree-sitter-mojo",
+      "commit": "99fe918e69f087f910ef3b11eba31eb0d7e54edf",
+      "abi": 14,
+      "generate": false,
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": [
+        "grammar-differs:none"
+      ]
+    },
+    "nginx": {
+      "catalogue": "nginx",
+      "repo": "opa-oz/tree-sitter-nginx",
+      "commit": "7cdf006ed1addef698fc680ae31721950f85e5e9",
+      "abi": 14,
+      "generate": true,
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": []
+    },
+    "nim": {
+      "catalogue": "nim",
+      "repo": "aMOPel/tree-sitter-nim",
+      "commit": "4900b68ead86049b67c4f7dfc4a805f170a7970e",
+      "abi": 14,
+      "generate": false,
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": [
+        "grammar-differs:alaviss/tree-sitter-nim"
+      ]
+    },
+    "nix": {
+      "catalogue": "nix",
+      "repo": "nix-community/tree-sitter-nix",
+      "commit": "5a64e75fc1ee54f9e14e3a23918e057d43b2de2b",
+      "abi": 14,
+      "generate": false,
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": []
+    },
+    "nushell": {
+      "catalogue": "nushell",
+      "repo": "nushell/tree-sitter-nu",
+      "commit": "64613ef22f4116862d7997939c8d1794ceb1f856",
+      "abi": 14,
+      "generate": true,
+      "c_symbol": "nu",
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": []
+    },
+    "objective-c": {
+      "catalogue": "objc",
+      "repo": "tree-sitter-grammars/tree-sitter-objc",
+      "commit": "181a81b8f23a2d593e7ab4259981f50122909fda",
+      "abi": 14,
+      "generate": false,
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": []
+    },
+    "ocaml": {
+      "catalogue": "ocaml",
+      "repo": "tree-sitter/tree-sitter-ocaml",
+      "commit": "a4ce49a6c17e88e7ca8350cfb666749d9a5c6630",
+      "abi": 14,
+      "generate": true,
+      "directory": "grammars/ocaml",
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": []
+    },
+    "odin": {
+      "catalogue": "odin",
+      "repo": "tree-sitter-grammars/tree-sitter-odin",
+      "commit": "d2ca8efb4487e156a60d5bd6db2598b872629403",
+      "abi": 14,
+      "generate": false,
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": []
+    },
+    "pascal": {
+      "catalogue": "pascal",
+      "repo": "Isopod/tree-sitter-pascal",
+      "commit": "042119eca2e18a60e56317fb06ee3ba5c32cb447",
+      "abi": 14,
+      "generate": false,
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": []
+    },
+    "perl": {
+      "catalogue": "perl",
+      "repo": "tree-sitter-perl/tree-sitter-perl",
+      "commit": "aa5600c8df1eb9ed111db72e20c741dd73ec336a",
+      "abi": 14,
+      "generate": false,
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": []
+    },
+    "pkl": {
+      "catalogue": "pkl",
+      "repo": "apple/tree-sitter-pkl",
+      "commit": "65f4483b9e8a5960a4d8948421ef3a8992013517",
+      "abi": 14,
+      "generate": true,
+      "licence": "Apache-2.0",
+      "licence_basis": "catalogue",
+      "flags": []
+    },
+    "prisma": {
+      "catalogue": "prisma",
+      "repo": "LumaKernel/tree-sitter-prisma",
+      "commit": "f1c30d82a5bf0b70ce33ef431f4acd7fd69968a3",
+      "abi": 14,
+      "generate": false,
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": [
+        "grammar-differs:victorhqc/tree-sitter-prisma"
+      ]
+    },
+    "prolog": {
+      "catalogue": "prolog",
+      "repo": "Rukiza/tree-sitter-prolog",
+      "commit": "c246cf2bf36590a3cb4de380205376d3c46208e8",
+      "abi": 14,
+      "generate": false,
+      "licence": "ISC",
+      "licence_basis": "catalogue",
+      "flags": [
+        "grammar-differs:foxyseta/tree-sitter-prolog"
+      ]
+    },
+    "purescript": {
+      "catalogue": "purescript",
+      "repo": "postsolar/tree-sitter-purescript",
+      "commit": "f541f95ffd6852fbbe88636317c613285bc105af",
+      "abi": 14,
+      "generate": true,
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": []
+    },
+    "r": {
+      "catalogue": "r",
+      "repo": "r-lib/tree-sitter-r",
+      "commit": "58a22794466c0fc15b0d3b40531db751593721e8",
+      "abi": 14,
+      "generate": false,
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": []
+    },
+    "rego": {
+      "catalogue": "rego",
+      "repo": "FallenAngel97/tree-sitter-rego",
+      "commit": "da2a1f63cd877efb05d56de61fe516e90012b9a7",
+      "abi": 14,
+      "generate": true,
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": []
+    },
+    "scala": {
+      "catalogue": "scala",
+      "repo": "tree-sitter/tree-sitter-scala",
+      "commit": "db390f312a54b04b13790e1767bfac32665c17ac",
+      "abi": 14,
+      "generate": true,
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": []
+    },
+    "scheme-racket": {
+      "catalogue": "scheme",
+      "repo": "6cdh/tree-sitter-scheme",
+      "commit": "c6cb7c7d7a04b3f5d999c28e2e9c0c31b2d50ece",
+      "abi": 14,
+      "generate": false,
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": []
+    },
+    "scss": {
+      "catalogue": "scss",
+      "repo": "tree-sitter-grammars/tree-sitter-scss",
+      "commit": "2ef6d42e3ad7a8208900f9346f4529806ae0f9f9",
+      "abi": 14,
+      "generate": false,
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": []
+    },
+    "solidity": {
+      "catalogue": "solidity",
+      "repo": "JoranHonig/tree-sitter-solidity",
+      "commit": "048fe686cb1fde267243739b8bdbec8fc3a55272",
+      "abi": 14,
+      "generate": true,
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": []
+    },
+    "svelte": {
+      "catalogue": "svelte",
+      "repo": "Himujjal/tree-sitter-svelte",
+      "commit": "60ea1d673a1a3eeeb597e098d9ada9ed0c79ef4b",
+      "abi": 14,
+      "generate": false,
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": [
+        "grammar-differs:tree-sitter-grammars/tree-sitter-svelte"
+      ]
+    },
+    "tcl": {
+      "catalogue": "tcl",
+      "repo": "lewis6991/tree-sitter-tcl",
+      "commit": "850a72ab6436e06645b33b11cfa60cbdb04b1f01",
+      "abi": 14,
+      "generate": true,
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": [
+        "grammar-differs:tree-sitter-grammars/tree-sitter-tcl"
+      ]
+    },
+    "templ": {
+      "catalogue": "templ",
+      "repo": "vrischmann/tree-sitter-templ",
+      "commit": "94d40865c15ebbaff9ed11dde5d6490b0f5de092",
+      "abi": 14,
+      "generate": true,
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": []
+    },
+    "terragrunt": {
+      "catalogue": "hcl",
+      "repo": "MichaHoffmann/tree-sitter-hcl",
+      "commit": "64ad62785d442eb4d45df3a1764962dafd5bc98b",
+      "abi": 14,
+      "generate": true,
+      "licence": "Apache-2.0",
+      "licence_basis": "catalogue",
+      "flags": [
+        "grammar-differs:tree-sitter-grammars/tree-sitter-hcl"
+      ]
+    },
+    "thrift": {
+      "catalogue": "thrift",
+      "repo": "tree-sitter-grammars/tree-sitter-thrift",
+      "commit": "68fd0d80943a828d9e6f49c58a74be1e9ca142cf",
+      "abi": 14,
+      "generate": false,
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": [
+        "grammar-differs:duskmoon314/tree-sitter-thrift"
+      ]
+    },
+    "tiltfile": {
+      "catalogue": "starlark",
+      "repo": "tree-sitter-grammars/tree-sitter-starlark",
+      "commit": "a453dbf3ba433db0e5ec621a38a7e59d72e4dc69",
+      "abi": 14,
+      "generate": false,
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": []
+    },
+    "typst": {
+      "catalogue": "typst",
+      "repo": "uben0/tree-sitter-typst",
+      "commit": "46cf4ded12ee974a70bf8457263b67ad7ee0379d",
+      "abi": 14,
+      "generate": false,
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": []
+    },
+    "vba": {
+      "catalogue": "",
+      "repo": "harumiWeb/tree-sitter-vba",
+      "commit": "",
+      "abi": 0,
+      "generate": false,
+      "licence": "",
+      "licence_basis": "",
+      "flags": [
+        "not-in-catalogue",
+        "unlicensed"
+      ]
+    },
+    "vbnet": {
+      "catalogue": "vb",
+      "repo": "CodeAnt-AI/tree-sitter-vb-dotnet",
+      "commit": "cfca210ce8fdcb5245bd9cd5c47ce0a21a8488d5",
+      "abi": 14,
+      "generate": true,
+      "c_symbol": "vb_dotnet",
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": [
+        "grammar-differs:govindbanura/tree-sitter-vbnet"
+      ]
+    },
+    "verilog": {
+      "catalogue": "verilog",
+      "repo": "tree-sitter/tree-sitter-verilog",
+      "commit": "227d277b6a1a5e2bf818d6206935722a7503de08",
+      "abi": 14,
+      "generate": false,
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": [
+        "grammar-differs:gmlarumbe/tree-sitter-systemverilog"
+      ]
+    },
+    "vhdl": {
+      "catalogue": "vhdl",
+      "repo": "alemuller/tree-sitter-vhdl",
+      "commit": "a3b2d84990527c7f8f4ae219c332c00c33d2d8e5",
+      "abi": 14,
+      "generate": false,
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": [
+        "grammar-differs:jpt13653903/tree-sitter-vhdl"
+      ]
+    },
+    "vimscript": {
+      "catalogue": "vim",
+      "repo": "tree-sitter-grammars/tree-sitter-vim",
+      "commit": "039c8d0aa1deae00ddeb0374dd70bcc0ec56938d",
+      "abi": 14,
+      "generate": true,
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": []
+    },
+    "vue": {
+      "catalogue": "vue",
+      "repo": "tree-sitter-grammars/tree-sitter-vue",
+      "commit": "ce8011a414fdf8091f4e4071752efc376f4afb08",
+      "abi": 14,
+      "generate": true,
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": []
+    },
+    "wgsl": {
+      "catalogue": "wgsl",
+      "repo": "szebniok/tree-sitter-wgsl",
+      "commit": "40259f3c77ea856841a4e0c4c807705f3e4a2b65",
+      "abi": 14,
+      "generate": false,
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": []
+    },
+    "zig": {
+      "catalogue": "zig",
+      "repo": "maxxnino/tree-sitter-zig",
+      "commit": "a80a6e9be81b33b182ce6305ae4ea28e29211bd5",
+      "abi": 14,
+      "generate": false,
+      "licence": "MIT",
+      "licence_basis": "catalogue",
+      "flags": [
+        "grammar-differs:tree-sitter-grammars/tree-sitter-zig"
+      ]
+    }
+  }
+}

@@ -1,0 +1,66 @@
+# A small stand-in for github-linguist's lib/linguist/heuristics.yml (MIT,
+# Copyright (c) 2017 GitHub, Inc.): real rules for .h, .m and .pl, and a
+# rule pair no RE2 pattern can express (.zz), for internal/langbench's tests.
+---
+disambiguations:
+- extensions: ['.h']
+  rules:
+  - language: Objective-C
+    named_pattern: objectivec
+  - language: C++
+    named_pattern: cpp
+  - language: C
+- extensions: ['.m']
+  rules:
+  - language: Objective-C
+    named_pattern: objectivec
+  - language: Mercury
+    pattern: ':- module'
+  - language: MATLAB
+    pattern: '^\s*%'
+  - language: MATLAB
+    pattern:
+    - '^[ \t]*function[ \t]+(?:\[[^\]\r\n]*\][ \t]*=[ \t]*|[A-Za-z]\w*[ \t]*=[ \t]*)?[A-Za-z]\w*[ \t]*\('
+    - '^[ \t]*classdef[ \t]+(?:\([^\r\n)]*\)[ \t]*)?[A-Za-z]\w*'
+- extensions: ['.pl']
+  rules:
+  - language: Prolog
+    pattern: '^[^#]*:-'
+  - language: Perl
+    and:
+      - negative_pattern: '^\s*use\s+v6\b'
+      - named_pattern: perl
+  - language: Raku
+    named_pattern: raku
+- extensions: ['.rb', '.rbw']
+  rules:
+  - language: Ruby
+    pattern: '^\s*require\b'
+- extensions: ['.zz']
+  rules:
+  - language: Zed
+    pattern: 'foo(?=bar)'
+  - language: Zed
+    pattern:
+    - 'baz(?!qux)'
+    - '^zed\b'
+  - language: [Zed, Zap]
+    and:
+    - pattern: '\bzap\b'
+    - negative_pattern: '(?<=x)y'
+  - language: Zed
+    pattern: '^ok\b'
+- extensions: ['.nomatch']
+  rules:
+  - language: Text
+named_patterns:
+  cpp:
+  - '^\s*#\s*include <(cstdint|string|vector|map|list|array|bitset|queue|stack|forward_list|unordered_map|unordered_set|(i|o|io)stream)>'
+  - '^\s*template\s*<'
+  - 'std::\w+'
+  objectivec: '^\s*(@(interface|class|protocol|property|end|synchronised|selector|implementation)\b|#import\s+.+\.h[">])'
+  perl:
+  - '\buse\s+(?:strict\b|v?5\b)'
+  - '^\s*use\s+(?:constant|overload)\b'
+  - '^\s*package\s+[^\W\d]\w*(?:::\w+)*\s*(?:[;{]|\sv?\d)'
+  raku: '^\s*(?:use\s+v6\b|\bmodule\b|\b(?:my\s+)?class\b)'
