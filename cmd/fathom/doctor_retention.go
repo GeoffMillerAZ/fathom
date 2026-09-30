@@ -4,7 +4,8 @@ package main
 // (docs/design/responsible-tenant.md §11.3, §12.1; RT-135).
 //
 // hook_budget: each hook invocation's wall time against its deadline, per
-// channel (hook-latency.jsonl, written by the hook guard's end), the
+// channel (hook-latency.jsonl, written by the hook guard's end, with the
+// invocation's CPU time beside it where the platform reports it: EW-29), the
 // minutes the shared breaker held hooks off, the edits served while it was
 // open (the guard feature degrades silently then, so they are counted),
 // and harness kills — an edit-hook invocation whose `seen` beat's id
@@ -30,7 +31,8 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
 
-// hookLatencyRow is one hook invocation's wall time.
+// hookLatencyRow is one hook invocation's wall time, and its CPU time when
+// the platform reports it (EW-29).
 type hookLatencyRow struct {
 	At       time.Time `json:"at"`
 	Channel  string    `json:"channel"`
@@ -40,6 +42,14 @@ type hookLatencyRow struct {
 	// beat the invocation emitted: a `seen` whose id never reaches this
 	// log is an invocation that never finished — a harness kill.
 	Inv string `json:"inv,omitempty"`
+	// CPUMS is the invocation's CPU time (user+sys, this process plus its
+	// reaped children) between the guard's begin and end (EW-29), beside the
+	// wall time MS: a slow hook with a small CPUMS waited, one with a
+	// CPUMS near MS worked. A pointer with omitempty: absent when the CPU
+	// could not be read at both ends (law 3) and in rows written before the
+	// field existed, never a fabricated 0. It can exceed MS — the Go runtime
+	// is multi-threaded.
+	CPUMS *int64 `json:"cpu_ms,omitempty"`
 }
 
 // hookLatencyRotateBytes bounds hook-latency.jsonl (one generation kept).
@@ -54,8 +64,10 @@ func hookLatencyPath() string {
 	return filepath.Join(filepath.Dir(p), "hook-latency.jsonl")
 }
 
-// recordHookLatency appends one row. Best-effort, like every beat.
-func recordHookLatency(channel, inv string, wall, budget time.Duration, at time.Time) {
+// recordHookLatency appends one row. Best-effort, like every beat. cpu is
+// the invocation's CPU time (EW-29), recorded only when cpuKnown: an
+// unreadable CPU leaves cpu_ms absent, never 0.
+func recordHookLatency(channel, inv string, wall, budget time.Duration, at time.Time, cpu time.Duration, cpuKnown bool) {
 	path := hookLatencyPath()
 	if path == "" {
 		return
@@ -64,7 +76,12 @@ func recordHookLatency(channel, inv string, wall, budget time.Duration, at time.
 		return
 	}
 	_ = dlog.RotateIfNeeded(path, hookLatencyRotateBytes)
-	b, err := json.Marshal(hookLatencyRow{At: at.UTC(), Channel: channel, MS: wall.Milliseconds(), BudgetMS: budget.Milliseconds(), Inv: inv})
+	row := hookLatencyRow{At: at.UTC(), Channel: channel, MS: wall.Milliseconds(), BudgetMS: budget.Milliseconds(), Inv: inv}
+	if cpuKnown && cpu >= 0 {
+		ms := cpu.Milliseconds()
+		row.CPUMS = &ms
+	}
+	b, err := json.Marshal(row)
 	if err != nil {
 		return
 	}
@@ -323,15 +340,49 @@ func hookP99s(rows []hookLatencyRow) (chans []string, p99, budget map[string]int
 	return chans, p99, budget, n
 }
 
-// hookLatencySummary renders "channel p99 1.9s/4.0s (n=…)" per channel.
+// hookP50s is each channel's median wall and median CPU time (EW-29) over
+// the rows that carry cpu_ms — the wall median is taken on those same rows,
+// so the two compare like for like — and how many rows that is. A channel
+// with no such row is absent from the maps.
+func hookP50s(rows []hookLatencyRow) (wall, cpu map[string]int64, timed map[string]int) {
+	wallBy, cpuBy := map[string][]int64{}, map[string][]int64{}
+	for _, r := range rows {
+		if r.CPUMS != nil {
+			wallBy[r.Channel] = append(wallBy[r.Channel], r.MS)
+			cpuBy[r.Channel] = append(cpuBy[r.Channel], *r.CPUMS)
+		}
+	}
+	wall, cpu, timed = map[string]int64{}, map[string]int64{}, map[string]int{}
+	median := func(v []int64) int64 {
+		sort.Slice(v, func(i, j int) bool { return v[i] < v[j] })
+		return v[(len(v)*50+99)/100-1]
+	}
+	for c, w := range wallBy {
+		timed[c] = len(w)
+		wall[c], cpu[c] = median(w), median(cpuBy[c])
+	}
+	return wall, cpu, timed
+}
+
+// hookLatencySummary renders "channel p99 1.9s/4.0s (n=…)" per channel, and
+// beside n the median wall and CPU time where rows carry cpu_ms (EW-29) —
+// "(n=…, p50 wall 940ms cpu 120ms)", or "… of 40 timed" when only some do.
 func hookLatencySummary(rows []hookLatencyRow) string {
 	chans, p99, budget, n := hookP99s(rows)
+	p50Wall, p50CPU, timed := hookP50s(rows)
 	parts := make([]string, 0, len(chans))
 	for _, c := range chans {
+		cpu := ""
+		if k := timed[c]; k > 0 {
+			cpu = fmt.Sprintf(", p50 wall %dms cpu %dms", p50Wall[c], p50CPU[c])
+			if k != n[c] {
+				cpu += fmt.Sprintf(" of %d timed", k)
+			}
+		}
 		if budget[c] > 0 {
-			parts = append(parts, fmt.Sprintf("%s p99 %.1fs/%.1fs (n=%d)", c, float64(p99[c])/1000, float64(budget[c])/1000, n[c]))
+			parts = append(parts, fmt.Sprintf("%s p99 %.1fs/%.1fs (n=%d%s)", c, float64(p99[c])/1000, float64(budget[c])/1000, n[c], cpu))
 		} else {
-			parts = append(parts, fmt.Sprintf("%s p99 %.1fs (n=%d, no deadline)", c, float64(p99[c])/1000, n[c]))
+			parts = append(parts, fmt.Sprintf("%s p99 %.1fs (n=%d, no deadline%s)", c, float64(p99[c])/1000, n[c], cpu))
 		}
 	}
 	return strings.Join(parts, " · ")

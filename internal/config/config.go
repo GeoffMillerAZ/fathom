@@ -259,6 +259,22 @@ type Console struct {
 	ConserveMaxFiles int `toml:"conserve_max_files"`
 }
 
+// Work configures the work-intelligence pages (schema.cue #Work; WI-2w,
+// docs/design/work-intelligence.md §3 U1): the CI summary files /work
+// reads CI minutes from.
+type Work struct {
+	CISummaries []CISummary
+}
+
+// CISummary is one `[[work.ci_summaries]]` entry: a JUnit XML file or a
+// workflow-run JSON export (Path, repo-relative or absolute) and the
+// commit it built. Commit may be "" only when the file names its own (a
+// workflow run's head_sha); a JUnit file without one is refused by name.
+type CISummary struct {
+	Path   string
+	Commit string
+}
+
 // SurfacePattern is one `[[surface.pattern]]` entry (ADR-044 §2.1): a
 // repo-declared capability-inventory source `internal/analysis/inventory.
 // Extract` cannot derive from a built-in kind (api/json/route/env/rpc/
@@ -306,6 +322,7 @@ type Config struct {
 	Hooks          Hooks
 	Surface        Surface
 	Console        Console
+	Work           Work
 	// Zones is `[zones]` (WI-1): zone name to its repo-relative path
 	// globs. A layer that sets it replaces the whole table.
 	Zones map[string][]string

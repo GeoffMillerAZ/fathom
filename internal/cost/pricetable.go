@@ -66,6 +66,14 @@ func loadPriceTable(path string) (PriceTable, error) {
 	return pt, nil
 }
 
+// LoadPriceTable is loadPriceTable for a caller outside this package
+// (PE-16w: the console prices sessions with it, as
+// LoadPriceTable(PriceTablePath())). The same contract: a missing file is
+// an empty table, a file that does not parse is a named error.
+func LoadPriceTable(path string) (PriceTable, error) {
+	return loadPriceTable(path)
+}
+
 // USD prices in/out/cache-read/cache-write token counts for model. priced
 // is false — and usd is always 0 — when model has no entry in the table,
 // so a caller can say "unpriced" instead of showing a $0.00 that looks

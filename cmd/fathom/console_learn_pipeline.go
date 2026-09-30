@@ -39,6 +39,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/console"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/ledgerroots"
 	"github.com/geoffmilleraz/fathom/internal/metrics"
 )
 
@@ -253,7 +254,7 @@ func readLearnFacts(cr *consoleRequest, m observatoryModel, choice learnChoice) 
 		f.RulesServed = console.Value[int]{State: out.traffic.Total.State, Reason: out.traffic.Total.Reason, Source: out.traffic.Total.Source}
 	}
 
-	g := cachedVerifyLedgerFor(verifyLedgerPath(), svc, row.Path)
+	g := cachedVerifyLedgerFor(verifyLedgerPath(), svc, row.Path, m.ledgerRoots())
 	f.GateRuns, f.GatePlans, f.GateVerified, f.GateClaimed = g.runs, g.plans, g.verified, g.claimed
 
 	// The switches: `fathom capabilities` for the project's root, by the
@@ -576,7 +577,7 @@ var verifyLedgerCache struct {
 // (its size and mtime) and the project's plans directory (its mtime: a plan
 // added or removed) are unchanged and both can still be read; a failed read
 // is never kept, and one that fails now is reported now.
-func cachedVerifyLedgerFor(path, svc, root string) learnGate {
+func cachedVerifyLedgerFor(path, svc, root string, roots ledgerroots.Roots) learnGate {
 	key := ""
 	if path != "" && root != "" && learnReadable(path) && learnReadable(filepath.Join(root, "docs", "plans")) {
 		li, lerr := os.Stat(path)
@@ -586,13 +587,13 @@ func cachedVerifyLedgerFor(path, svc, root string) learnGate {
 			plansSig = fmt.Sprintf("%d", pi.ModTime().UnixNano())
 		}
 		if lerr == nil && (perr == nil || errors.Is(perr, os.ErrNotExist)) {
-			key = fmt.Sprintf("%s\x00%d\x00%d\x00%s\x00%s\x00%s", path, li.Size(), li.ModTime().UnixNano(), svc, root, plansSig)
+			key = fmt.Sprintf("%s\x00%d\x00%d\x00%s\x00%s\x00%s\x00%s", path, li.Size(), li.ModTime().UnixNano(), svc, root, plansSig, roots.Key())
 			if g, ok := learnGateCache.get(key, time.Now()); ok {
 				return g
 			}
 		}
 	}
-	g := readVerifyLedgerFor(path, svc, root)
+	g := readVerifyLedgerFor(path, svc, root, roots)
 	if key != "" && g.runs.State != console.StateError {
 		learnGateCache.put(key, g, time.Time{})
 	}
@@ -621,17 +622,19 @@ func learnReadable(p string) bool {
 // the recorded root, README excluded): the verify runs recorded on them,
 // how many of them the gate has run on, and, over each plan's latest run,
 // its claimed rows and the verified ones. A plan is its repository-relative
-// path, whichever checkout ran it — the root itself, a worktree, the
-// pre-push gate's fresh clone — and however the row named it (relative to
-// its repo_root, or absolute), so one plan is counted once. A row naming
+// path however the row named it (relative to its repo_root, or absolute),
+// so one plan is counted once; only rows recorded at a registered root
+// are read (PE-24: a worktree's or a push clone's run is ignored, named). A row naming
 // anything else — a scratch plan under /tmp, a plan since deleted — is not
 // a run on this project's plans: it is named in the denominator as left
 // out, never counted as a plan gated.
 //
 // No ledger is absent (the gate has not run on this machine), an unreadable
 // ledger or plans directory an error; a readable ledger with no run on the
-// project's plans is a measured zero.
-func readVerifyLedgerFor(path, svc, root string) learnGate {
+// project's plans is a measured zero. Only rows under roots' registered
+// service roots are read (PE-24): a worktree's or a scratch clone's run is
+// not the project's, and the rows ignored are named in the denominator.
+func readVerifyLedgerFor(path, svc, root string, roots ledgerroots.Roots) learnGate {
 	source := "verify ledger " + path
 	absent := func(reason string) learnGate {
 		a := console.Absent[int](reason).WithSource(source)
@@ -655,6 +658,7 @@ func readVerifyLedgerFor(path, svc, root string) learnGate {
 	if rerr != nil {
 		return errored("verify ledger unreadable: " + rerr.Error())
 	}
+	rows, ignored := verifyLedgerRegisteredRows(rows, roots)
 	if root == "" {
 		return absent("no corpus root is recorded for " + svc + ", so the gate's runs cannot be matched to its plans")
 	}
@@ -698,8 +702,11 @@ func readVerifyLedgerFor(path, svc, root string) learnGate {
 		}
 		left = fmt.Sprintf("; %s %s no current plan (a scratch copy, a deleted plan) and are not counted", fmtThousands(elsewhere), verb)
 	}
+	if p := ignored.Phrase(verifyLedgerNoun); p != "" {
+		left += "; registered roots only: " + p
+	}
 	g := learnGate{
-		runs: console.Measured(runs, source).WithDenominator(fmt.Sprintf("gate runs on %s's %s in %s, from any checkout, of %s for %s in the ledger%s",
+		runs: console.Measured(runs, source).WithDenominator(fmt.Sprintf("gate runs on %s's %s in %s, from its registered root, of %s for %s in the ledger%s",
 			svc, plural(len(plans), "current plan"), plansDir, plural(forSvc, "row"), svc, left)),
 		plans: console.Measured(len(byPlan), source).WithDenominator(fmt.Sprintf("of the %s in %s the gate has run on", plural(len(plans), "plan"), plansDir)),
 	}

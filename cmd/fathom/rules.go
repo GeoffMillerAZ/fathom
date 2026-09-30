@@ -23,6 +23,8 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/rulereplay"
 	"github.com/geoffmilleraz/fathom/internal/guardspec"
+	"github.com/geoffmilleraz/fathom/internal/guardspec/guardsarif"
+	"github.com/geoffmilleraz/fathom/internal/verify"
 )
 
 // cmdRules dispatches to the rules verb named by args[0].
@@ -45,14 +47,25 @@ func cmdRules(args []string, stdout, stderr io.Writer) int {
 // cmdRulesReplay evaluates --rules' layer_rules (read once) against every
 // commit in --since's range under --root, reporting which commits would
 // have failed the gate and, of those, which were a new regression at that
-// commit versus one merely inherited from its parent (VB-16).
+// commit versus one merely inherited from its parent (VB-16). --format sarif
+// (SR-47w, F-29) emits the violations the range introduced as SARIF 2.1.0.
 func cmdRulesReplay(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("rules replay", stderr)
 	root := fs.String("root", ".", "git repository to replay")
 	rulesPath := fs.String("rules", ".fathom/guard.cue", "layer-rule file to evaluate, read once (relative to --root unless absolute)")
 	since := fs.String("since", "", "a git ref (replay ref..HEAD) or a bare positive integer N (replay the last N commits)")
 	jsonOut := fs.Bool("json", false, "emit the report as JSON instead of a table")
+	format := fs.String("format", "", "output format: table (default) | json | sarif — SARIF 2.1.0 of the violations the range introduced, one result per violation at the commit that introduced it (an inherited repeat is not a second finding), one rule per rule id, located at the offending package (SR-47w); overrides --json")
 	if err := fs.Parse(args); err != nil {
+		return 1
+	}
+	if *jsonOut && *format == "" {
+		*format = "json"
+	}
+	switch *format {
+	case "", "table", "json", "sarif":
+	default:
+		fmt.Fprintf(stderr, "error: --format %q: want table, json or sarif\n", *format)
 		return 1
 	}
 	if *since == "" {
@@ -80,14 +93,17 @@ func cmdRulesReplay(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
-	if *jsonOut {
+	switch *format {
+	case "json":
 		if err := report.WriteJSON(stdout); err != nil {
 			fmt.Fprintf(stderr, "error: encoding report: %v\n", err)
 			return 1
 		}
-		return 0
+	case "sarif":
+		_, _ = stdout.Write(verify.RenderSARIF("fathom rules replay", guardsarif.GuardVerdictsSARIF(report.IntroducedViolations())))
+	default:
+		report.WriteTable(stdout)
 	}
-	report.WriteTable(stdout)
 	return 0
 }
 

@@ -7,6 +7,7 @@ import (
 
 	readmanifest "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/read-manifest"
 	"github.com/geoffmilleraz/fathom/internal/intent"
+	"github.com/geoffmilleraz/fathom/internal/ledgerroots"
 	"github.com/geoffmilleraz/fathom/internal/readcoverage"
 )
 
@@ -19,7 +20,9 @@ import (
 // reader to skim past the ones that matter (O23's lesson, and T6's).
 
 // checkIntent reports what the corpus contains and what could not be read.
-func checkIntent(root string) doctorCheck {
+// Its clock and baseline are read from the intent ledger's rows under
+// roots' registered service roots (PE-25).
+func checkIntent(root string, roots ledgerroots.Roots) doctorCheck {
 	const name = "intent"
 
 	// The capability is a real switch: off silences the reporting channels
@@ -121,7 +124,10 @@ func checkIntent(root string) doctorCheck {
 	if c.DecisionsHome != "" {
 		parts = append(parts, "decisions: "+c.DecisionsHome)
 	}
-	ledger := intent.ReadLedger()
+	ledger, ignored := intent.ReadRegisteredLedger(roots)
+	if p := doctorIgnoredNote(ignored, intentLedgerNoun); p != "" {
+		parts = append(parts, p)
+	}
 	if clock, ok := intent.Clock(ledger, root); ok {
 		parts = append(parts, "clock started "+clock.At)
 	} else {
@@ -165,8 +171,10 @@ func checkIntent(root string) doctorCheck {
 
 // checkUnprovenClaims reports the honest ledger. It reads the newest
 // verify-ledger row per plan — never a fresh verify, which costs ~70
-// seconds here and would make doctor unusable.
-func checkUnprovenClaims(root, baseURL, service string) doctorCheck {
+// seconds here and would make doctor unusable — under roots' registered
+// service roots (PE-24; doctorLedgerRoots decides, and asks nothing inside
+// a hook).
+func checkUnprovenClaims(root, baseURL, service string, roots ledgerroots.Roots) doctorCheck {
 	const name = "unproven_claims"
 
 	if capabilityOffAt(root, "intent-corpus") {
@@ -210,7 +218,8 @@ func checkUnprovenClaims(root, baseURL, service string) doctorCheck {
 	// count as a total. U12 and U13 need no index, so they are wired in;
 	// only U4's index probe is skipped, and that is NAMED below rather than
 	// dropped.
-	rows, note := planRowStates(root)
+	rows, note := planRowStates(root, roots)
+	ledger, ledgerIgnored := intent.ReadRegisteredLedger(roots) // PE-25
 	contracts, contractNote, contractCoverage := planRowContracts(root)
 	guardNotes, guardScopes, guardWhy := repoGuardNotes(root)
 	a := intent.RunAudit(intent.AuditInput{
@@ -223,7 +232,7 @@ func checkUnprovenClaims(root, baseURL, service string) doctorCheck {
 		GuardScopes:      guardScopes,
 		GuardNote:        guardWhy,
 		ExtraCoverage:    []readmanifest.Manifest{contractCoverage},
-		Ledger:           intent.ReadLedger(),
+		Ledger:           ledger,
 		Now:              time.Now().UTC(),
 		// No SymbolOracle: the doctor row must not pay an index probe. U4
 		// is reported as not computed here, and `fathom intent audit`
@@ -235,6 +244,9 @@ func checkUnprovenClaims(root, baseURL, service string) doctorCheck {
 	staleNote := ""
 	if n := countMeasuredStale(rows); n > 0 {
 		staleNote = fmt.Sprintf("; measured-stale %d (a stale daemon's reading — coverage gap, not failure)", n)
+	}
+	if p := doctorIgnoredNote(ledgerIgnored, intentLedgerNoun); p != "" {
+		staleNote += "; " + p
 	}
 
 	if len(a.Unproven) == 0 {
@@ -276,6 +288,20 @@ func checkUnprovenClaims(root, baseURL, service string) doctorCheck {
 		Reason: reason,
 		Remedy: "fathom intent audit  # every claim with its remedy, and every source it could not compute",
 	}
+}
+
+// doctorIgnoredNote is a doctor row's short name for what the
+// registered-roots rule left out: the rows ignored, or that the roots were
+// not read (every row then counts). A row stays scannable, so the unread
+// reason itself is left to the daemon rows above.
+func doctorIgnoredNote(ign ledgerroots.Ignored, noun string) string {
+	switch {
+	case ign.Rows > 0:
+		return ign.Phrase(noun)
+	case ign.RegistryNote != "":
+		return "every " + noun + " read (the registered roots were not read)"
+	}
+	return ""
 }
 
 // countMeasuredStale is the number of plan-row states markMeasuredStale

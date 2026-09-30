@@ -285,8 +285,18 @@ apply), split into sections and written per file only when a file's units change
 `docs: N unit(s) elided` line; a document over 2 MiB or unreadable is a `warning: docs:` line, and
 a pass that could not run (a store with no doc index, a service with no local root) says why. It
 never fails the ingest. `--json` carries the same as `docs: {files, changed, unchanged, deleted,
-units_written, units_elided?, elided?: [{path, heading, bytes}], failures?: [{path, err}],
+units_written, links_written, units_elided?, elided?: [{path, heading, bytes}], failures?: [{path, err}],
 skipped?}`.
+
+**Doc-to-code links (KR-6).** Each unit the ingest (re)indexes is linked in the same pass: a
+backticked span (or a lone token on a fenced-code line) that names exactly one indexed symbol, or a
+repository path the index holds, becomes a `doc_links` row carrying the target's content hash at
+link time (a contract key links once SG-2 registers keys). A span that resolves to nothing, or to
+more than one symbol, is not linked. A unit the gate leaves unchanged is not re-linked, so its
+link-time hashes stay what `staleness_report`'s `doc_link_drift` (KR-7) compares the live index
+against; a link the doc no longer makes, or a removed section's, is closed, never deleted. The
+summary adds `docs: N doc-to-code link(s) held by the re-indexed units`. The first ingest by a
+binary with the link pass re-indexes every document once, to link units written before it existed.
 
 **Typed-pass toolchain ceiling (RT-106).** The Go typed pass's toolchain children (`go list`
 and the compiles it forks) run at background priority (`nice -n 10`, plus `taskpolicy -b` on
@@ -887,6 +897,18 @@ of kind `no_cycles`/`cross_service_direction`) is refused, naming it. `FATHOM_EN
 `[guards] enforce = false` in `.fathom/config.toml` / `~/.fathom/config.toml`, turns every
 enforced rule in this repo back to advisory.
 
+**The one-key verdict (SR-48, SR-48w, F-31).** When the same served rule tops a file's
+obligations two resolved turns running, the next turn asks for a verdict and names the rule's
+claim id. The user answers with their next prompt: exactly `c` (corroborate) or `r` (refute),
+optionally followed by a colon and a note (`r: does not apply to generated code`). The `prompt-hook` records
+only that exact shape, and only while the session has an ask pending (4 h); a word that starts
+with c or r, a key followed by prose with no colon (`r u sure?`), or any other prose, is an
+ordinary prompt. The following edit-hook turn writes the answer
+through the same core as `fathom claim corroborate|refute` into the store the daemon records
+(`--url`), attributed to the session: the claim event, the rule-outcome row, and for a refute
+the status flip and the closed validity window. It says so in one line, once; if the store
+cannot be written it names the `fathom claim` command that records it by hand.
+
 The anchored-memory block (AM-6) is gone: SR-13 (surface reckoning F-45, ADR-053)
 removed anchored memory — 0 memories in any repository.
 
@@ -1038,9 +1060,12 @@ fathom claim corroborate  --store <path> --service <id> --claim <claim-id> --not
 fathom claim show         <claim-id> [--service <id>] [--json] [--store <path> | --url <daemon>]
 fathom claim list         [--layer <name>] [--service <id>] [--status current|fresh|stale|contradicted|superseded|refuted|all] [--page N] [--json] [--store <path> | --url <daemon>]
 fathom claim effectiveness [--service <id>] [--class ignored|contested|never_triggered|unclassified|effective|all] [--page N] [--json] [--store <path> | --url <daemon>]
+fathom claim learn        [--service <id>] [--store <path>] [--apply] [--json]
 ```
 
 `effectiveness` (GL-18, U4) prints, per governing rule (a current claim in a governing layer, not retired), the counts the edit hook's rule-outcome log (`~/.fathom/rule-outcomes.jsonl`, GL-10) holds over the last 30 days (served over 90), each with its n, and the class each falls in (design `governance-learning.md` §5) with the change the evidence proposes — move an ignored rule to a hook or rewrite it, prune or re-scope a never-triggered one. Every proposal is a proposal: nothing is applied. No log, or one that cannot be read, classifies nothing and says why; a rate needs 20 serves, below which the row shows its n; and never triggered is not judged until the log reaches back 90 days. `--json` is exactly `/rules`' section.
+
+`learn` (GL-13, design `governance-learning.md` §6) promotes a candidate claim to active and retires an active one under the thresholds in the service's `.fathom/learning.cue` (the binary's defaults for any field it omits, GL-12): promotion at 3 corroborations from 2 distinct sessions with no refute over 30 days; retirement at 3 refutes outnumbering corroborations, or no serve for 180 days. It reads the rule-outcome log the hooks and verdicts write (GL-10) and the service's governing claims (current, in a governing layer), and prints each decision with the signals behind it. The default is a dry run; `--apply` persists the lifecycle, and a retirement closes the claim's validity window at that instant (its status is unchanged, and no row is ever deleted). Every applied decision is announced with its signals (GL-14): one `announced:` line each, and one intent-ledger row each, which the session attention line counts (`learning N`) and `fathom intent audit` lists; a dry run announces nothing. A never-triggered retirement is held, and named, while the log does not reach back over its whole window. The store defaults to the one the daemon records, and every project with claims is read unless `--service` names one. The owner runs it: no daemon pass or background job runs it.
 
 `show` (OC-30) prints one claim whole — statement, citation, scope, tier, status,
 provenance and every verdict recorded against it — and `--json` is exactly the
@@ -1160,7 +1185,8 @@ What governs a file, as the obligations tool serves it to an agent — and, with
 `--explain`, why (OC-32).
 
 ```sh
-fathom obligations --service <id> [--file <path>] [--layer rules|claims|all] [--explain] [--json] [--store <path> | --url <daemon>]
+fathom obligations --service <id> [--file <path>] [--layer rules|claims|all] [--root <dir>] [--explain] [--json] [--store <path> | --url <daemon>]
+fathom obligations promote <layer-rule-id> [--root <dir>] [--write]
 ```
 
 Without `--explain` it prints the served list: the raw-fallback rows the tool prepends
@@ -1194,6 +1220,28 @@ rule. `class` is GL-11's proposal (`ignored`, `effective`, `contested`,
 on. The rule's `claim_id` (what `fathom claim refute|corroborate --claim` takes) is in
 this output; the MCP `obligations` payload an agent reads carries neither the id nor the
 record — the id rides only on the edit hook's own request (origin `edit-hook`).
+
+After the compiled rules the verb lists the `.fathom/guard.cue` layer rules that govern
+the path (SR-45w, F-26), each marked **checkable** or **not checkable**: checkable means
+its kind has a deterministic pre-write check (`import_direction`, `boundary`), so it can
+become an `enforce: true` guard the PreToolUse hook denies on; `no_cycles` and
+`cross_service_direction` need the whole import or fleet graph and stay advisory, with
+that reason shown. A rule governs a file when the file's directory is its `from`
+(`import_direction`), outside its `allow` list (`boundary`), inside its `scope`
+(`no_cycles`), or the service is its `from_service`; the root-scope question lists every
+rule. `--root` names the checkout whose guard file is read (default: the service's
+recorded root, when it is a directory on this machine; otherwise the answer says it did
+not read one). `--json` carries it as `layer_rules` (`{source, rules: [{id, kind,
+sentence, severity, enforce, checkable, why?}], note?}`). `--explain --json` is unchanged
+(the console's `/explain` section).
+
+`fathom obligations promote <id>` compiles a checkable layer rule to an `enforce: true`
+guard (`guardspec.GuardFromCheckableRule`). The default is a dry run that prints the
+stanza as it would read; `--write` adds the one `enforce: true` line to that rule in
+`<root>/.fathom/guard.cue` and changes no other byte, and the result must load back with
+only that rule changed or nothing is written. A not-checkable rule is refused with its
+reason, and a rule already enforced is a named no-op. `FATHOM_ENFORCE=off` or `[guards]
+enforce = false` still turns every enforced rule back to advisory.
 
 ---
 
@@ -1565,14 +1613,17 @@ now), `scratch_daemons` (leaked unmanaged daemons — exactly the set `fathom da
 a `memory_limit` / `gc_hint` conflict; env overrides disclosed). Two more rows judge what
 the hooks and the disk cost (RT-135, §11.3, §12.1), also WARN, never FAIL: `hook_budget`
 (each channel's p99 wall time against its deadline over 24 h, from
-`~/.fathom/hook-latency.jsonl`, which every hook invocation appends to; minutes the
+`~/.fathom/hook-latency.jsonl`, which every hook invocation appends to, with its CPU time
+as `cpu_ms` where the platform reports it (EW-29) — a channel whose rows carry it also
+names `p50 wall … cpu …` beside n, `of N timed` when only some do, so a slow hook reads
+as work or as waiting; minutes the
 shared breaker held hooks off; edits served while it was open, whose guards were skipped;
 harness kills — an edit-hook `seen` beat never answered — read from the beats of the whole
 24 h across `hooks.jsonl` and `hooks.jsonl.1`; when the retained beats end sooner, the row
 names the span they cover) and `disk_retention` (`fathom
 gc`'s dry run: reclaimable bytes by class and the largest classes, what it only reports,
 and the home volume's free space; WARN above 512 MiB reclaimable). `fathom resources`'
-hooks line reads the same latency log.
+hooks line reads the same latency log, the CPU medians included.
 
 Exit `0` every check passed; `1` at least one check failed; `2` doctor itself could not
 run (bad flags, unresolvable `--path`) — an operational error, not a verdict on the
@@ -2049,7 +2100,7 @@ holding a quarantined service (RT-51).
 ### `gc` — disk retention by class
 
 ```sh
-fathom gc [--apply] [--json] [--workspace <dir>] [--call-log <path>]
+fathom gc [--apply] [--json] [--workspace <dir>] [--call-log <path>] [--url <daemon>]
 ```
 
 A dry run by default (RT-125, design §12.1): it lists what each class would reclaim —
@@ -2059,6 +2110,7 @@ and changes nothing — until `--apply`. Evidence is archived, never deleted:
 |---|---|
 | `call-log` | the serving daemon's writer rotates the live log at 64 MiB (renames only: live → `<log>.1`, the previous `.1` → `<log>.<ts>.pending`) and gzips pending generations in the background; gc never renames a live log — over 64 MiB it is reported, and `--apply` rolls up and gzips pending generations to `<log>.<ts>.jsonl.gz` under the lock the daemon's pass shares. Archives (including `metrics rotate`'s `<log>.archive-<date>`) are never deleted, and past 1 GiB they are reported |
 | `ledgers` | the verify, session and intent ledgers and `decisions.jsonl` over 32 MiB are reported and kept whole — their readers read only the live file, so rotating them would hide history |
+| `ledger-unregistered` | `fathom gc` only (PE-29, design progress-and-economics §11): rows of the verify and intent ledgers whose `repo_root` is not a registered service root of the daemon at `--url` (scratch clones, worktrees, test runs; PE-23's rule). The dry run counts rows and bytes per unregistered root; `--apply` moves them, byte-identical, to `$FATHOM_HOME/archive/<ledger>-unregistered-<YYYY-MM-DD>.jsonl` (appended when the day's file exists), updates `archive/SHA256SUMS` and adds one row to the table in `archive/README.md`. Rows are moved, never deleted, and a row appended during the swap stays live; restore with `cat <archive> >> <ledger>`. A row naming no root stays live. When the registered roots cannot be read, or the registry lists none, nothing is planned and one line says why. Neither the daemon's daily pass nor `doctor` plans this class |
 | `session-stamps` | older than 30 days: deleted |
 | `daemon-records` | `~/.fathom/daemon/<id>/record.json` (and legacy `~/.fathom/daemons`) whose pid is not running: deleted (the directory and its lifecycle ledger stay) |
 | `diag` | captures past 10 / 200 MiB per daemon: deleted, oldest first |
@@ -2815,7 +2867,7 @@ silently reported as zero rows.
 ```
 
 `refactor status --migration "<kind> <from> -> <to>" [--store DB] [--services
-a,b,c] [--json]` (CX-13, `docs/design/change-and-compliance.md` §4) is a
+a,b,c] [--conserve-since <ref>] [--json]` (CX-13, `docs/design/change-and-compliance.md` §4) is a
 second, separate mode: the FLEET-WIDE migration view for a declaration in
 `ParseMigration`'s own five-kind form (`symbol|import|route|config|pkg`),
 across every service the store knows (or the ones `--services` names).
@@ -2829,12 +2881,46 @@ into a named `degraded` entry rather than aborting the whole call. Purely
 read-only: it computes and reports, it never rewrites a site (the Moderne
 non-goal, refused as CX-X4).
 
+Each remaining site names its **blocker** beside it (CX-11w,
+`review.MigrationBlockers`): `generated` when its file has a
+`// Code generated ... DO NOT EDIT.` header (or another language's marker) or the
+repository's root `.gitattributes` marks it `linguist-generated` (nested
+`.gitattributes` are not read), and `governed` — citing the rule id, with a warn
+rule shown as `<id> (warn)` — when a layer rule in the repository's
+`.fathom/guard.cue` forbids the file's package the migration's `to`: an
+`import_direction` rule with the file in `from` and the `to` in its `to`, or a
+`boundary` rule with the file off its `allow` list and the `to` in `guarded`. The
+`to` is a directory: an import migration's as written or relative to the go.mod
+module, a symbol migration's the directory of each indexed declaration of that
+name; a route, config or pkg migration names none, so only generated code blocks
+it. A governed file that is also generated reports the rule.
+
+Each repository with a site or a `gone:` row also prints its **burn-down and
+completion verdict** (CX-12w, `review.MigrationBurnDown`). The rows are the
+repository's own `docs/plans/*.md` rows whose `gone:` contract names `from`
+(`callers` or `pattern` for a symbol, `import` or `pattern` for an import,
+`module` or `pattern` for a pkg, `pattern` otherwise), each proven when the
+verify ledger's newest reading of it says so and unproven when it says otherwise or
+never read it. The series is those rows' verdicts over time from the same ledger
+(`console.ProofHistory`): at each reading where one changed, how many are claimed
+and how many proven. Only readings recorded at a read repository's own root count
+(PE-24): a push clone's or a scratch clone's are ignored, and `ledger_ignored` (text:
+`verify ledger: …`) names how many. A repository is complete only when every row is proven and
+conservation is established with no unexcused loss: `--conserve-since <ref>` runs
+`fathom conserve --since <ref>` in each such repository, and without it none is
+complete — the reason says conservation was not run, never that it passed.
+
 ```json
 {"schema":"fathom.refactor.status.migration/v1",
  "migration":{"kind":"symbol","from":"OldFunc","to":"NewFunc"},
+ "conserve_since":"origin/main",
  "repositories":[{"repository":"svc-a",
-   "remaining":[{"file":"caller/user.go","line":5,"tier":"typed"}],
-   "done":[]}]}
+   "remaining":[{"file":"caller/user.go","line":5,"tier":"typed",
+     "blocker":{"reason":"governed","rule":"caller-not-newpkg"}}],
+   "done":[],
+   "burn_down":{"rows":[{"plan":"docs/plans/mig.md","id":"MG-1","verdict":"proven"}],
+     "series":[{"at":"2026-09-22T10:00:00Z","claimed":1,"proven":1,"remaining":0}],
+     "complete":false,"reason":"…","conservation":"not run"}}]}
 ```
 
 ---
@@ -2933,12 +3019,22 @@ so the verdict is never inferred from reach alone.
 | `--repo` | current directory | git checkout to re-derive from |
 | `--run-tests` | `false` | `certification` kind only: actually run the named test instead of reporting `unverified (no run)` |
 
+### `rules` — layer rules as tests, and as history (VB-14, VB-16, SR-47w)
+
+```
+fathom rules gen-test [--root DIR] [--out DIR]
+fathom rules replay --since <ref|N> [--root DIR] [--rules FILE] [--format table|json|sarif] [--json]
+```
+
+`gen-test` compiles `.fathom/guard.cue`'s `layer_rules` to a Go test file. `replay` evaluates today's rules against every commit in a range (`ref..HEAD`, or the last N commits) and reports which commits would have failed the gate and which violations each one introduced versus inherited. `--format table` is the default; `--json` (or `--format json`) is the whole report. `--format sarif` emits SARIF 2.1.0 through the shared emitter (`guardsarif`, `verify.RenderSARIF`): one result per violation at the commit that introduced it (an inherited repeat is not a second finding), one rule per rule id, `error` or `warning` from the rule's severity, located at the offending package, the commit named in the message. `--format` wins over `--json`.
+
 ### `tests coverage` / `tests select` — coverage, mutation, and test selection
 
 Full walkthrough: [docs/use-cases/test-coverage.md](use-cases/test-coverage.md).
 
 ```sh
 fathom tests coverage --profile [layer=]<file> [--profile <more>...] \
+  [--foreign <format>=<file>...] \
   [--service <id>] [--store <path>] [--diff <ref>] [--mutation <report>] [--json]
 
 fathom tests select --since <ref> [--safe] [--profile [layer=]<file>...] \
@@ -2951,6 +3047,17 @@ per layer, plus `ANY`), or `--diff <ref>` to narrow to changed symbols with
 no covering test in any layer. `--mutation <report>` (VB-34) adds a
 `MUTATION` score column (0.0-1.0) from a joined mutation-testing report — see
 "Mutation" in the use-case doc for the two accepted report shapes.
+
+`--foreign <format>=<file>` (repeatable; TQ-14w) joins a non-Go coverage report to the same
+indexed symbols, in the formats `fathom coverage ingest --format` accepts (`lcov`, `cobertura`,
+`jacoco`, `coverage-py`, `istanbul`, `llvm-cov`), read under the same 256 MiB cap. A file whose
+function symbols all carry line ranges is joined per symbol; a file whose symbols do not (or has
+none) is joined per file and printed under `FILE-LEVEL`, never guessed at symbol granularity; a
+report file no indexed file matches is named under `UNMATCHED`. `--profile` is optional when
+`--foreign` is given. `--json` carries both views under `foreign` (`by_symbol` and `by_file`, each
+row's `level` naming its granularity, plus `inputs` and `unmatched_files`) beside the Go view.
+`--diff` and `--mutation` narrow and score the Go `--profile` view only, so `--diff` is refused
+with `--foreign`.
 
 `tests select --since <ref>` leads with the certifying-first selection (T4: TQ-15w,
 TQ-16w, SR-50): the minimal set of tests that re-proves every LIVE certificate the diff
@@ -2973,7 +3080,8 @@ measured predicted catch-rate — never a fabricated one.
 
 | Flag (`tests coverage`) | Default | Description |
 |---|---|---|
-| `--profile` | (required, repeatable) | Go cover profile, as `[layer=]path`; a bare path defaults to layer `unit` |
+| `--profile` | (required unless `--foreign`; repeatable) | Go cover profile, as `[layer=]path`; a bare path defaults to layer `unit` |
+| `--foreign` | (none, repeatable) | non-Go coverage report as `<format>=<file>`, joined to symbols by line range where the language has them, else per file |
 | `--service` | resolved from cwd | Service ID |
 | `--store` | `<repo>/workspace/db/fathom.sqlite` | store path |
 | `--diff` | `""` | git ref: narrow to changed symbols with no covering test in any layer |
@@ -3379,6 +3487,7 @@ unreadable store) render on the same shell with the reason and the remedy.
 | `/statusz` | Daemon status (JSON schema 3 unchanged) |
 | `/plans` (`?svc=`, `?page=`) | Every plan across the fleet (or one repository) with a proof bar counted from the gate's verdicts, the claimed-but-unproven gap as the headline (a named lower bound while rows sit measured-stale), and the claimed-vs-proven trend of the scope's current plans once the verify ledger holds 14 days of their rows; carries `fathom plans status --service S --json` per repository and `fathom plans history [--service S] --json` for the trend |
 | `/progress` (`?svc=`, `?plan=`, `?wave=`, `?goal=`, `?agent=`, `?from=`, `?to=`) | Read-only views over computed state (PE-4..PE-12): goal gauges per scope bet, weighted progress by fleet/repository/plan/wave (`plans status --weighted`), the derived kanban (Open, Claimed-unproven, Proven, Refused or deferred; cards link to the row and its failing criterion), the frontier (`plans next --eligible-only`), the burn-up with a projected finish (a 14-day linear fit with its interval, withheld under 7 days), proof regressions with the commit that changed them, time-to-proof, claim honesty per agent identity (never per person), and the proof heatmap with streak and proved-today counts — all projected from the verify ledger's schema-3 proof history |
+| `/work` (`?svc=`) | Work intelligence for one repository (WI-8..WI-13): the model and harness scorecard (descriptive unless G2 admits a comparison), the interest rate and cost per zone with the first-attempt split, the friction map with proposed remedies, and hotspots. Zones come from `[zones]` in the repository's `.fathom/config.toml`; CI minutes come only from the CI summary files `[[work.ci_summaries]]` names — each a JUnit XML file (its `time` totals) or a workflow-run JSON export, by a repo-relative or absolute `path`, with the `commit` it built (a workflow run's own `head_sha` wins; a JUnit file must name one) — and a file the page could not read or parse is named in the cost-per-zone panel |
 | `/plans/{svc}/{plan}` | The plan's proof bar, its rows by state on a read-only board (each card names its contract kind; a card opens the row's evidence in a drawer, and is a link without JavaScript), every row as a table, and the burn-up; carries `plans status`, `plans next` and `plans history` for the plan |
 | `/plans/{svc}/{plan}/rows/{id}` | One row's evidence: contract, verdict criterion by criterion, the call path from its test to its symbol (or the line its lexical oracle matched), and its history from the plan's commits; `?format=fragment` is the drawer's body; carries `fathom verify --row ID --json` |
 | `/certifications` (`?svc=`) | Targets by their best certificate's state (heatmap and table), each repository's line, and the gap list with remedies; carries `certify status` (and, for one repository, `certify gaps`), each chip naming the daemon's `--store` |

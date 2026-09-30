@@ -21,6 +21,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/console"
 	"github.com/geoffmilleraz/fathom/internal/gitro"
+	"github.com/geoffmilleraz/fathom/internal/ledgerroots"
 	"github.com/geoffmilleraz/fathom/internal/verify"
 )
 
@@ -193,24 +194,35 @@ func rowRevisions(service, id string, revs []planRevisionText) []console.RowRevi
 }
 
 // ledgerRuns reads the verify ledger as projection rows; readErr names a
-// ledger that exists and could not be read (absence is zero rows).
-func ledgerRuns() (runs []console.LedgerRun, path, readErr string) {
+// ledger that exists and could not be read (absence is zero rows). Only
+// rows under roots' registered service roots become runs (PE-24); ignored
+// is what the filter left out, for the reader to name.
+func ledgerRuns(roots ledgerroots.Roots) (runs []console.LedgerRun, path, readErr string, ignored ledgerroots.Ignored) {
 	path = verifyLedgerPath()
 	rows, err := readVerifyLedgerNamed()
 	if err != "" {
-		return nil, path, err
+		return nil, path, err, ignored
 	}
+	rows, ignored = verifyLedgerRegisteredRows(rows, roots)
 	for _, r := range rows {
-		at, perr := time.Parse(time.RFC3339, r.At)
-		if perr != nil {
-			continue
+		if run, ok := ledgerRunOf(r); ok {
+			runs = append(runs, run)
 		}
-		runs = append(runs, console.LedgerRun{
-			At: at, Service: r.Service, Plan: r.Plan, Commit: r.Commit,
-			Total: r.Total, Claimed: r.Claimed, Verified: r.Verified, Failing: r.Failing, Origin: r.Origin,
-		})
 	}
-	return runs, path, ""
+	return runs, path, "", ignored
+}
+
+// ledgerRunOf is one ledger row as a projection row; false when its time
+// does not parse.
+func ledgerRunOf(r verifyLedgerRow) (console.LedgerRun, bool) {
+	at, err := time.Parse(time.RFC3339, r.At)
+	if err != nil {
+		return console.LedgerRun{}, false
+	}
+	return console.LedgerRun{
+		At: at, Service: r.Service, Plan: r.Plan, Commit: r.Commit,
+		Total: r.Total, Claimed: r.Claimed, Verified: r.Verified, Failing: r.Failing, Origin: r.Origin,
+	}, true
 }
 
 // readVerifyLedgerNamed is readVerifyLedger that tells an absent ledger (no

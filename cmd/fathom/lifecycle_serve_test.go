@@ -22,8 +22,9 @@ import (
 
 	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
 	"github.com/geoffmilleraz/fathom/internal/console"
-	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/dlog"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
+	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
 
@@ -202,46 +203,80 @@ type storeErr struct {
 func (e storeErr) Error() string { return e.msg }
 func (e storeErr) Code() int     { return e.code }
 
-// distressFleet is a FleetBackend whose store reads fail.
-type distressFleet struct{ err error }
-
-func (f distressFleet) Services() []string                            { return []string{"svc"} }
-func (f distressFleet) SymbolsFor(string) []core.SymbolNode           { return nil }
-func (f distressFleet) ObservationsFor(string) []core.Observation     { return nil }
-func (f distressFleet) UnsupportedLanguagesFor(string) map[string]int { return nil }
-func (f distressFleet) SymbolAggregatesFor(string) (int, []core.SourceKind, bool) {
-	return 0, nil, false
-}
-func (f distressFleet) SymbolAggregatesErr(string) (int, []core.SourceKind, error) {
-	return 0, nil, f.err
+// distressStore is a store whose derived-table reads fail with err, under a
+// real client and the daemon's own fleet adapter.
+type distressStore struct {
+	*store.MemoryStore
+	err error
 }
 
-// TestDiskFullIsDistressNeverZero (RT-41, §2.1, I38): SQLITE_FULL or
-// SQLITE_IOERR from the store is store distress — named, ingest and writes
-// refused — and a failed read renders a named error, never symbol_count 0.
+func (s distressStore) ListServiceIDs(context.Context) ([]string, error) { return []string{"svc"}, nil }
+func (s distressStore) ServiceSummary(context.Context, string) (store.ServiceSummary, bool, error) {
+	return store.ServiceSummary{}, false, s.err
+}
+func (s distressStore) SourceKindCounts(context.Context, string) ([]store.SourceKindCount, error) {
+	return nil, s.err
+}
+
+// distressAdapter is the daemon's fleet adapter (client.FleetAdapter) over a
+// store whose reads fail with err, its log captured in the returned buffer.
+func distressAdapter(err error) (*fleetAdapter, *strings.Builder) {
+	var buf strings.Builder
+	fa := newTestFleetAdapter(newCountingConnector(), distressStore{MemoryStore: store.NewMemoryStore(), err: err})
+	fa.SetLog(dlog.New(&buf, dlog.LevelDebug, time.Now))
+	return fa, &buf
+}
+
+// TestDiskFullIsDistressNeverZero (RT-41, §2.1, I38) pins the product path:
+// a SQLITE_FULL or SQLITE_IOERR read through the fleet adapter that
+// list_services calls is store distress — named in the error and the daemon
+// log, recorded so tenancy.StoreDistressNow refuses ingest and writes — and
+// the tool renders that error, never symbol_count 0.
 func TestDiskFullIsDistressNeverZero(t *testing.T) {
 	resetLifecycleModes(t)
+	ctx := context.Background()
 	full := storeErr{13, "database or disk is full (13)"}
-	if got := classifyStoreError(full); !strings.Contains(got, "store distress") || !strings.Contains(got, "SQLITE_FULL") {
-		t.Fatalf("classifyStoreError(FULL) = %q", got)
+
+	// SQLITE_FULL: both fleet reads name distress and record it.
+	fa, logged := distressAdapter(full)
+	if _, err := fa.StoredSummary(ctx, "svc"); err == nil || !strings.Contains(err.Error(), "store distress") || !strings.Contains(err.Error(), "SQLITE_FULL") {
+		t.Fatalf("StoredSummary(FULL) = %v, want a named store-distress error", err)
+	}
+	if !strings.Contains(logged.String(), "store distress") {
+		t.Fatalf("the fleet log does not name the distress: %q", logged.String())
 	}
 	if why, on := tenancy.StoreDistressNow(time.Now()); !on || !strings.Contains(why, "SQLITE_FULL") {
 		t.Fatalf("SQLITE_FULL did not set distress: %v %q", on, why)
 	}
 	tenancy.ResetLifecycleStateForTest()
-	if got := classifyStoreError(fmt.Errorf("wrapped: %w", storeErr{266, "disk I/O error (266)"})); !strings.Contains(got, "SQLITE_IOERR") {
-		t.Fatalf("classifyStoreError(IOERR_READ) = %q", got)
+	if n, _, err := fa.SymbolAggregatesErr("svc"); err == nil || n != 0 || !strings.Contains(err.Error(), "SQLITE_FULL") {
+		t.Fatalf("SymbolAggregatesErr(FULL) = %d, %v, want a named error", n, err)
 	}
+
+	// SQLITE_IOERR (a wrapped extended code) is distress too.
 	tenancy.ResetLifecycleStateForTest()
-	if got := classifyStoreError(errors.New("SQLITE_CANTOPEN")); strings.Contains(got, "distress") {
-		t.Fatalf("CANTOPEN is not distress: %q", got)
+	fa, _ = distressAdapter(fmt.Errorf("wrapped: %w", storeErr{266, "disk I/O error (266)"}))
+	if _, err := fa.StoredSummary(ctx, "svc"); err == nil || !strings.Contains(err.Error(), "SQLITE_IOERR") {
+		t.Fatalf("StoredSummary(IOERR_READ) = %v, want SQLITE_IOERR named", err)
+	}
+	if why, on := tenancy.StoreDistressNow(time.Now()); !on || !strings.Contains(why, "SQLITE_IOERR") {
+		t.Fatalf("SQLITE_IOERR did not set distress: %v %q", on, why)
+	}
+
+	// CANTOPEN is a transient lock, not distress.
+	tenancy.ResetLifecycleStateForTest()
+	fa, _ = distressAdapter(errors.New("SQLITE_CANTOPEN"))
+	if _, err := fa.StoredSummary(ctx, "svc"); err == nil || strings.Contains(err.Error(), "distress") {
+		t.Fatalf("CANTOPEN is not distress: %v", err)
 	}
 	if _, on := tenancy.StoreDistressNow(time.Now()); on {
 		t.Fatal("a non-distress error set distress")
 	}
 
-	// A failed read is a named error, never a zero count.
-	srv := mcp.NewServerWithFleetAndLogger(nil, distressFleet{err: full}, nil)
+	// A failed read through list_services is a named error, never a zero count.
+	tenancy.ResetLifecycleStateForTest()
+	fa, _ = distressAdapter(full)
+	srv := mcp.NewServerWithFleetAndLogger(nil, fa, nil)
 	resp, _ := srv.HandleRequest(context.Background(), []byte(`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"list_services","arguments":{}}}`))
 	body := string(resp)
 	if strings.Contains(body, `\"symbol_count\": 0`) || strings.Contains(body, `\"symbol_count\":0`) {

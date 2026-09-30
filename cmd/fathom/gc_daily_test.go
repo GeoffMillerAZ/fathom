@@ -24,11 +24,20 @@ func TestManagedDaemonRunsDailyGC(t *testing.T) {
 	gcTouch(t, cache, 10, old)
 	ledger := filepath.Join(home, ".fathom", "session-ledger.jsonl")
 	gcTouch(t, ledger, 40<<20, old)
+	// PE-29: a scratch root's verify row stays put — the daily pass passes
+	// no registered roots, so ledger-unregistered is never planned here.
+	verifyLedger := filepath.Join(home, ".fathom", "verify-ledger.jsonl")
+	scratchRow := luVerifyRow("/private/tmp/scratch-1", 1)
+	luAppend(t, verifyLedger, scratchRow)
 
 	var logs []string
 	logf := func(m string) { logs = append(logs, m) }
 	st := gcDailyState{started: now}
-	run := func(at time.Time) gcReport { return runGC(gcOptions{Home: home, TmpDir: tmp, Apply: true, Now: at}) }
+	var last gcReport
+	run := func(at time.Time) gcReport {
+		last = runGC(gcOptions{Home: home, TmpDir: tmp, Apply: true, Now: at})
+		return last
+	}
 
 	// The first 10 minutes: never.
 	if gcDailyTick(&st, now.Add(5*time.Minute), false, run, logf) {
@@ -52,6 +61,15 @@ func TestManagedDaemonRunsDailyGC(t *testing.T) {
 	}
 	if _, err := os.Stat(ledger); err != nil {
 		t.Fatalf("the daily gc touched a ledger (reported only): %v", err)
+	}
+	if items := luClassItems(last); len(items) != 0 {
+		t.Fatalf("the daily gc planned %s: %+v", gcClassLedgerUnregistered, items)
+	}
+	if b, err := os.ReadFile(verifyLedger); err != nil || string(b) != scratchRow {
+		t.Fatalf("the daily gc moved an unregistered-root row (%v)", err)
+	}
+	if _, err := os.Stat(filepath.Join(home, ".fathom", "archive")); !os.IsNotExist(err) {
+		t.Fatalf("the daily gc wrote an archive (%v)", err)
 	}
 	if len(logs) == 0 || !strings.Contains(logs[len(logs)-1], "gc (daily)") {
 		t.Fatalf("the daily run is not logged: %v", logs)

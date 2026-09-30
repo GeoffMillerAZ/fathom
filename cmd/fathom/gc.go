@@ -8,7 +8,10 @@ package main
 // never renaming a live log; and the verify, session and intent
 // ledgers and decisions.jsonl are reported, not rotated — their readers
 // read only the live file, so archiving them would hide history (I33, I38)
-// until those readers read archives too. What is deleted is what is not
+// until those readers read archives too. The one exception is owner-run:
+// ledger-unregistered (PE-29, gc_ledger_unregistered.go) moves rows whose
+// root the fleet never registered to ~/.fathom/archive, planned only when
+// cmdGC passes the registered roots. What is deleted is what is not
 // evidence: old session stamps, dead daemons' records, stale test temp
 // dirs, old scenario-bench worktrees and build binaries, and diagnostic
 // captures past their bound.
@@ -17,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
@@ -57,6 +61,14 @@ type gcOptions struct {
 	Apply     bool
 	Now       time.Time
 	Alive     func(pid int) bool // nil: signal 0
+	// LedgerRoots is the registered service roots the ledger-unregistered
+	// class (PE-29) reads. nil: the class is not planned at all — only
+	// cmdGC, the owner's verb, sets it; the daemon's daily pass and
+	// doctor's dry run never do.
+	LedgerRoots *gcLedgerRoots
+	// ledgerBeforeSwap (tests) runs between the class's read of a ledger
+	// and its swap, where a concurrent writer's append would land.
+	ledgerBeforeSwap func(ledger string)
 }
 
 // gcItem is one thing a class would reclaim or reports.
@@ -65,6 +77,8 @@ type gcItem struct {
 	Path   string `json:"path"`
 	Action string `json:"action"` // delete | archive | report
 	Bytes  int64  `json:"bytes"`
+	Rows   int    `json:"rows,omitempty"` // ledger-unregistered: the rows moved
+	Root   string `json:"root,omitempty"` // ledger-unregistered: the unregistered root
 	Reason string `json:"reason"`
 	Done   bool   `json:"done,omitempty"`
 	Error  string `json:"error,omitempty"`
@@ -123,6 +137,17 @@ func runGC(o gcOptions) gcReport {
 			if st, err := os.Stat(p); err == nil && st.Size() > gcLedgerRotateBytes {
 				add(gcItem{Class: "ledgers", Path: p, Action: "report", Bytes: st.Size(), Reason: "over 32 MiB; kept whole — its readers read only the live file, so an archive would hide history"})
 			}
+		}
+
+		// Unregistered-root ledger rows (PE-29): planned only when the
+		// owner's verb passed the registered roots; moved to archive/,
+		// never deleted (gc_ledger_unregistered.go).
+		if o.LedgerRoots != nil {
+			items, errs := ledgerUnregisteredClass(o.Home, *o.LedgerRoots, o.Now, o.Apply, o.ledgerBeforeSwap)
+			for _, it := range items {
+				add(it)
+			}
+			rep.Errors = append(rep.Errors, errs...)
 		}
 
 		// Session stamps older than 30 days.
@@ -199,6 +224,9 @@ func runGC(o gcOptions) gcReport {
 	archivePass := false
 	for i := range rep.Items {
 		it := &rep.Items[i]
+		if it.Class == gcClassLedgerUnregistered {
+			continue // moved, not reclaimed; applied with its plan above
+		}
 		if it.Action != "report" {
 			rep.Reclaimable[it.Class] += it.Bytes
 		}
@@ -348,6 +376,7 @@ func cmdGC(args []string, stdout, stderr io.Writer) int {
 	jsonOut := fs.Bool("json", false, "emit JSON")
 	workspace := fs.String("workspace", "", "the repository workspace/ to include (default: the enclosing repository's)")
 	callLogFlag := fs.String("call-log", "", "the call log (default: the daemon's recorded log, then [daemon].call_log, then "+defaultCallLogPath()+")")
+	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL (the registered service roots the ledger-unregistered class reads)")
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
@@ -360,7 +389,11 @@ func cmdGC(args []string, stdout, stderr io.Writer) int {
 			}
 		}
 	}
-	rep := runGC(gcOptions{Home: home, TmpDir: os.TempDir(), Workspace: ws, CallLog: resolveConsoleCallLog(*callLogFlag, "").Path, Apply: *apply})
+	// Only this verb passes the registered roots (PE-23's answer over the
+	// daemon's registry), so only the owner plans — and with --apply
+	// moves — ledger-unregistered (PE-29).
+	roots := gcLedgerRootsOf(registeredLedgerRoots(&http.Client{Timeout: 5 * time.Second}, *url))
+	rep := runGC(gcOptions{Home: home, TmpDir: os.TempDir(), Workspace: ws, CallLog: resolveConsoleCallLog(*callLogFlag, "").Path, Apply: *apply, LedgerRoots: roots})
 	if *jsonOut {
 		enc := json.NewEncoder(stdout)
 		enc.SetIndent("", "  ")

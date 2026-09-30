@@ -122,6 +122,15 @@ exampleConsole: #Config & {
 	console: conserve_max_files: 200
 }
 
+// The CI summary files /work reads CI minutes from (WI-2w): a JUnit file
+// names its commit, a workflow-run export may carry its own head_sha.
+exampleWork: #Config & {
+	work: ci_summaries: [
+		{path: "ci/junit.xml", commit: "0123abc"},
+		{path: "/abs/ci/runs.json"},
+	]
+}
+
 // Work-intelligence zones by path glob (WI-1).
 exampleZones: #Config & {
 	zones: {

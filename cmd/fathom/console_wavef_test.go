@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -77,9 +78,12 @@ func TestConsoleWaveF_PagesRenderTheirStates(t *testing.T) {
 	// The catches timeline: a failing verify-ledger row is a verify
 	// refusal; a kind filter keeps every lane's count; a kind with no
 	// instrument says why.
-	mustWrite(t, os.Getenv("FATHOM_VERIFY_LEDGER"), `{"schema_version":2,"at":"2026-09-24T10:00:00Z","repo_root":"/r","service":"payment-service","plan":"docs/plans/p.md","total":4,"claimed":3,"verified":2,"failing":1,"origin":"cli"}
+	// PE-24: the rows sit at payment-service's registered root, the only
+	// root a ledger reader counts.
+	payRoot := fixtureServiceRoot(t, f, "payment-service")
+	mustWrite(t, os.Getenv("FATHOM_VERIFY_LEDGER"), strings.ReplaceAll(`{"schema_version":2,"at":"2026-09-24T10:00:00Z","repo_root":"/r","service":"payment-service","plan":"docs/plans/p.md","total":4,"claimed":3,"verified":2,"failing":1,"origin":"cli"}
 {"schema_version":2,"at":"2026-09-24T11:00:00Z","repo_root":"/r","service":"payment-service","plan":"docs/plans/p.md","total":4,"claimed":3,"verified":3,"failing":0,"origin":"cli"}
-`)
+`, `"/r"`, strconv.Quote(payRoot)))
 	resetImpactReads()
 	_, _, impact = f.get(t, "/impact")
 	if !strings.Contains(impact, "docs/plans/p.md") || !strings.Contains(impact, "1 failing claimed row of 3 claimed rows (cli)") {

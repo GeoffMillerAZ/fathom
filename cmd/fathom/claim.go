@@ -33,7 +33,7 @@ import (
 // through the read-serving daemon.
 func cmdClaim(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
-		fmt.Fprintln(stderr, "error: claim requires a verb: add | refute | corroborate | show | list | effectiveness")
+		fmt.Fprintln(stderr, "error: claim requires a verb: add | refute | corroborate | show | list | effectiveness | learn")
 		printClaimUsage(stderr)
 		return 1
 	}
@@ -44,6 +44,8 @@ func cmdClaim(args []string, stdout, stderr io.Writer) int {
 		return cmdClaimList(args[1:], stdout, stderr)
 	case "effectiveness":
 		return cmdClaimEffectiveness(args[1:], stdout, stderr)
+	case "learn":
+		return cmdClaimLearn(args[1:], stdout, stderr)
 	case "add":
 		return cmdClaimAdd(args[1:], stdout, stderr)
 	case "refute":
@@ -51,7 +53,7 @@ func cmdClaim(args []string, stdout, stderr io.Writer) int {
 	case "corroborate":
 		return cmdClaimVerdict(args[1:], stdout, stderr, "corroborated", "")
 	default:
-		fmt.Fprintf(stderr, "error: unknown claim verb %q (want add | refute | corroborate | show | list | effectiveness)\n", args[0])
+		fmt.Fprintf(stderr, "error: unknown claim verb %q (want add | refute | corroborate | show | list | effectiveness | learn)\n", args[0])
 		printClaimUsage(stderr)
 		return 1
 	}
@@ -83,6 +85,7 @@ func printClaimUsage(w io.Writer) {
 	fmt.Fprintln(w, "  fathom claim show         <id> [--service S] [--json] [--store DB | --url U]")
 	fmt.Fprintln(w, "  fathom claim list         [--layer L] [--service S] [--status current|fresh|stale|contradicted|superseded|refuted|all] [--page N] [--json] [--store DB | --url U]")
 	fmt.Fprintln(w, "  fathom claim effectiveness [--service S] [--class ignored|contested|never_triggered|unclassified|effective|all] [--page N] [--json] [--store DB | --url U]")
+	fmt.Fprintln(w, "  fathom claim learn        [--service S] [--store DB] [--apply] [--json]")
 }
 
 // cmdClaimVerdict implements one triage verb. newStatus is the ClaimStatus to
@@ -132,17 +135,10 @@ func cmdClaimVerdict(args []string, stdout, stderr io.Writer, verdict string, ne
 
 	// The claim must actually exist for this service — a typo'd ID would
 	// otherwise silently append a dangling event nothing ever serves.
-	claims, err := st.ClaimsForService(ctx, *service, "")
+	found, err := claimExists(ctx, st, *service, *claimID)
 	if err != nil {
 		fmt.Fprintf(stderr, "error: load claims: %v\n", err)
 		return 1
-	}
-	found := false
-	for _, c := range claims {
-		if c.ClaimID == *claimID {
-			found = true
-			break
-		}
 	}
 	if !found {
 		fmt.Fprintf(stderr, "error: claim %q not found for service %q\n", *claimID, *service)
@@ -173,42 +169,12 @@ func cmdClaimVerdict(args []string, stdout, stderr io.Writer, verdict string, ne
 	// when the hook env carries one, else the literal "human:cli" — never
 	// "" (applyLearning's distinct-session promotion count could never
 	// attribute an unidentified event to anyone).
-	identity := claimVerdictIdentity()
-	ev := core.ClaimEvent{
-		ClaimID:    *claimID,
-		Verdict:    verdict,
-		Author:     *author,
-		Note:       *note,
-		At:         time.Now().UTC(),
-		AssertedBy: core.AssertedBy("claim-add", identity),
-	}
-	if err := st.AppendClaimEvent(ctx, ev); err != nil {
-		fmt.Fprintf(stderr, "error: append claim event: %v\n", err)
+	if err := recordClaimVerdict(ctx, st, claimVerdictInput{
+		Service: *service, ClaimID: *claimID, Verdict: verdict, NewStatus: newStatus,
+		Author: *author, Note: *note, Identity: claimVerdictIdentity(), At: time.Now().UTC(),
+	}); err != nil {
+		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
-	}
-	// GL-10 (docs/plans/governance-learning.md, design doc §5): a human
-	// verdict is one of the six event kinds the rule-effectiveness signal
-	// source records, feeding the SAME log the edit and PreToolUse hooks
-	// do — never a second, disconnected verdict channel. verdict is
-	// already exactly "refuted" or "corroborated" (this function's two
-	// callers pass those literals), matching ruleOutcomeRefuted/
-	// ruleOutcomeCorroborated by value.
-	recordRuleOutcome(*claimID, verdict, identity, "")
-
-	if newStatus != "" {
-		if err := st.SetClaimStatus(ctx, *service, *claimID, newStatus); err != nil {
-			fmt.Fprintf(stderr, "error: set claim status: %v\n", err)
-			return 1
-		}
-		// SU-19 (ADR-041 decision 7): refute is a terminal verdict — close
-		// the claim's bi-temporal validity window at the same instant its
-		// status flips to refuted. corroborate never reaches here
-		// (newStatus is "" for it — corroboration is provenance, never a
-		// status or validity change).
-		if err := st.SetClaimValidTo(ctx, *service, *claimID, ev.At); err != nil {
-			fmt.Fprintf(stderr, "error: close claim validity window: %v\n", err)
-			return 1
-		}
 	}
 
 	fmt.Fprintf(stdout, "claim:   %s\n", *claimID)
@@ -218,4 +184,76 @@ func cmdClaimVerdict(args []string, stdout, stderr io.Writer, verdict string, ne
 		fmt.Fprintf(stdout, "status:  %s\n", newStatus)
 	}
 	return 0
+}
+
+// claimExists reports whether claimID is one of service's claims.
+func claimExists(ctx context.Context, st store.Store, service, claimID string) (bool, error) {
+	claims, err := st.ClaimsForService(ctx, service, "")
+	if err != nil {
+		return false, err
+	}
+	for _, c := range claims {
+		if c.ClaimID == claimID {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// claimVerdictInput is one corroborate/refute verdict to record.
+// NewStatus is core.ClaimRefuted for a refute and "" for a corroborate
+// (corroboration never changes status or tier). Identity is the session
+// the verdict is attributed to (claimVerdictIdentity on the CLI, the
+// hook's own session id for a one-key answer).
+type claimVerdictInput struct {
+	Service, ClaimID, Verdict string
+	NewStatus                 core.ClaimStatus
+	Author, Note, Identity    string
+	At                        time.Time
+}
+
+// recordClaimVerdict is the verdict core `fathom claim refute|corroborate`
+// and the edit hook's one-key answer (SR-48w, askruleverdict.go) share:
+// refuse an unknown claim (no dangling event), append the ClaimEvent,
+// record the verdict in the GL-10 rule-outcome log, and for a refute flip
+// the status and close the validity window at the same instant (SU-19).
+func recordClaimVerdict(ctx context.Context, st store.Store, in claimVerdictInput) error {
+	found, err := claimExists(ctx, st, in.Service, in.ClaimID)
+	if err != nil {
+		return fmt.Errorf("load claims: %w", err)
+	}
+	if !found {
+		return fmt.Errorf("claim %q not found for service %q", in.ClaimID, in.Service)
+	}
+	ev := core.ClaimEvent{
+		ClaimID:    in.ClaimID,
+		Verdict:    in.Verdict,
+		Author:     in.Author,
+		Note:       in.Note,
+		At:         in.At.UTC(),
+		AssertedBy: core.AssertedBy("claim-add", in.Identity),
+	}
+	if err := st.AppendClaimEvent(ctx, ev); err != nil {
+		return fmt.Errorf("append claim event: %w", err)
+	}
+	// GL-10 (docs/plans/governance-learning.md, design doc §5): a human
+	// verdict is one of the six event kinds the rule-effectiveness signal
+	// source records, feeding the SAME log the edit and PreToolUse hooks
+	// do — never a second, disconnected verdict channel. Verdict is
+	// exactly "refuted" or "corroborated", matching ruleOutcomeRefuted/
+	// ruleOutcomeCorroborated by value.
+	recordRuleOutcome(in.ClaimID, in.Verdict, in.Identity, "")
+
+	if in.NewStatus != "" {
+		if err := st.SetClaimStatus(ctx, in.Service, in.ClaimID, in.NewStatus); err != nil {
+			return fmt.Errorf("set claim status: %w", err)
+		}
+		// SU-19 (ADR-041 decision 7): refute is a terminal verdict — close
+		// the claim's bi-temporal validity window at the same instant its
+		// status flips to refuted. corroborate never reaches here.
+		if err := st.SetClaimValidTo(ctx, in.Service, in.ClaimID, ev.At); err != nil {
+			return fmt.Errorf("close claim validity window: %w", err)
+		}
+	}
+	return nil
 }

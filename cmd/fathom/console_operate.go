@@ -250,7 +250,7 @@ func buildOperateProjection(d *consoleDeps, m observatoryModel, resolved console
 	} else if facts.Missing {
 		logErr = os.ErrNotExist
 	}
-	p.Flywheel = flywheelChecksFold(m.Impact, fold, logErr, now)
+	p.Flywheel = flywheelChecksFold(m.Impact, fold, logErr, now, m.ledgerRoots())
 	return p
 }
 

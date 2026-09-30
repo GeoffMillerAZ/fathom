@@ -173,7 +173,9 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 		// just consulted a guard stamp: that is the SAME edit's own
 		// --pre/--post pair, not a separate later turn (postEditMeta's own
 		// doc comment on skipRuleVerdict).
-		text, ok = withRuleVerdictAsk(sessionID, meta.service, meta.repoRelFile, meta.topRule, meta.topSrc, text, ok)
+		// SR-48w: the ask names the claim id, and an answered one-key
+		// reply pending for the session is written first.
+		text, ok = withRuleVerdictAsk(url, sessionID, meta.service, meta.repoRelFile, meta.topRule, meta.topSrc, meta.topClaimID, text, ok)
 		// SR-61 (F-27/U4): served/complied/violated per claim id, the SAME
 		// top-governing-rule turn-over-turn comparison SR-48 already reads
 		// above, generalized from rule text to the claim's stable id

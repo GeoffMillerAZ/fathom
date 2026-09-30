@@ -21,10 +21,10 @@ reports 20 units and the flywheel's continuity loop states keep or kill
 {bet: thread-bet, instrument: "fathom flywheel", threshold: "20 fresh-with-brief units (threadBetCheck), then the continuity loop states keep or kill", review: 2026-10-25}
 
 **G4. Ambient fathom closes.** Done when: `fathom plans status` shows
-`docs/plans/ambient-fathom.md` with 0 open and 0 claimed-unproven rows. Open (5 of 93 on
+`docs/plans/ambient-fathom.md` with 0 open and 0 claimed-unproven rows. Open (4 of 93 on
 2026-09-29, 0 claimed-unproven): SH-2 (the owned-keys ledger), SP-10 (the Scope panel's
-purge half), BA-6 (response-cost accounting, which lands with wave E's ship), RG-9 (the
-app-kit viz wiring row) and OP-1 (the A/B, G2). DO-3 and IR-3/4/5 (the assess lanes) are
+purge half), RG-9 (the app-kit viz wiring row) and OP-1 (the A/B, G2); BA-6 landed with
+wave E. DO-3 and IR-3/4/5 (the assess lanes) are
 designed (`docs/design/assess-lanes.md`, ADR-046) and proven 2026-09-25.
 {bet: ambient-closes, instrument: "fathom plans status", threshold: "docs/plans/ambient-fathom.md at 0 open and 0 claimed-unproven rows", review: 2026-10-25}
 
