@@ -1922,8 +1922,8 @@ tests being added) is what catches that, not a second reading of the prose.
   - **Expected:** the ledgers hold the fleet's registered repositories only, so burn-up, proof regressions, cost per proven row, the session join's unjoined share and the verify-gate figure describe real work
   - **Actual:** every run appends a row under its own working root, registered or not; on the reference machine 7,729 verify rows came from one scratch clone and 241 distinct roots appear in the verify ledger; found by the 2026-09-29 judgment research agent and confirmed by counting `repo_root` values under `/private/tmp` in `~/.fathom/verify-ledger.jsonl` and `intent-ledger.jsonl` (read only)
   - **Repro:** run `fathom verify --plan <plan>` or `fathom intent audit` inside a clone outside the registered service roots without setting FATHOM_VERIFY_LEDGER or FATHOM_INTENT_LEDGER, then count rows whose repo_root is the clone. The per-file variables already exist but are undocumented in docs/usage.md and nothing sets them for a scratch run
-  - **Fix:** planned, not yet landed: `docs/plans/progress-and-economics.md` PE-23 to PE-25 (readers filter to registered service roots and name the ignored count), PE-26 to PE-28 (a documented FATHOM_HOME and --ledger override that test and scratch runs use), PE-29 (a `fathom gc` class `ledger-unregistered` that archives, never deletes, on the owner's command) and the PE-M5 reading; design `docs/design/progress-and-economics.md` section 11
-- **Status:** open
+  - **Fix:** landed (see Status): `docs/plans/progress-and-economics.md` PE-23 to PE-25 (readers filter to registered service roots and name the ignored count), PE-26 to PE-28 (a documented FATHOM_HOME and --ledger override that test and scratch runs use), PE-29 (a `fathom gc` class `ledger-unregistered` that archives, never deletes, on the owner's command) and the PE-M5 reading; design `docs/design/progress-and-economics.md` section 11
+- **Status:** fixed (2026-09-29): PE-23 (`internal/ledgerroots`, 2a1d2865), PE-24 (every verify-ledger reader, 24dbd509) and PE-25 (every intent-ledger reader, 016caff6) keep only registered roots' rows and name the rows they ignored; PE-26 to PE-28 landed earlier; PE-29 (`fathom gc`'s owner-run class `ledger-unregistered`, 54afb51c) moves the rows already there to `~/.fathom/archive/`, never deleting one; each proven by `verify --strict`. The rows stay in the live ledgers until the owner runs `fathom gc --apply`. The PE-M5 reading (`docs/bench/readings/progress/ledger-pollution.md`) measured the population and found two follow-ups, still open: O195 and O196
 - **Impact:** every reading that joins or counts ledger rows without a root filter is inflated or skewed until PE-24 lands, among them proof history and burn-up (PE-2, PE-6), cost per proven row (PE-16), the unjoined share of the session join (PE-15), the verify-gate figure, and the corpus that decision E4 (WS-12) would fit on. Not measured: how far each figure moves once the scratch rows are excluded, which PE-M5 reads.
 
 ### O122 — the Bash-write hook treats a quoted `>` (echo "a -> b") or a quoted writer name as a file write and injects six unrelated root rules (__bash_write__.go nearest guide)
@@ -2406,6 +2406,32 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** the dialect fixes the path length with `#match?` on the whole reference and walks to the last identifier with leading and sibling anchors, one pattern per length from one to eight (dialects/protobuf/tags.scm); a dialect that needs the last named child elsewhere should check lang-probe before trusting a trailing anchor
 - **Status:** open (worked around)
 - **Impact:** a query that relies on a trailing anchor silently over-captures (here every package segment became a callee: call precision, and file-resolved edges named by a package segment)
+
+### O195 — under the registered-roots rule the per-row proof history is nearly empty: the fleet's gate runs are recorded outside the registered roots
+
+- **Symptom:** with PE-24's filter the proof history keeps 61 row histories of 2,951, and fathom's burn-up draws 36 weight on one day instead of 2,202 over two
+- **Evidence:**
+  - **Tool:** `console.ProofHistory` with the registered roots (PE-24), `console.BurnUp`, `/work`'s session join, over copies of the verify ledger and the 2026-09-29 archive
+  - **Expected:** the registered checkout's own readings carry each plan's per-row verdicts, so burn-up, regressions and time to proof read the fleet's history
+  - **Actual:** the pre-push gate verifies in a push worktree and most `fathom verify` runs happen in clones, so their `repo_root` is not a registered root; the registered fathom checkout recorded no per-row reading before 2026-09-29 (EW-M1's window reads 0 proven rows filtered, 1,486 unfiltered)
+  - **Repro:** the PE-M5 reading, `docs/bench/readings/progress/ledger-pollution.md` (method section)
+- **Root cause:** the writer records the root the run happened in (`appendVerifyLedgerFrom`), and the owner's rule of 2026-09-29 counts a worktree under a registered root as unregistered, so a push worktree's run is nobody's
+- **Fix:** none yet: the gate's pre-push step could record the registered root its push worktree belongs to (a `--ledger-root` or the worktree's main checkout), or the rule could admit a run whose commit is on the registered root's history; either is a design decision, not a reader change
+- **Status:** open
+- **Impact:** until then burn-up, regressions, time to proof, claim honesty and the session join read a thin slice of the fleet's proof (5,353 of 22,376 readings, 61 row histories)
+
+### O196 — scratch and build clones still append to the real verify ledger after the 2026-09-29 cleanup
+
+- **Symptom:** 1,357 verify-ledger rows under 24 unregistered roots were appended within about 13 hours of the cleanup
+- **Evidence:**
+  - **Tool:** `fathom verify` (every row `origin: cli`), read through `ledgerroots.Roots.Class` over a copy of the live ledger
+  - **Expected:** scratch and test runs set `FATHOM_HOME` or `--ledger` (PE-26 to PE-28, `docs/guides/agent-waves.md`), so the real ledger gains only registered roots' rows
+  - **Actual:** 660 rows under OS temp dirs (10 roots) from 11:52 UTC and 697 under external-volume build clones (14 roots) from 16:10 UTC on 2026-09-29
+  - **Repro:** count the live ledger's rows by root class, as the PE-M5 reading does
+- **Root cause:** not isolated: some run paths (an integrator's gate, a pre-push step in a clone, a worker environment without the wave's `FATHOM_HOME`) still write the operator's ledger
+- **Fix:** none yet; the readers ignore these rows (PE-24) and PE-29's gc class can archive them on the owner's command
+- **Status:** open
+- **Impact:** the ledgers keep growing with rows no reader counts; any tool that reads the file without the rule is skewed again
 
 ### O200 — lang-probe prints named nodes only, so the anonymous keyword tokens a special_form is written with (tree-sitter-elisp's "defvar", "defconst", "defun" vs "defsubst") are invisible in the tree; a query author learns they exist by guessing (special_form "defvar" ...) and seeing whether it captures. Its capture list is also cut at 96 lines
 

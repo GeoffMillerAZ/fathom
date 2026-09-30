@@ -371,7 +371,7 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 		// session ledger's verify_catches only ever saw runs inside an agent
 		// session, which told repositories that gate on every push to add
 		// the gate (O30's failure, again).
-		verifyRuns, verifyLedgerNote := windowVerifyRuns(winFrom, winTo)
+		verifyRuns, verifyIgnored, verifyLedgerNote := windowVerifyRuns(winFrom, winTo, ledgerRootsOf(svcs, nil))
 
 		obligationsBySvc := map[string]int{}
 		windowObligations := map[string]int{}
@@ -445,6 +445,7 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 				ObligationServes: windowObligations[name],
 				Sessions:         windowSessions[name],
 				VerifyRuns:       verifyRuns[name],
+				VerifyIgnored:    verifyIgnored[name],
 				WindowDays:       realizationWindowDays,
 				CallLogNote:      m.CallLogNote,
 				VerifyLedgerNote: verifyLedgerNote,
@@ -474,23 +475,7 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 				m.TrafficDays = append(m.TrafficDays, obsTrafficDay{Date: d, Calls: byDay[d]})
 			}
 		}
-		// RG-4: ordered by UNREALIZED VALUE, not by traffic. Sorting by
-		// call count answers "who is busy", which nobody needs to be told;
-		// this answers "where should I spend the next ten minutes". Ties
-		// break on sessions then name, so the order is stable (house
-		// contract). A row whose ladder could not be built falls back to
-		// the traffic key rather than being dropped.
-		sort.SliceStable(m.Services, func(i, j int) bool {
-			a, b := m.Services[i], m.Services[j]
-			ua, ub := unrealizedScore(a), unrealizedScore(b)
-			if ua != ub {
-				return ua > ub
-			}
-			if a.CallsTotal != b.CallsTotal {
-				return a.CallsTotal > b.CallsTotal
-			}
-			return a.Service < b.Service
-		})
+		rankFleetByUnrealized(m.Services)
 		m.AgentSurfaceTools, m.AgentSchemaBytes = surfaceSchemaTax(hc, baseURL)
 		m.Impact = buildImpactModel(now)
 		m.Impact.ObligationCalls = obligationCalls
@@ -500,6 +485,27 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 
 	m.Impact = buildImpactModel(now)
 	return m
+}
+
+// rankFleetByUnrealized orders the fleet page's rows in place (RG-4) by
+// UNREALIZED VALUE, not by traffic. Sorting by call count answers "who is
+// busy", which nobody needs to be told; this answers "where should I spend
+// the next ten minutes". Ties break on calls in the window, then the
+// service name, and the sort is stable, so equal keys keep their order
+// (house contract). A row whose ladder could not be built scores 0 and
+// falls back to the traffic key rather than being dropped.
+func rankFleetByUnrealized(rows []obsServiceRow) {
+	sort.SliceStable(rows, func(i, j int) bool {
+		a, b := rows[i], rows[j]
+		ua, ub := unrealizedScore(a), unrealizedScore(b)
+		if ua != ub {
+			return ua > ub
+		}
+		if a.CallsTotal != b.CallsTotal {
+			return a.CallsTotal > b.CallsTotal
+		}
+		return a.Service < b.Service
+	})
 }
 
 // onOff is G2's admissibility test over the two arms' units (PE-17w):

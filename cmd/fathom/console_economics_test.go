@@ -68,11 +68,13 @@ func buildDirect(t *testing.T, f *consoleFixture, id, target string, pathValues 
 }
 
 // proofServiceVerifyLedger is a schema-3 verify ledger for proof-service's
-// settlement plan: S-1 moves to claimed-proven at `at`.
-func proofServiceVerifyLedger(t *testing.T, at string) {
+// settlement plan: S-1 moves to claimed-proven at `at`, recorded at
+// proof-service's registered root (PE-24: the join reads no other).
+func proofServiceVerifyLedger(t *testing.T, f *consoleFixture, at string) {
 	t.Helper()
+	root := fixtureServiceRoot(t, f, "proof-service")
 	line := func(when, rows string) string {
-		return fmt.Sprintf(`{"schema_version":3,"at":%q,"repo_root":"/r/proof-service","service":"proof-service","plan":"docs/plans/settlement.md","commit":"","origin":"cli","total":2,"claimed":1,"verified":1,"digest":%q,"rows":[%s]}`, when, when, rows)
+		return fmt.Sprintf(`{"schema_version":3,"at":%q,"repo_root":%q,"service":"proof-service","plan":"docs/plans/settlement.md","commit":"","origin":"cli","total":2,"claimed":1,"verified":1,"digest":%q,"rows":[%s]}`, when, root, when, rows)
 	}
 	body := strings.Join([]string{
 		line("2026-09-15T08:00:00Z", `{"id":"S-1","state":"open","weight":1},{"id":"S-2","state":"open","weight":1}`),
@@ -145,7 +147,7 @@ func TestSessionPageShowsToolMixAndCacheHit(t *testing.T) {
 	}
 
 	// The plan page sums the sessions the join attributes to the plan.
-	proofServiceVerifyLedger(t, "2026-09-20T11:00:00Z")
+	proofServiceVerifyLedger(t, f, "2026-09-20T11:00:00Z")
 	resetObsCache()
 	_, directPlan := buildDirect(t, f, "plan", "/plans/proof-service/settlement", "svc", "proof-service", "plan", "settlement")
 	mustContain(t, "buildPlanPage", directPlan, `id="plan-tool-mix"`, "mcp__fathom__search", "75%")
@@ -167,7 +169,7 @@ func TestSessionsPageServesLiveFeed(t *testing.T) {
 		`{"schema_version":2,"session_id":"sess-feed-aaaa1111","arm":"on","repo":"proof-service","at":"2026-09-20T12:00:00Z","duration_ms":10800000,"tokens_note":"","harness":"claude-code","model":"claude-opus-4-5"}`,
 		`{"schema_version":2,"session_id":"sess-feed-bbbb2222","arm":"on","repo":"proof-service","at":"2026-09-22T12:00:00Z","duration_ms":600000,"tokens_note":"","harness":"codex","model":"gpt-5-codex"}`,
 	)
-	proofServiceVerifyLedger(t, "2026-09-20T11:00:00Z")
+	proofServiceVerifyLedger(t, f, "2026-09-20T11:00:00Z")
 	resetObsCache()
 
 	_, body := buildDirect(t, f, "sessions", "/sessions")
@@ -207,7 +209,8 @@ func TestSessionsPageServesLiveFeed(t *testing.T) {
 // through the user's price table (internal/cost LoadPriceTable), and shows
 // USD and tokens per proven row per plan and per language (the proven
 // row's anchor file, as the index resolved it). A session whose model is
-// not in the table is unpriced, never $0.00, and the PE-24 caveat is named.
+// not in the table is unpriced, never $0.00, and the PE-24 rule is named
+// with the readings it ignored.
 func TestProgressPagePricesSessionsThroughPriceTable(t *testing.T) {
 	f := newConsoleFixture(t)
 	prices := filepath.Join(t.TempDir(), "prices.toml")
@@ -217,11 +220,17 @@ func TestProgressPagePricesSessionsThroughPriceTable(t *testing.T) {
 		`{"schema_version":2,"session_id":"sess-priced","arm":"on","repo":"proof-service","at":"2026-09-20T12:00:00Z","duration_ms":10800000,"tokens_in":1000000,"tokens_out":100000,"tokens_cache_read":0,"tokens_cache_create":0,"tokens_note":"","harness":"claude-code","model":"claude-opus-4-5"}`,
 		`{"schema_version":2,"session_id":"sess-unpriced","arm":"on","repo":"proof-service","at":"2026-09-22T12:00:00Z","duration_ms":10800000,"tokens_in":500,"tokens_out":50,"tokens_note":"","harness":"codex","model":"gpt-not-in-table"}`,
 	)
-	line := func(when, rows string) string {
-		return fmt.Sprintf(`{"schema_version":3,"at":%q,"repo_root":"/r/proof-service","service":"proof-service","plan":"docs/plans/settlement.md","commit":"","origin":"cli","total":2,"claimed":1,"verified":1,"digest":%q,"rows":[%s]}`, when, when, rows)
+	lineAt := func(repoRoot, when, rows string) string {
+		return fmt.Sprintf(`{"schema_version":3,"at":%q,"repo_root":%q,"service":"proof-service","plan":"docs/plans/settlement.md","commit":"","origin":"cli","total":2,"claimed":1,"verified":1,"digest":%q,"rows":[%s]}`, when, repoRoot, when, rows)
 	}
+	// PE-24: the join reads only the registered root's readings; a push
+	// clone's reading (here one that would prove S-2 two days early) is
+	// ignored and named in the caveat.
+	root := fixtureServiceRoot(t, f, "proof-service")
+	line := func(when, rows string) string { return lineAt(root, when, rows) }
 	mustWrite(t, os.Getenv("FATHOM_VERIFY_LEDGER"), strings.Join([]string{
 		line("2026-09-15T08:00:00Z", `{"id":"S-1","state":"open","weight":1},{"id":"S-2","state":"open","weight":1}`),
+		lineAt("/tmp/scratchpad/pushclone", "2026-09-20T11:30:00Z", `{"id":"S-1","state":"claimed-proven","weight":1},{"id":"S-2","state":"claimed-proven","weight":1}`),
 		line("2026-09-20T11:00:00Z", `{"id":"S-1","state":"claimed-proven","weight":1},{"id":"S-2","state":"open","weight":1}`),
 		line("2026-09-22T11:00:00Z", `{"id":"S-1","state":"claimed-proven","weight":1},{"id":"S-2","state":"claimed-proven","weight":1}`),
 	}, "\n")+"\n")
@@ -240,6 +249,9 @@ func TestProgressPagePricesSessionsThroughPriceTable(t *testing.T) {
 	e := pm.Economics
 	if e.PriceTable != prices || e.JoinedRows != 2 {
 		t.Fatalf("economics = %+v", e)
+	}
+	if !strings.Contains(e.Caveat, "registered service root") || !strings.Contains(e.Caveat, "1 verify-ledger reading under 1 unregistered root") {
+		t.Errorf("caveat = %q, want the registered-roots rule and the push clone's reading named as ignored (PE-24)", e.Caveat)
 	}
 	var plan *progressCostRow
 	for i := range e.PerPlan {

@@ -13,6 +13,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/intent"
+	"github.com/geoffmilleraz/fathom/internal/ledgerroots"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
 )
 
@@ -141,7 +142,10 @@ func learningNeverSilentThroughTheVerb(t *testing.T) {
 			t.Errorf("ledger row %+v carries no signals or names another claim", r)
 		}
 	}
-	if got := learningAttentionFragment(f.root, f.now.Add(time.Minute)); got != "learning 2" {
+	// PE-25: the fragment reads the intent ledger under the registered
+	// roots; the fixture's root is the registered one (it sits in the test's
+	// temp dir, so no scratch dir is named).
+	if got := learningAttentionFragment(f.root, f.now.Add(time.Minute), ledgerroots.RegisteredRootsWith([]string{f.root}, nil)); got != "learning 2" {
 		t.Errorf("attention fragment = %q, want \"learning 2\"", got)
 	}
 }

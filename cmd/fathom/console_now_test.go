@@ -288,17 +288,21 @@ func TestConsoleFleet_TableSortFilterAndRollup(t *testing.T) {
 
 // TestConsoleNow_GateStateIsTheRunAtHEAD is the survey's defect through
 // the real handler: the registered root's newest run failed at an older
-// commit, while the pre-push gate's run in a detached clone passed at the
-// commit the root is on. Now and Fleet read the run at HEAD: no gate
-// failure, no "failed" health. A plan whose only run is the old one is
-// history — stale, in the past tense with its commit, never "fails".
+// commit, while a newer run passed at the commit the root is on. Now and
+// Fleet read the run at HEAD: no gate failure, no "failed" health. A plan
+// whose only run is the old one is history — stale, in the past tense with
+// its commit, never "fails". PE-24: a detached clone's run is not the
+// project's (its root is not registered), so its failure at HEAD is
+// ignored, never a gate item.
 func TestConsoleNow_GateStateIsTheRunAtHEAD(t *testing.T) {
 	f := newConsoleFixtureOpts(t, consoleFixtureOpts{Rooted: true})
 	root, head := rootedProject(t, f, "payment-service")
 	writeVerifyLedger(t, []map[string]any{
 		{"schema_version": 2, "at": "2026-09-19T21:00:33Z", "repo_root": root, "service": "payment-service", "plan": "docs/plans/receipts.md", "commit": "d8770983", "total": 45, "claimed": 45, "verified": 42, "failing": 3, "origin": "cli"},
 		{"schema_version": 2, "at": "2026-09-19T21:00:33Z", "repo_root": root, "service": "payment-service", "plan": "docs/plans/toolident.md", "commit": "d8770983", "total": 10, "claimed": 8, "verified": 7, "failing": 1, "origin": "cli"},
-		{"schema_version": 2, "at": "2026-09-25T02:58:00Z", "repo_root": "/tmp/scratchpad/pushclone", "service": "payment-service", "plan": "docs/plans/receipts.md", "commit": head, "total": 45, "claimed": 45, "verified": 45, "origin": "cli"},
+		{"schema_version": 2, "at": "2026-09-25T02:58:00Z", "repo_root": root, "service": "payment-service", "plan": "docs/plans/receipts.md", "commit": head, "total": 45, "claimed": 45, "verified": 45, "origin": "cli"},
+		// A push clone's later run at HEAD that failed: an unregistered root, ignored.
+		{"schema_version": 2, "at": "2026-09-25T03:30:00Z", "repo_root": "/tmp/scratchpad/pushclone", "service": "payment-service", "plan": "docs/plans/receipts.md", "commit": head, "total": 45, "claimed": 45, "verified": 40, "failing": 5, "origin": "cli"},
 		// Another service at the same commit is another index: not this project's proof.
 		{"schema_version": 2, "at": "2026-09-25T03:00:00Z", "repo_root": "/tmp/bench", "service": "payment-bench", "plan": "docs/plans/toolident.md", "commit": head, "total": 10, "claimed": 8, "verified": 8, "origin": "cli"},
 	})

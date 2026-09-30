@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -26,6 +27,9 @@ import (
 // conservation is established with no unexcused loss.
 func TestRefactorStatusMigrationShowsBurnDown(t *testing.T) {
 	dir := t.TempDir()
+	// PE-24: a reading under the OS temp dir is a scratch clone's, so the
+	// repositories' (registered) roots must not sit in it.
+	t.Setenv("TMPDIR", t.TempDir())
 	plan := func(rows ...string) string {
 		return "# Plan\n\n" + strings.Join(rows, "\n") + "\n"
 	}
@@ -72,6 +76,10 @@ func TestRefactorStatusMigrationShowsBurnDown(t *testing.T) {
 		line("2026-09-22T10:00:00Z", "svc-done", "d2", [2]string{"MG-1", proven}, [2]string{"MG-2", unproven}, [2]string{"MG-4", proven}),
 		line("2026-09-25T10:00:00Z", "svc-done", "d3", [2]string{"MG-1", proven}, [2]string{"MG-2", proven}, [2]string{"MG-4", proven}),
 		line("2026-09-21T10:00:00Z", "svc-late", "e1", [2]string{"MG-1", proven}, [2]string{"MG-2", unproven}, [2]string{"MG-3", unproven}),
+		// PE-24: a push clone of svc-late proved every row, but its root is
+		// not svc-late's registered root: ignored, and named.
+		strings.Replace(line("2026-09-26T10:00:00Z", "svc-late", "e2", [2]string{"MG-1", proven}, [2]string{"MG-2", proven}, [2]string{"MG-3", proven}),
+			strconv.Quote(filepath.Join(dir, "svc-late")), strconv.Quote(filepath.Join(dir, "pushclone", "svc-late")), 1),
 	}, "\n") + "\n"
 	if err := os.WriteFile(ledger, []byte(ledgerBody), 0o644); err != nil {
 		t.Fatal(err)
@@ -101,6 +109,10 @@ func TestRefactorStatusMigrationShowsBurnDown(t *testing.T) {
 		t.Errorf("svc-done without --conserve-since = %+v, want incomplete for want of conservation, naming the flag", done)
 	}
 
+	if !strings.Contains(rep.LedgerIgnored, "1 verify-ledger reading under 1 unregistered root") {
+		t.Errorf("ledger_ignored = %q, want the push clone's reading named (PE-24)", rep.LedgerIgnored)
+	}
+
 	late := repoOf(t, rep, "svc-late").BurnDown
 	if late == nil || late.Complete || !strings.Contains(late.Reason, "unproven gone: row(s) in svc-late: MG-2, MG-3") {
 		t.Errorf("svc-late = %+v, want the unproven rows named", late)
@@ -121,6 +133,7 @@ func TestRefactorStatusMigrationShowsBurnDown(t *testing.T) {
 		"conservation: not run",
 		"complete: no — conservation not established in svc-done",
 		"complete: no — unproven gone: row(s) in svc-late: MG-2, MG-3",
+		"verify ledger: 1 verify-ledger reading under 1 unregistered root ignored",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("text lacks %q:\n%s", want, out)
@@ -135,6 +148,7 @@ func TestRefactorStatusMigrationShowsBurnDown(t *testing.T) {
 func TestRefactorStatusMigrationBurnDownConserves(t *testing.T) {
 	requireGit(t)
 	dir := t.TempDir()
+	t.Setenv("TMPDIR", t.TempDir()) // PE-24: the registered root is not a scratch dir's
 	root := filepath.Join(dir, "svc-git")
 	writeTree(t, root, map[string]string{
 		"go.mod":            "module svc-git\n\ngo 1.21\n",

@@ -503,9 +503,13 @@ func cmdPlansOutcome(args []string, stdout, stderr io.Writer) int {
 		o.FirstAttempt = &v
 	case "":
 		if *result == console.ResultProven {
-			h, _ := console.ProofHistory(context.Background(), verifyLedgerPath(), console.DefaultHistoryTail)
+			// PE-24: the registered roots' readings only, the rest named.
+			h, _ := console.ProofHistory(context.Background(), verifyLedgerPath(), console.DefaultHistoryTail, cliLedgerRoots(defaultFathomURL()))
 			if f, known := console.RowFirstAttempt(h, *service, o.Plan, *row); known {
 				o.FirstAttempt = &f
+			}
+			if p := h.Ignored.Phrase("verify-ledger reading"); p != "" {
+				fmt.Fprintf(stderr, "first attempt read from the proof history, registered roots only: %s\n", p)
 			}
 		}
 	default:

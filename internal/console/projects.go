@@ -236,7 +236,7 @@ func WiredAndFresh(p Projects) Value[int] {
 }
 
 // verifyLedgerSource names what a project's recorded proof is read from.
-const verifyLedgerSource = "the verify ledger (each plan's newest run at HEAD — at the registered root or in any clone — else the root's newest, stale)"
+const verifyLedgerSource = "the verify ledger (each plan's newest run at HEAD at the registered root, else the root's newest, stale; runs at other roots are ignored)"
 
 const storeClaimsSource = "the daemon's store (semantic_claims)"
 

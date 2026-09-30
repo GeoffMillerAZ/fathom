@@ -305,7 +305,8 @@ func cmdResearchReport(args []string, stdout, stderr io.Writer) int {
 	})
 	// PC-13: the one canonical verify-gate figure, from the ledger — not
 	// window-scoped like the call-log counts above, and it says so itself.
-	report.VerifyGateFigure = verifyFigure(readVerifyLedger()).Sentence()
+	// PE-24: over the registered roots' rows, naming the rows it ignored.
+	report.VerifyGateFigure = registeredVerifyFigure(readVerifyLedger(), cliLedgerRoots(defaultFathomURL())).Sentence()
 
 	if *jsonOut {
 		enc := json.NewEncoder(stdout)

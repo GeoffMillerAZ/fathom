@@ -77,7 +77,8 @@ reaches a changed symbol. The whole-package run is the gate's, once, at the end.
 - One push per wave, by the integrator. Workers never push. The pre-push step reads its `--since`
   base from the remote sha lefthook passes (EW-16), so a stale local `origin/main` neither blocks the
   push nor widens the range.
-- EW-12, which makes this gate the wave's contract, stays open until EW-0 lands the integration line.
+- EW-12 makes this gate the wave's contract; it was proven on 2026-09-29, once EW-0 landed the
+  integration line.
 
 ## Ids and messages
 

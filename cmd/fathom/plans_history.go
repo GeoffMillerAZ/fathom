@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/console"
+	"github.com/geoffmilleraz/fathom/internal/ledgerroots"
 )
 
 // planHistoryMaxPoints bounds the revisions a burn-up draws.
@@ -48,7 +49,8 @@ func cmdPlansHistory(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	root := ""
-	if svcs, err := fetchServices(&http.Client{Timeout: 4 * time.Second}, *url); err == nil {
+	svcs, svcErr := fetchServices(&http.Client{Timeout: 4 * time.Second}, *url)
+	if svcErr == nil {
 		if info, ok := svcs[strings.ToLower(*service)]; ok {
 			root = info.path
 		}
@@ -58,7 +60,9 @@ func cmdPlansHistory(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
 	}
-	b := planBurnupFor(*service, root, path, rel, nil)
+	// PE-24: the ledger under the registered roots this one registry read names.
+	ledger := readLedgerRuns(ledgerRootsOf(svcs, svcErr))
+	b := planBurnupFor(*service, root, path, rel, &ledger)
 	if *jsonOut {
 		enc := json.NewEncoder(stdout)
 		enc.SetIndent("", "  ")
@@ -75,6 +79,9 @@ func cmdPlansHistory(args []string, stdout, stderr io.Writer) int {
 	}
 	for _, p := range b.Points {
 		fmt.Fprintf(stdout, "  %s  %s  scope %3d  claimed %3d\n", p.At, p.Commit, p.Scope, p.Claimed)
+	}
+	if p := ledger.Ignored.Phrase(verifyLedgerNoun); p != "" {
+		fmt.Fprintf(stdout, "verify ledger: %s\n", p)
 	}
 	if b.Proven.State == console.StatePresent {
 		fmt.Fprintf(stdout, "proven trend (verify ledger, %d days):\n", b.Proven.Days)
@@ -137,8 +144,8 @@ func planBurnupFor(service, root, path, rel string, ledger *ledgerRead) console.
 // planBurnupFrom is planBurnupFor over a history already read.
 func planBurnupFrom(service, path string, revs []planRevisionText, older int, note string, ledger *ledgerRead) console.Burnup {
 	if ledger == nil {
-		runs, lpath, lerr := ledgerRuns()
-		ledger = &ledgerRead{Runs: runs, Path: lpath, Err: lerr}
+		read := readLedgerRuns(cliLedgerRoots(defaultFathomURL()))
+		ledger = &read
 	}
 	b := console.PlanBurnup(console.BurnupInput{
 		Service: service, Plan: path,
@@ -148,14 +155,23 @@ func planBurnupFrom(service, path string, revs []planRevisionText, older int, no
 	})
 	b.Commits += older
 	b.Omitted += older
+	b.Proven.Source = withIgnored(b.Proven.Source, ledger.Ignored, verifyLedgerNoun)
 	return b
 }
 
-// ledgerRead is one read of the verify ledger.
+// ledgerRead is one read of the verify ledger, kept to the registered
+// roots; Ignored is what that left out (PE-24).
 type ledgerRead struct {
-	Runs []console.LedgerRun
-	Path string
-	Err  string
+	Runs    []console.LedgerRun
+	Path    string
+	Err     string
+	Ignored ledgerroots.Ignored
+}
+
+// readLedgerRuns is ledgerRuns as one ledgerRead.
+func readLedgerRuns(roots ledgerroots.Roots) ledgerRead {
+	runs, path, err, ignored := ledgerRuns(roots)
+	return ledgerRead{Runs: runs, Path: path, Err: err, Ignored: ignored}
 }
 
 // plansTrendCmd prints the claimed-vs-proven trend of the current plans of
@@ -176,8 +192,8 @@ func plansTrendCmd(service, url string, jsonOut bool, stdout, stderr io.Writer) 
 		fmt.Fprintf(stderr, "error: no indexed service named %q\n", service)
 		return 1
 	}
-	runs, lpath, lerr := ledgerRuns()
-	t := plansTrendOf(roots, ledgerRead{Runs: runs, Path: lpath, Err: lerr})
+	ledger := readLedgerRuns(ledgerRootsOf(svcs, nil)) // PE-24: the registered roots' rows
+	t := plansTrendOf(roots, ledger)
 	if jsonOut {
 		enc := json.NewEncoder(stdout)
 		enc.SetIndent("", "  ")
@@ -185,6 +201,9 @@ func plansTrendCmd(service, url string, jsonOut bool, stdout, stderr io.Writer) 
 		return 0
 	}
 	fmt.Fprintf(stdout, "claimed against proven: %s\n", t.Scope)
+	if p := ledger.Ignored.Phrase(verifyLedgerNoun); p != "" {
+		fmt.Fprintf(stdout, "  verify ledger: %s\n", p)
+	}
 	if t.State != console.StatePresent {
 		fmt.Fprintf(stdout, "  not drawn: %s\n", t.Reason)
 		return 0
@@ -209,5 +228,7 @@ func plansTrendOf(roots []serviceRoot, ledger ledgerRead) console.Trend {
 		}
 		sps = append(sps, sp)
 	}
-	return console.PlansTrend(ledger.Runs, ledger.Path, ledger.Err, console.DefaultTrendDays, sps)
+	t := console.PlansTrend(ledger.Runs, ledger.Path, ledger.Err, console.DefaultTrendDays, sps)
+	t.Source = withIgnored(t.Source, ledger.Ignored, verifyLedgerNoun)
+	return t
 }

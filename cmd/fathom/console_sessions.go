@@ -29,6 +29,7 @@ import (
 	"github.com/geoffmilleraz/app-kit/appkit/ui/table"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/viz"
 	"github.com/geoffmilleraz/fathom/internal/console"
+	"github.com/geoffmilleraz/fathom/internal/ledgerroots"
 )
 
 func init() {
@@ -483,10 +484,12 @@ func renderSessionReplay(cr *consoleRequest, rp sessionReplay, verb string) stri
 const sessionJoinMaxAuthorLooks = 100
 
 // sessionProofJoin is PE-15's join for a console page: the verify
-// ledger's proof history (a bounded, cached tail read) joined to sessions
-// (agentSessionsOf's windows over the model's ledger read), under f.
-func sessionProofJoin(ctx context.Context, sessions []console.AgentSession, f console.HistoryFilter) (console.JoinResult, console.History, console.SourceRead) {
-	h, read := console.ProofHistory(ctx, verifyLedgerPath(), console.DefaultHistoryTail)
+// ledger's proof history (a bounded, cached tail read) under roots'
+// registered service roots (PE-24: the history and the read's reason name
+// the readings ignored) joined to sessions (agentSessionsOf's windows over
+// the model's ledger read), under f.
+func sessionProofJoin(ctx context.Context, sessions []console.AgentSession, f console.HistoryFilter, roots ledgerroots.Roots) (console.JoinResult, console.History, console.SourceRead) {
+	h, read := console.ProofHistory(ctx, verifyLedgerPath(), console.DefaultHistoryTail, roots)
 	looks := 0
 	authorAt := func(ctx context.Context, root, commit string) (string, bool) {
 		if looks >= sessionJoinMaxAuthorLooks {
@@ -523,7 +526,7 @@ func sessionFeedFrom(ctx context.Context, m observatoryModel) (rows []sessionFee
 	if len(from) >= len("2006-01-02") {
 		f.From = from[:len("2006-01-02")]
 	}
-	join, _, read := sessionProofJoin(ctx, sessions, f)
+	join, _, read := sessionProofJoin(ctx, sessions, f, m.ledgerRoots())
 	proven := make(map[string]int, len(join.Outcomes))
 	for _, o := range join.Outcomes {
 		proven[o.SessionID] = len(o.Rows)
