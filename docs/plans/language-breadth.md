@@ -47,6 +47,7 @@ cannot reach its target keeps its contract and gains a `[-]` sibling
 - [x] `@scope.package` sets `SymbolNode.Package` for manifests with `package.strategy = "capture"` (§3.5) {id: LB-F5, symbol: tsPackageFromCapture, package: internal/extractor, reachable_from: TestTSPackageCapture, needs: "LB-F1"}
 - [x] One-level injections from `injections.scm` with a static `injection.language`, lines offset, nothing qualified across the boundary (§3.6) {id: LB-F6, symbol: extractInjections, package: internal/extractor, reachable_from: TestTSInjections, needs: "LB-F1"}
 - [x] Import captures generalized (`@import.stmt/module/name/alias/wildcard`, the existing `from`/`rel` forms kept) for any dialect's `imports.scm` (§3.7) {id: LB-F7, symbol: importSpecsFromCaptures, package: internal/extractor, reachable_from: TestDialectImportsGeneric, needs: "LB-F1"}
+- [x] indexbench lang-draft (locals2tags): -locals <locals.scm> -source "<repo> <path> @ <commit> (<SPDX>)" -out <tags.scm> drafts a dialect tags.scm from an nvim-treesitter locals.scm — one @local.definition per kept pattern becomes @name with @definition.<kind> on its outer node, scopes and references dropped, imports to a separate draft, unsupported predicates flagged, the §8.2 header written; a draft to tune, never an oracle {id: LB-F47, symbol: draftFromLocals, package: cmd/indexbench, reachable_from: TestCmdLangDraft, needs: "LB-F20,LB-F2"}
 
 ### F.3 The document engine and classification (§4, §5)
 
