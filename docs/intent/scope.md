@@ -194,6 +194,12 @@ interval excluding 0, tokens per clean success and tool calls at most 1.10 of th
 the line left record-only. PR-8 (block a silent loss at pre-push, accepted 2026-09-29, built by PR-9) is not part of this bet.
 {bet: served-not-kept, instrument: "fathom plans status", threshold: "PR-M2 part B: pin line on at most half the line-off oracle violations on the pin tasks with the interval excluding 0 and tokens per clean success and tool calls at most 1.10 of line-off (K5), else the line stays record-only; PR-M0 and PR-M1 read either way", review: 2027-01-31}
 
+**G34. Stewardship facts earn their place, or are cut (ADR-060).** Done when: `docs/plans/stewardship.md`
+SV-M1 (the lines replay over the 2026-09-29 bundles), SV-M2 (the owner's adjudication of one leftovers list) and
+SV-M3 (the used closure on fathom's own mirrors) each read KEEP or CUT, and a CUT removes what it killed in the same
+change (vision 41 section 7). All three readings are $0; nothing starts before the owner lifts the 2026-09-30 wind-down.
+{bet: stewardship, instrument: "fathom plans status", threshold: "SV-M1, SV-M2 and SV-M3 each read KEEP or CUT, a CUT removing what it killed in the same change", review: 2027-01-31}
+
 **G11. A reading, a hand-off and an answer carry their evidence (ADR-034).** The first
 round's 74 rows were voided by an instrument defect (the wired arm never had the tools; O41
 voided G10, ADR-033's ledger goal, on 2026-09-13 and it folds in here);
