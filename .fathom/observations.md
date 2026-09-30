@@ -2221,7 +2221,7 @@ tests being added) is what catches that, not a second reading of the prose.
   - **Actual:** the file yields no CSharpNamespace symbol and every symbol in it carries the directory fallback package; it is the only one of Newtonsoft.Json's 939 namespaced files (and none of Polly's 536) to lose its namespace. The same file with one extra `}` appended parses with its namespace
   - **Repro:** extract Src/Newtonsoft.Json.Tests/TestFixtureBase.cs (Newtonsoft.Json 4e13299d) with `extractor.NewTSExtractor("csharp")`: no CSharpNamespace symbol, and XUnitAssert's Package is not `Newtonsoft.Json.Tests`; lines 279-284 are `#if DNXCORE50 / protected TestFixtureBase() / #else / [SetUp] protected void TestSetup() / #endif` followed by one body
 - **Root cause:** tree-sitter-c-sharp parses an `#if` group as a node whose branches must each hold whole declarations, and reads every branch as code. Two method headers in the branches of one group meet one body (lines 279-284), the group fits no declaration, and the error recovery (content-sensitive: one extra `}`, or 78 fewer lines before the group, restores the namespace) leaves the file's `namespace_declaration` unparsed, so tags.scm's `@scope.package` never fires. Bisected on the file: blanking only that group's four directive lines, both headers kept, restores the namespace; blanking any other group's does not. The CGO extractor ingest dispatches .cs to parses with the same grammar (v0.23.5): it emitted no CSharpNamespace for the file and nested the later types under the wrong class (`Widget.Checks` in the reduced fixture). The same class of failure: 65 of Newtonsoft.Json's 944 files and 4 of Polly's 801 parse with an error as written, 42 and 3 of them from their `#if` groups
-- **Fix:** LB-F46 (48c671b6): `csharpConditionalTexts` (internal/extractor/csharpextract.go), one pre-parse step both extractors call (`withCSharpTree` in the CGO extractor; the tags engine through the dialect manifest's new `preprocess: "csharp-conditionals"`). A file whose tree has an ERROR or MISSING node is parsed with each group's directive lines blanked, every branch kept, then with each group read as its first branch; the first tree with no error is read, byte offsets and lines unchanged; a file that parses as written is read as written. Of the files it rescues, 39 of 42 (Newtonsoft.Json) and 2 of 3 (Polly) keep every branch. Trade: a member declared only in an `#elif`/`#else` of a file read as first branches is dropped (the fixture's `OnlyElse`). The compiler's reading with no symbol defined was measured and refused: it blanks every `#if HAVE_ASYNC` file (sym_recall .9876 to .9623) and never reads XUnitAssert, which is declared under `#if DNXCORE50`. ExtractorEpoch 35
+- **Fix:** LB-F46 (48c671b6): `csharpConditionalTexts` (internal/extractor/csharpextract.go), one pre-parse step both extractors call (`withCSharpTree` in the CGO extractor; the tags engine through the dialect manifest's new `preprocess: "csharp-conditionals"`). A file whose tree has an ERROR or MISSING node is parsed with each group's directive lines blanked, every branch kept, then with each group read as its first branch; the first tree with no error is read, byte offsets and lines unchanged; a file that parses as written is read as written. Of the files it rescues, 39 of 42 (Newtonsoft.Json) and 2 of 3 (Polly) keep every branch. Trade: a member declared only in an `#elif`/`#else` of a file read as first branches is dropped (the fixture's `OnlyElse`). The compiler's reading with no symbol defined was measured and refused: it blanks every `#if HAVE_ASYNC` file (sym_recall .9876 to .9623) and never reads XUnitAssert, which is declared under `#if DNXCORE50`. ExtractorEpoch 38 (35 on its branch; the merge onto wave w6's 37 made it 38)
 - **Status:** fixed by LB-F46 (48c671b6, 2026-09-29): Newtonsoft.Json `import_resolution` 13 to 313 of 313, Polly 15 of 15 unchanged (C# .0854 to 1, 328 of 328); L1 sym_recall .9876 to .9877, sym_precision .9849 to .9850, range_agreement .9595 to .9597; L2 call_recall .9454 to .9448 (else-branch calls of the three first-branch files), call_precision .7775 to .7776, def_mapping .8221 to .8222; `indexbench lang-oracle` at 48c671b6 on the pinned subjects, spliced into docs/bench/readings/lang/csharp.json. The product gain is the namespace symbol and the scoping: ingest's C# `Package` is the file stem, so its declared-type lookups still match nothing (O185)
 - **Impact:** every symbol of such a file was outside its namespace for namespace-dir's declared lookups (a `using` wildcard, alias or `using static` naming it resolved to nothing) and for `Package`-keyed queries; C#'s `import_resolution` read .0854 (28 of 328), and the 300 statements naming XUnitAssert were 91% of its in-repo imports
 
@@ -2497,3 +2497,81 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** none yet; the readers ignore these rows (PE-24) and PE-29's gc class can archive them on the owner's command
 - **Status:** open
 - **Impact:** the ledgers keep growing with rows no reader counts; any tool that reads the file without the rule is skewed again
+
+### O200 — lang-probe prints named nodes only, so the anonymous keyword tokens a special_form is written with (tree-sitter-elisp's "defvar", "defconst", "defun" vs "defsubst") are invisible in the tree; a query author learns they exist by guessing (special_form "defvar" ...) and seeing whether it captures. Its capture list is also cut at 96 lines
+
+- **Symptom:** lang-probe prints named nodes only, so the anonymous keyword tokens a special_form is written with (tree-sitter-elisp's "defvar", "defconst", "defun" vs "defsubst") are invisible in the tree; a query author learns they exist by guessing (special_form "defvar" ...) and seeing whether it captures. Its capture list is also cut at 96 lines
+- **Evidence:**
+  - **Tool:** indexbench lang-probe -dialect emacs-lisp <file>
+  - **Expected:** a flag (or default) that prints anonymous tokens beside the named nodes, and one that lifts the capture cap, so the query is written from what the tree contains
+  - **Actual:** the tree of (defvar x 1) is (special_form (symbol) (integer)) with no trace of "defvar"; a fixture with more than about 30 definitions shows only the first 96 capture lines and part of the tree, so the rest must be probed in slices
+  - **Repro:** printf '(defvar x 1)\n' > a.el; go run ./cmd/indexbench lang-probe -dialect emacs-lisp a.el
+- **Root cause:** `tree.SExpr` (internal/extractor/tsengine/sexpr.go) renders named nodes only (`ts_node_is_named` skips the rest), and `probeLines` (cmd/indexbench/langprobe.go) cuts the capture list at `probeMaxCaptureLines` (96) and the whole output at `probeMaxLines` (200)
+- **Fix:** none yet; worked around by trying `(special_form "defvar" ...)` in a stub query and by probing a fixture in slices
+- **Status:** open
+- **Impact:** a dialect for a Lisp-family grammar (whose keywords are anonymous tokens inside one node type) costs a guess per keyword; it did not change a result here
+
+### O201 — the wave brief says Wilfred/tree-sitter-elisp ships src/parser.c (215 KB); the 1.7.2 tarball has none (src/parser.c is in the repository's .gitignore), so the lock row has to be generate: true and build.sh downloads tree-sitter-cli 0.26.11 through npx at build time
+
+- **Symptom:** the wave brief says Wilfred/tree-sitter-elisp ships src/parser.c (215 KB); the 1.7.2 tarball has none (src/parser.c is in the repository's .gitignore), so the lock row has to be generate: true and build.sh downloads tree-sitter-cli 0.26.11 through npx at build time
+- **Evidence:**
+  - **Tool:** grammars.lock.json / build.sh (generate: true)
+  - **Expected:** a pinned grammar that builds from its tarball alone, or the brief naming the tag whose tarball carries parser.c
+  - **Actual:** grammar.json and node-types.json but no parser.c at tag 1.7.2; build.sh generates it, which needs network and npm at build time
+  - **Repro:** curl -sL https://github.com/Wilfred/tree-sitter-elisp/archive/refs/tags/1.7.2.tar.gz | tar tz | grep 'src/'
+- **Root cause:** tree-sitter-elisp lists /src/parser.c under "Grammar volatiles" in its .gitignore and generates it on `npm install`
+- **Fix:** the lock row says "generate": true (the swift and sql rows already do) and build.sh runs the lock's pinned tree-sitter CLI; the committed blob is what ships, so the network is a build-time need only
+- **Status:** worked around
+- **Impact:** the elisp blob's rebuild depends on the npm registry and the CLI's postinstall download; the digests in the lock still bind the committed bytes
+
+### O202 — the L1 scorer reduces the dialect's names to their last segment (MatchName) but compares the oracle's names whole, so a ctags name that carries its path (Tcl namespace eval ::struct::list, oo::class create ::tcl::chan::core) never pairs with the dialect's last segment
+
+- **Symptom:** the L1 scorer reduces the dialect's names to their last segment (MatchName) but compares the oracle's names whole, so a ctags name that carries its path (Tcl namespace eval ::struct::list, oo::class create ::tcl::chan::core) never pairs with the dialect's last segment
+- **Evidence:**
+  - **Tool:** indexbench lang-oracle (internal/langbench/score.go ScoreL1)
+  - **Expected:** design 1.4 says qualified names are compared on the last segment, on both sides
+  - **Actual:** Tcl (tcllib 2.0 + Tk 9.0.4, 827 files): 759 oracle-only and 789 dialect-only namespaces/classes, all of them one disagreement; sym_recall .8047 and sym_precision .7453. A scratch run with name = m.MatchName(name) applied to the oracle side too (not committed) reads sym_recall .9292, sym_precision .8607, matched 8253 vs 7147. PHP's reading (ctags names a namespace by its full path) documents the same gap and went to a parser dump instead
+  - **Repro:** go run ./cmd/indexbench lang-oracle -dialect tcl -subject workspace/calibration/tcl/tcllib -out workspace/tmp/x.json -unmatched workspace/tmp/u.json (oracle_only lists ::-named namespaces)
+- **Root cause:** `ScoreL1` builds the oracle side from `d.Name` (only `operatorName` is applied) while the dialect side goes through `m.MatchName`; the two sides are symmetric only when the oracle already names by last segment
+- **Fix:** none committed (out of the worker's files); `name = m.MatchName(name)` after the operator rewrite for the oracle side is the one-line change measured above; existing readings would move on a re-run (php.json documents the same gap). At the w6 merge, 728cb294's `oracleMatchName` (O204) cuts an oracle name that is a dotted identifier path only, so Tcl's `::` names still compare whole and this stays open
+- **Status:** open
+- **Impact:** any dialect whose ctags names carry their path (Tcl namespaces and classes, PHP namespaces) reads below its real recall and precision; Tcl is refused on parse errors anyway (LB-Q-tcl-rest), so this decides its re-measure, not its refusal
+
+### O203 — the 5% parse-error line that refuses a language has no instrument: lang-oracle and lang-probe report no count of files with an ERROR node, so every worker writes a scratch tree-walker to obtain the number the refusal rests on
+
+- **Symptom:** the 5% parse-error line that refuses a language has no instrument: lang-oracle and lang-probe report no count of files with an ERROR node, so every worker writes a scratch tree-walker to obtain the number the refusal rests on
+- **Evidence:**
+  - **Tool:** indexbench lang-oracle / design 14.2 refusal
+  - **Expected:** the reading carries files_with_error (the connector's file set, tree-sitter has_error) next to faults, so the refusal is read off the reading and re-checked by the tracker
+  - **Actual:** Tcl and Vim script both needed a scratch program (cmd/zzscratch, walking connector.Discover and counting ERROR/MISSING in tsengine SExpr) to get 516 of 827 files (62.4%) and 3 of 7 (42.9%); Vim script reads L1 excellent (sym_recall .9947, sym_precision 1) and is refused on 3 files (an embedded Python heredoc, a bare - ex command, a unary-plus string), with a 7-file calibration set where one file is 14%
+  - **Repro:** go run ./cmd/indexbench lang-oracle -dialect vimscript -subject workspace/calibration/vimscript/vim-fugitive -out workspace/tmp/x.json (no field for files with a parse error)
+- **Root cause:** the harness computes faults (a parser trap or timeout) but not has_error; the 5% line is a worker's ad hoc count, and the Swift refusal was first recorded and then overturned at integration for the same reason
+- **Fix:** none committed; a `files_with_error` count per subject in the reading (Subject.Tenancy or its own field), computed from the same connector file set the extraction reads, would put the refusal number in the reading and the tracker
+- **Status:** open
+- **Impact:** a refusal rests on a number no reading carries; Vim script's L1 excellent reading and its refusal are both true and only the notes say why
+
+### O204 — an oracle's dotted name is compared whole while the dialect's is cut to its last segment, so an Ada child unit is a miss on both sides
+
+- **Symptom:** an oracle's dotted name is compared whole while the dialect's is cut to its last segment, so an Ada child unit is a miss on both sides
+- **Evidence:**
+  - **Tool:** indexbench lang-oracle (internal/langbench/score.go ScoreL1)
+  - **Expected:** design section 1.4: qualified names are compared on the last segment, the oracle's and the dialect's alike
+  - **Actual:** universal-ctags names 'package GNATCOLL.Arg_Lists' GNATCOLL.Arg_Lists, the dialect's name becomes Arg_Lists, so 573 units were dialect-only and oracle-only at once: sym_precision .8909 and level_met none for a dialect that finds them all
+  - **Repro:** go run ./cmd/indexbench lang-oracle -dialect ada -subject workspace/calibration/ada/alire -out workspace/tmp/x.json -unmatched workspace/tmp/x-unmatched.json, then read dialect_only and oracle_only for the dotted units (573 across gnatcoll-core and alire)
+- **Root cause:** ScoreL1 cut the fathom name with MatchName (BareName) and passed the oracle's name through only the operator rule, so any oracle that writes a language's own expanded name whole never matched (no earlier dialect had one)
+- **Fix:** `oracleMatchName` (internal/langbench/score.go, 728cb294) cuts an oracle name that is a dotted identifier path to its last identifier and leaves any other punctuation whole, so name_match identity and TestNameMatchIdentity are untouched; design D2 Ada records it; the harness is shared and an Opus-level place (the tracker names BareName's separators for CSS), so the integrator reviews the commit
+- **Status:** fixed (728cb294, on w6-adavhdl; integrator review)
+- **Impact:** any dialect whose oracle writes a dotted name (Ada child units, VHDL none) reads far below its true precision and recall; without the fix LB-Q-ada read level_met none
+
+### O205 — on a store that holds no ingest of the service, tests select answers '0 test(s) selected, 0 touched certificate(s)' with no hint that the index is empty
+
+- **Symptom:** on a store that holds no ingest of the service, tests select answers '0 test(s) selected, 0 touched certificate(s)' with no hint that the index is empty
+- **Evidence:**
+  - **Tool:** fathom tests select --since 9ea6da5f --safe --store $FATHOM_CACHE_ROOT/verify.sqlite --service fathom
+  - **Expected:** an error or a one-line note that the store has no index for the service, so a worker knows the selection proves nothing
+  - **Actual:** 'certifying-first selection --since 9ea6da5f (--safe: plus every test that reaches a changed symbol): 0 test(s) selected, 0 touched certificate(s), 0 with no certifying test', exit 0, right after the worker's clone and before its first ingest
+  - **Repro:** a fresh clone, source genv-wave.sh, then the command above before any 'fathom ingest --store $FATHOM_CACHE_ROOT/verify.sqlite'
+- **Root cause:** not isolated; an empty store answers the same zeros a change with no tests does, and nothing in the output says which it was
+- **Fix:** none yet; a worker ingests its clone first (17 minutes cold on this repository under a busy machine, 5 minutes incremental) or runs the registered `go test` set; docs/guides/agent-waves.md's EW-11 step could name the ingest as a precondition
+- **Status:** open
+- **Impact:** the EW-11 step reads as passed when it selected nothing; the brief's ordering puts it before the first ingest, so every worker's first run is this empty answer

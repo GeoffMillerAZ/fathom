@@ -1,0 +1,59 @@
+{
+  "id": "emacs-lisp",
+  "display": "Emacs Lisp",
+  "kind": "language",
+  "engine": "tags",
+  "lang_tag": "emacs-lisp",
+  "match": {
+    "extensions": [".el"],
+    "basenames": [],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "grammar": { "blob": "elisp", "entry_point": "tree_sitter_elisp" },
+  "variants": [],
+  "queries": { "tags": "tags.scm" },
+  "kinds": {
+    "function":    { "source_kind": "EmacsLispFunction", "canonical": "function", "callable": true },
+    "macro":       { "source_kind": "EmacsLispMacro", "canonical": "macro", "callable": true },
+    "variable":    { "source_kind": "EmacsLispVariable", "canonical": "variable" },
+    "custom":      { "source_kind": "EmacsLispCustom", "canonical": "variable" },
+    "const":       { "source_kind": "EmacsLispConst", "canonical": "constant" },
+    "face":        { "source_kind": "EmacsLispFace", "canonical": "variable" },
+    "group":       { "source_kind": "EmacsLispGroup", "canonical": "namespace" },
+    "subst":       { "source_kind": "EmacsLispSubst", "canonical": "function", "callable": true },
+    "inline":      { "source_kind": "EmacsLispInline", "canonical": "function", "callable": true },
+    "alias":       { "source_kind": "EmacsLispAlias", "canonical": "function" },
+    "derivedMode": { "source_kind": "EmacsLispDerivedMode", "canonical": "function", "callable": true },
+    "minorMode":   { "source_kind": "EmacsLispMinorMode", "canonical": "function", "callable": true },
+    "method":      { "source_kind": "EmacsLispMethod", "canonical": "method", "callable": true },
+    "generic":     { "source_kind": "EmacsLispGeneric", "canonical": "method", "callable": true },
+    "struct":      { "source_kind": "EmacsLispStruct", "canonical": "struct" },
+    "class":       { "source_kind": "EmacsLispClass", "canonical": "class" }
+  },
+  "required_kinds": ["function", "macro", "variable", "custom"],
+  "oracle_kinds": {
+    "ctags": {
+      "function": "function",
+      "macro": "macro",
+      "variable": "variable",
+      "custom": "variable",
+      "const": "constant",
+      "face": "variable",
+      "group": "namespace",
+      "subst": "function",
+      "inline": "function",
+      "alias": "function",
+      "derivedMode": "function",
+      "minorMode": "function"
+    }
+  },
+  "name_match": "identity",
+  "ctags": { "languages": ["EmacsLisp"] },
+  "qualify": { "chain_containers": false, "container_sep": ".", "method_sep": "." },
+  "package": { "strategy": "dir" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L1",
+  "queue_id": "emacs-lisp"
+}

@@ -3,6 +3,31 @@
 Statistics and row states only. Each stop's reading is one line that begins with the row id, which the
 row's lexical oracle matches (`docs/plans/efficiency-wave.md`); the sections under it say what was read.
 
+## Stage 0: the integration (EW-0)
+
+EW-0 reading: the four lines are each an ancestor of main at `9ea6da5f` (`git merge-base --is-ancestor` exits 0 for all four): the push line carrying the wired audit (`872c939c`), the judgment plans (`adab8048`), the roadmap wave (`67b53780`) and the language wave (`c91741ac`); of the 29 rows `872c939c` reopened, 28 are still `[ ]` at that tip and `plans next` names each of them open (`plans status` counts them), and the 29th, IA-3, is `[-]` refused, a later disposition and not a regression.
+
+### What was read
+
+- **Ancestry.** Read-only git in a clean clone at `9ea6da5f`. All four commits, and the merges that carried them, are ancestors of the tip; 342 commits and 55 merges lie between `872c939c` and the tip.
+
+| line | commit | how it reached main |
+|---|---|---|
+| push line carrying the wired audit | `872c939c`, "disposition the 105 claimed rows no product entry point reaches" (2026-09-28) | on the first-parent history of main, before the `jev-ideas` merge `d9a3947e` |
+| judgment plans | `adab8048`, "seven judgment-program plans with grammar-v2 rows (ADR-056)" (2026-09-28) | on the line `d9a3947e` merged as its second parent (tip `6f5e8ed7`) |
+| roadmap wave | `67b53780`, "rm-integ, roadmap wave R4b" (2026-09-28) | first-parent merge, parents `68624033` and `e2604f48` |
+| language wave | `c91741ac`, "language wave 2 (lq-integ 88fe67a5) onto main" (2026-09-29) | merge on the push 81 line, parents `f383a64a` and `beb2b232` |
+
+- **Rows the wired audit reopened.** `git show 872c939c -- docs/plans` adds 29 `[ ]` lines. The ids: SH-2, BA-6, RG-4, PB-4, DF-6, DF-7, EP-37, O-13, R-12, R-21, GKE-MH-2, IA-3, LB-F24, P1-6, RC-13, RC-38, CV-5, RT-161, RT-41, SB-18, SM-4, SM-8, SR-67, SR-68, TC-8, VB-25, WI-20, WI-21, WI-22. Each id was read in the plan file the audit edited, at the tip: 28 are `[ ]` and none is `[x]`. `fathom plans next --json`, run with `--plan` over the 19 plan files that hold the 29 rows (taken from the tip, scratch store), names all 28 as open with state `open`; WI-22 is blocked on a `needs` target and is still named. `plans status --json` puts each of the 18 plans that hold an open one at an `open` count at least as large as its share of the 28.
+- **The one that is not open.** IA-3 (`docs/plans/init-and-adoption.md`) reads `[-]` with `disposition: refused`, set by AG-25 under ADR-059 (one stanza, in AGENTS.md alone) after the audit. It was reopened by the audit and refused later by a decision; the merge did not lose it.
+
+### What this reading does not say
+
+- It does not say the 28 rows are wired. They are open, each waiting on its own plan's wiring or disposition.
+- Rows can leave the open set after `9ea6da5f`: the commit that lands this reading also retires SR-67 and SR-68 as refused (`docs/plans/surface-reckoning.md`), so the tip after it reads 26 open and 3 `[-]`. The rest of wave w1 moves more of them: it claims RG-4 and RT-161 on
+  re-anchored product paths and refuses DF-6, DF-7, P1-6, CV-5, R-12 and R-21, so the wave's tip reads 18 open, 2 `[x]`
+  and 9 `[-]` (RC-13 counted in `docs/plans/receipts.md`, the file the audit edited).
+
 ## Stop 1: push, deploy, adopt (EW-S1)
 
 EW-S1 reading: push 81 passed the gate on its first run and landed as 087fb5ab (one attempt for one landing), `task deploy` exited 0 and the daemon serves that same commit, `fathom doctor` on the main checkout reads 53 checks: 38 pass, 8 warn, 1 fail, 6 skipped, with no wiring row failing, the agent surface serves the eight tools the stanza names, and the wave dispatched after the push ran under the guide (six worker environments, each with its own fathom home, cache root and temp dir); the row's `needs` list still holds EW-0 and EW-12, which are open, so this reading does not close the row.
@@ -51,3 +76,7 @@ from its worker environments while it was in flight:
 - It does not close EW-S1. The row's `needs` name EW-0 (the integration reading, not yet landed) and EW-12 (which waits on EW-0), and a row whose needs are open is not eligible; the clause "the next wave used the guide" is read from a wave still in flight.
 - One landing is not EW-M2's sample: it needs at least 6 landings after stop 1.
 - The doctor's `providers` FAIL and the partial obligations layer are held by the spend hold, not by a defect this stop introduced; neither was read as caused or fixed by the wave.
+
+### Closing note (2026-09-29)
+
+EW-0 and EW-12 are proven at `e5f52811`: `fathom verify --strict` on a fresh scratch ingest of that commit exits 0 for `docs/plans/efficiency-wave.md`, with both rows verified, so the two `needs` targets this reading named open are met, and every other `needs` target reads `[x]` (EW-1 to EW-5, EW-7 to EW-11, sdd-reconciler-v0.md G2-5 and G2-6, surface-reckoning.md SR-M1). The wave dispatched after push 81 (the `wa-*` workers) landed as push 82 (`700174be`, 20 commits on `087fb5ab`, carrying the `wa-agc`, `wa-hk` and `wa-hook` lines) and push 82 was merged into the next wave at `7dc430bf`. The reading above is unchanged; whether every worker kept to every rule of the guide was not re-read.

@@ -1,0 +1,38 @@
+{
+  "symbols": [
+    {
+      "name": "gate",
+      "kind": "VhdlEntity",
+      "package": "broken",
+      "line": 5,
+      "end_line": 7,
+      "tier": "verified"
+    },
+    {
+      "name": "rtl",
+      "kind": "VhdlArchitecture",
+      "package": "broken",
+      "line": 9,
+      "end_line": 22,
+      "tier": "verified"
+    },
+    {
+      "name": "rtl.compute",
+      "kind": "VhdlProcess",
+      "package": "broken",
+      "line": 12,
+      "end_line": 15,
+      "signature": "compute : process (a, b)",
+      "tier": "verified"
+    },
+    {
+      "name": "rtl.other",
+      "kind": "VhdlProcess",
+      "package": "broken",
+      "line": 17,
+      "end_line": 20,
+      "signature": "other : process (a)",
+      "tier": "verified"
+    }
+  ]
+}

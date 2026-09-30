@@ -717,7 +717,37 @@ func parseGitLog(serviceID, raw string) []store.Commit {
 // cmds and defer as Calls, and the includes that resolve to another Taskfile of
 // the repository) where each was fingerprinted as unclassified YAML; the salt
 // bump re-reads them.
-// Epoch 35 (O148, LB-F46): a .cs file whose tree has a syntax error is parsed
+// Epoch 35 (LB-Q-emacs-lisp, LB-Q-commonlisp): .el files now extract through
+// internal/extractor.NewTSExtractor("emacs-lisp") and .lisp, .lsp and .asd files
+// through NewTSExtractor("commonlisp") — tree-sitter via wazero/WASM, two fleet gaps
+// with no incumbent. Emacs Lisp: defun, defmacro, defsubst, cl-defun, cl-defmacro
+// and cl-defsubst (each with a Signature and an EndLine), defvar and defvar-local
+// (a bare `(defvar x)` too), defcustom, defconst, defface, defgroup, define-inline,
+// defalias, the derived and minor modes, cl-defgeneric and cl-defmethod, cl-defstruct
+// and eieio's defclass, at the top level or below it. Common Lisp: defun, defmacro,
+// defgeneric (a `(setf name)` one too) and defmethod (each with a Signature and an
+// EndLine), defvar, defparameter, defconstant, deftype, defstruct and defclass, at
+// the top level or below it; an .asd file is claimed and defines nothing. Every such
+// file was fingerprinted by the no-extractor path, so the salt bump re-reads them.
+// Epoch 36 (LB-Q-tcl, LB-Q-vimscript) changes no extraction: the wave's tcl and
+// vimscript dialects were refused (design §14.2, parse errors on 62.4% of the
+// Tcl calibration files and 3 of the 7 Vim ones, refusedDialects), so .tcl,
+// .tk, .tm, .vim and the vimrc basenames stay "no extractor registered" and
+// .tcl and .vim stay disclosed; the number is kept so the wave's history reads
+// in order, as epoch 28 did for swift.
+// Epoch 37 (LB-Q-ada, LB-Q-vhdl, docs/design/language-breadth.md §13): .ads
+// and .adb files now extract via internal/extractor.NewTSExtractor("ada") and
+// .vhd and .vhdl files via NewTSExtractor("vhdl") — tree-sitter via
+// wazero/WASM, fleet gaps with no incumbent. Ada: package specifications and
+// bodies, subprograms (bodies, declarations, instantiations, renamings,
+// expression functions), tasks, protected objects, entries, types, subtypes,
+// exceptions and constants, each callable with a Signature and an EndLine and
+// its calls named by callee. VHDL: entities, architectures, packages and
+// package bodies, labelled processes, functions and procedures (bodies and
+// declarations), types, subtypes, record elements and components. Every such
+// file was fingerprinted by the no-extractor path ("no extractor registered",
+// the epoch 18 class), so the salt bump re-reads them.
+// Epoch 38 (O148, LB-F46): a .cs file whose tree has a syntax error is parsed
 // again with each #if group's directive lines blanked, then with each group
 // read as its first branch, and the first tree with no error is read
 // (csharpConditionalTexts, withCSharpTree): such a file now yields its
@@ -725,7 +755,7 @@ func parseGitLog(serviceID, raw string) []store.Commit {
 // and a member declared only in an #elif or #else branch of a file read as
 // first branches is no longer extracted. Every such file was fingerprinted by
 // the old reading, so the salt bump re-reads them.
-const ExtractorEpoch = "35"
+const ExtractorEpoch = "38"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares
@@ -1187,8 +1217,10 @@ func (p *Pipeline) sniffedExtractor(relPath string, content []byte) (extractor.E
 // generated table lists it; langbench.RefusedItems reads the same refusal from
 // the plan for the tracker). swift: LB-Q-swift-rest — 36 of its 642
 // calibration files (5.6%) parse with an error under the pinned grammar, over
-// the 5% line. Dispatching it later is an ExtractorEpoch bump.
-var refusedDialects = map[string]bool{"swift": true}
+// the 5% line. tcl: LB-Q-tcl-rest — 516 of its 827 calibration files (62.4%).
+// vimscript: LB-Q-vimscript-rest — 3 of its 7 (42.9%). Dispatching one later is
+// an ExtractorEpoch bump.
+var refusedDialects = map[string]bool{"swift": true, "tcl": true, "vimscript": true}
 
 // Close releases the pipeline's tree-sitter grammar modules (RT-107). The
 // pipeline stays usable: the next extraction instantiates afresh.

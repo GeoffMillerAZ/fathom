@@ -188,6 +188,18 @@ owner's decisions, binding on the harness and every reading after them:
   stated in the oracle's README; ctags, reading by pattern, agrees on 4,191 of the dialect's 4,265
   definitions, so the rule is not the dialect's alone.
 
+- **D2, Ada (LB-Q-ada, 2026-09-29).** universal-ctags 6.2.1 is the only Ada oracle installed and it is tier B with two
+  disclosed limits: it writes no end line for Ada (`range_agreement` is not measured, so L1 is met at most at good, as
+  §1.2 says of the other end-less ctags parsers) and it loses sync in real bodies (after a `declare` block, at a
+  `private package` header, at `function ... is abstract;`), so 896 of the subjects' 1,064 dialect-only definitions
+  come after the last structure tag it writes in their file. The instrument was changed in one place: ctags writes a
+  child unit's name whole (`GNATCOLL.Arg_Lists`) where §1.4 compares the dialect's name on its last segment, so
+  `oracleMatchName` cuts an oracle name that is a dotted identifier path to its last identifier (a name with any other
+  punctuation is left whole, so `name_match: "identity"` and TestNameMatchIdentity are untouched). Without it the same
+  run reads sym_precision .8909 and level_met none, because 573 child units match on neither side. *Revisit when a
+  language whose oracle writes a dotted name for something the dialect qualifies differently makes the rule too
+  broad, or when an Ada tier-A oracle (Libadalang, GNAT's own tools) is installed.*
+
 - **D3 — oracle-deficiency disclosure.** A reading may carry an adjudicated set of
   dialect-only definitions the L1 oracle is verified to miss (`lang-oracle -adjudicate
   <file>`: classes, each with a `why`, an optional structural `pattern` where `{name}`

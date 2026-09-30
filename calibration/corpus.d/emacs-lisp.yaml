@@ -1,0 +1,26 @@
+id: emacs-lisp
+language: Emacs Lisp
+repos:
+  - name: magit/magit
+    url: https://github.com/magit/magit
+    ref: v4.7.1
+    sha: 659f89955cf60fe3d4326d881c412df06c69680d
+    licence: GPL-3.0-or-later
+    idioms:
+      - 'defun / defmacro / defsubst with docstrings, (interactive) specs and (declare ...) forms'
+      - 'defvar / defcustom / defconst / defface / defgroup at column 0, with multi-line values and :type / :group keywords'
+      - 'define-minor-mode and define-derived-mode (magit-mode and its derived modes)'
+      - 'cl-defmethod / cl-defgeneric / cl-defstruct and eieio defclass (magit-section)'
+      - 'definitions guarded by (with-eval-after-load ...) and (eval-when-compile ...) and written indented'
+  - name: emacs-lsp/lsp-mode
+    url: https://github.com/emacs-lsp/lsp-mode
+    ref: 10.0.0
+    sha: 913a6c07f163205cb568bc68d7dfe677dbc358ab
+    licence: GPL-3.0-or-later
+    subpath: clients
+    idioms:
+      - 'one file per language server client (clients/lsp-*.el): defcustom-heavy configuration with :type and :group'
+      - 'defun / defmacro / defalias / define-obsolete-function-alias wrappers around lsp-register-client'
+      - 'defvar-local and defconst tables, defface for semantic tokens'
+      - 'define-minor-mode / define-derived-mode for per-server modes'
+      - 'lambda-heavy request handlers and (lsp-make-...) generated constructors'

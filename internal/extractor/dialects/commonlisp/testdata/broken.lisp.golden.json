@@ -1,0 +1,38 @@
+{
+  "symbols": [
+    {
+      "name": "broken-before",
+      "kind": "CommonLispFunction",
+      "package": "broken",
+      "line": 3,
+      "end_line": 5,
+      "signature": "(defun broken-before (a)",
+      "tier": "verified"
+    },
+    {
+      "name": "*broken-after*",
+      "kind": "CommonLispVariable",
+      "package": "broken",
+      "line": 9,
+      "end_line": 10,
+      "tier": "verified"
+    },
+    {
+      "name": "broken-class",
+      "kind": "CommonLispClass",
+      "package": "broken",
+      "line": 12,
+      "end_line": 13,
+      "tier": "verified"
+    },
+    {
+      "name": "broken-method",
+      "kind": "CommonLispMethod",
+      "package": "broken",
+      "line": 15,
+      "end_line": 16,
+      "signature": "(defmethod broken-method ((x broken-class))",
+      "tier": "verified"
+    }
+  ]
+}

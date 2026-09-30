@@ -134,8 +134,7 @@
 - [x] the grade folds five dimensions — wired, fresh, queried, preventing, gating — each yes/no/not-applicable with not-applicable leaving the denominator; queried counts calls IN THE WINDOW, not calls ever {id: RG-1, symbol: realizationReportFrom, package: cmd/fathom, reachable_from: TestRealizationGradeDimensions}
 - [x] the letter carries the first broken rung in ladder order, and a repository with no sessions in the window grades idle rather than F {id: RG-2, symbol: realizationReportFrom, package: cmd/fathom, reachable_from: TestIdleIsNotFailure}
 - [x] grade computation is pure over a service row plus a window with an injected clock — same inputs, same letter {id: RG-3, symbol: realizationReportFrom, package: cmd/fathom, reachable_from: TestGradeIsPure}
-- [ ] the fleet page ranks by unrealized value (dimensions unrealized × sessions in window), deterministic and stable under equal keys, replacing the sort by call count {id: RG-4, symbol: rankByUnrealized, package: cmd/fathom, reachable_from: TestRankByUnrealizedValue}
-  <!-- product wiring open (fathom verify --strict reads it library-only, 2026-09-28): rankByUnrealized has no production caller, but the product does rank: the fleet page sorts by unrealizedScore (cmd/fathom/observatory.go, the RG-4 sort), which TestRankByUnrealizedValue does not exercise; re-anchor on the product sort with a test that pins its order, then flip. -->
+- [x] the fleet page ranks by unrealized value (dimensions unrealized × sessions in window), deterministic and stable under equal keys, replacing the sort by call count {id: RG-4, symbol: rankFleetByUnrealized, package: cmd/fathom, reachable_from: TestFleetPageRanksByUnrealizedValue}
 - [x] the service page renders the realization ladder with evidence inline and the first broken rung carrying its remedy — the exact command today (the project overview, `/projects/{svc}`, console wave C; `fathom fleet realization` prints the same ladder), a button after phase U {id: RG-5, symbol: RealizationLadder, package: internal/console, reachable_from: TestRealizationLadder_RemedyOnFirstUnmetRung}
 - [x] per-dimension 30-day series built from real call-log rows, rendering `stat.Absent` with a reason for days with no data — never an interpolated line, never a zero-height bar for an unmeasured dimension {id: RG-6, symbol: dimensionSeries, package: cmd/fathom, reachable_from: TestDimensionSeriesAbsenceIsNamed}
 - [x] the fleet page's grade distribution over 30 days — the honest scoreboard for phase U: if this does not improve, the buttons did not work {id: RG-7, symbol: gradeDistributionSeries, package: cmd/fathom, reachable_from: TestGradeDistributionSeries}
@@ -172,7 +171,7 @@ These are owner actions, not code, and they gate the honesty of everything
 above. Listed here so they are not lost.
 
 - [ ] (op) the counterfactual pilot is run: `fathom arm off --sessions 20` after pre-registering criteria — the only instrument that can license a savings claim (law 12) {id: OP-1, skip_test: true, skip: "operator action; expert-suite-p.md carries the pre-registered protocol"}
-- [ ] (op) the deployed daemon binary matches HEAD before any of the above is judged live — a committed fix reaches the daemon only after a deliberate deploy {id: OP-2, skip_test: true, skip: "operator action; AGENTS.md documents the deploy sequence"}
+- [x] (op) the deployed daemon binary matches HEAD before any of the above is judged live — a committed fix reaches the daemon only after a deliberate deploy {id: OP-2, oracle: lexical, path: docs/bench/readings/ambient-fathom/op-2-deploy.md, pattern: "^OP-2 reading:"}
 
 ## Phase DO — outcomes derived, not self-reported (docs/design/continuity-threads.md §4.1, owner field report 2026-08-14)
 

@@ -1,0 +1,105 @@
+{
+  "symbols": [
+    {
+      "name": "app",
+      "kind": "TclNamespace",
+      "package": "namespaces",
+      "line": 4,
+      "end_line": 26,
+      "tier": "verified"
+    },
+    {
+      "name": "app::init",
+      "kind": "TclProc",
+      "package": "namespaces",
+      "line": 8,
+      "end_line": 11,
+      "signature": "proc init {}",
+      "tier": "verified"
+    },
+    {
+      "name": "app::run",
+      "kind": "TclProc",
+      "package": "namespaces",
+      "line": 13,
+      "end_line": 17,
+      "signature": "proc run {name {mode fast}}",
+      "calls": [
+        "app::util::trim",
+        "incr"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "app::util",
+      "kind": "TclNamespace",
+      "package": "namespaces",
+      "line": 19,
+      "end_line": 23,
+      "tier": "verified"
+    },
+    {
+      "name": "app::util::trim",
+      "kind": "TclProc",
+      "package": "namespaces",
+      "line": 20,
+      "end_line": 22,
+      "signature": "proc trim {s}",
+      "calls": [
+        "return",
+        "string"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "app::config",
+      "kind": "TclNamespace",
+      "package": "namespaces",
+      "line": 28,
+      "end_line": 32,
+      "tier": "verified"
+    },
+    {
+      "name": "app::config::load",
+      "kind": "TclProc",
+      "package": "namespaces",
+      "line": 29,
+      "end_line": 31,
+      "signature": "proc load {path}",
+      "calls": [
+        "read_file",
+        "return"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "empty",
+      "kind": "TclNamespace",
+      "package": "namespaces",
+      "line": 35,
+      "end_line": 35,
+      "tier": "verified"
+    },
+    {
+      "name": "dynamic",
+      "kind": "TclProc",
+      "package": "namespaces",
+      "line": 36,
+      "end_line": 36,
+      "signature": "proc dynamic {}",
+      "tier": "verified"
+    },
+    {
+      "name": "app::extra",
+      "kind": "TclProc",
+      "package": "namespaces",
+      "line": 39,
+      "end_line": 41,
+      "signature": "proc ::app::extra {}",
+      "calls": [
+        "return"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

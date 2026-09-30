@@ -1,0 +1,179 @@
+{
+  "dialect": "vhdl",
+  "kind": "language",
+  "target_level": "L1",
+  "level_met": "L1",
+  "grade": {
+    "L1": "excellent",
+    "L2": "not-attempted",
+    "L3": "not-attempted",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-09-29",
+  "fathom_commit": "9ea6da5f",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "VUnit/vunit",
+      "sha": "ae9b175ae63247cc4abae69f640e423c0c4a57a2",
+      "files": 330,
+      "bytes": 2647234,
+      "counts": {
+        "callables": 4336,
+        "callables_signed": 4336,
+        "fathom_defs": 5604,
+        "kind_equal": 5539,
+        "matched": 5539,
+        "oracle_defs": 5567,
+        "range_eligible": 3179,
+        "range_ok": 3177
+      },
+      "families": {
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "class",
+        "field",
+        "function",
+        "interface",
+        "package",
+        "type_alias"
+      ],
+      "excluded_by_kind": {
+        "ctags:alias": 1138,
+        "ctags:constant": 784,
+        "ctags:generic": 300,
+        "ctags:port": 299,
+        "ctags:signal": 528,
+        "ctags:variable": 1916
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 1054.3010000000004,
+        "extract_cpu_ms": 1044.1319999999994,
+        "max_file_ms": 87,
+        "peak_module_pages": 684,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "stnolting/neorv32",
+      "sha": "e25059f2d7fa948342516c0722bbf2b19039ab3c",
+      "files": 68,
+      "bytes": 1225008,
+      "counts": {
+        "callables": 356,
+        "callables_signed": 356,
+        "fathom_defs": 1298,
+        "kind_equal": 1234,
+        "matched": 1234,
+        "oracle_defs": 1240,
+        "range_eligible": 610,
+        "range_ok": 610
+      },
+      "families": {
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "class",
+        "field",
+        "function",
+        "interface",
+        "package",
+        "type_alias"
+      ],
+      "excluded_by_kind": {
+        "ctags:constant": 886,
+        "ctags:generic": 862,
+        "ctags:port": 1184,
+        "ctags:signal": 884,
+        "ctags:variable": 137
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 457.73000000000013,
+        "extract_cpu_ms": 447.5660000000001,
+        "max_file_ms": 44,
+        "peak_module_pages": 538,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "B",
+      "tool": "universal-ctags",
+      "version": "6.2.1"
+    }
+  ],
+  "metrics": {
+    "call_precision": null,
+    "call_recall": null,
+    "def_mapping": null,
+    "file_edge_precision": null,
+    "file_edge_recall": null,
+    "import_resolution": null,
+    "kind_agreement": 1,
+    "range_agreement": 0.9995,
+    "signature_coverage": 1,
+    "sym_precision": 0.9813,
+    "sym_recall": 0.995,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "kind_agreement": "B",
+    "range_agreement": "B",
+    "signature_coverage": "B",
+    "sym_precision": "B",
+    "sym_recall": "B"
+  },
+  "required_kinds": [
+    "class",
+    "function",
+    "interface",
+    "package"
+  ],
+  "kind_intersection": [
+    "class",
+    "field",
+    "function",
+    "interface",
+    "package",
+    "type_alias"
+  ],
+  "counts": {
+    "callables": 4692,
+    "callables_signed": 4692,
+    "fathom_defs": 6902,
+    "kind_equal": 6773,
+    "matched": 6773,
+    "oracle_defs": 6807,
+    "range_eligible": 3789,
+    "range_ok": 3787
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 2.6,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 2.56,
+    "max_file_ms": 87,
+    "peak_module_pages": 684,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "ctags:alias": 1138,
+    "ctags:constant": 1670,
+    "ctags:generic": 1162,
+    "ctags:port": 1483,
+    "ctags:signal": 1412,
+    "ctags:variable": 2053
+  },
+  "notes": [
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "ports, generics, signals, variables, constants and aliases are excluded by kind on the oracle side (ctags:alias 1,138, ctags:constant 1,670, ctags:generic 1,162, ctags:port 1,483, ctags:signal 1,412, ctags:variable 2,053) and are not emitted; the 5 of 399 calibration files (1.25%) that parse with an ERROR node are VUnit's fifo.vhd, tb_axi_stream.vhd, custom_types.vhd, com_messenger.vhd and AlertLogPkg.vhd, and the definitions around each error are still found"
+  ],
+  "disposition": null
+}

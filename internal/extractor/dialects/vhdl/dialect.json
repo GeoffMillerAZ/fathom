@@ -1,0 +1,44 @@
+{
+  "id": "vhdl",
+  "display": "VHDL",
+  "kind": "language",
+  "engine": "tags",
+  "lang_tag": "vhdl",
+  "match": {
+    "extensions": [".vhd", ".vhdl"],
+    "basenames": [],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "grammar": { "blob": "vhdl", "entry_point": "tree_sitter_vhdl" },
+  "variants": [],
+  "queries": { "tags": "tags.scm" },
+  "kinds": {
+    "entity":         { "source_kind": "VhdlEntity",        "canonical": "interface", "container": true },
+    "architecture":   { "source_kind": "VhdlArchitecture",  "canonical": "class",     "container": true },
+    "package":        { "source_kind": "VhdlPackage",       "canonical": "package",   "container": true },
+    "package_body":   { "source_kind": "VhdlPackageBody",   "canonical": "package",   "container": true },
+    "process":        { "source_kind": "VhdlProcess",       "canonical": "function",  "callable": true },
+    "function":       { "source_kind": "VhdlFunction",      "canonical": "function",  "callable": true },
+    "procedure":      { "source_kind": "VhdlProcedure",     "canonical": "function",  "callable": true },
+    "function_spec":  { "source_kind": "VhdlFunctionSpec",  "canonical": "function",  "callable": true },
+    "procedure_spec": { "source_kind": "VhdlProcedureSpec", "canonical": "function",  "callable": true },
+    "type":           { "source_kind": "VhdlType",          "canonical": "type_alias" },
+    "subtype":        { "source_kind": "VhdlSubtype",       "canonical": "type_alias" },
+    "record_field":   { "source_kind": "VhdlRecordField",   "canonical": "field" },
+    "component":      { "source_kind": "VhdlComponent",     "canonical": "interface" }
+  },
+  "required_kinds": ["entity", "architecture", "package", "process"],
+  "oracle_kinds": {
+    "ctags": { "entity": "interface", "architecture": "class", "package": "package", "process": "function",
+               "function": "function", "procedure": "function", "prototype": "function",
+               "type": "type_alias", "subtype": "type_alias", "record": "field", "component": "interface" }
+  },
+  "ctags": { "languages": ["VHDL"], "args": ["--kinds-VHDL=+Cd"] },
+  "qualify": { "chain_containers": true, "container_sep": ".", "method_sep": "." },
+  "package": { "strategy": "dir" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L1",
+  "queue_id": "vhdl"
+}

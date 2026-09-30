@@ -1,0 +1,103 @@
+{
+  "symbols": [
+    {
+      "name": "plain",
+      "kind": "TclProc",
+      "package": "calls",
+      "line": 3,
+      "end_line": 7,
+      "signature": "proc plain {}",
+      "calls": [
+        "helper",
+        "other"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "qualified",
+      "kind": "TclProc",
+      "package": "calls",
+      "line": 9,
+      "end_line": 12,
+      "signature": "proc qualified {}",
+      "calls": [
+        "app::run",
+        "app::util::trim"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "substituted",
+      "kind": "TclProc",
+      "package": "calls",
+      "line": 14,
+      "end_line": 18,
+      "signature": "proc substituted {x}",
+      "calls": [
+        "compute",
+        "describe",
+        "format",
+        "lappend",
+        "normalize",
+        "puts"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "control",
+      "kind": "TclProc",
+      "package": "calls",
+      "line": 20,
+      "end_line": 38,
+      "signature": "proc control {items}",
+      "calls": [
+        "attempt",
+        "cleanup",
+        "go",
+        "more",
+        "ready",
+        "risky",
+        "step",
+        "visit",
+        "wait"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "dynamic",
+      "kind": "TclProc",
+      "package": "calls",
+      "line": 41,
+      "end_line": 44,
+      "signature": "proc dynamic {obj cmds}",
+      "calls": [
+        "lindex"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "outer",
+      "kind": "TclProc",
+      "package": "calls",
+      "line": 47,
+      "end_line": 52,
+      "signature": "proc outer {}",
+      "calls": [
+        "shallow"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "inner",
+      "kind": "TclProc",
+      "package": "calls",
+      "line": 48,
+      "end_line": 50,
+      "signature": "proc inner {}",
+      "calls": [
+        "deep"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

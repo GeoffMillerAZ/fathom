@@ -1,0 +1,52 @@
+{
+  "symbols": [
+    {
+      "name": "tb",
+      "kind": "VhdlEntity",
+      "package": "tb",
+      "line": 5,
+      "end_line": 6,
+      "tier": "verified"
+    },
+    {
+      "name": "bench",
+      "kind": "VhdlArchitecture",
+      "package": "tb",
+      "line": 8,
+      "end_line": 37,
+      "tier": "verified"
+    },
+    {
+      "name": "bench.stimulus",
+      "kind": "VhdlProcess",
+      "package": "tb",
+      "line": 15,
+      "end_line": 32,
+      "signature": "stimulus : process",
+      "calls": [
+        "is_high",
+        "pulse",
+        "rising_edge"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "pulse",
+      "kind": "VhdlProcedure",
+      "package": "tb",
+      "line": 16,
+      "end_line": 21,
+      "signature": "procedure pulse(signal s : out std_logic)",
+      "tier": "verified"
+    },
+    {
+      "name": "is_high",
+      "kind": "VhdlFunction",
+      "package": "tb",
+      "line": 23,
+      "end_line": 26,
+      "signature": "function is_high(s : std_logic) return boolean",
+      "tier": "verified"
+    }
+  ]
+}
