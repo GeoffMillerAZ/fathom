@@ -427,6 +427,7 @@ func TestGrammarLicenceVerdict(t *testing.T) {
 	}{
 		{"mit", "MIT", BasisFile, false, "", ""}, // package.json says Apache-2.0: the LICENSE decides
 		{"agpl", "AGPL-3.0", BasisFile, true, "refused:AGPL-3.0", "AGPL is refused"},
+		{"gpl", "GPL-3.0", BasisFile, true, "refused:GPL-3.0", "not on the allowlist"}, // package.json says MIT: the LICENSE decides, and refuses
 		{"declared-agree", "MIT", BasisDeclared, false, "", ""},
 		{"declared-one", "Apache-2.0", BasisDeclared, false, "", ""},
 		{"declared-disagree", "", "", true, "unlicensed", "disagree"},
