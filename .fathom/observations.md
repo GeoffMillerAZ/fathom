@@ -2364,7 +2364,7 @@ tests being added) is what catches that, not a second reading of the prose.
   - **Actual:** Tcl (tcllib 2.0 + Tk 9.0.4, 827 files): 759 oracle-only and 789 dialect-only namespaces/classes, all of them one disagreement; sym_recall .8047 and sym_precision .7453. A scratch run with name = m.MatchName(name) applied to the oracle side too (not committed) reads sym_recall .9292, sym_precision .8607, matched 8253 vs 7147. PHP's reading (ctags names a namespace by its full path) documents the same gap and went to a parser dump instead
   - **Repro:** go run ./cmd/indexbench lang-oracle -dialect tcl -subject workspace/calibration/tcl/tcllib -out /tmp/x.json -unmatched /tmp/u.json (oracle_only lists ::-named namespaces)
 - **Root cause:** `ScoreL1` builds the oracle side from `d.Name` (only `operatorName` is applied) while the dialect side goes through `m.MatchName`; the two sides are symmetric only when the oracle already names by last segment
-- **Fix:** none committed (out of the worker's files); `name = m.MatchName(name)` after the operator rewrite for the oracle side is the one-line change measured above; existing readings would move on a re-run (php.json documents the same gap)
+- **Fix:** none committed (out of the worker's files); `name = m.MatchName(name)` after the operator rewrite for the oracle side is the one-line change measured above; existing readings would move on a re-run (php.json documents the same gap). At the w6 merge, 728cb294's `oracleMatchName` (O204) cuts an oracle name that is a dotted identifier path only, so Tcl's `::` names still compare whole and this stays open
 - **Status:** open
 - **Impact:** any dialect whose ctags names carry their path (Tcl namespaces and classes, PHP namespaces) reads below its real recall and precision; Tcl is refused on parse errors anyway (LB-Q-tcl-rest), so this decides its re-measure, not its refusal
 
@@ -2380,3 +2380,29 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** none committed; a `files_with_error` count per subject in the reading (Subject.Tenancy or its own field), computed from the same connector file set the extraction reads, would put the refusal number in the reading and the tracker
 - **Status:** open
 - **Impact:** a refusal rests on a number no reading carries; Vim script's L1 excellent reading and its refusal are both true and only the notes say why
+
+### O204 — an oracle's dotted name is compared whole while the dialect's is cut to its last segment, so an Ada child unit is a miss on both sides
+
+- **Symptom:** an oracle's dotted name is compared whole while the dialect's is cut to its last segment, so an Ada child unit is a miss on both sides
+- **Evidence:**
+  - **Tool:** indexbench lang-oracle (internal/langbench/score.go ScoreL1)
+  - **Expected:** design section 1.4: qualified names are compared on the last segment, the oracle's and the dialect's alike
+  - **Actual:** universal-ctags names 'package GNATCOLL.Arg_Lists' GNATCOLL.Arg_Lists, the dialect's name becomes Arg_Lists, so 573 units were dialect-only and oracle-only at once: sym_precision .8909 and level_met none for a dialect that finds them all
+  - **Repro:** go run ./cmd/indexbench lang-oracle -dialect ada -subject workspace/calibration/ada/alire -out workspace/tmp/x.json -unmatched workspace/tmp/x-unmatched.json, then read dialect_only and oracle_only for the dotted units (573 across gnatcoll-core and alire)
+- **Root cause:** ScoreL1 cut the fathom name with MatchName (BareName) and passed the oracle's name through only the operator rule, so any oracle that writes a language's own expanded name whole never matched (no earlier dialect had one)
+- **Fix:** `oracleMatchName` (internal/langbench/score.go, 728cb294) cuts an oracle name that is a dotted identifier path to its last identifier and leaves any other punctuation whole, so name_match identity and TestNameMatchIdentity are untouched; design D2 Ada records it; the harness is shared and an Opus-level place (the tracker names BareName's separators for CSS), so the integrator reviews the commit
+- **Status:** fixed (728cb294, on w6-adavhdl; integrator review)
+- **Impact:** any dialect whose oracle writes a dotted name (Ada child units, VHDL none) reads far below its true precision and recall; without the fix LB-Q-ada read level_met none
+
+### O205 — on a store that holds no ingest of the service, tests select answers '0 test(s) selected, 0 touched certificate(s)' with no hint that the index is empty
+
+- **Symptom:** on a store that holds no ingest of the service, tests select answers '0 test(s) selected, 0 touched certificate(s)' with no hint that the index is empty
+- **Evidence:**
+  - **Tool:** fathom tests select --since 9ea6da5f --safe --store $FATHOM_CACHE_ROOT/verify.sqlite --service fathom
+  - **Expected:** an error or a one-line note that the store has no index for the service, so a worker knows the selection proves nothing
+  - **Actual:** 'certifying-first selection --since 9ea6da5f (--safe: plus every test that reaches a changed symbol): 0 test(s) selected, 0 touched certificate(s), 0 with no certifying test', exit 0, right after the worker's clone and before its first ingest
+  - **Repro:** a fresh clone, source genv-wave.sh, then the command above before any 'fathom ingest --store $FATHOM_CACHE_ROOT/verify.sqlite'
+- **Root cause:** not isolated; an empty store answers the same zeros a change with no tests does, and nothing in the output says which it was
+- **Fix:** none yet; a worker ingests its clone first (17 minutes cold on this repository under a busy machine, 5 minutes incremental) or runs the registered `go test` set; docs/guides/agent-waves.md's EW-11 step could name the ingest as a precondition
+- **Status:** open
+- **Impact:** the EW-11 step reads as passed when it selected nothing; the brief's ordering puts it before the first ingest, so every worker's first run is this empty answer

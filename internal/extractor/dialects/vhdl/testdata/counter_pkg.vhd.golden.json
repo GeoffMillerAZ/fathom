@@ -1,0 +1,149 @@
+{
+  "symbols": [
+    {
+      "name": "counter_pkg",
+      "kind": "VhdlPackage",
+      "package": "counter_pkg",
+      "line": 6,
+      "end_line": 31,
+      "tier": "verified"
+    },
+    {
+      "name": "state_t",
+      "kind": "VhdlType",
+      "package": "counter_pkg",
+      "line": 10,
+      "end_line": 10,
+      "tier": "verified"
+    },
+    {
+      "name": "byte_t",
+      "kind": "VhdlSubtype",
+      "package": "counter_pkg",
+      "line": 12,
+      "end_line": 12,
+      "tier": "verified"
+    },
+    {
+      "name": "frame_t",
+      "kind": "VhdlType",
+      "package": "counter_pkg",
+      "line": 14,
+      "end_line": 18,
+      "tier": "verified"
+    },
+    {
+      "name": "header",
+      "kind": "VhdlRecordField",
+      "package": "counter_pkg",
+      "line": 15,
+      "end_line": 15,
+      "tier": "verified"
+    },
+    {
+      "name": "payload",
+      "kind": "VhdlRecordField",
+      "package": "counter_pkg",
+      "line": 16,
+      "end_line": 16,
+      "tier": "verified"
+    },
+    {
+      "name": "valid",
+      "kind": "VhdlRecordField",
+      "package": "counter_pkg",
+      "line": 17,
+      "end_line": 17,
+      "tier": "verified"
+    },
+    {
+      "name": "frame_array_t",
+      "kind": "VhdlType",
+      "package": "counter_pkg",
+      "line": 20,
+      "end_line": 20,
+      "tier": "verified"
+    },
+    {
+      "name": "counter_pkg.next_count",
+      "kind": "VhdlFunctionSpec",
+      "package": "counter_pkg",
+      "line": 22,
+      "end_line": 22,
+      "signature": "function next_count(v : unsigned; limit : natural) return unsigned",
+      "tier": "verified"
+    },
+    {
+      "name": "counter_pkg.is_full",
+      "kind": "VhdlFunctionSpec",
+      "package": "counter_pkg",
+      "line": 24,
+      "end_line": 27,
+      "signature": "function is_full( v : unsigned; limit : natural ) return boolean",
+      "tier": "verified"
+    },
+    {
+      "name": "counter_pkg.clear",
+      "kind": "VhdlProcedureSpec",
+      "package": "counter_pkg",
+      "line": 29,
+      "end_line": 29,
+      "signature": "procedure clear(signal v : out unsigned)",
+      "tier": "verified"
+    },
+    {
+      "name": "counter_pkg",
+      "kind": "VhdlPackageBody",
+      "package": "counter_pkg",
+      "line": 33,
+      "end_line": 60,
+      "tier": "verified"
+    },
+    {
+      "name": "counter_pkg.next_count",
+      "kind": "VhdlFunction",
+      "package": "counter_pkg",
+      "line": 35,
+      "end_line": 41,
+      "signature": "function next_count(v : unsigned; limit : natural) return unsigned",
+      "calls": [
+        "is_full",
+        "to_unsigned"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "counter_pkg.is_full",
+      "kind": "VhdlFunction",
+      "package": "counter_pkg",
+      "line": 43,
+      "end_line": 49,
+      "signature": "function is_full( v : unsigned; limit : natural ) return boolean",
+      "calls": [
+        "to_integer"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "counter_pkg.clear",
+      "kind": "VhdlProcedure",
+      "package": "counter_pkg",
+      "line": 51,
+      "end_line": 58,
+      "signature": "procedure clear(signal v : out unsigned)",
+      "tier": "verified"
+    },
+    {
+      "name": "zero",
+      "kind": "VhdlFunction",
+      "package": "counter_pkg",
+      "line": 52,
+      "end_line": 55,
+      "signature": "function zero return unsigned",
+      "calls": [
+        "to_unsigned"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

@@ -379,3 +379,31 @@ func TestThroughputIsCPUTime(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+// TestScoreL1DottedOracleName (LB-Q-ada): a language whose own names are dotted (an Ada child unit,
+// `package GNATCOLL.Arg_Lists`) has an oracle that writes the whole expanded name where the dialect's name is
+// compared on its last segment (§1.4: qualified names are compared on the last segment), so the oracle's dotted
+// identifier path is compared on its last segment too. A name with any other punctuation (a selector, an npm
+// name, an export path) is not a dotted path and is left whole, as TestNameMatchIdentity holds.
+func TestScoreL1DottedOracleName(t *testing.T) {
+	m := Manifest{ID: "ada", RequiredKinds: []string{"package"},
+		Kinds:       map[string]KindSpec{"package": {SourceKind: "AdaPackage", Canonical: "package", Container: true}},
+		OracleKinds: map[string]map[string]string{"ctags": {"package": "package"}}}
+	nodes := []core.SymbolNode{
+		{FilePath: "gnatcoll-arg_lists.ads", Name: "GNATCOLL.Arg_Lists", Kind: "AdaPackage", Line: 31, EndLine: 174},
+		{FilePath: "gnatcoll-arg_lists.ads", Name: "Arg_List_Vector", Kind: "AdaPackage", Line: 160, EndLine: 165},
+	}
+	defs := []OracleDef{
+		{Path: "gnatcoll-arg_lists.ads", Name: "GNATCOLL.Arg_Lists", Line: 31, Kind: "package"},
+		{Path: "gnatcoll-arg_lists.ads", Name: "Arg_List_Vector", Line: 160, Kind: "package"},
+	}
+	res := ScoreL1(m, "ctags", nodes, defs)
+	if res.Counts[CntMatched] != 2 {
+		t.Fatalf("matched = %d, want 2 (dialect-only %v, oracle-only %v)", res.Counts[CntMatched], res.DialectOnly, res.OracleOnly)
+	}
+	for in, want := range map[string]string{"GNATCOLL.Arg_Lists": "Arg_Lists", "A.B.C": "C", "Plain": "Plain", ".a": ".a", "a:hover": "a:hover", "./utils": "./utils", "1.5": "1.5"} {
+		if got := oracleMatchName(in); got != want {
+			t.Errorf("oracleMatchName(%q) = %q, want %q", in, got, want)
+		}
+	}
+}

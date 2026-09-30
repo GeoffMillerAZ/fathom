@@ -282,6 +282,13 @@ var extClassMap = map[string]classification{
 	".lsp":  {core.KindCommonLispFunction, "commonlisp"},
 	".asd":  {core.KindCommonLispFunction, "commonlisp"},
 
+	// Ada and VHDL (LB-Q-ada, LB-Q-vhdl: new tree-sitter dialects, no incumbent).
+	// .ads (specification) and .adb (body) are GNAT's conventional Ada suffixes.
+	".adb":  {core.KindAdaPackage, "ada"},
+	".ads":  {core.KindAdaPackage, "ada"},
+	".vhd":  {core.KindVhdlEntity, "vhdl"},
+	".vhdl": {core.KindVhdlEntity, "vhdl"},
+
 	// Swift (LB-Q-swift) is not classified: its dialect is built and measured
 	// but refused (design §14.2, parse errors over the 5% line), so .swift
 	// stays disclosed as unsupported (unsupported_language_gen.go).

@@ -70,6 +70,8 @@ var langRowHint = map[string]string{
 	"dart":             "| Dart ",
 	"emacs-lisp":       "| Emacs Lisp ",
 	"commonlisp":       "| Common Lisp ",
+	"ada":              "| Ada ",
+	"vhdl":             "| VHDL ",
 	"sql":              "| SQL ",
 	"terraform":        "Terraform",
 	"yaml":             "Kubernetes YAML",

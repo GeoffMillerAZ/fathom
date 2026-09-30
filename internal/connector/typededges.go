@@ -55,6 +55,8 @@ var typedEdgeProducers = map[string]string{
 	"lua":        "syntax",
 	"emacs-lisp": "syntax",
 	"commonlisp": "syntax",
+	"ada":        "syntax",
+	"vhdl":       "syntax",
 	"sql":        "syntax",
 	"terraform":  "syntax",
 	"yaml":       "syntax",

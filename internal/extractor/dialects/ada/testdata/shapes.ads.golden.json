@@ -1,0 +1,158 @@
+{
+  "symbols": [
+    {
+      "name": "Shapes",
+      "kind": "AdaPackageSpec",
+      "package": "shapes",
+      "line": 5,
+      "end_line": 46,
+      "tier": "verified"
+    },
+    {
+      "name": "Max_Sides",
+      "kind": "AdaConstant",
+      "package": "shapes",
+      "line": 7,
+      "end_line": 7,
+      "tier": "verified"
+    },
+    {
+      "name": "Unit_Scale",
+      "kind": "AdaConstant",
+      "package": "shapes",
+      "line": 8,
+      "end_line": 8,
+      "tier": "verified"
+    },
+    {
+      "name": "Point",
+      "kind": "AdaType",
+      "package": "shapes",
+      "line": 10,
+      "end_line": 12,
+      "tier": "verified"
+    },
+    {
+      "name": "Shape_Kind",
+      "kind": "AdaType",
+      "package": "shapes",
+      "line": 14,
+      "end_line": 14,
+      "tier": "verified"
+    },
+    {
+      "name": "Side_Count",
+      "kind": "AdaSubtype",
+      "package": "shapes",
+      "line": 16,
+      "end_line": 16,
+      "tier": "verified"
+    },
+    {
+      "name": "Shape",
+      "kind": "AdaType",
+      "package": "shapes",
+      "line": 18,
+      "end_line": 18,
+      "tier": "verified"
+    },
+    {
+      "name": "Degenerate_Shape",
+      "kind": "AdaException",
+      "package": "shapes",
+      "line": 20,
+      "end_line": 20,
+      "tier": "verified"
+    },
+    {
+      "name": "Invalid_Shape",
+      "kind": "AdaException",
+      "package": "shapes",
+      "line": 20,
+      "end_line": 20,
+      "tier": "verified"
+    },
+    {
+      "name": "Shapes.Move",
+      "kind": "AdaProcedureSpec",
+      "package": "shapes",
+      "line": 22,
+      "end_line": 22,
+      "signature": "procedure Move (S : in out Shape; By : Point)",
+      "tier": "verified"
+    },
+    {
+      "name": "Shapes.Area",
+      "kind": "AdaFunctionSpec",
+      "package": "shapes",
+      "line": 24,
+      "end_line": 24,
+      "signature": "function Area (S : Shape) return Float",
+      "tier": "verified"
+    },
+    {
+      "name": "Shapes.Scaled",
+      "kind": "AdaFunctionSpec",
+      "package": "shapes",
+      "line": 26,
+      "end_line": 29,
+      "signature": "function Scaled (S : Shape; Factor : Float := Unit_Scale) return Shape",
+      "tier": "verified"
+    },
+    {
+      "name": "Shapes.\"+\"",
+      "kind": "AdaFunctionSpec",
+      "package": "shapes",
+      "line": 31,
+      "end_line": 31,
+      "signature": "function \"+\" (L, R : Point) return Point",
+      "tier": "verified"
+    },
+    {
+      "name": "Shapes.Is_Empty",
+      "kind": "AdaFunction",
+      "package": "shapes",
+      "line": 33,
+      "end_line": 33,
+      "signature": "function Is_Empty (S : Shape) return Boolean",
+      "calls": [
+        "Area"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Shapes.Registry",
+      "kind": "AdaPackageSpec",
+      "package": "shapes",
+      "line": 35,
+      "end_line": 38,
+      "tier": "verified"
+    },
+    {
+      "name": "Shapes.Registry.Register",
+      "kind": "AdaProcedureSpec",
+      "package": "shapes",
+      "line": 36,
+      "end_line": 36,
+      "signature": "procedure Register (S : Shape)",
+      "tier": "verified"
+    },
+    {
+      "name": "Shapes.Registry.Count",
+      "kind": "AdaFunctionSpec",
+      "package": "shapes",
+      "line": 37,
+      "end_line": 37,
+      "signature": "function Count return Natural",
+      "tier": "verified"
+    },
+    {
+      "name": "Shape",
+      "kind": "AdaType",
+      "package": "shapes",
+      "line": 42,
+      "end_line": 44,
+      "tier": "verified"
+    }
+  ]
+}

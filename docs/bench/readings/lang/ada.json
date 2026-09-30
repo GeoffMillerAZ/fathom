@@ -1,0 +1,179 @@
+{
+  "dialect": "ada",
+  "kind": "language",
+  "target_level": "L1",
+  "level_met": "L1",
+  "grade": {
+    "L1": "good",
+    "L2": "not-attempted",
+    "L3": "not-attempted",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-09-29",
+  "fathom_commit": "9ea6da5f",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "AdaCore/gnatcoll-core",
+      "sha": "8e270f83719d4284782a965edd80246be15b949b",
+      "files": 484,
+      "bytes": 3560479,
+      "counts": {
+        "callables": 5201,
+        "callables_signed": 5201,
+        "fathom_defs": 8832,
+        "kind_equal": 7951,
+        "matched": 7951,
+        "oracle_defs": 8018
+      },
+      "families": {
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "class",
+        "constant",
+        "function",
+        "method",
+        "package",
+        "type_alias"
+      ],
+      "excluded_by_kind": {
+        "ctags:component": 551,
+        "ctags:formal": 78,
+        "ctags:identifier": 5,
+        "ctags:label": 1,
+        "ctags:literal": 263,
+        "ctags:variable": 2462
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 1133.7889999999995,
+        "extract_cpu_ms": 1045.765,
+        "max_file_ms": 126,
+        "peak_module_pages": 482,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "alire-project/alire",
+      "sha": "fa9a1a9971d159f8cb2b8007dbb73e9e029fc109",
+      "files": 428,
+      "bytes": 2047910,
+      "counts": {
+        "callables": 3817,
+        "callables_signed": 3817,
+        "fathom_defs": 6172,
+        "kind_equal": 5989,
+        "matched": 5989,
+        "oracle_defs": 6031
+      },
+      "families": {
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "class",
+        "constant",
+        "function",
+        "method",
+        "package",
+        "type_alias"
+      ],
+      "excluded_by_kind": {
+        "ctags:component": 323,
+        "ctags:formal": 40,
+        "ctags:identifier": 6,
+        "ctags:label": 1,
+        "ctags:literal": 443,
+        "ctags:variable": 819
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 498.48799999999994,
+        "extract_cpu_ms": 497.3499999999998,
+        "max_file_ms": 20,
+        "peak_module_pages": 331,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "B",
+      "tool": "universal-ctags",
+      "version": "6.2.1"
+    }
+  ],
+  "metrics": {
+    "call_precision": null,
+    "call_recall": null,
+    "def_mapping": null,
+    "file_edge_precision": null,
+    "file_edge_recall": null,
+    "import_resolution": null,
+    "kind_agreement": 1,
+    "range_agreement": null,
+    "signature_coverage": 1,
+    "sym_precision": 0.9291,
+    "sym_recall": 0.9922,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "kind_agreement": "B",
+    "signature_coverage": "B",
+    "sym_precision": "B",
+    "sym_recall": "B"
+  },
+  "not_measured": [
+    "range_agreement"
+  ],
+  "required_kinds": [
+    "function",
+    "package",
+    "type_alias"
+  ],
+  "kind_intersection": [
+    "class",
+    "constant",
+    "function",
+    "method",
+    "package",
+    "type_alias"
+  ],
+  "counts": {
+    "callables": 9018,
+    "callables_signed": 9018,
+    "fathom_defs": 15004,
+    "kind_equal": 13940,
+    "matched": 13940,
+    "oracle_defs": 14049
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 3.63,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 3.44,
+    "max_file_ms": 126,
+    "peak_module_pages": 482,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "ctags:component": 874,
+    "ctags:formal": 118,
+    "ctags:identifier": 11,
+    "ctags:label": 2,
+    "ctags:literal": 706,
+    "ctags:variable": 3281
+  },
+  "notes": [
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "range_agreement not measured: the L1 oracle reported no end line for any matched definition, so L1 can be met at most at good, never excellent (design §1.2)",
+    "universal-ctags 6.2.1 (tier B, run with --kinds-Ada=+ET) is the only Ada oracle: no SCIP producer or tier-A tool is installed. It loses sync in real bodies, so sym_precision counts against the dialect definitions it never wrote: 896 of the two subjects' 1,064 dialect-only definitions (750 of gnatcoll-core's 881, 146 of alire's 183) come after the last structure tag ctags writes in their file (after a `declare` block, a `private package` header or an `is abstract` function; gnatcoll-json.adb after line 817, gnatcoll-io.ads whole), and 109 of its definitions the dialect does not emit are words of an expression it tagged as constants (`access`, `declare`, `and`) or the 20 operator functions (`\"/\"`) whose name the harness splits on its own `/`",
+    "a child unit is named whole (`GNATCOLL.Arg_Lists`) by both ctags and the dialect; the harness now compares an oracle's dotted identifier path on its last segment as it does the dialect's (design section 1.4, D2 Ada, internal/langbench.oracleMatchName): before that rule the same run read sym_precision .8909 and level_met none, with 573 child units counted as a miss on each side",
+    "5 of 914 calibration files (0.55%) parse with an ERROR node under the pinned grammar, all of them alire test-suite fixtures (crate.adb one-liners and a deliberately malformed bad.adb); the other subjects parse clean",
+    "variables, record components, enumeration literals, generic formals and labels are excluded by kind on the oracle side (ctags:variable 3,281, ctags:literal 706, ctags:component 874, ctags:formal 118) and are not emitted"
+  ],
+  "disposition": null
+}

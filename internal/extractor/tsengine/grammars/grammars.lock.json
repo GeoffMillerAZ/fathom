@@ -9,6 +9,21 @@
   "toolchain": { "zig": "0.16.0", "wasm_opt": "129", "tree_sitter_cli": "0.26.11" },
   "grammars": [
     {
+      "blob": "ada",
+      "repo": "briot/tree-sitter-ada",
+      "tag": "dd5fa4cdb3aba91abc687aa68fb1431396fce6a6",
+      "commit": "dd5fa4cdb3aba91abc687aa68fb1431396fce6a6",
+      "tarball_sha256": "f106303c124e64fd758606d08ed1a1f567d110e96f6a24462d41fb4010e46484",
+      "licence": "MIT",
+      "entry_points": ["tree_sitter_ada"],
+      "scanner": false,
+      "generate": false,
+      "abi": 14,
+      "blob_sha256": "e5d4df79895a32b1849e6053207e259e674c46310b7f9f593726fe66117855b0",
+      "blob_bytes": 374900,
+      "gz_bytes": 107979
+    },
+    {
       "blob": "bash",
       "repo": "tree-sitter/tree-sitter-bash",
       "tag": "v0.25.1",
@@ -415,6 +430,21 @@
       "blob_sha256": "30080208c90581bf3b29b412e9ee2e9a11c89b36153b6a94cc07da7b5000afcb",
       "blob_bytes": 2037040,
       "gz_bytes": 422906
+    },
+    {
+      "blob": "vhdl",
+      "repo": "jpt13653903/tree-sitter-vhdl",
+      "tag": "v2.0.3",
+      "commit": "a7cf493d07dbcf52ca287596451ae3fb8b12099f",
+      "tarball_sha256": "0afd50c99d2ee6277c9b183a6fb160173cf8635b3e14900a8dfc3dbbd6e93378",
+      "licence": "MIT",
+      "entry_points": ["tree_sitter_vhdl"],
+      "scanner": true,
+      "generate": false,
+      "abi": 15,
+      "blob_sha256": "3ec7500d69a8177a073f8c42e01fc4b40b4ac7c0259654e781375b3223189a1c",
+      "blob_bytes": 1314192,
+      "gz_bytes": 240100
     },
     {
       "blob": "vim",

@@ -1,0 +1,132 @@
+{
+  "symbols": [
+    {
+      "name": "Workers",
+      "kind": "AdaPackageSpec",
+      "package": "workers",
+      "line": 2,
+      "end_line": 31,
+      "tier": "verified"
+    },
+    {
+      "name": "Queue_Size",
+      "kind": "AdaConstant",
+      "package": "workers",
+      "line": 4,
+      "end_line": 4,
+      "tier": "verified"
+    },
+    {
+      "name": "Workers.Counter",
+      "kind": "AdaProtectedSpec",
+      "package": "workers",
+      "line": 6,
+      "end_line": 12,
+      "tier": "verified"
+    },
+    {
+      "name": "Workers.Counter.Increment",
+      "kind": "AdaProcedureSpec",
+      "package": "workers",
+      "line": 7,
+      "end_line": 7,
+      "signature": "procedure Increment",
+      "tier": "verified"
+    },
+    {
+      "name": "Workers.Counter.Value",
+      "kind": "AdaFunctionSpec",
+      "package": "workers",
+      "line": 8,
+      "end_line": 8,
+      "signature": "function Value return Natural",
+      "tier": "verified"
+    },
+    {
+      "name": "Workers.Counter.Wait_For",
+      "kind": "AdaEntrySpec",
+      "package": "workers",
+      "line": 9,
+      "end_line": 9,
+      "signature": "entry Wait_For (Target : Natural)",
+      "tier": "verified"
+    },
+    {
+      "name": "Workers.Worker",
+      "kind": "AdaTaskSpec",
+      "package": "workers",
+      "line": 14,
+      "end_line": 17,
+      "tier": "verified"
+    },
+    {
+      "name": "Workers.Worker.Start",
+      "kind": "AdaEntrySpec",
+      "package": "workers",
+      "line": 15,
+      "end_line": 15,
+      "signature": "entry Start (Job : Natural)",
+      "tier": "verified"
+    },
+    {
+      "name": "Workers.Worker.Stop",
+      "kind": "AdaEntrySpec",
+      "package": "workers",
+      "line": 16,
+      "end_line": 16,
+      "signature": "entry Stop",
+      "tier": "verified"
+    },
+    {
+      "name": "Workers.Logger",
+      "kind": "AdaTaskSpec",
+      "package": "workers",
+      "line": 19,
+      "end_line": 21,
+      "tier": "verified"
+    },
+    {
+      "name": "Workers.Logger.Log",
+      "kind": "AdaEntrySpec",
+      "package": "workers",
+      "line": 20,
+      "end_line": 20,
+      "signature": "entry Log (Message : String)",
+      "tier": "verified"
+    },
+    {
+      "name": "Workers.Registry",
+      "kind": "AdaProtectedSpec",
+      "package": "workers",
+      "line": 23,
+      "end_line": 25,
+      "tier": "verified"
+    },
+    {
+      "name": "Workers.Registry.Add",
+      "kind": "AdaProcedureSpec",
+      "package": "workers",
+      "line": 24,
+      "end_line": 24,
+      "signature": "procedure Add (Id : Positive)",
+      "tier": "verified"
+    },
+    {
+      "name": "Worker_Access",
+      "kind": "AdaType",
+      "package": "workers",
+      "line": 27,
+      "end_line": 27,
+      "tier": "verified"
+    },
+    {
+      "name": "Workers.Run_All",
+      "kind": "AdaProcedureSpec",
+      "package": "workers",
+      "line": 29,
+      "end_line": 29,
+      "signature": "procedure Run_All",
+      "tier": "verified"
+    }
+  ]
+}
