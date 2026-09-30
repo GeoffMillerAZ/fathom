@@ -5,9 +5,58 @@ package main
 // the order the test-only rankByUnrealized computes over reports.
 
 import (
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
+
+// TestBuildObservatoryModel_RanksTheFleet pins RG-4's product wiring: the
+// rows buildObservatoryModel returns are in rankFleetByUnrealized's order,
+// not the registry's name order. With no session ledger every row scores 0,
+// so the traffic key decides: beta (two calls in the log) before alpha
+// (none), where the name order would put alpha first.
+func TestBuildObservatoryModel_RanksTheFleet(t *testing.T) {
+	dir := hermeticObsEnv(t)
+	callLog := filepath.Join(dir, "calls.jsonl")
+	rows := `{"ts":"2026-08-25T10:00:00Z","tool":"find_symbol","service":"beta"}` + "\n" +
+		`{"ts":"2026-08-25T10:01:00Z","tool":"search","service":"beta"}` + "\n"
+	if err := os.WriteFile(callLog, []byte(rows), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("FATHOM_CALL_LOG", callLog)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.Contains(r.URL.Path, "/rpc") {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"jsonrpc":"2.0","id":1,"result":{"services":[` +
+			`{"service":"alpha","symbol_count":3,"languages":["go"]},` +
+			`{"service":"beta","symbol_count":3,"languages":["go"]}],"count":2}}`))
+	}))
+	defer srv.Close()
+
+	m := buildObservatoryModel(srv.URL, time.Date(2026, 8, 25, 12, 0, 0, 0, time.UTC))
+	if m.DegradedNote != "" {
+		t.Fatalf("registry answered, DegradedNote = %q", m.DegradedNote)
+	}
+	if len(m.Services) != 2 {
+		t.Fatalf("services = %d, want 2", len(m.Services))
+	}
+	for _, r := range m.Services {
+		if s := unrealizedScore(r); s != 0 {
+			t.Fatalf("no session ledger: %s must score 0, got %d", r.Service, s)
+		}
+	}
+	got := m.Services[0].Service + " " + m.Services[1].Service
+	if got != "beta alpha" || m.Services[0].CallsTotal != 2 || m.Services[1].CallsTotal != 0 {
+		t.Fatalf("fleet order = %q (calls %d, %d), want \"beta alpha\" (calls 2, 0): the model must be ranked", got, m.Services[0].CallsTotal, m.Services[1].CallsTotal)
+	}
+}
 
 // fleetRow is a fleet-page row with a realization ladder (nil when the
 // ladder could not be built) and a call total.
