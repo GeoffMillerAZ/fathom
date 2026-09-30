@@ -1,0 +1,79 @@
+{
+  "symbols": [
+    {
+      "name": "Containers.Generic_Stack",
+      "kind": "AdaPackageSpec",
+      "package": "generic_stack",
+      "line": 5,
+      "end_line": 24,
+      "tier": "verified"
+    },
+    {
+      "name": "Stack",
+      "kind": "AdaType",
+      "package": "generic_stack",
+      "line": 7,
+      "end_line": 7,
+      "tier": "verified"
+    },
+    {
+      "name": "Containers.Generic_Stack.Push",
+      "kind": "AdaProcedureSpec",
+      "package": "generic_stack",
+      "line": 9,
+      "end_line": 9,
+      "signature": "procedure Push (S : in out Stack; Item : Element)",
+      "tier": "verified"
+    },
+    {
+      "name": "Containers.Generic_Stack.Pop",
+      "kind": "AdaFunctionSpec",
+      "package": "generic_stack",
+      "line": 10,
+      "end_line": 10,
+      "signature": "function Pop (S : in out Stack) return Element",
+      "tier": "verified"
+    },
+    {
+      "name": "Containers.Generic_Stack.Is_Empty",
+      "kind": "AdaFunctionSpec",
+      "package": "generic_stack",
+      "line": 11,
+      "end_line": 11,
+      "signature": "function Is_Empty (S : Stack) return Boolean",
+      "tier": "verified"
+    },
+    {
+      "name": "Stack_Empty",
+      "kind": "AdaException",
+      "package": "generic_stack",
+      "line": 13,
+      "end_line": 13,
+      "tier": "verified"
+    },
+    {
+      "name": "Node",
+      "kind": "AdaType",
+      "package": "generic_stack",
+      "line": 17,
+      "end_line": 17,
+      "tier": "verified"
+    },
+    {
+      "name": "Node_Access",
+      "kind": "AdaType",
+      "package": "generic_stack",
+      "line": 18,
+      "end_line": 18,
+      "tier": "verified"
+    },
+    {
+      "name": "Stack",
+      "kind": "AdaType",
+      "package": "generic_stack",
+      "line": 20,
+      "end_line": 22,
+      "tier": "verified"
+    }
+  ]
+}

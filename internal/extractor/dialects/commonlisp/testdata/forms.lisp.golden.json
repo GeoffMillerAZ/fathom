@@ -1,0 +1,161 @@
+{
+  "symbols": [
+    {
+      "name": "forms/namespaced",
+      "kind": "CommonLispFunction",
+      "package": "forms",
+      "line": 5,
+      "end_line": 7,
+      "signature": "(defun forms/namespaced (a)",
+      "tier": "verified"
+    },
+    {
+      "name": "%forms-private",
+      "kind": "CommonLispFunction",
+      "package": "forms",
+      "line": 9,
+      "end_line": 9,
+      "signature": "(defun %forms-private (a)",
+      "tier": "verified"
+    },
+    {
+      "name": "cl-user::forms-qualified",
+      "kind": "CommonLispFunction",
+      "package": "forms",
+      "line": 11,
+      "end_line": 13,
+      "signature": "(defun cl-user::forms-qualified (a)",
+      "tier": "verified"
+    },
+    {
+      "name": "forms-doc-with-parens",
+      "kind": "CommonLispFunction",
+      "package": "forms",
+      "line": 15,
+      "end_line": 17,
+      "signature": "(defun forms-doc-with-parens (a)",
+      "tier": "verified"
+    },
+    {
+      "name": "forms-body-mentions-def",
+      "kind": "CommonLispFunction",
+      "package": "forms",
+      "line": 19,
+      "end_line": 20,
+      "signature": "(defun forms-body-mentions-def (a)",
+      "tier": "verified"
+    },
+    {
+      "name": "*forms-multi-line*",
+      "kind": "CommonLispVariable",
+      "package": "forms",
+      "line": 22,
+      "end_line": 26,
+      "tier": "verified"
+    },
+    {
+      "name": "forms-keys",
+      "kind": "CommonLispFunction",
+      "package": "forms",
+      "line": 28,
+      "end_line": 29,
+      "signature": "(defun forms-keys (a &key (b 1) (c 2) &allow-other-keys)",
+      "tier": "verified"
+    },
+    {
+      "name": "forms-aux",
+      "kind": "CommonLispFunction",
+      "package": "forms",
+      "line": 31,
+      "end_line": 32,
+      "signature": "(defun forms-aux (a &aux (b (* 2 a)))",
+      "tier": "verified"
+    },
+    {
+      "name": "forms-macro",
+      "kind": "CommonLispMacro",
+      "package": "forms",
+      "line": 34,
+      "end_line": 36,
+      "signature": "(defmacro forms-macro (name &body body)",
+      "tier": "verified"
+    },
+    {
+      "name": "*forms-list*",
+      "kind": "CommonLispParameter",
+      "package": "forms",
+      "line": 38,
+      "end_line": 38,
+      "tier": "verified"
+    },
+    {
+      "name": "+forms-pi+",
+      "kind": "CommonLispConst",
+      "package": "forms",
+      "line": 39,
+      "end_line": 39,
+      "tier": "verified"
+    },
+    {
+      "name": "*forms-a*",
+      "kind": "CommonLispVariable",
+      "package": "forms",
+      "line": 40,
+      "end_line": 40,
+      "tier": "verified"
+    },
+    {
+      "name": "*forms-b*",
+      "kind": "CommonLispVariable",
+      "package": "forms",
+      "line": 40,
+      "end_line": 40,
+      "tier": "verified"
+    },
+    {
+      "name": "forms-a",
+      "kind": "CommonLispFunction",
+      "package": "forms",
+      "line": 42,
+      "end_line": 42,
+      "signature": "(defun forms-a ()",
+      "tier": "verified"
+    },
+    {
+      "name": "forms-b",
+      "kind": "CommonLispFunction",
+      "package": "forms",
+      "line": 42,
+      "end_line": 42,
+      "signature": "(defun forms-b ()",
+      "tier": "verified"
+    },
+    {
+      "name": "forms-char-literals",
+      "kind": "CommonLispFunction",
+      "package": "forms",
+      "line": 44,
+      "end_line": 45,
+      "signature": "(defun forms-char-literals ()",
+      "tier": "verified"
+    },
+    {
+      "name": "forms-lambda-list",
+      "kind": "CommonLispFunction",
+      "package": "forms",
+      "line": 47,
+      "end_line": 48,
+      "signature": "(defun forms-lambda-list (a &optional (b nil b-p) &rest rest)",
+      "tier": "verified"
+    },
+    {
+      "name": "forms-place",
+      "kind": "CommonLispFunction",
+      "package": "forms",
+      "line": 50,
+      "end_line": 52,
+      "signature": "(defun (setf forms-place) (value place)",
+      "tier": "verified"
+    }
+  ]
+}

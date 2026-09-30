@@ -1,0 +1,99 @@
+{
+  "symbols": [
+    {
+      "name": "cl-point",
+      "kind": "EmacsLispStruct",
+      "package": "cl",
+      "line": 6,
+      "end_line": 8,
+      "tier": "verified"
+    },
+    {
+      "name": "cl-point3",
+      "kind": "EmacsLispStruct",
+      "package": "cl",
+      "line": 10,
+      "end_line": 11,
+      "tier": "verified"
+    },
+    {
+      "name": "cl-shape",
+      "kind": "EmacsLispClass",
+      "package": "cl",
+      "line": 13,
+      "end_line": 15,
+      "tier": "verified"
+    },
+    {
+      "name": "cl-circle",
+      "kind": "EmacsLispClass",
+      "package": "cl",
+      "line": 17,
+      "end_line": 19,
+      "tier": "verified"
+    },
+    {
+      "name": "cl-area",
+      "kind": "EmacsLispGeneric",
+      "package": "cl",
+      "line": 21,
+      "end_line": 22,
+      "signature": "(cl-defgeneric cl-area (shape)",
+      "tier": "verified"
+    },
+    {
+      "name": "cl-area",
+      "kind": "EmacsLispMethod",
+      "package": "cl",
+      "line": 24,
+      "end_line": 26,
+      "signature": "(cl-defmethod cl-area ((shape cl-circle))",
+      "tier": "verified"
+    },
+    {
+      "name": "cl-area",
+      "kind": "EmacsLispMethod",
+      "package": "cl",
+      "line": 28,
+      "end_line": 29,
+      "signature": "(cl-defmethod cl-area :around ((shape cl-shape))",
+      "tier": "verified"
+    },
+    {
+      "name": "cl-make-point",
+      "kind": "EmacsLispFunction",
+      "package": "cl",
+      "line": 31,
+      "end_line": 33,
+      "signature": "(cl-defun cl-make-point (x y &key (z 0))",
+      "tier": "verified"
+    },
+    {
+      "name": "cl-origin",
+      "kind": "EmacsLispFunction",
+      "package": "cl",
+      "line": 35,
+      "end_line": 35,
+      "signature": "(cl-defun cl-origin ())",
+      "tier": "verified"
+    },
+    {
+      "name": "cl-with-point",
+      "kind": "EmacsLispMacro",
+      "package": "cl",
+      "line": 37,
+      "end_line": 40,
+      "signature": "(cl-defmacro cl-with-point ((x y) point &rest body)",
+      "tier": "verified"
+    },
+    {
+      "name": "cl-twice",
+      "kind": "EmacsLispSubst",
+      "package": "cl",
+      "line": 42,
+      "end_line": 44,
+      "signature": "(cl-defsubst cl-twice (x)",
+      "tier": "verified"
+    }
+  ]
+}

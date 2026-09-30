@@ -1,0 +1,34 @@
+{
+  "symbols": [
+    {
+      "name": "Broken",
+      "kind": "AdaProcedure",
+      "package": "broken",
+      "line": 2,
+      "end_line": 12,
+      "signature": "procedure Broken",
+      "tier": "verified"
+    },
+    {
+      "name": "Before",
+      "kind": "AdaProcedure",
+      "package": "broken",
+      "line": 4,
+      "end_line": 7,
+      "signature": "procedure Before (X : Integer)",
+      "tier": "verified"
+    },
+    {
+      "name": "After",
+      "kind": "AdaFunction",
+      "package": "broken",
+      "line": 14,
+      "end_line": 17,
+      "signature": "function After (Z : Integer) return Integer",
+      "calls": [
+        "Before_Value"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

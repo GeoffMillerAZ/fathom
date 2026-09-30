@@ -1,0 +1,33 @@
+id: tcl
+language: Tcl
+# Both subjects are pure-Tcl libraries. `subpath: modules` keeps tcllib's clone to the packages it ships
+# (the repository is about 93 MB with its documentation sources and examples); `subpath: library` keeps
+# Tk's clone to the Tcl scripts the toolkit loads at run time (the repository is about 267 MB with the C
+# sources, the Windows, macOS and X11 ports and the test suite). Both tags are lightweight, so `sha` is
+# the commit itself. The licences are the Tcl/Tk licence (SPDX TCL, BSD-style; the subjects are read,
+# never vendored). The oracle is universal-ctags 6.2.1 (tier B), which writes an end line for procedures
+# and namespaces.
+repos:
+  - name: tcltk/tcllib
+    url: https://github.com/tcltk/tcllib
+    ref: tcllib-2-0
+    sha: 2a63bf212cc6423efb7a39958596ae2a2333c266
+    licence: TCL
+    subpath: modules
+    idioms:
+      - 'namespace eval blocks (443 of 796 files) holding a package''s procedures, with `package provide` (513 lines) and `namespace export` / `namespace ensemble create` (72 lines)'
+      - 'absolute procedure names declared outside any namespace body (`proc ::struct::list::reverse`; 6,122 of the 8,364 proc lines) beside relative names inside namespace eval bodies'
+      - 'procedures defined conditionally, behind `if {[info commands ...]}` guards and per-version alternatives (109 files), which universal-ctags does not tag'
+      - 'TclOO classes (`oo::class create ::tcl::chan::core`, 54) and snit types and widgets (79 files) whose methods live in the class body'
+      - 'procedure names with punctuation (`proc ::md4::<<<`, `proc ::grammar::fa::op::tclre::!`, the nroff exporter''s `.PP`)'
+      - 'array element references (`$state($name)`, 6,154 lines) and `upvar` (2,113 lines) in nearly every body'
+  - name: tcltk/tk
+    url: https://github.com/tcltk/tk
+    ref: core-9-0-4
+    sha: 584f8fcf62c320d7c341e77171188cb4d79c3725
+    licence: TCL
+    subpath: library
+    idioms:
+      - 'toolkit library procedures named into `tk::` and `ttk::` (`proc ::tk::MenuInvoke`; 337 `tk::` procedures) with `namespace eval ttk::button {}` stubs'
+      - 'event bindings (`bind TButton <Enter> { %W instate !disabled {...} }`, 848 lines) whose braced scripts carry %-substitutions and `!flag` words'
+      - 'array-keyed state (`$::tk::Priv(x)`, 1,536 element references), `upvar` and `variable` in most procedures'

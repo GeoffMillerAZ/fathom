@@ -1,0 +1,51 @@
+{
+  "id": "commonlisp",
+  "display": "Common Lisp",
+  "kind": "language",
+  "engine": "tags",
+  "lang_tag": "commonlisp",
+  "match": {
+    "extensions": [".lisp", ".lsp", ".asd"],
+    "basenames": [],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "grammar": { "blob": "commonlisp", "entry_point": "tree_sitter_commonlisp" },
+  "variants": [],
+  "queries": { "tags": "tags.scm" },
+  "kinds": {
+    "function":  { "source_kind": "CommonLispFunction", "canonical": "function", "callable": true },
+    "macro":     { "source_kind": "CommonLispMacro", "canonical": "macro", "callable": true },
+    "class":     { "source_kind": "CommonLispClass", "canonical": "class" },
+    "generic":   { "source_kind": "CommonLispGeneric", "canonical": "function", "callable": true },
+    "method":    { "source_kind": "CommonLispMethod", "canonical": "method", "callable": true },
+    "struct":    { "source_kind": "CommonLispStruct", "canonical": "struct" },
+    "variable":  { "source_kind": "CommonLispVariable", "canonical": "variable" },
+    "parameter": { "source_kind": "CommonLispParameter", "canonical": "variable" },
+    "const":     { "source_kind": "CommonLispConst", "canonical": "constant" },
+    "type":      { "source_kind": "CommonLispType", "canonical": "type_alias" }
+  },
+  "required_kinds": ["function", "macro", "class", "generic", "method"],
+  "oracle_kinds": {
+    "ctags": {
+      "function": "function",
+      "macro": "macro",
+      "class": "class",
+      "generic": "function",
+      "method": "method",
+      "struct": "struct",
+      "variable": "variable",
+      "parameter": "variable",
+      "const": "constant",
+      "type": "type_alias"
+    }
+  },
+  "name_match": "identity",
+  "ctags": { "languages": ["Lisp"] },
+  "qualify": { "chain_containers": false, "container_sep": ".", "method_sep": "." },
+  "package": { "strategy": "dir" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L1",
+  "queue_id": "commonlisp"
+}

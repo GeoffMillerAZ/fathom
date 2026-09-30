@@ -1,0 +1,41 @@
+{
+  "symbols": [
+    {
+      "name": "counter",
+      "kind": "VhdlEntity",
+      "package": "counter",
+      "line": 7,
+      "end_line": 16,
+      "tier": "verified"
+    },
+    {
+      "name": "rtl",
+      "kind": "VhdlArchitecture",
+      "package": "counter",
+      "line": 18,
+      "end_line": 47,
+      "tier": "verified"
+    },
+    {
+      "name": "debounce",
+      "kind": "VhdlComponent",
+      "package": "counter",
+      "line": 22,
+      "end_line": 24,
+      "tier": "verified"
+    },
+    {
+      "name": "rtl.tick",
+      "kind": "VhdlProcess",
+      "package": "counter",
+      "line": 27,
+      "end_line": 34,
+      "signature": "tick : process (clk, rst)",
+      "calls": [
+        "next_count",
+        "rising_edge"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "id": "ada",
+  "display": "Ada",
+  "kind": "language",
+  "engine": "tags",
+  "lang_tag": "ada",
+  "match": {
+    "extensions": [".adb", ".ads"],
+    "basenames": [],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "grammar": { "blob": "ada", "entry_point": "tree_sitter_ada" },
+  "variants": [],
+  "queries": { "tags": "tags.scm" },
+  "kinds": {
+    "package":        { "source_kind": "AdaPackage",       "canonical": "package",    "container": true },
+    "package_spec":   { "source_kind": "AdaPackageSpec",   "canonical": "package",    "container": true },
+    "procedure":      { "source_kind": "AdaProcedure",     "canonical": "function",   "callable": true },
+    "function":       { "source_kind": "AdaFunction",      "canonical": "function",   "callable": true },
+    "procedure_spec": { "source_kind": "AdaProcedureSpec", "canonical": "function",   "callable": true },
+    "function_spec":  { "source_kind": "AdaFunctionSpec",  "canonical": "function",   "callable": true },
+    "type":           { "source_kind": "AdaType",          "canonical": "type_alias" },
+    "subtype":        { "source_kind": "AdaSubtype",       "canonical": "type_alias" },
+    "task":           { "source_kind": "AdaTask",          "canonical": "class",      "container": true, "callable": true },
+    "task_spec":      { "source_kind": "AdaTaskSpec",      "canonical": "class",      "container": true },
+    "protected":      { "source_kind": "AdaProtected",     "canonical": "class",      "container": true },
+    "protected_spec": { "source_kind": "AdaProtectedSpec", "canonical": "class",      "container": true },
+    "entry":          { "source_kind": "AdaEntry",         "canonical": "method",     "callable": true },
+    "entry_spec":     { "source_kind": "AdaEntrySpec",     "canonical": "method",     "callable": true },
+    "exception":      { "source_kind": "AdaException",     "canonical": "constant" },
+    "constant":       { "source_kind": "AdaConstant",      "canonical": "constant" }
+  },
+  "required_kinds": ["package", "procedure", "function", "type"],
+  "oracle_kinds": {
+    "ctags": { "package": "package", "packspec": "package", "subprogram": "function", "subprogspec": "function",
+               "type": "type_alias", "typespec": "type_alias", "subtype": "type_alias",
+               "task": "class", "taskspec": "class", "protected": "class", "protectspec": "class",
+               "entry": "method", "entryspec": "method", "exception": "constant", "constant": "constant" }
+  },
+  "ctags": { "languages": ["Ada"], "args": ["--kinds-Ada=+ET"] },
+  "qualify": { "chain_containers": true, "container_sep": ".", "method_sep": "." },
+  "package": { "strategy": "dir" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L1",
+  "queue_id": "ada"
+}

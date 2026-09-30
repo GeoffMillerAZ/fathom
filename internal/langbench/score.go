@@ -1,6 +1,7 @@
 package langbench
 
 import (
+	"regexp"
 	"sort"
 	"strings"
 
@@ -62,6 +63,21 @@ func BareName(q string) string {
 	}
 	i := strings.LastIndexAny(q, ".:#/\\ )")
 	return q[i+1:]
+}
+
+// dottedPath is a name made only of identifiers joined by dots: a language's own expanded name (an Ada child
+// unit, GNATCOLL.Arg_Lists), which an oracle writes whole.
+var dottedPath = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)+$`)
+
+// oracleMatchName is the form of an oracle's name the harness compares with the dialect's last segment (§1.4:
+// qualified names are compared on the last segment): a dotted identifier path is cut to its last identifier,
+// anything else (a selector, an npm name, an export path, a name with other punctuation) is left as the oracle
+// wrote it, which is why name_match "identity" exists for the dialects that need those compared whole.
+func oracleMatchName(name string) string {
+	if dottedPath.MatchString(name) {
+		return name[strings.LastIndexByte(name, '.')+1:]
+	}
+	return name
 }
 
 // operatorName recognizes a symbolic operator's name in q (C++ and C#:
@@ -149,6 +165,8 @@ func ScoreL1(m Manifest, oracle string, nodes []core.SymbolNode, defs []OracleDe
 		name := d.Name
 		if op, ok := operatorName(name); ok && m.NameMatch != NameMatchIdentity {
 			name = op // one spelling per operator on both sides (BareName's rule)
+		} else if m.NameMatch != NameMatchIdentity {
+			name = oracleMatchName(name)
 		}
 		theirs = append(theirs, &scoredDef{path: d.Path, name: name, canonical: c, line: d.Line, end: d.End})
 	}

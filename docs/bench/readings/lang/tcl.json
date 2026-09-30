@@ -1,0 +1,163 @@
+{
+  "dialect": "tcl",
+  "kind": "language",
+  "target_level": "L1",
+  "level_met": "none",
+  "grade": {
+    "L1": "unmet",
+    "L2": "not-attempted",
+    "L3": "not-attempted",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-09-29",
+  "fathom_commit": "9ea6da5f",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "tcltk/tcllib",
+      "sha": "2a63bf212cc6423efb7a39958596ae2a2333c266",
+      "files": 704,
+      "bytes": 9777884,
+      "counts": {
+        "callables": 7925,
+        "callables_signed": 7925,
+        "fathom_defs": 8726,
+        "kind_equal": 6468,
+        "matched": 6468,
+        "oracle_defs": 8116,
+        "range_eligible": 6155,
+        "range_ok": 5969
+      },
+      "families": {
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "class",
+        "function",
+        "method",
+        "namespace"
+      ],
+      "tenancy": {
+        "faults": 1,
+        "faulting_files": [
+          "modules/fumagic/filetypes.tcl"
+        ],
+        "extract_ms": 3469.563,
+        "extract_cpu_ms": 3230.8510000000033,
+        "max_file_ms": 346,
+        "peak_module_pages": 468,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "tcltk/tk",
+      "sha": "584f8fcf62c320d7c341e77171188cb4d79c3725",
+      "files": 123,
+      "bytes": 1076692,
+      "counts": {
+        "callables": 802,
+        "callables_signed": 802,
+        "fathom_defs": 863,
+        "kind_equal": 679,
+        "matched": 679,
+        "oracle_defs": 766,
+        "range_eligible": 679,
+        "range_ok": 662
+      },
+      "families": {
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "class",
+        "function",
+        "method",
+        "namespace"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 425.0509999999997,
+        "extract_cpu_ms": 391.88300000000004,
+        "max_file_ms": 46,
+        "peak_module_pages": 351,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "B",
+      "tool": "universal-ctags",
+      "version": "6.2.1"
+    }
+  ],
+  "metrics": {
+    "call_precision": null,
+    "call_recall": null,
+    "def_mapping": null,
+    "file_edge_precision": null,
+    "file_edge_recall": null,
+    "import_resolution": null,
+    "kind_agreement": 1,
+    "range_agreement": 0.9703,
+    "signature_coverage": 1,
+    "sym_precision": 0.7453,
+    "sym_recall": 0.8047,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "kind_agreement": "B",
+    "range_agreement": "B",
+    "signature_coverage": "B",
+    "sym_precision": "B",
+    "sym_recall": "B"
+  },
+  "required_kinds": [
+    "class",
+    "function",
+    "method",
+    "namespace"
+  ],
+  "kind_intersection": [
+    "class",
+    "function",
+    "method",
+    "namespace"
+  ],
+  "counts": {
+    "callables": 8727,
+    "callables_signed": 8727,
+    "fathom_defs": 9589,
+    "kind_equal": 7147,
+    "matched": 7147,
+    "oracle_defs": 8882,
+    "range_eligible": 6834,
+    "range_ok": 6631
+  },
+  "tenancy": {
+    "faults": 1,
+    "faulting_files": [
+      "tcltk/tcllib:modules/fumagic/filetypes.tcl"
+    ],
+    "throughput_mb_s": 3,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 2.79,
+    "max_file_ms": 346,
+    "peak_module_pages": 468,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    "refused (design section 14.2, LB-Q-tcl-rest): 516 of these 827 files (62.4%) parse with an ERROR node under tree-sitter-grammars/tree-sitter-tcl 850a72ab, upstream main's head on 2026-09-29, over the 5% line, so the dialect stays built and tested but is not dispatched (fusion's refusedDialects), .tcl is disclosed as unsupported, and the tracker, milestones and support matrix claim no level for Tcl. The level_met above is what the harness measured, kept as the record",
+    "parse errors: tcllib 438 of 704 files (62.2%), Tk 78 of 123 (63.4%); the first error of 207 of the 516 is a ( (an array element such as $psglyphs($hexcode)), of 22 a ! word (instate !disabled), of 11 a ; and of 10 a set $ word; over every .tcl file of the two clones (796 and 123) the head reads 62.2% and 63.4%, commit 98015ebe (2024-10-04) 62.7% and 64.2%, commit 4ac1e729 (2024-09-05) 64.7% and 69.1%, and native-dsl-translation 0ff435e5 builds the identical blob",
+    "grammar: tree-sitter-grammars/tree-sitter-tcl at commit 850a72ab6436e06645b33b11cfa60cbdb04b1f01 (MIT, no release tag), tcl.wasm.gz 74,046 bytes gzip (203,872 raw), 468 peak module pages",
+    "L1 oracle: universal-ctags 6.2.1 with Tcl and TclOO (tier B; --map-Tcl=+.tm so it reads the .tm files the manifest claims) on tcltk/tcllib tcllib-2-0 (modules/, 704 files) and tcltk/tk core-9-0-4 (library/, 123 files): 8,882 oracle definitions and 9,589 dialect definitions in the kind intersection (namespace, function, class, method), 7,147 matched (sym_recall .8047, sym_precision .7453, kind_agreement 1, range_agreement .9703 over 6,834 with an oracle end, every one of 8,727 callables signed)",
+    "the misses, both subjects: 759 of 763 oracle-only namespaces and classes and 789 dialect-only ones are one disagreement, ctags writes the whole path of namespace eval ::struct::list (::struct::list) and the harness compares the oracle's name as written but the dialect's by its last segment (BareName; ScoreL1 calls MatchName on the dialect's names only); a scratch run of MatchName on the oracle's names too, not committed and not a reading, matches 8,253 (sym_recall .9292, sym_precision .8607, range_agreement .9715). identity name matching would instead fail every proc written proc ::a::b (6,122 of 8,364 proc lines), which ctags names by its last segment. 483 oracle-only procedures have a bare-name separator in their name (.PP, !, <<<, J1/2) and 418 are plain names in files whose ERROR recovery lost them. 1,527 dialect-only procedures are real definitions ctags does not tag (it enters namespace eval and oo::class bodies only, not an if block, a procedure or a catch: asn.tcl defines asnGetByte twice under if)",
+    "tenancy: 1 fault in 827 files (0.12%, over the 0.1% line): tcltk/tcllib:modules/fumagic/filetypes.tcl, 1.3 MB of generated data, traps in fathom_parse_bounded (wasm unreachable); the reading records it and does not skip it",
+    "L2 to L4 not attempted: the entry names ctags as its only oracle; universal-ctags gives no call pairs, and Tcl has no SCIP producer",
+    "Tcl classification: .tcl, .tk and .tm (ctags maps .tcl .tk .wish .exp by default; --map-Tcl=+.tm makes the oracle read .tm; .tm is also TeXmacs's extension). No tclsh shebang is claimed",
+    "a file whose extraction instantiated a grammar module after the warm-up (an injected language) is timed on a second, warm extraction",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+  ],
+  "disposition": "refused (design section 14.2): 516 of the 827 calibration files (62.4%: tcllib 438 of 704, Tk 78 of 123; a 1.3 MB tcllib file, modules/fumagic/filetypes.tcl, makes the parser trap) parse with an error under tree-sitter-grammars/tree-sitter-tcl 850a72ab, upstream main's head on 2026-09-29 and the best pin measured, far over the 5% line (the grammar reads every braced word as a script and fails on an array element $a($i), a !flag word and a stray ; or $); the dialect is built, tested and measured (L1 unmet: sym_recall .8047, sym_precision .7453, kind_agreement 1, range_agreement .9703, signature_coverage 1, tier B) but not dispatched, and Tcl stays disclosed as unsupported. Re-plan when a tree-sitter-tcl commit parses both subjects with at most 5% of files in error. Measured before the refusal: target L1, met none on tcltk/tcllib tcllib-2-0 (modules/) and tcltk/tk core-9-0-4 (library/), 827 files, universal-ctags 6.2.1 Tcl and TclOO (tier B): 8,882 oracle and 9,589 dialect definitions in the kind intersection, 7,147 matched; 3.00 MB/CPU-s, 1 fault, 468 peak module pages, tcl.wasm.gz 74,046 bytes. Trigger: a grammar that parses those files, and the harness comparing the oracle's names by last segment as it does the dialect's (a scratch run of that one-line change reads sym_recall .9292, sym_precision .8607)"
+}

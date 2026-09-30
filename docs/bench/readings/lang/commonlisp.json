@@ -1,0 +1,167 @@
+{
+  "dialect": "commonlisp",
+  "kind": "language",
+  "target_level": "L1",
+  "level_met": "L1",
+  "grade": {
+    "L1": "good",
+    "L2": "not-attempted",
+    "L3": "not-attempted",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-09-29",
+  "fathom_commit": "bcc2a33a",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "clack",
+      "sha": "9b053f271228c936572194a37cd014bc5d1402a6",
+      "files": 74,
+      "bytes": 232600,
+      "counts": {
+        "callables": 193,
+        "callables_signed": 193,
+        "fathom_defs": 275,
+        "kind_equal": 262,
+        "matched": 262,
+        "oracle_defs": 262
+      },
+      "families": {
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "class",
+        "constant",
+        "function",
+        "macro",
+        "method",
+        "struct",
+        "type_alias",
+        "variable"
+      ],
+      "excluded_by_kind": {
+        "ctags:unknown": 47
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 120.14500000000001,
+        "extract_cpu_ms": 109.41199999999996,
+        "max_file_ms": 13,
+        "peak_module_pages": 356,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "lem",
+      "sha": "38bae05a03bd6e6394819873fe5414b38da4753d",
+      "files": 158,
+      "bytes": 982024,
+      "counts": {
+        "callables": 1889,
+        "callables_signed": 1889,
+        "fathom_defs": 2296,
+        "kind_equal": 2250,
+        "matched": 2250,
+        "oracle_defs": 2340
+      },
+      "families": {
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "class",
+        "constant",
+        "function",
+        "macro",
+        "method",
+        "struct",
+        "type_alias",
+        "variable"
+      ],
+      "excluded_by_kind": {
+        "ctags:unknown": 845
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 844.5879999999997,
+        "extract_cpu_ms": 681.3030000000001,
+        "max_file_ms": 23,
+        "peak_module_pages": 374,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "B",
+      "tool": "universal-ctags",
+      "version": "6.2.1"
+    }
+  ],
+  "metrics": {
+    "call_precision": null,
+    "call_recall": null,
+    "def_mapping": null,
+    "file_edge_precision": null,
+    "file_edge_recall": null,
+    "import_resolution": null,
+    "kind_agreement": 1,
+    "range_agreement": null,
+    "signature_coverage": 1,
+    "sym_precision": 0.9771,
+    "sym_recall": 0.9654,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "kind_agreement": "B",
+    "signature_coverage": "B",
+    "sym_precision": "B",
+    "sym_recall": "B"
+  },
+  "not_measured": [
+    "range_agreement"
+  ],
+  "required_kinds": [
+    "class",
+    "function",
+    "macro",
+    "method"
+  ],
+  "kind_intersection": [
+    "class",
+    "constant",
+    "function",
+    "macro",
+    "method",
+    "struct",
+    "type_alias",
+    "variable"
+  ],
+  "counts": {
+    "callables": 2082,
+    "callables_signed": 2082,
+    "fathom_defs": 2571,
+    "kind_equal": 2512,
+    "matched": 2512,
+    "oracle_defs": 2602
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 1.54,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 1.26,
+    "max_file_ms": 23,
+    "peak_module_pages": 374,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "ctags:unknown": 892
+  },
+  "notes": [
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "range_agreement not measured: the L1 oracle reported no end line for any matched definition, so L1 can be met at most at good, never excellent (design §1.2)"
+  ],
+  "disposition": null
+}

@@ -1,0 +1,115 @@
+{
+  "symbols": [
+    {
+      "name": "Shapes",
+      "kind": "AdaPackage",
+      "package": "shapes",
+      "line": 3,
+      "end_line": 67,
+      "tier": "verified"
+    },
+    {
+      "name": "Pi",
+      "kind": "AdaConstant",
+      "package": "shapes",
+      "line": 5,
+      "end_line": 5,
+      "tier": "verified"
+    },
+    {
+      "name": "Shapes.Check",
+      "kind": "AdaProcedure",
+      "package": "shapes",
+      "line": 7,
+      "end_line": 12,
+      "signature": "procedure Check (S : Shape)",
+      "calls": [
+        "Area"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Shapes.Move",
+      "kind": "AdaProcedure",
+      "package": "shapes",
+      "line": 14,
+      "end_line": 19,
+      "signature": "procedure Move (S : in out Shape; By : Point)",
+      "calls": [
+        "Check"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Shapes.\"+\"",
+      "kind": "AdaFunction",
+      "package": "shapes",
+      "line": 21,
+      "end_line": 24,
+      "signature": "function \"+\" (L, R : Point) return Point",
+      "tier": "verified"
+    },
+    {
+      "name": "Shapes.Area",
+      "kind": "AdaFunction",
+      "package": "shapes",
+      "line": 26,
+      "end_line": 37,
+      "signature": "function Area (S : Shape) return Float",
+      "calls": [
+        "Sq"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Sq",
+      "kind": "AdaFunction",
+      "package": "shapes",
+      "line": 27,
+      "end_line": 30,
+      "signature": "function Sq (V : Float) return Float",
+      "tier": "verified"
+    },
+    {
+      "name": "Shapes.Scaled",
+      "kind": "AdaFunction",
+      "package": "shapes",
+      "line": 39,
+      "end_line": 48,
+      "signature": "function Scaled (S : Shape; Factor : Float := Unit_Scale) return Shape",
+      "calls": [
+        "Move"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Shapes.Registry",
+      "kind": "AdaPackage",
+      "package": "shapes",
+      "line": 50,
+      "end_line": 65,
+      "tier": "verified"
+    },
+    {
+      "name": "Shapes.Registry.Register",
+      "kind": "AdaProcedure",
+      "package": "shapes",
+      "line": 54,
+      "end_line": 58,
+      "signature": "procedure Register (S : Shape)",
+      "calls": [
+        "Check"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Shapes.Registry.Count",
+      "kind": "AdaFunction",
+      "package": "shapes",
+      "line": 60,
+      "end_line": 63,
+      "signature": "function Count return Natural",
+      "tier": "verified"
+    }
+  ]
+}

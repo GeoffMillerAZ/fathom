@@ -1,0 +1,102 @@
+{
+  "symbols": [
+    {
+      "name": "nested-when-compiling",
+      "kind": "CommonLispMacro",
+      "package": "nested",
+      "line": 6,
+      "end_line": 8,
+      "signature": "(defmacro nested-when-compiling (&body body)",
+      "tier": "verified"
+    },
+    {
+      "name": "nested-helper",
+      "kind": "CommonLispFunction",
+      "package": "nested",
+      "line": 10,
+      "end_line": 12,
+      "signature": "(defun nested-helper (x)",
+      "tier": "verified"
+    },
+    {
+      "name": "*nested-progn*",
+      "kind": "CommonLispVariable",
+      "package": "nested",
+      "line": 15,
+      "end_line": 15,
+      "tier": "verified"
+    },
+    {
+      "name": "nested-in-progn",
+      "kind": "CommonLispFunction",
+      "package": "nested",
+      "line": 16,
+      "end_line": 17,
+      "signature": "(defun nested-in-progn ()",
+      "tier": "verified"
+    },
+    {
+      "name": "nested-next",
+      "kind": "CommonLispFunction",
+      "package": "nested",
+      "line": 20,
+      "end_line": 22,
+      "signature": "(defun nested-next ()",
+      "tier": "verified"
+    },
+    {
+      "name": "nested-sbcl-only",
+      "kind": "CommonLispFunction",
+      "package": "nested",
+      "line": 25,
+      "end_line": 27,
+      "signature": "(defun nested-sbcl-only ()",
+      "tier": "verified"
+    },
+    {
+      "name": "nested-not-sbcl",
+      "kind": "CommonLispFunction",
+      "package": "nested",
+      "line": 29,
+      "end_line": 29,
+      "signature": "(defun nested-not-sbcl ()",
+      "tier": "verified"
+    },
+    {
+      "name": "nested-ccl-or-ecl",
+      "kind": "CommonLispFunction",
+      "package": "nested",
+      "line": 33,
+      "end_line": 34,
+      "signature": "(defun nested-ccl-or-ecl ()",
+      "tier": "verified"
+    },
+    {
+      "name": "nested-outer",
+      "kind": "CommonLispFunction",
+      "package": "nested",
+      "line": 36,
+      "end_line": 42,
+      "signature": "(defun nested-outer (x)",
+      "tier": "verified"
+    },
+    {
+      "name": "nested-inner",
+      "kind": "CommonLispFunction",
+      "package": "nested",
+      "line": 40,
+      "end_line": 41,
+      "signature": "(defun nested-inner (z)",
+      "tier": "verified"
+    },
+    {
+      "name": "nested-after-comments",
+      "kind": "CommonLispFunction",
+      "package": "nested",
+      "line": 52,
+      "end_line": 54,
+      "signature": "(defun nested-after-comments ()",
+      "tier": "verified"
+    }
+  ]
+}
