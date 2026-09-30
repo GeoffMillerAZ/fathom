@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -199,7 +200,9 @@ func checkoutHead(dir string) (head string, ok bool, err error) {
 	if _, statErr := os.Stat(filepath.Join(dir, ".git")); statErr != nil {
 		return "", false, nil
 	}
-	c := exec.Command("git", "-C", dir, "rev-parse", "HEAD")
+	ctx, cancel := context.WithTimeout(context.Background(), gitHeadTimeout)
+	defer cancel()
+	c := exec.CommandContext(ctx, "git", "-C", dir, "rev-parse", "HEAD")
 	for _, kv := range os.Environ() {
 		if !strings.HasPrefix(kv, "GIT_") {
 			c.Env = append(c.Env, kv)
