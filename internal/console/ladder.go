@@ -59,6 +59,9 @@ type LadderFacts struct {
 	// set, is why that ledger was not read (gating is then unknown).
 	VerifyRuns       int
 	VerifyLedgerNote string
+	// VerifyIgnored are the window's runs under a root that is not a
+	// registered service root (PE-24): never counted, always named.
+	VerifyIgnored int
 	// HasPlans says whether the gate has anything to check here;
 	// PlansNote, when set, is why docs/plans was not read (gating is then
 	// unknown — an unreadable directory is never "no plans").
@@ -171,7 +174,11 @@ func RealizationLadder(f LadderFacts) Ladder {
 	case f.VerifyLedgerNote != "":
 		add("gating", RungUnknown, "not measured — "+f.VerifyLedgerNote, gateFix)
 	default:
-		add("gating", metState(f.VerifyRuns > 0), fmt.Sprintf("%s verify run(s) %s, recorded in the verify ledger", thousands(f.VerifyRuns), window), gateFix)
+		ev := fmt.Sprintf("%s verify run(s) %s, recorded in the verify ledger", thousands(f.VerifyRuns), window)
+		if f.VerifyIgnored > 0 {
+			ev += fmt.Sprintf(" (%s more under an unregistered root ignored)", thousands(f.VerifyIgnored))
+		}
+		add("gating", metState(f.VerifyRuns > 0), ev, gateFix)
 	}
 
 	for i := range l.Rungs {

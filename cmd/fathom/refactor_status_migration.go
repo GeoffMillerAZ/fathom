@@ -46,6 +46,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/console"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/ledgerroots"
 	"github.com/geoffmilleraz/fathom/internal/review"
 	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/pkg/client"
@@ -91,6 +92,7 @@ func cmdRefactorStatusMigration(migrationText, storePath string, services []stri
 		Migration:     migrationWire{Kind: string(m.Kind), From: m.From, To: m.To},
 		ConserveSince: conserveSince,
 		Repositories:  renderMigrationRepos(view),
+		LedgerIgnored: view.LedgerIgnored,
 		Degraded:      view.Degraded,
 	}
 
@@ -134,6 +136,9 @@ func cmdRefactorStatusMigration(migrationText, storePath string, services []stri
 			printMigrationBurnDown(stdout, r.BurnDown)
 		}
 	}
+	if rep.LedgerIgnored != "" {
+		fmt.Fprintf(stdout, "verify ledger: %s\n", rep.LedgerIgnored)
+	}
 	for _, d := range rep.Degraded {
 		fmt.Fprintf(stdout, "degraded: %s\n", d)
 	}
@@ -168,7 +173,10 @@ type migrationFleetView struct {
 	GoneRows map[string][]migrationBurnRowWire
 	// Conservation is each repository's conservation state, in words.
 	Conservation map[string]string
-	Degraded     []string
+	// LedgerIgnored names the verify-ledger readings the burn-down left
+	// out: only readings at a read repository's recorded root count (PE-24).
+	LedgerIgnored string
+	Degraded      []string
 }
 
 // refactorStatusMigration builds the fleet-wide migration view for m: every
@@ -229,10 +237,20 @@ func migrationBurnDownFor(ctx context.Context, view *migrationFleetView, m revie
 			if ledger == "" {
 				ledger = verifyLedgerPath()
 			}
-			h, read := console.ProofHistory(ctx, ledger, console.DefaultHistoryTail)
+			// PE-24: only readings at a repository's recorded root (the
+			// store's registered service roots this view read) are its
+			// proof; a push clone's or a scratch clone's are ignored, named.
+			paths := make([]string, 0, len(roots))
+			for _, r := range roots {
+				if r != "" {
+					paths = append(paths, r)
+				}
+			}
+			h, read := console.ProofHistory(ctx, ledger, console.DefaultHistoryTail, ledgerroots.RegisteredRoots(paths))
 			if read.State != console.StatePresent {
 				view.Degraded = append(view.Degraded, "verify ledger: "+read.Reason+" — every gone: row reads unproven")
 			}
+			view.LedgerIgnored = h.Ignored.Phrase("verify-ledger reading")
 			hist = h
 		}
 		return hist
@@ -466,7 +484,10 @@ type migrationStatusReport struct {
 	Migration     migrationWire       `json:"migration"`
 	ConserveSince string              `json:"conserve_since,omitempty"`
 	Repositories  []migrationRepoWire `json:"repositories"`
-	Degraded      []string            `json:"degraded,omitempty"`
+	// LedgerIgnored names the verify-ledger readings under an unregistered
+	// root the burn-down left out (PE-24); absent when none was.
+	LedgerIgnored string   `json:"ledger_ignored,omitempty"`
+	Degraded      []string `json:"degraded,omitempty"`
 }
 
 type migrationWire struct {

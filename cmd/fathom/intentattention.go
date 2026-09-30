@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/intent"
+	"github.com/geoffmilleraz/fathom/internal/ledgerroots"
 )
 
 // The session-brief attention surface (EP-19, ADR-026 §7).
@@ -52,8 +53,12 @@ const (
 // rendered only when the count ROSE against a baseline row from before the
 // current session; a fall or a missing baseline prints nothing rather than a
 // congratulatory "+0".
-func intentAttentionFragment(projDir string, now time.Time) string {
-	rows := intent.ReadLedger()
+//
+// PE-25: only when projDir is a registered service root (roots, decided
+// from the identity the session hook already resolved: no daemon request,
+// no extra file read, no extra ledger scan).
+func intentAttentionFragment(projDir string, now time.Time, roots ledgerroots.Roots) string {
+	rows := attentionRows(intent.ReadLedger(), projDir, roots)
 	if len(rows) == 0 {
 		return ""
 	}
@@ -114,12 +119,43 @@ func splitDebt(byKind map[string]int) (unproven, fired int) {
 // the same drill-down convention the config/intent halves already use.
 // "" when nothing was recorded in the window — silence is correct when
 // there is genuinely nothing to report.
-func learningAttentionFragment(projDir string, now time.Time) string {
-	rows := intent.RecentLearning(intent.ReadLedger(), projDir, now.Add(-learningAttentionWindow))
+func learningAttentionFragment(projDir string, now time.Time, roots ledgerroots.Roots) string {
+	rows := intent.RecentLearning(attentionRows(intent.ReadLedger(), projDir, roots), projDir, now.Add(-learningAttentionWindow))
 	if len(rows) == 0 {
 		return ""
 	}
 	return fmt.Sprintf("learning %d", len(rows))
+}
+
+// attentionRows is the intent ledger's rows for projDir kept under roots
+// (PE-25). The line reads only projDir's rows, so they are narrowed to it
+// first and the registered-roots rule canonicalizes that one root, never
+// every row's.
+func attentionRows(rows []intent.LedgerRow, projDir string, roots ledgerroots.Roots) []intent.LedgerRow {
+	mine := make([]intent.LedgerRow, 0, len(rows))
+	for _, r := range rows {
+		if r.RepoRoot == projDir {
+			mine = append(mine, r)
+		}
+	}
+	kept, _ := intent.RegisteredRows(mine, roots)
+	return kept
+}
+
+// attentionLedgerRoots is the registered roots the attention line reads
+// under, from the identity the session hook already resolved for projDir
+// (PE-25's hook rule: no list_services call, no file read). The identity's
+// service root is the only root the line can use: projDir is registered
+// exactly when it is that root. No identity (a daemon that did not answer,
+// a hook past its deadline) is an unread registry: nothing is excluded.
+func attentionLedgerRoots(projDir string, id *identityResult) ledgerroots.Roots {
+	if id == nil {
+		return ledgerroots.Unread("no service identity was resolved for " + projDir + " this session")
+	}
+	if id.Service == "" || id.Path == "" {
+		return ledgerroots.RegisteredRoots(nil) // the registry answered: projDir is not a service root
+	}
+	return ledgerroots.RegisteredRoots([]string{id.Path})
 }
 
 // attentionLine composes the one attention line for projDir: the custodian's
@@ -128,7 +164,7 @@ func learningAttentionFragment(projDir string, now time.Time) string {
 // the intent rows, and each names its own drill-down verb). Returns "" when
 // every fragment is empty — silence is the correct output for a repo with
 // nothing to report.
-func attentionLine(projDir string, now time.Time) string {
+func attentionLine(projDir string, now time.Time, roots ledgerroots.Roots) string {
 	var parts []string
 	if n := violatedConcernCount(projDir); n > 0 {
 		parts = append(parts, fmt.Sprintf("config %d", n))
@@ -138,12 +174,12 @@ func attentionLine(projDir string, now time.Time) string {
 	if frag := wiringDriftAttention(projDir); frag != "" {
 		parts = append(parts, frag)
 	}
-	if frag := intentAttentionFragment(projDir, now); frag != "" {
+	if frag := intentAttentionFragment(projDir, now, roots); frag != "" {
 		parts = append(parts, frag)
 	}
 	// GL-14: extended, not doubled — one more fragment on the SAME shared
 	// line, never a second line.
-	if frag := learningAttentionFragment(projDir, now); frag != "" {
+	if frag := learningAttentionFragment(projDir, now, roots); frag != "" {
 		parts = append(parts, frag)
 	}
 	if len(parts) == 0 {

@@ -713,12 +713,15 @@ func TestConsolePagesRenderTheirVerbs(t *testing.T) {
 	// at their HEAD by a real `fathom verify` run, so the recorded proof
 	// has something to agree with.
 	g := newConsoleFixtureOpts(t, consoleFixtureOpts{Rooted: true})
-	rootedProject(t, g, "payment-service")
+	payRoot, _ := rootedProject(t, g, "payment-service")
 	plansDir, err := filepath.Abs(filepath.Join("testdata", "plans"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	var vout, verr bytes.Buffer
+	// The run is recorded at the project's registered root (PE-24: a run
+	// recorded anywhere else is not the project's proof).
+	t.Chdir(payRoot)
 	run([]string{"verify", "--service", "payment-service", "--url", g.ts.URL,
 		"--plan", filepath.Join(plansDir, "fixture-a.md"), "--plan", filepath.Join(plansDir, "fixture-b.md")}, &vout, &verr)
 	resetObsCache()

@@ -42,6 +42,11 @@ func learningAnnouncements(root string, decisions []semantic.LearningDecision, n
 	if len(decisions) == 0 {
 		return nil
 	}
+	// Writer-side dedup, read raw like StartClock and RecordBaseline
+	// (PE-25): under the registered-roots filter an unregistered root's
+	// transitions would never be seen, and each re-run would append them
+	// again. The announcement readers (RecentLearning in the audit and the
+	// attention line) read the filtered rows.
 	existing := intent.ReadLedger()
 	lines := make([]string, 0, len(decisions))
 	for _, d := range decisions {

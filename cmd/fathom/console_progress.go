@@ -34,6 +34,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/cost"
 	"github.com/geoffmilleraz/fathom/internal/intent"
+	"github.com/geoffmilleraz/fathom/internal/ledgerroots"
 )
 
 func init() {
@@ -99,8 +100,18 @@ type progressCostRow struct {
 	why            map[string]bool
 }
 
-// progressLedgerCaveat names what PE-24 has not yet fixed.
-const progressLedgerCaveat = "PE-24 is open: these figures include verify-ledger rows recorded under unregistered and scratch repository roots, which no reader filters out yet"
+// progressLedgerCaveat names the rule the join's proof history is read
+// under (PE-24); progressCaveat adds the readings it ignored.
+const progressLedgerCaveat = "only verify-ledger readings recorded at a registered service root are joined (PE-24): a scratch clone's, a worktree's or a push clone's reading is not the project's proof"
+
+// progressCaveat is the economics caveat: the registered-roots rule and
+// what it ignored, or why nothing was checked against it.
+func progressCaveat(ign ledgerroots.Ignored) string {
+	if p := ign.Phrase("verify-ledger reading"); p != "" {
+		return progressLedgerCaveat + "; " + p
+	}
+	return progressLedgerCaveat
+}
 
 // anchorKey keys a plan row's anchor file by service, plan base name and id.
 func anchorKey(service, plan, id string) string {
@@ -168,13 +179,13 @@ func anchorLanguages(cr *consoleRequest, anchors map[string]rowAnchor) func(key 
 
 // progressEconomicsFor prices the sessions joined under f (PE-16w).
 func progressEconomicsFor(ctx context.Context, m observatoryModel, f console.HistoryFilter, languageOf func(key string) string) progressEconomics {
-	e := progressEconomics{PriceTable: cost.PriceTablePath(), Caveat: progressLedgerCaveat, PerPlan: []progressCostRow{}, PerLanguage: []progressCostRow{}, Unpriced: []string{}}
+	e := progressEconomics{PriceTable: cost.PriceTablePath(), PerPlan: []progressCostRow{}, PerLanguage: []progressCostRow{}, Unpriced: []string{}}
 	pt, err := cost.LoadPriceTable(e.PriceTable)
 	if err != nil {
 		e.PriceNote = "price table unreadable: " + err.Error()
 	}
-	join, _, read := sessionProofJoin(ctx, agentSessionsOf(m), f)
-	e.History, e.Unjoined = read, len(join.Unjoined)
+	join, h, read := sessionProofJoin(ctx, agentSessionsOf(m), f, m.ledgerRoots())
+	e.History, e.Unjoined, e.Caveat = read, len(join.Unjoined), progressCaveat(h.Ignored)
 	plans, langs := map[string]*progressCostRow{}, map[string]*progressCostRow{}
 	unpriced := map[string]int{}
 	for _, o := range join.Outcomes {
@@ -284,7 +295,8 @@ func progressEconomicsFor(ctx context.Context, m observatoryModel, f console.His
 }
 
 // renderProgressEconomics renders the cost-per-row tables: per plan and
-// per language, the unpriced sessions named, the PE-24 caveat stated.
+// per language, the unpriced sessions named, the PE-24 rule and what it
+// ignored stated.
 func renderProgressEconomics(e progressEconomics) string {
 	var b strings.Builder
 	b.WriteString(`<p class="mb-3 text-xs text-ink-muted" data-ledger-caveat>` + html.EscapeString(e.Caveat+".") + `</p>`)
@@ -458,7 +470,7 @@ func buildProgressPage(cr *consoleRequest) (consoleOut, error) {
 	}
 
 	// The proof history and its projections.
-	h, read := console.ProofHistory(cr.r.Context(), verifyLedgerPath(), console.DefaultHistoryTail)
+	h, read := console.ProofHistory(cr.r.Context(), verifyLedgerPath(), console.DefaultHistoryTail, m.ledgerRoots())
 	model.History, model.Rows, model.Readings = read, len(h.Rows), len(h.Readings)
 	model.Board = console.DerivedBoard(h, f)
 	model.BurnUp = console.BurnUp(h, f, cr.now)

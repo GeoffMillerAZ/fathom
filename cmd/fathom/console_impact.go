@@ -88,7 +88,7 @@ func impactCatchSources(m observatoryModel, facts console.CallLogFacts, labelKey
 	impactReads.Lock()
 	if impactReads.guardKey != key || now.Sub(impactReads.guardAt) >= obsCacheTTL || now.Before(impactReads.guardAt) {
 		impactReads.Unlock()
-		src := freshCatchSources(m.reviews, facts, labelKey, m.registry)
+		src := freshCatchSources(m.reviews, facts, labelKey, m.registry, m.ledgerRoots())
 		impactReads.Lock()
 		impactReads.guard, impactReads.guardKey, impactReads.guardAt = src, key, now
 	}
@@ -104,9 +104,10 @@ func buildImpactPage(cr *consoleRequest) (consoleOut, error) {
 	m := cr.model()
 	q := cr.r.URL.Query()
 	facts := modelCallFacts(m)
+	verify, verifyIgnored := verifyLedgerRegisteredRows(impactVerifyRows(cr.now), m.ledgerRoots()) // PE-24
 	im := console.ImpactView(impactInputsFrom(impactSources{
 		imp: m.Impact, misses: m.Misses, classes: m.toolClass, callFacts: facts,
-		ledgerPath: sessionLedgerPath(), ledgerErr: m.ledgerErr, verify: impactVerifyRows(cr.now),
+		ledgerPath: sessionLedgerPath(), ledgerErr: m.ledgerErr, verify: verify, verifyIgnored: verifyIgnored,
 	}))
 	days, _ := strconv.Atoi(q.Get("days"))
 	if days < 0 {

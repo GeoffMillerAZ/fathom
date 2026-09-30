@@ -2,8 +2,11 @@ package main
 
 import (
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"io/fs"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"sort"
@@ -174,5 +177,64 @@ func TestGCDryRunDeletesNothing(t *testing.T) {
 	}
 	if ents, _ := os.ReadDir(filepath.Join(fh, "daemon", "fathom-live", "diag")); len(ents) != diagKeep {
 		t.Errorf("diag kept %d captures, want %d", len(ents), diagKeep)
+	}
+}
+
+// PE-29 product reach: `fathom gc` asks PE-23's registered roots of the
+// daemon's registry and plans ledger-unregistered; --apply moves the rows.
+// An unread or empty registry plans nothing and says why.
+func TestCmdGCPlansLedgerUnregisteredFromRegisteredRoots(t *testing.T) {
+	fh, ws := t.TempDir(), t.TempDir()
+	t.Setenv("FATHOM_HOME", fh)
+	t.Setenv("TMPDIR", t.TempDir())
+	luFixture(t, fh, false)
+	daemon := servicesDaemon(t, map[string]string{"a": "/reg/a", "b": "/reg/b/"})
+
+	run := func(url string, extra ...string) gcReport {
+		t.Helper()
+		args := append([]string{"--json", "--workspace", ws, "--call-log", filepath.Join(ws, "calls.jsonl"), "--url", url}, extra...)
+		var out, errb strings.Builder
+		if code := cmdGC(args, &out, &errb); code != 0 {
+			t.Fatalf("fathom gc %v: exit %d: %s%s", extra, code, out.String(), errb.String())
+		}
+		var rep gcReport
+		if err := json.Unmarshal([]byte(out.String()), &rep); err != nil {
+			t.Fatalf("gc --json: %v: %s", err, out.String())
+		}
+		return rep
+	}
+	dry := run(daemon.URL)
+	roots := map[string]int{}
+	for _, it := range luClassItems(dry) {
+		roots[filepath.Base(it.Path)+" "+it.Root] = it.Rows
+	}
+	if want := "map[intent-ledger.jsonl /private/tmp/wt:2 verify-ledger.jsonl /Volumes/x/tmp/clone:2 verify-ledger.jsonl /private/tmp/scratch-1:3]"; fmt.Sprint(roots) != want {
+		t.Fatalf("fathom gc dry run planned %v, want %s", roots, want)
+	}
+	if _, err := os.Stat(filepath.Join(fh, "archive")); !os.IsNotExist(err) {
+		t.Fatal("the dry run wrote an archive")
+	}
+	applied := run(daemon.URL, "--apply")
+	for _, it := range luClassItems(applied) {
+		if !it.Done {
+			t.Fatalf("fathom gc --apply left %+v undone", it)
+		}
+	}
+	arch, _ := filepath.Glob(filepath.Join(fh, "archive", "verify-ledger-unregistered-*.jsonl"))
+	if len(arch) != 1 {
+		t.Fatalf("fathom gc --apply archives %v, want one verify archive", arch)
+	}
+	if b, err := os.ReadFile(arch[0]); err != nil || strings.Count(string(b), "\n") != 5 {
+		t.Fatalf("fathom gc --apply archive: %v %q", err, b)
+	}
+
+	// Unread (nothing listening) and empty registries: one report, no counts.
+	dead := httptest.NewServer(http.NotFoundHandler())
+	dead.Close()
+	for _, url := range []string{dead.URL, servicesDaemon(t, nil).URL} {
+		items := luClassItems(run(url))
+		if len(items) != 1 || items[0].Action != "report" || items[0].Rows != 0 || items[0].Bytes != 0 {
+			t.Fatalf("registry at %s: items %+v, want one report and no counts", url, items)
+		}
 	}
 }

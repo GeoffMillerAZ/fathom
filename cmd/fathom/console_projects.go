@@ -8,10 +8,10 @@ package main
 //   - the observatory model: the registry, freshness, wiring, the
 //     realization ladder, open observations and the call log's per-day
 //     traffic (one fold, shared with every model-backed page);
-//   - the verify ledger: each plan's run at the project's HEAD — at its
-//     registered root or in any clone of the same service (the pre-push
-//     gate verifies in a detached clone) — else the root's newest run,
-//     stale (console.PlanRuns);
+//   - the verify ledger: each plan's run at the project's HEAD, else the
+//     root's newest run, stale (console.PlanRuns) — only rows recorded at
+//     a registered service root (PE-24: a worktree's or a push clone's
+//     run is not the project's; the rows ignored are named);
 //   - the daemon's store: claims by status, certify status and the
 //     obligations layer's latest compile;
 //   - the daemon's /statusz: the typed call-edge pass.
@@ -44,6 +44,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/certify"
 	"github.com/geoffmilleraz/fathom/internal/console"
+	"github.com/geoffmilleraz/fathom/internal/ledgerroots"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
@@ -102,7 +103,12 @@ func gatherProjects(ctx context.Context, src projectSources) projectsRead {
 	ledgerPath := verifyLedgerPath()
 	var runs []console.VerifyRun
 	runs, p.Ledger = src.cache.ledger(ledgerPath)
-	gate := gateRefusalFigure(runs, p.Ledger)
+	// PE-24: only the registered roots' runs; the rest are named.
+	runs, ignored := console.RegisteredRuns(runs, m.ledgerRoots())
+	if p.Ledger.State == console.StatePresent {
+		p.Ledger.Reason = withIgnored(p.Ledger.Reason, ignored, verifyLedgerNoun)
+	}
+	gate := gateRefusalFigure(runs, p.Ledger, ignored)
 	sameRoot := sameRootMatcher()
 
 	storeStamp := ""
@@ -352,8 +358,9 @@ func rungOf(d realizationDim) console.Rung {
 }
 
 // gateRefusalFigure is PC-13's one verify-gate figure (verifyFigure) over
-// the ledger read above, as a projected value.
-func gateRefusalFigure(runs []console.VerifyRun, ledger console.SourceRead) console.Value[int] {
+// the ledger read above, as a projected value; ignored is the runs the
+// registered-roots rule left out (PE-24), named in the denominator.
+func gateRefusalFigure(runs []console.VerifyRun, ledger console.SourceRead, ignored ledgerroots.Ignored) console.Value[int] {
 	const source = "the verify ledger (every recorded `fathom verify` run)"
 	switch ledger.State {
 	case console.StateError:
@@ -366,10 +373,11 @@ func gateRefusalFigure(runs []console.VerifyRun, ledger console.SourceRead) cons
 		rows = append(rows, verifyLedgerRow{At: r.At, RepoRoot: r.RepoRoot, Plan: r.Plan, Failing: r.Failing})
 	}
 	f := verifyFigure(rows)
+	f.Ignored = &ignored
 	if f.Runs == 0 {
 		return console.Absent[int](f.Sentence()).WithSource(source)
 	}
-	return console.Measured(f.Refusals, source).WithDenominator(fmt.Sprintf("of %s between %s and %s", plural(f.Runs, "recorded verify run"), dayOnly(f.First), dayOnly(f.Last)))
+	return console.Measured(f.Refusals, source).WithDenominator(withIgnored(fmt.Sprintf("of %s between %s and %s", plural(f.Runs, "recorded verify run"), dayOnly(f.First), dayOnly(f.Last)), ignored, verifyLedgerNoun))
 }
 
 func dayOnly(ts string) string {

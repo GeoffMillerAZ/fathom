@@ -10,7 +10,9 @@ package console
 // commit. The pre-push gate verifies in a detached clone (fathom's own
 // pushclone), so a run at HEAD may be recorded at any root: the commit, not
 // the directory, names the code it proved (with the service, which names
-// the index it proved it against). Only when no run at HEAD exists does the
+// the index it proved it against). PE-24 (O121): a reader keeps only rows
+// recorded at a registered service root (RegisteredRuns), so a clone's run
+// reaches PlanRuns only when its root is registered. Only when no run at HEAD exists does the
 // console fall back to the newest run at the project's registered root —
 // and then it is stale: it proved an older commit, and says which and when
 // (design §2: stale carries its age). Runs in scratch clones and bench
@@ -24,6 +26,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/ledgerroots"
 )
 
 // VerifyRun is one verify-ledger row: one plan, one run.
@@ -72,6 +76,21 @@ func ParseVerifyLedger(data []byte) (runs []VerifyRun, malformed int) {
 		runs = append(runs, r)
 	}
 	return runs, malformed
+}
+
+// RegisteredRuns keeps the runs whose repo_root is a registered service
+// root under roots and names what it ignored (PE-24, O121): a scratch
+// clone's or a worktree's run is not the fleet's proof. An unread registry
+// keeps every run and says why.
+func RegisteredRuns(runs []VerifyRun, roots ledgerroots.Roots) ([]VerifyRun, ledgerroots.Ignored) {
+	f := roots.NewFilter()
+	out := make([]VerifyRun, 0, len(runs))
+	for _, r := range runs {
+		if f.Keep(r.RepoRoot) {
+			out = append(out, r)
+		}
+	}
+	return out, f.Ignored()
 }
 
 // ProjectRunsQuery names one project for PlanRuns.

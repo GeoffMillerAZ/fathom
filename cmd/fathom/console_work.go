@@ -138,7 +138,7 @@ func computeWork(ctx context.Context, m observatoryModel, sr serviceRoot, now ti
 		idx = idxOpt[0]
 	}
 	var model workPageModel
-	h, read := console.ProofHistory(ctx, verifyLedgerPath(), console.DefaultHistoryTail)
+	h, read := console.ProofHistory(ctx, verifyLedgerPath(), console.DefaultHistoryTail, m.ledgerRoots())
 	model.History = read
 	f := console.HistoryFilter{Service: sr.Service}
 	looks := 0

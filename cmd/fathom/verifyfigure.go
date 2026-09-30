@@ -17,6 +17,8 @@ package main
 import (
 	"fmt"
 	"strings"
+
+	"github.com/geoffmilleraz/fathom/internal/ledgerroots"
 )
 
 // verifyFigureT is the computed figure. Zero Runs means "not instrumented",
@@ -28,6 +30,19 @@ type verifyFigureT struct {
 	Plans       int    // distinct (repo root, plan path)
 	Repos       int    // distinct repo roots
 	First, Last string // RFC3339 window bounds ("" when Runs == 0)
+	// Ignored is the rows left out because their repo_root is not a
+	// registered service root (PE-24); Sentence names them. nil when the
+	// rows were not filtered (a pointer keeps the figure comparable).
+	Ignored *ledgerroots.Ignored
+}
+
+// registeredVerifyFigure is the figure over the rows under roots'
+// registered service roots, naming the rows it ignored (PE-24).
+func registeredVerifyFigure(rows []verifyLedgerRow, roots ledgerroots.Roots) verifyFigureT {
+	kept, ign := verifyLedgerRegisteredRows(rows, roots)
+	f := verifyFigure(kept)
+	f.Ignored = &ign
+	return f
 }
 
 // verifyFigure computes the figure over rows. Deterministic: counts and
@@ -56,11 +71,19 @@ func verifyFigure(rows []verifyLedgerRow) verifyFigureT {
 	return f
 }
 
+// ignored is what the figure's rows left out (zero when unfiltered).
+func (f verifyFigureT) ignored() ledgerroots.Ignored {
+	if f.Ignored == nil {
+		return ledgerroots.Ignored{}
+	}
+	return *f.Ignored
+}
+
 // Sentence renders the figure with its window and denominators inline —
 // the only shape the number may be quoted in.
 func (f verifyFigureT) Sentence() string {
 	if f.Runs == 0 {
-		return "no `fathom verify` run is recorded in ~/.fathom/verify-ledger.jsonl — the gate figure is not instrumented (not a measured zero)"
+		return withIgnored("no `fathom verify` run is recorded in ~/.fathom/verify-ledger.jsonl — the gate figure is not instrumented (not a measured zero)", f.ignored(), verifyLedgerNoun)
 	}
 	day := func(ts string) string {
 		if i := strings.Index(ts, "T"); i > 0 {
@@ -68,6 +91,10 @@ func (f verifyFigureT) Sentence() string {
 		}
 		return ts
 	}
-	return fmt.Sprintf("the verify gate refused %d of %d recorded runs over %d plan(s) in %d repo(s) between %s and %s (a refusal = one run whose verdict carried at least one failing claimed row; %d failing-row readings summed across runs are NOT the figure; source ~/.fathom/verify-ledger.jsonl)",
-		f.Refusals, f.Runs, f.Plans, f.Repos, day(f.First), day(f.Last), f.FailingRows)
+	source := "source ~/.fathom/verify-ledger.jsonl"
+	if p := f.ignored().Phrase(verifyLedgerNoun); p != "" {
+		source += ", registered roots only: " + p
+	}
+	return fmt.Sprintf("the verify gate refused %d of %d recorded runs over %d plan(s) in %d repo(s) between %s and %s (a refusal = one run whose verdict carried at least one failing claimed row; %d failing-row readings summed across runs are NOT the figure; %s)",
+		f.Refusals, f.Runs, f.Plans, f.Repos, day(f.First), day(f.Last), f.FailingRows, source)
 }

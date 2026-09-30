@@ -371,7 +371,7 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 		// session ledger's verify_catches only ever saw runs inside an agent
 		// session, which told repositories that gate on every push to add
 		// the gate (O30's failure, again).
-		verifyRuns, verifyLedgerNote := windowVerifyRuns(winFrom, winTo)
+		verifyRuns, verifyIgnored, verifyLedgerNote := windowVerifyRuns(winFrom, winTo, ledgerRootsOf(svcs, nil))
 
 		obligationsBySvc := map[string]int{}
 		windowObligations := map[string]int{}
@@ -445,6 +445,7 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 				ObligationServes: windowObligations[name],
 				Sessions:         windowSessions[name],
 				VerifyRuns:       verifyRuns[name],
+				VerifyIgnored:    verifyIgnored[name],
 				WindowDays:       realizationWindowDays,
 				CallLogNote:      m.CallLogNote,
 				VerifyLedgerNote: verifyLedgerNote,

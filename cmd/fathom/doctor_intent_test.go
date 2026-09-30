@@ -16,14 +16,14 @@ import (
 func TestDoctorIntentRowsNeverFail(t *testing.T) {
 	t.Run("a repo with no corpus passes with a reason", func(t *testing.T) {
 		root := t.TempDir()
-		got := checkIntent(root)
+		got := checkIntent(root, unreadRoots)
 		if got.Status == doctorFail {
 			t.Errorf("not adopting Project Intent is a choice, not a failure: %+v", got)
 		}
 		if !strings.Contains(got.Reason, "not adopted") {
 			t.Errorf("the row must say why it is quiet: %q", got.Reason)
 		}
-		if claims := checkUnprovenClaims(root, "http://127.0.0.1:1", "svc"); claims.Status == doctorFail {
+		if claims := checkUnprovenClaims(root, "http://127.0.0.1:1", "svc", unreadRoots); claims.Status == doctorFail {
 			t.Errorf("unproven_claims must never fail: %+v", claims)
 		}
 	})
@@ -34,10 +34,10 @@ func TestDoctorIntentRowsNeverFail(t *testing.T) {
 		t.Setenv("FATHOM_INTENT_LEDGER", filepath.Join(root, "l.jsonl"))
 		t.Setenv("FATHOM_VERIFY_LEDGER", filepath.Join(root, "v.jsonl"))
 
-		if got := checkIntent(root); got.Status == doctorFail {
+		if got := checkIntent(root, unreadRoots); got.Status == doctorFail {
 			t.Errorf("intent row failed on a healthy corpus: %+v", got)
 		}
-		claims := checkUnprovenClaims(root, "http://127.0.0.1:1", "svc")
+		claims := checkUnprovenClaims(root, "http://127.0.0.1:1", "svc", unreadRoots)
 		if claims.Status == doctorFail {
 			t.Errorf("unproven_claims must warn at worst: %+v", claims)
 		}
@@ -72,7 +72,7 @@ func TestDoctorIntentRowsSkipOnUnreadableRouter(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = os.Chmod(router, 0o644) })
 
-	got := checkIntent(root)
+	got := checkIntent(root, unreadRoots)
 	if got.Status != doctorSkipped {
 		t.Errorf("intent row status = %v, want skipped for an unreadable router (never a guessed pass): %+v", got.Status, got)
 	}
@@ -80,7 +80,7 @@ func TestDoctorIntentRowsSkipOnUnreadableRouter(t *testing.T) {
 		t.Errorf("skip reason must name the unreadable path: %q", got.Reason)
 	}
 
-	claims := checkUnprovenClaims(root, "http://127.0.0.1:1", "svc")
+	claims := checkUnprovenClaims(root, "http://127.0.0.1:1", "svc", unreadRoots)
 	if claims.Status != doctorSkipped {
 		t.Errorf("unproven_claims status = %v, want skipped for an unreadable router: %+v", claims.Status, claims)
 	}
@@ -94,10 +94,10 @@ func TestDoctorIntentRowsSkipOnUnreadableRouter(t *testing.T) {
 // an honest PASS, never downgraded to SKIP by the fix above.
 func TestDoctorIntentRowsPassOnGenuinelyAbsentCorpus(t *testing.T) {
 	root := t.TempDir()
-	if got := checkIntent(root); got.Status != doctorPass {
+	if got := checkIntent(root, unreadRoots); got.Status != doctorPass {
 		t.Errorf("intent row status = %v, want pass for a genuinely absent corpus: %+v", got.Status, got)
 	}
-	claims := checkUnprovenClaims(root, "http://127.0.0.1:1", "svc")
+	claims := checkUnprovenClaims(root, "http://127.0.0.1:1", "svc", unreadRoots)
 	if claims.Status != doctorPass {
 		t.Errorf("unproven_claims status = %v, want pass for a genuinely absent corpus: %+v", claims.Status, claims)
 	}
@@ -133,7 +133,7 @@ func TestCheckUnprovenClaims_ReasonIncludesEvidenceTimestamp(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got := checkUnprovenClaims(root, "http://127.0.0.1:1", "svc")
+	got := checkUnprovenClaims(root, "http://127.0.0.1:1", "svc", unreadRoots)
 	if got.Status != doctorWarn {
 		t.Fatalf("status = %v, want warn (a failing plan row is honest debt, never a doctor failure): %+v", got.Status, got)
 	}
