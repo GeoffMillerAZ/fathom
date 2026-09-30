@@ -632,8 +632,20 @@ query source (LB-F2) and a rebuild of them from the lock is then byte-identical 
 Allowed for grammars, queries and fixtures: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause,
 ISC, Unlicense, CC0-1.0, Zlib, 0BSD; MPL-2.0 only for files taken unmodified. Refused: GPL
 (any), LGPL, AGPL, SSPL, EUPL, PolyForm (any), BUSL, FSL, Commons Clause, "no licence" and
-"licence unclear". The check reads the grammar repository's top-level `LICENSE` at the
-pinned commit **and** any licence file under `queries/` and `src/`; a mismatch refuses.
+"licence unclear". The check reads the grammar repository's top-level `LICENSE`, `LICENCE`
+or `COPYING` at the pinned commit **and** any licence file under `queries/` and `src/`; a
+mismatch refuses. A top-level licence file decides, identified by its text. Where there is
+none, a licence **declared** by the package manifests counts when they agree: `package.json`
+`license`, `Cargo.toml` `package.license` and `tree-sitter.json` `metadata.license`, every
+one present naming the same allowlisted SPDX id, recorded with basis `declared`
+(`kennyhml/tree-sitter-abap` has no LICENSE file and declares MIT in all three). Manifests
+that disagree, or none, leave the grammar unlicensed and refused. **AGPL is refused by name**,
+wherever it is read (the ADR-048 amendment of 2026-09-29, written with item tagsq): a queue
+grammar under AGPL is not pinned whatever the catalogue offers instead
+(`foxyseta/tree-sitter-prolog` is AGPL-3.0; the catalogue's `Rukiza/tree-sitter-prolog` is ISC,
+and re-pinning to it is a queue decision). `indexbench lang-pin -tree <checkout|tarball>`
+runs the check (`GrammarLicenceVerdict`, LB-F51) and exits 1 when refused. The verdicts
+for the two queue grammars above are recorded in `docs/plans/language-breadth.grammars.json`.
 `TestGrammarLock` fails when a blob's sha256 or size differs from the lock, when a blob
 exists without a lock row or a lock row without a blob, and when a licence is not on the
 allowlist. Every borrowed `.scm` file starts with a header:
@@ -874,12 +886,25 @@ worktree and your scratch directory.
 
 ### 13.1 Pin the grammar (tags-engine items only; skip for doc-engine items)
 
-5. Confirm the licence at the pinned commit: fetch the repository's `LICENSE` (and any
-   licence under `queries/` and `src/`) at the tag you will pin. If it is not on the
-   allowlist (§8.2), stop: disposition `refused`, reason `licence <SPDX>`.
-6. Resolve the tag to a commit (`git ls-remote`), download the tarball, compute its sha256,
-   and add a lock row (§8.1). Prefer a release tag that ships `src/parser.c`; if the grammar
-   only ships `grammar.js`, set `"generate": true` and pin the CLI version.
+5. Confirm the licence at the pinned commit: fetch the repository at the tag you will pin
+   (a checkout or the GitHub tarball) and run `indexbench lang-pin -tree <checkout|tarball>`
+   (§8.2): a top-level `LICENSE` decides; with none, a licence declared consistently in
+   `package.json`, `Cargo.toml` and `tree-sitter.json` counts (basis `declared`); a licence
+   file under `queries/` or `src/` that disagrees refuses. If it exits 1 (off the allowlist,
+   AGPL, unlicensed), stop: disposition `refused`, reason `licence <SPDX>`.
+6. Start the row from the catalogue: `indexbench lang-pin -id <id>` prints the draft lock row
+   (repo, commit as the tag, ABI, `generate`, licence, entry point, subdirs) from
+   `docs/plans/language-breadth.grammars.json`, which pre-fills the queue's unlocked tags items
+   from tree-sitter-language-pack's catalogue (MIT) at a pinned revision. Its flags tell you
+   what to check: `grammar-differs:<queue source>` (the catalogue names another repository than
+   the queue), `abi-outside:<n>`, `not-in-catalogue`; `refused:<SPDX>` and `unlicensed` exit 1.
+   The ABI is the catalogue's number, 14 unless it says otherwise; a grammar that ships a
+   `src/parser.c` has its own, so read `LANGUAGE_VERSION` there. Set `scanner` from
+   `src/scanner.c`. An item that names two grammars (gradle, scheme-racket) is pre-filled with
+   its first; pin the second by hand. Then resolve the tag to a commit (`git ls-remote`),
+   download the tarball, compute its sha256, and add the lock row (§8.1). Prefer a release tag
+   that ships `src/parser.c`; if the grammar only ships `grammar.js`, set `"generate": true`
+   and pin the CLI version.
 7. Build: `internal/extractor/tsengine/grammars/build.sh <blob>`. Paste `blob_sha256`,
    `blob_bytes`, `gz_bytes` into the lock. If the gzip size exceeds 3 MiB, note it in your
    report (it spends the embedded budget).
