@@ -185,7 +185,8 @@ CREATE TABLE IF NOT EXISTS compile_runs (
     rejection_reasons_json TEXT NOT NULL DEFAULT '[]',
     resumed_from       TEXT    NOT NULL DEFAULT '',
     uncompiled_scopes_json TEXT NOT NULL DEFAULT '[]',
-    sections_prefiltered INTEGER NOT NULL DEFAULT 0
+    sections_prefiltered INTEGER NOT NULL DEFAULT 0,
+    uncompiled_reasons_json TEXT NOT NULL DEFAULT '{}'
 );
 
 CREATE TABLE IF NOT EXISTS claim_events (
@@ -338,6 +339,10 @@ CREATE INDEX IF NOT EXISTS idx_observations_service_id
 		// legacy row simply reads back with SectionsPrefiltered==0 (honest:
 		// no pre-filter ever ran on it).
 		{"compile_runs", "sections_prefiltered", `ALTER TABLE compile_runs ADD COLUMN sections_prefiltered INTEGER NOT NULL DEFAULT 0`},
+		// EW-35: why each uncompiled section is uncompiled (section subject to
+		// failed/prefiltered/refused/budget/cancelled) — an ADDED column, never a
+		// table; a legacy row reads back with UncompiledReasons==nil.
+		{"compile_runs", "uncompiled_reasons_json", `ALTER TABLE compile_runs ADD COLUMN uncompiled_reasons_json TEXT NOT NULL DEFAULT '{}'`},
 		// T5-1/O13: pre-existing claim_links rows (including the live fleet
 		// store) predate AnchorText — a re-anchor read/write over such a
 		// store must not fail with "no such column", it must simply see ''

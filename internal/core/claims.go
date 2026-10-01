@@ -379,6 +379,19 @@ func HashLines(content []byte, start, end int) (string, bool) {
 	return hex.EncodeToString(h[:]), true
 }
 
+// Why a section stayed uncompiled (CompileRun.UncompiledReasons, EW-35).
+// "corpus_grew" and "stale" are serve-time reasons the live coverage
+// derives itself for sections no run recorded a reason for.
+const (
+	UncompiledFailed      = "failed"      // the model's answer never arrived usable (or its per-call deadline hit)
+	UncompiledPrefiltered = "prefiltered" // the decision port's pre-filter skipped it
+	UncompiledRefused     = "refused"     // the run's pre-flight budget refused the whole run
+	UncompiledBudget      = "budget"      // the mid-run budget stop never reached it
+	UncompiledCancelled   = "cancelled"   // the caller's context ended the run before it
+	UncompiledCorpusGrew  = "corpus_grew" // added to the corpus after the last run
+	UncompiledStale       = "stale"       // compiled once, its content or prompt changed since
+)
+
 // CompileRun is the per-run cost/audit ledger row (real usage, never
 // heuristics — ADR-016 §4.1).
 type CompileRun struct {
@@ -497,6 +510,12 @@ type CompileRun struct {
 	// and its subject is also folded into UncompiledScopes' document set —
 	// ADR-037's raw fallback must still be able to serve it.
 	SectionsPrefiltered int `json:"sections_prefiltered,omitempty"`
+	// UncompiledReasons (EW-35) names WHY each section this run left
+	// uncompiled is uncompiled: section subject ("<doc>#<slug>") to one of
+	// the Uncompiled* reason constants. Populated on a real run only;
+	// persisted as one added compile_runs column (never a table), nil on a
+	// legacy row.
+	UncompiledReasons map[string]string `json:"uncompiled_reasons,omitempty"`
 	// PrefilteredSections names, by stable section id ("<path>#<slug>"),
 	// every section SectionsPrefiltered counts — the same identity
 	// Section.Subject and a compiled claim's own Subject use, so a caller
