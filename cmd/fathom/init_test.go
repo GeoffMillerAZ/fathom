@@ -956,3 +956,18 @@ func TestCmdInit_HooksScopeProject_OverridesUserScope(t *testing.T) {
 		t.Errorf("stdout missing the --hooks-scope project note:\n%s", out.String())
 	}
 }
+
+// O13 (resolved, O300): CompileLayer is bridged to the provider registry, so
+// the starter config presents the claude-cli lane as a compile-capable,
+// subscription-backed profile and carries no stale "cannot drive compiles"
+// wording (that comment survives only in an operator's own old config).
+func TestStarterConfigPresentsClaudeCLIAsCompileCapable(t *testing.T) {
+	if !strings.Contains(starterConfigTOML, "subscription-backed") || !strings.Contains(starterConfigTOML, `provider = "claude-cli"`) {
+		t.Fatal("the starter config must offer claude-cli as the subscription-backed profile")
+	}
+	for _, stale := range []string{"cannot drive compile", "cannot drive compiles", "can't drive compile", "not compile-capable", "does not compile"} {
+		if strings.Contains(strings.ToLower(starterConfigTOML), stale) {
+			t.Errorf("starter config carries stale wording %q", stale)
+		}
+	}
+}

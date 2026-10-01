@@ -180,6 +180,7 @@ type GateConfig struct {
 	Mode     Mode
 	Now      func() time.Time // nil: time.Now
 	Level    func() Level     // nil: CurrentLevel
+	Cause    func() Cause     // nil: CurrentCause; what lifted the ladder
 	SafeMode func() bool      // nil: never
 	InFlight *InFlight        // nil: DefaultInFlight
 	Log      func(string)     // would-refuse and refusal lines; nil: none
@@ -222,6 +223,9 @@ func NewGate(cfg GateConfig) *Gate {
 	}
 	if cfg.Level == nil {
 		cfg.Level = CurrentLevel
+	}
+	if cfg.Cause == nil {
+		cfg.Cause = CurrentCause
 	}
 	if cfg.InFlight == nil {
 		cfg.InFlight = DefaultInFlight
@@ -365,13 +369,23 @@ func (g *Gate) callerGone(r Request, when string) *Refusal {
 	return &Refusal{Code: RefusalCallerGone, Reason: "caller went away " + when, Class: r.Class.String(), Level: g.cfg.Level().String()}
 }
 
+// RefusalText words a level refusal by its cause: a footprint mark (or an
+// unknown cause) keeps the memory-budget wording; a host trigger such as the
+// swap-volume floor names itself, never as a memory budget (EW-37).
+func RefusalText(lvl Level, c Cause, what string) string {
+	if c.BudgetCause() || c.Detail == "" {
+		return fmt.Sprintf("fathom is over its memory budget (%s): %s is refused — fathom resources", lvl, what)
+	}
+	return fmt.Sprintf("fathom is refusing at %s (%s): %s is refused — fathom resources", lvl, c.Detail, what)
+}
+
 func (g *Gate) decideLevel(r Request) *Refusal {
 	lvl := g.cfg.Level()
 	heavy := r.Class == ClassTree || r.Class == ClassFleet || r.Class == ClassIngest || r.Class == ClassEgress
 	if lvl >= LevelExit || (lvl >= LevelRefuse && heavy) {
 		return &Refusal{
 			Code:       RefusalLevel,
-			Reason:     fmt.Sprintf("fathom is over its memory budget (%s): %s-class work is refused — fathom resources", lvl, r.Class),
+			Reason:     RefusalText(lvl, g.cfg.Cause(), r.Class.String()+"-class work"),
 			Class:      r.Class.String(),
 			Level:      lvl.String(),
 			RetryAfter: 30 * time.Second,

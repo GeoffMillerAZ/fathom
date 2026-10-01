@@ -60,6 +60,12 @@ package config
 	// codex-cli lanes (mirrors FATHOM_CLAUDE_BIN / FATHOM_CODEX_BIN).
 	bin?: string
 
+	// timeout bounds ONE model call's subprocess for the claude-cli lane, a
+	// Go duration ("20m", "90s"); mirrors FATHOM_CLAUDE_TIMEOUT. Omitted
+	// keeps the kit default (5 minutes). A section that exceeds it counts
+	// as failed; it never aborts the compile (EW-33).
+	timeout?: =~"^([0-9]+(\\.[0-9]+)?(ns|us|ms|s|m|h))+$"
+
 	// api_key_env names an environment variable read at LLM-client
 	// construction time (never at config load time, so a rotated
 	// credential is picked up without re-parsing the config file).

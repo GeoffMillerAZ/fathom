@@ -153,18 +153,45 @@ func maintainedLineNames(line string) []string {
 	return names
 }
 
+// readMcpToolsDocSet returns docs/mcp-tools.md (the index) followed by every
+// docs/mcp-tools/*.md file the index links, concatenated in index order
+// (EW-32: the reference is split per group).
+func readMcpToolsDocSet(root string) (string, error) {
+	docs := filepath.Join(root, "docs")
+	raw, err := os.ReadFile(filepath.Join(docs, "mcp-tools.md"))
+	if err != nil {
+		return "", err
+	}
+	var b strings.Builder
+	b.Write(raw)
+	seen := map[string]bool{}
+	for _, m := range regexp.MustCompile(`\]\((mcp-tools/[A-Za-z0-9._-]+\.md)\)`).FindAllStringSubmatch(string(raw), -1) {
+		if seen[m[1]] {
+			continue
+		}
+		seen[m[1]] = true
+		part, err := os.ReadFile(filepath.Join(docs, filepath.FromSlash(m[1])))
+		if err != nil {
+			return "", err
+		}
+		b.WriteString("\n")
+		b.Write(part)
+	}
+	return b.String(), nil
+}
+
 // maintainedKnownNames is the vocabulary a `## Maintained` contract may use:
 // every tool documented in docs/mcp-tools.md (itself registry-synced by
 // TestMcpToolsDocMatchesRegistry), every dispatched verb, and the sub-verbs
 // and flags a line may legitimately name.
 func maintainedKnownNames(t *testing.T, root string) map[string]bool {
 	t.Helper()
-	toolDoc, err := os.ReadFile(filepath.Join(root, "docs", "mcp-tools.md"))
+	toolDoc, err := readMcpToolsDocSet(root)
 	if err != nil {
 		t.Skipf("docs/mcp-tools.md unreadable: %v", err)
 	}
 	known := map[string]bool{}
-	for _, m := range regexp.MustCompile("`([a-z][a-z0-9_]*)`").FindAllStringSubmatch(string(toolDoc), -1) {
+	for _, m := range regexp.MustCompile("`([a-z][a-z0-9_]*)`").FindAllStringSubmatch(toolDoc, -1) {
 		known[m[1]] = true
 	}
 	for _, v := range verbNames() {

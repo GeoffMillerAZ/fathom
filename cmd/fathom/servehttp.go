@@ -911,6 +911,13 @@ func (w *loggingResponseWriter) WriteHeader(status int) {
 	w.ResponseWriter.WriteHeader(status)
 }
 
+// Unwrap lets http.ResponseController reach the connection through this
+// wrapper (EW-36, the O128 recurrence): without it, the ingest-class detach
+// hook's SetWriteDeadline(zero) and every other ResponseController call
+// returned ErrNotSupported, silently, and the route's 150 s write deadline
+// cut a long compile_layer/ingest off with an empty answer.
+func (w *loggingResponseWriter) Unwrap() http.ResponseWriter { return w.ResponseWriter }
+
 // Flush lets loggingResponseWriter satisfy http.Flusher by forwarding to
 // the embedded ResponseWriter's own Flush, when it has one. Go does NOT
 // promote a method through an embedded INTERFACE field the way it does
@@ -1054,7 +1061,7 @@ func newHTTPHandlerDeps(srv *mcp.Server, c *client.Client, selfAddr string, port
 		// An ingest-class call runs detached with no class deadline; the
 		// route's 150 s write deadline would cut its client off mid-ingest
 		// (the work completes, the answer is lost), so it lifts it.
-		ctx = mcp.WithDetachHook(ctx, func() { _ = http.NewResponseController(w).SetWriteDeadline(time.Time{}) })
+		ctx = mcp.WithDetachHook(ctx, func() { _ = liftRPCWriteDeadline(w) })
 		ctx, doneSources := rpcSourcesScope(ctx, r)
 		defer doneSources()
 		// RT-39/RT-40/RT-41/RT-44: safe mode, warm-up, store distress and

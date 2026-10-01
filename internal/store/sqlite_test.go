@@ -1069,3 +1069,34 @@ func TestQueryClaimEventsSince_FiltersByWindow(t *testing.T) {
 		t.Fatalf("got %+v, want only c2", got)
 	}
 }
+
+// TestSQLiteStore_RecordCompileRun_PersistsUncompiledReasons (EW-35): the
+// per-section reasons round-trip through the added uncompiled_reasons_json
+// column on both stores; a run with none reads back nil.
+func TestSQLiteStore_RecordCompileRun_PersistsUncompiledReasons(t *testing.T) {
+	sq, err := NewSQLiteStore("")
+	if err != nil {
+		t.Fatalf("NewSQLiteStore: %v", err)
+	}
+	t.Cleanup(func() { _ = sq.Close() })
+	ctx := context.Background()
+	want := map[string]string{"docs/b.md#b": "failed", "ADR.md#x": "budget"}
+	for name, st := range map[string]Store{"sqlite": sq, "memory": NewMemoryStore()} {
+		if err := st.RecordCompileRun(ctx, core.CompileRun{RunID: "r1", ServiceID: "svc", Layer: "obligations", RanAt: time.Unix(1, 0).UTC(), UncompiledReasons: want}); err != nil {
+			t.Fatalf("%s RecordCompileRun: %v", name, err)
+		}
+		if err := st.RecordCompileRun(ctx, core.CompileRun{RunID: "r2", ServiceID: "svc", Layer: "obligations", RanAt: time.Unix(2, 0).UTC()}); err != nil {
+			t.Fatalf("%s RecordCompileRun: %v", name, err)
+		}
+		got, err := st.CompileRuns(ctx, "svc", "")
+		if err != nil || len(got) != 2 {
+			t.Fatalf("%s CompileRuns: %v len=%d", name, err, len(got))
+		}
+		if got[0].UncompiledReasons != nil {
+			t.Errorf("%s: reasonless run read back %v, want nil", name, got[0].UncompiledReasons)
+		}
+		if !reflect.DeepEqual(got[1].UncompiledReasons, want) {
+			t.Errorf("%s: reasons = %v, want %v", name, got[1].UncompiledReasons, want)
+		}
+	}
+}

@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
@@ -122,6 +123,7 @@ func runTestsSelect(args []string, gitRunner func(args ...string) ([]byte, error
 		fmt.Fprintf(stderr, "error: list symbols for service %q: %v\n", svc, err)
 		return 1
 	}
+	nodes = dropNestedModuleNodes(testsSelectRoot, nodes)
 	typed, _ := c.TypedEdges(ctx, svc) // best effort: absent for a fixture/module with no typed pass
 
 	out, gerr := gitRunner("diff", "--name-only", *since)
@@ -178,6 +180,44 @@ func runTestsSelect(args []string, gitRunner func(args ...string) ([]byte, error
 	renderCertifyingSelectionText(stdout, *since, view)
 	renderTestsSelectTable(stdout, *since, ranked, invocations, gap.Gap, replay, len(profiles) > 0)
 	return 0
+}
+
+// testsSelectRoot is the repository root the indexed paths are relative to
+// (the working directory; injected in tests).
+var testsSelectRoot = "."
+
+// inRootModule reports whether the repo-relative file belongs to the root
+// module: no directory between root and the file (the root excluded) holds
+// its own go.mod. A package under a nested module (calibration/oracles/*)
+// cannot run from the root, so `tests select` never names it (EW-38).
+func inRootModule(root, file string) bool {
+	dir := path.Dir(filepath.ToSlash(file))
+	for dir != "." && dir != "/" && dir != "" {
+		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(dir), "go.mod")); err == nil {
+			return false
+		}
+		dir = path.Dir(dir)
+	}
+	return true
+}
+
+// dropNestedModuleNodes returns nodes minus those defined under a nested
+// go.mod, memoising the per-directory answer.
+func dropNestedModuleNodes(root string, nodes []core.SymbolNode) []core.SymbolNode {
+	memo := map[string]bool{}
+	out := make([]core.SymbolNode, 0, len(nodes))
+	for _, n := range nodes {
+		d := path.Dir(filepath.ToSlash(n.FilePath))
+		ok, seen := memo[d]
+		if !seen {
+			ok = inRootModule(root, n.FilePath)
+			memo[d] = ok
+		}
+		if ok {
+			out = append(out, n)
+		}
+	}
+	return out
 }
 
 // rankedTest is one AffectedTest with its ranking inputs resolved —

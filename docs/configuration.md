@@ -89,6 +89,7 @@ Fields (all but `provider` are optional):
 | `deployment` | Azure OpenAI deployment name, for `provider = "azure-openai"`. |
 | `api_version` | Azure OpenAI API version; empty defers to the adapter's pinned GA default. |
 | `bin` | CLI binary override for `claude-cli`/`codex-cli` (mirrors `FATHOM_CLAUDE_BIN`/`FATHOM_CODEX_BIN`). |
+| `timeout` | `claude-cli` only: a Go duration (`"20m"`, `"90s"`) bounding ONE model call's subprocess; mirrors `FATHOM_CLAUDE_TIMEOUT`. Omitted keeps the kit's 5 minute default. A section whose call exceeds it counts as failed and is named in `section_errors`; the compile continues. |
 | `api_key_env` | Name of an environment variable to read at construction time. |
 | `api_key_cmd` | Argv (no shell) executed at construction time; trimmed stdout is the key. |
 

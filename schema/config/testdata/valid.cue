@@ -13,6 +13,7 @@ example: #Config & {
 		subscription: {
 			provider: "claude-cli"
 			bin:      "/opt/homebrew/bin/claude"
+			timeout:  "20m"
 		}
 		vault: {
 			provider: "openai"

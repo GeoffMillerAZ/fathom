@@ -71,6 +71,9 @@ func writeRefusal(w http.ResponseWriter, ref *tenancy.Refusal) {
 // daemonServerOpts shapes newDaemonServer.
 type daemonServerOpts struct {
 	managed bool // answer test callers 409 (§10.4)
+	// rpcWriteTimeout overrides daemonRPCWriteTimeout (zero: the default);
+	// a test shortens it to reproduce the long-ingest empty answer (EW-36).
+	rpcWriteTimeout time.Duration
 }
 
 // Server timeouts (§3.5).
@@ -89,7 +92,7 @@ const (
 // test caller. Every route requires the loopback Host: hosted-modules mode,
 // the one network-reachable exception, was removed by SR-17.
 func newDaemonServer(h http.Handler, o daemonServerOpts) *http.Server {
-	h = routeWriteDeadline(h)
+	h = routeWriteDeadline(h, o.rpcWriteTimeout)
 	if o.managed {
 		inner := h
 		h = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -110,17 +113,29 @@ func newDaemonServer(h http.Handler, o daemonServerOpts) *http.Server {
 
 // routeWriteDeadline sets each route's write deadline: none for the
 // /events SSE stream and the operator's pprof, 150 s for everything else.
-func routeWriteDeadline(next http.Handler) http.Handler {
+func routeWriteDeadline(next http.Handler, rpcTimeout time.Duration) http.Handler {
+	if rpcTimeout <= 0 {
+		rpcTimeout = daemonRPCWriteTimeout
+	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		rc := http.NewResponseController(w)
 		switch {
 		case r.URL.Path == "/events" || strings.HasPrefix(r.URL.Path, "/debug/pprof/"):
 			_ = rc.SetWriteDeadline(time.Time{})
 		default:
-			_ = rc.SetWriteDeadline(time.Now().Add(daemonRPCWriteTimeout))
+			_ = rc.SetWriteDeadline(time.Now().Add(rpcTimeout))
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// liftRPCWriteDeadline removes the route's write deadline for a call that
+// runs detached and may outlast it (an ingest-class tools/call, EW-36). It
+// reaches the connection through http.ResponseController, so every writer
+// wrapped around it must Unwrap (loggingResponseWriter does); the error is
+// http.ErrNotSupported when one does not, which a test pins.
+func liftRPCWriteDeadline(w http.ResponseWriter) error {
+	return http.NewResponseController(w).SetWriteDeadline(time.Time{})
 }
 
 // requireLoopbackHost refuses a request whose Host is not loopback, or

@@ -93,8 +93,33 @@ func buildAnthropicClientProfile(p config.Profile) (llmclient.LLMClient, error) 
 	return cl, nil
 }
 
+// newClaudeCLIClient is the claudecli constructor seam: a test captures the
+// Config a profile or the env lane resolved without a real binary.
+var newClaudeCLIClient = func(cfg claudecli.Config) (llmclient.LLMClient, error) { return claudecli.New(cfg) }
+
+// claudeCLIConfig resolves the claude-cli lane's Config from a binary path
+// and a Go-duration timeout ("" keeps the kit's 5 minute default). The one
+// place a profile's `timeout` key and FATHOM_CLAUDE_TIMEOUT reach the
+// client (EW-34).
+func claudeCLIConfig(bin, timeout string) (claudecli.Config, error) {
+	cfg := claudecli.Config{Bin: bin}
+	if timeout == "" {
+		return cfg, nil
+	}
+	d, err := time.ParseDuration(timeout)
+	if err != nil || d <= 0 {
+		return claudecli.Config{}, fmt.Errorf("claude-cli timeout %q is not a positive duration (e.g. \"20m\")", timeout)
+	}
+	cfg.Timeout = d
+	return cfg, nil
+}
+
 func buildClaudeCLIClientProfile(p config.Profile) (llmclient.LLMClient, error) {
-	cl, err := claudecli.New(claudecli.Config{Bin: p.Bin})
+	cfg, err := claudeCLIConfig(p.Bin, p.Timeout)
+	if err != nil {
+		return nil, err
+	}
+	cl, err := newClaudeCLIClient(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("construct Claude CLI client: %w", err)
 	}

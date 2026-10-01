@@ -335,3 +335,53 @@ func TestTestsSelect_RequiresSince(t *testing.T) {
 		t.Fatal("expected nonzero exit when --since is missing")
 	}
 }
+
+// TestTestsSelectSkipsNestedModules (EW-38): a package under a nested go.mod
+// (calibration/oracles/*) cannot run from the repo root, so `tests select`
+// never names it, while the root module's own packages stay selected.
+func TestTestsSelectSkipsNestedModules(t *testing.T) {
+	root := t.TempDir()
+	write := func(rel, body string) {
+		t.Helper()
+		p := filepath.Join(root, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("go.mod", "module example.com/root\n\ngo 1.22\n")
+	write("lib/lib.go", "package lib\n\nfunc Work() int { return 1 }\n")
+	write("lib/lib_test.go", "package lib\n\nimport \"testing\"\n\nfunc TestWork(t *testing.T) { _ = Work() }\n")
+	write("calibration/oracles/dump/go.mod", "module example.com/dump\n\ngo 1.22\n")
+	write("calibration/oracles/dump/dump.go", "package dump\n\nfunc Dump() int { return 2 }\n")
+	write("calibration/oracles/dump/dump_test.go", "package dump\n\nimport \"testing\"\n\nfunc TestDump(t *testing.T) { _ = Dump() }\n")
+
+	if !inRootModule(root, "lib/lib_test.go") || inRootModule(root, "calibration/oracles/dump/dump_test.go") {
+		t.Fatalf("inRootModule misclassifies the fixture")
+	}
+
+	storePath := filepath.Join(t.TempDir(), "s.sqlite")
+	var ing bytes.Buffer
+	if code := run([]string{"ingest", "--service", "nested-svc", "--path", root, "--store", storePath}, &ing, &ing); code != 0 {
+		t.Fatalf("ingest failed (%d): %s", code, ing.String())
+	}
+	old := testsSelectRoot
+	testsSelectRoot = root
+	t.Cleanup(func() { testsSelectRoot = old })
+	setEconomicsLedger(t, filepath.Join(t.TempDir(), "econ.jsonl"))
+
+	var out, errBuf bytes.Buffer
+	args := []string{"--since", "HEAD~1", "--service", "nested-svc", "--store", storePath, "--safe"}
+	if code := runTestsSelect(args, fakeGitRunner([]string{"lib/lib.go", "calibration/oracles/dump/dump.go"}), &out, &errBuf); code != 0 {
+		t.Fatalf("exit %d: %s", code, errBuf.String())
+	}
+	text := out.String()
+	if !strings.Contains(text, "TestWork") {
+		t.Fatalf("root-module test must stay selected:\n%s", text)
+	}
+	if strings.Contains(text, "oracles") || strings.Contains(text, "TestDump") {
+		t.Fatalf("nested-module package must be dropped:\n%s", text)
+	}
+}

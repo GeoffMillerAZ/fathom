@@ -476,6 +476,17 @@ func (c *Compiler) Compile(ctx context.Context, in CompileInput) (core.CompileRu
 		if refuse, reason := enforceBudgets(c.Layer, estTokensIn, 0, c.InRatePerKTok); refuse {
 			run.Refused = true
 			run.RefusalReason = reason
+			var refusedTail []orderedSection
+			for _, item := range ordered {
+				if needsCompile(bySubject, carried, item.sec, promptVersion) {
+					refusedTail = append(refusedTail, item)
+				}
+			}
+			run.UncompiledScopes = uncompiledDocScopes(append(append([]orderedSection{}, prefilteredOrdered...), refusedTail...))
+			run.UncompiledReasons = uncompiledReasons(
+				reasonedSections{core.UncompiledPrefiltered, prefilteredOrdered},
+				reasonedSections{core.UncompiledRefused, refusedTail},
+			)
 			run.TokensIn = estTokensIn
 			run.CostUSD = cost.PriceUSD(estTokensIn, c.InRatePerKTok)
 			run.DurationMS = now().Sub(started).Milliseconds()
@@ -503,6 +514,14 @@ func (c *Compiler) Compile(ctx context.Context, in CompileInput) (core.CompileRu
 	// deliverable 2's layer_coverage.uncompiled_scopes needs to know
 	// exactly which tail, if any, this run never reached).
 	stoppedAt := -1
+	// abortedAt is the ordered-index of the section whose compile the run
+	// aborted on (caller ctx ended, or a drift-anchor infrastructure
+	// failure); -1 means no abort. An abort never skips the flush below:
+	// every section compiled before it is stored and the run recorded
+	// (EW-33), and the error is returned only after.
+	abortedAt := -1
+	var abortErr error
+	var failedItems []orderedSection
 
 sectionLoop:
 	for i, item := range ordered {
@@ -542,10 +561,16 @@ sectionLoop:
 			// claims, and move on — one bad response must never abort
 			// an 88-section corpus. Only a cancelled or expired context
 			// aborts; a run in which NOTHING compiled fails at the end.
-			if ctx.Err() != nil || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-				return run, fmt.Errorf("semantic: compile %s: %w", sec.Subject, err)
+			// EW-33: a per-call deadline (claude-cli's own subprocess
+			// timeout) with a live caller ctx is that section's failure,
+			// never the caller's cancellation.
+			if callerAborted(ctx, err) {
+				abortErr = fmt.Errorf("semantic: compile %s: %w", sec.Subject, err)
+				abortedAt = i
+				break sectionLoop
 			}
 			run.SectionsFailed++
+			failedItems = append(failedItems, item)
 			if len(run.SectionErrors) < maxSectionErrors {
 				run.SectionErrors = append(run.SectionErrors, fmt.Sprintf("%s: %v", sec.Subject, firstLine(err.Error())))
 			}
@@ -560,7 +585,9 @@ sectionLoop:
 				// A drift-anchor failure is infrastructure, not a bad
 				// draft: abort the run loudly (FT-6 — see errDriftAnchor).
 				if errors.Is(verr, errDriftAnchor) {
-					return run, fmt.Errorf("semantic: compile %s: %w", sec.Subject, verr)
+					abortErr = fmt.Errorf("semantic: compile %s: %w", sec.Subject, verr)
+					abortedAt = i
+					break sectionLoop
 				}
 				run.ClaimsRejected++
 				cause := classifyRejectionCause(verr)
@@ -598,10 +625,11 @@ sectionLoop:
 	// mid-run budget stop, gains the tail of the deterministic order this
 	// run never reached — exactly what layer_coverage.uncompiled_scopes
 	// discloses at serve time.
-	var uncompiledTail []orderedSection
+	var uncompiledTail, prefilteredTail, budgetTail, abortedTail []orderedSection
 	for _, item := range prefilteredOrdered {
 		if _, ok := carried[item.sec.Subject]; !ok {
 			uncompiledTail = append(uncompiledTail, item)
+			prefilteredTail = append(prefilteredTail, item)
 		}
 	}
 	if stoppedAt >= 0 {
@@ -617,13 +645,31 @@ sectionLoop:
 		for _, item := range ordered[stoppedAt+1:] {
 			if needsCompile(bySubject, carried, item.sec, promptVersion) {
 				uncompiledTail = append(uncompiledTail, item)
+				budgetTail = append(budgetTail, item)
 			}
 		}
 	}
+	if abortedAt >= 0 {
+		for _, item := range ordered[abortedAt:] {
+			if needsCompile(bySubject, carried, item.sec, promptVersion) {
+				abortedTail = append(abortedTail, item)
+			}
+		}
+	}
+	// failed sections are uncompiled too (EW-35): they were never in
+	// UncompiledScopes before, so a partial compile named no reason.
+	uncompiledTail = append(uncompiledTail, failedItems...)
+	uncompiledTail = append(uncompiledTail, abortedTail...)
 	run.UncompiledScopes = uncompiledDocScopes(uncompiledTail)
+	run.UncompiledReasons = uncompiledReasons(
+		reasonedSections{core.UncompiledPrefiltered, prefilteredTail},
+		reasonedSections{core.UncompiledFailed, failedItems},
+		reasonedSections{core.UncompiledBudget, budgetTail},
+		reasonedSections{core.UncompiledCancelled, abortedTail},
+	)
 	run.RejectionReasons = buildRejectionReasons(rejectionCounts, rejectionSamples)
 	run.CostUSD = cost.PriceUSD(run.TokensIn, c.InRatePerKTok) + cost.PriceUSD(run.TokensOut, c.OutRatePerKTok)
-	if run.SectionsCompiled == 0 && run.SectionsFailed > 0 {
+	if abortErr == nil && run.SectionsCompiled == 0 && run.SectionsFailed > 0 {
 		return run, fmt.Errorf("semantic: compile: every section that needed the model failed (%d); first: %s", run.SectionsFailed, run.SectionErrors[0])
 	}
 	run.DurationMS = now().Sub(started).Milliseconds()
@@ -642,10 +688,16 @@ sectionLoop:
 		return run, nil
 	}
 
+	// EW-33: an abort still flushes every section compiled before it — the
+	// store writes below must outlive the caller's cancelled ctx.
+	sctx := ctx
+	if abortErr != nil {
+		sctx = context.WithoutCancel(ctx)
+	}
 	// AG-26: the carried claims are stored with the model's, and each
 	// carried subject is retired like a recompiled one (its own claims from
 	// an older digest, if any, are superseded below).
-	if err := c.St.PutClaims(ctx, append(newClaims, carriedClaims...), append(newLinks, carriedLinks...)); err != nil {
+	if err := c.St.PutClaims(sctx, append(newClaims, carriedClaims...), append(newLinks, carriedLinks...)); err != nil {
 		return run, fmt.Errorf("semantic: store claims: %w", err)
 	}
 	recompiledSubjects = append(recompiledSubjects, carriedSubjects...)
@@ -690,15 +742,18 @@ sectionLoop:
 				// SetClaimStatus call that used to leave ValidTo
 				// untouched here (every OTHER claim-ending path already
 				// paired the two calls by hand; this one had drifted).
-				if err := closeClaimValidity(ctx, c.St, in.ServiceID, old.ClaimID, core.ClaimSuperseded, now()); err != nil {
+				if err := closeClaimValidity(sctx, c.St, in.ServiceID, old.ClaimID, core.ClaimSuperseded, now()); err != nil {
 					return run, fmt.Errorf("semantic: supersede %s: %w", old.ClaimID, err)
 				}
 			}
 		}
 	}
 
-	if err := c.St.RecordCompileRun(ctx, run); err != nil {
+	if err := c.St.RecordCompileRun(sctx, run); err != nil {
 		return run, fmt.Errorf("semantic: record compile run: %w", err)
+	}
+	if abortErr != nil {
+		return run, abortErr
 	}
 	return run, nil
 }
@@ -706,6 +761,37 @@ sectionLoop:
 // promptOverheadTokens approximates the fixed prompt scaffolding per section
 // for dry-run / pre-flight estimates.
 const promptOverheadTokens = 260
+
+// callerAborted is EW-33's one abort predicate: only the CALLER's context
+// ending aborts a compile. An error from one section's model call — even a
+// context.DeadlineExceeded the claude-cli subprocess raised from its own
+// per-call timeout, or a Canceled it surfaced — while the caller's ctx is
+// live is that section's failure, counted and named, never the run's.
+func callerAborted(ctx context.Context, _ error) bool { return ctx.Err() != nil }
+
+// reasonedSections groups ordered sections under the one reason they stayed
+// uncompiled (core.Uncompiled*).
+type reasonedSections struct {
+	reason   string
+	sections []orderedSection
+}
+
+// uncompiledReasons maps each section subject to why it is uncompiled
+// (EW-35); the first group naming a subject wins. nil when none.
+func uncompiledReasons(groups ...reasonedSections) map[string]string {
+	var out map[string]string
+	for _, g := range groups {
+		for _, item := range g.sections {
+			if out == nil {
+				out = map[string]string{}
+			}
+			if _, ok := out[item.sec.Subject]; !ok {
+				out[item.sec.Subject] = g.reason
+			}
+		}
+	}
+	return out
+}
 
 // allDigestsMatch reports whether every prior claim was compiled from this
 // exact section content AND under the given prompt version — a prompt

@@ -921,6 +921,11 @@ func registerSemanticTools(s *Server, backend QueryInterface, modules moduleBack
 		if len(run.PrefilteredSections) > 0 {
 			result["prefiltered_sections"] = run.PrefilteredSections
 		}
+		// EW-35: why each section this run left uncompiled is uncompiled
+		// (failed, prefiltered, refused, budget, cancelled). Additive.
+		if len(run.UncompiledReasons) > 0 {
+			result["uncompiled_reasons"] = run.UncompiledReasons
+		}
 		return result, nil
 	})
 }

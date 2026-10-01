@@ -101,6 +101,7 @@ func applyEnvOverlay(base Profile, baseProv Provenance) (Profile, Provenance) {
 	switch out.Provider {
 	case ProviderClaudeCLI:
 		setEnv(&out.Bin, "bin", "FATHOM_CLAUDE_BIN")
+		setEnv(&out.Timeout, "timeout", "FATHOM_CLAUDE_TIMEOUT")
 	case ProviderCodexCLI:
 		setEnv(&out.Bin, "bin", "FATHOM_CODEX_BIN")
 	case ProviderOpenAI:

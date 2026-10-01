@@ -45,11 +45,7 @@ func TestEveryToolDeclaresCostClass(t *testing.T) {
 		srv.RegisterUndeclaredToolForTest("zz_undeclared_tool")
 	}()
 
-	raw, err := os.ReadFile(filepath.Join(repoRoot(t), "docs", "mcp-tools.md"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	doc := string(raw)
+	doc := readMcpToolsDoc(t)
 	start := strings.Index(doc, "## Cost classes")
 	end := strings.Index(doc, "## Shared tools")
 	if start < 0 || end <= start {

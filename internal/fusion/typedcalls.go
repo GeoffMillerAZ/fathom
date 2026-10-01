@@ -96,6 +96,7 @@ import (
 	"go/token"
 	"go/types"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -373,6 +374,55 @@ func formatFailedTypedPackages(fp []FailedTypedPackage) string {
 	return " (" + strings.Join(parts, "; ") + ")"
 }
 
+// typedPackagesLoad is packages.Load; a variable so a test can inject a load
+// that answers no packages and no error (EW-39).
+var typedPackagesLoad = packages.Load
+
+// zeroPackagesDisclosed turns a load of zero packages into a disclosed
+// failure when the connector found Go files the module should have loaded
+// (EW-39, O304). packages.Load returns err == nil with zero packages when
+// `go list` matched nothing (a list cut short under load, a pattern that
+// matched no package): without this the pass recorded "ok" with a
+// syntax-only graph. A repository with no loadable Go files stays silent:
+// testdata, underscore and dot directories, and nested modules are not
+// part of "./..." and never count.
+func zeroPackagesDisclosed(repoPath string, allowed map[string]bool, loaded int) error {
+	if loaded > 0 {
+		return nil
+	}
+	expected := 0
+	for rel := range allowed {
+		if loadableByRootPattern(repoPath, rel) {
+			expected++
+		}
+	}
+	if expected == 0 {
+		return nil
+	}
+	return fmt.Errorf("fusion: typed-edge load %q: go/packages returned 0 packages for ./... although %d Go file(s) were discovered — the typed pass produced nothing to trust (a go list cut short, or a module that matches no package)", repoPath, expected)
+}
+
+// loadableByRootPattern reports whether the repo-relative .go file sits in a
+// directory "./..." from repoPath would visit.
+func loadableByRootPattern(repoPath, rel string) bool {
+	dir := path.Dir(filepath.ToSlash(rel))
+	if dir == "." {
+		return true
+	}
+	segs := strings.Split(dir, "/")
+	for _, sg := range segs {
+		if sg == "testdata" || sg == "vendor" || strings.HasPrefix(sg, "_") || strings.HasPrefix(sg, ".") {
+			return false
+		}
+	}
+	for i := len(segs); i > 0; i-- {
+		if _, err := os.Stat(filepath.Join(repoPath, filepath.FromSlash(strings.Join(segs[:i], "/")), "go.mod")); err == nil {
+			return false
+		}
+	}
+	return true
+}
+
 // EnrichTypedEdges loads every Go package under repoPath (pattern "./...",
 // Tests:true so Test* callers are covered — goextract's own model treats
 // _test.go source as ordinary symbols), resolves each call site, and
@@ -444,13 +494,17 @@ func EnrichTypedEdges(ctx context.Context, st store.Store, serviceID, repoPath s
 		Mode: packages.NeedName | packages.NeedFiles | packages.NeedCompiledGoFiles |
 			packages.NeedImports | packages.NeedTypes | packages.NeedSyntax | packages.NeedTypesInfo,
 	}
-	pkgs, err := packages.Load(cfg, "./...")
+	pkgs, err := typedPackagesLoad(cfg, "./...")
 	if hErr := gov.check(); hErr != nil {
 		return halted(hErr) // a load the governor cancelled is a halt, never a toolchain failure
 	}
 	if err != nil {
 		report.Duration = time.Since(start)
 		return report, fmt.Errorf("fusion: typed-edge load %q: %w", repoPath, err)
+	}
+	if zErr := zeroPackagesDisclosed(repoPath, allowed, len(pkgs)); zErr != nil {
+		report.Duration = time.Since(start)
+		return report, zErr
 	}
 	// Sort by ID, NOT PkgPath: go/packages gives a test-augmented variant
 	// ("pkg [pkg.test]") the SAME PkgPath as its plain package (PkgPath is

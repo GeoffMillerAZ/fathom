@@ -216,6 +216,7 @@ func mergeProfileFields(p *Profile, raw map[string]any, name string, source Sour
 	set("deployment", &p.Deployment)
 	set("api_version", &p.APIVersion)
 	set("bin", &p.Bin)
+	set("timeout", &p.Timeout)
 	set("api_key_env", &p.APIKeyEnv)
 
 	if v, ok := raw["api_key_cmd"]; ok {
