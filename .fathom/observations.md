@@ -2666,3 +2666,29 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** none yet; the worker ran the focused packages (internal/config, the cmd/fathom pin and hook tests) under -race and left the whole set to task validate
 - **Status:** open
 - **Impact:** EW-11 selection stops narrowing as soon as a diff inserts a line above many symbols (a CHANGELOG line, a schema field), which is most diffs; test_gap overstates the untested change by two orders of magnitude here
+
+### O235 — scip import stored no typed edge for scip-dotnet, scip-php or scip-clang output: none of them sets enclosing_range, so every reference fell outside every definition's name token
+
+- **Symptom:** scip import stored no typed edge for scip-dotnet, scip-php or scip-clang output: none of them sets enclosing_range, so every reference fell outside every definition's name token
+- **Evidence:**
+  - **Tool:** indexbench lang-oracle -dialect csharp -subject /Volumes/m2ext/tmp/lang-oracles/clones/Polly -scip /Volumes/m2ext/tmp/lang-oracles/out/csharp-Polly.scip (and internal/scip.ImportIndex's Report on the same index and nodes)
+  - **Expected:** the references inside a mapped method's body become typed edges, as the harness's own call truth already attributes them (D5: 6,106 definitions took the mapped fathom definition's lines)
+  - **Actual:** before (d8ed9a29): typed_recall null, scip_edges 0, scip_edges_typed 0; ImportIndex Direct 0, Unresolved 0, Skipped no-enclosing-definition 122,921 (every reference). After LB-F54 and LB-F55: typed_recall .7003 (36,831 of 52,596), scip_edges 52,596; ImportIndex Direct 36,831, Unresolved 38,961, EnclosingFallback 7,496, Skipped local-target 24,699, unmapped-endpoint 15,765, no-enclosing-definition 6,665 (7,338 nodes, 22,588 unmapped definitions, both unchanged). Spot check, src/Polly.Core/Retry/RetryHelper.cs: GetRetryDelay -> GetRetryDelayCore (L28), GetRetryDelayCore -> ApplyJitter and DecorrelatedJitterBackoffV2, each a real call
+  - **Repro:** in a clone at d8ed9a29 and at the la-scip branch: go build -o /tmp/ib ./cmd/indexbench && /tmp/ib lang-oracle -dialect csharp -subject <Polly> -scip <csharp-Polly.scip> -out <scratch>/csharp.json; read counts.scip_edges, counts.scip_edges_typed and metrics.typed_recall
+- **Root cause:** definitionSpan used EnclosingRange, else Range (the name token); a producer that sets no enclosing_range leaves no definition span containing any reference. Separately, a reference to a `local N` (no extractor emits a local) landed in Skipped["unmapped-endpoint"], the typed_recall denominator, and a reference inside a local's initializer had that unmapped local as its FROM
+- **Fix:** LB-F54 (a mapped definition with no enclosing_range takes its node's Line..EndLine whole lines; Report.EnclosingFallback counts them; span comparison is lines first) and LB-F55 (Skipped["local-target"]; enclosingFrom climbs unmapped locals to the nearest mapped definition)
+- **Status:** fixed
+- **Impact:** every scip-dotnet, scip-php and scip-clang import stored zero typed edges and the C# reading's typed_recall was unmeasurable; locals inflated every producer's typed_recall denominator (Rust 21% of references, Dart 46% with parameters). The C# re-measure is wave 2; csharp.json is not re-committed here
+
+### O236 — the scip import's text, JSON and MCP rows print edges, direct, unresolved and unmapped only: Skipped, EnclosingFallback and the new local-target count reach pkg/client callers alone
+
+- **Symptom:** the scip import's text, JSON and MCP rows print edges, direct, unresolved and unmapped only: Skipped, EnclosingFallback and the new local-target count reach pkg/client callers alone
+- **Evidence:**
+  - **Tool:** fathom ingest -scip (cmd/fathom/ingest.go typed_edges line, ingest_json.go), the MCP scip import row (internal/mcp/scip_import.go)
+  - **Expected:** a reader of `fathom ingest -scip` sees how many references were skipped and why, and how many definitions took the line-span fallback, as the O115 Unmapped warning already discloses unmapped definitions
+  - **Actual:** the text line is `typed_edges: N edge(s) (D direct / U unresolved) via <producer> [<path>]` plus the Unmapped warning; Report.Skipped and Report.EnclosingFallback are on client.ImportSCIPResult but no surface renders them
+  - **Repro:** grep -n "Report\." cmd/fathom/ingest.go cmd/fathom/ingest_json.go internal/mcp/scip_import.go
+- **Root cause:** the surfaces predate Skipped's per-reason map; LB-F54/LB-F55 were scoped to internal/scip
+- **Fix:** none yet; the integrator (or a cmd/fathom owner) adds the fallback and skipped counts to the typed_edges line, the ingest JSON row and the MCP row
+- **Status:** open
+- **Impact:** the import's disclosure exists in the Report but a CLI or MCP user cannot see that 24,699 of Polly's references targeted a local or that the spans of 7,496 definitions came from fathom's own lines

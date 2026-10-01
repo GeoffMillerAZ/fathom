@@ -21,6 +21,10 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: patch (pre-1.0: breaking bumps minor)
 
+### Fixed
+
+- **`fathom ingest -scip` stores typed edges for an index whose producer sets no enclosing_range (scip-php, scip-clang, scip-dotnet; LB-F54), and stops counting references to local variables as unmapped (LB-F55).** A mapped definition without an enclosing range takes its fathom symbol's own lines, so the references in its body are attributed: Polly's scip-dotnet index went from 0 edges (every reference skipped) to 36,831 direct edges. A reference inside a local variable's initializer is attributed to the function the local lives in. The import report (`client.ImportSCIPResult`) names how many definitions took the fallback (`EnclosingFallback`) and how many references targeted a local (`Skipped["local-target"]`) (O235).
+
 ## [0.9.0] -- 2026-09-30
 
 Release impact: minor (pre-1.0: breaking bumps minor)
