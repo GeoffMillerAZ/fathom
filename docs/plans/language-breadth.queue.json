@@ -3729,7 +3729,7 @@
     "engine": "native",
     "plan_row": "LB-Q-nginx",
     "worker_model": "sonnet",
-    "retargeted": "L2 tags engine to L3 native (owner 2026-10-02: routing formats target L3): the tags engine cannot emit route targets or include cross_file references; opa-oz/tree-sitter-nginx v1.0.1 (MIT) was licence-checked and not used",
+    "retargeted": "L2 tags engine to L3 native (owner 2026-10-01: routing formats target L3): the tags engine cannot emit route targets or include cross_file references; opa-oz/tree-sitter-nginx v1.0.1 (MIT) was licence-checked and not used",
     "notes": "servers, locations (route), upstreams and their servers; proxy_pass/grpc_pass/fastcgi_pass to an upstream of the file (L2); include repo-path candidates and route_ref route-host targets (L3, the route contract)"
   },
   {

@@ -16,7 +16,7 @@ opa-oz/tree-sitter-nginx v1.0.1 (commit `47ade644d754cce57974aac44d2c9450e823d4f
 `64c563e478c57aebd4d722574300239689eb6e6b5eaacbc07d91c309282dee18`): `indexbench lang-pin -tree`
 verdict MIT (basis LICENSE), not AGPL, not refused. Not used: the tags engine cannot emit a route
 target or an include's cross-file reference (its L3 is `imports.scm` through `resolvestrategy.go`),
-and a routing format targets L3 (owner, 2026-10-02).
+and a routing format targets L3 (owner, 2026-10-01).
 
 ## What it models
 
