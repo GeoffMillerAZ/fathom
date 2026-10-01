@@ -105,3 +105,7 @@
   working scip-java run, or a universal-ctags release that recognizes local classes, or
   both, re-measures this dialect against a materially better oracle before the merge
   decision is revisited.
+- `references.scm` (LB-F74, wave lc): written in this repository; no upstream query adapted (type
+  identifiers, qualified types, annotations and the class a static member access names).
+- `imports.scm` (LB-F74, wave lc): a class import now binds the class's simple name (`@import.name`),
+  a wildcard keeps its own pattern; written in this repository.

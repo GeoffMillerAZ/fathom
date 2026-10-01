@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package acme.v1;
+
+import "acme/v1/common.proto";
+import "acme/v2/common.proto";
+import "buf/validate/validate.proto";
+
+message User {
+  Common common = 1;
+  buf.validate.FieldRules rules = 2;
+  acme.v2.Common.Kind kind = 3;
+}

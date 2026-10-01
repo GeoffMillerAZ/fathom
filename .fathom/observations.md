@@ -2987,3 +2987,42 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** none here; module roots are wave 3's (F-D)
 - **Status:** open
 - **Impact:** protobuf stays L2 with L3 unmet (xref_recall 0 vs its bar) and the dialect cannot be dispatched under lang-parity
+
+### O275 — JavaScript file_edge_recall stays under .25 after reference edges (.1795 on axios + express): most missed file pairs are referenced only from module-level code, which no definition encloses, so the symbol-to-symbol edge model has no From
+
+- **Symptom:** JavaScript file_edge_recall stays under .25 after reference edges (.1795 on axios + express): most missed file pairs are referenced only from module-level code, which no definition encloses, so the symbol-to-symbol edge model has no From
+- **Evidence:**
+  - **Tool:** indexbench lang-oracle -dialect javascript|typescript -scip <scip-typescript index> (file edges, LB-F74)
+  - **Expected:** an import-bound reference becomes a file edge wherever it is written, as scip-typescript counts every cross-file occurrence
+  - **Actual:** missed pairs whose every oracle occurrence lies outside a fathom definition: axios 139 of 164 (a default-exported anonymous adapter, top-level wiring), zod 310 of 335 (bench scripts, re-export lines), express nearly all (examples are top-level scripts); TypeScript reads .3872 (zod .4341, nest .3802) at precision .9622 and JavaScript .1795 at precision 1
+  - **Repro:** a scratch test pairing langbench.ScoreSCIP's FileEdges with fusion.ResolveFileEdges on the pinned subjects, each missed pair classified by whether any of its SCIP reference occurrences falls inside a fathom definition's lines
+- **Root cause:** TODO
+- **Fix:** TODO
+- **Status:** open
+- **Impact:** TODO
+
+### O276 — C# file_edge_precision falls from .9107 to .9049 with reference edges, the remainder mostly what scip-dotnet does not attest: generic types and methods with explicit type arguments (O271; Polly's Policy.Handle<T>(), 514 pairs), samples that reference Polly through its NuGet package, and a partial class many files declare
+
+- **Symptom:** C# file_edge_precision falls from .9107 to .9049 with reference edges, the remainder mostly what scip-dotnet does not attest: generic types and methods with explicit type arguments (O271; Polly's Policy.Handle<T>(), 514 pairs), samples that reference Polly through its NuGet package, and a partial class many files declare
+- **Evidence:**
+  - **Tool:** indexbench lang-oracle -dialect csharp -scip <scip-dotnet 0.2.14 index> (file edges, LB-F74)
+  - **Expected:** a reference to an in-repo type is an in-repo file edge in the oracle
+  - **Actual:** Polly 1,310 of 1,521 fathom file pairs agree, Newtonsoft.Json 2,628 of 2,831; recall .0619 to .4343 (3,938 of 9,067); a type two files declare (Polly's partial class Policy in 30 files, JsonTextReader in two) and a bare-named member (a property named CancellationToken) now bind nothing, which lifted precision from .6856
+  - **Repro:** a scratch test diffing fusion.ResolveFileEdges against langbench.ScoreSCIP's FileEdges on Polly 9ad5ae9b and Newtonsoft.Json 4e13299d, the fathom-only pairs tallied by target
+- **Root cause:** TODO
+- **Fix:** TODO
+- **Status:** open
+- **Impact:** TODO
+
+### O277 — the ruby-require dump's default load path (lib) leaves jekyll's 49 test files' require "helper" unresolved, so every file edge from a test to test/helper.rb counts against file_edge_precision though jekyll's own Rakefile adds test to the load path
+
+- **Symptom:** the ruby-require dump's default load path (lib) leaves jekyll's 49 test files' require "helper" unresolved, so every file edge from a test to test/helper.rb counts against file_edge_precision though jekyll's own Rakefile adds test to the load path
+- **Evidence:**
+  - **Tool:** ruby calibration/oracles/ruby-require/ruby_require_dump.rb -subject jekyll (default load path lib)
+  - **Expected:** the oracle resolves a require under the load path the subject runs with: jekyll's Rakefile sets test.libs << "lib" << "test"
+  - **Actual:** with -I lib only jekyll reads file_edge_precision .2647 (18 of 68) after LB-F76, 49 of the 50 misses a test file's edge to test/helper.rb; with -I lib -I test the truth gains 49 pairs (119) and the same edges read .9853 (67 of 68)
+  - **Repro:** ruby ruby_require_dump.rb -subject <jekyll 1f319fb2> (-I lib -I test), then lang-oracle -dialect ruby -tool-oracle <dump>
+- **Root cause:** TODO
+- **Fix:** TODO
+- **Status:** open
+- **Impact:** TODO

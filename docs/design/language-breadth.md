@@ -591,6 +591,34 @@ wildcard-imported name resolves to that name's member when its file defines one.
 A new strategy is a foundation-level change (an Opus row), never something a worker adds.
 Edges keep the existing label: `file-resolved`, tier pre-scan, never presented as typed.
 
+References and re-exports (F-D, wave lc: LB-F74 to LB-F78). A dialect's `references.scm`
+(manifest `queries.references`, compiled and run apart from its tags query, so no symbol or
+call changes) names what a file references outside a call's own text (`@ref.name`, or
+`@ref.head` with `@ref.member`; `@ref.not` marks a node no reference reads, a member's name)
+and what it re-exports (`@export.*`: `export * from`, `export { A as B } from`, Dart's
+`export 'x.dart' show/hide`, a default export). The extractor keeps a reference only when an
+import binds its head or, where unnamed names are in scope (a wildcard import, an
+include/require, a package scope), it starts with an upper case letter, and the file's
+`file_imports` row carries its imports, references and re-exports together (no new table).
+The resolver draws a reference from the innermost definition whose lines enclose it, through
+the bindings a call takes (a named import, a whole-module prefix, a wildcard name), never
+within its own file; a name a module re-exports binds the file defining it (a Python
+package's own imports are its re-exports); a whole-module binding used bare binds the
+module's default export, then its definition of the bound name, then its sole one. Language
+scope rules ride manifest parameters: a namespace-dir dialect whose package is a clause sees
+its own package's types unqualified (`package_scope: "nested"`: every enclosing namespace's
+too, C#), `constants: "lexical"` looks a Ruby constant up through the modules around it,
+`module_roots: "buf"` roots a protobuf import at buf.yaml's `modules[].path` and buf.work.yaml's
+`directories`, and `type_paths: "package-dir"` reads a dotted protobuf type as package then
+type, the package naming the defining file's directory. A namespace-dir named import whose
+path names no file binds the top-level name, or the class member, its path less the last
+segment names (Kotlin's `import a.b.fn`, Java's `import static a.b.Foo.bar`). A bare-named
+member a dialect emits inside a type (a C# property, a Java field) is never a top-level name,
+and a type two files declare (a C# partial class) binds nothing: which file a reference means
+has no answer at file granularity. A reference written outside every definition (an import
+line, module-level code, a re-export line) has no definition to draw from: the measured
+ceiling on JavaScript and TypeScript recall (O275).
+
 ## 7. L4: SCIP import per language
 
 The mechanism exists (`fathom ingest --scip`, auto-detected `index.scip` and

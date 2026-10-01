@@ -13,7 +13,7 @@
   },
   "grammar": { "blob": "csharp", "entry_point": "tree_sitter_c_sharp" },
   "variants": [],
-  "queries": { "tags": "tags.scm", "imports": "imports.scm" },
+  "queries": { "tags": "tags.scm", "imports": "imports.scm", "references": "references.scm" },
   "kinds": {
     "namespace": { "source_kind": "CSharpNamespace", "canonical": "namespace" },
     "class":     { "source_kind": "CSharpClass",     "canonical": "class",     "container": true },
@@ -34,7 +34,7 @@
   "qualify": { "chain_containers": true, "container_sep": ".", "method_sep": "." },
   "package": { "strategy": "capture" },
   "preprocess": "csharp-conditionals",
-  "imports": { "strategy": "namespace-dir", "suffixes": [".cs"], "type_wildcard": "members" },
+  "imports": { "strategy": "namespace-dir", "suffixes": [".cs"], "type_wildcard": "members", "package_scope": "nested" },
   "signature": { "max_chars": 200 },
   "target_level": "L4",
   "queue_id": "csharp"

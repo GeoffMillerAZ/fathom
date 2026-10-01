@@ -19,3 +19,5 @@
   decision 5); moved unchanged from the tags query it used to share a file with.
 - `testdata/`: fixtures written in this repository; the goldens were written by the
   pre-manifest engine at fdbc2ee4 (TestTagsDialectParity).
+- `references.scm` (LB-F74, wave lc): written in this repository; no upstream query adapted. The
+  file resolver's references (every identifier and dotted attribute path outside a call's text).

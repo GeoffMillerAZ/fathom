@@ -46,3 +46,5 @@
   incumbent's rpc `Signature` (the request and response type names joined by an arrow) is text no source spells, which a
   tags-engine signature cannot emit (`TestProtobufDialectRPCSignature`). No `ExtractorEpoch` bump: no stored output changes
   until the switch.
+- `references.scm` (LB-F74, LB-F77, wave lc): written in this repository; no upstream query adapted
+  (a type reference with its package path).

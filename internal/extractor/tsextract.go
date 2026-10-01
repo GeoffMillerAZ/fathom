@@ -65,6 +65,7 @@ type tsDialectRules struct {
 	stripPrefix     []string // manifest names.strip_prefix
 
 	importStrategy  string // manifest imports.strategy ("" when the dialect has none)
+	keepAllRefs     bool   // manifest imports.type_paths: every reference is a type (LB-F74)
 	packageStrategy string // manifest package.strategy
 	sigMax          int    // manifest signature.max_chars
 
@@ -72,6 +73,7 @@ type tsDialectRules struct {
 	query     string // tags query then imports query
 
 	injectionsQuery string // queries.injections (LB-F6), "" when none
+	refsQuery       string // queries.references (LB-F74), "" when none
 
 	// preprocess is the manifest's pre-parse step (tsPreprocessors), nil
 	// when it names none.
@@ -200,6 +202,7 @@ func compileDialectRules(d Dialect) (*tsDialectRules, error) {
 	}
 	if d.Imports != nil {
 		r.importStrategy = d.Imports.Strategy
+		r.keepAllRefs = d.Imports.Params.TypePaths != ""
 	}
 	if d.Calls != nil {
 		r.qualifyCalls = d.Calls.Qualify
@@ -220,6 +223,13 @@ func compileDialectRules(d Dialect) (*tsDialectRules, error) {
 			return nil, fmt.Errorf("dialect %s: %w", d.ID, err)
 		}
 		r.injectionsQuery = string(b)
+	}
+	if d.Queries.References != "" {
+		b, err := fs.ReadFile(dialectFS, path.Join("dialects", d.ID, d.Queries.References))
+		if err != nil {
+			return nil, fmt.Errorf("dialect %s: %w", d.ID, err)
+		}
+		r.refsQuery = string(b)
 	}
 	for key, k := range d.Kinds {
 		r.kinds[key] = tsDefKind{Kind: core.SourceKind(k.SourceKind), Container: k.Container, Callable: k.Callable}

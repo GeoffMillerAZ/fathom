@@ -7,25 +7,14 @@ package fusion_test
 // case, LB-F11) — mirroring TestResolveFileEdges_CIncludes/_PythonImports'
 // shape as far as Java's own grammar allows.
 //
-// Unlike those languages, `internal/fusion.resolveImports`'s "top level"
-// same-file/cross-file CALL matching only ever attributes a call to a
-// symbol whose Name has NO "." (fileresolve.go: "TSExtractor's
-// qualifyTSDefs only dots a callable's name when its immediate parent is a
-// container, so a module-scope function/class/variable always has a bare
-// Name"). Every Java method's parent IS a container (Java has no top-level
-// functions at all — a method is always "ClassName.method"), so this
-// matcher structurally never has a bare-named Java callable to match
-// against, for a same-file call OR a cross-file one — not a gap in THIS
-// dialect's queries; a foundation property of the shared same-file
-// call-capture + top-level-only matching convention (already the
-// documented, measured cause of Python's near-zero file_edge_recall,
-// LB-Q-python-rest's own reading note; cmd/indexbench/langoracle.go calls
-// fusion.ResolveFileEdges directly for the reading's own file_edge_recall/
-// precision metrics, so this is the same root cause, not a second one).
-// This test proves what DOES work end to end: imports parse and the
-// resolver runs to completion without skipping or erroring; it asserts
-// zero edges explicitly, as the correct and expected outcome, rather than
-// silently accepting whatever came out.
+// A Java method is always container-qualified ("Util.helper"), and its
+// call text is only the method's name, so no call resolves by the
+// top-level matching the call path makes. Since LB-F74 the import binds its
+// class's simple name (`import com.example.Util;` -> Util, imports.scm) and
+// the references query reads `Util.helper(3)`'s receiver as the qualified
+// reference "Util.helper": run reaches Util's member helper — the one edge
+// this fixture has. The same-file call run -> local draws none (a Java
+// method is never top level).
 
 import (
 	"context"
@@ -68,15 +57,10 @@ func TestResolveFileEdges_JavaImports(t *testing.T) {
 		}
 	}
 
-	// Zero call edges is the CORRECT outcome here (see header): every
-	// symbol this fixture's calls could possibly attribute to (Main.local,
-	// Util.helper) is a qualified ("ClassName.method") name, and
-	// resolveImports only ever matches a bare, unqualified top-level name.
-	// A non-zero count would mean either the matcher's contract changed
-	// (update this test to match) or this dialect is qualifying names
-	// unexpectedly (a real regression).
-	if len(edges) != 0 {
-		t.Errorf("edges = %d, want 0 (every Java symbol here is container-qualified); got %+v", len(edges), edges)
+	got := fileResolveEdgeSetAll(edges)
+	want := "fixture::com/example/com.example.Main.run -> fixture::com/example/com.example.Util.helper"
+	if len(got) != 1 || !got[want] {
+		t.Errorf("edges = %v, want only %s", got, want)
 	}
 
 	// Every resolved edge's From/To must be an actually-extracted symbol —

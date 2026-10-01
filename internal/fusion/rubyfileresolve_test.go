@@ -15,6 +15,7 @@ package fusion_test
 import (
 	"context"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -67,5 +68,40 @@ func TestResolveFileEdges_RubyRequire(t *testing.T) {
 	}
 	if len(got) != len(want) {
 		t.Errorf("got %d edges %v, want %d %v", len(got), got, len(want), want)
+	}
+}
+
+// TestResolveFileEdges_RubyLexicalConstants is LB-F76 (manifest
+// imports.constants "lexical", Sorbet's and Zeitwerk's constant lookup): a
+// constant is looked up through the modules and classes around its
+// reference, innermost first, then at the top level. `Base` in
+// `class Application < Base` inside `module Sinatra` reaches Sinatra::Base's
+// file, and `Request.new` in one of its methods Sinatra::Request; and a
+// require of a file that defines only nested constants (helpers.rb:
+// Sinatra::Helpers::Stream, O273) draws an edge when the requirer names one,
+// written qualified.
+func TestResolveFileEdges_RubyLexicalConstants(t *testing.T) {
+	dir, err := filepath.Abs(filepath.Join("testdata", "rubylexical"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	files, symbols := loadFileResolveFixture(t, dir, "ruby", fixtureFiles(t, dir, ".rb"))
+	edges, report := fusion.ResolveFileEdges(context.Background(), "ruby", dir, files, symbols)
+	if report.Skipped {
+		t.Fatalf("skipped: %s", report.SkipReason)
+	}
+	got := namedEdges(edges, symbols)
+	// App.stream writes Sinatra::Helpers::Stream: it references the module
+	// Sinatra and Sinatra::Helpers on the way, both defined (here) only by
+	// the file it requires.
+	want := []string{
+		"lib/app.rb|App.stream -> lib/sinatra/helpers.rb|Sinatra",
+		"lib/app.rb|App.stream -> lib/sinatra/helpers.rb|Sinatra::Helpers",
+		"lib/app.rb|App.stream -> lib/sinatra/helpers.rb|Sinatra::Helpers::Stream",
+		"lib/sinatra/main.rb|Sinatra::Application -> lib/sinatra/base.rb|Sinatra::Base",
+		"lib/sinatra/main.rb|Sinatra::Application.handle -> lib/sinatra/base.rb|Sinatra::Request",
+	}
+	if strings.Join(got, "\n") != strings.Join(want, "\n") {
+		t.Errorf("edges:\n  %s\nwant:\n  %s", strings.Join(got, "\n  "), strings.Join(want, "\n  "))
 	}
 }

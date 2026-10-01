@@ -27,3 +27,5 @@
   the full ones TestDialectGoldens checks, and TestJavaScriptDialectKeepsLegacySymbols holds
   every symbol the pre-manifest goldens listed except the enumerated locals and object-literal
   keys.
+- `references.scm` (LB-F74, LB-F75, wave lc): written in this repository; no upstream query adapted.
+  The file resolver's references and re-exports, a default export (`export default X`, `module.exports = X`).

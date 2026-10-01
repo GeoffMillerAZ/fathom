@@ -343,7 +343,26 @@ import (
 // function-local member assignments as symbols, with their calls attributed to them;
 // every .js, .jsx, .mjs, .cjs, .ts, .tsx, .mts and .cts file was fingerprinted by the
 // old queries, so the salt bump re-reads them.
-const ExtractorEpoch = "41"
+// Epoch 42 (wave lc, F-D reference edges: LB-F74, LB-F75, LB-F76, LB-F77, LB-F78): the
+// file resolver's file_imports row for a file is now its extractor.FileSpecs (its imports,
+// the names it references outside a call and the modules it re-exports, from the
+// dialect's new references query, manifest queries.references), where it was its import
+// list alone; an import-bound type or identifier reference (a type annotation or hint,
+// `new X`, extends, implements or with, a bare `X` or qualified `Y.Z`) is a file-resolved
+// edge from the definition around it, a name re-exported through a barrel or a package's
+// own imports binds the file defining it, a Ruby constant is looked up lexically, a
+// namespace-dir dialect whose package is a clause sees its own package's names (C#: and
+// every enclosing namespace's), a protobuf import resolves under buf.yaml and
+// buf.work.yaml module roots, and a namespace-dir named import whose path names no file
+// binds the package's top-level name or the class's member its path less the last segment
+// names. The java dialect's import of a class now binds the class's simple name (a named
+// import), where it bound the whole dotted path. Every .py, .js, .jsx, .mjs, .cjs, .ts,
+// .tsx, .mts, .cts, .java, .cs, .kt, .kts, .dart, .rb, .rake, .ru, Rakefile and .proto
+// file's row was written in the old shape (an older row no longer decodes and is parsed
+// again regardless), so the salt bump re-reads them. The integrator folds in, under this
+// same bump, the 'needs bump' notes of items php (phpextract.go), rust (rustextract.go,
+// rust imports.scm) and cfam (c/cpp).
+const ExtractorEpoch = "42"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares
