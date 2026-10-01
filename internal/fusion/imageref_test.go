@@ -254,7 +254,9 @@ func TestShellBuildsParse(t *testing.T) {
 // Dockerfile — and app/Dockerfile builds FROM it and copies out of it.
 func imageRefRepoCorpus() map[string]string {
 	return map[string]string{
-		"compose.yaml":     "services:\n  base:\n    image: acme/base\n    build: ./base\n  app:\n    build: ./app\n    depends_on: [base]\n  db:\n    image: postgres:16\n",
+		"compose.yaml":     "include:\n  - ./ops/compose.yaml\nservices:\n  base:\n    image: acme/base\n    build: ./base\n  app:\n    build: ./app\n    depends_on: [base]\n    extends:\n      file: common.yaml\n      service: defaults\n  db:\n    image: postgres:16\n",
+		"ops/compose.yaml": "services:\n  proxy:\n    image: docker.io/acme/base:latest\n",
+		"common.yaml":      "services:\n  defaults:\n    restart: unless-stopped\n",
 		"docker-bake.hcl":  "target \"base\" {\n  context = \"base\"\n  tags = [\"acme/base:latest\"]\n}\n",
 		"scripts/build.sh": "#!/bin/sh\nset -eu\ndocker build -t acme/base ./base\n",
 		"Makefile":         "image:\n\tdocker build -t docker.io/acme/base:latest base\n",
@@ -298,12 +300,17 @@ func storedDocXrefs(t *testing.T, st store.Store, svc string) []string {
 	return got
 }
 
-// TestIngest_ImageRefEdgesReachTheStore (LB-X-docker-image-ref, the
-// product-reach proof): an ingest builds the image-tag index from the bake
-// target, the script and the Makefile, reads each Dockerfile through the
-// dispatched dockerfile dialect, and stores app's FROM acme/base (and its
-// COPY --from of the same image) as a doc-xref edge from app's stage to the
-// root stage of base/Dockerfile — both stored symbol keys.
+// TestIngest_ImageRefEdgesReachTheStore (LB-X-docker-image-ref and LB-F89,
+// the product-reach proof): an ingest builds the image-tag index from the
+// compose service, the bake target, the script and the Makefile, reads each
+// Dockerfile through the dispatched dockerfile dialect and each compose file
+// through the dispatched docker-compose dialect (a fragment with an arbitrary
+// name by its content), and stores, all between stored symbol keys: app's FROM
+// acme/base (and its COPY --from of the same image) to the root stage of
+// base/Dockerfile; each compose build: to the Dockerfile it names, and an
+// image: the repository builds (another file's included service too) to its
+// Dockerfile; the include: to the included file's root and the extends.file
+// to the fragment's root. An image nothing builds (postgres) gives nothing.
 func TestIngest_ImageRefEdgesReachTheStore(t *testing.T) {
 	dir := t.TempDir()
 	writeCorpus(t, dir, imageRefRepoCorpus())
@@ -316,6 +323,11 @@ func TestIngest_ImageRefEdgesReachTheStore(t *testing.T) {
 	got := storedDocXrefs(t, st, "img")
 	want := []string{
 		"app/Dockerfile:runtime -> base/Dockerfile:alpine:3.19",
+		"compose.yaml:app -> app/Dockerfile:runtime",
+		"compose.yaml:app -> common.yaml:common.yaml",
+		"compose.yaml:base -> base/Dockerfile:alpine:3.19",
+		"compose.yaml:compose.yaml -> ops/compose.yaml:compose.yaml",
+		"ops/compose.yaml:proxy -> base/Dockerfile:alpine:3.19",
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("stored doc-xref edges\n got: %q\nwant: %q", got, want)
