@@ -25,6 +25,10 @@ func TestDialectQueriesCompile(t *testing.T) {
 		}
 		for key, v := range variants {
 			t.Run(key, func(t *testing.T) {
+				// Each variant stands up its own parser and compiles its
+				// own queries: nothing is shared, so the variants run
+				// together. Serial, this test was the longest in the package.
+				t.Parallel()
 				p, err := tsengine.NewParser(context.Background(), v.blob, v.entryPoint)
 				if err != nil {
 					t.Fatal(err)
