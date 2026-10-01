@@ -12,6 +12,8 @@ package console
 import (
 	"fmt"
 	"sort"
+
+	"github.com/geoffmilleraz/fathom/internal/semantic"
 )
 
 // Activity event kinds: the tool events friction counts.
@@ -40,8 +42,10 @@ type ActivityEvent struct {
 	Note    string
 }
 
-// RuleEvent is one GL-10 rule-outcome row (served, complied, violated,
-// blocked).
+// RuleEvent is one GL-10 rule-outcome row (served, still_served, top_changed,
+// blocked). ComputeFriction reads Event under the current vocabulary
+// (semantic.CanonicalRuleEvent), so a row an older binary wrote as violated
+// counts as a still_served one.
 type RuleEvent struct {
 	Rule    string
 	Event   string
@@ -109,8 +113,10 @@ type FrictionHotspot struct {
 	Key    string         `json:"key"`
 	Counts FrictionCounts `json:"counts"`
 	Total  int            `json:"total"`
-	// Blocks are PreToolUse denies per rule; ServedViolations are
-	// edit-hook violations of a rule the same session was served.
+	// Blocks are PreToolUse denies per rule; ServedViolations are the
+	// edit-hook repeat edits under a rule the same session was served
+	// (still_served rows: the rule still topped the file's served set, which
+	// is scope persistence, not proof the edit ignored it; JF-2, O255).
 	Blocks           []RuleCount `json:"blocks,omitempty"`
 	ServedViolations []RuleCount `json:"served_violations,omitempty"`
 	// LoopEnds are the symbols the search loops here ended at.
@@ -218,20 +224,20 @@ func FrictionSignals(in FrictionInputs) FrictionMap {
 
 	servedIn := map[string]bool{}
 	for _, r := range in.Rules {
-		if r.Event == "served" {
+		if semantic.CanonicalRuleEvent(r.Event) == semantic.RuleEventServed {
 			servedIn[r.Session+"\x00"+r.Rule] = true
 		}
 	}
 	for _, r := range in.Rules {
-		switch r.Event {
-		case "blocked":
+		switch semantic.CanonicalRuleEvent(r.Event) {
+		case semantic.RuleEventBlocked:
 			hit(r.File, "", fmt.Sprintf("%s: edit denied by rule %s", r.At, r.Rule), func(a *frictionAcc) {
 				a.h.Counts.Blocked++
 				a.blocks[r.Rule]++
 			})
-		case "violated":
+		case semantic.RuleEventStillServed:
 			served := servedIn[r.Session+"\x00"+r.Rule]
-			note := fmt.Sprintf("%s: edit violated rule %s", r.At, r.Rule)
+			note := fmt.Sprintf("%s: rule %s still topped this file's served set on a repeat edit", r.At, r.Rule)
 			if served {
 				note += " after it was served"
 			}
@@ -366,7 +372,7 @@ func frictionRemedies(m FrictionMap, in RemedyInputs) []Remedy {
 				add(h, PatternRepeatedBlocks, fmt.Sprintf("rule %s blocked %d edits here: it may be unclear — review its text against the blocked edits", b.Rule, b.N), text)
 			}
 			for _, v := range h.ServedViolations {
-				add(h, PatternServedIgnored, fmt.Sprintf("rule %s was served and still violated %d time(s): move it to a hook (a compiled guard with enforce = true)", v.Rule, v.N))
+				add(h, PatternServedIgnored, fmt.Sprintf("rule %s was served and still topped this file's served set on a repeat edit %d time(s): move it to a hook (a compiled guard with enforce = true)", v.Rule, v.N))
 			}
 		}
 		if h.Kind == HotspotSymbol {

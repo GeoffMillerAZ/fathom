@@ -20,8 +20,8 @@ func TestRuleOutcomesViewCountsServedCompliedViolatedPerClaim(t *testing.T) {
 		outcomeEvent("claim-a", semantic.RuleEventServed, 1),
 		outcomeEvent("claim-a", semantic.RuleEventServed, 2),
 		outcomeEvent("claim-a", semantic.RuleEventServed, 3),
-		outcomeEvent("claim-a", semantic.RuleEventComplied, 3),
-		outcomeEvent("claim-a", semantic.RuleEventViolated, 2),
+		outcomeEvent("claim-a", semantic.RuleEventTopChanged, 3),
+		outcomeEvent("claim-a", semantic.RuleEventStillServed, 2),
 		// Older than the 30-day window: not counted.
 		outcomeEvent("claim-a", semantic.RuleEventServed, 45),
 		outcomeEvent("claim-b", semantic.RuleEventServed, 4),
@@ -59,7 +59,7 @@ func TestRuleOutcomesViewNamesTheClassAfterTheWindowIsCovered(t *testing.T) {
 	for i := 0; i < 24; i++ {
 		events = append(events, outcomeEvent("ignored", semantic.RuleEventServed, 1+i%20))
 		if i < 14 {
-			events = append(events, outcomeEvent("ignored", semantic.RuleEventViolated, 1+i%20))
+			events = append(events, outcomeEvent("ignored", semantic.RuleEventStillServed, 1+i%20))
 		}
 	}
 	read := RuleOutcomeRead{Present: true, Rows: len(events), Since: ruleOutcomesNow.AddDate(0, 0, -100)}

@@ -24,14 +24,46 @@ import (
 // by literal value — internal/semantic cannot import cmd/fathom (import
 // direction), so the two sides agree on the wire vocabulary rather than
 // sharing a Go identifier.
+//
+// RuleEventStillServed and RuleEventTopChanged (JF-1,
+// docs/design/judgment-foundations.md section 5) were written as "violated"
+// and "complied" until the signal log's schema_version 2. They say what the
+// edit hook's tracker can know — the same claim still topped the file's
+// served set on a repeat edit, or the top claim changed — and not whether an
+// edit complied: rules are served by glob scope, so for a prose rule they
+// measure scope persistence and churn. "violated" is no event any more
+// (nothing writes it, ADR-057; a checkable rule denies and records blocked).
 const (
 	RuleEventServed       = "served"
-	RuleEventComplied     = "complied"
-	RuleEventViolated     = "violated"
+	RuleEventTopChanged   = "top_changed"
+	RuleEventStillServed  = "still_served"
 	RuleEventBlocked      = "blocked"
 	RuleEventRefuted      = "refuted"
 	RuleEventCorroborated = "corroborated"
 )
+
+// The names the tracker wrote before JF-1. Ledger rows already on disk keep
+// them, and a row is never dropped for its age: CanonicalRuleEvent reads them
+// under the names that say what they measured.
+const (
+	legacyRuleEventComplied = "complied"
+	legacyRuleEventViolated = "violated"
+)
+
+// CanonicalRuleEvent returns event under the current vocabulary: a row an
+// older binary wrote as "complied" is read as top_changed and one written as
+// "violated" as still_served, and every other name is returned unchanged. A
+// reader of the signal log applies it to each row it decodes, so the old and
+// the new rows of one ledger fold into the same counts.
+func CanonicalRuleEvent(event string) string {
+	switch event {
+	case legacyRuleEventComplied:
+		return RuleEventTopChanged
+	case legacyRuleEventViolated:
+		return RuleEventStillServed
+	}
+	return event
+}
 
 // RuleOutcomeEvent is one row from GL-10's signal log: which rule, what
 // happened, when.
@@ -44,7 +76,7 @@ type RuleOutcomeEvent struct {
 	// event — the harness session id, or "human:cli" for a human running
 	// the CLI with no harness session exported (cmd/fathom's
 	// claimVerdictIdentity). "" for an event whose writer predates this
-	// field, or a served/complied/violated/blocked row an edit/PreToolUse
+	// field, or a served/still_served/top_changed/blocked row an edit/PreToolUse
 	// hook wrote before that wiring carries a session (GL-10's own scope).
 	// applyLearning (GL-13) is this field's only reader: RuleEffectiveness
 	// itself (GL-11) classifies by counts and rates alone and never looks
@@ -170,12 +202,12 @@ func computeRuleEffectiveness(ruleID string, events []RuleOutcomeEvent, now time
 		if e.At.Before(cutoff30) {
 			continue
 		}
-		switch e.Event {
+		switch CanonicalRuleEvent(e.Event) {
 		case RuleEventServed:
 			r.Served30++
-		case RuleEventComplied:
+		case RuleEventTopChanged:
 			r.Complied30++
-		case RuleEventViolated:
+		case RuleEventStillServed:
 			r.Violated30++
 		case RuleEventBlocked:
 			r.Blocked30++

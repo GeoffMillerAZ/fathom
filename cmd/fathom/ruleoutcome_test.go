@@ -23,9 +23,9 @@ func TestRuleOutcomeEventsRecorded(t *testing.T) {
 	t.Cleanup(func() { ruleOutcomeNow = old })
 
 	recordRuleOutcome("GL-11", ruleOutcomeServed, "sess-1", "internal/semantic/foo.go")
-	recordRuleOutcome("GL-11", ruleOutcomeComplied, "sess-1", "internal/semantic/foo.go")
+	recordRuleOutcome("GL-11", ruleOutcomeTopChanged, "sess-1", "internal/semantic/foo.go")
 	// Both of these are dropped: an event needs both a rule id and a kind.
-	recordRuleOutcome("", ruleOutcomeViolated, "sess-1", "x.go")
+	recordRuleOutcome("", ruleOutcomeStillServed, "sess-1", "x.go")
 	recordRuleOutcome("GL-11", "", "sess-1", "x.go")
 
 	rows := readRuleOutcomeRows(t, path)
@@ -44,8 +44,8 @@ func TestRuleOutcomeEventsRecorded(t *testing.T) {
 	if rows[0].SchemaVersion != ruleOutcomeSchemaVersion {
 		t.Errorf("schema_version = %d, want %d", rows[0].SchemaVersion, ruleOutcomeSchemaVersion)
 	}
-	if rows[1].Event != ruleOutcomeComplied {
-		t.Errorf("row2 event = %q, want %q", rows[1].Event, ruleOutcomeComplied)
+	if rows[1].Event != ruleOutcomeTopChanged {
+		t.Errorf("row2 event = %q, want %q", rows[1].Event, ruleOutcomeTopChanged)
 	}
 }
 

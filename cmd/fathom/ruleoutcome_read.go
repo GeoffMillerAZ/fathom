@@ -2,7 +2,7 @@ package main
 
 // ruleoutcome_read.go — SR-61's reader half (surface reckoning F-27/U4,
 // design §6). ruleoutcome.go writes the signal log and ruleoutcome_track.go
-// feeds it served/complied/violated per claim id from the edit hook; this
+// feeds it served/still_served/top_changed per claim id from the edit hook; this
 // reads it back as the rows internal/semantic.RuleEffectiveness (GL-11)
 // projects and internal/console.RuleOutcomesView renders, for `fathom
 // obligations` and the serving explainer.
@@ -41,7 +41,10 @@ type ruleOutcomeLog struct {
 // missing file is not an error (no hook has recorded anything yet:
 // Read.Present false); any other failure is Read.Err, never a silent empty
 // log; a row that does not decode is counted in Read.Skipped and left out.
-// "" (no resolvable log path) reads as no log.
+// "" (no resolvable log path) reads as no log. Every row's event is read under
+// the current vocabulary (semantic.CanonicalRuleEvent, JF-2): a row an older
+// binary wrote as complied or violated is a top_changed or a still_served
+// here, never dropped.
 func readRuleOutcomeLog(path string, now time.Time) ruleOutcomeLog {
 	return readRuleOutcomeLogFrom(path, now.AddDate(0, 0, -ruleOutcomeKeepDays))
 }
@@ -94,7 +97,7 @@ func readRuleOutcomeLogFrom(path string, keepFrom time.Time) ruleOutcomeLog {
 			if at.Before(keepFrom) {
 				continue
 			}
-			out.Events = append(out.Events, semantic.RuleOutcomeEvent{RuleID: row.RuleID, Event: row.Event, At: at, Session: row.Session})
+			out.Events = append(out.Events, semantic.RuleOutcomeEvent{RuleID: row.RuleID, Event: semantic.CanonicalRuleEvent(row.Event), At: at, Session: row.Session})
 		}
 		serr := sc.Err()
 		f.Close()

@@ -3,9 +3,9 @@
 // passes through the edit and PreToolUse hooks (ADR-037/038, guarded
 // edits); this is where those decisions become a per-rule SIGNAL instead
 // of evaporating the moment the hook process exits. recordRuleOutcome
-// appends one JSONL row per rule per event — served, complied, violated,
-// blocked, plus the existing refuted/corroborated human claim verdicts
-// (`fathom claim refute`/`corroborate`, wired in claim.go) — to a bounded,
+// appends one JSONL row per rule per event — served, still_served,
+// top_changed, blocked, plus the existing refuted/corroborated human claim
+// verdicts (`fathom claim refute`/`corroborate`, wired in claim.go) — to a bounded,
 // rotated log under ~/.fathom/, NEVER the transcript (GL-X4: counts and
 // tool events only, no prose inference over transcripts, ADR-041 decision
 // 8).
@@ -42,10 +42,21 @@ import (
 // literals; any other string is still recorded as-is (the log is an
 // append-only signal, not a closed enum enforced at the write site) but
 // internal/semantic.RuleEffectiveness (GL-11) only recognizes these.
+//
+// still_served and top_changed (JF-1, docs/design/judgment-foundations.md
+// section 5) are what the tracker (ruleoutcome_track.go) can honestly say:
+// the SAME claim topped the file's served set on its previous resolved turn
+// too (still_served), or a different one did (top_changed). Neither says
+// whether an edit complied with a rule — rules are served by glob scope, so
+// a prose rule reads still_served on every repeat edit of a file. They were
+// written as violated and complied until schema_version 2; ledger rows
+// holding the old names are read as these two (semantic.CanonicalRuleEvent),
+// never dropped, and nothing writes violated any more (ADR-057): a checkable
+// rule denies and records blocked (ruleoutcome_blocked.go, PR-10).
 const (
 	ruleOutcomeServed       = "served"
-	ruleOutcomeComplied     = "complied"
-	ruleOutcomeViolated     = "violated"
+	ruleOutcomeTopChanged   = "top_changed"
+	ruleOutcomeStillServed  = "still_served"
 	ruleOutcomeBlocked      = "blocked"
 	ruleOutcomeRefuted      = "refuted"
 	ruleOutcomeCorroborated = "corroborated"
@@ -55,7 +66,12 @@ const (
 // callLogSchemaVersion's convention, internal/mcp/calllog.go) — bump on any
 // semantic change to an existing field; additive fields alone do not
 // require a bump.
-const ruleOutcomeSchemaVersion = 1
+//
+// 2 (JF-1): the event field's vocabulary changed — the tracker's violated and
+// complied became still_served and top_changed. A version-1 row's event is
+// read under the new name, by name, not by version, so a row without a
+// version reads the same way.
+const ruleOutcomeSchemaVersion = 2
 
 // ruleOutcomeLogRotateBytes bounds the signal log's on-disk size at 16 MiB
 // (design doc §5's own stated cap, plan row GL-10) — smaller than the 64
@@ -208,7 +224,7 @@ func readRuleOutcomeSignal(path string) console.RuleSignal {
 			sig.Skipped++
 			continue
 		}
-		sig.Events = append(sig.Events, semantic.RuleOutcomeEvent{RuleID: e.RuleID, Event: e.Event, At: at.UTC(), Session: e.Session})
+		sig.Events = append(sig.Events, semantic.RuleOutcomeEvent{RuleID: e.RuleID, Event: semantic.CanonicalRuleEvent(e.Event), At: at.UTC(), Session: e.Session})
 	}
 	if err := sc.Err(); err != nil {
 		sig.State, sig.Reason, sig.Events = console.StateError, fmt.Sprintf("reading %s: %v", path, err), nil

@@ -69,7 +69,7 @@ func TestObligationsShowsTheHooksRuleOutcomes(t *testing.T) {
 	// The hook served the top rule three times, it was addressed once and
 	// ignored once.
 	top := none.Rules[0].ClaimID
-	for _, ev := range []string{ruleOutcomeServed, ruleOutcomeServed, ruleOutcomeServed, ruleOutcomeComplied, ruleOutcomeViolated} {
+	for _, ev := range []string{ruleOutcomeServed, ruleOutcomeServed, ruleOutcomeServed, ruleOutcomeTopChanged, ruleOutcomeStillServed} {
 		recordRuleOutcome(top, ev, "sess-1", "payment.go")
 	}
 	out, _, _ = runVerb(t, f, append(append([]string{}, verb...), "--json")...)
