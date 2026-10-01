@@ -95,7 +95,7 @@ func TestAttentionQueue_OrdersByProofBlockingFirst(t *testing.T) {
 	if g := a.Items[5]; !strings.Contains(g.Title, "internal/CLAUDE.md") || !strings.Contains(g.Detail, "the last obligations compile (2026-09-20, 72 sections) did not compile them — it stopped at its budget") || g.Remedy != "fathom compile --service guides --layer obligations" {
 		t.Errorf("guide item = %+v", g)
 	}
-	if o := a.Items[6]; o.Count != 7 || o.Service != "notes" || !strings.Contains(o.Remedy, "/src/notes/.fathom/observations.md") {
+	if o := a.Items[6]; o.Count != 7 || o.Service != "notes" || !strings.Contains(o.Remedy, "/src/notes/.fathom/observations/") {
 		t.Errorf("observation item = %+v", o)
 	}
 	if a.State != StatePresent || a.ByKind[AttentionIndex] != 2 || a.Projects != 5 {

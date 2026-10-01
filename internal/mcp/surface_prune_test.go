@@ -50,6 +50,35 @@ func TestRegistryCarriesNoZeroCallTools(t *testing.T) {
 	}
 }
 
+// readMcpToolsDoc returns docs/mcp-tools.md (the index) followed by every
+// docs/mcp-tools/*.md file the index links, concatenated in index order —
+// the reference is split per group so parallel waves add files instead of
+// editing one (EW-32), and every doc-vs-registry test reads the whole set.
+func readMcpToolsDoc(t *testing.T) string {
+	t.Helper()
+	docs := filepath.Join(repoRoot(t), "docs")
+	raw, err := os.ReadFile(filepath.Join(docs, "mcp-tools.md"))
+	if err != nil {
+		t.Fatalf("read docs/mcp-tools.md: %v", err)
+	}
+	var b strings.Builder
+	b.Write(raw)
+	seen := map[string]bool{}
+	for _, m := range regexp.MustCompile(`\]\((mcp-tools/[A-Za-z0-9._-]+\.md)\)`).FindAllStringSubmatch(string(raw), -1) {
+		if seen[m[1]] {
+			continue
+		}
+		seen[m[1]] = true
+		part, err := os.ReadFile(filepath.Join(docs, filepath.FromSlash(m[1])))
+		if err != nil {
+			t.Fatalf("read docs/%s (linked from the mcp-tools.md index): %v", m[1], err)
+		}
+		b.WriteString("\n")
+		b.Write(part)
+	}
+	return b.String()
+}
+
 // toolTableSpan is the substring of docs/mcp-tools.md holding the tool
 // reference tables (Shared/Coding/Investigation/Platform) —
 // bounded so prompt and resource table rows (a disjoint namespace from
@@ -99,12 +128,8 @@ func repoRoot(t *testing.T) string {
 //
 // certifies: invariant I11 (asserts)
 func TestMcpToolsDocMatchesRegistry(t *testing.T) {
-	docPath := filepath.Join(repoRoot(t), "docs", "mcp-tools.md")
-	raw, err := os.ReadFile(docPath)
-	if err != nil {
-		t.Fatalf("read %s: %v", docPath, err)
-	}
-	span := toolTableSpan(t, string(raw))
+	whole := readMcpToolsDoc(t)
+	span := toolTableSpan(t, whole)
 	docNames := map[string]bool{}
 	for _, m := range docToolRow.FindAllStringSubmatch(span, -1) {
 		docNames[m[1]] = true
@@ -168,7 +193,7 @@ func TestMcpToolsDocMatchesRegistry(t *testing.T) {
 		}
 	}
 	for _, want := range []string{"## Protocol contract", "`readOnlyHint`", "`outputSchema`", "`structuredContent`", "`MCP-Protocol-Version`"} {
-		if !strings.Contains(string(raw), want) {
+		if !strings.Contains(whole, want) {
 			t.Errorf("docs/mcp-tools.md lacks %q — the served protocol contract must be documented", want)
 		}
 	}

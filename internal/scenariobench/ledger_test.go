@@ -148,7 +148,7 @@ func TestRenderScenarioLedger_CompileLayerSummaryInNotes(t *testing.T) {
 
 func TestRewriteScenarioLedgerSection(t *testing.T) {
 	dir := t.TempDir()
-	readme := filepath.Join(dir, "README.md")
+	readme := filepath.Join(dir, "scenario-runs.md")
 	original := "# Bench\n\nSome prose.\n\n## Scenario runs\n\n" +
 		ScenarioLedgerBeginMarker + "\n\n(nothing yet)\n\n" + ScenarioLedgerEndMarker +
 		"\n\nMore prose after.\n"
@@ -176,7 +176,7 @@ func TestRewriteScenarioLedgerSection(t *testing.T) {
 
 func TestRewriteScenarioLedgerSection_MissingMarkerIsError(t *testing.T) {
 	dir := t.TempDir()
-	readme := filepath.Join(dir, "README.md")
+	readme := filepath.Join(dir, "scenario-runs.md")
 	writeTestFile(t, readme, "# Bench\n\nno markers here\n")
 	if err := RewriteScenarioLedgerSection(readme, "body"); err == nil {
 		t.Fatal("expected an error when the markers are absent")
@@ -612,5 +612,27 @@ func TestBackfillScenarioLedgerCriteria_RewritesOnlyOnChange(t *testing.T) {
 	}
 	if string(before) != string(after) {
 		t.Error("expected the ledger to be left byte-for-byte untouched when nothing was backfilled")
+	}
+}
+
+// TestCommittedScenarioRunsCarriesTheLedgerMarkers (EW-32): the marker-fenced
+// ledger block lives in docs/bench/scenario-runs.md, the -readme default of
+// `scenariobench ledger` and `void`; the bench README keeps only a pointer.
+func TestCommittedScenarioRunsCarriesTheLedgerMarkers(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join("..", "..", "docs", "bench", "scenario-runs.md"))
+	if err != nil {
+		t.Fatalf("docs/bench/scenario-runs.md: %v", err)
+	}
+	text := string(raw)
+	i, j := strings.Index(text, ScenarioLedgerBeginMarker), strings.Index(text, ScenarioLedgerEndMarker)
+	if i < 0 || j < i {
+		t.Fatalf("scenario-runs.md must carry the begin marker before the end marker (begin %d, end %d)", i, j)
+	}
+	readme, err := os.ReadFile(filepath.Join("..", "..", "docs", "bench", "README.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(readme), ScenarioLedgerBeginMarker) {
+		t.Error("docs/bench/README.md must no longer carry the scenario ledger block")
 	}
 }
