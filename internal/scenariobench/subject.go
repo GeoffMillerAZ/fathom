@@ -797,7 +797,7 @@ func runInEnv(ctx context.Context, dir string, extra map[string]string, name str
 func wireScratchDaemon(ctx context.Context, wt *Worktree, task Task, renderedArm *Arm, root string) error {
 	binDir := wt.CellDir
 	bin := filepath.Join(binDir, "fathom")
-	if out, err := buildFathomBinary(ctx, root, bin); err != nil {
+	if out, err := BuildFathomBinary(ctx, root, bin); err != nil {
 		return fmt.Errorf("wiring scratch daemon: %w (%s)", err, out)
 	}
 	wt.fathomBin = bin
@@ -920,17 +920,19 @@ func wireScratchDaemon(ctx context.Context, wt *Worktree, task Task, renderedArm
 	return nil
 }
 
-// buildFathomBinary mirrors scripts/context-bench.sh's own scratch build:
+// BuildFathomBinary mirrors scripts/context-bench.sh's own scratch build:
 // GOWORK=off (a linked worktree cannot always resolve ../agentic-kit) and
 // CGO_ENABLED=1 (tree-sitter, ADR-013).
-// buildFathomBinary puts the fathom binary a wired cell runs at out. It is
+// BuildFathomBinary puts the fathom binary a wired cell runs at out. It is
 // built from a clean export of the repository's HEAD — never from the
 // working tree — and cached per commit under workspace/tmp/, so (1) a cell
 // runs exactly the commit its ledger row names, and (2) another editor's
 // in-progress edits in the checkout cannot break or leak into a cell
 // (guards-pilot-4 lost a wired cell to an uncommitted compile error,
 // 2026-09-13). The cache key is the HEAD sha; a dirty tree changes nothing.
-func buildFathomBinary(ctx context.Context, root, out string) (string, error) {
+// Exported so internal/scenariobenchwired's end-to-end test builds its binary
+// exactly as a cell does; wireScratchDaemon is the product caller.
+func BuildFathomBinary(ctx context.Context, root, out string) (string, error) {
 	sha, err := gitHeadSHA(ctx, root)
 	if err != nil {
 		return "", err
