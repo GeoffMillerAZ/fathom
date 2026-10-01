@@ -54,6 +54,10 @@ var (
 	programTiers = []string{"T1", "T2", "T3", "T4", "T5", "T6"}
 )
 
+// IsProgramTier reports whether t is one of the excellence program's tiers
+// (T1..T6). An entry's membership in the target set is its queue data alone.
+func IsProgramTier(t string) bool { return slices.Contains(programTiers, t) }
+
 // LoadQueue reads and validates the queue file at path.
 func LoadQueue(path string) ([]QueueEntry, error) {
 	b, err := os.ReadFile(path)
@@ -94,7 +98,7 @@ func ParseQueue(b []byte) ([]QueueEntry, error) {
 			return nil, fmt.Errorf("%s: target_level %q not in %v", where, e.TargetLevel, validLevels)
 		case !slices.Contains(validEngines, e.Engine):
 			return nil, fmt.Errorf("%s: engine %q not in %v", where, e.Engine, validEngines)
-		case e.Tier != "" && !slices.Contains(programTiers, e.Tier):
+		case e.Tier != "" && !IsProgramTier(e.Tier):
 			return nil, fmt.Errorf("%s: tier %q not in %v", where, e.Tier, programTiers)
 		case e.Kind == "tooling" && e.TargetLevel == "L4":
 			return nil, fmt.Errorf("%s: L4 is not-applicable for tool formats (§1.1)", where)

@@ -64,6 +64,11 @@ func TestParseQueueRefusesBadEntries(t *testing.T) {
 	if err != nil || len(q) != 1 || q[0].ID != "a-1" {
 		t.Fatalf("ParseQueue(ok) = %v, %v", q, err)
 	}
+	for _, bad := range []string{"", "T0", "T7", "t1", "A"} {
+		if IsProgramTier(bad) {
+			t.Errorf("IsProgramTier(%q) = true", bad)
+		}
+	}
 	for _, tier := range []string{"T1", "T2", "T3", "T4", "T5", "T6"} {
 		src := `[{"id":"a","plan_row":"LB-Q-a","kind":"language","target_level":"L1","engine":"tags","tier":"` + tier + `"}]`
 		if q, err := ParseQueue([]byte(src)); err != nil || q[0].Tier != tier {
