@@ -66,10 +66,27 @@
 // "ours, but we couldn't name it" — are never conflated.
 //
 // A reference's edge FROM is the innermost mapped definition (in the SAME
-// document) whose span (EnclosingRange, falling back to Range) contains
-// the reference's own Range start; a reference outside every definition's
-// span (a top-level import statement, most commonly) contributes no edge
-// and is counted in Report.Skipped rather than dropped silently.
+// document) whose span contains the reference's own Range start; a
+// reference outside every definition's span (a top-level import statement,
+// most commonly) contributes no edge and is counted in Report.Skipped
+// rather than dropped silently. A definition's span is its EnclosingRange
+// when the producer set one; otherwise (LB-F54) a MAPPED definition whose
+// fathom node knows its EndLine takes that node's own whole lines — the
+// harness's D5 fallback (internal/langbench) — and every other definition
+// its Range (the name token). scip-php, scip-clang and scip-dotnet set no
+// enclosing_range on any definition, so before the fallback their imports
+// stored no typed edge; Report.EnclosingFallback discloses how many
+// definitions took it.
+//
+// Local symbols (LB-F55): a reference to a "local N" the index defines but
+// no extractor maps is counted under Report.Skipped["local-target"], never
+// "unmapped-endpoint" — a local variable has no fathom identity, so it is
+// not a typed edge the import failed to name. A reference whose innermost
+// definition is an unmapped local (inside the local's initializer, which
+// scip-dart's enclosing_range covers) is attributed to the nearest mapped
+// definition enclosing that local; the climb passes only through unmapped
+// locals, and Parameter/TypeParameter definitions are handled as below,
+// unchanged.
 //
 // Two further correctness guards the O115 fix required, both found by
 // hand-verifying real scip-typescript/scip-python output rather than by
