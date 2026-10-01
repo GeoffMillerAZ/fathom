@@ -101,7 +101,9 @@ tasks:
     # gate per machine under the lease and niced (RT-129).
     # Measured 2026-09-30 under the lease at load ~11-13: concurrent 356 s,
     # shards after the packages 463 s and 476 s (internal/fusion, ~270-290 s,
-    # is the other long pole either way).
+    # was the other long pole either way). After the slowest tests moved to
+    # sibling packages, at load 10-15: 338 s; shards 231 s with their build,
+    # internal/fusion/perfgate 218 s, internal/fusion 137 s.
     # The go test line stays literal in this task: the test-run hook
     # (cmd/fathom/testrunhook_declared.go) reads the declared test commands
     # from this Taskfile.

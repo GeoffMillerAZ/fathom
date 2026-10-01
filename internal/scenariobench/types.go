@@ -235,7 +235,7 @@ type Rule struct {
 // ViolationProbe (RC-50, docs/plans/receipts.md) is a tiny scripted edit
 // that violates a guards task's own Rule — the corpus's mechanical proof
 // that its detectors actually detect, not merely that they run. A probe
-// test (internal/scenariobench/guardsm1_probe_test.go) applies task's own
+// test (internal/scenariobench/guardsm1/guardsm1_probe_test.go) applies task's own
 // Subject.Setup (if any — some tasks materialize their edit-site scaffold
 // there rather than committing it to this repo) and then Commands to a
 // throwaway copy of the subject tree, and asserts the task's rule

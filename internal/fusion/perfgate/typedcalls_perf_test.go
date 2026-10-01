@@ -54,6 +54,7 @@ package perfgate_test
 // validate (which runs the full `go test`) still covers it.
 import (
 	"context"
+	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -85,6 +86,12 @@ func TestTypedEdges_PerformanceGate(t *testing.T) {
 	repoRoot, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {
 		t.Fatalf("abs: %v", err)
+	}
+	// A wrong depth does not fail the measurement below: an ingest and a
+	// typed load of a subtree run fine and gate the ratio of a fraction of
+	// the module. The module root is the directory holding go.mod.
+	if _, err := os.Stat(filepath.Join(repoRoot, "go.mod")); err != nil {
+		t.Fatalf("repo root %s holds no go.mod (this package moved?): %v", repoRoot, err)
 	}
 
 	// Baseline: TRUE syntax-only ingest for this repo — typed pass

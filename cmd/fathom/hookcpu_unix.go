@@ -20,7 +20,7 @@ import (
 // TestNoHookRPCOutlivesItsDescriptorBudget's whole-hook bound needs, since
 // the git forks a hook makes are children of this process, and under load
 // it is their start latency, not their CPU, that balloons. (Same reading
-// as internal/fusion's cpuUsage, TestTypedEdges_PerformanceGate.)
+// as internal/fusion/perfgate's cpuUsage, TestTypedEdges_PerformanceGate.)
 //
 // A child's CPU is added to RUSAGE_CHILDREN only once it is reaped;
 // exec.Cmd.Output waits synchronously, so every git a hook forked and

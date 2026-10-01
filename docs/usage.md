@@ -49,7 +49,10 @@ shards run concurrently with `go test -race -p 4` over every other package, so a
 processes run at once (4 package binaries and 4 shards; fewer once the short packages finish),
 still one gate per machine under the lease and niced. Measured at load ~11-13 under the lease, the
 concurrent `task test` took 356 s against 463 s and 476 s with the shards after the packages;
-`internal/fusion` (~270-290 s) is the other long pole. Unlike `go test`, the shards keep
+`internal/fusion` (~270-290 s) was the other long pole. With the slowest single tests moved to
+sibling packages, `task test` took 338 s at load 10-15: the shards 231 s with their build,
+`internal/fusion/perfgate` 218 s (the longest package) and `internal/fusion` 137 s.
+Unlike `go test`, the shards keep
 no test-result cache, so `cmd/fathom` runs again even when nothing changed.
 
 `internal/scenariobench` runs once per gate, inside `task test`; it is not also a separate
