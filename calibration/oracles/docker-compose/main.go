@@ -8,7 +8,8 @@
 //
 // Tier A. Each compose file is handed to the real tool —
 // `docker compose config --format json` — which evaluates it the way
-// `docker compose up` would (YAML merge keys, anchors and `extends:` resolved).
+// `docker compose up` would (YAML merge keys, anchors, `include:` and
+// `extends:` resolved).
 // It runs with --no-normalize, so no dependency is inferred from links:,
 // volumes_from: or network_mode: service:x — those are real dependencies the
 // tool would add to `depends_on`, but they are not references the file spells
@@ -18,18 +19,35 @@
 // source lines, and `include:`/`extends:` merge other files' services into
 // the answer, so a yaml.v3 walk of the file itself supplies the line of each
 // service key and drops any name the file does not itself declare (the
-// merged-in ones belong to their own file's entry). A file the tool rejects
-// (an invalid Compose file — a schema violation, a missing include) yields
-// nothing and is counted on stderr; fathom still extracts what it can from
-// such a file, which the reading scores as it stands.
+// merged-in ones belong to their own file's entry). The tool names no file
+// entity, so none is emitted: the dialect's root entity (ComposeFile, one per
+// file) stays outside the L1 kind intersection and is checked through the
+// cross-file references, every one of which lands on one. A file the tool
+// rejects (an invalid Compose file — a schema violation, a missing include)
+// yields no definition and is counted on stderr; fathom still extracts what
+// it can from such a file, which the reading scores as it stands.
 //
-// Tier C (-xref). `config` resolves `extends:` and erases it, so the file
-// edges come from the raw YAML: `extends: {file: f}` (service -> file f,
-// relative to the referring file's directory) and `build:` (service -> the
-// Dockerfile the context and `dockerfile:` name, when it exists in the
-// subject). The build edges land on files a doc-engine dialect never reads
-// (a Dockerfile), so the harness drops them as out of scope (§1.4) and
-// counts them — that count is the disclosure.
+// The tier-A answer also carries the cross-file references the tool attests
+// (`cross_references`, file granularity): an `include:` entry (the file, a
+// `path:`, or each of a `path:` list) whose included file declares a service
+// that appears in the tool's answer for the including file; an
+// `extends: {file: f}` of a file the tool accepted (an extends whose file or
+// service does not resolve fails the whole `config`); and a `build:` as the
+// tool evaluated it (context, then `dockerfile:` relative to it, default
+// `Dockerfile`) naming a Dockerfile of the subject. When the tool rejects the
+// including file, each include and extends is probed alone: a scratch file
+// beside it holding only that entry (an include with the included file's
+// .env unread, as config's) is handed to the tool, and the entry is
+// attested when the tool accepts it (and, for an include, answers one of the
+// included file's services). The build edges land on files a doc-engine
+// dialect never reads (a Dockerfile), so the harness drops them as out of
+// scope (§1.4) and counts them.
+//
+// Tier C (-xref). The same edges from the raw YAML alone, unattested:
+// `include:` (the including file -> each included file), `extends: {file: f}`
+// (service -> file f, relative to the referring file's directory) and
+// `build:` (service -> the Dockerfile the context and `dockerfile:` name, when
+// it exists in the subject).
 //
 // Bench-only; never a product dependency.
 package main
@@ -47,6 +65,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -70,6 +89,128 @@ type xref struct {
 	Path   string `json:"path"`
 	From   string `json:"from"`
 	ToPath string `json:"to_path"`
+}
+
+// includes is a file's include: entries as written, with their lines: a
+// string, a `path:` string, or each string of a `path:` list.
+func includes(root *yaml.Node) []string {
+	var out []string
+	inc := get(root, "include")
+	if inc == nil || inc.Kind != yaml.SequenceNode {
+		return nil
+	}
+	for _, e := range inc.Content {
+		switch e.Kind {
+		case yaml.ScalarNode:
+			out = append(out, e.Value)
+		case yaml.MappingNode:
+			p := get(e, "path")
+			if p == nil {
+				continue
+			}
+			if p.Kind == yaml.ScalarNode {
+				out = append(out, p.Value)
+			} else if p.Kind == yaml.SequenceNode {
+				for _, q := range p.Content {
+					if q.Kind == yaml.ScalarNode {
+						out = append(out, q.Value)
+					}
+				}
+			}
+		}
+	}
+	return out
+}
+
+// subjectFile is p (relative to the referring file rel) as a file of the
+// subject, repo-relative; "" when it leaves the subject, is templated or
+// does not exist.
+func subjectFile(root, rel, p string) string {
+	if p == "" || strings.Contains(p, "$") || strings.Contains(p, "://") {
+		return ""
+	}
+	t := path.Clean(path.Join(path.Dir(rel), p))
+	if t == "." || t == ".." || strings.HasPrefix(t, "../") {
+		return ""
+	}
+	if st, err := os.Stat(filepath.Join(root, filepath.FromSlash(t))); err != nil || st.IsDir() {
+		return ""
+	}
+	return t
+}
+
+// declaredServices is the services a subject file itself declares.
+func declaredServices(root, rel string) []string {
+	b, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(rel)))
+	if err != nil {
+		return nil
+	}
+	var names []string
+	for _, s := range services(parse(b)) {
+		names = append(names, s.name)
+	}
+	return names
+}
+
+// probe hands the tool a scratch file beside file holding body alone and
+// returns its answer (nil when the tool rejects it).
+func probe(ctx context.Context, bin []string, file, body string) map[string]any {
+	pf := filepath.Join(filepath.Dir(file), ".fathom-oracle-probe.yml")
+	if err := os.WriteFile(pf, []byte(body), 0o644); err != nil {
+		return nil
+	}
+	defer os.Remove(pf)
+	j, err := config(ctx, bin, pf)
+	if err != nil {
+		return nil
+	}
+	return j
+}
+
+// configFile is config on file, or, when it includes other files, on a
+// scratch copy beside it whose include entries leave the included files' .env
+// unread (each entry in its long form with `env_file: /dev/null`), the same
+// rule as --env-file for the including project: with --no-interpolate nothing
+// in the answer depends on a .env, and an included project's .env requiring an
+// unset variable (`${X?}`) would otherwise fail the including file.
+func configFile(ctx context.Context, bin []string, file string, root *yaml.Node) (map[string]any, error) {
+	inc := get(root, "include")
+	if inc == nil || inc.Kind != yaml.SequenceNode {
+		return config(ctx, bin, file)
+	}
+	for i, e := range inc.Content {
+		switch e.Kind {
+		case yaml.ScalarNode:
+			inc.Content[i] = &yaml.Node{Kind: yaml.MappingNode, Content: []*yaml.Node{
+				{Kind: yaml.ScalarNode, Value: "path"}, {Kind: yaml.ScalarNode, Value: e.Value},
+				{Kind: yaml.ScalarNode, Value: "env_file"}, {Kind: yaml.ScalarNode, Value: os.DevNull},
+			}}
+		case yaml.MappingNode:
+			if get(e, "env_file") == nil {
+				e.Content = append(e.Content, &yaml.Node{Kind: yaml.ScalarNode, Value: "env_file"}, &yaml.Node{Kind: yaml.ScalarNode, Value: os.DevNull})
+			}
+		}
+	}
+	b, err := yaml.Marshal(root)
+	if err != nil {
+		return config(ctx, bin, file)
+	}
+	pf := filepath.Join(filepath.Dir(file), ".fathom-oracle-probe.yml")
+	if err := os.WriteFile(pf, b, 0o644); err != nil {
+		return nil, err
+	}
+	defer os.Remove(pf)
+	return config(ctx, bin, pf)
+}
+
+// anyIn reports whether one of names is a key of the tool's services.
+func anyIn(names []string, toolSvcs map[string]any) bool {
+	for _, n := range names {
+		if _, ok := toolSvcs[n]; ok {
+			return true
+		}
+	}
+	return false
 }
 
 type out struct {
@@ -164,12 +305,15 @@ func toolVersion(bin []string) string {
 	return strings.TrimSpace(string(b))
 }
 
-// config runs `docker compose config --format json` on one file.
+// config runs `docker compose config --format json` on one file. The
+// project's .env is not read (--env-file os.DevNull): with --no-interpolate
+// nothing in the answer depends on it, and a .env whose own values require an
+// unset variable (`${X?}`) would otherwise fail the file.
 func config(ctx context.Context, bin []string, file string) (map[string]any, error) {
 	ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
 	defer cancel()
 	args := append(append([]string(nil), bin[1:]...),
-		"--profile", "*", "-f", file, "--project-directory", filepath.Dir(file),
+		"--env-file", os.DevNull, "--profile", "*", "-f", file, "--project-directory", filepath.Dir(file),
 		"config", "--format", "json",
 		"--no-interpolate", "--no-env-resolution", "--no-path-resolution", "--no-consistency", "--no-normalize")
 	cmd := exec.CommandContext(ctx, bin[0], args...)
@@ -209,14 +353,13 @@ func main() {
 		fmt.Fprintln(os.Stderr, "docker-compose-oracle: neither `docker compose` nor docker-compose on PATH")
 		os.Exit(1)
 	}
-	o := out{Definitions: []def{}, References: []ref{}}
+	o := out{Definitions: []def{}, References: []ref{}, CrossReferences: []xref{}}
 	if *xrefMode {
-		o.Tool, o.Version, o.Tier = "docker-compose-xref-oracle (independent yaml.v3 walk of extends.file and build)", "gopkg.in/yaml.v3 v3.0.1", "C"
-		o.CrossReferences = []xref{}
+		o.Tool, o.Version, o.Tier = "docker-compose-xref-oracle (independent yaml.v3 walk of include, extends.file and build)", "gopkg.in/yaml.v3 v3.0.1", "C"
 	} else {
 		o.Tool, o.Version, o.Tier = "docker compose config --format json", toolVersion(bin), "A"
 	}
-	var files, rejected, unparsable int
+	var files, rejected, unparsable, probed int
 	ctx := context.Background()
 	err = filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -244,6 +387,11 @@ func main() {
 		}
 		svcs := services(rootNode)
 		if *xrefMode {
+			for _, inc := range includes(rootNode) {
+				if t := subjectFile(root, rel, inc); t != "" {
+					o.CrossReferences = append(o.CrossReferences, xref{rel, d.Name(), t})
+				}
+			}
 			for _, s := range svcs {
 				if s.node.Kind != yaml.MappingNode {
 					continue
@@ -258,17 +406,47 @@ func main() {
 			files++
 			return nil
 		}
-		if len(svcs) == 0 {
-			return nil
-		}
-		j, err := config(ctx, bin, p)
+		j, err := configFile(ctx, bin, p, rootNode)
 		if err != nil {
 			rejected++
 			fmt.Fprintf(os.Stderr, "rejected by the tool: %s: %v\n", rel, err)
+			// each include and extends is probed alone
+			for _, inc := range includes(rootNode) {
+				t := subjectFile(root, rel, inc)
+				if t == "" {
+					continue
+				}
+				// the included file's own .env is not read either (config's rule)
+				if pj := probe(ctx, bin, p, "include:\n  - path: "+strconv.Quote(inc)+"\n    env_file: "+strconv.Quote(os.DevNull)+"\n"); pj != nil {
+					ps, _ := pj["services"].(map[string]any)
+					if anyIn(declaredServices(root, t), ps) {
+						o.CrossReferences = append(o.CrossReferences, xref{rel, d.Name(), t})
+						probed++
+					}
+				}
+			}
+			for _, s := range svcs {
+				ext := get(s.node, "extends")
+				f, svc := scalar(get(ext, "file")), scalar(get(ext, "service"))
+				t := subjectFile(root, rel, f)
+				if t == "" || svc == "" {
+					continue
+				}
+				body := "services:\n  " + strconv.Quote(s.name) + ":\n    extends:\n      file: " + strconv.Quote(f) + "\n      service: " + strconv.Quote(svc) + "\n"
+				if probe(ctx, bin, p, body) != nil {
+					o.CrossReferences = append(o.CrossReferences, xref{rel, s.name, t})
+					probed++
+				}
+			}
 			return nil
 		}
 		files++
 		toolSvcs, _ := j["services"].(map[string]any)
+		for _, inc := range includes(rootNode) {
+			if t := subjectFile(root, rel, inc); t != "" && anyIn(declaredServices(root, t), toolSvcs) {
+				o.CrossReferences = append(o.CrossReferences, xref{rel, d.Name(), t})
+			}
+		}
 		for _, s := range svcs {
 			sj, ok := toolSvcs[s.name].(map[string]any)
 			if !ok {
@@ -279,6 +457,13 @@ func main() {
 			for _, n := range names {
 				o.References = append(o.References, ref{rel, s.name, n})
 			}
+			// the tool resolved the extends (it fails the file otherwise)
+			if t := subjectFile(root, rel, scalar(get(get(s.node, "extends"), "file"))); t != "" {
+				o.CrossReferences = append(o.CrossReferences, xref{rel, s.name, t})
+			}
+			if t := toolBuildTarget(root, rel, sj["build"]); t != "" {
+				o.CrossReferences = append(o.CrossReferences, xref{rel, s.name, t})
+			}
 		}
 		return nil
 	})
@@ -286,13 +471,11 @@ func main() {
 		fmt.Fprintln(os.Stderr, "docker-compose-oracle:", err)
 		os.Exit(1)
 	}
-	if *xrefMode {
-		sort.Slice(o.CrossReferences, func(i, j int) bool {
-			a, b := o.CrossReferences[i], o.CrossReferences[j]
-			return a.Path+"\x00"+a.From+"\x00"+a.ToPath < b.Path+"\x00"+b.From+"\x00"+b.ToPath
-		})
-	}
-	fmt.Fprintf(os.Stderr, "docker-compose-oracle: %d compose files answered, %d rejected by the tool, %d unparsable\n", files, rejected, unparsable)
+	sort.Slice(o.CrossReferences, func(i, j int) bool {
+		a, b := o.CrossReferences[i], o.CrossReferences[j]
+		return a.Path+"\x00"+a.From+"\x00"+a.ToPath < b.Path+"\x00"+b.From+"\x00"+b.ToPath
+	})
+	fmt.Fprintf(os.Stderr, "docker-compose-oracle: %d compose files answered, %d rejected by the tool (%d of their cross-file references attested by a probe), %d unparsable, %d cross-file references\n", files, rejected, probed, unparsable, len(o.CrossReferences))
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", " ")
 	if err := enc.Encode(o); err != nil {
@@ -321,6 +504,26 @@ func dependsOn(v any) []string {
 	}
 	sort.Strings(names)
 	return names
+}
+
+// toolBuildTarget is the Dockerfile a service's build names as the tool
+// evaluated it (the build object of its answer), repo-relative, when that
+// file exists in the subject; "" otherwise.
+func toolBuildTarget(root, rel string, b any) string {
+	m, ok := b.(map[string]any)
+	if !ok {
+		return ""
+	}
+	ctxDir, _ := m["context"].(string)
+	dockerfile, _ := m["dockerfile"].(string)
+	n := &yaml.Node{Kind: yaml.MappingNode, Content: []*yaml.Node{
+		{Kind: yaml.ScalarNode, Value: "build"},
+		{Kind: yaml.MappingNode, Content: []*yaml.Node{
+			{Kind: yaml.ScalarNode, Value: "context"}, {Kind: yaml.ScalarNode, Value: ctxDir},
+			{Kind: yaml.ScalarNode, Value: "dockerfile"}, {Kind: yaml.ScalarNode, Value: dockerfile},
+		}},
+	}}
+	return buildTarget(root, rel, n)
 }
 
 // buildTarget is the Dockerfile a service's build names (context, then
