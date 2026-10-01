@@ -23,7 +23,16 @@ file below, in this order.
 | [surfaces](mcp-tools/surfaces.md) | Tool groups, profiles and surfaces: the profile table, the path-scoped HTTP surfaces and the plain HTTP endpoints |
 | [protocol](mcp-tools/protocol.md) | The served protocol contract |
 | [cost-classes](mcp-tools/cost-classes.md) | The cost-class table (mirrors the registry) |
-| [shared](mcp-tools/shared.md) | Shared tools |
+| [shared](mcp-tools/shared.md) | Shared tools: the group heading and intro |
+| [shared-lookup](mcp-tools/shared-lookup.md) | Shared tools: lookup (find_symbol, status, staleness_report) |
+| [shared-obligations-a](mcp-tools/shared-obligations-a.md) | Shared tools: obligations, part a (and the `Finding` shape) |
+| [shared-obligations-b](mcp-tools/shared-obligations-b.md) | Shared tools: obligations, part b |
+| [shared-obligations-c](mcp-tools/shared-obligations-c.md) | Shared tools: obligations, part c |
+| [shared-obligations-d](mcp-tools/shared-obligations-d.md) | Shared tools: obligations, part d |
+| [shared-obligations-e](mcp-tools/shared-obligations-e.md) | Shared tools: obligations, part e |
+| [shared-obligations-f](mcp-tools/shared-obligations-f.md) | Shared tools: obligations, part f |
+| [shared-registry](mcp-tools/shared-registry.md) | Shared tools: registry (ingest, remove_service, rename_service) |
+| [shared-context](mcp-tools/shared-context.md) | Shared tools: context (repo_map, pack_context) |
 | [coding](mcp-tools/coding.md) | Coding tools |
 | [investigation](mcp-tools/investigation.md) | Investigation tools |
 | [platform](mcp-tools/platform.md) | Platform tools |
