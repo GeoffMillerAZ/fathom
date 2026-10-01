@@ -613,7 +613,14 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 			res.notes = append(res.notes, fmt.Sprintf("%s: %d callable references have no call written at their range (%s) and are left out of the call truth (L2 is call sites)", name, n, why))
 		}
 		if n := sr.Counts[langbench.CntScipCalledNames]; n > 0 {
-			res.notes = append(res.notes, fmt.Sprintf("%s: %d references to a class, a field or variable, an interface method or a local are written as a call (`name(`) and counted as calls to that name (L2 is call sites: scip-python names a constructed class, never a constructor; scip-go writes an interface's method as a term)", name, n))
+			why := "a reference the producer gives no callable descriptor"
+			switch spec.Manifest.ID {
+			case "python":
+				why = "scip-python names a constructed class (`Foo#`), never a constructor, and an attribute or local it calls by its own descriptor"
+			case goDialect:
+				why = "scip-go writes an interface's method and a func-typed field or variable as a term (`T#m.`)"
+			}
+			res.notes = append(res.notes, fmt.Sprintf("%s: %d references to a class, a field or variable, an interface method or a local are written as a call (`name(`) and counted as calls to that name (L2 is call sites: %s)", name, n, why))
 		}
 		if sr.EnclosingFallback > 0 {
 			res.notes = append(res.notes, fmt.Sprintf("%s: %d SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)", name, sr.EnclosingFallback))
