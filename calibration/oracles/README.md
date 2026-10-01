@@ -102,7 +102,8 @@ they are in no truth, and the dialect, which joins by name, draws them. The dial
 manifest of the repository, a vendored copy (next.js's `packages/next/src/compiled/*`) or a test fixture included, and
 npm joins only to a workspace member, so `-files-out` names the manifests npm evaluates as a workspace (the root and
 each member) and the reading scores the cross-references on those with `lang-oracle -only "$(paste -sd, <file>)"`, as
-cargo's and kustomize's are; measured over every manifest of the subjects the same run reads xref_precision .7984
+cargo's and kustomize's are (both corpus subjects keep every member directly under `packages/`, so `-only
+'package.json,packages/*/package.json'` names the same files and keeps the reading's note short); measured over every manifest of the subjects the same run reads xref_precision .7984
 (babel .9501, next.js .1292: 182 name joins to vendored and fixture manifests that are not workspace members). A
 string-valued bin has no entity in the dialect (npm names its one route after the package): the one recall miss in each
 subject, counted on stderr. The program empties `<scratch>/npm-oracle`; do not build its binary there.

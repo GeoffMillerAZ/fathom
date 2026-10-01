@@ -2,30 +2,40 @@
   "dialect": "package-json",
   "kind": "tooling",
   "target_level": "L3",
-  "level_met": "L1",
+  "level_met": "L3",
   "grade": {
     "L1": "excellent",
-    "L2": "not-attempted",
-    "L3": "not-attempted",
+    "L2": "excellent",
+    "L3": "good",
     "L4": "not-applicable"
   },
-  "measured_at": "2026-09-28",
-  "fathom_commit": "c5a1859a",
+  "measured_at": "2026-10-01",
+  "fathom_commit": "48de7de9",
   "extractor": "dialect",
   "subjects": [
     {
       "name": "babel",
       "sha": "54405f212b4e6a40f0e1dfba9293b0e3f3dd20e3",
-      "files": 199,
-      "bytes": 387098,
+      "files": 159,
+      "bytes": 386099,
       "counts": {
         "fathom_defs": 1637,
         "kind_equal": 1637,
         "matched": 1637,
-        "oracle_defs": 1638
+        "oracle_defs": 1638,
+        "ref_fathom": 950,
+        "ref_fathom_in_truth": 950,
+        "ref_truth": 950,
+        "ref_truth_found": 950,
+        "xref_fathom": 922,
+        "xref_fathom_in_truth": 876,
+        "xref_truth": 876,
+        "xref_truth_found": 876
       },
       "families": {
-        "l1": "A"
+        "l1": "A",
+        "refs": "A",
+        "xref": "C"
       },
       "kind_intersection": [
         "package",
@@ -35,8 +45,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 7.254999999999994,
-        "max_file_ms": 0,
+        "extract_ms": 10.786000000000001,
+        "extract_cpu_ms": 11.115000000000002,
+        "max_file_ms": 1,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -44,16 +55,26 @@
     {
       "name": "next.js",
       "sha": "a758ffcf501f6f1ddb03175bd1033508424c261e",
-      "files": 185,
-      "bytes": 78175,
+      "files": 20,
+      "bytes": 42737,
       "counts": {
-        "fathom_defs": 515,
-        "kind_equal": 515,
-        "matched": 515,
-        "oracle_defs": 516
+        "fathom_defs": 200,
+        "kind_equal": 200,
+        "matched": 200,
+        "oracle_defs": 201,
+        "ref_fathom": 516,
+        "ref_fathom_in_truth": 516,
+        "ref_truth": 516,
+        "ref_truth_found": 516,
+        "xref_fathom": 27,
+        "xref_fathom_in_truth": 27,
+        "xref_truth": 27,
+        "xref_truth_found": 27
       },
       "families": {
-        "l1": "A"
+        "l1": "A",
+        "refs": "A",
+        "xref": "C"
       },
       "kind_intersection": [
         "package",
@@ -63,7 +84,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 2.1539999999999937,
+        "extract_ms": 1.1770000000000003,
+        "extract_cpu_ms": 1.124,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -73,26 +95,30 @@
   "oracles": [
     {
       "tier": "A",
-      "tool": "npm pkg get",
+      "tool": "npm query ':root' (each manifest as npm loads it)",
       "version": "11.16.0"
     },
     {
-      "tier": "B",
-      "tool": "universal-ctags",
-      "status": "unavailable: universal-ctags has no parser for this dialect"
+      "tier": "C",
+      "tool": "npm query + npm ls --workspaces (a scratch copy with the workspace links npm install makes)",
+      "version": "11.16.0"
     }
   ],
   "metrics": {
-    "ref_precision": null,
-    "ref_recall": null,
+    "ref_precision": 1,
+    "ref_recall": 1,
     "sym_precision": 1,
-    "sym_recall": 0.9991,
-    "xref_precision": null,
-    "xref_recall": null
+    "sym_recall": 0.9989,
+    "xref_precision": 0.9515,
+    "xref_recall": 1
   },
   "metric_tiers": {
+    "ref_precision": "A",
+    "ref_recall": "A",
     "sym_precision": "A",
-    "sym_recall": "A"
+    "sym_recall": "A",
+    "xref_precision": "C",
+    "xref_recall": "C"
   },
   "required_kinds": [
     "package"
@@ -103,24 +129,38 @@
     "task"
   ],
   "counts": {
-    "fathom_defs": 2152,
-    "kind_equal": 2152,
-    "matched": 2152,
-    "oracle_defs": 2154
+    "fathom_defs": 1837,
+    "kind_equal": 1837,
+    "matched": 1837,
+    "oracle_defs": 1839,
+    "ref_fathom": 1466,
+    "ref_fathom_in_truth": 1466,
+    "ref_truth": 1466,
+    "ref_truth_found": 1466,
+    "xref_fathom": 949,
+    "xref_fathom_in_truth": 903,
+    "xref_truth": 903,
+    "xref_truth_found": 903
   },
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 49.45,
-    "max_file_ms": 0,
+    "throughput_mb_s": 35.04,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 35.85,
+    "max_file_ms": 1,
     "peak_module_pages": 0,
     "compiled_bytes": 0
   },
   "excluded_by_kind": {},
   "notes": [
-    "next.js: 1 files skipped by ingest's gates (generated)",
-    "next.js: 236 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
+    "babel: restricted to package.json, packages/*/package.json (-only; the files outside are a disclosed gap, not measured)",
+    "next.js: 628 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
+    "next.js: restricted to package.json, packages/*/package.json (-only; the files outside are a disclosed gap, not measured)",
+    "package-json: a string-valued bin has no entity in the dialect (npm names its route after the package), the one sym_recall miss in each subject; six of next.js's seven pnpm-workspace.yaml patterns name directories outside the corpus checkout and are not evaluated (npm lists the 19 packages/* members its root package.json declares)",
+    "package-json: cross-references are scored on the manifests npm evaluates as a workspace, the root and each member (-only; babel 159 of 199 package.json, next.js 20 of 185). Over every manifest of both subjects the same oracle files read sym_recall .9991, sym_precision 1, ref_recall 1, ref_precision 1, xref_precision .7984 (babel .9501, next.js .1292) and xref_recall 1, so level_met L2: the dialect joins a dependency name to any manifest of the repository, npm only to a member, and next.js's 182 extra edges go to vendored packages/next/src/compiled/* and fixture manifests that are not members",
+    "package-json: npm 11.16.0 rejects the workspace: protocol, so the oracle's scratch copy rewrites each such spec to the range the protocol means (babel 759 specs, next.js 15) and the cross-references file is tier C for that reason; babel's 46 `condition:BABEL_8_BREAKING ? : workspace:^` specs are ones npm cannot parse, so the dialect's edge for each is in no truth",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
   ],
-  "disposition": "deferred: L1 excellent; L2 has no intra-file reference to measure; L3 not attempted in this reading, which predates tool-format xref scoring (LB-F30, landed) — re-measure with a cross_references oracle (LB-Q-package-json-rest)"
+  "disposition": null
 }
