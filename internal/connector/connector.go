@@ -286,6 +286,11 @@ var extClassMap = map[string]classification{
 	".mk":         {core.KindMakeTarget, "makefile"},
 	".make":       {core.KindMakeTarget, "makefile"},
 
+	// Gradle build scripts in the Groovy DSL (LB-Q-gradle: a new tree-sitter
+	// dialect, no incumbent): build.gradle, settings.gradle and script
+	// plugins. A Kotlin DSL script (*.gradle.kts) stays Kotlin's (.kts).
+	".gradle": {core.KindGradleTask, "gradle"},
+
 	// Lua
 	".lua": {core.KindLuaFunction, "lua"},
 

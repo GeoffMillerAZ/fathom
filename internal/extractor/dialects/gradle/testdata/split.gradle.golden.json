@@ -1,0 +1,105 @@
+{
+  "symbols": [
+    {
+      "name": ":clients",
+      "kind": "GradleDependency",
+      "package": "split",
+      "line": 4,
+      "end_line": 4,
+      "signature": "api project(path: ':clients', configuration: 'shadow')",
+      "calls": [
+        ":clients"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": ":core",
+      "kind": "GradleDependency",
+      "package": "split",
+      "line": 5,
+      "end_line": 5,
+      "signature": "implementation(project(path: ':core'))",
+      "calls": [
+        ":core"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": ":bom",
+      "kind": "GradleDependency",
+      "package": "split",
+      "line": 6,
+      "end_line": 6,
+      "signature": "api(platform(project(path: ':bom')))",
+      "calls": [
+        ":bom"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "org.example:after-comment:1.0",
+      "kind": "GradleDependency",
+      "package": "split",
+      "line": 8,
+      "end_line": 8,
+      "signature": "implementation 'org.example:after-comment:1.0'",
+      "tier": "verified"
+    },
+    {
+      "name": ":after",
+      "kind": "GradleDependency",
+      "package": "split",
+      "line": 10,
+      "end_line": 10,
+      "signature": "api project(':after')",
+      "calls": [
+        ":after"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": ":tests",
+      "kind": "GradleDependency",
+      "package": "split",
+      "line": 12,
+      "end_line": 12,
+      "signature": "testImplementation project(path: ':tests', configuration: 'testOutput')",
+      "calls": [
+        ":tests"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": ":clients",
+      "module": ":clients",
+      "kind": "whole",
+      "line": 4
+    },
+    {
+      "local": ":core",
+      "module": ":core",
+      "kind": "whole",
+      "line": 5
+    },
+    {
+      "local": ":bom",
+      "module": ":bom",
+      "kind": "whole",
+      "line": 6
+    },
+    {
+      "local": ":after",
+      "module": ":after",
+      "kind": "whole",
+      "line": 10
+    },
+    {
+      "local": ":tests",
+      "module": ":tests",
+      "kind": "whole",
+      "line": 12
+    }
+  ]
+}

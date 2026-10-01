@@ -1,0 +1,8 @@
+// A task registered and configured in one chain after another statement of a block: the
+// grammar reads the chain as a command call followed by its closure.
+subprojects {
+    if (shouldPublish) {
+        apply plugin: 'signing'
+        tasks.register('install').configure { dependsOn(publishToMavenLocal) }
+    }
+}

@@ -1,0 +1,23 @@
+// A root build script that configures its subprojects in place.
+subprojects {
+    apply plugin: 'java'
+    dependencies {
+        testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0'
+    }
+}
+
+project(':core') {
+    apply plugin: 'scala'
+    dependencies {
+        implementation project(':clients')
+    }
+    task coreJar(type: Jar) {
+        dependsOn 'compileScala'
+    }
+}
+
+project(':clients') {
+    dependencies {
+        api 'org.lz4:lz4-java:1.8.0'
+    }
+}

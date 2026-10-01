@@ -1,0 +1,53 @@
+{
+  "symbols": [
+    {
+      "name": "java",
+      "kind": "GradlePlugin",
+      "package": "broken",
+      "line": 4,
+      "end_line": 4,
+      "tier": "verified"
+    },
+    {
+      "name": ":first",
+      "kind": "GradleDependency",
+      "package": "broken",
+      "line": 8,
+      "end_line": 8,
+      "signature": "api project(':first')",
+      "calls": [
+        ":first"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "org.example:after-error:1.0",
+      "kind": "GradleDependency",
+      "package": "broken",
+      "line": 11,
+      "end_line": 11,
+      "signature": "implementation 'org.example:after-error:1.0'",
+      "tier": "verified"
+    },
+    {
+      "name": "afterLambda",
+      "kind": "GradleTask",
+      "package": "broken",
+      "line": 16,
+      "end_line": 18,
+      "signature": "tasks.register('afterLambda')",
+      "calls": [
+        "hello"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": ":first",
+      "module": ":first",
+      "kind": "whole",
+      "line": 8
+    }
+  ]
+}

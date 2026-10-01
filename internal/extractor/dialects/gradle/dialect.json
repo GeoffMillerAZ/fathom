@@ -1,0 +1,35 @@
+{
+  "id": "gradle",
+  "display": "Gradle builds (Groovy DSL)",
+  "kind": "tooling",
+  "engine": "tags",
+  "lang_tag": "gradle",
+  "match": {
+    "extensions": [".gradle"],
+    "basenames": [],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "grammar": { "blob": "groovy", "entry_point": "tree_sitter_groovy" },
+  "variants": [],
+  "queries": { "tags": "tags.scm", "imports": "imports.scm" },
+  "kinds": {
+    "include":    { "source_kind": "GradleInclude",    "canonical": "module",   "callable": true },
+    "dependency": { "source_kind": "GradleDependency", "canonical": "package",  "callable": true },
+    "plugin":     { "source_kind": "GradlePlugin",     "canonical": "resource" },
+    "task":       { "source_kind": "GradleTask",       "canonical": "task",     "callable": true }
+  },
+  "required_kinds": ["include", "dependency", "plugin", "task"],
+  "oracle_kinds": {
+    "tool": { "module": "module", "package": "package", "resource": "resource", "task": "task" }
+  },
+  "name_match": "identity",
+  "names": { "trim_quotes": true },
+  "qualify": { "chain_containers": false, "container_sep": ".", "method_sep": "." },
+  "package": { "strategy": "dir" },
+  "imports": { "strategy": "namespace-dir", "separator": ":", "source_roots": [""], "suffixes": ["/build.gradle", "/build.gradle.kts"] },
+  "signature": { "max_chars": 200 },
+  "target_level": "L3",
+  "queue_id": "gradle"
+}

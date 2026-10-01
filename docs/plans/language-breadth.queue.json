@@ -2196,13 +2196,14 @@
     "kind": "tooling",
     "target_level": "L3",
     "grammar_source": "murtaza64/tree-sitter-groovy + fwcd/tree-sitter-kotlin",
-    "licence": "verify at pin",
+    "licence": "MIT",
     "oracle": [
-      "gradle projects -q --offline (tier A)"
+      "gradle projects -q --offline (tier A)",
+      "gradle help with an init-script model (calibration/oracles/gradle, tier A)"
     ],
     "calibration_subjects": [
-      "square/okhttp",
-      "spring-projects/spring-boot"
+      "spring-projects/spring-boot",
+      "apache/kafka"
     ],
     "depends_on": [
       "LB-F1",
@@ -2227,7 +2228,7 @@
     "engine": "tags",
     "plan_row": "LB-Q-gradle",
     "worker_model": "sonnet",
-    "notes": "new; tasks, plugins, include() project edges, project(':x') dependency edges"
+    "notes": "new; tasks, plugins, include() project edges, project(':x') dependency edges; the Groovy DSL dialect is measured on spring-boot and kafka (square/okhttp is Kotlin DSL throughout, which no dialect reads: LB-Q-gradle-rest)"
   },
   {
     "id": "vue",

@@ -1,0 +1,138 @@
+// oracle.gradle — the gradle oracle's init script (calibration/oracles/gradle, LB-F95). Bench-only;
+// never a product dependency. gradle-oracle (main.go) runs the subject's own wrapper with
+//
+//   -I oracle.gradle -DfathomOracle.out=<model.json> -DfathomOracle.candidates=<candidates.json> help
+//
+// and this script writes what Gradle itself evaluated, after every project is configured:
+//   - the settings: its directory, the settings plugins applied (of the candidate ids), and every
+//     project descriptor (path, project directory, build file);
+//   - per project (gradle.rootProject.allprojects): its build file, the candidate plugin ids its
+//     plugin manager has applied, every task name its container holds, and for each candidate
+//     task name it holds the task's dependsOn and finalizedBy as task names (a String as given, a
+//     Task or TaskProvider by name in its own project and by path in another);
+//   - per project and per configuration (the project's and its buildscript's, the latter as
+//     "buildscript:<name>"): each declared dependency, a project dependency by the path Gradle
+//     resolved, a module dependency by group, name and version.
+// The candidates (plugin ids and task names) come from gradle-oracle's own scan of every *.gradle
+// file of the subject; nothing here reads a script's text.
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
+
+// An init script applies to every build of the invocation; buildSrc and included builds (a
+// composite's gradle/plugins) have a parent and are not the subject's build. Gradle builds them
+// only for the classes the subject's scripts apply; a subject that wires its own verification
+// into that build (spring-boot's buildSrc: `jar.dependsOn check`, tests and checkstyle) would
+// run it on every evaluation, so the oracle drops a dependency on `check` or `test` there and
+// skips the verification tasks still in the graph. The subject's own build is evaluated
+// unchanged.
+if (gradle.parent != null) {
+    def verification = { d ->
+        def n = (d instanceof Task || d instanceof org.gradle.api.tasks.TaskProvider) ? d.name : (d instanceof CharSequence ? d.toString() : null)
+        n in ['check', 'test']
+    }
+    gradle.projectsEvaluated {
+        gradle.rootProject.allprojects { p ->
+            p.tasks.each { t ->
+                def kept = t.dependsOn.findAll { !verification(it) }
+                if (kept.size() != t.dependsOn.size()) {
+                    t.setDependsOn(kept)
+                }
+            }
+        }
+    }
+    gradle.taskGraph.whenReady { graph ->
+        graph.allTasks.each { t ->
+            if (t instanceof org.gradle.api.tasks.testing.Test || t.group == 'verification' ||
+                    t.class.name.contains('Checkstyle') || t.class.name.contains('Format')) {
+                t.enabled = false
+            }
+        }
+    }
+    return
+}
+
+def outPath = System.getProperty('fathomOracle.out')
+def candPath = System.getProperty('fathomOracle.candidates')
+def cand = candPath ? new JsonSlurper().parse(new File(candPath)) : [plugins: [], tasks: []]
+def candPlugins = (cand.plugins ?: []) as List<String>
+def candTasks = (cand.tasks ?: []) as Set<String>
+
+def model = [gradle: gradle.gradleVersion, settings: [:], projects: [], errors: []]
+
+def taskName = null
+taskName = { Object v, Project owner ->
+    if (v == null) return []
+    if (v instanceof CharSequence) return [v.toString()]
+    if (v instanceof Task) return [v.project == owner ? v.name : v.path]
+    if (v instanceof org.gradle.api.tasks.TaskProvider) return [v.name]
+    if (v instanceof org.gradle.api.provider.Provider) {
+        try { return taskName(v.getOrNull(), owner) } catch (Throwable ignored) { return [] }
+    }
+    if (v instanceof Iterable) return v.collectMany { taskName(it, owner) }
+    if (v instanceof Object[]) return (v as List).collectMany { taskName(it, owner) }
+    return []
+}
+
+gradle.settingsEvaluated { Settings settings ->
+    def descriptors = []
+    def walk = null
+    walk = { d ->
+        descriptors << [path: d.path, dir: d.projectDir.absolutePath, buildFile: d.buildFile.absolutePath]
+        d.children.sort { it.path }.each { walk(it) }
+    }
+    walk(settings.rootProject)
+    model.settings = [
+        dir: settings.settingsDir.absolutePath,
+        plugins: candPlugins.findAll { id ->
+            try { settings.pluginManager.hasPlugin(id) } catch (Throwable ignored) { false }
+        },
+        projects: descriptors,
+    ]
+}
+
+gradle.projectsEvaluated {
+    gradle.rootProject.allprojects.sort { it.path }.each { Project p ->
+        def entry = [path: p.path, dir: p.projectDir.absolutePath, buildFile: p.buildFile.absolutePath]
+        entry.plugins = candPlugins.findAll { id ->
+            try { p.pluginManager.hasPlugin(id) } catch (Throwable ignored) { false }
+        }
+        def names = (p.tasks.names as List).sort()
+        entry.taskNames = names
+        def details = []
+        names.findAll { candTasks.contains(it) }.each { n ->
+            try {
+                def t = p.tasks.findByName(n)
+                if (t == null) return
+                def dependsOn = t.dependsOn.collectMany { taskName(it, p) }.unique().sort()
+                def finalizedBy = []
+                try {
+                    finalizedBy = t.finalizedBy.getDependencies(t).collect { it.project == p ? it.name : it.path }.unique().sort()
+                } catch (Throwable e) {
+                    model.errors << "${p.path}:${n} finalizedBy: ${e.class.simpleName}".toString()
+                }
+                details << [name: n, dependsOn: dependsOn, finalizedBy: finalizedBy]
+            } catch (Throwable e) {
+                model.errors << "${p.path}:${n}: ${e.class.simpleName}".toString()
+            }
+        }
+        entry.tasks = details
+        def deps = []
+        def collect = { String prefix, ConfigurationContainer configs ->
+            configs.sort { it.name }.each { c ->
+                c.dependencies.each { d ->
+                    if (d instanceof ProjectDependency) {
+                        def path = d.metaClass.respondsTo(d, 'getPath') ? d.path : d.dependencyProject.path
+                        deps << [configuration: prefix + c.name, project: path]
+                    } else if (d instanceof ModuleDependency) {
+                        deps << [configuration: prefix + c.name, group: d.group, name: d.name, version: d.version]
+                    }
+                }
+            }
+        }
+        try { collect('', p.configurations) } catch (Throwable e) { model.errors << "${p.path} configurations: ${e.class.simpleName}".toString() }
+        try { collect('buildscript:', p.buildscript.configurations) } catch (Throwable e) { model.errors << "${p.path} buildscript: ${e.class.simpleName}".toString() }
+        entry.dependencies = deps
+        model.projects << entry
+    }
+    new File(outPath).text = JsonOutput.prettyPrint(JsonOutput.toJson(model))
+}

@@ -1,0 +1,18 @@
+// A script the grammar cannot read whole: the definitions around the
+// unreadable statements are still extracted.
+plugins {
+    id 'java'
+}
+
+dependencies {
+    api project(':first'), {
+        exclude group: 'org.example'
+    }
+    implementation 'org.example:after-error:1.0'
+}
+
+def keys = new TreeSet<>((a, b) -> a.name.compareTo(b.name))
+
+tasks.register('afterLambda') {
+    dependsOn 'hello'
+}

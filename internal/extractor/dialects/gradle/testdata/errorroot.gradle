@@ -1,0 +1,24 @@
+// A script whose syntax errors (lambdas as arguments) the grammar recovers from only by
+// wrapping the whole file in an ERROR node: the plugins block before them is still read.
+plugins {
+	id "java-platform"
+	id "org.example.bom"
+}
+bom {
+	upgrade {
+		gitHub {
+		}
+	}
+	library("Example", "1.0") {
+		group("org.example") {
+			bom("example-bom") {
+			}
+			docs(version -> "https://docs.example.org/%s.%s".formatted(version.major(), version.minor()))
+			releaseNotes(version -> "https://docs.example.org/%s.%s/changes".formatted(version.major(), version.minor()))
+		}
+		group("org.example.extra") {
+		}
+		group("org.example.more") {
+		}
+	}
+}
