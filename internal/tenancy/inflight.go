@@ -20,6 +20,25 @@ import (
 // cancelled (outcome: abandoned-by-governor).
 var ErrAbandonedByGovernor = errors.New("abandoned-by-governor: fathom is over its memory budget (refuse) — fathom resources")
 
+// AbandonedBy is the cancel cause for work the refuse rung cancelled, worded
+// by the ladder's cause (EW-37): errors.Is ErrAbandonedByGovernor either way,
+// and the text names a host trigger such as the swap-volume floor rather
+// than a memory budget.
+func AbandonedBy(c Cause) error {
+	if c.BudgetCause() || c.Detail == "" {
+		return ErrAbandonedByGovernor
+	}
+	return abandonedBy{detail: c.Detail}
+}
+
+type abandonedBy struct{ detail string }
+
+func (e abandonedBy) Error() string {
+	return "abandoned-by-governor: fathom is refusing (" + e.detail + ") — fathom resources"
+}
+
+func (e abandonedBy) Is(target error) bool { return target == ErrAbandonedByGovernor }
+
 // ErrHaltedOverBudget is the cancel cause of an ingest the exit rung halted.
 var ErrHaltedOverBudget = errors.New("ingest halted: fathom reached its exit mark; the service is quarantined until an explicit ingest")
 

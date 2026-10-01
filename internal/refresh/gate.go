@@ -19,6 +19,9 @@ func TenancyGate(service string, explicit bool, now time.Time) Verdict {
 	}
 	lvl := tenancy.CurrentLevel()
 	if lvl >= tenancy.LevelRefuse {
+		if c := tenancy.CurrentCause(); !c.BudgetCause() && c.Detail != "" {
+			return Verdict{Refuse: "refused (" + lvl.String() + ": " + c.Detail + "); fathom resources"}
+		}
 		return Verdict{Refuse: "refused (" + lvl.String() + ") — fathom is over its memory budget; fathom resources"}
 	}
 	if explicit {

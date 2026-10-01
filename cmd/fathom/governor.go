@@ -274,7 +274,11 @@ func (g *governor) tickLocked(at time.Time, late time.Duration) tenancy.Transiti
 // applyLadderLevel publishes the new level (producers read it before their
 // next unit) and runs the entered rung's actions (§2.1).
 func (g *governor) applyLadderLevel(tr tenancy.Transition) {
-	tenancy.PublishLevel(tr.To)
+	if tr.From != tr.To {
+		tenancy.PublishLevelCause(tr.To, tr.Cause)
+	} else {
+		tenancy.PublishLevel(tr.To)
+	}
 	if tr.From == tr.To {
 		g.logf(fmt.Sprintf("tenancy: %s", tr.Reason))
 		return
@@ -408,7 +412,7 @@ func (g *governor) scavenge(at time.Time, force bool, event string) {
 // cancelHeavy cancels every in-flight tree and fleet ticket, youngest
 // first, as abandoned-by-governor (RT-172).
 func (g *governor) cancelHeavy() {
-	got := g.inflight.Cancel(tenancy.ErrAbandonedByGovernor, tenancy.ClassTree, tenancy.ClassFleet)
+	got := g.inflight.Cancel(tenancy.AbandonedBy(tenancy.CurrentCause()), tenancy.ClassTree, tenancy.ClassFleet)
 	g.abandoned += int64(len(got))
 	g.cancelled = g.cancelled[:0]
 	for _, e := range got {
