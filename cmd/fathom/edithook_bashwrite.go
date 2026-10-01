@@ -41,7 +41,17 @@ const bashWriteTimeout = 2 * time.Second
 //
 // Every emission is a payload-cost beat (channel post-bash), so the
 // instrument that prices post-edit and pre-edit payloads prices this one.
-func cmdEditHookBashWrite(codec harness.Codec, hook harness.HookInput, url string, armOff bool, stdout io.Writer) int {
+//
+// pinText (PR-3, edithook_pin.go) is the commit pin line's text for the
+// same call: it rides this payload's envelope when there is one, and goes
+// out alone when this path is silent.
+func cmdEditHookBashWrite(codec harness.Codec, hook harness.HookInput, url string, armOff bool, stdout io.Writer, pinText string) int {
+	pinCarried := false
+	defer func() {
+		if !pinCarried {
+			emitPinContext(codec, pinText, stdout)
+		}
+	}()
 	deadline := time.Now().Add(bashWriteTimeout) // one shared budget for every RPC this call makes, not a fresh one each
 	sessionID := hook.SessionID
 	paths, writeShaped := bashWriteTargets(hook.Command)
@@ -124,10 +134,14 @@ func cmdEditHookBashWrite(codec harness.Codec, hook harness.HookInput, url strin
 		text = bashWriteRulesPayload(m)
 	}
 
+	if pinText != "" {
+		text += "\n" + pinText
+	}
 	out, err := codec.EncodeOutput(harness.EventPostTool, harness.HookOutput{Context: text})
 	if err != nil {
 		return 0
 	}
+	pinCarried = true
 	costMeta := map[string]string{}
 	answeredMeta := map[string]string{"emitted": "true", "phase": "post-bash"}
 	if doubt {
