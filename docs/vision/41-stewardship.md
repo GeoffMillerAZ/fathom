@@ -107,6 +107,9 @@ to sort the lines already existed in git and in the plans.
 - *Deferred.* "Would prove" (a scratch verify at each line's tip) instead of "claims or touches" costs an ingest per
   line; lines across the fleet and in scratch clones under operator-named roots come after the single-repository
   report reads (SV-D2, SV-D3).
+- *2026-10-02: SV-M1 read CUT (36 lines flagged against 25, O293), so the claims-rows and touches-rows classes are
+  removed (ADR-060 amendment 2026-10-02):* `plans lines` classes a line landed, at risk, idle or active and reads no
+  plan file; SV-3 and SV-D2 are refused, and a per-commit "already applied" landed test is future F60.
 
 ### 4.2 Upstream drift of vendored and pinned dependencies: merged into the system graph
 
@@ -246,7 +249,7 @@ future.
 
 | Reading | Kills |
 |---|---|
-| SV-M1 CUT (a valuable held item missed, or more than 25 lines flagged) | the rows classes; the landed class stays |
+| SV-M1 CUT (a valuable held item missed, or more than 25 lines flagged) | the rows classes; the landed class stays. Executed 2026-10-02 (ADR-060 amendment): claims rows and touches rows removed; landed, at risk, idle and active stay |
 | SV-M2 CUT (fewer than 8 in 10 flagged leftovers were trash or forgotten work) | the stray classes in `gc` |
 | SV-M3 CUT (Go units differ from `go list -deps` after one fix round, or the pruned mirror does not build) | `report used` and the reached-units fact; default deny survives |
 | SV-M4 shows no reached upstream change in two quarters | F58 |
