@@ -190,6 +190,9 @@ func ClassifyLines(ctx context.Context, opt Options) (Report, error) {
 	if err != nil {
 		return Report{}, err
 	}
+	if len(wts) > 0 {
+		c.mainWT = wts[0].path
+	}
 	byBranch := map[string]worktree{}
 	for _, w := range wts {
 		if w.branch != "" {
@@ -217,16 +220,18 @@ func ClassifyLines(ctx context.Context, opt Options) (Report, error) {
 		}
 		lines = append(lines, l)
 	}
-	if len(wts) > 0 {
-		c.mainWT = wts[0].path
-	}
-	for _, w := range wts {
+	for i, w := range wts {
 		switch {
 		case w.branch == "" && !w.bare && w.head != "":
 			l := Line{Kind: KindWorktree, Name: w.path, Tip: w.head, Worktree: w.path}
 			ww := w
 			if err := c.classifyCommitLine(&l, &ww, ""); err != nil {
 				return Report{}, err
+			}
+			if i == 0 && l.Class == Landed {
+				// A clean main worktree on a landed detached HEAD holds no
+				// work and is the repository itself: not a line.
+				continue
 			}
 			lines = append(lines, l)
 		case w.branch == c.integ:
@@ -469,11 +474,42 @@ func (c *classifier) dirty(w worktree) (n int, missing bool) {
 
 // dirtyPaths lists a dirty worktree's changed tracked paths.
 func (c *classifier) dirtyPaths(w worktree) []string {
-	out, err := c.git(w.path, "diff", "--name-only", "--no-renames", "HEAD")
+	out, err := c.git(w.path, "-c", "core.quotePath=false", "diff", "--name-only", "--no-renames", "HEAD")
 	if err != nil {
 		return nil
 	}
 	return splitLines(out)
+}
+
+// worktreeContentEqual reports whether every uncommitted path of a dirty
+// worktree (tracked changes and untracked, non-ignored files) reads the same
+// on the integration branch, a deleted path included: the worktree's own
+// edits are already there, so removing it loses nothing.
+func (c *classifier) worktreeContentEqual(w worktree) bool {
+	paths := c.dirtyPaths(w)
+	out, err := c.git(w.path, "-c", "core.quotePath=false", "ls-files", "--others", "--exclude-standard")
+	if err != nil {
+		return false
+	}
+	paths = append(paths, splitLines(out)...)
+	if len(paths) == 0 {
+		return false
+	}
+	for _, p := range paths {
+		local, lerr := c.opt.ReadFile(filepath.Join(w.path, filepath.FromSlash(p)))
+		onInteg, ierr := c.opt.Run(c.ctx, c.root, "show", c.tip+":"+p)
+		switch {
+		case lerr != nil && !errors.Is(lerr, os.ErrNotExist):
+			return false
+		case lerr != nil:
+			if ierr == nil {
+				return false // deleted here, still present there
+			}
+		case ierr != nil || string(local) != string(onInteg):
+			return false
+		}
+	}
+	return true
 }
 
 // classifyCommitLine fills l's facts. base, when set (a stash), is the
@@ -497,7 +533,7 @@ func (c *classifier) classifyCommitLine(l *Line, wt *worktree, base string) erro
 	landed := ""
 	var changed []string
 	if base != "" {
-		if out, err := c.git(c.root, "diff", "--name-only", "--no-renames", base, l.Tip); err == nil {
+		if out, err := c.git(c.root, "-c", "core.quotePath=false", "diff", "--name-only", "--no-renames", base, l.Tip); err == nil {
 			changed = splitLines(out)
 		}
 	}
@@ -543,10 +579,20 @@ func (c *classifier) classifyCommitLine(l *Line, wt *worktree, base string) erro
 		}
 	}
 	dirty := wt != nil && len(l.AtRisk) > 0 && strings.HasPrefix(l.AtRisk[0], "dirty")
-	if landed != "" && !dirty {
+	missingWT := wt != nil && len(l.AtRisk) > 0 && strings.HasPrefix(l.AtRisk[0], "worktree missing")
+	if landed != "" && (!dirty || c.worktreeContentEqual(*wt)) {
 		l.Class = Landed
 		l.Landed = landed
-		l.Removal = removal(*l, landed, c.integ, l.Worktree != "" && l.Worktree == c.mainWT)
+		if dirty {
+			// The dirty edits read the same on the integration branch.
+			l.Landed += ", worktree content-equal"
+		}
+		l.AtRisk = nil
+		l.Removal = removal(*l, landed, c.integ, removalShape{
+			inMain:  l.Worktree != "" && l.Worktree == c.mainWT,
+			force:   dirty,
+			missing: missingWT,
+		})
 		return nil
 	}
 	if isStash {
@@ -564,10 +610,10 @@ func (c *classifier) classifyCommitLine(l *Line, wt *worktree, base string) erro
 		l.Claims = c.claims(l.Tip, changed, wt, dirtyPlans)
 		diff := ""
 		if base != "" {
-			diff, _ = c.git(c.root, "diff", "--no-color", "--no-ext-diff", "--no-renames", "-U0", base, l.Tip)
+			diff, _ = c.git(c.root, "-c", "core.quotePath=false", "diff", "--no-color", "--no-ext-diff", "--no-renames", "-U0", base, l.Tip)
 		}
 		if dirty {
-			if wd, err := c.git(wt.path, "diff", "--no-color", "--no-ext-diff", "--no-renames", "-U0", "HEAD"); err == nil {
+			if wd, err := c.git(wt.path, "-c", "core.quotePath=false", "diff", "--no-color", "--no-ext-diff", "--no-renames", "-U0", "HEAD"); err == nil {
 				diff += "\n" + wd
 			}
 		}
@@ -576,7 +622,7 @@ func (c *classifier) classifyCommitLine(l *Line, wt *worktree, base string) erro
 		// A landed line kept only for its dirty worktree: its working-tree
 		// edits are the unlanded part.
 		l.Claims = c.claims(l.Tip, nil, wt, dirtyPlans)
-		if wd, err := c.git(wt.path, "diff", "--no-color", "--no-ext-diff", "--no-renames", "-U0", "HEAD"); err == nil {
+		if wd, err := c.git(wt.path, "-c", "core.quotePath=false", "diff", "--no-color", "--no-ext-diff", "--no-renames", "-U0", "HEAD"); err == nil {
 			l.Touches = c.touches(wd, l.Claims)
 		}
 	}
@@ -602,7 +648,7 @@ func (c *classifier) classifyCommitLine(l *Line, wt *worktree, base string) erro
 // and on the integration branch: the line's whole change is there, whatever
 // shape it landed in (a squash merge).
 func (c *classifier) contentEqual(tip string, changed []string) bool {
-	out, err := c.git(c.root, "diff", "--name-only", "--no-renames", tip, c.tip)
+	out, err := c.git(c.root, "-c", "core.quotePath=false", "diff", "--name-only", "--no-renames", tip, c.tip)
 	if err != nil {
 		return false
 	}
@@ -724,24 +770,39 @@ func (c *classifier) touches(diff string, claimed []string) []string {
 
 // removal names the command that would remove a landed line. It is printed,
 // never run (I63).
-func removal(l Line, landed, integ string, inMainWorktree bool) string {
+func removal(l Line, landed, integ string, shape removalShape) string {
+	wtRemove := "git worktree remove " + shellQuote(l.Worktree)
+	switch {
+	case shape.missing:
+		wtRemove = "git worktree prune"
+	case shape.force:
+		wtRemove = "git worktree remove --force " + shellQuote(l.Worktree)
+	}
 	switch l.Kind {
 	case KindStash:
 		return "git stash drop " + l.Name
 	case KindWorktree:
-		return "git worktree remove " + shellQuote(l.Worktree)
+		return wtRemove
 	}
 	del := "git branch -D " + shellQuote(l.Name)
 	if landed == "ancestor" {
 		del = "git branch -d " + shellQuote(l.Name)
 	}
 	switch {
-	case inMainWorktree:
+	case shape.inMain:
 		return "git switch " + shellQuote(integ) + " && " + del
 	case l.Worktree != "":
-		return "git worktree remove " + shellQuote(l.Worktree) + " && " + del
+		return wtRemove + " && " + del
 	}
 	return del
+}
+
+// removalShape is what the removal command depends on besides the line: the
+// branch is checked out in the main worktree, the worktree holds edits that
+// only read the same elsewhere (so `remove` needs --force), or the worktree's
+// directory is gone (prune, not remove).
+type removalShape struct {
+	inMain, force, missing bool
 }
 
 var safeShell = regexp.MustCompile(`^[A-Za-z0-9_./@:%+=,{}-]+$`)

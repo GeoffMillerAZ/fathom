@@ -80,6 +80,7 @@ const fooGo = "package pkg\n\nfunc Foo() int { return 1 }\n\nfunc Bar() int { re
 //	stale       pushed, last commit 40 days before now    → idle
 //	fresh       pushed, recent, touches nothing           → active
 //	wt-dirty    landed, checked out in a dirty worktree   → at risk (dirty)
+//	wt-same     landed, its dirty edit reads the same on main → landed (worktree content-equal)
 //	stash@{0}   an unlanded stash                         → at risk (stash)
 func buildFixture(t *testing.T) (root, wtPath string) {
 	t.Helper()
@@ -150,6 +151,13 @@ func buildFixture(t *testing.T) (root, wtPath string) {
 	f.git(root, "worktree", "add", "-q", wtPath, "wt-dirty")
 	f.write(wtPath, "notes/wip.txt", "uncommitted\n")
 
+	// wt-same: a branch at the base commit in a worktree whose uncommitted
+	// edit already reads the same on main.
+	f.git(root, "branch", "wt-same", "old-landed")
+	samePath := filepath.Join(f.dir, "wt-same")
+	f.git(root, "worktree", "add", "-q", samePath, "wt-same")
+	f.write(samePath, "README", "y\n")
+
 	// stash@{0}: an unlanded stash on main.
 	f.write(root, "README", "stashed edit\n")
 	f.git(root, "stash", "push", "-q", "-m", "wip readme")
@@ -194,6 +202,7 @@ func TestClassifyLinesLandedClaimsTouchesAtRiskIdle(t *testing.T) {
 		"stale":      {Idle, "", ""},
 		"fresh":      {Active, "", ""},
 		"wt-dirty":   {AtRisk, "", ""},
+		"wt-same":    {Landed, "ancestor, worktree content-equal", ""},
 		"stash@{0}":  {AtRisk, "", ""},
 	}
 	for name, w := range want {
@@ -249,6 +258,12 @@ func TestClassifyLinesLandedClaimsTouchesAtRiskIdle(t *testing.T) {
 	if got := byName["old-landed"].Removal; got != "git branch -d old-landed" {
 		t.Errorf("old-landed removal = %q", got)
 	}
+	if got, wantRm := byName["wt-same"].Removal, "git worktree remove --force "+byName["wt-same"].Worktree+" && git branch -d wt-same"; got != wantRm {
+		t.Errorf("wt-same removal = %q, want %q", got, wantRm)
+	}
+	if l := byName["wt-same"]; len(l.AtRisk) != 0 {
+		t.Errorf("a worktree whose edits read the same on main is not at risk: %v", l.AtRisk)
+	}
 	if got := byName["picked"].Removal; got != "git branch -D picked" {
 		t.Errorf("picked removal = %q (patch-equivalent needs -D)", got)
 	}
@@ -261,7 +276,7 @@ func TestClassifyLinesLandedClaimsTouchesAtRiskIdle(t *testing.T) {
 	if fmt.Sprint(names(rep.Lines)) != fmt.Sprint(names(rep2.Lines)) {
 		t.Errorf("order differs between runs: %v vs %v", names(rep.Lines), names(rep2.Lines))
 	}
-	if rep.Counts[Landed] != 3 || rep.Counts[AtRisk] != 3 {
+	if rep.Counts[Landed] != 4 || rep.Counts[AtRisk] != 3 {
 		t.Errorf("counts = %v", rep.Counts)
 	}
 }
@@ -281,4 +296,39 @@ func hasPrefix(ss []string, p string) bool {
 		}
 	}
 	return false
+}
+
+// A landed branch checked out in the main worktree cannot be removed with
+// `git worktree remove`: the command switches to the integration branch
+// first. A detached main worktree is never removed either.
+func TestClassifyLinesRemovalInMainWorktree(t *testing.T) {
+	f := &fx{t: t, dir: t.TempDir(), when: fixtureNow.Add(-3 * 24 * time.Hour)}
+	root := filepath.Join(f.dir, "repo")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	f.git(root, "init", "-q")
+	f.commit(root, "base", map[string]string{"README": "x\n"})
+	f.git(root, "switch", "-q", "-c", "feat")
+	rep, err := ClassifyLines(context.Background(), Options{Root: root, Run: gitro.Output, Now: func() time.Time { return fixtureNow }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rep.Lines) != 1 || rep.Lines[0].Name != "feat" {
+		t.Fatalf("lines = %+v", rep.Lines)
+	}
+	if got := rep.Lines[0].Removal; got != "git switch main && git branch -d feat" {
+		t.Errorf("removal = %q", got)
+	}
+
+	f.git(root, "switch", "-q", "--detach", "main")
+	rep, err = ClassifyLines(context.Background(), Options{Root: root, Run: gitro.Output, Now: func() time.Time { return fixtureNow }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, l := range rep.Lines {
+		if l.Kind == KindWorktree && strings.Contains(l.Removal, "worktree remove") {
+			t.Errorf("the main worktree named for removal: %+v", l)
+		}
+	}
 }

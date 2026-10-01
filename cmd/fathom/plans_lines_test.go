@@ -49,7 +49,7 @@ const linesPlan = "# P\n\n- [ ] Widget renders {id: L-1, symbol: Widget, package
 // run. Anything else is a write the guard refuses.
 var linesReadSubcommands = map[string]bool{
 	"rev-parse": true, "for-each-ref": true, "ls-tree": true, "show": true, "log": true,
-	"cherry": true, "merge-base": true, "diff": true, "rev-list": true, "status": true, "cat-file": true,
+	"cherry": true, "merge-base": true, "diff": true, "rev-list": true, "status": true, "cat-file": true, "ls-files": true,
 }
 
 // readOnlyGuard wraps gitro.Output and fails (and records) any git
