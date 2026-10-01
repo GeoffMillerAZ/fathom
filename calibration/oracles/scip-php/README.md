@@ -33,7 +33,7 @@ syntactic truth the php-parser dump (`../php-parser/`) gives.
 
 Re-run 2026-10-01 (wave la re-measure, fathom d8ed9a29): Homebrew `PHP 8.5.11 (cli) (NTS)` and `composer 2.10.3`
 replace the static 8.5.8 CLI. scip-php cloned at `71a5b117ec4c5dd2af302e363410e604e5df309e` (author date 2026-04-27,
-commit date 2026-05-02, `v0.0.2-816-g71a5b11`, `tool_version` 0.0.1) into `/Volumes/m2ext/tmp/lang-oracles/tools/scip-php`
+commit date 2026-05-02, `v0.0.2-816-g71a5b11`, `tool_version` 0.0.1) into a scratch tools directory
 and `composer install --no-dev` (5.8 s: php-parser v5.7.0, google/protobuf v5.34.1, phpstorm-stubs v2026.1,
 phpdoc-parser 2.3.2). The recipe above ran unchanged in each clone's own workspace (guzzle `composer remove --dev
 guzzle/client-integration-tests` 6.8 s, 8.5 MB vendor, scip-php 0.9 s, 827 KB index; monolog `config lock true` and
@@ -43,4 +43,5 @@ parse errors, as before. `lang-oracle -tool-oracle <dump> -scip <index>` re-read
 identically (call_precision .6924, def_mapping .7875), so no met level moved. New: `import_resolution` reads 1, 486
 of 486 in-repo imports (monolog 400, guzzle 86; scip-php does write references on `use` lines), import edges
 precision .8773 (486 of 554), recall 1, 43 of 897 imports resolved where the index names no file. typed_recall is
-still unmeasured (no `enclosing_range`) and is run after F-A (item scip) lands the `ImportIndex` line-span fallback.
+still unmeasured (no `enclosing_range`): this re-run predates the `ImportIndex` line-span fallback
+(LB-F54), which landed in the same wave, so it is read with the next measure.
