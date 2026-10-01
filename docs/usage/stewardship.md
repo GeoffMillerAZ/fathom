@@ -61,3 +61,17 @@ Both carry the action `report`: `--apply` never removes them and the reclaimable
 leave them out, because they are not fathom's (I63). The line says what to do instead:
 commit it, ignore it, or move it under `workspace/`. Only the verb plans these classes;
 the daemon's daily retention pass and `doctor` never do.
+
+## `fathom plans status`: archivable plans
+
+A plan with rows, none of them open or in progress, and every claimed row proven (none
+claimed-unproven, none left unmeasured by a stale daemon) is archivable (SV-5). The human
+table ends with one line per such plan naming the command, and `--json` adds
+`"archivable": true` and `"archive_command"` to its element:
+
+```text
+archivable: activation.md (0 open, 0 claimed-unproven) — fathom plans archive --service fathom docs/plans/activation.md
+```
+
+Deferred and refused rows do not hold a plan open; `fathom plans archive` keeps them in the
+archive with the rest. Status only names the command; the archive is the operator's call.
