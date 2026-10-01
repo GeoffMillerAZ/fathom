@@ -158,9 +158,9 @@ func TestCmdLangOracle(t *testing.T) {
 	}
 }
 
-// TestOwnedSourceRefsRoutesCppHeaders (LB-Q-cpp): a C++ subject's .h headers
-// are measured when the header router (the C++ sniff) sends them to C++ —
-// no dialect claims .h — and only then; every other dialect owns exactly what
+// TestOwnedSourceRefsRoutesCppHeaders (LB-Q-cpp, LB-F80): a C++ subject's .h
+// headers are measured when the header router (the C++ sniff) sends them to C++
+// — and a C subject's when it does not; no dialect claims .h; every other dialect owns exactly what
 // its manifest claims.
 func TestOwnedSourceRefsRoutesCppHeaders(t *testing.T) {
 	root := t.TempDir()
@@ -191,9 +191,15 @@ func TestOwnedSourceRefsRoutesCppHeaders(t *testing.T) {
 	if strings.Join(got, ",") != "impl.cc" {
 		t.Errorf("cpp owns %v under -only *.cc, want [impl.cc]", got)
 	}
+	// LB-F80: the router sends the other .h headers to C, so C measures
+	// exactly those (a C include's target is a header) and no C++ file.
 	c := langbench.Manifest{ID: "c", Match: langbench.ManifestMatch{Extensions: []string{".c"}}}
-	if n := len(ownedSourceRefs(c, root, refs, nil, nil)); n != 0 {
-		t.Errorf("c owns %d of these files, want 0 (only its own extensions)", n)
+	got = nil
+	for _, r := range ownedSourceRefs(c, root, refs, nil, nil) {
+		got = append(got, r.Path)
+	}
+	if strings.Join(got, ",") != "plain.h" {
+		t.Errorf("c owns %v, want [plain.h] (the header the sniff does not send to C++)", got)
 	}
 }
 

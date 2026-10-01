@@ -251,6 +251,16 @@ type SCIPOptions struct {
 	// through a Go interface or a func-typed field references a term. Each is
 	// counted (CntScipCalledNames) and disclosed.
 	CalledNames bool
+	// ClangMacroCalls: a reference to a macro symbol is a call to the name
+	// written there when it is followed by `(` (needs Source, LB-F80): scip-clang
+	// names a macro by its location, and C's extractor records `ASSERT_OK(x)` as
+	// a call (C++'s excludes an all-capitals invocation).
+	ClangMacroCalls bool
+	// ClangMacroArgs: a callable reference at a macro invocation's name whose
+	// callee is written as a call later on that line is a call written inside the
+	// macro's argument (`ASSERT_OK(uv_ip4_addr(..))`), which scip-clang references
+	// at the macro's own range (needs Source, LB-F80).
+	ClangMacroArgs bool
 }
 
 // SCIPOptionsFor is the option set for a dialect's SCIP producer.
@@ -263,6 +273,13 @@ func SCIPOptionsFor(dialect string, src func(path string) []byte) SCIPOptions {
 	}
 	if dialect == "python" {
 		return SCIPOptions{Source: src, CallSyntax: src != nil, CalledNames: src != nil}
+	}
+	if dialect == "c" || dialect == "cpp" {
+		// Call sites written in the source: scip-clang references a function
+		// passed as a value, and a call a macro expands to at the macro's own
+		// name; neither is written as a call. C records a function-like macro
+		// invocation as a call, C++ does not.
+		return SCIPOptions{Source: src, CallSyntax: src != nil, ClangMacroArgs: src != nil, ClangMacroCalls: src != nil && dialect == "c"}
 	}
 	if dialect == "go" {
 		// Go keeps every callable reference: its extractor records a
@@ -368,7 +385,7 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 	for _, d := range idx.GetDocuments() {
 		doc := d.GetRelativePath()
 		var srcLines [][]byte
-		if (opts.WrittenCallsOnly || opts.PrivateMembers || opts.CallSyntax || opts.CalledNames) && opts.Source != nil {
+		if (opts.WrittenCallsOnly || opts.PrivateMembers || opts.CallSyntax || opts.CalledNames || opts.ClangMacroCalls || opts.ClangMacroArgs) && opts.Source != nil {
 			srcLines = bytes.Split(opts.Source(doc), []byte("\n"))
 		}
 		checkWritten := opts.WrittenCallsOnly || opts.PrivateMembers || opts.CallSyntax
@@ -390,6 +407,17 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 			callee, callable := scipBareName(o.GetSymbol())
 			if opts.MacroCalls && strings.HasSuffix(o.GetSymbol(), "!") {
 				callable = true
+			}
+			if opts.ClangMacroCalls && strings.HasSuffix(o.GetSymbol(), "!") {
+				// scip-clang's macro symbol is its location, never its name: a
+				// function-like macro invoked as `NAME(` is a call to what is
+				// written; an object-like macro is no call (and no occurrence
+				// is counted for it).
+				name, ok := clangMacroCall(srcLines, r)
+				if !ok {
+					continue
+				}
+				callee, callable = name, true
 			}
 			if opts.PrivateMembers && srcLines != nil && !callable && strings.HasPrefix(o.GetSymbol(), "local ") {
 				// A private method, function or constructor is a local symbol: it
@@ -422,6 +450,9 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 					// producer also references a tear-off (`onError: c.addError`), an
 					// operator and the `super`/`this` of an initializer.
 					written = dartCallAt(srcLines, r, callee)
+				}
+				if !written && opts.ClangMacroArgs {
+					written = clangMacroArgCall(srcLines, r, callee)
 				}
 				if !written {
 					res.Counts[CntScipCallsUnwritten]++
@@ -643,6 +674,9 @@ func SCIPDefs(raw []byte, src func(path string) []byte) (defs []OracleDef, tool,
 	// members are local symbols, and a constructor or accessor is named as the
 	// dialect names it (dartName).
 	isDart := tool == "scip-dart"
+	// scip-clang reports a macro-generated definition over the macro's name
+	// (clangMacroGenerated); scoped to its symbols.
+	isClang := tool == "scip-clang"
 	docLines := map[string][][]byte{}
 	linesOf := func(path string) [][]byte {
 		if src == nil {
@@ -740,6 +774,9 @@ func SCIPDefs(raw []byte, src func(path string) []byte) (defs []OracleDef, tool,
 					}
 				}
 			}
+			if isClang && src != nil && r[0] == r[2] {
+				name, kind = clangDefName(name, kind, sym, lineText(int(r[0])), int(r[1]), int(r[3]))
+			}
 			switch {
 			case name == "<constructor>":
 				name = "constructor"
@@ -753,6 +790,11 @@ func SCIPDefs(raw []byte, src func(path string) []byte) (defs []OracleDef, tool,
 			def := OracleDef{Path: d.GetRelativePath(), Name: name, Line: int(r[0]) + 1, Kind: kind, Scoped: scoped}
 			if enc, ok := rangeOf(o.GetEnclosingRange()); ok {
 				def.End = int(enc[2]) + 1
+			}
+			if isClang && kind != "anonymous" && src != nil && r[0] == r[2] {
+				if t := lineText(int(r[0])); int(r[1]) <= int(r[3]) && int(r[3]) <= len(t) && clangMacroGenerated(name, t[r[1]:r[3]]) {
+					def.Generated = true
+				}
 			}
 			if isRA && src != nil && rustDeclKinds[kind] {
 				if t := lineText(int(r[0])); int(r[1]) <= len(t) && !rustDeclSite(t[:r[1]]) {
@@ -793,6 +835,9 @@ func SCIPDefs(raw []byte, src func(path string) []byte) (defs []OracleDef, tool,
 		}
 		return a.Name < b.Name
 	})
+	if isClang {
+		defs = clangDedupe(defs)
+	}
 	return defs, tool, version, nil
 }
 
