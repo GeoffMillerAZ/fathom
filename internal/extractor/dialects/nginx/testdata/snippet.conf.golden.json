@@ -1,0 +1,10 @@
+{
+  "path": "nginx/snippets/proxy.conf",
+  "roots": ["proxy.conf"],
+  "symbols": [
+    { "name": "proxy.conf", "kind": "NginxConfig", "line": 1, "end_line": 4 }
+  ],
+  "cross_file": [
+    { "from": "proxy.conf", "edge": "route_ref", "raw": "http://upstream_in_other_file", "target": "http://upstream_in_other_file", "strategy": "route-host", "line": 3 }
+  ]
+}

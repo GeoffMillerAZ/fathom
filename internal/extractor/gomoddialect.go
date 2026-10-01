@@ -71,6 +71,9 @@ func NewGoModulesExtractor() *GoModulesExtractor { return &GoModulesExtractor{} 
 // bespoke walker the harness reads through dispatch (terraform), and for an
 // unknown id.
 func NativeDialectExtractor(id string) (Extractor, bool) {
+	if e, ok := ProxyDialectExtractor(id); ok {
+		return e, true
+	}
 	switch id {
 	case "go-mod":
 		return NewGoModulesExtractor(), true

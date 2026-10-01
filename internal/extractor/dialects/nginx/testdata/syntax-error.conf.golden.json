@@ -1,0 +1,15 @@
+{
+  "path": "sites-enabled/broken",
+  "roots": ["broken"],
+  "symbols": [
+    { "name": "broken", "kind": "NginxConfig", "line": 1, "end_line": 18 },
+    { "name": "db", "kind": "NginxUpstream", "line": 1, "end_line": 3, "signature": "upstream db" },
+    { "name": "db db1:5432", "kind": "NginxUpstreamServer", "line": 2, "end_line": 2, "signature": "server db1:5432" },
+    { "name": "broken.example", "kind": "NginxServer", "line": 5, "end_line": 16, "signature": "listen 80; server_name broken.example" },
+    { "name": "broken.example /", "kind": "NginxLocation", "line": 9, "end_line": 11, "signature": "location /", "calls": ["db"] },
+    { "name": "broken.example /ok", "kind": "NginxLocation", "line": 13, "end_line": 15, "signature": "location /ok", "calls": ["db"] }
+  ],
+  "cross_file": [
+    { "from": "db", "edge": "route_ref", "raw": "db1:5432", "target": "db1:5432", "strategy": "route-host", "line": 2 }
+  ]
+}

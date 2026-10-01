@@ -1,0 +1,72 @@
+{
+  "id": "nginx",
+  "display": "nginx configuration (nginx.conf, .conf by sniff, sites-enabled/*)",
+  "kind": "tooling",
+  "engine": "native",
+  "lang_tag": "nginx",
+  "match": {
+    "extensions": [],
+    "basenames": [
+      "nginx.conf"
+    ],
+    "globs": [
+      "**/sites-enabled/*",
+      "**/sites-available/*"
+    ],
+    "shebangs": [],
+    "sniff": {
+      "extensions": [
+        ".conf"
+      ],
+      "pattern": "^[ \\t]*(?:(?:server|location|upstream|http|events|stream|map|types|limit_except|geo|split_clients)\\b[^;{}\\n#]*\\{|(?:listen|server_name|root|index|proxy_[a-z_]+|fastcgi_[a-z_]+|uwsgi_[a-z_]+|scgi_[a-z_]+|grpc_[a-z_]+|add_header|expires|return|rewrite|try_files|ssl_[a-z_]+|gzip(?:_[a-z_]+)?|brotli(?:_[a-z_]+)?|worker_[a-z_]+|error_log|access_log|log_format|sendfile|tcp_no(?:push|delay)|keepalive_[a-z_]+|default_type|charset(?:_types)?|client_[a-z_]+|error_page|alias|resolver|etag|open_file_cache[a-z_]*|autoindex|limit_req[a-z_]*|limit_conn[a-z_]*|more_set_headers|server_tokens|real_ip_[a-z_]+|set_real_ip_from|load_module|auth_basic[a-z_]*|auth_request|deny|allow)[ \\t][^;{}\\n]*;)",
+      "priority": 10
+    }
+  },
+  "variants": [],
+  "kinds": {
+    "config": {
+      "source_kind": "NginxConfig",
+      "canonical": "package"
+    },
+    "server": {
+      "source_kind": "NginxServer",
+      "canonical": "service"
+    },
+    "location": {
+      "source_kind": "NginxLocation",
+      "canonical": "route"
+    },
+    "upstream": {
+      "source_kind": "NginxUpstream",
+      "canonical": "service"
+    },
+    "upstream_server": {
+      "source_kind": "NginxUpstreamServer",
+      "canonical": "target"
+    }
+  },
+  "required_kinds": [
+    "config",
+    "server",
+    "location",
+    "upstream",
+    "upstream_server"
+  ],
+  "oracle_kinds": {
+    "tool": {
+      "package": "package",
+      "service": "service",
+      "route": "route",
+      "target": "target"
+    }
+  },
+  "name_match": "identity",
+  "package": {
+    "strategy": "none"
+  },
+  "signature": {
+    "max_chars": 200
+  },
+  "target_level": "L3",
+  "queue_id": "nginx"
+}

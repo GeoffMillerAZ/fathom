@@ -3703,37 +3703,89 @@
   },
   {
     "id": "nginx",
-    "name": "nginx configuration (nginx.conf, conf.d/*.conf by glob)",
+    "name": "nginx configuration (nginx.conf, .conf by sniff, sites-enabled/* by glob)",
     "kind": "tooling",
-    "target_level": "L2",
-    "grammar_source": "opa-oz/tree-sitter-nginx",
-    "licence": "verify at pin",
+    "target_level": "L3",
+    "grammar_source": "native:pure-go",
+    "licence": "n/a",
     "oracle": [
-      "nginx -T (tier A, needs nginx) → crossplane-parse (C)"
+      "nginx -T (1.31.6, tier A: validation and the included file set) + nginxinc crossplane parse (tier C: entities, lines, includes, route targets)"
     ],
     "calibration_subjects": [
       "h5bp/server-configs-nginx",
-      "nginxinc/docker-nginx"
+      "nginxinc/docker-nginx",
+      "nginx/nginx",
+      "docker/awesome-compose"
     ],
     "depends_on": [
-      "LB-F1",
-      "LB-F2",
-      "LB-F3",
-      "LB-F4",
-      "LB-F12",
-      "LB-F13",
-      "LB-F15",
       "LB-F16",
       "LB-F17",
-      "LB-F20",
       "LB-F21",
-      "LB-F22"
+      "LB-F22",
+      "LB-F96",
+      "LB-F98"
     ],
     "wave": 5,
-    "engine": "tags",
+    "engine": "native",
     "plan_row": "LB-Q-nginx",
     "worker_model": "sonnet",
-    "notes": "new; servers, locations (route: keys), upstreams; proxy_pass → upstream edges"
+    "retargeted": "L2 tags engine to L3 native (owner 2026-10-02: routing formats target L3): the tags engine cannot emit route targets or include cross_file references; opa-oz/tree-sitter-nginx v1.0.1 (MIT) was licence-checked and not used",
+    "notes": "servers, locations (route), upstreams and their servers; proxy_pass/grpc_pass/fastcgi_pass to an upstream of the file (L2); include repo-path candidates and route_ref route-host targets (L3, the route contract)"
+  },
+  {
+    "id": "haproxy",
+    "name": "HAProxy configuration (haproxy.cfg, .cfg by sniff)",
+    "kind": "tooling",
+    "target_level": "L3",
+    "grammar_source": "native:pure-go",
+    "licence": "n/a",
+    "oracle": [
+      "haproxy -c -dr -dC0,line (3.4.6, tier A: the parsed configuration with source lines)"
+    ],
+    "calibration_subjects": [
+      "haproxy/haproxy",
+      "bingohuang/docker-labs"
+    ],
+    "depends_on": [
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22",
+      "LB-F96",
+      "LB-F98"
+    ],
+    "wave": 5,
+    "engine": "native",
+    "plan_row": "LB-Q-haproxy",
+    "worker_model": "sonnet",
+    "notes": "new; frontend/backend/listen sections, servers, acls, use_backend/default_backend routes (L2 to the backend); server addresses as route_ref route-host targets (L3)"
+  },
+  {
+    "id": "caddyfile",
+    "name": "Caddyfile (Caddyfile, Caddyfile.* by glob, .caddyfile)",
+    "kind": "tooling",
+    "target_level": "L3",
+    "grammar_source": "native:pure-go",
+    "licence": "n/a",
+    "oracle": [
+      "caddy adapt --adapter caddyfile (2.11.6, tier A: sites, routes, upstreams, snippet use; lines by an independent scan)"
+    ],
+    "calibration_subjects": [
+      "caddyserver/caddy"
+    ],
+    "depends_on": [
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22",
+      "LB-F96",
+      "LB-F98"
+    ],
+    "wave": 5,
+    "engine": "native",
+    "plan_row": "LB-Q-caddyfile",
+    "worker_model": "sonnet",
+    "notes": "new; site blocks, snippets, named routes, matchers, handle/route/reverse_proxy routes; snippet imports (L2); file imports and reverse_proxy upstreams as route_ref route-host targets (L3)"
   },
   {
     "id": "systemd",

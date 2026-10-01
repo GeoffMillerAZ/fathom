@@ -343,7 +343,15 @@ import (
 // function-local member assignments as symbols, with their calls attributed to them;
 // every .js, .jsx, .mjs, .cjs, .ts, .tsx, .mts and .cts file was fingerprinted by the
 // old queries, so the salt bump re-reads them.
-const ExtractorEpoch = "41"
+// Epoch 42 (wave px, LB-Q-nginx, LB-Q-haproxy, LB-Q-caddyfile, LB-F101; the
+// integrator renumbers to origin/main's + 1 once): nginx.conf, haproxy.cfg,
+// Caddyfile and *.caddyfile, a .conf an nginx sniff claims, a .cfg a HAProxy
+// sniff claims and a sites-enabled/*, sites-available/* or Caddyfile.* file
+// are read by the native proxy dialects, where no extractor read them; a .conf
+// or .cfg no sniff claims is counted ambiguous instead of reaching dispatch.
+// Every such file was fingerprinted with nothing extracted, so the salt bump
+// re-reads it.
+const ExtractorEpoch = "42"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares

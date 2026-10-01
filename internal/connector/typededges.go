@@ -105,6 +105,15 @@ var typedEdgeProducers = map[string]string{
 	// same as Cargo.toml above. (The Go language itself stays "native".)
 	"go-mod": "syntax",
 
+	// nginx, HAProxy and Caddyfile (LB-Q-nginx, LB-Q-haproxy, LB-Q-caddyfile):
+	// native proxy dialects whose includes and imports become file-tier
+	// doc-xref edges and whose route targets are route_ref references, but
+	// are not a file-resolver or SCIP producer, so "syntax" is the honest
+	// baseline claim, same as go.mod above.
+	"nginx":     "syntax",
+	"haproxy":   "syntax",
+	"caddyfile": "syntax",
+
 	// MSBuild (LB-Q-msbuild): a ProjectReference to another project of the
 	// repository becomes a file-tier doc-xref edge at ingest
 	// (fusion.ResolveDocXrefs) but is not a file-resolver or SCIP producer,

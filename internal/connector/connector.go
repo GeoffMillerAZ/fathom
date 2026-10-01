@@ -73,6 +73,18 @@ var extClassMap = map[string]classification{
 	"go.mod":  {core.KindGoModule, "go-mod"},
 	"go.work": {core.KindGoWorkspace, "go-mod"},
 
+	// Proxy configuration (LB-Q-nginx, LB-Q-haproxy, LB-Q-caddyfile: native
+	// dialects, no incumbent). Only the names that settle a file alone are
+	// classified here; a .conf (nginx) or .cfg (HAProxy) file is the dialect's
+	// only when its content sniff matches, an extensionless sites-enabled/*
+	// file and a Caddyfile.* only by their manifest glob, so those carry no
+	// language tag, as a sniffed MATLAB .m does not (fusion's sniffedExtractor
+	// dispatches them through connector.ClassifyDialect).
+	"nginx.conf":  {core.SourceKind("NginxConfig"), "nginx"},
+	"haproxy.cfg": {core.SourceKind("HAProxyBackend"), "haproxy"},
+	"Caddyfile":   {core.SourceKind("CaddyfileConfig"), "caddyfile"},
+	".caddyfile":  {core.SourceKind("CaddyfileConfig"), "caddyfile"},
+
 	// Infrastructure / config
 	".tf":     {core.KindTerraformResource, "terraform"},
 	".tfvars": {core.KindTerraformVarValue, "terraform"},

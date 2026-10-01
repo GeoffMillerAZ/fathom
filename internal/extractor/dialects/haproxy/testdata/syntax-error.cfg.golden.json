@@ -1,0 +1,14 @@
+{
+  "path": "haproxy.cfg",
+  "roots": [],
+  "symbols": [
+    { "name": "fe", "kind": "HAProxyFrontend", "line": 2, "end_line": 5, "signature": "frontend fe" },
+    { "name": "fe bad", "kind": "HAProxyACL", "line": 4, "end_line": 4, "signature": "acl bad hdr(host) -i unterminated" },
+    { "name": "fe be", "kind": "HAProxyRoute", "line": 5, "end_line": 5, "signature": "use_backend be if bad", "calls": ["be"] },
+    { "name": "be", "kind": "HAProxyBackend", "line": 6, "end_line": 7, "signature": "backend be" },
+    { "name": "be s1", "kind": "HAProxyServer", "line": 7, "end_line": 7, "signature": "server s1 app:80" }
+  ],
+  "cross_file": [
+    { "from": "be", "edge": "route_ref", "raw": "app:80", "target": "app:80", "strategy": "route-host", "line": 7 }
+  ]
+}

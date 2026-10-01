@@ -1,0 +1,34 @@
+id: caddyfile
+language: Caddyfile
+# caddyserver/caddy's caddytest/integration/caddyfile_adapt (Apache-2.0, read only, never
+# vendored): each .caddyfiletest pairs a Caddyfile with the JSON caddy adapts it to. The
+# caddyfile oracle materializes each test's Caddyfile half into a scratch subject (one
+# <test>.caddyfile per test, committed so the reading names a SHA) and runs `caddy adapt`
+# on it; that derived subject is what lang-oracle measures. picosh/pico (MIT) is the L3
+# route subject: its caddy/Caddyfile* reverse_proxy to services of the compose files at
+# its root.
+repos:
+  - name: caddyserver/caddy
+    url: https://github.com/caddyserver/caddy
+    ref: v2.11.6
+    sha: ac834b5dc70a17dca296f47c78c64587d6631cbb
+    licence: Apache-2.0
+    subpath: caddytest/integration/caddyfile_adapt
+    idioms:
+      - "site blocks with several addresses, a global options block and snippets imported
+        with arguments"
+      - "named matchers (@name, block and single-line) and handle/handle_path/route blocks"
+      - "reverse_proxy with upstream lists, a to subdirective and transport blocks"
+      - "placeholders ({host}, {$ENV}) inside words, heredocs and backtick strings"
+  - name: picosh/pico
+    url: https://github.com/picosh/pico
+    ref: v2026.08.30.1
+    sha: 58ebb037f3e2249feb225a504f8be6adcb00490a
+    licence: MIT
+    sparse: ["caddy/**", "docker-compose*.yml"]
+    idioms:
+      - "a global options block (on_demand_tls, servers) and env placeholders ({$APP_DOMAIN})
+        as site addresses"
+      - "reverse_proxy to compose services by name and port (web:3000)"
+      - "one Caddyfile per service (Caddyfile.pgs, Caddyfile.prose): a Caddyfile.* family"
+

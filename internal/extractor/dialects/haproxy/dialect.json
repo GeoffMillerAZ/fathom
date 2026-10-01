@@ -1,0 +1,74 @@
+{
+  "id": "haproxy",
+  "display": "HAProxy configuration (haproxy.cfg, .cfg by sniff)",
+  "kind": "tooling",
+  "engine": "native",
+  "lang_tag": "haproxy",
+  "match": {
+    "extensions": [],
+    "basenames": [
+      "haproxy.cfg"
+    ],
+    "globs": [],
+    "shebangs": [],
+    "sniff": {
+      "extensions": [
+        ".cfg"
+      ],
+      "pattern": "^(?:global|defaults)[ \\t]*(?:#.*)?$|^(?:frontend|backend|listen)[ \\t]+[^\\s#]+[ \\t]*(?:#.*)?$",
+      "priority": 10
+    }
+  },
+  "variants": [],
+  "kinds": {
+    "frontend": {
+      "source_kind": "HAProxyFrontend",
+      "canonical": "service"
+    },
+    "backend": {
+      "source_kind": "HAProxyBackend",
+      "canonical": "service"
+    },
+    "listen": {
+      "source_kind": "HAProxyListen",
+      "canonical": "service"
+    },
+    "server": {
+      "source_kind": "HAProxyServer",
+      "canonical": "target"
+    },
+    "acl": {
+      "source_kind": "HAProxyACL",
+      "canonical": "rule"
+    },
+    "route": {
+      "source_kind": "HAProxyRoute",
+      "canonical": "route"
+    }
+  },
+  "required_kinds": [
+    "frontend",
+    "backend",
+    "listen",
+    "server",
+    "acl",
+    "route"
+  ],
+  "oracle_kinds": {
+    "tool": {
+      "service": "service",
+      "target": "target",
+      "rule": "rule",
+      "route": "route"
+    }
+  },
+  "name_match": "identity",
+  "package": {
+    "strategy": "none"
+  },
+  "signature": {
+    "max_chars": 200
+  },
+  "target_level": "L3",
+  "queue_id": "haproxy"
+}
