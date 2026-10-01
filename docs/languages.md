@@ -223,3 +223,26 @@ Milestone M1 progress: languages at L1 excellent 15/20, at L2 11/12, at L3 4/8, 
 | CODEOWNERS (.github/CODEOWNERS, docs/CODEOWNERS) | tool format | doc | pure-go:line parser (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-codeowners |
 | Laravel Blade templates (.blade.php) | language | tags | EmranMR/tree-sitter-blade (MIT (verify at pin)) | L2 | unsupported (disclosed) | — | — | — | LB-Q-blade |
 | Serverless Framework (serverless.yml) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-serverless |
+| Conan recipes and lockfiles (conanfile.txt, conanfile.py, conan.lock, conandata.yml) | tool format | tags+doc | tree-sitter/tree-sitter-python + pure-go:INI, encoding/json, gopkg.in/yaml.v3 (verify at pin) | L3 | unsupported (disclosed) | — | — | — | LB-Q-conan |
+| vcpkg manifests (vcpkg.json, vcpkg-configuration.json) | tool format | doc | pure-go:encoding/json (n/a) | L3 | unsupported (disclosed) | — | — | — | LB-Q-vcpkg |
+| Meson builds (meson.build, meson.options, meson_options.txt) | tool format | tags | candidate tree-sitter-grammars/tree-sitter-meson (verify at pin) (verify at pin) | L3 | unsupported (disclosed) | — | — | — | LB-Q-meson |
+| Clang compilation databases (compile_commands.json) | tool format | doc | pure-go:encoding/json (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-compile-commands |
+| Azure Bicep (.bicep, .bicepparam) | tool format | tags | candidate tree-sitter-grammars/tree-sitter-bicep (verify at pin) (verify at pin) | L3 | unsupported (disclosed) | — | — | — | LB-Q-bicep |
+| Azure Resource Manager templates (azuredeploy.json shape, by content) | tool format | doc | pure-go:encoding/json (n/a) | L3 | unsupported (disclosed) | — | — | — | LB-Q-arm-templates |
+| AWS CDK apps (cdk.json; programs ride their language) | tool format | doc | pure-go:encoding/json (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-aws-cdk |
+| Flux CD resources (Kustomization, HelmRelease, GitRepository, OCIRepository) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | unsupported (disclosed) | — | — | — | LB-Q-flux |
+| Kyverno policies (ClusterPolicy, Policy, PolicyException) | tool format | doc | yaml.v3 (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-kyverno |
+| OPA Gatekeeper ConstraintTemplates and constraints | tool format | doc | yaml.v3 (n/a) | L3 | unsupported (disclosed) | — | — | — | LB-Q-gatekeeper |
+| Conftest policies (policy/*.rego, conftest.toml) | tool format | tags+doc | rides LB-Q-rego's grammar + pure-go:go-toml/v2 (verify at pin) | L2 | unsupported (disclosed) | — | — | — | LB-Q-conftest |
+| Cedar policies and schemas (.cedar .cedarschema) | language | tags | verify at pin (no allowlisted tree-sitter-cedar known; fallback: Cedar's JSON policy form on the doc engine) (verify at pin) | L3 | unsupported (disclosed) | — | — | — | LB-Q-cedar |
+| AWS IAM policy documents (JSON by content, inline in CloudFormation and Terraform) | tool format | doc | encoding/json (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-aws-iam-policy |
+| Azure Policy definitions and initiatives (policyRule JSON) | tool format | doc | encoding/json (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-azure-policy |
+| Cloud Custodian policies (policies YAML) | tool format | doc | yaml.v3 (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-cloud-custodian |
+| Checkov custom policies (YAML graph checks, Python checks) | tool format | tags+doc | yaml.v3 + tree-sitter/tree-sitter-python (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-checkov-policies |
+| HashiCorp Sentinel policies (.sentinel) | language | tags | none open (verify at pin) (verify at pin) | L2 | unsupported (disclosed) | — | — | — | LB-Q-sentinel |
+| PgBouncer configuration (pgbouncer.ini) | tool format | doc | pure-go:INI parser (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-pgbouncer |
+| ProxySQL configuration (proxysql.cnf) | tool format | doc | pure-go:libconfig parser (verify at pin) (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-proxysql |
+| fathom configuration (.fathom/config.toml) | tool format | doc | pure-go:go-toml/v2 (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-fathom-config |
+| fathom concerns (.fathom/concerns.cue) | tool format | native | native:cuelang.org/go (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-fathom-concerns |
+| fathom layer packs (.fathom/layers/*/layer.cue, .fathom/rules/*.cue) | tool format | native | native:cuelang.org/go (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-fathom-layer-packs |
+| fathom plan grammar v2 rows (docs/plans/*.md) | tool format | doc | pure-go:plan row grammar (n/a) | L3 | unsupported (disclosed) | — | — | — | LB-Q-fathom-plan-rows |
