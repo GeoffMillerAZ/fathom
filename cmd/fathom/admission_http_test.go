@@ -294,7 +294,7 @@ func TestInProcessPanicReleasesItsSlot(t *testing.T) {
 // call lifts it. A read keeps it.
 func TestIngestClassLiftsTheWriteDeadline(t *testing.T) {
 	h, _ := gatedTestHandler(t, tenancy.ModeEnforce)
-	h = routeWriteDeadline(h)
+	h = routeWriteDeadline(h, 0)
 	serve := func(body string) []time.Time {
 		var mu sync.Mutex
 		var seen []time.Time
