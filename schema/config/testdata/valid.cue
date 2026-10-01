@@ -149,3 +149,11 @@ exampleTestRunHook: #Config & {
 		test_run: true
 	}
 }
+
+// The commit pin line's mode (PR-6, ADR-057 decision 4): off, record (the
+// default when unset) or feedback.
+examplePinCheck: #Config & {
+	hooks: {
+		pin_check: "feedback"
+	}
+}

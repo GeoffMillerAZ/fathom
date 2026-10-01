@@ -261,8 +261,13 @@ package config
 // decision 6) turns on the test-run hook: one line after a declared test
 // command fails, naming the failing tests and the changed symbols they
 // reach. Unset means off (default off until the level 10 bench).
+// pin_check (PR-6, ADR-057 decision 4) is the commit pin line's mode: off
+// (no check), record (check and log a pin beat, output unchanged) or
+// feedback (the lost-pin lines also reach the agent). Unset means record
+// (until PR-M1 passes).
 #Hooks: {
-	test_run?: bool
+	test_run?:  bool
+	pin_check?: "off" | "record" | "feedback"
 }
 
 // #SurfacePattern is one `[[surface.pattern]]` entry (ADR-044 §2.1): a
