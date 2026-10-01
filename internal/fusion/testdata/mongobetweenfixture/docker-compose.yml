@@ -1,0 +1,14 @@
+services:
+  mongo-a:
+    image: mongo:7
+  mongo-b:
+    image: mongo:7
+  pooler:
+    image: coinbase/mongobetween:latest
+    command: >-
+      -loglevel debug -ping
+      ":27016=mongodb://app:secret@mongo-a:27017,mongo-b:27017/orders?maxpoolsize=10&label=cluster0"
+      "/tmp/mongo2.sock=mongodb+srv://username:password@cluster1.example.com/database?label=cluster1"
+  sidecar:
+    image: acme/rails:1
+    entrypoint: ["/usr/local/bin/mongobetween", "-network", "unix", "-unlink", "/tmp/mongo.sock=mongodb://localhost:27017/db"]

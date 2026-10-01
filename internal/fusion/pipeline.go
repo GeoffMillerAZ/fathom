@@ -216,6 +216,14 @@ type Report struct {
 	// not run ("" when it ran).
 	DocXrefEdges   int
 	DocXrefSkipped string
+	// RouteRefEdges is the number of route_ref edges the route-ref pass
+	// stored (LB-F97): a route entity to the Kubernetes or compose service
+	// its target host names. RouteRefUnresolved counts the route-host
+	// references that resolved to nothing, by reason (fusion.RouteReasons);
+	// RouteRefSkipped names why the pass did not run ("" when it ran).
+	RouteRefEdges      int
+	RouteRefUnresolved map[string]int
+	RouteRefSkipped    string
 	// FileResolveSkipped names why the pass did not run ("" when it ran).
 	FileResolveReused     int
 	FileResolveFaults     int
