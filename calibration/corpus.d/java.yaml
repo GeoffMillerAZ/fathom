@@ -6,7 +6,7 @@ repos:
     ref: v33.7.1
     sha: c5b5a383a1f7f4a84c17de910f61181011c95908
     licence: Apache-2.0
-    subpath: guava/src
+    subpath: guava  # the module directory: scip-java builds it (root pom.xml, mvnw and .mvn come with a cone-mode sparse checkout), and its files are src/com/google/...
     idioms:
       - heavy static-factory and builder patterns (ImmutableList.of, CacheBuilder)
       - deep generic bounded-wildcard signatures (<K, V extends Comparable<V>>)

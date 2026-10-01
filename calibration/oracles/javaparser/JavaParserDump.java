@@ -13,6 +13,14 @@
 // enumConstant annotationMember compactConstructor. Local classes and the
 // members of anonymous classes are definitions like any other; an
 // anonymous class itself has no name and is not one.
+// imports (needs javaparser-symbol-solver-core on the classpath): every
+// import declaration as {path,line,to_path,module}, line its first line,
+// module the name as written, to_path the subject file JavaParser's own
+// resolution (JavaSymbolSolver over a JavaParserTypeSolver per source root,
+// each root derived from a file's package declaration) finds the imported
+// type in ("" when it names a package, the JDK or a dependency: no file of
+// the subject). A static import and a nested type resolve to the enclosing
+// type's file; `import a.b.*` of a package resolves to no single file.
 // calls: every method-call expression, paired with the innermost enclosing
 // definition this dump emits (skipped when there is none); from and to are
 // bare names.
@@ -25,6 +33,14 @@ import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.Node;
 import com.github.javaparser.ast.body.*;
 import com.github.javaparser.ast.expr.MethodCallExpr;
+import com.github.javaparser.ast.ImportDeclaration;
+import com.github.javaparser.ast.PackageDeclaration;
+import com.github.javaparser.resolution.TypeSolver;
+import com.github.javaparser.resolution.declarations.ResolvedReferenceTypeDeclaration;
+import com.github.javaparser.resolution.model.SymbolReference;
+import com.github.javaparser.symbolsolver.resolution.typesolvers.CombinedTypeSolver;
+import com.github.javaparser.symbolsolver.resolution.typesolvers.JavaParserTypeSolver;
+import com.github.javaparser.symbolsolver.resolution.typesolvers.ReflectionTypeSolver;
 import java.nio.file.*;
 import java.util.*;
 import java.util.stream.*;
@@ -44,8 +60,24 @@ public class JavaParserDump {
         try (Stream<Path> s = Files.walk(root)) {
             files = s.filter(p -> p.toString().endsWith(".java") && Files.isRegularFile(p)).sorted().collect(Collectors.toList());
         }
-        StringBuilder defsOut = new StringBuilder(), callsOut = new StringBuilder();
-        int failed = 0, ndefs = 0, ncalls = 0;
+        StringBuilder defsOut = new StringBuilder(), callsOut = new StringBuilder(), importsOut = new StringBuilder();
+        int failed = 0, ndefs = 0, ncalls = 0, nimports = 0, nresolved = 0;
+        Map<String, Path> unitFiles = new HashMap<>();
+        CombinedTypeSolver solver = new CombinedTypeSolver();
+        Set<Path> srcRoots = new TreeSet<>();
+        for (Path f : files) {
+            ParseResult<CompilationUnit> pr = parser.parse(f);
+            if (!pr.isSuccessful() || pr.getResult().isEmpty()) continue;
+            Optional<PackageDeclaration> pd = pr.getResult().get().getPackageDeclaration();
+            Path dir = f.getParent();
+            if (pd.isPresent()) {
+                for (int i = pd.get().getNameAsString().split("\\.").length; i > 0 && dir != null; i--) dir = dir.getParent();
+            }
+            if (dir != null) srcRoots.add(dir);
+        }
+        for (Path r : srcRoots) solver.add(new JavaParserTypeSolver(r, cfg));
+        // the JDK last: the subject's own sources win over a same-named class on this dump's classpath (guava's)
+        solver.add(new ReflectionTypeSolver(false));
         for (Path f : files) {
             String rel = root.relativize(f).toString().replace('\\', '/');
             ParseResult<CompilationUnit> pr = parser.parse(f);
@@ -85,6 +117,31 @@ public class JavaParserDump {
                 append(defsOut, String.format("{\"path\":%s,\"name\":%s,\"line\":%d,\"end\":%d,\"kind\":%s}", q(d.path()), q(d.name()), d.line(), d.end(), q(d.kind())));
                 ndefs++;
             }
+            for (ImportDeclaration imp : cu.getImports()) {
+                String name = imp.getNameAsString();
+                String to = "";
+                List<String> tries = new ArrayList<>();
+                tries.add(name);
+                if (imp.isStatic() && !imp.isAsterisk() && name.contains(".")) tries.add(name.substring(0, name.lastIndexOf('.')));
+                else if (!imp.isStatic() && !imp.isAsterisk() && name.contains(".")) tries.add(name.substring(0, name.lastIndexOf('.')));
+                for (String t : tries) {
+                    SymbolReference<ResolvedReferenceTypeDeclaration> sr;
+                    try { sr = solver.tryToSolveType(t); } catch (RuntimeException e) { continue; }
+                    if (!sr.isSolved()) continue;
+                    Optional<Node> ast = sr.getCorrespondingDeclaration().toAst();
+                    if (ast.isEmpty()) break;
+                    Optional<CompilationUnit> dcu = ast.get().findCompilationUnit();
+                    if (dcu.isEmpty() || dcu.get().getStorage().isEmpty()) break;
+                    Path tp = dcu.get().getStorage().get().getPath().toAbsolutePath().normalize();
+                    if (tp.startsWith(root)) to = root.relativize(tp).toString().replace('\\', '/');
+                    break;
+                }
+                int line = imp.getBegin().isPresent() ? imp.getBegin().get().line : 0;
+                String mod = (imp.isStatic() ? "static " : "") + name + (imp.isAsterisk() ? ".*" : "");
+                append(importsOut, String.format("{\"path\":%s,\"line\":%d,\"to_path\":%s,\"module\":%s}", q(rel), line, q(to), q(mod)));
+                nimports++;
+                if (!to.isEmpty()) nresolved++;
+            }
             Set<String> seen = new TreeSet<>();
             for (MethodCallExpr call : cu.findAll(MethodCallExpr.class)) {
                 Node p = call.getParentNode().orElse(null);
@@ -108,11 +165,13 @@ public class JavaParserDump {
                 ncalls++;
             }
         }
-        System.err.printf("files=%d parse_failed=%d definitions=%d calls=%d%n", files.size(), failed, ndefs, ncalls);
+        System.err.printf("files=%d parse_failed=%d definitions=%d calls=%d imports=%d resolved_to_subject=%d%n", files.size(), failed, ndefs, ncalls, nimports, nresolved);
         System.out.print("{\"tool\":\"javaparser\",\"version\":\"" + VERSION + "\",\"tier\":\"B\",\"definitions\":[");
         System.out.print(defsOut);
         System.out.print("],\"calls\":[");
         System.out.print(callsOut);
+        System.out.print("],\"imports\":[");
+        System.out.print(importsOut);
         System.out.println("]}");
     }
 
