@@ -20,9 +20,12 @@ import (
 
 // QueueEntry is one item of docs/plans/language-breadth.queue.json (§15).
 type QueueEntry struct {
-	ID                  string   `json:"id"`
-	Name                string   `json:"name"`
-	Kind                string   `json:"kind"` // language | tooling
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Kind string `json:"kind"` // language | tooling
+	// Tier is the excellence program's target-set tier, T1..T6: an entry
+	// without one is outside the target set. Membership is this data alone.
+	Tier                string   `json:"tier,omitempty"`
 	TargetLevel         string   `json:"target_level"`
 	GrammarSource       string   `json:"grammar_source"`
 	Licence             string   `json:"licence"`
@@ -46,6 +49,9 @@ var (
 	validKinds   = []string{"language", "tooling"}
 	validLevels  = []string{"L1", "L2", "L3", "L4"}
 	validEngines = []string{"tags", "doc", "native", "tags+doc"}
+	// programTiers is the closed set of excellence-program tiers; reading.go's
+	// validTiers is a different thing (oracle tiers A-D).
+	programTiers = []string{"T1", "T2", "T3", "T4", "T5", "T6"}
 )
 
 // LoadQueue reads and validates the queue file at path.
@@ -88,6 +94,8 @@ func ParseQueue(b []byte) ([]QueueEntry, error) {
 			return nil, fmt.Errorf("%s: target_level %q not in %v", where, e.TargetLevel, validLevels)
 		case !slices.Contains(validEngines, e.Engine):
 			return nil, fmt.Errorf("%s: engine %q not in %v", where, e.Engine, validEngines)
+		case e.Tier != "" && !slices.Contains(programTiers, e.Tier):
+			return nil, fmt.Errorf("%s: tier %q not in %v", where, e.Tier, programTiers)
 		case e.Kind == "tooling" && e.TargetLevel == "L4":
 			return nil, fmt.Errorf("%s: L4 is not-applicable for tool formats (§1.1)", where)
 		case slices.Contains(e.DependsOn, e.PlanRow):
