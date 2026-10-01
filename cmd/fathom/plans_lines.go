@@ -2,11 +2,12 @@ package main
 
 // plans_lines.go — `fathom plans lines [--json]` (SV-2, ADR-060 decision 2,
 // vision 41 §4.1): one repository's local branches, linked worktrees and
-// stashes, each classed landed, claims rows, touches rows, at risk, idle or
-// active, with its rows and its age. For a landed line it prints the command
-// that would remove it. It runs no git write, deletes nothing and rewrites no
-// history (I63, P15): every git read goes through gitro, and the removal
-// command is text for the operator.
+// stashes, each classed landed, at risk, idle or active, with its age. For a
+// landed line it prints the command that would remove it. The claims-rows and
+// touches-rows classes were removed when SV-M1 read CUT (ADR-060 amendment
+// 2026-10-02). It runs no git write, deletes nothing and rewrites no history
+// (I63, P15): every git read goes through gitro, and the removal command is
+// text for the operator.
 
 import (
 	"context"
@@ -69,22 +70,13 @@ func renderPlansLines(w io.Writer, rep worklines.Report) {
 	if len(tip) > 12 {
 		tip = tip[:12]
 	}
-	fmt.Fprintf(w, "fathom plans lines — %s (integration %s at %s, %d open rows)\n", rep.Root, rep.Integration, tip, rep.OpenRows)
+	fmt.Fprintf(w, "fathom plans lines — %s (integration %s at %s)\n", rep.Root, rep.Integration, tip)
 	if len(rep.Lines) == 0 {
 		fmt.Fprintln(w, "no lines besides the integration branch")
 	}
 	tw := tabwriter.NewWriter(w, 0, 2, 2, ' ', 0)
-	fmt.Fprintln(tw, "class\tline\trows\tage\tnote")
+	fmt.Fprintln(tw, "class\tline\tage\tnote")
 	for _, l := range rep.Lines {
-		rows := "-"
-		switch {
-		case len(l.Claims) > 0 && len(l.Touches) > 0:
-			rows = strings.Join(l.Claims, ",") + " (touches " + strings.Join(l.Touches, ",") + ", " + l.Tier + ")"
-		case len(l.Claims) > 0:
-			rows = strings.Join(l.Claims, ",")
-		case len(l.Touches) > 0:
-			rows = strings.Join(l.Touches, ",") + " (" + l.Tier + ")"
-		}
 		name := l.Name
 		if l.Kind != worklines.KindBranch {
 			name = l.Kind + " " + name
@@ -97,7 +89,7 @@ func renderPlansLines(w io.Writer, rep worklines.Report) {
 		if l.Kind == worklines.KindBranch && l.Worktree != "" {
 			note = append(note, "worktree "+l.Worktree)
 		}
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%dd\t%s\n", l.Class, name, rows, l.AgeDays, strings.Join(note, "; "))
+		fmt.Fprintf(tw, "%s\t%s\t%dd\t%s\n", l.Class, name, l.AgeDays, strings.Join(note, "; "))
 	}
 	_ = tw.Flush()
 	var parts []string

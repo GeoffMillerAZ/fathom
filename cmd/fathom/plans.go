@@ -33,7 +33,7 @@ import (
 //	plans archive — governed artifact lifecycle (E4-1)
 //	plans restore — the archive/restore round-trip (E4-1)
 //	plans lines   — one repository's branches, worktrees and stashes classed
-//	                against the integration branch and open rows (SV-2)
+//	                against the integration branch (SV-2)
 func cmdPlans(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
 		fmt.Fprintln(stderr, "error: plans requires a subcommand (status, next, history, archive, restore, lines)")

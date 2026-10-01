@@ -1,6 +1,6 @@
 // Package worklines classifies one repository's lines of work (its local
-// branches, linked worktrees and stashes) against the integration branch and
-// the open rows of the plans on it (ADR-060 decision 2, vision 41 §4.1).
+// branches, linked worktrees and stashes) against the integration branch
+// (ADR-060 decision 2, vision 41 §4.1).
 //
 // A line is one of:
 //
@@ -8,17 +8,17 @@
 //     (every commit has an equivalent there, `git cherry`), or content-equal
 //     (a squash merge: every path the line changed reads the same on the
 //     integration branch), with a clean worktree;
-//   - claims rows: its plan edits flip rows that are open on the integration
-//     branch (the row ids are named);
-//   - touches rows: its diff touches an open row's anchors, at the lexical tier
-//     (a changed line under the row's package names its symbol, or the diff
-//     changes the row's oracle path);
 //   - at risk: a dirty worktree, a stash, or commits on no remote;
 //   - idle: none of these, and no commit for 14 days;
 //   - active: none of these, and a recent commit.
 //
 // A line can carry more than one fact; its class is the first that holds in
 // that order, and the at-risk reasons are listed whatever the class.
+//
+// The claims-rows and touches-rows classes (a line's plan edits flip open
+// rows; its diff names an open row's anchors) were removed when the SV-M1
+// replay read CUT (ADR-060 amendment 2026-10-02, O293), so the package reads
+// no plan file.
 //
 // The package only reads (I63, P15). Every git command goes through the
 // injected Runner, and for a landed line it names the command that would
@@ -30,15 +30,12 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/geoffmilleraz/fathom/internal/verify"
 )
 
 // Runner runs one git command in dir and returns its standard output. The
@@ -49,16 +46,14 @@ type Runner func(ctx context.Context, dir string, args ...string) ([]byte, error
 type Class string
 
 const (
-	Landed      Class = "landed"
-	ClaimsRows  Class = "claims-rows"
-	TouchesRows Class = "touches-rows"
-	AtRisk      Class = "at-risk"
-	Idle        Class = "idle"
-	Active      Class = "active"
+	Landed Class = "landed"
+	AtRisk Class = "at-risk"
+	Idle   Class = "idle"
+	Active Class = "active"
 )
 
 // Classes lists every class in precedence order.
-var Classes = []Class{Landed, ClaimsRows, TouchesRows, AtRisk, Idle, Active}
+var Classes = []Class{Landed, AtRisk, Idle, Active}
 
 // Line kinds.
 const (
@@ -79,7 +74,7 @@ type Options struct {
 	Integration string
 	// Run runs every git command; required.
 	Run Runner
-	// ReadFile reads a dirty worktree's own copy of a plan; nil is os.ReadFile.
+	// ReadFile reads a dirty worktree's own copy of a path; nil is os.ReadFile.
 	ReadFile func(string) ([]byte, error)
 	// Now is the clock ages are measured against; nil is time.Now.
 	Now func() time.Time
@@ -100,12 +95,6 @@ type Line struct {
 	// Landed says how a landed line landed: ancestor, patch-equivalent or
 	// content-equal.
 	Landed string `json:"landed,omitempty"`
-	// Claims are the open rows ("<plan>.md#<ID>") the line's plan edits flip.
-	Claims []string `json:"claims,omitempty"`
-	// Touches are the open rows whose anchors the line's diff touches.
-	Touches []string `json:"touches,omitempty"`
-	// Tier names how Touches was matched; always "lexical" today.
-	Tier string `json:"tier,omitempty"`
 	// AtRisk lists why the line could be lost: a dirty worktree, a stash,
 	// commits on no remote.
 	AtRisk []string `json:"at_risk,omitempty"`
@@ -124,19 +113,8 @@ type Report struct {
 	Root           string        `json:"root"`
 	Integration    string        `json:"integration"`
 	IntegrationTip string        `json:"integration_tip"`
-	OpenRows       int           `json:"open_rows"`
 	Lines          []Line        `json:"lines"`
 	Counts         map[Class]int `json:"counts"`
-}
-
-// openRow is one row open on the integration branch.
-type openRow struct {
-	key     string // "<plan>.md#<ID>"
-	symbol  string // last identifier of Expect.Symbol
-	pkg     string // Expect.Package, slash-separated, no trailing slash
-	oracle  string // OraclePath
-	planRel string
-	id      string
 }
 
 type classifier struct {
@@ -147,9 +125,7 @@ type classifier struct {
 	tip       string
 	now       time.Time
 	idleAfter time.Duration
-	open      []openRow
-	openByKey map[string]map[string]bool // plan path → open ids
-	mainWT    string                     // the main worktree's path
+	mainWT    string // the main worktree's path
 }
 
 // ClassifyLines classifies every local branch, linked worktree and stash of
@@ -182,9 +158,6 @@ func ClassifyLines(ctx context.Context, opt Options) (Report, error) {
 		return Report{}, err
 	}
 	c.tip = tip
-	if err := c.loadOpenRows(); err != nil {
-		return Report{}, err
-	}
 
 	wts, err := c.worktrees()
 	if err != nil {
@@ -275,7 +248,7 @@ func ClassifyLines(ctx context.Context, opt Options) (Report, error) {
 	for _, l := range lines {
 		counts[l.Class]++
 	}
-	return Report{Root: c.root, Integration: c.integ, IntegrationTip: c.tip, OpenRows: len(c.open), Lines: lines, Counts: counts}, nil
+	return Report{Root: c.root, Integration: c.integ, IntegrationTip: c.tip, Lines: lines, Counts: counts}, nil
 }
 
 func (c *classifier) git(dir string, args ...string) (string, error) {
@@ -294,61 +267,6 @@ func (c *classifier) resolveIntegration() (string, error) {
 		}
 	}
 	return "", fmt.Errorf("worklines: integration branch %q not found in %s", c.integ, c.root)
-}
-
-// loadOpenRows parses every active plan on the integration branch (the
-// non-recursive docs/plans/*.md, README.md excluded, as the verify gate
-// reads them) and keeps the rows that are neither claimed nor dispositioned.
-func (c *classifier) loadOpenRows() error {
-	c.openByKey = map[string]map[string]bool{}
-	for _, rel := range c.planFilesAt(c.tip) {
-		raw, err := c.git(c.root, "show", c.tip+":"+rel)
-		if err != nil {
-			return err
-		}
-		plan := verify.ParseMarkdownPlan("", []byte(raw))
-		for _, t := range plan.Tasks {
-			if t.Claimed || t.Skipped || t.ID == "" {
-				continue
-			}
-			r := openRow{
-				key:     path.Base(rel) + "#" + t.ID,
-				symbol:  lastIdent(t.Expect.Symbol),
-				pkg:     strings.TrimSuffix(filepath.ToSlash(t.Expect.Package), "/"),
-				oracle:  filepath.ToSlash(t.OraclePath),
-				planRel: rel,
-				id:      t.ID,
-			}
-			c.open = append(c.open, r)
-			if c.openByKey[rel] == nil {
-				c.openByKey[rel] = map[string]bool{}
-			}
-			c.openByKey[rel][t.ID] = true
-		}
-	}
-	return nil
-}
-
-func (c *classifier) planFilesAt(commit string) []string {
-	out, err := c.git(c.root, "ls-tree", "--name-only", commit, "docs/plans/")
-	if err != nil {
-		return nil
-	}
-	var files []string
-	for _, f := range strings.Split(out, "\n") {
-		if isPlanFile(f) {
-			files = append(files, f)
-		}
-	}
-	sort.Strings(files)
-	return files
-}
-
-func isPlanFile(rel string) bool {
-	if path.Dir(rel) != "docs/plans" || !strings.HasSuffix(rel, ".md") {
-		return false
-	}
-	return !strings.EqualFold(path.Base(rel), "README.md")
 }
 
 type branch struct {
@@ -563,7 +481,6 @@ func (c *classifier) classifyCommitLine(l *Line, wt *worktree, base string) erro
 	}
 
 	// At risk.
-	var dirtyPlans []string
 	if wt != nil {
 		n, missing := c.dirty(*wt)
 		switch {
@@ -571,11 +488,6 @@ func (c *classifier) classifyCommitLine(l *Line, wt *worktree, base string) erro
 			l.AtRisk = append(l.AtRisk, "worktree missing (prunable)")
 		case n > 0:
 			l.AtRisk = append(l.AtRisk, fmt.Sprintf("dirty worktree (%d %s)", n, plural(n, "path", "paths")))
-			for _, p := range c.dirtyPaths(*wt) {
-				if isPlanFile(p) {
-					dirtyPlans = append(dirtyPlans, p)
-				}
-			}
 		}
 	}
 	dirty := wt != nil && len(l.AtRisk) > 0 && strings.HasPrefix(l.AtRisk[0], "dirty")
@@ -605,35 +517,7 @@ func (c *classifier) classifyCommitLine(l *Line, wt *worktree, base string) erro
 		}
 	}
 
-	// Claims and touches read only what the line itself changed.
-	if landed == "" {
-		l.Claims = c.claims(l.Tip, changed, wt, dirtyPlans)
-		diff := ""
-		if base != "" {
-			diff, _ = c.git(c.root, "-c", "core.quotePath=false", "diff", "--no-color", "--no-ext-diff", "--no-renames", "-U0", base, l.Tip)
-		}
-		if dirty {
-			if wd, err := c.git(wt.path, "-c", "core.quotePath=false", "diff", "--no-color", "--no-ext-diff", "--no-renames", "-U0", "HEAD"); err == nil {
-				diff += "\n" + wd
-			}
-		}
-		l.Touches = c.touches(diff, l.Claims)
-	} else {
-		// A landed line kept only for its dirty worktree: its working-tree
-		// edits are the unlanded part.
-		l.Claims = c.claims(l.Tip, nil, wt, dirtyPlans)
-		if wd, err := c.git(wt.path, "-c", "core.quotePath=false", "diff", "--no-color", "--no-ext-diff", "--no-renames", "-U0", "HEAD"); err == nil {
-			l.Touches = c.touches(wd, l.Claims)
-		}
-	}
-	if len(l.Touches) > 0 {
-		l.Tier = "lexical"
-	}
 	switch {
-	case len(l.Claims) > 0:
-		l.Class = ClaimsRows
-	case len(l.Touches) > 0:
-		l.Class = TouchesRows
 	case len(l.AtRisk) > 0:
 		l.Class = AtRisk
 	case c.now.Sub(l.CommittedAt) >= c.idleAfter:
@@ -662,110 +546,6 @@ func (c *classifier) contentEqual(tip string, changed []string) bool {
 		}
 	}
 	return true
-}
-
-// claims names the open rows the line's own plan edits flip to claimed.
-func (c *classifier) claims(tip string, changed []string, wt *worktree, dirtyPlans []string) []string {
-	plans := map[string]bool{}
-	for _, f := range changed {
-		if isPlanFile(f) && c.openByKey[f] != nil {
-			plans[f] = false
-		}
-	}
-	for _, f := range dirtyPlans {
-		if c.openByKey[f] != nil {
-			plans[f] = true
-		}
-	}
-	set := map[string]bool{}
-	for rel, fromWorktree := range plans {
-		var raw []byte
-		if fromWorktree && wt != nil {
-			b, err := c.opt.ReadFile(filepath.Join(wt.path, filepath.FromSlash(rel)))
-			if err != nil {
-				continue
-			}
-			raw = b
-		} else {
-			s, err := c.git(c.root, "show", tip+":"+rel)
-			if err != nil {
-				continue
-			}
-			raw = []byte(s)
-		}
-		for _, t := range verify.ParseMarkdownPlan("", raw).Tasks {
-			if t.Claimed && c.openByKey[rel][t.ID] {
-				set[path.Base(rel)+"#"+t.ID] = true
-			}
-		}
-	}
-	return sortedKeys(set)
-}
-
-var identRE = regexp.MustCompile(`[A-Za-z_][A-Za-z0-9_]*`)
-
-// touches names the open rows whose anchors the diff touches, at the lexical
-// tier: a changed line in a file under the row's package (anywhere, when the
-// row names none) carries the row's symbol as a whole identifier, or the
-// diff changes the row's oracle path. Plan files are skipped (a row's own
-// text names its symbol), and rows the line claims are not repeated.
-func (c *classifier) touches(diff string, claimed []string) []string {
-	if strings.TrimSpace(diff) == "" || len(c.open) == 0 {
-		return nil
-	}
-	files := map[string]bool{}
-	idents := map[string]map[string]bool{} // file → identifiers on changed lines
-	cur := ""
-	for _, ln := range strings.Split(diff, "\n") {
-		switch {
-		case strings.HasPrefix(ln, "diff --git "):
-			cur = ""
-		case strings.HasPrefix(ln, "+++ "), strings.HasPrefix(ln, "--- "):
-			p := strings.TrimSpace(ln[4:])
-			if p == "/dev/null" {
-				continue
-			}
-			p = strings.TrimPrefix(strings.TrimPrefix(p, "a/"), "b/")
-			p = strings.Trim(p, `"`)
-			cur = p
-			files[p] = true
-		case cur == "" || isPlanFile(cur):
-		case strings.HasPrefix(ln, "+"), strings.HasPrefix(ln, "-"):
-			if idents[cur] == nil {
-				idents[cur] = map[string]bool{}
-			}
-			for _, id := range identRE.FindAllString(ln[1:], -1) {
-				idents[cur][id] = true
-			}
-		}
-	}
-	skip := map[string]bool{}
-	for _, k := range claimed {
-		skip[k] = true
-	}
-	set := map[string]bool{}
-	for _, r := range c.open {
-		if skip[r.key] {
-			continue
-		}
-		if r.oracle != "" && files[r.oracle] {
-			set[r.key] = true
-			continue
-		}
-		if r.symbol == "" {
-			continue
-		}
-		for f, ids := range idents {
-			if r.pkg != "" && path.Dir(f) != r.pkg && !strings.HasPrefix(f, r.pkg+"/") {
-				continue
-			}
-			if ids[r.symbol] {
-				set[r.key] = true
-				break
-			}
-		}
-	}
-	return sortedKeys(set)
 }
 
 // removal names the command that would remove a landed line. It is printed,
@@ -814,17 +594,6 @@ func shellQuote(s string) string {
 	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
 }
 
-func lastIdent(sym string) string {
-	sym = strings.TrimSpace(sym)
-	if i := strings.LastIndexAny(sym, ".:/"); i >= 0 {
-		sym = sym[i+1:]
-	}
-	if m := identRE.FindString(sym); m != "" {
-		return m
-	}
-	return ""
-}
-
 func splitLines(s string) []string {
 	var out []string
 	for _, ln := range strings.Split(s, "\n") {
@@ -832,18 +601,6 @@ func splitLines(s string) []string {
 			out = append(out, ln)
 		}
 	}
-	return out
-}
-
-func sortedKeys(m map[string]bool) []string {
-	if len(m) == 0 {
-		return nil
-	}
-	out := make([]string, 0, len(m))
-	for k := range m {
-		out = append(out, k)
-	}
-	sort.Strings(out)
 	return out
 }
 
