@@ -57,7 +57,18 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		printUsage(stderr)
 		return 1
 	}
+	v, ok := lookupVerb(args[0])
+	if !ok {
+		fmt.Fprintf(stderr, "error: unknown subcommand %q\n", args[0])
+		printUsage(stderr)
+		return 1
+	}
+	return v.Run.execVerb(args[1:], stdin, stdout, stderr)
+}
 
+// dispatchSwitch is the switch-era dispatch, reached through legacyVerb
+// (transitional, EW-45).
+func dispatchSwitch(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	switch args[0] {
 	case "version":
 		return cmdVersion(args[1:], stdout, stderr)
@@ -303,8 +314,9 @@ func printUsage(w io.Writer) {
 	fmt.Fprintln(w, "Usage: fathom <subcommand> [flags]")
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "Subcommands:")
+	all := verbs()
 	width := 0
-	for _, v := range verbTable {
+	for _, v := range all {
 		if v.Hidden {
 			continue
 		}
@@ -312,7 +324,7 @@ func printUsage(w io.Writer) {
 			width = n
 		}
 	}
-	for _, v := range verbTable {
+	for _, v := range all {
 		if v.Hidden {
 			continue
 		}
