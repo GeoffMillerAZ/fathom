@@ -193,3 +193,27 @@ func TestCmdLangOracleScipClangDefsDropInactiveLines(t *testing.T) {
 		t.Errorf("without the oracle fathom_defs = %d, want 3", r2.Counts[langbench.CntFathomDefs])
 	}
 }
+
+// TestCmdLangOracleFileEdgeTruthScopedToMeasuredFiles (LB-F80): under -only the
+// index still holds files the run does not measure; an index cross-file edge to
+// or from one is not the subject's (it was counted in the truth, so a header-only
+// measurement of a library whose tests the index also holds read a recall
+// ceiling it could not reach). The edges left out are disclosed.
+func TestCmdLangOracleFileEdgeTruthScopedToMeasuredFiles(t *testing.T) {
+	subject := copyFixture(t, "cfixture")
+	out := filepath.Join(t.TempDir(), "c.json")
+	args := []string{"-dialect", "c", "-manifest", filepath.Join("..", "..", "internal", "extractor", "dialects", "c", "dialect.json"), "-subject", subject,
+		"-ctags", filepath.Join(t.TempDir(), "none"), "-scip", clangFixtureIndex(t), "-only", "main.c",
+		"-out", out, "-queue", filepath.Join("..", "..", "docs", "plans", "language-breadth.queue.json")}
+	var stdout, stderr bytes.Buffer
+	if code := cmdLangOracle(args, &stdout, &stderr); code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr.String())
+	}
+	r, raw := readValidReading(t, out)
+	if r.Counts[langbench.CntFileEdgesTruth] != 0 {
+		t.Errorf("file_edges_truth = %d, want 0 (main.c -> util.h ends in a file this run does not measure)\n%s", r.Counts[langbench.CntFileEdgesTruth], raw)
+	}
+	if !bytes.Contains(raw, []byte(noteFileEdgeTruthScoped)) {
+		t.Errorf("the left-out index edges are not disclosed:\n%s", raw)
+	}
+}

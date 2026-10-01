@@ -37,6 +37,9 @@ const noteScipClangDefsScoped = "files the scip-clang index does not hold"
 // noteScipClangInactive names the lines L1 against scip-clang leaves out.
 const noteScipClangInactive = "on lines the build's own preprocessor discards (an inactive #if branch of the one configuration scip-clang indexes)"
 
+// noteFileEdgeTruthScoped names the index edges the file-edge truth leaves out.
+const noteFileEdgeTruthScoped = "cross-file edges run from or to a file this run does not measure (-only, discovery's exclusions, an ingest gate) and are left out of the file-edge truth (§1.4)"
+
 // oracleTimeout bounds one external oracle run (design §13.4 step 19).
 const oracleTimeout = 20 * time.Minute
 
@@ -698,7 +701,11 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 				res.notes = append(res.notes, name+": file-resolved edges not measured: "+rep.SkipReason)
 			} else {
 				edges = edgesFromIndexed(edges, sr.Docs, name, &res.notes)
-				langbench.ScoreFileEdges(sr.FileEdges, edges, nodes, sub.Counts)
+				truth := scopedFileEdgeTruth(sr.FileEdges, inScope)
+				if n := len(sr.FileEdges) - len(truth); n > 0 {
+					res.notes = append(res.notes, fmt.Sprintf("%s: %d index %s", name, n, noteFileEdgeTruthScoped))
+				}
+				langbench.ScoreFileEdges(truth, edges, nodes, sub.Counts)
 				sub.Families[langbench.FamilyFileEdges] = "A"
 			}
 		} else if spec.Manifest.ID == goDialect {
@@ -1156,4 +1163,15 @@ func activeLinesOf(paths []string) (map[string][][2]int, error) {
 func lineActive(ranges [][2]int, line int) bool {
 	i := sort.Search(len(ranges), func(i int) bool { return ranges[i][1] >= line })
 	return i < len(ranges) && ranges[i][0] <= line
+}
+
+// scopedFileEdgeTruth keeps the index's cross-file edges between measured files.
+func scopedFileEdgeTruth(truth map[[2]string]bool, inScope map[string]bool) map[[2]string]bool {
+	out := make(map[[2]string]bool, len(truth))
+	for k := range truth {
+		if inScope[k[0]] && inScope[k[1]] {
+			out[k] = true
+		}
+	}
+	return out
 }
