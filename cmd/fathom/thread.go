@@ -1011,3 +1011,15 @@ func derivedInFlight(root string) string {
 	}
 	return "git in-flight: " + strings.Join(parts, ", ")
 }
+
+// threadRunner runs `fathom thread` (registered below; EW-45).
+type threadRunner struct{}
+
+func (threadRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdThread(args, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "thread", Group: "govern", Order: 10, Run: threadRunner{},
+		Summary: "Continuity threads: brief | note | point | list | close | promote | handoff — the work, not the session (vision 21)"})
+}

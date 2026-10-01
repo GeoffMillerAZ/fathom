@@ -549,3 +549,15 @@ func routeLineFor(hc *http.Client, baseURL, prompt string, deadline time.Time) s
 	}
 	return routeLine(hc, baseURL, prompt, deadline)
 }
+
+// promptHookRunner runs `fathom prompt-hook` (registered below; EW-45).
+type promptHookRunner struct{}
+
+func (promptHookRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdPromptHook(args, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "prompt-hook", Group: "hooks", Order: 50, Run: promptHookRunner{},
+		Summary: "UserPromptSubmit hook: resolve the paths/packages/symbols the prompt names through the index and inject the rules that govern them, before the first edit (O57 items 4/5)"})
+}

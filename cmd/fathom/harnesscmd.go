@@ -311,3 +311,15 @@ func cmdHarnessHooks(args []string, stdout, stderr io.Writer) int {
 	_ = order
 	return 0
 }
+
+// harnessRunner runs `fathom harness` (registered below; EW-45).
+type harnessRunner struct{}
+
+func (harnessRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdHarness(args, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "harness", Group: "govern", Order: 140, Run: harnessRunner{},
+		Summary: "The harness registry (ADR-029): list [--json] | capabilities [--harness ID] [--json] | matrix [--url U] [--json] — every vehicle per capability, unverified rows say so"})
+}

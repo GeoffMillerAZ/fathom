@@ -77,3 +77,15 @@ func cmdReceiptVerify(args []string, stdout, stderr io.Writer) int {
 	fmt.Fprintf(stdout, "receipt verify: DIFFERENCE — %s\n", outcome.Diff)
 	return 1
 }
+
+// receiptRunner runs `fathom receipt` (registered below; EW-45).
+type receiptRunner struct{}
+
+func (receiptRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdReceipt(args, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "receipt", Group: "govern", Order: 70, Run: receiptRunner{},
+		Summary: "A stranger's re-derivation (VB-20): verify [--repo DIR] <receipt.json> checks a saved answer against a bare git checkout with go/types and git alone — no daemon, no store"})
+}

@@ -229,3 +229,15 @@ func configJSONValue(loaded config.Loaded, profile config.Profile, prov config.P
 	}
 	return out
 }
+
+// configRunner runs `fathom config` (registered below; EW-45).
+type configRunner struct{}
+
+func (configRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdConfig(args, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "config", Group: "operate", Order: 100, Run: configRunner{},
+		Summary: "Print the effective configuration (--explain for per-key provenance) | audit (custodian concerns) | propose (a diff for each mechanically mendable violation; writes nothing)"})
+}

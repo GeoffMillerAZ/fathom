@@ -836,3 +836,15 @@ func filterFrontier(frontier []frontierRow, keep func(frontierRow) bool) []front
 	}
 	return out
 }
+
+// plansRunner runs `fathom plans` (registered below; EW-45).
+type plansRunner struct{}
+
+func (plansRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdPlans(args, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "plans", Group: "plans", Order: 20, Run: plansRunner{},
+		Summary: "Computed SDD progress: status | next [--eligible-only] | history --plan P | context --row ID | lease | leases | archive | restore"})
+}

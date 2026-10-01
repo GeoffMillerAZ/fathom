@@ -220,3 +220,16 @@ func cmdArm(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 }
+
+// armRunner runs `fathom arm` (registered below; EW-45).
+type armRunner struct{}
+
+func (armRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdArm(args, stdout, stderr)
+}
+
+func init() {
+	// SR-31: fathom metrics arm covers this; stays fully dispatched
+	declareVerb(verb{Name: "arm", Group: "operate", Order: 170, Hidden: true, Run: armRunner{},
+		Summary: "A/B counterfactual arm (law 12): off --for D --sessions N [--note ...] | on"})
+}

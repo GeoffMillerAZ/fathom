@@ -410,3 +410,24 @@ func writeJSON(path string, v any) error {
 	}
 	return os.WriteFile(path, append(data, '\n'), 0o644)
 }
+
+// runPlugin dispatches `fathom plugin render`.
+func runPlugin(args []string, stdout, stderr io.Writer) int {
+	if len(args) > 0 && args[0] == "render" {
+		return cmdPluginRender(args[1:], stdout, stderr)
+	}
+	fmt.Fprintln(stderr, "usage: fathom plugin render [--out DIR] [--mcp-url U] [--marketplace]")
+	return 1
+}
+
+// pluginRunner runs `fathom plugin` (registered below; EW-45).
+type pluginRunner struct{}
+
+func (pluginRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return runPlugin(args, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "plugin", Group: "govern", Order: 120, Run: pluginRunner{},
+		Summary: "plugin render [--out DIR] [--mcp-url U] [--marketplace]: render one plugin tree carrying both the Claude Code and the Agent Plugins 1.0 manifests over one skills/ dir"})
+}

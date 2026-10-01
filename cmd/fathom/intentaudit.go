@@ -678,3 +678,15 @@ func repoGuardNotes(root string) ([]string, func(string) []string, string) {
 	sort.Strings(notes)
 	return notes, func(n string) []string { return scopes[n] }, ""
 }
+
+// intentRunner runs `fathom intent` (registered below; EW-45).
+type intentRunner struct{}
+
+func (intentRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdIntent(args, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "intent", Group: "operate", Order: 10, Run: intentRunner{},
+		Summary: "The intent corpus (ADR-026): audit — conditions, invariant rungs, unproven claims | doctrine — the vision promotion pipeline and goals as pre-registered bets | export --guard"})
+}

@@ -264,3 +264,17 @@ func stripMarkdownPosition(plan *verify.Plan) {
 		plan.Tasks[i].UnreadAnnotation = ""
 	}
 }
+
+// genPlanCueRunner runs `fathom gen-plan-cue` (registered below; EW-45).
+type genPlanCueRunner struct{}
+
+func (genPlanCueRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdGenPlanCue(args, stdout, stderr)
+}
+
+func init() {
+	// SR-30: internal dev/round-trip tooling (ADR-018 decision 3), not
+	// agent-facing
+	declareVerb(verb{Name: "gen-plan-cue", Group: "operate", Order: 60, Hidden: true, Run: genPlanCueRunner{},
+		Summary: "Emit the generated CUE shadow of a Markdown plan (round-trip verified)"})
+}

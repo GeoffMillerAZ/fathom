@@ -132,3 +132,15 @@ func parseReposFlag(s string) (map[string]string, error) {
 	}
 	return repos, nil
 }
+
+// platformCallersRunner runs `fathom platform-callers` (registered below; EW-45).
+type platformCallersRunner struct{}
+
+func (platformCallersRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdPlatformCallers(args, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "platform-callers", Group: "serve", Order: 50, Run: platformCallersRunner{},
+		Summary: "Print cross-repo callers of a symbol"})
+}

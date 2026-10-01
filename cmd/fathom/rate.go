@@ -280,3 +280,16 @@ func evaluateABCriterion(imp obsImpact) string {
 			*imp.TokensOnMedian, *imp.TokensOffMedian, outcomeText)
 	}
 }
+
+// rateRunner runs `fathom rate` (registered below; EW-45).
+type rateRunner struct{}
+
+func (rateRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdRate(args, stdout, stderr)
+}
+
+func init() {
+	// SR-31: fathom metrics rate covers this; stays fully dispatched
+	declareVerb(verb{Name: "rate", Group: "operate", Order: 160, Hidden: true, Run: rateRunner{},
+		Summary: "Rate this session 1-5: the OUTCOME half of the A/B criterion (fewer tokens is not a win if you got less done)"})
+}

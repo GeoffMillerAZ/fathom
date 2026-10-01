@@ -801,3 +801,15 @@ func recordReviewSupersedeEvents(ctx context.Context, c *client.Client, supersed
 	}
 	return recorded
 }
+
+// reviewRunner runs `fathom review` (registered below; EW-45).
+type reviewRunner struct{}
+
+func (reviewRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdReview(args, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "review", Group: "review", Order: 20, Run: reviewRunner{},
+		Summary: "Store-direct review of files changed since a git ref (arch conformance, spec coverage); --mode report|persist (--no-persist = report only), --manifest FILE, --idempotency-key, --expect-index-watermark, --budget-seconds = advisory bound"})
+}

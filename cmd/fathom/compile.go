@@ -798,3 +798,15 @@ func printCompileRunMap(w io.Writer, m map[string]any) {
 		fmt.Fprintf(w, "ran_at:            %s\n", ranAt)
 	}
 }
+
+// compileRunner runs `fathom compile` (registered below; EW-45).
+type compileRunner struct{}
+
+func (compileRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdCompile(args, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "compile", Group: "plans", Order: 40, Run: compileRunner{},
+		Summary: "Compile a semantic layer for a service (dry-run by default)"})
+}

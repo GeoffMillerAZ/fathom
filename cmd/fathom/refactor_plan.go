@@ -438,3 +438,27 @@ func slugify(s string) string {
 	}
 	return strings.Trim(b.String(), "-")
 }
+
+// runRefactor dispatches `fathom refactor plan|status`.
+func runRefactor(args []string, stdout, stderr io.Writer) int {
+	if len(args) > 0 && args[0] == "plan" {
+		return cmdRefactorPlan(args[1:], stdout, stderr)
+	}
+	if len(args) > 0 && args[0] == "status" {
+		return cmdRefactorStatus(args[1:], stdout, stderr)
+	}
+	fmt.Fprintln(stderr, "usage: fathom refactor plan <symbol|package|import> [--out FILE] [--service S] [--store DB]\n       fathom refactor status --plan FILE [--json]\n       fathom refactor status --migration \"<kind> <from> -> <to>\" [--store DB] [--services a,b,c] [--json]")
+	return 2
+}
+
+// refactorRunner runs `fathom refactor` (registered below; EW-45).
+type refactorRunner struct{}
+
+func (refactorRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return runRefactor(args, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "refactor", Group: "review", Order: 50, Run: refactorRunner{},
+		Summary: "refactor plan <symbol|package|import> [--out FILE] [--service S] [--store DB]: writes a gate-ready grammar-v2 plan (Baseline header, one ratcheted gone: row per referencing package, certified_by rows, the final absence row, a conserve instruction) | refactor status --plan FILE [--json]: each ratchet's live count vs its max and vs the baseline, plus drift landed on the branch since baseline (ADR-044 §4) | refactor status --migration \"<kind> <from> -> <to>\" [--store DB] [--services a,b,c] [--json]: the fleet-wide migration view — remaining/done sites per service, typed where available, lexical otherwise; read-only, never rewrites a site (CX-13, design change-and-compliance.md §4)"})
+}

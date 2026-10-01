@@ -482,3 +482,15 @@ func wrapAt(s string, width int, indent string) string {
 	}
 	return b.String()
 }
+
+// capabilitiesRunner runs `fathom capabilities` (registered below; EW-45).
+type capabilitiesRunner struct{}
+
+func (capabilitiesRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdCapabilities(args, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "capabilities", Group: "operate", Order: 140, Run: capabilitiesRunner{},
+		Summary: "What is switched on here and WHY anything is off: list | explain <id> | set <id> on|off"})
+}

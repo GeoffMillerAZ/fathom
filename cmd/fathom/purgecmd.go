@@ -515,3 +515,15 @@ func (s *stringList) Set(v string) error {
 	*s = append(*s, v)
 	return nil
 }
+
+// purgeRunner runs `fathom purge` (registered below; EW-45).
+type purgeRunner struct{}
+
+func (purgeRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdPurge(args, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "purge", Group: "govern", Order: 110, Run: purgeRunner{},
+		Summary: "IRREVERSIBLE removal: purge <glob> --service S --reason R [--dry-run|--yes] | history (exit 2 = SQL zero but bytes unchecked)"})
+}

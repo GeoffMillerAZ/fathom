@@ -141,3 +141,15 @@ func defaultGitRunner(args ...string) ([]byte, error) {
 func cmdIngestDiff(args []string, stdout, stderr io.Writer) int {
 	return runIngestDiff(args, defaultGitRunner, stdout, stderr)
 }
+
+// ingestDiffRunner runs `fathom ingest-diff` (registered below; EW-45).
+type ingestDiffRunner struct{}
+
+func (ingestDiffRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdIngestDiff(args, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "ingest-diff", Group: "index", Order: 20, Run: ingestDiffRunner{},
+		Summary: "Ingest only files changed since a git ref"})
+}
