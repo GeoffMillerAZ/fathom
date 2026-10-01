@@ -5,7 +5,7 @@
 // per-file resolver. It reuses the SAME cached (parser, compiled query)
 // pair Extract uses for symbol extraction — no second grammar load, no
 // second query compile — and is entirely additive: Extract's own capture
-// switch (splitTSMatches) only recognizes "name"/"reference.call"/
+// switch (splitTSMatchesWith) only recognizes "name"/"reference.call"/
 // "definition.*" and silently ignores every "import.*" capture, so nothing
 // about existing symbol extraction changes.
 package extractor

@@ -630,7 +630,7 @@ type tsDef struct {
 	start, end uint32
 	line       int
 	// defLine is the DEFINITION node's own start line (defNode.Line()),
-	// independent of `line` above (nameNode.Line() -- see splitTSMatches).
+	// independent of `line` above (nameNode.Line() -- see splitTSMatchesWith).
 	// tsEndLine adds its within-range newline count to THIS, never to
 	// `line`: the two diverge exactly when N names share one definition
 	// (CSS's grouped selector list is the only case today), and using
@@ -801,17 +801,12 @@ func compactExpr(text string, sigils bool) (string, bool) {
 	return b.String(), depth == 0
 }
 
-// splitTSMatches separates a query's flat match list into definitions (a
+// splitTSMatchesWith separates a query's flat match list into definitions (a
 // "name" + "definition.<kind>" capture pair) and call sites (a
-// "reference.call" capture, its callee per tsCalleeName) using src to
-// resolve capture text, and counts type references (typeRefCaptures).
-func splitTSMatches(matches []tsengine.Match, kinds map[string]tsDefKind, src []byte, norm func(string) string) ([]*tsDef, []tsCallSite, int) {
-	defs, calls, _, typeRefs := splitTSMatchesWith(matches, kinds, src, norm, false)
-	return defs, calls, typeRefs
-}
-
-// splitTSMatchesWith is splitTSMatches under the manifest's calls.qualify,
-// also returning the query's call attachments (@calls.to, @calls.from).
+// "reference.call" capture, its callee per tsCalleeName, qualified under the
+// manifest's calls.qualify) using src to resolve capture text, returns the
+// query's call attachments (@calls.to, @calls.from), and counts type
+// references (typeRefCaptures).
 func splitTSMatchesWith(matches []tsengine.Match, kinds map[string]tsDefKind, src []byte, norm func(string) string, qualify bool) ([]*tsDef, []tsCallSite, []tsCallAttach, int) {
 	var defs []*tsDef
 	var calls []tsCallSite

@@ -7,6 +7,13 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/extractor/tsengine"
 )
 
+// splitTSMatches is splitTSMatchesWith with no call qualification and the
+// call attachments dropped: the shape these end-capture tests read.
+func splitTSMatches(matches []tsengine.Match, kinds map[string]tsDefKind, src []byte, norm func(string) string) ([]*tsDef, []tsCallSite, int) {
+	defs, calls, _, typeRefs := splitTSMatchesWith(matches, kinds, src, norm, false)
+	return defs, calls, typeRefs
+}
+
 // TestSplitTSMatches_EndCaptureExtendsDefinition: a grammar that puts a
 // callable's body in a sibling of its signature (tree-sitter-dart's
 // function_signature + function_body, LB-Q-dart) cannot capture one node that
