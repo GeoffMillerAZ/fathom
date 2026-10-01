@@ -2784,3 +2784,55 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** none yet; options are carrying `to_kind` into call resolution so a package reference resolves only to a package, or recording a manifest's dependency names under an edge that is not a call. The block itself is an extraction change that needs an ExtractorEpoch bump (covered by item go's 39->40)
 - **Status:** open
 - **Impact:** who-calls and blast_radius answers can list a manifest as a caller of a same-named function (heuristic tier), for every package.json and Cargo.toml whose service has a function named like one of its dependencies
+
+### O271 — scip-dotnet 0.2.14 writes no occurrence for a call of a generic method with explicit type arguments: 5,624 of the 8,265 C# call pairs the dialect finds and the oracle does not prove (68%)
+
+- **Symptom:** scip-dotnet 0.2.14 writes no occurrence for a call of a generic method with explicit type arguments: 5,624 of the 8,265 C# call pairs the dialect finds and the oracle does not prove (68%)
+- **Evidence:**
+  - **Tool:** `indexbench lang-oracle -dialect csharp -scip` with `-unmatched` on Polly 9ad5ae9b and Newtonsoft.Json 4e13299d (fathom 9613c745); the SCIP document dumped at bench/Polly.Benchmarks/Fallback.cs
+  - **Expected:** a call `Workloads.FuncAsync<int>()` or `Policy<int>.Handle<InvalidOperationException>()` carries a reference to the method, as it does for the same call without type arguments
+  - **Actual:** lines 15, 19 and 6 of Fallback.cs carry occurrences for `Workloads`, `Policy#Execute()` and the type argument `System/InvalidOperationException#` and none for `FuncAsync`, `FuncThrows` or `Handle`; the dialect also names the callee with its type arguments (`FuncAsync<int>`, and the tail `InvalidOperationException>` of `FuncThrows<int, InvalidOperationException>()`). A counterfactual run that strips the type arguments reads call_precision .7776 to .7853 only, so the missing occurrence is the larger part
+  - **Repro:** re-run `-unmatched` on both subjects, then dump the document (internal/scip's Index, Document.Occurrences) around a fathom_only pair's line
+- **Root cause:** scip-dotnet's handling of a generic_name (not read); the dialect's callee is the generic_name node's text
+- **Fix:** dialect: strip the type-argument list from a generic method callee (wave 3, LB-Q-csharp-rest's trigger); oracle: disclosed in the csharp reading's notes, not scored
+- **Status:** open
+- **Impact:** C# L2 call_precision reads .7776 and the classification shows 68% of the gap is oracle-side, so the level cannot clear .85 by dialect fixes alone: the remaining pairs are nameof (368), delegate invocations (400), #if regions (601), 393 unexplained and 879 unresolved
+
+### O272 — the C# dialect lists `nameof(x)` as a call: 368 of the 8,265 pairs the dialect finds and scip-dotnet does not prove
+
+- **Symptom:** the C# dialect lists `nameof(x)` as a call: 368 of the 8,265 pairs the dialect finds and scip-dotnet does not prove
+- **Evidence:**
+  - **Tool:** `indexbench lang-oracle -dialect csharp -scip -unmatched` (fathom 9613c745)
+  - **Expected:** `nameof` is an operator, as Roslyn's syntax dump and scip-dotnet treat it, not a call
+  - **Actual:** 166 Polly and 202 Newtonsoft.Json fathom_only pairs have the callee `nameof` (DeserializeConstructorHandling.cs `Website`, Issue1619.cs `ReadJson`)
+  - **Repro:** the C# calls query captures an invocation whose function is the identifier `nameof`
+- **Root cause:** the tags query reads `nameof` as an identifier invocation (not read in the query)
+- **Fix:** none yet; wave 3 drops the `nameof` identifier from the C# call capture (a manifest and query change, an extractor epoch bump)
+- **Status:** open
+- **Impact:** 368 of the C# dialect's call pairs are false calls to a language operator, 1% of its pairs
+
+### O273 — Ruby L3 file edges against the ruby-require dump read file_edge_precision .4667 and file_edge_recall .0486: the resolver draws 15 cross-file edges where Ruby's own lookup attests 144 requires
+
+- **Symptom:** Ruby L3 file edges against the ruby-require dump read file_edge_precision .4667 and file_edge_recall .0486: the resolver draws 15 cross-file edges where Ruby's own lookup attests 144 requires
+- **Evidence:**
+  - **Tool:** `indexbench lang-oracle -dialect ruby -tool-oracle <ts-tags calls> -tool-oracle <ruby-require imports>` without -scip (LB-F57), sinatra v4.2.1 and jekyll v4.4.1, fathom fdd2bb59
+  - **Expected:** an in-repo `require`, `require_relative` or `autoload` that Ruby resolves to a file of the subject is a file edge, as the dump's imports say
+  - **Actual:** file_edges_truth 144 (sinatra 74, jekyll 70), file_edges_fathom 15 (5, 10), file_edges_agree 7 (4, 3): precision .4667, recall .0486; import_resolution 1 (144 of 144), so the strategy finds every file and the edges are what is missing
+  - **Repro:** the L3 re-measure of wave lb, commands in calibration/oracles/ruby-require/README.md
+- **Root cause:** the resolver draws an edge where a file calls a symbol the required file defines at its top level; a require for effect or whose file defines only a nested constant (`Sinatra::Base` in `module Sinatra`) draws none (the entry's lexical-constant note; per-edge cause not isolated)
+- **Fix:** none; Ruby stays at L2 and LB-Q-ruby-rest carries the numbers: the trigger is a file-edge rule that follows a resolved require and Ruby's lexical constant lookup
+- **Status:** open
+- **Impact:** Ruby L3 is unreachable by thresholds: tier B caps it at good and both file-edge metrics miss (.90, .25)
+
+### O274 — protobuf xref_recall reads 0 of 11 and the file resolver draws no file-resolved edge for a buf workspace: protovalidate's module-rooted imports are not followed
+
+- **Symptom:** protobuf xref_recall reads 0 of 11 and the file resolver draws no file-resolved edge for a buf workspace: protovalidate's module-rooted imports are not followed
+- **Evidence:**
+  - **Tool:** `indexbench lang-oracle -dialect protobuf -tool-oracle <protoc descriptors>` (LB-F56) on grpc/grpc-go v1.84.0 (10 files) and bufbuild/protovalidate v1.2.2 (118 files under -only), fathom 9613c745 base fdd2bb59
+  - **Expected:** an import rooted at a buf module path (`import "buf/validate/validate.proto"` under proto/protovalidate) resolves to its file and draws the cross-file edge protoc attests
+  - **Actual:** xref_truth 11 (all protovalidate), xref_fathom 0, xref_recall 0, xref_precision unmeasured; 6 more oracle xrefs on files fathom does not read
+  - **Repro:** re-run of the commands in calibration/oracles/protoc-descriptors/README.md plus the -only restriction in the reading
+- **Root cause:** the file-symbol import strategy resolves under the repository root only and no strategy reads buf.yaml or buf.work.yaml module roots (the first measurement's finding: 0 of 123 protovalidate imports; grpc-go's 3 of 3 draw no cross-file reference)
+- **Fix:** none here; module roots are wave 3's (F-D)
+- **Status:** open
+- **Impact:** protobuf stays L2 with L3 unmet (xref_recall 0 vs its bar) and the dialect cannot be dispatched under lang-parity

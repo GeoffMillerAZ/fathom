@@ -64,3 +64,7 @@ index names (ripgrep 115 of 251, clap 520 of 1,093), 543 resolve to none and 166
 import-line references are left out because their symbol is defined in more than one file. typed_recall predates F-A
 (item scip: the `ImportIndex` line-span fallback and local references out of `typed_recall`) and is re-run after that
 merge.
+
+Re-run 2026-10-01 (wave lb remeasure, fathom fdd2bb59, same Homebrew `rust-analyzer 0.0.0 (03fcb77246 2026-09-27)`): ripgrep
+12.0 s, clap 35.7 s, the recipe unchanged. typed_recall reads .671 (53,089 of 79,123 in-index edges) now that LB-F55 takes the
+22,443 references to a local out of its denominator; L1, L2 and L3 read as at d8ed9a29.

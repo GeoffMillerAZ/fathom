@@ -32,3 +32,13 @@ require_relative_in_subject 43`; jekyll: `files 159 ... autoload_in_subject 49 r
 require_relative_in_subject 7`. `import_resolution` 144 of 144 in-repo imports; 76 of 462 imports resolve where the oracle
 names no file (requires the load path `lib` does not reach: sinatra-contrib and rack-protection, jekyll's test/ and rake/). The
 same run with `-I lib -I test -I features/support -I .` names 194 of 194 and leaves 26 unattested.
+
+File edges (LB-F57), measured 2026-10-01 at fathom fdd2bb59: the same dump scores the resolver's cross-file edges when the
+run has no `-scip`, next to the ts-tags calls oracle (calibration/oracles/ts-tags) and the L1 universal-ctags default:
+
+    indexbench lang-oracle -dialect ruby -subject <checkout> -subject-name sinatra/sinatra \
+        -tool-oracle out/ruby-sinatra-calls.json -tool-oracle out/ruby-sinatra-imports.json -out docs/bench/readings/lang/ruby.json
+
+144 in-repo require pairs (sinatra 74, jekyll 70) against the resolver's 15 edges: file_edge_precision .4667, file_edge_recall
+.0486 (O273). The tree-sitter-ruby 0.23.1 wheel needed for the calls oracle installs into a fresh venv
+(`python3 -m venv v && v/bin/pip install tree-sitter==0.25.2 tree-sitter-ruby==0.23.1`).
