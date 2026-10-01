@@ -2,15 +2,15 @@
   "dialect": "javascript",
   "kind": "language",
   "target_level": "L4",
-  "level_met": "none",
+  "level_met": "L1",
   "grade": {
-    "L1": "unmet",
+    "L1": "excellent",
     "L2": "unmet",
     "L3": "unmet",
     "L4": "unmet"
   },
-  "measured_at": "2026-09-28",
-  "fathom_commit": "cdae696c",
+  "measured_at": "2026-10-01",
+  "fathom_commit": "57b1c59b",
   "extractor": "dialect",
   "subjects": [
     {
@@ -20,15 +20,15 @@
       "bytes": 432267,
       "counts": {
         "adjudicated": 89,
-        "call_fathom": 806,
-        "call_fathom_in_truth": 208,
+        "call_fathom": 763,
+        "call_fathom_in_truth": 233,
         "call_truth": 274,
-        "call_truth_found": 208,
-        "callables": 308,
-        "callables_signed": 308,
-        "fathom_defs": 318,
-        "file_edges_agree": 32,
-        "file_edges_fathom": 32,
+        "call_truth_found": 233,
+        "callables": 249,
+        "callables_signed": 249,
+        "fathom_defs": 259,
+        "file_edges_agree": 33,
+        "file_edges_fathom": 33,
         "file_edges_truth": 227,
         "import_edges_agree": 219,
         "import_edges_fathom": 232,
@@ -39,15 +39,15 @@
         "imports_in_repo": 232,
         "imports_resolved_agree": 232,
         "imports_unattested": 13,
-        "kind_equal": 176,
-        "matched": 176,
+        "kind_equal": 167,
+        "matched": 167,
         "oracle_defs": 177,
         "range_eligible": 139,
         "range_ok": 139,
         "scip_defs": 1978,
         "scip_defs_mapped": 212,
-        "scip_edges": 13201,
-        "scip_edges_typed": 731
+        "scip_edges": 7451,
+        "scip_edges_typed": 706
       },
       "families": {
         "calls": "A",
@@ -72,9 +72,10 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 198.10600000000002,
-        "extract_cpu_ms": 187.107,
-        "max_file_ms": 33,
+        "files_with_error": 0,
+        "extract_ms": 151.7529999999999,
+        "extract_cpu_ms": 144.28599999999994,
+        "max_file_ms": 24,
         "peak_module_pages": 334,
         "compiled_bytes": 0
       },
@@ -176,14 +177,14 @@
       "files": 152,
       "bytes": 590443,
       "counts": {
-        "adjudicated": 99,
-        "call_fathom": 579,
+        "adjudicated": 98,
+        "call_fathom": 576,
         "call_fathom_in_truth": 24,
         "call_truth": 31,
         "call_truth_found": 24,
-        "callables": 256,
-        "callables_signed": 256,
-        "fathom_defs": 256,
+        "callables": 245,
+        "callables_signed": 245,
+        "fathom_defs": 245,
         "file_edges_agree": 3,
         "file_edges_fathom": 3,
         "file_edges_truth": 163,
@@ -202,8 +203,8 @@
         "range_ok": 73,
         "scip_defs": 1552,
         "scip_defs_mapped": 73,
-        "scip_edges": 14720,
-        "scip_edges_typed": 34
+        "scip_edges": 6334,
+        "scip_edges_typed": 611
       },
       "families": {
         "calls": "A",
@@ -228,9 +229,10 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 473.08600000000024,
-        "extract_cpu_ms": 327.701,
-        "max_file_ms": 32,
+        "files_with_error": 0,
+        "extract_ms": 247.96099999999993,
+        "extract_cpu_ms": 231.146,
+        "max_file_ms": 16,
         "peak_module_pages": 315,
         "compiled_bytes": 0
       },
@@ -312,7 +314,6 @@
         "lib/response.js:946 redirect (assigned-function)",
         "lib/router/index.js:136 handle (assigned-function)",
         "lib/router/index.js:338 process_params (assigned-function)",
-        "lib/router/index.js:43 exports (assigned-function)",
         "lib/router/index.js:439 use (assigned-function)",
         "lib/router/index.js:502 route (assigned-function)",
         "lib/router/index.js:97 param (assigned-function)",
@@ -345,18 +346,18 @@
     }
   ],
   "metrics": {
-    "call_precision": 0.1675,
-    "call_recall": 0.7607,
+    "call_precision": 0.1919,
+    "call_recall": 0.8426,
     "def_mapping": 0.0807,
     "file_edge_precision": 1,
-    "file_edge_recall": 0.0897,
+    "file_edge_recall": 0.0923,
     "import_resolution": 1,
     "kind_agreement": 1,
     "range_agreement": 1,
     "signature_coverage": 1,
-    "sym_precision": 0.8368,
-    "sym_recall": 0.9908,
-    "typed_recall": 0.0274
+    "sym_precision": 0.9905,
+    "sym_recall": 0.9632,
+    "typed_recall": 0.0955
   },
   "metric_tiers": {
     "call_precision": "A",
@@ -383,16 +384,16 @@
     "method"
   ],
   "counts": {
-    "adjudicated": 188,
-    "call_fathom": 1385,
-    "call_fathom_in_truth": 232,
+    "adjudicated": 187,
+    "call_fathom": 1339,
+    "call_fathom_in_truth": 257,
     "call_truth": 305,
-    "call_truth_found": 232,
-    "callables": 564,
-    "callables_signed": 564,
-    "fathom_defs": 574,
-    "file_edges_agree": 35,
-    "file_edges_fathom": 35,
+    "call_truth_found": 257,
+    "callables": 494,
+    "callables_signed": 494,
+    "fathom_defs": 504,
+    "file_edges_agree": 36,
+    "file_edges_fathom": 36,
     "file_edges_truth": 390,
     "import_edges_agree": 374,
     "import_edges_fathom": 387,
@@ -403,23 +404,24 @@
     "imports_in_repo": 387,
     "imports_resolved_agree": 387,
     "imports_unattested": 13,
-    "kind_equal": 323,
-    "matched": 323,
+    "kind_equal": 314,
+    "matched": 314,
     "oracle_defs": 326,
     "range_eligible": 212,
     "range_ok": 212,
     "scip_defs": 3530,
     "scip_defs_mapped": 285,
-    "scip_edges": 27921,
-    "scip_edges_typed": 765
+    "scip_edges": 13785,
+    "scip_edges_typed": 1317
   },
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 1.99,
+    "files_with_error": 0,
+    "throughput_mb_s": 2.72,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 1.52,
-    "max_file_ms": 33,
+    "wall_throughput_mb_s": 2.56,
+    "max_file_ms": 24,
     "peak_module_pages": 334,
     "compiled_bytes": 0
   },
@@ -433,13 +435,12 @@
     "scip:var": 477
   },
   "notes": [
-    "adjudicated: 188 dialect-only definitions the L1 oracle is verified to miss (each listed under its subject's adjudicated, admitted by langbench.Adjudicate's deterministic file:line, name and module-scope check, owner decision D3) are left out of sym_precision's denominator",
+    "adjudicated: 187 dialect-only definitions the L1 oracle is verified to miss (each listed under its subject's adjudicated, admitted by langbench.Adjudicate's deterministic file:line, name and module-scope check, owner decision D3) are left out of sym_precision's denominator",
     "axios/axios: 1 files skipped by ingest's gates (generated)",
-    "axios/axios: 45 adjudication claims refused by the deterministic check (e.g. bin/contributors.js:73 assign (arrow-const): not at module scope: its line is indented)",
-    "expressjs/express: 10 adjudication claims refused by the deterministic check (e.g. examples/search/public/client.js:9 onreadystatechange (assigned-function): not at module scope: its line is indented)",
     "import_resolution: 387 of 387 in-repo imports resolve to a file the oracle names (0 unresolved, 0 only to other files; L3 bar: excellent \u003e= 0.95, good \u003e= 0.85); import edges precision 0.9664 (374 of 387) and recall 1 (374 of 374); 13 of 768 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 0 oracle import targets outside the files measured",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
-    "L3 re-grade 2026-09-29 (O145 fixes at 928ec49a and 9de28530, LB-F43 and LB-F44): import_resolution 1 (387 of 387 in-repo imports: axios 232, express 155) against scip-typescript 0.4.0's references on the import lines (tier A, round 2's indexes) on the pinned subjects (axios cdcfd214, express df0abc93). Before the fixes express read 53 of 155 (`require('..')`, `require('../')` and `require('../../')` name a directory, the repository root, whose index.js relative-path did not reach) and axios 232 of 232. The import counts come from a lang-oracle run at 9de28530 and are spliced into each recorded subject beside the families measured at cdae696c; regrading changes no other metric. L3 stays unmet: file_edge_recall .0897 misses .25 whatever import_resolution reads. Disclosed, not gated: import edge precision .9664 and recall 1; 13 of 768 imports resolve where the oracle names no file"
+    "tier-C L1 check (D5 extension, LB-F46): helix-editor/helix runtime/queries/_javascript/tags.scm at ba40e547426b0f9896c8bdc699a4ab11f2b37dbc (MPL-2.0), run by lang-oracle -tags-query on the same subjects, lists all 187 admitted D3 definitions (path, line and name). Its own L1 reads sym_recall 0.6428 and sym_precision 0.9782, because it also defines locals, named function expressions and object-literal pairs; it is a copy of the upstream tags.scm the dialect's shapes follow, so it corroborates the admissions, not the scope rule.",
+    "tier-C L2 (LB-F68, D5; O264, O265): calls against tree-sitter-javascript's upstream queries/tags.scm (v0.25.0, 44c892e0, MIT, calibration/oracles/ts-tags/javascript-tags.scm) run by py-tree-sitter 0.25.2 on the same subjects, scored in a lang-oracle run without -scip because a subject takes calls from one oracle: call_recall 0.7245 (1,173 of 1,619 pairs), call_precision 0.8767 (1,173 of 1,338), L2 unmet at tier C (good needs recall .75); 0.7888 and 0.9227 before LB-Q-javascript-rest's scope rule. All but one of the truth pairs fathom misses (a scratch pair diff) name a caller the dialect does not define: upstream also defines function-local bindings, named function expressions, object-literal pairs and methods and assignments inside functions. Disclosed: the dialect's definition shapes follow that query where they agree, so the oracle is independent in runtime, not in query shape. The L2 metrics above are scip-typescript's (tier A)."
   ],
-  "disposition": "partial: target L4, L1 unmet against scip-typescript 0.4.0 (tier A, D2) on axios + express: sym_recall 0.9908 but sym_precision 0.8368 vs the .90 good floor, with 188 adjudicated module-scope definitions (D3; classes arrow-const and assigned-function — scip-typescript records `app.use = function use(fn)` as local references with no definition, verified on express lib/application.js:194; the D3 audit withdrew object-literal-method and refused locals, docs/bench/readings/lang/d3-audit.md). 63 dialect-only definitions remain: function-local arrow consts and function expressions, test-callback helpers, handlers assigned inside functions, object-literal methods. L3 unmet: import_resolution 1 (387 of 387, 2026-09-29, after O145's fixes) but file_edge_recall 0.0897 vs .25. L2 unmet: call_precision 0.1675 — on untyped JavaScript scip-typescript resolves few call targets to callable symbols (305 truth pairs for 1385 fathom pairs), so SCIP is not an adequate L2 oracle for untyped JS; L4 def_mapping 0.0807, typed_recall 0.0274. Trigger: the dialect stops emitting function-local definitions and object-literal keys (sym_precision to .90), then a JavaScript calls oracle that sees property-assigned functions (a tier-C upstream tags.scm run, D5) or typed subjects (JSDoc/checkJs)."
+  "disposition": "partial: target L4, met L1 excellent against scip-typescript 0.4.0 (tier A, D2) on axios + express: sym_recall 0.9632, sym_precision 0.9905 (187 adjudicated module-scope definitions, D3 as audited, all 187 also listed by helix's tags.scm as a tier-C check), kind_agreement 1, range_agreement 1, signature_coverage 1, since the dialect stopped emitting function-local bindings, function-local member assignments and object-literal members (LB-Q-javascript-rest; the 3 dialect-only definitions left are computed-name class members such as [Symbol.iterator], and sym_recall's loss from 0.9908 is the 9 object-literal methods scip-typescript defines as locals). L2 unmet: against the tier-C upstream tags.scm calls oracle (LB-F68) call_recall 0.7245 vs .75 and call_precision 0.8767, because that oracle encloses calls in locals, named function expressions and object-literal pairs the dialect does not define (O265; 0.7888 and 0.9227 before the scope rule); scip-typescript's own L2 (tier A, the metrics above) reads call_precision 0.1919 because it resolves few call targets on untyped JavaScript, and lang-oracle cannot take the tier-C calls beside it (O264). L3 unmet: import_resolution 1 (387 of 387) but file_edge_recall 0.0923 vs .25. L4: def_mapping 0.0807, typed_recall 0.0955. Trigger: an owner decision on the L2 enclosure rule (O265) or a JavaScript calls oracle whose callers are module and member definitions (a typed checkJs/JSDoc subject), with a lang-oracle that takes tier-C calls beside -scip (O264); then L3 file edges on the same subjects."
 }
