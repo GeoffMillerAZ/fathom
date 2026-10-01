@@ -31,6 +31,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/conserve"
@@ -81,22 +82,114 @@ func commitPinLine(codec harness.Codec, hook harness.HookInput, armOff bool) str
 	if root == "" {
 		return ""
 	}
-	if pinCheckMode(root) != config.PinCheckFeedback {
+	mode := pinCheckMode(root)
+	if mode == config.PinCheckOff {
 		return ""
 	}
-	shas := gitSummaryShas(hook.ToolOutput)
+	// Feedback reaches the agent only on Claude Code (PR-V1: other
+	// harnesses stay record-only) and never under an OFF arm (IT-3).
+	feedback := mode == config.PinCheckFeedback && !armOff && codec.ID() == harness.ClaudeCode
+
+	ctx, cancel := testRunContext() // the hook guard's deadline (I53), or none outside a hook
+	defer cancel()
+	stageStart := time.Now()
 	var lines []string
-	for _, sha := range shas {
-		commit, losses, err := commitPinLosses(context.Background(), root, sha)
-		if err != nil {
-			continue
-		}
-		lines = append(lines, renderPinLines(losses, commit)...)
+	for _, sha := range gitSummaryShas(hook.ToolOutput) {
+		start := time.Now()
+		commit := sha
+		out := runCommitPinWithDeadline(ctx, pinStageBudget-time.Since(stageStart), func(ctx context.Context) ([]conserve.PinLoss, error) {
+			full, losses, err := commitPinLosses(ctx, root, sha)
+			commit = full
+			return losses, err
+		})
+		rendered := renderPinLines(out.losses, commit)
+		emitPinBeat(pinRecord{
+			Session: hook.SessionID, Commit: commit, Outcome: out, MS: time.Since(start).Milliseconds(),
+			Mode: mode, Emitted: feedback && len(rendered) > 0, ArmOff: armOff,
+		})
+		lines = append(lines, rendered...)
 	}
-	if armOff || codec.ID() != harness.ClaudeCode {
+	if !feedback {
 		return ""
 	}
 	return capPinLines(lines)
+}
+
+// The three outcomes of one commit's check, as its pin beat records them.
+const (
+	pinKept    = "kept"
+	pinLost    = "lost"
+	pinSkipped = "skipped"
+)
+
+// pinStageBudget is the stage's sub-budget inside the hook guard deadline
+// (ADR-057 decision 4, I53). A var so a test can spend it.
+var pinStageBudget = 250 * time.Millisecond
+
+// pinOutcome is one commit's check: kept, lost (with its losses) or skipped
+// (with a reason).
+type pinOutcome struct {
+	status string
+	reason string
+	losses []conserve.PinLoss
+}
+
+// runCommitPinWithDeadline runs work inside budget, itself inside ctx (the
+// hook guard's deadline, I53). A check that cannot start in time, overruns
+// either bound, or fails a read is skipped with a reason and renders
+// nothing: an answer that arrives late is dropped, and a check that did not
+// finish never reads as kept.
+func runCommitPinWithDeadline(ctx context.Context, budget time.Duration, work func(context.Context) ([]conserve.PinLoss, error)) pinOutcome {
+	if ctx.Err() != nil {
+		return pinOutcome{status: pinSkipped, reason: "deadline"}
+	}
+	if budget <= 0 {
+		return pinOutcome{status: pinSkipped, reason: "budget"}
+	}
+	sub, cancel := context.WithTimeout(ctx, budget)
+	defer cancel()
+	losses, err := work(sub)
+	switch {
+	case ctx.Err() != nil:
+		return pinOutcome{status: pinSkipped, reason: "deadline"}
+	case sub.Err() != nil:
+		return pinOutcome{status: pinSkipped, reason: "budget"}
+	case err != nil:
+		if s, ok := errIsPinSkip(err); ok {
+			return pinOutcome{status: pinSkipped, reason: string(s)}
+		}
+		return pinOutcome{status: pinSkipped, reason: "read_error"}
+	case len(losses) == 0:
+		return pinOutcome{status: pinKept}
+	}
+	return pinOutcome{status: pinLost, losses: losses}
+}
+
+// pinRecord is one checked commit, as its pin beat records it.
+type pinRecord struct {
+	Session string
+	Commit  string
+	Outcome pinOutcome
+	MS      int64
+	Mode    string
+	Emitted bool
+	ArmOff  bool
+}
+
+// emitPinBeat writes the commit's one `pin` beat to hooks.jsonl (channel
+// edit-hook).
+func emitPinBeat(r pinRecord) {
+	meta := map[string]string{
+		"status": r.Outcome.status,
+		"mode":   r.Mode,
+	}
+	if r.Outcome.reason != "" {
+		meta["reason"] = r.Outcome.reason
+	}
+	if r.Commit != "" {
+		meta["commit"] = r.Commit
+	}
+	emitBeat("edit-hook", pinBeatKind, firingMetaArm(meta, r.Session, "", r.ArmOff))
 }
 
 // pinCheckMode reads [hooks] pin_check for the repository at root, cheapest

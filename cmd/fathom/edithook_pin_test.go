@@ -6,6 +6,8 @@ package main
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"io"
 	"os"
 	"os/exec"
@@ -13,8 +15,10 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/config"
+	"github.com/geoffmilleraz/fathom/internal/conserve"
 	"github.com/geoffmilleraz/fathom/internal/harness"
 )
 
@@ -230,4 +234,94 @@ func runPinEditHook(t *testing.T, repo, command, output string) string {
 		t.Fatalf("edit-hook exited %d", rc)
 	}
 	return out.String()
+}
+
+// TestCommitPinSkipsSilentlyOverBudget pins PR-4: the stage runs inside a
+// 250 ms sub-budget within the hook guard deadline (I53). Over budget, past
+// the deadline, or on a read error it prints nothing and its beat says
+// skipped with a reason, never kept. CPU-safe: the budget is injected, and
+// nothing waits on a wall-clock interval it could lose under -race.
+func TestCommitPinSkipsSilentlyOverBudget(t *testing.T) {
+	lost := []conserve.PinLoss{{Test: "TestRoundHalfUp", Kind: "deleted"}}
+	worked := func(called *bool, losses []conserve.PinLoss, err error) func(context.Context) ([]conserve.PinLoss, error) {
+		return func(context.Context) ([]conserve.PinLoss, error) {
+			*called = true
+			return losses, err
+		}
+	}
+	check := func(t *testing.T, got pinOutcome, status, reason string) {
+		t.Helper()
+		if got.status != status || got.reason != reason {
+			t.Errorf("outcome = %s/%s, want %s/%s", got.status, got.reason, status, reason)
+		}
+		if status != pinLost && len(got.losses) != 0 {
+			t.Errorf("a %s outcome carries %d losses; a skipped check renders nothing", status, len(got.losses))
+		}
+	}
+
+	t.Run("no budget left: never starts", func(t *testing.T) {
+		called := false
+		check(t, runCommitPinWithDeadline(context.Background(), 0, worked(&called, lost, nil)), pinSkipped, "budget")
+		if called {
+			t.Error("the check started with no budget left")
+		}
+	})
+	t.Run("the hook deadline already passed", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		called := false
+		check(t, runCommitPinWithDeadline(ctx, time.Hour, worked(&called, lost, nil)), pinSkipped, "deadline")
+		if called {
+			t.Error("the check started past the hook deadline")
+		}
+	})
+	t.Run("an answer that arrives after the budget is dropped", func(t *testing.T) {
+		got := runCommitPinWithDeadline(context.Background(), time.Nanosecond, func(ctx context.Context) ([]conserve.PinLoss, error) {
+			<-ctx.Done() // the sub-budget ends; the answer is late
+			return lost, nil
+		})
+		check(t, got, pinSkipped, "budget")
+	})
+	t.Run("the hook deadline passes mid-check", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		got := runCommitPinWithDeadline(ctx, time.Hour, func(context.Context) ([]conserve.PinLoss, error) {
+			cancel()
+			return lost, nil
+		})
+		check(t, got, pinSkipped, "deadline")
+	})
+	t.Run("a read error", func(t *testing.T) {
+		called := false
+		check(t, runCommitPinWithDeadline(context.Background(), time.Hour, worked(&called, nil, errors.New("cat-file: broken pipe"))), pinSkipped, "read_error")
+	})
+	t.Run("a root commit", func(t *testing.T) {
+		called := false
+		check(t, runCommitPinWithDeadline(context.Background(), time.Hour, worked(&called, nil, pinSkipRootCommit)), pinSkipped, "root_commit")
+	})
+	t.Run("in time", func(t *testing.T) {
+		called := false
+		check(t, runCommitPinWithDeadline(context.Background(), time.Hour, worked(&called, lost, nil)), pinLost, "")
+		check(t, runCommitPinWithDeadline(context.Background(), time.Hour, worked(&called, nil, nil)), pinKept, "")
+	})
+
+	// Through `fathom edit-hook` with the budget spent: a commit that loses a
+	// pin prints nothing, and its one beat says skipped, never kept.
+	t.Run("edit-hook over budget", func(t *testing.T) {
+		repo := pinRepo(t, config.PinCheckFeedback)
+		prev := pinStageBudget
+		pinStageBudget = 0
+		t.Cleanup(func() { pinStageBudget = prev })
+		writeRepoFile(t, repo, "money/round_test.go", pinTestHeader+pinDownTest)
+		out := pinCommitAll(t, repo, "drop half-up")
+		if stdout := runPinEditHook(t, repo, `git commit -am "drop half-up"`, out); stdout != "" {
+			t.Fatalf("an over-budget check printed %q", stdout)
+		}
+		beats := pinBeats(t)
+		if len(beats) != 1 || beats[0]["status"] != pinSkipped || beats[0]["reason"] != "budget" {
+			t.Fatalf("pin beats = %v, want one skipped/budget", beats)
+		}
+		if beats[0]["commit"] == "" || !strings.HasPrefix(beats[0]["commit"], pinSha(t, out)) {
+			t.Errorf("the skipped beat names commit %q, want %s", beats[0]["commit"], pinSha(t, out))
+		}
+	})
 }
