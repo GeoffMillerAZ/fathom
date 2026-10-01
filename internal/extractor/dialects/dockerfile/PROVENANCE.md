@@ -51,3 +51,20 @@
   `LB-Q-dockerfile-rest`): no tags-engine import strategy maps a local image tag to the
   Dockerfile that built it, and `internal/langbench.recompute()` does not score
   `xref_precision`/`xref_recall` for any `kind: "tooling"` dialect yet.
+
+## Cross-file references (LB-X-docker-image-ref)
+
+The dialect stays tags-engine, and `tags.scm` still captures no `COPY --from` (above). A
+Dockerfile reaches the doc-xref pass (`fusion.enrichDocXrefEdges`) as a `DocFile`
+synthesized from this dialect's own nodes (`fusion.DockerfileDocFile`): its stages are the
+entities, its last stage the root (the image `docker build` produces), and each `FROM` and
+`COPY --from` naming an image — not an earlier stage's alias, not a stage index, not
+`scratch` — an `image-ref` reference from the stage it is written in, read from the source
+text (escape directive, line continuations and heredocs honoured) and attributed to the
+stage whose `FROM` line precedes it. The reference resolves through the pass's image-tag
+index to the root stage of the in-repo Dockerfile that builds that image, so both ends of
+a stored edge are this dialect's symbol keys. A templated reference (`FROM ${BASE}`) is
+never joined. Only a file the dispatch routes here (`Dockerfile`, `*.dockerfile`) is a
+build target: `Dockerfile.prod` and `Containerfile` are not dispatched, so a build naming
+one resolves to nothing.
+

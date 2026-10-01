@@ -1,13 +1,18 @@
 {
   "symbols": [
-    { "name": "web", "kind": "ComposeService", "package": "basic", "line": 3, "end_line": 9, "signature": "nginx:1.27",
-      "calls": ["api", "cache"], "tier": "verified" },
-    { "name": "api", "kind": "ComposeService", "package": "basic", "line": 10, "end_line": 19, "signature": "./api",
-      "calls": ["cache", "db"], "tier": "verified" },
+    { "name": "basic.yaml", "kind": "ComposeFile", "package": "basic", "line": 1, "end_line": 32, "signature": "shop", "tier": "verified" },
+    { "name": "web", "kind": "ComposeService", "package": "basic", "line": 3, "end_line": 9, "signature": "nginx:1.27", "calls": ["api", "cache"], "tier": "verified" },
+    { "name": "api", "kind": "ComposeService", "package": "basic", "line": 10, "end_line": 19, "signature": "./api", "calls": ["cache", "db"], "tier": "verified" },
     { "name": "db", "kind": "ComposeService", "package": "basic", "line": 20, "end_line": 23, "signature": "postgres:16", "tier": "verified" },
     { "name": "cache", "kind": "ComposeService", "package": "basic", "line": 24, "end_line": 25, "signature": "./cache", "tier": "verified" },
-    { "name": "worker", "kind": "ComposeService", "package": "basic", "line": 26, "end_line": 27,
-      "signature": "registry.example.com/shop/worker:${TAG:-latest}", "tier": "verified" }
+    { "name": "worker", "kind": "ComposeService", "package": "basic", "line": 26, "end_line": 27, "signature": "registry.example.com/shop/worker:${TAG:-latest}", "tier": "verified" }
   ],
-  "cross_file": []
+  "cross_file": [
+    { "from": "web", "edge": "runs", "raw": "nginx:1.27", "target": "nginx:1.27", "strategy": "image-ref", "line": 4 },
+    { "from": "api", "edge": "build", "raw": "./api", "target": "api", "strategy": "repo-path", "line": 11 },
+    { "from": "api", "edge": "build_dockerfile", "raw": "Dockerfile.dev", "target": "Dockerfile.dev", "strategy": "repo-path", "line": 13 },
+    { "from": "db", "edge": "runs", "raw": "postgres:16", "target": "postgres:16", "strategy": "image-ref", "line": 21 },
+    { "from": "cache", "edge": "build", "raw": "./cache", "target": "cache", "strategy": "repo-path", "line": 25 },
+    { "from": "worker", "edge": "runs", "raw": "registry.example.com/shop/worker:${TAG:-latest}", "target": "registry.example.com/shop/worker:${TAG:-latest}", "strategy": "image-ref", "line": 27 }
+  ]
 }

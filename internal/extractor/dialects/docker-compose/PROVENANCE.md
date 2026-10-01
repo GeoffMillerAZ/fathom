@@ -48,20 +48,23 @@ Divergences, all forced by §4's selector subset (no literals, no string operati
   `network_mode: service:x` need a string split (`db:alias`, `x:ro`), which the engine
   cannot do. The oracle runs `config --no-normalize` precisely so that the dependencies
   the tool infers from those keys do not count as `depends_on` truth.
-- **Cross-file references are recorded, not resolved.** `extends.file` (from the
-  service) and `include:` (a path, `{path}`, or `{path: [..]}`) are captured as
-  `repo-path` cross-file references (`DocResult.CrossFile`, goldens in
-  `extends-include.yaml` and `include-only.yaml`). `fusion.ResolveDocXrefs` joins a
-  `repo-path` reference to the target file's *root entity* (an entity selected at `$`),
-  and a compose file has none: it carries no scalar that is always present (top-level
-  `name:` is optional) and the engine has no file-name value to name one with. Nor is a `build:` edge
-  resolvable: a Dockerfile is a tags-engine file, absent from the doc-xref index
-  (`LB-X-docker-image-ref`, deferred). No `build` cross-file entry is declared: the
-  design's prototype (`testdata/doc/compose.doc.json`) resolves `build` through
-  `repo-path`, which would join a service to the sole *doc* file in its context
-  directory — a `package.json`, say — a guess, not the Dockerfile the edge means.
-  Both `extends.file` and `include` will start resolving, with no dialect change, when a
-  compose file has a root entity.
+- **Cross-file references resolve through a root entity and the image-tag index**
+  (LB-X-docker-image-ref). Every compose file has a root entity, `ComposeFile`, named by
+  the file itself (`$file`, signed by the optional top-level `name:`): the origin of its
+  `include:` references and the target that `include:` and `extends.file` (both
+  `repo-path`) resolve to in `fusion.ResolveDocXrefs`. A service's `image:` is an
+  `image-ref` reference (edge `runs`), resolved through the doc-xref pass's in-memory
+  image-tag index to the root stage of the in-repo Dockerfile that builds that image. Its
+  build is two `repo-path` references the resolver joins: `build` (the context, `build:` or
+  `build.context`) and `build_dockerfile` (`build.dockerfile`, relative to the context);
+  together they name one Dockerfile, Docker's rule (`<context>/Dockerfile` by default, the
+  referring file's directory when no context is written). A service carrying both
+  `image:` and a build is one of the index's three build sites (with docker-bake targets
+  and a literal `docker build -t` in a script, a Makefile or a CI run step). The design's
+  prototype (`testdata/doc/compose.doc.json`) resolved `build` as a plain directory, which
+  joined a service to the sole doc file in its context (a `package.json`, say); the
+  resolver's build rule names the Dockerfile instead. `extends: {file, service}` resolves
+  to the file's root entity, not to the service it names (the engine records the file).
 - **YAML merge keys (`<<: *anchor`) are not applied by the doc decoder.** Aliases are
   followed (`depends_on: *deps` works, `depends-forms.yaml`), but a `<<` key stays a key,
   so a service that inherits `image:` or `depends_on:` through a merge loses them (checked:
@@ -90,13 +93,8 @@ invalid on purpose) is the one, and it is the reading's one dialect-only definit
 which is the product behaviour the number should show.
 
 A second, tier-C mode (`-xref`) writes the cross-file references a raw walk finds:
-`extends.file` and `build:` (context + `dockerfile:`, when the Dockerfile exists in the
-subject). Over the two subjects that is 36 edges — 35 `build:` edges onto Dockerfiles and
-one `extends.file` edge onto `common.yaml` — and the harness drops every one as out of
-scope (§1.4: the target is a file the dialect does not read), counting them in the
-reading's notes. That count is the disclosure: L3 is not measured because there is
-nothing scorable, not because it scored well. `include:` is not emitted: its origin is
-the document, and a document with no root entity has no origin to name.
+`include:`, `extends.file` and `build:` (context + `dockerfile:`, when the Dockerfile
+exists in the subject).
 
 ## Subjects
 

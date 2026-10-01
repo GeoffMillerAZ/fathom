@@ -152,7 +152,8 @@ func TestDockerComposeDialectGoldens(t *testing.T) {
 // service the incumbent spells "build: <context>" and the doc engine (§4: no
 // literals, no templating) can only emit the bare context, a documented
 // divergence (PROVENANCE.md), and a build map with no context reads "build: ."
-// from the incumbent and "" here.
+// from the incumbent and "" here. The dialect's one addition, the file's root
+// entity (ComposeFile, LB-X-docker-image-ref), is not a service.
 func TestDockerComposeDialectIncumbentParity(t *testing.T) {
 	fixtures := map[string]string{
 		"images-and-depends-on": `version: "3.9"
@@ -202,9 +203,15 @@ networks:
 			if err != nil {
 				t.Fatal(err)
 			}
-			neu, err := x.Extract("svc", "docker-compose.yml", []byte(src))
+			all, err := x.Extract("svc", "docker-compose.yml", []byte(src))
 			if err != nil {
 				t.Fatal(err)
+			}
+			var neu []core.SymbolNode
+			for _, n := range all {
+				if n.Kind == core.KindComposeService {
+					neu = append(neu, n)
+				}
 			}
 			if len(old) != len(neu) {
 				t.Fatalf("service count: incumbent %d, dialect %d", len(old), len(neu))
@@ -237,5 +244,44 @@ networks:
 				}
 			}
 		})
+	}
+}
+
+// TestDockerComposeDialectRootAndBuildRefs (LB-X-docker-image-ref): every
+// compose file has a root entity named by the file (ComposeFile, signed by
+// the optional top-level name:), the origin of its include: references and
+// the target an include or an extends.file resolves to; a service's image:
+// is an image-ref reference, and its build — a context string, a map's
+// context, a map's dockerfile (relative to the context) — repo-path
+// references the doc-xref resolver joins into one Dockerfile.
+func TestDockerComposeDialectRootAndBuildRefs(t *testing.T) {
+	x := loadDockerComposeExtractor(t)
+	src := "name: shop\nservices:\n  a:\n    image: acme/a:1\n    build: ./a\n" +
+		"  b:\n    build:\n      context: ./b\n      dockerfile: docker/Dockerfile\n" +
+		"  c:\n    build:\n      dockerfile: c.dockerfile\n"
+	res, err := x.ExtractDoc("svc", "deploy/compose.prod.yaml", []byte(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(res.Roots, []string{"compose.prod.yaml"}) {
+		t.Fatalf("roots %q, want the file's own name", res.Roots)
+	}
+	root := res.Nodes[0]
+	if root.Kind != "ComposeFile" || root.Name != "compose.prod.yaml" || root.Signature != "shop" || root.Line != 1 {
+		t.Fatalf("root entity %+v", root)
+	}
+	var got []string
+	for _, c := range res.CrossFile {
+		got = append(got, c.From+" "+c.Edge+" "+c.Strategy+" "+c.Raw)
+	}
+	want := []string{
+		"a runs image-ref acme/a:1",
+		"a build repo-path ./a",
+		"b build repo-path ./b",
+		"b build_dockerfile repo-path docker/Dockerfile",
+		"c build_dockerfile repo-path c.dockerfile",
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("cross_file\n got: %q\nwant: %q", got, want)
 	}
 }
