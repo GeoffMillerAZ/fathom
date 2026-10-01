@@ -2,6 +2,7 @@ package semantic
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -71,31 +72,52 @@ func TestCompilePerCallDeadlineCountsSectionFailedAndContinues(t *testing.T) {
 }
 
 // EW-33: only the caller's ctx aborts, and no compiled section is dropped.
+// Run on both stores: the SQLite store refuses a write on a cancelled ctx
+// (the daemon's store), so only it pins that the abort's flush outlives the
+// caller's cancellation; the memory store ignores ctx.
 func TestCompileCallerCancelFlushesCompiledSections(t *testing.T) {
-	st := store.NewMemoryStore()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	llm := &scriptedLLM{script: map[int]func() (llmclient.Response, error){
-		3: func() (llmclient.Response, error) {
-			cancel()
-			return llmclient.Response{}, ctx.Err()
+	stores := map[string]func(t *testing.T) store.Store{
+		"memory": func(*testing.T) store.Store { return store.NewMemoryStore() },
+		"sqlite": func(t *testing.T) store.Store {
+			sq, err := store.NewSQLiteStore("")
+			if err != nil {
+				t.Fatalf("NewSQLiteStore: %v", err)
+			}
+			t.Cleanup(func() { _ = sq.Close() })
+			return sq
 		},
-	}}
-	c := &Compiler{St: st, LLM: llm, Model: "mock-model", Now: fixedNow}
-	run, err := c.Compile(ctx, fourDocs())
-	if err == nil {
-		t.Fatal("a cancelled caller ctx must return an error")
 	}
-	claims, _ := st.ClaimsForService(context.Background(), "svc", LayerObligations)
-	if len(claims) != 2 {
-		t.Fatalf("stored %d claims after cancel, want sections 1-2's (2)", len(claims))
-	}
-	if run.SectionsCompiled != 2 {
-		t.Fatalf("SectionsCompiled = %d, want 2", run.SectionsCompiled)
-	}
-	runs, _ := st.CompileRuns(context.Background(), "svc", LayerObligations)
-	if len(runs) != 1 {
-		t.Fatalf("compile_runs rows = %d, want the aborted run recorded", len(runs))
+	for name, mk := range stores {
+		t.Run(name, func(t *testing.T) {
+			st := mk(t)
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			llm := &scriptedLLM{script: map[int]func() (llmclient.Response, error){
+				3: func() (llmclient.Response, error) {
+					cancel()
+					return llmclient.Response{}, ctx.Err()
+				},
+			}}
+			c := &Compiler{St: st, LLM: llm, Model: "mock-model", Now: fixedNow}
+			run, err := c.Compile(ctx, fourDocs())
+			if err == nil {
+				t.Fatal("a cancelled caller ctx must return an error")
+			}
+			if !errors.Is(err, context.Canceled) || !strings.HasPrefix(err.Error(), "semantic: compile docs/c.md") {
+				t.Fatalf("err = %v, want the caller's cancellation at section 3 (not a store write refused on the cancelled ctx)", err)
+			}
+			claims, _ := st.ClaimsForService(context.Background(), "svc", LayerObligations)
+			if len(claims) != 2 {
+				t.Fatalf("stored %d claims after cancel, want sections 1-2's (2)", len(claims))
+			}
+			if run.SectionsCompiled != 2 {
+				t.Fatalf("SectionsCompiled = %d, want 2", run.SectionsCompiled)
+			}
+			runs, _ := st.CompileRuns(context.Background(), "svc", LayerObligations)
+			if len(runs) != 1 {
+				t.Fatalf("compile_runs rows = %d, want the aborted run recorded", len(runs))
+			}
+		})
 	}
 }
 
