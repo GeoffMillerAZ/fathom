@@ -45,3 +45,14 @@ of 486 in-repo imports (monolog 400, guzzle 86; scip-php does write references o
 precision .8773 (486 of 554), recall 1, 43 of 897 imports resolved where the index names no file. typed_recall is
 still unmeasured (no `enclosing_range`): this re-run predates the `ImportIndex` line-span fallback
 (LB-F54), which landed in the same wave, so it is read with the next measure.
+
+Re-run 2026-10-01 (wave lc, fathom 7f342df3 plus LB-F81): same recipe, same pins (scip-php 71a5b117, php-parser 5.7.0).
+Move each `index.scip` out of the subject before `lang-oracle -scip`: a SCIP index inside the subject makes the
+harness skip the file-resolved edges ("a SCIP index is present for this repo"), so file_edge_* read null. phpextract.go
+and the dialect now emit properties (declared and promoted, `Owner.$name`), class/interface/trait/enum constants and
+enum cases (`Owner.Case`), the definitions scip-php writes with the `.` descriptor: scip_defs_mapped 1,592 to 2,014 of
+2,054 on monolog and 494 to 595 of 595 on guzzle, def_mapping .7875 to .9849, typed_recall .6744 to .9997 (L4
+excellent); L1 (sym_precision/recall 1, kind and range agreement 1, signature_coverage 1) and file edges (precision 1,
+recall .0745) are unchanged, because the php-parser dump emits none of the new kinds and `lang-oracle` leaves a kind
+outside the oracle's intersection out of both sides (`excluded_by_kind` names 343 + 65 properties, 71 + 39 constants,
+8 enum cases). The 40 monolog definitions still unmapped are not tallied here.

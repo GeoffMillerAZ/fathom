@@ -63,3 +63,10 @@
   the store and imports from the dialect). A switch flips `pipeline.go`'s line, deletes `phpextract.go` and
   its test, and bumps `ExtractorEpoch`: the dialect adds a `PhpNamespace` symbol to every namespaced file
   and changes `Package` from the directory to the namespace, so every key of a namespaced file changes.
+
+- Members (LB-F81): `tags.scm` adds `PhpProperty` (a `property_element`, and a promoted constructor
+  parameter), `PhpConst` (a `const_element`, so a `const A = 1, B = 2;` group is two) and `PhpEnumCase`, the
+  definitions scip-php writes. A property keeps its `$` (`Box.$label`). The engine qualifies a definition
+  by its immediate container only, so a promoted constructor property, nested in its method, is the bare
+  `$width` here and `Box.$width` in `phpextract.go` (lang-oracle matches bare names; a `member` kind flag in
+  `tsextract.go`'s qualification would close it).
