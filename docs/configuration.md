@@ -833,6 +833,70 @@ deadline (5 s less the I53 margin): tier 1 past the deadline is dropped
 silently and the row says `deadline: missed`. No model is asked anything
 (provider none): the line is byte-identical whatever `[decide]` says.
 
+## The commit pin line: `[hooks] pin_check`
+
+The commit pin line (ADR-057 decision 4, `docs/design/served-not-kept.md`
+section 3) checks each `git commit` an agent runs through its Bash tool for
+a **lost pin**: a test that a governing source names (an invariant's
+enforcement column in `docs/intent/invariants.md`, a `tests/*.cue`
+manifest entry, a `docs/intent/scope.md` evidence line, a `// certifies:`
+marker, or a guard note's `done needs:`) and that the commit deleted,
+renamed, weakened, skipped, changed the golden data of, or moved the
+marker off. It runs in **record** mode by default until PR-M1 (30 days of
+record mode on owner traffic) passes:
+
+```toml
+# .fathom/config.toml (or ~/.fathom/config.toml)
+[hooks]
+pin_check = "record"   # "off" | "record" (default) | "feedback"
+```
+
+- `off`: no check and no beat.
+- `record` (the default when no layer sets the key): each commit is
+  checked and leaves one `pin` beat in the hook log (`~/.fathom/hooks.jsonl`,
+  channel `edit-hook`): the session, the commit, the status (`kept`,
+  `lost`, or `skipped` with its reason), the loss kinds, the lost test ids,
+  the naming sources as `path:line`, and the stage's milliseconds. Never
+  source text. The hook's output is byte-identical to `off`.
+- `feedback`: `record`, plus one line per lost pin in the agent's context,
+  in the same payload as anything else the call earned (Claude Code only).
+
+What the line does:
+
+- It rides the existing `PostToolUse(Bash)` → `fathom edit-hook` row. Only
+  a command that runs `git commit` reaches it (after `cd`, `pushd` or
+  `git -C`); every other Bash call still forks nothing.
+- It reads the commit's sha from git's own summary line (`[main 3f9a1c2]
+  …`) in the command's output and checks the commit's first parent to the
+  commit: no store, no daemon call, no reach (a pin is named by its source,
+  never inferred from what a test reaches). It runs whether or not the rule
+  was served: a lost pin is a fact about the diff.
+- One line per lost pin, at most three per commit and then `+N more at
+  pre-push`, each under 240 bytes: the loss kind, the test, the source that
+  names it and where to look at head, for example
+  `fathom pin renamed · TestRoundHalfUp (named by invariant_enforcement docs/intent/invariants.md:5) · now TestRoundHalfUpAgain (money/half_test.go:5) in 3f9a1c2 · a -run on this name now matches no test`.
+  When the same commit also edits the source that names the pin, the line
+  adds `(its source was edited in this commit)`: a deliberate retirement
+  stays visible without being called a violation. A test whose body was
+  only `edited` is silent, a test moved unchanged to another file is kept,
+  and nothing is printed when no pin is lost.
+- It reads every blob through one `git cat-file --batch` process, the
+  changed files through one `git diff-tree` and the parent's file list (for
+  its `tests/*.cue` manifests) through one `git ls-tree`, inside a 250 ms
+  sub-budget of the hook's deadline (I53). Over budget, past the deadline or on a read
+  error it prints nothing and its beat says `skipped` with the reason,
+  never `kept`.
+
+What it does not do: it never blocks the commit, never offers a waiver or a
+bypass, never repeats the rule's text and never describes the detector; it
+opens no store and keeps no state file. A commit that prints no summary
+line (`git commit -q`) is not checked: its beat says `skipped` with reason
+`no_summary`, so the skip rate is measured. Harnesses other than Claude
+Code stay record-only until their post-shell input and added context are
+confirmed (PR-V1). The backstop is pre-push: `fathom conserve
+--strict-plane integrity` blocks a silent pin loss whatever this line said
+(PR-9).
+
 ## The console: `[console]`
 
 The Observatory console bounds its own background work

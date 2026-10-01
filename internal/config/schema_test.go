@@ -157,6 +157,10 @@ bad19: #Config & {
 bad20: #Config & {
 	work: ci_summaries: [{path: "ci/junit.xml", commit: "main"}]
 }`},
+		{"[hooks] pin_check outside off|record|feedback", `
+bad21: #Config & {
+	hooks: pin_check: "warn"
+}`},
 	}
 
 	cctx := cuecontext.New()

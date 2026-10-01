@@ -248,7 +248,20 @@ type Hooks struct {
 	// the failing tests and the changed symbols they reach. Default false
 	// until the level 10 bench (TR-M1) reads PASS.
 	TestRun bool
+	// PinCheck (PR-6, ADR-057 decision 4) is the commit pin line's mode:
+	// PinCheckOff (no check, no beat), PinCheckRecord (check and beat,
+	// stdout unchanged) or PinCheckFeedback (the lost-pin lines reach the
+	// agent too). Load sets PinCheckRecord when no layer names it: record
+	// mode until PR-M1 passes.
+	PinCheck string
 }
+
+// The [hooks] pin_check values (schema.cue #Hooks).
+const (
+	PinCheckOff      = "off"
+	PinCheckRecord   = "record"
+	PinCheckFeedback = "feedback"
+)
 
 // Console configures the Observatory console's bounds (schema.cue
 // #Console; RT-118, docs/design/responsible-tenant.md §14):
@@ -396,7 +409,7 @@ type Loaded struct {
 // validate is a *LoadError naming that file.
 func Load(userPath, projectPath string) (Loaded, error) {
 	out := Loaded{
-		Config:      Config{Profiles: map[string]Profile{}, Decide: DefaultDecide},
+		Config:      Config{Profiles: map[string]Profile{}, Decide: DefaultDecide, Hooks: Hooks{PinCheck: PinCheckRecord}},
 		Provenance:  Provenance{},
 		UserPath:    userPath,
 		ProjectPath: projectPath,
