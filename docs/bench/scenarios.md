@@ -357,7 +357,7 @@ they touch files this repo already carries.
 Every task also carries a `violation_probe` (`ViolationProbe`,
 `types.go`): a tiny scripted edit — a `sed`, a heredoc, or (for the
 commit task) a real `git commit` — that violates the rule.
-`internal/scenariobench/guardsm1_probe_test.go`
+`internal/scenariobench/guardsm1/guardsm1_probe_test.go`
 (`TestGuardsM1ViolationProbesFireAndClear`) applies each task's own
 `subject.setup` (when it has one) to a disposable `git archive HEAD` copy
 of the tree, then proves the primary detector actually discriminates:

@@ -131,7 +131,7 @@ problem:
    (DuckDB ATTACH, vision 03) targets a backend ADR-025 deleted.
 8. The typed pass costs ~3.3× a syntax-only ingest even fully cached and
    cannot reach its own ≤2× target on `go/packages`
-   (`internal/fusion/typedcalls_perf_test.go:14-21,105-109`).
+   (`internal/fusion/perfgate/typedcalls_perf_test.go:38-49`).
 9. Response budgeting is per handler, not middleware; O90's 63k-token answer
    happened before its guard existed (`.fathom/observations.md:1403-1409`).
 10. Selector-method and interface edges are still missing in places (O39/O40),

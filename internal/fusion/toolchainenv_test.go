@@ -130,7 +130,8 @@ func TestTypedPassChildrenNicedAndCapped(t *testing.T) {
 // / GOMAXPROCS=1 keeps it; FATHOM_TOOLCHAIN_PROCS=N moves the ceiling and
 // FATHOM_TOOLCHAIN_PROCS=off lifts it (the environment passes through
 // untouched), which is how a measurement of the typed pass's own cost
-// (TestTypedEdges_PerformanceGate) runs it unthrottled.
+// (internal/fusion/perfgate's TestTypedEdges_PerformanceGate) runs it
+// unthrottled.
 func TestToolchainCapNeverRaisesAndCanBeLifted(t *testing.T) {
 	cases := []struct {
 		knob      string
