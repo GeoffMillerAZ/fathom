@@ -56,3 +56,25 @@ every `call` node but not a bare identifier, so the oracle's non-local identifie
 a reader called inside its class) are the dialect's L2 recall misses; the dialect also lists `super` as a call, which upstream's
 pattern does not.
 
+
+JavaScript (LB-F68) runs the grammar's own upstream `queries/tags.scm` (tree-sitter/tree-sitter-javascript v0.25.0,
+`44c892e0`, the lock's pin, MIT, verbatim under a header as `javascript-tags.scm`) with py-tree-sitter 0.25.2 and
+tree-sitter-javascript 0.25.0:
+
+    <tools>/pyts/bin/pip install tree-sitter==0.25.2 tree-sitter-javascript==0.25.0
+    <tools>/pyts/bin/python tags_oracle.py --lang javascript --query javascript-tags.scm \
+        --ext .js --ext .jsx --ext .mjs --ext .cjs <clone>/axios > out/javascript-axios-calls.json
+    # axios/axios cdcfd214: 165 files / 4,621 pairs (its dist/ bundles included: the harness keeps the 989 pairs on
+    # files fathom reads), expressjs/express df0abc93: 152 / 630; 0 parse errors
+
+scip-typescript is no L2 oracle on untyped JavaScript (it resolves few call targets to callable symbols: 305 truth pairs
+for 1,385 fathom pairs), so this is the JavaScript calls truth. Its `@definition.function` and `@definition.method` both
+enclose calls; a call's callee is the upstream `@name` (an identifier other than `require`, or a member call's property).
+Disclosure: the javascript dialect's definition shapes follow this query (class and function declarations, methods,
+arrow-function and function-expression bindings, member assignments), so the oracle is independent in runtime, not in
+query shape, where they agree. They do not agree on scope: upstream also defines a function-local binding, a named
+function expression, an object-literal pair or method and an assignment inside a function, which the dialect leaves
+out since LB-Q-javascript-rest (scip-typescript defines none of them as a module or member symbol), so upstream pairs a call written
+in one with that inner name and the dialect with the definition around it. `indexbench lang-oracle` takes calls from one
+oracle per subject, so this file is scored in a run without `-scip` (`-tool-oracle out/javascript-<subject>-calls.json`),
+and the reading carries its numbers in a note beside scip-typescript's L1, L3 and L4.

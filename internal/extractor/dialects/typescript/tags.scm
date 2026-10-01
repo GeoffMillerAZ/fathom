@@ -1,12 +1,35 @@
 ; dialects/typescript/tags.scm — symbol + call queries for the wazero tree-sitter engine
 ; (internal/extractor.NewTSExtractor("javascript") dispatches .ts/.tsx files
 ; to this query set, ADR-021 §4). TypeScript's grammar is a superset of
-; JavaScript's, so every javascript.scm pattern still applies (class
+; JavaScript's, so javascript.scm's patterns still apply (class
 ; declarations, functions, methods, arrow-function const bindings) — this
 ; file repeats them plus the TS-only constructs (interfaces, type aliases,
 ; enums). Used for both the "typescript" and "tsx" grammar entry points.
 ;
 ; Predicate-free by design — see python.scm's header comment for why.
+;
+; Scope (LB-Q-typescript-rest, measured against scip-typescript 0.4.0 on zod
+; 1fb56a5c and nest 9ff83d54), the javascript dialect's rule: a function
+; declaration is a definition at any depth (scip-typescript reports a nested
+; one as a local symbol whose documentation says function); a binding to an
+; arrow function or function expression only as a direct child of the
+; program or of an export statement (so an exported namespace member is
+; one), never inside a function, block or test callback, where the oracle
+; records a const and never a definition; a method only in a class body.
+; No member of an object literal is a definition, a shorthand method or a
+; pair alike, `export default { ... }` included: scip-typescript defines
+; one only as a local symbol, and only where the object's contextual type
+; declares no such member (zod packages/bench/array.ts:12, `zod3() {…}` passed
+; to `metabench`: "(method) zod3"); otherwise the name is only a reference to
+; the declared member (zod packages/zod/src/v4/classic/schemas.ts:256 `check`,
+; to ZodType#check(); packages/bench/property-access.ts:22 `get`, to
+; ProxyHandler#get()). That is the type checker's rule, not a module or
+; member rule the D3 rule (docs/bench/readings/lang/d3-audit.md) could
+; admit. On the subjects this scope rule moves sym_precision .9381 -> .986
+; and sym_recall .9937 -> .9729, all of that loss the 185 object-literal
+; methods and getters the oracle had reported (zod's benchmark objects and
+; recursive-schema getters most). A call written inside a binding that is
+; no longer a definition belongs to the definition around it.
 
 (class_declaration
   name: (_) @name) @definition.class
@@ -38,13 +61,32 @@
   body: (_) @body) @definition.function
 
 ; Name alternation per critic B2 — see javascript.scm's comment.
-(method_definition
-  name: [(property_identifier) (private_property_identifier) (computed_property_name)] @name
-  body: (_) @body) @definition.method
+(class_body
+  (method_definition
+    name: [(property_identifier) (private_property_identifier) (computed_property_name)] @name
+    body: (_) @body) @definition.method)
 
-(variable_declarator
-  name: (identifier) @name
-  value: [(arrow_function body: (_) @body) (function_expression body: (_) @body)]) @definition.function
+; const f = () => … / var g = function () {…} at module scope.
+(program
+  [(lexical_declaration
+     (variable_declarator
+       name: (identifier) @name
+       value: [(arrow_function body: (_) @body) (function_expression body: (_) @body)]) @definition.function)
+   (variable_declaration
+     (variable_declarator
+       name: (identifier) @name
+       value: [(arrow_function body: (_) @body) (function_expression body: (_) @body)]) @definition.function)])
+
+; export const f = () => … (at module scope, or in a namespace).
+(export_statement
+  [(lexical_declaration
+     (variable_declarator
+       name: (identifier) @name
+       value: [(arrow_function body: (_) @body) (function_expression body: (_) @body)]) @definition.function)
+   (variable_declaration
+     (variable_declarator
+       name: (identifier) @name
+       value: [(arrow_function body: (_) @body) (function_expression body: (_) @body)]) @definition.function)])
 
 (interface_declaration
   name: (type_identifier) @name) @definition.interface

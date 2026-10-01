@@ -27,6 +27,7 @@ Release impact: patch (pre-1.0: breaking bumps minor)
 
 ### Changed
 
+- **JavaScript and TypeScript extraction: function-local and object-literal definitions are no longer indexed (LB-Q-javascript-rest, LB-Q-typescript-rest).** An arrow-function or function-expression binding is a symbol only at module scope (or exported, a namespace's export included), a method only in a class body, a prototype or member assignment only as a module-scope statement, and no object-literal member is one; a call written in one now belongs to the definition around it. Measured against scip-typescript 0.4.0, sym_precision .8368 to .9905 for JavaScript (axios, express) and .9381 to .986 for TypeScript (zod, nest), both now L1 excellent. `ExtractorEpoch` 41 re-reads every JavaScript and TypeScript file on upgrade.
 - A `package.json` package now records the dependency names it writes (dependencies, devDependencies, peerDependencies, optionalDependencies) as references, as a `Cargo.toml` package does, so they reach the call graph. Measured against npm: reference recall and precision 1 on babel and next.js.
 
 ### Fixed

@@ -830,12 +830,13 @@ class K {
 		t.Fatalf("Extract: %v", err)
 	}
 	// Exactly these — NOT plain (a non-function const), NOT the call sites
-	// g(x)/f(1). The inner arrow binding g IS a definition (matching the
-	// incumbent, which emitted variable_declarator+arrow anywhere).
+	// g(x)/f(1), and NOT the inner arrow binding g: since
+	// LB-Q-javascript-rest an arrow binding is a definition only at module
+	// scope (a function-local one is a local scip-typescript never reports;
+	// the incumbent emitted variable_declarator+arrow anywhere).
 	assertExactSymbols(
 		t, nodes,
 		string(core.KindJSFunc)+":f",
-		string(core.KindJSFunc)+":g",
 		string(core.KindJSClass)+":K",
 		string(core.KindJSMethod)+":K.m",
 	)

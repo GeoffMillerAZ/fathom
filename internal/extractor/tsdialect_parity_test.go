@@ -31,7 +31,7 @@ var updateGoldens = flag.Bool("update", false, "rewrite dialect golden files fro
 // pre-LB-Q-kotlin goldens listed. Ruby left it the same way with LB-Q-ruby
 // (constants, attr_* properties, aliases, define_method methods and a constant
 // reference as a call are new): TestRubyDialectKeepsLegacySymbols.
-var migratedTagsDialects = []string{"javascript", "python", "typescript"}
+var migratedTagsDialects = []string{"python"}
 
 // goldenSymbol is one SymbolNode as a golden file records it. Service and
 // FilePath are fixed by the harness ("svc", "src/<case>.<ext>").
