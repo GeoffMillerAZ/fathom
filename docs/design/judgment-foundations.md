@@ -168,6 +168,10 @@ Most of the strength ladder is computable from evidence: assertion calls present
 a property library imported, a mutation report present. Compute which levels the evidence permits;
 if the site stays on, the model chooses only among those. The 43 of 43 `asserts` answers on Go table
 tests may simply be correct. **Bar:** the model is never offered a level the evidence rules out.
+**As built (2026-10-01, JF-9):** `asserts` needs an assertion call in the body or the test's `t` handed
+to a helper; `golden` a golden or `testdata` read; `property` a property library imported by the file;
+`mutation-killed` a `--mutation` report with a killed mutant. `smoke` and `conformance` stay offered (no
+computable evidence rules them out). An answer outside the offered levels is dropped, never suggested.
 
 ## 8. Calibration readings, not fitted maps (A8)
 

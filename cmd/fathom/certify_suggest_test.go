@@ -6,6 +6,7 @@ package main
 // decision.MockDecider scripted so each test lands in a different band:
 //
 //   - TestAlpha: both answers proceed (>= 0.9)      -> a written suggestion
+//     (its body asserts, so the evidence permits "asserts", JF-9)
 //   - TestBeta:  both answers confirm (0.5..0.9)     -> "unsure", not written
 //   - TestGamma: both answers below 0.5               -> fully silent
 //
@@ -28,7 +29,7 @@ import (
 
 const certifySuggestFixtureSrc = `package pkg
 
-func TestAlpha(t *T) {}
+func TestAlpha(t *T) { t.Errorf("asserts") }
 
 func TestBeta(t *T) {}
 

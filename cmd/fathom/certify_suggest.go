@@ -38,11 +38,13 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
 
 	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
+	"github.com/geoffmilleraz/fathom/internal/analysis/coverage"
 	"github.com/geoffmilleraz/fathom/internal/certify"
 	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/connector"
@@ -105,6 +107,7 @@ func runCertifySuggest(args []string, ports *decide.Ports, now func() time.Time,
 	storePath := fs.String("store", defaultStorePath(), "store path (.sqlite/.db)")
 	out := fs.String("out", workspacePath("artifacts/certify-suggestions.jsonl"), "suggestions artifact path (regenerated fresh each run, like certify manifest — never appended)")
 	limit := fs.Int("limit", 0, "cap the number of unregistered Test* symbols considered (0 = no cap)")
+	mutationPath := fs.String("mutation", "", "JF-9: a mutation-testing report (go-mutesting output or fathom's JSON shape); with a killed mutant in it, mutation-killed is offered as a strength (falls back to $"+mutationReportEnvVar+")")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
@@ -179,9 +182,17 @@ func runCertifySuggest(args []string, ports *decide.Ports, now func() time.Time,
 		return 0
 	}
 
+	if *mutationPath == "" {
+		*mutationPath = os.Getenv(mutationReportEnvVar)
+	}
+	mutation, merr := certifySuggestMutationEvidence(*mutationPath)
+	if merr != nil {
+		fmt.Fprintf(stderr, "error: --mutation %q: %v\n", *mutationPath, merr)
+		return 1
+	}
 	items := make([]certifySuggestItem, len(candidates))
 	for i, n := range candidates {
-		items[i] = certifySuggestItem{Node: n, Source: readCertifySuggestSource(corpusRoot, n)}
+		items[i] = certifySuggestItemFor(corpusRoot, n, mutation)
 	}
 	chunks := certifySuggestChunks(items)
 
@@ -210,6 +221,9 @@ func runCertifySuggest(args []string, ports *decide.Ports, now func() time.Time,
 			assertsAns, hasAsserts := resp.Answers[n.Name+":asserts"]
 			if !hasStrength || !hasAsserts {
 				continue // no answer for one of the pair: the port left it invalid, nothing to render
+			}
+			if !certifyLevelOffered(it.Evidence, strengthAns.Choice) {
+				continue // JF-9: a level the evidence rules out is never suggested, whatever the provider said
 			}
 			strengthProceed := decision.BandOf(strengthAns.Confidence) == decision.BandProceed
 			assertsProceed := assertsAns.Noul >= decision.ProceedAtOrAbove
@@ -252,27 +266,130 @@ func runCertifySuggest(args []string, ports *decide.Ports, now func() time.Time,
 
 // certifySuggestItem pairs one candidate Test* symbol with its own
 // (already 4 KiB-capped) source text, read once and reused for both
-// chunk planning and request building.
+// chunk planning and request building, and the evidence that decides which
+// strength levels it is offered (JF-9).
 type certifySuggestItem struct {
-	Node   core.SymbolNode
-	Source string
+	Node     core.SymbolNode
+	Source   string
+	Evidence certifyEvidence
 }
 
-// readCertifySuggestSource reads n's own [Line, EndLine] source lines
-// from corpusRoot (best effort: an unreadable file, or a symbol with no
+// certifyEvidence is what a test's own source, its file's imports and the
+// run's mutation report show (JF-9, judgment-foundations §7): each field
+// permits one rung of the strength ladder. smoke and conformance need none:
+// no computable evidence rules them out.
+type certifyEvidence struct {
+	Asserts  bool // an assertion call, or the test's t handed to a helper
+	Golden   bool // a golden file read
+	Property bool // a property-testing library imported
+	Mutation bool // a mutation report with a killed mutant
+}
+
+var (
+	// certifyAssertCall is an assertion in the test body: a testing.TB
+	// failure method, a testify/gomega-style assertion, or a cmp diff.
+	certifyAssertCall = regexp.MustCompile(`(\b(t|tb|b|tt)|\.T\(\))\.(Error|Errorf|Fatal|Fatalf|Fail|FailNow)\(|\b(assert|require|is|qt|gomega)\.[A-Z]\w*\(|\bExpect\(|\bcmp\.Diff\(`)
+	// certifyTBHandoff is the test's t (or tb) passed to another call,
+	// which may assert on its behalf.
+	certifyTBHandoff = regexp.MustCompile(`\w\((?:[^()]*,\s*)?(?:t|tb)\s*[,)]`)
+	// certifyGoldenRead is a golden or testdata fixture the test reads.
+	certifyGoldenRead = regexp.MustCompile(`(?i)golden|\btestdata\b`)
+	// certifyPropertyImport is a property-testing library import.
+	certifyPropertyImport = regexp.MustCompile(`"(testing/quick|pgregory\.net/rapid|github\.com/leanovate/gopter[^"]*|github\.com/flyingmutant/rapid)"`)
+)
+
+// certifySuggestEvidenceOf reads the evidence from a test's body, its whole
+// file (for imports) and whether a mutation report with a killed mutant
+// was given.
+func certifySuggestEvidenceOf(body, file string, mutation bool) certifyEvidence {
+	return certifyEvidence{
+		Asserts:  certifyAssertCall.MatchString(body) || certifyTBHandoff.MatchString(body),
+		Golden:   certifyGoldenRead.MatchString(body),
+		Property: certifyPropertyImport.MatchString(file),
+		Mutation: mutation,
+	}
+}
+
+// certifyPermittedOptions is the strength ladder narrowed to the levels ev
+// permits, in ladder order.
+func certifyPermittedOptions(ev certifyEvidence) []decision.Option {
+	out := make([]decision.Option, 0, len(certifyStrengthOptions))
+	for _, o := range certifyStrengthOptions {
+		if certifyLevelOffered(ev, o.Name) {
+			out = append(out, o)
+		}
+	}
+	return out
+}
+
+// certifyLevelOffered reports whether ev permits the strength level.
+func certifyLevelOffered(ev certifyEvidence, level string) bool {
+	switch level {
+	case "smoke", "conformance":
+		return true
+	case "asserts":
+		return ev.Asserts
+	case "golden":
+		return ev.Golden
+	case "property":
+		return ev.Property
+	case "mutation-killed":
+		return ev.Mutation
+	}
+	return false
+}
+
+// certifySuggestItemFor reads n's source and evidence once (JF-9): the
+// evidence from the whole body, the state from its 4 KiB cap.
+func certifySuggestItemFor(corpusRoot string, n core.SymbolNode, mutation bool) certifySuggestItem {
+	full, file := readCertifySuggestSourceAndFile(corpusRoot, n)
+	return certifySuggestItem{Node: n, Source: capCertifySuggestSource(full), Evidence: certifySuggestEvidenceOf(full, file, mutation)}
+}
+
+// certifySuggestMutationEvidence reports whether the report at path ("" for
+// none) holds at least one killed mutant.
+func certifySuggestMutationEvidence(path string) (bool, error) {
+	if path == "" {
+		return false, nil
+	}
+	f, err := os.Open(path) //nolint:gosec — an operator-supplied CLI flag
+	if err != nil {
+		return false, err
+	}
+	defer f.Close()
+	rep, err := coverage.ParseMutationReport(f)
+	if err != nil {
+		return false, err
+	}
+	for _, m := range rep.Mutants {
+		if m.Killed {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// readCertifySuggestSourceAndFile reads n's own [Line, EndLine] source
+// lines from corpusRoot, uncapped, and the whole file's text (its imports
+// are evidence, JF-9). Best effort: an unreadable file, or a symbol with no
 // usable line range, yields "" rather than failing the whole run — a test
-// with no readable source still gets asked about, just with empty
-// state for its own portion), capped at certifySuggestMaxSourceBytes.
-func readCertifySuggestSource(corpusRoot string, n core.SymbolNode) string {
+// with no readable source still gets asked about, just with empty state
+// for its own portion and no evidence beyond smoke and conformance.
+func readCertifySuggestSourceAndFile(corpusRoot string, n core.SymbolNode) (body, file string) {
 	path := n.FilePath
 	if corpusRoot != "" && !filepath.IsAbs(path) {
 		path = filepath.Join(corpusRoot, path)
 	}
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return ""
+		return "", ""
 	}
-	lines := strings.Split(string(data), "\n")
+	return certifySuggestBody(string(data), n), string(data)
+}
+
+// certifySuggestBody cuts n's [Line, EndLine] lines out of the file's text.
+func certifySuggestBody(data string, n core.SymbolNode) string {
+	lines := strings.Split(data, "\n")
 	start := n.Line - 1
 	if start < 0 {
 		start = 0
@@ -284,7 +401,12 @@ func readCertifySuggestSource(corpusRoot string, n core.SymbolNode) string {
 	if start >= end {
 		return ""
 	}
-	body := strings.Join(lines[start:end], "\n")
+	return strings.Join(lines[start:end], "\n")
+}
+
+// capCertifySuggestSource caps a body at certifySuggestMaxSourceBytes, the
+// state each test contributes to a request.
+func capCertifySuggestSource(body string) string {
 	if len(body) > certifySuggestMaxSourceBytes {
 		body = body[:certifySuggestMaxSourceBytes] + "\n... [truncated]"
 	}
@@ -337,7 +459,8 @@ func buildCertifySuggestRequest(items []certifySuggestItem) decision.Request {
 				ID:           n.Name + ":strength",
 				Kind:         decision.KindChoice,
 				Instructions: fmt.Sprintf("For the test function %s (shown above in State), which strength would it provide if linked to a certification target? Pick exactly one.", n.Name),
-				Options:      certifyStrengthOptions,
+				// JF-9: only the levels this test's evidence permits.
+				Options: certifyPermittedOptions(it.Evidence),
 			},
 			decision.Question{
 				ID:            n.Name + ":asserts",
