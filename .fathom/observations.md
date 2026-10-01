@@ -536,7 +536,7 @@ triage if it matters.
 - **Evidence (2026-08-08):** three compiles refused in a row; meanwhile 6,985 obligations calls served staleness warnings instead of compiled rules (the resume_as_code field report's top finding).
 - **Root cause:** CompileLayer is wired only to a direct Anthropic key (WithLLM), not to the provider profiles the rest of the CLI resolves.
 - **Fix:** bridge CompileLayer to the provider registry so claude-cli profiles compile too; until then the unblock is an ANTHROPIC_API_KEY in the daemon's launchd EnvironmentVariables.
-- **Status:** open
+- **Status:** fixed — CompileLayer is bridged to the provider registry by 471223fa (CF-1..CF-10: `buildLLMClientForProfile` wired into `fathom compile` and serve-http's `compile_layer`); see O300
 - **Impact:** the second-busiest tool in the fleet serves warnings, not rules, on every wired repo.
 
 ### O14 — flywheel verify-gate loop reads IDLE ('gate has never run in a recorded session') while lefthook pre-push runs bin/fathom verify on every push in this repo
