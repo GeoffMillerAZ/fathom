@@ -552,6 +552,12 @@ func (p *Pipeline) resolveExtractor(relPath string, content []byte, idx *sibling
 			e, ok = p.toolExts[ToolCloudFormation]
 			toolKind = ToolCloudFormation
 		}
+		if !ok && ext == ".json" && openAPIJSON(content) {
+			// An OpenAPI or Swagger document written as JSON (LB-Q-openapi):
+			// the same decision as a YAML one's top-level openapi:/swagger:.
+			e, ok = p.toolExts[ToolOpenAPI]
+			toolKind = ToolOpenAPI
+		}
 		if !ok {
 			e, ok = p.exts[ext]
 		}

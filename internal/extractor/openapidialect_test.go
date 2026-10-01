@@ -206,8 +206,9 @@ func openAPIByName(nodes []core.SymbolNode) map[string]core.SymbolNode {
 // Swagger 2.0's definitions; an empty document; determinism), run against the
 // dialect. Every SourceKind the incumbent emitted is kept (OpenAPIOperation,
 // OpenAPISchema) with its names, tier and count. The one addition is a
-// document entity (OpenAPIDocument, named by the file): an empty document now
-// yields it and nothing else, where the incumbent yielded nothing.
+// document entity (OpenAPIDocument, named by the file) for a document that
+// has an `info`: an empty one (`openapi: 3.0.0` alone) still yields nothing,
+// as the incumbent's did, and so does a tool's config with an `openapi:` key.
 func TestOpenAPIDialectKeepsIncumbentContracts(t *testing.T) {
 	x := loadOpenAPIExtractor(t)
 	nodes, err := x.Extract("svc", "api/widgets.yaml", []byte(openAPIIncumbentFixture))
@@ -275,6 +276,13 @@ definitions:
 		if n.Kind == core.KindOpenAPIOperation || n.Kind == core.KindOpenAPISchema {
 			t.Errorf("an empty document yielded %v", brief(nodes))
 		}
+	}
+	if len(nodes) != 0 {
+		t.Errorf("an empty document yielded %v, want nothing", brief(nodes))
+	}
+	nodes, _ = x.Extract("svc", "redocly.yaml", []byte("apis:\n  main:\n    root: openapi.yaml\nopenapi:\n  codeSamples:\n    languages: []\n"))
+	if len(nodes) != 0 {
+		t.Errorf("a tool config with an openapi: key yielded %v, want nothing", brief(nodes))
 	}
 
 	a, _ := x.Extract("svc", "api/widgets.yaml", []byte(openAPIIncumbentFixture))

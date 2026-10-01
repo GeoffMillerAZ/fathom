@@ -2,8 +2,8 @@
   "decode": "yaml",
   "detect": {"content_sniff": "(?m)^(?:openapi|swagger)[ \\t]*:[ \\t]*\\S|[{,][ \\t\\r\\n]*\"(?:openapi|swagger)\"[ \\t]*:[ \\t]*\""},
   "entities": [
-    {"select": "$", "where": {"has_key": ["openapi"]}, "kind": "package", "source_kind": "OpenAPIDocument", "name": "$file", "signature": ".openapi"},
-    {"select": "$", "where": {"has_key": ["swagger"]}, "kind": "package", "source_kind": "OpenAPIDocument", "name": "$file", "signature": ".swagger"},
+    {"select": "$", "where": {"has_key": ["openapi", "info"]}, "kind": "package", "source_kind": "OpenAPIDocument", "name": "$file", "signature": ".openapi"},
+    {"select": "$", "where": {"has_key": ["swagger", "info"]}, "kind": "package", "source_kind": "OpenAPIDocument", "name": "$file", "signature": ".swagger"},
     {"select": "$.paths.*.*", "where": {"is_map": true, "key_in": ["get", "put", "post", "delete", "options", "head", "patch", "trace"]}, "kind": "route", "source_kind": "OpenAPIOperation", "name": "fmt:{$key @upper} {$parent}", "signature": ".operationId|.summary"},
     {"select": "$.webhooks.*.*", "where": {"is_map": true, "key_in": ["get", "put", "post", "delete", "options", "head", "patch", "trace"]}, "kind": "route", "source_kind": "OpenAPIOperation", "name": "fmt:{$key @upper} {$parent}", "signature": ".operationId|.summary"},
     {"select": "$.components.schemas.*", "include_null": true, "kind": "type_alias", "source_kind": "OpenAPISchema", "name": "$key"},

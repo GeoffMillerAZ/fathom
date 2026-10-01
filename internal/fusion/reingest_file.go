@@ -172,6 +172,11 @@ func (p *Pipeline) ReingestFile(ctx context.Context, st store.Store, serviceID, 
 		// extractor its extension names.
 		extExtractor, ok = p.toolExts[ToolCloudFormation]
 	}
+	if !ok && ext == ".json" && openAPIJSON(content) {
+		// An OpenAPI or Swagger document written as JSON (LB-Q-openapi), read
+		// by its content as ingest's dispatch reads it.
+		extExtractor, ok = p.toolExts[ToolOpenAPI]
+	}
 	if !ok {
 		extExtractor, ok = p.exts[ext]
 	}
