@@ -8,7 +8,8 @@
 //     (every commit has an equivalent there, `git cherry`), or content-equal
 //     (a squash merge: every path the line changed reads the same on the
 //     integration branch), with a clean worktree;
-//   - at risk: a dirty worktree, a stash, or commits on no remote;
+//   - at risk: a dirty worktree, a stash, commits on no remote, or remotes
+//     that could not be read (a failed count never reads as pushed);
 //   - idle: none of these, and no commit for 14 days;
 //   - active: none of these, and a recent commit.
 //
@@ -510,10 +511,15 @@ func (c *classifier) classifyCommitLine(l *Line, wt *worktree, base string) erro
 	if isStash {
 		l.AtRisk = append(l.AtRisk, "stash")
 	} else if landed == "" {
-		if out, err := c.git(c.root, "rev-list", "--count", l.Tip, "--not", c.tip, "--remotes"); err == nil {
-			if n, _ := strconv.Atoi(strings.TrimSpace(out)); n > 0 {
-				l.AtRisk = append(l.AtRisk, fmt.Sprintf("%d %s on no remote", n, plural(n, "commit", "commits")))
-			}
+		// A failed count cannot show the commits are on a remote, so the line
+		// reads at risk, never active or idle by default.
+		out, err := c.git(c.root, "rev-list", "--count", l.Tip, "--not", c.tip, "--remotes")
+		n, perr := strconv.Atoi(strings.TrimSpace(out))
+		switch {
+		case err != nil || perr != nil:
+			l.AtRisk = append(l.AtRisk, "remotes unread (git rev-list failed)")
+		case n > 0:
+			l.AtRisk = append(l.AtRisk, fmt.Sprintf("%d %s on no remote", n, plural(n, "commit", "commits")))
 		}
 	}
 

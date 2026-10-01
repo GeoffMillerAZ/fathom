@@ -395,3 +395,41 @@ func TestClassifyLinesRemovalInMainWorktree(t *testing.T) {
 		}
 	}
 }
+
+// TestClassifyLinesUnreadRemotesReadAtRisk: when the read that counts a
+// line's commits on no remote fails, the line cannot be shown to be on a
+// remote, so it reads at risk with that reason, never active or idle. The
+// read used to drop its error: a pushed-or-not line fell through to active
+// (seen as a flake of TestCmdPlansLinesReportsAndNeverActs under load).
+func TestClassifyLinesUnreadRemotesReadAtRisk(t *testing.T) {
+	root, _ := buildFixture(t)
+	run := func(ctx context.Context, dir string, args ...string) ([]byte, error) {
+		for _, a := range args {
+			if a == "rev-list" {
+				return nil, fmt.Errorf("injected rev-list failure")
+			}
+		}
+		return gitro.Output(ctx, dir, args...)
+	}
+	rep, err := ClassifyLines(context.Background(), Options{Root: root, Run: run, Now: func() time.Time { return fixtureNow }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	byName := map[string]Line{}
+	for _, l := range rep.Lines {
+		byName[l.Name] = l
+	}
+	for _, name := range []string{"fresh", "stale", "risky"} {
+		l := byName[name]
+		if l.Class != AtRisk || !hasPrefix(l.AtRisk, "remotes unread") {
+			t.Errorf("%s = %+v, want at-risk with a remotes-unread reason", name, l)
+		}
+	}
+	// Landed lines and stashes never read the remotes, so they are unchanged.
+	if l := byName["old-landed"]; l.Class != Landed {
+		t.Errorf("old-landed = %+v", l)
+	}
+	if l := byName["stash@{0}"]; l.Class != AtRisk || !hasPrefix(l.AtRisk, "stash") {
+		t.Errorf("stash = %+v", l)
+	}
+}

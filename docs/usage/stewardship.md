@@ -18,7 +18,7 @@ integration branch (SV-1, SV-2):
 | Class | Means |
 |---|---|
 | `landed` | An ancestor of the integration branch, patch-equivalent to it (`git cherry` finds an equivalent for every commit), or content-equal (every path the line changed reads the same there, as after a squash merge), with a clean worktree. The note names how it landed and the command that would remove it, for example `git branch -d done` or `git worktree remove <path> && git branch -D picked`. |
-| `at-risk` | A dirty worktree, a stash, or commits on no remote. The reasons are listed whatever the class. |
+| `at-risk` | A dirty worktree, a stash, or commits on no remote; a line whose remotes could not be read (`remotes unread`) reads at risk too, never active. The reasons are listed whatever the class. |
 | `idle` | None of the above and no commit for `--idle-days` days. |
 | `active` | None of the above, with a recent commit. |
 
