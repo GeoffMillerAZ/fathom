@@ -38,11 +38,11 @@ func ruleRemedies(results []RuleEffectivenessResult) []RuleRemedy {
 		case RuleClassIgnored:
 			ratio := 0.0
 			if r.Served30 > 0 {
-				ratio = 100 * float64(r.Violated30) / float64(r.Served30)
+				ratio = 100 * float64(r.StillServed30) / float64(r.Served30)
 			}
 			out = append(out, RuleRemedy{
 				RuleID: r.RuleID, Class: r.Class, Remedy: r.Remedy,
-				Evidence: fmt.Sprintf("violated %d/%d served (%.0f%%) over 30d, never blocked", r.Violated30, r.Served30, ratio),
+				Evidence: fmt.Sprintf("still served on a repeat edit %d/%d served (%.0f%%) over 30d, never blocked", r.StillServed30, r.Served30, ratio),
 			})
 		case RuleClassNeverTriggered:
 			out = append(out, RuleRemedy{

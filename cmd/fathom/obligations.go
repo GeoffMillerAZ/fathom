@@ -16,7 +16,7 @@ package main
 // and this verb's default output are the same served list.
 //
 // Beside each served rule the verb shows what the edit hook recorded of it
-// — served, complied, violated over the last 30 days (SR-61, F-27/U4;
+// — served, top_changed, still_served over the last 30 days (SR-61, F-27/U4;
 // ruleoutcome_read.go reads the hook's signal log). That record and the
 // rule's claim id are read here, by a person; the MCP payload an agent
 // reads carries neither (the id rides only to the edit hook itself).
@@ -349,7 +349,7 @@ func cmdObligations(args []string, stdout, stderr io.Writer) int {
 }
 
 // ruleOutcomeText is one served rule's hook record as the CLI prints it:
-// "hook, last 30 days: served 3 · complied 1 · violated 1", with the
+// "hook, last 30 days: served 3 · top changed 1 · still served 1", with the
 // human-verdict counts only when there are any and GL-11's class — a
 // proposal, never an action — when one applies. "" when the record is not
 // known or the rule has no claim id (a raw-fallback row has none).
@@ -361,7 +361,7 @@ func ruleOutcomeText(v console.Value[console.RuleOutcomeSet], claimID string) st
 	if !ok {
 		return ""
 	}
-	line := fmt.Sprintf("hook, last %d days: served %d · complied %d · violated %d", v.V.WindowDays, c.Served, c.Complied, c.Violated)
+	line := fmt.Sprintf("hook, last %d days: served %d · top changed %d · still served %d", v.V.WindowDays, c.Served, c.TopChanged, c.StillServed)
 	if c.Blocked > 0 {
 		line += fmt.Sprintf(" · blocked %d", c.Blocked)
 	}

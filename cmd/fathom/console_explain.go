@@ -541,7 +541,7 @@ func renderAgentSees(se console.ServingExplanation) string {
 }
 
 // ruleOutcomeHTML is one served rule's hook record under its statement
-// (SR-61): "3 served · 1 complied · 1 violated over the last 30 days", with
+// (SR-61): "3 served · 1 top changed · 1 still served over the last 30 days", with
 // GL-11's class as a proposal when one applies. "" when the record is not
 // known or the rule has no claim id.
 func ruleOutcomeHTML(v console.Value[console.RuleOutcomeSet], claimID string) string {
@@ -552,7 +552,7 @@ func ruleOutcomeHTML(v console.Value[console.RuleOutcomeSet], claimID string) st
 	if !ok {
 		return ""
 	}
-	line := fmt.Sprintf("%d served · %d complied · %d violated over the last %d days", c.Served, c.Complied, c.Violated, v.V.WindowDays)
+	line := fmt.Sprintf("%d served · %d top changed · %d still served over the last %d days", c.Served, c.TopChanged, c.StillServed, v.V.WindowDays)
 	if c.Class != "" {
 		line += " — " + strings.ReplaceAll(c.Class, "_", " ") + " (a proposal: " + c.Remedy + ")"
 	}

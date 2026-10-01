@@ -144,11 +144,15 @@ const (
 type RuleEffectivenessResult struct {
 	RuleID string
 
-	// Served30/Complied30/Violated30/Blocked30/Refuted30/Corroborated30 are
-	// counts within the 30-day window ending at the caller's now.
+	// Served30/TopChanged30/StillServed30/Blocked30/Refuted30/Corroborated30
+	// are counts within the 30-day window ending at the caller's now.
+	// TopChanged30 and StillServed30 (JF-2; Complied30 and Violated30
+	// before) count the tracker's top_changed and still_served events:
+	// scope churn and scope persistence, never a count of edits that did or
+	// did not comply with a rule.
 	Served30       int
-	Complied30     int
-	Violated30     int
+	TopChanged30   int
+	StillServed30  int
 	Blocked30      int
 	Refuted30      int
 	Corroborated30 int
@@ -206,9 +210,9 @@ func computeRuleEffectiveness(ruleID string, events []RuleOutcomeEvent, now time
 		case RuleEventServed:
 			r.Served30++
 		case RuleEventTopChanged:
-			r.Complied30++
+			r.TopChanged30++
 		case RuleEventStillServed:
-			r.Violated30++
+			r.StillServed30++
 		case RuleEventBlocked:
 			r.Blocked30++
 		case RuleEventRefuted:
@@ -227,17 +231,25 @@ func computeRuleEffectiveness(ruleID string, events []RuleOutcomeEvent, now time
 // can never overlap never_triggered's Served90 == 0 condition (n=0 in the
 // 90-day superset implies n=0 in the 30-day window too). ignored is
 // checked before effective only because the table lists it first; a rule
-// cannot satisfy both (a violated/served ratio >= 0.5 and a complied/
-// served ratio >= 0.9 cannot both hold when complied+violated <= served).
+// cannot satisfy both (a still_served/served ratio >= 0.5 and a
+// top_changed/served ratio >= 0.9 cannot both hold when
+// top_changed+still_served <= served).
+//
+// The class names keep GL-11's words (JF-2 did not redesign the table), but
+// the counts behind them are the renamed events, so "ignored" reads "the same
+// rule still topped the file on at least half of its serves" and "effective"
+// "the top rule changed on at least 90% of them": scope persistence and
+// churn, not compliance (docs/design/governance-learning.md, the correction
+// of 2026-09-29).
 func classifyRule(r RuleEffectivenessResult) (RuleEffectivenessClass, string) {
 	switch {
 	case r.Served30 >= ruleEffectivenessMinN && r.Blocked30 == 0 &&
-		float64(r.Violated30)/float64(r.Served30) >= ruleIgnoredMinRatio:
+		float64(r.StillServed30)/float64(r.Served30) >= ruleIgnoredMinRatio:
 		return RuleClassIgnored, "move to a hook (deny) or rewrite with the violating example"
 	case r.Served90 == 0:
 		return RuleClassNeverTriggered, "prune or re-scope"
 	case r.Served30 >= ruleEffectivenessMinN &&
-		float64(r.Complied30)/float64(r.Served30) >= ruleEffectiveMinRatio:
+		float64(r.TopChanged30)/float64(r.Served30) >= ruleEffectiveMinRatio:
 		return RuleClassEffective, "keep"
 	case r.Refuted30 >= ruleContestedMinRefutes:
 		return RuleClassContested, "human review"

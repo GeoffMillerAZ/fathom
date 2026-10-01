@@ -210,7 +210,7 @@ func TestRuleEffectivenessReadsOldEventNames(t *testing.T) {
 		mixed = append(mixed, RuleOutcomeEvent{RuleID: "ignored-rule", Event: RuleEventStillServed, At: recent})
 	}
 	for _, r := range RuleEffectiveness(ids, mixed, now) {
-		if r.RuleID == "ignored-rule" && (r.Class != RuleClassIgnored || r.Violated30 != 15) {
+		if r.RuleID == "ignored-rule" && (r.Class != RuleClassIgnored || r.StillServed30 != 15) {
 			t.Errorf("a ledger spanning the rename lost rows: ignored-rule = %+v, want 15 repeat-edit rows", r)
 		}
 	}

@@ -32,7 +32,7 @@ func TestRuleRemediesAreProposals(t *testing.T) {
 	}
 
 	var events []RuleOutcomeEvent
-	// ignored: 20 served, 10 violated (50%), never blocked.
+	// ignored: 20 served, 10 still_served (50%), never blocked.
 	events = append(events, servedEvents("ignored-rule", 20, recent)...)
 	events = append(events, kindEvents("ignored-rule", RuleEventStillServed, 10, recent)...)
 	// effective: keeps, never a remedy proposal.

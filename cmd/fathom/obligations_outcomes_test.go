@@ -3,7 +3,7 @@ package main
 // obligations_outcomes_test.go — SR-61's read side (surface reckoning
 // F-27/U4, design §6): `fathom obligations` and the console's serving
 // explainer show, beside each served rule, what the edit hook recorded of it
-// — served, complied, violated over the last 30 days — read from the signal
+// — served, top_changed, still_served over the last 30 days — read from the signal
 // log at request time. The agent-facing MCP payload is untouched (its claim
 // id and counts ride nowhere an agent pays for; obligations_claimid_test.go).
 
@@ -27,10 +27,10 @@ type obligationsOutcomesJSON struct {
 		V      struct {
 			WindowDays int `json:"window_days"`
 			Rules      []struct {
-				ClaimID  string `json:"claim_id"`
-				Served   int    `json:"served"`
-				Complied int    `json:"complied"`
-				Violated int    `json:"violated"`
+				ClaimID     string `json:"claim_id"`
+				Served      int    `json:"served"`
+				TopChanged  int    `json:"top_changed"`
+				StillServed int    `json:"still_served"`
 			} `json:"rules"`
 		} `json:"v"`
 	} `json:"outcomes"`
@@ -84,16 +84,16 @@ func TestObligationsShowsTheHooksRuleOutcomes(t *testing.T) {
 		t.Fatalf("outcomes = %+v over %d rules", got.Outcomes.V, len(got.Rules))
 	}
 	first := got.Outcomes.V.Rules[0]
-	if first.ClaimID != top || first.Served != 3 || first.Complied != 1 || first.Violated != 1 {
-		t.Errorf("top rule outcomes = %+v, want served 3, complied 1, violated 1", first)
+	if first.ClaimID != top || first.Served != 3 || first.TopChanged != 1 || first.StillServed != 1 {
+		t.Errorf("top rule outcomes = %+v, want served 3, top_changed 1, still_served 1", first)
 	}
 	for _, r := range got.Outcomes.V.Rules[1:] {
-		if r.Served != 0 || r.Violated != 0 {
+		if r.Served != 0 || r.StillServed != 0 {
 			t.Errorf("a rule the hook never served reads %+v, want a measured zero", r)
 		}
 	}
 	text, _, _ = runVerb(t, f, verb...)
-	if !strings.Contains(text, "hook, last 30 days: served 3 · complied 1 · violated 1") {
+	if !strings.Contains(text, "hook, last 30 days: served 3 · top changed 1 · still served 1") {
 		t.Errorf("text does not show the top rule's record:\n%s", text)
 	}
 
@@ -111,7 +111,7 @@ func TestObligationsShowsTheHooksRuleOutcomes(t *testing.T) {
 		t.Fatalf("explain outcomes state = %s (%s)", section.Outcomes.State, section.Outcomes.Reason)
 	}
 	_, _, html := f.get(t, "/explain?svc=payment-service&file=payment.go")
-	if !strings.Contains(html, `data-rule-outcomes`) || !strings.Contains(html, "3 served") || !strings.Contains(html, "1 violated") {
+	if !strings.Contains(html, `data-rule-outcomes`) || !strings.Contains(html, "3 served") || !strings.Contains(html, "1 still served") {
 		t.Errorf("the explainer's served list does not show the hook's record:\n%.600s", html)
 	}
 }

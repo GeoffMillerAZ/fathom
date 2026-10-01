@@ -55,7 +55,7 @@ type Obligation struct {
 	// ClaimID (SR-61, surface reckoning F-27/U4) is the underlying claim's
 	// content-addressed identity (core.SemanticClaim.ClaimID) — the same
 	// id `fathom claim refute|corroborate --claim <id>` takes, and what
-	// the edit hook's per-claim served/complied/violated tracking
+	// the edit hook's per-claim served/still_served/top_changed tracking
 	// (cmd/fathom/ruleoutcome.go) keys off of instead of Rule+Src text.
 	// Always populated for a real compiled claim; "" (omitted) only for a
 	// raw-tier fallback row (rawfallback.go), which has no claim behind

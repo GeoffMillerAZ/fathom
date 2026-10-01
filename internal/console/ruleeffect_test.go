@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -56,9 +57,9 @@ func ruleFixture(t *testing.T, extra ...core.SemanticClaim) KnowledgeSource {
 func ruleSignal(daysBack int) RuleSignal {
 	var ev []semantic.RuleOutcomeEvent
 	ev = append(ev, ruleEvents("r-ignored", "served", 30, 5)...)
-	ev = append(ev, ruleEvents("r-ignored", "violated", 20, 5)...)
+	ev = append(ev, ruleEvents("r-ignored", semantic.RuleEventStillServed, 20, 5)...)
 	ev = append(ev, ruleEvents("r-effective", "served", 25, 4)...)
-	ev = append(ev, ruleEvents("r-effective", "complied", 24, 4)...)
+	ev = append(ev, ruleEvents("r-effective", semantic.RuleEventTopChanged, 24, 4)...)
 	ev = append(ev, ruleEvents("r-contested", "served", 5, 3)...)
 	ev = append(ev, ruleEvents("r-contested", "refuted", 3, 3)...)
 	ev = append(ev, ruleEvents("r-quiet", "served", 3, 2)...)
@@ -122,11 +123,11 @@ func TestListRuleEffectiveness_ClassesRatesAndRemedies(t *testing.T) {
 	}
 	// Counts and rates carry their n; a rate needs 20 serves.
 	ign, _ := rowFor(v, "r-ignored")
-	if ign.Served30 != 30 || ign.Violated30 != 20 || ign.ViolationRate == nil || *ign.ViolationRate < 0.66 || *ign.ViolationRate > 0.67 {
+	if ign.Served30 != 30 || ign.StillServed30 != 20 || ign.StillServedRate == nil || *ign.StillServedRate < 0.66 || *ign.StillServedRate > 0.67 {
 		t.Errorf("r-ignored = %+v", ign)
 	}
 	quiet, _ := rowFor(v, "r-quiet")
-	if quiet.Served30 != 3 || quiet.ComplianceRate != nil || quiet.ViolationRate != nil {
+	if quiet.Served30 != 3 || quiet.TopChangedRate != nil || quiet.StillServedRate != nil {
 		t.Errorf("r-quiet = %+v: below 20 serves shows n and no rate", quiet)
 	}
 	// Tallies count every class; the retired, superseded and claims-role
@@ -256,5 +257,43 @@ func TestListRuleEffectiveness_FilterAndPaging(t *testing.T) {
 	bj, _ := json.Marshal(b)
 	if string(a) != string(bj) {
 		t.Error("the projection is not deterministic")
+	}
+}
+
+// JF-2: a signal whose events carry the names a binary from before JF-1
+// wrote (violated, complied) projects to the same rows as the renamed
+// events: the counts land in StillServed30 and TopChanged30, never dropped.
+func TestListRuleEffectiveness_ReadsOldEventNames(t *testing.T) {
+	src := ruleFixture(t)
+	renamed := ruleSignal(100)
+	old := ruleSignal(100)
+	old.Events = append([]semantic.RuleOutcomeEvent(nil), renamed.Events...)
+	n := 0
+	for i, e := range old.Events {
+		switch e.Event {
+		case semantic.RuleEventStillServed:
+			old.Events[i].Event = "violated"
+			n++
+		case semantic.RuleEventTopChanged:
+			old.Events[i].Event = "complied"
+			n++
+		}
+	}
+	if n != 44 {
+		t.Fatalf("renamed %d events, want the fixture's 20 repeat edits and 24 top changes", n)
+	}
+	want, err := ListRuleEffectiveness(context.Background(), src, renamed, RuleEffectivenessFilter{}, 1, ruleNow)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := ListRuleEffectiveness(context.Background(), src, old, RuleEffectivenessFilter{}, 1, ruleNow)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got.Rows, want.Rows) || !reflect.DeepEqual(got.Remedies, want.Remedies) || !reflect.DeepEqual(got.Classes, want.Classes) {
+		t.Errorf("old-name events read differently:\n old %+v\n new %+v", got.Rows, want.Rows)
+	}
+	if r, _ := rowFor(got, "r-effective"); r.TopChanged30 != 24 || r.TopChangedRate == nil || r.Class != "effective" {
+		t.Errorf("complied events were not read as top_changed: %+v", r)
 	}
 }

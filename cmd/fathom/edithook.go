@@ -186,7 +186,7 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 		// SR-48w: the ask names the claim id, and an answered one-key
 		// reply pending for the session is written first.
 		text, ok = withRuleVerdictAsk(url, sessionID, meta.service, meta.repoRelFile, meta.topRule, meta.topSrc, meta.topClaimID, text, ok)
-		// SR-61 (F-27/U4): served/complied/violated per claim id, the SAME
+		// SR-61 (F-27/U4): served/still_served/top_changed per claim id, the SAME
 		// top-governing-rule turn-over-turn comparison SR-48 already reads
 		// above, generalized from rule text to the claim's stable id
 		// (ruleoutcome_track.go). Independent of withRuleVerdictAsk's own
@@ -249,7 +249,7 @@ type postEditMeta struct {
 	// ClaimID — "" whenever the compiled rule behind it predates ClaimID
 	// (semantic.Obligation's own doc comment) or no rule governs the file
 	// this turn. trackRuleOutcome (ruleoutcome_track.go) keys the
-	// served/complied/violated signal off of THIS, never topRule/topSrc
+	// served/still_served/top_changed signal off of THIS, never topRule/topSrc
 	// text, so a rule's wording changing across a recompile never reads
 	// as a different claim.
 	topClaimID string
