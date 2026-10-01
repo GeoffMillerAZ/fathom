@@ -2588,3 +2588,16 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** none yet: give those `tags.scm` files the §8.2 header (a docs-and-query-comment change that does not move a golden), or let the refusal also read the dialect's PROVENANCE.md for `<repo>` plus `<path>`
 - **Status:** open
 - **Impact:** low today (the three have tier-A SCIP and tier-B ctags oracles, so no worker needs a tier-C query for them); it is the ADR-048 amendment's own revisit trigger ("a dialect drafted from its oracle query without a `; source:` header naming it")
+
+### O230 — tests select counts every symbol below an inserted line as changed: a 5-line edit to schema/config/schema.cue lists all 111 CUE fields after it, and a 1-line CHANGELOG insertion lists 46 later headings, in test_gap and in the reach seed
+
+- **Symptom:** tests select counts every symbol below an inserted line as changed: a 5-line edit to schema/config/schema.cue lists all 111 CUE fields after it, and a 1-line CHANGELOG insertion lists 46 later headings, in test_gap and in the reach seed
+- **Evidence:**
+  - **Tool:** fathom tests select --since origin/main --safe --store $FATHOM_CACHE_ROOT/verify.sqlite --service fathom
+  - **Expected:** only the symbols whose own lines the diff touches (the #Hooks block at schema.cue L260-L270, the one CHANGELOG line) are changed; a symbol that only moved down is unchanged
+  - **Actual:** test_gap names 328 symbols (111 in schema/config/schema.cue, 111 in internal/config/config_schema.cue, 46 CHANGELOG headings, 27 docs/configuration.md headings), e.g. #Tenancy.budget (schema.cue#L319) and CHANGELOG.2026-07-17 (L1639), none of which the diff edits (hunks: schema.cue @@ -263,0 +264,4 @@ and @@ -265 +269,2 @@); --safe selects 2990 tests across about 80 packages for a change to one config field and one hook stage
+  - **Repro:** on wave p3-pin (base origin/main fa1e1d16): git diff origin/main -U0 -- schema/config/schema.cue shows two hunks near L264; fathom tests select --since origin/main --safe --store $FATHOM_CACHE_ROOT/verify.sqlite --service fathom | grep -c "no test reaches it" prints 328
+- **Root cause:** not isolated; the set looks like a base-to-head symbol comparison that counts a moved span (same text, new line numbers) as a change, rather than an intersection of each symbol head span with the diff hunks
+- **Fix:** none yet; the worker ran the focused packages (internal/config, the cmd/fathom pin and hook tests) under -race and left the whole set to task validate
+- **Status:** open
+- **Impact:** EW-11 selection stops narrowing as soon as a diff inserts a line above many symbols (a CHANGELOG line, a schema field), which is most diffs; test_gap overstates the untested change by two orders of magnitude here

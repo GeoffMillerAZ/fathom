@@ -89,6 +89,10 @@ func mergeLayer(cfg *Config, prov Provenance, raw map[string]any, source Source,
 			cfg.Hooks.TestRun = b
 			prov["hooks.test_run"] = SourceInfo{source, path}
 		}
+		if s, ok := hm["pin_check"].(string); ok {
+			cfg.Hooks.PinCheck = s
+			prov["hooks.pin_check"] = SourceInfo{source, path}
+		}
 	}
 
 	if cm, ok := raw["connector"].(map[string]any); ok {

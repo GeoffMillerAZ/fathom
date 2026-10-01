@@ -131,3 +131,9 @@ package config
 // bad20: #Config & {
 // 	work: ci_summaries: [{path: "ci/junit.xml", commit: "main"}]
 // }
+
+// [hooks] pin_check is off, record or feedback (PR-6); any other value is
+// refused:
+// bad21: #Config & {
+// 	hooks: pin_check: "warn"
+// }

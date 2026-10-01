@@ -113,10 +113,20 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 	}
 	sessionID := hook.SessionID
 
+	// PR-3 (ADR-057 decision 4): a git commit seen by PostToolUse(Bash) is
+	// checked for lost pins before the observe-only exit below swallows the
+	// non-write Bash call. Only a git commit statement forks git
+	// (edithook_pin.go); pinText is what it adds to this call's payload.
+	pinText := ""
+	if !*pre {
+		pinText = commitPinLine(codec, hook, armOff)
+	}
+
 	// RT-131 (§11.3): an observe-only call (the Read|Grep|Glob observer, a
 	// Bash call with no write targets) exits here, before any git or
 	// daemon work.
 	if observeOnlyExit(ev, hook, armOff) {
+		emitPinContext(codec, pinText, stdout)
 		return 0
 	}
 
@@ -133,7 +143,7 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 		// where tool_input.file_path would be — every other tool (a read,
 		// a search) still has neither and stays silent, exactly as before.
 		if hook.Tool == harness.ToolShell && strings.TrimSpace(hook.Command) != "" {
-			return cmdEditHookBashWrite(codec, hook, url, armOff, stdout)
+			return cmdEditHookBashWrite(codec, hook, url, armOff, stdout, pinText)
 		}
 		return 0
 	}
