@@ -519,7 +519,7 @@ route_confidence  = 0.9      # unchanged at this default (2026-09-24, ADR-042 am
 route_timeout_ms  = 3000     # POST /route's own decider budget, in ms (100-30000)
 rank_within_tier  = false    # obligations re-orders rules only inside their governing-scope tier
 rerank_timeout_ms = 1500     # obligations re-rank's own decider budget, in ms (100-60000)
-sites = ["route", "compile_prefilter", "obligations_rerank", "certify_suggest", "assess", "preflight"]  # the egress opt-in — this is the default
+sites = ["compile_prefilter", "obligations_rerank", "certify_suggest", "assess", "preflight"]  # the egress opt-in — this is the default (route is off: add "route" to turn it on)
 ```
 
 `rank_within_tier` defaults to **false** (amended 2026-09-23, ADR-042): the
@@ -605,12 +605,19 @@ SiteAllowed`) rather than re-derived at each one. Every failure discloses why:
 blocked site; `fathom certify suggest` prints one line naming it and exits 0;
 `fathom doctor`'s `decision_provider` row appends `(sites off: <names>)` to a
 passing provider's own Reason whenever `sites` excludes any of them.
-Unset (the default, shown above) means every current site, so an
-unconfigured `[decide]` block behaves exactly as it did before `sites`
-existed; `sites = []` disables every site outright — a fully quiet decision
+Unset (the default, shown above) means every current site except `route`:
+`route` is off by default since 2026-10-01 (JF-7, judgment-foundations §6: it
+failed calibration), its code and the deterministic precheck are kept, and
+listing `"route"` in `sites` turns it back on. The default list is frozen: it
+never grows. `sites = []` disables every site outright — a fully quiet decision
 port with a provider still configured. Closed to the six site names that
-exist today (`fathom config` load refuses an unrecognized one by name, the
-same discipline `provider`'s own enum already applies).
+exist today plus the **opt-in** names (JF-4, R2) — `triage_failure`, `ask`,
+`explore`, `compact_advice` and one `judge_<name>` per judge site — for
+judgments not built yet (`fathom config` load refuses any other name, the same
+discipline `provider`'s own enum already applies). An opt-in site is refused
+unless the repository's **own** `.fathom/config.toml` lists it: the default
+never does, and a user-global `~/.fathom/config.toml` that lists it does not
+opt a repository in, whatever `provider` is set to.
 
 `provider = "typesafe"` routes through the kit's TypeSafe (Jev) adapter directly
 — no `[llm]` profile needed — and lands 2026-09-22 (ADR-042 amendment; the

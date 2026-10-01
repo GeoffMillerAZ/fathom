@@ -161,6 +161,14 @@ bad20: #Config & {
 bad21: #Config & {
 	hooks: pin_check: "warn"
 }`},
+		{"[decide] sites naming the judge_* family as a wildcard", `
+bad22: #Config & {
+	decide: sites: ["judge_*"]
+}`},
+		{"[decide] sites naming a judge site with no name", `
+bad23: #Config & {
+	decide: sites: ["judge_"]
+}`},
 	}
 
 	cctx := cuecontext.New()

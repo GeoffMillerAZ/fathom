@@ -225,12 +225,16 @@ package config
 	// sites is the egress allowlist (ADR-044 decision 8, I14): the site
 	// names this port is allowed to send a decision.Question off-host from.
 	// A site absent here makes NO call at all, whatever provider is set.
-	// Unset (the default) means every current site — DefaultDecide.Sites in
-	// Go, so unconfigured behaviour is unchanged; `sites = []` disables
-	// every site. Closed to the six sites that exist today, same
-	// discipline as provider's own enum ("assess" is `fathom assess`,
-	// ADR-046; "preflight" is task preflight's Score, WI-18).
-	sites?: [...("route" | "compile_prefilter" | "obligations_rerank" | "certify_suggest" | "assess" | "preflight")]
+	// Unset (the default) means DefaultDecide.Sites in Go: every site that
+	// existed when per-site opt-in landed, minus "route" (JF-7, off by
+	// default; naming it turns it back on); `sites = []` disables every
+	// site. Closed to the six sites that exist today ("assess" is `fathom
+	// assess`, ADR-046; "preflight" is task preflight's Score, WI-18) plus
+	// the opt-in names (JF-4, judgment-foundations §4, R2): "triage_failure",
+	// "ask", "explore", "compact_advice" and one "judge_<name>" per judge
+	// site. An opt-in name takes effect only from the repository's own
+	// .fathom/config.toml, never from a user-global file.
+	sites?: [...("route" | "compile_prefilter" | "obligations_rerank" | "certify_suggest" | "assess" | "preflight" | "triage_failure" | "ask" | "explore" | "compact_advice" | =~"^judge_[a-z][a-z0-9_]*$")]
 }
 
 // #Tests configures vision 33 / ADR-043 stage 0's test-evidence ingest: a

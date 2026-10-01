@@ -25,8 +25,13 @@ Release impact: minor (pre-1.0: breaking bumps minor)
 
 - `decisions.jsonl` and the assess ledger (and `fathom assess --json`) name the yes/no decision kind `predicate` at `schema_version` 2, where version 1 rows say `noul`; `fathom decide log` and the console read both as `predicate`, and no provider request changes ([migration](docs/upgrades/0.10.0-decision-kind-predicate.md)).
 
+### Added
+
+- `[decide] sites` accepts the opt-in site names `triage_failure`, `ask`, `explore`, `compact_advice` and `judge_<name>` (JF-4); no call site asks one yet, and each is refused, whatever `provider` is set to, unless the repository's own `.fathom/config.toml` names it (a user-global `~/.fathom/config.toml` cannot opt a repository in).
+
 ### Changed
 
+- `route` is off by default: the default `[decide] sites` drops it (JF-7, it failed calibration), so a configured provider no longer answers `POST /route` unless `sites` names `"route"`; the deterministic precheck is unchanged. The default list is now frozen.
 - The vendored agentic-kit is pinned at 0c08348 (`v0.7.1-0.20261001071505-0c083484abe6`): the decision port's hexagonal hardening, its adapters in `foundations/decision/llm` and `foundations/decision/typesafe`.
 
 ## [0.9.0] -- 2026-09-30

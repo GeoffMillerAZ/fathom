@@ -7,6 +7,9 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -225,19 +228,111 @@ func TestOpen_TypeSafe(t *testing.T) {
 	})
 }
 
+// TestSiteAllowed_OptInSitesRefusedUnderDefault pins JF-4
+// (docs/design/judgment-foundations.md §4, R2): an opt-in site is refused
+// under the default allowlist even with a provider set, refused when only a
+// user-global config.toml names it, and allowed only when the repository's
+// own .fathom/config.toml (the project layer) names it in [decide] sites.
+func TestSiteAllowed_OptInSitesRefusedUnderDefault(t *testing.T) {
+	optIn := []string{"triage_failure", "ask", "explore", "compact_advice", "judge_failure"}
+	for _, want := range []string{"triage_failure", "ask", "explore", "compact_advice", "judge_*"} {
+		found := false
+		for _, s := range decide.OptInSites {
+			found = found || s == want
+		}
+		if !found {
+			t.Errorf("OptInSites = %v, want it to list %q", decide.OptInSites, want)
+		}
+	}
+	for _, site := range decide.AllSites {
+		if decide.IsOptInSite(site) {
+			t.Errorf("AllSites lists %q, an opt-in name: opt-in sites have no call site yet (R2) and never join the default list", site)
+		}
+	}
+
+	t.Run("the default refuses every opt-in site, even with a provider set", func(t *testing.T) {
+		cfg := config.DefaultDecide
+		cfg.Provider = "typesafe"
+		for _, site := range optIn {
+			if !decide.IsOptInSite(site) {
+				t.Errorf("IsOptInSite(%q) = false, want true", site)
+			}
+			if decide.SiteAllowed(cfg, site) {
+				t.Errorf("SiteAllowed(DefaultDecide with provider typesafe, %q) = true, want false (opt-in)", site)
+			}
+		}
+	})
+
+	sitesTOML := "[decide]\nprovider = \"typesafe\"\nsites = [\"compile_prefilter\", \"triage_failure\", \"ask\", \"explore\", \"compact_advice\", \"judge_failure\"]\n"
+
+	t.Run("a user-global config.toml cannot opt a repository in", func(t *testing.T) {
+		dir := t.TempDir()
+		user := filepath.Join(dir, "user.toml")
+		if err := os.WriteFile(user, []byte(sitesTOML), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		loaded, err := config.Load(user, filepath.Join(dir, "absent", "config.toml"))
+		if err != nil {
+			t.Fatalf("Load: %v", err)
+		}
+		for _, site := range optIn {
+			if decide.SiteAllowed(loaded.Config.Decide, site) {
+				t.Errorf("SiteAllowed(%q) = true with only the user layer naming it, want false (the repository's own [decide] sites must name it)", site)
+			}
+		}
+		if !decide.SiteAllowed(loaded.Config.Decide, decide.SiteCompilePrefilter) {
+			t.Error("a user layer still narrows an ordinary site: compile_prefilter refused, want allowed")
+		}
+	})
+
+	t.Run("the repository's own [decide] sites opts it in", func(t *testing.T) {
+		dir := t.TempDir()
+		project := filepath.Join(dir, ".fathom", "config.toml")
+		if err := os.MkdirAll(filepath.Dir(project), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(project, []byte(sitesTOML), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		loaded, err := config.Load(filepath.Join(dir, "no-user.toml"), project)
+		if err != nil {
+			t.Fatalf("Load: %v", err)
+		}
+		for _, site := range optIn {
+			if !decide.SiteAllowed(loaded.Config.Decide, site) {
+				t.Errorf("SiteAllowed(%q) = false with the project layer naming it, want true", site)
+			}
+		}
+		if decide.SiteAllowed(loaded.Config.Decide, "judge_other") {
+			t.Error("SiteAllowed(judge_other) = true, want false: naming judge_failure opts in that one site, not the family")
+		}
+	})
+}
+
 // TestSiteAllowed_Allowlist pins CV-42 (docs/design/refactor-conservation.md
-// §7, ADR-044 decision 8, I14): a site absent from cfg.Sites makes no call,
-// whatever Provider is set to; the four site name constants this package
-// exports are exactly what config.DefaultDecide.Sites lists by default, so
-// an unconfigured [decide] block calls every site it always called before
-// Sites existed.
+// §7, ADR-044 decision 8, I14) and JF-5 (judgment-foundations §4, §6): a
+// site absent from cfg.Sites makes no call, whatever Provider is set to;
+// under the documented default every site in AllSites minus OptInSites is
+// allowed, except the one stated exclusion, route (section 6: off by
+// default, its code kept), so the unconfigured behaviour of every other
+// existing site is unchanged (I42).
 func TestSiteAllowed_Allowlist(t *testing.T) {
-	t.Run("every default site is allowed under the documented default", func(t *testing.T) {
+	t.Run("AllSites minus OptInSites are allowed by default, route the one stated exclusion", func(t *testing.T) {
 		cfg := config.DefaultDecide
 		for _, site := range decide.AllSites {
-			if !decide.SiteAllowed(cfg, site) {
-				t.Errorf("SiteAllowed(DefaultDecide, %q) = false, want true (unconfigured behaviour must stay unchanged)", site)
+			want := !decide.IsOptInSite(site) && !slices.Contains(decide.DefaultOffSites, site)
+			if got := decide.SiteAllowed(cfg, site); got != want {
+				t.Errorf("SiteAllowed(DefaultDecide, %q) = %v, want %v", site, got, want)
 			}
+		}
+		if !slices.Equal(decide.DefaultOffSites, []string{decide.SiteRoute}) {
+			t.Errorf("DefaultOffSites = %v, want exactly [route] (section 6)", decide.DefaultOffSites)
+		}
+		if decide.SiteAllowed(cfg, decide.SiteRoute) {
+			t.Error("SiteAllowed(DefaultDecide, route) = true, want false (route is off by default)")
+		}
+		if !decide.SiteAllowed(config.Decide{Sites: []string{decide.SiteRoute}}, decide.SiteRoute) {
+			t.Error("route named in [decide] sites is refused, want allowed: route is a stated exclusion, not an opt-in site")
 		}
 	})
 

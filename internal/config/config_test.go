@@ -468,6 +468,59 @@ func TestLoad_GuardsTable(t *testing.T) {
 	}
 }
 
+// TestConfig_DecideDefaultSitesExcludeRoute pins JF-7
+// (docs/design/judgment-foundations.md §6): route leaves the default
+// [decide] sites, frozen at the sites that existed before JF-7 minus route;
+// its code and SR-44's deterministic precheck stay, and a repository or a
+// user that names route in [decide] sites gets it back. RepoSites records
+// only what the project layer named (JF-4: the repository's own list).
+func TestConfig_DecideDefaultSitesExcludeRoute(t *testing.T) {
+	frozen := []string{"compile_prefilter", "obligations_rerank", "certify_suggest", "assess", "preflight"}
+	dir := t.TempDir()
+
+	loaded, err := Load("", "")
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if !reflect.DeepEqual(loaded.Config.Decide.Sites, frozen) {
+		t.Errorf("default [decide] sites = %v, want the frozen list %v", loaded.Config.Decide.Sites, frozen)
+	}
+	for _, s := range loaded.Config.Decide.Sites {
+		if s == "route" {
+			t.Error("default [decide] sites lists route, want it off by default")
+		}
+	}
+	if loaded.Config.Decide.RepoSites != nil {
+		t.Errorf("RepoSites = %v with no project layer, want nil", loaded.Config.Decide.RepoSites)
+	}
+
+	user := filepath.Join(dir, "user.toml")
+	writeTOML(t, user, "[decide]\nsites = [\"route\", \"compile_prefilter\"]\n")
+	loaded, err = Load(user, "")
+	if err != nil {
+		t.Fatalf("Load user: %v", err)
+	}
+	if got := loaded.Config.Decide.Sites; !reflect.DeepEqual(got, []string{"route", "compile_prefilter"}) {
+		t.Errorf("user-layer sites = %v, want route back as named", got)
+	}
+	if loaded.Config.Decide.RepoSites != nil {
+		t.Errorf("RepoSites = %v from a user layer, want nil (only the project layer is the repository's own)", loaded.Config.Decide.RepoSites)
+	}
+
+	project := filepath.Join(dir, "project.toml")
+	writeTOML(t, project, "[decide]\nsites = [\"route\", \"ask\"]\n")
+	loaded, err = Load(user, project)
+	if err != nil {
+		t.Fatalf("Load project: %v", err)
+	}
+	if got := loaded.Config.Decide.RepoSites; !reflect.DeepEqual(got, []string{"route", "ask"}) {
+		t.Errorf("RepoSites = %v, want the project layer's list", got)
+	}
+	if got := loaded.Config.Decide.Sites; !reflect.DeepEqual(got, []string{"route", "ask"}) {
+		t.Errorf("Sites = %v, want the project layer's list", got)
+	}
+}
+
 // TestConfig_DecideBlock pins ADR-042's decision port config surface
 // (docs/vision/32-decision-port.md, schema.cue #Decide): defaults when the
 // `[decide]` table is absent, every key parses when present, an unknown
@@ -492,7 +545,7 @@ func TestConfig_DecideBlock(t *testing.T) {
 			RouteTimeoutMS:   3000,
 			RankWithinTier:   false,
 			RerankTimeoutMS:  1500,
-			Sites:            []string{"route", "compile_prefilter", "obligations_rerank", "certify_suggest", "assess", "preflight"},
+			Sites:            []string{"compile_prefilter", "obligations_rerank", "certify_suggest", "assess", "preflight"},
 		}
 		if !reflect.DeepEqual(loaded.Config.Decide, want) {
 			t.Errorf("Decide = %+v, want defaults %+v", loaded.Config.Decide, want)

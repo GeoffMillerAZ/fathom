@@ -54,6 +54,17 @@ example: #Config & {
 	}
 }
 
+// A repository's own [decide] sites opting into new judgment sites (JF-4,
+// judgment-foundations §4, R2): the opt-in names validate in any layer,
+// but only the project layer's list turns one on (decide.SiteAllowed).
+// "route" is off by default (JF-7) and comes back when named.
+exampleOptInSites: #Config & {
+	decide: {
+		provider: "typesafe"
+		sites: ["route", "compile_prefilter", "triage_failure", "ask", "explore", "compact_advice", "judge_failure"]
+	}
+}
+
 // A [decide] block using the TypeSafe (Jev) adapter directly (ADR-042
 // amendment, 2026-09-22): endpoint/model are optional overrides, and the
 // key comes from one of api_key_env or api_key_cmd — never a literal.
