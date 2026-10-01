@@ -108,3 +108,41 @@ func TestGoExtractor_CallSites(t *testing.T) {
 		t.Errorf("Use.Calls not sorted: %v", calls)
 	}
 }
+
+// rangeOverFuncFixture: since Go 1.23 a range operand may be a function
+// (`for x := range All` calls All with the loop body as yield), so a range
+// operand is a position a function value can take and stays a reference,
+// unlike a comparison operand or a case value (LB-F66).
+const rangeOverFuncFixture = `package p
+
+import "maps"
+
+func All(yield func(int) bool) {}
+
+func Use(m map[string]int) {
+	for x := range All {
+		_ = x
+	}
+	for k := range maps.Keys {
+		_ = k
+	}
+}
+`
+
+func TestGoExtractor_RangeOverFuncIsACall(t *testing.T) {
+	nodes, err := extractor.NewGoExtractor().Extract("svc", "p/p.go", []byte(rangeOverFuncFixture))
+	if err != nil {
+		t.Fatalf("Extract: %v", err)
+	}
+	var calls []string
+	for _, n := range nodes {
+		if n.Name == "Use" {
+			calls = n.Calls
+		}
+	}
+	for _, want := range []string{"svc::p.All", "maps.Keys"} {
+		if !slices.Contains(calls, want) {
+			t.Errorf("Use.Calls lacks the range-over-func operand %q: %v", want, calls)
+		}
+	}
+}

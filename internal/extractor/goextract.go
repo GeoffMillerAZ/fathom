@@ -417,8 +417,9 @@ func cyclomaticComplexity(fn *ast.FuncDecl) int {
 // package-level function of that name; and a value no function can be is no
 // reference either (skipNonFuncValue): an operand of a comparison against
 // anything but nil or of any other binary operator, a switch tag or case
-// value, the base of a further selector, and a unary, slice, range or
-// increment operand. A type stays a reference: `var t pkg.T` and
+// value, the base of a further selector, and a unary, slice or increment
+// operand. A range operand is not one of them: since Go 1.23 it may be a
+// function (`for x := range All`). A type stays a reference: `var t pkg.T` and
 // `pkg.T{...}` are how a test reaches a type a plan row names (verify's
 // test_reaches) and how product reach links a package only a type names. A
 // method called on any receiver expression is a call too:
@@ -518,9 +519,8 @@ func collectCalls(service, pkgName string, fn *ast.FuncDecl, localFuncs map[stri
 				}
 			}
 			return true
-		case *ast.RangeStmt:
-			skipNonFuncValue(skip, node.X)
-			return true
+		// A range operand stays a reference: since Go 1.23 it may be a
+		// function (`for x := range All` calls All).
 		case *ast.IncDecStmt:
 			skipNonFuncValue(skip, node.X)
 			return true
