@@ -250,3 +250,59 @@ func TestIngest_ExtractorEpoch_TSEngineForcesReExtraction(t *testing.T) {
 		t.Error("greet.py re-extraction did not surface the greet() function — tsengine extractor not wired")
 	}
 }
+
+// TestIngest_ExtractorEpoch_GitHooksAndCloudFormationForceReExtraction pins
+// epoch 39 (LB-Q-git-hooks-config and LB-Q-cloudformation): a lefthook config
+// was fingerprinted as unclassified YAML and a CloudFormation template as
+// generic YAML before the two doc-engine dialects were dispatched, so the bump
+// "38"→"39" must re-read both. The seeded fingerprints are salted with "38",
+// the TRUE prior epoch, so the test fails if the bump reverts (the XT-5 rule
+// above); every dialect test still passes on a fresh store without the bump.
+func TestIngest_ExtractorEpoch_GitHooksAndCloudFormationForceReExtraction(t *testing.T) {
+	dir := t.TempDir()
+	files := map[string][]byte{
+		"lefthook.yml": []byte("pre-commit:\n  commands:\n    lint:\n      run: go vet ./...\n"),
+		"template.yaml": []byte("AWSTemplateFormatVersion: \"2010-09-09\"\n" +
+			"Resources:\n  Queue:\n    Type: AWS::SQS::Queue\n"),
+	}
+	conn := connector.NewLocalConnector()
+	st := store.NewMemoryStore()
+	svc := core.ServiceRef{ID: "epoch39-svc", Path: dir}
+	ctx := context.Background()
+	for name, src := range files {
+		if err := os.WriteFile(filepath.Join(dir, name), src, 0o644); err != nil {
+			t.Fatalf("write %s: %v", name, err)
+		}
+		oldSalted := sha256.Sum256(append(append([]byte{}, src...), []byte("\x00fathom-extractor-epoch:38")...))
+		if err := st.SetFingerprint(ctx, svc.ID, name, hex.EncodeToString(oldSalted[:])); err != nil {
+			t.Fatalf("SetFingerprint %s: %v", name, err)
+		}
+	}
+
+	p := fusion.New(conn, st, defaultCfg())
+	t.Cleanup(p.Close)
+	rep, err := p.Ingest(ctx, svc)
+	if err != nil {
+		t.Fatalf("Ingest: %v", err)
+	}
+	if rep.Skipped != 0 {
+		t.Fatalf("%d file(s) skipped (a pre-epoch-39 fingerprint was honored) — ExtractorEpoch was not bumped for the git-hooks-config and cloudformation dispatch", rep.Skipped)
+	}
+
+	obs, err := st.QueryObservations(ctx, svc.ID, "")
+	if err != nil {
+		t.Fatalf("QueryObservations: %v", err)
+	}
+	var sawHook, sawResource bool
+	for _, o := range obs {
+		if o.SourceRef == "lefthook.yml" && o.SourceKind == core.KindLefthookHook && o.Symbol == "pre-commit" {
+			sawHook = true
+		}
+		if o.SourceRef == "template.yaml" && o.SourceKind == "CFNResource" && o.Symbol == "Queue" {
+			sawResource = true
+		}
+	}
+	if !sawHook || !sawResource {
+		t.Errorf("re-extraction did not surface the dialects' symbols (LefthookHook pre-commit=%v, CFNResource Queue=%v)", sawHook, sawResource)
+	}
+}

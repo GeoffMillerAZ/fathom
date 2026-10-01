@@ -171,7 +171,7 @@ both builds' `ingest --dry-run` discover the same 6,524 files and 75,971,918 byt
 per-byte denominator.
 
 **Method** (the wave-1b in-process method above). `fathom ingest --json --store <fresh
-sqlite> --service poly --path <tree>`, niced, under `/Volumes/m2ext/tmp/lang-measure.lock`,
+sqlite> --service poly --path <tree>`, niced, under `<scratch>/lang-measure.lock`,
 timed by `/usr/bin/time -l` (user + sys includes any child); each run a fresh store and a
 fresh compilation cache (a CLI ingest compiles grammars in memory; only the managed daemon
 enables the on-disk cache). Two runs a build, interleaved base, head, base, head; the second
