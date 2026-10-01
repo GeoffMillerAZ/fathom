@@ -757,7 +757,7 @@ nothing may depend on it (P24). The entry's own drop-if stands.
 
 ## F60. A per-commit "already applied" landed test for `plans lines`
 
-- Confidence: plausible. Horizon: later. Evidence: ADR-060's amendment of 2026-10-02,
+- Confidence: plausible. Horizon: later. Evidence: ADR-060's amendment of 2026-10-01,
   `docs/bench/readings/stewardship/lines-replay.md` (SV-M1 CUT, its "Not measured" list), O293,
   `docs/plans/efficiency-wave.md` EW-41.
 - Motivation: the landed test (an ancestor, patch-equivalent by `git cherry`, or content-equal) cannot see work that

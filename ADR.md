@@ -3590,7 +3590,7 @@ and cited in the design: change is the first suspect, correlation is not cause, 
 
 **Status.** Accepted 2026-09-30 for decisions 1 to 8 (the owner delegated the calls to the owner-architect); amended
 2026-09-30: decision 7's ordering accepted, and decision 6's licence boundary settled as default deny (the amendment
-below); amended 2026-10-02: SV-M1 read CUT, so `plans lines` loses the claims-rows and touches-rows classes (the
+below); amended 2026-10-01: SV-M1 read CUT, so `plans lines` loses the claims-rows and touches-rows classes (the
 second amendment below). The owner's wind-down of 2026-09-30 still holds every new wave until the owner lifts it; decision 7 orders the
 work after that. **Type.** Product / architecture. Inputs: the owner's six notes of 2026-09-30 (line
 lifecycle, upstream drift, temporary artifacts, SRE as code, minimal vendoring, prioritization), the 2026-09-29
@@ -3677,8 +3677,8 @@ Kit); none knows what the code is for. `dep_drift`, which the owner's note assum
   their rows land.
 
 **Revisit when.**
-- SV-M1, SV-M2 or SV-M3 reads CUT: remove what the reading killed (vision 41 section 7). (Fired 2026-10-02 for
-  SV-M1: the rows classes are removed, the amendment of 2026-10-02 below; SV-M3 read KEEP, and SV-M2 has not read.)
+- SV-M1, SV-M2 or SV-M3 reads CUT: remove what the reading killed (vision 41 section 7). (Fired 2026-10-01 for
+  SV-M1: the rows classes are removed, the amendment of 2026-10-01 below; SV-M3 read KEEP, and SV-M2 has not read.)
 - SV-M4 shows no reached upstream change in two quarters: drop F58.
 - A named consumer commits alert rules, SLO specs or dashboards: promote F59.
 - Review Kit asks for readiness facts through the evidence contract before F59's trigger fires.
@@ -3696,11 +3696,11 @@ this directory and generated outputs private", `internal/designadapt/*_delivery.
 listed as a fact, so an allow can be as narrow as the closure. Vision 41 section 4.5, the SV-8 and SV-V1 rows and the
 decisions index follow; ids and contracts are unchanged.
 
-**Amendment (2026-10-02): SV-M1 read CUT; the rows classes are removed.** The $0 replay over the 2026-09-29
+**Amendment (2026-10-01): SV-M1 read CUT; the rows classes are removed.** The $0 replay over the 2026-09-29
 consolidation (`docs/bench/readings/stewardship/lines-replay.md`) flagged 36 lines against the pre-registered bar of
 25 (O293): 18 kit lines read touches rows because their diffs named a generic symbol under an open row's package,
 and the landed test cannot see work that landed and was then edited on `main`. The owner-architect decided on
-2026-10-02 to remove the killed classes, claims rows and touches rows, from `fathom plans lines`: the
+2026-10-01 to remove the killed classes, claims rows and touches rows, from `fathom plans lines`: the
 `internal/worklines` classes and their matchers, the `--json` fields `claims`, `touches`, `tier` and `open_rows`, the
 table's rows column and open-rows count, and the docs. Landed, at risk, idle and active stay, in that precedence.
 Nothing then needs the plan files, so worklines reads none. The decision retires the test

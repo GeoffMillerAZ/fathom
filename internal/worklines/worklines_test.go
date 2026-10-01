@@ -252,7 +252,7 @@ func TestClassifyLinesLandedAtRiskIdle(t *testing.T) {
 }
 
 // TestClassifyLinesClassesOnlyLandedAtRiskIdleActive pins SV-M1's CUT
-// (ADR-060 amendment 2026-10-02, O293): the claims-rows and touches-rows
+// (ADR-060 amendment 2026-10-01, O293): the claims-rows and touches-rows
 // classes are gone, a line that flips an open plan row or whose diff names an
 // open row's symbol is classed by its remaining facts, and no plan file is
 // read.

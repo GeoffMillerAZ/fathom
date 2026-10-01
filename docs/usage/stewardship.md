@@ -23,9 +23,9 @@ integration branch (SV-1, SV-2):
 | `active` | None of the above, with a recent commit. |
 
 The `claims-rows` and `touches-rows` classes (a line's plan edits flip open rows; its diff
-names an open row's anchors) were removed on 2026-10-02: SV-M1
+names an open row's anchors) were removed on 2026-10-01: SV-M1
 (`docs/bench/readings/stewardship/lines-replay.md`) read CUT for them, 36 lines flagged
-over the 2026-09-29 consolidation against a bar of 25 (ADR-060 amendment 2026-10-02,
+over the 2026-09-29 consolidation against a bar of 25 (ADR-060 amendment 2026-10-01,
 O293). The report reads no plan file. A line that landed and was then edited on the
 integration branch still reads at risk, idle or active; a per-commit "already applied"
 test is a recorded future (F60), not a class.

@@ -17,7 +17,7 @@
 //
 // The claims-rows and touches-rows classes (a line's plan edits flip open
 // rows; its diff names an open row's anchors) were removed when the SV-M1
-// replay read CUT (ADR-060 amendment 2026-10-02, O293), so the package reads
+// replay read CUT (ADR-060 amendment 2026-10-01, O293), so the package reads
 // no plan file.
 //
 // The package only reads (I63, P15). Every git command goes through the

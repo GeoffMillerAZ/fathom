@@ -5,7 +5,7 @@ package main
 // stashes, each classed landed, at risk, idle or active, with its age. For a
 // landed line it prints the command that would remove it. The claims-rows and
 // touches-rows classes were removed when SV-M1 read CUT (ADR-060 amendment
-// 2026-10-02). It runs no git write, deletes nothing and rewrites no history
+// 2026-10-01). It runs no git write, deletes nothing and rewrites no history
 // (I63, P15): every git read goes through gitro, and the removal command is
 // text for the operator.
 
