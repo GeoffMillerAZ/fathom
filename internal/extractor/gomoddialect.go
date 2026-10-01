@@ -67,11 +67,12 @@ func NewGoModulesExtractor() *GoModulesExtractor { return &GoModulesExtractor{} 
 
 // NativeDialectExtractor returns the stand-alone extractor of a native-engine
 // dialect that has one (the harness measures the dialect's own code through
-// it, not fusion's dispatch). ok is false for a native dialect served by a
-// bespoke walker the harness reads through dispatch (terraform), and for an
-// unknown id.
+// it, not fusion's dispatch, so a DocResulter's cross-file references reach
+// the xref scoring). ok is false for an unknown id.
 func NativeDialectExtractor(id string) (Extractor, bool) {
 	switch id {
+	case "terraform":
+		return NewHCLExtractor(), true
 	case "go-mod":
 		return NewGoModulesExtractor(), true
 	}
