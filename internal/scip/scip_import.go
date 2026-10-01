@@ -86,13 +86,26 @@ type Report struct {
 	// idea of the definition's line) even though the fallback recovered
 	// the correct symbol.
 	ResolvedViaFallback int
+	// EnclosingFallback (LB-F54) counts mapped definitions whose producer
+	// set no EnclosingRange and that therefore took their fathom node's own
+	// line span (Line..EndLine, whole lines) as their containment span —
+	// see definitionSpan. scip-php, scip-clang and scip-dotnet set no
+	// enclosing_range at all, so without it no reference fell inside any
+	// definition and the import stored no typed edge. Unmapped definitions,
+	// and mapped ones whose node has no EndLine, keep their name token.
+	EnclosingFallback int
 	// Skipped names, per reason, how many occurrences ImportIndex declined
 	// to turn into an edge — never silently dropped. "no-enclosing-
 	// definition" is a reference outside every definition's span (a
 	// top-level import statement is the common case); "invalid-range" is
 	// a malformed occurrence range; "unmapped-endpoint" is a reference
 	// whose FROM (enclosing definition) or internally-defined TO could
-	// not be mapped to a fathom symbol (O115, see Unmapped's doc comment).
+	// not be mapped to a fathom symbol (O115, see Unmapped's doc comment);
+	// "local-target" (LB-F55) is a reference to a "local N" symbol the
+	// index defines but no extractor maps — a value with no fathom
+	// identity (a local variable), so never a typed edge to miss, and
+	// kept out of "unmapped-endpoint" (the harness's typed_recall
+	// denominator) for that reason.
 	Skipped map[string]int
 }
 
@@ -193,24 +206,50 @@ func (s span) contains(p pos) bool {
 	return s.ok && lessEq(s.start, p) && lessEq(p, s.end)
 }
 
-// size is a comparable measure of s's extent — used to pick the INNERMOST
-// of several containing spans (the smallest one), never an arbitrary one.
-func (s span) size() int64 {
-	return int64(s.end.line-s.start.line)*1_000_000 + int64(s.end.char-s.start.char)
+// narrower reports whether s's extent is strictly smaller than t's: fewer
+// lines, or as many lines and fewer characters — used to pick the INNERMOST
+// of several containing spans, never an arbitrary one. Lines compare first,
+// so a whole-line fallback span (LB-F54, end character 1<<30) is still
+// narrower than any producer EnclosingRange covering more lines.
+func (s span) narrower(t span) bool {
+	sl, tl := s.end.line-s.start.line, t.end.line-t.start.line
+	if sl != tl {
+		return sl < tl
+	}
+	return int64(s.end.char)-int64(s.start.char) < int64(t.end.char)-int64(t.start.char)
 }
 
+// wholeLine is the end character a line-span fallback uses: past the end
+// of any real line, so the span covers its last line whole.
+const wholeLine = 1 << 30
+
 // definitionSpan returns the span a definition occurrence's containment
-// tests use: EnclosingRange when the producer set one (the real body
-// extent), falling back to Range (just the name token — still usable for
-// containment, only less generous) otherwise. This is orthogonal to WHICH
-// fathom symbol the definition maps to (see fileLine / resolveDefinition
-// below): containment is pure geometry and never depended on naming, even
-// before O115.
-func definitionSpan(occ *scippb.Occurrence) span {
+// tests use, and whether it came from the LB-F54 fallback:
+//
+//   - EnclosingRange when the producer set one (the real body extent);
+//   - otherwise, when the definition mapped (resolveDefinition) to a fathom
+//     node with EndLine >= Line > 0, that node's own lines: from
+//     min(node.Line-1, Range's start line), character 0, through
+//     EndLine-1 whole — the same fallback the language harness applies
+//     (internal/langbench/scip.go, owner decision D5), so a producer that
+//     sets no enclosing_range (scip-php, scip-clang, scip-dotnet) still
+//     attributes the references inside a mapped body;
+//   - otherwise Range (just the name token — still usable for containment,
+//     only less generous): an unmapped definition, or one whose node has
+//     no EndLine.
+//
+// The fallback never applies to a definition that carries an
+// EnclosingRange, so such a producer's import is unchanged by it.
+func definitionSpan(occ *scippb.Occurrence, node core.SymbolNode, mapped bool) (span, bool) {
 	if sp := normalizeRange(occ.GetEnclosingRange()); sp.ok {
-		return sp
+		return sp, false
 	}
-	return normalizeRange(occ.GetRange())
+	rng := normalizeRange(occ.GetRange())
+	if !rng.ok || !mapped || node.Line <= 0 || node.EndLine < node.Line {
+		return rng, false
+	}
+	lo := min(int32(node.Line-1), rng.start.line)
+	return span{start: pos{lo, 0}, end: pos{int32(node.EndLine - 1), wholeLine}, ok: true}, true
 }
 
 func isDefinition(occ *scippb.Occurrence) bool {
@@ -239,7 +278,7 @@ const localSymbolPrefix = "local "
 // local variable ended up wired to an unrelated type in a different test
 // file that happened to reuse the same local id.
 func scopedSymbolKey(docPath, scipSymbol string) string {
-	if strings.HasPrefix(scipSymbol, localSymbolPrefix) {
+	if isLocalSymbol(scipSymbol) {
 		return docPath + "\x00" + scipSymbol
 	}
 	return scipSymbol
@@ -402,11 +441,14 @@ func lastUnquotedAny(s, chars string) int {
 // and node is the zero value.
 type docDef struct {
 	scipSymbol  string
-	sp          span // containment span: EnclosingRange, falling back to Range
+	sp          span // containment span: see definitionSpan
 	parent      int  // index into the same document's []docDef, -1 if none
 	node        core.SymbolNode
 	mapped      bool
 	viaFallback bool
+	// lineSpan: sp is the mapped node's own lines (LB-F54), not a range
+	// the producer gave.
+	lineSpan bool
 }
 
 // descriptorIsParameterLike reports whether scipSymbol's LAST descriptor
@@ -491,16 +533,17 @@ func buildDocDefs(doc *scippb.Document, byLoc map[fileLine][]core.SymbolNode, by
 		if !isDefinition(occ) {
 			continue
 		}
-		sp := definitionSpan(occ)
-		if !sp.ok {
+		// The definition's own position (Range, else EnclosingRange) is the
+		// join key; a definition with neither is skipped as before.
+		rng := normalizeRange(occ.GetRange())
+		if !rng.ok {
+			rng = normalizeRange(occ.GetEnclosingRange())
+		}
+		if !rng.ok {
 			continue
 		}
-		rng := normalizeRange(occ.GetRange())
-		startLine := sp.start.line
-		if rng.ok {
-			startLine = rng.start.line
-		}
-		node, mapped, viaFallback := resolveDefinition(byLoc, byLeaf, doc.GetRelativePath(), startLine, occ.GetSymbol())
+		node, mapped, viaFallback := resolveDefinition(byLoc, byLeaf, doc.GetRelativePath(), rng.start.line, occ.GetSymbol())
+		sp, lineSpan := definitionSpan(occ, node, mapped)
 		defs = append(defs, docDef{
 			scipSymbol:  occ.GetSymbol(),
 			sp:          sp,
@@ -508,13 +551,14 @@ func buildDocDefs(doc *scippb.Document, byLoc map[fileLine][]core.SymbolNode, by
 			node:        node,
 			mapped:      mapped,
 			viaFallback: viaFallback,
+			lineSpan:    lineSpan,
 		})
 	}
 	sort.SliceStable(defs, func(i, j int) bool {
 		if defs[i].sp.start != defs[j].sp.start {
 			return less(defs[i].sp.start, defs[j].sp.start)
 		}
-		return defs[i].sp.size() > defs[j].sp.size() // wider first when tied
+		return defs[j].sp.narrower(defs[i].sp) // wider first when tied
 	})
 
 	var stack []int
@@ -539,11 +583,35 @@ func enclosingDef(defs []docDef, p pos) int {
 		if !defs[i].sp.contains(p) {
 			continue
 		}
-		if best == -1 || defs[i].sp.size() < defs[best].sp.size() {
+		if best == -1 || defs[i].sp.narrower(defs[best].sp) {
 			best = i
 		}
 	}
 	return best
+}
+
+// isLocalSymbol reports whether sym is SCIP's "local N" form
+// (localSymbolPrefix).
+func isLocalSymbol(sym string) bool { return strings.HasPrefix(sym, localSymbolPrefix) }
+
+// enclosingFrom returns the definition a reference whose innermost
+// enclosing definition is defs[di] is attributed FROM (LB-F55). An
+// UNMAPPED "local N" definition (a local variable whose span covers its
+// own initializer, as scip-dart writes it) is no fathom symbol, so the
+// reference climbs its parent chain to the nearest mapped definition — the
+// function the local lives in. The climb passes only through unmapped
+// locals: it stops at the first definition that is mapped or is not a
+// local, so a reference inside an unmapped method, or a Parameter or
+// TypeParameter (descriptorIsParameterLike — handled exactly as before
+// LB-F55: unmapped, its references counted as "unmapped-endpoint"), is
+// never re-attributed to an outer definition. A local with no mapped
+// ancestor returns itself, still unmapped.
+func enclosingFrom(defs []docDef, di int) docDef {
+	d := defs[di]
+	for !d.mapped && isLocalSymbol(d.scipSymbol) && d.parent >= 0 {
+		d = defs[d.parent]
+	}
+	return d
 }
 
 // fromIndex is ImportIndex's pure core.
@@ -589,6 +657,9 @@ func fromIndex(service string, idx *scippb.Index, nodes []core.SymbolNode) Impor
 				if d.viaFallback {
 					rep.ResolvedViaFallback++
 				}
+				if d.lineSpan {
+					rep.EnclosingFallback++
+				}
 			} else {
 				rep.Unmapped++
 			}
@@ -603,7 +674,12 @@ func fromIndex(service string, idx *scippb.Index, nodes []core.SymbolNode) Impor
 	// whose FROM is unmapped, or whose TO names a symbol this index DOES
 	// define but could not itself map, contributes no edge (O115) and is
 	// counted under Skipped["unmapped-endpoint"] rather than silently
-	// dropped or mis-typed as Unresolved.
+	// dropped or mis-typed as Unresolved — except a TO that is an unmapped
+	// "local N" (LB-F55), counted under Skipped["local-target"]: a local
+	// variable has no fathom identity, so it is no typed edge missed. A
+	// reference whose innermost definition is an unmapped local (inside a
+	// local variable's initializer) climbs to that local's nearest mapped
+	// enclosing definition (enclosingFrom).
 	edgesByPkg := map[string][]core.Edge{}
 	for _, st := range states {
 		for _, occ := range st.doc.GetOccurrences() {
@@ -620,7 +696,16 @@ func fromIndex(service string, idx *scippb.Index, nodes []core.SymbolNode) Impor
 				rep.Skipped["no-enclosing-definition"]++
 				continue
 			}
-			fromDef := st.defs[di]
+			toSym := occ.GetSymbol()
+			// A reference to a "local" symbol only ever resolves within
+			// its OWN document (scopedSymbolKey) — the doc that this
+			// reference occurrence itself sits in, per SCIP's spec.
+			toKey := scopedSymbolKey(st.doc.GetRelativePath(), toSym)
+			if isLocalSymbol(toSym) && definedRaw[toKey] && !bySym[toKey].mapped {
+				rep.Skipped["local-target"]++
+				continue
+			}
+			fromDef := enclosingFrom(st.defs, di)
 			if !fromDef.mapped {
 				rep.Skipped["unmapped-endpoint"]++
 				continue
@@ -628,11 +713,6 @@ func fromIndex(service string, idx *scippb.Index, nodes []core.SymbolNode) Impor
 			fromKey := fromDef.node.Key()
 			fromPkg := fromDef.node.PackagePath()
 
-			toSym := occ.GetSymbol()
-			// A reference to a "local" symbol only ever resolves within
-			// its OWN document (scopedSymbolKey) — the doc that this
-			// reference occurrence itself sits in, per SCIP's spec.
-			toKey := scopedSymbolKey(st.doc.GetRelativePath(), toSym)
 			var edge core.Edge
 			switch {
 			case bySym[toKey].mapped:

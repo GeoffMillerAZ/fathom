@@ -1,6 +1,6 @@
 {
   "symbols": [
-    { "name": "acme-monorepo", "kind": "PackageJSONPackage", "package": "package", "line": 1, "end_line": 16, "signature": "0.0.0", "tier": "verified" },
+    { "name": "acme-monorepo", "kind": "PackageJSONPackage", "package": "package", "line": 1, "end_line": 16, "signature": "0.0.0", "calls": ["turbo"], "tier": "verified" },
     { "name": "build", "kind": "PackageJSONScript", "package": "package", "line": 10, "end_line": 10, "signature": "turbo run build", "tier": "verified" },
     { "name": "postinstall", "kind": "PackageJSONScript", "package": "package", "line": 11, "end_line": 11, "signature": "husky install", "tier": "verified" }
   ],

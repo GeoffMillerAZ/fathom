@@ -1,0 +1,8 @@
+{
+  "symbols": [
+    { "name": "test", "kind": "PackageJSONScript", "package": "package", "line": 4, "end_line": 4, "signature": "jest", "tier": "verified" }
+  ],
+  "cross_file": [
+    { "from": "", "edge": "depends_on", "raw": "left-pad", "target": "left-pad", "strategy": "module-source", "line": 7 }
+  ]
+}

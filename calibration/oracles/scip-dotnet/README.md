@@ -21,4 +21,7 @@ What the index carries: no `enclosing_range` on any definition, no
 `SymbolInformation.kind`, and `documentation[0]` is the C# declaration
 (`class Bulkhead`, `public void Bulkhead.M()`). Without enclosing ranges it
 yields no call pairs by itself; C# L1 and call pairs are measured with the
-Roslyn syntax dump (`../roslyn/`) instead.
+Roslyn syntax dump (`../roslyn/`) instead. Since LB-F54,
+`internal/scip.ImportIndex` takes a mapped definition's fathom lines as its
+span, so `fathom ingest -scip` stores this index's typed edges (Polly: 36,831
+direct; O235); the C# reading has not been re-measured with it.

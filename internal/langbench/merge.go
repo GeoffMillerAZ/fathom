@@ -12,7 +12,11 @@ import (
 type SubjectTenancy struct {
 	Faults        int      `json:"faults"`
 	FaultingFiles []string `json:"faulting_files"`
-	ExtractMS     float64  `json:"extract_ms"`
+	// FilesWithError (LB-F59, O203): the subject's measured files whose
+	// tree on the dialect's own pinned grammar holds an ERROR or MISSING
+	// node; nil when not measured (doc and native engines).
+	FilesWithError *int    `json:"files_with_error,omitempty"`
+	ExtractMS      float64 `json:"extract_ms"`
 	// ExtractCPUMS is the extraction process's CPU time (user+system)
 	// over the same timed extractions (owner decision D1); 0 on a
 	// subject measured before D1.
@@ -105,6 +109,9 @@ func recompute(r *Reading) {
 			ten.Faults += t.Faults
 			for _, f := range t.FaultingFiles {
 				ten.FaultingFiles = append(ten.FaultingFiles, s.Name+":"+f)
+			}
+			if t.FilesWithError != nil {
+				ten.FilesWithError = new(*t.FilesWithError + derefInt(ten.FilesWithError))
 			}
 			ms += t.ExtractMS
 			cpuMS += t.ExtractCPUMS
@@ -199,6 +206,14 @@ func recompute(r *Reading) {
 		sort.Strings(r.Notes)
 	}
 	r.Finalize()
+}
+
+// derefInt is *p, or 0 for nil.
+func derefInt(p *int) int {
+	if p == nil {
+		return 0
+	}
+	return *p
 }
 
 // noteAdjudicatedPrefix opens the reading's D3 disclosure note.

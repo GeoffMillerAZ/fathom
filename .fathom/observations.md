@@ -2390,8 +2390,8 @@ tests being added) is what catches that, not a second reading of the prose.
   - **Actual:** `measureSubject` builds the imports scorer only when `spec.Manifest.Kind != "tooling"` (cmd/indexbench/langoracle.go, LB-F40) and calls `scoreXrefOracle` only when the extractor is an `extractor.DocResulter` (the doc engine, `fusion.ResolveDocXrefs`); a tags-engine tool format gets neither, so no reading can meet L3
   - **Repro:** `go run ./cmd/indexbench lang-oracle -dialect protobuf -subject <grpc-go clone> -tool-oracle protobuf-grpc-go.json -out <scratch>/protobuf.json` and read `grade.L3`
 - **Root cause:** the harness's two L3 paths were built for their first users: import_resolution for languages (LB-F40) and cross-file references for doc-engine tool formats (LB-F30); protobuf is the first tags-engine tool format with an L3 target (CMake and GraphQL are queued behind it)
-- **Fix:** none yet (a harness change, not a worker's): score a tags-engine tool format's file-resolved edges (fusion.ResolveFileEdges) against the oracle's `cross_references` at file granularity, or its import specs against `imports`, then re-measure LB-Q-protobuf
-- **Status:** open
+- **Fix:** LB-F56: for a tool format the doc engine does not extract, `measureSubject` scores the oracle's `cross_references` at file granularity (`to` dropped, `from` read by the dialect's name matching) against the file resolver's edges over the dialect's import strategy (`fusion.ResolveFileEdges`), as `xref_precision`/`xref_recall` at the file's tier (`scoreFileXrefOracle`, `TestCmdLangOracleTagsToolFormatXrefs`: a protobuf fixture reads L3 excellent). The imports half was not taken: `import_resolution` is no tool-format metric (§1.2). LB-Q-protobuf is not re-measured here (wave 2)
+- **Status:** fixed by LB-F56 (wave la, 2026-10-01)
 - **Impact:** every tags-engine tool format queued at L3 (protobuf, cmake, graphql) stops at L2 whatever its extraction, and its row stays open behind a `-rest` deferral
 
 ### O168 — a trailing `.` anchor does not select the last identifier of tree-sitter-proto's `message_or_enum_type`
@@ -2546,8 +2546,8 @@ tests being added) is what catches that, not a second reading of the prose.
   - **Actual:** Tcl and Vim script both needed a scratch program (cmd/zzscratch, walking connector.Discover and counting ERROR/MISSING in tsengine SExpr) to get 516 of 827 files (62.4%) and 3 of 7 (42.9%); Vim script reads L1 excellent (sym_recall .9947, sym_precision 1) and is refused on 3 files (an embedded Python heredoc, a bare - ex command, a unary-plus string), with a 7-file calibration set where one file is 14%
   - **Repro:** go run ./cmd/indexbench lang-oracle -dialect vimscript -subject workspace/calibration/vimscript/vim-fugitive -out workspace/tmp/x.json (no field for files with a parse error)
 - **Root cause:** the harness computes faults (a parser trap or timeout) but not has_error; the 5% line is a worker's ad hoc count, and the Swift refusal was first recorded and then overturned at integration for the same reason
-- **Fix:** none committed; a `files_with_error` count per subject in the reading (Subject.Tenancy or its own field), computed from the same connector file set the extraction reads, would put the refusal number in the reading and the tracker
-- **Status:** open
+- **Fix:** LB-F59: each tags-dialect subject records `tenancy.files_with_error`, its measured files (the connector set the extraction reads) whose tree on the dialect's own pinned grammar holds an ERROR or MISSING node (`filesWithError`, the extractor's own `[(ERROR) (MISSING)]` query; lang-probe's S-expression cannot show a MISSING token, O238), and the reading's tenancy sums it as an optional field (doc and native engines report none; committed readings unchanged). Cross-checked with the tree-sitter 0.27 CLI on the pinned tree-sitter-proto: same 2 of 4 fixture files. The tracker does not yet re-check the 5% line
+- **Status:** fixed by LB-F59 (wave la, 2026-10-01)
 - **Impact:** a refusal rests on a number no reading carries; Vim script's L1 excellent reading and its refusal are both true and only the notes say why
 
 ### O204 — an oracle's dotted name is compared whole while the dialect's is cut to its last segment, so an Ada child unit is a miss on both sides
@@ -2666,6 +2666,124 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** none yet; the worker ran the focused packages (internal/config, the cmd/fathom pin and hook tests) under -race and left the whole set to task validate
 - **Status:** open
 - **Impact:** EW-11 selection stops narrowing as soon as a diff inserts a line above many symbols (a CHANGELOG line, a schema field), which is most diffs; test_gap overstates the untested change by two orders of magnitude here
+
+### O235 — scip import stored no typed edge for scip-dotnet, scip-php or scip-clang output: none of them sets enclosing_range, so every reference fell outside every definition's name token
+
+- **Symptom:** scip import stored no typed edge for scip-dotnet, scip-php or scip-clang output: none of them sets enclosing_range, so every reference fell outside every definition's name token
+- **Evidence:**
+  - **Tool:** indexbench lang-oracle -dialect csharp -subject <scratch>/clones/Polly -scip <scratch>/out/csharp-Polly.scip (and internal/scip.ImportIndex's Report on the same index and nodes)
+  - **Expected:** the references inside a mapped method's body become typed edges, as the harness's own call truth already attributes them (D5: 6,106 definitions took the mapped fathom definition's lines)
+  - **Actual:** before (d8ed9a29): typed_recall null, scip_edges 0, scip_edges_typed 0; ImportIndex Direct 0, Unresolved 0, Skipped no-enclosing-definition 122,921 (every reference). After LB-F54 and LB-F55: typed_recall .7003 (36,831 of 52,596), scip_edges 52,596; ImportIndex Direct 36,831, Unresolved 38,961, EnclosingFallback 7,496, Skipped local-target 24,699, unmapped-endpoint 15,765, no-enclosing-definition 6,665 (7,338 nodes, 22,588 unmapped definitions, both unchanged). Spot check, src/Polly.Core/Retry/RetryHelper.cs: GetRetryDelay -> GetRetryDelayCore (L28), GetRetryDelayCore -> ApplyJitter and DecorrelatedJitterBackoffV2, each a real call
+  - **Repro:** in a clone at d8ed9a29 and at the la-scip branch: go build -o /tmp/ib ./cmd/indexbench && /tmp/ib lang-oracle -dialect csharp -subject <Polly> -scip <csharp-Polly.scip> -out <scratch>/csharp.json; read counts.scip_edges, counts.scip_edges_typed and metrics.typed_recall
+- **Root cause:** definitionSpan used EnclosingRange, else Range (the name token); a producer that sets no enclosing_range leaves no definition span containing any reference. Separately, a reference to a `local N` (no extractor emits a local) landed in Skipped["unmapped-endpoint"], the typed_recall denominator, and a reference inside a local's initializer had that unmapped local as its FROM
+- **Fix:** LB-F54 (a mapped definition with no enclosing_range takes its node's Line..EndLine whole lines; Report.EnclosingFallback counts them; span comparison is lines first) and LB-F55 (Skipped["local-target"]; enclosingFrom climbs unmapped locals to the nearest mapped definition)
+- **Status:** fixed
+- **Impact:** every scip-dotnet, scip-php and scip-clang import stored zero typed edges and the C# reading's typed_recall was unmeasurable; locals inflated every producer's typed_recall denominator (Rust 21% of references, Dart 46% with parameters). The C# re-measure is wave 2; csharp.json is not re-committed here
+
+### O236 — the scip import's text, JSON and MCP rows print edges, direct, unresolved and unmapped only: Skipped, EnclosingFallback and the new local-target count reach pkg/client callers alone
+
+- **Symptom:** the scip import's text, JSON and MCP rows print edges, direct, unresolved and unmapped only: Skipped, EnclosingFallback and the new local-target count reach pkg/client callers alone
+- **Evidence:**
+  - **Tool:** fathom ingest -scip (cmd/fathom/ingest.go typed_edges line, ingest_json.go), the MCP scip import row (internal/mcp/scip_import.go)
+  - **Expected:** a reader of `fathom ingest -scip` sees how many references were skipped and why, and how many definitions took the line-span fallback, as the O115 Unmapped warning already discloses unmapped definitions
+  - **Actual:** the text line is `typed_edges: N edge(s) (D direct / U unresolved) via <producer> [<path>]` plus the Unmapped warning; Report.Skipped and Report.EnclosingFallback are on client.ImportSCIPResult but no surface renders them
+  - **Repro:** grep -n "Report\." cmd/fathom/ingest.go cmd/fathom/ingest_json.go internal/mcp/scip_import.go
+- **Root cause:** the surfaces predate Skipped's per-reason map; LB-F54/LB-F55 were scoped to internal/scip
+- **Fix:** none yet; the integrator (or a cmd/fathom owner) adds the fallback and skipped counts to the typed_edges line, the ingest JSON row and the MCP row
+- **Status:** open
+- **Impact:** the import's disclosure exists in the Report but a CLI or MCP user cannot see that 24,699 of Polly's references targeted a local or that the spans of 7,496 definitions came from fathom's own lines
+
+### O238 — lang-probe's S-expression never shows a MISSING node: a file whose only parse error is an inserted `;` or `}` prints a clean tree
+
+- **Symptom:** `indexbench lang-probe -dialect protobuf` on `message C {\n  string c = 1\n}` prints a tree with no ERROR and no MISSING, while the parse has a MISSING `;` (the tree-sitter 0.27 CLI prints `(MISSING ";" [2, 14] - [2, 14])` on the same grammar)
+- **Evidence:**
+  - **Tool:** `indexbench lang-probe` (tsengine `Tree.SExpr`)
+  - **Expected:** the probe a worker reads a parse with shows every node the parser inserted, as `tree-sitter parse` does
+  - **Actual:** `SExpr` renders named nodes only and prints a node's type without its missing flag, so an anonymous MISSING token is skipped and a named one prints like any other node; the extractor's own `[(ERROR) (MISSING)] @error` query matches the file (`TestCmdLangOracleFilesWithError` pins the gap)
+  - **Repro:** `printf 'syntax = "proto3";\nmessage C {\n  string c = 1\n}\n' > /tmp/c.proto && go run ./cmd/indexbench lang-probe -dialect protobuf /tmp/c.proto`
+- **Root cause:** `tsengine.Tree.SExpr` walks `ts_node_is_named` children and never asks `ts_node_is_missing`
+- **Fix:** none yet (tsengine belongs to another item): print `(MISSING <type>)` for a missing node, named or not; files_with_error does not depend on it (LB-F59 counts with the query)
+- **Status:** open
+- **Impact:** a worker counting parse errors from the probe's output (O203's scratch walkers) undercounts every file whose only error is a missing token
+
+### O239 — eight committed readings carry note text the reading writer would escape, so their bytes are not the harness's
+
+- **Symptom:** decoding dart, go-mod, html, lua, powershell, rust, tcl and vimscript readings and writing them with `langbench.MarshalReading` changes their bytes: a note's literal `=>`, `<script>` or `<<<` becomes `\u003e`, `\u003c`
+- **Evidence:**
+  - **Tool:** `langbench.MarshalReading` (design §10: the one writer of a reading's bytes)
+  - **Expected:** a committed reading is byte-identical to its re-marshalling, as one the harness wrote is
+  - **Actual:** 8 of the committed readings differ, each only in a note's `<`, `>` or `&`; their JSON values are equal (`TestCommittedReadingsRoundTrip` compares values for this reason)
+  - **Repro:** decode docs/bench/readings/lang/dart.json with `json.Decoder`, `MarshalReading` it and diff: line 589 (`=>` against `=\u003e`)
+- **Root cause:** those notes were written or edited after the harness wrote the reading (by hand or by a tool that does not escape HTML), and `json.MarshalIndent` escapes `<`, `>` and `&`
+- **Fix:** none yet: the next re-measure of each rewrites the note escaped (a byte diff with no change of value), or `MarshalReading` turns off HTML escaping, which rewrites every other reading's notes instead
+- **Status:** open
+- **Impact:** low: no value changes, but a wave-2 re-measure of these eight shows note diffs a reviewer has to recognise as escaping
+
+### O242 — an extractor change to which names Go emits moves hard-coded symbol counts in five tests and one golden, found only by a whole-package run
+
+- **Symptom:** an extractor change to which names Go emits moves hard-coded symbol counts in five tests and one golden, found only by a whole-package run
+- **Evidence:**
+  - **Tool:** go test -race ./internal/fusion/... ./internal/analysis/... ./pkg/client/... ./internal/indexbench/... after LB-F60 (unexported Go const and var now symbols)
+  - **Expected:** one failure naming the fixture and the reason
+  - **Actual:** six failures in four packages: TestIngest_Basic, TestIngest_Lazy and TestEnrich_ExistingTestsUnaffected (internal/fusion) and TestIngest_PaymentService (pkg/client) each hard-code payment-service at 5 symbols, with comments reading "errors.go yields 0 (unexported vars only)"; TestBuildEdges_FauxtownGolden (internal/analysis/callgraph) hard-codes 13 fauxtown nodes; TestPayloadReplay moved two entries of internal/indexbench/testdata/l1-replay.json (repo_map bytes 484 to 564, staleness_report sources 1 to 2, a new GoVar kind)
+  - **Repro:** drop the ast.IsExported filter on token.CONST and token.VAR in internal/extractor/goextract.go and run the packages above
+- **Root cause:** each fixture count is a literal beside a comment that restates the extractor's old rule, so nothing ties the number to the rule
+- **Fix:** counts moved to 7 and 17, the golden regenerated with -update (only those two entries moved), comments reworded to say why; the literals stay literals
+- **Status:** fixed
+- **Impact:** the next extractor change that adds symbols to fauxtown will move the same literals; tests select --safe does not narrow here (1585 tests, O230), so only a whole-package run finds them
+
+
+### O244 — scip-dart attests 6 of 752 Dart imports (it writes no occurrence on an import or export URI), so import_resolution reads 1 on a 6-import denominator and import-edge precision .0127 is an artifact; the harness has no attested-fraction guard
+
+- **Symptom:** the 2026-10-01 L3 re-measure of Dart reads import_resolution 1 (6 of 6 in-repo imports, excellent against the .95 bar) while 389 of the 394 imports the dialect resolves to a file of the subject have no oracle truth at all, and import edges read precision .0127 (5 of 394)
+- **Evidence:**
+  - **Tool:** indexbench lang-oracle -dialect dart -scip <index> -scip-defs on the eight packages (fathom d8ed9a29, scip-dart 1.7.0, dart 3.13.4)
+  - **Expected:** an import_resolution whose denominator is most of the imports the dialect resolves, as for PHP (486 attested of 897 imports, scip-php writes references on `use` lines) and Rust (1,344 of 2,138)
+  - **Actual:** imports 752, imports_in_repo 6 (http 2, http2 4, the other six packages 0), imports_unattested 389, import_edges_fathom 394, import_edges_truth 6. The eight indexes carry 33 non-definition occurrences on import, export, show and part lines, all with symbol_roles 0 (none with the Import role): a reference to a name a `show` or `hide` clause lists (`export 'src/client.dart' hide zoneClient;`), never to the URI; `import '../http.dart' as http;` has only the prefix's definition
+  - **Repro:** calibration/oracles/scip-dart/README.md recipe on dart-lang/http pkgs/http (dart pub get, dart pub global run scip_dart . -o x.scip), then list the occurrences of lib/src/client.dart on line 11; indexbench lang-oracle -dialect dart ... and read the import_* counts of docs/bench/readings/lang/dart.json
+- **Root cause:** scip-dart emits no occurrence for a URI directive, and ScoreImports pairs oracle references with a statement only by the lines the reference sits on, so an import without a show or hide clause has no truth and is counted as unattested (apart, never wrong). The L3 import_resolution grade has no minimum share of imports the oracle attests, so an oracle that sees under 1% of a language's imports still grades excellent
+- **Fix:** none (a readings-only item; the harness belongs to the harness item, LB-F61 is reserved for the integrator). Candidates: an attested-fraction disclosure that stops import_resolution grading good or excellent below a floor, and a neutral Dart directive dump (the analyzer's resolved ImportDirective and ExportDirective uris, tier B) as the import oracle, as clang-includes and ruby-require are for C++ and Ruby
+- **Status:** open
+- **Impact:** Dart's import_resolution 1 is not evidence the dialect resolves imports; L3 stays unmet on file_edge_recall .108 against .25, but once F-D lifts that metric L3 would pass on this number. The three plan rows keep their texts honest (LB-Q-dart-rest names the 6 of 752)
+
+### O247 — npm 11.16.0 rejects the `workspace:` protocol, so a tier-A npm oracle cannot evaluate a yarn or pnpm workspace's sibling dependencies as written: 759 of babel's specs and 15 of next.js's
+
+- **Symptom:** npm 11.16.0 rejects the `workspace:` protocol, so a tier-A npm oracle cannot evaluate a yarn or pnpm workspace's sibling dependencies as written: 759 of babel's specs and 15 of next.js's
+- **Evidence:**
+  - **Tool:** `npm install --package-lock-only --offline` and `npm ls --json --workspaces` (npm 11.16.0) on a three-package workspace in which one member depends on a sibling as `workspace:^`
+  - **Expected:** the dependency resolves to the sibling member, as it does in yarn berry and pnpm
+  - **Actual:** `npm error code EUNSUPPORTEDPROTOCOL … Unsupported URL Type "workspace:": workspace:^` and no tree at all (the install fails for the whole ideal tree, not the one edge); `npm ls` lists `@babel/eslint-parser@workspace:^` as an UNMET DEPENDENCY
+  - **Repro:** `calibration/oracles/npm` run on babel v7.29.9 prints `workspace: protocol specs … ^:759` on stderr, and `*:15` on next.js v16.3.6
+- **Root cause:** npm's spec parser has no `workspace:` protocol (reproduced on a toy workspace; npm's source was not read)
+- **Fix:** worked around in the oracle: its scratch copy rewrites each spec to the range the protocol means (the member's own version for `^`, `~` and `*`, the range itself for `workspace:<range>`), counts the shapes, and files the cross-references as tier C. A tier-A answer needs the package manager that defines the protocol; neither pnpm nor yarn is installed on the measuring machine
+- **Status:** open (worked around)
+- **Impact:** the package-json L3 reading is tier C at best, so capped at good, and its sibling-dependency truth for babel is npm's join of an adapted spec, not a tool's reading of the manifest as written
+
+### O248 — package.json cross-file resolution is member-blind and version-blind: on next.js the dialect draws 209 edges and npm attests 27; over every manifest xref_precision reads .7984 (babel .9501, next.js .1292)
+
+- **Symptom:** package.json cross-file resolution is member-blind and version-blind: on next.js the dialect draws 209 edges and npm attests 27; over every manifest xref_precision reads .7984 (babel .9501, next.js .1292)
+- **Evidence:**
+  - **Tool:** `indexbench lang-oracle -dialect package-json` with the npm oracle (calibration/oracles/npm), over every manifest and again with `-only 'package.json,packages/*/package.json'`
+  - **Expected:** the edges a dependency draws are the ones the tool confirms: a dependency name joins the workspace member of that name
+  - **Actual:** next.js 27 of 209 edges are in the truth; the other 182 go to vendored `packages/next/src/compiled/*` manifests (named like the registry packages they copy) and to test fixtures. babel 876 of 922: the other 46 are `condition:BABEL_8_BREAKING ? : workspace:^` specs npm cannot parse
+  - **Repro:** the commands in calibration/oracles/README.md (package-json row) with and without `-only`
+- **Root cause:** `fusion.ResolveDocXrefs` resolves a bare module-source name to the one root entity of that name in any other file (internal/fusion/docxref.go), so it knows no workspace membership, no version range and no vendored tree (read in the resolver; the 182 edges were listed against the truth)
+- **Fix:** none yet. The reading is scored on the workspace manifests, as cargo's and maven's are, and says what it leaves out; a join restricted to the members the root's `workspaces` names is a fusion change (a new test, an ExtractorEpoch bump)
+- **Status:** open
+- **Impact:** an index of a vendoring monorepo carries dependency edges from `next` and its siblings to copies of registry packages that npm resolves elsewhere, and the L3 reading cannot say how many over the whole repository without the scope restriction
+
+### O249 — a package.json dependency name now resolves by name to a same-named function: the references block makes the package a heuristic caller of `glob()` in a repository that has both a dependency and a function by that name
+
+- **Symptom:** a package.json dependency name now resolves by name to a same-named function: the references block makes the package a heuristic caller of `glob()` in a repository that has both a dependency and a function by that name
+- **Evidence:**
+  - **Tool:** `symbol_context` on a scratch ingest of a two-file repository (package.json with `dependencies: {glob, lodash}` and src/glob.js defining `function glob`), fathom built at 48de7de9
+  - **Expected:** no caller: a dependency is not a call site
+  - **Actual:** `callers: ["mini::package.mini-app"]` with `resolution: {typed: 0, heuristic: 1}`; `observation_calls` holds (glob, lodash) for the package symbol
+  - **Repro:** ingest that repository into a scratch store and ask `symbol_context` for `glob`
+- **Root cause:** a doc-spec reference records only the name in SymbolNode.Calls; its `to_kind` is checked at compile time and by `declared_only`, and is not carried to the call resolver (internal/extractor/docengine.go), so a name resolves against symbols of every kind. The cargo dialect has had the same behaviour since LB-Q-cargo
+- **Fix:** none yet; options are carrying `to_kind` into call resolution so a package reference resolves only to a package, or recording a manifest's dependency names under an edge that is not a call. The block itself is an extraction change that needs an ExtractorEpoch bump (covered by item go's 39->40)
+- **Status:** open
+- **Impact:** who-calls and blast_radius answers can list a manifest as a caller of a same-named function (heuristic tier), for every package.json and Cargo.toml whose service has a function named like one of its dependencies
 
 ### O255 — after JF-2 the work page's friction and GL-11's ignored remedy still describe a repeat edit as a violation: a still_served row increments the Blocked friction count and the remedy says "rewrite with the violating example"
 

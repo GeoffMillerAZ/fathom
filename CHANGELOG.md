@@ -28,12 +28,18 @@ Release impact: minor (pre-1.0: breaking bumps minor)
 
 ### Added
 
+- **Go extraction: `find_symbol` and `symbol_context` now answer unexported package-level consts and vars (LB-F60).** A const or var was a symbol only when its name was exported, which a func and a type never needed; `ExtractorEpoch` 40 re-reads every `.go` file on upgrade.
 - `[decide] sites` accepts the opt-in site names `triage_failure`, `ask`, `explore`, `compact_advice` and `judge_<name>` (JF-4); no call site asks one yet, and each is refused, whatever `provider` is set to, unless the repository's own `.fathom/config.toml` names it (a user-global `~/.fathom/config.toml` cannot opt a repository in).
 
 ### Changed
 
+- A `package.json` package now records the dependency names it writes (dependencies, devDependencies, peerDependencies, optionalDependencies) as references, as a `Cargo.toml` package does, so they reach the call graph. Measured against npm: reference recall and precision 1 on babel and next.js.
 - `route` is off by default: the default `[decide] sites` drops it (JF-7, it failed calibration), so a configured provider no longer answers `POST /route` unless `sites` names `"route"`; the deterministic precheck is unchanged. The default list is now frozen.
 - The vendored agentic-kit is pinned at 0c08348 (`v0.7.1-0.20261001071505-0c083484abe6`): the decision port's hexagonal hardening, its adapters in `foundations/decision/llm` and `foundations/decision/typesafe`.
+
+### Fixed
+
+- **`fathom ingest -scip` stores typed edges for an index whose producer sets no enclosing_range (scip-php, scip-clang, scip-dotnet; LB-F54), and stops counting references to local variables as unmapped (LB-F55).** A mapped definition without an enclosing range takes its fathom symbol's own lines, so the references in its body are attributed: Polly's scip-dotnet index went from 0 edges (every reference skipped) to 36,831 direct edges. A reference inside a local variable's initializer is attributed to the function the local lives in. The import report (`client.ImportSCIPResult`) names how many definitions took the fallback (`EnclosingFallback`) and how many references targeted a local (`Skipped["local-target"]`) (O235).
 
 ## [0.9.0] -- 2026-09-30
 

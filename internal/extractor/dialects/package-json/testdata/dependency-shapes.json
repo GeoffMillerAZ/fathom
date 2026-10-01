@@ -1,0 +1,9 @@
+{
+  "name": "acme-odd",
+  "dependencies": ["left-pad"],
+  "devDependencies": "vitest",
+  "peerDependencies": {
+    "react": 18,
+    "react-dom": null
+  }
+}

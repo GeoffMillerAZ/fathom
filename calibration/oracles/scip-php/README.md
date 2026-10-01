@@ -23,10 +23,25 @@ Run (2026-09-28, both clean; the vendor trees and the two edits below are delete
 
 What the index carries: no `enclosing_range` on any of its 4,334 definitions and no `SymbolInformation.kind`
 (only the descriptor suffix: `#` type, `().` method or function, `.` property, constant or enum case), so a
-definition's span for call attribution is the mapped fathom definition's own lines (D5) and
-`internal/scip.ImportIndex` attributes no reference to it. It indexes `src/` and `tests/` (composer's
+definition's span for call attribution is the mapped fathom definition's own lines (D5), which
+`internal/scip.ImportIndex` also takes since LB-F54 (before it, the import attributed no reference). It indexes `src/` and `tests/` (composer's
 autoload and autoload-dev roots) and PHP's builtin functions through phpstorm-stubs, so `strlen` is a
 callable reference. It records no reference for a method called on a vendor-typed receiver (a
 `Psr\Http\Message\RequestInterface` parameter's `getUri()`, `getBody()`, `hasHeader()`) and none for a
 constructor (`new X` is a reference to the class), which is why call_precision is measured short of the
 syntactic truth the php-parser dump (`../php-parser/`) gives.
+
+Re-run 2026-10-01 (wave la re-measure, fathom d8ed9a29): Homebrew `PHP 8.5.11 (cli) (NTS)` and `composer 2.10.3`
+replace the static 8.5.8 CLI. scip-php cloned at `71a5b117ec4c5dd2af302e363410e604e5df309e` (author date 2026-04-27,
+commit date 2026-05-02, `v0.0.2-816-g71a5b11`, `tool_version` 0.0.1) into a scratch tools directory
+and `composer install --no-dev` (5.8 s: php-parser v5.7.0, google/protobuf v5.34.1, phpstorm-stubs v2026.1,
+phpdoc-parser 2.3.2). The recipe above ran unchanged in each clone's own workspace (guzzle `composer remove --dev
+guzzle/client-integration-tests` 6.8 s, 8.5 MB vendor, scip-php 0.9 s, 827 KB index; monolog `config lock true` and
+`composer update` 9.1 s, 150 MB vendor, scip-php 2.3 s, 2.4 MB index). The php-parser dump (`../php-parser/`, 5.7.0,
+definitions-only) reads 74 files, 834 definitions, 3,189 call pairs on guzzle and 217, 1,814, 5,968 on monolog, 0
+parse errors, as before. `lang-oracle -tool-oracle <dump> -scip <index>` re-read every L1, L2 and L4 metric and count
+identically (call_precision .6924, def_mapping .7875), so no met level moved. New: `import_resolution` reads 1, 486
+of 486 in-repo imports (monolog 400, guzzle 86; scip-php does write references on `use` lines), import edges
+precision .8773 (486 of 554), recall 1, 43 of 897 imports resolved where the index names no file. typed_recall is
+still unmeasured (no `enclosing_range`): this re-run predates the `ImportIndex` line-span fallback
+(LB-F54), which landed in the same wave, so it is read with the next measure.

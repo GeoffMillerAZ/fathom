@@ -3,6 +3,7 @@ package scip
 import (
 	"context"
 	"os"
+	"reflect"
 	"sort"
 	"testing"
 	"time"
@@ -913,5 +914,191 @@ func TestImportIndex_FindCallers_ResolvesThroughImportedEdges(t *testing.T) {
 	}
 	if !found {
 		t.Fatalf("find_callers(%q) callers = %+v, want it to include %q — O115 regressed: the imported edge never joined the symbol table", greetKey, callers, runKey)
+	}
+}
+
+// importOf marshals idx and runs ImportIndex over it with nodes.
+func importOf(t *testing.T, idx *scippb.Index, nodes []core.SymbolNode) Import {
+	t.Helper()
+	raw, err := proto.Marshal(idx)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	imp, err := ImportIndex("svc", raw, nodes)
+	if err != nil {
+		t.Fatalf("ImportIndex: %v", err)
+	}
+	return imp
+}
+
+// noEnclosingNodes is the fathom side of BuildNoEnclosingFixtureIndex: what
+// a PHP extractor mints for src/Greeter.php (1-based Line..EndLine), with
+// helper's EndLine left unknown (0).
+func noEnclosingNodes() []core.SymbolNode {
+	return []core.SymbolNode{
+		{Service: "svc", Package: "Acme", Name: "Greeter", FilePath: "src/Greeter.php", Line: 3, EndLine: 11},
+		{Service: "svc", Package: "Acme", Name: "Greeter.greet", FilePath: "src/Greeter.php", Line: 4, EndLine: 7},
+		{Service: "svc", Package: "Acme", Name: "Greeter.log", FilePath: "src/Greeter.php", Line: 8, EndLine: 10},
+		{Service: "svc", Package: "Acme", Name: "helper", FilePath: "src/Greeter.php", Line: 12},
+	}
+}
+
+// TestImportIndex_LBF54_MappedDefinitionLineSpanFallback (LB-F54): a
+// producer that sets no enclosing_range on any definition (scip-php,
+// scip-clang, scip-dotnet) left every reference outside every definition's
+// name token, so ImportIndex stored no typed edge at all. A definition that
+// maps to a fathom node with EndLine >= Line > 0 now takes that node's line
+// span; the reference inside greet's body becomes a Direct edge only
+// through that fallback, while helper (no EndLine) keeps its name token.
+func TestImportIndex_LBF54_MappedDefinitionLineSpanFallback(t *testing.T) {
+	nodes := noEnclosingNodes()
+	key := func(i int) string { return nodes[i].Key() }
+	imp := importOf(t, BuildNoEnclosingFixtureIndex(), nodes)
+
+	want := []edgePair{
+		{key(1), key(2), core.EdgeDirect},
+		{key(1), unresolvedMarker("scip-php composer php 8.3.0 strlen()."), core.EdgeUnresolved},
+		{key(2), unresolvedMarker("scip-php composer lib/logger 2.0.0 Lib/Logger#"), core.EdgeUnresolved},
+	}
+	sortPairs(want)
+	if got := edgePairs(imp); !reflect.DeepEqual(got, want) {
+		t.Fatalf("edges = %+v\nwant    %+v", got, want)
+	}
+	r := imp.Report
+	if r.EnclosingFallback != 3 {
+		t.Errorf("Report.EnclosingFallback = %d, want 3 (Greeter, greet, log; helper has no EndLine)", r.EnclosingFallback)
+	}
+	if r.Direct != 1 || r.Unresolved != 2 || r.Edges != 3 {
+		t.Errorf("Report Direct/Unresolved/Edges = %d/%d/%d, want 1/2/3", r.Direct, r.Unresolved, r.Edges)
+	}
+	if r.Unmapped != 2 {
+		t.Errorf("Report.Unmapped = %d, want 2 (the $name and $m parameters)", r.Unmapped)
+	}
+	wantSkipped := map[string]int{"no-enclosing-definition": 3, "unmapped-endpoint": 2}
+	if !reflect.DeepEqual(r.Skipped, wantSkipped) {
+		t.Errorf("Report.Skipped = %v, want %v (two top-level references plus the one inside helper, whose node has no EndLine; the parameter references unchanged)", r.Skipped, wantSkipped)
+	}
+}
+
+// TestImportIndex_LBF54_EnclosingRangeWins: the producer's own
+// enclosing_range always beats the fallback, per definition. greet carries
+// an EnclosingRange of lines 3-4 only, so the strlen reference on line 5
+// belongs to Greeter's fallback span, never to greet's fathom node span. And
+// a fallback span (whole lines, char 1<<30) nested inside a long enclosing
+// range must still be the innermost: Greeter's 498-line EnclosingRange may
+// not swallow log's three-line fallback.
+func TestImportIndex_LBF54_EnclosingRangeWins(t *testing.T) {
+	idx := BuildNoEnclosingFixtureIndex()
+	for _, occ := range idx.Documents[0].Occurrences {
+		switch occ.Symbol {
+		case "scip-php composer acme/greeter 1.0.0 Acme/Greeter#greet().":
+			occ.EnclosingRange = []int32{3, 2, 4, 30}
+		}
+	}
+	nodes := noEnclosingNodes()
+	key := func(i int) string { return nodes[i].Key() }
+	strlen := unresolvedMarker("scip-php composer php 8.3.0 strlen().")
+	logger := unresolvedMarker("scip-php composer lib/logger 2.0.0 Lib/Logger#")
+
+	imp := importOf(t, idx, nodes)
+	got := edgePairs(imp)
+	want := []edgePair{{key(0), strlen, core.EdgeUnresolved}, {key(1), key(2), core.EdgeDirect}, {key(2), logger, core.EdgeUnresolved}}
+	sortPairs(want)
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("edges = %+v\nwant    %+v", got, want)
+	}
+	if imp.Report.EnclosingFallback != 2 {
+		t.Errorf("Report.EnclosingFallback = %d, want 2 (Greeter, log)", imp.Report.EnclosingFallback)
+	}
+
+	// A long producer enclosing range around a short fallback span.
+	for _, occ := range idx.Documents[0].Occurrences {
+		if occ.Symbol == "scip-php composer acme/greeter 1.0.0 Acme/Greeter#" {
+			occ.EnclosingRange = []int32{2, 0, 500, 1}
+		}
+	}
+	imp = importOf(t, idx, nodes)
+	for _, e := range edgePairs(imp) {
+		if e.to == logger && e.from != key(2) {
+			t.Errorf("Logger reference attributed to %q, want log %q: a 3-line fallback span is narrower than a 498-line enclosing range", e.from, key(2))
+		}
+	}
+}
+
+func sortPairs(p []edgePair) {
+	sort.Slice(p, func(i, j int) bool {
+		if p[i].from != p[j].from {
+			return p[i].from < p[j].from
+		}
+		return p[i].to < p[j].to
+	})
+}
+
+// TestImportIndex_LBF54_ProducerEnclosingRangeUnchanged: an index whose
+// every definition carries an enclosing_range (the committed TS fixture)
+// imports byte-identically whether or not the service's nodes know their
+// EndLine: the fallback never applies to it.
+func TestImportIndex_LBF54_ProducerEnclosingRangeUnchanged(t *testing.T) {
+	raw := loadFixtureIndexBytes(t)
+	extracted := extractFixtureNodes(t)
+	withEnd := 0
+	stripped := make([]core.SymbolNode, len(extracted))
+	for i, n := range extracted {
+		if n.EndLine >= n.Line && n.Line > 0 {
+			withEnd++
+		}
+		n.EndLine = 0
+		stripped[i] = n
+	}
+	if withEnd == 0 {
+		t.Fatal("no extracted node carries an EndLine: the comparison would prove nothing")
+	}
+	a, err := ImportIndex(fixtureService, raw, extracted)
+	if err != nil {
+		t.Fatalf("ImportIndex: %v", err)
+	}
+	b, err := ImportIndex(fixtureService, raw, stripped)
+	if err != nil {
+		t.Fatalf("ImportIndex (EndLine stripped): %v", err)
+	}
+	if !reflect.DeepEqual(a, b) {
+		t.Fatalf("import differs with node EndLine known:\n%+v\nvs stripped:\n%+v", a, b)
+	}
+	if a.Report.EnclosingFallback != 0 {
+		t.Errorf("Report.EnclosingFallback = %d, want 0 for a producer that sets enclosing_range", a.Report.EnclosingFallback)
+	}
+}
+
+// TestImportIndex_LBF55_LocalTargetsAndLocalInitializers (LB-F55): a
+// reference to a "local N" the index defines but no extractor maps is
+// counted under Skipped["local-target"], out of "unmapped-endpoint" (the
+// typed_recall denominator, internal/langbench/scip.go): a local has no
+// fathom identity, so it was never a typed edge to miss. A reference inside
+// an unmapped local's own span (its initializer, Dart's shape) climbs to the
+// nearest mapped definition; the climb stops at an unmapped non-local
+// definition (Box.mystery), and parameter references stay unmapped-endpoint.
+func TestImportIndex_LBF55_LocalTargetsAndLocalInitializers(t *testing.T) {
+	nodes := []core.SymbolNode{
+		{Service: "svc", Package: "lib", Name: "run", FilePath: "lib/app.dart", Line: 2, EndLine: 5},
+		{Service: "svc", Package: "lib", Name: "compute", FilePath: "lib/app.dart", Line: 7, EndLine: 9},
+		{Service: "svc", Package: "lib", Name: "Box", FilePath: "lib/app.dart", Line: 11, EndLine: 16},
+	}
+	imp := importOf(t, BuildLocalsFixtureIndex(), nodes)
+
+	want := []edgePair{
+		{nodes[0].Key(), nodes[1].Key(), core.EdgeDirect},
+		{nodes[0].Key(), unresolvedMarker("scip-dart pub dart:core 3.0.0 dart:core/print()."), core.EdgeUnresolved},
+	}
+	sortPairs(want)
+	if got := edgePairs(imp); !reflect.DeepEqual(got, want) {
+		t.Fatalf("edges = %+v\nwant    %+v (run -> compute comes from inside local 0's initializer)", got, want)
+	}
+	r := imp.Report
+	wantSkipped := map[string]int{"no-enclosing-definition": 1, "local-target": 2, "unmapped-endpoint": 2}
+	if !reflect.DeepEqual(r.Skipped, wantSkipped) {
+		t.Errorf("Report.Skipped = %v, want %v", r.Skipped, wantSkipped)
+	}
+	if r.Direct != 1 || r.Unresolved != 1 || r.Unmapped != 4 || r.EnclosingFallback != 0 {
+		t.Errorf("Report Direct/Unresolved/Unmapped/EnclosingFallback = %d/%d/%d/%d, want 1/1/4/0", r.Direct, r.Unresolved, r.Unmapped, r.EnclosingFallback)
 	}
 }
