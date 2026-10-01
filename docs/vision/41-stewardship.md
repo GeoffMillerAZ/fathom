@@ -1,11 +1,11 @@
 # 41 - Stewardship: the lines, leftovers, inheritance and promises around the code
 
-Status: accepted 2026-09-30 (ADR-060; accepted by the owner-architect under the owner's delegation, except the
-sequencing in section 4.6, ADR-060 decision 7, which is proposed to the owner). Owner notes of 2026-09-30: six ideas, with the instruction not to
-overload fathom with bad features. Plan: `docs/plans/stewardship.md` (SV-). Futures F58 and F59. Goal G34 in
-`docs/intent/scope.md`. Invariant I63. Builds on the system graph (ADR-050), the feature map and the review family
-(ADR-055), judgment at the port (ADR-056), incident maps (ADR-058) and the proof-layer roadmap's kitchen-sink gate
-(ADR-049 decision 1).
+Status: accepted 2026-09-30 (ADR-060; accepted by the owner-architect under the owner's delegation, the sequencing in
+section 4.6 (decision 7) included, and the licence boundary in section 4.5 settled as default deny). Owner notes of
+2026-09-30: six ideas, with the instruction not to overload fathom with bad features. Plan:
+`docs/plans/stewardship.md` (SV-). Futures F58 and F59. Goal G34 in `docs/intent/scope.md`. Invariant I63. Builds on
+the system graph (ADR-050), the feature map and the review family (ADR-055), judgment at the port (ADR-056), incident
+maps (ADR-058) and the proof-layer roadmap's kitchen-sink gate (ADR-049 decision 1).
 
 ## 1. The question
 
@@ -178,8 +178,9 @@ Would fathom help? Partly, and the part it helps with is the part the owner's ca
 - *What fathom adds.* (1) The reason: which product entry point and which first importer reach each unit ("why do I
   vendor this?"). (2) The non-Go half: Tailwind source lists, `go:embed` patterns, TypeScript and JavaScript imports
   in a component catalog, which no single toolchain command covers. (3) The join nobody else has, which is the
-  owner's actual constraint: **licensed and unreached must not ship**. A public project may carry the licensed
-  components it uses (the owner's reading of the licence, declared by the owner), never the catalog.
+  owner's actual constraint: **licensed sources must not ship publicly**. Default deny: a public project carries a
+  licensed path only where the owner has recorded an explicit allow for it (the owner's reading of the licence,
+  declared by the owner), never the catalog.
 - *Fathom's own tree is the first case.* The binary imports 22 of app-kit's 93 non-test Go packages and 19 of
   agentic-kit's 242, yet `third_party/` mirrors both trees whole (1,806 and 1,602 files), and `scripts/ui-css.sh`
   keeps a hand-written Tailwind source list of 18 of app-kit's 28 UI packages.
@@ -190,23 +191,28 @@ Would fathom help? Partly, and the part it helps with is the part the owner's ca
   added. SV-M3 reads it on fathom's own mirrors: Go units equal `go list -deps`, the CSS units equal the hand-kept
   list, and a mirror pruned to the closure passes `task build` and `scripts/ui-css.sh --check-sources`; the
   reduction is recorded.
-- *The boundary.* A `.fathom/licensed.cue` declaration names paths, the licence and a policy (`never` or `reached`);
-  a new conservation plane blocks a push whose tree holds a `never` path or an unreached `reached` path, and lists
-  reached licensed units as a fact (SV-8). Today a `forbidden_paths` guard already denies an agent's write to a
-  licensed path at the edit (ADR-038), but it cannot see a bulk copy by a sync script, which is how vendoring
-  happens; the push is the earliest moment that sees the whole tree (ADR-057's placement rule). SV-8 waits on a named
-  consumer (SV-V1): the public repository and the owner's written policy per licensed path.
+- *The boundary: default deny.* Licensed sources (Tailwind Plus and Catalyst are the cases) never ship in a public
+  repository, which is app-kit's own delivery rule ("Licensed derivative: keep this directory and generated outputs
+  private", `internal/designadapt/*_delivery.go`). A `.fathom/licensed.cue` declaration names the licensed paths, their
+  licence and the owner's explicit allows; a new conservation plane blocks a push whose tree holds a declared path
+  with no allow, and lists reached and allowed licensed units as a fact (SV-8). An explicit owner allow per path is
+  the only exception, and fathom never grants one. The declaration is committed by the repository that ships
+  publicly; a repository without one is not checked, and fathom never infers visibility. Today a `forbidden_paths`
+  guard already denies an agent's write to a licensed path at the edit (ADR-038), but it cannot see a bulk copy by a
+  sync script, which is how vendoring happens; the push is the earliest moment that sees the whole tree (ADR-057's
+  placement rule). SV-8 waits on a named consumer (SV-V1): the public repository and the owner's explicit allow, if
+  any, per licensed path.
 - *Refused.* Fathom copying, pruning or vendoring files (a package manager, and the transformation-engine non-goal):
   the copy stays a script (`scripts/sync-vendor.sh`) that reads the closure JSON. Fathom inferring what is licensed,
   judging derived-work similarity or interpreting a licence: a legal judgment, declared by the owner, never a model.
 
-### 4.6 Prioritization: ditch-then-merge is done; the order after the wind-down (proposed)
+### 4.6 Prioritization: ditch-then-merge is done; the order after the wind-down
 
 The owner's rule has already run: the 2026-09-29 feature scorecard shows all 10 DITCH verdicts executed (deleted or
 frozen) and all 12 MERGE verdicts folded, on `main` (SR-10 to SR-32, ADR-053). What remains of its spirit is
 "finish before building": the rows the wired audit reopened and the 24 IMPROVE verdicts come before any new engine.
 
-Proposed order once the owner lifts the 2026-09-30 wind-down (no new waves until then):
+The order once the owner lifts the 2026-09-30 wind-down (no new waves until then):
 
 1. *Development speed, bounded.* The efficiency wave has 24 rows proven and 6 open; EW-M1 waits 14 days after stop 1,
    which is a wait, not work. ADR-049's amendment already stops efficiency rows jumping the queue if EW-M1 misses its
@@ -217,7 +223,7 @@ Proposed order once the owner lifts the 2026-09-30 wind-down (no new waves until
 3. *Stewardship first slices* as small $0 fillers between language batches, the lines report first, because the
    2026-09-29 harvest shows it pays back in development speed.
 
-Status: proposed. The owner decides the sequence and when the wind-down ends.
+Status: accepted 2026-09-30 by the owner-architect (ADR-060 decision 7). The owner decides when the wind-down ends.
 
 ## 5. The decision port
 
@@ -242,6 +248,6 @@ future.
 |---|---|
 | SV-M1 CUT (a valuable held item missed, or more than 25 lines flagged) | the rows classes; the landed class stays |
 | SV-M2 CUT (fewer than 8 in 10 flagged leftovers were trash or forgotten work) | the stray classes in `gc` |
-| SV-M3 CUT (Go units differ from `go list -deps` after one fix round, or the pruned mirror does not build) | `report used` and the `reached` policy; the `never` policy survives |
+| SV-M3 CUT (Go units differ from `go list -deps` after one fix round, or the pruned mirror does not build) | `report used` and the reached-units fact; default deny survives |
 | SV-M4 shows no reached upstream change in two quarters | F58 |
 | no promise consumer within 365 days | F59 |

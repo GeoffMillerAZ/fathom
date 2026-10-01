@@ -3588,9 +3588,10 @@ and cited in the design: change is the first suspect, correlation is not cause, 
 
 ## ADR-060: Stewardship facts: lines, leftovers, inheritance and promises are joins fathom reports and never acts on (2026-09-30)
 
-**Status.** Accepted 2026-09-30 for decisions 1 to 6 and 8 (the owner delegated the calls to the owner-architect).
-Decision 7 (sequencing) is proposed: the owner decides it, and the owner's wind-down of 2026-09-30 holds every new
-wave until the owner lifts it. **Type.** Product / architecture. Inputs: the owner's six notes of 2026-09-30 (line
+**Status.** Accepted 2026-09-30 for decisions 1 to 8 (the owner delegated the calls to the owner-architect); amended
+2026-09-30: decision 7's ordering accepted, and decision 6's licence boundary settled as default deny (the amendment
+below). The owner's wind-down of 2026-09-30 still holds every new wave until the owner lifts it; decision 7 orders the
+work after that. **Type.** Product / architecture. Inputs: the owner's six notes of 2026-09-30 (line
 lifecycle, upstream drift, temporary artifacts, SRE as code, minimal vendoring, prioritization), the 2026-09-29
 consolidation backup manifest (local, `workspace/`), the 2026-09-29 feature scorecard, a census of this
 workstation's repositories on 2026-09-30, and fathom's own `third_party/` mirrors. Vision:
@@ -3638,14 +3639,20 @@ Kit); none knows what the code is for. `dep_drift`, which the owner's note assum
 6. *Minimal vendoring: accepted as the used closure and a licence boundary plane.* `UsedUnits` and `fathom report
    used` compute a dependency's closure from product entry points with a reason per unit: Go packages equal to `go
    list -deps` (file pruning inside a Go package is unsafe and refused), TypeScript and JavaScript modules by import
-   edges, declared asset roots (SV-6, SV-7), read on fathom's own mirrors (SV-M3). The boundary plane blocks at
-   pre-push a tree holding a `never` licensed path or an unreached `reached` one, from the owner's licensed-paths
-   declaration, a CUE file under the repository's fathom directory (SV-8, after a named consumer, SV-V1). Fathom
-   never copies, prunes or vendors files (the copy stays `scripts/sync-vendor.sh`), never fetches, and never infers
-   or judges what is licensed.
-7. *Prioritization (proposed).* Ditch-then-merge has run: all 10 DITCH and all 12 MERGE verdicts are on `main`.
-   After the wind-down: finish the efficiency wave (6 open rows; EW-M1 is a 14-day wait), then language excellence
-   most common first as the main line (G15), with the stewardship first slices as $0 fillers, lines first.
+   edges, declared asset roots (SV-6, SV-7), read on fathom's own mirrors (SV-M3). The boundary plane is default
+   deny: licensed sources (a catalog such as Tailwind Plus or Catalyst) never ship in a public repository, so it
+   blocks at pre-push a tree holding a path the owner's licensed-paths declaration names, unless the owner has
+   recorded an explicit allow for that path, the only exception. The declaration is a CUE file under the
+   repository's fathom directory, committed by a repository that ships publicly (SV-8, after a named consumer,
+   SV-V1); a repository without one is not checked, and fathom never infers visibility. This is app-kit's own
+   delivery rule ("Licensed derivative: keep this directory and generated outputs private",
+   `internal/designadapt/*_delivery.go`). Reached licensed units are listed as a fact, so an allow can be as narrow
+   as the closure. Fathom never copies, prunes or vendors files (the copy stays `scripts/sync-vendor.sh`), never
+   fetches, and never infers or judges what is licensed.
+7. *Prioritization.* Accepted 2026-09-30 by the owner-architect. Ditch-then-merge has run: all 10 DITCH and all 12
+   MERGE verdicts are on `main`. After the wind-down: finish the efficiency wave (6 open rows; EW-M1 is a 14-day
+   wait), then language excellence most common first as the main line (G15), with the stewardship first slices as $0
+   fillers, lines first.
 8. *The decision port has no role* in any stewardship fact; a model-drafted landing summary is generation, the
    port's weak side, and licence questions are never judged.
 
@@ -3657,6 +3664,8 @@ Kit); none knows what the code is for. `dep_drift`, which the owner's note assum
 - *Content-similarity detection of derived licensed work.* A legal judgment with a costly false "fine to ship".
 - *A Reliability Kit, or SRE features in fathom now.* No consumer, and the Standard belongs to Review Kit.
 - *Reordering work by ditch-then-merge.* Already done; the rule's remaining force is "finish before building".
+- *A per-path policy (`never`, `reached`) that lets a licensed file the product reaches ship.* Replaced on 2026-09-30
+  by default deny and an explicit owner allow per path (the amendment below).
 
 **Consequences.**
 - New when built: `internal/worklines`, `internal/usedset`, `fathom plans lines`, `fathom report used`, `gc`
@@ -3672,4 +3681,15 @@ Kit); none knows what the code is for. `dep_drift`, which the owner's note assum
 - A named consumer commits alert rules, SLO specs or dashboards: promote F59.
 - Review Kit asks for readiness facts through the evidence contract before F59's trigger fires.
 - A line holding valuable work is lost although the report classed it landed or idle.
-- The owner decides decision 7's sequence, or reverses a refusal.
+- The owner reverses a refusal or the default-deny boundary. (The trigger "The owner decides decision 7's sequence"
+  fired 2026-09-30: accepted, and decision 7 stands.)
+
+**Amendment (2026-09-30): decision 7 accepted; the licence boundary is default deny.** The owner-architect accepted
+decision 7's ordering, so decisions 1 to 8 are all accepted. The same pass settled the reading decision 6 left open:
+the boundary plane's per-path policy (`never`, `reached`) is replaced by one rule. Licensed sources (Tailwind Plus and
+Catalyst are the cases) never ship in a public repository, and the plane blocks a pushed tree holding a declared
+licensed path unless the owner has recorded an explicit allow for that path; that allow is the only exception, and
+fathom never grants one. The rule matches app-kit's delivery rule for licensed derivatives ("Licensed derivative: keep
+this directory and generated outputs private", `internal/designadapt/*_delivery.go`). Reached licensed units are still
+listed as a fact, so an allow can be as narrow as the closure. Vision 41 section 4.5, the SV-8 and SV-V1 rows and the
+decisions index follow; ids and contracts are unchanged.
