@@ -74,11 +74,9 @@ const fooGo = "package pkg\n\nfunc Foo() int { return 1 }\n\nfunc Bar() int { re
 //	old-landed  an ancestor of main                       → landed (ancestor)
 //	picked      a commit cherry-picked onto main          → landed (patch-equivalent)
 //	squashed    two commits squash-merged onto main       → landed (content-equal)
-//	claims      flips P-1 to [x] (pushed)                 → claims rows P-1
-//	touches     edits Foo's body under pkg/ (pushed)      → touches rows P-2 (Bar named), lexical
 //	risky       one commit on no remote                   → at risk
 //	stale       pushed, last commit 40 days before now    → idle
-//	fresh       pushed, recent, touches nothing           → active
+//	fresh       pushed, recent                            → active
 //	wt-dirty    landed, checked out in a dirty worktree   → at risk (dirty)
 //	wt-same     landed, its dirty edit reads the same on main → landed (worktree content-equal)
 //	stash@{0}   an unlanded stash                         → at risk (stash)
@@ -90,10 +88,10 @@ func buildFixture(t *testing.T) (root, wtPath string) {
 		t.Fatal(err)
 	}
 	f.git(root, "init", "-q")
-	f.commit(root, "base", map[string]string{"docs/plans/p.md": planOpen, "docs/plans/README.md": "- [ ] not a plan {id: R-1}\n", "pkg/foo.go": fooGo, "README": "x\n"})
+	f.commit(root, "base", map[string]string{"pkg/foo.go": fooGo, "README": "x\n"})
 	f.git(root, "branch", "old-landed")
 
-	// stale: an old line pushed long ago, touching nothing open.
+	// stale: an old line pushed long ago.
 	f.when = fixtureNow.Add(-40 * 24 * time.Hour)
 	f.git(root, "switch", "-q", "-c", "stale")
 	f.commit(root, "stale note", map[string]string{"notes/stale.txt": "old\n"})
@@ -116,28 +114,13 @@ func buildFixture(t *testing.T) (root, wtPath string) {
 	f.git(root, "merge", "-q", "--squash", "squashed")
 	f.git(root, "commit", "-q", "-m", "squash")
 
-	// claims: flips P-1 in its plan edit.
+	// risky: a commit on no remote.
 	f.when = fixtureNow.Add(-2 * 24 * time.Hour)
-	f.git(root, "switch", "-q", "-c", "claims")
-	f.commit(root, "claim P-1", map[string]string{
-		"docs/plans/p.md": strings.Replace(planOpen, "- [ ] Foo exists", "- [x] Foo exists", 1),
-		"pkg/foo.go":      fooGo + "\n// Foo is proven.\n",
-	})
-	f.git(root, "update-ref", "refs/remotes/origin/claims", "HEAD")
-	f.git(root, "switch", "-q", "main")
-
-	// touches: edits Bar's line under pkg/ without touching the plan.
-	f.git(root, "switch", "-q", "-c", "touches")
-	f.commit(root, "bar body", map[string]string{"pkg/foo.go": strings.Replace(fooGo, "return 2", "return 3", 1)})
-	f.git(root, "update-ref", "refs/remotes/origin/touches", "HEAD")
-	f.git(root, "switch", "-q", "main")
-
-	// risky: a commit on no remote, touching nothing open.
 	f.git(root, "switch", "-q", "-c", "risky")
 	f.commit(root, "unpushed", map[string]string{"notes/risky.txt": "r\n"})
 	f.git(root, "switch", "-q", "main")
 
-	// fresh: pushed, recent, touching nothing open.
+	// fresh: pushed, recent.
 	f.git(root, "switch", "-q", "-c", "fresh")
 	f.commit(root, "fresh note", map[string]string{"notes/fresh.txt": "f\n"})
 	f.git(root, "update-ref", "refs/remotes/origin/fresh", "HEAD")
@@ -164,7 +147,7 @@ func buildFixture(t *testing.T) (root, wtPath string) {
 	return root, wtPath
 }
 
-func TestClassifyLinesLandedClaimsTouchesAtRiskIdle(t *testing.T) {
+func TestClassifyLinesLandedAtRiskIdle(t *testing.T) {
 	root, wtPath := buildFixture(t)
 	var calls [][]string
 	run := func(ctx context.Context, dir string, args ...string) ([]byte, error) {
@@ -191,19 +174,16 @@ func TestClassifyLinesLandedClaimsTouchesAtRiskIdle(t *testing.T) {
 	want := map[string]struct {
 		class  Class
 		landed string
-		rows   string
 	}{
-		"old-landed": {Landed, "ancestor", ""},
-		"picked":     {Landed, "patch-equivalent", ""},
-		"squashed":   {Landed, "content-equal", ""},
-		"claims":     {ClaimsRows, "", "p.md#P-1"},
-		"touches":    {TouchesRows, "", "p.md#P-2"},
-		"risky":      {AtRisk, "", ""},
-		"stale":      {Idle, "", ""},
-		"fresh":      {Active, "", ""},
-		"wt-dirty":   {AtRisk, "", ""},
-		"wt-same":    {Landed, "ancestor, worktree content-equal", ""},
-		"stash@{0}":  {AtRisk, "", ""},
+		"old-landed": {Landed, "ancestor"},
+		"picked":     {Landed, "patch-equivalent"},
+		"squashed":   {Landed, "content-equal"},
+		"risky":      {AtRisk, ""},
+		"stale":      {Idle, ""},
+		"fresh":      {Active, ""},
+		"wt-dirty":   {AtRisk, ""},
+		"wt-same":    {Landed, "ancestor, worktree content-equal"},
+		"stash@{0}":  {AtRisk, ""},
 	}
 	for name, w := range want {
 		l, ok := byName[name]
@@ -217,27 +197,17 @@ func TestClassifyLinesLandedClaimsTouchesAtRiskIdle(t *testing.T) {
 		if l.Landed != w.landed {
 			t.Errorf("%s: landed %q, want %q", name, l.Landed, w.landed)
 		}
-		rows := strings.Join(append(append([]string{}, l.Claims...), l.Touches...), ",")
-		if rows != w.rows {
-			t.Errorf("%s: rows %q, want %q", name, rows, w.rows)
-		}
 	}
 	if len(rep.Lines) != len(want) {
-		t.Errorf("lines = %v, want exactly %d (main and README.md's rows are never lines)", names(rep.Lines), len(want))
+		t.Errorf("lines = %v, want exactly %d (main is never a line)", names(rep.Lines), len(want))
 	}
 
-	// Rows, tier and age are carried on the line itself.
-	if l := byName["touches"]; l.Tier != "lexical" {
-		t.Errorf("touches tier = %q, want lexical", l.Tier)
-	}
-	if l := byName["claims"]; l.Tier != "" || len(l.Touches) != 0 {
-		t.Errorf("a claimed row is not also touched: %+v", l)
-	}
+	// Age is carried on the line itself.
 	if got := byName["stale"].AgeDays; got != 40 {
 		t.Errorf("stale age = %d days, want 40", got)
 	}
-	if got := byName["claims"].AgeDays; got != 2 {
-		t.Errorf("claims age = %d days, want 2", got)
+	if got := byName["fresh"].AgeDays; got != 2 {
+		t.Errorf("fresh age = %d days, want 2", got)
 	}
 	if l := byName["risky"]; !hasPrefix(l.AtRisk, "1 commit on no remote") {
 		t.Errorf("risky reasons = %v", l.AtRisk)
@@ -278,6 +248,99 @@ func TestClassifyLinesLandedClaimsTouchesAtRiskIdle(t *testing.T) {
 	}
 	if rep.Counts[Landed] != 4 || rep.Counts[AtRisk] != 3 {
 		t.Errorf("counts = %v", rep.Counts)
+	}
+}
+
+// TestClassifyLinesClassesOnlyLandedAtRiskIdleActive pins SV-M1's CUT
+// (ADR-060 amendment 2026-10-02, O293): the claims-rows and touches-rows
+// classes are gone, a line that flips an open plan row or whose diff names an
+// open row's symbol is classed by its remaining facts, and no plan file is
+// read.
+func TestClassifyLinesClassesOnlyLandedAtRiskIdleActive(t *testing.T) {
+	if got, want := fmt.Sprint(Classes), fmt.Sprint([]Class{"landed", "at-risk", "idle", "active"}); got != want {
+		t.Fatalf("Classes = %s, want %s", got, want)
+	}
+	f := &fx{t: t, dir: t.TempDir(), when: fixtureNow.Add(-40 * 24 * time.Hour)}
+	root := filepath.Join(f.dir, "repo")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	f.git(root, "init", "-q")
+	f.commit(root, "base", map[string]string{"docs/plans/p.md": planOpen, "docs/plans/README.md": "- [ ] not a plan {id: R-1}\n", "pkg/foo.go": fooGo})
+
+	// names-idle: pushed 40 days ago; its diff names Bar (open row P-2) under pkg/.
+	f.git(root, "switch", "-q", "-c", "names-idle")
+	f.commit(root, "bar body", map[string]string{"pkg/foo.go": strings.Replace(fooGo, "return 2", "return 3", 1)})
+	f.git(root, "update-ref", "refs/remotes/origin/names-idle", "HEAD")
+	f.git(root, "switch", "-q", "main")
+
+	// flips-active: pushed, recent; flips open row P-1 and names Foo.
+	f.when = fixtureNow.Add(-2 * 24 * time.Hour)
+	f.git(root, "switch", "-q", "-c", "flips-active")
+	f.commit(root, "claim P-1", map[string]string{
+		"docs/plans/p.md": strings.Replace(planOpen, "- [ ] Foo exists", "- [x] Foo exists", 1),
+		"pkg/foo.go":      fooGo + "\n// Foo is proven.\n",
+	})
+	f.git(root, "update-ref", "refs/remotes/origin/flips-active", "HEAD")
+	f.git(root, "switch", "-q", "main")
+
+	// flips-risky: on no remote; flips open row P-2 and changes P-3's oracle path.
+	f.git(root, "switch", "-q", "-c", "flips-risky")
+	f.commit(root, "claim P-2", map[string]string{
+		"docs/plans/p.md":    strings.Replace(planOpen, "- [ ] Bar exists", "- [x] Bar exists", 1),
+		"docs/readings/r.md": "ok\n",
+	})
+	f.git(root, "switch", "-q", "main")
+	f.git(root, "update-ref", "refs/remotes/origin/main", "main")
+
+	var calls [][]string
+	run := func(ctx context.Context, dir string, args ...string) ([]byte, error) {
+		calls = append(calls, args)
+		return gitro.Output(ctx, dir, args...)
+	}
+	rep, err := ClassifyLines(context.Background(), Options{Root: root, Run: run, Now: func() time.Time { return fixtureNow }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]Class{"names-idle": Idle, "flips-active": Active, "flips-risky": AtRisk}
+	byName := map[string]Line{}
+	for _, l := range rep.Lines {
+		byName[l.Name] = l
+	}
+	for name, class := range want {
+		l, ok := byName[name]
+		if !ok {
+			t.Errorf("line %q missing; got %v", name, names(rep.Lines))
+			continue
+		}
+		if l.Class != class {
+			t.Errorf("%s: class %q, want %q (line %+v)", name, l.Class, class, l)
+		}
+	}
+	if len(rep.Lines) != len(want) {
+		t.Errorf("lines = %v, want exactly %d", names(rep.Lines), len(want))
+	}
+	if l := byName["flips-risky"]; !hasPrefix(l.AtRisk, "1 commit on no remote") {
+		t.Errorf("flips-risky reasons = %v", l.AtRisk)
+	}
+	known := map[Class]bool{}
+	for _, c := range Classes {
+		known[c] = true
+	}
+	for c := range rep.Counts {
+		if !known[c] {
+			t.Errorf("counts carry class %q, not one of %v", c, Classes)
+		}
+	}
+
+	// Nothing needs the plan files any more, so none is listed or read.
+	for _, args := range calls {
+		for _, a := range args {
+			if strings.Contains(a, "docs/plans") {
+				t.Errorf("ClassifyLines read the plans: git %s", strings.Join(args, " "))
+				break
+			}
+		}
 	}
 }
 
