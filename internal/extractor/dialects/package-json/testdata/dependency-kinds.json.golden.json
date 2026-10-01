@@ -1,0 +1,14 @@
+{
+  "symbols": [
+    { "name": "@acme/app", "kind": "PackageJSONPackage", "package": "package", "line": 1, "end_line": 19, "signature": "1.0.0", "calls": ["@acme/core", "chalk-legacy", "fsevents", "left-pad", "react", "vitest"], "tier": "verified" }
+  ],
+  "cross_file": [
+    { "from": "", "edge": "depends_on", "raw": "left-pad", "target": "left-pad", "strategy": "module-source", "line": 5 },
+    { "from": "", "edge": "depends_on", "raw": "@acme/core", "target": "@acme/core", "strategy": "module-source", "line": 6 },
+    { "from": "", "edge": "depends_on", "raw": "chalk-legacy", "target": "chalk-legacy", "strategy": "module-source", "line": 7 },
+    { "from": "", "edge": "dev_depends_on", "raw": "left-pad", "target": "left-pad", "strategy": "module-source", "line": 10 },
+    { "from": "", "edge": "dev_depends_on", "raw": "vitest", "target": "vitest", "strategy": "module-source", "line": 11 },
+    { "from": "", "edge": "peer_depends_on", "raw": "react", "target": "react", "strategy": "module-source", "line": 14 },
+    { "from": "", "edge": "optional_depends_on", "raw": "fsevents", "target": "fsevents", "strategy": "module-source", "line": 17 }
+  ]
+}

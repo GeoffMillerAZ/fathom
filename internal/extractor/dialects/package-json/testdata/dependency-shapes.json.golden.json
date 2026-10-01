@@ -1,0 +1,8 @@
+{
+  "symbols": [
+    { "name": "acme-odd", "kind": "PackageJSONPackage", "package": "package", "line": 1, "end_line": 9, "calls": ["react"], "tier": "verified" }
+  ],
+  "cross_file": [
+    { "from": "", "edge": "peer_depends_on", "raw": "react", "target": "react", "strategy": "module-source", "line": 6 }
+  ]
+}

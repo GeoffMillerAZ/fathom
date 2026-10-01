@@ -2745,3 +2745,42 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** none (a readings-only item; the harness belongs to the harness item, LB-F61 is reserved for the integrator). Candidates: an attested-fraction disclosure that stops import_resolution grading good or excellent below a floor, and a neutral Dart directive dump (the analyzer's resolved ImportDirective and ExportDirective uris, tier B) as the import oracle, as clang-includes and ruby-require are for C++ and Ruby
 - **Status:** open
 - **Impact:** Dart's import_resolution 1 is not evidence the dialect resolves imports; L3 stays unmet on file_edge_recall .108 against .25, but once F-D lifts that metric L3 would pass on this number. The three plan rows keep their texts honest (LB-Q-dart-rest names the 6 of 752)
+
+### O247 — npm 11.16.0 rejects the `workspace:` protocol, so a tier-A npm oracle cannot evaluate a yarn or pnpm workspace's sibling dependencies as written: 759 of babel's specs and 15 of next.js's
+
+- **Symptom:** npm 11.16.0 rejects the `workspace:` protocol, so a tier-A npm oracle cannot evaluate a yarn or pnpm workspace's sibling dependencies as written: 759 of babel's specs and 15 of next.js's
+- **Evidence:**
+  - **Tool:** `npm install --package-lock-only --offline` and `npm ls --json --workspaces` (npm 11.16.0) on a three-package workspace in which one member depends on a sibling as `workspace:^`
+  - **Expected:** the dependency resolves to the sibling member, as it does in yarn berry and pnpm
+  - **Actual:** `npm error code EUNSUPPORTEDPROTOCOL … Unsupported URL Type "workspace:": workspace:^` and no tree at all (the install fails for the whole ideal tree, not the one edge); `npm ls` lists `@babel/eslint-parser@workspace:^` as an UNMET DEPENDENCY
+  - **Repro:** `calibration/oracles/npm` run on babel v7.29.9 prints `workspace: protocol specs … ^:759` on stderr, and `*:15` on next.js v16.3.6
+- **Root cause:** npm's spec parser has no `workspace:` protocol (reproduced on a toy workspace; npm's source was not read)
+- **Fix:** worked around in the oracle: its scratch copy rewrites each spec to the range the protocol means (the member's own version for `^`, `~` and `*`, the range itself for `workspace:<range>`), counts the shapes, and files the cross-references as tier C. A tier-A answer needs the package manager that defines the protocol; neither pnpm nor yarn is installed on the measuring machine
+- **Status:** open (worked around)
+- **Impact:** the package-json L3 reading is tier C at best, so capped at good, and its sibling-dependency truth for babel is npm's join of an adapted spec, not a tool's reading of the manifest as written
+
+### O248 — package.json cross-file resolution is member-blind and version-blind: on next.js the dialect draws 209 edges and npm attests 27; over every manifest xref_precision reads .7984 (babel .9501, next.js .1292)
+
+- **Symptom:** package.json cross-file resolution is member-blind and version-blind: on next.js the dialect draws 209 edges and npm attests 27; over every manifest xref_precision reads .7984 (babel .9501, next.js .1292)
+- **Evidence:**
+  - **Tool:** `indexbench lang-oracle -dialect package-json` with the npm oracle (calibration/oracles/npm), over every manifest and again with `-only 'package.json,packages/*/package.json'`
+  - **Expected:** the edges a dependency draws are the ones the tool confirms: a dependency name joins the workspace member of that name
+  - **Actual:** next.js 27 of 209 edges are in the truth; the other 182 go to vendored `packages/next/src/compiled/*` manifests (named like the registry packages they copy) and to test fixtures. babel 876 of 922: the other 46 are `condition:BABEL_8_BREAKING ? : workspace:^` specs npm cannot parse
+  - **Repro:** the commands in calibration/oracles/README.md (package-json row) with and without `-only`
+- **Root cause:** `fusion.ResolveDocXrefs` resolves a bare module-source name to the one root entity of that name in any other file (internal/fusion/docxref.go), so it knows no workspace membership, no version range and no vendored tree (read in the resolver; the 182 edges were listed against the truth)
+- **Fix:** none yet. The reading is scored on the workspace manifests, as cargo's and maven's are, and says what it leaves out; a join restricted to the members the root's `workspaces` names is a fusion change (a new test, an ExtractorEpoch bump)
+- **Status:** open
+- **Impact:** an index of a vendoring monorepo carries dependency edges from `next` and its siblings to copies of registry packages that npm resolves elsewhere, and the L3 reading cannot say how many over the whole repository without the scope restriction
+
+### O249 — a package.json dependency name now resolves by name to a same-named function: the references block makes the package a heuristic caller of `glob()` in a repository that has both a dependency and a function by that name
+
+- **Symptom:** a package.json dependency name now resolves by name to a same-named function: the references block makes the package a heuristic caller of `glob()` in a repository that has both a dependency and a function by that name
+- **Evidence:**
+  - **Tool:** `symbol_context` on a scratch ingest of a two-file repository (package.json with `dependencies: {glob, lodash}` and src/glob.js defining `function glob`), fathom built at 48de7de9
+  - **Expected:** no caller: a dependency is not a call site
+  - **Actual:** `callers: ["mini::package.mini-app"]` with `resolution: {typed: 0, heuristic: 1}`; `observation_calls` holds (glob, lodash) for the package symbol
+  - **Repro:** ingest that repository into a scratch store and ask `symbol_context` for `glob`
+- **Root cause:** a doc-spec reference records only the name in SymbolNode.Calls; its `to_kind` is checked at compile time and by `declared_only`, and is not carried to the call resolver (internal/extractor/docengine.go), so a name resolves against symbols of every kind. The cargo dialect has had the same behaviour since LB-Q-cargo
+- **Fix:** none yet; options are carrying `to_kind` into call resolution so a package reference resolves only to a package, or recording a manifest's dependency names under an edge that is not a call. The block itself is an extraction change that needs an ExtractorEpoch bump (covered by item go's 39->40)
+- **Status:** open
+- **Impact:** who-calls and blast_radius answers can list a manifest as a caller of a same-named function (heuristic tier), for every package.json and Cargo.toml whose service has a function named like one of its dependencies

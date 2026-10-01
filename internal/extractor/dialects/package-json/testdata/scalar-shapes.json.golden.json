@@ -1,6 +1,6 @@
 {
   "symbols": [
-    { "name": "acme-cli", "kind": "PackageJSONPackage", "package": "package", "line": 1, "end_line": 12, "signature": "1.0.0", "tier": "verified" }
+    { "name": "acme-cli", "kind": "PackageJSONPackage", "package": "package", "line": 1, "end_line": 12, "signature": "1.0.0", "calls": ["fsevents", "react"], "tier": "verified" }
   ],
   "cross_file": [
     { "from": "", "edge": "peer_depends_on", "raw": "react", "target": "react", "strategy": "module-source", "line": 7 },
