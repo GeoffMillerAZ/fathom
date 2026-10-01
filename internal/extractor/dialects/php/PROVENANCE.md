@@ -31,6 +31,10 @@
   namespace-dir` with `separator: "\"` resolves a name through composer.json's PSR-4 prefixes
   (`internal/fusion/resolvestrategy.go`'s `resolvePSR4`, already tested) and, for a namespace declared by
   several files, through the files that declare it.
+- `references.scm` (LB-F74, wave lc): written in this repository; no upstream query adapted (the class names a
+  file writes outside a call: type hints, `new X`, extends, implements, a trait use, `X::CONST`, `X::$prop`,
+  `X::class`, instanceof, a catch), read as nikic/PHP-Parser's NameResolver reads them (a use alias, else the
+  file's own namespace).
 - Kept from the incumbent (§11 step 3, port parity): the six `SourceKind` strings above, method names
   qualified as `Owner.method`, `TierVerified`, sorted output. Added beyond it (a port may add, never drop):
   `PhpNamespace`, enum methods, `Signature` and `EndLine` on every definition, `Package` from the declared

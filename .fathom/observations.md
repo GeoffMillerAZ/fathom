@@ -3026,3 +3026,94 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** TODO
 - **Status:** open
 - **Impact:** TODO
+
+### O280 — the scip-clang 0.4.0 oracle was fetched though its brief said to stop unless its licence carried the LLVM exception: sourcegraph/scip-clang's own LICENSE is the plain Apache License 2.0
+
+- **Symptom:** the scip-clang 0.4.0 oracle was fetched though its brief said to stop unless its licence carried the LLVM exception: sourcegraph/scip-clang's own LICENSE is the plain Apache License 2.0
+- **Evidence:**
+  - **Tool:** calibration/oracles/scip-clang/run.sh (LB-F79), asset scip-clang-arm64-darwin v0.4.0, sha256 ff042fbc8a029f09f4b69fc7692e290e21c52923593207ee52d4e7439473ec64
+  - **Expected:** the brief's condition (Apache-2.0 WITH LLVM-exception) met before the fetch, or the run stopped
+  - **Actual:** the repository's LICENSE at v0.4.0 is plain Apache-2.0 with no exception clause of its own (the LLVM it embeds carries Apache-2.0 WITH LLVM-exception); plain Apache-2.0 is on ADR-048's allowlist and the tool runs as a separate process on the measurement path only, so the worker proceeded and the README records version, asset URL, sha256 and licence
+  - **Repro:** read LICENSE at github.com/sourcegraph/scip-clang tag v0.4.0
+- **Root cause:** the brief's licence condition was stricter than ADR-048's allowlist
+- **Fix:** none; the owner confirms the fetch under ADR-048 or reverts LB-F79's runner
+- **Status:** open
+- **Impact:** LB-F79 and the c.json and cpp.json readings rest on this oracle
+
+### O281 — C and C++ file edges: a call to a function defined in a .c and declared in an included header resolves to no file edge (libuv 1,666 of 2,131 and curl 1,699 of 4,271 index file edges end in a .c)
+
+- **Symptom:** C and C++ file edges: a call to a function defined in a .c and declared in an included header resolves to no file edge (libuv 1,666 of 2,131 and curl 1,699 of 4,271 index file edges end in a .c)
+- **Evidence:**
+  - **Tool:** indexbench lang-oracle -dialect c -scip <scip-clang 0.4.0 index> (LB-F80), libuv v1.53.0 and curl 8.22.0
+  - **Expected:** main.c including util.h and calling helper(21), with util.c defining int helper(int x), draws the edge main.c -> util.c the index attests
+  - **Actual:** truth 2, fathom 0 on that fixture; on the subjects file_edge_recall .0678 at precision .9333 (174 agree on libuv, every one a .h)
+  - **Repro:** fixture util.h `int helper(int x);`, util.c defining it, main.c including util.h and calling helper(21); lang-oracle as in docs/bench/readings/lang/c.json
+- **Root cause:** the file resolver reaches the included header alone; nothing follows a prototype to the file that defines it
+- **Fix:** none yet; LB-Q-c-rest's trigger
+- **Status:** open
+- **Impact:** C L3 file_edge_recall .0678 vs .25
+
+### O282 — C include paths: a quoted include rooted at an ancestor include directory resolves to nothing (curl lib/curlx/base64.c includes "curlx/base64.h" through -I lib; 184 of 1,571 in-repo imports unresolved)
+
+- **Symptom:** C include paths: a quoted include rooted at an ancestor include directory resolves to nothing (curl lib/curlx/base64.c includes "curlx/base64.h" through -I lib; 184 of 1,571 in-repo imports unresolved)
+- **Evidence:**
+  - **Tool:** indexbench lang-oracle -dialect c with the clang-preprocessor imports oracle (calibration/oracles/scip-clang/preproc, tier A)
+  - **Expected:** `#include "curlx/base64.h"` from lib/curlx/base64.c resolves to lib/curlx/base64.h as the build's -I lib does
+  - **Actual:** fixture lib/curlx/base64.h, lib/curlx/base64.c including "curlx/base64.h", lib/setup.h included as "setup.h" from lib/curlx/other.c: 0 of 2 resolve; import_resolution .8829 on the subjects
+  - **Repro:** the fixture above; lang-oracle as in docs/bench/readings/lang/c.json
+- **Root cause:** the include-path strategy tries the including file's directory and the repository root, not an ancestor directory the build adds with -I
+- **Fix:** none yet; LB-Q-c-rest's trigger
+- **Status:** open
+- **Impact:** C import_resolution .8829 vs .95
+
+### O283 — C and C++ file edges: an index edge made only by a type, a template or a macro is no fathom edge (fmt 44 of 262, nlohmann/json 27 of 220)
+
+- **Symptom:** C and C++ file edges: an index edge made only by a type, a template or a macro is no fathom edge (fmt 44 of 262, nlohmann/json 27 of 220)
+- **Evidence:**
+  - **Tool:** indexbench lang-oracle -dialect cpp -scip <scip-clang 0.4.0 index>, fmt 12.2.0 and nlohmann/json v3.12.0
+  - **Expected:** main.cpp including types.hpp and taking a const Config& draws the edge main.cpp -> types.hpp
+  - **Actual:** truth 1, fathom 0 on that fixture; cpp file_edge_recall .1473 at precision 1
+  - **Repro:** fixture types.hpp `struct Config {};`, main.cpp including it and taking `const Config&`; lang-oracle as in docs/bench/readings/lang/cpp.json
+- **Root cause:** the C and C++ dialects name no references query, so only calls draw file edges (LB-F74's reference pass does not reach them)
+- **Fix:** none yet; a c and cpp references.scm (LB-Q-cpp-rest's trigger)
+- **Status:** open
+- **Impact:** C++ L3 file_edge_recall .1473 vs .25
+
+### O287 — Rust import_resolution: resolveCrateMod reads a use spec with no `::` as a `mod x;` child module, so a use rooted at a workspace crate (`use globset::{Glob}`) or exactly crate/self/super resolves to nothing (482 + 60 bindings on ripgrep + clap)
+
+- **Symptom:** Rust import_resolution: resolveCrateMod reads a use spec with no `::` as a `mod x;` child module, so a use rooted at a workspace crate (`use globset::{Glob}`) or exactly crate/self/super resolves to nothing (482 + 60 bindings on ripgrep + clap)
+- **Evidence:**
+  - **Tool:** indexbench lang-oracle -dialect rust -scip <rust-analyzer index> (LB-F83), ripgrep 14.1.1 and clap v4.6.1
+  - **Expected:** in a Cargo workspace, crates/b/src/lib.rs `use a::{S};` resolves the spec `a` to crates/a/src/lib.rs, and crates/a/src/x.rs `use crate::{S};` to crates/a/src/lib.rs
+  - **Actual:** both resolve to nothing; import_resolution .4732 (830 of 1,754)
+  - **Repro:** the fixture above; calibration/oracles/rust-analyzer/README.md (2026-10-01 re-run)
+- **Root cause:** the extractor writes `mod x;` and a one-segment use spec alike (both bare), and resolveCrateMod takes every bare spec as a child module
+- **Fix:** none yet; an ImportSpec field naming a use spec, or `mod x;` spelled `self::x`
+- **Status:** open
+- **Impact:** the largest share of Rust's L3 import_resolution miss
+
+### O288 — Rust import_resolution: module roots other than lib.rs, main.rs and mod.rs are not crate roots ([[bin]] path targets, inline `mod tests` super, integration-test roots; 93 + 17 + 11 bindings)
+
+- **Symptom:** Rust import_resolution: module roots other than lib.rs, main.rs and mod.rs are not crate roots ([[bin]] path targets, inline `mod tests` super, integration-test roots; 93 + 17 + 11 bindings)
+- **Evidence:**
+  - **Tool:** indexbench lang-oracle -dialect rust -scip <rust-analyzer index>, ripgrep 14.1.1 and clap v4.6.1
+  - **Expected:** tests/tests.rs `mod util;` resolves to tests/util.rs; a `[[bin]] path = "crates/core/main.rs"` target is a crate root; `use super::{A}` inside an inline `mod tests { }` names the file's own module
+  - **Actual:** none resolves (ripgrep's [[bin]] root: crateSrcDir takes the root manifest's src/, which does not exist)
+  - **Repro:** fixture tests/tests.rs with `mod util;` and an empty tests/util.rs; calibration/oracles/rust-analyzer/README.md
+- **Root cause:** crateSrcDir reads no `[[bin]]`/`[lib]` path or name, and the strategy treats neither an integration-test root file nor an inline module as a module root
+- **Fix:** none yet
+- **Status:** open
+- **Impact:** 121 of Rust's 924 import_resolution misses
+
+### O289 — Rust import_resolution: a named import through a `pub use` re-export resolves to the re-exporting file, where the index names the defining file (210 bindings), and a mixed use statement scores its external-crate binding as unresolved (51)
+
+- **Symptom:** Rust import_resolution: a named import through a `pub use` re-export resolves to the re-exporting file, where the index names the defining file (210 bindings), and a mixed use statement scores its external-crate binding as unresolved (51)
+- **Evidence:**
+  - **Tool:** indexbench lang-oracle -dialect rust -scip <rust-analyzer index>, ripgrep 14.1.1 and clap v4.6.1
+  - **Expected:** a/src/lib.rs `mod inner; pub use inner::T;`, a/src/inner.rs `pub struct T;`, b with `use a::T;`: the named import T reaches a/src/inner.rs
+  - **Actual:** it reaches a/src/lib.rs; `use {bstr::BString, grep::printer::{ColorSpecs}}` pairs one oracle set with every binding of the statement
+  - **Repro:** the fixture above; calibration/oracles/rust-analyzer/README.md
+- **Root cause:** the rust references query captures no `pub use` re-export, so LB-F75's export channel does not follow it; the scoring pairs a statement's oracle set with each binding
+- **Fix:** none yet; a rust re-export capture on LB-F75's channel, and per-binding oracle sets in the scoring
+- **Status:** open
+- **Impact:** 261 of Rust's 924 import_resolution misses

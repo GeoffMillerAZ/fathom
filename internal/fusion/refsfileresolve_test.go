@@ -119,7 +119,10 @@ func TestResolveFileEdges_ImportBoundReferences(t *testing.T) {
 			"lib/app.dart|Repo.find -> lib/src/user.dart|User",
 		}},
 		{"php", "php", []string{".php"}, []string{
-			// `Helper::assist()` with no use: the class of Service's own namespace
+			// `Helper::assist()` with no use: the class of Service's own namespace,
+			// its method through the call and the class through the scope the
+			// references query names
+			"src/App/Service.php|Service.run -> src/App/Helper.php|Helper",
 			"src/App/Service.php|Service.run -> src/App/Helper.php|Helper.assist",
 		}},
 	}

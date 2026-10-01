@@ -359,9 +359,17 @@ import (
 // import), where it bound the whole dotted path. Every .py, .js, .jsx, .mjs, .cjs, .ts,
 // .tsx, .mts, .cts, .java, .cs, .kt, .kts, .dart, .rb, .rake, .ru, Rakefile and .proto
 // file's row was written in the old shape (an older row no longer decodes and is parsed
-// again regardless), so the salt bump re-reads them. The integrator folds in, under this
-// same bump, the 'needs bump' notes of items php (phpextract.go), rust (rustextract.go,
-// rust imports.scm) and cfam (c/cpp).
+// again regardless), so the salt bump re-reads them. The php and rust dialects name their
+// references queries too, so every .php and .rs file's row takes the new shape as well.
+// Under the same bump: PHP properties, class constants and enum cases (LB-F81):
+// phpextract.go now emits PhpProperty, PhpConst and PhpEnumCase for them and walks an
+// enum's body, so every indexed .php file re-extracts. Rust members (LB-F82):
+// rustextract.go now emits a struct's or union's named fields, an enum's variants and a
+// struct-like variant's fields, an impl's or trait's associated consts and types, a
+// trait's required and default methods, and unions (RustField, RustVariant,
+// RustAssocConst, RustAssocType, RustUnion); and use trees (LB-F83): the rust dialect's
+// imports.scm composes a nested group's prefixes, so a .rs file's import specs change
+// shape. Every .rs file re-extracts. Item cfam (C, C++) changes no extractor output.
 const ExtractorEpoch = "42"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file

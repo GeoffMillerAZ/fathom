@@ -54,6 +54,9 @@
   `@import.prefix`, no spec of its own) and every member inside takes the prefixes of all the lists around it,
   outermost first (`use a::{b::{c, d}, e}` is `a::b` for c and d, `a` for e; the engine composes them,
   `tsimports.go` composeImportPrefix). The residue is the resolver's, listed in the reading's notes.
+- `references.scm` (LB-F74, wave lc): written in this repository; no upstream query adapted (type names, a scoped
+  type `m::Bar`, a scoped path `Foo::new` and `X::CONST`, kept when a `use` binds the head or, under a glob `use`,
+  when it starts upper case). A `pub use` re-export is not captured yet (O289).
 - `testdata/`: fixtures written in this repository. `shapes.rs` every kind (nested modules, unit, tuple and generic
   structs, an enum, a union, a trait with required and default methods and associated items, inherent, trait,
   reference, slice and path impls, a multi-line signature, async, const and unsafe extern functions, an `extern`
