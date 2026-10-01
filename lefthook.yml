@@ -25,8 +25,18 @@ pre-commit:
 
 pre-push:
   commands:
+    # EW (tag-only push): validate and verify skip when no commit is new to
+    # the remote (scripts/prepush-refs.sh). The verify step below is the one
+    # command that reads stdin (lefthook 1.13.6 deadlocks with two
+    # `use_stdin: true` commands) and runs first (priority 1); it leaves the
+    # verdict validate asks for here.
     validate:
-      run: task validate
+      run: |
+        if bash scripts/prepush-refs.sh skipped; then
+          echo "pre-push: validate skipped — no commit is new to the remote"
+          exit 0
+        fi
+        task validate
     # fathom verify gate — §5.1 + §5.3 of docs/design/coding-agent-excellence.md:
     # gating only [x] claimed tasks in docs/plans/*.md.
     # exit 1 (claimed task unproven, or claimed and Unknown under --strict —
@@ -69,8 +79,16 @@ pre-push:
     # says so. A block names the base it read. The body runs under macOS's
     # bash 3.2 (no ${x,,}, no mapfile, no empty-array expansion under set -u).
     verify:
+      priority: 1
       use_stdin: true
       run: |
+        refs=""
+        if [ ! -t 0 ]; then refs=$(cat); fi
+        # A push that carries no new commit (a tag already on the remote, a
+        # delete) skips verify, and leaves the same verdict for validate.
+        if [ -n "$refs" ] && [ -f scripts/prepush-refs.sh ] && printf '%s\n' "$refs" | bash scripts/prepush-refs.sh decide; then
+          exit 0
+        fi
         [ -x bin/fathom ] || exit 0
         lease="bash scripts/gate-lease.sh"
         shopt -s nullglob
@@ -92,7 +110,7 @@ pre-push:
         range_from=""
         remote_sha=""
         new_branch=""
-        if [ ! -t 0 ]; then
+        if [ -n "$refs" ]; then
           head_sha=$(git rev-parse HEAD 2>/dev/null)
           while read -r _lref lsha _rref rsha; do
             [ -n "$lsha" ] || continue
@@ -100,7 +118,7 @@ pre-push:
             if [ "$lsha" = "$head_sha" ] || [ -z "$remote_sha$new_branch" ]; then
               if [ -z "${rsha//0/}" ]; then remote_sha=""; new_branch=1; else remote_sha="$rsha"; new_branch=""; fi
             fi
-          done
+          done <<<"$refs"
         fi
         if [ -n "$remote_sha" ]; then
           if git cat-file -e "$remote_sha^{commit}" 2>/dev/null && base=$(git merge-base "$remote_sha" HEAD 2>/dev/null) && [ -n "$base" ]; then
