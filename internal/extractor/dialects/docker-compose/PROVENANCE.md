@@ -8,13 +8,16 @@ comes from.
 ## Port of `internal/extractor/composeextract.go`
 
 `ComposeService` is the incumbent's own `SourceKind`, kept verbatim (§2.2, §13.2 step
-15). Name, line, tier and the `depends_on` calls are identical to the incumbent's on its
-own fixtures (`TestDockerComposeDialectIncumbentParity`) and on all five calibration
+15). Name, line, tier and the `depends_on` calls were identical to the incumbent's on its
+own fixtures (a parity test that read both, retired with it; the cases live on in
+`TestComposeDialectKeepsIncumbentContracts`) and on all five calibration
 subjects (`lang-parity`, 2026-10-01: sym_recall, sym_precision, ref_recall and
 ref_precision all equal, kinds gained `ComposeFile`, none lost). The reading meets the
 target level, L3 excellent, so fusion dispatches the dialect (LB-F89, §11 step 2): the four
 basenames by name and every other compose file (an override, an arbitrarily named
-fragment) through classifyYAML's content signal, as the incumbent was.
+fragment) through classifyYAML's content signal, as the incumbent was. With the target
+met and parity read, `composeextract.go` and its tests are retired (§11 step 3), and so is
+the P20 pair that compared the design's prototype (`testdata/doc/compose.doc.json`) with it.
 
 Divergences, all forced by §4's selector subset (no literals, no string operations):
 

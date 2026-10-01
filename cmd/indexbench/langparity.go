@@ -23,7 +23,6 @@ var incumbentExtractors = map[string]func() extractor.Extractor{
 	"cextract":          func() extractor.Extractor { return extractor.NewCExtractor() },
 	"cheaderextract":    func() extractor.Extractor { return extractor.NewCHeaderExtractor() },
 	"cmakeextract":      func() extractor.Extractor { return extractor.NewCMakeExtractor() },
-	"composeextract":    func() extractor.Extractor { return extractor.NewComposeExtractor() },
 	"cppextract":        func() extractor.Extractor { return extractor.NewCppExtractor() },
 	"csharpextract":     func() extractor.Extractor { return extractor.NewCSharpExtractor() },
 	"cueextract":        func() extractor.Extractor { return extractor.NewCUEExtractor() },

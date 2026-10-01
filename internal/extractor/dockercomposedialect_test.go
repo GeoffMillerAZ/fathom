@@ -13,7 +13,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -145,18 +144,36 @@ func TestDockerComposeDialectGoldens(t *testing.T) {
 	}
 }
 
-// TestDockerComposeDialectIncumbentParity (design §13.2 step 15, port of
-// composeextract.go): on the incumbent's own test fixtures the dialect emits
-// the same services — SourceKind, name, line, tier and depends_on calls
-// identical. Signature is identical for an image service; for a build-only
-// service the incumbent spells "build: <context>" and the doc engine (§4: no
-// literals, no templating) can only emit the bare context, a documented
-// divergence (PROVENANCE.md), and a build map with no context reads "build: ."
-// from the incumbent and "" here. The dialect's one addition, the file's root
-// entity (ComposeFile, LB-X-docker-image-ref), is not a service.
-func TestDockerComposeDialectIncumbentParity(t *testing.T) {
-	fixtures := map[string]string{
-		"images-and-depends-on": `version: "3.9"
+// TestComposeDialectKeepsIncumbentContracts carries composeextract.go's own
+// cases, retired with it (LB-Q-docker-compose, design §11 step 3; before the
+// retirement TestDockerComposeDialectIncumbentParity read both extractors on
+// these fixtures and lang-parity read MERGE on five subjects): one
+// ComposeService per service at its key line, tier verified, image: as the
+// signature, depends_on in its list and map forms as sorted Calls, nothing but
+// the file's root entity for a file with no services, no error on malformed
+// YAML, and the same output twice. The one divergence is unchanged: a build-only
+// service is signed by its bare context (the incumbent spelled "build: <ctx>"),
+// and a build map with no context reads "" (the incumbent's "build: .").
+func TestComposeDialectKeepsIncumbentContracts(t *testing.T) {
+	x := loadDockerComposeExtractor(t)
+	services := func(t *testing.T, src string) map[string]core.SymbolNode {
+		t.Helper()
+		nodes, err := x.Extract("svc", "docker-compose.yml", []byte(src))
+		if err != nil {
+			t.Fatalf("Extract: %v", err)
+		}
+		out := map[string]core.SymbolNode{}
+		for _, n := range nodes {
+			if n.Kind == core.KindComposeService {
+				out[n.Name] = n
+			} else if n.Kind != "ComposeFile" {
+				t.Errorf("unexpected kind %q (%s)", n.Kind, n.Name)
+			}
+		}
+		return out
+	}
+	t.Run("images and depends_on", func(t *testing.T) {
+		got := services(t, `version: "3.9"
 services:
   db:
     image: postgres:16
@@ -175,8 +192,31 @@ services:
         condition: service_healthy
       cache:
         condition: service_started
-`,
-		"build-forms": `services:
+`)
+		want := map[string]struct {
+			line      int
+			signature string
+			calls     []string
+		}{
+			"db":    {3, "postgres:16", nil},
+			"cache": {8, "redis:7-alpine", []string{"db"}},
+			"app":   {13, "registry.example.com/app:latest", []string{"cache", "db"}},
+		}
+		if len(got) != len(want) {
+			t.Fatalf("services %d, want %d", len(got), len(want))
+		}
+		for name, w := range want {
+			n, ok := got[name]
+			if !ok {
+				t.Fatalf("missing service %q", name)
+			}
+			if n.Line != w.line || n.Signature != w.signature || n.Tier != core.TierVerified || !reflect.DeepEqual(n.Calls, w.calls) {
+				t.Errorf("%s: line %d sig %q tier %q calls %v; want %d %q verified %v", name, n.Line, n.Signature, n.Tier, n.Calls, w.line, w.signature, w.calls)
+			}
+		}
+	})
+	t.Run("build forms", func(t *testing.T) {
+		got := services(t, `services:
   builder:
     build: ./myapp
   helper:
@@ -189,62 +229,31 @@ services:
   both:
     image: keep/this:1
     build: ./ignored-for-signature
-`,
-		"no-services": `version: "3.9"
-networks:
-  default: {}
-`,
-	}
-	x := loadDockerComposeExtractor(t)
-	inc := NewComposeExtractor()
-	for name, src := range fixtures {
-		t.Run(name, func(t *testing.T) {
-			old, err := inc.Extract("svc", "docker-compose.yml", []byte(src))
-			if err != nil {
-				t.Fatal(err)
+`)
+		for name, sig := range map[string]string{"builder": "./myapp", "helper": "./tools", "bare": "", "both": "keep/this:1"} {
+			if n, ok := got[name]; !ok || n.Signature != sig {
+				t.Errorf("%s: signature %q (present %v), want %q", name, n.Signature, ok, sig)
 			}
-			all, err := x.Extract("svc", "docker-compose.yml", []byte(src))
-			if err != nil {
-				t.Fatal(err)
-			}
-			var neu []core.SymbolNode
-			for _, n := range all {
-				if n.Kind == core.KindComposeService {
-					neu = append(neu, n)
-				}
-			}
-			if len(old) != len(neu) {
-				t.Fatalf("service count: incumbent %d, dialect %d", len(old), len(neu))
-			}
-			byName := map[string]core.SymbolNode{}
-			for _, n := range neu {
-				byName[n.Name] = n
-			}
-			for _, o := range old {
-				n, ok := byName[o.Name]
-				if !ok {
-					t.Errorf("dialect missed service %q", o.Name)
-					continue
-				}
-				if n.Kind != o.Kind || n.Line != o.Line || n.Tier != o.Tier {
-					t.Errorf("%s: kind/line/tier dialect %q/%d/%q, incumbent %q/%d/%q", o.Name, n.Kind, n.Line, n.Tier, o.Kind, o.Line, o.Tier)
-				}
-				if !reflect.DeepEqual(n.Calls, o.Calls) {
-					t.Errorf("%s: calls dialect %v, incumbent %v", o.Name, n.Calls, o.Calls)
-				}
-				want := o.Signature
-				if strings.HasPrefix(want, "build: ") {
-					want = strings.TrimPrefix(want, "build: ")
-					if want == "." && n.Signature == "" {
-						want = ""
-					}
-				}
-				if n.Signature != want {
-					t.Errorf("%s: signature dialect %q, incumbent %q (want %q)", o.Name, n.Signature, o.Signature, want)
-				}
-			}
-		})
-	}
+		}
+	})
+	t.Run("no services", func(t *testing.T) {
+		if got := services(t, "version: \"3.9\"\nnetworks:\n  default: {}\n"); len(got) != 0 {
+			t.Errorf("services %v, want none", got)
+		}
+	})
+	t.Run("malformed", func(t *testing.T) {
+		if _, err := x.Extract("svc", "compose.yml", []byte("not: valid: yaml: :::")); err != nil {
+			t.Errorf("Extract must not error on malformed YAML: %v", err)
+		}
+	})
+	t.Run("determinism", func(t *testing.T) {
+		src := []byte("services:\n  a:\n    image: x\n    depends_on: [b, c]\n  b:\n    image: y\n  c:\n    build: .\n")
+		n1, _ := x.Extract("svc", "docker-compose.yml", src)
+		n2, _ := x.Extract("svc", "docker-compose.yml", src)
+		if !reflect.DeepEqual(n1, n2) {
+			t.Errorf("non-deterministic:\n%+v\n%+v", n1, n2)
+		}
+	})
 }
 
 // TestDockerComposeDialectRootAndBuildRefs (LB-X-docker-image-ref): every
