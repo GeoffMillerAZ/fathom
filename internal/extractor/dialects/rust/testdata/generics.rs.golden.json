@@ -17,6 +17,15 @@
       "tier": "verified"
     },
     {
+      "name": "Token.text",
+      "kind": "RustField",
+      "package": "generics",
+      "line": 7,
+      "end_line": 7,
+      "signature": "pub text: &'a str",
+      "tier": "verified"
+    },
+    {
       "name": "Token",
       "kind": "RustImpl",
       "package": "generics",
@@ -54,6 +63,15 @@
       "tier": "verified"
     },
     {
+      "name": "Token.Item",
+      "kind": "RustAssocType",
+      "package": "generics",
+      "line": 21,
+      "end_line": 21,
+      "signature": "type Item = char;",
+      "tier": "verified"
+    },
+    {
       "name": "Token.next",
       "kind": "RustFn",
       "package": "generics",
@@ -72,6 +90,15 @@
       "package": "generics",
       "line": 28,
       "end_line": 34,
+      "tier": "verified"
+    },
+    {
+      "name": "Token.Err",
+      "kind": "RustAssocType",
+      "package": "generics",
+      "line": 29,
+      "end_line": 29,
+      "signature": "type Err = ();",
       "tier": "verified"
     },
     {

@@ -18,6 +18,15 @@
       "tier": "verified"
     },
     {
+      "name": "Holder.field",
+      "kind": "RustField",
+      "package": "broken",
+      "line": 8,
+      "end_line": 8,
+      "signature": "field: u32",
+      "tier": "verified"
+    },
+    {
       "name": "Holder",
       "kind": "RustImpl",
       "package": "broken",

@@ -170,3 +170,25 @@ fn helper(x: u32) -> u32 {
 		t.Errorf("helper.Calls = %v, want a path spelled with the graph's separator, a turbofish path by its last name, and no constructor", h.Calls)
 	}
 }
+
+// TestRustDialectMembers (LB-F82): the dialect emits the same fields,
+// variants and associated items the CGO walker does, under the same kinds. The
+// two differ in one disclosed place: a struct-like variant's field is bare in
+// the dialect (a variant is not a container there) but Variant.field in the
+// walker.
+func TestRustDialectMembers(t *testing.T) {
+	e := rustBothExtractors(t)["dialect"]
+	seen, _ := rustExtract(t, e, "src/lib.rs", rustMembersFixture)
+	for _, w := range []rustKey{
+		{"Config.name", core.KindRustField}, {"Config.verbose", core.KindRustField},
+		{"Bits.a", core.KindRustField}, {"Bits.b", core.KindRustField},
+		{"Shape.Empty", core.KindRustVariant}, {"Shape.Circle", core.KindRustVariant}, {"Shape.Rect", core.KindRustVariant},
+		{"w", core.KindRustField}, {"h", core.KindRustField},
+		{"Source.LIMIT", core.KindRustAssocConst}, {"Source.Item", core.KindRustAssocType}, {"Source.next", core.KindRustFn},
+		{"Config.LIMIT", core.KindRustAssocConst}, {"Config.Item", core.KindRustAssocType}, {"Config.DEFAULT", core.KindRustAssocConst},
+	} {
+		if _, ok := seen[w]; !ok {
+			t.Errorf("missing %+v", w)
+		}
+	}
+}

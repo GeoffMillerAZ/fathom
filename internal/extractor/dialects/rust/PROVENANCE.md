@@ -23,10 +23,15 @@
   (the incumbent never entered a trait body); a nested function, a bodiless `extern` function and a function-local
   `const`/`static` are definitions. Every callable carries a `Signature` (its source up to the body, whitespace
   collapsed; a bodiless signature ends at its `;`) and an `EndLine`.
-- Not extracted, on purpose: struct fields, enum variants, associated types and constants (members of a type, not
-  items), local variables and parameters. SCIP defines all of them, which is why `def_mapping` reads .6920 (see the
-  reading); adding them would mint a symbol for every `x.field` reference target without moving typed_recall
-  (21% of references target a local, which no extractor maps).
+- Members (LB-F82): a struct's or union's named field, an enum's variant, a struct-like variant's field and an
+  associated const or type of an impl or trait are definitions, qualified `Owner.name` like a method (`Config.name`,
+  `Shape.Rect`, `Source.LIMIT`, `Config.Item`; kinds RustField, RustVariant, RustAssocConst, RustAssocType,
+  `internal/core/kinds_rust.go`; canonical field, enum_member, field, field as rust-analyzer's scoped kinds map).
+  Struct, union and enum are containers; a variant is a callable-qualified member, so a struct-like variant's field is
+  bare (`w`) here and `Rect.w` in the CGO walker (a variant is not a container, the engine does not chain). A tuple
+  field is not extracted by either: rust-analyzer's index defines none for a crate's own tuple struct. This moved
+  `def_mapping` .692 -> .8988 (the reading). Still not extracted: local variables and parameters, and what a macro
+  expands to (687 definitions across the two subjects, disclosed).
 - Calls: the callee is the called name; a scoped path (`Foo::new()`, `crate::a::b()`, `std::mem::swap()`) is
   captured whole and the manifest's `qualify.scope_sep: "::"` spells it `Foo.new`, the key of the method it names;
   a path with a generic segment (`Vec::<u8>::new()`, `<T as Trait>::f()`) keeps its last name. A capitalised callee
@@ -45,8 +50,10 @@
   `use a::b::*;` is a wildcard; a group `use a::{b, c as d, self};` is a named import of the prefix per identifier
   member. `imports.strategy: crate-mod` (`internal/fusion/resolvestrategy.go`'s `resolveCrateMod`, already
   tested) resolves `crate::`, `self::`, `super::`, a workspace member's crate name and a child module. Not
-  resolved: a nested path or group inside braces (`use a::{b::c, d::{e, f}}`) carries a prefix the query cannot
-  compose with its parent, so only its identifier members resolve.
+  resolved through nested groups (LB-F83): a group's list is a scope record (`@import.scope` with its path as
+  `@import.prefix`, no spec of its own) and every member inside takes the prefixes of all the lists around it,
+  outermost first (`use a::{b::{c, d}, e}` is `a::b` for c and d, `a` for e; the engine composes them,
+  `tsimports.go` composeImportPrefix). The residue is the resolver's, listed in the reading's notes.
 - `testdata/`: fixtures written in this repository. `shapes.rs` every kind (nested modules, unit, tuple and generic
   structs, an enum, a union, a trait with required and default methods and associated items, inherent, trait,
   reference, slice and path impls, a multi-line signature, async, const and unsafe extern functions, an `extern`
@@ -82,7 +89,8 @@
   1, call_recall .8172 -> .9593, call_precision .9339 -> .9846, no kind lost; kinds gained: RustConst,
   RustMacro, RustStatic, RustTypeAlias (RustUnion when a subject has one). It is registered for imports only:
   `fileResolveLangFor(".rs")` selects it, so an ingest's file-resolved pass resolves `mod` and `use` statements
-  through crate-mod (the pass reads symbols from the store and imports from the dialect). A switch flips
+  through crate-mod (the pass reads symbols from the store and imports from the dialect). The CGO walker emits the
+  same members (LB-F82) and is what ingest dispatches; the measured numbers are the dialect's. A switch flips
   `pipeline.go`'s line, deletes `rustextract.go` and its test, and bumps `ExtractorEpoch`: impl symbols are named by
   their head type instead of the type field's source text and trait methods, unions, aliases, consts, statics and
   macros are new symbols.

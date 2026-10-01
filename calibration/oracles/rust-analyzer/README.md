@@ -21,7 +21,7 @@ two):
 
 `cargo.features = "all"` matters: with the default features rust-analyzer does not analyze feature-gated modules,
 and every definition in them is a dialect-only miss (clap: 262 documents against 299 with all features). Code under `#[cfg(windows)]` and the `tests/derive_ui` compile-fail files are still outside it — the
-remaining dialect-only definitions (30 on ripgrep, 140 on clap), all real definitions in the source.
+remaining dialect-only definitions (48 on ripgrep, 212 on clap after LB-F82), all real definitions in the source.
 
 What the index carries: `SymbolInformation.kind` on every symbol (Struct, Enum, Trait, Function, Method,
 StaticMethod, TraitMethod, Macro, Module, Constant, StaticVariable, TypeAlias, AssociatedType, Field, EnumMember,
@@ -68,3 +68,42 @@ merge.
 Re-run 2026-10-01 (wave lb remeasure, fathom fdd2bb59, same Homebrew `rust-analyzer 0.0.0 (03fcb77246 2026-09-27)`): ripgrep
 12.0 s, clap 35.7 s, the recipe unchanged. typed_recall reads .671 (53,089 of 79,123 in-index edges) now that LB-F55 takes the
 22,443 references to a local out of its denominator; L1, L2 and L3 read as at d8ed9a29.
+
+Re-run 2026-10-01 (wave lc, fathom b750ed19, the same Homebrew `rust-analyzer 0.0.0 (03fcb77246 2026-09-27)` and
+`cargo`/`rustc 1.98.1`): `cargo.features all`, `CARGO_HOME` and `CARGO_TARGET_DIR` outside the subjects (target
+dropped after), both subjects cloned shallow at their pinned tags, ripgrep and clap indexed in the same seconds as
+before. LB-F82 (fields, enum variants and associated consts and types in rustextract.go and the dialect) moved
+def_mapping .692 -> .8988 and typed_recall .671 -> .8212; the SCIP definitions that remain unmapped are the 687
+macro-expanded ones and about 400 file modules (a `Module` definition at line 1 of each file, `crate/` for a root).
+rust-analyzer defines no field for a crate's own tuple struct (only terminal_size's `Width#0.` appears, an
+external crate), so neither extractor emits one.
+
+Residue of import_resolution (.4732, 830 of 1,754 in-repo bindings; classification and counts in the reading's
+notes). LB-F83 (nested use trees) closed the extractor-side cause; every miss left is the file resolver's or the
+scoring's, handed to the integrator because `internal/fusion/{resolvestrategy.go, fileresolve.go}` are item refs'
+alone:
+
+- O287 (482 + 60 unresolved): `resolveCrateMod` reads a spec with no `::` as a `mod x;` child module. A use whose
+  path root is a workspace crate (`use globset::{Glob}`, spec `globset`) or exactly `crate`/`self`/`super`
+  (`use crate::{a, b}`) therefore resolves to nothing. Minimal fixture: a Cargo workspace `crates/a/Cargo.toml`
+  (`name = "a"`), `crates/a/src/lib.rs` (`pub struct S;`), `crates/b/src/lib.rs` (`use a::{S};`): the spec `a`
+  must resolve to `crates/a/src/lib.rs`, and in `crates/a/src/x.rs` `use crate::{S};` to `crates/a/src/lib.rs`.
+  The extractor cannot tell them apart from `mod x;` (both bare), so the resolver needs to know the spec came from a
+  `use` (an ImportSpec field) or `mod x;` should be spelled `self::x`.
+- O288 (93 + 17 + 11 unresolved): module roots that are not `lib.rs`/`main.rs`/`mod.rs`. (a) A `[[bin]] path =
+  "crates/core/main.rs"` target in the workspace-root manifest with no Cargo.toml of its own: `crateSrcDir` finds
+  the root manifest and takes `src/`, which does not exist (ripgrep, 93 bindings); read `[[bin]]`/`[lib]` `path`
+  and `[lib] name` when naming a crate root. (b) `use super::{A}` inside an inline `mod tests { }` means the file's
+  own module, not its parent directory's (17). (c) `mod util;` in `tests/tests.rs` is `tests/util.rs`: an
+  integration-test, example or bench root file is a crate root, so its child modules sit beside it, not in
+  `tests/tests/` (11, and 19 `crate::util` paths from those files resolve to `src/lib.rs`). Minimal fixture:
+  `tests/tests.rs` with `mod util;`, `tests/util.rs` empty: the spec `util` must resolve to `tests/util.rs`.
+- O289 (210 resolved elsewhere, 51 scoring): `pub use` re-exports. The resolver names the re-exporting module's file
+  (a facade crate's `src/lib.rs`, a `mod.rs`) and the index names the file that defines the item: `use grep::pcre2;`,
+  `pub use clap::ValueHint;` (clap's lib.rs `pub use clap_builder::*;`), `use super::ArgAction;` where
+  `builder/mod.rs` has `pub use self::action::ArgAction;`. This is the integrator follow-up on item refs' generic
+  export channel: a named import should follow the target file's own re-exports to the defining file. Minimal
+  fixture: `a/src/lib.rs` `mod inner; pub use inner::T;`, `a/src/inner.rs` `pub struct T;`, `b` with
+  `use a::T;`: the named import `T` must reach `a/src/inner.rs`. The 51 are not resolution errors: a statement
+  `use {bstr::BString, grep::printer::{ColorSpecs}}` pairs one oracle set (the in-repo files of its in-repo
+  members) with every binding of the statement, so the external-crate binding reads as unresolved.

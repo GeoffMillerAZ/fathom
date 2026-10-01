@@ -49,6 +49,15 @@
       "tier": "verified"
     },
     {
+      "name": "PORT",
+      "kind": "RustAssocConst",
+      "package": "shapes",
+      "line": 18,
+      "end_line": 18,
+      "signature": "pub const PORT: u16 = 8080;",
+      "tier": "verified"
+    },
+    {
       "name": "connect",
       "kind": "RustFn",
       "package": "shapes",
@@ -74,6 +83,15 @@
       "package": "shapes",
       "line": 25,
       "end_line": 27,
+      "tier": "verified"
+    },
+    {
+      "name": "Conn.fd",
+      "kind": "RustField",
+      "package": "shapes",
+      "line": 26,
+      "end_line": 26,
+      "signature": "pub fd: i32",
       "tier": "verified"
     },
     {
@@ -118,11 +136,65 @@
       "tier": "verified"
     },
     {
+      "name": "Widget.id",
+      "kind": "RustField",
+      "package": "shapes",
+      "line": 46,
+      "end_line": 46,
+      "signature": "pub id: u32",
+      "tier": "verified"
+    },
+    {
+      "name": "Widget.payload",
+      "kind": "RustField",
+      "package": "shapes",
+      "line": 47,
+      "end_line": 47,
+      "signature": "pub payload: T",
+      "tier": "verified"
+    },
+    {
       "name": "Shape",
       "kind": "RustEnum",
       "package": "shapes",
       "line": 50,
       "end_line": 54,
+      "tier": "verified"
+    },
+    {
+      "name": "Shape.Circle",
+      "kind": "RustVariant",
+      "package": "shapes",
+      "line": 51,
+      "end_line": 51,
+      "signature": "Circle(f64)",
+      "tier": "verified"
+    },
+    {
+      "name": "Shape.Square",
+      "kind": "RustVariant",
+      "package": "shapes",
+      "line": 52,
+      "end_line": 52,
+      "signature": "Square { side: f64 }",
+      "tier": "verified"
+    },
+    {
+      "name": "side",
+      "kind": "RustField",
+      "package": "shapes",
+      "line": 52,
+      "end_line": 52,
+      "signature": "side: f64",
+      "tier": "verified"
+    },
+    {
+      "name": "Shape.Empty",
+      "kind": "RustVariant",
+      "package": "shapes",
+      "line": 53,
+      "end_line": 53,
+      "signature": "Empty",
       "tier": "verified"
     },
     {
@@ -134,11 +206,47 @@
       "tier": "verified"
     },
     {
+      "name": "Bits.int",
+      "kind": "RustField",
+      "package": "shapes",
+      "line": 57,
+      "end_line": 57,
+      "signature": "int: u32",
+      "tier": "verified"
+    },
+    {
+      "name": "Bits.float",
+      "kind": "RustField",
+      "package": "shapes",
+      "line": 58,
+      "end_line": 58,
+      "signature": "float: f32",
+      "tier": "verified"
+    },
+    {
       "name": "Render",
       "kind": "RustTrait",
       "package": "shapes",
       "line": 61,
       "end_line": 70,
+      "tier": "verified"
+    },
+    {
+      "name": "Render.Output",
+      "kind": "RustAssocType",
+      "package": "shapes",
+      "line": 62,
+      "end_line": 62,
+      "signature": "type Output;",
+      "tier": "verified"
+    },
+    {
+      "name": "Render.DEPTH",
+      "kind": "RustAssocConst",
+      "package": "shapes",
+      "line": 63,
+      "end_line": 63,
+      "signature": "const DEPTH: u32;",
       "tier": "verified"
     },
     {
@@ -169,6 +277,15 @@
       "package": "shapes",
       "line": 72,
       "end_line": 88,
+      "tier": "verified"
+    },
+    {
+      "name": "Widget.LIMIT",
+      "kind": "RustAssocConst",
+      "package": "shapes",
+      "line": 73,
+      "end_line": 73,
+      "signature": "pub const LIMIT: u32 = 10;",
       "tier": "verified"
     },
     {
@@ -218,6 +335,24 @@
       "tier": "verified"
     },
     {
+      "name": "Vec.Output",
+      "kind": "RustAssocType",
+      "package": "shapes",
+      "line": 97,
+      "end_line": 97,
+      "signature": "type Output = Vec<u8>;",
+      "tier": "verified"
+    },
+    {
+      "name": "Vec.DEPTH",
+      "kind": "RustAssocConst",
+      "package": "shapes",
+      "line": 98,
+      "end_line": 98,
+      "signature": "const DEPTH: u32 = 1;",
+      "tier": "verified"
+    },
+    {
       "name": "Vec.render",
       "kind": "RustFn",
       "package": "shapes",
@@ -238,6 +373,24 @@
       "tier": "verified"
     },
     {
+      "name": "str.Output",
+      "kind": "RustAssocType",
+      "package": "shapes",
+      "line": 106,
+      "end_line": 106,
+      "signature": "type Output = String;",
+      "tier": "verified"
+    },
+    {
+      "name": "str.DEPTH",
+      "kind": "RustAssocConst",
+      "package": "shapes",
+      "line": 107,
+      "end_line": 107,
+      "signature": "const DEPTH: u32 = 0;",
+      "tier": "verified"
+    },
+    {
       "name": "str.render",
       "kind": "RustFn",
       "package": "shapes",
@@ -255,6 +408,24 @@
       "package": "shapes",
       "line": 114,
       "end_line": 121,
+      "tier": "verified"
+    },
+    {
+      "name": "[u8].Output",
+      "kind": "RustAssocType",
+      "package": "shapes",
+      "line": 115,
+      "end_line": 115,
+      "signature": "type Output = ();",
+      "tier": "verified"
+    },
+    {
+      "name": "[u8].DEPTH",
+      "kind": "RustAssocConst",
+      "package": "shapes",
+      "line": 116,
+      "end_line": 116,
+      "signature": "const DEPTH: u32 = 0;",
       "tier": "verified"
     },
     {
