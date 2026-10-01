@@ -41,8 +41,43 @@ func gatewayFixtures(t *testing.T, id string) []string {
 	return out
 }
 
+// gatewayExtract reads one fixture as if it sat in infra/<name> and returns
+// its entities, references and cross-file references in the golden's shape.
+func gatewayExtract(t *testing.T, x *DocExtractor, fx string) cfnGolden {
+	t.Helper()
+	rel := "infra/" + filepath.Base(fx)
+	src, err := os.ReadFile(fx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, err := x.ExtractDoc("svc", rel, src)
+	if err != nil {
+		t.Fatalf("ExtractDoc: %v", err)
+	}
+	got := cfnGolden{Symbols: []cfnGoldenSymbol{}, CrossFile: []cfnGoldenCross{}}
+	for _, n := range res.Nodes {
+		if n.Service != "svc" || n.FilePath != rel {
+			t.Fatalf("%s: plumbing changed: service %q file %q", fx, n.Service, n.FilePath)
+		}
+		got.Symbols = append(got.Symbols, cfnGoldenSymbol{
+			Name: n.Name, Kind: string(n.Kind), Package: n.Package,
+			Line: n.Line, EndLine: n.EndLine, Signature: n.Signature,
+			Calls: n.Calls, Tier: tierName(n.Tier),
+		})
+	}
+	for _, c := range res.CrossFile {
+		got.CrossFile = append(got.CrossFile, cfnGoldenCross{
+			From: c.From, Edge: c.Edge, Raw: c.Raw, Target: c.Target, Strategy: c.Strategy, Line: c.Line,
+		})
+	}
+	return got
+}
+
 // TestGatewayDialectGoldens: every fixture's entities, references and
-// cross-file references (route targets included) against its golden.
+// cross-file references (route targets included) against its hand-written
+// golden. The fixtures are looped in the test's own body, not subtests, so a
+// plan row's reachable_from can name this test (the call graph does not enter
+// a t.Run closure).
 func TestGatewayDialectGoldens(t *testing.T) {
 	for _, id := range gatewayDialects {
 		x, err := NewDocDialectExtractor(id)
@@ -50,52 +85,26 @@ func TestGatewayDialectGoldens(t *testing.T) {
 			t.Fatalf("NewDocDialectExtractor(%s): %v", id, err)
 		}
 		for _, fx := range gatewayFixtures(t, id) {
-			t.Run(id+"/"+filepath.Base(fx), func(t *testing.T) {
-				rel := "infra/" + filepath.Base(fx)
-				src, err := os.ReadFile(fx)
-				if err != nil {
-					t.Fatal(err)
-				}
-				res, err := x.ExtractDoc("svc", rel, src)
-				if err != nil {
-					t.Fatalf("ExtractDoc: %v", err)
-				}
-				got := cfnGolden{Symbols: []cfnGoldenSymbol{}, CrossFile: []cfnGoldenCross{}}
-				for _, n := range res.Nodes {
-					if n.Service != "svc" || n.FilePath != rel {
-						t.Fatalf("%s: plumbing changed: service %q file %q", fx, n.Service, n.FilePath)
-					}
-					got.Symbols = append(got.Symbols, cfnGoldenSymbol{
-						Name: n.Name, Kind: string(n.Kind), Package: n.Package,
-						Line: n.Line, EndLine: n.EndLine, Signature: n.Signature,
-						Calls: n.Calls, Tier: tierName(n.Tier),
-					})
-				}
-				for _, c := range res.CrossFile {
-					got.CrossFile = append(got.CrossFile, cfnGoldenCross{
-						From: c.From, Edge: c.Edge, Raw: c.Raw, Target: c.Target, Strategy: c.Strategy, Line: c.Line,
-					})
-				}
-				gp := fx + ".golden.json"
-				raw, err := os.ReadFile(gp)
-				if err != nil {
-					t.Fatalf("read golden: %v", err)
-				}
-				var want cfnGolden
-				if err := json.Unmarshal(raw, &want); err != nil {
-					t.Fatalf("%s: %v", gp, err)
-				}
-				if want.Symbols == nil {
-					want.Symbols = []cfnGoldenSymbol{}
-				}
-				if want.CrossFile == nil {
-					want.CrossFile = []cfnGoldenCross{}
-				}
-				if !reflect.DeepEqual(got, want) {
-					gj, _ := json.MarshalIndent(got, "", "  ")
-					t.Errorf("%s: extraction differs from %s\ngot:\n%s", fx, gp, gj)
-				}
-			})
+			got := gatewayExtract(t, x, fx)
+			gp := fx + ".golden.json"
+			raw, err := os.ReadFile(gp)
+			if err != nil {
+				t.Fatalf("read golden: %v", err)
+			}
+			var want cfnGolden
+			if err := json.Unmarshal(raw, &want); err != nil {
+				t.Fatalf("%s: %v", gp, err)
+			}
+			if want.Symbols == nil {
+				want.Symbols = []cfnGoldenSymbol{}
+			}
+			if want.CrossFile == nil {
+				want.CrossFile = []cfnGoldenCross{}
+			}
+			if !reflect.DeepEqual(got, want) {
+				gj, _ := json.MarshalIndent(got, "", "  ")
+				t.Errorf("%s/%s: extraction differs from %s\ngot:\n%s", id, filepath.Base(fx), gp, gj)
+			}
 		}
 	}
 }
