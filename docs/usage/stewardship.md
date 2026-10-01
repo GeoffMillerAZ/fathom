@@ -24,6 +24,11 @@ integration branch and the rows open on it (SV-1, SV-2):
 | `idle` | None of the above and no commit for `--idle-days` days. |
 | `active` | None of the above, with a recent commit. |
 
+SV-M1 (`docs/bench/readings/stewardship/lines-replay.md`) read CUT for the two rows classes:
+over the 2026-09-29 consolidation they flagged 36 lines against a bar of 25. Landed and at
+risk stand; `claims-rows` and `touches-rows` still print in this version until the owner
+removes them (O293), so read them as hints, not as a work list.
+
 A line takes the first class that holds, in that order. Open rows are the rows of the
 integration branch's `docs/plans/*.md` (README.md excluded) that are neither `[x]` nor
 `[-]`. Each line carries its rows, its age in days and its tip; `--json` prints the
@@ -37,3 +42,22 @@ copy of the index, so the report never locks or rewrites `.git/index` in a check
 someone is working in. `TestCmdPlansLinesReportsAndNeverActs` runs the verb with a git
 runner that refuses any write subcommand and checks that refs, reflogs, every index and
 the worktree list are byte-identical before and after.
+
+## `fathom gc`: strays and binaries
+
+```sh
+fathom gc [--repo DIR] [--json] [--apply]
+```
+
+Besides its retention classes, `fathom gc` lists two report-only classes for the repository
+(`--repo`, default the enclosing one; SV-4):
+
+| Class | Lists |
+|---|---|
+| `strays` | Untracked files and directories git does not ignore, outside the declared homes: `workspace/` and the ADR-039 build-cache roots (`FATHOM_CACHE_ROOT`, `GOCACHE`, `GOMODCACHE`, `GOTMPDIR` when they lie inside the repository). A fully untracked directory is one item. |
+| `binaries` | Executable binaries (an execute bit and an ELF, Mach-O or PE header; a script is not one), committed or lying untracked in the tree. |
+
+Both carry the action `report`: `--apply` never removes them and the reclaimable totals
+leave them out, because they are not fathom's (I63). The line says what to do instead:
+commit it, ignore it, or move it under `workspace/`. Only the verb plans these classes;
+the daemon's daily retention pass and `doctor` never do.

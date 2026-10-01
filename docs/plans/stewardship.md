@@ -21,7 +21,7 @@ lines, leftovers and used-closure slices (SV-1, SV-2, SV-4 to SV-7) and the $0 r
 
 ## Wave 2: leftovers (section 4.3)
 
-- [ ] `fathom gc` reports untracked non-ignored files outside declared homes (`workspace/`, the ADR-039 build-cache roots) and executable binaries in the tree as report-only classes that `--apply` never removes (I63) {id: SV-4, symbol: gcStrays, package: cmd/fathom, reachable_from: TestGCStraysReportOnlyNeverApplied}
+- [x] `fathom gc` reports untracked non-ignored files outside declared homes (`workspace/`, the ADR-039 build-cache roots) and executable binaries in the tree as report-only classes that `--apply` never removes (I63) {id: SV-4, symbol: gcStrays, package: cmd/fathom, reachable_from: TestGCStraysReportOnlyNeverApplied}
 - [ ] `fathom plans status` marks a plan with 0 open and 0 claimed-unproven rows archivable and names `fathom plans archive` {id: SV-5, symbol: planArchivable, package: cmd/fathom, reachable_from: TestPlansStatusMarksArchivable}
 - [ ] (op) SV-M2: the owner adjudicates one strays and archivable list on this repository and on agentic-kit; at least 8 in 10 flagged items were trash or forgotten work {id: SV-M2, oracle: lexical, path: docs/bench/readings/stewardship/leftovers.md, pattern: "^SV-M2 verdict: (KEEP|CUT)", needs: "SV-4,SV-5"}
 
