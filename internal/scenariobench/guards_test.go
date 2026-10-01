@@ -273,6 +273,7 @@ func checkGuardsCorpusDetectors(t *testing.T, c Corpus) {
 						// fanout-determinism/store-search-accelerator) has
 						// nothing for a static tree search to find — the
 						// package exists only inside a prepared worktree.
+						// internal/scenariobench/guardsm1's
 						// TestGuardsM1ViolationProbesFireAndClear is the
 						// real proof for these: it runs task.Subject.Setup
 						// and then this exact detector command for real.

@@ -39,15 +39,44 @@
 // TestGuardsCorpusDetectorsExist already, and are a "did anything happen"
 // formality orthogonal to whether a RULE was violated; the latter is
 // exercised by internal/mcp's own suite, not by this corpus.
-package scenariobench
+//
+// It lives in its own package, internal/scenariobench/guardsm1 (see doc.go),
+// so `go test` runs it in a test binary beside internal/scenariobench's other
+// tests; it reaches only scenariobench's exported types (Corpus, Task,
+// Detector), and copies the few test-only helpers it shares with that
+// package's own guardsfathom_probe_test.go.
+package guardsm1_test
 
 import (
+	"encoding/json"
 	"os"
 	"os/exec"
 	"testing"
+
+	"github.com/geoffmilleraz/fathom/internal/scenariobench"
 )
 
-const guardsM1CorpusPath = "../../testdata/scenariobench/guards-m1.json"
+const guardsM1CorpusPath = "../../../testdata/scenariobench/guards-m1.json"
+
+// moduleRoot is the repo root from this package's location
+// (internal/scenariobench/guardsm1), for the `git archive HEAD` copy the
+// probes run against.
+const moduleRoot = "../../.."
+
+// loadGuardsCorpusAt reads one guards corpus: a copy of
+// internal/scenariobench's test helper of the same name.
+func loadGuardsCorpusAt(t *testing.T, path string) scenariobench.Corpus {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read guards corpus: %v", err)
+	}
+	var c scenariobench.Corpus
+	if err := json.Unmarshal(data, &c); err != nil {
+		t.Fatalf("parse guards corpus: %v", err)
+	}
+	return c
+}
 
 // guardsM1PrimaryDetector names, per task, the one oracle.detectors entry
 // this file's probe exercises red/green — see the package doc comment for
@@ -63,7 +92,7 @@ var guardsM1PrimaryDetector = map[string]string{
 }
 
 // taskDetector returns the named detector from task's oracle.
-func taskDetector(t *testing.T, task Task, name string) Detector {
+func taskDetector(t *testing.T, task scenariobench.Task, name string) scenariobench.Detector {
 	t.Helper()
 	for _, d := range task.Oracle.Detectors {
 		if d.Name == name {
@@ -71,7 +100,7 @@ func taskDetector(t *testing.T, task Task, name string) Detector {
 		}
 	}
 	t.Fatalf("task %s: no detector named %q in oracle.detectors", task.ID, name)
-	return Detector{}
+	return scenariobench.Detector{}
 }
 
 // archiveHEAD extracts `git archive HEAD` of root into a fresh directory
@@ -177,7 +206,7 @@ func TestGuardsM1ViolationProbesFireAndClear(t *testing.T) {
 // edit-site scaffold — the same step PrepareSubject runs in a real cell,
 // before the first ingest — so the tree already honors the rule (detector
 // green); the probe breaks it (detector red).
-func checkBreakageTask(t *testing.T, task Task, detector Detector) {
+func checkBreakageTask(t *testing.T, task scenariobench.Task, detector scenariobench.Detector) {
 	t.Helper()
 	dir := archiveHEAD(t, moduleRoot)
 
@@ -203,7 +232,7 @@ func checkBreakageTask(t *testing.T, task Task, detector Detector) {
 // instead, the probe's naive PARTIAL completion (registry + catalog, no
 // Maintained line) must read red, and finishing the omitted piece must
 // turn the same detector green.
-func checkOmissionTaskMaintainedLine(t *testing.T, task Task, detector Detector) {
+func checkOmissionTaskMaintainedLine(t *testing.T, task scenariobench.Task, detector scenariobench.Detector) {
 	t.Helper()
 	dir := archiveHEAD(t, moduleRoot)
 
@@ -237,7 +266,7 @@ func checkOmissionTaskMaintainedLine(t *testing.T, task Task, detector Detector)
 // probe (a real `git commit` with no Verified: line, in a throwaway repo)
 // must read red, and amending the same commit to carry the trailer must
 // turn the same detector green.
-func checkOmissionTaskCommit(t *testing.T, task Task, detector Detector) {
+func checkOmissionTaskCommit(t *testing.T, task scenariobench.Task, detector scenariobench.Detector) {
 	t.Helper()
 	dir := t.TempDir()
 

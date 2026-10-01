@@ -1,16 +1,17 @@
 // guardsfathom_probe_test.go — wave N14 item 2's mechanical proof that
 // testdata/scenariobench/guards-fathom.json's new
 // "debug-dump-default-under-workspace" detector actually discriminates,
-// the same shape guardsm1_probe_test.go already proves for guards-m1.json
-// (RC-50): guards-pilot-6's second reading found that the task's ORIGINAL
-// oracle — reusing the pre-existing TestDefaultStorePathNeverTheCwd
-// verbatim — never exercises a brand-new verb's own default path at all,
-// so two real sessions hardcoded ~/.fathom/debug unconditionally and both
-// scored PASS. This file applies the corpus's own violation_probe (the
-// naive, hardcoded-home fix) to a disposable copy of the subject tree and
-// checks the new detector goes red, then applies a compliant fix (routes
-// through the shared workspacePath helper, cmd/fathom/defaultpaths.go)
-// and checks the same detector goes green.
+// the same shape internal/scenariobench/guardsm1's guardsm1_probe_test.go
+// already proves for guards-m1.json (RC-50): guards-pilot-6's second
+// reading found that the task's ORIGINAL oracle — reusing the pre-existing
+// TestDefaultStorePathNeverTheCwd verbatim — never exercises a brand-new
+// verb's own default path at all, so two real sessions hardcoded
+// ~/.fathom/debug unconditionally and both scored PASS. This file applies
+// the corpus's own violation_probe (the naive, hardcoded-home fix) to a
+// disposable copy of the subject tree and checks the new detector goes red,
+// then applies a compliant fix (routes through the shared workspacePath
+// helper, cmd/fathom/defaultpaths.go) and checks the same detector goes
+// green.
 package scenariobench
 
 import (
@@ -23,9 +24,9 @@ import (
 )
 
 // TestGuardsI31DebugDumpDetectorFiresAndClears is wave N14 item 2's
-// anchor. It reuses guardsm1_probe_test.go's archiveHEAD/applyCommands/
-// runProbeDetector/taskDetector helpers (same package) rather than
-// reimplementing them.
+// anchor. It uses the archiveHEAD/applyCommands/runProbeDetector/
+// taskDetector helpers at the end of this file (the guardsm1 package keeps
+// its own copies) rather than reimplementing them per test.
 func TestGuardsI31DebugDumpDetectorFiresAndClears(t *testing.T) {
 	c := loadGuardsCorpus(t) // guards-fathom.json
 	var task Task
@@ -225,5 +226,84 @@ func TestGuardsI36PostWireSetupDerivesFromHEADNotWorkingTree(t *testing.T) {
 	}
 	if strings.Contains(string(got), "inline as prose") {
 		t.Errorf("expected the working tree's own drifted content to have no bearing on the result at all — it must never even be read, got:\n%s", got)
+	}
+}
+
+// The helpers below (taskDetector, archiveHEAD, runProbeDetector,
+// applyCommands) are shared with internal/scenariobench/guardsm1's own
+// copies: TestGuardsM1ViolationProbesFireAndClear moved to that package so
+// it runs in a test binary beside this one.
+
+// taskDetector returns the named detector from task's oracle.
+func taskDetector(t *testing.T, task Task, name string) Detector {
+	t.Helper()
+	for _, d := range task.Oracle.Detectors {
+		if d.Name == name {
+			return d
+		}
+	}
+	t.Fatalf("task %s: no detector named %q in oracle.detectors", task.ID, name)
+	return Detector{}
+}
+
+// archiveHEAD extracts `git archive HEAD` of root into a fresh directory
+// under t.TempDir(): a disposable, plain (no .git) copy of the committed
+// subject tree, exactly as RC-50 asks — cheap enough to make one per task.
+func archiveHEAD(t *testing.T, root string) string {
+	t.Helper()
+	dir := t.TempDir()
+	archive := exec.Command("git", "-C", root, "archive", "HEAD")
+	tarx := exec.Command("tar", "-x", "-C", dir)
+	pipe, err := archive.StdoutPipe()
+	if err != nil {
+		t.Fatalf("git archive: stdout pipe: %v", err)
+	}
+	tarx.Stdin = pipe
+	if err := tarx.Start(); err != nil {
+		t.Fatalf("tar -x: start: %v", err)
+	}
+	if err := archive.Run(); err != nil {
+		t.Fatalf("git -C %s archive HEAD: %v", root, err)
+	}
+	if err := tarx.Wait(); err != nil {
+		t.Fatalf("tar -x: %v", err)
+	}
+	return dir
+}
+
+// runProbeDetector runs command (a guards-m1.json detector, verbatim) via
+// `sh -c` in dir, inheriting this test process's own environment (the
+// GOMODCACHE/GOCACHE/CGO_ENABLED/GOFLAGS the gate is invoked with) plus an
+// explicit GOWORK=off, and returns its exit code and combined output.
+func runProbeDetector(t *testing.T, dir, command string) (int, string) {
+	t.Helper()
+	cmd := exec.Command("sh", "-c", command)
+	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), "GOWORK=off")
+	out, err := cmd.CombinedOutput()
+	if err == nil {
+		return 0, string(out)
+	}
+	if ee, ok := err.(*exec.ExitError); ok {
+		return ee.ExitCode(), string(out)
+	}
+	t.Fatalf("running detector %q in %s: %v\n%s", command, dir, err, out)
+	return -1, string(out)
+}
+
+// applyCommands runs every command in order via `sh -c` in dir, failing
+// the test immediately if any one of them errors — a subject.setup, a
+// violation_probe, or this file's own "now complete the omitted piece"
+// fix is meant to be unconditionally applicable to a fresh copy of the
+// tree.
+func applyCommands(t *testing.T, dir string, commands []string) {
+	t.Helper()
+	for _, c := range commands {
+		cmd := exec.Command("sh", "-c", c)
+		cmd.Dir = dir
+		cmd.Env = append(os.Environ(), "GOWORK=off")
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("applying %q: %v\n%s", c, err, out)
+		}
 	}
 }
