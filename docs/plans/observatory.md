@@ -21,7 +21,7 @@
 ## C — The verb and the docs
 
 - [-] fathom brief writes a dated local markdown value brief from the same impact model: real numbers with denominators, version stamps, and an explicit not-measured section; refuses nothing silently {id: OB-7, disposition: refused, reason: "retired by SR-14 (surface reckoning): the fathom brief CLI verb (cmdBrief) is removed for 0 lifetime calls; renderBriefMD/briefTuning survive for the console's /brief page"}
-- [x] usage docs and the fathom-impact skill point at the observatory and the brief {id: OB-8, oracle: lexical, path: docs/usage.md, pattern: "/observatory/brief"}
+- [x] usage docs and the fathom-impact skill point at the observatory and the brief {id: OB-8, oracle: lexical, path: docs/usage/serve-http.md, pattern: "/observatory/brief"}
 
 ## C2 — Owner asks landed mid-flight (2026-08-08)
 

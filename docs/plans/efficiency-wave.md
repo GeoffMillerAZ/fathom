@@ -42,6 +42,7 @@ surface-reckoning.md SR-M1, which pins the default surface's schema bytes.
 - [x] Workers run `fathom tests select`'s certifying-first set before any whole-package run {id: EW-11, oracle: lexical, path: docs/guides/agent-waves.md, pattern: "tests select", needs: "test-intelligence.md#TQ-15w,test-intelligence.md#TQ-16w,surface-reckoning.md#SR-50"}
 - [x] (op) EW-6: session-hook and stop-hook cost read as CPU and wall time from the hook-latency log on a loaded and an idle machine (p50 895 ms and 2,261 ms under load on 2026-09-29), naming whether it is work or load; a fix row follows if it is work {id: EW-6, oracle: lexical, path: docs/bench/readings/efficiency-wave/hook-latency.md, pattern: "^EW-6 reading:"}
 - [x] The hook-latency record carries each invocation's CPU time (user plus system) beside its wall time, so a slow hook reads as work or load from the log alone; EW-6's two work findings (the session hook near 0.9 s at any load, the stop hook 1.6 s at an idle machine) are then re-read as CPU {id: EW-29, symbol: recordHookLatency, package: cmd/fathom, reachable_from: TestRecordHookLatencyCarriesCPUTime, needs: "EW-6"}
+- [x] `fathom observe` writes each new entry to its own file .fathom/observations/O<n>.md (exclusive create), mints the next id over the legacy log and the directory together, and every reader reads both; the legacy log stays as written {id: EW-32, symbol: readObservations, package: cmd/fathom, reachable_from: TestObserveWritesPerEntryFileAndReadersReadBoth}
 
 ## Stop 1: push, deploy, adopt
 

@@ -603,7 +603,7 @@ func guideItems(r ProjectFacts) []AttentionItem {
 // observationItems are a project's open observations, or its unreadable
 // observations file (which hides an unknown number of them).
 func observationItems(r ProjectFacts) []AttentionItem {
-	file := ".fathom/observations.md"
+	file := ".fathom/observations/"
 	if r.Path != "" {
 		file = strings.TrimSuffix(r.Path, "/") + "/" + file
 	}

@@ -1,6 +1,7 @@
 // The scenario ledger (SB-18): one committed JSONL row per (run, task,
 // arm) — docs/bench/scenarios-ledger.jsonl — rendered as a marker-fenced
-// table into docs/bench/README.md's "## Scenario runs" section, mirroring
+// table into docs/bench/scenario-runs.md's "## Scenario runs" section (the
+// bench README keeps a pointer, EW-32), mirroring
 // scripts/bench-ledger-render.sh's own marker convention so both ledgers
 // read the same way.
 package scenariobench
@@ -787,7 +788,7 @@ func EscalationPlan(ledgerRows []ScenarioLedgerRow, criterion Criterion, margin 
 }
 
 // ScenarioLedgerBeginMarker / ScenarioLedgerEndMarker fence the rendered
-// table inside docs/bench/README.md's "## Scenario runs" section, so the
+// table inside docs/bench/scenario-runs.md's "## Scenario runs" section, so the
 // prose around it survives every re-render (mirrors
 // scripts/bench-ledger-render.sh's ledger table markers).
 const (
