@@ -21,6 +21,10 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: patch (pre-1.0: breaking bumps minor)
 
+### Changed
+
+- A `package.json` package now records the dependency names it writes (dependencies, devDependencies, peerDependencies, optionalDependencies) as references, as a `Cargo.toml` package does, so they reach the call graph. Measured against npm: reference recall and precision 1 on babel and next.js.
+
 ## [0.9.0] -- 2026-09-30
 
 Release impact: minor (pre-1.0: breaking bumps minor)

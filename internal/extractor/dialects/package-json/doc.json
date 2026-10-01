@@ -11,6 +11,12 @@
     { "select": "$.exports.*",
       "kind": "route", "source_kind": "PackageJSONExport", "name": "$key", "signature": ".import | .require | .default | $" }
   ],
+  "references": [
+    { "from": "package", "select": "$.dependencies.*", "value": "$key", "to_kind": "package", "edge": "depends_on" },
+    { "from": "package", "select": "$.devDependencies.*", "value": "$key", "to_kind": "package", "edge": "dev_depends_on" },
+    { "from": "package", "select": "$.peerDependencies.*", "value": "$key", "to_kind": "package", "edge": "peer_depends_on" },
+    { "from": "package", "select": "$.optionalDependencies.*", "value": "$key", "to_kind": "package", "edge": "optional_depends_on" }
+  ],
   "cross_file": [
     { "select": "$.workspaces[*]", "value": "$", "resolve": "repo-path", "edge": "workspace_member" },
     { "select": "$.dependencies.*", "value": "$key", "resolve": "module-source", "edge": "depends_on" },

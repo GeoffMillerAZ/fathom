@@ -5,10 +5,12 @@ package extractor
 // "TestDialectGoldens" runner exists yet for doc-engine dialects (only
 // TestTagsDialectParity, and only for the five pre-manifest tags
 // languages) so this dialect gets its own, in the same golden shape
-// (name/kind/package/line/end_line/signature/tier) plus a "cross_file"
+// (name/kind/package/line/end_line/signature/calls/tier) plus a "cross_file"
 // section doc dialects have and tags dialects don't (there is no
 // "imports" concept here — cross-file references resolve by strategy,
-// design §4).
+// design §4). The package entity's calls are the dependency names the
+// manifest writes (the doc spec's references block, the cargo dialect's
+// shape), which is what lang-oracle scores as reference pairs (L2).
 
 import (
 	"encoding/json"
@@ -20,13 +22,14 @@ import (
 )
 
 type pkgJSONGoldenSymbol struct {
-	Name      string `json:"name"`
-	Kind      string `json:"kind"`
-	Package   string `json:"package"`
-	Line      int    `json:"line"`
-	EndLine   int    `json:"end_line"`
-	Signature string `json:"signature,omitempty"`
-	Tier      string `json:"tier"`
+	Name      string   `json:"name"`
+	Kind      string   `json:"kind"`
+	Package   string   `json:"package"`
+	Line      int      `json:"line"`
+	EndLine   int      `json:"end_line"`
+	Signature string   `json:"signature,omitempty"`
+	Calls     []string `json:"calls,omitempty"`
+	Tier      string   `json:"tier"`
 }
 
 type pkgJSONGoldenCross struct {
@@ -112,11 +115,8 @@ func TestPackageJSONDialectGoldens(t *testing.T) {
 				}
 				got.Symbols = append(got.Symbols, pkgJSONGoldenSymbol{
 					Name: n.Name, Kind: string(n.Kind), Package: n.Package,
-					Line: n.Line, EndLine: n.EndLine, Signature: n.Signature, Tier: tierName(n.Tier),
+					Line: n.Line, EndLine: n.EndLine, Signature: n.Signature, Calls: n.Calls, Tier: tierName(n.Tier),
 				})
-				if len(n.Calls) != 0 {
-					t.Errorf("%s: %s: unexpected Calls %v (this dialect declares no intra-file references)", fx, n.Name, n.Calls)
-				}
 			}
 			got.CrossFile = []pkgJSONGoldenCross{}
 			for _, c := range res.CrossFile {

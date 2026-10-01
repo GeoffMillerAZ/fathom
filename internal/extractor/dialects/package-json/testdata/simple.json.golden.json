@@ -1,6 +1,6 @@
 {
   "symbols": [
-    { "name": "@acme/widgets", "kind": "PackageJSONPackage", "package": "package", "line": 1, "end_line": 25, "signature": "2.3.1", "tier": "verified" },
+    { "name": "@acme/widgets", "kind": "PackageJSONPackage", "package": "package", "line": 1, "end_line": 25, "signature": "2.3.1", "calls": ["@acme/core", "lodash", "typescript"], "tier": "verified" },
     { "name": "build", "kind": "PackageJSONScript", "package": "package", "line": 7, "end_line": 7, "signature": "tsc -p tsconfig.json", "tier": "verified" },
     { "name": "test", "kind": "PackageJSONScript", "package": "package", "line": 8, "end_line": 8, "signature": "jest --coverage", "tier": "verified" },
     { "name": "lint", "kind": "PackageJSONScript", "package": "package", "line": 9, "end_line": 9, "signature": "eslint src", "tier": "verified" },
