@@ -79,6 +79,7 @@ follows because XM-M2 needs it.
 
 - [ ] Every worker brief carries one map id: the wave map the orchestrator mints before dispatch, composed with the task's own map, which workers append to with provenance {id: EW-13, oracle: lexical, path: docs/guides/agent-waves.md, pattern: "map id", needs: "exploration-maps.md#XM-8,exploration-maps.md#XM-9,exploration-maps.md#XM-14,EW-M3"}
 - [ ] (op) EW-S2: the stop-2 reading: the maps slice deployed and the next two waves dispatched with a map id in every brief {id: EW-S2, oracle: lexical, path: docs/bench/readings/efficiency-wave/stops.md, pattern: "^EW-S2 reading:", needs: "EW-13,EW-M1", weight: 2}
+- [x] runServeHTTP is split by phase into same-package servehttp_*.go files (config and flags, lifecycle, store and tenancy setup, routes, background loops, shutdown) with no behaviour change and a clean `fathom review --since` conservation; the tenancy lint's request-path context rule covers every servehttp*.go non-test file, proven by a planted context.Background in a servehttp_<phase>.go path {id: EW-47, oracle: lexical, path: internal/lint/tenancy/tenancy_test.go, pattern: "\"cmd/fathom/servehttp_[a-z_]+\.go\"", min: 1}
 
 ## Measurement: did the wave pay
 

@@ -15,16 +15,16 @@ bare-go	cmd/fathom/plans.go	CLI fan-out, one goroutine per local plan, joined by
 bare-go	cmd/fathom/prompthook_findings.go	hook-side fan-out bounded by the file list, joined by a WaitGroup under the hook deadline
 bare-go	cmd/fathom/review.go	CLI: the body raced against its timeout on a buffered channel
 bare-go	cmd/fathom/selfrestart.go	runs the candidate binary's version check against a watchdog timer; buffered, never leaks
-bare-go	cmd/fathom/servehttp.go	daemon lifetime goroutine started once at serve-http startup and stopped by the drain
-bare-go	cmd/fathom/servehttp.go	daemon lifetime goroutine started once at serve-http startup and stopped by the drain
-bare-go	cmd/fathom/servehttp.go	daemon lifetime goroutine started once at serve-http startup and stopped by the drain
-bare-go	cmd/fathom/servehttp.go	daemon lifetime goroutine started once at serve-http startup and stopped by the drain
-bare-go	cmd/fathom/servehttp.go	daemon lifetime goroutine started once at serve-http startup and stopped by the drain
-bare-go	cmd/fathom/servehttp.go	daemon lifetime goroutine started once at serve-http startup and stopped by the drain
-bare-go	cmd/fathom/servehttp.go	daemon lifetime goroutine started once at serve-http startup and stopped by the drain
-bare-go	cmd/fathom/servehttp.go	daemon lifetime goroutine started once at serve-http startup and stopped by the drain
-bare-go	cmd/fathom/servehttp.go	daemon lifetime goroutine started once at serve-http startup and stopped by the drain
-bare-go	cmd/fathom/servehttp.go	daemon lifetime goroutine started once at serve-http startup and stopped by the drain
+bare-go	cmd/fathom/servehttp_config.go	daemon lifetime goroutine started once at serve-http startup and stopped by the drain
+bare-go	cmd/fathom/servehttp_lifecycle.go	daemon lifetime goroutine started once at serve-http startup and stopped by the drain
+bare-go	cmd/fathom/servehttp_lifecycle.go	daemon lifetime goroutine started once at serve-http startup and stopped by the drain
+bare-go	cmd/fathom/servehttp_lifecycle.go	daemon lifetime goroutine started once at serve-http startup and stopped by the drain
+bare-go	cmd/fathom/servehttp_loops.go	daemon lifetime goroutine started once at serve-http startup and stopped by the drain
+bare-go	cmd/fathom/servehttp_loops.go	daemon lifetime goroutine started once at serve-http startup and stopped by the drain
+bare-go	cmd/fathom/servehttp_loops.go	daemon lifetime goroutine started once at serve-http startup and stopped by the drain
+bare-go	cmd/fathom/servehttp_loops.go	daemon lifetime goroutine started once at serve-http startup and stopped by the drain
+bare-go	cmd/fathom/servehttp_loops.go	daemon lifetime goroutine started once at serve-http startup and stopped by the drain
+bare-go	cmd/fathom/servehttp_routes.go	daemon lifetime goroutine started once at serve-http startup and stopped by the drain
 bare-go	cmd/fathom/unmanaged.go	unmanaged daemon's parent watch: one per process, lives until the parent exits
 bare-go	cmd/fathom/unmanaged.go	unmanaged daemon's parent watch: one per process, lives until the parent exits
 bare-go	cmd/scenariobench/signals.go	benchmark signal forwarder, one per bench run
@@ -49,14 +49,14 @@ bg-ctx	cmd/fathom/console_refactor.go	shared, cached git/conserve computation th
 bg-ctx	cmd/fathom/console_refactor.go	shared, cached git/conserve computation that outlives the request; bounded by consoleGitTimeout / consoleConserveDeadline
 bg-ctx	cmd/fathom/console_router.go	the observatory model is a shared 30 s cache entry rebuilt once for every page; replaced by the request's context when one is present
 bg-ctx	cmd/fathom/console_tenancy_panel.go	in-process statusz for the resources panel's shared background rebuild; no request owns it
-bg-ctx	cmd/fathom/servehttp.go	daemon lifetime context in serve-http startup, cancelled by the drain; not a request
-bg-ctx	cmd/fathom/servehttp.go	daemon lifetime context in serve-http startup, cancelled by the drain; not a request
-bg-ctx	cmd/fathom/servehttp.go	daemon lifetime context in serve-http startup, cancelled by the drain; not a request
-bg-ctx	cmd/fathom/servehttp.go	daemon lifetime context in serve-http startup, cancelled by the drain; not a request
-bg-ctx	cmd/fathom/servehttp.go	daemon lifetime context in serve-http startup, cancelled by the drain; not a request
-bg-ctx	cmd/fathom/servehttp.go	daemon lifetime context in serve-http startup, cancelled by the drain; not a request
-bg-ctx	cmd/fathom/servehttp.go	daemon lifetime context in serve-http startup, cancelled by the drain; not a request
-bg-ctx	cmd/fathom/servehttp.go	daemon lifetime context in serve-http startup, cancelled by the drain; not a request
+bg-ctx	cmd/fathom/servehttp_lifecycle.go	daemon lifetime context in serve-http startup, cancelled by the drain; not a request
+bg-ctx	cmd/fathom/servehttp_lifecycle.go	daemon lifetime context in serve-http startup, cancelled by the drain; not a request
+bg-ctx	cmd/fathom/servehttp_loops.go	daemon lifetime context in serve-http startup, cancelled by the drain; not a request
+bg-ctx	cmd/fathom/servehttp_loops.go	daemon lifetime context in serve-http startup, cancelled by the drain; not a request
+bg-ctx	cmd/fathom/servehttp_loops.go	daemon lifetime context in serve-http startup, cancelled by the drain; not a request
+bg-ctx	cmd/fathom/servehttp_loops.go	daemon lifetime context in serve-http startup, cancelled by the drain; not a request
+bg-ctx	cmd/fathom/servehttp_loops.go	daemon lifetime context in serve-http startup, cancelled by the drain; not a request
+bg-ctx	cmd/fathom/servehttp_store.go	daemon lifetime context in serve-http startup, cancelled by the drain; not a request
 bg-ctx	internal/mcp/autorefresh.go	NewAutoRefresh starts a process-lifetime refresh queue; daemons use NewAutoRefreshQueued with the drain's context
 bg-ctx	internal/mcp/graph_patch.go	scope lookup for a cache patch after a refresh job, called through a context-free interface; a point query on the watermark
 bg-ctx	internal/mcp/servicerefs_memo.go	scope lookup to drop a memo entry after a per-file refresh, called through a context-free interface; a point query on the watermark
