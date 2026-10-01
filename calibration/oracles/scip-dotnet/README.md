@@ -25,3 +25,16 @@ Roslyn syntax dump (`../roslyn/`) instead. Since LB-F54,
 `internal/scip.ImportIndex` takes a mapped definition's fathom lines as its
 span, so `fathom ingest -scip` stores this index's typed edges (Polly: 36,831
 direct; O235); the C# reading has not been re-measured with it.
+
+Re-measure 2026-10-01 (wave lb remeasure, branch lb-remeasure = fdd2bb59 plus LB-F64's commit): the 2026-09-28 indexes and
+Roslyn dumps were reused (the checkouts are the pinned SHAs, unchanged). One lang-oracle run per subject, with the dump's
+`calls` array removed so the SCIP index is the only calls oracle (the harness takes one per subject), and `-unmatched` for
+the L2 call-pair classification:
+
+    python3 -c "import json,sys; d=json.load(open(sys.argv[1])); d.pop('calls'); json.dump(d,open(sys.argv[2],'w'))" out/csharp-Polly.json out/csharp-Polly-nocalls.json
+    indexbench lang-oracle -dialect csharp -subject <clone>/Polly -subject-name App-vNext/Polly -tool-oracle out/csharp-Polly-nocalls.json \
+        -scip out/csharp-Polly.scip -unmatched out/unmatched-Polly.json -out docs/bench/readings/lang/csharp.json
+
+A generic method called with explicit type arguments (`Policy<int>.Handle<InvalidOperationException>()`, `FuncAsync<int>()`)
+has no occurrence in the index for the method name: 5,624 of the 8,265 call pairs the dialect finds and the index does not
+prove (O271).

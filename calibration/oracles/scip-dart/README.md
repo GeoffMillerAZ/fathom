@@ -52,3 +52,7 @@ line are references to the names a `show` or `hide` clause lists (`export 'src/c
 of the 752 imports (http 2, http2 4) have an oracle, 389 resolve to a file of the subject with no attestation, and
 import edges read precision .0127 (5 of 394), recall .8333 (5 of 6). typed_recall predates F-A (item scip) and is
 re-run after that merge.
+
+Re-run 2026-10-01 (wave lb remeasure, fathom fdd2bb59, scip_dart 1.7.0, Homebrew dart 3.13.4): the eight packages re-indexed
+and re-measured with the recipe unchanged. typed_recall reads .8464 (11,551 of 13,647 in-index edges) with LB-F55's local
+references out of the denominator (6,089 of 19,736); L1, L2 and L3 read as at d8ed9a29.

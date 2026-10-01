@@ -34,3 +34,9 @@ excludes `testdata/`); bufbuild/protovalidate v1.2.2, 126 of 156 compiled (29 fi
 `examples/cel_field_presence.proto` googleapis' `google/type/postal_address.proto`, neither in the repository). buf's image
 of the repository's workspace (37 files) gives the same 919 definitions, 287 references, 42 imports and 11 cross-file
 references as protoc.
+
+Re-run 2026-10-01 (wave lb remeasure, fathom fdd2bb59, libprotoc 34.1, buf 1.70.0), both subjects with the commands above
+(grpc-go 13 of 13 compiled; protovalidate 126 of 156, measured under the reading's `-only` restriction, 118 files). `lang-oracle`
+now scores the oracle's `cross_references` (LB-F56): xref_recall 0 of 11 (all protovalidate), xref_precision unmeasured — the file
+resolver draws no edge for a buf workspace's module-rooted imports (O274; module roots are wave 3's). `buf build` over protovalidate's
+workspace decoded with `-image` gives 919 definitions, 310 references, 44 imports and 12 cross-file references.

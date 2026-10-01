@@ -9,8 +9,8 @@
     "L3": "unmet",
     "L4": "unmet"
   },
-  "measured_at": "2026-09-28",
-  "fathom_commit": "bab7f72c",
+  "measured_at": "2026-10-01",
+  "fathom_commit": "9613c745",
   "extractor": "dialect",
   "subjects": [
     {
@@ -19,13 +19,16 @@
       "files": 801,
       "bytes": 4479791,
       "counts": {
-        "call_fathom": 18519,
+        "call_fathom": 18517,
         "call_fathom_in_truth": 13391,
-        "call_truth": 14054,
+        "call_truth": 14053,
         "call_truth_found": 13391,
-        "callables": 5079,
-        "callables_signed": 5079,
-        "fathom_defs": 7337,
+        "callables": 5080,
+        "callables_signed": 5080,
+        "fathom_defs": 7338,
+        "file_edges_agree": 67,
+        "file_edges_fathom": 85,
+        "file_edges_truth": 4051,
         "import_edges_agree": 15,
         "import_edges_fathom": 7270,
         "import_edges_truth": 15,
@@ -39,15 +42,16 @@
         "matched": 7175,
         "oracle_defs": 7344,
         "range_eligible": 7175,
-        "range_ok": 6384,
+        "range_ok": 6383,
         "scip_defs": 7296,
         "scip_defs_mapped": 6106,
-        "scip_edges": 0,
-        "scip_edges_typed": 0
+        "scip_edges": 52596,
+        "scip_edges_typed": 36831
       },
       "families": {
         "calls": "A",
         "defmap": "A",
+        "file_edges": "A",
         "imports": "A",
         "l1": "B",
         "typed": "A"
@@ -71,9 +75,10 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 1693.4939999999995,
-        "extract_cpu_ms": 1608.2359999999999,
-        "max_file_ms": 71,
+        "files_with_error": 4,
+        "extract_ms": 1913.0009999999993,
+        "extract_cpu_ms": 1895.5819999999987,
+        "max_file_ms": 74,
         "peak_module_pages": 519,
         "compiled_bytes": 0
       }
@@ -84,13 +89,16 @@
       "files": 944,
       "bytes": 7091764,
       "counts": {
-        "call_fathom": 18660,
-        "call_fathom_in_truth": 15516,
-        "call_truth": 16522,
-        "call_truth_found": 15516,
-        "callables": 7337,
-        "callables_signed": 7337,
+        "call_fathom": 18650,
+        "call_fathom_in_truth": 15511,
+        "call_truth": 16538,
+        "call_truth_found": 15511,
+        "callables": 7336,
+        "callables_signed": 7336,
         "fathom_defs": 12618,
+        "file_edges_agree": 494,
+        "file_edges_fathom": 531,
+        "file_edges_truth": 5016,
         "import_edges_agree": 313,
         "import_edges_fathom": 48380,
         "import_edges_truth": 313,
@@ -100,19 +108,20 @@
         "imports_in_repo": 313,
         "imports_resolved_agree": 313,
         "imports_unattested": 1067,
-        "kind_equal": 12479,
-        "matched": 12479,
+        "kind_equal": 12481,
+        "matched": 12481,
         "oracle_defs": 12556,
-        "range_eligible": 12479,
-        "range_ok": 12474,
+        "range_eligible": 12481,
+        "range_ok": 12481,
         "scip_defs": 12508,
-        "scip_defs_mapped": 10174,
-        "scip_edges": 0,
-        "scip_edges_typed": 0
+        "scip_defs_mapped": 10176,
+        "scip_edges": 105437,
+        "scip_edges_typed": 81058
       },
       "families": {
         "calls": "A",
         "defmap": "A",
+        "file_edges": "A",
         "imports": "A",
         "l1": "B",
         "typed": "A"
@@ -138,10 +147,11 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 3969.997999999996,
-        "extract_cpu_ms": 2938.0650000000023,
-        "max_file_ms": 228,
-        "peak_module_pages": 629,
+        "files_with_error": 42,
+        "extract_ms": 3232.3099999999968,
+        "extract_cpu_ms": 3228.0959999999977,
+        "max_file_ms": 149,
+        "peak_module_pages": 631,
         "compiled_bytes": 0
       }
     }
@@ -159,29 +169,32 @@
     }
   ],
   "metrics": {
-    "call_precision": 0.7775,
-    "call_recall": 0.9454,
-    "def_mapping": 0.8221,
-    "file_edge_precision": null,
-    "file_edge_recall": null,
+    "call_precision": 0.7776,
+    "call_recall": 0.9448,
+    "def_mapping": 0.8222,
+    "file_edge_precision": 0.9107,
+    "file_edge_recall": 0.0619,
     "import_resolution": 1,
     "kind_agreement": 0.9997,
-    "range_agreement": 0.9595,
+    "range_agreement": 0.9597,
     "signature_coverage": 1,
-    "sym_precision": 0.9849,
-    "sym_recall": 0.9876,
-    "typed_recall": null
+    "sym_precision": 0.985,
+    "sym_recall": 0.9877,
+    "typed_recall": 0.746
   },
   "metric_tiers": {
     "call_precision": "A",
     "call_recall": "A",
     "def_mapping": "A",
+    "file_edge_precision": "A",
+    "file_edge_recall": "A",
     "import_resolution": "A",
     "kind_agreement": "B",
     "range_agreement": "B",
     "signature_coverage": "B",
     "sym_precision": "B",
-    "sym_recall": "B"
+    "sym_recall": "B",
+    "typed_recall": "A"
   },
   "required_kinds": [
     "class",
@@ -202,13 +215,16 @@
     "struct"
   ],
   "counts": {
-    "call_fathom": 37179,
-    "call_fathom_in_truth": 28907,
-    "call_truth": 30576,
-    "call_truth_found": 28907,
+    "call_fathom": 37167,
+    "call_fathom_in_truth": 28902,
+    "call_truth": 30591,
+    "call_truth_found": 28902,
     "callables": 12416,
     "callables_signed": 12416,
-    "fathom_defs": 19955,
+    "fathom_defs": 19956,
+    "file_edges_agree": 561,
+    "file_edges_fathom": 616,
+    "file_edges_truth": 9067,
     "import_edges_agree": 328,
     "import_edges_fathom": 55650,
     "import_edges_truth": 328,
@@ -218,24 +234,25 @@
     "imports_in_repo": 328,
     "imports_resolved_agree": 328,
     "imports_unattested": 1517,
-    "kind_equal": 19649,
-    "matched": 19654,
+    "kind_equal": 19651,
+    "matched": 19656,
     "oracle_defs": 19900,
-    "range_eligible": 19654,
-    "range_ok": 18858,
+    "range_eligible": 19656,
+    "range_ok": 18864,
     "scip_defs": 19804,
-    "scip_defs_mapped": 16280,
-    "scip_edges": 0,
-    "scip_edges_typed": 0
+    "scip_defs_mapped": 16282,
+    "scip_edges": 158033,
+    "scip_edges_typed": 117889
   },
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 2.55,
+    "files_with_error": 46,
+    "throughput_mb_s": 2.26,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 2.04,
-    "max_file_ms": 228,
-    "peak_module_pages": 629,
+    "wall_throughput_mb_s": 2.25,
+    "max_file_ms": 149,
+    "peak_module_pages": 631,
     "compiled_bytes": 0
   },
   "excluded_by_kind": {
@@ -250,10 +267,14 @@
   "notes": [
     "App-vNext/Polly: 6106 SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)",
     "JamesNK/Newtonsoft.Json: 10174 SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)",
+    "JamesNK/Newtonsoft.Json: 10176 SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)",
+    "L3 re-grade 2026-09-29 (O145 fixes at 9de28530, LB-F45): import_resolution .0854 (28 of 328 in-repo imports: Polly 15 of 15, Newtonsoft.Json 13 of 313) against scip-dotnet 0.2.14's references on the using lines (tier A, round 2's indexes) on the pinned subjects (Polly 9ad5ae9b, Newtonsoft.Json 4e13299d); before the fixes both read 0 (an aliased using of a type resolved only by path mirroring). 300 of Newtonsoft.Json's 313 are `using Assert = Newtonsoft.Json.Tests.XUnitAssert;`, a type declared in Src/Newtonsoft.Json.Tests/TestFixtureBase.cs, which the dialect extracts without its namespace: two method headers in #if/#else branches share one body (line 279), the grammar reads both, the namespace_declaration does not parse, and XUnitAssert's package falls back to its directory, so no declared type N.T names it (O148; the only one of Newtonsoft.Json's 939 namespaced files, and none of Polly's 536, to lose its namespace). The import counts come from a lang-oracle run at 9de28530 and are spliced into each recorded subject beside the families measured at bab7f72c; regrading changes no other metric. L3 moves from not attempted to unmet; level_met stays L1. Disclosed, not gated: 1,510 of 5,715 imports resolve where the oracle names no file (1,507 before the fixes: an unaliased using binds the files declaring its namespace, D7, and the index names no file for a namespace), which puts import edge precision at .0005 (28 of 55,343) and recall at .0854",
+    "L3 re-grade 2026-09-29 (O148 fix at 48c671b6, LB-F53): import_resolution 1 (328 of 328 in-repo imports: Polly 15 of 15, Newtonsoft.Json 313 of 313, was 13) against scip-dotnet 0.2.14's references on the using lines (tier A, round 2's indexes) on the pinned subjects (Polly 9ad5ae9b, Newtonsoft.Json 4e13299d). The 300 `using Assert = Newtonsoft.Json.Tests.XUnitAssert;` now resolve: a file whose tree has a syntax error is parsed with each #if group's directive lines blanked, then as each group's first branch, and the first reading that parses is read (csharpConditionalTexts, the manifest's preprocess), so TestFixtureBase.cs keeps its namespace. The import counts come from a lang-oracle run at 48c671b6 and are spliced into each recorded subject beside the families measured at bab7f72c; regrading changes no other recorded metric. The same run moves, not spliced: L1 (Roslyn, tier B) sym_recall .9876 to .9877, sym_precision .9849 to .9850, range_agreement .9595 to .9597; L2 (scip-dotnet, tier A) call_recall .9454 to .9448 (else-branch calls of the three files read as first branches), call_precision .7775 to .7776; def_mapping .8221 to .8222. L3 stays unmet: its file_edge_precision and file_edge_recall bars are not measured for C#; level_met stays L1 (L2 unmet). Disclosed, not gated: 1,517 of 5,715 imports resolve where the oracle names no file (1,510 before), import edge precision .0059 (328 of 55,650) and recall 1. These readings measure the dialect; ingest dispatches .cs to the CGO incumbent, whose package is the file stem, so its declared-type lookups do not reach this gain (O185)",
     "import_resolution: 328 of 328 in-repo imports resolve to a file the oracle names (0 unresolved, 0 only to other files; L3 bar: excellent \u003e= 0.95, good \u003e= 0.85); import edges precision 0.0059 (328 of 55650) and recall 1 (328 of 328); 1517 of 5715 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 0 oracle import targets outside the files measured",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
-    "L3 re-grade 2026-09-29 (O145 fixes at 9de28530, LB-F45): import_resolution .0854 (28 of 328 in-repo imports: Polly 15 of 15, Newtonsoft.Json 13 of 313) against scip-dotnet 0.2.14's references on the using lines (tier A, round 2's indexes) on the pinned subjects (Polly 9ad5ae9b, Newtonsoft.Json 4e13299d); before the fixes both read 0 (an aliased using of a type resolved only by path mirroring). 300 of Newtonsoft.Json's 313 are `using Assert = Newtonsoft.Json.Tests.XUnitAssert;`, a type declared in Src/Newtonsoft.Json.Tests/TestFixtureBase.cs, which the dialect extracts without its namespace: two method headers in #if/#else branches share one body (line 279), the grammar reads both, the namespace_declaration does not parse, and XUnitAssert's package falls back to its directory, so no declared type N.T names it (O148; the only one of Newtonsoft.Json's 939 namespaced files, and none of Polly's 536, to lose its namespace). The import counts come from a lang-oracle run at 9de28530 and are spliced into each recorded subject beside the families measured at bab7f72c; regrading changes no other metric. L3 moves from not attempted to unmet; level_met stays L1. Disclosed, not gated: 1,510 of 5,715 imports resolve where the oracle names no file (1,507 before the fixes: an unaliased using binds the files declaring its namespace, D7, and the index names no file for a namespace), which puts import edge precision at .0005 (28 of 55,343) and recall at .0854",
-    "L3 re-grade 2026-09-29 (O148 fix at 48c671b6, LB-F53): import_resolution 1 (328 of 328 in-repo imports: Polly 15 of 15, Newtonsoft.Json 313 of 313, was 13) against scip-dotnet 0.2.14's references on the using lines (tier A, round 2's indexes) on the pinned subjects (Polly 9ad5ae9b, Newtonsoft.Json 4e13299d). The 300 `using Assert = Newtonsoft.Json.Tests.XUnitAssert;` now resolve: a file whose tree has a syntax error is parsed with each #if group's directive lines blanked, then as each group's first branch, and the first reading that parses is read (csharpConditionalTexts, the manifest's preprocess), so TestFixtureBase.cs keeps its namespace. The import counts come from a lang-oracle run at 48c671b6 and are spliced into each recorded subject beside the families measured at bab7f72c; regrading changes no other recorded metric. The same run moves, not spliced: L1 (Roslyn, tier B) sym_recall .9876 to .9877, sym_precision .9849 to .9850, range_agreement .9595 to .9597; L2 (scip-dotnet, tier A) call_recall .9454 to .9448 (else-branch calls of the three files read as first branches), call_precision .7775 to .7776; def_mapping .8221 to .8222. L3 stays unmet: its file_edge_precision and file_edge_recall bars are not measured for C#; level_met stays L1 (L2 unmet). Disclosed, not gated: 1,517 of 5,715 imports resolve where the oracle names no file (1,510 before), import edge precision .0059 (328 of 55,650) and recall 1. These readings measure the dialect; ingest dispatches .cs to the CGO incumbent, whose package is the file stem, so its declared-type lookups do not reach this gain (O185)"
+    "re-measure 2026-10-01 (wave lb remeasure; fathom_commit 9613c745 is the lb-remeasure branch: fdd2bb59 plus fb's LB-F64 commit cb9f147e cherry-picked, which adds csharp to the L3 file-edge harness and -unmatched's call pairs): scip-dotnet 0.2.14's indexes of 2026-09-28 (Polly 9ad5ae9b, 882 documents; Newtonsoft.Json 4e13299d, 948) and the Roslyn 5.9.0 dump are reused, the pinned checkouts being unchanged; one run per subject with the dump's `calls` removed (lang-oracle takes one calls oracle per subject and L2 is scip-dotnet's): L1 from the dump (sym_recall .9877, sym_precision .985, range_agreement .9597, kind_agreement .9997), L2 call_recall .9448 and call_precision .7776, def_mapping .8222",
+    "typed_recall .746 (117,889 of 158,033 in-index edges: Polly 36,831 of 52,596, Newtonsoft.Json 81,058 of 105,437), measurable since LB-F54 (ImportIndex takes a mapped definition's fathom lines as its span where the index carries no enclosing_range) and LB-F55 (references to a local out of the denominator); it was null. L3 file edges (csharp in fileResolveLang, LB-F64) read file_edge_precision .9107 (561 of 616) and file_edge_recall .0619 (561 of 9,067 SCIP file edges) against .90 and .25, with import_resolution 1: L3 stays unmet on file_edge_recall. L4 def_mapping .8222 and typed_recall .746 each miss .85",
+    "L2 classification (2026-10-01, lang-oracle -unmatched, each category counted over all 8,265 call pairs the dialect finds that scip-dotnet does not prove: Polly 5,126, Newtonsoft.Json 3,139; call_precision .7776 = 28,902 of 37,167): (1) 5,624 (68%) are a call of a generic method with explicit type arguments, `Workloads.FuncAsync\u003cint\u003e()`, `Policy\u003cint\u003e.Handle\u003cInvalidOperationException\u003e()`, `JsonConvert.DeserializeObject\u003cIList\u003cdecimal\u003e\u003e(x)`: scip-dotnet 0.2.14 writes no occurrence for the method name (dumped for bench/Polly.Benchmarks/Fallback.cs:15, 19 and 6: the receiver's type and the callee's own type arguments are indexed, the generic method is not), a verified oracle deficiency; the dialect also names such a callee with its type arguments (`FuncAsync\u003cint\u003e`, and the tail `InvalidOperationException\u003e` of a two-argument list), a dialect fix that alone moves call_precision .7776 to .7853 (counterfactual run, not committed); (2) 368 are `nameof(x)`, which Roslyn and SCIP treat as an operator and the dialect lists as a call (a dialect fix); (3) 400 invoke a delegate-typed parameter, local or field (`callback(context, state)`, `predicate(item)`, `setter(p)`): SCIP records a reference to the local or parameter, not a callable, so the harness's truth has no pair, the same shape as Dart's (an oracle limitation, each sampled in the source); (4) 601 sit in a `#if` region the indexed target framework does not compile (`#if !HAVE_LINQ` in LinqBridge.cs, `#if !NETCOREAPP` in Polly's TimeoutRejectedException.cs and BrokenCircuitException.cs), which the dialect reads and scip-dotnet does not (the one-framework index of the Newtonsoft.Json run, LibraryFrameworks=net8.0); (5) 393 name a callee that has no reference anywhere in the oracle's document for the file although the source writes the call (mostly generated designer files, SqlTypesDataSet.Designer.cs and LinqToSqlClasses.designer.cs, 76 pairs, and the test helpers TraceableAction.cs, ChaosOutcomeStrategyTests.cs: `this.Reset()`, `instance.GetType()`, `Assert.IsNotNull(o)`): an omitted occurrence; the cause was not isolated; (6) 879 name a callee the document references elsewhere: a call written in a chain after a generic call whose own occurrence is missing (`Policy.Handle\u003cDivideByZeroException\u003e().WaitAndRetryAsync(...)`: no occurrence for either, WaitAndRetryAsyncSpecs.cs:503-505) or attributed to another enclosing definition under the D5 span fallback (1,190 Polly and 2,334 Newtonsoft.Json SCIP definitions are unmapped); sampled, not resolved per pair. Leaving out the oracle-side categories (1), (3) and (4), which are verified in the source, the dialect's precision would read .9463 (28,902 of 30,542); that is disclosed, not scored, and no pattern or threshold moved"
   ],
-  "disposition": "partial: target L4, met L1 excellent against a Roslyn 5.9.0 syntax dump (tier B, D2 — scip-dotnet 0.2.14 sets neither kinds nor enclosing ranges, so it cannot measure ranges) on Newtonsoft.Json + Polly: sym_recall 0.9876, sym_precision 0.9849, range 0.9595. L2 unmet against scip-dotnet (tier A, D5 enclosing fallback): call_recall 0.9454, call_precision 0.7775 vs .85, not root-caused this round. L3 unmet: import_resolution 1 (328 of 328, 2026-09-29, after O145's and O148's fixes); file_edge_precision and file_edge_recall not measured; ingest's CGO incumbent does not reach the gain (O185). L4: def_mapping 0.8221; typed_recall unmeasured — ImportIndex keeps no edge from an index without enclosing ranges (the C gap). using X; Y.Z() now resolves (D7). Trigger: ImportIndex's enclosing fallback and an L2 pass over the unmatched pairs."
+  "disposition": "partial: target L4, met L1 excellent against a Roslyn 5.9.0 syntax dump (tier B, D2: scip-dotnet 0.2.14 sets neither kinds nor enclosing ranges, so it cannot measure ranges) on Newtonsoft.Json + Polly: sym_recall .9877, sym_precision .985, range .9597. L2 unmet against scip-dotnet (tier A, D5 enclosing fallback): call_recall .9448, call_precision .7776 vs .85, classified 2026-10-01: of the 8,265 pairs the dialect finds and the oracle does not prove, 68% are generic-method calls with explicit type arguments scip-dotnet writes no occurrence for (a verified oracle deficiency; the dialect also keeps the type arguments in the callee name), 368 are nameof (dialect), 400 invoke a delegate-typed parameter, 601 sit in a #if region the indexed framework does not compile, 393 have no oracle occurrence, 879 are unresolved. L3 unmet: import_resolution 1 (328 of 328), file_edge_precision .9107 and file_edge_recall .0619 (561 of 9,067) vs .90 and .25; ingest's CGO incumbent does not reach the gain (O185). L4 unmet: def_mapping .8222 and typed_recall .746 (117,889 of 158,033 in-index edges, measurable since LB-F54/LB-F55) vs .85. using X; Y.Z() now resolves (D7). Trigger: the dialect names a generic-method callee without its type arguments and drops nameof, and the file-edge gap (561 of 9,067 SCIP file edges) is root-caused (LB-Q-csharp-rest)."
 }

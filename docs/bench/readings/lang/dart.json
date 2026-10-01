@@ -10,7 +10,7 @@
     "L4": "unmet"
   },
   "measured_at": "2026-10-01",
-  "fathom_commit": "d8ed9a29",
+  "fathom_commit": "fdd2bb59",
   "extractor": "dialect",
   "subjects": [
     {
@@ -42,8 +42,8 @@
         "scip_calls_unwritten": 91,
         "scip_defs": 362,
         "scip_defs_mapped": 362,
-        "scip_edges": 3785,
-        "scip_edges_typed": 1533
+        "scip_edges": 2320,
+        "scip_edges_typed": 1821
       },
       "families": {
         "calls": "A",
@@ -68,9 +68,10 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 79.774,
-        "extract_cpu_ms": 80.02800000000002,
-        "max_file_ms": 32,
+        "files_with_error": 0,
+        "extract_ms": 100.89700000000003,
+        "extract_cpu_ms": 99.78299999999996,
+        "max_file_ms": 38,
         "peak_module_pages": 373,
         "compiled_bytes": 0
       }
@@ -105,8 +106,8 @@
         "scip_calls_unwritten": 10,
         "scip_defs": 30,
         "scip_defs_mapped": 30,
-        "scip_edges": 259,
-        "scip_edges_typed": 78
+        "scip_edges": 102,
+        "scip_edges_typed": 89
       },
       "families": {
         "calls": "A",
@@ -131,9 +132,10 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 8.859000000000002,
-        "extract_cpu_ms": 8.953000000000001,
-        "max_file_ms": 1,
+        "files_with_error": 0,
+        "extract_ms": 8.863,
+        "extract_cpu_ms": 9.049999999999999,
+        "max_file_ms": 2,
         "peak_module_pages": 328,
         "compiled_bytes": 0
       }
@@ -168,8 +170,8 @@
         "scip_calls_unwritten": 14,
         "scip_defs": 126,
         "scip_defs_mapped": 126,
-        "scip_edges": 1560,
-        "scip_edges_typed": 694
+        "scip_edges": 1143,
+        "scip_edges_typed": 701
       },
       "families": {
         "calls": "A",
@@ -197,9 +199,10 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 44.397999999999996,
-        "extract_cpu_ms": 44.402,
-        "max_file_ms": 17,
+        "files_with_error": 0,
+        "extract_ms": 46.963999999999984,
+        "extract_cpu_ms": 46.807,
+        "max_file_ms": 18,
         "peak_module_pages": 343,
         "compiled_bytes": 0
       }
@@ -237,8 +240,8 @@
         "scip_calls_unwritten": 73,
         "scip_defs": 278,
         "scip_defs_mapped": 278,
-        "scip_edges": 3661,
-        "scip_edges_typed": 1181
+        "scip_edges": 2389,
+        "scip_edges_typed": 1712
       },
       "families": {
         "calls": "A",
@@ -266,9 +269,10 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 80.23499999999999,
-        "extract_cpu_ms": 80.59999999999998,
-        "max_file_ms": 10,
+        "files_with_error": 0,
+        "extract_ms": 122.47700000000002,
+        "extract_cpu_ms": 117.664,
+        "max_file_ms": 15,
         "peak_module_pages": 338,
         "compiled_bytes": 0
       }
@@ -306,8 +310,8 @@
         "scip_calls_unwritten": 50,
         "scip_defs": 985,
         "scip_defs_mapped": 985,
-        "scip_edges": 9462,
-        "scip_edges_typed": 4543
+        "scip_edges": 5925,
+        "scip_edges_typed": 5652
       },
       "families": {
         "calls": "A",
@@ -335,9 +339,10 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 195.30200000000002,
-        "extract_cpu_ms": 195.692,
-        "max_file_ms": 19,
+        "files_with_error": 0,
+        "extract_ms": 207.744,
+        "extract_cpu_ms": 206.544,
+        "max_file_ms": 20,
         "peak_module_pages": 356,
         "compiled_bytes": 0
       }
@@ -372,8 +377,8 @@
         "scip_calls_unwritten": 10,
         "scip_defs": 60,
         "scip_defs_mapped": 60,
-        "scip_edges": 437,
-        "scip_edges_typed": 148
+        "scip_edges": 236,
+        "scip_edges_typed": 165
       },
       "families": {
         "calls": "A",
@@ -401,9 +406,10 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 13.679000000000002,
-        "extract_cpu_ms": 15.745999999999999,
-        "max_file_ms": 10,
+        "files_with_error": 0,
+        "extract_ms": 13.592,
+        "extract_cpu_ms": 13.304,
+        "max_file_ms": 8,
         "peak_module_pages": 331,
         "compiled_bytes": 0
       }
@@ -438,8 +444,8 @@
         "scip_calls_unwritten": 13,
         "scip_defs": 112,
         "scip_defs_mapped": 112,
-        "scip_edges": 1651,
-        "scip_edges_typed": 825
+        "scip_edges": 1009,
+        "scip_edges_typed": 940
       },
       "families": {
         "calls": "A",
@@ -467,9 +473,10 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 45.03,
-        "extract_cpu_ms": 45.202000000000005,
-        "max_file_ms": 13,
+        "files_with_error": 0,
+        "extract_ms": 75.22099999999999,
+        "extract_cpu_ms": 73.365,
+        "max_file_ms": 20,
         "peak_module_pages": 342,
         "compiled_bytes": 0
       }
@@ -504,8 +511,8 @@
         "scip_calls_unwritten": 34,
         "scip_defs": 111,
         "scip_defs_mapped": 110,
-        "scip_edges": 896,
-        "scip_edges_typed": 401
+        "scip_edges": 523,
+        "scip_edges_typed": 471
       },
       "families": {
         "calls": "A",
@@ -533,9 +540,10 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 21.455000000000002,
-        "extract_cpu_ms": 21.582,
-        "max_file_ms": 5,
+        "files_with_error": 0,
+        "extract_ms": 26.712,
+        "extract_cpu_ms": 25.593,
+        "max_file_ms": 6,
         "peak_module_pages": 328,
         "compiled_bytes": 0
       }
@@ -560,7 +568,7 @@
     "signature_coverage": 1,
     "sym_precision": 0.9995,
     "sym_recall": 0.9995,
-    "typed_recall": 0.4331
+    "typed_recall": 0.8464
   },
   "metric_tiers": {
     "call_precision": "A",
@@ -628,16 +636,17 @@
     "scip_calls_unwritten": 295,
     "scip_defs": 2064,
     "scip_defs_mapped": 2063,
-    "scip_edges": 21711,
-    "scip_edges_typed": 9403
+    "scip_edges": 13647,
+    "scip_edges_typed": 11551
   },
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 1.88,
+    "files_with_error": 0,
+    "throughput_mb_s": 1.56,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 1.89,
-    "max_file_ms": 32,
+    "wall_throughput_mb_s": 1.53,
+    "max_file_ms": 38,
     "peak_module_pages": 373,
     "compiled_bytes": 0
   },
@@ -670,7 +679,8 @@
     "integration review 2026-09-29 (kept): the tags engine's @end capture is used by dialects/dart/tags.scm alone and only ever extends a definition; the scip-dart rules are keyed on scip-dart's symbols and SCIPOptionsFor(\"dart\"); the wave's dart commits (a4e653b6, e9efdbc2, 3ecb38d7) changed no other dialect's goldens, and TestDialectGoldens passes for every dialect",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
     "re-measure 2026-10-01 regression check: every L1, L2 and L4 metric and every count except the import family re-reads identically on all eight packages, so no met level regressed (throughput 1.88 MB/CPU-s against 1.27 on 2026-09-29, 0 faults, 373 peak module pages); dart pub get and one scip-dart index take 3 to 5 s a package",
-    "typed_recall .4331 predates F-A (item scip of wave la: ImportIndex's mapped-definition line-span fallback and leaving local-symbol references out of typed_recall): this sweep ran the harness without it, and the integrator re-runs typed_recall after the scip merge"
+    "typed_recall .4331 predates F-A (item scip of wave la: ImportIndex's mapped-definition line-span fallback and leaving local-symbol references out of typed_recall): this sweep ran the harness without it, and the integrator re-runs typed_recall after the scip merge",
+    "re-measure 2026-10-01 (wave lb remeasure, fathom fdd2bb59, scip-dart 1.7.0 on the eight packages as pinned): typed_recall .8464 (11,551 of 13,647 in-index edges), was .4331 at d8ed9a29, .0036 under the .85 bar; LB-F55 takes 6,089 references to a local out of the denominator (19,736 to 13,647 edges) and attributes a reference inside a local initializer to the enclosing function, and the 2,096 edges left unmapped are references to a parameter or a type parameter. Every other metric reads as at d8ed9a29 (import_resolution 1 on 6 of 6, file_edge_precision .9847, file_edge_recall .108); L3 file_edge_recall is the level's only unmet metric, so L4 stays unreachable whatever typed_recall reads"
   ],
-  "disposition": "partial: target L4, met L2 (L1 excellent, L2 excellent) on eight pure-Dart packages of felangel/bloc bloc-v9.2.1 and dart-lang/http http-v1.5.0, 225 files: sym_recall .9995, sym_precision .9995, kind_agreement 1, range_agreement 1, signature_coverage 1 (1,731 callables), call_recall .9971, call_precision .9648 (scip-dart 1.7.0, tier A), 1.88 MB/CPU-s, 0 faults, 373 peak module pages, dart.wasm.gz 205,433 bytes. L3 is not met: import_resolution reads 1 on 6 of 6 in-repo imports (measured 2026-10-01), but scip-dart attests only 6 of the 752 imports (it records no occurrence on an import or export URI, only on a name a show or hide clause lists), and file_edge_recall is .108 against .25 (precision .9847): the index has a file edge for every type reference and for every import through a barrel file, and the dialect's edges come from call sites bound by an import (`export` is not followed, a type reference is counted and not stored). L4 is not met: def_mapping .9995 is excellent but typed_recall is .4331 against .85, because 46% of the index's references target a parameter, a type parameter or a local variable no extractor emits and a reference inside a local variable's initializer has that unmapped local as its enclosing definition; typed_recall predates F-A (the ImportIndex fallback and local-reference exclusion of item scip) and is re-run after that merge. Trigger: the file resolver following `export` and the tags engine storing type references, and internal/scip attributing an edge from an unmapped local to its nearest mapped enclosing definition with the harness counting only references to symbols an extractor can emit."
+  "disposition": "partial: target L4, met L2 (L1 excellent, L2 excellent) on eight pure-Dart packages of felangel/bloc bloc-v9.2.1 and dart-lang/http http-v1.5.0, 225 files: sym_recall .9995, sym_precision .9995, kind_agreement 1, range_agreement 1, signature_coverage 1 (1,731 callables), call_recall .9971, call_precision .9648 (scip-dart 1.7.0, tier A), 1.88 MB/CPU-s, 0 faults, 373 peak module pages, dart.wasm.gz 205,433 bytes. L3 is not met: import_resolution reads 1 on 6 of 6 in-repo imports (measured 2026-10-01), but scip-dart attests only 6 of the 752 imports (it records no occurrence on an import or export URI, only on a name a show or hide clause lists), and file_edge_recall is .108 against .25 (precision .9847): the index has a file edge for every type reference and for every import through a barrel file, and the dialect's edges come from call sites bound by an import (`export` is not followed, a type reference is counted and not stored). L4 is not met: def_mapping .9995 is excellent but typed_recall is .8464 against .85 (re-read 2026-10-01 at fdd2bb59 with local references out of its denominator and a reference in a local initializer attributed to the enclosing function, was .4331: 11,551 of 13,647 edges; the 2,096 unmapped are references to a parameter or a type parameter), and L4 needs L3, which file_edge_recall .108 keeps unmet. Trigger: the file resolver following `export` and the tags engine storing type references, and internal/scip attributing an edge from an unmapped local to its nearest mapped enclosing definition with the harness counting only references to symbols an extractor can emit."
 }

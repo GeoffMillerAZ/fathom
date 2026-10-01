@@ -10,7 +10,7 @@
     "L4": "unmet"
   },
   "measured_at": "2026-10-01",
-  "fathom_commit": "d8ed9a29",
+  "fathom_commit": "fdd2bb59",
   "extractor": "dialect",
   "subjects": [
     {
@@ -49,8 +49,8 @@
         "scip_calls_unwritten": 3448,
         "scip_defs": 5007,
         "scip_defs_mapped": 3219,
-        "scip_edges": 39498,
-        "scip_edges_typed": 16817
+        "scip_edges": 29935,
+        "scip_edges_typed": 16862
       },
       "families": {
         "calls": "A",
@@ -87,9 +87,10 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 484.4470000000001,
-        "extract_cpu_ms": 484.292,
-        "max_file_ms": 75,
+        "files_with_error": 0,
+        "extract_ms": 517.889,
+        "extract_cpu_ms": 518.863,
+        "max_file_ms": 80,
         "peak_module_pages": 461,
         "compiled_bytes": 0
       }
@@ -130,8 +131,8 @@
         "scip_calls_unwritten": 2439,
         "scip_defs": 5862,
         "scip_defs_mapped": 4302,
-        "scip_edges": 62068,
-        "scip_edges_typed": 36220
+        "scip_edges": 49188,
+        "scip_edges_typed": 36227
       },
       "families": {
         "calls": "A",
@@ -170,9 +171,10 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 804.2349999999998,
-        "extract_cpu_ms": 808.2759999999992,
-        "max_file_ms": 54,
+        "files_with_error": 13,
+        "extract_ms": 1018.883000000001,
+        "extract_cpu_ms": 999.702,
+        "max_file_ms": 62,
         "peak_module_pages": 408,
         "compiled_bytes": 0
       }
@@ -197,7 +199,7 @@
     "signature_coverage": 1,
     "sym_precision": 0.9784,
     "sym_recall": 0.9986,
-    "typed_recall": 0.5222
+    "typed_recall": 0.671
   },
   "metric_tiers": {
     "call_precision": "A",
@@ -261,16 +263,17 @@
     "scip_calls_unwritten": 5887,
     "scip_defs": 10869,
     "scip_defs_mapped": 7521,
-    "scip_edges": 101566,
-    "scip_edges_typed": 53037
+    "scip_edges": 79123,
+    "scip_edges_typed": 53089
   },
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 3.28,
+    "files_with_error": 13,
+    "throughput_mb_s": 2.79,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 3.29,
-    "max_file_ms": 75,
+    "wall_throughput_mb_s": 2.76,
+    "max_file_ms": 80,
     "peak_module_pages": 461,
     "compiled_bytes": 0
   },
@@ -307,7 +310,8 @@
     "re-measure 2026-10-01 oracle and regression check: rust-analyzer is now the Homebrew build 0.0.0 (03fcb77246 2026-09-27) with cargo and rustc 1.98.1 (the 2026-09-29 reading used rust-analyzer 1.98.1 48a229ce from rustup), cargo.features all, CARGO_HOME and CARGO_TARGET_DIR outside the subjects, indexes 12 s (ripgrep) and 27 s (clap); every L1, L2 and L4 metric and every count except the import family re-reads identically, so no met level regressed (throughput 3.28 MB/CPU-s against 2.17, 0 faults, 461 peak module pages)",
     "remaining L1 misses (11 oracle-only, 170 dialect-only of 7,727 and 7,886): consts declared inside a macro's token tree (ripgrep's rgtest! bodies), const generic parameters and a raw identifier (oracle-only); items under #[cfg(windows)] and files outside every crate target such as clap's tests/derive_ui compile-fail cases (dialect-only, real definitions rust-analyzer does not analyze)",
     "typed_recall .5222 predates F-A (item scip of wave la: ImportIndex's mapped-definition line-span fallback and leaving local-symbol references out of typed_recall): this sweep ran the harness without it, and the integrator re-runs typed_recall after the scip merge",
-    "unscored cross-check: universal-ctags 6.2.1 over the same files (tier B; it writes no end line for Rust, so it can only grade good) reads sym_recall .9927, sym_precision .9775, kind_agreement 1, signature_coverage 1 with impl blocks and modules in the kind intersection (8,647 of 8,711 oracle definitions matched); lang-parity against rustextract (ctags for L1, this SCIP for the rest): sym_recall .8934 -\u003e .9927, sym_precision .9638 -\u003e .9775, signature_coverage 0 -\u003e 1, call_recall .8172 -\u003e .9593, call_precision .9339 -\u003e .9846, no kind lost, RustConst, RustMacro, RustStatic and RustTypeAlias gained"
+    "unscored cross-check: universal-ctags 6.2.1 over the same files (tier B; it writes no end line for Rust, so it can only grade good) reads sym_recall .9927, sym_precision .9775, kind_agreement 1, signature_coverage 1 with impl blocks and modules in the kind intersection (8,647 of 8,711 oracle definitions matched); lang-parity against rustextract (ctags for L1, this SCIP for the rest): sym_recall .8934 -\u003e .9927, sym_precision .9638 -\u003e .9775, signature_coverage 0 -\u003e 1, call_recall .8172 -\u003e .9593, call_precision .9339 -\u003e .9846, no kind lost, RustConst, RustMacro, RustStatic and RustTypeAlias gained",
+    "re-measure 2026-10-01 (wave lb remeasure, fathom fdd2bb59, rust-analyzer 0.0.0 (03fcb77246 2026-09-27), cargo.features all, both subjects as pinned): typed_recall .671 (53,089 of 79,123 in-index edges: ripgrep 16,862 of 29,935, clap 36,227 of 49,188), was .5222 at d8ed9a29; the 22,443 references to a local that LB-F55 takes out of the denominator are the whole change (101,566 to 79,123 edges, typed edges 53,037 to 53,089). Every L1, L2 and L3 metric reads as at d8ed9a29 (def_mapping .692, import_resolution .4725, file_edge_precision .7045, file_edge_recall .0134); clap now reports 13 files with a tree-sitter ERROR or MISSING node (files_with_error, LB-F59: the tests/derive_ui compile-fail inputs), none on ripgrep"
   ],
-  "disposition": "partial: target L4, met L2 (L1 and L2 excellent, tier A) against a rust-analyzer SCIP index (tier A, cargo.features all; 1.98.1 at the first measurement, the Homebrew build 03fcb77246 of 2026-09-27 on 2026-10-01) on BurntSushi/ripgrep 14.1.1 and clap-rs/clap v4.6.1, 427 files (sym_recall .9986, sym_precision .9784, kind_agreement 1, range_agreement 1, signature_coverage 1, call_recall .9593, call_precision .9846; 3.3 MB/CPU-s, 0 faults, 461 peak module pages, rust.wasm.gz 204,421 bytes). L3 is unmet on all three of its metrics: import_resolution .4725 misses .85 (measured 2026-10-01: 635 of 1,344 in-repo imports resolve to the file the index names; 543 resolve to none and 166 only to another file), file_edge_precision .7045 misses .90 and file_edge_recall .0134 misses .25: a call through a use or mod resolves, a method call on a typed receiver and a type reference do not (file_edge_precision .7045: the 13 clap edges the index lacks are real calls of utils::assert_output). L4 def_mapping .692 misses .85 (fields, enum variants and associated types are not extracted; 687 macro-expanded definitions are written nowhere) and typed_recall .5222 misses .85 (21% of references target a local, which no extractor maps, and fields, variants and modules are unmapped endpoints; typed_recall predates F-A, the ImportIndex fallback and local-reference exclusion of item scip, and is re-run after that merge). Per design section 11 step 2 the target is not met, so fusion's Rust dispatch is unchanged and the CGO incumbent rustextract.go stays live. Trigger: ImportIndex leaves local-symbol references out of typed_recall, and the dialect extracts fields, variants and associated items; a dispatch switch then bumps ExtractorEpoch."
+  "disposition": "partial: target L4, met L2 (L1 and L2 excellent, tier A) against a rust-analyzer SCIP index (tier A, cargo.features all; 1.98.1 at the first measurement, the Homebrew build 03fcb77246 of 2026-09-27 on 2026-10-01) on BurntSushi/ripgrep 14.1.1 and clap-rs/clap v4.6.1, 427 files (sym_recall .9986, sym_precision .9784, kind_agreement 1, range_agreement 1, signature_coverage 1, call_recall .9593, call_precision .9846; 3.3 MB/CPU-s, 0 faults, 461 peak module pages, rust.wasm.gz 204,421 bytes). L3 is unmet on all three of its metrics: import_resolution .4725 misses .85 (measured 2026-10-01: 635 of 1,344 in-repo imports resolve to the file the index names; 543 resolve to none and 166 only to another file), file_edge_precision .7045 misses .90 and file_edge_recall .0134 misses .25: a call through a use or mod resolves, a method call on a typed receiver and a type reference do not (file_edge_precision .7045: the 13 clap edges the index lacks are real calls of utils::assert_output). L4 def_mapping .692 misses .85 (fields, enum variants and associated types are not extracted; 687 macro-expanded definitions are written nowhere) and typed_recall .671 misses .85 (re-read 2026-10-01 at fdd2bb59 with local references out of its denominator, was .5222: 53,089 of 79,123 in-index edges; the unmapped endpoints that remain are fields, enum variants, associated types, modules and parameters). Per design section 11 step 2 the target is not met, so fusion's Rust dispatch is unchanged and the CGO incumbent rustextract.go stays live. Trigger: ImportIndex leaves local-symbol references out of typed_recall, and the dialect extracts fields, variants and associated items; a dispatch switch then bumps ExtractorEpoch."
 }
