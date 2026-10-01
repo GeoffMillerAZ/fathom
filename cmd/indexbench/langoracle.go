@@ -29,7 +29,7 @@ import (
 const scipClangTool = "scip-clang"
 
 // noteScipClangNoImports discloses why a scip-clang index scores no imports.
-const noteScipClangNoImports = "scip-clang records no reference on an #include line and gives no occurrence the Import role, so its index is no imports oracle: import_resolution is the clang-includes dump's (tier B), and file edges stay the index's cross-file references (tier A)"
+const noteScipClangNoImports = "scip-clang records no reference on an #include line and gives no occurrence the Import role, so its index is no imports oracle: import_resolution is an imports dump's (the build-flags preprocessor oracle at tier A, or clang-includes at tier B), and file edges stay the index's cross-file references (tier A)"
 
 // noteScipClangDefsScoped names the files L1 against scip-clang leaves out.
 const noteScipClangDefsScoped = "files the scip-clang index does not hold"
@@ -596,6 +596,10 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 		// configuration's preprocessor keeps; the rest are disclosed.
 		scoped := nodes
 		clangIndex := false
+		leftOut := "the callers L2 scores"
+		if opts.scipDefs {
+			leftOut = "L1 and of the callers L2 scores"
+		}
 		if docs, tool, err := langbench.SCIPDocuments(raw); err != nil {
 			return res, err
 		} else if tool == scipClangTool {
@@ -607,7 +611,7 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 				}
 			}
 			if n := len(nodes) - len(scoped); n > 0 {
-				res.notes = append(res.notes, fmt.Sprintf("%s: %d of fathom's definitions are in %s (the compilation database compiles no translation unit for them: another platform's tree, an example) and are left out of L1 and of the callers L2 scores", name, n, noteScipClangDefsScoped))
+				res.notes = append(res.notes, fmt.Sprintf("%s: %d of fathom's definitions are in %s (the compilation database compiles no translation unit for them: another platform's tree, an example) and are left out of %s", name, n, noteScipClangDefsScoped, leftOut))
 			}
 			active, err := activeLinesOf(opts.tools)
 			if err != nil {
@@ -622,7 +626,7 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 					kept = append(kept, n)
 				}
 				if n := len(scoped) - len(kept); n > 0 {
-					res.notes = append(res.notes, fmt.Sprintf("%s: %d of fathom's definitions are %s and are left out of L1 and of the callers L2 scores", name, n, noteScipClangInactive))
+					res.notes = append(res.notes, fmt.Sprintf("%s: %d of fathom's definitions are %s and are left out of %s", name, n, noteScipClangInactive, leftOut))
 				}
 				scoped = kept
 			}
