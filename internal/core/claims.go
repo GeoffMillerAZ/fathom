@@ -387,7 +387,7 @@ const (
 	UncompiledPrefiltered = "prefiltered" // the decision port's pre-filter skipped it
 	UncompiledRefused     = "refused"     // the run's pre-flight budget refused the whole run
 	UncompiledBudget      = "budget"      // the mid-run budget stop never reached it
-	UncompiledCancelled   = "cancelled"   // the caller's context ended the run before it
+	UncompiledCancelled   = "cancelled"   // the run aborted before it: the caller's context ended, or a drift-anchor store failure (FT-6)
 	UncompiledCorpusGrew  = "corpus_grew" // added to the corpus after the last run
 	UncompiledStale       = "stale"       // compiled once, its content or prompt changed since
 )
