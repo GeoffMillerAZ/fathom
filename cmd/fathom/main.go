@@ -121,6 +121,9 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		if len(args) > 1 && args[1] == "packs" {
 			return cmdReportPacks(args[2:], stdout, stderr)
 		}
+		if len(args) > 1 && args[1] == "used" {
+			return cmdReportUsed(args[2:], stdout, stderr)
+		}
 		return cmdReport(args[1:], stdout, stderr)
 	case "review":
 		return cmdReview(args[1:], stdout, stderr)

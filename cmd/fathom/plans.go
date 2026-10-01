@@ -32,9 +32,11 @@ import (
 //	                the registry's) current plans
 //	plans archive — governed artifact lifecycle (E4-1)
 //	plans restore — the archive/restore round-trip (E4-1)
+//	plans lines   — one repository's branches, worktrees and stashes classed
+//	                against the integration branch and open rows (SV-2)
 func cmdPlans(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
-		fmt.Fprintln(stderr, "error: plans requires a subcommand (status, next, history, archive, restore)")
+		fmt.Fprintln(stderr, "error: plans requires a subcommand (status, next, history, archive, restore, lines)")
 		return 1
 	}
 	switch args[0] {
@@ -56,8 +58,10 @@ func cmdPlans(args []string, stdout, stderr io.Writer) int {
 		return cmdPlansArchive(args[1:], stdout, stderr)
 	case "restore":
 		return cmdPlansRestore(args[1:], stdout, stderr)
+	case "lines":
+		return cmdPlansLines(args[1:], stdout, stderr)
 	default:
-		fmt.Fprintf(stderr, "error: unknown plans subcommand %q (want status, next, history, context, outcome, lease, leases, archive, restore)\n", args[0])
+		fmt.Fprintf(stderr, "error: unknown plans subcommand %q (want status, next, history, context, outcome, lease, leases, archive, restore, lines)\n", args[0])
 		return 1
 	}
 }
@@ -401,9 +405,17 @@ func cmdPlansStatus(args []string, stdout, stderr io.Writer) int {
 	}
 
 	if *jsonOut {
+		out := make([]planStatusJSON, len(rollups))
+		for i, r := range rollups {
+			out[i] = planStatusJSON{PlanRollup: r}
+			if planArchivable(r) {
+				out[i].Archivable = true
+				out[i].ArchiveCommand = planArchiveCommand(*service, root, r.Plan)
+			}
+		}
 		enc := json.NewEncoder(stdout)
 		enc.SetIndent("", "  ")
-		_ = enc.Encode(rollups)
+		_ = enc.Encode(out)
 		return 0
 	}
 
@@ -413,10 +425,48 @@ func cmdPlansStatus(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stdout, "%-40s %6d %7d %17d %14d %5d %9d %14d\n",
 			filepath.Base(r.Plan), r.Total, r.Proven, r.ClaimedUnproven, r.MeasuredStale, r.Open, r.DeferredWithTrigger, r.SkippedOther)
 	}
+	for _, r := range rollups {
+		if planArchivable(r) {
+			fmt.Fprintf(stdout, "archivable: %s (0 open, 0 claimed-unproven) — %s\n", filepath.Base(r.Plan), planArchiveCommand(*service, root, r.Plan))
+		}
+	}
 	if daemonStale {
 		fmt.Fprintf(stdout, "\nmeasured-stale: %s — claimed rows the daemon did not prove are coverage gaps, not failures (ADR-027); task deploy or restart the daemon, then re-run\n", staleWhy)
 	}
 	return 0
+}
+
+// planStatusJSON is one `plans status --json` element: the rollup, plus
+// the archivable mark (SV-5), additive to the shape.
+type planStatusJSON struct {
+	console.PlanRollup
+	Archivable     bool   `json:"archivable,omitempty"`
+	ArchiveCommand string `json:"archive_command,omitempty"`
+}
+
+// planArchivable reports whether a plan is done with: it has rows, none is
+// open or in progress, and every claimed row is proven (none unproven, none
+// left unmeasured by a stale daemon). Deferred and refused rows stay
+// recorded in the archive (SV-5, ADR-060 decision 4). `fathom plans
+// archive` acts on it; status only names the command.
+func planArchivable(r planRollup) bool {
+	return r.Total > 0 && r.Open == 0 && r.ClaimedUnproven == 0 && r.MeasuredStale == 0
+}
+
+// planArchiveCommand names the `fathom plans archive` invocation for a plan,
+// relative to the root the plans were found under when it lies inside it.
+func planArchiveCommand(service, root, plan string) string {
+	arg := plan
+	if root != "" {
+		if rel, err := filepath.Rel(root, plan); err == nil && !strings.HasPrefix(rel, "..") {
+			arg = filepath.ToSlash(rel)
+		}
+	}
+	cmd := "fathom plans archive --service " + service
+	if root != "" && filepath.IsAbs(root) && arg != plan {
+		cmd += " --root " + shellQuote(root)
+	}
+	return cmd + " " + shellQuote(arg)
 }
 
 // ─── plans next (E3-2) ──────────────────────────────────────────────────────

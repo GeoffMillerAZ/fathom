@@ -61,6 +61,13 @@ type gcOptions struct {
 	Apply     bool
 	Now       time.Time
 	Alive     func(pid int) bool // nil: signal 0
+	// Repo is the repository whose strays and binaries the report-only
+	// classes of SV-4 list (gc_strays.go). "": the classes are not planned —
+	// only cmdGC, the owner's verb, sets it.
+	Repo string
+	// CacheRoots are the ADR-039 build-cache roots; one inside Repo is a
+	// declared home, like workspace/.
+	CacheRoots []string
 	// LedgerRoots is the registered service roots the ledger-unregistered
 	// class (PE-29) reads. nil: the class is not planned at all — only
 	// cmdGC, the owner's verb, sets it; the daemon's daily pass and
@@ -217,6 +224,15 @@ func runGC(o gcOptions) gcReport {
 		for _, p := range keepNewest(filepath.Join(o.Workspace, "tmp"), "fathom-bin-", gcBinKeep, 0, o.Now, false) {
 			add(gcItem{Class: "workspace-bins", Path: p, Action: "delete", Bytes: dirSize(p), Reason: "beyond the newest 3 build binaries"})
 		}
+	}
+
+	// Strays and binaries (SV-4): report-only, never applied (I63).
+	if o.Repo != "" {
+		items, errs := gcStrays(o.Repo, o.CacheRoots)
+		for _, it := range items {
+			add(it)
+		}
+		rep.Errors = append(rep.Errors, errs...)
 	}
 
 	archived := map[string]bool{} // pending generations one archive pass handled
@@ -377,15 +393,20 @@ func cmdGC(args []string, stdout, stderr io.Writer) int {
 	workspace := fs.String("workspace", "", "the repository workspace/ to include (default: the enclosing repository's)")
 	callLogFlag := fs.String("call-log", "", "the call log (default: the daemon's recorded log, then [daemon].call_log, then "+defaultCallLogPath()+")")
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL (the registered service roots the ledger-unregistered class reads)")
+	repoFlag := fs.String("repo", "", "the repository whose strays and binaries are reported, never removed (default: the enclosing repository)")
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
 	home, _ := os.UserHomeDir()
 	ws := *workspace
-	if ws == "" {
-		if cwd, err := os.Getwd(); err == nil {
-			if top := gitToplevel(cwd); top != "" {
+	repo := *repoFlag
+	if cwd, err := os.Getwd(); err == nil && (ws == "" || repo == "") {
+		if top := gitToplevel(cwd); top != "" {
+			if ws == "" {
 				ws = filepath.Join(top, "workspace")
+			}
+			if repo == "" {
+				repo = top
 			}
 		}
 	}
@@ -393,7 +414,7 @@ func cmdGC(args []string, stdout, stderr io.Writer) int {
 	// daemon's registry), so only the owner plans — and with --apply
 	// moves — ledger-unregistered (PE-29).
 	roots := gcLedgerRootsOf(registeredLedgerRoots(&http.Client{Timeout: 5 * time.Second}, *url))
-	rep := runGC(gcOptions{Home: home, TmpDir: os.TempDir(), Workspace: ws, CallLog: resolveConsoleCallLog(*callLogFlag, "").Path, Apply: *apply, LedgerRoots: roots})
+	rep := runGC(gcOptions{Home: home, TmpDir: os.TempDir(), Workspace: ws, CallLog: resolveConsoleCallLog(*callLogFlag, "").Path, Apply: *apply, LedgerRoots: roots, Repo: repo, CacheRoots: gcCacheRootsFromEnv()})
 	if *jsonOut {
 		enc := json.NewEncoder(stdout)
 		enc.SetIndent("", "  ")
