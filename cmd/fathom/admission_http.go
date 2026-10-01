@@ -129,6 +129,15 @@ func routeWriteDeadline(next http.Handler, rpcTimeout time.Duration) http.Handle
 	})
 }
 
+// liftRPCWriteDeadline removes the route's write deadline for a call that
+// runs detached and may outlast it (an ingest-class tools/call, EW-36). It
+// reaches the connection through http.ResponseController, so every writer
+// wrapped around it must Unwrap (loggingResponseWriter does); the error is
+// http.ErrNotSupported when one does not, which a test pins.
+func liftRPCWriteDeadline(w http.ResponseWriter) error {
+	return http.NewResponseController(w).SetWriteDeadline(time.Time{})
+}
+
 // requireLoopbackHost refuses a request whose Host is not loopback, or
 // whose Origin (when present) is not the page's own origin.
 func requireLoopbackHost(next http.Handler) http.Handler {

@@ -78,4 +78,8 @@ func TestLoggingResponseWriterUnwraps(t *testing.T) {
 	if lw.Unwrap() != http.ResponseWriter(rec) {
 		t.Fatal("Unwrap must return the wrapped writer")
 	}
+	// An unwrappable writer cannot lift the deadline, and says so.
+	if err := liftRPCWriteDeadline(struct{ http.ResponseWriter }{rec}); err == nil {
+		t.Fatal("a writer that hides the connection must report ErrNotSupported, not succeed silently")
+	}
 }
