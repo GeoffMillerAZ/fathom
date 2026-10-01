@@ -37,6 +37,24 @@ priority (`nice -n 10`; `FATHOM_GATE_NICE=off` opts out, `FATHOM_GATE_NICE=backg
 `taskpolicy -b`, which measured ~3x slower: `cmd/fathom` 441 s against 168 s niced)
 and `go test -p 4`. `task validate:unleased` is the same gate without the lease.
 
+`task test` runs `cmd/fathom` (about 1,900 serial tests, ~357 s alone: the gate's critical path)
+as four shards of one race build (`scripts/test-shards.sh`; `FATHOM_TEST_SHARDS` sets the count).
+The partition is greedy longest-first over the measured seconds in
+`scripts/test-shards.weights.tsv` (`task test:weights` re-measures them; a test missing from the
+file weighs the median), so it is the same for the same test list. Before any test runs, each
+shard's `-test.run` pattern must select exactly its planned tests and the shards together exactly
+the binary's `-test.list`: a test dropped or run twice fails the gate. Each shard prints a
+go-test `ok`/`FAIL` line with its wall time, and a failing shard's output is shown in full. The
+shards run concurrently with `go test -race -p 4` over every other package, so at most 8 test
+processes run at once (4 package binaries and 4 shards; fewer once the short packages finish),
+still one gate per machine under the lease and niced. Measured at load ~11-13 under the lease, the
+concurrent `task test` took 356 s against 463 s and 476 s with the shards after the packages;
+`internal/fusion` (~270-290 s) is the other long pole. Unlike `go test`, the shards keep
+no test-result cache, so `cmd/fathom` runs again even when nothing changed.
+
+`internal/scenariobench` runs once per gate, inside `task test`; it is not also a separate
+`validate:unleased` dependency (`task scenariobench` still runs it alone).
+
 ### Pushing (`task push`)
 
 ```sh

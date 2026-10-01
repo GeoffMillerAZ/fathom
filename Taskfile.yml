@@ -91,7 +91,41 @@ tasks:
     # which gives it a FATHOM_HOME under workspace/tmp/ (removed afterwards; a
     # caller's own wins), so a test that reaches a per-user ledger or record
     # never writes the operator's ~/.fathom.
-    cmds: ["bash scripts/scratch-home.sh {{.GO}} test -race -p 4 ./..."]
+    # cmd/fathom (~1,900 serial tests, ~357 s alone: the gate's critical
+    # path) runs as FATHOM_TEST_SHARDS (default 4) shards of ONE race build
+    # through scripts/test-shards.sh, balanced by the measured seconds in
+    # scripts/test-shards.weights.tsv (`task test:weights` refreshes them);
+    # every other package runs through the go test line below. The two run
+    # CONCURRENTLY: at most 4 package test binaries plus 4 shards, 8 test
+    # processes at peak (fewer once the short packages finish), still one
+    # gate per machine under the lease and niced (RT-129).
+    # Measured 2026-09-30 under the lease at load ~11-13: concurrent 356 s,
+    # shards after the packages 463 s and 476 s (internal/fusion, ~270-290 s,
+    # is the other long pole either way).
+    # The go test line stays literal in this task: the test-run hook
+    # (cmd/fathom/testrunhook_declared.go) reads the declared test commands
+    # from this Taskfile.
+    cmds:
+      - |
+        rc=0
+        pkgs=$({{.GO}} list ./... | grep -v '/cmd/fathom$') || exit 1
+        mkdir -p workspace/tmp
+        shardout=$(mktemp workspace/tmp/test-shards-out.XXXXXX)
+        bash scripts/scratch-home.sh bash scripts/test-shards.sh >"$shardout" 2>&1 & shards=$!
+        bash scripts/scratch-home.sh {{.GO}} test -race -p 4 $pkgs || rc=$?
+        wait $shards || rc=1
+        cat "$shardout"; rm -f "$shardout"
+        exit $rc
+
+  test:weights:
+    desc: Re-measure cmd/fathom's per-test seconds into scripts/test-shards.weights.tsv (the shard balance of `task test`) from one go test -race -json run
+    cmds:
+      - |
+        rc=0
+        mkdir -p workspace/tmp
+        bash scripts/scratch-home.sh {{.GO}} test -race -count=1 -json ./cmd/fathom >workspace/tmp/test-weights.json || rc=$?
+        bash scripts/test-shards.sh weights workspace/tmp/test-weights.json || exit 1
+        exit $rc
 
   test-unit:
     desc: Fast unit tests only (-short)
@@ -194,6 +228,7 @@ tasks:
         bash scripts/build-cache_test.sh
         bash scripts/deploy-wait_test.sh
         bash scripts/gate-lease_test.sh
+        bash scripts/test-shards_test.sh
         bash scripts/scratch-home_test.sh
         bash scripts/tenancy-stress_test.sh
         bash scripts/pipefail-grep_test.sh
@@ -224,7 +259,10 @@ tasks:
     # stranger-check (RP-23) is the same lesson one step further: the copy
     # must init and pass doctor for someone who is not the author. Measured
     # 26–43s on 2026-09-02, under the two-minute budget that admits it here.
-    deps: [fmt-check, vet, cue-vet, vendor-check, testkit-schema-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit, scenariobench, bench-l0-gate, tenancy-lint]
+    # scenariobench is not a dep: `task test` already runs
+    # ./internal/scenariobench (race, under this file's CGO_ENABLED=1), and
+    # the dep ran it a second time (77–102 s each, measured 2026-09-30).
+    deps: [fmt-check, vet, cue-vet, vendor-check, testkit-schema-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit, bench-l0-gate, tenancy-lint]
     cmds: [{ task: test }]
 
   push:
