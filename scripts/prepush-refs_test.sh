@@ -35,7 +35,9 @@ git tag v-new "$fresh"
 zero=0000000000000000000000000000000000000000
 oldtag=$(git rev-parse v-old)
 
-decide() { printf '%s\n' "$@" | bash "${SCRIPT_DIR}/prepush-refs.sh" decide; }
+# git hands pre-push the remote name as $1; lefthook passes it as {1}.
+remote=origin
+decide() { printf '%s\n' "$@" | bash "${SCRIPT_DIR}/prepush-refs.sh" decide "$remote"; }
 want_skip() {
   local what="$1"
   shift
@@ -61,6 +63,21 @@ want_full "new branch" "refs/heads/feat $fresh refs/heads/feat $zero"
 want_full "tag on a commit the remote lacks" "refs/tags/v-new $fresh refs/tags/v-new $zero"
 want_full "unresolvable sha" "refs/tags/v-x ffffffffffffffffffffffffffffffffffffffff refs/tags/v-x $zero"
 want_full "no ref lines" ""
+
+# Only the remote being pushed to is trusted: a commit that only ANOTHER
+# remote's stale tracking ref holds keeps the full gate.
+git update-ref refs/remotes/other/x "$fresh"
+want_full "tag whose commit only another remote's ref holds, pushed to origin" "refs/tags/v-new $fresh refs/tags/v-new $zero"
+remote=other
+want_skip "the same tag pushed to the remote whose ref holds it" "refs/tags/v-new $fresh refs/tags/v-new $zero"
+remote=""
+want_full "an empty remote name" "refs/tags/v-old $oldtag refs/tags/v-old $zero"
+remote="origin/x"
+want_full "a remote name with a slash" "refs/tags/v-old $oldtag refs/tags/v-old $zero"
+remote=origin
+git update-ref -d refs/remotes/other/x
+if printf '%s\n' "refs/tags/v-old $oldtag refs/tags/v-old $zero" | bash "${SCRIPT_DIR}/prepush-refs.sh" decide >"${scratch}/out"; then fail "decide with no remote argument skipped the gate"; fi
+if bash "${SCRIPT_DIR}/prepush-refs.sh" skipped; then fail "no remote argument left a marker"; fi
 
 # A stale skip marker never carries over: a skip verdict, then a full one.
 want_skip "again" "refs/tags/v-old $oldtag refs/tags/v-old $zero"
@@ -98,7 +115,7 @@ pre-push:
       run: |
         refs=""
         if [ ! -t 0 ]; then refs=$(cat); fi
-        if [ -n "$refs" ] && printf '%s\n' "$refs" | bash scripts/prepush-refs.sh decide; then exit 0; fi
+        if [ -n "$refs" ] && printf '%s\n' "$refs" | bash scripts/prepush-refs.sh decide "{1}"; then exit 0; fi
         echo ran >>workspace/tmp/verify.ran
 YML
   unset PREPUSH_SKIP_MARKER
