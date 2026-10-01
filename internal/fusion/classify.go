@@ -246,6 +246,21 @@ func openAPIJSON(content []byte) bool {
 	return err == nil && len(res.Roots) > 0
 }
 
+// isOpenAPI reports whether ingest's dispatch reads relPath as an OpenAPI or
+// Swagger document: a .yaml or .yml the classifier gives ToolOpenAPI, or a
+// .json that is one (openAPIJSON). ReingestFile asks it, so a one-file
+// refresh reads a document as an ingest does, not as the generic YAML or
+// JSON extractor its extension names.
+func isOpenAPI(relPath string, content []byte, idx *siblingIndex) bool {
+	switch filepath.Ext(relPath) {
+	case ".yaml", ".yml":
+		return Classify(relPath, content, idx) == ToolOpenAPI
+	case ".json":
+		return openAPIJSON(content)
+	}
+	return false
+}
+
 // ContentDialect names the doc-engine dialect ingest's dispatch reads
 // relPath with when no basename, glob or extension claims it and its content
 // does: "cloudformation" for a CloudFormation or SAM template, "openapi" for
