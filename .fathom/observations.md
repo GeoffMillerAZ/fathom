@@ -2784,3 +2784,55 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** none yet; options are carrying `to_kind` into call resolution so a package reference resolves only to a package, or recording a manifest's dependency names under an edge that is not a call. The block itself is an extraction change that needs an ExtractorEpoch bump (covered by item go's 39->40)
 - **Status:** open
 - **Impact:** who-calls and blast_radius answers can list a manifest as a caller of a same-named function (heuristic tier), for every package.json and Cargo.toml whose service has a function named like one of its dependencies
+
+### O260 — call_precision's misses classified for Python, TypeScript, Go and PHP (F-B, wave lb): most were the oracles' vocabulary and environment, the rest Go's value references and a nameless callee
+
+- **Symptom:** call_precision read .2782 (Python), .4725 (TypeScript), .7246 (Go) and .6924 (PHP) against tier-A SCIP truth, and the fix was assumed to be call qualification alone
+- **Evidence:**
+  - **Tool:** `indexbench lang-oracle -scip <index> -unmatched <file>` (LB-F64's call pairs both ways) at fathom cb9f147e (extraction identical to fdd2bb59), every fathom-only pair classified by a scratch program that reads the call's raw text and the index's occurrences of the callee's name inside the caller's lines
+  - **Expected:** fathom-only pairs are mostly fathom's: same-file bare-name collisions
+  - **Actual:** Python (fastapi 5,247 + flask 2,153 fathom-only, an index taken without the subjects' dependencies): receiver calls the index does not resolve 3,026 + 1,399, locals 1,197 + 324 (an import scip-python could not resolve becomes a local), classes called 849 + 286 (scip-python names `Foo#`, never a constructor), subscript or call-result callee text 78 + 95, nested or unmapped attribution 67 + 10, other 30 + 39. With the dependencies installed (O263) fastapi's 5,247 fall to 2,020, 1,401 of them classes called, and its 3,179 oracle-only pairs are 1,381 references that are no call (a value, a decorator by name), 1,587 decorator or module-level calls fathom gave no owner and 211 other. Go (cli/cli 8,370 + cobra 429): a type in a declaration, composite literal or assertion recorded as a call 3,768 + 117, a constant or variable recorded as a value reference or an interface method called (scip-go writes it as a term, O261) 2,485 + 65, Go's predeclared functions 1,440 + 185, locals 619 + 28, other 58 + 34; oracle-only 2,427 written calls on a field or a call's result collectCalls dropped. TypeScript (zod 833 + nest 3,869): unresolved receivers 251 + 1,489, locals 144 + 1,208, terms called 141 + 202, attribution 198 + 388, subscript or call-result text 42 + 325, bare names with no symbol 27 + 232, classes called 30 + 25. PHP (guzzle 611 + monolog 1,258): all but 11 a method called on a receiver scip-php does not resolve (vendor interfaces, builtin classes, untyped variables); the 11 are an enum's builtin `from`/`cases`, two extension functions and one attribution
+  - **Repro:** the commands in calibration/oracles/scip-python, scip-go and scip-php's READMEs, then `lang-oracle -unmatched`
+- **Root cause and verdicts:** (1) oracle environment, scip-python without the subject's dependencies: fixed in the oracle recipe (O263); (2) oracle vocabulary, a reference that is no call (Python) and a class, term or local written as a call (Python, Go): the harness reads it (`SCIPOptionsFor`, LB-F64), counted and disclosed; (3) extractor, Python decorators and module-level assignments owning their calls, compacted qualified call text, a nameless callee dropped (LB-F65); Go's type positions, provably-non-function operands and selector field names no longer calls, a method on a field or call result now one (LB-F66); (4) verified oracle deficiencies left as disclosed misses: receivers the index cannot type (pytest fixtures, vendor interfaces in PHP), Go's predeclared functions; (5) fathom's own imprecision left: Go constants passed as arguments recorded as function values (VS-6, 701 pairs), a typed-pass question
+- **Fix:** LB-F64..LB-F67 (fc4fd4a6, 2d3d8a16). Python .2782 to .8751 (recall .9939, L2 good), Go .7246 to .9205 (recall .9843, L2 excellent), PHP unchanged (.6924), TypeScript .4725 to .473 with `calls.qualify` on (left to the integrator's enablement)
+- **Status:** fixed (Python, Go); open (PHP's vendor receivers, TypeScript's locals and receivers)
+- **Impact:** a reading's L2 named the extractor for what were mostly its oracle's environment and vocabulary; Go and Python callers now see calls through fields, call results, decorators and module-level wiring
+
+### O261 — scip-go writes an interface's method and a func-typed field as a term, so a call through an interface was absent from Go's call truth; Go's predeclared functions have no symbol at all
+
+- **Symptom:** Go call_precision counted every call through an interface as fathom's error
+- **Evidence:**
+  - **Tool:** a scratch dump of the scip-go 0.2.7 index of cli/cli v2.69.0
+  - **Expected:** `cfg.ActiveToken(h)` on an interface-typed cfg references a method descriptor `ActiveToken().`
+  - **Actual:** the definition and every reference are `api/tokenGetter#ActiveToken.`, a term; a func-typed struct field called (`tr.roundTrip(req)`) is a term too; `len`, `append`, `make` and `string(x)` carry no occurrence
+  - **Repro:** `scip-go index ./...` in cli/cli, then read the occurrences named `ActiveToken` (calibration/oracles/scip-go/README.md)
+- **Root cause:** scip-go's descriptor for an interface method (and a field) is a term; the harness took only `().` descriptors as callables
+- **Fix:** `SCIPOptionsFor("go")` counts a term, class or local reference written as a call (`name(`) as a call (`scip_called_names`, 2,876 on the two subjects, disclosed); Go's predeclared functions stay a disclosed oracle deficiency (1,625 pairs)
+- **Status:** fixed (interface calls); open by design (predeclared functions)
+- **Impact:** Go's L2 read .7897 instead of .7246 from the oracle reading alone, before any extractor change
+
+### O262 — scip-php indexes no file outside an autoload root, so 191 of guzzle's file-resolved edges were scored as fathom's errors; PHP's file edges were zero until a scoped call kept its scope
+
+- **Symptom:** PHP file_edge_precision and recall read 0, and the first edges F-B produced read precision .8276
+- **Evidence:**
+  - **Tool:** `indexbench lang-oracle -dialect php -scip` on guzzle/guzzle 7.9.3, and a scratch listing of fathom's file edges absent from the index
+  - **Expected:** an edge from tests/Handler/CurlFactoryTest.php to tests/Server.php (`Server::enqueue()` through `use GuzzleHttp\Tests\Server;`) is in the truth
+  - **Actual:** the index holds 17 of guzzle's 31 test files: the 14 declaring `namespace GuzzleHttp\Test` (singular) map to no autoload-dev root (`GuzzleHttp\Tests\`), so scip-php skips them, and every edge from them was counted against fathom
+  - **Repro:** compare the index's documents with the measured files (calibration/oracles/scip-php/README.md's run)
+- **Root cause:** the file-edge score was not scoped to the index's documents, as the call score already is (FathomCallPairs over the index's documents)
+- **Fix:** lang-oracle scores file edges only from files the index holds and discloses the rest (edgesFromIndexed, LB-F64); PHP's dialect composes `Foo::bar` and the resolver binds it through a `use` (LB-F65, LB-F67): precision 1 (72 of 72), recall .0745
+- **Status:** fixed (scope); open (recall: the index's file edges are every cross-file reference, fathom's are calls)
+- **Impact:** a reading over-counted fathom's file-edge errors for any producer that skips files fathom reads
+
+### O263 — scip-python indexed without the subject's dependencies resolves no vendor receiver: Python's call_precision .2782 was mostly the oracle's environment
+
+- **Symptom:** Python call_precision .2782 on fastapi + flask, read as the extractor's same-file bare-name collisions (LB-Q-python-rest)
+- **Evidence:**
+  - **Tool:** scip-python 0.6.6 run twice over fastapi 0.119.1 and flask 3.1.3: with no environment, and with a virtual environment holding each subject's dependencies (calibration/oracles/scip-python/run.sh)
+  - **Expected:** the same truth either way for the subject's own calls
+  - **Actual:** with no dependencies, `client.get(...)` on starlette's TestClient, pydantic model methods and every name imported through a package not installed resolve to nothing or to a local; the same fathom extraction (fdd2bb59) reads call_precision .2782 and call_recall .5634 against that index and .6123 and .6386 against the environment-aware one
+  - **Repro:** run.sh with and without its install arguments, then `lang-oracle -scip`
+- **Root cause:** scip-python resolves an external name only through the Python environment it finds on PATH; the 2026-09-28 index was taken outside any environment
+- **Fix:** the oracle recipe installs each subject's dependencies (never the subject itself) into a virtual environment (calibration/oracles/scip-python); the Python reading is re-measured with it
+- **Status:** fixed
+- **Impact:** a tier-A reading can be the oracle's environment more than the extractor; a SCIP producer that resolves through an installed environment needs that environment pinned with its version
