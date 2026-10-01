@@ -37,6 +37,7 @@ swift: #Dialect & {
 	package: {strategy: "dir"}
 	imports: {strategy: "swift-module", suffixes: [".swift"]}
 	signature: {max_chars: 200}
+	calls: {qualify: true}
 	target_level: "L3"
 	queue_id:     "swift"
 }

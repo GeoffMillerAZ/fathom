@@ -410,3 +410,61 @@ func TestIngest_ExtractorEpoch_PackageJSONDependencyReferencesForceReExtraction(
 		t.Error("re-extraction did not surface the package's dependency reference (PackageJSONPackage acme -> left-pad)")
 	}
 }
+
+// TestIngest_ExtractorEpoch_CallQualificationForcesReExtraction pins epoch 41
+// (LB-F65, LB-F66, wave lb): a Python call is stored qualified and a
+// decorator's call belongs to the definition it decorates, and the Go
+// extractor records a method called on a selector chain or a call's result
+// and no type, operand or field name as a call. A .py or .go file
+// fingerprinted at epoch 40 carried the old call text, so the bump "40"→"41"
+// must re-read it. The seeded fingerprints are salted with "40", the TRUE
+// prior epoch (the XT-5 rule above).
+func TestIngest_ExtractorEpoch_CallQualificationForcesReExtraction(t *testing.T) {
+	dir := t.TempDir()
+	files := map[string][]byte{
+		"routes.py": []byte("@app.get(\"/items\")\ndef read_items():\n    return []\n"),
+		"use.go":    []byte("package use\n\nfunc Use(r *Resp) {\n\tr.Header.Get(\"a\")\n}\n"),
+	}
+	conn := connector.NewLocalConnector()
+	st := store.NewMemoryStore()
+	svc := core.ServiceRef{ID: "epoch41-svc", Path: dir}
+	ctx := context.Background()
+	for name, src := range files {
+		if err := os.WriteFile(filepath.Join(dir, name), src, 0o644); err != nil {
+			t.Fatalf("write %s: %v", name, err)
+		}
+		oldSalted := sha256.Sum256(append(append([]byte{}, src...), []byte("\x00fathom-extractor-epoch:40")...))
+		if err := st.SetFingerprint(ctx, svc.ID, name, hex.EncodeToString(oldSalted[:])); err != nil {
+			t.Fatalf("SetFingerprint %s: %v", name, err)
+		}
+	}
+
+	p := fusion.New(conn, st, defaultCfg())
+	t.Cleanup(p.Close)
+	rep, err := p.Ingest(ctx, svc)
+	if err != nil {
+		t.Fatalf("Ingest: %v", err)
+	}
+	if rep.Skipped != 0 {
+		t.Fatalf("%d file(s) skipped (a pre-epoch-41 fingerprint was honored) — ExtractorEpoch was not bumped for call qualification", rep.Skipped)
+	}
+
+	obs, err := st.QueryObservations(ctx, svc.ID, "")
+	if err != nil {
+		t.Fatalf("QueryObservations: %v", err)
+	}
+	var sawDecorator, sawChain bool
+	for _, o := range obs {
+		for _, c := range o.Calls {
+			if o.SourceRef == "routes.py" && o.Symbol == "read_items" && c == "app.get" {
+				sawDecorator = true
+			}
+			if o.SourceRef == "use.go" && o.Symbol == "Use" && c == "r.Header.Get" {
+				sawChain = true
+			}
+		}
+	}
+	if !sawDecorator || !sawChain {
+		t.Errorf("re-extraction did not surface the new call text (read_items -> app.get %v, Use -> r.Header.Get %v)", sawDecorator, sawChain)
+	}
+}

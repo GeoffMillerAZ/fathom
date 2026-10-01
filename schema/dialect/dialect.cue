@@ -99,6 +99,13 @@ import "struct"
 		max_chars: int & >0 & <=200 | *200
 	} | *{max_chars: 200}
 
+	// calls: how call sites are stored (LB-F65). qualify keeps a callee's
+	// receiver or scope with the called name ("self.x", "Foo::bar"),
+	// compacted; a callee that ends in no name is not stored.
+	calls?: {
+		qualify?: bool
+	}
+
 	// ctags is the dialect's own tier-B (§1.3) oracle invocation — universal-
 	// ctags' own language name(s) and any extra flags (design §13.4 step 18)
 	// — for a dialect internal/langbench's embedded incumbents.json (the

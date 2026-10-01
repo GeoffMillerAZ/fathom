@@ -39,16 +39,16 @@
       "end_line": 29,
       "signature": "public function run(Service $svc): void",
       "calls": [
+        "().fluent",
+        "Service::create",
         "array_map",
-        "boot",
-        "create",
-        "decode",
-        "fetch",
-        "fluent",
-        "helper",
-        "maybe",
-        "run",
-        "wrap"
+        "parent::run",
+        "static::boot",
+        "svc.fetch",
+        "svc.fetch().decode",
+        "svc.maybe",
+        "this.helper",
+        "this.wrap"
       ],
       "tier": "verified"
     },
@@ -60,7 +60,7 @@
       "end_line": 39,
       "signature": "private function helper( int $one, int $two ): int",
       "calls": [
-        "sum"
+        "this.sum"
       ],
       "tier": "verified"
     }

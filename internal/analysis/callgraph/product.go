@@ -104,7 +104,7 @@ func ProductEntryReach(g *Graph) *ProductReach {
 		case n.Name == "main" && n.Package == "main":
 			mains = append(mains, key)
 		case n.Name == "init":
-			initsByPkg[n.PackagePath()] = append(initsByPkg[n.PackagePath()], key)
+			initsByPkg[goPackageDir(n)] = append(initsByPkg[goPackageDir(n)], key)
 		}
 	}
 	sort.Strings(mains)
@@ -121,7 +121,7 @@ func ProductEntryReach(g *Graph) *ProductReach {
 		// init functions run at start-up and become entry points too.
 		var next []string
 		for key := range r.reached {
-			pkg := g.nodes[key].PackagePath()
+			pkg := goPackageDir(g.nodes[key])
 			if linked[pkg] {
 				continue
 			}
@@ -137,6 +137,18 @@ func ProductEntryReach(g *Graph) *ProductReach {
 	}
 	sort.Strings(r.entries)
 	return r
+}
+
+// goPackageDir is the Go package a node belongs to: its file's directory (a
+// directory is one package). Not PackagePath, whose last segment is a
+// method's receiver type: reaching T.Run links package reg (LB-F66, which
+// stopped recording `var t reg.T`'s type as a call, the edge that had
+// linked reg by accident).
+func goPackageDir(n core.SymbolNode) string {
+	if n.FilePath == "" {
+		return n.PackagePath()
+	}
+	return path.Dir(n.FilePath)
 }
 
 // walk is a multi-source BFS from sources (sorted), recording for each

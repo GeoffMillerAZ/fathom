@@ -26,6 +26,7 @@ package dialect
 // 14. An import case off the list:    imports: {strategy: "dotted-module", case: "kebab"}
 // 15. A type_wildcard off the list:   imports: {strategy: "namespace-dir", type_wildcard: "fields"}
 // 16. A preprocess step off the list: preprocess: "c-conditionals"
+// 16a. A calls rule off the list:     calls: {resolve: true}; calls: {qualify: "yes"}
 //
 // #Doc negatives (internal/langbench/docschema_test.go asserts each fails when
 // unified with #Doc), each the minimal doc spec below with one defect.
