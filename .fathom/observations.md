@@ -2390,8 +2390,8 @@ tests being added) is what catches that, not a second reading of the prose.
   - **Actual:** `measureSubject` builds the imports scorer only when `spec.Manifest.Kind != "tooling"` (cmd/indexbench/langoracle.go, LB-F40) and calls `scoreXrefOracle` only when the extractor is an `extractor.DocResulter` (the doc engine, `fusion.ResolveDocXrefs`); a tags-engine tool format gets neither, so no reading can meet L3
   - **Repro:** `go run ./cmd/indexbench lang-oracle -dialect protobuf -subject <grpc-go clone> -tool-oracle protobuf-grpc-go.json -out <scratch>/protobuf.json` and read `grade.L3`
 - **Root cause:** the harness's two L3 paths were built for their first users: import_resolution for languages (LB-F40) and cross-file references for doc-engine tool formats (LB-F30); protobuf is the first tags-engine tool format with an L3 target (CMake and GraphQL are queued behind it)
-- **Fix:** none yet (a harness change, not a worker's): score a tags-engine tool format's file-resolved edges (fusion.ResolveFileEdges) against the oracle's `cross_references` at file granularity, or its import specs against `imports`, then re-measure LB-Q-protobuf
-- **Status:** open
+- **Fix:** LB-F56: for a tool format the doc engine does not extract, `measureSubject` scores the oracle's `cross_references` at file granularity (`to` dropped, `from` read by the dialect's name matching) against the file resolver's edges over the dialect's import strategy (`fusion.ResolveFileEdges`), as `xref_precision`/`xref_recall` at the file's tier (`scoreFileXrefOracle`, `TestCmdLangOracleTagsToolFormatXrefs`: a protobuf fixture reads L3 excellent). The imports half was not taken: `import_resolution` is no tool-format metric (§1.2). LB-Q-protobuf is not re-measured here (wave 2)
+- **Status:** fixed by LB-F56 (wave la, 2026-10-01)
 - **Impact:** every tags-engine tool format queued at L3 (protobuf, cmake, graphql) stops at L2 whatever its extraction, and its row stays open behind a `-rest` deferral
 
 ### O168 — a trailing `.` anchor does not select the last identifier of tree-sitter-proto's `message_or_enum_type`
@@ -2546,8 +2546,8 @@ tests being added) is what catches that, not a second reading of the prose.
   - **Actual:** Tcl and Vim script both needed a scratch program (cmd/zzscratch, walking connector.Discover and counting ERROR/MISSING in tsengine SExpr) to get 516 of 827 files (62.4%) and 3 of 7 (42.9%); Vim script reads L1 excellent (sym_recall .9947, sym_precision 1) and is refused on 3 files (an embedded Python heredoc, a bare - ex command, a unary-plus string), with a 7-file calibration set where one file is 14%
   - **Repro:** go run ./cmd/indexbench lang-oracle -dialect vimscript -subject workspace/calibration/vimscript/vim-fugitive -out workspace/tmp/x.json (no field for files with a parse error)
 - **Root cause:** the harness computes faults (a parser trap or timeout) but not has_error; the 5% line is a worker's ad hoc count, and the Swift refusal was first recorded and then overturned at integration for the same reason
-- **Fix:** none committed; a `files_with_error` count per subject in the reading (Subject.Tenancy or its own field), computed from the same connector file set the extraction reads, would put the refusal number in the reading and the tracker
-- **Status:** open
+- **Fix:** LB-F59: each tags-dialect subject records `tenancy.files_with_error`, its measured files (the connector set the extraction reads) whose tree on the dialect's own pinned grammar holds an ERROR or MISSING node (`filesWithError`, the extractor's own `[(ERROR) (MISSING)]` query; lang-probe's S-expression cannot show a MISSING token, O238), and the reading's tenancy sums it as an optional field (doc and native engines report none; committed readings unchanged). Cross-checked with the tree-sitter 0.27 CLI on the pinned tree-sitter-proto: same 2 of 4 fixture files. The tracker does not yet re-check the 5% line
+- **Status:** fixed by LB-F59 (wave la, 2026-10-01)
 - **Impact:** a refusal rests on a number no reading carries; Vim script's L1 excellent reading and its refusal are both true and only the notes say why
 
 ### O204 — an oracle's dotted name is compared whole while the dialect's is cut to its last segment, so an Ada child unit is a miss on both sides
@@ -2666,3 +2666,29 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** none yet; the worker ran the focused packages (internal/config, the cmd/fathom pin and hook tests) under -race and left the whole set to task validate
 - **Status:** open
 - **Impact:** EW-11 selection stops narrowing as soon as a diff inserts a line above many symbols (a CHANGELOG line, a schema field), which is most diffs; test_gap overstates the untested change by two orders of magnitude here
+
+### O238 — lang-probe's S-expression never shows a MISSING node: a file whose only parse error is an inserted `;` or `}` prints a clean tree
+
+- **Symptom:** `indexbench lang-probe -dialect protobuf` on `message C {\n  string c = 1\n}` prints a tree with no ERROR and no MISSING, while the parse has a MISSING `;` (the tree-sitter 0.27 CLI prints `(MISSING ";" [2, 14] - [2, 14])` on the same grammar)
+- **Evidence:**
+  - **Tool:** `indexbench lang-probe` (tsengine `Tree.SExpr`)
+  - **Expected:** the probe a worker reads a parse with shows every node the parser inserted, as `tree-sitter parse` does
+  - **Actual:** `SExpr` renders named nodes only and prints a node's type without its missing flag, so an anonymous MISSING token is skipped and a named one prints like any other node; the extractor's own `[(ERROR) (MISSING)] @error` query matches the file (`TestCmdLangOracleFilesWithError` pins the gap)
+  - **Repro:** `printf 'syntax = "proto3";\nmessage C {\n  string c = 1\n}\n' > /tmp/c.proto && go run ./cmd/indexbench lang-probe -dialect protobuf /tmp/c.proto`
+- **Root cause:** `tsengine.Tree.SExpr` walks `ts_node_is_named` children and never asks `ts_node_is_missing`
+- **Fix:** none yet (tsengine belongs to another item): print `(MISSING <type>)` for a missing node, named or not; files_with_error does not depend on it (LB-F59 counts with the query)
+- **Status:** open
+- **Impact:** a worker counting parse errors from the probe's output (O203's scratch walkers) undercounts every file whose only error is a missing token
+
+### O239 — eight committed readings carry note text the reading writer would escape, so their bytes are not the harness's
+
+- **Symptom:** decoding dart, go-mod, html, lua, powershell, rust, tcl and vimscript readings and writing them with `langbench.MarshalReading` changes their bytes: a note's literal `=>`, `<script>` or `<<<` becomes `\u003e`, `\u003c`
+- **Evidence:**
+  - **Tool:** `langbench.MarshalReading` (design §10: the one writer of a reading's bytes)
+  - **Expected:** a committed reading is byte-identical to its re-marshalling, as one the harness wrote is
+  - **Actual:** 8 of the committed readings differ, each only in a note's `<`, `>` or `&`; their JSON values are equal (`TestCommittedReadingsRoundTrip` compares values for this reason)
+  - **Repro:** decode docs/bench/readings/lang/dart.json with `json.Decoder`, `MarshalReading` it and diff: line 589 (`=>` against `=\u003e`)
+- **Root cause:** those notes were written or edited after the harness wrote the reading (by hand or by a tool that does not escape HTML), and `json.MarshalIndent` escapes `<`, `>` and `&`
+- **Fix:** none yet: the next re-measure of each rewrites the note escaped (a byte diff with no change of value), or `MarshalReading` turns off HTML escaping, which rewrites every other reading's notes instead
+- **Status:** open
+- **Impact:** low: no value changes, but a wave-2 re-measure of these eight shows note diffs a reviewer has to recognise as escaping

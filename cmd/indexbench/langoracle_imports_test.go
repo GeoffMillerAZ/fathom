@@ -200,3 +200,54 @@ func TestCmdLangOracleOneImportsOracle(t *testing.T) {
 		t.Errorf("exit %d, stderr %q: want a refusal", code, stderr.String())
 	}
 }
+
+// TestCmdLangOracleImportDumpFileEdges (LB-F57): with no SCIP index, a
+// neutral file's imports (ruby-require's dump of the fixture, tier B) are
+// the truth file_edge_precision and file_edge_recall score fusion's
+// file-resolved edges against: each in-scope (path, to_path) pair, at the
+// file's tier, with the import-versus-reference difference disclosed.
+func TestCmdLangOracleImportDumpFileEdges(t *testing.T) {
+	subject := copyFixture(t, "rubyfixture")
+	out := filepath.Join(t.TempDir(), "ruby.json")
+	args := []string{"-dialect", "ruby", "-manifest", filepath.Join("..", "..", "internal", "extractor", "dialects", "ruby", "dialect.json"),
+		"-subject", subject, "-tool-oracle", filepath.Join("testdata", "ruby-require-rubyfixture.json"), "-ctags", filepath.Join(t.TempDir(), "none"),
+		"-out", out, "-queue", filepath.Join("..", "..", "docs", "plans", "language-breadth.queue.json")}
+	var stdout, stderr bytes.Buffer
+	if code := cmdLangOracle(args, &stdout, &stderr); code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr.String())
+	}
+	r, raw := readValidReading(t, out)
+	// lib/app.rb requires helper.rb and models/user.rb: App#run calls helper
+	// and Formatting.money (helper.rb) and User.new (user.rb).
+	for k, v := range map[string]int{langbench.CntFileEdgesTruth: 2, langbench.CntFileEdgesFathom: 2, langbench.CntFileEdgesAgree: 2} {
+		if r.Counts[k] != v {
+			t.Errorf("%s = %d, want %d\n%s", k, r.Counts[k], v, raw)
+		}
+	}
+	for _, m := range []string{langbench.MFileEdgePrecision, langbench.MFileEdgeRecall} {
+		if v := r.Metrics[m]; v == nil || *v != 1 || r.MetricTiers[m] != "B" {
+			t.Errorf("%s = %v tier %q, want 1 at B", m, v, r.MetricTiers[m])
+		}
+	}
+	if !bytes.Contains(raw, []byte(noteFileEdgesFromImports)) {
+		t.Errorf("the import-statement truth is not disclosed:\n%s", raw)
+	}
+}
+
+// TestCmdLangOracleImportDumpFileEdgesOnePerSubject: a SCIP index stays the
+// file-edge truth when one is given; a dump's imports never add a second.
+func TestCmdLangOracleImportDumpFileEdgesOnePerSubject(t *testing.T) {
+	subject := copyFixture(t, "rustfixture")
+	out := filepath.Join(t.TempDir(), "rust.json")
+	args := []string{"-dialect", "rust", "-manifest", filepath.Join("..", "..", "internal", "extractor", "dialects", "rust", "dialect.json"),
+		"-subject", subject, "-scip", rustFixtureIndex(t), "-ctags", filepath.Join(t.TempDir(), "none"),
+		"-out", out, "-queue", filepath.Join("..", "..", "docs", "plans", "language-breadth.queue.json")}
+	var stdout, stderr bytes.Buffer
+	if code := cmdLangOracle(args, &stdout, &stderr); code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr.String())
+	}
+	r, raw := readValidReading(t, out)
+	if r.MetricTiers[langbench.MFileEdgeRecall] != "A" || bytes.Contains(raw, []byte(noteFileEdgesFromImports)) {
+		t.Errorf("file edges tier %q, want A from the SCIP index alone\n%s", r.MetricTiers[langbench.MFileEdgeRecall], raw)
+	}
+}
