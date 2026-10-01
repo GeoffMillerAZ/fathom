@@ -2589,6 +2589,19 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Status:** open
 - **Impact:** low today (the three have tier-A SCIP and tier-B ctags oracles, so no worker needs a tier-C query for them); it is the ADR-048 amendment's own revisit trigger ("a dialect drafted from its oracle query without a `; source:` header naming it")
 
+### O220 — the gate's stranger-check fails while the internal disk is under 5 GiB free, and its output hides why
+
+- **Symptom:** `task validate:unleased` fails in stranger-check with `fathom init exited 2` and `service "stranger" did not confirm as indexed … (see the MANUAL line above for why)`, on the base commit (fa1e1d16) and on the wave g1 taskfile change alike, while no printed line names a cause
+- **Evidence:**
+  - **Tool:** `scripts/stranger-check.sh` (a `task validate:unleased` dependency)
+  - **Expected:** the check passes, or its failure output names the cause
+  - **Actual:** the throwaway daemon's tenancy ladder went `normal → refuse: swap volume free 285.4 MiB < 5 GiB` (the internal disk had 285 MiB free) and init's ingest failed with `over budget: ingest producer halted at refuse (fathom resources)`. That reason is init's `MANUAL: ingest failed: …` line, which stranger-check's diagnostic filter drops with every other `MANUAL:` line, and init's stderr line only points at it. init.go already gives the unreachable-daemon case its own stderr line for this reason, but not the not-indexed case
+  - **Repro:** with under 5 GiB free on the swap volume, `FATHOM_STRANGER_KEEP=1 bash scripts/stranger-check.sh`, then `grep 'MANUAL: ingest' <kept work dir>/init.log`
+- **Root cause:** the stranger daemon samples the host's swap volume against the default `[tenancy.host] min_swap_volume_free` (5 GiB), and its temp HOME has no config to change that. The filter keeps lines it treats as routine out of the failure output, and this one carries the cause
+- **Fix:** none yet. Either stranger-check prints `MANUAL: ingest` lines as non-routine, or init's not-indexed stderr line carries the ingest error, as the unreachable case does
+- **Status:** open
+- **Impact:** while the internal disk is under 5 GiB free, every gate on the machine fails, whatever the change, and the failure reads like an indexing defect. Wave g1's validate before/after timing could not finish (3 of 4 interleaved runs failed here in under 4 minutes)
+
 ### O230 — tests select counts every symbol below an inserted line as changed: a 5-line edit to schema/config/schema.cue lists all 111 CUE fields after it, and a 1-line CHANGELOG insertion lists 46 later headings, in test_gap and in the reach seed
 
 - **Symptom:** tests select counts every symbol below an inserted line as changed: a 5-line edit to schema/config/schema.cue lists all 111 CUE fields after it, and a 1-line CHANGELOG insertion lists 46 later headings, in test_gap and in the reach seed

@@ -1,8 +1,8 @@
-package callgraph
+package cachemem_test
 
 // cache_memory_test.go — O108 (.fathom/observations.md): the always-on
 // daemon's memory grew ~0.9 GB/hour over 9.4h. The watermark-keyed
-// call-graph memo (cache.go) was candidate (a) — one graph retained per
+// call-graph memo (callgraph/cache.go) was candidate (a) — one graph retained per
 // (service, watermark) with an LRU eviction that, IF it merely dropped
 // entries from the logical slice without actually releasing them (a
 // classic Go footgun: re-slicing off the front of a growing backing array
@@ -31,6 +31,7 @@ import (
 	"sync"
 	"testing"
 
+	. "github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
 	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
