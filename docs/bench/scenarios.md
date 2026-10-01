@@ -223,7 +223,7 @@ and only matter for `bench-compare-edges`.
    | free (corpus) | `task bench-scenario-plan` | 0 — lists the public corpus's cells and keys |
    | free (index oracle) | `task bench-compare-edges` | 0 — competitor edges vs the go/types L0 truth |
    | free (typed-edge oracle) | `task bench-l0-scip` | 0 — fathom's own edges vs a SCIP index, any language (ADR-041 decision 5, SU-12) — see "The SCIP typed-edge oracle" below |
-   | free (gate) | `task scenariobench` | 0 — corpus load, category/prediction gate, driver unit tests; re-derives the public corpus when the pins from step 1 are present |
+   | free (gate) | `task scenariobench` | 0 — corpus load, category/prediction gate, driver unit tests; re-derives the public corpus when the pins from step 1 are present. `task validate` runs this package inside `task test` (`go test -race` over every package but `cmd/fathom`), not as a separate dependency; `task scenariobench` runs it alone |
 
 3. **Paid tiers — ask before running (`docs/intent/autonomy.md`), need
    `claude` on `PATH` and an API key:**

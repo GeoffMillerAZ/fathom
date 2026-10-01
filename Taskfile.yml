@@ -224,7 +224,10 @@ tasks:
     # stranger-check (RP-23) is the same lesson one step further: the copy
     # must init and pass doctor for someone who is not the author. Measured
     # 26–43s on 2026-09-02, under the two-minute budget that admits it here.
-    deps: [fmt-check, vet, cue-vet, vendor-check, testkit-schema-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit, scenariobench, bench-l0-gate, tenancy-lint]
+    # scenariobench is not a dep: `task test` already runs
+    # ./internal/scenariobench (race, under this file's CGO_ENABLED=1), and
+    # the dep ran it a second time (77–102 s each, measured 2026-09-30).
+    deps: [fmt-check, vet, cue-vet, vendor-check, testkit-schema-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit, bench-l0-gate, tenancy-lint]
     cmds: [{ task: test }]
 
   push:

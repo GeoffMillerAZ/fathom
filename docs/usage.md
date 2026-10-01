@@ -37,6 +37,9 @@ priority (`nice -n 10`; `FATHOM_GATE_NICE=off` opts out, `FATHOM_GATE_NICE=backg
 `taskpolicy -b`, which measured ~3x slower: `cmd/fathom` 441 s against 168 s niced)
 and `go test -p 4`. `task validate:unleased` is the same gate without the lease.
 
+`internal/scenariobench` runs once per gate, inside `task test`; it is not also a separate
+`validate:unleased` dependency (`task scenariobench` still runs it alone).
+
 ### Pushing (`task push`)
 
 ```sh
