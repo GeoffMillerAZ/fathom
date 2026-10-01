@@ -322,6 +322,26 @@ type callDiff struct {
 	truth, mine map[langbench.CallPair]bool
 }
 
+// edgesFromIndexed keeps the edges whose file the SCIP index covers: the
+// index proves no edge from a document it does not hold (scip-php skips a
+// test file no autoload root maps), so such an edge is out of scope (§1.4),
+// counted in a note, never scored as fathom's error (LB-F65).
+func edgesFromIndexed(edges []core.Edge, docs map[string]bool, name string, notes *[]string) []core.Edge {
+	out := edges[:0:0]
+	dropped := 0
+	for _, e := range edges {
+		if docs[e.FromFile] {
+			out = append(out, e)
+		} else {
+			dropped++
+		}
+	}
+	if dropped > 0 {
+		*notes = append(*notes, fmt.Sprintf("%s: %d file-resolved edges from files the SCIP index does not hold are out of the file-edge scope (§1.4)", name, dropped))
+	}
+	return out
+}
+
 // pairsOnlyIn returns the pairs of a absent from b, sorted.
 func pairsOnlyIn(a, b map[langbench.CallPair]bool) []unmatchedPair {
 	out := []unmatchedPair{}
@@ -584,10 +604,16 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 		}
 		if n := sr.Counts[langbench.CntScipCallsUnwritten]; n > 0 {
 			why := "an operator rust-analyzer resolves to its trait method: ?, ==, !x, *x, a[i], a + b"
-			if spec.Manifest.ID == "dart" {
+			switch spec.Manifest.ID {
+			case "dart":
 				why = "a tear-off such as `onError: c.addError`, an operator, the super(...) of an initializer"
+			case "python":
+				why = "a function or method referenced without a call: passed as a value, as in Depends(get_db), or a decorator applied by name"
 			}
 			res.notes = append(res.notes, fmt.Sprintf("%s: %d callable references have no call written at their range (%s) and are left out of the call truth (L2 is call sites)", name, n, why))
+		}
+		if n := sr.Counts[langbench.CntScipCalledNames]; n > 0 {
+			res.notes = append(res.notes, fmt.Sprintf("%s: %d references to a class, a field or variable, an interface method or a local are written as a call (`name(`) and counted as calls to that name (L2 is call sites: scip-python names a constructed class, never a constructor; scip-go writes an interface's method as a term)", name, n))
 		}
 		if sr.EnclosingFallback > 0 {
 			res.notes = append(res.notes, fmt.Sprintf("%s: %d SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)", name, sr.EnclosingFallback))
@@ -602,6 +628,7 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 			if rep.Skipped {
 				res.notes = append(res.notes, name+": file-resolved edges not measured: "+rep.SkipReason)
 			} else {
+				edges = edgesFromIndexed(edges, sr.Docs, name, &res.notes)
 				langbench.ScoreFileEdges(sr.FileEdges, edges, nodes, sub.Counts)
 				sub.Families[langbench.FamilyFileEdges] = "A"
 			}
@@ -611,6 +638,7 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 			if err != nil {
 				res.notes = append(res.notes, name+": file edges not measured: "+err.Error())
 			} else {
+				edges = edgesFromIndexed(edges, sr.Docs, name, &res.notes)
 				langbench.ScoreFileEdges(sr.FileEdges, edges, nodes, sub.Counts)
 				sub.Families[langbench.FamilyFileEdges] = "A"
 				res.notes = append(res.notes, noteGoTypedFileEdges)

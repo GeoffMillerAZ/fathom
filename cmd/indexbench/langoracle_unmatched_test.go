@@ -41,7 +41,7 @@ func must(b []byte, err error) []byte {
 func pyCallsFixture(t *testing.T) (subject, index string) {
 	t.Helper()
 	subject = t.TempDir()
-	src := "class Foo:\n    def bar(self):\n        return 1\n\n    def baz(self):\n        return 2\n\n\ndef run():\n    f = Foo()\n    h = f.baz\n    return f.bar()\n"
+	src := "class Foo:\n    x = make()\n\n    def bar(self):\n        return 1\n\n\ndef run():\n    f = Foo()\n    g.zap()\n    return f.bar()\n"
 	if err := os.WriteFile(filepath.Join(subject, "a.py"), []byte(src), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -52,13 +52,12 @@ func pyCallsFixture(t *testing.T) (subject, index string) {
 	ref := func(sym string, rng ...int32) *scippb.Occurrence { return &scippb.Occurrence{Symbol: sym, Range: rng} }
 	idx := &scippb.Index{Metadata: &scippb.Metadata{ToolInfo: &scippb.ToolInfo{Name: "scip-python", Version: "0.6.6"}},
 		Documents: []*scippb.Document{{RelativePath: "a.py", Occurrences: []*scippb.Occurrence{
-			def(pre+"Foo#", []int32{0, 0, 5, 16}, 0, 6, 9),
-			def(pre+"Foo#bar().", []int32{1, 4, 2, 16}, 1, 8, 11),
-			def(pre+"Foo#baz().", []int32{4, 4, 5, 16}, 4, 8, 11),
-			def(pre+"run().", []int32{8, 0, 11, 18}, 8, 4, 7),
-			ref(pre+"Foo#", 9, 8, 11),
-			ref(pre+"Foo#baz().", 10, 10, 13),
-			ref(pre+"Foo#bar().", 11, 13, 16),
+			def(pre+"Foo#", []int32{0, 0, 4, 16}, 0, 6, 9),
+			ref(pre+"make().", 1, 8, 12),
+			def(pre+"Foo#bar().", []int32{3, 4, 4, 16}, 3, 8, 11),
+			def(pre+"run().", []int32{7, 0, 10, 18}, 7, 4, 7),
+			ref(pre+"Foo#", 8, 8, 11),
+			ref(pre+"Foo#bar().", 10, 13, 16),
 		}}}}
 	raw, err := proto.Marshal(idx)
 	if err != nil {
@@ -106,13 +105,13 @@ func TestCmdLangOracleUnmatchedCallPairs(t *testing.T) {
 		if u.Calls.Oracle != "scip-python" {
 			t.Errorf("calls oracle = %q, want scip-python", u.Calls.Oracle)
 		}
-		// run() writes Foo(): the index names the class (Foo#), not a
-		// callable, so fathom's constructor call is fathom-only; `h = f.baz`
-		// references the method without calling it, which the index counts
-		// and fathom does not; f.bar() is on both sides.
+		// g.zap() has a receiver the index does not resolve: fathom-only.
+		// Foo's class body calls make(), which the index gives to Foo and
+		// fathom to no definition: oracle-only. Foo() and f.bar() are on
+		// both sides.
 		want := unmatchedCalls{Oracle: "scip-python",
-			FathomOnly: []unmatchedPair{{"a.py", "run", "Foo"}},
-			OracleOnly: []unmatchedPair{{"a.py", "run", "baz"}}}
+			FathomOnly: []unmatchedPair{{"a.py", "run", "zap"}},
+			OracleOnly: []unmatchedPair{{"a.py", "Foo", "make"}}}
 		if got, _ := json.Marshal(u.Calls); string(got) != string(must(json.Marshal(want))) {
 			t.Errorf("calls = %s, want %s", got, must(json.Marshal(want)))
 		}
@@ -126,6 +125,10 @@ func TestCmdLangOracleUnmatchedCallPairs(t *testing.T) {
 		}
 		if bytes.Contains(raw, []byte("fathom_only")) {
 			t.Error("the reading carries the diagnosis")
+		}
+		// LB-F65: Foo() is the class written as a call, counted and disclosed.
+		if r.Counts[langbench.CntScipCalledNames] != 1 || !bytes.Contains(raw, []byte("are written as a call")) {
+			t.Errorf("the class written as a call is not counted and disclosed: %d\n%s", r.Counts[langbench.CntScipCalledNames], raw)
 		}
 		// No L1 oracle ran (ctags absent): the L1 sections are absent.
 		if u.DialectOnly != nil || u.OracleOnly != nil {
@@ -208,5 +211,42 @@ func TestFileResolveLangServesCSharpAndJava(t *testing.T) {
 				t.Errorf("file_edge_recall tier %q, want B (the dump's)", r.MetricTiers[langbench.MFileEdgeRecall])
 			}
 		})
+	}
+}
+
+// TestCmdLangOracleFileEdgesScopedToIndexedFiles (LB-F65): an edge from a
+// file the SCIP index does not hold (scip-php skips a test file no autoload
+// root maps) is out of the file-edge scope, disclosed, never scored as
+// fathom's error.
+func TestCmdLangOracleFileEdgesScopedToIndexedFiles(t *testing.T) {
+	subject := copyFixture(t, "pyfixture")
+	const pre = "scip-python python fixture 0.1 `pkg.util`/"
+	idx := &scippb.Index{Metadata: &scippb.Metadata{ToolInfo: &scippb.ToolInfo{Name: "scip-python", Version: "0.6.6"}},
+		Documents: []*scippb.Document{{RelativePath: "pkg/util.py", Occurrences: []*scippb.Occurrence{
+			{Symbol: pre + "helper().", Range: []int32{3, 4, 10}, EnclosingRange: []int32{3, 0, 4, 12}, SymbolRoles: int32(scippb.SymbolRole_Definition)},
+		}}}}
+	raw, err := proto.Marshal(idx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	scip := filepath.Join(t.TempDir(), "python.scip")
+	if err := os.WriteFile(scip, raw, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(t.TempDir(), "python.json")
+	var stdout, stderr bytes.Buffer
+	if code := cmdLangOracle([]string{"-dialect", "python", "-subject", subject, "-ctags", filepath.Join(t.TempDir(), "none"), "-scip", scip,
+		"-out", out, "-queue", filepath.Join("..", "..", "docs", "plans", "language-breadth.queue.json")}, &stdout, &stderr); code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr.String())
+	}
+	r, raw2 := readValidReading(t, out)
+	// main.py's run -> pkg/util.py's helper and pkg/wrapper.py's wrap ->
+	// other: neither main.py nor pkg/wrapper.py is in the index, so neither
+	// edge is scored.
+	if r.Counts[langbench.CntFileEdgesFathom] != 0 {
+		t.Errorf("file_edges_fathom = %d, want 0 (the edges come from a file the index does not hold)\n%s", r.Counts[langbench.CntFileEdgesFathom], raw2)
+	}
+	if !bytes.Contains(raw2, []byte("out of the file-edge scope")) {
+		t.Errorf("the out-of-scope edges are not disclosed:\n%s", raw2)
 	}
 }
