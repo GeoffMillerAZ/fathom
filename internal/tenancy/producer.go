@@ -46,7 +46,33 @@ var currentLevel atomic.Uint32
 
 // PublishLevel sets the process-wide ladder level the producers read. The
 // governor loop is its one writer in a daemon; tests restore LevelNormal.
-func PublishLevel(l Level) { currentLevel.Store(uint32(l)) }
+func PublishLevel(l Level) {
+	currentLevel.Store(uint32(l))
+	if l < LevelRefuse {
+		currentCause.Store(nil)
+	}
+}
+
+var currentCause atomic.Pointer[Cause]
+
+// PublishLevelCause sets the level and the cause that lifted it, so the
+// admission gate and the refresh gate can name it (EW-37).
+func PublishLevelCause(l Level, c Cause) {
+	currentLevel.Store(uint32(l))
+	if l < LevelRefuse || c == (Cause{}) {
+		currentCause.Store(nil)
+		return
+	}
+	currentCause.Store(&c)
+}
+
+// CurrentCause is the published cause of the current rung (zero: none).
+func CurrentCause() Cause {
+	if c := currentCause.Load(); c != nil {
+		return *c
+	}
+	return Cause{}
+}
 
 // CurrentLevel is the published ladder level.
 func CurrentLevel() Level { return Level(currentLevel.Load()) }

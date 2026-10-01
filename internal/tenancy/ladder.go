@@ -89,6 +89,42 @@ type Transition struct {
 	At       time.Time
 	Changed  bool
 	Reason   string
+	// Cause is what lifted the ladder on a rise (zero otherwise): the gate
+	// names it in a refusal, so a swap-volume floor never reads as a memory
+	// budget (EW-37).
+	Cause Cause
+}
+
+// CauseKind classes what lifted the ladder.
+type CauseKind uint8
+
+const (
+	// CauseUnknown: no cause published; refusals keep the budget wording.
+	CauseUnknown CauseKind = iota
+	// CauseMark: a footprint mark (shed, refuse or exit): the memory budget.
+	CauseMark
+	// CauseHost: a host trigger that is not fathom's own footprint.
+	CauseHost
+)
+
+// Cause is the ladder's cause: its class and the formatted reason.
+type Cause struct {
+	Kind   CauseKind
+	Detail string
+}
+
+// BudgetCause reports whether the refusal should keep the memory-budget
+// wording: a footprint mark, or no cause known.
+func (c Cause) BudgetCause() bool { return c.Kind == CauseUnknown || c.Kind == CauseMark }
+
+func causeOf(w why, reason string) Cause {
+	switch w {
+	case whyNone:
+		return Cause{}
+	case whyShedMark, whyRefuseMark, whyExitMark:
+		return Cause{Kind: CauseMark, Detail: reason}
+	}
+	return Cause{Kind: CauseHost, Detail: reason}
 }
 
 // lateEscalates reports whether s ran at least lateFactor cadences after
@@ -217,8 +253,9 @@ func StepLadder(st *LadderState, s *Sample, b *Budget) Transition {
 	switch {
 	case target > from:
 		st.Level, st.Since, st.belowSince = target, s.At, time.Time{}
+		reason := reasonFor(cause, s, b, combined, st, weight == 2)
 		return Transition{From: from, To: target, At: s.At, Changed: true,
-			Reason: reasonFor(cause, s, b, combined, st, weight == 2)}
+			Reason: reason, Cause: causeOf(cause, reason)}
 	case from == LevelExit && target < LevelExit:
 		// The exit rung is an action (the daemon exits, or halts an ingest
 		// and lets the next sample decide): not sustained, it holds refuse

@@ -373,3 +373,47 @@ func waitFor(t *testing.T, cond func() bool) {
 		time.Sleep(time.Millisecond)
 	}
 }
+
+// TestRefusalNamesSwapVolumeFloor (EW-37): a refuse rung lifted by the
+// swap-volume floor reads as the swap-volume floor, never as a memory
+// budget; an RSS-mark cause keeps the budget wording.
+func TestRefusalNamesSwapVolumeFloor(t *testing.T) {
+	r := newRig(t)
+	r.h.swapVolFree = 4 * GiB
+	var tr Transition
+	for range 2 {
+		tr = r.step(0)
+	}
+	if tr.To != LevelRefuse || tr.Cause.BudgetCause() {
+		t.Fatalf("swap-volume rise: %+v", tr)
+	}
+	g := NewGate(GateConfig{
+		Budget: testBudget(t), Mode: ModeEnforce, InFlight: NewInFlight(nil),
+		Level: func() Level { return tr.To }, Cause: func() Cause { return tr.Cause },
+	})
+	_, ref := g.Admit(context.Background(), Request{Tool: "x", Class: ClassTree, Origin: OriginAgent})
+	if ref == nil || ref.Code != RefusalLevel {
+		t.Fatalf("want a level refusal, got %+v", ref)
+	}
+	if !strings.Contains(ref.Reason, "swap volume free") || strings.Contains(ref.Reason, "memory budget") {
+		t.Fatalf("refusal must name the swap-volume floor, not a memory budget: %q", ref.Reason)
+	}
+	if err := AbandonedBy(tr.Cause); !errors.Is(err, ErrAbandonedByGovernor) || strings.Contains(err.Error(), "memory budget") {
+		t.Fatalf("abandon cause: %v", err)
+	}
+
+	m := newRig(t)
+	m.h.footprint = 4200 * MiB
+	var mt Transition
+	for range 2 {
+		mt = m.step(0)
+	}
+	g2 := NewGate(GateConfig{
+		Budget: testBudget(t), Mode: ModeEnforce, InFlight: NewInFlight(nil),
+		Level: func() Level { return mt.To }, Cause: func() Cause { return mt.Cause },
+	})
+	_, ref = g2.Admit(context.Background(), Request{Tool: "x", Class: ClassTree, Origin: OriginAgent})
+	if ref == nil || !strings.Contains(ref.Reason, "memory budget") {
+		t.Fatalf("RSS-mark cause keeps the budget wording: %+v", ref)
+	}
+}
