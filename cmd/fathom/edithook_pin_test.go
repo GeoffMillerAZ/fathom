@@ -400,3 +400,85 @@ func TestPinBeatCarriesNoSourceText(t *testing.T) {
 		}
 	}
 }
+
+// TestPinCheckOffAndRecordLeaveStdoutByteIdentical pins PR-6's second
+// clause: for the same commit, `[hooks] pin_check = "off"` (no check, no
+// beat) and "record" (check and beat) print byte-identical stdout, here a
+// bash-write payload the same command earned; "feedback" puts the lost-pin
+// line in that same envelope. Under an OFF arm stdout is empty and the beat
+// is stamped arm off; on a harness other than Claude Code feedback stays
+// record-only (PR-V1).
+func TestPinCheckOffAndRecordLeaveStdoutByteIdentical(t *testing.T) {
+	repo := pinRepo(t, config.PinCheckOff)
+	isolateBashDoubt(t)
+	t.Setenv("FATHOM_HOOKS_LOG", filepath.Join(t.TempDir(), "hooks.jsonl"))
+	srv := fakePromptDaemon(t, map[string]any{
+		"NOTES.md": map[string]any{
+			"service": strings.ToLower(filepath.Base(repo)), "file": "NOTES.md",
+			"rules": []any{map[string]any{"rule": "Notes stay short.", "src": "AGENTS.md#L1-L1", "tier": "doc-claimed", "layer": "obligations"}},
+		},
+	}, nil)
+	defer srv.Close()
+
+	// One commit that loses TestRoundHalfUp, made by a command that also
+	// writes NOTES.md (so the bash-write payload is in play).
+	writeRepoFile(t, repo, "money/round_test.go", pinTestHeader+pinDownTest)
+	writeRepoFile(t, repo, "NOTES.md", "note\n")
+	out := pinCommitAll(t, repo, "notes")
+	command := `echo note > NOTES.md && git add -A && git commit -m notes`
+	run := func(mode string) string {
+		t.Helper()
+		writeRepoFile(t, repo, ".fathom/config.toml", "[hooks]\npin_check = \""+mode+"\"\n")
+		restore := pipeStdin(t, testRunPostPayload(repo, command, out))
+		defer restore()
+		var stdout bytes.Buffer
+		if rc := cmdEditHook([]string{"--url", srv.URL}, &stdout, io.Discard); rc != 0 {
+			t.Fatalf("edit-hook exited %d", rc)
+		}
+		return stdout.String()
+	}
+
+	off := run(config.PinCheckOff)
+	if n := len(pinBeats(t)); n != 0 {
+		t.Fatalf("pin_check off wrote %d pin beat(s); off is no check and no beat", n)
+	}
+	if !strings.Contains(off, "Notes stay short.") {
+		t.Fatalf("the control is blind: the bash-write payload is missing under off: %q", off)
+	}
+	record := run(config.PinCheckRecord)
+	if record != off {
+		t.Fatalf("record changed the payload:\noff:    %q\nrecord: %q", off, record)
+	}
+	if beats := pinBeats(t); len(beats) != 1 || beats[0]["status"] != pinLost {
+		t.Fatalf("record wrote pin beats %v, want one lost", beats)
+	}
+
+	feedback := run(config.PinCheckFeedback)
+	if strings.Count(feedback, "\n") != 1 || !strings.Contains(feedback, "Notes stay short.") || !strings.Contains(feedback, "fathom pin deleted · TestRoundHalfUp ") {
+		t.Fatalf("feedback is not one envelope carrying the bash-write rule and the pin line: %q", feedback)
+	}
+	if beats := pinBeats(t); len(beats) != 2 || beats[1]["emitted"] != "true" {
+		t.Fatalf("feedback pin beats = %v, want a second, emitted", beats)
+	}
+
+	// Another harness: feedback stays record-only.
+	codex, ok := harness.CodecFor(harness.Codex)
+	if !ok {
+		t.Fatal("no codex codec")
+	}
+	if line := commitPinLine(codex, pinHook(repo, command, out), false); line != "" {
+		t.Errorf("feedback on codex returned %q; other harnesses are record-only", line)
+	}
+	if beats := pinBeats(t); len(beats) != 3 || beats[2]["status"] != pinLost || beats[2]["emitted"] != "false" {
+		t.Errorf("codex pin beats = %v, want a third, lost, not emitted", beats)
+	}
+
+	// Under an OFF arm: nothing printed, the beat stamped arm off.
+	_, _ = armOffEnv(t, 3)
+	if armed := run(config.PinCheckFeedback); armed != "" {
+		t.Fatalf("an OFF arm printed %q", armed)
+	}
+	if beats := pinBeats(t); len(beats) != 4 || beats[3]["arm"] != "off" || beats[3]["emitted"] != "false" {
+		t.Fatalf("OFF-arm pin beats = %v, want a fourth stamped arm off", beats)
+	}
+}
