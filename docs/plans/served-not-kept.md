@@ -26,7 +26,7 @@ what was considered so it is not re-proposed.
 - [x] The stage reads blobs through one `git cat-file --batch` process, stays inside a 250 ms sub-budget and its descriptor deadline (I53), and on a miss skips silently with a `skipped` beat, never a kept one {id: PR-4, symbol: runCommitPinWithDeadline, package: cmd/fathom, reachable_from: TestCommitPinSkipsSilentlyOverBudget, needs: "PR-3"}
 - [x] One `pin` beat per checked commit in hooks.jsonl carries session, commit, loss kinds, test ids, source cites and ms, and no source text {id: PR-5, symbol: emitPinBeat, package: cmd/fathom, reachable_from: TestPinBeatCarriesNoSourceText, needs: "PR-3"}
 - [x] `[hooks] pin_check` is `off`, `record` (default) or `feedback`, and `off` and `record` leave the payload byte-identical {id: PR-6, symbol: Load, package: internal/config, reachable_from: TestConfig_HooksPinCheckDefaultsRecord, needs: "PR-3"}
-- [ ] `docs/configuration.md` documents `[hooks] pin_check` and what the line does and does not do {id: PR-7, oracle: lexical, path: docs/configuration.md, pattern: "pin_check", needs: "PR-6"}
+- [x] `docs/configuration.md` documents `[hooks] pin_check` and what the line does and does not do {id: PR-7, oracle: lexical, path: docs/configuration.md, pattern: "pin_check", needs: "PR-6"}
 
 ## Wave 2: the pre-push gate (owner decision)
 
