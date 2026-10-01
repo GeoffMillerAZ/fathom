@@ -6,6 +6,7 @@ package main
 // decision.MockDecider scripted so each test lands in a different band:
 //
 //   - TestAlpha: both answers proceed (>= 0.9)      -> a written suggestion
+//     (its body asserts, so the evidence permits "asserts", JF-9)
 //   - TestBeta:  both answers confirm (0.5..0.9)     -> "unsure", not written
 //   - TestGamma: both answers below 0.5               -> fully silent
 //
@@ -28,7 +29,7 @@ import (
 
 const certifySuggestFixtureSrc = `package pkg
 
-func TestAlpha(t *T) {}
+func TestAlpha(t *T) { t.Errorf("asserts") }
 
 func TestBeta(t *T) {}
 
@@ -46,11 +47,11 @@ func certifySuggestMockResponse() decision.Response {
 		Model:    "mock-1",
 		Answers: map[string]decision.Answer{
 			"TestAlpha:strength": ans("TestAlpha:strength", decision.KindChoice, "asserts", 0, 0.95),
-			"TestAlpha:asserts":  ans("TestAlpha:asserts", decision.KindNoul, "", 0.96, 0.96),
+			"TestAlpha:asserts":  ans("TestAlpha:asserts", decision.KindPredicate, "", 0.96, 0.96),
 			"TestBeta:strength":  ans("TestBeta:strength", decision.KindChoice, "smoke", 0, 0.70),
-			"TestBeta:asserts":   ans("TestBeta:asserts", decision.KindNoul, "", 0.60, 0.60),
+			"TestBeta:asserts":   ans("TestBeta:asserts", decision.KindPredicate, "", 0.60, 0.60),
 			"TestGamma:strength": ans("TestGamma:strength", decision.KindChoice, "smoke", 0, 0.30),
-			"TestGamma:asserts":  ans("TestGamma:asserts", decision.KindNoul, "", 0.10, 0.90),
+			"TestGamma:asserts":  ans("TestGamma:asserts", decision.KindPredicate, "", 0.10, 0.90),
 		},
 	}
 }

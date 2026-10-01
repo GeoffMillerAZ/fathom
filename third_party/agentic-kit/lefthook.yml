@@ -30,22 +30,46 @@ pre-push:
       run: task validate
     # fathom verify gate — "done means proven": [x] claims in docs/plans/*.md
     # must verify against the code index. exit 1 (claim disproven) blocks the
-    # push; exit 2 (daemon/index unavailable) warns and allows it (fail-open).
+    # push; exit 2 (index unavailable) warns and allows it (fail-open).
     # Convention + grammar: fathom repo, docs/plans/README.md.
     #
-    # FATHOM_BIN always wins. Otherwise resolve the first-existing of
-    # ../fathom/bin/fathom, ../sextant/bin/fathom — the fathom repo directory
-    # is mid-rename (sextant -> fathom); this default survives either name
-    # without an env override.
+    # The gate verifies the tree it pushes (docs/project-intent/operating.md
+    # §5 rule 2): the daemon's agentic-kit index follows the operator's
+    # checkout, which can lag a push clone by many commits, so rows the pushed
+    # tree proves failed and rows it breaks could pass. The step ingests this
+    # working tree into a scratch store inside this checkout's git directory
+    # (never tracked, never swept, one per clone or worktree) and verifies
+    # against that. An ingest failure allows the push with a named line and
+    # the log path, never a silent pass.
+    #
+    # Binary resolution, first hit wins: `fathom` on PATH (the deployed binary,
+    # so the gate reads plans with the same fathom the fleet runs), then
+    # FATHOM_BIN, then a sibling build (../fathom/bin/fathom, ../sextant/bin/fathom
+    # — the fathom repo directory is mid-rename). A sibling build is whatever
+    # was last compiled in that checkout and can be months stale. None found:
+    # fail-open, said aloud. The line "fathom verify: using ..." names the
+    # binary that ran.
     fathom-verify:
       run: |
-        FATHOM="${FATHOM_BIN:-}"
-        if [ -z "$FATHOM" ]; then
-          if [ -x ../fathom/bin/fathom ]; then FATHOM=../fathom/bin/fathom
-          else FATHOM=../sextant/bin/fathom
+        FATHOM=""
+        if command -v fathom >/dev/null 2>&1; then
+          FATHOM="$(command -v fathom)"
+        elif [ -n "${FATHOM_BIN:-}" ] && [ -x "$FATHOM_BIN" ]; then
+          FATHOM="$FATHOM_BIN"
+        else
+          if [ -n "${FATHOM_BIN:-}" ]; then
+            echo "fathom verify: FATHOM_BIN=$FATHOM_BIN is not executable — trying the sibling builds"
+          fi
+          if [ -x ../fathom/bin/fathom ]; then
+            FATHOM=../fathom/bin/fathom
+          elif [ -x ../sextant/bin/fathom ]; then
+            FATHOM=../sextant/bin/fathom
+          else
+            echo "fathom verify: no fathom binary (PATH, FATHOM_BIN, ../fathom/bin, ../sextant/bin) — allowing push (fail-open)"
+            exit 0
           fi
         fi
-        [ -x "$FATHOM" ] || exit 0
+        echo "fathom verify: using $FATHOM ($("$FATHOM" version 2>&1 | head -n 1))"
         plans=""
         for f in docs/plans/*.md; do
           [ -e "$f" ] || continue
@@ -53,39 +77,47 @@ pre-push:
           plans="$plans $f"
         done
         [ -z "$plans" ] && exit 0
+        gate="$(git rev-parse --absolute-git-dir)/fathom-gate"
+        store="$gate/verify.sqlite"
+        mkdir -p "$gate"
+        rm -f "$store" "$store-wal" "$store-shm"
+        if ! "$FATHOM" ingest --store "$store" --service agentic-kit --path "$PWD" >"$gate/ingest.log" 2>&1; then
+          echo "fathom verify: scratch ingest of the pushed tree failed — allowing push (fail-open, see $gate/ingest.log)"
+          exit 0
+        fi
+        echo "fathom verify: verifying against a scratch ingest of $(git rev-parse --short HEAD) ($store)"
         rc=0
         for f in $plans; do
-          "$FATHOM" verify --service agentic-kit --plan "$f"
+          "$FATHOM" verify --service agentic-kit --plan "$f" --store "$store"
           code=$?
           [ $code -eq 1 ] && rc=1
           [ $code -eq 2 ] && echo "fathom verify: operational error — allowing push (fail-open)"
         done
         exit $rc
 
-# Best-effort fleet-index refresh (fathom, né sextant). Non-blocking on
-# error; concurrent daemon writes are fine on the SQLite WAL store (fathom
-# ADR-020). --path must be ABSOLUTE ("$PWD"): the recorded ServiceMeta path
-# is what the fathom DAEMON resolves from its own working directory on
-# auto-refresh — a relative "." recorded here would make the daemon refresh
-# the fathom repo under the agentic-kit service ID.
+# Best-effort fleet-index refresh, through the daemon. `fathom
+# post-commit-hook` asks the running daemon to re-index this checkout and never
+# writes a store itself (fathom HF-2/INC-3): the old step here was a shell
+# `fathom ingest` into the daemon's own fleet store, run with a sibling build
+# as stale as that checkout's last compile, the write path fathom's O16 rode.
+# The hook refreshes nothing from a linked worktree or from a clone the
+# service is not registered at (it says so on stderr), so a push clone never
+# re-points the agentic-kit service; it never blocks a commit.
 #
-# Same rename-resilient resolution as fathom-verify above, plus the
-# older bin/sextant name as a last-resort fallback. The ingest store path is
-# derived from wherever FATHOM actually resolved (strip /bin/<name>), so it
-# never disagrees with which fathom checkout is actually running.
+# Binary resolution is the same as fathom-verify's above; none found: skip.
 post-commit:
   commands:
     fathom-refresh:
       run: |
-        FATHOM="${FATHOM_BIN:-}"
-        if [ -z "$FATHOM" ]; then
-          if [ -x ../fathom/bin/fathom ]; then FATHOM=../fathom/bin/fathom
-          elif [ -x ../sextant/bin/fathom ]; then FATHOM=../sextant/bin/fathom
-          else FATHOM=../sextant/bin/sextant
-          fi
+        FATHOM=""
+        if command -v fathom >/dev/null 2>&1; then
+          FATHOM="$(command -v fathom)"
+        elif [ -n "${FATHOM_BIN:-}" ] && [ -x "$FATHOM_BIN" ]; then
+          FATHOM="$FATHOM_BIN"
+        elif [ -x ../fathom/bin/fathom ]; then
+          FATHOM=../fathom/bin/fathom
+        elif [ -x ../sextant/bin/fathom ]; then
+          FATHOM=../sextant/bin/fathom
         fi
-        [ -x "$FATHOM" ] || exit 0
-        DOWNSTREAM="${FATHOM%/bin/*}"
-        STORE="$DOWNSTREAM/workspace/db/fleet.sqlite"
-        [ -e "$STORE" ] || STORE="$DOWNSTREAM/workspace/db/fleet.duckdb"
-        "$FATHOM" ingest --service agentic-kit --path "$PWD" --store "$STORE" >/dev/null 2>&1 || true
+        [ -n "$FATHOM" ] || exit 0
+        "$FATHOM" post-commit-hook --dir "$PWD" --service agentic-kit --quiet || true

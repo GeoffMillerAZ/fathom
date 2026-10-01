@@ -3199,7 +3199,7 @@ fathom certify gaps [--kind invariant|incident|spec|port|rule|behaviour] \
   [--service <id>] [--store <path>] [--json]
 fathom certify manifest [--out FILE] [--check] [--service <id>] [--store <path>]
 fathom certify orphans [--json] [--service <id>] [--store <path>]
-fathom certify suggest [--limit N] [--out FILE] [--service <id>] [--store <path>]
+fathom certify suggest [--limit N] [--mutation <report>] [--out FILE] [--service <id>] [--store <path>]
 ```
 
 `certify status` reports the compiled `certifications` layer's target/live/
@@ -3231,7 +3231,14 @@ behaviour" noul — and writes proceed-band answers to `--out`
 (`workspace/artifacts/certify-suggestions.jsonl` by default, regenerated
 fresh each run, never appended), rendered as a hint in `certify gaps`'s
 table output; a suggestion is never a claim and is never written to the
-store, and `provider = none` prints one line and exits 0.
+store, and `provider = none` prints one line and exits 0. The strength
+choice offers only the levels the test's evidence permits (JF-9): `asserts`
+when the body calls an assertion or hands its `t` to a helper, `golden` when
+it reads a golden or `testdata` file, `property` when its file imports a
+property library (`testing/quick`, rapid, gopter), `mutation-killed` when
+`--mutation` (or `$FATHOM_MUTATION_REPORT`) names a report with a killed
+mutant; `smoke` and `conformance` are always offered. An answer outside those
+levels is never suggested.
 
 | Flag (`certify gaps`) | Default | Description |
 |---|---|---|
@@ -3250,6 +3257,7 @@ store, and `provider = none` prints one line and exits 0.
 | Flag (`certify suggest`) | Default | Description |
 |---|---|---|
 | `--limit` | `0` (no cap) | cap the number of unregistered `Test*` symbols considered |
+| `--mutation` | `$FATHOM_MUTATION_REPORT` | a mutation report (go-mutesting output or fathom's JSON shape); with a killed mutant, `mutation-killed` is offered |
 | `--out` | `workspace/artifacts/certify-suggestions.jsonl` | suggestions artifact path (regenerated fresh, never appended) |
 | `--service` | resolved from cwd | Service ID |
 | `--store` | `<repo>/workspace/db/fathom.sqlite` | store path |

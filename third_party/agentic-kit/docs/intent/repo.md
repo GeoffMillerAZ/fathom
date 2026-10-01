@@ -52,7 +52,7 @@ package maintenance and composition still have a cost. Live counts belong in the
 | `internal/jsonwire` | private helper | root | strict prose, lesson-transfer and workflow CLI decoders | stays private; Unicode wire integrity, not a general JSON validator |
 | `examples/*`, `scenarios/*` | example | root | readers; the composition proofs | stays; not library surface |
 | `fathom-pack/` | contract | root | every consumer via fathom guards and layers | stays |
-| `docs/project-intent/`, `.agents/skills/intent-*` | tooling | root | every repo in the fleet | stays; inbound from adopters when: an adopter's `refresh` finds a rule the practice lacks |
+| `docs/project-intent/`, `.claude/skills/intent-*` | tooling | root | every repo in the fleet | stays; inbound from adopters when: an adopter's `refresh` finds a rule the practice lacks |
 
 Inbound: fathom doctrine laws become primitives here (heartbeat `CheckExistence` was
 "promoted from fathom doctrine law 7"). Conjure's CLI kit and structured-edit engine are

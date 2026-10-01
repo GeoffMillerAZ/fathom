@@ -7,13 +7,19 @@ package main
 // purely the fail-open glue around it — I14: a misconfigured or
 // unreachable [decide] provider must NEVER stop the daemon from starting or
 // the CLI from compiling. Every failure here is a warn line and a
-// decision.None-backed *decide.Ports, never a returned error.
+// decision.None-backed *decide.Ports, never a returned error. A provider
+// that opens but then fails a call (a timeout, a 429 or 529, the daemon's
+// refuse rung or safe mode) degrades per call instead (JF-6): one "warn:
+// decision port degraded" line to the same stderr, and the site's
+// deterministic path (internal/decide/degrade.go).
 import (
 	"fmt"
 	"io"
+	"os"
 	"time"
 
 	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
+	"github.com/geoffmilleraz/agentic-kit/foundations/decision/typesafe"
 	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
 	"github.com/geoffmilleraz/fathom/internal/buildinfo"
 	"github.com/geoffmilleraz/fathom/internal/config"
@@ -52,7 +58,7 @@ func openDecisionPorts(loaded config.Loaded, daemonProfileName, callLogPath, lab
 	rec := openDecisionRecorder(callLogPath, stderr)
 
 	if cfg.Provider != "llm" {
-		ports, err := decide.Open(cfg, nil, "", rec)
+		ports, err := decide.Open(cfg, nil, "", rec, decide.WithDisclose(stderr))
 		if err != nil {
 			// Reachable for an unknown provider value (config.Load's own
 			// CUE schema already refuses that at load time — #Decide's
@@ -67,7 +73,7 @@ func openDecisionPorts(loaded config.Loaded, daemonProfileName, callLogPath, lab
 		if cfg.Provider == "typesafe" {
 			model := cfg.Model
 			if model == "" {
-				model = decision.DefaultTypeSafeModel
+				model = typesafe.DefaultTypeSafeModel
 			}
 			fmt.Fprintf(stderr, "%s: decision port typesafe (model %s)\n", label, model)
 		}
@@ -86,7 +92,7 @@ func openDecisionPorts(loaded config.Loaded, daemonProfileName, callLogPath, lab
 	model := compileModelForProfile(p)
 	lane := func(string) (llmclient.LLMClient, error) { return buildLLMClientForProfile(p) }
 
-	ports, err := decide.Open(cfg, lane, model, rec)
+	ports, err := decide.Open(cfg, lane, model, rec, decide.WithDisclose(stderr))
 	if err != nil {
 		fmt.Fprintf(stderr, "warn: decision port disabled: %v\n", err)
 		return &decide.Ports{Decider: decision.None{}, Cfg: cfg, Recorder: rec}
@@ -110,5 +116,25 @@ func openDecisionRecorder(callLogPath string, stderr io.Writer) *decide.Recorder
 		fmt.Fprintf(stderr, "warn: decision log disabled: %v\n", err)
 		return nil
 	}
-	return decide.NewRecorder(f, time.Now, buildinfo.Version())
+	rec := decide.NewRecorder(f, time.Now, buildinfo.Version())
+	seedDecisionRecorder(rec, path)
+	return rec
+}
+
+// seedDecisionRecorder hands rec the last decide.SeedTailBytes of the
+// existing log (JF-10), so a model move across a restart still marks the
+// site's first new row "recalibration_due". Best effort: an unreadable log
+// seeds nothing.
+func seedDecisionRecorder(rec *decide.Recorder, path string) {
+	f, err := os.Open(path)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	if st, err := f.Stat(); err == nil && st.Size() > decide.SeedTailBytes {
+		if _, err := f.Seek(st.Size()-decide.SeedTailBytes, io.SeekStart); err != nil {
+			return
+		}
+	}
+	rec.Seed(f) // a partial first line fails to parse and is skipped
 }

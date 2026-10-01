@@ -1,0 +1,1 @@
+Stale agent worktree copy: AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE

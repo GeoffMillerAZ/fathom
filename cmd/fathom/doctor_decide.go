@@ -29,7 +29,7 @@ import (
 	"strings"
 	"time"
 
-	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
+	"github.com/geoffmilleraz/agentic-kit/foundations/decision/typesafe"
 	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
 	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/decide"
@@ -136,13 +136,13 @@ func decisionProviderVerdict(loaded config.Loaded, build profileClientBuilder, c
 		}
 		model := dc.Model
 		if model == "" {
-			model = decision.DefaultTypeSafeModel
+			model = typesafe.DefaultTypeSafeModel
 		}
 		endpoint := dc.Endpoint
 		if endpoint == "" {
-			endpoint = decision.DefaultTypeSafeBaseURL
+			endpoint = typesafe.DefaultTypeSafeBaseURL
 		}
-		ts, tsErr := decision.NewTypeSafe(decision.TypeSafeConfig{APIKey: key, BaseURL: dc.Endpoint, Model: dc.Model})
+		ts, tsErr := typesafe.NewTypeSafe(typesafe.TypeSafeConfig{APIKey: key, BaseURL: dc.Endpoint, Model: dc.Model})
 		if tsErr != nil {
 			return doctorCheck{
 				Name: name, Status: doctorFail,
@@ -155,7 +155,7 @@ func decisionProviderVerdict(loaded config.Loaded, build profileClientBuilder, c
 		if err := ts.Ping(pingCtx); err != nil {
 			return doctorCheck{
 				Name: name, Status: doctorFail,
-				// Never the key — err is a *decision.TypeSafeError or a
+				// Never the key — err is a *typesafe.TypeSafeError or a
 				// transport error, neither of which ever carries it (kit
 				// contract, typesafe.go).
 				Reason: fmt.Sprintf("[decide] provider=typesafe endpoint=%s ping failed: %v", endpoint, err),

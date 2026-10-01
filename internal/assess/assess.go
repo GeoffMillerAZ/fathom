@@ -149,7 +149,7 @@ var qualityLevels = []decision.Option{
 func unitQuestions(withClaims bool) []decision.Question {
 	qs := []decision.Question{
 		{
-			ID: "coherent", Kind: decision.KindNoul,
+			ID: "coherent", Kind: decision.KindPredicate,
 			Instructions:  "The commits in this unit implement one coherent, finished change.",
 			TrueCriteria:  "the diffs read as a complete change with a clear purpose.",
 			FalseCriteria: "the diffs are partial, abandoned, contradictory, or leave the code broken.",
@@ -157,7 +157,7 @@ func unitQuestions(withClaims bool) []decision.Question {
 	}
 	if withClaims {
 		qs = append(qs, decision.Question{
-			ID: "claims_backed", Kind: decision.KindNoul,
+			ID: "claims_backed", Kind: decision.KindPredicate,
 			Instructions:  "Every plan row this unit flipped to done ([x]) is backed by code or tests present in the diffs.",
 			TrueCriteria:  "each flipped row names something the diffs add or change.",
 			FalseCriteria: "at least one flipped row claims work the diffs do not contain.",
@@ -165,7 +165,7 @@ func unitQuestions(withClaims bool) []decision.Question {
 	}
 	qs = append(qs,
 		decision.Question{
-			ID: "tests_accompany", Kind: decision.KindNoul,
+			ID: "tests_accompany", Kind: decision.KindPredicate,
 			Instructions:  "The behaviour changes in the diffs come with test changes that exercise them.",
 			TrueCriteria:  "new or changed behaviour has matching new or changed tests.",
 			FalseCriteria: "behaviour changed with no test that exercises it.",
@@ -372,8 +372,8 @@ func Verdicts(b Built, resp decision.Response) []Verdict {
 		if a, ok := resp.Answers[q.ID]; ok {
 			v.Confidence = a.Confidence
 			v.Band = string(decision.BandOf(a.Confidence))
-			switch q.Kind {
-			case decision.KindNoul:
+			switch decision.CanonicalKind(q.Kind) {
+			case decision.KindPredicate:
 				v.Answer = "false"
 				if a.Noul >= 0.5 {
 					v.Answer = "true"
@@ -423,11 +423,25 @@ func EstimateTokens(req decision.Request) int {
 	return n
 }
 
+// digestKindSpelling is the spelling a question's kind is hashed under. The
+// question-set digest names what the provider is asked, and the yes/no
+// kind's Go name moved to KindPredicate (agentic-kit DP-12) while every
+// adapter's wire kept saying "noul": hashing the canonical kind under the
+// spelling the digests were minted with keeps an unchanged question set's
+// digest unchanged (7f557f9283695d7f for the unit lane), so a ledger row
+// and its calibration never read a rename as a new template.
+func digestKindSpelling(k decision.Kind) string {
+	if decision.CanonicalKind(k) == decision.KindPredicate {
+		return "noul"
+	}
+	return string(k)
+}
+
 func digestQuestions(lane string, qs []decision.Question) string {
 	h := sha256.New()
 	fmt.Fprintf(h, "lane=%s\n", lane)
 	for _, q := range qs {
-		fmt.Fprintf(h, "%s|%s|%s|%s|%s\n", q.ID, q.Kind, q.Instructions, q.TrueCriteria, q.FalseCriteria)
+		fmt.Fprintf(h, "%s|%s|%s|%s|%s\n", q.ID, digestKindSpelling(q.Kind), q.Instructions, q.TrueCriteria, q.FalseCriteria)
 		opts := make([]string, 0, len(q.Options))
 		for _, o := range q.Options {
 			opts = append(opts, o.Name+"="+o.Criteria)

@@ -172,7 +172,7 @@ type rerankChunkResult struct {
 	lat   time.Duration
 }
 
-// rerankWithinTiers asks d one batched decision.KindNoul question per
+// rerankWithinTiers asks d one batched decision.KindPredicate question per
 // ELIGIBLE matched claim — "does this rule govern the edit described in the
 // state" — where eligible (DP-24) means: matched's own governing-scope tier
 // (scored.governing.tier) has at least one member inside the served
@@ -267,7 +267,7 @@ func rerankWithinTiers(ctx context.Context, d decision.Decider, file, hunk strin
 					Site:       "obligations",
 					Provider:   d.Name(),
 					QuestionID: m.cl.ClaimID,
-					Kind:       decision.KindNoul,
+					Kind:       decision.KindPredicate,
 					Choice:     reason,
 				})
 				continue
@@ -295,7 +295,7 @@ func rerankWithinTiers(ctx context.Context, d decision.Decider, file, hunk strin
 			for _, m := range chunk {
 				req.Questions = append(req.Questions, decision.Question{
 					ID:           m.cl.ClaimID,
-					Kind:         decision.KindNoul,
+					Kind:         decision.KindPredicate,
 					Instructions: "Does this rule govern the edit described in the state — would an editor of this file have to follow it here?",
 					TrueCriteria: rerankCriteria(m.cl),
 				})
@@ -324,7 +324,7 @@ func rerankWithinTiers(ctx context.Context, d decision.Decider, file, hunk strin
 		}
 		ranked = true
 		for id, a := range res.resp.Answers {
-			if a.Kind == decision.KindNoul {
+			if decision.CanonicalKind(a.Kind) == decision.KindPredicate {
 				relevance[id] = a.Noul
 			}
 		}

@@ -38,7 +38,7 @@ const prefilterChunkSize = 20
 // value — documented on that field.
 const defaultPrefilterThreshold = 0.5
 
-// prefilterInstructions is the fixed KindNoul question every section in a
+// prefilterInstructions is the fixed KindPredicate question every section in a
 // chunk is asked, verbatim (vision 32 §2 item 1).
 const prefilterInstructions = "Does this section state a binding rule for code in this repository (something an editor of a governed file must do or must never do), rather than narrative, history, or an example?"
 
@@ -74,7 +74,7 @@ const prefilterInstructions = "Does this section state a binding rule for code i
 //
 // Otherwise, one decision.Request is sent per chunk: State is the chunk's
 // sections rendered deterministically (id, doc path, heading, text) and
-// Questions is one KindNoul question per section, ID = the section's
+// Questions is one KindPredicate question per section, ID = the section's
 // stable Subject, Instructions = prefilterInstructions. A section whose
 // answer is absent from the Response (named in Invalid, or simply never
 // answered) or whose Noul falls strictly below threshold is skipped; a tie
@@ -82,8 +82,10 @@ const prefilterInstructions = "Does this section state a binding rule for code i
 // Response.Records("compile_prefilter"), in chunk order, for the caller to
 // log.
 //
-// A real Decider error (anything but ErrNoProvider) aborts and is returned
-// to the caller — the same "poison the whole run, don't guess" posture
+// A provider failure through internal/decide's port is ErrNoProvider (JF-6:
+// the port's fallback to decision.None discloses one line), so it keeps
+// every section like no provider at all. A real Decider error (anything
+// but ErrNoProvider) aborts and is returned to the caller — the same "poison the whole run, don't guess" posture
 // Compile's own LLM call already takes at the section level, just one step
 // earlier. decErr (DP-22, O109) is non-nil in exactly that case — data
 // describing the chunk that failed (site, provider, question count,
@@ -124,7 +126,7 @@ func PrefilterSections(ctx context.Context, d decision.Decider, threshold float6
 					Site:       "compile_prefilter",
 					Provider:   d.Name(),
 					QuestionID: sec.Subject,
-					Kind:       decision.KindNoul,
+					Kind:       decision.KindPredicate,
 					Choice:     reason,
 				})
 				continue
@@ -186,14 +188,14 @@ func prefilterPlanItems(secs []Section) []decisionPlanItem {
 
 // buildPrefilterRequest renders one chunk's decision.Request: State is
 // every section's id/doc/heading/text, deterministically ordered (chunk
-// order, which is secs' own order); Questions is one KindNoul question per
+// order, which is secs' own order); Questions is one KindPredicate question per
 // section keyed by its stable Subject.
 func buildPrefilterRequest(chunk []Section) decision.Request {
 	qs := make([]decision.Question, len(chunk))
 	for i, sec := range chunk {
 		qs[i] = decision.Question{
 			ID:           sec.Subject,
-			Kind:         decision.KindNoul,
+			Kind:         decision.KindPredicate,
 			Instructions: prefilterInstructions,
 		}
 	}

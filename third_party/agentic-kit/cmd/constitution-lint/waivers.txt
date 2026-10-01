@@ -30,6 +30,17 @@ foundations/cache/result-cache
 # clarification-loop: pure behavioral state machine — no shared data type.
 foundations/communications/clarification-loop
 
+# ── foundations/decision ─────────────────────────────────────────────────────
+# decisiontest: conformance test suite for decision.Decider — test helper, no
+# data contract.
+foundations/decision/decisiontest
+# llm: the LLM decision adapter (DP-14) — behavioral only: configured by
+# functional options (model, max tokens, clock) over an injected
+# llmclient.LLMClient, so no struct crosses the package boundary as data; its
+# rendered prompt and OutputSchema are pinned by golden files, and the
+# Request/Response it speaks are the parent foundations/decision schema's.
+foundations/decision/llm
+
 # ── foundations/distribution ─────────────────────────────────────────────────
 # (artifact-builder and artifact-store retired Wave 4 — zero consumers)
 

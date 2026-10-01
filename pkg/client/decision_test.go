@@ -13,6 +13,7 @@ import (
 	"time"
 
 	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
+	"github.com/geoffmilleraz/agentic-kit/foundations/decision/typesafe"
 	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
 	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/decide"
@@ -344,7 +345,7 @@ func TestWithDecision_TypeSafeFake(t *testing.T) {
 	srv := typesafeSystemOneFake(t)
 	defer srv.Close()
 
-	ts, err := decision.NewTypeSafe(decision.TypeSafeConfig{APIKey: "test-key", BaseURL: srv.URL})
+	ts, err := typesafe.NewTypeSafe(typesafe.TypeSafeConfig{APIKey: "test-key", BaseURL: srv.URL})
 	if err != nil {
 		t.Fatalf("NewTypeSafe: %v", err)
 	}

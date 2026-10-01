@@ -47,17 +47,25 @@ const (
 )
 
 // UnsureBelow is the confidence threshold below which BandOf returns
-// BandUnsure.
+// BandUnsure. It is the vendor's illustrative starting value, an
+// uncalibrated band: see BandOf.
 const UnsureBelow = 0.5
 
 // ProceedAtOrAbove is the confidence threshold at or above which BandOf
-// returns BandProceed.
+// returns BandProceed. It is the vendor's illustrative starting value, an
+// uncalibrated band: see BandOf.
 const ProceedAtOrAbove = 0.9
 
 // BandOf classifies confidence into a Band: below UnsureBelow is
 // BandUnsure, at or above ProceedAtOrAbove is BandProceed, otherwise
 // BandConfirm. Boundaries are exact: confidence == UnsureBelow is
 // BandConfirm, and confidence == ProceedAtOrAbove is BandProceed.
+//
+// These are uncalibrated starting bands, the same for every site: a
+// confidence is a provider's claim, and BandProceed does not mean answers
+// at that confidence are right. NewReading splits a site's labeled samples
+// by them, and CalibratedBand keeps a band only where that site's reading
+// clears a stated bar (docs/fast-judgment.md section 3).
 func BandOf(confidence float64) Band {
 	switch {
 	case confidence < UnsureBelow:

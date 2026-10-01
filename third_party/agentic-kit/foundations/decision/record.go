@@ -27,7 +27,7 @@ type Record struct {
 	Confidence float64
 	// Score is the Answer's Score (KindScore only; zero otherwise).
 	Score float64
-	// Noul is the Answer's Noul (KindNoul only; zero otherwise).
+	// Noul is the Answer's Noul (KindPredicate only; zero otherwise).
 	Noul float64
 
 	// Latency is the Response's Latency, copied onto every Record.

@@ -160,10 +160,10 @@ type Decide struct {
 	RerankTimeoutMS int `toml:"rerank_timeout_ms"`
 
 	// Endpoint overrides provider "typesafe"'s base URL (default
-	// decision.DefaultTypeSafeBaseURL). Unused by "none"/"llm".
+	// typesafe.DefaultTypeSafeBaseURL). Unused by "none"/"llm".
 	Endpoint string `toml:"endpoint"`
 	// Model overrides provider "typesafe"'s model (default
-	// decision.DefaultTypeSafeModel, "jev-latest"). Unused by "none"/"llm".
+	// typesafe.DefaultTypeSafeModel, "jev-latest"). Unused by "none"/"llm".
 	Model string `toml:"model"`
 	// APIKeyEnv names an environment variable ResolveAPIKey reads for
 	// provider "typesafe", at call time — never cached, never resolved
@@ -186,11 +186,22 @@ type Decide struct {
 	// regardless of Provider — internal/decide.SiteAllowed is the single
 	// gate every call site consults. A present-but-empty list (`sites = []`)
 	// disables every site; an absent key (the common case) leaves the
-	// loaded default in place (DefaultDecide.Sites: every current site, so
-	// unconfigured behaviour is unchanged) exactly like every other
-	// present-key-replaces-default list field in this struct (APIKeyCmd
-	// above, Findings.Producers).
+	// loaded default in place (DefaultDecide.Sites: every current site
+	// except route, JF-7) exactly like every other present-key-replaces-
+	// default list field in this struct (APIKeyCmd above,
+	// Findings.Producers). The opt-in names (decide.OptInSites: JF-4,
+	// judgment-foundations §4) validate here too, but only RepoSites can
+	// turn one on.
 	Sites []string `toml:"sites"`
+
+	// RepoSites is [decide] sites exactly as the repository's own
+	// .fathom/config.toml (the project layer) wrote it; nil when that layer
+	// does not set sites. Load sets it, never a file key (toml:"-").
+	// decide.SiteAllowed allows an opt-in site (decide.OptInSites, R2)
+	// only when RepoSites names it: a user-global config.toml can narrow or
+	// widen the ordinary sites, but it never opts a repository into a new
+	// judgment (JF-4).
+	RepoSites []string `toml:"-"`
 }
 
 // DefaultDecide is the zero-configuration [decide] block: provider "none"
@@ -216,14 +227,17 @@ var DefaultDecide = Decide{
 	RouteTimeoutMS:   3000,
 	RankWithinTier:   false,
 	RerankTimeoutMS:  1500,
-	// Every current site (ADR-044 decision 8): the default allowlist keeps
-	// every existing site's behaviour unchanged — Provider "none" still
-	// makes no call either way, and a real provider calls every site it
-	// always called before Sites existed. A repo narrows this explicitly.
-	// "assess" (ADR-046) joins the default like every other site: the
-	// provider is the egress arm, and assess additionally needs its own
-	// default-off capability and an explicit invocation before it spends.
-	Sites: []string{"route", "compile_prefilter", "obligations_rerank", "certify_suggest", "assess", "preflight"},
+	// Frozen (JF-4, judgment-foundations §4): the sites that existed when
+	// per-site opt-in landed, minus route. It never grows: a new site is
+	// opt-in (decide.OptInSites, R2) and a repository names it in its own
+	// [decide] sites. Provider "none" still makes no call either way.
+	// route left on 2026-10-01 (JF-7, §6: it failed calibration, ADR-042
+	// amendment 2026-09-24); its code and SR-44's deterministic precheck
+	// stay, and naming "route" in [decide] sites turns it back on.
+	// "assess" (ADR-046) stays: the provider is the egress arm, and assess
+	// additionally needs its own default-off capability and an explicit
+	// invocation before it spends.
+	Sites: []string{"compile_prefilter", "obligations_rerank", "certify_suggest", "assess", "preflight"},
 }
 
 // Tests configures vision 33 / ADR-043 stage 0's test-evidence ingest

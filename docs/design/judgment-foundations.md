@@ -81,8 +81,29 @@ agentic-kit's hexagonal hardening rows (below).
   even when `provider` is set.
 - `TestSiteAllowed_Allowlist` changes to assert that `AllSites` minus `OptInSites` are allowed by
   default; a new test asserts that each opt-in site is refused under the default.
+- **As built (2026-10-01, JF-4/JF-5).** "The repository's own" means the project layer
+  (`.fathom/config.toml`): `config.Load` keeps that layer's list as `Decide.RepoSites`, and a
+  user-global `~/.fathom/config.toml` can narrow or widen the existing sites but never opts a
+  repository into an opt-in site. `OptInSites` holds names only (no call site asks one, R2); they are
+  disjoint from `AllSites` (the sites that have a call site), and the schema accepts them plus one
+  `judge_<name>` per judge site, never the `judge_*` wildcard. Route is reconciled as a **stated
+  exclusion**, not an opt-in site: `decide.DefaultOffSites = [route]`, and the allowlist test asserts
+  `AllSites` minus `OptInSites` minus `DefaultOffSites` are allowed by default. Reason: route is
+  served by the daemon, whose project layer is its own working directory's config rather than the
+  asking repository's, so an opt-in route could not be turned back on where it runs; and route is a
+  narrowing of an existing site (section 6), so any layer naming `route` turns it back on. **Revisit
+  when** the first opt-in site that runs in the daemon is wired: it needs a per-repository answer to
+  "the repository's own" that the daemon's single config does not give.
 - The degrade rule: a missing key, a timeout, a 429 or 529, refuse mode or safe mode each produce one
   disclosed line and the deterministic path. Nothing else changes.
+- **As built (2026-10-01, JF-6).** `decide.Open` wraps the provider adapter in the kit's fallback to
+  `decision.None` (agentic-kit `NewFallback`, assembled by `ComposeFromConfig` from a policy derived
+  from `[decide] provider`); the fallback's required Observe hook writes the one line (`warn: decision
+  port degraded (<timeout|rate limited|overloaded|closed|error>): ...`) and the site gets an error that
+  is `decision.ErrNoProvider`, the signal every site already reads as "no provider". The daemon's
+  closures (`closingDecider`, `gateDecider`) sit on the adapter inside the fallback
+  (`Ports.Gated`), so safe mode and the refuse rung degrade the same way. A missing key keeps its
+  startup line (`warn: decision port disabled`) and opens `decision.None`. No cache (R5).
 
 **Provider matrix (how Jev stays optional).**
 
@@ -134,7 +155,9 @@ never `violated`. **Kill:** none; it is a correction.
 ## 6. Route off by default (A6)
 
 Remove `route` from `DefaultDecide.Sites`. The code stays (a narrowing, not a deletion) and SR-44's
-deterministic precheck stays. **Re-admission** needs at least 100 real prompts replayed through 4 to 6
+deterministic precheck stays. As built (JF-7): route is `decide.DefaultOffSites`, the one stated
+exclusion from "`AllSites` minus `OptInSites` are allowed by default" (section 4); naming `route` in
+`[decide] sites` turns it back on. **Re-admission** needs at least 100 real prompts replayed through 4 to 6
 decomposed nouls, weights fitted on half and tested on the other half, judged against R3. 41 held-out
 prompts cannot establish 0.9: 38 of 41 has a Wilson lower bound near 0.80.
 
@@ -145,6 +168,10 @@ Most of the strength ladder is computable from evidence: assertion calls present
 a property library imported, a mutation report present. Compute which levels the evidence permits;
 if the site stays on, the model chooses only among those. The 43 of 43 `asserts` answers on Go table
 tests may simply be correct. **Bar:** the model is never offered a level the evidence rules out.
+**As built (2026-10-01, JF-9):** `asserts` needs an assertion call in the body or the test's `t` handed
+to a helper; `golden` a golden or `testdata` read; `property` a property library imported by the file;
+`mutation-killed` a `--mutation` report with a killed mutant. `smoke` and `conformance` stay offered (no
+computable evidence rules them out). An answer outside the offered levels is dropped, never suggested.
 
 ## 8. Calibration readings, not fitted maps (A8)
 
@@ -154,6 +181,13 @@ AUROC, the label provenance mix (human, frontier, computed) and a "recalibration
 model moves. There is no table, so RT-M1 does not gate it. A fitted map (Platt or temperature scaling)
 is deferred (F39): it cannot repair route's non-monotonic failure, and a fit at n near 100 is noise.
 `fathom decide calibrate --provider X` re-grades every site against its calibration set.
+
+**As built (2026-10-01, JF-10, R8).** Every `decisions.jsonl` row carries the resolved model
+(`resp.Model`), and the first row a site logs under a model or provider other than the one it last
+logged carries `"recalibration_due": true` (additive, so `schema_version` stays 2). The comparison
+lives in `decide.Recorder`, keyed by the kit's `decision.ReadingKey` and decided by
+`Reading.RecalibrationDue`, seeded at open from the last 1 MiB of the existing log; no table, memo or
+background job (R5). A failed call (no model) neither marks nor moves anything.
 
 ## 9. Doc corrections (A5)
 

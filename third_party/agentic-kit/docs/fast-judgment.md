@@ -43,18 +43,22 @@ not transferable to yours. Unmarked statements are method, not measurement.
 
 | Kind (kit) | Asks | Returns | Reach for it when | Watch out |
 |---|---|---|---|---|
-| Predicate (`KindNoul`, vendor "Noul") | a yes/no statement, optional criteria for each side | probability of yes, no confidence field | gates, flags, per-item screening, "is this one relevant" | the vendor's other kinds carry a `confidence`; a threshold tuned on a predicate does not carry to a choice [vendor] |
+| Predicate (`KindPredicate`; vendor term and wire alias "noul") | a yes/no statement, optional criteria for each side | probability of yes, no confidence field | gates, flags, per-item screening, "is this one relevant" | the vendor's other kinds carry a `confidence`; a threshold tuned on a predicate does not carry to a choice [vendor] |
 | Choice (`KindChoice`) | pick one of up to 255 options you define | probability per option, a `confidence` | classification, routing, triage | relative, not absolute: it says which option, never that none applies, so give it an exit and add per-option predicates when "act at all" matters [vendor] |
 | Score (`KindScore`) | a position on 2 to 10 ordered levels you describe | a value that can fall between levels, a distribution | grading, risk, severity, difficulty | levels are positions, not measurements: compare to a threshold, never interpolate a magnitude [vendor] |
 | Abstain (not a primitive) | an `other` or `unknown` option, or a low-confidence band | the model declining | every choice; every gate that has a human or a deterministic fallback | an explicit unknown option did not produce reliable abstention in the kit's own two-request live smoke, which marked uninformative captured text as satisfied [kit]. Treat abstention as something to calibrate, not a feature to trust. |
 
 **In this repository.** `foundations/decision` defines the three kinds, `Confidence` (the
 vendor's k/max statistic, recomputed locally and never taken from the wire), `BandOf`,
-and three interchangeable deciders: `None` (always "no provider"), `LLM` (a generic
-completion asked to emulate the contract) and `TypeSafe` (the native endpoint). Two
+and three interchangeable deciders: `None` (always "no provider", in the core), `llm.LLM`
+(a generic completion asked to emulate the contract, in `foundations/decision/llm`) and
+`typesafe.TypeSafe` (the native endpoint, in `foundations/decision/typesafe`). The core
+imports neither adapter package, so the port carries no vendor code. Two
 cautions. `BandOf` hard-codes 0.5 and 0.9, which are the vendor's illustrative starting
-bands, not calibrated bands for any of your sites; per-site calibrated bands are planned
-work, see [decision 0017](intent/decisions/0017-fast-judgment-is-optional-and-calibrated.md).
+bands, not calibrated bands for any of your sites; `CalibratedBand` keeps a band for a
+site only where that site's reading (`NewReading`) clears a stated bar (`HintBar`,
+`GateBar`) and reads everything else as unsure, see
+[decision 0017](intent/decisions/0017-fast-judgment-is-optional-and-calibrated.md).
 And the `LLM` adapter emulates the shape, not the model: its numbers are self-reported,
 so calibrate it separately from the native provider.
 
@@ -115,10 +119,13 @@ site failed calibration outright, and 41 held-out prompts could not have establi
    Wilson intervals; whether accuracy rises with confidence (if it does not, no
    threshold can repair it); Brier score and AUROC; the label provenance mix; coverage
    at the bar. Correlated questions and repeated replays are not independent trials.
-   The kit has none of Wilson, Brier or AUROC yet (`reliability-stats` offers paired
-   bootstrap, Wilcoxon and A12 for comparing arms); a readings library is accepted work
-   with open plan rows DP-22 and DP-23, not started
-   ([decision 0017](intent/decisions/0017-fast-judgment-is-optional-and-calibrated.md),
+   In this kit `decision.NewReading` computes all of these but coverage for one (site,
+   template version, provider, resolved model) from your labeled samples: n and accuracy
+   with a Wilson 95% interval, the split by confidence band with per-band intervals,
+   monotonicity, Brier, AUROC and the provenance mix, and `Reading.RecalibrationDue`
+   flags a moved model. It is pure compute with no table, so you keep the samples
+   (`reliability-stats` offers paired bootstrap, Wilcoxon and A12 for comparing arms;
+   [decision 0017](intent/decisions/0017-fast-judgment-is-optional-and-calibrated.md),
    [plan](plans/decision-port.md#hexagonal-hardening)).
 6. **Apply the bar for the authority the answer will have.**
 
@@ -223,8 +230,8 @@ background work. On a missed deadline, skip silently and append at the next oppo
   have been sent, so a person can see the cost and the egress before opting in.
 - A missing key, a timeout, a 429 or 529, a refusal or a safe mode each produce one
   disclosed line and the deterministic path. Never fall back silently to a different
-  provider: its numbers are uncalibrated. (`NewTypeSafe` refuses to construct without a
-  key for this reason; a caller wanting a fallback composes one on purpose.)
+  provider: its numbers are uncalibrated. (`typesafe.NewTypeSafe` refuses to construct
+  without a key for this reason; a caller wanting a fallback composes one on purpose.)
 - Access itself is unreliable while a product is young. A secondary source reported
   new sign-ups paused for demand within a week of launch, the vendor says its limits
   move without notice, and the aggregator route used in the kit's smoke was an alpha

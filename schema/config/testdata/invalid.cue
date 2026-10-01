@@ -137,3 +137,12 @@ package config
 // bad21: #Config & {
 // 	hooks: pin_check: "warn"
 // }
+
+// A [decide] sites entry naming the judge_* family itself, or a judge site
+// with no name: one "judge_<name>" per site, never a wildcard (JF-4):
+// bad22: #Config & {
+// 	decide: sites: ["judge_*"]
+// }
+// bad23: #Config & {
+// 	decide: sites: ["judge_"]
+// }

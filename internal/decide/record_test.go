@@ -17,7 +17,7 @@ import (
 // (Confidence < decision.UnsureBelow) is recorded applied:false no matter
 // what the caller's applied predicate returns; a confident one is recorded
 // per the predicate; a nil Recorder is a no-op; every row carries
-// schema_version 1 and rows come out sorted by question id.
+// schema_version 2 and rows come out sorted by question id.
 func TestRecord_UnsureIsNotApplied(t *testing.T) {
 	fixedNow := time.Date(2026, 9, 22, 12, 0, 0, 0, time.UTC)
 
@@ -25,8 +25,8 @@ func TestRecord_UnsureIsNotApplied(t *testing.T) {
 		Provider: "llm",
 		Model:    "test-model",
 		Answers: map[string]decision.Answer{
-			"b-unsure": {Kind: decision.KindNoul, Noul: 0.4, Confidence: 0.4},
-			"a-sure":   {Kind: decision.KindNoul, Noul: 0.95, Confidence: 0.95},
+			"b-unsure": {Kind: decision.KindPredicate, Noul: 0.4, Confidence: 0.4},
+			"a-sure":   {Kind: decision.KindPredicate, Noul: 0.95, Confidence: 0.95},
 		},
 		Latency: 12 * time.Millisecond,
 		Usage:   decision.Usage{InputTokens: 10, OutputTokens: 5},
@@ -86,8 +86,8 @@ func TestRecord_UnsureIsNotApplied(t *testing.T) {
 	}
 
 	for _, row := range []map[string]any{rowA, rowB} {
-		if v, ok := row["schema_version"].(float64); !ok || v != 1 {
-			t.Errorf("schema_version = %v, want 1", row["schema_version"])
+		if v, ok := row["schema_version"].(float64); !ok || v != 2 {
+			t.Errorf("schema_version = %v, want 2", row["schema_version"])
 		}
 		if row["fathom_version"] != "v-test" {
 			t.Errorf("fathom_version = %v, want %q", row["fathom_version"], "v-test")
@@ -113,7 +113,7 @@ func TestRecord_NilRecorderIsNoop(t *testing.T) {
 	resp := decision.Response{
 		Provider: "none",
 		Answers: map[string]decision.Answer{
-			"only": {Kind: decision.KindNoul, Noul: 0.9, Confidence: 0.9},
+			"only": {Kind: decision.KindPredicate, Noul: 0.9, Confidence: 0.9},
 		},
 	}
 	rec.Record("site", resp, func(decision.Answer) bool { return true })
@@ -129,12 +129,12 @@ func TestRecorder_Append(t *testing.T) {
 	records := []decision.Record{
 		{
 			Site: "compile_prefilter", Provider: "llm", Model: "test-model",
-			QuestionID: "sec-2", Kind: decision.KindNoul,
+			QuestionID: "sec-2", Kind: decision.KindPredicate,
 			Noul: 0.4, Confidence: 0.4, // unsure band
 		},
 		{
 			Site: "compile_prefilter", Provider: "llm", Model: "test-model",
-			QuestionID: "sec-1", Kind: decision.KindNoul,
+			QuestionID: "sec-1", Kind: decision.KindPredicate,
 			Noul: 0.95, Confidence: 0.95, // proceed band
 		},
 	}
@@ -205,8 +205,8 @@ func TestRecordError(t *testing.T) {
 		t.Fatalf("row not JSON: %v", err)
 	}
 
-	if v, ok := row["schema_version"].(float64); !ok || v != 1 {
-		t.Errorf("schema_version = %v, want 1", row["schema_version"])
+	if v, ok := row["schema_version"].(float64); !ok || v != 2 {
+		t.Errorf("schema_version = %v, want 2", row["schema_version"])
 	}
 	if row["fathom_version"] != "v-test" {
 		t.Errorf("fathom_version = %v, want %q", row["fathom_version"], "v-test")

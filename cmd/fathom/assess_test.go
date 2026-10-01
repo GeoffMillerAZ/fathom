@@ -171,9 +171,9 @@ func unitAnswers(model string) decision.Response {
 	return decision.Response{
 		Provider: "llm", Model: model,
 		Answers: map[string]decision.Answer{
-			"coherent":        {ID: "coherent", Kind: decision.KindNoul, Noul: 0.96, Confidence: 0.96},
-			"claims_backed":   {ID: "claims_backed", Kind: decision.KindNoul, Noul: 0.93, Confidence: 0.93},
-			"tests_accompany": {ID: "tests_accompany", Kind: decision.KindNoul, Noul: 0.2, Confidence: 0.8},
+			"coherent":        {ID: "coherent", Kind: decision.KindPredicate, Noul: 0.96, Confidence: 0.96},
+			"claims_backed":   {ID: "claims_backed", Kind: decision.KindPredicate, Noul: 0.93, Confidence: 0.93},
+			"tests_accompany": {ID: "tests_accompany", Kind: decision.KindPredicate, Noul: 0.2, Confidence: 0.8},
 			"quality":         {ID: "quality", Kind: decision.KindChoice, Choice: "adequate", Probabilities: map[string]float64{"adequate": 0.9, "solid": 0.1}, Confidence: 0.875},
 		},
 		Usage: decision.Usage{InputTokens: 1200, OutputTokens: 80},
@@ -223,7 +223,7 @@ func TestCmdAssess_JudgesWorkProductsNeverTranscripts(t *testing.T) {
 		}
 	}
 	for _, q := range calls[0].Questions {
-		if q.Kind != decision.KindNoul && q.Kind != decision.KindChoice {
+		if q.Kind != decision.KindPredicate && q.Kind != decision.KindChoice {
 			t.Errorf("question %s is %q: every judgment is a typed noul or choice", q.ID, q.Kind)
 		}
 	}

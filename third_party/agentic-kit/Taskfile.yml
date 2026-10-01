@@ -32,6 +32,8 @@ tasks:
     desc: go vet across the workspace (root module + nested modules)
     cmds:
       - "{{.GO}} vet ./..."
+      # ./... skips dot directories; the intent snapshot updater lives in one
+      - "{{.GO}} vet ./.claude/skills/intent-init/scripts"
       - "(cd kits/docextract/pdf && {{.GO}} vet ./...)"
       - "(cd kits/docextract/xlsx && {{.GO}} vet ./...)"
 
@@ -57,6 +59,8 @@ tasks:
     desc: Run all tests (race-detected, root module + nested modules)
     cmds:
       - "{{.GO}} test -race ./..."
+      # ./... skips dot directories; the intent snapshot updater lives in one
+      - "{{.GO}} test -race ./.claude/skills/intent-init/scripts"
       - "(cd kits/docextract/pdf && {{.GO}} test -race ./...)"
       - "(cd kits/docextract/xlsx && {{.GO}} test -race ./...)"
 
@@ -74,11 +78,11 @@ tasks:
       - task: test
 
   scripts-check:
-    desc: bash -n every shipped shell script, then run the fathom-pack push-gate tests over temp repositories (no network)
+    desc: bash -n every shipped shell script, then run the fathom-pack push-gate tests over temp repositories and the intent-skill installer test under a temporary HOME (no network)
     cmds:
       - |
         rc=0
-        for f in fathom-pack/scripts/*.sh; do
+        for f in fathom-pack/scripts/*.sh scripts/*.sh; do
           bash -n "$f" || { echo "bash -n FAILED: $f"; rc=1; }
         done
         [ "$rc" -eq 0 ] || exit "$rc"
@@ -87,6 +91,7 @@ tasks:
         # hermetic under a hook: git exports GIT_DIR to hooks, so run both again with the real one set
         GIT_DIR="$(git rev-parse --absolute-git-dir)" bash fathom-pack/scripts/push-check_test.sh
         GIT_DIR="$(git rev-parse --absolute-git-dir)" bash fathom-pack/scripts/push-http_test.sh
+        bash scripts/install-intent_test.sh
 
   eval:
     desc: "Run kits/eval-runner in replay mode over the committed corpus (H5/D9 first subscriber). Fully offline: no provider keys, no network — cassette-backed judge lanes only. Exits non-zero on regression-gate failure and on an empty bank (ErrEmptyBank, enforced in the runner, not here); the printed scenario count is informational."

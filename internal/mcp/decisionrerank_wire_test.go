@@ -63,7 +63,7 @@ func seedWireClaim(t *testing.T, st store.Store, id, rule string) {
 func mockNoulResponse(provider string, answers map[string]float64) decision.Response {
 	out := decision.Response{Provider: provider, Answers: make(map[string]decision.Answer, len(answers))}
 	for id, noul := range answers {
-		out.Answers[id] = decision.Answer{ID: id, Kind: decision.KindNoul, Noul: noul}
+		out.Answers[id] = decision.Answer{ID: id, Kind: decision.KindPredicate, Noul: noul}
 	}
 	return out
 }

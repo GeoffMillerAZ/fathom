@@ -6,7 +6,7 @@ like responsible long-term owners of a project, without loading any of it into a
 that does not need it.
 
 It lives in `docs/intent/` with a router at `docs/intent/README.md`. The procedure is
-the `intent-*` skill family (`.agents/skills/intent-*/`, templates in `intent-init/`).
+the `intent-*` skill family (`.claude/skills/intent-*/`, templates in `intent-init/`).
 Tool wiring is in [integration.md](integration.md); worked examples, including what
 *not* to record, are in [examples.md](examples.md). Change records (commits, changelog,
 breaking changes, the release ritual) are the sibling layer in [changes.md](changes.md):

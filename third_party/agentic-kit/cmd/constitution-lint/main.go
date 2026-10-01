@@ -57,6 +57,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -1221,7 +1222,8 @@ func waivedLine(waivers map[string]bool, rel string, line int) bool {
 // ── 10. secret-scan ──────────────────────────────────────────────────────────
 
 // checkSecretScan sweeps the working tree on disk — every file under root
-// except .git/, workspace/, tmp/, and *_test.go (see walkSweepFiles); it
+// except .git/, .claude/worktrees/, workspace/, tmp/, and *_test.go (see
+// walkSweepFiles); it
 // never consults git, so "tracked vs untracked" plays no part — for matches
 // against the well-known secret shapes in
 // cmd/constitution-lint/secret-patterns.txt (one regexp per line, #
@@ -1391,17 +1393,32 @@ func checkReadmeCount(root string) []Finding {
 
 // ── sweep helpers (shared by org-agnostic and secret-scan) ──────────────────
 
-// sweepSkipDirs are directory base names always excluded from the
-// repo-wide sweeps: .git/ (VCS internals), workspace/ and tmp/ (generated,
-// gitignored scratch — see AGENTS.md's workspace/ entry), and .claude/
-// (Claude Code session state — it can hold full stale agent-worktree copies
-// of the repo, whose waivers, keyed to real paths, can never match; never
-// shipped, never swept).
+// sweepSkipDirs are the directories always excluded from the repo-wide
+// sweeps, at any depth: .git/ (VCS internals), workspace/ and tmp/
+// (generated, gitignored scratch — see AGENTS.md's workspace/ entry), and
+// .claude/worktrees/ (Claude Code agent worktrees — full stale copies of
+// the repo, whose waivers, keyed to real paths, can never match; never
+// shipped, never swept). A key without a slash matches a directory's base
+// name; a "parent/name" key matches only that name directly under that
+// parent. The rest of .claude/ is swept: .claude/skills holds the kit's
+// shipped skills (the one real copy; .agents/skills links to it), so a
+// secret or an org-specific name there must fail like anywhere else.
 var sweepSkipDirs = map[string]bool{
-	".git":      true,
-	".claude":   true,
-	"workspace": true,
-	"tmp":       true,
+	".git":              true,
+	".claude/worktrees": true,
+	"workspace":         true,
+	"tmp":               true,
+}
+
+// isSweepSkipDir reports whether the directory at rel (root-relative,
+// slash-separated) is one of sweepSkipDirs.
+func isSweepSkipDir(rel string) bool {
+	name := path.Base(rel)
+	if sweepSkipDirs[name] {
+		return true
+	}
+	parent := path.Base(path.Dir(rel))
+	return parent != "." && sweepSkipDirs[parent+"/"+name]
 }
 
 // lintOwnTestdataRel is this linter's own fixture directory, excluded from
@@ -1430,7 +1447,10 @@ func walkSweepFiles(root string, fn func(rel string, data []byte)) error {
 // with the operating system's own wording, still skipped, and the reason
 // read-coverage fails), or skipped with its category ("sweep-skip-dir"
 // for sweepSkipDirs and lintOwnTestdataRel, recorded once for the
-// directory rather than per descendant; "test-file"). Binary-looking
+// directory rather than per descendant; "test-file"; "dir-symlink", a
+// symlink whose target is a directory, which the walk never descends and
+// which is read at its real path when that lies under root, so
+// os.ReadFile's "is a directory" is not a failed read). Binary-looking
 // files (a NUL byte in the first 8000 bytes, the same heuristic classic
 // Unix text tools use) were read successfully and are recorded as read;
 // they are simply not handed to fn. A directory that cannot be entered is
@@ -1456,7 +1476,7 @@ func walkWithManifest(root string, reads *readmanifest.Set, fn func(rel string, 
 			return nil
 		}
 		if d.IsDir() {
-			if sweepSkipDirs[d.Name()] || rel == lintOwnTestdataRel {
+			if isSweepSkipDir(rel) || rel == lintOwnTestdataRel {
 				reads.Skip(path, "sweep-skip-dir")
 				return fs.SkipDir
 			}
@@ -1465,6 +1485,12 @@ func walkWithManifest(root string, reads *readmanifest.Set, fn func(rel string, 
 		if strings.HasSuffix(rel, "_test.go") {
 			reads.Skip(path, "test-file")
 			return nil
+		}
+		if d.Type()&fs.ModeSymlink != 0 {
+			if info, statErr := os.Stat(path); statErr == nil && info.IsDir() {
+				reads.Skip(path, "dir-symlink")
+				return nil
+			}
 		}
 		data, ok := reads.ReadFile(path)
 		if !ok {

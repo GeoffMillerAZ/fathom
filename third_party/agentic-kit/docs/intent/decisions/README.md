@@ -3,7 +3,7 @@
 Index of the kit's decisions. Most were recorded where they were made (the uplift plan,
 a design doc, `compat.md`); this index points at them and carries the short revisit
 condition. A pointed-at decision is promoted to a record here (`NNNN-slug.md`, template in
-`.agents/skills/intent-init/templates/decisions/`) only when it is reopened.
+`.claude/skills/intent-init/templates/decisions/`) only when it is reopened.
 New decisions are written here directly with `intent-decide`.
 
 Record a decision when any holds: reversal is expensive; it constrains code outside its

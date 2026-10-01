@@ -49,7 +49,21 @@ _severityLevels: #Question & {
 	Levels: ["cosmetic", "minor", "moderate", "major", "line-down"]
 }
 
-// A noul (yes/no probability) question.
+// A predicate (yes/no probability) question.
+_lineStopped: #Question & {
+	ID:           "line-stopped"
+	Kind:         "predicate"
+	Instructions: "has the line stopped?"
+	Options: []
+	Min:           0
+	Max:           0
+	Rubric:        ""
+	TrueCriteria:  "the belt is not moving"
+	FalseCriteria: ""
+	Levels: []
+}
+
+// A predicate question written with the decode alias "noul".
 _restartSafe: #Question & {
 	ID:           "restart-safe"
 	Kind:         "noul"
@@ -63,8 +77,74 @@ _restartSafe: #Question & {
 	Levels: []
 }
 
-// A Request bundling all three questions against one State.
+// A Request bundling every question above against one State.
 _request: #Request & {
 	State: "widget on line 3 stopped moving after the motor made a grinding noise"
-	Questions: [_rootCause, _severity, _severityLevels, _restartSafe]
+	Questions: [_rootCause, _severity, _severityLevels, _lineStopped, _restartSafe]
 }
+
+// Composition policies (#Policy). These are regular fields, not hidden
+// ones, so `cue vet ./testdata/` also checks that every required field is
+// present (a hidden field is checked for conflicts only).
+
+// cache(cascade(cheap, fallback(a, b))): testdata/compose_policy.json, which
+// TestComposeFromConfigBuildsCascadeFallbackCache composes.
+composePolicy: #Policy & {
+	cache: {
+		name:             "judgment-cache"
+		store:            "memory"
+		template_version: "v1"
+		observe:          "cache-log"
+		inner: cascade: {
+			name:           "tiers"
+			escalate_below: 0.8
+			observe:        "cascade-log"
+			stages: [
+				{provider: "cheap"},
+				{fallback: {
+					name:    "backup"
+					observe: "fallback-log"
+					deciders: [{provider: "a"}, {provider: "b"}]
+				}},
+			]
+		}
+	}
+}
+
+// The same nodes reordered: testdata/compose_policy_reordered.json.
+composePolicyReordered: #Policy & {
+	cache: {
+		name:             "judgment-cache"
+		store:            "memory"
+		template_version: "v1"
+		observe:          "cache-log"
+		inner: cascade: {
+			name:           "tiers"
+			escalate_below: 0.8
+			observe:        "cascade-log"
+			stages: [
+				{fallback: {
+					name:    "backup"
+					observe: "fallback-log"
+					deciders: [{provider: "b"}, {provider: "a"}]
+				}},
+				{provider: "cheap"},
+			]
+		}
+	}
+}
+
+// A recorder over a cost-ordered cascade that never escalates on
+// confidence (escalate_below 0), and a replay of a named transcript.
+recordPolicy: #Policy & {
+	record: {
+		name: "rec"
+		inner: cascade: {
+			order_by_cost:  true
+			escalate_below: 0
+			stages: [{provider: "cheap"}, {provider: "b"}]
+		}
+	}
+}
+
+replayPolicy: #Policy & {replay: {name: "offline", transcript: "run-1"}}

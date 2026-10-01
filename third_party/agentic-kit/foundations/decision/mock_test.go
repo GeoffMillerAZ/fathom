@@ -16,7 +16,7 @@ func mockRequest(state string) decision.Request {
 func TestMockDecider_ScriptedEntriesInOrder(t *testing.T) {
 	boom := errors.New("scripted failure")
 	m := decision.NewMockDecider("mock",
-		decision.MockEntry{Response: decision.Response{Provider: "first", Answers: map[string]decision.Answer{"q1": {ID: "q1", Kind: decision.KindNoul, Noul: 0.9}}}},
+		decision.MockEntry{Response: decision.Response{Provider: "first", Answers: map[string]decision.Answer{"q1": {ID: "q1", Kind: decision.KindPredicate, Noul: 0.9}}}},
 		decision.MockEntry{Err: boom, Response: decision.Response{Provider: "ignored when Err is set"}},
 	)
 

@@ -328,6 +328,11 @@ func mergeDecideFields(d *Decide, raw map[string]any, source Source, path string
 		if list, ok := stringSlice(v); ok {
 			d.Sites = list
 			prov["decide.sites"] = SourceInfo{source, path}
+			// JF-4: only the project layer is the repository's own list,
+			// the one that may opt it into an opt-in site.
+			if source == SourceProject {
+				d.RepoSites = list
+			}
 		}
 	}
 }

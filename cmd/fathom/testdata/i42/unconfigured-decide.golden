@@ -1,0 +1,19 @@
+== doctor decision_provider (table)
+fathom doctor — service "svc", harness "claude", root /repo
+
+CHECK                STATUS  REASON
+decision_provider    SKIP    off ([decide] provider = none)
+
+1 checks: 0 pass, 0 fail, 1 skipped
+== doctor decision_provider (json)
+{"name":"decision_provider","status":"skipped","reason":"off ([decide] provider = none)"}
+== openDecisionPorts stderr
+== certify suggest stdout
+certify suggest: a decision provider is required (set [decide] provider = llm|typesafe in .fathom/config.toml)
+== certify suggest stderr
+== certify suggest exit
+0
+== route status
+OK
+== route body
+{"shape":"","verb":"","confidence":0,"band":"unsure","provider":"none"}

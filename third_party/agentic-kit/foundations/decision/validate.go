@@ -7,13 +7,22 @@ import "fmt"
 //   - State must be non-empty.
 //   - Every Question.ID must be non-empty and unique within req.
 //   - Every Question.Kind must be a known Kind (KindChoice, KindScore, or
-//     KindNoul).
+//     KindPredicate). A Kind built without ParseKind that holds the alias
+//     "noul" is accepted as KindPredicate; the adapters answer it as one.
 //   - A KindChoice question must have 2..255 Options with unique,
 //     non-empty names.
 //   - A KindScore question must have Max strictly greater than Min, UNLESS
-//     Levels is set, in which case Levels must have 2..10 entries and
+//     Levels is set, in which case Levels must have at least 2 entries and
 //     Min/Max must be either both zero (unset) or exactly 0 and
 //     len(Levels)-1.
+//
+// Validate enforces the structure every Decider shares, not any one
+// provider's limits. In particular it puts no upper bound on Levels: the
+// 2..10 levels of TypeSafe's Score primitive is that vendor's limit, which
+// TypeSafe declares in its Capabilities and enforces itself, refusing an
+// out-of-limit question into Response.Invalid by ID (DP-13). At least 2
+// Levels stays a domain rule: one level is not an ordered score, just as
+// the range form needs Max greater than Min.
 //
 // Validate does not require req.Questions to be non-empty: an empty batch
 // is a degenerate but harmless request.
@@ -32,7 +41,7 @@ func Validate(req Request) error {
 		}
 		seen[q.ID] = true
 
-		switch q.Kind {
+		switch canonicalKind(q.Kind) {
 		case KindChoice:
 			if err := validateChoiceOptions(q); err != nil {
 				return err
@@ -41,7 +50,7 @@ func Validate(req Request) error {
 			if err := validateScoreRange(q); err != nil {
 				return err
 			}
-		case KindNoul:
+		case KindPredicate:
 			// No additional structural constraints.
 		default:
 			return fmt.Errorf("decision: question %q: unknown Kind %q", q.ID, q.Kind)
@@ -52,9 +61,10 @@ func Validate(req Request) error {
 
 // validateScoreRange checks q's Min/Max/Levels against the score-kind
 // contract: with Levels unset, Max must be strictly greater than Min (the
-// original rule); with Levels set, Levels must have 2..10 entries and
-// Min/Max must be either both zero (unset) or exactly 0 and len(Levels)-1 —
-// see Question.Levels.
+// original rule); with Levels set, Levels must have at least 2 entries (no
+// upper bound: an adapter's own level limit is its Capabilities' business,
+// not the core's — see Validate) and Min/Max must be either both zero
+// (unset) or exactly 0 and len(Levels)-1 — see Question.Levels.
 func validateScoreRange(q Question) error {
 	if len(q.Levels) == 0 {
 		if !(q.Max > q.Min) {
@@ -62,8 +72,8 @@ func validateScoreRange(q Question) error {
 		}
 		return nil
 	}
-	if len(q.Levels) < 2 || len(q.Levels) > 10 {
-		return fmt.Errorf("decision: question %q: score Levels must have 2..10 entries, got %d", q.ID, len(q.Levels))
+	if len(q.Levels) < 2 {
+		return fmt.Errorf("decision: question %q: score Levels must have at least 2 entries, got %d", q.ID, len(q.Levels))
 	}
 	unset := q.Min == 0 && q.Max == 0
 	matching := q.Min == 0 && q.Max == float64(len(q.Levels)-1)

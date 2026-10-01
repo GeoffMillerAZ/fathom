@@ -1,0 +1,25 @@
+{
+  "cache": {
+    "name": "judgment-cache",
+    "store": "memory",
+    "template_version": "v1",
+    "observe": "cache-log",
+    "inner": {
+      "cascade": {
+        "name": "tiers",
+        "escalate_below": 0.8,
+        "observe": "cascade-log",
+        "stages": [
+          {"provider": "cheap"},
+          {
+            "fallback": {
+              "name": "backup",
+              "observe": "fallback-log",
+              "deciders": [{"provider": "a"}, {"provider": "b"}]
+            }
+          }
+        ]
+      }
+    }
+  }
+}

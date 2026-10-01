@@ -18,3 +18,15 @@ func (None) Name() string { return "none" }
 func (None) Decide(_ context.Context, _ Request) (Response, error) {
 	return Response{Provider: "none"}, ErrNoProvider
 }
+
+// Capabilities declares that None answers no kind, bills nothing, makes no
+// round trip and reports no probabilities: every Request fails with
+// ErrNoProvider before any work.
+func (None) Capabilities() Capabilities {
+	return Capabilities{
+		Declared:            true,
+		Latency:             LatencyNone,
+		Cost:                CostNone,
+		ConfidenceSemantics: ConfidenceNone,
+	}
+}

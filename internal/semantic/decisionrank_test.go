@@ -21,13 +21,13 @@ import (
 
 const rerankTestFile = "internal/extractor/goextract.go"
 
-// mockNoulResponse builds a decision.Response answering one KindNoul
+// mockNoulResponse builds a decision.Response answering one KindPredicate
 // question per (claimID, noul) pair — a compact way to script a
 // MockDecider entry for these tests.
 func mockNoulResponse(provider string, answers map[string]float64) decision.Response {
 	out := decision.Response{Provider: provider, Answers: make(map[string]decision.Answer, len(answers))}
 	for id, noul := range answers {
-		out.Answers[id] = decision.Answer{ID: id, Kind: decision.KindNoul, Noul: noul}
+		out.Answers[id] = decision.Answer{ID: id, Kind: decision.KindPredicate, Noul: noul}
 	}
 	return out
 }
@@ -201,7 +201,7 @@ func TestRerankWithinTiers_ChunksByDeciderName(t *testing.T) {
 		for ci, n := range chunkSizes {
 			answers := make(map[string]decision.Answer, n)
 			for j := 0; j < n; j++ {
-				answers[matched[idx].cl.ClaimID] = decision.Answer{ID: matched[idx].cl.ClaimID, Kind: decision.KindNoul, Noul: 0.9}
+				answers[matched[idx].cl.ClaimID] = decision.Answer{ID: matched[idx].cl.ClaimID, Kind: decision.KindPredicate, Noul: 0.9}
 				idx++
 			}
 			entries[ci] = decision.MockEntry{Response: decision.Response{Provider: "llm", Answers: answers}}
@@ -242,7 +242,7 @@ func TestRerankWithinTiers_ChunksByDeciderName(t *testing.T) {
 	t.Run("unrecognized-name mock: 1 call", func(t *testing.T) {
 		answers := make(map[string]decision.Answer, len(matched))
 		for _, m := range matched {
-			answers[m.cl.ClaimID] = decision.Answer{ID: m.cl.ClaimID, Kind: decision.KindNoul, Noul: 0.9}
+			answers[m.cl.ClaimID] = decision.Answer{ID: m.cl.ClaimID, Kind: decision.KindPredicate, Noul: 0.9}
 		}
 		md := decision.NewMockDecider("mock", decision.MockEntry{Response: decision.Response{Provider: "mock", Answers: answers}})
 
@@ -289,7 +289,7 @@ func (f *fixedBatchDecider) Decide(_ context.Context, req decision.Request) (dec
 	f.mu.Unlock()
 	answers := make(map[string]decision.Answer, len(req.Questions))
 	for _, q := range req.Questions {
-		answers[q.ID] = decision.Answer{ID: q.ID, Kind: decision.KindNoul, Noul: 0.9}
+		answers[q.ID] = decision.Answer{ID: q.ID, Kind: decision.KindPredicate, Noul: 0.9}
 	}
 	return decision.Response{Provider: f.name, Answers: answers}, nil
 }
@@ -310,7 +310,7 @@ func (d chunkFailDecider) Decide(_ context.Context, req decision.Request) (decis
 		if q.ID == d.failID {
 			return decision.Response{}, d.err
 		}
-		answers[q.ID] = decision.Answer{ID: q.ID, Kind: decision.KindNoul, Noul: 0.9}
+		answers[q.ID] = decision.Answer{ID: q.ID, Kind: decision.KindPredicate, Noul: 0.9}
 	}
 	return decision.Response{Provider: "llm", Answers: answers}, nil
 }
@@ -661,7 +661,7 @@ func (p *concurrencyProbeDecider) Decide(_ context.Context, req decision.Request
 
 	answers := make(map[string]decision.Answer, len(req.Questions))
 	for _, q := range req.Questions {
-		answers[q.ID] = decision.Answer{ID: q.ID, Kind: decision.KindNoul, Noul: 0.9}
+		answers[q.ID] = decision.Answer{ID: q.ID, Kind: decision.KindPredicate, Noul: 0.9}
 	}
 	return decision.Response{Provider: "llm", Answers: answers}, nil
 }
@@ -707,7 +707,7 @@ func TestRerankWithinTiers_DefaultCapsChunkTypesafe(t *testing.T) {
 
 	answers := make(map[string]decision.Answer, len(matched))
 	for _, m := range matched {
-		answers[m.cl.ClaimID] = decision.Answer{ID: m.cl.ClaimID, Kind: decision.KindNoul, Noul: 0.9}
+		answers[m.cl.ClaimID] = decision.Answer{ID: m.cl.ClaimID, Kind: decision.KindPredicate, Noul: 0.9}
 	}
 	entry := decision.MockEntry{Response: decision.Response{Provider: "typesafe", Answers: answers}}
 	md := decision.NewMockDecider("typesafe", entry, entry, entry)
@@ -748,8 +748,8 @@ func TestRerankWithinTiers_OversizedClaimNeverSent(t *testing.T) {
 	matched := []scored{normal[0], huge, normal[1]}
 
 	answers := map[string]decision.Answer{
-		"rule000": {ID: "rule000", Kind: decision.KindNoul, Noul: 0.9},
-		"rule001": {ID: "rule001", Kind: decision.KindNoul, Noul: 0.9},
+		"rule000": {ID: "rule000", Kind: decision.KindPredicate, Noul: 0.9},
+		"rule001": {ID: "rule001", Kind: decision.KindPredicate, Noul: 0.9},
 	}
 	entry := decision.MockEntry{Response: decision.Response{Provider: "typesafe", Answers: answers}}
 	md := decision.NewMockDecider("typesafe", entry, entry, entry)

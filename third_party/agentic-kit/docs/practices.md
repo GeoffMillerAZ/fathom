@@ -436,7 +436,7 @@ it open is free. Full practice: `docs/project-intent/README.md`.
 | Component | Role |
 |---|---|
 | `docs/project-intent/` | methodology, agent integration (Claude Code, Codex, generic `AGENTS.md`; one instruction file), examples of good and bad future-proofing |
-| `.agents/skills/intent-*/` | the on-demand skills — `intent-init`, `intent-design`, `intent-decide`, `intent-audit`, `intent-doctor`, `intent-prune`, `intent-release`, `intent-incident` — and the templates they copy; `install-intent.sh` puts them on a harness's path |
+| `.claude/skills/intent-*/` (`.agents/skills` links to it) | the on-demand skills — `intent-init`, `intent-design`, `intent-decide`, `intent-audit`, `intent-doctor`, `intent-prune`, `intent-release`, `intent-incident` — and the templates they copy; `scripts/install-intent.sh` puts them on a harness's path |
 
 **STATUS: shipped** as docs and a skill; no Go package, by design. Revisit when a second
 adopting repo shows index drift the `refresh` walk did not catch (that is the day a
@@ -712,7 +712,7 @@ provider change. A judgment is never proof, and each site is opt-in on its own.
 
 | Package | Role |
 |---|---|
-| `foundations/decision` | the `Decider` port with `None`, `LLM` and `TypeSafe`; `Validate`; `Confidence` recomputed locally, never taken from the wire; `BandOf` (fixed 0.5 and 0.9 bands: vendor-suggested and uncalibrated); `Response.Records` (site, provider, resolved model, answer, latency, tokens); `MockDecider` |
+| `foundations/decision` | the `Decider` port with `None` (adapters `llm.LLM` in `foundations/decision/llm` and `typesafe.TypeSafe` in `foundations/decision/typesafe`, which the core never imports); `Validate`; `Confidence` recomputed locally, never taken from the wire; `BandOf` (fixed 0.5 and 0.9 bands: vendor-suggested and uncalibrated); `Response.Records` (site, provider, resolved model, answer, latency, tokens); `MockDecider` |
 | `foundations/quality/structural-refusal` | a "meets" verdict with no citable evidence becomes "unknown" in the value itself: the evidence half of abstention, for judgments a model makes |
 | `foundations/quality/reliability-stats` | paired bootstrap, Wilcoxon and A12 for comparing a model arm with a baseline arm |
 
