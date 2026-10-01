@@ -9,28 +9,34 @@
     "L3": "good",
     "L4": "not-applicable"
   },
-  "measured_at": "2026-09-28",
-  "fathom_commit": "bab7f72c",
+  "measured_at": "2026-10-01",
+  "fathom_commit": "a2d8ad48",
   "extractor": "dialect",
   "subjects": [
     {
       "name": "GoogleCloudPlatform/microservices-demo",
       "sha": "38e7348eb289eb5b87c0c6e8cb19ced0449dc389",
-      "files": 14,
-      "bytes": 33606,
+      "files": 15,
+      "bytes": 31816,
       "counts": {
-        "fathom_defs": 50,
-        "kind_equal": 50,
-        "matched": 50,
-        "oracle_defs": 50,
+        "fathom_defs": 53,
+        "kind_equal": 53,
+        "matched": 53,
+        "oracle_defs": 53,
         "ref_fathom": 11,
         "ref_fathom_in_truth": 11,
         "ref_truth": 11,
         "ref_truth_found": 11,
-        "xref_fathom": 12,
-        "xref_fathom_in_truth": 12,
-        "xref_truth": 12,
-        "xref_truth_found": 12
+        "route_fathom": 2,
+        "route_fathom_in_truth": 2,
+        "route_oracle_unresolved_external": 1,
+        "route_truth": 2,
+        "route_truth_found": 2,
+        "route_unresolved_external": 1,
+        "xref_fathom": 14,
+        "xref_fathom_in_truth": 14,
+        "xref_truth": 14,
+        "xref_truth_found": 14
       },
       "families": {
         "l1": "C",
@@ -42,14 +48,102 @@
         "resource"
       ],
       "excluded_by_kind": {
-        "fathom:K8sSelector": 24
+        "fathom:K8sSelector": 25
       },
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 1.7380000000000002,
-        "extract_cpu_ms": 1.7429999999999999,
+        "extract_ms": 4.096,
+        "extract_cpu_ms": 3.9170000000000003,
         "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "istio/istio",
+      "sha": "190ae921b848ec010b8be4457533837ed8fce258",
+      "files": 41,
+      "bytes": 58912,
+      "counts": {
+        "fathom_defs": 140,
+        "kind_equal": 140,
+        "matched": 140,
+        "oracle_defs": 140,
+        "ref_fathom": 20,
+        "ref_fathom_in_truth": 20,
+        "ref_truth": 20,
+        "ref_truth_found": 20,
+        "route_fathom": 148,
+        "route_fathom_in_truth": 148,
+        "route_oracle_unresolved_external": 4,
+        "route_oracle_unresolved_undeclared": 1,
+        "route_truth": 148,
+        "route_truth_found": 148,
+        "route_unresolved_external": 4,
+        "route_unresolved_undeclared": 1,
+        "xref_fathom": 301,
+        "xref_fathom_in_truth": 301,
+        "xref_truth": 301,
+        "xref_truth_found": 301
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C",
+        "xref": "C"
+      },
+      "kind_intersection": [
+        "data_source",
+        "resource"
+      ],
+      "excluded_by_kind": {
+        "fathom:K8sSelector": 93
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 10.407,
+        "extract_cpu_ms": 7.632,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "kubernetes-sigs/gateway-api",
+      "sha": "ca6c2a65454737236fb7a937bd9b17e42b07e9de",
+      "files": 95,
+      "bytes": 52135,
+      "counts": {
+        "fathom_defs": 114,
+        "kind_equal": 114,
+        "matched": 114,
+        "oracle_defs": 114,
+        "route_fathom": 0,
+        "route_fathom_in_truth": 0,
+        "route_oracle_unresolved_undeclared": 67,
+        "route_truth": 0,
+        "route_truth_found": 0,
+        "route_unresolved_undeclared": 77,
+        "xref_fathom": 0,
+        "xref_fathom_in_truth": 0,
+        "xref_truth": 0,
+        "xref_truth_found": 0
+      },
+      "families": {
+        "l1": "C",
+        "xref": "C"
+      },
+      "kind_intersection": [
+        "data_source",
+        "resource"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 14.392999999999999,
+        "extract_cpu_ms": 9.149999999999997,
+        "max_file_ms": 1,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -68,10 +162,14 @@
         "ref_fathom_in_truth": 7,
         "ref_truth": 7,
         "ref_truth_found": 7,
-        "xref_fathom": 99,
-        "xref_fathom_in_truth": 99,
-        "xref_truth": 99,
-        "xref_truth_found": 99
+        "route_fathom": 1,
+        "route_fathom_in_truth": 1,
+        "route_truth": 1,
+        "route_truth_found": 1,
+        "xref_fathom": 100,
+        "xref_fathom_in_truth": 100,
+        "xref_truth": 100,
+        "xref_truth_found": 100
       },
       "families": {
         "l1": "C",
@@ -88,9 +186,51 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 12.92399999999999,
-        "extract_cpu_ms": 17.363999999999997,
-        "max_file_ms": 2,
+        "extract_ms": 29.481999999999996,
+        "extract_cpu_ms": 25.685000000000002,
+        "max_file_ms": 7,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "kubernetes/ingress-nginx",
+      "sha": "0a5901f3c64f11e92e487799b8da3f00cca37515",
+      "files": 38,
+      "bytes": 40931,
+      "counts": {
+        "fathom_defs": 64,
+        "kind_equal": 64,
+        "matched": 64,
+        "oracle_defs": 64,
+        "route_fathom": 25,
+        "route_fathom_in_truth": 25,
+        "route_oracle_unresolved_undeclared": 5,
+        "route_truth": 25,
+        "route_truth_found": 25,
+        "route_unresolved_undeclared": 5,
+        "xref_fathom": 38,
+        "xref_fathom_in_truth": 38,
+        "xref_truth": 38,
+        "xref_truth_found": 38
+      },
+      "families": {
+        "l1": "C",
+        "xref": "C"
+      },
+      "kind_intersection": [
+        "data_source",
+        "resource"
+      ],
+      "excluded_by_kind": {
+        "fathom:K8sSelector": 26
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 4.933000000000001,
+        "extract_cpu_ms": 4.545000000000001,
+        "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -127,34 +267,44 @@
     "resource"
   ],
   "counts": {
-    "fathom_defs": 459,
-    "kind_equal": 459,
-    "matched": 459,
-    "oracle_defs": 459,
-    "ref_fathom": 18,
-    "ref_fathom_in_truth": 18,
-    "ref_truth": 18,
-    "ref_truth_found": 18,
-    "xref_fathom": 111,
-    "xref_fathom_in_truth": 111,
-    "xref_truth": 111,
-    "xref_truth_found": 111
+    "fathom_defs": 780,
+    "kind_equal": 780,
+    "matched": 780,
+    "oracle_defs": 780,
+    "ref_fathom": 38,
+    "ref_fathom_in_truth": 38,
+    "ref_truth": 38,
+    "ref_truth_found": 38,
+    "route_fathom": 176,
+    "route_fathom_in_truth": 176,
+    "route_oracle_unresolved_external": 5,
+    "route_oracle_unresolved_undeclared": 73,
+    "route_truth": 176,
+    "route_truth_found": 176,
+    "route_unresolved_external": 5,
+    "route_unresolved_undeclared": 83,
+    "xref_fathom": 453,
+    "xref_fathom_in_truth": 453,
+    "xref_truth": 453,
+    "xref_truth_found": 453
   },
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 11.97,
+    "throughput_mb_s": 7.44,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 15.6,
-    "max_file_ms": 2,
+    "wall_throughput_mb_s": 5.99,
+    "max_file_ms": 7,
     "peak_module_pages": 0,
     "compiled_bytes": 0
   },
   "excluded_by_kind": {
-    "fathom:K8sSelector": 174
+    "fathom:K8sSelector": 294
   },
   "notes": [
-    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+    "istio/istio: route cross-check by istioctl analyze 1.31.1 (IST0101 host+subset) (tier A, not scored): 30 of 30 checked route targets agree with the oracle",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "route references (route_* counts, LB-F98) are scored into xref_precision and xref_recall with the oracle's cross_references: a route, upstream or mesh rule's entity to the Kubernetes Service or compose service its target host names, resolved by fusion.ResolveRouteRefs (the resolver ingest stores route_ref edges from) over the files ingest's route pass reads; route_unresolved_\u003creason\u003e counts fathom's unresolved references, route_oracle_unresolved_\u003creason\u003e the oracle's"
   ],
   "disposition": null
 }

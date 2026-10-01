@@ -19,7 +19,9 @@ repos:
     ref: main
     sha: 38e7348eb289eb5b87c0c6e8cb19ced0449dc389
     licence: Apache-2.0
-    subpath: kubernetes-manifests
+    # LB-F99 (wave px): the Istio manifests beside the Kubernetes ones, so the
+    # mesh's VirtualServices and Gateways route to the Services they front.
+    sparse: ["kubernetes-manifests/**", "istio-manifests/**"]
     idioms:
       - "a real 11-microservice application's Kubernetes manifests: one
         Deployment+Service pair per microservice, consistent label/selector
@@ -27,3 +29,44 @@ repos:
       - "serviceAccountName, resource requests/limits, readiness/liveness
         probes, and env/envFrom on every container"
       - "container images pinned to a shared registry with per-service tags"
+      - "istio-manifests: an Istio Gateway and VirtualServices in front of the
+        frontend Service, plus ServiceEntries for egress hosts (LB-F99 routes)"
+  - name: istio/istio
+    url: https://github.com/istio/istio
+    ref: 1.31.1
+    sha: 190ae921b848ec010b8be4457533837ed8fce258
+    licence: Apache-2.0
+    sparse: ["samples/bookinfo/networking/**", "samples/bookinfo/platform/kube/**"]
+    idioms:
+      - "Istio VirtualServices whose destinations name Services by short name,
+        with subsets and weights (route-host, LB-F99)"
+      - "DestinationRules whose host is the Service a subset set belongs to"
+      - "the bookinfo Services and Deployments in several variants (one file
+        per service version), so a short name can have more than one
+        declaration in a directory"
+      - "Istio Gateways whose servers' hosts are public or wildcard"
+  - name: kubernetes-sigs/gateway-api
+    url: https://github.com/kubernetes-sigs/gateway-api
+    ref: v1.6.2
+    sha: ca6c2a65454737236fb7a937bd9b17e42b07e9de
+    licence: Apache-2.0
+    subpath: examples
+    idioms:
+      - "HTTPRoute, GRPCRoute, TLSRoute, TCPRoute and UDPRoute backendRefs
+        naming Services, weighted and filtered (route-host, LB-F99)"
+      - "cross-namespace backendRefs and non-Service backend kinds, which the
+        doc engine cannot tell apart from a plain Service name"
+      - "Gateways and GatewayClasses beside the routes, Services only in some
+        examples"
+  - name: kubernetes/ingress-nginx
+    url: https://github.com/kubernetes/ingress-nginx
+    ref: controller-v1.15.1
+    sha: 0a5901f3c64f11e92e487799b8da3f00cca37515
+    licence: Apache-2.0
+    subpath: docs/examples
+    idioms:
+      - "networking.k8s.io/v1 Ingresses whose path backends and default
+        backends name Services (route-host, LB-F99)"
+      - "documentation examples: an Ingress often ships without the Service it
+        names (undeclared), beside Deployment+Service pairs"
+      - "annotations and TLS sections that carry no route"
