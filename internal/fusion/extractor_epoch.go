@@ -313,7 +313,12 @@ import (
 // were; the blank identifier is still skipped), so find_symbol and symbol_context
 // answer an unexported const or var and the SCIP export and the symbol sets that
 // count them now include them. Every .go file was fingerprinted by the exported-only
-// reading, so the salt bump re-reads them.
+// reading, so the salt bump re-reads them. Also LB-Q-package-json, under the same
+// bump (one per wave, as epoch 39): the package-json dialect gained a references
+// block, so a package.json's package entity now calls each dependency name its
+// dependencies, devDependencies, peerDependencies and optionalDependencies write
+// (the Cargo.toml dialect's shape); every package.json was fingerprinted without
+// those calls.
 const ExtractorEpoch = "40"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file

@@ -357,3 +357,56 @@ func TestIngest_ExtractorEpoch_GoUnexportedConstVarForceReExtraction(t *testing.
 		t.Errorf("re-extraction did not surface the unexported symbols (GoConst maxRetries=%v, GoVar defaultName=%v)", sawConst, sawVar)
 	}
 }
+
+// TestIngest_ExtractorEpoch_PackageJSONDependencyReferencesForceReExtraction
+// pins the second item under epoch 40 (LB-Q-package-json, wave la): the
+// package-json dialect gained a references block, so the manifest's package
+// entity now calls each dependency name it writes. A package.json fingerprinted
+// at epoch 39 carried no such call, and the same bump "39"→"40" must re-read it.
+// The seeded fingerprint is salted with "39", the TRUE prior epoch (the XT-5
+// rule above).
+func TestIngest_ExtractorEpoch_PackageJSONDependencyReferencesForceReExtraction(t *testing.T) {
+	dir := t.TempDir()
+	const name = "package.json"
+	src := []byte("{\n  \"name\": \"acme\",\n  \"dependencies\": { \"left-pad\": \"^1.3.0\" }\n}\n")
+	conn := connector.NewLocalConnector()
+	st := store.NewMemoryStore()
+	svc := core.ServiceRef{ID: "epoch40-pkgjson-svc", Path: dir}
+	ctx := context.Background()
+	if err := os.WriteFile(filepath.Join(dir, name), src, 0o644); err != nil {
+		t.Fatalf("write %s: %v", name, err)
+	}
+	oldSalted := sha256.Sum256(append(append([]byte{}, src...), []byte("\x00fathom-extractor-epoch:39")...))
+	if err := st.SetFingerprint(ctx, svc.ID, name, hex.EncodeToString(oldSalted[:])); err != nil {
+		t.Fatalf("SetFingerprint %s: %v", name, err)
+	}
+
+	p := fusion.New(conn, st, defaultCfg())
+	t.Cleanup(p.Close)
+	rep, err := p.Ingest(ctx, svc)
+	if err != nil {
+		t.Fatalf("Ingest: %v", err)
+	}
+	if rep.Skipped != 0 {
+		t.Fatalf("%d file(s) skipped (a pre-epoch-40 fingerprint was honored) — ExtractorEpoch was not bumped for the package.json dependency references", rep.Skipped)
+	}
+
+	obs, err := st.QueryObservations(ctx, svc.ID, "")
+	if err != nil {
+		t.Fatalf("QueryObservations: %v", err)
+	}
+	var sawDep bool
+	for _, o := range obs {
+		if o.SourceRef != name || o.SourceKind != core.KindPackageJSONPackage || o.Symbol != "acme" {
+			continue
+		}
+		for _, c := range o.Calls {
+			if c == "left-pad" {
+				sawDep = true
+			}
+		}
+	}
+	if !sawDep {
+		t.Error("re-extraction did not surface the package's dependency reference (PackageJSONPackage acme -> left-pad)")
+	}
+}

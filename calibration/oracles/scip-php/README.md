@@ -23,8 +23,8 @@ Run (2026-09-28, both clean; the vendor trees and the two edits below are delete
 
 What the index carries: no `enclosing_range` on any of its 4,334 definitions and no `SymbolInformation.kind`
 (only the descriptor suffix: `#` type, `().` method or function, `.` property, constant or enum case), so a
-definition's span for call attribution is the mapped fathom definition's own lines (D5) and
-`internal/scip.ImportIndex` attributes no reference to it. It indexes `src/` and `tests/` (composer's
+definition's span for call attribution is the mapped fathom definition's own lines (D5), which
+`internal/scip.ImportIndex` also takes since LB-F54 (before it, the import attributed no reference). It indexes `src/` and `tests/` (composer's
 autoload and autoload-dev roots) and PHP's builtin functions through phpstorm-stubs, so `strlen` is a
 callable reference. It records no reference for a method called on a vendor-typed receiver (a
 `Psr\Http\Message\RequestInterface` parameter's `getUri()`, `getBody()`, `hasHeader()`) and none for a
