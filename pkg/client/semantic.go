@@ -128,12 +128,20 @@ func coreDecisionRecordsToKit(recs []core.DecisionRecord) []decision.Record {
 	}
 	out := make([]decision.Record, len(recs))
 	for i, r := range recs {
+		// The kind crosses the core boundary as text: read it through
+		// decision.ParseKind, so the legacy "noul" reads as KindPredicate
+		// (agentic-kit DP-12). A kind no kit version names reads as the
+		// zero Kind, never guessed.
+		kind, err := decision.ParseKind(r.Kind)
+		if err != nil {
+			kind = ""
+		}
 		out[i] = decision.Record{
 			Site:         r.Site,
 			Provider:     r.Provider,
 			Model:        r.Model,
 			QuestionID:   r.QuestionID,
-			Kind:         decision.Kind(r.Kind),
+			Kind:         kind,
 			Choice:       r.Choice,
 			Confidence:   r.Confidence,
 			Score:        r.Score,

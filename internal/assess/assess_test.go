@@ -41,7 +41,7 @@ func TestUnitQuestionsAreTypedAndVersioned(t *testing.T) {
 			t.Errorf("question %s is a score — a score answer has no confidence spread; use a choice over levels", q.ID)
 		}
 	}
-	for id, want := range map[string]decision.Kind{"coherent": decision.KindNoul, "claims_backed": decision.KindNoul, "tests_accompany": decision.KindNoul, "quality": decision.KindChoice} {
+	for id, want := range map[string]decision.Kind{"coherent": decision.KindPredicate, "claims_backed": decision.KindPredicate, "tests_accompany": decision.KindPredicate, "quality": decision.KindChoice} {
 		if ids[id] != want {
 			t.Errorf("question %s kind = %q, want %q", id, ids[id], want)
 		}
@@ -172,8 +172,8 @@ func TestVerdictBands(t *testing.T) {
 	resp := decision.Response{
 		Provider: "mock",
 		Answers: map[string]decision.Answer{
-			"coherent":        {ID: "coherent", Kind: decision.KindNoul, Noul: 0.95, Confidence: 0.95},
-			"tests_accompany": {ID: "tests_accompany", Kind: decision.KindNoul, Noul: 0.3, Confidence: 0.7},
+			"coherent":        {ID: "coherent", Kind: decision.KindPredicate, Noul: 0.95, Confidence: 0.95},
+			"tests_accompany": {ID: "tests_accompany", Kind: decision.KindPredicate, Noul: 0.3, Confidence: 0.7},
 			"quality":         {ID: "quality", Kind: decision.KindChoice, Choice: "solid", Probabilities: map[string]float64{"solid": 0.4, "adequate": 0.3, "harmful": 0.1, "incomplete": 0.1, "exemplary": 0.1}, Confidence: 0.25},
 		},
 		Invalid: map[string]string{"claims_backed": "missing value"},
@@ -292,5 +292,18 @@ func TestEstimateTokensIsTheCompileHeuristic(t *testing.T) {
 	est := EstimateTokens(b.Request)
 	if est <= len(b.Request.State)/4 {
 		t.Errorf("estimate %d must cover state bytes/4 (%d) plus the questions", est, len(b.Request.State)/4)
+	}
+}
+
+// TestQuestionSetDigestsSurviveTheKindRename pins JF-24: the yes/no kind is
+// now decision.KindPredicate (agentic-kit DP-12) but no question the provider
+// sees changed, so both question-set digests keep the values they were minted
+// with (captured before the rename, 2026-10-01).
+func TestQuestionSetDigestsSurviveTheKindRename(t *testing.T) {
+	if got := UnitQuestionSetDigest(); got != "7f557f9283695d7f" {
+		t.Errorf("UnitQuestionSetDigest() = %q, want the pre-rename 7f557f9283695d7f", got)
+	}
+	if got := InterventionQuestionSetDigest(); got != "7e52a31018bfd234" {
+		t.Errorf("InterventionQuestionSetDigest() = %q, want the pre-rename 7e52a31018bfd234", got)
 	}
 }

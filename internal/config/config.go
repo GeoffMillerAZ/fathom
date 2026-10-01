@@ -160,10 +160,10 @@ type Decide struct {
 	RerankTimeoutMS int `toml:"rerank_timeout_ms"`
 
 	// Endpoint overrides provider "typesafe"'s base URL (default
-	// decision.DefaultTypeSafeBaseURL). Unused by "none"/"llm".
+	// typesafe.DefaultTypeSafeBaseURL). Unused by "none"/"llm".
 	Endpoint string `toml:"endpoint"`
 	// Model overrides provider "typesafe"'s model (default
-	// decision.DefaultTypeSafeModel, "jev-latest"). Unused by "none"/"llm".
+	// typesafe.DefaultTypeSafeModel, "jev-latest"). Unused by "none"/"llm".
 	Model string `toml:"model"`
 	// APIKeyEnv names an environment variable ResolveAPIKey reads for
 	// provider "typesafe", at call time — never cached, never resolved

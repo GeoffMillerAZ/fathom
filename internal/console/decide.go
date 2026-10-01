@@ -19,6 +19,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
 )
 
 // DecisionRow is one decisions.jsonl row.
@@ -137,6 +139,13 @@ func DecideView(in DecideInputs, f DecideFilter, page, perPage int) DecideModel 
 			var r DecisionRow
 			if json.Unmarshal(line, &r) != nil {
 				continue
+			}
+			// A row written before the kit's generic kind (agentic-kit
+			// DP-12) says "noul": read it through decision.ParseKind, so
+			// it shows as "predicate" beside the rows written since. An
+			// unknown kind is shown as written.
+			if k, err := decision.ParseKind(r.Kind); err == nil {
+				r.Kind = string(k)
 			}
 			rows = append(rows, r)
 		}

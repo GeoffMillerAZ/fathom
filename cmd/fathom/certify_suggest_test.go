@@ -46,11 +46,11 @@ func certifySuggestMockResponse() decision.Response {
 		Model:    "mock-1",
 		Answers: map[string]decision.Answer{
 			"TestAlpha:strength": ans("TestAlpha:strength", decision.KindChoice, "asserts", 0, 0.95),
-			"TestAlpha:asserts":  ans("TestAlpha:asserts", decision.KindNoul, "", 0.96, 0.96),
+			"TestAlpha:asserts":  ans("TestAlpha:asserts", decision.KindPredicate, "", 0.96, 0.96),
 			"TestBeta:strength":  ans("TestBeta:strength", decision.KindChoice, "smoke", 0, 0.70),
-			"TestBeta:asserts":   ans("TestBeta:asserts", decision.KindNoul, "", 0.60, 0.60),
+			"TestBeta:asserts":   ans("TestBeta:asserts", decision.KindPredicate, "", 0.60, 0.60),
 			"TestGamma:strength": ans("TestGamma:strength", decision.KindChoice, "smoke", 0, 0.30),
-			"TestGamma:asserts":  ans("TestGamma:asserts", decision.KindNoul, "", 0.10, 0.90),
+			"TestGamma:asserts":  ans("TestGamma:asserts", decision.KindPredicate, "", 0.10, 0.90),
 		},
 	}
 }

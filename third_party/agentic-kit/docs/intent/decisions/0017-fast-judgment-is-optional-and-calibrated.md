@@ -53,17 +53,19 @@ good for other projects lives in this repository, org-agnostic.
 ## Consequences
 
 Guidance can go stale as vendor documents move; each vendor fact is dated and tagged.
-The method has no in-kit tooling for Wilson bounds, Brier or AUROC, and `decision.Record`
-lacks question version, digest and input hash. Until the readings library exists,
-consumers keep their own calibration logs.
+The method had no in-kit tooling for Wilson bounds, Brier or AUROC until the readings library
+landed (2026-09-29: `NewReading`, DP-23, and `CalibratedBand`, DP-22). `decision.Record` still
+lacks question version, digest and input hash, so consumers keep their own calibration logs
+and feed them to `NewReading`.
 
 ## Deferred
 
-Accepted by the owner 2026-09-29, not started; they follow the reference consumer's in-flight push (owner's
-sequencing). Recorded as open plan rows on 2026-09-29 (`docs/plans/decision-port.md`, section "Hexagonal
-hardening", DP-12 to DP-24; the reference consumer's ADR-056 and its rows JF-13, JF-14 and JF-24 track the same
-work). Renaming `KindNoul` and moving the adapters are breaking changes and need `compat.md`, a migration note
-and a `### Breaking` line when they land (DP-24).
+Accepted by the owner 2026-09-29; they follow the reference consumer's in-flight push (owner's sequencing).
+By the end of wave wk2 (2026-09-29), DP-12, DP-13, DP-15 to DP-20, DP-22 and DP-23 were proven and DP-14,
+DP-21 and DP-24 stayed open; the plan's boxes carry the live state. Recorded as open plan rows on 2026-09-29
+(`docs/plans/decision-port.md`, section "Hexagonal hardening", DP-12 to DP-24; the reference consumer's ADR-056
+and its rows JF-13, JF-14 and JF-24 track the same work). Renaming `KindNoul` and moving the adapters are
+breaking changes and need `compat.md`, a migration note and a `### Breaking` line when they land (DP-24).
 
 - A generic kind name (for example `KindPredicate`) with `noul` kept as a wire and config alias (DP-12).
 - Adapters declare vendor limits (Score's 2 to 10 levels) instead of the core enforcing them (DP-13) and live in

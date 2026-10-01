@@ -19,7 +19,15 @@ Compatibility surface: `docs/intent/scope.md`.
 
 ## [Unreleased]
 
-Release impact: patch (pre-1.0: breaking bumps minor)
+Release impact: minor (pre-1.0: breaking bumps minor)
+
+### Breaking
+
+- `decisions.jsonl` and the assess ledger (and `fathom assess --json`) name the yes/no decision kind `predicate` at `schema_version` 2, where version 1 rows say `noul`; `fathom decide log` and the console read both as `predicate`, and no provider request changes ([migration](docs/upgrades/0.10.0-decision-kind-predicate.md)).
+
+### Changed
+
+- The vendored agentic-kit is pinned at 0c08348 (`v0.7.1-0.20261001071505-0c083484abe6`): the decision port's hexagonal hardening, its adapters in `foundations/decision/llm` and `foundations/decision/typesafe`.
 
 ## [0.9.0] -- 2026-09-30
 

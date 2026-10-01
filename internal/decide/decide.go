@@ -14,6 +14,8 @@ import (
 	"fmt"
 
 	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
+	"github.com/geoffmilleraz/agentic-kit/foundations/decision/llm"
+	"github.com/geoffmilleraz/agentic-kit/foundations/decision/typesafe"
 	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
 	"github.com/geoffmilleraz/fathom/internal/config"
 )
@@ -37,11 +39,11 @@ const (
 	// decision.KindChoice question asking which verb a prompt fits.
 	SiteRoute = "route"
 	// SiteCompilePrefilter is the compile pre-filter (DP-9,
-	// internal/semantic.PrefilterSections): one decision.KindNoul question
-	// per ordered section asking whether it states a binding rule.
+	// internal/semantic.PrefilterSections): one decision.KindPredicate
+	// question per ordered section asking whether it states a binding rule.
 	SiteCompilePrefilter = "compile_prefilter"
 	// SiteObligationsRerank is the obligations within-tier re-rank (DP-7/
-	// DP-8, internal/semantic.rerankWithinTiers): one decision.KindNoul
+	// DP-8, internal/semantic.rerankWithinTiers): one decision.KindPredicate
 	// question per eligible rule asking whether it governs the edit. The
 	// decisions.jsonl row this site produces is still logged under Site
 	// "obligations" (internal/semantic/decisionrank.go) — that wire value
@@ -54,7 +56,7 @@ const (
 	SiteCertifySuggest = "certify_suggest"
 	// SiteAssess is `fathom assess` (DO-3/IR-3, ADR-046,
 	// docs/design/assess-lanes.md): one batched request per explicitly
-	// invoked run, typed noul/choice questions over a unit's on-disk work
+	// invoked run, typed predicate/choice questions over a unit's on-disk work
 	// products. Also gated by the default-off `assess` capability, so
 	// listing it here is never, by itself, consent to spend.
 	SiteAssess = "assess"
@@ -97,11 +99,13 @@ func SiteAllowed(cfg config.Decide, site string) bool {
 // yields the kit's zero-configuration decision.None — no call is ever made.
 // provider "llm" resolves an llmclient.LLMClient via lane(cfg.Profile) (the
 // caller's own profile-construction seam — internal/decide never
-// constructs a client itself) and wraps it in decision.NewLLM(client,
-// model). provider "typesafe" resolves cfg.ResolveAPIKey (cmd, then env,
-// then TYPESAFE_API_KEY — internal/config/apikey.go) and builds the kit's
+// constructs a client itself) and wraps it in llm.NewLLM(client, model),
+// the adapter in the kit's own decision/llm package (agentic-kit DP-14).
+// provider "typesafe" resolves cfg.ResolveAPIKey (cmd, then env, then
+// TYPESAFE_API_KEY — internal/config/apikey.go) and builds the kit's
 // TypeSafe Decider directly over cfg.Endpoint/cfg.Model — no lane, no
-// llmclient, the same construction-swap decision.NewTypeSafe documents. An
+// llmclient, the same construction-swap typesafe.NewTypeSafe (decision/
+// typesafe) documents. An
 // empty key is an error (never a silent None here — the caller,
 // cmd/fathom's openDecisionPorts, is what turns this into a warn-and-none,
 // per I14) naming which of the three indirections to set. Any other
@@ -126,7 +130,7 @@ func Open(cfg config.Decide, lane func(profile string) (llmclient.LLMClient, err
 		if err != nil {
 			return nil, fmt.Errorf("decide: opening llm lane (profile %q): %w", cfg.Profile, err)
 		}
-		return &Ports{Decider: decision.NewLLM(client, model), Cfg: cfg, Recorder: rec}, nil
+		return &Ports{Decider: llm.NewLLM(client, model), Cfg: cfg, Recorder: rec}, nil
 	case "typesafe":
 		key, err := cfg.ResolveAPIKey(context.Background())
 		if err != nil {
@@ -135,7 +139,7 @@ func Open(cfg config.Decide, lane func(profile string) (llmclient.LLMClient, err
 		if key == "" {
 			return nil, fmt.Errorf("decide: [decide] provider typesafe: no API key (set TYPESAFE_API_KEY, or [decide].api_key_env / api_key_cmd)")
 		}
-		ts, err := decision.NewTypeSafe(decision.TypeSafeConfig{APIKey: key, BaseURL: cfg.Endpoint, Model: cfg.Model})
+		ts, err := typesafe.NewTypeSafe(typesafe.TypeSafeConfig{APIKey: key, BaseURL: cfg.Endpoint, Model: cfg.Model})
 		if err != nil {
 			return nil, fmt.Errorf("decide: constructing typesafe decider: %w", err)
 		}

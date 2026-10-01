@@ -680,7 +680,10 @@ call log (`internal/decide.DefaultRecorderPath` — same directory as
 repo's state directory); no call log configured means no decision log either.
 A call that hard-fails (no answer at all) is logged too, as an `error` row
 (DP-22/DP-23, O109) — so silence in `decisions.jsonl` always means "never
-asked", never "asked and failed".
+asked", never "asked and failed". A yes/no answer's `kind` is `predicate`
+(`schema_version` 2, from 0.10.0); a row written before says `noul`, and every
+reader (`fathom decide log`, the console) reads it as `predicate`
+(`docs/upgrades/0.10.0-decision-kind-predicate.md`).
 
 ## The findings loop: `[findings]`
 

@@ -1,23 +1,89 @@
 package decide_test
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
+	"github.com/geoffmilleraz/agentic-kit/foundations/decision/llm"
+	"github.com/geoffmilleraz/agentic-kit/foundations/decision/typesafe"
 	llmclient "github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
 	"github.com/geoffmilleraz/fathom/internal/config"
+	"github.com/geoffmilleraz/fathom/internal/console"
 	"github.com/geoffmilleraz/fathom/internal/decide"
 )
+
+// TestDecideOpenUsesSubpackageAdaptersAndStillReadsNoulRows pins JF-24
+// (docs/plans/judgment-foundations.md): after the kit hardening (agentic-kit
+// DP-12, DP-14) Open builds the adapters from their own packages,
+// decision/llm and decision/typesafe; a yes/no answer is logged under the
+// generic kind "predicate"; and a decisions.jsonl row written before the
+// rename, kind "noul", still reads, as predicate, beside the new rows.
+func TestDecideOpenUsesSubpackageAdaptersAndStillReadsNoulRows(t *testing.T) {
+	t.Run("llm opens decision/llm", func(t *testing.T) {
+		lane := func(string) (llmclient.LLMClient, error) { return llmclient.NewMockClient(), nil }
+		ports, err := decide.Open(config.Decide{Provider: "llm"}, lane, "test-model", nil)
+		if err != nil {
+			t.Fatalf("Open: %v", err)
+		}
+		if _, ok := ports.Decider.(*llm.LLM); !ok {
+			t.Errorf("Decider = %T, want *llm.LLM (foundations/decision/llm)", ports.Decider)
+		}
+	})
+
+	t.Run("typesafe opens decision/typesafe", func(t *testing.T) {
+		t.Setenv("TYPESAFE_API_KEY", "test-key")
+		ports, err := decide.Open(config.Decide{Provider: "typesafe"}, nil, "", nil)
+		if err != nil {
+			t.Fatalf("Open: %v", err)
+		}
+		if _, ok := ports.Decider.(*typesafe.TypeSafe); !ok {
+			t.Errorf("Decider = %T, want *typesafe.TypeSafe (foundations/decision/typesafe)", ports.Decider)
+		}
+	})
+
+	t.Run("a predicate is logged as predicate and a legacy noul row still reads", func(t *testing.T) {
+		var buf bytes.Buffer
+		rec := decide.NewRecorder(&buf, func() time.Time { return time.Unix(0, 0).UTC() }, "test")
+		rec.Record("obligations", decision.Response{
+			Provider: "typesafe", Model: "jev-1.13.0",
+			Answers: map[string]decision.Answer{"q": {ID: "q", Kind: decision.KindPredicate, Noul: 0.95, Confidence: 0.95}},
+		}, func(decision.Answer) bool { return true })
+		var row struct {
+			SchemaVersion int    `json:"schema_version"`
+			Kind          string `json:"kind"`
+		}
+		if err := json.Unmarshal(bytes.TrimSpace(buf.Bytes()), &row); err != nil {
+			t.Fatalf("decoding the written row %q: %v", buf.String(), err)
+		}
+		if row.Kind != "predicate" || row.SchemaVersion != 2 {
+			t.Errorf("written kind %q at schema_version %d, want %q at 2 (the kind's value changed)", row.Kind, row.SchemaVersion, "predicate")
+		}
+
+		legacy := `{"ts":"2026-09-21T10:00:00Z","site":"obligations","provider":"llm","kind":"noul","confidence":0.7,"latency_ms":600,"applied":true}` + "\n"
+		m := console.DecideView(console.DecideInputs{LogPath: "decisions.jsonl", Log: append([]byte(legacy), buf.Bytes()...)}, console.DecideFilter{}, 1, 50)
+		if len(m.Rows) != 2 {
+			t.Fatalf("read %d rows, want 2 (the legacy noul row and the new predicate row)", len(m.Rows))
+		}
+		for _, r := range m.Rows {
+			if r.Kind != string(decision.KindPredicate) {
+				t.Errorf("row %s kind = %q, want %q (noul is the decode alias of predicate)", r.TS, r.Kind, decision.KindPredicate)
+			}
+		}
+	})
+}
 
 // TestOpen_NoneAndLLM pins DP-2 (docs/plans/decision-port.md): "none" builds
 // the kit's zero-configuration decision.None without ever calling lane;
 // "llm" calls lane with cfg.Profile and wraps the returned client in
-// decision.NewLLM; any other provider is refused by name; a lane failure
+// llm.NewLLM; any other provider is refused by name; a lane failure
 // propagates.
 func TestOpen_NoneAndLLM(t *testing.T) {
 	t.Run("none never calls lane", func(t *testing.T) {
@@ -62,9 +128,9 @@ func TestOpen_NoneAndLLM(t *testing.T) {
 		if gotProfile != "work" {
 			t.Errorf("lane called with profile %q, want %q", gotProfile, "work")
 		}
-		l, ok := ports.Decider.(*decision.LLM)
+		l, ok := ports.Decider.(*llm.LLM)
 		if !ok {
-			t.Fatalf("Decider = %T, want *decision.LLM", ports.Decider)
+			t.Fatalf("Decider = %T, want *llm.LLM", ports.Decider)
 		}
 		if l.Name() != "llm" {
 			t.Errorf("Name() = %q, want %q", l.Name(), "llm")
@@ -142,7 +208,7 @@ func TestOpen_TypeSafe(t *testing.T) {
 		}
 		resp, err := ports.Decider.Decide(context.Background(), decision.Request{
 			State:     "ping",
-			Questions: []decision.Question{{ID: "ping", Kind: decision.KindNoul, Instructions: "The statement is a ping."}},
+			Questions: []decision.Question{{ID: "ping", Kind: decision.KindPredicate, Instructions: "The statement is a ping."}},
 		})
 		if err != nil {
 			t.Fatalf("Decide: %v", err)

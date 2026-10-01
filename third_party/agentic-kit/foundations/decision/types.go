@@ -6,24 +6,6 @@ import (
 	"time"
 )
 
-// Kind selects which shape of fast-decision question a Question asks.
-//
-// CUE mirror: #Kind in schema.cue.
-type Kind string
-
-// The three question kinds, mirroring TypeSafe AI's System One primitives
-// (Choice/Score/Noul) — see the package doc's mapping table.
-const (
-	// KindChoice asks the caller to pick among named Options and reports a
-	// probability distribution over them.
-	KindChoice Kind = "choice"
-	// KindScore asks for a value on a continuous [Min, Max] range.
-	KindScore Kind = "score"
-	// KindNoul asks a yes/no question and reports the probability the
-	// statement is true.
-	KindNoul Kind = "noul"
-)
-
 // Option is one named alternative for a KindChoice Question. Criteria is
 // optional free text describing when this option applies; it may be empty.
 //
@@ -46,10 +28,11 @@ type Question struct {
 	// unique within the Request (enforced by Validate); it keys
 	// Response.Answers and Response.Invalid.
 	ID string
-	// Kind selects the question shape: KindChoice, KindScore, or KindNoul.
+	// Kind selects the question shape: KindChoice, KindScore, or
+	// KindPredicate.
 	Kind Kind
 	// Instructions is the question text shown to the decider — for
-	// KindNoul, the statement whose truth probability is being asked.
+	// KindPredicate, the statement whose truth probability is being asked.
 	Instructions string
 
 	// Options is the set of named alternatives. Meaningful only for
@@ -64,20 +47,19 @@ type Question struct {
 	// empty.
 	Rubric string
 	// Levels is an optional ordered list of level descriptions for a
-	// KindScore question, low to high (2..10 entries when set — enforced
-	// by Validate). When set, Min/Max must be either unset (both zero) or
-	// exactly 0 and len(Levels)-1 (enforced by Validate); a Score answer
-	// then addresses a position in Levels rather than an arbitrary
-	// [Min, Max] float. Meaningful only for KindScore; ignored otherwise.
-	// The typesafe adapter (see doc.go) sends Levels verbatim as its
-	// "score" question criteria, or — when Levels is empty — synthesizes
-	// integer levels from an integral [Min, Max] range of 2..10 values.
-	// The llm adapter renders Levels into the prompt/schema when set and
-	// is byte-identical to before Levels existed when it is empty.
+	// KindScore question, low to high (at least 2 entries when set —
+	// enforced by Validate, which sets no upper bound). When set, Min/Max
+	// must be either unset (both zero) or exactly 0 and len(Levels)-1
+	// (enforced by Validate); a Score answer then addresses a position in
+	// Levels rather than an arbitrary [Min, Max] float. Meaningful only
+	// for KindScore; ignored otherwise. Each adapter maps Levels onto its
+	// own wire and declares how many levels it takes (Capabilities'
+	// MinScoreLevels and MaxScoreLevels): TypeSafe takes 2..10 and records
+	// an out-of-limit question in Response.Invalid; LLM declares no limit.
 	Levels []string
 
 	// TrueCriteria and FalseCriteria are optional free text describing what
-	// counts as true/false for a KindNoul question. May be empty.
+	// counts as true/false for a KindPredicate question. May be empty.
 	TrueCriteria, FalseCriteria string
 }
 
@@ -100,13 +82,14 @@ type Request struct {
 //   - KindChoice: Choice (one of the Question's Option names) and
 //     Probabilities (every option present, summing to 1.0).
 //   - KindScore: Score, within [Question.Min, Question.Max].
-//   - KindNoul: Noul, within [0, 1].
+//   - KindPredicate: Noul, the probability the statement is true, within
+//     [0, 1].
 //
 // Confidence is always populated: for KindChoice, Confidence(Probabilities);
 // for KindScore, Confidence called over a degenerate single-outcome input
 // (a Score has no discrete alternative set to form a distribution over, so
 // this collapses to 1.0 by Confidence's own k<=1 rule — see the package
-// doc); for KindNoul, Noul when Noul>=0.5, else 1-Noul.
+// doc); for KindPredicate, Noul when Noul>=0.5, else 1-Noul.
 type Answer struct {
 	// ID is the answered Question's ID.
 	ID string
@@ -123,8 +106,8 @@ type Answer struct {
 	// (KindScore only).
 	Score float64
 
-	// Noul is the probability the KindNoul question's statement is true,
-	// within [0, 1] (KindNoul only).
+	// Noul is the probability the KindPredicate question's statement is
+	// true, within [0, 1] (KindPredicate only).
 	Noul float64
 
 	// Confidence is a single confidence number in [0, 1] — see the type
@@ -166,9 +149,10 @@ type Response struct {
 }
 
 // Decider answers typed fast-decision Questions about a blob of state.
-// Implementations: None (the zero-configuration stub), LLM (backed by an
-// llmclient.LLMClient), and TypeSafe (backed by TypeSafe AI's System One
-// API directly) — see the package doc's adapter table.
+// Implementations: None (the zero-configuration stub, in this package),
+// llm.LLM (backed by an llmclient.LLMClient, in foundations/decision/llm)
+// and typesafe.TypeSafe (a native typed-judgment provider, in
+// foundations/decision/typesafe) — see the package doc's Adapters section.
 type Decider interface {
 	// Name identifies the Decider implementation (e.g. "none", "llm").
 	Name() string

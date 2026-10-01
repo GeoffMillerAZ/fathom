@@ -23,7 +23,16 @@ func validScoreQuestion(id string) decision.Question {
 }
 
 func validNoulQuestion(id string) decision.Question {
-	return decision.Question{ID: id, Kind: decision.KindNoul}
+	return decision.Question{ID: id, Kind: decision.KindPredicate}
+}
+
+// scoreLevels returns n distinct level descriptions "0".."n-1".
+func scoreLevels(n int) []string {
+	levels := make([]string, n)
+	for i := range levels {
+		levels[i] = fmt.Sprintf("%d", i)
+	}
+	return levels
 }
 
 func TestValidate(t *testing.T) {
@@ -53,6 +62,13 @@ func TestValidate(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "raw noul kind built without ParseKind is a predicate",
+			req: decision.Request{State: "s", Questions: []decision.Question{
+				{ID: "q1", Kind: decision.Kind("noul")},
+			}},
+			wantErr: false,
+		},
+		{
 			name:    "empty questions is valid (degenerate but harmless)",
 			req:     decision.Request{State: "some state"},
 			wantErr: false,
@@ -65,7 +81,7 @@ func TestValidate(t *testing.T) {
 		{
 			name: "empty question id",
 			req: decision.Request{State: "s", Questions: []decision.Question{
-				{ID: "", Kind: decision.KindNoul},
+				{ID: "", Kind: decision.KindPredicate},
 			}},
 			wantErr: true,
 		},
@@ -162,16 +178,16 @@ func TestValidate(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "score Levels with 11 entries is too many",
+			name: "score Levels with 11 entries is valid (no vendor level cap in the core; see DP-13)",
 			req: decision.Request{State: "s", Questions: []decision.Question{
-				{ID: "q1", Kind: decision.KindScore, Levels: []string{"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"}},
+				{ID: "q1", Kind: decision.KindScore, Levels: scoreLevels(11)},
 			}},
-			wantErr: true,
+			wantErr: false,
 		},
 		{
-			name: "score Levels with 10 entries is valid (upper bound inclusive)",
+			name: "score Levels with 10 entries is valid",
 			req: decision.Request{State: "s", Questions: []decision.Question{
-				{ID: "q1", Kind: decision.KindScore, Levels: []string{"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"}},
+				{ID: "q1", Kind: decision.KindScore, Levels: scoreLevels(10)},
 			}},
 			wantErr: false,
 		},
@@ -210,6 +226,60 @@ func TestValidate(t *testing.T) {
 			err := decision.Validate(tt.req)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+// TestValidateHasNoVendorScoreLevelLimit pins DP-13: Score's 2..10 levels is
+// TypeSafe's vendor limit, declared by that adapter (Capabilities) and
+// enforced there, not a rule of the fast-decision contract. Validate accepts
+// any ordered list of at least two levels; what stays a domain rule is the
+// structure — Min/Max must match Levels, and one level is not an ordered
+// score (the range form likewise needs Max > Min).
+func TestValidateHasNoVendorScoreLevelLimit(t *testing.T) {
+	score := func(levels []string, min, max float64) decision.Request {
+		return decision.Request{State: "s", Questions: []decision.Question{
+			{ID: "q1", Kind: decision.KindScore, Levels: levels, Min: min, Max: max},
+		}}
+	}
+
+	valid := []struct {
+		name string
+		req  decision.Request
+	}{
+		{"11 levels, Min/Max unset", score(scoreLevels(11), 0, 0)},
+		{"11 levels, Min/Max matching (0,10)", score(scoreLevels(11), 0, 10)},
+		{"20 levels, Min/Max unset", score(scoreLevels(20), 0, 0)},
+		{"20 levels, Min/Max matching (0,19)", score(scoreLevels(20), 0, 19)},
+		{"1000 levels", score(scoreLevels(1000), 0, 0)},
+		{"2 levels (the smallest ordered score)", score(scoreLevels(2), 0, 0)},
+	}
+	for _, tt := range valid {
+		t.Run("valid/"+tt.name, func(t *testing.T) {
+			if err := decision.Validate(tt.req); err != nil {
+				t.Errorf("Validate() error = %v, want nil (the core has no level cap)", err)
+			}
+		})
+	}
+
+	// The Min/Max-must-match-Levels rule is structural and stays, at any size.
+	invalid := []struct {
+		name string
+		req  decision.Request
+	}{
+		{"11 levels, Max not len-1", score(scoreLevels(11), 0, 9)},
+		{"20 levels, Max not len-1", score(scoreLevels(20), 0, 10)},
+		{"20 levels, nonzero Min", score(scoreLevels(20), 1, 19)},
+		// One level is not an ordered score: the range form needs Max > Min for
+		// the same reason. This is a domain rule, not a vendor limit, so it
+		// stays in Validate.
+		{"1 level", score(scoreLevels(1), 0, 0)},
+	}
+	for _, tt := range invalid {
+		t.Run("invalid/"+tt.name, func(t *testing.T) {
+			if err := decision.Validate(tt.req); err == nil {
+				t.Error("Validate() error = nil, want non-nil")
 			}
 		})
 	}

@@ -113,13 +113,18 @@ descriptions); bodies load on use.
 Pin a reviewed snapshot for repeatable team/CI use. From an authorized adopting repo:
 
 ```sh
-go run /path/to/agentic-kit/.agents/skills/intent-init/scripts/vendor_intent.go -source /path/to/agentic-kit -root .
+go run /path/to/agentic-kit/.claude/skills/intent-init/scripts/vendor_intent.go -source /path/to/agentic-kit -root .
 go run .agentic-kit/upstream/.agents/skills/intent-init/scripts/vendor_intent.go -root . -check
 ```
 
 The offline updater copies only the practice, eight skills/templates/scripts and
 license, records a base commit and per-file hashes, and links project-local
-`.agents/skills/intent-*` and `.claude/skills/intent-*` to that same snapshot. It refuses
+`.agents/skills/intent-*` and `.claude/skills/intent-*` to that same snapshot (only the
+`.claude` links when the adopter's `.agents/skills` is itself a link to `.claude/skills`,
+so nothing is written through it; any other link there is refused). The kit keeps its
+skills in `.claude/skills`, with `.agents/skills` a relative link to it; the snapshot
+keeps its own `.agentic-kit/upstream/.agents/skills/` layout, so an existing manifest
+stays valid and a kit checkout from before the move is still a valid source. It refuses
 local edits, unmanaged files, link collisions and source symlinks. It never fetches,
 deletes, commits, modifies global configuration or overwrites a competing skill.
 Updates are reviewed diffs, not automatic tracking of a mutable checkout. A working-
@@ -130,13 +135,14 @@ authenticity. Review the source/update provenance before running its code. For a
 personal checkout-following installation, the existing opt-in installer remains:
 
 ```sh
-/path/to/agentic-kit/.agents/skills/install-intent.sh        # symlinks, idempotent
-/path/to/agentic-kit/.agents/skills/install-intent.sh --uninstall
+/path/to/agentic-kit/scripts/install-intent.sh        # symlinks, idempotent
+/path/to/agentic-kit/scripts/install-intent.sh --uninstall
 ```
 
 With authorization to change global configuration, it links `intent-*` into `~/.agents/skills/`
-and `~/.claude/skills/` (Claude Code), then verifies both resolve. The kit checkout is
-the single source; there are no copies to drift.
+and `~/.claude/skills/` (Claude Code), then verifies both resolve. The kit checkout's
+`.claude/skills` is the single source; there are no copies to drift. A link installed
+before the move still resolves, through the kit's `.agents/skills` link.
 
 ## 5. Claude Code
 
@@ -171,7 +177,8 @@ the single source; there are no copies to drift.
   Concatenated with the project `AGENTS.md` chain every session under a 32 KiB default
   cap (`project_doc_max_bytes`); keep both small.
 - Skills: `~/.agents/skills/intent-*` from the installer; also `.agents/skills/` inside
-  a repo. `$intent-<name>` or implicit.
+  a repo, which may be a relative link to `.claude/skills` so both hosts read one copy
+  (the kit's own layout). `$intent-<name>` or implicit.
 - Project: the stanzas in §2 in `AGENTS.md`. Nested `AGENTS.md` files concatenate root
   → cwd when the instruction chain is built. Do not assume reading a nested file from
   a root-started session reloads that chain. Root instructions must route the path.

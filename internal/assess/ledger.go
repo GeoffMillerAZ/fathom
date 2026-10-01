@@ -14,7 +14,10 @@ import (
 
 // RowSchemaVersion identifies the assess ledger's row shape (bump on any
 // semantic change to an existing field, never for an additive one).
-const RowSchemaVersion = 1
+//
+// 2 (JF-24, agentic-kit DP-12): a verdict's "kind" names the yes/no kind
+// "predicate", the kit's generic name, where a version 1 row says "noul".
+const RowSchemaVersion = 2
 
 // Row is one assess run on the assess ledger — the spend meter IR-4 keeps
 // apart from the session ledger. Every "if known" figure is a pointer with

@@ -4,7 +4,7 @@
 
 A layered, org-agnostic platform for **governed agentic work** — developed
 almost entirely by AI agents. CUE owns the *shape* of data; Go owns
-*behavior* — drift between them is a bug. The tree is **202 Go packages, zero
+*behavior* — drift between them is a bug. The tree is **205 Go packages, zero
 external dependencies** (`go.mod` has no `require` block) — a generated count,
 not a hand-maintained one: see [`docs/catalog.md`](docs/catalog.md) (`task
 docs-index` regenerates it, `constitution-lint`'s `catalog-fresh` check

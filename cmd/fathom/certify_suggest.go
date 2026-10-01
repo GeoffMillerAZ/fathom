@@ -334,7 +334,7 @@ func buildCertifySuggestRequest(items []certifySuggestItem) decision.Request {
 			},
 			decision.Question{
 				ID:            n.Name + ":asserts",
-				Kind:          decision.KindNoul,
+				Kind:          decision.KindPredicate,
 				Instructions:  fmt.Sprintf("%s (shown above in State) asserts a real behaviour or outcome, rather than merely executing code with no meaningful check.", n.Name),
 				TrueCriteria:  "the test fails a real assertion (an expected value, error, or state check) when the behaviour is wrong.",
 				FalseCriteria: "the test only calls code and checks nothing, or only checks that nothing panicked.",

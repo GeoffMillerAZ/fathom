@@ -13,7 +13,11 @@ import (
 // decisionRecordSchemaVersion identifies this JSONL row shape's field
 // semantics (mirrors internal/mcp.callLogSchemaVersion's convention: bump on
 // any semantic change to an existing field, never for an additive one).
-const decisionRecordSchemaVersion = 1
+//
+// 2 (JF-24, agentic-kit DP-12): "kind" names the yes/no kind "predicate",
+// the kit's generic name; a version 1 row says "noul" for the same kind, and
+// every reader folds it through decision.ParseKind.
+const decisionRecordSchemaVersion = 2
 
 // decisionRow is one JSONL row written per answered decision.Question, OR
 // (DP-22, O109) per decision-port call that hard-failed and answered
@@ -164,7 +168,7 @@ func (r *Recorder) writeRow(ts string, rec decision.Record, applied bool) {
 		Provider:      rec.Provider,
 		Model:         rec.Model,
 		QuestionID:    rec.QuestionID,
-		Kind:          string(rec.Kind),
+		Kind:          string(decision.CanonicalKind(rec.Kind)),
 		Choice:        rec.Choice,
 		Confidence:    rec.Confidence,
 		Score:         rec.Score,

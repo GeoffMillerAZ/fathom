@@ -89,7 +89,7 @@ func TestPrefilterSections_Batches(t *testing.T) {
 		answers := make(map[string]decision.Answer, n)
 		for j := 0; j < n; j++ {
 			sec := secs[idx]
-			answers[sec.Subject] = decision.Answer{ID: sec.Subject, Kind: decision.KindNoul, Noul: 0.9, Confidence: 0.9}
+			answers[sec.Subject] = decision.Answer{ID: sec.Subject, Kind: decision.KindPredicate, Noul: 0.9, Confidence: 0.9}
 			idx++
 		}
 		entries[ci] = decision.MockEntry{Response: decision.Response{Provider: "llm", Answers: answers}}
@@ -128,8 +128,8 @@ func TestPrefilterSections_Batches(t *testing.T) {
 			if q.ID != wantID {
 				t.Errorf("chunk %d question %d: ID = %q, want %q (ids not preserved in order)", ci, j, q.ID, wantID)
 			}
-			if q.Kind != decision.KindNoul {
-				t.Errorf("chunk %d question %d: Kind = %q, want %q", ci, j, q.Kind, decision.KindNoul)
+			if q.Kind != decision.KindPredicate {
+				t.Errorf("chunk %d question %d: Kind = %q, want %q", ci, j, q.Kind, decision.KindPredicate)
 			}
 			idx++
 		}
@@ -155,7 +155,7 @@ func TestPrefilterSections_UnrecognizedDeciderIsUnbounded(t *testing.T) {
 	for i := range secs {
 		id := fmt.Sprintf("docs/c.md#s%02d", i)
 		secs[i] = Section{Path: "docs/c.md", Subject: id, StartLine: i + 1, EndLine: i + 1, Text: fmt.Sprintf("# S%02d\nrule %d", i, i)}
-		answers[id] = decision.Answer{ID: id, Kind: decision.KindNoul, Noul: 0.9, Confidence: 0.9}
+		answers[id] = decision.Answer{ID: id, Kind: decision.KindPredicate, Noul: 0.9, Confidence: 0.9}
 	}
 	md := decision.NewMockDecider("mock-generic", decision.MockEntry{
 		Response: decision.Response{Provider: "mock-generic", Answers: answers},
@@ -243,7 +243,7 @@ func TestPrefilterSections_DefaultCapsChunkByBytes(t *testing.T) {
 		id := fmt.Sprintf("docs/big.md#s%03d", i)
 		text := fmt.Sprintf("# S%03d\n%s", i, strings.Repeat("x", bodyBytes))
 		secs[i] = Section{Path: "docs/big.md", Subject: id, StartLine: i + 1, EndLine: i + 1, Text: text}
-		answers[id] = decision.Answer{ID: id, Kind: decision.KindNoul, Noul: 0.9, Confidence: 0.9}
+		answers[id] = decision.Answer{ID: id, Kind: decision.KindPredicate, Noul: 0.9, Confidence: 0.9}
 	}
 	resp := decision.Response{Provider: "typesafe", Answers: answers}
 	md := decision.NewMockDecider("typesafe",
@@ -310,8 +310,8 @@ func TestPrefilterSections_OversizedSectionNeverSent(t *testing.T) {
 		{Path: "docs/n.md", Subject: "docs/n.md#b", StartLine: 2, EndLine: 2, Text: "# B\nrule b"},
 	}
 	answers := map[string]decision.Answer{
-		"docs/n.md#a": {ID: "docs/n.md#a", Kind: decision.KindNoul, Noul: 0.9, Confidence: 0.9},
-		"docs/n.md#b": {ID: "docs/n.md#b", Kind: decision.KindNoul, Noul: 0.9, Confidence: 0.9},
+		"docs/n.md#a": {ID: "docs/n.md#a", Kind: decision.KindPredicate, Noul: 0.9, Confidence: 0.9},
+		"docs/n.md#b": {ID: "docs/n.md#b", Kind: decision.KindPredicate, Noul: 0.9, Confidence: 0.9},
 	}
 	resp := decision.Response{Provider: "typesafe", Answers: answers}
 	md := decision.NewMockDecider("typesafe", decision.MockEntry{Response: resp}, decision.MockEntry{Response: resp})

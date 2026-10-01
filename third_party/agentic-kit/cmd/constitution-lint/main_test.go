@@ -278,12 +278,19 @@ func TestCheckOrgAgnostic(t *testing.T) {
 		assertAnyFail(t, findings, `contains denylisted org-specific token "FakeOrgCorp"`)
 	})
 
-	t.Run(".claude session state excluded", func(t *testing.T) {
-		// Claude Code keeps agent worktrees and other session state under
-		// .claude/ — full stale copies of the repo whose waivers (keyed to
-		// real paths) can never match. Never shipped, never swept.
+	t.Run(".claude/worktrees excluded", func(t *testing.T) {
+		// Claude Code keeps agent worktrees under .claude/worktrees/ — full
+		// stale copies of the repo whose waivers (keyed to real paths) can
+		// never match. Never shipped, never swept.
 		findings := findingsFor(t, checkOrgAgnostic, "testdata/orgagnostic-claudedir")
 		assertAllPass(t, findings)
+	})
+
+	t.Run(".claude/skills swept", func(t *testing.T) {
+		// .claude/skills holds shipped skills (the kit's one real copy), so
+		// only .claude/worktrees is exempt, not all of .claude/.
+		findings := findingsFor(t, checkOrgAgnostic, "testdata/orgagnostic-claudeskills")
+		assertAnyFail(t, findings, `.claude/skills/leaky/SKILL.md:3: contains denylisted org-specific token "FakeOrgCorp"`)
 	})
 
 	t.Run("model-ID literal outside carve-out", func(t *testing.T) {
@@ -331,6 +338,38 @@ func TestCheckSecretScan(t *testing.T) {
 		findings := findingsFor(t, checkSecretScan, "testdata/secretscan-clean")
 		assertAllPass(t, findings)
 	})
+
+	t.Run(".claude/skills swept, .claude/worktrees not", func(t *testing.T) {
+		findings := checkSecretScan("testdata/secretscan-claudedir")
+		var failed []string
+		for _, f := range findings {
+			if !f.Pass {
+				failed = append(failed, f.Message)
+			}
+		}
+		if len(failed) != 1 || !strings.HasPrefix(failed[0], ".claude/skills/leaky/SKILL.md:") {
+			t.Fatalf("want exactly one failure, in .claude/skills/leaky/SKILL.md; got %v", failed)
+		}
+	})
+}
+
+func TestIsSweepSkipDir(t *testing.T) {
+	for rel, want := range map[string]bool{
+		".git":                     true,
+		"tmp":                      true,
+		"kits/x/workspace":         true,
+		".claude/worktrees":        true,
+		"sub/.claude/worktrees":    true,
+		".claude":                  false,
+		".claude/skills":           false,
+		".claude/skills/worktrees": false,
+		"worktrees":                false,
+		"sub/worktrees":            false,
+	} {
+		if got := isSweepSkipDir(rel); got != want {
+			t.Errorf("isSweepSkipDir(%q) = %v, want %v", rel, got, want)
+		}
+	}
 }
 
 // TestSecretScanCanary plants a fixture (testdata/secretscan-canary/)
@@ -623,5 +662,47 @@ func TestWalkWithManifestRecordsOutcomes(t *testing.T) {
 	}
 	if got, want := m.LowerBound(1), "≥ 1 (1 unreadable: a.txt)"; got != want {
 		t.Fatalf("LowerBound = %q, want %q", got, want)
+	}
+}
+
+// TestWalkWithManifestSkipsDirectorySymlinks pins that a symlink to a directory (the
+// kit's `.agents/skills` link to `.claude/skills`) is recorded as a skip, not
+// as an unreadable file that fails read-coverage, and that the tree it points at is
+// still swept once, at its real path. A symlink to a file is still read.
+func TestWalkWithManifestSkipsDirectorySymlinks(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "real"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for rel, body := range map[string]string{"real/r.txt": "in the real tree", "file.txt": "target"} {
+		if err := os.WriteFile(filepath.Join(root, rel), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.Symlink("real", filepath.Join(root, "linkdir")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	if err := os.Symlink("file.txt", filepath.Join(root, "linkfile")); err != nil {
+		t.Fatal(err)
+	}
+
+	set := readmanifest.NewSet()
+	set.RelativeTo(root)
+	var swept []string
+	if err := walkWithManifest(root, set, func(rel string, _ []byte) { swept = append(swept, rel) }); err != nil {
+		t.Fatalf("walk: %v", err)
+	}
+	if want := []string{"file.txt", "linkfile", "real/r.txt"}; !reflect.DeepEqual(swept, want) {
+		t.Fatalf("swept = %v, want %v", swept, want)
+	}
+	got := map[string]readmanifest.Outcome{}
+	for _, e := range set.Manifest().Entries {
+		got[e.Path] = e.Outcome
+	}
+	if got["linkdir"] != readmanifest.Skipped("dir-symlink") {
+		t.Fatalf("linkdir = %+v, want a dir-symlink skip", got["linkdir"])
+	}
+	if !set.Manifest().Complete() {
+		t.Fatal("a directory symlink is a fact, not blindness")
 	}
 }

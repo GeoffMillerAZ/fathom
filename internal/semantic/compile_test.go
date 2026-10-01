@@ -2107,8 +2107,8 @@ func TestCompile_PrefilterSkipsAndDiscloses(t *testing.T) {
 	decider := decision.NewMockDecider("mock-decide", decision.MockEntry{Response: decision.Response{
 		Provider: "mock-decide",
 		Answers: map[string]decision.Answer{
-			"docs/twosections.md#rule-a": {ID: "docs/twosections.md#rule-a", Kind: decision.KindNoul, Noul: 0.9, Confidence: 0.9},
-			"docs/twosections.md#rule-b": {ID: "docs/twosections.md#rule-b", Kind: decision.KindNoul, Noul: 0.2, Confidence: 0.8},
+			"docs/twosections.md#rule-a": {ID: "docs/twosections.md#rule-a", Kind: decision.KindPredicate, Noul: 0.9, Confidence: 0.9},
+			"docs/twosections.md#rule-b": {ID: "docs/twosections.md#rule-b", Kind: decision.KindPredicate, Noul: 0.2, Confidence: 0.8},
 		},
 	}})
 

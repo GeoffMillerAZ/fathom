@@ -14,6 +14,7 @@ import (
 	"time"
 
 	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
+	"github.com/geoffmilleraz/agentic-kit/foundations/decision/typesafe"
 	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
 	"github.com/geoffmilleraz/fathom/internal/buildinfo"
 	"github.com/geoffmilleraz/fathom/internal/config"
@@ -67,7 +68,7 @@ func openDecisionPorts(loaded config.Loaded, daemonProfileName, callLogPath, lab
 		if cfg.Provider == "typesafe" {
 			model := cfg.Model
 			if model == "" {
-				model = decision.DefaultTypeSafeModel
+				model = typesafe.DefaultTypeSafeModel
 			}
 			fmt.Fprintf(stderr, "%s: decision port typesafe (model %s)\n", label, model)
 		}
