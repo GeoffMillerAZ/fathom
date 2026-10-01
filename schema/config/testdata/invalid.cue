@@ -146,3 +146,12 @@ package config
 // bad23: #Config & {
 // 	decide: sites: ["judge_"]
 // }
+
+// A claude-cli profile timeout must be a Go duration ("20m"), never prose
+// or a bare number (EW-34):
+// bad24: #Config & {
+// 	profiles: slow: {
+// 		provider: "claude-cli"
+// 		timeout:  "soon"
+// 	}
+// }

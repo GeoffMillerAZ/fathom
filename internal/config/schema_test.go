@@ -169,6 +169,13 @@ bad22: #Config & {
 bad23: #Config & {
 	decide: sites: ["judge_"]
 }`},
+		{"claude-cli timeout that is not a Go duration (EW-34)", `
+bad24: #Config & {
+	profiles: slow: {
+		provider: "claude-cli"
+		timeout:  "soon"
+	}
+}`},
 	}
 
 	cctx := cuecontext.New()

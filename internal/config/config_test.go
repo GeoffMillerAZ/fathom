@@ -1223,3 +1223,22 @@ func TestLoad_ConnectorIncludeRefusedInUserLayer(t *testing.T) {
 		t.Fatalf("user-layer connector.include: err = %v, want a LoadError naming %s and the corpus file it belongs in", err, user)
 	}
 }
+
+// EW-34: a claude-cli profile's timeout key loads, rides the env overlay and
+// an invalid duration is refused by the schema at load.
+func TestLoad_ClaudeCLIProfileTimeout(t *testing.T) {
+	dir := t.TempDir()
+	userPath := filepath.Join(dir, "user.toml")
+	writeTOML(t, userPath, "[profiles.sub]\nprovider = \"claude-cli\"\ntimeout = \"20m\"\n")
+	loaded, err := Load(userPath, filepath.Join(dir, "project.toml"))
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if got := loaded.Config.Profiles["sub"].Timeout; got != "20m" {
+		t.Fatalf("Timeout = %q, want 20m", got)
+	}
+	writeTOML(t, userPath, "[profiles.sub]\nprovider = \"claude-cli\"\ntimeout = \"soon\"\n")
+	if _, err := Load(userPath, filepath.Join(dir, "project.toml")); err == nil {
+		t.Fatal("a non-duration timeout must be refused at load")
+	}
+}

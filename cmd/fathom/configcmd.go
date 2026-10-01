@@ -85,6 +85,9 @@ func profileFieldRows(p config.Profile) [][2]string {
 		{"bin", p.Bin},
 		{"api_key_env", p.APIKeyEnv},
 	}
+	if p.Timeout != "" {
+		rows = append(rows, [2]string{"timeout", p.Timeout})
+	}
 	if len(p.APIKeyCmd) > 0 {
 		rows = append(rows, [2]string{"api_key_cmd", fmt.Sprintf("%v", p.APIKeyCmd)})
 	} else {
