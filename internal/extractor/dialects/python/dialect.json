@@ -28,6 +28,7 @@
   "package": { "strategy": "dir" },
   "imports": { "strategy": "dotted-module" },
   "signature": { "max_chars": 200 },
+  "calls": { "qualify": true },
   "target_level": "L4",
   "queue_id": "python"
 }

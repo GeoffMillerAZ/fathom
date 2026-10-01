@@ -61,12 +61,36 @@
   left: (type
     (identifier) @name)) @definition.type
 
-; Naive same-file call collection (whatever expression is being called, as
-; source text) — mirrors the incumbent CGO extractor's CollectCalls, not a
-; typed/resolved edge (ADR-021 §3 typed edges are a Go-only enrichment pass;
-; tree-sitter-derived call edges beyond this are deferred, see XT-7).
+; Same-file call collection: the expression being called, as source text,
+; which dialect.json's calls.qualify (LB-F65) stores compacted — its receiver
+; chain plus the called name ("self.make", "db.query().filter"), a subscript
+; or a call's result called (`handlers[k](x)`, `f()()`) naming no callee and
+; stored as none. Not a typed/resolved edge (ADR-021 §3 typed edges are a
+; Go-only enrichment pass).
 (call
   function: (_) @reference.call)
+
+; A call outside every function still belongs to a definition (LB-F65, the
+; attribution scip-python's enclosing ranges give): a decorator's calls to the
+; definition it decorates (`@app.get("/")` is read_item's), a module-level
+; assignment's to the variable it defines (`app = FastAPI()` is app's), and an
+; annotated class attribute's to that attribute (`count: int = Field(0)`).
+(decorated_definition
+  (decorator) @calls.from
+  definition: (_) @calls.to)
+
+(module
+  (expression_statement
+    (assignment
+      left: (identifier))) @calls.to @calls.from)
+
+(class_definition
+  body: (block
+    (expression_statement
+      (assignment
+        left: (identifier)
+        type: (type)
+        right: (_))) @calls.to @calls.from))
 
 ; @body (LB-F3, design §3.3): a callable's Signature is its definition's text up to
 ; the start of this capture, whitespace collapsed; without it, the first line.

@@ -53,7 +53,10 @@ type Dialect struct {
 	// tsPreprocessors, schema #Dialect.preprocess): a file whose tree has a
 	// syntax error is parsed as each text the step gives, and the first tree
 	// with none is read (O148). Omitted: the file is parsed as written.
-	Preprocess  string           `json:"preprocess,omitempty"`
+	Preprocess string `json:"preprocess,omitempty"`
+	// Calls is how call sites are stored (LB-F65). Omitted: every callee
+	// is taken as captured.
+	Calls       *DialectCalls    `json:"calls,omitempty"`
 	Imports     *DialectImports  `json:"imports,omitempty"`
 	Signature   DialectSignature `json:"signature"`
 	TargetLevel string           `json:"target_level"`
@@ -63,6 +66,15 @@ type Dialect struct {
 	// incumbents.json (the five pre-manifest languages) does not cover —
 	// CSS onward. Omitted for a dialect ctags has no parser for.
 	Ctags *DialectCtags `json:"ctags,omitempty"`
+}
+
+// DialectCalls is a dialect's call-site rules (LB-F65). Qualify stores a
+// call's text as its receiver or scope joined to the called name — "a.b",
+// "self.x", "Foo::bar" — compacted (extractor.compactCallee): whitespace
+// and argument contents dropped, and a callee that ends in no name (a
+// subscript or a call's result called) not stored at all.
+type DialectCalls struct {
+	Qualify bool `json:"qualify,omitempty"`
 }
 
 // DialectCtags is one dialect's tier-B oracle invocation: universal-ctags'

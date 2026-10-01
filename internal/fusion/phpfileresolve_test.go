@@ -4,13 +4,14 @@ package fusion_test
 // across fixture files through its manifest's namespace-dir strategy with
 // composer.json's PSR-4 prefixes.
 //
-// What resolves, and what does not, is the tags engine's call text, not the
-// import: a PHP call site reaches the resolver as the called name alone
-// (`Helper::assist()` is "assist", `Util\format('x')` is "format") because
-// tree-sitter-php has no node spanning a receiver and its name, so a
-// class-qualified call cannot be tied to `use App\Util\Helper;`. A function
-// called through a namespace alias can: `use App\Util;` is a wildcard over
-// the files declaring that namespace and brings `format` into scope.
+// What resolves is the tags engine's call text: under calls.qualify (LB-F65)
+// a scoped call keeps its scope (`Helper::assist()` is "Helper::assist",
+// `self::local()` "self::local") and a member call its receiver
+// (`$this->local()` is "this.local"), so `use App\Util\Helper;` (a wildcard,
+// D7) and its alias `Assist` bind Helper's member and self/this the enclosing
+// class's. A function called through a namespace alias resolves as before:
+// `use App\Util;` is a wildcard over the files declaring that namespace and
+// brings `format` into scope.
 
 import (
 	"context"
@@ -51,6 +52,9 @@ func TestResolveFileEdges_PhpUse(t *testing.T) {
 	got := fileResolveEdgeSetAll(edges)
 	want := []string{
 		"fixture::src/App.Consumer.run -> fixture::src/Util/App\\Util.format",
+		"fixture::src/App.Consumer.run -> fixture::src/Util/App\\Util.Helper.assist",
+		"fixture::src/App.Consumer.run -> fixture::src/App.Consumer.local",
+		"fixture::src/App.Consumer.viaAlias -> fixture::src/Util/App\\Util.Helper.assist",
 	}
 	for _, w := range want {
 		if !got[w] {

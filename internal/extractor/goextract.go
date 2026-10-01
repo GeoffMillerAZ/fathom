@@ -412,6 +412,20 @@ func cyclomaticComplexity(fn *ast.FuncDecl) int {
 // are not references at all: a CallExpr's own Fun (already classified
 // above), a composite-literal KEY (a field NAME), and the left side of an
 // assignment (the ASSIGNED-TO variable).
+//
+// LB-F66 (O260): a selector's own Sel is a field or method name, never the
+// package-level function of that name; and a value no function can be is no
+// reference either (skipNonFuncValue): an operand of a comparison against
+// anything but nil or of any other binary operator, a switch tag or case
+// value, the base of a further selector, and a unary, slice, range or
+// increment operand. A type stays a reference: `var t pkg.T` and
+// `pkg.T{...}` are how a test reaches a type a plan row names (verify's
+// test_reaches) and how product reach links a package only a type names. A
+// method called on any receiver expression is a call too:
+// "<receiver>.Method", the receiver rendered by calleeQualifier (a selector
+// chain as written, a call's or an index's result as "f()" or "a[]"), so its
+// last segment is the method's name as BareName and the store's CalleeName
+// read it.
 func collectCalls(service, pkgName string, fn *ast.FuncDecl, localFuncs map[string]bool, imports map[string]string) []string {
 	if fn.Body == nil {
 		return nil
@@ -477,6 +491,40 @@ func collectCalls(service, pkgName string, fn *ast.FuncDecl, localFuncs map[stri
 			}
 			return true
 
+		case *ast.BinaryExpr:
+			// Function values compare only with nil: an operand of any other
+			// comparison, or of any other operator, is no function (LB-F66).
+			if (node.Op == token.EQL || node.Op == token.NEQ) && (isNilIdent(node.X) || isNilIdent(node.Y)) {
+				return true
+			}
+			skipNonFuncValue(skip, node.X)
+			skipNonFuncValue(skip, node.Y)
+			return true
+		case *ast.UnaryExpr:
+			skipNonFuncValue(skip, node.X)
+			return true
+		case *ast.SliceExpr:
+			skipNonFuncValue(skip, node.X)
+			return true
+		case *ast.SwitchStmt:
+			skipNonFuncValue(skip, node.Tag)
+			if node.Body != nil {
+				for _, st := range node.Body.List {
+					if cc, ok := st.(*ast.CaseClause); ok {
+						for _, e := range cc.List {
+							skipNonFuncValue(skip, e)
+						}
+					}
+				}
+			}
+			return true
+		case *ast.RangeStmt:
+			skipNonFuncValue(skip, node.X)
+			return true
+		case *ast.IncDecStmt:
+			skipNonFuncValue(skip, node.X)
+			return true
+
 		case *ast.ValueSpec:
 			// `var _ = f` in a body: a blank sink is no reference (EW-15).
 			for i, name := range node.Names {
@@ -486,19 +534,24 @@ func collectCalls(service, pkgName string, fn *ast.FuncDecl, localFuncs map[stri
 			}
 			return true
 
-		case *ast.CompositeLit:
-			for _, elt := range node.Elts {
-				if kv, ok := elt.(*ast.KeyValueExpr); ok {
-					if keyIdent, ok := kv.Key.(*ast.Ident); ok {
-						skip[keyIdent] = true
-					}
-				}
-			}
-			return true
-
 		case *ast.CallExpr:
 			skip[node.Fun] = true
-			switch fun := node.Fun.(type) {
+			fun := node.Fun
+			for {
+				// A generic instantiation F[T](x) calls F (T stays a reference).
+				switch ix := fun.(type) {
+				case *ast.IndexExpr:
+					skip[ix.X] = true
+					fun = ix.X
+					continue
+				case *ast.IndexListExpr:
+					skip[ix.X] = true
+					fun = ix.X
+					continue
+				}
+				break
+			}
+			switch fun := fun.(type) {
 			case *ast.Ident:
 				// Simple call: Foo()
 				name := fun.Name
@@ -527,6 +580,20 @@ func collectCalls(service, pkgName string, fn *ast.FuncDecl, localFuncs map[stri
 					} else {
 						seen[ident.Name+"."+sel] = true
 					}
+				} else {
+					// A method called on a selector chain or on a call's or an
+					// index's result (LB-F66).
+					seen[calleeQualifier(fun.X, imports)+"."+sel] = true
+				}
+			}
+			return true
+
+		case *ast.CompositeLit:
+			for _, elt := range node.Elts {
+				if kv, ok := elt.(*ast.KeyValueExpr); ok {
+					if keyIdent, ok := kv.Key.(*ast.Ident); ok {
+						skip[keyIdent] = true
+					}
 				}
 			}
 			return true
@@ -541,6 +608,11 @@ func collectCalls(service, pkgName string, fn *ast.FuncDecl, localFuncs map[stri
 			return true
 
 		case *ast.SelectorExpr:
+			// The selected name is a field or method, never the
+			// package-level function of the same name; a selector's base
+			// that is itself selected from is no function value (LB-F66).
+			skip[node.Sel] = true
+			skipNonFuncValue(skip, node.X)
 			// Value position: only an explicit "pkg.Func" import-table
 			// selector counts (see the doc comment).
 			if !skip[node] {
@@ -565,6 +637,57 @@ func collectCalls(service, pkgName string, fn *ast.FuncDecl, localFuncs map[stri
 	}
 	sort.Strings(keys)
 	return keys
+}
+
+// skipNonFuncValue marks e (parentheses aside) when it is a name or a
+// selector: called from a position no function value can take (LB-F66).
+func skipNonFuncValue(skip map[ast.Expr]bool, e ast.Expr) {
+	for {
+		p, ok := e.(*ast.ParenExpr)
+		if !ok {
+			break
+		}
+		e = p.X
+	}
+	switch e.(type) {
+	case *ast.Ident, *ast.SelectorExpr:
+		skip[e] = true
+	}
+}
+
+// isNilIdent reports whether e is the predeclared nil.
+func isNilIdent(e ast.Expr) bool {
+	id, ok := e.(*ast.Ident)
+	return ok && id.Name == "nil"
+}
+
+// calleeQualifier renders a method call's receiver expression for the
+// stored call text (LB-F66): a name (an import alias canonicalized to its
+// path's last segment, as for "pkg.Func"), a selector chain as written, a
+// call's result as "<fun>()" and an index's as "<x>[]"; anything else is
+// "()". Its last segment is never mistaken for the callee: BareName and the
+// store's CalleeName keep the text after the last '.'.
+func calleeQualifier(e ast.Expr, imports map[string]string) string {
+	switch x := e.(type) {
+	case *ast.Ident:
+		if imp, ok := imports[x.Name]; ok {
+			return path.Base(imp)
+		}
+		return x.Name
+	case *ast.SelectorExpr:
+		return calleeQualifier(x.X, imports) + "." + x.Sel.Name
+	case *ast.CallExpr:
+		return calleeQualifier(x.Fun, imports) + "()"
+	case *ast.IndexExpr:
+		return calleeQualifier(x.X, imports) + "[]"
+	case *ast.IndexListExpr:
+		return calleeQualifier(x.X, imports) + "[]"
+	case *ast.ParenExpr:
+		return calleeQualifier(x.X, imports)
+	case *ast.StarExpr:
+		return calleeQualifier(x.X, imports)
+	}
+	return "()"
 }
 
 // allBlank reports whether every expression is the blank identifier.

@@ -10,7 +10,7 @@
     "L4": "unmet"
   },
   "measured_at": "2026-10-01",
-  "fathom_commit": "d8ed9a29",
+  "fathom_commit": "ac49f2db",
   "extractor": "dialect",
   "subjects": [
     {
@@ -26,7 +26,8 @@
         "callables": 1365,
         "callables_signed": 1365,
         "fathom_defs": 1814,
-        "file_edges_fathom": 0,
+        "file_edges_agree": 46,
+        "file_edges_fathom": 46,
         "file_edges_truth": 829,
         "import_edges_agree": 400,
         "import_edges_fathom": 401,
@@ -44,8 +45,8 @@
         "range_ok": 1814,
         "scip_defs": 2054,
         "scip_defs_mapped": 1592,
-        "scip_edges": 0,
-        "scip_edges_typed": 0
+        "scip_edges": 6385,
+        "scip_edges_typed": 4085
       },
       "families": {
         "calls": "A",
@@ -67,9 +68,10 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 305.10199999999986,
-        "extract_cpu_ms": 291.88199999999995,
-        "max_file_ms": 13,
+        "files_with_error": 0,
+        "extract_ms": 234.88699999999994,
+        "extract_cpu_ms": 236.03900000000007,
+        "max_file_ms": 8,
         "peak_module_pages": 339,
         "compiled_bytes": 0
       }
@@ -87,7 +89,8 @@
         "callables": 691,
         "callables_signed": 691,
         "fathom_defs": 834,
-        "file_edges_fathom": 1,
+        "file_edges_agree": 26,
+        "file_edges_fathom": 26,
         "file_edges_truth": 137,
         "import_edges_agree": 86,
         "import_edges_fathom": 153,
@@ -105,8 +108,8 @@
         "range_ok": 834,
         "scip_defs": 595,
         "scip_defs_mapped": 494,
-        "scip_edges": 0,
-        "scip_edges_typed": 0
+        "scip_edges": 1512,
+        "scip_edges_typed": 1241
       },
       "families": {
         "calls": "A",
@@ -128,8 +131,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 184.96100000000004,
-        "extract_cpu_ms": 175.17899999999992,
+        "files_with_error": 0,
+        "extract_ms": 148.153,
+        "extract_cpu_ms": 145.72600000000006,
         "max_file_ms": 18,
         "peak_module_pages": 351,
         "compiled_bytes": 0
@@ -152,15 +156,15 @@
     "call_precision": 0.6924,
     "call_recall": 1,
     "def_mapping": 0.7875,
-    "file_edge_precision": 0,
-    "file_edge_recall": 0,
+    "file_edge_precision": 1,
+    "file_edge_recall": 0.0745,
     "import_resolution": 1,
     "kind_agreement": 1,
     "range_agreement": 1,
     "signature_coverage": 1,
     "sym_precision": 1,
     "sym_recall": 1,
-    "typed_recall": null
+    "typed_recall": 0.6744
   },
   "metric_tiers": {
     "call_precision": "A",
@@ -173,7 +177,8 @@
     "range_agreement": "B",
     "signature_coverage": "B",
     "sym_precision": "B",
-    "sym_recall": "B"
+    "sym_recall": "B",
+    "typed_recall": "A"
   },
   "required_kinds": [
     "class",
@@ -200,7 +205,8 @@
     "callables": 2056,
     "callables_signed": 2056,
     "fathom_defs": 2648,
-    "file_edges_fathom": 1,
+    "file_edges_agree": 72,
+    "file_edges_fathom": 72,
     "file_edges_truth": 966,
     "import_edges_agree": 486,
     "import_edges_fathom": 554,
@@ -218,36 +224,37 @@
     "range_ok": 2648,
     "scip_defs": 2649,
     "scip_defs_mapped": 2086,
-    "scip_edges": 0,
-    "scip_edges_typed": 0
+    "scip_edges": 7897,
+    "scip_edges_typed": 5326
   },
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 2.84,
+    "files_with_error": 0,
+    "throughput_mb_s": 3.47,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 2.71,
+    "wall_throughput_mb_s": 3.46,
     "max_file_ms": 18,
     "peak_module_pages": 351,
     "compiled_bytes": 0
   },
   "excluded_by_kind": {},
   "notes": [
+    "F-B (wave lb, fathom ac49f2db): the php dialect stores a scoped call as its scope with the name (`Helper::assist`, `self::x`) and a member call with its receiver (`this.client.send`) under calls.qualify (LB-F65), and the file resolver reads `::` as '.', binding a call through a `use` (a wildcard, D7) or its alias to the class's member (LB-F67): PHP's first file edges, precision 1 (72 of 72) and recall .0745 (72 of 966 SCIP file edges), so L3 stays unmet on recall (.25 good): the index's file edges are every cross-file reference (a type hint, a `new X`, a `use`), fathom's are calls, and a `$x-\u003em()` call cannot be bound without the receiver's type. 191 of guzzle's fathom edges come from the 14 test files scip-php does not index (no autoload root maps their `GuzzleHttp\\Test` namespace) and are out of the file-edge scope (O262). The dialect is not dispatched (ingest reads .php with the CGO phpextract.go), so these edges are lang-oracle's, not ingest's",
     "L1 oracle: nikic/php-parser 5.7.0 syntax dump (tier B, D2; calibration/oracles/php-parser) because universal-ctags 6.2.1 is deficient for PHP: it writes no end line, has no enum kind (an enum is not tagged, and its methods come out as namespace-level functions: 8 kind mismatches on monolog's Level), and names a namespace with its full path, which the bare-name comparison cannot match. An unscored ctags run over the same files matched every class, interface, trait, function and method (2,394 of 2,394 on both sides, kind_agreement .9967); sym_recall and sym_precision read .9044 only through the 253 namespaces, and range_agreement was not measured",
     "L2 oracle: scip-php (HEAD 71a5b117, tool_version 0.0.1, PHP 8.5.8 static CLI, tier A) resolves no method call on a vendor-typed receiver (a RequestInterface parameter's getUri, getBody, hasHeader: 351 of the 2,055 src pairs are absent from the index, 1,258 of monolog's 4,558 and 611 of guzzle's 1,519 in all; PHPUnit mocks and dev-dependency receivers in tests/ add the rest): every SCIP call pair is found (call_recall 1.0) but call_precision is .6924, so L2 is unmet. Against the php-parser dump's call pairs (tier B, not scored here: one calls oracle per subject, D5 keeps a SCIP index that gives references at tier A) both are 1.0 on identical pair sets (4,558 monolog, 2,571 guzzle), L2 good",
-    "L3 is not gradeable: the harness computes no import_resolution; file_edge_precision 0 and recall 0 (one edge on guzzle: tests/UtilsTest.php to the src/ helper functions, absent from the index; 966 SCIP file edges) because a PHP call reaches the resolver as its called name alone, tree-sitter-php having no node that spans a receiver and its method, so a class-qualified call cannot be tied to a use statement (only a function called through a namespace alias resolves, TestResolveFileEdges_PhpUse)",
-    "L3 re-grade 2026-09-29 (LB-F40 harness at 3929c383): import_resolution is not measured, because it cannot be on this machine: php, composer and scip-php are absent (the tier-A SCIP index and calibration/oracles/php-parser both need a PHP runtime) and no neutral imports dump exists for PHP. This supersedes the statement above that the harness computes no import_resolution (it does since LB-F40). L3 stays unmet whatever it reads: file_edge_precision and file_edge_recall read 0",
+    "L2 unchanged by F-B (O260, O262): every fathom call pair the index lacks (1,869: monolog 1,258, guzzle 611) is a method called on a receiver scip-php does not resolve: a vendor interface (psr/http-message, psr/log), a builtin class (Throwable::getMessage) or an untyped variable; call_recall 1, call_precision .6924. Against the php-parser dump's syntactic call pairs (tier B) both read 1.0, as before",
     "L3 re-measure 2026-10-01 (wave la, fathom d8ed9a29, PHP 8.5.11, composer 2.10.3, scip-php 71a5b117 with tool_version 0.0.1, php-parser 5.7.0 dump): import_resolution is measured for the first time and reads 1: 486 of 486 in-repo imports resolve to a file the oracle names (monolog 400 of 400, guzzle 86 of 86), import edges read precision .8773 (486 of 554) and recall 1 (486 of 486), and 43 of 897 imports resolve where scip-php names no file of the subject (guzzle 42, monolog 1). This supersedes the two earlier notes that import_resolution could not be measured here. L3 stays unmet: file_edge_precision 0 \u003c .90 and file_edge_recall 0 \u003c .25",
     "Seldaek/monolog: 1592 SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)",
     "def_mapping .7875: the SCIP definitions this dialect does not emit are properties, class constants and enum cases (about 20%: 101 of 595 on guzzle, 422 of 2,054 on monolog); the incumbent reads .7829",
     "grammar: tree-sitter-php v0.24.2 (the tag the incumbent phpextract.go's binding pins), php.wasm.gz 191,343 bytes gzip (811,496 raw), 351 peak module pages",
+    "guzzle/guzzle: 191 file-resolved edges from files the SCIP index does not hold are out of the file-edge scope (§1.4)",
     "guzzle/guzzle: 494 SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)",
     "import_resolution: 486 of 486 in-repo imports resolve to a file the oracle names (0 unresolved, 0 only to other files; L3 bar: excellent \u003e= 0.95, good \u003e= 0.85); import edges precision 0.8773 (486 of 554) and recall 1 (486 of 486); 43 of 897 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 0 oracle import targets outside the files measured",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
     "re-measure 2026-10-01 regression check: both subjects re-run with the full oracle set (the php-parser dump as the tier-B L1 oracle with definitions only, scip-php for calls, def_mapping and file edges, composer edits as calibration/oracles/scip-php/README.md), 834 and 1,814 dump definitions, 74 and 217 files, 0 parse errors; every L1, L2 and L4 metric and every count except the import family re-reads identically, so no met level regressed (throughput 2.84 MB/CPU-s against 3.46 on 2026-09-28, 0 faults, 351 peak module pages)",
     "subjects are measured as cloned, with dependencies installed only so scip-php can resolve vendor symbols (vendor/ is excluded from both sides by the connector; tests/ is measured, SCIP indexes it too): guzzle/guzzle 7.9.3 with composer install after removing guzzle/client-integration-tests (it needs the composer-bin plugin's second install, and plugins were off), Seldaek/monolog 3.9.0 after flipping composer.json's config.lock so a composer.lock exists (calibration/corpus.d/php.yaml)",
-    "typed_recall not measured: scip-php sets no enclosing_range (verified: 0 of 4,334 definitions), so internal/scip.ImportIndex, which falls back to the definition's name token, attributes no reference (the gap LB-Q-cpp-rest records for scip-clang)",
-    "typed_recall stays not measured and predates F-A (item scip of wave la: ImportIndex's mapped-definition line-span fallback, the gap scip-php's missing enclosing_range leaves): the integrator re-runs it after the scip merge"
+    "typed_recall re-read (wave lb) through internal/scip.ImportIndex's mapped-definition line-span fallback (LB-F54): .6744 (5,326 of 7,897 SCIP reference edges kept as typed edges), so L4 is measured for the first time and unmet with def_mapping .7875 (.85 good)"
   ],
-  "disposition": "partial: target L4, met L1 excellent against a php-parser 5.7.0 syntax dump (tier B, D2; universal-ctags writes no end line and cannot see enums) on guzzle/guzzle 7.9.3 and Seldaek/monolog 3.9.0, 291 files (sym_recall 1, sym_precision 1, kind_agreement 1, range_agreement 1, signature_coverage 1; 2.84 MB/CPU-s, 0 faults, 351 peak module pages, php.wasm.gz 191,343 bytes). L2 unmet: call_recall 1.0 but call_precision .6924 against scip-php (tier A, D5 enclosing fallback) — the index leaves method calls on vendor-typed receivers unresolved, so 1,869 of this dialect's 6,077 call pairs are absent from it; against the php-parser dump's call pairs (tier B) both are 1.0, L2 good. L3 is unmet: import_resolution reads 1 (486 of 486 in-repo imports against scip-php, measured 2026-10-01) but file_edge precision/recall read 0 (a PHP call reaches the resolver as its called name alone). L4 typed_recall is not measured (scip-php sets no enclosing_range, so it predates F-A's ImportIndex line-span fallback of item scip and is run after that merge) and def_mapping .7875 misses .85 (properties, class constants and enum cases are not emitted). Per design section 11 step 2 the target is not met, so fusion's PHP dispatch is unchanged and the CGO incumbent phpextract.go stays live. Trigger: the harness accepts a tier-B calls oracle for L2 (or scip-php resolves vendor-typed methods), the tags engine composes a receiver with a callee name, ImportIndex gains the mapped-definition line-span fallback, and the dialect extracts properties and constants; a dispatch switch then bumps ExtractorEpoch."
+  "disposition": "deferred: target L4, met L1 excellent (php-parser dump, tier B). L2 unmet: call_precision .6924 (call_recall 1) against scip-php, which resolves no method call on a vendor-typed or untyped receiver (1,869 pairs; 1.0 against the php-parser dump). L3 unmet: import_resolution 1, file edges precision 1 and recall .0745 since F-B (wave lb, `Foo::bar` through a `use`). L4 unmet: def_mapping .7875 and typed_recall .6744 (re-read under LB-F54). The dialect is not dispatched (phpextract.go stays live)."
 }

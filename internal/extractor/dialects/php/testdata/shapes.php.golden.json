@@ -50,7 +50,7 @@
       "end_line": 24,
       "signature": "public function log(string $message): void",
       "calls": [
-        "info"
+        "this.logger.info"
       ],
       "tier": "verified"
     },
@@ -152,7 +152,7 @@
       "end_line": 83,
       "signature": "public static function fromChar(string $c): self",
       "calls": [
-        "from"
+        "self::from"
       ],
       "tier": "verified"
     },

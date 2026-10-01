@@ -34,6 +34,7 @@
   "package": { "strategy": "capture" },
   "imports": { "strategy": "namespace-dir", "separator": "\\", "suffixes": [".php"] },
   "signature": { "max_chars": 200 },
+  "calls": { "qualify": true },
   "target_level": "L4",
   "queue_id": "php"
 }

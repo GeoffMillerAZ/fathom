@@ -236,6 +236,20 @@ type SCIPOptions struct {
 	// and the `super(...)` of an initializer are not written calls, and are counted
 	// (CntScipCallsUnwritten) and disclosed.
 	PrivateMembers bool
+	// CallSyntax: a callable reference is a call site only where its name is
+	// written followed by `(` (needs Source), the Dart standard (LB-F65):
+	// scip-python references a function passed as a value and a decorator
+	// applied by name; neither is a call site, and both are counted
+	// (CntScipCallsUnwritten) and disclosed.
+	CallSyntax bool
+	// CalledNames: a reference to a class (`Foo#`), a term (`x.`: a field, a
+	// variable, an interface method, which scip-go writes as a term) or a
+	// local (named by what is written) whose name is written followed by `(`
+	// is a call to that name (needs Source; LB-F65). Python constructs by
+	// calling the class and scip-python names the class there; a call
+	// through a Go interface or a func-typed field references a term. Each is
+	// counted (CntScipCalledNames) and disclosed.
+	CalledNames bool
 }
 
 // SCIPOptionsFor is the option set for a dialect's SCIP producer.
@@ -245,6 +259,14 @@ func SCIPOptionsFor(dialect string, src func(path string) []byte) SCIPOptions {
 	}
 	if dialect == "dart" {
 		return SCIPOptions{Source: src, PrivateMembers: src != nil}
+	}
+	if dialect == "python" {
+		return SCIPOptions{Source: src, CallSyntax: src != nil, CalledNames: src != nil}
+	}
+	if dialect == "go" {
+		// Go keeps every callable reference: its extractor records a
+		// function value as a call (VS-6).
+		return SCIPOptions{Source: src, CalledNames: src != nil}
 	}
 	return SCIPOptions{}
 }
@@ -345,9 +367,10 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 	for _, d := range idx.GetDocuments() {
 		doc := d.GetRelativePath()
 		var srcLines [][]byte
-		if (opts.WrittenCallsOnly || opts.PrivateMembers) && opts.Source != nil {
+		if (opts.WrittenCallsOnly || opts.PrivateMembers || opts.CallSyntax || opts.CalledNames) && opts.Source != nil {
 			srcLines = bytes.Split(opts.Source(doc), []byte("\n"))
 		}
+		checkWritten := opts.WrittenCallsOnly || opts.PrivateMembers || opts.CallSyntax
 		for _, o := range d.GetOccurrences() {
 			if o.GetSymbolRoles()&int32(scippb.SymbolRole_Definition) != 0 {
 				continue
@@ -377,12 +400,23 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 					}
 				}
 			}
+			if opts.CalledNames && srcLines != nil && !callable {
+				// A class, a term or a local written as a call (LB-F65).
+				name := callee
+				if strings.HasPrefix(o.GetSymbol(), "local ") && r[0] == r[2] && int(r[0]) < len(srcLines) && r[1] >= 0 && r[1] <= r[3] && int(r[3]) <= len(srcLines[r[0]]) {
+					name = string(srcLines[r[0]][r[1]:r[3]])
+				}
+				if name != "" && dartCallAt(srcLines, r, name) {
+					callee, callable = name, true
+					res.Counts[CntScipCalledNames]++
+				}
+			}
 			if !callable || callee == "" {
 				continue
 			}
-			if srcLines != nil {
+			if checkWritten && srcLines != nil {
 				written := writtenAt(srcLines, r, callee)
-				if opts.PrivateMembers {
+				if opts.PrivateMembers || opts.CallSyntax {
 					// Dart: a call is the name followed by its arguments; the
 					// producer also references a tear-off (`onError: c.addError`), an
 					// operator and the `super`/`this` of an initializer.

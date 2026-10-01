@@ -66,11 +66,19 @@
   function: [(qualified_name (name) @name .) (relative_name (name) @name .)]) @reference.call
   (#not-match? @name "^(?i:isset|empty|die|eval|exit)$"))
 
+; With dialect.json's calls.qualify (LB-F65) a method call's receiver and a
+; scoped call's scope qualify the name: `$this->client->send()` is stored as
+; "this.client.send", `Helper::assist()` as "Helper::assist", `self::x()` as
+; "self::x", so the file resolver can bind the qualifier to a `use` or to the
+; enclosing class. The last segment is the called name, as before.
 (member_call_expression
+  object: (_) @call.receiver
   name: (name) @name) @reference.call
 
 (nullsafe_member_call_expression
+  object: (_) @call.receiver
   name: (name) @name) @reference.call
 
 (scoped_call_expression
+  scope: (_) @call.scope
   name: (name) @name) @reference.call

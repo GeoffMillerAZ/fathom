@@ -24,8 +24,8 @@
       "end_line": 17,
       "signature": "public function load(string $path): string",
       "calls": [
-        "format",
-        "load"
+        "Assist::load",
+        "format"
       ],
       "tier": "verified"
     }

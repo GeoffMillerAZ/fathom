@@ -60,6 +60,7 @@ type tsDialectRules struct {
 	containerSep    string   // separator when chainContainers is true
 	methodSep       string   // separator between a container's qualified name and a callable's own name
 	scopeSep        string   // manifest qualify.scope_sep: the language's own scope operator ("::"), "" when none
+	qualifyCalls    bool     // manifest calls.qualify (LB-F65): qualifiedCallee
 	trimQuotes      bool     // manifest names.trim_quotes
 	stripPrefix     []string // manifest names.strip_prefix
 
@@ -199,6 +200,9 @@ func compileDialectRules(d Dialect) (*tsDialectRules, error) {
 	}
 	if d.Imports != nil {
 		r.importStrategy = d.Imports.Strategy
+	}
+	if d.Calls != nil {
+		r.qualifyCalls = d.Calls.Qualify
 	}
 	if d.Names != nil {
 		r.trimQuotes, r.stripPrefix = d.Names.TrimQuotes, d.Names.StripPrefix
@@ -465,11 +469,11 @@ func (e *TSExtractor) extractLocked(variant tsVariant, service, relPath string, 
 		}
 	}
 
-	defs, calls, typeRefs := splitTSMatches(matches, rules.kinds, src, rules.nameNormalizer())
+	defs, calls, attaches, typeRefs := splitTSMatchesWith(matches, rules.kinds, src, rules.nameNormalizer(), rules.qualifyCalls)
 	e.typeRefs.Add(int64(typeRefs))
 	resolveTSParents(defs)
 	qualifyTSDefs(defs, rules)
-	attachTSCalls(defs, calls)
+	attachTSCalls(defs, calls, attaches...)
 
 	pkg := pkgFromPath(relPath)
 	switch {
@@ -647,6 +651,16 @@ type tsCallSite struct {
 	start, end uint32
 }
 
+// tsCallAttach gives the calls inside from (a decorator, a module-level
+// variable's statement) to the definition whose node spans exactly to — a
+// call no callable definition encloses still has an owner (LB-F65). A query
+// says so with one match capturing @calls.to (that definition's node) and
+// @calls.from; a dialect whose query has neither is unaffected.
+type tsCallAttach struct {
+	toStart, toEnd     uint32
+	fromStart, fromEnd uint32
+}
+
 // typeRefCaptures are the reference captures §3.4 counts but does not store
 // until a consumer exists.
 var typeRefCaptures = map[string]bool{"reference.class": true, "reference.implementation": true, "reference.type": true}
@@ -677,22 +691,147 @@ func tsCalleeName(m tsengine.Match, src []byte) (callee string, site tsengine.No
 	return site.Text(src), site, true
 }
 
+// qualifiedCallee is a call site's callee under the manifest's
+// calls.qualify (LB-F65): the called name joined to its receiver
+// (@call.receiver, by ".") or its scope (@call.scope, by "::") when the
+// match captures one inside @reference.call, else the whole callee
+// expression compacted (compactCallee). Either way the text after the last
+// '.' or ':' is the called name, as BareName and the store's CalleeName
+// read it.
+func qualifiedCallee(m tsengine.Match, src []byte, callee string, site tsengine.Node) string {
+	var named bool
+	var recv, scope *tsengine.Node
+	for i := range m.Captures {
+		c := &m.Captures[i]
+		if c.Node.StartByte < site.StartByte || c.Node.EndByte > site.EndByte {
+			continue
+		}
+		switch c.Name {
+		case "name":
+			named = true
+		case "call.receiver":
+			n := c.Node
+			recv = &n
+		case "call.scope":
+			n := c.Node
+			scope = &n
+		}
+	}
+	if !named {
+		return compactCallee(callee)
+	}
+	switch {
+	case scope != nil:
+		if q, ok := compactExpr(scope.Text(src), true); ok && q != "" {
+			return q + "::" + callee
+		}
+	case recv != nil:
+		if q, ok := compactExpr(recv.Text(src), true); ok && q != "" && q != "()" {
+			return q + "." + callee
+		}
+		return "()." + callee // a receiver with no name of its own: (new Foo)->bar()
+	}
+	return callee
+}
+
+// compactCallee is a whole callee expression as stored call text (LB-F65):
+// compactExpr's, unless it ends in no name (a subscript or a call's result
+// called), when it names no callee: "". A text whose groups the compaction
+// cannot follow (a quote or bracket inside a comment or a regular
+// expression) is kept as written, whitespace collapsed: its last segment is
+// still the called name.
+func compactCallee(text string) string {
+	out, ok := compactExpr(text, false)
+	if !ok {
+		return strings.Join(strings.Fields(text), "")
+	}
+	if strings.HasSuffix(out, ")") || strings.HasSuffix(out, "]") || strings.HasSuffix(out, "}") {
+		return ""
+	}
+	return out
+}
+
+// compactExpr is a callee, receiver or scope expression compacted (LB-F65):
+// whitespace dropped, the contents of every (), [] and {} group dropped
+// (string literals inside them skipped; a ' after a letter or digit is an
+// apostrophe, not a quote), `->` and `?->` (PHP) and `?.` (TypeScript) read
+// as '.', and with sigils PHP's `$` before a name dropped. ok is false when
+// a group never closes.
+func compactExpr(text string, sigils bool) (string, bool) {
+	var b strings.Builder
+	depth := 0
+	var quote byte
+	for i := 0; i < len(text); i++ {
+		c := text[i]
+		if depth > 0 {
+			switch {
+			case quote != 0:
+				if c == '\\' {
+					i++
+				} else if c == quote {
+					quote = 0
+				}
+			case c == '"' || c == '`' || (c == '\'' && (i == 0 || !isIdentByte(text[i-1]))):
+				quote = c
+			case c == '(' || c == '[' || c == '{':
+				depth++
+			case c == ')' || c == ']' || c == '}':
+				depth--
+				if depth == 0 {
+					b.WriteByte(c)
+				}
+			}
+			continue
+		}
+		switch {
+		case c == ' ' || c == '\t' || c == '\n' || c == '\r':
+		case c == '(' || c == '[' || c == '{':
+			depth++
+			b.WriteByte(c)
+		case sigils && c == '$' && i+1 < len(text) && isIdentByte(text[i+1]):
+		case c == '?' && i+1 < len(text) && text[i+1] == '.':
+		case c == '?' && i+2 < len(text) && text[i+1] == '-' && text[i+2] == '>':
+		case c == '-' && i+1 < len(text) && text[i+1] == '>':
+			b.WriteByte('.')
+			i++
+		default:
+			b.WriteByte(c)
+		}
+	}
+	return b.String(), depth == 0
+}
+
 // splitTSMatches separates a query's flat match list into definitions (a
 // "name" + "definition.<kind>" capture pair) and call sites (a
 // "reference.call" capture, its callee per tsCalleeName) using src to
 // resolve capture text, and counts type references (typeRefCaptures).
 func splitTSMatches(matches []tsengine.Match, kinds map[string]tsDefKind, src []byte, norm func(string) string) ([]*tsDef, []tsCallSite, int) {
+	defs, calls, _, typeRefs := splitTSMatchesWith(matches, kinds, src, norm, false)
+	return defs, calls, typeRefs
+}
+
+// splitTSMatchesWith is splitTSMatches under the manifest's calls.qualify,
+// also returning the query's call attachments (@calls.to, @calls.from).
+func splitTSMatchesWith(matches []tsengine.Match, kinds map[string]tsDefKind, src []byte, norm func(string) string, qualify bool) ([]*tsDef, []tsCallSite, []tsCallAttach, int) {
 	var defs []*tsDef
 	var calls []tsCallSite
+	var attaches []tsCallAttach
 	typeRefs := 0
 	for _, m := range matches {
 		if callee, site, ok := tsCalleeName(m, src); ok {
-			if norm != nil {
+			if qualify {
+				callee = qualifiedCallee(m, src, callee, site)
+			}
+			if norm != nil && callee != "" {
 				callee = norm(callee)
 			}
 			if callee != "" {
 				calls = append(calls, tsCallSite{text: callee, start: site.StartByte, end: site.EndByte})
 			}
+			continue
+		}
+		if a, ok := tsCallAttachOf(m); ok {
+			attaches = append(attaches, a)
 			continue
 		}
 		var nameNode, defNode, bodyNode, endNode *tsengine.Node
@@ -767,7 +906,27 @@ func splitTSMatches(matches []tsengine.Match, kinds map[string]tsDefKind, src []
 		}
 		defs = append(defs, d)
 	}
-	return defs, calls, typeRefs
+	return defs, calls, attaches, typeRefs
+}
+
+// tsCallAttachOf reads a match capturing @calls.to and @calls.from.
+func tsCallAttachOf(m tsengine.Match) (tsCallAttach, bool) {
+	var to, from *tsengine.Node
+	for i := range m.Captures {
+		c := &m.Captures[i]
+		switch c.Name {
+		case "calls.to":
+			n := c.Node
+			to = &n
+		case "calls.from":
+			n := c.Node
+			from = &n
+		}
+	}
+	if to == nil || from == nil {
+		return tsCallAttach{}, false
+	}
+	return tsCallAttach{toStart: to.StartByte, toEnd: to.EndByte, fromStart: from.StartByte, fromEnd: from.EndByte}, true
 }
 
 // tsPackageFromCapture applies @scope.package (LB-F5, design §3.5) for a
@@ -942,7 +1101,12 @@ func qualifyTSDefs(defs []*tsDef, spec *tsDialectRules) {
 // via treesitter.CollectCalls — not a typed/resolved edge; ADR-021 §3's
 // typed Go enrichment pass is unaffected). Deduplicated and sorted, matching
 // CollectCalls's contract exactly.
-func attachTSCalls(defs []*tsDef, calls []tsCallSite) {
+//
+// An attachment (@calls.to/@calls.from, LB-F65) gives a call inside its
+// from range to its definition when no callable definition encloses the
+// call more tightly than that range: a decorator's call goes to the
+// definition it decorates, a module-level assignment's to its variable.
+func attachTSCalls(defs []*tsDef, calls []tsCallSite, attaches ...tsCallAttach) {
 	for _, c := range calls {
 		best := -1
 		for i, d := range defs {
@@ -952,6 +1116,21 @@ func attachTSCalls(defs []*tsDef, calls []tsCallSite) {
 			if c.start >= d.start && c.end <= d.end {
 				if best == -1 || (defs[best].end-defs[best].start) > (d.end-d.start) {
 					best = i
+				}
+			}
+		}
+		var span uint32
+		if best >= 0 {
+			span = defs[best].end - defs[best].start
+		}
+		for _, a := range attaches {
+			if c.start < a.fromStart || c.end > a.fromEnd || (best >= 0 && a.fromEnd-a.fromStart >= span) {
+				continue
+			}
+			for i, d := range defs {
+				if d.start == a.toStart && d.end == a.toEnd {
+					best, span = i, a.fromEnd-a.fromStart
+					break
 				}
 			}
 		}

@@ -28,6 +28,11 @@ const (
 	// CntScipCallsUnwritten counts callable references left out of call
 	// truth because no call is written at their range (SCIPOptions).
 	CntScipCallsUnwritten = "scip_calls_unwritten"
+	// CntScipCalledNames counts references to a non-callable symbol (a
+	// class, a field or variable, an interface method scip-go writes as a
+	// term, a local) the call truth takes as a call because a call is
+	// written at their range (SCIPOptions.CalledNames, LB-F65).
+	CntScipCalledNames = "scip_called_names"
 
 	CntScipDefs       = "scip_defs"
 	CntScipDefsMapped = "scip_defs_mapped"

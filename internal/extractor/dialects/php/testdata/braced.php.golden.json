@@ -58,7 +58,7 @@
       "end_line": 25,
       "signature": "function connect(Store $s): void",
       "calls": [
-        "get"
+        "s.get"
       ],
       "tier": "verified"
     },
@@ -78,7 +78,7 @@
       "end_line": 32,
       "signature": "public function warm(): void",
       "calls": [
-        "flush"
+        "this.flush"
       ],
       "tier": "verified"
     },

@@ -50,7 +50,8 @@
       "end_line": 25,
       "signature": "def handle(self):",
       "calls": [
-        "call_it"
+        "call_it",
+        "route"
       ],
       "tier": "verified"
     }

@@ -361,15 +361,25 @@ func resolveImports(r *importResolver, paths []string, specs map[string][]extrac
 			fromKey := s.Key()
 			seen := map[string]bool{}
 			for _, call := range s.Calls {
+				call = strings.ReplaceAll(call, "::", ".") // PHP's Foo::bar (LB-F65) reads like Foo.bar
 				if staticNames[call] && enclosingTypeDeclares(s.Name, call, qualified[path]) {
 					continue // C#: the caller's own type is searched before any using static
 				}
-				toKey, ok := matchFileResolvedCall(call, named, whole, topLevel, topLevel[path], wild)
+				toKey, ok, self := matchSelfMember(call, s.Name, qualified[path])
+				if self && !ok {
+					continue // self.x binds to the enclosing class or to nothing, never a top-level x
+				}
+				if !ok {
+					toKey, ok = matchFileResolvedCall(call, named, whole, topLevel, topLevel[path], wild)
+				}
 				if !ok {
 					toKey, ok = matchTypeAlias(call, typeAlias, qualified, keyFile, symName)
 				}
 				if !ok {
 					toKey, ok = matchWildMember(call, wild, qualified, keyFile)
+				}
+				if !ok {
+					toKey, ok = matchNamedMember(call, named, qualified, keyFile, symName)
 				}
 				if !ok || toKey == fromKey || seen[toKey] {
 					continue
@@ -430,6 +440,49 @@ func matchFileResolvedCall(call string, named, whole map[string]string, topLevel
 		}
 	}
 	return "", false
+}
+
+// selfQualifiers are the receivers that name the caller's own class:
+// Python's self and cls, PHP's $this, self:: and static:: (stored as this,
+// self, static under calls.qualify, LB-F65) and TypeScript's this.
+var selfQualifiers = map[string]bool{"self": true, "cls": true, "this": true, "static": true}
+
+// matchSelfMember resolves a call "self.x…" (any selfQualifiers head) made
+// in a method to the enclosing class's member x — the caller's name less
+// its last segment, joined to the rest — in the caller's own file (LB-F65).
+// self reports a self-qualified call, bound or not: one the class does not
+// define (inherited, or a field) binds to nothing, never to a top-level x.
+func matchSelfMember(call, caller string, local map[string]string) (key string, ok, self bool) {
+	head, rest, dotted := strings.Cut(call, ".")
+	if !dotted || !selfQualifiers[head] {
+		return "", false, false
+	}
+	i := strings.LastIndexByte(caller, '.')
+	if i < 0 {
+		return "", false, true
+	}
+	key, ok = local[caller[:i]+"."+rest]
+	return key, ok, true
+}
+
+// matchNamedMember resolves a dotted call "Y.Z…" whose head Y is a name a
+// named import binds (Python's `from m import Repo` then `Repo.create()`,
+// LB-F65): to the member "Y.Z" when the imported symbol's file defines it,
+// else to Y itself — matchWildMember's rule for a named binding.
+func matchNamedMember(call string, named map[string]string, qualified map[string]map[string]string, keyFile, symName map[string]string) (string, bool) {
+	head, rest, dotted := strings.Cut(call, ".")
+	if !dotted {
+		return "", false
+	}
+	key, ok := named[head]
+	if !ok {
+		return "", false
+	}
+	member, _, _ := strings.Cut(rest, ".")
+	if mk, ok := qualified[keyFile[key]][symName[key]+"."+member]; ok {
+		return mk, true
+	}
+	return key, true
 }
 
 // matchWildMember resolves a dotted call "Y.Z…" whose head Y is a name a

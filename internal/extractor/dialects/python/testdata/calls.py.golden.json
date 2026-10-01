@@ -1,0 +1,72 @@
+{
+  "symbols": [
+    {
+      "name": "registry",
+      "kind": "PythonVar",
+      "package": "calls",
+      "line": 6,
+      "end_line": 6,
+      "calls": [
+        "functools.partial"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "cached",
+      "kind": "PythonFunc",
+      "package": "calls",
+      "line": 10,
+      "end_line": 16,
+      "signature": "def cached(key):",
+      "calls": [
+        "db.query",
+        "db.query().filter",
+        "db.query().filter().all",
+        "functools.lru_cache",
+        "helper",
+        "make"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Service",
+      "kind": "PythonClass",
+      "package": "calls",
+      "line": 19,
+      "end_line": 25,
+      "tier": "verified"
+    },
+    {
+      "name": "limit",
+      "kind": "PythonVar",
+      "package": "calls",
+      "line": 20,
+      "end_line": 20,
+      "calls": [
+        "compute_limit"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Service.build",
+      "kind": "PythonFunc",
+      "package": "calls",
+      "line": 24,
+      "end_line": 25,
+      "signature": "def build(self):",
+      "calls": [
+        "self.make",
+        "trace"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "functools",
+      "module": "functools",
+      "kind": "whole",
+      "line": 4
+    }
+  ]
+}

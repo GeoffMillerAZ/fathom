@@ -319,7 +319,22 @@ import (
 // dependencies, devDependencies, peerDependencies and optionalDependencies write
 // (the Cargo.toml dialect's shape); every package.json was fingerprinted without
 // those calls.
-const ExtractorEpoch = "40"
+// Epoch 41 (wave lb, F-B call qualification: LB-F65, LB-F66, O260): the python
+// dialect stores a call qualified (dialect.json calls.qualify): its receiver chain
+// with the called name, argument and index contents dropped ("db.query().filter"),
+// and a callee that ends in no name (`handlers[k](x)`, `f()()`) not at all; a
+// decorator's calls now belong to the definition it decorates, and a module-level
+// assignment's and an annotated class attribute's to the variable they define
+// (@calls.to/@calls.from), where each was dropped as outside every function. The Go
+// extractor records a method called on a selector chain or on a call's or an
+// index's result ("resp.Header.Get", "strings.NewReader().Len"), where it recorded
+// none, and no longer records a value no function can be (an operand of a
+// comparison or arithmetic, a case value, the base of a further selector) or a
+// selector's own field or method name as a call; a type stays a reference. Every .py
+// and .go file was fingerprinted with the old call text, so the salt bump re-reads
+// them. (The php dialect's qualification ships under the same bump but is not
+// dispatched; the CGO phpextract.go still reads .php.)
+const ExtractorEpoch = "41"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares
