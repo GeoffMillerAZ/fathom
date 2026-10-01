@@ -1,0 +1,30 @@
+id: groovy
+language: Groovy
+# The queue entry's two subjects, both Apache-2.0 and both read only, never
+# vendored. spockframework/spock is a test framework written in Groovy (an AST
+# transformation library plus its own specifications); apache/grails-core is a
+# web framework whose plugins, GORM layer and tests are Groovy. `sha` is the
+# peeled commit of each annotated release tag.
+repos:
+  - name: spockframework/spock
+    url: https://github.com/spockframework/spock
+    ref: spock-2.4
+    sha: d6edec6dcfd8210589dfce4b5870e2c17818f65b
+    licence: Apache-2.0
+    idioms:
+      - 'specification classes whose feature methods are named by string literals (def "a feature"() {...})'
+      - 'closures passed to methods and assigned to names, with implicit it and named parameters'
+      - 'traits, interfaces, enums and annotation types beside classes'
+      - 'dynamic def methods and typed methods with default parameter values and generics'
+      - 'command-chain calls without parentheses (given:/when:/then: blocks, with(x) { ... })'
+  - name: apache/grails-core
+    url: https://github.com/apache/grails-core
+    ref: v7.2.4
+    sha: ea4ddc768f362a77fceb926ced14491c18524ca3
+    licence: Apache-2.0
+    idioms:
+      - 'traits with static and instance methods mixed into domain classes'
+      - 'static closures as DSL blocks (static mapping = { ... }, static constraints = { ... })'
+      - 'GString interpolation, safe navigation (?.) and the spread operator (*.)'
+      - 'nested and anonymous inner classes, @CompileStatic and @Transactional annotations'
+      - 'Gradle build scripts in the Groovy DSL beside the sources'
