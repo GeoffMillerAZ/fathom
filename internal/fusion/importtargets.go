@@ -13,7 +13,6 @@ import (
 	"context"
 	"fmt"
 	"sort"
-	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/extractor"
@@ -42,9 +41,12 @@ type ResolvedImport struct {
 //
 // What a spec resolves to follows the bindings resolveImports makes:
 //   - a named import: the file that defines the name at the top level of
-//     one of the module's files; else, where the strategy has a submodule
-//     form, the one file `Module<sep>Name` names (`from pkg import mod`);
-//     else the module's files;
+//     one of the module's files, or that one of them re-exports it from
+//     (LB-F75: with the module's files, which the statement also names); else, where the strategy has a submodule form, the one file
+//     `Module<sep>Name` names (`from pkg import mod`); else the module's
+//     files; else (namespace-dir, LB-F78) the file of the package or class
+//     the module path less its last segment names that defines the name,
+//     or all of that package's files;
 //   - a whole-module import: the files declaring the type an alias names
 //     (namespace-dir: C#'s `using A = N.T;`), else the module's files, else
 //     the files declaring the namespace an alias names (`using A = N;`);
@@ -74,16 +76,30 @@ func ResolveImportSpecs(ctx context.Context, lang, repoPath string, files []core
 	for _, p := range paths {
 		fileSet[p] = true
 	}
-	topLevel, keyFile, declared := importScopes(symbols, fileSet)
-	types := r.declaredTypes(symbols, fileSet)
+	idx := newResolveIndex(r, symbols, fileSet)
 
 	var report FileResolveReport
 	var faults []string
 	var out []ResolvedImport
+	spansOf := make(map[string][]extractor.ImportSpan, len(files))
+	specs := make(map[string]extractor.FileSpecs, len(files))
 	for _, f := range files {
 		spans, ierr := ext.ExtractImportSpans(f.Path, f.Content)
 		if ierr != nil {
 			faults = append(faults, f.Path) // counted and named, never a silent skip
+			continue
+		}
+		spansOf[f.Path] = spans
+		// The file's re-exports (LB-F75): a name imported through a barrel
+		// or a package's __init__ binds the file defining it.
+		if fs, err := ext.ExtractFileSpecs(f.Path, f.Content); err == nil {
+			specs[f.Path] = fs
+		}
+	}
+	x := newExportIndex(r, specs, idx.topLevel)
+	for _, f := range files {
+		spans, ok := spansOf[f.Path]
+		if !ok {
 			continue
 		}
 		report.FilesScanned++
@@ -91,7 +107,7 @@ func ResolveImportSpecs(ctx context.Context, lang, repoPath string, files []core
 		for _, sp := range spans {
 			out = append(out, ResolvedImport{
 				File: f.Path, Spec: sp.ImportSpec, StartLine: sp.StartLine, EndLine: sp.EndLine,
-				Targets: r.specTargets(f.Path, sp.ImportSpec, topLevel, keyFile, declared, types),
+				Targets: r.specTargets(f.Path, sp.ImportSpec, idx, x),
 			})
 		}
 	}
@@ -100,42 +116,19 @@ func ResolveImportSpecs(ctx context.Context, lang, repoPath string, files []core
 	return out, report
 }
 
-// importScopes indexes symbols as resolveImports does: each file's
-// top-level (undotted) names to their keys, each key's file, and the files
-// declaring each package or namespace (fileSet's only).
-func importScopes(symbols []core.SymbolNode, fileSet map[string]bool) (topLevel map[string]map[string]string, keyFile map[string]string, declared map[string][]string) {
-	topLevel = map[string]map[string]string{}
-	keyFile = make(map[string]string, len(symbols))
-	declared = map[string][]string{}
-	for _, s := range symbols {
-		keyFile[s.Key()] = s.FilePath
-		if s.Package != "" && fileSet[s.FilePath] {
-			if fs := declared[s.Package]; len(fs) == 0 || fs[len(fs)-1] != s.FilePath {
-				declared[s.Package] = append(fs, s.FilePath)
-			}
-		}
-		if strings.Contains(s.Name, ".") {
-			continue
-		}
-		m := topLevel[s.FilePath]
-		if m == nil {
-			m = map[string]string{}
-			topLevel[s.FilePath] = m
-		}
-		m[s.Name] = s.Key()
-	}
-	return topLevel, keyFile, declared
-}
-
 // specTargets is the files spec binds in importer (ResolveImportSpecs'
 // rules), sorted, without the importer itself.
-func (r *importResolver) specTargets(importer string, spec extractor.ImportSpec, topLevel map[string]map[string]string, keyFile map[string]string, declared, types map[string][]string) []string {
+func (r *importResolver) specTargets(importer string, spec extractor.ImportSpec, idx *resolveIndex, x *exportIndex) []string {
+	keyFile, declared, types := idx.keyFile, idx.declared, idx.types
 	var targets []string
 	switch spec.Kind {
 	case extractor.ImportNamed:
 		module := r.resolve(importer, spec.Module)
-		if key, ok := lookupNamed(module, spec.ExportedName, topLevel); ok {
-			targets = []string{keyFile[key]}
+		if key, ok := lookupExported(module, spec.ExportedName, x); ok {
+			// A re-exported name binds its defining file and still names
+			// the module it is imported from (LB-F75): both are what the
+			// statement reaches.
+			targets = append([]string{keyFile[key]}, module...)
 		} else if sep := r.submoduleSep(); sep != "" && spec.ExportedName != "" {
 			if sub := r.resolve(importer, spec.Module+sep+spec.ExportedName); len(sub) == 1 {
 				targets = sub
@@ -143,6 +136,15 @@ func (r *importResolver) specTargets(importer string, spec extractor.ImportSpec,
 		}
 		if len(targets) == 0 {
 			targets = module
+		}
+		if len(targets) == 0 {
+			// LB-F78: the package or class the path less its last
+			// segment names, the file defining the name when one does.
+			if key, ok := idx.memberImport(r, importer, spec); ok {
+				targets = []string{keyFile[key]}
+			} else {
+				targets = idx.memberImportFiles(r, importer, spec)
+			}
 		}
 	case extractor.ImportWhole:
 		switch keys := r.aliasedType(types, spec); {

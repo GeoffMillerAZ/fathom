@@ -183,10 +183,10 @@ func TestFileResolveLangServesCSharpAndJava(t *testing.T) {
 	}{
 		// Program.cs's `using U = MyApp.Util;` then U.Helper.Assist().
 		{"csharp", "csfixture", `{"path": "Program.cs", "line": 1, "to_path": "MyApp/Util.cs"}`, 1, 1},
-		// Main.java's `import com.example.Util;` then Util.helper(3): measured,
-		// though the resolver binds no call through a single-type import yet
-		// (TestResolveFileEdges_JavaImports), so nothing agrees.
-		{"java", "javafixture", `{"path": "com/example/Main.java", "line": 3, "to_path": "com/example/Util.java"}`, 1, 0},
+		// Main.java's `import com.example.Util;` then Util.helper(3): since
+		// LB-F74 the import binds Util and the reference Util.helper reaches
+		// Util's member (TestResolveFileEdges_JavaImports), so the edge agrees.
+		{"java", "javafixture", `{"path": "com/example/Main.java", "line": 3, "to_path": "com/example/Util.java"}`, 1, 1},
 	} {
 		t.Run(tc.dialect, func(t *testing.T) {
 			if _, ok := fileResolveLang[tc.dialect]; !ok {

@@ -132,9 +132,10 @@
   ],
   "imports": [
     {
-      "local": "com.example.util.Helper",
+      "local": "Helper",
+      "exported": "Helper",
       "module": "com.example.util.Helper",
-      "kind": "whole",
+      "kind": "named",
       "line": 3
     }
   ]
