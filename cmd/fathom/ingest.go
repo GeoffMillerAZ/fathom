@@ -533,3 +533,15 @@ func printDefaultIgnoredDirs(w io.Writer, dirs []string) {
 	fmt.Fprintf(w, "excluded: %d default-ignored cache dir(s) (%s%s) — re-include one with [connector] include in .fathom/config.toml\n",
 		len(dirs), strings.Join(shown, ", "), more)
 }
+
+// ingestRunner runs `fathom ingest` (registered below; EW-45).
+type ingestRunner struct{}
+
+func (ingestRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdIngest(args, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "ingest", Group: "index", Order: 10, Run: ingestRunner{},
+		Summary: "Ingest a service into the knowledge store"})
+}

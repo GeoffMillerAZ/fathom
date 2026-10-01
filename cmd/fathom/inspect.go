@@ -60,3 +60,15 @@ func cmdInspect(args []string, stdout, stderr io.Writer) int {
 	}
 	return 0
 }
+
+// inspectRunner runs `fathom inspect` (registered below; EW-45).
+type inspectRunner struct{}
+
+func (inspectRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdInspect(args, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "inspect", Group: "index", Order: 80, Run: inspectRunner{},
+		Summary: "List stored symbols for a service"})
+}

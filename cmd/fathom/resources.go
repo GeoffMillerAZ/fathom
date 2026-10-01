@@ -1027,3 +1027,15 @@ var resourcesEnvNow = liveResourcesEnv
 func cmdResources(args []string, stdout, stderr io.Writer) int {
 	return runResources(args, stdout, stderr, resourcesEnvNow())
 }
+
+// resourcesRunner runs `fathom resources` (registered below; EW-45).
+type resourcesRunner struct{}
+
+func (resourcesRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdResources(args, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "resources", Group: "operate", Order: 40, Run: resourcesRunner{},
+		Summary: "What the daemon takes from this machine, from files (works when it is down): budget, footprint history, lifecycle, quarantine, host, in-flight, hooks, scratch daemons, disk, last capture; exit 0 within budget, 1 over/crash-looping/stopped/leaked, 2 unreadable [--json] [--since 24h] [--id ID]"})
+}

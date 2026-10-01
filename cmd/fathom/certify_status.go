@@ -109,3 +109,36 @@ func certifyStatusJSON(svc string, s certify.GapSummary, unread []string) map[st
 	}
 	return doc
 }
+
+// runCertify dispatches `fathom certify status|gaps|manifest|orphans|suggest`.
+func runCertify(args []string, stdout, stderr io.Writer) int {
+	if len(args) > 0 && args[0] == "status" {
+		return cmdCertifyStatus(args[1:], stdout, stderr)
+	}
+	if len(args) > 0 && args[0] == "gaps" {
+		return cmdCertifyGaps(args[1:], stdout, stderr)
+	}
+	if len(args) > 0 && args[0] == "manifest" {
+		return cmdCertifyManifest(args[1:], stdout, stderr)
+	}
+	if len(args) > 0 && args[0] == "orphans" {
+		return cmdCertifyOrphans(args[1:], stdout, stderr)
+	}
+	if len(args) > 0 && args[0] == "suggest" {
+		return cmdCertifySuggest(args[1:], stdout, stderr)
+	}
+	fmt.Fprintln(stderr, "usage: fathom certify status [--service S] [--store DB] [--json]\n       fathom certify gaps [--kind invariant|incident|spec|port|rule|behaviour] [--service S] [--store DB] [--json]\n       fathom certify manifest [--out FILE] [--check] [--service S] [--store DB]\n       fathom certify orphans [--service S] [--store DB] [--json]\n       fathom certify suggest [--service S] [--store DB] [--limit N]")
+	return 1
+}
+
+// certifyRunner runs `fathom certify` (registered below; EW-45).
+type certifyRunner struct{}
+
+func (certifyRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return runCertify(args, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "certify", Group: "review", Order: 90, Run: certifyRunner{},
+		Summary: "certify status: declared/live/gap counts and the join rate for the compiled certifications layer | certify gaps [--kind invariant|incident|spec|port|rule|behaviour] [--json]: every declared target, invariant row and incident record with no live certificate, each with a remedy line (plus any decision-port suggestion on the table path); --json emits the versioned fathom.certify.gaps/v1 shape the Review Kit adapter parses | certify manifest [--out FILE] [--check]: regenerates docs/certifications.md from the layer, --check fails when the committed file differs | certify orphans [--json]: Test* symbols that certify nothing, reach no symbol changed in 180 days, and never failed/flaked — a list, never an action | certify suggest [--limit N] [--out FILE]: one batched decision-port request per chunk of unregistered Test* symbols (strength choice + asserts noul); proceed-band answers become suggestions in workspace/artifacts/certify-suggestions.jsonl, never a claim; provider none prints one line and exits 0 (vision 33 / ADR-043)"})
+}

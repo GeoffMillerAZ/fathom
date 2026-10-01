@@ -125,3 +125,15 @@ func resolveMetricsWindow(sinceDur time.Duration, from, to string, now time.Time
 	since = until.Add(-sinceDur)
 	return since, until, nil
 }
+
+// metricsRunner runs `fathom metrics` (registered below; EW-45).
+type metricsRunner struct{}
+
+func (metricsRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdMetrics(args, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "metrics", Group: "govern", Order: 80, Run: metricsRunner{},
+		Summary: "Observability surfaces: spend | traffic | channels | interventions | series | rollup | rotate | impact (the four questions, arms as ranges) | catches (the catches timeline) | sessions (the session table, or one session's windowed replay) | load (calls per day per surface, tools by caller class) | instrument | flywheel | retro | rate | arm (SR-31)"})
+}

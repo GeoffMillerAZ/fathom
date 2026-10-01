@@ -2018,3 +2018,15 @@ func printDoctorJSON(w io.Writer, harness, svc, root string, checks []doctorChec
 	enc.SetIndent("", "  ")
 	_ = enc.Encode(doctorJSONPayload(harness, svc, root, checks))
 }
+
+// doctorRunner runs `fathom doctor` (registered below; EW-45).
+type doctorRunner struct{}
+
+func (doctorRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdDoctor(args, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "doctor", Group: "operate", Order: 130, Run: doctorRunner{},
+		Summary: "Deterministic wiring diagnosis: registration, daemon, hooks, stanza, skills, config, obligations, traffic"})
+}

@@ -391,7 +391,7 @@ func extractGoJSON(f File) []Item {
 // "Command") and a bare `Command{...}` (a dot-import) — never anything
 // else named "Command", but a false positive there would need an unrelated
 // type named exactly "Command" with a field also named exactly "Use" set
-// to a string literal, which this repo's own convention (verbTable,
+// to a string literal, which this repo's own convention (declareVerb,
 // cmd/fathom/verbs.go) avoids entirely by not using cobra at all.
 func extractGoCLI(f File) []Item {
 	fset := token.NewFileSet()

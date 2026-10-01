@@ -177,7 +177,7 @@ func (sc *consoleSearchCache) index(cr *consoleRequest) console.SearchIndex {
 // projects, and each local project's plans, rows and intent records.
 func gatherSearchDocs(reg *consoleRegistry, services []searchService, degraded string) ([]console.SearchDoc, []string) {
 	docs := reg.searchDocs()
-	for _, v := range verbTable {
+	for _, v := range verbs() {
 		d := console.SearchDoc{Group: console.GroupVerbs, Kind: "verb", Title: v.Name, Subtitle: clip(v.Summary, 160), Command: "fathom " + v.Name}
 		if p, ok := reg.pageRendering(v.Name); ok {
 			d.Href = p.Href
