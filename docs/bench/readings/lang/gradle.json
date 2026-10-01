@@ -1,0 +1,176 @@
+{
+  "dialect": "gradle",
+  "kind": "tooling",
+  "target_level": "L3",
+  "level_met": "L2",
+  "grade": {
+    "L1": "excellent",
+    "L2": "excellent",
+    "L3": "unmet",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-10-01",
+  "fathom_commit": "b5ae3fb0",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "kafka",
+      "sha": "13f70256db3c994c590e5d262a7cc50b9e973204",
+      "files": 2,
+      "bytes": 127674,
+      "counts": {
+        "callables": 339,
+        "callables_signed": 339,
+        "fathom_defs": 367,
+        "kind_equal": 363,
+        "matched": 363,
+        "oracle_defs": 363,
+        "ref_fathom": 156,
+        "ref_fathom_in_truth": 155,
+        "ref_truth": 157,
+        "ref_truth_found": 155
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A"
+      },
+      "kind_intersection": [
+        "module",
+        "package",
+        "resource",
+        "task"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 1,
+        "extract_ms": 142.363,
+        "extract_cpu_ms": 124.31400000000001,
+        "max_file_ms": 121,
+        "peak_module_pages": 389,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "spring-boot",
+      "sha": "6fdf67ea1552691e932604d4bf67a5e08ff0b0ea",
+      "files": 442,
+      "bytes": 803908,
+      "counts": {
+        "callables": 4645,
+        "callables_signed": 4645,
+        "fathom_defs": 5729,
+        "kind_equal": 5726,
+        "matched": 5726,
+        "oracle_defs": 5726,
+        "ref_fathom": 2726,
+        "ref_fathom_in_truth": 2724,
+        "ref_truth": 2724,
+        "ref_truth_found": 2724,
+        "xref_fathom": 9,
+        "xref_fathom_in_truth": 9,
+        "xref_truth": 2703,
+        "xref_truth_found": 9
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A",
+        "xref": "A"
+      },
+      "kind_intersection": [
+        "module",
+        "package",
+        "resource",
+        "task"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 15,
+        "extract_ms": 616.6860000000006,
+        "extract_cpu_ms": 581.7919999999999,
+        "max_file_ms": 99,
+        "peak_module_pages": 361,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "gradle (help, init-script model)",
+      "version": "9.7.0 (spring-boot), 8.14.1 (kafka)"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 0.999,
+    "ref_recall": 0.9993,
+    "sym_precision": 0.9989,
+    "sym_recall": 1,
+    "xref_precision": 1,
+    "xref_recall": 0.0033
+  },
+  "metric_tiers": {
+    "ref_precision": "A",
+    "ref_recall": "A",
+    "sym_precision": "A",
+    "sym_recall": "A",
+    "xref_precision": "A",
+    "xref_recall": "A"
+  },
+  "required_kinds": [
+    "module",
+    "package",
+    "resource",
+    "task"
+  ],
+  "kind_intersection": [
+    "module",
+    "package",
+    "resource",
+    "task"
+  ],
+  "counts": {
+    "callables": 4984,
+    "callables_signed": 4984,
+    "fathom_defs": 6096,
+    "kind_equal": 6089,
+    "matched": 6089,
+    "oracle_defs": 6089,
+    "ref_fathom": 2882,
+    "ref_fathom_in_truth": 2879,
+    "ref_truth": 2881,
+    "ref_truth_found": 2879,
+    "xref_fathom": 9,
+    "xref_fathom_in_truth": 9,
+    "xref_truth": 2703,
+    "xref_truth_found": 9
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "files_with_error": 16,
+    "throughput_mb_s": 1.32,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 1.23,
+    "max_file_ms": 121,
+    "peak_module_pages": 389,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    "L3 unmet: xref_recall .0033 (9 of 2,703 oracle cross-references: an include or project dependency to the build script of the project Gradle resolved it to) at xref_precision 1. imports.scm resolves each path to the script Gradle's default layout gives it (namespace-dir over ':' from the repository root), but the file resolver binds a call through a whole-module import only to the target file's one top-level symbol, and a build script declares several (plugins, dependencies, tasks), none named by its project path; the 9 edges are the scripts that declare exactly one (LB-Q-gradle-rest)",
+    "attested by Gradle and scored: spring-boot 440 includes, 4,144 dependencies, 1,084 plugins, 58 tasks; kafka 61 includes (storage:api by its directory: settings renames it storage-api), 212 dependencies, 26 plugins, 64 tasks. Scanned and not attested, so out of the truth and the dialect's only extra definitions: spring-boot's prepareOldMetadata, prepareNewMetadata and generate (registered only when the build is given a version to compare) and kafka's org.scoverage plugin (twice) and reportCoverage task (twice), applied and registered only with a coverage flag; kafka's project(':x').sourceSets.test.output entries are file collections, not project dependencies, and neither side counts them",
+    "grammar: murtaza64/tree-sitter-groovy main at 2a6ddd55 (MIT, groovy.wasm.gz 171,362 bytes gzip); on these 729 scripts it reads 22 with an error against 37 for dekobon/tree-sitter-groovy v0.3.0, 85 for Decodetalkers master and 84 for amaanq v0.1.2 (tree-sitter 0.27 CLI)",
+    "kafka: restricted to settings.gradle, build.gradle (-only; the files outside are a disclosed gap, not measured)",
+    "measured files: the scripts Gradle evaluates as the subject's build (gradle-oracle -files-out, equal to the -only globs): spring-boot's settings and root scripts and its 440 project scripts, of the 725 *.gradle files in the checkout (the rest are the Gradle plugin's test resources, buildSrc, the gradle/plugins included build and the integration tests' standalone builds, none evaluated as this build); kafka's settings.gradle and build.gradle (its 64 projects have no script of their own; the gradle/*.gradle script plugins are applied by path, and the model names no applied script)",
+    "not read: the Kotlin DSL (spring-boot's 53 *.gradle.kts, all of the queue's square/okhttp), which stays with the kotlin dialect (LB-Q-gradle-rest); a version-catalog accessor (libs.x.y), the map notation (group:, name:) and files(...) declare dependencies the dialect does not name, and the oracle's line scan does not propose them either, so neither side scores them",
+    "oracle: Gradle's own evaluation through calibration/oracles/gradle (tier A): each subject's wrapper (spring-boot Gradle 9.7.0, kafka 8.14.1; JDK 21.0.12, -Xmx2g, nice) runs help on a scratch copy with the init script oracle.gradle, which writes, after every project is configured, the settings' project descriptors and settings plugins and, per project, its build script, applied plugin ids, task names, each candidate task's dependsOn and finalizedBy and each configuration's declared dependencies; an independent brace-depth line scan of the Gradle-evaluated scripts gives each entity's line and keeps it only when Gradle attests it in the project the line configures (the script's own, a project(':x') block's, any project's inside subprojects, allprojects or configure); `gradle projects -q --offline` lists the same projects as the model's descriptors (spring-boot 454, kafka 63)",
+    "parse errors: 16 of the 444 measured scripts hold an ERROR or MISSING node (3.6%, under design section 14.2's 5% line; spring-boot 15, kafka 1), mostly a Java lambda or method reference as an argument; on the Groovy subjects' build scripts the same grammar reads 82 of grails-core v7.2.4's 343 (23.9%) and 6 of spock-2.4's 25 with an error, mostly a comma between a project dependency and its closure, so a subject in that style would measure over the line (disclosed in LB-Q-gradle-rest)",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "references: 2,881 truth pairs, 89 of them a declared task's dependsOn or finalizedBy as Gradle evaluated them (the task realized) and 2,792 an include or project dependency to the path it names (each one Gradle resolved to a project), which the dialect records as a call so the file resolver can bind it; the 89 task pairs alone read recall .9888 (88) and precision .9670 (88 of 91), excellent: missed kafka srcJar to processMessages (added outside the task's declaration), extra kafka reportCoverage to coverageGen (not registered) and spring-boot antRun's two (Gradle could not evaluate that task's dependsOn at configuration: 5 tasks' details failed with IllegalResolutionException and are absent from the truth)",
+    "spring-boot: restricted to settings.gradle, build.gradle, */*/build.gradle (-only; the files outside are a disclosed gap, not measured)",
+    "xref_precision and xref_recall of a tags-engine tool format score the file resolver's file-resolved edges (fusion.ResolveFileEdges over the dialect's import strategy, the edges ingest stores) against the oracle's cross_references at file granularity: (file, referring definition, referenced file), the referenced definition's name not compared (LB-F56)"
+  ],
+  "disposition": "partial: target L3, met L2 (L1 excellent, L2 excellent) on spring-projects/spring-boot v4.1.1 (442 scripts) and apache/kafka 4.1.0 (2) against Gradle's own evaluation (tier A): sym_recall 1, sym_precision .9989 (6,089 definitions), ref_recall .9993, ref_precision .999 (2,881 pairs), 0 faults, 389 peak module pages. L3 is unmet: xref_recall .0033 (9 of 2,703) at precision 1, because the file resolver binds an import's call only to a target file's one top-level symbol and a build script declares several (LB-Q-gradle-rest); the Kotlin DSL is not read; the row itself also needs LB-Q-kotlin at L4 (G2-6)"
+}

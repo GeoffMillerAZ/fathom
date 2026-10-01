@@ -1,0 +1,27 @@
+// A settings script: the projects of the build and the settings plugins.
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+    }
+    plugins {
+        id 'org.example.managed' version '1.0'
+    }
+}
+
+plugins {
+    id 'org.example.settings-conventions' version '0.1'
+}
+
+rootProject.name = 'sample'
+
+include ':app', ':lib'
+include("core:util")
+include 'tools:cli'
+
+if (System.getenv('WITH_DOCS')) {
+    include ':docs'
+}
+
+['x', 'y'].each { include it }
+
+includeBuild 'build-logic'

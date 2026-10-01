@@ -1,0 +1,104 @@
+{
+  "symbols": [
+    {
+      "name": "org.example.settings-conventions",
+      "kind": "GradlePlugin",
+      "package": "settings",
+      "line": 12,
+      "end_line": 12,
+      "tier": "verified"
+    },
+    {
+      "name": ":app",
+      "kind": "GradleInclude",
+      "package": "settings",
+      "line": 17,
+      "end_line": 17,
+      "signature": "':app'",
+      "calls": [
+        ":app"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": ":lib",
+      "kind": "GradleInclude",
+      "package": "settings",
+      "line": 17,
+      "end_line": 17,
+      "signature": "':lib'",
+      "calls": [
+        ":lib"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "core:util",
+      "kind": "GradleInclude",
+      "package": "settings",
+      "line": 18,
+      "end_line": 18,
+      "signature": "\"core:util\"",
+      "calls": [
+        "core:util"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "tools:cli",
+      "kind": "GradleInclude",
+      "package": "settings",
+      "line": 19,
+      "end_line": 19,
+      "signature": "'tools:cli'",
+      "calls": [
+        "tools:cli"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": ":docs",
+      "kind": "GradleInclude",
+      "package": "settings",
+      "line": 22,
+      "end_line": 22,
+      "signature": "':docs'",
+      "calls": [
+        ":docs"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": ":app",
+      "module": ":app",
+      "kind": "whole",
+      "line": 17
+    },
+    {
+      "local": ":lib",
+      "module": ":lib",
+      "kind": "whole",
+      "line": 17
+    },
+    {
+      "local": "core:util",
+      "module": "core:util",
+      "kind": "whole",
+      "line": 18
+    },
+    {
+      "local": "tools:cli",
+      "module": "tools:cli",
+      "kind": "whole",
+      "line": 19
+    },
+    {
+      "local": ":docs",
+      "module": ":docs",
+      "kind": "whole",
+      "line": 22
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+// Tasks: every declaration form, and the tasks each depends on.
+task hello {
+    doLast { println 'hello' }
+}
+
+task copyDocs(type: Copy) {
+    dependsOn 'hello'
+    from 'docs'
+    into "$buildDir/docs"
+}
+
+task('quoted') {
+    dependsOn hello, copyDocs
+}
+
+task bare
+
+tasks.register("generate", Sync) {
+    dependsOn(tasks.named("hello"))
+    finalizedBy 'report'
+}
+
+tasks.register('report')
+
+def packaged = tasks.register("packageAll", Zip) {
+    dependsOn tasks.generate
+    finalizedBy(report)
+}
+
+task verify(dependsOn: ['hello', 'generate']) {
+    mustRunAfter 'report'
+}
+
+tasks.named('hello') {
+    dependsOn 'bare'
+}
+
+hello.dependsOn bare

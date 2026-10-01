@@ -1,0 +1,70 @@
+{
+  "symbols": [
+    {
+      "name": "java",
+      "kind": "GradlePlugin",
+      "package": "root",
+      "line": 3,
+      "end_line": 3,
+      "tier": "verified"
+    },
+    {
+      "name": "org.junit.jupiter:junit-jupiter:5.10.0",
+      "kind": "GradleDependency",
+      "package": "root",
+      "line": 5,
+      "end_line": 5,
+      "signature": "testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0'",
+      "tier": "verified"
+    },
+    {
+      "name": "scala",
+      "kind": "GradlePlugin",
+      "package": "root",
+      "line": 10,
+      "end_line": 10,
+      "tier": "verified"
+    },
+    {
+      "name": ":clients",
+      "kind": "GradleDependency",
+      "package": "root",
+      "line": 12,
+      "end_line": 12,
+      "signature": "implementation project(':clients')",
+      "calls": [
+        ":clients"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "coreJar",
+      "kind": "GradleTask",
+      "package": "root",
+      "line": 14,
+      "end_line": 16,
+      "signature": "task coreJar(type: Jar)",
+      "calls": [
+        "compileScala"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "org.lz4:lz4-java:1.8.0",
+      "kind": "GradleDependency",
+      "package": "root",
+      "line": 21,
+      "end_line": 21,
+      "signature": "api 'org.lz4:lz4-java:1.8.0'",
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": ":clients",
+      "module": ":clients",
+      "kind": "whole",
+      "line": 12
+    }
+  ]
+}

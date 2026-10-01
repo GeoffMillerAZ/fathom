@@ -295,6 +295,13 @@ const (
 	// class and enum and CSS's keyframes.
 	KindMakeTarget SourceKind = "MakeTarget"
 
+	// Gradle build scripts, Groovy DSL (LB-Q-gradle, language-breadth: new —
+	// a fleet gap, no incumbent). KindGradleTask is the manifest's primary
+	// connector-classification kind; the dialect's other kinds (include,
+	// dependency, plugin) have no connector classification use and so get no
+	// constant of their own, same precedent as Makefile's variable.
+	KindGradleTask SourceKind = "GradleTask"
+
 	// Lua
 	KindLuaFunction SourceKind = "LuaFunction"
 

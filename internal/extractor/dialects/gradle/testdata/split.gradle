@@ -1,0 +1,15 @@
+// Dependencies the grammar splits: a notation right after a comment, and a project named by a
+// map (path: and configuration:), bare or inside platform().
+dependencies {
+    api project(path: ':clients', configuration: 'shadow')
+    implementation(project(path: ':core'))
+    api(platform(project(path: ':bom')))
+    // a comment before a notation
+    implementation 'org.example:after-comment:1.0'
+    // a comment before a project
+    api project(':after')
+    // a comment before a map
+    testImplementation project(path: ':tests', configuration: 'testOutput')
+    // a comment before a catalog accessor
+    api libs.rocksdb
+}
