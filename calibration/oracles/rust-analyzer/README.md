@@ -50,3 +50,17 @@ It records no `impl` definitions (960 `RustImpl` symbols are outside the L1 kind
 `excluded_by_kind`), reports fields, enum variants and associated types as definitions the dialect does not extract
 (`def_mapping` .692), and gives locals a definition (21% of the 151,764 references target one, and no extractor maps
 a local, which bounds `typed_recall` at about two thirds whatever an extractor emits).
+
+Re-run 2026-10-01 (wave la re-measure, fathom d8ed9a29): Homebrew `rust-analyzer 0.0.0 (03fcb77246 2026-09-27)`
+and `cargo`/`rustc 1.98.1 (48a229ce 2026-09-01)` instead of rustup (the formula's sysroot carries `rust-src`, so the
+standard library still resolves), no install into a scratch directory. The recipe above ran unchanged with
+`CARGO_HOME=<toolcache>/cargo` (246 MB after both subjects) and `CARGO_TARGET_DIR` on the external volume (303 MB):
+ripgrep 12.4 s (7.4 MB index, 18 `Duplicate symbol` warnings), clap 27.4 s (11 MB, 712). `lang-oracle -scip -scip-defs`
+ran against each real subject root and re-read every L1, L2 and L4 metric and count identically (sym_recall .9986,
+sym_precision .9784, call_recall .9593, call_precision .9846, def_mapping .692, typed_recall .5222), so the Homebrew
+build is a drop-in for the rustup one and no met level moved. What is new is L3 `import_resolution` (computed from the
+index's references on `use` and `mod` lines since LB-F40), .4725: 635 of 1,344 in-repo imports resolve to the file the
+index names (ripgrep 115 of 251, clap 520 of 1,093), 543 resolve to none and 166 only to another file; 427
+import-line references are left out because their symbol is defined in more than one file. typed_recall predates F-A
+(item scip: the `ImportIndex` line-span fallback and local references out of `typed_recall`) and is re-run after that
+merge.

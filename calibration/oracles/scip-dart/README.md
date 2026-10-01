@@ -38,3 +38,17 @@ no fallback. Its shapes, and how `internal/langbench` reads them (all scoped to 
   parameter, not to a callable descriptor, so the index omits it and the dialect's pair counts against `call_precision`.
 - `typed_recall` counts every in-index reference: 46% of them (9,076 of 19,736 across the eight packages) target a parameter, a type
   parameter or a local variable, which no extractor emits as a symbol (`docs/plans/language-breadth.md`, `LB-Q-dart-rest`).
+
+Re-run 2026-10-01 (wave la re-measure, fathom d8ed9a29): Homebrew `dart 3.13.4 (stable)`, `dart pub global activate
+scip_dart` 1.7.0 into `PUB_CACHE=<toolcache>/pub` (4 s), then `dart pub get` and `dart pub global run scip_dart . -o`
+in each of the eight packages, 3.1 to 5.0 s a package with the pub get (bloc 4.4, bloc_test 3.4, bloc_concurrency
+3.1, http 5.0, http_parser 3.7, http2 4.6, web_socket_channel 3.8, http_multi_server 3.1). `lang-oracle -scip
+-scip-defs` ran per package against the real package root (0.6 to 1.2 s each) and re-read every L1, L2 and L4 metric
+and count identically (sym_recall .9995, call_recall .9971, call_precision .9648, def_mapping .9995, typed_recall
+.4331), so no met level moved. New: `import_resolution` reads 1, on 6 of 6 in-repo imports, and that is the oracle's
+reach, not the dialect's: scip-dart writes no occurrence on an import or export URI (`import '../http.dart' as
+http;` carries only the prefix's definition) and none with the Import symbol role; the only occurrences on an import
+line are references to the names a `show` or `hide` clause lists (`export 'src/client.dart' hide zoneClient;`), so 6
+of the 752 imports (http 2, http2 4) have an oracle, 389 resolve to a file of the subject with no attestation, and
+import edges read precision .0127 (5 of 394), recall .8333 (5 of 6). typed_recall predates F-A (item scip) and is
+re-run after that merge.

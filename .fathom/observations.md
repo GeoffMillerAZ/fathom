@@ -2732,3 +2732,16 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Status:** fixed
 - **Impact:** the next extractor change that adds symbols to fauxtown will move the same literals; tests select --safe does not narrow here (1585 tests, O230), so only a whole-package run finds them
 
+
+### O244 — scip-dart attests 6 of 752 Dart imports (it writes no occurrence on an import or export URI), so import_resolution reads 1 on a 6-import denominator and import-edge precision .0127 is an artifact; the harness has no attested-fraction guard
+
+- **Symptom:** the 2026-10-01 L3 re-measure of Dart reads import_resolution 1 (6 of 6 in-repo imports, excellent against the .95 bar) while 389 of the 394 imports the dialect resolves to a file of the subject have no oracle truth at all, and import edges read precision .0127 (5 of 394)
+- **Evidence:**
+  - **Tool:** indexbench lang-oracle -dialect dart -scip <index> -scip-defs on the eight packages (fathom d8ed9a29, scip-dart 1.7.0, dart 3.13.4)
+  - **Expected:** an import_resolution whose denominator is most of the imports the dialect resolves, as for PHP (486 attested of 897 imports, scip-php writes references on `use` lines) and Rust (1,344 of 2,138)
+  - **Actual:** imports 752, imports_in_repo 6 (http 2, http2 4, the other six packages 0), imports_unattested 389, import_edges_fathom 394, import_edges_truth 6. The eight indexes carry 33 non-definition occurrences on import, export, show and part lines, all with symbol_roles 0 (none with the Import role): a reference to a name a `show` or `hide` clause lists (`export 'src/client.dart' hide zoneClient;`), never to the URI; `import '../http.dart' as http;` has only the prefix's definition
+  - **Repro:** calibration/oracles/scip-dart/README.md recipe on dart-lang/http pkgs/http (dart pub get, dart pub global run scip_dart . -o x.scip), then list the occurrences of lib/src/client.dart on line 11; indexbench lang-oracle -dialect dart ... and read the import_* counts of docs/bench/readings/lang/dart.json
+- **Root cause:** scip-dart emits no occurrence for a URI directive, and ScoreImports pairs oracle references with a statement only by the lines the reference sits on, so an import without a show or hide clause has no truth and is counted as unattested (apart, never wrong). The L3 import_resolution grade has no minimum share of imports the oracle attests, so an oracle that sees under 1% of a language's imports still grades excellent
+- **Fix:** none (a readings-only item; the harness belongs to the harness item, LB-F61 is reserved for the integrator). Candidates: an attested-fraction disclosure that stops import_resolution grading good or excellent below a floor, and a neutral Dart directive dump (the analyzer's resolved ImportDirective and ExportDirective uris, tier B) as the import oracle, as clang-includes and ruby-require are for C++ and Ruby
+- **Status:** open
+- **Impact:** Dart's import_resolution 1 is not evidence the dialect resolves imports; L3 stays unmet on file_edge_recall .108 against .25, but once F-D lifts that metric L3 would pass on this number. The three plan rows keep their texts honest (LB-Q-dart-rest names the 6 of 752)
