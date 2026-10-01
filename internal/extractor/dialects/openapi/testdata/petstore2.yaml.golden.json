@@ -1,0 +1,93 @@
+{
+  "symbols": [
+    {
+      "name": "petstore2.yaml",
+      "kind": "OpenAPIDocument",
+      "package": "petstore2",
+      "line": 1,
+      "end_line": 51,
+      "signature": "2.0",
+      "tier": "verified"
+    },
+    {
+      "name": "GET /pets",
+      "kind": "OpenAPIOperation",
+      "package": "petstore2",
+      "line": 7,
+      "end_line": 19,
+      "signature": "listPets",
+      "calls": [
+        "Failure",
+        "Pet",
+        "limit"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "PUT /pets",
+      "kind": "OpenAPIOperation",
+      "package": "petstore2",
+      "line": 20,
+      "end_line": 28,
+      "tier": "verified"
+    },
+    {
+      "name": "Pet",
+      "kind": "OpenAPISchema",
+      "package": "petstore2",
+      "line": 30,
+      "end_line": 36,
+      "calls": [
+        "Owner",
+        "Pet"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Owner",
+      "kind": "OpenAPISchema",
+      "package": "petstore2",
+      "line": 37,
+      "end_line": 38,
+      "tier": "verified"
+    },
+    {
+      "name": "limit",
+      "kind": "OpenAPIParameter",
+      "package": "petstore2",
+      "line": 40,
+      "end_line": 43,
+      "signature": "limit",
+      "tier": "verified"
+    },
+    {
+      "name": "Failure",
+      "kind": "OpenAPIResponse",
+      "package": "petstore2",
+      "line": 45,
+      "end_line": 48,
+      "calls": [
+        "Pet"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "basic",
+      "kind": "OpenAPISecurityScheme",
+      "package": "petstore2",
+      "line": 50,
+      "end_line": 51,
+      "tier": "verified"
+    }
+  ],
+  "cross_file": [
+    {
+      "from": "",
+      "edge": "ref",
+      "raw": "./spec/Pet.yaml",
+      "target": "api/spec/Pet.yaml",
+      "strategy": "repo-path",
+      "line": 25
+    }
+  ]
+}

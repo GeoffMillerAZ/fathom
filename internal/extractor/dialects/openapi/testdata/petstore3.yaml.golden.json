@@ -1,0 +1,181 @@
+{
+  "symbols": [
+    {
+      "name": "petstore3.yaml",
+      "kind": "OpenAPIDocument",
+      "package": "petstore3",
+      "line": 1,
+      "end_line": 111,
+      "signature": "3.0.3",
+      "tier": "verified"
+    },
+    {
+      "name": "GET /pets",
+      "kind": "OpenAPIOperation",
+      "package": "petstore3",
+      "line": 9,
+      "end_line": 31,
+      "signature": "listPets",
+      "calls": [
+        "Failure",
+        "Limit",
+        "Next",
+        "Pet"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "POST /pets",
+      "kind": "OpenAPIOperation",
+      "package": "petstore3",
+      "line": 32,
+      "end_line": 38,
+      "signature": "Add a pet",
+      "calls": [
+        "PetBody"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "GET /pets/{petId}",
+      "kind": "OpenAPIOperation",
+      "package": "petstore3",
+      "line": 40,
+      "end_line": 50,
+      "signature": "getPet",
+      "calls": [
+        "Failure",
+        "Pet"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Pet",
+      "kind": "OpenAPISchema",
+      "package": "petstore3",
+      "line": 54,
+      "end_line": 64,
+      "calls": [
+        "NewPet"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "NewPet",
+      "kind": "OpenAPISchema",
+      "package": "petstore3",
+      "line": 65,
+      "end_line": 71,
+      "calls": [
+        "Pet"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "a/b",
+      "kind": "OpenAPISchema",
+      "package": "petstore3",
+      "line": 72,
+      "end_line": 73,
+      "tier": "verified"
+    },
+    {
+      "name": "Alias",
+      "kind": "OpenAPISchema",
+      "package": "petstore3",
+      "line": 74,
+      "end_line": 75,
+      "calls": [
+        "a/b"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Missing",
+      "kind": "OpenAPISchema",
+      "package": "petstore3",
+      "line": 76,
+      "end_line": 77,
+      "tier": "verified"
+    },
+    {
+      "name": "Open",
+      "kind": "OpenAPISchema",
+      "package": "petstore3",
+      "line": 78,
+      "end_line": 78,
+      "tier": "verified"
+    },
+    {
+      "name": "Limit",
+      "kind": "OpenAPIParameter",
+      "package": "petstore3",
+      "line": 80,
+      "end_line": 84,
+      "signature": "limit",
+      "tier": "verified"
+    },
+    {
+      "name": "Trace",
+      "kind": "OpenAPIParameter",
+      "package": "petstore3",
+      "line": 85,
+      "end_line": 89,
+      "signature": "X-Trace",
+      "tier": "verified"
+    },
+    {
+      "name": "Failure",
+      "kind": "OpenAPIResponse",
+      "package": "petstore3",
+      "line": 91,
+      "end_line": 96,
+      "tier": "verified"
+    },
+    {
+      "name": "PetBody",
+      "kind": "OpenAPIRequestBody",
+      "package": "petstore3",
+      "line": 98,
+      "end_line": 102,
+      "calls": [
+        "NewPet"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Next",
+      "kind": "OpenAPIHeader",
+      "package": "petstore3",
+      "line": 104,
+      "end_line": 106,
+      "tier": "verified"
+    },
+    {
+      "name": "ApiKey",
+      "kind": "OpenAPISecurityScheme",
+      "package": "petstore3",
+      "line": 108,
+      "end_line": 111,
+      "tier": "verified"
+    }
+  ],
+  "cross_file": [
+    {
+      "from": "",
+      "edge": "ref",
+      "raw": "./people.yaml",
+      "target": "api/people.yaml",
+      "strategy": "repo-path",
+      "line": 60
+    },
+    {
+      "from": "",
+      "edge": "ref",
+      "raw": "common/tag.yaml",
+      "target": "api/common/tag.yaml",
+      "strategy": "repo-path",
+      "line": 62
+    }
+  ]
+}
