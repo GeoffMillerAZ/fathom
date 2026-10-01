@@ -716,3 +716,41 @@ nothing may depend on it (P24). The entry's own drop-if stands.
   id, and a consumer whose runbooks lack the commands asks for templates.
 - Drop if: F56 is dropped, or no consumer asks within 180 days of F56's stage 2 shipping, or the sensor's first
   30-day reading shows under 10 percent of rendered probes run.
+
+## F58. Upstream drift of vendored and pinned dependencies, restricted to what the product reaches
+
+- Confidence: plausible. Horizon: later. Evidence: ADR-060 decision 3, `docs/vision/41-stewardship.md` section 4.2,
+  `docs/plans/stewardship.md` SV-M4 and SV-D1, ADR-050 decision 4, `docs/plans/system-graph.md` SG-37 to SG-39.
+- Motivation: Renovate and Dependabot say a new version exists; nobody says whether it changes anything the product
+  uses. For a vendored mirror the next version is often already on disk as a sibling checkout (agentic-kit and
+  app-kit here), so upgrade impact over the used closure could put one line on the attention line: "app-kit moved
+  and changed 3 files you reach".
+- Do not build: polling, a registry query or any fetch (P23, I56); a version-availability feed (Renovate's and
+  Dependabot's job); a significance rule other than a removed or re-signatured reached symbol, a changed file inside
+  the used closure, or a licence-file change; a model's opinion of significance.
+- Preserve: `contract_drift {pkg, from, to}` as the one upgrade-impact answer (ADR-050); the used closure's JSON
+  (`fathom report used`, SV-7) as its filter; `.vendor-commit` stamps and `task vendor-check` as the pin record.
+- Promote when: `docs/plans/system-graph.md` SG-39 is proven and SV-M4 shows at least one reached upstream change in
+  a quarter.
+- Drop if: SV-M4 shows no reached upstream change in two quarters, or a dependency bot ships reach-restricted
+  upgrade impact that reads fathom's closure.
+
+## F59. Promises as code: SLOs, alerts and dashboards linked to the code that keeps them
+
+- Confidence: plausible. Horizon: later. Evidence: ADR-060 decision 5, `docs/vision/41-stewardship.md` section 4.4,
+  `docs/plans/stewardship.md` SV-D5, ADR-050 (the link model), ADR-044 (conservation planes), ADR-055 decisions 7 and
+  8 (Review Kit's domains and the evidence contract), ADR-058 (incident declarations).
+- Motivation: a service's promises form a chain (feature, route, the SLI metric emitted on the handler's reach, the
+  SLO, alert and dashboard that consume it, the runbook), and each break is a code-grounded fact: an alert or
+  dashboard on a metric no code emits, a route with no SLI or no SLO, a refactor that stops emitting a metric an alert
+  consumes. Review Kit's reliability domain judges readiness against a Standard and needs these facts.
+- Do not build: before a named consumer exists (P20; the 2026-09-30 census found no alert-rule, SLO-spec or
+  dashboard file on this workstation); live SLI values, burn rates or alert state (the ops system's, a rendered link
+  at most); readiness grades or level criteria in fathom (a Review Kit Standard); an organization-wide dashboard
+  (hosted, a non-goal); a separate Reliability Kit (P21); a tool per kind (law 4).
+- Preserve: the contract-key grammar stays additive, so a `metric:` kind is one more key kind (ADR-050 decision 1);
+  conservation planes stay registrable; readiness facts travel through the versioned evidence contract; a level
+  renders only from a committed reading (ADR-054).
+- Promote when: a named consumer commits alert rules, SLO specs or dashboards, and `docs/plans/system-graph.md` SG-2
+  and SG-M1 have landed.
+- Drop if: no consumer within 365 days of 2026-09-30, or Review Kit's reliability domain declines fathom evidence.

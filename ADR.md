@@ -3585,3 +3585,111 @@ and cited in the design: change is the first suspect, correlation is not cause, 
 - A supported harness reads CLAUDE.md but not AGENTS.md.
 - An adopter asks in writing for a CLAUDE.md-only layout.
 - `stanza_loaded` SKIPs on every row of our fleet for 30 days: retire or replace the row.
+
+## ADR-060: Stewardship facts: lines, leftovers, inheritance and promises are joins fathom reports and never acts on (2026-09-30)
+
+**Status.** Accepted 2026-09-30 for decisions 1 to 8 (the owner delegated the calls to the owner-architect); amended
+2026-09-30: decision 7's ordering accepted, and decision 6's licence boundary settled as default deny (the amendment
+below). The owner's wind-down of 2026-09-30 still holds every new wave until the owner lifts it; decision 7 orders the
+work after that. **Type.** Product / architecture. Inputs: the owner's six notes of 2026-09-30 (line
+lifecycle, upstream drift, temporary artifacts, SRE as code, minimal vendoring, prioritization), the 2026-09-29
+consolidation backup manifest (local, `workspace/`), the 2026-09-29 feature scorecard, a census of this
+workstation's repositories on 2026-09-30, and fathom's own `third_party/` mirrors. Vision:
+`docs/vision/41-stewardship.md`. Plan: `docs/plans/stewardship.md` (SV-). Goal G34. Invariant I63. Futures F58 and
+F59. Reads ADR-049 decision 1, ADR-050 decision 4, ADR-053, ADR-055 decisions 7 and 8, and ADR-058 as constraints.
+
+**Context.** Around the code at HEAD lie work not landed (about 230 lines in the 2026-09-29 harvest, 2 of them
+valuable; 46 worktrees and 53 branches removed by hand), files nothing owns, code we did not write (fathom's binary
+imports 22 of app-kit's 93 non-test Go packages and 19 of agentic-kit's 242 while `third_party/` mirrors both whole,
+1,806 and 1,602 files), and what a service promises (no alert-rule, SLO-spec or dashboard file on this workstation on
+2026-09-30). Tools exist for each part (git, Renovate and Dependabot, `go mod vendor`, Prometheus and Grafana, Review
+Kit); none knows what the code is for. `dep_drift`, which the owner's note assumed, was deleted under ADR-053
+(scorecard F-18); `task vendor-check` (I15) proves a mirror equals its pin and says nothing about upstream.
+
+**Decision.**
+1. *The family rule.* A stewardship fact is a join of git or file state with a fact fathom already computes (plan
+   rows, reach from product entry points, contract keys, conservation planes); never a new engine (ADR-051 decision
+   1). Fathom reports and never acts: it never deletes, merges, squashes, rebases or checks out a branch, worktree,
+   stash or clone it did not create, and names the command instead of running it (invariant I63, P15). Each fact is
+   a CLI report run on the operator's ask; the only ambient channel is one count on the SessionStart attention line,
+   after a reading earns it. No stewardship work runs in the Stop hook or around compaction.
+2. *Lines: accepted.* `fathom plans lines` classifies one repository's branches, linked worktrees and stashes as
+   landed, claims rows, touches rows, at risk or idle (SV-1, SV-2); a $0 replay over the 2026-09-29 bundles decides
+   whether the row classes stay (SV-M1); the attention count waits on it (SV-3). Squash and re-summarize by default is
+   refused as fathom behaviour. Would-prove by a scratch verify per line and fleet-wide or scratch-clone lines are
+   deferred (SV-D2, SV-D3).
+3. *Upstream drift: merged into the system graph.* "Did upstream change what we use" is ADR-050's upgrade impact
+   (SG-39) restricted to the used closure, with a vendored mirror's "to" version read from its sibling checkout on
+   disk. "Significant" is deterministic: a removed or re-signatured symbol the product reaches, a changed file inside
+   the used closure, or a licence-file change. Polling and version discovery are refused (P23, I56; Renovate and
+   Dependabot own them). First slice: the pin-lag reading SV-M4; the attention line is deferred (F58, SV-D1).
+4. *Temporary artifacts: merged.* Report-only `gc` classes for strays outside declared homes and binaries in the
+   tree (SV-4), `archivable` in `plans status` (SV-5), the owner's adjudication SV-M2. Stale documents stay with the
+   knowledge-retrieval doc drift; uncited documents are deferred (SV-D4). Stop-hook and compaction nudges and a
+   `Lifetime:` header are refused.
+5. *SRE as code: promises as code; the fathom half deferred, the standards in Review Kit.* Fathom's part is the
+   code-grounded chain (feature, route, the SLI metric emitted on the handler's reach, the SLO, alert and dashboard
+   that consume it, the runbook declaration): a `metric:` contract-key kind, dangling promises through
+   `contract_drift`, observability conservation at review, and readiness facts delivered to Review Kit through the
+   evidence contract. Readiness levels, error-budget policy and the reliability Standard are Review Kit's (its
+   "Reliability and operations" domain); live values, burn rates and alert state stay in the ops system (a rendered
+   link at most, ADR-058); an organization-wide dashboard is hosted (DATUM, a fathom non-goal). A separate
+   Reliability Kit is refused (P21). The build is deferred (F59, SV-D5): no consumer on 2026-09-30 (P20). Usable
+   today: a Review Kit concern pack compiling a reliability convention into obligations at the edit.
+6. *Minimal vendoring: accepted as the used closure and a licence boundary plane.* `UsedUnits` and `fathom report
+   used` compute a dependency's closure from product entry points with a reason per unit: Go packages equal to `go
+   list -deps` (file pruning inside a Go package is unsafe and refused), TypeScript and JavaScript modules by import
+   edges, declared asset roots (SV-6, SV-7), read on fathom's own mirrors (SV-M3). The boundary plane is default
+   deny: licensed sources (a catalog such as Tailwind Plus or Catalyst) never ship in a public repository, so it
+   blocks at pre-push a tree holding a path the owner's licensed-paths declaration names, unless the owner has
+   recorded an explicit allow for that path, the only exception. The declaration is a CUE file under the
+   repository's fathom directory, committed by a repository that ships publicly (SV-8, after a named consumer,
+   SV-V1); a repository without one is not checked, and fathom never infers visibility. This is app-kit's own
+   delivery rule ("Licensed derivative: keep this directory and generated outputs private",
+   `internal/designadapt/*_delivery.go`). Reached licensed units are listed as a fact, so an allow can be as narrow
+   as the closure. Fathom never copies, prunes or vendors files (the copy stays `scripts/sync-vendor.sh`), never
+   fetches, and never infers or judges what is licensed.
+7. *Prioritization.* Accepted 2026-09-30 by the owner-architect. Ditch-then-merge has run: all 10 DITCH and all 12
+   MERGE verdicts are on `main`. After the wind-down: finish the efficiency wave (6 open rows; EW-M1 is a 14-day
+   wait), then language excellence most common first as the main line (G15), with the stewardship first slices as $0
+   fillers, lines first.
+8. *The decision port has no role* in any stewardship fact; a model-drafted landing summary is generation, the
+   port's weak side, and licence questions are never judged.
+
+**Alternatives rejected.**
+- *A lines tracker that nudges and lands work.* A dispatch loop (non-goal) and writes fathom does not own.
+- *Upstream watching inside fathom.* Polling and egress (P23, I56) to rebuild what Renovate and Dependabot do.
+- *Fathom as a vendoring tool.* A package manager and the transformation-engine non-goal; `go mod vendor` is already
+  exact for Go packages.
+- *Content-similarity detection of derived licensed work.* A legal judgment with a costly false "fine to ship".
+- *A Reliability Kit, or SRE features in fathom now.* No consumer, and the Standard belongs to Review Kit.
+- *Reordering work by ditch-then-merge.* Already done; the rule's remaining force is "finish before building".
+- *A per-path policy (`never`, `reached`) that lets a licensed file the product reaches ship.* Replaced on 2026-09-30
+  by default deny and an explicit owner allow per path (the amendment below).
+
+**Consequences.**
+- New when built: `internal/worklines`, `internal/usedset`, `fathom plans lines`, `fathom report used`, `gc`
+  report-only classes, a `boundary` conservation plane, a licensed-paths CUE declaration (SV-8); no MCP tool, no table, no cache, no
+  background job.
+- `docs/intent/`: goal G34, invariant I63 (stated until SV-2 and SV-4 land), futures F58 and F59, the decisions row.
+- The compatibility surface grows by `plans lines --json`, `report used --json` and the licensed declaration when
+  their rows land.
+
+**Revisit when.**
+- SV-M1, SV-M2 or SV-M3 reads CUT: remove what the reading killed (vision 41 section 7).
+- SV-M4 shows no reached upstream change in two quarters: drop F58.
+- A named consumer commits alert rules, SLO specs or dashboards: promote F59.
+- Review Kit asks for readiness facts through the evidence contract before F59's trigger fires.
+- A line holding valuable work is lost although the report classed it landed or idle.
+- The owner reverses a refusal or the default-deny boundary. (The trigger "The owner decides decision 7's sequence"
+  fired 2026-09-30: accepted, and decision 7 stands.)
+
+**Amendment (2026-09-30): decision 7 accepted; the licence boundary is default deny.** The owner-architect accepted
+decision 7's ordering, so decisions 1 to 8 are all accepted. The same pass settled the reading decision 6 left open:
+the boundary plane's per-path policy (`never`, `reached`) is replaced by one rule. Licensed sources (Tailwind Plus and
+Catalyst are the cases) never ship in a public repository, and the plane blocks a pushed tree holding a declared
+licensed path unless the owner has recorded an explicit allow for that path; that allow is the only exception, and
+fathom never grants one. The rule matches app-kit's delivery rule for licensed derivatives ("Licensed derivative: keep
+this directory and generated outputs private", `internal/designadapt/*_delivery.go`). Reached licensed units are still
+listed as a fact, so an allow can be as narrow as the closure. Vision 41 section 4.5, the SV-8 and SV-V1 rows and the
+decisions index follow; ids and contracts are unchanged.
