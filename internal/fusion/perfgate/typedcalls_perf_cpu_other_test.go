@@ -1,6 +1,6 @@
 //go:build !darwin && !linux
 
-package fusion_test
+package perfgate_test
 
 import "time"
 

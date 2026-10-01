@@ -1,4 +1,4 @@
-package fusion_test
+package perfgate_test
 
 // TestTypedEdges_PerformanceGate is CT-5 (docs/plans/callgraph-types.md):
 // measures the typed enrichment pass's first-run CPU cost against a TRUE
@@ -30,7 +30,7 @@ package fusion_test
 // shared GOCACHE happens to be in, same as any other consumer of it. In
 // the pre-push gate this repo's own packages are typically compiled
 // before this test runs, so GOCACHE is usually warm by the time it does;
-// a standalone `go test ./internal/fusion/ -run
+// a standalone `go test ./internal/fusion/perfgate/ -run
 // TestTypedEdges_PerformanceGate` against a cold GOCACHE will see higher
 // CPU on both sides (compiling, not just go/packages metadata work) — the
 // RATIO is the portable number, not either side's absolute value.
@@ -80,7 +80,9 @@ func TestTypedEdges_PerformanceGate(t *testing.T) {
 	// trip on a slowdown chosen by design, not on a blowup.
 	t.Setenv("FATHOM_TOOLCHAIN_PROCS", "off")
 
-	repoRoot, err := filepath.Abs(filepath.Join("..", ".."))
+	// This package lives at internal/fusion/perfgate, three levels below
+	// the module root (it was two when the gate sat in internal/fusion).
+	repoRoot, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {
 		t.Fatalf("abs: %v", err)
 	}

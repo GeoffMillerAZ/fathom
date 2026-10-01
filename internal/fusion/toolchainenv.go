@@ -32,7 +32,8 @@ const defaultToolchainProcs = 2
 // "off" lifts the caps entirely (the environment passes through; the shim
 // still nices). Unset, empty or unparseable: defaultToolchainProcs. For an
 // operator with cores to spare, and for measuring the typed pass's own cost
-// (TestTypedEdges_PerformanceGate) without the deliberate throttle.
+// (internal/fusion/perfgate's TestTypedEdges_PerformanceGate) without the
+// deliberate throttle.
 const toolchainProcsEnv = "FATHOM_TOOLCHAIN_PROCS"
 
 // toolchainProcCap is the ceiling in force; 0 means no cap.
