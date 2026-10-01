@@ -12,8 +12,10 @@ package fusion
 // referenced entity, stored under the typed_edges key "doc-xref" and
 // replaced wholesale each pass — the same table and label ResolveFileEdges
 // writes. A reference that leaves the repository (a registry package, a
-// remote action, an image) resolves to nothing here; crossing repositories
-// is the service_ref/module_ref layer's job (design §1.1).
+// remote action, an image nothing in the repository builds) resolves to
+// nothing here; crossing repositories is the service_ref/module_ref layer's
+// job (design §1.1). An image the repository builds resolves through the
+// image-tag index (imageref.go, LB-X-docker-image-ref).
 
 import (
 	"context"
@@ -27,10 +29,14 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/extractor"
 )
 
-// DocFile is one doc-engine file's extraction.
+// DocFile is one doc-engine file's extraction. Builds are the image build
+// sites the file writes outside its DocResult (a docker-bake target, a
+// literal `docker build` in a script, a Makefile or a CI run step), read
+// into the image-tag index (LB-X-docker-image-ref).
 type DocFile struct {
 	Path   string
 	Result extractor.DocResult
+	Builds []ImageBuild
 }
 
 // DocXref is one resolved cross-file reference: entity to entity.
@@ -48,14 +54,30 @@ const docXrefStateKey = typedPassStatePrefix + "doc-xref"
 // ResolveDocXrefs resolves every file's cross_file references against the
 // set (deterministic, sorted): repo-path, repo-root and a relative
 // module-source name a file, the one doc file directly in a named
-// directory, or every such file in the directories a glob names, and then
-// that file's first root entity; a non-relative module-source or a
-// service-name resolves to the one entity (a root entity, for
-// module-source) of that name in another file; a label-selector joins
-// every labelled entity in its scope whose labels include the selector.
-// image-ref and anything unresolved yield nothing. A reference resolving
-// to its own origin's symbol key is dropped (it would be a self-edge).
+// directory (of several, the one the referring file's dialect owns by its
+// basenames and globs, O165), or every such file in the directories a glob
+// names, and then that file's first root entity; a non-relative
+// module-source or a service-name resolves to the one entity (a root
+// entity, for module-source) of that name in another file; a
+// label-selector joins every labelled entity in its scope whose labels
+// include the selector; an image-ref resolves through the image-tag index
+// to the root entity of the one Dockerfile of the set that builds it, and
+// a build context (edge "build", with "build_dockerfile") to that of the
+// Dockerfile it names (LB-X-docker-image-ref). Anything unresolved yields
+// nothing. A reference resolving to its own origin's symbol key is dropped
+// (it would be a self-edge), as is an image-ref back into its own file.
 func ResolveDocXrefs(files []DocFile) []DocXref {
+	xs, _ := resolveDocXrefs(files)
+	return xs
+}
+
+// imageRefStats is what the image-ref half of a resolution read and
+// skipped, for the pass's disclosure.
+type imageRefStats struct {
+	Sites, TemplatedBuilds, Ambiguous, TemplatedRefs int
+}
+
+func resolveDocXrefs(files []DocFile) ([]DocXref, imageRefStats) {
 	byPath := map[string]*DocFile{}
 	byDir := map[string][]string{}
 	type fk struct{ file, name string }
@@ -84,7 +106,7 @@ func ResolveDocXrefs(files []DocFile) []DocXref {
 		}
 		return fk{file, f.Result.Roots[0]}, true
 	}
-	fileTargets := func(target string) []string {
+	fileTargets := func(target, referrer string) []string {
 		if target == "" {
 			return nil
 		}
@@ -104,8 +126,8 @@ func ResolveDocXrefs(files []DocFile) []DocXref {
 		}
 		var out []string
 		for _, d := range dirs {
-			if fs := byDir[d]; len(fs) == 1 {
-				out = append(out, fs[0])
+			if f, ok := oneDocFile(byDir[d], referrer); ok {
+				out = append(out, f)
 			}
 		}
 		return out
@@ -141,20 +163,52 @@ func ResolveDocXrefs(files []DocFile) []DocXref {
 		}
 		return fk{}, false
 	}
+	img := BuildImageIndex(files)
+	stats := imageRefStats{Sites: img.Sites, TemplatedBuilds: img.TemplatedBuilds, Ambiguous: img.Ambiguous}
 	for _, f := range files {
-		for _, c := range f.Result.CrossFile {
-			from := fk{f.Path, c.From}
-			if c.From == "" {
-				r, ok := rootOf(f.Path)
-				if !ok {
-					continue
+		origin := func(name string) (fk, bool) {
+			if name == "" {
+				return rootOf(f.Path)
+			}
+			return fk{f.Path, name}, true
+		}
+		// a build context, with the Dockerfile named relative to it,
+		// resolves once per origin to the Dockerfile it names
+		builds := composeBuildsOf(f)
+		for _, name := range sortedBuildOrigins(builds) {
+			b := builds[name]
+			from, ok := origin(name)
+			if !ok {
+				continue
+			}
+			if t, ok := b.file(f.Path); ok {
+				if to, ok := rootOf(t); ok {
+					add(from, to, extractor.DocCrossFileRef{From: name, Edge: buildEdge, Strategy: "repo-path", Line: b.line})
 				}
-				from = r
+			}
+		}
+		for _, c := range f.Result.CrossFile {
+			from, ok := origin(c.From)
+			if !ok {
+				continue
+			}
+			if c.Strategy == "repo-path" && (c.Edge == buildEdge || c.Edge == buildDockerfileEdge) {
+				continue
 			}
 			switch c.Strategy {
+			case "image-ref":
+				if templated(c.Raw) {
+					stats.TemplatedRefs++
+					continue
+				}
+				if t, ok := img.Lookup(c.Raw); ok && t != f.Path {
+					if to, ok := rootOf(t); ok {
+						add(from, to, c)
+					}
+				}
 			case "repo-path", "repo-root", "module-source":
 				if c.Strategy == "repo-path" || isRel(c.Raw) {
-					for _, t := range fileTargets(c.Target) {
+					for _, t := range fileTargets(c.Target, f.Path) {
 						if to, ok := rootOf(t); ok {
 							add(from, to, c)
 						}
@@ -188,7 +242,54 @@ func ResolveDocXrefs(files []DocFile) []DocXref {
 		}
 		return false
 	})
+	return out, stats
+}
+
+// sortedBuildOrigins is the origins of a file's builds, in name order.
+func sortedBuildOrigins(m map[string]*composeBuild) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
 	return out
+}
+
+// oneDocFile is the file a directory reference names among the doc files
+// directly in the directory (design §4): the only one, or, of several, the
+// only one the referring file's dialect owns by its manifest's basenames and
+// globs (O165: a Taskfile include of website/, which holds a package.json
+// beside its Taskfile; a kustomize base beside its Kubernetes manifests) —
+// the set an ingest resolves over holds every doc file, the harness's only the
+// dialect's own, so the rule must not depend on which.
+func oneDocFile(fs []string, referrer string) (string, bool) {
+	if len(fs) == 1 {
+		return fs[0], true
+	}
+	own := ownedDialect(referrer)
+	if own == "" {
+		return "", false
+	}
+	var hit []string
+	for _, f := range fs {
+		if ownedDialect(f) == own {
+			hit = append(hit, f)
+		}
+	}
+	if len(hit) == 1 {
+		return hit[0], true
+	}
+	return "", false
+}
+
+// ownedDialect is the dialect whose manifest claims p by basename or glob
+// ("" for none, or an extension-only claim).
+func ownedDialect(p string) string {
+	v := connector.ClassifyDialect(dialectRules(), p, nil)
+	if v.By != connector.ClassifiedByBasename && v.By != connector.ClassifiedByGlob {
+		return ""
+	}
+	return v.Dialect
 }
 
 // labelsInclude: every selector label is present with the same value (a
@@ -243,22 +344,27 @@ func isDocCandidate(p string) bool {
 }
 
 // enrichDocXrefEdges is the Ingest hook for LB-F30: when a doc candidate
-// changed (or the last pass did not complete), every doc candidate is read
-// through ingest's gates and dispatch, each file a doc-engine dialect
-// governs is walked with ExtractDoc, and the resolved references replace
-// the "doc-xref" typed edges. Best-effort per file; a halt is returned.
+// or an image build candidate changed (or the last pass did not complete),
+// every candidate is read through ingest's gates and dispatch, each file a
+// doc-engine dialect governs is walked with ExtractDoc, each Dockerfile the
+// dockerfile dialect governs is read as its stages (DockerfileDocFile), a
+// bake file, script, Makefile or CI file contributes its image build sites,
+// and the resolved references replace the "doc-xref" typed edges.
+// Best-effort per file; a halt is returned.
 func (p *Pipeline) enrichDocXrefEdges(ctx context.Context, svc core.ServiceRef, refs []core.SourceRef, changed []string) (int, string, error) {
 	if p.cfg.DisableTypedEdges {
 		return 0, "typed edges disabled", nil
 	}
-	if !passNeeded(changed, p.passStateOK(ctx, svc.ID, docXrefStateKey), isDocCandidate) {
+	if !passNeeded(changed, p.passStateOK(ctx, svc.ID, docXrefStateKey), isDocXrefInput) {
 		return 0, SkippedPassReason, nil
 	}
 	p.beginPassState(ctx, svc.ID, docXrefStateKey)
 	idx := buildSiblingIndex(refs)
+	dockerfile := p.exts["Dockerfile"]
 	var files []DocFile
 	for _, r := range refs {
-		if !isDocCandidate(r.Path) {
+		img := isImageBuildCandidate(r.Path)
+		if !isDocCandidate(r.Path) && !img {
 			continue
 		}
 		content, err := p.conn.Fetch(ctx, r)
@@ -271,21 +377,40 @@ func (p *Pipeline) enrichDocXrefEdges(ctx context.Context, svc core.ServiceRef, 
 		if len(content) > MaxExtractSize || connector.IsBinary(content) || gateDialectFile(r.Path, content).excluded != "" {
 			continue
 		}
+		f := DocFile{Path: r.Path}
+		keep := false
 		e, _, ok, _ := p.resolveExtractor(r.Path, content, idx)
-		doc, isDoc := e.(extractor.DocResulter)
-		if !ok || !isDoc {
-			continue
+		if doc, isDoc := e.(extractor.DocResulter); ok && isDoc {
+			if res, err := doc.ExtractDoc(svc.ID, r.Path, content); err == nil {
+				f.Result, keep = res, true
+			}
+		} else if ok && img && dockerfile != nil && e == dockerfile {
+			if nodes, err := e.Extract(svc.ID, r.Path, content); err == nil {
+				f, keep = DockerfileDocFile(r.Path, content, nodes), true
+			}
 		}
-		res, err := doc.ExtractDoc(svc.ID, r.Path, content)
-		if err != nil {
-			continue
+		if img {
+			if b := imageBuildSites(r.Path, content); len(b) > 0 {
+				f.Builds, keep = b, true
+			}
 		}
-		files = append(files, DocFile{Path: r.Path, Result: res})
+		if keep {
+			files = append(files, f)
+		}
 	}
-	edges := DocXrefEdges(ResolveDocXrefs(files))
+	xs, st := resolveDocXrefs(files)
+	if st.TemplatedBuilds > 0 || st.TemplatedRefs > 0 || st.Ambiguous > 0 {
+		p.diagInfo("fusion: doc-xref pass %q: image-tag index: %d build sites; %d build sites and %d image references skipped as templated (${X}, $(X), $X); %d tags ambiguous (two Dockerfiles build them)\n",
+			svc.ID, st.Sites, st.TemplatedBuilds, st.TemplatedRefs, st.Ambiguous)
+	}
+	edges := DocXrefEdges(xs)
 	if err := p.st.PutTypedEdges(ctx, svc.ID, docXrefPackageKey, edges); err != nil {
 		return 0, "", fmt.Errorf("doc-xref edges: store: %w", err)
 	}
 	p.commitPassState(ctx, svc.ID, docXrefStateKey)
 	return len(edges), "", nil
 }
+
+// isDocXrefInput: a path whose change re-runs the doc-xref pass — a doc
+// candidate, or a file the image-tag index reads.
+func isDocXrefInput(p string) bool { return isDocCandidate(p) || isImageBuildCandidate(p) }

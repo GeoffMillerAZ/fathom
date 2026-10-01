@@ -209,8 +209,18 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	p.exts["Dockerfile"] = dockerfile
 	p.exts[".dockerfile"] = dockerfile
 
-	// Docker Compose (full-basename keys take precedence over .yaml k8s extractor)
-	compose := extractor.NewComposeExtractor()
+	// Docker Compose (full-basename keys take precedence over .yaml k8s
+	// extractor). LB-Q-docker-compose (LB-F89): the doc-engine docker-compose
+	// dialect serves the four basenames and, through classifyYAML's content
+	// signal (a top-level services:) and toolExts below, every other compose
+	// file, an override or an arbitrarily named fragment; it retires
+	// composeextract.go at lang-parity and gives the doc-xref pass its
+	// DocResult (a root entity per file; include, extends.file, image: and
+	// build: references, LB-X-docker-image-ref).
+	compose, err := extractor.NewDocDialectExtractor("docker-compose")
+	if err != nil {
+		panic(fmt.Sprintf("fusion: doc-dialect docker-compose: %v", err))
+	}
 	p.exts["docker-compose.yml"] = compose
 	p.exts["docker-compose.yaml"] = compose
 	p.exts["compose.yml"] = compose

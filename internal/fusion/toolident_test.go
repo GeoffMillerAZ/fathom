@@ -568,18 +568,20 @@ images:
 }
 
 // TestIngest_ClassifiedButZeroSymbolsCounted is critic F5's second half: a
-// GitLab-CI-shaped file has a top-level `services:` key holding a LIST, so
-// it classifies as compose — then the compose extractor (which needs a
-// mapping) emits zero symbols. Without a counter that zero-symbol outcome
-// was invisible: classified files bypassed the Unclassified counter and
-// produced nothing, silently. Every zero-symbol outcome must be visible
-// somewhere: classified-but-zero files get their own per-tool counter.
+// file with a top-level `services:` key classifies as compose, and a compose
+// file the extractor cannot read (here, YAML that does not parse) emits zero
+// symbols. Without a counter that zero-symbol outcome was invisible:
+// classified files bypassed the Unclassified counter and produced nothing,
+// silently. Every zero-symbol outcome must be visible somewhere:
+// classified-but-zero files get their own per-tool counter. (The critic's
+// original fixture, a GitLab-CI-shaped file whose `services:` is a list, is no
+// longer zero: the docker-compose dialect gives every compose-classified
+// document its root entity, LB-F89; O324 records that classification.)
 func TestIngest_ClassifiedButZeroSymbolsCounted(t *testing.T) {
 	dir := t.TempDir()
 	writeFile(t, dir, "ci-config.yml", `services:
   - docker:dind
-stages:
-  - build
+stages: [build
 `)
 
 	conn := connector.NewLocalConnector()

@@ -1,8 +1,8 @@
 {
   "symbols": [
+    { "name": "extends-include.yaml", "kind": "ComposeFile", "package": "extends-include", "line": 1, "end_line": 20, "tier": "verified" },
     { "name": "base", "kind": "ComposeService", "package": "extends-include", "line": 9, "end_line": 10, "signature": "alpine:3", "tier": "verified" },
-    { "name": "web", "kind": "ComposeService", "package": "extends-include", "line": 11, "end_line": 15,
-      "calls": ["base"], "tier": "verified" },
+    { "name": "web", "kind": "ComposeService", "package": "extends-include", "line": 11, "end_line": 15, "calls": ["base"], "tier": "verified" },
     { "name": "local", "kind": "ComposeService", "package": "extends-include", "line": 16, "end_line": 18, "tier": "verified" },
     { "name": "legacy", "kind": "ComposeService", "package": "extends-include", "line": 19, "end_line": 20, "tier": "verified" }
   ],
@@ -11,6 +11,7 @@
     { "from": "", "edge": "includes", "raw": "./shared/monitoring.yaml", "target": "shared/monitoring.yaml", "strategy": "repo-path", "line": 3 },
     { "from": "", "edge": "includes", "raw": "./a.yaml", "target": "a.yaml", "strategy": "repo-path", "line": 6 },
     { "from": "", "edge": "includes", "raw": "./b.yaml", "target": "b.yaml", "strategy": "repo-path", "line": 7 },
+    { "from": "base", "edge": "runs", "raw": "alpine:3", "target": "alpine:3", "strategy": "image-ref", "line": 10 },
     { "from": "web", "edge": "extends", "raw": "./common/base.yaml", "target": "common/base.yaml", "strategy": "repo-path", "line": 13 }
   ]
 }

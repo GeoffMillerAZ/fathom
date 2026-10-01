@@ -1,10 +1,13 @@
 {
   "symbols": [
-    { "name": "my_service", "kind": "ComposeService", "package": "legacy-names", "line": 3, "end_line": 8,
-      "signature": "repo/app@sha256:0123abcd", "calls": ["web-1"], "tier": "verified" },
+    { "name": "legacy-names.yaml", "kind": "ComposeFile", "package": "legacy-names", "line": 1, "end_line": 15, "tier": "verified" },
+    { "name": "my_service", "kind": "ComposeService", "package": "legacy-names", "line": 3, "end_line": 8, "signature": "repo/app@sha256:0123abcd", "calls": ["web-1"], "tier": "verified" },
     { "name": "web-1", "kind": "ComposeService", "package": "legacy-names", "line": 9, "end_line": 11, "signature": "nginx", "tier": "verified" },
-    { "name": "app.v2", "kind": "ComposeService", "package": "legacy-names", "line": 12, "end_line": 15, "signature": ".",
-      "calls": ["my_service"], "tier": "verified" }
+    { "name": "app.v2", "kind": "ComposeService", "package": "legacy-names", "line": 12, "end_line": 15, "signature": ".", "calls": ["my_service"], "tier": "verified" }
   ],
-  "cross_file": []
+  "cross_file": [
+    { "from": "my_service", "edge": "runs", "raw": "repo/app@sha256:0123abcd", "target": "repo/app@sha256:0123abcd", "strategy": "image-ref", "line": 4 },
+    { "from": "web-1", "edge": "runs", "raw": "nginx", "target": "nginx", "strategy": "image-ref", "line": 10 },
+    { "from": "app.v2", "edge": "build", "raw": ".", "target": "", "strategy": "repo-path", "line": 13 }
+  ]
 }

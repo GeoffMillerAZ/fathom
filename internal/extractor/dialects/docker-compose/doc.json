@@ -10,6 +10,9 @@
     ]
   },
   "entities": [
+    { "select": "$", "where": { "is_map": true },
+      "kind": "package", "source_kind": "ComposeFile", "name": "$file", "signature": ".name" },
+
     { "select": "$.services.*", "where": { "is_map": true },
       "kind": "service", "source_kind": "ComposeService", "name": "$key",
       "signature": ".image | .build.context | .build" }
@@ -21,6 +24,9 @@
   "cross_file": [
     { "from": "service", "select": "$.extends.file", "value": "$", "resolve": "repo-path", "edge": "extends" },
     { "select": "$.include[*]", "value": "$", "resolve": "repo-path", "edge": "includes" },
-    { "select": "$.include[*].path[*]", "value": "$", "resolve": "repo-path", "edge": "includes" }
+    { "select": "$.include[*].path[*]", "value": "$", "resolve": "repo-path", "edge": "includes" },
+    { "from": "service", "select": "$.image", "value": "$", "resolve": "image-ref", "edge": "runs" },
+    { "from": "service", "select": "$.build", "value": "$ | .context", "resolve": "repo-path", "edge": "build" },
+    { "from": "service", "select": "$.build.dockerfile", "value": "$", "resolve": "repo-path", "edge": "build_dockerfile" }
   ]
 }
