@@ -84,29 +84,33 @@ func TestResolveDocXrefs_Taskfile(t *testing.T) {
 
 // TestTaskfileDirectoryNeedsTheOneFileRule pins what fusion.ResolveDocXrefs does
 // with an include of a directory that holds a Taskfile and any other file a doc
-// dialect reads (a package.json, a pom.xml, a Cargo.toml): a directory resolves
-// to the one doc file in it (design §4), so it names no file. go-task's own
+// dialect reads (a package.json, a pom.xml, a Cargo.toml): of the doc files in
+// the directory, the one the referring dialect owns by its basenames and globs
+// is the one it names (O165), so the include resolves whether the set holds
+// only Taskfiles (the harness's) or every doc file (an ingest's). go-task's own
 // website/ (a Taskfile.yml beside a package.json, the include `taskfile:
-// ./website`) is the case. An include that names the Taskfile, `./website/
-// Taskfile.yml`, resolves either way. LB-Q-taskfile-rest names the trigger:
-// flip this assertion when the resolver prefers the file the referring dialect
-// owns.
+// ./website`) is the case. A directory holding two Taskfiles still names none.
 func TestTaskfileDirectoryNeedsTheOneFileRule(t *testing.T) {
 	tf := docFiles(t, "taskfile", map[string]string{
-		"Taskfile.yml":         "version: '3'\nincludes:\n  dir: ./website\n  file:\n    taskfile: ./other/Taskfile.yml\n",
-		"website/Taskfile.yml": "version: '3'\n",
-		"other/Taskfile.yml":   "version: '3'\n",
+		"Taskfile.yml":           "version: '3'\nincludes:\n  dir: ./website\n  file:\n    taskfile: ./other/Taskfile.yml\n  two: ./two\n",
+		"website/Taskfile.yml":   "version: '3'\n",
+		"other/Taskfile.yml":     "version: '3'\n",
+		"two/Taskfile.yml":       "version: '3'\n",
+		"two/Taskfile.dist.yaml": "version: '3'\n",
 	})
-	if got := xrefBrief(ResolveDocXrefs(tf)); len(got) != 2 {
-		t.Fatalf("with only Taskfiles in the set both includes resolve: got %q", got)
+	want := []string{
+		"Taskfile.yml:Taskfile.yml -includes-> other/Taskfile.yml:Taskfile.yml",
+		"Taskfile.yml:Taskfile.yml -includes-> website/Taskfile.yml:Taskfile.yml",
+	}
+	if got := xrefBrief(ResolveDocXrefs(tf)); !reflect.DeepEqual(got, want) {
+		t.Fatalf("with only Taskfiles in the set\n got: %q\nwant: %q", got, want)
 	}
 	pkg := docFiles(t, "package-json", map[string]string{
 		"website/package.json": `{"name":"website","version":"1.0.0"}`,
 		"other/package.json":   `{"name":"other","version":"1.0.0"}`,
 	})
-	want := []string{"Taskfile.yml:Taskfile.yml -includes-> other/Taskfile.yml:Taskfile.yml"}
 	if got := xrefBrief(ResolveDocXrefs(append(tf, pkg...))); !reflect.DeepEqual(got, want) {
-		t.Fatalf("a directory beside a package.json resolves to nothing (design §4's one-file rule); the file form still resolves\n got: %q\nwant: %q", got, want)
+		t.Fatalf("a directory beside a package.json resolves to its Taskfile (O165)\n got: %q\nwant: %q", got, want)
 	}
 }
 

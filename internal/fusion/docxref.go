@@ -48,8 +48,9 @@ const docXrefStateKey = typedPassStatePrefix + "doc-xref"
 // ResolveDocXrefs resolves every file's cross_file references against the
 // set (deterministic, sorted): repo-path, repo-root and a relative
 // module-source name a file, the one doc file directly in a named
-// directory, or every such file in the directories a glob names, and then
-// that file's first root entity; a non-relative module-source or a
+// directory (of several, the one the referring file's dialect owns by its
+// basenames and globs, O165), or every such file in the directories a glob
+// names, and then that file's first root entity; a non-relative module-source or a
 // service-name resolves to the one entity (a root entity, for
 // module-source) of that name in another file; a label-selector joins
 // every labelled entity in its scope whose labels include the selector.
@@ -84,7 +85,7 @@ func ResolveDocXrefs(files []DocFile) []DocXref {
 		}
 		return fk{file, f.Result.Roots[0]}, true
 	}
-	fileTargets := func(target string) []string {
+	fileTargets := func(target, referrer string) []string {
 		if target == "" {
 			return nil
 		}
@@ -104,8 +105,8 @@ func ResolveDocXrefs(files []DocFile) []DocXref {
 		}
 		var out []string
 		for _, d := range dirs {
-			if fs := byDir[d]; len(fs) == 1 {
-				out = append(out, fs[0])
+			if f, ok := oneDocFile(byDir[d], referrer); ok {
+				out = append(out, f)
 			}
 		}
 		return out
@@ -154,7 +155,7 @@ func ResolveDocXrefs(files []DocFile) []DocXref {
 			switch c.Strategy {
 			case "repo-path", "repo-root", "module-source":
 				if c.Strategy == "repo-path" || isRel(c.Raw) {
-					for _, t := range fileTargets(c.Target) {
+					for _, t := range fileTargets(c.Target, f.Path) {
 						if to, ok := rootOf(t); ok {
 							add(from, to, c)
 						}
@@ -189,6 +190,43 @@ func ResolveDocXrefs(files []DocFile) []DocXref {
 		return false
 	})
 	return out
+}
+
+// oneDocFile is the file a directory reference names among the doc files
+// directly in the directory (design §4): the only one, or, of several, the
+// only one the referring file's dialect owns by its manifest's basenames and
+// globs (O165: a Taskfile include of website/, which holds a package.json
+// beside its Taskfile; a kustomize base beside its Kubernetes manifests) —
+// the set an ingest resolves over holds every doc file, the harness's only the
+// dialect's own, so the rule must not depend on which.
+func oneDocFile(fs []string, referrer string) (string, bool) {
+	if len(fs) == 1 {
+		return fs[0], true
+	}
+	own := ownedDialect(referrer)
+	if own == "" {
+		return "", false
+	}
+	var hit []string
+	for _, f := range fs {
+		if ownedDialect(f) == own {
+			hit = append(hit, f)
+		}
+	}
+	if len(hit) == 1 {
+		return hit[0], true
+	}
+	return "", false
+}
+
+// ownedDialect is the dialect whose manifest claims p by basename or glob
+// ("" for none, or an extension-only claim).
+func ownedDialect(p string) string {
+	v := connector.ClassifyDialect(dialectRules(), p, nil)
+	if v.By != connector.ClassifiedByBasename && v.By != connector.ClassifiedByGlob {
+		return ""
+	}
+	return v.Dialect
 }
 
 // labelsInclude: every selector label is present with the same value (a

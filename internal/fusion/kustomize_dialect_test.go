@@ -81,13 +81,10 @@ func TestResolveDocXrefs_Kustomize(t *testing.T) {
 
 // TestKustomizeBaseDirectoryNeedsTheOneFileRule pins what fusion.ResolveDocXrefs
 // does with a directory that holds a kustomization and another file a doc
-// dialect reads: a directory resolves to the one doc file in it (design §4), so a
-// base directory with a sibling doc file names no file at all. Today's ingest
-// dispatches a Kubernetes manifest to the incumbent (not a doc-engine
-// extractor), so a base holds one doc file and resolves; the day the kubernetes
-// dialect is dispatched, every base with a manifest stops resolving unless the
-// resolver prefers the referring dialect's own file. LB-Q-kustomize-rest names
-// the trigger; flip this assertion with that change.
+// dialect reads: of the doc files in the directory, the one the referring
+// dialect owns by its basenames (kustomization.yaml, kustomization.yml) is the
+// one it names (O165), so a base resolves whether its Kubernetes manifests are
+// doc files of the set (the day the kubernetes dialect is dispatched) or not.
 func TestKustomizeBaseDirectoryNeedsTheOneFileRule(t *testing.T) {
 	kz := docFiles(t, "kustomize", map[string]string{
 		"overlay/kustomization.yaml": "resources:\n  - ../base\n",
@@ -99,11 +96,12 @@ func TestKustomizeBaseDirectoryNeedsTheOneFileRule(t *testing.T) {
 	k8s := docFiles(t, "kubernetes", map[string]string{
 		"base/deployment.yaml": "apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: web\n",
 	})
-	// the base's own file reference still resolves (a file, not a directory); the
-	// overlay's reference to the directory does not
-	want := []string{"base/kustomization.yaml:kustomization.yaml -resource-> base/deployment.yaml:Deployment/web"}
+	want := []string{
+		"base/kustomization.yaml:kustomization.yaml -resource-> base/deployment.yaml:Deployment/web",
+		"overlay/kustomization.yaml:kustomization.yaml -resource-> base/kustomization.yaml:kustomization.yaml",
+	}
 	if got := xrefBrief(ResolveDocXrefs(append(kz, k8s...))); !reflect.DeepEqual(got, want) {
-		t.Fatalf("a base directory holding a second doc file resolves to nothing (design §4's one-file rule)\n got: %q\nwant: %q", got, want)
+		t.Fatalf("a base directory holding a second doc file resolves to its kustomization (O165)\n got: %q\nwant: %q", got, want)
 	}
 }
 
