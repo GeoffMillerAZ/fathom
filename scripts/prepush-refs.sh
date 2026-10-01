@@ -26,9 +26,16 @@ set -u
 marker="${PREPUSH_SKIP_MARKER:-workspace/tmp/prepush-skip}"
 zero_re='^0+$'
 
+# decide REMOTE < refs. Only the remote-tracking refs of REMOTE (the name git
+# hands pre-push as $1) vouch that it holds a commit: a stale ref of another
+# remote proves nothing about this one. No name, an empty one or one with a
+# slash (a URL) keeps the full gate.
 decide() {
   rm -f "$marker"
-  local lref lsha rref rsha refs=0 commit
+  local remote="${1:-}" lref lsha rref rsha refs=0 commit
+  case "$remote" in
+    "" | */*) return 1 ;;
+  esac
   while read -r lref lsha rref rsha; do
     [ -n "${lsha:-}" ] || continue
     refs=$((refs + 1))
@@ -39,7 +46,7 @@ decide() {
       refs/tags/*)
         commit=$(git rev-parse --verify -q "${lsha}^{commit}" 2>/dev/null) || return 1
         [ -n "$commit" ] || return 1
-        [ -n "$(git for-each-ref --count=1 --contains "$commit" refs/remotes 2>/dev/null)" ] || return 1
+        [ -n "$(git for-each-ref --count=1 --contains "$commit" "refs/remotes/${remote}/" 2>/dev/null)" ] || return 1
         ;;
       *)
         return 1 # a branch (or anything else) is real work
@@ -67,11 +74,11 @@ skipped() {
 case "${1:-}" in
   decide)
     if [ -t 0 ]; then rm -f "$marker"; exit 1; fi
-    decide
+    decide "${2:-}"
     ;;
   skipped) skipped ;;
   *)
-    echo "usage: prepush-refs.sh decide < refs | skipped" >&2
+    echo "usage: prepush-refs.sh decide REMOTE < refs | skipped" >&2
     exit 2
     ;;
 esac

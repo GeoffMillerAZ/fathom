@@ -48,6 +48,7 @@ surface-reckoning.md SR-M1, which pins the default surface's schema bytes.
 - [x] `fathom observe` writes each new entry to its own file .fathom/observations/O<n>.md (exclusive create), mints the next id over the legacy log and the directory together, and every reader reads both; the legacy log stays as written {id: EW-32, symbol: readObservations, package: cmd/fathom, reachable_from: TestObserveWritesPerEntryFileAndReadersReadBoth}
 - [ ] The Shared tools reference is split by tool family into parts the docs/mcp-tools.md index links in read order between the shared heading and the coding tools, rows moved verbatim; TestMcpToolsDocMatchesRegistry and the cost-class test read the full set unchanged {id: EW-42, oracle: lexical, path: docs/mcp-tools.md, pattern: "\]\(mcp-tools/shared-[a-z-]+\.md\)", min: 3}
 - [ ] This repository carries `.fathom/observations/README.md`, the per-entry layout's header `fathom observe` writes (no repo-specific path, the exclusive-create id rule; O179, O291), pinned equal to the binary's header by a test {id: EW-43, oracle: lexical, path: .fathom/observations/README.md, pattern: "^<!-- fathom-observations:v1 -->$"}
+- [ ] The tag-only pre-push skip trusts only the remote-tracking refs of the remote being pushed to (lefthook passes its name): a tag whose commit only another remote's ref holds keeps the full gate, and no remote name keeps it too {id: EW-44, oracle: lexical, path: lefthook.yml, pattern: "prepush-refs\.sh decide .*\{1\}"}
 
 ## Stop 1: push, deploy, adopt
 
