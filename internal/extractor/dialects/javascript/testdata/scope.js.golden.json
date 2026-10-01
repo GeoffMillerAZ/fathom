@@ -1,0 +1,161 @@
+{
+  "symbols": [
+    {
+      "name": "topArrow",
+      "kind": "JSFunc",
+      "package": "scope",
+      "line": 8,
+      "end_line": 8,
+      "signature": "topArrow = (x) =>",
+      "calls": [
+        "wrap"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "topExpr",
+      "kind": "JSFunc",
+      "package": "scope",
+      "line": 9,
+      "end_line": 11,
+      "signature": "topExpr = function ()",
+      "calls": [
+        "wrap"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "topLet",
+      "kind": "JSFunc",
+      "package": "scope",
+      "line": 12,
+      "end_line": 12,
+      "signature": "topLet = async () =>",
+      "calls": [
+        "wrap"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "exportedArrow",
+      "kind": "JSFunc",
+      "package": "scope",
+      "line": 14,
+      "end_line": 14,
+      "signature": "exportedArrow = () =>",
+      "calls": [
+        "topArrow"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "exportedFn",
+      "kind": "JSFunc",
+      "package": "scope",
+      "line": 15,
+      "end_line": 26,
+      "signature": "function exportedFn()",
+      "calls": [
+        "assigned",
+        "localArrow",
+        "localCall",
+        "localExpr",
+        "nestedDecl",
+        "otherLocal"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "nestedDecl",
+      "kind": "JSFunc",
+      "package": "scope",
+      "line": 22,
+      "end_line": 24,
+      "signature": "function nestedDecl()",
+      "calls": [
+        "nestedCall"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Server",
+      "kind": "JSFunc",
+      "package": "scope",
+      "line": 28,
+      "end_line": 40,
+      "signature": "function Server(opts)",
+      "calls": [
+        "lateCall",
+        "loaded",
+        "onThis"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "listen",
+      "kind": "JSMethod",
+      "package": "scope",
+      "line": 42,
+      "end_line": 44,
+      "signature": "Server.prototype.listen = function listen(port)",
+      "calls": [
+        "bind"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "create",
+      "kind": "JSFunc",
+      "package": "scope",
+      "line": 46,
+      "end_line": 48,
+      "signature": "exports.create = function create()",
+      "tier": "verified"
+    },
+    {
+      "name": "head",
+      "kind": "JSFunc",
+      "package": "scope",
+      "line": 50,
+      "end_line": 52,
+      "signature": "app.head = function head()",
+      "calls": [
+        "route"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Router",
+      "kind": "JSClass",
+      "package": "scope",
+      "line": 54,
+      "end_line": 59,
+      "tier": "verified"
+    },
+    {
+      "name": "Router.route",
+      "kind": "JSMethod",
+      "package": "scope",
+      "line": 55,
+      "end_line": 58,
+      "signature": "route(path)",
+      "calls": [
+        "compare",
+        "match"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "fixture",
+      "kind": "JSFunc",
+      "package": "scope",
+      "line": 80,
+      "end_line": 82,
+      "signature": "function fixture()",
+      "calls": [
+        "load"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

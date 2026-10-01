@@ -33,7 +33,12 @@ var updateGoldens = flag.Bool("update", false, "rewrite dialect golden files fro
 // reference as a call are new): TestRubyDialectKeepsLegacySymbols. Python left
 // it with LB-F65 (calls.qualify and decorator and module-level call
 // attribution change its call text): TestPythonDialectKeepsLegacySymbols.
-var migratedTagsDialects = []string{"javascript", "typescript"}
+// JavaScript and TypeScript left it with LB-F69 (definitions at module and
+// member scope only): TestJavaScriptDialectKeepsLegacySymbols and
+// TestTypeScriptDialectKeepsLegacySymbols. The list is now empty: every
+// migrated language is held to its full golden by TestDialectGoldens and to
+// its pre-manifest symbols by its own KeepsLegacySymbols test.
+var migratedTagsDialects = []string{}
 
 // goldenSymbol is one SymbolNode as a golden file records it. Service and
 // FilePath are fixed by the harness ("svc", "src/<case>.<ext>").

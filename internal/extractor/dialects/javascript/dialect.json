@@ -27,7 +27,8 @@
                "module": "namespace", "property": "property" },
     "ctags": { "class": "class", "function": "function", "generator": "function", "method": "method",
                "getter": "method", "setter": "method", "property": "property", "field": "field",
-               "variable": "variable", "constant": "constant" }
+               "variable": "variable", "constant": "constant" },
+    "tool":  { "class": "class", "function": "function", "method": "method" }
   },
   "qualify": { "chain_containers": false, "container_sep": ".", "method_sep": "." },
   "package": { "strategy": "dir" },

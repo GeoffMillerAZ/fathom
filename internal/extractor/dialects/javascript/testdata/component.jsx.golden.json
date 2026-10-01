@@ -8,18 +8,7 @@
       "end_line": 6,
       "signature": "function Button({ label, onClick })",
       "calls": [
-        "format"
-      ],
-      "tier": "verified"
-    },
-    {
-      "name": "handle",
-      "kind": "JSFunc",
-      "package": "component",
-      "line": 4,
-      "end_line": 4,
-      "signature": "handle = () =>",
-      "calls": [
+        "format",
         "onClick"
       ],
       "tier": "verified"

@@ -2849,3 +2849,42 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** the oracle recipe installs each subject's dependencies (never the subject itself) into a virtual environment (calibration/oracles/scip-python); the Python reading is re-measured with it
 - **Status:** fixed
 - **Impact:** a tier-A reading can be the oracle's environment more than the extractor; a SCIP producer that resolves through an installed environment needs that environment pinned with its version
+
+### O264 — lang-oracle takes calls from one oracle per subject: a tier-C calls file is refused beside -scip, so JavaScript's tier-C L2 cannot sit in the reading beside scip-typescript's L1, L3 and L4
+
+- **Symptom:** lang-oracle takes calls from one oracle per subject: a tier-C calls file is refused beside -scip, so JavaScript's tier-C L2 cannot sit in the reading beside scip-typescript's L1, L3 and L4
+- **Evidence:**
+  - **Tool:** `indexbench lang-oracle -dialect javascript -subject <express> -scip javascript-express.scip -scip-defs -tool-oracle javascript-express-calls.json` (the tier-C file from `calibration/oracles/ts-tags/tags_oracle.py --lang javascript`)
+  - **Expected:** L1, L3 and L4 from the SCIP index, calls from the tier-C file (scip-typescript is no L2 oracle on untyped JavaScript: 305 truth pairs for 1,385 fathom pairs)
+  - **Actual:** `calls given alongside another calls oracle (a SCIP index or an earlier file); measure one per subject`, exit 1
+  - **Repro:** the command above on expressjs/express df0abc93 with the pinned scip-typescript 0.4.0 index
+- **Root cause:** `measureSubject` sets the calls family to tier A from every `-scip` index (cmd/indexbench/langoracle.go, the `sub.Families[langbench.FamilyCalls] = "A"` after `ScoreSCIPWith`), and `scoreToolOracle` refuses a second calls source (the same file, `len(tf.Calls) > 0`)
+- **Fix:** none yet (cmd/indexbench is outside wave lb's jsts item); a per-subject choice of calls oracle (for example `-calls-from tool`) would let the reading take tier-C calls beside tier-A definitions. Worked around: the tier-C file is scored in a run without `-scip` (a scratch reading) and the committed reading carries its numbers in a note
+- **Status:** open (worked around)
+- **Impact:** javascript.json's L2 metrics are scip-typescript's (call_precision .19), not the measured tier-C ones; level_met is unaffected this round because the tier-C L2 is unmet too (O265)
+
+### O265 — the tier-C JavaScript calls truth encloses calls finer than the dialect defines: after the scope change call_recall against upstream tags.scm falls .7888 to .7245, all of it calls written in a local the dialect no longer defines
+
+- **Symptom:** the tier-C JavaScript calls truth encloses calls finer than the dialect defines: after the scope change call_recall against upstream tags.scm falls .7888 to .7245, all of it calls written in a local the dialect no longer defines
+- **Evidence:**
+  - **Tool:** `indexbench lang-oracle -dialect javascript -tool-oracle out/javascript-<subject>-calls.json` (no `-scip`) on axios cdcfd214 and express df0abc93, before and after LB-Q-javascript-rest's queries
+  - **Expected:** a call pair is the same (caller, callee) on both sides wherever both define the enclosing function
+  - **Actual:** before: call_recall .7888 (1,277 of 1,619), call_precision .9227; after: .7245 (1,173 of 1,619) and .8767 (1,173 of 1,338). A scratch diff of the pairs: of the truth pairs fathom misses, all but one name a caller the dialect does not define (a function-local binding, a named function expression such as `new Promise(function dispatchXhrRequest(...))`, an object-literal pair or method, an assignment inside a function)
+  - **Repro:** calibration/oracles/ts-tags/README.md (JavaScript), then the lang-oracle run above on each subject
+- **Root cause:** upstream's `@definition.function` matches a variable declarator, a named function expression, an assignment and a pair at any depth, and tags_oracle.py pairs each call with the innermost one; scip-typescript, the L1 oracle, defines none of those as a module or member symbol, so L1 pulls the dialect's definitions to module and member scope and the upstream L2 truth pulls them back down
+- **Fix:** none; an owner decision: keep tags_oracle.py's innermost-definition rule (the reading discloses the disagreement, as Lua's does for table constructors), or a JavaScript L2 oracle whose callers are module and member definitions (scip-typescript on a typed, checkJs/JSDoc subject)
+- **Status:** open (needs owner decision)
+- **Impact:** JavaScript L2 reads unmet on recall (.7245 vs the .75 good floor) while every pair fathom draws is .8767 precise; the trigger for LB-Q-javascript-rest names the decision
+
+### O266 — D3 claim drafting reads a definition's first three lines, so a module-scope arrow const whose `=>` comes later is never drafted: 26 real TypeScript module definitions stay in sym_precision's denominator
+
+- **Symptom:** D3 claim drafting reads a definition's first three lines, so a module-scope arrow const whose `=>` comes later is never drafted: 26 real TypeScript module definitions stay in sym_precision's denominator
+- **Evidence:**
+  - **Tool:** `calibration/adjudications/claims.py calibration/adjudications/typescript.classes.json <unmatched.json> <subject>` then `lang-oracle -adjudicate` on zod 1fb56a5c and nest 9ff83d54
+  - **Expected:** a column-0 `export const X = (` whose parameter list spans lines is drafted under the arrow-const class like a one-line one
+  - **Actual:** 26 such definitions stay dialect-only (nest packages/core/errors/messages.ts:63 `UNKNOWN_DEPENDENCIES_MESSAGE`, packages/common/decorators/core/set-metadata.decorator.ts:22 `SetMetadata`, zod packages/zod/src/v3/types.ts:87 `handleResult`); after LB-Q-typescript-rest they are 26 of the 123 residual dialect-only definitions (85 more are constructors of classes declared inside test callbacks)
+  - **Repro:** the measurement in docs/bench/readings/lang/typescript.json's notes, then the residue diff of `-unmatched` against the reading's `adjudicated`
+- **Root cause:** claims.py slices `lines[line - 1:min(line + 2, …)]` before matching the class pattern (calibration/adjudications/claims.py), a window chosen for one-line arrows
+- **Fix:** none yet (claims.py serves every D3 language); widening the window to the definition's end line, which the unmatched entry carries, needs the D3 audit rerun on the admitted sets
+- **Status:** open
+- **Impact:** TypeScript sym_precision reads .986 where these admissions would read about .989; no level changes

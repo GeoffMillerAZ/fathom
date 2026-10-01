@@ -17,19 +17,8 @@
       "signature": "function View({ title }: Props)",
       "calls": [
         "render",
+        "setOpen",
         "useState"
-      ],
-      "tier": "verified"
-    },
-    {
-      "name": "toggle",
-      "kind": "JSFunc",
-      "package": "view",
-      "line": 9,
-      "end_line": 9,
-      "signature": "toggle = () =>",
-      "calls": [
-        "setOpen"
       ],
       "tier": "verified"
     },

@@ -333,7 +333,16 @@ import (
 // selector's own field or method name as a call; a type stays a reference. Every .py
 // and .go file was fingerprinted with the old call text, so the salt bump re-reads
 // them. (The php dialect's qualification ships under the same bump but is not
-// dispatched; the CGO phpextract.go still reads .php.)
+// dispatched; the CGO phpextract.go still reads .php.) Also LB-F69, under the same
+// bump (one per wave): the javascript and typescript dialects define an arrow-function
+// or function-expression binding only at module scope (a direct child of the program
+// or of an export statement), a method only in a class body, a prototype or member
+// assignment only as a module-scope statement, and no object-literal member at all, so
+// a call written in a dropped binding now belongs to the definition around it. A store
+// ingested before it holds function-local bindings, object-literal methods and
+// function-local member assignments as symbols, with their calls attributed to them;
+// every .js, .jsx, .mjs, .cjs, .ts, .tsx, .mts and .cts file was fingerprinted by the
+// old queries, so the salt bump re-reads them.
 const ExtractorEpoch = "41"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file

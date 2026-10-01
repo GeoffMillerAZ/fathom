@@ -34,7 +34,12 @@
     "ctags": { "class": "class", "function": "function", "generator": "function", "method": "method",
                "interface": "interface", "enum": "enum", "alias": "type_alias", "namespace": "namespace",
                "property": "property", "variable": "variable", "constant": "constant",
-               "enumerator": "enum_member" }
+               "enumerator": "enum_member" },
+    "tool":  { "class_declaration": "class", "abstract_class_declaration": "class",
+               "function_declaration": "function", "generator_function_declaration": "function",
+               "method_definition": "method", "interface_declaration": "interface",
+               "enum_declaration": "enum", "type_alias_declaration": "type_alias",
+               "internal_module": "namespace" }
   },
   "qualify": { "chain_containers": false, "container_sep": ".", "method_sep": "." },
   "package": { "strategy": "dir" },

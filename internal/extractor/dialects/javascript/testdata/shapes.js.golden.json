@@ -122,18 +122,6 @@
       "tier": "verified"
     },
     {
-      "name": "method",
-      "kind": "JSMethod",
-      "package": "shapes",
-      "line": 53,
-      "end_line": 55,
-      "signature": "method()",
-      "calls": [
-        "inner"
-      ],
-      "tier": "verified"
-    },
-    {
       "name": "asyncFn",
       "kind": "JSFunc",
       "package": "shapes",
