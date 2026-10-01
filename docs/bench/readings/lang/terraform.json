@@ -2,15 +2,15 @@
   "dialect": "terraform",
   "kind": "tooling",
   "target_level": "L3",
-  "level_met": "L1",
+  "level_met": "L3",
   "grade": {
     "L1": "excellent",
-    "L2": "not-attempted",
-    "L3": "not-attempted",
+    "L2": "excellent",
+    "L3": "good",
     "L4": "not-applicable"
   },
-  "measured_at": "2026-09-28",
-  "fathom_commit": "bb66c4fd",
+  "measured_at": "2026-10-01",
+  "fathom_commit": "11fd88fd",
   "extractor": "dialect",
   "subjects": [
     {
@@ -19,32 +19,43 @@
       "files": 87,
       "bytes": 523029,
       "counts": {
-        "fathom_defs": 1047,
-        "kind_equal": 1016,
-        "matched": 1016,
-        "oracle_defs": 1016
+        "fathom_defs": 1234,
+        "kind_equal": 1234,
+        "matched": 1234,
+        "oracle_defs": 1234,
+        "range_eligible": 1234,
+        "range_ok": 1234,
+        "ref_fathom": 1855,
+        "ref_fathom_in_truth": 1807,
+        "ref_truth": 1807,
+        "ref_truth_found": 1807,
+        "xref_fathom": 664,
+        "xref_fathom_in_truth": 651,
+        "xref_truth": 866,
+        "xref_truth_found": 651
       },
       "families": {
-        "l1": "B"
+        "l1": "A",
+        "refs": "A",
+        "xref": "A"
       },
       "kind_intersection": [
         "data_source",
         "module",
         "output",
         "resource",
+        "variable",
         "variable_decl"
       ],
       "excluded_by_kind": {
-        "ctags:local": 394,
-        "ctags:provider": 13,
-        "fathom:TerraformLocal": 187,
         "fathom:TerraformProvider": 13
       },
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 30.447999999999993,
-        "max_file_ms": 3,
+        "extract_ms": 73.502,
+        "extract_cpu_ms": 71.40199999999999,
+        "max_file_ms": 7,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -55,32 +66,43 @@
       "files": 77,
       "bytes": 453543,
       "counts": {
-        "fathom_defs": 1757,
-        "kind_equal": 1750,
-        "matched": 1750,
-        "oracle_defs": 1750
+        "fathom_defs": 1877,
+        "kind_equal": 1877,
+        "matched": 1877,
+        "oracle_defs": 1877,
+        "range_eligible": 1877,
+        "range_ok": 1877,
+        "ref_fathom": 2399,
+        "ref_fathom_in_truth": 2390,
+        "ref_truth": 2390,
+        "ref_truth_found": 2390,
+        "xref_fathom": 1496,
+        "xref_fathom_in_truth": 1496,
+        "xref_truth": 2662,
+        "xref_truth_found": 1496
       },
       "families": {
-        "l1": "B"
+        "l1": "A",
+        "refs": "A",
+        "xref": "A"
       },
       "kind_intersection": [
         "data_source",
         "module",
         "output",
         "resource",
+        "variable",
         "variable_decl"
       ],
       "excluded_by_kind": {
-        "ctags:local": 345,
-        "ctags:provider": 13,
-        "fathom:TerraformLocal": 120,
         "fathom:TerraformProvider": 13
       },
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 29.595999999999997,
-        "max_file_ms": 3,
+        "extract_ms": 84.90000000000002,
+        "extract_cpu_ms": 81.45099999999995,
+        "max_file_ms": 16,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -88,22 +110,26 @@
   ],
   "oracles": [
     {
-      "tier": "B",
-      "tool": "universal-ctags",
-      "version": "6.2.1"
+      "tier": "A",
+      "tool": "opentofu (tofu show -json -config, tofu graph -type=plan)",
+      "version": "1.13.0"
     }
   ],
   "metrics": {
-    "ref_precision": null,
-    "ref_recall": null,
-    "sym_precision": 0.9864,
+    "ref_precision": 0.9866,
+    "ref_recall": 1,
+    "sym_precision": 1,
     "sym_recall": 1,
-    "xref_precision": null,
-    "xref_recall": null
+    "xref_precision": 0.994,
+    "xref_recall": 0.6086
   },
   "metric_tiers": {
-    "sym_precision": "B",
-    "sym_recall": "B"
+    "ref_precision": "A",
+    "ref_recall": "A",
+    "sym_precision": "A",
+    "sym_recall": "A",
+    "xref_precision": "A",
+    "xref_recall": "A"
   },
   "required_kinds": [
     "data_source",
@@ -116,32 +142,45 @@
     "module",
     "output",
     "resource",
+    "variable",
     "variable_decl"
   ],
   "counts": {
-    "fathom_defs": 2804,
-    "kind_equal": 2766,
-    "matched": 2766,
-    "oracle_defs": 2766
+    "fathom_defs": 3111,
+    "kind_equal": 3111,
+    "matched": 3111,
+    "oracle_defs": 3111,
+    "range_eligible": 3111,
+    "range_ok": 3111,
+    "ref_fathom": 4254,
+    "ref_fathom_in_truth": 4197,
+    "ref_truth": 4197,
+    "ref_truth_found": 4197,
+    "xref_fathom": 2160,
+    "xref_fathom_in_truth": 2147,
+    "xref_truth": 3528,
+    "xref_truth_found": 2147
   },
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 16.26,
-    "max_file_ms": 3,
+    "throughput_mb_s": 6.39,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 6.17,
+    "max_file_ms": 16,
     "peak_module_pages": 0,
     "compiled_bytes": 0
   },
   "excluded_by_kind": {
-    "ctags:local": 739,
-    "ctags:provider": 26,
-    "fathom:TerraformLocal": 307,
     "fathom:TerraformProvider": 26
   },
   "notes": [
-    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
-    "providers have no canonical kind and are excluded",
-    "universal-ctags 6.2.1's Terraform parser tags every key = value pair inside a nested object/list literal within a locals block's own attribute value as its own separate 'local' definition (verified directly: examples/network-acls/main.tf's locals.network_acls = {...} nested rule maps alone produce 16 spurious 'cidr_block' local tags at one nesting depth) -- of ctags' 739 combined 'local' tags across both subjects, 100% of the unmatched ones (225 on terraform-aws-vpc alone) are this false-positive class; every real resource/data/module/variable/output ctags tag matched a fathom definition (0 misses). 'local' is therefore excluded from both sides' kind intersection (like 'provider') rather than trusted as ground truth."
+    "oracle: OpenTofu 1.13.0 itself, tier A (calibration/oracles/terraform): every directory holding a .tf file is a root module of a scratch copy of the subject (19 roots per subject, all initialized and graphed), `tofu init -backend=false` against a shared offline filesystem provider mirror (hashicorp/aws 6.67.0, tls, time, cloudinit, null, helm, http, local: 215 MiB of packages, no direct installation), then `tofu show -json -config` (each module's resources, data sources, variables, outputs and module calls, and every expression's references, count/for_each and depends_on), `tofu graph -type=plan` (local values, and the references of a dynamic block's content, which the configuration JSON omits) and init's modules.json (where each module path lives). Positions come from an independent line reader (no HCL parser): 0 definitions unlocated, range_agreement 1.0. A registry module an example calls is downloaded by init and lies outside the subject: it is not measured.",
+    "names are compared whole (name_match identity): a terraform address carries dots (aws_vpc.this, data.T.N, module.m, var.x, local.x, output.o), so the last-segment rule would conflate every resource named `this`. Local values are measured (canonical variable) now that the oracle is the tool: universal-ctags 6.2.1's spurious nested-map `local` tags were why the earlier tier-B reading excluded them. Providers have no canonical kind and are excluded.",
+    "L2: the oracle's references are every reference a definition makes to a definition of its own module, keyed by the referring file wherever the target is declared and named by address (module.m.o names the call module.m), as lang-oracle compares Calls. ref_recall 1.0; ref_precision .9866: the 57 references fathom draws beyond the tool (9 vpc, 48 eks) were each checked to be written in their definition's source, in the oracle's two blind spots: a local value's (36), read from the plan graph, and a dynamic block's content (21), which the configuration JSON does not render and the plan graph keeps only when no other reference of the same definition already depends on the target (OpenTofu transitively reduces the graph): vpc's local.vpc_id -> aws_vpc.this, eks's aws_eks_cluster.this -> var.encryption_config.",
+    "L3: cross-file references resolve through ResolveDocXrefs' label-selector join, the same resolver ingest stores doc-xref edges from (each definition labelled terraform.address in the scope of its module directory; a reference to a definition another file declares; a module call's input arguments to the called module's variables; a module.m.o read through a module block the same file declares to output o there). xref_precision .994 (the 13 beyond the tool are the L2 blind spots, a local or a data source's dynamic block referring to variables.tf); xref_recall .6086 (2147 of 3528; vpc 1496 of 2662, .562; eks 651 of 866, .752): every one of the 1381 missed is a module.m.o read in a file that does not declare module \"m\" (an example's outputs.tf reading module.vpc.* declared in its main.tf, checked by script for all 1381), whose target, output o in the called directory, takes a second hop through the call's source in another file: the one-hop label join cannot take it and a file's ExtractDoc cannot know it. The reference to the call itself (outputs.tf -> main.tf) is resolved.",
+    "the label-selector join compares every reference with every label set (O320): 4449 references against 3111 labels resolved in 80 ms on both subjects together.",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
   ],
-  "disposition": "deferred: L1 is excellent (sym_recall 1.0, sym_precision .9864) once universal-ctags' 'local' kind is excluded from the kind intersection as unreliable ground truth (see notes) -- the terraform queue item's L3 target is out of reach this pass. L2 (tool-format 'reference recall/precision', design table 1.2) and L3 (import_resolution / file_edge_precision/recall) both need an oracle at tier A or C (design table 1.3); this item's named oracle is 'terraform graph (tier A, offline init)', which needs `terraform init` to resolve every subject's declared providers. Measured directly against the registry before attempting it: the AWS provider alone (both subjects use it; eks additionally needs kubernetes/helm/tls/cloudinit/null/local/time) ships a 127 MiB compressed darwin/arm64 zip (registry.terraform.io metadata, 2026-09-28) -- an uncompressed Go provider binary of that class typically lands 2-3x larger, and combined with the terraform CLI itself (26 MiB compressed) and eks's extra providers this exceeds the language-breadth run's stated 300 MiB per-worker disk ceiling well before a single `terraform graph` runs, even held only transiently. No tier-C oracle is available either: an independent second implementation of HCL reference extraction would need to be written and would not be genuinely independent of this dialect's own hashicorp/hcl/v2-based extractor without real, separate authorship -- self-grading the extractor's own Calls output with a same-library second pass is exactly the kind of ungrounded measurement design §14.2 rules out. The Calls edges (design §1.1 L2 'resource reference edges': resource/data/module/output intra-file references, locals per-attribute, depends_on) and module source recording (local-path and registry refs, in Signature) are implemented and unit-tested (internal/extractor/hclextract_test.go) but genuinely unmeasured -- 'not-attempted', not claimed. LB-Q-terraform stays unchecked; see LB-Q-terraform-rest. Trigger: a shared, pre-populated offline provider mirror (built once, reused across every terraform-dependent queue item rather than downloaded per item) makes tier A tractable within the disk budget, or an Opus-reviewed decision accepts a tier-C independent HCL reference parser (a second, separately-authored implementation, not this dialect's own extractor run twice) for L2/L3."
+  "disposition": null
 }
