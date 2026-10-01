@@ -465,7 +465,7 @@ func LoadDocExtractor(d Dialect) (*DocExtractor, error) {
 
 // NewDocDialectExtractor finds id's embedded manifest and builds its
 // document engine (LB-F8, design §4) — the fusion dispatch table's
-// (internal/fusion/pipeline.go) constructor for a "doc"/"tags+doc" dialect,
+// (internal/fusion/register.go) constructor for a "doc"/"tags+doc" dialect,
 // the same role NewTSExtractor(id) plays for a "tags" one.
 func NewDocDialectExtractor(id string) (*DocExtractor, error) {
 	dialects, err := LoadDialects()

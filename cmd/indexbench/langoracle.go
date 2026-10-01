@@ -97,7 +97,7 @@ func cmdLangOracle(args []string, stdout, stderr io.Writer) int {
 
 	// Measure the dialect's OWN extractor (ExtractForBenchWith, LB-F18),
 	// never fusion's live dispatch: a port whose incumbent still occupies
-	// pipeline.go's extension map (§11 step 2's merge gate not yet passed)
+	// register.go's extension map (§11 step 2's merge gate not yet passed)
 	// would otherwise be measured as its own incumbent — wrong extractor,
 	// wrong reading, and undetectable from the output alone (kept
 	// SourceKind strings, §11 step 3, make the incumbent's nodes still
