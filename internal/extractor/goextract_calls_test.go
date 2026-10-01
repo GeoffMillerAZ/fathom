@@ -9,11 +9,11 @@ import (
 
 // callSitesFixture pins LB-F66: collectCalls records a method called on any
 // receiver expression (a selector chain, a call's result), and leaves out a
-// name in a position no function value can take — a type (a composite
-// literal's, a declaration's, a type assertion's, new/make's argument), an
-// operand of a comparison or arithmetic, a case value, the base of a further
-// selector, and a selector's own field or method name. A function referenced
-// as a value where it can be one (an argument) is still recorded (VS-6).
+// value no function can be — an operand of a comparison or arithmetic, a
+// case value, the base of a further selector — and a selector's own field or
+// method name. A function referenced as a value where it can be one (an
+// argument) is still recorded (VS-6), and so is a type (`var b bytes.Buffer`,
+// `http.Server{}`): a test reaches a type a plan row names through it.
 const callSitesFixture = `package p
 
 import (
@@ -90,13 +90,18 @@ func TestGoExtractor_CallSites(t *testing.T) {
 		}
 	}
 	for _, bad := range []string{
-		"bytes.Buffer", "http.Server", "http.Client", "http.Handler", "http.Response", "bytes.Reader", // types
 		"http.StatusNoContent", "http.StatusOK", "http.StatusAccepted", // operands and case values
 		"os.Stdout",     // the base of a further selector
 		"svc::p.helper", // c.helper's method name is not the package func helper
 	} {
 		if slices.Contains(calls, bad) {
 			t.Errorf("Use.Calls records %q, which no function value can be: %v", bad, calls)
+		}
+	}
+	// Types stay references (verify's test_reaches of a type symbol).
+	for _, typ := range []string{"bytes.Buffer", "http.Server", "http.Client", "http.Handler", "http.Response", "bytes.Reader"} {
+		if !slices.Contains(calls, typ) {
+			t.Errorf("Use.Calls lacks the type reference %q: %v", typ, calls)
 		}
 	}
 	if !slices.IsSorted(calls) {

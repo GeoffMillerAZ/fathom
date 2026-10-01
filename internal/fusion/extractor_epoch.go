@@ -328,9 +328,9 @@ import (
 // (@calls.to/@calls.from), where each was dropped as outside every function. The Go
 // extractor records a method called on a selector chain or on a call's or an
 // index's result ("resp.Header.Get", "strings.NewReader().Len"), where it recorded
-// none, and no longer records a name in a position no function value can take (a
-// type, an operand of a comparison or arithmetic, a case value, the base of a
-// further selector) or a selector's own field or method name as a call. Every .py
+// none, and no longer records a value no function can be (an operand of a
+// comparison or arithmetic, a case value, the base of a further selector) or a
+// selector's own field or method name as a call; a type stays a reference. Every .py
 // and .go file was fingerprinted with the old call text, so the salt bump re-reads
 // them. (The php dialect's qualification ships under the same bump but is not
 // dispatched; the CGO phpextract.go still reads .php.)

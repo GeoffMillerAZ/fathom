@@ -414,17 +414,18 @@ func cyclomaticComplexity(fn *ast.FuncDecl) int {
 // assignment (the ASSIGNED-TO variable).
 //
 // LB-F66 (O260): a selector's own Sel is a field or method name, never the
-// package-level function of that name; and a name in a position no function
-// value can take is no reference either (skipNonFuncValues): a type (a
-// composite literal's, a declaration's, a type assertion's, a local type
-// declaration's, new/make's first argument, a type conversion's), an operand
-// of a comparison against anything but nil or of any other binary operator,
-// a switch tag or case value, the base of a further selector or index, and
-// a unary or range operand. A method called on any receiver expression is a
-// call too: "<receiver>.Method", the receiver rendered by calleeQualifier
-// (a selector chain as written, a call's or an index's result as "f()" or
-// "a[]"), so its last segment is the method's name as BareName and the
-// store's CalleeName read it.
+// package-level function of that name; and a value no function can be is no
+// reference either (skipNonFuncValue): an operand of a comparison against
+// anything but nil or of any other binary operator, a switch tag or case
+// value, the base of a further selector, and a unary, slice, range or
+// increment operand. A type stays a reference: `var t pkg.T` and
+// `pkg.T{...}` are how a test reaches a type a plan row names (verify's
+// test_reaches) and how product reach links a package only a type names. A
+// method called on any receiver expression is a call too:
+// "<receiver>.Method", the receiver rendered by calleeQualifier (a selector
+// chain as written, a call's or an index's result as "f()" or "a[]"), so its
+// last segment is the method's name as BareName and the store's CalleeName
+// read it.
 func collectCalls(service, pkgName string, fn *ast.FuncDecl, localFuncs map[string]bool, imports map[string]string) []string {
 	if fn.Body == nil {
 		return nil
@@ -502,13 +503,6 @@ func collectCalls(service, pkgName string, fn *ast.FuncDecl, localFuncs map[stri
 		case *ast.UnaryExpr:
 			skipNonFuncValue(skip, node.X)
 			return true
-		case *ast.StarExpr:
-			skipNonFuncValue(skip, node.X)
-			return true
-		case *ast.IndexExpr:
-			skipNonFuncValue(skip, node.X)
-			skipNonFuncValue(skip, node.Index)
-			return true
 		case *ast.SliceExpr:
 			skipNonFuncValue(skip, node.X)
 			return true
@@ -524,27 +518,6 @@ func collectCalls(service, pkgName string, fn *ast.FuncDecl, localFuncs map[stri
 				}
 			}
 			return true
-		case *ast.TypeSwitchStmt:
-			if node.Body != nil {
-				for _, st := range node.Body.List {
-					if cc, ok := st.(*ast.CaseClause); ok {
-						skipTypeExprs(skip, cc.List...)
-					}
-				}
-			}
-			return true
-		case *ast.TypeAssertExpr:
-			skipTypeExprs(skip, node.Type)
-			return true
-		case *ast.FuncLit:
-			skipTypeExprs(skip, node.Type)
-			return true
-		case *ast.TypeSpec:
-			if node.TypeParams != nil {
-				skipTypeNode(skip, node.TypeParams)
-			}
-			skipTypeExprs(skip, node.Type)
-			return true
 		case *ast.RangeStmt:
 			skipNonFuncValue(skip, node.X)
 			return true
@@ -553,7 +526,6 @@ func collectCalls(service, pkgName string, fn *ast.FuncDecl, localFuncs map[stri
 			return true
 
 		case *ast.ValueSpec:
-			skipTypeExprs(skip, node.Type)
 			// `var _ = f` in a body: a blank sink is no reference (EW-15).
 			for i, name := range node.Names {
 				if name.Name == "_" && i < len(node.Values) && len(node.Names) == len(node.Values) {
@@ -566,26 +538,18 @@ func collectCalls(service, pkgName string, fn *ast.FuncDecl, localFuncs map[stri
 			skip[node.Fun] = true
 			fun := node.Fun
 			for {
-				// A generic instantiation F[T](x) calls F; T is a type.
+				// A generic instantiation F[T](x) calls F (T stays a reference).
 				switch ix := fun.(type) {
 				case *ast.IndexExpr:
-					skipTypeExprs(skip, ix.Index)
 					skip[ix.X] = true
 					fun = ix.X
 					continue
 				case *ast.IndexListExpr:
-					skipTypeExprs(skip, ix.Indices...)
 					skip[ix.X] = true
 					fun = ix.X
 					continue
 				}
 				break
-			}
-			if isTypeExpr(node.Fun) {
-				skipTypeExprs(skip, node.Fun) // a conversion: (*pkg.T)(x), []pkg.T(x)
-			}
-			if id, ok := fun.(*ast.Ident); ok && (id.Name == "new" || id.Name == "make") && len(node.Args) > 0 {
-				skipTypeExprs(skip, node.Args[0])
 			}
 			switch fun := fun.(type) {
 			case *ast.Ident:
@@ -632,7 +596,6 @@ func collectCalls(service, pkgName string, fn *ast.FuncDecl, localFuncs map[stri
 					}
 				}
 			}
-			skipTypeExprs(skip, node.Type)
 			return true
 
 		case *ast.Ident:
@@ -676,30 +639,6 @@ func collectCalls(service, pkgName string, fn *ast.FuncDecl, localFuncs map[stri
 	return keys
 }
 
-// skipTypeExprs marks every name inside each type expression: a type is no
-// function value and no call (LB-F66). A nil expression is skipped.
-func skipTypeExprs(skip map[ast.Expr]bool, exprs ...ast.Expr) {
-	for _, e := range exprs {
-		if e != nil {
-			skipTypeNode(skip, e)
-		}
-	}
-}
-
-func skipTypeNode(skip map[ast.Expr]bool, n ast.Node) {
-	ast.Inspect(n, func(n ast.Node) bool {
-		switch x := n.(type) {
-		case *ast.FuncLit:
-			return false // a function literal's body is code, not a type
-		case *ast.Ident:
-			skip[x] = true
-		case *ast.SelectorExpr:
-			skip[x] = true
-		}
-		return true
-	})
-}
-
 // skipNonFuncValue marks e (parentheses aside) when it is a name or a
 // selector: called from a position no function value can take (LB-F66).
 func skipNonFuncValue(skip map[ast.Expr]bool, e ast.Expr) {
@@ -720,24 +659,6 @@ func skipNonFuncValue(skip map[ast.Expr]bool, e ast.Expr) {
 func isNilIdent(e ast.Expr) bool {
 	id, ok := e.(*ast.Ident)
 	return ok && id.Name == "nil"
-}
-
-// isTypeExpr reports whether a call's Fun is written as a type, making the
-// call a conversion: (*pkg.T)(x), []pkg.T(x), map[K]V(x), chan T(x),
-// func()(x), interface{}(x), struct{}(x).
-func isTypeExpr(e ast.Expr) bool {
-	for {
-		p, ok := e.(*ast.ParenExpr)
-		if !ok {
-			break
-		}
-		e = p.X
-	}
-	switch e.(type) {
-	case *ast.StarExpr, *ast.ArrayType, *ast.MapType, *ast.ChanType, *ast.FuncType, *ast.InterfaceType, *ast.StructType:
-		return true
-	}
-	return false
 }
 
 // calleeQualifier renders a method call's receiver expression for the
