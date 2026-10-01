@@ -5,7 +5,7 @@ package main
 // exit; heavy admission closes; in-flight tree/fleet work is cancelled and
 // so is an in-flight ingest, which observes it at its batch boundary — the
 // pipeline checks its context between fetch and write
-// (internal/fusion/pipeline.go), so it stops before writing or finishes its
+// (internal/fusion/ingest.go), so it stops before writing or finishes its
 // write; that an aborted ingest leaves ingest_state in_progress and its
 // watermark unmoved is RT-109's contract, not this file's; point and index
 // calls finish; all within 12 s in total (under the plist's ExitTimeOut 20); the

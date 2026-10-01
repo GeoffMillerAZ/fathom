@@ -1,0 +1,35 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Parameters": {
+    "VpcId": { "Type": "AWS::EC2::VPC::Id" }
+  },
+  "Conditions": {
+    "HasVpc": { "Fn::Not": [{ "Fn::Equals": [{ "Ref": "VpcId" }, ""] }] }
+  },
+  "Resources": {
+    "SecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Condition": "HasVpc",
+      "Properties": {
+        "VpcId": { "Ref": "VpcId" },
+        "GroupDescription": { "Fn::Sub": "${AWS::StackName} group" }
+      }
+    },
+    "Instance": {
+      "Type": "AWS::EC2::Instance",
+      "DependsOn": ["SecurityGroup"],
+      "Properties": {
+        "SecurityGroupIds": [{ "Fn::GetAtt": ["SecurityGroup", "GroupId"] }],
+        "SubnetId": { "Fn::If": ["HasVpc", { "Ref": "AWS::NoValue" }, "subnet-1"] }
+      }
+    },
+    "Eip": {
+      "Type": "AWS::EC2::EIP",
+      "DependsOn": "Instance",
+      "Properties": { "InstanceId": { "Ref": "Instance" }, "Domain": { "Fn::GetAtt": "Instance.Vpc" } }
+    }
+  },
+  "Outputs": {
+    "PublicIp": { "Value": { "Fn::GetAtt": ["Eip", "PublicIp"] } }
+  }
+}

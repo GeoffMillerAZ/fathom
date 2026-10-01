@@ -26,3 +26,15 @@ package dialect
 // 14. An import case off the list:    imports: {strategy: "dotted-module", case: "kebab"}
 // 15. A type_wildcard off the list:   imports: {strategy: "namespace-dir", type_wildcard: "fields"}
 // 16. A preprocess step off the list: preprocess: "c-conditionals"
+//
+// #Doc negatives (internal/langbench/docschema_test.go asserts each fails when
+// unified with #Doc), each the minimal doc spec below with one defect.
+//
+// docBase: {decode: "yaml", detect: {},
+//           entities: [{select: "$", kind: "package", source_kind: "X", name: "$file"}]}
+//
+// 17. A yaml_tags scheme off the list:  yaml_tags: "k8s"
+// 18. yaml_tags on a JSON decode:       decode: "json", yaml_tags: "cloudformation"
+// 19. declared_only not a boolean:      references: [{from: "package", select: "$..Ref", value: "$", to_kind: "package", edge: "ref", declared_only: "yes"}]
+// 20. An empty content sniff:           detect: {content_sniff: ""}
+// 21. A selector not rooted at $ or .:  entities: [{select: "Resources..Ref", ...}]

@@ -97,7 +97,7 @@ func cmdLangOracle(args []string, stdout, stderr io.Writer) int {
 
 	// Measure the dialect's OWN extractor (ExtractForBenchWith, LB-F18),
 	// never fusion's live dispatch: a port whose incumbent still occupies
-	// pipeline.go's extension map (§11 step 2's merge gate not yet passed)
+	// register.go's extension map (§11 step 2's merge gate not yet passed)
 	// would otherwise be measured as its own incumbent — wrong extractor,
 	// wrong reading, and undetectable from the output alone (kept
 	// SourceKind strings, §11 step 3, make the incumbent's nodes still
@@ -304,8 +304,13 @@ func onlyMatch(globs []string, rel string) bool {
 // C++, the polyglot .h headers fusion's header router sends to the C++
 // extractor. No dialect claims .h (design §5 leaves it to that router, which
 // sniffs the source), so without this a C++ library's headers — most of fmt —
-// would be measured as nothing.
-func ownedSourceRefs(m langbench.Manifest, root string, refs []core.SourceRef, only []string) []core.SourceRef {
+// would be measured as nothing. contentDialect, when non-nil, names the
+// dialect ingest's dispatch reads a file with by its content alone
+// (fusion.Pipeline.ContentDialect): a doc-engine dialect that claims no name
+// (LB-Q-cloudformation: a template is a .yaml, .yml or .json whose content
+// says so) is measured on exactly the files ingest sends it.
+func ownedSourceRefs(m langbench.Manifest, root string, refs []core.SourceRef, only []string, contentDialect func(rel string, content []byte) string) []core.SourceRef {
+	byContent := contentDialect != nil && m.Engine == "doc" && len(m.Match.Extensions)+len(m.Match.Basenames)+len(m.Match.Globs) == 0 && m.Match.Sniff == nil
 	var out []core.SourceRef
 	for _, ref := range refs {
 		if !onlyMatch(only, ref.Path) {
@@ -313,6 +318,15 @@ func ownedSourceRefs(m langbench.Manifest, root string, refs []core.SourceRef, o
 		}
 		if m.Owns(ref.Path) {
 			out = append(out, ref)
+			continue
+		}
+		if byContent {
+			switch strings.ToLower(filepath.Ext(ref.Path)) {
+			case ".yaml", ".yml", ".json":
+				if b, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(ref.Path))); err == nil && contentDialect(ref.Path, b) == m.ID {
+					out = append(out, ref)
+				}
+			}
 			continue
 		}
 		if m.ID == "cpp" && strings.EqualFold(filepath.Ext(ref.Path), ".h") {
@@ -354,7 +368,9 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 	// Warm-up: one untimed extraction compiles the dialect's grammar, so
 	// per-file times measure extraction, not the one-time lazy compile
 	// (design §9 charges that to the module pool, LB-F15).
-	ownedRefs := ownedSourceRefs(spec.Manifest, root, refs, opts.only)
+	ownedRefs := ownedSourceRefs(spec.Manifest, root, refs, opts.only, func(rel string, content []byte) string {
+		return pipe.ContentDialect(rel, content, refs)
+	})
 	if len(opts.only) > 0 {
 		res.notes = append(res.notes, fmt.Sprintf("%s: restricted to %s (-only; the files outside are a disclosed gap, not measured)", name, strings.Join(opts.only, ", ")))
 	}

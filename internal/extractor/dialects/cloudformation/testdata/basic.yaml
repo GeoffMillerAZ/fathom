@@ -1,0 +1,60 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: A queue, a bucket and a function, with the short-form intrinsics.
+Parameters:
+  Env:
+    Type: String
+    AllowedValues: [dev, prod]
+  BucketSuffix:
+    Type: String
+    Default: data
+Mappings:
+  RegionMap:
+    us-east-1:
+      Ami: ami-123
+Conditions:
+  IsProd: !Equals [!Ref Env, prod]
+  NotProd: !Not [!Condition IsProd]
+Resources:
+  Queue:
+    Type: AWS::SQS::Queue
+    Condition: IsProd
+    Properties:
+      QueueName: !Sub "${Env}-queue"
+  Bucket:
+    Type: AWS::S3::Bucket
+    DependsOn: Queue
+    Properties:
+      BucketName: !Join ["-", [!Ref Env, !Ref BucketSuffix, !Ref AWS::AccountId]]
+      NotificationConfiguration:
+        QueueConfigurations:
+          - Queue: !GetAtt Queue.Arn
+            Event: s3:ObjectCreated:*
+  Function:
+    Type: AWS::Lambda::Function
+    DependsOn: [Bucket, Queue]
+    Properties:
+      Role: !GetAtt [Role, Arn]
+      ImageId: !FindInMap [RegionMap, !Ref AWS::Region, Ami]
+      Environment:
+        Variables:
+          BUCKET: !Ref Bucket
+          MODE: !If [IsProd, fast, !Ref AWS::NoValue]
+          MISSING: !Ref Nowhere
+  Role:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+Outputs:
+  BucketArn:
+    Description: The bucket's ARN
+    Value: !GetAtt Bucket.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-bucket"
+  QueueUrl:
+    Condition: IsProd
+    Value: !Ref Queue

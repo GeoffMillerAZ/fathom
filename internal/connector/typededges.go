@@ -126,6 +126,12 @@ var typedEdgeProducers = map[string]string{
 	// (fusion.ResolveDocXrefs) but is not a file-resolver or SCIP producer, so
 	// "syntax" is the honest baseline claim, same as pom.xml and MSBuild above.
 	"taskfile": "syntax",
+
+	// Git hook managers (LB-Q-git-hooks-config): lefthook's hooks, commands,
+	// scripts and jobs and pre-commit's hooks are definitions only (L1); no
+	// reference or cross-file edge is drawn, so "syntax" is the honest baseline
+	// claim, same as Taskfile above.
+	"git-hooks-config": "syntax",
 }
 
 // TypedEdgeProducer returns lang's typed-edge producer string — "native",

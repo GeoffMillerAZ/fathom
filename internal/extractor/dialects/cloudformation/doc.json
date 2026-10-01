@@ -1,0 +1,30 @@
+{
+  "decode": "yaml",
+  "yaml_tags": "cloudformation",
+  "detect": {"require_keys": ["Resources"], "content_sniff": "(?m)^AWSTemplateFormatVersion[ \\t]*:|\"AWSTemplateFormatVersion\"[ \\t]*:|^Transform[ \\t]*:[\\s\\[\\-\"']*AWS::|\"Transform\"[ \\t]*:[\\s\\[]*\"AWS::|(?s:^Resources[ \\t]*:.*?\\bType[ \\t]*:[ \\t]*[\"']?[A-Za-z0-9]+::[A-Za-z0-9]+)|(?s:\"Resources\"[ \\t]*:\\s*\\{.*?\"Type\"[ \\t]*:[ \\t]*\"[A-Za-z0-9]+::[A-Za-z0-9]+)"},
+  "entities": [
+    {"select": "$", "where": {"is_map": true}, "kind": "package", "source_kind": "CFNTemplate", "name": "$file", "signature": ".Transform[*] | .AWSTemplateFormatVersion"},
+    {"select": "$.Parameters.*", "where": {"is_map": true}, "kind": "variable_decl", "source_kind": "CFNParameter", "name": "$key", "signature": ".Type"},
+    {"select": "$.Mappings.*", "where": {"is_map": true}, "kind": "table", "source_kind": "CFNMapping", "name": "$key"},
+    {"select": "$.Conditions.*", "where": {"is_map": true}, "kind": "rule", "source_kind": "CFNCondition", "name": "$key"},
+    {"select": "$.Resources.*", "where": {"is_map": true}, "kind": "resource", "source_kind": "CFNResource", "name": "$key", "signature": ".Type"},
+    {"select": "$.Outputs.*", "where": {"is_map": true}, "kind": "output", "source_kind": "CFNOutput", "name": "$key", "signature": ".Description"}
+  ],
+  "references": [
+    {"from": "CFNResource", "select": "$..Ref", "value": "$", "to_kind": "CFNParameter", "edge": "ref", "declared_only": true},
+    {"from": "CFNResource", "select": "$..Ref", "value": "$", "to_kind": "CFNResource", "edge": "ref", "declared_only": true},
+    {"from": "CFNResource", "select": "$..Fn::GetAtt[0]", "value": "$", "to_kind": "CFNResource", "edge": "getatt", "declared_only": true},
+    {"from": "CFNResource", "select": "$.DependsOn[*]", "value": "$", "to_kind": "CFNResource", "edge": "depends_on", "declared_only": true},
+    {"from": "CFNResource", "select": "$.Condition", "value": "$", "to_kind": "CFNCondition", "edge": "condition", "declared_only": true},
+    {"from": "CFNResource", "select": "$..Fn::If[0]", "value": "$", "to_kind": "CFNCondition", "edge": "condition", "declared_only": true},
+    {"from": "CFNOutput", "select": "$..Ref", "value": "$", "to_kind": "CFNParameter", "edge": "ref", "declared_only": true},
+    {"from": "CFNOutput", "select": "$..Ref", "value": "$", "to_kind": "CFNResource", "edge": "ref", "declared_only": true},
+    {"from": "CFNOutput", "select": "$..Fn::GetAtt[0]", "value": "$", "to_kind": "CFNResource", "edge": "getatt", "declared_only": true},
+    {"from": "CFNOutput", "select": "$.Condition", "value": "$", "to_kind": "CFNCondition", "edge": "condition", "declared_only": true},
+    {"from": "CFNOutput", "select": "$..Fn::If[0]", "value": "$", "to_kind": "CFNCondition", "edge": "condition", "declared_only": true}
+  ],
+  "cross_file": [
+    {"from": "CFNResource", "where": {"equals": {".Type": "AWS::CloudFormation::Stack"}}, "select": "$.Properties.TemplateURL", "value": "$", "resolve": "repo-path", "edge": "nested_stack"},
+    {"from": "CFNResource", "where": {"equals": {".Type": "AWS::Serverless::Application"}}, "select": "$.Properties.Location", "value": "$", "resolve": "repo-path", "edge": "nested_application"}
+  ]
+}

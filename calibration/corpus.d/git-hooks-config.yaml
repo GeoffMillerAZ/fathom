@@ -1,0 +1,43 @@
+id: git-hooks-config
+language: "Git hook managers (lefthook.yml, .pre-commit-config.yaml)"
+# The queue entry's two subjects (both MIT, read only, never vendored). Neither is thick:
+# evilmartians/lefthook keeps most of its configs under testdata/ and tests/, which the
+# connector never reads (the sparse checkout takes the lefthook configs only), so fathom
+# sees its own .lefthook.yml and the four under examples/; pre-commit/pre-commit-hooks holds
+# its own .pre-commit-config.yaml and the .pre-commit-hooks.yaml manifest that defines the
+# hooks it ships. v1.13.6 is the release the installed `lefthook` is (the tier-A oracle);
+# pre-commit is not installed on the measuring machine, so the pre-commit half is measured
+# at tier C (a Ruby Psych reference parse, calibration/oracles/lefthook-dump/).
+repos:
+  - name: evilmartians/lefthook
+    url: https://github.com/evilmartians/lefthook.git
+    ref: v1.13.6
+    sha: 539f66c92f10e20ed369d769afee1cd6e93d5735
+    licence: MIT
+    sparse:
+      - "**/lefthook.yml"
+      - "**/lefthook.yaml"
+      - "**/.lefthook.yml"
+      - "**/.lefthook.yaml"
+      - "**/lefthook-local.yml"
+      - "**/lefthook-local.yaml"
+      - "**/.lefthook-local.yml"
+      - "**/.lefthook-local.yaml"
+    idioms:
+      - "hooks as top-level keys beside lefthook's own options (min_version, output,
+        skip_output, colors, templates, remotes)"
+      - "commands keyed by name with glob, run and {staged_files}, and scripts keyed by
+        file name with a runner"
+      - "parallel and piped hooks, and a commit-msg hook that runs commitlint"
+      - "a test tree the connector never reads (testdata/ and tests/)"
+  - name: pre-commit/pre-commit-hooks
+    url: https://github.com/pre-commit/pre-commit-hooks.git
+    ref: v6.0.0
+    sha: 3e8a8703264a2f4a69428a0aa4dcb512790b2c8c
+    licence: MIT
+    idioms:
+      - "a hook repository's manifest (.pre-commit-hooks.yaml): each hook's id, name,
+        entry, language, types and stages"
+      - "a .pre-commit-config.yaml of remote repos pinned by rev, each with a hooks
+        list by id (and args)"
+      - "the repository using its own hooks through a remote pin of itself"

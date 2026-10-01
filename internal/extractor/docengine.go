@@ -17,6 +17,7 @@ import (
 	"path"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -28,11 +29,18 @@ type DocSpec struct {
 	Decode string `json:"decode"`
 	// MultiDocument: a YAML stream's documents are walked one by one
 	// (Kubernetes manifests).
-	MultiDocument bool          `json:"multi_document,omitempty"`
-	Detect        DocDetect     `json:"detect"`
-	Entities      []DocEntity   `json:"entities"`
-	References    []DocRef      `json:"references,omitempty"`
-	CrossFile     []DocCrossRef `json:"cross_file,omitempty"`
+	MultiDocument bool `json:"multi_document,omitempty"`
+	// YAMLTags names how a YAML local tag (`!Name value`) is read: unset,
+	// it is dropped (the node reads as its untagged value, GitLab's
+	// `!reference` a plain list); "cloudformation" reads a short-form
+	// intrinsic as its long form (`!Ref X` is {Ref: X}, `!Sub s` is
+	// {Fn::Sub: s}, `!GetAtt A.B` is {Fn::GetAtt: [A, B]}, as is a long-form
+	// GetAtt written `A.B`), cfn-lint's rule (LB-Q-cloudformation).
+	YAMLTags   string        `json:"yaml_tags,omitempty"`
+	Detect     DocDetect     `json:"detect"`
+	Entities   []DocEntity   `json:"entities"`
+	References []DocRef      `json:"references,omitempty"`
+	CrossFile  []DocCrossRef `json:"cross_file,omitempty"`
 	// Labels names the label maps an entity carries for a label-selector
 	// join (owner decision D4, 2026-09-28: Kubernetes Service -> workload).
 	Labels []DocLabels `json:"labels,omitempty"`
@@ -59,10 +67,13 @@ type DocLabelSet struct {
 	Line   int
 }
 
-// DocDetect is how a file is recognized. Basenames, globs and the content
-// sniff are classification's (connector.ClassifyDialect, §5); RequireKeys
-// is enforced here, per document: a document whose root lacks one yields
-// no entities.
+// DocDetect is how a file is recognized. Basenames and globs are
+// classification's (connector.ClassifyDialect, §5). ContentSniff is a
+// regular expression over the whole file, for a dialect no basename, glob or
+// extension claims (a CloudFormation template is a .yaml, .yml or .json
+// whose content says so): fusion's routing asks DetectsContent. RequireKeys
+// is enforced here, per document: a document whose root lacks one yields no
+// entities.
 type DocDetect struct {
 	Basenames    []string `json:"basenames,omitempty"`
 	Globs        []string `json:"globs,omitempty"`
@@ -120,6 +131,11 @@ type DocRef struct {
 	Value  string `json:"value"`
 	ToKind string `json:"to_kind"`
 	Edge   string `json:"edge"`
+	// DeclaredOnly records a value only when it names an entity of ToKind
+	// declared in the same document: a CloudFormation Ref to a pseudo
+	// parameter (AWS::Region) or to a name the template never declares is
+	// not a reference to one of its entities.
+	DeclaredOnly bool `json:"declared_only,omitempty"`
 }
 
 // DocCrossRef is a cross-file reference: Select from the document root
@@ -175,6 +191,9 @@ type DocResult struct {
 
 var docDecoders = map[string]bool{"yaml": true, "json": true, "jsonc": true, "toml": true, "xml": true}
 
+// docYAMLTagSchemes are the yaml_tags schemes (DocSpec.YAMLTags).
+var docYAMLTagSchemes = map[string]bool{yamlTagsCloudFormation: true}
+
 var docResolveStrategies = map[string]bool{
 	"repo-path": true, "image-ref": true, "module-source": true, "service-name": true,
 	"repo-root": true, "label-selector": true,
@@ -199,6 +218,15 @@ type DocExtractor struct {
 	refs     []compiledRef
 	cross    []compiledCross
 	labels   []compiledLabels
+	sniff    *regexp.Regexp // detect.content_sniff, nil when the spec has none
+}
+
+// DetectsContent reports whether src is a file this spec's
+// detect.content_sniff claims — the content classification of a dialect no
+// basename, glob or extension claims (design §4, §5). A spec without a
+// sniff detects nothing.
+func (x *DocExtractor) DetectsContent(src []byte) bool {
+	return x.sniff != nil && x.sniff.Match(src)
 }
 
 type compiledEntity struct {
@@ -260,8 +288,9 @@ func compileScope(expr string) (docValue, error) {
 }
 
 // NewDocExtractor compiles spec's selectors (§4's subset: `$`, `.key`,
-// `.*`, `[*]`, `$key`, alternation `|`) and checks its decode, kinds and
-// strategies; an error names the offending field.
+// `.*`, `[*]`, `[N]`, `..key`, `$key`, alternation `|`) and its content
+// sniff, and checks its decode, tag scheme, kinds and strategies; an error
+// names the offending field.
 func NewDocExtractor(spec DocSpec) (*DocExtractor, error) {
 	if !docDecoders[spec.Decode] {
 		return nil, fmt.Errorf("doc spec: decode %q is not yaml, json, jsonc, toml or xml", spec.Decode)
@@ -269,10 +298,25 @@ func NewDocExtractor(spec DocSpec) (*DocExtractor, error) {
 	if spec.MultiDocument && spec.Decode != "yaml" {
 		return nil, fmt.Errorf("doc spec: multi_document needs decode yaml")
 	}
+	if spec.YAMLTags != "" {
+		if spec.Decode != "yaml" {
+			return nil, fmt.Errorf("doc spec: yaml_tags needs decode yaml")
+		}
+		if !docYAMLTagSchemes[spec.YAMLTags] {
+			return nil, fmt.Errorf("doc spec: yaml_tags %q is not cloudformation", spec.YAMLTags)
+		}
+	}
 	if len(spec.Entities) == 0 {
 		return nil, fmt.Errorf("doc spec: no entities")
 	}
 	x := &DocExtractor{spec: spec}
+	if cs := spec.Detect.ContentSniff; cs != nil {
+		re, err := regexp.Compile(*cs)
+		if err != nil {
+			return nil, fmt.Errorf("doc spec: detect.content_sniff: %w", err)
+		}
+		x.sniff = re
+	}
 	kinds := map[string]bool{}
 	for i, e := range spec.Entities {
 		where := fmt.Sprintf("doc spec: entities[%d]", i)
@@ -423,7 +467,7 @@ type entityHit struct {
 
 // ExtractDoc decodes src and walks every document.
 func (x *DocExtractor) ExtractDoc(service, relPath string, src []byte) (DocResult, error) {
-	docs, err := decodeDoc(x.spec.Decode, src, x.spec.MultiDocument)
+	docs, err := decodeDoc(x.spec.Decode, src, x.spec.MultiDocument, x.spec.YAMLTags)
 	if err != nil || len(docs) == 0 {
 		return DocResult{}, nil
 	}
@@ -464,6 +508,17 @@ func (x *DocExtractor) ExtractDoc(service, relPath string, src []byte) (DocResul
 				hits = append(hits, h)
 			}
 		}
+		// declared: the names this document declares, per entity kind and
+		// source kind (a declared_only reference's filter).
+		declared := map[string]map[string]bool{}
+		for _, h := range hits {
+			for _, k := range []string{h.ent.Kind, h.ent.SourceKind} {
+				if declared[k] == nil {
+					declared[k] = map[string]bool{}
+				}
+				declared[k][h.name] = true
+			}
+		}
 		for _, h := range hits {
 			calls := map[string]bool{}
 			for i := range x.refs {
@@ -473,9 +528,11 @@ func (x *DocExtractor) ExtractDoc(service, relPath string, src []byte) (DocResul
 				}
 				for _, m := range cr.sel.eval(h.node, "") {
 					m.file = base
-					if v := cr.val.eval(m); v != "" {
-						calls[v] = true
+					v := cr.val.eval(m)
+					if v == "" || (cr.DeclaredOnly && !declared[cr.ToKind][v]) {
+						continue
 					}
+					calls[v] = true
 				}
 			}
 			res.Nodes = append(res.Nodes, core.SymbolNode{
@@ -778,18 +835,25 @@ const (
 	stepKey docStepKind = iota
 	stepAllValues
 	stepAllItems
+	stepDescend
+	stepIndex
 )
 
 type docStep struct {
-	kind docStepKind
-	key  string
+	kind  docStepKind
+	key   string
+	index int
 }
 
 // docPath is a compiled selector: `$` (the context node) followed by
-// `.key`, `.*` (every value of a map, with its key) and `[*]` (every item
+// `.key`, `.*` (every value of a map, with its key), `[*]` (every item
 // of a sequence; any other non-null node is its own single item, so a
 // field written as either one value or a list reads the same, and a
-// single repeated XML element reads as a one-item list).
+// single repeated XML element reads as a one-item list), `[N]` (a
+// sequence's item N, from 0; nothing for anything else) and `..key`
+// (recursive descent: the value of every entry named key at any depth under
+// the node, through maps and sequences, in document order — a
+// CloudFormation `Ref` wherever a resource's properties nest it).
 type docPath struct{ steps []docStep }
 
 type docMatch struct {
@@ -811,7 +875,10 @@ func joinDocPath(path, key string) string {
 	return path + "." + key
 }
 
-var docKeyRe = regexp.MustCompile(`^[^.\[\]|*\s$]+`)
+var (
+	docKeyRe   = regexp.MustCompile(`^[^.\[\]|*\s$]+`)
+	docIndexRe = regexp.MustCompile(`^\[([0-9]+)\]`)
+)
 
 func parseDocPath(s string) (docPath, error) {
 	s = strings.TrimSpace(s)
@@ -830,6 +897,21 @@ func parseDocPath(s string) (docPath, error) {
 		case strings.HasPrefix(s, "[*]"):
 			p.steps = append(p.steps, docStep{kind: stepAllItems})
 			s = s[3:]
+		case docIndexRe.MatchString(s):
+			m := docIndexRe.FindStringSubmatch(s)
+			i, err := strconv.Atoi(m[1])
+			if err != nil {
+				return docPath{}, fmt.Errorf("selector: bad index at %q", s)
+			}
+			p.steps = append(p.steps, docStep{kind: stepIndex, index: i})
+			s = s[len(m[0]):]
+		case strings.HasPrefix(s, ".."):
+			k := docKeyRe.FindString(s[2:])
+			if k == "" {
+				return docPath{}, fmt.Errorf("selector: `..` needs a key at %q", s)
+			}
+			p.steps = append(p.steps, docStep{kind: stepDescend, key: k})
+			s = s[2+len(k):]
 		case strings.HasPrefix(s, ".*"):
 			p.steps = append(p.steps, docStep{kind: stepAllValues})
 			s = s[2:]
@@ -841,7 +923,7 @@ func parseDocPath(s string) (docPath, error) {
 			p.steps = append(p.steps, docStep{kind: stepKey, key: k})
 			s = s[1+len(k):]
 		default:
-			return docPath{}, fmt.Errorf("selector: unexpected %q (the subset is $ .key .* [*])", s)
+			return docPath{}, fmt.Errorf("selector: unexpected %q (the subset is $ .key .* [*] [N] ..key)", s)
 		}
 	}
 	return p, nil
@@ -883,6 +965,12 @@ func (p docPath) evalKeep(ctx *docNode, ctxKey string, keepNull bool) []docMatch
 				default:
 					next = append(next, docMatch{node: n, key: m.key, path: m.path})
 				}
+			case stepIndex:
+				if n != nil && n.kind == docSeq && st.index < len(n.items) {
+					next = append(next, docMatch{node: n.items[st.index], path: m.path})
+				}
+			case stepDescend:
+				next = descend(next, n, m.path, st.key)
 			}
 		}
 		cur = next
@@ -891,6 +979,30 @@ func (p docPath) evalKeep(ctx *docNode, ctxKey string, keepNull bool) []docMatch
 	for _, m := range cur {
 		if m.node != nil && (keepNull || m.node.kind != docNull) {
 			out = append(out, m)
+		}
+	}
+	return out
+}
+
+// descend appends, in document order, the value of every map entry named
+// key at any depth under n (a match's own subtree follows it), each with
+// the dotted path of the keys walked from the selection's start.
+func descend(out []docMatch, n *docNode, path, key string) []docMatch {
+	if n == nil {
+		return out
+	}
+	switch n.kind {
+	case docMap:
+		for i, k := range n.keys {
+			p := joinDocPath(path, k)
+			if k == key {
+				out = append(out, docMatch{node: n.vals[i], key: k, path: p})
+			}
+			out = descend(out, n.vals[i], p, key)
+		}
+	case docSeq:
+		for _, it := range n.items {
+			out = descend(out, it, path, key)
 		}
 	}
 	return out

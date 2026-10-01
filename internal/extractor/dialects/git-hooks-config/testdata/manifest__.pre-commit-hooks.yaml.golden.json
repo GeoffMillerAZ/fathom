@@ -1,0 +1,7 @@
+{
+  "symbols": [
+    { "name": "check-added-large-files", "kind": "PreCommitHookDef", "package": ".pre-commit-hooks", "line": 1, "end_line": 7, "signature": "check for added large files", "tier": "verified" },
+    { "name": "check-json", "kind": "PreCommitHookDef", "package": ".pre-commit-hooks", "line": 8, "end_line": 12, "signature": "check json", "tier": "verified" },
+    { "name": "no-commit-to-branch", "kind": "PreCommitHookDef", "package": ".pre-commit-hooks", "line": 13, "end_line": 18, "signature": "don't commit to branch", "tier": "verified" }
+  ]
+}

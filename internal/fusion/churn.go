@@ -3,7 +3,7 @@ package fusion
 // churn.go — TQ-1 (docs/plans/test-intelligence.md; design doc
 // docs/design/test-intelligence.md §3 T1): churn per file, computed once
 // at ingest from the service's own git commit history (already collected
-// through gitro/realGitLog and stored via SetCommits, see pipeline.go's
+// through gitro/realGitLog and stored via SetCommits, see ingest.go's
 // recordIngestMeta) and stored via store.SetFileChurn — never recomputed
 // at request time (I48). This is a git fact over already-stored `commits`
 // rows, not a re-derived code-churn heuristic: the retired churn and

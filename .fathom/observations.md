@@ -2576,6 +2576,58 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Status:** open
 - **Impact:** the EW-11 step reads as passed when it selected nothing; the brief's ordering puts it before the first ingest, so every worker's first run is this empty answer
 
+### O206 — a doc-engine dialect that claims no file by name (a CloudFormation template is a .yaml, .yml or .json whose content says so) could not be measured: ownedSourceRefs owns only what the manifest's match claims, and any match claim on .yaml or .json would make ClassifyDialect's gate call every other YAML or JSON file ambiguous_unclassified
+
+- **Symptom:** a doc-engine dialect that claims no file by name (a CloudFormation template is a .yaml, .yml or .json whose content says so) could not be measured: ownedSourceRefs owns only what the manifest's match claims, and any match claim on .yaml or .json would make ClassifyDialect's gate call every other YAML or JSON file ambiguous_unclassified
+- **Evidence:**
+  - **Tool:** indexbench lang-oracle
+  - **Expected:** the harness measures a dialect on exactly the files ingest's dispatch sends it
+  - **Actual:** lang-oracle -dialect cloudformation errored: the subject has no cloudformation files fathom would extract; fixed in this item: ownedSourceRefs takes a contentDialect callback (fusion.Pipeline.ContentDialect, the dispatch decision itself) for a doc dialect with an empty match
+  - **Repro:** a dialect.json with an empty match and a doc.json detect.content_sniff; go run ./cmd/indexbench lang-oracle -dialect <id> -subject <dir> -out x.json
+- **Root cause:** the harness decides which subject files a dialect owns from the manifest's match alone (langbench.Manifest.Owns), and a content-classified dialect has no safe match to declare: ClassifyDialect makes an extension one dialect claims plainly (kubernetes: .yaml) and another by sniff ambiguous when the sniff misses, so the ingest gate would exclude every other YAML file
+- **Fix:** ownedSourceRefs takes a contentDialect callback, fusion.Pipeline.ContentDialect (resolveExtractor's own verdict), used only for a doc dialect with an empty match; TestOwnedSourceRefsByContent
+- **Status:** fixed (LB-Q-cloudformation, w6)
+- **Impact:** without it a content-routed tool format (CloudFormation; later Serverless, CDK output, OpenAPI by content) is unmeasurable, or measured on files ingest never sends it
+
+### O207 — yq's line and key|line report lines shifted up by the count of a file's leading comments and --- marker: its header preprocessing (on by default) slurps them before parsing
+
+- **Symptom:** yq's line and key|line report lines shifted up by the count of a file's leading comments and --- marker: its header preprocessing (on by default) slurps them before parsing
+- **Evidence:**
+  - **Tool:** yq v4 (an oracle's independent decode)
+  - **Expected:** yq '... | line' is the file's line
+  - **Actual:** examples/commitlint/lefthook.yml (one leading comment line) read every hook and command one line early until the decode passed --header-preprocess=false; the taskfile oracle works around the same shift with leadingLines
+  - **Repro:** printf '# c\na:\n  b: 1\n' | yq -o=json '[.. | select(path|length>0) | {"p": path, "kl": (key|line)}]' -   (a at 1, not 2; add --header-preprocess=false for 2)
+- **Root cause:** yq v4 preprocesses a file's header (leading comments, a --- marker) separately by default, and the parse that assigns lines starts after it
+- **Fix:** calibration/oracles/lefthook-dump passes --header-preprocess=false; an oracle that reads lines from yq should do the same (the taskfile oracle adds leadingLines instead)
+- **Status:** worked around (w6)
+- **Impact:** an oracle joining tool names to yq lines scores every definition of a file with a leading comment as a miss (|Δline| is the comment count, over 2 for a long header)
+
+### O208 — LB-M5 misses: ingest cost per byte on the LB-M1 polyglot set is 1.85x the 56c18502 baseline on CPU (bound 1.5x)
+
+- **Symptom:** LB-M5 misses: ingest cost per byte on the LB-M1 polyglot set is 1.85x the 56c18502 baseline on CPU (bound 1.5x)
+- **Evidence:**
+  - **Tool:** fathom ingest (in-process, polyglot set)
+  - **Expected:** head 9ea6da5f within 1.5x of base 56c18502 per byte, CPU basis (D1)
+  - **Actual:** second of two runs, 75,971,918 bytes: base 17.29 s CPU / 20.81 s wall / 236.5 G instructions, head 32.04 s / 36.95 s / 523.3 G: 1.85x CPU, 1.78x wall, 2.21x instructions; per subject, retrofit's javadoc HTML/CSS (new coverage) is 42% of the growth, and the file-resolved import pass re-parses C/C++/C#/Java/PHP/Protobuf/Rust files in wasm beside their incumbent extractors
+  - **Repro:** footprint.md 'LB-M5 ingest cost per byte' section: git archive LB-M1's subjects at their recorded SHAs into one tree, then /usr/bin/time -l fathom ingest --json --store <fresh> --service poly --path <tree> with a 56c18502 and a 9ea6da5f build
+- **Root cause:** head does more on the same bytes: new dialects extract what base skipped (retrofit's 3.6 MB of javadoc HTML and 0.4 MB of CSS: 8,160 symbols), and the file-resolved import pass, which covered Python and JavaScript/TypeScript at base, covers sixteen tags dialects, so a C, C++, C#, Java, PHP, Protocol Buffers or Rust file is parsed twice (the incumbent extractor, then the wasm tags engine for its imports); plus a doc index and wazero compiling each grammar the set uses once per process
+- **Fix:** none in this wave (a measurement item). Levers the numbers point at: take a dialect's imports from the incumbent's own parse, or skip the wasm re-parse where the incumbent already has the import specs; and weigh new coverage apart from per-byte cost in the row's contract (the set without retrofit still reads 1.78x on instructions, so coverage alone does not explain the miss)
+- **Status:** open
+- **Impact:** LB-M5 stays open (FAIL recorded); a full ingest of a polyglot repository costs about twice the CPU it did at the LB-M1 baseline
+
+### O209 — the LB-M7 payload guard passes only on the two-tool sum: find_symbol alone grows 20.0% with signature and end_line on the polyglot fixture, and the sum sits 0.4 points under the 10% bound
+
+- **Symptom:** the LB-M7 payload guard passes only on the two-tool sum: find_symbol alone grows 20.0% with signature and end_line on the polyglot fixture, and the sum sits 0.4 points under the 10% bound
+- **Evidence:**
+  - **Tool:** find_symbol / symbol_context (MCP)
+  - **Expected:** each of find_symbol and symbol_context within 10% of its payload without the L1 fields, with room for the languages that still lack signatures
+  - **Actual:** text payload over 52 calls at 9ea6da5f: find_symbol 6,689 vs 5,575 bytes (+20.0%), symbol_context 14,950 vs 14,169 (+5.5%), sum 21,639 vs 19,744 (+9.6%); Java methods (7 rows) still carry no signature, and about 40 bytes each would put the sum near 11%
+  - **Repro:** footprint.md 'LB-M7 answer payload' section: scratch-ingest internal/connector/testdata/fauxtown/polyglot-service, call find_symbol(name) and symbol_context(symbol) over serve-mcp for its 26 names, strip signature and end_line and re-encode
+- **Root cause:** a `find_symbol` row is short (about 200 bytes on this fixture), so a 20–60-byte `signature` plus an `end_line` is a large share of it; `symbol_context`'s snippet dilutes the same fields, and the row sums the two tools
+- **Fix:** none taken (the row as written passes); the next L1 wave that adds signatures to a new kind re-runs the probe, and a per-tool bound or a `find_symbol` that omits `signature` on multi-row answers is the lever if it crosses
+- **Status:** open
+- **Impact:** LB-M7 reads PASS at +9.6%; per-tool, `find_symbol` answers on small symbols cost a fifth more tokens than before L1
+
 ### O210 — condition (a) of ADR-048's D5 extension reads only `; source:` headers, and three dialects name their drafting source in PROVENANCE.md alone
 
 - **Symptom:** `lang-oracle -tags-query` refuses a third-party query that a `; source:` header of the dialect's own `.scm` files names (LB-F52), but javascript, python and typescript carry no such header: their PROVENANCE.md says the definition shapes "follow the grammar's own upstream `queries/tags.scm` (MIT)", so that upstream file would be admitted as their tier-C L1 oracle although they were drafted from it

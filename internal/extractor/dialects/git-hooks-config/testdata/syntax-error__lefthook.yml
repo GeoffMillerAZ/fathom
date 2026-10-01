@@ -1,0 +1,8 @@
+pre-commit:
+  commands:
+    lint:
+      run: [unterminated
+pre-push:
+  commands:
+    test:
+      run: go test

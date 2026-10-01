@@ -461,9 +461,21 @@ walk into data (LB-F8, P20: generalized from six).
 }
 ```
 
-Selectors are a deliberately small JSONPath subset (`$`, `.key`, `.*`, `[*]`, `$key`, `$path`,
-`$file`, alternation `|`), implemented in Go over the decoded tree — no expression language, no
-templating. `$path` is the dotted keys from the selection's start down to the node (one entity per
+Selectors are a deliberately small JSONPath subset (`$`, `.key`, `.*`, `[*]`, `[N]`, `..key`,
+`$key`, `$path`, `$file`, alternation `|`), implemented in Go over the decoded tree — no expression
+language, no templating. `[N]` is a sequence's item N (from 0; nothing for anything else) and `..key`
+is recursive descent: the value of every entry named `key` at any depth under the node, through maps
+and sequences, in document order (LB-Q-cloudformation: a `Ref` wherever a resource's properties nest
+it; `..Fn::GetAtt[0]` is the resource a GetAtt names). A reference may carry `declared_only` (record a
+value only when it names an entity of its `to_kind` declared in the same document: a CloudFormation
+Ref to a pseudo parameter, `AWS::Region`, is not one of the template's entities). A YAML spec may name
+`yaml_tags: "cloudformation"`, the one tag scheme: a short-form intrinsic reads as its long form
+(`!Ref X` is `{Ref: X}`, `!GetAtt A.B` is `{Fn::GetAtt: [A, B]}`, as is a long form written `A.B`,
+any other `!Name v` is `{Fn::Name: v}`, cfn-lint's rule); without it a local tag is dropped, as it
+always was (GitLab's `!reference` reads as a plain list). `detect.content_sniff` is a regular
+expression over the whole file for a dialect no basename, glob or extension claims: fusion's
+yaml-family classifier and its `.json` route send a file to the dialect when it matches, and the
+harness measures exactly those files. `$path` is the dotted keys from the selection's start down to the node (one entity per
 depth names a nested map's keys as a template reads them, `image.repository`); `$file` is the base
 name of the file being read, extension included, the name of a document that carries none (an
 MSBuild project is named by its file, LB-Q-msbuild; the extension keeps `Directory.Build.props` and

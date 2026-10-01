@@ -1,0 +1,59 @@
+# A lefthook config with every option lefthook reads beside its hooks.
+min_version: 1.5.0
+colors:
+  cyan: 14
+  gray: 244
+output:
+  - meta
+  - summary
+skip_output: [execution_info]
+source_dir: .lefthook
+extends:
+  - ./config/lefthook-extra.yml
+templates:
+  runner: bundle exec
+remotes:
+  - git_url: https://github.com/example/hooks
+    ref: v1.0.0
+    configs:
+      - shared.yml
+
+pre-commit:
+  parallel: true
+  commands:
+    lint:
+      glob: "*.{js,ts}"
+      run: npx eslint {staged_files}
+    "fmt:go":
+      glob: "*.go"
+      run: |
+        gofmt -l {staged_files}
+        go vet ./...
+    todo:
+  scripts:
+    "check-size.sh":
+      runner: bash
+    "good_job.js":
+      runner: node
+
+pre-push:
+  commands:
+    lint:
+      run: npx eslint .
+    test:
+      run: go test ./...
+      skip:
+        - merge
+        - rebase
+
+commit-msg:
+  scripts:
+    "commitlint.sh":
+      runner: bash
+
+post-checkout:
+
+deploy-check:
+  commands:
+    smoke:
+      run: ./scripts/smoke.sh

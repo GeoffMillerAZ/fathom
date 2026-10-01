@@ -15,7 +15,7 @@ un-defers XT-6, XT-6b and XT-7 (`docs/plans/extraction-treesitter.md`).
 
 | Fact | Evidence |
 |---|---|
-| 17 languages and ~16 tool formats are classified and extracted | `internal/connector/connector.go` `extClassMap`; `internal/fusion/pipeline.go` `New` |
+| 17 languages and ~16 tool formats are classified and extracted | `internal/connector/connector.go` `extClassMap`; `internal/fusion/register.go` `New` |
 | Five run on the generic tags-query engine (JS, TS, Python, Ruby, Kotlin): a grammar blob plus a `.scm` file, no per-language Go | `internal/extractor/tsextract.go`, `tsqueries/*.scm`, `tsengine/grammars/` (7.2 MB of wasm, 1.5 MB gzip -9) |
 | Nine run on hand-written Go walkers over CGO tree-sitter (Java, C, C++, C#, Rust, Scala, PHP, Bash, Lua) — the tracker calls them "heuristic", which undersells the AST and oversells the coverage | `*extract.go` imports of `github.com/tree-sitter/go-tree-sitter`; `docs/languages.md` |
 | Three are regex (SQL, Helm templates, templ); the config family is pure-Go structured decoding | `sqlextract.go`, `helmextract.go`, `templextract.go`; `ghaextract.go`, `composeextract.go`, `k8sextract.go` … |

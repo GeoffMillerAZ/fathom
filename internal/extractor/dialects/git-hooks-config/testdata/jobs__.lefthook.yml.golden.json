@@ -1,0 +1,13 @@
+{
+  "symbols": [
+    { "name": "pre-commit", "kind": "LefthookHook", "package": ".lefthook", "line": 1, "end_line": 21, "tier": "verified" },
+    { "name": "lint", "kind": "LefthookJob", "package": ".lefthook", "line": 4, "end_line": 6, "signature": "yarn lint {staged_files}", "tier": "verified" },
+    { "name": "checks", "kind": "LefthookJob", "package": ".lefthook", "line": 8, "end_line": 21, "tier": "verified" },
+    { "name": "typecheck", "kind": "LefthookJob", "package": ".lefthook", "line": 12, "end_line": 13, "signature": "yarn tsc", "tier": "verified" },
+    { "name": "nested", "kind": "LefthookJob", "package": ".lefthook", "line": 16, "end_line": 21, "tier": "verified" },
+    { "name": "deepest", "kind": "LefthookJob", "package": ".lefthook", "line": 19, "end_line": 21, "signature": "deep.sh", "tier": "verified" },
+    { "name": "pre-push", "kind": "LefthookHook", "package": ".lefthook", "line": 23, "end_line": 29, "tier": "verified" },
+    { "name": "test", "kind": "LefthookJob", "package": ".lefthook", "line": 25, "end_line": 26, "signature": "go test ./...", "tier": "verified" },
+    { "name": "legacy", "kind": "LefthookCommand", "package": ".lefthook", "line": 28, "end_line": 29, "signature": "make check", "tier": "verified" }
+  ]
+}

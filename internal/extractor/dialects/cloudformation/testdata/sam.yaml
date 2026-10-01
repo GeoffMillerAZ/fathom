@@ -1,0 +1,43 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Globals:
+  Function:
+    Runtime: python3.12
+    Environment:
+      Variables:
+        TABLE: !Ref Table
+Parameters:
+  Stage:
+    Type: String
+Resources:
+  Table:
+    Type: AWS::Serverless::SimpleTable
+  Api:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: app.handler
+      CodeUri: src/
+      Events:
+        Get:
+          Type: Api
+          Properties:
+            Path: /items
+            Method: get
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref Table
+  Child:
+    Type: AWS::Serverless::Application
+    Properties:
+      Location: ./nested/child.yaml
+      Parameters:
+        Stage: !Ref Stage
+  FromRepo:
+    Type: AWS::Serverless::Application
+    Properties:
+      Location:
+        ApplicationId: arn:aws:serverlessrepo:us-east-1:123456789012:applications/hello
+        SemanticVersion: 1.0.0
+Outputs:
+  ApiArn:
+    Value: !GetAtt ApiRole.Arn

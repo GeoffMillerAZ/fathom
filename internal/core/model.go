@@ -239,6 +239,18 @@ const (
 	// of its own, the MSBuildTarget precedent.
 	KindTaskfile SourceKind = "Taskfile"
 
+	// Git hook managers (LB-Q-git-hooks-config, language-breadth: new, a
+	// doc-engine tool format, no incumbent). The connector-classification kind
+	// of each format's files: a lefthook config (lefthook.yml and its
+	// .lefthook, .yaml and -local spellings) is its hooks, a pre-commit
+	// config (.pre-commit-config.yaml) its configured hooks, and a hook
+	// repository's manifest (.pre-commit-hooks.yaml) the hooks it defines. The
+	// lefthook command, script and job kinds have no connector-classification
+	// use and so get no constant of their own, the TaskfileTask precedent.
+	KindLefthookHook     SourceKind = "LefthookHook"
+	KindPreCommitHook    SourceKind = "PreCommitHook"
+	KindPreCommitHookDef SourceKind = "PreCommitHookDef"
+
 	// pyproject.toml (LB-Q-python-packaging, language-breadth: new — a
 	// doc-engine tool format, no incumbent; requirements*.txt and
 	// setup.cfg from the same queue entry stay unclassified, §14.2: the

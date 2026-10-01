@@ -240,7 +240,7 @@ func compileDialectRules(d Dialect) (*tsDialectRules, error) {
 // while the pool keeps it, closed when the pool's six-module LRU cap or its
 // two-minute idle bound retires it, and re-instantiated on the next use. fusion's
 // pass-3 extraction is documented as sequential/single-goroutine per
-// Pipeline (internal/fusion/pipeline.go's extractAndStore), so e.mu is
+// Pipeline (internal/fusion/extract_sink.go's extractAndStore), so e.mu is
 // essentially uncontended in practice; it exists so a TSExtractor
 // shared across concurrent callers (e.g. two ingests on one long-lived
 // daemon Pipeline) degrades to serialized correctness rather than wasm

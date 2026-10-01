@@ -117,3 +117,17 @@ helm: #Dialect & {
 	target_level: "L3"
 	queue_id:     "helm"
 }
+
+// A doc-engine spec (#Doc, schema/dialect/doc.cue) with LB-Q-cloudformation's
+// additions: the cloudformation yaml_tags scheme, a content sniff, the `..key`
+// and `[N]` selector steps and a declared_only reference.
+cfnDoc: #Doc & {
+	decode:    "yaml"
+	yaml_tags: "cloudformation"
+	detect: {require_keys: ["Resources"], content_sniff: "(?m)^AWSTemplateFormatVersion\\s*:"}
+	entities: [{select: "$.Resources.*", where: {is_map: true}, kind: "resource", source_kind: "CFNResource", name: "$key", signature: ".Type"}]
+	references: [
+		{from: "resource", select: "$..Ref", value: "$", to_kind: "resource", edge: "ref", declared_only: true},
+		{from: "resource", select: "$..Fn::GetAtt[0]", value: "$", to_kind: "resource", edge: "getatt", declared_only: true},
+	]
+}

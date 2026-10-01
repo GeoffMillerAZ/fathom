@@ -1,0 +1,17 @@
+{
+  "symbols": [
+    { "name": "pre-commit", "kind": "LefthookHook", "package": "lefthook", "line": 21, "end_line": 37, "tier": "verified" },
+    { "name": "lint", "kind": "LefthookCommand", "package": "lefthook", "line": 24, "end_line": 26, "signature": "npx eslint {staged_files}", "tier": "verified" },
+    { "name": "fmt:go", "kind": "LefthookCommand", "package": "lefthook", "line": 27, "end_line": 29, "signature": "gofmt -l {staged_files}\ngo vet ./...\n", "tier": "verified" },
+    { "name": "todo", "kind": "LefthookCommand", "package": "lefthook", "line": 32, "end_line": 32, "tier": "verified" },
+    { "name": "check-size.sh", "kind": "LefthookScript", "package": "lefthook", "line": 34, "end_line": 35, "signature": "bash", "tier": "verified" },
+    { "name": "good_job.js", "kind": "LefthookScript", "package": "lefthook", "line": 36, "end_line": 37, "signature": "node", "tier": "verified" },
+    { "name": "pre-push", "kind": "LefthookHook", "package": "lefthook", "line": 39, "end_line": 47, "tier": "verified" },
+    { "name": "lint", "kind": "LefthookCommand", "package": "lefthook", "line": 41, "end_line": 42, "signature": "npx eslint .", "tier": "verified" },
+    { "name": "test", "kind": "LefthookCommand", "package": "lefthook", "line": 43, "end_line": 47, "signature": "go test ./...", "tier": "verified" },
+    { "name": "commit-msg", "kind": "LefthookHook", "package": "lefthook", "line": 49, "end_line": 52, "tier": "verified" },
+    { "name": "commitlint.sh", "kind": "LefthookScript", "package": "lefthook", "line": 51, "end_line": 52, "signature": "bash", "tier": "verified" },
+    { "name": "deploy-check", "kind": "LefthookHook", "package": "lefthook", "line": 56, "end_line": 59, "tier": "verified" },
+    { "name": "smoke", "kind": "LefthookCommand", "package": "lefthook", "line": 58, "end_line": 59, "signature": "./scripts/smoke.sh", "tier": "verified" }
+  ]
+}

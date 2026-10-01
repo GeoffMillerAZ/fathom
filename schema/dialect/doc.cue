@@ -11,10 +11,23 @@ package dialect
 	if multi_document != _|_ if multi_document {
 		decode: "yaml"
 	}
+	// yaml_tags: how a YAML local tag (`!Name value`) is read
+	// (LB-Q-cloudformation). Unset, it is dropped (the node reads as its
+	// untagged value, GitLab's `!reference` a plain list); "cloudformation"
+	// reads a short-form intrinsic as its long form (`!Ref X` is {Ref: X},
+	// `!GetAtt A.B` is {"Fn::GetAtt": [A, B]}, any other `!Name v` is
+	// {"Fn::Name": v}), cfn-lint's rule.
+	yaml_tags?: "cloudformation"
+	if yaml_tags != _|_ {
+		decode: "yaml"
+	}
 	detect: {
 		basenames?: [...(string & !="")]
 		globs?: [...(string & !="")]
 		require_keys?: [...(string & !="")]
+		// content_sniff: a regular expression over the whole file, for a
+		// dialect no basename, glob or extension claims (a CloudFormation
+		// template): fusion routes a file to it when it matches.
 		content_sniff?: null | (string & !="")
 	}
 	entities: [#DocEntity, ...#DocEntity]
@@ -24,7 +37,9 @@ package dialect
 	labels?: [...#DocLabels]
 }
 
-// #DocSelector: `$` or `.`, then `.key`, `.*` and `[*]` steps.
+// #DocSelector: `$` or `.`, then `.key`, `.*`, `[*]`, `[N]` (a sequence's
+// item N, from 0) and `..key` (the value of every entry named key at any
+// depth, recursive descent) steps.
 #DocSelector: =~"^(\\$|\\.)"
 
 // #DocValue: selectors, `$key`, `$path` (the dotted keys down to the node)
@@ -66,6 +81,10 @@ package dialect
 	value:   #DocValue
 	to_kind: string & !=""
 	edge:    string & !=""
+	// declared_only: record a value only when it names an entity of
+	// to_kind declared in the same document (a CloudFormation Ref to a
+	// pseudo parameter is not a reference to one of the template's).
+	declared_only?: bool
 }
 
 #DocCrossRef: {

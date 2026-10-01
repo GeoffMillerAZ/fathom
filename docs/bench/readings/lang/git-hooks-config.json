@@ -1,0 +1,131 @@
+{
+  "dialect": "git-hooks-config",
+  "kind": "tooling",
+  "target_level": "L1",
+  "level_met": "L1",
+  "grade": {
+    "L1": "good",
+    "L2": "not-attempted",
+    "L3": "not-attempted",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-09-29",
+  "fathom_commit": "9ea6da5f",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "evilmartians/lefthook",
+      "sha": "539f66c92f10e20ed369d769afee1cd6e93d5735",
+      "files": 5,
+      "bytes": 3763,
+      "counts": {
+        "fathom_defs": 27,
+        "kind_equal": 27,
+        "matched": 27,
+        "oracle_defs": 27
+      },
+      "families": {
+        "l1": "A"
+      },
+      "kind_intersection": [
+        "job",
+        "stage"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 0.20400000000000001,
+        "extract_cpu_ms": 0.20500000000000002,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "pre-commit/pre-commit-hooks",
+      "sha": "3e8a8703264a2f4a69428a0aa4dcb512790b2c8c",
+      "files": 2,
+      "bytes": 8763,
+      "counts": {
+        "fathom_defs": 48,
+        "kind_equal": 48,
+        "matched": 48,
+        "oracle_defs": 48
+      },
+      "families": {
+        "l1": "C"
+      },
+      "kind_intersection": [
+        "job",
+        "stage"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 0.714,
+        "extract_cpu_ms": 0.538,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "lefthook dump",
+      "version": "1.13.6"
+    },
+    {
+      "tier": "C",
+      "tool": "ruby psych",
+      "version": "3.1.0 (ruby 2.6.10)"
+    }
+  ],
+  "metrics": {
+    "ref_precision": null,
+    "ref_recall": null,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "xref_precision": null,
+    "xref_recall": null
+  },
+  "metric_tiers": {
+    "sym_precision": "C",
+    "sym_recall": "C"
+  },
+  "required_kinds": [
+    "job",
+    "stage"
+  ],
+  "kind_intersection": [
+    "job",
+    "stage"
+  ],
+  "counts": {
+    "fathom_defs": 75,
+    "kind_equal": 75,
+    "matched": 75,
+    "oracle_defs": 75
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 16.86,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 13.64,
+    "max_file_ms": 0,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    ".pre-commit-hooks.yaml is read: it is pre-commit's second file format (a hook repository's manifest, what `pre-commit validate-manifest` checks), its entries are the hooks a config's repos[*].hooks[*].id names, and without it the pre-commit subject is one config of 14 hooks",
+    "lefthook is tier A: `lefthook dump --format json` (lefthook 1.13.6) run on each config alone, as the lefthook.yml of a fresh scratch repository, names the hooks, commands, scripts and jobs as the tool loaded them; which top-level keys are lefthook's own options and not hooks is read from the JSON schema the lefthook binary embeds (every property that is not a #/$defs/Hook); the tool writes no line, so each name is joined to its written line by a yq v4.53.3 decode (--header-preprocess=false, which keeps a file's leading comments in the line count); all 5 configs were accepted; the 2 jobs of .lefthook.yml's `lint \u0026 test` group carry no name, in the tool's output or fathom's, and are not entities",
+    "not claimed: lefthook.json and lefthook.toml (the dialect decodes YAML); a job nested more than three group levels deep; lefthook's extends, remotes and source_dir and pre-commit's repo and rev (cross-file and cross-repository references, L3, not in the target); a command reached only through a YAML merge key (\u003c\u003c:) is not read",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "pre-commit is tier C: pre-commit validate-config is absent on the measuring machine (w6 triage 2026-09-29, no installs), so .pre-commit-config.yaml and .pre-commit-hooks.yaml are read by a Ruby Psych reference parse (Psych 3.1.0, libyaml, ruby 2.6.10: calibration/oracles/lefthook-dump/precommit_psych.rb), which caps that subject, and so the reading's L1, at good; the lefthook subject alone reads L1 excellent (27 of 27 at tier A)",
+    "subjects: evilmartians/lefthook v1.13.6 (sparse checkout of its lefthook configs; the connector never reads testdata/ and tests/, where most of the repository's configs are), so fathom sees 5 configs (.lefthook.yml and the four under examples/, 27 definitions); pre-commit/pre-commit-hooks v6.0.0: its .pre-commit-config.yaml (14 hooks) and its .pre-commit-hooks.yaml manifest (34 hook definitions)"
+  ],
+  "disposition": null
+}
