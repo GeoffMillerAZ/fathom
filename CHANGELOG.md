@@ -21,6 +21,10 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: patch (pre-1.0: breaking bumps minor)
 
+### Added
+
+- **Go extraction: `find_symbol` and `symbol_context` now answer unexported package-level consts and vars (LB-F60).** A const or var was a symbol only when its name was exported, which a func and a type never needed; `ExtractorEpoch` 40 re-reads every `.go` file on upgrade.
+
 ## [0.9.0] -- 2026-09-30
 
 Release impact: minor (pre-1.0: breaking bumps minor)

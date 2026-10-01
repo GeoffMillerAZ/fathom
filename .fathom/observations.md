@@ -2666,3 +2666,17 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** none yet; the worker ran the focused packages (internal/config, the cmd/fathom pin and hook tests) under -race and left the whole set to task validate
 - **Status:** open
 - **Impact:** EW-11 selection stops narrowing as soon as a diff inserts a line above many symbols (a CHANGELOG line, a schema field), which is most diffs; test_gap overstates the untested change by two orders of magnitude here
+
+### O242 — an extractor change to which names Go emits moves hard-coded symbol counts in five tests and one golden, found only by a whole-package run
+
+- **Symptom:** an extractor change to which names Go emits moves hard-coded symbol counts in five tests and one golden, found only by a whole-package run
+- **Evidence:**
+  - **Tool:** go test -race ./internal/fusion/... ./internal/analysis/... ./pkg/client/... ./internal/indexbench/... after LB-F60 (unexported Go const and var now symbols)
+  - **Expected:** one failure naming the fixture and the reason
+  - **Actual:** six failures in four packages: TestIngest_Basic, TestIngest_Lazy and TestEnrich_ExistingTestsUnaffected (internal/fusion) and TestIngest_PaymentService (pkg/client) each hard-code payment-service at 5 symbols, with comments reading "errors.go yields 0 (unexported vars only)"; TestBuildEdges_FauxtownGolden (internal/analysis/callgraph) hard-codes 13 fauxtown nodes; TestPayloadReplay moved two entries of internal/indexbench/testdata/l1-replay.json (repo_map bytes 484 to 564, staleness_report sources 1 to 2, a new GoVar kind)
+  - **Repro:** drop the ast.IsExported filter on token.CONST and token.VAR in internal/extractor/goextract.go and run the packages above
+- **Root cause:** each fixture count is a literal beside a comment that restates the extractor's old rule, so nothing ties the number to the rule
+- **Fix:** counts moved to 7 and 17, the golden regenerated with -update (only those two entries moved), comments reworded to say why; the literals stay literals
+- **Status:** fixed
+- **Impact:** the next extractor change that adds symbols to fauxtown will move the same literals; tests select --safe does not narrow here (1585 tests, O230), so only a whole-package run finds them
+

@@ -27,8 +27,8 @@ func NewGoExtractor() *GoExtractor { return &GoExtractor{} }
 //   - method → KindGoMethod (Package = receiver type name, Name = "ReceiverType.MethodName")
 //   - type struct → KindGoType
 //   - type interface → KindGoInterface
-//   - exported var → KindGoVar
-//   - exported const → KindGoConst
+//   - var → KindGoVar     (a package-level name, exported or not; never `_`)
+//   - const → KindGoConst (likewise)
 //
 // For func/method nodes, Calls contains the sorted set of callee keys for calls
 // that resolve to other symbols within the same service, plus unresolved callee
@@ -160,7 +160,9 @@ func (g *GoExtractor) funcNode(
 	}
 }
 
-// genDeclNodes builds SymbolNodes for a *ast.GenDecl (type/var/const).
+// genDeclNodes builds SymbolNodes for a *ast.GenDecl (type/var/const). A const or
+// var is a symbol exported or not, as a func and a type are (LB-F60); the blank
+// identifier declares nothing and is skipped.
 func (g *GoExtractor) genDeclNodes(
 	service, pkgName, relPath string,
 	fset *token.FileSet,
@@ -201,7 +203,7 @@ func (g *GoExtractor) genDeclNodes(
 			}
 			endPos := fset.Position(vs.End())
 			for _, name := range vs.Names {
-				if name == nil || !ast.IsExported(name.Name) {
+				if name == nil || name.Name == "_" {
 					continue
 				}
 				pos := fset.Position(name.Pos())
@@ -226,7 +228,7 @@ func (g *GoExtractor) genDeclNodes(
 			}
 			endPos := fset.Position(vs.End())
 			for _, name := range vs.Names {
-				if name == nil || !ast.IsExported(name.Name) {
+				if name == nil || name.Name == "_" {
 					continue
 				}
 				pos := fset.Position(name.Pos())

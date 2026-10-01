@@ -308,7 +308,13 @@ import (
 // own entities, and a nested stack's or serverless application's local template as a
 // file-tier edge) where each YAML one was unclassified and each JSON one was read by the
 // generic JSON extractor.
-const ExtractorEpoch = "39"
+// Epoch 40 (LB-F60, docs/plans/language-breadth.md): a package-level Go const or var
+// is now extracted whether or not its name is exported (a func and a type already
+// were; the blank identifier is still skipped), so find_symbol and symbol_context
+// answer an unexported const or var and the SCIP export and the symbol sets that
+// count them now include them. Every .go file was fingerprinted by the exported-only
+// reading, so the salt bump re-reads them.
+const ExtractorEpoch = "40"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares

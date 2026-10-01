@@ -64,7 +64,7 @@ func TestBuildEdges_FauxtownGolden(t *testing.T) {
 	if !reflect.DeepEqual(edges, want) {
 		t.Errorf("Build(fauxtown).edges = %v, want %v", edges, want)
 	}
-	if got, wantN := len(merged), 13; got != wantN {
+	if got, wantN := len(merged), 17; got != wantN {
 		t.Errorf("fauxtown node count = %d, want %d (fixture changed under this test)", got, wantN)
 	}
 	if got, wantN := g.EdgeCount(), len(want); got != wantN {
