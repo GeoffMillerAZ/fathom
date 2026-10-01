@@ -880,9 +880,10 @@ What the line does:
   stays visible without being called a violation. A test whose body was
   only `edited` is silent, a test moved unchanged to another file is kept,
   and nothing is printed when no pin is lost.
-- It reads every blob through one `git cat-file --batch` process and the
-  changed files through one `git diff-tree`, inside a 250 ms sub-budget of
-  the hook's deadline (I53). Over budget, past the deadline or on a read
+- It reads every blob through one `git cat-file --batch` process, the
+  changed files through one `git diff-tree` and the parent's file list (for
+  its `tests/*.cue` manifests) through one `git ls-tree`, inside a 250 ms
+  sub-budget of the hook's deadline (I53). Over budget, past the deadline or on a read
   error it prints nothing and its beat says `skipped` with the reason,
   never `kept`.
 

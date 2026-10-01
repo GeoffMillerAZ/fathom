@@ -3,7 +3,8 @@
 Grammar v2 (`docs/plans/README.md`). A row flips to `[x]` only when
 `fathom verify --service fathom --plan docs/plans/served-not-kept.md` proves it. Design:
 `docs/design/served-not-kept.md` (section numbers below are its). Goal G33. Futures F53 (`propose_check`) and F54
-(orchestrator constraints on a sub-agent). Nothing here is built; the one claimed row is PR-8, the decision.
+(orchestrator constraints on a sub-agent). Built: wave 1 (PR-1 to PR-7, the line in record mode), PR-9, PR-10 and PR-12;
+open: PR-11 (waits on JF-1) and the readings PR-M1 and PR-M2.
 
 The accepted core is the commit pin line (PR-1 to PR-7) with two ledger fixes that ride SR-61 (PR-10, PR-11) and
 JF-1 landing alone. PR-8 (a silent pin loss blocks at pre-push) was accepted on 2026-09-29 by the owner-architect and confirmed by the owner the same day (Q34

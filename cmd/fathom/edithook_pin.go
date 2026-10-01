@@ -366,7 +366,8 @@ const (
 
 // commitPinLosses runs conserve.PinLosses over sha's first parent to sha in
 // the repository at root, reading every blob through one `git cat-file
-// --batch` process and the changed files through one diff-tree. It returns
+// --batch` process and the changed files through one diff-tree (PinLosses
+// adds one ls-tree at the parent for its tests/*.cue manifests). It returns
 // the commit's full sha.
 func commitPinLosses(ctx context.Context, root, sha string) (string, []conserve.PinLoss, error) {
 	batch, err := startCatFileBatch(ctx, root)
