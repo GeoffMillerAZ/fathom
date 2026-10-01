@@ -1,0 +1,7 @@
+version_info: "2"
+resources:
+- "@type": type.googleapis.com/envoy.config.listener.v3.Listener
+  name: from-lds
+  address:
+    socket_address: {address: 0.0.0.0, port_value: 10003}
+  filter_chains: []

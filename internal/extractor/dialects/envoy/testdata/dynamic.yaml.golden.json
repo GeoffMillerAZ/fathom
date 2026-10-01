@@ -1,0 +1,88 @@
+{
+  "symbols": [
+    {
+      "name": "dynamic.yaml",
+      "kind": "EnvoyConfig",
+      "package": "dynamic",
+      "line": 1,
+      "end_line": 47,
+      "tier": "verified"
+    },
+    {
+      "name": "web",
+      "kind": "EnvoyListener",
+      "package": "dynamic",
+      "line": 12,
+      "end_line": 27,
+      "signature": "10000",
+      "tier": "verified"
+    },
+    {
+      "name": "other",
+      "kind": "EnvoyListener",
+      "package": "dynamic",
+      "line": 28,
+      "end_line": 42,
+      "signature": "10001",
+      "tier": "verified"
+    },
+    {
+      "name": "cp",
+      "kind": "EnvoyListener",
+      "package": "dynamic",
+      "line": 43,
+      "end_line": 47,
+      "tier": "verified"
+    }
+  ],
+  "cross_file": [
+    {
+      "from": "",
+      "edge": "xds_path",
+      "raw": "cds.yaml",
+      "target": "infra/cds.yaml",
+      "strategy": "repo-path",
+      "line": 7
+    },
+    {
+      "from": "",
+      "edge": "xds_path",
+      "raw": "lds.yaml",
+      "target": "infra/lds.yaml",
+      "strategy": "repo-path",
+      "line": 9
+    },
+    {
+      "from": "web",
+      "edge": "listener_rds",
+      "raw": "local_routes",
+      "target": "local_routes",
+      "strategy": "service-name",
+      "line": 24
+    },
+    {
+      "from": "",
+      "edge": "xds_path",
+      "raw": "rds.yaml",
+      "target": "infra/rds.yaml",
+      "strategy": "repo-path",
+      "line": 27
+    },
+    {
+      "from": "other",
+      "edge": "listener_rds",
+      "raw": "remote_routes",
+      "target": "remote_routes",
+      "strategy": "service-name",
+      "line": 40
+    },
+    {
+      "from": "",
+      "edge": "xds_path",
+      "raw": "./rds.yaml",
+      "target": "infra/rds.yaml",
+      "strategy": "repo-path",
+      "line": 42
+    }
+  ]
+}

@@ -343,14 +343,18 @@ import (
 // function-local member assignments as symbols, with their calls attributed to them;
 // every .js, .jsx, .mjs, .cjs, .ts, .tsx, .mts and .cts file was fingerprinted by the
 // old queries, so the salt bump re-reads them.
-// Epoch 42 (wave px, LB-Q-nginx, LB-Q-haproxy, LB-Q-caddyfile, LB-F101; the
-// integrator renumbers to origin/main's + 1 once): nginx.conf, haproxy.cfg,
-// Caddyfile and *.caddyfile, a .conf an nginx sniff claims, a .cfg a HAProxy
-// sniff claims and a sites-enabled/*, sites-available/* or Caddyfile.* file
-// are read by the native proxy dialects, where no extractor read them; a .conf
-// or .cfg no sniff claims is counted ambiguous instead of reaching dispatch.
-// Every such file was fingerprinted with nothing extracted, so the salt bump
-// re-reads it.
+//
+// Epoch 42 (wave px: LB-Q-nginx, LB-Q-haproxy, LB-Q-caddyfile, LB-F101; LB-Q-envoy,
+// LB-Q-kong, LB-Q-traefik, LB-F104): nginx.conf, haproxy.cfg, Caddyfile and *.caddyfile,
+// a .conf an nginx sniff claims, a .cfg a HAProxy sniff claims and a sites-enabled/*,
+// sites-available/* or Caddyfile.* file are read by the native proxy dialects, where no
+// extractor read them; a .conf or .cfg no sniff claims is counted ambiguous instead of
+// reaching dispatch. An Envoy bootstrap or xDS file, a Kong declarative file and a Traefik
+// static or file-provider file (YAML or TOML) that a manifest basename or glob names and the
+// dialect's content sniff claims now extract through the doc-engine envoy, kong and traefik
+// dialects (gatewayDispatch) instead of the generic YAML, JSON or TOML extractor, or none at
+// all (an unclassified YAML). A store ingested before it holds those files as bare keys or
+// nothing, so the salt bump re-reads them.
 const ExtractorEpoch = "42"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file

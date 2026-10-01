@@ -1,0 +1,22 @@
+version_info: "7"
+resources:
+- "@type": type.googleapis.com/envoy.config.route.v3.RouteConfiguration
+  name: local_routes
+  virtual_hosts:
+  - name: acme
+    domains: ["acme.example.com"]
+    routes:
+    - match: {prefix: "/api"}
+      route: {cluster: backend}
+    - name: mirrored
+      match: {prefix: "/"}
+      route:
+        cluster: static-ip
+        request_mirror_policies:
+        - cluster: backend
+- "@type": type.googleapis.com/envoy.config.listener.v3.Listener
+  name: xds-listener
+  address:
+    socket_address: {address: 0.0.0.0, port_value: 10002}
+- "@type": type.googleapis.com/envoy.config.endpoint.v3.ClusterLoadAssignment
+  cluster_name: backend

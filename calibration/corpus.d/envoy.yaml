@@ -1,0 +1,38 @@
+id: envoy
+language: Envoy proxy configuration (bootstrap, xDS resource files)
+# Subjects (Apache-2.0, read only, never vendored). envoyproxy/examples is the
+# L3 subject: every sandbox pairs an envoy.yaml with a docker-compose.yaml
+# whose service names the clusters' socket addresses name. envoyproxy/envoy is
+# large, so only its documented configs and examples are checked out.
+# supabase/supabase docker/ is the second L3 subject: Envoy fronting a compose
+# stack of named services (docker-compose.envoy.yml).
+repos:
+  - name: envoyproxy/examples
+    url: https://github.com/envoyproxy/examples.git
+    ref: v0.2.7
+    sha: b7ce63d6def59a7ad69fd2680e071d0d041a0509
+    licence: Apache-2.0
+    idioms:
+      - "static_resources bootstraps: listeners with an inline HttpConnectionManager route_config, virtual_hosts, routes and clusters"
+      - "docker-compose services named by a cluster's load_assignment socket_address.address (front-proxy, load-balancing)"
+      - "file-based xDS: dynamic_resources lds_config/cds_config path_config_source.path naming a lds.yaml/cds.yaml"
+      - "typed_config @type resources (version_info, resources: [...]) in lds.yaml, cds.yaml"
+      - "weighted_clusters and rds route_config_name references"
+  - name: envoyproxy/envoy
+    url: https://github.com/envoyproxy/envoy.git
+    ref: v1.39.1
+    sha: b579d07d3ad7ee11d32b105e91a5a39ad24718d7
+    licence: Apache-2.0
+    sparse: ["configs/**", "examples/**"]
+    idioms:
+      - "the reference configs the documentation ships (configs/*.yaml and its templates' rendered outputs)"
+      - "legacy hosts: and v2 spellings beside v3 typed_config"
+  - name: supabase/supabase
+    url: https://github.com/supabase/supabase.git
+    ref: v1.26.08
+    sha: 86854671e95be31e24fa0785cded0579fe692fcb
+    licence: Apache-2.0
+    sparse: ["docker/**"]
+    idioms:
+      - "docker/volumes/api/envoy: a bootstrap (envoy.yaml) with file-based LDS and CDS (cds.yaml, lds.template.yaml) beside a docker-compose.envoy.yml whose services (auth, rest, realtime, storage, ...) the clusters' socket addresses name"
+      - "the same stack fronted by Kong (docker/volumes/api/kong.yml), the cross-gateway comparison"

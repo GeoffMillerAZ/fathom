@@ -1,0 +1,12 @@
+{
+  "symbols": [
+    { "name": "echo", "kind": "KongService", "package": "kong", "line": 4, "end_line": 7, "signature": "http://echo:1027", "tier": "verified" },
+    { "name": "echo-route", "kind": "KongRoute", "package": "kong", "line": 7, "end_line": 7, "signature": "/echo", "tier": "verified" },
+    { "name": "pool", "kind": "KongUpstream", "package": "kong", "line": 11, "end_line": 11, "tier": "verified" },
+    { "name": "pool-a:80", "kind": "KongTarget", "package": "kong", "line": 11, "end_line": 11, "tier": "verified" }
+  ],
+  "cross_file": [
+    { "from": "echo", "edge": "route_ref", "raw": "http://echo:1027", "target": "http://echo:1027", "strategy": "route-host", "line": 6 },
+    { "from": "pool", "edge": "route_ref", "raw": "pool-a:80", "target": "pool-a:80", "strategy": "route-host", "line": 11 }
+  ]
+}

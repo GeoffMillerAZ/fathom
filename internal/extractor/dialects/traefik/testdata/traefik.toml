@@ -1,0 +1,14 @@
+[entryPoints.web]
+  address = ":80"
+
+[providers.file]
+  filename = "dynamic.toml"
+
+[http.routers.site]
+  rule = "Host(`site.example.com`)"
+  entryPoints = ["web"]
+  service = "site"
+
+[http.services.site.loadBalancer]
+  [[http.services.site.loadBalancer.servers]]
+    url = "http://site:3000"

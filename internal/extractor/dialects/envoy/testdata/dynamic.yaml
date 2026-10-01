@@ -1,0 +1,47 @@
+node:
+  id: edge-1
+  cluster: acme
+dynamic_resources:
+  cds_config:
+    path_config_source:
+      path: cds.yaml
+  lds_config:
+    path: lds.yaml
+static_resources:
+  listeners:
+  - name: web
+    address:
+      socket_address:
+        address: 0.0.0.0
+        port_value: 10000
+    filter_chains:
+    - filters:
+      - name: envoy.filters.network.http_connection_manager
+        typed_config:
+          "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+          stat_prefix: web
+          rds:
+            route_config_name: local_routes
+            config_source:
+              path_config_source:
+                path: rds.yaml
+  - name: other
+    address:
+      socket_address:
+        address: 0.0.0.0
+        port_value: 10001
+    filter_chains:
+    - filters:
+      - name: envoy.filters.network.http_connection_manager
+        typed_config:
+          "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+          stat_prefix: other
+          rds:
+            route_config_name: remote_routes
+            config_source:
+              path: ./rds.yaml
+  - name: cp
+    address:
+      pipe:
+        path: /var/run/envoy.sock
+    filter_chains: [{filters: [{name: envoy.filters.network.tcp_proxy, typed_config: {"@type": type.googleapis.com/envoy.extensions.filters.network.tcp_proxy.v3.TcpProxy, stat_prefix: tcp, cluster: backend}}]}]

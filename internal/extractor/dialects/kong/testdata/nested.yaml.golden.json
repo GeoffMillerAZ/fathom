@@ -1,0 +1,23 @@
+{
+  "symbols": [
+    { "name": "orders", "kind": "KongService", "package": "nested", "line": 3, "end_line": 16, "signature": "orders-upstream", "calls": ["orders-upstream"], "tier": "verified" },
+    { "name": "orders-list", "kind": "KongRoute", "package": "nested", "line": 7, "end_line": 9, "signature": "/orders", "tier": "verified" },
+    { "name": "orders-admin", "kind": "KongRoute", "package": "nested", "line": 10, "end_line": 12, "signature": "admin.example.com", "tier": "verified" },
+    { "name": "rate-limiting", "kind": "KongPlugin", "package": "nested", "line": 14, "end_line": 16, "tier": "verified" },
+    { "name": "billing", "kind": "KongService", "package": "nested", "line": 17, "end_line": 21, "signature": "http://billing.acme:8080/v1", "tier": "verified" },
+    { "name": "billing-all", "kind": "KongRoute", "package": "nested", "line": 20, "end_line": 21, "signature": "/billing", "tier": "verified" },
+    { "name": "legacy", "kind": "KongService", "package": "nested", "line": 22, "end_line": 23, "signature": "legacy.example.com", "tier": "verified" },
+    { "name": "orders-upstream", "kind": "KongUpstream", "package": "nested", "line": 25, "end_line": 29, "tier": "verified" },
+    { "name": "orders-1.acme:8000", "kind": "KongTarget", "package": "nested", "line": 27, "end_line": 28, "signature": "100", "tier": "verified" },
+    { "name": "10.1.0.5:8000", "kind": "KongTarget", "package": "nested", "line": 29, "end_line": 29, "tier": "verified" }
+  ],
+  "cross_file": [
+    { "from": "orders", "edge": "service_upstream", "raw": "orders-upstream", "target": "orders-upstream", "strategy": "service-name", "line": 4 },
+    { "from": "orders", "edge": "route_ref", "raw": "orders-upstream", "target": "orders-upstream", "strategy": "route-host", "line": 4 },
+    { "from": "billing", "edge": "route_ref", "raw": "http://billing.acme:8080/v1", "target": "http://billing.acme:8080/v1", "strategy": "route-host", "line": 18 },
+    { "from": "legacy", "edge": "service_upstream", "raw": "legacy.example.com", "target": "legacy.example.com", "strategy": "service-name", "line": 23 },
+    { "from": "legacy", "edge": "route_ref", "raw": "legacy.example.com", "target": "legacy.example.com", "strategy": "route-host", "line": 23 },
+    { "from": "orders-upstream", "edge": "route_ref", "raw": "orders-1.acme:8000", "target": "orders-1.acme:8000", "strategy": "route-host", "line": 27 },
+    { "from": "orders-upstream", "edge": "route_ref", "raw": "10.1.0.5:8000", "target": "10.1.0.5:8000", "strategy": "route-host", "line": 29 }
+  ]
+}

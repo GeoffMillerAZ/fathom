@@ -1,0 +1,38 @@
+{
+  "decode": "yaml",
+  "detect": {
+    "content_sniff": "(?m)^(static_resources|dynamic_resources)[ \\t]*:|\"(static_resources|dynamic_resources)\"[ \\t]*:|\"?@type\"?[ \\t]*:[ \\t]*\"?type\\.googleapis\\.com/envoy\\."
+  },
+  "entities": [
+    {"select": "$", "where": {"is_map": true}, "kind": "package", "source_kind": "EnvoyConfig", "name": "$file"},
+    {"select": "$.static_resources.listeners[*]", "where": {"is_map": true}, "kind": "resource", "source_kind": "EnvoyListener",
+     "name": ".name | .address.socket_address.port_value | .address.pipe.path", "signature": ".address.socket_address.port_value"},
+    {"select": "$.resources[*]", "where": {"is_map": true, "equals": {".@type": "type.googleapis.com/envoy.config.listener.v3.Listener"}}, "kind": "resource", "source_kind": "EnvoyListener",
+     "name": ".name | .address.socket_address.port_value | .address.pipe.path", "signature": ".address.socket_address.port_value"},
+    {"select": "$..route_config", "where": {"is_map": true}, "kind": "section", "source_kind": "EnvoyRouteConfiguration", "name": ".name"},
+    {"select": "$.resources[*]", "where": {"is_map": true, "equals": {".@type": "type.googleapis.com/envoy.config.route.v3.RouteConfiguration"}}, "kind": "section", "source_kind": "EnvoyRouteConfiguration", "name": ".name"},
+    {"select": "$..virtual_hosts[*]", "where": {"is_map": true}, "kind": "selector", "source_kind": "EnvoyVirtualHost", "name": ".name", "signature": ".domains[0]"},
+    {"select": "$..routes[*]", "where": {"is_map": true}, "kind": "route", "source_kind": "EnvoyRoute",
+     "name": ".name | .match.prefix | .match.path | .match.safe_regex.regex", "signature": ".route.cluster"},
+    {"select": "$.static_resources.clusters[*]", "where": {"is_map": true}, "kind": "service", "source_kind": "EnvoyCluster", "name": ".name", "signature": ".type"},
+    {"select": "$.resources[*]", "where": {"is_map": true, "equals": {".@type": "type.googleapis.com/envoy.config.cluster.v3.Cluster"}}, "kind": "service", "source_kind": "EnvoyCluster", "name": ".name", "signature": ".type"}
+  ],
+  "references": [
+    {"from": "EnvoyRoute", "select": "$.route.cluster", "value": "$", "to_kind": "EnvoyCluster", "edge": "route_cluster", "declared_only": true},
+    {"from": "EnvoyRoute", "select": "$.route.weighted_clusters.clusters[*].name", "value": "$", "to_kind": "EnvoyCluster", "edge": "route_cluster", "declared_only": true},
+    {"from": "EnvoyRoute", "select": "$.route.request_mirror_policies[*].cluster", "value": "$", "to_kind": "EnvoyCluster", "edge": "route_mirror", "declared_only": true},
+    {"from": "EnvoyListener", "select": "$..rds.route_config_name", "value": "$", "to_kind": "EnvoyRouteConfiguration", "edge": "listener_rds", "declared_only": true}
+  ],
+  "cross_file": [
+    {"select": "$..path_config_source.path", "value": "$", "resolve": "repo-path", "edge": "xds_path"},
+    {"select": "$..lds_config.path", "value": "$", "resolve": "repo-path", "edge": "xds_path"},
+    {"select": "$..cds_config.path", "value": "$", "resolve": "repo-path", "edge": "xds_path"},
+    {"select": "$..eds_config.path", "value": "$", "resolve": "repo-path", "edge": "xds_path"},
+    {"select": "$..config_source.path", "value": "$", "resolve": "repo-path", "edge": "xds_path"},
+    {"from": "EnvoyRoute", "select": "$.route.cluster", "value": "$", "resolve": "service-name", "edge": "route_cluster"},
+    {"from": "EnvoyRoute", "select": "$.route.weighted_clusters.clusters[*].name", "value": "$", "resolve": "service-name", "edge": "route_cluster"},
+    {"from": "EnvoyRoute", "select": "$.route.request_mirror_policies[*].cluster", "value": "$", "resolve": "service-name", "edge": "route_mirror"},
+    {"from": "EnvoyListener", "select": "$..rds.route_config_name", "value": "$", "resolve": "service-name", "edge": "listener_rds"},
+    {"from": "EnvoyCluster", "select": "$..socket_address.address", "value": "$", "resolve": "route-host", "edge": "route_ref"}
+  ]
+}

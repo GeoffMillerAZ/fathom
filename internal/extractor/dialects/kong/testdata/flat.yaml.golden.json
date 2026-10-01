@@ -1,0 +1,32 @@
+{
+  "symbols": [
+    { "name": "catalog", "kind": "KongService", "package": "flat", "line": 3, "end_line": 4, "signature": "catalog-up", "calls": ["catalog-up"], "tier": "verified" },
+    { "name": "search", "kind": "KongService", "package": "flat", "line": 5, "end_line": 6, "signature": "search.acme", "tier": "verified" },
+    { "name": "catalog-route", "kind": "KongRoute", "package": "flat", "line": 8, "end_line": 10, "signature": "/catalog", "calls": ["catalog"], "tier": "verified" },
+    { "name": "search-route", "kind": "KongRoute", "package": "flat", "line": 11, "end_line": 14, "signature": "/search", "calls": ["search"], "tier": "verified" },
+    { "name": "orphan-route", "kind": "KongRoute", "package": "flat", "line": 15, "end_line": 17, "signature": "orphan.example.com", "tier": "verified" },
+    { "name": "catalog-up", "kind": "KongUpstream", "package": "flat", "line": 19, "end_line": 19, "tier": "verified" },
+    { "name": "catalog-1.acme:9000", "kind": "KongTarget", "package": "flat", "line": 21, "end_line": 22, "calls": ["catalog-up"], "tier": "verified" },
+    { "name": "catalog-2.acme:9000", "kind": "KongTarget", "package": "flat", "line": 23, "end_line": 25, "signature": "50", "calls": ["catalog-up"], "tier": "verified" },
+    { "name": "cors", "kind": "KongPlugin", "package": "flat", "line": 27, "end_line": 28, "calls": ["catalog"], "tier": "verified" },
+    { "name": "key-auth", "kind": "KongPlugin", "package": "flat", "line": 29, "end_line": 31, "calls": ["search-route"], "tier": "verified" },
+    { "name": "prometheus", "kind": "KongPlugin", "package": "flat", "line": 32, "end_line": 32, "tier": "verified" },
+    { "name": "request-id", "kind": "KongPlugin", "package": "flat", "line": 33, "end_line": 34, "tier": "verified" }
+  ],
+  "cross_file": [
+    { "from": "catalog", "edge": "service_upstream", "raw": "catalog-up", "target": "catalog-up", "strategy": "service-name", "line": 4 },
+    { "from": "catalog", "edge": "route_ref", "raw": "catalog-up", "target": "catalog-up", "strategy": "route-host", "line": 4 },
+    { "from": "search", "edge": "service_upstream", "raw": "search.acme", "target": "search.acme", "strategy": "service-name", "line": 6 },
+    { "from": "search", "edge": "route_ref", "raw": "search.acme", "target": "search.acme", "strategy": "route-host", "line": 6 },
+    { "from": "catalog-route", "edge": "route_service", "raw": "catalog", "target": "catalog", "strategy": "service-name", "line": 9 },
+    { "from": "search-route", "edge": "route_service", "raw": "search", "target": "search", "strategy": "service-name", "line": 12 },
+    { "from": "orphan-route", "edge": "route_service", "raw": "elsewhere", "target": "elsewhere", "strategy": "service-name", "line": 16 },
+    { "from": "catalog-1.acme:9000", "edge": "route_ref", "raw": "catalog-1.acme:9000", "target": "catalog-1.acme:9000", "strategy": "route-host", "line": 21 },
+    { "from": "catalog-1.acme:9000", "edge": "target_upstream", "raw": "catalog-up", "target": "catalog-up", "strategy": "service-name", "line": 22 },
+    { "from": "catalog-2.acme:9000", "edge": "route_ref", "raw": "catalog-2.acme:9000", "target": "catalog-2.acme:9000", "strategy": "route-host", "line": 23 },
+    { "from": "catalog-2.acme:9000", "edge": "target_upstream", "raw": "catalog-up", "target": "catalog-up", "strategy": "service-name", "line": 24 },
+    { "from": "cors", "edge": "plugin_service", "raw": "catalog", "target": "catalog", "strategy": "service-name", "line": 28 },
+    { "from": "key-auth", "edge": "plugin_route", "raw": "search-route", "target": "search-route", "strategy": "service-name", "line": 30 },
+    { "from": "request-id", "edge": "plugin_service", "raw": "unknown", "target": "unknown", "strategy": "service-name", "line": 34 }
+  ]
+}

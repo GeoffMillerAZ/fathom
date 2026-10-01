@@ -1,0 +1,11 @@
+static_resources:
+  clusters:
+  - name: legacy
+    type: STRICT_DNS
+    hosts:
+    - socket_address:
+        address: old-backend
+        port_value: 9000
+    - socket_address:
+        address: 198.51.100.4
+        port_value: 9000

@@ -1,0 +1,384 @@
+{
+  "dialect": "traefik",
+  "kind": "tooling",
+  "target_level": "L3",
+  "level_met": "L2",
+  "grade": {
+    "L1": "excellent",
+    "L2": "good",
+    "L3": "not-attempted",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-10-01",
+  "fathom_commit": "f21aff82",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "Bin-hy/Vistack",
+      "sha": "78905dd43be8be1e79d5d4db73abd2f755e86e27",
+      "files": 2,
+      "bytes": 1727,
+      "counts": {
+        "fathom_defs": 10,
+        "kind_equal": 10,
+        "matched": 10,
+        "oracle_defs": 10,
+        "range_eligible": 8,
+        "range_ok": 8,
+        "ref_fathom": 4,
+        "ref_fathom_in_truth": 4,
+        "ref_truth": 4,
+        "ref_truth_found": 4
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A"
+      },
+      "kind_intersection": [
+        "package",
+        "resource",
+        "route",
+        "rule",
+        "service"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 0.306,
+        "extract_cpu_ms": 0.302,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "ChainSafe/WebZjs",
+      "sha": "a50df944c32243cb8da9f86e7d52cb65ac926439",
+      "files": 2,
+      "bytes": 1064,
+      "counts": {
+        "fathom_defs": 9,
+        "kind_equal": 9,
+        "matched": 9,
+        "oracle_defs": 9,
+        "range_eligible": 7,
+        "range_ok": 7,
+        "ref_fathom": 6,
+        "ref_fathom_in_truth": 6,
+        "ref_truth": 6,
+        "ref_truth_found": 6
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A"
+      },
+      "kind_intersection": [
+        "package",
+        "resource",
+        "route",
+        "rule",
+        "service"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 0.255,
+        "extract_cpu_ms": 0.23399999999999999,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "Heziode/traefik-v2-https-ssl-localhost",
+      "sha": "74c1b0048124a083c440b8e5f8d9ea0acafb3339",
+      "files": 1,
+      "bytes": 419,
+      "counts": {
+        "fathom_defs": 2,
+        "kind_equal": 1,
+        "matched": 1,
+        "oracle_defs": 1
+      },
+      "families": {
+        "l1": "A"
+      },
+      "kind_intersection": [
+        "package",
+        "resource",
+        "route",
+        "rule",
+        "service"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 0.12,
+        "extract_cpu_ms": 0.118,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "MarkusJx/traefik-wol",
+      "sha": "cf3583486931e73d56609e3daa210ef828c5715f",
+      "files": 1,
+      "bytes": 997,
+      "counts": {
+        "fathom_defs": 5,
+        "kind_equal": 5,
+        "matched": 5,
+        "oracle_defs": 5,
+        "range_eligible": 4,
+        "range_ok": 4,
+        "ref_fathom": 3,
+        "ref_fathom_in_truth": 3,
+        "ref_truth": 3,
+        "ref_truth_found": 3
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A"
+      },
+      "kind_intersection": [
+        "package",
+        "resource",
+        "route",
+        "rule",
+        "service"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 0.217,
+        "extract_cpu_ms": 0.219,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "appsecco/opa-traefik-microservice-authz",
+      "sha": "30b21c6caff5f83261817c8150f16628beafbd9b",
+      "files": 2,
+      "bytes": 851,
+      "counts": {
+        "fathom_defs": 10,
+        "kind_equal": 10,
+        "matched": 10,
+        "oracle_defs": 10,
+        "range_eligible": 8,
+        "range_ok": 8,
+        "ref_fathom": 7,
+        "ref_fathom_in_truth": 7,
+        "ref_truth": 7,
+        "ref_truth_found": 7
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A"
+      },
+      "kind_intersection": [
+        "package",
+        "resource",
+        "route",
+        "rule",
+        "service"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 0.10300000000000001,
+        "extract_cpu_ms": 0.10300000000000001,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "druidfi/stonehenge",
+      "sha": "f3effa7518df81fb6ee16f59af5feac8bca3c95a",
+      "files": 2,
+      "bytes": 1681,
+      "counts": {
+        "fathom_defs": 11,
+        "kind_equal": 11,
+        "matched": 11,
+        "oracle_defs": 11,
+        "range_eligible": 9,
+        "range_ok": 9,
+        "ref_fathom": 0,
+        "ref_truth": 3
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A"
+      },
+      "kind_intersection": [
+        "package",
+        "resource",
+        "route",
+        "rule",
+        "service"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 0.184,
+        "extract_cpu_ms": 0.178,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "interledger/testnet",
+      "sha": "6119615b0b8ac436aa9dc09eb994ef1aeb902282",
+      "files": 1,
+      "bytes": 1320,
+      "counts": {
+        "fathom_defs": 9,
+        "kind_equal": 9,
+        "matched": 9,
+        "oracle_defs": 9,
+        "range_eligible": 8,
+        "range_ok": 8,
+        "ref_fathom": 4,
+        "ref_fathom_in_truth": 4,
+        "ref_truth": 4,
+        "ref_truth_found": 4
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A"
+      },
+      "kind_intersection": [
+        "package",
+        "resource",
+        "route",
+        "rule",
+        "service"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 0.222,
+        "extract_cpu_ms": 0.217,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "quentintaranpino/nostrcheck-server",
+      "sha": "1809ea419baf31b77ca654c7552119c9a8e58367",
+      "files": 1,
+      "bytes": 2820,
+      "counts": {
+        "fathom_defs": 17,
+        "kind_equal": 17,
+        "matched": 17,
+        "oracle_defs": 17,
+        "range_eligible": 16,
+        "range_ok": 16,
+        "ref_fathom": 8,
+        "ref_fathom_in_truth": 8,
+        "ref_truth": 8,
+        "ref_truth_found": 8
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A"
+      },
+      "kind_intersection": [
+        "package",
+        "resource",
+        "route",
+        "rule",
+        "service"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 0.249,
+        "extract_cpu_ms": 0.228,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "traefik",
+      "version": "3.7.13"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 1,
+    "ref_recall": 0.9143,
+    "sym_precision": 0.9863,
+    "sym_recall": 1,
+    "xref_precision": null,
+    "xref_recall": null
+  },
+  "metric_tiers": {
+    "ref_precision": "A",
+    "ref_recall": "A",
+    "sym_precision": "A",
+    "sym_recall": "A"
+  },
+  "required_kinds": [
+    "package",
+    "resource",
+    "route",
+    "rule",
+    "service"
+  ],
+  "kind_intersection": [
+    "package",
+    "resource",
+    "route",
+    "rule",
+    "service"
+  ],
+  "counts": {
+    "fathom_defs": 73,
+    "kind_equal": 72,
+    "matched": 72,
+    "oracle_defs": 72,
+    "range_eligible": 60,
+    "range_ok": 60,
+    "ref_fathom": 32,
+    "ref_fathom_in_truth": 32,
+    "ref_truth": 35,
+    "ref_truth_found": 32
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 6.8,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 6.57,
+    "max_file_ms": 0,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    "Bin-hy/Vistack: restricted to deploy/traefik/dynamic.yml, deploy/traefik/traefik.yml (-only; the files outside are a disclosed gap, not measured)",
+    "ChainSafe/WebZjs: restricted to traefik/dynamic.yml, traefik/traefik.yml (-only; the files outside are a disclosed gap, not measured)",
+    "Heziode/traefik-v2-https-ssl-localhost: 3 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
+    "Heziode/traefik-v2-https-ssl-localhost: restricted to config/dynamic.yml, config/static.yml (-only; the files outside are a disclosed gap, not measured)",
+    "MarkusJx/traefik-wol: 2 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
+    "MarkusJx/traefik-wol: restricted to example/dynamic.yml, example/static.yml (-only; the files outside are a disclosed gap, not measured)",
+    "appsecco/opa-traefik-microservice-authz: restricted to traefik/dynamic.yml, traefik/traefik.yml (-only; the files outside are a disclosed gap, not measured)",
+    "druidfi/stonehenge: restricted to traefik/dynamic/traefik.dynamic.yml, traefik/traefik.yml (-only; the files outside are a disclosed gap, not measured)",
+    "interledger/testnet: restricted to local/config/traefik/dynamic.yml (-only; the files outside are a disclosed gap, not measured)",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "quentintaranpino/nostrcheck-server: restricted to dynamic.yml (-only; the files outside are a disclosed gap, not measured)"
+  ],
+  "disposition": "partial: target L3, met L2 (L1 excellent, L2 good, tier A) against traefik 3.7.13 (/api/rawdata, /api/entrypoints on a scratch copy) on 8 repositories with Traefik files named where the manifest claims them: sym_recall 1, sym_precision .9863 (73 dialect definitions, 72 in the tool's list: one router the proxy drops), ref_precision 1, ref_recall .9143 (32 of 35: a provider suffix, service: x@file, cannot be read by the doc engine); L3 xref not measured (every static file in a subject names its dynamic file by a container path, /etc/traefik/dynamic.yml, which resolves through the compose volume mount, not as a repository path), the route_ref layer is the routeref item's (LB-F96, LB-F98): LB-Q-traefik-rest"
+}

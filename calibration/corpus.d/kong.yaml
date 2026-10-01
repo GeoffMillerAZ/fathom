@@ -1,0 +1,94 @@
+id: kong
+language: Kong declarative configuration (decK / DB-less)
+# Two kinds of subject, all read only and never vendored.
+# (1) Repositories whose declarative file sits where fathom's ingest reads it: a
+# kong.yml beside a docker-compose stack whose services are the hosts its Kong
+# services name, the L3 shape. decK accepts every kong.yml but supabase's, which
+# uses the DB-less loader's acls, credentials and comments (route targets there
+# are tier C).
+# (2) Kong/deck's and Kong/go-database-reconciler's own state files: the only
+# subjects that write foreign keys (route.service, plugin.service|route) in
+# bulk, so the only ones that can measure L2. They live under testdata
+# directories, which Discover prunes, so ingest never reads them in place; they
+# are measured from a scratch copy with `testdata` renamed `td`
+# (calibration/oracles/kong/README.md), and the reading says so.
+repos:
+  - name: Kong/deck
+    url: https://github.com/Kong/deck.git
+    ref: v1.68.0
+    sha: 34b752ef8dbf5befefb45c2abb72f50e289ee952
+    licence: Apache-2.0
+    sparse: ["**/*.yaml", "**/*.yml"]
+    idioms:
+      - "decK state files: services, routes written flat with service: {name: ...}, upstreams with targets, plugins scoped by service or route"
+      - "invalid and enterprise-only states decK's offline validation rejects"
+  - name: Kong/go-database-reconciler
+    url: https://github.com/Kong/go-database-reconciler.git
+    ref: v1.42.4
+    sha: 3e9e2aa4a799494cd8824a27867e366745c091fd
+    licence: Apache-2.0
+    sparse: ["**/*.yaml", "**/*.yml"]
+    idioms:
+      - "format 3.0 files for the reconciler's own state tests: plugins and routes with foreign keys"
+  - name: callistaenterprise/blog-api-gateway-kong
+    url: https://github.com/callistaenterprise/blog-api-gateway-kong.git
+    ref: main
+    sha: 577ff95d269e7f350ef0a07da0f68f0cd67f2e89
+    licence: Apache-2.0
+    idioms:
+      - "kong.yml: services with a url naming a compose service, routes and plugins"
+      - "docker-compose.yml: the Kong container and the services its routes proxy"
+  - name: afteracademy/gomicro
+    url: https://github.com/afteracademy/gomicro.git
+    ref: main
+    sha: 6d3aec7aee37cd46a5e15c56c8096e5408e76dbc
+    licence: Apache-2.0
+    idioms:
+      - "kong/kong.yml and kong/kong-load-balanced.yml: services, upstreams with targets (load balanced), routes"
+      - "docker-compose.yml and docker-compose-load-balanced.yml: the replicas the upstream targets name"
+  - name: jonashackt/spring-boot-openapi-kong
+    url: https://github.com/jonashackt/spring-boot-openapi-kong.git
+    ref: main
+    sha: 2b662b7bb5ca9f25ee05ce1a5677dc56ae5fffc8
+    licence: MIT
+    idioms:
+      - "kong/kong.yml generated for a Spring Boot service: services, routes, plugins"
+      - "docker-compose.yml with Kong and the service it fronts"
+  - name: AliBigdeli/FastApi-GRPC-Todo-Microservice-App
+    url: https://github.com/AliBigdeli/FastApi-GRPC-Todo-Microservice-App.git
+    ref: main
+    sha: 91d6621a3f2d6af45dba40da5bd463f11c7b96a6
+    licence: MIT
+    idioms:
+      - "kong/kong.yml fronting a set of microservices named in docker-compose.yml"
+  - name: Kong/docker-kong-js-pdk
+    url: https://github.com/Kong/docker-kong-js-pdk.git
+    ref: main
+    sha: 97182fb17e03ca18430b72df6415e709044068dd
+    licence: Apache-2.0
+    idioms:
+      - "config/kong.yml: a service, a route and a JavaScript plugin"
+  - name: alexashley/kong-plugin-path-prefix
+    url: https://github.com/alexashley/kong-plugin-path-prefix.git
+    ref: master
+    sha: 07be42fe4a785866c0e02de9295b5111efd45b0b
+    licence: MIT
+    idioms:
+      - "kong.yml exercising a custom plugin on a service and a route; docker-compose.yml"
+  - name: ozanonurtek/flask-microservices-with-kong
+    url: https://github.com/ozanonurtek/flask-microservices-with-kong.git
+    ref: master
+    sha: deab41bf1d70f9d183fc8fd3cf6b3090747c6d01
+    licence: MIT
+    idioms:
+      - "kong.yml fronting Flask services named in the compose file"
+  - name: supabase/supabase
+    url: https://github.com/supabase/supabase.git
+    ref: v1.26.08
+    sha: 86854671e95be31e24fa0785cded0579fe692fcb
+    licence: Apache-2.0
+    sparse: ["docker/**"]
+    idioms:
+      - "docker/volumes/api/kong.yml: services whose url names a compose service (http://auth:9999/, http://rest:3000/) with routes and cors/key-auth plugins"
+      - "docker-compose.yml services (kong, auth, rest, realtime, storage, meta, functions, ...) the route targets resolve to"
+      - "a declarative file decK's strict schema rejects (acls, credentials, _comment): route targets only, tier C"
