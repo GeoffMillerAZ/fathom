@@ -1,0 +1,12 @@
+{
+  "symbols": [
+    { "name": "longform.json", "kind": "CFNTemplate", "package": "longform", "line": 1, "end_line": 33, "signature": "2010-09-09", "tier": "verified" },
+    { "name": "VpcId", "kind": "CFNParameter", "package": "longform", "line": 4, "end_line": 4, "signature": "AWS::EC2::VPC::Id", "tier": "verified" },
+    { "name": "HasVpc", "kind": "CFNCondition", "package": "longform", "line": 7, "end_line": 7, "tier": "verified" },
+    { "name": "SecurityGroup", "kind": "CFNResource", "package": "longform", "line": 10, "end_line": 15, "signature": "AWS::EC2::SecurityGroup", "calls": ["HasVpc", "VpcId"], "tier": "verified" },
+    { "name": "Instance", "kind": "CFNResource", "package": "longform", "line": 18, "end_line": 23, "signature": "AWS::EC2::Instance", "calls": ["HasVpc", "SecurityGroup"], "tier": "verified" },
+    { "name": "Eip", "kind": "CFNResource", "package": "longform", "line": 26, "end_line": 29, "signature": "AWS::EC2::EIP", "calls": ["Instance"], "tier": "verified" },
+    { "name": "PublicIp", "kind": "CFNOutput", "package": "longform", "line": 33, "end_line": 33, "calls": ["Eip"], "tier": "verified" }
+  ],
+  "cross_file": []
+}

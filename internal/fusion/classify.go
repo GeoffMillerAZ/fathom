@@ -18,16 +18,20 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/extractor"
 )
 
 // ToolKind identifies what a yaml/cue-family source file actually is,
 // resolved by path + content + sibling-directory context. It is recorded on
 // every Observation extracted from a classified file (core.Observation.
 // ToolKind) — files outside the yaml/cue family are never classified and
-// carry "" (honest: "not ambiguous, no classification needed"), not a lie.
+// carry "" (honest: "not ambiguous, no classification needed"), not a lie,
+// except a .json CloudFormation template, which its content classifies
+// (ToolCloudFormation) exactly as it does the YAML ones.
 type ToolKind string
 
 const (
@@ -52,6 +56,10 @@ const (
 	ToolCUEModule        ToolKind = "cue-module"
 	ToolTimoni           ToolKind = "timoni"
 	ToolCUEPlain         ToolKind = "cue"
+	// ToolCloudFormation (LB-Q-cloudformation): an AWS CloudFormation or SAM
+	// template, a .yaml, .yml or .json no name claims, read by its content
+	// (the cloudformation dialect's detect.content_sniff).
+	ToolCloudFormation ToolKind = "cloudformation"
 )
 
 // MaxExtractSize is the size cap above which a file is skipped from
@@ -142,7 +150,82 @@ func classifyYAML(relPath string, content []byte, idx *siblingIndex) ToolKind {
 	if openapiTopRe.Match(content) {
 		return ToolOpenAPI
 	}
+	// AWS CloudFormation / SAM (LB-Q-cloudformation): a template is YAML no
+	// name claims, so it is read by its content, and last: only a file no
+	// signal above claimed can be one, so every verdict above is unchanged.
+	// The signal is the dialect's own detect.content_sniff
+	// (AWSTemplateFormatVersion, an AWS:: Transform, or a top-level Resources
+	// map whose Types are Namespace::Service names).
+	if cloudFormationDetects(content) {
+		return ToolCloudFormation
+	}
 	return ToolUnclassified
+}
+
+var (
+	cfnOnce sync.Once
+	cfnExt  *extractor.DocExtractor
+)
+
+// cloudFormationExtractor is the cloudformation dialect's document engine,
+// built once; nil when the manifest does not load (TestDialectManifests
+// fails the build's tests on that, and routing then claims nothing).
+func cloudFormationExtractor() *extractor.DocExtractor {
+	cfnOnce.Do(func() {
+		if x, err := extractor.NewDocDialectExtractor("cloudformation"); err == nil {
+			cfnExt = x
+		}
+	})
+	return cfnExt
+}
+
+// cloudFormationDetects reports whether content is a CloudFormation or SAM
+// template by the dialect's detect.content_sniff.
+func cloudFormationDetects(content []byte) bool {
+	x := cloudFormationExtractor()
+	return x != nil && x.DetectsContent(content)
+}
+
+// cloudFormationJSON reports whether a .json file is a CloudFormation
+// template: the sniff claims it and it decodes to one (a root mapping with a
+// Resources key, the dialect's require_keys), so a JSON document that only
+// mentions a template's key (a schema, a resource specification) keeps the
+// generic JSON extractor. Only a file the sniff claims is decoded.
+func cloudFormationJSON(content []byte) bool {
+	x := cloudFormationExtractor()
+	if x == nil || !x.DetectsContent(content) {
+		return false
+	}
+	res, err := x.ExtractDoc("", "template.json", content)
+	return err == nil && len(res.Roots) > 0
+}
+
+// isCloudFormation reports whether ingest's dispatch reads relPath as a
+// CloudFormation template: a .yaml or .yml the classifier gives
+// ToolCloudFormation, or a .json that is one (cloudFormationJSON; a
+// basename claim, package.json, wins first: resolveExtractor, ReingestFile).
+func isCloudFormation(relPath string, content []byte, idx *siblingIndex) bool {
+	switch filepath.Ext(relPath) {
+	case ".yaml", ".yml":
+		return Classify(relPath, content, idx) == ToolCloudFormation
+	case ".json":
+		return cloudFormationJSON(content)
+	}
+	return false
+}
+
+// ContentDialect names the doc-engine dialect ingest's dispatch reads
+// relPath with when no basename, glob or extension claims it and its content
+// does: "cloudformation" for a CloudFormation or SAM template, "" otherwise.
+// refs is the service's Discover list (the sibling index the YAML classifier
+// reads). The language-breadth harness measures a content-classified dialect
+// on exactly these files (indexbench lang-oracle).
+func (p *Pipeline) ContentDialect(relPath string, content []byte, refs []core.SourceRef) string {
+	_, tk, ok, _ := p.resolveExtractor(relPath, content, buildSiblingIndex(refs))
+	if ok && tk == ToolCloudFormation {
+		return string(ToolCloudFormation)
+	}
+	return ""
 }
 
 // classifyCUE resolves the ToolKind tag for a .cue file. Every ToolKind it

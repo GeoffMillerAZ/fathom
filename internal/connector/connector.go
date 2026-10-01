@@ -228,6 +228,26 @@ var extClassMap = map[string]classification{
 	"taskfile.dist.yml":  {core.KindTaskfile, "taskfile"},
 	"taskfile.dist.yaml": {core.KindTaskfile, "taskfile"},
 
+	// Git hook managers (LB-Q-git-hooks-config, language-breadth: new, a
+	// doc-engine tool format, no incumbent). lefthook's config in the eight
+	// spellings it reads (lefthook.yml, .lefthook.yml, lefthook.yaml,
+	// .lefthook.yaml and their -local overrides), pre-commit's config and a
+	// hook repository's manifest (.pre-commit-hooks.yaml, the hooks a
+	// config's `hooks[*].id` names). The basename check (kindForFile/classify)
+	// takes precedence over the generic YAML handling, which never claimed
+	// them. lefthook.json and lefthook.toml are not claimed (the dialect
+	// decodes YAML).
+	"lefthook.yml":            {core.KindLefthookHook, "git-hooks-config"},
+	"lefthook.yaml":           {core.KindLefthookHook, "git-hooks-config"},
+	".lefthook.yml":           {core.KindLefthookHook, "git-hooks-config"},
+	".lefthook.yaml":          {core.KindLefthookHook, "git-hooks-config"},
+	"lefthook-local.yml":      {core.KindLefthookHook, "git-hooks-config"},
+	"lefthook-local.yaml":     {core.KindLefthookHook, "git-hooks-config"},
+	".lefthook-local.yml":     {core.KindLefthookHook, "git-hooks-config"},
+	".lefthook-local.yaml":    {core.KindLefthookHook, "git-hooks-config"},
+	".pre-commit-config.yaml": {core.KindPreCommitHook, "git-hooks-config"},
+	".pre-commit-hooks.yaml":  {core.KindPreCommitHookDef, "git-hooks-config"},
+
 	// Python packaging (LB-Q-python-packaging, language-breadth: new — a
 	// doc-engine tool format, no incumbent). The basename check
 	// (kindForFile/classify) takes precedence over ".toml" (the generic

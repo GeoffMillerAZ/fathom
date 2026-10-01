@@ -1,0 +1,36 @@
+{
+  "id": "git-hooks-config",
+  "display": "Git hook managers (lefthook.yml, .pre-commit-config.yaml)",
+  "kind": "tooling",
+  "engine": "doc",
+  "lang_tag": "git-hooks-config",
+  "match": {
+    "extensions": [],
+    "basenames": [
+      "lefthook.yml", "lefthook.yaml", ".lefthook.yml", ".lefthook.yaml",
+      "lefthook-local.yml", "lefthook-local.yaml", ".lefthook-local.yml", ".lefthook-local.yaml",
+      ".pre-commit-config.yaml", ".pre-commit-hooks.yaml"
+    ],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "variants": [],
+  "kinds": {
+    "hook":                { "source_kind": "LefthookHook",     "canonical": "stage" },
+    "command":             { "source_kind": "LefthookCommand",  "canonical": "job" },
+    "script":              { "source_kind": "LefthookScript",   "canonical": "job" },
+    "job":                 { "source_kind": "LefthookJob",      "canonical": "job" },
+    "pre_commit_hook":     { "source_kind": "PreCommitHook",    "canonical": "job" },
+    "pre_commit_hook_def": { "source_kind": "PreCommitHookDef", "canonical": "job" }
+  },
+  "required_kinds": ["hook", "command", "script", "job", "pre_commit_hook", "pre_commit_hook_def"],
+  "oracle_kinds": {
+    "tool": { "stage": "stage", "job": "job" }
+  },
+  "name_match": "identity",
+  "package": { "strategy": "none" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L1",
+  "queue_id": "git-hooks-config"
+}

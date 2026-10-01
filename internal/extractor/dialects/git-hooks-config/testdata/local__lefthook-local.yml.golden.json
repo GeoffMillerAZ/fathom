@@ -1,0 +1,8 @@
+{
+  "symbols": [
+    { "name": "pre-commit", "kind": "LefthookHook", "package": "lefthook-local", "line": 2, "end_line": 7, "tier": "verified" },
+    { "name": "lint", "kind": "LefthookCommand", "package": "lefthook-local", "line": 4, "end_line": 5, "tier": "verified" },
+    { "name": "spell", "kind": "LefthookCommand", "package": "lefthook-local", "line": 6, "end_line": 7, "signature": "cspell {staged_files}", "tier": "verified" },
+    { "name": "pre-push", "kind": "LefthookHook", "package": "lefthook-local", "line": 8, "end_line": 9, "tier": "verified" }
+  ]
+}

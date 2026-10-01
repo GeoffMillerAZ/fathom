@@ -1,0 +1,11 @@
+{
+  "symbols": [
+    { "name": "trailing-whitespace", "kind": "PreCommitHook", "package": ".pre-commit-config", "line": 13, "end_line": 13, "tier": "verified" },
+    { "name": "end-of-file-fixer", "kind": "PreCommitHook", "package": ".pre-commit-config", "line": 14, "end_line": 14, "tier": "verified" },
+    { "name": "check-yaml", "kind": "PreCommitHook", "package": ".pre-commit-config", "line": 15, "end_line": 16, "tier": "verified" },
+    { "name": "black", "kind": "PreCommitHook", "package": ".pre-commit-config", "line": 20, "end_line": 22, "signature": "black (python)", "tier": "verified" },
+    { "name": "mypy", "kind": "PreCommitHook", "package": ".pre-commit-config", "line": 25, "end_line": 29, "signature": "mypy", "tier": "verified" },
+    { "name": "check-hooks-apply", "kind": "PreCommitHook", "package": ".pre-commit-config", "line": 34, "end_line": 34, "tier": "verified" },
+    { "name": "check-useless-excludes", "kind": "PreCommitHook", "package": ".pre-commit-config", "line": 35, "end_line": 35, "tier": "verified" }
+  ]
+}

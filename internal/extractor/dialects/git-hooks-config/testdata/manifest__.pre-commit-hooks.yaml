@@ -1,0 +1,18 @@
+-   id: check-added-large-files
+    name: check for added large files
+    description: prevents giant files from being committed.
+    entry: check-added-large-files
+    language: python
+    stages: [pre-commit, pre-push, manual]
+    minimum_pre_commit_version: 3.2.0
+-   id: check-json
+    name: check json
+    entry: check-json
+    language: python
+    types: [json]
+-   id: no-commit-to-branch
+    name: "don't commit to branch"
+    entry: no-commit-to-branch
+    language: python
+    pass_filenames: false
+    always_run: true

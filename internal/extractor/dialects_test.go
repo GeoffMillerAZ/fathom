@@ -129,7 +129,7 @@ func TestLoadDialectsRefuses(t *testing.T) {
 		"doc kind undeclared": {map[string]string{"dialects/d/dialect.json": docManifest,
 			"dialects/d/doc.json": strings.Replace(docSpecOK, "DJob", "Other", 1)}, "not a kind the manifest declares"},
 		"doc bad selector": {map[string]string{"dialects/d/dialect.json": docManifest,
-			"dialects/d/doc.json": strings.Replace(docSpecOK, `"$.*"`, `"$..x"`, 1)}, "select"},
+			"dialects/d/doc.json": strings.Replace(docSpecOK, `"$.*"`, `"$..*"`, 1)}, "select"},
 		"type_wildcard off list": {map[string]string{"dialects/a/dialect.json": strings.Replace(base("a", "AF", ".a"), `"target_level"`, `"imports":{"strategy":"namespace-dir","type_wildcard":"fields"},"target_level"`, 1), "dialects/a/tags.scm": ""}, "imports.type_wildcard"},
 		"required undeclared":    {map[string]string{"dialects/a/dialect.json": strings.Replace(base("a", "AF", ".a"), `"required_kinds":["f"]`, `"required_kinds":["class"]`, 1), "dialects/a/tags.scm": ""}, "not a declared kind"},
 	}

@@ -23,12 +23,15 @@ import (
 )
 
 // decodeDoc returns the document roots of src (one unless multi, YAML).
-func decodeDoc(format string, src []byte, multi bool) ([]*docNode, error) {
+// yamlTags names the scheme a YAML local tag is read by ("" drops it, as
+// every dialect but CloudFormation does; "cloudformation" reads a short-form
+// intrinsic as its long form, cfnIntrinsic).
+func decodeDoc(format string, src []byte, multi bool, yamlTags string) ([]*docNode, error) {
 	var docs []*docNode
 	var err error
 	switch format {
 	case "yaml":
-		docs, err = decodeYAMLDoc(src, multi)
+		docs, err = decodeYAMLDoc(src, multi, yamlTags)
 	case "json":
 		var n *docNode
 		n, err = decodeJSONDoc(src)
@@ -63,7 +66,7 @@ func decodeDoc(format string, src []byte, multi bool) ([]*docNode, error) {
 
 // ── YAML ──────────────────────────────────────────────────────────────────
 
-func decodeYAMLDoc(src []byte, multi bool) ([]*docNode, error) {
+func decodeYAMLDoc(src []byte, multi bool, yamlTags string) ([]*docNode, error) {
 	dec := yaml.NewDecoder(bytes.NewReader(src))
 	var out []*docNode
 	for {
@@ -79,7 +82,7 @@ func decodeYAMLDoc(src []byte, multi bool) ([]*docNode, error) {
 			return nil, err
 		}
 		if len(doc.Content) > 0 {
-			out = append(out, fromYAML(doc.Content[0], 0))
+			out = append(out, fromYAML(doc.Content[0], 0, yamlTags))
 		}
 		if !multi {
 			break
@@ -89,13 +92,15 @@ func decodeYAMLDoc(src []byte, multi bool) ([]*docNode, error) {
 }
 
 // fromYAML converts a yaml.v3 node, following aliases (bounded depth, so
-// an alias cycle cannot recurse forever).
-func fromYAML(n *yaml.Node, depth int) *docNode {
+// an alias cycle cannot recurse forever). A local tag (`!Name`) is dropped —
+// the node reads as its untagged value — unless yamlTags names a scheme that
+// reads it (tagYAML).
+func fromYAML(n *yaml.Node, depth int, yamlTags string) *docNode {
 	if n == nil || depth > 64 {
 		return nil
 	}
 	if n.Kind == yaml.AliasNode {
-		out := fromYAML(n.Alias, depth+1)
+		out := fromYAML(n.Alias, depth+1, yamlTags)
 		if out != nil {
 			cp := *out
 			cp.line = n.Line
@@ -103,15 +108,23 @@ func fromYAML(n *yaml.Node, depth int) *docNode {
 		}
 		return nil
 	}
+	if yamlTags == yamlTagsCloudFormation {
+		if name, ok := cfnIntrinsic(n.Tag); ok {
+			return cfnLongForm(n, name, depth, yamlTags)
+		}
+	}
 	d := &docNode{line: n.Line}
 	switch n.Kind {
 	case yaml.MappingNode:
 		d.kind = docMap
 		for i := 0; i+1 < len(n.Content); i += 2 {
 			k, v := n.Content[i], n.Content[i+1]
-			vn := fromYAML(v, depth+1)
+			vn := fromYAML(v, depth+1, yamlTags)
 			if vn == nil {
 				vn = &docNode{kind: docNull}
+			}
+			if yamlTags == yamlTagsCloudFormation && k.Value == "Fn::GetAtt" && vn.kind == docScalar {
+				vn = cfnGetAttList(vn.scalar, v.Line)
 			}
 			vn.line = k.Line
 			d.set(k.Value, vn)
@@ -119,7 +132,7 @@ func fromYAML(n *yaml.Node, depth int) *docNode {
 	case yaml.SequenceNode:
 		d.kind = docSeq
 		for _, it := range n.Content {
-			if in := fromYAML(it, depth+1); in != nil {
+			if in := fromYAML(it, depth+1, yamlTags); in != nil {
 				d.items = append(d.items, in)
 			}
 		}
@@ -132,6 +145,61 @@ func fromYAML(n *yaml.Node, depth int) *docNode {
 		}
 	default:
 		return nil
+	}
+	return d
+}
+
+// yamlTagsCloudFormation is the one yaml_tags scheme (DocSpec.YAMLTags).
+const yamlTagsCloudFormation = "cloudformation"
+
+// cfnIntrinsic names the long form of a CloudFormation short-form tag, the
+// rule cfn-lint's decoder applies (cfnlint/decode/cfn_yaml.py): `!Ref` and
+// `!Condition` are their own keys, any other local tag `!Name` is `Fn::Name`
+// (`!Sub`, `!GetAtt`, `!If`, `!Join`, `!Select`, `!Equals`, …, and a
+// transform's own, `!Rain::Embed`). A standard tag (`!!str`) is not one.
+func cfnIntrinsic(tag string) (string, bool) {
+	if len(tag) < 2 || tag[0] != '!' || tag[1] == '!' {
+		return "", false
+	}
+	switch name := tag[1:]; name {
+	case "Ref", "Condition":
+		return name, true
+	default:
+		return "Fn::" + name, true
+	}
+}
+
+// cfnLongForm reads a tagged node `!Name v` as the one-key map {long name:
+// v}, on the tag's line; `!GetAtt A.B` is {Fn::GetAtt: [A, B]}, the list the
+// short form's dotted string abbreviates.
+func cfnLongForm(n *yaml.Node, name string, depth int, yamlTags string) *docNode {
+	var v *docNode
+	if name == "Fn::GetAtt" && n.Kind == yaml.ScalarNode {
+		v = cfnGetAttList(n.Value, n.Line)
+	} else {
+		inner := *n
+		inner.Tag = ""
+		if inner.Kind == yaml.ScalarNode && inner.Value == "" {
+			inner.Tag = "!!null"
+		}
+		v = fromYAML(&inner, depth+1, yamlTags)
+	}
+	if v == nil {
+		v = &docNode{kind: docNull}
+	}
+	v.line = n.Line
+	d := &docNode{kind: docMap, line: n.Line}
+	d.set(name, v)
+	return d
+}
+
+// cfnGetAttList splits a GetAtt's `resource.attribute` at its first dot
+// into the two-item list the long form writes ([resource, attribute]); an
+// attribute may itself hold dots (Endpoint.Address).
+func cfnGetAttList(s string, line int) *docNode {
+	d := &docNode{kind: docSeq, line: line}
+	for _, part := range strings.SplitN(s, ".", 2) {
+		d.items = append(d.items, &docNode{kind: docScalar, scalar: part, line: line})
 	}
 	return d
 }

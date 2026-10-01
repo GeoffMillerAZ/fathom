@@ -755,7 +755,22 @@ func parseGitLog(serviceID, raw string) []store.Commit {
 // and a member declared only in an #elif or #else branch of a file read as
 // first branches is no longer extracted. Every such file was fingerprinted by
 // the old reading, so the salt bump re-reads them.
-const ExtractorEpoch = "38"
+// Epoch 39 (LB-Q-git-hooks-config, docs/design/language-breadth.md §13/§4): a
+// lefthook config (lefthook.yml, .lefthook.yml, lefthook.yaml, .lefthook.yaml and
+// the four -local spellings), a .pre-commit-config.yaml and a .pre-commit-hooks.yaml
+// now extract through the doc-engine git-hooks-config dialect (lefthook's hooks and
+// their commands, scripts and named jobs; pre-commit's configured hooks and a hook
+// repository's hook definitions, by id) where each was fingerprinted as unclassified
+// YAML; the salt bump re-reads them. Also LB-Q-cloudformation, under the same bump (one
+// per dispatched item): a .yaml, .yml or .json whose content is an AWS CloudFormation or
+// SAM template (AWSTemplateFormatVersion, an AWS:: Transform, or a top-level Resources map
+// with Namespace::Service types) now extracts through the doc-engine cloudformation dialect
+// (the template, its Parameters, Mappings, Conditions, Resources and Outputs, the Ref,
+// GetAtt, DependsOn and Condition references a resource or output makes to the template's
+// own entities, and a nested stack's or serverless application's local template as a
+// file-tier edge) where each YAML one was unclassified and each JSON one was read by the
+// generic JSON extractor.
+const ExtractorEpoch = "39"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares
@@ -1008,6 +1023,18 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	}
 	p.toolExts[ToolGitLabCI] = gitlabCI
 
+	// AWS CloudFormation / SAM (LB-Q-cloudformation, language-breadth: new, a
+	// doc-engine tool format, no incumbent). A template claims no name: a
+	// .yaml or .yml reaches it through classifyYAML's content signal, last of
+	// all the signals, and a .json through resolveExtractor's sniff before the
+	// generic JSON extractor (a basename claim, package.json, still wins);
+	// ReingestFile makes the same decision.
+	cloudFormation, err := extractor.NewDocDialectExtractor("cloudformation")
+	if err != nil {
+		panic(fmt.Sprintf("fusion: doc-dialect cloudformation: %v", err))
+	}
+	p.toolExts[ToolCloudFormation] = cloudFormation
+
 	// Protocol Buffers
 	p.exts[".proto"] = extractor.NewProtoExtractor()
 
@@ -1098,6 +1125,22 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 		"Taskfile.dist.yml", "Taskfile.dist.yaml", "taskfile.dist.yml", "taskfile.dist.yaml",
 	} {
 		p.exts[name] = taskfile
+	}
+
+	// Git hook managers (LB-Q-git-hooks-config, language-breadth: new, a
+	// doc-engine tool format, no incumbent). Each basename is unambiguous by
+	// name (resolveExtractor's basename lookup, before the classifier that left
+	// these unclassified); the doc spec reads each format by its basename.
+	gitHooks, err := extractor.NewDocDialectExtractor("git-hooks-config")
+	if err != nil {
+		panic(fmt.Sprintf("fusion: doc-dialect git-hooks-config: %v", err))
+	}
+	for _, name := range []string{
+		"lefthook.yml", "lefthook.yaml", ".lefthook.yml", ".lefthook.yaml",
+		"lefthook-local.yml", "lefthook-local.yaml", ".lefthook-local.yml", ".lefthook-local.yaml",
+		".pre-commit-config.yaml", ".pre-commit-hooks.yaml",
+	} {
+		p.exts[name] = gitHooks
 	}
 
 	// Scala
@@ -2408,6 +2451,12 @@ func (p *Pipeline) resolveExtractor(relPath string, content []byte, idx *sibling
 		// Unchanged fast path: try full basename first (e.g. "go.mod"),
 		// then extension.
 		e, ok = p.exts[base]
+		if !ok && ext == ".json" && cloudFormationJSON(content) {
+			// A CloudFormation template written as JSON (LB-Q-cloudformation):
+			// its content, not its extension, says what it is.
+			e, ok = p.toolExts[ToolCloudFormation]
+			toolKind = ToolCloudFormation
+		}
 		if !ok {
 			e, ok = p.exts[ext]
 		}

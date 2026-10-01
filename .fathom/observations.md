@@ -2588,3 +2588,29 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** none yet: give those `tags.scm` files the §8.2 header (a docs-and-query-comment change that does not move a golden), or let the refusal also read the dialect's PROVENANCE.md for `<repo>` plus `<path>`
 - **Status:** open
 - **Impact:** low today (the three have tier-A SCIP and tier-B ctags oracles, so no worker needs a tier-C query for them); it is the ADR-048 amendment's own revisit trigger ("a dialect drafted from its oracle query without a `; source:` header naming it")
+
+### O206 — a doc-engine dialect that claims no file by name (a CloudFormation template is a .yaml, .yml or .json whose content says so) could not be measured: ownedSourceRefs owns only what the manifest's match claims, and any match claim on .yaml or .json would make ClassifyDialect's gate call every other YAML or JSON file ambiguous_unclassified
+
+- **Symptom:** a doc-engine dialect that claims no file by name (a CloudFormation template is a .yaml, .yml or .json whose content says so) could not be measured: ownedSourceRefs owns only what the manifest's match claims, and any match claim on .yaml or .json would make ClassifyDialect's gate call every other YAML or JSON file ambiguous_unclassified
+- **Evidence:**
+  - **Tool:** indexbench lang-oracle
+  - **Expected:** the harness measures a dialect on exactly the files ingest's dispatch sends it
+  - **Actual:** lang-oracle -dialect cloudformation errored: the subject has no cloudformation files fathom would extract; fixed in this item: ownedSourceRefs takes a contentDialect callback (fusion.Pipeline.ContentDialect, the dispatch decision itself) for a doc dialect with an empty match
+  - **Repro:** a dialect.json with an empty match and a doc.json detect.content_sniff; go run ./cmd/indexbench lang-oracle -dialect <id> -subject <dir> -out x.json
+- **Root cause:** the harness decides which subject files a dialect owns from the manifest's match alone (langbench.Manifest.Owns), and a content-classified dialect has no safe match to declare: ClassifyDialect makes an extension one dialect claims plainly (kubernetes: .yaml) and another by sniff ambiguous when the sniff misses, so the ingest gate would exclude every other YAML file
+- **Fix:** ownedSourceRefs takes a contentDialect callback, fusion.Pipeline.ContentDialect (resolveExtractor's own verdict), used only for a doc dialect with an empty match; TestOwnedSourceRefsByContent
+- **Status:** fixed (LB-Q-cloudformation, w6)
+- **Impact:** without it a content-routed tool format (CloudFormation; later Serverless, CDK output, OpenAPI by content) is unmeasurable, or measured on files ingest never sends it
+
+### O207 — yq's line and key|line report lines shifted up by the count of a file's leading comments and --- marker: its header preprocessing (on by default) slurps them before parsing
+
+- **Symptom:** yq's line and key|line report lines shifted up by the count of a file's leading comments and --- marker: its header preprocessing (on by default) slurps them before parsing
+- **Evidence:**
+  - **Tool:** yq v4 (an oracle's independent decode)
+  - **Expected:** yq '... | line' is the file's line
+  - **Actual:** examples/commitlint/lefthook.yml (one leading comment line) read every hook and command one line early until the decode passed --header-preprocess=false; the taskfile oracle works around the same shift with leadingLines
+  - **Repro:** printf '# c\na:\n  b: 1\n' | yq -o=json '[.. | select(path|length>0) | {"p": path, "kl": (key|line)}]' -   (a at 1, not 2; add --header-preprocess=false for 2)
+- **Root cause:** yq v4 preprocesses a file's header (leading comments, a --- marker) separately by default, and the parse that assigns lines starts after it
+- **Fix:** calibration/oracles/lefthook-dump passes --header-preprocess=false; an oracle that reads lines from yq should do the same (the taskfile oracle adds leadingLines instead)
+- **Status:** worked around (w6)
+- **Impact:** an oracle joining tool names to yq lines scores every definition of a file with a leading comment as a miss (|Δline| is the comment count, over 2 for a long header)

@@ -1,0 +1,17 @@
+{
+  "symbols": [
+    { "name": "basic.yaml", "kind": "CFNTemplate", "package": "basic", "line": 1, "end_line": 60, "signature": "2010-09-09", "tier": "verified" },
+    { "name": "Env", "kind": "CFNParameter", "package": "basic", "line": 4, "end_line": 6, "signature": "String", "tier": "verified" },
+    { "name": "BucketSuffix", "kind": "CFNParameter", "package": "basic", "line": 7, "end_line": 9, "signature": "String", "tier": "verified" },
+    { "name": "RegionMap", "kind": "CFNMapping", "package": "basic", "line": 11, "end_line": 13, "tier": "verified" },
+    { "name": "IsProd", "kind": "CFNCondition", "package": "basic", "line": 15, "end_line": 15, "tier": "verified" },
+    { "name": "NotProd", "kind": "CFNCondition", "package": "basic", "line": 16, "end_line": 16, "tier": "verified" },
+    { "name": "Queue", "kind": "CFNResource", "package": "basic", "line": 18, "end_line": 22, "signature": "AWS::SQS::Queue", "calls": ["IsProd"], "tier": "verified" },
+    { "name": "Bucket", "kind": "CFNResource", "package": "basic", "line": 23, "end_line": 31, "signature": "AWS::S3::Bucket", "calls": ["BucketSuffix", "Env", "Queue"], "tier": "verified" },
+    { "name": "Function", "kind": "CFNResource", "package": "basic", "line": 32, "end_line": 42, "signature": "AWS::Lambda::Function", "calls": ["Bucket", "IsProd", "Queue", "Role"], "tier": "verified" },
+    { "name": "Role", "kind": "CFNResource", "package": "basic", "line": 43, "end_line": 51, "signature": "AWS::IAM::Role", "tier": "verified" },
+    { "name": "BucketArn", "kind": "CFNOutput", "package": "basic", "line": 53, "end_line": 57, "signature": "The bucket's ARN", "calls": ["Bucket"], "tier": "verified" },
+    { "name": "QueueUrl", "kind": "CFNOutput", "package": "basic", "line": 58, "end_line": 60, "calls": ["IsProd", "Queue"], "tier": "verified" }
+  ],
+  "cross_file": []
+}

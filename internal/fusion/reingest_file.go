@@ -166,6 +166,12 @@ func (p *Pipeline) ReingestFile(ctx context.Context, st store.Store, serviceID, 
 		// there, not through the generic YAML extractor the extension names.
 		extExtractor, ok = p.toolExts[ToolGitLabCI]
 	}
+	if !ok && isCloudFormation(relFile, content, nil) {
+		// A CloudFormation template (LB-Q-cloudformation) is read by its
+		// content, as ingest's dispatch reads it, not by the YAML or JSON
+		// extractor its extension names.
+		extExtractor, ok = p.toolExts[ToolCloudFormation]
+	}
 	if !ok {
 		extExtractor, ok = p.exts[ext]
 	}

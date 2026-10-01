@@ -1,0 +1,29 @@
+pre-commit:
+  parallel: true
+  jobs:
+    - name: lint
+      run: yarn lint {staged_files}
+      glob: "*.{js,ts}"
+    - run: echo "an unnamed job is no entity"
+    - name: checks
+      group:
+        parallel: true
+        jobs:
+          - name: typecheck
+            run: yarn tsc
+          - script: audit.sh
+            runner: bash
+          - name: nested
+            group:
+              jobs:
+                - name: deepest
+                  script: deep.sh
+                  runner: sh
+
+pre-push:
+  jobs:
+    - name: test
+      run: go test ./...
+  commands:
+    legacy:
+      run: make check

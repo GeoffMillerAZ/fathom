@@ -1,0 +1,39 @@
+{
+  "decode": "yaml",
+  "detect": {
+    "basenames": [
+      "lefthook.yml", "lefthook.yaml", ".lefthook.yml", ".lefthook.yaml",
+      "lefthook-local.yml", "lefthook-local.yaml", ".lefthook-local.yml", ".lefthook-local.yaml",
+      ".pre-commit-config.yaml", ".pre-commit-hooks.yaml"
+    ]
+  },
+  "entities": [
+    { "files": ["lefthook.yml", "lefthook.yaml", ".lefthook.yml", ".lefthook.yaml", "lefthook-local.yml", "lefthook-local.yaml", ".lefthook-local.yml", ".lefthook-local.yaml"],
+      "select": "$.*",
+      "where": { "is_map": true, "not_key_in": ["$schema", "min_version", "lefthook", "source_dir", "source_dir_local", "rc", "skip_output", "output", "extends", "no_tty", "assert_lefthook_installed", "colors", "skip_lfs", "remote", "remotes", "templates", "glob_matcher"] },
+      "kind": "stage", "source_kind": "LefthookHook", "name": "$key" },
+
+    { "files": ["lefthook.yml", "lefthook.yaml", ".lefthook.yml", ".lefthook.yaml", "lefthook-local.yml", "lefthook-local.yaml", ".lefthook-local.yml", ".lefthook-local.yaml"],
+      "select": "$.*.commands.*", "include_null": true,
+      "kind": "job", "source_kind": "LefthookCommand", "name": "$key", "signature": ".run" },
+    { "files": ["lefthook.yml", "lefthook.yaml", ".lefthook.yml", ".lefthook.yaml", "lefthook-local.yml", "lefthook-local.yaml", ".lefthook-local.yml", ".lefthook-local.yaml"],
+      "select": "$.*.scripts.*", "include_null": true,
+      "kind": "job", "source_kind": "LefthookScript", "name": "$key", "signature": ".runner" },
+    { "files": ["lefthook.yml", "lefthook.yaml", ".lefthook.yml", ".lefthook.yaml", "lefthook-local.yml", "lefthook-local.yaml", ".lefthook-local.yml", ".lefthook-local.yaml"],
+      "select": "$.*.jobs[*]", "where": { "is_map": true, "has_key": ["name"] },
+      "kind": "job", "source_kind": "LefthookJob", "name": ".name", "signature": ".run | .script" },
+    { "files": ["lefthook.yml", "lefthook.yaml", ".lefthook.yml", ".lefthook.yaml", "lefthook-local.yml", "lefthook-local.yaml", ".lefthook-local.yml", ".lefthook-local.yaml"],
+      "select": "$.*.jobs[*].group.jobs[*]", "where": { "is_map": true, "has_key": ["name"] },
+      "kind": "job", "source_kind": "LefthookJob", "name": ".name", "signature": ".run | .script" },
+    { "files": ["lefthook.yml", "lefthook.yaml", ".lefthook.yml", ".lefthook.yaml", "lefthook-local.yml", "lefthook-local.yaml", ".lefthook-local.yml", ".lefthook-local.yaml"],
+      "select": "$.*.jobs[*].group.jobs[*].group.jobs[*]", "where": { "is_map": true, "has_key": ["name"] },
+      "kind": "job", "source_kind": "LefthookJob", "name": ".name", "signature": ".run | .script" },
+
+    { "files": [".pre-commit-config.yaml"],
+      "select": "$.repos[*].hooks[*]", "where": { "is_map": true, "has_key": ["id"] },
+      "kind": "job", "source_kind": "PreCommitHook", "name": ".id", "signature": ".name | .entry" },
+    { "files": [".pre-commit-hooks.yaml"],
+      "select": "$[*]", "where": { "is_map": true, "has_key": ["id"] },
+      "kind": "job", "source_kind": "PreCommitHookDef", "name": ".id", "signature": ".name" }
+  ]
+}

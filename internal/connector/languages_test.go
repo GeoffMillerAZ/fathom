@@ -91,6 +91,7 @@ var langRowHint = map[string]string{
 	"go-mod":           "go.mod, go.work,",
 	"kustomize":        "Kustomize",
 	"taskfile":         "Taskfile.yml",
+	"git-hooks-config": "lefthook.yml, .pre-commit-config.yaml, CloudFormation",
 }
 
 // registryLangTags returns the sorted, deduplicated set of Lang tags

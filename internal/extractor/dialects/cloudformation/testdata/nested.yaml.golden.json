@@ -1,0 +1,15 @@
+{
+  "symbols": [
+    { "name": "nested.yaml", "kind": "CFNTemplate", "package": "nested", "line": 1, "end_line": 25, "signature": "2010-09-09", "tier": "verified" },
+    { "name": "Network", "kind": "CFNResource", "package": "nested", "line": 3, "end_line": 6, "signature": "AWS::CloudFormation::Stack", "tier": "verified" },
+    { "name": "Storage", "kind": "CFNResource", "package": "nested", "line": 7, "end_line": 13, "signature": "AWS::CloudFormation::Stack", "calls": ["Network"], "tier": "verified" },
+    { "name": "Remote", "kind": "CFNResource", "package": "nested", "line": 14, "end_line": 17, "signature": "AWS::CloudFormation::Stack", "tier": "verified" },
+    { "name": "Hosted", "kind": "CFNResource", "package": "nested", "line": 18, "end_line": 21, "signature": "AWS::CloudFormation::Stack", "tier": "verified" },
+    { "name": "NotAStack", "kind": "CFNResource", "package": "nested", "line": 22, "end_line": 25, "signature": "AWS::S3::Bucket", "tier": "verified" }
+  ],
+  "cross_file": [
+    { "from": "Network", "edge": "nested_stack", "raw": "./network/vpc.yaml", "target": "infra/network/vpc.yaml", "strategy": "repo-path", "line": 6 },
+    { "from": "Storage", "edge": "nested_stack", "raw": "storage.yaml", "target": "infra/storage.yaml", "strategy": "repo-path", "line": 11 },
+    { "from": "Hosted", "edge": "nested_stack", "raw": "https://s3.amazonaws.com/bucket/t.yaml", "target": "infra/https:/s3.amazonaws.com/bucket/t.yaml", "strategy": "repo-path", "line": 21 }
+  ]
+}
