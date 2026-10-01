@@ -468,3 +468,65 @@ func TestIngest_ExtractorEpoch_CallQualificationForcesReExtraction(t *testing.T)
 		t.Errorf("re-extraction did not surface the new call text (read_items -> app.get %v, Use -> r.Header.Get %v)", sawDecorator, sawChain)
 	}
 }
+
+// TestIngest_ExtractorEpoch_WaveTLFormatsForceReExtraction pins epoch 42
+// (wave tl, one bump for the wave): Compose files extract through the
+// docker-compose dialect and gain a ComposeFile root entity (LB-F89), OpenAPI
+// and Swagger documents through the openapi dialect (LB-Q-openapi), `.tf`
+// files drop loop variables and provider meta-arguments from Calls and join
+// the doc-xref pass (LB-F84, LB-F86), and `*.gradle` files extract through the
+// gradle dialect (LB-F94). A file fingerprinted at epoch 41 carried the old
+// reading, so the bump "41"→"42" must re-read it. The seeded fingerprints are
+// salted with "41", the TRUE prior epoch (the XT-5 rule above).
+func TestIngest_ExtractorEpoch_WaveTLFormatsForceReExtraction(t *testing.T) {
+	dir := t.TempDir()
+	files := map[string][]byte{
+		"compose.yaml": []byte("services:\n  web:\n    image: nginx\n"),
+		"openapi.yaml": []byte("openapi: 3.0.3\ninfo:\n  title: Pets\n  version: \"1\"\npaths:\n  /pets:\n    get:\n      operationId: listPets\n      responses:\n        \"200\":\n          description: ok\n"),
+		"main.tf":      []byte("variable \"names\" {}\n\nresource \"null_resource\" \"each\" {\n  triggers = { for n in var.names : n => n }\n}\n"),
+		"build.gradle": []byte("plugins {\n  id 'java'\n}\n\ntask hello {\n  doLast { println 'hi' }\n}\n"),
+	}
+	conn := connector.NewLocalConnector()
+	st := store.NewMemoryStore()
+	svc := core.ServiceRef{ID: "epoch42-svc", Path: dir}
+	ctx := context.Background()
+	for name, src := range files {
+		if err := os.WriteFile(filepath.Join(dir, name), src, 0o644); err != nil {
+			t.Fatalf("write %s: %v", name, err)
+		}
+		oldSalted := sha256.Sum256(append(append([]byte{}, src...), []byte("\x00fathom-extractor-epoch:41")...))
+		if err := st.SetFingerprint(ctx, svc.ID, name, hex.EncodeToString(oldSalted[:])); err != nil {
+			t.Fatalf("SetFingerprint %s: %v", name, err)
+		}
+	}
+
+	p := fusion.New(conn, st, defaultCfg())
+	t.Cleanup(p.Close)
+	rep, err := p.Ingest(ctx, svc)
+	if err != nil {
+		t.Fatalf("Ingest: %v", err)
+	}
+	if rep.Skipped != 0 {
+		t.Fatalf("%d file(s) skipped (a pre-epoch-42 fingerprint was honored) — ExtractorEpoch was not bumped for the wave tl formats", rep.Skipped)
+	}
+
+	obs, err := st.QueryObservations(ctx, svc.ID, "")
+	if err != nil {
+		t.Fatalf("QueryObservations: %v", err)
+	}
+	var sawComposeFile, sawOpenAPIDoc bool
+	for _, o := range obs {
+		if o.SourceRef == "compose.yaml" && o.SourceKind == core.SourceKind("ComposeFile") {
+			sawComposeFile = true
+		}
+		if o.SourceRef == "openapi.yaml" && o.SourceKind == core.SourceKind("OpenAPIDocument") {
+			sawOpenAPIDoc = true
+		}
+	}
+	if !sawComposeFile {
+		t.Error("re-extraction did not surface the docker-compose dialect's ComposeFile root entity for compose.yaml")
+	}
+	if !sawOpenAPIDoc {
+		t.Error("re-extraction did not surface the openapi dialect's OpenAPIDocument entity for openapi.yaml")
+	}
+}

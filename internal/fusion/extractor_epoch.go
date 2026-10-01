@@ -343,7 +343,20 @@ import (
 // function-local member assignments as symbols, with their calls attributed to them;
 // every .js, .jsx, .mjs, .cjs, .ts, .tsx, .mts and .cts file was fingerprinted by the
 // old queries, so the salt bump re-reads them.
-const ExtractorEpoch = "41"
+// Epoch 42 (wave tl, one bump for the wave): Compose files (compose.yaml,
+// compose.yml, docker-compose.yaml, docker-compose.yml) extract through the
+// docker-compose doc dialect, which retired composeextract.go and adds a
+// ComposeFile root entity per file whose include: and extends.file resolve to the
+// included or extended file (LB-F89); a Dockerfile's FROM and COPY --from, a
+// compose service's image: and build:, and a Kubernetes container's image: resolve
+// to the in-repo Dockerfile that builds the image (LB-X-docker-image-ref, LB-F87).
+// OpenAPI and Swagger documents, YAML and JSON, extract through the openapi doc
+// dialect, which retired openapiextract.go (LB-Q-openapi). A .tf file joins the
+// doc-xref pass and its Calls drop for-expression variables, dynamic-block
+// iterators and the provider/providers meta-arguments (LB-F84, LB-F86). A *.gradle
+// file extracts through the gradle dialect (LB-F94). Every such file was
+// fingerprinted by the old reading, so the salt bump re-reads them.
+const ExtractorEpoch = "42"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares

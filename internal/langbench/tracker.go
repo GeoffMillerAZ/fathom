@@ -84,9 +84,7 @@ func RefusedItems(q []QueueEntry, plan verify.Plan) map[string]string {
 var registeredFormats = map[string]Registration{
 	"github-actions": {Extractor: "ghaextract.go", LangTag: "yaml"},
 	"kubernetes":     {Extractor: "k8sextract.go", LangTag: "yaml"},
-	"docker-compose": {Extractor: "composeextract.go", LangTag: "yaml"},
 	"helm":           {Extractor: "helmextract.go", LangTag: "yaml"},
-	"openapi":        {Extractor: "openapiextract.go", LangTag: "yaml"},
 	"cue":            {Extractor: "cueextract.go", LangTag: "cue"},
 	"markdown":       {Extractor: "mdextract.go", LangTag: "md"},
 	"templ":          {Extractor: "templextract.go", LangTag: "templ"},

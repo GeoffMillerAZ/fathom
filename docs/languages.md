@@ -50,6 +50,7 @@ language-native SCIP indexer), **file** (per-file resolver, tier pre-scan, label
 | Ada | tree-sitter (wasm) | yes | gnatcoll-core, alire | **syntax** — call names by syntax only (a procedure call statement or a function call, named by the callee's last identifier); no SCIP producer exists for Ada | L1 is measured at good (universal-ctags writes no Ada end line and loses sync after a `declare` block, so `range_agreement` is not measured); the `with` graph (L3, a strategy over child-unit paths) |
 | VHDL | tree-sitter (wasm) | yes | neorv32, VUnit | **syntax** — call names by syntax only; the grammar cannot tell a function call from an index, so both are recorded; no SCIP producer exists for VHDL | ports, signals and generics are not emitted; the `library`/`use` graph (L3) |
 | Makefile | tree-sitter (wasm) | yes | prometheus, cosmopolitan, valkey | **syntax** — a rule's literal prerequisite words by syntax only; no SCIP producer exists for make, and a prerequisite spelled with a variable is a value the dialect does not evaluate | `include` edges (L3), tab-indented assignments inside conditionals and unspaced `VAR?=x` (tree-sitter-make limits) |
+| Gradle builds (Groovy DSL: `*.gradle`) | tree-sitter (wasm, murtaza64/tree-sitter-groovy commit 2a6ddd55) | yes | spring-boot, kafka | **syntax** — a task's `dependsOn`/`finalizedBy` names by syntax only; an include or a project dependency resolves to the named project's build script only when that script declares a single top-level symbol (LB-Q-gradle-rest); no SCIP producer exists for Gradle | project edges (L3); the Kotlin DSL (`*.gradle.kts` stays Kotlin's) |
 | Emacs Lisp | tree-sitter (wasm; the grammar is generated at build time, its repository commits no `parser.c`) | yes | magit, lsp-mode | **syntax** — no call is captured yet (a head symbol is a call, a `let` binding pair, a `dolist` spec and a `cond` clause in the same syntax); no SCIP producer exists for Emacs Lisp | call edges (L2), which must tell a call from a binding form; `transient-define-*`, `defvar-keymap`, `define-error` and `ert-deftest` (ctags has no kind for them) |
 | Common Lisp | tree-sitter (wasm) | yes | lem, clack | **syntax** — no call is captured yet (a head symbol is a call, a `let` binding pair, a `cond` clause and a `loop` clause in the same syntax); no SCIP producer exists for Common Lisp | call edges (L2), which must tell a call from a binding form; `define-condition`, `define-command` and a `(:method ...)` option of a `defgeneric`; the grammar reads a `loop :with` list of four or more variables and some `format` control strings (`~/`, `~{~A~^ ~}`, `~:*`) as errors, which leaves 4 of the 232 calibration files (1.7%) with a parse error |
 | SQL | heuristic (`sqlextract.go`) | no | — | **syntax** | — |
@@ -57,7 +58,7 @@ language-native SCIP indexer), **file** (per-file resolver, tier pre-scan, label
 | Kubernetes YAML, Helm, Kustomize, docker-compose | pure Go | n/a | (corpus.yaml) | **syntax** (`service_ref` cross-repo edges) | — |
 | Dockerfile, CMake, GitHub Actions, proto, GraphQL, OpenAPI, JSON, TOML, templ, Markdown, go.mod, go.work, package.json, pyproject.toml, pom.xml, Cargo.toml, .csproj, .fsproj, .vbproj, .props, .targets, Taskfile.yml, lefthook.yml, .pre-commit-config.yaml, CloudFormation and SAM templates (by content) | pure Go | n/a | (corpus.yaml where listed) | **syntax** | — |
 
-Disclosed as unsupported (named per service in `list_services`, never silently skipped; `internal/connector/unsupported_language.go`): Clojure, Crystal, Elixir, Elm, Erlang, F#, Groovy, Haskell, Julia, Nim, OCaml, Swift (refused, LB-Q-swift-rest), Zig.
+Disclosed as unsupported (named per service in `list_services`, never silently skipped; `internal/connector/unsupported_language.go`): Clojure, Crystal, Elixir, Elm, Erlang, F#, Groovy (refused, LB-Q-groovy-rest), Haskell, Julia, Nim, OCaml, Swift (refused, LB-Q-swift-rest), Zig.
 
 Bench coverage today: every scenario corpus has a Go subject; the Long Code Arena corpus
 covers Python, Java and Kotlin bug localization. SU-23 (done) adds TypeScript
@@ -77,7 +78,7 @@ no reading yet; `unsupported (disclosed)` is queued, not registered, and named p
 by `list_services`; `refused` is refused by its plan row (design §14.2): it claims no level,
 is not dispatched and stays disclosed, whatever its reading measured.
 
-Milestone M1 progress: languages at L1 excellent 15/20, at L2 10/12, at L3 0/8, at L4 0/6; tool formats at target 14/15
+Milestone M1 progress: languages at L1 excellent 15/20, at L2 10/12, at L3 0/8, at L4 0/6; tool formats at target 17/15
 
 | Language or format | Kind | Engine | Grammar / parser | Target | Level met | Oracles | Typed edges | Reading | Next |
 |---|---|---|---|---|---|---|---|---|---|
@@ -95,12 +96,12 @@ Milestone M1 progress: languages at L1 excellent 15/20, at L2 10/12, at L3 0/8, 
 | Python packaging (pyproject.toml, requirements*.txt, setup.cfg) | tool format | doc | pure-go:github.com/pelletier/go-toml/v2 (n/a) | L2 | L2 (L1 good, L2 good) | C tomllib reference parse tomllib(python3.14) | syntax | 2026-09-28 | at target (LB-Q-python-packaging) |
 | C# (.cs) | language | tags | tree-sitter/tree-sitter-c-sharp (MIT) | L4 | L1 (L1 excellent) | B roslyn-syntax Microsoft.CodeAnalysis.CSharp 5.9.0; A scip-dotnet 0.1.0-SNAPSHOT | — | 2026-10-01 | LB-Q-csharp |
 | C (.c, .h by sniff) | language | tags | tree-sitter/tree-sitter-c (MIT) | L4 | L1 (L1 good) | A scip-clang 0.4.0; B universal-ctags 6.2.1 | scip:scip-clang | 2026-09-28 | LB-Q-c |
-| Terraform / OpenTofu (.tf .tfvars .tf.json) | tool format | native | native:github.com/hashicorp/hcl/v2 (MPL-2.0 (library dependency, unmodified)) | L3 | L1 (L1 excellent) | B universal-ctags 6.2.1 | syntax | 2026-09-28 | LB-Q-terraform |
+| Terraform / OpenTofu (.tf .tfvars .tf.json) | tool format | native | native:github.com/hashicorp/hcl/v2 (MPL-2.0 (library dependency, unmodified)) | L3 | L3 (L1 excellent, L2 excellent, L3 good) | A opentofu (tofu show -json -config, tofu graph -type=plan) 1.13.0 | syntax | 2026-10-01 | at target (LB-Q-terraform) |
 | C++ (.cc .cpp .cxx .hpp .hh .hxx, .h by sniff) | language | tags | tree-sitter/tree-sitter-cpp (MIT) | L4 | L1 (L1 excellent) | B clang-includes Apple clang version 21.0.0 (clang-2100.3.34.2); A scip-clang 0.4.0; B universal-ctags 6.2.1 | scip:scip-clang | 2026-09-28 | LB-Q-cpp |
 | Go (.go) | language | native | native:go/parser+go/types (BSD-3-Clause) | L4 | L1 (L1 excellent) | A scip-go 0.2.7; B universal-ctags 6.2.1 | native | 2026-10-01 | LB-Q-go |
 | Kubernetes manifests (incl. CRDs) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 good, L2 good, L3 good) | C kubernetes-oracle (independent gopkg.in/yaml.v3 walk) gopkg.in/yaml.v3 v3.0.1 | — | 2026-09-28 | at target (LB-Q-kubernetes) |
 | PowerShell (.ps1 .psm1 .psd1) | language | tags | airbus-cert/tree-sitter-powershell (MIT (verify at pin)) | L2 | L2 (L1 excellent, L2 good) | B powershell-ast PowerShell 7.5.4 System.Management.Automation.Language.Parser | syntax | 2026-09-28 | at target (LB-Q-powershell) |
-| Docker Compose files | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L2 (L1 excellent, L2 excellent) | A docker compose config --format json 5.1.4; C docker-compose-xref-oracle (independent yaml.v3 walk of extends.file and build) gopkg.in/yaml.v3 v3.0.1 | — | 2026-09-28 | LB-Q-docker-compose |
+| Docker Compose files | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A docker compose config --format json 5.1.4 | — | 2026-10-01 | at target (LB-Q-docker-compose) |
 | PHP (.php) | language | tags | tree-sitter/tree-sitter-php (MIT) | L4 | L1 (L1 excellent) | B php-parser 5.7.0.0; A scip-php 0.0.1 | syntax | 2026-10-01 | LB-Q-php |
 | Helm charts (Chart.yaml, values.yaml, templates/*.yaml, *.tpl) | tool format | tags+doc | ngalaiko/tree-sitter-go-template (MIT (verify at pin)) | L3 | L3 (L1 good, L2 good, L3 good) | C helm-oracle (Go text/template/parse for templates, gopkg.in/yaml.v3 for Chart.yaml and values.yaml) text/template/parse (go1.26); gopkg.in/yaml.v3 v3.0.1 | — | 2026-09-28 | at target (LB-Q-helm) |
 | Rust (.rs) | language | tags | tree-sitter/tree-sitter-rust (MIT) | L4 | L2 (L1 excellent, L2 excellent) | A rust-analyzer 0.0.0 (03fcb77246 2026-09-27) | scip:rust-analyzer | 2026-10-01 | LB-Q-rust |
@@ -122,7 +123,7 @@ Milestone M1 progress: languages at L1 excellent 15/20, at L2 10/12, at L3 0/8, 
 | Argo CD Applications and Argo Workflows | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | unsupported (disclosed) | — | — | — | LB-Q-argo |
 | R (.R .r) | language | tags | r-lib/tree-sitter-r (MIT) | L2 | unsupported (disclosed) | — | — | — | LB-Q-r |
 | Ansible playbooks, roles and inventories | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | unsupported (disclosed) | — | — | — | LB-Q-ansible |
-| Groovy (.groovy .gvy) | language | tags | murtaza64/tree-sitter-groovy (verify at pin) | L2 | unsupported (disclosed) | — | — | — | LB-Q-groovy |
+| Groovy (.groovy .gvy) | language | tags | murtaza64/tree-sitter-groovy (verify at pin) | L2 | refused | — | — | — | re-plan (LB-Q-groovy-rest refused) |
 | Composer manifests (composer.json) | tool format | doc | pure-go:encoding/json (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-composer |
 | Visual Basic .NET (.vb) | language | tags | govindbanura/tree-sitter-vbnet (weak, 2026) (verify at pin) | L1 | unsupported (disclosed) | — | — | — | LB-Q-vbnet |
 | Bazel / Starlark (BUILD, BUILD.bazel, *.bzl, WORKSPACE, MODULE.bazel) | tool format | tags | tree-sitter-grammars/tree-sitter-starlark (MIT) | L3 | unsupported (disclosed) | — | — | — | LB-Q-bazel |
@@ -133,7 +134,7 @@ Milestone M1 progress: languages at L1 excellent 15/20, at L2 10/12, at L3 0/8, 
 | GDScript (.gd) | language | tags | PrestonKnopp/tree-sitter-gdscript (MIT) | L2 | unsupported (disclosed) | — | — | — | LB-Q-gdscript |
 | GraphQL schemas and operations (.graphql .gql) | tool format | tags | bkegley/tree-sitter-graphql (MIT (verify at pin)) | L3 | tolerated | — | syntax | — | LB-Q-graphql |
 | Elixir (.ex .exs) | language | tags | elixir-lang/tree-sitter-elixir (Apache-2.0) | L3 | unsupported (disclosed) | — | — | — | LB-Q-elixir |
-| OpenAPI / Swagger documents | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | tolerated | — | syntax | — | LB-Q-openapi |
+| OpenAPI / Swagger documents | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A @apidevtools/swagger-parser 13.1.0; A @apidevtools/swagger-parser ($refs.paths) 13.1.0 | — | 2026-10-01 | at target (LB-Q-openapi) |
 | JSON Schema documents | tool format | doc | pure-go:encoding/json (n/a) | L3 | unsupported (disclosed) | — | — | — | LB-Q-json-schema |
 | Scala (.scala .sc) | language | tags | tree-sitter/tree-sitter-scala (MIT) | L4 | tolerated | — | scip:scip-java | — | LB-Q-scala |
 | Nix (.nix, flake.nix) | tool format | tags | nix-community/tree-sitter-nix (MIT) | L3 | unsupported (disclosed) | — | — | — | LB-Q-nix |
@@ -144,7 +145,7 @@ Milestone M1 progress: languages at L1 excellent 15/20, at L2 10/12, at L3 0/8, 
 | Rego / OPA policy (.rego) | language | tags | FallenAngel97/tree-sitter-rego (MIT (verify at pin)) | L3 | refused | — | — | — | re-plan (LB-Q-rego-rest refused) |
 | Git hook managers (lefthook.yml, .pre-commit-config.yaml) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L1 | L1 (L1 good) | A lefthook dump 1.13.6; C ruby psych 3.1.0 (ruby 2.6.10) | syntax | 2026-09-29 | at target (LB-Q-git-hooks-config) |
 | Astro components (.astro) | language | tags | virchau13/tree-sitter-astro (MIT) | L2 | unsupported (disclosed) | — | — | — | LB-Q-astro |
-| Gradle builds (build.gradle, build.gradle.kts, settings.gradle*) | tool format | tags | murtaza64/tree-sitter-groovy + fwcd/tree-sitter-kotlin (verify at pin) | L3 | unsupported (disclosed) | — | — | — | LB-Q-gradle |
+| Gradle builds (build.gradle, build.gradle.kts, settings.gradle*) | tool format | tags | murtaza64/tree-sitter-groovy + fwcd/tree-sitter-kotlin (MIT) | L3 | L2 (L1 excellent, L2 excellent) | A gradle (help, init-script model) 9.7.0 (spring-boot), 8.14.1 (kafka) | syntax | 2026-10-01 | LB-Q-gradle |
 | Vue single-file components (.vue) | language | tags | tree-sitter-grammars/tree-sitter-vue (MIT) | L3 | unsupported (disclosed) | — | — | — | LB-Q-vue |
 | Jenkins pipelines (Jenkinsfile, *.jenkinsfile) | tool format | tags | murtaza64/tree-sitter-groovy (verify at pin) | L2 | unsupported (disclosed) | — | — | — | LB-Q-jenkinsfile |
 | Svelte components (.svelte) | language | tags | tree-sitter-grammars/tree-sitter-svelte (MIT) | L3 | unsupported (disclosed) | — | — | — | LB-Q-svelte |

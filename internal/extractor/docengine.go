@@ -6,9 +6,10 @@ package extractor
 // doc.json names the decode, the entities to select, and the references
 // between them, and this engine walks the decoded tree. It generalizes the
 // walk the six bespoke config extractors (GitHub Actions, Compose,
-// Kubernetes, Kustomize, Helm values, OpenAPI) each hand-code (P20):
-// TestDocExtractorParity reproduces Compose's and GitHub Actions' symbols
-// from a doc.json alone.
+// Kubernetes, Kustomize, Helm values, OpenAPI) each hand-coded (P20):
+// TestDocExtractorParity reproduces GitHub Actions' symbols from a doc.json
+// alone (the Kustomize, Compose and OpenAPI extractors were retired by their
+// dialects, each at lang-parity).
 
 import (
 	"bytes"
