@@ -45,8 +45,16 @@ func TestCallLogRotationOffRequestPath(t *testing.T) {
 		close(release)
 		t.Fatal("a row write waited on the previous generation's roll-up and gzip")
 	}
-	if archiving.Load() == 0 {
-		t.Fatal("rotation past the bound never started a background archive pass")
+	// The archive pass runs on its own goroutine, so the writes returning
+	// does not mean it has reached archiveHook yet: its start is progress to
+	// wait for (waitSafety is a hang guard), not a race the scheduler must
+	// win. It lost that race on a loaded pre-push gate, and 107 of 600 runs
+	// under background QoS.
+	for deadline := time.Now().Add(waitSafety); archiving.Load() == 0; time.Sleep(time.Millisecond) {
+		if time.Now().After(deadline) {
+			close(release)
+			t.Fatal("rotation past the bound never started a background archive pass")
+		}
 	}
 	close(release)
 	if err := w.Close(); err != nil {

@@ -76,6 +76,18 @@ func pinRepo(t *testing.T, mode string) string {
 	t.Setenv("HOME", t.TempDir())
 	t.Setenv("FATHOM_HOOKS_LOG", filepath.Join(t.TempDir(), "hooks.jsonl"))
 	t.Setenv("CLAUDE_PROJECT_DIR", "")
+	// The stage's 250 ms budget bounds a hook on the operator's machine; it
+	// is not what a test of the rendered line or the lost/kept beat
+	// measures. On a loaded pre-push gate (nice 10, -race, four shards) the
+	// git reads overran it, the check skipped, and the line under test came
+	// back empty. A pin repository's tests get a budget no machine overruns,
+	// and the hook guard's deadline (the edit-hook path, runPinEditHook) is
+	// widened the same way; TestCommitPinSkipsSilentlyOverBudget sets its
+	// own stage budget (0) after this to pin the skip. Safe: t.Setenv above
+	// keeps every caller sequential.
+	prevBudget, prevScale := pinStageBudget, hookBudgetScale
+	pinStageBudget, hookBudgetScale = time.Minute, 30
+	t.Cleanup(func() { pinStageBudget, hookBudgetScale = prevBudget, prevScale })
 	repo, _ := filepath.EvalSymlinks(t.TempDir())
 	gitInitTempRepo(t, repo)
 	writeRepoFile(t, repo, "docs/intent/invariants.md", pinInvariantsBase)
